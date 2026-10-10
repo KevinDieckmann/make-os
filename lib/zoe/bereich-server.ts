@@ -1,7 +1,7 @@
 // ─── ZOE: Bereich erkennen — was der Server dazu liest (09.10. spät) ───────────────────────────────────────────────────
 // Die Regel steht rein in ./bereich.ts (`bereichFuerVorschlag`). Hier wird nur gesammelt, was sie braucht:
-//   • der fachliche Bezug: Aufgabe (`spaceVonAufgabe`), Kalender (`spaceVonKalender`), CRM-Eintrag (Business, außer alle Deals/Mandate der
-//     Firma liegen bei einer Privat-Einheit — `bereichVonGesellschaft`), Vorschlag eines Heads (Bereich des Heads aus dem Katalog);
+//   • der fachliche Bezug: Aufgabe (`spaceVonAufgabe`), Kalender (`spaceVonKalender`), CRM-Eintrag (immer Business — Kevin 09.10. spät,
+//     auch bei Deals/Mandaten einer Privat-Einheit), Vorschlag eines Heads (Bereich des Heads aus dem Katalog);
 //   • die bekannten Namen: CRM-Firmen und -Kontakte über die Sicht der Markttraktion (`crmBekannteNamen`, lib/zoe/crm-sicht.ts — Art. 18 fehlt)
 //     und die eigenen Gesellschaften aus dem Register. Nur zum ERKENNEN — kein Name verlässt diese Stelle, gespeichert werden nur Kennungen.
 // Wirft nie: scheitert das Lesen, bleibt (c) das Gespräch bzw. (d) „unklar“.

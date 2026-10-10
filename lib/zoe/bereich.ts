@@ -4,8 +4,8 @@
 // richtigen Stapel zuordnen.“
 //
 // EINE Regel `bereichFuerVorschlag` — in dieser Reihenfolge, die erste, die etwas sagt, gewinnt:
-//   (a) der fachliche Bezug: was der Server zum Bezug aufgelöst hat (Aufgabe → ihr Space, CRM-Kontakt/-Firma/-Deal/-Mandat → Business außer
-//       Privat-Einheit, Kalender → Space des Kalenders, Vorschlag eines Heads → Bereich des Heads), sonst die Gruppe des Werkzeugs (Gesundheit,
+//   (a) der fachliche Bezug: was der Server zum Bezug aufgelöst hat (Aufgabe → ihr Space, CRM-Kontakt/-Firma/-Deal/-Mandat → IMMER Business
+//       (Kevin 09.10. spät), Kalender → Space des Kalenders, Vorschlag eines Heads → Bereich des Heads), sonst die Gruppe des Werkzeugs (Gesundheit,
 //       Haushalt, Familie → Privat; Markttraktion, Kontakte, Kunden, Business, Bauplan → Business), sonst die ausdrückliche Angabe in der
 //       Eingabe (`space`/`bereich`, `spaceId`/`einheit`/`firma` über den Bereich der Einheit);
 //   (b) der Inhalt nennt einen bekannten Namen aus dem BESTAND (CRM-Firma, CRM-Kontakt mit vollem Namen, eigene Gesellschaft) — nie feste
@@ -82,6 +82,27 @@ export const passtZurSicht = (v: { bereich?: unknown }, space: Bereich | null): 
 };
 /** Nur Vorschläge GENAU dieses Bereichs (ohne „unklar“) — für die Sammelfreigabe: ein unklarer Vorschlag braucht erst seinen Bereich. */
 export const genauImBereich = (v: { bereich?: unknown }, space: Bereich | null): boolean => !space || bereichVonVorschlag(v) === space;
+
+/**
+ * Wirkung des Bereichs auf die Eingabe bei der Freigabe (rein, 09.10. spät — „wo wir schreiben“): eine Aufgabe ohne eigenen Ort (create_task
+ * ohne spaceId/einheit/meilenstein/unter) landet im Bereich des Vorschlags — auch wenn er von Hand gewählt wurde. Alle anderen Werkzeuge bleiben
+ * unverändert (fakt_merken bekommt den Bereich als Kontext). Angewandt NUR in `fuehreAus` bei der Freigabe.
+ */
+export function eingabeMitBereich(werkzeug: string, eingabe: Record<string, unknown>, bereich: Bereich | null | undefined): Record<string, unknown> {
+  if (!bereich || werkzeug !== 'create_task') return eingabe;
+  if (['spaceId', 'einheit', 'meilenstein', 'unter'].some(k => typeof eingabe[k] === 'string' && (eingabe[k] as string).trim())) return eingabe;
+  return eingabe.space === bereich ? eingabe : { ...eingabe, space: bereich };
+}
+
+/**
+ * Was eine Lage für eine Sicht weglässt (rein, 09.10. spät — Empfang `/zoe` je Sicht): Privat ohne Markttraktion (CRM); Business ohne Familie,
+ * Körperdaten und Haushaltsfinanzen. Weggelassenes steht gar nicht erst im Prompt (die Schalter von `promptBrain`). Ohne Sicht nichts weglassen.
+ */
+export function lageFuerSicht(space: Bereich | null): { aus: ('crm' | 'familie')[]; koerper: boolean; haushalt: boolean } {
+  if (space === 'privat') return { aus: ['crm'], koerper: true, haushalt: true };
+  if (space === 'business') return { aus: ['familie'], koerper: false, haushalt: false };
+  return { aus: [], koerper: true, haushalt: true };
+}
 
 /** Merksatz ↔ Bereich des Gesprächs: ohne Bereich (Gespräch ohne Space) alle; sonst die eigenen und die neutralen (ohne Bereich). */
 export const faktPasstZuBereich = (f: { bereich?: unknown }, bereich: Bereich | null | undefined): boolean => {

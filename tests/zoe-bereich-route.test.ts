@@ -64,7 +64,8 @@ beforeAll(async () => {
       { id: 'f-pelikan', name: 'Pelikanwerk GmbH', rolle: 'zielkunde', geaendert: T },
       { id: 'f-garten', name: 'Gartenhof Selbsthilfe', rolle: 'kunde', geaendert: T },
     ],
-    // Die Firma „Gartenhof“ hat nur einen Deal der Selbstständigkeit (Privat-Einheit) → ihr Bereich ist Privat.
+    // Die Firma „Gartenhof“ hat nur einen Deal der Selbstständigkeit (Privat-Einheit) — sie bleibt trotzdem Business (Kevin 09.10. spät:
+    // alles aus der Markttraktion ist Business).
     chancen: [{ id: 'ch-garten', titel: 'Beratung', kontaktIds: [], firmaId: 'f-garten', firma: 'Gartenhof Selbsthilfe', art: 'retainer', wert: { betrag: 1, basis: 'monat' }, stufe: 'bedarf', historie: [], qualifizierung: { schmerz: 'ja', entscheider: 'ja', budget: 'unklar', zeitpunkt: 'ja', wirkung: 'unklar', alternative: 'unklar' }, gesellschaft: 'kdc', besitzer: 'kevin', angelegt: T, geaendert: T }],
   });
   await db.saveJson('kontakte', { kontakte: [
@@ -99,19 +100,27 @@ describe('lege ordnet zu — der Befund', () => {
     expect(a).toMatchObject({ bereich: 'privat', bereichQuelle: 'gespraech' });
     expect(b.bereich).toBeUndefined();
   });
-  it('Kontakt mit vollem Namen → Bereich seiner Firma; Firma einer Privat-Einheit → Privat; Art.-18-Personen zählen nie', async () => {
+  it('Kontakt mit vollem Namen → Business; Firma mit Deals einer Privat-Einheit → trotzdem Business; Art.-18-Personen zählen nie', async () => {
     await merke('Zora Probestein ist jetzt Geschäftsführerin', 'Zora Probestein', 'privat');
     await merke('Gartenhof Selbsthilfe zahlt jetzt per Lastschrift', 'Gartenhof', 'business');
     await merke('Gesine Schutzmann zieht nach Bremen', 'Gesine Schutzmann', null);
     const [geheim, garten, zora] = await stapel.lies('offen');
     expect(zora).toMatchObject({ bereich: 'business', bereichNennt: [{ art: 'kontakt', id: 'c-zora' }] });
-    expect(garten).toMatchObject({ bereich: 'privat', bereichQuelle: 'inhalt' });
+    expect(garten).toMatchObject({ bereich: 'business', bereichQuelle: 'inhalt', bereichNennt: [{ art: 'firma', id: 'f-garten' }] });
     expect(geheim.bereich).toBeUndefined();
     expect(geheim.bereichNennt).toBeUndefined();
   });
   it('ein Bereich, den der Aufrufer mitgibt, zählt nicht — die Regel entscheidet', async () => {
     const v = await stapel.lege({ werkzeug: 'notiz_anlegen', gruppe: 'gesundheit', titel: 'x', nachher: 'y', eingabe: {}, person: 'kevin', bereich: 'business', bereichQuelle: 'hand' });
     expect(v).toMatchObject({ bereich: 'privat', bereichQuelle: 'bezug' });
+  });
+  it('alles aus der Markttraktion ist Business — auch Deal/Firma, die über die Selbstständigkeit (Privat-Einheit) laufen', async () => {
+    for (const id of ['deal:ch-garten', 'firma:f-garten', 'kontakt:c-zora', 'mandat:m-unbekannt', 'markttraktion']) {
+      const v = await stapel.lege({ werkzeug: 'crm_vorschlag', gruppe: 'crm', titel: `CRM ${id}`, nachher: 'x', eingabe: { art: 'aktivitaet', id }, person: 'kevin', bezug: { art: 'crm', id } }, { gespraech: 'privat' });
+      expect(v.bereich, id).toBe('business');
+    }
+    const { crmBezugBereich } = await import('@/lib/zoe/crm-sicht');
+    expect(await crmBezugBereich('firma:f-garten')).toMatchObject({ bereich: 'business', nennt: [{ art: 'firma', id: 'f-garten' }] });
   });
   it('Vorschlag mit Bezug auf eine Aufgabe → Bereich ihres Space', async () => {
     await db.saveJson('tasks', {
@@ -195,13 +204,35 @@ describe('Bereich wählen (POST aktion „bereich“) und Freigeben mit Stand', 
     // Ein entschiedener Vorschlag bekommt keinen Bereich mehr.
     expect((await senden('kevin', { aktion: 'bereich', id: v.id, bereich: 'privat' })).status).toBe(409);
   });
-  it('Freigeben ohne Stand geht wie bisher; ein unklarer Vorschlag wird ein neutraler Merksatz', async () => {
+  it('ohne Bereich KEINE Freigabe (409 bereich-fehlt, auch Altbestand und über die Arten) — Ablehnen geht; mit Bereich und ohne Stand wie bisher', async () => {
     await merke('Montags immer Teamrunde', 'Teamrunde', null);
     const [v] = (await holen('kevin')).d.vorschlaege;
+    const nein = await senden('kevin', { id: v.id, entscheidung: 'freigeben' }) as unknown as { status: number; d: { code?: string; error?: string } };
+    expect(nein.status).toBe(409);
+    expect(nein.d.code).toBe('bereich-fehlt');
+    expect(nein.d.error).toMatch(/Erst den Bereich wählen/);
+    expect((await db.loadJson<{ fakten: unknown[] }>('zoe-gedaechtnis'))?.fakten ?? []).toEqual([]);
+    // Auch an der Route vorbei (jede Art beansprucht): beanspruche lehnt ab.
+    const a = await stapel.beanspruche(v.id, 'kevin');
+    expect(a).toMatchObject({ ok: false, status: 409, code: 'bereich-fehlt' });
+    expect((await stapel.hole(v.id))?.status).toBe('offen');
+    // Bereich wählen → Freigabe ohne Stand geht wie bisher.
+    expect((await senden('kevin', { aktion: 'bereich', id: v.id, bereich: 'privat' })).status).toBe(200);
     expect((await senden('kevin', { id: v.id, entscheidung: 'freigeben' })).status).toBe(200);
-    const f = (await db.loadJson<{ fakten: { bereich?: string }[] }>('zoe-gedaechtnis'))!.fakten;
-    expect(f).toHaveLength(1);
-    expect(f[0].bereich).toBeUndefined();
+    expect((await db.loadJson<{ fakten: { bereich?: string }[] }>('zoe-gedaechtnis'))!.fakten[0].bereich).toBe('privat');
+    // Ablehnen geht auch ohne Bereich.
+    await merke('Freitags kein Sport', 'Sport', null);
+    const [u] = (await holen('kevin')).d.vorschlaege;
+    expect((await senden('kevin', { id: u.id, entscheidung: 'ablehnen' })).status).toBe(200);
+  });
+  it('Sammelfreigabe ohne Sicht nimmt nie einen Vorschlag ohne Bereich', async () => {
+    const { ZOE_AUFGABE_WERKZEUG } = await import('@/lib/aufgaben/zoe');
+    await db.saveJson('tasks', { projects: [], tasks: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [] });
+    // Bezug auf eine Aufgabe, die es nicht (mehr) gibt → Bereich unklar.
+    const v = await stapel.lege({ werkzeug: ZOE_AUFGABE_WERKZEUG, gruppe: 'aufgaben', titel: 'Weg', nachher: 'Notiz', eingabe: { entwurf: 'Ein Entwurf' }, person: 'kevin', quelle: 'lauf', bezug: { art: 'aufgabe', id: 'a-gibts-nicht' } });
+    expect(v.bereich).toBeUndefined();
+    const r = await senden('kevin', { alle: true }) as unknown as { status: number; d: { ergebnisse: { id: string }[] } };
+    expect(r.d.ergebnisse.map(e => e.id)).not.toContain(v.id);
   });
   it('„alle freigeben“ mit Sicht nimmt nur Vorschläge dieser Sicht', async () => {
     await db.saveJson('tasks', {

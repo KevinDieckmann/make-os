@@ -15,7 +15,7 @@ import { kennzahlWerte } from './kontext';
 import { WEG } from '@/lib/wege';
 import { abgelaufen, fadenStand, fehler, kurz, ohneAbgelaufene, zugZuruecknehmenFaden, FRISTEN, type Fehler, type FadenIndexKern, type FadenKern, type FadenKopfKern, type NachrichtKern } from './faeden';
 import { ablageAendern, ablageAbgleichen, ablageUmziehen, faedenLesen, fadenLesen, indexLesen, type Arbeit } from './faeden-ablage';
-import { fadenSichtbar, headSichtbar, headsFuer, type KontoSicht } from './sicht';
+import { fadenSichtbar, headSichtbar, headsFuer, type KontoSicht, headImBereich, fadenImBereich, type SichtBereich } from './sicht';
 
 export type { Arbeit } from './faeden-ablage';
 
@@ -219,17 +219,23 @@ const SEIT_MAX = 200;
  * Freigaben als Zahl, Bezug zu den Jahreszielen (Bestand `ziele`, Bereich nach Konto) und ein Kurz-Briefing — vorerst regelbasiert
  * ohne Modell. Lesen schreibt nie (`seit` kommt vom Browser — nur ein Filter über eigene Daten).
  */
-export async function agentenAntwort(person: string, seit: string): Promise<AgentenAntwort> {
+/**
+ * `space` (09.10. spät): die Sicht Privat bzw. Business — Heads, Threads, Überblick und Freigaben-Zahl nur dieses Bereichs (EINE Filterstelle
+ * lib/agenten/sicht.ts: `headImBereich`, `fadenImBereich`); ohne wie bisher alles.
+ */
+export async function agentenAntwort(person: string, seit: string, space: SichtBereich | null = null): Promise<AgentenAntwort> {
   const sicht = await sichtLaden(person);
   const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
   const h = (await kontoFuerSpeicher(person))?.haushalt;
   const u = { person, haushalt: h && /^[a-z0-9][a-z0-9-]{0,39}$/.test(h) ? h : null };
-  const [einstellung, faeden] = await Promise.all([einstellungFuer(u.haushalt, person), sichtbareFaeden(sicht)]);
+  const [einstellung, alleFaeden] = await Promise.all([einstellungFuer(u.haushalt, person), sichtbareFaeden(sicht)]);
+  const faeden = alleFaeden.filter(f => fadenImBereich(f, space));
+  const headsDerSicht = headsFuer(sicht).filter(h => headImBereich(h.id, space));
   // Paket 4b: Einstellungen, Kosten und Rechte je Head, Instanz-Budget (lib/agenten/einstellung.ts, lib/ki/tor.ts).
   const zusatz = await einstellungZusatz(person, sicht, u.haushalt, einstellung, faeden.filter(f => f.besitzer === person)).catch(e => { console.error('[agenten] Einstellungen nicht lesbar:', e instanceof Error ? e.message.slice(0, 120) : e); return null; });
   // Durchstich 09.10.: EINE Zählung offener Freigaben je Head (lib/agenten/naechstes.ts `freigabenJeHead`) — dieselbe wie „Als Nächstes“.
   // Vorher zählte der Kopf Plan-Freigaben doppelt (Thread UND Stapel) und die Freigabe-Listen der eingebauten Heads gar nicht.
-  const freigaben = await (await import('./naechstes')).freigabenJeHead(person, new Set(headsFuer(sicht).map(h => h.id)), u.haushalt).catch(() => new Map<string, { anzahl: number }>());
+  const freigaben = await (await import('./naechstes')).freigabenJeHead(person, new Set(headsDerSicht.map(h => h.id)), u.haushalt, space).catch(() => new Map<string, { anzahl: number }>());
   const freigabenVon = (headId: string) => freigaben.get(headId)?.anzahl ?? 0;
   let businessFrei = false;
   try { const { businessFreiJetzt } = await import('@/lib/arbeitsrahmen/server'); businessFrei = (await businessFreiJetzt(person)).frei; } catch { /* offen statt blockiert */ }
@@ -237,7 +243,7 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
   const laufend = (f: FadenKopfKern) => !!f.lauf && (f.lauf.status === 'wartet' || f.lauf.status === 'laeuft');
 
   const heads: HeadKarte[] = [];
-  for (const d of headsFuer(sicht)) {
+  for (const d of headsDerSicht) {
     const eh = einstellung.heads[d.id] ?? {};
     const aus = new Set(eh.mitarbeiterAus ?? []);
     const [ms, skills, kennzahlen] = await Promise.all([
@@ -283,7 +289,7 @@ export async function agentenAntwort(person: string, seit: string): Promise<Agen
 
   // Jahresziele über die EINE Lesestelle — dieselbe, aus der ZOE und die Heads sie im Kontext bekommen (Durchstich 09.10.).
   const { jahreszieleFuer } = await import('@/lib/planung/jahresziele-sicht');
-  const ziele: Ueberblick['ziele'] = (await jahreszieleFuer({ privat: sicht.vollesMitglied })).map(z => ({ id: z.id, titel: z.titel, fortschritt: z.fortschritt, link: WEG.ziel(z.id) }));
+  const ziele: Ueberblick['ziele'] = (await jahreszieleFuer({ privat: sicht.vollesMitglied })).filter(z => !space || z.bereich === space).map(z => ({ id: z.id, titel: z.titel, fortschritt: z.fortschritt, link: WEG.ziel(z.id) }));
 
   const teile = [
     passiert.length ? `${passiert.length} ${passiert.length === 1 ? 'Ergebnis' : 'Ergebnisse'} seit deinem letzten Besuch` : 'Seit deinem letzten Besuch nichts Neues',

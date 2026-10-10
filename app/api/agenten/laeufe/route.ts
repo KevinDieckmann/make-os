@@ -13,6 +13,7 @@ import { AGENTEN_NUR_SELBST } from '@/lib/agenten/typen';
 import { laeufeLesen, laufAbbrechen, laufNeuStarten } from '@/lib/agenten/laeufe';
 import { naechstesLesen, naechstesVerdichten } from '@/lib/agenten/naechstes';
 import { planAendern, planen, planLesen, planLoeschen } from '@/lib/agenten/plan-server';
+import { laufImBereich, planImBereich, sichtBereichAus } from '@/lib/agenten/sicht';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,8 +28,17 @@ export async function GET(req: Request) {
   const z = await eigenePerson(req, false, AGENTEN_NUR_SELBST);
   if (z instanceof NextResponse) return z;
   const jetzt = new Date();
+  // Sicht Privat/Business (09.10. spät, EINE Filterstelle lib/agenten/sicht.ts): Läufe nach Thread bzw. Head, Pläne nach Head, „Als Nächstes“ nach
+  // eigenem Bereich bzw. Head — die andere Sicht bekommt nichts davon. Ohne `space` wie bisher alles.
+  const space = sichtBereichAus(new URL(req.url).searchParams.get('space'));
+  if (space === undefined) return NextResponse.json({ ok: false, fehler: 'space ist privat oder business.', error: 'space ist privat oder business.' }, { status: 400 });
   const { kiSchalterFuer } = await import('@/lib/datenschutz/ki-einstellungen');
-  const [laeufe, naechstes, plan, ki] = await Promise.all([laeufeLesen(z.person, jetzt), naechstesLesen(z.person, jetzt), planLesen(z.person), kiSchalterFuer(z.person).catch(() => null)]);
+  const [alleLaeufe, naechstes, planRoh, ki] = await Promise.all([laeufeLesen(z.person, jetzt), naechstesLesen(z.person, jetzt, space), planLesen(z.person), kiSchalterFuer(z.person).catch(() => null)]);
+  const fadenBereich = new Map<string, unknown>();
+  if (space) { const { indexLesen } = await import('@/lib/agenten/faeden-ablage'); for (const f of (await indexLesen(z.person).catch(() => null))?.faeden ?? []) fadenBereich.set(f.id, f.bereich); }
+  const laeufe = alleLaeufe.filter(l => laufImBereich(l, space, fadenBereich));
+  const aufgaben = planRoh.aufgaben.filter(p => planImBereich(p, space));
+  const plan = { aufgaben, staende: Object.fromEntries(Object.entries(planRoh.staende).filter(([id]) => aufgaben.some(a => a.id === id))) };
   // Rundgang 09.10.: je wiederkehrendem Lauf nur das nächste Vorkommen (+ „n weitere“) — die Rechnung bleibt die des Takts.
   // `hintergrundKi` (Rundgang „Agenten live“): ohne Hintergrund-KI laufen geplante Aufgaben nicht — die Oberfläche sagt es dann.
   return NextResponse.json({ ok: true, laeufe, naechstes: naechstesVerdichten(naechstes), plan: plan.aufgaben, planStaende: plan.staende, ...(ki ? { hintergrundKi: !!ki.hintergrund } : {}) }, { headers: { 'Cache-Control': 'no-store' } });

@@ -16,7 +16,7 @@ import { anstehendAbleiten } from '@/lib/meldungen/regeln';
 const firma = (id: string, name: string, bereich: 'privat' | 'business' = 'business'): BekannterName => ({ art: 'firma', id, schluessel: namensSchluessel(name, 'firma'), bereich });
 const kontakt = (id: string, name: string, bereich: 'privat' | 'business' = 'business'): BekannterName => ({ art: 'kontakt', id, schluessel: namensSchluessel(name, 'kontakt'), bereich });
 const NAMEN: BekannterName[] = [
-  firma('f-pelikan', 'Pelikanwerk GmbH'), firma('f-garten', 'Gartenhof Selbst', 'privat'), kontakt('c-zora', 'Dr. Zora Probestein'),
+  firma('f-pelikan', 'Pelikanwerk GmbH'), { art: 'gesellschaft', id: 'kdc', schluessel: namensSchluessel('Gartenhof Selbst', 'gesellschaft'), bereich: 'privat', ort: { id: 'kdc', name: 'Gartenhof Selbst' } }, kontakt('c-zora', 'Dr. Zora Probestein'),
   { art: 'gesellschaft', id: 'g-holz', schluessel: namensSchluessel('Holzbrücke Beteiligungen UG (haftungsbeschränkt)', 'gesellschaft'), bereich: 'business', ort: { id: 'g-holz', name: 'Holzbrücke Beteiligungen' } },
 ];
 const fakt = (satz: string, thema = 'Notiz') => ({ werkzeug: 'fakt_merken', gruppe: 'gedaechtnis', titel: 'Fakt merken', nachher: `${thema}: ${satz}`, eingabe: { thema, satz } });
@@ -73,8 +73,8 @@ describe('Regel (b): der Inhalt nennt bekannte Namen aus dem Bestand', () => {
     expect(bereichFuerVorschlag(beide, { namen: NAMEN, gespraech: 'privat' })).toMatchObject({ bereich: 'privat', quelle: 'gespraech' });
     expect(bereichFuerVorschlag(beide, { namen: NAMEN }).bereich).toBe('unklar');
   });
-  it('eine Firma einer Privat-Einheit macht den Vorschlag privat; Ort nur, wenn eindeutig', () => {
-    expect(bereichFuerVorschlag(fakt('Gartenhof Selbst zahlt jetzt per Lastschrift'), { namen: NAMEN, gespraech: 'business' })).toMatchObject({ bereich: 'privat', quelle: 'inhalt' });
+  it('eine eigene Gesellschaft im Privat-Bereich (Privat-Einheit) macht den Vorschlag privat; Ort nur, wenn eindeutig', () => {
+    expect(bereichFuerVorschlag(fakt('Gartenhof Selbst zahlt jetzt per Lastschrift'), { namen: NAMEN, gespraech: 'business' })).toMatchObject({ bereich: 'privat', quelle: 'inhalt', ort: { id: 'kdc' } });
     expect(bereichFuerVorschlag(fakt('Holzbrücke Beteiligungen zieht um'), { namen: NAMEN })).toMatchObject({ bereich: 'business', ort: { id: 'g-holz' } });
   });
   it('vorschlagTexte: Titel, Vorher/Nachher, Anlass und Text-Werte der Eingabe — nie `_`-Felder', () => {
@@ -184,5 +184,29 @@ describe('Zähler je Sicht: Heute („Steht an“) und Glocke', () => {
     expect(glocke({ kalender: 2, jeBereich: { privat: { kalender: 0 }, business: { kalender: 2 } } })).toBe('/os/stapel?space=business');
     expect(glocke({ kalender: 2, jeBereich: { privat: { kalender: 1 }, business: { kalender: 1 } } })).toBe('/os/stapel');
     expect(glocke({ kalender: 1 })).toBe('/os/stapel');
+  });
+});
+
+describe('Bereich wirkt bei der Freigabe; ZOE-Kanal „ja <Kennung> privat|business“', () => {
+  it('eingabeMitBereich: create_task ohne eigenen Ort landet im Bereich — sonst unverändert', async () => {
+    const { eingabeMitBereich } = await import('@/lib/zoe/bereich');
+    expect(eingabeMitBereich('create_task', { title: 'x' }, 'business')).toEqual({ title: 'x', space: 'business' });
+    expect(eingabeMitBereich('create_task', { title: 'x', space: 'privat' }, 'business')).toEqual({ title: 'x', space: 'business' });
+    expect(eingabeMitBereich('create_task', { title: 'x', meilenstein: 'M1' }, 'business')).toEqual({ title: 'x', meilenstein: 'M1' });
+    expect(eingabeMitBereich('create_task', { title: 'x' }, null)).toEqual({ title: 'x' });
+    expect(eingabeMitBereich('fakt_merken', { thema: 'a', satz: 'b' }, 'privat')).toEqual({ thema: 'a', satz: 'b' });
+  });
+  it('deuten liest den Bereich nur bei „ja“ — die Kennung bleibt richtig', async () => {
+    const { deuten } = await import('@/lib/zoe-whatsapp/kanal');
+    expect(deuten('ja K7P2 business')).toEqual({ art: 'ja', kennung: 'K7P2', bereich: 'business' });
+    expect(deuten('Ja privat K7P2')).toEqual({ art: 'ja', kennung: 'K7P2', bereich: 'privat' });
+    expect(deuten('ja K7P2')).toEqual({ art: 'ja', kennung: 'K7P2' });
+    expect(deuten('nein K7P2 privat')).toEqual({ art: 'nein', kennung: 'K7P2' });
+  });
+  it('Empfang je Sicht (lageFuerSicht): Privat ohne Markttraktion, Business ohne Familie, Körper und Haushalt', async () => {
+    const { lageFuerSicht } = await import('@/lib/zoe/bereich');
+    expect(lageFuerSicht('privat')).toEqual({ aus: ['crm'], koerper: true, haushalt: true });
+    expect(lageFuerSicht('business')).toEqual({ aus: ['familie'], koerper: false, haushalt: false });
+    expect(lageFuerSicht(null)).toEqual({ aus: [], koerper: true, haushalt: true });
   });
 });

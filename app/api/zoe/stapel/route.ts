@@ -24,10 +24,11 @@
 // ohne `space` bzw. `space=alles` wie bisher alles). Jeder Vorschlag trägt seinen `stand`; POST `{ aktion: 'bereich', id, bereich, stand }` setzt
 // den Bereich von Hand („Bereich wählen“), veraltet → 409. Freigeben mit `stand` prüft ihn ebenso (409 statt einer Entscheidung über etwas, das
 // man so nicht gesehen hat). „Alle freigeben“ mit `space` nimmt nur Vorschläge GENAU dieses Bereichs (unklare brauchen erst ihren Bereich).
+// Ohne Bereich KEINE Freigabe (Kevin 09.10. spät) — einzeln 409 `code: 'bereich-fehlt'`, in der Sammelfreigabe nie dabei; Ablehnen jederzeit.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
-import { lies, hole, entscheide, beanspruche, loslassen, vorschlagSichtbar, vorschlagStand, bereichSetzen, type Vorschlag } from '@/lib/zoe/stapel';
+import { lies, hole, entscheide, beanspruche, loslassen, vorschlagSichtbar, vorschlagStand, bereichSetzen, BEREICH_FEHLT, BEREICH_FEHLT_CODE, type Vorschlag } from '@/lib/zoe/stapel';
 import { bereichAus, passtZurSicht, genauImBereich, type Bereich } from '@/lib/zoe/bereich';
 import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { stapelArtVon, UNBEKANNTE_ART } from '@/lib/zoe/stapel-arten';
@@ -163,7 +164,7 @@ export async function POST(req: Request) {
   /** Ein gewöhnlicher Werkzeug-Vorschlag: beanspruchen (in der Sperre), ausführen, entscheiden. */
   const werkzeugFreigeben = async (id: string, eingabeNeu: Record<string, unknown> | null) => {
     const a = await beanspruche(id, wer, darfMitStand);
-    if (!a.ok) return { ok: false as const, status: a.status, text: a.fehler, vorschlag: null };
+    if (!a.ok) return { ok: false as const, status: a.status, text: a.fehler, vorschlag: null, ...(a.code ? { code: a.code } : {}) };
     const eingabe = eingabeNeu ?? a.v.eingabe;
     let lauf: { ok: boolean; text: string };
     // Der Bereich des Vorschlags geht als Kontext an das Werkzeug (nie aus der Eingabe) — „Fakt merken“ legt den Merksatz in diesem Bereich ab.
@@ -177,7 +178,7 @@ export async function POST(req: Request) {
   if (body.alle) {
     const space = sichtAus(body.space);
     if (space === undefined) return SICHT_FALSCH();
-    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen, privat) && genauImBereich(v, space));
+    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen, privat) && genauImBereich(v, space) && !!bereichAus(v.bereich));
     const offen = alleOffen.filter(sammelTauglich);
     const einzeln = alleOffen.length - offen.length;
     if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [], einzeln });
@@ -205,6 +206,8 @@ export async function POST(req: Request) {
   if (v.status !== 'offen') return NextResponse.json({ ok: false, error: `Schon entschieden (${v.status}).` }, { status: 409 });
   // Freigeben mit Stand (09.10. spät): hat sich der Vorschlag seit dem Ansehen geändert (z. B. Bereich in einem anderen Fenster), nichts freigeben.
   if (body.entscheidung !== 'ablehnen' && stand && stand !== vorschlagStand(v)) return NextResponse.json({ ok: false, error: VERALTET, vorschlag: mitStand(v) }, { status: 409 });
+  // Ohne Bereich keine Freigabe (09.10. spät) — erst „Bereich wählen“. Ablehnen geht jederzeit.
+  if (body.entscheidung !== 'ablehnen' && !bereichAus(v.bereich)) return NextResponse.json({ ok: false, code: BEREICH_FEHLT_CODE, error: BEREICH_FEHLT, vorschlag: mitStand(v) }, { status: 409 });
 
   if (body.entscheidung === 'ablehnen') {
     const grund = typeof body.grund === 'string' ? body.grund.replace(/\u0000/g, '').trim() : '';
@@ -226,6 +229,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ergebnis: r.text, vorschlag: await hole(v.id) });
   }
   const r = await werkzeugFreigeben(id, sauber.wert);
-  if (r.status !== 200) return NextResponse.json({ ok: false, error: r.text }, { status: r.status });
+  if (r.status !== 200) return NextResponse.json({ ok: false, error: r.text, ...('code' in r && r.code ? { code: r.code } : {}) }, { status: r.status });
   return NextResponse.json({ ok: r.ok, ergebnis: r.text, vorschlag: r.vorschlag });
 }

@@ -25,7 +25,7 @@ import { headDef } from '@/lib/agenten/katalog';
 import { ablageAendernFuer, bestandLesen, fadenAendern, indexAendern, sichtbareFaeden, sichtLaden } from '@/lib/agenten/faeden-server';
 import { fadenLesen } from '@/lib/agenten/faeden-ablage';
 import { fadenStand, istFadenId, kurz, merksatzWeg, passtAgent, textPruefen, titelAus, type FadenKern, type FadenKopfKern } from '@/lib/agenten/faeden';
-import { headSichtbar, teilenErlaubt, type KontoSicht } from '@/lib/agenten/sicht';
+import { headSichtbar, teilenErlaubt, type KontoSicht, fadenImBereich, sichtBereichAus } from '@/lib/agenten/sicht';
 import { senden, type SendenAnfrage } from '@/lib/agenten/gespraech';
 import { zoeVerlaufUebernehmen } from '@/lib/agenten/zoe-faden';
 import { willStrom } from '@/lib/http/sse';
@@ -70,6 +70,9 @@ export async function GET(req: Request) {
   const z = await eigenePerson(req, false, AGENTEN_NUR_SELBST);
   if (z instanceof NextResponse) return z;
   const q = new URL(req.url).searchParams;
+  // Sicht Privat/Business (09.10. spät): mit `?space=` nur Threads dieses Bereichs — Liste und einzelner Thread (lib/agenten/sicht.ts `fadenImBereich`).
+  const space = sichtBereichAus(q.get('space'));
+  if (space === undefined) return nein(400, 'space ist privat oder business.');
   const sicht = await sichtLaden(z.person);
   // Erststart (Paket 4a): der alte ZOE-Verlauf wird beim ersten Lesen EINMAL zu ZOE-Threads der Person (lib/agenten/zoe-faden.ts,
   // idempotent, Marke im Bestand; der alte Bestand bleibt liegen) — begründete Ausnahme von „Lesen schreibt nicht“.
@@ -77,7 +80,7 @@ export async function GET(req: Request) {
   const id = q.get('id');
   if (id) {
     if (!istFadenId(id)) return nein(400, 'Thread-Kennung ungültig.');
-    const alle = await sichtbareFaeden(sicht);
+    const alle = (await sichtbareFaeden(sicht)).filter(x => fadenImBereich(x, space));
     const k = alle.find(x => x.id === id);
     // Der ganze Thread (E3): aus der Ablage der Besitzerin — nur, wenn die Sicht seinen Kopf sieht.
     const f = k ? await fadenLesen(k.besitzer, k.id) : null;
@@ -96,7 +99,7 @@ export async function GET(req: Request) {
   }
   const filter = q.get('agent');
   if (filter && !AGENT_SCHLUESSEL.test(filter)) return nein(400, 'Filter ungültig.');
-  const faeden = (await sichtbareFaeden(sicht)).filter(f => passtAgent(f, filter)).sort((a, b) => b.aktualisiert.localeCompare(a.aktualisiert));
+  const faeden = (await sichtbareFaeden(sicht)).filter(f => passtAgent(f, filter) && fadenImBereich(f, space)).sort((a, b) => b.aktualisiert.localeCompare(a.aktualisiert));
   return NextResponse.json({ ok: true, faeden: faeden.map(f => kurz(f, z.person)) } satisfies FadenListeAntwort, { headers: { 'Cache-Control': 'no-store' } });
 }
 

@@ -12,7 +12,7 @@ import type { Person } from './raum';
 import { SELBST_GEKAPSELT } from './fremd';
 import { LESEND } from './gespraech-schutz';
 import { ZOE_BUSINESS_GRUPPEN, ZOE_ZURUECKGEHALTEN } from '@/lib/arbeitsrahmen/regel';
-import { bereichAus, BEREICH_NAME, type Bereich } from './bereich';
+import { bereichAus, BEREICH_NAME, eingabeMitBereich, type Bereich } from './bereich';
 
 export interface Lauf {
   /** Was dem Modell (oder dem Aufrufer) zurückgemeldet wird. */
@@ -131,7 +131,8 @@ export async function fuehreAus(
     ? await (async () => { try { const b = await (await import('./bereich-server')).bereichErmitteln({ werkzeug: name, gruppe, titel: vs.titel, nachher: vs.nachher, eingabe: input, ...(opt.anlass ? { anlass: opt.anlass } : {}) }, { gespraech: bereichAus(opt.bereich) }); return b.bereich === 'unklar' ? null : b.bereich; } catch { return bereichAus(opt.bereich); } })()
     : bereichAus(opt.bereich);
   const kontext = opt.erzwingen || opt.zoe || opt.herkunft || bereich ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person, ...(opt.vorschlagId ? { vorschlagId: opt.vorschlagId } : {}) } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}), ...(opt.herkunft && !opt.erzwingen ? { herkunft: opt.herkunft.slice(0, 200) } : {}), ...(bereich ? { bereich } : {}) } : undefined;
-  const text = await werk.lauf(input, origin, leseSicht ? undefined : opt.person, kontext);
+  // Bei der Freigabe wirkt der Bereich des Vorschlags auf den Ort (eine Aufgabe ohne Ort landet dort, lib/zoe/bereich.ts `eingabeMitBereich`).
+  const text = await werk.lauf(opt.erzwingen ? eingabeMitBereich(name, input, bereich) : input, origin, leseSicht ? undefined : opt.person, kontext);
   // Ebenfalls nur der Anfang: die Werkzeuge stellen ihre Fehlermeldung voran,
   // im weiteren Text dürfen dieselben Wörter harmlos vorkommen.
   // Nachschliff 09.10.: „Nicht eingeplant“ (plan_block in einer Business-freien Zeit) ist ein Fehlschlag — vorher galt der Vorschlag im Stapel als

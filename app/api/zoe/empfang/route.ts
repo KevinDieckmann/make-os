@@ -20,6 +20,7 @@ import { vornameVon } from '@/lib/zoe/grundauftrag';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { kiSchalterFuer, type KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
+import { bereichAus, lageFuerSicht } from '@/lib/zoe/bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -66,8 +67,13 @@ export async function GET(req: Request) {
   if (!zugang) return nurHaushalt();
   const schranke = modellSchranke(req); if (schranke) return schranke;
   const person = zugang.person;
+  // Sicht Privat/Business (09.10. spät): Zahl der Freigaben und Lage nur dieses Bereichs (lib/zoe/bereich.ts `lageFuerSicht`); je Sicht gehalten.
+  const roh = new URL(req.url).searchParams.get('space');
+  const space = bereichAus(roh);
+  if (roh && roh !== 'alles' && !space) return NextResponse.json({ ok: false, error: 'space ist privat oder business.' }, { status: 400 });
+  const teile = lageFuerSicht(space);
   const stunde = stundeJetzt();
-  const schluessel = `${person}:${stunde}`;
+  const schluessel = `${person}:${stunde}${space ? `:${space}` : ''}`;
 
   const gehalten = await loadJson<Stand>('zoe-empfang');
   const da = gehalten?.je?.[schluessel];
@@ -78,15 +84,16 @@ export async function GET(req: Request) {
   }
 
   // Nur die Vorschläge, die diese Person sieht (Sicherheitsprüfung 09.10.: vorher zählte die Zahl die der anderen Person mit).
-  const offen = await offeneAnzahlFuer(person).catch(() => 0);
+  const offen = await offeneAnzahlFuer(person, space).catch(() => 0);
   const name = await vornameVon(person);
   let lage = '';
   // KI-Schalter (05.10.): nur erlaubte Bereiche, Gesundheit nur mit Einwilligung (b) — `kategorien` = was drinsteht.
   const kiS = await kiSchalterFuer(person);
   let kategorien: KiKategorie[] = ['allgemein'];
-  try { const b = await gatherBrain(undefined, person); lage = promptBrain(b, { bereiche: kiS.bereiche }); kategorien = brainKategorien(b, { bereiche: kiS.bereiche }); } catch { /* ohne Lage geht es auch */ }
+  const bereiche = { ...kiS.bereiche, ...Object.fromEntries(teile.aus.map(x => [x, false])) };
+  try { const b = await gatherBrain(undefined, person); lage = promptBrain(b, { bereiche, ...(teile.koerper ? {} : { koerper: false }) }); kategorien = brainKategorien(b, { bereiche, ...(teile.koerper ? {} : { koerper: false }) }); } catch { /* ohne Lage geht es auch */ }
   // Privat-Finanzen (09.10., Anbieter-Tor): nur mit erlaubtem Zugang (mit Tor: nur EU) — sonst ohne den Haushalt.
-  try { const hz = kiS.bereiche.finanzen && (await (await import('@/lib/ki/tor')).kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req) : null; if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen', 'finanzen-privat']; } } catch { /* ohne Haushalt geht es auch */ }
+  try { const hz = teile.haushalt && kiS.bereiche.finanzen && (await (await import('@/lib/ki/tor')).kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req) : null; if (hz) { lage += `\n\n${blockHaushalt(await ladeHaushalt(hz.haushalt))}`; kategorien = [...kategorien, 'finanzen', 'finanzen-privat']; } } catch { /* ohne Haushalt geht es auch */ }
 
   const r = await askText({
     zweck: 'empfang', ki: kiAus(req, kategorien, { person }),

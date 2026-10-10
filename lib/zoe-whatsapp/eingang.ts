@@ -132,7 +132,7 @@ async function einen(person: string, e: EingangEintrag, jetzt: number): Promise<
       return;
     case 'ja':
     case 'nein':
-      return entscheiden(person, k, d.art, d.kennung, e, antworte, voll);
+      return entscheiden(person, k, d.art, d.kennung, e, antworte, voll, d.art === 'ja' ? d.bereich : undefined);
     case 'aufgabe':
     case 'notiz':
       return vorschlagen(person, d.art, d.text, antworte, voll, jetzt);
@@ -189,18 +189,18 @@ async function vorschlagen(person: string, was: 'aufgabe' | 'notiz', text: strin
     do { kennung = zufallsKennung(4); } while (da[kennung]);
     return { ...cur, vorschlaege: { ...da, [kennung]: { stapelId: v.id, am: new Date(jetzt).toISOString(), was } } };
   }, jetzt);
-  const wamid = await antworte(KANAL_TEXTE.vorschlag(kennung, was, link(WEG.freigaben()), voll ? titel : undefined));
+  const wamid = await antworte(KANAL_TEXTE.vorschlag(kennung, was, link(WEG.freigaben()), voll ? titel : undefined, !v.bereich));
   await aendereKanal(person, cur => (cur.vorschlaege?.[kennung] ? { ...cur, vorschlaege: { ...cur.vorschlaege, [kennung]: { ...cur.vorschlaege[kennung], wamid } } } : null), jetzt);
 }
 
-async function entscheiden(person: string, k: ZoeKanal, art: 'ja' | 'nein', kennungText: string | undefined, e: EingangEintrag, antworte: (t: string) => Promise<string>, voll: boolean): Promise<void> {
+async function entscheiden(person: string, k: ZoeKanal, art: 'ja' | 'nein', kennungText: string | undefined, e: EingangEintrag, antworte: (t: string) => Promise<string>, voll: boolean, bereich?: 'privat' | 'business'): Promise<void> {
   const verweise = k.vorschlaege ?? {};
   // Genau dieser Vorschlag: Kennung im Text — oder die Person antwortet direkt auf die Nachricht, die ihn ankündigte.
   const kennung = kennungText ?? (e.antwortAuf ? Object.entries(verweise).find(([, x]) => x.wamid === e.antwortAuf)?.[0] : undefined);
   const ref = kennung ? verweise[kennung] : undefined;
   if (!kennung || !ref) { await antworte(KANAL_TEXTE.welcher(Object.keys(verweise).sort())); return; }
   const weg = () => aendereKanal(person, cur => { const { [kennung]: _x, ...rest } = cur.vorschlaege ?? {}; return { ...cur, vorschlaege: rest }; });
-  const { hole, beanspruche, entscheide, loslassen } = await import('@/lib/zoe/stapel');
+  const { hole, beanspruche, entscheide, loslassen, bereichSetzen } = await import('@/lib/zoe/stapel');
   const v = await hole(ref.stapelId);
   // Nur ein eigener, offener Vorschlag — nie einer einer anderen Person (die Verweise liegen ohnehin je Person).
   if (!v || v.person !== person) { await weg(); await antworte(KANAL_TEXTE.welcher(Object.keys(verweise).filter(x => x !== kennung).sort())); return; }
@@ -211,11 +211,16 @@ async function entscheiden(person: string, k: ZoeKanal, art: 'ja' | 'nein', kenn
     await antworte(r ? KANAL_TEXTE.abgelehnt(kennung) : KANAL_TEXTE.schonEntschieden(kennung));
     return;
   }
+  // „ja <Kennung> privat|business“ (09.10. spät): erst den Bereich setzen (wie „Bereich wählen“ in MAKE OS), dann freigeben.
+  if (bereich) {
+    const b = await bereichSetzen(v.id, bereich, { von: person, pruefe: x => (x.person === person ? null : { status: 404, fehler: 'Vorschlag nicht gefunden.' }) });
+    if (!b.ok) { await antworte(KANAL_TEXTE.schonEntschieden(kennung)); return; }
+  }
   const a = await beanspruche(v.id, person, x => (x.person === person ? null : { status: 404, fehler: 'Vorschlag nicht gefunden.' }));
-  if (!a.ok) { await antworte(KANAL_TEXTE.schonEntschieden(kennung)); return; }
+  if (!a.ok) { await antworte(a.code === 'bereich-fehlt' ? KANAL_TEXTE.bereichFehlt(kennung, link(WEG.freigaben())) : KANAL_TEXTE.schonEntschieden(kennung)); return; }
   const { fuehreAus } = await import('@/lib/zoe/ausfuehren');
   let erg: { ok: boolean; text: string };
-  try { erg = await fuehreAus(a.v.werkzeug, a.v.eingabe, innenAdresse(), { erzwingen: true, person, freigegebenVon: person }); }
+  try { erg = await fuehreAus(a.v.werkzeug, a.v.eingabe, innenAdresse(), { erzwingen: true, person, freigegebenVon: person, vorschlagId: a.v.id, bereich: a.v.bereich ?? null }); }
   catch (x) { await loslassen(v.id); throw x; }
   await entscheide(v.id, erg.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: erg.text, von: person, ausArbeit: true });
   await weg();

@@ -18,7 +18,7 @@ import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, MIKRO, RAND, SCHRIFT, 
 import type { FadenKurz, Lauf, Naechstes } from '@/lib/agenten/typen';
 import { Chip, Fortschritt, Hinweis, Knopf, Leer, SymbolKnopf, eingabe } from '../ui';
 import { headFarbe } from './Avatar';
-import { anfrageId, fadenSenden, laeufeSenden, meldeNeu, mitRueckfrage, stapelEntscheiden } from './daten';
+import { anfrageId, fadenSenden, laeufeSenden, meldeNeu, mitRueckfrage, stapelBereich, stapelEntscheiden } from './daten';
 import { useAgenten } from './kontext';
 import { BudgetBalken, MehrMenue, NotAusKnopf } from './Kopfleiste';
 import { TASTE_TEXT } from './klappen';
@@ -119,9 +119,14 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
   const detail = vorschlagDetail(v);
   const entscheide = async (entscheidung: 'freigeben' | 'ablehnen', fragen: boolean) => {
     if (fragen && !(await bestaetigen({ titel: entscheidung === 'freigeben' ? 'Freigeben?' : 'Ablehnen?', text: `„${v.titel}“${detail ? ` — ${detail}` : ''}`, ja: entscheidung === 'freigeben' ? 'Freigeben' : 'Ablehnen', gefahr: entscheidung === 'ablehnen' }))) return;
-    const r = await stapelEntscheiden({ id: v.id, entscheidung });
+    const r = await stapelEntscheiden({ id: v.id, entscheidung, ...(v.stand ? { stand: v.stand } : {}) });
     if (r.ok) { setErledigt(entscheidung === 'freigeben' ? 'freigegeben' : 'abgelehnt'); melde(`„${v.titel}“ ${entscheidung === 'freigeben' ? 'freigegeben' : 'abgelehnt'}.`, 'gut'); }
     else melde(r.text, 'kritisch');
+  };
+  /** Ohne Bereich keine Freigabe (09.10. spät): erst Privat oder Business — danach steht hier „Freigeben“. */
+  const bereich = async (b: 'privat' | 'business') => {
+    const r = await stapelBereich(v.id, b, v.stand);
+    if (r.ok) melde(`„${v.titel}“ gehört jetzt zu ${b === 'privat' ? 'Privat' : 'Business'} — jetzt freigeben.`, 'gut'); else melde(r.text, 'kritisch');
   };
   const inhalt = (
     <div style={{ ...zeile, background: FLAECHE_STIL.gehoben.background, borderColor: TIEF.rand(RISIKO_FARBE[risiko]) }}>
@@ -133,7 +138,8 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
       {detail && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{detail}</div>}
       {erledigt ? <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Erledigt: {erledigt}.</div> : (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
-          {risiko !== 'aussen' && <Knopf onClick={() => entscheide('freigeben', risiko !== 'risikoarm')}>Freigeben</Knopf>}
+          {risiko !== 'aussen' && !v.bereich && (['privat', 'business'] as const).map(b => <Knopf key={b} onClick={() => bereich(b)}>{b === 'privat' ? 'Privat' : 'Business'}</Knopf>)}
+          {risiko !== 'aussen' && v.bereich && <Knopf onClick={() => entscheide('freigeben', risiko !== 'risikoarm')}>Freigeben</Knopf>}
           <Knopf leise onClick={() => entscheide('ablehnen', true)}>Ablehnen</Knopf>
           <Knopf leise href={WEG.freigaben()}>Ansehen ›</Knopf>
         </div>
@@ -142,13 +148,13 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
   );
   return (
     <li>
-      <WischZeile an={form === 'handy' && risiko === 'risikoarm' && !erledigt} onRechts={() => { void entscheide('freigeben', true); }} onLinks={() => { void entscheide('ablehnen', true); }}>{inhalt}</WischZeile>
+      <WischZeile an={form === 'handy' && risiko === 'risikoarm' && !erledigt && !!v.bereich} onRechts={() => { void entscheide('freigeben', true); }} onLinks={() => { void entscheide('ablehnen', true); }}>{inhalt}</WischZeile>
     </li>
   );
 }
 
 export function WartetAufDich() {
-  const { stapel, faeden, form, melde, agenten } = useAgenten();
+  const { stapel, faeden, form, melde, agenten, space } = useAgenten();
   const rueckfragen = faeden.zustand === 'da' ? wartendeFaeden(faeden.daten.faeden) : [];
   const vorschlaege = stapel.zustand === 'da' ? stapel.daten.vorschlaege.filter(v => !v.status || v.status === 'offen') : [];
   const risikoarm = vorschlaege.filter(v => risikoVon(v) === 'risikoarm').length;
@@ -157,7 +163,7 @@ export function WartetAufDich() {
   const beiHeads = stapel.zustand === 'da' ? freigabenBeiHeads(agenten.zustand === 'da' ? agenten.daten.ueberblick.freigaben.anzahl : undefined, vorschlaege.length) : 0;
   const zahl = rueckfragen.length + vorschlaege.length + beiHeads;
   const alle = async () => {
-    const r = await stapelEntscheiden({ alle: true });
+    const r = await stapelEntscheiden({ alle: true, space });
     if (r.ok) melde(`${r.daten.erledigt ?? 0} risikoarme Freigaben erledigt.`, 'gut'); else melde(r.text, 'kritisch');
   };
   return (

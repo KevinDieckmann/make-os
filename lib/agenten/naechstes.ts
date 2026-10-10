@@ -202,19 +202,19 @@ export function fristEintraege(fristen: readonly { id: string; art: string; tag:
     const h = headFuerFrist(f);
     const dringend = f.tag <= tagPlus(heute, FRIST_DRINGEND_TAGE);
     const kritisch = f.tag === heute || (!!f.kuendigung && f.tag <= tagPlus(heute, 3));
-    return eintrag({ id: `frist:${f.id}`, art: 'frist', titel: f.titel, wann: f.tag, ...(h && sichtbar.has(h) ? { headId: h } : {}), link: f.href, wichtig: true, dringend, ...(kritisch ? { kritisch: true } : {}) });
+    return eintrag({ id: `frist:${f.id}`, art: 'frist', titel: f.titel, wann: f.tag, ...(h && sichtbar.has(h) ? { headId: h } : {}), link: f.href, wichtig: true, dringend, ...(kritisch ? { kritisch: true } : {}), bereich: f.bereich });
   });
 }
 
 /** Aufgaben, die bei ZOE liegen (nur die eigenen Aufträge, offen bzw. in Arbeit) → Einträge (rein). */
-export function zoeAufgabeEintraege(tasks: readonly { id: string; title: string; priority?: string; dueDate?: string; zoe?: { status: string } }[], heute: string, jetzt: Date): Naechstes[] {
+export function zoeAufgabeEintraege(tasks: readonly { id: string; title: string; priority?: string; dueDate?: string; zoe?: { status: string }; /** Bereich der Aufgabe (09.10. spät) — vom Aufrufer gerechnet. */ bereich?: 'privat' | 'business' }[], heute: string, jetzt: Date): Naechstes[] {
   return tasks.filter(t => t.zoe && (t.zoe.status === 'offen' || t.zoe.status === 'in_arbeit')).map(t => {
     const due = t.dueDate?.slice(0, 10);
     const dringend = !!due && due <= tagPlus(heute, FRIST_DRINGEND_TAGE);
     const wichtig = t.priority === 'high' || t.priority === 'critical';
     return eintrag({
       id: `zoe-aufgabe:${t.id}`, art: 'zoe-aufgabe', titel: t.title, wann: due && due >= heute ? due : jetzt.toISOString(), link: WEG.aufgabe(t.id),
-      wichtig, dringend, ...(t.priority === 'critical' && dringend ? { kritisch: true } : {}),
+      wichtig, dringend, ...(t.priority === 'critical' && dringend ? { kritisch: true } : {}), ...(t.bereich ? { bereich: t.bereich } : {}),
     });
   });
 }
@@ -230,7 +230,7 @@ const sicher = async <T,>(p: Promise<T>, leer: T): Promise<T> => p.catch(e => { 
  * Paket 4b im Stapel stehen) und die eigenen Freigabe-Listen der eingebauten Heads (`head-<id>`) bzw. des Finanzchefs (entschieden wird dort —
  * die Freigaben-Seite bündelt sie). Schlüssel `''` = ZOE/System. Nur Heads, die die Person sieht; Vorschläge nur, wenn sie sie sehen darf.
  */
-export async function freigabenJeHead(person: string, sicht: ReadonlySet<string>, haushalt: string | null): Promise<Map<string, { anzahl: number; aeltestes: string }>> {
+export async function freigabenJeHead(person: string, sicht: ReadonlySet<string>, haushalt: string | null, space: 'privat' | 'business' | null = null): Promise<Map<string, { anzahl: number; aeltestes: string }>> {
   const { loadJson } = await import('@/lib/store/local-db');
   const { vorschlaegeFuer } = await import('@/lib/zoe/stapel');
   const { standName: chefStand } = await import('@/lib/finanzen/chef/stand');
@@ -238,7 +238,8 @@ export async function freigabenJeHead(person: string, sicht: ReadonlySet<string>
   const gruppen = new Map<string, { anzahl: number; aeltestes: string }>();
   const zaehle = (k: string, zeit: string) => { const g = gruppen.get(k) ?? { anzahl: 0, aeltestes: zeit }; g.anzahl++; if (zeit < g.aeltestes) g.aeltestes = zeit; gruppen.set(k, g); };
   // Nur, was die Person sieht — EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ ohne Vorschläge des Systems aus dem Privat-Bereich.
-  for (const v of await sicher(vorschlaegeFuer(person, 'offen'), [])) {
+  // Sicht Privat/Business (09.10. spät): nur die Vorschläge dieses Bereichs und die unklaren (`passtZurSicht`).
+  for (const v of await sicher(vorschlaegeFuer(person, 'offen', space), [])) {
     const h = headVonVorschlag(v);
     zaehle(h && sicht.has(h) ? h : '', v.zeit);
   }
@@ -251,7 +252,8 @@ export async function freigabenJeHead(person: string, sicht: ReadonlySet<string>
   return gruppen;
 }
 
-export async function naechstesLesen(person: string, jetzt: Date = new Date()): Promise<Naechstes[]> {
+/** `space` (09.10. spät): nur, was in die Sicht Privat bzw. Business gehört (lib/agenten/sicht.ts `naechstesImBereich`); ohne wie bisher alles. */
+export async function naechstesLesen(person: string, jetzt: Date = new Date(), space: 'privat' | 'business' | null = null): Promise<Naechstes[]> {
   const { loadJson } = await import('@/lib/store/local-db');
   const { sichtbareHeads, sichtbareSkills, umfangFuer } = await import('./skills-server');
   const { einstellungFuer } = await import('./skills-lesen');
@@ -374,7 +376,7 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
   }
 
   // 3) Offene Freigaben — EINE Zeile je Head (ZOE-Stapel, Freigabe-Listen der Heads und des Finanzchefs) — dieselbe Zählung wie am Head.
-  const gruppen = await freigabenJeHead(person, sicht, umfang.haushalt);
+  const gruppen = await freigabenJeHead(person, sicht, umfang.haushalt, space);
   raus.push(...freigabeEintraege(Array.from(gruppen, ([k, g]) => ({ ...(k ? { headId: k } : {}), ...g })), jetzt));
 
   // 4) Fristen — dieselbe Stelle wie Kalender und Glocke; Privates nur für volle Mitglieder (`fuerPersonFiltern`).
@@ -390,9 +392,13 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date()): 
   const { ladeAufgabenSicht } = await import('@/lib/aufgaben/sicht');
   const { zoeAufgaben } = await import('@/lib/aufgaben/zoe');
   const stand = await sicher(ladeAufgabenSicht(person), null);
-  if (stand) raus.push(...zoeAufgabeEintraege(zoeAufgaben(stand, { auftraggeberin: person }).alle, heute, jetzt));
+  if (stand) {
+    const { spaceVonAufgabe } = await import('@/lib/make-one/space-regeln');
+    raus.push(...zoeAufgabeEintraege(zoeAufgaben(stand, { auftraggeberin: person }).alle.map(t => ({ ...t, bereich: spaceVonAufgabe(t) })), heute, jetzt));
+  }
 
-  return naechstesSortieren(raus.filter(x => zeitWert(x.wann) < bis.getTime()));
+  const { naechstesImBereich } = await import('./sicht');
+  return naechstesSortieren(raus.filter(x => zeitWert(x.wann) < bis.getTime() && naechstesImBereich(x, space)));
 }
 
 export type { NaechstesArt, HeadDef };

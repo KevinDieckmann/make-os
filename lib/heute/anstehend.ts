@@ -83,8 +83,8 @@ export function vorschlagOrt(v: AVorschlaege | undefined): 'privat' | 'business'
  * „Steht an“ für EINE Sicht (08.10., Markttraktion Woche 2 · 4.10 — serverseitig, die Route filtert): Heute › Privat zeigte CRM-Follow-ups
  * und Business-Fristen. Privat: keine Follow-ups und Nachbereitungen (CRM = Business), keine Danke-Mails (Netzwerken), nur Privat-Fristen,
  * nur Geburtstage aus der Familie. Business: nur Business-Fristen, Geburtstage aus dem CRM. Termine und Buchungsanfragen bleiben in beiden
- * (sie gehören der Person). ZOE-Vorschläge seit 09.10. spät nur die des Bereichs (lib/zoe/bereich.ts — „unklar“ nur unter Alles).
- * Ohne Sicht („Alles“) unverändert.
+ * (sie gehören der Person). ZOE-Vorschläge seit 09.10. spät nur die des Bereichs und die unklaren (lib/zoe/bereich.ts `passtZurSicht`).
+ * Ohne Sicht (ältere Aufrufer) unverändert.
  */
 export function anstehendFuerSpace(a: Anstehend, space: 'privat' | 'business' | null | undefined): Anstehend {
   // Nur die Zahlen des Bereichs — `jeBereich` bleibt (der andere Bereich mit 0), damit `vorschlagOrt` den Link in diesen Bereich setzt.

@@ -113,7 +113,7 @@ export async function merke(neu: Omit<Fakt, 'id' | 'zeit' | 'tag'>): Promise<{ f
 
 /**
  * Merksätze lesen — die EINE Stelle, durch die sie in einen Prompt gehen (ZOE-Gespräch, frag_gedaechtnis). `bereich` (09.10. spät) = Bereich
- * des Gesprächs: nur Merksätze dieses Bereichs und die neutralen (ohne Bereich); ohne Angabe („Alles“) alle.
+ * des Gesprächs: nur Merksätze dieses Bereichs und die neutralen (ohne Bereich); ohne Angabe (Gespräch ohne Space, z. B. ein Kanal) alle.
  */
 export async function lies(opt: { thema?: string; art?: FaktArt; raum?: Fakt['raum']; anzahl?: number; bereich?: Bereich | null } = {}): Promise<Fakt[]> {
   const s = await loadJson<Stand>('zoe-gedaechtnis');
