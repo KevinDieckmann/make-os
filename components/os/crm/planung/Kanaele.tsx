@@ -104,7 +104,7 @@ function KanalForm({ lage, k, st, api, onFertig }: { lage: PlanungLage; k: Kanal
           );
         })}
       </div>
-      <Schalter an={aktiv} onChange={setAktiv}>Aktiv — wird geplant und zugeordnet</Schalter>
+      <Schalter erklaerung="planung.kanalAktiv" an={aktiv} onChange={setAktiv}>Aktiv — wird geplant und zugeordnet</Schalter>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Knopf haupt onClick={speichern}>{k ? 'Speichern' : 'Leadkanal anlegen'}</Knopf>
         <Knopf leise onClick={onFertig}>Abbrechen</Knopf>

@@ -110,8 +110,8 @@ function Profil({ e, lage, sw }: { e: SEintrag; lage: GesellschaftLage; sw: Schr
         {lage.kontext.hgbKapital && <Feldzeile label="Größenklasse (§ 267 HGB)"><Pillen liste={GROESSENKLASSEN.map(g => ({ id: g.id, label: g.label }))} aktiv={p.groessenklasse ?? null} onWahl={(g: Groessenklasse) => setze({ groessenklasse: g })} /></Feldzeile>}
         {lage.kontext.holding && p.groessenklasse === 'kleinst' && <Hinweis art="achtung">Eine reine Beteiligungs-Holding ist nie Kleinstkapitalgesellschaft (§ 267a Abs. 3 Nr. 3 HGB).</Hinweis>}
         <div style={{ display: 'grid', gap: 8 }}>
-          <Schalter karte an={!!p.beraten} onChange={v => setze({ beraten: v })} beschreibung="Längere Erklärungsfrist (§ 149 Abs. 3 AO).">Erklärungen macht ein Steuerbüro</Schalter>
-          <Schalter karte an={!!p.kreativeHonorare} onChange={v => setze({ kreativeHonorare: v })} beschreibung="Künstlersozialabgabe (§§ 24 ff. KSVG).">Regelmäßig Aufträge an selbständige Kreative</Schalter>
+          <Schalter erklaerung="schild.beraten" karte an={!!p.beraten} onChange={v => setze({ beraten: v })} beschreibung="Längere Erklärungsfrist (§ 149 Abs. 3 AO).">Erklärungen macht ein Steuerbüro</Schalter>
+          <Schalter erklaerung="schild.kreativeHonorare" karte an={!!p.kreativeHonorare} onChange={v => setze({ kreativeHonorare: v })} beschreibung="Künstlersozialabgabe (§§ 24 ff. KSVG).">Regelmäßig Aufträge an selbständige Kreative</Schalter>
         </div>
       </div>
       <div style={{ ...klein, marginTop: 8 }}>Die Angaben steuern Fristen (Größenklasse) und die Schwellen-Wächter. Beträge in Euro, gespeichert in Cent.</div>

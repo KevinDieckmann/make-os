@@ -211,4 +211,53 @@ export const EINSTELLUNGEN_BUSINESS = {
     was: 'Welche Steuern für die Gesellschaft berechnet werden und mit welchen Sätzen. Leere Felder gelten als Vorgabe (grauer Wert); eingetragene überlagern sie. Das sind Näherungen — keine Steuerberatung.',
     beispiel: 'Der Gewerbesteuer-Hebesatz deiner Gemeinde weicht von der Vorgabe ab. Du trägst ihn ein; die Rechnung nimmt ihn sofort, „zurücksetzen“ geht auf die Vorgabe.',
   },
+  // Nachgezogen bei der Zusammenführung (10.10.): Schalter aus Markttraktion › Planung und Unternehmen › Schild.
+  'planung.kanalAktiv': {
+    was: 'Ob dieser Leadkanal in der Planung mitrechnet und neue Leads ihm zugeordnet werden.',
+    beispiel: 'Eine Messe läuft nur im Frühjahr: Im Sommer schaltest du den Kanal aus, die Wochenziele verteilen sich auf die übrigen Kanäle.',
+    an: 'Der Kanal zählt im Rückwärts-Trichter, im Kreislauf und im Scoreboard.',
+    aus: 'Der Kanal bleibt mit seiner Geschichte erhalten, rechnet aber nicht mehr mit.',
+  },
+  'schild.beraten': {
+    was: 'Ob die Steuererklärungen der Gesellschaft über ein Steuerbüro laufen — davon hängt die Abgabefrist ab.',
+    beispiel: 'Mit Steuerbüro rechnet der Pflichten-Kalender die längere Frist; ohne die reguläre.',
+    an: 'Die Fristen für Erklärungen werden mit der verlängerten Frist gerechnet.',
+    aus: 'Es gilt die reguläre Abgabefrist.',
+  },
+  'schild.kreativeHonorare': {
+    was: 'Ob die Gesellschaft regelmäßig selbständige Kreative beauftragt (Design, Text, Foto) — das kann eine Abgabe zur Künstlersozialkasse auslösen.',
+    beispiel: 'Ihr lasst jeden Monat Grafiken extern gestalten: Der Pflichten-Kalender erinnert an die jährliche Meldung.',
+    an: 'Die Meldung zur Künstlersozialkasse steht im Pflichten-Kalender.',
+    aus: 'Keine Erinnerung dazu.',
+  },
+  'schild.marke.inhaber': {
+    was: 'Ob die Marke auf die Gesellschaft eingetragen ist (und nicht auf eine Person).',
+    beispiel: 'Eine Marke steht noch auf einer Privatperson: Die Ampel zeigt das als Lücke, damit sie übertragen wird.',
+    an: 'Gilt als sauber dokumentiert.',
+    aus: 'Die Ampel meldet „Inhaber prüfen“.',
+  },
+  'schild.domain.auto': {
+    was: 'Ob sich die Domain beim Anbieter automatisch verlängert.',
+    beispiel: 'Ohne automatische Verlängerung erinnert der Kalender rechtzeitig vor dem Ablauf.',
+    an: 'Keine Ablauf-Erinnerung nötig, nur ein Hinweis zur Zahlung.',
+    aus: 'Vor dem Ablauf kommt eine Erinnerung in Kalender und Glocke.',
+  },
+  'schild.domain.zweiFaktor': {
+    was: 'Ob das Konto beim Domain-Anbieter mit einem zweiten Faktor geschützt ist. Zugangsdaten selbst speichert MAKE OS nie.',
+    beispiel: 'Ohne zweiten Faktor könnte jemand mit einem erratenen Passwort die Domain umleiten — die Ampel weist darauf hin.',
+    an: 'Gilt als geschützt.',
+    aus: 'Die Ampel meldet „zweiten Faktor einrichten“.',
+  },
+  'schild.domain.zugang': {
+    was: 'Ob der Zugang zum Domain-Konto für den Notfall hinterlegt ist (z. B. im Passwort-Manager eurer Firma), damit ihr nicht ausgesperrt seid.',
+    beispiel: 'Fällt eine Person aus, kommt die andere trotzdem an die Domain-Einstellungen.',
+    an: 'Gilt als abgesichert.',
+    aus: 'Die Ampel meldet „Notfallzugang klären“.',
+  },
+  'schild.domain.inhaber': {
+    was: 'Ob die Domain auf die Gesellschaft eingetragen ist (und nicht auf eine Person oder Agentur).',
+    beispiel: 'Die Domain läuft noch über eine Agentur: Die Ampel zeigt das, damit sie auf die Gesellschaft umgezogen wird.',
+    an: 'Gilt als sauber dokumentiert.',
+    aus: 'Die Ampel meldet „Inhaber prüfen“.',
+  },
 } as const satisfies Record<string, EinstellungsText>;

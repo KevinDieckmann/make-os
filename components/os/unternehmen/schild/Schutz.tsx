@@ -107,7 +107,7 @@ function MarkeForm({ m, sw, fertig, heute }: { m?: Marke; sw: Schreiben; fertig:
         <Feldzeile label="Schutz bis (nach Verlängerung)"><input type="date" value={w.schutzBis} onChange={x => s('schutzBis', x.target.value)} aria-label="Schutz bis" style={eingabe} /></Feldzeile>
         <Feldzeile label="Klassen (Nizza)"><input value={w.klassen} onChange={x => s('klassen', x.target.value)} aria-label="Klassen" placeholder="z. B. 9, 35, 42" style={eingabe} /></Feldzeile>
       </Felder>
-      <Schalter karte an={w.inhaber} onChange={v => s('inhaber', v)} beschreibung="Marke und Domain gehören auf die Gesellschaft (Praxis).">Inhaber ist die Gesellschaft</Schalter>
+      <Schalter erklaerung="schild.marke.inhaber" karte an={w.inhaber} onChange={v => s('inhaber', v)} beschreibung="Marke und Domain gehören auf die Gesellschaft (Praxis).">Inhaber ist die Gesellschaft</Schalter>
       <Feldzeile label="Notiz"><input value={w.notiz} onChange={x => s('notiz', x.target.value)} aria-label="Notiz" style={eingabe} /></Feldzeile>
       <Fehler t={fehler} />
       <Fuss fertig={fertig} aus={!w.bezeichnung.trim()} />
@@ -136,10 +136,10 @@ function DomainForm({ d, marken, sw, fertig }: { d?: Domain; marken: Marke[]; sw
         </Feldzeile>}
       </Felder>
       <div style={{ display: 'grid', gap: 8 }}>
-        <Schalter karte an={w.auto} onChange={v => s('auto', v)}>Verlängert sich automatisch</Schalter>
-        <Schalter karte an={w.zweiFaktor} onChange={v => s('zweiFaktor', v)}>Zweiter Faktor beim Registrar</Schalter>
-        <Schalter karte an={w.zugang} onChange={v => s('zugang', v)}>Zugang ist für den Notfall hinterlegt</Schalter>
-        <Schalter karte an={w.inhaber} onChange={v => s('inhaber', v)}>Inhaber ist die Gesellschaft</Schalter>
+        <Schalter erklaerung="schild.domain.auto" karte an={w.auto} onChange={v => s('auto', v)}>Verlängert sich automatisch</Schalter>
+        <Schalter erklaerung="schild.domain.zweiFaktor" karte an={w.zweiFaktor} onChange={v => s('zweiFaktor', v)}>Zweiter Faktor beim Registrar</Schalter>
+        <Schalter erklaerung="schild.domain.zugang" karte an={w.zugang} onChange={v => s('zugang', v)}>Zugang ist für den Notfall hinterlegt</Schalter>
+        <Schalter erklaerung="schild.domain.inhaber" karte an={w.inhaber} onChange={v => s('inhaber', v)}>Inhaber ist die Gesellschaft</Schalter>
       </div>
       <Feldzeile label="Notiz"><input value={w.notiz} onChange={x => s('notiz', x.target.value)} aria-label="Notiz" style={eingabe} /></Feldzeile>
       <Fehler t={fehler} />
