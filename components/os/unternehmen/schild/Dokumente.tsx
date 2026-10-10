@@ -26,12 +26,13 @@ const aufbewahrung = (z: DokSoll) => (!z.aufbewahrenBis ? undefined : z.aufbewah
 export function Dokumente({ lage, e, sw }: { lage: GesellschaftLage; e: SEintrag; sw: Schreiben }) {
   const [offen, setOffen] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState<{ art: string; dok?: Dokument } | null>(null);
+  const { melden, hinweis } = useRueckgaengig();
   const nachGruppe = DOK_GRUPPEN.map(g => ({ ...g, l: lage.dokumente.filter(d => d.katalog.gruppe === g.id) })).filter(g => g.l.length);
   const fehlend = lage.dokumente.filter(d => dokSchwere(d) === 'rot').length;
   return (
     <>
       {fehlend > 0 && <Hinweis art="kritisch" titel={`${fehlend} Pflichtdokument${fehlend === 1 ? '' : 'e'} fehlen oder sind abgelaufen`}>Unten rot markiert — erfassen, Datei ablegen oder mit Grund „nicht nötig“ vermerken.</Hinweis>}
-      {form && <DokForm key={`${form.art}-${form.dok?.id ?? 'neu'}`} art={form.art} dok={form.dok} lage={lage} sw={sw} fertig={() => setForm(null)} />}
+      {form && <DokForm key={`${form.art}-${form.dok?.id ?? 'neu'}`} art={form.art} dok={form.dok} lage={lage} sw={sw} melden={melden} fertig={() => setForm(null)} />}
       {nachGruppe.map(g => (
         <Karte key={g.id}>
           <Klappbar id={`dok-${g.id}`} titel={g.label} zaehler={g.l.filter(d => dokSchwere(d) !== 'ok').length} offen={offen[g.id] ?? true} umschalten={() => setOffen(o => ({ ...o, [g.id]: !(o[g.id] ?? true) }))}>
@@ -47,6 +48,7 @@ export function Dokumente({ lage, e, sw }: { lage: GesellschaftLage; e: SEintrag
         ))}</Liste>
       </Karte>
       <Vorlagen lage={lage} e={e} sw={sw} />
+      {hinweis}
       <SchildFuss>Unterlagen liegen verschlüsselt in der Ablage des Haushalts; Aufbewahrung ab Ende des Kalenderjahres (§ 257 HGB, § 147 AO).</SchildFuss>
     </>
   );
@@ -72,13 +74,12 @@ function DokZeile({ z, lage, onBearbeiten }: { z: DokSoll; lage: GesellschaftLag
 }
 
 /** Erfassen/Ändern eines Dokuments: Status, Fassung, Ablauf, Geschäftsjahr, Quelle, Datei (verschlüsselte Ablage), Notiz. */
-function DokForm({ art, dok, lage, sw, fertig }: { art: string; dok?: Dokument; lage: GesellschaftLage; sw: Schreiben; fertig: () => void }) {
+function DokForm({ art, dok, lage, sw, melden, fertig }: { art: string; dok?: Dokument; lage: GesellschaftLage; sw: Schreiben; melden: ReturnType<typeof useRueckgaengig>['melden']; fertig: () => void }) {
   const kat = katalogVon(art);
   const [w, setW] = useState({ art, titel: dok?.titel ?? '', status: (dok?.status ?? 'vorhanden') as DokStatus, fassungVom: dok?.fassungVom ?? '', gueltigBis: dok?.gueltigBis ?? '', geschaeftsjahr: dok?.geschaeftsjahr ? String(dok.geschaeftsjahr) : '', quelle: (dok?.quelle ?? '') as DokQuelle | '', notiz: dok?.notiz ?? '', grund: dok?.grund ?? '' });
   const [dateiIds, setDateiIds] = useState<string[]>(dok?.dateiIds ?? []);
   const [fehler, setFehler] = useState<string | null>(null);
   const [laed, setLaed] = useState(false);
-  const { melden, hinweis } = useRueckgaengig();
   const setze = (k: keyof typeof w, v: string) => setW(x => ({ ...x, [k]: v }));
   const speichern = async () => {
     setFehler(null);
@@ -125,7 +126,6 @@ function DokForm({ art, dok, lage, sw, fertig }: { art: string; dok?: Dokument; 
           {dok && <Knopf leise onClick={() => void loeschen()}>In den Papierkorb</Knopf>}
         </div>
       </form>
-      {hinweis}
     </Karte>
   );
 }
