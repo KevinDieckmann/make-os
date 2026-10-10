@@ -21,6 +21,8 @@ import { montagVon, tagPlus } from '@/lib/zeit/kalender-kern';
 import { einheitAusGesellschaft } from '@/lib/einheiten';
 import { bauKennung, BAU_KOPF } from '@/lib/bau/kennung';
 import { fahrplanFuer } from '@/lib/gesellschaften/fahrplan';
+import { verantwortlich } from '@/lib/crm/team';
+import { EVENT_REIHEN } from '@/lib/crm/marke';
 import { DEMO_MARKE, DEMO_SAAT_VERSION, DEMO_DOMAIN, demoUuid } from './schutz';
 
 export class DemoFehler extends Error {}
@@ -89,6 +91,7 @@ const R = {
   gesundheitEinwilligung: () => import('@/app/api/datenschutz/gesundheit/route') as Promise<Modul>,
   koerper: () => import('@/app/api/gesundheit/koerper/route') as Promise<Modul>,
   erholung: () => import('@/app/api/gesundheit/erholung/route') as Promise<Modul>,
+  planung: () => import('@/app/api/crm/planung/route') as Promise<Modul>,
 };
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -202,6 +205,18 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   ];
   for (const d of deals) await rufe(R.deal(), 'POST', '/api/crm/deal', d.kontaktIds.length > 1 ? JONAS : LENA, { aktion: 'anlegen', ...d, gesellschaft: 'ug', quelle: 'netzwerk', besitzer: LENA });
   schritt('CRM: Firmen', FIRMEN.length); schritt('CRM: Kontakte', KONTAKTE.length); schritt('CRM: Produkte', PRODUKTE.length); schritt('CRM: Mandate', 2); schritt('CRM: Deals', deals.length);
+
+  // 3b) Markttraktion › Planung (10.10.): zwei erfundene Leadkanäle (Netzwerk, eigene Eventreihe), ein Umsatzziel bis Jahresende, eine
+  //     Challenge dieser Woche und ein abgehakter Schritt „nach der Leistung“ — über die Planungs-Route (Einzel-Schritte), wie im Browser.
+  const reihe = EVENT_REIHEN[0]?.id;
+  await rufe(R.planung(), 'PATCH', '/api/crm/planung', LENA, { ops: [
+    { op: 'kanal', eintrag: { id: 'lk-demo-netzwerk', name: 'Netzwerk & Empfehlung (Beispiel)', herkunft: 'netzwerk', kanaele: ['netzwerk', 'empfehlung', 'outreach'], leadsMonat: 6, zyklusWochen: 8, quoten: { leadZuGespraech: 45, gespraechZuSql: 50 }, kostenJeLead: 20, verantwortlich: verantwortlich('sales'), rang: 1 } },
+    { op: 'kanal', eintrag: { id: 'lk-demo-reihe', name: 'Eigene Abendreihe (Beispiel)', herkunft: 'eventreihe', ...(reihe ? { bezug: reihe } : {}), leadsMonat: 8, zyklusWochen: 10, quoten: { leadZuGespraech: 30 }, kostenJeLead: 35, minutenJeLead: 25, beitraegeWoche: 2, verantwortlich: verantwortlich('event'), rang: 2 } },
+    { op: 'ziel', eintrag: { id: 'uz-demo-jahr', gesellschaft: 'ug', titel: 'Neugeschäft bis Jahresende (Beispiel)', von: heute, bis: `${heute.slice(0, 4)}-12-31`, umsatz: 60_000, dealWert: 7_500 } },
+    { op: 'challenge', eintrag: { id: 'chl-demo-gespraeche', woche: montag, art: 'gespraeche', titel: '6 echte Gespräche', ziel: 6, person: 'beide' } },
+    { op: 'schritt', mandatId: 'm-demo-nordwerk', schritt: 'bewertung', erledigt: true },
+  ] });
+  schritt('Markttraktion-Planung', 5);
 
   // 4) Gesellschaften: Holding (kdv) hält die operative (ug); die Beratung (kdc) als Einzelunternehmen; eine neue in Gründung.
   const reg = await rufe(R.gesellschaften(), 'GET', '/api/gesellschaften', LENA);

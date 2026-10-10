@@ -12,7 +12,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import {
   aufloesen, markttraktion, REITER_ZEILE, REITER_IDS, KLICKZIELE_ZEILE, reiterVon, BEREICHE, BEREICHE_ALT, SALES_ALT_ANSICHTEN,
-  DEALS_ANSICHTEN, FOLLOWUP_ANSICHTEN, BESUCHE_ANSICHTEN, QUALI_ANSICHTEN, MARKETING_ANSICHTEN, type Bereich,
+  DEALS_ANSICHTEN, FOLLOWUP_ANSICHTEN, BESUCHE_ANSICHTEN, QUALI_ANSICHTEN, MARKETING_ANSICHTEN, PLANUNG_ANSICHTEN, type Bereich,
 } from '../lib/crm/adresse';
 import { WEG } from '../lib/wege';
 
@@ -27,23 +27,25 @@ function dateien(dir: string, ende: RegExp): string[] {
 
 /** Welche Ansichten (`a`) ein Bereich kennt — null = frei (Kartei-Ansichten, Akte, Runden, Events, Angebot, Stammdaten). */
 const GUELTIG: Partial<Record<Bereich, readonly string[]>> = {
-  deals: DEALS_ANSICHTEN, followup: FOLLOWUP_ANSICHTEN, besuche: BESUCHE_ANSICHTEN, qualifizierung: QUALI_ANSICHTEN, marketing: MARKETING_ANSICHTEN,
+  deals: DEALS_ANSICHTEN, followup: FOLLOWUP_ANSICHTEN, besuche: BESUCHE_ANSICHTEN, qualifizierung: QUALI_ANSICHTEN, marketing: MARKETING_ANSICHTEN, planung: PLANUNG_ANSICHTEN,
 };
 /** Alle Ansichten, die es je gab (Stand vor dem 08.10. eingeschlossen). */
 const ALTE_ANSICHTEN = [
   undefined, 'board', 'liste', 'akte', 'kunden', 'auswertung', 'faellig', 'woche', 'powerhour', 'kadenz', 'head', 'kampagnen', 'heute', 'leads',
   'pipeline', 'uebersicht', 'anfragen', 'segmente', 'redaktion', 'newsletter', 'positionierung', 'kalender', 'wirkung', 'runde', 'scoring',
   'scoring-sales', 'runde-kreis', 'runde-chancen', 'runde-vernetzen', 'datenschutz', 'qualitaet', 'wertelisten', 'quatsch',
+  // Planung (10.10.)
+  'kreislauf', 'ziele', 'kanaele', 'challenges',
 ];
 
 describe('Markttraktion — höchstens sieben Reiter, jede Ansicht einmal', () => {
   it('Reiterzeile: sechs Reiter, zwei Schnellknöpfe, Stammdaten hinter dem Zahnrad', () => {
     expect(REITER_IDS.length).toBeLessThanOrEqual(7);
     expect(REITER_IDS).toEqual(['ueberblick', 'kontakte', 'deals', 'followup', 'marketing', 'events']);
-    expect(REITER_ZEILE.mitte).toEqual(['qualifizierung', 'angebot']);
+    expect(REITER_ZEILE.mitte).toEqual(['qualifizierung', 'angebot', 'planung']);
     expect(REITER_ZEILE.zahnrad).toBe('stammdaten');
-    // Vorher zwölf Klickziele in der Zeile — jetzt acht (Offene Frage an Kevin: Schnellknöpfe zählen als Klickziel mit).
-    expect(KLICKZIELE_ZEILE).toBeLessThanOrEqual(8);
+    // Vorher zwölf Klickziele in der Zeile — seit 08.10. acht, seit 10.10. neun (Kevins Entscheidung: Schnellknopf „Planung“ rechts neben „Angebot“).
+    expect(KLICKZIELE_ZEILE).toBeLessThanOrEqual(9);
   });
   it('jeder Bereich gehört genau einem Ort; „Sales“ ist kein Bereich mehr', () => {
     const orte = [...REITER_ZEILE.links.flatMap(r => r.bereiche), ...REITER_ZEILE.mitte, ...REITER_ZEILE.rechts.flatMap(r => r.bereiche), REITER_ZEILE.zahnrad];
@@ -112,6 +114,7 @@ describe('Markttraktion — jede alte Adresse findet ihren neuen Ort', () => {
       WEG.akte('c-1'), WEG.kontakt(), WEG.kontakt('c-1'), WEG.firma(), WEG.firma('f-1'), WEG.event(), WEG.event('ev-1', 'gaeste'), WEG.besuch(),
       WEG.besuch('ev-2'), WEG.besuch(undefined, 'wirkung'), WEG.besuch(undefined, 'kunden'), WEG.stammdaten(), WEG.stammdaten('datenschutz'),
       ...(['anfragen', 'segmente', 'kampagnen', 'redaktion', 'newsletter', 'positionierung'] as const).map(a => WEG.marketing(a)), WEG.marketing(),
+      WEG.vertriebsplanung(), ...(['ziele', 'kanaele', 'challenges'] as const).map(a => WEG.vertriebsplanung(a)),
     ];
     for (const l of links) {
       const u = new URL(l, 'http://x');

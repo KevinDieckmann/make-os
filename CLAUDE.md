@@ -1301,7 +1301,7 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   sechs Reiter **Überblick · Kontakte & Firmen** (Bereiche `kontakte` = Personen, `firmen`) **· Deals** (a=board|liste|auswertung|akte; Auswertung = Kanal-Leistung
   + Kunden kurz + Pipeline, der Head of Sales steht am Board) **· Follow-up** (a=faellig|woche|powerhour|kadenz — Power Hour NUR hier) **· Marketing** (a=uebersicht|
   anfragen|segmente|kampagnen|redaktion|newsletter|positionierung — Kampagnen NUR hier) **· Events** (Bereiche `besuche` = Besuchte Events mit Kalender · Wirkung ·
-  Im Kundenauftrag, `event` = Make.One); dazu die zwei Schnellknöpfe Qualifizierung (a=leads|scoring|scoring-sales, Runde ohne a — Leads NUR hier) und Angebot;
+  Im Kundenauftrag, `event` = Make.One); dazu die Schnellknöpfe Qualifizierung (a=leads|scoring|scoring-sales, Runde ohne a — Leads NUR hier), Angebot und (10.10.) Planung;
   die Stammdaten öffnet das Zahnrad im Kopf (`REITER_ZEILE.zahnrad`, auch Einstellungen › Daten & Datenschutz › „Kartei-Pflege“). Den Reiter „Sales“, Firmen › Leads,
   Deals › Kunden und die alte Qualifizierungs-Runde der Kartei (`runde-chancen`) gibt es nicht mehr — `aufloesen()` übersetzt JEDE alte Kombination (Wächter
   `tests/aufraeumen-etappe3.test.ts`), die Seite schreibt alte Adressen still auf den neuen Ort um. Alte Links NIE umschreiben, sondern dort ergänzen; neue Ansicht =
@@ -1331,6 +1331,21 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   `besitzerAusOwner`, `moeglicheDubletten`. Route `POST /api/crm/import` mit `vorschau:true` (schreibt nichts), ohne → schreibt und legt Konflikte in
   `crm-import-konflikte` ab (`lib/crm/import-konflikte.ts`), `aktion:'konflikt'` entscheidet einzeln, GET liefert den Stand. Segment `seg-vernetzen` entsteht
   beim ersten Import. Neue Schreibwege für Stammdaten-Felder müssen `vonHandMarkieren` rufen — sonst überschreibt der nächste Import die Handarbeit.
+
+## Markttraktion › Planung (10.10., Branch `mt-planung`, nur lokal; UPDATES.md)
+Kevin 10.10.: Schnellknopf „Planung“ rechts neben „Angebot“ (`REITER_ZEILE.mitte`, `planungLink`/`WEG.vertriebsplanung`) — „Umsatzziele auf Aktivitäten
+runterplanen, mit Kapa“, „planen pro Leadkanal“, „der Kunde bleibt im Kreis“. Ansichten `a` = kreislauf (Start) · ziele · kanaele · challenges, `kanal` filtert.
+- **Gespeichert nur, was es sonst nicht gibt:** Bestand `markttraktion-planung--<haushalt>` (Business) — Leadkanäle, Umsatzziele (nur Business-Gesellschaften,
+  Privat-Einheit → 400), Challenges, Zeiten je Aktivität, Schritte „nach der Leistung“ je Mandat-Kennung. Regeln rein in `lib/crm/planung-daten.ts`
+  (`planungAnwenden`: Einzel-Schritte, Stand je Eintrag → 409, Grenzen → 413, nie gekürzt), Server `lib/crm/planung-server.ts`, Route `/api/crm/planung`
+  (GET Haushalt inkl. „nur Business“, `?space=privat` → 400; PATCH nur Sitzung).
+- **EINE Rechnung** `lib/crm/planung.ts` auf den vorhandenen Bausteinen (leads, kanalVon, gemesseneQuoten, zyklus, wahrscheinlichkeit, echtesGespraech,
+  alsMarketingAnmeldung, MACHBAR_BIS/ENG_BIS): Zuordnung Lead/Deal/Mandat → Kanal NUR abgeleitet (genauer Bezug Kampagne/Eventreihe zuerst, dann Herkunft) —
+  nie an Leads/Deals speichern; Kreislauf (7 Stufen, Plan vs. Ist ab `MINDESTMENGE`, „Annahme“ markiert); Rückwärts-Trichter (letzter Start = Ende − Sales
+  Cycle); Bedarf je Person gegen freie Kapazität (`kapaStandFuer`); Wochenziele → `wochenScoreboard(…, plan)` (erweitert: `ScoreZeile.plan`, Zeilen „Neue Leads“,
+  „Angebote raus“ nur mit Plan); Challenges (Fortschritt `wochenIst`, Vorschläge `challengeVorschlaege` als Regelwerk). Neue Planungs-Kennzahl → dort, nie in der Ansicht.
+- Oberfläche `components/os/crm/planung/` (EIN Abruf `usePlanung`). Tests `tests/markttraktion-planung{,-route}.test.ts`. Offen: Head of Sales an die Challenge-Regel
+  hängen (ändert sein Datenpaket → Evals zuerst).
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.

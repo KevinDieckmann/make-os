@@ -4,6 +4,75 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Markttraktion › Planung: vom Umsatzziel zu den Aktivitäten, Leadkanäle, Kreislauf, Challenges (nur lokal — Branch `mt-planung`, Basis f08bf479 = `update-0910b`)
+
+Entscheidung 10.10.: In der Markttraktion rechts neben „Angebot“ ein Schnellknopf **„Planung“** — „Umsatzziele auf einzelne Aktivitäten runterplanen —
+Sales, Marketing, was auch immer — mit Kapa und allem, was dazugehört. Das Wochen-Scoreboard ist mega, aber nur, wenn ich weiß, was das Ziel war. Dann
+wöchentliche Challenges …“ und „die Pipeline in einem Bereich sehen, wo wir die Conversions sehen und anpassen können — planen pro Leadkanal … der Kunde
+bleibt immer in diesem Kreis mit unseren Produkten.“
+
+**Gebaut:**
+- **Schnellknopf „Planung“** (hellblau, pulsiert leise wie die anderen) rechts neben „Angebot“ — `REITER_ZEILE.mitte` = Qualifizierung · Angebot · Planung,
+  Adresse `/os/markttraktion?s=planung&a=<kreislauf|ziele|kanaele|challenges>&kanal=<lk-…|ohne>` (`planungLink`, `WEG.vertriebsplanung`).
+- **Kreislauf** (Start): ein ruhiger Ring (Handy: Liste) — Leadkanäle → Leads & Qualifizierung → Deals (SQL … Abschluss) → Abschluss & Follow-up →
+  Fulfillment (aktive Mandate je Produkt und Phase) → Nach der Leistung → Wiederkauf → zurück. Je Stufe die Zahl, Plan gegen Ist der Umwandlung
+  (Plan = Annahme, solange nichts geplant ist; Ist erst ab fünf Fällen, `MINDESTMENGE`), Filter je Leadkanal, „öffnen“ führt in die VORHANDENE Ansicht
+  (Qualifizierung, Deals, Follow-up, Produkte & Mandate). **Nach der Leistung je Kunde** (aktive Mandate schon während des Fulfillments und im letzten Jahr
+  beendete): Newsletter · Bewertung/Rezension · Testimonial · Upselling · Cross-Selling · Leistung beendet — abgeleitet, wo die Daten es sagen (Mandat
+  beendet, neuer Deal derselben Firma mit gleichem/anderem Produkt, Newsletter-Einwilligung), sonst von Hand abhaken.
+- **Leadkanäle** (neu, je Haushalt): Name, Herkunft (Marketing-Kampagne, eigene Eventreihe, Netzwerk, Empfehlung, Inbound, Partner, frei), genauer Bezug
+  (Kampagne bzw. Eventreihe), welche Herkunft der Kartei hierher zählt, Plan-Leads/Monat, Sales Cycle (Wochen, gemessener Wert zum Übernehmen), Plan-Quoten
+  Lead→Gespräch · Gespräch→SQL · SQL→Angebot · Angebot→Gewonnen (leer = Annahme aus den Pipeline-Wahrscheinlichkeiten; Ist daneben mit „übernehmen“),
+  Kosten je Lead (≈ Kosten je SQL), Minuten je Lead, Beiträge je Woche, wer Leads erzeugt / wer Gespräche führt, aktiv. **Zuordnung nur abgeleitet**: erst
+  der genaue Bezug (Person in der Kampagne bzw. als Marketing-Anmeldung an einem Abend der Reihe), dann die Herkunft (`kanalVon`); Deals über ihren Lead,
+  sonst ihre Quelle; Mandate über den Deal bzw. die Firma — an Leads, Deals und Kontakten wird nichts umgeschrieben.
+- **Ziele & Aktivitäten**: Umsatzziel je Business-Gesellschaft und Zeitraum (optional aus einem Business-Zahlenziel der Planung übernommen) → Rückwärts-
+  Trichter: Umsatz ÷ Ø Deal-Wert (Eingabe, sonst gemessen) → Deals ÷ Angebot→Gewonnen → Angebote ÷ SQL→Angebot → SQL ÷ Gespräch→SQL → Gespräche ÷
+  Lead→Gespräch → Leads je Kanal (Anteile eigen oder nach geplanter Leistung). Je Kanal: je Woche bis zum **letzten Start = Ende − Sales Cycle** (danach
+  zählen Leads fürs nächste Ziel, „zu spät“ rot), nötige gegen geplante Leads/Monat, Lead-Kosten. Ist: gewonnen im Zeitraum + offen gewichtet.
+  **Diese Woche je Welt und je Person** gegen die freie Kapazität (Planung › Kapazität, Ø nächste vier Wochen): „machbar · eng · nicht machbar — bräuchte
+  X h/Woche“ (Schwellen wie die Kapazität 70/90 %). Zeit je Aktivität einstellbar (Gespräch 45, Angebot 120, Nachfassen 15, Beitrag 30 Minuten).
+- **Wochen-Scoreboard mit Ziel** (Überblick): gibt es einen Plan, kommen die Wochenziele für echte Gespräche und neue SQL aus der Planung, dazu die Zeilen
+  „Neue Leads“ und „Angebote raus“ (Soll/Ist je Woche) — Ziel-Spalte hellblau, Kopf „Ziele aus der Planung ›“. Ohne Plan bleibt alles wie bisher.
+- **Challenges** je Woche (1–3, je Person oder gemeinsam): Gespräche, neue Leads, Angebote, neue Deals, Power Hours, ruhende Kontakte reaktivieren
+  (≥ 90 Tage still), Begegnungen auf Events — Fortschritt aus echten Aktivitäten (System zählt nie), jede mit Sprung in die passende Liste (Power Hour,
+  Kampagne/Make.One/Netzwerken, Kadenz, Angebot …). **Vorschläge aus den Lücken des Plans** (Regelwerk, kein Modellaufruf): Wochenziel gegen letzte
+  Woche, größte Lücke zuerst; ohne Plan die Startwerte. **Rückblick** der Vorwoche mit erreicht/nicht und einem Satz.
+
+**Daten & Recht:** neuer Bestand `markttraktion-planung--<haushalt>` (Bereich Business; Speicher-Register mit Angaben, `NICHT_PERSOENLICH`): Kanäle,
+Umsatzziele, Challenges, Zeiten, Schritte je Mandat-Kennung — Personen nur als Team-Kürzel, keine Daten Dritter. Route `/api/crm/planung` (Routen-Register
+`modul:markttraktion`): GET Haushalt des Inhabers (auch Konto „nur Business“), `?space=privat` → 400 (die Markttraktion ist Business); PATCH nur per Sitzung
+(Dienstweg 403), `bauPruefen`, `jsonBegrenzt`, Einzel-Schritte mit Stand je Eintrag (409 + aktueller Stand), 60 Schritte/40 Kanäle/40 Ziele → 413.
+Umsatzziele nur für Business-Gesellschaften (Selbstständigkeit → 400 „gehört zu Privat“). Lese-Protokoll Bereich „firmen“. Demo-Saat: zwei erfundene
+Leadkanäle, ein Umsatzziel, eine Challenge, ein abgehakter Schritt (über die Route).
+Tests: `tests/markttraktion-planung.test.ts` (Rechnung), `tests/markttraktion-planung-route.test.ts` (Zugang, Trennung, 409/413, Scoreboard); angepasst
+`markttraktion-angebot`, `aufraeumen-etappe3` (Klickziele ≤ 9), `demo`.
+
+**So testet ihr (in Klicks):**
+1. Markttraktion öffnen → rechts neben „Angebot“ steht **Planung** → antippen. Der Kreislauf erscheint; ohne Leadkanal steht unter „Leadkanäle“ 0.
+2. Pille **Leadkanäle** → „Ersten Leadkanal anlegen“: Name „Netzwerk“, Herkunft Netzwerk, Plan-Leads `6`, Sales Cycle `8` → „Leadkanal anlegen“. Zweiten
+   anlegen: Herkunft „Eigene Eventreihe“, Reihe wählen, Plan-Leads `8`. In der Zeile stehen Leads, Deals und die Quoten mit „Ist“ (— bis fünf Fälle).
+3. **Bearbeiten** → bei „Lead → Gespräch“ `40` eintragen (oder „übernehmen“ beim Ist) → Speichern. Im zweiten Browser-Fenster mit altem Stand speichern →
+   „Inzwischen hat jemand anderes geändert“, die neue Fassung ist da.
+4. Pille **Ziele & Aktivitäten** → „Umsatzziel anlegen“: Gesellschaft wählen (die Selbstständigkeit steht nicht zur Wahl), Umsatz `60000`, Ø Deal-Wert `7500`
+   → anlegen. Darunter: Umsatz → Deals → Angebote → SQL → Gespräche → Leads und die Tabelle je Kanal (je Woche, letzter Start, Leads/Monat nötig/geplant).
+   Ein Ziel mit Ende in drei Wochen und Sales Cycle 8 zeigt „zu spät“.
+5. Darunter „Diese Woche — je Welt und je Person“: Stunden je Person und „machbar/eng/nicht machbar“ (Kapazität unter Planung › Kapazität pflegen).
+6. Markttraktion › **Überblick** → Wochen-Scoreboard: Kopf „Ziele aus der Planung ›“, Gespräche/SQL mit hellblauem Ziel, neue Zeilen „Neue Leads“ und
+   „Angebote raus“. Umsatzziel wieder entfernen → das Scoreboard zeigt die alten Ziele.
+7. **Kreislauf** → Stufe „Deals“ antippen → Plan/Ist, „Deals öffnen“ führt ins Board. Pille eines Kanals oben → nur dessen Zahlen. Stufe „Nach der Leistung“ →
+   je Kunde die Schritte; „Bewertung / Rezension“ antippen hakt ab (noch einmal = zurück); abgeleitete (✓) lassen sich nicht anklicken — der Tooltip sagt, woher.
+8. **Challenges** → Vorschlag „Übernehmen“ oder selbst „+ Challenge“; ein Gespräch in einer Kontaktakte festhalten → der Balken wächst. Nächste Woche im
+   Rückblick einen Satz eintragen.
+9. Am Handy (375 px): Kreislauf als Liste, Tabelle der Ziele seitlich wischbar, Schnellknöpfe vorn in der wischbaren Leiste.
+
+**Offen / bewusst nicht:** Head of Sales schlägt die Challenges noch nicht selbst vor — die Regel (`challengeVorschlaege`) liegt rein bereit; sie ins
+Datenpaket/den Grundlauf zu hängen ändert seine Eingabe → vorher die Evals (`/api/heads/eval`). Leads aus „Partner“/„frei“ kommen nur über die gewählte
+Herkunft der Kartei (es gibt keine eigene Herkunft „Partner“). Umsatz-Ist zählt gewonnene Deals der Gesellschaft (nicht Rechnungen).
+
+**Rückweg:** nur ein neuer Bestand und optionale Felder (`ScoreZeile.plan`); der alte Stand kennt `markttraktion-planung--*` nicht und zeigt das Scoreboard
+wie vorher.
+
 ## 10.10.2026 — Fokus-Steuerung: Fokus + Kompass zusammen, oben rechts, Privat und Business getrennt (nur lokal — Branch `fokus-steuerung`, Basis 5249d903 = `update-0910b`)
 
 Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehmen — Planung soll nur Planung sein. Prio und Fokus geben wir im

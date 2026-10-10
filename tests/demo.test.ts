@@ -108,7 +108,12 @@ describe('Saat', () => {
   it('sät eine vollständige, erfundene Demo über die Schreibwege', async () => {
     const b = await server.demoSaenInLeerenOrdner({ passwort: 'pruef-passwort-demo', heute: localDay() }); // echtes Heute: die Deal-Prüfung vergleicht mit der Uhr
     const n = Object.fromEntries(b.schritte.map(s => [s.name, s.anzahl]));
-    expect(n).toMatchObject({ Konten: 3, Team: 4, 'CRM: Kontakte': 8, 'CRM: Deals': 4, Gesellschaften: 4, Meilensteine: 5, 'Wochenpläne festgehalten': 4, 'Wissen (Notizen)': 4, 'Körper-Profil': 1, Erholung: 1 });
+    expect(n).toMatchObject({ Konten: 3, Team: 4, 'CRM: Kontakte': 8, 'CRM: Deals': 4, Gesellschaften: 4, Meilensteine: 5, 'Wochenpläne festgehalten': 4, 'Wissen (Notizen)': 4, 'Körper-Profil': 1, Erholung: 1, 'Markttraktion-Planung': 5 });
+    // Markttraktion › Planung (10.10.): zwei erfundene Leadkanäle, ein Umsatzziel, eine Challenge — im Bestand des Demo-Haushalts.
+    const pl = await db.loadJson<{ kanaele: unknown[]; ziele: { gesellschaft: string }[]; challenges: unknown[] }>('markttraktion-planung--demo');
+    expect(pl?.kanaele).toHaveLength(2);
+    expect(pl?.ziele.map(z => z.gesellschaft)).toEqual(['ug']);
+    expect(pl?.challenges).toHaveLength(1);
     // Erholung (10.10.): ein erfundenes Programm, eine Serie (2 von 6), ein Ziel, ein paar Einheiten — über die Erholungs-Route, mit Suffix.
     const eh = await db.loadJson<{ programme: { name: string }[]; behandlungen: { termine: { erledigt: boolean }[] }[]; einheiten: unknown[]; ziele: unknown[] }>('erholung--lena');
     expect(eh?.programme.map(p => p.name)).toEqual(['Mobility am Morgen (Beispiel)']);
