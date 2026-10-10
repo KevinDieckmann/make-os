@@ -16,6 +16,7 @@
 // Summen der Instanz OHNE fremde Einzelheiten; ein Konto ohne Privat-Bereich bekommt den Privat-Bestand gar nicht erst geladen.
 
 import { inEuroCent } from '@/lib/ki/kosten';
+import { FEHLERKLASSEN, type Fehlerklasse } from '@/lib/werkzeuge/vertrag';
 
 export const SPUR_PRAEFIX = 'lauf-spur';
 export const SPUR_AUFBEWAHRUNG_MONATE = 12;
@@ -32,6 +33,14 @@ export type SpurErgebnis = 'ok' | 'gestapelt' | 'wartet' | 'abgebrochen' | 'gesp
 export const SPUR_ERGEBNISSE: readonly SpurErgebnis[] = ['ok', 'gestapelt', 'wartet', 'abgebrochen', 'gesperrt', 'fehler'];
 
 export interface SpurToken { ein: number; aus: number; cacheLesen: number; cacheSchreiben: number }
+
+/**
+ * Ausgänge der Werkzeug-Aufrufe eines Abschnitts (10.10., Paket V3 „Werkzeug-Verträge“): je Art (erfolg · abgelehnt · fehler · freigabe =
+ * „braucht_freigabe“, liegt im Stapel), je Fehlerklasse, und wie oft der Text-Rückfall `ausAltText` griff (`rueckfall`, Ziel 0 — ein Werkzeug
+ * meldete einen Fehlschlag noch als bloßen Satz). Nur Zahlen. Fehlt das Feld, gab es keinen Werkzeug-Aufruf über die Hülle.
+ */
+export interface SpurWerkzeuge { erfolg: number; abgelehnt: number; fehler: number; freigabe: number; rueckfall: number; klassen?: Partial<Record<Fehlerklasse, number>> }
+export const leereWerkzeugZaehler = (): SpurWerkzeuge => ({ erfolg: 0, abgelehnt: 0, fehler: 0, freigabe: 0, rueckfall: 0 });
 
 export interface SpurEintrag {
   /** Ende des Abschnitts (ISO). */
@@ -60,6 +69,8 @@ export interface SpurEintrag {
   cent: number;
   /** Zahl der Werkzeugaufrufe. */
   werkzeuge: number;
+  /** Ausgänge der Werkzeug-Aufrufe (V3) — nur, wenn es welche über die Hülle gab. */
+  wz?: SpurWerkzeuge;
   ergebnis: SpurErgebnis;
 }
 
@@ -116,6 +127,16 @@ export function spurKopfLesen(v: unknown): SpurBezug | null {
 const zahl = (v: unknown, max = 1e9): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.min(Math.round(v), max) : 0);
 const cent = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.min(Math.round(v * 100) / 100, 1e7) : 0);
 
+/** Werkzeug-Zähler säubern (rein): nur bekannte Arten und Fehlerklassen, nur Zahlen; ohne einen Aufruf → undefined. */
+export function wzSaeubern(roh: unknown): SpurWerkzeuge | undefined {
+  if (!roh || typeof roh !== 'object') return undefined;
+  const r = roh as Record<string, unknown>;
+  const k = (r.klassen && typeof r.klassen === 'object' ? r.klassen : {}) as Record<string, unknown>;
+  const klassen = Object.fromEntries(FEHLERKLASSEN.map(x => [x, zahl(k[x], 10_000)]).filter(([, n]) => (n as number) > 0)) as Partial<Record<Fehlerklasse, number>>;
+  const w: SpurWerkzeuge = { erfolg: zahl(r.erfolg, 10_000), abgelehnt: zahl(r.abgelehnt, 10_000), fehler: zahl(r.fehler, 10_000), freigabe: zahl(r.freigabe, 10_000), rueckfall: zahl(r.rueckfall, 10_000), ...(Object.keys(klassen).length ? { klassen } : {}) };
+  return w.erfolg + w.abgelehnt + w.fehler + w.freigabe + w.rueckfall > 0 ? w : undefined;
+}
+
 /**
  * Einen Eintrag säubern (rein): nur bekannte Felder, Kennungen nach Form, Kennwörter statt Text, Zahlen begrenzt. Was nicht passt, fällt weg
  * bzw. wird zum neutralen Wert — so kann auch ein Aufrufer, der versehentlich Text übergibt, nichts Inhaltliches hineinschreiben. null =
@@ -143,6 +164,7 @@ export function spurSaeubern(roh: Partial<SpurEintrag> | Record<string, unknown>
     token: { ein: zahl(t.ein), aus: zahl(t.aus), cacheLesen: zahl(t.cacheLesen), cacheSchreiben: zahl(t.cacheSchreiben) },
     cent: cent(e.cent),
     werkzeuge: zahl(e.werkzeuge, 10_000),
+    ...(wzSaeubern(e.wz) ? { wz: wzSaeubern(e.wz) } : {}),
     ergebnis: SPUR_ERGEBNISSE.includes(e.ergebnis as SpurErgebnis) ? e.ergebnis as SpurErgebnis : 'fehler',
   };
 }
@@ -180,6 +202,8 @@ export interface SpurSumme {
   fehler: number;
   /** Fehler ÷ Läufe ohne Sperren (KPI „Fehlerquote Läufe“, Teil F). */
   fehlerQuote: number | null;
+  /** Ausgänge der Werkzeug-Aufrufe (V3) — `rueckfall` soll 0 sein. */
+  wz: SpurWerkzeuge;
 }
 
 /** Summen über Einträge (rein). */
@@ -192,7 +216,20 @@ export function summeVon(l: readonly SpurEintrag[], kurs: number): SpurSumme {
     ketten: new Set(l.map(e => e.kette)).size, laeufe: l.length, cent: c, euroCent: Math.round(inEuroCent(c, kurs) * 100) / 100,
     token, cacheQuote: cacheQuote(token), werkzeuge: l.reduce((a, e) => a + e.werkzeuge, 0), aufrufe: l.reduce((a, e) => a + e.aufrufe, 0),
     fehler, fehlerQuote: ohneSperre ? Math.round((fehler / ohneSperre) * 1000) / 1000 : null,
+    wz: wzSumme(l),
   };
+}
+
+/** Werkzeug-Ausgänge über Einträge summieren (rein). */
+export function wzSumme(l: readonly SpurEintrag[]): SpurWerkzeuge {
+  const s = leereWerkzeugZaehler();
+  const klassen: Partial<Record<Fehlerklasse, number>> = {};
+  for (const e of l) {
+    if (!e.wz) continue;
+    s.erfolg += e.wz.erfolg; s.abgelehnt += e.wz.abgelehnt; s.fehler += e.wz.fehler; s.freigabe += e.wz.freigabe; s.rueckfall += e.wz.rueckfall;
+    for (const [k, n] of Object.entries(e.wz.klassen ?? {})) klassen[k as Fehlerklasse] = (klassen[k as Fehlerklasse] ?? 0) + (n ?? 0);
+  }
+  return Object.keys(klassen).length ? { ...s, klassen } : s;
 }
 
 /** Tempo von ZOE (KPI „Zeit bis zum ersten Zeichen“): p50/p95 über die Züge mit gemessenem erstem Wort, dazu die Dauer der Züge. */

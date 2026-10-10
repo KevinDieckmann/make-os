@@ -94,7 +94,7 @@ export async function mitSpur<T>(s: SpurStart, fn: (o: OffeneSpur) => Promise<T>
       zeit: new Date(jetzt).toISOString(), lauf, kette, ...(oben ? { eltern: oben.eltern } : {}), art: s.art, agent: s.agent, person: s.person, bereich: s.bereich,
       start: new Date(beginn).toISOString(), dauerMs: jetzt - beginn, ...(sammler.ersteWortMs !== undefined ? { ttftMs: sammler.ersteWortMs } : {}),
       ...(e.modell ?? sammler.modell ? { modell: e.modell ?? sammler.modell } : {}), aufrufe: sammler.aufrufe, token: { ...sammler.token }, cent: sammler.cent,
-      werkzeuge: e.werkzeuge ?? 0, ergebnis,
+      werkzeuge: e.werkzeuge ?? 0, ...(sammler.wz ? { wz: { ...sammler.wz } } : {}), ergebnis,
     });
   };
   let t: T;

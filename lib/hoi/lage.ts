@@ -113,7 +113,9 @@ export interface InnenLage {
 }
 
 /** Lauf-Spur (10.10., Paket V1 „Messen & sparen“) — gerechnet aus lib/agenten/spur.ts (`summeVon`, `zoeTempo`), nur Zahlen, nie Personen/Kennungen. */
-export interface LaufSpurLage { laeufe7d: number; fehlerQuote7d: number | null; zoeZuege7d: number; zoeTtftP95Ms: number | null; zoeDauerP95Ms: number | null; zoeCacheQuote: number | null }
+export interface LaufSpurLage { laeufe7d: number; fehlerQuote7d: number | null; zoeZuege7d: number; zoeTtftP95Ms: number | null; zoeDauerP95Ms: number | null; zoeCacheQuote: number | null;
+  /** Werkzeug-Ausgänge der 7 Tage (10.10., Paket V3 „Werkzeug-Verträge“) — `rueckfall` = ein Werkzeug meldete einen Fehlschlag nur als Satz (Ziel 0). */
+  werkzeuge7d?: { erfolg: number; abgelehnt: number; fehler: number; freigabe: number; rueckfall: number } }
 /** Schwellen aus AGENTEN_KONZEPT_V2.md Teil F (Vorschläge — „erster Monat messen, dann festlegen“): deshalb nur gelb, nie rot. */
 export const LAUF_SPUR_SCHWELLEN = { fehlerQuote: 0.03, ttftP95Ms: 5_000, zugP95Ms: 30_000, cacheQuote: 0.6, mindestLaeufe: 10 } as const;
 /** Agenten-Läufe (Fehlerquote) und ZOE (erstes Wort, Zug-Dauer, Cache-Anteil) der letzten 7 Tage. Rein, getestet (tests/agenten-spur.test.ts). */
@@ -136,6 +138,12 @@ export function laufSpurBefunde(l: LaufSpurLage | null | undefined): Befund[] {
       id: 'lauf-spur-zoe', bereich: 'app' as const, label: 'ZOE · Tempo und Zwischenspeicher', ampel: (langsam || cache ? 'gelb' : 'gruen') as Ampel,
       wert: `${l.zoeZuege7d} Züge · erstes Wort p95 ${s(l.zoeTtftP95Ms)} · Zug p95 ${s(l.zoeDauerP95Ms)} · Zwischenspeicher ${pz(l.zoeCacheQuote)}`,
       satz: langsam ? `langsamer als das Ziel (erstes Wort ≤ ${s(S.ttftP95Ms)}, Zug ≤ ${s(S.zugP95Ms)} bei 95 %)` : cache ? `weniger als ${Math.round(S.cacheQuote * 100)} % der Eingabe kam aus dem Zwischenspeicher — wechselt die Werkzeug-Auswahl ständig?` : 'im Ziel',
+    }] : []),
+    // Werkzeug-Verträge (V3): Rückfall = ein Werkzeug meldete einen Fehlschlag nur als Satz (der Ausgang wurde am Text geraten) — Ziel 0, deshalb gelb.
+    ...(l.werkzeuge7d && (l.werkzeuge7d.erfolg + l.werkzeuge7d.abgelehnt + l.werkzeuge7d.fehler + l.werkzeuge7d.freigabe) ? [{
+      id: 'werkzeug-vertraege', bereich: 'app' as const, label: 'Werkzeuge · Verträge (7 Tage)', ampel: (l.werkzeuge7d.rueckfall > 0 ? 'gelb' : 'gruen') as Ampel,
+      wert: `${l.werkzeuge7d.erfolg + l.werkzeuge7d.abgelehnt + l.werkzeuge7d.fehler + l.werkzeuge7d.freigabe} Aufrufe · Vorschlag ${l.werkzeuge7d.freigabe} · abgelehnt ${l.werkzeuge7d.abgelehnt} · Fehler ${l.werkzeuge7d.fehler} · Rückfall ${l.werkzeuge7d.rueckfall}`,
+      satz: l.werkzeuge7d.rueckfall > 0 ? 'ein Werkzeug meldete einen Fehlschlag nur als Satz (Server-Log „[werkzeug-vertrag]“ nennt es) — es soll fehlschlag(klasse, …) melden' : 'jedes Werkzeug meldet seinen Ausgang typisiert',
     }] : []),
   ];
 }

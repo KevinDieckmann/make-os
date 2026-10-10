@@ -4,6 +4,7 @@
 // Aufrufen, eine Wache gegen neue ungeschützte Schreibwege und die Sperr-Reihenfolge crm → kontakte (keine
 // Verklemmung, wenn `aendereCrm` mit Lead-Folge und `aendereKontakte` gleichzeitig laufen).
 // Eigener Datenordner, erfundene Konten und Daten — nie der echte Bestand.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { localDay } from '@/lib/zeit';
 import { mkdtempSync, rmSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -165,7 +166,7 @@ describe('Umgestellte Schreibwege erzeugen einen Protokolleintrag (ohne Werte)',
     await setzeKartei([person('c-w7-zoe', { vorname: 'Zora', nachname: 'Zoetest' })]);
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
     const ab = await zaehler();
-    const t = await WERKZEUGE.notiere_kontakt.lauf({ kontakt: 'c-w7-zoe', art: 'anruf', text: 'Gespräch Pelikan 8' }, 'test', 'kevin');
+    const t = meldungVon(await WERKZEUGE.notiere_kontakt.lauf({ kontakt: 'c-w7-zoe', art: 'anruf', text: 'Gespräch Pelikan 8' }, 'test', 'kevin'));
     expect(String(t)).toMatch(/^Notiert/);
     await pruefe(ab, 'c-w7-zoe', { wer: 'zoe', person: 'kevin' }, ['Pelikan 8', 'Zoetest']);
   });

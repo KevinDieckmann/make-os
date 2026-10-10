@@ -21,6 +21,7 @@ import { kategorieVonWerkzeug, werkzeugSperre } from '@/lib/datenschutz/ki-werkz
 import { istBereich, type KiSchalter } from '@/lib/datenschutz/ki-einstellungen';
 import { BUSINESS_GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
 import { HEAD_WERKZEUGE, MITARBEITER_WERKZEUGE, GRENZEN, type HeadDef, type KiKategorie, type Mitarbeiter } from './typen';
+import { fehlschlag, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
 export type { WerkzeugDef };
 
@@ -65,11 +66,13 @@ export const MITARBEITER_ZUSATZ = ['brett_eintragen', 'hilfe_anfragen', 'rat_hol
 export const HEAD_ZUSATZ = ['brett_antworten'] as const;
 export const AGENTEN_WERKZEUG_NAMEN: ReadonlySet<string> = new Set([...HEAD_WERKZEUGE, ...MITARBEITER_WERKZEUGE, ...MITARBEITER_ZUSATZ, ...HEAD_ZUSATZ]);
 
+// Grenzen im Schema (V3, Werkzeug-Verträge): dieselben, die der Handler prüft (`GRENZEN.auftragZeichen`) — die Hülle lehnt darüber mit Satz ab.
+const L = (description: string, maxLength: number) => ({ type: 'string', minLength: 1, maxLength, description });
 const AUFTRAG_SCHEMA = obj({
-  ziel: S('Ein Satz: was am Ende da sein soll'),
-  format: S('Wie das Ergebnis aussieht (z. B. „drei Entwürfe mit Anlass“)'),
-  grenzen: S('Was NICHT getan wird (z. B. „nichts senden, nur Vorschläge, keine privaten Daten“)'),
-  quellen: S('Welche Daten/Werkzeuge der Mitarbeiter nutzen soll'),
+  ziel: L('Ein Satz: was am Ende da sein soll', GRENZEN.auftragZeichen),
+  format: L('Wie das Ergebnis aussieht (z. B. „drei Entwürfe mit Anlass“)', GRENZEN.auftragZeichen),
+  grenzen: L('Was NICHT getan wird (z. B. „nichts senden, nur Vorschläge, keine privaten Daten“)', GRENZEN.auftragZeichen),
+  quellen: L('Welche Daten/Werkzeuge der Mitarbeiter nutzen soll', GRENZEN.auftragZeichen),
 }, ['ziel', 'format', 'grenzen', 'quellen']);
 
 export function agentenDefs(o: { mitarbeiter: readonly Pick<Mitarbeiter, 'id' | 'name' | 'rolle'>[]; headWerkzeuge: readonly string[] }): Record<string, WerkzeugDef> {
@@ -78,16 +81,19 @@ export function agentenDefs(o: { mitarbeiter: readonly Pick<Mitarbeiter, 'id' | 
       input_schema: obj({ mitarbeiter: { type: 'string', enum: o.mitarbeiter.map(m => m.id), description: o.mitarbeiter.map(m => `${m.id} = ${m.name}: ${m.rolle}`).join(' · ') }, auftrag: AUFTRAG_SCHEMA, hilfe_fuer: S('Optional: Kennung einer offenen Frage im Arbeitsstand (der Mitarbeiter liefert nur Funde)') }, ['mitarbeiter', 'auftrag']) },
     skill_laden: { name: 'skill_laden', description: 'Lädt die Anleitung eines Skills (Name aus der Liste SKILLS) — erst dann kennst du die Schritte.', input_schema: obj({ skill: S('Kennung des Skills') }, ['skill']) },
     merksatz_vorschlagen: { name: 'merksatz_vorschlagen', description: 'Ein kurzer Merksatz („so machen wir das“). ebene „persoenlich“: nur für diese Person, du legst ihn selbst ab (sichtbar und löschbar) — nur ohne fremden Text im Thread. ebene „haushalt“: gilt für alle, geht als Vorschlag in den Stapel (Klick). Nie Namen, Adressen oder Daten Dritter.',
-      input_schema: obj({ text: S(`Höchstens ${GRENZEN.merksatzZeichen} Zeichen`), ebene: { type: 'string', enum: ['persoenlich', 'haushalt'] } }, ['text', 'ebene']) },
+      input_schema: obj({ text: L(`Höchstens ${GRENZEN.merksatzZeichen} Zeichen`, GRENZEN.merksatzZeichen), ebene: { type: 'string', enum: ['persoenlich', 'haushalt'] } }, ['text', 'ebene']) },
     skill_vorschlagen: { name: 'skill_vorschlagen', description: 'Schlägt einen neuen Skill (wiederverwendbare Anleitung) vor — er geht in den Stapel und wird erst nach Klick und Testlauf aktiv.',
-      input_schema: obj({ name: S('kebab-case, höchstens 64 Zeichen'), beschreibung: S('Was und wann, dritte Person'), anleitung: S('Schritte'), werkzeuge: { type: 'array', items: { type: 'string', enum: [...o.headWerkzeuge] } }, tests: { type: 'array', items: obj({ eingabe: S(''), erwartet: { type: 'array', items: { type: 'string' } } }, ['eingabe', 'erwartet']) } }, ['name', 'beschreibung', 'anleitung']) },
+      // Weitere Felder eines Skills (Auslöser, Eingabe-Felder, Beispiele, Stufe …) nimmt die Werkstatt an und prüft den GANZEN Entwurf selbst (`skillPruefen`,
+      // jede Abweichung mit Satz) — deshalb hier offen (`additionalProperties`), die Pflichtfelder und Typen prüft trotzdem schon die Hülle (V3).
+      input_schema: { ...obj({ name: S('kebab-case, höchstens 64 Zeichen'), beschreibung: S('Was und wann, dritte Person'), anleitung: S('Schritte'), werkzeuge: { type: 'array', items: { type: 'string', enum: [...o.headWerkzeuge] } }, tests: { type: 'array', items: obj({ eingabe: S(''), erwartet: { type: 'array', items: { type: 'string' } } }, ['eingabe', 'erwartet']) } }, ['name', 'beschreibung', 'anleitung']), additionalProperties: true } },
     mitarbeiter_vorschlagen: { name: 'mitarbeiter_vorschlagen', description: 'Schlägt einen neuen Mitarbeiter vor — er geht in den Stapel und ist erst nach Klick da.',
-      input_schema: obj({ name: S('Name'), rolle: S('Ein Satz'), anleitung: S('Wie er arbeitet'), werkzeuge: { type: 'array', items: { type: 'string', enum: [...o.headWerkzeuge] } } }, ['name', 'rolle']) },
+      // Wie beim Skill: den ganzen Entwurf prüft die Werkstatt (`mitarbeiterPruefen`) — weitere Felder (Stufe, Fach-Agent …) offen.
+      input_schema: { ...obj({ name: S('Name'), rolle: S('Ein Satz'), anleitung: S('Wie er arbeitet'), werkzeuge: { type: 'array', items: { type: 'string', enum: [...o.headWerkzeuge] } } }, ['name', 'rolle']), additionalProperties: true } },
     brett_antworten: { name: 'brett_antworten', description: 'Beantwortet eine offene Frage eines Mitarbeiters im Arbeitsstand — sein Lauf setzt danach fort.', input_schema: obj({ frage_id: S('Kennung der Frage'), antwort: S('Die Antwort') }, ['frage_id', 'antwort']) },
     brett_eintragen: { name: 'brett_eintragen', description: 'Trägt einen Fund (mit Beleg) oder eine Entscheidung in den gemeinsamen Arbeitsstand des Auftrags ein.', input_schema: obj({ art: { type: 'string', enum: ['fund', 'entscheidung'] }, text: S('Kurz, mit Beleg') }, ['art', 'text']) },
-    hilfe_anfragen: { name: 'hilfe_anfragen', description: 'Fragt deinen Head um Hilfe (höchstens einmal je Lauf). Dein Lauf endet danach mit „wartet“ und setzt fort, sobald die Antwort im Arbeitsstand steht. Nur wenn du ohne die Antwort nicht weiterkommst.', input_schema: obj({ frage: S('Was du brauchst'), warum: S('Wofür'), wer: S('Optional: welcher Mitarbeiter helfen könnte') }, ['frage', 'warum']) },
+    hilfe_anfragen: { name: 'hilfe_anfragen', description: 'Fragt deinen Head um Hilfe (höchstens einmal je Lauf). Dein Lauf endet danach mit „wartet“ und setzt fort, sobald die Antwort im Arbeitsstand steht. Nur wenn du ohne die Antwort nicht weiterkommst.', input_schema: obj({ frage: S('Was du brauchst'), warum: L('Wofür', 500), wer: S('Optional: welcher Mitarbeiter helfen könnte') }, ['frage', 'warum']) },
     rat_holen: { name: 'rat_holen', description: 'Fragt ein stärkeres Modell um Rat (höchstens zweimal je Lauf) — es liest den bisherigen Verlauf und antwortet nur mit Text.', input_schema: obj({ frage: S('Wobei du unsicher bist') }, ['frage']) },
-    fach_agent: { name: 'fach_agent', description: 'Führt deinen Fach-Agenten aus und liefert sein Ergebnis (Daten).', input_schema: obj({ auftrag: S('Konkreter Auftrag') }) },
+    fach_agent: { name: 'fach_agent', description: 'Führt deinen Fach-Agenten aus und liefert sein Ergebnis (Daten).', input_schema: obj({ auftrag: { type: 'string', maxLength: GRENZEN.auftragZeichen, description: 'Konkreter Auftrag' } }) },
   };
 }
 
@@ -197,7 +203,7 @@ export const BEREICH_IN_EINGABE: ReadonlySet<string> = new Set(['meine_aufgaben'
 export const BEREICHS_LESER = new Set(['lies_postfach', 'suche_arbeit']);
 
 /** Postfächer der Person nur im Bereich des Heads (Inbox 2 filtert serverseitig über `imBereich`). */
-export async function postfachImBereich(person: string, bereich: 'privat' | 'business', input: Record<string, unknown>): Promise<string> {
+export async function postfachImBereich(person: string, bereich: 'privat' | 'business', input: Record<string, unknown>): Promise<WerkzeugRueckgabe> {
   const { stromFuer } = await import('@/lib/inbox/strom-server');
   const { lageText } = await import('@/lib/inbox/zoe-sicht');
   const s = await stromFuer(person, { space: bereich });
@@ -215,13 +221,13 @@ export async function postfachImBereich(person: string, bereich: 'privat' | 'bus
 }
 
 /** Arbeitssuche nur im Bereich: Business-Heads ohne Privat-Space und ohne private Notizen (Agenten-Sicht des Brains). */
-export async function arbeitImBereich(person: string, bereich: 'privat' | 'business', input: Record<string, unknown>, erlaubt?: ReadonlySet<string>): Promise<string> {
+export async function arbeitImBereich(person: string, bereich: 'privat' | 'business', input: Record<string, unknown>, erlaubt?: ReadonlySet<string>): Promise<WerkzeugRueckgabe> {
   const frage = String(input.frage ?? input.suche ?? '').replace(/\u0000/g, '').trim();
-  if (!frage) return 'Fehlgeschlagen: frage fehlt (Stichworte).';
-  if (frage.length > 300) return 'Nicht ausgeführt: die Frage ist länger als 300 Zeichen — bitte Stichworte.';
+  if (!frage) return fehlschlag('eingabe', 'Fehlgeschlagen: frage fehlt (Stichworte).');
+  if (frage.length > 300) return fehlschlag('eingabe', 'Nicht ausgeführt: die Frage ist länger als 300 Zeichen — bitte Stichworte.');
   const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
   const haushalt = await haushaltDesInhabers();
-  if (!haushalt) return 'Nicht ausgeführt: nur im Haushalt des Inhabers.';
+  if (!haushalt) return fehlschlag('rechte', 'Nicht ausgeführt: nur im Haushalt des Inhabers.');
   const anzahl = Math.max(1, Math.min(20, Number(input.anzahl) || 8));
   const A = await import('@/lib/brain/app-index');
   const { mischen, arbeitAntwort, arbeitQuellen } = await import('@/lib/zoe/arbeit-werkzeug');

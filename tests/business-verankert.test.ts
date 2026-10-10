@@ -1,6 +1,7 @@
 // Business-Index tiefer verankert (25.09.): ZOE liest und schreibt (mit Freigabe),
 // der Head of Finance warnt bei Rot und fehlendem Monatsabschluss, eigene Schwellen
 // und Jahresziele werden gespeichert — alles nur für den Haushalt des Inhabers.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 // 05.10. (Selbstständigkeit → Privat): Diese Datei prüft die MECHANIK des Business-Index mit der Selbstständigkeit als Business-Firma —
 // das ist weiter eine gültige Instanz-Einstellung (`NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}`, lib/einheiten.ts). Unsere
@@ -46,23 +47,23 @@ describe('ZOE', () => {
     expect(risikoVon('monatsabschluss_erfassen')).toBe('freigabe');
   });
   it('beantwortet den Index und eine Kennzahl — aber nicht für ein Konto außerhalb des Haushalts', async () => {
-    const gesamt = await WERKZEUGE.business_index.lauf({}, '', 'malin');
+    const gesamt = meldungVon(await WERKZEUGE.business_index.lauf({}, '', 'malin'));
     expect(gesamt).toMatch(/^Business-Index Gesamt: \d+/);
     expect(gesamt).toMatch(/Rot: .*Überfällige Forderungen/);
-    const eine = await WERKZEUGE.business_index.lauf({ sicht: 'kdc', kennzahl: 'ueberfaellig' }, '', 'kevin');
+    const eine = meldungVon(await WERKZEUGE.business_index.lauf({ sicht: 'kdc', kennzahl: 'ueberfaellig' }, '', 'kevin'));
     expect(eine).toMatch(/Überfällige Forderungen \(Selbstständigkeit\): 100 % — rot/);
-    expect(await WERKZEUGE.business_index.lauf({ kennzahl: 'ek_quote' }, '', 'kevin')).toMatch(/noch nicht messbar/);
-    expect(await WERKZEUGE.business_index.lauf({}, '', 'gast')).toMatch(/Kein Zugang/);
+    expect(meldungVon(await WERKZEUGE.business_index.lauf({ kennzahl: 'ek_quote' }, '', 'kevin'))).toMatch(/noch nicht messbar/);
+    expect(meldungVon(await WERKZEUGE.business_index.lauf({}, '', 'gast'))).toMatch(/Kein Zugang/);
   });
   it('Monatsabschluss per ZOE: ergänzt nur Genanntes, keine Zukunft, kein fremdes Konto', async () => {
-    const r = await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2026-07', personal: 2000 }, '', 'kevin');
+    const r = meldungVon(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2026-07', personal: 2000 }, '', 'kevin'));
     expect(r).toMatch(/gespeichert/);
     const e = (speicher.get('business-abschluesse') as { eintraege: { monat: string; umsatz?: number; personal?: number }[] }).eintraege.find(x => x.monat === '2026-07')!;
     expect(e).toMatchObject({ umsatz: 8000, personal: 2000 });
     // Direkt danach liest ZOE schon den neuen Stand (kein veralteter Zwischenspeicher).
-    expect(await WERKZEUGE.business_index.lauf({ sicht: 'kdc', kennzahl: 'personalquote' }, '', 'kevin')).toMatch(/Personalaufwandsquote \(Selbstständigkeit\): \d/);
-    expect(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2030-01', umsatz: 1 }, '', 'kevin')).toMatch(/Nicht eingetragen/);
-    expect(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2026-08', umsatz: 1 }, '', 'gast')).toMatch(/Kein Zugang/);
+    expect(meldungVon(await WERKZEUGE.business_index.lauf({ sicht: 'kdc', kennzahl: 'personalquote' }, '', 'kevin'))).toMatch(/Personalaufwandsquote \(Selbstständigkeit\): \d/);
+    expect(meldungVon(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2030-01', umsatz: 1 }, '', 'kevin'))).toMatch(/Nicht eingetragen/);
+    expect(meldungVon(await WERKZEUGE.monatsabschluss_erfassen.lauf({ firma: 'kdc', monat: '2026-08', umsatz: 1 }, '', 'gast'))).toMatch(/Kein Zugang/);
   });
 });
 

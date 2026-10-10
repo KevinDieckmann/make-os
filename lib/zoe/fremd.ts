@@ -4,29 +4,13 @@
 // auf dem Kontoauszug, eine Kontaktnotiz aus LinkedIn oder ein Kalendertitel
 // darf ZOE nie etwas „befehlen“.
 
-/** Werkzeug → Quellenname im <fremde_daten>-Rahmen. */
-export const FREMD_WERKZEUGE: Record<string, string> = {
-  lies_postfach: 'postfach',
-  suche_kontakt: 'kontakte', finde_kontakt: 'kontakte', lies_kontakt: 'kontakte',
-  crm_lage: 'crm',
-  haushalt_buchungen: 'bank',
-  suche_wissen: 'notizen', lies_notiz: 'notizen',
-  frag_gedaechtnis: 'gedaechtnis',
-  // 28.09. (C2): Projekt-/Aufgaben-Dateien und Notizen — kapseln selbst (SELBST_GEKAPSELT).
-  projekt_unterlagen: 'projekt-unterlagen', datei_lesen: 'projekt-unterlagen',
-  // 28.09. (C4): Titel der eigenen ZOE-Aufgaben.
-  meine_aufgaben: 'aufgaben',
-  // 29.09. (B3): eine Suche über Brain und App — kapselt selbst (SELBST_GEKAPSELT).
-  suche_arbeit: 'arbeitsbestaende',
-  // 28.09. (C7): die ganze Markttraktion — alle kapseln selbst (Kopfzeile + fremd(), SELBST_GEKAPSELT).
-  crm_suche: 'markttraktion', kontakt_akte: 'markttraktion', firma_akte: 'markttraktion', pipeline: 'markttraktion', mandate_lage: 'markttraktion',
-  angebote_lage: 'markttraktion', kampagnen_lage: 'markttraktion', events_lage: 'markttraktion', besuche_lage: 'markttraktion', marketing_lage: 'markttraktion', kennzahlen: 'markttraktion',
-  sales_lage: 'markttraktion', qualifizierung_lage: 'markttraktion', stammdaten_lage: 'markttraktion', datenqualitaet: 'markttraktion', crm_datei_lesen: 'crm-ablage', heads_lage: 'markttraktion',
-  // 29.09. (#K1): plan_block nennt bei einer Kollision den Titel des festen Termins — Titel können aus Einladungen Dritter stammen.
-  plan_block: 'kalender',
-  // 09.10. (Paket 4a): die Antwort eines Heads ist Text eines anderen Agenten (er liest Kartei, Postfach, Notizen seines Bereichs).
-  head_fragen: 'agent',
-};
+import { FREMD_ABGELEITET, GEKAPSELT_ABGELEITET } from '@/lib/werkzeuge/einordnung';
+
+/**
+ * Werkzeug → Quellenname im <fremde_daten>-Rahmen. Seit V3 (10.10.) ABGELEITET aus der einen Einordnung je Werkzeug
+ * (lib/werkzeuge/einordnung.ts, Feld `fremd`, inkl. früherer Namen für alte Verläufe) — dort steht je Werkzeug die Begründung.
+ */
+export const FREMD_WERKZEUGE: Record<string, string> = { ...FREMD_ABGELEITET };
 
 /**
  * Der Kalender ist eine Fremdquelle (29.09., #K1): Termintitel, Orte und Notizen können aus Einladungen Dritter stammen.
@@ -38,15 +22,9 @@ export const KALENDER_QUELLE = 'kalender';
  * Werkzeuge, die ihre Antwort SELBST kapseln (eigene Kopfzeile + `fremd()`-Block, lib/zoe/aufgaben-unterlagen.ts):
  * das Gespräch gilt danach als „fremd gelesen“, die Antwort wird aber nicht ein zweites Mal eingepackt.
  * Ins ZOE-Protokoll geht von ihnen nur die Kopfzeile — nie Dateiinhalte oder Notizen.
+ * Seit V3 (10.10.) ABGELEITET aus lib/werkzeuge/einordnung.ts (Feld `gekapselt`).
  */
-export const SELBST_GEKAPSELT: ReadonlySet<string> = new Set(['projekt_unterlagen', 'datei_lesen', 'suche_arbeit',
-  // Markttraktion (28.09., C7, lib/zoe/crm-werkzeuge.ts) — auch die umgeleiteten suche_kontakt und crm_lage.
-  'suche_kontakt', 'crm_lage', 'crm_suche', 'kontakt_akte', 'firma_akte', 'pipeline', 'mandate_lage', 'angebote_lage', 'kampagnen_lage', 'events_lage', 'besuche_lage',
-  'marketing_lage', 'kennzahlen', 'sales_lage', 'qualifizierung_lage', 'stammdaten_lage', 'datenqualitaet', 'crm_datei_lesen', 'heads_lage',
-  // Nachschliff 09.10.: das Agenten-Werkzeug `medien_suchen` (lib/agenten/medien-werkzeuge.ts) — Dateinamen, Album-Titel, Notizen im eigenen Rahmen.
-  'medien_suchen',
-  // 09.10.: Gesundheits-Unterlagen der Person (nur der Gesundheits-Head, lib/agenten/unterlagen-werkzeug.ts) — Kopfzeile + eigener Rahmen.
-  'gesundheit_unterlagen']);
+export const SELBST_GEKAPSELT: ReadonlySet<string> = GEKAPSELT_ABGELEITET;
 
 /** Agent (run_agent) → Quellenname; Agenten mit reinen Zahlen fehlen bewusst. */
 export const FREMD_AGENTEN: Record<string, string> = {

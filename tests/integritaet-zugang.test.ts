@@ -3,6 +3,7 @@
 // ist beim Dienstweg so streng wie `karteiZugang` (ohne Person → null, fremde Person →
 // null), die CRM-Werkzeuge prüfen selbst, kimmi bietet sie nur im Haushalt an, die
 // Heads-Routen sind geschützt. Eigener Datenordner, erfundene Konten und Daten.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -77,14 +78,14 @@ describe('ZOE-Werkzeuge der Markttraktion prüfen selbst (K1)', () => {
     const vorher = JSON.stringify([await db.loadJson('kontakte'), await db.loadJson('crm')]);
     for (const name of W.CRM_WERKZEUGE) {
       const eingabe = { kontakt: 'Anna', frage: 'Anna', name: 'Beispiel AG', art: 'notiz', an: 'malin', naechster_schritt: 'x', faellig: '2026-10-01' };
-      expect(await W.WERKZEUGE[name].lauf(eingabe, 'http://test', 'fremd'), name).toBe(W.KEIN_CRM);
-      expect(await W.WERKZEUGE[name].lauf(eingabe, 'http://test', 'ohne'), name).toBe(W.KEIN_CRM);
-      expect(await W.WERKZEUGE[name].lauf(eingabe, 'http://test', undefined), name).toMatch(/^Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person/);
+      expect(meldungVon(await W.WERKZEUGE[name].lauf(eingabe, 'http://test', 'fremd')), name).toBe(W.KEIN_CRM);
+      expect(meldungVon(await W.WERKZEUGE[name].lauf(eingabe, 'http://test', 'ohne')), name).toBe(W.KEIN_CRM);
+      expect(meldungVon(await W.WERKZEUGE[name].lauf(eingabe, 'http://test', undefined)), name).toMatch(/^Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person/);
     }
     expect(JSON.stringify([await db.loadJson('kontakte'), await db.loadJson('crm')])).toBe(vorher);
   });
   it('im Haushalt des Inhabers läuft das Werkzeug', async () => {
-    expect(await W.WERKZEUGE.suche_kontakt.lauf({ frage: 'Anna' }, 'http://test', 'malin')).toContain('c-anna');
+    expect(meldungVon(await W.WERKZEUGE.suche_kontakt.lauf({ frage: 'Anna' }, 'http://test', 'malin'))).toContain('c-anna');
   });
   it('auch über fuehreAus (Stapel-Freigabe, Aufträge) — fremde Person bekommt nichts', async () => {
     const { fuehreAus } = await import('@/lib/zoe/ausfuehren');
@@ -93,7 +94,7 @@ describe('ZOE-Werkzeuge der Markttraktion prüfen selbst (K1)', () => {
     expect(r.text).not.toContain('c-anna');
   });
   it('starte_auftraege: Agenten, die die Kartei lesen, nicht für fremde Konten', async () => {
-    expect(await W.WERKZEUGE.starte_auftraege.lauf({ auftraege: [{ agent: 'crm' }] }, 'http://test', 'fremd')).toBe(W.KEIN_CRM);
+    expect(meldungVon(await W.WERKZEUGE.starte_auftraege.lauf({ auftraege: [{ agent: 'crm' }] }, 'http://test', 'fremd'))).toBe(W.KEIN_CRM);
     expect(await W.crmWerkzeugErlaubt('malin')).toBe(true);
     expect(await W.crmWerkzeugErlaubt(null)).toBe(false);
   });

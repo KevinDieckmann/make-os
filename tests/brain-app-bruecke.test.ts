@@ -2,6 +2,7 @@
 // Leitplanken: nur in einen konfigurierten Server-Vault (hier ein Temp-Ordner, nie der Mac-Vault), keine Art.-18-Kontakte,
 // keine „nur ich“-Aufgaben, kein Papierkorb, Privat-Space standardmäßig nur als Zahl, Sicht vor dem Ranking,
 // idempotent je Tag, von Hand angelegte Dateien bleiben unberührt. Eigener Datenordner, erfundene Daten, kein Modell.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import os from 'os';
@@ -229,15 +230,15 @@ describe('Such-Index app_chunks + suche_arbeit', () => {
     (await import('@/lib/zoe/vault')).bestandVergessen();
     await (await import('@/lib/brain/index')).aktualisieren(true);
     const W = await import('@/lib/zoe/werkzeuge');
-    const aus = await W.WERKZEUGE.suche_arbeit.lauf({ frage: 'Bergkristall' }, 'http://test', 'malin');
+    const aus = meldungVon(await W.WERKZEUGE.suche_arbeit.lauf({ frage: 'Bergkristall' }, 'http://test', 'malin'));
     expect(aus.split('\n')[0]).toMatch(/^SUCHE · 2 Treffer/);
     expect(aus).toContain('<fremde_daten');
     expect(aus).toContain('/os/aufgaben?offen=t-offen');
     expect(aus).toContain('[Brain] Bergkristall Treffen');
     // Der generierte Spiegel steht nicht im Vault-Index (sonst doppelt).
     expect(aus).not.toContain('_App/');
-    expect(await W.WERKZEUGE.suche_arbeit.lauf({ frage: 'Bergkristall' }, 'http://test', 'gast')).toMatch(/^Nicht ausgeführt/);
-    expect(await W.WERKZEUGE.suche_arbeit.lauf({ frage: 'Bergkristall' }, 'http://test')).toMatch(/^Nicht ausgeführt/);
+    expect(meldungVon(await W.WERKZEUGE.suche_arbeit.lauf({ frage: 'Bergkristall' }, 'http://test', 'gast'))).toMatch(/^Nicht ausgeführt/);
+    expect(meldungVon(await W.WERKZEUGE.suche_arbeit.lauf({ frage: 'Bergkristall' }, 'http://test'))).toMatch(/^Nicht ausgeführt/);
     const { REGISTER } = await import('@/lib/zoe/register');
     expect(REGISTER.suche_arbeit.risiko).toBe('frei');
   });
@@ -258,7 +259,7 @@ describe('gatherBrain + mandate_lage (B4)', () => {
     const von = new Date(Date.now() - 2 * 3600_000).toISOString(), bis = new Date(Date.now() - 3600_000).toISOString();
     await db.saveJson(speicherFuer('zeit', 'kevin'), { tage: { [H]: { auto: {}, bewusst: { 'business:crm': 5400 }, bloecke: [{ von, bis, schluessel: 'business:crm', label: 'CRM', sek: 5400, mandatId: 'm-probe', firmaId: 'f-probe', einheit: 'kdc' }] } } });
     const W = await import('@/lib/zoe/werkzeuge');
-    const aus = await W.WERKZEUGE.mandate_lage.lauf({}, 'http://test', 'kevin');
+    const aus = meldungVon(await W.WERKZEUGE.mandate_lage.lauf({}, 'http://test', 'kevin'));
     expect(aus).toMatch(/Zeit KW \d+ \(.+\): 1,5 h mit Mandat/);
     expect(aus).toContain('Zeit diese Woche: 1,5 h (1 Blöcke)');
   });

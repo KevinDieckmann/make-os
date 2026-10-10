@@ -13,7 +13,8 @@
 //   • Gesellschaft nur eine Business-Gesellschaft (`businessFirmaAus`, kein stiller Rückfall auf die Selbstständigkeit);
 //   • Beträge auf den Cent; eine Wiederholung derselben Freigabe legt nichts doppelt an (Kennung aus der Vorschlags-Kennung).
 
-import { innen, innenFehler, innenNein } from './innen';
+import { innen, innenFehler, innenKlasse, innenNein, type InnenAntwort } from './innen';
+import { fehlschlag, istWerkzeugErgebnis, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 import { ausVorschlag } from './crm-vorschlag';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
@@ -26,22 +27,23 @@ import type { WerkzeugKontext } from './werkzeuge';
  */
 export const FINANZPLAN_ALTWEG_WERKZEUGE: ReadonlySet<string> = new Set(['setze_kontostand', 'erfasse_rechnung', 'erfasse_zahlung', 'erfasse_planposten']);
 
-const KEINE_PERSON = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
+const KEINE_PERSON_NEIN = fehlschlag('rechte', 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).');
 export const KEIN_FINANZZUGANG = 'Nicht ausgeführt: Kontostände, Rechnungen, Zahlungen und Planposten liegen in den Finanzbeständen des Haushalts — dafür fehlt diesem Konto der Zugang (System › Konto). Nichts gespeichert.';
-const PRIVAT_HINWEIS = 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Finanzen › Privat) — dafür gibt es eigene Werkzeuge.';
+const PRIVAT_HINWEIS = fehlschlag('rechte', 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Finanzen › Privat) — dafür gibt es eigene Werkzeuge.');
 const istPrivatAngabe = (rein: unknown) => /privat|haushalt|n26/i.test(String(rein ?? ''));
 /** Auf den Cent (CLAUDE.md „Geld auf den Cent“) — nie auf ganze Euro. */
 const cent = (n: number) => Math.round(n * 100) / 100;
 const eur = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: Number.isInteger(cent(n)) ? 0 : 2, maximumFractionDigits: 2 }).format(cent(n || 0));
-/** Der Ablehnungstext der Route, ohne doppeltes „Abgelehnt:“. */
-const nein = (t: string) => `Fehlgeschlagen: ${t.replace(/^Abgelehnt: /, '')}`;
-const KONFLIKT = 'Fehlgeschlagen: Inzwischen hat jemand diesen Eintrag geändert — nichts überschrieben. Bitte neu ansehen und noch einmal.';
+/** Die Ablehnung der Route (V3: Fehlerklasse aus dem Status), der Text ohne doppeltes „Abgelehnt:“. */
+const nein = (r: InnenAntwort): WerkzeugErgebnis => fehlschlag(innenKlasse(r), `Fehlgeschlagen: ${innenFehler(r).replace(/^Abgelehnt: /, '')}`);
+const KONFLIKT = fehlschlag('konflikt', 'Fehlgeschlagen: Inzwischen hat jemand diesen Eintrag geändert — nichts überschrieben. Bitte neu ansehen und noch einmal.');
+const OHNE_ZUGANG = fehlschlag('rechte', KEIN_FINANZZUGANG);
 
 /** Zugang wie die Route (`privatFinanzZugang`) — vorab, damit nichts gelesen wird, was die Person nicht sehen darf. */
-async function finanzZugang(person: string | undefined): Promise<string | null> {
-  if (!person) return KEINE_PERSON;
+async function finanzZugang(person: string | undefined): Promise<WerkzeugErgebnis | null> {
+  if (!person) return KEINE_PERSON_NEIN;
   const { privatFinanzZugangFuer } = await import('@/lib/finanzen/haushalt/zugriff');
-  return (await privatFinanzZugangFuer(person).catch(() => null)) ? null : KEIN_FINANZZUGANG;
+  return (await privatFinanzZugangFuer(person).catch(() => null)) ? null : OHNE_ZUGANG;
 }
 
 type MitFassung = { id: string; fassung?: string } & Record<string, unknown>;
@@ -49,61 +51,61 @@ interface PlanSicht { firmen: MitFassung[]; rechnungen: MitFassung[]; zahlungen:
 const ohneFassung = (e: MitFassung) => { const { fassung: _f, ...rest } = e; return rest; };
 
 /** Den Finanzplan so lesen, wie ihn die Oberfläche bekommt (Route GET: Zugang, Lese-Protokoll, je Eintrag `fassung`). */
-async function planLesen(person: string): Promise<PlanSicht | string> {
+async function planLesen(person: string): Promise<PlanSicht | WerkzeugErgebnis> {
   const r = await innen('/api/state/finanzplan', 'GET', null, person);
-  if (innenNein(r)) return r.status === 403 ? KEIN_FINANZZUGANG : nein(innenFehler(r));
+  if (innenNein(r)) return r.status === 403 ? OHNE_ZUGANG : nein(r);
   const liste = (k: string) => (Array.isArray(r.json[k]) ? r.json[k] as MitFassung[] : []);
   return { firmen: liste('firmen'), rechnungen: liste('rechnungen'), zahlungen: liste('zahlungen') };
 }
 
 /** Ein Finanzplan-PATCH über die Route — Text bei Ablehnung, sonst die neue Sicht (für die nächste Fassung). */
-async function planSchreiben(person: string, body: Record<string, unknown>): Promise<{ ok: true; sicht: PlanSicht; json: Record<string, unknown> } | { ok: false; text: string }> {
+async function planSchreiben(person: string, body: Record<string, unknown>): Promise<{ ok: true; sicht: PlanSicht; json: Record<string, unknown> } | { ok: false; nein: WerkzeugErgebnis }> {
   const r = await innen('/api/state/finanzplan', 'PATCH', body, person);
-  if (r.status === 403) return { ok: false, text: KEIN_FINANZZUGANG };
-  if (r.status === 409 && Array.isArray(r.json.konflikte) && (r.json.konflikte as { grund?: string }[]).some(k => k.grund === 'inzwischen geändert' || k.grund === 'inzwischen gelöscht') && !/höchstens|storn|gestellt|festgeschrieben|Positionen/.test(innenFehler(r))) return { ok: false, text: KONFLIKT };
-  if (innenNein(r)) return { ok: false, text: nein(innenFehler(r)) };
+  if (r.status === 403) return { ok: false, nein: OHNE_ZUGANG };
+  if (r.status === 409 && Array.isArray(r.json.konflikte) && (r.json.konflikte as { grund?: string }[]).some(k => k.grund === 'inzwischen geändert' || k.grund === 'inzwischen gelöscht') && !/höchstens|storn|gestellt|festgeschrieben|Positionen/.test(innenFehler(r))) return { ok: false, nein: KONFLIKT };
+  if (innenNein(r)) return { ok: false, nein: nein(r) };
   const liste = (k: string) => (Array.isArray(r.json[k]) ? r.json[k] as MitFassung[] : []);
   return { ok: true, sicht: { firmen: liste('firmen'), rechnungen: liste('rechnungen'), zahlungen: liste('zahlungen') }, json: r.json };
 }
 
 /** Business-Gesellschaft aus der Angabe — ohne stillen Rückfall (lib/einheiten.ts `businessFirmaAus`). */
-function firmaPruefen(roh: unknown): { ok: true; firma: Gesellschaftskennung } | { ok: false; text: string } {
+function firmaPruefen(roh: unknown): { ok: true; firma: Gesellschaftskennung } | { ok: false; nein: WerkzeugErgebnis } {
   const f = businessFirmaAus(roh);
-  return f.ok ? f : { ok: false, text: `Nicht erfasst: ${f.fehler}` };
+  return f.ok ? f : { ok: false, nein: fehlschlag('eingabe', `Nicht erfasst: ${f.fehler}`) };
 }
 
-export async function setzeKontostand(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
+export async function setzeKontostand(input: Record<string, unknown>, _origin?: string, person?: string): Promise<WerkzeugRueckgabe> {
   const betrag = Number(input.betrag);
-  if (input.betrag === undefined || input.betrag === null || input.betrag === '' || !isFinite(betrag)) return 'Fehlgeschlagen: betrag fehlt oder ist keine Zahl.';
+  if (input.betrag === undefined || input.betrag === null || input.betrag === '' || !isFinite(betrag)) return fehlschlag('eingabe', 'Fehlgeschlagen: betrag fehlt oder ist keine Zahl.');
   if (istPrivatAngabe(input.firma)) return PRIVAT_HINWEIS;
   const f = firmaPruefen(input.firma);
-  if (!f.ok) return f.text;
+  if (!f.ok) return f.nein;
   const sperre = await finanzZugang(person);
   if (sperre) return sperre;
   const plan = await planLesen(person!);
-  if (typeof plan === 'string') return plan;
-  if (!plan.firmen.length) return 'Fehlgeschlagen: Noch kein Finanzplan angelegt (Finanzen einmal öffnen) — nichts erfasst.';
+  if (istWerkzeugErgebnis(plan)) return plan;
+  if (!plan.firmen.length) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Noch kein Finanzplan angelegt (Finanzen einmal öffnen) — nichts erfasst.');
   const alt = plan.firmen.find(x => x.id === f.firma);
   const eintrag = alt ? { ...ohneFassung(alt), kontostand: cent(betrag) } : { id: f.firma, name: finanzOrtName(f.firma), bank: '', kontostand: cent(betrag), stand: null };
   const s = await planSchreiben(person!, { ops: [{ liste: 'firmen', op: 'upsert', eintrag, ...(alt?.fassung ? { stand: alt.fassung } : {}) }] });
-  if (!s.ok) return s.text;
+  if (!s.ok) return s.nein;
   return `Erfasst: Kontostand ${kontoName(f.firma, String(alt?.name ?? finanzOrtName(f.firma)))} = ${eur(betrag)} (Stand heute).`;
 }
 
-export async function erfasseRechnung(input: Record<string, unknown>, _origin?: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
+export async function erfasseRechnung(input: Record<string, unknown>, _origin?: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   if (istPrivatAngabe(input.firma)) return PRIVAT_HINWEIS;
   const kunde = String(input.kunde ?? '').trim().slice(0, 120);
-  if (!kunde) return 'Fehlgeschlagen: kunde fehlt.';
+  if (!kunde) return fehlschlag('eingabe', 'Fehlgeschlagen: kunde fehlt.');
   const status = ['geplant', 'gestellt', 'bezahlt'].includes(String(input.status)) ? String(input.status) : undefined;
   const betrag = input.betrag != null && input.betrag !== '' && isFinite(Number(input.betrag)) ? Math.max(0, cent(Number(input.betrag))) : undefined;
   const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
   const titel = input.titel ? String(input.titel).slice(0, 200) : undefined;
   const f = firmaPruefen(input.firma);
-  if (!f.ok) return f.text;
+  if (!f.ok) return f.nein;
   const sperre = await finanzZugang(person);
   if (sperre) return sperre;
   const plan = await planLesen(person!);
-  if (typeof plan === 'string') return plan;
+  if (istWerkzeugErgebnis(plan)) return plan;
   // Nur Rechnungen DIESER Gesellschaft (ohne Gesellschaft: Altbestand) — nie eine Rechnung einer Privat-Einheit.
   const kandidaten = plan.rechnungen.filter(r => (r.firmaId === f.firma || !r.firmaId) && String(r.kunde ?? '').toLowerCase() === kunde.toLowerCase());
   const r = kandidaten.find(x => !titel || String(x.titel ?? '').toLowerCase().includes(titel.toLowerCase()));
@@ -119,7 +121,7 @@ export async function erfasseRechnung(input: Record<string, unknown>, _origin?: 
     fassung = r.fassung;
     if (geaendert) {
       const s = await planSchreiben(person!, { ops: [{ liste: 'rechnungen', op: 'upsert', eintrag: neu, ...(r.fassung ? { stand: r.fassung } : {}) }] });
-      if (!s.ok) return s.text;
+      if (!s.ok) return s.nein;
       fassung = s.sicht.rechnungen.find(x => x.id === id)?.fassung;
     }
     aktion = `Rechnung ${kunde} aktualisiert: ${eur(Number(neu.betrag ?? 0))}${statusSchreiben ? `, Status ${statusSchreiben}` : ''}${faellig ? `, fällig ${faellig}` : ''}`;
@@ -127,38 +129,39 @@ export async function erfasseRechnung(input: Record<string, unknown>, _origin?: 
     // Eine Wiederholung derselben Freigabe trifft die Rechnung oben (gleicher Kunde) — die Kennung aus dem Vorschlag hält sie zusätzlich fest.
     id = kontext?.vorschlagId ? ausVorschlag('r', kontext.vorschlagId) : neueKennung('r');
     const s = await planSchreiben(person!, { ops: [{ liste: 'rechnungen', op: 'upsert', eintrag: { id, firmaId: f.firma, kunde, titel: titel ?? 'Leistung', betrag: betrag ?? 0, status: statusSchreiben ?? 'geplant', ...(faellig ? { faellig } : {}) } }] });
-    if (!s.ok) return s.text;
+    if (!s.ok) return s.nein;
     fassung = s.sicht.rechnungen.find(x => x.id === id)?.fassung;
     aktion = `Neue Rechnung angelegt: ${kunde} ${betrag != null ? eur(betrag) : 'ohne Betrag'} [${statusSchreiben ?? 'geplant'}]`;
   }
   if (status === 'bezahlt') {
     // Wie der Klick: Status, bezahltAm und die Buchung bu-re-<id> in EINER Sperre (app/api/state/finanzplan `bezahlt`).
     const b = await innen('/api/state/finanzplan', 'PATCH', { aktion: 'bezahlt', rechnungId: id, am: localDay(), ...(fassung ? { stand: fassung } : {}) }, person!);
-    if (b.status === 403) return KEIN_FINANZZUGANG;
-    if (innenNein(b)) return `${aktion}. Bezahlt NICHT vermerkt: ${innenFehler(b).replace(/^Abgelehnt: /, '')}`;
+    if (b.status === 403) return OHNE_ZUGANG;
+    // Die Rechnung steht, „bezahlt“ nicht — das ist kein Erfolg (der Stapel zeigt „fehlgeschlagen“ mit diesem Satz).
+    if (innenNein(b)) return fehlschlag(innenKlasse(b), `${aktion}. Bezahlt NICHT vermerkt: ${innenFehler(b).replace(/^Abgelehnt: /, '')}`);
     aktion += b.json.schonBezahlt ? ' — war schon bezahlt' : ` — als bezahlt vermerkt (${localDay()}), Zahlungseingang gebucht`;
   }
   return `Erfasst: ${aktion}. Sichtbar in der Finanzplanung.`;
 }
 
-export async function erfasseZahlung(input: Record<string, unknown>, _origin?: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
+export async function erfasseZahlung(input: Record<string, unknown>, _origin?: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   if (istPrivatAngabe(input.firma)) return PRIVAT_HINWEIS;
   const an = String(input.an ?? '').trim().slice(0, 120);
   const betrag = Number(input.betrag);
-  if (!an || input.betrag === undefined || input.betrag === null || !isFinite(betrag)) return 'Fehlgeschlagen: an + betrag nötig.';
+  if (!an || input.betrag === undefined || input.betrag === null || !isFinite(betrag)) return fehlschlag('eingabe', 'Fehlgeschlagen: an + betrag nötig.');
   const faellig = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
   const f = firmaPruefen(input.firma);
-  if (!f.ok) return f.text;
+  if (!f.ok) return f.nein;
   const sperre = await finanzZugang(person);
   if (sperre) return sperre;
   const id = kontext?.vorschlagId ? ausVorschlag('z', kontext.vorschlagId) : neueKennung('z');
   if (kontext?.vorschlagId) {
     const plan = await planLesen(person!);
-    if (typeof plan === 'string') return plan;
+    if (istWerkzeugErgebnis(plan)) return plan;
     if (plan.zahlungen.some(z => z.id === id)) return `Zahlung an ${an} stand schon da (derselbe Vorschlag) — nichts doppelt angelegt.`;
   }
   const s = await planSchreiben(person!, { ops: [{ liste: 'zahlungen', op: 'upsert', eintrag: { id, firmaId: f.firma, an, titel: String(input.titel ?? '').slice(0, 200), betrag: Math.max(0, cent(betrag)), status: 'offen', ...(faellig ? { faellig } : {}) } }] });
-  if (!s.ok) return s.text;
+  if (!s.ok) return s.nein;
   return `Erfasst: Zahlung an ${an} über ${eur(Math.max(0, betrag))}${faellig ? `, fällig ${faellig}` : ''} (${finanzOrtName(f.firma)}) — steht in der Prioritätenliste.`;
 }
 
@@ -176,11 +179,11 @@ export function planpostenFirma(angabe: unknown, vorhanden: readonly { firmaId?:
 }
 
 /** Wiederkehrende Kosten oder Einnahmen für die Liquiditäts-Planung — über PATCH /api/state/liquiplan. */
-export async function erfassePlanposten(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
+export async function erfassePlanposten(input: Record<string, unknown>, _origin?: string, person?: string): Promise<WerkzeugRueckgabe> {
   if (istPrivatAngabe(input.firma) || String(input.kategorie ?? '') === 'privat') return PRIVAT_HINWEIS;
   const titel = String(input.titel ?? '').trim().slice(0, 160);
   const betrag = Number(input.betrag);
-  if (!titel || !isFinite(betrag) || Math.round(betrag) === 0) return 'Fehlgeschlagen: titel + betrag nötig (negativ = Ausgabe).';
+  if (!titel || !isFinite(betrag) || Math.round(betrag) === 0) return fehlschlag('eingabe', 'Fehlgeschlagen: titel + betrag nötig (negativ = Ausgabe).');
   const RHY = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
   const rhythmus = RHY.includes(String(input.rhythmus)) ? String(input.rhythmus) : 'monatlich';
   const ab = /^\d{4}-\d{2}-\d{2}$/.test(String(input.ab ?? '')) ? String(input.ab) : localDay();
@@ -189,28 +192,28 @@ export async function erfassePlanposten(input: Record<string, unknown>, _origin?
   const sperre = await finanzZugang(person);
   if (sperre) return sperre;
   const l = await innen('/api/state/liquiplan', 'GET', null, person!);
-  if (innenNein(l)) return l.status === 403 ? KEIN_FINANZZUGANG : nein(innenFehler(l));
+  if (innenNein(l)) return l.status === 403 ? OHNE_ZUGANG : nein(l);
   const posten = (Array.isArray(l.json.posten) ? l.json.posten : []) as ({ id: string; titel: string; firmaId?: string } & Record<string, unknown>)[];
   const firmaId = planpostenFirma(input.firma, posten);
   // Ein Business-Werkzeug legt nie etwas bei einer Privat-Einheit ab (Funde #3) — auch keine ausdrücklich genannte. Ohne bzw. mit
   // unbekannter Angabe bleibt der Posten ohne Firma (= Business, „nicht zugeordnet“ — die Prüfliste zeigt ihn), nie bei der Selbstständigkeit.
-  if (firmaId && bereichVonFirma(firmaId) === 'privat') { const g = businessFirmaAus(firmaId); return `Nicht erfasst: ${g.ok ? 'gehört zu Privat.' : g.fehler}`; }
+  if (firmaId && bereichVonFirma(firmaId) === 'privat') { const g = businessFirmaAus(firmaId); return fehlschlag('rechte', `Nicht erfasst: ${g.ok ? 'gehört zu Privat.' : g.fehler}`); }
   const alt = posten.find(p => p.titel.toLowerCase() === titel.toLowerCase());
-  if (alt && bereichVonFirma(alt.firmaId) === 'privat') return 'Nicht erfasst: Dieser Planposten gehört zu Privat — im Privat-Bereich der Finanzen ändern.';
+  if (alt && bereichVonFirma(alt.firmaId) === 'privat') return fehlschlag('rechte', 'Nicht erfasst: Dieser Planposten gehört zu Privat — im Privat-Bereich der Finanzen ändern.');
   const eintrag = alt
     ? { ...alt, betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) }
     : { id: neueKennung('lp'), titel, betrag, rhythmus, ab, sicher, ...(kategorie ? { kategorie } : {}), ...(firmaId ? { firmaId } : {}) };
   const r = await innen('/api/state/liquiplan', 'PATCH', { ops: [{ liste: 'posten', op: 'upsert', eintrag }] }, person!);
-  if (r.status === 403) return KEIN_FINANZZUGANG;
-  if (innenNein(r)) return nein(innenFehler(r));
-  if (!Number(r.json.angewandt)) return 'Fehlgeschlagen: Der Planposten wurde nicht angenommen (Betrag 0 oder ungültig) — nichts gespeichert.';
+  if (r.status === 403) return OHNE_ZUGANG;
+  if (innenNein(r)) return nein(r);
+  if (!Number(r.json.angewandt)) return fehlschlag('eingabe', 'Fehlgeschlagen: Der Planposten wurde nicht angenommen (Betrag 0 oder ungültig) — nichts gespeichert.');
   const wie = rhythmus === 'einmalig' ? 'einmalig' : rhythmus === 'monatlich' ? 'monatlich' : rhythmus === 'quartal' ? 'je Quartal' : 'jährlich';
   return `Erfasst: ${titel} ${alt ? 'aktualisiert' : 'angelegt'} — ${betrag < 0 ? '−' : '+'}${eur(Math.abs(Math.round(betrag)))} ${wie} ab ${ab}. Rechnet sofort in der Liquiditäts-Planung mit.`;
 }
 
 /** Jahresziele und Startmonat setzen — über PATCH /api/state/finance (Controlling, Haushalt des Inhabers). */
-export async function setzeZiele(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON;
+export async function setzeZiele(input: Record<string, unknown>, _origin?: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return KEINE_PERSON_NEIN;
   const zahl = (v: unknown) => (v !== undefined && v !== null && v !== '' && isFinite(Number(v)) ? Number(v) : undefined);
   const zielUmsatz = zahl(input.zielUmsatz) != null ? Math.max(0, zahl(input.zielUmsatz)!) : undefined;
   const zielGewinn = zahl(input.zielGewinn) != null ? Math.max(0, zahl(input.zielGewinn)!) : undefined;
@@ -226,11 +229,11 @@ export async function setzeZiele(input: Record<string, unknown>, _origin?: strin
       if (i >= 0) startMonat = i;
     }
   }
-  if (zielUmsatz == null && zielGewinn == null && cash == null && startMonat == null) return 'Fehlgeschlagen: nichts zu setzen (zielUmsatz, zielGewinn, cash oder startMonat angeben).';
+  if (zielUmsatz == null && zielGewinn == null && cash == null && startMonat == null) return fehlschlag('eingabe', 'Fehlgeschlagen: nichts zu setzen (zielUmsatz, zielGewinn, cash oder startMonat angeben).');
   const felder = { ...(zielUmsatz != null ? { zielUmsatz } : {}), ...(zielGewinn != null ? { zielGewinn } : {}), ...(cash != null ? { cash } : {}), ...(startMonat != null ? { startMonat } : {}) };
   const r = await innen('/api/state/finance', 'PATCH', { felder }, person);
-  if (r.status === 403) return 'Nicht ausgeführt: Das Controlling gehört zum Haushalt des Inhabers — für dieses Konto nicht verfügbar.';
-  if (innenNein(r)) return nein(innenFehler(r));
+  if (r.status === 403) return fehlschlag('rechte', 'Nicht ausgeführt: Das Controlling gehört zum Haushalt des Inhabers — für dieses Konto nicht verfügbar.');
+  if (innenNein(r)) return nein(r);
   const teile = [
     zielUmsatz != null ? `Ziel-Umsatz ${eur(Math.round(zielUmsatz))}` : '', zielGewinn != null ? `Ziel-Gewinn ${eur(Math.round(zielGewinn))}` : '',
     cash != null ? `Cash ${eur(Math.round(cash))}` : '', startMonat != null ? `Start ab ${['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'][startMonat]}` : '',

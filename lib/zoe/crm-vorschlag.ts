@@ -27,12 +27,13 @@ import { crmSicht, eindeutig, EINGESCHRAENKT_NAME, NICHT_IM_HINTERGRUND, karteiF
 import { BEIDE, TEAM } from '@/lib/crm/team-liste';
 import { GESELLSCHAFTEN } from '@/lib/einheiten';
 import { innen, type InnenAntwort } from './innen';
+import { brauchtFreigabe, fehlschlag, istWerkzeugErgebnis, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
 /** Kennungen des CRM-Teams der Instanz (lib/crm/team-liste.ts) — nie feste Namen im Code (09.10., „neutral-rest-2“). */
 const teamIds = (): string[] => TEAM.map(t => t.id);
 
 type Eingabe = Record<string, unknown>;
-type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<string>;
+type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
 type Status = 400 | 403 | 404 | 409 | 413;
 
 export const CRM_VORSCHLAG_WERKZEUG = 'crm_vorschlag';
@@ -81,7 +82,8 @@ const liste = (v: unknown): string[] => (Array.isArray(v) ? v.map(x => text(x, 1
 
 /** Was ein geplanter Vorschlag trägt (normalisiert — Kennungen statt Namen). */
 interface Plan { titel: string; vorher?: string; nachher: string; eingabe: Eingabe; bezugId: string }
-type Geplant = Plan | string;
+/** Geplant — oder ein typisierter Fehlschlag (V3: nie mehr ein Satz, aus dem jemand den Ausgang rät). */
+type Geplant = Plan | WerkzeugErgebnis;
 
 // ── Rohbestände für Stände (vor jeder Sicht: der Server rechnet den Stand am gespeicherten Datensatz) ──
 async function rohKontakt(id: string): Promise<Kontakt | undefined> {
@@ -91,33 +93,33 @@ async function rohCrm(): Promise<CrmBestand> { return (await import('@/lib/crm/s
 
 // ── Finden in der Sicht (Art. 18 ausgeblendet) ────────────────────────────
 
-function kontaktAus(s: CrmSicht, roh: unknown, pflicht = true): Kontakt | string | null {
+function kontaktAus(s: CrmSicht, roh: unknown, pflicht = true): Kontakt | WerkzeugErgebnis | null {
   const h = text(roh, 160);
-  if (!h) return pflicht ? 'Fehlgeschlagen: kontakt fehlt (Kennung c-… oder Name).' : null;
-  if (s.eingeschraenkt.has(h)) return 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
+  if (!h) return pflicht ? fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt (Kennung c-… oder Name).') : null;
+  if (s.eingeschraenkt.has(h)) return fehlschlag('sperre', 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).');
   const r = eindeutig(s.kontakte, h, k => [anzeigename(k), k.firma, k.email], suchPasst);
-  if (!r) return `Fehlgeschlagen: Kein Kontakt zu „${kurz(h, 40)}“ — erst mit crm_suche nachsehen.`;
-  if (Array.isArray(r)) return `Fehlgeschlagen: Mehrdeutig — ${r.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}. Bitte mit Kennung.`;
+  if (!r) return fehlschlag('nicht_gefunden', `Fehlgeschlagen: Kein Kontakt zu „${kurz(h, 40)}“ — erst mit crm_suche nachsehen.`);
+  if (Array.isArray(r)) return fehlschlag('eingabe', `Fehlgeschlagen: Mehrdeutig — ${r.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}. Bitte mit Kennung.`);
   return r;
 }
 function firmaAus(s: CrmSicht, roh: unknown) {
   const h = text(roh, 160);
   if (!h) return null;
   const r = eindeutig(s.crm.firmen, h, f => [f.name, f.domain], suchPasst);
-  if (!r) return `Fehlgeschlagen: Keine Firma zu „${kurz(h, 40)}“.`;
-  if (Array.isArray(r)) return `Fehlgeschlagen: Mehrdeutig — ${r.map(f => `${f.name} [${f.id}]`).join(' oder ')}.`;
+  if (!r) return fehlschlag('nicht_gefunden', `Fehlgeschlagen: Keine Firma zu „${kurz(h, 40)}“.`);
+  if (Array.isArray(r)) return fehlschlag('eingabe', `Fehlgeschlagen: Mehrdeutig — ${r.map(f => `${f.name} [${f.id}]`).join(' oder ')}.`);
   return r;
 }
 function dealAus(s: CrmSicht, roh: unknown) {
   const h = text(roh, 160);
   if (!h) return null;
   const r = eindeutig(s.crm.chancen, h, c => [c.titel, c.firma], suchPasst);
-  if (!r) return `Fehlgeschlagen: Kein Deal zu „${kurz(h, 40)}“.`;
-  if (Array.isArray(r)) return `Fehlgeschlagen: Mehrdeutig — ${r.map(c => `${c.titel} [${c.id}]`).join(' oder ')}.`;
+  if (!r) return fehlschlag('nicht_gefunden', `Fehlgeschlagen: Kein Deal zu „${kurz(h, 40)}“.`);
+  if (Array.isArray(r)) return fehlschlag('eingabe', `Fehlgeschlagen: Mehrdeutig — ${r.map(c => `${c.titel} [${c.id}]`).join(' oder ')}.`);
   return r;
 }
-const istFehler = (x: unknown): x is string => typeof x === 'string';
-const WERBESPERRE = (k: Kontakt) => `Nicht vorgeschlagen: ${anzeigename(k)} hat eine Werbesperre seit ${k.werbesperre!.seit} (Art. 21) — keine Ansprache, keine Entwürfe.`;
+const istFehler = (x: unknown): x is WerkzeugErgebnis => istWerkzeugErgebnis(x);
+const WERBESPERRE = (k: Kontakt) => fehlschlag('sperre', `Nicht vorgeschlagen: ${anzeigename(k)} hat eine Werbesperre seit ${k.werbesperre!.seit} (Art. 21) — keine Ansprache, keine Entwürfe.`);
 
 /** Kanal-Ampel prüfen — rot lehnt ab (mit Grund), gelb wird zum Hinweis. */
 async function kanalPruefen(s: CrmSicht, k: Kontakt, kanal: 'mail' | 'linkedin' | 'telefon' | 'einladung' | 'newsletter'): Promise<{ fehler?: string; hinweis?: string; farbe: string }> {
@@ -135,18 +137,18 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
   const { heute, crm } = s;
   switch (art) {
     case 'aktivitaet': {
-      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? 'Fehlgeschlagen: kontakt fehlt.';
+      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt.');
       const { AKTIVITAET_ARTEN, ERGEBNISSE, wannSaeubern } = await import('@/lib/make-one/crm');
       const a = text(i.aktivitaet_art, 20) || 'notiz';
-      if (!AKTIVITAET_ARTEN.includes(a as never) || ['stufe', 'system', 'uebergabe', 'event'].includes(a)) return 'Fehlgeschlagen: aktivitaet_art ist mail, linkedin, anruf, antwort, termin, gespraech oder notiz.';
-      const t = text(i.text, 3000); if (!t) return 'Fehlgeschlagen: text fehlt (was passiert ist).';
+      if (!AKTIVITAET_ARTEN.includes(a as never) || ['stufe', 'system', 'uebergabe', 'event'].includes(a)) return fehlschlag('eingabe', 'Fehlgeschlagen: aktivitaet_art ist mail, linkedin, anruf, antwort, termin, gespraech oder notiz.');
+      const t = text(i.text, 3000); if (!t) return fehlschlag('eingabe', 'Fehlgeschlagen: text fehlt (was passiert ist).');
       const erg = ERGEBNISSE.includes(i.ergebnis as never) ? String(i.ergebnis) : undefined;
       const anlass = text(i.anlass, 600) || undefined;
       if (a === 'anruf' && !anlass) {
         const { anlassPflicht } = await import('@/lib/crm/recht');
         const { OFFENE_STUFEN } = await import('@/lib/crm/pipeline');
         if (anlassPflicht(k, { hatMandat: crm.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(k.id)), hatChance: crm.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(k.id)) }))
-          return 'Fehlgeschlagen: Ein Anruf bei gelber Telefon-Ampel braucht einen konkreten Anlass aus der Beziehung (anlass).';
+          return fehlschlag('eingabe', 'Fehlgeschlagen: Ein Anruf bei gelber Telefon-Ampel braucht einen konkreten Anlass aus der Beziehung (anlass).');
       }
       const naechster = text(i.naechster_schritt) && tagOk(i.faellig) ? { text: text(i.naechster_schritt), datum: String(i.faellig) } : undefined;
       const wann = wannSaeubern(i.wann);
@@ -159,20 +161,20 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     case 'followup': {
       const { istWerblich } = await import('@/lib/crm/followup');
       const f = tagOk(i.faellig); const t = text(i.text, 300);
-      if (!t || !f) return 'Fehlgeschlagen: text und faellig (YYYY-MM-DD) sind Pflicht.';
-      if (f < heute) return `Fehlgeschlagen: ${f} liegt in der Vergangenheit.`;
+      if (!t || !f) return fehlschlag('eingabe', 'Fehlgeschlagen: text und faellig (YYYY-MM-DD) sind Pflicht.');
+      if (f < heute) return fehlschlag('eingabe', `Fehlgeschlagen: ${f} liegt in der Vergangenheit.`);
       const fa = (['anruf', 'mail', 'linkedin', 'termin', 'nachricht', 'sonstig'] as FollowUpArt[]).includes(i.followup_art as FollowUpArt) ? i.followup_art as FollowUpArt : 'sonstig';
       const deal = dealAus(s, i.deal); if (istFehler(deal)) return deal;
       const mandat = text(i.mandat, 80) ? crm.mandate.find(m => m.id === text(i.mandat, 80) || suchPasst([m.titel, m.kunde], text(i.mandat, 80))) : undefined;
       const firma = firmaAus(s, i.firma); if (istFehler(firma)) return firma;
       const k = kontaktAus(s, i.kontakt, false); if (istFehler(k)) return k;
       const bezug: { art: FollowUpBezugArt; id: string } | null = deal ? { art: 'chance', id: deal.id } : mandat ? { art: 'mandat', id: mandat.id } : firma ? { art: 'firma', id: firma.id } : k ? { art: 'kontakt', id: k.id } : null;
-      if (!bezug) return 'Fehlgeschlagen: Bezug fehlt (kontakt, firma, deal oder mandat).';
+      if (!bezug) return fehlschlag('eingabe', 'Fehlgeschlagen: Bezug fehlt (kontakt, firma, deal oder mandat).');
       let hinweis = '';
       if (k && istWerblich({ art: fa, bezug })) {
         if (k.werbesperre) return WERBESPERRE(k);
         const kp = await kanalPruefen(s, k, fa === 'anruf' ? 'telefon' : fa === 'linkedin' ? 'linkedin' : 'mail');
-        if (kp.fehler) return kp.fehler;
+        if (kp.fehler) return fehlschlag('sperre', kp.fehler);
         hinweis = kp.hinweis ?? '';
       }
       const zust = text(i.zustaendig, 20);
@@ -184,11 +186,11 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     }
     case 'followup_verschieben': {
       const id = text(i.followup, 120); const f = tagOk(i.faellig);
-      if (!id || !f) return 'Fehlgeschlagen: followup (Kennung aus der Akte) und faellig sind Pflicht.';
-      if (f < heute) return `Fehlgeschlagen: ${f} liegt in der Vergangenheit.`;
+      if (!id || !f) return fehlschlag('eingabe', 'Fehlgeschlagen: followup (Kennung aus der Akte) und faellig sind Pflicht.');
+      if (f < heute) return fehlschlag('eingabe', `Fehlgeschlagen: ${f} liegt in der Vergangenheit.`);
       const echt = crm.followups.find(x => x.id === id);
-      if (echt?.kontaktId && s.eingeschraenkt.has(echt.kontaktId)) return 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
-      if (!echt && !id.startsWith('v:')) return 'Fehlgeschlagen: Follow-up nicht gefunden.';
+      if (echt?.kontaktId && s.eingeschraenkt.has(echt.kontaktId)) return fehlschlag('sperre', 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).');
+      if (!echt && !id.startsWith('v:')) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Follow-up nicht gefunden.');
       return {
         titel: `${ART_TITEL.followup_verschieben}${echt ? `: ${kurz(echt.text, 60)}` : ''}`, bezugId: echt?.kontaktId ? `kontakt:${echt.kontaktId}` : 'markttraktion',
         vorher: echt?.faellig, nachher: f,
@@ -196,9 +198,9 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       };
     }
     case 'deal_anlegen': {
-      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? 'Fehlgeschlagen: kontakt fehlt.';
+      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt.');
       const schritt = text(i.naechster_schritt), datum = tagOk(i.faellig);
-      if (!schritt || !datum) return 'Fehlgeschlagen: naechster_schritt und faellig sind Pflicht — ohne nächsten Schritt verliert sich der Deal.';
+      if (!schritt || !datum) return fehlschlag('eingabe', 'Fehlgeschlagen: naechster_schritt und faellig sind Pflicht — ohne nächsten Schritt verliert sich der Deal.');
       const { STUFEN } = await import('@/lib/crm/pipeline');
       const stufe = STUFEN.some(x => x.id === i.stufe && x.offen) ? String(i.stufe) : undefined;
       const monat = Number(i.wert_monat) > 0 ? Math.round(Number(i.wert_monat)) : 0, einmal = Number(i.wert_einmalig) > 0 ? Math.round(Number(i.wert_einmalig)) : 0;
@@ -211,16 +213,16 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       };
     }
     case 'deal_aendern': {
-      const d = dealAus(s, i.deal); if (istFehler(d) || !d) return d ?? 'Fehlgeschlagen: deal fehlt.';
+      const d = dealAus(s, i.deal); if (istFehler(d) || !d) return d ?? fehlschlag('eingabe', 'Fehlgeschlagen: deal fehlt.');
       const { STUFEN } = await import('@/lib/crm/pipeline');
       const felder: Eingabe = {};
-      if (i.stufe !== undefined) { if (!STUFEN.some(x => x.id === i.stufe)) return 'Fehlgeschlagen: unbekannte Stufe.'; felder.stufe = i.stufe as ChancenStufe; }
-      if ((felder.stufe === 'verloren' || felder.stufe === 'geparkt') && !text(i.grund)) return 'Fehlgeschlagen: verloren/geparkt braucht einen Grund (grund).';
+      if (i.stufe !== undefined) { if (!STUFEN.some(x => x.id === i.stufe)) return fehlschlag('eingabe', 'Fehlgeschlagen: unbekannte Stufe.'); felder.stufe = i.stufe as ChancenStufe; }
+      if ((felder.stufe === 'verloren' || felder.stufe === 'geparkt') && !text(i.grund)) return fehlschlag('eingabe', 'Fehlgeschlagen: verloren/geparkt braucht einen Grund (grund).');
       if (text(i.grund)) felder.grund = text(i.grund, 300);
       if (text(i.naechster_schritt) && tagOk(i.faellig)) felder.naechsterSchritt = { text: text(i.naechster_schritt), datum: i.faellig };
       if (tagOk(i.erwartet_am)) felder.erwartetAm = i.erwartet_am;
       if (tagOk(i.wiedervorlage)) felder.wiedervorlage = i.wiedervorlage;
-      if (!Object.keys(felder).length) return 'Fehlgeschlagen: nichts zu ändern (stufe, grund, naechster_schritt+faellig, erwartet_am, wiedervorlage).';
+      if (!Object.keys(felder).length) return fehlschlag('eingabe', 'Fehlgeschlagen: nichts zu ändern (stufe, grund, naechster_schritt+faellig, erwartet_am, wiedervorlage).');
       const roh = (await rohCrm()).chancen.find(c => c.id === d.id);
       return {
         titel: `${ART_TITEL.deal_aendern}: ${kurz(d.titel, 60)}`, bezugId: `deal:${d.id}`,
@@ -230,7 +232,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       };
     }
     case 'kontakt_felder': {
-      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? 'Fehlgeschlagen: kontakt fehlt.';
+      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt.');
       const roh = (i.felder && typeof i.felder === 'object' && !Array.isArray(i.felder) ? i.felder : {}) as Eingabe;
       const { werteSaeubern, typenVon, kategorienVon, labelsVon } = await import('@/lib/crm/mehrfach');
       const { wer } = await import('@/lib/crm/team');
@@ -240,30 +242,30 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const felder: Eingabe = {}; const vorher: string[] = []; const nachher: string[] = [];
       const setze = (f: string, neu: unknown, alt: unknown) => { felder[f] = neu; vorher.push(`${f} ${Array.isArray(alt) ? alt.join(', ') || '—' : String(alt ?? '—')}`); nachher.push(`${f} ${Array.isArray(neu) ? neu.join(', ') : String(neu)}`); };
       for (const f of ['typen', 'kategorien', 'labels'] as const) if (roh[f] !== undefined) { const w = werteSaeubern(liste(roh[f])); if (w) setze(f, w, f === 'typen' ? typenVon(k) : f === 'kategorien' ? kategorienVon(k) : labelsVon(k)); }
-      if (roh.zustaendig !== undefined || roh.besitzer !== undefined) { const w = wer(roh.zustaendig ?? roh.besitzer); if (!w) return `Fehlgeschlagen: zustaendig ist ${[...teamIds(), BEIDE].join(', ')}.`; setze('besitzer', w, k.besitzer); }
-      if (roh.phase !== undefined) { if (!istLifecycle(roh.phase)) return 'Fehlgeschlagen: phase ist lead, mql, sql, opportunity, angebot, kunde oder follow_up.'; setze('phase', roh.phase, k.phase); }
-      if (roh.bean !== undefined) { if (!istBean(roh.bean)) return 'Fehlgeschlagen: bean ist B, E, A oder N.'; setze('bean', roh.bean, k.bean); }
-      if (roh.kreis !== undefined) { if (!['A', 'B', 'C', 'D'].includes(String(roh.kreis))) return 'Fehlgeschlagen: kreis ist A, B, C oder D.'; setze('kreis', roh.kreis, k.kreis); }
-      if (roh.anrede !== undefined) { if (roh.anrede !== 'Sie' && roh.anrede !== 'Du') return 'Fehlgeschlagen: anrede ist Sie oder Du.'; setze('anrede', roh.anrede, k.anrede); }
-      if (roh.prio !== undefined) { if (!['A', 'B', 'C', ''].includes(String(roh.prio))) return 'Fehlgeschlagen: prio ist A, B oder C.'; setze('prio', roh.prio, k.prio); }
-      if (roh.lebensphase !== undefined) { if (!LEBENSPHASEN.includes(roh.lebensphase as never)) return `Fehlgeschlagen: lebensphase ist ${LEBENSPHASEN.join(', ')}.`; setze('lebensphase', roh.lebensphase, k.lebensphase); }
+      if (roh.zustaendig !== undefined || roh.besitzer !== undefined) { const w = wer(roh.zustaendig ?? roh.besitzer); if (!w) return fehlschlag('eingabe', `Fehlgeschlagen: zustaendig ist ${[...teamIds(), BEIDE].join(', ')}.`); setze('besitzer', w, k.besitzer); }
+      if (roh.phase !== undefined) { if (!istLifecycle(roh.phase)) return fehlschlag('eingabe', 'Fehlgeschlagen: phase ist lead, mql, sql, opportunity, angebot, kunde oder follow_up.'); setze('phase', roh.phase, k.phase); }
+      if (roh.bean !== undefined) { if (!istBean(roh.bean)) return fehlschlag('eingabe', 'Fehlgeschlagen: bean ist B, E, A oder N.'); setze('bean', roh.bean, k.bean); }
+      if (roh.kreis !== undefined) { if (!['A', 'B', 'C', 'D'].includes(String(roh.kreis))) return fehlschlag('eingabe', 'Fehlgeschlagen: kreis ist A, B, C oder D.'); setze('kreis', roh.kreis, k.kreis); }
+      if (roh.anrede !== undefined) { if (roh.anrede !== 'Sie' && roh.anrede !== 'Du') return fehlschlag('eingabe', 'Fehlgeschlagen: anrede ist Sie oder Du.'); setze('anrede', roh.anrede, k.anrede); }
+      if (roh.prio !== undefined) { if (!['A', 'B', 'C', ''].includes(String(roh.prio))) return fehlschlag('eingabe', 'Fehlgeschlagen: prio ist A, B oder C.'); setze('prio', roh.prio, k.prio); }
+      if (roh.lebensphase !== undefined) { if (!LEBENSPHASEN.includes(roh.lebensphase as never)) return fehlschlag('eingabe', `Fehlgeschlagen: lebensphase ist ${LEBENSPHASEN.join(', ')}.`); setze('lebensphase', roh.lebensphase, k.lebensphase); }
       for (const f of ['position', 'jobtitel', 'telefon', 'linkedin'] as const) if (roh[f] !== undefined) { const t = text(roh[f], 200); if (t) setze(f, t, k[f]); }
       if (roh.firma !== undefined) {
-        const fi = firmaAus(s, roh.firma); if (istFehler(fi) || !fi) return fi ?? 'Fehlgeschlagen: firma fehlt.';
+        const fi = firmaAus(s, roh.firma); if (istFehler(fi) || !fi) return fi ?? fehlschlag('eingabe', 'Fehlgeschlagen: firma fehlt.');
         const { istFirmaWechsel, firmaWechselFehlt } = await import('@/lib/crm/stationen');
         const absicht = roh.firma_wechsel ?? i.firma_wechsel;
         const kroh = await rohKontakt(k.id);
-        if (!istFirmaWechsel(absicht) && firmaWechselFehlt(kroh, { firmaId: fi.id })) return 'Fehlgeschlagen: Firma ändern braucht firma_wechsel (jobwechsel, zusaetzlich oder korrektur).';
+        if (!istFirmaWechsel(absicht) && firmaWechselFehlt(kroh, { firmaId: fi.id })) return fehlschlag('eingabe', 'Fehlgeschlagen: Firma ändern braucht firma_wechsel (jobwechsel, zusaetzlich oder korrektur).');
         setze('firmaId', fi.id, k.firmaId); if (istFirmaWechsel(absicht)) felder.firmaWechsel = absicht;
       }
-      if (!Object.keys(felder).length) return 'Fehlgeschlagen: keine erlaubten Felder (typen, kategorien, labels, zustaendig, phase, bean, kreis, anrede, prio, lebensphase, position, jobtitel, telefon, linkedin, firma + firma_wechsel). Einwilligungen, Werbesperre und Einschränkung ändert ZOE nie.';
+      if (!Object.keys(felder).length) return fehlschlag('eingabe', 'Fehlgeschlagen: keine erlaubten Felder (typen, kategorien, labels, zustaendig, phase, bean, kreis, anrede, prio, lebensphase, position, jobtitel, telefon, linkedin, firma + firma_wechsel). Einwilligungen, Werbesperre und Einschränkung ändert ZOE nie.');
       return {
         titel: `${ART_TITEL.kontakt_felder}: ${anzeigename(k)}`, bezugId: `kontakt:${k.id}`, vorher: vorher.join(' · '), nachher: nachher.join(' · '),
         eingabe: { art, kontaktId: k.id, felder, _stand: stand(await rohKontakt(k.id)), ...(k.firmaId ? { firmaId: k.firmaId } : {}) },
       };
     }
     case 'aufgabe': {
-      const t = text(i.titel, 300); if (!t) return 'Fehlgeschlagen: titel fehlt.';
+      const t = text(i.titel, 300); if (!t) return fehlschlag('eingabe', 'Fehlgeschlagen: titel fehlt.');
       const k = kontaktAus(s, i.kontakt, false); if (istFehler(k)) return k;
       const fi = firmaAus(s, i.firma); if (istFehler(fi)) return fi;
       const d = dealAus(s, i.deal); if (istFehler(d)) return d;
@@ -280,11 +282,11 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     }
     case 'qualifizierung': {
       const { leads, KRITERIEN, LEAD_STATUS } = await import('@/lib/crm/leads');
-      const h = text(i.lead ?? i.firma ?? i.kontakt, 160); if (!h) return 'Fehlgeschlagen: lead fehlt (Firma f-… oder Person c-…).';
-      if (s.eingeschraenkt.has(h)) return 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
+      const h = text(i.lead ?? i.firma ?? i.kontakt, 160); if (!h) return fehlschlag('eingabe', 'Fehlgeschlagen: lead fehlt (Firma f-… oder Person c-…).');
+      if (s.eingeschraenkt.has(h)) return fehlschlag('sperre', 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).');
       const r = eindeutig(leads(s.kontakte, crm, heute), h, z => [z.name], suchPasst);
-      if (!r) return 'Fehlgeschlagen: Kein Lead zu dieser Angabe (qualifizierung_lage zeigt, wer dran ist).';
-      if (Array.isArray(r)) return `Fehlgeschlagen: Mehrdeutig — ${r.map(z => `${z.name} [${z.id}]`).join(' oder ')}.`;
+      if (!r) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Kein Lead zu dieser Angabe (qualifizierung_lage zeigt, wer dran ist).');
+      if (Array.isArray(r)) return fehlschlag('eingabe', `Fehlgeschlagen: Mehrdeutig — ${r.map(z => `${z.name} [${z.id}]`).join(' oder ')}.`);
       const felder: Eingabe = {};
       const kr = (i.kriterien && typeof i.kriterien === 'object' ? i.kriterien : {}) as Eingabe;
       const k2: Eingabe = {}; for (const x of KRITERIEN) if (['ja', 'nein', 'unklar'].includes(String(kr[x.id]))) k2[x.id] = kr[x.id];
@@ -292,10 +294,10 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const an = (i.antworten && typeof i.antworten === 'object' ? i.antworten : {}) as Eingabe;
       const a2: Eingabe = {}; for (const x of KRITERIEN) if (text(an[x.id], 600)) a2[x.id] = text(an[x.id], 600);
       if (Object.keys(a2).length) felder.antworten = a2;
-      if (i.lead_status !== undefined) { if (!LEAD_STATUS.some(x => x.id === i.lead_status)) return 'Fehlgeschlagen: unbekannter lead_status.'; felder.status = i.lead_status; }
+      if (i.lead_status !== undefined) { if (!LEAD_STATUS.some(x => x.id === i.lead_status)) return fehlschlag('eingabe', 'Fehlgeschlagen: unbekannter lead_status.'); felder.status = i.lead_status; }
       if (['ja', 'nein', 'unklar'].includes(String(i.fit))) felder.fit = i.fit;
       if (text(i.text, 1500)) felder.notiz = text(i.text, 1500);
-      if (!Object.keys(felder).length) return 'Fehlgeschlagen: nichts zu ergänzen (kriterien, antworten, lead_status, fit, text als Notiz).';
+      if (!Object.keys(felder).length) return fehlschlag('eingabe', 'Fehlgeschlagen: nichts zu ergänzen (kriterien, antworten, lead_status, fit, text als Notiz).');
       const rc = await rohCrm();
       const rohLead = r.art === 'firma' ? rc.firmen.find(f => f.id === r.id)?.lead : (await rohKontakt(r.id))?.lead;
       return {
@@ -306,13 +308,13 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       };
     }
     case 'dubletten': {
-      const a = kontaktAus(s, i.behalten); if (istFehler(a) || !a) return a ?? 'Fehlgeschlagen: behalten fehlt.';
-      const b = kontaktAus(s, i.weg); if (istFehler(b) || !b) return b ?? 'Fehlgeschlagen: weg fehlt.';
-      if (a.id === b.id) return 'Fehlgeschlagen: behalten und weg sind dieselbe Person.';
+      const a = kontaktAus(s, i.behalten); if (istFehler(a) || !a) return a ?? fehlschlag('eingabe', 'Fehlgeschlagen: behalten fehlt.');
+      const b = kontaktAus(s, i.weg); if (istFehler(b) || !b) return b ?? fehlschlag('eingabe', 'Fehlgeschlagen: weg fehlt.');
+      if (a.id === b.id) return fehlschlag('eingabe', 'Fehlgeschlagen: behalten und weg sind dieselbe Person.');
       const { zusammenfuehrenPruefen, wasWandert, wanderungText } = await import('@/lib/crm/dubletten');
       const ra = await rohKontakt(a.id), rb = await rohKontakt(b.id);
       const nein = ra && rb ? zusammenfuehrenPruefen(ra, rb) : 'nicht gefunden';
-      if (nein) return `Nicht vorgeschlagen: ${nein}`;
+      if (nein) return fehlschlag(ra && rb ? 'sperre' : 'nicht_gefunden', `Nicht vorgeschlagen: ${nein}`);
       return {
         titel: `${ART_TITEL.dubletten}: ${anzeigename(b)} → ${anzeigename(a)}`, bezugId: `kontakt:${a.id}`,
         vorher: `${a.id} und ${b.id} getrennt`, nachher: `${b.id} geht in ${a.id} auf · es wandert: ${wanderungText(wasWandert(crm, b))} · rückgängig über Stammdaten › Dubletten`,
@@ -323,7 +325,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const { istReparierbar, REPARIERBAR, verbindungenReparieren } = await import('@/lib/crm/verbindungen');
       const { ladeVerbindungsBestaende } = await import('@/lib/crm/verbindungen-laden');
       const ids = liste(i.befunde).filter(istReparierbar);
-      if (!ids.length) return `Fehlgeschlagen: befunde braucht reparierbare Kennungen (${REPARIERBAR.join(', ')}) — siehe datenqualitaet.`;
+      if (!ids.length) return fehlschlag('eingabe', `Fehlgeschlagen: befunde braucht reparierbare Kennungen (${REPARIERBAR.join(', ')}) — siehe datenqualitaet.`);
       const vs = verbindungenReparieren(await ladeVerbindungsBestaende(heute, s.person), ids, new Date().toISOString(), s.person);
       return {
         titel: `${ART_TITEL.reparatur}: ${ids.join(', ')}`, bezugId: 'markttraktion',
@@ -332,12 +334,12 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       };
     }
     case 'import_konflikt': {
-      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? 'Fehlgeschlagen: kontakt fehlt.';
+      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt.');
       const feld = text(i.feld, 40); const wahl = i.wahl === 'online' || i.wahl === 'liste' ? i.wahl : null;
-      if (!feld || !wahl) return 'Fehlgeschlagen: feld und wahl (online | liste) sind Pflicht.';
+      if (!feld || !wahl) return fehlschlag('eingabe', 'Fehlgeschlagen: feld und wahl (online | liste) sind Pflicht.');
       const { KONFLIKT_SPEICHER } = await import('@/lib/crm/import-konflikte');
       const kf = ((await loadJson<import('@/lib/crm/import-konflikte').KonfliktStand>(KONFLIKT_SPEICHER))?.konflikte ?? []).find(x => x.kontaktId === k.id && x.feld === feld);
-      if (!kf) return 'Fehlgeschlagen: Dieser Konflikt ist nicht (mehr) offen.';
+      if (!kf) return fehlschlag('konflikt', 'Fehlgeschlagen: Dieser Konflikt ist nicht (mehr) offen.');
       const fw = ['jobwechsel', 'zusaetzlich', 'korrektur'].includes(String(i.firma_wechsel)) ? String(i.firma_wechsel) : undefined;
       return {
         titel: `${ART_TITEL.import_konflikt}: ${anzeigename(k)} · ${feld}`, bezugId: `kontakt:${k.id}`,
@@ -348,21 +350,21 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     case 'angebot_entwurf': {
       const A = await import('@/lib/crm/angebote');
       const alt = text(i.angebot, 80) ? (crm.angebote ?? []).find(a => a.id === text(i.angebot, 80)) : undefined;
-      if (text(i.angebot, 80) && !alt) return 'Fehlgeschlagen: Angebot nicht gefunden.';
-      if (alt && alt.status !== 'entwurf') return `Fehlgeschlagen: Das Angebot ist ${alt.status} — ändern nur als neue Version im Angebots-Tool. ZOE bereitet nur Entwürfe vor.`;
+      if (text(i.angebot, 80) && !alt) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Angebot nicht gefunden.');
+      if (alt && alt.status !== 'entwurf') return fehlschlag('konflikt', `Fehlgeschlagen: Das Angebot ist ${alt.status} — ändern nur als neue Version im Angebots-Tool. ZOE bereitet nur Entwürfe vor.`);
       const k = kontaktAus(s, i.kontakt, false); if (istFehler(k)) return k;
       if (k?.werbesperre) return WERBESPERRE(k);
       const fi = firmaAus(s, i.firma); if (istFehler(fi)) return fi;
       const d = dealAus(s, i.deal); if (istFehler(d)) return d;
       const g = text(i.gesellschaft, 3) || alt?.gesellschaft;
-      if (!A.istGesellschaft(g)) return `Fehlgeschlagen: gesellschaft ist ${GESELLSCHAFTEN.join(', ')}.`;
+      if (!A.istGesellschaft(g)) return fehlschlag('eingabe', `Fehlgeschlagen: gesellschaft ist ${GESELLSCHAFTEN.join(', ')}.`);
       const pos = Array.isArray(i.positionen) ? (i.positionen as Eingabe[]).slice(0, A.ANGEBOT_GRENZEN.positionen).map((p, n) => ({
         id: `p${n + 1}`, titel: text(p.titel, A.ANGEBOT_GRENZEN.titel), text: text(p.text, A.ANGEBOT_GRENZEN.text), menge: Number(p.menge) > 0 ? Number(p.menge) : 1, einheit: text(p.einheit, 30) || 'pauschal',
         einzelpreisCent: Math.round((Number(p.einzelpreis) || 0) * 100), ustSatz: [19, 7, 0].includes(Number(p.ust_satz)) ? Number(p.ust_satz) : 19,
         basis: ['einmalig', 'monat', 'jahr'].includes(String(p.basis)) ? String(p.basis) : 'einmalig', ...(Number(p.laufzeit_monate) > 0 ? { laufzeitMonate: Math.round(Number(p.laufzeit_monate)) } : {}),
         ...(text(p.leistung, 80) && crm.leistungen.some(l => l.id === text(p.leistung, 80)) ? { leistungId: text(p.leistung, 80) } : {}),
       })).filter(p => p.titel) : [];
-      if (!pos.length && !alt) return 'Fehlgeschlagen: positionen fehlen (titel, text, menge, einheit, einzelpreis in €, ust_satz, basis).';
+      if (!pos.length && !alt) return fehlschlag('eingabe', 'Fehlgeschlagen: positionen fehlen (titel, text, menge, einheit, einzelpreis in €, ust_satz, basis).');
       const felder: Eingabe = {
         gesellschaft: g, ...(k ? { kontaktId: k.id } : {}), ...(fi ? { firmaId: fi.id } : k?.firmaId ? { firmaId: k.firmaId } : {}), ...(d ? { dealId: d.id } : {}),
         ...(text(i.titel, 200) ? { titel: text(i.titel, 200) } : {}), ...(pos.length ? { positionen: pos } : {}),
@@ -378,13 +380,13 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       };
     }
     case 'nachricht_entwurf': case 'anruf_leitfaden': case 'einladung_entwurf': case 'danke_entwurf': {
-      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? 'Fehlgeschlagen: kontakt fehlt.';
+      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt.');
       if (k.werbesperre) return WERBESPERRE(k);
-      const t = text(i.text, 6000); if (!t) return 'Fehlgeschlagen: text fehlt.';
+      const t = text(i.text, 6000); if (!t) return fehlschlag('eingabe', 'Fehlgeschlagen: text fehlt.');
       const kanal = art === 'anruf_leitfaden' ? 'telefon' : art === 'einladung_entwurf' ? 'einladung' : i.kanal === 'linkedin' ? 'linkedin' : 'mail';
       const kp = await kanalPruefen(s, k, kanal as 'mail' | 'linkedin' | 'telefon' | 'einladung');
       // Danke nach einem Event ist Beziehungspflege, keine Werbung — trotzdem nur, wo der Kanal nicht rot ist.
-      if (kp.fehler) return kp.fehler;
+      if (kp.fehler) return fehlschlag('sperre', kp.fehler);
       const betreff = text(i.betreff, 200);
       const { mailtoLink } = await import('@/lib/crm/angebote');
       const mailto = kanal === 'mail' || kanal === 'einladung' ? (k.email ? mailtoLink(k.email, betreff, t) : undefined) : undefined;
@@ -396,10 +398,10 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     }
     case 'powerhour_reihenfolge': {
       const ids = liste(i.kontakte);
-      if (!ids.length) return 'Fehlgeschlagen: kontakte (Kennungen in der vorgeschlagenen Reihenfolge) fehlen.';
+      if (!ids.length) return fehlschlag('eingabe', 'Fehlgeschlagen: kontakte (Kennungen in der vorgeschlagenen Reihenfolge) fehlen.');
       const raus: string[] = []; const drin: string[] = [];
       for (const id of ids) { const k = s.kontakt(id); if (!k || k.werbesperre) raus.push(id); else drin.push(k.id); }
-      if (!drin.length) return 'Fehlgeschlagen: keiner der Kontakte ist ansprechbar (eingeschränkt, gesperrt oder unbekannt).';
+      if (!drin.length) return fehlschlag('sperre', 'Fehlgeschlagen: keiner der Kontakte ist ansprechbar (eingeschränkt, gesperrt oder unbekannt).');
       return {
         titel: `${ART_TITEL.powerhour_reihenfolge}: ${drin.length} Anrufe`, bezugId: 'markttraktion',
         nachher: `${drin.map((id, n) => `${n + 1}. ${s.name(id)}`).join(' · ')}${raus.length ? ` · ${raus.length} ausgelassen (eingeschränkt, gesperrt oder unbekannt)` : ''}`,
@@ -408,7 +410,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     }
     case 'beitrag_entwurf': {
       const t = text(i.titel, 200); const inhalt = text(i.text, 8000);
-      if (!t || !inhalt) return 'Fehlgeschlagen: titel und text sind Pflicht.';
+      if (!t || !inhalt) return fehlschlag('eingabe', 'Fehlgeschlagen: titel und text sind Pflicht.');
       const kanal = ['linkedin', 'newsletter', 'blog', 'podcast', 'vortrag', 'sonstig'].includes(String(i.beitrag_kanal)) ? String(i.beitrag_kanal) : 'linkedin';
       const stimme = [...teamIds(), 'marke'].includes(String(i.stimme)) ? String(i.stimme) : undefined;
       return {
@@ -419,7 +421,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     }
     case 'newsletter_entwurf': {
       const t = text(i.titel, 200); const inhalt = text(i.text, 20000);
-      if (!t || !inhalt) return 'Fehlgeschlagen: titel und text sind Pflicht.';
+      if (!t || !inhalt) return fehlschlag('eingabe', 'Fehlgeschlagen: titel und text sind Pflicht.');
       const { newsletterEmpfaenger } = await import('@/lib/crm/marketing');
       const n = newsletterEmpfaenger(s.kontakte).length;
       return {
@@ -429,7 +431,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       };
     }
     case 'segment': {
-      const name = text(i.name ?? i.titel, 80); if (!name) return 'Fehlgeschlagen: name fehlt.';
+      const name = text(i.name ?? i.titel, 80); if (!name) return fehlschlag('eingabe', 'Fehlgeschlagen: name fehlt.');
       const kr = (i.kriterien && typeof i.kriterien === 'object' && !Array.isArray(i.kriterien) ? i.kriterien : {}) as SegmentKriterien;
       const { kriterienSauber, kriterienText } = await import('@/lib/crm/marketing');
       const { segmentAuswerten, kontextAus } = await import('@/lib/crm/segmente');
@@ -443,7 +445,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     }
     case 'gaesteliste': {
       const e = s.crm.events.find(x => x.id === text(i.event, 80) || suchPasst([x.titel], text(i.event, 80)));
-      if (!e) return 'Fehlgeschlagen: event nicht gefunden (Kennung aus events_lage).';
+      if (!e) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: event nicht gefunden (Kennung aus events_lage).');
       const schon = new Set(crm.teilnahmen.filter(t => t.eventId === e.id).map(t => t.kontaktId));
       const drin: string[] = []; const raus: string[] = [];
       for (const id of liste(i.kontakte)) {
@@ -453,7 +455,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
         if ((await kanalPruefen(s, k, 'einladung')).fehler) { raus.push(id); continue; }
         drin.push(k.id);
       }
-      if (!drin.length) return 'Fehlgeschlagen: niemand vorzumerken (gesperrt, ohne Grundlage für eine Einladung, schon auf der Liste oder unbekannt).';
+      if (!drin.length) return fehlschlag('sperre', 'Fehlgeschlagen: niemand vorzumerken (gesperrt, ohne Grundlage für eine Einladung, schon auf der Liste oder unbekannt).');
       return {
         titel: `${ART_TITEL.gaesteliste}: ${e.titel} (${drin.length})`, bezugId: `event:${e.id}`,
         nachher: `${drin.map(id => s.name(id)).join(', ')} als „vorgemerkt“${raus.length ? ` · ${raus.length} ausgelassen (Werbesperre, keine Grundlage, schon dabei oder unbekannt)` : ''} · eingeladen wird nichts`,
@@ -462,8 +464,8 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
     }
     case 'leistungstext': {
       const l = crm.leistungen.find(x => x.id === text(i.leistung, 80) || suchPasst([x.name], text(i.leistung, 80)));
-      if (!l) return 'Fehlgeschlagen: leistung (Produkt) nicht gefunden — siehe stammdaten_lage.';
-      const lt = text(i.text, 6000); if (!lt) return 'Fehlgeschlagen: text (Leistungstext) fehlt.';
+      if (!l) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: leistung (Produkt) nicht gefunden — siehe stammdaten_lage.');
+      const lt = text(i.text, 6000); if (!lt) return fehlschlag('eingabe', 'Fehlgeschlagen: text (Leistungstext) fehlt.');
       const angebot = { ...(l.angebot ?? {}), leistungstext: lt, ...(text(i.titel, 200) ? { titel: text(i.titel, 200) } : {}), ...(text(i.einleitung, 3000) ? { einleitung: text(i.einleitung, 3000) } : {}) };
       const aktiv = i.aktiv_setzen === true && l.status !== 'aktiv';
       const roh = (await rohCrm()).leistungen.find(x => x.id === l.id);
@@ -479,15 +481,15 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const { standName } = await import('@/lib/heads/stand');
       const { ABLEHNGRUENDE } = await import('@/lib/heads/lernen');
       const h = HEADS.find(x => x === i.head);
-      if (!h) return 'Fehlgeschlagen: head ist sales, marketing oder event.';
+      if (!h) return fehlschlag('eingabe', 'Fehlgeschlagen: head ist sales, marketing oder event.');
       const st = await loadJson<import('@/lib/heads/stand').HeadStand>(standName(h));
       const hv = (st?.vorschlaege ?? []).find(x => x.id === text(i.vorschlag, 80));
-      if (!hv) return 'Fehlgeschlagen: Vorschlag des Heads nicht gefunden (Kennung aus heads_lage).';
-      if (hv.status !== 'offen') return `Fehlgeschlagen: schon entschieden (${hv.status}).`;
-      if (hv.kontakt_id && s.eingeschraenkt.has(hv.kontakt_id)) return 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
+      if (!hv) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Vorschlag des Heads nicht gefunden (Kennung aus heads_lage).');
+      if (hv.status !== 'offen') return fehlschlag('konflikt', `Fehlgeschlagen: schon entschieden (${hv.status}).`);
+      if (hv.kontakt_id && s.eingeschraenkt.has(hv.kontakt_id)) return fehlschlag('sperre', 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).');
       const status = i.entscheidung === 'abgelehnt' ? 'abgelehnt' : 'angenommen';
       const grund = status === 'abgelehnt' ? ABLEHNGRUENDE.find(g => g.id === i.grund)?.id : undefined;
-      if (status === 'abgelehnt' && !grund) return `Fehlgeschlagen: Ablehnen braucht grund (${ABLEHNGRUENDE.map(g => g.id).join(', ')}) — daraus lernt der Head.`;
+      if (status === 'abgelehnt' && !grund) return fehlschlag('eingabe', `Fehlgeschlagen: Ablehnen braucht grund (${ABLEHNGRUENDE.map(g => g.id).join(', ')}) — daraus lernt der Head.`);
       const k = hv.kontakt_id ? s.kontakt(hv.kontakt_id) : undefined;
       if (status === 'angenommen' && k?.werbesperre && hv.entwurf) return WERBESPERRE(k);
       return {
@@ -501,24 +503,24 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
 }
 
 /** Das Werkzeug `crm_vorschlag`: prüfen, Vorher/Nachher rechnen, als Stapel-Art „crm“ ablegen — ändert nichts. */
-export async function crmVorschlag(input: Eingabe, _origin: string, person?: string, kontext?: { herkunft?: string }): Promise<string> {
+export async function crmVorschlag(input: Eingabe, _origin: string, person?: string, kontext?: { herkunft?: string }): Promise<WerkzeugRueckgabe> {
   try {
     const s = await crmSicht(person);
-    if (!s || !person) return NICHT_IM_HINTERGRUND;
+    if (!s || !person) return fehlschlag('rechte', NICHT_IM_HINTERGRUND);
     const art = String(input.art ?? '') as VorschlagArt;
-    if (!(VORSCHLAG_ARTEN as readonly string[]).includes(art)) return `Fehlgeschlagen: art ist eine von ${VORSCHLAG_ARTEN.join(', ')}.`;
+    if (!(VORSCHLAG_ARTEN as readonly string[]).includes(art)) return fehlschlag('eingabe', `Fehlgeschlagen: art ist eine von ${VORSCHLAG_ARTEN.join(', ')}.`);
     const p = await planen(art, input, s);
-    if (typeof p === 'string') return p;
+    if (istWerkzeugErgebnis(p)) return p;
     const v = await lege({
       werkzeug: CRM_VORSCHLAG_WERKZEUG, gruppe: 'crm', titel: p.titel, ...(p.vorher ? { vorher: p.vorher } : {}), nachher: p.nachher,
       eingabe: p.eingabe, person, quelle: 'gespraech', bezug: { art: 'crm', id: p.bezugId },
       // Aus dem Agenten-Bereich (Durchstich 09.10.): „<Head>: …“ vorne — der Vorschlag zählt dann beim Head (Zähler, Annahmequote).
       ...(kontext?.herkunft || text(input.begruendung, 400) ? { anlass: [kontext?.herkunft, text(input.begruendung, 400)].filter(Boolean).join(' — ').slice(0, 600) } : {}),
     });
-    return `VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${p.titel}: ${p.vorher ? `${p.vorher} → ` : ''}${p.nachher}. Liegt als Vorschlag ${v.id} im Freigabe-Stapel (und an der Kontakt-/Firmenakte). Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt oder versendet.`;
+    return brauchtFreigabe(`VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${p.titel}: ${p.vorher ? `${p.vorher} → ` : ''}${p.nachher}. Liegt als Vorschlag ${v.id} im Freigabe-Stapel (und an der Kontakt-/Firmenakte). Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt oder versendet.`, v.id);
   } catch (e) {
     console.error('[zoe/crm-vorschlag]', e instanceof Error ? e.message : e);
-    return 'Fehlgeschlagen: Der Vorschlag konnte gerade nicht vorbereitet werden.';
+    return fehlschlag('voruebergehend', 'Fehlgeschlagen: Der Vorschlag konnte gerade nicht vorbereitet werden.');
   }
 }
 

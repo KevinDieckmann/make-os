@@ -3,6 +3,7 @@
 // ausdrücklich teilt (Konto › `teilt.ziele`, Vorgabe „nicht geteilt“, schalten nur sie selbst). Nicht geteilt ⇒ nichts davon in
 // Ziele-Route, Lichtfäden, Seil, Meilensteinen (Altbestand), Kapazität, Verbindungsprüfung — auch keine Kennung, kein „Belegt“.
 // Erfundene Personen (person-a = Inhaber, person-b = Mitglied, person-c = anderer Haushalt) und erfundene Ziele.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -211,7 +212,7 @@ describe('nicht geteilt (Vorgabe) — person-a bekommt nichts aus den eigenen Zi
     ohneGeheim(JSON.stringify((await gatherBrain('2026-10-08', 'person-a')).meilensteine), 'brain person-a');
     expect(JSON.stringify((await gatherBrain('2026-10-08', 'person-b')).meilensteine)).toContain('GEHEIM-MS-BIZ');
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
-    const t = await WERKZEUGE.setze_meilenstein.lauf({ titel: 'GEHEIM', fortschritt: 50 }, 'http://test', 'person-a');
+    const t = meldungVon(await WERKZEUGE.setze_meilenstein.lauf({ titel: 'GEHEIM', fortschritt: 50 }, 'http://test', 'person-a'));
     expect(t).toMatch(/Kein Meilenstein/);
     ohneGeheim(t, 'setze_meilenstein');
     expect((await db.loadJson<{ meilensteine: { id: string; fortschritt: number }[] }>('meilensteine'))!.meilensteine.find(m => m.id === 'm-alt')?.fortschritt).toBe(0);

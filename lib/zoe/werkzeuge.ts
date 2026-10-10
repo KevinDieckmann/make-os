@@ -26,7 +26,7 @@ import { ARBEIT_WERKZEUGE } from './arbeit-werkzeug';
 import { SPORT_WERKZEUGE } from './sport-werkzeuge';
 import { CRM_LESE_LAEUFE, suche_kontakt as sucheKontaktSicht, crm_lage as crmLageSicht } from './crm-werkzeuge';
 import { CRM_VORSCHLAG_LAUF, ausVorschlag } from './crm-vorschlag';
-import { innen, innenFehler, innenNein } from './innen';
+import { innen, innenFehler, innenKlasse, innenNein } from './innen';
 import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { istFokusHorizont } from '@/lib/planung/fokus';
 import { fokusSichtFuer } from '@/lib/planung/fokus-server';
@@ -38,6 +38,7 @@ import { verbunden as icloudVerbunden } from '@/lib/kalender/icloud';
 import { blockKollision } from '@/lib/planung/bloecke';
 import { planTag } from '@/lib/planung/zeitstrahl';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
+import { fehlschlag, istWerkzeugErgebnis, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
 // ── ZOE plant: Block in den Kalender der Person (Vorgabe: „dass da auch drin geplant werden kann"). Seit F2 M8
 // (29.09., Vorgabe „ZOE schreibt nur über den Stapel“) ist `plan_block` freigabepflichtig (Register, Gruppe „kalender“):
@@ -49,23 +50,30 @@ const PLAN_ARTEN_ZOE = ['fokus', 'reha', 'erholung', 'routine', 'pause', 'aufgab
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const KEINE_PERSON_PLAN = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 
-async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON_PLAN; // Regel 5: nie ein Rückfall auf eine feste Person
+async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON_PLAN); // Regel 5: nie ein Rückfall auf eine feste Person
   const date = String(input.date ?? '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Fehlgeschlagen: date muss YYYY-MM-DD sein.';
-  if (date < localDay()) return `Fehlgeschlagen: ${date} liegt in der Vergangenheit — plane ab heute (${localDay()}).`;
-  const startMin = Math.max(6 * 60, Math.min(22 * 60 - 15, Math.round(Number(input.startMin) / 15) * 15 || 9 * 60));
-  const dauerMin = Math.max(15, Math.min(240, Math.round(Number(input.dauerMin) / 15) * 15 || 60));
-  const titel = String(input.titel ?? '').slice(0, 120) || 'Block';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fehlschlag('eingabe', 'Fehlgeschlagen: date muss YYYY-MM-DD sein.');
+  if (date < localDay()) return fehlschlag('eingabe', `Fehlgeschlagen: ${date} liegt in der Vergangenheit — plane ab heute (${localDay()}).`);
+  // V3 (10.10., Werkzeug-Verträge; AGENTEN_KONZEPT_V2.md A4 S2 nannte genau diese Stelle): Uhrzeit, Dauer und Titel werden NICHT mehr still
+  // geklemmt bzw. gekürzt — das Schema (Fenster 06:00–21:45, Raster 15, Dauer 15–240, Titel ≤ 120) prüft die Hülle vorher; wer das Werkzeug
+  // direkt ruft, bekommt hier dieselbe klare Ablehnung.
+  const startMin = Number(input.startMin);
+  const dauerMin = Number(input.dauerMin);
+  if (!Number.isInteger(startMin) || startMin < 6 * 60 || startMin > 22 * 60 - 15 || startMin % 15) return fehlschlag('eingabe', 'Fehlgeschlagen: startMin muss zwischen 360 und 1305 liegen, im 15-Minuten-Raster (540 = 09:00).');
+  if (!Number.isInteger(dauerMin) || dauerMin < 15 || dauerMin > 240 || dauerMin % 15) return fehlschlag('eingabe', 'Fehlgeschlagen: dauerMin muss zwischen 15 und 240 liegen, im 15-Minuten-Raster.');
+  const titel = String(input.titel ?? '').trim();
+  if (!titel || titel.length > 120) return fehlschlag('eingabe', 'Fehlgeschlagen: titel fehlt oder ist länger als 120 Zeichen.');
+  if (input.art !== undefined && input.art !== null && !(PLAN_ARTEN_ZOE as readonly string[]).includes(String(input.art))) return fehlschlag('eingabe', `Fehlgeschlagen: art ist eine von ${[...PLAN_ARTEN_ZOE].join(', ')}.`);
   const art = (PLAN_ARTEN_ZOE as readonly string[]).includes(String(input.art)) ? String(input.art) as PlanArt : 'block';
   const ende = startMin + dauerMin;
-  if (!icloudVerbunden()) return 'Fehlgeschlagen: iCloud ist nicht verbunden — Blöcke sind Termine im Kalender.';
+  if (!icloudVerbunden()) return fehlschlag('voruebergehend', 'Fehlgeschlagen: iCloud ist nicht verbunden — Blöcke sind Termine im Kalender.');
 
   // Feste Termine — nichts wird überplant. Über denselben Lesepfad wie ZOE (R-Z #K4, für die Person gefiltert: private
   // der anderen nur „Belegt“, abgesagte fehlen). Ab dem Vortag gelesen: ein Termin über Mitternacht zählt mit (F2 M5).
   const kal = await termineFuerZoe(person, tagePlus(date, -1), tagePlus(date, 1));
   const kollision = blockKollision(kal.termine, person, date, startMin, ende);
-  if (kollision) return `Kollision mit festem Termin „${kollision.titel}“ (${hhmm(kollision.s)}–${hhmm(Math.min(kollision.e, 24 * 60 - 1))}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`;
+  if (kollision) return fehlschlag('konflikt', `Kollision mit festem Termin „${kollision.titel}“ (${hhmm(kollision.s)}–${hhmm(Math.min(kollision.e, 24 * 60 - 1))}) am ${date} — nicht eingeplant. Schlage eine freie Zeit vor.`);
 
   // Business-frei (08.10., Lücke 7, lib/arbeitsrahmen/regel.ts): Arbeit (Fokus, Aufgabe, eigener Block) kommt nie in eine
   // Business-freie Zeit der Person — Reha, Routine und Pause schon. Der Satz nennt keine Zeiten und keinen Grund aus der Familie.
@@ -75,7 +83,7 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
       const { businessFreiFensterFuer } = await import('@/lib/arbeitsrahmen/server');
       const spannen = await businessFreiFensterFuer(person, date, tagePlus(date, 1)).catch(() => []);
       if (ueberlappt(spannen, `${date}T${hhmm(startMin)}:00`, ende >= 24 * 60 ? `${tagePlus(date, 1)}T00:00:00` : `${date}T${hhmm(ende)}:00`)) {
-        return `Nicht eingeplant: ${date} ${hhmm(startMin)}–${hhmm(Math.min(ende, 24 * 60 - 1))} liegt in einer Business-freien Zeit — dort plant ZOE keine Arbeit. Schlage eine Zeit außerhalb vor (freie_zeit).`;
+        return fehlschlag('sperre', `Nicht eingeplant: ${date} ${hhmm(startMin)}–${hhmm(Math.min(ende, 24 * 60 - 1))} liegt in einer Business-freien Zeit — dort plant ZOE keine Arbeit. Schlage eine Zeit außerhalb vor (freie_zeit).`);
       }
     }
   }
@@ -83,7 +91,7 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
   try {
     await blockAnlegen(person, { date, startMin, dauerMin, titel, art }, { art: 'zoe', person });
   } catch (e) {
-    return `Fehlgeschlagen: ${e instanceof Error ? e.message.slice(0, 200) : 'Kalender nicht erreichbar.'}`;
+    return fehlschlag('voruebergehend', `Fehlgeschlagen: ${e instanceof Error ? e.message.slice(0, 200) : 'Kalender nicht erreichbar.'}`);
   }
   return `Eingeplant: „${titel}“ am ${date}, ${hhmm(startMin)}–${hhmm(ende)} (${art}) — als Block im Kalender (iCloud), frei verschiebbar.`;
 }
@@ -93,13 +101,13 @@ async function planBlock(input: Record<string, unknown>, _o?: unknown, person?: 
 // private Termine der anderen Person sind darin nur „belegt“ (maskiert je Person). Legt nichts an — einen Termin
 // schlägt ZOE danach vor, angelegt wird erst per Klick.
 const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON_PLAN; // S1 #17: kein Rückfall auf eine feste Person (Regel 5)
+async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON_PLAN); // S1 #17: kein Rückfall auf eine feste Person (Regel 5)
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!(await personImHaushaltDesInhabers(person))) return 'Fehlgeschlagen: freie Zeit nur für Personen des Haushalts.';
+  if (!(await personImHaushaltDesInhabers(person))) return fehlschlag('rechte', 'Fehlgeschlagen: freie Zeit nur für Personen des Haushalts.');
   const roh = Array.isArray(input.personen) ? input.personen.map(String) : typeof input.personen === 'string' ? String(input.personen).split(',') : [];
   const personen = Array.from(new Set([person, ...roh.map(x => x.trim().toLowerCase()).filter(x => /^[a-z0-9-]{1,40}$/.test(x))])).slice(0, 4);
-  for (const p of personen) if (!(await personImHaushaltDesInhabers(p))) return `Fehlgeschlagen: ${p} gehört nicht zum Haushalt — freie Zeit nur für Personen des Haushalts.`;
+  for (const p of personen) if (!(await personImHaushaltDesInhabers(p))) return fehlschlag('rechte', `Fehlgeschlagen: ${p} gehört nicht zum Haushalt — freie Zeit nur für Personen des Haushalts.`);
   const dauerMin = Math.max(10, Math.min(480, Math.round(Number(input.dauerMin) || 60)));
   const tage = Math.max(1, Math.min(30, Math.round(Number(input.tage) || 7)));
   const von = /^\d{4}-\d{2}-\d{2}$/.test(String(input.von ?? '')) && String(input.von) >= localDay() ? String(input.von) : undefined;
@@ -121,13 +129,15 @@ async function freieZeit(input: Record<string, unknown>, _o?: unknown, person?: 
 export { planpostenFirma, FINANZPLAN_ALTWEG_WERKZEUGE } from './finanz-werkzeuge';
 const eurW = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Math.round(n || 0));
 
-/** Eine Auswahl per Namensteil: genau ein Treffer (ein exakter Name gewinnt), sonst ein Fehlertext. */
-function treffer<T extends { id: string; titel: string }>(liste: readonly T[], teil: string, was: string): T | string {
+/** Eine Auswahl per Namensteil: genau ein Treffer (ein exakter Name gewinnt), sonst ein typisierter Fehlschlag (V3: mehrdeutig = Eingabe, keiner = nicht gefunden). */
+function treffer<T extends { id: string; titel: string }>(liste: readonly T[], teil: string, was: string): T | WerkzeugErgebnis {
   const s = teil.trim().toLowerCase();
   const exakt = liste.filter(x => x.titel.trim().toLowerCase() === s);
   const l = exakt.length === 1 ? exakt : liste.filter(x => x.titel.toLowerCase().includes(s));
   if (l.length === 1) return l[0];
-  return l.length ? `${was} „${teil}“ ist nicht eindeutig (${l.slice(0, 4).map(x => x.titel).join(' · ')}) — genauer benennen.` : `Kein ${was} passt zu „${teil}“.`;
+  return l.length
+    ? fehlschlag('eingabe', `Fehlgeschlagen: ${was} „${teil}“ ist nicht eindeutig (${l.slice(0, 4).map(x => x.titel).join(' · ')}) — genauer benennen.`)
+    : fehlschlag('nicht_gefunden', `Fehlgeschlagen: Kein ${was} passt zu „${teil}“.`);
 }
 
 /**
@@ -137,15 +147,15 @@ function treffer<T extends { id: string; titel: string }>(liste: readonly T[], t
  * Ziele nachziehen — vorher schrieb das Werkzeug mit `updateJson` an alledem vorbei. Hier wird nur gesucht (was die Person sehen darf)
  * und die Änderung als `teil` gebaut.
  */
-async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON_PLAN;
+async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON_PLAN);
   const suche = String(input.titel ?? '').trim().toLowerCase();
-  if (!suche) return 'Fehlgeschlagen: titel fehlt.';
+  if (!suche) return fehlschlag('eingabe', 'Fehlgeschlagen: titel fehlt.');
   const fortschritt = input.fortschritt != null && isFinite(Number(input.fortschritt)) ? Math.max(0, Math.min(100, Math.round(Number(input.fortschritt)))) : undefined;
   const erledigt = input.erledigt === true;
   // Verschieben (30.09.): jedes echte Datum bis 10 Jahre um heute — ausdrücklich auch im nächsten Jahr.
   const faellig = input.faellig != null && input.faellig !== '' ? planTag(input.faellig, localDay()) : undefined;
-  if (faellig === null) return 'Fehlgeschlagen: faellig als Datum YYYY-MM-DD angeben (höchstens 10 Jahre voraus).';
+  if (faellig === null) return fehlschlag('eingabe', 'Fehlgeschlagen: faellig als Datum YYYY-MM-DD angeben (höchstens 10 Jahre voraus).');
   // Ziel und Kette (01.10., Ziel ↔ Meilenstein): `ziel` = Teil des Ziel-Titels (leer = Bezug lösen), `wartet_auf` = Teile der
   // Titel der Vorgänger (leere Liste = Kette lösen). Gilt wie alles hier nur über den Stapel (Register: freigabepflichtig).
   const zielText = input.ziel !== undefined ? String(input.ziel ?? '').trim() : undefined;
@@ -159,16 +169,16 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
     const roh = ZIEL_HORIZONTE.flatMap(h => (Array.isArray(zd?.[h]) ? zd![h] : []).filter(z => !z.abgeleitetVon));
     const alle = ohnePrivat ? zieleOhnePrivat(roh) : roh;
     const t = treffer(alle, zielText, 'Ziel');
-    if (typeof t === 'string') return `Fehlgeschlagen: ${t}`;
+    if (istWerkzeugErgebnis(t)) return t;
     zielWahl = t;
   }
   // Lesen wie die Oberfläche: die Route liefert nur, was die Person sehen darf (eigene Ziele nur geteilt, 08.10.), je Zeile mit Stand.
   type Ms = { id: string; titel: string; fortschritt: number; erledigt: boolean; abgeleitetVon?: string; stand?: string };
   const g = await innen('/api/state/meilensteine', 'GET', null, person);
-  if (innenNein(g)) return `Fehlgeschlagen: ${innenFehler(g)}`;
+  if (innenNein(g)) return fehlschlag(innenKlasse(g), `Fehlgeschlagen: ${innenFehler(g)}`);
   const sichtbar = (Array.isArray(g.json.meilensteine) ? g.json.meilensteine : []) as Ms[];
   const m = sichtbar.find(x => x.titel.toLowerCase().includes(suche));
-  if (!m) return `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}“. Offene: ${sichtbar.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`;
+  if (!m) return fehlschlag('nicht_gefunden', `Fehlgeschlagen: Kein Meilenstein passt zu „${input.titel}“. Offene: ${sichtbar.filter(x => !x.erledigt).slice(0, 5).map(x => x.titel).join(' · ')}`);
   const felder: Record<string, unknown> = {};
   const teile: string[] = [];
   if (faellig) {
@@ -184,7 +194,7 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
     const ids: string[] = [];
     for (const t of wartetRoh) {
       const w = treffer(sichtbar.filter(x => x.id !== m.id), t, 'Meilenstein');
-      if (typeof w === 'string') return `Fehlgeschlagen: ${w}`;
+      if (istWerkzeugErgebnis(w)) return w;
       if (!ids.includes(w.id)) ids.push(w.id);
     }
     felder.wartetAuf = ids.length ? ids : null;
@@ -197,13 +207,13 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
   if (erledigt) { felder.erledigt = true; felder.fortschritt = 100; felder.erledigtAm = localDay(); teile.push('abgehakt ✓'); }
   else if (fortschritt != null && errechnet !== null) teile.push(`nicht von Hand gesetzt — der Fortschritt rechnet sich aus seinen Aufgaben (${errechnet} %); Aufgaben abhaken oder den Meilenstein als erledigt setzen`);
   else if (fortschritt != null) { felder.fortschritt = fortschritt; teile.push(`auf ${fortschritt}% gesetzt`); }
-  if (!Object.keys(felder).length) return teile.length ? `Erfasst: Meilenstein „${m.titel}“ ${teile.join(' und ')}.` : 'Nichts geändert — fortschritt, erledigt, faellig, ziel oder wartet_auf angeben.';
+  if (!Object.keys(felder).length) return teile.length ? `Erfasst: Meilenstein „${m.titel}“ ${teile.join(' und ')}.` : fehlschlag('eingabe', 'Nichts geändert — fortschritt, erledigt, faellig, ziel oder wartet_auf angeben.');
   // Als ganzer Eintrag (`upsert` mit Stand) wie die Oberfläche — dann zieht die Route auch die Liste des Meilensteins nach
   // (`meilensteinStrukturSichern`); `null` lässt die Säuberung ein Feld weg (Ziel/Kette lösen).
   const { stand, ...ohneStand } = m;
   const r = await innen('/api/state/meilensteine', 'PATCH', { ops: [{ op: 'upsert', eintrag: { ...ohneStand, ...felder }, ...(stand ? { stand } : {}) }] }, person);
-  if (r.status === 409 && Array.isArray(r.json.konflikte) && (r.json.konflikte as unknown[]).length) return `Fehlgeschlagen: Der Meilenstein „${m.titel}“ wurde inzwischen geändert — nichts überschrieben, bitte noch einmal.`;
-  if (innenNein(r)) return `Fehlgeschlagen: ${innenFehler(r).replace(/^Abgelehnt: /, '')}`;
+  if (r.status === 409 && Array.isArray(r.json.konflikte) && (r.json.konflikte as unknown[]).length) return fehlschlag('konflikt', `Fehlgeschlagen: Der Meilenstein „${m.titel}“ wurde inzwischen geändert — nichts überschrieben, bitte noch einmal.`);
+  if (innenNein(r)) return fehlschlag(innenKlasse(r), `Fehlgeschlagen: ${innenFehler(r).replace(/^Abgelehnt: /, '')}`);
   return `Erfasst: Meilenstein „${m.titel}“ ${teile.join(' und ')}.`;
 }
 
@@ -213,25 +223,25 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
  * Privat, bei einem Konto „nur Business“ Business). Der Stand kommt aus derselben Lesestelle (lib/planung/fokus-server.ts) — 409 statt
  * Überschreiben, über 300 Zeichen 413 (nie gekürzt).
  */
-async function setzeFokus(input: Record<string, unknown>, _origin?: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON_PLAN;
+async function setzeFokus(input: Record<string, unknown>, _origin?: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON_PLAN);
   const h = String(input.horizont ?? '');
-  if (!istFokusHorizont(h)) return 'Fehlgeschlagen: horizont tag|woche|monat|quartal|jahr nötig.';
+  if (!istFokusHorizont(h)) return fehlschlag('eingabe', 'Fehlgeschlagen: horizont tag|woche|monat|quartal|jahr nötig.');
   const zugang = await planZugangFuer(person);
-  if (!zugang) return 'Fehlgeschlagen: Der Fokus gehört zu einem Haushalt — dieses Konto hat keinen.';
+  if (!zugang) return fehlschlag('rechte', 'Fehlgeschlagen: Der Fokus gehört zu einem Haushalt — dieses Konto hat keinen.');
   const bereich = input.space === 'privat' || input.space === 'business' ? input.space : zugang.sicht === 'privat' ? 'privat' : 'business';
   const wessen = input.fuer === 'ich' ? 'mein' : 'unser';
   // Fokus des Jahres je Jahr (30.09.): `jahr` nur beim Horizont Jahr, höchstens 10 Jahre um heute.
   const laufend = Number(localDay().slice(0, 4));
   const jahr = h === 'jahr' && input.jahr != null ? Number(input.jahr) : laufend;
-  if (!Number.isInteger(jahr) || Math.abs(jahr - laufend) > 10) return 'Fehlgeschlagen: jahr als Jahreszahl angeben (höchstens 10 Jahre um heute).';
+  if (!Number.isInteger(jahr) || Math.abs(jahr - laufend) > 10) return fehlschlag('eingabe', 'Fehlgeschlagen: jahr als Jahreszahl angeben (höchstens 10 Jahre um heute).');
   const s = await fokusSichtFuer(person, bereich, { jahr });
-  if ('fehler' in s) return `Fehlgeschlagen: ${s.fehler}`;
+  if ('fehler' in s) return fehlschlag('rechte', `Fehlgeschlagen: ${s.fehler}`);
   const text = String(input.text ?? '');
   const zelle = wessen === 'unser' ? s.horizonte[h].unser : s.horizonte[h].mein;
   const r = await innen('/api/planung/fokus', 'PUT', { bereich, wessen, horizont: h, ...(h === 'jahr' ? { jahr } : {}), text, stand: zelle.stand }, person);
-  if (r.status === 409) return 'Fehlgeschlagen: Der Fokus wurde inzwischen geändert — nichts überschrieben, bitte noch einmal.';
-  if (innenNein(r)) return `Fehlgeschlagen: ${innenFehler(r)}`;
+  if (r.status === 409) return fehlschlag('konflikt', 'Fehlgeschlagen: Der Fokus wurde inzwischen geändert — nichts überschrieben, bitte noch einmal.');
+  if (innenNein(r)) return fehlschlag(innenKlasse(r), `Fehlgeschlagen: ${innenFehler(r)}`);
   const wer = wessen === 'unser' ? 'Unser Fokus' : 'Mein Fokus';
   return `Erfasst: ${wer} (${h}${h === 'jahr' && jahr !== laufend ? ` ${jahr}` : ''}, ${bereich === 'privat' ? 'Privat' : 'Business'}) = „${text.trim()}“. ${h === 'jahr' && jahr !== laufend ? `Gilt ab Januar ${jahr}.` : 'Steht auf Heute und in Planung › Fokus und lenkt die Planung.'}`;
 }
@@ -251,14 +261,14 @@ const HEUTE_ODER = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}
  * `health-log` ist Art. 9) nur mit Einwilligung (a); Privat-Routinen (ihre Namen gehen an das Modell, oft Gesundheit) zusätzlich nur mit
  * (b) „an die KI“ — ohne (b) werden sie weder abgehakt noch aufgezählt.
  */
-async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { routineAusZuruf } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
-  if (!person) return KEINE_PERSON;
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const wer = person;
   const { gesundheitStandFuer } = await import('@/lib/datenschutz/gesundheit-einwilligung');
   const g = await gesundheitStandFuer(wer);
-  if (!g.verarbeitungErlaubt) return 'Abgelehnt: Für das Abhaken fehlt die Einwilligung dieser Person (System › Datenschutz › Gesundheit) — Routinen stehen im Gesundheits-Log. Nichts gespeichert.';
+  if (!g.verarbeitungErlaubt) return fehlschlag('sperre', 'Abgelehnt: Für das Abhaken fehlt die Einwilligung dieser Person (System › Datenschutz › Gesundheit) — Routinen stehen im Gesundheits-Log. Nichts gespeichert.');
   const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean; owner?: string; space?: string; einheit?: string }[] }>('routinen');
   // Nur Routinen, die diese Person sieht (eigene + gemeinsame) — nie die der anderen abhaken oder aufzählen.
   const { spaceVonRoutine } = await import('@/lib/planung/routinen');
@@ -273,7 +283,7 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
     .filter(r => (spaceVonRoutine(r as Parameters<typeof spaceVonRoutine>[0]) === 'privat' ? privatAn : planungAn));
   const zurufe = Array.isArray(input.routinen) ? (input.routinen as unknown[]).map(String) : [String(input.routine ?? '')];
   const ids = zurufe.map(z => routineAusZuruf(z, alle)).filter((x): x is string => !!x);
-  if (!ids.length) return `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ') || '—'}${privatAn ? '' : ' (Privat-Routinen nur mit der Einwilligung „An die KI geben“)'}${planungAn ? '' : ' (Business-Routinen: Bereich „Aufgaben & Ziele“ ist für ZOE ausgeschaltet)'}`;
+  if (!ids.length) return fehlschlag('nicht_gefunden', `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ') || '—'}${privatAn ? '' : ' (Privat-Routinen nur mit der Einwilligung „An die KI geben“)'}${planungAn ? '' : ' (Business-Routinen: Bereich „Aufgaben & Ziele“ ist für ZOE ausgeschaltet)'}`);
   const erledigt = input.erledigt !== false;
   const datum = HEUTE_ODER(input.datum);
   await updateJson<Record<string, string[]>>(speicherFuer('health-log', wer), current => {
@@ -291,22 +301,22 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
  * (`gesundheitVerarbeitungErlaubt`, Art. 9), dann das Modul der Person (`moduleFuer`, lib/gesundheit/module-server.ts — ein
  * ausgeschaltetes Modul nimmt nichts an; nie schaltet ein ZOE-Eintrag ein Modul über den Altbestand „von selbst“ ein).
  */
-async function gesundheitsModulSperre(person: string, modul: 'haut' | 'serie'): Promise<string | null> {
+async function gesundheitsModulSperre(person: string, modul: 'haut' | 'serie'): Promise<WerkzeugErgebnis | null> {
   const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung');
-  if (!(await gesundheitVerarbeitungErlaubt(person))) return 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (System › Datenschutz). Nichts gespeichert.';
+  if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (System › Datenschutz). Nichts gespeichert.');
   const [{ moduleFuer }, { modulAusText }] = await Promise.all([import('@/lib/gesundheit/module-server'), import('@/lib/gesundheit/module')]);
-  if (!(await moduleFuer(person))[modul]) return `Abgelehnt: ${modulAusText(modul)} Nichts gespeichert.`;
+  if (!(await moduleFuer(person))[modul]) return fehlschlag('sperre', `Abgelehnt: ${modulAusText(modul)} Nichts gespeichert.`);
   return null;
 }
 
-async function hautEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function hautEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { saeubereHaut, hautTrend } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
-  if (!person) return KEINE_PERSON;
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const sperreHaut = await gesundheitsModulSperre(person, 'haut');
   if (sperreHaut) return sperreHaut;
   const e = saeubereHaut(input, new Date().toISOString());
-  if (!e) return 'Fehlgeschlagen: juckreiz (0–10) fehlt.';
+  if (!e) return fehlschlag('eingabe', 'Fehlgeschlagen: juckreiz (0–10) fehlt.');
   const datum = HEUTE_ODER(input.datum);
   const log = await updateJson<Record<string, typeof e>>(speicherFuer('haut', person), current => ({ ...(current ?? {}), [datum]: e }));
   const t = hautTrend(log, localDay());
@@ -315,13 +325,13 @@ async function hautEintrag(input: Record<string, unknown>, _o: string, person?: 
 }
 
 /** „Setz Tomaten und 500 g Lachs auf die Liste“ — Einkaufsliste des Haushalts (26.09.). */
-async function einkaufSetzen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON;
+async function einkaufSetzen(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!(await personImHaushaltDesInhabers(person))) return 'Fehlgeschlagen: die Einkaufsliste gehört zum Haushalt des Inhabers.';
+  if (!(await personImHaushaltDesInhabers(person))) return fehlschlag('rechte', 'Fehlgeschlagen: die Einkaufsliste gehört zum Haushalt des Inhabers.');
   const roh = Array.isArray(input.posten) ? input.posten : [input.posten];
   const posten = roh.map(x => String(x ?? '').trim()).filter(Boolean).slice(0, 20);
-  if (!posten.length) return 'Fehlgeschlagen: keine Posten genannt.';
+  if (!posten.length) return fehlschlag('eingabe', 'Fehlgeschlagen: keine Posten genannt.');
   const { sauberDatei, wendeAn, postenParsen, postenAus, aufDerListe } = await import('@/lib/ernaehrung/modell');
   const gesetzt: string[] = [], schonDa: string[] = [];
   await updateJson('ernaehrung', cur => {
@@ -338,11 +348,11 @@ async function einkaufSetzen(input: Record<string, unknown>, _o: string, person?
   return `${gesetzt.length ? `Auf der Einkaufsliste: ${gesetzt.join(', ')}.` : ''}${schonDa.length ? ` Stand schon drauf: ${schonDa.join(', ')}.` : ''}`.trim() || 'Nichts zu tun.';
 }
 
-async function journalEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON;
+async function journalEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   // Wie die Oberfläche (PATCH /api/state/journal): das Journal trägt Gesundheitsdaten (seit 09.10. auch den Tages-Check) — nur mit
   // Einwilligung (a) der Person (Bestandskonten ohne Erklärung wie bisher).
-  { const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung'); if (!(await gesundheitVerarbeitungErlaubt(person))) return 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (System › Datenschutz). Nichts gespeichert.'; }
+  { const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung'); if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (System › Datenschutz). Nichts gespeichert.'); }
   const { speicherFuer } = await import('./raum');
   const datum = HEUTE_ODER(input.datum);
   const t = (v: unknown, n = 800) => { const s = String(v ?? '').trim().slice(0, n); return s || undefined; };
@@ -361,10 +371,10 @@ async function journalEintrag(input: Record<string, unknown>, _o: string, person
   let check: Record<string, boolean | null> | null = null;
   if (input.check !== undefined && input.check !== null) {
     const c = checkEingangSaeubern(input.check);
-    if (!c.ok) return `Fehlgeschlagen: ${c.fehler}`;
+    if (!c.ok) return fehlschlag('eingabe', `Fehlgeschlagen: ${c.fehler}`);
     check = c.werte;
   }
-  if (!Object.keys(neu).length && !check) return 'Fehlgeschlagen: nichts zum Eintragen (gut, dankbar, hart, text, stimmung, energie, stress, check).';
+  if (!Object.keys(neu).length && !check) return fehlschlag('eingabe', 'Fehlgeschlagen: nichts zum Eintragen (gut, dankbar, hart, text, stimmung, energie, stress, check).');
   await updateJson<Record<string, Record<string, unknown>>>(speicherFuer('journal', person), current => {
     const log = current ?? {};
     const tag: Record<string, unknown> = { ...(log[datum] ?? {}), ...neu, at: new Date().toISOString() };
@@ -374,14 +384,14 @@ async function journalEintrag(input: Record<string, unknown>, _o: string, person
   return `Journal ${datum === localDay() ? 'heute' : datum}: ${[...Object.keys(neu), ...(check ? ['Tages-Check'] : [])].join(', ')} festgehalten.`;
 }
 
-async function streakEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function streakEintrag(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { saeubereStreak, streakStand } = await import('@/lib/gesundheit/eintraege');
   const { speicherFuer } = await import('./raum');
-  if (!person) return KEINE_PERSON;
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const sperreSerie = await gesundheitsModulSperre(person, 'serie');
   if (sperreSerie) return sperreSerie;
   const e = saeubereStreak({ ...input, craving: input.verlangen ?? input.craving }, new Date().toISOString());
-  if (!e) return 'Fehlgeschlagen: sauber (true/false) fehlt.';
+  if (!e) return fehlschlag('eingabe', 'Fehlgeschlagen: sauber (true/false) fehlt.');
   const datum = HEUTE_ODER(input.datum);
   const log = await updateJson<Record<string, typeof e>>(speicherFuer('streak', person), current => ({ ...(current ?? {}), [datum]: e }));
   const st = streakStand(log, localDay());
@@ -393,11 +403,11 @@ async function streakEintrag(input: Record<string, unknown>, _o: string, person?
 // 28.09. (Integritätsprüfung): kein Teilstring-Treffer mehr („Beispiel“ traf „Beispiel AG“ UND „Beispielbau“ und
 // schrieb in das erste) — nur ein exakter Name (ohne Rechtsform, `mandatTreffer`) oder die Kennung; sonst Rückfrage.
 // Geschrieben wird über den normalen Mandat-Weg (`wendeCrmAn`: Säuberung, Grenzen, Stand-Regeln).
-async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON;
+async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const name = String(input.name ?? '').trim().slice(0, 120);
   const mandatId = String(input.mandat_id ?? '').trim().slice(0, 80);
-  if (!name && !mandatId) return 'Fehlgeschlagen: name fehlt.';
+  if (!name && !mandatId) return fehlschlag('eingabe', 'Fehlgeschlagen: name fehlt.');
   const status = ({ aktiv: 'aktiv', gespraech: 'verhandlung', ruht: 'pausiert' } as const)[String(input.status) as 'aktiv' | 'gespraech' | 'ruht'];
   const cashflow = isFinite(Number(input.cashflow)) && Number(input.cashflow) > 0 ? Math.round(Number(input.cashflow)) : undefined;
   const schritt = input.naechsterSchritt ? String(input.naechsterSchritt).slice(0, 300) : undefined;
@@ -441,7 +451,7 @@ async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: 
     aktion = `${name} als Mandat angelegt (${status ?? 'verhandlung'})`;
     return r.bestand;
   });
-  if (fehler) return `Nicht ausgeführt: ${fehler}`;
+  if (fehler) return fehlschlag('eingabe', `Nicht ausgeführt: ${fehler}`);
   return `Erfasst: ${aktion}. Sichtbar unter Produkte & Mandate (links in der Leiste).`;
 }
 
@@ -451,15 +461,15 @@ async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: 
  * die Post einer anderen Person, nie ohne Person. Nur Kopf und Ausschnitt (KI-Grundsatz: Volltext nur beim Entwurf auf Klick).
  * Read-only — es wird nie geantwortet, verschoben oder gelöscht.
  */
-async function liesPostfach(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON;
+async function liesPostfach(input: Record<string, unknown>, _origin: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const suche = String(input.suche ?? '').trim().slice(0, 60);
   const anzahl = Math.min(20, Math.max(1, Number(input.anzahl) || (suche ? 5 : 20)));
   try {
     const { postfachFuerZoe } = await import('@/lib/inbox/zoe-sicht');
     return (await postfachFuerZoe(person, suche, anzahl)).text;
   } catch (err) {
-    return `Postfach nicht lesbar: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`;
+    return fehlschlag('voruebergehend', `Postfach nicht lesbar: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
   }
 }
 
@@ -468,8 +478,8 @@ async function liesPostfach(input: Record<string, unknown>, _origin: string, per
  * der Person gehört hat, direkt ablegen kann, statt sie auf /os/gesundheit zu
  * schicken. Nur was übergeben wurde, wird geschrieben.
  */
-async function setzeVitalwerte(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON;
+async function setzeVitalwerte(input: Record<string, unknown>, origin: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const zahl = (v: unknown, min: number, max: number) => {
     const n = Number(v);
     return isFinite(n) && n >= min && n <= max ? n : undefined;
@@ -482,7 +492,7 @@ async function setzeVitalwerte(input: Record<string, unknown>, origin: string, p
     ...(input.notiz ? { note: String(input.notiz).slice(0, 400) } : {}),
   };
   const gesetzt = Object.entries(vitals).filter(([, v]) => v !== undefined);
-  if (!gesetzt.length) return 'Fehlgeschlagen: keine gültigen Werte übergeben (recovery 0–100, schlaf 0–24, hrv, ruhepuls).';
+  if (!gesetzt.length) return fehlschlag('eingabe', 'Fehlgeschlagen: keine gültigen Werte übergeben (recovery 0–100, schlaf 0–24, hrv, ruhepuls).');
 
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(input.datum ?? '')) ? String(input.datum) : localDay();
   try {
@@ -493,7 +503,7 @@ async function setzeVitalwerte(input: Record<string, unknown>, origin: string, p
       signal: AbortSignal.timeout(30_000),
     });
     const d = await r.json();
-    if (!d.ok) return `Nicht gespeichert: ${String(d.error ?? '').slice(0, 200)}`;
+    if (!d.ok) return fehlschlag('intern', `Nicht gespeichert: ${String(d.error ?? '').slice(0, 200)}`);
     const text = [
       vitals.rec != null ? `Recovery ${vitals.rec}%` : null,
       vitals.sleep != null ? `Schlaf ${vitals.sleep} h` : null,
@@ -502,7 +512,7 @@ async function setzeVitalwerte(input: Record<string, unknown>, origin: string, p
     ].filter(Boolean).join(' · ');
     return `Eingetragen für ${datum}: ${text}. Steht jetzt im Gesundheits-Cockpit und in jeder Tagesform-Rechnung.`;
   } catch (err) {
-    return `Nicht gespeichert: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`;
+    return fehlschlag('intern', `Nicht gespeichert: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
   }
 }
 
@@ -524,9 +534,9 @@ async function meilensteinAus(v: unknown, person?: string): Promise<string | und
   return m?.id;
 }
 
-async function erstelleAufgabe(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
+async function erstelleAufgabe(input: Record<string, unknown>, origin: string, person?: string): Promise<WerkzeugRueckgabe> {
   const title = String(input.title ?? '').trim().slice(0, 300);
-  if (!title) return 'Fehlgeschlagen: title fehlt.';
+  if (!title) return fehlschlag('eingabe', 'Fehlgeschlagen: title fehlt.');
   const PRIOS = ['low', 'medium', 'high', 'critical'];
   // Für wen: eine Person des Haushalts (Speichername aus den Konten) oder „both“ — nie eine feste Liste im Code (09.10.).
   // Unbekannt → keine Angabe (die anlegende Person), wie bisher.
@@ -546,13 +556,13 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
     // Meilenstein (30.09.): Teil des Namens → die Aufgabe landet in seiner Liste (Space/Projekt/Liste vom Meilenstein).
     meilensteinId: await meilensteinAus(input.meilenstein, person),
   };
-  if (input.meilenstein !== undefined && input.meilenstein !== '' && !body.meilensteinId) return `Fehlgeschlagen: kein Meilenstein passt zu „${String(input.meilenstein).slice(0, 80)}“.`;
+  if (input.meilenstein !== undefined && input.meilenstein !== '' && !body.meilensteinId) return fehlschlag('nicht_gefunden', `Fehlgeschlagen: kein Meilenstein passt zu „${String(input.meilenstein).slice(0, 80)}“.`);
   // Unteraufgabe auf jeder Ebene (01.10.): `unter` = Titel/Pfad/Kennung der übergeordneten Aufgabe — gesucht nur in dem, was die
   // Person sehen darf („nur ich“). Den Ort erbt sie von dort; Tiefe/Kreis prüft der Schreibweg (bis AUFGABEN_EBENEN_MAX).
   let parentId: string | undefined;
   if (typeof input.unter === 'string' && input.unter.trim()) {
     const e = elternAusText((await ladeAufgabenSicht(person ?? null)).tasks, input.unter.slice(0, 300));
-    if ('fehler' in e) return `Aufgabe nicht angelegt: ${e.fehler}`;
+    if ('fehler' in e) return fehlschlag('eingabe', `Aufgabe nicht angelegt: ${e.fehler}`);
     parentId = e.id;
   }
   try {
@@ -563,12 +573,12 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
       signal: AbortSignal.timeout(30_000),
     });
     const d = await r.json();
-    if (!d.ok) return `Aufgabe nicht angelegt: ${String(d.error ?? '').slice(0, 160)}`;
+    if (!d.ok) return fehlschlag('intern', `Aufgabe nicht angelegt: ${String(d.error ?? '').slice(0, 160)}`);
     if (d.duplikat) return `Gab es schon: „${title}“ steht bereits offen im Board — keine zweite angelegt.`;
     // Rundgang 09.10. („Agenten live“): deutsch angeführt, Priorität und Datum in Worten — der Satz steht als Ergebnis unter Freigaben.
     return `Angelegt: „${title}“${parentId ? ' als Unteraufgabe' : ''}${body.priority !== 'medium' ? ` (${PRIO_NAME[String(body.priority)] ?? body.priority})` : ''}${body.dueDate ? `, fällig ${tagDe(body.dueDate)}` : ''}${body.einheit ? ` · ${body.einheit}` : ''}${body.meilensteinId ? ' · am Meilenstein' : ''}. Steht im Board.`;
   } catch (err) {
-    return `Aufgabe nicht angelegt: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`;
+    return fehlschlag('intern', `Aufgabe nicht angelegt: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`);
   }
 }
 
@@ -583,7 +593,7 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
  */
 /** Höchstzahl Aufträge je Aufruf von `starte_auftraege` — darüber wird abgelehnt, nie gekürzt. */
 export const AUFTRAEGE_MAX = 20;
-async function starteAuftraege(input: Record<string, unknown>, origin: string, person?: string): Promise<string> {
+async function starteAuftraege(input: Record<string, unknown>, origin: string, person?: string): Promise<WerkzeugRueckgabe> {
   const roh = Array.isArray(input.auftraege) ? input.auftraege : [];
   const auftraege = roh
     .map(x => (x && typeof x === 'object' ? x as Record<string, unknown> : null))
@@ -595,17 +605,17 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
       anlass: input.anlass ? String(input.anlass).slice(0, 200) : undefined,
     }))
     .filter(a => a.name);
-  if (!auftraege.length) return 'Fehlgeschlagen: keine Agenten angegeben.';
+  if (!auftraege.length) return fehlschlag('eingabe', 'Fehlgeschlagen: keine Agenten angegeben.');
   // Nie still kürzen (09.10., Takt-Fund — vorher `.slice(0, 20)`: der 21. Auftrag fiel weg, das Modell hielt ihn für eingereiht). Über der
   // Grenze wird NICHTS eingereiht, und das Modell erfährt es in einem Satz.
-  if (auftraege.length > AUFTRAEGE_MAX) return `Nicht eingereiht: höchstens ${AUFTRAEGE_MAX} Aufträge je Aufruf (genannt: ${auftraege.length}) — nichts gestartet. Bitte aufteilen und in Teilen schicken.`;
+  if (auftraege.length > AUFTRAEGE_MAX) return fehlschlag('grenze', `Nicht eingereiht: höchstens ${AUFTRAEGE_MAX} Aufträge je Aufruf (genannt: ${auftraege.length}) — nichts gestartet. Bitte aufteilen und in Teilen schicken.`);
   // Härtetest 09.10.: nur Fach-Agenten — Systemläufe des Takts (Morgenlauf, Löschfristen, Agenten-Lauf `faden` …) startet kein Gespräch;
   // sie liefen sonst auf Zuruf (oder auf einen eingeschleusten Satz) mit Modellkosten bzw. Wirkung außerhalb ihres Takts.
   const { SYSTEM_LAEUFE } = await import('./agenten');
   const system = auftraege.filter(a => (SYSTEM_LAEUFE as readonly string[]).includes(a.name));
-  if (system.length) return `Nicht eingereiht: ${system.map(a => a.name).join(', ')} ist kein Fach-Agent (läuft nur im Takt).`;
+  if (system.length) return fehlschlag('eingabe', `Nicht eingereiht: ${system.map(a => a.name).join(', ')} ist kein Fach-Agent (läuft nur im Takt).`);
   // Agenten, die die Kartei lesen, nur für Personen im Haushalt des Inhabers (28.09., K1).
-  if (auftraege.some(a => (CRM_AGENTEN as readonly string[]).includes(a.name)) && !(await crmWerkzeugErlaubt(person))) return KEIN_CRM;
+  if (auftraege.some(a => (CRM_AGENTEN as readonly string[]).includes(a.name)) && !(await crmWerkzeugErlaubt(person))) return fehlschlag('rechte', KEIN_CRM);
 
   try {
     const r = await fetch(`${origin}/api/zoe/auftraege`, {
@@ -615,13 +625,13 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
       signal: AbortSignal.timeout(20_000),
     });
     const d = await r.json();
-    if (!d.ok) return `Aufträge nicht eingereiht: ${String(d.error ?? '').slice(0, 160)}`;
+    if (!d.ok) return fehlschlag('intern', `Aufträge nicht eingereiht: ${String(d.error ?? '').slice(0, 160)}`);
     const namen = auftraege.map(a => a.name).join(', ');
     return `${d.angelegt} Aufträge laufen jetzt im Hintergrund (${namen})`
       + `${d.schonDa ? `, ${d.schonDa} liefen schon` : ''}. `
       + 'Sag der Person, dass sie parallel laufen und die Ergebnisse unter /os/stapel einlaufen — sie muss nicht warten.';
   } catch (err) {
-    return `Warteschlange nicht erreichbar: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`;
+    return fehlschlag('voruebergehend', `Warteschlange nicht erreichbar: ${err instanceof Error ? err.message.slice(0, 140) : 'Fehler'}`);
   }
 }
 
@@ -629,12 +639,12 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
  * Sich etwas merken. Entscheidung vom 06.09.: sofort, nicht auf
  * Nachfrage — dafür sichtbar in einer Liste, aus der die Person rauswerfen kann.
  */
-async function faktMerken(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
+async function faktMerken(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   const ARTEN = ['person', 'firma', 'vorliebe', 'entscheidung', 'termin', 'zahl', 'sonstiges'];
   const thema = String(input.thema ?? '').trim().slice(0, 120);
   const satz = String(input.satz ?? '').trim().slice(0, 500);
-  if (!thema || !satz) return 'Fehlgeschlagen: thema und satz nötig.';
-  if (!person) return KEINE_PERSON;
+  if (!thema || !satz) return fehlschlag('eingabe', 'Fehlgeschlagen: thema und satz nötig.');
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const { merke, GedaechtnisVoll } = await import('./gedaechtnis');
   const GEMEINSAM = ['gemeinsam', 'beide', 'both'];
   let neu: boolean;
@@ -650,7 +660,7 @@ async function faktMerken(input: Record<string, unknown>, _origin: string, perso
     }));
   } catch (e) {
     // Gedächtnis voll (09.10., Agenten-Datenschicht): nie still kürzen — der 413-Satz geht an das Modell („Fehlgeschlagen: …“, nichts gemerkt).
-    if (e instanceof GedaechtnisVoll) return e.message;
+    if (e instanceof GedaechtnisVoll) return fehlschlag('grenze', e.message);
     throw e;
   }
   return neu
@@ -659,9 +669,9 @@ async function faktMerken(input: Record<string, unknown>, _origin: string, perso
 }
 
 /** Business-Index lesen (25.09.) — nur für den Haushalt des Inhabers, wie das Cockpit. */
-async function businessIndex(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+async function businessIndex(input: Record<string, unknown>, _origin: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!person || !(await personImHaushaltDesInhabers(person))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
+  if (!person || !(await personImHaushaltDesInhabers(person))) return fehlschlag('rechte', 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.');
   const { businessText } = await import('@/lib/business/fuer-chef');
   const { scopeAus } = await import('@/lib/business/register');
   // Seit 05.10. gehört die Selbstständigkeit zu Privat — der Business-Index führt sie nicht (ehrlich sagen statt still „Gesamt“).
@@ -676,18 +686,18 @@ async function businessIndex(input: Record<string, unknown>, _origin: string, pe
  * Nennbeträgen), Vorgänger und laufenden Verträgen samt Stichtagen — nur Haushalt des Inhabers, nur lesen. Notizen und
  * Klausel-Texte gehen bewusst nicht mit (Cap-Table ist sensibel; ZOE nennt Zahlen, wie sie stehen).
  */
-async function gesellschaftenLesen(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+async function gesellschaftenLesen(input: Record<string, unknown>, _origin: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!person || !(await personImHaushaltDesInhabers(person))) return 'Kein Zugang: Das Gesellschafts-Register gehört zum Haushalt des Inhabers.';
+  if (!person || !(await personImHaushaltDesInhabers(person))) return fehlschlag('rechte', 'Kein Zugang: Das Gesellschafts-Register gehört zum Haushalt des Inhabers.');
   const { haushaltFuer } = await import('@/lib/finanzen/haushalt/zugriff');
   const h = await haushaltFuer(person);
-  if (!h) return 'Kein Zugang: Ohne Haushalt am Konto gibt es kein Register.';
+  if (!h) return fehlschlag('rechte', 'Kein Zugang: Ohne Haushalt am Konto gibt es kein Register.');
   const { ladeRegister } = await import('@/lib/gesellschaften/server');
   const m = await import('@/lib/gesellschaften/modell');
   const alle = m.alleGesellschaften(await ladeRegister(h.haushalt));
   const frage = typeof input.name === 'string' ? input.name.toLocaleLowerCase('de-DE').trim() : '';
   const liste = frage ? alle.filter(g => m.anzeigeName(g).toLocaleLowerCase('de-DE').includes(frage) || (g.firmierung ?? '').toLocaleLowerCase('de-DE').includes(frage)) : alle;
-  if (!liste.length) return `Keine Gesellschaft passt zu „${frage}“. Im Register: ${alle.map(m.anzeigeName).join(', ')}.`;
+  if (!liste.length) return fehlschlag('nicht_gefunden', `Keine Gesellschaft passt zu „${frage}“. Im Register: ${alle.map(m.anzeigeName).join(', ')}.`);
   const name = (b: { art: string; id: string }) => (b.art === 'gesellschaft' ? m.anzeigeName(alle.find(x => x.id === b.id) ?? { id: b.id as never }) : b.art === 'person' ? `Person ${b.id}` : b.art === 'firma' ? `CRM-Firma ${b.id}` : `CRM-Kontakt ${b.id}`);
   return liste.map(g => {
     const a = m.anteile(g);
@@ -705,28 +715,28 @@ async function gesellschaftenLesen(input: Record<string, unknown>, _origin: stri
 }
 
 /** Monatsabschluss eintragen (25.09.) — läuft nur nach Freigabe (Register: freigabe). */
-async function monatsabschlussErfassen(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+async function monatsabschlussErfassen(input: Record<string, unknown>, _origin: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!person || !(await personImHaushaltDesInhabers(person))) return 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.';
+  if (!person || !(await personImHaushaltDesInhabers(person))) return fehlschlag('rechte', 'Kein Zugang: Der Business-Index gehört zum Haushalt des Inhabers.');
   const { speichereAbschluss } = await import('@/lib/business/speicher');
   // Nur genannte Zahlen weitergeben — fehlende Felder bleiben, wie sie sind.
   const roh = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined && v !== null && v !== ''));
   const r = await speichereAbschluss(roh, person);
-  if (!r.ok) return `Nicht eingetragen: ${r.fehler}`;
+  if (!r.ok) return fehlschlag('eingabe', `Nicht eingetragen: ${r.fehler}`);
   return `Monatsabschluss ${finanzOrtName(r.eintrag.firma)} ${r.eintrag.monat} gespeichert — der Business-Index rechnet damit (/os/finanzen?s=business).`;
 }
 
 /** Gesundheits-Index lesen (26.09.): die eigene Person — oder eine, die ihre Gesundheit teilt. */
-async function gesundheitsIndex(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
-  if (!person) return KEINE_PERSON;
+async function gesundheitsIndex(input: Record<string, unknown>, _origin: string, person?: string): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const fuer = typeof input.person === 'string' && /^[a-z0-9-]{1,40}$/.test(input.person) ? input.person : person;
   // Art. 9 (05.10.): an die KI nur mit Einwilligung — eigene Werte mit (b); fremde nur, wenn die Person (b) UND (c)
   // „mit dem Partner teilen, auch an dessen ZOE“ erklärt hat und mit dir teilt. Vorher reichte „teilt“ allein.
   const { gesundheitFuerZoe } = await import('@/lib/datenschutz/gesundheit-einwilligung');
   if (!(await gesundheitFuerZoe(fuer, person))) {
     return fuer === person
-      ? 'Kein Zugang: Gesundheitsdaten gehen nur mit deiner Einwilligung „An die KI geben“ an ZOE (System › Datenschutz).'
-      : 'Kein Zugang: Diese Person gibt ihre Gesundheitsdaten nicht an deine ZOE frei.';
+      ? fehlschlag('sperre', 'Kein Zugang: Gesundheitsdaten gehen nur mit deiner Einwilligung „An die KI geben“ an ZOE (System › Datenschutz).')
+      : fehlschlag('rechte', 'Kein Zugang: Diese Person gibt ihre Gesundheitsdaten nicht an deine ZOE frei.');
   }
   const { gesundheitsIndexFuer } = await import('@/lib/gesundheit/speicher');
   const { schwellenText } = await import('@/lib/business/text');
@@ -735,7 +745,7 @@ async function gesundheitsIndex(input: Record<string, unknown>, _origin: string,
   const AMPEL = { gruen: 'grün', gelb: 'gelb', rot: 'rot', grau: 'fehlt' } as const;
   if (typeof input.kennzahl === 'string' && input.kennzahl) {
     const k = alle.find(x => x.id === input.kennzahl);
-    if (!k) return `Unbekannte Kennzahl „${input.kennzahl}“. Es gibt: ${alle.map(x => x.id).join(', ')}`;
+    if (!k) return fehlschlag('eingabe', `Unbekannte Kennzahl „${input.kennzahl}“. Es gibt: ${alle.map(x => x.id).join(', ')}`);
     if (!k.gemessen) return `${k.label}: noch nicht messbar — ${k.quelle}.${k.pflegen ? ` Schließen: ${k.pflegen.text} (${k.pflegen.href}).` : ''}`;
     const punkte = k.details.slice(0, 3).map(d => `${d.titel}${d.wert ? ` ${d.wert}` : ''}${d.unter ? ` (${d.unter})` : ''}`).join(' · ');
     return `${k.label}: ${k.anzeige} — ${AMPEL[k.ampel]} (${schwellenText(k)}). Formel: ${k.formel}. Gerechnet: ${k.quelle}.${punkte ? ` Dahinter: ${punkte}.` : ''}`;
@@ -746,22 +756,22 @@ async function gesundheitsIndex(input: Record<string, unknown>, _origin: string,
 }
 
 /** Idee, Fehler oder Wunsch an MAKE OS selbst — landet im Bauplan unter „Ideen“ (nie direkt in „Bereit“). */
-async function bauplanNotieren(input: Record<string, unknown>, _origin: string, person?: string): Promise<string> {
+async function bauplanNotieren(input: Record<string, unknown>, _origin: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { karteAnlegen } = await import('@/lib/bauplan/speicher');
   const { ARTEN } = await import('@/lib/bauplan/form');
   // Bilder und Seite kommen nur aus der Oberfläche, nie aus dem Gespräch.
-  if (!person) return KEINE_PERSON; // S1 #17: kein Rückfall auf eine feste Person (Regel 5)
+  if (!person) return fehlschlag('rechte', KEINE_PERSON); // S1 #17: kein Rückfall auf eine feste Person (Regel 5)
   const k = await karteAnlegen({ ...input, bilder: undefined, seite: undefined, quelle: 'ZOE' }, person);
-  if (!k) return 'Fehlgeschlagen: titel nötig.';
+  if (!k) return fehlschlag('eingabe', 'Fehlgeschlagen: titel nötig.');
   return `Im Bauplan notiert (Ideen): „${k.titel}“ — ${ARTEN.find(a => a.id === k.art)?.label ?? 'Verbesserung'}, Bereich ${k.bereich}.`;
 }
 
 /** Im eigenen Gedächtnis nachsehen, bevor geraten wird. */
-async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
+async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   const { lies } = await import('./gedaechtnis');
   const thema = input.thema ? String(input.thema).slice(0, 120) : undefined;
   // Nur der eigene und der gemeinsame Raum — aus dem der anderen Person nichts.
-  if (!person) return KEINE_PERSON;
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   // Im Gespräch eines Bereichs nur dessen Merksätze und die neutralen (09.10. spät, dieselbe Stelle wie der Prompt: `lies({ bereich })`).
   const treffer = await lies({ thema, anzahl: 30, raum: person, bereich: kontext?.bereich ?? null });
   if (!treffer.length) return thema ? `Nichts gemerkt zu „${thema}“.` : 'Das Gedächtnis ist noch leer.';
@@ -775,9 +785,9 @@ async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, 
 // Aufgelöst aus den Konten in lib/zoe/vault.ts (09.10.: keine feste Person mehr).
 const sichtFuer = async (person?: string) => { const { AGENT } = await import('./vault'); return person ? { person } : AGENT; };
 
-async function sucheWissen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function sucheWissen(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const frage = String(input.frage ?? '').trim().slice(0, 300);
-  if (!frage) return 'Fehlgeschlagen: frage fehlt.';
+  if (!frage) return fehlschlag('eingabe', 'Fehlgeschlagen: frage fehlt.');
   const { suche } = await import('./vault');
   const { treffer, durchsucht } = await suche(frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)), await sichtFuer(person));
   if (!treffer.length) return `Nichts gefunden zu „${frage}“ (${durchsucht} Notizen durchsucht).`;
@@ -787,25 +797,25 @@ async function sucheWissen(input: Record<string, unknown>, _o: string, person?: 
   + '\n\nNenne die Quelle, aus der du zitierst. 🔒 PRIVAT heißt: nur im Gespräch mit der Person selbst verwenden — nie in Mails, Entwürfe, Briefings oder Texte nach außen.';
 }
 
-async function liesNotiz(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function liesNotiz(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const id = String(input.notiz ?? '').trim();
-  if (!id) return 'Fehlgeschlagen: notiz fehlt.';
+  if (!id) return fehlschlag('eingabe', 'Fehlgeschlagen: notiz fehlt.');
   const { notiz } = await import('./vault');
   const d = await notiz(id, 12_000, await sichtFuer(person));
-  if (!d.ok) return `Notiz nicht lesbar: ${d.fehler}`;
+  if (!d.ok) return fehlschlag('voruebergehend', `Notiz nicht lesbar: ${d.fehler}`);
   return `NOTIZ ${d.pfad} — ${d.titel}${d.scope === 'privat' ? ' · 🔒 PRIVAT' : ''}${d.stand ? ` · Stand ${d.stand}` : ''}${d.oben ? `\nGÜLTIGER STAND (oberster 🔴-Block):\n${d.oben}\n───` : ''}\n\n${d.text}`;
 }
 
-async function notizAnlegen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function notizAnlegen(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { legeAn } = await import('./vault');
   const d = await legeAn(String(input.titel ?? ''), String(input.text ?? ''), { person, scope: input.privat === true ? 'privat' : 'intern' });
-  return d.ok ? `Protokoll angelegt: ${d.pfad} — steht in deinem Obsidian-Brain.` : `Nicht angelegt: ${d.fehler}`;
+  return d.ok ? `Protokoll angelegt: ${d.pfad} — steht in deinem Obsidian-Brain.` : fehlschlag('intern', `Nicht angelegt: ${d.fehler}`);
 }
 
-async function notizErgaenzen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
+async function notizErgaenzen(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { haengeAn } = await import('./vault');
   const d = await haengeAn(String(input.notiz ?? ''), String(input.text ?? ''), { titel: input.titel ? String(input.titel) : undefined, person });
-  return d.ok ? `Ergänzt: ${d.pfad} — als datierter Block angehängt, nichts überschrieben.` : `Nicht ergänzt: ${d.fehler}`;
+  return d.ok ? `Ergänzt: ${d.pfad} — als datierter Block angehängt, nichts überschrieben.` : fehlschlag('intern', `Nicht ergänzt: ${d.fehler}`);
 }
 
 
@@ -843,17 +853,17 @@ async function kontaktFinden(hinweis: string) {
  * Idempotenz aus. Name, Eingabe und Stufe (freigabepflichtig) bleiben; die Vorschlags-Kennung der Freigabe macht eine Wiederholung
  * wirkungslos und kennzeichnet den Eintrag als „aus ZOE, freigegeben von …“.
  */
-async function notiereKontakt(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
-  if (!person) return KEINE_PERSON;
+async function notiereKontakt(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
-  if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
+  if (!hinweis) return fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).');
   const { zoeNotiz } = await import('@/lib/crm/erfassen');
   const e = zoeNotiz(input, localDay());
-  if (typeof e === 'string') return e;
+  if (typeof e === 'string') return fehlschlag('eingabe', e);
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}“ gefunden — erst mit suche_kontakt nachsehen.`;
+  if (!treffer) return fehlschlag('nicht_gefunden', `Kein Kontakt zu „${hinweis}“ gefunden — erst mit suche_kontakt nachsehen.`);
   const { STUFEN, STUFE_LABEL, anzeigename } = await import('@/lib/make-one/crm');
-  if (mehrere) return `Mehrdeutig — meinst du ${mehrere.map(k => `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''} [${k.id}]`).join(' oder ')}? Bitte mit der ID erneut.`;
+  if (mehrere) return fehlschlag('eingabe', `Mehrdeutig — meinst du ${mehrere.map(k => `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''} [${k.id}]`).join(' oder ')}? Bitte mit der ID erneut.`);
   const stufe = STUFEN.includes(input.stufe as never) ? String(input.stufe) : undefined;
   const anlass = String(input.anlass ?? '').replace(/\s+/g, ' ').trim().slice(0, 600);
   const vorschlagId = kontext?.vorschlagId ?? neueKennung('v');
@@ -861,12 +871,12 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
     id: treffer.id, art: e.art, text: e.text, ergebnis: e.ergebnis, notiz: e.notiz, stufe, wiedervorlage: e.wiedervorlage, naechster: e.naechster,
     ...(anlass ? { anlass } : {}), vorschlagId,
   }, person);
-  if (r.json.anlassPflicht) return 'Nicht notiert: Anruf bei gelber Telefon-Ampel nur mit konkretem Anlass aus der Beziehung (mutmaßliche Einwilligung, § 7 Abs. 2 UWG) — bitte den Anlass nennen (anlass).';
-  if (r.json.eingeschraenkt) return 'Nicht notiert: die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).';
-  if (innenNein(r)) return `Fehlgeschlagen: ${innenFehler(r)}`;
+  if (r.json.anlassPflicht) return fehlschlag('sperre', 'Nicht notiert: Anruf bei gelber Telefon-Ampel nur mit konkretem Anlass aus der Beziehung (mutmaßliche Einwilligung, § 7 Abs. 2 UWG) — bitte den Anlass nennen (anlass).');
+  if (r.json.eingeschraenkt) return fehlschlag('sperre', 'Nicht notiert: die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).');
+  if (innenNein(r)) return fehlschlag(innenKlasse(r), `Fehlgeschlagen: ${innenFehler(r)}`);
   if (r.json.schonDa) return `Stand schon da: ${anzeigename(treffer)} · ${e.art} — derselbe Vorschlag, nichts doppelt notiert.`;
   const n = r.json.kontakt as import('@/lib/make-one/crm').Kontakt | undefined;
-  if (!n) return 'Fehlgeschlagen: Kontakt beim Schreiben nicht mehr gefunden.';
+  if (!n) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Kontakt beim Schreiben nicht mehr gefunden.');
   const teile = [
     `Notiert: ${anzeigename(n)} · ${e.art}${e.ergebnis ? ` · ${e.ergebnis}` : ''}`,
     e.notiz?.bedarf ? `Bedarf: ${e.notiz.bedarf}` : '',
@@ -876,16 +886,16 @@ async function notiereKontakt(input: Record<string, unknown>, _origin: string, p
   return `${teile.join(' · ')}.${typeof r.json.hinweis === 'string' && r.json.hinweis ? ` ${r.json.hinweis}` : ''}`;
 }
 
-async function entwurfAnsprache(input: Record<string, unknown>, _o?: string, person?: string): Promise<string> {
+async function entwurfAnsprache(input: Record<string, unknown>, _o?: string, person?: string): Promise<WerkzeugRueckgabe> {
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
-  if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
+  if (!hinweis) return fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).');
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}“ gefunden.`;
+  if (!treffer) return fehlschlag('nicht_gefunden', `Kein Kontakt zu „${hinweis}“ gefunden.`);
   const { anzeigename } = await import('@/lib/make-one/crm');
-  if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
+  if (mehrere) return fehlschlag('eingabe', `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`);
   const { entwurfFuer } = await import('@/lib/ansprache');
   const r = await entwurfFuer(treffer, { lauf: 'gespraech', person: person ?? null, kategorien: ['crm'], anzahl: 1 });
-  if (!r.ok) return `Entwurf fehlgeschlagen: ${r.fehler}`;
+  if (!r.ok) return fehlschlag('intern', `Entwurf fehlgeschlagen: ${r.fehler}`);
   const { ampel } = await import('@/lib/crm/recht');
   const wege = ampel(treffer).map(c => `${c.kanal} ${c.farbe === 'gruen' ? 'zulässig' : c.farbe === 'gelb' ? 'nur persönlich' : 'NICHT zulässig'}`).join(', ') || 'kein Kanal hinterlegt';
   return `ANSPRACHE-ENTWURF für ${anzeigename(treffer)}${treffer.firma ? ` (${treffer.firma})` : ''} — Kanäle: ${wege}\n\nBETREFF: ${r.entwurf.betreff}\n\nE-MAIL:\n${r.entwurf.email}\n\nLINKEDIN:\n${r.entwurf.linkedin}\n\n${r.entwurf.hinweis}\nNichts wurde versendet. Wenn die Person es geschickt hat, mit notiere_kontakt (art: mail oder linkedin) festhalten.`;
@@ -894,17 +904,17 @@ async function entwurfAnsprache(input: Record<string, unknown>, _o?: string, per
 // ─── Markttraktion (24.09. nachts): Chance anlegen, Lage abfragen ─────────────────────
 
 /** Kontakt an eine andere Person des Teams übergeben (25.09.) — Verlauf, nächster Schritt, Aufgabe. Nichts wird versendet. */
-async function kontaktUebergeben(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
-  if (!person) return 'Nicht verfügbar: Übergeben geht nur im Gespräch mit einer Person des Haushalts.';
+async function kontaktUebergeben(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', 'Nicht verfügbar: Übergeben geht nur im Gespräch mit einer Person des Haushalts.');
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
-  if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
+  if (!hinweis) return fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).');
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}“ — erst mit suche_kontakt nachsehen.`;
+  if (!treffer) return fehlschlag('nicht_gefunden', `Kein Kontakt zu „${hinweis}“ — erst mit suche_kontakt nachsehen.`);
   const { anzeigename } = await import('@/lib/make-one/crm');
-  if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
+  if (mehrere) return fehlschlag('eingabe', `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`);
   const { uebergeben } = await import('@/lib/crm/uebergabe');
   const r = await uebergeben({ art: 'kontakt', id: treffer.id, an: String(input.an ?? ''), notiz: input.notiz ? String(input.notiz) : undefined, frist: input.frist ? String(input.frist) : undefined }, person, { art: 'zoe', person }, { quelle: 'zoe', ...(kontext?.freigegebenVon ? { freigegebenVon: kontext.freigegebenVon } : {}) });
-  return r.ok ? `Übergeben: ${r.text}.` : `Fehlgeschlagen: ${r.fehler}`;
+  return r.ok ? `Übergeben: ${r.text}.` : fehlschlag('intern', `Fehlgeschlagen: ${r.fehler}`);
 }
 
 /**
@@ -913,21 +923,21 @@ async function kontaktUebergeben(input: Record<string, unknown>, _o: string, per
  * nächsten Schritt, kein zweiter offener Deal ohne Absicht, Lead wird SQL. Feste Kennung aus der Vorschlags-Kennung — eine Wiederholung
  * derselben Freigabe legt keinen zweiten Deal an.
  */
-async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<string> {
-  if (!person) return 'Fehlgeschlagen: CRM-Werkzeuge nur im Auftrag einer Person im Haushalt (Regel 5).';
+async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
+  if (!person) return fehlschlag('rechte', 'Fehlgeschlagen: CRM-Werkzeuge nur im Auftrag einer Person im Haushalt (Regel 5).');
   const hinweis = String(input.kontakt ?? '').trim().slice(0, 160);
-  if (!hinweis) return 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).';
+  if (!hinweis) return fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt (Name, Firma oder ID).');
   const { treffer, mehrere } = await kontaktFinden(hinweis);
-  if (!treffer) return `Kein Kontakt zu „${hinweis}“ — erst mit suche_kontakt nachsehen oder in der Markttraktion › Kontakte anlegen.`;
+  if (!treffer) return fehlschlag('nicht_gefunden', `Kein Kontakt zu „${hinweis}“ — erst mit suche_kontakt nachsehen oder in der Markttraktion › Kontakte anlegen.`);
   const { anzeigename } = await import('@/lib/make-one/crm');
-  if (mehrere) return `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`;
+  if (mehrere) return fehlschlag('eingabe', `Mehrdeutig — ${mehrere.map(k => `${anzeigename(k)} [${k.id}]`).join(' oder ')}? Bitte mit der ID.`);
   const { STUFEN } = await import('@/lib/crm/pipeline');
   const stufe = STUFEN.some(x => x.id === input.stufe && x.offen) ? String(input.stufe) : undefined;
   const betrag = Number(input.wert_monat) > 0 ? Math.round(Number(input.wert_monat)) : Number(input.wert_einmalig) > 0 ? Math.round(Number(input.wert_einmalig)) : 0;
   const basis = Number(input.wert_monat) > 0 ? 'monat' : 'einmalig';
   const schritt = String(input.naechster_schritt ?? '').trim().slice(0, 300);
   const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(input.faellig ?? '')) ? String(input.faellig) : undefined;
-  if (!schritt || !datum) return 'Fehlgeschlagen: naechster_schritt und faellig (YYYY-MM-DD) sind Pflicht — ohne nächsten Schritt verliert sich der Deal.';
+  if (!schritt || !datum) return fehlschlag('eingabe', 'Fehlgeschlagen: naechster_schritt und faellig (YYYY-MM-DD) sind Pflicht — ohne nächsten Schritt verliert sich der Deal.');
   const id = kontext?.vorschlagId ? ausVorschlag('ch', kontext.vorschlagId) : undefined;
   if (id && ((await loadJson<{ chancen?: { id: string }[] }>('crm'))?.chancen ?? []).some(c => c.id === id)) return 'Deal stand schon da (derselbe Vorschlag) — nichts doppelt angelegt.';
   const r = await innen('/api/crm/deal', 'POST', {
@@ -937,7 +947,7 @@ async function chanceAnlegen(input: Record<string, unknown>, _o: string, person?
   if (innenNein(r)) {
     const offen = r.json.offen as { id?: string } | undefined;
     if (id && offen?.id === id) return 'Deal stand schon da (derselbe Vorschlag) — nichts doppelt angelegt.';
-    return `Fehlgeschlagen: ${innenFehler(r)}${offen?.id ? ` (offener Deal: ${offen.id})` : ''}`;
+    return fehlschlag(innenKlasse(r), `Fehlgeschlagen: ${innenFehler(r)}${offen?.id ? ` (offener Deal: ${offen.id})` : ''}`);
   }
   const c = r.json.chance as { titel?: string; stufe?: string } | undefined;
   // Quelle aus der Herkunft des Leads (08.10., 2.5), SQL nur bei erfüllten Kriterien (2.3) — die Antwort der Route sagt es.
@@ -957,47 +967,47 @@ async function haushaltDer(person?: string) {
 }
 const KEIN_HAUSHALT = 'Nicht verfügbar: Die Haushaltsfinanzen gibt es nur im Gespräch mit einer Person des Haushalts — nicht im Hintergrund und nicht für andere Konten.';
 
-async function haushaltStand(_i: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+async function haushaltStand(_i: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+  const z = await haushaltDer(person); if (!z) return fehlschlag('rechte', KEIN_HAUSHALT);
   const { ladeHaushalt } = await import('@/lib/finanzen/haushalt/speicher');
   const { standText } = await import('@/lib/finanzen/haushalt/zoe');
   return standText(await ladeHaushalt(z.haushalt));
 }
 
-async function haushaltBuchungen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+async function haushaltBuchungen(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+  const z = await haushaltDer(person); if (!z) return fehlschlag('rechte', KEIN_HAUSHALT);
   const { ladeHaushalt } = await import('@/lib/finanzen/haushalt/speicher');
   const { buchungenSuchen } = await import('@/lib/finanzen/haushalt/zoe');
   return buchungenSuchen(await ladeHaushalt(z.haushalt), { suche: input.suche ? String(input.suche) : undefined, monat: input.monat ? String(input.monat) : undefined, kategorie: input.kategorie ? String(input.kategorie) : undefined });
 }
 
-async function haushaltZuordnen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+async function haushaltZuordnen(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+  const z = await haushaltDer(person); if (!z) return fehlschlag('rechte', KEIN_HAUSHALT);
   const { ladeHaushalt } = await import('@/lib/finanzen/haushalt/speicher');
   const { regelLernen } = await import('@/lib/finanzen/haushalt/aktionen');
   const { normal } = await import('@/lib/finanzen/haushalt/regeln');
   const h = await ladeHaushalt(z.haushalt);
   const kat = h.stamm.kategorien.find(k => normal(k.name) === normal(String(input.kategorie ?? '')));
-  if (!kat) return `Fehlgeschlagen: Kategorie „${String(input.kategorie ?? '')}“ gibt es nicht. Vorhanden: ${h.stamm.kategorien.map(k => k.name).join(', ')}.`;
+  if (!kat) return fehlschlag('nicht_gefunden', `Fehlgeschlagen: Kategorie „${String(input.kategorie ?? '')}“ gibt es nicht. Vorhanden: ${h.stamm.kategorien.map(k => k.name).join(', ')}.`);
   const e = await regelLernen(z.haushalt, { muster: String(input.muster ?? ''), kategorie_id: kat.id, rueckwirkend: input.rueckwirkend !== false, ganzes_wort: true }, false);
   return `Gemerkt: „${String(input.muster)}“ → ${kat.name}. ${e.geaendert} Buchung${e.geaendert === 1 ? '' : 'en'} zugeordnet.`;
 }
 
-async function haushaltRechnungBezahlt(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+async function haushaltRechnungBezahlt(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+  const z = await haushaltDer(person); if (!z) return fehlschlag('rechte', KEIN_HAUSHALT);
   const { ladeHaushalt, patchen } = await import('@/lib/finanzen/haushalt/speicher');
   const { normal } = await import('@/lib/finanzen/haushalt/regeln');
   const { heuteBerlin } = await import('@/lib/finanzen/haushalt/monat');
   const h = await ladeHaushalt(z.haushalt);
   const s = normal(String(input.rechnung ?? ''));
   const r = h.belege.filter(b => b.art === 'rechnung' && !b.erledigt && (normal(b.empfaenger ?? '').includes(s) || normal(b.bezeichnung).includes(s)));
-  if (r.length !== 1) return r.length ? `Nicht eindeutig: ${r.map(b => b.empfaenger || b.bezeichnung).join(', ')}.` : `Keine offene Rechnung zu „${String(input.rechnung ?? '')}“.`;
+  if (r.length !== 1) return r.length ? fehlschlag('eingabe', `Nicht eindeutig: ${r.map(b => b.empfaenger || b.bezeichnung).join(', ')}.`) : fehlschlag('nicht_gefunden', `Keine offene Rechnung zu „${String(input.rechnung ?? '')}“.`);
   const e = await patchen(z.haushalt, 'belege', [{ op: 'upsert', stand: r[0].stand, eintrag: { ...r[0], erledigt: true, bezahlt_am: heuteBerlin() } }]);
-  return e.ok ? `Als bezahlt vermerkt: ${r[0].empfaenger || r[0].bezeichnung}.` : `Fehlgeschlagen: ${e.fehler}`;
+  return e.ok ? `Als bezahlt vermerkt: ${r[0].empfaenger || r[0].bezeichnung}.` : fehlschlag('intern', `Fehlgeschlagen: ${e.fehler}`);
 }
 
-async function haushaltRechnungErfassen(input: Record<string, unknown>, _o: string, person?: string): Promise<string> {
-  const z = await haushaltDer(person); if (!z) return KEIN_HAUSHALT;
+async function haushaltRechnungErfassen(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+  const z = await haushaltDer(person); if (!z) return fehlschlag('rechte', KEIN_HAUSHALT);
   const { patchen } = await import('@/lib/finanzen/haushalt/speicher');
   const betrag = Number(input.betrag);
   const e = await patchen(z.haushalt, 'belege', [{ op: 'upsert', eintrag: {
@@ -1006,7 +1016,7 @@ async function haushaltRechnungErfassen(input: Record<string, unknown>, _o: stri
     // 08.10. spät: Vorname aus dem Konto der auslösenden Person (vorher: wer nicht die zweite Person war, hieß wie die erste).
     verursacher: await vornameVon(person ?? z.person), einheit: 'privat', erledigt: false,
   } }]);
-  return e.ok ? `Offene Rechnung erfasst: ${String(input.an ?? '')}${Number.isFinite(betrag) ? ` über ${eurW(betrag)}` : ''}.` : `Fehlgeschlagen: ${e.fehler}`;
+  return e.ok ? `Offene Rechnung erfasst: ${String(input.an ?? '')}${Number.isFinite(betrag) ? ` über ${eurW(betrag)}` : ''}.` : fehlschlag('intern', `Fehlgeschlagen: ${e.fehler}`);
 }
 
 // ─── Markttraktion nur im Haushalt des Inhabers (28.09., Integritätsprüfung K1) ─────
@@ -1055,10 +1065,10 @@ export interface WerkzeugKontext {
    */
   bereich?: 'privat' | 'business';
 }
-type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<string>;
+type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<WerkzeugRueckgabe>;
 const nurImHaushalt = (lauf: Lauf): Lauf => async (input, origin, person, kontext) => {
-  if (!person) return KEINE_PERSON;
-  if (!(await crmWerkzeugErlaubt(person))) return KEIN_CRM;
+  if (!person) return fehlschlag('rechte', KEINE_PERSON);
+  if (!(await crmWerkzeugErlaubt(person))) return fehlschlag('rechte', KEIN_CRM);
   return lauf(input, origin, person, kontext);
 };
 

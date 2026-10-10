@@ -1,5 +1,6 @@
 // ─── ZOE / Gesundheits-Agent: Trainingsplan lesen und VORSCHLAGEN — nur mit Einwilligung (b), gespeichert erst nach Freigabe (09.10.) ──
 // Erfundene Personen und Pläne, eigener Datenordner; kein Modellaufruf (die Werkzeuge rechnen ohne KI).
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { rmSync } from 'node:fs';
 
@@ -65,13 +66,13 @@ describe('Register und Tor', () => {
 
 describe('trainingsplan_lesen', () => {
   it('ohne Person und ohne Einwilligung (b): nichts', async () => {
-    expect(await W.WERKZEUGE.trainingsplan_lesen.lauf({}, 'http://test', undefined)).toMatch(/^Nicht ausgeführt/);
-    expect(await W.WERKZEUGE.trainingsplan_lesen.lauf({}, 'http://test', 'olaf')).toMatch(/Einwilligung/);
+    expect(meldungVon(await W.WERKZEUGE.trainingsplan_lesen.lauf({}, 'http://test', undefined))).toMatch(/^Nicht ausgeführt/);
+    expect(meldungVon(await W.WERKZEUGE.trainingsplan_lesen.lauf({}, 'http://test', 'olaf'))).toMatch(/Einwilligung/);
     const ueberTor = await A.fuehreAus('trainingsplan_lesen', {}, 'http://test', { person: 'olaf' });
     expect(ueberTor.ok).toBe(false);
   });
   it('mit (b): heute geplant mit dem Hinweis der Tagesform-Regel, Woche, Wettkampf mit Prognose — keine Notizen', async () => {
-    const t = await W.WERKZEUGE.trainingsplan_lesen.lauf({}, 'http://test', 'pia');
+    const t = meldungVon(await W.WERKZEUGE.trainingsplan_lesen.lauf({}, 'http://test', 'pia'));
     expect(t).toMatch(/Recovery 35 %/);
     expect(t).toMatch(/Heute geplant: Lauf · Intervall · 45 min — offen — Regel: Recovery rot/);
     expect(t).toMatch(/Halbmarathon Prüfstadt in 8 Tagen/);
@@ -93,9 +94,9 @@ describe('trainingsplan_vorschlagen — ZOE speichert nie selbst', () => {
     expect(s!.planVorlagen).toBeUndefined();
   });
   it('ohne Freigabe direkt aufgerufen: nichts; ohne Person: nichts', async () => {
-    expect(await W.WERKZEUGE.trainingsplan_vorschlagen.lauf(VORSCHLAG, 'http://test', 'pia')).toMatch(/^Nicht ausgeführt/);
-    expect(await W.WERKZEUGE.trainingsplan_vorschlagen.lauf(VORSCHLAG, 'http://test', undefined)).toMatch(/^Nicht ausgeführt/);
-    expect(await W.WERKZEUGE.trainingsplan_vorschlagen.lauf(VORSCHLAG, 'http://test', 'pia', { freigegebenVon: 'olaf' })).toMatch(/^Nicht ausgeführt/);
+    expect(meldungVon(await W.WERKZEUGE.trainingsplan_vorschlagen.lauf(VORSCHLAG, 'http://test', 'pia'))).toMatch(/^Nicht ausgeführt/);
+    expect(meldungVon(await W.WERKZEUGE.trainingsplan_vorschlagen.lauf(VORSCHLAG, 'http://test', undefined))).toMatch(/^Nicht ausgeführt/);
+    expect(meldungVon(await W.WERKZEUGE.trainingsplan_vorschlagen.lauf(VORSCHLAG, 'http://test', 'pia', { freigegebenVon: 'olaf' }))).toMatch(/^Nicht ausgeführt/);
   });
   it('nach Freigabe der Person: EIGENE Vorlage (nicht aktiviert), gekennzeichnet; dieselbe Freigabe zweimal → eine', async () => {
     const r = await A.fuehreAus('trainingsplan_vorschlagen', VORSCHLAG, 'http://test', { person: 'pia', erzwingen: true, freigegebenVon: 'pia', vorschlagId: 'v-test-1' });
@@ -116,6 +117,6 @@ describe('trainingsplan_vorschlagen — ZOE speichert nie selbst', () => {
   });
   it('mehr als vier Einheiten an einem Tag → abgelehnt', async () => {
     const zuViel = { ...VORSCHLAG, tage: { mo: Array.from({ length: 5 }, () => ({ sparte: 'lauf', dauerMin: 10 })) } };
-    expect(await W.WERKZEUGE.trainingsplan_vorschlagen.lauf(zuViel, 'http://test', 'pia', { freigegebenVon: 'pia', vorschlagId: 'v-x' })).toMatch(/Höchstens 4/);
+    expect(meldungVon(await W.WERKZEUGE.trainingsplan_vorschlagen.lauf(zuViel, 'http://test', 'pia', { freigegebenVon: 'pia', vorschlagId: 'v-x' }))).toMatch(/Höchstens 4/);
   });
 });

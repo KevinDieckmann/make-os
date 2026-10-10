@@ -15,6 +15,7 @@ import { imHintergrund } from '@/lib/datenschutz/ki-lauf';
 import { kiSchalterFuer } from '@/lib/datenschutz/ki-einstellungen';
 import { KI_LAEUFE } from '@/lib/zoe/takt';
 import { mitSpurBezug } from '@/lib/agenten/spur-server';
+import { wiederholbar } from '@/lib/werkzeuge/vertrag';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,7 +77,9 @@ export async function POST(req: Request) {
     // Arbeiter ruft hier an, nicht die Person. Sonst liefe alles, was nachts
     // passiert, unter einer Dienst-Identität.
     const lauf = await mitSpurBezug(a.spur, a.person ?? null, () => fuehreAus(a.name, a.eingabe, origin, { anlass: a.anlass, person: a.person, hintergrund: true }));
-    await melde(a.id, token, lauf.ok ? 'fertig' : 'fehler', lauf.text);
+    // Werkzeug-Verträge (V3): nur ein vorübergehender (bzw. unklarer) Fehler lohnt eine Wiederholung — eine ungültige Eingabe, fehlende Rechte, eine
+    // Sperre oder „nicht gefunden“ würden dreimal genauso scheitern (vorher wiederholte die Warteschlange jeden Fehlschlag).
+    await melde(a.id, token, lauf.ok ? 'fertig' : 'fehler', lauf.text, !lauf.ok && !wiederholbar(lauf.ergebnis.klasse));
     return NextResponse.json({ ok: lauf.ok, ergebnis: lauf.text, gestapelt: lauf.gestapelt });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

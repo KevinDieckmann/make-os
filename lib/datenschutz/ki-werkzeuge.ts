@@ -6,6 +6,7 @@
 
 import type { KiKategorie, KiSchalter } from './ki-einstellungen';
 import { istBereich, KI_BEREICH_LABEL } from './ki-einstellungen';
+import { KATEGORIE_ABGELEITET } from '@/lib/werkzeuge/einordnung';
 
 /** Werkzeug-Gruppe (lib/zoe/register.ts) → Datenkategorie. Gruppen ohne Eintrag lesen keine Bereichsdaten. */
 export const GRUPPE_KATEGORIE: Record<string, KiKategorie> = {
@@ -21,22 +22,12 @@ export const GRUPPE_KATEGORIE: Record<string, KiKategorie> = {
 };
 
 /**
- * Ausnahmen je Werkzeug: die Einkaufsliste steht in der Gruppe „gesundheit“, ist aber keine Gesundheitsangabe.
- * `an_head`/`head_fragen` (Gruppe „agenten“, Paket 4a): keine feste Kategorie — der Head läuft mit SEINEN aktiven Kategorien durch das
- * KI-Tor (Schalter, Einwilligung), und was `head_fragen` zurückbringt, trägt ZOE mit genau diesen Kategorien weiter
- * (lib/agenten/zoe-heads.ts `headFrageKategorien`). Ein ausgeschalteter Bereich bleibt damit auch über einen Head zu.
- * Paket 4c: die Medien-Werkzeuge des Agenten-Bereichs (lib/agenten/medien-werkzeuge.ts, nicht im ZOE-Register) — `bild_bearbeiten` schickt die
- * PIXEL eines Fotos hinaus (Kategorie `medien`, Schalter „Bilder an die KI“); suchen, erzeugen (aus Text) und Vorschläge lesen keine Bildinhalte.
+ * Ausnahmen je Werkzeug zur Kategorie der Gruppe (`null` = keine Kategorie) — z. B. die Einkaufsliste (Gruppe „gesundheit“, aber keine
+ * Gesundheitsangabe), `an_head`/`head_fragen` (der Head läuft mit SEINEN aktiven Kategorien durch das KI-Tor), `hake_routine` (neutral, prüft je
+ * Routine selbst) und die Medien-Werkzeuge (`bild_bearbeiten` schickt die PIXEL eines Fotos hinaus → `medien`). Seit V3 (10.10.) ABGELEITET aus der
+ * einen Einordnung je Werkzeug (lib/werkzeuge/einordnung.ts, Feld `kategorie`) — dort steht je Werkzeug die Begründung.
  */
-export const WERKZEUG_KATEGORIE: Record<string, KiKategorie | null> = {
-  einkauf_setzen: null, an_head: null, head_fragen: null,
-  // Routinen abhaken (09.10., Funde klein): neutral statt „Gesundheit“ — eine Business-Routine braucht keine Gesundheits-Einwilligung. Das
-  // Werkzeug prüft je Routine selbst (lib/zoe/werkzeuge.ts `hakeRoutine`): Einwilligung (a) zum Schreiben (`health-log` ist Art. 9, wie in der
-  // Oberfläche), Business-Routinen nur mit eingeschaltetem Bereich „Aufgaben & Ziele“, Privat-Routinen nur mit (b) „an die KI“ (ihre Namen
-  // gehen an das Modell). Neutral, damit der Gesundheits-Head (Kategorie Gesundheit) das Werkzeug behält; kimmi nennt die Kategorien im Protokoll.
-  hake_routine: null,
-  medien_suchen: null, medien_vorschlagen: null, bild_erzeugen: null, video_starten: null, bild_bearbeiten: 'medien',
-};
+export const WERKZEUG_KATEGORIE: Record<string, KiKategorie | null> = { ...KATEGORIE_ABGELEITET };
 
 export const kategorieVonGruppe = (gruppe: string): KiKategorie | null => GRUPPE_KATEGORIE[gruppe] ?? null;
 /** Kategorie eines Werkzeugs (Ausnahme vor Gruppe). */

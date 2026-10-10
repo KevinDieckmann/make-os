@@ -281,7 +281,8 @@ describe('(2) Antwort-Formen: abgeschnitten, abgelehnt, leer, unbekannte/kaputte
     expect(r.d.reply).toBe('Ging nicht — sag mir genauer, was du brauchst.');
     const erg = letzteErgebnisse(ki.anfragen[1]);
     expect(erg[0]).toMatch(/Nicht angeboten/);
-    expect(erg[1]).toMatch(/Nicht ausgeführt|unbekannt|gibt es nicht/i);
+    // V3 (Werkzeug-Verträge): die kaputte Eingabe prüft die Hülle — ein Satz je Fund, nichts ausgeführt.
+    expect(erg[1]).toMatch(/Eingabe für „an_head“ ungültig.*„head“ muss ein Text sein.*Nichts ausgeführt/);
     // Head: unbekanntes Werkzeug ebenso
     ki.folge.push(werkzeug(['gibt_es_nicht', {}]), text('Ohne das Werkzeug: die Pipeline ist ruhig.'));
     const h = await head('person-a', { text: 'Pipeline?' });
@@ -310,7 +311,7 @@ describe('(2) Antwort-Formen: abgeschnitten, abgelehnt, leer, unbekannte/kaputte
     const alt = WERKZEUGE.freie_zeit.lauf;
     WERKZEUGE.freie_zeit.lauf = async () => `Freie Zeiten: ${'09:00–10:00 · '.repeat(8_000)}`;
     try {
-      ki.folge.push(werkzeug(['freie_zeit', { personen: ['ich'], dauer: 30 }]), text('Viele Lücken.'));
+      ki.folge.push(werkzeug(['freie_zeit', { personen: ['ich'], dauerMin: 30 }]), text('Viele Lücken.'));
       const r = await zoe('person-a', { message: 'Wann habe ich Zeit?', zoeFaden: 'neu' });
       expect(r.d.reply).toBe('Viele Lücken.');
       const e = letzteErgebnisse(ki.anfragen[1])[0];
@@ -324,12 +325,12 @@ describe('(2) Antwort-Formen: abgeschnitten, abgelehnt, leer, unbekannte/kaputte
     const alt = WERKZEUGE.freie_zeit.lauf;
     WERKZEUGE.freie_zeit.lauf = async () => { throw new Error('Kalender kaputt'); };
     try {
-      ki.folge.push(werkzeug(['freie_zeit', { dauer: 30 }]), text('Der Kalender klemmt gerade — ich sage Bescheid.'));
+      ki.folge.push(werkzeug(['freie_zeit', { dauerMin: 30 }]), text('Der Kalender klemmt gerade — ich sage Bescheid.'));
       const r = await zoe('person-a', { message: 'Wann habe ich Zeit?', zoeFaden: 'neu' });
       expect(r.d.reply).toBe('Der Kalender klemmt gerade — ich sage Bescheid.');
       expect(r.d.ran).toEqual([{ agent: 'freie_zeit', ok: false }]);
       expect(letzteErgebnisse(ki.anfragen[1])[0]).toMatch(/Fehlgeschlagen: das Werkzeug freie_zeit/);
-      ki.folge.push(werkzeug(['freie_zeit', { dauer: 30 }]), text('Kalender klemmt.'));
+      ki.folge.push(werkzeug(['freie_zeit', { dauerMin: 30 }]), text('Kalender klemmt.'));
       const h = await head('person-a', { text: 'Wann ist Zeit für ein Gespräch?' }, true);
       expect(h.status).toBe(200);
       expect(((h.d.faden as FadenKern).nachrichten.at(-1)!).text).toBe('Kalender klemmt.');
@@ -407,7 +408,7 @@ describe('(3) Schleifen & Kosten: Stillstand, Delegations-Kreise, Grenzen, Budge
       const verbrauchVorher = await verbrauchSumme();
       const a = await mitarbeiterAuftrag('MARKE-GRENZE: Angebote prüfen.', { kostenGrenzeCent: 40 });
       expect((await fadenVon('person-b', fadenId(a)))!.lauf!.kostenGrenzeCent).toBe(40);
-      ki.folge.push({ ...werkzeug(['pipeline', { runde: 1 }]), usage: teuer }, { ...werkzeug(['pipeline', { runde: 2 }]), usage: teuer }, { ...text('nie erreicht'), usage: teuer });
+      ki.folge.push({ ...werkzeug(['pipeline', { deal: 'Runde eins' }]), usage: teuer }, { ...werkzeug(['pipeline', { deal: 'Runde zwei' }]), usage: teuer }, { ...text('nie erreicht'), usage: teuer });
       const r = await laufen(fadenId(a));
       expect(r.d.laufStatus).toBe('abgebrochen');
       expect(ki.anfragen.length).toBe(2);
@@ -522,7 +523,7 @@ describe('(3) Schleifen & Kosten: Stillstand, Delegations-Kreise, Grenzen, Budge
   it('Not-Aus mitten im Lauf: die nächste Runde startet nicht, Thread „abgebrochen“ mit Grund — nichts läuft weiter', async () => {
     const a = await mitarbeiterAuftrag('MARKE-NOTAUS: Angebote durchgehen.');
     const notAus = (an: boolean) => rufe(agentenRoute.POST, '/api/agenten', sitzung('person-b'), { aktion: 'not-aus', an });
-    ki.folge.push(() => ({ warte: notAus(true), dann: werkzeug(['pipeline', { x: 1 }]) }), werkzeug(['pipeline', { x: 2 }]), text('nie erreicht'));
+    ki.folge.push(() => ({ warte: notAus(true), dann: werkzeug(['pipeline', { deal: 'eins' }]) }), werkzeug(['pipeline', { deal: 'zwei' }]), text('nie erreicht'));
     try {
       const r = await laufen(fadenId(a));
       expect(r.d.laufStatus).toBe('abgebrochen');
@@ -600,7 +601,7 @@ describe('(4) Gleichzeitigkeit & Zustände: zwei Tabs, Doppelklick, Abbruch, Neu
   it('Browser bricht den Strom ab, NACHDEM ein Werkzeug lief: Hinweis im Thread statt verwaister Frage — der Thread nimmt sofort neue Nachrichten', async () => {
     ki.folge.push(text('Hallo.'));
     const id = String((await zoe('person-a', { message: 'Start Abbruch', zoeFaden: 'neu' })).d.fadenId);
-    ki.folge.push(werkzeug(['freie_zeit', { dauer: 30 }]), { haengen: true });
+    ki.folge.push(werkzeug(['freie_zeit', { dauerMin: 30 }]), { haengen: true });
     const ab = new AbortController();
     const r = await kimmi.POST(new Request('http://test/api/kimmi', { method: 'POST', headers: SSE('person-a'), body: JSON.stringify({ message: 'MARKE-ABBRUCH-WERKZEUG', zoeFaden: id }), signal: ab.signal }));
     const leser = r.body!.getReader();

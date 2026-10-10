@@ -41,6 +41,8 @@ import { istWissenWerkzeug, wissenAngebotErgaenzen, wissenAusfuehren, wissenBesc
 import { aktiveKategorien, arbeitImBereich, BEREICHS_LESER, eingabeImBereich, mitarbeiterListe, postfachImBereich, werkzeugAngebot } from './werkzeuge';
 import { anhaengen, brettText, fadenStand, fehler, fuerPrompt, gedaechtnisFuer, inTeilen, istFadenId, KERN_GRENZEN, neuerFaden, offeneFragen, textPruefen, zugLaeuft, ZUG_LAEUFT, type Fehler, type FadenKern, type LaufSpan, type NachrichtKern } from './faeden';
 import { bestandLesen, eigenerFaden, fadenAendern, fadenAnlegen, zugZuruecknehmenFuer } from './faeden-server';
+import { brauchtFreigabe, erfolg, ergebnisAus, fehlschlag, type Fehlerklasse, type WerkzeugErgebnis } from '@/lib/werkzeuge/vertrag';
+import { ausgangVermerken, vertragsPruefung } from '@/lib/werkzeuge/huelle';
 
 /** Ein Satz für den Gesundheits-Head (Entscheidung 09.10., Fragerunde Teil 2 Nr. 18): Wellness, nie Diagnose oder Therapie. */
 export const WELLNESS_SATZ = 'Du bist ein Wellness-Coach: keine Diagnose, keine Therapie, keine medizinische Beratung. Du arbeitest nur mit den EIGENEN Werten dieser Person; bei Beschwerden verweist du ruhig auf Ärztin oder Arzt.';
@@ -73,7 +75,7 @@ export async function aktiveMitarbeiter(head: HeadDef, u: Umfang, e: AgentenEins
 
 // ── Werkzeug-Handler (aus delegation.ts) ────────────────────────────────────────────────────────────────────────────────
 
-export interface WerkzeugAntwort { text: string; ok: boolean; fortschritt?: boolean; gestapelt?: boolean; vorschlagId?: string; /** Lauf endet danach mit „wartet“. */ wartet?: string; /** Fremd-Quelle (lib/zoe/fremd.ts), wenn das Ergebnis Text Dritter trägt — die Schleife setzt dann „fremd gelesen“ (Nachschliff 09.10., `medien_suchen`). */ quelle?: string;
+export interface WerkzeugAntwort { text: string; ok: boolean; /** Fehlerklasse (V3, lib/werkzeuge/vertrag.ts) — ohne Angabe bei `ok: false` „intern“. */ klasse?: Fehlerklasse; fortschritt?: boolean; gestapelt?: boolean; vorschlagId?: string; /** Lauf endet danach mit „wartet“. */ wartet?: string; /** Fremd-Quelle (lib/zoe/fremd.ts), wenn das Ergebnis Text Dritter trägt — die Schleife setzt dann „fremd gelesen“ (Nachschliff 09.10., `medien_suchen`). */ quelle?: string;
   /** KI-Kategorien des Ergebnisses (09.10., KI-Etiketten — z. B. `fach_agent`): die Schleife nimmt sie in den KI-Kontext der nächsten Runde. */ kategorien?: KiKategorie[] }
 export interface SchleifenStand { fremdGelesen: boolean; vertraulich: boolean; ratGenutzt: number; hilfeGenutzt: number; kategorien: KiKategorie[]; verlaufText: () => string; delegiert: number }
 export interface AgentenHandler {
@@ -146,7 +148,11 @@ export interface LaufErgebnis {
 
 /** Anlass der Stapel-Vorschläge — beginnt immer mit dem Namen des Heads (Zähler „Freigaben je Head“ im Überblick). */
 export const anlassVon = (head: HeadDef, m: Pick<Mitarbeiter, 'name'> | null, titel: string): string => `${head.name}${m ? ` · ${m.name}` : ''}: ${titel}`.slice(0, 200);
-const OK_TEXT = (t: string) => !/^(Fehlgeschlagen|Nicht ausgeführt|Nicht angeboten|Unbekannt|Nicht erfasst|Nicht notiert|Nicht eingereiht)/i.test(t.trim()) && !/fehlgeschlagen|nicht erreichbar|nicht lesbar|nicht vermerkt/i.test(t.slice(0, 200));
+/**
+ * Die Antwort eines Agenten-Werkzeugs in die feste Form (V3, lib/werkzeuge/vertrag.ts) — für die Lauf-Spur: ok + Vorschlag → braucht_freigabe,
+ * ok → erfolg, sonst fehlschlag mit der Klasse des Handlers (ohne Angabe: intern). Nie aus dem Text geraten.
+ */
+const alsErgebnis = (w: WerkzeugAntwort): WerkzeugErgebnis => (w.ok ? (w.gestapelt ? brauchtFreigabe(w.text, w.vorschlagId) : erfolg(w.text)) : fehlschlag(w.klasse ?? 'intern', w.text));
 
 /**
  * Text eines Skills/Mitarbeiters, der aus fremd gelesenem Text entstand (Nahtstellen-Prüfung 09.10., Punkt 8): gekapselt (`fremd()`), nie mit dem
@@ -326,7 +332,17 @@ async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string
       Object.assign(s, { fremdGelesen: z.fremdGelesen, vertraulich: z.vertraulich, kategorien: Array.from(z.kategorien) });
       const wname = u.name;
       const input = u.input;
+      // Vertrag (V3): Agenten-Werkzeuge gegen das Schema, das dem Modell in DIESEM Lauf angeboten war (mit den echten Listen — Mitarbeiter, Werkzeuge
+      // des Heads), Register-Werkzeuge gegen ihren Vertrag NACH `eingabeImBereich` (die Felder, die der Head festlegt — Bereich, Zuständig —, setzt
+      // der Server ausdrücklich; alles andere muss passen). Dazu der Bereich des Heads. Ungültig → ein klarer Satz, nichts läuft, nichts im Stapel.
+      const vertragNein = (ein: Record<string, unknown>, schema?: Record<string, unknown>) => {
+        const p = vertragsPruefung(wname, ein, { sicht: head.bereich, ...(schema ? { schema } : {}) });
+        return p.ok ? null : ausgangVermerken(wname, p.ergebnis);
+      };
       if (angebot.agenten.has(wname)) {
+        const angebotenDef = (angebot.tools as { name: string; input_schema: Record<string, unknown> }[]).find(t => t.name === wname);
+        const nein = vertragNein(input, angebotenDef?.input_schema);
+        if (nein) return { inhalt: nein.meldung, ok: false };
         const w = istUnterlagenWerkzeug(wname)
           ? await unterlagenWerkzeugAusfuehren(input, { person, head })
           : istWissenWerkzeug(wname)
@@ -335,6 +351,7 @@ async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string
             ? await medienWerkzeugAusfuehren(wname, input, { person, head, agent: e.faden.agent, hintergrund: e.hintergrund, fremdGelesen: z.fremdGelesen, titel: e.faden.titel })
             : await e.handler.ausfuehren(wname, input, s);
         // Agenten-Werkzeuge kapseln selbst (Rat, Fach-Agent) — ihre Marke übernimmt die Schleife aus dem Stand des Handlers.
+        ausgangVermerken(wname, alsErgebnis(w));
         if (s.fremdGelesen) z.fremdGelesen = true;
         if (s.vertraulich) z.vertraulich = true;
         return { inhalt: w.text, ok: w.ok, ...(w.quelle && w.ok ? { quelle: w.quelle } : {}), ...(w.fortschritt !== undefined ? { fortschritt: w.fortschritt } : {}), ...(w.gestapelt ? { gestapelt: true } : {}), ...(w.vorschlagId ? { vorschlagId: w.vorschlagId } : {}), ...(w.wartet ? { wartet: w.wartet } : {}), ...(w.kategorien?.length ? { kategorien: w.kategorien } : {}) };
@@ -342,10 +359,14 @@ async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string
       if (!angebot.register.has(wname)) return { inhalt: 'Nicht angeboten — dieses Werkzeug gehört nicht zu deinem Bereich.', ok: false };
       // 09.10.: Wissen im Modus „nur“ — auch die Brain-Werkzeuge des Heads lesen nur in seinen Ordnern (dieselbe Stelle wie `wissen_suchen`).
       if (wissen?.modus === 'nur' && wissen.pfade.length && (wname === 'suche_wissen' || wname === 'lies_notiz')) {
+        const nein = vertragNein(input);
+        if (nein) return { inhalt: nein.meldung, ok: false };
         const w = await wissenBeschraenkt(wname, input, { person, head, wissen });
+        ausgangVermerken(wname, alsErgebnis(w));
         return { inhalt: w.text, ok: w.ok, ...(w.quelle && w.ok ? { quelle: WISSEN_QUELLE } : {}), kategorien: ['brain'] };
       }
       const ein = eingabeImBereich(wname, input, head);
+      { const nein = vertragNein(ein); if (nein) return { inhalt: nein.meldung, ok: false }; }
       const geprueft = e.handler.pruefen ? await e.handler.pruefen(wname, ein, s) : null;
       if (geprueft) return { inhalt: geprueft, ok: false };
       const kat = kategorieVonWerkzeug(wname, gruppeVon(wname));
@@ -354,7 +375,9 @@ async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string
         // suche_arbeit: genau die Kategorien, die gelesen wurden (09.10., Funde #6) — Aufgaben, und nur mit aktiver Kategorie Markttraktion/Brain.
         const gelesen = wname === 'suche_arbeit' ? (await import('@/lib/zoe/arbeit-werkzeug')).arbeitQuellen(ein, { aufgaben: kats.includes('aufgaben'), crm: kats.includes('crm'), brain: kats.includes('brain') }).kategorien : [];
         const kategorienRoh = Array.from(new Set([...(kat ? [kat] : []), ...gelesen]));
-        return { inhalt: roh, ok: OK_TEXT(roh), quelle: FREMD_WERKZEUGE[wname] ?? 'arbeitsbestaende', ...(kategorienRoh.length ? { kategorien: kategorienRoh } : {}) };
+        // Der Ausgang kommt typisiert aus dem Leser (V3) — nie mehr ein Muster über den Text.
+        const erg = ausgangVermerken(wname, ergebnisAus(roh));
+        return { inhalt: erg.meldung, ok: erg.ok, quelle: FREMD_WERKZEUGE[wname] ?? 'arbeitsbestaende', ...(kategorienRoh.length ? { kategorien: kategorienRoh } : {}) };
       }
       if (e.trocken && (!LESEND.has(wname) || wname === 'crm_vorschlag')) {
         const { vorschauVon } = await import('@/lib/zoe/register');
@@ -365,9 +388,11 @@ async function agentLaufInnen(e: LaufEingabe & { laufId: string }, kette: string
       // Wissen im Business nur in der Agenten-Sicht (nie private Notizen der Person in einem teilbaren Business-Thread).
       const leseSicht = head.bereich === 'business' && (wname === 'suche_wissen' || wname === 'lies_notiz');
       // Bereich des Heads (09.10. spät): ordnet Vorschläge im Stapel zu und wählt die Merksätze (lib/zoe/bereich.ts, Regel (c)).
-      const lauf = await fuehreAus(wname, ein, e.origin, { anlass: anlassVon(head, m, e.faden.titel), herkunft: anlassVon(head, m, e.faden.titel), person, vorschlagen, quelle: e.modus === 'chat' ? 'gespraech' : 'lauf', hintergrund: e.hintergrund || leseSicht, bereich: head.bereich });
+      const lauf = await fuehreAus(wname, ein, e.origin, { anlass: anlassVon(head, m, e.faden.titel), herkunft: anlassVon(head, m, e.faden.titel), person, vorschlagen, quelle: e.modus === 'chat' ? 'gespraech' : 'lauf', hintergrund: e.hintergrund || leseSicht, bereich: head.bereich, sicht: head.bereich, fremdGelesen: z.fremdGelesen });
       const quelle = FREMD_WERKZEUGE[wname] ?? null;
-      return { inhalt: lauf.text, ok: lauf.ok, ...(quelle && lauf.ok ? { quelle } : {}), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(lauf.vorschlagId ? { vorschlagId: lauf.vorschlagId } : {}), ...(kat ? { kategorien: [kat] } : {}) };
+      // V3: ein typisierter Fehlschlag eines Fremd-Lesers kann Daten tragen (z. B. „mehrdeutig — <Namen aus der Kartei>“) — wie im ZOE-Gespräch zählt
+      // die Quelle auch dann (gespraech-schutz.ts: „jede Quelle zählt, auch ein gescheiterter Lauf“). Bisher galten solche Sätze als Erfolg.
+      return { inhalt: lauf.text, ok: lauf.ok, ...(quelle && (lauf.ok || lauf.ergebnis.klasse === 'eingabe' || lauf.ergebnis.klasse === 'nicht_gefunden') ? { quelle } : {}), ...(lauf.gestapelt ? { gestapelt: true } : {}), ...(lauf.vorschlagId ? { vorschlagId: lauf.vorschlagId } : {}), ...(kat ? { kategorien: [kat] } : {}) };
     },
   });
 

@@ -6,6 +6,7 @@
 //      bei ZOE → 400 · (d) meine_aufgaben / projekt_unterlagen / datei_lesen nur im Bereich des Heads.
 //   4. Markttraktion-Takt mit Inhalte-Ausnahme bzw. Glocke; Prospect-Agent schreibt per PATCH mit Stand.
 // Eigener Datenordner, erfundene Konten (`@example.invalid`), kein Netz, kein Modell.
+import { meldungVon } from '@/lib/werkzeuge/vertrag';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { rmSync } from 'node:fs';
 
@@ -339,14 +340,14 @@ describe('3d · Aufgaben-Leser nur im Bereich des Heads', () => {
 
   it('meine_aufgaben und projekt_unterlagen mit space=business finden nichts aus Privat', async () => {
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
-    const nurB = await WERKZEUGE.meine_aufgaben.lauf({ space: 'business' }, 'http://intern', 'person-a');
+    const nurB = meldungVon(await WERKZEUGE.meine_aufgaben.lauf({ space: 'business' }, 'http://intern', 'person-a'));
     expect(nurB).toContain('Business-Auftrag');
     expect(nurB).not.toContain('PRIVATMARKE');
-    expect(await WERKZEUGE.meine_aufgaben.lauf({}, 'http://intern', 'person-a')).toContain('PRIVATMARKE');
-    const u = await WERKZEUGE.projekt_unterlagen.lauf({ projekt: 'PRIVATMARKE Projekt', space: 'business' }, 'http://intern', 'person-a');
+    expect(meldungVon(await WERKZEUGE.meine_aufgaben.lauf({}, 'http://intern', 'person-a'))).toContain('PRIVATMARKE');
+    const u = meldungVon(await WERKZEUGE.projekt_unterlagen.lauf({ projekt: 'PRIVATMARKE Projekt', space: 'business' }, 'http://intern', 'person-a'));
     expect(u).toMatch(/kein Projekt/);
     expect(u).not.toContain('PRIVATMARKE Notiz');
-    expect(await WERKZEUGE.projekt_unterlagen.lauf({ projekt: 'Business-Projekt', space: 'business' }, 'http://intern', 'person-a')).toContain('Business-Notiz');
+    expect(meldungVon(await WERKZEUGE.projekt_unterlagen.lauf({ projekt: 'Business-Projekt', space: 'business' }, 'http://intern', 'person-a'))).toContain('Business-Notiz');
   });
 });
 
