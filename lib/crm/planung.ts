@@ -333,7 +333,7 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
     { id: 'deals', label: 'Deals (SQL … Abschluss)', anzahl: offen.length, zusatz: `${Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)).toLocaleString('de-DE')} € offen`,
       plan: `SQL → Gewonnen ${pz(sqlZuGewPlan)}`, ist: `SQL → Gewonnen ${pz(gq?.quote)}`, annahme: annahme('sqlZuAngebot', 'angebotZuGewonnen'), href: WEG.deals(), hrefLabel: 'Deals öffnen' },
     { id: 'followup', label: 'Abschluss & Follow-up', anzahl: e.followup.faellig, zusatz: e.followup.ueberfaellig ? `${e.followup.ueberfaellig} überfällig` : 'nichts überfällig', href: WEG.followup(), hrefLabel: 'Follow-up öffnen' },
-    { id: 'fulfillment', label: 'Fulfillment', anzahl: aktiveM.length, zusatz: [`${ff.size} Produkt-Phasen`, ...(fortschrittZusatz(aktiveM, e.fortschritt))].join(' · '), href: WEG.mandat(), hrefLabel: 'Produkte & Mandate öffnen' },
+    { id: 'fulfillment', label: 'Fulfillment', anzahl: aktiveM.length, zusatz: [`${ff.size} Produkt-Phasen`, ...(fortschrittZusatz(aktiveM, e.fortschritt))].join(' · '), href: WEG.fulfillment('kreislauf'), hrefLabel: 'Fulfillment öffnen' },
     { id: 'nachher', label: 'Nach der Leistung', anzahl: kunden.filter(k => k.offen > 0).length, zusatz: 'Upselling · Cross-Selling · Bewertung · Testimonial · Newsletter', href: '', hrefLabel: 'Schritte je Kunde' },
     { id: 'wiederkauf', label: 'Wiederkauf', anzahl: wieder, zusatz: `${offenWieder} offene Deals mit Bestandskunden`,
       ist: kundenZahl >= MINDESTMENGE ? `${Math.round((100 * wieder) / kundenZahl)} % kaufen wieder` : `${wieder} von ${kundenZahl} Kunden`, href: WEG.deals(), hrefLabel: 'Deals öffnen' },

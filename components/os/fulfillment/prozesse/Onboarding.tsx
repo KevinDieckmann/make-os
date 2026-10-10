@@ -1,0 +1,138 @@
+'use client';
+
+// ─── Fulfillment › Onboarding (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 3.1, 3.2) ──────────────────────────────────────────────────────
+// Kandidaten: Mandate (aktiv oder Angebot, Business-Gesellschaft, ohne Fall) mit unterschriebenem Vertrag, angenommenem Angebot oder gewonnenem
+// Deal — mit der 24-h-Uhr der Willkommensmail. „Starten“ legt den Fall an (Paket-Vorlage vorgewählt aus der Zuordnung des Produkts),
+// „Ausblenden“ setzt nur eine Marke. Dieselbe Karte steht als `OnboardingHinweis` in Produkte & Mandate › Mandate (nur, wenn es Kandidaten gibt —
+// sonst bleibt die Seite genau wie bisher). Darunter die laufenden Onboardings und die Einstellungen (Willkommen in … Stunden, Nachsorge-Tage).
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { FARBE as C } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, Punkt, LEUCHT } from '../../ui';
+import { Fenster } from '../../Fenster';
+import { Wahl } from '../../crm/Wahl';
+import { WEG } from '@/lib/wege';
+import { localDay } from '@/lib/zeit';
+import type { CrmApi } from '../../crm/daten';
+import { useUebersicht, useUebersichtKurz, fallAktion, vorlagenOps, holeJson, fehlerText, neueAnfrageId, geaendert, type Kandidat } from './daten';
+import { klein, feld, Leiste, Meldung } from './teile';
+
+const GRUND: Record<Kandidat['grund'], string> = { vertrag: 'Vertrag unterschrieben', angebot: 'Angebot angenommen', deal: 'Deal gewonnen' };
+
+function uhrText(k: Kandidat): { text: string; farbe: string } | null {
+  if (!k.uhr.faellig) return null;
+  if (k.uhr.ueberfaellig) return { text: 'Willkommensmail überfällig', farbe: LEUCHT.kritisch };
+  const d = new Date(k.uhr.faellig);
+  return { text: `Willkommen bis ${d.toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })}`, farbe: (k.uhr.restStunden ?? 99) <= 6 ? LEUCHT.achtung : LEUCHT.gut };
+}
+
+/** Kandidaten-Liste mit Start-Dialog — geteilt von Fulfillment › Onboarding und dem Einhänger in Produkte & Mandate. */
+function KandidatenKarte({ kandidaten, pakete, i }: { kandidaten: Kandidat[]; pakete: { id: string; titel: string }[]; i: number }) {
+  const [start, setStart] = useState<Kandidat | null>(null);
+  const [meldung, setMeldung] = useState<string | null>(null);
+  const aus = async (k: Kandidat) => {
+    const a = await holeJson('/api/fulfillment/fall', { method: 'PATCH', body: JSON.stringify({ mandatId: k.mandatId, ops: [{ op: 'onboarding-aus', aus: true }] }) });
+    if (a.ok) geaendert(); else setMeldung(fehlerText(a));
+  };
+  return (
+    <Karte i={i} akzent={LEUCHT.gut}>
+      <Ueberschrift farbe={LEUCHT.gut} erklaerung="fulfillment.willkommen24h" rechts={<span>{kandidaten.length}</span>}>Kundenonboarding starten</Ueberschrift>
+      <Meldung text={meldung} art="kritisch" />
+      <Liste>
+        {kandidaten.map(k => {
+          const u = uhrText(k);
+          return (
+            <Zeile key={k.mandatId} links={<Punkt farbe={u?.farbe ?? LEUCHT.gut} />} titel={k.kunde} umbrechen
+              unter={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>{k.titel} · {GRUND[k.grund]}{u && <Chip farbe={u.farbe}>{u.text}</Chip>}{k.vorgeschlagen && <Chip farbe={C.inkDim}>im Stapel vorgeschlagen</Chip>}</span>}
+              rechts={<Leiste><Knopf leise onClick={() => aus(k)}>Ausblenden</Knopf><Knopf onClick={() => setStart(k)}>Starten</Knopf></Leiste>} />
+          );
+        })}
+      </Liste>
+      {start && <StartDialog k={start} pakete={pakete} onZu={() => setStart(null)} />}
+    </Karte>
+  );
+}
+
+/** Start-Dialog: Paket-Vorlage (vorgewählt aus der Zuordnung des Produkts) und Starttag — legt den Fall an (idempotent über die Anfrage). */
+export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage'>; pakete: { id: string; titel: string }[]; onZu: () => void }) {
+  const router = useRouter();
+  const [vorlage, setVorlage] = useState<string | null>(k.vorlage?.id ?? pakete[0]?.id ?? null);
+  const [tag, setTag] = useState(localDay());
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [anfrage] = useState(neueAnfrageId);
+  const los = async () => {
+    if (!vorlage) { setFehler('Bitte eine Paket-Vorlage wählen.'); return; }
+    const a = await fallAktion({ aktion: 'starten', mandatId: k.mandatId, vorlageId: vorlage, start: tag, anfrageId: anfrage });
+    if (a.ok) { onZu(); router.push(WEG.fall(k.mandatId)); } else setFehler(fehlerText(a));
+  };
+  return (
+    <Fenster titel={`Onboarding starten: ${k.kunde}`} onZu={onZu} breit={560}>
+      <form onSubmit={e => { e.preventDefault(); void los(); }} style={{ display: 'grid', gap: 12 }}>
+        {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
+        {!pakete.length && <Hinweis art="achtung">Noch keine Paket-Vorlage — unter Fulfillment › Prozesse „Aus Muster anlegen“.</Hinweis>}
+        <Feldzeile label="Paket-Vorlage" erklaerung="fulfillment.zuordnung">
+          <Wahl label="Paket-Vorlage" liste={pakete.map(p => ({ id: p.id, label: p.titel }))} wert={vorlage} onWahl={setVorlage} />
+        </Feldzeile>
+        <Feldzeile label="Start"><input type="date" value={tag} onChange={e => setTag(e.target.value)} style={feld} /></Feldzeile>
+        <div style={klein}>Der Fall kopiert die Struktur der Vorlage und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.</div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <Knopf leise onClick={onZu}>Abbrechen</Knopf>
+          <Knopf haupt typ="submit" aus={!vorlage}>Fall anlegen</Knopf>
+        </div>
+      </form>
+    </Fenster>
+  );
+}
+
+/** Einhänger in Produkte & Mandate › Mandate: die Karte erscheint NUR, wenn es Kandidaten gibt (sonst bleibt die Seite wie bisher). */
+export function OnboardingHinweis(_p: { api: CrmApi }) {
+  const { daten } = useUebersichtKurz();
+  if (!daten?.kandidaten.length) return null;
+  return <KandidatenKarte kandidaten={daten.kandidaten} pakete={daten.prozesse.filter(p => p.art === 'paket')} i={1} />;
+}
+
+export function Onboarding() {
+  const router = useRouter();
+  const { daten, fehler } = useUebersicht();
+  if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
+  const laufend = Object.values(daten.faelle).filter(f => f.status === 'onboarding').sort((a, b) => Number(b.willkommenUeberfaellig) - Number(a.willkommenUeberfaellig));
+  const pakete = daten.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel }));
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      {daten.kandidaten.length > 0
+        ? <KandidatenKarte kandidaten={daten.kandidaten} pakete={pakete} i={1} />
+        : <Hinweis art="info">Kein Mandat wartet aufs Onboarding. Ein Mandat erscheint hier, sobald der Vertrag unterschrieben, ein Angebot angenommen oder der Deal gewonnen ist.</Hinweis>}
+      <Karte i={2}>
+        <Ueberschrift rechts={<span>{laufend.length}</span>}>Laufende Onboardings</Ueberschrift>
+        {!laufend.length ? <div style={klein}>Gerade läuft kein Onboarding.</div> : (
+          <Liste>
+            {laufend.map(f => (
+              <Zeile key={f.mandatId} links={<Punkt farbe={f.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.gut} />} titel={f.kunde} onClick={() => router.push(WEG.fall(f.mandatId))}
+                unter={`${f.onboardingOffen} Schritt${f.onboardingOffen === 1 ? '' : 'e'} offen${f.willkommenUeberfaellig ? ' · Willkommensmail überfällig' : ''}`} />
+            ))}
+          </Liste>
+        )}
+      </Karte>
+      <Einstellungen daten={daten} />
+    </div>
+  );
+}
+
+function Einstellungen({ daten }: { daten: NonNullable<ReturnType<typeof useUebersicht>['daten']> }) {
+  const [fehler, setFehler] = useState<string | null>(null);
+  const setze = async (felder: Record<string, unknown>) => { const a = await vorlagenOps([{ op: 'einstellungen', felder }]); setFehler(a.ok ? null : fehlerText(a)); };
+  const e = daten.einstellungen;
+  return (
+    <Karte i={3}>
+      <Ueberschrift>Takt des Onboardings</Ueberschrift>
+      {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
+      <Feldzeile label="Willkommensmail spätestens nach (Stunden)" erklaerung="fulfillment.einstellungWillkommen">
+        <input inputMode="numeric" defaultValue={String(e.willkommenStunden)} onBlur={x => { const n = Number(x.target.value); if (n && n !== e.willkommenStunden) void setze({ willkommenStunden: n }); }} style={feld} />
+      </Feldzeile>
+      <Feldzeile label="Nachsorge nach Mandatsende (Tage, durch Komma)" erklaerung="fulfillment.nachsorge">
+        <input defaultValue={e.nachsorgeTage.join(', ')} onBlur={x => { const l = x.target.value.split(',').map(t => Number(t.trim())).filter(n => Number.isInteger(n) && n > 0); if (l.length && l.join(',') !== e.nachsorgeTage.join(',')) void setze({ nachsorgeTage: l }); }} style={feld} />
+      </Feldzeile>
+    </Karte>
+  );
+}

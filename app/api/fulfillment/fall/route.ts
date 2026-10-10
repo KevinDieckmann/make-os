@@ -94,7 +94,9 @@ export async function GET(req: Request) {
   // Stakeholder: Namen nur aus der Kartei (Art. 18: eingeschränkte erscheinen nur als Kennung, ohne Namen).
   const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
   const kontakte = await kontakteFuerVerarbeitung();
-  const personenIds = new Set([...w.stakeholder.map(s => s.kontaktId), ...mandat.kontaktIds]);
+  const { personenDerFirma } = await import('@/lib/crm/stationen');
+  // Wählbar sind Ansprechpersonen des Mandats und Personen der Firma (laufende Station) — eingeschränkte fehlen schon in `kontakteFuerVerarbeitung`.
+  const personenIds = new Set([...w.stakeholder.map(s => s.kontaktId), ...mandat.kontaktIds, ...(mandat.firmaId ? personenDerFirma(kontakte, mandat.firmaId, { nurAktiv: true }).map(k => k.id) : [])]);
   const personen = kontakte.filter(k => personenIds.has(k.id)).map(k => ({ id: k.id, name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() || k.email || 'Kontakt', position: k.position ?? null, email: k.email ?? null, firmaId: k.firmaId ?? null }));
   if (w.stakeholder.length) leseZugriff(req, 'fulfillment', { anzahl: w.stakeholder.length });
   const bezuege = await import('@/lib/kalender/bezug-server').then(x => x.ladeBezuege()).catch(() => ({ bezuege: {} }));

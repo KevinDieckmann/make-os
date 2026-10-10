@@ -17,7 +17,7 @@ import type { AnwendenErgebnis, Baustein, BausteinArt, ImportLauf, ProzessKnoten
 import { BAUSTEIN_ARTEN } from '../lesen';
 import { GRENZEN, TEXT_MAX } from '../grenzen';
 import { ebeneVon, kinderVon, vorfahren } from '../regeln';
-import { TAG_NUR_INTERN, TAG_VOR_VERKAUF } from './bausteine';
+import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
 import { ausfuehren, fnv, istObj, nein, slug, titelForm } from './pruefen';
 
@@ -109,7 +109,7 @@ function bausteinLesen(x: Record<string, unknown>): Gelesen {
   const herkunftText = laenge(s(x.herkunft), TEXT_MAX.hinweis, 'die Herkunft', q);
   const text = typeof x.text === 'string' && x.text.trim() ? x.text : undefined;
   if (text && text.length > GRENZEN.text) throw new Error(`„${q}“: der Text ist länger als ${GRENZEN.text.toLocaleString('de-DE')} Zeichen.`);
-  const gliederung = textListe(x.gliederung, GRENZEN.gliederung, TEXT_MAX.gliederungPunkt, 'die Gliederung', q);
+  const gliederung = textListe(x.gliederung, GRENZEN.gliederung, GLIEDERUNG_PUNKT_MAX, 'die Gliederung', q);
   const platzhalter = textListe(x.platzhalter, 60, TEXT_MAX.kurz, 'die Platzhalter', q);
   const phase = s(x.phase), unterphase = s(x.unterphase);
   const giltFuer = Array.isArray(x.gilt_fuer) ? x.gilt_fuer.filter((y): y is string => typeof y === 'string').map(tagWert).filter(Boolean) : [];

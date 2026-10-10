@@ -18,6 +18,11 @@ export const TAG_NUR_INTERN = 'nur-intern';
 export const TAG_VOR_VERKAUF = 'pruefen-vor-verkauf';
 /** Messe-/Event-Nachfasstakt (Kevin 00:20): Tag 1, 3, 7, 14, 30 nach dem Ereignis — als Einzelschritte in „Nach der Messe“. */
 export const MESSE_NACHFASS_TAGE: readonly number[] = [1, 3, 7, 14, 30];
+/**
+ * Länge eines Gliederungspunkts: die Vorlagen-Dateien tragen ganze Sätze je Punkt (bis rund 600 Zeichen) — die C0-Grenze `TEXT_MAX.gliederungPunkt`
+ * (300) hätte jeden vierten Baustein abgelehnt. C1 nimmt deshalb bis 1.000 Zeichen je Punkt (wie Ziel/Ergebnis); darüber 413, nie gekürzt.
+ */
+export const GLIEDERUNG_PUNKT_MAX = 1000;
 
 export const BAUSTEIN_ART_LABEL: Record<BausteinArt, string> = {
   aufgabe: 'Aufgabe', dokument: 'Dokument', skript: 'Skript', checkliste: 'Checkliste', mail: 'Mail', kennzahl: 'Kennzahl', ritual: 'Ritual',
@@ -97,7 +102,7 @@ export function bausteinAusEingabe(roh: Record<string, unknown>, alt: Baustein |
     else if (roh.text.length > GRENZEN.text) nein(`Text: höchstens ${GRENZEN.text.toLocaleString('de-DE')} Zeichen (jetzt ${roh.text.length.toLocaleString('de-DE')}). Nichts gespeichert.`, 413);
     else teil.text = roh.text;
   }
-  const gl = textListe(roh.gliederung, 'gliederungPunkt', 'Gliederung', GRENZEN.gliederung); if (gl) teil.gliederung = gl;
+  const gl = textListe(roh.gliederung, 'ziel', 'Gliederung', GRENZEN.gliederung); if (gl) teil.gliederung = gl;
   const pl = textListe(roh.platzhalter, 'kurz', 'Platzhalter', 60); if (pl) teil.platzhalter = pl;
   const fr = fragenAus(roh.fragen); if (fr !== undefined) teil.fragen = fr.length ? fr : null;
   const kf = optBool(roh.kundeFuellt, 'Kunde füllt aus'); if (kf !== undefined) teil.kundeFuellt = kf || null;
