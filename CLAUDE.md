@@ -884,6 +884,15 @@ Gesundheitsinhalte nur mit Einwilligung ‚an die KI‘“.
   `seil-server.ts` + `GET /api/seil` (Bereich SERVERSEITIG, `finanzRecht: 'business'` = nur Business, Dienstweg 403). Oberfläche `components/os/seil`
   (`SeilBand` Rechner mit Beschriftungs-Spalte, `SeilHandy` bis 720 px). Wächter `tests/seil-route.test.ts` („Sicht Business bekommt nichts aus Privat“),
   `seil-{modell,bezuege,oberflaeche}.test.ts`. Demo-Saat zeigt ein Seil (Unterziel, Kette, Blockade, Erledigtes).
+- **Eigene Meilensteine an eigenen Zielen (10.10., Kevin: „Ja, eigene Meilensteine“, Branch `eigene-meilensteine`; UPDATES.md):** eigene Ziele
+  (`ziele-eigen--<person>`) tragen EIGENE Meilensteine im Bestand `meilensteine-eigen--<person>` (IMMER mit Suffix, nie im gemeinsamen `meilensteine`),
+  immer Privat — ohne Space/Einheit/Mandat/Aufwand/Kette/Kaskade/Aufgaben-Liste. Regeln rein `lib/planung/eigene-meilensteine.ts` (Säuberung über
+  `sauberMeilenstein`, Bezug nur auf ein eigenes Nicht-Business-Ziel, Fortschritt `eigenesZielFortschritt` = Mittelwert ohne archivierte, sonst von Hand),
+  Sicht NUR `eigeneMeilensteineSicht`/`eigeneMeilensteineFuerBetrachter` (lib/planung/eigene-ziele-sicht.ts: selbst alles, andere nur zu geteilten Zielen,
+  „nur Business“/fremder Haushalt nichts), EINE Lese-/Schreibstelle `lib/planung/eigene-meilensteine-server.ts`, Route `/api/state/meilensteine-eigen`
+  (schreiben nur selbst per Sitzung, Stand/409, 413, Dienstweg 403). Der Server zieht den Fortschritt der eigenen Ziele nach (`eigeneZieleNachziehen`,
+  auch nach `/api/state/ziele` mit `fuer: 'ich'`). Oberfläche `EigeneMeilensteineListe` + `useEigeneMeilensteine` in `ZieleUebersicht`. Neue Leser eigener
+  Meilensteine (Lichtfäden, Kalender, ZOE …) nur über diese Sicht. Wächter `tests/eigene-meilensteine.test.ts`.
 - Tests `tests/planung-*.test.ts`. Sichtprüfung nur mit Wegwerfkonto; Ziele/Meilensteine/Routinen sind GETEILTE Bestände —
   Schreibtests nur über `fuer: 'ich'` (persönlicher Ziele-Speicher), nie in `ziele`/`meilensteine`/`routinen` selbst.
 

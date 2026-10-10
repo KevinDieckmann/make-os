@@ -39,6 +39,55 @@ Zwei kleine Entscheidungen vom 10.10.: „Nur Anspannung 1–5“ und `people.md
 4. Agenten › „Aus dem Brain übernehmen“: bei `people.md` steht „Wird zu: als Mitarbeiter unter CEO-Office“ (Grund: „… kein eigener Head; als Mitarbeiter
    unter CEO-Office“). Übernehmen → unter CEO-Office erscheint der Mitarbeiter „People / Founder-Care“. Zweite Vorschau: „Schon da“.
 
+## 10.10.2026 — Eigene Meilensteine an eigenen Zielen (nur lokal — Branch `eigene-meilensteine`, Basis 4fd45912 = `update-0910b`)
+
+Kevin 10.10.: „Ja, eigene Meilensteine.“ Bis dahin trugen eigene Ziele (Spalte „Meine Ziele“) keine Meilensteine — die hingen nur am
+gemeinsamen Bestand `meilensteine` (Regel seit 07.10.).
+
+**Gebaut:**
+- **Eigener Bestand je Person** `meilensteine-eigen--<person>` (IMMER mit Suffix, auch das Erstkonto; nie im gemeinsamen `meilensteine`), immer
+  Privat. Regeln rein in `lib/planung/eigene-meilensteine.ts`: Säuberung über die vorhandenen Meilenstein-Regeln (`sauberMeilenstein`) — Kennung, Titel
+  und Ziel Pflicht, Datum optional; KEIN Space-Feld, keine Einheit, kein Mandat, kein Aufwand, keine Kette („wartet auf“), keine Kaskade, keine
+  Aufgaben-Liste `lm-…`. Bezug: nur ein vorhandenes eigenes Ziel derselben Person, nie eins im Business (`eigenerZielBezugPruefen`, 400).
+- **Sicht auf dem Server, EINE Stelle** neben `eigeneZieleSicht` (`lib/planung/eigene-ziele-sicht.ts`): `eigeneMeilensteineSicht` +
+  `eigeneMeilensteineFuerBetrachter` — die Person selbst alles; eine andere Person des Haushalts nur die Meilensteine der Ziele, die die Eigentümerin
+  einzeln teilt (`geteilt`; ganz geteilt über Konto › `teilt.ziele` = alle); Konto „nur Business“ (auch für die eigenen — Privat ist für dieses Konto
+  nicht da), fremder Haushalt, Person ohne Konto, Systemlauf: nichts.
+- **Route** `GET/PATCH /api/state/meilensteine-eigen` (`?fuer=ich|<speicher>`; Routen-Register Klasse `haushalt`): nichts geteilt → 403 ohne Inhalt
+  (dieselbe Antwort wie „gibt es nicht“); schreiben nur der eigene Bestand per Sitzung — `fuer` einer anderen Person 403, Dienstweg 403 (ZOE/Takt
+  schreiben nie), Konto „nur Business“ 403; Einzeländerungen mit Stand (`listePatchen`, 409 mit aktuellem Bestand), höchstens 160 Änderungen bzw. 500
+  Meilensteine → 413 (nie gekürzt), ungültiger Eintrag → 400 (nie still verworfen), `jsonBegrenzt`, `bauPruefen`. Server:
+  `lib/planung/eigene-meilensteine-server.ts`.
+- **Fortschritt des eigenen Ziels:** hat es Meilensteine (ohne archivierte), gilt ihr Mittelwert (erledigt = 100), sonst der Wert von Hand — EINE reine
+  Funktion `eigenesZielFortschritt`; der Server schreibt ihn nach jeder Meilenstein-Änderung und nach jedem Schreiben der eigenen Ziele
+  (`/api/state/ziele` mit `fuer: 'ich'`) in `ziele-eigen--<person>` (`eigeneZieleNachziehen`, wie `zieleNachziehen` beim gemeinsamen Bestand) — so
+  sehen auch die geteilte Spalte der anderen Person und Heute den richtigen Wert.
+- **Oberfläche** (`components/os/planung/ZieleUebersicht.tsx`, neu `EigeneMeilensteineListe.tsx` + `useEigeneMeilensteine.ts`): in „Meine Ziele“ je
+  Ziel „▸ Meilensteine“ aufklappbar — anlegen per Enter (Datum optional), abhaken, Datum setzen/ändern, löschen per Wischen/Symbol mit „Rückgängig“;
+  der Schieberegler weicht dem Fortschritt aus den Meilensteinen. In der Spalte der anderen Person nur lesend und nur zu geteilten Zielen.
+- **Recht:** Speicher-Register mit Angaben (Rechtsgrundlage, Art. 15, Löschfrist) und Bereich „je Person“ (`JE_PERSON`), `PERSON_BESTAENDE`
+  (`nurMitSuffix` — Konto-Export und Konto löschen), Einzel-Wiederherstellung durch einen Inhaber gesperrt (persönlicher Bestand), Messlatte mit Marke
+  in der Saat.
+- **Bewusst offen:** Aufgaben-Liste je eigenem Meilenstein (`lm-…`), Detailseite, Kette/Abhängigkeiten, Anzeige in Lichtfäden/Seil/Kalender-Fristen/
+  Heute/ZOE (diese Leser kennen eigene Meilensteine nicht — es geht dort also auch nichts hinaus). Wird ein eigenes Ziel gelöscht oder über „Neu
+  anfangen“ archiviert, bleiben seine Meilensteine im Bestand (unsichtbar) — „Rückgängig“/„Zurückholen“ bringt sie mit dem Ziel zurück; endgültig weg
+  erst mit dem Konto. Demo-Saat zeigt noch keine.
+
+Tests: `tests/eigene-meilensteine.test.ts` (neu: Regeln, Route „Sicht A bekommt nichts aus B“ — ohne Teilen, einzeln geteilt, ganz geteilt, nur
+Business, fremder Haushalt, Dienstweg —, Schreibweg 403/400/409/413, Fortschritt zieht nach, Register, Einhängen), `messlatte-malin` (Marke
+`meilensteinEigen`), dazu grün: `ziele-unsere-meine`, `planung-*`, `routen-register`, `datenschutz-register`, `trennung-bereiche`, `betroffenenrechte`,
+`design-*`, `ziele-eine-quelle`, `eigene-ziele-teilen`, `konto-sicht-planung`.
+
+**So testet ihr** (zwei Konten im Haushalt, Kopf-Schalter „Privat“):
+1. Planung › Jahr: in „Meine Ziele“ ein Ziel anlegen, unter dem Titel „▸ Meilensteine“ antippen.
+2. „+ Meilenstein …“ eintippen, optional ein Datum wählen, Enter → der Meilenstein steht da; der Schieberegler am Ziel ist weg, der Fortschritt
+   zeigt 0 %.
+3. Zwei Meilensteine anlegen, einen abhaken → das Ziel zeigt 50 %. „+ Datum“ antippen → Datum setzen.
+4. Einen Meilenstein nach links wischen (bzw. am Rechner das Papierkorb-Symbol) → „gelöscht“ mit „Rückgängig“ → Rückgängig holt ihn zurück.
+5. Anderes Konto (Planung › Jahr, Spalte mit deinem Vornamen): solange das Ziel „nur ich“ ist, erscheinen weder Ziel noch Meilensteine.
+6. Am eigenen Ziel „mit <Name> teilen“ einschalten → im anderen Konto neu laden: das Ziel steht dort mit „▸ 2 Meilensteine“ — aufklappen, nur
+   lesen (kein Haken, kein Löschen). Wieder „nur ich“ → nach dem Neuladen ist beides weg.
+
 ## 09.10.2026 — ZOE: Bereich erkennen, Stapel und Gedächtnis je Bereich (nur lokal — Branch `zoe-bereich`, Basis 4178e395)
 
 Befund live (Kevin, 09.10. spät): im Kopf-Schalter „Privat“ stand unter ZOE › Freigaben „Gedächtnis · Fakt merken — weil du gesagt hast:

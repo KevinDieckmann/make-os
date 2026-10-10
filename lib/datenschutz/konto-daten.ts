@@ -67,6 +67,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'arbeitsrahmen', nurMitSuffix: true },
   // Mein Fokus (09.10.): Privat und Business getrennt, IMMER mit Suffix (lib/planung/fokus.ts `fokusBestand`).
   { basis: 'fokus-eigen', nurMitSuffix: true }, { basis: 'fokus-eigen-business', nurMitSuffix: true },
+  // Eigene Meilensteine an eigenen Zielen (10.10.): gehören allein der Person — IMMER mit Suffix (lib/planung/eigene-meilensteine.ts).
+  { basis: 'meilensteine-eigen', nurMitSuffix: true },
 
   // ZOE auf WhatsApp (08.10.): der Kanal der Person (Nummer, Nachweise, Sprachnachrichten-Liste) — IMMER mit Suffix; die Dateien der
   // Sprachnachrichten entfernt `kontoLoeschen` vorher (Schritt 2c).
