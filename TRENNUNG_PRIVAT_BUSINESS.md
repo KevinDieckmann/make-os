@@ -4,6 +4,8 @@ Stand 09./10.10.2026 · Branch `trennung-plan` · Analyse und Plan, **kein Umbau
 Kevin, 09.10. spät: „Höchster Datenschutz, Firma und Privat müssen immer getrennt liegen, auch von den Daten, sonst kriegen wir es
 nachher nicht in Firmen implementiert.“
 
+> **Entschieden (Kevin, 10.10.2026):** Frage 7 = **Agenten-Ablage zuerst** (Gespräche, Freigaben, Merksätze — solange sie seit dem Neustart jung ist), danach Finanzen, Aufgaben, Kalender Stufe für Stufe **nach Format v2**. Frage 2 = **Kartei und CRM ganz Business, nur das Geld der Selbstständigkeit** (Rechnungen, Buchungen, Abschluss, Steuern, Konto) folgt dem Bereich Privat. Die übrigen Fragen sind offen.
+
 ## Kurz (für Kevin)
 
 1. MAKE OS hat heute **208 Bestände** im Speicher-Register. Davon liegen **6 rein privat**, **37 rein im Business**, **39 je Person**

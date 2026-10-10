@@ -11,6 +11,8 @@ und dabei alles im absoluten Top-1-%-Level zu programmieren.“
 
 ---
 
+> **Entschieden (Kevin, 10.10.2026):** F1 = **Fundament zuerst** (Messen → Werkzeug-Verträge → Prüffälle). F2 = **Agenten-Ablage jetzt als erste Gruppe der Trennung** (Paket V2). F3–F8 sind offen.
+
 ## Zusammenfassung für Kevin (15 Zeilen)
 
 1. Euer Agenten-System ist schon stark: Sicherheit, Datenschutz und Robustheit liegen über dem, was die meisten Produkte haben — nichts geht ohne euren Klick nach außen.
