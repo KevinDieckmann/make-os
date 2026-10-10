@@ -49,7 +49,8 @@ export const ANSPRUCH_MS = 10 * 60_000;
 // Head of Recht (10.10.): `recht` — Aufgabe aus dem Recht-Check, Katalog-Risiko, Checkliste als Entwurf, Vertragsfrist, Anwalts-Mappe (lib/recht/server.ts).
 // Fulfillment (10.10., FULFILLMENT_KONZEPT.md): `fulfillment` — Onboarding starten, Nachsorge, Puls, Analyse-Hinweise; verteilt nach Präfix der
 // Kennung (`p:`/`k:`/`a:`) in lib/fulfillment/stapel.ts.
-export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | 'fulfillment' | AgentenStapelArt;
+// Inbox (10.10., Roadmap Phase 1): `inbox` — Aufgaben-Vorschlag aus einer Mail/WhatsApp (Regelwerk ohne Modell, lib/inbox/aufgaben-vorschlag-server.ts).
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | 'fulfillment' | 'inbox' | AgentenStapelArt;
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {

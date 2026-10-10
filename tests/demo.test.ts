@@ -228,6 +228,18 @@ describe('Zurücksetzen (MAKE_OS_DEMO=1)', () => {
     const crm = await db.loadJson<{ firmen: { id: string; name: string }[] }>('crm');
     expect(crm?.firmen.find(f => f.id === 'f-demo-atlas')?.name).toBe('Atlas Software GmbH');
     expect((await db.loadJson<{ konten: { speicher: string; salz: string }[] }>('konten'))?.konten.find(k => k.speicher === 'lena')?.salz).toBe(vorher);
+    // Inbox (10.10.): Demo-Postfach mit erfundener Post, zwei Übergaben an Jonas (eine mit mitgegebenem PDF), Aufgaben-Vorschläge in Lenas
+    // Freigaben, die Suche findet bei Jonas die Kopie über den Anhang-Namen — und nichts aus Lenas Postfach.
+    const ub = await db.loadJson<{ uebergaben: { an: string; nachrichten: { anhaenge: { ablage?: string }[] }[] }[] }>('inbox-uebergaben--demo');
+    expect(ub?.uebergaben.filter(u => u.an === 'jonas')).toHaveLength(2);
+    expect(ub?.uebergaben.some(u => u.nachrichten.some(n => n.anhaenge.some(a => a.ablage)))).toBe(true);
+    const { lies } = await import('@/lib/zoe/stapel');
+    expect((await lies('offen')).filter(v => v.bezug?.art === 'inbox' && v.person === 'lena').length).toBeGreaterThan(0);
+    const suche = (await import('@/app/api/inbox/suche/route')) as unknown as { GET: Handler };
+    const treffer = async (q: string, p: string) => ((await (await suche.GET(new Request(`http://test/api/inbox/suche?q=${q}`, { headers: sitzung(p) }))).json()).treffer ?? []) as { art: string }[];
+    expect((await treffer('Rechnung-2026', 'jonas')).map(t => t.art)).toEqual(['uebergabe']);
+    expect(await treffer('Kooperationsanfrage', 'jonas')).toEqual([]);
+    expect((await treffer('Kooperationsanfrage', 'lena')).length).toBe(1);
   }, 240_000);
 
   it('gesperrt, sobald ein echtes Konto im Ordner steht (nichts wird gelöscht)', async () => {

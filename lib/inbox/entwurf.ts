@@ -8,6 +8,8 @@
 //   · Nur die eigene Mail der Person (Spiegel der Person: Gmail oder IMAP); der Dienstweg kommt gar nicht bis hierher (Route: nur Sitzung).
 //   · Stimme und Absender je Bereich: der Systemtext nennt den Bereich des Postfachs (nie eine feste Firma im Code — Plattform-Regel).
 //   · Kein Mailtext in Logs; das Modell bekommt höchstens `MAIL_MAX` Zeichen der Mail und `BRAIN_MAX` Zeichen Brain-Kontext.
+//   · Übergabe (10.10.): auch zur KOPIE eines übergebenen Gesprächs (`inboxEntwurfUebergabe`) — nur für Personen, die die Übergabe sehen
+//     (`uebergabeFinden`), mit dem mitgeführten Kennzeichen der Gegenseite (Art. 18 → 409); gesendet wird über ein EIGENES Postfach.
 
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
 import type { AnbieterId } from '@/lib/ki/anbieter';
@@ -18,6 +20,7 @@ import { trefferText } from '@/lib/zoe/brain-chat';
 import { nameVon } from '@/lib/zoe/raum';
 import { regelnFuerPrompt } from '@/lib/brain/regeln';
 import { gespraechLesen } from './gespraech-server';
+import type { Zuordnung } from '@/lib/gmail/typen';
 
 export const MAIL_MAX = 4000;
 export const BRAIN_MAX = 6000;
@@ -50,12 +53,34 @@ export interface EntwurfErgebnis { draft: string; quellen: string[]; /** Zugang,
 export async function inboxEntwurf(person: string, gespraech: string, hinweis?: string, ki: KiKontext = { lauf: 'aufruf', person, kategorien: ['postfach'], anzahl: 1 }): Promise<EntwurfErgebnis> {
   const a = await gespraechLesen(person, gespraech);
   if (!a) throw new EntwurfFehler('Dieses Gespräch gibt es nicht (mehr).', 404);
-  const z = a.gespraech.zuordnung;
+  const auf = a.nachrichten.find(n => n.id === a.antwort.antwortAuf) ?? a.nachrichten[a.nachrichten.length - 1];
+  return entwurfSchreiben(person, { auf, z: a.gespraech.zuordnung, quelle: a.gespraech.quelle === 'gmail' ? 'gmail' : 'postfach', bereichName: a.antwort.bereichName }, hinweis, ki);
+}
+
+/**
+ * ZOE-Entwurf zur Kopie einer Übergabe (10.10.): nur, wer die Übergabe sieht; Antwort auf die jüngste echte Nachricht von außen; bei Art. 18
+ * (mitgeführtes Kennzeichen) kein Entwurf (409). Nur ein Vorschlag — gesendet wird über ein eigenes Postfach per Einzelklick.
+ */
+export async function inboxEntwurfUebergabe(person: string, id: string, hinweis?: string, ki: KiKontext = { lauf: 'aufruf', person, kategorien: ['postfach'], anzahl: 1 }): Promise<EntwurfErgebnis> {
+  const { uebergabeFinden } = await import('./uebergaben-server');
+  const u = await uebergabeFinden(person, id);
+  if (!u) throw new EntwurfFehler('Diese Übergabe gibt es nicht (mehr).', 404);
+  if (u.sperre === 'eingeschraenkt') throw new EntwurfFehler('Verarbeitung eingeschränkt (Art. 18) — kein ZOE-Entwurf, bitte selbst schreiben.', 409);
+  const auf = [...u.nachrichten].reverse().find(n => !n.vonUns && !n.automatisch) ?? u.nachrichten[u.nachrichten.length - 1];
+  if (!auf) throw new EntwurfFehler('Diese Übergabe hat keine Nachricht.', 404);
+  const { bereichNamen } = await import('@/lib/postfach/register');
+  const { bereichName } = await import('@/lib/postfach/typen');
+  const name = bereichName(u.bereich, await bereichNamen().catch(() => ({} as Record<string, string>)));
+  return entwurfSchreiben(person, { auf, z: undefined, quelle: u.quelle === 'gmail' ? 'gmail' : 'postfach', bereichName: name }, hinweis, ki);
+}
+
+/** Der gemeinsame Teil: Brain-Kontext, Regeln, Prompt, Modell. */
+async function entwurfSchreiben(person: string, e: { auf: { von: { email: string; name?: string }; betreff: string; text: string }; z: Zuordnung | undefined; quelle: 'gmail' | 'postfach'; bereichName: string }, hinweis: string | undefined, ki: KiKontext): Promise<EntwurfErgebnis> {
+  const { auf, z } = e;
   if (z?.sperre === 'eingeschraenkt') throw new EntwurfFehler(`${z.name}: Verarbeitung eingeschränkt (Art. 18) — kein ZOE-Entwurf, bitte selbst schreiben.`, 409);
   if (!hasAnthropicKey()) throw new EntwurfFehler('Kein Anthropic-Key hinterlegt — ZOE kann gerade keinen Entwurf schreiben.', 503, true);
   const agent = await resolveAgent('inbox');
   if (!agent.enabled) throw new EntwurfFehler('Der Inbox-Agent ist ausgeschaltet.', 409);
-  const auf = a.nachrichten.find(n => n.id === a.antwort.antwortAuf) ?? a.nachrichten[a.nachrichten.length - 1];
 
   let brain = 'Keine Treffer.';
   let quellen: string[] = [];
@@ -69,7 +94,7 @@ export async function inboxEntwurf(person: string, gespraech: string, hinweis?: 
 
   const user = [
     'Eingegangene Mail:',
-    fremd(a.gespraech.quelle === 'gmail' ? 'gmail' : 'postfach', [
+    fremd(e.quelle, [
       `Von: ${auf.von.name ? `${auf.von.name} ` : ''}<${auf.von.email}>`,
       `Betreff: ${auf.betreff || '(kein Betreff)'}`, '',
       auf.text.slice(0, MAIL_MAX) || '(kein Inhalt verfügbar)',
@@ -82,7 +107,7 @@ export async function inboxEntwurf(person: string, gespraech: string, hinweis?: 
     hinweis?.trim() ? `Hinweis der Person für die Antwort: ${hinweis.trim().slice(0, 500)}` : 'Schreibe eine passende, knappe Antwort.',
   ].join('\n');
 
-  const r = await askText({ zweck: 'inbox-draft', system: entwurfSystem(person, z?.anrede, regeln, a.antwort.bereichName), user, maxTokens: 4000, model: agent.model, ki });
+  const r = await askText({ zweck: 'inbox-draft', system: entwurfSystem(person, z?.anrede, regeln, e.bereichName), user, maxTokens: 4000, model: agent.model, ki });
   if (!r.ok || !r.text) throw new EntwurfFehler(r.error === 'guthaben-leer' ? 'Das KI-Guthaben ist leer.' : 'ZOE konnte gerade keinen Entwurf schreiben — bitte noch einmal versuchen.', 502);
   return { draft: r.text.trim(), quellen, ...(r.anbieter ? { anbieter: r.anbieter } : {}) };
 }

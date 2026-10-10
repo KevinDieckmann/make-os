@@ -47,6 +47,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   // Fulfillment (10.10.): Onboarding starten, Nachsorge (C1), Puls → Gespräch anbieten (C2), Analyse-Hinweise (C3) — verteilt nach Präfix
   // der Kennung (lib/fulfillment/stapel.ts); jeder Weg nur über die Schreibstellen des Pakets.
   fulfillment: async () => (await import('@/lib/fulfillment/stapel')).FULFILLMENT_STAPEL_ART,
+  // Inbox (10.10., Roadmap Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“): ein Regelwerk hat in einer Nachricht einen Auftrag erkannt —
+  // die Aufgabe entsteht erst hier, über den Aufgaben-Weg (/api/tasks/create), nur für die Person, in deren Inbox die Nachricht liegt.
+  inbox: async () => (await import('@/lib/inbox/aufgaben-vorschlag-server')).INBOX_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

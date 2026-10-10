@@ -3,7 +3,7 @@
 // (`postfachSichtbar`), die WhatsApp-Business-Nummer (nur mit Zugang) und Übergaben an bzw. von ihr (`uebergabeSichtbar`) — alles
 // über den Strom der Person (`stromRoh`) bzw. `uebergabenFuer`, dazu derselbe Bereichsfilter `imBereich`. Es gibt keinen Parameter
 // für eine andere Person. Geblockte Absender bleiben draußen.
-// Treffer: Betreff, Absender, Empfänger, Text — EINE Such-Regel (`nachrichtTreffer` → lib/text/such-norm.ts). Ergebnis: Gespräche
+// Treffer: Betreff, Absender, Empfänger, Text, Anhang-Namen (10.10.) — EINE Such-Regel (`nachrichtTreffer` → lib/text/such-norm.ts). Ergebnis: Gespräche
 // (jüngster Treffer zuerst) mit Ort + Ausschnitt; höchstens `SUCHE_GRENZEN.seite` je Seite, dazu `gesamt` — nie still gekürzt
 // („mehr …“ lädt die nächste Seite über `ab`). Der Suchbegriff geht NIE in ein Protokoll (die Route notiert nur Bereich + Anzahl).
 
@@ -38,7 +38,7 @@ export interface SuchTreffer {
 
 export interface SuchErgebnis { treffer: SuchTreffer[]; gesamt: number; ab: number; seite: number }
 
-interface Nachricht { am: string; betreff: string; von: Adr; an: Adr[]; cc: Adr[]; text: string }
+interface Nachricht { am: string; betreff: string; von: Adr; an: Adr[]; cc: Adr[]; text: string; anhaenge?: readonly { name: string; eingebettet?: boolean }[] }
 
 /** Treffer eines Gesprächs aus seinen Nachrichten (rein). */
 function trefferAus(nachrichten: readonly Nachricht[], frage: string): { am: string; wo: TrefferOrt; ausschnitt: string; anzahl: number } | null {
@@ -64,7 +64,7 @@ export async function inboxSuchen(person: string, frage: string, f: StromFilter 
     const b = sicht.get(g.postfachId)!.besitzer;
     if (!imap.has(b)) imap.set(b, await Promise.all([ladeImapStand(b), ladeImapTexte(b)]));
   }
-  const alsNachricht = (k: GmailKopf | StromKopf, text: string): Nachricht => ({ am: k.am, betreff: k.betreff, von: k.von, an: k.an, cc: k.cc, text });
+  const alsNachricht = (k: GmailKopf | StromKopf, text: string): Nachricht => ({ am: k.am, betreff: k.betreff, von: k.von, an: k.an, cc: k.cc, text, anhaenge: k.anhaenge ?? [] });
   const treffer: SuchTreffer[] = [];
   for (const g of gespraeche) {
     let n: Nachricht[] = [];

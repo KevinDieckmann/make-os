@@ -296,9 +296,10 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     // Inbox 2 (06.10.): dieselbe Frist für die IMAP-Spiegel (alle Personen, auch ruhende Postfächer).
     const { imapAufraeumen } = await import('@/lib/postfach/aufraeumen');
     zaehle('imap-spiegel', await imapAufraeumen(stichtag('mail-spiegel', f['mail-spiegel'], heute)));
-    // Inbox teilen (08.10.): erledigte Übergaben (Kopien) 90 Tage nach „Erledigt“ — feste Frist, auch ohne weiteren Schreibvorgang.
+    // Inbox teilen (08.10.): erledigte Übergaben (Kopien) 90 Tage nach „Erledigt“ — feste Frist, auch ohne weiteren Schreibvorgang. Seit 10.10. dazu
+    // die Frist des Mail-Spiegels (die Kopie lebt nicht länger als das Original im Spiegel) und verwaiste mitgegebene Anhänge.
     const { uebergabenAufraeumen } = await import('@/lib/inbox/uebergaben-speicher');
-    zaehle('inbox-uebergaben', await uebergabenAufraeumen());
+    zaehle('inbox-uebergaben', await uebergabenAufraeumen(new Date(), stichtag('mail-spiegel', f['mail-spiegel'], heute)));
   });
 
   // 11c · WhatsApp (07.10.): Nachrichten der Business-Nummer vor der Frist (Vorgabe 7 Jahre, § 257 HGB) weg, ihre Dateien mit; Medien vor der

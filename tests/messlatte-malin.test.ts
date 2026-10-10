@@ -306,6 +306,10 @@ const SYS = {
 
   // Inbox teilen (08.10., Lücke 6): eine Übergabe von Kevin an eine DRITTE Person des Haushalts — Malin ist nicht beteiligt.
   uebergabe: 'MESSLATTE-SYS-UEBERGABE-NOTIZ',
+  // Inbox (10.10., Lücke 6 + Phase 1): der Name eines MITGEGEBENEN Anhangs dieser Übergabe, Kevins Aufgaben-Vorschlag aus der Inbox (Stapel-Art
+  // „inbox“, nur er selbst) und sein Merker-Bestand `inbox-vorschlaege--kevin`.
+  uebergabeAnhang: 'MESSLATTE-SYS-UEBERGABE-ANHANG',
+  inboxVorschlag: 'MESSLATTE-SYS-INBOX-VORSCHLAG',
 
   // ZOE auf WhatsApp (08.10.): der Kanal je Person — die Marke steckt im Zeitpunkt „verbunden seit“ (nur der geht maskiert-frei hinaus).
   zoeKanal: '2002-03-04T05:06:07.891Z',
@@ -545,8 +549,13 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson('inbox-uebergaben--haus-messlatte', { v: 1, uebergaben: [{
       id: 'ub-11111111-2222-4333-8444-555555555555', von: 'kevin', an: 'dritte', gespraech: `im~${PF}~0123456789abcdef0123`, quelle: 'imap', postfachId: PF, bereich: 'privat',
       betreff: SYS.mail, gegenueber: { email: 'freundin@example.invalid' }, notiz: SYS.uebergabe, kuemmert: 'dritte', status: 'offen',
-      angelegtAm: J, kopieAm: J, geaendertAm: J, nachrichten: [{ id: `${PF}:e:1:1`, am: J, von: { email: 'freundin@example.invalid' }, an: [], cc: [], betreff: SYS.mail, text: SYS.uebergabe, vonUns: false, anhaenge: [] }], verlauf: [],
+      angelegtAm: J, kopieAm: J, geaendertAm: J, nachrichten: [{ id: `${PF}:e:1:1`, am: J, von: { email: 'freundin@example.invalid' }, an: [], cc: [], betreff: SYS.mail, text: SYS.uebergabe, vonUns: false,
+        anhaenge: [{ teil: '2', name: `${SYS.uebergabeAnhang}.pdf`, typ: 'application/pdf', groesse: 10, ablage: 'ua-11111111-2222-4333-8444-555555555555.bin' }] }], verlauf: [],
     }] });
+    await db.saveJson('inbox-vorschlaege--kevin', { v: 1, geprueft: { [SYS.inboxVorschlag]: H }, letzterLauf: J });
+    await lege({ werkzeug: 'inbox_aufgabe', gruppe: 'inbox', titel: SYS.inboxVorschlag, nachher: SYS.inboxVorschlag, anlass: SYS.inboxVorschlag,
+      eingabe: { gespraech: `im~${PF}~0123456789abcdef0123`, space: 'privat', aufgabe: { title: SYS.inboxVorschlag, description: SYS.inboxVorschlag, priority: 'medium', space: 'privat' } },
+      person: 'kevin', quelle: 'lauf', bezug: { art: 'inbox', id: '0123456789abcdef0123' } } as Parameters<typeof lege>[0]);
     await db.saveJson('haut', { [H]: { juckreiz: 3, schub: false, ausloeser: SYS.haut, am: J } });
     const { speicherFuer: sf } = await import('@/lib/zoe/raum');
     await db.saveJson(sf('gesundheit-alltag', 'kevin'), { v: 1, schlaf: { aufstehen: '07:30', aufstehenZiel: '06:45', schrittMin: 15, schrittTage: 3, ab: H, erinnerung: true, vorlaufMin: 30, handy: false }, essen: { orientierung: true }, ergaenzungen: { [SYS.alltag]: 'kreatin' } });

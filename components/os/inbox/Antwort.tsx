@@ -63,11 +63,12 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
   useEffect(() => { schreibe(schluessel, text); }, [schluessel, text]);
 
   const entwurf = async () => {
-    if (!v.gespraech) return;
+    if (!v.gespraech && !v.uebergabe) return;
     const eigenerText = text.replace(v.signatur ? `-- \n${v.signatur}` : '\u0000', '').trim();
     if (eigenerText && !(await bestaetigen({ titel: 'Text durch ZOE-Entwurf ersetzen?', text: 'Der Text im Feld wird durch den Entwurf von ZOE ersetzt.', ja: 'Ersetzen' }))) return;
     setSchreibt(true); setFehler('');
-    const r = await senden<{ draft?: string; quellen?: string[] }>('/api/inbox/entwurf', { gespraech: v.gespraech, ...(hinweis.trim() ? { hinweis: hinweis.trim() } : {}) });
+    // Übergabe (10.10.): Entwurf zur Kopie — der Server liest sie nur, wenn die Person die Übergabe sieht.
+    const r = await senden<{ draft?: string; quellen?: string[] }>('/api/inbox/entwurf', { ...(v.gespraech ? { gespraech: v.gespraech } : { uebergabe: v.uebergabe }), ...(hinweis.trim() ? { hinweis: hinweis.trim() } : {}) });
     setSchreibt(false);
     if (r.d.ok && r.d.draft) {
       setText(`${r.d.draft}${v.signatur ? `\n\n-- \n${v.signatur}` : ''}`); setVonKi(true);
@@ -117,7 +118,7 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
       {!v.gespraech && !v.uebergabe && <Feldzeile label="Betreff"><input value={betreff} onChange={e => setBetreff(e.target.value)} style={eingabe} aria-label="Betreff" /></Feldzeile>}
       {vonKi && text.trim() && <KiMarke />}
       <textarea ref={feld} value={text} onChange={e => { setText(e.target.value); if (!e.target.value.trim()) setVonKi(false); }} rows={10} placeholder="Deine Antwort …" aria-label="Text" style={{ ...eingabe, minHeight: 200, resize: 'vertical', lineHeight: 1.55, paddingTop: 12 }} />
-      {v.gespraech && (
+      {(v.gespraech || v.uebergabe) && (
         <details style={{ fontSize: TYP.bedien, color: C.inkLeise }} open={!!v.start?.zoeHinweis}>
           <summary style={{ cursor: 'pointer', minHeight: 32 }}>Hinweis für ZOE (optional)</summary>
           <input value={hinweis} onChange={e => setHinweis(e.target.value)} placeholder="z. B. Termin vorschlagen, höflich absagen, freundlich nachfassen" style={{ ...eingabe, marginTop: 6 }} aria-label="Hinweis für ZOE" />
@@ -126,7 +127,7 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
       {v.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{v.hinweis}</div>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <Knopf haupt onClick={() => los(false)} aus={laeuft || !text.trim() || !an.trim() || (!v.gespraech && !postfach) || (!v.gespraech && !v.uebergabe && !betreff.trim())}>{laeuft ? 'sendet …' : 'Senden'}</Knopf>
-        {v.gespraech && <Knopf leise onClick={entwurf} aus={schreibt || laeuft}>{schreibt ? 'ZOE schreibt …' : 'ZOE-Entwurf'}</Knopf>}
+        {(v.gespraech || v.uebergabe) && <Knopf leise onClick={entwurf} aus={schreibt || laeuft}>{schreibt ? 'ZOE schreibt …' : 'ZOE-Entwurf'}</Knopf>}
         <Knopf leise onClick={async () => { const t = text.replace(v.signatur ? `-- \n${v.signatur}` : '\u0000', '').trim(); if (!t || (await bestaetigen({ titel: 'Entwurf verwerfen?', text: 'Der geschriebene Text geht verloren.', ja: 'Verwerfen', gefahr: true }))) { schreibe(schluessel, ''); onZu(); } }} aus={laeuft}>Verwerfen</Knopf>
       </div>
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gesendet wird nur mit dem Klick auf „Senden“.</div>

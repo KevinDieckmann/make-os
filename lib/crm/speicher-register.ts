@@ -148,15 +148,21 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'mit dem Konto bzw. „Trennen“ (Gespräche dieses Postfachs); Absender-Entscheidungen bis die Person sie zurücknimmt',
   }),
   // Inbox teilen (08.10.2026, Lücke 6): Übergaben (freigegebene Kopien) und der gemeinsame Zustand der Team-Postfächer — je Haushalt.
-  mit(E('inbox-uebergaben--*', 'Übergaben je Haushalt: freigegebene KOPIE eines Gesprächs (Köpfe: Absender, Empfänger, Betreff; Texte; Anhänge nur als Liste) von einer Person des Haushalts an eine andere, mit Notiz, „wer kümmert sich“ und Verlauf (nur Schritte, nie Text). Art. 17: Übergaben, die die Person nennen, fallen ganz weg (person-weitere.ts); das Original bleibt im Postfach (dort löschen).'), {
+  mit(E('inbox-uebergaben--*', 'Übergaben je Haushalt: freigegebene KOPIE eines Gesprächs (Köpfe: Absender, Empfänger, Betreff; Texte; Anhänge als Liste — als Datei nur die ausdrücklich angehakten, verschlüsselt in der Ablage `inbox-uebergaben/ua-<uuid>.bin`, seit 10.10.) von einer Person des Haushalts an eine andere, mit Notiz, „wer kümmert sich“, Kennzeichen Werbesperre/Art. 18 und Verlauf (nur Schritte, nie Text). Art. 17: Übergaben, die die Person nennen, fallen ganz weg (person-weitere.ts), ihre Dateien mit dem nächsten Löschfristen-Lauf; das Original bleibt im Postfach (dort löschen).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — die eigene Korrespondenz im Haushalt/Team weitergeben, damit sich jemand kümmert (Geschäftspostfächer zusätzlich lit. b: Anbahnung/Vertrag); geteilt nur ausdrücklich per Klick, Privat nur an volle Mitglieder',
     art15: 'Kontakt: Auskunft zählt die Übergaben, die die Person nennen; Konto: Konto › Meine Daten (eigene gegebene und erhaltene Übergaben)',
-    loeschfrist: 'erledigte Übergaben 90 Tage nach „Erledigt“ (täglicher Löschfristen-Lauf und jeder Schreibvorgang räumen sie weg); Konto löschen entfernt alle Übergaben der Person',
+    loeschfrist: 'erledigte Übergaben 90 Tage nach „Erledigt“ (täglicher Löschfristen-Lauf und jeder Schreibvorgang räumen sie weg); jede Kopie höchstens so lange wie der Mail-Spiegel (Frist „mail-spiegel“, gemessen an der jüngsten kopierten Nachricht); „Zurückziehen“ entfernt die Kopie sofort; Konto löschen entfernt alle Übergaben der Person; mitgegebene Dateien fallen mit ihrer Übergabe weg (verwaiste räumt der tägliche Lauf)',
   }),
   mit(T('inbox-geteilt--*', 'Gemeinsamer Zustand der Team-Postfächer je Haushalt: Wiedervorlage und „erledigt bis“ je Gespräch (nur Kennungen — bei WhatsApp trägt die Kennung die Nummer der Gegenseite), bestätigte Zuordnung (Kontakt-Kennung), „wer kümmert sich“ (Person des Haushalts) — Kennungen und Nummer der Person fallen weg bzw. werden getilgt.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — gemeinsame Post des Teams ordnen (wer kümmert sich, Wiedervorlage)',
     art15: 'Kontakt: Auskunft nennt die Zuordnung; Konto: Konto › Meine Daten (Gespräche, um die sich die Person kümmert)',
     loeschfrist: 'mit dem Postfach („Trennen“, „Teilen aus“ gibt ihn dem Besitzer zurück) bzw. dem Konto des Besitzers; „wer kümmert sich“ einer gelöschten Person fällt weg',
+  }),
+  // Inbox (10.10., Roadmap Phase 1): Merker der Aufgaben-Vorschläge je Person — nur Fingerabdrücke geprüfter Nachrichten, keine Dritten.
+  mit(H('inbox-vorschlaege--*', 'Aufgaben-Vorschläge aus der Inbox je Person: Fingerabdrücke (SHA-256, gekürzt) der schon geprüften Nachrichten mit Tag, Schalter „automatisch“, letzter Lauf — kein Text, keine Adresse, keine Nummer, keine Kennung. Die Vorschläge selbst liegen im Freigabe-Stapel (zoe-stapel).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — die eigene Post ordnen (Vorschläge nur für die Person selbst, angelegt erst per Klick)',
+    art15: 'Konto › Meine Daten (nur Merker, keine Inhalte)',
+    loeschfrist: 'Merker nach 60 Tagen; der Bestand mit dem Konto',
   }),
   A('kalender-umzug-sicherung--*', 'Sicherung der iCloud-Texte beim Umzug Business → Google (Notizen können Dritte nennen) — verschlüsselt, 30 Tage, dann räumt der Takt sie weg (lib/kalender/google/umzug.ts); Wahrheit ist der Termin in Google.', 'kalender-caches'),
   // Verbindung zu Google (03.10.): Token-Bestand und Anmelde-Zustand — gehören der Person des Haushalts, keine Dritten.
@@ -846,6 +852,8 @@ const JE_PERSON: readonly string[] = [
   'arbeitsmodus', 'arbeitsmodus--*', 'arbeitsrahmen--*', 'flaeche', 'flaeche--*', 'onboarding--*', 'fokus-laufend--*',
   // Heute › Top 3 (10.10.): die eigene Festlegung des Tages — nur Aufgaben-Kennungen
   'heute-top3--*',
+  // Inbox › Aufgaben-Vorschläge (10.10.): Merker je Person (nur Fingerabdrücke), Schalter „automatisch“
+  'inbox-vorschlaege--*',
   'agenten-skills-privat--*', 'medien-privat--*', 'ki-tiefenbericht--*',
 ];
 const INSTANZ: readonly string[] = [

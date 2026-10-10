@@ -111,6 +111,13 @@ export const EINSTELLUNGEN_KONTO = {
     aus: 'Nur du siehst das Postfach. Private Postfächer bleiben immer privat.',
     daten: 'Die Nachrichten liegen als Kopie in MAKE OS; mit dem Teilen sehen sie auch die anderen Personen mit Zugang zum Bereich.',
   },
+  'postfach.aufgabenVorschlaege': {
+    was: 'MAKE OS liest die jüngste Nachricht deiner Gespräche (eigene Postfächer und Team-Gespräche, um die du dich kümmerst) und erkennt ohne KI, ob darin eine Frist, eine Bitte, eine Frage an dich oder eine Rechnung/ein Vertrag steckt. Daraus wird ein Vorschlag in DEINEN Freigaben — die Aufgabe entsteht erst mit deinem Klick, mit Link zurück ins Gespräch.',
+    beispiel: 'Eine Kundin schreibt „Können Sie mir das Angebot bis Freitag schicken?“. In deinen Freigaben liegt „Aufgabe aus der Inbox — Frist Fr.“; ein Klick legt „Angebot …“ mit Fälligkeit Freitag an.',
+    an: 'Alle 15 Minuten prüft MAKE OS neue Nachrichten und legt Vorschläge ab (jede Nachricht nur einmal, höchstens fünf je Durchgang).',
+    aus: 'Vorschläge nur, wenn du in der Inbox auf „Vorschläge holen“ klickst.',
+    daten: 'Ohne KI und ohne Versand: der Text bleibt in MAKE OS, ins Protokoll gehen nur Kennungen. Andere Personen sehen deine Vorschläge nie.',
+  },
   'zoe.whatsapp': {
     was: 'Dein persönlicher Draht zu ZOE auf WhatsApp. ZOE hat eine eigene Business-Nummer; du verbindest deine Handynummer mit einem einmaligen Code. Danach bekommst du Hinweise und kannst ihr dort Fragen schicken.',
     beispiel: 'Du schreibst ZOE morgens „Was steht heute an?“ Ohne die Ausnahme „Inhalte senden“ antwortet sie mit einem neutralen Hinweis und einem Link zur App — den Inhalt siehst du erst nach dem Öffnen.',

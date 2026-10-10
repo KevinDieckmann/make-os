@@ -12,7 +12,9 @@
 // gilt auch für Nummern (Zulassen · Blocken); Lagebild und Fächer zählen WhatsApp mit (derselbe Strom).
 // Teilen (08.10., Lücke 6 „Business Couple“): Fach „Übergeben“ (Kopien an bzw. von mir, `offen=ub-…` öffnet sie), „wer kümmert sich“ an
 // Gesprächen der Team-Postfächer und bei WhatsApp, Suchfeld oben (am Handy hinter der Lupe, Taste „/“) — Suche auf dem Server über das,
-// was die Person sieht (/api/inbox/suche), Ergebnisse mit Hervorhebung statt der Arbeitsliste.
+// was die Person sieht (/api/inbox/suche), Ergebnisse mit Hervorhebung statt der Arbeitsliste (seit 10.10. auch Anhang-Namen).
+// Aufgaben-Vorschläge (10.10., Roadmap Phase 1): unter dem ZOE-Satz „Vorschläge holen“ + Schalter „automatisch“ (`AufgabenVorschlaege`) — das
+// Regelwerk legt Vorschläge in die EIGENEN Freigaben, angelegt wird dort per Klick.
 // Ansicht & Ordnung (09.10., Kevin: „ansehen können — sortiert … auf das Postfach klicken, z. B. MAKE Innovation oder KD Ventures“):
 //   · BEREICHS-LEISTE oben (wischbare Reiter): „Alle“ + je Bereich mit Postfächern der Person, mit Ungelesen-Zähler — Klick = nur dessen
 //     Gespräche (der Server filtert: `?bereich=`), die Adresse trägt Bereich + Postfach + offenes Gespräch (Zurück führt in denselben Bereich).
@@ -46,6 +48,7 @@ import { WaSymbol, fensterJetzt } from '../whatsapp';
 import { fensterText, nummerAnzeige, type Fenster } from '@/lib/whatsapp/typen';
 import { UebergabeAnsicht, UebergabenKarte } from './Teilen';
 import { SuchErgebnisse, SuchFeld } from './Suche';
+import { AufgabenVorschlaege } from './Vorschlaege';
 import { aktion, holen, istUebergabeId, nameVon, senden, tagIn, zeitKurz, type GespraechZeile, type StromAntwort } from './daten';
 
 type Filter = { fach: FachId | 'nachfassen' | 'wiedervorlage'; bereich: string | null } | null;
@@ -517,6 +520,7 @@ export function InboxZwei() {
                 <span style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, display: 'block' }}>ZOE schlägt vor</span>
                 {s.zoe.text}{s.zoe.gespraech ? ' ›' : ''}
               </button>
+              <AufgabenVorschlaege meldung={t => melden(t)} space={space} />
             </div>
           </Karte>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }} data-inbox="postfach-leiste">

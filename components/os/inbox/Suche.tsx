@@ -13,7 +13,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Knopf, Hinweis, Leer, Punkt, eingabe
 import { WaSymbol } from '../whatsapp';
 import { holen, zeitKurz, type SuchAntwort, type SuchTreffer } from './daten';
 
-const ORT: Record<TrefferOrt, string> = { betreff: 'im Betreff', absender: 'im Absender', empfaenger: 'bei den Empfängern', text: 'im Text' };
+const ORT: Record<TrefferOrt, string> = { betreff: 'im Betreff', absender: 'im Absender', empfaenger: 'bei den Empfängern', text: 'im Text', anhang: 'im Namen eines Anhangs' };
 
 /** Text mit hervorgehobenen Suchwörtern (rein über `markieren`). */
 export function Markiert({ text, frage }: { text: string; frage: string }) {
@@ -65,7 +65,7 @@ export function SuchErgebnisse({ frage, filter, offenId, onOeffnen }: { frage: s
       {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
       {!d && !fehler && <Leer>sucht …</Leer>}
       {d?.hinweis && <Leer>{d.hinweis}</Leer>}
-      {d && !d.hinweis && !d.treffer.length && <Leer symbol="⌕">Nichts gefunden — gesucht wird in Betreff, Absender, Empfängern und Text deiner Post, deiner Team-Postfächer und deiner Übergaben.</Leer>}
+      {d && !d.hinweis && !d.treffer.length && <Leer symbol="⌕">Nichts gefunden — gesucht wird in Betreff, Absender, Empfängern, Text und Anhang-Namen deiner Post, deiner Team-Postfächer und deiner Übergaben. Beispiel: „Rechnung 117“ findet auch die Mail mit dem Anhang „Rechnung-2026-117.pdf“.</Leer>}
       {d && d.treffer.length > 0 && <Liste>{d.treffer.map(zeile)}</Liste>}
       {d && d.treffer.length < d.gesamt && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
