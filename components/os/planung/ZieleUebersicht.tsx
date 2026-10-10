@@ -10,8 +10,10 @@
 //   · Unsere Ziele — der gemeinsame Bestand (Privat + ohne Bereich), beide bearbeiten; im Jahr oben der Nordstern.
 //   · Meine Ziele — der eigene Bestand (`fuer: 'ich'`), nur ich; je Ziel „mit <Name> teilen“ (`geteilt`, Vorgabe aus).
 //   · <Name> — je Partner (anderes volles Mitglied des Haushalts) NUR, was er/sie geteilt hat — der Server filtert, hier nur lesen.
-// Anlegen direkt in jeder Spalte (Enter), Fortschritt je Ziel und als Ø im Kopf, Meilensteine je gemeinsamem Ziel aufklappbar (eigene
-// Ziele tragen keine Meilensteine — die hängen am gemeinsamen Bestand). Namen aus den Konten (`usePlanPersonen`), nie fest im Code.
+// Anlegen direkt in jeder Spalte (Enter), Fortschritt je Ziel und als Ø im Kopf, Meilensteine je Ziel aufklappbar: gemeinsame Ziele mit den
+// gemeinsamen Meilensteinen (Bestand `meilensteine`), eigene Ziele seit 10.10. mit EIGENEN Meilensteinen (`meilensteine-eigen--<person>`,
+// `useEigeneMeilensteine` + `EigeneMeilensteineListe`; die Spalte der anderen Person zeigt nur die der geteilten Ziele — der Server filtert).
+// Namen aus den Konten (`usePlanPersonen`), nie fest im Code.
 
 import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -25,6 +27,7 @@ import { offenErledigt, naechsterRang, verschiebe } from '@/lib/planung/rang';
 import { zielJahr } from '@/lib/planung/zeitstrahl';
 import { wirksamerSpace, speicherSpace } from '@/lib/planung/bereich';
 import { meilensteineVonZiel, wirksamerFortschritt } from '@/lib/planung/meilenstein-aufgaben';
+import { eigenesZielFortschritt, meilensteineDesZiels } from '@/lib/planung/eigene-meilensteine';
 import { usePlanPersonen, type PlanPerson } from '@/lib/planung/ziele-client';
 import type { Ziel, ZielHorizont } from '@/lib/planung/typen';
 import { useTasks } from '@/context/TasksContext';
@@ -33,6 +36,8 @@ import { PfeilRang } from './PfeilRang';
 import { NordsternKarte } from './NordsternKarte';
 import { usePlanung, type PlanungStand } from './usePlanung';
 import { loescheZiel } from './ziel-loeschen';
+import { useEigeneMeilensteine, type EigeneMeilensteineStand } from './useEigeneMeilensteine';
+import { EigeneMeilensteineListe } from './EigeneMeilensteineListe';
 
 export type SpaltenArt = 'unsere' | 'meine' | 'partner';
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
@@ -65,6 +70,8 @@ export interface ZieleUebersichtProps {
 export function ZieleUebersicht({ horizont, gemeinsam, planJahr, rueck, i = 0, kompakt, ohneUnsere }: ZieleUebersichtProps) {
   const personen = usePlanPersonen();
   const meine = usePlanung(horizont, true, 'ich');
+  // Eigene Meilensteine (10.10.): nach jedem Speichern zieht der Server den Fortschritt der eigenen Ziele nach — dann die Ziele neu laden.
+  const meineMs = useEigeneMeilensteine('ich', true, meine.zieleNeuLaden);
   const partner = personen?.partner ?? [];
   return (
     <div className="ziele-spalten" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 14, alignItems: 'start' }}>
@@ -72,7 +79,7 @@ export function ZieleUebersicht({ horizont, gemeinsam, planJahr, rueck, i = 0, k
         <ZielSpalte art="unsere" titel="Unsere Ziele" p={gemeinsam} horizont={horizont} planJahr={planJahr} rueck={rueck} i={i} kompakt={kompakt}
           kopf={horizont === 'jahr' ? <NordsternKarte eingebettet /> : <NordsternKarte kompakt />} />
       )}
-      <ZielSpalte art="meine" titel="Meine Ziele" p={meine} horizont={horizont} planJahr={planJahr} rueck={rueck} i={i + 1} kompakt={kompakt} partner={partner} />
+      <ZielSpalte art="meine" titel="Meine Ziele" p={meine} horizont={horizont} planJahr={planJahr} rueck={rueck} i={i + 1} kompakt={kompakt} partner={partner} eigeneMs={meineMs} />
       {partner.map((pp, k) => <PartnerSpalte key={pp.speicher} person={pp} horizont={horizont} planJahr={planJahr} rueck={rueck} i={i + 2 + k} kompakt={kompakt} />)}
     </div>
   );
@@ -81,7 +88,8 @@ export function ZieleUebersicht({ horizont, gemeinsam, planJahr, rueck, i = 0, k
 /** Je Partner eine eigene Ladung (nur lesen; der Server liefert nur das Geteilte). */
 function PartnerSpalte({ person, horizont, planJahr, rueck, i, kompakt }: { person: PlanPerson; horizont: ZielHorizont; planJahr: number; rueck: Rueckgaengig; i: number; kompakt?: boolean }) {
   const p = usePlanung(horizont, true, person.speicher);
-  return <ZielSpalte art="partner" titel={person.vorname} p={p} horizont={horizont} planJahr={planJahr} rueck={rueck} i={i} kompakt={kompakt} />;
+  const ms = useEigeneMeilensteine(person.speicher);
+  return <ZielSpalte art="partner" titel={person.vorname} p={p} horizont={horizont} planJahr={planJahr} rueck={rueck} i={i} kompakt={kompakt} eigeneMs={ms} />;
 }
 
 interface SpalteProps {
@@ -90,9 +98,11 @@ interface SpalteProps {
   kopf?: ReactNode;
   /** Meine: wem „teilen“ etwas zeigt (Vornamen im Schalter). */
   partner?: readonly PlanPerson[];
+  /** Meine/Partner: die eigenen Meilensteine (10.10.) — die der anderen Person nur zu ihren geteilten Zielen (Server-Filter). */
+  eigeneMs?: EigeneMeilensteineStand;
 }
 
-function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf, partner = [] }: SpalteProps) {
+function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf, partner = [], eigeneMs }: SpalteProps) {
   const farbe = SPALTEN_FARBE[art];
   const laufend = Number(p.heute.slice(0, 4));
   const zeitLabel = horizont === 'jahr' ? String(planJahr) : p.zr.label;
@@ -152,7 +162,11 @@ function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf
 
   const zeile = (z: Ziel, pos: number, n: number) => {
     const zMs = art === 'unsere' ? meilensteineVonZiel(z.id, p.ms) : [];
-    const v = z.erledigt ? 100 : z.fortschritt;
+    // Eigene Ziele (10.10.): eigene Meilensteine; der Fortschritt folgt ihnen (Mittelwert), sonst der Wert von Hand.
+    const mitEigenen = art !== 'unsere' && !!eigeneMs;
+    const darfMs = darf && !!eigeneMs?.darfSchreiben;
+    const nMs = zMs.length || (eigeneMs && mitEigenen ? meilensteineDesZiels(z.id, eigeneMs.ms).length : 0);
+    const v = eigeneMs && mitEigenen ? eigenesZielFortschritt(z, eigeneMs.ms) : z.erledigt ? 100 : z.fortschritt;
     const offenMs = auf.has(z.id);
     const abgeleitet = !!z.abgeleitetVon && !z.angepasst;
     const titelKnoten = bearbeite?.id === z.id
@@ -166,9 +180,9 @@ function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf
     const unter = [
       z.termin ? `bis ${dtKurz(z.termin)}` : null,
       horizont === 'jahr' && z.zielwert ? `Ziel ${z.zielwert}` : null,
-      zMs.length ? (
+      nMs || (mitEigenen && darfMs) ? (
         <button key="ms" type="button" onClick={() => umschalten(z.id)} aria-expanded={offenMs} aria-label={`Meilensteine von „${z.titel}“ ${offenMs ? 'zuklappen' : 'aufklappen'}`}
-          style={{ ...leiseKnopf, padding: 0, color: C.inkDim }}>{offenMs ? '▾' : '▸'} {zMs.length === 1 ? '1 Meilenstein' : `${zMs.length} Meilensteine`}</button>
+          style={{ ...leiseKnopf, padding: 0, color: C.inkDim }}>{offenMs ? '▾' : '▸'} {nMs ? (nMs === 1 ? '1 Meilenstein' : `${nMs} Meilensteine`) : 'Meilensteine'}</button>
       ) : null,
       z.abgeleitetVon ? <span key="ab" style={{ color: z.angepasst ? LEUCHT.achtung : LEUCHT.agenten }}>{z.angepasst ? 'angepasst' : 'aus dem Jahresziel'}</span> : null,
       art === 'meine' && partner.length > 0 ? (
@@ -183,9 +197,9 @@ function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf
     ].filter(Boolean) as ReactNode[];
     const fortschritt = !z.erledigt && (
       <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto' }}>
-        {darf && !zMs.length
+        {darf && !nMs
           ? <input type="range" min={0} max={100} step={5} value={v} aria-label={`Fortschritt „${z.titel}“`} onChange={e => zPatch(z.id, { fortschritt: Number(e.target.value) })} style={{ width: kompakt ? 64 : 'clamp(64px, 9vw, 96px)', accentColor: col(v) }} />
-          : <span title={zMs.length ? 'Aus den Meilensteinen dieses Ziels' : undefined} style={{ display: 'inline-flex', width: kompakt ? 64 : 'clamp(64px, 9vw, 96px)' }}><Segmentbalken anteil={v / 100} label={`Fortschritt ${z.titel}`} farbe={col(v)} segmente={kompakt ? 8 : 10} hoehe={10} breite="100%" /></span>}
+          : <span title={nMs ? 'Aus den Meilensteinen dieses Ziels' : undefined} style={{ display: 'inline-flex', width: kompakt ? 64 : 'clamp(64px, 9vw, 96px)' }}><Segmentbalken anteil={v / 100} label={`Fortschritt ${z.titel}`} farbe={col(v)} segmente={kompakt ? 8 : 10} hoehe={10} breite="100%" /></span>}
         <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', width: 40, textAlign: 'right', color: col(v) }}>{v} %</span>
         {darf && !kompakt && <PfeilRang label={z.titel} obenAus={pos === 0} untenAus={pos === n - 1} onAuf={() => bewegen(z.id, 'auf')} onAb={() => bewegen(z.id, 'ab')} />}
         {darf && <button onClick={() => setBearbeite({ id: z.id, text: z.titel })} aria-label={`„${z.titel}“ umbenennen`} title="umbenennen" style={leiseKnopf}>✎</button>}
@@ -201,6 +215,7 @@ function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf
     return (
       <div key={z.id}>
         {darf ? <ZeileAktionen titel={z.titel} archiviert={!!z.archiviertAm} onArchivieren={() => archivieren(z)} onLoeschen={() => loeschen(z)}>{kern}</ZeileAktionen> : kern}
+        {offenMs && mitEigenen && eigeneMs && <EigeneMeilensteineListe zielId={z.id} zielTitel={z.titel} stand={eigeneMs} darf={darfMs} rueck={rueck} farbe={farbe} heute={heute} />}
         {offenMs && zMs.length > 0 && (
           <div style={{ margin: '2px 0 8px 36px', display: 'grid', gap: 4 }}>
             {zMs.map(m => {

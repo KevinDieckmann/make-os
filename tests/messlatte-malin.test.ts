@@ -342,6 +342,9 @@ const SYS = {
 
   // 09.10. „Fokus: gemeinsam und je Person“: Kevins eigener Fokus (`fokus-eigen--kevin`, nicht geteilt) — nur er selbst.
   fokusMein: 'MESSLATTE-SYS-FOKUS-MEIN',
+
+  // 10.10. „eigene Meilensteine“: ein Meilenstein an Kevins NICHT geteiltem eigenem Ziel (`meilensteine-eigen--kevin`) — nur er selbst.
+  meilensteinEigen: 'MESSLATTE-SYS-MEILENSTEIN-EIGEN',
 };
 const ALLE_MARKEN: Record<string, string> = { ...GEHEIM, ...SYS };
 
@@ -465,6 +468,10 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     const ziele = (await import('@/app/api/state/ziele/route')) as unknown as Handler3;
     const zr = await schreiben(ziele.PATCH, 'PATCH', '/api/state/ziele', 'kevin', { horizont: 'jahr', fuer: 'ich', ops: [{ op: 'upsert', eintrag: { id: 'z-messlatte-eigen', titel: SYS.ziel, fortschritt: 10, space: 'privat' } }] });
     expect(zr.status, await zr.clone().text()).toBe(200);
+    // Eigener Meilenstein (10.10.) an Kevins nicht geteiltem eigenem Ziel — über den Schreibweg der Route.
+    const msEigen = (await import('@/app/api/state/meilensteine-eigen/route')) as unknown as { PATCH: Handler };
+    const me = await schreiben(msEigen.PATCH, 'PATCH', '/api/state/meilensteine-eigen', 'kevin', { ops: [{ op: 'upsert', eintrag: { id: 'mse-messlatte', titel: SYS.meilensteinEigen, zielId: 'z-messlatte-eigen', fortschritt: 0, erledigt: false } }] });
+    expect(me.status, await me.clone().text()).toBe(200);
 
     // E4-Rest (09.10.): gemeinsame Planung im Privat-Bereich des Haushalts — Routine für beide, geteiltes Ziel, Meilenstein, Fokus-Satz.
     await db.updateJson<{ routinen?: unknown[]; bloecke?: unknown[] }>('routinen', cur => ({ ...(cur ?? {}), routinen: [...(cur?.routinen ?? []),
@@ -649,7 +656,7 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
         }
       }
       // Das Werkzeug der Einzel-Wiederherstellung (Inhaber) öffnet keine persönlichen Bestände der anderen Person.
-      for (const q of ['?bestand=gesundheit-koerper--kevin&tag=2026-10-01&liste=beschwerden&ids=kb-messlatte', '?bestand=tageslauf', '?bestand=vitals', '?bestand=ziele-eigen--kevin']) {
+      for (const q of ['?bestand=gesundheit-koerper--kevin&tag=2026-10-01&liste=beschwerden&ids=kb-messlatte', '?bestand=tageslauf', '?bestand=vitals', '?bestand=ziele-eigen--kevin', '?bestand=meilensteine-eigen--kevin']) {
         const r = await rufeGet('intern/wiederherstellen', q, 'malin');
         if (r === 'frist' || 'fehler' in r) { lecks.push(`intern/wiederherstellen${q}: keine Antwort`); continue; }
         if (r.status !== 403) lecks.push(`intern/wiederherstellen${q}: ${r.status} statt 403`);

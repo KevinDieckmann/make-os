@@ -141,6 +141,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'tasks/create': r('POST', 'haushalt', 'Aufgabe anlegen; Systemlauf nur mit owner (S1).'),
   'state/ziele': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsame Ziele („wir“) und persönliche Ziele des Haushalts — fremde eigene nur, wenn geteilt (teilt.ziele, 08.10.), nie schreiben.'),
   'state/meilensteine': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsamer Meilenstein-Bestand des Haushalts.'),
+  'state/meilensteine-eigen': r('GET,PATCH', 'haushalt', 'Eigene Meilensteine an eigenen Zielen (10.10., `meilensteine-eigen--<person>`, immer Privat): lesen die Person selbst, eine andere Person des Haushalts nur, was sie über ihre eigenen Ziele teilt (Server-Filter lib/planung/eigene-ziele-sicht.ts); Konto „nur Business“ und fremder Haushalt nichts. Schreiben nur der eigene Bestand per Sitzung (Dienstweg 403), Stand/409, Grenzen 413.'),
   // 08.10. abends (Fragebogen Teil 3): keine Startroutinen mehr (das waren die Routinen einer echten Person) — eine leere Instanz
   // startet ohne Routinen, der GET liest nur noch.
   'state/routinen': r('GET,PUT,PATCH', 'haushalt', 'Gemeinsamer Routinen-Bestand des Haushalts (Blöcke je Person); lesen auch als Systemlauf.'),

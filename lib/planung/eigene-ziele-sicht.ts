@@ -3,7 +3,8 @@
 // wenn die Eigentümerin sie ausdrücklich teilt. Einstellung je Person am Konto (`teilt.ziele`: Speichernamen, wem sie ihre eigenen
 // Ziele zeigt — wie `teilt.gesundheit`), Vorgabe „nicht geteilt“ (Feld fehlt = niemand), schalten nur sie selbst
 // (`PUT /api/konto/teilen`). Nicht geteilt ⇒ NICHTS davon kommt an: kein Titel, keine Kennung, kein „Belegt“, keine Meilensteine,
-// die noch auf ein solches Ziel zeigen (Altbestand; seit 07.10. kann kein neuer Meilenstein auf ein eigenes Ziel zeigen).
+// die noch auf ein solches Ziel zeigen (Altbestand; seit 07.10. kann kein neuer Meilenstein des GEMEINSAMEN Bestands auf ein eigenes Ziel
+// zeigen — eigene Ziele tragen seit 10.10. eigene Meilensteine in einem eigenen Bestand, Regel unten bei „Eigene Meilensteine“).
 // Geteilt ⇒ lesen (GET /api/state/ziele?fuer=<person>), nie schreiben. Die Sammel-Ansichten (Lichtfäden, Fluss, Brain-Kugel, Seil)
 // bleiben dabei so streng wie vorher (fremde eigene Ziele dort höchstens als „Belegt“).
 // EINE Regel für alle Leser — hier (rein) und in eigene-ziele-sicht-server.ts (Konten laden). Neue Leser fremder eigener Ziele
@@ -141,4 +142,38 @@ export function nurGeteilte<D extends EigeneDatei>(d: D | null | undefined): D {
 export function hatGeteiltes(d: EigeneDatei | null | undefined): boolean {
   const g = nurGeteilte(d);
   return HORIZONTE.some(h => (g[h] as unknown[]).length > 0) || Object.values(g.fokus ?? {}).some(v => !!v.trim());
+}
+
+// ── Eigene Meilensteine (10.10., Kevin: „Ja, eigene Meilensteine“) ─────────────────────────────────────────────────────────────
+// Eigene Meilensteine (`meilensteine-eigen--<person>`, lib/planung/eigene-meilensteine.ts) hängen an eigenen Zielen und sind immer Privat.
+// Sichtbar: der Person selbst; einer anderen Person nur, wenn sie die eigenen Ziele der Eigentümerin sieht — ganz geteilt (`teilt.ziele`)
+// alle, einzeln geteilt NUR die Meilensteine der Ziele mit `geteilt: true`. Ein Konto „nur Business“ sieht keine (auch nicht die eigenen —
+// Privates ist für dieses Konto nicht da), ein fremder Haushalt, eine Person ohne Konto und der Systemlauf ebenso wenig. EINE Stelle für
+// jeden Leser: `eigeneMeilensteineSicht` + `eigeneMeilensteineFuerBetrachter` (Route GET /api/state/meilensteine-eigen).
+
+/**
+ * Wie viel `betrachter` von den eigenen Meilensteinen von `eigentuemer` sieht: wie bei den eigenen Zielen (`eigeneZieleSicht`), aber nie für
+ * ein Konto „nur Business“ oder eine Person ohne Konto im Haushalt (eigene Meilensteine sind immer Privat).
+ */
+export function eigeneMeilensteineSicht(konten: readonly KontoZieleTeilen[], eigentuemer: string, betrachter: string | null | undefined): EigeneZieleSicht {
+  if (!betrachter) return 'nichts';
+  if (!vollesMitglied(konten.find(k => k.speicher === betrachter))) return 'nichts';
+  return eigeneZieleSicht(konten, eigentuemer, betrachter);
+}
+
+/** Kennungen der einzeln geteilten eigenen Ziele einer Datei (alle Horizonte). */
+export function geteilteZielIds(d: EigeneDatei | null | undefined): Set<string> {
+  const g = nurGeteilte(d);
+  return new Set(HORIZONTE.flatMap(h => (g[h] as { id?: unknown }[]).map(z => z?.id).filter((x): x is string => typeof x === 'string')));
+}
+
+/**
+ * NUR die eigenen Meilensteine, die der Betrachter sehen darf (rein, Server): `alles` → alle · `geteilte` → nur die an einem einzeln geteilten
+ * Ziel der Eigentümerin (`ziele` = ihr eigener Ziel-Bestand) · `nichts` → keiner. Ein Meilenstein ohne Ziel kommt bei `geteilte` nie an.
+ */
+export function eigeneMeilensteineFuerBetrachter<M extends { zielId?: string }>(ms: readonly M[], ziele: EigeneDatei | null | undefined, sicht: EigeneZieleSicht): M[] {
+  if (sicht === 'nichts') return [];
+  if (sicht === 'alles') return [...ms];
+  const geteilt = geteilteZielIds(ziele);
+  return ms.filter(m => !!m.zielId && geteilt.has(m.zielId));
 }

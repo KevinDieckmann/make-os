@@ -509,6 +509,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand)',
   }),
   H('meilensteine', 'Eigene Meilensteine des Haushalts.'),
+  // Eigene Meilensteine an eigenen Zielen (10.10., Kevin: „Ja, eigene Meilensteine“ — lib/planung/eigene-meilensteine.ts): je Person, immer
+  // Privat, Titel/Datum/Fortschritt der eigenen Planung; keine Dritten, kein Personen-Feld.
+  mit(H('meilensteine-eigen--*', 'Eigene Meilensteine je Person an ihren eigenen Zielen (Titel, Datum, Fortschritt) — immer Privat; sichtbar nur der Person selbst und, je Ziel geteilt, den anderen vollen Mitgliedern des Haushalts; keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — die Person plant für sich selbst',
+    art15: 'Konto-Export (PERSON_BESTAENDE); sichtbar nur der Person selbst und, je eigenem Ziel geteilt, den anderen vollen Mitgliedern des Haushalts (Planung › Ziele)',
+    loeschfrist: 'bis die Person sie löscht bzw. mit dem Konto (Konto löschen entfernt den Bestand)',
+  }),
   // Austausch am Meilenstein (30.09.): Verlauf, Notiz, Links — Texte können Dritte nennen (Kunden, Partner) → getilgt.
   T('meilenstein-raum--*', 'Verlauf/Notiz/Links je Meilenstein — bleiben, Namen/Adressen der Person getilgt (lib/crm/person-weitere.ts).'),
   H('kompass', 'Eigener Kompass des Haushalts.'),
@@ -699,6 +706,8 @@ const JE_PERSON: readonly string[] = [
   'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*',
   // Mein Fokus · Privat (10.10.)
   'fokus-eigen--*',
+  // Eigene Meilensteine an eigenen Zielen (10.10.) — immer Privat, je Person
+  'meilensteine-eigen--*',
   // Zugänge und Kanäle der Person
   'google-verbindung--*', 'icloud-verbindung--*', 'kalender-icloud--*', 'postfaecher--*', 'postfach-zugang--*', 'oauth-tokens',
   'zoe-kanal--*', 'zoe-whatsapp-medien',

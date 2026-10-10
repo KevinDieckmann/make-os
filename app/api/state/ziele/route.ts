@@ -35,6 +35,7 @@ import { protokolliere, protokolliereBestand, werAus } from '@/lib/store/aenderu
 import { mitFarbe, zielFarbenDesHaushalts } from '@/lib/planung/ziel-farben-server';
 import { eigeneZieleSichtFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { hatGeteiltes, nurGeteilte } from '@/lib/planung/eigene-ziele-sicht';
+import { eigeneZieleNachziehen } from '@/lib/planung/eigene-meilensteine-server';
 import { BEREICH_GETRENNT, ZIEL_FEHLT, oberzielLoesen, oberzielPruefen, type BezuegeGeloest } from '@/lib/planung/bezuege';
 import { zielBezuegeInAufgabenLoesen } from '@/lib/aufgaben/ziel-bezug-server';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
@@ -268,7 +269,8 @@ export async function PATCH(req: Request) {
     }
   }
   // Ziel-Fortschritt aus Meilensteinen (30.09.): hat ein Ziel Meilensteine, gilt ihr Mittelwert (auch nach einer Änderung von Hand).
-  if (sp.fuer === 'wir' && await zieleNachziehen()) {
+  // Eigene Ziele (10.10.): dieselbe Regel mit den EIGENEN Meilensteinen der Person (`meilensteine-eigen--<person>`, lib/planung/eigene-meilensteine.ts).
+  if (sp.fuer === 'wir' ? await zieleNachziehen() : await eigeneZieleNachziehen(sp.fuer)) {
     const f = datei(await loadJson<ZieleDatei>(sp.name));
     return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(f, ohnePrivat) });
   }
