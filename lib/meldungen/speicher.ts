@@ -73,6 +73,8 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   // Paket 4c: nie Bild- oder Albumnamen auf einen Messenger.
   if (m.art === 'medien') return 'Bei Fotos & Videos wartet etwas auf dich — Details in MAKE OS';
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
+  // Schlaf-Hilfe (09.10.): Gesundheit nie im Wortlaut auf einen Messenger.
+  if (m.art === 'gesundheit') return 'Ein Gesundheits-Hinweis wartet — Details in MAKE OS';
   return m.titel;
 }
 

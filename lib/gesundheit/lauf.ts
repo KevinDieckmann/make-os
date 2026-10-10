@@ -43,6 +43,26 @@ async function moduleEinstellung(person: Person): Promise<{ module: ModulStand; 
   } catch { return { module: { ...MODULE_AUS }, symptom: null }; }
 }
 
+/** Die Fragen des Tages-Checks, die die Person gewählt hat (09.10.) — nur ihre eigene Einstellung; nicht lesbar → keine. */
+async function checkKurz(person: Person): Promise<string[]> {
+  try {
+    const [{ alltagLaden }, { aktiveFragen }] = await Promise.all([import('./alltag-server'), import('./tages-check')]);
+    return aktiveFragen((await alltagLaden(person)).alltag.check).map(f => f.kurz);
+  } catch { return []; }
+}
+
+/** Schlaf-Hilfe (09.10.): die Schlafenszeit von heute Abend — nur aus der EIGENEN Einstellung und den eigenen Werten, nur mit
+ *  Einwilligung (a); diese Zeile steht nur in der vollen Nachricht (Inhalts-Ausnahme der Person). Nicht lesbar → keine Zeile. */
+async function schlafenszeitHeute(person: Person, heute: string): Promise<{ schlafenszeit?: string }> {
+  try {
+    const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung');
+    if (!(await gesundheitVerarbeitungErlaubt(person))) return {};
+    const { alltagLaden, schlafLageFuer } = await import('./alltag-server');
+    const l = await schlafLageFuer(person, (await alltagLaden(person)).alltag, heute);
+    return l.schlafenszeit ? { schlafenszeit: l.schlafenszeit } : {};
+  } catch { return {}; }
+}
+
 /** WHOOP frisch holen (08.10.): für JEDE Person mit eigener Verbindung (vorher fest nur das Erstkonto) — wartet höchstens 30 s.
  *  Fehler sind hier keine: die Morgennachricht sagt dann eben ehrlich „keine Werte“. */
 async function whoopHolen(person: Person): Promise<void> {
@@ -86,6 +106,7 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string,
       name,
       vitals: { rec: v.rec, sleep: v.sleep, heute: v.heute },
       routinen: alle.filter(r => r.wann === 'morgen').map(r => r.label),
+      ...(await schlafenszeitHeute(person, heute)),
     });
     return text + await haushaltZeilen(person);
   }
@@ -97,6 +118,7 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string,
       routinen: alle.filter(r => r.wann === 'abend').map(r => r.label),
       streakAktiv: anzeige.module.serie,
       symptom: anzeige.symptom,
+      check: await checkKurz(person),
     });
   }
   // woche

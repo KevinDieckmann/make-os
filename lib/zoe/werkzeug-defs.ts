@@ -22,6 +22,7 @@ import { BUSINESS_EINHEITEN_NAMEN, PRIVAT_EINHEITEN_NAMEN, BUSINESS_GESELLSCHAFT
 import { ARTEN as BAU_ARTEN, BEREICHE as BAU_BEREICHE } from '@/lib/bauplan/form';
 import { KENNZAHLEN as BUSINESS_KENNZAHLEN, SAEULEN_TEXT, SCOPES as BUSINESS_SCOPES } from '@/lib/business/register';
 import { GESUNDHEIT_KENNZAHLEN } from '@/lib/gesundheit/index';
+import { CHECK_FRAGEN } from '@/lib/gesundheit/tages-check';
 import { BEIDE, TEAM } from '@/lib/crm/team';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 
@@ -333,11 +334,12 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
     },
     {
       name: 'journal_eintrag',
-      description: 'Journal für den Tag: was lief gut, wofür dankbar, wo hart zu sich; dazu Stimmung/Energie/Stress 1–5. Nutze das für die Abendantwort und für alles, was nach Reflexion klingt. Nur übernehmen, was gesagt wurde.',
+      description: 'Journal für den Tag: was lief gut, wofür dankbar, wo hart zu sich; dazu Stimmung/Energie/Stress 1–5 und der Tages-Check (ja/nein-Fragen wie im WHOOP-Journal). Nutze das für die Abendantwort und für alles, was nach Reflexion klingt. Nur übernehmen, was gesagt wurde.',
       input_schema: obj({
         gut: { type: 'string' }, dankbar: { type: 'string' }, hart: { type: 'string' },
         text: { type: 'string', description: 'Freier Text, wenn es keine der drei Fragen trifft' },
         stimmung: { type: 'number' }, energie: { type: 'number' }, stress: { type: 'number', description: '1–5, niedrig = gut' }, datum: { type: 'string' },
+        check: { type: 'object', description: `Tages-Check: nur ausdrücklich beantwortete Fragen, Kennung → true (ja) / false (nein). Kennungen: ${CHECK_FRAGEN.map(f => `${f.id} („${f.frage}“)`).join(', ')}` },
       }),
     },
     {

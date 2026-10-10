@@ -24,6 +24,10 @@ export function hinweisCheckIn(name: string, slot: 'morgen' | 'mittag' | 'abend'
   return `${name}, ${was} wartet in MAKE OS — ${link}`;
 }
 
+/** Abend-Erinnerung der Schlaf-Hilfe (09.10.) — Glocke und Handy, IMMER neutral: keine Uhrzeit, kein Schlafwert, keine Schuld. */
+export const SCHLAF_ERINNERUNG_TITEL = 'Zeit, den Tag ausklingen zu lassen';
+export const hinweisSchlafenszeit = (link: string) => `${SCHLAF_ERINNERUNG_TITEL} — ${link}`;
+
 /** Hinweis zur Kopplung — neutral, ohne Personen oder Haushalt zu nennen (Plattform-Regel). */
 export const TELEGRAM_FREMD = 'Dieser Bot gehört zu einer privaten MAKE-OS-Instanz. Koppeln geht nur aus MAKE OS heraus (Konto › Telegram).';
 

@@ -5,7 +5,8 @@
 // Haushalts (Konten + gewählte Gäste): gemeinsame Gerichte, passend für alle — seit 08.10.
 // (Kevin) ohne Variante je Person und ohne Personennamen (`lib/ernaehrung/neutral.ts`). Bevorzugte Lebensmittel zuerst; was im Vorrat ist, wird
 // verbraucht und steht nicht auf der Liste. NUR ein Vorschlag — übernommen
-// wird per Klick. Kein Medizin-/Ernährungsrat.
+// wird per Klick. Kein Medizin-/Ernährungsrat. Seit 09.10. kennt der Prompt die Belastungstage des Haushalts (Trainingsplan bzw.
+// Strain der Personen mit Einwilligung (b)) — nur als Wochentage, nie mit Namen.
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { nurHaushalt } from '@/lib/zugang/tor';
@@ -20,6 +21,9 @@ import { TAGE, MAHLZEITEN, KATEGORIEN, sauberDatei, neueId, kategorieRaten, glei
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { profileFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import { namenFuer, ohneNamen, gerichtNeutral, begruendungNeutral } from '@/lib/ernaehrung/neutral';
+import { belastungsZeile } from '@/lib/ernaehrung/orientierung';
+import { belastungFuerHaushalt } from '@/lib/ernaehrung/orientierung-server';
+import { localDay } from '@/lib/zeit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,7 +64,11 @@ export async function POST(req: Request) {
   const gaeste = new Set(Array.isArray(body.gaeste) ? body.gaeste.map(String) : []);
   // Art. 9 (05.10.): Bedürfnisse/Unverträglichkeiten nur mit Einwilligung (b) der Person an die KI — sonst (und für Gäste
   // immer) nur als neutrale Küchenregel „nie“ (lib/datenschutz/gesundheit-ki.ts).
-  const { profile, mitGesundheit } = await profileFuerKi(f.profile.filter(p => p.konto || gaeste.has(p.person)));
+  const { profile, mitGesundheit: profilGesundheit } = await profileFuerKi(f.profile.filter(p => p.konto || gaeste.has(p.person)));
+  // Belastungstage (09.10.): harte Trainingstage im Haushalt → dort kohlenhydratreicher. Nur aus Personen mit Einwilligung (b), nur
+  // Wochentage, nie Namen oder Werte (lib/ernaehrung/orientierung-server.ts). Ohne (b) bleibt der Prompt wie bisher.
+  const belastung = await belastungFuerHaushalt(f.profile.filter(p => p.konto).map(p => p.person), localDay()).catch(() => ({ tage: [], mitGesundheit: false }));
+  const mitGesundheit = profilGesundheit || belastung.mitGesundheit;
   const namen = profile.map(p => p.name || p.person);
   const bevorzugt = f.lebensmittel.filter(l => l.bevorzugt).map(l => (l.hinweis ? `${l.name} (${l.hinweis})` : l.name));
   const vorrat = f.vorrat.map(v => (v.menge ? `${v.name} (${v.menge})` : v.name));
@@ -73,6 +81,7 @@ export async function POST(req: Request) {
     profile.length ? 'PROFILE (verbindlich — Unverträgliches und „Nie“ sind absolut):\n' + profile.map(profilText).join('\n') : 'PROFILE: keine hinterlegt — plane ausgewogen.',
     bevorzugt.length ? `BEVORZUGTE LEBENSMITTEL (zuerst nehmen, so benennen): ${bevorzugt.join('; ')}` : '',
     vorrat.length ? `VORRAT ZUHAUSE (verbrauchen! kommt NICHT auf die Einkaufsliste): ${vorrat.join('; ')}` : '',
+    belastungsZeile(belastung.tage),
     gespeichert.length ? `UNSERE GERICHTE (★ = Lieblinge; gern wieder einplanen, dann EXAKT diesen Namen verwenden und KEIN neues Rezept dafür schreiben): ${gespeichert.join('; ')}` : '',
     'REGELN:',
     '- Je Mahlzeit EIN Gericht, Name max 8 Wörter. Nur gemeinsame Gerichte, die für alle passen — keine Variante je Person.',
