@@ -114,6 +114,14 @@ describe('Saat', () => {
     expect(pl?.kanaele).toHaveLength(2);
     expect(pl?.ziele.map(z => z.gesellschaft)).toEqual(['ug']);
     expect(pl?.challenges).toHaveLength(1);
+    // Produkte · Leistungstreppe (10.10.): eine erfundene Beispiel-Treppe mit zwei Paketen auf derselben Ebene, Kundenreise, Roadmap, Positionierung.
+    expect(n['Leistungstreppe']).toBe(4);
+    const tp = await db.loadJson<{ stufen: { ebene: number }[]; kreislauf: unknown[]; roadmap: unknown[]; positionierung: { claim?: string }; kunden: Record<string, unknown> }>('produkt-treppe--demo');
+    expect(tp?.stufen.map(s => s.ebene)).toEqual([1, 2, 3, 3]);
+    expect(tp?.kreislauf).toHaveLength(5);
+    expect(tp?.roadmap).toHaveLength(1);
+    expect(tp?.positionierung.claim).toBeTruthy();
+    expect(Object.keys(tp?.kunden ?? {})).toEqual(['m-demo-nordwerk']);
     // Erholung (10.10.): ein erfundenes Programm, eine Serie (2 von 6), ein Ziel, ein paar Einheiten — über die Erholungs-Route, mit Suffix.
     const eh = await db.loadJson<{ programme: { name: string }[]; behandlungen: { termine: { erledigt: boolean }[] }[]; einheiten: unknown[]; ziele: unknown[] }>('erholung--lena');
     expect(eh?.programme.map(p => p.name)).toEqual(['Mobility am Morgen (Beispiel)']);

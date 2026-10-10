@@ -155,7 +155,11 @@ export interface Mandat {
 
 export type LeistungTyp = 'diagnose' | 'workshop' | 'retainer' | 'sprint' | 'vermittlung' | 'software';
 /** Ein Schritt im Ablauf eines Produkts (25.09.) — ein Mandat steht in genau einer Phase. */
-export interface ProduktPhase { id: string; name: string; dauerTage?: number; beschreibung?: string }
+export interface ProduktPhase {
+  id: string; name: string; dauerTage?: number; beschreibung?: string;
+  /** Leistungstreppe (10.10., alles optional): Ziel des Schritts und warum er wichtig ist, sein Ergebnis, die Kennzahl, der Aufwand in Stunden. */
+  ziel?: string; ergebnis?: string; kennzahl?: string; aufwandStunden?: number;
+}
 export type UnterlageArt = 'angebot' | 'vertrag' | 'deck' | 'onepager' | 'sonstiges';
 /** Unterlage zu einem Produkt: Link (https) oder Notiz im Brain (/os/wissen?n=…). */
 export interface Unterlage { id: string; titel: string; art: UnterlageArt; url?: string }

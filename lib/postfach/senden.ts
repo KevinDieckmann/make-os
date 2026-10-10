@@ -10,7 +10,7 @@
 // Kein Text in Protokollen.
 
 import { antwortEmpfaenger, pruefeEmpfaenger, SendenFehler, TEXT_MAX, EMPFAENGER_MAX, type AntwortBezug } from '@/lib/gmail/senden';
-import { adresseGueltig, adresseKlein, antwortBetreff, mimeBauen, referenzenFuer, zeilenfrei } from '@/lib/gmail/mime';
+import { adresseGueltig, adresseKlein, antwortBetreff, mimeBauen, referenzenFuer, zeilenfrei, type MailAnhang } from '@/lib/gmail/mime';
 import type { Adr } from '@/lib/gmail/typen';
 import { ladePostfach, zugangLesen } from './register';
 import { imapAbgleichen, sitzungFuer } from './abgleich';
@@ -31,6 +31,8 @@ export interface ImapSendenEingabe {
   uwgBestaetigt?: boolean;
   /** Antwort auf eine übergebene Mail (08.10.) — wie bei Gmail (lib/gmail/senden.ts `AntwortBezug`). */
   bezug?: AntwortBezug;
+  /** Anhänge (10.10., Fortschritts-Report) — geladen und geprüft von der Route. */
+  anhaenge?: MailAnhang[];
 }
 
 export interface ImapSendenErgebnis { messageId: string; von: string; an: string[]; abgelegt: 'selbst' | 'anbieter' | 'nicht' }
@@ -73,7 +75,7 @@ export async function imapSenden(e: ImapSendenEingabe): Promise<ImapSendenErgebn
   }
 
   const roh = mimeBauen({
-    von: { ...(p.absenderName ? { name: p.absenderName } : {}), email: p.adresse }, an, ...(cc.length ? { cc } : {}), betreff, text,
+    von: { ...(p.absenderName ? { name: p.absenderName } : {}), email: p.adresse }, an, ...(cc.length ? { cc } : {}), betreff, text, ...(e.anhaenge?.length ? { anhaenge: e.anhaenge } : {}),
     ...(auf?.messageId ? { inReplyTo: auf.messageId, references: referenzenFuer(auf.references, auf.messageId) } : {}),
     ...(!auf && e.bezug?.messageId ? { inReplyTo: e.bezug.messageId, references: referenzenFuer(e.bezug.references, e.bezug.messageId) } : {}),
   });

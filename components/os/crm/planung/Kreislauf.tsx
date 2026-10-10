@@ -128,6 +128,13 @@ export function Kreislauf({ api, lage, zuKanaele }: { api: PlanungApi; lage: Pla
                     <span style={{ fontSize: TYP.body, fontWeight: 600 }}>{x.kunde}<span style={{ color: C.inkDim, fontWeight: 400 }}> · {x.titel}{x.produkt ? ` · ${x.produkt}` : ''}{x.phase ? ` (${x.phase})` : ''}</span></span>
                     <Knopf leise href={x.href}>{x.status === 'beendet' ? 'beendet' : 'aktiv'} ›</Knopf>
                   </div>
+                  {/* Fortschritt im Paket (10.10., Leistungstreppe unter Produkte & Mandate) — nur, wenn eine Treppe gepflegt ist. */}
+                  {(x.paket || x.naechsteStufe) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {x.paket && <Chip farbe={LEUCHT.business}>Paket: {x.paket}{x.lieferungen ? ` · ${x.lieferungen} geliefert` : ''}</Chip>}
+                      {x.naechsteStufe && <Chip farbe={LEUCHT.gut}>reif für: {x.naechsteStufe}</Chip>}
+                    </div>
+                  )}
                   <Schritte k={x} schreibe={api.schreibe} />
                 </div>
               ))}

@@ -19,7 +19,7 @@ import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { anzeigename } from '@/lib/make-one/crm';
 import { GMAIL_API, aliaseSicherstellen, nachrichtHolen } from './abgleich';
-import { adresseGueltig, adresseKlein, antwortBetreff, bytesBase64url, mimeBauen, referenzenFuer, zeilenfrei, nachrichtAus } from './mime';
+import { adresseGueltig, adresseKlein, antwortBetreff, bytesBase64url, mimeBauen, referenzenFuer, zeilenfrei, nachrichtAus, type MailAnhang } from './mime';
 import { adressIndex, eigeneAdressen } from './zuordnung';
 import { aendereGmailStand, aendereGmailTexte, adressenText, ladeGmailStand } from './stand';
 import type { Adr, GmailAlias, GmailKopf, GmailStand } from './typen';
@@ -51,6 +51,8 @@ export interface SendenEingabe {
    * Übergabe — Betreff „Re: …“, In-Reply-To/References daraus (die Gegenseite sieht ein Gespräch), Empfänger als Vorgabe. Ohne threadId.
    */
   bezug?: AntwortBezug;
+  /** Anhänge (10.10., Fortschritts-Report) — geladen und geprüft von der Route (nur Dateien der eigenen Ablage). */
+  anhaenge?: MailAnhang[];
 }
 
 /** Bezug einer Antwort außerhalb des eigenen Spiegels (übergebene Mail). */
@@ -150,7 +152,7 @@ export async function gmailSenden(e: SendenEingabe): Promise<SendenErgebnis> {
   }
 
   const roh = mimeBauen({
-    von: { ...(absender.name ? { name: absender.name } : {}), email: absender.email }, an, ...(cc.length ? { cc } : {}), betreff, text,
+    von: { ...(absender.name ? { name: absender.name } : {}), email: absender.email }, an, ...(cc.length ? { cc } : {}), betreff, text, ...(e.anhaenge?.length ? { anhaenge: e.anhaenge } : {}),
     ...(antwortAuf?.messageId ? { inReplyTo: antwortAuf.messageId, references: referenzenFuer(antwortAuf.references, antwortAuf.messageId) } : {}),
     ...(!antwortAuf && e.bezug?.messageId ? { inReplyTo: e.bezug.messageId, references: referenzenFuer(e.bezug.references, e.bezug.messageId) } : {}),
   });

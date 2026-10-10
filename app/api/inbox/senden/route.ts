@@ -2,6 +2,8 @@
 // POST { gespraech, an?, cc?, text, von?, uwgBestaetigt?, anfrageId? }        Antwort im Gespräch über die RICHTIGE Quelle:
 //        Gmail → Gmail-API (Absender: eigene Adresse oder verifizierter Alias) · IMAP → SMTP des Postfachs (Absender = das Postfach)
 //      { neu: { postfach, betreff }, an, cc?, text, uwgBestaetigt?, anfrageId? }   neue Mail aus einem eigenen Postfach
+//      … anhaenge?: [{ datei: 'd-…' }]   (10.10.) Dateien der CRM-Ablage mit Bezug (z. B. Fortschritts-Report am Mandat) — nur Kennungen, höchstens
+//      drei, zusammen 4 MB (lib/inbox/anhaenge-server.ts); nie Bytes aus dem Browser
 //   → { ok, an, von }  ·  409 { code: 'uwg', uwg }  (§ 7 UWG-Rückfrage, noch nichts gesendet)  ·  409 { code: 'eingeschraenkt' } (Art. 18)
 // NUR die eigene Person aus der Sitzung: der Dienstweg (ZOE, Takt, Arbeiter, Skripte) bekommt IMMER 403 — jede Mail erst Entwurf,
 // dann Einzelklick (Versand-Regel 28.09.). `anfrageId` macht einen Netz-Retry wirkungslos (einmalig, 24 h). Kein Text im Protokoll.
@@ -30,6 +32,7 @@ import { einmalig } from '@/lib/store/anfragen';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import type { Adr } from '@/lib/gmail/typen';
+import { anhaengeLaden } from '@/lib/inbox/anhaenge-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,7 +54,9 @@ export async function POST(req: Request) {
   try {
     const r = await einmalig<Record<string, unknown>>('inbox-senden', b.anfrageId, async () => {
       try {
-        const gemeinsam = { person: z.person, text: String(b.text ?? ''), ...(adressen(b.an) ? { an: adressen(b.an) } : {}), ...(adressen(b.cc) ? { cc: adressen(b.cc) } : {}), uwgBestaetigt: b.uwgBestaetigt === true };
+        // Anhänge (10.10., Fortschritts-Report): nur Kennungen eigener Ablage-Dateien — geladen und geprüft, BEVOR etwas gesendet wird.
+        const anhaenge = await anhaengeLaden(z.person, b.anhaenge);
+        const gemeinsam = { person: z.person, text: String(b.text ?? ''), ...(adressen(b.an) ? { an: adressen(b.an) } : {}), ...(adressen(b.cc) ? { cc: adressen(b.cc) } : {}), uwgBestaetigt: b.uwgBestaetigt === true, ...(anhaenge.length ? { anhaenge } : {}) };
         let postfach: string, ausNachricht: string | undefined, bezug: AntwortBezug | undefined;
         if (neu) postfach = neu.postfach as string;
         else if (uebergabe) {
@@ -88,7 +93,7 @@ export async function POST(req: Request) {
           x = { an: s.an, von: s.von };
         }
         // Wer gesendet hat, steht im Protokoll (`wer` = Sitzung) — beim Team-Postfach auch, dass es ALS das geteilte Postfach ging.
-        await protokolliere('inbox', [{ op: 'neu', id: x.id ?? uebergabe ?? (b.gespraech as string | undefined) ?? postfach, felder: ['gesendet', ...(team ? ['team-postfach'] : []), ...(uebergabe ? ['uebergabe'] : [])] }], wer).catch(() => { /* nur Protokoll */ });
+        await protokolliere('inbox', [{ op: 'neu', id: x.id ?? uebergabe ?? (b.gespraech as string | undefined) ?? postfach, felder: ['gesendet', ...(team ? ['team-postfach'] : []), ...(uebergabe ? ['uebergabe'] : []), ...(anhaenge.length ? ['anhang'] : [])] }], wer).catch(() => { /* nur Protokoll */ });
         if (uebergabe) await uebergabeGeantwortet(z.person, uebergabe);
         return { status: 200, body: { ok: true, ...x } };
       } catch (e) {

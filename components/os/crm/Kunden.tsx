@@ -52,6 +52,7 @@ import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
 import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
 import { monatsName } from '@/lib/finanzen/rechnung/regeln';
+import { MandatFortschritt } from '../mandate/treppe/Fortschritt';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -257,6 +258,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       {produkt && (produkt.phasen?.length
         ? <Feldzeile label="Phase"><Wahl label="Phase" liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} wert={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} /></Feldzeile>
         : <Feldzeile label="Phase"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Produkt hat noch keinen Ablauf — unter Produkte anlegen.</span></Feldzeile>)}
+      {/* Leistungstreppe (10.10.): Fortschritt im Paket, Health-Ampel, nächste Stufe und der Fortschritts-Report an den Kunden. */}
+      <MandatFortschritt mandatId={m.id} />
       <Feldzeile label="Honorar">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Feld typ="number" wert={m.honorar.betrag ? String(m.honorar.betrag) : ''} breite={120} platzhalter="€" onFertig={b => setze({ honorar: { ...m.honorar, betrag: Number(b) || 0 } })} />
