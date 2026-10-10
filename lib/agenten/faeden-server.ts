@@ -101,11 +101,11 @@ export async function fadenAnlegen(person: string, f: FadenKern, jetzt?: string)
 }
 
 /** Persönliches Gedächtnis (bzw. die Marke der ZOE-Übernahme) ändern — nur der Index wird geschrieben. */
-export async function indexAendern<E>(person: string, fn: (i: FadenIndexKern) => { e: E; neu?: Partial<Pick<FadenIndexKern, 'gedaechtnis' | 'zoeUebernahme'>> } | Fehler): Promise<{ ok: true; e: E; index: FadenIndexKern } | Fehler> {
+export async function indexAendern<E>(person: string, fn: (i: FadenIndexKern) => { e: E; neu?: Partial<Pick<FadenIndexKern, 'gedaechtnis' | 'zoeUebernahme' | 'chat'>> } | Fehler): Promise<{ ok: true; e: E; index: FadenIndexKern } | Fehler> {
   return ablageAendernFuer<E>(person, t => {
     const r = fn(t.index());
     if ('ok' in r && r.ok === false) return r;
-    const x = r as { e: E; neu?: Partial<Pick<FadenIndexKern, 'gedaechtnis' | 'zoeUebernahme'>> };
+    const x = r as { e: E; neu?: Partial<Pick<FadenIndexKern, 'gedaechtnis' | 'zoeUebernahme' | 'chat'>> };
     if (x.neu) t.indexFelder(z => ({ ...z, ...x.neu }));
     return { e: x.e };
   });

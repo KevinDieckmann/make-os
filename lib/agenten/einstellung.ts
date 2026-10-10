@@ -427,6 +427,21 @@ export async function kostenJeHeadMonat(jetzt = new Date()): Promise<Record<stri
   return kostenJeHeadAusVerbrauch(s?.tage ?? [], monatBerlin(jetzt), usdEurKurs());
 }
 
+/**
+ * Chat je Bereich (10.10., GET /api/agenten/chat): Not-Aus und „aus“ der Heads für den Chat unten — ohne das Budget (das prüft das Senden,
+ * `laufSperre`; hier ginge sonst bei jedem Öffnen die Kostenmessung mit). Fail-closed wie `laufSperre`: nicht lesbar → alle gesperrt.
+ */
+export async function chatSperren(person: string, heads: readonly Pick<HeadDef, 'id' | 'ebene' | 'name'>[]): Promise<Map<string, string>> {
+  const raus = new Map<string, string>();
+  try {
+    const e = await rohLesen(await haushaltFuerPerson(person));
+    for (const h of heads) { const s = headSperre(e, h, person); if (s) raus.set(h.id, s.text); }
+  } catch {
+    for (const h of heads) raus.set(h.id, UNLESBAR_TEXT);
+  }
+  return raus;
+}
+
 /** Die Sicht eines Kontos (lib/agenten/faeden-server.ts `sichtLaden` — die EINE Filterstelle). */
 async function sichtFuer(person: string): Promise<KontoSicht> {
   const { sichtLaden } = await import('./faeden-server');

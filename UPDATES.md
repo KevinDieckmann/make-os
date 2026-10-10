@@ -137,6 +137,52 @@ Tests: `tests/zeilen-menue.test.ts` (neu: Einstellungen, Wischen, Menü-Reihenfo
 5. Gesundheit › Ernährung › Einkaufsliste: einen Posten nach rechts wischen → weg, „Rückgängig“ holt ihn zurück. Planung › Routinen: „⋯“ an einer
    Routine → „Pausieren“.
 
+## 10.10.2026 — Chat je Bereich: der Chat unten nimmt den passenden Head an, „↔ ZOE“ schaltet um (nur lokal — Branch `chat-je-bereich`, Basis 475bcb06 = `update-0910b`)
+
+Kevin 10.10.: „In den einzelnen Bereichen soll man mit den Head ofs oder dem Gesundheitsagent chatten können — bzw. ZOE unten so einstellen, dass sie
+den Chat immer passend zur Maske annimmt: im Sales der Head of Sales, im Marketing der Head of Marketing usw. — und dann können wir immer zu ZOE
+umschalten.“
+
+**Gebaut:**
+- **EINE Zuordnung Seite → Head** (rein, client-sicher): `lib/agenten/kontext-head.ts` (`SEITEN_REGELN`, `kontextHeadFuer`, `markttraktionHead`).
+  Markttraktion: Deals · Follow-up · Qualifizierung · Angebot · Kontakte & Firmen · Überblick → Head of Sales; Marketing → Head of Marketing; Events /
+  Make.One / Netzwerken → Head of Event. Finanzen Business → Head of Finance, Privat → Finanzen privat · Mandate → Kundenerfolg · Unternehmen, Board →
+  CEO-Office · Aufgaben Business → Operations, Privat → Persönliche Assistenz · Planung/Fokus/Kompass/Wachstum Business → CEO-Office, Privat →
+  Assistenz (Kapazität Business → Operations) · System, HOI, Bauplan, Verbindungen → Head of IT · Datenschutz → Recht & Datenschutz · Gesundheit, Sport
+  → Gesundheit & Sport (Ernährung → Ernährung & Einkauf) · Familie → Familie & Partnerschaft. Heute, Inbox, Kalender, ZOE-Seiten, Konto, Kontakte privat
+  → ZOE. Ein Head gilt nur in der Sicht seines Bereichs (Business-Head in der Privat-Sicht → ZOE); Gesundheit einer anderen Person (`?fuer=`) → ZOE.
+- **Der Server entscheidet**, mit wem man sprechen darf: neue Route `GET /api/agenten/chat?space=privat|business` (Klasse `person`, `eigenePerson`,
+  Dienstweg 403) — nur die Heads dieser Sicht, die die Person sieht (EINE Filterstelle `lib/agenten/sicht.ts`), je Head Not-Aus/„aus“
+  (`chatSperren`, fail-closed), und als `fehlt` nur, was die Person selbst ändern kann (eigene Gesundheits-Einwilligung). Senden an einen Head nimmt jetzt
+  `space` (Head anderen Bereichs → 403) und `bezug` (nur Art + Kennung wie „ZOE fragen“; nur Heads mit Markttraktion bekommen den Satz „SEITE: …“,
+  `bezugSatzFuerHead`) — derselbe Thread-Weg wie auf der Agenten-Seite, kein zweiter Chat-Weg, kein Modellaufruf daneben.
+- **Chat unten** (`components/os/ZoePanel.tsx`, Kontext `components/os/chat/useChatKontext.ts`): Kopf zeigt den Ansprechpartner (Kürzel-Kugel in der
+  Farbe des Heads bzw. ZOE-Kugel) und „↔ ZOE“ bzw. „↔ <Head>“; je Ansprechpartner ein eigener Verlauf (Umschalten behält beide). Der Head setzt seinen
+  jüngsten Thread dieser Sicht fort (ohne laufende Hintergrundaufgaben), „Neu“ beginnt einen neuen. Seitenwechsel tauscht den Ansprechpartner erst, wenn
+  keine Antwort mehr läuft. Der Kontext der Seite (offener Kontakt, Firma, Deal, Angebot, Mandat) steht als „Bezug“ im Chat und geht mit (✕ löst ihn bis
+  zur nächsten Seite). Fehlt die Einwilligung für Gesundheit & Sport, antwortet ZOE mit Hinweis und Link „Einwilligung ›“.
+- **Einstellung je Person** „Im Chat antwortet: Passender Head · Immer ZOE“ (☰ Verlauf im Chat). Gespeichert im eigenen Index der Threads
+  (`agenten-faeden--<person>` › `chat`, kein neuer Bestand), `POST /api/agenten/chat { wahl }`.
+- **Einstieg auf der Seite:** in der Markttraktion heißt „ZOE fragen“ jetzt „Mit Head of Sales/Marketing/Event sprechen“ (je Reiter), in der Firmenakte
+  „Mit Head of Sales sprechen“ — öffnet den Chat unten beim Head mit dem Bezug. Keine neuen Karten auf anderen Seiten (der Chat unten passt sich überall an).
+- Tests: `tests/chat-je-bereich.test.ts` (Zuordnung, Wächter „Privat-Sicht bekommt nie einen Business-Head“, Ansprechpartner, Bezug nur Kennung, Route:
+  Sicht, Einwilligung, „nur Business“, fremder Haushalt/Dienstweg 403, Wahl je Person, Senden mit `space`/`bezug`, fremder Gesundheits-Thread 404).
+
+**So testet ihr**
+1. Business › Markttraktion › Deals öffnen, unten rechts den Chat öffnen: oben steht „Head of Sales“ mit „↔ ZOE“. Eine Frage stellen („Was ist hier
+   gerade wichtig?“) → die Antwort kommt vom Head of Sales (Agenten › Head of Sales zeigt denselben Thread).
+2. „↔ ZOE“ klicken → ZOE mit ihrem Verlauf; „↔ Sales“ → zurück, das Gespräch mit dem Head ist noch da.
+3. Reiter Marketing öffnen → oben „Head of Marketing“; Reiter Events → „Head of Event“. Während einer laufenden Antwort die Seite wechseln: die Antwort
+   läuft zu Ende, erst dann wechselt der Ansprechpartner.
+4. Einen Kontakt öffnen („Kontakt öffnen“) → im Chat steht „Bezug · Kontakt · c-…“; fragen „Was weißt du über diesen Kontakt?“ → der Head liest nach.
+   ✕ löst den Bezug.
+5. Oben „Mit Head of Sales sprechen“ klicken → der Chat öffnet beim Head (auch wenn „Immer ZOE“ eingestellt ist).
+6. Kopf auf Privat stellen, Gesundheit öffnen: mit Einwilligung (System › Datenschutz › Gesundheit, „an die KI“) → „Gesundheit & Sport“; ohne → ZOE
+   antwortet, darüber der Hinweis mit „Einwilligung ›“.
+7. Heute, Inbox, Kalender → ZOE. Finanzen Business → Head of Finance, Finanzen Privat → Finanzen privat.
+8. Im Chat ☰ → „Im Chat antwortet: Immer ZOE“ → überall ZOE, „↔ <Head>“ bleibt zum Umschalten. Zurück auf „Passender Head“.
+9. Am Handy (375 px) dasselbe im unteren Chat.
+
 ## 10.10.2026 — Stress nur als Anspannung 1–5 · Brain-Notiz „People“ als Mitarbeiter unter CEO-Office (nur lokal — Branch `stress-people`, Basis 4fd45912)
 
 Zwei kleine Entscheidungen vom 10.10.: „Nur Anspannung 1–5“ und `people.md` (Founder-Care) → als Mitarbeiter unter CEO-Office, Business.

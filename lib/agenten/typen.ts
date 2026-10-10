@@ -890,7 +890,9 @@ export interface FadenAntwort { ok: true; faden: Faden; stand: string; kinder: F
 export interface FadenListeAntwort { ok: true; faeden: FadenKurz[] }
 /** POST /api/agenten/faden (Paket 1). Wiederholbares anlegen trägt `anfrageId` (`einmalig`). */
 export type FadenAnfrage =
-  | { aktion: 'senden'; agent: AgentRef; text: string; fadenId?: string; stand?: string; anhaenge?: Anhang[]; anfrageId?: string; /** „+ Hintergrundaufgabe jetzt“: Thread + Lauf in der Warteschlange */ hintergrund?: boolean; kostenGrenzeCent?: number }
+  | { aktion: 'senden'; agent: AgentRef; text: string; fadenId?: string; stand?: string; anhaenge?: Anhang[]; anfrageId?: string; /** „+ Hintergrundaufgabe jetzt“: Thread + Lauf in der Warteschlange */ hintergrund?: boolean; kostenGrenzeCent?: number;
+      /** Chat je Bereich (10.10.): Sicht, aus der gesendet wird (Head anderen Bereichs → 403), und der Kontext der Seite (nur Art + Kennung). */
+      space?: 'privat' | 'business'; bezug?: { art: string; id?: string } }
   | { aktion: 'umbenennen'; fadenId: string; titel: string; stand: string }
   | { aktion: 'gelesen'; fadenId: string }
   | { aktion: 'loeschen'; fadenId: string; stand: string }

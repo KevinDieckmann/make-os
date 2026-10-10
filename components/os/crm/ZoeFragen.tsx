@@ -13,19 +13,31 @@ import { Knopf, LEUCHT, feld } from '../ui';
 import { ZOE_FRAGEN_EREIGNIS, passtZuBezug, type CrmBezug } from '@/lib/zoe/crm-bezug';
 import { WEG } from '@/lib/wege';
 import { kontaktAkte } from '@/lib/crm/adresse';
+import { headDef } from '@/lib/agenten/katalog';
+import { headFarbe } from '../agenten/Avatar';
 
-/** ZOE mit Bezug öffnen (ZoePanel hört auf das Ereignis). */
-export function zoeFragen(b: CrmBezug) {
+/**
+ * Den Chat unten mit Bezug öffnen (ZoePanel hört auf das Ereignis). `ziel` (10.10., Chat je Bereich): `seite` = mit dem Head, der zur Seite
+ * passt (ob die Person ihn nutzen darf, entscheidet der Server — sonst antwortet ZOE mit Hinweis), `zoe` = mit ZOE; ohne Angabe wie bisher.
+ */
+export function zoeFragen(b: CrmBezug, ziel?: 'seite' | 'zoe') {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(ZOE_FRAGEN_EREIGNIS, { detail: b }));
+  window.dispatchEvent(new CustomEvent(ZOE_FRAGEN_EREIGNIS, { detail: { ...b, ...(ziel ? { ziel } : {}) } }));
 }
 
-/** Knopf „ZOE fragen“ — klein für Köpfe von Akten und Reitern. */
-export function ZoeFragenKnopf({ bezug, titel = 'ZOE fragen' }: { bezug: CrmBezug; titel?: string }) {
+/**
+ * Knopf „ZOE fragen“ — klein für Köpfe von Akten und Reitern. Mit `headId` (10.10.) der schlanke Einstieg „Mit <Head> sprechen“ in der Farbe
+ * des Heads: er öffnet den Chat unten beim Head der Seite (Name aus dem Katalog); umschalten zu ZOE geht dort mit „↔ ZOE“.
+ */
+export function ZoeFragenKnopf({ bezug, titel, headId }: { bezug: CrmBezug; titel?: string; headId?: string }) {
+  const head = headId ? headDef(headId) : null;
+  const farbe = head ? headFarbe(head.farbe) : LEUCHT.agenten;
+  const text = titel ?? (head ? `Mit ${head.name} sprechen` : 'ZOE fragen');
   return (
-    <button type="button" onClick={() => zoeFragen(bezug)} className="fassbar zoe-fragen" aria-label={titel} title="ZOE öffnen — sie liest hier selbst nach und schlägt nur vor"
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${LEUCHT.agenten}1F`, color: LEUCHT.agenten, border: 'none', borderRadius: 999, padding: '8px 14px', minHeight: 40, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${LEUCHT.agenten}` }} /><span className="zoe-fragen-text">{titel}</span>
+    <button type="button" onClick={() => zoeFragen(bezug, head ? 'seite' : undefined)} className="fassbar zoe-fragen" aria-label={text}
+      title={head ? `${head.name} im Chat unten öffnen — liest hier selbst nach und schlägt nur vor; „↔ ZOE“ wechselt zu ZOE` : 'ZOE öffnen — sie liest hier selbst nach und schlägt nur vor'}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${farbe}1F`, color: farbe, border: 'none', borderRadius: 999, padding: '8px 14px', minHeight: 40, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${farbe}` }} /><span className="zoe-fragen-text">{text}</span>
     </button>
   );
 }
