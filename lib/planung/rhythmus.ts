@@ -318,8 +318,11 @@ export function faelligkeit(r: FaelligEingabe, erledigtTage: readonly string[], 
     let nach = tagePlus(pause.bis, 1);
     for (let i = 0; i < ROUTINE_GRENZEN.pausen; i++) { const w = pausiertAm(r, nach); if (!w) break; nach = tagePlus(w.bis, 1); }
     const k = faelligKern(g, r.naechstesMal, erledigtTage, nach, r.angelegtAm);
-    const naechstes = k.naechstes > nach ? k.naechstes : ersterDranAb(g, r.naechstesMal, nach);
-    return { faellig: false, naechstes, ueberfaellig: false, pausiert: true, ...(g.art === 'pro-woche' ? { dieseWoche: k.dieseWoche, proWoche: k.proWoche } : {}) };
+    // Am ersten Tag nach der Pause dran (auch ein nachzuholender Monatstermin) → dieser Tag; sonst der nächste Termin danach.
+    const naechstes = k.faellig ? nach : k.naechstes > nach ? k.naechstes : ersterDranAb(g, r.naechstesMal, nach);
+    // x-mal pro Woche: der Stand DIESER Woche (nicht der Woche nach der Pause).
+    const h = g.art === 'pro-woche' ? faelligKern(g, r.naechstesMal, erledigtTage, heute, r.angelegtAm) : null;
+    return { faellig: false, naechstes, ueberfaellig: false, pausiert: true, ...(h ? { dieseWoche: h.dieseWoche, proWoche: h.proWoche } : {}) };
   }
   return faelligKern(g, r.naechstesMal, erledigtTage, heute, r.angelegtAm);
 }

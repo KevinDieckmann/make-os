@@ -179,6 +179,9 @@ describe('Fälligkeit der neuen Regeln (über die Wiederholung der Aufgaben)', (
     expect(faelligkeit(r({ art: 'wochentage', tage: [1, 4] }, { pausen: p }), [], '2026-10-06')).toMatchObject({ faellig: false, naechstes: '2026-10-12' });
     expect(faelligkeit({ rhythmus: 'woechentlich', pausen: p }, ['2026-09-20'], '2026-10-07')).toMatchObject({ faellig: false, pausiert: true, naechstes: '2026-10-10' });
     expect(faelligkeit({ rhythmus: 'woechentlich', pausen: p }, ['2026-09-20'], '2026-10-10')).toMatchObject({ faellig: true, ueberfaellig: true });
+    // Ein Monatstermin in der Pause wird danach nachgeholt; x-mal pro Woche zeigt den Stand DIESER Woche.
+    expect(faelligkeit(r({ art: 'monatlich', monatstag: 15 }, { angelegtAm: '2026-10-01', pausen: [{ von: '2026-10-14', bis: '2026-10-18' }] }), [], '2026-10-16')).toMatchObject({ faellig: false, pausiert: true, naechstes: '2026-10-19' });
+    expect(faelligkeit(r({ art: 'pro-woche', anzahl: 3 }, { pausen: p }), ['2026-10-05'], '2026-10-07')).toMatchObject({ pausiert: true, dieseWoche: 1, proWoche: 3, naechstes: '2026-10-10' });
   });
   it('Zeitraum: vorher / nachher nicht dran', () => {
     expect(faelligkeit(r({ art: 'taeglich' }, { zeitraum: { bis: '2026-10-01' } }), [], '2026-10-05')).toMatchObject({ faellig: false, ausserhalb: 'nachher' });
