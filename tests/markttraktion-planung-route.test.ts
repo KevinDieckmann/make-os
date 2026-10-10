@@ -4,7 +4,11 @@
 //   · Sicht Privat bekommt nichts: `?space=privat` → 400, Umsatzziel der Selbstständigkeit → 400, die Auswahl nennt sie nie
 //   · Schreiben nur mit Sitzung (Dienstweg 403), Stand je Eintrag (409 mit aktuellem Stand), 413 über den Grenzen
 //   · Wochenziele kommen im Scoreboard an (Überblick, /api/crm/traktion)
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/markttraktion' }));
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -119,5 +123,27 @@ describe('Planung — schreiben', () => {
     const z = j.scoreboard.zeilen.find((x: { id: string }) => x.id === 'neue_leads');
     expect(z?.plan).toBe(true);
     expect(z?.ziel).toBe(j.planWoche.leads);
+  });
+});
+
+describe('Planung — die Ansichten rendern mit der echten Antwort (kein Absturz, keine Privat-Einheit)', () => {
+  it('Kreislauf, Leadkanäle, Ziele & Aktivitäten, Challenges', async () => {
+    const lage = await (await route.GET(get('pa'))).json();
+    const api = { lage, laedt: false, fehler: null, hinweis: null, setHinweis: () => {}, schreibe: async () => true, neuLaden: async () => {} };
+    const { Kreislauf } = await import('@/components/os/crm/planung/Kreislauf');
+    const { Kanaele } = await import('@/components/os/crm/planung/Kanaele');
+    const { Ziele } = await import('@/components/os/crm/planung/Ziele');
+    const { Challenges } = await import('@/components/os/crm/planung/Challenges');
+    const h = (c: unknown, p: unknown) => renderToStaticMarkup(createElement(c as never, p as never));
+    const kreis = h(Kreislauf, { api, lage, zuKanaele: () => {} });
+    expect(kreis).toContain('Der Kreislauf');
+    expect(kreis).toContain('Wiederkauf');
+    expect(h(Kanaele, { api, lage, kanal: null, onKanal: () => {} })).toContain('Eigene Reihe');
+    const ziele = h(Ziele, { api, lage, zuKanaele: () => {} });
+    expect(ziele).toContain('Umsatzziele');
+    expect(ziele).toContain('letzter Start');
+    expect(h(Challenges, { api, lage })).toContain('Challenges dieser Woche');
+    const { finanzOrtName, PRIVAT_GESELLSCHAFTEN } = await import('@/lib/einheiten');
+    for (const p of PRIVAT_GESELLSCHAFTEN) expect(ziele).not.toContain(`>${finanzOrtName(p)}<`);
   });
 });
