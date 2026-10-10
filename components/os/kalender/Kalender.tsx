@@ -513,7 +513,7 @@ export function Kalender() {
     <SymbolKnopf ariaLabel={modus === 'aufgaben' ? 'Aufgaben suchen' : 'Termine suchen'} titel="Suchen (/)" onClick={sucheAuf}><Search size={18} /></SymbolKnopf>
   );
   const kopfzeile = (
-    <div className="kalender-kopf" role="toolbar" aria-label="Kalender bedienen">
+    <div className="kalender-kopf" role="group" aria-label="Kalender bedienen">
       <div className="kalender-kopf-links">
         {/* Spalte zugeklappt (09.10.): „Spalte öffnen“ und ein kleines „Erstellen“ vorne — sonst stünde „Erstellen“ nur in der Spalte. */}
         {breit && !linksOffen && <SymbolKnopf ariaLabel={`Spalte öffnen — Monat, Sicht, Kalender (${LINKS_TASTE})`} offen={false} steuert={LINKS_ID} onClick={() => linksUmschalten(true)}><PanelLeftOpen size={18} /></SymbolKnopf>}
