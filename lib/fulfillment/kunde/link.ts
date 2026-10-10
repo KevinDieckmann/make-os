@@ -15,7 +15,7 @@ export const NICHT_GUELTIG = 'Dieser Link ist nicht (mehr) gültig.';
 export const LINK_TAGE = 90;
 /** Ein Link gilt höchstens so viele Tage nach dem Mandatsende. */
 export const NACH_ENDE_TAGE = 30;
-/** Rechte eines neuen Links (Kevin 23:25: Upload freigegeben — nur sichere Dateitypen, am Inhalt geprüft; je Link abschaltbar). */
+/** Rechte eines neuen Links (Entscheidung 10.10., 23:25: Upload freigegeben — nur sichere Dateitypen, am Inhalt geprüft; je Link abschaltbar). */
 export const RECHTE_VORGABE: KundenLink['rechte'] = { formular: true, upload: true, puls: true };
 /** Fassung des Datenschutzhinweises (Art. 13) auf der Kunden-Seite — hochzählen, wenn sich der Text ändert. */
 export const HINWEIS_VERSION = 1;

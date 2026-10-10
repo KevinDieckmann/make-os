@@ -3,7 +3,7 @@
 // Unterlagen NUR „freigegeben“), `reportZusatzFuer` (Leistungstreppe), `kundeMorgenlauf`, `kundeFristen`, `kundeAuskunft`, `KUNDE_STAPEL` (Hub-Dateien).
 // Dazu die Schreibwege der Routen (intern `/api/fulfillment/kunde{,/datei,/vorschau}`, öffentlich `/api/kunde/kl-…{,/formular,/upload,/puls}`).
 //
-// Regeln (Kevin 10.10./23:25, Konzept 5.4):
+// Regeln (Entscheidungen 10.10., 23:25; Konzept 5.4):
 //   · Kunden-Link kommt AUSGESCHALTET — Umgebung `MAKE_OS_KUNDENLINK=an` UND Instanz-Schalter (nur Inhaber). Aus → jeder öffentliche Weg dieselbe 404.
 //   · Token nur im Fragment, im Bestand nur der Hash; das Token steht genau einmal in der Antwort von „Link anlegen“ bzw. „Puls-Anfrage“ — nie gespeichert,
 //     nie protokolliert (auch `einmalig` speichert Antworten — deshalb hier ohne).
@@ -23,12 +23,12 @@ import { textNennt, type PersonMerkmale } from '@/lib/crm/person-weitere';
 import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { Mandat, CrmBestand, FollowUp } from '@/lib/crm/typen';
-import { fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen, eintragStand, UNTERLAGEN_ORDNER } from '../speicher';
+import { fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen, fulfillmentSpeicherFuer, eintragStand, UNTERLAGEN_ORDNER } from '../speicher';
 import { mandatsEnde, pulsStufe } from '../regeln';
 import { STAPEL_GRUPPE, KENNUNG } from '../grenzen';
 import { dateinameSaeubern } from '@/lib/dateien/regeln';
 import {
-  aktiverLink, letzterLink, linkAnwenden, linkOeffentlich, linkStatus, schalterStand, abgelaufeneMarkieren, HINWEIS_VERSION,
+  aktiverLink, letzterLink, linkAnwenden, linkOeffentlich, linkStatus, schalterStand, abgelaufeneMarkieren,
   type LinkOeffentlich, type LinkOp, type SchalterStand,
 } from './link';
 import { formulareDesFalls, formularProzent, formularStandVon, formulareProzent, abschnitteVon, antwortenAnwenden, antwortenCsv, fnv, formularSchluessel } from './formular';
@@ -147,7 +147,7 @@ function kurzAus(kunde: KundeDatei, mandatId: string, schalter: SchalterStand, f
   const letzter = letzterLink(kunde, mandatId);
   const link: KundeKurz['link'] = !schalter.an ? 'aus' : akt ? 'aktiv' : letzter ? linkStatus(letzter, heute, ende) : 'keiner';
   const p = letzterPuls(kunde, mandatId);
-  const formulare = formulareDesFalls(fall, bausteine).filter(b => b.kundeFuellt === true);
+  const formulare = formulareDesFalls(fall, bausteine).filter(b => b.kundeFuellt === true && kundeTauglich(b));
   return {
     link, formularProzent: formulareProzent(formulare, kunde, mandatId),
     ungepruefteUnterlagen: kunde.unterlagen.filter(u => u.mandatId === mandatId && u.status === 'ungeprueft').length,
@@ -566,7 +566,7 @@ export async function kundeMorgenlauf(h: string, heute: string): Promise<Morgenl
 /** Löschfristen (8.1): Antworten und Puls-Sätze 12 Monate, Unterlagen 90 Tage nach Mandatsende (außer Beleg), verwaiste Dateien — Zähler je Name. */
 export async function kundeFristen(k: FristenKontext): Promise<Record<string, number>> {
   const h = await fulfillmentHaushalt();
-  const name = `fulfillment-kunde--${h}`;
+  const name = fulfillmentSpeicherFuer('kunde', h);
   const zaehler: Record<string, number> = {};
   if ((await loadJson<unknown>(name)) !== null) {
     const { ladeCrmMitPapierkorb } = await import('@/lib/crm/speicher');
@@ -589,7 +589,7 @@ export async function kundeFristen(k: FristenKontext): Promise<Record<string, nu
   const namen = await fs.readdir(ordner).catch(() => [] as string[]);
   if (namen.length) {
     const bekannt = new Set<string>();
-    for (const art of ['kunde', 'faelle', 'dossiers', 'vorlagen'] as const) alleTexte(await loadJson<unknown>(`${art === 'vorlagen' ? 'fulfillment' : `fulfillment-${art}`}--${h}`).catch(() => null), bekannt);
+    for (const art of ['kunde', 'faelle', 'dossiers', 'vorlagen'] as const) alleTexte(await loadJson<unknown>(fulfillmentSpeicherFuer(art, h)).catch(() => null), bekannt);
     const jetzt = k.jetzt.getTime();
     const dateien = await Promise.all(namen.map(async n => ({ name: n, alt: jetzt - ((await fs.stat(path.join(ordner, n)).catch(() => null))?.mtimeMs ?? jetzt) > 86_400_000 })));
     const verwaist = verwaisteDateien(dateien, bekannt);

@@ -1,5 +1,5 @@
 // ─── Fulfillment · Kunde — Unterlagen hochladen: Typ am Inhalt, Grenzen, Metadaten weg (rein; C2, 10.10.; FULFILLMENT_KONZEPT.md 5.4) ──────────────
-// Kevin 23:25: „nur sichere Dateitypen (PDF, Bilder, Office ohne Makros, am INHALT geprüft wie die Aufgaben-Ablage), nie öffnen/ausführen, verschlüsselt
+// Entscheidung 10.10., 23:25: „nur sichere Dateitypen (PDF, Bilder, Office ohne Makros, am INHALT geprüft wie die Aufgaben-Ablage), nie öffnen/ausführen, verschlüsselt
 // ablegen, nur als Download — kein Virenscanner“. Deshalb:
 //   · Typ NUR am Inhalt über `aufgabenTypErkennen` (lib/dateien/aufgaben-regeln.ts) und dann eingeschränkt auf PDF, PNG, JPG, WEBP, HEIC, DOCX, XLSX,
 //     PPTX — Office mit Makro-Projekt erkennt jene Regel schon als „kein Office“. CSV/TXT/MD, SVG, ZIP, ausführbare Dateien: nie (415).

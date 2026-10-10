@@ -17,7 +17,7 @@ import type { Mandat } from '@/lib/crm/typen';
 
 /**
  * Taugt ein Baustein für die Kunden-Seite, das Kunden-PDF, den Report und den Export? Liest die Marken OPTIONAL — `nur_intern` und
- * `pruefen_vor_verkauf` (Kevin 00:20/23:20) kennt der Typ von C0 (noch) nicht; dazu die vorhandenen Vermerke „Urheberrecht prüfen“ und
+ * `pruefen_vor_verkauf` (Entscheidung 10.10., 00:20/23:20) kennt der Typ von C0 (noch) nicht; dazu die vorhandenen Vermerke „Urheberrecht prüfen“ und
  * „rechtlich prüfen“ (gilt, bis „geprüft“ vermerkt ist). Im Zweifel: nein.
  */
 export function kundeTauglich(b: Baustein): boolean {

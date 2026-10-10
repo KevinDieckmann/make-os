@@ -1,8 +1,8 @@
 // ─── Kunden-Link — eine Unterlage hochladen (öffentlich; Fulfillment C2, 10.10. — kommt AUSGESCHALTET; FULFILLMENT_KONZEPT.md 5.4) ────────────────
 // POST multipart: `datei` (genau eine), `stempel`, `webseite` (Honigtopf, leer), optional `zweck` (register | playbook). Nur mit `x-kunde-token` und Recht
-// „Upload“ — sonst dieselbe 404. Kevin 23:25: nur sichere Typen, am INHALT geprüft (PDF, PNG, JPG, WEBP, HEIC, DOCX/XLSX/PPTX ohne Makros; sonst 415),
+// „Upload“ — sonst dieselbe 404. Entscheidung 10.10., 23:25: nur sichere Typen, am INHALT geprüft (PDF, PNG, JPG, WEBP, HEIC, DOCX/XLSX/PPTX ohne Makros; sonst 415),
 // Bilder ohne Exif/GPS, nie geöffnet oder ausgeführt, verschlüsselt abgelegt (`fulfillment-unterlagen`), Status „ungeprüft“ bis ein Mensch freigibt.
-// Grenzen: Datei ≤ 25 MB, je Link ≤ 20 Dateien und ≤ 200 MB (413), je Link ≤ 30 Uploads je Stunde (429). Kein Virenscanner (Kevins Entscheidung).
+// Grenzen: Datei ≤ 25 MB, je Link ≤ 20 Dateien und ≤ 200 MB (413), je Link ≤ 30 Uploads je Stunde (429). Kein Virenscanner (Entscheidung des Inhabers).
 // Die zuständige Person bekommt eine NEUTRALE Glocke („Neue Unterlagen zu „<Mandat>“ eingegangen“, ohne Dateinamen).
 
 import { kundeZugriff, antwortOeffentlich } from '@/lib/fulfillment/kunde/oeffentlich';
