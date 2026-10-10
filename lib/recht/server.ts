@@ -65,6 +65,11 @@ const markenKappen = (m: Record<string, string>): Record<string, string> => {
   const e = Object.entries(m);
   return e.length <= RECHT_GRENZEN.marken ? m : Object.fromEntries(e.sort((a, b) => b[1].localeCompare(a[1])).slice(0, RECHT_GRENZEN.marken));
 };
+/** Marken setzen (Beschluss-Buch, lib/gesellschaften/beschluss-server.ts: Folgen eines Beschlusses höchstens einmal im Stapel). */
+export async function rechtMarkenSetzen(haushalt: string, schluessel: readonly string[], heute = localDay()): Promise<void> {
+  if (!schluessel.length) return;
+  await rechtAendern(haushalt, s => ({ ...s, marken: markenKappen({ ...(s.marken ?? {}), ...Object.fromEntries(schluessel.map(k => [k, heute])) }) }));
+}
 
 // ── Datenschutz & Compliance: nur Zähler (System › Datenschutz) ─────────────────────────────────────────────────────────
 
@@ -98,11 +103,15 @@ function businessVertragsFristen(register: RegisterDatei | null): ReturnType<typ
   return vertragsStichtage(schildGesellschaften(register));
 }
 
-/** Der Check JETZT (nur lesen, nichts gespeichert): Lage wie die Oberfläche + Vertragsfristen + Datenschutz-Zähler. */
+/** Der Check JETZT (nur lesen, nichts gespeichert): Lage wie die Oberfläche + Vertragsfristen + Beschlüsse ohne Anmeldung/Eintragung + Datenschutz-Zähler. */
 export async function rechtCheckJetzt(haushalt: string, heute = localDay()): Promise<{ lage: Lage; check: WochenCheck }> {
-  const [{ unternehmenLage }, { ladeRegister }] = await Promise.all([import('@/lib/gesellschaften/schild-server'), import('@/lib/gesellschaften/server')]);
+  const [{ unternehmenLage }, { ladeRegister }, { beschluesseOhneEintragung }] = await Promise.all([
+    import('@/lib/gesellschaften/schild-server'), import('@/lib/gesellschaften/server'), import('@/lib/gesellschaften/beschluesse'),
+  ]);
   const [lage, register, datenschutz] = await Promise.all([unternehmenLage(haushalt, heute), ladeRegister(haushalt), datenschutzZahlen(heute)]);
-  return { lage, check: wochenCheck({ lage, vertragsFristen: businessVertragsFristen(register), datenschutz, heute }) };
+  // Beschluss-Buch (10.10.): nur die Business-Gesellschaften des Schilds — nie die Privat-Einheit.
+  const beschluesse = beschluesseOhneEintragung(schildGesellschaften(register), heute);
+  return { lage, check: wochenCheck({ lage, vertragsFristen: businessVertragsFristen(register), datenschutz, heute, beschluesse }) };
 }
 
 const AUFGABE_PRAEFIX = 'rcw-';
@@ -267,7 +276,7 @@ export async function vertragEingang(haushalt: string, person: string, dateiId: 
 // ── Anwalts-Mappe ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Namen für die Mappe (`art:id` → Name): Personen des Haushalts, eigene Gesellschaften, Kontakte/Firmen (eingeschränkte Kontakte fehlen, Art. 18). */
-async function namenFuer(register: RegisterDatei | null, haushalt: string): Promise<Record<string, string>> {
+export async function rechtNamen(register: RegisterDatei | null, haushalt: string): Promise<Record<string, string>> {
   const [{ ladeKonten }, { alleGesellschaften, anzeigeName }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/gesellschaften/modell')]);
   const namen: Record<string, string> = {};
   for (const k of (await ladeKonten()).konten.filter(x => x.haushalt === haushalt)) namen[`person:${k.speicher}`] = k.name || k.speicher;
@@ -302,7 +311,7 @@ export async function mappeErstellen(haushalt: string, person: string, themaRoh:
   const [schild, lage, liste] = await Promise.all([ladeSchild(haushalt), unternehmenLage(haushalt, heute), ablageListe(haushalt)]);
   const ablage = nurCrm(liste).filter(e => e.gesellschaft === g.id && !!e.datei);
   const r = mappeBauen({
-    thema, g, s: eintragVon(schild, g.id), lage: lage.gesellschaften.find(x => x.id === g.id), heute, fragen: f.fragen, namen: await namenFuer(register, haushalt),
+    thema, g, s: eintragVon(schild, g.id), lage: lage.gesellschaften.find(x => x.id === g.id), heute, fragen: f.fragen, namen: await rechtNamen(register, haushalt),
     ablage: ablage.map(e => ({ id: e.id, ...(e.titel ? { titel: e.titel } : {}), name: e.datei!.name, hochgeladenAm: e.hochgeladenAm })),
   });
   if ('fehler' in r) throw new RechtFehler(r.fehler, r.status);
@@ -323,7 +332,7 @@ export async function mappeErstellen(haushalt: string, person: string, themaRoh:
 // ── Freigabe im Stapel (Art „recht“, lib/zoe/stapel-arten.ts) ───────────────────────────────────────────────────────────
 
 /** Die „Werkzeuge“ der Art — nur Etiketten im Stapel (keine Register-Werkzeuge). */
-export const RECHT_STAPEL_WERKZEUGE = ['recht_aufgabe', 'recht_mappe', 'recht_risiko', 'recht_checkliste', 'recht_frist'] as const;
+export const RECHT_STAPEL_WERKZEUGE = ['recht_aufgabe', 'recht_mappe', 'recht_risiko', 'recht_checkliste', 'recht_frist', 'recht_beschluss_ereignis', 'recht_beschluss_fassung', 'recht_beschluss_captable'] as const;
 
 type Erg = Awaited<ReturnType<StapelArtFreigabe['freigeben']>>;
 const nein = (status: 400 | 403 | 404 | 409 | 413, fehler: string): Erg => ({ ok: false, status, fehler });
@@ -433,7 +442,10 @@ export const RECHT_STAPEL_ART: StapelArtFreigabe = {
     try {
       const gid = text(v.eingabe.gesellschaftId, 80);
       if (gid) await businessGesellschaft(z.haushalt, gid);
-      const ergebnis = v.werkzeug === 'recht_aufgabe' ? await aufgabeAnlegen(v, person)
+      // Beschluss-Buch (10.10.): Folgen eines gefassten Beschlusses — lib/gesellschaften/beschluss-server.ts rechnet sie aus dem jetzigen Bestand neu.
+      const bs = await import('@/lib/gesellschaften/beschluss-server');
+      const ergebnis = bs.istBeschlussWerkzeug(v.werkzeug) ? await bs.beschlussFolgeFreigeben(v, z.haushalt, person).catch(e => { if (e instanceof bs.BeschlussFehler) throw new RechtFehler(e.message, e.status); throw e; })
+        : v.werkzeug === 'recht_aufgabe' ? await aufgabeAnlegen(v, person)
         : v.werkzeug === 'recht_risiko' ? await risikoUebernehmen(v, z.haushalt, person)
           : v.werkzeug === 'recht_checkliste' ? await checklisteAblegen(v, z.haushalt, person)
             : v.werkzeug === 'recht_frist' ? await fristEintragen(v, z.haushalt, person)

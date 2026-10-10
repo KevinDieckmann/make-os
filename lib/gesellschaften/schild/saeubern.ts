@@ -89,7 +89,7 @@ function ereignis(roh: Record<string, unknown>, alt: Ereignis | undefined, id: s
   if (!datum) fehler.push({ feld: 'datum', text: 'Wann war das Ereignis?' });
   const notiz = hat(roh, 'notiz') ? lang(roh.notiz, 1000, 'notiz', fehler) : alt?.notiz;
   if (fehler.length) return { fehler };
-  return { fehler, e: rein({ id, art: art as EreignisArt, datum: datum!, notiz, angelegt: alt?.angelegt ?? k.jetzt, geloeschtAm: alt?.geloeschtAm }) };
+  return { fehler, e: rein({ id, art: art as EreignisArt, datum: datum!, notiz, beschlussId: alt?.beschlussId, angelegt: alt?.angelegt ?? k.jetzt, geloeschtAm: alt?.geloeschtAm }) };
 }
 
 function massnahmenLesen(roh: unknown, fehler: RegisterFehler[]): Massnahme[] | undefined {

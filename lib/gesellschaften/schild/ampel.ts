@@ -18,7 +18,7 @@ import { tagePlus, tagText } from './zeit';
 
 export type Ampel = 'rot' | 'gelb' | 'gruen';
 export const AMPEL_TEXT: Record<Ampel, string> = { rot: 'handeln', gelb: 'prüfen', gruen: 'im Lot' };
-export type SchildReiter = 'ueberblick' | 'gesellschaften' | 'pflichten' | 'dokumente' | 'risiken' | 'struktur' | 'schutz' | 'vertraege';
+export type SchildReiter = 'ueberblick' | 'gesellschaften' | 'pflichten' | 'dokumente' | 'risiken' | 'struktur' | 'schutz' | 'vertraege' | 'beschluesse';
 
 export interface Punkt { text: string; weg: string; schwere: 'rot' | 'gelb' }
 export interface Teil { ampel: Ampel; punkte: Punkt[]; zahlen: Record<string, number> }

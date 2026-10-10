@@ -8,7 +8,9 @@
 // GET  ?suche=register&q=…               → höchstens 8 Treffer der Schnellsuche (Gesellschaften, Verträge, Beschlüsse) mit Weg
 // POST { felder, anfrageId }            → neue Gesellschaft `g-…` (Name Pflicht)
 // PATCH { id, stand, felder }                          → Steckbrief
-// PATCH { id, stand, liste, eintrag, eintragId? }      → Gesellschafter / Beteiligung / Vertrag anlegen bzw. ändern
+// PATCH { id, stand, liste, eintrag, eintragId? }      → Gesellschafter / Beteiligung / Vertrag / Organ / Beschluss / Fassung anlegen bzw. ändern
+//                                                        Beschluss-Buch (10.10.): die Nummer vergibt der Server; ein Beschluss „gefasst“ legt seine Folgen
+//                                                        als Vorschläge in den Stapel (Art „recht“); Fassungen werden nie geändert (409)
 // PATCH { id, stand, liste, eintragId, aktion }        → archivieren · zurueckholen · loeschen · wiederherstellen · endgueltig
 // PATCH { id, stand, aktion, ziel? }                   → dieselben Aktionen für die Gesellschaft (ziel: ruhend | aufgeloest)
 // Zugang (Plattform-Regel „Trennung serverseitig“): NUR der Haushalt des Inhabers und nur eine Person mit Haushalt am
@@ -103,7 +105,7 @@ export async function GET(req: Request) {
     if (frage.length < 2) return NextResponse.json({ ok: true, treffer: [] }, kopf);
     const treffer = registerTreffer(alleGesellschaften(d), t => suchPasst([...t], frage)).map(t => ({
       art: t.art, id: t.id, titel: t.titel, unter: t.unter, space: 'business' as const,
-      href: WEG.unternehmen(t.gesellschaftId, t.art === 'vertrag' ? 'vertraege' : t.art === 'beschluss' ? 'organe' : undefined),
+      href: t.art === 'beschluss' ? WEG.beschluss(t.gesellschaftId, t.id) : WEG.unternehmen(t.gesellschaftId, t.art === 'vertrag' ? 'vertraege' : undefined),
     }));
     return NextResponse.json({ ok: true, treffer }, kopf);
   }
@@ -181,7 +183,7 @@ export async function PATCH(req: Request) {
   if (!aktionOk) return fehler('aktion: archivieren, zurueckholen, loeschen, wiederherstellen oder endgueltig.', 400);
 
   if (b.liste !== undefined) {
-    if (!REGISTER_LISTEN.includes(b.liste as RegisterListe)) return fehler('liste: gesellschafter, beteiligungen oder vertraege.', 400);
+    if (!REGISTER_LISTEN.includes(b.liste as RegisterListe)) return fehler(`liste: ${REGISTER_LISTEN.join(', ')}.`, 400);
     const liste = b.liste as RegisterListe;
     const eintragId = typeof b.eintragId === 'string' ? b.eintragId : undefined;
     if (aktion) {
@@ -189,9 +191,15 @@ export async function PATCH(req: Request) {
       return antwort(await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragHandeln(liste, eintragId, aktion)), z.haushalt);
     }
     if (!b.eintrag || typeof b.eintrag !== 'object') return fehler('eintrag fehlt.', 400);
-    const r = await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragSchreiben(liste, b.eintrag, eintragId));
+    const r = await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragSchreiben(liste, b.eintrag, eintragId, z.person));
     // Erinnerung vor „kündigen bis“: liegt der Stichtag schon im Vorlauf, sofort (sonst im Morgenlauf).
     if (r.g && liste === 'vertraege') await vertragsErinnerungen(z.haushalt);
+    // Beschluss-Buch (10.10.): ein gefasster Beschluss legt seine Folgen (Pflichten, Fassung, Cap-Table) als Vorschläge in den Stapel — nur für eine
+    // Person mit Zugang zur Firmen-Akte, je Folge höchstens einmal; erst der Klick im Stapel wirkt. Wirft nie.
+    if (r.g && liste === 'beschluesse') {
+      const neu = eintragId ? r.g.beschluesse?.find(x => x.id === eintragId) : r.g.beschluesse?.[r.g.beschluesse.length - 1];
+      if (neu?.status === 'gefasst') await (await import('@/lib/gesellschaften/beschluss-server')).beschlussFolgenLegen(z.haushalt, z.person, r.g.id, neu.id);
+    }
     return antwort(r, z.haushalt);
   }
   if (aktion) {

@@ -86,6 +86,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('unternehmen-risiken', 'Unternehmen · Risiko-Register', WEG.schild('risiken'), 'business'),
   s('unternehmen-struktur', 'Unternehmen · Struktur und Cap-Table', WEG.schild('struktur'), 'business'),
   s('unternehmen-schutz', 'Unternehmen · Marken, Domains, Versicherungen', WEG.schild('schutz'), 'business'),
+  s('unternehmen-beschluesse', 'Unternehmen · Beschlüsse & Satzung (Beschluss-Buch, Gegenstand, Fassungen)', WEG.beschluss(), 'business'),
   // Netzwerken (03.10.): unterwegs erfassen und die eigenen Visitenkarten (QR) — in jedem Space auffindbar.
   s('netzwerken', 'Netzwerken · Person erfassen, Abendbericht', WEG.netzwerken()),
   s('netzwerken-karte', 'Netzwerken · Meine Visitenkarten', WEG.netzwerkenKarte()),

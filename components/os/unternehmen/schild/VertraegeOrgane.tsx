@@ -38,7 +38,7 @@ export function VertraegeOrgane({ daten, liste, heute }: { daten: RegisterDaten;
                 {!organe.length ? <span style={klein}>Keine Organe eingetragen.</span> : (
                   <Liste>{organe.map(o => <Zeile key={o.id} titel={bezugName(o.wer, daten.namen)} unter={[organLabel(o.funktion), o.seit ? `seit ${datum(o.seit)}` : undefined].filter(Boolean).join(' · ')} />)}</Liste>
                 )}
-                <div><Knopf leise href={WEG.unternehmen(g.id, 'organe')}>Organe & Beschlüsse</Knopf></div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise href={WEG.unternehmen(g.id, 'organe')}>Organe</Knopf><Knopf leise href={WEG.beschluss(g.id)}>Beschluss-Buch</Knopf></div>
               </section>
             </div>
           </Karte>

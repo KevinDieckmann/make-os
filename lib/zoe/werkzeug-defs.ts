@@ -145,7 +145,7 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
     },
     {
       name: 'gesellschaften_lesen',
-      description: `Liest das Gesellschafts-Register (/os/unternehmen): eigene Gesellschaften mit Status (geplant · in Gründung · eingetragen · ruhend · aufgelöst), Rechtsform, Sitz, Register, Stammkapital, Gesellschaftern mit Anteil, „hervorgegangen aus“, wer wen hält und laufende Verträge mit Fristen. Nutze das bei „Wem gehört …?“, „Wie ist der Stand der Gründung?“, „Welche Verträge laufen aus?“. Nur lesen; Zahlen genau so nennen, wie sie kommen; keine Rechtsberatung. ${DATEN}`,
+      description: `Liest das Gesellschafts-Register (/os/unternehmen): eigene Gesellschaften mit Status (geplant · in Gründung · eingetragen · ruhend · aufgelöst), Rechtsform, Sitz, Register, Stammkapital, Gesellschaftern mit Anteil, „hervorgegangen aus“, wer wen hält, laufende Verträge mit Fristen, den gültigen Gegenstand und die jüngsten Beschlüsse aus dem Beschluss-Buch (Nummer, Datum, Art, Status; Beschlüsse ohne Anmeldung bzw. Eintragung). Nutze das bei „Wem gehört …?“, „Wie ist der Stand der Gründung?“, „Welche Verträge laufen aus?“, „Was haben wir zuletzt beschlossen?“. Nur lesen; Zahlen genau so nennen, wie sie kommen; keine Rechtsberatung. ${DATEN}`,
       input_schema: obj({ name: { type: 'string', description: 'Optional: Teil des Namens einer Gesellschaft — ohne Angabe alle.' } }),
     },
     {

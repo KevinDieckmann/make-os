@@ -89,6 +89,8 @@ export interface Ereignis {
   /** Tag des Ereignisses — Anker der Ereignis-Pflichten. */
   datum: string;
   notiz?: string;
+  /** Aus diesem Beschluss des Registers (Beschluss-Buch, 10.10.) — setzt NUR der Server bei der Freigabe der Folge; bleibt beim Ändern. */
+  beschlussId?: string;
   angelegt?: string;
   geloeschtAm?: string;
 }

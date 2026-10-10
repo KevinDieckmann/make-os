@@ -5,7 +5,8 @@
 // Beteiligungen, Verträge mit Fristen, Unterlagen. Kevin 10.10.: „Welche Infos muss ich immer dokumentiert bei mir haben — rechtlich wie ein
 // Schild aufstellen, das Risiko immer wieder mitbewerten.“ Die Seite ist in Reiter gegliedert (`?s=`, Wege über `WEG.schild`):
 //   Überblick (Ampel je Gesellschaft und gesamt) · Gesellschaften (Liste · Archiv · Papierkorb, `?f=`) · Pflichten · Dokumente (mit Vorlagen) ·
-//   Risiken · Struktur (Organigramm + Cap-Table) · Marken & Versicherungen · Verträge & Organe. Pflichten/Dokumente/Risiken/Schutz gelten je
+//   Risiken · Struktur (Organigramm + Cap-Table) · Marken & Versicherungen · Verträge & Organe · Beschlüsse & Satzung (10.10.: Beschluss-Buch,
+//   Gegenstand & Satzung mit Historie — `?s=beschluesse&w=<kennung>[&b=<beschluss>][&a=satzung]`, Beschluesse.tsx). Pflichten/Dokumente/Risiken/Schutz gelten je
 //   BUSINESS-Gesellschaft (`?w=<kennung>`) — Daten im eigenen Business-Bestand (GET/PATCH /api/gesellschaften/schild); das Register selbst
 //   bleibt unverändert (nur gelesen).
 //   Alte Adressen: `?s=liste` → Gesellschaften, `?s=archiv|papierkorb` → Gesellschaften mit Filter.
@@ -45,10 +46,11 @@ import { Struktur } from './schild/Struktur';
 import { Schutz } from './schild/Schutz';
 import { VertraegeOrgane } from './schild/VertraegeOrgane';
 import { GesellschaftWahl, AmpelChip } from './schild/teile';
+import { BeschluesseBereich, type BuchAnsicht } from './Beschluesse';
 
 type Sicht = SchildReiter;
 const SICHTEN: { id: Sicht; label: string }[] = [
-  { id: 'ueberblick', label: 'Überblick' }, { id: 'gesellschaften', label: 'Gesellschaften' }, { id: 'pflichten', label: 'Pflichten' },
+  { id: 'ueberblick', label: 'Überblick' }, { id: 'gesellschaften', label: 'Gesellschaften' }, { id: 'beschluesse', label: 'Beschlüsse & Satzung' }, { id: 'pflichten', label: 'Pflichten' },
   { id: 'dokumente', label: 'Dokumente' }, { id: 'risiken', label: 'Risiken' }, { id: 'struktur', label: 'Struktur' },
   { id: 'schutz', label: 'Marken & Versicherungen' }, { id: 'vertraege', label: 'Verträge & Organe' },
 ];
@@ -61,7 +63,7 @@ export function sichtAus(s: string | null, f: string | null): { sicht: Sicht; fi
   return { sicht, filter: FILTER.find(x => x.id === f)?.id ?? 'liste' };
 }
 /** Reiter, die je Business-Gesellschaft gelten (Gesellschaft-Wahl `w`). */
-const JE_GESELLSCHAFT: readonly Sicht[] = ['pflichten', 'dokumente', 'risiken', 'schutz'];
+const JE_GESELLSCHAFT: readonly Sicht[] = ['pflichten', 'dokumente', 'risiken', 'schutz', 'beschluesse'];
 
 /** Status → Farbe der Pille: Zustand, keine Deko. */
 export const STATUS_FARBE: Record<GesStatus, string> = { geplant: C.inkDim, gruendung: LEUCHT.achtung, eingetragen: LEUCHT.gut, ruhend: C.inkLeise, aufgeloest: C.inkLeise };
@@ -87,13 +89,14 @@ export function UnternehmenView() {
   }, []);
   useEffect(() => { void laden(); }, [laden]);
 
-  const geh = (q: { g?: string; s?: Sicht; r?: string; f?: Filter; w?: string }) => {
+  const geh = (q: { g?: string; s?: Sicht; r?: string; f?: Filter; w?: string; a?: string }) => {
     const u = new URLSearchParams();
     if (q.g) u.set('g', q.g);
     if (q.r) u.set('r', q.r);
     if (q.s && q.s !== 'ueberblick') u.set('s', q.s);
     if (q.f && q.f !== 'liste') u.set('f', q.f);
     if (q.w) u.set('w', q.w);
+    if (q.a) u.set('a', q.a);
     router.push(`/os/unternehmen${u.size ? `?${u}` : ''}`, { scroll: false });
   };
   const ersetzen = (g: GAnzeige) => setDaten(d => (d ? { ...d, gesellschaften: d.gesellschaften.map(x => (x.id === g.id ? g : x)) } : d));
@@ -137,12 +140,30 @@ export function UnternehmenView() {
       )}
       {sicht === 'struktur' && <Struktur daten={daten} schild={schild.daten?.eintraege ?? []} gewaehlt={params.get('w') ?? undefined} waehle={w => geh({ s: 'struktur', w })} oeffne={id => geh({ g: id })} />}
       {sicht === 'vertraege' && <VertraegeOrgane daten={daten} liste={daten.gesellschaften.filter(x => !x.geloeschtAm && business.some(b => b.id === x.id))} heute={heute} />}
-      {sicht !== 'gesellschaften' && sicht !== 'struktur' && sicht !== 'vertraege' && (!lage || !schild.daten ? <Karte><Leer>lädt …</Leer></Karte>
+      {sicht === 'beschluesse' && <Beschluesse daten={daten} wahl={params.get('w') ?? gewaehlt} offenId={params.get('b') ?? undefined} ansicht={params.get('a') === 'satzung' ? 'satzung' : 'buch'}
+        risikenVon={id => (schild.daten?.eintraege.find(e => e.id === id)?.risiken ?? []).filter(r => !r.geloeschtAm).map(r => ({ id: r.id, titel: r.titel }))}
+        geh={(w, a) => geh({ s: 'beschluesse', w, ...(a === 'satzung' ? { a } : {}) })} ersetzen={ersetzen} />}
+      {sicht !== 'gesellschaften' && sicht !== 'struktur' && sicht !== 'vertraege' && sicht !== 'beschluesse' && (!lage || !schild.daten ? <Karte><Leer>lädt …</Leer></Karte>
         : sicht === 'ueberblick' ? <><Ueberblick lage={lage} /><RechtBereich lage={lage} gesellschaften={daten.gesellschaften} /></>
           : !gewaehlt ? <Karte><Leerzustand symbol={<Building2 size={22} />} titel="Keine Business-Gesellschaft" aktion={<Knopf leise onClick={() => geh({ s: 'gesellschaften' })}>Zu den Gesellschaften</Knopf>}>Pflichten, Dokumente, Risiken und Schutzrechte gelten je Gesellschaft im Bereich Business.</Leerzustand></Karte>
             : <JeGesellschaft key={gewaehlt} sicht={sicht} lage={lage} id={gewaehlt} schild={schild.daten} ersetzen={schild.ersetzen} personen={daten.personen} waehle={w => geh({ s: sicht, w })} heute={heute} />)}
     </Seite>
   );
+}
+
+/**
+ * Beschlüsse & Satzung (10.10.): alle Gesellschaften des Registers außer der Privat-Einheit (Gesellschafterbeschlüsse gibt es auch vor der Eintragung).
+ * Ein Schreiber je Gesellschaft (`useSchreiber` im Bereich) — derselbe Weg wie im Steckbrief.
+ */
+function Beschluesse({ daten, wahl, offenId, ansicht, risikenVon, geh, ersetzen }: {
+  daten: RegisterDaten; wahl?: string; offenId?: string; ansicht: BuchAnsicht; risikenVon: (id: string) => { id: string; titel: string }[];
+  geh: (w: string, a?: BuchAnsicht) => void; ersetzen: (g: GAnzeige) => void;
+}) {
+  const liste = daten.gesellschaften.filter(x => !x.geloeschtAm && !gehoertZuPrivat(x.id));
+  const g = liste.find(x => x.id === wahl) ?? liste[0];
+  if (!g) return <Karte><Leerzustand symbol={<Building2 size={22} />} titel="Keine Gesellschaft" aktion={<Knopf leise href={WEG.schild('gesellschaften')}>Zu den Gesellschaften</Knopf>}>Das Beschluss-Buch führt Beschlüsse je Gesellschaft — lege zuerst eine Gesellschaft an.</Leerzustand></Karte>;
+  return <BeschluesseBereich key={g.id} g={g} daten={daten} liste={liste.map(x => ({ id: x.id, name: x.name }))} waehle={id => geh(id, ansicht)} onNeu={ersetzen}
+    risiken={risikenVon(g.id)} offenId={offenId} ansicht={ansicht} setAnsicht={a => geh(g.id, a)} />;
 }
 
 /** Ein Reiter je Gesellschaft (Pflichten · Dokumente · Risiken · Marken & Versicherungen) mit EINEM Schreiber (Kette mit Stand). */

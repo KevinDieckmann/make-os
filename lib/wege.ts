@@ -118,8 +118,14 @@ export const WEG = {
    * Unternehmen › Schild (10.10.): Reiter der Seite (Überblick · Gesellschaften · Pflichten · Dokumente · Risiken · Struktur · Marken & Versicherungen ·
    * Verträge & Organe) — optional gleich auf eine Gesellschaft (`w`). Ohne Reiter: der Überblick (Ampel).
    */
-  schild: (reiter?: 'ueberblick' | 'gesellschaften' | 'pflichten' | 'dokumente' | 'risiken' | 'struktur' | 'schutz' | 'vertraege', gesellschaftId?: string) =>
+  schild: (reiter?: 'ueberblick' | 'gesellschaften' | 'pflichten' | 'dokumente' | 'risiken' | 'struktur' | 'schutz' | 'vertraege' | 'beschluesse', gesellschaftId?: string) =>
     q('/os/unternehmen', { s: reiter && reiter !== 'ueberblick' ? reiter : undefined, w: gesellschaftId }),
+  /**
+   * Unternehmen › Beschlüsse & Satzung (10.10.): das Beschluss-Buch einer Gesellschaft — optional gleich ein Beschluss geöffnet (`b`) bzw. die
+   * Ansicht „Gegenstand & Satzung“ (`a=satzung`).
+   */
+  beschluss: (gesellschaftId?: string, beschlussId?: string, ansicht?: 'satzung') =>
+    q('/os/unternehmen', { s: 'beschluesse', w: gesellschaftId, b: beschlussId, a: ansicht }),
   /**
    * Unterlagen einer Gesellschaft in der Ablage — optional nur die eines Vertrags (DSGVO-Nachtrag 04.10.): funktioniert auch,
    * wenn Gesellschaft bzw. Vertrag endgültig gelöscht sind (die Unterlagen bleiben, § 257 HGB).

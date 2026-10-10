@@ -135,15 +135,48 @@ export const ERINNERUNG_VORGABE_TAGE = 30;
 export type GesRolle = 'operativ' | 'holding';
 export const GES_ROLLEN: readonly { id: GesRolle; label: string }[] = [{ id: 'operativ', label: 'operativ' }, { id: 'holding', label: 'Holding' }];
 
-export type BeschlussArt = 'gesellschafterbeschluss' | 'gf-beschluss' | 'umlaufbeschluss' | 'beiratsbeschluss' | 'sonstiges';
+// Beschluss-Buch (10.10., Kevin: „Unternehmen wird extrem spannend, wenn ich da alle Gesellschafterbeschlüsse, den Gegenstand und alles dazu
+// gesammelt habe.“): weitere Arten, Status „angemeldet“, Gremium, Beteiligte, Abstimmung, Wirkung, Verweise, strukturierte Änderungen — alles
+// OPTIONAL im selben Eintrag (Altbestand bleibt gültig). Regeln (Nummern, Ergebnis, Folgen, Fassungen) rein in ./beschluesse.ts.
+export type BeschlussArt =
+  | 'gesellschafterbeschluss' | 'umlaufbeschluss' | 'gf-beschluss' | 'satzungsaenderung' | 'kapitalmassnahme' | 'gf-bestellung'
+  | 'gewinnverwendung' | 'jahresabschluss' | 'beiratsbeschluss' | 'sonstiges';
 export const BESCHLUSS_ARTEN: readonly { id: BeschlussArt; label: string }[] = [
-  { id: 'gesellschafterbeschluss', label: 'Gesellschafterbeschluss' }, { id: 'gf-beschluss', label: 'GF-Beschluss' },
-  { id: 'umlaufbeschluss', label: 'Umlaufbeschluss' }, { id: 'beiratsbeschluss', label: 'Beiratsbeschluss' }, { id: 'sonstiges', label: 'Sonstiges' },
+  { id: 'gesellschafterbeschluss', label: 'Gesellschafterbeschluss' }, { id: 'umlaufbeschluss', label: 'Umlaufbeschluss' },
+  { id: 'gf-beschluss', label: 'GF-Beschluss' }, { id: 'satzungsaenderung', label: 'Satzungsänderung' },
+  { id: 'kapitalmassnahme', label: 'Kapitalmaßnahme' }, { id: 'gf-bestellung', label: 'GF-Bestellung/Abberufung' },
+  { id: 'gewinnverwendung', label: 'Gewinnverwendung' }, { id: 'jahresabschluss', label: 'Feststellung Jahresabschluss' },
+  { id: 'beiratsbeschluss', label: 'Beiratsbeschluss' }, { id: 'sonstiges', label: 'Sonstiges' },
 ];
-export type BeschlussStatus = 'entwurf' | 'gefasst' | 'eingetragen' | 'aufgehoben';
+export type BeschlussStatus = 'entwurf' | 'gefasst' | 'angemeldet' | 'eingetragen' | 'aufgehoben';
 export const BESCHLUSS_STATUS: readonly { id: BeschlussStatus; label: string }[] = [
-  { id: 'entwurf', label: 'Entwurf' }, { id: 'gefasst', label: 'gefasst' }, { id: 'eingetragen', label: 'eingetragen' }, { id: 'aufgehoben', label: 'aufgehoben' },
+  { id: 'entwurf', label: 'Entwurf' }, { id: 'gefasst', label: 'gefasst' }, { id: 'angemeldet', label: 'angemeldet' },
+  { id: 'eingetragen', label: 'eingetragen' }, { id: 'aufgehoben', label: 'aufgehoben' },
 ];
+/** Welches Gremium beschließt. Fehlt = aus der Art abgeleitet (./beschluesse.ts `gremiumVon`). */
+export type Gremium = 'gesellschafterversammlung' | 'alleingesellschafter' | 'geschaeftsfuehrung' | 'beirat' | 'aufsichtsrat' | 'sonstiges';
+export const GREMIEN: readonly { id: Gremium; label: string }[] = [
+  { id: 'gesellschafterversammlung', label: 'Gesellschafterversammlung' }, { id: 'alleingesellschafter', label: 'Alleingesellschafter' },
+  { id: 'geschaeftsfuehrung', label: 'Geschäftsführung' }, { id: 'beirat', label: 'Beirat' }, { id: 'aufsichtsrat', label: 'Aufsichtsrat' }, { id: 'sonstiges', label: 'Sonstiges' },
+];
+export type Stimme = 'ja' | 'nein' | 'enthaltung';
+export const STIMMEN: readonly { id: Stimme; label: string }[] = [{ id: 'ja', label: 'Ja' }, { id: 'nein', label: 'Nein' }, { id: 'enthaltung', label: 'Enthaltung' }];
+/**
+ * Eine Stimme: `id` = Gesellschafter- (`gs-…`) oder Organ-Eintrag (`og-…`) dieser Gesellschaft. `gewichtCent` (Nennbetrag) und `ohneStimmrecht`
+ * hält NUR der Server zum Zeitpunkt der Abstimmung fest — eine spätere Änderung der Cap-Table ändert das Ergebnis nie.
+ */
+export interface Stimmabgabe { id: string; stimme: Stimme; gewichtCent?: number; ohneStimmrecht?: true }
+export type VerweisArt = 'vertrag' | 'gesellschafter' | 'risiko';
+/** Verweis auf einen Vertrag (`vt-…`) bzw. Gesellschafter (`gs-…`) dieser Gesellschaft oder ein Risiko des Schilds (`rk-…`) — nur Kennungen. */
+export interface BeschlussVerweis { art: VerweisArt; id: string }
+/** Merkmale mit Fassungs-Historie (Gegenstand & Satzung). */
+export type SatzungMerkmal = 'gegenstand' | 'satzung' | 'stammkapital' | 'sitz' | 'geschaeftsfuehrung' | 'firmierung';
+export const SATZUNG_MERKMALE: readonly { id: SatzungMerkmal; label: string }[] = [
+  { id: 'gegenstand', label: 'Gegenstand des Unternehmens' }, { id: 'satzung', label: 'Satzung (Fassung)' }, { id: 'stammkapital', label: 'Stammkapital' },
+  { id: 'sitz', label: 'Sitz' }, { id: 'geschaeftsfuehrung', label: 'Geschäftsführung' }, { id: 'firmierung', label: 'Firmierung' },
+];
+/** Was ein Beschluss an Gegenstand/Satzung/Kapital/Sitz/Geschäftsführung ändert — daraus schlägt der Server die neue Fassung vor. */
+export interface BeschlussAenderung { merkmal: SatzungMerkmal; text?: string; cent?: number }
 export interface Beschluss {
   /** `bs-<uuid>` */
   id: string;
@@ -156,6 +189,44 @@ export interface Beschluss {
   vorArchiv?: BeschlussStatus;
   /** Unterlagen in der Dateiablage (Bezug = diese Gesellschaft). */
   dateiIds?: string[];
+  /**
+   * Laufende Nummer im Beschluss-Buch je Gesellschaft und Jahr — vergibt NUR der Server, sobald der Beschluss nicht mehr Entwurf ist; nie
+   * umgeschrieben. Altbestand ohne Nummer bekommt sie nur in der Anzeige abgeleitet (./beschluesse.ts `beschlussNummern`).
+   */
+  nummer?: { jahr: number; nr: number };
+  gremium?: Gremium;
+  /** Beteiligte: Gesellschafter- (`gs-…`) bzw. Organ-Einträge (`og-…`) dieser Gesellschaft — nur Kennungen. */
+  beteiligte?: string[];
+  abstimmung?: Stimmabgabe[];
+  /** Wirksam ab (fehlt = Beschlusstag; eine Satzungsänderung wirkt erst mit der Eintragung, § 54 Abs. 3 GmbHG). */
+  wirkungAb?: string;
+  angemeldetAm?: string;
+  eingetragenAm?: string;
+  verweise?: BeschlussVerweis[];
+  aenderungen?: BeschlussAenderung[];
+  /** Aus welcher Vorlage (./beschluss-vorlagen.ts) — nur zur Anzeige. */
+  vorlage?: string;
+  /** Wann angelegt (Server). */
+  angelegt?: string;
+  geloeschtAm?: string;
+}
+/**
+ * Eine Fassung von Gegenstand, Satzung, Kapital, Sitz, Geschäftsführung oder Firmierung — jede Änderung ist eine NEUE Fassung mit „gültig ab“
+ * und Verweis auf den Beschluss; nie überschrieben (eine falsche geht in den Papierkorb). „Stand am Datum X“ = je Merkmal die jüngste Fassung
+ * mit `ab` ≤ X (./beschluesse.ts `standAm`). `angelegt`/`von` setzt der Server.
+ */
+export interface Fassung {
+  /** `fs-<uuid>` */
+  id: string;
+  merkmal: SatzungMerkmal;
+  ab: string;
+  text?: string;
+  cent?: number;
+  beschlussId?: string;
+  dateiIds?: string[];
+  notiz?: string;
+  angelegt?: string;
+  von?: string;
   geloeschtAm?: string;
 }
 
@@ -203,6 +274,8 @@ export interface RegisterGesellschaft extends Omit<Absender, 'id'> {
   vertraege?: Vertrag[];
   beschluesse?: Beschluss[];
   organe?: Organ[];
+  /** Fassungen von Gegenstand & Satzung (10.10., Beschluss-Buch) — Historie, nie überschrieben. */
+  fassungen?: Fassung[];
   angelegt?: string;
   geloeschtAm?: string;
 }
@@ -225,14 +298,17 @@ export interface RegisterDatei { gesellschaften: RegisterGesellschaft[]; geloesc
 /** Höchstens so viele Vermerke — die ältesten fallen zuerst (sie verweisen nur auf Unterlagen, die in der Ablage bleiben). */
 export const MAX_VERMERKE = 500;
 
-export type RegisterListe = 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'beschluesse' | 'organe';
-export const REGISTER_LISTEN: readonly RegisterListe[] = ['gesellschafter', 'beteiligungen', 'vertraege', 'beschluesse', 'organe'];
-export const PRAEFIX: Record<RegisterListe, string> = { gesellschafter: 'gs', beteiligungen: 'bt', vertraege: 'vt', beschluesse: 'bs', organe: 'og' };
+export type RegisterListe = 'gesellschafter' | 'beteiligungen' | 'vertraege' | 'beschluesse' | 'organe' | 'fassungen';
+export const REGISTER_LISTEN: readonly RegisterListe[] = ['gesellschafter', 'beteiligungen', 'vertraege', 'beschluesse', 'organe', 'fassungen'];
+export const PRAEFIX: Record<RegisterListe, string> = { gesellschafter: 'gs', beteiligungen: 'bt', vertraege: 'vt', beschluesse: 'bs', organe: 'og', fassungen: 'fs' };
 /** Ein Eintrag irgendeiner Liste des Registers. */
-export type ListenEintrag = Gesellschafter | FremdBeteiligung | Vertrag | Beschluss | Organ;
+export type ListenEintrag = Gesellschafter | FremdBeteiligung | Vertrag | Beschluss | Organ | Fassung;
 
 /** Grenzen (nie still kürzen — darüber 413/400 mit Text). */
-export const GRENZEN = { gesellschaften: 60, gesellschafter: 80, beteiligungen: 80, vertraege: 120, beschluesse: 300, organe: 60, parteien: 12, dateien: 20, fristen: 20 } as const;
+export const GRENZEN = {
+  gesellschaften: 60, gesellschafter: 80, beteiligungen: 80, vertraege: 120, beschluesse: 300, organe: 60, fassungen: 300, parteien: 12, dateien: 20, fristen: 20,
+  beteiligte: 80, verweise: 20, aenderungen: 6, inhalt: 20_000, fassungText: 6000,
+} as const;
 
 // ── Lesen ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -653,6 +729,8 @@ export const EINTRAG_AKTIONEN: readonly EintragAktion[] = ['archivieren', 'zurue
 export function eintragAktion<T extends ListenEintrag>(liste: RegisterListe, e: T, aktion: EintragAktion, heute: string, jetzt: string): T {
   if (aktion === 'loeschen') return inPapierkorb(e, jetzt);
   if (aktion === 'wiederherstellen') return ausPapierkorb(e);
+  // Fassungen kennen kein Archiv: eine neue Fassung löst die alte ab (Historie), eine falsche geht in den Papierkorb (der Server lehnt ab).
+  if (liste === 'fassungen') return e;
   if (liste === 'organe') {
     const o = { ...(e as Organ) };
     if (aktion === 'archivieren') o.bis = o.bis && o.bis <= heute ? o.bis : heute; else delete o.bis;
@@ -682,6 +760,7 @@ export function eintragAktion<T extends ListenEintrag>(liste: RegisterListe, e: 
 
 /** Ist ein Listeneintrag archiviert (ausgeschieden/beendet)? */
 export function eintragArchiviert(liste: RegisterListe, e: ListenEintrag, heute = '9999-12-31'): boolean {
+  if (liste === 'fassungen') return false;
   if (liste === 'organe') return !!(e as Organ).bis && (e as Organ).bis! <= heute;
   if (liste === 'beschluesse') return (e as Beschluss).status === 'aufgehoben';
   if (liste === 'gesellschafter') return !!(e as Gesellschafter).ausgeschiedenAm;
@@ -780,29 +859,179 @@ export function registerEinheitenNamen(d: RegisterDatei | null | undefined): str
 
 // ── Beschlüsse und Organe säubern (04.10. Nachtrag) ──────────────────────────────────────────────────────────────
 
-export function beschlussSaeubern(roh: unknown, alt?: Beschluss): { e?: Beschluss; fehler: RegisterFehler[] } {
+/** Text ohne Kürzen (Beschluss-Buch): über der Grenze → Fehler, nie still abgeschnitten. */
+function ganzerText(v: unknown, n: number, feld: string, name: string, fehler: RegisterFehler[]): string | undefined {
+  const t = String(v ?? '').replace(/\u0000/g, '').replace(/\r\n?/g, '\n').trim();
+  if (t.length > n) { fehler.push({ feld, text: `${name}: höchstens ${n.toLocaleString('de-DE')} Zeichen.` }); return undefined; }
+  return t || undefined;
+}
+const BETEILIGT_ID = /^(gs|og)-[a-z0-9][a-z0-9-]{3,62}$/;
+const VERWEIS_MUSTER: Record<VerweisArt, RegExp> = { vertrag: UNTER_ID('vt'), gesellschafter: UNTER_ID('gs'), risiko: UNTER_ID('rk') };
+const MERKMAL_TEXT_MAX: Record<SatzungMerkmal, number> = { gegenstand: GRENZEN.fassungText, satzung: 500, stammkapital: 0, sitz: 120, geschaeftsfuehrung: 300, firmierung: 160 };
+const merkmalLabel = (m: SatzungMerkmal) => SATZUNG_MERKMALE.find(x => x.id === m)?.label ?? m;
+
+/** Eine strukturierte Änderung (Beschluss) bzw. ein Fassungswert lesen: Stammkapital als Betrag, sonst Text (Grenze je Merkmal). */
+function merkmalWert(merkmal: SatzungMerkmal, o: Record<string, unknown>, feld: string, fehler: RegisterFehler[], textPflicht = true): { text?: string; cent?: number } {
+  if (merkmal === 'stammkapital') {
+    const c = centAus(o.cent ?? o.text);
+    if (c === 'fehler' || !c) { fehler.push({ feld, text: 'Stammkapital bitte als Betrag (z. B. 25.000).' }); return {}; }
+    return { cent: c };
+  }
+  const t = ganzerText(o.text, MERKMAL_TEXT_MAX[merkmal], feld, merkmalLabel(merkmal), fehler);
+  if (!t && textPflicht) fehler.push({ feld, text: `${merkmalLabel(merkmal)}: bitte den Wortlaut bzw. Wert eintragen.` });
+  return t ? { text: t } : {};
+}
+
+/**
+ * Einen Beschluss säubern (neu oder geändert). `g` = die Gesellschaft (Beteiligte, Abstimmung, Verweise werden gegen ihre Einträge geprüft und
+ * das Gewicht einer Stimme zum Zeitpunkt der Abstimmung festgehalten); `o.jetzt`/`o.heute` = Server-Zeit (angelegt; „angemeldet am“/„eingetragen
+ * am“ beim Statuswechsel, wenn leer). Die Nummer kommt NIE aus der Eingabe (vergibt der Server, lib/gesellschaften/server.ts).
+ */
+export function beschlussSaeubern(roh: unknown, alt?: Beschluss, g?: Pick<RegisterGesellschaft, 'gesellschafter' | 'organe' | 'vertraege'>, o: { jetzt?: string; heute?: string } = {}): { e?: Beschluss; fehler: RegisterFehler[] } {
   const fehler: RegisterFehler[] = [];
-  const o = (roh && typeof roh === 'object' ? roh : {}) as Record<string, unknown>;
-  const dv = o.datum !== undefined ? o.datum : alt?.datum; const datum = tag(dv);
+  const r = (roh && typeof roh === 'object' ? roh : {}) as Record<string, unknown>;
+  const dv = r.datum !== undefined ? r.datum : alt?.datum; const datum = tag(dv);
   if (!datum) fehler.push({ feld: 'datum', text: 'Datum bitte als JJJJ-MM-TT.' });
-  const art = (o.art !== undefined ? o.art : alt?.art) as BeschlussArt;
+  const art = (r.art !== undefined ? r.art : alt?.art) as BeschlussArt;
   if (!BESCHLUSS_ARTEN.some(a => a.id === art)) fehler.push({ feld: 'art', text: 'Welche Art von Beschluss?' });
-  const titel = o.titel !== undefined ? zeile(o.titel, 160) : alt?.titel;
+  const titel = r.titel !== undefined ? zeile(r.titel, 160) : alt?.titel;
   if (!titel) fehler.push({ feld: 'titel', text: 'Worum geht es? Bitte einen Titel.' });
-  const status = (o.status !== undefined ? o.status : alt?.status ?? 'gefasst') as BeschlussStatus;
+  const status = (r.status !== undefined ? r.status : alt?.status ?? 'gefasst') as BeschlussStatus;
   if (!BESCHLUSS_STATUS.some(x => x.id === status)) fehler.push({ feld: 'status', text: 'Unbekannter Status.' });
-  const inhalt = o.inhalt !== undefined ? block(o.inhalt, 4000) : alt?.inhalt;
+  const inhalt = r.inhalt !== undefined ? ganzerText(r.inhalt, GRENZEN.inhalt, 'inhalt', 'Inhalt', fehler) : alt?.inhalt;
   let dateiIds = alt?.dateiIds;
-  if (o.dateiIds !== undefined) {
-    const l = Array.isArray(o.dateiIds) ? o.dateiIds : [];
+  if (r.dateiIds !== undefined) {
+    const l = Array.isArray(r.dateiIds) ? r.dateiIds : [];
     const ok = l.filter((x): x is string => typeof x === 'string' && /^d-[a-z0-9-]{4,60}$/.test(x));
     if (ok.length !== l.length || l.length > GRENZEN.dateien) fehler.push({ feld: 'dateiIds', text: `Höchstens ${GRENZEN.dateien} lesbare Unterlagen.` });
     dateiIds = [...new Set(ok)];
   }
-  const id = alt?.id ?? (typeof o.id === 'string' && UNTER_ID('bs').test(o.id) ? o.id : undefined);
+  // Gremium (fehlt = aus der Art abgeleitet).
+  let gremium = alt?.gremium;
+  if (r.gremium !== undefined) {
+    if (r.gremium === null || r.gremium === '') gremium = undefined;
+    else if (GREMIEN.some(x => x.id === r.gremium)) gremium = r.gremium as Gremium;
+    else fehler.push({ feld: 'gremium', text: 'Unbekanntes Gremium.' });
+  }
+  const gibtEs = (id: string) => !g || (id.startsWith('gs-') ? (g.gesellschafter ?? []).some(x => x.id === id) : (g.organe ?? []).some(x => x.id === id));
+  // Beteiligte: nur Einträge dieser Gesellschaft (Gesellschafter/Organe) — nie Namen.
+  let beteiligte = alt?.beteiligte;
+  if (r.beteiligte !== undefined) {
+    const l = Array.isArray(r.beteiligte) ? r.beteiligte : [];
+    if (l.length > GRENZEN.beteiligte) fehler.push({ feld: 'beteiligte', text: `Höchstens ${GRENZEN.beteiligte} Beteiligte.` });
+    const ok = l.filter((x): x is string => typeof x === 'string' && BETEILIGT_ID.test(x) && gibtEs(x));
+    if (ok.length !== l.length) fehler.push({ feld: 'beteiligte', text: 'Beteiligte sind Gesellschafter oder Organe dieser Gesellschaft — einer ist nicht (mehr) eingetragen.' });
+    beteiligte = [...new Set(ok)];
+  }
+  // Abstimmung: je Beteiligtem eine Stimme; Gewicht (Nennbetrag) und „ohne Stimmrecht“ hält der Server zum Zeitpunkt der Abstimmung fest.
+  let abstimmung = alt?.abstimmung;
+  if (r.abstimmung !== undefined) {
+    const l = Array.isArray(r.abstimmung) ? r.abstimmung : [];
+    if (l.length > GRENZEN.beteiligte) fehler.push({ feld: 'abstimmung', text: `Höchstens ${GRENZEN.beteiligte} Stimmen.` });
+    const neu: Stimmabgabe[] = [];
+    for (const x of l) {
+      const s = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
+      const id = typeof s.id === 'string' && BETEILIGT_ID.test(s.id) && gibtEs(s.id) ? s.id : undefined;
+      const stimme = STIMMEN.some(v => v.id === s.stimme) ? s.stimme as Stimme : undefined;
+      if (!id || !stimme) { fehler.push({ feld: 'abstimmung', text: 'Jede Stimme braucht einen Beteiligten dieser Gesellschaft und ja, nein oder Enthaltung.' }); continue; }
+      if (neu.some(v => v.id === id)) { fehler.push({ feld: 'abstimmung', text: 'Jeder Beteiligte stimmt nur einmal ab.' }); continue; }
+      const vorher = alt?.abstimmung?.find(v => v.id === id);
+      const gs = id.startsWith('gs-') ? (g?.gesellschafter ?? []).find(v => v.id === id) : undefined;
+      const gewichtCent = vorher?.gewichtCent ?? gs?.nennbetragCent;
+      const ohne = vorher ? vorher.ohneStimmrecht : gs?.ohneStimmrecht;
+      neu.push({ id, stimme, ...(typeof gewichtCent === 'number' ? { gewichtCent } : {}), ...(ohne ? { ohneStimmrecht: true as const } : {}) });
+    }
+    abstimmung = neu;
+  }
+  if (abstimmung?.length) beteiligte = [...new Set([...(beteiligte ?? []), ...abstimmung.map(s => s.id)])];
+  const datumFeld = (k: 'wirkungAb' | 'angemeldetAm' | 'eingetragenAm') => { const v = r[k] !== undefined ? r[k] : alt?.[k]; const t = tag(v); if (v && !t) fehler.push({ feld: k, text: 'Datum bitte als JJJJ-MM-TT.' }); return t; };
+  const wirkungAb = datumFeld('wirkungAb');
+  let angemeldetAm = datumFeld('angemeldetAm'), eingetragenAm = datumFeld('eingetragenAm');
+  if (wirkungAb && datum && wirkungAb < datum) fehler.push({ feld: 'wirkungAb', text: 'Die Wirkung kann nicht vor dem Beschluss liegen.' });
+  // Statuswechsel stempelt den Tag, wenn er leer ist (nur beim Wechsel — nie an einem Altbestand, der schon so steht).
+  if (o.heute && alt?.status !== status) {
+    if (status === 'angemeldet' && !angemeldetAm) angemeldetAm = o.heute;
+    if (status === 'eingetragen' && !eingetragenAm) eingetragenAm = o.heute;
+  }
+  // Verweise: Vertrag/Gesellschafter dieser Gesellschaft, Risiko des Schilds (nur Kennung).
+  let verweise = alt?.verweise;
+  if (r.verweise !== undefined) {
+    const l = Array.isArray(r.verweise) ? r.verweise : [];
+    if (l.length > GRENZEN.verweise) fehler.push({ feld: 'verweise', text: `Höchstens ${GRENZEN.verweise} Verweise.` });
+    const neu: BeschlussVerweis[] = [];
+    for (const x of l) {
+      const v = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
+      const a = v.art as VerweisArt;
+      const id = typeof v.id === 'string' ? v.id : '';
+      const ok = (a === 'vertrag' || a === 'gesellschafter' || a === 'risiko') && VERWEIS_MUSTER[a].test(id)
+        && (!g || a === 'risiko' || (a === 'vertrag' ? (g.vertraege ?? []).some(y => y.id === id) : (g.gesellschafter ?? []).some(y => y.id === id)));
+      if (!ok) { fehler.push({ feld: 'verweise', text: 'Ein Verweis zeigt auf nichts in dieser Gesellschaft.' }); continue; }
+      if (!neu.some(y => y.art === a && y.id === id)) neu.push({ art: a, id });
+    }
+    verweise = neu;
+  }
+  // Änderungen an Gegenstand/Satzung/Kapital/Sitz/Geschäftsführung/Firmierung — je Merkmal höchstens eine.
+  let aenderungen = alt?.aenderungen;
+  if (r.aenderungen !== undefined) {
+    const l = Array.isArray(r.aenderungen) ? r.aenderungen : [];
+    if (l.length > GRENZEN.aenderungen) fehler.push({ feld: 'aenderungen', text: `Höchstens ${GRENZEN.aenderungen} Änderungen je Beschluss.` });
+    const neu: BeschlussAenderung[] = [];
+    for (const x of l) {
+      const v = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
+      const m = SATZUNG_MERKMALE.some(y => y.id === v.merkmal) ? v.merkmal as SatzungMerkmal : undefined;
+      if (!m) { fehler.push({ feld: 'aenderungen', text: 'Was ändert sich? (Gegenstand, Satzung, Stammkapital, Sitz, Geschäftsführung, Firmierung)' }); continue; }
+      if (neu.some(y => y.merkmal === m)) { fehler.push({ feld: 'aenderungen', text: `${merkmalLabel(m)} steht schon in den Änderungen.` }); continue; }
+      const w = merkmalWert(m, v, 'aenderungen', fehler, m !== 'satzung');
+      if (m === 'satzung' || w.text || w.cent) neu.push({ merkmal: m, ...w });
+    }
+    aenderungen = neu;
+  }
+  const vorlage = r.vorlage !== undefined ? (typeof r.vorlage === 'string' && /^[a-z0-9-]{1,40}$/.test(r.vorlage) ? r.vorlage : undefined) : alt?.vorlage;
+  const id = alt?.id ?? (typeof r.id === 'string' && UNTER_ID('bs').test(r.id) ? r.id : undefined);
   if (!id) fehler.push({ feld: 'id', text: 'Kennung fehlt.' });
   if (fehler.length) return { fehler };
-  return { fehler, e: { id: id!, datum: datum!, art, titel: titel!, status, ...(status === 'aufgehoben' && alt?.vorArchiv ? { vorArchiv: alt.vorArchiv } : {}), ...(inhalt ? { inhalt } : {}), ...(dateiIds?.length ? { dateiIds } : {}), ...(alt?.geloeschtAm ? { geloeschtAm: alt.geloeschtAm } : {}) } };
+  const angelegt = alt?.angelegt ?? (alt ? undefined : o.jetzt);
+  return {
+    fehler, e: {
+      id: id!, datum: datum!, art, titel: titel!, status, ...(status === 'aufgehoben' && alt?.vorArchiv ? { vorArchiv: alt.vorArchiv } : {}), ...(inhalt ? { inhalt } : {}),
+      ...(dateiIds?.length ? { dateiIds } : {}), ...(alt?.nummer ? { nummer: alt.nummer } : {}), ...(gremium ? { gremium } : {}), ...(beteiligte?.length ? { beteiligte } : {}),
+      ...(abstimmung?.length ? { abstimmung } : {}), ...(wirkungAb ? { wirkungAb } : {}), ...(angemeldetAm ? { angemeldetAm } : {}), ...(eingetragenAm ? { eingetragenAm } : {}),
+      ...(verweise?.length ? { verweise } : {}), ...(aenderungen?.length ? { aenderungen } : {}), ...(vorlage ? { vorlage } : {}), ...(angelegt ? { angelegt } : {}),
+      ...(alt?.geloeschtAm ? { geloeschtAm: alt.geloeschtAm } : {}),
+    },
+  };
+}
+
+/**
+ * Eine NEUE Fassung säubern (Gegenstand & Satzung) — Fassungen werden nie geändert (der Server lehnt Änderungen ab). `angelegt`/`von` vom Server;
+ * der Beschluss-Verweis muss auf einen Beschluss dieser Gesellschaft zeigen.
+ */
+export function fassungSaeubern(roh: unknown, o: { jetzt: string; person: string; beschluesse?: readonly Pick<Beschluss, 'id'>[] }): { e?: Fassung; fehler: RegisterFehler[] } {
+  const fehler: RegisterFehler[] = [];
+  const r = (roh && typeof roh === 'object' ? roh : {}) as Record<string, unknown>;
+  const merkmal = SATZUNG_MERKMALE.some(x => x.id === r.merkmal) ? r.merkmal as SatzungMerkmal : undefined;
+  if (!merkmal) fehler.push({ feld: 'merkmal', text: 'Welche Fassung? (Gegenstand, Satzung, Stammkapital, Sitz, Geschäftsführung, Firmierung)' });
+  const ab = tag(r.ab);
+  if (!ab) fehler.push({ feld: 'ab', text: '„Gültig ab“ bitte als JJJJ-MM-TT.' });
+  let dateiIds: string[] | undefined;
+  if (r.dateiIds !== undefined) {
+    const l = Array.isArray(r.dateiIds) ? r.dateiIds : [];
+    const ok = l.filter((x): x is string => typeof x === 'string' && /^d-[a-z0-9-]{4,60}$/.test(x));
+    if (ok.length !== l.length || l.length > GRENZEN.dateien) fehler.push({ feld: 'dateiIds', text: `Höchstens ${GRENZEN.dateien} lesbare Unterlagen.` });
+    dateiIds = ok.length ? [...new Set(ok)] : undefined;
+  }
+  const wert = merkmal ? merkmalWert(merkmal, r, 'text', fehler, merkmal !== 'satzung') : {};
+  if (merkmal === 'satzung' && !wert.text && !dateiIds?.length) fehler.push({ feld: 'text', text: 'Satzung: eine Bezeichnung der Fassung oder die Datei (Wortlaut mit Notarbescheinigung).' });
+  let beschlussId: string | undefined;
+  if (r.beschlussId !== undefined && r.beschlussId !== null && r.beschlussId !== '') {
+    beschlussId = typeof r.beschlussId === 'string' && UNTER_ID('bs').test(r.beschlussId) && (!o.beschluesse || o.beschluesse.some(b => b.id === r.beschlussId)) ? r.beschlussId : undefined;
+    if (!beschlussId) fehler.push({ feld: 'beschlussId', text: 'Der Beschluss gehört nicht zu dieser Gesellschaft.' });
+  }
+  const notiz = r.notiz !== undefined ? ganzerText(r.notiz, 1000, 'notiz', 'Notiz', fehler) : undefined;
+  const id = typeof r.id === 'string' && UNTER_ID('fs').test(r.id) ? r.id : undefined;
+  if (!id) fehler.push({ feld: 'id', text: 'Kennung fehlt.' });
+  if (fehler.length) return { fehler };
+  return { fehler, e: { id: id!, merkmal: merkmal!, ab: ab!, ...wert, ...(beschlussId ? { beschlussId } : {}), ...(dateiIds ? { dateiIds } : {}), ...(notiz ? { notiz } : {}), angelegt: o.jetzt, von: o.person } };
 }
 
 export function organSaeubern(roh: unknown, alt?: Organ): { e?: Organ; fehler: RegisterFehler[] } {

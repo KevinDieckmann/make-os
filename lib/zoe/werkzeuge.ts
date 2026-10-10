@@ -694,6 +694,8 @@ async function gesellschaftenLesen(input: Record<string, unknown>, _origin: stri
   if (!h) return fehlschlag('rechte', 'Kein Zugang: Ohne Haushalt am Konto gibt es kein Register.');
   const { ladeRegister } = await import('@/lib/gesellschaften/server');
   const m = await import('@/lib/gesellschaften/modell');
+  const bm = await import('@/lib/gesellschaften/beschluesse');
+  const heute = localDay();
   const alle = m.alleGesellschaften(await ladeRegister(h.haushalt));
   const frage = typeof input.name === 'string' ? input.name.toLocaleLowerCase('de-DE').trim() : '';
   const liste = frage ? alle.filter(g => m.anzeigeName(g).toLocaleLowerCase('de-DE').includes(frage) || (g.firmierung ?? '').toLocaleLowerCase('de-DE').includes(frage)) : alle;
@@ -709,6 +711,11 @@ async function gesellschaftenLesen(input: Record<string, unknown>, _origin: stri
       ...m.haelt(g.id, alle).map(x => `  Hält ${x.prozent.toLocaleString('de-DE')} % an ${m.anzeigeName(alle.find(y => y.id === x.an) ?? { id: x.an })}`),
       ...m.aktiveEintraege(g.vertraege).filter(v => v.status !== 'beendet').map(v => `  Vertrag: ${v.titel} (${m.vertragArtLabel(v.art)}, ${m.vertragStatusLabel(v.status)})${v.ende ? ` bis ${v.ende}` : ''}${v.kuendigenBis ? `, kündigen bis ${v.kuendigenBis}` : ''}`),
       m.registerLuecken(g).length ? `  Noch offen: ${m.registerLuecken(g).join(', ')}` : '',
+      // Beschluss-Buch (10.10.): gültige Fassung von Gegenstand/Satzung und die jüngsten Beschlüsse — nur lesen; Wortlaut der Beschlüsse nicht.
+      ...bm.standAm(g, heute, heute).filter(x => x.fassung && (x.merkmal === 'gegenstand' || x.merkmal === 'satzung'))
+        .map(x => `  ${bm.merkmalLabel(x.merkmal)} (gültig ab ${x.fassung!.ab}): ${(x.wert ?? '').length > 300 ? `${x.wert!.slice(0, 299)}…` : x.wert}`),
+      ...bm.buchListe(g.beschluesse).slice(-8).reverse().map(({ b, nr }) => `  Beschluss ${bm.nummerText(nr)} vom ${b.datum}: ${b.titel} (${bm.artLabel(b.art)}, ${bm.statusLabelB(b.status)})`),
+      ...bm.beschluesseOhneEintragung([g], heute).map(x => `  Offen: ${x.text}`),
     ].filter(Boolean);
     return z.join('\n');
   }).join('\n\n') + '\n(Quelle: Register /os/unternehmen — Hinweis, keine Rechtsberatung.)';
