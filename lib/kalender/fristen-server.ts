@@ -51,7 +51,7 @@ export async function steuerFristenLesen(heute: string): Promise<NonNullable<Que
  * anderen Person; ohne Person keiner an einem eigenen Ziel) — kann die Regel nicht gelesen werden, fehlen die Meilensteine.
  */
 export async function fristenQuellenLesen(betrachter: string | null): Promise<Quellen> {
-  const [meilensteine, bauplan, crm, finanzplan, einst, vertraege] = await Promise.all([
+  const [meilensteine, bauplan, crm, finanzplan, einst, vertraege, unternehmen] = await Promise.all([
     loadJson<{ meilensteine?: (NonNullable<Quellen['meilensteine']>[number] & { zielId?: string; abgeleitetVon?: string })[] }>('meilensteine')
       .then(async f => ({ meilensteine: await meilensteineSichtbarFuer(f?.meilensteine, betrachter) })).catch(() => null),
     ladeBauplan().catch(() => null),
@@ -59,6 +59,8 @@ export async function fristenQuellenLesen(betrachter: string | null): Promise<Qu
     loadJson<{ zahlungen?: Quellen['zahlungen']; rechnungen?: Quellen['rechnungen'] }>('finanzplan').catch(() => null),
     ladeEinstellungen().catch(() => null),
     vertragsFristenLesen().catch(() => []),
+    // Unternehmen › Schild (10.10.): Pflichten, Dokument-Abläufe, Marken/Domains/Versicherungen — gerechnet in lib/gesellschaften/schild/ampel.ts.
+    import('@/lib/gesellschaften/schild-server').then(m => m.schildFristenLesen()).catch(() => []),
   ]);
   return {
     meilensteine: meilensteine?.meilensteine, etappen: bauplan?.etappen,
@@ -71,6 +73,7 @@ export async function fristenQuellenLesen(betrachter: string | null): Promise<Qu
     deals: crm?.chancen.map(c => ({ id: c.id, titel: c.titel, stufe: c.stufe, ...(c.erwartetAm ? { erwartetAm: c.erwartetAm } : {}), besitzer: c.besitzer, offen: OFFENE_STUFEN.includes(c.stufe) })),
     steuer: einst?.steuerVorlage.an ? await steuerFristenLesen(localDay()).catch(() => []) : [],
     vertraege,
+    unternehmen,
   };
 }
 

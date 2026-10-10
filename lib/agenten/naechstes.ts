@@ -188,7 +188,7 @@ export function headFuerFrist(f: { art: string; bereich: 'privat' | 'business' }
     case 'zahlung': case 'eingang': case 'steuer': return f.bereich === 'privat' ? 'finanzen-privat' : 'finanzen';
     case 'mandat': return 'kundenerfolg';
     case 'angebot': case 'deal': return 'sales';
-    case 'dsgvo': return 'recht';
+    case 'dsgvo': case 'pflicht': return 'recht';
     case 'vertrag': return 'strategie';
     case 'etappe': return 'produkt';
     case 'meilenstein': return f.bereich === 'privat' ? 'assistenz' : 'strategie';

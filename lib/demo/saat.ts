@@ -71,6 +71,7 @@ const R = {
   crm: () => import('@/app/api/crm/bestand/route') as Promise<Modul>,
   deal: () => import('@/app/api/crm/deal/route') as Promise<Modul>,
   gesellschaften: () => import('@/app/api/gesellschaften/route') as Promise<Modul>,
+  schild: () => import('@/app/api/gesellschaften/schild/route') as Promise<Modul>,
   eroeffnung: () => import('@/app/api/business/eroeffnung/route') as Promise<Modul>,
   konten: () => import('@/app/api/finanzen/konten/route') as Promise<Modul>,
   ziele: () => import('@/app/api/state/ziele/route') as Promise<Modul>,
@@ -218,6 +219,26 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   ng = (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: neu.id, stand: ng.stand, liste: 'gesellschafter', eintrag: { wer: { art: 'person', id: JONAS }, nennbetragCent: '10.000', einlage: 'nein' } })).gesellschaft as { stand: string };
   void ng; void kdv; void ug;
   schritt('Gesellschaften', 4);
+
+  // 4b) Unternehmen › Schild (10.10.): die operative Gesellschaft mit Profil, Dokumenten-Status, drei Risiken (bewertet), einer Marke und einer
+  //     Versicherung — erfunden, über dieselbe Route wie die Oberfläche (Stand aus der letzten Antwort).
+  let sch = ((await rufe(R.schild(), 'GET', '/api/gesellschaften/schild', LENA)).eintraege as { id: string; stand: string }[]).find(e => e.id === 'ug')!;
+  const schild = async (body: Record<string, unknown>) => { const r = await rufe(R.schild(), 'PATCH', '/api/gesellschaften/schild', LENA, { id: 'ug', stand: sch.stand, ...body }); sch = r.eintrag as typeof sch; return r; };
+  await schild({ profil: { beschaeftigte: 4, umsatzVorjahrCent: '420.000', bilanzsummeCent: '180.000', groessenklasse: 'klein', beraten: true, tragfaehigkeitCent: '60.000' } });
+  for (const d of [
+    { art: 'satzung', fassungVom: '2023-01-10', quelle: 'notar' }, { art: 'gesellschafterliste', fassungVom: '2023-01-10', quelle: 'notar' },
+    { art: 'transparenzregister', fassungVom: tagPlus(heute, -400), quelle: 'register-abruf' }, { art: 'steuer-stammdaten', fassungVom: '2023-02-01', quelle: 'eigen' },
+    { art: 'elster-zertifikat', fassungVom: tagPlus(heute, -1035), gueltigBis: tagPlus(heute, 60), quelle: 'behoerde' }, { art: 'vvt', fassungVom: tagPlus(heute, -200), quelle: 'eigen' },
+  ]) await schild({ liste: 'dokumente', eintrag: d });
+  const kat = await schild({ katalog: ['R1', 'R3', 'R8'] });
+  const risiken = ((kat.eintrag as { risiken: { id: string; katalogId: string }[] }).risiken);
+  for (const [k, e, w, euro] of [['R1', 2, 4, '30.000'], ['R3', 4, 4, '45.000'], ['R8', 2, 3, '15.000']] as const) {
+    await schild({ bewertung: { risikoId: risiken.find(x => x.katalogId === k)!.id, eintritt: e, wirkung: w, art: 'netto', wirkungCent: euro, grund: 'Erste Runde (Beispiel)' } });
+  }
+  await schild({ liste: 'marken', eintrag: { bezeichnung: 'Nordlicht Cockpit', amt: 'dpma', form: 'wort', registerNr: '30 2016 000 000 (Beispiel)', anmeldetag: tagPlus(heute, -3600), klassen: '9, 42', inhaberIstGesellschaft: true } });
+  await schild({ liste: 'versicherungen', eintrag: { art: 'vermoegensschaden', versicherer: 'Beispiel Versicherung AG', deckungFallCent: '1.000.000', beginn: '2023-01-10', ablauf: tagPlus(heute, 75), kuendigungsfristMonate: 3 } });
+  await schild({ liste: 'ereignisse', eintrag: { art: 'neuer-vertrag', datum: tagPlus(heute, -5), notiz: 'Rahmenvertrag mit einem Pilotkunden (Beispiel)' } });
+  schritt('Unternehmen › Schild', 1);
 
   // 5) Ziele (Jahr, Business + Privat) und Meilensteine mit Aufwand, Personen, Kette.
   const opsLabel = einheitAusGesellschaft('ug') ?? 'Operativ';

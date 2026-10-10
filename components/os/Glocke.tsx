@@ -137,6 +137,12 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   // 09.10. (Schlaf-Hilfe): die eigene Abend-Erinnerung zur Schlafenszeit — neutral.
   gesundheit: { Icon: Moon, label: 'Gesundheit', farbe: C.aktiv },
 };
+/**
+ * Unternehmen › Schild (10.10.): Erinnerungen des Schilds tragen die vorhandene Art „vertrag“ (Rückweg: eine neue Art kennt die alte Glocke nicht) und
+ * werden an ihrer Aufgaben-Kennung (`usp-`, `usd-`, `usm-`, `usr-`) als „Unternehmen“ beschriftet.
+ */
+const ART_UNTERNEHMEN = { Icon: Hourglass, label: 'Unternehmen', farbe: C.achtung };
+const artVon = (m: { art: string; bezug?: { art?: string; id?: string } }) => (m.art === 'vertrag' && /^us[pdmr]-/.test(m.bezug?.id ?? '') ? ART_UNTERNEHMEN : ART[m.art as keyof typeof ART]);
 
 function zeitVon(m: Meldung, jetzt: number): string {
   if (m.virtuell) return m.art === 'faellig' || m.art === 'termin' || m.art === 'nachbereiten' || m.art === 'frist' || m.art === 'followup' || m.art === 'vorschlag' || m.art === 'danke' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
@@ -169,7 +175,7 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
       ) : (
         <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 4, display: 'grid', gap: 2 }}>
           {sicht.meldungen.map(m => {
-            const a = ART[m.art];
+            const a = artVon(m);
             return (
               <li key={m.id}>
                 <Link href={m.link} onClick={() => oeffnen(m)} data-meldung={m.art}
@@ -190,7 +196,7 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
                       <li key={e.id}>
                         <Link href={e.link} onClick={() => oeffnen(m)} data-meldung-in={m.id}
                           style={{ display: 'block', padding: '6px 10px', minHeight: 32, borderRadius: 8, textDecoration: 'none', color: m.gelesen ? C.inkLeise : C.inkDim, fontSize: TYP.bedien, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
-                          {e.titel} <span style={{ color: C.inkLeise }}>· {ART[e.art]?.label ?? ''} · {vorZeit(e.am, jetzt)}</span>
+                          {e.titel} <span style={{ color: C.inkLeise }}>· {artVon(e)?.label ?? ''} · {vorZeit(e.am, jetzt)}</span>
                         </Link>
                       </li>
                     ))}

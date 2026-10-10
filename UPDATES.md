@@ -4,6 +4,77 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Unternehmen › Schild: Pflichtdokumente, Pflichten-Kalender, Risiko-Register, Struktur, Marken & Versicherungen (nur lokal — Branch `unternehmen-schild`, Basis 6086ee72 = `update-0910b`)
+
+Entscheidung 10.10.: „Welche Infos muss ich immer dokumentiert bei mir haben — rechtlich wie ein Schild aufstellen, das Risiko immer wieder mitbewerten,
+damit wir nicht angreifbar sind. Maximal ausbauen.“ Grundlage: `research/unternehmen/FAKTEN_UNTERNEHMEN_RECHT.md` (Pflichtsatz, Fristen, Haftungskarte,
+Risiko-Modell). Überall: **Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.**
+
+**Gebaut:**
+- **Seite `/os/unternehmen` in Reitern** (`?s=`, Wege `WEG.schild(reiter, gesellschaft)`): Überblick (Compliance-Ampel je Business-Gesellschaft und gesamt,
+  „was fehlt“ mit Weg, was ansteht) · Gesellschaften (wie bisher, Archiv/Papierkorb als Filter `?f=`; alte `?s=liste|archiv|papierkorb` gelten weiter) ·
+  Pflichten · Dokumente (mit Vorlagen) · Risiken · Struktur · Marken & Versicherungen · Verträge & Organe (Überblick, gepflegt wird in der Gesellschaft).
+- **Pflichtdokumente** je Gesellschaft: Soll-Liste je Rechtsform (GmbH/UG, Einzelunternehmen, Holding, Einpersonen-Gesellschaft, mit Beschäftigten …) aus dem
+  Katalog `lib/gesellschaften/schild/dokumente.ts` (Pflicht/empfohlen, Norm, Aufbewahrung, Prüf-Rhythmus); Status gerechnet: vorhanden · fehlt · abgelaufen ·
+  prüfen · veraltet (Gesellschafterliste älter als der letzte Ein-/Austritt) · nicht nötig (mit Grund). Gesellschaftsvertrag, Gesellschaftervereinbarung,
+  GF-Vertrag, Darlehen und Beschlüsse erkennt das Register selbst. Datei-Upload über die vorhandene **verschlüsselte Ablage** (wie Unterlagen/Verträge).
+- **Pflichten-Kalender** — Fristen GERECHNET, gespeichert nur „erledigt am“/„trifft nicht zu“: Jahresabschluss aufstellen (3 bzw. 6 M), feststellen (8 bzw. 11 M,
+  UG-Rücklage, Einladung eine Woche vorher), offenlegen (12 M), Größenklasse, Konzernabschluss/Beteiligungsquoten zum 01.01. (Holding), Transparenzregister-
+  Abgleich, BG-Lohnnachweis, KSK, Schwerbehinderten-Anzeige — je nach Profil. **Ereignisse** (Anteilsübertragung, GF-Wechsel, Satzungsänderung, Sitz, Prokura,
+  Gewerbe, Betriebseröffnung, erste Beschäftigung, neuer Vertrag, Kapitalverlust, Insolvenzreife) bringen ihre Pflichten mit („unverzüglich“ = Vorschlag 14 Tage).
+  **Schwellen-Wächter** (1/10/20/50 Personen, 800.000 € Umsatz, Buchführungspflicht EU). **Steuer-Takt** nur als Verweis auf das Steuer-Modul (eine Quelle).
+  Fristen stehen im **Kalender** (Fristen-Ebene, Zeichen ⚑), im Vorlauf entsteht EINE **Aufgabe** (`usp-…`, idempotent) + **Glocke** (vorhandene Art „vertrag“, als
+  „Unternehmen“ beschriftet; Telegram neutral);
+  ein Vermerk „erledigt“ schließt die Aufgabe.
+- **Risiko-Register** je Gesellschaft: Kategorie, Ursache/Ereignis/Wirkung, Indikator, Behandlung, Maßnahmen, verantwortlich (Person des Haushalts und/oder Rolle),
+  Status, **Bewertungs-Verlauf** (Eintritt × Wirkung 1–5, brutto/netto, nur anhängen), Matrix 5 × 5, **Aggregation gegen die Tragfähigkeit**. **Quartalsweise**
+  neu bewerten (Aufgabe je Quartal) + **sofort bei Anlässen** (Ereignis, neuer Vertrag im Register, Gesellschafterwechsel, erreichte Schwelle). **Startkatalog**
+  mit 17 generischen Risiken zum Übernehmen.
+- **Struktur & Cap-Table als Bild:** Organigramm (SVG; am Handy Liste), Anteile UND Stimmrechte, durchgerechnete Beteiligung über die Holding (Hinweis
+  wirtschaftlich Berechtigte > 25 %), Historie — alles aus den vorhandenen Gesellschafter-Einträgen, nichts doppelt gespeichert.
+- **Dokumente & Vorlagen:** neun Mustertexte (Gesellschafterbeschluss, Niederschrift Einpersonen-GmbH, Feststellung JA, Einladung GV, Insichgeschäft,
+  Entscheidungsprotokoll, NDA, AVV-Gerüst, Vollmacht) → Entwurf je Gesellschaft, gefüllt nur aus dem Steckbrief, Rest „[…]“; regelbasiert, kein Modell,
+  nichts verlässt das System.
+- **Marken, Domains, Versicherungen:** Schutzende (§ 47 MarkenG), Verlängerungsfenster, Nachfrist, Benutzungsschonfrist; Domain-Ablauf, Inhaber, zweiter Faktor
+  (nie Zugangsdaten); Versicherung „kündigen bis“, stillschweigende Verlängerung, Sonderkündigung nach drei Jahren (§ 11 VVG) → Kalender + Erinnerung.
+- **Für den Head of Recht** (eigenes Paket): `unternehmenLage(haushalt)` in `lib/gesellschaften/schild-server.ts` (dieselbe Rechnung wie die Oberfläche,
+  nur lesen) und `GET /api/gesellschaften/schild?lage=1`.
+
+**Daten und Recht:** EIGENER Business-Bestand `unternehmen-schild--<haushalt>` (Speicher-Register mit Angaben, `IN_BUSINESS`) — **das Gesellschafts-Register
+wird nicht angefasst** (nur gelesen; kein neues Feld, keine Umbenennung, keine Migration, nichts schreibt beim Start). Nur Business-Gesellschaften
+(`bereichVon`), eine Privat-Einheit → 400. Route `/api/gesellschaften/schild` (Routen-Register: `haushalt`; Sicht-Regel Business über `gesellschaften`): nur
+Haushalt des Inhabers mit Person (Testkunde, fremder Haushalt, Finanzrecht „nur Business“, Dienstweg ohne Person → 403), Stand/409, Bau-Kennung,
+Lese-Protokoll, Änderungsprotokoll ohne Werte, Grenzen → 413. Personen nur als Speichername eines Kontos des Haushalts; Konto löschen tilgt „wer“.
+Morgenlauf-Schritt „Unternehmen › Schild“ (Papierkorb 30 Tage, Erinnerungen). Demo-Saat: die operative Gesellschaft mit Profil, sechs Dokumenten,
+drei bewerteten Risiken, einer Marke, einer Versicherung, einem Ereignis.
+
+**Wächter:** `tests/unternehmen-schild.test.ts` (Regeln rein: Zeit, Soll-Liste, Pflichten, Schwellen, Risiken, Schutz, Vorlagen, Struktur, Säubern, Ampel;
+Server: Rechte, „Sicht X bekommt nichts aus Y“, Privat-Einheit nie, Stand/409, Erinnerungen idempotent + Glocke + Schließen, Kalender, Konto löschen, **Altbestand:
+Register ohne neue Felder bit-gleich gelesen, Datei nach Schreibvorgängen ins Schild unverändert**). Erweitert: `sicht-business-privat` (Marke im Schild),
+`demo` (Schritt „Unternehmen › Schild“). Geprüft: `gesellschaften-*`, `kalender-*`, `aufgaben-t1-*`, `aufgaben-serie`, `routen-register`, `datenschutz-register`,
+`trennung-bereiche`, `betroffenenrechte`, `client-buendel`, `neutral-rest`, `netzwerken-recht`, `business-frei`, `design-standard`, `aufraeumen-etappe1`, `spaces`,
+`messlatte-malin`.
+
+**So testet ihr (in Klicks):**
+1. Leiste **Unternehmen** → Reiter **Überblick**: je Business-Gesellschaft vier Ampeln (Dokumente · Pflichten · Risiken · Marken & Versicherungen) mit „was fehlt“;
+   ein Punkt antippen → ihr landet im passenden Reiter der Gesellschaft.
+2. Reiter **Pflichten** → Profil ausfüllen (Beschäftigte, Umsatz Vorjahr, Größenklasse „klein“) → die Fristen „Jahresabschluss aufstellen“ springen auf 6 Monate.
+   Eine Pflicht antippen → „Erledigt“ (Datum, optional Beleg) → sie wandert nach „Erledigt“; die zugehörige Aufgabe unter Aufgaben ist erledigt.
+3. **Ereignisse** → „Anteilsübertragung“, Datum heute → darunter erscheinen „Neue Gesellschafterliste“, „Transparenzregister“, „SV-Status prüfen“; unter Kalender
+   (Fristen-Ebene) stehen sie mit ⚑. Im Reiter **Risiken** steht oben „Sofort neu bewerten — Ereignis: Anteilsübertragung“ (sobald es Risiken gibt).
+4. Reiter **Dokumente** → eine rote Zeile (z. B. Satzung) antippen → Status, Fassung vom, Datei ablegen (PDF) → Speichern → grün „vorhanden“, Datei herunterladbar.
+   Unten **Vorlagen** → „Entwurf“ bei „Niederschrift Einpersonen-Gesellschaft“ → Text gefüllt mit Firmierung/Sitz, Rest „[…]“ → bearbeiten, „Text kopieren“.
+5. Reiter **Risiken** → Startkatalog „Alle 17 übernehmen“ → ein Risiko öffnen → Eintritt/Wirkung wählen → „Bewertung festhalten“ → Ampel und Matrix ändern sich,
+   Verlauf zeigt die Bewertung; Tragfähigkeit eintragen → Aggregation.
+6. Reiter **Struktur** → Organigramm (am Handy als Liste), darunter Cap-Table mit Anteil und Stimmen; bei einer Holding die durchgerechneten Anteile.
+7. Reiter **Marken & Versicherungen** → Marke mit Anmeldetag vor knapp 10 Jahren → „verlängern“; Versicherung mit Ablauf in 2 Monaten → „kündigen bis“ steht im
+   Kalender, Aufgabe 30 Tage vorher.
+8. Gegenprobe Trennung: Kopf auf **Privat** → `/api/gesellschaften/schild?space=privat` antwortet 403; die Selbstständigkeit erscheint im Schild nicht.
+
+**Rückweg:** nur ein neuer Bestand (`unternehmen-schild--*`) — keine neue Meldungs-Art (die Glocke nutzt „vertrag“, die alte Glocke zeigt sie als
+„Vertragsfrist“), die neue Fristen-Art `pflicht` wird nur gerechnet, nie gespeichert. Der alte Stand liest das Register unverändert und ignoriert den neuen
+Bestand; die Aufgaben `usp-/usd-/usm-/usr-…` bleiben normale Aufgaben.
+
 ## 10.10.2026 — Sicht Business zeigt nie Privat-Themen (Sweep über alle Bereiche; nur lokal — Branch `sweep-bereiche`, Basis a51bc21b = `update-0910b`)
 
 Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat — wir haben im Business-Bereich keinen Bereich, der Familie und

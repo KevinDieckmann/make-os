@@ -70,6 +70,8 @@ const BUSINESS = {
   zeit: 'MARKE-BUSINESS-ZEIT',
   meldung: 'MARKE-BUSINESS-MELDUNG',
   widget: 'MARKE-BUSINESS-WIDGET',
+  // Unternehmen › Schild (10.10.): ein Risiko der operativen Gesellschaft im eigenen Business-Bestand.
+  schild: 'MARKE-BUSINESS-SCHILD',
 };
 
 /**
@@ -326,6 +328,8 @@ describe('Alle lesenden Routen: Sicht Business ohne Privat, Sicht Privat ohne Bu
     crm.chancen = [{ id: 'd-sicht', titel: BUSINESS.crm, kontaktIds: [], art: 'projekt', wert: { betrag: 1000, basis: 'einmalig' }, stufe: 'angebot', historie: [{ stufe: 'angebot', am: J, von: 'person-a' }],
       naechsterSchritt: { text: 'Angebot nachfassen', datum: H }, qualifizierung: offen, erwartetAm: tagePlus(H, 30), gesellschaft: 'ug', besitzer: 'person-a', angelegt: J, geaendert: J }];
     await db.saveJson('crm', crm);
+    // Unternehmen › Schild (10.10.): Business-Bestand je Haushalt — nie in der Sicht Privat.
+    await db.saveJson('unternehmen-schild--haus-sicht', { gesellschaften: [{ id: 'ug', risiken: [{ id: 'rk-00000000-0000-4000-8000-0000000000d1', titel: BUSINESS.schild, kategorie: 'recht', status: 'offen', bewertungen: [] }] }] });
 
     // Kalender (Stand vom Mac): ein Termin in einem Familien-Kalender (Privat), einer in einem Arbeits-Kalender (Business) — heute, in einer Stunde.
     const inStunde = (n: number) => { const d = new Date(Date.now() + n * 3_600_000); const p = (x: number) => String(x).padStart(2, '0'); return `${H}T${p(d.getHours())}:${p(d.getMinutes())}:00`; };

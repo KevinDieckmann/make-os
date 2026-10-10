@@ -57,7 +57,7 @@ export const istGoogleTermin = (t: Pick<KTermin, 'kalenderId'>): boolean => !!t.
 /** Vorläufiger Eintrag (Buchungsanfrage) — über das Feld `vorlaeufig` (K3: kein Kennungs-Präfix mehr). */
 export const istVorlaeufig = (t: Pick<KTermin, 'vorlaeufig'>): boolean => !!t.vorlaeufig;
 /** Eine Frist wie GET /api/kalender sie liefert (lib/kalender/eintraege.ts `Frist`; K6a: Steuer-Vorlage, `fuer`, `kuendigung`). */
-export interface KFrist { id: string; art: 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal' | 'vertrag'; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean; bereich?: 'privat' | 'business'; fuer?: string; kuendigung?: true }
+export interface KFrist { id: string; art: 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal' | 'vertrag' | 'pflicht'; tag: string; titel: string; unter?: string; href: string; erledigt?: boolean; bereich?: 'privat' | 'business'; fuer?: string; kuendigung?: true }
 export interface KErinnerung { id: string; tag: string; zeit?: string; titel: string; liste?: string }
 export interface KalenderStand {
   ok: boolean; quelle: 'icloud' | 'mac' | 'leer'; stand: string | null; fehler?: string; icloud: boolean; konto: string | null;
@@ -87,6 +87,7 @@ export const FRIST_ZEICHEN: Record<KFrist['art'], { zeichen: string; farbe: stri
   angebot: { zeichen: '✉', farbe: LEUCHT.business, label: 'Angebot gültig bis' },
   deal: { zeichen: '◎', farbe: LEUCHT.business, label: 'Deal: Entscheidung erwartet' },
   vertrag: { zeichen: '§', farbe: LEUCHT.achtung, label: 'Vertragsfrist (Gesellschaft)' },
+  pflicht: { zeichen: '⚑', farbe: LEUCHT.achtung, label: 'Pflicht (Unternehmen)' },
 };
 
 /** Die Ebenen, die man ein- und ausblenden kann. */

@@ -47,6 +47,12 @@ lokal, Route `/os`, Port 3001.
   nach jeder Vertragsänderung. Neue Gesellschaften im Finanzplan: bewusst nicht (Kevin).
   Gründungsfahrplan: Vorlage `lib/gesellschaften/fahrplan.ts` (Ziel + 9 Meilensteine mit `wartetAuf` + Aufgaben), Karte im Steckbrief
   (`components/os/unternehmen/Fahrplan.tsx`), nur über die bestehenden Planungs-/Aufgaben-Schreibwege, feste Kennungen `z-fahrplan-…`/`ms-fahrplan-…`.
+  **Schild (10.10., Branch `unternehmen-schild`; UPDATES.md):** Pflichtdokumente, Pflichten-Kalender, Risiko-Register, Marken/Domains/Versicherungen, Entwürfe aus Vorlagen
+  liegen im EIGENEN Business-Bestand `unternehmen-schild--<haushalt>` (nie im gemischten Register; nur Business-Gesellschaften, Privat-Einheit → 400), EINE Schreibstelle
+  `lib/gesellschaften/schild-server.ts`, Route `/api/gesellschaften/schild` (Stand/409). Regeln rein in `lib/gesellschaften/schild/*` (Kataloge als Daten, Fristen/Ampel/
+  Schwellen/Prüftermine GERECHNET, gespeichert nur Vermerke „erledigt am“ und Bewertungs-Verlauf). Kalender über `Quellen.unternehmen` (Art `pflicht`), Erinnerungen
+  `usp-/usd-/usm-/usr-` (Glocke mit der vorhandenen Art „vertrag“), Morgenlauf-Schritt „Unternehmen › Schild“. Head of Recht liest NUR `unternehmenLage(haushalt)`.
+  Neue Pflicht = Zeile in `PFLICHT_REGELN`/`EREIGNIS_ARTEN`, neues Dokument = Zeile in `DOKUMENT_KATALOG` (Kennung nie ändern) + Test `tests/unternehmen-schild.test.ts`.
 - **Malin ist Gesundheits-Beauftragte** (Sport, Ernährung, Hyrox-Pro-Ziel) —
   Gesundheitsthemen laufen über sie.
 - **Kritisch pulsiert:** Priorisierung nach Eisenhower; kritische Aufgaben

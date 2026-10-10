@@ -161,6 +161,11 @@ export async function POST(req: Request) {
       // 04.10. Nachtrag: Erinnerung vor „kündigen bis“ (Aufgabe + Glocke, idempotent).
       const e = await vertragsErinnerungen(h);
       schritte.push({ name: 'Vertrags-Erinnerungen', ok: true, info: e.neu ? `${e.neu} neue Erinnerung${e.neu === 1 ? '' : 'en'}` : 'keine fällig' });
+      // 10.10. Unternehmen › Schild: Papierkorb (30 Tage) und Erinnerungen (Pflichten, Abläufe, Marken/Versicherungen, Risiko-Runde) — idempotent.
+      const schild = await import('@/lib/gesellschaften/schild-server');
+      const sp = await schild.schildPapierkorbAufraeumen(h);
+      const se = await schild.schildErinnerungen(h);
+      schritte.push({ name: 'Unternehmen › Schild', ok: true, info: [se.neu ? `${se.neu} neue Erinnerung${se.neu === 1 ? '' : 'en'}` : 'keine fällig', se.geschlossen ? `${se.geschlossen} erledigt` : '', sp.eintraege ? `Papierkorb: ${sp.eintraege} endgültig` : ''].filter(Boolean).join(' · ') });
     }
   } catch (err) {
     schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });

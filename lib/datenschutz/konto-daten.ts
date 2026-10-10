@@ -113,6 +113,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'familie--*': 'Familie je Haushalt',
   'finanzen-plan--*': 'Finanzplan je Haushalt (Aufbewahrungspflicht)',
   'gesellschaften--*': 'Gesellschafts-Register je Haushalt',
+  'unternehmen-schild--*': 'Unternehmen › Schild je Haushalt (10.10., nur Business-Gesellschaften) — keine Einträge je Person; beim Löschen wird „wer“ (Vermerk, Bewertung, Entwurf, verantwortlich) „[gelöscht]“',
   'inbox-uebergaben--*': 'Übergaben je Haushalt (Inbox teilen, 08.10.) — im Export die eigenen (gegeben/erhalten), beim Konto-Löschen fallen sie ganz weg',
   'inbox-geteilt--*': 'Gemeinsamer Zustand der Team-Postfächer je Haushalt — im Export „wer kümmert sich“ der Person; beim Löschen fällt das weg, ihre eigenen Team-Postfächer verlieren den Zustand',
   'haushalt-*--*': 'Haushaltsfinanzen je Haushalt',
@@ -509,6 +510,9 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       if (n) await protokolliere(wissenName, [{ liste: 'heads', op: 'geaendert', id: 'konto', felder: ['geaendertVon'] }], { art: 'system' });
       return n;
     });
+    // Unternehmen › Schild (10.10.): Einträge bleiben (Geschäftsunterlagen), „wer“ wird „[gelöscht]“.
+    const schild = `unternehmen-schild--${konto.haushalt}`;
+    await nurWenn(schild, async () => (await import('@/lib/gesellschaften/schild-server')).schildKontoLoeschen(konto.haushalt!, speicher));
     // Ereignisse (09.10., E1): Ereignisse NUR dieser Person (ihre Mail, „An ZOE gegeben“) fallen weg, aus `personen` wird sie gestrichen.
     const ev = `ereignisse--${konto.haushalt}`;
     await nurWenn(ev, async () => {

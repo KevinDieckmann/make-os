@@ -78,7 +78,14 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('mt-stammdaten', 'Markttraktion · Stammdaten', WEG.stammdaten(), 'business'),
   s('mandate', 'Mandate & Unternehmen · Mandate', WEG.mandat(), 'business'),
   s('produkte', 'Mandate & Unternehmen · Produkte (Leistungskatalog)', WEG.produkt(), 'business'),
-  s('unternehmen', 'Mandate & Unternehmen · Gesellschaften, Anteile, Verträge', WEG.unternehmen(), 'business'),
+  s('unternehmen', 'Unternehmen · Überblick (Compliance-Ampel)', WEG.unternehmen(), 'business'),
+  // Unternehmen › Schild (10.10.): die Reiter einzeln auffindbar.
+  s('unternehmen-gesellschaften', 'Unternehmen · Gesellschaften, Anteile, Verträge', WEG.schild('gesellschaften'), 'business'),
+  s('unternehmen-pflichten', 'Unternehmen · Pflichten-Kalender (Jahresabschluss, Register, Fristen)', WEG.schild('pflichten'), 'business'),
+  s('unternehmen-dokumente', 'Unternehmen · Pflichtdokumente und Vorlagen', WEG.schild('dokumente'), 'business'),
+  s('unternehmen-risiken', 'Unternehmen · Risiko-Register', WEG.schild('risiken'), 'business'),
+  s('unternehmen-struktur', 'Unternehmen · Struktur und Cap-Table', WEG.schild('struktur'), 'business'),
+  s('unternehmen-schutz', 'Unternehmen · Marken, Domains, Versicherungen', WEG.schild('schutz'), 'business'),
   // Netzwerken (03.10.): unterwegs erfassen und die eigenen Visitenkarten (QR) — in jedem Space auffindbar.
   s('netzwerken', 'Netzwerken · Person erfassen, Abendbericht', WEG.netzwerken()),
   s('netzwerken-karte', 'Netzwerken · Meine Visitenkarten', WEG.netzwerkenKarte()),
