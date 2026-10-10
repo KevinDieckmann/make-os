@@ -16,10 +16,11 @@
 import { useLinkAuswahl } from '../Verlauf';
 import { mandateLink, qualifizierungLink } from '@/lib/crm/adresse';
 import { WEG, eventLink } from '@/lib/wege';
+import { zoeFragen } from './ZoeFragen';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie, ZeileAktionen, useRueckgaengig, useRueckfrage, type ZeilenMehr } from '../ui';
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -154,6 +155,15 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         wahl: istOffen(c) ? [{ label: 'Verloren …', ton: 'leise', tun: () => verlorenFragen(c) }, { label: 'Parken', tun: () => parken(c) }] : [],
       }),
     istOffen,
+    // Im Menü „⋯“ (10.10.): parken und verloren direkt — ohne den Umweg über „Archivieren“; dazu der erste Kontakt.
+    mehr: c => [
+      ...(istOffen(c) ? [
+        { id: 'parken', label: `Parken bis ${datum(plusTage(crm.heute, 60))}`, hinweis: 'mit Wiedervorlage', tun: () => parken(c) },
+        { id: 'verloren', label: 'Verloren …', hinweis: 'mit Grund', tun: () => verlorenFragen(c) },
+      ] : []),
+      ...(c.kontaktIds[0] ? [{ id: 'kontakt', label: 'Kontakt öffnen', tun: () => zuKontakt(c.kontaktIds[0]) }] : []),
+      { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'deal', id: c.id }) },
+    ],
   };
   const zieh = (e: React.DragEvent, ziel: ChancenStufe) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); if (id) zieheNach(id, ziel); };
 
@@ -220,7 +230,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
                       {l.map(c => {
                         const a = crm.ampel[c.id];
                         return (
-                          <ZeileAktionen key={c.id} titel={c.titel} onArchivieren={() => deal.archivieren(c)} onLoeschen={() => deal.loeschen(c)}>
+                          <ZeileAktionen key={c.id} titel={c.titel} onArchivieren={() => deal.archivieren(c)} onLoeschen={() => deal.loeschen(c)}
+                            loeschenFragt href={WEG.deal(c.id)} onOeffnen={() => (zuAkte ? zuAkte(c.id) : setAuswahl(c.id))} mehr={deal.mehr(c)}>
                           <button draggable onDragStart={e => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }} onDoubleClick={() => zuAkte?.(c.id)} title="Klick: Details · Doppelklick: Akte · Ziehen: Stufe wechseln" onClick={() => setAuswahl(auswahl === c.id ? null : c.id)} className="fassbar" style={{ textAlign: 'left', cursor: 'grab', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
                             <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'flex-start' }}>
                               <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{c.titel}</span>
@@ -292,7 +303,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
 }
 
 /** Zeilen-Aktionen eines Deals (Pipeline) — Archiv = parken/verloren, Zurückholen = wieder offen, Löschen = nur Fehlanlage. */
-interface DealAktionen { archivieren: (c: Chance) => void; zurueckholen: (c: Chance) => void; loeschen: (c: Chance) => void; istOffen: (c: Chance) => boolean }
+interface DealAktionen { archivieren: (c: Chance) => void; zurueckholen: (c: Chance) => void; loeschen: (c: Chance) => void; istOffen: (c: Chance) => boolean; mehr: (c: Chance) => ZeilenMehr[] }
 
 function ChancenZeile({ c, api, offen, onKlick, zuKontakt, deal, wunsch, wunschWeg }: { c: Chance; api: CrmApi; offen: boolean; onKlick: () => void; zuKontakt: (id: string) => void; deal: DealAktionen; wunsch?: ChancenStufe; wunschWeg?: () => void }) {
   const crm = api.crm!;
@@ -301,7 +312,8 @@ function ChancenZeile({ c, api, offen, onKlick, zuKontakt, deal, wunsch, wunschW
   const personen = c.kontaktIds.map(id => kontakte.find(k => k.id === id)).filter(Boolean);
   return (
     <div>
-      <ZeileAktionen titel={c.titel} archiviert={!deal.istOffen(c)} onArchivieren={() => (deal.istOffen(c) ? deal.archivieren(c) : deal.zurueckholen(c))} onLoeschen={() => deal.loeschen(c)}>
+      <ZeileAktionen titel={c.titel} archiviert={!deal.istOffen(c)} onArchivieren={() => (deal.istOffen(c) ? deal.archivieren(c) : deal.zurueckholen(c))} onLoeschen={() => deal.loeschen(c)}
+        loeschenFragt href={WEG.deal(c.id)} onOeffnen={onKlick} mehr={deal.mehr(c)}>
       <Zeile onClick={onKlick} aktiv={offen} links={<Punkt farbe={a ? AMPEL[a.ampel] : C.inkLeise} />}
         titel={<>{c.titel}{firmenName(c, crm.stand.firmen) && <span style={{ color: C.inkLeise }}> · {firmenName(c, crm.stand.firmen)}</span>}</>}
         unter={[c.naechsterSchritt ? `→ ${c.naechsterSchritt.text} · ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt', a?.gruende[0]].filter(Boolean).join(' · ')}

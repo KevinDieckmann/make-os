@@ -16,7 +16,7 @@ import { WEG, eventLink } from '@/lib/wege';
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, ZeileAktionen } from '../ui';
+import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE } from '../ui';
 import { useCrmAblage, PapierkorbKarte, type CrmAblage } from './ablage';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
@@ -38,7 +38,7 @@ import { useFirmaWechselFrage } from './kontakt/FirmaWechselFrage';
 import { firmenGruppe, muetter, toechter as toechterVon } from '@/lib/crm/konzern';
 import { beanGruppe, BEAN_LABEL } from '@/lib/crm/bean';
 import { AufgabenAkte } from '../aufgaben/AufgabenAkte';
-import { ZoeVorschlaege, ZoeFragenKnopf } from './ZoeFragen';
+import { ZoeVorschlaege, ZoeFragenKnopf, zoeFragen } from './ZoeFragen';
 import { NeuePersonKurz } from './PersonAnlegen';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
@@ -106,7 +106,8 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
 
   // Breit: dichte Tabelle wie in einer guten Adressverwaltung (Firma · Domain · Branche · Ort · Personen · Rolle).
   const aktionen = (x: Firma, inhalt: ReactNode) => (
-    <ZeileAktionen key={x.id} titel={x.name} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => loeschen(x)}>{inhalt}</ZeileAktionen>
+    <ZeileAktionen key={x.id} titel={x.name} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => loeschen(x)}
+      href={WEG.firma(x.id)} onOeffnen={() => setAuswahl(x.id)} mehr={[{ id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'firma', id: x.id }) }]}>{inhalt}</ZeileAktionen>
   );
   const zeile = (x: Firma) => breit ? aktionen(x,
     <div onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} className="fassbar" title={[x.name, x.branche, x.stadt].filter(Boolean).join(' · ')}
@@ -147,7 +148,7 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
           ) : (
             <>
               {breit && (
-                <div style={{ display: 'grid', gridTemplateColumns: FIRMEN_SPALTEN, gap: 12, padding: '0 8px 6px', fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: FIRMEN_SPALTEN, gap: 12, padding: `0 ${8 + ZEILE_MEHR_BREITE}px 6px 8px`, fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                   <span /><span>Firma</span><span>Domain</span><span>Branche</span><span>Ort</span><span style={{ textAlign: 'right' }}>Pers.</span><span>Rolle</span>
                 </div>
               )}

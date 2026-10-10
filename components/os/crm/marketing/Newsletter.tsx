@@ -17,6 +17,7 @@
 // 04.10. (Kevin: „alles anpassbar“): jede Ausgabe am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter Archiv)
 // und Löschen (Papierkorb 30 Tage, Rückgängig); endgültig nur aus dem Papierkorb (components/os/crm/ablage.tsx).
 
+import { WEG } from '@/lib/wege';
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Zahl, Raster, feld, LEUCHT, ZeileAktionen } from '../../ui';
@@ -109,7 +110,7 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
             const stand = a.status === 'versendet' ? 'nicht_noetig' : ausgabeFreigabeStand(a);
             return (
               <div key={a.id}>
-                <ZeileAktionen titel={a.titel} archiviert={sicht === 'archiv'} onArchivieren={() => { if (offen === a.id) setOffen(null); if (sicht === 'archiv') ablage.zurueckholen(a.id, a.titel); else ablage.archivieren(a.id, a.titel); }} onLoeschen={() => { if (offen === a.id) setOffen(null); ablage.loeschen(a.id, a.titel); }}>
+                <ZeileAktionen href={WEG.marketing('newsletter', a.id)} onOeffnen={() => setOffen(a.id)} titel={a.titel} archiviert={sicht === 'archiv'} onArchivieren={() => { if (offen === a.id) setOffen(null); if (sicht === 'archiv') ablage.zurueckholen(a.id, a.titel); else ablage.archivieren(a.id, a.titel); }} onLoeschen={() => { if (offen === a.id) setOffen(null); ablage.loeschen(a.id, a.titel); }}>
                 <Zeile onClick={() => setOffen(offen === a.id ? null : a.id)} aktiv={offen === a.id} titel={a.titel} links={<AutorStimme autor={autorVon(a)} stimme={a.stimme} groesse={20} />}
                   unter={[a.datum ? datum(a.datum, heute) : 'ohne Datum', a.stimme ? `als ${stimmeText(a.stimme)}` : '', a.beitragIds.length ? `${a.beitragIds.length} Beiträge` : '', a.status === 'versendet' && a.empfaenger ? `${a.empfaenger} Empfänger` : '', a.antworten ? `${a.antworten} Antworten` : '', q !== null ? `Abmeldungen ${prozent(q)}` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{stand !== 'ok' && <FreigabeChip stand={stand} an={a.freigabe?.an} />}<Chip farbe={STATUS_FARBE[a.status]}>{AUSGABE_STATUS.find(s => s.id === a.status)?.label}</Chip></span>} />

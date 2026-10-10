@@ -494,6 +494,9 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
 - Design-Sprache: Klar·DARK — Token in `lib/make-one/os-data.ts` (THEME),
   Petrol `#21B5AA` als Akzent. Motion-Sprache in `app/globals.css`.
 - **Keine Untertitel/Hinweise hinter Namen** — Namen stehen allein.
+- **Zeilen-Aktionen (10.10., Kevin: „Löschen und Archivieren muss anders laufen“):** nie Knöpfe ÜBER dem Inhalt — jede Listenzeile mit Aktionen hängt an
+  `ZeileAktionen` („⋯“ in eigener Spalte → Menü: Öffnen · Link · neuer Tab · `mehr` · ─ · Archivieren · Löschen; Handy wischen nach Einstellung des Geräts,
+  Einstellungen › Bedienung `/os/system/bedienung`). Neue Liste: `href` über `WEG`, Extras als `mehr`, `loeschenFragt` wenn sie selbst fragt (DESIGN_STANDARD.md).
 - Startseite heißt „Heute“ (`/os`, seit 08.10.; vorher „Dashboard“/„Home“). Interne Navigation immer `next/link`, nie `<a>`.
 - Charts: die drei Teals (health/planning/finance) nie gemeinsam als Serien —
   Finanzen im Chart = Kupfer `#DE9E63`.
@@ -1090,8 +1093,8 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   Anwenden/Zählen. Alte Links: `alteAdresseUmleiten` (`&g=` → Liste, `&l=` einer Aufgabe gewordenen Liste → `a=`), `aufgabenLink` schreibt kein `g`.
   **Ein Feld je Ebene** (`NeuFelder.tsx`: `NeueListeFeld` · `NeueAufgabeFeld` · `NeueUnteraufgabeFeld` — nie zwei gleich aussehende Felder).
   **Umwandeln** rein in `lib/aufgaben/umwandeln.ts` (`listeZuAufgabe`, `aufgabeZuListe` → Hülle ins Einzel-Archiv, `umhaengen`;
-  `zeilenAenderungen` → `ZEILEN_SETZEN` + „Rückgängig“ mit den alten Zeilen), Menü „…“ `ZeilenMenue.tsx` (Portal; die Rand-Knöpfe von
-  `ZeileAktionen` rücken per `.ui-za:has(.aufgaben-zeilenmenue)` links daneben). **Ziehen & Ablegen**: Regel `lib/aufgaben/ziehen.ts` `ablegen`
+  `zeilenAenderungen` → `ZEILEN_SETZEN` + „Rückgängig“ mit den alten Zeilen), Menü „⋯“ = seit 10.10. der Standard `ZeileAktionen` mit
+  `mehr` (DESIGN_STANDARD.md › Zeilen-Aktionen; das eigene `ZeilenMenue.tsx` ist aufgegangen). **Ziehen & Ablegen**: Regel `lib/aufgaben/ziehen.ts` `ablegen`
   (vor/nach/in/Listenende, lückenlose `sortOrder`), Oberfläche `Ziehen.tsx` (Maus ab 6 px, Finger lange drücken 0,45 s, Fenster-Hörer in der
   Capture-Phase — React-`stopPropagation` an der Zeile hält das Wischen fern), Tastatur = „Verschieben nach …“. Server: `ortPruefen` (Liste gehört
   zum Projekt, Projekt im Space, umgehängte Unteraufgabe bleibt im Space; nur bei Änderung, nicht für Server-Schreiber) + `elternPruefen` wie bisher;

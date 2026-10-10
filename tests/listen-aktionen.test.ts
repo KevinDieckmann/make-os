@@ -68,6 +68,9 @@ const LISTEN: [string, string][] = [
   ['Familie (Themen, Wünsche, Ideen)', 'components/os/familie/ablage.tsx'],
   ['Stammdaten-Kartei', 'components/os/StammdatenView.tsx'],
   ['Netzwerken (Visitenkarten-Profile)', 'components/os/netzwerken/MeineKarte.tsx'],
+  // 10.10. (Standard Zeilen-Aktionen „überall“): Routinen (vorher ✕ ohne Rückgängig) und die Einkaufsliste (vorher eigenes „×“).
+  ['Routinen', 'components/os/RoutinenPlanerView.tsx'],
+  ['Einkaufsliste', 'components/os/ErnaehrungView.tsx'],
 ];
 
 describe('Wächter: alle Listen am Baustein, keine Browser-Rückfrage', () => {

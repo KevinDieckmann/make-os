@@ -219,3 +219,29 @@ describe('Dokumentation', () => {
     expect(md).toContain('prefers-reduced-motion');
   });
 });
+
+describe('Zeilen-Aktionen (10.10., DESIGN_STANDARD.md › Zeilen-Aktionen): nichts liegt über dem Inhalt', () => {
+  it('keine Rand-Knöpfe mehr; „⋯“ ist ein Menü-Knopf (aria-haspopup) mit 44 px in eigener Spalte; Wisch-Richtungen aus der Einstellung', () => {
+    const css = lies('app/globals.css');
+    expect(css).not.toMatch(/\.ui-za-schnell|\.ui-za-knopf|aufgaben-zeilenmenue/);
+    expect(css).toContain('.ui-za-spalte { flex: 0 0 44px; width: 44px;');
+    expect(css).toMatch(/\.ui-za-mehr \{ width: 44px; height: 44px; min-height: 44px;/);
+    expect(ZIEL.handy).toBeLessThanOrEqual(44);
+    const q = lies('components/os/ui/zeile-aktionen.tsx');
+    expect(q).toContain('aria-haspopup="menu"');
+    expect(q).toContain("wischZiel(dx < 0 ? 'links' : 'rechts', b, kann)");
+    expect(q).toContain('const b = useBedienung();');
+  });
+  it('Klassen des Bausteins (`ui-za-…`) nur im Baustein — keine Seite baut eigene Aktions-Knöpfe über ihre Zeilen', () => {
+    const funde = dateien('components').filter(f => f !== 'components/os/ui/zeile-aktionen.tsx' && /className=["`{][^"`}]*\bui-za-/.test(lies(f)));
+    expect(funde).toEqual([]);
+  });
+  it('Menü: Reihenfolge Allgemeines · Liste · Archiv/Löschen, Gefahr ganz unten; ohne Recht keine Einträge', async () => {
+    const { zeilenMenueEintraege } = await import('@/components/os/ui');
+    const nichts = () => {};
+    const l = zeilenMenueEintraege({ titel: 'X', href: '/os/x', kopieren: nichts, onArchivieren: nichts, onLoeschen: nichts, mehr: [{ id: 'm', label: 'M', tun: nichts }] });
+    expect(l.map(e => e.gruppe)).toEqual(['allgemein', 'allgemein', 'allgemein', 'mehr', 'ablage', 'ablage']);
+    expect(l.at(-1)?.gefahr).toBe(true);
+    expect(zeilenMenueEintraege({ titel: 'X', darf: false, href: '/os/x', onLoeschen: nichts })).toEqual([]);
+  });
+});

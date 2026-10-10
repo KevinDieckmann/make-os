@@ -24,7 +24,7 @@ import {
   gerichteFiltern, tagsHaeufig, imPlan, gerichtZuName, zutatenAusText, schritteAusText,
   type ErnaehrungFile, type Mahlzeiten, type Tag, type Mahlzeit, type Op, type Gericht, type EinkaufPosten, type Profil, type Kategorie, type PlanGerichte,
 } from '@/lib/ernaehrung/modell';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, useBreit, Hinweis } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, feld, LEUCHT, useBreit, Hinweis, ZeileAktionen, useRueckgaengig } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { bildVerkleinern } from '@/lib/bilder/client';
 
@@ -75,6 +75,8 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   // Kommt man per Link (?g=…), steht das Rezept nach dem Laden im Bild — am Handy liegt es sonst unter dem Plan.
   useEffect(() => { if (daten && params.get('g')) setTimeout(() => rezeptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }, [!!daten]); // eslint-disable-line react-hooks/exhaustive-deps
   const melde = (t: string) => { setMeld(t); setTimeout(() => setMeld(''), 3000); };
+  // Einkaufsliste (10.10., Standard Zeilen-Aktionen): Posten wischen bzw. „⋯“ → Löschen mit 10 s „Rückgängig“ (vorher ein ✕ ohne Rückweg).
+  const { melden: rueckMelden, hinweis: rueckHinweis } = useRueckgaengig();
 
   /** Kleine Schritte: sofort im Bild, dann zum Server; die Antwort ist der wahre Stand. */
   const patch = useCallback(async (ops: Op[]) => {
@@ -189,7 +191,11 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
   const b = daten.budget;
   const budgetFarbe = b && b.budget ? (b.ausgegeben > b.budget ? LEUCHT.kritisch : b.ausgegeben > b.budget * 0.85 ? LEUCHT.achtung : LEUCHT.gut) : C.inkLeise;
 
-  const inhalt = (
+  const postenWeg = (p: EinkaufPosten) => {
+    void patch([{ liste: 'einkauf', op: 'delete', id: p.id }]);
+    rueckMelden(`„${p.text}“ von der Liste genommen`, () => void patch([{ liste: 'einkauf', op: 'upsert', eintrag: { ...p } }]));
+  };
+  const inhalt = (<>
     <Flaeche seite="ernaehrung">
         {/* ── Essens-Woche ── */}
         <Kachel id="woche" titel="Essens-Woche" breite={4}>
@@ -369,11 +375,13 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
                 <div style={{ ...mikro, padding: '6px 2px 2px' }}>{gr.label.replace(/ \(.*\)$/, '')}</div>
                 <Liste>
                   {gr.posten.map(p => (
-                    <Zeile key={p.id}
+                    <ZeileAktionen key={p.id} titel={p.text} onLoeschen={() => postenWeg(p)}
+                      mehr={[{ id: 'abhaken', label: p.erledigt ? 'Wieder offen' : 'Abhaken', tun: () => void patch([{ liste: 'einkauf', op: 'upsert', eintrag: { id: p.id, erledigt: !p.erledigt } }]) }]}>
+                    <Zeile
                       links={<Haken an={p.erledigt} onChange={() => void patch([{ liste: 'einkauf', op: 'upsert', eintrag: { id: p.id, erledigt: !p.erledigt } }])} />}
                       titel={<span style={{ color: p.erledigt ? C.inkLeise : C.ink, textDecoration: p.erledigt ? 'line-through' : 'none' }}>{p.menge ? <b style={{ fontWeight: 600 }}>{p.menge} </b> : ''}{p.text}</span>}
-                      unter={[p.fuer?.length ? `für ${p.fuer.map(nameVon).join(' & ')}` : '', p.von ? `von ${nameVon(p.von)}` : '', p.quelle === 'plan' || p.quelle === 'rezept' ? 'aus dem Plan' : ''].filter(Boolean).join(' · ') || undefined}
-                      rechts={<button onClick={() => void patch([{ liste: 'einkauf', op: 'delete', id: p.id }])} aria-label="Posten entfernen" title="Posten entfernen" style={nackt}>✕</button>} />
+                      unter={[p.fuer?.length ? `für ${p.fuer.map(nameVon).join(' & ')}` : '', p.von ? `von ${nameVon(p.von)}` : '', p.quelle === 'plan' || p.quelle === 'rezept' ? 'aus dem Plan' : ''].filter(Boolean).join(' · ') || undefined} />
+                    </ZeileAktionen>
                   ))}
                 </Liste>
               </div>
@@ -463,7 +471,8 @@ export function ErnaehrungView({ eingebettet = false }: { eingebettet?: boolean 
         </Karte>
         </Kachel>
     </Flaeche>
-  );
+    {rueckHinweis}
+  </>);
 
   if (eingebettet) return inhalt;
   return <Seite titel="Ernährung" unter="Die Woche, die ihr durchhaltet — mit euren Lebensmitteln, eurem Vorrat und je Person ihren Bedürfnissen.">{inhalt}</Seite>;

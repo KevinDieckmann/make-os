@@ -4,7 +4,8 @@
 // eine Aufgabe ins Listenfeld. Seit 06.10. (Umbau v3, lib/aufgaben/umbau-gruppen.ts): keine Gruppen, und pro Ebene GENAU EIN
 // Feld, das aussieht wie das, was es anlegt (NeuFelder.tsx): im Projekt unten „+ Neue Liste“ (Überschrift-Stil), in jeder Liste
 // unten „+ Neue Aufgabe“ (Haken-Zeile), in einer aufgeklappten Aufgabe „+ Unteraufgabe“ (eingerückt).
-// Menü „…“ je Zeile (ZeilenMenue.tsx): Liste → Aufgabe, Aufgabe → Liste, Aufgabe ↔ Unteraufgabe, „Verschieben nach …“ — jeweils
+// Menü „⋯“ je Zeile (seit 10.10. der Standard `ZeileAktionen` mit `mehr`, components/os/ui/zeilen-menue.tsx): Öffnen, Link kopieren,
+// Liste → Aufgabe, Aufgabe → Liste, Aufgabe ↔ Unteraufgabe, „Verschieben nach …“, unten Archivieren/Löschen — jeweils
 // mit „Rückgängig“ (lib/aufgaben/umwandeln.ts, über die bestehenden Ops; der Server prüft Eltern, Tiefe, Kreise und Ort).
 // Ziehen & Ablegen (Ziehen.tsx, Regel lib/aufgaben/ziehen.ts): Aufgaben zwischen Listen, Unteraufgaben zwischen Aufgaben,
 // Reihenfolge — Maus ziehen, Handy lange drücken; Tastatur über „Verschieben nach …“.
@@ -16,7 +17,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react';
 import { MessageSquare, Link2, ChevronRight, Lock, Sparkles, StickyNote } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, HakenZiel, Punkt, prioFarbe, ZielChip, useZielBezug, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
+import { Karte, HakenZiel, Punkt, prioFarbe, ZielChip, useZielBezug, ZeileAktionen, useRueckgaengig, useRueckfrage, type ZeilenMehr } from '../ui';
+import { WEG } from '@/lib/wege';
 import { dateienZaehlen } from './Papierkorb';
 import { projektUmfang, umfangText } from '@/lib/aufgaben/papierkorb';
 import { istMeilensteinListe } from '@/lib/planung/meilenstein-aufgaben';
@@ -32,7 +34,6 @@ import { aufgabeAnlegen, listeAnlegen, ownerLabel, LISTEN_FARBEN, useIch, type P
 import { SerienZeichen } from './WiederholungWahl';
 import { ListeSerieKnopf } from './SerienListeEinstellen';
 import { NeueListeFeld, NeueAufgabeFeld, NeueUnteraufgabeFeld } from './NeuFelder';
-import { ZeilenMenue, type MenuePunkt } from './ZeilenMenue';
 import { useZiehen } from './Ziehen';
 
 const ZU_MERKER = 'make-aufgaben-zu';
@@ -159,30 +160,30 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     const pid = p.virtuell ? sonstigeProjektId(raumId) : p.id;
     return p.listen.map(l => ({ id: `${pid}|${l.virtuell ? '' : l.id}`, label: `${p.titel} › ${l.titel}`, ...(l.farbe ? { punkt: l.farbe } : { punkt: p.farbe }) }));
   }), [projekte, raumId]);
-  const verschiebenNach = (t: Task): MenuePunkt => ({
-    label: 'Verschieben nach', hinweis: 'in eine andere Liste (auch ohne Maus)',
+  const verschiebenNach = (t: Task): ZeilenMehr => ({
+    id: 'verschieben', label: 'Verschieben nach',  hinweis: 'in eine andere Liste (auch ohne Maus)',
     auswahl: { titel: 'Verschieben nach …', eintraege: listenZiele, waehlen: k => { const [projektId, listeId] = k.split('|'); anwenden(ablegen(vollRef.current, t.id, { art: 'liste', projektId, listeId: listeId || null }, jetzt())); } },
   });
-  const aufgabenMenue = (t: Task, tiefe: number): MenuePunkt[] => {
-    const punkte: MenuePunkt[] = [verschiebenNach(t)];
+  const aufgabenMenue = (t: Task, tiefe: number): ZeilenMehr[] => {
+    const punkte: ZeilenMehr[] = [verschiebenNach(t)];
     const eltern = elternKandidaten(t, state.tasks).map(x => ({ id: x.id, label: pfadText(x, nachId) })).sort((a, b) => a.label.localeCompare(b.label, 'de'));
     if (tiefe === 0) {
-      punkte.push({ label: 'In Liste umwandeln', hinweis: (kinder.get(t.id)?.length ?? 0) ? 'Unteraufgaben werden ihre Aufgaben; die Aufgabe selbst kommt ins Archiv' : 'Die Aufgabe selbst kommt ins Archiv (zurückholbar)', tun: () => { anwenden(aufgabeZuListe(vollRef.current, t.id, { jetzt: jetzt() })); } });
-      punkte.push({ label: 'Zur Unteraufgabe machen', hinweis: 'unter eine andere Aufgabe hängen', auswahl: { titel: 'Unteraufgabe von …', eintraege: eltern, waehlen: id => { anwenden(umhaengen(vollRef.current, t.id, id, jetzt())); }, leer: 'Keine passende Aufgabe in diesem Projekt.' } });
+      punkte.push({ id: 'in-liste', label: 'In Liste umwandeln', hinweis: (kinder.get(t.id)?.length ?? 0) ? 'Unteraufgaben werden ihre Aufgaben; die Aufgabe selbst kommt ins Archiv' : 'Die Aufgabe selbst kommt ins Archiv (zurückholbar)', tun: () => { anwenden(aufgabeZuListe(vollRef.current, t.id, { jetzt: jetzt() })); } });
+      punkte.push({ id: 'unteraufgabe', label: 'Zur Unteraufgabe machen', hinweis: 'unter eine andere Aufgabe hängen', auswahl: { titel: 'Unteraufgabe von …', eintraege: eltern, waehlen: id => { anwenden(umhaengen(vollRef.current, t.id, id, jetzt())); }, leer: 'Keine passende Aufgabe in diesem Projekt.' } });
     } else {
-      punkte.push({ label: 'Zur Hauptaufgabe machen', hinweis: 'steht dann direkt in der Liste', tun: () => { anwenden(umhaengen(vollRef.current, t.id, null, jetzt())); } });
-      if (eltern.length) punkte.push({ label: 'Umhängen unter', auswahl: { titel: 'Umhängen unter …', eintraege: eltern, waehlen: id => { anwenden(umhaengen(vollRef.current, t.id, id, jetzt())); } } });
+      punkte.push({ id: 'hauptaufgabe', label: 'Zur Hauptaufgabe machen', hinweis: 'steht dann direkt in der Liste', tun: () => { anwenden(umhaengen(vollRef.current, t.id, null, jetzt())); } });
+      if (eltern.length) punkte.push({ id: 'umhaengen', label: 'Umhängen unter', auswahl: { titel: 'Umhängen unter …', eintraege: eltern, waehlen: id => { anwenden(umhaengen(vollRef.current, t.id, id, jetzt())); } } });
     }
     return punkte;
   };
-  const listenMenue = (p: BaumProjekt, l: BaumListe): MenuePunkt[] => {
-    const punkte: MenuePunkt[] = [
-      { label: 'Umbenennen', tun: () => { const v = window.prompt('Liste umbenennen', l.titel)?.trim(); if (v && v !== l.titel) dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, titel: v.slice(0, 80) } }); } },
-      { label: 'Farbe', auswahl: { titel: 'Farbe der Liste', eintraege: [{ id: '', label: 'ohne Farbe' }, ...LISTEN_FARBEN.map(f => ({ id: f, label: f, punkt: f }))], waehlen: f => dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, farbe: f || undefined } }) } },
+  const listenMenue = (p: BaumProjekt, l: BaumListe): ZeilenMehr[] => {
+    const punkte: ZeilenMehr[] = [
+      { id: 'umbenennen', label: 'Umbenennen', tun: () => { const v = window.prompt('Liste umbenennen', l.titel)?.trim(); if (v && v !== l.titel) dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, titel: v.slice(0, 80) } }); } },
+      { id: 'farbe', label: 'Farbe', auswahl: { titel: 'Farbe der Liste', eintraege: [{ id: '', label: 'ohne Farbe' }, ...LISTEN_FARBEN.map(f => ({ id: f, label: f, punkt: f }))], waehlen: f => dispatch({ type: 'UPDATE_LISTE', payload: { id: l.id, farbe: f || undefined } }) } },
     ];
     if (!istMeilensteinListe(l.id)) {
       const ziele = [...p.listen.filter(x => !x.virtuell && x.id !== l.id).map(x => ({ id: x.id, label: x.titel, ...(x.farbe ? { punkt: x.farbe } : {}) })), { id: '', label: 'Sonstige (ohne Liste)' }];
-      punkte.push({ label: 'In Aufgabe umwandeln', hinweis: 'die Liste wird eine Aufgabe, ihre Aufgaben deren Unteraufgaben', auswahl: { titel: 'Als Aufgabe in Liste …', eintraege: ziele, waehlen: z => { anwenden(listeZuAufgabe(vollRef.current, l.id, z || null, { jetzt: jetzt(), ich })); } } });
+      punkte.push({ id: 'in-aufgabe', label: 'In Aufgabe umwandeln', hinweis: 'die Liste wird eine Aufgabe, ihre Aufgaben deren Unteraufgaben', auswahl: { titel: 'Als Aufgabe in Liste …', eintraege: ziele, waehlen: z => { anwenden(listeZuAufgabe(vollRef.current, l.id, z || null, { jetzt: jetzt(), ich })); } } });
     }
     return punkte;
   };
@@ -227,7 +228,9 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     const gezogen = ziehen.zieht === t.id;
     return (
       <div key={t.id}>
-        <ZeileAktionen titel={t.title} onArchivieren={() => handlung.archivieren(t)} onLoeschen={() => { void handlung.loeschen(t).then(weg => { if (weg && istOffen) onOeffnen(null); }); }}>
+        <ZeileAktionen titel={t.title} onArchivieren={() => handlung.archivieren(t)} onLoeschen={() => { void handlung.loeschen(t).then(weg => { if (weg && istOffen) onOeffnen(null); }); }}
+          // Die Handlung fragt selbst, wenn Unteraufgaben mitgehen oder eine Serie läuft — dann keine zweite Rückfrage.
+          loeschenFragt={a.unter.length > 0 || !!t.wiederholung} onOeffnen={() => onOeffnen(t.id)} href={WEG.aufgabe(t.id)} mehr={aufgabenMenue(t, tiefe)}>
         <div className="zeile" {...ziehen.griff(t.id, t.title)} style={{ ...ZIEHBAR, display: 'flex', alignItems: 'center', gap: 6, padding: '7px 4px', paddingLeft: einzug, borderBottom: '1px solid rgba(255,255,255,.05)', minHeight: 44, background: istOffen ? 'rgba(255,255,255,.05)' : 'transparent', borderRadius: istOffen ? 10 : 0, opacity: gezogen ? 0.45 : 1 }}>
           {klappbar ? (
             <button onClick={() => umschalten(auf, setAuf, t.id)} aria-label={aufgeklappt ? `Unteraufgaben von „${t.title}“ zuklappen` : `Unteraufgaben von „${t.title}“ aufklappen`} aria-expanded={aufgeklappt} className="fassbar"
@@ -240,7 +243,6 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
             {!breit && meta(t, a.unter, true)}
           </button>
           {breit && meta(t, a.unter, false)}
-          <span data-nicht-ziehen><ZeilenMenue titel={t.title} punkte={aufgabenMenue(t, tiefe)} /></span>
         </div>
         </ZeileAktionen>
         {aufgeklappt && <>
@@ -261,14 +263,13 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     return (
       <div key={lk} style={{ marginTop: zeigeKopf ? 12 : 0 }}>
         {zeigeKopf && (
-          <ZeileAktionen titel={`Liste ${l.titel}`} darf={!l.virtuell} onLoeschen={() => listeLoeschen(l.id)}>
+          <ZeileAktionen titel={`Liste ${l.titel}`} darf={!l.virtuell} onLoeschen={() => listeLoeschen(l.id)} mehr={!p.fremd ? listenMenue(p, l) : undefined}>
           <div {...zielListe} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: `1px solid ${l.farbe ? `${l.farbe}55` : 'rgba(255,255,255,.07)'}`, flexWrap: 'wrap' }}>
             <button onClick={() => umschalten(zu, setZu, lk, ZU_MERKER)} aria-label={lz ? `Liste „${l.titel}“ aufklappen` : `Liste „${l.titel}“ zuklappen`} aria-expanded={!lz} className="fassbar" style={{ ...klappKnopf, color: C.inkLeise, width: 32, height: 32 }}>{chevron(lz, 14)}</button>
             {l.farbe && <Punkt farbe={l.farbe} groesse={8} />}
             <span style={{ fontSize: TYP.bedien, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: l.virtuell ? C.inkLeise : (l.farbe ?? C.inkDim) }}>{l.titel}</span>
             <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{l.offen || ''}</span>
             {!l.virtuell && <ListeSerieKnopf listeId={l.id} />}
-            {!l.virtuell && !p.fremd && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}><ZeilenMenue titel={`Liste ${l.titel}`} punkte={listenMenue(p, l)} /></span>}
           </div>
           </ZeileAktionen>
         )}
@@ -297,7 +298,8 @@ export function BaumAnsicht({ projekte, state, dispatch, raumId, offenId, onOeff
     return (
       <Karte key={p.id} i={i + iStart}>
         {projektKopf && (
-          <ZeileAktionen titel={`Projekt ${p.titel}`} darf={!p.virtuell && !p.fremd} onArchivieren={() => projektArchivieren(p.id, p.titel)} onLoeschen={() => void projektLoeschen(p.id, p.titel)}>
+          <ZeileAktionen titel={`Projekt ${p.titel}`} darf={!p.virtuell && !p.fremd} onArchivieren={() => projektArchivieren(p.id, p.titel)} onLoeschen={() => void projektLoeschen(p.id, p.titel)}
+            loeschenFragt onOeffnen={onProjekt ? () => onProjekt(pid) : undefined}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: pz ? 0 : 6 }}>
             <button onClick={() => umschalten(zu, setZu, p.id, ZU_MERKER)} aria-label={pz ? 'Projekt aufklappen' : 'Projekt zuklappen'} aria-expanded={!pz} className="fassbar" style={klappKnopf}>{chevron(pz, 16)}</button>
             <Punkt farbe={p.farbe} />

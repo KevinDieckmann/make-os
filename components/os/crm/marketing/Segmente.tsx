@@ -9,6 +9,7 @@
 // 04.10. (Kevin: „alles anpassbar“): jede Zeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter Archiv) und
 // Löschen (Papierkorb 30 Tage, Rückgängig; hängen Kampagnen/Events daran → Rückfrage). components/os/crm/ablage.tsx.
 
+import { WEG } from '@/lib/wege';
 import { TEMPERATUR } from '@/lib/crm/score';
 import { localDay } from '@/lib/zeit';
 import { useMemo, useState } from 'react';
@@ -115,7 +116,7 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
             const a = zahlen.get(s.id);
             return (
               <div key={s.id}>
-                <ZeileAktionen titel={s.name} archiviert={sicht === 'archiv'} onArchivieren={() => { if (entwurf?.id === s.id) setEntwurf(null); if (sicht === 'archiv') ablage.zurueckholen(s.id, s.name); else ablage.archivieren(s.id, s.name); }} onLoeschen={() => loeschen(s)}>
+                <ZeileAktionen href={WEG.marketing('segmente', s.id)} onOeffnen={() => oeffne(s)} titel={s.name} archiviert={sicht === 'archiv'} onArchivieren={() => { if (entwurf?.id === s.id) setEntwurf(null); if (sicht === 'archiv') ablage.zurueckholen(s.id, s.name); else ablage.archivieren(s.id, s.name); }} onLoeschen={() => loeschen(s)}>
                   <Zeile onClick={() => oeffne(s)} aktiv={entwurf?.id === s.id} titel={s.name} unter={s.beschreibung || kriterienText(s.kriterien)}
                     rechts={<Chip farbe={a?.anzahl ? LEUCHT.business : C.inkDim}>{a?.anzahl ?? 0} Personen</Chip>} />
                 </ZeileAktionen>

@@ -93,8 +93,8 @@ describe('Aufräumen Etappe 1 — jede Seite ist erreichbar', () => {
 
 describe('Aufräumen Etappe 1 — Einstellungen', () => {
   const eintraege = EINSTELLUNGEN_GRUPPEN.flatMap(g => g.eintraege);
-  it('vier Gruppen, jede Seite genau einmal', () => {
-    expect(EINSTELLUNGEN_GRUPPEN.map(g => g.titel)).toEqual(['Konto & Sicherheit', 'Verbindungen', 'Daten & Datenschutz', 'Betrieb']);
+  it('fünf Gruppen (10.10.: + Bedienung), jede Seite genau einmal', () => {
+    expect(EINSTELLUNGEN_GRUPPEN.map(g => g.titel)).toEqual(['Konto & Sicherheit', 'Bedienung', 'Verbindungen', 'Daten & Datenschutz', 'Betrieb']);
     const pfade = eintraege.map(e => pfadVon(e.href));
     expect(new Set(pfade).size).toBe(pfade.length);
     for (const e of eintraege) expect(SEITEN.some(s => passt(s, e.href)), e.href).toBe(true);

@@ -22,6 +22,7 @@
 // 04.10. (Kevin: „alles anpassbar“): jede Beitragszeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter
 // Archiv, zurückholbar) und Löschen (Papierkorb 30 Tage, Rückgängig; steckt er in einer Ausgabe → Rückfrage).
 
+import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { anfrageKanalAusBeitrag } from '@/lib/crm/anfragen';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -111,7 +112,7 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
   const aktuell = offen ? (alleBeitraege ?? []).find(b => b.id === offen) ?? null : null;
   /** Eine Beitragszeile mit Archivieren/Löschen (Wischen bzw. Knöpfe am Rand). */
   const mitAktionen = (b: Beitrag, zeile: ReactNode) => (
-    <ZeileAktionen key={b.id} titel={b.titel} archiviert={!!b.archiviertAm} onArchivieren={() => { if (offen === b.id) setOffen(null); if (b.archiviertAm) ablage.zurueckholen(b.id, b.titel); else ablage.archivieren(b.id, b.titel); }} onLoeschen={() => { if (offen === b.id) setOffen(null); beitragLoeschen(ablage, b, crm.stand.newsletter.filter(n => n.beitragIds.includes(b.id)).length); }}>
+    <ZeileAktionen key={b.id} href={WEG.marketing('redaktion', b.id)} onOeffnen={() => setOffen(b.id)} titel={b.titel} archiviert={!!b.archiviertAm} onArchivieren={() => { if (offen === b.id) setOffen(null); if (b.archiviertAm) ablage.zurueckholen(b.id, b.titel); else ablage.archivieren(b.id, b.titel); }} onLoeschen={() => { if (offen === b.id) setOffen(null); beitragLoeschen(ablage, b, crm.stand.newsletter.filter(n => n.beitragIds.includes(b.id)).length); }}>
       {zeile}
     </ZeileAktionen>
   );

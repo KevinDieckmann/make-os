@@ -55,25 +55,23 @@ const stand = (): TasksState => ({
 
 // ── 1 · Der Baustein ─────────────────────────────────────────────────────────────────────────────────────────────
 describe('Baustein ZeileAktionen (components/os/ui)', () => {
-  it('rendert die Zeile, dahinter Archivieren + Löschen und am Rand dieselben zwei — mit Vorleser-Beschriftung', async () => {
+  // Seit 10.10. (Kevin: Rand-Knöpfe lagen über dem Inhalt): „⋯“ in eigener Spalte → Menü; die Punkte selbst prüft tests/zeilen-menue.test.ts.
+  it('rendert die Zeile und daneben „⋯“ in eigener Spalte — Menü-Knopf mit Vorleser-Beschriftung, keine Rand-Knöpfe mehr', async () => {
     const { ZeileAktionen } = await import('@/components/os/ui');
     const html = renderToStaticMarkup(h(ZeileAktionen, { titel: 'Kickoff-Paket', onArchivieren: () => {}, onLoeschen: () => {} }, h('div', null, 'Zeile')));
     expect(html).toContain('class="ui-za"');
     expect(html).toContain('ui-za-inhalt');
-    expect(html).toContain('Zeile');
-    expect(html.match(/aria-label="„Kickoff-Paket“ archivieren"/g)).toHaveLength(2); // hinter der Zeile (Handy) + am Rand (Rechner)
-    expect(html.match(/aria-label="„Kickoff-Paket“ löschen \(Papierkorb\)"/g)).toHaveLength(2);
-    expect(html).toContain('role="group"');
-    // Geschlossen: die Aktionen hinter der Zeile sind für Vorleser verborgen und nicht im Tab-Lauf (der Rand-Knopf ist es).
-    expect(html).toContain('aria-hidden="true"');
-    expect(html).toContain('tabindex="-1"');
+    expect(html).toContain('<div class="ui-za-kern"><div>Zeile</div></div><div class="ui-za-spalte">');
+    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain('aria-label="Aktionen für „Kickoff-Paket“"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).not.toContain('ui-za-schnell');
+    expect(html).not.toContain('role="group"');
   });
-  it('im Archiv heißt die ruhige Aktion „Zurückholen“', async () => {
-    const { ZeileAktionen } = await import('@/components/os/ui');
-    const html = renderToStaticMarkup(h(ZeileAktionen, { titel: 'X', archiviert: true, onArchivieren: () => {}, onLoeschen: () => {} }, 'z'));
-    expect(html).toContain('„X“ aus dem Archiv zurückholen');
-    expect(html).toContain('Zurückholen');
-    expect(html).not.toContain('Archivieren<');
+  it('im Archiv heißt die ruhige Aktion „Zurückholen“ (im Menü)', async () => {
+    const { zeilenMenueEintraege } = await import('@/components/os/ui');
+    const l = zeilenMenueEintraege({ titel: 'X', archiviert: true, onArchivieren: () => {}, onLoeschen: () => {} });
+    expect(l.map(e => e.label)).toEqual(['Zurückholen', 'Löschen']);
   });
   it('ohne Recht (darf=false) oder ohne Aktion: nur die Zeile — keine Aktion erscheint', async () => {
     const { ZeileAktionen } = await import('@/components/os/ui');
@@ -100,9 +98,9 @@ describe('Baustein ZeileAktionen (components/os/ui)', () => {
     expect(q).toContain('setPointerCapture');
     expect(q).not.toMatch(/from '(react-swipeable|framer-motion|@use-gesture)/);
     const css = lies('app/globals.css');
-    expect(css).toContain('.ui-za-inhalt { position: relative; touch-action: pan-y;');
+    expect(css).toMatch(/\.ui-za-inhalt \{ position: relative; display: flex; align-items: center; touch-action: pan-y;/);
     expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{ animation: none !important; transition: none !important; \}/);
-    expect(css).toContain('@media (hover: none), (pointer: coarse) {\n  .ui-za-schnell:not(:focus-within)');
+    expect(css).toContain('@media (hover: none), (pointer: coarse) {\n  .ui-za-mehr { opacity: 1; }');
   });
 });
 

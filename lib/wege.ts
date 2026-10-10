@@ -47,6 +47,10 @@ export const WEG = {
   menschen: () => '/os/menschen',
   /** Konto (Kachel „Team“: Konten und Team-Personen des Haushalts pflegen). */
   konto: () => '/os/konto',
+  /** Bauplan (Board): `k` öffnet eine Karte. */
+  bauplan: (k?: string) => q('/os/bauplan', { k }),
+  /** Einstellungen › Bedienung (10.10.): Wischen am Handy, Menü „⋯“, Rückfrage vor dem Löschen, Dichte — je Gerät. */
+  bedienung: () => '/os/system/bedienung',
   /** System › Datenschutz (05.10.): Verantwortlicher, Empfänger/AVV, Selbstprüfung, Verzeichnis-Export — `#abschnitt` springt hin. */
   datenschutz: (abschnitt?: 'verantwortlicher' | 'empfaenger' | 'pruefung' | 'verzeichnis' | 'pannen' | 'dokumente' | 'nachweise' | 'gesundheit' | 'ki' | 'telegram' | 'protokoll') => q('/os/datenschutz', {}, abschnitt),
   /**

@@ -14,6 +14,8 @@ import { anzeigename } from '@/lib/make-one/crm';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste as ListeRahmen, Zeile, Leer, Knopf, Chip, Punkt, feld, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../../ui';
 import { PAPIERKORB_TAGE, papierkorbBis } from '@/lib/eintraege/sicher';
+import { WEG } from '@/lib/wege';
+import { zoeFragen } from '../ZoeFragen';
 import { Pillen } from '../teile';
 import type { CrmApi } from '../daten';
 import { suchPasst } from '@/lib/text/such-norm';
@@ -92,7 +94,8 @@ export function AngebotListe({ api, daten, onOeffnen, onNeu }: { api: CrmApi; da
                   rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}><Knopf leise onClick={() => wiederherstellen(a)}>Wiederherstellen</Knopf><Knopf leise farbe={LEUCHT.kritisch} onClick={() => endgueltig(a as Angebot & { stand: string })}>Endgültig löschen</Knopf></span>} />
               );
               return (
-                <ZeileAktionen key={a.id} titel={titel(a)} archiviert={!!a.archiviertAm} onArchivieren={() => archivieren(a)} onLoeschen={() => loeschen(a)}>
+                <ZeileAktionen key={a.id} titel={titel(a)} archiviert={!!a.archiviertAm} onArchivieren={() => archivieren(a)} onLoeschen={() => loeschen(a)}
+                  loeschenFragt={a.status !== 'entwurf'} href={WEG.angebot({ angebotId: a.id })} onOeffnen={() => onOeffnen(a.id)} mehr={[{ id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'angebot', id: a.id }) }]}>
                 <Zeile onClick={() => onOeffnen(a.id)} links={<Punkt farbe={STATUS_FARBE[a.status]} />}
                   titel={<>{a.nummer ? `${a.nummer} · ` : ''}{a.titel || 'ohne Titel'}</>}
                   unter={[name(a) || 'ohne Empfänger', gesellschaftLabel(a.gesellschaft), a.gestelltAm ? `gestellt ${a.gestelltAm.slice(8, 10)}.${a.gestelltAm.slice(5, 7)}.` : `geändert ${a.geaendert.slice(8, 10)}.${a.geaendert.slice(5, 7)}.`, `${euroCent(s.gesamt.netto)} netto`].join(' · ')}

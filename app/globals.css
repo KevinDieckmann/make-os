@@ -917,32 +917,44 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ui-monat-zelle { min-height: 56px !important; padding: 4px 2px !important; justify-items: center; }
 }
 
-/* ─── Zeilen-Aktionen: Archivieren & Löschen (04.10., components/os/ui/zeile-aktionen.tsx) ─────────────────────────
-   Handy: Zeile nach links wischen (die Aktionen liegen dahinter, sichtbar nur die freigewischte Breite). Rechner: Symbol-Knöpfe
-   am rechten Rand beim Überfahren/Fokus. `touch-action: pan-y` lässt das senkrechte Scrollen dem Browser. */
+/* ─── Zeilen-Aktionen (04.10., neu 10.10. — components/os/ui/zeile-aktionen.tsx, DESIGN_STANDARD.md › Zeilen-Aktionen) ─────────
+   Rechner: „⋯“ in einer EIGENEN Spalte rechts (nie über dem Inhalt), ruhig — sichtbar beim Überfahren/Fokus, am Handy und mit der
+   Einstellung „⋯ immer sichtbar“ (`:root[data-za-mehr="immer"]`) immer. Handy: Zeile wischen, hinter ihr steht, was passiert.
+   `touch-action: pan-y` lässt das senkrechte Scrollen dem Browser. */
 .ui-za { position: relative; }
 .ui-za-bahn { position: relative; overflow: hidden; }
-.ui-za-inhalt { position: relative; touch-action: pan-y; transition: transform .24s cubic-bezier(.22, 1, .36, 1); }
-.ui-za-hinten { position: absolute; top: 0; right: 0; bottom: 0; overflow: hidden; display: flex; justify-content: flex-end; transition: width .24s cubic-bezier(.22, 1, .36, 1); }
-.ui-za-zieht .ui-za-inhalt, .ui-za-zieht .ui-za-hinten { transition: none; }
-/* Die Zeile ist im Baustein immer „letztes Kind“ — der Trenner richtet sich nach dem Platz des Bausteins in der Liste. */
-.ui-za:not(:last-child) > .ui-za-bahn > .ui-za-inhalt > .zeile:last-child { border-bottom: 1px solid rgba(255, 255, 255, .05) !important; }
-.ui-za:not(:last-child) > .ui-za-bahn > .ui-za-inhalt > .ui-zeile:last-child { border-bottom: 1px solid rgba(255, 255, 255, .06); }
-.ui-za-inhalt > .ui-zeile-klick { margin: 0; }
-.ui-za-reihe { display: flex; height: 100%; flex: 0 0 auto; }
-.ui-za-aktion { width: 88px; height: 100%; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: none; font-weight: 600; line-height: 1.2; cursor: pointer; }
-.ui-za-schnell { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; padding: 2px; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 2; box-shadow: 0 8px 24px -10px rgba(0, 0, 0, .7); }
-.ui-za:hover > .ui-za-schnell, .ui-za-schnell:focus-within { opacity: 1; pointer-events: auto; }
-.ui-za-offen > .ui-za-schnell { opacity: 0 !important; pointer-events: none !important; }
-/* Aufgaben-Zeilen mit Menü „…“ (06.10., components/os/aufgaben/ZeilenMenue.tsx): die Rand-Knöpfe stehen links daneben, „…“ bleibt frei. */
-.ui-za:has(.aufgaben-zeilenmenue) > .ui-za-schnell { right: 52px; }
-.ui-za-knopf { width: 40px; height: 40px; display: grid; place-items: center; border: none; background: none; border-radius: 10px; cursor: pointer; }
-.ui-za-knopf:hover { background: rgba(255, 255, 255, .07); }
-.ui-za-knopf:focus-visible, .ui-za-aktion:focus-visible { outline: 2px solid #58D9CD; outline-offset: -2px; }
-/* Ohne Zeiger (Handy/Tablet): die Rand-Knöpfe nur für Vorleser und Tastatur — gewischt wird hinter der Zeile. */
+.ui-za-inhalt { position: relative; display: flex; align-items: center; touch-action: pan-y; transition: transform .24s cubic-bezier(.22, 1, .36, 1); }
+.ui-za-kern { flex: 1 1 auto; min-width: 0; }
+.ui-za-spalte { flex: 0 0 44px; width: 44px; display: flex; align-items: center; justify-content: center; align-self: stretch; }
+.ui-za-mehr { width: 44px; height: 44px; min-height: 44px; display: grid; place-items: center; padding: 0; border: none; background: none; cursor: pointer; opacity: 0; transition: opacity .15s ease, background .15s ease; }
+.ui-za:hover .ui-za-mehr, .ui-za:focus-within .ui-za-mehr, .ui-za-mehr[aria-expanded="true"], :root[data-za-mehr="immer"] .ui-za-mehr { opacity: 1; }
+.ui-za-mehr:hover, .ui-za-mehr[aria-expanded="true"] { background: rgba(255, 255, 255, .07); }
+.ui-za-mehr:focus-visible, .ui-zm-punkt:focus-visible { outline: 2px solid #58D9CD; outline-offset: -2px; }
+/* Ohne Zeiger (Handy/Tablet): „⋯“ steht immer — Wischen ist der schnelle Weg, „⋯“ der sichtbare. */
 @media (hover: none), (pointer: coarse) {
-  .ui-za-schnell:not(:focus-within) { clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; padding: 0; border: 0 !important; box-shadow: none; }
+  .ui-za-mehr { opacity: 1; }
 }
+.ui-za-hinten { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; overflow: hidden; transition: width .24s cubic-bezier(.22, 1, .36, 1), background-image .12s ease; }
+.ui-za-hinten-rechts { right: 0; justify-content: flex-end; }
+.ui-za-hinten-links { left: 0; justify-content: flex-start; }
+.ui-za-hinweis { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 20px; font-weight: 600; line-height: 1.2; white-space: nowrap; transition: transform .12s ease; }
+.ui-za-scharf .ui-za-hinweis { transform: scale(1.08); }
+.ui-za-zieht .ui-za-inhalt, .ui-za-zieht .ui-za-hinten { transition: none; }
+/* Die Zeile ist im Baustein immer „letztes Kind“ — der Trenner läuft unter der ganzen Zeile durch (auch unter „⋯“) und richtet sich nach
+   dem Platz des Bausteins in der Liste. */
+.ui-za-kern > .ui-zeile:last-child, .ui-za-kern > .zeile:last-child { border-bottom: 0 !important; }
+.ui-za:not(:last-child) > .ui-za-bahn > .ui-za-inhalt:has(> .ui-za-kern > .ui-zeile:only-child) { border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.ui-za:not(:last-child) > .ui-za-bahn > .ui-za-inhalt:has(> .ui-za-kern > .zeile:only-child:not(.ui-zeile)) { border-bottom: 1px solid rgba(255, 255, 255, .05); }
+.ui-za-kern > .ui-zeile-klick { margin: 0; }
+/* Das Menü „⋯“ (components/os/ui/zeilen-menue.tsx): Punkte ≥ 44 px, am Handy ein Blatt von unten über einem dunklen Grund. */
+.ui-zm { box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .7); }
+.ui-zm-punkt:hover:not([aria-disabled="true"]), .ui-zm-punkt:focus-visible { background: rgba(255, 255, 255, .06); }
+.ui-zm-grund { position: fixed; inset: 0; z-index: 9989; background: rgba(5, 7, 8, .5); }
+.ui-zm-blatt { animation: uiZmAuf .2s cubic-bezier(.22, 1, .36, 1); }
+@keyframes uiZmAuf { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Dichte der Listen (Einstellungen › Bedienung, `:root[data-dichte="kompakt"]`): weniger Luft — das Tippziel bleibt ≥ 44 px. */
+:root[data-dichte="kompakt"] .ui-zeile { min-height: 44px; padding-top: 5px; padding-bottom: 5px; gap: 2px 12px; }
+:root[data-dichte="kompakt"] .ui-zeile-unter { margin-top: 0; }
 .ui-rueckgaengig { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 9998; width: min(460px, calc(100vw - 32px)); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 14px; box-shadow: 0 16px 40px -12px rgba(0, 0, 0, .7); box-sizing: border-box; }
 .ui-rueckgaengig-knopf { background: none; border-radius: 10px; cursor: pointer; font-weight: 700; padding: 8px 12px; min-height: 44px; }
 .ui-rueckfrage-grund { position: fixed; inset: 0; z-index: 10000; background: rgba(5, 7, 8, .62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 16px; }

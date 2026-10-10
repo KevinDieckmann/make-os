@@ -27,7 +27,7 @@ import { einheitName, PRIVAT_EINHEITEN_NAMEN } from '@/lib/einheiten';
 import { hatPrivatEinheit, speicherSpace } from '@/lib/planung/bereich';
 import { rhythmusKurz, naechstesMalNach } from '@/lib/planung/rhythmus';
 import { PlanerLeiste } from './PlanerLeiste';
-import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen, ZeileAktionen, useRueckgaengig } from './ui';
 import { PfeilRang } from './planung/PfeilRang';
 import { neueKennung } from '@/lib/kennung';
 
@@ -148,6 +148,12 @@ export function RoutinenPlanerView() {
   const nameVon = (sp: string) => (sp === OWNER_BEIDE ? 'gemeinsam' : personen.find(p => p.speicher === sp)?.name ?? (sp === ich ? 'ich' : sp));
   // Wechsel des Bereichs: Privat verwirft die Einheit; nach Business fällt auch eine Privat-Einheit (Selbstständigkeit) weg — sonst stünde die
   // Routine weiter unter Privat (05.10. abends, Bereich abgeleitet).
+  // Löschen (10.10., Standard Zeilen-Aktionen): wischen bzw. „⋯“ statt eines ✕ in der Zeile — mit 10 s „Rückgängig“.
+  const { melden, hinweis: rueckHinweis } = useRueckgaengig();
+  const routineLoeschen = (r: Routine) => {
+    persist(routinenRef.current.filter(x => x.id !== r.id));
+    melden(`Routine „${r.label}“ gelöscht`, () => { if (!routinenRef.current.some(x => x.id === r.id)) persist([...routinenRef.current, r]); });
+  };
   const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p, ...(p.space === 'privat' || (p.space === 'business' && hatPrivatEinheit(x)) ? { einheit: undefined } : {}) } : x)));
   /** Privat-Einheit (Selbstständigkeit) an einer Privat-Routine setzen/lösen — gespeichert in der Form des alten Stands (Business + Einheit). */
   const privatEinheitSetzen = (id: string, e: string) => persist(routinen.map(x => (x.id !== id ? x : e ? { ...x, space: speicherSpace('privat', e), einheit: e } : { ...x, space: 'privat' as const, einheit: undefined })));
@@ -275,7 +281,9 @@ export function RoutinenPlanerView() {
                 );
                 const pos = ids.indexOf(r.id);
                 return (
-                  <div key={r.id} className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 1 : 0.45, transition: 'opacity .2s ease' }}>
+                  <ZeileAktionen key={r.id} titel={r.label} onLoeschen={() => routineLoeschen(r)}
+                    mehr={[{ id: 'aktiv', label: r.aktiv ? 'Pausieren' : 'Wieder aktivieren', tun: () => patch(r.id, { aktiv: !r.aktiv }) }]}>
+                  <div className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 1 : 0.45, transition: 'opacity .2s ease' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       <Schalter an={r.aktiv} farbe={LEUCHT.gut} onChange={v => patch(r.id, { aktiv: v })} titel={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} ariaLabel={`Routine ${r.label} aktiv`} />
                       <Punkt farbe={katFarbe(r.kategorie)} groesse={8} />
@@ -287,7 +295,6 @@ export function RoutinenPlanerView() {
                       <Chip farbe={owner === OWNER_BEIDE ? LEUCHT.beziehung : LEUCHT.puls}>{nameVon(owner)}</Chip>
                       {rh !== 'taeglich' && <Chip farbe={LEUCHT.agenten}>{rhythmusKurz(rh)}{r.naechstesMal ? ` · ${dtKurz(r.naechstesMal)}` : ''}</Chip>}
                       <PfeilRang label={r.label} obenAus={pos === 0} untenAus={pos === ids.length - 1} onAuf={() => persist(verschiebe(routinen, r.id, 'auf', ids))} onAb={() => persist(verschiebe(routinen, r.id, 'ab', ids))} />
-                      <button onClick={() => persist(routinen.filter(x => x.id !== r.id))} aria-label="Routine löschen" style={loeschen}>✕</button>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, paddingLeft: 46 }}>
                       <select value={sp} onChange={e => patch(r.id, { space: e.target.value as SpaceId })} aria-label="Space" style={{ ...wahl, padding: '5px 8px', color: SPACE_FARBE[sp] }}>
@@ -322,6 +329,7 @@ export function RoutinenPlanerView() {
                       </span>
                     </div>
                   </div>
+                  </ZeileAktionen>
                 );
               })}
             </Liste>
@@ -387,6 +395,7 @@ export function RoutinenPlanerView() {
           </div>
         )}
       </Karte>
+      {rueckHinweis}
     </Seite>
   );
 }
