@@ -7,7 +7,7 @@
 // Ablauf-Datei (Prozessnamen früherer Unternehmen) werden NIE Kennung oder Titel — die Kennung entsteht aus dem Titel (`fp-imp-<slug>`).
 //
 // Bausteine bekommen die Kennung `fb-imp-<quell-id>` (Präfixe s2-/s3-/s4- der Dateien bleiben drin → keine Kollision; derselbe Import
-// noch einmal aktualisiert statt zu verdoppeln). Vorhandene Bausteine mit gleicher Kennung: nur LEERE Felder werden ergänzt (Kevin 10.10.);
+// noch einmal aktualisiert statt zu verdoppeln). Vorhandene Bausteine mit gleicher Kennung: nur LEERE Felder werden ergänzt (Entscheidung 10.10.);
 // abweichende Inhalte stehen in der Vorschau („abweichend“ bzw. „Konflikt“, wenn von Hand geändert) und gehen nur mit „Import nehmen“ rein.
 // Marken: „vor Einsatz rechtlich prüfen“ (`rechtVorschlag`), „vor Verkauf prüfen“ (gekauftes/fremdes Material, `pruefen_vor_verkauf`),
 // „nur intern“ (`nur_intern`). Grenzen: ≤ 400 Bausteine bzw. ≤ 20 Abläufe je Datei (413), sonst wird abgelehnt — nie still gekürzt.

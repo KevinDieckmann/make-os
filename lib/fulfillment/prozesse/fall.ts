@@ -12,7 +12,7 @@ import type { AnwendenErgebnis, Fall, FallKnoten, KnotenStatus, ProzessKnoten, P
 import { GRENZEN } from '../grenzen';
 import { ebeneVon, inReihenfolge, kinderVon, teilbaum, EBENEN_MAX } from '../regeln';
 import { MUSTER_BEFAEHIGUNG, MUSTER_ONBOARDING } from '../muster';
-import { obKnotenId, obSchluessel } from './onboarding';
+import { OB_PRAEFIX, obKnotenId, obSchluessel } from './onboarding';
 import { ausfuehren, istObj, mischen, nein, optBool, optTag, optText, optWahl, optZahl, pflichtText, standPruefen, titelForm } from './pruefen';
 import { tagPlus } from '@/lib/kalender/zeit';
 
@@ -47,18 +47,21 @@ export function fallStarten(e: StartEingabe): Fall {
     tag = tagPlus(tag, p.dauerTage);
     knoten = knoten.map(k => (k.id === p.id ? { ...k, faelligAm: tag } : k));
   }
-  // Onboarding: erster Knoten (Ebene 2 oder 3), der „Onboarding“ heißt — sonst eine neue Phase ganz vorn.
+  // Onboarding: ein Knoten (Ebene 2 oder 3), der „Onboarding“ heißt — bevorzugt einer ohne eigene Schritte (bei „Vorlauf / Onboarding“ mit dem
+  // Unterschritt „Onboarding“ also der Unterschritt) —, sonst eine neue Phase ganz vorn. Die acht Schritte kommen hinter vorhandene.
   const wurzel = knoten.find(k => !k.elternId);
-  let container = knoten.find(k => { const eb = ebeneVon(k, knoten); return (eb === 2 || eb === 3) && titelForm(k.titel).split(' ').includes('onboarding'); });
+  const passend = knoten.filter(k => { const eb = ebeneVon(k, knoten); return (eb === 2 || eb === 3) && titelForm(k.titel).split(' ').includes('onboarding'); });
+  let container = passend.find(k => kinderVon(k.id, knoten).length === 0) ?? passend[0];
   if (!container && wurzel) {
     container = { id: 'fk-ob', elternId: wurzel.id, titel: 'Onboarding', rang: 0, status: 'offen', extra: true, kundeSichtbar: true };
     knoten = [...knoten, container].map(k => (k.elternId === wurzel.id ? { ...k, rang: k.id === 'fk-ob' ? 1 : k.rang + 1 } : k));
   }
-  if (container && kinderVon(container.id, knoten).length === 0 && ebeneVon(container, knoten) < EBENEN_MAX - 1) {
+  if (container && ebeneVon(container, knoten) < EBENEN_MAX - 1 && !knoten.some(k => k.id.startsWith(OB_PRAEFIX) && k.elternId)) {
     const c = container;
+    const vorhanden = kinderVon(c.id, knoten).length;
     MUSTER_ONBOARDING.forEach((s, i) => {
       knoten.push({
-        id: obKnotenId(s.schluessel), elternId: c.id, titel: s.titel, rang: i + 1, status: 'offen', extra: true, zustaendig: s.zustaendig,
+        id: obKnotenId(s.schluessel), elternId: c.id, titel: s.titel, rang: vorhanden + i + 1, status: 'offen', extra: true, zustaendig: s.zustaendig,
         ...(s.freigabe ? { freigabe: s.freigabe } : {}), ...(s.schluessel === 'willkommen' && e.willkommenBis ? { faelligAm: e.willkommenBis } : {}),
         ...(s.schluessel === 'playbook' ? { kundeSichtbar: true } : {}),
       });
@@ -383,7 +386,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           if (o.weg === true) { f.wertKonto[z.id] = { ...alt, messungen: alt.messungen.filter(m => m.am !== am) }; geaendert.push(`wert:${z.id}`); break; }
           const wert = optZahl(o.wert, -1e12, 1e12, 'Messwert');
           if (wert == null) nein('Messwert fehlt.');
-          // Messwerte trägt nur MAKE ein (Kevin 10.10.) — es gibt keinen Kunden-Eingabeweg; Quelle immer „hand“.
+          // Messwerte trägt nur MAKE ein (Entscheidung 10.10.) — es gibt keinen Kunden-Eingabeweg; Quelle immer „hand“.
           const messungen = [...alt.messungen.filter(m => m.am !== am), { am, wert: wert as number, quelle: 'hand' as const }].sort((a, b) => (a.am < b.am ? -1 : 1));
           f.wertKonto[z.id] = { ...alt, messungen }; geaendert.push(`wert:${z.id}`);
           break;

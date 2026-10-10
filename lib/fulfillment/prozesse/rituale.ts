@@ -3,7 +3,7 @@
 // täglich MIT Zahlenrunde ist eine Instanz-Vorlage). „Termine anlegen“ öffnet den VORHANDENEN Anlege-Dialog des Kalenders, vorbelegt mit
 // Titel, Dauer, Bezug `mandatId` und Gästen aus der Stakeholder-Karte — es gibt keinen neuen Schreibweg in den Kalender; Gäste nur über die
 // vorhandene Rückfrage. Der Fall merkt sich danach die Termin-Kennung (`ritual-merken`).
-// Mitschrift im 4-Zeilen-Standard (Kevin 22:30): Anlass · Ergebnis · nächster Schritt · Frist — kein Freitext über Personen. Daraus per Klick
+// Mitschrift im 4-Zeilen-Standard (Entscheidung 22:30): Anlass · Ergebnis · nächster Schritt · Frist — kein Freitext über Personen. Daraus per Klick
 // ein Eintrag im Entscheidungs-Log oder eine Aufgabe (`/api/tasks/create` mit `bezug.mandatId`). Rein und client-sicher.
 
 import type { Mitschrift, RitualVorlage, Rhythmus } from '../typen';

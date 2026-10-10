@@ -1,7 +1,7 @@
 // ─── Fulfillment · Prozesse — Bausteine der Bibliothek: Marken, Prüfung, Eingabe (C1, 10.10.) ──────────────────────────────────────
 // Ein Baustein ist die kleinste wiederverwendbare Einheit (Dokument, Skript, Checkliste, Mail, Kennzahl, Ritual, Formular/Workbook,
 // Analyse, Freigabe). Er steckt in beliebig vielen Paket-Vorlagen (Knoten auf Ebene 5 verweisen nur per `bausteinId`).
-// Marken (Kevin 22:30, 23:20, 00:20):
+// Marken (Entscheidung 22:30, 23:20, 00:20):
 //   · „vor Einsatz rechtlich prüfen“  → `rechtPruefen` (Ansprache-Texte, § 7 UWG, Provisionen …); geprüft = `rechtGeprueft` (Tag, Person, Notiz)
 //   · „vor Verkauf prüfen“            → `urheberPruefen` (gekauftes/fremdes Material); geprüft = Marke `urheber-geprueft:<id>` in `VorlagenDatei.marken`
 //   · „nur intern“                    → Schlagwort `nur-intern` (Material der früheren Agentur): NIE in Kunden-Ansicht, Kunden-PDF, Report oder Export
@@ -16,7 +16,7 @@ import { nein, istObj, pflichtText, optText, optWahl, optBool, textListe } from 
 
 export const TAG_NUR_INTERN = 'nur-intern';
 export const TAG_VOR_VERKAUF = 'pruefen-vor-verkauf';
-/** Messe-/Event-Nachfasstakt (Kevin 00:20): Tag 1, 3, 7, 14, 30 nach dem Ereignis — als Einzelschritte in „Nach der Messe“. */
+/** Messe-/Event-Nachfasstakt (Entscheidung 00:20): Tag 1, 3, 7, 14, 30 nach dem Ereignis — als Einzelschritte in „Nach der Messe“. */
 export const MESSE_NACHFASS_TAGE: readonly number[] = [1, 3, 7, 14, 30];
 /**
  * Länge eines Gliederungspunkts: die Vorlagen-Dateien tragen ganze Sätze je Punkt (bis rund 600 Zeichen) — die C0-Grenze `TEXT_MAX.gliederungPunkt`

@@ -1,4 +1,4 @@
-// ─── Fulfillment · Prozesse — Kennzahlen (C1, 10.10.; FULFILLMENT_KONZEPT.md 1.4 + Kevin 23:25 „sofort in den Business-Index“) ─────────
+// ─── Fulfillment · Prozesse — Kennzahlen (C1, 10.10.; FULFILLMENT_KONZEPT.md 1.4 + Entscheidung 23:25 „sofort in den Business-Index“) ─────────
 // Zwei Teile, beide rein:
 //   1. Die Erfolgsmaße aus 1.4 (`ff_willkommen_24h` … `ff_analyse_kosten`) — gezeigt unter Fulfillment › Visualisierung, je mit Erklärung.
 //   2. Die Säule „Fulfillment“ im Business-Index (`FF_SAEULE`, `FF_KENNZAHLEN`, `ffMessung`): Health, Takt, Kunden-Puls, Wert-Konto der

@@ -1,7 +1,7 @@
 // ─── Fulfillment · Prozesse — Wert-Konto: Zielerreichung, Ist-Text, Messreihe (C1, 10.10.; FULFILLMENT_KONZEPT.md 1.3, 7.5) ───────────
 // Das Wert-Konto ist das gemeinsame Zielbild DES KUNDEN (Ausgangslage, Zielwerte, Datum — im Kick-off festgelegt; keine Garantie, kein
 // Erfolgshonorar). Die Ziele selbst bleiben in `Mandat.ziele` (eine Wahrheit für „was ist das Ziel“); der Fall ergänzt je Ziel-Kennung
-// Ausgang, Zielzahl, Einheit, Richtung, Datum und die Messreihe. Messwerte trägt nur MAKE ein (Kevin 10.10.). Eine neue Messung schreibt im
+// Ausgang, Zielzahl, Einheit, Richtung, Datum und die Messreihe. Messwerte trägt nur MAKE ein (Entscheidung 10.10.). Eine neue Messung schreibt im
 // selben Klick `Mandat.ziele[i].ist` (formatierter Wert, ≤ 80 Zeichen) über den CRM-Weg — so bleibt der heutige Report richtig.
 // Rein und client-sicher.
 

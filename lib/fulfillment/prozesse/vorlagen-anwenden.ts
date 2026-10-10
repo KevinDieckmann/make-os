@@ -171,7 +171,7 @@ function musterKopie(m: ProzessVorlage, k: VorlagenKontext, verweise: (musterId:
     const v = verweis ? verweise(verweis) : undefined;
     return v ? { ...neu, verweis: v } : neu;
   });
-  // Messe-Nachfasstakt (Kevin 00:20): unter „Nach der Messe“ je ein Einzelschritt für Tag 1, 3, 7, 14, 30.
+  // Messe-Nachfasstakt (Entscheidung 00:20): unter „Nach der Messe“ je ein Einzelschritt für Tag 1, 3, 7, 14, 30.
   if (m.id === MUSTER_P3.id) {
     const nach = map.get('fk-muster-p3-messen-nach');
     if (nach) MESSE_NACHFASS_TAGE.forEach((t, i) => knoten.push({ id: k.neueId('fk'), elternId: nach, titel: `Nachfassen Tag ${t}`, rang: i + 1, dauerTage: t }));

@@ -2,7 +2,7 @@
 
 // ─── Fulfillment › Fall › Wert-Konto (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 7.5) ──────────────────────────────────────────────────
 // Das gemeinsame Zielbild des Kunden: je Ziel des Mandats (`Mandat.ziele` bleibt die Wahrheit für „was ist das Ziel“) Ausgang, Zielwert,
-// Einheit und Datum — im Kick-off „festlegen“. Messwerte trägt nur MAKE ein (Kevin 10.10.); jede Messung schreibt im selben Klick den Ist-Wert am
+// Einheit und Datum — im Kick-off „festlegen“. Messwerte trägt nur MAKE ein (Entscheidung 10.10.); jede Messung schreibt im selben Klick den Ist-Wert am
 // Mandat, damit der heutige Report richtig bleibt. Ein neues Ziel legt zuerst die Zeile am Mandat an. Keine Garantie, kein Erfolgshonorar.
 
 import { useState } from 'react';

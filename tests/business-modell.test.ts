@@ -100,8 +100,9 @@ describe('Punkte hinter den Kacheln', () => {
   });
 
   it('kein Link endet im Leeren: jeder Punkt und jedes „so schließen“ zeigt auf eine echte Seite', () => {
+    // 10.10. (Fulfillment C1): die Säule „Fulfillment“ verweist auf Produkte & Mandate › Fulfillment (app/os/mandate/fulfillment).
     // 08.10. (Aufräumen Etappe 2): Finanzen hat keine Nebenseiten mehr — alles unter /os/finanzen, `s` muss ein echter Ort sein.
-    const ERLAUBT_PFAD = /^\/os\/(finanzen|mandate|markttraktion|planung\/(woche|jahr|kapazitaet|meilenstein\/[A-Za-z0-9_~:.-]+|ziel\/[A-Za-z0-9_~:.-]+)|kalender|agenten|aufgaben)(\?[a-z]+=[^&#\s]+(&[a-z]+=[^&#\s]+)*)?(#(abschluss|einstellungen|modell|verlauf|kontostaende|fristen|ruecklage|ust|uebergabe|index|gesamt|altbestand))?$/;
+    const ERLAUBT_PFAD = /^\/os\/(finanzen|mandate\/fulfillment|mandate|markttraktion|planung\/(woche|jahr|kapazitaet|meilenstein\/[A-Za-z0-9_~:.-]+|ziel\/[A-Za-z0-9_~:.-]+)|kalender|agenten|aufgaben)(\?[a-z]+=[^&#\s]+(&[a-z]+=[^&#\s]+)*)?(#(abschluss|einstellungen|modell|verlauf|kontostaende|fristen|ruecklage|ust|uebergabe|index|gesamt|altbestand))?$/;
     const ERLAUBT = { test: (h: string) => ERLAUBT_PFAD.test(h) && (!h.startsWith('/os/finanzen') || (FINANZ_S as readonly string[]).includes(new URLSearchParams(h.split(/[?#]/)[1] ?? '').get('s') ?? 'privat')) };
     const b = leer({
       firmen: [{ id: 'kdc', name: 'Consulting', kontostand: 20000, stand: '2026-09-01' }, { id: 'kdv', name: 'KD Ventures', kontostand: null, stand: null }],

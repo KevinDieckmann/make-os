@@ -1,5 +1,5 @@
 // ─── Fulfillment · Prozesse — Ablauf-Bild: Lage der Stufen und Kanten je Zeichenform (C1, 10.10.; FULFILLMENT_KONZEPT.md 2.6, 6.2) ──────
-// Abläufe (früherer Vertrieb, als Wissen; der heutige Kreislauf der Markttraktion gilt) werden „schön visualisiert“ (Kevin 22:55):
+// Abläufe (früherer Vertrieb, als Wissen; der heutige Kreislauf der Markttraktion gilt) werden „schön visualisiert“ (Entscheidung 22:55):
 //   trichter  — gestapelte, nach unten schmalere Scheiben; mehrere Stufen derselben Stufe nebeneinander; Ausstiege rechts daneben
 //   fluss     — Spalten von links nach rechts (Stufe = längster Weg über „weiter“), Weichen-Texte an den Kanten, Rückwege als Bögen unterhalb
 //   zeitachse — Kreise auf einer Linie, nach Phasen gruppiert; Rückwege als Bögen oberhalb, Schleifen als kleine Rundpfeile
