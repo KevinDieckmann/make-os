@@ -174,10 +174,11 @@ export function AgentenSeite() {
   const sichtbar = (platz ?? 0) > 0 || (typeof window !== 'undefined' && typeof ResizeObserver === 'undefined');
   const form: Form = handy ? 'handy' : lage.form;
 
-  const agenten = useAbruf('agenten', ladeAgenten, 60_000);
-  const faeden = useAbruf('faeden', () => ladeFaeden(), 60_000);
-  const laeufe = useAbruf('laeufe', ladeLaeufe, 30_000);
-  const stapel = useAbruf('stapel', ladeStapel, 60_000);
+  // Je Sicht des Kopfs (09.10. spät): der Server liefert nur den Bereich der Sicht — der Schlüssel trägt ihn, damit ein Wechsel neu lädt.
+  const agenten = useAbruf(`agenten:${space}`, () => ladeAgenten(space), 60_000);
+  const faeden = useAbruf(`faeden:${space}`, () => ladeFaeden(undefined, space), 60_000);
+  const laeufe = useAbruf(`laeufe:${space}`, () => ladeLaeufe(space), 30_000);
+  const stapel = useAbruf(`stapel:${space}`, () => ladeStapel(space), 60_000);
   const { bestaetigen, dialog: rueckfrage } = useRueckfrage();
   const [dialog, setDialog] = useState<DialogArt | null>(null);
   const [entwurf, setEntwurf] = useState<{ headId: string; mitarbeiterId: string } | null>(null);

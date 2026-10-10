@@ -150,7 +150,7 @@ export const nummerMaskiert = (n: string | undefined): string | undefined => (n 
 
 export type Deutung =
   | { art: 'stop' }
-  | { art: 'ja' | 'nein'; kennung?: string }
+  | { art: 'ja' | 'nein'; kennung?: string; /** „ja <Kennung> privat|business“ (09.10. spät): erst den Bereich setzen, dann freigeben. */ bereich?: 'privat' | 'business' }
   | { art: 'aufgabe' | 'notiz'; text: string }
   | { art: 'quittung' }
   | { art: 'frage'; text: string };
@@ -169,8 +169,10 @@ export function deuten(roh: string | undefined): Deutung {
   if (/^(stop|stopp|abmelden|abbestellen|unsubscribe)\s*[.!]?$/i.test(text)) return { art: 'stop' };
   const jn = /^(ja|freigeben|nein|ablehnen)\b([\s\S]*)$/i.exec(text);
   if (jn && jn[2].trim().length <= 30) {
-    const k = KENNUNG.exec(jn[2]);
-    return { art: /^(ja|freigeben)$/i.test(jn[1]) ? 'ja' : 'nein', ...(k ? { kennung: k[1].toUpperCase() } : {}) };
+    const b = /\b(privat|business)\b/i.exec(jn[2]);
+    const k = KENNUNG.exec(jn[2].replace(/\b(privat|business)\b/ig, ' '));
+    const ja = /^(ja|freigeben)$/i.test(jn[1]);
+    return { art: ja ? 'ja' : 'nein', ...(k ? { kennung: k[1].toUpperCase() } : {}), ...(ja && b ? { bereich: b[1].toLowerCase() as 'privat' | 'business' } : {}) };
   }
   const a = /^(aufgabe|notiz)\s*[:–-]\s*([\s\S]+)$/i.exec(text);
   if (a && a[2].trim()) return { art: a[1].toLowerCase() === 'aufgabe' ? 'aufgabe' : 'notiz', text: a[2].trim() };
@@ -203,14 +205,15 @@ export const KANAL_TEXTE = {
   zuLang: (n: number) => `Das ist zu lang (höchstens ${n} Zeichen) — bitte kürzer schicken. Nichts angelegt.`,
   sprachnachricht: (link: string) => `Sprachnachricht erhalten — bitte als Text schicken oder in MAKE OS anhören: ${link}`,
   antwortInApp: (link: string) => `Antwort liegt in MAKE OS — ${link}`,
-  vorschlag: (k: string, was: 'aufgabe' | 'notiz', link: string, titel?: string) =>
-    `Vorschlag ${k} liegt in deinen Freigaben: ${was === 'aufgabe' ? 'eine Aufgabe' : 'eine Notiz'}${titel ? ` „${titel}“` : ''}. Antworte „ja ${k}“ zum Freigeben oder „nein ${k}“ — oder in MAKE OS: ${link}`,
+  // Ohne erkannten Bereich (09.10. spät): „ja <Kennung> privat“ bzw. „… business“ — ohne Bereich gibt es keine Freigabe.
+  vorschlag: (k: string, was: 'aufgabe' | 'notiz', link: string, titel?: string, bereichFehlt?: boolean) =>
+    `Vorschlag ${k} liegt in deinen Freigaben: ${was === 'aufgabe' ? 'eine Aufgabe' : 'eine Notiz'}${titel ? ` „${titel}“` : ''}. ${bereichFehlt ? `Antworte „ja ${k} privat“ oder „ja ${k} business“ zum Freigeben` : `Antworte „ja ${k}“ zum Freigeben`} oder „nein ${k}“ — oder in MAKE OS: ${link}`,
   freigegeben: (k: string, link: string, ergebnis?: string) => (ergebnis ? `Freigegeben (${k}): ${ergebnis}` : `Freigegeben (${k}). Ergebnis in MAKE OS: ${link}`),
   fehlgeschlagen: (k: string, link: string) => `Vorschlag ${k} ließ sich nicht übernehmen — bitte in MAKE OS ansehen: ${link}`,
   abgelehnt: (k: string) => `Vorschlag ${k} abgelehnt.`,
   schonEntschieden: (k: string) => `Vorschlag ${k} ist schon entschieden.`,
   /** Ohne Bereich keine Freigabe (09.10. spät) — neutral, ohne Inhalt. */
-  bereichFehlt: (k: string, ziel: string) => `Vorschlag ${k}: erst in MAKE OS den Bereich wählen (Privat oder Business), dann freigeben — ${ziel}`,
+  bereichFehlt: (k: string, ziel: string) => `Vorschlag ${k}: erst den Bereich wählen — antworte „ja ${k} privat“ oder „ja ${k} business“ (oder in MAKE OS: ${ziel}).`,
   welcher: (offen: readonly string[]) => (offen.length ? `Welcher Vorschlag? Antworte „ja <Kennung>“ — offen: ${offen.join(', ')}.` : 'Gerade liegt kein Vorschlag von hier offen.'),
 } as const;
 

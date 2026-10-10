@@ -158,13 +158,14 @@ const q = (basis: string, p: Record<string, string | undefined>) => {
   return t ? `${basis}?${t}` : basis;
 };
 
-export const ladeAgenten = () => holen<AgentenAntwort>(WEGE.agenten);
-export const ladeFaeden = (agent?: string) => holen<FadenListeAntwort>(q(WEGE.faden, { agent }));
+// `space` (09.10. spät): die Sicht des Kopfs — der Server liefert nur Heads, Threads, Läufe und Freigaben dieses Bereichs (lib/agenten/sicht.ts).
+export const ladeAgenten = (space?: string) => holen<AgentenAntwort>(q(WEGE.agenten, { space }));
+export const ladeFaeden = (agent?: string, space?: string) => holen<FadenListeAntwort>(q(WEGE.faden, { agent, space }));
 export const ladeFaden = (id: string) => holen<FadenAntwort>(q(WEGE.faden, { id }));
 export const ladeSkills = (head?: string) => holen<SkillsAntwort>(q(WEGE.skills, { head }));
 export const ladeSkill = (id: string) => holen<SkillAntwort>(q(WEGE.skills, { id }));
-export const ladeLaeufe = () => holen<LaeufeAntwort>(WEGE.laeufe);
-export const ladeStapel = () => holen<StapelAntwort>(WEGE.stapel);
+export const ladeLaeufe = (space?: string) => holen<LaeufeAntwort>(q(WEGE.laeufe, { space }));
+export const ladeStapel = (space?: string) => holen<StapelAntwort>(q(WEGE.stapel, { space }));
 
 // ── Schreiben ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -197,8 +198,14 @@ export async function laeufeSenden(a: LaeufeAnfrage): Promise<Ergebnis<{ ok: tru
   return r;
 }
 /** Freigabe aus „Wartet auf dich“: eine Entscheidung je Vorschlag oder „alle risikoarmen“ (der Server nimmt nur risikoarme). */
-export async function stapelEntscheiden(b: { id: string; entscheidung: 'freigeben' | 'ablehnen'; grund?: string } | { alle: true }): Promise<Ergebnis<{ ok: true; erledigt?: number; einzeln?: number }>> {
+export async function stapelEntscheiden(b: { id: string; entscheidung: 'freigeben' | 'ablehnen'; grund?: string; stand?: string } | { alle: true; space?: string }): Promise<Ergebnis<{ ok: true; erledigt?: number; einzeln?: number }>> {
   const r = await senden<{ ok: true; erledigt?: number; einzeln?: number }>(WEGE.stapel, b);
+  if (r.ok) meldeNeu();
+  return r;
+}
+/** „Bereich wählen“ (09.10. spät): ohne Bereich gibt es keine Freigabe — erst Privat oder Business, mit dem gesehenen Stand (409, wenn veraltet). */
+export async function stapelBereich(id: string, bereich: 'privat' | 'business', stand?: string): Promise<Ergebnis<{ ok: true }>> {
+  const r = await senden<{ ok: true }>(WEGE.stapel, { aktion: 'bereich', id, bereich, ...(stand ? { stand } : {}) });
   if (r.ok) meldeNeu();
   return r;
 }

@@ -660,6 +660,8 @@ export interface Naechstes {
   kritisch?: boolean;
   /** Freigaben als EINE Zeile mit Zahl (C2). */
   anzahl?: number;
+  /** Eigener Bereich (Frist, Aufgabe — 09.10. spät); sonst gilt der des Heads (lib/agenten/sicht.ts `naechstesImBereich`). */
+  bereich?: 'privat' | 'business';
   /**
    * Serie eines wiederkehrenden Laufs (Zeitplan, Skill, Hintergrundaufgabe; Rundgang 09.10.) — dieselbe Kennung an jedem Vorkommen.
    * Die Antwort von GET /api/agenten/laeufe zeigt je Serie nur das NÄCHSTE Vorkommen (`naechstesVerdichten`, lib/agenten/naechstes.ts).

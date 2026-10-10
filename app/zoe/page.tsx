@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { ZoeStart } from '@/components/os/ZoeStart';
 import { wache } from '@/lib/zugang/wache';
 
@@ -9,5 +10,6 @@ export const dynamic = 'force-dynamic';
 // mit Seitenleiste. Wer Zahlen sehen will, geht von hier eine Ebene tiefer.
 export default async function Page() {
   await wache('/zoe');
-  return <ZoeStart />;
+  // Suspense (09.10. spät): der Empfang liest die Sicht des Kopfs (useSpace → useSearchParams).
+  return <Suspense><ZoeStart /></Suspense>;
 }

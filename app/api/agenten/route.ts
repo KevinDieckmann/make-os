@@ -19,6 +19,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { AGENTEN_NUR_SELBST } from '@/lib/agenten/typen';
 import { agentenAntwort } from '@/lib/agenten/faeden-server';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { sichtBereichAus } from '@/lib/agenten/sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,11 +29,14 @@ const nein = (status: number, fehler: string, extra: Record<string, unknown> = {
 export async function GET(req: Request) {
   const z = await eigenePerson(req, false, AGENTEN_NUR_SELBST);
   if (z instanceof NextResponse) return z;
+  // Sicht Privat/Business (09.10. spät): Heads, Threads, Überblick nur dieses Bereichs — serverseitig (lib/agenten/sicht.ts).
+  const space = sichtBereichAus(new URL(req.url).searchParams.get('space'));
+  if (space === undefined) return nein(400, 'space ist privat oder business.');
   const roh = new URL(req.url).searchParams.get('seit');
   const t = roh ? Date.parse(roh) : NaN;
   const seit = new Date(Number.isFinite(t) && t <= Date.now() ? t : Date.now() - 24 * 3_600_000).toISOString();
   try {
-    const a = await agentenAntwort(z.person, seit);
+    const a = await agentenAntwort(z.person, seit, space);
     // Feinschliff 09.10.: der Kopf eines Heads trägt Indexwerte — Gesundheit (Art. 9, nur die eigenen Werte) bzw. der Privat-Index des
     // Haushalts stehen dann im Lese-Protokoll wie auf ihren Seiten (nur Bereich und Person, nie Werte).
     const geliefert = (index: string) => a.heads.some(h => h.kennzahlen.some(k => k.id.startsWith(`${index}:`) && k.wert !== null));

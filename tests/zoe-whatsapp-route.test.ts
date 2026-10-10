@@ -293,7 +293,7 @@ describe('Senden: Fenster, Vorlage „Briefing bereit“, neutral ohne Ausnahme'
 });
 
 describe('Eingang: Aufgabe/Notiz nur als Vorschlag, „ja“ nur für den eigenen', () => {
-  it('„Aufgabe: …“ → Vorschlag im Stapel (nicht angelegt); „ja“ ohne Kennung fragt; fremde Kennung geht nicht; „ja <Kennung>“ legt an', async () => {
+  it('„Aufgabe: …“ → Vorschlag im Stapel (nicht angelegt); „ja“ ohne Kennung fragt; fremde Kennung geht nicht; ohne Bereich erst „ja <Kennung> privat|business“', async () => {
     await verbinde('kevin', '+49 170 1111111', KEVIN_NR);
     await verbinde('malin', '+49 170 2222222', MALIN_NR);
     await schreibt('kevin', KEVIN_NR, 'Aufgabe: Steuerberater anrufen');
@@ -314,10 +314,16 @@ describe('Eingang: Aufgabe/Notiz nur als Vorschlag, „ja“ nur für den eigene
     await schreibt('kevin', KEVIN_NR, 'ja');
     expect(gesendet(KEVIN_NR).at(-1)).toBe(K.KANAL_TEXTE.welcher([k]));
 
+    // Ohne Kopf-Schalter kein Bereich (09.10. spät): die Ansage nannte den Weg; „ja <Kennung>“ allein gibt nichts frei.
+    expect(ansage).toContain(`„ja ${k} privat“`);
     await schreibt('kevin', KEVIN_NR, `ja ${k}`);
+    expect(gesendet(KEVIN_NR).at(-1)).toMatch(/erst den Bereich wählen/);
+    expect(hops.filter(h => h.url.endsWith('/api/tasks/create'))).toEqual([]);
+    await schreibt('kevin', KEVIN_NR, `ja ${k} business`);
     const anlegen = hops.filter(h => h.url.endsWith('/api/tasks/create'));
     expect(anlegen).toHaveLength(1);
-    expect(anlegen[0]).toMatchObject({ person: 'kevin', body: { title: 'Steuerberater anrufen' } });
+    // Der gewählte Bereich wirkt auf den Ort der Aufgabe (lib/zoe/bereich.ts `eingabeMitBereich`).
+    expect(anlegen[0]).toMatchObject({ person: 'kevin', body: { title: 'Steuerberater anrufen', space: 'business' } });
     const { hole } = await import('@/lib/zoe/stapel');
     expect(await hole(offen[0].id)).toMatchObject({ status: 'freigegeben', entschiedenVon: 'kevin' });
     expect(gesendet(KEVIN_NR).at(-1)).toMatch(new RegExp(`^Freigegeben \\(${k}\\)`));
@@ -328,7 +334,7 @@ describe('Eingang: Aufgabe/Notiz nur als Vorschlag, „ja“ nur für den eigene
     const kanal = await S.ladeKanal('kevin');
     const [k1, ref] = Object.entries(kanal.vorschlaege ?? {})[0];
     expect(ref.wamid).toMatch(/^wamid\.ZOUT/);
-    await schreibt('kevin', KEVIN_NR, 'ja', { context: { id: ref.wamid } });
+    await schreibt('kevin', KEVIN_NR, 'ja privat', { context: { id: ref.wamid } });
     const { hole } = await import('@/lib/zoe/stapel');
     expect((await hole(ref.stapelId))?.status).toBe('freigegeben');
     await schreibt('kevin', KEVIN_NR, 'Aufgabe: Altes aufräumen');
@@ -348,7 +354,7 @@ describe('Eingang: Aufgabe/Notiz nur als Vorschlag, „ja“ nur für den eigene
     const v = (await lies('offen')).filter(x => x.werkzeug === 'create_task');
     expect(v.map(x => x.person).sort()).toEqual(['kevin', 'malin']);
     const km = kennungAus(gesendet(MALIN_NR).at(-1)!);
-    await schreibt('malin', MALIN_NR, `ja ${km}`);
+    await schreibt('malin', MALIN_NR, `ja ${km} privat`);
     expect(hops.filter(h => h.url.endsWith('/api/tasks/create'))[0]).toMatchObject({ person: 'malin' });
   });
   it('„Notiz: …“ → Vorschlag notiz_anlegen, privat; zu lange Aufgabe → nichts angelegt', async () => {

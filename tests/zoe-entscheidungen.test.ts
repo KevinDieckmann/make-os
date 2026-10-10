@@ -16,6 +16,8 @@ delete process.env.ANTHROPIC_API_KEY;
 vi.mock('@/lib/meldungen/melden', () => ({ melde: async () => {} }));
 
 const T = '2026-09-01T08:00:00.000Z';
+/** Ohne Bereich keine Freigabe (09.10. spät, lib/zoe/bereich.ts): diese Vorschläge kommen „aus einem Gespräch im Bereich Privat“. */
+const MIT_BEREICH = { gespraech: 'privat' as const };
 const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', haushalt?: string) => ({ id, speicher, email: `${speicher}@test.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...(haushalt ? { haushalt } : {}) });
 const kontakt = (id: string, vorname: string, extra: Record<string, unknown> = {}) => ({ id, vorname, nachname: 'Beispiel', eignung: '', prio: '', stufe: 'gespraech', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...extra });
 const sitzung = (p: string) => ({ 'content-type': 'application/json', 'x-make-user': p });
@@ -49,7 +51,7 @@ afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
 
 describe('Entscheidungen dauerhaft, mit Person', () => {
   it('Ablehnen über die Route: Person + Grund am Eintrag und dauerhaft; zweites Ablehnen → 409', async () => {
-    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Block setzen', nachher: 'x', eingabe: { tag: '2026-10-01' }, person: 'kevin' });
+    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Block setzen', nachher: 'x', eingabe: { tag: '2026-10-01' }, person: 'kevin' }, MIT_BEREICH);
     const r = await entscheiden(v.id, 'kevin', 'ablehnen', { grund: 'passt diese Woche nicht' });
     expect(r.status).toBe(200);
     expect(await stapel.hole(v.id)).toMatchObject({ status: 'abgelehnt', entschiedenVon: 'kevin', grund: 'passt diese Woche nicht', protokolliert: true });
@@ -58,7 +60,7 @@ describe('Entscheidungen dauerhaft, mit Person', () => {
     expect((await entscheiden(v.id, 'kevin', 'ablehnen')).status).toBe(409);
   });
   it('zu langer Grund → 413 (nie gekürzt); zu lange geänderte Eingabe → 413', async () => {
-    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Block', nachher: 'x', eingabe: { tag: '2026-10-02', titel: 'a' }, person: 'kevin' });
+    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Block', nachher: 'x', eingabe: { tag: '2026-10-02', titel: 'a' }, person: 'kevin' }, MIT_BEREICH);
     const lang = await entscheiden(v.id, 'kevin', 'ablehnen', { grund: 'x'.repeat(401) });
     expect(lang.status).toBe(413);
     expect((await stapel.hole(v.id))!.status).toBe('offen');
@@ -70,7 +72,7 @@ describe('Entscheidungen dauerhaft, mit Person', () => {
     await entscheiden(v.id, 'kevin', 'ablehnen');
   });
   it('„Ändern & freigeben“: ein Zahl-Feld bleibt Zahl — Text dort → 400, nichts übernommen (Gegenprüfung 08.10.)', async () => {
-    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Block mit Dauer', nachher: 'x', eingabe: { tag: '2026-10-06', dauer: 60 }, person: 'kevin' });
+    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Block mit Dauer', nachher: 'x', eingabe: { tag: '2026-10-06', dauer: 60 }, person: 'kevin' }, MIT_BEREICH);
     const r = await entscheiden(v.id, 'kevin', 'freigeben', { eingabe: { tag: '2026-10-06', dauer: '1.500' } });
     expect(r.status).toBe(400);
     expect(String(((await r.json()) as { error?: string }).error)).toMatch(/„dauer“ ist ein Zahl-Feld/);
@@ -88,7 +90,7 @@ describe('Kürzen nur nach dauerhaftem Festhalten', () => {
     const alt = Array.from({ length: 205 }, (_, i) => ({ id: `v-alt-${String(i).padStart(4, '0')}`, zeit: T, tag: '2026-09-01', werkzeug: 'plan_block', gruppe: 'planer', titel: `Alt ${i}`, nachher: 'x', eingabe: {}, status: 'freigegeben', entschiedenAm: T }));
     const jetzt = (await db.loadJson<{ vorschlaege: unknown[] }>('zoe-stapel'))!.vorschlaege;
     await db.saveJson('zoe-stapel', { vorschlaege: [...jetzt, ...alt] });
-    await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Neu', nachher: 'x', eingabe: { tag: '2026-10-03' }, person: 'kevin' });
+    await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Neu', nachher: 'x', eingabe: { tag: '2026-10-03' }, person: 'kevin' }, MIT_BEREICH);
     const liste = (await db.loadJson<{ vorschlaege: { id: string }[] }>('zoe-stapel'))!.vorschlaege;
     expect(liste.length).toBeLessThanOrEqual(200);
     const weg = alt.filter(a => !liste.some(x => x.id === a.id));
@@ -113,7 +115,7 @@ describe('Kürzen nur nach dauerhaftem Festhalten', () => {
 
 describe('Keine Doppel-Ausführung', () => {
   it('beanspruche: von zwei gleichzeitigen gewinnt genau einer', async () => {
-    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Parallel', nachher: 'x', eingabe: { tag: '2026-10-04' }, person: 'kevin' });
+    const v = await stapel.lege({ werkzeug: 'plan_block', gruppe: 'planer', titel: 'Parallel', nachher: 'x', eingabe: { tag: '2026-10-04' }, person: 'kevin' }, MIT_BEREICH);
     const [a, b] = await Promise.all([stapel.beanspruche(v.id, 'kevin'), stapel.beanspruche(v.id, 'kevin')]);
     expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
     expect((await stapel.hole(v.id))!.status).toBe('in_arbeit');

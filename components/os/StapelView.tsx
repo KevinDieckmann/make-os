@@ -73,11 +73,9 @@ export function StapelView() {
   /** Nur der Reiter „Offen“ braucht Stapel, Arbeiter, Heads, Gedächtnis und Verbrauch — das Protokoll lädt selbst (1-vCPU-Server). */
   const offenReiter = reiter === 'offen';
   const { bestaetigen, dialog } = useRueckfrage();
-  // Die Sicht des Kopf-Schalters (Privat · Business) — der Server filtert danach, die Seite zeigt nur, was er liefert. Ein noch vorhandenes
-  // „Alles“ im Kopf (bis der Kopf nur noch zwei Bereiche kennt) zeigt alles.
-  const { wahl, space } = useSpace();
-  const sichtSpace: Bereich | null = (wahl as string) === 'alles' ? null : space;
-  const sicht = sichtSpace ? `space=${sichtSpace}` : '';
+  // Die Sicht des Kopf-Schalters (Privat · Business — immer konkret) — der Server filtert danach, die Seite zeigt nur, was er liefert.
+  const { space: sichtSpace } = useSpace();
+  const sicht = `space=${sichtSpace}`;
   /** „Ändern & freigeben“: je Vorschlag die geänderten Felder (Text), erst beim Freigeben in ihre Form gebracht. */
   const [aendern, setAendern] = useState<Record<string, Record<string, string>>>({});
   const [vorschlaege, setVorschlaege] = useState<Vorschlag[]>([]);
@@ -150,13 +148,13 @@ export function StapelView() {
   async function bereichWaehlen(v: Vorschlag, bereich: Bereich) {
     setBusy(v.id);
     const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'bereich', id: v.id, bereich, ...(v.stand ? { stand: v.stand } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
-    setMeldung(d.ok ? `„${v.titel}“ gehört jetzt zu ${BEREICH_NAME[bereich]}.${sichtSpace && sichtSpace !== bereich ? ` Du findest ihn unter „${BEREICH_NAME[bereich]}“.` : ''}` : (d.error ?? 'Bereich nicht geändert.'));
+    setMeldung(d.ok ? `„${v.titel}“ gehört jetzt zu ${BEREICH_NAME[bereich]}.${sichtSpace !== bereich ? ` Du findest ihn unter „${BEREICH_NAME[bereich]}“.` : ' Jetzt kannst du ihn freigeben.'}` : (d.error ?? 'Bereich nicht geändert.'));
     setBusy(null); void laden();
   }
   async function alleFreigeben(gruppe?: string) {
     setBusy(gruppe ?? 'alle');
     // „Alle freigeben“ nimmt nur, was diese Sicht zeigt (der Server filtert mit derselben Sicht).
-    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}), space: sichtSpace ?? 'alles' }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
+    const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true, ...(gruppe ? { gruppe } : {}), space: sichtSpace }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
     setMeldung(d.error ?? `${d.erledigt ?? 0} risikoarme Vorschläge übernommen.${d.einzeln ? ` ${d.einzeln} brauchen einzeln einen Blick (ändern Status/Deadline, CRM oder anderes).` : ''}`); setBusy(null); void laden(); void rehydrate();
   }
   async function chargeZurueck(charge: string) {
@@ -174,7 +172,7 @@ export function StapelView() {
   // Unklare oben unter „Bereich wählen“ (in beiden Sichten), darunter die zugeordneten nach Gruppe. „Alle freigeben“ nimmt nur zugeordnete.
   const unklar = offen.filter(v => bereichVonVorschlag(v) === 'unklar');
   const zugeordnet = offen.filter(v => bereichVonVorschlag(v) !== 'unklar');
-  const risikoarmOffen = (sichtSpace ? zugeordnet : offen).filter(sammelTauglich);
+  const risikoarmOffen = zugeordnet.filter(sammelTauglich);
   const entschieden = vorschlaege.filter(v => v.status !== 'offen').slice(0, 10);
   const gruppen = Array.from(new Set(zugeordnet.map(v => v.gruppe)));
   const g = (id: string) => GRUPPE[id] ?? { label: id, href: '/os', farbe: C.inkLeise };
@@ -185,7 +183,10 @@ export function StapelView() {
     return (
     <div key={v.id}>
       <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={v.titel} unter={anlassText(v) ?? `${v.vorher ? `${v.vorher} → ` : ''}${v.nachher}`}
-        rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><BereichEtikett v={v} /><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id || feldFehler.length > 0} titel={feldFehler.length ? `Erst „${feldFehler[0].schluessel}“ berichtigen: ${feldFehler[0].grund}` : undefined} farbe={LEUCHT.gut}>{aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? 'Ändern & freigeben' : 'Freigeben'}</Knopf><Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
+        rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{bereichVonVorschlag(v) === 'unklar' ? <>
+          {/* Ohne Bereich keine Freigabe (Kevin 09.10. spät): erst Privat oder Business wählen, danach steht hier „Freigeben“. */}
+          {(['privat', 'business'] as const).map(x => <Knopf key={x} farbe={BEREICH_FARBE[x]} aus={busy === v.id} onClick={() => bereichWaehlen(v, x)}>{BEREICH_NAME[x]}</Knopf>)}
+        </> : <><BereichEtikett v={v} /><Knopf onClick={() => entscheide(v, 'freigeben')} aus={busy === v.id || feldFehler.length > 0} titel={feldFehler.length ? `Erst „${feldFehler[0].schluessel}“ berichtigen: ${feldFehler[0].grund}` : undefined} farbe={LEUCHT.gut}>{aendern[v.id] && hatAenderung(v.eingabe, aendern[v.id]) ? 'Ändern & freigeben' : 'Freigeben'}</Knopf></>}<Knopf leise onClick={() => entscheide(v, 'ablehnen')} aus={busy === v.id}>Ablehnen</Knopf></span>} />
       {offenId === v.id && (
         <div style={{ padding: '6px 2px 16px 2px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', fontSize: TYP.bedien, color: C.inkDim }}>
@@ -243,7 +244,7 @@ export function StapelView() {
       {reiter === 'protokoll' ? <StapelProtokoll /> : <>
       {meldung && <Hinweis art="info" rolle="status">{meldung}</Hinweis>}
       {/* Sicht (09.10. spät): unter Privat bzw. Business nur dieser Bereich — unklare stehen in beiden oben, bis ihr Bereich gewählt ist. */}
-      {sichtSpace && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Vorschläge aus {BEREICH_NAME[sichtSpace]} — dazu oben die, bei denen ZOE den Bereich nicht sicher erkannt hat.</div>}
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Vorschläge aus {BEREICH_NAME[sichtSpace]} — dazu oben die, bei denen ZOE den Bereich nicht sicher erkannt hat.</div>
 
       <Spalten verhaeltnis="2:1">
         <Spalte>

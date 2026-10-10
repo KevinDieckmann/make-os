@@ -141,9 +141,9 @@ const ladeZoeFaden = async (id: string): Promise<{ nachrichten: Nachricht[]; sta
 export function ZoePanel() {
   // Der aktive Space geht mit jeder Nachricht mit (26.09.): ZOE antwortet aus dieser Sicht und legt Neues dort ab.
   // Der Space ist auch der Bereich des Gesprächs (09.10. spät): er ordnet Vorschläge im Stapel zu (lib/zoe/bereich.ts, Regel (c)) und wählt
-  // die Merksätze. Der Zähler zeigt dieselbe Sicht wie ZOE › Freigaben (ein noch vorhandenes „Alles“ im Kopf = alle).
-  const { space: aktiverSpace, wahl } = useSpace();
-  const stapelSicht = (wahl as string) === 'alles' ? 'alles' : aktiverSpace;
+  // die Merksätze. Der Zähler zeigt dieselbe Sicht wie ZOE › Freigaben (Kopf: Privat · Business).
+  const { space: aktiverSpace } = useSpace();
+  const stapelSicht = aktiverSpace;
   const [fenster, setFenster] = useState<Fenster>(STANDARD);
   const [convo, setConvo] = useState<Msg[]>([]);
   const [ask, setAsk] = useState('');

@@ -54,7 +54,7 @@ const objekte = (kal: string) => Object.values(ic.kalender[kal].objekte).map(o =
 
 async function vorschlagVonZoe(person: string, eingabe: Record<string, unknown>): Promise<{ id: string; werkzeug: string; status: string }> {
   ki.folge.push(werkzeug(['plan_block', eingabe]), text('Der Block liegt zur Freigabe bereit.'));
-  const r = await rufe(kimmi.POST, '/api/kimmi', sitzung(person), { message: 'Plane mir bitte einen Fokus-Block im Kalender ein.', zoeFaden: 'neu' });
+  const r = await rufe(kimmi.POST, '/api/kimmi', sitzung(person), { message: 'Plane mir bitte einen Fokus-Block im Kalender ein.', zoeFaden: 'neu', space: 'privat' /* Bereich des Gesprächs (09.10. spät): ohne Bereich keine Freigabe */ });
   expect(r.status, JSON.stringify(r.d)).toBe(200);
   const s = await rufe(stapelRoute.GET, '/api/zoe/stapel', sitzung(person));
   const v = (s.d.vorschlaege as { id: string; werkzeug: string; status: string; eingabe: Record<string, unknown> }[]).filter(x => x.werkzeug === 'plan_block' && x.eingabe.titel === eingabe.titel);

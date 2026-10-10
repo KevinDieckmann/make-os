@@ -232,6 +232,8 @@ export function kostenImMonat(laeufe: readonly Lauf[], jetzt: Date = new Date())
 export interface VorschlagKurz {
   id: string; titel: string; nachher?: string; werkzeug: string; gruppe?: string; zeit?: string; anlass?: string;
   bezug?: { art: string; id: string }; status?: string;
+  /** Bereich (09.10. spät) — fehlt = unklar: dann erst „Bereich wählen“, keine Freigabe. `stand` geht beim Wählen/Freigeben zurück. */
+  bereich?: 'privat' | 'business'; stand?: string;
 }
 /**
  * Was eine Freigabe genau bewirkt — für die Zeile „Wartet auf dich“ und die Rückfrage (Rundgang 09.10. „Agenten live“: viele Vorschläge heißen nur

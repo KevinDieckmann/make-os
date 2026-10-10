@@ -186,3 +186,27 @@ describe('Zähler je Sicht: Heute („Steht an“) und Glocke', () => {
     expect(glocke({ kalender: 1 })).toBe('/os/stapel');
   });
 });
+
+describe('Bereich wirkt bei der Freigabe; ZOE-Kanal „ja <Kennung> privat|business“', () => {
+  it('eingabeMitBereich: create_task ohne eigenen Ort landet im Bereich — sonst unverändert', async () => {
+    const { eingabeMitBereich } = await import('@/lib/zoe/bereich');
+    expect(eingabeMitBereich('create_task', { title: 'x' }, 'business')).toEqual({ title: 'x', space: 'business' });
+    expect(eingabeMitBereich('create_task', { title: 'x', space: 'privat' }, 'business')).toEqual({ title: 'x', space: 'business' });
+    expect(eingabeMitBereich('create_task', { title: 'x', meilenstein: 'M1' }, 'business')).toEqual({ title: 'x', meilenstein: 'M1' });
+    expect(eingabeMitBereich('create_task', { title: 'x' }, null)).toEqual({ title: 'x' });
+    expect(eingabeMitBereich('fakt_merken', { thema: 'a', satz: 'b' }, 'privat')).toEqual({ thema: 'a', satz: 'b' });
+  });
+  it('deuten liest den Bereich nur bei „ja“ — die Kennung bleibt richtig', async () => {
+    const { deuten } = await import('@/lib/zoe-whatsapp/kanal');
+    expect(deuten('ja K7P2 business')).toEqual({ art: 'ja', kennung: 'K7P2', bereich: 'business' });
+    expect(deuten('Ja privat K7P2')).toEqual({ art: 'ja', kennung: 'K7P2', bereich: 'privat' });
+    expect(deuten('ja K7P2')).toEqual({ art: 'ja', kennung: 'K7P2' });
+    expect(deuten('nein K7P2 privat')).toEqual({ art: 'nein', kennung: 'K7P2' });
+  });
+  it('Empfang je Sicht (lageFuerSicht): Privat ohne Markttraktion, Business ohne Familie, Körper und Haushalt', async () => {
+    const { lageFuerSicht } = await import('@/lib/zoe/bereich');
+    expect(lageFuerSicht('privat')).toEqual({ aus: ['crm'], koerper: true, haushalt: true });
+    expect(lageFuerSicht('business')).toEqual({ aus: ['familie'], koerper: false, haushalt: false });
+    expect(lageFuerSicht(null)).toEqual({ aus: [], koerper: true, haushalt: true });
+  });
+});

@@ -19,7 +19,7 @@ import { useStimme } from '@/hooks/useStimme';
 import { KiMarke } from '../KiMarke';
 import { Chip, Knopf, Leer, SymbolKnopf, Wahl, eingabe, Eigenschaft, Schalter } from '../ui';
 import { KuerzelKugel, ZoeStandbild, headFarbe } from './Avatar';
-import { bewerten, ladeFaden, stapelEntscheiden, type StapelAntwort } from './daten';
+import { bewerten, ladeFaden, stapelBereich, stapelEntscheiden, type StapelAntwort } from './daten';
 import {
   absenderVon, agentAusSchluessel, delegationTeile, euroAusUsd, fadenStatusFarbe, fadenStatusName, risikoVon, RISIKO_NAME, zeitKurz,
   type Ansprechbar, type Risiko,
@@ -74,9 +74,15 @@ export function VorschlagKarte({ vorschlagId, stapel }: { vorschlagId?: string; 
   const entscheide = async (entscheidung: 'freigeben' | 'ablehnen') => {
     if (!v) return;
     if (entscheidung === 'ablehnen' && !(await bestaetigen({ titel: 'Vorschlag ablehnen?', text: `„${v.titel}“${v.nachher ? ` (${v.nachher.slice(0, 120)})` : ''} wird nicht ausgeführt.`, ja: 'Ablehnen', gefahr: true }))) return;
-    const r = await stapelEntscheiden({ id: v.id, entscheidung });
+    const r = await stapelEntscheiden({ id: v.id, entscheidung, ...(v.stand ? { stand: v.stand } : {}) });
     if (r.ok) { setWeg(entscheidung === 'freigeben' ? 'Freigegeben.' : 'Abgelehnt.'); melde(entscheidung === 'freigeben' ? `„${v.titel}“ freigegeben.` : `„${v.titel}“ abgelehnt.`, 'gut'); }
     else melde(r.text, 'kritisch');
+  };
+  /** Ohne Bereich keine Freigabe (09.10. spät): erst Privat oder Business. */
+  const bereich = async (b: 'privat' | 'business') => {
+    if (!v) return;
+    const r = await stapelBereich(v.id, b, v.stand);
+    if (r.ok) melde(`„${v.titel}“ gehört jetzt zu ${b === 'privat' ? 'Privat' : 'Business'} — jetzt freigeben.`, 'gut'); else melde(r.text, 'kritisch');
   };
   return (
     <div style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: `${ABSTAND.m}px ${ABSTAND.l}px`, display: 'grid', gap: ABSTAND.s, borderColor: TIEF.rand(RISIKO_FARBE[risiko]) }}>
@@ -89,7 +95,8 @@ export function VorschlagKarte({ vorschlagId, stapel }: { vorschlagId?: string; 
       {v?.nachher && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{v.nachher}</div>}
       {weg ? <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>{weg}</div> : (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
-          {v && risiko !== 'aussen' && <Knopf onClick={() => entscheide('freigeben')}>Freigeben</Knopf>}
+          {v && risiko !== 'aussen' && !v.bereich && (['privat', 'business'] as const).map(b => <Knopf key={b} onClick={() => bereich(b)}>{b === 'privat' ? 'Privat' : 'Business'}</Knopf>)}
+          {v && risiko !== 'aussen' && v.bereich && <Knopf onClick={() => entscheide('freigeben')}>Freigeben</Knopf>}
           {v && <Knopf leise onClick={() => entscheide('ablehnen')}>Ablehnen</Knopf>}
           <Knopf leise href={WEG.freigaben()}>Ansehen ›</Knopf>
         </div>

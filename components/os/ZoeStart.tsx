@@ -34,6 +34,7 @@ import { zustandVon, inWorte, wortVerzug, vorschlaege, tagesWort } from '@/lib/m
 import { ENTSTEHEND_LEER, entstehendNach, type Entstehend } from '@/lib/http/sse';
 import { postMitStrom } from '@/lib/http/strom-client';
 import { zufallsUuid } from '@/lib/kennung';
+import { useSpace } from '@/hooks/useSpace';
 
 /** Ein Zug im Empfang — `ich` = die Person, mit der ZOE spricht (neutral, Paket 4a). `gestreamt` = stand schon beim Entstehen da
  *  (09.10.) — dann kommt er nicht noch einmal Wort für Wort an. */
@@ -83,6 +84,8 @@ function lampe(e: React.PointerEvent<HTMLElement>) {
 }
 
 export function ZoeStart() {
+  // Sicht des Kopfs (09.10. spät, immer konkret): Thread, Begrüßung und neue Gespräche gehören zu diesem Bereich.
+  const { space } = useSpace();
   const [aktiv, setAktiv] = useState(0);
   const [empfang, setEmpfang] = useState('');
   const [zuege, setZuege] = useState<Zug[]>([]);
@@ -129,11 +132,13 @@ export function ZoeStart() {
     return () => clearInterval(iv);
   }, []);
 
+  // Je Sicht des Kopfs (09.10. spät): der jüngste ZOE-Thread DIESES Bereichs (der Server filtert) — ein Wechsel fängt im anderen Bereich an.
   useEffect(() => {
-    fetch('/api/agenten/faden?agent=zoe').then(r => r.json()).then((d: { faeden?: { id: string }[] }) => {
+    fadenRef.current = '';
+    fetch(`/api/agenten/faden?agent=zoe&space=${space}`).then(r => r.json()).then((d: { faeden?: { id: string }[] }) => {
       if (!fadenRef.current && Array.isArray(d.faeden) && d.faeden[0]?.id) fadenRef.current = d.faeden[0].id;
     }).catch(() => {});
-  }, []);
+  }, [space]);
 
   // Stunde erst im Browser setzen: auf dem Server wäre es die Zeit des
   // Rechners, und React würde die Abweichung melden.
@@ -141,7 +146,8 @@ export function ZoeStart() {
 
   // Der Empfang: zwei Sätze, serverseitig je Stunde gerechnet und gehalten.
   useEffect(() => {
-    fetch('/api/zoe/empfang')
+    // Je Sicht (09.10. spät): Lage und Zahl der Freigaben nur dieses Bereichs (der Server lässt den anderen weg).
+    fetch(`/api/zoe/empfang?space=${space}`)
       .then(r => r.json())
       .then(d => {
         if (!d?.text) return;
@@ -153,7 +159,7 @@ export function ZoeStart() {
     // stimme absichtlich nicht in den Abhängigkeiten: sonst liest er bei jedem
     // Wechsel des Sprach-Zustands erneut vor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [space]);
 
   // Das Neueste ist immer sichtbar — ohne Sprung, damit es nicht reißt.
   // Ein Bild abwarten: die Wörter der Antwort werden erst beim Zeichnen
@@ -176,7 +182,7 @@ export function ZoeStart() {
     try {
       // Mit Strom (09.10.): der Text erscheint, während er entsteht; am Ende dieselbe Antwort wie ohne Strom (Rückfall auf JSON).
       // `anfrageId` (Härtetest 09.10.): der Rückfall auf JSON nach einem Netzfehler lässt den Zug auf dem Server nie zweimal laufen.
-      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: fadenRef.current || 'neu', anfrageId: zufallsUuid() }, e => {
+      const r = await postMitStrom('/api/kimmi', { message: q, zoeFaden: fadenRef.current || 'neu', space, anfrageId: zufallsUuid() }, e => {
         if (e.art === 'text') gezeigt = true;
         setEntsteht(s => entstehendNach(s, e));
       });
@@ -195,7 +201,7 @@ export function ZoeStart() {
     }
     setEntsteht(ENTSTEHEND_LEER);
     setDenkt(false);
-  }, [denkt, stimme]);
+  }, [denkt, stimme, space]);
 
   // Mikrofon und Erkennung laufen zusammen los und hören zusammen auf. Sonst
   // bliebe die Aufnahmeanzeige des Browsers stehen, nachdem er fertig ist.

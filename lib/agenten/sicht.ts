@@ -86,3 +86,50 @@ export function teilenErlaubt(f: FadenSicht, person: string): boolean {
 
 /** Schreiben (Nachricht, Umbenennen, Löschen, Lauf) — nur der Besitzer. Geteilt heißt: lesen. */
 export const fadenSchreibbar = (f: Pick<Faden, 'besitzer'>, person: string): boolean => f.besitzer === person;
+
+// ── Bereich der Sicht (09.10. spät: „Agenten-Seite und Empfang auch trennen“) ─────────────────────────────────────────────
+// Der Kopf kennt Privat · Business. Die Routen des Agenten-Bereichs (`/api/agenten`, `/api/agenten/faden`, `/api/agenten/laeufe`) und der
+// Empfang nehmen `?space=` und liefern NUR, was in diese Sicht gehört — gefiltert HIER, nie bloß in der Oberfläche. Regeln:
+//   Head → sein Bereich aus dem Katalog · Thread → `bereich` des Threads (Head-Threads = Bereich des Heads, ZOE-Threads = Bereich, in dem sie
+//   begonnen wurden) · Lauf → sein Thread, sonst sein Head · Hintergrundaufgabe → ihr Head · „Als Nächstes“ → eigener Bereich (Frist, Aufgabe),
+//   sonst der Head. Ohne erkennbaren Bereich (ZOE-Aufgabe ohne Head, Systemlauf) → in BEIDEN Sichten (wie unklare Vorschläge im Stapel).
+// Ohne `space` (ältere Aufrufer) wie bisher alles. Die bestehenden Bestände bleiben, wie sie sind (Feld `bereich` ist dort Übergang).
+
+export type SichtBereich = 'privat' | 'business';
+
+/** `?space=` → Bereich der Sicht; ohne Angabe bzw. „alles“ → null (alles); alles andere → undefined (die Route antwortet 400). */
+export function sichtBereichAus(v: string | null | undefined): SichtBereich | null | undefined {
+  if (!v || v === 'alles') return null;
+  return v === 'privat' || v === 'business' ? v : undefined;
+}
+
+/** Gehört etwas mit diesem Bereich in die Sicht? Ohne erkennbaren Bereich: in beide. */
+export function imBereichDerSicht(bereich: unknown, space: SichtBereich | null | undefined): boolean {
+  if (!space) return true;
+  return (bereich !== 'privat' && bereich !== 'business') || bereich === space;
+}
+
+/** Bereich eines Heads aus dem Katalog (unbekannt → undefined). */
+export const headBereichVon = (headId: string | null | undefined): SichtBereich | undefined => (headId ? headDef(headId)?.bereich : undefined);
+
+/** Head in der Sicht? */
+export const headImBereich = (headId: string, space: SichtBereich | null | undefined): boolean => imBereichDerSicht(headBereichVon(headId), space);
+
+/** Thread in der Sicht? (`bereich` des Threads; fehlt er, der Bereich seines Heads; ZOE ohne Bereich → beide.) */
+export function fadenImBereich(f: { bereich?: unknown; agent?: AgentRef }, space: SichtBereich | null | undefined): boolean {
+  const b = f.bereich === 'privat' || f.bereich === 'business' ? f.bereich : f.agent ? headBereichVon(headVon(f.agent)) : undefined;
+  return imBereichDerSicht(b, space);
+}
+
+/** Lauf in der Sicht? Zuerst sein Thread (Bereich aus `fadenBereich`), sonst sein Head; Systemläufe ohne beides → beide. */
+export function laufImBereich(l: { fadenId?: string; headId?: string }, space: SichtBereich | null | undefined, fadenBereich: ReadonlyMap<string, unknown>): boolean {
+  const b = l.fadenId && fadenBereich.has(l.fadenId) ? fadenBereich.get(l.fadenId) : headBereichVon(l.headId);
+  return imBereichDerSicht(b, space);
+}
+
+/** Hintergrundaufgabe in der Sicht? (ihr Head; ZOE → beide.) */
+export const planImBereich = (p: { agent: AgentRef }, space: SichtBereich | null | undefined): boolean => imBereichDerSicht(headBereichVon(headVon(p.agent)), space);
+
+/** „Als Nächstes“ in der Sicht? Eigener Bereich (Frist, Aufgabe) vor dem Head. */
+export const naechstesImBereich = (n: { bereich?: unknown; headId?: string }, space: SichtBereich | null | undefined): boolean =>
+  imBereichDerSicht(n.bereich === 'privat' || n.bereich === 'business' ? n.bereich : headBereichVon(n.headId), space);
