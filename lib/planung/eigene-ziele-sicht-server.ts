@@ -3,13 +3,24 @@
 
 import { loadJson } from '@/lib/store/local-db';
 import { ladeKonten } from '@/lib/zugang/konten';
-import { eigeneZieleLesbar, lesbareEigentuemer, meilensteinVerborgen, verborgeneMeilensteinIds, verborgeneZielIds } from './eigene-ziele-sicht';
+import { eigeneZieleLesbar, eigeneZieleSicht, lesbareEigentuemer, meilensteinVerborgen, partnerVon, verborgeneMeilensteinIds, verborgeneZielIds, type EigeneZieleSicht } from './eigene-ziele-sicht';
 import { meilensteineImUmfang } from './bereich-sicht-server';
 
 /** Darf `betrachter` die eigenen Ziele von `eigentuemer` lesen? */
 export async function eigeneZieleLesbarFuer(eigentuemer: string, betrachter: string | null | undefined): Promise<boolean> {
   if (betrachter && eigentuemer === betrachter) return true;
   return eigeneZieleLesbar((await ladeKonten()).konten, eigentuemer, betrachter);
+}
+
+/** Wie viel `betrachter` aus dem eigenen Bestand von `eigentuemer` sieht (09.10.: alles · einzeln geteilte · nichts). */
+export async function eigeneZieleSichtFuer(eigentuemer: string, betrachter: string | null | undefined): Promise<EigeneZieleSicht> {
+  if (betrachter && eigentuemer === betrachter) return 'alles';
+  return eigeneZieleSicht((await ladeKonten()).konten, eigentuemer, betrachter);
+}
+
+/** Die Partner der Person (andere volle Mitglieder ihres Haushalts) — für die Spalten „<Name>“ in Planung und Heute. */
+export async function partnerFuer(person: string | null | undefined): Promise<string[]> {
+  return person ? partnerVon((await ladeKonten()).konten, person) : [];
 }
 
 /** Wessen eigene Ziele `betrachter` lesen darf (inklusive der eigenen; ohne Person: niemand). */

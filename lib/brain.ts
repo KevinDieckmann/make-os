@@ -47,6 +47,8 @@ import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { bereichVonFirma } from '@/lib/einheiten';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { fokusZeilenFuer } from '@/lib/planung/fokus-server';
+import { FOKUS_KOPF, fokusZeilenText, type FokusZeile } from '@/lib/planung/fokus';
 
 // ── Formen ──
 interface StoredTask { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string; assignee?: string; /** Business-Einheit (27.09.) — nur im Business gesetzt. */ einheit?: string }
@@ -109,6 +111,11 @@ export interface Brain {
    * Agenten-Überblick). Privat nur für volle Mitglieder. Optional: fehlt es, sagt der Kontext „keine hinterlegt“.
    */
   jahresziele?: { titel: string; bereich: 'privat' | 'business'; fortschritt: number | null }[];
+  /**
+   * Fokus der Person (09.10., Kevin: „Fokusse … individuell“): Unser Fokus (Privat nur mit Privat-Zugang, Business je Gesellschaft), Mein
+   * Fokus und was andere mit ihr teilen — NUR über lib/planung/fokus-server.ts `fokusZeilenFuer` (die EINE Lesestelle für Prompts).
+   */
+  fokus?: FokusZeile[];
   /** Geldfluss aus der Finanzplanung + Mandate aus dem CRM. */
   geld: { forderungen: number; vorbereitung: number; ueberfaelligeForderungen: number };
   mandate: { aktiv: number; gespraech: number; cashflow: number };
@@ -196,6 +203,8 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
   const geburtstage = await geburtstageIm({ von: heute, bis: anlaesseBis }, person).catch(() => []);
   // Nordstern (08.10. abends): aus dem Bestand des Haushalts der Person — wirft nie, ohne Haushalt/Eintrag null.
   const nordstern = await nordsternFuerPerson(person);
+  // Fokus (09.10.): der AUSLÖSENDEN Person — Unser + Mein + mit ihr Geteiltes, Privat nur mit Privat-Zugang. Wirft nie (leer = keiner).
+  const fokus = await fokusZeilenFuer(person);
   // Jahresziele (Durchstich 09.10.): wie der Agenten-Überblick — Privat nur für volle Mitglieder (Konto mit Haushalt), ein Konto
   // „nur Business“ nie. Über die EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts). Wirft nie (unlesbar → nichts).
   const { jahreszieleFuer } = await import('@/lib/planung/jahresziele-sicht');
@@ -280,6 +289,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     })(),
     nordstern,
     jahresziele,
+    fokus,
     team: teamZeilenAus(val(teamR) ?? []),
     geld: geldAus(val(fplanR)?.rechnungen ?? [], heute),
     mandate: (() => {
@@ -463,9 +473,12 @@ export function blockZiele(b?: Brain, bereich?: 'privat' | 'business'): string {
   const jz = (b?.jahresziele ?? []).filter(z => !bereich || z.bereich === bereich);
   const jahresziele = jz.length ? daten('jahresziele', jz.map(z => `- ${z.titel} (${z.bereich === 'privat' ? 'Privat' : 'Business'}${z.fortschritt !== null ? `, ${z.fortschritt} %` : ''})`).join('\n')) : 'keine hinterlegt.';
   const meilensteine = ms.length ? daten('meilensteine', ms.map(m => `- ${m}`).join('\n')) : 'keine hinterlegt.';
+  // Fokus (09.10.): ein Head nur den seines Bereichs; Text der Mitglieder im <daten>-Rahmen.
+  const fz = (b?.fokus ?? []).filter(z => !bereich || z.bereich === bereich);
+  const fokus = fz.length ? daten('fokus', fokusZeilenText(fz)) : 'keiner gesetzt — er wird unter Planung › Fokus gepflegt.';
   const team = b?.team ?? [];
   const teamText = team.length ? team.map(t => `- ${t}`).join('\n') : 'kein Team hinterlegt — es wird unter Konto › Team gepflegt. Nenne keine Person, die hier nicht steht.';
-  return `NORDSTERN-ZIEL: ${nordstern}\n\nJAHRESZIELE (Planung › Jahr): ${jahresziele}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr): ${meilensteine}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${teamText}`;
+  return `NORDSTERN-ZIEL: ${nordstern}\n\nJAHRESZIELE (Planung › Jahr): ${jahresziele}\n\n${FOKUS_KOPF}: ${fokus}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr): ${meilensteine}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${teamText}`;
 }
 
 /** Der Standard-Kontext für Agenten — wähl ab, was der Agent braucht. */

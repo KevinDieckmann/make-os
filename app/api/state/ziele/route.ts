@@ -33,7 +33,8 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ohneToteVerweise, zielVerweiseLoesen } from '@/lib/planung/meilenstein-kette';
 import { protokolliere, protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { mitFarbe, zielFarbenDesHaushalts } from '@/lib/planung/ziel-farben-server';
-import { eigeneZieleLesbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { eigeneZieleSichtFuer } from '@/lib/planung/eigene-ziele-sicht-server';
+import { hatGeteiltes, nurGeteilte } from '@/lib/planung/eigene-ziele-sicht';
 import { BEREICH_GETRENNT, ZIEL_FEHLT, oberzielLoesen, oberzielPruefen, type BezuegeGeloest } from '@/lib/planung/bezuege';
 import { zielBezuegeInAufgabenLoesen } from '@/lib/aufgaben/ziel-bezug-server';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
@@ -62,16 +63,20 @@ const JE_HORIZONT = 100;
  * Haushalt (nur lesen). Rückgabe: Speichername + ob geschrieben werden darf.
  * Seit 08.10. (Kevin): die eigenen Ziele einer ANDEREN Person nur, wenn sie sie mit mir teilt (Konto › `teilt.ziele`,
  * lib/planung/eigene-ziele-sicht.ts) — sonst `geteilt: false` → 403, nichts aus dem Bestand.
+ * Seit 09.10. (Kevin: „und jeder für sich … irgendwie müssen wir das Ganze ja sehen“): teilt sie nicht alles, aber einzelne Ziele
+ * (`geteilt: true`) bzw. Fokus-Sätze (`fokusGeteilt`), bekommt ein anderes volles Mitglied des Haushalts NUR diese (`nurGeteilte`);
+ * gibt es nichts Geteiltes, bleibt es bei 403 — ein ungeteiltes Ziel kommt nie an.
  */
-async function speicherFuerAnfrage(req: Request, fuer: string | null): Promise<{ name: string; darfSchreiben: boolean; fuer: string } | { geteilt: false } | null> {
+async function speicherFuerAnfrage(req: Request, fuer: string | null): Promise<{ name: string; darfSchreiben: boolean; fuer: string; nurGeteilte?: true } | { geteilt: false } | null> {
   const ich = personAus(req);
   if (!fuer || fuer === 'wir') return { name: 'ziele', darfSchreiben: true, fuer: 'wir' };
   if (fuer === 'ich' || fuer === ich) return { name: speicherFuer('ziele-eigen', ich), darfSchreiben: true, fuer: ich };
   if (!/^[a-z0-9-]{1,40}$/.test(fuer)) return null;
   const z = await haushaltVon(req);
   if (!z) return null;
-  if (!(await eigeneZieleLesbarFuer(fuer, personStreng(req)))) return { geteilt: false };
-  return { name: speicherFuer('ziele-eigen', fuer), darfSchreiben: false, fuer };
+  const sicht = await eigeneZieleSichtFuer(fuer, personStreng(req));
+  if (sicht === 'nichts') return { geteilt: false };
+  return { name: speicherFuer('ziele-eigen', fuer), darfSchreiben: false, fuer, ...(sicht === 'geteilte' ? { nurGeteilte: true as const } : {}) };
 }
 const NICHT_GETEILT = 'Diese Person teilt ihre eigenen Ziele nicht mit dir.';
 const nichtGeteilt = () => NextResponse.json({ ok: false, error: NICHT_GETEILT, geteilt: false }, { status: 403 });
@@ -87,8 +92,11 @@ export async function GET(req: Request) {
   const sp = await speicherFuerAnfrage(req, new URL(req.url).searchParams.get('fuer'));
   if (!sp) return NextResponse.json({ ok: false, error: 'Diese Person gehört nicht zu deinem Haushalt.' }, { status: 403 });
   if ('geteilt' in sp) return nichtGeteilt();
-  const f = datei(await loadJson<ZieleDatei>(sp.name));
-  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...await mitStaenden(f, await ohnePrivatFuer(req)) });
+  const roh = await loadJson<ZieleDatei>(sp.name);
+  // Einzeln geteilt (09.10.): NUR die geteilten Ziele/Sätze — ohne etwas Geteiltes dieselbe Antwort wie „nicht geteilt“.
+  if (sp.nurGeteilte && !hatGeteiltes(roh)) return nichtGeteilt();
+  const f = datei(sp.nurGeteilte ? nurGeteilte(roh) : roh);
+  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...(sp.nurGeteilte ? { nurGeteilte: true } : {}), ...await mitStaenden(f, await ohnePrivatFuer(req)) });
 }
 
 /** Konto „nur Business“ (09.10., EINE Konto-Sicht)? Systemlauf → nein; Konten unlesbar → ja (fail-closed, nie auf Verdacht zeigen). */

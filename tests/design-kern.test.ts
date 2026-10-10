@@ -245,7 +245,10 @@ describe('Praxis-Funde 04.10. (Handy-Tippziele, Kopf, Abschneiden)', () => {
     expect(lies('components/os/Kopf.tsx')).toContain("flex: '1 1000 520px', minWidth: 150,");
     expect(lies('app/globals.css')).toContain('.wachstum-kopf-suche .kopf-kuerzel { display: none; }');
     expect(lies('components/os/ZoePanel.tsx')).toContain('disabled={thinking || !ask.trim()}');
-    expect(lies('components/os/FokusView.tsx')).toContain('placeholder="eintragen …"');
+    // Seit 09.10. steht die Fokus-Karte in der FokusTafel: die Frage als Text über den Feldern, im Feld nur ein kurzer Platzhalter.
+    expect(lies('components/os/FokusView.tsx')).toContain('<FokusTafel');
+    expect(lies('components/os/planung/FokusTafel.tsx')).toContain('lineHeight: 1.4 }}>{FOKUS_FRAGE[h]}</span>');
+    expect(lies('components/os/planung/FokusTafel.tsx')).toContain("platzhalter={sicht.darfUnser ? 'gemeinsam eintragen …' : 'noch keiner gesetzt'}");
   });
 });
 

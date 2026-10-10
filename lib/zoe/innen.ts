@@ -35,6 +35,7 @@ const ROUTEN = {
   // 09.10.: Planung — Meilensteine (Kette, Bezüge, Liste je Meilenstein) und Ziele (Fokus).
   '/api/state/meilensteine': () => import('@/app/api/state/meilensteine/route'),
   '/api/state/ziele': () => import('@/app/api/state/ziele/route'),
+  '/api/planung/fokus': () => import('@/app/api/planung/fokus/route'),
 } as const;
 
 export type InnenPfad = keyof typeof ROUTEN;

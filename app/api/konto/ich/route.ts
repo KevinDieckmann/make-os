@@ -7,7 +7,7 @@ import { ladeKonten, aendereKonten, oeffentlich, passwortTauglich, passwortHashe
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, letzte } from '@/lib/zugang/anmeldungen';
-import { eigeneZieleLesbar } from '@/lib/planung/eigene-ziele-sicht';
+import { eigeneZieleLesbar, partnerVon } from '@/lib/planung/eigene-ziele-sicht';
 import { istHauptInhaber, istWirksamerInhaber } from '@/lib/zugang/inhaber';
 import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 
@@ -32,7 +32,9 @@ export async function GET(req: Request) {
     zweiterFaktorEinrichten: zweiFaktorOffen(s.einstellungen, ich),
     anmeldungen: await letzte(wer, 5),
     // `teiltZieleMitMir` (08.10.): ob ich die EIGENEN Ziele dieser Person lesen darf (lib/planung/eigene-ziele-sicht.ts — dieselbe Regel wie die Ziele-Route).
-    andere: s.konten.filter(k => k.speicher !== wer).map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle, teiltGesundheitMitMir: k.teilt.gesundheit.includes(wer), teiltZieleMitMir: eigeneZieleLesbar(s.konten, k.speicher, wer) })),
+    // `partner` (09.10.): anderes volles Mitglied meines Haushalts — bekommt in Planung und auf Heute eine eigene Spalte mit dem, was es
+    // einzeln teilt (die Ziele selbst filtert der Server, hier steht nur, wessen Spalte es gibt).
+    andere: s.konten.filter(k => k.speicher !== wer).map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle, teiltGesundheitMitMir: k.teilt.gesundheit.includes(wer), teiltZieleMitMir: eigeneZieleLesbar(s.konten, k.speicher, wer), partner: partnerVon(s.konten, wer).includes(k.speicher) })),
   });
 }
 

@@ -13,33 +13,30 @@
 //   6. Lichtfäden (03.10.) — übergreifend (Wurzel Gesamt): alle Stränge, Engstellen, eine Ebene tiefer per Tippen
 //   Fokus-Signatur (04.10., Schaufenster): „Unser Fokus“ ist DIE Fokus-Karte (Lichtfaden an der Kante, Netz-Motiv), die Regler
 //   stehen als Segmentbalken, die Fokus-Blöcke tragen ihre Minuten je Tag als FadenLinie, darunter läuft der Strahl v3.
+//   09.10. (Kevin: „dass wir selber alle immer Fokusse einstellen können … Muss ja auch wieder individuell sein“): die Fokus-Karte ist die
+//   Fokus-Tafel (components/os/planung/FokusTafel.tsx) — je Bereich (Privat · Business, im Business je Gesellschaft) und Horizont (Jahr ·
+//   Quartal · Monat · Woche · Heute) „Unser Fokus“ und „Mein Fokus“ (teilbar), getrennte Bestände (lib/planung/fokus.ts).
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
-import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, feld, zoneFarbe, LEUCHT, Segmentbalken } from './ui';
+import { Seite, Karte, Ueberschrift, Ring, Chip, Knopf, Leer, zoneFarbe, LEUCHT, Segmentbalken } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { ZeitJeEinheitKarte, FokusBloeckeKarte } from './zeit/ZeitJeEinheit';
 import { ZeitJeMandatKarte } from './zeit/ZeitJeMandat';
 import { Lichtfaeden } from './lichtfaeden/Lichtfaeden';
 import { PlanerLeiste } from './PlanerLeiste';
+import { FokusTafel } from './planung/FokusTafel';
+import { useSpace } from '@/hooks/useSpace';
 
-type Horizont = 'tag' | 'woche' | 'monat';
-const HORIZONTE: { id: Horizont; label: string; frage: string }[] = [
-  { id: 'tag', label: 'Heute', frage: 'Was muss heute passieren, damit der Tag gut war?' },
-  { id: 'woche', label: 'Diese Woche', frage: 'Worauf zahlt diese Woche ein?' },
-  { id: 'monat', label: 'Dieser Monat', frage: 'Was ist das eine Ergebnis des Monats?' },
-];
 const SAEULEN: Record<string, { name: string; farbe: string }> = {
   health: { name: 'Gesundheit', farbe: LEUCHT.gut }, business: { name: 'Business', farbe: LEUCHT.business }, planning: { name: 'Planung', farbe: LEUCHT.planung },
   finance: { name: 'Finanzen', farbe: LEUCHT.geld }, social: { name: 'Familie & Partnerschaft', farbe: LEUCHT.beziehung },
 };
 
 export function FokusView() {
-  const [fokus, setFokus] = useState<Partial<Record<Horizont, string>>>({});
-  const [entwurf, setEntwurf] = useState<Partial<Record<Horizont, string>>>({});
-  const [gespeichert, setGespeichert] = useState<Horizont | null>(null);
+  const { space } = useSpace();
   const [rec, setRec] = useState<number | null>(null);
   const [frisch, setFrisch] = useState(false);
   const [regler, setRegler] = useState<Record<string, number> | null>(null);
@@ -47,17 +44,10 @@ export function FokusView() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetch('/api/state/ziele').then(r => r.json()).then(d => { const f = (d.state ?? d)?.fokus ?? {}; setFokus(f); setEntwurf(f); }).catch(() => {});
     fetch('/api/gesundheit/stand').then(r => r.json()).then(d => { if (d?.vitals) { setRec(typeof d.vitals.rec === 'number' ? d.vitals.rec : null); setFrisch(!!(d.vitals.heute || (d.vitals.alterTage <= 1 && !d.vitals.fallback))); } }).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? null)).catch(() => {});
   }, []);
 
-  async function speichern(h: Horizont) {
-    const text = (entwurf[h] ?? '').trim();
-    if (text === (fokus[h] ?? '')) return;
-    const r = await fetch('/api/state/ziele', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ horizont: h, fokus: text }) }).then(x => x.json()).catch(() => null);
-    if (r?.ok) { setFokus(r.fokus ?? { ...fokus, [h]: text }); setGespeichert(h); setTimeout(() => setGespeichert(null), 1800); }
-  }
   async function ausrichten() {
     setBusy(true);
     try { const d = await fetch('/api/fokus', { method: 'POST' }).then(r => r.json()); setPlan(d.reply ?? d.error ?? 'Keine Antwort.'); }
@@ -72,27 +62,14 @@ export function FokusView() {
     : 'Rot: Nur das Nötige. Termine schieben, Erholung einplanen.';
 
   return (
-    <Seite titel="Fokus" unter="Worauf es heute, diese Woche und diesen Monat ankommt — und ob der Körper mitmacht.">
+    <Seite titel="Fokus" unter="Worauf es ankommt — gemeinsam und für jede Person, vom Jahr bis heute — und ob der Körper mitmacht.">
       {/* Einstieg unter Planung (08.10.): dieselbe Reiterzeile wie Tag · Woche · Monat · Quartal · Jahr. */}
       <PlanerLeiste aktiv="fokus" />
       <Flaeche seite="fokus">
       <Kachel id="fokus" titel="Unser Fokus" breite={6}>
       <Karte i={0} ton="fokus" netz>
-        <Ueberschrift farbe={LEUCHT.planung}>Unser Fokus</Ueberschrift>
-        <div style={{ display: 'grid', gap: 14 }}>
-          {HORIZONTE.map(h => (
-            <label key={h.id} style={{ display: 'grid', gap: 6 }}>
-              <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600 }}>
-                {h.label}{gespeichert === h.id && <span style={{ color: LEUCHT.gut, letterSpacing: 0, textTransform: 'none' }}>gespeichert</span>}
-              </span>
-              {/* Die Frage steht als Text über dem Feld — als Platzhalter wurde sie am Handy abgeschnitten (Praxis 04.10.). */}
-              <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{h.frage}</span>
-              <input value={entwurf[h.id] ?? ''} placeholder="eintragen …" onChange={e => setEntwurf({ ...entwurf, [h.id]: e.target.value })}
-                onBlur={() => void speichern(h.id)} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                style={{ ...feld, fontSize: h.id === 'tag' ? 17 : TYP.body, fontWeight: h.id === 'tag' ? 600 : 400 }} aria-label={`Fokus ${h.label}`} />
-            </label>
-          ))}
-        </div>
+        <Ueberschrift farbe={LEUCHT.planung}>Unser Fokus · Mein Fokus</Ueberschrift>
+        <FokusTafel vorgabe={space} />
       </Karte>
       </Kachel>
 

@@ -328,10 +328,15 @@ describe('Meilenstein und Fokus über die Routen (Funde #5)', () => {
     const tasks = await db.loadJson<{ listen?: { id: string }[] }>('tasks');
     expect((tasks?.listen ?? []).some(l => l.id.startsWith('lm-') && l.id.includes('ms-a'))).toBe(true);
   });
-  it('setze_fokus über PUT /api/state/ziele: gemeinsamer Bestand, Protokoll ohne den Satz', async () => {
-    expect(await lauf('setze_fokus', { horizont: 'woche', space: 'business', text: 'Fokus-Probe' }, 'pia')).toMatch(/^Erfasst: Fokus/);
-    expect((await db.loadJson<{ fokus: Record<string, string> }>('ziele'))!.fokus['business:woche']).toBe('Fokus-Probe');
-    const p = (await protokoll()).filter(e => e.bestand === 'ziele');
+  it('setze_fokus über PUT /api/planung/fokus: getrennter Business-Bestand, Protokoll ohne den Satz', async () => {
+    // Seit 09.10. „Unser Fokus · Business“ im eigenen Bestand je Haushalt (Privat und Business getrennt, lib/planung/fokus.ts).
+    expect(await lauf('setze_fokus', { horizont: 'woche', space: 'business', text: 'Fokus-Probe' }, 'pia')).toMatch(/^Erfasst: Unser Fokus/);
+    expect((await db.loadJson<{ fokus: Record<string, string> }>(`fokus-business--${HAUS}`))!.fokus['gesamt:woche']).toBe('Fokus-Probe');
+    expect(await db.loadJson(`fokus-privat--${HAUS}`)).toBeNull();
+    // „Mein Fokus“ der auslösenden Person landet in ihrem eigenen Bestand.
+    expect(await lauf('setze_fokus', { horizont: 'woche', space: 'privat', fuer: 'ich', text: 'Mein-Probe' }, 'pia')).toMatch(/^Erfasst: Mein Fokus/);
+    expect((await db.loadJson<{ fokus: Record<string, string> }>('fokus-eigen--pia'))!.fokus.woche).toBe('Mein-Probe');
+    const p = (await protokoll()).filter(e => e.bestand === `fokus-business--${HAUS}`);
     expect(p.length).toBeGreaterThan(0);
     expect(JSON.stringify(p)).not.toContain('Fokus-Probe');
     expect(await lauf('setze_fokus', { horizont: 'woche', text: 'x' })).toMatch(/^Nicht ausgeführt/);

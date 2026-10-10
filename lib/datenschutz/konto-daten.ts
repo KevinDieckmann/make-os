@@ -65,6 +65,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'tageslauf' }, { basis: 'arbeitsmodus' }, { basis: 'gesundheitszeit' },
   // Business-frei (08.10., Lücke 7): die eigene Ergänzung des Arbeitsrahmens — immer mit Suffix (`arbeitsrahmen--<speicher>`).
   { basis: 'arbeitsrahmen', nurMitSuffix: true },
+  // Mein Fokus (09.10.): Privat und Business getrennt, IMMER mit Suffix (lib/planung/fokus.ts `fokusBestand`).
+  { basis: 'fokus-eigen', nurMitSuffix: true }, { basis: 'fokus-eigen-business', nurMitSuffix: true },
 
   // ZOE auf WhatsApp (08.10.): der Kanal der Person (Nummer, Nachweise, Sprachnachrichten-Liste) — IMMER mit Suffix; die Dateien der
   // Sprachnachrichten entfernt `kontoLoeschen` vorher (Schritt 2c).
@@ -116,6 +118,8 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'meilenstein-raum--*': 'Austausch je Meilenstein (Arbeit des Haushalts)',
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
+  'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
+  'fokus-business--*': 'Unser Fokus · Business je Haushalt und Gesellschaft (Freitext der Mitglieder, ohne Personen-Feld)',
   'nordstern--*': 'Nordstern je Haushalt (gemeinsames Ziel, Freitext ohne Personen-Feld — kann Vornamen nennen, wird beim Konto-Löschen nicht automatisch getilgt, ändern unter Planung › Jahr) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
   'team--*': 'Team je Haushalt — der Eintrag des Kontos fällt beim Löschen weg',
   'uebergabe-journal--*': 'Übergaben an Kunden (Kartei)',

@@ -27,21 +27,21 @@ import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, feld, prioFarbe, LEUCHT, Segmente, Knopf, useRueckgaengig, FlussKarte } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, prioFarbe, LEUCHT, Segmente, Knopf, useRueckgaengig, FlussKarte } from './ui';
 import { useZiel, useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
-import { SPACE_LABEL, spaceVonAufgabe, fokusSchluessel, type SpaceId } from '@/lib/make-one/space-regeln';
+import { SPACE_LABEL, spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
 import { EinheitMarke } from './aufgaben/Einheit';
 import { zeitraum } from '@/lib/planung/zeitraum';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { passtEinheit } from '@/lib/planung/einheiten';
 import { beginntText, jahrAus, jahrLage, meilensteinImJahr, meilensteinJahr, planJahre, zielJahr, type JahrLage } from '@/lib/planung/zeitstrahl';
-import { fokusImJahr, fokusJahrSchluessel } from '@/lib/planung/jahr-fokus';
 import { WEG } from '@/lib/wege';
 import { wartetText } from '@/lib/planung/meilenstein-kette';
 import { zielVonMeilenstein } from '@/lib/planung/meilenstein-aufgaben';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 import { NordsternKarte } from './planung/NordsternKarte';
+import { FokusTafel } from './planung/FokusTafel';
 import { usePlanung } from './planung/usePlanung';
 import { useStrahlFenster, adresseSetzen } from './planung/useStrahlFenster';
 import { useMeilensteinFenster } from './planung/MeilensteinFenster';
@@ -77,7 +77,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
   // EIN Stand für Zeitstrahl, Forecast, Fokus und die Listen darunter (30.09. — vorher reichte das Bauteil ihn hoch).
   const p = usePlanung(horizont);
-  const { ziele, ms, fokus: fokusAlle, geladen } = p;
+  const { ziele, ms, geladen } = p;
   const rueck = useRueckgaengig();
 
   // Planungsjahr (30.09.): aus der Adresse (`?jahr=`), ein verlinkter Meilenstein zieht in sein Jahr.
@@ -103,15 +103,9 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const imBusiness = spaceFilter === 'business';
   // Bereich abgeleitet (05.10. abends): Ziele der Selbstständigkeit stehen unter Privat (`wirksamerSpace`).
   const zieleImSpace = ziele.filter(z => { const zs = wirksamerSpace(z); return (spaceFilter === 'alle' || !zs || zs === spaceFilter) && (!istJahr || zielJahr(z, laufend) === planJahr); });
-  // Fokus je Space (26.09.) und im Jahr je Jahr (30.09., lib/planung/jahr-fokus.ts): im Space der Space-Satz, ohne Space der gemeinsame.
-  // Konto „nur Business“ (09.10., E4-Rest): den gemeinsamen Satz liefert der Server ihm nicht (im Zweifel privat) — in „Alles“ gilt sein Business-Satz.
+  // Fokus (09.10.): FokusTafel liest und schreibt selbst (getrennte Bestände) — hier nur, welcher Bereich in „Alles“ vorgewählt ist.
   const nurBusiness = useNurBusiness();
-  const fokusBasis = fokusSchluessel(horizont, spaceFilter === 'alle' ? (nurBusiness ? 'business' : null) : spaceFilter);
-  const fokusKey = istJahr ? fokusJahrSchluessel(fokusBasis, planJahr) : fokusBasis;
-  const fokus = istJahr ? fokusImJahr(fokusAlle, fokusBasis, planJahr, laufend) : (fokusAlle[fokusKey] ?? '');
   useZuZiel(zielM, geladen);
-
-  function fokusSetzen(v: string) { p.fokusSetzen(fokusKey, v); }
 
   // Aufgaben, die in diesem Zeitraum fällig sind.
   const faellig = tasksState.tasks
@@ -208,12 +202,11 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
         </div>
       )}
 
-      {/* Fokus dieses Horizonts — die eine Richtung, gegen die geplant wird */}
+      {/* Fokus dieses Horizonts — die eine Richtung, gegen die geplant wird. Seit 09.10. Unser + Mein Fokus aus den getrennten Beständen
+          (FokusTafel, lib/planung/fokus.ts) — im Bereich des Filters; in „Alles“ wählbar. Nichts mehr in den gemischten Bestand `ziele`. */}
       <Karte i={0} akzent={farbe}>
-        <Ueberschrift farbe={farbe} rechts="Sichtbar im Wochenplaner und in der Tagesplanung — ZOE plant dagegen.">{fokusTitel}</Ueberschrift>
-        <input value={fokus} onChange={e => fokusSetzen(e.target.value)} aria-label={fokusTitel}
-          placeholder={horizont === 'monat' ? 'z. B. Gesundheit stabilisieren + F&F-Kunden onboarden' : 'Woran richtet sich alles aus?'}
-          style={{ ...feld, fontWeight: 600 }} />
+        <Ueberschrift farbe={farbe} rechts="Sichtbar auf Heute, im Kalender › Planen und in der Tagesplanung — ZOE plant dagegen.">{fokusTitel}</Ueberschrift>
+        <FokusTafel {...(spaceFilter === 'alle' ? { vorgabe: nurBusiness ? 'business' as const : 'privat' as const } : { bereich: spaceFilter })} horizonte={[horizont]} {...(istJahr ? { jahr: planJahr } : {})} />
       </Karte>
 
       {/* Zeitstrahl — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten. Im Jahr: Fenster zum Blättern, Anlegen per Klick. */}
@@ -278,8 +271,8 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
         </Karte>
       )}
 
-      {/* Jahr: der Nordstern ist Business — im Privat-Space steht er nicht (26.09.). Seit 08.10. abends gemeinsames, pflegbares Ziel
-          des Haushalts (Daten statt Konstante, /api/planung/nordstern) — die Karte lädt, zeigt den Leerzustand und bearbeitet selbst. */}
+      {/* Jahr: der Nordstern als eigene Karte in Business/Alles. Seit 08.10. abends gemeinsames, pflegbares Ziel des Haushalts (Daten statt
+          Konstante, /api/planung/nordstern); seit 09.10. steht er im Privat-Filter oben in „Unsere Ziele“ (ZieleUebersicht). */}
       {hatNordstern && (
         <NordsternKarte i={kNordstern}
           rechts={<Link href={spaceFilter === 'business' ? '/os/finanzen?s=business' : '/os/gesundheit?s=index'} style={{ color: C.inkLeise, textDecoration: 'none' }}>{spaceFilter === 'business' ? 'Meilensteine zählen im Business-Index ›' : 'Meilensteine zählen in den Indizes ›'}</Link>} />

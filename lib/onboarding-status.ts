@@ -500,11 +500,15 @@ async function gemeinsam(u: Umfang): Promise<Record<string, Befund>> {
       const mitZahl = j.filter(z => typeof z.zielwert === 'number' && z.zielwert > 0).length;
       return j.length ? ja(`${j.length} Jahresziele für ${laufend}, ${mitZahl} mit Zahl`) : nein(`noch kein Jahresziel für ${laufend}`);
     },
-    // Fokus je Horizont — gemeinsam oder je Bereich, das Jahr auch je Jahr (lib/planung/jahr-fokus.ts).
+    // Fokus je Horizont — gemeinsam oder je Bereich, das Jahr auch je Jahr (lib/planung/jahr-fokus.ts). Seit 09.10. zählt auch der
+    // „Unser Fokus“ in den getrennten Beständen (fokus-privat/-business--<haushalt>, lib/planung/fokus.ts) — nur ja/nein je Horizont.
     fokus: async () => {
       const { fokusFuerLaufendesJahr } = await import('@/lib/planung/jahr-fokus');
       const alle = fokusFuerLaufendesJahr((await ziele())?.fokus ?? {}, laufend);
-      const gesetzt = (['jahr', 'quartal', 'monat', 'woche'] as const).filter(h => ['', 'privat:', 'business:'].some(p => (alle[`${p}${h}`] ?? '').trim())).length;
+      const { fokusPrivatName, fokusBusinessName } = await import('@/lib/planung/fokus');
+      const neu = u.haushalt ? await Promise.all([lesen<{ fokus?: Record<string, string> }>(fokusPrivatName(u.haushalt)), lesen<{ fokus?: Record<string, string> }>(fokusBusinessName(u.haushalt))]) : [];
+      const neuGesetzt = (h: string) => neu.some(d => Object.entries(d?.fokus ?? {}).some(([k, v]) => (k === h || k.endsWith(`:${h}`) || (h === 'jahr' && k.endsWith(`jahr:${laufend}`))) && !!v.trim()));
+      const gesetzt = (['jahr', 'quartal', 'monat', 'woche'] as const).filter(h => neuGesetzt(h) || ['', 'privat:', 'business:'].some(p => (alle[`${p}${h}`] ?? '').trim())).length;
       return gesetzt >= 3 ? ja(`${gesetzt} von 4 Horizonten gesetzt`) : nein(`nur ${gesetzt} von 4 Horizonten gesetzt`);
     },
     kompass: async () => {

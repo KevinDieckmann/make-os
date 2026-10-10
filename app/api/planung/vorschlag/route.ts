@@ -30,6 +30,8 @@ import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { sichtbarFuer, spaceVonRoutine } from '@/lib/planung/routinen';
 import { wirksamerSpace } from '@/lib/planung/bereich';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
+import { fokusZeilenFuer } from '@/lib/planung/fokus-server';
+import { fokusSatz } from '@/lib/planung/fokus';
 interface RoutineDef { label: string; wann: 'morgen' | 'tag' | 'abend'; dauerMin: number; aktiv: boolean; owner?: string; space?: 'privat' | 'business'; einheit?: string }
 
 export const runtime = 'nodejs';
@@ -63,15 +65,17 @@ export async function POST(req: Request) {
   // Feste Termine (iCloud-Stand, auch die Blöcke — K5) für genau diese Woche (dedupliziert). Seit 29.09. (Paket R-Z, #K4) über denselben
   // Lesepfad wie ZOE (`termineFuerZoe`): für die Person gefiltert — private/Gesundheitstermine der anderen nur „Belegt“
   // (die Zeit blockiert weiter), fremder Haushalt bekommt keine Termine; fremde Titel gekapselt (#K1).
-  const [kal, tasksState, ziele, vitals, routinenF, reglerF, eigeneAngaben] = await Promise.all([
+  const [kal, tasksState, ziele, vitals, routinenF, reglerF, eigeneAngaben, fokus] = await Promise.all([
     termineFuerZoe(person, tage[0], tagePlus(tage[6], 1)),
     ladeAufgabenSicht(person), // Sichtfilter „nur ich“ (29.09.)
-    loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean; space?: 'privat' | 'business'; einheit?: string }[]> & { fokus?: Record<string, string> }>('ziele'),
+    loadJson<Record<string, { titel: string; fortschritt: number; erledigt?: boolean; space?: 'privat' | 'business'; einheit?: string }[]>>('ziele'),
     // Art. 9 (05.10.): Vitalwerte nur mit Einwilligung (b) der Person an die KI — sonst gar nicht erst lesen.
     gesundheitAnKi(person).then(frei => (frei ? resolveVitals(undefined, person) : null)).catch(() => null),
     loadJson<{ routinen: RoutineDef[] }>('routinen'),
     loadJson<{ regler: Record<string, number> }>('fokus-regler'),
     eigenerGesundheitsKontext(person),
+    // Fokus (09.10.): der der Person, für die geplant wird (Unser + Mein + mit ihr Geteiltes) — EINE Lesestelle (lib/planung/fokus-server.ts).
+    fokusZeilenFuer(person, { horizonte: ['woche', 'monat'] }),
   ]);
   const name = nameVon(person);
   const regler = reglerF?.regler ?? {};
@@ -139,8 +143,7 @@ export async function POST(req: Request) {
     // Fremde Titel (Einladung, Abo, Buchungsseite) als Daten gekapselt — nie Anweisung (#K1).
     fest.length ? fest.map(f => `- ${WD[tage.indexOf(f.date)]} ${f.date} ${mm(f.startMin)}–${mm(f.startMin + f.dauerMin)}: ${f.fremd ? fremd(KALENDER_QUELLE, f.titel) : f.titel}`).join('\n') : '(keine)',
     '',
-    ziele?.fokus?.woche ? `FOKUS DER WOCHE (dagegen planst du zuerst): ${ziele.fokus.woche}` : '',
-    ziele?.fokus?.monat ? `FOKUS DES MONATS: ${ziele.fokus.monat}` : '',
+    fokus.length ? fokusSatz(fokus) : '',
     Object.keys(regler).length
       ? `FOKUS-REGLER (im Haushalt eingestellt, 0–100 — Bereiche mit hohem Wert bekommen MEHR Blöcke/bessere Slots, niedrige treten zurück; kritische Aufgaben schlagen den Regler immer): ${Object.entries(regler).map(([k, v]) => `${SAEULE_LABEL[k] ?? k} ${v}`).join(' · ')}`
       : '',

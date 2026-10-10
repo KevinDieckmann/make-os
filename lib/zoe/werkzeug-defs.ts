@@ -285,10 +285,11 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
     },
     {
       name: 'setze_fokus',
-      description: 'Setzt den Fokus-Satz für einen Horizont („Fokus der Woche: …") — gemeinsam oder je Space (Privat/Business; Standard: der aktive Space, wenn der Nutzer in einem ist).',
+      description: 'Setzt einen Fokus-Satz für einen Horizont („Fokus der Woche: …") — „Unser Fokus“ (gemeinsam, Standard) oder „Mein Fokus“ der Person, mit der du sprichst; je Bereich Privat oder Business (getrennt).',
       input_schema: obj({
         horizont: { type: 'string', enum: ['tag', 'woche', 'monat', 'quartal', 'jahr'] },
-        space: { type: 'string', enum: ['privat', 'business'], description: 'Optional: Fokus nur für diesen Space' },
+        space: { type: 'string', enum: ['privat', 'business'], description: 'Bereich: Privat oder Business (Standard: der aktive Space, sonst Privat)' },
+        fuer: { type: 'string', enum: ['wir', 'ich'], description: 'wir = Unser Fokus (gemeinsam, Standard), ich = Mein Fokus der Person' },
         jahr: { type: 'number', description: 'Nur bei horizont=jahr: für welches Jahr (Standard das laufende; z. B. das nächste Jahr vorplanen)' },
         text: { type: 'string' },
       }, ['horizont', 'text']),

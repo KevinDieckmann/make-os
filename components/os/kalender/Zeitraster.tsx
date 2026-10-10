@@ -295,9 +295,9 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
   const kopfBreite = 46;
   const vorschau = aufzug && aufzug.aktiv && (aufzug.bewegt || aufzug.b !== aufzug.a) ? { ...ziehSpanne(aufzug.a, aufzug.b, RASTER), tag: aufzug.tag } : null;
   return (
-    <div style={{ display: 'grid', gridTemplateRows: 'auto auto auto 1fr auto', minHeight: 0, height: '100%', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, overflow: 'hidden', background: 'rgba(255,255,255,.015)' }}>
-      {/* Tagesköpfe */}
-      <div style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px repeat(${tage.length}, minmax(0, 1fr))`, borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+    <div data-kalender-zieht={zieh?.aktiv || aufzug?.aktiv || ablage ? '' : undefined} style={{ display: 'grid', gridTemplateRows: 'auto auto auto 1fr auto', minHeight: 0, height: '100%', border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, overflow: 'hidden', background: 'rgba(255,255,255,.015)' }}>
+      {/* Tagesköpfe — am Handy die Wisch-Zeile (ein Finger waagerecht blättert, senkrecht rollt die Seite weiter: wischen.ts). */}
+      <div data-wisch-kopf="" style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px repeat(${tage.length}, minmax(0, 1fr))`, borderBottom: '1px solid rgba(255,255,255,.07)', touchAction: 'pan-y' }}>
         <div />
         {tage.map(tag => { const d = new Date(`${tag}T12:00:00`); const h = tag === heute; return (
           <div key={tag} style={{ padding: '8px 6px 6px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,.05)' }}>
@@ -454,7 +454,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
           </div>
         </div>
       </div>
-      <div style={{ fontSize: 12, color: C.inkLeise, padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,.05)', fontFamily: SCHRIFT.text }}>Klick in eine Lücke legt an · aufziehen wählt die Zeit (am Handy kurz halten) · anfassen verschiebt · untere Kante ändert die Dauer · Aufgaben: Haken erledigt, ziehen plant ein · 🔒 nur in Apple/Google änderbar · 👥 mit Gästen</div>
+      <div style={{ fontSize: 12, color: C.inkLeise, padding: '6px 10px', borderTop: '1px solid rgba(255,255,255,.05)', fontFamily: SCHRIFT.text }}>Klick in eine Lücke legt an · aufziehen wählt die Zeit (am Handy kurz halten) · anfassen verschiebt · untere Kante ändert die Dauer · Aufgaben: Haken erledigt, ziehen plant ein · 🔒 nur in Apple/Google änderbar · 👥 mit Gästen · wischen blättert (zwei Finger, am Handy über die Tageszeile)</div>
     </div>
   );
 }

@@ -298,6 +298,137 @@ WHOOP-Schlafbeginn als Einschlafzeit (WHOOP misst „im Bett“) — Annahme. **
 `check` im Journal (bleibt beim Schreiben über PATCH erhalten, ein PUT des ganzen Journals aus dem alten Stand auch) und kennt die Meldungsart
 `gesundheit` nicht (die Glocke verwirft solche Einträge beim Lesen — nur Erinnerungen).
 
+## 09.10.2026 — Fokus: gemeinsam und je Person (nur lokal — Branch `ziele-und-wischen`, Basis 7e80f4fc)
+
+Kevin 09.10. spät: „Bau die Fokus-Seite auch nochmal ein wenig um, dass wir selber alle immer Fokusse einstellen können — sonst macht das
+ja alles keinen Sinn. Muss ja auch wieder individuell sein.“ Dazu die neue Regel: „Firma und Privat müssen immer getrennt liegen — auch von
+den Daten.“
+
+**Befund vorher:** Der Fokus lag als Satz je Horizont im gemischten Bestand `ziele` (`monat`, `privat:monat`, `business:monat` …) — ein
+„gemeinsamer“ Satz ohne Bereich, eigene Sätze nur über den Kompass (`ziele-eigen--<person>`), nichts davon teilbar, und die Prompts (Kalender-
+Agent, Wochenvorschlag) lasen den gemeinsamen Satz für jede Person — auch für ein Konto „nur Business“. `gatherBrain` kannte den Fokus gar nicht.
+
+**Gebaut:**
+- **Getrennte Bestände** (`lib/planung/fokus.ts`): Unser Fokus · Privat `fokus-privat--<haushalt>`, Unser Fokus · Business je Gesellschaft
+  `fokus-business--<haushalt>` (Schlüssel `<gesamt|gesellschaft>:<h>`), Mein Fokus · Privat `fokus-eigen--<person>`, Mein Fokus · Business
+  `fokus-eigen-business--<person>`; je Satz „teilen“ (`geteilt`). Kein Bestand mischt Privat und Business. **Altbestand bleibt** und wird nur
+  gelesen: Privat `privat:<h>`, sonst der bisherige gemeinsame Satz; Business-Gesamt `business:<h>`; Mein Fokus aus `ziele-eigen--<person>` — nur
+  im Haushalt der Inhaber (`ziele` liegt instanzweit). Sobald ein neuer Satz gespeichert ist, gilt er (auch leer = bewusst gelöscht). Nichts wird
+  mehr in `ziele` geschrieben.
+- **EINE Stelle** `lib/planung/fokus-server.ts` + Route `GET/PUT /api/planung/fokus` (Register `haushalt`, Tor `planZugangVon`): je Horizont
+  Unser, Mein (+ geteilt) und je Partner NUR Geteiltes (Regel wie bei den Zielen: volle Mitglieder desselben Haushalts). Schreiben mit Stand der
+  Zelle → 409 mit der neuen Fassung; > 300 Zeichen → 413; Unser nur volle Mitglieder (Konto „nur Business“ liest den Business-Fokus, schreibt
+  nur seinen eigenen); Privat für „nur Business“ 403.
+- **Oberfläche:** `components/os/planung/FokusTafel.tsx` — Privat · Business (im Business Gesamt + je Gesellschaft), Jahr · Quartal · Monat ·
+  Woche · Heute, je Zeile „Unser Fokus“ und „Mein Fokus“ mit Schalter „mit <Name> teilen“, darunter Geteiltes der anderen Person. Ein Feld, Enter
+  oder Verlassen speichert. Eingehängt in **Planung › Fokus**, die Fokus-Karte auf **Jahr/Quartal/Monat**, **Kalender › Planen** (Woche) und im
+  **Kompass** (der Fokus je Priorität bleibt dort wie bisher). **Heute:** die Fokus-Karte fragt bei fehlendem Satz direkt („Noch kein Fokus
+  diesen Monat — Worauf kommt es diesen Monat an?“) mit Eingabefeld; Tagesstart (Ritual) schreibt „Mein Fokus · Heute“; Tagesplanung und Wachstum
+  lesen über denselben Hook (`lib/planung/fokus-client.ts` `useFokus`).
+- **ZOE/Agenten lesen den Fokus der AUSLÖSENDEN Person:** `fokusZeilenFuer(person)` (Unser + Mein + mit ihr Geteiltes, Privat nur mit Privat-Zugang)
+  — in `gatherBrain` (`Brain.fokus`, im `<daten>`-Rahmen in `blockZiele`, ein Head nur seinen Bereich), im Kalender-Agenten
+  (`/api/kalender/analyse`) und im Wochenvorschlag (`/api/planung/vorschlag`). ZOE `setze_fokus` schreibt über `PUT /api/planung/fokus` (neu:
+  `fuer: wir|ich`, Bereich Privat/Business, Vorschau aus derselben Lesestelle).
+- **Recht:** Speicher-Register (4 Einträge mit Angaben), `PERSON_BESTAENDE` (`fokus-eigen`, `fokus-eigen-business`, immer mit Suffix → Konto-Export
+  und Konto löschen), `NICHT_PERSOENLICH` (die zwei Haushalts-Bestände); Messlatte: Marke in `fokus-eigen--kevin`. Onboarding-Prüfung „Fokus“
+  zählt die neuen Bestände mit.
+
+Tests: `tests/fokus-unser-mein.test.ts` (neu: Regel, Altbestand, Route „ungeteilter eigener Fokus kommt nie an“, „nur Business“ nie Privat,
+fremder Haushalt nichts — auch nicht aus dem Altbestand, Stand/409, 413, getrennte Bestände, `ziele` unberührt, EINE Lesestelle), angepasst:
+`zoe-schreibwege`, `planung-naechstes-jahr`, `design-kern`, `messlatte-malin`; grün: `routen-register`, `datenschutz-register`, `betroffenenrechte`,
+Design-Wächter, Onboarding, Brain/Agenten.
+
+**So testet ihr** (beide Konten):
+1. Planung › Fokus: oben Privat · Business. Bei „Monat“ unter „Unser Fokus“ einen Satz eintippen, Enter → „gespeichert“. Die andere Person
+   lädt neu → sieht denselben Satz.
+2. Unter „Mein Fokus“ einen Satz eintippen → die andere Person sieht ihn NICHT. Schalter „mit <Name> teilen“ an → bei ihr steht er unter dem
+   Feld mit deinem Vornamen.
+3. Business wählen → Gesamt und je Gesellschaft ein eigener Satz.
+4. Heute (Privat) ohne Monatsfokus: die Fokus-Karte fragt „Worauf kommt es diesen Monat an?“ — eintippen, Enter → der Satz steht in der Karte.
+5. Planung › Jahr/Quartal/Monat: die Fokus-Karte oben zeigt Unser + Mein für diesen Horizont. Kalender › Planen: „Fokus der Woche“.
+6. ZOE: „Setz meinen Fokus für diese Woche auf …“ → Vorschlag im Stapel → freigeben → steht unter „Mein Fokus · Woche“.
+7. Bisherige Sätze (vor dem Update) erscheinen als „bisheriger Satz“, bis jemand sie überschreibt.
+
+**Offen:** Der Fokus je Priorität im Kompass liegt weiter im bisherigen Bestand (nicht umgezogen); Gesellschaften aus dem Register (`g-…`) haben
+noch keinen eigenen Business-Fokus (nur die festen Business-Gesellschaften).
+
+## 09.10.2026 — Ziele: gemeinsam und je Person (nur lokal — Branch `ziele-und-wischen`, Basis 7e80f4fc)
+
+Kevin 09.10.: „Wir müssen im privaten Bereich irgendwie einen Bereich haben, wo wir zusammen unsere Ziele eintragen können — und jeder für
+sich. Das ist unfassbar wichtig. Auch bei der Planung. Irgendwie müssen wir das Ganze ja sehen, sonst macht es keinen Sinn.“
+
+**Befund (warum es unsichtbar war):** Eigene Ziele (`ziele-eigen--<person>`) gab es seit dem 26.09. nur auf dem Server — keine Ansicht legte
+sie an oder zeigte sie; nur der Kompass las und schrieb die eigenen FOKUS-Sätze. Die Planung (Jahr/Quartal/Monat, Woche in Kalender › Planen,
+Tag) zeigte allein den gemeinsamen Bestand `ziele`, gemischt mit Business. Die Ziele der anderen Person kamen nur „ganz oder gar nicht“
+(Konto › „Eigene Ziele teilen“, 08.10.) — und auch dann nirgends als Liste. Für das Paar gab es also keinen Ort, an dem „wir“, „ich“ und
+„du“ nebeneinander stehen.
+
+**Gebaut:**
+- **Drei Spalten im Privat-Bereich, auf jedem Horizont** (`components/os/planung/ZieleUebersicht.tsx`, eingehängt in `ZieleMeilensteine` statt
+  der Ziele-Karte, sobald der Filter „Privat“ ist — damit gilt es in Planung › Jahr/Quartal/Monat, Kalender › Planen (Woche) und Tagesplanung):
+  **Unsere Ziele** (gemeinsamer Bestand, Privat + ohne Bereich, beide bearbeiten; im Jahr oben der **Nordstern**, sonst als eine Zeile),
+  **Meine Ziele** (eigener Bestand, nur ich) und **<Vorname der anderen Person>** (nur, was sie geteilt hat — nur lesen). Anlegen direkt in
+  jeder Spalte (Enter; im Jahr optional Zahl/Termin, Privat-Einheit), Haken, Fortschritt je Ziel und als Ø im Kopf, Pfeile, Umbenennen,
+  Archivieren/Löschen mit „Rückgängig“, Meilensteine je gemeinsamem Ziel aufklappbar. Namen aus den Konten, nie im Code. Business unverändert;
+  im Kopf-Schalter „Alles“ (solange es ihn gibt) bleibt die Ziele-Karte, darüber Meine + <Name>.
+- **Je Ziel teilen:** Schalter „mit <Name> teilen“ an jedem eigenen Ziel (neues optionales Feld `Ziel.geteilt`, Vorgabe aus). Abgeleitete Ziele
+  der Kaskade erben es vom Jahresziel. Der Speicherort ändert sich nicht (bleibt `ziele-eigen--<person>`).
+- **Server filtert** (`lib/planung/eigene-ziele-sicht.ts`): `eigeneZieleSicht` = alles (eigen bzw. ganz geteilt wie bisher) · geteilte (zwei VOLLE
+  Mitglieder desselben Haushalts — nie ein Konto „nur Business“, nie ein fremder Haushalt) · nichts; `nurGeteilte` liefert nur `geteilt: true`
+  (und Fokus-Sätze unter `fokusGeteilt`, für Teil C). `GET /api/state/ziele?fuer=<person>` gibt bei „geteilte“ NUR das, ohne etwas Geteiltes
+  403 wie bisher; schreiben auf fremde Ziele bleibt 403. Die Sammel-Ansichten (Lichtfäden, Seil, Brain-Kugel, Fluss) bleiben bewusst bei der
+  strengen Regel (nur ganz Geteiltes). `/api/konto/ich` nennt je anderer Person `partner` (volles Mitglied desselben Haushalts).
+- **Heute (Privat):** neue Karte „Ziele · Unsere · Meine“ (Widget `ziele`, Standard in `uebersicht-privat`, Horizont wählbar) — dieselben
+  Spalten zum Lesen, „Planung ›“ führt zum Eintragen. Browser liest dafür nur über `lib/planung/ziele-client.ts` (`usePlanPersonen`,
+  `useZieleSpalten`); geschrieben wird über `usePlanung(horizont, true, 'ich')`.
+- **Recht:** eigene Ziele bleiben persönlich — `ziele-eigen` steht schon in `PERSON_BESTAENDE` (Konto-Export, Konto löschen) und im
+  Speicher-Register; `geteilt` reist im Export mit, ändert nichts am Ort. Neuer Bestand: keiner.
+
+Tests: `tests/ziele-unsere-meine.test.ts` (neu: Regel, Route „ungeteiltes eigenes Ziel der anderen Person kommt nie an“, „nur Business“/fremder
+Haushalt 403, Schreiben 403, Kaskade vererbt, Partner-Liste, Einhängen), dazu grün: `eigene-ziele-teilen`, `ziele-eine-quelle`, `nordstern`,
+`messlatte-malin`, `planung-*`, Design-Wächter.
+
+**So testet ihr** (beide Konten, Kopf-Schalter „Privat“):
+1. Planung › Jahr: unter dem Zeitstrahl stehen „Unsere Ziele“ (mit dem Nordstern oben), „Meine Ziele“ und eine Spalte mit dem Vornamen der
+   anderen Person.
+2. In „Meine Ziele“ ein Ziel eintippen, Enter → es steht da mit „nur ich“. Bei der anderen Person (anderes Gerät/Konto) taucht es NICHT auf.
+3. Am Ziel den Schalter „mit <Name> teilen“ antippen → „geteilt mit <Name>“. Die andere Person lädt Planung › Jahr neu → das Ziel steht in ihrer
+   Spalte mit deinem Vornamen (nur lesen, kein Haken).
+4. In „Unsere Ziele“ ein Ziel anlegen → beide sehen es und können es abhaken; „▸ n Meilensteine“ klappt die Meilensteine auf.
+5. Planung › Quartal und › Monat, Kalender › Planen (Woche): dieselben drei Spalten.
+6. Heute (Privat): Karte „Ziele · Jahr“ mit den drei Spalten und dem Fortschritt.
+
+## 09.10.2026 — Kalender: Wischen (nur lokal — Branch `ziele-und-wischen`, Basis 7e80f4fc)
+
+Kevin 09.10.: „Wenn ich mit 2 Fingern nach links wische, soll die nächste Woche angezeigt werden, nach rechts wieder zurück.“
+
+**Gebaut:** Wischen blättert in **Tag · 4 Tage · Woche · Monat** (nicht Jahr/Termine, nicht im Aufgaben-Modus) — dieselbe Funktion wie die Pfeile
+‹ ›, also immer der nächste/vorige Zeitraum der Ansicht.
+- **Trackpad (Mac, iPad mit Trackpad):** zwei Finger waagerecht. Richtung wie beim Rollen — mit „natürlichem Scrollen“ (Mac-Vorgabe) heißt das
+  Finger nach **links = weiter**, nach rechts = zurück. Aufsummiert ab 60 px, danach **Sperre 600 ms** (verlängert sich, solange der Schwung
+  nachläuft, höchstens 1,4 s) — ein Wischer springt nie zwei Wochen; ein Wischer in die Gegenrichtung nach 600 ms löst sofort. Senkrechtes Rollen
+  bleibt beim Raster; nur ein waagerechter Wischer wird abgefangen (sonst blättert der Browser mit seiner Zurück-Geste die Seite weg), dazu
+  `overscroll-behavior-x: none` am Inhalt. Pinch (ctrlKey) zählt nie.
+- **Touch (Handy, iPad ohne Trackpad):** **ein Finger waagerecht über die Kopfzeile der Tage** (Wochentag + Datum; im Monat die Wochentage).
+  Entscheidung: zwei Finger am Handy fängt iOS als Zoom ab (`maximum-scale` gilt dort nicht für Pinch) und ist einhändig unbequem; ein Finger im
+  Raster kollidiert mit Rollen, Aufziehen und Verschieben (350 ms Halten). Die Kopfzeile rollt nicht und trägt keine Knöpfe (`touch-action: pan-y`:
+  senkrecht rollt die Seite weiter).
+- **Nie** während Ziehen/Aufziehen im Raster (`data-kalender-zieht`, gedrückte Taste), nie über einem offenen Termin-Fenster/Dialog.
+- Hinweis in der Hilfezeile unter dem Raster: „wischen blättert (zwei Finger, am Handy über die Tageszeile)“.
+
+Regeln rein in `components/os/kalender/wischen.ts` (`radSchritt`, `kopfWischRichtung`, `wischenAktiv`, Hook `useKalenderWischen`), eingehängt in
+`Kalender.tsx`; Kopfzeilen in `Zeitraster.tsx`/`Monat.tsx` markiert. Tests: `tests/kalender-wischen.test.ts` (Schwelle, Richtung, Sperre mit
+Schwung, Deckel, Gegenrichtung, senkrecht/Pinch/blockiert nie abgefangen, Touch, Einhängen).
+
+**So testet ihr:**
+1. Mac: Kalender, Ansicht Woche → mit zwei Fingern auf dem Trackpad nach links wischen → nächste Woche (KW +1). Nach rechts → zurück.
+2. Einmal kräftig wischen → es springt genau EINE Woche, nicht mehrere.
+3. Mit zwei Fingern senkrecht rollen → das Raster rollt wie bisher, die Woche bleibt.
+4. Ansicht Monat → wischen blättert den Monat; Ansicht Tag → den Tag. Ansicht Jahr → nichts passiert.
+5. Einen Termin anklicken (Fenster offen) → wischen tut nichts.
+6. Handy: Ansicht Tag → mit einem Finger über die Zeile mit Wochentag und Datum nach links wischen → nächster Tag. Im Raster selbst rollt der Finger
+   wie bisher.
+
 ## 09.10.2026 — Inbox: Ansicht, Ordnung, Bereichs-Labels (nur lokal — Branch `inbox-ansicht`, Basis a063e73a)
 
 Kevin 09.10.: „Ich muss mir die Inbox und die Nachrichten, die da gekommen sind, auch ansehen können — sortiert. Sonst nutzt mir das alles nichts.

@@ -15,13 +15,16 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, zoneFarbe, ZielBezug, LEUCHT } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { PlanerLeiste } from './PlanerLeiste';
+import { useFokus } from '@/lib/planung/fokus-client';
+import { useSpace } from '@/hooks/useSpace';
+import { useNurBusiness } from './useInhaber';
 
 interface Faktor { label: string; wert: number; echt: boolean; quelle?: string; href?: string }
 interface Saeule { key: string; label: string; gewicht: number; score: number | null; zuDuenn: boolean; faktoren?: Faktor[] }
 interface Perf { index: number | null; label: string; hebel: string | null; abdeckung: number; stand: string; saeulen: Saeule[] }
 interface Messung { date: string; index: number | null }
 interface Ziel { id: string; titel: string; fortschritt: number; erledigt: boolean }
-interface Ziele { monat: Ziel[]; quartal: Ziel[]; jahr: Ziel[]; fokus: { monat?: string; woche?: string; tag?: string } }
+interface Ziele { monat: Ziel[]; quartal: Ziel[]; jahr: Ziel[] }
 
 const FARBE_JE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
 const KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
@@ -33,6 +36,9 @@ export function WachstumView() {
   const [verlauf, setVerlauf] = useState<Messung[]>([]);
   const [ziele, setZiele] = useState<Ziele | null>(null);
   const [offen, setOffen] = useState<string | null>(null);
+  const { space } = useSpace();
+  const nurBusiness = useNurBusiness();
+  const fokus = useFokus(nurBusiness === null ? null : nurBusiness ? 'business' : space);
 
   useEffect(() => {
     fetch('/api/performance').then(r => r.json()).then(d => { setPerf(d.aktuell ?? null); setVerlauf(d.verlauf ?? []); }).catch(() => {});
@@ -120,12 +126,17 @@ export function WachstumView() {
       </Kachel>
       <Kachel id="fokus" titel="Fokus" breite={2}>
       <Karte i={5} akzent={LEUCHT.schlaf}>
-        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/kompass" style={{ color: C.inkLeise, textDecoration: 'none' }}>Kompass ›</Link>}>Fokus</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/fokus" style={{ color: C.inkLeise, textDecoration: 'none' }}>Fokus ›</Link>}>Fokus</Ueberschrift>
+        {/* Seit 09.10. aus den getrennten Fokus-Beständen (lib/planung/fokus-client.ts): Unser, sonst Mein Fokus des aktiven Bereichs. */}
         <Liste>
-          {(['monat', 'woche', 'tag'] as const).map(k => (
-            <Zeile key={k} links={<span style={{ fontSize: 12, color: C.inkLeise, width: 52, textTransform: 'uppercase', letterSpacing: '.04em' }}>{k === 'monat' ? 'Monat' : k === 'woche' ? 'Woche' : 'Tag'}</span>}
-              titel={ziele?.fokus?.[k] ? <span style={{ fontWeight: 600 }}>{ziele.fokus[k]}</span> : <span style={{ color: C.inkLeise }}>noch nicht gesetzt</span>} />
-          ))}
+          {(['monat', 'woche', 'tag'] as const).map(k => {
+            const v = fokus.sicht?.horizonte[k];
+            const text = v ? (v.unser.text || v.mein.text) : '';
+            return (
+              <Zeile key={k} links={<span style={{ fontSize: 12, color: C.inkLeise, width: 52, textTransform: 'uppercase', letterSpacing: '.04em' }}>{k === 'monat' ? 'Monat' : k === 'woche' ? 'Woche' : 'Tag'}</span>}
+                titel={text ? <span style={{ fontWeight: 600 }}>{text}</span> : <span style={{ color: C.inkLeise }}>noch nicht gesetzt</span>} />
+            );
+          })}
         </Liste>
       </Karte>
       </Kachel>

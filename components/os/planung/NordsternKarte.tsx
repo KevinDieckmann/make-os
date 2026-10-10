@@ -5,6 +5,8 @@
 // /api/planung/nordstern (Haushalt aus dem Konto, Stand/409, Business-Konten nur lesen — entschieden auf dem Server).
 // Leer: Leerzustand mit Weg; Bearbeiten: Textfeld, Speichern mit dem gesehenen Stand. Bei 409 bleibt die eigene Eingabe im Feld
 // und die neue Fassung steht darüber — nichts geht still verloren. Kein Konto mit Haushalt → die Karte zeigt sich nicht.
+// Seit 09.10. (Ziele: Unsere · Meine · <Name>) steht er oben in „Unsere Ziele“: `eingebettet` = ohne eigene Karte (Jahr, bearbeitbar),
+// `kompakt` = eine Zeile zum Lesen (Quartal/Monat/Woche/Tag), leer gar nicht.
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -14,7 +16,7 @@ import { Karte, Ueberschrift, Knopf, Hinweis, Leer, eingabe, LEUCHT } from '../u
 type Laden = { art: 'laedt' } | { art: 'aus' } | { art: 'da'; d: NordsternAntwort };
 type Meldung = { art: 'achtung' | 'kritisch'; text: string } | null;
 
-export function NordsternKarte({ i = 0, rechts }: { i?: number; rechts?: ReactNode }) {
+export function NordsternKarte({ i = 0, rechts, eingebettet, kompakt }: { i?: number; rechts?: ReactNode; eingebettet?: boolean; kompakt?: boolean }) {
   const [z, setZ] = useState<Laden>({ art: 'laedt' });
   const [entwurf, setEntwurf] = useState<string | null>(null);
   const [meldung, setMeldung] = useState<Meldung>(null);
@@ -30,6 +32,13 @@ export function NordsternKarte({ i = 0, rechts }: { i?: number; rechts?: ReactNo
 
   if (z.art !== 'da') return null;
   const d = z.d;
+  if (kompakt) {
+    return d.text ? (
+      <p title="Nordstern des Haushalts — bearbeiten unter Planung › Jahr" style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <span aria-hidden style={{ color: LEUCHT.schlaf, marginRight: 6 }}>✦</span>{d.text}
+      </p>
+    ) : null;
+  }
 
   async function speichern() {
     if (entwurf === null || z.art !== 'da') return;
@@ -54,9 +63,13 @@ export function NordsternKarte({ i = 0, rechts }: { i?: number; rechts?: ReactNo
   const bearbeiten = entwurf !== null;
   const zuLang = (entwurf?.length ?? 0) > NORDSTERN_MAX;
 
-  return (
-    <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.schlaf} rechts={rechts}>Nordstern</Ueberschrift>
+  // Hülle als Funktion (kein Bauteil im Rendern — sonst verlöre das Textfeld bei jedem Tastendruck den Fokus).
+  const huelle = (inhalt: ReactNode) => (eingebettet
+    ? <section aria-label="Nordstern" style={{ display: 'grid', gap: 6, paddingBottom: 10, borderBottom: `1px solid ${C.linie}` }}><div style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700, color: LEUCHT.schlaf }}>✦ Nordstern</div>{inhalt}</section>
+    : <Karte i={i}><Ueberschrift farbe={LEUCHT.schlaf} rechts={rechts}>Nordstern</Ueberschrift>{inhalt}</Karte>);
+
+  return huelle(
+    <>
       {meldung && <div style={{ marginBottom: 10 }}><Hinweis art={meldung.art} rolle={meldung.art === 'kritisch' ? 'alert' : 'status'}>{meldung.text}</Hinweis></div>}
       {bearbeiten ? (
         <div style={{ display: 'grid', gap: 10 }}>
@@ -82,6 +95,6 @@ export function NordsternKarte({ i = 0, rechts }: { i?: number; rechts?: ReactNo
           Noch kein Nordstern hinterlegt — das gemeinsame Ziel, an dem sich Jahre, Ziele und ZOE ausrichten.
         </Leer>
       )}
-    </Karte>
+    </>,
   );
 }

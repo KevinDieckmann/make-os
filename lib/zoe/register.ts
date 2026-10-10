@@ -23,7 +23,9 @@ import { businessFirmaAus, finanzOrtName, istGesellschaft, kontoName } from '@/l
 import { AUFGABEN_REGISTER } from './aufgaben-werkzeuge';
 import { SPORT_REGISTER } from './sport-werkzeuge';
 import { ARBEIT_REGISTER } from './arbeit-werkzeug';
-import { fokusImJahr } from '@/lib/planung/jahr-fokus';
+import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
+import { istFokusHorizont } from '@/lib/planung/fokus';
+import { fokusSichtFuer } from '@/lib/planung/fokus-server';
 import { localDay } from '@/lib/zeit';
 import { CRM_VORSCHLAG_REGISTER } from './crm-vorschlag';
 // Priorität und Tag deutsch in Vorschau und Stapel (09.10. „Agenten live“: dort stand „(high)“ und „2026-10-10“).
@@ -190,20 +192,22 @@ async function vsMeilenstein(i: Record<string, unknown>, person?: string): Promi
   };
 }
 
-async function vsFokus(i: Record<string, unknown>): Promise<Vorschau> {
+async function vsFokus(i: Record<string, unknown>, person?: string): Promise<Vorschau> {
+  // Seit 09.10. aus derselben Lesestelle wie die Oberfläche (lib/planung/fokus-server.ts): Unser bzw. Mein Fokus, Privat/Business getrennt.
   const h = String(i.horizont ?? '');
-  const z = await loadJson<{ fokus?: Record<string, string> }>('ziele');
-  const sp = i.space === 'privat' || i.space === 'business' ? String(i.space) : null;
-  const key = sp ? `${sp}:${h}` : h;
-  // Fokus des Jahres je Jahr (30.09.): vorher = der Satz dieses Jahres.
+  const sp = i.space === 'privat' || i.space === 'business' ? i.space : null;
+  const wessen = i.fuer === 'ich' ? 'mein' : 'unser';
   const laufend = Number(localDay().slice(0, 4));
   const jahr = h === 'jahr' && i.jahr != null && Number.isInteger(Number(i.jahr)) ? Number(i.jahr) : null;
-  const alt = h === 'jahr' ? fokusImJahr(z?.fokus, key, jahr ?? laufend, laufend) : (z?.fokus?.[key] ?? '');
+  const zugang = await planZugangFuer(person);
+  const bereich = sp ?? (zugang?.sicht === 'business' ? 'business' : 'privat');
+  const s = istFokusHorizont(h) && person ? await fokusSichtFuer(person, bereich, { ...(jahr ? { jahr } : {}) }) : null;
+  const alt = s && !('fehler' in s) && istFokusHorizont(h) ? (wessen === 'unser' ? s.horizonte[h].unser.text : s.horizonte[h].mein.text) : '';
   return {
-    titel: `Fokus (${h}${jahr && jahr !== laufend ? ` ${jahr}` : ''}${sp ? `, ${sp}` : ''}) setzen`,
+    titel: `${wessen === 'unser' ? 'Unser' : 'Mein'} Fokus (${h}${jahr && jahr !== laufend ? ` ${jahr}` : ''}, ${bereich === 'privat' ? 'Privat' : 'Business'}) setzen`,
     vorher: alt ? `„${alt}“` : 'nicht gesetzt',
     nachher: `„${text(i.text, 300)}“`,
-    zurueck: { werkzeug: 'setze_fokus', eingabe: { horizont: h, ...(sp ? { space: sp } : {}), ...(jahr ? { jahr } : {}), text: alt } },
+    zurueck: { werkzeug: 'setze_fokus', eingabe: { horizont: h, space: bereich, ...(wessen === 'mein' ? { fuer: 'ich' } : {}), ...(jahr ? { jahr } : {}), text: alt } },
   };
 }
 

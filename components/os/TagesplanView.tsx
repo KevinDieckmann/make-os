@@ -1,6 +1,5 @@
 'use client';
 import { useSpace } from '@/hooks/useSpace';
-import { fokusFuerSpace } from '@/lib/make-one/space-regeln';
 
 import Link from 'next/link';
 // ─── MAKE OS — Tagesplanung ─────────────────────────────────────────────────
@@ -29,6 +28,8 @@ import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT, useRueckfrage } from './ui';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
+import { useFokus } from '@/lib/planung/fokus-client';
+import { useNurBusiness } from './useInhaber';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
 interface Fix { titel: string; startMin: number; dauerMin: number }
@@ -76,7 +77,9 @@ function Ziehbar({ farbe, daten, children, breit }: { farbe: string; daten: obje
 }
 
 export function TagesplanView({ tag }: { tag?: string } = {}) {
-  const { ausAdresse: spaceAusAdresse } = useSpace();
+  const { ausAdresse: spaceAusAdresse, space: spaceAktiv } = useSpace();
+  const nurBusiness = useNurBusiness();
+  const fokusDaten = useFokus(nurBusiness === null ? null : nurBusiness ? 'business' : (spaceAusAdresse ?? spaceAktiv));
   const { bestaetigen, dialog } = useRueckfrage();
   // Kevins Ansage: den nächsten Tag angucken können. Ohne Anker ist es heute.
   const heute = tag ?? localDay();
@@ -90,7 +93,6 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const [meldung, setMeldung] = useState<string | null>(null);
   const [routinen, setRoutinen] = useState<Routine[]>([]);
   const [hlog, setHlog] = useState<Record<string, string[]>>({});
-  const [fokusAlle, setFokusAlle] = useState<Record<string, string>>({});
   const [ziele, setZiele] = useState<{ titel: string; fortschritt: number }[]>([]);
   const [regler, setRegler] = useState<Record<string, number>>({});
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
@@ -111,7 +113,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
       }).catch(() => { setArchiv([]); setRehaVorher(false); });
     fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
     fetch('/api/state/health').then(r => r.json()).then(d => setHlog(d.log ?? {})).catch(() => {});
-    fetch('/api/state/ziele').then(r => r.json()).then(d => { setFokusAlle(d.fokus ?? {}); setZiele((d.monat ?? []).filter((z: { erledigt?: boolean }) => !z.erledigt)); }).catch(() => {});
+    fetch('/api/state/ziele').then(r => r.json()).then(d => { setZiele((d.monat ?? []).filter((z: { erledigt?: boolean }) => !z.erledigt)); }).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
   }, [heute]);
 
@@ -164,9 +166,12 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
 
   // Der Fokus des Tages — fällt auf Woche, dann Monat zurück.
   // Im Space zählt der Space-Fokus, sonst der gemeinsame (26.09.).
-  const fokusSicht = fokusFuerSpace(fokusAlle, spaceAusAdresse);
-  const fokusText = fokusSicht.tag || fokusSicht.woche || fokusSicht.monat || '';
-  const fokusQuelle = fokusSicht.tag ? 'Tag' : fokusSicht.woche ? 'Woche' : fokusSicht.monat ? 'Monat' : '';
+  // Fokus (09.10.): Unser bzw. Mein Fokus aus den getrennten Beständen (lib/planung/fokus-client.ts) — Bereich der Adresse, sonst der aktive.
+  const fokusH = fokusDaten.sicht?.horizonte;
+  const fokusSatzVon = (h: 'tag' | 'woche' | 'monat') => fokusH ? (fokusH[h].mein.text || fokusH[h].unser.text) : '';
+  const fokusAlle = { tag: fokusSatzVon('tag'), woche: fokusSatzVon('woche'), monat: fokusSatzVon('monat') };
+  const fokusText = fokusAlle.tag || fokusAlle.woche || fokusAlle.monat || '';
+  const fokusQuelle = fokusAlle.tag ? 'Tag' : fokusAlle.woche ? 'Woche' : fokusAlle.monat ? 'Monat' : '';
 
   // ── Fokusbereiche: Regler ≥ Schwelle + grobe Stichwort-Erkennung aus den Fokus-Texten ──
   const fokusSaeulen = useMemo(() => {
@@ -177,7 +182,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     if (/kunde|umsatz|vertrieb|launch|pipeline|onboard/.test(ft)) s.add('business');
     if (/partner|familie|beziehung|team/.test(ft)) s.add('social');
     return s;
-  }, [regler, fokusAlle]);
+  }, [regler, fokusAlle.tag, fokusAlle.woche, fokusAlle.monat]);
   const passtZumFokus = (r: Routine) => fokusSaeulen.has(KATEGORIE_ZU_SAEULE[r.kategorie] ?? '');
 
   // Routine-Häkchen — derselbe Store wie im Gesundheits-Cockpit.

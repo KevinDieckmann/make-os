@@ -24,7 +24,8 @@ export function Monat({ blatt, monat, heute, termine, fristen, erinnerungen, far
 }) {
   return (
     <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr', height: '100%', minHeight: 0, border: '1px solid rgba(255,255,255,.07)', borderRadius: 14, overflow: 'hidden', background: 'rgba(255,255,255,.015)', fontFamily: SCHRIFT.text }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+      {/* Wochentage — am Handy die Wisch-Zeile (wischen.ts). */}
+      <div data-wisch-kopf="" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid rgba(255,255,255,.07)', touchAction: 'pan-y' }}>
         {WD.map(w => <div key={w} style={{ padding: '8px 6px', textAlign: 'center', fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 700 }}>{w}</div>)}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(6, 1fr)', minHeight: 0 }}>

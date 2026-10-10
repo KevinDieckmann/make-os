@@ -104,10 +104,13 @@ describe('Fokus des Jahres je Jahr', () => {
     expect((await ziele.PUT(req('/api/state/ziele', 'PUT', { horizont: 'prio:jahresabschluss', fokus: 'x' }))).status).toBe(200);
   });
   it('ZOE setzt den Fokus fürs nächste Jahr', async () => {
+    // Seit 09.10. in den getrennten Fokus-Beständen (Privat ≠ Business, lib/planung/fokus.ts) — der gemischte Bestand `ziele` bleibt unberührt.
+    const vorher = (await db.loadJson<{ fokus: Record<string, string> }>('ziele'))!.fokus;
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
     expect(await WERKZEUGE.setze_fokus.lauf({ horizont: 'jahr', space: 'privat', jahr: N, text: 'Gesund bleiben' }, 'http://test', 'kevin')).toMatch(/Gilt ab Januar/);
-    const roh = (await db.loadJson<{ fokus: Record<string, string> }>('ziele'))!.fokus;
-    expect(roh[`privat:jahr:${N}`]).toBe('Gesund bleiben');
-    expect(roh['privat:jahr']).toBeUndefined();
+    expect((await db.loadJson<{ fokus: Record<string, string> }>('ziele'))!.fokus).toEqual(vorher);
+    const neu = (await db.loadJson<{ fokus: Record<string, string> }>('fokus-privat--test-haus'))!.fokus;
+    expect(neu[`jahr:${N}`]).toBe('Gesund bleiben');
+    expect(neu[`jahr:${J}`]).toBeUndefined();
   });
 });

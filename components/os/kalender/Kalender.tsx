@@ -21,6 +21,8 @@
 // Seit 09.10. (Kevin: „Kalender links einklappbar … dann hat er ausreichend Platz“): die linke Spalte klappt ein — Knopf neben
 // „Erstellen“, ⌘B/Strg+B, je Browser gemerkt; zugeklappt „Spalte öffnen“ + kleines „Erstellen“ vorne in der Kopfzeile. Nur breit (nebeneinander);
 // Planen öffnet eine zugeklappte Spalte (die Bausteine stehen dort). Regeln rein in ./klappen.ts.
+// Seit 09.10. (Kevin: „mit 2 Fingern nach links wischen = nächste Woche, nach rechts zurück“): Wischen blättert in Tag/4 Tage/Woche/Monat —
+// Trackpad mit zwei Fingern, am Handy ein Finger auf der Kopfzeile der Tage; dieselbe Funktion wie die Pfeile. Regeln rein in ./wischen.ts.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -70,6 +72,7 @@ import { modusAusAdresse, startAnsicht, type Modus, type KalenderAnsicht } from 
 import { useSpace } from '@/hooks/useSpace';
 import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
 import { LINKS_ID, LINKS_TASTE, linksOffenLesen, linksOffenMerken, linksSichtbar, linksTaste, oeffnenFuerPlanen } from './klappen';
+import { useKalenderWischen, wischenAktiv } from './wischen';
 
 type Ansicht = KalenderAnsicht;
 /** Ansichten mit Zeitraster — nur dort lässt sich planen. */
@@ -246,6 +249,9 @@ export function Kalender() {
 
   // Navigation
   const springe = (richtung: -1 | 1) => setAnker(a => ansicht === 'tag' ? tagPlus(a, richtung) : ansicht === 'vier' ? tagPlus(a, 4 * richtung) : ansicht === 'woche' ? tagPlus(a, 7 * richtung) : ansicht === 'monat' ? monatPlus(a, richtung) : ansicht === 'jahr' ? monatPlus(a, 12 * richtung) : tagPlus(a, 30 * richtung));
+  // Wischen (09.10.): Trackpad zwei Finger waagerecht bzw. ein Finger auf der Kopfzeile der Tage — dieselbe Funktion wie die Pfeile.
+  const inhalt = useRef<HTMLDivElement>(null);
+  useKalenderWischen(inhalt, { aktiv: wischenAktiv(ansicht, modus) && !offen && !neu, weiter: springe });
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       const ziel = e.target as HTMLElement | null;
@@ -448,7 +454,8 @@ export function Kalender() {
         {modus !== 'aufgaben' && <div className="ui-reiter-zeile" style={{ maxWidth: '100%' }}><Reiter ariaLabel="Ansicht des Kalenders" liste={(modus === 'planen' ? ANSICHTEN.filter(a => MIT_RASTER.includes(a.id)) : ANSICHTEN).map(a => ({ id: a.id, label: a.label }))} aktiv={ansicht} onWahl={setAnsicht} /></div>}
         {!breit && <ErstellenMenue breit={false} onArt={a => setNeu(neuVon(a))} />}
       </div>
-      <div style={{ minHeight: 0, ...(modus === 'aufgaben' ? { overflowY: 'auto' as const } : {}) }}>
+      {/* overscroll-behavior-x: kein „Zurück“ des Browsers am Rand, wenn waagerecht gewischt wird (wischen.ts fängt den Wischer ab). */}
+      <div ref={inhalt} style={{ minHeight: 0, overscrollBehaviorX: 'none', ...(modus === 'aufgaben' ? { overflowY: 'auto' as const } : {}) }}>
         {modus === 'aufgaben' && <AufgabenModus heute={heute} woche={wocheDesAnkers} sicht={sicht} bereich={bereich} suche={suche} filter={aufgabenFilter} onFilter={setAufgabenFilter} />}
         {modus !== 'aufgaben' && (ansicht === 'tag' || ansicht === 'woche') && (
           <Zeitraster tage={tage} heute={heute} termine={k4.raster(rasterTermine)} fristen={fristen} erinnerungen={erinnerungen} aufgaben={aufgabenImZeitraum} aufgabeDauer={einst?.dauer.aufgabe ?? 30} farbe={k4.farbe(farbe)}

@@ -68,6 +68,8 @@ export function abgeleitetesZiel(eltern: Ziel, h: Unterhorizont, jahr: number, b
     ...(eltern.firmaId ? { firmaId: eltern.firmaId } : {}),
     zielwert: anteil(eltern.zielwert ?? 0, teile(h, jahr)).gerundet,
     abgeleitetVon: eltern.id,
+    // Geteilt (09.10., eigene Ziele): das abgeleitete Ziel folgt dem Jahresziel — geteilt ist es, wenn das Jahresziel es ist.
+    ...(eltern.geteilt ? { geteilt: true } : {}),
   };
 }
 

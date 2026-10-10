@@ -9,7 +9,7 @@ import Link from 'next/link';
 // Abends: Routinen → Abend-Journal → Blick auf morgen → ausloggen.
 // 24.09.: auf das lebendige Muster umgezogen — jeder Schritt ist eine Karte.
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { PlanBlock } from '@/types/planer';
@@ -17,6 +17,9 @@ import { localDay } from '@/lib/zeit';
 import { tagPlus as tagPlusK } from '@/lib/kalender/zeit';
 import { useTasks } from '@/context/TasksContext';
 import { Seite, Karte, Chip, Knopf, Segmente, feld, LEUCHT } from './ui';
+import { useFokus } from '@/lib/planung/fokus-client';
+import { FokusFeld } from './planung/FokusTafel';
+import { useNurBusiness } from './useInhaber';
 
 interface Vitals { rec?: number; sleep?: number; hrv?: number; rhr?: number; note?: string }
 interface JournalEintrag { text?: string; mood?: number; energy?: number; stress?: number; flags?: string[]; at?: string; tagesnote?: number }
@@ -75,12 +78,15 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
   const [vEingabe, setVEingabe] = useState<{ rec: string; sleep: string; hrv: string; rhr: string; note: string }>({ rec: '', sleep: '', hrv: '', rhr: '', note: '' });
   const [journal, setJournal] = useState<Record<string, JournalEintrag>>({});
   const [abendText, setAbendText] = useState('');
-  const [fokusTag, setFokusTag] = useState('');
+  // Fokus des Tages (09.10.): „Mein Fokus · Heute“ aus den getrennten Fokus-Beständen (lib/planung/fokus-client.ts) — Privat, bei einem Konto
+  // „nur Business“ Business; nichts mehr in den gemischten Bestand `ziele`.
+  const nurBusiness = useNurBusiness();
+  const fokusRitual = useFokus(nurBusiness === null ? null : nurBusiness ? 'business' : 'privat');
+  const fokusTag = fokusRitual.sicht?.horizonte.tag.mein.text ?? '';
   const [bloecke, setBloecke] = useState<PlanBlock[]>([]);
   const [routinen, setRoutinen] = useState<{ gesamt: number; erledigt: number }>({ gesamt: 0, erledigt: 0 });
   const [arbeit, setArbeit] = useState<Modus | null>(null);
   const [gespeichert, setGespeichert] = useState('');
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!startModus) setModusTab(new Date().getHours() >= 15 ? 'abend' : 'morgen');
@@ -93,7 +99,6 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
       setJournal(j);
       setAbendText(j[heute]?.text ?? '');
     }).catch(() => {});
-    fetch('/api/state/ziele').then(r => r.json()).then(d => setFokusTag(d.fokus?.tag ?? '')).catch(() => {});
     // Blöcke von heute und morgen (K5: Kalender-Termine der Art Fokus/Block + Archiv des alten Wochenplans).
     fetch(`/api/planung/bloecke?von=${heute}&bis=${tagPlusK(heute, 2)}`).then(r => r.json()).then(d => setBloecke(Array.isArray(d.bloecke) ? d.bloecke : [])).catch(() => {});
     Promise.all([
@@ -159,13 +164,6 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
     journalSpaeter(next);
   }
 
-  function fokusSpeichern(text: string) {
-    setFokusTag(text);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      fetch('/api/state/ziele', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ horizont: 'tag', fokus: text }) }).catch(() => {});
-    }, 600);
-  }
 
   const morgenDatum = (() => { const d = new Date(`${heute}T12:00:00`); d.setDate(d.getDate() + 1); return localDay(d); })();
   const j = journal[heute] ?? {};
@@ -280,8 +278,8 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
           </Schritt>
 
           <Schritt nr={5} titel="Fokus des Tages" done={mSchritte.fokus}>
-            <input value={fokusTag} onChange={e => fokusSpeichern(e.target.value)} placeholder="Der eine Satz: worauf liegt heute der Fokus?"
-              style={{ ...feld, fontWeight: 600 }} />
+            <FokusFeld wert={fokusTag} label="Mein Fokus heute" platzhalter="Der eine Satz: worauf liegt heute der Fokus?" gross aus={!fokusRitual.sicht}
+              onSpeichern={text => fokusRitual.schreiben('mein', 'tag', { text })} />
           </Schritt>
 
           <Schritt nr={6} titel="Tag bauen — Blöcke, Kollisionen, Delegation" done={mSchritte.plan}>
