@@ -380,13 +380,77 @@ export function obsidianLink(n: Pick<Notiz, 'id' | 'wurzel'>): string | null {
   return `obsidian://open?vault=${encodeURIComponent(w.obsidian)}&file=${encodeURIComponent(datei)}`;
 }
 
-/** Eine Notiz per Kennung oder Wikilink-Namen finden — nur, was die Sicht erlaubt. */
-function finde(b: Bestand, id: string, sicht: VaultSicht): Notiz | undefined {
+/** Eine Notiz per Kennung oder Wikilink-Namen finden — nur, was die Sicht erlaubt (und, mit `pfade`, nur in diesen Präfixen). */
+function finde(b: Bestand, id: string, sicht: VaultSicht, pfade?: readonly string[]): Notiz | undefined {
   const sauberId = id.replace(/^\[\[|\]\]$/g, '').split('|')[0].trim();
   const klein = sauberId.toLowerCase();
   const passt = (n: Notiz) => n.id === sauberId || n.id.toLowerCase().endsWith(klein) || n.titel.toLowerCase() === klein.replace(/\.md$/, '');
   // Wikilink-Namen: wie Obsidian — die erste passende Notiz, das Brain vor der Doku.
-  return b.notizen.find(n => passt(n) && darfSehen(n, sicht));
+  return b.notizen.find(n => passt(n) && darfSehen(n, sicht) && imPfad(n.id, pfade));
+}
+
+// ── Pfade im Brain (09.10., Wissen je Head und „Aus dem Brain übernehmen“) ──────────────────────────────────────────
+// Eingestellt werden Pfade RELATIV zur Wurzel des Brains (`01. Ordner/Unterordner` bzw. `…/Notiz.md`) — so bleiben sie gültig, egal wo der
+// Vault liegt (Mac, Server `/vault`). Gesucht wird über Kennungs-Präfixe der Wurzel „make“ (nie die Doku-Wurzel).
+
+/** Kennungs-Präfix zu einem Pfad relativ zum Brain: Ordner → `make/…/Ordner/`, Notiz (`.md`) → genau ihre Kennung. */
+export function brainPraefix(pfad: string): string {
+  const w = WURZELN[0];
+  const rel = relative(w.vault, join(w.pfad, pfad)).split(sep).join('/');
+  return `${w.id}/${rel}${/\.md$/i.test(pfad) ? '' : '/'}`;
+}
+
+/** Pfad einer Notiz relativ zum Brain (Kennung der Wurzel „make“) — sonst null (Doku-Wurzel, fremd). */
+export function brainPfadVon(id: string): string | null {
+  const w = WURZELN[0];
+  const basis = `${w.id}/${relative(w.vault, w.pfad).split(sep).join('/')}`;
+  const p = basis.endsWith('/') ? basis : `${basis}/`;
+  return id.startsWith(p) ? id.slice(p.length) : null;
+}
+
+export interface BrainOrdner { pfad: string; notizen: number }
+export interface BrainNotizKurz { id: string; pfad: string; titel: string; typ?: string; scope?: string; stand?: string; ordner: string }
+
+/** Alle Notizen der Wurzel „make“, die die Sicht sieht — mit Pfad relativ zum Brain und ihrem Ordner. */
+export async function brainNotizen(sichtRoh: Sicht | VaultSicht): Promise<BrainNotizKurz[]> {
+  const sicht = await sichtAufloesen(sichtRoh);
+  const b = await bestand();
+  const raus: BrainNotizKurz[] = [];
+  for (const n of b.notizen) {
+    if (n.wurzel !== WURZELN[0].id || !darfSehen(n, sicht)) continue;
+    const pfad = brainPfadVon(n.id);
+    if (!pfad) continue;
+    const i = pfad.lastIndexOf('/');
+    raus.push({ id: n.id, pfad, titel: n.titel, ...(n.typ ? { typ: n.typ } : {}), ...(n.scope ? { scope: n.scope } : {}), ...(n.stand ? { stand: n.stand } : {}), ordner: i < 0 ? '' : pfad.slice(0, i) });
+  }
+  return raus;
+}
+
+/**
+ * Kopf (alle Felder) und Rumpf einer Notiz der Wurzel „make“ — nur, was die Sicht sieht (über den Bestand geprüft wie `notiz`). Für Leser,
+ * die den Kopf brauchen (lib/agenten/brain-agenten-server.ts). Text aus dem Vault ist Daten — der Aufrufer kapselt bzw. führt nichts aus.
+ */
+export async function notizRoh(id: string, sichtRoh: Sicht | VaultSicht): Promise<{ ok: true; pfad: string; titel: string; felder: Record<string, string | string[]>; rumpf: string } | { ok: false; fehler: string }> {
+  const sicht = await sichtAufloesen(sichtRoh);
+  const n = (await bestand()).notizen.find(x => x.id === id && x.wurzel === WURZELN[0].id && darfSehen(x, sicht));
+  const pfad = n ? brainPfadVon(n.id) : null;
+  if (!n || !pfad) return { ok: false, fehler: 'Keine Notiz — oder nicht freigegeben.' };
+  try {
+    const { kopf, rumpf } = leseKopf(await readFile(n.pfad, 'utf8'));
+    return { ok: true, pfad, titel: n.titel, felder: kopf.felder, rumpf };
+  } catch (err) {
+    return { ok: false, fehler: err instanceof Error ? err.message.slice(0, 140) : 'nicht lesbar' };
+  }
+}
+
+/** Die Ordner des Brains mit sichtbaren Notizen (Zahl je Ordner samt Unterordnern) — für Wähler. Sortiert nach Pfad. */
+export async function brainOrdner(sichtRoh: Sicht | VaultSicht): Promise<BrainOrdner[]> {
+  const zahl = new Map<string, number>();
+  for (const n of await brainNotizen(sichtRoh)) {
+    const teile = n.ordner ? n.ordner.split('/') : [];
+    for (let i = 1; i <= teile.length; i++) { const o = teile.slice(0, i).join('/'); zahl.set(o, (zahl.get(o) ?? 0) + 1); }
+  }
+  return Array.from(zahl.entries()).map(([pfad, notizen]) => ({ pfad, notizen })).sort((a, b) => a.pfad.localeCompare(b.pfad, 'de'));
 }
 
 // ── Suchen ──────────────────────────────────────────────────────────────────
@@ -400,8 +464,10 @@ export interface Treffer {
  * Suche über Titel, Überschriften, Stichworte und Text. Nachvollziehbar:
  * Titel wiegt am schwersten, dann Überschrift, dann Häufigkeit im Text.
  * Das Brain führt (+8), Frisches schlägt Altes sanft.
+ * `pfade` (09.10., Wissen je Head): nur Notizen, deren Kennung mit einem dieser Präfixe beginnt (`brainPraefix`) — gefiltert wie die Sicht
+ * VOR dem Ranking (im Index schon in der Abfrage). Leer/fehlend = alle.
  */
-export async function suche(frage: string, anzahl = 6, sicht: Sicht | VaultSicht = AGENT, bereich?: string): Promise<{ treffer: Treffer[]; durchsucht: number }> {
+export async function suche(frage: string, anzahl = 6, sicht: Sicht | VaultSicht = AGENT, bereich?: string, pfade?: readonly string[]): Promise<{ treffer: Treffer[]; durchsucht: number }> {
   // Die Sicht wird EINMAL aus den Konten aufgelöst — vor dem Ranking (09.10.). Unlesbare Konten werfen (fail-closed).
   const s = await sichtAufloesen(sicht);
   // Brain-Index (27.09.): steht der FTS5-Index bereit, sucht er — über Abschnitte, mit Sicht vor dem Ranking.
@@ -409,20 +475,23 @@ export async function suche(frage: string, anzahl = 6, sicht: Sicht | VaultSicht
   if (process.env.MAKE_OS_BRAIN_INDEX !== 'aus') {
     try {
       const ix = await import('@/lib/brain/index');
-      if (ix.indexBereit()) { const r = await ix.hybridSuche(frage, anzahl, s, bereich); return { treffer: r.treffer, durchsucht: r.durchsucht }; }
+      if (ix.indexBereit()) { const r = await ix.hybridSuche(frage, anzahl, s, bereich, pfade); return { treffer: r.treffer, durchsucht: r.durchsucht }; }
     } catch { /* Rückfall unten */ }
   }
-  return sucheOhneIndex(frage, anzahl, s, bereich);
+  return sucheOhneIndex(frage, anzahl, s, bereich, pfade);
 }
 
+/** Liegt die Notiz (Kennung) in einem der Präfixe? Ohne Präfixe: ja. Rein. */
+export const imPfad = (id: string, pfade?: readonly string[]): boolean => !pfade?.length || pfade.some(p => id.startsWith(p));
+
 /** Die Suche ohne Index — liest jede sichtbare Notiz (Rückfall und Vergleichsmaßstab). */
-export async function sucheOhneIndex(frage: string, anzahl = 6, sichtRoh: Sicht | VaultSicht = AGENT, bereich?: string): Promise<{ treffer: Treffer[]; durchsucht: number }> {
+export async function sucheOhneIndex(frage: string, anzahl = 6, sichtRoh: Sicht | VaultSicht = AGENT, bereich?: string, pfade?: readonly string[]): Promise<{ treffer: Treffer[]; durchsucht: number }> {
   const sicht = await sichtAufloesen(sichtRoh);
   // Ohne Unicode-Flag (das Projekt übersetzt nach ES5): Trennzeichen sind alles
   // außer Buchstaben, Ziffern und deutschen Umlauten.
   const begriffe = frage.toLowerCase().split(/[^a-z0-9äöüß]+/).filter(w => w.length > 2).slice(0, 8);
   const b = await bestand();
-  const sichtbar = b.notizen.filter(n => darfSehen(n, sicht) && (!bereich || n.bereich === bereich));
+  const sichtbar = b.notizen.filter(n => darfSehen(n, sicht) && (!bereich || n.bereich === bereich) && imPfad(n.id, pfade));
   if (!begriffe.length) return { treffer: [], durchsucht: sichtbar.length };
 
   const roh: (Treffer & { text: string })[] = [];
@@ -490,11 +559,11 @@ export function gekuerzt(rumpf: string, max: number, waechstNachUnten: boolean):
 }
 
 /** Eine Notiz ganz lesen. Der Pfad wird gegen den Bestand geprüft — von außen
- *  gereichte Pfade führen so nie an Ausschlüssen oder der Sicht vorbei. */
-export async function notiz(id: string, maxZeichen = 12_000, sichtRoh: Sicht | VaultSicht = AGENT): Promise<NotizVoll> {
+ *  gereichte Pfade führen so nie an Ausschlüssen oder der Sicht vorbei. `pfade` (09.10., Wissen je Head): nur Notizen in diesen Präfixen. */
+export async function notiz(id: string, maxZeichen = 12_000, sichtRoh: Sicht | VaultSicht = AGENT, pfade?: readonly string[]): Promise<NotizVoll> {
   const sicht = await sichtAufloesen(sichtRoh);
   const b = await bestand();
-  const n = finde(b, id, sicht);
+  const n = finde(b, id, sicht, pfade);
   if (!n) return { ok: false, fehler: `Keine Notiz „${id}" — oder nicht freigegeben.` };
   try {
     const text = await readFile(n.pfad, 'utf8');

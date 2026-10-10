@@ -137,13 +137,16 @@ export function NotAusKnopf() {
 
 /** „⋯“ unten im Hintergrund: Leitplanken, Budget und Kosten je Head, Zeitpläne, die bisherige Übersicht. */
 export function MehrMenue() {
-  const { dialog } = useAgenten();
+  const { dialog, agenten } = useAgenten();
+  // „Aus dem Brain übernehmen“ nur für Inhaber (die Route entscheidet; `budget.setzen` sagt der Server nur einem Inhaber zu).
+  const inhaber = agenten.zustand === 'da' && !!agenten.daten.budget?.setzen;
   const eintraege: MenueEintrag[] = [
+    ...(inhaber ? [{ label: 'Aus dem Brain übernehmen', satz: 'Heads, Mitarbeiter und Wissen aus den Agenten-Notizen eures Brains', tun: () => dialog({ art: 'brain' }) }] : []),
     { label: 'Leitplanken', satz: 'Was Agenten dürfen — und was nie', tun: () => dialog({ art: 'leitplanken' }) },
     { label: 'Budget und Kosten', satz: 'Grenze je Monat oder gesamt, Kosten je Head', tun: () => dialog({ art: 'budget' }) },
     { label: 'Zeitpläne', satz: 'Wiederkehrende und geplante Aufgaben', tun: () => dialog({ art: 'geplant' }) },
     { label: 'Bisherige Übersicht', satz: 'Alle Agenten mit Schaltern, Modell und Autonomie', tun: () => dialog({ art: 'uebersicht' }) },
   ];
   return <Menue ariaLabel="Mehr" rechts oben eintraege={eintraege}
-    knopf={(offen, um) => <SymbolKnopf ariaLabel="Mehr: Leitplanken, Budget, Zeitpläne, bisherige Übersicht" offen={offen} onClick={um}><MoreHorizontal size={20} /></SymbolKnopf>} />;
+    knopf={(offen, um) => <SymbolKnopf ariaLabel={`Mehr: ${inhaber ? 'Aus dem Brain übernehmen, ' : ''}Leitplanken, Budget, Zeitpläne, bisherige Übersicht`} offen={offen} onClick={um}><MoreHorizontal size={20} /></SymbolKnopf>} />;
 }

@@ -119,6 +119,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'ereignisse--*': 'Ereignisse für die Agenten je Haushalt (09.10., E1) — nur Kennungen, rollend 30 Tage; nicht im Export (keine Inhalte der Person), beim Konto-Löschen fallen die Ereignisse NUR dieser Person weg (Mail, „An ZOE gegeben“), aus Personen-Listen wird sie gestrichen',
   // Agenten-Bereich (08.10. spät, Paket 0 „Vertrag“): Bestände je HAUSHALT — Export/Löschen der eigenen Einträge baut das jeweilige Paket.
   'agenten-skills--*': 'Werkstatt der Heads je Haushalt (Skills, eigene Mitarbeiter, Gedächtnis) — im Export die selbst angelegten/freigegebenen, beim Löschen Speichername „[gelöscht]“ (Paket 3)',
+  'agenten-wissen--*': 'Wissen der Business-Heads im Brain je Haushalt (09.10., nur Business, nur Pfade) — im Export die selbst gesetzten Einträge, beim Löschen bleibt das Wissen, der Speichername wird „[gelöscht]“',
   'agenten-einstellung--*': 'Einstellungen der Heads je Haushalt — im Export der eigene Abschnitt der Privat-Heads (mit eigenen Aufträgen, 09.10.), selbst geschriebene Aufträge an Heads des Haushalts und die eigenen Vermerke; beim Löschen fällt der Abschnitt weg, der Speichername wird „[gelöscht]“ (Paket 4b)',
   'medien--*': 'Business-Medien je Haushalt — im Export (`medien`, lib/medien/export.ts) die selbst aufgenommenen, abgebildeten und bewerteten als Metadaten samt eigener Einwilligungen, Dateien nur als Download-Weg; beim Löschen bleibt das Medium mit `von` „[gelöscht]“ (Paket 5)',
 };
@@ -261,6 +262,10 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     const einstName = `agenten-einstellung--${k.haushalt}`;
     const einst = await loadJson<import('@/lib/agenten/typen').AgentenEinstellung>(einstName).catch(() => null);
     if (einst) merke(einstName, (await import('@/lib/agenten/einstellung')).einstellungEintraegeVon(einst, speicher));
+    // Wissen der Business-Heads (09.10.): selbst gesetzte Einträge (Pfade, Zeit) — Business-Bestand, getrennt von den Einstellungen.
+    const wissenName = `agenten-wissen--${k.haushalt}`;
+    const wissenRoh = await loadJson<import('@/lib/agenten/typen').WissenBestand>(wissenName).catch(() => null);
+    if (wissenRoh) { const ws = await import('@/lib/agenten/wissen-server'); merke(wissenName, ws.wissenEintraegeVon(ws.wissenBestandLesen(wissenRoh), speicher)); }
     const kapa = await loadJson<Obj>(`kapazitaet--${k.haushalt}`).catch(() => null);
     const kid = `${KONTO_PRAEFIX}${speicher}`;
     if (kapa && JSON.stringify(kapa).includes(`"${kid}"`)) eintraege[`kapazitaet--${k.haushalt}`] = [{ hinweis: 'Ihre Kapazitätswerte stehen vollständig in der Kapazitäts-Auskunft (Planung › Kapazität).', person: kid }];
@@ -467,6 +472,15 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       let n = 0;
       await updateJson<import('@/lib/agenten/typen').AgentenEinstellung>(einstName, cur => { if (!cur) return cur as unknown as import('@/lib/agenten/typen').AgentenEinstellung; const r = einstellungOhnePerson(cur, speicher); n = r.n; return n ? r.neu : cur; });
       if (n) await protokolliere(einstName, [{ liste: 'personen', op: 'geaendert', id: 'konto', felder: ['zustaendig', 'notAus', 'geaendertVon'] }], { art: 'system' });
+      return n;
+    });
+    // Wissen der Business-Heads (09.10.): das Wissen bleibt, der Speichername wird „[gelöscht]“.
+    const wissenName = `agenten-wissen--${konto.haushalt}`;
+    await nurWenn(wissenName, async () => {
+      const ws = await import('@/lib/agenten/wissen-server');
+      let n = 0;
+      await updateJson<import('@/lib/agenten/typen').WissenBestand>(wissenName, cur => { if (!cur) return cur as unknown as import('@/lib/agenten/typen').WissenBestand; const r = ws.wissenOhnePerson(ws.wissenBestandLesen(cur), speicher); n = r.n; return n ? r.neu : cur; });
+      if (n) await protokolliere(wissenName, [{ liste: 'heads', op: 'geaendert', id: 'konto', felder: ['geaendertVon'] }], { art: 'system' });
       return n;
     });
     // Ereignisse (09.10., E1): Ereignisse NUR dieser Person (ihre Mail, „An ZOE gegeben“) fallen weg, aus `personen` wird sie gestrichen.

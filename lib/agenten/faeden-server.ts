@@ -336,6 +336,9 @@ async function einstellungZusatz(person: string, sicht: KontoSicht, haushalt: st
   let betrachter: Awaited<ReturnType<typeof import('@/lib/medien/server').betrachterFuer>> | undefined;
   // 09.10.: geht der eigene Auftrag an den Head gerade an das Modell? Dieselbe Stelle wie der Lauf (lib/agenten/auftrag-server.ts).
   const [{ auftragLageFuer }, schalter] = await Promise.all([import('./auftrag-server'), kiE.kiSchalterFuer(person)]);
+  // 09.10.: Wissen der Business-Heads im Brain — aus dem Business-Bestand `agenten-wissen--<haushalt>` (EIN Lesezugriff; Privat-Heads nie).
+  const wissenS = await import('./wissen-server');
+  const wissenB = await wissenS.wissenLesen(haushalt).catch(() => null);
   return {
     sperre: (d: HeadDef) => ein.headSperre(einstellung, d, person, kostenVon(d)),
     sicht: async (d: HeadDef, eh: HeadEinstellung) => {
@@ -344,6 +347,7 @@ async function einstellungZusatz(person: string, sicht: KontoSicht, haushalt: st
       return ein.einstellungSicht(d, eh, {
         boden: lage.boden, wirksameAutonomie: lage.stufe, modelle, kostenCent: kostenVon(d),
         aendern: ein.einstellungDarf(sicht, d, true), foto: null, auftrag,
+        ...(wissenB && d.bereich === 'business' ? { wissen: await wissenS.wissenSichtFuer(haushalt, d, wissenB) } : {}),
       });
     },
     foto: async (d: HeadDef, id: string | undefined): Promise<string | null> => {

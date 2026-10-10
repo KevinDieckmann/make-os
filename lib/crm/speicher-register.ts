@@ -262,6 +262,13 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
     loeschfrist: 'solange die Instanz läuft bzw. bis der Auftrag geleert wird; beim Konto-Löschen fällt der eigene Abschnitt weg (samt Aufträgen an Privat-Heads) und der Speichername wird „[gelöscht]“ (Paket 4b)',
     kategorie: ['art9'],
   }),
+  // Wissen der Business-Heads im Brain (09.10., „Aus dem Brain übernehmen“; Kevin: „Firma und Privat liegen getrennt — auch in der Datenhaltung“):
+  // NUR Business — je Business-Head Ordner/Notizen des Vaults (Pfade, keine Inhalte) und der Agenten-Ordner des Firmen-Brains.
+  mit(H('agenten-wissen--*', 'Wissen der Business-Heads je Haushalt: Pfade von Ordnern/Notizen im Brain (keine Inhalte), Modus, wer zuletzt geändert hat (Speichername); dazu der Agenten-Ordner des Brains für „Aus dem Brain übernehmen“. Nur Business — Privat-Heads haben hier nie einen Eintrag.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Betrieb der Software im Haushalt (Arbeitsweise der Business-Agenten)',
+    art15: 'jedes Mitglied sieht das Wissen der Business-Heads, die es sehen darf; selbst gesetzte Einträge (mit Zeit) stehen im Konto-Export',
+    loeschfrist: 'solange die Instanz läuft bzw. bis das Wissen entfernt wird; beim Konto-Löschen wird der Speichername „[gelöscht]“',
+  }),
   // Medien unterwegs (09.10., Paket 5 V1; Kevins Antworten Fragerunde Teil 2): Kataloge (Metadaten, Personen im Bild, Freigaben, Einwilligungen) —
   // die Dateien liegen NIE im Datenordner-Bestand, sondern verschlüsselt je Segment im Medienspeicher (Hetzner Object Storage, ohne Einrichtung
   // `<daten>/medien`, von der Nachtsicherung ausgenommen). Bilder können Personen zeigen (Recht am Bild); Gesichtserkennung gibt es nicht.

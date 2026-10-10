@@ -547,10 +547,21 @@ export async function skillEntscheidungZaehlen(v: { id: string; person?: string 
 
 // ── Mitarbeiter ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Eigenen Mitarbeiter anlegen (Antwort 4: „selbst anlegen“). `quelle` vorschlag nur über den Stapel. */
-export async function mitarbeiterAnlegen(person: string, headId: unknown, roh: unknown, quelle: 'hand' | 'vorschlag' = 'hand', opt: { ausFremdemText?: boolean } = {}): Promise<Ergebnis<{ mitarbeiter: Mitarbeiter; stand: string }>> {
+/**
+ * Eigenen Mitarbeiter anlegen (Antwort 4: „selbst anlegen“). `quelle` vorschlag nur über den Stapel.
+ * NUR Server (09.10., „Aus dem Brain übernehmen“, lib/agenten/brain-agenten-server.ts): `opt.agentId` = ein früherer Fach-Agent der Software,
+ * den der Mitarbeiter über `fach_agent` nutzt — nur ausführbare (lib/zoe/agenten.ts `AUSFUEHRBAR`, keine Systemläufe/Heads) und unter einem
+ * Business-Head nur die ohne private Daten (`fachAgentErlaubt`); `opt.herkunft` = die Notiz im Brain (damit nichts doppelt entsteht).
+ */
+export async function mitarbeiterAnlegen(person: string, headId: unknown, roh: unknown, quelle: 'hand' | 'vorschlag' = 'hand', opt: { ausFremdemText?: boolean; agentId?: string; herkunft?: NonNullable<Mitarbeiter['herkunft']> } = {}): Promise<Ergebnis<{ mitarbeiter: Mitarbeiter; stand: string }>> {
   const hk = await headKontext(person, headId);
   if (!hk.ok) return hk;
+  if (opt.agentId !== undefined) {
+    const [{ AUSFUEHRBAR, SYSTEM_LAEUFE }, { fachAgentErlaubt }] = await Promise.all([import('@/lib/zoe/agenten'), import('./werkzeuge')]);
+    const ok = (AUSFUEHRBAR as readonly string[]).includes(opt.agentId) && !(SYSTEM_LAEUFE as readonly string[]).includes(opt.agentId)
+      && !/^head-/.test(opt.agentId) && opt.agentId !== 'finanzchef' && fachAgentErlaubt(opt.agentId, hk.head.bereich);
+    if (!ok) return fehler(400, 'Diesen Fach-Agenten kann ein Mitarbeiter dieses Heads nicht nutzen.');
+  }
   const raus = await inWerkstatt<Ergebnis<{ mitarbeiter: Mitarbeiter; stand: string }>>(hk.name, (w, halt) => {
     const p = mitarbeiterPruefen(roh, hk.head);
     if (!p.ok) halt(p);
@@ -558,7 +569,7 @@ export async function mitarbeiterAnlegen(person: string, headId: unknown, roh: u
     const alle = mitarbeiterListe(hk.head.id, w.mitarbeiter).filter(m => m.headId === hk.head.id);
     if (alle.length >= GRENZEN.mitarbeiterJeHead) halt(fehler(413, `Höchstens ${GRENZEN.mitarbeiterJeHead} Mitarbeiter je Head.`));
     if (alle.some(m => m.name.toLowerCase() === inhalt.name.toLowerCase())) halt(fehler(409, `Einen Mitarbeiter „${inhalt.name}“ hat dieser Head schon.`));
-    const m: Mitarbeiter = { id: neueKennung('ma'), headId: hk.head.id, ...inhalt, gedaechtnis: [], quelle, angelegtVon: person, ...(quelle === 'vorschlag' ? { freigegebenVon: person } : {}), ...(opt.ausFremdemText ? { ausFremdemText: true as const } : {}) };
+    const m: Mitarbeiter = { id: neueKennung('ma'), headId: hk.head.id, ...inhalt, ...(opt.agentId ? { agentId: opt.agentId } : {}), gedaechtnis: [], quelle, angelegtVon: person, ...(quelle === 'vorschlag' ? { freigegebenVon: person } : {}), ...(opt.ausFremdemText ? { ausFremdemText: true as const } : {}), ...(opt.herkunft ? { herkunft: opt.herkunft } : {}) };
     return { neu: { ...w, mitarbeiter: [...w.mitarbeiter, m] }, raus: { ok: true, mitarbeiter: m, stand: standVon(m) } };
   });
   if (raus.ok) await protokoll(hk.name, [{ liste: 'mitarbeiter', op: 'neu', id: raus.mitarbeiter.id }], person);

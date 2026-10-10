@@ -11,6 +11,8 @@
 //                Mitarbeiter aus, eigener Auftrag (09.10., ≤ 4.000 Zeichen, sonst 413; beim Gesundheits-Auftrag nur mit Einwilligung (a), sonst 403);
 //                Haushalts-Heads nur volle Mitglieder, Privat-Heads nur die Person selbst (403), Stand → 409, Prüfung → 400
 //   not-aus      { an, headId? } — für alle (nur volle Mitglieder) bzw. je Head (wer ihn sieht); Setzen hält laufende Läufe sofort an
+//   wissen       { headId, wissen: { pfade, modus } | null, stand } — Wissen eines Business-Heads im Brain (09.10., Business-Bestand
+//                `agenten-wissen--<haushalt>`; Privat-Heads 400, nur volle Mitglieder, Pfade müssen in der Agenten-Sicht existieren, Stand → 409)
 // Nur die Person selbst (`eigenePerson`, Dienstweg 403), keine Personen-Parameter, Body ≤ 32 KB (`jsonBegrenzt`; der Auftrag mit 4.000 Zeichen
 // passt auch mit Sonderzeichen hinein), Bau-Kennung beim Schreiben.
 import { NextResponse } from 'next/server';
@@ -60,5 +62,11 @@ export async function POST(req: Request) {
     const r = await notAusSetzen(z.person, b.an, b.headId);
     return r.ok ? NextResponse.json(r) : nein(r.status, r.fehler);
   }
-  return nein(400, 'Unbekannte Aktion — „einstellung“ oder „not-aus“.');
+  if (b.aktion === 'wissen') {
+    // 09.10.: Wissen eines Business-Heads im Brain (Ordner/Notizen) — Business-Bestand, Stand → 409, nur volle Mitglieder (lib/agenten/wissen-server.ts).
+    const { wissenAendern } = await import('@/lib/agenten/wissen-server');
+    const r = await wissenAendern(z.person, b.headId, b.wissen, b.stand);
+    return r.ok ? NextResponse.json({ ok: true, headId: r.headId, wissen: r.wissen, stand: r.stand }) : nein(r.status, r.fehler, typeof r.stand === 'string' ? { stand: r.stand } : {});
+  }
+  return nein(400, 'Unbekannte Aktion — „einstellung“, „not-aus“ oder „wissen“.');
 }

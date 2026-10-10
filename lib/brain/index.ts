@@ -23,7 +23,7 @@ import path from 'node:path';
 import { datenOrdner } from '@/lib/store/local-db';
 import { schluesselRing } from '@/lib/store/huelle.mjs';
 import { indexOrtWaehlen, ramDateisystem, type IndexOrt } from './index-ort';
-import { bestand, leseKopf, darfSehen, sichtAufloesen, type Sicht, type VaultSicht, type Treffer } from '@/lib/zoe/vault';
+import { bestand, leseKopf, darfSehen, imPfad, sichtAufloesen, type Sicht, type VaultSicht, type Treffer } from '@/lib/zoe/vault';
 import { abschnitte, verweise, ftsAnfrage } from './chunks';
 
 export interface IndexStand { notizen: number; chunks: number; vektoren: number; letzterLauf: string | null; dauerMs: number | null; datei: string }
@@ -245,19 +245,23 @@ interface Zeile { id: number; notiz_id: string; ueberschrift: string; kontext: s
  * (+) und Frisches (+) wie bisher; Notizen, auf die ein Treffer per Wikilink zeigt,
  * bekommen einen Nachbarschafts-Bonus (1 Hop).
  */
-export function indexSuche(frage: string, anzahl = 6, sicht: VaultSicht, bereich?: string): { treffer: IndexTreffer[]; durchsucht: number } {
+export function indexSuche(frage: string, anzahl = 6, sicht: VaultSicht, bereich?: string, pfade?: readonly string[]): { treffer: IndexTreffer[]; durchsucht: number } {
   const d = oeffneIndex();
   const durchsucht = Number((d.prepare('SELECT COUNT(*) n FROM notizen').get() as { n: number }).n);
   const anfrage = ftsAnfrage(frage);
   if (!anfrage) return { treffer: [], durchsucht };
+  // Wissen je Head (09.10.): nur Notizen in diesen Präfixen — IN der Abfrage (vor LIMIT und Ranking), nie nachträglich.
+  const praefixe = (pfade ?? []).filter(p => typeof p === 'string' && p.length > 0);
+  const pfadSql = praefixe.length ? ` AND (${praefixe.map(() => 'substr(c.notiz_id, 1, ?) = ?').join(' OR ')})` : '';
+  const pfadWerte = praefixe.flatMap(p => [p.length, p]);
   let zeilen: Zeile[] = [];
   try {
     zeilen = d.prepare(`SELECT c.id, c.notiz_id, c.ueberschrift, c.kontext, c.text, bm25(chunks_fts, 3.0, 1.0) AS r,
         n.titel, n.bereich, n.scope, n.owner, n.stand, n.wurzel, n.geaendert, n.typ
       FROM chunks_fts f JOIN chunks c ON c.id = f.rowid JOIN notizen n ON n.id = c.notiz_id
-      WHERE chunks_fts MATCH ? ORDER BY r LIMIT 120`).all(anfrage) as unknown as Zeile[];
+      WHERE chunks_fts MATCH ?${pfadSql} ORDER BY r LIMIT 120`).all(anfrage, ...pfadWerte) as unknown as Zeile[];
   } catch { return { treffer: [], durchsucht }; }
-  const sichtbar = zeilen.filter(z => darfSehen({ scope: z.scope ?? undefined, owner: z.owner ?? undefined }, sicht) && (!bereich || z.bereich === bereich));
+  const sichtbar = zeilen.filter(z => darfSehen({ scope: z.scope ?? undefined, owner: z.owner ?? undefined }, sicht) && (!bereich || z.bereich === bereich) && imPfad(z.notiz_id, praefixe));
   // BM25 ist negativ (kleiner = besser) → in positive Punkte drehen.
   const jeNotiz = new Map<string, { beste: Zeile; punkte: number; weitere: number }>();
   for (const z of sichtbar) {
@@ -297,9 +301,9 @@ export function indexSuche(frage: string, anzahl = 6, sicht: VaultSicht, bereich
  * Abschnitten; Reciprocal Rank Fusion (k = 60) verbindet sie. Ohne Modell/Vektoren bleibt es
  * bei der Volltextsuche — dieselbe Form, derselbe Aufrufer (lib/zoe/vault.ts suche).
  */
-export async function hybridSuche(frage: string, anzahl = 6, sichtRoh: Sicht | VaultSicht, bereich?: string): Promise<{ treffer: IndexTreffer[]; durchsucht: number; hybrid: boolean }> {
+export async function hybridSuche(frage: string, anzahl = 6, sichtRoh: Sicht | VaultSicht, bereich?: string, pfade?: readonly string[]): Promise<{ treffer: IndexTreffer[]; durchsucht: number; hybrid: boolean }> {
   const sicht = await sichtAufloesen(sichtRoh); // aus den Konten, vor dem Ranking (09.10.)
-  const volltext = indexSuche(frage, Math.max(anzahl * 3, 20), sicht, bereich);
+  const volltext = indexSuche(frage, Math.max(anzahl * 3, 20), sicht, bereich, pfade);
   let semantisch: { chunkId: number; notizId: string; aehnlichkeit: number }[] | null = null;
   try {
     const e = await import('./einbettung');
@@ -313,7 +317,7 @@ export async function hybridSuche(frage: string, anzahl = 6, sichtRoh: Sicht | V
   const notizIds = Array.from(new Set(semantisch.map(s => s.notizId)));
   const platz = notizIds.map(() => '?').join(',');
   const notizen = new Map((d.prepare(`SELECT id, titel, bereich, scope, owner, stand, wurzel, geaendert FROM notizen WHERE id IN (${platz})`).all(...notizIds) as { id: string; titel: string; bereich: string; scope: string | null; owner: string | null; stand: string | null; wurzel: string; geaendert: string }[]).map(n => [n.id, n]));
-  const semantischSichtbar = semantisch.filter(s => { const n = notizen.get(s.notizId); return n && darfSehen({ scope: n.scope ?? undefined, owner: n.owner ?? undefined }, sicht) && (!bereich || n.bereich === bereich); });
+  const semantischSichtbar = semantisch.filter(s => { const n = notizen.get(s.notizId); return n && darfSehen({ scope: n.scope ?? undefined, owner: n.owner ?? undefined }, sicht) && (!bereich || n.bereich === bereich) && imPfad(n.id, pfade); });
   const fusion = rrf([volltext.treffer.map(t => t.chunkId), semantischSichtbar.map(s => s.chunkId)]);
   const jeChunkVolltext = new Map(volltext.treffer.map(t => [t.chunkId, t]));
   const raus: IndexTreffer[] = [];
