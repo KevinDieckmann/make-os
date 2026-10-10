@@ -130,17 +130,17 @@ export function BrainUebernahmeFenster({ onZu }: { onZu: () => void }) {
                 {e.ziel && e.ziel.als === 'head' && e.auftrag && (
                   <div style={{ display: 'grid', gap: ABSTAND.xs }}>
                     {waehlbarAuftrag(e.auftrag.aktion)
-                      ? <Schalter an={!!w.auftrag && (e.auftrag.aktion !== 'eigener' || !!w.ersetzen)} onChange={an => setze(e.datei, x => ({ ...x, auftrag: an, ersetzen: e.auftrag!.aktion === 'eigener' ? an : x.ersetzen }))}>{AUFTRAG_TEXT[e.auftrag.aktion]} · {e.auftrag.zeichen.toLocaleString('de-DE')} Zeichen</Schalter>
+                      ? <Schalter erklaerung="brain.uebernahme.auftrag" an={!!w.auftrag && (e.auftrag.aktion !== 'eigener' || !!w.ersetzen)} onChange={an => setze(e.datei, x => ({ ...x, auftrag: an, ersetzen: e.auftrag!.aktion === 'eigener' ? an : x.ersetzen }))}>{AUFTRAG_TEXT[e.auftrag.aktion]} · {e.auftrag.zeichen.toLocaleString('de-DE')} Zeichen</Schalter>
                       : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{AUFTRAG_TEXT[e.auftrag.aktion]}</span>}
                     {e.auftrag.text && <details><summary style={{ fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>Auftrag ansehen</summary><div style={{ fontSize: TYP.bedien, color: C.ink, whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: ABSTAND.xs }}>{e.auftrag.text}</div></details>}
                   </div>
                 )}
-                {e.ziel && e.stufe && <Schalter an={!!w.stufe} onChange={an => setze(e.datei, x => ({ ...x, stufe: an }))}>Modellstufe aus der Notiz: {e.stufe.datei} (heute {e.stufe.heute})</Schalter>}
+                {e.ziel && e.stufe && <Schalter erklaerung="brain.uebernahme.stufe" an={!!w.stufe} onChange={an => setze(e.datei, x => ({ ...x, stufe: an }))}>Modellstufe aus der Notiz: {e.stufe.datei} (heute {e.stufe.heute})</Schalter>}
                 {e.ziel && e.mitarbeiter.length > 0 && (
                   <div style={{ display: 'grid', gap: ABSTAND.xs }}>
                     <span style={{ ...MIKRO }}>Mitarbeiter</span>
                     {e.mitarbeiter.map(m => (m.aktion === 'einschalten' || m.aktion === 'anlegen')
-                      ? <Schalter key={m.kuerzel} an={(w.mitarbeiter ?? []).includes(m.kuerzel)} onChange={an => setze(e.datei, x => ({ ...x, mitarbeiter: umschalten(x.mitarbeiter, m.kuerzel, an) }))}>{m.neu ? `${m.neu.name} — ${m.grund}` : m.grund}</Schalter>
+                      ? <Schalter key={m.kuerzel} erklaerung="brain.uebernahme.mitarbeiter" an={(w.mitarbeiter ?? []).includes(m.kuerzel)} onChange={an => setze(e.datei, x => ({ ...x, mitarbeiter: umschalten(x.mitarbeiter, m.kuerzel, an) }))}>{m.neu ? `${m.neu.name} — ${m.grund}` : m.grund}</Schalter>
                       : <span key={m.kuerzel} style={{ fontSize: TYP.bedien, color: C.inkLeise }}><Chip farbe={m.aktion === 'vorhanden' ? LEUCHT.gut : C.inkLeise}>{m.kuerzel}</Chip> {m.grund}</span>)}
                   </div>
                 )}
@@ -148,7 +148,7 @@ export function BrainUebernahmeFenster({ onZu }: { onZu: () => void }) {
                   <div style={{ display: 'grid', gap: ABSTAND.xs }}>
                     <span style={{ ...MIKRO }}>Wissen im Brain</span>
                     {e.wissen.map(x => x.aktion === 'neu'
-                      ? <Schalter key={x.pfad} an={(w.wissen ?? []).includes(x.pfad)} onChange={an => setze(e.datei, y => ({ ...y, wissen: umschalten(y.wissen, x.pfad, an) }))}>{x.art === 'ordner' ? 'Ordner' : 'Notiz'} „{x.pfad}“</Schalter>
+                      ? <Schalter key={x.pfad} erklaerung="brain.uebernahme.wissen" an={(w.wissen ?? []).includes(x.pfad)} onChange={an => setze(e.datei, y => ({ ...y, wissen: umschalten(y.wissen, x.pfad, an) }))}>{x.art === 'ordner' ? 'Ordner' : 'Notiz'} „{x.pfad}“</Schalter>
                       : <span key={x.pfad} style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Schon zugeordnet: „{x.pfad}“</span>)}
                     {e.wissenNichtGefunden.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nicht gefunden oder privat (geht nie an Agenten): {e.wissenNichtGefunden.join(', ')}</span>}
                   </div>

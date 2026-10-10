@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { FOKUS_FRAGE, FOKUS_HORIZONTE, FOKUS_LABEL, type FokusBereich, type FokusHorizont, type FokusWessen } from '@/lib/planung/fokus';
 import { useFokus } from '@/lib/planung/fokus-client';
-import { Hinweis, Pillen, Schalter, Segmente, feld, LEUCHT } from '../ui';
+import { Erklaert, Hinweis, Pillen, Schalter, Segmente, feld, LEUCHT } from '../ui';
 import { useNurBusiness } from '../useInhaber';
 
 /** Ein Feld: lokaler Entwurf, Enter/Verlassen speichert; bei Fehler bleibt der Entwurf stehen. */
@@ -87,10 +87,10 @@ export function FokusTafel({ bereich: fest, vorgabe = 'privat', horizonte = FOKU
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: TYP.bedien, color: LEUCHT.schlaf, fontWeight: 600 }}>
                   Mein Fokus
                   {sicht.partner.length > 0 && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 400, color: v.mein.geteilt ? LEUCHT.schlaf : C.inkLeise }}>
-                      <Schalter an={v.mein.geteilt} onChange={an => { void schreiben('mein', h, { geteilt: an }); }} farbe={LEUCHT.schlaf} ariaLabel={`Mein Fokus ${FOKUS_LABEL[h]} mit ${partnerNamen} teilen`} />
+                    <Erklaert erklaerung="fokus.teilen" name="Mein Fokus teilen"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 400, color: v.mein.geteilt ? LEUCHT.schlaf : C.inkLeise }}>
+                      <Schalter erklaerungOhne="Teilen-Schalter im Satz „Mein Fokus“ — das „i“ um den ganzen Satz erklärt das Teilen" an={v.mein.geteilt} onChange={an => { void schreiben('mein', h, { geteilt: an }); }} farbe={LEUCHT.schlaf} ariaLabel={`Mein Fokus ${FOKUS_LABEL[h]} mit ${partnerNamen} teilen`} />
                       {v.mein.geteilt ? `geteilt mit ${partnerNamen}` : 'nur ich'}
-                    </span>
+                    </span></Erklaert>
                   )}
                 </span>
                 <FokusFeld wert={v.mein.text} label={`Mein Fokus ${FOKUS_LABEL[h]}`} platzhalter="nur für dich …" gross={h === 'tag'} onSpeichern={setzen('mein', h)} />

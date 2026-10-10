@@ -269,12 +269,12 @@ export function ModuleKarte({ k, modulStand: ms, aendern, nachher }: { k: Koerpe
   const schalten = async (m: typeof GESUNDHEIT_MODULE[number], an: boolean) => { if (await aendern([{ op: 'modul', modul: m, an }])) nachher?.(); };
   return (
     <Karte i={6}>
-      <Ueberschrift>Module</Ueberschrift>
+      <Ueberschrift erklaerung="gesundheit.module">Module</Ueberschrift>
       <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '0 0 10px', lineHeight: 1.5 }}>Eigene Tagebücher — nur für dich. Aus: nichts wird angezeigt oder abgefragt, Einträge bleiben gespeichert.</p>
       {!ms && <Leer>Lädt …</Leer>}
       {ms && GESUNDHEIT_MODULE.map(m => (
         <div key={m} style={{ margin: '0 0 12px' }}>
-          <Schalter karte an={ms[m]} onChange={an => { void schalten(m, an); }} ariaLabel={`${MODUL_INFO[m].name} ${ms[m] ? 'ausschalten' : 'einschalten'}`}
+          <Schalter karte erklaerung={`gesundheit.modul.${m}`} an={ms[m]} onChange={an => { void schalten(m, an); }} ariaLabel={`${MODUL_INFO[m].name} ${ms[m] ? 'ausschalten' : 'einschalten'}`}
             beschreibung={MODUL_INFO[m].satz}>{MODUL_INFO[m].name}</Schalter>
           {m === 'haut' && ms.haut && (
             <div style={{ margin: '8px 2px 0' }}>

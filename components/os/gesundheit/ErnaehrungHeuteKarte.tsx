@@ -106,7 +106,7 @@ export function ErnaehrungHeuteKarte({ i = 0, hinweis = false }: { i?: number; h
                 <Knopf haupt typ="submit" farbe={LEUCHT.gut}>{ergaenzungLabel(vorlage, menge)} anlegen</Knopf>
               </form>
             )}
-            <Schalter karte an={e.an} onChange={v => void orientierung(v)} farbe={LEUCHT.gut} beschreibung="Ein Satz am Tag aus deinen WHOOP-Werten und deinem Trainingsplan.">Orientierung nach WHOOP</Schalter>
+            <Schalter karte erklaerung="gesundheit.ernaehrung.orientierung" an={e.an} onChange={v => void orientierung(v)} farbe={LEUCHT.gut} beschreibung="Ein Satz am Tag aus deinen WHOOP-Werten und deinem Trainingsplan.">Orientierung nach WHOOP</Schalter>
           </div>
         </Klappbar>
         <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: 0, lineHeight: 1.5 }}>{ESSEN_HINWEIS} MAKE OS empfiehlt keine Mengen.</p>

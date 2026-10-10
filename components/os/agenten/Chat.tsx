@@ -353,7 +353,7 @@ export function ChatFeld({ platzhalter, ansprechbar = [], onSenden, laeuft, aus,
             {stimme.hoert ? <MicOff size={18} color={LEUCHT.kritisch} /> : <Mic size={18} />}
           </SymbolKnopf>
         )}
-        {vorlesen && stimme.kannSprechen && <Schalter an={vorlesen.an} onChange={vorlesen.umschalten}>Vorlesen</Schalter>}
+        {vorlesen && stimme.kannSprechen && <Schalter erklaerung="chat.vorlesen" an={vorlesen.an} onChange={vorlesen.umschalten}>Vorlesen</Schalter>}
         {stimme.hoert && <span role="status" style={{ fontSize: TYP.bedien, color: C.inkDim }}>Hört zu{stimme.teil ? `: „${stimme.teil}“` : ' …'}</span>}
         {stimme.fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{stimme.fehler}</span>}
         <span style={{ flex: 1 }} />

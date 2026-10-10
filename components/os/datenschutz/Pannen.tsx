@@ -34,7 +34,7 @@ export function PannenKarte({ i = 4 }: { i?: number }) {
   const dringend = d.pannen.filter(p => (d.offen[p.id] ?? []).some(x => x.dringend)).length;
   return (
     <Karte i={i} id="pannen" akzent={dringend ? LEUCHT.kritisch : undefined}>
-      <Ueberschrift rechts={<Knopf leise onClick={() => setEntwurf(LEER())}>+ Panne</Knopf>}>Pannen-Register (Art. 33 Abs. 5)</Ueberschrift>
+      <Ueberschrift erklaerung="datenschutz.pannen" rechts={<Knopf leise onClick={() => setEntwurf(LEER())}>+ Panne</Knopf>}>Pannen-Register (Art. 33 Abs. 5)</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>Jede Datenpanne gehört hierher — auch ohne Meldepflicht. Bei Risiko: Meldung an die Aufsichtsbehörde binnen 72 Stunden ab Kenntnis; bei hohem Risiko zusätzlich die Betroffenen benachrichtigen. Ablauf und Vorlagen: datenschutz/DATENPANNEN.md. Nur der Inhaber sieht dieses Register.</div>
       {entwurf && <Formular e={entwurf} onAbbrechen={() => setEntwurf(null)} onSpeichern={async x => { if (await senden({ aktion: 'panne', panne: { ...x, kenntnisAm: x.kenntnisAm ? new Date(x.kenntnisAm).toISOString() : '' } })) setEntwurf(null); }} />}
       {!d.pannen.length && !entwurf && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Keine Panne eingetragen.</div>}

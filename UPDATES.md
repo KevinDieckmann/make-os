@@ -4,6 +4,63 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Erklärung überall: antippen, verstehen, Fallbeispiel (nur lokal — Branch `erklaerungen`, Basis 6086ee72 = `update-0910b`)
+
+Entscheidung 10.10.: „Wenn man auf die einzelnen Sachen klickt, möchte ich, dass die Erklärung dahinter ist und was es bedeutet — mit Fallbeispiel. Das will ich
+überall.“ Umfang (alle vier gewählt): alle Einstellungen, alle Kennzahlen und Ampeln, die Onboarding-Schritte, die Agenten und Heads.
+
+**Gebaut:**
+- **EIN Baustein** `components/os/ui/erklaerung.tsx` (Export `from '../ui'`): das „i“ (`ErklaerKnopf`, 44 × 44, `aria-expanded`), das aufgeklappte `ErklaerPanel`
+  („Was es bedeutet · Beispiel · Wenn an · Wenn aus · Kosten und Datenweg“) und `Erklaert` als Hülle um jedes Bedienelement. Die Prop `erklaerung` nehmen
+  `Schalter`, `Zeile`, `Ueberschrift`, `Beschriftung`, `Feldzeile`, `Klappbar`, `Kennzahl` und `Zahl`. In einer `Zeile` klappt der **Titel** die Erklärung
+  auf („die Zeile antippen, nicht den Schalter“); Kennzahl-Kacheln sind antippbar und nehmen geöffnet die ganze Rasterzeile ein.
+- **Texte als Daten** in `lib/erklaerungen/` (eine Instanz kann sie später anpassen): `einstellungen-datenschutz/-konto/-privat/-business.ts` (137 Schlüssel),
+  `agenten.ts` (16 Heads: tut · tut nie · Beispiel-Vorschlag; 42 Mitarbeiter-Vorlagen: Beispiel, „tut“ = Rolle, „nie“ = Grenzen ihres Heads), `kennzahlen.ts`
+  (Register-Kennzahlen **aus dem Register gebaut**: Formel + Schwellen, ein gerechnetes Beispiel mit denselben Funktionen wie der Index, der Pflege-Weg; dazu
+  Texte für Kapazität, Wirkung, Scoreboard, Leistung der Heads), `schritte.ts` (ein Beispiel je Onboarding-Schritt, 91 Schritte). Alle Beispiele sind erfunden
+  („Beispiel GmbH“, „Mira“) — keine echten Namen, Firmen, Beträge, Gesundheitsangaben.
+- **Angeschlossen:** System › Datenschutz & KI (Gesundheit a/b/c, KI-Schalter der Person und der Instanz, Telegram, KI-Protokoll, Verantwortlicher, Empfänger/AVV,
+  Selbstprüfung, Verzeichnis, Pannen, Dokumente, Art. 14, Instanz-Ende, Nachweise), Einstellungen › Bedienung, Konto & Sicherheit (Passwort, Adressen, zweiter
+  Faktor, Pflicht, Leerlauf, Einladen, Haushalt, Inhaber, Gesundheit/Ziele teilen, Telegram, Meine Daten, Team), ZOE auf WhatsApp, Agenten (Head-Info: tut/nie/Beispiel,
+  jeder Abschnitt, Modell/Aufwand/Autonomie/Budget/Zuständig/an-aus/Not-Aus, Skill-Werkstatt, Brain-Übernahme, Mitarbeiter, Leistung), Kalender-Einstellungen
+  (iCloud, Google, Zuordnung, belegt, freie Tage, Dauer), Postfach teilen, Gesundheit (Module, Schlaf, Ernährung, Erholung, Sport), Fokus (Prioritäten, Zeit und
+  Ampel, Tagesform, Wirkung, Lage, Teilen), Kapazität (jede Kachel, Grundwert, Urlaub, Zuweisungen, Erholung), Glocke, Finanzplanung (Schalter, Bausteine, Steuern),
+  Medien, Netzwerken, Unternehmen. **Alle Index-Kacheln** (Business, Privat, Gesundheit, Traktion, Fokus & Zeit, Kapazität): „i“ an der Kachel und der Block „Wie
+  gerechnet · Beispiel · Was ihr tun könnt“ oben im Kennzahl-Fenster (dessen Formel-/Punkte-Zeilen sind darin aufgegangen). Die Head-Kennzahlen kommen vom Server mit
+  (`KennzahlWert.erklaerung`, `lib/agenten/kontext.ts`).
+- **`Schalter` verlangt eine Erklärung** (Typ): `erklaerung="…"` oder, nur für Erledigt-Haken und Tabellenzellen, `erklaerungOhne="Grund"` — 12 Stellen, der Wächter
+  erlaubt höchstens 14.
+- **Onboarding:** jeder Schritt trägt `beispiel` (`Schritt.beispiel`, gesetzt am Ende von `SCHRITTE`), die Einrichtung zeigt es unter dem „Warum“.
+- **Wächter** `tests/erklaerungen.test.ts` (36 Tests): jeder Schalter erklärt oder steht begründet auf der Ausnahmeliste; jeder Schlüssel in der Oberfläche hat einen Text
+  und jeder Text eine Stelle; Ein/Aus-Schalter erklären beide Seiten; jede Register-Kennzahl hat Formel, gerechnetes Beispiel („… von 100 Punkten“) und „Was ihr tun
+  könnt“; jeder Head und jeder Mitarbeiter des Katalogs hat tut/nie/Beispiel; jeder Onboarding-Schritt ein Beispiel (ohne feste Daten, Wochentage, Monate); keine
+  Personennamen oder festen Firmen in den Texten; Baustein-Maße (44 px, `aria-expanded`). `tests/schalter-eine-quelle.test.ts` angepasst (Pflicht-Prop).
+
+**So testet ihr (Klicks):**
+1. **System › Datenschutz:** bei „Hintergrund-KI für mich“ das „i“ rechts neben dem Schalter antippen → „Was es bedeutet“, „Beispiel“, „Wenn an“, „Wenn aus“, „Kosten und
+   Datenweg“. Der Schalter selbst schaltet wie vorher (nur das „i“ klappt auf). Ebenso bei Gesundheit (a)/(b)/(c), Web-Suche, jedem Bereich, „Bilder an die KI“, Telegram.
+   Die Überschriften (KI-Schalter, Instanz, Telegram, KI-Protokoll, Verantwortlicher, Empfänger …) tragen ebenfalls ein „i“.
+2. **Konto:** „Zugang der Instanz“ → in der Zeile „Zweiter Faktor für alle Pflicht“ den **Titel** antippen (nicht den Schalter) → die Erklärung klappt unter der Zeile auf.
+3. **Einstellungen › Bedienung:** die „i“ bei Löschen, „⋯“, Dichte, Vibrieren.
+4. **Agenten › ein Head › Info:** oben „Was <Head> tut — und was nie“ antippen → tut · nie · Beispiel-Vorschlag. Darunter jeder Abschnitt (Auftrag, Wissen, Mitarbeiter, Skills …)
+   mit „i“. Bei „Mitarbeiter“ den Namen eines Mitarbeiters antippen → seine Rolle, die Grenzen seines Heads, ein Beispiel. Unter „Einstellungen“ die „i“ bei Modell, Aufwand,
+   Autonomie, Budget, Zuständig, Head ist an, Not-Aus. Die drei Kacheln im Kopf (Kennzahlen) antippen.
+5. **Business-/Privat-/Gesundheits-/Markttraktions-Index:** an einer Kachel das „i“ oben rechts → „Wie gerechnet · Beispiel · Was ihr tun könnt“; die Kachel selbst öffnet wie bisher
+   das Fenster, dort steht derselbe Block oben. Am Ring das „i“ neben dem Chip („Solide“ …) und neben „% auf echten Daten“.
+6. **Fokus:** „Prioritäten“ und „Zeit“ (Ampel passt/knapp/passt nicht) und „Tagesform“, „Wirkung“ — je ein „i“ an der Überschrift; „Zeit zählt aus“ im Thema.
+7. **Planung › Kapazität:** jede der fünf Kacheln antippen (wie gerechnet, Beispiel); bei einer Person Grundwert, „Urlaub & feste Blöcke“, Zuweisungen.
+8. **Kalender › Einstellungen:** iCloud, Google, „Zählt als belegt“, „Frei, aber nicht gesetzlich“, „Kalender → Space“ — je ein „i“.
+9. **Einrichtung (Onboarding):** bei jedem Schritt steht unter dem „Warum“ ein „Beispiel“.
+10. Am Handy (375 px): das „i“ ist 44 px groß, die Erklärung bricht um und verdeckt nichts; Tab-Taste erreicht das „i“, Enter/Leertaste klappt auf, `aria-expanded` wechselt.
+
+**Rückweg:** reine Oberfläche und Texte — keine neuen Bestände, keine Formänderung der Daten. Der Stand vor dem Branch läuft unverändert. Neue Schalter ohne Erklärung lassen den Typ-Check
+und den Wächter rot werden (so soll es sein).
+
+**Nicht gebaut / offen:** (1) Texte der Instanz überschreiben (Daten sind getrennt, aber es gibt noch keine Einstellung dafür). (2) Erledigt-Haken, Tabellenzellen der Finanzplanung
+und die Teilen-Schalter in Textzeilen haben kein eigenes „i“ (Grund steht je am Schalter, die Erklärung hängt an der Überschrift bzw. am Satz). (3) Ein Pop-over statt Aufklappen in Tabellen.
+(4) Mitarbeiter, die jemand selbst anlegt, haben keine Erklärung (nur die Vorlagen des Katalogs). (5) Weitere Kennzahl-Kacheln außerhalb der Index-Register (Controlling, Sport, Events)
+bekommen ihre Texte, sobald jemand sie braucht — der Baustein (`Kennzahl`/`Zahl` mit `erklaerung`) ist da.
+
 ## 10.10.2026 — Sicht Business zeigt nie Privat-Themen (Sweep über alle Bereiche; nur lokal — Branch `sweep-bereiche`, Basis a51bc21b = `update-0910b`)
 
 Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat — wir haben im Business-Bereich keinen Bereich, der Familie und

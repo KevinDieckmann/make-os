@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Knopf, feld, LEUCHT, SymbolKnopf } from '../ui';
+import { Erklaert, Knopf, feld, LEUCHT, SymbolKnopf } from '../ui';
 import { zaehltAlsBelegt, zuordnung, type BelegtEinstellungen } from '@/lib/kalender/belegt';
 import { freieTageSauber, FREIE_TAGE_STANDARD, type FreierTag } from '@/lib/kalender/freie-tage';
 
@@ -34,7 +34,7 @@ export function EinstellungenBelegt({ kalender, einst, setzen }: { kalender: rea
   return (
     <>
       <div style={{ display: 'grid', gap: 4 }}>
-        <span style={klein}>Zählt als belegt (freie Zeit, Buchungsseite)</span>
+        <Erklaert erklaerung="kalender.belegt" name="Zählt als belegt"><span style={klein}>Zählt als belegt (freie Zeit, Buchungsseite)</span></Erklaert>
         {kalender.map(k => {
           const an = zaehltAlsBelegt(einst, k.name);
           const zugeordnet = zuordnung(einst, k.name) !== null;
@@ -50,7 +50,7 @@ export function EinstellungenBelegt({ kalender, einst, setzen }: { kalender: rea
         {!kalender.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Kalender geladen.</span>}
       </div>
       <div style={{ display: 'grid', gap: 4 }}>
-        <span style={klein}>Frei, aber nicht gesetzlich (keine Buchungen, keine Vorschläge)</span>
+        <Erklaert erklaerung="kalender.freieTage" name="Frei, aber nicht gesetzlich"><span style={klein}>Frei, aber nicht gesetzlich (keine Buchungen, keine Vorschläge)</span></Erklaert>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {freie.map(f => (
             <span key={f.tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, padding: '3px 4px 3px 9px', borderRadius: 999, background: 'rgba(255,255,255,.05)', color: C.ink, fontFamily: SCHRIFT.text }}>

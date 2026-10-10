@@ -22,7 +22,7 @@ const DOKUMENTE: { datei: string; was: string }[] = [
 export function DokumenteKarte({ i = 5 }: { i?: number }) {
   return (
     <Karte i={i} id="dokumente">
-      <Ueberschrift>Dokumente</Ueberschrift>
+      <Ueberschrift erklaerung="datenschutz.dokumente">Dokumente</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>Im Repository (Entwürfe — anwaltlich prüfen). Sie beschreiben, was diese Seite und der Code umsetzen.</div>
       <Liste>{DOKUMENTE.map(d => <Zeile key={d.datei} titel={<code style={{ fontSize: TYP.bedien }}>{d.datei}</code>} unter={d.was} umbrechen />)}</Liste>
     </Karte>

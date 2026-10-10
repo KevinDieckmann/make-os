@@ -39,7 +39,7 @@ export function MeineDaten({ zweiterFaktorAn, inhaber, haupt = true, andere, i =
   const bereit = !!loeschen && loeschen.passwort.length > 0 && (!zweiterFaktorAn || loeschen.code.trim().length >= 6) && loeschen.wort.trim().toUpperCase() === 'LÖSCHEN';
   return (
     <Karte i={i} id="meine-daten">
-      <Ueberschrift farbe={LEUCHT.planung}>Meine Daten</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.planung} erklaerung="konto.meineDaten">Meine Daten</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 12 }}>
         Was MAKE OS über Sie speichert, wozu, an wen es geht und wie lange — und die Daten selbst. Jeder Abruf wird im Protokoll vermerkt (ohne Inhalte).
       </div>

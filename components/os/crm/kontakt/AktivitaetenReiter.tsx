@@ -193,7 +193,7 @@ export function AktivitaetenReiter({ k, api, unter, onUnter }: AktivitaetenReite
           <Wahl label="Zeitraum" liste={ZEITRAEUME} wert={filter.zeitraum} onWahl={zeitraum => setze({ zeitraum })} klein farbe={filter.zeitraum === 'beginn' ? C.inkDim : C.aktiv} />
           <Wahl label="Aktivität zugewiesen" liste={personenFilter(TEAM)} wert={filter.person} onWahl={person => setze({ person })} onLeeren={() => setze({ person: null })} leerenLabel="alle Personen" leer="Person: alle" klein />
           {aktiv === 'alle' && systemZahl > 0 && (
-            <Schalter an={filter.system} onChange={system => setze({ system })}>Systemereignisse zeigen ({systemZahl})</Schalter>
+            <Schalter erklaerung="crm.systemereignisse" an={filter.system} onChange={system => setze({ system })}>Systemereignisse zeigen ({systemZahl})</Schalter>
           )}
           <span style={{ flex: 1 }} />
           {filterGesetzt(filter) && <button type="button" onClick={() => setFilter(FILTER_START)} className="fassbar" style={{ ...leiseKnopf, color: C.aktiv }}>Filter zurücksetzen</button>}

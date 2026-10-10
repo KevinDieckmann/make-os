@@ -28,7 +28,7 @@ export function BedienungView() {
       {gesperrt && <Hinweis art="achtung">Dieser Browser lässt das Merken nicht zu (privates Fenster?) — die Wahl gilt bis zum Neuladen.</Hinweis>}
 
       <Karte i={0}>
-        <Ueberschrift>Wischen am Handy</Ueberschrift>
+        <Ueberschrift erklaerung="bedienung.wischen">Wischen am Handy</Ueberschrift>
         <Beschriftung>Nach links wischen</Beschriftung>
         <Segmente<WischWahl> umbrechen liste={[...WISCH_WAHLEN]} aktiv={b.wischenLinks} onWahl={w => setze({ wischenLinks: w })} />
         <div style={{ height: 12 }} />
@@ -40,7 +40,7 @@ export function BedienungView() {
 
       <Karte i={1}>
         <Ueberschrift>Löschen</Ueberschrift>
-        <Schalter karte an={b.loeschenNachfragen} onChange={v => setze({ loeschenNachfragen: v })}
+        <Schalter karte erklaerung="bedienung.loeschen" an={b.loeschenNachfragen} onChange={v => setze({ loeschenNachfragen: v })}
           beschreibung="Aus: es wird gleich gelöscht (in den Papierkorb, wo es einen gibt) und unten steht 10 Sekunden „Rückgängig“. Listen, bei denen etwas daran hängt, fragen immer.">
           Vor dem Löschen nachfragen
         </Schalter>
@@ -48,14 +48,14 @@ export function BedienungView() {
 
       <Karte i={2}>
         <Ueberschrift>Menü „⋯“</Ueberschrift>
-        <Schalter karte an={b.mehrImmer} onChange={v => setze({ mehrImmer: v })}
+        <Schalter karte erklaerung="bedienung.mehr" an={b.mehrImmer} onChange={v => setze({ mehrImmer: v })}
           beschreibung="Am Rechner steht „⋯“ sonst nur beim Überfahren der Zeile oder mit der Tastatur (Tab). Am Handy steht es immer.">
           „⋯“ immer sichtbar
         </Schalter>
       </Karte>
 
       <Karte i={3}>
-        <Ueberschrift>Listen</Ueberschrift>
+        <Ueberschrift erklaerung="bedienung.dichte">Listen</Ueberschrift>
         <Beschriftung>Dichte</Beschriftung>
         <Segmente umbrechen liste={[...DICHTEN]} aktiv={b.dichte} onWahl={d => setze({ dichte: d })} />
         <p style={text}>Kompakt zeigt mehr Zeilen auf einmal — jede Zeile bleibt mindestens 44 px hoch (gut zu treffen).</p>
@@ -63,7 +63,7 @@ export function BedienungView() {
 
       <Karte i={4}>
         <Ueberschrift>Rückmeldung</Ueberschrift>
-        <Schalter karte an={b.haptik} aus={vibriert === false} onChange={v => setze({ haptik: v })}
+        <Schalter karte erklaerung="bedienung.haptik" an={b.haptik} aus={vibriert === false} onChange={v => setze({ haptik: v })}
           beschreibung={vibriert === false ? 'Dieses Gerät kann das im Browser nicht (iPhone-Safari).' : 'Ein kurzes Vibrieren, sobald das Wischen auslösen wird, und wenn es auslöst.'}>
           Kurz vibrieren beim Wischen
         </Schalter>

@@ -9,7 +9,7 @@
 
 import { type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Ring, Fortschritt, Chip, LEUCHT, FadenLinie } from '../ui';
+import { Erklaert, Karte, Ueberschrift, Ring, Fortschritt, Chip, LEUCHT, FadenLinie } from '../ui';
 import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlKachel, KennzahlFenster, AMPEL_FARBE, scoreFarbe, type SchwelleSenden } from '../business/teile';
 import { VerlaufKarte, type Serie } from '../business/Verlauf';
@@ -77,10 +77,10 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
           <Ring groesse="gross" wert={pi?.index != null ? String(pi.index) : undefined} anteil={pi?.index != null ? pi.index / 100 : undefined} farbe={farbe} label={pi ? `${name} · ${pi.label}` : 'lädt …'} />
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Chip farbe={farbe}>{chip}</Chip>
+              <Erklaert erklaerung="index.gesamt" name={`${name}-Index`}><Chip farbe={farbe}>{chip}</Chip></Erklaert>
               {trend != null && trend !== 0 && <Chip farbe={trend > 0 ? LEUCHT.gut : LEUCHT.kritisch}>{trend > 0 ? '▲' : '▼'} {Math.abs(trend)} in 30 Tagen</Chip>}
               {chips}
-              {pi && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.round(pi.abdeckung * 100)} % auf echten Daten · {pi.luecken} Messlücke{pi.luecken === 1 ? '' : 'n'}</span>}
+              {pi && <Erklaert erklaerung="index.abdeckung" name="Abdeckung"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.round(pi.abdeckung * 100)} % auf echten Daten · {pi.luecken} Messlücke{pi.luecken === 1 ? '' : 'n'}</span></Erklaert>}
               {pi?.teil && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Erst {pi.teil.saeulen} von {pi.teil.von} Säulen haben genug Daten (Teilwert {pi.teil.wert}) — der Index zählt ab {Math.round(MIN_ABDECKUNG * 100)} % des Gewichts.</span>}
               {/* Anlaufphase (08.10., 7.1): gerechnet wie immer, aber noch nicht belastbar — die Daten laufen erst an. */}
               {pi?.vorlaeufig && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Vorläufig bis {pi.vorlaeufig.bis.slice(8, 10)}.{pi.vorlaeufig.bis.slice(5, 7)}. — Anlaufphase nach dem ersten Lauf.</span>}

@@ -160,7 +160,7 @@ export function Buchungen() {
           </select>
         </span>
         <input value={suche} placeholder="Empfänger suchen" aria-label="Empfänger suchen" onChange={e => setSuche(e.target.value)} style={{ ...eingabeStil, width: 190 }} />
-        <Schalter an={nurOffen} onChange={setNurOffen}>nur ohne Zuordnung ({offeneBuchungen(d)})</Schalter>
+        <Schalter erklaerung="finanzplan.nurOhneZuordnung" an={nurOffen} onChange={setNurOffen}>nur ohne Zuordnung ({offeneBuchungen(d)})</Schalter>
         <span style={{ flex: 1 }} />
         <Knopf onClick={() => setNeu({ d: d.einstellungen.heute, b: '', n: '', k: 'gemeinsam', z: 'x.offen', notiz: '' })}>+ Buchung</Knopf>
       </div>
@@ -186,7 +186,7 @@ export function Buchungen() {
         </Spalte>
         <Spalte>
           <Karte i={1}>
-            <Ueberschrift rechts={<span>Zuordnung ändern gilt mit „merken“ für alle Buchungen dieses Empfängers</span>}>{liste.length} Buchungen</Ueberschrift>
+            <Ueberschrift erklaerung="finanzplan.zuordnungMerken" rechts={<span>Zuordnung ändern gilt mit „merken“ für alle Buchungen dieses Empfängers</span>}>{liste.length} Buchungen</Ueberschrift>
             <div style={{ maxHeight: 640, overflowY: 'auto' }}>
               <Tabelle klein>
                 <thead><tr><th style={TH}>Datum</th><th style={TH}>Empfänger</th><th style={TH}>Konto</th><th style={THr}>Betrag</th><th style={TH}>Planzeile</th><th style={TH}>merken</th></tr></thead>
@@ -198,7 +198,7 @@ export function Buchungen() {
                       <td style={TD}><Etikett text={b.k} /></td>
                       <td style={TDr}><Geld v={b.b} dezimal={2} farbe={b.b > 0 ? LEUCHT.gut : undefined} /></td>
                       <td style={TD}><ZeilenAuswahl wert={b.z} onWahl={z => zuordnen(b, z)} offen={b.z === 'x.offen'} /></td>
-                      <td style={TD}><Schalter an={merken[b.id] ?? true} onChange={v => setMerken({ ...merken, [b.id]: v })} ariaLabel={`Zuordnung für ${b.n} merken`} /></td>
+                      <td style={TD}><Schalter erklaerungOhne="Tabellenzelle — die Überschrift der Buchungsliste erklärt „merken“" an={merken[b.id] ?? true} onChange={v => setMerken({ ...merken, [b.id]: v })} ariaLabel={`Zuordnung für ${b.n} merken`} /></td>
                     </tr>
                   ))}
                   {!liste.length && <tr><td colSpan={6} style={TDleise}>Keine Buchungen für diese Auswahl.</td></tr>}

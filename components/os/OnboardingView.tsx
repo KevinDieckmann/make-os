@@ -109,6 +109,8 @@ function Anleitung({ s }: { s: Schritt }) {
   return (
     <>
       <p style={absatz}>{s.warum}</p>
+      {/* 10.10. (Kevin: „… die Erklärung dahinter — mit Fallbeispiel“): ein erfundener, kurzer Fall (lib/erklaerungen/schritte.ts). */}
+      {s.beispiel && <p style={{ ...absatz, marginTop: 8, borderLeft: `2px solid ${C.aktiv}55`, paddingLeft: 10 }}><span style={stark}>Beispiel: </span>{s.beispiel}</p>}
       <ol style={{ margin: '8px 0 0', paddingLeft: 17 }}>
         {s.wie.map((w, i) => <li key={i} style={{ ...absatz, marginBottom: 3 }}>{w}</li>)}
       </ol>

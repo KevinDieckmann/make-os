@@ -378,3 +378,26 @@ Rückfall (ZoeHirn, Orb, Liste). 5. Daten der Brain-Kugel nur aus `/api/brain/pu
 Glühen (Bloom) nur auf der Kugel, schaltet sich auf schwachen Geräten selbst ab; ZOE dichter (80 k) mit hellem Ring, hohler Mitte und weißglühenden
 Spitzen, Aurora nur in den Ecken des Empfangs; Brain als eigene Bühne: Galaxie aus leisen Formpunkten, Datensätze als Sterne mit Halo, Cluster-
 Beschriftung mit Kamerafahrt, Bögen statt Striche, Legende als Filter. Schilder und Legende sind Knöpfe (≥ 44 px), Titelkarte im Glas-Stil (`LICHT_GLAS`).
+
+## Erklärung — antippen, verstehen, Fallbeispiel (10.10.)
+Kevin (10.10.): „Wenn man auf die einzelnen Sachen klickt, möchte ich, dass die Erklärung dahinter ist und was es bedeutet — mit Fallbeispiel. Das will ich überall.“
+EIN Baustein (`components/os/ui/erklaerung.tsx`, Export `from '../ui'`), EINE Stelle für die Texte (`lib/erklaerungen/` — Daten, damit eine Instanz sie anpassen
+kann), ein Wächter (`tests/erklaerungen.test.ts`).
+
+| Baustein | Zweck |
+|---|---|
+| `erklaerung`-Prop | An `Schalter`, `Zeile`, `Ueberschrift`, `Beschriftung`, `Feldzeile`, `Klappbar`, `Kennzahl`, `Zahl`: ein Schlüssel aus `EINSTELLUNGEN` (Typ prüft ihn) **oder** fertige Abschnitte (`kennzahlAbschnitte`, `headAbschnitte`, `mitarbeiterAbschnitte`, `kennzahlTextVon`). |
+| `ErklaerKnopf` | Das kleine „i“ (Tippfläche 44 × 44, `aria-expanded`/`aria-controls`, Name im `aria-label`). In Überschriften und Beschriftungen schiebt `.ui-erkl-knopf` (globals.css) die Fläche mit negativem Rand zurück. |
+| `ErklaerPanel` | Die aufgeklappte Erklärung: Abschnitte „Beschriftung · Text“; das Beispiel trägt eine leise Kante. |
+| `Erklaert` | Hülle um ein beliebiges Bedienelement: Element + „i“, die Erklärung klappt darunter über die ganze Breite auf. |
+
+**Regeln:** 1. Aufgebaut ist sie nach dem, was sie erklärt: **Einstellung** = Was es bedeutet · Beispiel · Wenn an · Wenn aus (· Kosten und Datenweg, wenn Daten hinausgehen
+oder Guthaben kostet) — **Kennzahl** = Wie gerechnet · Beispiel · Was ihr tun könnt — **Head/Mitarbeiter** = Was er tut · Was er nie tut · Beispiel-Vorschlag — **Onboarding-Schritt**
+= Warum/Wie (vorhanden) + Beispiel. 2. **Jeder `Schalter` verlangt `erklaerung`** (Typ) — oder `erklaerungOhne="Grund"` für Erledigt-Haken und Tabellenzellen; der Wächter zählt
+die Ausnahmen (höchstens 14, Grund ≥ 25 Zeichen) und lässt die Einstellungsseiten ausnahmefrei. 3. In einer `Zeile` meldet der Schalter seine Erklärung an die Zeile: der **Titel der
+Zeile** klappt sie auf („die Zeile antippen, nicht den Schalter“). Ist die Zeile selbst ein Tippziel (`onClick`), steht ein „i“ davor. 4. `Kennzahl`/`Zahl` mit Erklärung sind
+antippbar, die geöffnete Kachel nimmt die ganze Rasterzeile ein. 5. **Index-Kennzahlen erfindet niemand neu:** „Wie gerechnet“ ist die `formel` des Registers plus Schwellen, das
+„Beispiel“ rechnet die Mitte zwischen roter und grüner Schwelle mit denselben Funktionen wie der Index durch (`punkte`/`ampel`), „Was ihr tun könnt“ ist der Pflege-Weg des Registers
+(`lib/erklaerungen/kennzahlen.ts`). 6. Beispiele sind **erfunden und neutral** („Beispiel GmbH“, „Mira“) — keine echten Namen, Firmen, Beträge, keine Gesundheitsangaben einer Person
+(Wächter). Abschnitte ≤ 560 Zeichen, ganze Sätze. 7. Neuer Schalter/neue Einstellung = ein Eintrag in `lib/erklaerungen/einstellungen-*.ts`; neuer Head oder neue Vorlage im
+Katalog = ein Eintrag in `lib/erklaerungen/agenten.ts`; neuer Onboarding-Schritt = ein Eintrag in `lib/erklaerungen/schritte.ts` — sonst wird der Wächter rot.

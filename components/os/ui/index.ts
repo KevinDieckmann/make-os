@@ -5,6 +5,9 @@
 export { Seite, Karte, Ueberschrift, Abschnitt, Titel, Beschriftung, Kennzahl, Zahl, Raster, Liste, Zeile, Eigenschaft, Initialen, Fortschritt, SEITE_BREIT } from './flaechen';
 export { Knopf, Gross, Wahl, Pillen, MehrfachPillen, Chip, Segmente, Reiter, Schalter, Aktionsleiste, HakenZiel, SymbolKnopf, type KnopfProps, type KnopfTon, type ReiterEintrag } from './knoepfe';
 export { Hinweis, Leerzustand, Leer, Erfolg, Schritte } from './rueckmeldung';
+// Erklärung (10.10.): „i“ → Was es bedeutet · Beispiel · Wenn an/aus (Texte als Daten: lib/erklaerungen). `Schalter`, `Zeile`, `Ueberschrift`, `Beschriftung`,
+// `Feldzeile`, `Kennzahl` und `Zahl` nehmen `erklaerung`; `Erklaert` legt ein „i“ um jedes andere Bedienelement.
+export { Erklaert, ErklaerKnopf, ErklaerPanel, ErklaerZeichen, useErklaerung, type ErklaerungsQuelle } from './erklaerung';
 // Klappbar (08.10.): Abschnitt einer Seite zum Auf- und Zuklappen — zugeklappt nicht gerendert, Anker #<id> (Finanzen › Planung).
 export { Klappbar } from './klappbar';
 export { eingabe, feld, auswahl, Feldzeile } from './felder';

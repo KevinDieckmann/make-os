@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { markttraktion } from '@/lib/crm/adresse';
 import { FARBE as C, TYP, leuchtFarbe } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Punkt, LEUCHT } from '../ui';
+import { kennzahlTextVon } from '@/lib/erklaerungen/kennzahlen';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Scoreboard as ScoreboardDaten, ScoreAmpel, ScoreZeile, VerlaufTag } from '@/lib/crm/scoreboard';
 import type { Welt } from '@/lib/crm/traktion';
@@ -218,7 +219,7 @@ export function Scoreboard(_: { api: CrmApi }) {
   const bote = d.bote;
   return (
     <Karte i={3}>
-      <Ueberschrift rechts={<span>{d.scoreboard.wochen.length} Wochen · Ziel je Woche</span>}>Wochen-Scoreboard</Ueberschrift>
+      <Ueberschrift erklaerung={kennzahlTextVon('scoreboard.wochen')} rechts={<span>{d.scoreboard.wochen.length} Wochen · Ziel je Woche</span>}>Wochen-Scoreboard</Ueberschrift>
       <Verlauf tage={d.verlauf ?? []} heute={d.heute} />
       <Tabelle sb={d.scoreboard} />
       <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>

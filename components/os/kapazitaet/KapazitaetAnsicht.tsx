@@ -17,7 +17,8 @@ import type { KapaStand, PersonStand, Machbarkeit, Ausnahme } from '@/lib/kapazi
 import { MACHBAR_BIS, ENG_BIS } from '@/lib/kapazitaet/typen';
 import { stufeVon } from '@/lib/kapazitaet/modell';
 import type { KapaOp } from '@/lib/kapazitaet/aendern';
-import { Seite, Karte, Ueberschrift, Zahl, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, auswahl, useHandy, LEUCHT, useRueckgaengig } from '../ui';
+import { Erklaert, Seite, Karte, Ueberschrift, Zahl, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, auswahl, useHandy, LEUCHT, useRueckgaengig } from '../ui';
+import { kennzahlTextVon } from '@/lib/erklaerungen/kennzahlen';
 import { PlanerLeiste } from '../PlanerLeiste';
 import { useKapazitaet, type Bezug } from './useKapazitaet';
 import { MachbarMarke, LastBand, STUFE_FARBE, STUFE_TEXT } from './teile';
@@ -70,12 +71,12 @@ function Ueberblick({ s, heute }: { s: KapaStand; heute: string }) {
     <Karte i={0}>
       <Ueberschrift rechts={kz.engpassWochen.length ? <span style={{ color: LEUCHT.achtung }}>{kz.engpassWochen.length} Engpass-Woche{kz.engpassWochen.length === 1 ? '' : 'n'} in 12 Wochen</span> : 'keine Engpässe in 12 Wochen'}>Team · nächste Wochen</Ueberschrift>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: 16, marginBottom: 18 }}>
-        <Zahl wert={kz.last4 == null ? '—' : `${z(kz.last4)} %`} label={kz.last4 == null ? 'Last 4 Wochen · noch nichts verplant' : `Last 4 Wochen · ${z(kz.bedarf4)} von ${z(kz.belastbar4)} h`} farbe={lastFarbe} />
-        <Zahl wert={kz.machbar.bewertet ? `${kz.machbar.machbar} / ${kz.machbar.bewertet}` : '—'} label={kz.machbar.bewertet ? `machbar${kz.machbar.eng ? ` · ${kz.machbar.eng} eng` : ''}${kz.machbar.nicht ? ` · ${kz.machbar.nicht} nicht` : ''}` : 'Meilensteine mit Aufwand'} farbe={kz.machbar.nicht || kz.machbar.ueberfaellig ? LEUCHT.kritisch : kz.machbar.eng ? LEUCHT.achtung : undefined} />
-        <Zahl wert={kz.pufferStdWoche == null ? '—' : `${z(kz.pufferStdWoche)} h`} label="Puffer je Woche (Ø 4 Wochen)" farbe={kz.pufferStdWoche != null && kz.pufferStdWoche < 0 ? LEUCHT.kritisch : undefined} />
-        <Zahl wert={kz.planTreue == null ? '—' : `${z(kz.planTreue)} %`} label={kz.planTreue == null ? 'Plan-Treue · noch nicht messbar' : kz.planTreueQuelle === 'festgehalten' ? `Plan-Treue · ${kz.treueWochen?.length ?? 0} festgehaltene Woche${kz.treueWochen?.length === 1 ? '' : 'n'}` : 'Plan-Treue · Näherung'}
+        <Zahl erklaerung={kennzahlTextVon('kapazitaet.last4')} wert={kz.last4 == null ? '—' : `${z(kz.last4)} %`} label={kz.last4 == null ? 'Last 4 Wochen · noch nichts verplant' : `Last 4 Wochen · ${z(kz.bedarf4)} von ${z(kz.belastbar4)} h`} farbe={lastFarbe} />
+        <Zahl erklaerung={kennzahlTextVon('kapazitaet.machbar')} wert={kz.machbar.bewertet ? `${kz.machbar.machbar} / ${kz.machbar.bewertet}` : '—'} label={kz.machbar.bewertet ? `machbar${kz.machbar.eng ? ` · ${kz.machbar.eng} eng` : ''}${kz.machbar.nicht ? ` · ${kz.machbar.nicht} nicht` : ''}` : 'Meilensteine mit Aufwand'} farbe={kz.machbar.nicht || kz.machbar.ueberfaellig ? LEUCHT.kritisch : kz.machbar.eng ? LEUCHT.achtung : undefined} />
+        <Zahl erklaerung={kennzahlTextVon('kapazitaet.puffer')} wert={kz.pufferStdWoche == null ? '—' : `${z(kz.pufferStdWoche)} h`} label="Puffer je Woche (Ø 4 Wochen)" farbe={kz.pufferStdWoche != null && kz.pufferStdWoche < 0 ? LEUCHT.kritisch : undefined} />
+        <Zahl erklaerung={kennzahlTextVon('kapazitaet.planTreue')} wert={kz.planTreue == null ? '—' : `${z(kz.planTreue)} %`} label={kz.planTreue == null ? 'Plan-Treue · noch nicht messbar' : kz.planTreueQuelle === 'festgehalten' ? `Plan-Treue · ${kz.treueWochen?.length ?? 0} festgehaltene Woche${kz.treueWochen?.length === 1 ? '' : 'n'}` : 'Plan-Treue · Näherung'}
           farbe={kz.planTreue == null ? undefined : kz.planTreue >= 80 ? LEUCHT.gut : kz.planTreue >= 50 ? LEUCHT.achtung : LEUCHT.kritisch} />
-        <Zahl wert={`${Math.round(s.team.kopf.faktor * 100)} %`} label={s.team.kopf.personen ? 'Kopf & Energie (Team, 14 Tage)' : 'Kopf & Energie · ohne geteilte Messung'} />
+        <Zahl erklaerung={kennzahlTextVon('kapazitaet.kopf')} wert={`${Math.round(s.team.kopf.faktor * 100)} %`} label={s.team.kopf.personen ? 'Kopf & Energie (Team, 14 Tage)' : 'Kopf & Energie · ohne geteilte Messung'} />
       </div>
       <LastBand stand={s} von={heute} bis={tagPlus(heute, WOCHEN * 7 - 1)} hoehe={34} />
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>
@@ -96,7 +97,7 @@ function TreueKarte({ s }: { s: KapaStand }) {
   const dieseWoche = plan ? plan.personen.reduce((a, p) => a + p.geplant, 0) : 0;
   return (
     <Karte i={1} id="plan-treue">
-      <Ueberschrift rechts={kz.planTreueQuelle === 'festgehalten' ? 'geplant vs. Ist' : 'Näherung'}>Plan-Treue</Ueberschrift>
+      <Ueberschrift erklaerung={kennzahlTextVon('kapazitaet.planTreue')} rechts={kz.planTreueQuelle === 'festgehalten' ? 'geplant vs. Ist' : 'Näherung'}>Plan-Treue</Ueberschrift>
       {wochen.length ? (
         <Liste>
           {wochen.slice().reverse().map(w => {
@@ -127,7 +128,7 @@ function MachbarKarte({ posten }: { posten: Machbarkeit[] }) {
   const [alle, setAlle] = useState(false);
   return (
     <Karte i={1}>
-      <Ueberschrift rechts={ohne.length ? `${ohne.length} ohne Aufwand oder Termin` : undefined}>Machbarkeit · Meilensteine & Ziele</Ueberschrift>
+      <Ueberschrift erklaerung="kapazitaet.machbarkeit" rechts={ohne.length ? `${ohne.length} ohne Aufwand oder Termin` : undefined}>Machbarkeit · Meilensteine & Ziele</Ueberschrift>
       {!bewertet.length && <Leer aktion={<Knopf leise href={WEG.jahr()}>Zu Ziele & Meilensteine</Knopf>}>Noch kein offener Business-Meilenstein mit Aufwand und Termin. Trag am Meilenstein „Aufwand (h)“ ein — dann steht hier, ob es reicht.</Leer>}
       <Liste>
         {bewertet.map(p => (
@@ -217,11 +218,11 @@ function ErholungWahl({ p, los }: { p: PersonStand; los: (ops: KapaOp[]) => Prom
   const an = !!p.erholungAm;
   return (
     <div style={{ ...zeileStil, marginTop: 10 }}>
-      <span style={{ fontSize: TYP.bedien, color: C.inkDim, flex: '1 1 260px', minWidth: 0 }}>
+      <div style={{ flex: '1 1 260px', minWidth: 0 }}><Erklaert breit erklaerung="kapazitaet.erholung" name="Erholung berücksichtigen"><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>
         {an
           ? `Deine Erholung zählt als Team-Faktor (seit ${new Date(p.erholungAm!).toLocaleDateString('de-DE')}) — nur wenn du deine Gesundheit mit allen im Haushalt teilst; den Wert siehst nur du.`
           : 'Deine Erholung (Gesundheitsdaten) zählt nicht. Einschalten = Einwilligung, dass sie als gemeinsamer Team-Faktor die belastbare Zeit der nächsten 14 Tage mindert — jederzeit widerrufbar.'}
-      </span>
+      </span></Erklaert></div>
       <Knopf onClick={() => void los([{ op: 'erholung', person: p.id, an: !an }])}>{an ? 'Erholung nicht mehr berücksichtigen' : 'Erholung berücksichtigen'}</Knopf>
     </div>
   );
@@ -232,7 +233,7 @@ function Grundwert({ p, los }: { p: PersonStand; los: (ops: KapaOp[]) => Promise
   const [wert, setWert] = useState<string>(p.grundwertQuelle === 'einstellung' ? String(p.grundwert) : '');
   return (
     <div style={zeileStil}>
-      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, flex: '1 0 100%' }}>Grundwert</span>
+      <div style={{ flex: '1 0 100%' }}><Erklaert erklaerung="kapazitaet.grundwert" name="Grundwert"><span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>Grundwert</span></Erklaert></div>
       <input type="number" inputMode="decimal" min={0} max={80} step={1} value={wert} placeholder={`${z(p.grundwert)}`} aria-label={`Grundwert ${p.name} in Stunden je Woche`}
         onChange={e => setWert(e.target.value)} style={{ ...klein, width: 96 }} />
       <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>h je Woche</span>
@@ -255,7 +256,7 @@ function Ausnahmen({ p, darf, los }: { p: PersonStand; darf: boolean; los: (ops:
   const text = (a: Ausnahme) => a.art === 'urlaub' ? `Urlaub ${kurz(a.von)}–${kurz(a.bis ?? a.von)}` : `Block ${z(a.stundenWoche ?? 0)} h/Woche ab ${kurz(a.von)}${a.bis ? ` bis ${kurz(a.bis)}` : ''}`;
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>Urlaub & feste Blöcke</span>
+      <Erklaert erklaerung="kapazitaet.ausnahmen" name="Urlaub und feste Blöcke"><span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>Urlaub & feste Blöcke</span></Erklaert>
       {!p.ausnahmen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine — Abwesenheiten und Feiertage aus dem Kalender zählen von selbst.</span>}
       <div style={zeileStil}>
         {p.ausnahmen.map(a => (
@@ -295,7 +296,7 @@ function Zuweisungen({ p, darf, zuweisungen, bezuege, los }: { p: PersonStand; d
   };
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>Zuweisungen · Mandate & Kunden</span>
+      <Erklaert erklaerung="kapazitaet.zuweisungen" name="Zuweisungen"><span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>Zuweisungen · Mandate & Kunden</span></Erklaert>
       {!zuweisungen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine wiederkehrend gebundene Zeit.</span>}
       <div style={zeileStil}>
         {zuweisungen.map(x => (
@@ -324,7 +325,7 @@ function Zuweisungen({ p, darf, zuweisungen, bezuege, los }: { p: PersonStand; d
 function KopfKarte({ s, privat }: { s: KapaStand; privat: boolean }) {
   return (
     <Karte flach>
-      <Ueberschrift>So rechnet die Kapazität</Ueberschrift>
+      <Ueberschrift erklaerung="kapazitaet.rechnung">So rechnet die Kapazität</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, display: 'grid', gap: 6 }}>
         <span>Verfügbar = Grundwert (sonst Wochenvorlage, sonst Annahme 40 h) − Urlaub, Feiertage, ganztägig abwesend − Termine im Arbeitsfenster − 15 min Umschalten je Termin − feste Blöcke.</span>
         <span>Business-freie Zeiten (Familie und eigene) nehmen Arbeitszeit der Wochenvorlage weg — dort zählt kein Soll: <BusinessFreiLink /></span>

@@ -233,7 +233,7 @@ function PostfachZeile({ p, bereiche, onGeaendert, meldung }: { p: PostfachOeffe
               {p.quelle === 'imap' && <Feldzeile label="Absendername"><input value={f.absenderName} onChange={e => setF({ ...f, absenderName: e.target.value })} style={eingabe} /></Feldzeile>}
               <Feldzeile label="Signatur (steht beim Antworten unten im Text)"><textarea value={f.signatur} onChange={e => setF({ ...f, signatur: e.target.value })} rows={3} style={{ ...eingabe, minHeight: 88, resize: 'vertical' }} /></Feldzeile>
               {p.quelle === 'imap' && (
-                <Schalter karte an={!!p.geteilt} aus={laeuft || (!p.geteilt && raumVon(p.bereich) !== 'business')} onChange={an => void post({ aktion: 'einstellen', geteilt: an })}
+                <Schalter karte erklaerung="postfach.teilen" an={!!p.geteilt} aus={laeuft || (!p.geteilt && raumVon(p.bereich) !== 'business')} onChange={an => void post({ aktion: 'einstellen', geteilt: an })}
                   beschreibung={raumVon(p.bereich) === 'business' ? 'Alle im Haushalt mit Zugang zu diesem Bereich sehen die Gespräche, antworten als dieses Postfach und tragen ein, wer sich kümmert. Dein Passwort, der Abgleich und das Senden bleiben bei dir.' : 'Geht nur mit einem Business-Bereich — private Postfächer bleiben privat.'}>
                   Mit dem Team teilen
                 </Schalter>

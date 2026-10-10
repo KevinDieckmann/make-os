@@ -84,7 +84,7 @@ function SteuerFeldEingabe({ f, setze }: { f: SteuerFeld; setze: (wert: number |
   const mitReset = f.gesetzt ? <button type="button" onClick={() => setze(null)} title="Zurück auf die Vorgabe" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', font: 'inherit', fontSize: TYP.bedien, padding: 0, textAlign: 'left' }}>↺ zurücksetzen</button> : null;
   let eingabe: ReactNode;
   if (f.art === 'anteil') eingabe = <ProzentFeld wert={f.gesetzt ? (f.wert as number) : null} leer platzhalter={prozentText(f.vorgabe as number, f.dezimal)} dezimal={f.dezimal} breite="100%" titel={f.label} onFertig={v => setze(v == null ? null : Math.max(0, Math.min(1, v)))} />;
-  else if (f.art === 'schalter') eingabe = <Schalter an={f.wert as boolean} onChange={v => setze(v)}>{f.wert ? 'ja' : 'nein'}{!f.gesetzt ? ' (Vorgabe)' : ''}</Schalter>;
+  else if (f.art === 'schalter') eingabe = <Schalter erklaerung="finanzplan.steuerSchalter" an={f.wert as boolean} onChange={v => setze(v)}>{f.wert ? 'ja' : 'nein'}{!f.gesetzt ? ' (Vorgabe)' : ''}</Schalter>;
   else if (f.art === 'wahl') eingabe = <Auswahl wert={String(f.wert)} onWahl={v => setze(v)} optionen={f.optionen ?? []} titel={f.label} />;
   else if (f.art === 'monat') eingabe = <ZahlFeld wert={f.gesetzt ? (f.wert as number) : null} leer platzhalter={String(f.vorgabe)} dezimal={0} breite="100%" titel={f.label} onFertig={v => setze(v == null ? null : Math.max(1, Math.min(12, Math.round(v))))} />;
   else eingabe = <ZahlFeld wert={f.gesetzt ? (f.wert as number) : null} leer platzhalter={String(f.vorgabe).replace('.', ',')} dezimal={f.dezimal} breite="100%" titel={f.label} onFertig={v => setze(v == null ? null : Math.max(0, v))} />;
@@ -143,7 +143,7 @@ export function SteuerKarte({ ort, offen: offenStart = false, i = 0, szenario }:
 
   return (
     <Karte i={i} id={`steuern-${ort}`}>
-      <Ueberschrift rechts={<KnopfKlein farbe={offen ? C.inkDim : undefined} onClick={() => setOffen(o => !o)}>{offen ? 'Zuklappen' : 'Anpassen'}</KnopfKlein>}>
+      <Ueberschrift rechts={<KnopfKlein farbe={offen ? C.inkDim : undefined} onClick={() => setOffen(o => !o)}>{offen ? 'Zuklappen' : 'Anpassen'}</KnopfKlein>} erklaerung="finanzplan.steuer">
         Welche Steuern gelten? — {finanzOrtName(ort)}{szenario ? ` · ${szenario.name}` : ''}
       </Ueberschrift>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
@@ -169,7 +169,7 @@ export function SteuerKarte({ ort, offen: offenStart = false, i = 0, szenario }:
           <div>
             {zeilen.map(z => (
               <ZeilenRahmen key={z.art} dim={!z.an} name={z.info.label} hinweis={z.hinweis ?? z.info.wirkung}
-                schalter={z.schaltbar ? <Schalter an={z.an} onChange={v => tu({ art: 'an', steuer: z.art as SteuerArt, wert: v })} ariaLabel={`${z.info.label} berechnen`} /> : <span style={{ color: C.inkLeise, fontSize: TYP.bedien, width: 44, display: 'inline-block' }}>immer</span>}
+                schalter={z.schaltbar ? <Schalter erklaerungOhne="Steuerzeile — Hinweistext und Überschrift „Welche Steuern gelten?“ erklären sie" an={z.an} onChange={v => tu({ art: 'an', steuer: z.art as SteuerArt, wert: v })} ariaLabel={`${z.info.label} berechnen`} /> : <span style={{ color: C.inkLeise, fontSize: TYP.bedien, width: 44, display: 'inline-block' }}>immer</span>}
                 satz={satzFeld(z)} />
             ))}
           </div>

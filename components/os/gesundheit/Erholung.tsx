@@ -78,7 +78,7 @@ function HeuteKarte({ d, aendern, heute }: { d: ErholungAntwort; aendern: (ops: 
       {sicht.faellig.length === 0 && <Leer>{s.programme.some(p => p.status === 'aktiv') ? 'Heute ist kein Programm dran.' : eigene ? 'Noch kein aktives Programm — unten eines anlegen oder eine Vorlage übernehmen.' : 'Heute ist kein Programm dran.'}</Leer>}
       {sicht.faellig.map(f => (
         <Zeile key={f.programm.id} titel={f.programm.name} unter={[f.minuten ? `${f.minuten} min` : '', f.grund, f.programm.stufe ?? ''].filter(Boolean).join(' · ')}
-          rechts={<Schalter an={f.erledigt} aus={!eigene} farbe={ERHOLUNG_FARBE} ariaLabel={`${f.programm.name} heute erledigt`}
+          rechts={<Schalter erklaerung="gesundheit.erholung.erledigt" an={f.erledigt} aus={!eigene} farbe={ERHOLUNG_FARBE} ariaLabel={`${f.programm.name} heute erledigt`}
             onChange={an => { void aendern([an ? { op: 'einheit', einheit: { tag: heute, programmId: f.programm.id } } : { op: 'einheit-weg', programmId: f.programm.id, tag: heute }]); }} />} />
       ))}
       <div style={{ marginTop: 10 }}><Klein>{teile.length ? `Heute: ${teile.join(' · ')}` : 'Heute noch keine Erholung eingetragen.'}</Klein></div>
@@ -251,7 +251,7 @@ function BehandlungKarte({ b, eigene, aendern, heute, termine, unterlagen }: { b
       <Klein>{naechster ? `Nächster Termin: ${tagKurz(naechster.tag)}${naechster.uhr ? ` ${naechster.uhr}` : ''}` : 'Kein offener Termin.'}{b.notiz ? ` · ${b.notiz}` : ''}</Klein>
       {b.termine.map(t => (
         <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>
-          <Schalter an={t.erledigt} aus={!eigene} farbe={ERHOLUNG_FARBE} ariaLabel={`Termin ${tagKurz(t.tag)} erledigt`} onChange={an => { void aendern([{ op: 'behandlung-termin', id: b.id, terminKennung: t.id, termin: { erledigt: an } }]); }} />
+          <Schalter erklaerung="gesundheit.erholung.terminErledigt" an={t.erledigt} aus={!eigene} farbe={ERHOLUNG_FARBE} ariaLabel={`Termin ${tagKurz(t.tag)} erledigt`} onChange={an => { void aendern([{ op: 'behandlung-termin', id: b.id, terminKennung: t.id, termin: { erledigt: an } }]); }} />
           <span style={{ color: t.erledigt ? C.inkLeise : C.ink }}>{tagKurz(t.tag)}{t.uhr ? ` ${t.uhr}` : ''}</span>
           {t.terminId && <Link href={WEG.termin(t.terminId, t.tag)} style={{ color: C.inkDim }}>im Kalender ›</Link>}
           {eigene && <button type="button" onClick={() => { void aendern([{ op: 'behandlung-termin-weg', id: b.id, terminKennung: t.id }]); }} aria-label="Termin entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 44, minHeight: 44 }}>×</button>}
@@ -410,9 +410,9 @@ function EinstellungenKarte({ d, aendern }: { d: ErholungAntwort; aendern: (ops:
   return (
     <Karte i={8}>
       <Ueberschrift farbe={ERHOLUNG_FARBE}>Einstellungen</Ueberschrift>
-      <Zeile titel="Vorschlag aus deinen Körperwerten" unter="Recovery, Belastung, HRV-Trend, Schlafschuld" rechts={<Schalter an={vorschlagAn} farbe={ERHOLUNG_FARBE} ariaLabel="Vorschlag zeigen" onChange={an => { void aendern([{ op: 'einstellungen', einstellungen: { vorschlag: an } }]); }} />} />
+      <Zeile titel="Vorschlag aus deinen Körperwerten" unter="Recovery, Belastung, HRV-Trend, Schlafschuld" rechts={<Schalter erklaerung="gesundheit.erholung.vorschlag" an={vorschlagAn} farbe={ERHOLUNG_FARBE} ariaLabel="Vorschlag zeigen" onChange={an => { void aendern([{ op: 'einstellungen', einstellungen: { vorschlag: an } }]); }} />} />
       <Zeile titel="Pausen im Arbeitstag" unter={p.an ? (naechste ? `nächste Pause ${naechste.um}${naechste.faellig ? ' — jetzt fällig' : ''}` : 'heute keine mehr') : 'aus'}
-        rechts={<Schalter an={p.an} farbe={ERHOLUNG_FARBE} ariaLabel="Pausen-Erinnerung" onChange={an => { void aendern([{ op: 'einstellungen', einstellungen: { pausen: { ...p, an } } }]); }} />} />
+        rechts={<Schalter erklaerung="gesundheit.erholung.pausen" an={p.an} farbe={ERHOLUNG_FARBE} ariaLabel="Pausen-Erinnerung" onChange={an => { void aendern([{ op: 'einstellungen', einstellungen: { pausen: { ...p, an } } }]); }} />} />
       {p.an && (
         <form onSubmit={async ev => { ev.preventDefault(); await aendern([{ op: 'einstellungen', einstellungen: { pausen: { an: true, alleMin: alle || 90, von, bis } } }]); }} style={{ display: 'grid', gap: 6, marginTop: 8 }}>
           <Reihe>

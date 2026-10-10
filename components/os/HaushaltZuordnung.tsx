@@ -42,7 +42,7 @@ export function HaushaltZuordnung() {
   }
   return (
     <Karte i={5} akzent={LEUCHT.geld}>
-      <Ueberschrift farbe={LEUCHT.geld}>Haushaltsfinanzen</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.geld} erklaerung="konto.haushalt">Haushaltsfinanzen</Ueberschrift>
       <div style={{ fontSize: 13, color: C.inkDim, marginBottom: 6 }}>Wer eure privaten Finanzen unter „Finanzen › Privat“ sieht und pflegt. Alle anderen Konten sehen davon nichts, auch keine Summen.</div>
       {offen && (
         <div style={{ display: 'grid', gap: 6, marginBottom: 10 }}>

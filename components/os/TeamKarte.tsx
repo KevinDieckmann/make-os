@@ -85,7 +85,7 @@ export function TeamKarte({ i = 3 }: { i?: number }) {
 
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.beziehung} rechts={pflegbar && !entwurf ? <Knopf leise onClick={() => { setEntwurf({ ...leer }); setMeldung(null); }}>+ Person</Knopf> : undefined}>Team — wer was trägt</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.beziehung} erklaerung="konto.team" rechts={pflegbar && !entwurf ? <Knopf leise onClick={() => { setEntwurf({ ...leer }); setMeldung(null); }}>+ Person</Knopf> : undefined}>Team — wer was trägt</Ueberschrift>
       {pflegbar && !ausDaten && (
         <Leer>Team einmal eintragen: Noch stehen hier nur die Konten mit ihrer Konto-Rolle. Rollen und weitere Personen mit Name, Kurzwort und Rolle anlegen — Delegation, Inbox und ZOE nutzen dann genau diese Angaben.</Leer>
       )}

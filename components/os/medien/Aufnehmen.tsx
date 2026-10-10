@@ -107,12 +107,12 @@ function AufnehmenBlatt({ dateien, vorgabe, alben, privat, ich, onZu }: { dateie
         </Feldzeile>
         {videos.length > 0 && (
           <>
-            <Schalter an={ton} onChange={setTon} karte beschreibung={TEXTE.tonHinweis}>Ton behalten</Schalter>
-            <Schalter an={original} onChange={setOriginal} karte beschreibung="Empfohlen: in der Kamera 1080p/30 (HEVC). 4K-Videos nur als „Original“ — sie sind sehr groß.">Original (4K erlauben)</Schalter>
+            <Schalter erklaerung="medien.ton" an={ton} onChange={setTon} karte beschreibung={TEXTE.tonHinweis}>Ton behalten</Schalter>
+            <Schalter erklaerung="medien.original" an={original} onChange={setOriginal} karte beschreibung="Empfohlen: in der Kamera 1080p/30 (HEVC). 4K-Videos nur als „Original“ — sie sind sehr groß.">Original (4K erlauben)</Schalter>
             <Hinweis art="info">{TEXTE.appOffen}</Hinweis>
           </>
         )}
-        <Schalter an={extern} onChange={setExtern} karte beschreibung="Dann ist vor jeder Freigabe der Lizenz-Nachweis als Datei Pflicht.">Von einer fremden Fotografin / einem fremden Fotografen</Schalter>
+        <Schalter erklaerung="medien.extern" an={extern} onChange={setExtern} karte beschreibung="Dann ist vor jeder Freigabe der Lizenz-Nachweis als Datei Pflicht.">Von einer fremden Fotografin / einem fremden Fotografen</Schalter>
         {fehler.map((f, i) => <Hinweis key={i} art="achtung" rolle="alert">{f}</Hinweis>)}
         {laeuft && <Hinweis art="info" rolle="status">{laeuft}</Hinweis>}
         <Knopf haupt voll farbe={LEUCHT.agenten} aus={!!laeuft} onClick={fehler.length ? onZu : los}>{fehler.length ? 'Fertig' : laeuft ? 'bereitet vor …' : 'Hochladen'}</Knopf>

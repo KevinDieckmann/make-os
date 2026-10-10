@@ -33,6 +33,7 @@
 
 import { WEG } from '@/lib/wege';
 import { BUSINESS_EINHEITEN_NAMEN, UG_NAME } from '@/lib/einheiten';
+import { SCHRITT_BEISPIELE } from '@/lib/erklaerungen/schritte';
 
 export type Ebene = 'instanz' | 'gemeinsam' | 'ich';
 
@@ -72,6 +73,11 @@ export interface Schritt {
   danach?: string;
   minuten: number;
   wo?: { href: string; label: string };
+  /**
+   * Ein Fallbeispiel (10.10., Kevin: „Wenn man auf die einzelnen Sachen klickt, die Erklärung dahinter — mit Fallbeispiel“): ein erfundener, kurzer
+   * Fall, wie der Schritt im Alltag aussieht. Der Text steht in lib/erklaerungen/schritte.ts und wird am Ende von `SCHRITTE` angehängt.
+   */
+  beispiel?: string;
   /** Am Server: der Befehl — nie ein Wert (Platzhalter in spitzen Klammern). */
   befehl?: string;
   /** Schlüssel, unter dem der Server den echten Zustand prüft (lib/onboarding-status.ts). */
@@ -221,7 +227,7 @@ const KONTO = { href: WEG.konto(), label: 'Konto' };
 const HOI = { href: '/os/hoi', label: 'Head of IT' };
 const BUSINESS = BUSINESS_EINHEITEN_NAMEN.length ? ` (bei euch: ${BUSINESS_EINHEITEN_NAMEN.join(' · ')})` : '';
 
-export const SCHRITTE: Schritt[] = [
+const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
   // ── Etappe 0 — Am Upload-Tag und direkt danach (Server, nur der Inhaber) ─────────────────────────────────────────────────────
   {
     id: 'update', etappe: 0, nr: '0.1', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25,
@@ -1399,6 +1405,9 @@ export const SCHRITTE: Schritt[] = [
     wo: { href: WEG.powerHour(), label: 'Markttraktion › Power Hour' },
   },
 ];
+
+/** Alle Schritte samt Fallbeispiel (lib/erklaerungen/schritte.ts) — EINE Zuordnung; ein Schritt ohne Beispiel fällt dem Wächter auf. */
+export const SCHRITTE: Schritt[] = SCHRITTE_OHNE_BEISPIEL.map(s => (SCHRITT_BEISPIELE[s.id] ? { ...s, beispiel: SCHRITT_BEISPIELE[s.id] } : s));
 
 /** Ein Schritt per Kennung (null = unbekannt). */
 export const schrittMitId = (id: string): Schritt | null => SCHRITTE.find(s => s.id === id) ?? null;

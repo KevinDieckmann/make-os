@@ -10,7 +10,7 @@ import { WEG } from '@/lib/wege';
 export function VerzeichnisKarte({ i = 3 }: { i?: number }) {
   return (
     <Karte i={i} id="verzeichnis">
-      <Ueberschrift>Verzeichnis der Verarbeitungstätigkeiten (Art. 30)</Ueberschrift>
+      <Ueberschrift erklaerung="datenschutz.verzeichnis">Verzeichnis der Verarbeitungstätigkeiten (Art. 30)</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 12 }}>
         Ein Dokument aus einer Quelle: Verantwortlicher und Empfänger von hier, Verarbeitungen aus dem Verzeichnis, Löschfristen aus der Tabelle.
         Fehlende Verarbeitungen der Plattform werden beim Öffnen ergänzt; von Hand Geändertes bleibt.

@@ -581,7 +581,7 @@ function Fertig({ id, warte, name, zustaendig, foto, onNochEine, onBericht, schr
 /** „Wir haben persönlich gesprochen“ (§ 7 UWG): nur dann gibt es morgen einen Danke-Entwurf. Standard an; ohne Gespräch beim ersten Kontakt den Datenschutzhinweis geben. */
 export function GespraechSchalter({ an, onUm }: { an: boolean; onUm: (v: boolean) => void }) {
   return (
-    <Schalter karte an={an} onChange={onUm} testId="gespraech-schalter"
+    <Schalter karte erklaerung="netzwerken.gespraech" an={an} onChange={onUm} testId="gespraech-schalter"
       beschreibung={an ? 'Danke-Entwurf ab morgen. Aus = keine Danke-Mail.' : 'Aus: keine Danke-Mail — nur Karte erhalten. Datenschutzhinweis beim ersten Kontakt geben.'}>
       Wir haben persönlich gesprochen
     </Schalter>
@@ -593,7 +593,7 @@ export function HandySchalter({ an, onUm, grund }: { an: boolean; onUm: (v: bool
   const aus = !!grund;
   return (
     <div style={{ display: 'grid', gap: 6 }}>
-      <Schalter karte an={an} onChange={onUm} aus={aus} testId="handy-schalter"
+      <Schalter karte erklaerung="netzwerken.handy" an={an} onChange={onUm} aus={aus} testId="handy-schalter"
         symbol={<BookUser size={20} aria-hidden style={{ flex: '0 0 auto', color: an ? C.aktiv : C.inkDim }} />}
         beschreibung={aus ? grund : 'Danach liegt der Kontakt-Knopf bereit — die Daten bleiben im Browser. Im Handy liegt er dann in Apple Kontakte (iCloud) — Löschen und Auskunft dort selbst.'}>
         Auch im Handy speichern

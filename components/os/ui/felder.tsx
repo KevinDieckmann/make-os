@@ -6,6 +6,8 @@
 
 import type { CSSProperties, ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, RAND, ECKE } from '@/lib/make-one/design';
+import { abschnitteVon, type ErklaerungsQuelle } from '@/lib/erklaerungen';
+import { ErklaerKnopf, ErklaerPanel, useErklaerung } from './erklaerung';
 
 export const eingabe: CSSProperties = {
   width: '100%', minHeight: 48, boxSizing: 'border-box', background: 'rgba(255,255,255,.05)', border: `1px solid ${RAND.stark}`, borderRadius: ECKE.eingabe,
@@ -23,13 +25,28 @@ export const auswahl: CSSProperties = {
   ...feld, minHeight: 40, width: 'auto', maxWidth: '100%', padding: '8px 12px', fontSize: TYP.bedien, appearance: 'auto', WebkitAppearance: 'menulist', colorScheme: 'dark', cursor: 'pointer',
 };
 
-/** Beschriftung über dem Feld, Fehlertext darunter (in ganzen Sätzen). */
-export function Feldzeile({ label, children, fehler }: { label: string; children: ReactNode; fehler?: string }) {
-  return (
+/**
+ * Beschriftung über dem Feld, Fehlertext darunter (in ganzen Sätzen). Mit `erklaerung` (10.10.) steht ein „i“ rechts neben der Beschriftung;
+ * die Erklärung klappt unter dem Feld auf (das „i“ liegt neben dem `label`, nicht darin — ein Klick darauf soll nicht das Feld fokussieren).
+ */
+export function Feldzeile({ label, children, fehler, erklaerung }: { label: string; children: ReactNode; fehler?: string; erklaerung?: ErklaerungsQuelle }) {
+  const e = useErklaerung();
+  const abschnitte = erklaerung ? abschnitteVon(erklaerung) : [];
+  const kern = (
     <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim }}>{label}</span>
+      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, ...(abschnitte.length ? { paddingRight: 36 } : null) }}>{label}</span>
       {children}
       {fehler && <span role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{fehler}</span>}
     </label>
+  );
+  if (!abschnitte.length) return kern;
+  return (
+    <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+      <div style={{ position: 'relative', minWidth: 0 }}>
+        {kern}
+        <span style={{ position: 'absolute', top: -13, right: -8 }}><ErklaerKnopf offen={e.offen} onClick={e.umschalten} id={e.id} name={label} /></span>
+      </div>
+      {e.offen && <ErklaerPanel id={e.id} abschnitte={abschnitte} />}
+    </div>
   );
 }

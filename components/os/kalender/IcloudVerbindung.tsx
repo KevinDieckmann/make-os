@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Knopf, Hinweis, Feldzeile, eingabe, Schalter, useRueckfrage } from '../ui';
+import { Erklaert, Knopf, Hinweis, Feldzeile, eingabe, Schalter, useRueckfrage } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
 
 interface Stand {
@@ -107,7 +107,7 @@ export function IcloudVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
   return (
     <div style={box} data-icloud="verbindung">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, fontSize: 14 }}>iCloud Kalender</span>
+        <Erklaert erklaerung="kalender.icloud" name="iCloud Kalender"><span style={{ fontWeight: 700, fontSize: 14 }}>iCloud Kalender</span></Erklaert>
         {s?.verbunden && !s.anmeldung && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv, border: `1px solid ${C.aktiv}55`, borderRadius: 999, padding: '1px 8px' }}>verbunden</span>}
         {s?.anmeldung && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.kritisch, border: `1px solid ${C.kritisch}55`, borderRadius: 999, padding: '1px 8px' }}>App-Passwort ungültig</span>}
       </div>
@@ -145,18 +145,18 @@ export function IcloudVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
 
       {s?.verbunden && !s.haupt && !!s.kalender?.length && (
         <div style={{ display: 'grid', gap: 2 }}>
-          <span style={{ ...klein, fontWeight: 600 }}>Welche Kalender zeigen?</span>
+          <Erklaert erklaerung="kalender.zeigen" name="Welche Kalender zeigen?"><span style={{ ...klein, fontWeight: 600 }}>Welche Kalender zeigen?</span></Erklaert>
           {s.kalender.map(k => (
             <div key={k.kennung} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44 }}>
               <span style={{ flex: 1, fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}{k.schreibbar ? '' : ' · nur lesbar'}</span>
               <span style={klein}>{k.gezeigt ? `${k.termine} Termine` : 'aus'}</span>
-              <Schalter an={k.gezeigt} aus={!!arbeit} onChange={an => void zeigen(k.kennung, an)} ariaLabel={`${k.name} zeigen`} />
+              <Schalter erklaerungOhne="Zeile in der Kalenderliste — die Überschrift „Welche Kalender zeigen?“ erklärt es" an={k.gezeigt} aus={!!arbeit} onChange={an => void zeigen(k.kennung, an)} ariaLabel={`${k.name} zeigen`} />
             </div>
           ))}
           <span style={klein}>Kalender, die schon im Haushalts-Kalender stehen (geteilt), erscheinen nur einmal.</span>
           {s.kalender.some(k => k.gezeigt && k.schreibbar) && (
             <label style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-              <span style={{ ...klein, fontWeight: 600 }}>Blöcke aus Planen und ZOE landen in</span>
+              <Erklaert erklaerung="kalender.blockkalender" name="Blöcke aus Planen und ZOE"><span style={{ ...klein, fontWeight: 600 }}>Blöcke aus Planen und ZOE landen in</span></Erklaert>
               <select value={s.blockKalender ?? ''} disabled={!!arbeit} onChange={e => void blockZiel(e.target.value)} style={{ ...eingabe, minHeight: 44 }} aria-label="Kalender für Blöcke">
                 {s.kalender.filter(k => k.gezeigt && k.schreibbar).map(k => <option key={k.kennung} value={k.kennung}>{k.name}</option>)}
               </select>
