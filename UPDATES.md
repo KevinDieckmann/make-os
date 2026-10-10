@@ -110,6 +110,47 @@ dieser Runde). **Rückweg:** der alte Stand liest die neuen Felder nicht und leh
 verwirft beim Speichern eines Beschlusses dessen neue Felder; `fassungen` bleiben im Eintrag liegen (der alte Schreibweg behält unbekannte Felder). Vor dem
 Upload Sicherung (Live-Daten-Regel); zurück nur mit Sicherung, wenn neue Beschlüsse bearbeitet wurden.
 
+## 10.10.2026 — Fulfillment C1: Prozesse, Bausteine, Fall, Onboarding, Takt, Wert-Konto, Wirkung, Cockpit (nur lokal — Branch `fulfillment-c1`, Basis `update-0910b`; Konzept `FULFILLMENT_KONZEPT.md` 2, 3, 5.1, 5.3, 6.2, 6.3, 7, 8, 10)
+
+Der Kern des Bereichs Fulfillment: Prozess-Hochhaus mit drei Paket-Vorlagen, Bausteine-Bibliothek mit Import, der Fall je Mandat (Kopie der Vorlage),
+Onboarding mit 24-Stunden-Willkommensmail, Rituale/Mitschriften, Wert-Konto, Wirkungsbericht, Cockpit „was hängt“ und die Säule im Business-Index.
+
+**Nur additiv:** geschrieben werden nur die C0-Bestände `fulfillment--<haushalt>` (Vorlagen, Bausteine, Rituale, Zuordnung, Marken, Import-Läufe) und
+`fulfillment-faelle--<haushalt>`. Am CRM nur über die vorhandenen Schreibwege und nur bei einem Fall: Phase am Mandat (nur vorwärts), Lieferobjekte der
+Leistungstreppe, Ist-Wert bzw. neues Ziel am Mandat. Mandate ohne Fall bleiben exakt, wie sie sind (Test). Business-Index: neue Säule „Fulfillment“ 10 %
+(nur mit Messung) — ohne Fall ist der Index bit-gleich zum bisherigen (Test); die übrigen Säulen ×0,9 im alten Verhältnis („Kapazität 14 %“).
+Vorschläge (Onboarding starten, Nachsorge) nur über den Freigabe-Stapel; Mails nur per Klick über `/api/inbox/senden` (Art. 18, § 7 UWG wie dort).
+**Rückweg:** der alte Stand liest die Fulfillment-Bestände nicht; am CRM keine neue Form (Ziele, Phase, Lieferobjekte wie bisher).
+
+**Import der echten Dateien (nur auf dem Server, nie ins Repo):** Fulfillment › Bausteine › „Datei wählen“ → Vorschau (neu/gleich/ergänzt/abweichend,
+„rechtlich prüfen“, „vor Verkauf prüfen“, „nur intern“) → „Übernehmen“. Gleiche Kennung ergänzt nur leere Felder; „Rückgängig“ 30 Tage. Lokal mit den
+Dateien vom 10.10. geprüft: 86 + 45 + 66 + 34 Bausteine und 6 Abläufe ohne Fehler.
+
+**So testet ihr** (Klickdummy `localhost:3001`, am besten in der Demo-Instanz — sie bringt alles mit):
+1. Produkte & Mandate › Fulfillment › Prozesse: leer → „Aus Muster anlegen“ → Hochhaus (Dach · Etagen · Fundament) erscheint; Kasten antippen → Steckbrief,
+   Brotkrumen, „Kunden dort“. Darunter drei Pakete; eins aufklappen → Knoten anlegen/verschieben (▲▼), Kreis wird abgelehnt.
+2. Bausteine: Filter „rechtlich prüfen“/„nur intern“; einen Baustein öffnen → Schalter „Für Kunden sichtbar“, „Nur intern“ (ⓘ zeigt Erklärung + Beispiel),
+   „rechtlich geprüft“ vermerken. „Datei wählen“ mit einer Bausteine-JSON → Vorschau → Übernehmen → derselbe Import noch einmal: alles „gleich“.
+3. Kreislauf: heutiger Kreislauf oben (Link „Planung öffnen“), darunter die Abläufe als Bild (Trichter, Fluss mit Weichen, Zeitachse; Ergänzungen
+   gestrichelt). Am Handy (375 px) als Liste. „Als Paket-Vorlage übernehmen“.
+4. Produkte & Mandate › Mandate: Karte „Kundenonboarding starten“ bei unterschriebenen Mandaten ohne Fall → „Starten“ → Paket wählen → der Fall öffnet.
+5. Fall › Überblick: Onboarding-Schritte (abgeleitet), Karte „Willkommensmail“ (rot nach 24 h) → Entwurf mit drei freien Kick-off-Zeiten → Postfach wählen
+   → „Senden“ (erst der Klick). Quick Wins, Kick-off-Fragen abhaken.
+6. Fall › Ablauf: Status je Schritt; „Freigabe F… vermerken“ (wie bestätigt, am); „entfällt“ fragt nach dem Grund; „+ Zusatz-Schritt“.
+7. Fall › Wert-Konto: Ausgang, Zielwert, Einheit, Datum → „Im Kick-off festlegen“ → Messung eintragen → „vorher → jetzt → Ziel“ und Verlauf; der Ist-Wert
+   am Mandat zieht mit. „Neues Ziel“ legt die Zeile am Mandat an.
+8. Fall › Menschen: Stakeholder aus der Kartei (Rolle, Einfluss, Haltung), Zusammenarbeits-Vereinbarung „Als bestätigt vermerken“, Entscheidungs-Log
+   („Mit dem Kunden geteilt“).
+9. Fall › Takt: Ritual „Termin anlegen“ → der normale Kalender-Dialog, vorbelegt (Titel, Dauer, Mandat, Gäste) → danach „1 Termin angelegt“. Mitschrift
+   (Anlass · Ergebnis · nächster Schritt · Frist) → „→ Entscheidung“ / „→ Aufgabe“. Befähigung abhaken. Wirkungsbericht: „Bericht erstellen“ → PDF
+   herunterladen → „Per Mail senden …“ (Anhang dabei) → Vorschläge danach (Kundenstimme, Fallstudie, Empfehlung, nächste Stufe).
+10. Visualisierung: Landkarte groß, Cockpit („was hängt“ zuerst, rot oben), Erfolgsmaße mit ⓘ.
+11. Produkte › ein Produkt: Zeile „Fulfillment: <Paket> ›“ mit Auswahl. Mandatsakte: „Fulfillment öffnen ›“. Markttraktion › Planung › Kreislauf:
+    Stufe Fulfillment → „Fulfillment öffnen“.
+12. Business › Cockpit: Säule „Fulfillment“ erscheint erst mit einem Fall; Punkte darunter springen in den Fall.
+13. `npx vitest run tests/fulfillment-c1-*.test.ts` grün (die C0-Erwartungen „501“ in tests/fulfillment-fundament.test.ts sind mit C1 überholt — beim
+    Zusammenführen von C1–C3 anpassen).
+
 ## 10.10.2026 — Fulfillment C0: Fundament (nur lokal — Branch `fulfillment-c0`, Basis `update-0910b`; Konzept `FULFILLMENT_KONZEPT.md`)
 
 Grundlage für den neuen Bereich Fulfillment (WIE wir liefern) unter Produkte & Mandate — die Pakete C1 (Prozesse, Fall, Onboarding), C2 (Kunden-Link)

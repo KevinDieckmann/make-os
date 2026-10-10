@@ -1430,6 +1430,32 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
 - Anschlüsse: Kreislauf der Planung liest `fortschrittFuerKreislauf`; Head of Sales bekommt `treppeFuerHead` im Datenpaket; Chat unter `/os/mandate?s=produkte` = Sales.
   Tests `tests/produkte-treppe{,-route}.test.ts` (inkl. Altbestand bleibt unverändert).
 
+## Fulfillment (10.10., Konzept `FULFILLMENT_KONZEPT.md`; Seite Produkte & Mandate › Fulfillment, `WEG.fulfillment`/`WEG.fall`)
+### C1 — Prozesse, Bausteine, Fall, Onboarding, Takt, Wert-Konto, Wirkung, Cockpit (Branch `fulfillment-c1`; UPDATES.md)
+- **Rein, EINE Stelle je Regel** in `lib/fulfillment/prozesse/`: `vorlagen-anwenden.ts` (Vorlagen-Ops mit Stand: `aus-muster` idempotent über Marken
+  `muster:<id>`, `knoten`/`knoten-weg`/`knoten-rang`, `uebergang`, `baustein`, `recht-geprueft`, `urheber-geprueft`, `ritual`, `zuordnung` nur Paket-Vorlagen,
+  `einstellungen` (Kunden-Link nur Inhaber → 403), `onboarding-aus`; Struktur: eine Wurzel, ≤ 5 Ebenen, Ebene 5 nur Baustein-Verweis, Übergänge nur im
+  Ablauf und auf derselben Ebene) · `import.ts` (Bausteine `vorlagen: […]` und Abläufe je `stufen`/`uebergaenge`; Kennungen `fb-imp-<quelle>`/`fp-imp-<titel>`,
+  unbekannte Felder egal, nie Links/Quellenverzeichnis/Instanzwerte, nur LEERE Felder ergänzen außer „Import nehmen“, Rückgängig 30 Tage, Vorschau-Kennung
+  mit Bestands-Stand → 409) · `fall.ts` (Start = Kopie der Vorlage + 8 Onboarding-Schritte `fk-ob-*` im Knoten „Onboarding“ + 4 Befähigungs-Kriterien;
+  Fall-Ops alles oder nichts; `fk-ob-*` und Schritte mit Freigabe nie von Hand „erledigt“; Vorlagen-Diff, Übernehmen entfernt nie) · `onboarding.ts`
+  (Onboarding ABGELEITET, nie gespeichert: `onboardingStand`, `fallWirksam`; Willkommens-Uhr 24 h; Vorlage = Baustein `mail` mit Schlagwort `willkommen`
+  (+ `du`/`sie`)) · `wert.ts` · `rituale.ts` (nur Vorbelegung des VORHANDENEN Kalender-Dialogs, kein neuer Kalender-Schreibweg) · `landkarte.ts`/`ablauf-bild.ts`
+  (Lage rechnen; die Zeichner in `components/os/fulfillment/prozesse/Zeichnung.tsx` rechnen nichts; < 720 px Liste) · `cockpit.ts` · `kennzahlen.ts` · `wirkung.ts`.
+- **Baustein-Marken als Schlagworte** (der C0-Säuberer kennt keine Felder dafür): `nur-intern` (nie an Kunden: Kunden-Ansicht, Report, Wirkungsbericht,
+  Export — `kundeSichtbar` dann immer false), `pruefen-vor-verkauf` bzw. `urheberPruefen` (Prüfvermerk als Marke `urheber-geprueft:<id>`). Jeder Weg zum
+  Kunden fragt NUR `fuerKundenFrei(b, datei)` / `nurIntern(b)` (lib/fulfillment/prozesse/bausteine.ts). Messe-Nachfasstakt `MESSE_NACHFASS_TAGE` (1, 3, 7, 14, 30).
+- **Server** `fall-server.ts` (EINE Schreibstelle der Fälle; `ziel-neu` legt das Ziel am Mandat an; Nachzug ins CRM: Phase nur vorwärts,
+  Lieferobjekte über `treppeSchreiben`, Ist-Wert) und `server.ts` (`fallLesen` liefert den wirksamen Fall, Cockpit, `ffKennzahlenFuerIndex` → null ohne Fall,
+  Morgenlauf-Vorschläge Onboarding/Nachsorge über den Stapel, Fristen, Art. 15). Fall nur für Business-Mandate (sonst 400). Messwerte trägt nur das Team ein.
+- **Routen** `/api/fulfillment` (GET Übersicht, `?nur=kurz` für Einhänger, `?baustein=`; PATCH Vorlagen-Ops), `/fall` (GET `?m=`, `?willkommen=1`;
+  POST `starten` idempotent über `anfrageId`, `vorlage-uebernehmen`, `nachziehen`; PATCH `{ mandatId, ops }`), `/import`, `/cockpit`, `/wirkung` (PDF in
+  `fulfillment-unterlagen`, „Per Mail“ legt eine Kopie in die Dateiablage am Mandat, Zitat nur mit Einwilligung). Erste Zeile immer `fulfillmentZugang`.
+- **Business-Index:** Säule `ff` (`FF_SAEULE`, 10 %, `nurMitMessung`), Kennzahlen `FF_KENNZAHLEN` mit Punkten je Fall; `Bestand.fulfillment` aus `ladeRoh`.
+  Neue Fulfillment-Kennzahl = Eintrag dort + `ffMessung`; ohne Fall bleibt der Index bit-gleich (Wächter tests/fulfillment-c1-index.test.ts).
+- Erklärungen `lib/erklaerungen/fulfillment-prozesse.ts`; Oberfläche `components/os/fulfillment/prozesse/*` (Export über `index.tsx`, Namen fest).
+  Tests `tests/fulfillment-c1-{rein,index,routen,demo}.test.ts`; Demo `lib/demo/fulfillment-prozesse.ts`.
+
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
 - **Eine Stelle je Aufgabe:** rein `lib/crm/netzwerken.ts` (Schritte, `erfassungPruefen`, `kenntWirSchon`, `firmaVorschlaege`, Danke-Entwurf, `berichtAus`), Server `lib/crm/netzwerken-server.ts` (`erfassungAusfuehren`, `dankeRausVermerken`, `freieVorschlaege`), Route `app/api/netzwerken` (GET Personen/`?frei=`, POST `erfassen`/`danke-raus`), Warteschlange `lib/netzwerken/warteschlange.ts`, Karte-Auslesen (aus) `lib/crm/netzwerken-karte.ts`. Nie neben diesen Stellen eine zweite Dublettenprüfung, Erfassungslogik oder Offline-Warteschlange bauen.
