@@ -17,17 +17,17 @@
 //   ZOE-Aufgabe wichtig bei Priorität hoch/kritisch; dringend bei Deadline in ≤ `FRIST_DRINGEND_TAGE`; kritisch = Priorität kritisch + dringend
 //   Lauf        (Zeitplan, Skill, Plan) dringend in den nächsten `DRINGEND_STUNDEN`; wichtig nur Reviews (Stufe „stark“) und Hintergrundaufgaben
 
-import { EISENHOWER_REIHE, GRENZEN, type Eisenhower, type HeadDef, type Naechstes, type NaechstesArt } from './typen';
+import { EISENHOWER_REIHE, GRENZEN, type HeadDef, type Naechstes, type NaechstesArt } from './typen';
 import { naechsteSlots, regelVon, schonGelaufen, wirksamAb, TAKT_BIS, TAKT_VON, type ZeitRegel, type ZeitplanLage } from './zeitplan';
 import { ausWandzeit, tagPlus, tagVon, wandzeit, wandAus } from '@/lib/kalender/zeit';
 import { istBusinessFrei, type Spanne } from '@/lib/arbeitsrahmen/regel';
 import { WEG } from '@/lib/wege';
+// Die Vierfelder-Regel und die „dringend“-Grenze stehen seit 10.10. an EINER Stelle (Heute › Top 3 nutzt dieselbe): lib/aufgaben/eisenhower.ts.
+import { FRIST_DRINGEND_TAGE, quadrantVon } from '@/lib/aufgaben/eisenhower';
+export { FRIST_DRINGEND_TAGE, quadrantVon };
 
 export const DRINGEND_STUNDEN = 24;
 export const FREIGABE_KRITISCH_STUNDEN = 48;
-export const FRIST_DRINGEND_TAGE = 2;
-
-export const quadrantVon = (wichtig: boolean, dringend: boolean): Eisenhower => (wichtig ? (dringend ? 'q1' : 'q2') : dringend ? 'q3' : 'q4');
 
 export function eintrag(x: Omit<Naechstes, 'quadrant'>): Naechstes {
   return { ...x, quadrant: quadrantVon(x.wichtig, x.dringend) };

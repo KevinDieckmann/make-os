@@ -6,7 +6,7 @@
 // EINE Regel für Katalog (Browser), Standard (Wächter) und gespeicherte Layouts (Server, app/api/state/flaeche):
 //   · `privat`   — Inhalte nur des Privat-Bereichs (Gesundheit, Familie, Essen, Privat-Finanzen, Wachstums-Score mit den Säulen Gesundheit/Familie).
 //   · `business` — Inhalte nur des Business-Bereichs (Markttraktion, Business-Index, Traktion, Zeit je Einheit).
-//   · `neutral`  — das Widget folgt dem Bereich seiner Fläche (Aufgaben, Termine, Fokus, Ziele, Steht an, ZOE & Inbox, Zeit „Privat gegen
+//   · `neutral`  — das Widget folgt dem Bereich seiner Fläche (Aufgaben, Termine, Fokus, Ziele, Steht an, Top 3, Tages-Briefing, Freigaben von ZOE & Inbox, Zeit „Privat gegen
 //                  Business“ = nur Summen, Entscheidung 09.10.). Auf einer Fläche mit Bereich nimmt es IMMER deren Bereich (`widgetSpace`).
 // Eine Fläche mit Bereich (`spaceAusFlaeche`: Heute › Privat/Business, Gesundheit, Familie, Markttraktion …) zeigt nur `neutral` und ihren
 // eigenen Bereich. Flächen ohne Bereich (System, Konto …) zeigen alles.

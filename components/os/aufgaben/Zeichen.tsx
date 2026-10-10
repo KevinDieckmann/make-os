@@ -8,6 +8,8 @@ import type { CSSProperties } from 'react';
 import { Lock } from 'lucide-react';
 import { FARBE as C, SCHRIFT, LEUCHT, TYP } from '@/lib/make-one/design';
 import type { Task } from '@/types/tasks';
+import type { Eisenhower } from '@/lib/agenten/typen';
+import { EISENHOWER_NAME } from '@/lib/aufgaben/eisenhower';
 
 /** Farbe „Abgebrochen“ (wie GRUNDSTATUS in lib/aufgaben/struktur.ts). */
 export const ABGEBROCHEN_FARBE = '#8A8F98';
@@ -59,6 +61,26 @@ export function FristZeichen({ t, heute, stil }: { t: Pick<Task, 'status' | 'due
     <span aria-label={ueber ? `überfällig seit ${d}` : heuteFaellig ? `heute fällig` : `fällig ${d}`} title={ueber ? 'überfällig' : undefined}
       style={{ fontFamily: SCHRIFT.display, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: ueber ? LEUCHT.kritisch : heuteFaellig ? LEUCHT.achtung : C.inkLeise, ...stil }}>
       {ueber ? `! ${d}` : heuteFaellig ? 'heute' : d}
+    </span>
+  );
+}
+
+const QUADRANT_FARBE: Record<Eisenhower, string> = { q1: LEUCHT.kritisch, q2: LEUCHT.puls, q3: LEUCHT.achtung, q4: C.inkLeise };
+/**
+ * Eisenhower als Zeichen (10.10., Heute › Top 3 und Aufgaben-Karte; Kevin: „Prioritäten (Eisenhower) sichtbarer“): eine kleine Vierfelder-Matrix,
+ * das Feld der Aufgabe gefüllt — oben links wichtig und dringend, oben rechts wichtig, unten links dringend, unten rechts später. Nicht nur Farbe:
+ * die Lage des gefüllten Feldes und der Text (Tooltip, Vorleser) sagen es auch. `kritisch` pulsiert (Leitbild „Kritisch pulsiert“, Klasse `krit-puls`;
+ * bei reduzierter Bewegung steht es still).
+ */
+export function EisenhowerZeichen({ q, kritisch, groesse = 16 }: { q: Eisenhower; kritisch?: boolean; groesse?: number }) {
+  const f = QUADRANT_FARBE[q];
+  const feld = (k: Eisenhower, x: number, y: number) => (
+    <rect key={k} x={x} y={y} width={6} height={6} rx={1.6} fill={k === q ? f : 'none'} stroke={k === q ? f : C.inkLeise} strokeOpacity={k === q ? 1 : 0.5} strokeWidth={1} />
+  );
+  const name = `${EISENHOWER_NAME[q]}${kritisch ? ' · kritisch' : ''}`;
+  return (
+    <span role="img" aria-label={`Eisenhower: ${name}`} title={`Eisenhower: ${name}`} className={kritisch ? 'krit-puls' : undefined} style={{ display: 'inline-flex', flex: '0 0 auto', lineHeight: 0 }}>
+      <svg width={groesse} height={groesse} viewBox="0 0 14 14" aria-hidden>{feld('q1', 0.5, 0.5)}{feld('q2', 7.5, 0.5)}{feld('q3', 0.5, 7.5)}{feld('q4', 7.5, 7.5)}</svg>
     </span>
   );
 }

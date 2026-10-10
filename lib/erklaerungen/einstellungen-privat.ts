@@ -198,4 +198,27 @@ export const EINSTELLUNGEN_PRIVAT = {
     was: 'Pro Meilenstein und Ziel: Reicht die freie Zeit bis zum Termin für den Rest des Aufwands? Bis 70 % der freien Zeit gilt es als machbar, bis 90 % als eng, darüber als nicht machbar. Ohne Aufwand oder Termin gibt es keine Aussage.',
     beispiel: 'Meilenstein „Angebot fertig“: Aufwand 20 Stunden, 50 % erledigt, in den nächsten zwei Wochen sind 16 Stunden frei. Rest 10 Stunden gegen 16: Das sind 63 % — machbar.',
   },
+  // ── Heute: Top 3, Briefing, Freigaben, Jahresziele, Eisenhower (10.10., Branch `heute-top3`) ───────────────────────────────────
+  'heute.top3': {
+    was: 'Die drei Aufgaben, auf die es heute am meisten ankommt. ZOE schlägt sie nach einer festen Regel vor, ohne KI: überfällig und heute fällig zuerst, dann kritisch und hohe Priorität, dann Meilensteine mit naher Frist und Aufgaben, auf die andere warten. Du übernimmst den Vorschlag, tauschst eine Aufgabe oder wählst selbst.',
+    beispiel: 'Du hast eine überfällige Rechnung, eine kritische Aufgabe und einen Meilenstein, der in drei Tagen fällig ist. ZOE schlägt genau diese drei vor. Du tauschst den Meilenstein gegen einen Anruf, den du heute führen willst, und legst fest — den Rest des Tages sind das deine drei.',
+    daten: 'Gerechnet auf dem Server aus deinen eigenen Aufgaben, ohne KI und ohne Kosten. Gespeichert werden nur die Kennungen der drei Aufgaben des Tages in deinem eigenen Bestand; Privat und Business sind getrennt, und niemand sonst sieht deine Auswahl.',
+  },
+  'heute.briefing': {
+    was: 'Ein kurzer Text zum Tag in drei bis fünf Sätzen: was ansteht, was brennt, was auf deine Freigabe wartet, deine Top 3 und ein Hinweis zum Fokus. Er stammt nur aus dem Bereich, in dem du gerade bist — in Business steht nichts aus Privat.',
+    beispiel: 'Dort steht etwa: „Heute stehen 3 Termine an, der erste um 09:30. Bei den Aufgaben: 1 überfällig, 2 heute fällig. 2 Vorschläge von ZOE warten auf deine Freigabe.“ So weißt du in zehn Sekunden, wo du stehst.',
+    daten: 'Aus den Zahlen auf dem Server zusammengesetzt, ohne KI und ohne Kosten; es wird nichts an Dritte gesendet.',
+  },
+  'heute.freigaben': {
+    was: 'Vorschläge von ZOE, die erst wirken, wenn du sie freigibst — ZOE legt nichts allein an, schreibt nichts nach außen und ändert nichts ohne dein Ja. Hier siehst du die Zahl und die ersten drei; der Link führt in die Freigaben, wo du prüfst, änderst oder ablehnst.',
+    beispiel: 'ZOE schlägt vor, für die überfällige Rechnung die Aufgabe „Zahlung nachfassen“ anzulegen. Sie steht hier unter den ersten drei. Du öffnest die Freigaben, liest Begründung und Wirkung und gibst frei — erst dann gibt es die Aufgabe.',
+  },
+  'heute.jahresziele': {
+    was: 'Der Fortschritt der Ziele dieses Jahres im aktuellen Bereich: gemeinsame Ziele, deine eigenen und was dein Gegenüber mit dir teilt. Die Zahl ist der wirksame Fortschritt — er wird aus den Meilensteinen und ihren Aufgaben berechnet, nicht von Hand geschätzt. Ein Klick auf ein Ziel öffnet es.',
+    beispiel: 'Das Ziel „Zwei Pilotkunden live“ hat drei Meilensteine, einer ist erledigt, einer zur Hälfte geschafft: Die Karte zeigt rund 50 Prozent. Hakst du im Meilenstein Aufgaben ab, steigt die Zahl von selbst.',
+  },
+  'heute.eisenhower': {
+    was: 'Das kleine Quadrat zeigt, wohin eine Aufgabe in der Eisenhower-Matrix gehört: oben links wichtig und dringend, oben rechts wichtig, unten links dringend, unten rechts später. Wichtig heißt hohe oder kritische Priorität, dringend heißt fällig in höchstens zwei Tagen oder schon überfällig. Kritische Aufgaben pulsieren.',
+    beispiel: 'Eine Aufgabe mit hoher Priorität, die übermorgen fällig ist, steht oben links und kommt in der Liste zuerst. Dieselbe Aufgabe ohne Termin steht oben rechts: wichtig, aber noch nicht dringend — Zeit, sie fest einzuplanen.',
+  },
 } as const satisfies Record<string, EinstellungsText>;

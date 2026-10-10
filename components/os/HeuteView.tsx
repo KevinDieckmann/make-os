@@ -41,7 +41,8 @@ export const HEUTE_FLAECHE: Record<HeuteSicht, string> = { privat: 'uebersicht-p
 export const HEUTE_FLAECHE_FRUEHER_ALLES = 'home';
 
 /**
- * Der Standard je Sicht (wird nie gespeichert). Kennungen der bisherigen Übersichts-Standards bleiben gleich. „Zeit“ (09.10.) steht
+ * Der Standard je Sicht (wird nie gespeichert). Kennungen der bisherigen Übersichts-Standards bleiben gleich; neue Karten (Briefing, Top 3) rutschen über
+ * `anwenden` auch in gespeicherte Layouts an ihre Standardstelle (lib/flaeche/modell.ts). „Zeit“ (09.10.) steht
  * in beiden Sichten gleich hinter dem Index: Privat gegen Business, heute und 7 Tage — so sieht man „das Ganze“ in jedem Bereich.
  * Jedes Widget hier muss in seine Sicht passen (lib/flaeche/sicht.ts `widgetPasst`, Wächter tests/sicht-business-privat.test.ts) — der Server
  * zeigt ein gespeichertes Layout nur mit passenden Widgets.
@@ -50,12 +51,18 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
   privat: [
     // Einrichtung (08.10. spät, Onboarding B5): vorne, solange die eigene Einrichtung offen ist — `anwenden` setzt sie auch in angepasste Layouts.
     { id: 'einrichtung', art: 'einrichtung', breite: 6 },
-    { id: 'anstehend', art: 'anstehend', breite: 4 },
+    // Der Tag in einem Blick (10.10., Kevin 08.10.: „Top-3 Prioritäten, von ZOE vorgeschlagen; kurzes Tages-Briefing als Text; offene Freigaben von ZOE;
+    // Fortschritt der Jahresziele“): Briefing und Fokus, Top 3 und Freigaben, dann was ansteht — die Jahresziele stehen weiter unten bei den Zielen.
+    { id: 'briefing', art: 'briefing', breite: 4 },
     { id: 'fokus', art: 'fokus', breite: 2, einstellungen: { space: 'privat' } },
+    { id: 'top3', art: 'top3', breite: 4 },
+    { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
+    { id: 'anstehend', art: 'anstehend', breite: 4 },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'privat' }, titel: 'Nächste 3 Tage · Privat' },
     { id: 'index', art: 'index', breite: 2, einstellungen: { saeule: 'privat' } },
     { id: 'zeit', art: 'zeit', breite: 2, einstellungen: { space: 'beide' } },
-    // Ziele (09.10., Kevin: „zusammen unsere Ziele — und jeder für sich … sonst macht es keinen Sinn“): Unsere · Meine · <Name>.
+    // Ziele (09.10., Kevin: „zusammen unsere Ziele — und jeder für sich … sonst macht es keinen Sinn“): Unsere · Meine · <Name>; seit 10.10. als „Jahresziele“
+    // mit dem wirksamen Fortschritt und einem Link je Ziel.
     { id: 'ziele', art: 'ziele', breite: 4 },
     { id: 'aufgaben', art: 'aufgaben', breite: 4, einstellungen: { space: 'privat', nur: 'dran' } },
     { id: 'koerper', art: 'koerper', breite: 2 },
@@ -65,20 +72,23 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'familie', art: 'familie', breite: 2 },
     { id: 'essen', art: 'essen', breite: 2 },
     { id: 'routinen', art: 'routinen', breite: 2 },
-    { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
     { id: 'score', art: 'score', breite: 2 },
   ],
   business: [
     { id: 'einrichtung', art: 'einrichtung', breite: 6 },
-    { id: 'anstehend', art: 'anstehend', breite: 4 },
+    { id: 'briefing', art: 'briefing', breite: 4 },
     { id: 'fokus', art: 'fokus', breite: 2, einstellungen: { space: 'business' } },
+    { id: 'top3', art: 'top3', breite: 4 },
+    { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
+    { id: 'anstehend', art: 'anstehend', breite: 4 },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'business', business: true }, titel: 'Nächste 3 Tage · Business' },
     { id: 'index', art: 'index', breite: 2, einstellungen: { saeule: 'business' } },
     { id: 'zeit', art: 'zeit', breite: 2, einstellungen: { space: 'beide' } },
+    // Jahresziele auch im Business (10.10.): der Fortschritt der Business-Ziele — der Server liefert hier nur Business (`?space=business`).
+    { id: 'ziele', art: 'ziele', breite: 4 },
     { id: 'aufgaben', art: 'aufgaben', breite: 4, einstellungen: { space: 'business', nur: 'dran' } },
     { id: 'traktion', art: 'index', breite: 2, einstellungen: { saeule: 'traktion' } },
     { id: 'dran', art: 'dran', breite: 2 },
-    { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
     // Kein Wachstums-Score mehr in Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): seine Säulen sind
     // Gesundheit, Familie & Partnerschaft, Finanzen privat … — er steht in Privat. Business hat den Business-Index (oben).
   ],

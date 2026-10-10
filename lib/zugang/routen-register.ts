@@ -182,6 +182,9 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'state/flaeche': r('GET,PUT', 'person', 'Flächen-Layout je Person (speicherFuer).'),
   'state/rituale': r('GET,PUT', 'person', 'Rituale-Log je Person.'),
   'heute/anstehend': r('GET', 'haushalt', '„Heute“ aus Kalender, Fristen, Follow-ups des Haushalts.'),
+  // Heute › Top 3 und Tages-Briefing (10.10.): nur die Person selbst (Dienstweg 403), ein Bereich je Antwort — Business bekommt nichts aus Privat.
+  'heute/top3': r('GET,PUT', 'person', 'Top 3 des Tages: ZOEs Vorschlag (Regelwerk) und die eigene Festlegung — Bestand `heute-top3--<person>`, nur die Person selbst, Privat und Business getrennt.'),
+  'heute/briefing': r('GET', 'person', 'Tages-Briefing als kurzer Text aus den Zahlen der Person für EINEN Bereich — kein Modell, nichts aus dem anderen Bereich.'),
   'meldungen': r('GET,POST', 'haushalt', 'Glocke je Person im Haushalt.'),
 
   // ── ZOE, Agenten, Brain ────────────────────────────────────────────────────────────────────────────────────

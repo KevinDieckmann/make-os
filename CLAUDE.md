@@ -1100,6 +1100,21 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
   Weitere Karten-Seiten nach demselben Muster anschließen
   (offen: Wochen-/Tagesplaner, Aufgaben-Board, Inbox, Kompass, Säulen, Stapel, CRM-Unterseiten, Finanz-Details).
 
+## Heute: Top 3, Tages-Briefing, Freigaben, Jahresziele, Eisenhower (10.10., Branch `heute-top3`, nur lokal; UPDATES.md)
+Kevin 08.10. (Fragebogen): „Top-3 Prioritäten, von ZOE vorgeschlagen; kurzes Tages-Briefing als Text; offene Freigaben von ZOE; Fortschritt der Jahresziele“ · „Täglich Top-3
+festlegen; Prioritäten (Eisenhower) sichtbarer“. Karten auf `/os` (je Bereich Privat bzw. Business, Flächen-Kennungen unverändert): `briefing`, `top3`, `zoe` (jetzt „Freigaben von ZOE“ mit
+den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Business), `aufgaben` (Eisenhower-Zeichen, sortiert nach Feld).
+- **Eisenhower an EINER Stelle** `lib/aufgaben/eisenhower.ts` (rein): wichtig = Priorität hoch/kritisch (oder Grund von außen), dringend = Deadline ≤ 2 Tage, `quadrantVon`, `EISENHOWER_NAME`;
+  „Geplant“ im Agenten-Bereich nimmt dieselbe Regel. Zeichen `EisenhowerZeichen` (components/os/aufgaben/Zeichen.tsx); **nur kritisch pulsiert** (`krit-puls`). Nie eine zweite Vierfelder-Regel.
+- **Top 3 = Regelwerk, kein Modell** (`lib/heute/top3.ts` rein, `top3-server.ts`): Punkte aus überfällig/heute/kritisch/hoch/Meilenstein-Frist/blockiert andere; Vorschlag ab `VORSCHLAG_AB`,
+  nie Wartendes/Erledigtes/bei ZOE/fremd/anderer Bereich. Liest NUR über `ladeAufgabenSicht(person)` (nie fremdes „nur ich“, Konto „nur Business“ ohne Privat). Festgelegt im Bestand
+  `heute-top3--<person>` (IMMER mit Suffix, nur Aufgaben-Kennungen je Tag und Bereich, 45 Tage; `PERSON_BESTAENDE`, `JE_PERSON`); `PUT` mit `stand` (veraltet → 409), eine schon festgelegte
+  erledigte Aufgabe darf bleiben. Abhaken nur über den Aufgaben-Schreibweg. **Ein Modell zum Umordnen nur hier andocken** (Kategorie `aufgaben`, KI-Tor), nie je Seitenaufruf.
+- **Briefing = Regelwerk aus Zahlen** (`lib/heute/briefing.ts` rein, `briefing-server.ts`, gemerkt 60 s): 4–5 Sätze, nur Zahlen DES Bereichs (nie Gesundheit/Familie/Erholung). Der ZOE-Morgenlauf
+  taugt dafür nicht (Systemlauf des Inhabers über alle Bereiche).
+- Routen `GET/PUT /api/heute/top3`, `GET /api/heute/briefing`: Klasse `person` (`eigenePerson`, Dienstweg 403), `?space=` filtert auf dem Server (ohne: beide Bereiche der Person; Konto „nur Business“
+  nie Privat). Wächter `tests/heute-top3.test.ts` („Sicht Business bekommt nichts aus Privat“, „Person B sieht … von A nicht“), Messlatte-Marke `top3`.
+
 ## Hochladen nur auf Kevins Wort (26.09. abends)
 - Gebaut und überarbeitet wird lokal auf `entwicklung`; Kevin klickt den Stand im Dev-Server (`localhost:3001`) durch
   („Klickdummy“). Nach `main`/Hetzner geht NICHTS ohne Kevins ausdrückliche Freigabe für genau diesen Stand — auch keine

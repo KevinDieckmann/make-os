@@ -352,6 +352,10 @@ const SYS = {
   // 10.10. Routinen 2: Kevins Zähler je Tag und Routine (`routinen-person--kevin`, Art. 9) — nur er selbst bzw. wem er die Gesundheit zeigt.
   routinenZaehler: 'MESSLATTE-SYS-ROUTINEN-ZAEHLER',
 
+  // 10.10. Heute › Top 3 (Branch `heute-top3`): Kevins festgelegte Top 3 des Tages (`heute-top3--kevin`, Privat) — die Marke steckt im Zeitpunkt
+  // „festgelegt um“ (nur der geht hinaus); Malin bekommt weder diesen Bestand noch Kevins „nur ich“-Aufgabe, auf die er zeigt.
+  top3: '2001-02-03T05:06:07.890Z',
+
   laufSpurPrivat: 'lauf-00000000-0000-4000-8000-0000000a5f01',
   laufSpurBusiness: 'lauf-00000000-0000-4000-8000-0000000a5f02',
 };
@@ -549,6 +553,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson(sf('gesundheit-koerper', 'kevin'), { v: 1, leitsatz: SYS.koerper, beschwerden: [{ id: 'kb-messlatte', name: SYS.koerper, status: '', notiz: SYS.koerper, ton: 'achtung' }], hebel: [], stufen: [], zusammenhaenge: [], hinweis: SYS.koerper, symptom: { name: SYS.koerper }, sauberZaehler: true, routinenHinweise: [] });
     // Onboarding: Kevins persönliches Häkchen (die Marke steckt im Zeitstempel) und alte Häkchen seiner früheren Spur im gemeinsamen
     // Bestand — die zählen nie und erscheinen höchstens als Kennung „früher abgehakt“, nie mit Zeitstempel.
+    // Heute › Top 3 (10.10.): Kevins Festlegung von heute — die „nur ich“-Aufgabe oben steht in seinen Top 3 (Privat).
+    await db.saveJson('heute-top3--kevin', { v: 1, tage: { [H]: { privat: { ids: ['t-messlatte-geheim'], am: SYS.top3, von: 'hand' } } } });
     await db.saveJson('onboarding--kevin', { erledigt: { 'ich-rundgang': { at: SYS.onboarding, von: 'kevin' } } });
     await db.saveJson('onboarding', { erledigt: { 'kevin-sicht-alt': { at: '2000-01-01T00:00:00.000Z', von: 'Kevin' }, 'kevin-zwei-faktor': { at: '2001-02-03T04:05:07.891Z', von: 'Kevin' } } });
 
