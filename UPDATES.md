@@ -4,6 +4,53 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Heute: Top 3 des Tages, Tages-Briefing, Freigaben von ZOE, Jahresziele, Eisenhower (nur lokal — Branch `heute-top3`, Basis 9fe02de9 = `update-0910b`)
+
+Kevins Fragebogen-Antwort vom 08.10.: „Top-3 Prioritäten, von ZOE vorgeschlagen; kurzes Tages-Briefing als Text; offene Freigaben von ZOE; Fortschritt der
+Jahresziele“ und „Täglich Top-3 festlegen; Prioritäten (Eisenhower) sichtbarer“. Auf **Heute** (`/os`), je Bereich Privat bzw. Business.
+
+**Gebaut:**
+- **Top 3 des Tages** (neue Karte, Kennung `top3`): ZOE schlägt drei Aufgaben vor — als **Regelwerk ohne Modell** (kein Aufruf je Seitenaufruf, nichts an die KI):
+  überfällig 50 (+1 je Tag) · heute fällig 40 · morgen 24 · in 2 Tagen 16 · kritisch 30 · hoch 14 · Meilenstein-Frist ≤ 14 Tage (bis 26) · „blockiert andere“ (bis 24).
+  Nie vorgeschlagen: erledigt/abgebrochen, wartend, wartet auf eine andere Aufgabe, bei ZOE in Arbeit, fremde Zuständigkeit, Archiv/Papierkorb, Unteraufgabe ohne eigene
+  Dringlichkeit. Ein Vorschlag braucht mindestens 10 Punkte (nichts „zur Auffüllung“). Jede Zeile nennt den **Grund** („überfällig seit 3 Tagen · kritisch“).
+  Die Person **übernimmt**, **tauscht** (Auswahl der 24 besten Aufgaben des Bereichs, mit Suche), lässt weg oder legt **selbst fest** (1–3). Festgelegt = Haken in der
+  Karte über den vorhandenen Aufgaben-Schreibweg (`TOGGLE_TASK`, mit Rückgängig wie überall); „Ändern“ und „Zurücksetzen“ (ZOEs Vorschlag gilt wieder).
+- **Tages-Briefing** (neue Karte, Kennung `briefing`): 4–5 Sätze — Termine heute, was brennt (überfällig / heute fällig / kritisch, in Business dazu fällige Follow-ups),
+  Freigaben von ZOE (nur wenn welche warten), die Top 3 (festgelegt oder Vorschlag), ein Hinweis zum Fokus. **Regelwerk aus Zahlen**, gemerkt (60 s). Der Morgenlauf von ZOE
+  (`/api/zoe/morgen`) schreibt zwar einen Bericht, aber als Systemlauf des Inhabers über ALLE Bereiche — er taugt nicht als Text für eine andere Person oder einen Bereich.
+- **Freigaben von ZOE** (die Karte „ZOE & Inbox“ heißt jetzt „Freigaben von ZOE & Inbox“, Kennung `zoe`): Zahl **und die ersten drei Vorschläge** mit dem, was die Freigabe
+  bewirkt, Link in die Freigaben (im Bereich der Sicht). Quelle bleibt `GET /api/zoe/stapel?space=` (eigene Vorschläge, Bereich serverseitig).
+- **Jahresziele** (die Karte „Ziele“ heißt „Jahresziele · Fortschritt“, Kennung `ziele`): vier statt drei Ziele je Spalte, **Prozentzahl** (wirksamer Fortschritt, aus den
+  Meilensteinen gerechnet) und **ein Link je Ziel** (`WEG.ziel`); neu auch in **Heute › Business** (der Server liefert dort nur Business-Ziele).
+- **Eisenhower sichtbarer:** ein Zeichen (kleine Vierfelder-Matrix, das Feld der Aufgabe gefüllt; nicht nur Farbe) in der Top-3-Karte und in der Aufgaben-Karte; die Aufgaben-Karte
+  sortiert jetzt zuerst nach Feld (wichtig + dringend, wichtig, dringend, später), darin nach Deadline. **Kritische pulsieren** (`krit-puls`, bei reduzierter Bewegung still).
+  Die Regel steht an EINER Stelle: `lib/aufgaben/eisenhower.ts` (auch „Geplant“ im Agenten-Bereich nimmt sie, `QUADRANT_NAME` = `EISENHOWER_NAME`).
+- **Heute-Standard:** Briefing + Fokus, Top 3 + Freigaben, dann Steht an, Termine … (`HEUTE_STANDARD`); gespeicherte Layouts bleiben, die neuen Karten rutschen an ihre
+  Standardstelle (`anwenden`). Erklärung (i) mit Fallbeispiel an Top 3, Briefing, Freigaben, Jahresziele und dem Eisenhower-Zeichen (`heute.*`, lib/erklaerungen).
+- **Neu serverseitig:** `GET/PUT /api/heute/top3`, `GET /api/heute/briefing` (Routen-Klasse `person`, Dienstweg 403, ein Bereich je Antwort). Neuer Bestand `heute-top3--<person>`
+  (immer mit Suffix, nur Aufgaben-Kennungen je Tag und Bereich, 45 Tage; Speicher-Register, `JE_PERSON`, `PERSON_BESTAENDE`, Messlatte-Marke).
+- **Demo-Saat:** zwei Freigaben von ZOE für Lena, ihre Top 3 im Business (ZOEs Vorschlag übernommen); Privat bleibt im Zustand „Vorschlag“; eine dringende Privat-Aufgabe dazu.
+
+**So testet ihr** (Klickdummy `localhost:3001`; Demo: `DEMO.md`, Lena):
+1. **Heute**, Kopf auf **Business**: oben das **Tages-Briefing** (Sätze zu Terminen, Aufgaben, Freigaben, Top 3, Fokus) und der Fokus; darunter die **Top 3 des Tages** mit drei Zeilen,
+   je Grund und Eisenhower-Zeichen; die kritische pulsiert leise. Das „i“ an der Überschrift erklärt die Rangfolge mit einem Beispiel.
+2. **Top 3 übernehmen** → die Karte zeigt „Festgelegt um …“; eine Zeile abhaken → durchgestrichen, das Briefing sagt „… schon geschafft“; Haken wieder weg → offen.
+   **Ändern** → bei einer Zeile **Tauschen**, eine andere Aufgabe suchen und wählen; **+ Aufgabe hinzufügen** (bis drei); **Top n festlegen**. **Zurücksetzen** → ZOEs Vorschlag.
+3. Kopf auf **Privat**: eigene Top 3 (nur Privat-Aufgaben), eigenes Briefing; nichts aus Business, und umgekehrt. Zweites Konto anmelden: es sieht nur seine eigenen Aufgaben,
+   Festlegungen und Texte (auch nicht „nur ich“ der anderen Person).
+4. Karte **Freigaben von ZOE**: Zahl und die ersten drei Vorschläge; ein Klick führt in die Freigaben des Bereichs.
+5. Karte **Jahresziele**: Fortschritt je Ziel in Prozent, Klick auf den Titel öffnet das Ziel; im Business nur Business-Ziele.
+6. **Aufgaben**-Karte: rechts das Eisenhower-Zeichen; kritische pulsieren, die Liste steht in der Reihenfolge der Felder.
+7. Fläche anpassen (Stift): „+ Widget“ bietet „Top 3 des Tages“ und „Tages-Briefing“ an; ein vorher gespeichertes Layout bleibt, die neuen Karten stehen an ihrer Stelle.
+
+**Tests:** `tests/heute-top3.test.ts` (53: Eisenhower-Regel, Rangfolge/Gründe/Ausschlüsse, Prüfung/Datei, Briefing-Sätze, Route mit Tor, **„Sicht Business bekommt nichts aus Privat“**,
+**„Person B sieht Top 3 und Briefing von A nicht“**, Festlegen mit Stand/409, erledigte bleibt, Karten gerendert, Standard/Layout-Erhalt, Register, Erklärungen); `tests/messlatte-malin.test.ts`
+(neue Marke `top3`); `tests/demo.test.ts` (Top 3 + Freigaben in der Saat).
+**Nicht gebaut / offen:** Sichtprüfung im Browser steht aus (kein Server in dieser Runde); ein Modell zum Umordnen der Top 3 (die Andockstelle ist `top3Kandidaten` — heute bewusst nur Regelwerk);
+das Briefing als Morgenlauf-Text je Person (der Lauf ist ein Systemlauf des Inhabers, Offen in CLAUDE.md Regel 5). **Rückweg:** nur neue Routen, ein neuer Bestand je Person, Oberfläche — der alte Stand
+ignoriert `heute-top3--*` und kennt die Karten `top3`/`briefing` nicht (ein gespeichertes Layout mit ihnen würde beim alten Stand ignoriert).
+
 ## 10.10.2026 — Kalender: Ansicht wie Google (nur lokal — Branch `kalender-ansicht`, Basis 7c9e1335 = `update-0910b`)
 
 Entscheidung 10.10.: „Den Kalender überall in der Ansicht anpassen — nicht gut zu sehen, nicht gut zu scrollen, man sieht einfach nichts, im Vergleich zu

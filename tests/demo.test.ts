@@ -131,6 +131,17 @@ describe('Saat', () => {
     expect(eh?.behandlungen[0].termine.filter(t => t.erledigt)).toHaveLength(2);
     expect(eh?.einheiten).toHaveLength(4);
     expect(eh?.ziele).toHaveLength(1);
+    // Heute (10.10.): zwei Freigaben von ZOE im Stapel und die Top 3 von Lena im Business (ZOEs Vorschlag übernommen) — Privat bleibt im Zustand „Vorschlag“.
+    expect(n['Heute: Top 3 und Freigaben']).toBeGreaterThanOrEqual(4);
+    const t3 = await db.loadJson<{ tage: Record<string, { business?: { ids: string[]; von: string }; privat?: unknown }> }>('heute-top3--lena');
+    const heuteTag = Object.values(t3?.tage ?? {})[0];
+    expect(heuteTag?.business?.ids.length).toBeGreaterThanOrEqual(2);
+    expect(heuteTag?.business?.von).toBe('vorschlag');
+    expect(heuteTag?.privat).toBeUndefined();
+    const stapel = await db.loadJson<{ vorschlaege: { person?: string; status: string; nachher?: string }[] }>('zoe-stapel');
+    const offenLena = (stapel?.vorschlaege ?? []).filter(v => v.person === 'lena' && v.status === 'offen');
+    expect(offenLena.length).toBeGreaterThanOrEqual(2);
+    expect(offenLena.some(v => v.nachher?.includes('Angebot Grünfeld Bau nachfassen'))).toBe(true);
     const crm = await db.loadJson<{ chancen: unknown[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[] }>('crm');
     expect(crm?.chancen).toHaveLength(4);
     expect(crm?.mandate).toHaveLength(2);

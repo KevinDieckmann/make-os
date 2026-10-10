@@ -53,6 +53,10 @@ import { spaceAusFlaeche } from '@/lib/flaeche/space';
 import { widgetSpace } from '@/lib/flaeche/sicht';
 import { dranOhneZusagen } from '@/lib/heute/anstehend';
 import { Anstehend } from '../heute/Anstehend';
+import { Top3Karte } from '../heute/Top3';
+import { BriefingKarte } from '../heute/Briefing';
+import { EisenhowerZeichen } from '../aufgaben/Zeichen';
+import { aufgabeEinordnung, quadrantRang } from '@/lib/aufgaben/eisenhower';
 import { fortschrittVon, restzeitText, schritteFuer, schrittInSicht, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
 import { useZieleSpalten } from '@/lib/planung/ziele-client';
 import { useFokus } from '@/lib/planung/fokus-client';
@@ -117,8 +121,11 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
   // Unteraufgaben (28.09. abends) nur, wenn sie dran sind (fällig/kritisch) — in „alle offenen“ zählt die Aufgabe selbst.
   // Abgebrochene sind nicht offen (29.09.); wer noch auf eine andere Aufgabe wartet, heißt „wartet“, nicht „überfällig“ (#36).
   const offen = state.tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled' && (sp === 'alle' || spaceVonAufgabe(t) === sp) && passtEh(t) && (!t.parentId || nur !== 'alle'));
+  // Eisenhower (10.10., Kevin: „Prioritäten sichtbarer“): zuerst wichtig + dringend, dann wichtig, dringend, später; darin nach Deadline. Das Zeichen rechts
+  // zeigt das Feld (lib/aufgaben/eisenhower.ts), kritische pulsieren.
+  const einord = (t: Task) => aufgabeEinordnung(t, heute);
   const liste = (nur === 'alle' ? offen : offen.filter(t => (t.dueDate && t.dueDate <= heute) || t.priority === 'critical'))
-    .sort((a, b) => ((a.dueDate ?? '9') < (b.dueDate ?? '9') ? -1 : 1)).slice(0, n);
+    .sort((a, b) => quadrantRang(einord(a).quadrant) - quadrantRang(einord(b).quadrant) || ((a.dueDate ?? '9') < (b.dueDate ?? '9') ? -1 : 1)).slice(0, n);
   const projekt = (id: string) => state.projects.find(p => p.id === id)?.title ?? '';
   const anlegen = () => {
     const p = parseSchnell(neu.trim(), state.projects, undefined, personen); if (!p.title) return;
@@ -136,7 +143,7 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
   };
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.achtung} rechts={<Link href={sp === 'alle' ? '/os/aufgaben' : `/os/aufgaben?space=${sp}`} style={link}>{offen.length} offen ›</Link>}>{titel ?? `${nur === 'alle' ? 'Aufgaben' : 'Aufgaben heute'}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp as 'privat' | 'business']}`}${eh === 'alle' ? '' : eh === 'ohne' ? ' · ohne Einheit' : ` · ${eh}`}`}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} erklaerung="heute.eisenhower" rechts={<Link href={sp === 'alle' ? '/os/aufgaben' : `/os/aufgaben?space=${sp}`} style={link}>{offen.length} offen ›</Link>}>{titel ?? `${nur === 'alle' ? 'Aufgaben' : 'Aufgaben heute'}${sp === 'alle' ? '' : ` · ${SPACE_LABEL[sp as 'privat' | 'business']}`}${eh === 'alle' ? '' : eh === 'ohne' ? ' · ohne Einheit' : ` · ${eh}`}`}</Ueberschrift>
       <input value={neu} onChange={x => setNeu(x.target.value)} onKeyDown={x => { if (x.key === 'Enter') anlegen(); }} placeholder="Neue Aufgabe für heute … (!! kritisch · fr · #projekt · @Name)" style={{ ...feld, marginBottom: 6 }} />
       <Liste>
         {liste.length === 0 && <Leer>{offen.length ? 'Nichts fällig, nichts kritisch.' : 'Keine Aufgaben. Eine Zeile oben, Enter — oder ZOE sagen.'}</Leer>}
@@ -145,7 +152,7 @@ function AufgabenWidget({ e, titel, i, seite }: WidgetProps) {
             links={<Haken an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />}
             titel={t.title}
             unter={[sp === 'alle' ? <span key="s" style={{ color: SPACE_FARBE[spaceVonAufgabe(t)] }}>{SPACE_LABEL[spaceVonAufgabe(t)]}</span> : null, eh === 'alle' && t.einheit && einheitErlaubt(t) ? <EinheitMarke key="e" name={t.einheit} /> : null, projekt(t.projectId), wartetAuf(t, state.tasks).length ? (sp === 'alle' || spaceVonAufgabe(wartetAuf(t, state.tasks)[0]) === sp ? `wartet auf „${wartetAuf(t, state.tasks)[0].title}“` : 'wartet auf eine andere Aufgabe') : t.dueDate && t.dueDate < heute ? `überfällig seit ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : t.dueDate === heute ? 'heute' : t.dueDate ? `bis ${t.dueDate.slice(8)}.${t.dueDate.slice(5, 7)}.` : ''].filter(Boolean).map((x, k, arr) => <span key={k}>{x}{k < arr.length - 1 ? ' · ' : ''}</span>)}
-            rechts={<Punkt farbe={prioFarbe(t.priority)} />} />
+            rechts={<EisenhowerZeichen q={einord(t).quadrant} kritisch={einord(t).kritisch} />} />
         ))}
       </Liste>
     </Karte>
@@ -266,6 +273,8 @@ function FokusWidget({ e, titel, i, seite }: WidgetProps) {
 // gemeinsam (Privat), eigen, je Partner NUR das Geteilte (der Server filtert, lib/planung/ziele-client.ts `useZieleSpalten`). Anlegen/Teilen
 // in Planung › Jahr (bzw. dem gewählten Horizont).
 const ZIELE_HORIZONT_WORT: Record<string, string> = { jahr: 'Jahr', quartal: 'Quartal', monat: 'Monat', woche: 'Woche' };
+/** So viele Ziele zeigt jede Spalte (10.10.: vier statt drei — die Jahresziele sind der Fortschritt, der auf Heute zählt). */
+const ZIELE_JE_SPALTE = 4;
 function ZieleWidget({ e, titel, i, seite }: WidgetProps) {
   const h = str(e.horizont, 'jahr') as ZielHorizont;
   const laufend = Number(localDay().slice(0, 4));
@@ -284,13 +293,17 @@ function ZieleWidget({ e, titel, i, seite }: WidgetProps) {
         </div>
         {offen.length ? (
           <div style={{ display: 'grid', gap: 6 }}>
-            {offen.slice(0, 3).map(z => (
+            {offen.slice(0, ZIELE_JE_SPALTE).map(z => (
               <div key={z.id} style={{ display: 'grid', gap: 3 }}>
-                <span style={{ fontSize: TYP.bedien, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.titel}</span>
+                {/* Jedes Ziel führt in sein Detail (WEG.ziel); die Zahl ist der wirksame Fortschritt (der Server rechnet ihn aus den Meilensteinen nach). */}
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: TYP.bedien, minWidth: 0 }}>
+                  <Link href={WEG.ziel(z.id)} style={{ color: C.ink, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{z.titel}</Link>
+                  <span style={{ color: C.inkDim, fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{Math.round(z.fortschritt)} %</span>
+                </span>
                 <Fortschritt anteil={z.fortschritt / 100} farbe={farbe} />
               </div>
             ))}
-            {offen.length > 3 && <Link href={planung} style={{ ...link, fontSize: TYP.bedien }}>+ {offen.length - 3} weitere ›</Link>}
+            {offen.length > ZIELE_JE_SPALTE && <Link href={planung} style={{ ...link, fontSize: TYP.bedien }}>+ {offen.length - ZIELE_JE_SPALTE} weitere ›</Link>}
           </div>
         ) : <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>{leer}</div>}
       </div>
@@ -298,7 +311,7 @@ function ZieleWidget({ e, titel, i, seite }: WidgetProps) {
   };
   return (
     <Karte i={i} akzent={SPACE_FARBE[bereich]}>
-      <Ueberschrift farbe={SPACE_FARBE[bereich]} rechts={<Link href={planung} style={link}>Planung ›</Link>}>{titel ?? `Ziele · ${ZIELE_HORIZONT_WORT[h] ?? 'Jahr'}`}</Ueberschrift>
+      <Ueberschrift farbe={SPACE_FARBE[bereich]} erklaerung="heute.jahresziele" rechts={<Link href={planung} style={link}>Planung ›</Link>}>{titel ?? (h === 'jahr' ? `Jahresziele ${laufend} · ${SPACE_LABEL[bereich]}` : `Ziele · ${ZIELE_HORIZONT_WORT[h] ?? 'Jahr'} · ${SPACE_LABEL[bereich]}`)}</Ueberschrift>
       {!d ? <Leer>lade …</Leer> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 14 }}>
           {spalte('Unsere', SPACE_FARBE[bereich], d.unsere, <Link href={planung} style={{ color: C.inkDim }}>Noch kein gemeinsames Ziel — eintragen ›</Link>)}
@@ -515,26 +528,43 @@ function FinanzenPrivatWidget({ titel, i }: WidgetProps) {
   );
 }
 
-// ── ZOE (Stapel) & Inbox ─────────────────────────────────────────────────
+// ── ZOE: offene Freigaben (+ Inbox) ──────────────────────────────────────────────────────────────────────────────
+// Seit 10.10. (Kevin 08.10.: „offene Freigaben von ZOE“): die Zahl UND die ersten drei Vorschläge mit dem, was die Freigabe bewirken würde, dazu der
+// Weg in die Freigaben. Quelle ist der Stapel selbst (GET /api/zoe/stapel?space=) — er liefert der Person nur ihre eigenen Vorschläge und die des
+// Systems, auf Heute nur die des Bereichs der Fläche (und die „unklaren“); nichts anderes steht hier.
+interface FreigabeKurz { id: string; titel: string; nachher?: string; anlass?: string }
 function ZoeWidget({ e, titel, i, seite }: WidgetProps) {
+  const router = useRouter();
   // Je Sicht der Fläche (09.10. spät): Heute › Privat zählt nur Vorschläge aus Privat, › Business nur aus Business — der Server filtert.
   const sicht = spaceAusFlaeche(seite);
-  const stapel = useDaten<number>(`/api/zoe/stapel${sicht === 'alle' ? '' : `?space=${sicht}`}`, x => { const d = x as { offen?: number | unknown[]; vorschlaege?: unknown[] }; return typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : (d.vorschlaege ?? []).length; });
+  const stapel = useDaten<{ n: number; erste: FreigabeKurz[] }>(`/api/zoe/stapel${sicht === 'alle' ? '' : `?space=${sicht}`}`, x => {
+    const d = x as { offen?: number | unknown[]; vorschlaege?: (FreigabeKurz & { status?: string })[] };
+    const offen = (d.vorschlaege ?? []).filter(v => !v.status || v.status === 'offen');
+    const n = typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : offen.length;
+    return { n, erste: offen.slice(0, 3).map(v => ({ id: v.id, titel: v.titel, ...(v.nachher ? { nachher: v.nachher } : {}), ...(v.anlass ? { anlass: v.anlass } : {}) })) };
+  });
   const mitInbox = e.inbox === true;
   // Inbox 2 (06.10.): offen = Gespräche in Arbeit ohne Rundschreiben (EIN Strom, nur die eigenen Postfächer, /api/inbox).
   // Inbox nur des Bereichs (10.10.): `?space=` — der Server filtert die Postfächer (lib/inbox/strom-server.ts `imBereich`).
   const inbox = useDaten<number>(mitInbox ? `/api/inbox${sicht === 'alle' ? '' : `?space=${sicht}`}` : '/api/zoe/stapel', x => (mitInbox ? ((x as { gespraeche?: { inArbeit?: boolean; fach?: string }[] }).gespraeche ?? []).filter(g => g.inArbeit && g.fach !== 'info' && g.fach !== 'warten').length : null));
-  const n = stapel ?? null;
+  const n = stapel?.n ?? null;
+  const freigaben = sicht === 'privat' || sicht === 'business' ? WEG.freigaben(undefined, sicht) : WEG.freigaben();
   return (
     <Karte i={i} akzent={n ? LEUCHT.achtung : undefined}>
-      <Ueberschrift farbe={n ? LEUCHT.achtung : C.inkLeise} rechts={<Link href="/os/stapel" style={link}>Stapel ›</Link>}>{titel ?? (mitInbox ? 'ZOE & Inbox' : 'ZOE')}</Ueberschrift>
+      <Ueberschrift farbe={n ? LEUCHT.achtung : C.inkLeise} erklaerung="heute.freigaben" rechts={<Link href={freigaben} style={link}>Freigaben ›</Link>}>{titel ?? (mitInbox ? 'Freigaben von ZOE & Inbox' : 'Freigaben von ZOE')}</Ueberschrift>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-        <Link href="/os/stapel" style={{ textDecoration: 'none', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: n ? LEUCHT.achtung : C.inkLeise, textShadow: n ? `0 0 24px ${LEUCHT.achtung}33` : undefined }}>{n == null ? '—' : n}</Link>
+        <Link href={freigaben} style={{ textDecoration: 'none', fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 'clamp(34px,4vw,44px)', letterSpacing: '-.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: n ? LEUCHT.achtung : C.inkLeise, textShadow: n ? `0 0 24px ${LEUCHT.achtung}33` : undefined }}>{n == null ? '—' : n}</Link>
         <div style={{ fontSize: TYP.body, fontWeight: 600, lineHeight: 1.35 }}>
           {n == null ? 'ZOE' : n === 0 ? 'Nichts vorbereitet — alles erledigt.' : `Vorschl${n === 1 ? 'ag wartet' : 'äge warten'} auf dich`}
           {mitInbox && <div style={{ fontSize: TYP.bedien, color: C.inkDim, fontWeight: 500, marginTop: 4 }}><Link href={sicht === 'alle' ? '/os/inbox' : `/os/inbox?space=${sicht}`} style={{ color: C.inkDim }}>{inbox ? `${inbox} in der Inbox offen ›` : 'Inbox ›'}</Link></div>}
         </div>
       </div>
+      {stapel && stapel.erste.length > 0 && (
+        <Liste>
+          {stapel.erste.map(v => <Zeile key={v.id} onClick={() => { router.push(freigaben); }} links={<Punkt farbe={LEUCHT.achtung} />} titel={v.nachher || v.titel} unter={v.nachher && v.titel !== v.nachher ? v.titel : undefined} />)}
+          {stapel.n > stapel.erste.length && <Zeile onClick={() => { router.push(freigaben); }} titel={<span style={{ color: C.inkDim }}>+ {stapel.n - stapel.erste.length} weitere</span>} />}
+        </Liste>
+      )}
     </Karte>
   );
 }
@@ -828,8 +858,21 @@ function EinrichtungWidget({ titel, i, seite }: WidgetProps) {
 // 4.10 (08.10.): die Sicht der Fläche (Heute › Privat/Business) geht an den Server — Privat zeigt keine CRM-Follow-ups/Business-Fristen.
 function AnstehendWidget({ i, seite }: WidgetProps) { return <Anstehend i={i} space={spaceAusFlaeche(seite)} />; }
 
+// ── Top 3 des Tages und Tages-Briefing (10.10., Branch `heute-top3`) ────────────────────────────────────────────────
+// Beide gehören zu EINEM Bereich: dem der Fläche (Heute › Privat bzw. Business); auf einer Fläche ohne Bereich dem aktiven Bereich im Kopf. Der Server
+// liefert nie den anderen (app/api/heute/top3, app/api/heute/briefing).
+function useKartenSicht(seite: string | undefined, e: Einstellungen): 'privat' | 'business' {
+  const ws = widgetSpace(seite, e);
+  const { space } = useSpace();
+  return ws === 'alle' ? space : ws;
+}
+function Top3Widget({ e, titel, i, seite }: WidgetProps) { const sicht = useKartenSicht(seite, e); return <Top3Karte i={i} sicht={sicht} titel={titel} />; }
+function BriefingWidget({ e, titel, i, seite }: WidgetProps) { const sicht = useKartenSicht(seite, e); return <BriefingKarte i={i} sicht={sicht} titel={titel} />; }
+
 export const WIDGETS: Record<string, WidgetDef> = {
   einrichtung: { art: 'einrichtung', label: 'Einrichtung', bereich: 'Tag', beschreibung: 'Wie weit deine Einrichtung ist und was als Nächstes kommt — verschwindet, wenn alles steht', breite: 6, Komponente: EinrichtungWidget },
+  briefing: { art: 'briefing', label: 'Tages-Briefing', bereich: 'Tag', beschreibung: 'Drei bis fünf Sätze zum Tag: was ansteht, was brennt, was auf deine Freigabe wartet, deine Top 3 und ein Hinweis zum Fokus', breite: 4, Komponente: BriefingWidget },
+  top3: { art: 'top3', label: 'Top 3 des Tages', bereich: 'Tag', beschreibung: 'Die drei wichtigsten Aufgaben des Tages — ZOE schlägt vor, du übernimmst, tauschst oder legst selbst fest; mit Eisenhower-Zeichen', breite: 4, Komponente: Top3Widget },
   anstehend: { art: 'anstehend', label: 'Steht an', bereich: 'Tag', beschreibung: 'Nachbereiten, Fristen, Follow-ups, Buchungsanfragen und Geburtstage — dieselbe Quelle wie die Glocke', breite: 4, Komponente: AnstehendWidget },
   score: { art: 'score', label: 'Wachstums-Score', bereich: 'Tag', beschreibung: 'Der Score, auf den wir hinarbeiten — mit den sechs Säulen', breite: 2, Komponente: ScoreWidget },
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
@@ -838,7 +881,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
     einstellungen: [TAGE_WAHL, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }] },
   fokus: { art: 'fokus', label: 'Fokus', bereich: 'Tag', beschreibung: 'Worauf es heute, diese Woche oder diesen Monat ankommt', breite: 2, Komponente: FokusWidget,
     einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'auto', label: 'der nächste gesetzte' }, { w: 'tag', label: 'heute' }, { w: 'woche', label: 'Woche' }, { w: 'monat', label: 'Monat' }], standard: 'auto' }, { k: 'space', label: 'Bereich', art: 'wahl', optionen: [{ w: 'alle', label: 'der Fläche bzw. der aktive' }, { w: 'privat', label: 'Privat' }, { w: 'business', label: 'Business' }], standard: 'alle' }] },
-  ziele: { art: 'ziele', label: 'Ziele · Unsere · Meine', bereich: 'Tag', beschreibung: 'Gemeinsame Ziele, deine eigenen und was dein Gegenüber mit dir teilt — mit Fortschritt', breite: 4, Komponente: ZieleWidget,
+  ziele: { art: 'ziele', label: 'Jahresziele · Fortschritt', bereich: 'Tag', beschreibung: 'Fortschritt der Ziele des Bereichs: gemeinsame, deine eigenen und was dein Gegenüber mit dir teilt — jedes Ziel führt in sein Detail', breite: 4, Komponente: ZieleWidget,
     einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'jahr', label: 'Jahr' }, { w: 'quartal', label: 'Quartal' }, { w: 'monat', label: 'Monat' }], standard: 'jahr' }] },
   koerper: { art: 'koerper', label: 'Körper', bereich: 'Gesundheit', beschreibung: 'Recovery und Routinen von heute', breite: 2, Komponente: KoerperWidget },
   // Erholung (10.10.): die EIGENE Erholung — Vorschlag, fällige Programme, Ziele, Fokus, Pausen (components/os/gesundheit/ErholungHeute.tsx).
@@ -850,7 +893,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
   index: { art: 'index', label: 'Index je Säule', bereich: 'Finanzen', beschreibung: 'Business-, Privat-, Gesundheits-Index oder Traktions-Score mit Säulen', breite: 2, Komponente: IndexWidget,
     einstellungen: [{ k: 'saeule', label: 'Säule', art: 'wahl', optionen: [{ w: 'business', label: 'Business' }, { w: 'privat', label: 'Privat' }, { w: 'gesundheit', label: 'Gesundheit' }, { w: 'traktion', label: 'Traktion' }], standard: 'business' }] },
   'finanzen-privat': { art: 'finanzen-privat', label: 'Finanzen · privat', bereich: 'Finanzen', beschreibung: 'Fällige Raten, Rechnungen, fehlende Kontoauszüge', breite: 2, Komponente: FinanzenPrivatWidget },
-  zoe: { art: 'zoe', label: 'ZOE & Inbox', bereich: 'ZOE', beschreibung: 'Vorschläge im Stapel, offene Inbox', breite: 2, Komponente: ZoeWidget,
+  zoe: { art: 'zoe', label: 'Freigaben von ZOE & Inbox', bereich: 'ZOE', beschreibung: 'Offene Freigaben von ZOE — Zahl und die ersten drei —, dazu die offene Inbox', breite: 2, Komponente: ZoeWidget,
     einstellungen: [{ k: 'inbox', label: 'Inbox dazu', art: 'schalter', standard: false }] },
   dran: { art: 'dran', label: 'Wer heute dran ist', bereich: 'Business', beschreibung: 'Die wichtigsten Kontakte der Power Hour', breite: 4, Komponente: DranWidget },
   kanal: { art: 'kanal', label: 'Kanal-Leistung', bereich: 'Business', beschreibung: 'Welcher Herkunftskanal warme Leads und SQLs bringt', breite: 2, Komponente: KanalWidget },
@@ -866,6 +909,8 @@ export const WIDGETS: Record<string, WidgetDef> = {
 };
 export const KATALOG: KatalogEintrag[] = [
   { art: 'einrichtung', label: 'Einrichtung', beschreibung: WIDGETS.einrichtung.beschreibung, bereich: 'Tag', breite: 6 },
+  { art: 'briefing', label: 'Tages-Briefing', beschreibung: WIDGETS.briefing.beschreibung, bereich: 'Tag', breite: 4 },
+  { art: 'top3', label: 'Top 3 des Tages', beschreibung: WIDGETS.top3.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'anstehend', label: 'Steht an', beschreibung: WIDGETS.anstehend.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'score', label: 'Wachstums-Score', beschreibung: WIDGETS.score.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'aufgaben', label: 'Aufgaben', beschreibung: WIDGETS.aufgaben.beschreibung, bereich: 'Tag', breite: 4 },
@@ -877,7 +922,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'zeit', label: 'Zeit & Fokus · Business', beschreibung: WIDGETS.zeit.beschreibung, bereich: 'Tag', breite: 2, voreinstellung: { space: 'business' } },
   { art: 'zeit', label: 'Zeit · Privat und Business', beschreibung: 'Wo die Zeit hingeht — Privat gegen Business, heute und 7 Tage, mit Anteil', bereich: 'Tag', breite: 2, voreinstellung: { space: 'beide' } },
   { art: 'zeit', label: 'Zeit je Einheit', beschreibung: `Bewusste Business-Zeit je ${BUSINESS_EINHEITEN_NAMEN.join(' · ')} · ohne Einheit`, bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },
-  { art: 'ziele', label: 'Ziele · Unsere · Meine', beschreibung: WIDGETS.ziele.beschreibung, bereich: 'Tag', breite: 4 },
+  { art: 'ziele', label: 'Jahresziele · Fortschritt', beschreibung: WIDGETS.ziele.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'koerper', label: 'Körper', beschreibung: WIDGETS.koerper.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'erholung', label: 'Erholung heute', beschreibung: WIDGETS.erholung.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen', label: 'Routinen & Streak', beschreibung: WIDGETS.routinen.beschreibung, bereich: 'Gesundheit', breite: 2 },
@@ -889,7 +934,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'index', label: 'Gesundheits-Index', beschreibung: 'Der Gesundheits-Index mit seinen Säulen', bereich: 'Gesundheit', breite: 2, voreinstellung: { saeule: 'gesundheit' } },
   { art: 'index', label: 'Traktions-Score', beschreibung: 'Der Traktions-Score der Markttraktion', bereich: 'Business', breite: 2, voreinstellung: { saeule: 'traktion' } },
   { art: 'finanzen-privat', label: 'Finanzen · privat', beschreibung: WIDGETS['finanzen-privat'].beschreibung, bereich: 'Finanzen', breite: 2 },
-  { art: 'zoe', label: 'ZOE & Inbox', beschreibung: WIDGETS.zoe.beschreibung, bereich: 'ZOE', breite: 2, voreinstellung: { inbox: true } },
+  { art: 'zoe', label: 'Freigaben von ZOE & Inbox', beschreibung: WIDGETS.zoe.beschreibung, bereich: 'ZOE', breite: 2, voreinstellung: { inbox: true } },
   { art: 'dran', label: 'Wer heute dran ist', beschreibung: WIDGETS.dran.beschreibung, bereich: 'Business', breite: 4 },
   { art: 'kanal', label: 'Kanal-Leistung', beschreibung: WIDGETS.kanal.beschreibung, bereich: 'Business', breite: 2 },
   { art: 'event', label: WIDGETS.event.label, beschreibung: WIDGETS.event.beschreibung, bereich: 'Business', breite: 2 },

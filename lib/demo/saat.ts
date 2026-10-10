@@ -81,6 +81,7 @@ const R = {
   meilensteine: () => import('@/app/api/state/meilensteine/route') as Promise<Modul>,
   aufgabe: () => import('@/app/api/tasks/create/route') as Promise<Modul>,
   aufgaben: () => import('@/app/api/state/tasks/route') as Promise<Modul>,
+  top3: () => import('@/app/api/heute/top3/route') as Promise<Modul>,
   routinen: () => import('@/app/api/state/routinen/route') as Promise<Modul>,
   kapazitaet: () => import('@/app/api/kapazitaet/route') as Promise<Modul>,
   zeit: () => import('@/app/api/state/zeit/route') as Promise<Modul>,
@@ -336,6 +337,7 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { title: 'Monatsabschluss an die Kanzlei', person: JONAS, dueDate: tagPlus(heute, 6), space: 'business', einheit: opsLabel },
     { title: 'Kennzahlen-Review Nordwerk vorbereiten', person: LENA, dueDate: tagPlus(heute, 1), priority: 'critical', space: 'business', einheit: opsLabel },
     { title: 'Urlaub im Frühjahr buchen', person: LENA, dueDate: tagPlus(heute, 14), space: 'privat' },
+    { title: 'Geschenk für das Familienfest besorgen', person: LENA, dueDate: tagPlus(heute, 2), priority: 'high', space: 'privat' },
   ];
   for (const a of aufgaben) {
     const { person, ...rest } = a;
@@ -376,6 +378,22 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     ops: karten.map(task => ({ op: 'upsert', task })),
   });
   schritt('Seil (Bezüge)', 1 + msSeil.length + 3 + karten.length);
+
+  // 7c) Heute (10.10., Branch `heute-top3`): zwei Freigaben von ZOE im Stapel (Ausnahme zur Regel „nur über Routen“: der Stapel hat keinen Schreibweg im
+  //     Browser — Vorschläge legt nur ZOE selbst ab, hier `lege` wie im Lauf) und die Top 3 des Tages von Lena im Business — über die Route:
+  //     genau ZOEs Vorschlag übernommen. Privat bleibt im Zustand „Vorschlag“ (Übernehmen/Anpassen), so sind beide Zustände vorführbar.
+  const { lege } = await import('@/lib/zoe/stapel');
+  const vorschlaege = [
+    { titel: 'Angebot Grünfeld Bau nachfassen', anlass: 'Das Angebot liegt seit acht Tagen ohne Antwort (Beispiel).', eingabe: { title: 'Angebot Grünfeld Bau nachfassen', priority: 'high', faellig: tagPlus(heute, 1) } },
+    { titel: 'Monatsabschluss vorbereiten', anlass: 'Der Monat endet in einer Woche, die Belege sind noch nicht vollständig (Beispiel).', eingabe: { title: 'Belege für den Monatsabschluss sammeln', priority: 'medium', faellig: tagPlus(heute, 5) } },
+  ];
+  for (const v of vorschlaege) {
+    await lege({ werkzeug: 'create_task', gruppe: 'aufgaben', titel: 'Aufgabe anlegen', nachher: `Aufgabe „${v.titel}“ anlegen`, eingabe: v.eingabe, anlass: v.anlass, person: LENA, quelle: 'lauf' } as Parameters<typeof lege>[0]);
+  }
+  const t3 = await rufe(R.top3(), 'GET', '/api/heute/top3?space=business', LENA);
+  const vorschlagIds = ((t3.bereiche as { business?: { vorschlag: { id: string }[] } }).business?.vorschlag ?? []).map(z => z.id);
+  if (vorschlagIds.length) await rufe(R.top3(), 'PUT', '/api/heute/top3', LENA, { aktion: 'festlegen', space: 'business', ids: vorschlagIds, stand: '' });
+  schritt('Heute: Top 3 und Freigaben', vorschlagIds.length + vorschlaege.length);
 
   // 8) Wochenvorlage (Arbeitszeit) je Person — Grundlage von Kalender-Verfügbarkeit und Kapazität.
   for (const [person, tage, von, bis] of [[LENA, [1, 2, 3, 4, 5], '08:30', '17:30'], [JONAS, [1, 2, 3, 4], '09:00', '17:00']] as const) {

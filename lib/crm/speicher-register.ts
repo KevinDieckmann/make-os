@@ -689,6 +689,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Konto › Meine Daten exportiert den Bestand; die eigene Spur der Einrichtung zeigt ihn',
     loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand samt Tageskopien)',
   }),
+  // Heute › Top 3 (10.10., Branch `heute-top3`): die eigene Auswahl der drei wichtigsten Aufgaben je Tag und Bereich — nur Aufgaben-Kennungen und der
+  // Zeitpunkt, keine Titel, keine Dritten. Immer mit Suffix, nur die Person selbst (GET/PUT /api/heute/top3 liefern nur die eigenen).
+  mit(H('heute-top3--*', 'Top 3 des Tages je Person (Aufgaben-Kennungen je Tag und Bereich, Zeitpunkt, ob von ZOE vorgeschlagen oder von Hand) — nur die Person selbst liest und schreibt sie.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — die eigene Tagesplanung in der Software',
+    art15: 'Konto › Meine Daten exportiert den Bestand; Heute › Top 3 zeigt die Festlegung des Tages',
+    loeschfrist: 'rollend 45 Tage (ältere Tage fallen beim Schreiben heraus); Konto löschen entfernt den Bestand samt Tageskopien',
+  }),
   K('ordnung', 'Sortierung/Ordnung von Listen.'),
   K('performance', 'Wachstums-Score (Zahlen).'),
   K('planung-einheiten--*', 'Einheiten der Planung je Haushalt.'),
@@ -802,6 +809,8 @@ const JE_PERSON: readonly string[] = [
   'zoe-kanal--*', 'zoe-whatsapp-medien',
   // eigene Einstellungen und eigene Ablagen
   'arbeitsmodus', 'arbeitsmodus--*', 'arbeitsrahmen--*', 'flaeche', 'flaeche--*', 'onboarding--*', 'fokus-laufend--*',
+  // Heute › Top 3 (10.10.): die eigene Festlegung des Tages — nur Aufgaben-Kennungen
+  'heute-top3--*',
   'agenten-skills-privat--*', 'medien-privat--*', 'ki-tiefenbericht--*',
 ];
 const INSTANZ: readonly string[] = [

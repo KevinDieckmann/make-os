@@ -10,6 +10,7 @@ import type {
 } from '@/lib/agenten/typen';
 import { EISENHOWER_REIHE, GRENZEN, type HeadDef } from '@/lib/agenten/typen';
 import { inEuroCent, USD_EUR_VORGABE } from '@/lib/ki/kosten';
+import { EISENHOWER_NAME } from '@/lib/aufgaben/eisenhower';
 import { EREIGNIS_NAME } from '@/lib/ereignisse/arten';
 
 /** Zeitzone aller Anzeigen — wie überall in der App (Berliner Wandzeit). */
@@ -216,9 +217,8 @@ export function wiederholText(n: Pick<Naechstes, 'weitere' | 'bis' | 'wiederholt
   if (n.wiederholt === 'werktags') return `werktags${bis}`;
   return `+${n.weitere} weitere${bis}`;
 }
-export const QUADRANT_NAME: Readonly<Record<Eisenhower, string>> = {
-  q1: 'Wichtig & dringend', q2: 'Wichtig', q3: 'Dringend', q4: 'Später',
-};
+// Die Namen der vier Felder stehen an EINER Stelle (10.10., lib/aufgaben/eisenhower.ts) — Heute › Top 3 zeichnet dasselbe Zeichen.
+export const QUADRANT_NAME: Readonly<Record<Eisenhower, string>> = EISENHOWER_NAME;
 
 /** Geld des laufenden Berliner Monats aus den Läufen (Budget-Balken; Fragerunde 16: „erster Monat nur messen“). */
 export function kostenImMonat(laeufe: readonly Lauf[], jetzt: Date = new Date()): number {
