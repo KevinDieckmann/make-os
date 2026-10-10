@@ -19,7 +19,7 @@
 // wird nur noch von der Übernahme gelesen (lib/planung/wochenplan-uebernahme*.ts).
 
 import { PLAN_ARTEN, type PlanArt, type PlanBlock } from '@/types/planer';
-import { istBlockArt, type BlockArt } from '@/lib/kalender/arten';
+import { istBlockArt, istErholungsArt, type BlockArt } from '@/lib/kalender/arten';
 import { wandAus, minutenVon, tagPlus } from '@/lib/kalender/zeit';
 import { minutenBelegung } from '@/lib/kalender/auswertung';
 
@@ -83,11 +83,11 @@ export function gehoertZu(t: Pick<BlockQuelle, 'wer' | 'von'>, person: string): 
   return t.wer === person || t.wer === 'beide';
 }
 
-/** Art eines vorgeschlagenen Schutz-Blocks aus seinem Titel (Kalender-Agent): Reha/Physio/Mobilität/Dehnen → reha, Fokus/Deep → fokus,
+/** Art eines vorgeschlagenen Schutz-Blocks aus seinem Titel (Kalender-Agent): Erholung/Reha/Physio/Mobilität/Dehnen → erholung (seit 10.10.), Fokus/Deep → fokus,
  *  Pause → pause, sonst block. Nur allgemeine Begriffe (09.10.: keine Körperstelle einer bestimmten Person). */
 export function planArtAusTitel(titel: string): PlanArt {
   const t = titel.toLowerCase();
-  if (/reha|physio|mobil|dehn/.test(t)) return 'reha';
+  if (/erholung|reha|physio|mobil|dehn|regeneration/.test(t)) return 'erholung';
   if (/fokus|deep|konzentr/.test(t)) return 'fokus';
   if (/pause/.test(t)) return 'pause';
   return 'block';
@@ -103,6 +103,8 @@ export function blockAnfrage(b: BlockNeu, wer?: string): Record<string, unknown>
     titel: b.titel.trim().slice(0, 120) || (art === 'fokus' ? 'Fokus' : 'Block'),
     start: wandAus(b.date, start), ende: wandAus(b.date, start + dauer), ganztags: false,
     art, ...(blockArt ? { blockArt } : {}), beschaeftigt: true,
+    // Erholung (10.10.): Gesundheit — als privat angelegt (andere sehen nur „Belegt“; `maskieren` verdeckt Erholungs-Blöcke ohnehin).
+    ...(blockArt && istErholungsArt(blockArt) ? { sichtbarkeit: 'privat' } : {}),
     ...(wer ? { wer } : {}),
     ...(b.taskId ? { bezug: { aufgabeId: b.taskId } } : {}),
   };

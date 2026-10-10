@@ -17,7 +17,7 @@
 // Hauptaufgabe; alle Ebenen darunter erben sie.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Leaf } from 'lucide-react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, HakenZiel, Knopf, SymbolKnopf, feld, prioFarbe, ZielChip, useZielBezug } from '../ui';
@@ -166,6 +166,18 @@ export function AufgabeDetail({ task: t, state, dispatch, spaces, personen, ich,
               <Lock size={13} aria-hidden /> nur ich
             </button>
             <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurIch ? 'Nur du siehst sie — und nur du bist zuständig.' : t.assignee !== ich || t.beteiligte?.length ? 'Für euch beide sichtbar. „Nur ich“ macht dich zuständig und nimmt Beteiligte und Wechsel heraus.' : 'Für euch beide sichtbar.'}</span>
+          </Feld>
+        )}
+        {/* Erholung (10.10., Kevin: „Erholung überall einstellbar“): nur Privat — abgehakt zählt die Aufgabe in Gesundheit › Erholung der Verantwortlichen. */}
+        {(t.spaceId ?? 'privat') === 'privat' && t.space !== 'business' && (
+          <Feld label="Erholung">
+            <button type="button" aria-pressed={!!t.erholung} onClick={() => aendern({ erholung: t.erholung ? undefined : true })} className="fassbar"
+              title="Als Erholung markiert zählt die erledigte Aufgabe in deine Erholung des Tages (Gesundheit › Erholung)."
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, borderRadius: 999, padding: '4px 12px', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien,
+                border: `1px solid ${t.erholung ? `${LEUCHT.gut}99` : 'rgba(255,255,255,.1)'}`, background: t.erholung ? `${LEUCHT.gut}22` : 'rgba(255,255,255,.03)', color: t.erholung ? LEUCHT.gut : C.inkDim }}>
+              <Leaf size={13} aria-hidden /> Erholung
+            </button>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{t.erholung ? 'Abgehakt zählt sie in deine Erholung des Tages.' : 'Markieren, wenn die Aufgabe Erholung ist.'}</span>
           </Feld>
         )}
         <Feld label="Priorität">

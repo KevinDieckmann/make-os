@@ -28,7 +28,7 @@ export function gesundheitStraenge(d: GesundheitDaten): Strang[] {
     const tag = tagAus(r.naechstesMal);
     if (!tag || !r.aktiv || TAEGLICH.has(r.rhythmus ?? 'taeglich')) continue;
     const person = !r.owner || r.owner === BEIDE ? BEIDE : r.owner;
-    const gesundheit = r.kategorie === 'gesundheit';
+    const gesundheit = r.kategorie === 'gesundheit' || r.kategorie === 'erholung';
     // 05.10. abends: eine Routine einer Privat-Einheit (Selbstständigkeit) läuft unter Privat, auch mit Kategorie „business“.
     const business = !hatPrivatEinheit(r) && (r.kategorie === 'business' || r.space === 'business');
     const pfad = gesundheit ? themaPfad('privat', 'gesundheit') : themaPfad(business ? 'business' : 'privat', 'planung');

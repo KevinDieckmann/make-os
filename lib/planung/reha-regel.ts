@@ -1,8 +1,10 @@
 // ─── Reha als eigene Gewohnheit — EINE reine Regel (Server UND Browser) ──────
+// Seit 10.10. zählt jeder Erholungs-Block (Unterart `erholung` oder der Altbestand `reha`, `istErholungsArt`).
 // Reha gehört nur dann in Prüfungen (Schild „Reha fehlt“, Tagesplanung „Durchgeplant“), wenn die Person selbst in den
 // letzten `REHA_GEWOHNHEIT_TAGE` Tagen Reha-Blöcke geplant hat — nie fest für alle (08.10. abends, Plattform-Regel).
 
 import { tagPlus } from '@/lib/kalender/zeit';
+import { istErholungsArt } from '@/lib/kalender/arten';
 
 /** Wie weit zurück „Reha gehört zur eigenen Routine“ zählt (Tage). */
 export const REHA_GEWOHNHEIT_TAGE = 14;
@@ -12,7 +14,7 @@ type BlockKurz = { date: string; art: string };
 /** Hat die Person in den letzten `REHA_GEWOHNHEIT_TAGE` Tagen vor `today` selbst Reha geplant? */
 export function rehaGewohnt(bloecke: readonly BlockKurz[], today: string): boolean {
   const ab = tagPlus(today, -REHA_GEWOHNHEIT_TAGE);
-  return bloecke.some(b => b.art === 'reha' && b.date >= ab && b.date < today);
+  return bloecke.some(b => istErholungsArt(b.art) && b.date >= ab && b.date < today);
 }
 
 /**
@@ -21,6 +23,6 @@ export function rehaGewohnt(bloecke: readonly BlockKurz[], today: string): boole
  */
 export function rehaFehltHeute(bloecke: readonly BlockKurz[], today: string): boolean {
   const heute = bloecke.filter(b => b.date === today);
-  if (!heute.length || heute.some(b => b.art === 'reha')) return false;
+  if (!heute.length || heute.some(b => istErholungsArt(b.art))) return false;
   return rehaGewohnt(bloecke, today);
 }

@@ -162,6 +162,8 @@ export function taskSauber(o: unknown): Task | null {
     statusId: kennung(t.statusId),
     bezug: bezugSauber(t.bezug),
     anlass: anlassSauber(t.anlass),
+    // Erholung (10.10.): nur Privat — im Business (Space-Abweichung oder Firmen-Space) fällt die Marke weg.
+    erholung: t.erholung === true && t.space !== 'business' && (!istSpaceId(t.spaceId) || t.spaceId === 'privat') ? true : undefined,
     // Seit 29.09. (Kevin): Beteiligte, Sichtbarkeit „nur ich“, Anlegerin (setzt der Server — lib/aufgaben/speicher.ts überschreibt).
     beteiligte: beteiligteSauber(t.beteiligte),
     sichtbarkeit: t.sichtbarkeit === 'nur-ich' || t.sichtbarkeit === 'haushalt' ? t.sichtbarkeit : undefined,

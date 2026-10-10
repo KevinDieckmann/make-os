@@ -27,6 +27,7 @@ import { wandAus } from '@/lib/kalender/zeit';
 import { ZieleMeilensteine } from '../planung/ZieleMeilensteine';
 import { WEG } from '@/lib/wege';
 import type { KTermin, Wer } from './teile';
+import { ErholungZielePlanung } from '../gesundheit/ErholungHeute';
 import { FokusTafel } from '../planung/FokusTafel';
 
 /** Was man gerade platziert (antippen → in den Kalender klicken). */
@@ -34,11 +35,12 @@ export interface Baustein { art: PlanArt; titel: string; dauerMin: number; taskI
 
 const BAUSTEINE: Baustein[] = [
   { art: 'fokus', titel: 'Fokus (Deep Work)', dauerMin: 90 },
-  { art: 'reha', titel: 'Training / Sport', dauerMin: 30 }, // Reha o. Ä. nur aus den eigenen Routinen (09.10.)
+  { art: 'erholung', titel: 'Erholung', dauerMin: 30 }, // Erholung (10.10.): zählt in Gesundheit › Erholung, zieht von der Arbeitszeit ab; andere sehen „Belegt“, wenn privat
+  { art: 'routine', titel: 'Training / Sport', dauerMin: 30 }, // eigene Abläufe nur aus den eigenen Routinen (09.10.)
   { art: 'pause', titel: 'Pause', dauerMin: 15 },
   { art: 'block', titel: 'Blockzeit', dauerMin: 60 },
 ];
-const ART_LABEL: Record<PlanArt, string> = { fokus: 'Fokus', reha: 'Reha', routine: 'Routine', pause: 'Pause', aufgabe: 'Aufgabe', block: 'Block' };
+const ART_LABEL: Record<PlanArt, string> = { fokus: 'Fokus', reha: 'Erholung', erholung: 'Erholung', routine: 'Routine', pause: 'Pause', aufgabe: 'Aufgabe', block: 'Block' };
 const DAUERN = [15, 30, 60, 90, 120].map(d => ({ id: String(d), label: d < 60 ? `${d} min` : `${(d / 60).toLocaleString('de-DE')} h` }));
 const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const fmtH = (min: number) => (min / 60).toFixed(1).replace('.', ',');
@@ -311,7 +313,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
           <input value={neuTitel} onChange={e => setNeuTitel(e.target.value)} placeholder="Wofür? z. B. Steuerberater anrufen" aria-label="Titel des eigenen Blocks" style={{ ...feld, fontSize: 13 }} />
           <div style={{ maxWidth: '100%', overflowX: 'auto' }}><Segmente liste={DAUERN} aktiv={String(neuDauer)} onWahl={id => setNeuDauer(Number(id))} /></div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {(['block', 'fokus', 'reha', 'pause'] as const).map(a => (
+            {(['block', 'fokus', 'erholung', 'pause'] as const).map(a => (
               <button key={a} type="button" className="fassbar" onClick={() => setNeuArt(a)} aria-pressed={neuArt === a}
                 style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '6px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: neuArt === a ? `${ART_FARBE[a]}26` : 'rgba(255,255,255,.05)', color: neuArt === a ? ART_FARBE[a] : C.inkDim }}>{ART_LABEL[a]}</button>
             ))}
@@ -332,6 +334,8 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
         <FokusTafel horizonte={['woche']} {...(spaceAusAdresse ? { bereich: spaceAusAdresse } : { vorgabe: spaceAktiv })} />
       </Karte>
       <ZieleMeilensteine horizont="woche" farbe={LEUCHT.schlaf} i={1} kompakt />
+      {/* Erholungs-Ziele der Woche (10.10.) — nur die eigenen, nicht im Business-Bereich; zeichnet nichts ohne Ziel. */}
+      {spaceAusAdresse !== 'business' && <ErholungZielePlanung zeitraum="woche" i={1} />}
       <Karte i={2} akzent={LEUCHT.agenten}>
         <Ueberschrift farbe={LEUCHT.agenten}>ZOE belegt die Woche</Ueberschrift>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>

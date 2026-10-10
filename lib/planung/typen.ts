@@ -150,7 +150,8 @@ export interface Routine {
   id: string;
   label: string;
   wann: 'morgen' | 'tag' | 'abend';
-  kategorie: 'gesundheit' | 'leben' | 'business';
+  /** Seit 10.10. auch `erholung` (Kevin: „Erholung überall einstellbar“) — zählt in Gesundheit › Erholung; andere sehen die Routine nur „Belegt“. */
+  kategorie: 'gesundheit' | 'erholung' | 'leben' | 'business';
   dauerMin: number;
   aktiv: boolean;
   /** Fehlt → privat (Altbestand). */

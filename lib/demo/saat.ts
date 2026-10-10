@@ -88,6 +88,7 @@ const R = {
   sport: () => import('@/app/api/sport/route') as Promise<Modul>,
   gesundheitEinwilligung: () => import('@/app/api/datenschutz/gesundheit/route') as Promise<Modul>,
   koerper: () => import('@/app/api/gesundheit/koerper/route') as Promise<Modul>,
+  erholung: () => import('@/app/api/gesundheit/erholung/route') as Promise<Modul>,
 };
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -449,6 +450,25 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { op: 'eintrag', liste: 'zusammenhaenge', eintrag: { text: 'Mehr Schlaf → mehr Energie am Nachmittag (Beispiel)' } },
   ] });
   schritt('Körper-Profil', 1);
+  // Erholung (10.10.): ein erfundenes Programm, eine Behandlungsserie, ein Erholungs-Ziel und ein paar erledigte Einheiten — über die
+  // Erholungs-Route (Einwilligung (a) steht oben). Harmlos und allgemein, nur die Person selbst (und wem sie die Gesundheit zeigt) sieht es.
+  const eh = await rufe(R.erholung(), 'GET', '/api/gesundheit/erholung', LENA);
+  const e1 = await rufe(R.erholung(), 'PATCH', '/api/gesundheit/erholung', LENA, { stand: eh.stand, ops: [
+    { op: 'programm', programm: { name: 'Mobility am Morgen (Beispiel)', ziel: 'Beweglich in den Tag (Beispiel)', art: 'mobility', proWoche: 4, stufe: 'Phase 1', uebungen: [{ name: 'Ruhig durchbewegen', minuten: 8 }, { name: 'Dehnen im Stehen', minuten: 5, wiederholungen: 10 }] } },
+    { op: 'behandlung', behandlung: { art: 'Massage (Beispiel)', geplant: 6 } },
+    { op: 'ziel', ziel: { titel: '3× Erholung je Woche', zeitraum: 'woche', einheiten: 3 } },
+    { op: 'fokus', text: 'Pausen ernst nehmen (Beispiel)' },
+  ] });
+  const eStand = e1.erholung as { programme: { id: string }[]; behandlungen: { id: string }[] };
+  const programmId = eStand.programme[0].id, behandlungId = eStand.behandlungen[0].id;
+  await rufe(R.erholung(), 'PATCH', '/api/gesundheit/erholung', LENA, { stand: e1.stand, ops: [
+    ...[1, 2, 4].map(n => ({ op: 'einheit', einheit: { tag: tagPlus(heute, -n), programmId } })),
+    { op: 'einheit', einheit: { tag: tagPlus(heute, -3), art: 'spaziergang', minuten: 25 } },
+    { op: 'behandlung-termin', id: behandlungId, termin: { tag: tagPlus(heute, -14), uhr: '17:00', erledigt: true } },
+    { op: 'behandlung-termin', id: behandlungId, termin: { tag: tagPlus(heute, -7), uhr: '17:00', erledigt: true } },
+    { op: 'behandlung-termin', id: behandlungId, termin: { tag: tagPlus(heute, 7), uhr: '17:00' } },
+  ] });
+  schritt('Erholung', 1);
 
   // 14b) Agenten-Bereich und Fotos & Videos (Paket 4c): Threads mit Berichten je Business-Head, Mitarbeiter-Aufträge, Skills (einer aktiv),
   //      geplante Hintergrundaufgaben, ein Album mit drei erzeugten Farbflächen (eins freigegeben, eins angefragt, eins beim Head of Marketing).

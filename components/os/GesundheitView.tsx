@@ -9,6 +9,7 @@
 //              ein Satz, die WHOOP-Werte als zwei kleine Karten (Schlaf, Körperwerte — 09.10.), EINE Tagesliste (Routinen, die
 //              eingeschalteten Module — Symptom-Tagebuch, Zähler —, drei Fragen — so macht es Whoops Journal). Die große
 //              Neugestaltung wartet auf die trainierende Person: research/gesundheit/COCKPIT_VORSCHLAG.md.
+//   Erholung   (10.10.) Programme, heute fällige Einheiten, Behandlungen, Erholungs-Ziele, Vorschlag aus den Körperwerten, Beschwerden-Verlauf
 //   Verlauf    30 Tage, ein Diagramm je Kennzahl
 //   Ernährung  die Woche (bestehende Ansicht, eingebettet)
 //   Körper     Energie, Gesundheits-Meilensteine, die eigenen Module (09.10.) und das EIGENE Körper-Profil (Daten je
@@ -44,12 +45,15 @@ import { SchlafHilfeKarte } from './gesundheit/SchlafHilfeKarte';
 import { TagesCheckKarte } from './gesundheit/TagesCheckKarte';
 import { ErnaehrungHeuteKarte } from './gesundheit/ErnaehrungHeuteKarte';
 import { EinwilligungHinweis } from './gesundheit/EinwilligungHinweis';
+import { ErholungReiter } from './gesundheit/Erholung';
 import { useZuZiel } from './ziel';
 import { WEG } from '@/lib/wege';
 
-type Segment = 'heute' | 'index' | 'verlauf' | 'ernaehrung' | 'koerper';
+type Segment = 'heute' | 'erholung' | 'index' | 'verlauf' | 'ernaehrung' | 'koerper';
+// Erholung (10.10., Kevin): eigener Reiter direkt nach „Heute“ — Programme, Behandlungen, Regeneration, Beschwerden-Verlauf
+// (components/os/gesundheit/Erholung.tsx). In der Ansicht einer anderen Person nur lesend und nur, was sie teilt (die Route entscheidet).
 const SEGMENTE: { id: Segment; label: string }[] = [
-  { id: 'heute', label: 'Heute' }, { id: 'index', label: 'Index' }, { id: 'verlauf', label: 'Verlauf' }, { id: 'ernaehrung', label: 'Ernährung' }, { id: 'koerper', label: 'Körper' },
+  { id: 'heute', label: 'Heute' }, { id: 'erholung', label: 'Erholung' }, { id: 'index', label: 'Index' }, { id: 'verlauf', label: 'Verlauf' }, { id: 'ernaehrung', label: 'Ernährung' }, { id: 'koerper', label: 'Körper' },
 ];
 
 interface Vitals { rec: number; sleep: number; hrv: number; rhr: number; stand: string; heute: boolean; alterTage: number; fallback: boolean }
@@ -376,6 +380,8 @@ export function GesundheitView() {
           </Flaeche>
         </>
       )}
+
+      {segment === 'erholung' && stand && <ErholungReiter key={ansicht} fuer={ansicht} eigene={eigeneSicher} />}
 
       {segment === 'index' && <GesundheitIndex fuer={!eigene ? ansicht : undefined} ich={stand?.ich} stand={hl} />}
 

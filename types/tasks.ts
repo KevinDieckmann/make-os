@@ -78,6 +78,11 @@ export interface Task extends Timestamps {
    * `bezug.kontaktId`, hier nur Art + Jahr (keine Kopie von Name oder Datum). Heute erkennt so „vorgemerkt“ per Kennung.
    */
   anlass?: AufgabeAnlass;
+  /**
+   * Erholung (10.10., Kevin: „Erholung überall einstellbar“): eine PRIVATE Aufgabe als Erholung markiert — abgehakt zählt sie in die Erholung
+   * des Tages der Verantwortlichen (Gesundheit › Erholung). Nur `true`; im Business verwirft der Schreibweg die Marke (lib/aufgaben/saeubern.ts).
+   */
+  erholung?: true;
   /** Kommentare mit @-Erwähnung (Speichernamen der Personen). */
   kommentare?: AufgabeKommentar[];
   /** Startdatum (YYYY-MM-DD). */

@@ -4,6 +4,80 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Erholung: eigener Reiter unter Gesundheit, überall einstellbar (nur lokal — Branch `erholung`, Basis 475bcb06 = `update-0910b`)
+
+Kevin 10.10.: „Einen Erholungsbereich — manche müssen extrem viel erholen bzw. Reha machen, die zweite Person nach dem Sport. Ein Bereich, wo es
+um Erholung geht, der muss auch überall mit einstellbar sein.“
+
+**Gebaut — der Reiter Gesundheit › Erholung** (`components/os/gesundheit/Erholung.tsx`, Weg `WEG.erholung()`, Suche „Gesundheit · Erholung“):
+- **Programme**: eigene Reha-/Übungsprogramme (Name, Wofür, Art, Übungen mit Minuten/Wiederholungen/Sätzen, Häufigkeit je Woche, feste Tage oder
+  flexibel, Stufe/Phase, aktiv · pausiert · beendet). **Heute fällig** = fester Tag heute bzw. flexibel, bis die Woche ihr Soll hat; abhaken je
+  Programm und Tag (idempotent, zurücknehmbar). **Woche**: „2 von 3“ je Programm, Balken je Tag, Streak „Erholung gehalten“.
+- **Vorlagen-Bibliothek** (neutral, keine Diagnosen): Mobility, Dehnen, Kräftigung, Atemübung, Wärme/Sauna, Kälte, Massage/Faszienrolle,
+  Physiotherapie-Übungen, Spaziergang, Mittagsruhe, Bildschirmpause — „Übernehmen“ legt ein Programm an. Freie Einheit eintragen (Art + Minuten).
+- **Behandlungen & Termine**: Serien („6 von 10“, nächster Termin), Termine von Hand oder **mit einem Kalender-Termin verknüpft — nur über die
+  Kennung, nie der Titel**, dazu Verweise auf die **eigenen Gesundheits-Unterlagen** (`gu-…`).
+- **Vorschlag aus den eigenen Körperwerten** — EINE reine Regel `erholungVorschlag` (lib/gesundheit/erholung-lage.ts), Vorrang: Recovery rot →
+  „Heute Erholungstag“ · HRV-/Ruhepuls-Trend (lib/sport/entlastung.ts) → „Entlastungswoche“ · Schlafschuld ≥ 2 h (lib/gesundheit/schlaf.ts) →
+  „Schlaf nachholen“ · Recovery gelb oder gestern über dem Strain-Rahmen (lib/gesundheit/belastung.ts) → „leichte Einheit“ · grün → „normal
+  belastbar“; ohne Werte nichts. Nur Vorschlag, mit Gründen und Hinweis „keine ärztliche Beratung“; abschaltbar.
+- **Beschwerden-Verlauf**: mit eingeschaltetem Symptom-Tagebuch (Modul) 30 Tage 0–10 + Auslöser, und der **Zusammenhang „Erholung erledigt ↔
+  Beschwerde am Folgetag“** — nur eigene Einträge, erst ab je 5 Tagen mit/ohne Erholung, formuliert als Zusammenhang („kein Beleg für eine Ursache“).
+- **Erholungs-Ziele** (je Woche/Monat, Einheiten und/oder Minuten, optional an EIN Programm gebunden — Fortschritt aus den erledigten Einheiten),
+  **Fokus-Satz der Erholung**, **Pausen im Arbeitstag** (alle n Minuten zwischen von/bis; nächste Pause im Heute-Widget, „Pause gemacht“).
+- **Erholung des Tages aus allen Quellen**: Einheiten, erledigte Aufgaben mit Marke „Erholung“, erledigte Routinen der Kategorie „Erholung“,
+  bewusst gemessene Erholungs-Zeit (≥ 5 min), dazu geplante Erholungs-Blöcke im Kalender (geplant ≠ erledigt).
+
+**Überall einstellbar:**
+- **(a) Kalender & Planen**: neue Block-Unterart `erholung` (X-MAKE-BLOCK); der Altbestand `reha` bleibt gültig und zählt überall als Erholung
+  (`istErholungsArt`/`istErholungsBlock`, lib/kalender/arten.ts — Reha-Schild, Tagesplanung „Durchgeplant“, Gesundheits-Index, Energie, Kapazität).
+  Baustein „Erholung“ in Planen und Tagesplan („Training / Sport“ ist jetzt eine Routine-Zeit, keine Reha mehr). Neue Erholungs-Blöcke sind privat;
+  **`maskieren` zeigt Erholungs-Blöcke einer anderen Person IMMER nur „Belegt“ — ohne Titel und ohne Unterart**, auch ohne CLASS:PRIVATE (Kalender, Heute,
+  ZOE). Im Termin-Fenster eines Erholungs-Blocks: „▶ Zeit messen“.
+- **(b) Routinen & Aufgaben**: Routine-Kategorie „Erholung“ (zählt als Gesundheit: Index, Energie, Lichtfäden, Fluss, Einrichtung; fremde Routinen
+  bleiben „Belegt“ ohne Kategorie). Aufgaben im Space Privat lassen sich als „Erholung“ markieren (`Task.erholung`, im Business verwirft der Schreibweg
+  die Marke) — abgehakt zählen sie in die Erholung des Tages der Verantwortlichen.
+- **(c) Ziele, Fokus & Heute**: Erholungs-Ziele und Fokus-Satz liegen im Erholungs-Bestand der Person (Art. 9 — bewusst nicht in `ziele-eigen`/
+  `fokus-eigen`, die nicht als Gesundheit eingestuft und teilbar sind). Heute-Widget **„Erholung heute“** (Katalog unter Gesundheit, im Standard der
+  Privat-Sicht; zeichnet nichts, solange die Person keine Erholung pflegt): Vorschlag, fällige Programme abhaken, Ziele, Fokus, nächste Pause.
+  In der Planung zeigt eine Karte die eigenen Erholungs-Ziele des Zeitraums (Kalender › Planen = Woche, Planung › Monat; nur lesen, nie im Business).
+- **(d) Kapazität & Zeit**: geplante Erholungs-Blöcke im Arbeitsfenster ziehen von der verfügbaren Arbeitszeit ab — **nur als Stunden** (in den
+  Termin-Stunden, kein eigener Wert, keine Art, kein Titel, kein Umschalten); die Kapazität bleibt ohne Gesundheitswerte im Business-Index. Zeit:
+  eigener Bereich `privat:erholung` (Fokus-Zähler aus dem Reiter „▶ Zeit messen“ oder am Erholungs-Block), Name „Erholung“ in den Zeit-Karten.
+- **ZOE „Erholung heute“** nur mit Einwilligung (b): `gatherBrain` → `Brain.erholung` (Vorschlag, fällige Programme, eigener Fokus-Satz) im
+  `<daten quelle="erholung">`-Rahmen am Körper-Block — nie für eine andere Person.
+
+**Daten & Recht:** Bestand `erholung--<person>` (IMMER mit Suffix, `erholungName`), Speicher-Register mit GESUNDHEIT-Angaben (Art. 9), Bereich
+`JE_PERSON`, `PERSON_BESTAENDE` (Export + Löschen, `nurMitSuffix`). Route `GET/PATCH /api/gesundheit/erholung` (Routen-Register Klasse `person`):
+schreiben nur die Person selbst (Dienstweg 403, Einwilligung (a) zuerst — reines Entfernen geht immer, Stand/409, > 50 Schritte bzw. Grenzen → 413,
+`jsonBegrenzt`, `bauPruefen`); lesen eine andere Person nur bei geteiltem Gesundheit-Zugang UND beiden vollen Mitgliedern des Haushalts — dann ohne
+Unterlagen- und Kalender-Verweise, ohne Pausen-Einstellung, ohne Stand, mit Lese-Protokoll. Konto „nur Business“, Testkunde, fremder Haushalt: 403.
+Messlatte-Marke `erholung--kevin`. Demo-Saat: Programm „Mobility am Morgen (Beispiel)“, Serie „Massage (Beispiel)“ (2 von 6), Ziel, ein paar Einheiten.
+Tests: `tests/erholung-modell.test.ts` (rein), `tests/erholung-route.test.ts` (Sicht X bekommt nichts aus Y), `tests/erholung-ueberall.test.ts`
+(Kalender, Routinen, Aufgaben, Heute, Kapazität, Zeit, Register). Angepasst: `tests/kalender-k5.test.ts` (Titel „Reha …“ → `erholung`, Block privat).
+
+**Rückweg:** Der alte Stand liest einen Block `X-MAKE-BLOCK:erholung` als „Block“ (Blockzeit, zählt dort als Arbeit) und kennt die Routine-Kategorie
+`erholung` nicht (der Schreibweg macht beim nächsten Speichern „Leben“ daraus); `Task.erholung` verwirft er beim nächsten Speichern der Aufgabe;
+`erholung--*` liegt ungelesen. Nichts geht verloren, was heute gespeichert ist.
+
+**Bewusst nicht gebaut (Rest):** Pausen-Erinnerung als Glocke/Telegram (heute nur Anzeige + „Pause gemacht“); Erholungs-Ziele als Einträge der
+Planungs-Ziele (sie liegen im Art.-9-Bestand — in der Planung nur als Karte); Programme als Kalender-Serie anlegen (Planen-Baustein statt dessen).
+
+**So testet ihr** (lokal `localhost:3001`, eigene Testdaten)
+1. Gesundheit › Reiter **Erholung**. Ohne Einwilligung (a) zeigt der Kopf den Hinweis — erst einwilligen (System › Datenschutz › Gesundheit).
+2. Rechts „Vorlagen“ › bei „Mobility“ **Übernehmen** → links unter „Programme“ steht es, oben unter „Erholung heute“ ist es dran. **Schalter**
+   antippen → „1 von 4 diese Woche“, „Diese Woche“ zeigt den Balken; nochmal antippen nimmt es zurück.
+3. „Programme“ › **+ Programm**: Name, Mo/Mi/Fr antippen, eine Übung mit 10 Min. → Speichern. An einem Nicht-Tag ist es heute nicht dran.
+4. „Behandlungen & Termine“: „Physiotherapie“, 10 → **+ Serie**. Bei der Serie einen Kalender-Termin aus der Liste wählen → **+ Termin** →
+   „im Kalender ›“ springt in den Kalender. Schalter am Termin → „1 von 10“. Unterlage antippen (wenn unter Heute › Unterlagen eine liegt).
+5. „Erholungs-Ziele“: „3× Erholung je Woche“, 3 → **+ Ziel**; „Fokus der Erholung“ eintragen. Heute (Privat) zeigt das Widget **Erholung heute**.
+6. Kalender › Planen: Baustein **Erholung** antippen, in den Kalender klicken → Block. Mit der zweiten Person (ohne geteilte Gesundheit) im
+   Kalender ansehen: nur „Belegt“. Den Block öffnen → **▶ Zeit messen** → im Kopf läuft der Zähler; beenden → unter Erholung „… min gemessen“.
+7. Planung › Routinen: neue Routine mit Kategorie **Erholung** → unter Gesundheit › Heute abhaken → Erholung zählt „1 Routine“.
+8. Aufgaben: eine Privat-Aufgabe öffnen → Feld **Erholung** antippen → erledigen → Erholung zählt „1 Aufgabe“. Bei einer Business-Aufgabe fehlt das Feld.
+9. Planung › Kapazität: ein Erholungs-Block in der Arbeitszeit senkt „frei“ der Woche (als Termin-Stunden, ohne Art/Titel).
+10. Zweite Person, die ihre Gesundheit teilt: Gesundheit › Name der anderen Person › Erholung → nur lesen, keine Unterlagen, kein Kalender-Verweis.
+
 ## 10.10.2026 — Stress nur als Anspannung 1–5 · Brain-Notiz „People“ als Mitarbeiter unter CEO-Office (nur lokal — Branch `stress-people`, Basis 4fd45912)
 
 Zwei kleine Entscheidungen vom 10.10.: „Nur Anspannung 1–5“ und `people.md` (Founder-Care) → als Mitarbeiter unter CEO-Office, Business.

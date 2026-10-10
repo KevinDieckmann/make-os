@@ -4,7 +4,7 @@
 // Je Person und Tag (ab heute, WOCHEN_STANDARD Wochen):
 //   Soll       = Grundwert (Stunden je Woche ÷ 5 an Werktagen) · sonst Wochenvorlage (Planung › Routinen) · sonst Annahme 40 h
 //   − Abwesend = Urlaub (Ausnahme), Feiertag, ganztägig abwesend (Kalender)
-//   − Termine  = Termine im Arbeitsfenster (Kalender, überlappungsfrei)
+//   − Termine  = Termine im Arbeitsfenster (Kalender, überlappungsfrei) — seit 10.10. auch geplante Erholungs-Blöcke (nur Stunden)
 //   − Umschalten = 15 min je Termin (Meeting-Last)
 //   − Blöcke   = feste Blöcke (Ausnahme, Stunden je Woche)
 //   = Netto
@@ -54,7 +54,8 @@ const STANDARD_FENSTER = [{ s: 9 * 60, e: 18 * 60 }];
 
 /**
  * Die Verfügbarkeit einer Person (K1, `verfuegbarkeitFuer`) als Kalendertage für die Kapazität. Termine zählen, wenn sie
- * beschäftigen (Art „termin“ oder Abwesenheit mit Uhrzeit) — Fokus und Blöcke sind geplante Arbeit, keine Abzüge.
+ * beschäftigen (Art „termin“ oder Abwesenheit mit Uhrzeit) — Fokus und Blöcke sind geplante Arbeit, keine Abzüge; seit 10.10. ziehen
+ * geplante Erholungs-Blöcke (Unterart Erholung bzw. Reha) wie Termine ab (nur Stunden).
  */
 export function tageAusVerfuegbarkeit(v: Pick<Verfuegbarkeit, 'tage'>): { tage: TagEingabe[]; hatVorlage: boolean } {
   // Business-frei (08.10., Lücke 7): K1 hat die Business-freie Zeit schon aus der Arbeitszeit der Vorlage genommen — das Soll
@@ -64,7 +65,9 @@ export function tageAusVerfuegbarkeit(v: Pick<Verfuegbarkeit, 'tage'>): { tage: 
     const fenster = t.arbeitszeit.length
       ? t.arbeitszeit.map(a => ({ s: a.start.slice(0, 10) === t.tag ? minuten(a.start) : 0, e: a.ende.slice(0, 10) === t.tag ? minuten(a.ende) : 1440 }))
       : t.arbeitszeitVorlage?.length ? [] : STANDARD_FENSTER;
-    const belegt = t.beschaeftigt.filter(b => !b.ganztags && (b.art === 'termin' || b.art === 'abwesend'));
+    // Erholung (10.10., Kevin: „Erholung überall einstellbar“): geplante Erholungs-Blöcke im Arbeitsfenster ziehen wie Termine ab — nur als
+    // Stunden (in `terminStunden`, nie als eigene Zahl, nie mit Titel/Art); sie zählen nicht als Termin (kein Umschalten).
+    const belegt = t.beschaeftigt.filter(b => !b.ganztags && (b.art === 'termin' || b.art === 'abwesend' || b.erholung));
     const spannen = belegt.map(b => ({ s: b.start.slice(0, 10) === t.tag ? minuten(b.start) : 0, e: b.ende.slice(0, 10) === t.tag ? minuten(b.ende) : 1440 }));
     const vorlage = t.arbeitszeit.reduce((s, a) => s + Math.max(0, (Date.parse(`${a.ende}Z`) - Date.parse(`${a.start}Z`)) / 3_600_000), 0);
     return {

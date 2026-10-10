@@ -59,6 +59,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   // Gesundheits-Unterlagen (09.10.): die Liste gehört allein der Person — IMMER mit Suffix; die Dateien entfernt `kontoLoeschen` vorher (Schritt 2e),
   // im Export steht die Liste, die Dateien einzeln über den Download (`nichtEnthalten`).
   { basis: 'gesundheit-unterlagen', nurMitSuffix: true },
+  // Erholung (10.10.): Programme, Einheiten, Behandlungen, Erholungs-Ziele der Person — IMMER mit Suffix (lib/gesundheit/erholung.ts `erholungName`).
+  { basis: 'erholung', nurMitSuffix: true },
   // Onboarding (08.10. spät): persönliche Häkchen der Einrichtung — `onboarding` ohne Suffix sind die GEMEINSAMEN (geteilter Bestand).
   { basis: 'onboarding', nurMitSuffix: true },
   // Seit 08.10. spät je Person (Datenschutz vor dem Upload): Tagesläufe mit Ausrichtung, Arbeits- und Gesundheits-Schalter.

@@ -138,6 +138,8 @@ export const WEG = {
   gesundheit: (abschnitt?: 'morgen' | 'routinen' | 'haut' | 'streak' | 'index', fuer?: string) => q('/os/gesundheit', { fuer }, abschnitt),
   journal: () => '/os/journal',
   ernaehrung: () => '/os/gesundheit?s=ernaehrung',
+  // Erholung (10.10.): Reiter unter Gesundheit — `fuer` zeigt die andere Person (nur lesend, nur wenn sie teilt).
+  erholung: (fuer?: string) => q('/os/gesundheit', { s: 'erholung', fuer }),
   gericht: (id: string) => `/os/gesundheit?s=ernaehrung&g=${encodeURIComponent(id)}`,
   energie: () => '/os/gesundheit?s=koerper',
   // Sport (27.09.): persönlich je Person — Reiter plan (Standard) · hyrox · lauf · gym · erholung.

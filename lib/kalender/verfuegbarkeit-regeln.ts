@@ -18,12 +18,19 @@
 import { tagPlus, minutenVon, wandAus, feiertag, istWochenende, wochentag } from '@/lib/zeit/kalender-kern';
 import type { TerminMitBezug } from './bezug';
 import type { IcsArt, ArbeitsortArt } from './arten';
-import { arbeitsortTitel } from './arten';
+import { arbeitsortTitel, istErholungsBlock } from './arten';
 import type { Block } from '@/lib/planung/typen';
 import { abziehen, amTag as spannenAmTag, ueberlappt } from '@/lib/arbeitsrahmen/regel';
 
 export interface Zeitraum { start: string; ende: string }
-export interface Belegt extends Zeitraum { art: IcsArt; ganztags: boolean }
+export interface Belegt extends Zeitraum {
+  art: IcsArt; ganztags: boolean;
+  /**
+   * Geplante Erholung (10.10.): ein Block der Unterart Erholung (bzw. Altbestand Reha) — nur, damit die Kapazität ihn von der Arbeitszeit
+   * abzieht. Nur intern (die Verfügbarkeit geht nie an den Browser), nie mit Titel.
+   */
+  erholung?: true;
+}
 export interface TagVerfuegbarkeit {
   tag: string;
   /** Gesetzlicher Feiertag in NRW (Name). */
@@ -91,7 +98,7 @@ export function verfuegbarkeitAus(a: { person: string; von: string; bis: string;
       tag, ...(ft ? { feiertag: ft } : {}), wochenende: istWochenende(tag),
       ...(ort ? { arbeitsort: { art: ort.t.arbeitsort!.art, titel: arbeitsortTitel(ort.t.arbeitsort!) } } : {}),
       abwesend, ganzAbwesend, arbeitszeit,
-      beschaeftigt: heute.filter(x => x.t.beschaeftigt).map(x => x.b).sort((x, y) => x.start.localeCompare(y.start)),
+      beschaeftigt: heute.filter(x => x.t.beschaeftigt).map(x => (istErholungsBlock(x.t) ? { ...x.b, erholung: true as const } : x.b)).sort((x, y) => x.start.localeCompare(y.start)),
       ...(frei.length ? { businessFrei: frei } : {}),
       ...(gekuerzt ? { arbeitszeitVorlage: vorlageTag } : {}),
     });

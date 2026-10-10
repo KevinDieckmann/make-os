@@ -409,6 +409,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // NUR die Person selbst (auch bei „Teilen“ nicht), an die KI nur über eigenerGesundheitsKontext mit Einwilligung (b).
   mit(H('gesundheit-koerper', 'Körper-Profil (Erstkonto) — eigene Gesundheitsdaten, nur die Person selbst.'), KOERPER),
   mit(H('gesundheit-koerper--*', 'Körper-Profil je Person — eigene Gesundheitsdaten, nur die Person selbst.'), KOERPER),
+  // Erholung je Person (10.10., lib/gesundheit/erholung*.ts): eigene Programme, erledigte Einheiten, Behandlungsserien (Termin-Verweise nur als
+  // Kennung, Unterlagen nur als `gu-…`), Erholungs-Ziele, Fokus-Satz, Pausen-Einstellung — IMMER mit Suffix. Andere Konten nur bei „Teilen“ (lesen,
+  // ohne Unterlagen-/Termin-Verweise), an die KI nur mit Einwilligung (b) über gatherBrain.
+  mit(H('erholung--*', 'Erholung je Person (Programme, Einheiten, Behandlungsserien, Erholungs-Ziele, Fokus-Satz, Pausen) — eigene Gesundheitsdaten (Art. 9).'), {
+    ...GESUNDHEIT,
+    art15: 'die Person sieht, pflegt und exportiert ihre Erholung selbst (Gesundheit › Erholung, Konto › Meine Daten); andere Konten nur lesend bei „Teilen“ (ohne Unterlagen- und Kalender-Verweise)',
+  }),
   // Gesundheits-Unterlagen (09.10., lib/gesundheit/unterlagen*.ts): Metadaten je Person, Dateien verschlüsselt im Ordner `gesundheit-unterlagen`.
   mit(H('gesundheit-unterlagen--*', 'Gesundheits-Unterlagen je Person (Metadaten: Name, Art, Größe, Zeitpunkt, Prüfsumme, eigene Notiz) — die Dateien (Arztbrief, Laborwerte, Trainingsplan; können Ärztinnen/Ärzte nennen) liegen verschlüsselt in <daten>/gesundheit-unterlagen. Nur die Person selbst, auch bei „Teilen“ nie andere Konten; der Text geht nur an IHREN Gesundheits-Head und nur mit Einwilligung (b).'), {
     ...KOERPER,
@@ -703,7 +710,7 @@ const JE_PERSON: readonly string[] = [
   // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber
   'sport', 'sport--*', 'vitals', 'vitals--*', 'gesundheit-index', 'gesundheit-index--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
   'gesundheit-alltag', 'gesundheit-alltag--*', 'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
-  'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*',
+  'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*', 'erholung--*',
   // Mein Fokus · Privat (10.10.)
   'fokus-eigen--*',
   // Eigene Meilensteine an eigenen Zielen (10.10.) — immer Privat, je Person

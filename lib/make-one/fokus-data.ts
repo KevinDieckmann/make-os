@@ -17,7 +17,7 @@ export const SAEULE_VON_PROJEKT: Record<string, string> = Object.fromEntries(Obj
 
 /** Routine-Kategorie → Score-Säule (für „zahlt auf den Fokus ein"). */
 export const KATEGORIE_ZU_SAEULE: Record<string, string> = {
-  gesundheit: 'health', business: 'business', leben: 'social',
+  gesundheit: 'health', erholung: 'health', business: 'business', leben: 'social',
 };
 
 export const SAEULE_LABEL: Record<string, string> = {

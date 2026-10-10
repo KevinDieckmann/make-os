@@ -41,7 +41,7 @@ interface Block { date: string; startMin: number; dauerMin: number; titel: strin
 interface Task { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string }
 
 const WD = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-const ARTEN = new Set(['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block']);
+const ARTEN = new Set(['fokus', 'reha', 'erholung', 'routine', 'pause', 'aufgabe', 'block']);
 const mm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 export async function POST(req: Request) {

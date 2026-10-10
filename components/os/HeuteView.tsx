@@ -57,6 +57,8 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'ziele', art: 'ziele', breite: 4 },
     { id: 'aufgaben', art: 'aufgaben', breite: 4, einstellungen: { space: 'privat', nur: 'dran' } },
     { id: 'koerper', art: 'koerper', breite: 2 },
+    // Erholung (10.10., Kevin): die eigene Erholung des Tages — zeichnet nichts, solange die Person keine pflegt.
+    { id: 'erholung', art: 'erholung', breite: 2 },
     { id: 'finanzen-privat', art: 'finanzen-privat', breite: 2 },
     { id: 'familie', art: 'familie', breite: 2 },
     { id: 'essen', art: 'essen', breite: 2 },

@@ -123,7 +123,7 @@ export async function computeShields(today = localDay(), person?: string | null)
   // ── Reha: heute kein Reha-Block, obwohl er zur eigenen Routine gehört (08.10. abends: kein Ziel EINER Person mehr im
   //    Code — der Schild gilt nur, wer in den letzten 14 Tagen selbst Reha-Blöcke geplant hat; Regel `rehaFehltHeute`) ──
   if (rehaFehltHeute(wplanF, today)) {
-    shields.push({ id: 'reha', stufe: 'amber', text: 'Heute ist kein Reha-Block geplant — in den letzten zwei Wochen gehörte er zu deiner Routine.', href: '/os/planung', label: 'Tagesplanung' });
+    shields.push({ id: 'reha', stufe: 'amber', text: 'Heute ist kein Erholungs-Block geplant — in den letzten zwei Wochen gehörte er zu deiner Routine.', href: '/os/planung', label: 'Tagesplanung' });
   }
 
   // Rot zuerst — was weh tut, steht oben.

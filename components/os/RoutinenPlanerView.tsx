@@ -38,6 +38,8 @@ const WANN: { id: Routine['wann']; label: string; hint: string }[] = [
 ];
 const KAT: { id: Routine['kategorie']; label: string; farbe: string }[] = [
   { id: 'gesundheit', label: 'Gesundheit', farbe: LEUCHT.gut },
+  // Erholung (10.10.): zählt in Gesundheit › Erholung, wenn abgehakt — andere sehen die Routine nur „Belegt“.
+  { id: 'erholung', label: 'Erholung', farbe: LEUCHT.schlaf },
   { id: 'leben', label: 'Leben', farbe: LEUCHT.beziehung },
   { id: 'business', label: 'Business', farbe: LEUCHT.business },
 ];
