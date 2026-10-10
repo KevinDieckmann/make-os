@@ -127,7 +127,11 @@ describe('Einstellen und rechnen — nur die eigene Person', () => {
     const vorher = roh('gesundheit-alltag--anna');
     const stand = (await rufe(alltag.GET, 'GET', '/api/gesundheit/alltag', sitzung('anna'))).json.stand;
     expect((await rufe(alltag.PATCH, 'PATCH', '/api/gesundheit/alltag', sitzung('anna'), { stand, ops: [{ op: 'schlaf', felder: { aufstehen: 'früh' } }] })).status).toBe(400);
-    expect((await rufe(alltag.PATCH, 'PATCH', '/api/gesundheit/alltag', sitzung('anna'), { stand, ops: [{ op: 'check', fragen: ['koffein-spaet', 'alkohol', 'getrunken', 'bildschirm-spaet', 'spaet-gegessen', 'stress', 'draussen'] }] })).status).toBe(413);
+    expect((await rufe(alltag.PATCH, 'PATCH', '/api/gesundheit/alltag', sitzung('anna'), { stand, ops: [{ op: 'check', fragen: ['koffein-spaet', 'alkohol', 'getrunken', 'bildschirm-spaet', 'spaet-gegessen', 'training-spaet', 'draussen'] }] })).status).toBe(413);
+    // „Stressiger Tag?“ ist abgelöst (10.10., „Nur Anspannung 1–5“): als neue Auswahl 400 mit Grund.
+    const st = await rufe(alltag.PATCH, 'PATCH', '/api/gesundheit/alltag', sitzung('anna'), { stand, ops: [{ op: 'check', fragen: ['alkohol', 'stress'] }] });
+    expect(st.status).toBe(400);
+    expect(st.json.error).toContain('Anspannung');
     expect(roh('gesundheit-alltag--anna')).toBe(vorher);
   });
 });
@@ -147,6 +151,45 @@ describe('Tages-Check im eigenen Journal, Abhaken im eigenen Log', () => {
     // Cara ohne Einwilligung: 403, kein Journal.
     expect((await rufe(journal.PATCH, 'PATCH', '/api/state/journal', sitzung('cara'), { datum: tag, eintrag: { check: { alkohol: true } } })).status).toBe(403);
     expect(roh('journal--cara')).toBeNull();
+  });
+
+  it('Stress nur als Anspannung (10.10.): alte Ja/Nein-Antworten bleiben liegen, werden nie gezeigt; ausgewertet wird die Anspannung', async () => {
+    // Altbestand: an sechs Tagen eine Anspannung (Morgen-Check) und eine alte Ja/Nein-Antwort, die jeweils das Gegenteil sagt.
+    const tage = [1, 2, 3, 4, 5, 6].map(i => tagePlus(heute, -i));
+    const werte = [5, 1, 4, 2, 4, 3];
+    await db.updateJson<Record<string, Record<string, unknown>>>('journal--anna', j => {
+      const n = { ...(j ?? {}) };
+      tage.forEach((t, i) => { n[t] = { ...(n[t] ?? {}), stress: werte[i], check: { ...((n[t]?.check as object) ?? {}), stress: werte[i] < 4 } }; });
+      return n;
+    });
+    // Eine neue Antwort am selben Tag löscht die alte nie.
+    const p = await rufe(journal.PATCH, 'PATCH', '/api/state/journal', sitzung('anna'), { datum: tage[0], eintrag: { check: { draussen: true } } });
+    expect(p.status, p.text).toBe(200);
+    expect(p.json.eintrag.check).toMatchObject({ stress: false, draussen: true });
+    // Neu beantworten geht nicht mehr.
+    const neu = await rufe(journal.PATCH, 'PATCH', '/api/state/journal', sitzung('anna'), { datum: tage[0], eintrag: { check: { stress: true } } });
+    expect(neu.status).toBe(400);
+    expect(neu.json.error).toContain('Anspannung');
+    const g = await rufe(alltag.GET, 'GET', '/api/gesundheit/alltag', sitzung('anna'));
+    expect(g.status).toBe(200);
+    const c = g.json.sicht.check;
+    expect(c.katalog.map((f: { id: string }) => f.id)).not.toContain('stress');
+    expect(Object.keys(c.antworten)).not.toContain('stress');
+    expect(c.befunde.map((b: { id: string }) => b.id)).toEqual(['anspannung']); // Annas Schlaf ist jede Nacht gleich → „kaum Unterschied“
+    expect(c.befunde[0]).toMatchObject({ kurz: 'Stress', quelle: 'Anspannung (Morgen-Check)', ja: { n: 3 }, nein: { n: 3 } });
+    expect(c.befunde[0].satz).toContain('kaum Unterschied');
+    expect(c.fortschritt.map((f: { id: string }) => f.id)).not.toContain('stress');
+  });
+
+  it('eine gespeicherte Auswahl mit „stress“ wird beim Lesen still entfernt — kein Fehler, kein 409 beim nächsten Speichern', async () => {
+    await db.updateJson<Record<string, unknown>>('gesundheit-alltag--ben', a => ({ ...(a ?? {}), check: { fragen: ['stress', 'alkohol'] } }));
+    const g = await rufe(alltag.GET, 'GET', '/api/gesundheit/alltag', sitzung('ben'));
+    expect(g.status, g.text).toBe(200);
+    expect(g.json.einstellung.check).toEqual({ fragen: ['alkohol'] });
+    expect(g.json.sicht.check.fragen.map((f: { id: string }) => f.id)).toEqual(['alkohol']);
+    const p = await rufe(alltag.PATCH, 'PATCH', '/api/gesundheit/alltag', sitzung('ben'), { stand: g.json.stand, ops: [{ op: 'check', fragen: ['alkohol', 'getrunken'] }] });
+    expect(p.status, p.text).toBe(200);
+    expect(roh('gesundheit-alltag--ben')).not.toContain('"stress"');
   });
 
   it('PATCH /api/state/health hakt EINE Routine ab bzw. löst sie — nur im eigenen Log', async () => {

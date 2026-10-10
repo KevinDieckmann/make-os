@@ -340,7 +340,7 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
       input_schema: obj({
         gut: { type: 'string' }, dankbar: { type: 'string' }, hart: { type: 'string' },
         text: { type: 'string', description: 'Freier Text, wenn es keine der drei Fragen trifft' },
-        stimmung: { type: 'number' }, energie: { type: 'number' }, stress: { type: 'number', description: '1–5, niedrig = gut' }, datum: { type: 'string' },
+        stimmung: { type: 'number' }, energie: { type: 'number' }, stress: { type: 'number', description: 'Anspannung 1–5, niedrig = gut (Stress gibt es nur so, nicht im Tages-Check)' }, datum: { type: 'string' },
         check: { type: 'object', description: `Tages-Check: nur ausdrücklich beantwortete Fragen, Kennung → true (ja) / false (nein). Kennungen: ${CHECK_FRAGEN.map(f => `${f.id} („${f.frage}“)`).join(', ')}` },
       }),
     },

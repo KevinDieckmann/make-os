@@ -19,7 +19,7 @@ import type { VitalsLog } from '@/lib/vitals';
 import { alltagAnwenden, alltagEinstellungen, alltagSaeubern, AlltagFehler, ALLTAG_BASIS, type AlltagStand } from './alltag';
 import { schlafLage, erinnerungFaellig, type SchlafLage } from './schlaf';
 import { naechteAus } from './schlaf-naechte';
-import { aktiveFragen, checkAuswertung, checkSaeubern, checkTagFuer, CHECK_FRAGEN, CHECK_MAX, type CheckAntworten, type CheckBefund, type CheckFortschritt, type CheckFrage } from './tages-check';
+import { aktiveFragen, checkAuswertung, checkSaeubern, checkTagFuer, ANSPANNUNG_ID, CHECK_FRAGEN, CHECK_MAX, type CheckAntworten, type CheckBefund, type CheckFortschritt, type CheckFrage } from './tages-check';
 import { essenOrientierung, planBelastung, wTagVon, ERGAENZUNG_VORLAGEN, type EssenSicht, type ErgaenzungId, type ErgaenzungVorlage } from '@/lib/ernaehrung/orientierung';
 
 /** Stand der Einstellungen (Fingerabdruck ohne Riegel/Zeitstempel); ohne Bestand `leer`. */
@@ -119,17 +119,18 @@ export async function alltagSicht(person: string, alltag: AlltagStand, jetzt = n
   const { saeubere } = await import('@/lib/sport/modell');
   const [vitals, journal, sportRoh, routinenF, hl] = await Promise.all([
     loadJson<VitalsLog>(speicherFuer('vitals', person)),
-    loadJson<Record<string, { check?: unknown } | null>>(speicherFuer('journal', person)),
+    loadJson<Record<string, { check?: unknown; stress?: unknown } | null>>(speicherFuer('journal', person)),
     loadJson<unknown>(speicherFuer('sport', person)),
     loadJson<{ routinen?: RoutineKurz[] }>('routinen'),
     loadJson<Record<string, string[]>>(speicherFuer('health-log', person)),
   ]);
   const schlaf = await schlafLageFuer(person, alltag, heute, vitals);
 
-  // Tages-Check: aktive Fragen, Tag (vor 14 Uhr gestern), Antworten, Auswertung (nur eigene Tage).
+  // Tages-Check: aktive Fragen, Tag (vor 14 Uhr gestern), Antworten, Auswertung (nur eigene Tage). Stress zählt immer mit — nicht als
+  // Frage, sondern aus der Anspannung 1–5 des Morgen-Checks (10.10., `ANSPANNUNG_ID`); abgelöste Antworten (`check.stress`) nie.
   const fragen = aktiveFragen(alltag.check);
   const { tag, welcher } = checkTagFuer(wandzeit(jetzt));
-  const aus = checkAuswertung(journal, vitals, fragen.map(f => f.id), heute);
+  const aus = checkAuswertung(journal, vitals, [...fragen.map(f => f.id), ANSPANNUNG_ID], heute);
   const check: CheckSicht = {
     fragen, katalog: CHECK_FRAGEN.map(f => ({ ...f, aktiv: fragen.some(x => x.id === f.id) })), max: CHECK_MAX,
     tag, welcher, antworten: checkSaeubern(journal?.[tag]?.check) ?? {}, befunde: aus.befunde, fortschritt: aus.fortschritt,

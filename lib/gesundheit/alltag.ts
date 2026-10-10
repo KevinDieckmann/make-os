@@ -12,7 +12,7 @@
 // Rein (Server UND Browser): Form, Säuberung beim Lesen (nie kürzen), Schritte. Über einer Grenze 413, ungültig 400 — ein
 // ungültiger Schritt lässt den ganzen Stapel liegen.
 
-import { CHECK_FRAGEN, CHECK_MAX, istCheckFrage } from './tages-check';
+import { CHECK_FRAGEN, CHECK_MAX, istCheckFrage, istAbgeloest, abgeloestText } from './tages-check';
 import { aufstehenStufe, istUhr } from './schlaf';
 import { istErgaenzung, type ErgaenzungId } from '@/lib/ernaehrung/orientierung';
 
@@ -86,6 +86,7 @@ export function alltagSaeubern(roh: unknown): AlltagStand {
   a.schlaf.erinnerung = s.erinnerung === true;
   if (inGrenze(s.vorlaufMin, ALLTAG_GRENZEN.vorlaufMin)) a.schlaf.vorlaufMin = Math.round(s.vorlaufMin);
   a.schlaf.handy = s.handy === true;
+  // Nur Fragen des Katalogs — eine abgelöste (z. B. `stress`, 10.10.) fällt beim Lesen still weg, nie ein Fehler.
   const c = obj(o.check);
   if (c && Array.isArray(c.fragen)) a.check = { fragen: CHECK_FRAGEN.map(f => f.id).filter(id => (c.fragen as unknown[]).includes(id)) };
   const e = obj(o.essen);
@@ -180,6 +181,8 @@ export function alltagAnwenden(alt: AlltagStand, ops: unknown, heute: string): A
     if (o.op === 'schlaf') a = { ...a, schlaf: schlafAnwenden(a.schlaf, o.felder, heute) };
     else if (o.op === 'check') {
       if (!Array.isArray(o.fragen)) throw new AlltagFehler(400, 'check: fragen (Liste) fehlt.');
+      const abgeloest = o.fragen.find(id => istAbgeloest(id));
+      if (abgeloest !== undefined) throw new AlltagFehler(400, `check: ${abgeloestText(String(abgeloest))}`);
       const unbekannt = o.fragen.find(id => !istCheckFrage(id));
       if (unbekannt !== undefined) throw new AlltagFehler(400, `check: unbekannte Frage „${String(unbekannt).slice(0, 40)}“.`);
       const ids = CHECK_FRAGEN.map(f => f.id).filter(id => (o.fragen as unknown[]).includes(id));
