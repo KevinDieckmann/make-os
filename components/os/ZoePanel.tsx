@@ -27,15 +27,26 @@ import Link from 'next/link';
 // 09.10. (Paket 4a): das Gedächtnis ist der ZOE-Thread der Person (`agenten-faeden--<person>`) — derselbe Thread wie im Empfang und auf
 // der Agenten-Seite. Gesendet wird mit `zoeFaden`; der Server liest den Verlauf aus dem Thread (nie aus dem Browser) und legt Frage und
 // Antwort selbst ab. Der alte Bestand `zoe-verlauf` wird beim ersten Lesen einmal übernommen (lib/agenten/zoe-faden.ts).
+//
+// 10.10. (Chat je Bereich, Auftrag: „ZOE unten so einstellen, dass sie den Chat immer passend zur Maske annimmt: im Sales der Head of Sales, im
+// Marketing der Head of Marketing usw. — und dann können wir immer zu ZOE umschalten“): der Chat nimmt den Head an, der zur Seite passt
+// (rein: lib/agenten/kontext-head.ts; welche Heads die Person nutzen DARF, sagt der Server: GET /api/agenten/chat). Mit einem Head spricht
+// er über den vorhandenen Thread-Weg (POST /api/agenten/faden `senden` — derselbe Thread wie auf der Agenten-Seite, mit `space` und dem
+// Bezug der Seite, nur Kennungen); „↔ ZOE“ schaltet um, beide Verläufe bleiben. Einstellung je Person (Verlauf ☰): „Passender Head“ oder
+// „Immer ZOE“. Ein Seitenwechsel tauscht den Ansprechpartner erst, wenn keine Antwort mehr läuft.
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
-import { Chip, Knopf, feld, LEUCHT } from './ui';
+import { Chip, Knopf, Segmente, feld, LEUCHT } from './ui';
+import { KuerzelKugel, headFarbe } from './agenten/Avatar';
+import { useChatKontext } from './chat/useChatKontext';
+import { ansprechpartnerFuer, CHAT_WAHL_TEXT, type ChatHead, type ChatWahl, type PartnerSchluessel } from '@/lib/agenten/kontext-head';
+import { WEG } from '@/lib/wege';
 import { useSpace } from '@/hooks/useSpace';
 import { useStimme } from '@/hooks/useStimme';
 import { fuerStimme, titelAus, wannText } from '@/lib/make-one/zoe-verlauf';
-import type { FadenKurz, Nachricht } from '@/lib/agenten/typen';
+import type { AgentRef, FadenKurz, Nachricht } from '@/lib/agenten/typen';
 import { ZOE_FRAGEN_EREIGNIS, CRM_BEZUG_LABEL, crmBezugAus, type CrmBezug } from '@/lib/zoe/crm-bezug';
 import { ZoeKugel, type ZoeZustand } from './kugel';
 import { KUGEL } from '@/lib/make-one/design';
@@ -64,7 +75,12 @@ interface Beleg {
 }
 
 interface Handoff { agent: string; name: string; href: string; why: string }
-interface Msg { role: 'user' | 'kimmi'; text: string; zeit?: string; handoffs?: Handoff[]; ran?: { agent: string; ok: boolean }[] }
+interface Msg { role: 'user' | 'kimmi'; text: string; zeit?: string; handoffs?: Handoff[]; ran?: { agent: string; ok: boolean; gestapelt?: boolean }[] }
+/** Ein Gespräch je Ansprechpartner (ZOE bzw. ein Head) — Umschalten behält beide (10.10.). `stand` = Stand des Threads (Head: 409 statt still). */
+interface Gespraech { convo: Msg[]; id: string; stand: string; liste: FadenKurz[]; geladen: boolean }
+const LEER_G: Gespraech = { convo: [], id: '', stand: '', liste: [], geladen: false };
+const ZOE_VORSCHLAEGE = ['Plane meinen Tag', 'Was ist heute wichtig?', 'Was kann ich abgeben?'];
+const HEAD_VORSCHLAEGE = ['Was ist hier gerade wichtig?', 'Was schlägst du als Nächstes vor?'];
 interface Fenster { offen: boolean; w: number; h: number; right: number; bottom: number }
 
 // ZOE-Lila für alles, was er selbst ist; Teal für das, was man drückt.
@@ -126,10 +142,11 @@ const ausFaden = (ns: readonly Nachricht[]): Msg[] => ns.map(n => ({
   role: n.rolle === 'person' ? 'user' as const : 'kimmi' as const,
   text: n.text,
   zeit: n.zeit,
-  ...(n.werkzeuge?.length ? { ran: n.werkzeuge.map(w => ({ agent: w.name, ok: w.ok })) } : {}),
+  ...(n.werkzeuge?.length ? { ran: n.werkzeuge.map(w => ({ agent: w.name, ok: w.ok, ...(w.gestapelt ? { gestapelt: true } : {}) })) } : {}),
 }));
 const ZOE_FAEDEN = '/api/agenten/faden?agent=zoe';
-const ladeZoeFaden = async (id: string): Promise<{ nachrichten: Nachricht[]; stand: string } | null> => {
+/** Einen eigenen Thread laden (ZOE oder Head) — Nachrichten und Stand. */
+const ladeThread = async (id: string): Promise<{ nachrichten: Nachricht[]; stand: string } | null> => {
   try {
     const r = await fetch(`/api/agenten/faden?id=${encodeURIComponent(id)}`);
     if (!r.ok) return null;
@@ -145,15 +162,16 @@ export function ZoePanel() {
   const { space: aktiverSpace } = useSpace();
   const stapelSicht = aktiverSpace;
   const [fenster, setFenster] = useState<Fenster>(STANDARD);
-  const [convo, setConvo] = useState<Msg[]>([]);
   const [ask, setAsk] = useState('');
   const [thinking, setThinking] = useState(false);
   // Streaming (09.10.): der Text, während er entsteht, und das laufende Werkzeug — bis die fertige Antwort da ist.
   const [entsteht, setEntsteht] = useState<Entstehend>(ENTSTEHEND_LEER);
   // Wie viel vorbereitet ist und auf die Person wartet (kommt aus jeder Antwort).
   const [stapelOffen, setStapelOffen] = useState(0);
-  // „ZOE fragen“ aus der Markttraktion (28.09., C7): Art + Kennung geht mit jeder Nachricht mit, bis man ihn löst.
-  const [bezug, setBezug] = useState<CrmBezug | null>(null);
+  // „ZOE fragen“ aus der Markttraktion (28.09., C7): Art + Kennung geht mit jeder Nachricht mit, bis man ihn löst. Seit 10.10. kommt der Bezug
+  // auch von der Seite selbst (offener Kontakt, Firma, Deal, Angebot, Mandat — `seitenBezug`); ✕ löst ihn bis zum nächsten Seitenwechsel.
+  const [bezugGewaehlt, setBezugGewaehlt] = useState<CrmBezug | null>(null);
+  const [bezugWeg, setBezugWeg] = useState<string | null>(null);
   // Beleg an ZOE geben: lesen → zeigen → erst nach Bestätigung buchen.
   const dateiWahl = useRef<HTMLInputElement>(null);
   const [belegLaeuft, setBelegLaeuft] = useState<string | null>(null);
@@ -163,10 +181,11 @@ export function ZoePanel() {
   const [ueberDatei, setUeberDatei] = useState(false);
   // Eröffnung ohne Lagebericht: neutral, ohne feste Anrede — den Namen kennt ZOE erst aus dem Konto (`anredeSatz` im Gespräch).
   const [briefing, setBriefing] = useState('**Ich bin da.** Frag mich, lass mich planen, oder schick mich los.');
-  // Gedächtnis
-  // Der ZOE-Thread dieses Gesprächs ('' = beim nächsten Senden ein neuer) und alle ZOE-Threads der Person.
-  const [gespraechId, setGespraechId] = useState('');
-  const [alle, setAlle] = useState<FadenKurz[]>([]);
+  // Gedächtnis — je Ansprechpartner (10.10.): der Thread dieses Gesprächs ('' = beim nächsten Senden ein neuer) und alle Threads mit ihm.
+  const [gs, setGs] = useState<Partial<Record<PartnerSchluessel, Gespraech>>>({});
+  const gsRef = useRef(gs);
+  gsRef.current = gs;
+  const aendere = useCallback((key: PartnerSchluessel, fn: (x: Gespraech) => Gespraech) => setGs(a => ({ ...a, [key]: fn(a[key] ?? LEER_G) })), []);
   const [zeigeVerlauf, setZeigeVerlauf] = useState(false);
   const [heute, setHeute] = useState('');
   // Stimme
@@ -174,7 +193,7 @@ export function ZoePanel() {
   const [freihand, setFreihand] = useState(false);
 
   const convoRef = useRef<HTMLDivElement>(null);
-  const beruehrt = useRef(false);   // schon getippt? dann nichts überschreiben
+  const beruehrt = useRef(new Set<PartnerSchluessel>());   // schon getippt? dann nichts überschreiben (je Ansprechpartner)
   const freihandRef = useRef(false);
   freihandRef.current = freihand;
   const vorlesenRef = useRef(false);
@@ -183,6 +202,42 @@ export function ZoePanel() {
   const zug = useRef<{ art: 'groesse' | 'ort'; x: number; y: number; w: number; h: number; right: number; bottom: number } | null>(null);
 
   const stimme = useStimme(t => { if (!thinking) send(t); });
+
+  // ── Ansprechpartner (10.10., Chat je Bereich): der passende Head der Seite oder ZOE ──
+  // Der Kontext wird erst geladen, wenn der Chat einmal offen war. Der Server liefert nur Heads, die die Person sehen darf (lib/agenten/sicht.ts);
+  // `manuell` = der Umschalter „↔“ im Kopf (gilt nur für den Head, für den er gesetzt wurde). Gewechselt wird nie während einer Antwort.
+  const [einmalOffen, setEinmalOffen] = useState(false);
+  useEffect(() => { if (fenster.offen) setEinmalOffen(true); }, [fenster.offen]);
+  const kx = useChatKontext(einmalOffen);
+  const [manuell, setManuell] = useState<{ ziel: 'zoe' | 'head'; fuer: string | null } | null>(null);
+  // Ein anderer Bereich (anderer Head der Seite) beginnt wieder mit der eigenen Wahl — der Umschalter gilt nur, solange man im Bereich bleibt.
+  useEffect(() => { setManuell(m => (m && m.fuer === kx.vorschlag ? m : null)); }, [kx.vorschlag]);
+  const ap = ansprechpartnerFuer({ vorschlag: kx.vorschlag, heads: kx.heads, wahl: kx.wahl, fehlt: kx.fehlt, manuell });
+  const [aktiv, setAktiv] = useState<{ key: PartnerSchluessel; head: ChatHead | null }>({ key: 'zoe', head: null });
+  const zielHead = ap.partner === 'zoe' ? null : ap.angebot;
+  useEffect(() => {
+    if (thinking) return; // laufende Antwort nie abbrechen — der Wechsel kommt, sobald sie fertig ist
+    setAktiv(a => (a.key === ap.partner && a.head?.id === zielHead?.id ? a : { key: ap.partner, head: zielHead }));
+  }, [ap.partner, zielHead, thinking]);
+  const kopfHead = aktiv.head;
+  const partnerName = kopfHead ? kopfHead.name : 'ZOE';
+  /** Farbe des Ansprechpartners: ZOE-Lila bzw. die Farbe des Heads aus dem Katalog. */
+  const PF = kopfHead ? headFarbe(kopfHead.farbe) : J;
+  const g = gs[aktiv.key] ?? LEER_G;
+  const convo = g.convo, gespraechId = g.id, alle = g.liste;
+  const vorschlagRef = useRef<string | null>(null);
+  vorschlagRef.current = kx.vorschlag;
+  const umschalten = () => {
+    if (thinking || !ap.angebot) return;
+    stimme.schweig(); stimme.hoerAuf();
+    setZeigeVerlauf(false);
+    setManuell({ ziel: kopfHead ? 'zoe' : 'head', fuer: kx.vorschlag });
+  };
+  const wahlSetzen = (w: ChatWahl) => { setManuell(null); void kx.setzeWahl(w); };
+  // Bezug: gewählt („Mit … sprechen“, „ZOE fragen“) vor der Seite; ein Seitenwechsel nimmt den gewählten zurück.
+  useEffect(() => { setBezugGewaehlt(null); }, [kx.seite]);
+  const bezug: CrmBezug | null = bezugGewaehlt ?? (kx.bezug && bezugWeg !== kx.seite ? kx.bezug : null);
+  const bezugLoesen = () => { setBezugGewaehlt(null); setBezugWeg(kx.seite); };
 
   // ── Fenster (lokal) ──
   useEffect(() => {
@@ -197,9 +252,14 @@ export function ZoePanel() {
   useEffect(() => { try { localStorage.setItem(MERKER_FENSTER, JSON.stringify(fenster)); } catch { /* egal */ } }, [fenster]);
   useEffect(() => {
     const fragen = (e: Event) => {
-      const b = crmBezugAus((e as CustomEvent).detail);
-      if (!b) return;
-      setBezug(b); setZeigeVerlauf(false);
+      const detail = (e as CustomEvent).detail;
+      const b = crmBezugAus(detail);
+      // `ziel` (10.10.): „Mit <Head> sprechen“ öffnet den passenden Head der Seite (`seite`), „ZOE fragen“ ZOE (`zoe`) — ohne Angabe wie bisher.
+      const ziel = detail && typeof detail === 'object' ? (detail as { ziel?: unknown }).ziel : undefined;
+      if (!b && ziel !== 'seite' && ziel !== 'zoe') return;
+      if (b) setBezugGewaehlt(b);
+      if (ziel === 'seite' || ziel === 'zoe') setManuell({ ziel: ziel === 'seite' ? 'head' : 'zoe', fuer: vorschlagRef.current });
+      setZeigeVerlauf(false);
       setFenster(f => ({ ...f, offen: true }));
     };
     window.addEventListener(ZOE_FRAGEN_EREIGNIS, fragen);
@@ -211,14 +271,39 @@ export function ZoePanel() {
   useEffect(() => {
     fetch(ZOE_FAEDEN).then(r => r.json()).then(async (d: { faeden?: FadenKurz[] }) => {
       const fs = Array.isArray(d.faeden) ? d.faeden : [];
-      setAlle(fs);
-      if (beruehrt.current || !fs[0]) return;
-      const f = await ladeZoeFaden(fs[0].id);
-      if (beruehrt.current || !f?.nachrichten.length) return;
-      setConvo(ausFaden(f.nachrichten));
-      setGespraechId(fs[0].id);
+      aendere('zoe', x => ({ ...x, liste: fs, geladen: true }));
+      if (beruehrt.current.has('zoe') || !fs[0]) return;
+      const f = await ladeThread(fs[0].id);
+      if (beruehrt.current.has('zoe') || !f?.nachrichten.length) return;
+      aendere('zoe', x => ({ ...x, convo: ausFaden(f.nachrichten), id: fs[0].id, stand: f.stand }));
     }).catch(() => {});
-  }, []);
+  }, [aendere]);
+
+  // ── Ein Head als Ansprechpartner (10.10.): sein jüngster Thread dieser Sicht kommt zurück — derselbe wie auf der Agenten-Seite. Threads mit
+  // laufendem bzw. eingereihtem Lauf (Hintergrundaufgabe) bleiben dort; ohne passenden Thread beginnt das nächste Senden einen neuen. ──
+  useEffect(() => {
+    const h = aktiv.head;
+    if (!fenster.offen || !h) return;
+    const key = aktiv.key;
+    if (gsRef.current[key]?.geladen) return;
+    aendere(key, x => ({ ...x, geladen: true }));
+    void (async () => {
+      try {
+        const r = await fetch(`/api/agenten/faden?agent=${encodeURIComponent(key)}&space=${h.bereich}`);
+        if (!r.ok) throw new Error(String(r.status));
+        const d = await r.json() as { faeden?: FadenKurz[] };
+        const fs = (Array.isArray(d.faeden) ? d.faeden : []).filter(f => f.agent.art === 'head');
+        aendere(key, x => ({ ...x, liste: fs }));
+        const weiter = fs.find(f => f.status !== 'laeuft' && !f.eingereiht);
+        if (!weiter || beruehrt.current.has(key)) return;
+        const f = await ladeThread(weiter.id);
+        if (!f || beruehrt.current.has(key)) return;
+        aendere(key, x => ({ ...x, convo: ausFaden(f.nachrichten), id: weiter.id, stand: f.stand }));
+      } catch {
+        aendere(key, x => ({ ...x, geladen: false })); // beim nächsten Öffnen noch einmal
+      }
+    })();
+  }, [fenster.offen, aktiv, aendere]);
 
   /** Gespräch sofort auf die Platte — Regel: gleicher Stand beim nächsten Reingucken. */
   /** Datei einlesen und von ZOE auswerten lassen. Schreibt noch nichts. */
@@ -268,12 +353,13 @@ export function ZoePanel() {
   }
 
   /** Die Liste nachziehen — gespeichert hat der Server (Frage und Antwort stehen im Thread). */
-  const merke = (id: string, frage: string) => {
+  const merke = (key: PartnerSchluessel, id: string, frage: string) => {
     if (!id) return;
     const jetzt = new Date().toISOString();
-    setAlle(a => {
-      const alt = a.find(x => x.id === id);
-      return [{ ...(alt ?? { id, titel: titelAus(frage), agent: { art: 'zoe' as const }, status: 'offen' as const }), aktualisiert: jetzt }, ...a.filter(x => x.id !== id)];
+    const agent: AgentRef = key === 'zoe' ? { art: 'zoe' } : { art: 'head', headId: key.slice(5) };
+    aendere(key, x => {
+      const alt = x.liste.find(f => f.id === id);
+      return { ...x, liste: [{ ...(alt ?? { id, titel: titelAus(frage), agent, status: 'offen' as const }), aktualisiert: jetzt }, ...x.liste.filter(f => f.id !== id)] };
     });
   };
 
@@ -326,11 +412,14 @@ export function ZoePanel() {
     document.body.style.cursor = art === 'groesse' ? 'nwse-resize' : 'grabbing';
   };
 
-  const send = async (q: string) => {
-    beruehrt.current = true;
+  /** Senden an den, der gerade antwortet: ZOE (ihr Thread über /api/kimmi) oder den Head der Seite (sein Thread über /api/agenten/faden). */
+  const send = (q: string) => (aktiv.head ? sendHead(q, aktiv.head, aktiv.key) : sendZoe(q));
+
+  const sendZoe = async (q: string) => {
+    beruehrt.current.add('zoe');
     setAsk(''); setThinking(true); setZeigeVerlauf(false);
     const meins: Msg = { role: 'user', text: q, zeit: new Date().toISOString() };
-    setConvo(c => [...c, meins]);
+    aendere('zoe', x => ({ ...x, convo: [...x.convo, meins] }));
     setEntsteht(ENTSTEHEND_LEER);
     try {
       // Der Verlauf liegt im ZOE-Thread auf dem Server — hier geht nur die neue Nachricht mit (Paket 4a). Mit Strom (09.10.): der Text
@@ -343,27 +432,77 @@ export function ZoePanel() {
       if ((r.body as { ok?: unknown } | null)?.ok === false) setAsk(a => a || q);
       if (r.unterbrochen) {
         // Abgerissen: der Server hat nichts Halbes gespeichert — den Thread neu laden, statt still noch einmal zu senden (Kosten).
-        const f = gespraechId ? await ladeZoeFaden(gespraechId) : null;
-        setConvo(c => [...(f ? ausFaden(f.nachrichten) : c), { role: 'kimmi', text: 'Die Verbindung ist abgerissen — fehlt meine Antwort, frag bitte noch einmal.', zeit: new Date().toISOString() }]);
+        const f = gespraechId ? await ladeThread(gespraechId) : null;
+        aendere('zoe', x => ({ ...x, convo: [...(f ? ausFaden(f.nachrichten) : x.convo), { role: 'kimmi', text: 'Die Verbindung ist abgerissen — fehlt meine Antwort, frag bitte noch einmal.', zeit: new Date().toISOString() }] }));
         return;
       }
       const d = (r.body ?? {}) as { reply?: string; stapelOffen?: unknown; fadenId?: unknown; handoffs?: unknown; ran?: unknown };
       // Neu fragen statt die Zahl der Antwort zu nehmen (09.10. spät): sie zählt für den Bereich des Gesprächs, der Zähler hier für die Sicht.
       if (typeof d.stapelOffen === 'number') stapelZaehlen();
-      if (typeof d.fadenId === 'string' && d.fadenId) { setGespraechId(d.fadenId); merke(d.fadenId, q); }
+      const fid = typeof d.fadenId === 'string' ? d.fadenId : '';
+      if (fid) { aendere('zoe', x => ({ ...x, id: fid })); merke('zoe', fid, q); }
       const antwort: Msg = {
         role: 'kimmi', text: d.reply ?? 'Ich habe gerade keine Antwort.', zeit: new Date().toISOString(),
         handoffs: Array.isArray(d.handoffs) ? d.handoffs : undefined,
         ran: Array.isArray(d.ran) && d.ran.length ? d.ran : undefined,
       };
-      setConvo(c => [...c, antwort]);
+      aendere('zoe', x => ({ ...x, convo: [...x.convo, antwort] }));
       if (vorlesenRef.current) {
         stimme.lies(fuerStimme(antwort.text), () => { if (freihandRef.current) stimme.hoerZu(); });
       }
     } catch {
       const fehler: Msg = { role: 'kimmi', text: 'Ich konnte gerade nicht antworten — versuch es nochmal.', zeit: new Date().toISOString() };
-      setConvo(c => [...c, fehler]);
+      aendere('zoe', x => ({ ...x, convo: [...x.convo, fehler] }));
       setAsk(a => a || q); // keine Verbindung: die Frage bleibt im Feld (Härtetest 09.10.)
+    } finally {
+      setThinking(false);
+      setEntsteht(ENTSTEHEND_LEER);
+    }
+  };
+
+  /**
+   * An den Head der Seite (10.10.): derselbe Weg wie auf der Agenten-Seite (POST /api/agenten/faden `senden`, mit Strom) — kein zweiter Chat-Weg,
+   * kein Modellaufruf daneben. Mit `space` (der Server lehnt einen Head anderer Sicht ab) und dem Bezug der Seite (nur Art + Kennung). Der
+   * Verlauf kommt aus der Antwort des Servers (Thread); scheitert der Zug, nimmt der Server die Nachricht zurück und die Frage kommt ins Feld.
+   */
+  const sendHead = async (q: string, head: ChatHead, key: PartnerSchluessel) => {
+    beruehrt.current.add(key);
+    setAsk(''); setThinking(true); setZeigeVerlauf(false);
+    const meins: Msg = { role: 'user', text: q, zeit: new Date().toISOString() };
+    const vorher = gsRef.current[key] ?? LEER_G;
+    aendere(key, x => ({ ...x, convo: [...x.convo, meins] }));
+    setEntsteht(ENTSTEHEND_LEER);
+    const hinweis = (text: string): Msg => ({ role: 'kimmi', text, zeit: new Date().toISOString() });
+    try {
+      const r = await postMitStrom('/api/agenten/faden', {
+        aktion: 'senden', agent: { art: 'head', headId: head.id }, text: q, ...(vorher.id ? { fadenId: vorher.id, stand: vorher.stand } : {}),
+        space: head.bereich, anfrageId: zufallsUuid(), ...(bezug ? { bezug } : {}),
+      }, e => setEntsteht(s => entstehendNach(s, e)));
+      if (r.netz) throw new Error('netz');
+      const d = (r.body ?? {}) as { ok?: unknown; faden?: { id?: unknown; nachrichten?: Nachricht[] }; stand?: unknown; fehler?: unknown; stapelOffen?: unknown };
+      if (r.unterbrochen) {
+        const f = vorher.id ? await ladeThread(vorher.id) : null;
+        aendere(key, x => ({ ...x, convo: [...(f ? ausFaden(f.nachrichten) : x.convo), hinweis('Die Verbindung ist abgerissen — fehlt die Antwort, frag bitte noch einmal.')], ...(f ? { stand: f.stand } : {}) }));
+        return;
+      }
+      const fid = typeof d.faden?.id === 'string' ? d.faden.id : '';
+      const nachrichten = Array.isArray(d.faden?.nachrichten) ? d.faden.nachrichten : null;
+      if (r.status >= 200 && r.status < 300 && d.ok !== false && fid && nachrichten) {
+        aendere(key, x => ({ ...x, convo: ausFaden(nachrichten), id: fid, stand: typeof d.stand === 'string' ? d.stand : '' }));
+        merke(key, fid, q);
+        if (typeof d.stapelOffen === 'number') stapelZaehlen();
+        const letzte = [...nachrichten].reverse().find(n => n.rolle !== 'person');
+        if (letzte && vorlesenRef.current) stimme.lies(fuerStimme(letzte.text), () => { if (freihandRef.current) stimme.hoerZu(); });
+        return;
+      }
+      // Nicht gelaufen (Sperre, Not-Aus, Budget, Stand veraltet …): der Server hat die Nachricht nicht behalten — der Satz erscheint, die Frage
+      // kommt zurück ins Feld. Kam der aktuelle Thread mit (409), gilt er.
+      const text = typeof d.fehler === 'string' && d.fehler ? d.fehler : 'Gerade keine Antwort — versuch es bitte noch einmal.';
+      aendere(key, x => ({ ...x, convo: [...(nachrichten ? ausFaden(nachrichten) : x.convo.filter(m => m !== meins)), hinweis(text)], ...(nachrichten && fid ? { id: fid, stand: typeof d.stand === 'string' ? d.stand : x.stand } : {}) }));
+      setAsk(a => a || q);
+    } catch {
+      aendere(key, x => ({ ...x, convo: [...x.convo.filter(m => m !== meins), hinweis(`${head.name} konnte gerade nicht antworten — versuch es nochmal.`)] }));
+      setAsk(a => a || q);
     } finally {
       setThinking(false);
       setEntsteht(ENTSTEHEND_LEER);
@@ -382,26 +521,27 @@ export function ZoePanel() {
 
   const neuesGespraech = () => {
     stimme.schweig(); stimme.hoerAuf();
-    setConvo([]); setGespraechId(''); setZeigeVerlauf(false);
-    beruehrt.current = true;
+    aendere(aktiv.key, x => ({ ...x, convo: [], id: '', stand: '' }));
+    setZeigeVerlauf(false);
+    beruehrt.current.add(aktiv.key);
   };
 
-  const oeffne = async (g: FadenKurz) => {
+  const oeffne = async (t: FadenKurz) => {
     stimme.schweig(); stimme.hoerAuf();
-    beruehrt.current = true;
+    const key = aktiv.key;
+    beruehrt.current.add(key);
     setZeigeVerlauf(false);
-    const f = await ladeZoeFaden(g.id);
-    setConvo(f ? ausFaden(f.nachrichten) : []); setGespraechId(g.id);
+    const f = await ladeThread(t.id);
+    aendere(key, x => ({ ...x, convo: f ? ausFaden(f.nachrichten) : [], id: t.id, stand: f?.stand ?? '' }));
   };
 
   /** Löschen braucht den Stand des Threads (409 statt still überschreiben) — erst lesen, dann löschen. */
   const loesche = async (id: string) => {
-    const f = await ladeZoeFaden(id);
+    const f = await ladeThread(id);
     if (!f) return;
     const r = await fetch('/api/agenten/faden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'loeschen', fadenId: id, stand: f.stand }) }).catch(() => null);
     if (!r?.ok) return;
-    setAlle(a => a.filter(g => g.id !== id));
-    if (id === gespraechId) { setConvo([]); setGespraechId(''); }
+    aendere(aktiv.key, x => ({ ...x, liste: x.liste.filter(t => t.id !== id), ...(id === x.id ? { convo: [], id: '', stand: '' } : {}) }));
   };
 
   const kugelZustand: ZoeZustand = stimme.hoert ? 'hoert' : stimme.spricht ? 'spricht' : thinking ? 'denkt' : 'ruht';
@@ -409,7 +549,7 @@ export function ZoePanel() {
   // ── Zu: das kleine pulsierende Icon, das überall mitgeht ──
   if (!fenster.offen) {
     return (
-      <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label="ZOE öffnen" title="ZOE" className="zoe-fab"
+      <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label={`${partnerName} öffnen`} title={partnerName} className="zoe-fab"
         style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: 'none', background: FLAECHE, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${KUGEL.smaragd}2E, inset 0 1px 0 rgba(255,255,255,.08)` }}>
         <ZoeSymbol size={38} zustand={kugelZustand} puls />
         {(thinking || stimme.hoert || stimme.spricht) && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung, boxShadow: `0 0 8px ${stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung}33` }} />}
@@ -444,12 +584,24 @@ export function ZoePanel() {
       {/* Kopf — am Kopf packst du das Fenster und schiebst es, wohin du willst */}
       <div onPointerDown={zugStart('ort')}
         style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px 10px 20px', borderBottom: `1px solid ${HAAR}`, background: 'rgba(255,255,255,.03)', cursor: 'grab', touchAction: 'none' }}>
-        <ZoeSymbol size={28} zustand={kugelZustand} puls={stimme.hoert || stimme.spricht} />
-        <div style={{ minWidth: 0, flex: '0 0 auto' }}>
-          <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, letterSpacing: '.06em' }}>ZOE</div>
+        {/* Ansprechpartner (10.10.): der Head der Seite als Kürzel-Kugel in seiner Farbe — sonst ZOE als Lichtkugel. */}
+        {kopfHead
+          ? <KuerzelKugel name={kopfHead.name} farbe={PF} bereich={kopfHead.bereich} groesse={28} />
+          : <ZoeSymbol size={28} zustand={kugelZustand} puls={stimme.hoert || stimme.spricht} />}
+        <div style={{ minWidth: 0, flex: '0 1 auto' }}>
+          <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, fontWeight: 700, letterSpacing: kopfHead ? '.02em' : '.06em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{partnerName}</div>
           <div style={{ fontSize: TYP.mikro, fontWeight: 600, color: zustandFarbe, whiteSpace: 'nowrap' }}>{zustand}</div>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }} onPointerDown={e => e.stopPropagation()}>
+          {/* Umschalter (10.10.): zwischen dem Head der Seite und ZOE — beide Verläufe bleiben. Während einer Antwort gesperrt. */}
+          {ap.angebot && (
+            <button onClick={umschalten} disabled={thinking} className="zoe-umschalten"
+              title={kopfHead ? `Zu ZOE wechseln — das Gespräch mit ${kopfHead.name} bleibt` : `Zu ${ap.angebot.name} wechseln — das Gespräch mit ZOE bleibt`}
+              aria-label={kopfHead ? 'Zu ZOE wechseln' : `Zu ${ap.angebot.name} wechseln`}
+              style={{ ...chip(kopfHead ? J : headFarbe(ap.angebot.farbe)), cursor: thinking ? 'default' : 'pointer' }}>
+              ↔ {kopfHead ? 'ZOE' : ap.angebot.kurz}
+            </button>
+          )}
           {/* Gesprächs-Modus: ein Knopf für alles — Mikrofon an, Antwort wird
               vorgelesen, danach hört er von selbst wieder zu. Vorgabe:
               „damit ich eine echte Konversation aufbauen kann." */}
@@ -491,19 +643,37 @@ export function ZoePanel() {
         </div>
       </div>
 
-      {/* Bezug aus der Markttraktion (28.09., C7): ZOE liest dort selbst nach und schlägt nur vor. */}
+      {/* Warum hier ZOE statt des passenden Heads antwortet (10.10.) — z. B. die eigene Gesundheits-Einwilligung fehlt. */}
+      {kx.bereit && ap.hinweis && !kopfHead && (
+        <div role="note" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${HAAR}`, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}>
+          <span style={{ flex: 1, minWidth: 0 }}>{ap.hinweis}</span>
+          {ap.einwilligung && <Link href={WEG.datenschutz('gesundheit')} style={{ color: C.aktiv, textDecoration: 'none', whiteSpace: 'nowrap', fontWeight: 600 }}>Einwilligung ›</Link>}
+        </div>
+      )}
+
+      {/* Bezug (28.09., C7; seit 10.10. auch von der Seite selbst): nur Art + Kennung — ZOE bzw. der Head liest selbst nach und schlägt nur vor. */}
       {bezug && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${HAAR}`, fontSize: TYP.bedien, color: C.inkDim }}>
-          <span style={{ color: J, fontWeight: 700 }}>Bezug</span>
+          <span style={{ color: PF, fontWeight: 700 }}>Bezug</span>
           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{CRM_BEZUG_LABEL[bezug.art]}{bezug.id ? ` · ${bezug.id}` : ''}</span>
-          <button onClick={() => setBezug(null)} title="Bezug lösen" aria-label="Bezug lösen" style={{ background: 'transparent', border: 0, color: C.inkLeise, cursor: 'pointer', fontSize: 13 }}>✕</button>
+          <button onClick={bezugLoesen} title="Bezug lösen" aria-label="Bezug lösen" style={{ background: 'transparent', border: 0, color: C.inkLeise, cursor: 'pointer', fontSize: 13 }}>✕</button>
         </div>
       )}
 
       {/* Verlauf — alle Gespräche, jederzeit wieder aufmachbar */}
       {zeigeVerlauf && (
         <div style={{ flex: 1, overflowY: 'auto', background: 'transparent' }}>
-          <div style={{ ...lbl, padding: '12px 16px 6px' }}>Verlauf · {alle.length} {alle.length === 1 ? 'Gespräch' : 'Gespräche'}</div>
+          {/* Einstellung je Person (10.10.): wer im Chat unten antwortet — der passende Head der Seite oder immer ZOE. */}
+          <div style={{ padding: '12px 16px 4px', display: 'grid', gap: 8 }}>
+            <div style={lbl}>Im Chat antwortet</div>
+            <Segmente liste={[{ id: 'seite' as ChatWahl, label: CHAT_WAHL_TEXT.seite }, { id: 'zoe' as ChatWahl, label: CHAT_WAHL_TEXT.zoe }]} aktiv={kx.wahl} onWahl={wahlSetzen} />
+            {kopfHead && (
+              <Link href={WEG.agenten({ h: kopfHead.id, ...(gespraechId ? { f: gespraechId } : {}) })} style={{ color: C.aktiv, fontSize: TYP.bedien, textDecoration: 'none', fontWeight: 600 }}>
+                {kopfHead.name} im Agenten-Bereich öffnen ›
+              </Link>
+            )}
+          </div>
+          <div style={{ ...lbl, padding: '12px 16px 6px' }}>Verlauf mit {partnerName} · {alle.length} {alle.length === 1 ? 'Gespräch' : 'Gespräche'}</div>
           {!alle.length && <div style={{ padding: '18px 16px', fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55 }}>Noch nichts gespeichert. Ab jetzt bleibt jedes Gespräch hier liegen.</div>}
           {alle.map(g => (
             <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderTop: `1px solid rgba(255,255,255,.05)`, background: g.id === gespraechId ? `${J}14` : 'transparent' }}>
@@ -523,17 +693,24 @@ export function ZoePanel() {
       {/* Konversation */}
       {!zeigeVerlauf && (
       <div ref={convoRef} style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {convo.length === 0 && !thinking && (
+        {convo.length === 0 && !thinking && (kopfHead ? (
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div style={lbl}><span style={{ color: PF }}>{kopfHead.name}</span> · hier zuständig</div>
+            <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55 }}>{kopfHead.auftrag}</div>
+            {kopfHead.hinweis && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{kopfHead.hinweis}</div>}
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Was schreibt, liegt danach als Vorschlag unter Freigaben — erst dein Klick übernimmt. Mit „↔ ZOE“ sprichst du mit ZOE.</div>
+          </div>
+        ) : (
           <div>
             <div style={{ ...lbl, marginBottom: 8 }}><span style={{ color: J }}>ZOE</span> · Lagebericht</div>
             <Rich text={briefing} />
           </div>
-        )}
+        ))}
         {convo.map((m, i) => m.role === 'user'
           ? <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '88%', background: `${C.aktiv}22`, color: C.ink, borderRadius: 16, padding: '9px 13px', fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)' }}>{m.text}</div>
           : <div key={i} style={{ maxWidth: '96%' }}>
               <div style={{ ...lbl, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: J }}>ZOE</span>
+                <span style={{ color: PF }}>{partnerName}</span>
                 {/* KI-VO Art. 50 (05.10.): dezent als KI-erzeugt gekennzeichnet — wichtig, wenn Text weitergegeben wird. */}
                 <span title="KI-erzeugt (KI-VO Art. 50) — vor dem Weitergeben prüfen" aria-label="KI-erzeugt" style={{ color: C.inkLeise, fontWeight: 500 }}>· KI</span>
                 {stimme.kannSprechen && (
@@ -547,8 +724,8 @@ export function ZoePanel() {
               {m.ran && m.ran.length > 0 && (
                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 7 }}>
                   {m.ran.map((x, xi) => (
-                    <Chip key={xi} farbe={x.ok ? LEUCHT.gut : LEUCHT.kritisch}>
-                      <span style={{ fontFamily: SCHRIFT.mono, fontWeight: 600 }}>⚙ {x.agent}</span> {x.ok ? 'ausgeführt' : 'fehlgeschlagen'}
+                    <Chip key={xi} farbe={x.gestapelt ? LEUCHT.achtung : x.ok ? LEUCHT.gut : LEUCHT.kritisch}>
+                      <span style={{ fontFamily: SCHRIFT.mono, fontWeight: 600 }}>⚙ {x.agent}</span> {x.gestapelt ? 'als Vorschlag' : x.ok ? 'ausgeführt' : 'fehlgeschlagen'}
                     </Chip>
                   ))}
                 </div>
@@ -565,11 +742,11 @@ export function ZoePanel() {
         {/* Streaming (09.10.): der Text, während er entsteht, und „ruft … auf“ bei Werkzeugen — kein Tipp-Effekt, nur anhängen. */}
         {thinking && entsteht.text && (
           <div style={{ maxWidth: '96%' }}>
-            <div style={{ ...lbl, marginBottom: 5 }}><span style={{ color: J }}>ZOE</span></div>
+            <div style={{ ...lbl, marginBottom: 5 }}><span style={{ color: PF }}>{partnerName}</span></div>
             <Rich text={entsteht.text} />
           </div>
         )}
-        {thinking && <div role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}><span style={{ ...lbl, color: J }}>ZOE</span> {entsteht.werkzeug ? `ruft ${entsteht.werkzeug} auf …` : entsteht.text ? 'schreibt …' : 'denkt nach …'}</div>}
+        {thinking && <div role="status" aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkLeise }}><span style={{ ...lbl, color: PF }}>{partnerName}</span> {entsteht.werkzeug ? `ruft ${entsteht.werkzeug} auf …` : entsteht.text ? 'schreibt …' : 'denkt nach …'}</div>}
       </div>
       )}
 
@@ -639,11 +816,11 @@ export function ZoePanel() {
         <div style={{ ...feld, display: 'flex', alignItems: 'flex-end', gap: 9, padding: '8px 10px', boxShadow: stimme.hoert ? `0 0 0 1px ${LEUCHT.kritisch}, 0 0 14px ${LEUCHT.kritisch}33` : undefined }}>
           <textarea value={ask} onChange={e => setAsk(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && ask.trim() && !thinking) { e.preventDefault(); send(ask.trim()); } }}
-            placeholder={stimme.hoert ? 'Sprich einfach …' : 'Sprich mit ZOE …'} aria-label="Nachricht an ZOE" rows={fenster.h > 640 ? 2 : 1} disabled={thinking}
+            placeholder={stimme.hoert ? 'Sprich einfach …' : `Sprich mit ${partnerName} …`} aria-label={`Nachricht an ${partnerName}`} rows={fenster.h > 640 ? 2 : 1} disabled={thinking}
             style={{ flex: 1, minWidth: 0, background: 'transparent', border: 0, outline: 'none', color: C.ink, fontSize: 13.5, fontFamily: SCHRIFT.text, resize: 'none', lineHeight: 1.5, padding: '4px 2px' }} />
           {stimme.kannHoeren && (
             <button onClick={() => stimme.hoert ? stimme.hoerAuf() : stimme.hoerZu()} disabled={thinking}
-              aria-label={stimme.hoert ? 'Aufnahme beenden' : 'Sprechen'} title={stimme.hoert ? 'Fertig — abschicken' : 'Mikrofon: sprich mit ZOE'}
+              aria-label={stimme.hoert ? 'Aufnahme beenden' : 'Sprechen'} title={stimme.hoert ? 'Fertig — abschicken' : `Mikrofon: sprich mit ${partnerName}`}
               style={{ ...rund, cursor: thinking ? 'default' : 'pointer', background: stimme.hoert ? `${LEUCHT.kritisch}22` : 'rgba(255,255,255,.06)', color: stimme.hoert ? LEUCHT.kritisch : C.inkDim, boxShadow: stimme.hoert ? `0 0 12px ${LEUCHT.kritisch}33` : undefined }}>
               {stimme.hoert ? '■' : <Mikro farbe={C.inkDim} />}
             </button>
@@ -660,7 +837,7 @@ export function ZoePanel() {
             style={{ ...rund, background: thinking || !ask.trim() ? 'rgba(255,255,255,.08)' : C.aktiv, color: thinking || !ask.trim() ? C.inkLeise : C.grund, fontSize: 15, fontWeight: 700, cursor: thinking || !ask.trim() ? 'default' : 'pointer', boxShadow: thinking || !ask.trim() ? undefined : `0 6px 18px -6px ${C.aktiv}99` }}>↑</button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' }}>
-          {['Plane meinen Tag', 'Was ist heute wichtig?', 'Was kann ich abgeben?'].map(c => (
+          {(kopfHead ? HEAD_VORSCHLAEGE : ZOE_VORSCHLAEGE).map(c => (
             <button key={c} onClick={() => !thinking && send(c)} disabled={thinking}
               style={{ ...knopf(), cursor: thinking ? 'default' : 'pointer' }}>{c}</button>
           ))}

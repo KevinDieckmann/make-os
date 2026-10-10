@@ -46,6 +46,7 @@ import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 import { AngebotStart } from './angebot/AngebotStart';
 import { ZoeFragenKnopf } from './ZoeFragen';
 import { zoeBezugFuer } from '@/lib/zoe/crm-bezug';
+import { markttraktionHead } from '@/lib/agenten/kontext-head';
 
 // Die Reiterzeile (Aufräumen Etappe 3, 08.10.): links die Arbeit, in der Mitte die Schnellknöpfe, rechts die Welten Marketing und
 // Events. Reihenfolge und Zuordnung stehen in `REITER_ZEILE` (lib/crm/adresse.ts).
@@ -202,7 +203,8 @@ export function MarkttraktionSeite() {
     // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
     <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>
       {/* „ZOE fragen“ (28.09., C7): mit dem, was gerade offen ist (Kontakt, Firma, Deal, Angebot) oder dem Reiter — ZOE liest selbst nach, schlägt nur vor. */}
-      <ZoeFragenKnopf bezug={zoeBezugFuer(bereich, ansicht, kParam)} />
+      {/* Seit 10.10. (Chat je Bereich): „Mit <Head> sprechen“ — der Head des Reiters (Sales, Marketing, Event) im Chat unten; „↔ ZOE“ wechselt dort. */}
+      <ZoeFragenKnopf bezug={zoeBezugFuer(bereich, ansicht, kParam)} headId={markttraktionHead(`?s=${bereich}`)} />
       {/* „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (am Handy kürzer: „+ Aktivität“). */}
       <Knopf onClick={() => setErfassen(true)} ariaLabel="Aktivität hinzufügen" style={{ whiteSpace: 'nowrap' }}><span>+ Aktivität<span className="ui-nur-breit"> hinzufügen</span></span></Knopf>
       {/* Stammdaten (Qualität, Wertelisten, Datenschutz, Import & Export) — seit 08.10. hinter dem Zahnrad statt als Reiter. */}

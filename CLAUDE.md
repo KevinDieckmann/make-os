@@ -1913,6 +1913,18 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   - Dateiablage schreibt im Format des Modus (kompatibel „MKOSDAT1“, v2 „MKOSDAT2“ mit Schlüssel-ID + AAD Haushalt/Kennung,
     `lib/store/datei-huelle.mjs` `binImModus`), liest v1 + v2 über den Schlüsselring; Kennungen `d-<uuid>`.
 
+## Chat je Bereich — der Chat unten nimmt den passenden Head an (10.10., Branch `chat-je-bereich`, nur lokal; UPDATES.md)
+Kevin: „im Sales der Head of Sales, im Marketing der Head of Marketing usw. — und dann können wir immer zu ZOE umschalten.“
+- **EINE Zuordnung Seite → Head** rein in `lib/agenten/kontext-head.ts` (`SEITEN_REGELN`, `kontextHeadFuer`, `markttraktionHead`, `ansprechpartnerFuer`,
+  `seitenBezug`, `bezugSatzFuerHead`). Neue Seite mit Head = EINE Zeile dort (Kennung aus dem Katalog; Wächter prüft Head und Bereich). Ohne Head → ZOE;
+  ein Head nur in der Sicht seines Bereichs; Gesundheit einer anderen Person (`?fuer=`) → ZOE. Die Zuordnung im Browser ist nur Vorschlag.
+- **Server entscheidet:** `GET /api/agenten/chat?space=` (nur sichtbare Heads der Sicht über `lib/agenten/sicht.ts`, Sperren `chatSperren`, `fehlt` nur
+  die eigene Gesundheits-Einwilligung), `POST { wahl: 'seite' | 'zoe' }` → `agenten-faeden--<person>` › `chat` (kein neuer Bestand). Senden an einen Head
+  NUR über `/api/agenten/faden` `senden` mit `space` (anderer Bereich → 403) und `bezug` (nur Art + Kennung, `crmBezugAus`) — nie ein zweiter Chat-Weg.
+- **Oberfläche:** `ZoePanel` (Ansprechpartner im Kopf, „↔ ZOE“/„↔ <Head>“, je Ansprechpartner eigener Verlauf, Wechsel nie während einer Antwort, Wahl
+  unter ☰), Kontext `components/os/chat/useChatKontext.ts`; `ZoeFragenKnopf headId=…` = „Mit <Head> sprechen“ (Markttraktion, Firmenakte). Tests
+  `tests/chat-je-bereich.test.ts`.
+
 ## Agenten — Querliegendes
 - **Ereignisstelle (09.10., E1; ANALYSE_AGENTEN_DATEN.md):** Agenten erfahren von Änderungen nur über `ereignis(e)` (`lib/ereignisse/server.ts`, wirft nie,
   Dedup über deterministische Kennung, nach dem Speichern der Quelle) → Bestand `ereignisse--<haushalt>` (nur Kennungen, nie Betreff/Text/Beträge; Frist

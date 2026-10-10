@@ -29,7 +29,9 @@ import { neueKennung } from '@/lib/kennung';
 import { headDef } from './katalog';
 import { mitarbeiterFuerHead, skillsFuerHead, einstellungFuer, gedaechtnisFuer as werkstattGedaechtnis } from './skills-lesen';
 import { GRENZEN, TON_SATZ, agentSchluessel, type Anhang, type AgentRef, type AgentenEinstellung, type HeadDef, type KiKategorie, type LaufSchritt, type Merksatz, type Mitarbeiter, type ModelTier, type Nachricht, type Skill, type Umfang } from './typen';
-import { headSichtbar, kategorienFuer, type KontoSicht } from './sicht';
+import { headImBereich, headSichtbar, kategorienFuer, sichtBereichAus, type KontoSicht } from './sicht';
+import { bezugSatzFuerHead } from './kontext-head';
+import { crmBezugAus } from '@/lib/zoe/crm-bezug';
 import { kontextFuer } from './kontext';
 import { istMedienWerkzeug, medienAngebotErgaenzen, medienWerkzeugAusfuehren } from './medien-werkzeuge';
 import { istUnterlagenWerkzeug, unterlagenAngebotErgaenzen, unterlagenWerkzeugAusfuehren } from './unterlagen-werkzeug';
@@ -363,7 +365,12 @@ export async function agentLauf(e: LaufEingabe): Promise<LaufErgebnis> {
 
 // ── Chat: eine Nachricht an einen Head oder Mitarbeiter (POST /api/agenten/faden `senden`) ─────────────────────────────────
 
-export interface SendenAnfrage { agent: AgentRef; text: unknown; fadenId?: unknown; stand?: unknown; anhaenge?: unknown; hintergrund?: unknown; kostenGrenzeCent?: unknown }
+/**
+ * `space` (10.10., Chat je Bereich): die Sicht, aus der gesendet wird — ein Head anderen Bereichs → 403 (Privat-Sicht spricht nie mit einem
+ * Business-Head; lib/agenten/sicht.ts `headImBereich`). `bezug` (10.10.): der Kontext der Seite — nur Art + geprüfte Kennung wie „ZOE fragen“
+ * (lib/zoe/crm-bezug.ts `crmBezugAus`), nie Text Dritter; gilt nur für Heads mit Kategorie `crm` (lib/agenten/kontext-head.ts `bezugSatzFuerHead`).
+ */
+export interface SendenAnfrage { agent: AgentRef; text: unknown; fadenId?: unknown; stand?: unknown; anhaenge?: unknown; hintergrund?: unknown; kostenGrenzeCent?: unknown; space?: unknown; bezug?: unknown }
 export interface Antwort { status: number; body: Record<string, unknown> }
 const nein = (status: number, fehlerText: string, extra: Record<string, unknown> = {}): Antwort => ({ status, body: { ok: false, fehler: fehlerText, error: fehlerText, ...extra } });
 
@@ -393,6 +400,11 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
   if (a.agent.art === 'zoe') return nein(400, 'ZOE spricht nur über ihr Gespräch (ZOE-Thread über /api/kimmi) — nicht über den Head-Chat.');
   if ((a.agent.art !== 'head' && a.agent.art !== 'mitarbeiter') || typeof a.agent.headId !== 'string') return nein(400, 'Agent ungültig.');
   if (!headSichtbar(sicht, a.agent.headId)) return nein(403, 'Diesen Head siehst du nicht.');
+  if (a.space !== undefined && a.space !== null) {
+    const space = sichtBereichAus(typeof a.space === 'string' ? a.space : '?');
+    if (space === undefined) return nein(400, 'space ist privat oder business.');
+    if (!headImBereich(a.agent.headId, space)) return nein(403, 'Dieser Head gehört nicht in diese Sicht.');
+  }
   const agent: AgentRef = a.agent.art === 'head' ? { art: 'head', headId: a.agent.headId } : { art: 'mitarbeiter', headId: a.agent.headId, mitarbeiterId: String((a.agent as { mitarbeiterId?: unknown }).mitarbeiterId ?? '') };
   const { umfangFuer, handlerFuer, einreihen } = await import('./delegation');
   const u = await umfangFuer(person);
@@ -452,7 +464,10 @@ export async function senden(o: { sicht: KontoSicht; anfrage: SendenAnfrage; ori
     e = await agentLauf({
       sicht, umfang: u, faden, modus: 'chat', origin: o.origin, hintergrund: false, handler: handlerFuer(ctx), gedaechtnis: gedaechtnisFuer(bestand, agent), laufId,
       offeneFragen: offeneBretter.length > 0,
-      zusatz: offeneBretter.length ? `OFFENE FRAGEN DEINER MITARBEITER (Arbeitsstand):\n${offeneBretter.map(b => brettText(b, fremd)).join('\n\n')}` : undefined,
+      zusatz: [
+        agent.art === 'head' ? bezugSatzFuerHead(crmBezugAus(a.bezug), head) : '',
+        offeneBretter.length ? `OFFENE FRAGEN DEINER MITARBEITER (Arbeitsstand):\n${offeneBretter.map(b => brettText(b, fremd)).join('\n\n')}` : '',
+      ].filter(Boolean).join('\n\n') || undefined,
       ...(o.strom ? { ereignis: o.strom.ereignis, signal: o.strom.signal } : {}),
     });
   } catch (x) {

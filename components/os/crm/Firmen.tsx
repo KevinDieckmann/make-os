@@ -310,7 +310,7 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma, onLoeschen }: { f: Firm
       </div>
       {/* ZOE (28.09., C7): fragen mit dieser Firma als Bezug; offene Vorschläge zur Firma und ihren Personen/Deals. */}
       <div style={{ display: 'grid', gap: 10 }}>
-        <div><ZoeFragenKnopf bezug={{ art: 'firma', id: f.id }} /></div>
+        <div><ZoeFragenKnopf bezug={{ art: 'firma', id: f.id }} headId="sales" /></div>
         <ZoeVorschlaege art="firma" id={f.id} onUebernommen={() => void api.laden(true)} />
       </div>
       <div>

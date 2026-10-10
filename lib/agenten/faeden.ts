@@ -83,6 +83,11 @@ interface BestandZusatz {
    * beim ersten Lesen; danach nie wieder (der alte Bestand bleibt liegen).
    */
   zoeUebernahme?: { am: string; anzahl: number };
+  /**
+   * Chat je Bereich (10.10.): wer im Chat unten antwortet — `seite` = der passende Head der Seite (Vorgabe, Feld fehlt), `zoe` = immer ZOE.
+   * Eine Einstellung der Person selbst (nur sie liest und schreibt sie, GET/POST /api/agenten/chat); lib/agenten/kontext-head.ts.
+   */
+  chat?: { wahl: 'seite' | 'zoe'; am: string };
 }
 
 /** Altbestand (vor E3): EINE Datei mit allen Threads ganz. Nur noch Lesen und Umzug (faeden-ablage.ts) — und reine Tests. */
@@ -147,6 +152,7 @@ export function teilen(alt: Partial<FadenBestandKern> | null, jetzt: string): { 
       v: 2, faeden: faeden.map(f => kopfVon(f, spaetesteZeit(f))),
       ...(alt?.gedaechtnis ? { gedaechtnis: alt.gedaechtnis } : {}),
       ...(alt?.zoeUebernahme ? { zoeUebernahme: alt.zoeUebernahme } : {}),
+      ...(alt?.chat ? { chat: alt.chat } : {}),
       teilung: { am: jetzt, anzahl: faeden.length },
     },
   };
