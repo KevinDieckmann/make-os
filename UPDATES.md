@@ -15,7 +15,8 @@ Rückmeldung aus dem Onboarding (10.10.): „Beim Thema Routinen brauchen wir me
   alle x Tage/Wochen/Monate (ab dem letzten Mal, „nächstes Mal am“) · monatlich am Tag bzw. am n-ten Wochentag (auch alle n Monate). **Mehrmals täglich**
   über feste Uhrzeiten (eine Uhrzeit = feste Uhrzeit, mehrere = je Uhrzeit einmal) oder „n-mal am Tag“.
 - **Zähler** („8 Gläser“): Tagesziel + Wort, „− 5/8 +“ in Gesundheit › Heute, im Heute-Widget „Routinen heute“; der Haken im Gesundheits-Log steht erst mit
-  erreichtem Ziel (alle bisherigen Leser — Quote, Index, Ritual — zählen so weiter richtig).
+  erreichtem Ziel (alle bisherigen Leser — Quote, Index, Ritual — zählen so weiter richtig). Abhaken geht überall (Gesundheit, Heute, Tagesplanung, Journal)
+  als EIN PATCH je Tipp — keine Ansicht schreibt mehr den ganzen Gesundheits-Log (zwei Geräte überschreiben sich nicht mehr).
 - **Je Routine:** Tageszeit/feste Uhrzeit, Dauer, **Erinnerung** (Glocke; aufs Handy nur mit der eigenen Einstellung „Erinnerungen auch aufs Handy“, immer
   neutral ohne Namen/Zahl), **Zeitraum** von–bis, **Pausen** (Urlaub/krank/sonst — nicht dran, der Streak reißt nicht), Bereich/Kategorie (inkl. Erholung),
   **Ziel** („zahlt ein auf …“), **Kalender-Block** (nur Routine einer Person: die nächsten 14 Tage als private Blöcke „Belegt“ für andere, feste UID,

@@ -16,7 +16,7 @@ import { WEG } from '@/lib/wege';
 // Feste Termine = die übrigen Termine des Tages (beschäftigt, mit Uhrzeit). Keine KEMARIS-Beispieldaten mehr.
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useNachspeichern } from '@/lib/make-one/nachspeichern';
+import { routineHakenSenden } from './routinen/haken';
 import { FARBE as C, MIKRO, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { ART_FARBE, type PlanBlock } from '@/types/planer';
 import { useKalender } from './kalender/teile';
@@ -112,9 +112,6 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const [regler, setRegler] = useState<Record<string, number>>({});
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
   const [jetztMin, setJetztMin] = useState<number | null>(null);
-  const hSpaeter = useNachspeichern<Record<string, string[]>>(next => {
-    fetch('/api/state/health', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
-  }, 300);
 
   useEffect(() => {
     fetch('/api/konto/ich').then(r => r.json()).then(d => { if (typeof d.ich?.speicher === 'string') setIch(d.ich.speicher); }).catch(() => {});
@@ -200,14 +197,18 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   }, [regler, fokusAlle.tag, fokusAlle.woche, fokusAlle.monat]);
   const passtZumFokus = (r: Routine) => fokusSaeulen.has(KATEGORIE_ZU_SAEULE[r.kategorie] ?? '');
 
-  // Routine-Häkchen — derselbe Store wie im Gesundheits-Cockpit.
+  // Routine-Häkchen — derselbe Store wie im Gesundheits-Cockpit. Routinen 2 (10.10.): EIN PATCH je Haken über die eine Schreibstelle
+  // (`routineHaken` — bei einem Zähler füllt der Haken das Tagesziel auf bzw. leert es), nie mehr der ganze Log aus dem Browser.
   const erledigt = useMemo(() => new Set(hlog[heute] ?? []), [hlog, heute]);
   function toggleRoutine(id: string) {
+    const an = !(hlog[heute] ?? []).includes(id);
     const tag = new Set(hlog[heute] ?? []);
-    if (tag.has(id)) tag.delete(id); else tag.add(id);
-    const next = { ...hlog, [heute]: Array.from(tag) };
-    setHlog(next);
-    hSpaeter(next);
+    if (an) tag.add(id); else tag.delete(id);
+    setHlog(h => ({ ...h, [heute]: Array.from(tag) }));
+    void routineHakenSenden(id, { erledigt: an }).then(a => {
+      if (a.ok && a.erledigt) setHlog(h => ({ ...h, [heute]: a.erledigt! }));
+      else if (!a.ok) setMeldung(a.error ?? 'Routine nicht gespeichert.');
+    });
   }
 
   // ── Aufgaben-Leiste: Priorität schlägt immer, dann Fokus-Regler, dann Fälligkeit ──

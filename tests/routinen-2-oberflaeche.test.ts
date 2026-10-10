@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/planung/routinen' }));
@@ -63,11 +63,12 @@ describe('Abhaken und Zählen', () => {
     expect(streakText(4, 'woche')).toBe('Streak 4 Wochen');
     expect(streakText(0, 'tag')).toBe('');
   });
-  it('keine Ansicht schreibt mehr den ganzen Gesundheits-Log für Routinen (PUT) — Gesundheit und das Heute-Widget nehmen den PATCH', () => {
-    for (const f of ['components/os/GesundheitView.tsx', 'components/os/flaeche/widgets.tsx']) {
-      const t = lies(f);
-      expect(t, f).not.toMatch(/'\/api\/state\/health', \{ method: 'PUT'/);
-      expect(t, f).toContain('routineHakenSenden');
+  it('keine Ansicht schreibt mehr den ganzen Gesundheits-Log für Routinen (PUT) — Gesundheit, Heute-Widget, Tagesplanung, Journal nehmen den PATCH', () => {
+    const alle = (dir: string): string[] => readdirSync(path.join(path.resolve(__dirname, '..'), dir), { withFileTypes: true })
+      .flatMap(d => (d.isDirectory() ? alle(`${dir}/${d.name}`) : d.name.endsWith('.tsx') ? [`${dir}/${d.name}`] : []));
+    expect(alle('components').filter(f => /'\/api\/state\/health', \{ method: 'PUT'/.test(lies(f)))).toEqual([]);
+    for (const f of ['components/os/GesundheitView.tsx', 'components/os/flaeche/widgets.tsx', 'components/os/TagesplanView.tsx', 'components/os/JournalView.tsx']) {
+      expect(lies(f), f).toContain('routineHakenSenden');
     }
   });
 });
