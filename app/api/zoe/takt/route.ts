@@ -90,6 +90,9 @@ export async function POST(req: Request) {
   // Routinen 2 (10.10.): Erinnerungen aufs Handy — nur mit der Einstellung der Person und Einwilligung (a), neutral, einmal je Routine und Uhrzeit
   // (Riegel im eigenen Bestand). Die Glocke leitet ohne Takt ab. Ohne KI, nie blockierend (lib/planung/routinen-takt.ts).
   void import('@/lib/planung/routinen-takt').then(m => m.routinenErinnerungenImTakt()).catch(() => {});
+  // Inbox (10.10., Roadmap Phase 1): Aufgaben-Vorschläge aus Mails/WhatsApp — Regelwerk ohne Modell, je Person höchstens alle 15 Min., nur
+  // eigene Gespräche bzw. Team-Gespräche, um die sie sich kümmert; nur in den EIGENEN Freigabe-Stapel (lib/inbox/aufgaben-vorschlag-server.ts).
+  void import('@/lib/inbox/aufgaben-vorschlag-server').then(m => m.inboxVorschlaegeImTakt()).catch(() => {});
   void businessTagesstand();
   // Agenten (Härtetest 09.10.): verwaiste Läufe („läuft“ ohne Prozess nach einem Neustart, „wartet“ auf einen aufgegebenen Auftrag) enden
   // sichtbar mit „fehler“ und einer Glocke — nie „läuft“ für immer. Nie blockierend.

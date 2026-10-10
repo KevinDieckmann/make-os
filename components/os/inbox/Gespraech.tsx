@@ -269,7 +269,9 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
       )}
       <FlowErgebnisse gespraechId={id} ergebnisse={ergebnisse} />
       {!antwort && a.uebergabe && (a.uebergabe.personen.length > 0 || a.uebergabe.bestehend.length > 0) && (
-        <UebergebenFeld gespraech={id} personen={a.uebergabe.personen} bestehend={a.uebergabe.bestehend} meldung={t => meldung(t)} onGeaendert={() => { void laden(); onGeaendert(); }} />
+        <UebergebenFeld gespraech={id} personen={a.uebergabe.personen} bestehend={a.uebergabe.bestehend}
+          anhaenge={a.nachrichten.flatMap(n => n.anhaenge.filter(x => !x.eingebettet).map(x => ({ nachricht: n.id, teil: x.teil, name: x.name, groesse: x.groesse })))}
+          meldung={t => meldung(t)} onGeaendert={() => { void laden(); onGeaendert(); }} />
       )}
       {spaeterAuf && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

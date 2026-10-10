@@ -44,6 +44,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   // Head of Recht (10.10.): Aufgabe aus dem Recht-Check, Katalog-Risiko übernehmen, Checkliste als Entwurf, Vertragsfrist am Vertrag, Anwalts-Mappe
   // (lib/recht/server.ts) — nur Personen mit Zugang zur Firmen-Akte; über die Schreibstellen von Schild, Register, Aufgaben und Ablage.
   recht: async () => (await import('@/lib/recht/server')).RECHT_STAPEL_ART,
+  // Inbox (10.10., Roadmap Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“): ein Regelwerk hat in einer Nachricht einen Auftrag erkannt —
+  // die Aufgabe entsteht erst hier, über den Aufgaben-Weg (/api/tasks/create), nur für die Person, in deren Inbox die Nachricht liegt.
+  inbox: async () => (await import('@/lib/inbox/aufgaben-vorschlag-server')).INBOX_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

@@ -1,11 +1,11 @@
 // ─── Inbox 2 — ZOE-Entwurf für eine Antwort, jede Quelle (06.10.2026; vorher /api/gmail/entwurf) ───────────────────
-// POST { gespraech, hinweis? } → { ok, draft, quellen, ki } — nur ein VORSCHLAG; gesendet wird nur auf den Einzelklick (/api/inbox/senden).
+// POST { gespraech | uebergabe, hinweis? } → { ok, draft, quellen, ki }  (uebergabe = `ub-…`, 10.10.: Entwurf zur Kopie einer Übergabe) — nur ein VORSCHLAG; gesendet wird nur auf den Einzelklick (/api/inbox/senden).
 // Nur die eigene Person (Sitzung), nur ein Gespräch aus den eigenen Spiegeln; eingeschränkte Personen (Art. 18) → 409; Modell-Drossel
 // (`modellSchranke`). Brain-Kontext: die Sicht der Person ohne private Notizen. KI-VO Art. 50: `ki` kennzeichnet den Text.
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { eigenePerson, NUR_EIGENE_POST } from '@/lib/google/zugang';
-import { inboxEntwurf, EntwurfFehler } from '@/lib/inbox/entwurf';
+import { inboxEntwurf, inboxEntwurfUebergabe, EntwurfFehler } from '@/lib/inbox/entwurf';
 import { istGespraechId } from '@/lib/inbox/strom';
 import { modellSchranke, zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
@@ -19,11 +19,15 @@ export async function POST(req: Request) {
   if (z instanceof NextResponse) return z;
   if (zuGross(req, 16 * 1024)) return ZU_GROSS(16 * 1024);
   const schranke = modellSchranke(req); if (schranke) return schranke;
-  let b: { gespraech?: unknown; hinweis?: unknown };
+  let b: { gespraech?: unknown; uebergabe?: unknown; hinweis?: unknown };
   try { b = await jsonBegrenzt(req, 16 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
-  if (!istGespraechId(b.gespraech)) return NextResponse.json({ ok: false, fehler: 'gespraech fehlt.' }, { status: 400 });
+  const ub = typeof b.uebergabe === 'string' && /^ub-[0-9a-f-]{36}$/.test(b.uebergabe) ? b.uebergabe : null;
+  if (!ub && !istGespraechId(b.gespraech)) return NextResponse.json({ ok: false, fehler: 'gespraech fehlt.' }, { status: 400 });
   try {
-    const r = await inboxEntwurf(z.person, b.gespraech, typeof b.hinweis === 'string' ? b.hinweis : undefined, kiAus(req, ['postfach', 'brain', 'crm'], { anzahl: 1 }));
+    const hinweis = typeof b.hinweis === 'string' ? b.hinweis : undefined;
+    const r = ub
+      ? await inboxEntwurfUebergabe(z.person, ub, hinweis, kiAus(req, ['postfach', 'brain'], { anzahl: 1 }))
+      : await inboxEntwurf(z.person, b.gespraech as string, hinweis, kiAus(req, ['postfach', 'brain', 'crm'], { anzahl: 1 }));
     return NextResponse.json({ ok: true, ...r, ki: kiKennzeichen({ anbieter: r.anbieter }) });
   } catch (e) {
     if (e instanceof EntwurfFehler) return NextResponse.json({ ok: false, fehler: e.message, ...(e.needsKey ? { needsKey: true } : {}) }, { status: e.status });

@@ -4,6 +4,62 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 10.10.2026 — Inbox: Suche über Anhang-Namen, Übergeben mit Anhängen + Zurückziehen, Aufgaben-Vorschläge aus Mails/WhatsApp (nur lokal — Branch `inbox-suche-uebergeben`, Basis 2e5ef5fb = `update-0910b`)
+
+ROADMAP_Q4.md › Lücke 6 („Mail nicht übergebbar, keine Inbox-Suche“, Kevin & Malin) und Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“. Suche, Übergaben (Kopie) und
+Team-Postfach gab es seit 08.10. (`inbox-teilen`) — dieses Paket schließt die offenen Punkte daraus und baut die Aufgaben-Vorschläge neu.
+
+**Gebaut:**
+- **Suche auch über Anhang-NAMEN** (nie Inhalte): „Rechnung 117“ findet die Mail mit „Rechnung-2026-117.pdf“; Treffer zeigt „im Namen eines Anhangs“. Dieselbe Such-Regel
+  (`nachrichtTreffer` → `suchNorm`), dieselbe Sicht wie bisher (eigene Spiegel, sichtbare Team-Postfächer, eigene Übergaben, Bereichsfilter `imBereich`, Taste „/“).
+- **Übergeben mit Anhängen:** beim „Übergeben an …“ lassen sich die Anhänge des Gesprächs **einzeln anhaken** (Erklärung mit Beispiel am Feld). Nur die angehakten gehen als
+  **verschlüsselte Kopie** mit (Bild-Ablage, neuer Ordner `inbox-uebergaben`, Name `ua-<uuid>.bin`, höchstens 10 bzw. 25 MB → sonst 413, nichts übergeben); die Empfängerin
+  lädt sie über `GET /api/inbox/uebergaben?id=…&anhang=…` (nur die beiden Beteiligten, Download mit `nosniff`/`sandbox`, Lese-Protokoll ohne Namen). Ohne Haken bleibt ein
+  Anhang nur ein Name in der Kopie — wie bisher. „Kopie aktualisieren“ behält mitgegebene Anhänge.
+- **Zurückziehen** (nur die übergebende Person, Rückfrage mit Beispiel): die Kopie ist bei der Empfängerin weg, samt Dateien; neutrale Glocke ohne Betreff. Im Gespräch neben
+  „Kopie aktualisieren“ und in der Übergabe-Ansicht.
+- **Kennzeichen der Gegenseite** wandern mit (`Uebergabe.sperre`): Art. 18 → roter Hinweis, **kein ZOE-Entwurf** (409); Werbesperre → Hinweis „nur 1:1, keine Werbung“.
+  Bei „Kopie aktualisieren“ neu gelesen.
+- **ZOE-Entwurf auch zur Kopie:** die Empfängerin bekommt beim Antworten (aus ihrem EIGENEN Postfach) „ZOE-Entwurf“ + „Hinweis für ZOE“ — nur ein Vorschlag, gesendet
+  wird per Klick (`POST /api/inbox/entwurf { uebergabe }`, nur wer die Übergabe sieht).
+- **Löschfrist wie der Mail-Spiegel:** eine Kopie lebt nicht länger als ihre jüngste Nachricht im Spiegel (Frist „Mail-Spiegel“, Vorgabe 180 Tage) — dazu wie bisher
+  erledigte nach 90 Tagen; verwaiste Dateien räumt der tägliche Löschfristen-Lauf.
+- **Aufgaben-Vorschläge aus Mails und WhatsApp** (Regelwerk **ohne Modell**, `lib/inbox/aufgaben-vorschlag.ts`): in der jüngsten echten Nachricht von außen (ohne Zitate
+  „Am … schrieb …“, ohne Floskeln, höchstens 14 Tage alt) erkennt es **Frist** (`fristAus`, dieselbe Regel wie die Inbox), **Rechnung/Vertrag/Angebot/Mahnung** (Anhang-Name
+  bzw. Betreff), **Bitte an uns**, **Frage an uns**. Treffer → Vorschlag der neuen Stapel-Art **„inbox“** in den **eigenen Freigaben** der Postfach-Person (Bereich aus dem
+  Postfach); **Freigeben** legt die Aufgabe über `/api/tasks/create` an — Titel aus dem Betreff, Frist, Bezug zu Kontakt/Firma/Deal, **Link zurück ins Gespräch**
+  (derselbe Weg wie „Aufgabe daraus machen“, Duplikat-Schutz). Nur eigene Gespräche bzw. Team-/WhatsApp-Gespräche, um die man sich **kümmert**; nie Art. 18, nie Rundschreiben,
+  neue Absender oder „Warten auf“. **Idempotent je Nachricht** (Merker = Fingerabdruck in `inbox-vorschlaege--<person>`), höchstens 5 neue je Lauf. Läufe: im **Takt alle
+  15 Minuten** (Schalter „automatisch“, je Person, Vorgabe an) und auf Klick **„Vorschläge holen“** (Inbox, unter „ZOE schlägt vor“). Datenschutz: Titel im Stapel ohne Betreff
+  oder Namen (er steht dauerhaft in den ZOE-Entscheidungen), Mailtext nie im Protokoll, nichts an die KI.
+- **Neu serverseitig:** `GET/POST /api/inbox/vorschlaege` (Klasse `person`, nur Haushalt des Inhabers, Dienstweg 403), `POST /api/inbox/uebergaben { aktion: 'zurueckziehen' }`,
+  `GET …?anhang=`. Neuer Bestand `inbox-vorschlaege--<person>` (Speicher-Register, `JE_PERSON`, `PERSON_BESTAENDE`, Messlatte-Marke), Bild-Ordner `inbox-uebergaben` (Rotation,
+  Sicherungsprüfung, Instanz-Export nehmen ihn über `BILD_ORDNER` mit).
+- **Demo-Saat** (nur mit `MAKE_OS_DEMO=1`): Lena verbindet ein Demo-Postfach (MAKE), übergibt Jonas die Angebots-Anfrage (mit Notiz) und die Rechnung **mit PDF**, und holt
+  Aufgaben-Vorschläge (Frist „bis Freitag“, Rechnung, Bitte …).
+
+**So testet ihr** (Klickdummy `localhost:3001`; am einfachsten die Demo mit `MAKE_OS_DEMO=1`, `DEMO.md`):
+1. Als **Lena** › **Inbox**: unter „ZOE schlägt vor“ steht **„Aufgaben aus der Post: Vorschläge holen“** und „n Vorschläge warten ›“. Das „i“ am Schalter **automatisch** erklärt mit Beispiel.
+2. „n Vorschläge warten ›“ → **Freigaben**: „Aufgabe aus der Inbox — Frist …“ (ohne Betreff im Titel); aufklappen → „Gespräch öffnen ›“. **Freigeben** → unter **Aufgaben** steht
+   „Angebot Kennzahlen-Paket Q4“ mit Frist und dem Link zurück ins Gespräch. Noch einmal „Vorschläge holen“ → „Nichts Neues zu prüfen“ (keine Doppelten).
+3. **Suche** (Taste „/“): „Rechnung-2026“ → Treffer „im Namen eines Anhangs“. Kopf auf **Privat** → keine Business-Treffer.
+4. Ein Gespräch mit Anhang öffnen → **Übergeben an …** → Jonas, Anhang anhaken, Notiz → Übergeben. Als **Jonas** › Inbox › Fach **Übergeben** → Kopie öffnen → der Anhang trägt
+   „mitgegeben“ und lädt herunter; **Antworten** → **ZOE-Entwurf** (mit KI-Schlüssel) — gesendet wird nur per „Senden“ aus Jonas’ eigenem Postfach.
+5. Als **Lena** in der Übergabe (oder im Gespräch) **Zurückziehen** → Rückfrage → bei Jonas ist die Kopie weg (Glocke „… zurückgezogen“, ohne Betreff); die Suche findet sie bei ihm nicht mehr.
+6. Kontakt in der Kartei auf **Einschränkung (Art. 18)** setzen, Gespräch übergeben → Jonas sieht den roten Hinweis, „ZOE-Entwurf“ sagt „kein Entwurf“.
+7. Als **Ben** (nur Business): keine Übergabe aus einem Privat-Postfach, keine Treffer daraus; die Vorschläge von Lena sieht er nie.
+
+**Tests:** `tests/inbox-suche-uebergeben.test.ts` (14: Anhang-Namen in der Suche, Wahl/Ablage/Zurückziehen rein, Regelwerk Frist/Dokument/Bitte/Frage ohne Zitat/Floskel/Smalltalk,
+Kandidaten, Aufgabe + Titel ohne Betreff, Löschfrist wie Mail-Spiegel; von Ende zu Ende: verschlüsselt abgelegt, nur Beteiligte laden, **„Person B bekommt nichts aus As Spiegel außer
+der übergebenen Kopie“**, Zurückziehen nur A, verwaiste Dateien, 413/404, Art. 18/Werbesperre, **„Business-Sicht zeigt keine Privat-Treffer/Kopien“**, Vorschläge nur für die
+Postfach-Person, idempotent, Freigabe legt Aufgabe mit Link an, kein Betreff im dauerhaften Protokoll, Schalter + Takt, Dienstweg/fremder Haushalt 403); `tests/messlatte-malin.test.ts`
+(Marken `uebergabeAnhang`, `inboxVorschlag`); `tests/demo.test.ts` (Inbox der Demo: zwei Übergaben, eine mit PDF, Vorschläge, Suche bei Jonas nur die Kopie).
+**Nicht gebaut / nächster Schritt:** gemeinsames Postfach je Gesellschaft mit „wer kümmert sich“ als eigenes Register (heute: Team-Postfach = geteiltes IMAP-Postfach einer Person);
+optional ein Modell für die Vorschläge (Andockstelle `handlungAus`, nur über `askText`/KI-Tor mit `fremd()`, nur bei Hintergrund-KI an); Sichtprüfung im Browser steht aus (kein Server in
+dieser Runde). **Rückweg:** nur neue Routen, ein neuer Bestand je Person, ein neuer Bild-Ordner, optionale Felder (`UebergabeAnhang.ablage`, `Uebergabe.sperre`) — der alte Stand
+ignoriert sie; mitgegebene Dateien bleiben dann bis zur Rückkehr liegen (keine Löschung durch den alten Stand). Offene Vorschläge der Art „inbox“ kann der alte Stand nicht
+freigeben (409 „unbekannte Art“) — vorher freigeben oder ablehnen.
+
 ## 10.10.2026 — Heute: Top 3 des Tages, Tages-Briefing, Freigaben von ZOE, Jahresziele, Eisenhower (nur lokal — Branch `heute-top3`, Basis 9fe02de9 = `update-0910b`)
 
 Kevins Fragebogen-Antwort vom 08.10.: „Top-3 Prioritäten, von ZOE vorgeschlagen; kurzes Tages-Briefing als Text; offene Freigaben von ZOE; Fortschritt der

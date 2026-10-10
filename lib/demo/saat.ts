@@ -10,6 +10,7 @@
 // Schutzregeln (wann gesät/zurückgesetzt werden darf): lib/demo/schutz.ts. Aufrufer: scripts/demo-saat.mjs und
 // lib/demo/server.ts (Knopf „Demo zurücksetzen“). Doku: DEMO.md.
 // Agenten-Bereich und „Fotos & Videos“ (Paket 4c): lib/demo/saat-agenten.ts — ohne KI-Schlüssel vollständig (gespeicherte Antworten, kein Modell).
+// Inbox (10.10.): lib/demo/saat-inbox.ts — Demo-Postfach, Übergaben, Aufgaben-Vorschläge (nur mit MAKE_OS_DEMO=1).
 
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
@@ -553,6 +554,11 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   //      geplante Hintergrundaufgaben, ein Album mit drei erzeugten Farbflächen (eins freigegeben, eins angefragt, eins beim Head of Marketing).
   const { agentenUndMedienSaen } = await import('./saat-agenten');
   for (const s of await agentenUndMedienSaen({ lena: LENA, jonas: JONAS, haushalt: DEMO_HAUSHALT, heute, jetzt })) schritt(s.name, s.anzahl);
+
+  // 14c) Inbox (10.10.): Demo-Postfach mit erfundener Post, zwei Übergaben an Jonas (eine mit PDF), Aufgaben-Vorschläge für Lena — nur mit
+  //      MAKE_OS_DEMO=1 (sonst gibt es den Anbieter „demo“ nicht). lib/demo/saat-inbox.ts.
+  const { inboxSaen } = await import('./saat-inbox');
+  for (const s of await inboxSaen({ lena: LENA, jonas: JONAS })) schritt(s.name, s.anzahl);
 
   // 15) Wissen: Notizen im Vault der Demo (nur, wenn er im Datenordner liegt — Riegel in lib/demo/schutz.ts).
   let notizen = 0;

@@ -1940,6 +1940,15 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
 - **Tests:** `tests/inbox2-rein.test.ts` (Lesen, Fächer, Fristen, Gespräche, Filter, Übernahme, Anbieter, Fehler, Vorschläge), `tests/inbox2-postfach.test.ts` (von Ende
   zu Ende mit `PostSpeicher`: Prüfen vor Speichern, Trennung, Passwörter nie in Antworten, stabile Kennungen, Zurückschreiben, Senden, abgelehnte Anmeldung, Zuordnen,
   Screener, Trennen); Gmail-Tests laufen über die neuen Wege.
+- **Teilen, Suche, Aufgaben-Vorschläge (08./10.10., ROADMAP_Q4 Lücke 6 + Phase 1; UPDATES.md 10.10.):** Regeln rein in `lib/inbox/teilen.ts` (Sicht
+  `postfachSichtbar`/`uebergabeSichtbar`/`bereichZugang`, EINE Such-Regel `nachrichtTreffer` inkl. Anhang-NAMEN), Server `suche-server.ts`, `uebergaben-*.ts`,
+  `teilen-server.ts`. **Übergabe = Kopie** im Bestand `inbox-uebergaben--<haushalt>`; Anhänge als Datei NUR ausdrücklich angehakt (Bild-Ablage `inbox-uebergaben`,
+  `ua-<uuid>.bin`, Download nur für die Beteiligten); Dateien fallen in `aendereUebergaben` mit weg (`ablageWeg`), verwaiste räumt der Löschfristen-Lauf — neue
+  Schreibwege auf den Bestand IMMER über `aendereUebergaben`. „Zurückziehen“ nur `von`; `sperre` (Art. 18/Werbesperre) wandert mit; Frist wie der Mail-Spiegel
+  (`uebergabenNachMailFrist`). **Aufgaben-Vorschläge:** Regelwerk ohne Modell `lib/inbox/aufgaben-vorschlag.ts` (`handlungAus`, `vorschlagKandidat`: nur eigene
+  Gespräche bzw. Team/WhatsApp mit „kümmert sich“ = Person), Server `aufgaben-vorschlag-server.ts` (Takt 15 Min. mit Schalter je Person, Klick „Vorschläge holen“,
+  Merker-Fingerabdrücke `inbox-vorschlaege--<person>`), Stapel-Art `inbox` → `/api/tasks/create` über `aufgabeAusGespraech`. Stapel-Titel NIE mit Betreff/Namen
+  (steht dauerhaft in den ZOE-Entscheidungen). Wächter `tests/inbox-teilen.test.ts`, `tests/inbox-suche-uebergeben.test.ts`.
 
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — seit 05.10. mit Datenschlüssel nur im tmpfs/Arbeitsspeicher (`indexOrt`, nach jedem Start neu gebaut), lokal ohne Schlüssel als Datei (bei Zweifel löschen, der Takt baut neu).

@@ -3,9 +3,10 @@
 // (freigegebene Kopie), gemeinsames Postfach je Gesellschaft mit ‚wer kümmert sich‘, Suche über die eigenen Spiegel.“
 //
 // Grundregel bleibt: eine Person liest NIE die Post der anderen. Geteilt wird nur ausdrücklich per Klick —
-//   · Übergabe   eine KOPIE eines eigenen Gesprächs (Köpfe + Texte bis jetzt, Anhänge nur als Liste) an eine Person des Haushalts,
-//                die den Bereich des Postfachs sehen darf (Business: jedes Konto des Haushalts; Privat: nur volle Mitglieder).
-//                Neue Nachrichten wandern NICHT mit — „Kopie aktualisieren“ macht die übergebende Person.
+//   · Übergabe   eine KOPIE eines eigenen Gesprächs (Köpfe + Texte bis jetzt, Anhänge als Liste — als Datei nur, wenn ausdrücklich
+//                angehakt, dann verschlüsselt in der Ablage, 10.10.) an eine Person des Haushalts, die den Bereich des Postfachs sehen darf
+//                (Business: jedes Konto des Haushalts; Privat: nur volle Mitglieder). Neue Nachrichten wandern NICHT mit — „Kopie
+//                aktualisieren“ macht die übergebende Person; „Zurückziehen“ (10.10.) entfernt die Kopie samt Dateien bei der Empfängerin.
 //   · Team-Postfach  ein IMAP-Postfach mit Business-Bereich, das die einrichtende Person „mit dem Team teilt“. Sichtbar für alle
 //                Konten des Haushalts mit Zugang zum Bereich; Zugang (Passwort), Abgleich und Senden bleiben beim Besitzer.
 //   · „wer kümmert sich“ je Gespräch eines Team-Postfachs bzw. der WhatsApp-Business-Nummer (die gehört ohnehin der Instanz).
@@ -77,8 +78,17 @@ export const TEAM_GRENZEN = { gespraeche: 5000 } as const;
 
 // ── Übergaben ───────────────────────────────────────────────────────────────
 
-export interface UebergabeAnhang { teil: string; name: string; typ: string; groesse: number }
-/** Eine Nachricht der Kopie — Kopf + Text zum Zeitpunkt der Übergabe (bzw. „Kopie aktualisieren“). Nie Anhang-Inhalte. */
+/**
+ * Ein Anhang in der Kopie. `ablage` (10.10.): nur wenn die übergebende Person ihn AUSDRÜCKLICH angehakt hat — dann liegt eine verschlüsselte
+ * Kopie der Bytes in der Bild-Ablage (Ordner `UEBERGABE_ABLAGE_ORDNER`, Name `ua-<uuid>.bin`) und die Empfängerin kann ihn herunterladen.
+ * Ohne `ablage` steht er nur als Name in der Liste.
+ */
+export interface UebergabeAnhang { teil: string; name: string; typ: string; groesse: number; ablage?: string }
+/** Ordner der mitgegebenen Anhänge in der verschlüsselten Bild-Ablage (lib/store/datei-huelle.mjs `BILD_ORDNER`). */
+export const UEBERGABE_ABLAGE_ORDNER = 'inbox-uebergaben' as const;
+/** Name einer mitgegebenen Datei in der Ablage. */
+export const UEBERGABE_ABLAGE_NAME = /^ua-[0-9a-f-]{36}\.bin$/;
+/** Eine Nachricht der Kopie — Kopf + Text zum Zeitpunkt der Übergabe (bzw. „Kopie aktualisieren“). Anhang-Inhalte nur, wenn angehakt. */
 export interface UebergabeNachricht {
   id: string;
   am: string;
@@ -114,6 +124,11 @@ export interface Uebergabe {
   bereich: string | null;
   betreff: string;
   gegenueber: Adr;
+  /**
+   * Kennzeichen der Gegenseite aus der Kartei, mitgeführt bei Übergabe und „Kopie aktualisieren“ (10.10.): Werbesperre bzw. Einschränkung
+   * (Art. 18) — die Empfängerin sieht es sofort; kein ZOE-Entwurf bei Art. 18, Senden prüft der Server ohnehin (`pruefeEmpfaenger`).
+   */
+  sperre?: 'werbesperre' | 'eingeschraenkt';
   /** Notiz der übergebenden Person. */
   notiz?: string;
   /** Wer sich kümmert: `an` oder `von`. */
@@ -139,6 +154,10 @@ export const UEBERGABE_GRENZEN = {
   offen: 300,
   /** Schritte im Verlauf einer Übergabe. */
   verlauf: 200,
+  /** Mitgegebene Anhänge (ausdrücklich angehakt) je Übergabe — mehr → 413. */
+  anhaenge: 10,
+  /** Zusammen höchstens so viele Bytes mitgegebener Anhänge je Übergabe — mehr → 413 (nie still weggelassen). */
+  anhaengeBytes: 25 * 1024 * 1024,
   /** Erledigte Übergaben bleiben so lange, dann räumt der nächste Schreibvorgang sie weg (Löschfrist, Speicher-Register). */
   aufbewahrungTage: 90,
 } as const;
@@ -241,6 +260,55 @@ export function uebergabenAufbewahren(liste: readonly Uebergabe[], jetzt: Date):
   return liste.filter(u => !(u.status === 'erledigt' && u.erledigtAm && Date.parse(u.erledigtAm) < grenze));
 }
 
+/**
+ * Löschfrist „wie der Mail-Spiegel“ (10.10.): eine Kopie lebt nicht länger als das Original im Spiegel — Übergaben, deren JÜNGSTE kopierte
+ * Nachricht vor dem Stichtag der Frist `mail-spiegel` liegt, fallen weg (jeder Status; „Kopie aktualisieren“ hält eine laufende frisch). Rein.
+ */
+export function uebergabenNachMailFrist(liste: readonly Uebergabe[], stichtag: string): Uebergabe[] {
+  return liste.filter(u => u.nachrichten.reduce((m, n) => (n.am > m ? n.am : m), u.kopieAm).slice(0, 10) >= stichtag);
+}
+
+/** Darf `person` diese Übergabe zurückziehen (die Kopie ganz entfernen)? Nur die übergebende Person — sonst 403. Rein, getestet. */
+export function zurueckziehenPruefen(u: Pick<Uebergabe, 'von'>, person: string): void {
+  if (person !== u.von) throw new TeilenFehler('Zurückziehen kann nur die Person, die übergeben hat.', 403);
+}
+
+/** Alle Ablage-Namen (mitgegebene Anhänge) einer bzw. mehrerer Übergaben (rein). */
+export function ablageNamen(u: Pick<Uebergabe, 'nachrichten'> | readonly Pick<Uebergabe, 'nachrichten'>[]): string[] {
+  const l: readonly Pick<Uebergabe, 'nachrichten'>[] = Array.isArray(u) ? (u as readonly Pick<Uebergabe, 'nachrichten'>[]) : [u as Pick<Uebergabe, 'nachrichten'>];
+  return l.flatMap(x => x.nachrichten.flatMap(n => n.anhaenge.map(a => a.ablage).filter((v): v is string => !!v && UEBERGABE_ABLAGE_NAME.test(v))));
+}
+
+/** Ablage-Namen, die nach einer Änderung nicht mehr gebraucht werden (vorher da, nachher nicht) — die löscht der Server. Rein. */
+export function ablageWeg(vorher: readonly Pick<Uebergabe, 'nachrichten'>[], nachher: readonly Pick<Uebergabe, 'nachrichten'>[]): string[] {
+  const bleibt = new Set(ablageNamen(nachher));
+  return Array.from(new Set(ablageNamen(vorher))).filter(n => !bleibt.has(n));
+}
+
+/** Gewählte Anhänge zum Mitgeben (aus dem Körper): `[{ nachricht, teil }]`, ohne Doppelte. Unsinn → 400, zu viele → 413. Rein. */
+export function anhangWahlSauber(roh: unknown): { nachricht: string; teil: string }[] {
+  if (roh === undefined || roh === null) return [];
+  if (!Array.isArray(roh)) throw new TeilenFehler('anhaenge: eine Liste von { nachricht, teil }.', 400);
+  const raus: { nachricht: string; teil: string }[] = [];
+  for (const x of roh) {
+    const o = (x && typeof x === 'object' ? x : {}) as { nachricht?: unknown; teil?: unknown };
+    if (typeof o.nachricht !== 'string' || !/^[A-Za-z0-9:._-]{1,120}$/.test(o.nachricht) || typeof o.teil !== 'string' || !/^[0-9A-Za-z._-]{1,60}$/.test(o.teil)) throw new TeilenFehler('Ein gewählter Anhang ist ungültig — nichts übergeben.', 400);
+    if (!raus.some(r => r.nachricht === o.nachricht && r.teil === o.teil)) raus.push({ nachricht: o.nachricht, teil: o.teil });
+  }
+  if (raus.length > UEBERGABE_GRENZEN.anhaenge) throw new TeilenFehler(`Höchstens ${UEBERGABE_GRENZEN.anhaenge} Anhänge mitgeben — nichts übergeben.`, 413);
+  return raus;
+}
+
+/**
+ * „Kopie aktualisieren“: mitgegebene Anhänge, die in der neuen Kopie noch stehen (gleiche Nachricht + Teil), behalten ihre Ablage — so
+ * bleibt die Datei bei der Empfängerin, ohne sie neu zu holen. Rein, getestet.
+ */
+export function ablageUebernehmen(alt: readonly UebergabeNachricht[], neu: readonly UebergabeNachricht[]): UebergabeNachricht[] {
+  const da = new Map<string, string>();
+  for (const n of alt) for (const a of n.anhaenge) if (a.ablage) da.set(`${n.id}|${a.teil}`, a.ablage);
+  return neu.map(n => ({ ...n, anhaenge: n.anhaenge.map(a => { const ab = da.get(`${n.id}|${a.teil}`); return ab ? { ...a, ablage: ab } : a; }) }));
+}
+
 /** Was die Liste einer Person zeigt — ohne Texte (die holt die Ansicht). */
 export interface UebergabeZeile {
   id: string;
@@ -252,6 +320,9 @@ export interface UebergabeZeile {
   status: UebergabeStatus;
   angelegtAm: string; kopieAm: string; geaendertAm: string;
   anzahl: number; ausschnitt: string; anhaenge: number;
+  /** Davon mitgegeben (verschlüsselte Kopie zum Herunterladen). */
+  mitgegeben: number;
+  sperre?: 'werbesperre' | 'eingeschraenkt';
   /** Eine neuere Nachricht kam seit der Kopie — nur für die übergebende Person (aus ihrem Spiegel). */
   neuer?: boolean;
   stand: string;
@@ -269,6 +340,7 @@ export function uebergabeZeile(u: Uebergabe, person: string, namen: Readonly<Rec
     angelegtAm: u.angelegtAm, kopieAm: u.kopieAm, geaendertAm: u.geaendertAm,
     anzahl: u.nachrichten.length, ausschnitt: (letzte?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 200),
     anhaenge: u.nachrichten.reduce((s, n) => s + n.anhaenge.length, 0),
+    mitgegeben: ablageNamen(u).length, ...(u.sperre ? { sperre: u.sperre } : {}),
     stand: standVon(u),
   };
 }
@@ -340,20 +412,22 @@ export function ausschnittUm(text: string, frage: string, breite: number = SUCHE
   return `${a > 0 ? '… ' : ''}${t.slice(a, a + breite).trim()}${a + breite < t.length ? ' …' : ''}`;
 }
 
-/** Eine Nachricht für die Suche (Kopf + Text). */
-export interface SuchNachricht { betreff: string; von: Adr; an: Adr[]; cc: Adr[]; text: string }
-export type TrefferOrt = 'betreff' | 'absender' | 'empfaenger' | 'text';
+/** Eine Nachricht für die Suche (Kopf + Text + Anhang-NAMEN — nie Anhang-Inhalte, 10.10.). */
+export interface SuchNachricht { betreff: string; von: Adr; an: Adr[]; cc: Adr[]; text: string; anhaenge?: readonly { name: string; eingebettet?: boolean }[] }
+export type TrefferOrt = 'betreff' | 'absender' | 'empfaenger' | 'text' | 'anhang';
 
 const adrText = (l: readonly Adr[]) => l.map(a => `${a.name ?? ''} ${a.email}`).join(' ');
 
 /**
- * Passt eine Nachricht? Alle Suchwörter müssen in Betreff, Absender, Empfängern oder Text derselben Nachricht stehen (EINE Regel:
- * `suchPasst`-Logik über suchNorm). Liefert den Ort des ersten Treffers und den Ausschnitt — oder null. Rein, getestet.
+ * Passt eine Nachricht? Alle Suchwörter müssen in Betreff, Absender, Empfängern, Text oder den Anhang-Namen derselben Nachricht stehen
+ * (EINE Regel: `suchPasst`-Logik über suchNorm). Liefert den Ort des ersten Treffers und den Ausschnitt — oder null. Rein, getestet.
+ * Anhang-Namen (10.10., Roadmap Lücke 6): nur die Namen der echten Anhänge (eingebettete Bilder zählen nicht), nie ihr Inhalt.
  */
 export function nachrichtTreffer(n: SuchNachricht, frage: string): { wo: TrefferOrt; ausschnitt: string } | null {
   const w = suchWoerter(frage);
   if (!w.length) return null;
-  const felder: [TrefferOrt, string][] = [['betreff', n.betreff], ['absender', `${n.von.name ?? ''} ${n.von.email}`], ['empfaenger', adrText([...n.an, ...n.cc])], ['text', n.text]];
+  const anhaenge = (n.anhaenge ?? []).filter(a => !a.eingebettet).map(a => a.name).join(' · ');
+  const felder: [TrefferOrt, string][] = [['betreff', n.betreff], ['absender', `${n.von.name ?? ''} ${n.von.email}`], ['empfaenger', adrText([...n.an, ...n.cc])], ['text', n.text], ['anhang', anhaenge]];
   const alle = suchNorm(felder.map(f => f[1]).join(' '));
   if (!w.every(x => alle.includes(x))) return null;
   const ort = felder.find(([, t]) => w.some(x => suchNorm(t).includes(x)))!;

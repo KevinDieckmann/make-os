@@ -1,14 +1,19 @@
 // ─── Inbox teilen — „An <Person> übergeben“ (Server, 08.10.2026, Lücke 6) ───────────────────────────────────────────
 // Kevin 08.10.: „Mail nicht übergebbar … → ‚An <Person> übergeben‘ (freigegebene Kopie)“. Eine Person übergibt ein Gespräch aus
 // IHREM Postfach (Gmail oder IMAP, kein Team-Postfach — dort gilt „wer kümmert sich“) an eine Person des Haushalts, die den Bereich
-// des Postfachs sehen darf. Der Server legt eine KOPIE an: Köpfe + Texte der Nachrichten bis jetzt, Anhänge nur als Liste (laden
-// kann sie nur die übergebende Person aus ihrem Spiegel), dazu die Notiz und „wer kümmert sich“. Neue Nachrichten im Original wandern
+// des Postfachs sehen darf. Der Server legt eine KOPIE an: Köpfe + Texte der Nachrichten bis jetzt, Anhänge als Liste (als Datei nur die
+// ausdrücklich angehakten, siehe unten — die übrigen lädt nur die übergebende Person aus ihrem Spiegel), dazu die Notiz und „wer kümmert sich“. Neue Nachrichten im Original wandern
 // NICHT mit — „Kopie aktualisieren“ (nur die übergebende Person). Die Empfängerin antwortet nur über ein EIGENES Postfach (bzw. ein
 // Team-Postfach, das sie sieht) desselben Raums, oder gibt „zurück an …“ mit Notiz. „Erledigt“ gilt für beide.
 // Glocke an die andere Person über `melde()` — neutraler Titel ohne Betreff. Protokoll nur Kennung + Feldnamen, nie Text.
+// 10.10. (Roadmap Lücke 6, Nachtrag): Anhänge AUSDRÜCKLICH angehakt → verschlüsselte Kopie der Bytes in der Ablage (`ua-<uuid>.bin`, Ordner
+// `inbox-uebergaben`), die Empfängerin lädt sie über GET /api/inbox/uebergaben?id=…&anhang=… herunter; „Zurückziehen“ (nur die übergebende
+// Person) entfernt die Kopie samt Dateien; die Kennzeichen der Gegenseite (Werbesperre, Art. 18) wandern mit (`sperre`).
 
+import { randomUUID } from 'crypto';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
+import { bildAblegen, bildEntfernen, bildOeffnen } from '@/lib/store/bild-ablage';
 import { melde } from '@/lib/meldungen/melden';
 import { ladeGmailTexte } from '@/lib/gmail/stand';
 import { ladeImapTexte } from '@/lib/postfach/spiegel';
@@ -17,8 +22,8 @@ import { nachrichtenVon } from './verlauf';
 import { teamPersonen } from './teilen-server';
 import { aendereUebergaben, standPruefen, uebergabenFuer } from './uebergaben-speicher';
 import {
-  kopiePruefen, notizSauber, raumVon, TeilenFehler, uebergabeAnwenden, uebergabeEmpfaenger,
-  type Uebergabe, type UebergabeAktion, type UebergabeNachricht,
+  ablageUebernehmen, anhangWahlSauber, kopiePruefen, notizSauber, raumVon, TeilenFehler, uebergabeAnwenden, uebergabeEmpfaenger, zurueckziehenPruefen,
+  UEBERGABE_ABLAGE_NAME, UEBERGABE_ABLAGE_ORDNER, UEBERGABE_GRENZEN, type Uebergabe, type UebergabeAktion, type UebergabeNachricht,
 } from './teilen';
 
 const TITEL = {
@@ -27,6 +32,7 @@ const TITEL = {
   erledigt: (n: string) => `${n} hat ein übergebenes Gespräch erledigt.`,
   wieder: (n: string) => `${n} hat dir ein Gespräch erneut übergeben.`,
   kuemmert: (n: string) => `${n} bittet dich, dich um ein übergebenes Gespräch zu kümmern.`,
+  zurueckgezogen: (n: string) => `${n} hat ein übergebenes Gespräch zurückgezogen.`,
 };
 export const uebergabeLink = (id: string) => `/os/inbox?offen=${id}`;
 
@@ -53,8 +59,48 @@ export async function uebergabePersonen(person: string, bereich: string | null):
   return uebergabeEmpfaenger(await teamPersonen(), person, bereich).map(p => ({ speicher: p.speicher, name: p.name }));
 }
 
-/** Übergeben. Wirft `TeilenFehler` (400/403/404/409/413). */
-export async function uebergeben(person: string, gespraech: string, an: string, notizRoh?: unknown, jetzt = new Date()): Promise<Uebergabe> {
+/**
+ * Die angehakten Anhänge aus dem EIGENEN Spiegel holen und verschlüsselt ablegen (Ordner `inbox-uebergaben`). Nur Anhänge, die in der Kopie
+ * stehen (also aus diesem Gespräch, nicht eingebettet); zusammen höchstens `UEBERGABE_GRENZEN.anhaengeBytes` → sonst 413, nichts abgelegt.
+ * Liefert die Kopie mit `ablage` an den gewählten Anhängen. Scheitert etwas, sind schon abgelegte Dateien wieder weg.
+ */
+async function anhaengeMitgeben(person: string, quelle: 'gmail' | 'imap', kopie: UebergabeNachricht[], wahl: { nachricht: string; teil: string }[]): Promise<{ kopie: UebergabeNachricht[]; dateien: string[] }> {
+  if (!wahl.length) return { kopie, dateien: [] };
+  const dateien: string[] = [];
+  const zuordnung = new Map<string, string>();
+  let summe = 0;
+  try {
+    for (const w of wahl) {
+      const meta = kopie.find(n => n.id === w.nachricht)?.anhaenge.find(a => a.teil === w.teil);
+      if (!meta) throw new TeilenFehler('Einen gewählten Anhang gibt es in diesem Gespräch nicht — nichts übergeben.', 404);
+      summe += meta.groesse;
+      if (summe > UEBERGABE_GRENZEN.anhaengeBytes) throw new TeilenFehler(`Die gewählten Anhänge sind zusammen größer als ${UEBERGABE_GRENZEN.anhaengeBytes / 1048576} MB — nichts übergeben.`, 413);
+      let bytes: Buffer;
+      try {
+        bytes = quelle === 'gmail'
+          ? Buffer.from((await (await import('@/lib/gmail/aktion')).gmailAnhang(person, w.nachricht, w.teil)).bytes)
+          : (await (await import('@/lib/postfach/aktion')).imapAnhang(person, w.nachricht, w.teil)).bytes;
+      } catch (e) {
+        const st = (e as { status?: number }).status;
+        throw new TeilenFehler(`Der Anhang „${meta.name}“ ließ sich gerade nicht holen${st === 413 ? ' (zu groß)' : ''} — nichts übergeben.`, st === 413 ? 413 : 409);
+      }
+      const name = `ua-${randomUUID()}.bin`;
+      await bildAblegen(UEBERGABE_ABLAGE_ORDNER, name, bytes);
+      dateien.push(name);
+      zuordnung.set(`${w.nachricht}|${w.teil}`, name);
+    }
+  } catch (e) {
+    for (const d of dateien) await bildEntfernen(UEBERGABE_ABLAGE_ORDNER, d).catch(() => {});
+    throw e;
+  }
+  return { kopie: kopie.map(n => ({ ...n, anhaenge: n.anhaenge.map(a => { const ab = zuordnung.get(`${n.id}|${a.teil}`); return ab ? { ...a, ablage: ab } : a; }) })), dateien };
+}
+
+/**
+ * Übergeben. Wirft `TeilenFehler` (400/403/404/409/413). `anhaengeRoh` (10.10.): ausdrücklich angehakte Anhänge `[{ nachricht, teil }]` —
+ * nur diese gehen als (verschlüsselte) Datei mit, alle anderen stehen nur als Name in der Kopie.
+ */
+export async function uebergeben(person: string, gespraech: string, an: string, notizRoh?: unknown, jetzt = new Date(), anhaengeRoh?: unknown): Promise<Uebergabe> {
   const team = await teamPersonen();
   const ich = team.find(t => t.speicher === person);
   if (!ich) throw new TeilenFehler('Nur im Haushalt.', 403);
@@ -65,17 +111,26 @@ export async function uebergeben(person: string, gespraech: string, an: string, 
   const empf = uebergabeEmpfaenger(team, person, g.bereich).find(p => p.speicher === an);
   if (!empf) throw new TeilenFehler(an === person ? 'An dich selbst geht keine Übergabe.' : 'An diese Person geht keine Übergabe aus diesem Bereich (Privat nur an volle Mitglieder des Haushalts).', 403);
   const notiz = notizSauber(notizRoh);
-  const nachrichten = await kopieBauen(person, gespraech);
+  const wahl = anhangWahlSauber(anhaengeRoh);
+  const schonDa = (l: readonly Uebergabe[]) => l.some(x => x.von === person && x.an === an && x.gespraech === gespraech && x.status !== 'erledigt');
+  // Vorab prüfen (bevor Anhänge geholt werden) — in der Sperre unten noch einmal.
+  if (schonDa(await uebergabenFuer(person, team))) throw new TeilenFehler(`Schon an ${empf.name} übergeben — dort „Kopie aktualisieren“.`, 409);
+  const mit = await anhaengeMitgeben(person, g.quelle, await kopieBauen(person, gespraech), wahl);
   const am = jetzt.toISOString();
   const u: Uebergabe = {
     id: neueKennung('ub'), von: person, an, gespraech, quelle: g.quelle, postfachId: g.postfachId, bereich: g.bereich,
-    betreff: g.betreff, gegenueber: g.gegenueber, ...(notiz ? { notiz } : {}), kuemmert: an, status: 'offen',
-    angelegtAm: am, kopieAm: am, geaendertAm: am, nachrichten, verlauf: [{ am, von: person, was: 'uebergeben', wer: an, ...(notiz ? { notiz } : {}) }],
+    betreff: g.betreff, gegenueber: g.gegenueber, ...(g.zuordnung?.sperre ? { sperre: g.zuordnung.sperre } : {}), ...(notiz ? { notiz } : {}), kuemmert: an, status: 'offen',
+    angelegtAm: am, kopieAm: am, geaendertAm: am, nachrichten: mit.kopie, verlauf: [{ am, von: person, was: 'uebergeben', wer: an, ...(notiz ? { notiz } : {}) }],
   };
-  await aendereUebergaben(l => {
-    if (l.some(x => x.von === person && x.an === an && x.gespraech === gespraech && x.status !== 'erledigt')) throw new TeilenFehler(`Schon an ${empf.name} übergeben — dort „Kopie aktualisieren“.`, 409);
-    return { liste: [...l, u], wert: null };
-  }, jetzt);
+  try {
+    await aendereUebergaben(l => {
+      if (schonDa(l)) throw new TeilenFehler(`Schon an ${empf.name} übergeben — dort „Kopie aktualisieren“.`, 409);
+      return { liste: [...l, u], wert: null };
+    }, jetzt);
+  } catch (e) {
+    for (const d of mit.dateien) await bildEntfernen(UEBERGABE_ABLAGE_ORDNER, d).catch(() => {});
+    throw e;
+  }
   await melde({ an, art: 'postfach', titel: TITEL.uebergeben(ich.name), link: uebergabeLink(u.id), von: person });
   return u;
 }
@@ -93,9 +148,13 @@ export async function uebergabeAktion(person: string, id: string, befehl: Ueberg
   const sichtbar = await uebergabeFinden(person, id);
   if (!sichtbar) throw new TeilenFehler('Diese Übergabe gibt es nicht (mehr).', 404);
   let aktion: UebergabeAktion;
+  let sperre: Uebergabe['sperre'] | null | undefined;
   if (befehl === 'aktualisieren') {
     if (person !== sichtbar.von) throw new TeilenFehler('Die Kopie aktualisiert nur die Person, die übergeben hat.', 403);
-    aktion = { art: 'aktualisiert', nachrichten: await kopieBauen(person, sichtbar.gespraech) };
+    // Mitgegebene Anhänge bleiben, solange ihre Nachricht in der Kopie steht; das Kennzeichen der Gegenseite wird neu gelesen.
+    aktion = { art: 'aktualisiert', nachrichten: ablageUebernehmen(sichtbar.nachrichten, await kopieBauen(person, sichtbar.gespraech)) };
+    const g = (await stromRoh(person).catch(() => null))?.gespraeche.find(x => x.id === sichtbar.gespraech);
+    sperre = g ? (g.zuordnung?.sperre ?? null) : undefined;
   } else if (befehl === 'kuemmert') aktion = { art: 'kuemmert', wer: String(o.wer ?? '') };
   else if (befehl === 'zurueck' || befehl === 'wieder') aktion = { art: befehl, ...(o.notiz !== undefined ? { notiz: String(o.notiz ?? '') } : {}) };
   else aktion = { art: 'erledigt' };
@@ -104,7 +163,8 @@ export async function uebergabeAktion(person: string, id: string, befehl: Ueberg
     const i = l.findIndex(x => x.id === id);
     if (i < 0) throw new TeilenFehler('Diese Übergabe gibt es nicht (mehr).', 404);
     standPruefen(l[i], o.stand);
-    const n = uebergabeAnwenden(l[i], aktion, person, am);
+    let n = uebergabeAnwenden(l[i], aktion, person, am);
+    if (sperre !== undefined) { const { sperre: _s, ...rest } = n; n = sperre ? { ...rest, sperre } : rest; }
     l[i] = n;
     return { liste: l, wert: n };
   }, jetzt);
@@ -115,6 +175,41 @@ export async function uebergabeAktion(person: string, id: string, befehl: Ueberg
   else if (befehl === 'wieder') await melde({ an: andere, art: 'postfach', titel: TITEL.wieder(name), link: uebergabeLink(id), von: person });
   else if (befehl === 'kuemmert' && neu.kuemmert !== person) await melde({ an: neu.kuemmert, art: 'postfach', titel: TITEL.kuemmert(name), link: uebergabeLink(id), von: person });
   return neu;
+}
+
+/**
+ * Zurückziehen (10.10.): NUR die übergebende Person entfernt die Kopie ganz — bei der Empfängerin ist sie danach weg (samt mitgegebener
+ * Dateien, die `aendereUebergaben` löscht). Mit optionalem Stand (409). Die Empfängerin bekommt eine neutrale Glocke (ohne Betreff).
+ */
+export async function zurueckziehen(person: string, id: string, stand?: string, jetzt = new Date()): Promise<{ an: string }> {
+  const sichtbar = await uebergabeFinden(person, id);
+  if (!sichtbar) throw new TeilenFehler('Diese Übergabe gibt es nicht (mehr).', 404);
+  zurueckziehenPruefen(sichtbar, person);
+  const an = await aendereUebergaben(l => {
+    const i = l.findIndex(x => x.id === id);
+    if (i < 0) throw new TeilenFehler('Diese Übergabe gibt es nicht (mehr).', 404);
+    standPruefen(l[i], stand);
+    zurueckziehenPruefen(l[i], person);
+    const wer = l[i].an;
+    return { liste: l.filter(x => x.id !== id), wert: wer };
+  }, jetzt);
+  const name = (await teamPersonen()).find(t => t.speicher === person)?.name ?? person;
+  await melde({ an, art: 'postfach', titel: TITEL.zurueckgezogen(name), link: '/os/inbox', von: person });
+  return { an };
+}
+
+/**
+ * Ein mitgegebener Anhang einer sichtbaren Übergabe (beide Beteiligten) — Bytes aus der verschlüsselten Ablage. Wirft `TeilenFehler` (404),
+ * wenn die Übergabe nicht sichtbar ist oder der Anhang nicht mitgegeben wurde.
+ */
+export async function uebergabeAnhang(person: string, id: string, ablage: string): Promise<{ name: string; bytes: Buffer; u: Uebergabe }> {
+  if (!UEBERGABE_ABLAGE_NAME.test(ablage)) throw new TeilenFehler('anhang ist ungültig.', 400);
+  const u = await uebergabeFinden(person, id);
+  const a = u?.nachrichten.flatMap(n => n.anhaenge).find(x => x.ablage === ablage);
+  if (!u || !a) throw new TeilenFehler('Diesen Anhang gibt es in der Übergabe nicht.', 404);
+  const bytes = await bildOeffnen(UEBERGABE_ABLAGE_ORDNER, ablage);
+  if (!bytes) throw new TeilenFehler('Die Datei dieses Anhangs fehlt — bitte neu übergeben lassen.', 404);
+  return { name: a.name, bytes, u };
 }
 
 /** Nach einer Antwort der Empfängerin: Vermerk „geantwortet“ (ohne Text). Fehler hier halten nichts auf. */

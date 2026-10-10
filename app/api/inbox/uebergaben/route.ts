@@ -4,8 +4,13 @@
 //      ?id=ub-…                                    → { ok, uebergabe (Kopie mit Texten), zeile, neuer, postfaecher } — nur sichtbare
 //                                                    (`uebergabeSichtbar`), sonst 404; Anhänge nur als Liste (laden kann sie nur die
 //                                                    übergebende Person aus IHREM Spiegel). Lesen der Empfängerin → Lese-Protokoll.
-// POST { aktion: 'uebergeben', gespraech, an, notiz? }                     Kopie eines EIGENEN Gesprächs an eine Person des Haushalts mit
-//                                                                          Zugang zum Bereich (Privat nur an volle Mitglieder) → Glocke
+//      ?id=ub-…&anhang=ua-….bin                    → ein MITGEGEBENER Anhang (10.10.) als Download (`attachment`, nosniff, sandbox) — nur
+//                                                    für die beiden Beteiligten; Lesen der Empfängerin → Lese-Protokoll (ohne Namen).
+// POST { aktion: 'uebergeben', gespraech, an, notiz?, anhaenge?: [{ nachricht, teil }] }
+//                                                                          Kopie eines EIGENEN Gesprächs an eine Person des Haushalts mit
+//                                                                          Zugang zum Bereich (Privat nur an volle Mitglieder) → Glocke;
+//                                                                          angehakte Anhänge gehen verschlüsselt mit (≤ 10, ≤ 25 MB → 413)
+//      { aktion: 'zurueckziehen', id, stand? }    nur die übergebende Person: die Kopie ist bei der Empfängerin weg (samt Dateien)
 //      { aktion: 'zurueck' | 'erledigt' | 'wieder' | 'kuemmert' | 'aktualisieren', id, notiz?, wer?, stand? }
 //                                                                          Stand veraltet → 409; fremde Übergabe → 404; nicht erlaubt → 403
 // NUR die eigene Person aus der Sitzung (`eigenePerson`; Dienstweg 403). Protokoll nur Kennung + Feldnamen, nie Text oder Notiz.
@@ -18,7 +23,8 @@ import { istBereichKennung } from '@/lib/inbox/ansicht';
 import { TeilenFehler, uebergabeZeile } from '@/lib/inbox/teilen';
 import { teamPersonen } from '@/lib/inbox/teilen-server';
 import { uebergabeZeilenFuer } from '@/lib/inbox/uebergaben-speicher';
-import { antwortPostfaecher, neuerAlsKopie, uebergabeAktion, uebergabeFinden, uebergeben, UEBERGABE_BEFEHLE, type UebergabeBefehl } from '@/lib/inbox/uebergaben-server';
+import { antwortPostfaecher, neuerAlsKopie, uebergabeAktion, uebergabeAnhang, uebergabeFinden, uebergeben, zurueckziehen, UEBERGABE_BEFEHLE, type UebergabeBefehl } from '@/lib/inbox/uebergaben-server';
+import { dateinameKopf } from '@/lib/gmail/antwort';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 
@@ -35,6 +41,20 @@ export async function GET(req: Request) {
   const id = q.get('id');
   if (id !== null) {
     if (!UB_ID.test(id)) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
+    const anhang = q.get('anhang');
+    if (anhang !== null) {
+      try {
+        const a = await uebergabeAnhang(z.person, id, anhang);
+        if (a.u.an === z.person) leseZugriff(req, 'inbox', { betroffen: a.u.von, anzahl: 1 });
+        return new Response(new Uint8Array(a.bytes), { status: 200, headers: {
+          'Content-Type': 'application/octet-stream', 'Content-Disposition': dateinameKopf(a.name), 'Content-Length': String(a.bytes.length),
+          'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': 'sandbox', 'Cache-Control': 'no-store',
+        } });
+      } catch (e) {
+        if (e instanceof TeilenFehler) return NextResponse.json({ ok: false, fehler: e.message }, { status: e.status });
+        throw e;
+      }
+    }
     const u = await uebergabeFinden(z.person, id);
     if (!u) return NextResponse.json({ ok: false, fehler: 'Diese Übergabe gibt es nicht (mehr).' }, { status: 404 });
     // Die Empfängerin liest Post aus dem Postfach einer anderen Person — nachweisbar (nur wessen Post, nie Inhalt).
@@ -60,12 +80,20 @@ export async function POST(req: Request) {
   try {
     if (b.aktion === 'uebergeben') {
       if (!istGespraechId(b.gespraech) || typeof b.an !== 'string' || !PERSON.test(b.an)) return NextResponse.json({ ok: false, fehler: 'gespraech und an fehlen.' }, { status: 400 });
-      const u = await uebergeben(z.person, b.gespraech, b.an, b.notiz);
-      await protokolliere('inbox-uebergaben', [{ op: 'neu', id: u.id, felder: ['uebergeben', ...(u.notiz ? ['notiz'] : [])] }], wer).catch(() => { /* nur Protokoll */ });
-      return NextResponse.json({ ok: true, id: u.id, text: 'Übergeben — die Kopie liegt jetzt in der Inbox der anderen Person.' });
+      const u = await uebergeben(z.person, b.gespraech, b.an, b.notiz, new Date(), b.anhaenge);
+      const mit = u.nachrichten.reduce((n, x) => n + x.anhaenge.filter(a => a.ablage).length, 0);
+      await protokolliere('inbox-uebergaben', [{ op: 'neu', id: u.id, felder: ['uebergeben', ...(u.notiz ? ['notiz'] : []), ...(mit ? ['anhaenge'] : [])] }], wer).catch(() => { /* nur Protokoll */ });
+      return NextResponse.json({ ok: true, id: u.id, text: `Übergeben — die Kopie liegt jetzt in der Inbox der anderen Person${mit ? ` (mit ${mit === 1 ? 'einem Anhang' : `${mit} Anhängen`})` : ''}.` });
+    }
+    if (b.aktion === 'zurueckziehen') {
+      if (typeof b.id !== 'string' || !UB_ID.test(b.id)) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
+      if (b.stand !== undefined && (typeof b.stand !== 'string' || !/^[0-9a-f]{1,32}$/.test(b.stand))) return NextResponse.json({ ok: false, fehler: 'stand ist ungültig.' }, { status: 400 });
+      await zurueckziehen(z.person, b.id, typeof b.stand === 'string' ? b.stand : undefined);
+      await protokolliere('inbox-uebergaben', [{ op: 'geloescht', id: b.id, felder: ['zurueckziehen'] }], wer).catch(() => { /* nur Protokoll */ });
+      return NextResponse.json({ ok: true, text: 'Zurückgezogen — die Kopie ist bei der anderen Person nicht mehr da.' });
     }
     if (!UEBERGABE_BEFEHLE.includes(b.aktion as UebergabeBefehl) || typeof b.id !== 'string' || !UB_ID.test(b.id)) {
-      return NextResponse.json({ ok: false, fehler: `aktion = uebergeben | ${UEBERGABE_BEFEHLE.join(' | ')} und id fehlen.` }, { status: 400 });
+      return NextResponse.json({ ok: false, fehler: `aktion = uebergeben | zurueckziehen | ${UEBERGABE_BEFEHLE.join(' | ')} und id fehlen.` }, { status: 400 });
     }
     if (b.stand !== undefined && (typeof b.stand !== 'string' || !/^[0-9a-f]{1,32}$/.test(b.stand))) return NextResponse.json({ ok: false, fehler: 'stand ist ungültig.' }, { status: 400 });
     const befehl = b.aktion as UebergabeBefehl;

@@ -231,6 +231,13 @@ export function StapelView() {
           {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} />}
           {/* Art „recht“ (10.10., Head of Recht): Checkliste, Aufgabentext bzw. Fundstelle zum Lesen — keine Rechtsberatung. */}
           {v.bezug?.art === 'recht' && <RechtStapelDetail v={v} />}
+          {/* Art „inbox“ (10.10.): Aufgabe aus einer Mail/WhatsApp — der Sprung zurück ins Gespräch (nur die eigene Inbox sieht es). */}
+          {v.bezug?.art === 'inbox' && typeof v.eingabe?.gespraech === 'string' && (
+            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Knopf leise href={`/os/inbox?offen=${encodeURIComponent(v.eingabe.gespraech)}`}>Gespräch öffnen ›</Knopf>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Freigeben legt die Aufgabe an — mit Link zurück ins Gespräch. Erkannt ohne KI.</span>
+            </div>
+          )}
           <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
         </div>
       )}
