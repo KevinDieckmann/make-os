@@ -1061,7 +1061,7 @@ man sonst 30 Stunden am Tag arbeiten müsste … realistisch planbar.“ (UMBAU_
     Suche (⌘K) · Glocke · Fokus-Zähler. Kein Score, kein Index-Schalter, keine Heute/Inbox/Kalender-Knöpfe.
   - **Leiste** (`components/os/Leiste.tsx`): nur die Punkte des aktiven Space, `leisteFuer(space)` in `lib/make-one/spaces.ts` (≤ 12): Heute ·
     Inbox · Kalender · Aufgaben · Planung · Finanzen · (Privat: Gesundheit · Familie · Kontakte `/os/menschen` | Business: Markttraktion ·
-    Mandate & Unternehmen · Kontakte `?s=kontakte`) · ZOE. Unten Einstellungen (`/os/system`), „Problem oder Idee melden“, Konto. Handy unten:
+    Produkte & Mandate · Unternehmen — seit 10.10. getrennt, Kontakte nicht mehr im Business: Kartei über Markttraktion) · ZOE. Unten Einstellungen (`/os/system`), „Problem oder Idee melden“, Konto. Handy unten:
     siehe Nachbesserung (fünf Einträge). `SpaceEintrag.passt` legt den Space fest, `auch` hebt nur hervor (gemeinsame
     Seiten), Muster `=/os` = genau die Startseite; `zeitId` hält den Zeitmessungs-Schlüssel bei Umbenennung (Planung = `ziele-planung`).
   - **Unterbereiche:** ZOE-Reiter (`components/os/ZoeReiter.tsx`, `ZOE_BEREICH`: Freigaben · Agenten · Loops · Brain · Empfang) auf allen

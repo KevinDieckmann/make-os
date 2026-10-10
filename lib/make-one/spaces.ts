@@ -25,7 +25,7 @@
 // Alte Adressen mit `?space=alles` und ein gemerktes „alles“ gelten als „kein Parameter“ bzw. „der zuletzt konkrete Space“.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays } from 'lucide-react';
+import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays, Building2 } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
 
 export type { SpaceId };
@@ -96,9 +96,10 @@ export const SPACES: Space[] = [
       ...vorn('business'),
       { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?space=business', '/os/finanzen?s=business', '/os/finanzen?s=controlling', '/os/finanzen?s=rechnungen', '/os/finanzen?s=liquiditaet', '/os/finanzen?s=buchungen', '/os/finanzen?s=steuern', '/os/finanzen?s=chef'], auch: ['/os/finanzen'] },
       { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm'] },
-      // Mandate & Unternehmen (08.10.): eine Gruppe — der Punkt öffnet Mandate, das Gesellschafts-Register ist von dort einen Klick entfernt.
-      { href: '/os/mandate', label: 'Mandate & Unternehmen', icon: Briefcase, zeitId: 'mandate', passt: ['/os/mandate', '/os/unternehmen'] },
-      { href: '/os/markttraktion?s=kontakte', label: 'Kontakte', icon: BookUser, passt: ['/os/markttraktion?s=kontakte'] },
+      // Produkte & Mandate und Unternehmen (10.10., Entscheidung: getrennt, Unternehmen eigener Punkt und eigener Ausbau). Kontakte stehen im
+      // Business nicht mehr in der Leiste (Entscheidung 10.10.) — die Kartei liegt in Markttraktion › Kontakte & Firmen; `zeitId` bleibt für die Zeitmessung.
+      { href: '/os/mandate', label: 'Produkte & Mandate', icon: Briefcase, zeitId: 'mandate', passt: ['/os/mandate'] },
+      { href: '/os/unternehmen', label: 'Unternehmen', icon: Building2, passt: ['/os/unternehmen'] },
     ],
   },
 ];

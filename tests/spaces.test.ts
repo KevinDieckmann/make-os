@@ -23,7 +23,8 @@ describe('Spaces', () => {
     expect(aktiverSpaceEintrag('/os/research', '')).toMatchObject({ space: null, eintrag: { label: 'ZOE' } });
     expect(aktiverSpaceEintrag('/os/wachstum', '')).toMatchObject({ space: null, eintrag: { label: 'Planung' } });
     expect(aktiverSpaceEintrag('/os/inbox', '?space=business')).toMatchObject({ space: 'business', eintrag: { label: 'Inbox' } });
-    expect(aktiverSpaceEintrag('/os/unternehmen', '')).toMatchObject({ space: 'business', eintrag: { label: 'Mandate & Unternehmen' } });
+    expect(aktiverSpaceEintrag('/os/unternehmen', '')).toMatchObject({ space: 'business', eintrag: { label: 'Unternehmen' } });
+    expect(aktiverSpaceEintrag('/os/mandate', '')).toMatchObject({ space: 'business', eintrag: { label: 'Produkte & Mandate' } });
     expect(aktiverSpaceEintrag('/os/konto', '').eintrag).toBeNull();
   });
   it('Space aus der Adresse: ?space= gewinnt, sonst der Eintrag, sonst null', () => {
@@ -45,10 +46,11 @@ describe('Spaces', () => {
       expect(s.start).toBe(`/os?space=${s.id}`);
     }
     expect(leisteFuer('privat').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Gesundheit', 'Familie', 'Kontakte', 'ZOE']);
-    expect(leisteFuer('business').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Markttraktion', 'Mandate & Unternehmen', 'Kontakte', 'ZOE']);
+    expect(leisteFuer('business').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Markttraktion', 'Produkte & Mandate', 'Unternehmen', 'ZOE']);
   });
   it('Hervorhebung in der Leiste passt zum Fundort', () => {
-    expect(aktiverLeistenPunkt('business', '/os/markttraktion', '?s=kontakte&a=akte&k=c-1')?.label).toBe('Kontakte');
+    // 10.10.: Kontakte stehen im Business nicht mehr in der Leiste — die Kartei gehört zur Markttraktion.
+    expect(aktiverLeistenPunkt('business', '/os/markttraktion', '?s=kontakte&a=akte&k=c-1')?.label).toBe('Markttraktion');
     expect(aktiverLeistenPunkt('business', '/os/markttraktion', '?s=deals')?.label).toBe('Markttraktion');
     expect(aktiverLeistenPunkt('privat', '/os', '')?.label).toBe('Heute');
     expect(aktiverLeistenPunkt('privat', '/os/kompass', '')?.label).toBe('Planung');
@@ -61,7 +63,7 @@ describe('Spaces', () => {
   });
   it('Space-Schalter: Gegenstück im anderen Space, sonst Heute; gemeinsame Seiten bleiben stehen', () => {
     expect(wechselZiel('/os/aufgaben', '?space=privat', 'business')).toBe('/os/aufgaben?space=business');
-    expect(wechselZiel('/os/menschen', '', 'business')).toBe('/os/markttraktion?s=kontakte');
+    expect(wechselZiel('/os/menschen', '', 'business')).toBe('/os?space=business');
     expect(wechselZiel('/os/markttraktion', '?s=deals', 'privat')).toBe('/os?space=privat');
     expect(wechselZiel('/os', '', 'business')).toBe('/os?space=business');
     expect(wechselZiel('/os/konto', '', 'business')).toBeNull();
