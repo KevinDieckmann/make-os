@@ -44,7 +44,7 @@ describe('Blöcke sind Termine (lib/planung/bloecke.ts)', () => {
 
   it('Anfrage für POST /api/kalender/termin: Raster 15 Min, Dauer 15 Min … 8 h, beschäftigt, Aufgabe nur als Bezug', () => {
     expect(blockAnfrage({ date: '2026-10-06', startMin: 547, dauerMin: 50, titel: '  Reha ', art: 'reha', taskId: 't-9' }, 'malin')).toEqual({
-      titel: 'Reha', start: '2026-10-06T09:00:00', ende: '2026-10-06T09:45:00', ganztags: false, art: 'block', blockArt: 'reha', beschaeftigt: true, wer: 'malin', bezug: { aufgabeId: 't-9' },
+      titel: 'Reha', start: '2026-10-06T09:00:00', ende: '2026-10-06T09:45:00', ganztags: false, art: 'block', blockArt: 'reha', beschaeftigt: true, sichtbarkeit: 'privat', wer: 'malin', bezug: { aufgabeId: 't-9' },
     });
     expect(blockAnfrage({ date: '2026-10-06', startMin: 600, dauerMin: 9999, titel: '', art: 'fokus' })).toMatchObject({ titel: 'Fokus', ende: '2026-10-06T18:00:00', art: 'fokus' });
   });
@@ -66,7 +66,7 @@ describe('Blöcke sind Termine (lib/planung/bloecke.ts)', () => {
     expect(gehoertZu({ von: 'malin', wer: 'beide' }, 'kevin')).toBe(false);
     expect(gehoertZu({ wer: 'beide' }, 'kevin')).toBe(true);
     expect(gehoertZu({ wer: 'kevin' }, 'malin')).toBe(false);
-    expect(planArtAusTitel('Reha / Rücken')).toBe('reha');
+    expect(planArtAusTitel('Reha / Rücken')).toBe('erholung'); // seit 10.10.: Erholung (reha = Altbestand, zählt gleich)
     expect(planArtAusTitel('Deep Work')).toBe('fokus');
   });
 

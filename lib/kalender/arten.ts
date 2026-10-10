@@ -44,9 +44,19 @@ export const ART_INFO: Record<TerminArt, ArtInfo> = {
 
 // ── Unterart eines Blocks (X-MAKE-BLOCK, K5) ────────────────────────────────
 /** Unterart eines Blocks — so heißen die Bausteine des Planens (types/planer.ts PLAN_ARTEN ohne fokus/block). */
-export type BlockArt = 'reha' | 'routine' | 'pause' | 'aufgabe';
-export const BLOCK_ARTEN: readonly BlockArt[] = ['reha', 'routine', 'pause', 'aufgabe'];
+export type BlockArt = 'reha' | 'erholung' | 'routine' | 'pause' | 'aufgabe';
+export const BLOCK_ARTEN: readonly BlockArt[] = ['reha', 'erholung', 'routine', 'pause', 'aufgabe'];
 export const istBlockArt = (v: unknown): v is BlockArt => typeof v === 'string' && (BLOCK_ARTEN as readonly string[]).includes(v);
+
+/**
+ * Erholung (10.10., Kevin: „Erholung überall einstellbar“): die Unterart `erholung` — und der Altbestand `reha`, der genauso zählt (bleibt
+ * gültig, wird gelesen und von ZOE weiter angenommen). EINE Frage für alle Leser: Gesundheits-Index, Reha-Schild, Tagesplanung,
+ * Kapazität (zieht geplante Erholung von der Arbeitszeit ab), Erholung des Tages. Ein älterer Stand liest `erholung` als „Block“.
+ */
+export const ERHOLUNG_BLOCK_ARTEN: readonly BlockArt[] = ['erholung', 'reha'];
+export const istErholungsArt = (v: unknown): boolean => v === 'erholung' || v === 'reha';
+/** Ist ein Termin ein Erholungs-Block (Art „block“ mit Unterart erholung bzw. reha)? */
+export const istErholungsBlock = (t: { art?: string; blockArt?: string | null }): boolean => t.art === 'block' && istErholungsArt(t.blockArt);
 
 /**
  * Standard für frei/beschäftigt, wenn der Termin selbst nichts sagt (kein TRANSP): Abwesend/Fokus beschäftigt,

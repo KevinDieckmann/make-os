@@ -45,7 +45,7 @@ import { vornameVon } from '@/lib/zoe/grundauftrag';
 // (`erzwingen`). Angelegt wird über den Blöcke-Weg (lib/planung/bloecke-server.ts `blockAnlegen`: iCloud-Termin der Art
 // Fokus/Block im Kalender der Person → kalender-bezug → Änderungsprotokoll, ohne Teilnehmer) — nie über den Apple-Altweg,
 // NIE über feste Termine (Kollision `blockKollision` bei der Freigabe, gelesen ohne Netz).
-const PLAN_ARTEN_ZOE = ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'] as const;
+const PLAN_ARTEN_ZOE = ['fokus', 'reha', 'erholung', 'routine', 'pause', 'aufgabe', 'block'] as const;
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const KEINE_PERSON_PLAN = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 

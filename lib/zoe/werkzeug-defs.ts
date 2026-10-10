@@ -228,7 +228,7 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
         startMin: { type: 'number', description: 'Start in Minuten ab 00:00 (540 = 09:00), Raster 15, Fenster 360–1305' },
         dauerMin: { type: 'number', description: 'Dauer in Minuten (15–240)' },
         titel: { type: 'string', description: 'Kurzer Block-Titel' },
-        art: { type: 'string', enum: ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'], description: 'Art des Blocks' },
+        art: { type: 'string', enum: ['fokus', 'erholung', 'reha', 'routine', 'pause', 'aufgabe', 'block'], description: 'Art des Blocks (erholung = Erholung/Reha; reha ist der ältere Name)' },
       }, ['date', 'startMin', 'dauerMin', 'titel']),
     },
     {

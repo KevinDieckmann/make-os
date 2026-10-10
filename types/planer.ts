@@ -3,7 +3,9 @@
 // Energie) — fünf Stellen, die auseinanderlaufen können. Härtung 04.08.:
 // EIN Typ hier, alle importieren.
 
-export const PLAN_ARTEN = ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'] as const;
+// Erholung (10.10., Kevin: „Erholung überall einstellbar“): eigene Unterart `erholung`; `reha` bleibt gültig (Altbestand, ZOE) und zählt
+// überall als Erholung (`istErholungsArt`, lib/kalender/arten.ts).
+export const PLAN_ARTEN = ['fokus', 'reha', 'erholung', 'routine', 'pause', 'aufgabe', 'block'] as const;
 export type PlanArt = typeof PLAN_ARTEN[number];
 
 export interface PlanBlock {
@@ -25,6 +27,7 @@ export interface PlanBlock {
 export const ART_FARBE: Record<PlanArt, string> = {
   fokus: '#21B5AA',
   reha: '#58D9CD',
+  erholung: '#58D9CD',
   routine: '#D9A441',
   pause: '#96A8A2',
   aufgabe: '#4A6CF7',

@@ -1,5 +1,6 @@
 'use client';
 
+import { ErholungZielePlanung } from './gesundheit/ErholungHeute';
 import Link from 'next/link';
 // ─── MAKE OS — Planung nach Horizont (Monat · Quartal · Jahr) ───────────────
 // Eine Seite je Zeithorizont: Fokus, Zeitstrahl, Forecast — und darunter
@@ -208,6 +209,9 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
         <Ueberschrift farbe={farbe} rechts="Sichtbar auf Heute, im Kalender › Planen und in der Tagesplanung — ZOE plant dagegen.">{fokusTitel}</Ueberschrift>
         <FokusTafel {...(spaceFilter === 'alle' ? { vorgabe: nurBusiness ? 'business' as const : 'privat' as const } : { bereich: spaceFilter })} horizonte={[horizont]} {...(istJahr ? { jahr: planJahr } : {})} />
       </Karte>
+      {/* Erholungs-Ziele (10.10.): die EIGENEN des Monats (die der Woche stehen in Kalender › Planen) — nur Privat/Alles, nie für ein Konto „nur Business“; Daten über die
+          Erholungs-Route (nur die Person selbst). Zeichnet nichts ohne Erholungs-Ziel des Zeitraums. */}
+      {horizont === 'monat' && spaceFilter !== 'business' && !nurBusiness && <ErholungZielePlanung zeitraum="monat" i={1} />}
 
       {/* Zeitstrahl — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten. Im Jahr: Fenster zum Blättern, Anlegen per Klick. */}
       {istJahr ? (jahrSicht === 'seil' ? (

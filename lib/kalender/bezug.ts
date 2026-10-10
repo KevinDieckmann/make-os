@@ -33,7 +33,7 @@
 // geschrieben. Speicher/Sperre: lib/kalender/bezug-server.ts.
 
 import type { Termin, IcsZusatz } from './ics';
-import { istIcsArt, farbeSauber, farbeHex, type IcsArt } from './arten';
+import { istIcsArt, istErholungsBlock, farbeSauber, farbeHex, type IcsArt } from './arten';
 
 export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'mandatId', 'dealId', 'aufgabeId', 'eventId'] as const;
 export type BezugFeld = (typeof BEZUG_FELDER)[number];
@@ -257,10 +257,12 @@ export function eigentuemer(t: { von?: string; wer?: string; persoenlich?: strin
  * immer als privat — auch ohne CLASS:PRIVATE — und tragen nach außen nur den neutralen Kalendernamen („iCloud · <Vorname>“).
  */
 export function maskieren<T extends TerminMitBezug & { wer?: string }>(t: T, betrachter: string | null | undefined): T {
-  if (t.sichtbarkeit !== 'privat' && !t.persoenlich) return t;
+  // Erholung (10.10.): ein Erholungs-Block (Unterart erholung bzw. Altbestand reha) gilt für die anderen IMMER als privat — Gesundheit
+  // (Art. 9), auch wenn er in Apple ohne CLASS:PRIVATE steht. Die Unterart selbst geht verdeckt nie hinaus (sonst verriete sie die Art).
+  if (t.sichtbarkeit !== 'privat' && !t.persoenlich && !istErholungsBlock(t)) return t;
   const e = eigentuemer(t);
   if (!e || e === betrachter) return t;
-  const { ort: _o, notiz: _n, bezug: _b, gastKontakte: _g, teilnehmer: _t, organisator: _og, erinnerungen: _e, farbeEigen: _f, farbeId: _fi, arbeitsort: _a, stand: _s, link: _l, ...rest } = t as T & { link?: string };
+  const { ort: _o, notiz: _n, bezug: _b, gastKontakte: _g, teilnehmer: _t, organisator: _og, erinnerungen: _e, farbeEigen: _f, farbeId: _fi, arbeitsort: _a, stand: _s, link: _l, blockArt: _ba, ...rest } = t as T & { link?: string };
   // R-K1 #96: nach außen keine echte UID (mit ihr ließe sich der Termin per API ansprechen) — eine Kennung, die nur für
   // die Anzeige eindeutig ist; die Route lehnt Ändern/Löschen fremd-privater Termine ohnehin mit 403 ab.
   const verdeckt = verdeckteKennung(t.id);

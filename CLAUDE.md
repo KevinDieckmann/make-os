@@ -806,6 +806,30 @@ Gesundheitsinhalte nur mit Einwilligung ‚an die KI‘“.
   Upload gelöscht. Weitere Altbestände (z. B. Nordstern) hängen sich als `AltbestandTeil` an `altbestandTeile()` an; außer dem Start-Haken
   (`lib/store/betrieb.ts`) importiert niemand das Modul (Wächter `tests/altbestand-uebernahme.test.ts`).
 
+## Erholung je Person — Reiter unter Gesundheit, überall einstellbar (10.10., Branch `erholung`, nur lokal; UPDATES.md)
+Kevin 10.10.: „Einen Erholungsbereich — manche müssen extrem viel erholen bzw. Reha machen, die zweite Person nach dem Sport … der muss auch überall
+mit einstellbar sein.“
+- **Bestand** `erholung--<person>` (IMMER mit Suffix, `erholungName`; Art. 9, Register GESUNDHEIT, `JE_PERSON`, `PERSON_BESTAENDE` nurMitSuffix):
+  Programme (Übungen, je Woche, feste Tage oder flexibel, Stufe, Status), Einheiten (Protokoll; je Programm und Tag einmal), Behandlungsserien
+  (Termine mit Kalender-Verweis NUR als Kennung, nie Titel; eigene Unterlagen NUR als `gu-…`), Erholungs-Ziele (Woche/Monat), Fokus-Satz,
+  Einstellungen (Pausen, Vorschlag an/aus). Rein `lib/gesundheit/erholung.ts` (Form, Säuberung, Grenzen 413, Schritte), Rechnungen NUR in
+  `lib/gesundheit/erholung-lage.ts` (heute fällig, Woche, Tag aus allen Quellen, Streak, Ziele, Behandlungen, Vorschlag, Zusammenhang, Pausen),
+  Server `erholung-server.ts` (Stand/409, Sicht mit Quellen in `sicher()`), Route `/api/gesundheit/erholung` (Klasse `person`): schreiben nur die
+  Person selbst (Dienstweg 403, Einwilligung (a) zuerst, nur Entfernen ohne), lesen andere NUR bei geteilter Gesundheit UND beiden vollen Mitgliedern
+  des Haushalts — gefiltert VOR dem Rechnen (`erholungFuerBetrachter`: ohne Unterlagen, Kalender-Verweise, Pausen) + Lese-Protokoll.
+- **EINE Vorschlags-Regel** `erholungVorschlag` (Recovery rot → Erholungstag · HRV-/Ruhepuls-Trend → Entlastungswoche · Schlafschuld ≥ 2 h → Schlaf ·
+  gelb/gestern über Strain-Rahmen → leicht · grün → normal; ohne Werte null) aus den vorhandenen Regeln (belastung, entlastung, schlaf) — nur Vorschlag.
+  Zusammenhang „Erholung ↔ Beschwerde am Folgetag“ nur eigene Einträge, ab `ZUSAMMENHANG_MIN` je Gruppe, nie als Ursache formuliert.
+- **Überall:** Block-Unterart `erholung` (Altbestand `reha` zählt gleich — NUR über `istErholungsArt`/`istErholungsBlock` in lib/kalender/arten.ts fragen,
+  nie `=== 'reha'`); `maskieren` verdeckt Erholungs-Blöcke einer anderen Person IMMER („Belegt“, ohne `blockArt`); neue Erholungs-Blöcke `sichtbarkeit:
+  privat`. Routine-Kategorie `erholung` (Gesundheit über `istGesundheitsKategorie`). `Task.erholung` nur Space Privat (Säuberung verwirft sonst).
+  Kapazität: Erholungs-Blöcke im Arbeitsfenster über `Belegt.erholung` NUR als Termin-Stunden (kein eigener Wert, keine Art, kein Umschalten). Zeit:
+  `ERHOLUNG_ZEIT_SCHLUESSEL` = `privat:erholung` (lib/zeitmessung/erholung.ts, `erholungStarten`, `fokusFuerTermin({ erholung })`). Heute-Widget
+  `erholung` (nur eigene, Standard nur Privat), Karte `ErholungZielePlanung` in Kalender › Planen (Woche) und Planung › Monat (nur lesen). ZOE nur über
+  `gatherBrain` mit Einwilligung (b) (`Brain.erholung`, `<daten quelle="erholung">`).
+- Erholungs-Ziele und Fokus-Satz liegen bewusst im Art.-9-Bestand, nicht in `ziele-eigen`/`fokus-eigen`. Wächter `tests/erholung-{modell,route,ueberall}.test.ts`,
+  Messlatte-Marke `erholung--kevin`.
+
 ## Ziele & Planung — Ziele, Meilensteine, Kaskade, Routinen (27.09. abends, nur lokal)
 - Ein Bauteil für alle Ebenen Tag · Woche · Monat · Quartal · Jahr: `components/os/planung/ZieleMeilensteine.tsx` (Ziele links,
   Meilensteine rechts, „+ neu“ oben, offen nach Rang, Erledigtes unten scrollend) + `usePlanung.ts` (laden/schreiben) +

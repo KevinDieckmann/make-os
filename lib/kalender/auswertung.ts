@@ -249,7 +249,7 @@ export const stundenAus = (min: number): string => `${(Math.round((min / 60) * 1
 export const abweichungText = (min: number): string => (Math.abs(min) < 3 ? '±0 h' : `${min > 0 ? '+' : '−'}${stundenAus(Math.abs(min))}`);
 
 /** Anzeigename der Block-Unterarten (K5 `X-MAKE-BLOCK`). */
-export const BLOCK_NAME: Record<string, string> = { reha: 'Reha', routine: 'Routine', pause: 'Pause', aufgabe: 'Aufgabe', block: 'Blockzeit' };
+export const BLOCK_NAME: Record<string, string> = { erholung: 'Erholung', reha: 'Erholung', routine: 'Routine', pause: 'Pause', aufgabe: 'Aufgabe', block: 'Blockzeit' };
 
 /** Anteil in Prozent (0 bei leerem Ganzen). */
 /** „1 Termin“ / „3 Termine“ (Schlussprüfung 29.09.). */

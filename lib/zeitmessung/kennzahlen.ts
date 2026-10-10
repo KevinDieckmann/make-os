@@ -34,6 +34,8 @@ const BEREICH_LABEL: Record<string, string> = {
   home: 'Home', heute: 'Heute', wachstum: 'Wachstum', system: 'System', zoe: 'ZOE', inbox: 'Inbox', kalender: 'Kalender', uebersicht: 'Übersicht',
   finanzen: 'Finanzen', aufgaben: 'Aufgaben', 'ziele-planung': 'Ziele & Planung', gesundheit: 'Gesundheit', familie: 'Familie', kontakte: 'Kontakte',
   markttraktion: 'Markttraktion', mandate: 'Mandate', agenten: 'Agenten', brain: 'Brain', sonstiges: 'MAKE OS',
+  // 10.10.: bewusste Erholung (Fokus-Zähler, Gesundheit › Erholung bzw. Erholungs-Block im Kalender) und Fokuszeit aus dem Kalender.
+  erholung: 'Erholung', fokuszeit: 'Fokuszeit',
 };
 export const bereichLabel = (id: string): string => BEREICH_LABEL[id] ?? id.replace(/-/g, ' ');
 

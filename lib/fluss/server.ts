@@ -205,7 +205,7 @@ async function gesundheit(person: string, heute: string): Promise<FlussReihe> {
   const einheiten = sport ? zaehlende(alleEinheiten(sport)).map(e => e.datum) : [];
   // Plan der laufenden Woche (Block oder Standardwoche, mit Phase — lib/sport/plan-bau.ts).
   const planJeWoche = sport?.einstieg.fertig ? geplanteEinheiten(sport, montagVon(heute)).length : 0;
-  const routinen = (await routinenSichtbarFuer(r?.routinen ?? [], person)).filter(x => x.aktiv && x.kategorie === 'gesundheit' && tag(x.naechstesMal));
+  const routinen = (await routinenSichtbarFuer(r?.routinen ?? [], person)).filter(x => x.aktiv && (x.kategorie === 'gesundheit' || x.kategorie === 'erholung') && tag(x.naechstesMal));
   return flussGesundheit({
     heute, planJeWoche, planAb: tag(sport?.planStart), link: WEG.gesundheit(),
     einheiten,

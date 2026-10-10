@@ -10,6 +10,7 @@
 import { schluesselFuer, teile } from './modell';
 import { bereichVon } from './bereich';
 import { laufendAbgleich, laufendSaeubern } from './fokus-regeln';
+import { ERHOLUNG_ZEIT_SCHLUESSEL } from './erholung';
 
 export const FOKUS_MERKER = 'make-fokus';
 export const FOKUS_EREIGNIS = 'make-fokus-geaendert';
@@ -72,13 +73,26 @@ export function fokusFuerAufgabe(a: { id: string; einheit?: string }, pfad = win
  * des Kalenders (mit Aufgabe/Mandat/Einheit: Business), Bereich „fokuszeit“, und merkt die Termin-UID. Läuft schon ein
  * Fokus, wird NICHTS ersetzt (sonst ginge dessen Zeit verloren) — `laeuft` mit seinem Label.
  */
-export function fokusFuerTermin(t: { uid: string; titel: string; space: 'privat' | 'business' }, z: { aufgabeId?: string; einheit?: string; mandatId?: string } = {}): { art: 'gestartet' } | { art: 'laeuft'; label: string } {
+export function fokusFuerTermin(t: { uid: string; titel: string; space: 'privat' | 'business'; erholung?: boolean }, z: { aufgabeId?: string; einheit?: string; mandatId?: string } = {}): { art: 'gestartet' } | { art: 'laeuft'; label: string } {
   const l = gemerkterFokus();
   if (l) return { art: 'laeuft', label: l.label };
+  // Erholungs-Block (10.10.): misst als Erholung (Privat, Bereich „Erholung“) — nie Business, nie mit Aufgabe/Mandat.
+  if (t.erholung) { fokusMerken({ von: new Date().toISOString(), schluessel: ERHOLUNG_ZEIT_SCHLUESSEL, label: t.titel.slice(0, 80), terminUid: t.uid }); return { art: 'gestartet' }; }
   const business = t.space === 'business' || !!(z.aufgabeId || z.mandatId || z.einheit);
   fokusMerken({
     von: new Date().toISOString(), schluessel: schluesselFuer(business ? 'business' : 'privat', 'fokuszeit'), label: t.titel.slice(0, 80), terminUid: t.uid,
     ...(business && z.aufgabeId ? { aufgabeId: z.aufgabeId } : {}), ...(business && z.einheit ? { einheit: z.einheit } : {}), ...(business && z.mandatId ? { mandatId: z.mandatId } : {}),
   });
+  return { art: 'gestartet' };
+}
+
+/**
+ * Erholung bewusst messen (10.10., Gesundheit › Erholung „Zeit messen“): ein Block im Privat-Bereich „Erholung“ (`privat:erholung`) — die
+ * Erholung des Tages zählt die Minuten mit. Läuft schon ein Fokus, wird NICHTS ersetzt.
+ */
+export function erholungStarten(label: string): { art: 'gestartet' } | { art: 'laeuft'; label: string } {
+  const l = gemerkterFokus();
+  if (l) return { art: 'laeuft', label: l.label };
+  fokusMerken({ von: new Date().toISOString(), schluessel: ERHOLUNG_ZEIT_SCHLUESSEL, label: (label.trim() || 'Erholung').slice(0, 80) });
   return { art: 'gestartet' };
 }

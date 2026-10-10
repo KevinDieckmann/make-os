@@ -67,7 +67,7 @@ const WERKZEUGE = [
         startMin: { type: 'number', description: 'Minuten ab 00:00 (540 = 09:00)' },
         dauerMin: { type: 'number', description: '15–240' },
         titel: { type: 'string' },
-        art: { type: 'string', enum: ['fokus', 'reha', 'routine', 'pause', 'aufgabe', 'block'] },
+        art: { type: 'string', enum: ['fokus', 'erholung', 'reha', 'routine', 'pause', 'aufgabe', 'block'] },
       },
       required: ['date', 'startMin', 'dauerMin', 'titel'],
     },

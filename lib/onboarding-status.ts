@@ -299,7 +299,7 @@ async function persoenlich(person: string, u: Umfang): Promise<Record<string, Be
     // Gesundheits-Routinen: mindestens eine aktive eigene Routine der Kategorie Gesundheit.
     'routinen-gesundheit': async () => {
       if (!u.privat) return null;
-      const z = ((await routinen())?.routinen ?? []).filter(r => r?.aktiv && r.owner === person && r.kategorie === 'gesundheit').length;
+      const z = ((await routinen())?.routinen ?? []).filter(r => r?.aktiv && r.owner === person && (r.kategorie === 'gesundheit' || r.kategorie === 'erholung')).length;
       return z ? ja(`${n(z, 'aktive Gesundheits-Routine', 'aktive Gesundheits-Routinen')} von dir`) : nein('noch keine eigene Gesundheits-Routine');
     },
     // 6.2a (09.10.): Gesundheits-Agent — eigener Auftrag gesetzt ODER mindestens eine eigene Unterlage. Nur ja/nein und Zähler, nie Inhalt.

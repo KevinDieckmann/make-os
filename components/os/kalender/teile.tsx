@@ -13,7 +13,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, Segmente, Chip, feld, LEUCHT } from '../ui';
 import { Fenster } from '../Fenster';
 import { ART_FARBE } from '@/types/planer';
-import { ART_INFO, TERMIN_FARBEN, SICHTBARKEIT_LABEL, ARBEITSORTE, arbeitsortTitel, erinnerungText, farbeHex, type IcsArt, type Sichtbarkeit, type Arbeitsort, type ArbeitsortArt } from '@/lib/kalender/arten';
+import { ART_INFO, TERMIN_FARBEN, SICHTBARKEIT_LABEL, ARBEITSORTE, arbeitsortTitel, erinnerungText, farbeHex, istErholungsBlock, type IcsArt, type Sichtbarkeit, type Arbeitsort, type ArbeitsortArt } from '@/lib/kalender/arten';
 import { gmtText, wandzeitIn } from '@/lib/kalender/zeitzone';
 import { ausWandzeit } from '@/lib/kalender/zeit';
 import { objektSchluessel, type BezugKennungen } from '@/lib/kalender/bezug';
@@ -360,8 +360,10 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
     if (r.ok) { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onGespeichert(); onZu(); } else { setFehler(r.fehler ?? 'Nicht gelöscht.'); if (r.aktuell) setKonflikt(r.aktuell); setLoeschenFragen(false); }
   };
   const abbrechen = () => { schreibeMerker(MERKER_AENDERUNG(termin.uid), null); onZu(); };
+  // Erholungs-Block (10.10.): „Zeit messen“ zählt als Erholung (Privat, Bereich „Erholung“) — nie Business.
+  const erholungsBlock = istErholungsBlock(basis as KTermin & { blockArt?: string });
   const fokusStarten = () => {
-    const r = fokusFuerTermin({ uid: objektSchluessel(termin), titel: basis.titel, space }, zuordnung);
+    const r = fokusFuerTermin({ uid: objektSchluessel(termin), titel: basis.titel, space, erholung: erholungsBlock }, zuordnung);
     setFokusMeldung(r.art === 'gestartet' ? 'Fokus läuft — der Zähler steht oben im Kopf.' : `Es läuft schon ein Fokus („${r.label}“) — erst im Kopf beenden.`);
   };
 
@@ -436,6 +438,13 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
               <Knopf leise aus={laeuft || basis.meineAntwort === 'vielleicht'} onClick={() => antworten('vielleicht')}>Vielleicht</Knopf>
               <Knopf farbe={LEUCHT.kritisch} aus={laeuft || basis.meineAntwort === 'abgesagt'} onClick={() => antworten('abgesagt')}>Absagen</Knopf>
             </div>
+          </div>
+        )}
+        {erholungsBlock && art !== 'fokus' && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: `${ART_FARBE.erholung}14`, border: `1px solid ${ART_FARBE.erholung}40`, borderRadius: 12, padding: '10px 12px' }}>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Erholung — zählt in Gesundheit › Erholung.</span>
+            <Knopf farbe={ART_FARBE.erholung} onClick={fokusStarten}>▶ Zeit messen</Knopf>
+            {fokusMeldung && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{fokusMeldung}</span>}
           </div>
         )}
         {art === 'fokus' && (

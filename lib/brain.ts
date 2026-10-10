@@ -12,6 +12,7 @@
 //     `nordstern--<haushalt>`, lib/planung/nordstern-server.ts); fehlt etwas, sagt der Kontext das, statt etwas
 //     Festes aus dem Code einzusetzen.
 
+import { erholungZoeFuer } from '@/lib/gesundheit/erholung-zoe';
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm, kundenAusMandaten } from '@/lib/crm/speicher';
@@ -104,6 +105,11 @@ export interface Brain {
    * unvollständige Brains (Tests, Ausfall) gültig bleiben; ohne Wert sagt der Kontext „kein Nordstern hinterlegt“.
    */
   nordstern?: string | null;
+  /**
+   * Erholung der Person (10.10., Gesundheit › Erholung): Vorschlag des Tages, heute fällige Programme, eigener Fokus-Satz — eine Zeile, NUR
+   * mit Einwilligung (b) (`gesundheitFrei`), sonst leer. Nie die Erholung einer anderen Person.
+   */
+  erholung?: string;
   /** Team-Zeilen aus `team--<haushalt>` (28.09., U4) — Namen nur aus den Daten; fehlt es, gelten die Rollen-Platzhalter. */
   team?: string[];
   /**
@@ -205,6 +211,8 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
   const nordstern = await nordsternFuerPerson(person);
   // Fokus (09.10.): der AUSLÖSENDEN Person — Unser + Mein + mit ihr Geteiltes, Privat nur mit Privat-Zugang. Wirft nie (leer = keiner).
   const fokus = await fokusZeilenFuer(person);
+  // Erholung (10.10.): nur mit Einwilligung (b) — dieselbe Schranke wie die Körperwerte; wirft nie (leer = nichts).
+  const erholung = gesundheitFrei ? await erholungZoeFuer(person, heute).catch(() => '') : '';
   // Jahresziele (Durchstich 09.10.): wie der Agenten-Überblick — Privat nur für volle Mitglieder (Konto mit Haushalt), ein Konto
   // „nur Business“ nie. Über die EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts). Wirft nie (unlesbar → nichts).
   const { jahreszieleFuer } = await import('@/lib/planung/jahresziele-sicht');
@@ -290,6 +298,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     nordstern,
     jahresziele,
     fokus,
+    ...(erholung ? { erholung } : {}),
     team: teamZeilenAus(val(teamR) ?? []),
     geld: geldAus(val(fplanR)?.rechnungen ?? [], heute),
     mandate: (() => {
@@ -454,7 +463,9 @@ export function blockVitals(b: Brain): string {
   // die andere Person. Die Werte kommen aus dem Speicher der Person, mit der
   // gerade geredet wird (siehe gatherBrain). Fehlende Werte stehen als „—“ da (vitalsKurz), nie als erfundene Zahl;
   // kein Name im Code (08.10.: vorher fest je Person).
-  return `KÖRPER (privat, nie in Business-Aussagen, nie über die andere Person): ${vitalsKurz(v)}${vitalsHint(v)}.${v.note ? ` Eigene Notiz: "${v.note}"` : ''}`;
+  const koerper = `KÖRPER (privat, nie in Business-Aussagen, nie über die andere Person): ${vitalsKurz(v)}${vitalsHint(v)}.${v.note ? ` Eigene Notiz: "${v.note}"` : ''}`;
+  // Erholung (10.10.): eigene Angaben der Person (Programmnamen sind ihr Text) — im <daten>-Rahmen, nie Anweisung.
+  return b.erholung ? `${koerper}\n${daten('erholung', b.erholung)}` : koerper;
 }
 
 function blockGedaechtnisRoh(b: Brain, max = 6): string {

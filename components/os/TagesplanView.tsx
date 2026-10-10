@@ -20,6 +20,7 @@ import { ART_FARBE, type PlanBlock } from '@/types/planer';
 import { useKalender } from './kalender/teile';
 import { bloeckeAus, blockAnfrage, gehoertZu, planArtVon, type PlanBlockSicht } from '@/lib/planung/bloecke';
 import { REHA_GEWOHNHEIT_TAGE, rehaGewohnt } from '@/lib/planung/reha-regel';
+import { istErholungsArt } from '@/lib/kalender/arten';
 import { tagPlus, wandAus, minutenVon } from '@/lib/kalender/zeit';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
@@ -52,8 +53,9 @@ const H = (ENDE - START) * PX;
 const BAUSTEINE: { art: PlanBlock['art']; titel: string; dauerMin: number }[] = [
   { art: 'fokus', titel: 'Fokus (Deep Work)', dauerMin: 90 },
   { art: 'fokus', titel: 'Kurzer Fokus', dauerMin: 45 },
-  { art: 'reha', titel: 'Training / Sport', dauerMin: 30 }, // Reha o. Ä. nur aus den eigenen Routinen (09.10.)
-  { art: 'reha', titel: 'Bewegung / Spaziergang', dauerMin: 30 },
+  { art: 'routine', titel: 'Training / Sport', dauerMin: 30 }, // eigene Abläufe nur aus den eigenen Routinen (09.10.)
+  { art: 'erholung', titel: 'Erholung', dauerMin: 30 }, // Erholung (10.10.): zählt in Gesundheit › Erholung und zieht von der Arbeitszeit ab
+  { art: 'erholung', titel: 'Bewegung / Spaziergang', dauerMin: 30 },
   { art: 'pause', titel: 'Pause', dauerMin: 15 },
   { art: 'pause', titel: 'Mittag', dauerMin: 45 },
   { art: 'block', titel: 'Blockzeit', dauerMin: 60 },
@@ -251,9 +253,9 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
         if (intervalle[i].s < intervalle[k].e && intervalle[k].s < intervalle[i].e) kollisionen++;
       }
     }
-    const rehaHeute = meine.some(b => b.art === 'reha');
+    const rehaHeute = meine.some(b => istErholungsArt(b.art));
     return [
-      ...(rehaVorher || rehaHeute ? [{ ok: rehaHeute, text: 'Reha' }] : []),
+      ...(rehaVorher || rehaHeute ? [{ ok: rehaHeute, text: 'Erholung' }] : []),
       { ok: wochenende || fokusMin >= 90, text: wochenende ? 'Wochenende' : '90 Min Fokus' },
       { ok: faelligHeute.every(t => geplantTasks.has(t.id)), text: 'Fälliges im Plan' },
       { ok: meine.some(b => b.art === 'routine' && b.startMin < 10 * 60) || erledigt.size > 0, text: 'Morgenroutine' },

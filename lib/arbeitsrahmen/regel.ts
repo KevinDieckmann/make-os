@@ -158,8 +158,8 @@ export function bisText(ende: string, heute: string): string {
 
 // ── Was ist „Business“? — eine Regel für Termine, Blöcke und Meldungen ────────────────────────────────────────────────
 
-/** Block-Unterarten aus „Planen“, die keine Arbeit sind (Reha, Routine, Pause) — alles andere (Fokus, Aufgabe, eigener Block) ist Arbeit. */
-const KEINE_ARBEIT = new Set(['reha', 'routine', 'pause']);
+/** Block-Unterarten aus „Planen“, die keine Arbeit sind (Erholung/Reha, Routine, Pause) — alles andere (Fokus, Aufgabe, eigener Block) ist Arbeit. */
+const KEINE_ARBEIT = new Set(['reha', 'erholung', 'routine', 'pause']);
 /** Ist ein Block Arbeit? `art` wie im Kalender (fokus | block), `blockArt` die Unterart aus „Planen“. */
 export const istArbeitsBlock = (art: string, blockArt?: string | null): boolean => art === 'fokus' || (art === 'block' && !KEINE_ARBEIT.has(String(blockArt ?? '')));
 

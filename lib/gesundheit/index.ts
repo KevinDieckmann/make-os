@@ -12,6 +12,7 @@
 // Symptom-Tagebuch `haut`, Zähler „Sauber geblieben“ `streak`, lib/gesundheit/module.ts). Struktur und Tracking, keine
 // ärztliche Beratung.
 
+import { istErholungsArt } from '@/lib/kalender/arten';
 import { berechneModell, type KennzahlDefBasis, type SaeuleDef, type Messung, type Detail, type Ampel, type Schwelle, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import type { VitalsLog } from '@/lib/vitals';
 import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog } from './eintraege';
@@ -218,7 +219,8 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
       details: je.slice(0, 3).map(x => ({ titel: x.r.label, wert: `${Math.round(x.q * 7)}/7`, unter: x.r.wann ? `${x.r.wann}s` : undefined, href: WEG.gesundheit('routinen', b.person), ampel: x.q >= 0.7 ? 'gruen' as Ampel : x.q >= 0.4 ? 'gelb' as Ampel : 'rot' as Ampel })) };
   },
   reha(b) {
-    const r = routine(b, /reha|mobil|dehn|physio/i);
+    // Seit 10.10.: eine Routine der Kategorie „Erholung“ zuerst, sonst wie bisher nach dem Namen.
+    const r = b.routinen.find(x => x.kategorie === 'erholung') ?? routine(b, /erholung|reha|mobil|dehn|physio/i);
     if (!r) return { luecke: 'Keine Reha-Routine angelegt', details: [{ titel: 'Routine „Reha & Mobilität“ anlegen', href: WEG.routinen() }] };
     const q = routineQuote(b.log, [r.id], b.heute, 7);
     if (!q.tage) return { luecke: 'In 7 Tagen nichts abgehakt', details: [{ titel: 'Heute abhaken', href: WEG.gesundheit('routinen', b.person) }] };
@@ -227,7 +229,7 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
   },
   bewegung(b) {
     const ab = tagPlus(b.heute, -27);
-    const l = b.bloecke.filter(x => x.date >= ab && x.date <= b.heute && (x.art === 'reha' || GES_BLOCK.test(x.titel ?? '')));
+    const l = b.bloecke.filter(x => x.date >= ab && x.date <= b.heute && (istErholungsArt(x.art) || GES_BLOCK.test(x.titel ?? '')));
     if (!b.bloecke.some(x => x.date >= ab && x.date <= b.heute)) return { luecke: 'In 4 Wochen kein Block im Wochenplan', details: [{ titel: 'Woche planen', href: WEG.woche() }] };
     const h = l.reduce((s, x) => s + x.dauerMin, 0) / 60;
     const w = h / 4;

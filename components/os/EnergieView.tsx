@@ -16,6 +16,8 @@ import { localDay } from '@/lib/zeit';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Zahl, LEUCHT, Spalten, Spalte } from './ui';
 // Erkennungsmuster an EINER Stelle (auch der Gesundheits-Index), nur allgemeine Begriffe (09.10.).
 import { GES_TERMIN, GES_BLOCK } from '@/lib/gesundheit/muster';
+import { istErholungsArt } from '@/lib/kalender/arten';
+import { istGesundheitsKategorie } from '@/lib/planung/routinen';
 
 interface Termin { titel: string; date: string; zeit: string }
 interface Meilenstein { id?: string; titel: string; faellig?: string; zeitfenster?: string; messlatte?: string; fortschritt: number; erledigt: boolean; bereich: string }
@@ -70,15 +72,15 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
     fetch('/api/state/ernaehrung').then(r => r.json())
       .then(d => setEssenGeplant(Object.values(d.plan ?? {}).reduce((s: number, t) => s + ['fruehstueck', 'mittag', 'abend'].filter(k => (t as Record<string, string>)[k]?.trim()).length, 0))).catch(() => {});
     fetch('/api/state/routinen?sicht=ich').then(r => r.json())
-      .then(d => setRoutinen((d.routinen ?? []).filter((x: { aktiv: boolean; kategorie: string }) => x.aktiv && x.kategorie === 'gesundheit'))).catch(() => {});
+      .then(d => setRoutinen((d.routinen ?? []).filter((x: { aktiv: boolean; kategorie: string }) => x.aktiv && istGesundheitsKategorie(x.kategorie)))).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const wochenDaten = wochen.map((w, wi) => {
     const tage = Array.from({ length: 7 }, (_, i) => tagPlus(w, i));
     const wb = (bloecke[w] ?? []).filter(b => !wi ? b.date >= heute : true);
-    const reha = wb.filter(b => b.art === 'reha');
-    const sport = wb.filter(b => b.art !== 'reha' && GES_BLOCK.test(b.titel));
+    const reha = wb.filter(b => istErholungsArt(b.art));
+    const sport = wb.filter(b => !istErholungsArt(b.art) && GES_BLOCK.test(b.titel));
     const term = termine.filter(t => tage.includes(t.date));
     const ms = etappen.filter(m => m.faellig && tage.includes(m.faellig));
     return { w, wi, tage, reha, sport, term, ms };
@@ -105,8 +107,8 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
                   /* Neutral (08.10. abends, Fragebogen Teil 3): keine Ziele oder Gründe EINER Person im Code — nur, was geplant ist. */
                   unter={<span style={{ color: C.inkLeise }}>
                     {reha.length || sport.length
-                      ? [reha.length ? `Reha ${reha.length}×` : '', sport.length ? `Sport ${sport.length}×` : ''].filter(Boolean).join(' · ')
-                      : 'noch keine Reha- oder Sport-Blöcke'}
+                      ? [reha.length ? `Erholung ${reha.length}×` : '', sport.length ? `Sport ${sport.length}×` : ''].filter(Boolean).join(' · ')
+                      : 'noch keine Erholungs- oder Sport-Blöcke'}
                   </span>}
                   rechts={leer
                     ? <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>nichts geplant — <Link href="/os/kalender?modus=planen" style={link}>Blöcke reinziehen ›</Link></span>
@@ -116,7 +118,7 @@ export function EnergieView({ eingebettet = false }: { eingebettet?: boolean } =
                     {einheiten.length > 0 && (
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: term.length || ms.length ? 8 : 0 }}>
                         {einheiten.map((b, i) => (
-                          <Chip key={i} farbe={b.art === 'reha' ? LEUCHT.gut : LEUCHT.puls}>{tagKurz(b.date)} {mm(b.startMin)} {b.titel}</Chip>
+                          <Chip key={i} farbe={istErholungsArt(b.art) ? LEUCHT.gut : LEUCHT.puls}>{tagKurz(b.date)} {mm(b.startMin)} {b.titel}</Chip>
                         ))}
                       </div>
                     )}

@@ -336,6 +336,8 @@ const SYS = {
   // seiner Gesundheits-Unterlage (`gesundheit-unterlagen--kevin`) — nur er selbst.
   agentenAuftrag: 'MESSLATTE-SYS-AGENTEN-AUFTRAG',
   unterlage: 'MESSLATTE-SYS-GESUNDHEIT-UNTERLAGE',
+  // Erholung (10.10.): Bestand je Person `erholung--<person>` (Art. 9) — nur die Person selbst bzw. wem sie die Gesundheit zeigt.
+  erholung: 'MESSLATTE-SYS-ERHOLUNG-PROGRAMM',
   // 09.10. Schlaf-Hilfe, Tages-Check, Essen nach WHOOP: Kevins Einstellungen (`gesundheit-alltag`, Erstkonto ohne Suffix) — die Marke steckt in
   // der Kennung einer Ergänzungs-Routine (nur er selbst sieht seine Einstellungen, auch bei „Teilen“ nicht).
   alltag: 'MESSLATTE-SYS-ALLTAG',
@@ -582,6 +584,8 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     // Agenten-Bereich (Paket 4b): Kevins Einstellungen seines Privat-Heads (eigener Abschnitt im Bestand des Haushalts).
     await db.saveJson('agenten-einstellung--haus-messlatte', { v: 1, heads: {}, personen: { kevin: { heads: { assistenz: { zustaendig: SYS.agentenEinstellung, budgetCentMonat: 1234, geaendertVon: 'kevin', geaendertAm: J, auftrag: SYS.agentenAuftrag, auftragVon: 'kevin', auftragAm: J } } } } });
     // 09.10.: eine Gesundheits-Unterlage von Kevin (nur der Eintrag — die Liste liefert nur Metadaten).
+    // 10.10.: Kevins Erholung (Programm, Behandlung mit Unterlage, Fokus) — Kevin teilt seine Gesundheit nicht mit Malin.
+    await db.saveJson('erholung--kevin', { v: 1, programme: [{ id: 'ep-messlatte', name: SYS.erholung, art: 'mobility', uebungen: [], proWoche: 3, tage: [], status: 'aktiv', angelegt: J }], einheiten: [{ id: 'ee-messlatte', tag: H, programmId: 'ep-messlatte', art: 'mobility', am: J }], behandlungen: [{ id: 'eb-messlatte', art: SYS.erholung, termine: [], unterlagen: [], status: 'laeuft', angelegt: J }], ziele: [], fokus: SYS.erholung, einstellungen: {} });
     await db.saveJson('gesundheit-unterlagen--kevin', { v: 1, unterlagen: [{ id: 'gu-00000000-0000-4000-8000-0000000000a1', name: `${SYS.unterlage}.pdf`, typ: 'application/pdf', groesse: 1234, hochgeladen: J, pruefsumme: 'x' }] });
     await db.saveJson('agenten-plan--kevin', { v: 1, aufgaben: [{ id: 'hg-messlatte', besitzer: 'kevin', agent: { art: 'head', headId: 'assistenz' }, titel: SYS.agentenPlan, auftrag: SYS.agentenPlan, zeitplan: { art: 'wiederkehrend', rhythmus: 'taeglich', uhrzeit: '08:00' }, aktiv: true, erstellt: J }] });
 

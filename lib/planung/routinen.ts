@@ -30,7 +30,7 @@ export function sauberRoutine(roh: unknown): Routine | null {
     id: String(r.id ?? '').slice(0, 60) || neueKennung('r'),
     label,
     wann: (['morgen', 'tag', 'abend'] as const).includes(r.wann as Routine['wann']) ? r.wann as Routine['wann'] : 'morgen',
-    kategorie: (['gesundheit', 'leben', 'business'] as const).includes(r.kategorie as Routine['kategorie']) ? r.kategorie as Routine['kategorie'] : 'leben',
+    kategorie: (['gesundheit', 'erholung', 'leben', 'business'] as const).includes(r.kategorie as Routine['kategorie']) ? r.kategorie as Routine['kategorie'] : 'leben',
     dauerMin: Math.max(5, Math.min(120, Math.round(Number(r.dauerMin)) || 15)),
     aktiv: r.aktiv !== false,
   };
@@ -229,3 +229,9 @@ export function bloeckeFuer(bloecke: readonly Block[] | undefined, person: strin
 export function standardBloecke(person: string, von = '09:00', bis = '18:00'): Block[] {
   return ([1, 2, 3, 4, 5] as Wochentag[]).map(wt => ({ id: `bl-${person}-${wt}-std`, owner: person, wochentag: wt, von, bis, art: 'business' as const, titel: 'Arbeit', rang: 1 }));
 }
+
+/**
+ * Gehört eine Routine-Kategorie zur Gesundheit? (10.10.) „Erholung“ ist eine Gesundheits-Kategorie — zählt im Gesundheits-Index, auf der
+ * Energie-Seite und in den Lichtfäden wie „Gesundheit“. Ohne Kategorie (Altbestand) gilt wie bisher Gesundheit.
+ */
+export const istGesundheitsKategorie = (k: unknown): boolean => !k || k === 'gesundheit' || k === 'erholung';

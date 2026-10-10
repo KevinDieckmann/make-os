@@ -29,6 +29,7 @@ import type { Breite, Einstellungen, Wert } from '@/lib/flaeche/modell';
 import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE } from '@/lib/make-one/space-regeln';
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { bereicheNachZeit, privatGegenBusiness, zeitText, type ZeitBild } from '@/lib/zeitmessung/modell';
+import { ErholungHeuteWidget } from '../gesundheit/ErholungHeute';
 import { bereichLabel } from '@/lib/zeitmessung/kennzahlen';
 import type { Zeitraum } from '@/lib/zeitmessung/einheiten';
 import { EinheitBalken, zeitEinheitenAdresse, type ZeitJeEinheitAntwort } from '../zeit/ZeitJeEinheit';
@@ -325,6 +326,9 @@ function KoerperWidget({ titel, i }: WidgetProps) {
     </Karte>
   );
 }
+
+// ── Erholung heute (10.10.) ─────────────────────────────────────────────────
+function ErholungWidget({ titel, i }: WidgetProps) { return <ErholungHeuteWidget titel={titel} i={i} />; }
 
 // ── Routinen & Streak ───────────────────────────────────────────────────────
 function RoutinenWidget({ titel, i }: WidgetProps) {
@@ -803,6 +807,8 @@ export const WIDGETS: Record<string, WidgetDef> = {
   ziele: { art: 'ziele', label: 'Ziele · Unsere · Meine', bereich: 'Tag', beschreibung: 'Gemeinsame Ziele, deine eigenen und was dein Gegenüber mit dir teilt — mit Fortschritt', breite: 4, Komponente: ZieleWidget,
     einstellungen: [{ k: 'horizont', label: 'Horizont', art: 'wahl', optionen: [{ w: 'jahr', label: 'Jahr' }, { w: 'quartal', label: 'Quartal' }, { w: 'monat', label: 'Monat' }], standard: 'jahr' }] },
   koerper: { art: 'koerper', label: 'Körper', bereich: 'Gesundheit', beschreibung: 'Recovery und Routinen von heute', breite: 2, Komponente: KoerperWidget },
+  // Erholung (10.10.): die EIGENE Erholung — Vorschlag, fällige Programme, Ziele, Fokus, Pausen (components/os/gesundheit/ErholungHeute.tsx).
+  erholung: { art: 'erholung', label: 'Erholung heute', bereich: 'Gesundheit', beschreibung: 'Vorschlag aus deinen Körperwerten, heute fällige Programme, Erholungs-Ziele und die nächste Pause — nur deine', breite: 2, Komponente: ErholungWidget },
   routinen: { art: 'routinen', label: 'Routinen & Streak', bereich: 'Gesundheit', beschreibung: 'Welche Routinen heute schon stehen, dein Streak', breite: 2, Komponente: RoutinenWidget },
   'routinen-heute': { art: 'routinen-heute', label: 'Routinen heute', bereich: 'Tag', beschreibung: 'Was heute dran ist — eigene und gemeinsame Routinen nach Rhythmus, abhakbar', breite: 2, Komponente: RoutinenHeuteWidget,
     einstellungen: [{ k: 'space', label: 'Bereich', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }] },
@@ -839,6 +845,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'zeit', label: 'Zeit je Einheit', beschreibung: `Bewusste Business-Zeit je ${BUSINESS_EINHEITEN_NAMEN.join(' · ')} · ohne Einheit`, bereich: 'Business', breite: 2, voreinstellung: { space: 'business', nach: 'einheit' } },
   { art: 'ziele', label: 'Ziele · Unsere · Meine', beschreibung: WIDGETS.ziele.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'koerper', label: 'Körper', beschreibung: WIDGETS.koerper.beschreibung, bereich: 'Gesundheit', breite: 2 },
+  { art: 'erholung', label: 'Erholung heute', beschreibung: WIDGETS.erholung.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen', label: 'Routinen & Streak', beschreibung: WIDGETS.routinen.beschreibung, bereich: 'Gesundheit', breite: 2 },
   { art: 'routinen-heute', label: 'Routinen heute · Privat', beschreibung: 'Heute fällige private Routinen — eigene und gemeinsame, abhakbar', bereich: 'Tag', breite: 2, voreinstellung: { space: 'privat' } },
   { art: 'routinen-heute', label: 'Routinen heute · Business', beschreibung: 'Heute fällige Business-Routinen — eigene und gemeinsame, abhakbar', bereich: 'Business', breite: 2, voreinstellung: { space: 'business' } },
