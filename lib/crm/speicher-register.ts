@@ -18,13 +18,32 @@
 //   loeschfrist      Frist als Satz (zusätzlich zu `frist` = Kennung einer einstellbaren Löschfrist)
 //   kategorie        'art9' (Gesundheit), 'beschaeftigte' (Arbeitszeit/Urlaub, § 26 BDSG), 'vertraulich' (Geschäftsgeheimnisse, Cap-Table)
 // Der Zweck steht wie bisher in `grund`.
+// Seit 09.10. spät (Kevin: „Firma und Privat müssen immer getrennt liegen, auch von den Daten“; Plan TRENNUNG_PRIVAT_BUSINESS.md)
+// trägt JEDER Eintrag seinen Bereich — gesetzt nicht im Eintrag selbst, sondern in der Tabelle `BEREICH_JE_MUSTER` unten:
+//   bereich      'privat'   nur Privat-Bereich des Haushalts (Familie, Ernährung, Kompass, Nordstern) — nie in eine Firmen-Instanz
+//                'business' nur Business (Kartei-Pflichtbestände, Heads, Business-Medien, Gmail/Google, WhatsApp Business …)
+//                'person'   gehört EINER Kontoperson und ist ihre eigene Sache (Gesundheit, Zugänge, eigene Einstellungen) — wandert
+//                           mit dem Konto, nie mit einem Bereich
+//                'instanz'  Betrieb/Einstellungen der Instanz (Konten, Riegel, Protokoll-Siegel, Schalter) — keine Bereichsdaten
+//                'gemischt' enthält Privat UND Business, getrennt nur über ein Feld (space, bereich, einheit, ort, Gesellschaft …)
+//                           oder gar nicht — `trennung` sagt, was heute trennt. Die Liste darf nur KÜRZER werden, ein NEUER Bestand
+//                           ist nie gemischt (Wächter tests/trennung-bereiche.test.ts): je Bereich ein eigener Bestand.
 // Rein, ohne Abhängigkeiten — der Test und die Doku lesen es direkt.
 
 export type Bezug = 'dritte' | 'haushalt' | 'kein';
 export type Behandlung = 'entfernen' | 'tilgen' | 'pseudonym' | 'ausgenommen';
 export type Kategorie = 'art9' | 'beschaeftigte' | 'vertraulich';
+/** Wohin ein Bestand gehört (TRENNUNG_PRIVAT_BUSINESS.md) — Werte siehe Kopf. */
+export type SpeicherBereich = 'privat' | 'business' | 'person' | 'instanz' | 'gemischt';
+export const SPEICHER_BEREICHE: readonly SpeicherBereich[] = ['privat', 'business', 'person', 'instanz', 'gemischt'];
 export interface Angaben { rechtsgrundlage: string; art15: string; loeschfrist: string; kategorie?: Kategorie[] }
-export interface SpeicherEintrag extends Partial<Angaben> { muster: string; bezug: Bezug; behandlung: Behandlung; grund: string; frist?: string }
+export interface SpeicherEintrag extends Partial<Angaben> {
+  muster: string; bezug: Bezug; behandlung: Behandlung; grund: string; frist?: string;
+  /** Bereich des Bestands (aus `BEREICH_JE_MUSTER`, 09.10. spät). */
+  bereich?: SpeicherBereich;
+  /** Nur bei `gemischt`: welches Feld heute Privat und Business trennt (bzw. dass keins trennt). */
+  trennung?: string;
+}
 /** Einen Eintrag um die Pflicht-Angaben ergänzen (neue Speicher, besondere Kategorien). */
 const mit = (e: SpeicherEintrag, a: Angaben): SpeicherEintrag => ({ ...e, ...a });
 /** Gesundheitsdaten der Person selbst (Art. 9): Grundlage und Wege — eine Formulierung für alle Gesundheits-Bestände. */
@@ -62,7 +81,7 @@ const K = (muster: string, grund: string): SpeicherEintrag => ({ muster, bezug: 
 /** Spiegel einer Apple-Quelle mit Dritten: ausgenommen — Löschung nur in Apple (der Löschlauf meldet, wo). */
 const A = (muster: string, grund: string, frist?: string): SpeicherEintrag => ({ muster, bezug: 'dritte', behandlung: 'ausgenommen', grund, ...(frist ? { frist } : {}) });
 
-export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
+const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // ── CRM-Kern (lib/crm/person-bestaende.ts) ──
   E('kontakte', 'Die Kartei — Eintrag raus (personEntfernen), mit allen Feldern inkl. Geburtstag (K2, 29.09.).', 'kontakte'),
   E('crm', 'Kennung raus (person-verweise.ts) — auch aus den Zielpersonen besuchter Events (Event.zielpersonen, 03.10.) und aus dem Übergabe-Protokoll (Event.uebergaben[].kontaktIds, netz-recht); voller Name in Deal-Titeln/Kundennamen → „[gelöscht]“.'),
@@ -604,6 +623,156 @@ export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = [
   K('datenschutz-migration', 'Marke der Umrechnung v1 → v2 je Pepper (nur Zahlen).'),
 ];
 
+// ─── Bereich je Bestand (09.10. spät, Inventur in TRENNUNG_PRIVAT_BUSINESS.md) ─────────────────────────────────────────────
+// Regel „im Zweifel gemischt“: was heute Privat und Business in EINEM Bestand hält — auch nur abgeleitet oder als Verweis —, steht
+// unten in GEMISCHT mit dem Feld, das heute trennt. Eine Entscheidung oder ein Umbau nimmt einen Bestand heraus (Liste wird kürzer);
+// ein neuer Bestand kommt nie dazu. Die Selbstständigkeit (kdc) gehört seit 05.10. zum Bereich Privat (lib/einheiten.ts) — deshalb
+// sind Bestände gemischt, die sie zusammen mit den Business-Gesellschaften führen.
+
+const IN_PRIVAT: readonly string[] = [
+  'familie--*', 'ernaehrung', 'ernaehrung-vorschlag', 'kompass', 'nordstern--*', 'gesundheit-takt',
+];
+const IN_BUSINESS: readonly string[] = [
+  // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
+  'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
+  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  // Business-Postfächer und -Kalender (Google Workspace mit Domain-Prüfung, Microsoft 365, WhatsApp-Nummer nur im Business)
+  'gmail-stand--*', 'gmail-text--*', 'kalender-google--*', 'kalender-umzug-sicherung--*', 'm365-postfach', 'microsoft-inbox', 'kemaris-calendar',
+  'whatsapp-spiegel', 'whatsapp-zustand', 'whatsapp-medien',
+  // Business-Medien, Team, Planungs-Einheiten, Business-Finanzen ohne Privat-Einheit
+  'medien--*', 'team--*', 'planung-einheiten--*', 'finance', 'business-eroeffnung',
+];
+const JE_PERSON: readonly string[] = [
+  // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber
+  'sport', 'sport--*', 'vitals', 'vitals--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
+  'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
+  'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*',
+  // Zugänge und Kanäle der Person
+  'google-verbindung--*', 'icloud-verbindung--*', 'kalender-icloud--*', 'postfaecher--*', 'postfach-zugang--*', 'oauth-tokens',
+  'zoe-kanal--*', 'zoe-whatsapp-medien',
+  // eigene Einstellungen und eigene Ablagen
+  'arbeitsmodus', 'arbeitsmodus--*', 'arbeitsrahmen--*', 'flaeche', 'flaeche--*', 'onboarding--*', 'fokus-laufend--*',
+  'agenten-skills-privat--*', 'medien-privat--*', 'ki-tiefenbericht--*',
+];
+const INSTANZ: readonly string[] = [
+  'konten', 'anmeldungen', 'telegram', 'oauth-states', 'google-oauth-zustand', 'whoop-oauth-zustand', 'zoe-whatsapp-zustand',
+  'ki-verbrauch', 'ki-einstellungen', 'ki-protokoll--*', 'ki-auftraege-offen', 'ki-stand', 'demo-instanz', 'backlog', 'bauplan-bilder',
+  'protokoll-siegel', 'protokoll-pruefung', 'bauzeit', 'agents-config', 'brain-konsolidierung', 'brain-bruecke--*', 'brain-app-spiegel',
+  'crm-loeschfristen', 'dashboard', 'filter', 'fokus-regler', 'labels', 'spaces', 'arbeitsplatz', 'kalender-einstellungen', 'kalender-sicherung',
+  'onboarding', 'tagesstart', 'willkommen', 'anwesenheit', 'nutzung', 'client-fehler', 'absichten--*', 'anfragen-ergebnis',
+  'wochenplan-uebernahme', 'zulieferer-uebernahme', 'hoi-meldung', 'hoi-durchsicht', 'hoi-aussen', 'hoi-csp',
+  'datenschutz-einrichtung', 'datenschutz-pannen', 'datenschutz-grabsteine',
+];
+/** Gemischte Bestände (Stand 09.10.) → was heute trennt. Nur kürzer werden lassen (tests/trennung-bereiche.test.ts). */
+export const GEMISCHT: Readonly<Record<string, string>> = {
+  // ── Kartei und Markttraktion ──
+  kontakte: 'kein Feld — Bereich einer Person nur abgeleitet (Firma → Deals/Mandate ihrer Gesellschaft, lib/zoe/crm-sicht.ts); Kunden der Selbstständigkeit liegen in derselben Kartei',
+  crm: 'Deal/Mandat/Angebot.gesellschaft (Selbstständigkeit = Privat), Event.fuer; Bereich einer Firma abgeleitet (bereichVonGesellschaft)',
+  'crm-dateien--*': 'Bezug je Eintrag (Kontakt, Firma, Mandat, Rechnung, Angebot, Gesellschaft) → Gesellschaft; auch Rechnungs-PDFs der Selbstständigkeit',
+  'gesellschaften--*': 'je Gesellschaft (Selbstständigkeit = Privat, kdv/ug/g-… = Business) — Steckbrief, Absender, Cap-Table, Verträge',
+  'mandate-tabelle-laeufe': 'Lauf-Protokoll eingefügter Mandate (Mandat → Gesellschaft)',
+  // ── Aufgaben und Planung ──
+  tasks: 'Task/Project.spaceId (privat · kdc · kdv · ug · m-<firma>), eigene Status je Space; Vorlagen, Serien und Papierkorb über alle Spaces',
+  'aufgaben-dateien--*': 'Feld bereich (privat/business, aus dem Space der Aufgabe) je Datei; die Dateien liegen im selben Ordner wie die CRM-Ablage',
+  ordnung: 'orgs: Aufgabe → Ort (privat oder Gesellschaft) von Hand; Themen-Reihenfolge',
+  'zoe-chargen--*': 'Kennungen von Aufgaben/Vorschlägen beider Bereiche',
+  ziele: 'Ziel.space + einheit je Horizont; Fokus-Sätze je Space (privat:jahr / business:jahr)',
+  'ziele-eigen': 'persönliche Ziele mit space je Horizont (Altname Erstkonto)',
+  'ziele-eigen--*': 'persönliche Ziele mit space je Horizont',
+  meilensteine: 'Meilenstein.space + einheit/mandatId (Bereich über wirksamerSpace)',
+  'meilenstein-raum--*': 'Austausch je Meilenstein (Meilenstein → space)',
+  routinen: 'Routine.space und Block.art (privat/business) + einheit',
+  wochenplan: 'Altbestand (nur Archiv der Übernahme): Blöcke mit art privat/business',
+  'wochenplan--*': 'Altbestand (nur Archiv der Übernahme): Blöcke mit art privat/business',
+  'kapazitaet--*': 'zählt Arbeit, nicht Bereich: Zuweisungen Person × Mandat/Kunde auch der Selbstständigkeit (Privat-Einheit)',
+  'kapazitaet-plan--*': 'Wochenpläne der Arbeit inkl. Selbstständigkeit (Posten nur als Kennung)',
+  zeit: 'Schlüssel space:bereich je Tag; Fokus-Blöcke mit Einheit/Mandat',
+  'zeit--*': 'Schlüssel space:bereich je Tag; Fokus-Blöcke mit Einheit/Mandat',
+  performance: 'Wachstums-Score je Tag: Säulen Gesundheit/Familie (privat) und Business/Finanzen in einem Eintrag',
+  'performance--*': 'Wachstums-Score je Tag: Säulen Gesundheit/Familie (privat) und Business/Finanzen in einem Eintrag',
+  tageslauf: 'Tagesläufe: Ausrichtung mit Tagesform (Art. 9) und Business-Prioritäten in einem Text',
+  'tageslauf--*': 'Tagesläufe: Ausrichtung mit Tagesform (Art. 9) und Business-Prioritäten in einem Text',
+  // ── Kalender ──
+  'calendar-cache': 'Kategorie/Kalender je Termin (privat, gemeinsam, holding, Google je Person) — Space über kalender-einstellungen',
+  'kalender-icloud': 'iCloud-Spiegel des Haushalts — Space je Kalender aus kalender-einstellungen (privat, gemeinsam, Business)',
+  'kalender-bezug': 'Bezug je Termin: Kontakt/Firma/Mandat/Deal/Event (Business) und Aufgabe (beide); der Termin liegt im privaten oder geschäftlichen Kalender',
+  meetings: 'kein Feld — Bereich nur über den Termin (Kalender → Space)',
+  'apple-reminders-cache': 'Altbestand: Erinnerungen-Listen vom Mac ohne Bereich (eingefroren, als Aufgaben übernommen)',
+  'apple-contacts-cache': 'Altbestand: Adressbuch vom Mac ohne Bereich (eingefroren)',
+  // ── Postfächer ──
+  'imap-stand--*': 'mehrere Postfächer je Person in einem Bestand — postfachId → Bereich im Register postfaecher--*',
+  'imap-text--*': 'mehrere Postfächer je Person in einem Bestand — postfachId → Bereich im Register postfaecher--*',
+  'inbox-zustand--*': 'je Gespräch (Kennung → Postfach → Bereich) und Screener je Absender',
+  'inbox-uebergaben--*': 'je Übergabe das Gespräch → Postfach → Bereich',
+  'inbox-geteilt--*': 'je Gespräch → Postfach → Bereich',
+  'inbox-absender': 'Altbestand: Screener aller Postfächer ohne Bereich (abgelöst durch inbox-zustand--*)',
+  'inbox-triage': 'Altbestand: Einstufungen von Mails aller Postfächer ohne Bereich',
+  'inbox-status': 'Altbestand der alten Inbox: Zustand je Mail aller Postfächer ohne Bereich',
+  'apple-mail-cache': 'Altbestand: Mail-Zwischenspeicher vom Mac (private und geschäftliche Postfächer, ohne Bereich)',
+  // ── Finanzen und Steuern ──
+  finanzplan: 'Rechnungen/Zahlungen/Merkposten/Konten je firmaId (Selbstständigkeit = Privat, kdv/ug = Business)',
+  rechnungswesen: 'Nummernkreise je Gesellschaft (auch Selbstständigkeit)',
+  'finanzen-plan--*': 'EIN Dokument je Haushalt, Pfade privat/business (businessSicht, privatTeil); Selbstständigkeit unter Privat',
+  liquiplan: 'Planposten je Firma bzw. ausdrücklich privat (ohnePrivatPosten)',
+  buchungen: 'Feld ort (privat · kdc · kdv · ug)',
+  grundlage: 'V1-Export: Teile p (privat, Kredite), s (Selbstständigkeit), u (UG), b (Belege)',
+  'business-abschluesse': 'Monatsabschlüsse je Firma — Selbstständigkeit (Privat) und Business-Gesellschaften, getrennt über bereichVonFirma',
+  'abschluss-laeufe': 'Lauf-Protokoll je Gesellschaft (auch Selbstständigkeit)',
+  'business-einstellungen': 'je Sicht — gespeicherte Werte der Selbstständigkeit (kdc) bleiben liegen',
+  'business-verlauf': 'je Sicht — gespeicherter Verlauf der Selbstständigkeit (kdc) bleibt liegen',
+  'finanzchef-einstellung': 'Steuer- und Rechtsform-Einstellungen für kdv UND kdc (Selbstständigkeit)',
+  steuern: 'Einstellungen je Steuer-Firma (kdc, kdv) und die private Einkommensteuer',
+  'haushalt-*--*': 'Haushaltsfinanzen: Posten/Belege je einheit (privat · kdc · kdv · ug); dazu haushalt-chef--* (Head of Finance Business + Haushalt)',
+  'haushalt-umzug--*': 'Umzugskopie der Haushaltsfinanzen (wie haushalt-*--*)',
+  'konten--*': 'Konten je Inhaber (Gesellschaft, privat, gemeinsam)',
+  'kontoauszug-laeufe--*': 'je Lauf das Konto → Gesellschaft bzw. privat',
+  // ── ZOE, Agenten, KI, Medien ──
+  'zoe-verlauf': 'kein Feld — Gespräche mit ZOE über beide Bereiche',
+  'zoe-gedaechtnis': 'kein Feld — Merksätze aus beiden Bereichen',
+  'zoe-protokoll': 'Werkzeug-Aufrufe beider Bereiche (Bereich über das Werkzeug)',
+  'zoe-stapel': 'Vorschläge beider Bereiche (Bereich je Vorschlag abgeleitet, lib/zoe/bereich-server.ts)',
+  'zoe-entscheidungen--*': 'Entscheidungen zu Vorschlägen beider Bereiche (Bereich des Vorschlags)',
+  'zoe-auftraege': 'Warteschlange der Läufe beider Bereiche (Auftrags- und Ergebnistexte)',
+  'zoe-empfang': 'Begrüßungstext aus beiden Bereichen (Zwischenspeicher)',
+  'agenten-faeden--*': 'Threads je Person mit ZOE, Business-Heads und Privat-Heads (Agent → Bereich)',
+  'agenten-faden--*': 'ein Thread je Datei — Agent → Bereich (ZOE, Business-Head oder Privat-Head)',
+  'agenten-skills--*': 'Werkstatt je Haushalt: Business-Heads und Familie-Head (Head → Bereich)',
+  'agenten-plan--*': 'Hintergrundaufgaben je Person für beliebige Agenten (Agent → Bereich)',
+  'agenten-einstellung--*': 'Business-Heads je Haushalt UND Abschnitte der Privat-Heads je Person (Auftrag an den Gesundheits-Head, Art. 9)',
+  'agent-log': 'Läufe aller Agenten (Bereich über den Agenten)',
+  'meldungen--*': 'Glocke je Person: Meldungen beider Bereiche mit Titeln (Art/Bezug → Bereich)',
+  'ereignisse--*': 'Feld bereich je Ereignis',
+  'ki-medien--*': 'Auftragsbuch/Altbestand der KI-Medien — Ziel medien--* (Business) oder medien-privat--* (privat)',
+  'ki-medien': 'Dateien der KI-Medien beider Ablagen',
+  medien: 'Dateien von medien--* (Business) und medien-privat--* (privat) im selben Speicher — Schlüssel je Medium',
+  'medien-uploads': 'offene Uploads für Business- und private Alben (Album → Katalog)',
+  // ── Protokolle, deren Einträge je einem Bestand/Bereich gehören ──
+  'aenderungsprotokoll--*': 'Feld bestand je Eintrag → Bereich des Bestands',
+  'leseprotokoll--*': 'Feld bereich je Eintrag (gesundheit, finanzen, kontakte, gesellschaften …)',
+  aenderungen: 'Altbestand (nur gelesen): Browser-Änderungen je Bestand',
+};
+
+const BEREICH_JE_MUSTER: ReadonlyMap<string, SpeicherBereich> = new Map<string, SpeicherBereich>([
+  ...IN_PRIVAT.map(m => [m, 'privat'] as const),
+  ...IN_BUSINESS.map(m => [m, 'business'] as const),
+  ...JE_PERSON.map(m => [m, 'person'] as const),
+  ...INSTANZ.map(m => [m, 'instanz'] as const),
+  ...Object.keys(GEMISCHT).map(m => [m, 'gemischt'] as const),
+]);
+/** Wie oft ein Muster in den Bereichs-Listen steht — für den Wächter (genau einmal). */
+export function bereichNennungen(muster: string): number {
+  return [IN_PRIVAT, IN_BUSINESS, JE_PERSON, INSTANZ, Object.keys(GEMISCHT)].reduce((n, l) => n + l.filter(x => x === muster).length, 0);
+}
+/** Alle Muster der Bereichs-Listen (Wächter: keine toten Einträge). */
+export const BEREICH_MUSTER: readonly string[] = [...IN_PRIVAT, ...IN_BUSINESS, ...JE_PERSON, ...INSTANZ, ...Object.keys(GEMISCHT)];
+
+export const SPEICHER_REGISTER: readonly SpeicherEintrag[] = REGISTER_EINTRAEGE.map(e => {
+  const bereich = BEREICH_JE_MUSTER.get(e.muster);
+  if (!bereich) return e;
+  return bereich === 'gemischt' ? { ...e, bereich, trennung: GEMISCHT[e.muster] } : { ...e, bereich };
+});
+
 /** Dynamische Namen im Code, deren Präfix aus einer Konstante kommt (`${KONSTANTE}${…}` → „**“) — mit ihrem Muster. */
 export const DYNAMISCHE_NAMEN: Readonly<Record<string, { datei: string; muster: string }>> = {
   '**': { datei: 'lib/crm/verbindungen-laden.ts', muster: 'aufgaben-dateien--*' },
@@ -614,4 +783,9 @@ const alsRegex = (muster: string) => new RegExp(`^${muster.replace(/[.+?^${}()|[
 /** Der Register-Eintrag für einen Bestandsnamen (auch ein Code-Muster wie `heads-replay-*`) — oder null. */
 export function registerEintrag(name: string): SpeicherEintrag | null {
   return SPEICHER_REGISTER.find(e => e.muster === name || alsRegex(e.muster).test(name)) ?? null;
+}
+
+/** Bereich eines Bestandsnamens laut Register — oder null (unbekannt). Noch ohne Wirkung; Grundlage der Stufen 2–4 im Plan. */
+export function bereichVonBestand(name: string): SpeicherBereich | null {
+  return registerEintrag(name)?.bereich ?? null;
 }
