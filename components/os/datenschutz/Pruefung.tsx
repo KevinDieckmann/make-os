@@ -20,7 +20,7 @@ export function PruefungKarte({ stand, i = 2 }: { /** Wechselt nach jeder Änder
   const offen = p?.filter(x => x.status !== 'erfuellt').length ?? 0;
   return (
     <Karte i={i} id="pruefung">
-      <Ueberschrift rechts={p ? <Chip farbe={offen ? LEUCHT.achtung : LEUCHT.gut}>{p.length - offen} von {p.length} erfüllt</Chip> : undefined}>Selbstprüfung</Ueberschrift>
+      <Ueberschrift erklaerung="datenschutz.pruefung" rechts={p ? <Chip farbe={offen ? LEUCHT.achtung : LEUCHT.gut}>{p.length - offen} von {p.length} erfüllt</Chip> : undefined}>Selbstprüfung</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 8 }}>Aus den echten Beständen gerechnet, nicht abgehakt. Keine Rechtsberatung.</div>
       {!p ? <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Rechnet …</div> : (
         <Liste>

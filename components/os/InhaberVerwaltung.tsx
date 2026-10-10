@@ -68,7 +68,7 @@ export function InhaberVerwaltung({ ich, zweiterFaktorAn, i = 0 }: { ich: string
   const ohneFaktor = konten.filter(k => k.rolle !== 'inhaber' && !!haushalt && k.haushalt === haushalt && !k.zweiterFaktorAn).length;
   return (
     <Karte i={i} id="inhaber" akzent={LEUCHT.puls}>
-      <Ueberschrift farbe={LEUCHT.puls}>Inhaber</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.puls} erklaerung="konto.inhaber">Inhaber</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 6 }}>
         Inhaber verwalten die Instanz gleichwertig: Konten, Haushalt, zweiter Faktor, Datenschutz, Nachweise, Agenten. Persönliches bleibt bei jeder
         Person. Inhaber kann werden, wer im selben Haushalt ist und den zweiten Faktor eingerichtet hat.

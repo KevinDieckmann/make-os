@@ -78,7 +78,7 @@ export function ZoeWhatsappKarte({ i = 0 }: { i?: number }) {
 
   return (
     <Karte i={i} akzent={k?.status === 'verbunden' ? KUGEL.smaragd : undefined} id="zoe-whatsapp">
-      <Ueberschrift farbe={KUGEL.smaragd} rechts={<Chip farbe={zustand.farbe}>{zustand.text}</Chip>}>ZOE auf WhatsApp</Ueberschrift>
+      <Ueberschrift farbe={KUGEL.smaragd} erklaerung="zoe.whatsapp" rechts={<Chip farbe={zustand.farbe}>{zustand.text}</Chip>}>ZOE auf WhatsApp</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, marginBottom: 12 }}>
         ZOE erreicht dich über ihre eigene WhatsApp-Nummer: Briefing am Morgen, Wochenstart, Rückblick, Erinnerungen, Sicherheits-Hinweise. Du kannst ihr dort
         Fragen stellen, „Aufgabe: …“ oder „Notiz: …“ schicken (landen als Vorschlag in deinen Freigaben). Ohne Ausnahme kommen nur Hinweise mit Link.
@@ -99,7 +99,7 @@ export function ZoeWhatsappKarte({ i = 0 }: { i?: number }) {
 
           {(k.status === 'aus' || k.status === 'getrennt') && (
             <form onSubmit={e => { e.preventDefault(); void verbinden(); }} style={{ display: 'grid', gap: 12 }}>
-              <Schalter karte an={zustimmung} onChange={setZustimmung} beschreibung={EINWILLIGUNG_TEXT.text}>{EINWILLIGUNG_TEXT.titel}</Schalter>
+              <Schalter karte erklaerung="zoe.whatsapp.einwilligung" an={zustimmung} onChange={setZustimmung} beschreibung={EINWILLIGUNG_TEXT.text}>{EINWILLIGUNG_TEXT.titel}</Schalter>
               <Feldzeile label="Deine Handynummer (mit Vorwahl)">
                 <input value={nummer} onChange={e => setNummer(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="+49 170 1234567" style={{ ...eingabe, maxWidth: 320 }} />
               </Feldzeile>
@@ -135,7 +135,7 @@ export function ZoeWhatsappKarte({ i = 0 }: { i?: number }) {
                 <Angabe label="24-Stunden-Fenster" wert={k.fenster.offen ? `offen bis ${uhr(k.fenster.bis ?? undefined)}` : 'zu — Hinweise als Vorlage „Briefing bereit“'} />
                 {s.zoeNummer && <Angabe label="ZOE-Nummer" wert={s.zoeNummer} mono />}
               </div>
-              <Schalter karte an={k.inhalte.an} onChange={an => { void inhalte(an); }} beschreibung={k.inhalte.an ? `Eingeschaltet seit ${uhr(k.inhalte.seit)}. ${INHALTE_TEXT.text}` : 'Aus: nur neutrale Hinweise mit Link. Einschalten fragt noch einmal nach.'}>{INHALTE_TEXT.titel}</Schalter>
+              <Schalter karte erklaerung="zoe.whatsapp.inhalte" an={k.inhalte.an} onChange={an => { void inhalte(an); }} beschreibung={k.inhalte.an ? `Eingeschaltet seit ${uhr(k.inhalte.seit)}. ${INHALTE_TEXT.text}` : 'Aus: nur neutrale Hinweise mit Link. Einschalten fragt noch einmal nach.'}>{INHALTE_TEXT.titel}</Schalter>
               {k.offeneVorschlaege > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.offeneVorschlaege} Vorschlag{k.offeneVorschlaege === 1 ? '' : 'e'} von WhatsApp warten in deinen Freigaben.</div>}
               <Sprachnachrichten liste={k.sprachnachrichten} />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

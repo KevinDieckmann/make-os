@@ -832,7 +832,11 @@ export interface FadenKurz {
  * Eine Kennzahl im Kopf eines Heads. `hinweis` (Rundgang 09.10.): warum der Index (noch) keinen Wert hat — der Satz der Lücke aus dem
  * gemeinsamen Kern (z. B. „erst ab 10 Entscheidungen (2 gewonnen · 1 verloren)“), damit der Kopf nie ein stummes „—“ zeigt.
  */
-export interface KennzahlWert { id: string; label: string; wert: string | null; ampel?: 'gruen' | 'gelb' | 'rot' | 'grau'; hinweis?: string }
+export interface KennzahlWert {
+  id: string; label: string; wert: string | null; ampel?: 'gruen' | 'gelb' | 'rot' | 'grau'; hinweis?: string;
+  /** Erklärung (10.10.): Wie gerechnet · Beispiel · Was ihr tun könnt — aus dem Register der Kennzahl (lib/erklaerungen/kennzahlen.ts), nie erfunden. */
+  erklaerung?: { kopf: string; text: string }[];
+}
 export type HeadGesperrt = 'aus' | 'not-aus' | 'budget' | 'business-frei' | 'einwilligung' | 'modul';
 export interface HeadKarte {
   id: string;

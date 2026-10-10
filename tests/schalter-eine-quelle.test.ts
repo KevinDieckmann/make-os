@@ -36,23 +36,23 @@ describe('EIN Schalter', () => {
 
   it('ohne Beschriftung ist ariaLabel Pflicht — der Typ erzwingt es', () => {
     // @ts-expect-error — weder Beschriftung noch ariaLabel
-    const ohne: SchalterProps = { an: true, onChange: () => {} };
-    const mitLabel: SchalterProps = { an: true, onChange: () => {}, ariaLabel: 'Routine aktiv' };
-    const mitText: SchalterProps = { an: false, onChange: () => {}, children: 'nur offene' };
+    const ohne: SchalterProps = { an: true, onChange: () => {}, erklaerungOhne: 'Testfall' };
+    const mitLabel: SchalterProps = { an: true, onChange: () => {}, ariaLabel: 'Routine aktiv', erklaerungOhne: 'Testfall' };
+    const mitText: SchalterProps = { an: false, onChange: () => {}, children: 'nur offene', erklaerungOhne: 'Testfall' };
     expect([ohne, mitLabel, mitText]).toHaveLength(3);
   });
 
   it('die drei Formen: Rolle switch, aria-checked, Name, 44 px Tippfläche', () => {
-    const blank = zeichne({ an: true, onChange: () => {}, ariaLabel: 'Baustein rechnet mit' });
+    const blank = zeichne({ an: true, onChange: () => {}, ariaLabel: 'Baustein rechnet mit', erklaerungOhne: 'Testfall' });
     expect(blank).toContain('role="switch"');
     expect(blank).toContain('aria-checked="true"');
     expect(blank).toContain('aria-label="Baustein rechnet mit"');
     expect(blank).toContain('height:44px');
-    const text = zeichne({ an: false, onChange: () => {}, children: 'Systemereignisse zeigen' });
+    const text = zeichne({ an: false, onChange: () => {}, children: 'Systemereignisse zeigen', erklaerungOhne: 'Testfall' });
     expect(text).toContain('aria-checked="false"');
     expect(text).toContain('Systemereignisse zeigen');
     expect(text).toContain('min-height:44px');
-    const karte = zeichne({ an: true, onChange: () => {}, karte: true, children: 'Wir haben persönlich gesprochen', beschreibung: 'Danke-Entwurf ab morgen.', testId: 'gespraech-schalter', aus: true });
+    const karte = zeichne({ an: true, onChange: () => {}, karte: true, children: 'Wir haben persönlich gesprochen', beschreibung: 'Danke-Entwurf ab morgen.', testId: 'gespraech-schalter', aus: true, erklaerungOhne: 'Testfall' });
     expect(karte).toContain('data-testid="gespraech-schalter"');
     expect(karte).toContain('Danke-Entwurf ab morgen.');
     expect(karte).toContain('disabled=""');
@@ -60,7 +60,7 @@ describe('EIN Schalter', () => {
 
   it('onChange bekommt den neuen Zustand', () => {
     let gesetzt: boolean | null = null;
-    const el = Schalter({ an: false, onChange: v => { gesetzt = v; }, ariaLabel: 'x' }) as unknown as { props: { onClick: () => void } };
+    const el = Schalter({ an: false, onChange: v => { gesetzt = v; }, ariaLabel: 'x', erklaerungOhne: 'Testfall' }) as unknown as { props: { onClick: () => void } };
     el.props.onClick();
     expect(gesetzt).toBe(true);
   });

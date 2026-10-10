@@ -4,10 +4,12 @@
 // Die Flächen-Hierarchie des Standards: Grund → Fläche (flach) → gehobene Karte. Die Bereichsfarbe tönt nur die EINE Karte, die zählt
 // („Heute bei“ in Netzwerken) — sonst bleibt alles neutral. Ablauf der Stile: lib/make-one/design.ts › FLAECHE_STIL, Klassen `ui-*` in globals.css.
 
-import { type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF, FLAECHE_STIL, ECKE, LEUCHT, FOKUS_LICHT, FOKUS_STIL } from '@/lib/make-one/design';
+import { abschnitteVon, type ErklaerungsQuelle } from '@/lib/erklaerungen';
 import { useHochzaehlen } from '../schlank';
 import { FokusKante, NetzMotiv } from './fokus';
+import { ErklaerKnopf, ErklaerPanel, ErklaerZeichen, ZeileErklaerung, useErklaerung } from './erklaerung';
 
 /** Breite der Arbeitsfläche — wie schlank.tsx (bis 1440 px, Kanten wie der Wachstums-Kopf). */
 export const SEITE_BREIT = 1440;
@@ -55,15 +57,24 @@ export function Karte({ children, i = 0, akzent, ton, licht, netz, flach, dicht,
   );
 }
 
-/** Überschrift einer Karte: Beschriftung in GROSSBUCHSTABEN (Mikro-Stufe), optional mit Bereichspunkt, rechts Zusatz (Zähler, Link). */
-export function Ueberschrift({ children, rechts, farbe }: { children: ReactNode; rechts?: ReactNode; farbe?: string }) {
+/**
+ * Überschrift einer Karte: Beschriftung in GROSSBUCHSTABEN (Mikro-Stufe), optional mit Bereichspunkt, rechts Zusatz (Zähler, Link).
+ * Mit `erklaerung` (10.10.) steht hinter dem Titel ein „i“; die Erklärung (Was es bedeutet · Beispiel …) klappt unter der Überschrift auf.
+ */
+export function Ueberschrift({ children, rechts, farbe, erklaerung }: { children: ReactNode; rechts?: ReactNode; farbe?: string; erklaerung?: ErklaerungsQuelle }) {
+  const e = useErklaerung();
+  const abschnitte = erklaerung ? abschnitteVon(erklaerung) : [];
   return (
-    <div className="ui-abschnitt">
-      <h2 className="ui-abschnitt-titel">
-        {farbe && <span aria-hidden className="ui-abschnitt-punkt" style={{ background: farbe }} />}{children}
-      </h2>
-      {rechts && <span className="ui-abschnitt-rechts">{rechts}</span>}
-    </div>
+    <>
+      <div className="ui-abschnitt">
+        <h2 className="ui-abschnitt-titel">
+          {farbe && <span aria-hidden className="ui-abschnitt-punkt" style={{ background: farbe }} />}{children}
+          {abschnitte.length > 0 && <ErklaerKnopf offen={e.offen} onClick={e.umschalten} id={e.id} name={typeof children === 'string' ? children : undefined} />}
+        </h2>
+        {rechts && <span className="ui-abschnitt-rechts">{rechts}</span>}
+      </div>
+      {e.offen && abschnitte.length > 0 && <div style={{ marginBottom: 12 }}><ErklaerPanel id={e.id} abschnitte={abschnitte} /></div>}
+    </>
   );
 }
 export const Abschnitt = Ueberschrift;
@@ -81,14 +92,30 @@ export function Titel({ children, unter, rechts }: { children: ReactNode; unter?
   );
 }
 
-/** Beschriftung über einem Feld oder einer Gruppe (Mikro-Stufe). */
-export function Beschriftung({ children, rechts }: { children: ReactNode; rechts?: ReactNode }) {
-  return <div className="ui-beschriftung"><span>{children}</span>{rechts && <span className="ui-beschriftung-rechts">{rechts}</span>}</div>;
+/** Beschriftung über einem Feld oder einer Gruppe (Mikro-Stufe). Mit `erklaerung` (10.10.): „i“ dahinter, die Erklärung klappt darunter auf. */
+export function Beschriftung({ children, rechts, erklaerung }: { children: ReactNode; rechts?: ReactNode; erklaerung?: ErklaerungsQuelle }) {
+  const e = useErklaerung();
+  const abschnitte = erklaerung ? abschnitteVon(erklaerung) : [];
+  return (
+    <>
+      <div className="ui-beschriftung">
+        <span>{children}{abschnitte.length > 0 && <ErklaerKnopf offen={e.offen} onClick={e.umschalten} id={e.id} name={typeof children === 'string' ? children : undefined} />}</span>
+        {rechts && <span className="ui-beschriftung-rechts">{rechts}</span>}
+      </div>
+      {e.offen && abschnitte.length > 0 && <div style={{ marginBottom: 8 }}><ErklaerPanel id={e.id} abschnitte={abschnitte} /></div>}
+    </>
+  );
 }
 
-/** Kennzahl-Kachel: große Zahl (zählt hoch), Beschriftung darunter; mit `onClick` ein Tippziel. `ton` färbt die Zahl (Zustand!). */
-export function Kennzahl({ wert, label, ton, unter, onClick, klein }: { wert?: string; label: ReactNode; ton?: string; unter?: ReactNode; onClick?: () => void; klein?: boolean }) {
+/**
+ * Kennzahl-Kachel: große Zahl (zählt hoch), Beschriftung darunter; mit `onClick` ein Tippziel. `ton` färbt die Zahl (Zustand!).
+ * Mit `erklaerung` (10.10.: „Wie gerechnet · Beispiel · Was ihr tun könnt“) ist die Kachel antippbar: die Erklärung klappt in der Kachel auf,
+ * die Kachel nimmt dann die ganze Rasterzeile ein. Hat sie schon einen `onClick` (öffnet etwas), bleibt der Klick; das „i“ steht dann oben rechts.
+ */
+export function Kennzahl({ wert, label, ton, unter, onClick, klein, erklaerung }: { wert?: string; label: ReactNode; ton?: string; unter?: ReactNode; onClick?: () => void; klein?: boolean; erklaerung?: ErklaerungsQuelle }) {
   const z = useHochzaehlen(wert);
+  const e = useErklaerung();
+  const abschnitte = erklaerung ? abschnitteVon(erklaerung) : [];
   const inhalt = (
     <>
       <span className="ui-kennzahl-wert" style={{ fontFamily: SCHRIFT.display, fontSize: klein ? 'clamp(18px,2.4vw,22px)' : 'clamp(22px,2.8vw,28px)', color: wert == null ? C.inkLeise : ton ?? C.ink }}>{z ?? '—'}</span>
@@ -97,17 +124,43 @@ export function Kennzahl({ wert, label, ton, unter, onClick, klein }: { wert?: s
     </>
   );
   const stil: CSSProperties = { ...FLAECHE_STIL.flach, borderRadius: ECKE.flach };
+  if (abschnitte.length) {
+    const name = typeof label === 'string' ? label : undefined;
+    const huelle: CSSProperties = { ...stil, position: 'relative', ...(e.offen ? { gridColumn: '1 / -1' } : null) };
+    const knopfStil: CSSProperties = { display: 'grid', gap: 2, width: '100%', margin: 0, padding: 0, background: 'none', border: 0, font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' };
+    return (
+      <div className="ui-kennzahl ui-kennzahl-erkl" style={huelle}>
+        {onClick
+          ? <button type="button" onClick={onClick} className="fassbar" style={knopfStil}>{inhalt}</button>
+          : <button type="button" onClick={e.umschalten} aria-expanded={e.offen} aria-controls={e.id} className="fassbar" title="Was bedeutet das?" style={knopfStil}>{inhalt}</button>}
+        {onClick
+          ? <span style={{ position: 'absolute', top: 0, right: 0 }}><ErklaerKnopf offen={e.offen} onClick={e.umschalten} id={e.id} name={name} /></span>
+          : <span style={{ position: 'absolute', top: 12, right: 12 }}><ErklaerZeichen offen={e.offen} /></span>}
+        {e.offen && <ErklaerPanel id={e.id} abschnitte={abschnitte} style={{ marginTop: 8 }} />}
+      </div>
+    );
+  }
   return onClick
     ? <button type="button" onClick={onClick} className="ui-kennzahl ui-kennzahl-klick fassbar" style={stil}>{inhalt}</button>
     : <div className="ui-kennzahl" style={stil}>{inhalt}</div>;
 }
-/** Alter Name aus schlank.tsx (Zahl mit Beschriftung, ohne Fläche) — bleibt für Stellen, an denen die Zahl frei steht. */
-export function Zahl({ wert, label, farbe, gross }: { wert?: string; label: ReactNode; farbe?: string; gross?: boolean }) {
+/** Alter Name aus schlank.tsx (Zahl mit Beschriftung, ohne Fläche) — bleibt für Stellen, an denen die Zahl frei steht. Mit `erklaerung` antippbar (wie `Kennzahl`). */
+export function Zahl({ wert, label, farbe, gross, erklaerung }: { wert?: string; label: ReactNode; farbe?: string; gross?: boolean; erklaerung?: ErklaerungsQuelle }) {
   const z = useHochzaehlen(wert);
-  return (
-    <div className="ui-zahl" style={{ minWidth: 0 }}>
+  const e = useErklaerung();
+  const abschnitte = erklaerung ? abschnitteVon(erklaerung) : [];
+  const koerper = (
+    <>
       <div style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: gross ? 'clamp(38px,5.5vw,52px)' : 'clamp(20px,2.6vw,24px)', letterSpacing: '-.03em', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', color: wert == null ? C.inkLeise : farbe ?? C.ink }}>{z ?? '—'}</div>
-      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>{label}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>{label}{abschnitte.length > 0 && <ErklaerZeichen offen={e.offen} />}</div>
+    </>
+  );
+  if (!abschnitte.length) return <div className="ui-zahl" style={{ minWidth: 0 }}>{koerper}</div>;
+  return (
+    <div className="ui-zahl ui-zahl-erkl" style={{ minWidth: 0, ...(e.offen ? { gridColumn: '1 / -1' } : null) }}>
+      <button type="button" onClick={e.umschalten} aria-expanded={e.offen} aria-controls={e.id} title="Was bedeutet das?" className="fassbar"
+        style={{ display: 'block', width: '100%', margin: 0, padding: 0, background: 'none', border: 0, font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}>{koerper}</button>
+      {e.offen && <ErklaerPanel id={e.id} abschnitte={abschnitte} style={{ marginTop: 8 }} />}
     </div>
   );
 }
@@ -119,20 +172,40 @@ export function Liste({ children }: { children: ReactNode }) {
 /**
  * Eine Zeile einer Liste: links Symbol/Kürzel, Titel + ein Zusatz, rechts Zustand. Mit `onClick` ein Tippziel (≥ 44 px) mit Pfeil, wenn rechts nichts steht.
  * `umbrechen`: lange Titel brechen um (Dialoge am Handy), sonst werden sie abgeschnitten.
+ * `erklaerung` (10.10.): der TITEL der Zeile klappt die Erklärung (Was es bedeutet · Beispiel …) darunter auf — „die Zeile antippen, nicht den
+ * Schalter“. Ein `Schalter` in `rechts` meldet seine Erklärung selbst an die Zeile. Ist die Zeile ein Tippziel (`onClick`), steht stattdessen ein „i“ vor `rechts`.
  */
-export function Zeile({ links, titel, unter, rechts, onClick, aktiv, umbrechen }: {
-  links?: ReactNode; titel: ReactNode; unter?: ReactNode; rechts?: ReactNode; onClick?: () => void; aktiv?: boolean; umbrechen?: boolean;
+export function Zeile({ links, titel, unter, rechts, onClick, aktiv, umbrechen, erklaerung }: {
+  links?: ReactNode; titel: ReactNode; unter?: ReactNode; rechts?: ReactNode; onClick?: () => void; aktiv?: boolean; umbrechen?: boolean; erklaerung?: ErklaerungsQuelle;
 }) {
   const kurz = umbrechen ? { overflowWrap: 'anywhere' as const } : { overflow: 'hidden' as const, textOverflow: 'ellipsis' as const, whiteSpace: 'nowrap' as const };
+  const [vomKind, setVomKind] = useState<ErklaerungsQuelle | null>(null);
+  const melden = useCallback((q: ErklaerungsQuelle | null) => setVomKind(q), []);
+  const e = useErklaerung();
+  const q = erklaerung ?? vomKind;
+  const abschnitte = q ? abschnitteVon(q) : [];
+  const titelKnopf = abschnitte.length > 0 && !onClick;
+  const text = (
+    <>
+      <div className="ui-zeile-titel" style={kurz}>{titel}{titelKnopf && <ErklaerZeichen offen={e.offen} />}</div>
+      {unter && <div className="ui-zeile-unter" style={kurz}>{unter}</div>}
+    </>
+  );
   return (
     <div onClick={onClick} className={`ui-zeile zeile${onClick ? ' ui-zeile-klick zeile-klick fassbar' : ''}${aktiv ? ' ui-zeile-aktiv' : ''}`}>
       {links}
-      <div className="ui-zeile-text">
-        <div className="ui-zeile-titel" style={kurz}>{titel}</div>
-        {unter && <div className="ui-zeile-unter" style={kurz}>{unter}</div>}
-      </div>
-      {rechts && <div className="ui-zeile-rechts">{rechts}</div>}
-      {onClick && !rechts && <span aria-hidden className="ui-zeile-pfeil">›</span>}
+      {titelKnopf
+        ? <div className="ui-zeile-text ui-zeile-erkl" role="button" tabIndex={0} aria-expanded={e.offen} aria-controls={e.id} title="Was bedeutet das?" style={{ cursor: 'pointer' }}
+          onClick={e.umschalten} onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); e.umschalten(); } }}>{text}</div>
+        : <div className="ui-zeile-text">{text}</div>}
+      {(rechts || (abschnitte.length > 0 && onClick)) && (
+        <div className="ui-zeile-rechts">
+          {abschnitte.length > 0 && onClick && <ErklaerKnopf offen={e.offen} onClick={e.umschalten} id={e.id} name={typeof titel === 'string' ? titel : undefined} />}
+          <ZeileErklaerung.Provider value={onClick ? null : melden}>{rechts}</ZeileErklaerung.Provider>
+        </div>
+      )}
+      {onClick && !rechts && abschnitte.length === 0 && <span aria-hidden className="ui-zeile-pfeil">›</span>}
+      {e.offen && abschnitte.length > 0 && <ErklaerPanel id={e.id} abschnitte={abschnitte} style={{ flex: '1 0 100%', marginBottom: 4 }} />}
     </div>
   );
 }

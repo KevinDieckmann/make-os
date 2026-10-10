@@ -29,7 +29,7 @@ export function AnmeldeAdressen({ email, weitere, i = 1, geaendert }: { email: s
   const ohnePw = !pw;
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.puls} rechts={<span>{1 + weitere.length} von {1 + MAX_WEITERE}</span>}>Anmelde-Adressen</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.puls} erklaerung="konto.adressen" rechts={<span>{1 + weitere.length} von {1 + MAX_WEITERE}</span>}>Anmelde-Adressen</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginBottom: 6 }}>Alle Adressen melden dich im selben Konto an — mit demselben Passwort und demselben zweiten Faktor. Jede Änderung bestätigst du mit deinem aktuellen Passwort.</div>
       <div className="konto-adressen">
         <div className="konto-adresse">

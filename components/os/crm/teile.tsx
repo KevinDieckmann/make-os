@@ -135,7 +135,7 @@ export function NotizFormular({ heute, ergebnis, onFertig, onAbbruch, knopf = 'S
       </div>
       {einwilligung && (
         <div style={{ display: 'grid', gap: 6, padding: '8px 10px', borderRadius: 10, background: ja ? `${LEUCHT.gut}10` : 'transparent', border: `1px solid ${ja ? `${LEUCHT.gut}44` : 'rgba(255,255,255,.06)'}` }}>
-          <Schalter an={ja} onChange={setJa} farbe={LEUCHT.gut}><b style={{ color: C.ink }}>Einwilligung für Mail erhalten</b></Schalter>
+          <Schalter erklaerung="crm.einwilligungMail" an={ja} onChange={setJa} farbe={LEUCHT.gut}><b style={{ color: C.ink }}>Einwilligung für Mail erhalten</b></Schalter>
           {ja && <input value={wortlaut} aria-label="Wortlaut der Einwilligung" placeholder="Wortlaut: Frage und Antwort" onChange={e => setWortlaut(e.target.value)} style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />}
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.45 }}>Eine Visitenkarte ist keine Einwilligung — nur ein ausdrückliches Ja mit Wortlaut.</span>
         </div>

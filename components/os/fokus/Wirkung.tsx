@@ -12,6 +12,7 @@ import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
 import type { SteuerBereich } from '@/lib/fokus/steuerung';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Ring, Balken, Chip, Fortschritt, Zahl, Hinweis, zoneFarbe } from '../ui';
+import { kennzahlTextVon } from '@/lib/erklaerungen/kennzahlen';
 
 interface Faktor { label: string; wert: number; echt: boolean; quelle?: string; href?: string }
 interface Saeule { key: string; label: string; gewicht: number; score: number | null; zuDuenn: boolean; faktoren?: Faktor[] }
@@ -43,14 +44,14 @@ export function Wirkung({ bereich, i = 0 }: { bereich: SteuerBereich; i?: number
   return (
     <>
       <Karte i={i} ton={perf.index != null ? zone : undefined}>
-        <Ueberschrift farbe={zone} rechts={perf.stand ? `Stand ${datum(perf.stand)}` : undefined}>Wirkung {bereich === 'privat' ? 'Privat' : 'Business'}</Ueberschrift>
+        <Ueberschrift farbe={zone} erklaerung="fokus.wirkung" rechts={perf.stand ? `Stand ${datum(perf.stand)}` : undefined}>Wirkung {bereich === 'privat' ? 'Privat' : 'Business'}</Ueberschrift>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
           <Ring groesse="gross" label={`Wirkung ${bereich === 'privat' ? 'Privat' : 'Business'}`} wert={perf.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf.index != null ? perf.index / 100 : undefined}
             unter={perf.index != null ? <Chip farbe={zone}>{perf.label}</Chip> : undefined} />
           <div style={{ minWidth: 0, width: '100%' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
-              <Zahl wert={`${Math.round(perf.abdeckung * 100)}`} label="% der Messpunkte echt gemessen" farbe={perf.abdeckung >= 0.6 ? LEUCHT.gut : perf.abdeckung >= 0.4 ? LEUCHT.achtung : LEUCHT.kritisch} />
-              <Zahl wert={bester?.index != null ? String(bester.index) : undefined} label={bester ? `Bestwert · ${datum(bester.date)}` : 'Bestwert'} farbe={zoneFarbe(bester?.index)} />
+              <Zahl erklaerung={kennzahlTextVon('fokus.wirkung.abdeckung')} wert={`${Math.round(perf.abdeckung * 100)}`} label="% der Messpunkte echt gemessen" farbe={perf.abdeckung >= 0.6 ? LEUCHT.gut : perf.abdeckung >= 0.4 ? LEUCHT.achtung : LEUCHT.kritisch} />
+              <Zahl erklaerung={kennzahlTextVon('fokus.wirkung.bestwert')} wert={bester?.index != null ? String(bester.index) : undefined} label={bester ? `Bestwert · ${datum(bester.date)}` : 'Bestwert'} farbe={zoneFarbe(bester?.index)} />
             </div>
             {perf.hebel && <p style={{ fontSize: TYP.body, color: C.inkDim, margin: '16px 0 0' }}>Größter Hebel: <b style={{ color: C.ink, fontWeight: 600 }}>{perf.hebel}</b></p>}
             {perf.index == null && <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '16px 0 0' }}>Noch zu wenig gemessen, um eine Zahl zu nennen.</p>}

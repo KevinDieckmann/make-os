@@ -27,16 +27,16 @@ export function ZugangEinstellungen({ i = 6 }: { i?: number }) {
   const stundenOk = Number.isInteger(h) && h >= 1 && h <= 336;
   return (
     <Karte i={i} akzent={LEUCHT.achtung}>
-      <Ueberschrift farbe={LEUCHT.achtung}>Zugang der Instanz</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} erklaerung="konto.zugangInstanz">Zugang der Instanz</Ueberschrift>
       <Liste>
         <Zeile titel="Zweiter Faktor für alle Pflicht"
           unter={b.zweiFaktorPflicht
             ? 'An — wer keinen zweiten Faktor hat, richtet ihn beim nächsten Anmelden ein und kommt vorher nirgends hin.'
             : `Aus — ${b.ohneZweitenFaktor === 0 ? 'alle Konten haben ihn trotzdem schon.' : `${b.ohneZweitenFaktor} Konto${b.ohneZweitenFaktor === 1 ? '' : 'en'} ohne zweiten Faktor.`} Für Kundendaten empfohlen: an.`}
-          rechts={<Schalter an={b.zweiFaktorPflicht} onChange={an => void setze({ zweiFaktorPflicht: an }, an ? 'Pflicht ist an.' : 'Pflicht ist aus.')} ariaLabel="Zweiter Faktor für alle Pflicht" />} />
+          rechts={<Schalter erklaerung="konto.zweiFaktorPflicht" an={b.zweiFaktorPflicht} onChange={an => void setze({ zweiFaktorPflicht: an }, an ? 'Pflicht ist an.' : 'Pflicht ist aus.')} ariaLabel="Zweiter Faktor für alle Pflicht" />} />
       </Liste>
       <form className="konto-feldreihe" style={{ marginTop: 12 }} onSubmit={e => { e.preventDefault(); if (stundenOk) void setze({ leerlaufStunden: h }, 'Leerlauf gespeichert.'); }}>
-        <Feldzeile label="Abmelden nach so vielen Stunden ohne Aktivität (1–336)"><input value={stunden} onChange={e => setStunden(e.target.value)} inputMode="numeric" style={feld} /></Feldzeile>
+        <Feldzeile label="Abmelden nach so vielen Stunden ohne Aktivität (1–336)" erklaerung="konto.leerlauf"><input value={stunden} onChange={e => setStunden(e.target.value)} inputMode="numeric" style={feld} /></Feldzeile>
         <Knopf leise typ="submit" aus={!stundenOk || h === b.leerlaufStunden}>Speichern</Knopf>
       </form>
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>Zusätzlich endet jede Sitzung spätestens nach 14 Tagen.</div>

@@ -9,7 +9,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Balken, Knopf, feld, auswahl, LEUCHT } from '../ui';
+import { Balken, ErklaerKnopf, ErklaerPanel, Knopf, feld, auswahl, useErklaerung, LEUCHT } from '../ui';
+import { kennzahlAbschnitte } from '@/lib/erklaerungen/kennzahlen';
 import { Fenster } from '../Fenster';
 import type { KennzahlStand, Ampel, Detail } from '@/lib/kennzahlen/kern';
 
@@ -49,14 +50,22 @@ export function DetailListe({ details, dicht, onKlick }: { details: Detail[]; di
   );
 }
 
+/** Die Erklärung einer Kennzahl aus ihrem Register-Stand: Wie gerechnet · Beispiel · Was ihr tun könnt (10.10.) — nichts davon ist erfunden. */
+export const erklaerungVon = (k: KennzahlStand) => kennzahlAbschnitte({
+  label: k.label, einheit: k.einheit, richtung: k.richtung, gruen: k.gruen, rot: k.rot, formel: k.formel, gemessen: k.gemessen,
+  ...(k.pflegen ? { pflegen: k.pflegen } : {}), ...(k.gemessen ? {} : { luecke: k.quelle }),
+});
+
 export function KennzahlKachel({ k, onOeffnen }: { k: KennzahlStand; onOeffnen: () => void }) {
   const f = AMPEL_FARBE[k.ampel];
   const punkte = k.details.slice(0, 3);
+  const e = useErklaerung();
   return (
-    <div style={{ display: 'grid', gap: 8, alignContent: 'start', minWidth: 0, padding: '12px 14px', borderRadius: 14,
+    <div style={{ display: 'grid', gap: 8, alignContent: 'start', minWidth: 0, padding: '12px 14px', borderRadius: 14, position: 'relative', ...(e.offen ? { gridColumn: '1 / -1' } : null),
       background: k.gemessen ? `color-mix(in srgb, ${f} 7%, ${C.flaecheHoch})` : 'rgba(255,255,255,.025)', border: `1px solid ${k.gemessen ? `${f}33` : 'rgba(255,255,255,.07)'}`, color: C.ink }}>
+      <span style={{ position: 'absolute', top: 0, right: 0 }}><ErklaerKnopf offen={e.offen} onClick={e.umschalten} id={e.id} name={k.label} /></span>
       <button type="button" onClick={onOeffnen} className="fassbar" title="Formel, Schwellen, alle Punkte und Verlauf"
-        style={{ display: 'grid', gap: 6, alignContent: 'start', textAlign: 'left', minWidth: 0, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, color: C.ink }}>
+        style={{ display: 'grid', gap: 6, alignContent: 'start', textAlign: 'left', minWidth: 0, padding: '0 34px 0 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SCHRIFT.text, color: C.ink }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
           <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.label}</span>
           <span title={AMPEL_TEXT[k.ampel]} style={{ width: 9, height: 9, borderRadius: '50%', flex: '0 0 auto', background: f, boxShadow: k.gemessen ? `0 0 8px ${f}33` : undefined }} />
@@ -73,6 +82,7 @@ export function KennzahlKachel({ k, onOeffnen }: { k: KennzahlStand; onOeffnen: 
           </>
         )}
       </button>
+      {e.offen && <ErklaerPanel id={e.id} abschnitte={erklaerungVon(k)} />}
       {punkte.length > 0 && (
         <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', paddingTop: 6 }}>
           <DetailListe details={punkte} dicht />
@@ -151,12 +161,11 @@ export function KennzahlFenster({ k, saeule, verlauf, scope, onZu, onGespeichert
         <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: f }}>{AMPEL_TEXT[k.ampel]}</span>
         {k.punkte != null && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{k.punkte} von 100 Punkten</span>}
       </div>
+      <ErklaerPanel id={`erkl-fenster-${k.id}`} abschnitte={erklaerungVon(k)} />
       <div style={{ display: 'grid', gap: 8 }}>
         {zeile('Säule', `${saeule} · ${k.gruppe}`)}
-        {zeile('Formel', k.formel)}
         {zeile(k.gemessen ? 'Gerechnet' : 'Es fehlt', k.quelle)}
-        {zeile('Schwellen', <>{schwellenText(k)}{k.angepasst && <span style={{ color: LEUCHT.achtung }}> (eigene)</span>}</>)}
-        {zeile('Punkte', k.einheit === 'punkte' ? 'Der Wert ist schon ein Score (0–100).' : 'An der roten Schwelle 20, an der grünen 100, dazwischen linear.')}
+        {k.angepasst && zeile('Schwellen', <span style={{ color: LEUCHT.achtung }}>eigene — {schwellenText(k)}</span>)}
       </div>
       {k.details.length > 0 && (
         <div style={{ display: 'grid', gap: 6 }}>

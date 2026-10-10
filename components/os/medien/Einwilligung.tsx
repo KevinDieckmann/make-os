@@ -76,7 +76,7 @@ export function EinwilligungFenster({ albumId, anlass, kontakte, onZu, onFertig 
         </Feldzeile>
         {!kontakt && treffer.map(k => <Knopf key={k.id} leise onClick={() => { setKontakt(k); setSuche(''); }}>{k.name}</Knopf>)}
         <Feldzeile label="Wofür?"><MehrfachPillen liste={ZWECKE.map(z => ({ id: z, label: ZWECK_NAME(z) }))} aktiv={zwecke} onWahl={setZwecke} /></Feldzeile>
-        <Schalter an={kind} onChange={setKind} karte beschreibung="Bei Kindern und Jugendlichen willigen die Sorgeberechtigten ein — ohne sie wird nie freigegeben.">Minderjährige Person</Schalter>
+        <Schalter erklaerung="medien.minderjaehrig" an={kind} onChange={setKind} karte beschreibung="Bei Kindern und Jugendlichen willigen die Sorgeberechtigten ein — ohne sie wird nie freigegeben.">Minderjährige Person</Schalter>
         {kind && <Feldzeile label="Name der sorgeberechtigten Person"><input value={sorge} onChange={e => setSorge(e.target.value)} maxLength={120} style={eingabe} /></Feldzeile>}
         {vorlage?.verantwortlicherFehlt && <Hinweis art="achtung">Verantwortlicher fehlt — erst unter System › Datenschutz eintragen. Ohne ihn ist die Einwilligung nicht informiert.</Hinweis>}
         {vorlage && <div style={{ fontSize: TYP.body, lineHeight: 1.55, color: C.ink, background: 'rgba(255,255,255,.05)', borderRadius: 14, padding: '12px 14px' }}>{vorlage.wortlaut}</div>}

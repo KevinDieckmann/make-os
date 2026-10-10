@@ -133,7 +133,7 @@ function GesellschafterForm({ g, daten, alt, rest, schreibe, fertig }: { g: GAnz
           {einlage === 'teil' && <Feldzeile label="Davon eingezahlt (€)"><input value={eingezahlt} onChange={e => setEingezahlt(e.target.value)} inputMode="decimal" aria-label="Eingezahlt in Euro" style={feldStil} /></Feldzeile>}
         </Felder>
         <Feldzeile label="Einlage"><Pillen liste={EINLAGEN.map(e => ({ id: e.id, label: e.label }))} aktiv={einlage} onWahl={setEinlage} /></Feldzeile>
-        <Schalter an={stimmrecht} onChange={setStimmrecht}>Mit Stimmrecht</Schalter>
+        <Schalter erklaerung="unternehmen.stimmrecht" an={stimmrecht} onChange={setStimmrecht}>Mit Stimmrecht</Schalter>
         <Feldzeile label="Klauseln (Vesting, Vorkaufsrecht, Drag-/Tag-along …)"><textarea value={klauseln} onChange={e => setKlauseln(e.target.value)} aria-label="Klauseln" rows={3} placeholder="frei, z. B. Vesting 4 Jahre, Cliff 12 Monate" style={{ ...feldStil, resize: 'vertical', lineHeight: 1.5 }} /></Feldzeile>
         {rest !== undefined && !alt && <div style={klein}>Noch frei: {centText(rest)} vom Stammkapital.</div>}
         {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}

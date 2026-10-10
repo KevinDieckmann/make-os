@@ -351,7 +351,7 @@ export function GesundheitView() {
               {(stand?.routinen.liste ?? []).map(r => (
                 <Zeile key={r.id} wann={r.wann === 'abend' ? 'Abend' : r.id === 'essen' ? 'Mittag' : 'Morgen'} titel={r.label}
                   unter={eigeneSicher ? routinenHinweis(koerper.koerper, r.id) : undefined}
-                  kinder={<Schalter an={heuteDrin.has(r.id)} onChange={() => hake(r.id)} aus={!eigene} ariaLabel={`${r.label} heute erledigt`} />} />
+                  kinder={<Schalter erklaerungOhne="Erledigt-Haken einer Routine, keine Einstellung" an={heuteDrin.has(r.id)} onChange={() => hake(r.id)} aus={!eigene} ariaLabel={`${r.label} heute erledigt`} />} />
               ))}
               {symptomName && (<>
               <div id="haut" style={{ scrollMarginTop: 90 }} />
@@ -371,7 +371,7 @@ export function GesundheitView() {
                   unter={stand?.streak.aktuell ? `Tag ${stand.streak.sauberTage} seit dem letzten Rückfall` : stand?.streak.eintraege30 ? 'seit über drei Tagen kein Eintrag' : 'noch nicht angefangen'}
                   kinder={<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {eigene && <button onClick={() => streakSetzen(false)} style={{ background: 'none', border: 'none', color: C.inkLeise, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text, padding: 0 }}>Rückfall</button>}
-                    <Schalter an={!!stand?.streak.aktuell && (stand.haut.tage[0]?.d === heute ? true : stand.streak.aktuell)} onChange={() => streakSetzen(true)} aus={!eigene} ariaLabel="Heute sauber geblieben" />
+                    <Schalter erklaerungOhne="Erledigt-Haken für heute, keine Einstellung" an={!!stand?.streak.aktuell && (stand.haut.tage[0]?.d === heute ? true : stand.streak.aktuell)} onChange={() => streakSetzen(true)} aus={!eigene} ariaLabel="Heute sauber geblieben" />
                   </div>} />
               )}
             </div>

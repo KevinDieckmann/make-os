@@ -11,7 +11,7 @@ import { ChevronDown, ChevronUp, Plus, Settings2, X } from 'lucide-react';
 import { FARBE as C, TYP, SCHRIFT, LEUCHT } from '@/lib/make-one/design';
 import { neueKennung } from '@/lib/kennung';
 import { HOCH_AB, LABEL_MAX, type SteuerThema } from '@/lib/fokus/steuerung';
-import { Karte, Ueberschrift, Hinweis, Knopf, Leerzustand, MehrfachPillen, Segmentbalken, SymbolKnopf, feld, useRueckfrage } from '../ui';
+import { Erklaert, Karte, Ueberschrift, Hinweis, Knopf, Leerzustand, MehrfachPillen, Segmentbalken, SymbolKnopf, feld, useRueckfrage } from '../ui';
 import type { SteuerungSicht } from './useSteuerung';
 
 /** Farbe eines Themas nach Rang — nur Anzeige (keine Farbe im Bestand). */
@@ -68,7 +68,7 @@ export function Prioritaeten({ s, themenSetzen, vorgabe, i = 0 }: {
 
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={LEUCHT.planung} rechts={s.quelle === 'alt' ? 'übernommen aus Kompass' : undefined}>Prioritäten</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.planung} erklaerung="fokus.prioritaeten" rechts={s.quelle === 'alt' ? 'übernommen aus Kompass' : undefined}>Prioritäten</Ueberschrift>
       <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '0 0 12px' }}>Oben zählt zuerst. Der Regler sagt, wie viel Energie hineingeht — ab {HOCH_AB} hat ein Thema Vorfahrt in Tagesplan und Wochenplanung.</p>
       {lesend && <Hinweis art="info">Nur lesen — die Themen pflegen die Mitglieder des Haushalts. Dein eigenes Soll stellst du unten unter Zeit ein.</Hinweis>}
       {meldung && <Hinweis art="achtung" rolle="status">{meldung}</Hinweis>}
@@ -111,7 +111,7 @@ export function Prioritaeten({ s, themenSetzen, vorgabe, i = 0 }: {
                       <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Zeit kommt aus den Fokus-Blöcken dieser Einheit.</span>
                     ) : (
                       <>
-                        <span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Zeit zählt aus</span>
+                        <Erklaert erklaerung="fokus.zeitQuelle" name="Zeit zählt aus"><span style={{ fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Zeit zählt aus</span></Erklaert>
                         <MehrfachPillen liste={s.quellen.map(q => ({ id: q.id, label: q.label }))} aktiv={t.zeit} farbe={farbe}
                           onWahl={ids => void schreiben(aendern(t.id, { zeit: ids.slice(0, 8) }))} />
                       </>

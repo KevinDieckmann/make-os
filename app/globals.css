@@ -970,3 +970,13 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ui-rueckfrage-wahl { flex-direction: column-reverse; }
   .ui-rueckfrage-wahl .ui-knopf { width: 100%; }
 }
+
+/* Erklärung (10.10., components/os/ui/erklaerung.tsx): „i“ neben Schaltern, Überschriften, Beschriftungen; Titel einer Zeile / Kachel klappt auf.
+   Die Tippfläche bleibt 44 × 44; in Überschriften und Beschriftungen schiebt der negative Rand sie zurück, damit die Zeile nicht höher wird. */
+.ui-erkl-knopf { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; padding: 0; background: none; border: 0; border-radius: 12px; cursor: pointer; box-sizing: border-box; }
+.ui-erkl-knopf:hover { background: rgba(255, 255, 255, .06); color: #E8ECEA !important; }
+.ui-abschnitt-titel .ui-erkl-knopf { margin: -15px -6px -15px -4px; }
+.ui-beschriftung .ui-erkl-knopf { margin: -17px -4px -17px 0; vertical-align: middle; }
+.ui-erkl-panel { font-family: inherit; }
+.ui-zeile-erkl:hover .ui-erkl-zeichen, .ui-kennzahl-erkl:hover .ui-erkl-zeichen { color: #58D9CD !important; }
+.ui-zeile-erkl:focus-visible { outline: 2px solid #58D9CD; outline-offset: 2px; border-radius: 8px; }

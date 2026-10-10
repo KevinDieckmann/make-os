@@ -24,7 +24,8 @@ import { MODEL_LABEL } from '@/lib/make-one/agents-data';
 import { Fenster } from '../Fenster';
 import { BrainUebernahmeFenster } from './BrainUebernahme';
 import { KostenFenster } from './KostenSpur';
-import { Chip, Eigenschaft, Feldzeile, Hinweis, Knopf, Leer, Liste, MehrfachPillen, Pillen, Schalter, Schritte, Segmente, SymbolKnopf, Zeile, auswahl, eingabe, feld } from '../ui';
+import { Chip, Eigenschaft, ErklaerKnopf, ErklaerPanel, Feldzeile, Hinweis, Knopf, Leer, Liste, MehrfachPillen, Pillen, Schalter, Schritte, Segmente, SymbolKnopf, Zeile, auswahl, eingabe, feld, useErklaerung, type ErklaerungsQuelle } from '../ui';
+import { abschnitteVon } from '@/lib/erklaerungen';
 import { anfrageId, budgetSetzen, fadenSenden, laeufeSenden, ladeSkill, mitRueckfrage, skillSenden } from './daten';
 import { WEG } from '@/lib/wege';
 import { sichtbareHeads, useAgenten, type DialogArt } from './kontext';
@@ -352,8 +353,16 @@ const FELD_ARTEN: { id: SkillEingabeFeld['art']; label: string }[] = [
   { id: 'text', label: 'Text' }, { id: 'zahl', label: 'Zahl' }, { id: 'datum', label: 'Datum' }, { id: 'auswahl', label: 'Auswahl' }, { id: 'kontakt', label: 'Kontakt' }, { id: 'firma', label: 'Firma' },
 ];
 
-function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) {
-  return <section style={{ display: 'grid', gap: ABSTAND.s }}><span style={{ ...MIKRO }}>{titel}</span>{children}</section>;
+function Abschnitt({ titel, erklaerung, children }: { titel: string; erklaerung?: ErklaerungsQuelle; children: ReactNode }) {
+  const e = useErklaerung();
+  const abschnitte = erklaerung ? abschnitteVon(erklaerung) : [];
+  return (
+    <section style={{ display: 'grid', gap: ABSTAND.s }}>
+      <span style={{ ...MIKRO, display: 'flex', alignItems: 'center', gap: ABSTAND.xs }}>{titel}{abschnitte.length > 0 && <span style={{ margin: '-14px 0' }}><ErklaerKnopf offen={e.offen} onClick={e.umschalten} id={e.id} name={titel} /></span>}</span>
+      {e.offen && abschnitte.length > 0 && <ErklaerPanel id={e.id} abschnitte={abschnitte} />}
+      {children}
+    </section>
+  );
 }
 
 export function SkillEditor({ headId, skillId, start, onZu }: { headId?: string; skillId?: string; start?: Partial<SkillEntwurf>; onZu: () => void }) {
@@ -486,7 +495,7 @@ export function SkillEditor({ headId, skillId, start, onZu }: { headId?: string;
           <Abschnitt titel="Werkzeuge (nur die des Heads — die Freigabe-Stufe bleibt die des Werkzeugs)">
             {def ? <MehrfachPillen liste={def.werkzeuge.map(x => ({ id: x, label: x }))} aktiv={e.werkzeuge} onWahl={x => setE({ ...e, werkzeuge: x })} /> : <Leer>Wähle zuerst einen Head.</Leer>}
           </Abschnitt>
-          <Abschnitt titel="Auslöser">
+          <Abschnitt titel="Auslöser" erklaerung="agenten.skill.ausloeser">
             <Segmente liste={[{ id: 'hand', label: 'Von Hand' }, { id: 'zeitplan', label: 'Zeitplan' }, { id: 'ereignis', label: 'Ereignis' }]} aktiv={e.ausloeser.art}
               onWahl={a => setzeAusloeser(a === 'hand' ? { art: 'hand' } : a === 'zeitplan' ? { art: 'zeitplan', rhythmus: 'werktags', uhrzeit: '08:00' } : { art: 'ereignis', ereignis: 'neue-mail' })} />
             {e.ausloeser.art === 'zeitplan' && (() => {
@@ -513,26 +522,26 @@ export function SkillEditor({ headId, skillId, start, onZu }: { headId?: string;
               );
             })()}
           </Abschnitt>
-          <Abschnitt titel="Eingabe-Felder (was der Skill beim Start fragt)">
+          <Abschnitt titel="Eingabe-Felder (was der Skill beim Start fragt)" erklaerung="agenten.skill.eingabefelder">
             {e.eingabeFelder.map((f, i) => (
               <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr) auto auto', gap: ABSTAND.s, alignItems: 'center' }}>
                 <input value={f.label} onChange={x => setE({ ...e, eingabeFelder: e.eingabeFelder.map((y, j) => (j === i ? { ...y, label: x.target.value, id: skillName(x.target.value) || y.id } : y)) })} placeholder="Beschriftung" aria-label={`Feld ${i + 1}: Beschriftung`} style={feld} />
                 <select value={f.art} onChange={x => setE({ ...e, eingabeFelder: e.eingabeFelder.map((y, j) => (j === i ? { ...y, art: x.target.value as SkillEingabeFeld['art'] } : y)) })} aria-label={`Feld ${i + 1}: Art`} style={{ ...auswahl, minHeight: ZIEL.handy }}>
                   {FELD_ARTEN.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
                 </select>
-                <Schalter an={!!f.pflicht} onChange={v => setE({ ...e, eingabeFelder: e.eingabeFelder.map((y, j) => (j === i ? { ...y, pflicht: v } : y)) })} ariaLabel={`Feld ${i + 1}: Pflicht`} />
+                <Schalter erklaerungOhne="Zeile im Feld-Editor — der Abschnitt „Eingabe-Felder“ erklärt Pflichtfelder" an={!!f.pflicht} onChange={v => setE({ ...e, eingabeFelder: e.eingabeFelder.map((y, j) => (j === i ? { ...y, pflicht: v } : y)) })} ariaLabel={`Feld ${i + 1}: Pflicht`} />
                 <SymbolKnopf ariaLabel={`Feld ${i + 1} entfernen`} gefahr onClick={() => setE({ ...e, eingabeFelder: e.eingabeFelder.filter((_, j) => j !== i) })}>×</SymbolKnopf>
               </div>
             ))}
             <div><Knopf leise onClick={() => setE({ ...e, eingabeFelder: [...e.eingabeFelder, { id: `feld-${e.eingabeFelder.length + 1}`, label: '', art: 'text' }] })}>+ Feld</Knopf></div>
           </Abschnitt>
-          <Abschnitt titel="Ergebnis und Freigabe">
+          <Abschnitt titel="Ergebnis und Freigabe" erklaerung="agenten.skill.ergebnis">
             <Segmente liste={[{ id: 'stapel', label: 'Als Vorschlag in die Freigaben' }, { id: 'faden', label: 'Als Thread' }]} aktiv={e.ergebnis} onWahl={x => setE({ ...e, ergebnis: x })} umbrechen />
-            <Schalter karte an={e.freigabePflicht} onChange={v => setE({ ...e, freigabePflicht: v })} beschreibung="Jede Wirkung geht als Vorschlag in die Freigaben — auch wenn das Werkzeug frei wäre. Lockern geht nie.">Freigabe-Pflicht</Schalter>
+            <Schalter karte erklaerung="agenten.freigabePflicht" an={e.freigabePflicht} onChange={v => setE({ ...e, freigabePflicht: v })} beschreibung="Jede Wirkung geht als Vorschlag in die Freigaben — auch wenn das Werkzeug frei wäre. Lockern geht nie.">Freigabe-Pflicht</Schalter>
           </Abschnitt>
-          <Abschnitt titel="Modell und Kosten">
+          <Abschnitt titel="Modell und Kosten" erklaerung="head.modell">
             <Segmente liste={STUFEN} aktiv={e.stufe} onWahl={x => setE({ ...e, stufe: x })} />
-            <Feldzeile label="Kostengrenze je Lauf in Euro (optional)"><input inputMode="decimal" value={grenze} onChange={x => setGrenze(x.target.value)} placeholder="z. B. 0,50" style={eingabe} /></Feldzeile>
+            <Feldzeile label="Kostengrenze je Lauf in Euro (optional)" erklaerung="agenten.skill.kostengrenze"><input inputMode="decimal" value={grenze} onChange={x => setGrenze(x.target.value)} placeholder="z. B. 0,50" style={eingabe} /></Feldzeile>
           </Abschnitt>
           <details>
             <summary style={{ cursor: 'pointer', fontSize: TYP.bedien, color: C.inkDim, minHeight: ZIEL.handy, display: 'flex', alignItems: 'center' }}>SKILL.md importieren …</summary>

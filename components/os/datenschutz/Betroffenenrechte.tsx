@@ -29,7 +29,7 @@ export function Art14VorlageKarte({ d, onGeaendert, i = 0 }: { d: EinrichtungAnt
   }
   return (
     <Karte i={i} id="art14">
-      <Ueberschrift rechts={<Chip farbe={d.art14 ? LEUCHT.gut : C.inkDim}>{d.art14 ? 'eigene Vorlage' : 'mitgeliefert'}</Chip>}>Information nach Art. 14</Ueberschrift>
+      <Ueberschrift erklaerung="datenschutz.art14" rechts={<Chip farbe={d.art14 ? LEUCHT.gut : C.inkDim}>{d.art14 ? 'eigene Vorlage' : 'mitgeliefert'}</Chip>}>Information nach Art. 14</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 10 }}>
         Wer Daten nicht bei der Person selbst erhebt (Recherche, Liste, Empfehlung), muss sie spätestens nach einem Monat informieren. In der Akte entsteht daraus ein Entwurf mit ihren Angaben — gesendet wird nur von Ihnen, im Mail-Programm. Die Selbstprüfung meldet offene Fristen.
       </div>
@@ -79,7 +79,7 @@ export function VertragsendeKarte({ i = 0 }: { i?: number }) {
   if (!umfang) return null; // nur der Haupt-Inhaber bekommt den Umfang — alle anderen (auch weitere Inhaber) sehen die Karte nicht (der Server sagt 403)
   return (
     <Karte i={i} id="vertragsende">
-      <Ueberschrift farbe={LEUCHT.achtung}>Vertragsende: Export und Löschung der Instanz</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.achtung} erklaerung="datenschutz.instanzende">Vertragsende: Export und Löschung der Instanz</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 10 }}>
         Rückgabe aller Daten (AVV § 11): {umfang.bestaende} Bestände, {umfang.dateien} Dateien, {umfang.bilder} Bilder — entschlüsselt in einer JSON-Datei.
         {umfang.medien ? ` Fotos & Videos (${umfang.medien}): Angaben und Liste der Dateien — die Dateien selbst vorher in der App herunterladen.` : ''} Nur für den Haupt-Inhaber, mit Passwort{zweiterFaktor ? ' und Code' : ' (und Code, wenn der zweite Faktor an ist)'}; der Abruf steht im Protokoll.

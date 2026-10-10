@@ -86,7 +86,7 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
       {meldung && <Hinweis art="info" rolle="status">{meldung}</Hinweis>}
 
       <Karte i={i + 0} id="gesundheit">
-        <Ueberschrift>Gesundheit (Art. 9 DSGVO)</Ueberschrift>
+        <Ueberschrift erklaerung="gesundheit.art9">Gesundheit (Art. 9 DSGVO)</Ueberschrift>
         {g?.stand.hinweisOffen && (
           <Hinweis art="achtung" titel="Bitte bestätigen">Deine Gesundheitsdaten werden bisher ohne ausdrückliche Einwilligung verarbeitet. Bitte bestätige unten „In MAKE OS verarbeiten“ — bis dahin bleibt alles wie bisher, aber nichts geht an die KI oder an deinen Partner.</Hinweis>
         )}
@@ -99,7 +99,7 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
           const gesperrt = (t.zweck === 'ki' && !g.stand.verarbeiten.an) || (t.zweck === 'partner' && !(g.stand.verarbeiten.an && g.stand.ki.an));
           return (
             <div key={t.zweck} style={{ marginTop: 12 }}>
-              <Schalter karte an={s.an} aus={gesperrt && !s.an} onChange={v => void erklaeren(t.zweck, v)} beschreibung={<>{t.text}<br /><span style={{ color: C.inkLeise }}>{s.an ? `Eingewilligt am ${zeit(s.seit)} (Fassung ${s.fassung})` : gesperrt ? 'Setzt die Einwilligung darüber voraus.' : 'Aus'}</span></>}>
+              <Schalter karte erklaerung={`gesundheit.${t.zweck}`} an={s.an} aus={gesperrt && !s.an} onChange={v => void erklaeren(t.zweck, v)} beschreibung={<>{t.text}<br /><span style={{ color: C.inkLeise }}>{s.an ? `Eingewilligt am ${zeit(s.seit)} (Fassung ${s.fassung})` : gesperrt ? 'Setzt die Einwilligung darüber voraus.' : 'Aus'}</span></>}>
                 {t.titel}
               </Schalter>
             </div>
@@ -118,27 +118,27 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
       </Karte>
 
       <Karte i={i + 1} id="ki">
-        <Ueberschrift>KI-Schalter</Ueberschrift>
+        <Ueberschrift erklaerung="ki.schalter">KI-Schalter</Ueberschrift>
         <div style={text}>Was an die KI gehen darf (Anbieter und Weg: siehe Protokoll unten). Deine Schalter schränken nur ein — über die Instanz hinaus öffnen sie nichts. Erzwungen wird auf dem Server, an der einen Stelle, an der Daten das Haus verlassen.</div>
         {k && (
           <>
             <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
-              <Schalter karte an={k.eigen.hintergrund ?? true} aus={!k.instanz.hintergrund} onChange={v => void stellen('person', { hintergrund: v })} beschreibung={k.instanz.hintergrund ? 'Automatische Läufe ohne aktuelle Frage (Morgen-/Abendlauf, Heads, Head of Finance, ZOE-Aufgaben) — Namen von Kontakten werden dabei durch Platzhalter ersetzt.' : 'Für die ganze Instanz ausgeschaltet.'}>Hintergrund-KI für mich</Schalter>
-              <Schalter karte an={k.eigen.websuche ?? true} aus={!k.instanz.websuche} onChange={v => void stellen('person', { websuche: v })} beschreibung={k.instanz.websuche ? 'Recherche und Lage mit Web-Suche — Suchbegriffe gehen an einen Suchdienst.' : 'Für die ganze Instanz ausgeschaltet.'}>Web-Suche für mich</Schalter>
+              <Schalter karte erklaerung="ki.hintergrund" an={k.eigen.hintergrund ?? true} aus={!k.instanz.hintergrund} onChange={v => void stellen('person', { hintergrund: v })} beschreibung={k.instanz.hintergrund ? 'Automatische Läufe ohne aktuelle Frage (Morgen-/Abendlauf, Heads, Head of Finance, ZOE-Aufgaben) — Namen von Kontakten werden dabei durch Platzhalter ersetzt.' : 'Für die ganze Instanz ausgeschaltet.'}>Hintergrund-KI für mich</Schalter>
+              <Schalter karte erklaerung="ki.websuche" an={k.eigen.websuche ?? true} aus={!k.instanz.websuche} onChange={v => void stellen('person', { websuche: v })} beschreibung={k.instanz.websuche ? 'Recherche und Lage mit Web-Suche — Suchbegriffe gehen an einen Suchdienst.' : 'Für die ganze Instanz ausgeschaltet.'}>Web-Suche für mich</Schalter>
               {k.bereiche.map(b => (
-                <Schalter key={b.id} karte an={k.eigen.bereiche[b.id] ?? true} aus={!k.instanz.bereiche[b.id]} onChange={v => void stellen('person', { bereiche: { [b.id]: v } })} beschreibung={k.instanz.bereiche[b.id] ? `ZOE darf ${b.label} lesen und an das Modell geben.` : 'Für die ganze Instanz ausgeschaltet.'}>{b.label}</Schalter>
+                <Schalter key={b.id} karte erklaerung={`ki.bereich.${b.id}`} an={k.eigen.bereiche[b.id] ?? true} aus={!k.instanz.bereiche[b.id]} onChange={v => void stellen('person', { bereiche: { [b.id]: v } })} beschreibung={k.instanz.bereiche[b.id] ? `ZOE darf ${b.label} lesen und an das Modell geben.` : 'Für die ganze Instanz ausgeschaltet.'}>{b.label}</Schalter>
               ))}
-              <Schalter karte an={!!k.eigen.bilderAnKi} onChange={v => void bilder(v)} beschreibung="Fotos aus „Fotos & Videos“ zum Bearbeiten an den Bild-Anbieter — nur Business, nur einem Head gegeben, Personen nur mit Einwilligung „KI“. Vorgabe aus.">Bilder an die KI</Schalter>
+              <Schalter karte erklaerung="ki.bilder" an={!!k.eigen.bilderAnKi} onChange={v => void bilder(v)} beschreibung="Fotos aus „Fotos & Videos“ zum Bearbeiten an den Bild-Anbieter — nur Business, nur einem Head gegeben, Personen nur mit Einwilligung „KI“. Vorgabe aus.">Bilder an die KI</Schalter>
             </div>
             {k.inhaber && (
               <div style={{ marginTop: 18 }}>
-                <Ueberschrift>Instanz (nur Inhaber)</Ueberschrift>
+                <Ueberschrift erklaerung="ki.instanz">Instanz (nur Inhaber)</Ueberschrift>
                 <div style={text}>Vorgabe dieser Instanz: {k.vorgabe === 'kompatibel' ? '„kompatibel“ — lief schon vor dem 05.10., alles an wie bisher' : '„sparsam“ — Hintergrund-KI und Web-Suche aus, bis du sie einschaltest'}.</div>
                 <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-                  <Schalter karte an={k.instanz.hintergrund} onChange={v => void stellen('instanz', { hintergrund: v })} beschreibung="Gilt für alle Personen dieser Instanz.">Hintergrund-KI</Schalter>
-                  <Schalter karte an={k.instanz.websuche} onChange={v => void stellen('instanz', { websuche: v })} beschreibung="Gilt für alle Personen dieser Instanz.">Web-Suche</Schalter>
+                  <Schalter karte erklaerung="ki.instanz.hintergrund" an={k.instanz.hintergrund} onChange={v => void stellen('instanz', { hintergrund: v })} beschreibung="Gilt für alle Personen dieser Instanz.">Hintergrund-KI</Schalter>
+                  <Schalter karte erklaerung="ki.instanz.websuche" an={k.instanz.websuche} onChange={v => void stellen('instanz', { websuche: v })} beschreibung="Gilt für alle Personen dieser Instanz.">Web-Suche</Schalter>
                   {k.bereiche.map(b => (
-                    <Schalter key={b.id} karte an={k.instanz.bereiche[b.id]} onChange={v => void stellen('instanz', { bereiche: { [b.id]: v } })} beschreibung="ZOE darf diesen Bereich lesen (für alle).">{b.label}</Schalter>
+                    <Schalter key={b.id} karte erklaerung={`ki.bereich.${b.id}`} an={k.instanz.bereiche[b.id]} onChange={v => void stellen('instanz', { bereiche: { [b.id]: v } })} beschreibung="ZOE darf diesen Bereich lesen (für alle).">{b.label}</Schalter>
                   ))}
                 </div>
               </div>
@@ -148,11 +148,11 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
       </Karte>
 
       <Karte i={i + 2} id="telegram">
-        <Ueberschrift>Telegram</Ueberschrift>
+        <Ueberschrift erklaerung="telegram.hinweise">Telegram</Ueberschrift>
         <div style={text}>Über Telegram kommen nur neutrale Hinweise („Neue Nachricht in MAKE OS“ mit Link) — keine Gesundheitswerte, keine Kontakt- oder Vertragsinhalte, keine ZOE-Antworten.</div>
         {k && (
           <div style={{ marginTop: 12 }}>
-            <Schalter karte an={!!k.telegramVoll} onChange={v => void telegram(v)} beschreibung={<>{k.telegramHinweis.text}{k.telegramVoll ? <><br /><span style={{ color: C.inkLeise }}>Eingeschaltet am {zeit(k.telegramVoll.seit)}</span></> : null}</>}>
+            <Schalter karte erklaerung="telegram.voll" an={!!k.telegramVoll} onChange={v => void telegram(v)} beschreibung={<>{k.telegramHinweis.text}{k.telegramVoll ? <><br /><span style={{ color: C.inkLeise }}>Eingeschaltet am {zeit(k.telegramVoll.seit)}</span></> : null}</>}>
               ZOE-Antworten vollständig über Telegram
             </Schalter>
           </div>
@@ -163,7 +163,7 @@ export function KiGesundheitKarten({ i = 0 }: { i?: number }) {
         <Ueberschrift rechts={
           // Datei-Download (keine Navigation) — deshalb ein echtes <a download>, kein next/link.
           <a href="/api/datenschutz/ki-protokoll?auskunft=1" download className="ui-knopf fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 14px', borderRadius: 11, border: '1px solid rgba(255,255,255,.12)', color: C.ink, fontSize: TYP.bedien, textDecoration: 'none' }}>Auskunft als Datei</a>
-        }>KI-Protokoll</Ueberschrift>
+        } erklaerung="ki.protokoll">KI-Protokoll</Ueberschrift>
         <div style={text}>Je Modell-Aufruf nur Metadaten — wann, wofür, welche Datenkategorien, wie viele, ob pseudonymisiert. Nie Inhalte. Aufbewahrung 12 Monate. Empfänger: {p?.zusammenfassung.empfaenger ?? 'Anthropic PBC (USA)'}.</div>
         {p && p.zusammenfassung.kategorien.length > 0 && (
           <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>

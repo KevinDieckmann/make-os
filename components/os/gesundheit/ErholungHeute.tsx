@@ -40,7 +40,7 @@ export function ErholungHeuteWidget({ titel, i }: { titel?: string; i: number })
       {s.fokus.trim() && <div style={{ fontSize: TYP.bedien, color: C.ink, marginBottom: 6 }}>{s.fokus}</div>}
       {sicht.faellig.slice(0, 4).map(f => (
         <Zeile key={f.programm.id} titel={f.programm.name} unter={f.grund}
-          rechts={<Schalter an={f.erledigt} farbe={ERHOLUNG_FARBE} ariaLabel={`${f.programm.name} heute erledigt`}
+          rechts={<Schalter erklaerung="gesundheit.erholung.erledigt" an={f.erledigt} farbe={ERHOLUNG_FARBE} ariaLabel={`${f.programm.name} heute erledigt`}
             onChange={an => { void aendern([an ? { op: 'einheit', einheit: { tag: heute, programmId: f.programm.id } } : { op: 'einheit-weg', programmId: f.programm.id, tag: heute }]); }} />} />
       ))}
       {sicht.ziele.slice(0, 2).map(z => (

@@ -17,7 +17,9 @@ import { FARBE as C, ABSTAND, LEUCHT, MIKRO, SCHRIFT, TYP, ZIEL } from '@/lib/ma
 import { headDef } from '@/lib/agenten/katalog';
 import { TON_SATZ, GRENZEN, type WissenModus, type Aufwand, type AutonomieStufe, type EinstellungFeld, type FadenAntwort, type FadenKurz, type HeadDef, type HeadKarte, type ModelTier, type Nachricht, type SkillKurz, type SkillsAntwort, type Mitarbeiter } from '@/lib/agenten/typen';
 import { MODEL_LABEL } from '@/lib/make-one/agents-data';
-import { Chip, Eigenschaft, Feldzeile, Hinweis, Karte, Kennzahl, Klappbar, Knopf, Leer, Leerzustand, Liste, Raster, Reiter, Schalter, Segmente, SymbolKnopf, Zeile, auswahl, eingabe } from '../ui';
+import { Chip, Eigenschaft, Erklaert, Feldzeile, Hinweis, Karte, Kennzahl, Klappbar, Knopf, Leer, Leerzustand, Liste, Raster, Reiter, Schalter, Segmente, SymbolKnopf, Zeile, auswahl, eingabe } from '../ui';
+import { headAbschnitte, mitarbeiterAbschnitte } from '@/lib/erklaerungen/agenten';
+import { kennzahlTextVon } from '@/lib/erklaerungen/kennzahlen';
 import { KuerzelKugel, bereichFarbe, fotoVon, headFarbe } from './Avatar';
 import { ChatFeld, ChatVerlauf, Schreibt } from './Chat';
 import { GespraechKopf } from './GespraechKopf';
@@ -56,6 +58,8 @@ export function HeadUeber({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
   return (
     <section aria-label={`Über ${k.kurz}`} style={{ display: 'grid', gap: ABSTAND.m }}>
       <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.55 }}>{k.auftrag}</div>
+      {/* 10.10. (Erklärung überall): was der Head tut, was er nie tut, ein Beispiel-Vorschlag (lib/erklaerungen/agenten.ts). */}
+      {headAbschnitte(k.id).length > 0 && <Liste><Zeile titel={`Was ${k.kurz} tut — und was nie`} unter="mit einem Beispiel-Vorschlag" erklaerung={headAbschnitte(k.id)} /></Liste>}
       {sicht && (
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
           <b style={{ color: C.ink }}>Sieht:</b> {sicht.sieht.join(' · ') || '—'}
@@ -65,7 +69,7 @@ export function HeadUeber({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
       )}
       {k.kennzahlen.length > 0 && (
         <Raster min={form === 'handy' ? 120 : 160}>
-          {k.kennzahlen.slice(0, 3).map(z => <Kennzahl key={z.id} klein wert={z.wert ?? undefined} label={z.label} ton={z.ampel ? AMPEL[z.ampel] : undefined} unter={z.wert == null ? z.hinweis : undefined} />)}
+          {k.kennzahlen.slice(0, 3).map(z => <Kennzahl key={z.id} klein wert={z.wert ?? undefined} label={z.label} ton={z.ampel ? AMPEL[z.ampel] : undefined} unter={z.wert == null ? z.hinweis : undefined} erklaerung={z.erklaerung} />)}
         </Raster>
       )}
       {k.hinweis && <Hinweis art="info">{k.hinweis}</Hinweis>}
@@ -167,7 +171,7 @@ function MitarbeiterReiter({ k, skills }: { k: HeadKarte; skills: Abruf<SkillsAn
         <Liste>
           {liste.map(m => (
             <div key={m.id} style={{ display: 'grid', gap: ABSTAND.xs, padding: `${ABSTAND.s}px 0` }}>
-              <Zeile links={<KuerzelKugel name={m.name} farbe={farbe} bereich={k.bereich} groesse={KUGEL_GROESSE.liste} />} titel={m.name} unter={m.rolle} umbrechen
+              <Zeile links={<KuerzelKugel name={m.name} farbe={farbe} bereich={k.bereich} groesse={KUGEL_GROESSE.liste} />} titel={m.name} unter={m.rolle} umbrechen erklaerung={mitarbeiterAbschnitte(m.id)}
                 rechts={<span style={{ display: 'flex', gap: ABSTAND.xs, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   {m.headId !== k.id && <Chip farbe={C.inkDim}>hilft hier aus</Chip>}
                   {m.auchFuer.length > 0 && m.headId === k.id && <Chip farbe={C.inkDim}>hilft auch {m.auchFuer.length} weiteren</Chip>}
@@ -273,9 +277,9 @@ function LeistungReiter({ k, skills }: { k: HeadKarte; skills: Abruf<SkillsAntwo
   return (
     <div style={{ display: 'grid', gap: ABSTAND.l }}>
       <Raster min={160}>
-        <Kennzahl klein wert={l.annahme.text === '—' ? undefined : l.annahme.text} label="Annahmequote" unter={`${l.annahme.angenommen} angenommen · ${l.annahme.abgelehnt} abgelehnt`} />
-        <Kennzahl klein wert={l.laeufe ? String(l.laeufe) : undefined} label="Läufe" />
-        <Kennzahl klein wert={l.kostenJeErgebnis === '—' ? undefined : l.kostenJeErgebnis} label="Kosten je Ergebnis" />
+        <Kennzahl klein erklaerung={kennzahlTextVon('agent.annahmequote')} wert={l.annahme.text === '—' ? undefined : l.annahme.text} label="Annahmequote" unter={`${l.annahme.angenommen} angenommen · ${l.annahme.abgelehnt} abgelehnt`} />
+        <Kennzahl klein erklaerung={kennzahlTextVon('agent.laeufe')} wert={l.laeufe ? String(l.laeufe) : undefined} label="Läufe" />
+        <Kennzahl klein erklaerung={kennzahlTextVon('agent.kostenErgebnis')} wert={l.kostenJeErgebnis === '—' ? undefined : l.kostenJeErgebnis} label="Kosten je Ergebnis" />
       </Raster>
       <div style={{ display: 'grid', gap: ABSTAND.s }}>
         <span style={{ ...MIKRO }}>Erfolgsquote je Skill</span>
@@ -361,19 +365,19 @@ function Einstellungen({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
       {e?.notAus && <Hinweis art="achtung" titel="Not-Aus">Dieser Head ist angehalten — seit {new Date(e.notAus.seit).toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.</Hinweis>}
       <Karte flach>
         <div style={{ display: 'grid', gap: ABSTAND.m }}>
-          <Feldzeile label={`Modell${e ? ` — ${e.modelle[stufe]}` : ''}${e && stufe === e.vorgabe.stufe ? ' (Vorgabe)' : ''}`}>
+          <Feldzeile label={`Modell${e ? ` — ${e.modelle[stufe]}` : ''}${e && stufe === e.vorgabe.stufe ? ' (Vorgabe)' : ''}`} erklaerung="head.modell">
             {darf ? <Segmente liste={STUFEN} aktiv={stufe} onWahl={x => schreibe({ stufe: x === e!.vorgabe.stufe ? null : x }, 'Modell gespeichert.')} />
               : <span style={{ fontSize: TYP.body, color: C.ink }}>{MODEL_LABEL[stufe]} <span style={{ color: C.inkLeise }}>(Vorgabe)</span></span>}
           </Feldzeile>
-          <Feldzeile label="Aufwand (Denktiefe)">
+          <Feldzeile label="Aufwand (Denktiefe)" erklaerung="head.aufwand">
             {darf ? <Segmente liste={AUFWAENDE} aktiv={aufwand} onWahl={x => schreibe({ aufwand: x === e!.vorgabe.aufwand ? null : x }, 'Aufwand gespeichert.')} />
               : <span style={{ fontSize: TYP.body, color: C.ink }}>{AUFWAND_NAME[aufwand]}</span>}
           </Feldzeile>
-          <Feldzeile label="Autonomie — nach außen nie ohne Klick; die Stufe lässt sich je Head nur verschärfen">
+          <Feldzeile label="Autonomie — nach außen nie ohne Klick; die Stufe lässt sich je Head nur verschärfen" erklaerung="head.autonomie">
             {darf ? <Segmente liste={AUTONOMIE.filter(a => a.id === 'vorschlag' || e!.vorgabe.autonomie === 'intern')} aktiv={autonomie} onWahl={x => schreibe({ autonomie: x === e!.vorgabe.autonomie ? null : x }, 'Autonomie gespeichert.')} />
               : <span style={{ fontSize: TYP.body, color: C.ink }}>{autonomie === 'intern' ? 'Risikoarm selbst' : 'Nur Vorschlag'}</span>}
           </Feldzeile>
-          <Feldzeile label={`Budget je Monat in Euro — ${euro(kosten)} in diesem Monat${e?.budgetCentMonat != null ? ` von ${euro(e.budgetCentMonat)}` : ' · ohne Grenze nur messen'}`}>
+          <Feldzeile label={`Budget je Monat in Euro — ${euro(kosten)} in diesem Monat${e?.budgetCentMonat != null ? ` von ${euro(e.budgetCentMonat)}` : ' · ohne Grenze nur messen'}`} erklaerung="head.budget">
             {darf ? (
               <form onSubmit={x => { x.preventDefault(); void budgetSpeichern(); }} style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
                 <input value={budget} onChange={x => setBudget(x.target.value)} inputMode="decimal" placeholder="leer = nur messen" aria-label="Budget je Monat in Euro" style={{ ...eingabe, flex: 1, minWidth: 140 }} />
@@ -381,7 +385,7 @@ function Einstellungen({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
               </form>
             ) : <span style={{ fontSize: TYP.body, color: C.ink }}>{e?.budgetCentMonat != null ? euro(e.budgetCentMonat) : 'keine Grenze — nur messen'}</span>}
           </Feldzeile>
-          <Feldzeile label="Zuständig (Person aus den Konten)">
+          <Feldzeile label="Zuständig (Person aus den Konten)" erklaerung="head.zustaendig">
             {darf && personen.length ? (
               <select value={e?.zustaendig ?? ''} onChange={x => schreibe({ zustaendig: x.target.value || null }, 'Zuständigkeit gespeichert.')} style={{ ...auswahl, width: '100%', minHeight: ZIEL.handy }} aria-label="Zuständige Person">
                 <option value="">Niemand Bestimmtes</option>
@@ -389,7 +393,7 @@ function Einstellungen({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
               </select>
             ) : <span style={{ fontSize: TYP.body, color: C.ink }}>{personen.find(p => p.id === e?.zustaendig)?.name ?? '—'}</span>}
           </Feldzeile>
-          {darf && <Schalter an={k.aktiv} onChange={an => schreibe({ aktiv: an }, an ? `${k.kurz} ist an.` : `${k.kurz} ist aus.`)}>{k.aktiv ? 'Head ist an' : 'Head ist aus'}</Schalter>}
+          {darf && <Schalter erklaerung="head.aktiv" an={k.aktiv} onChange={an => schreibe({ aktiv: an }, an ? `${k.kurz} ist an.` : `${k.kurz} ist aus.`)}>{k.aktiv ? 'Head ist an' : 'Head ist aus'}</Schalter>}
           {darf && <Feldzeile label="Foto (optional — sonst das Kürzel)"><FotoWahl aktuell={e?.foto ?? null} onWahl={id => schreibe({ foto: id }, id ? 'Foto gespeichert.' : 'Wieder mit Kürzel.')} /></Feldzeile>}
           <Eigenschaft label="Anbieter">Anthropic (über das KI-Tor)</Eigenschaft>
           <Eigenschaft label="Ebene">{k.ebene === 'haushalt' ? 'Haushalt — gilt für alle im Haushalt' : 'Persönlich — gilt nur für dich'}</Eigenschaft>
@@ -397,7 +401,7 @@ function Einstellungen({ k, def }: { k: HeadKarte; def: HeadDef | null }) {
       </Karte>
       {!e && <Hinweis art="info" aktion={<Knopf leise onClick={() => dialog({ art: 'uebersicht' })}>Bisherige Agenten-Schalter ›</Knopf>}>Die Einstellungen kommen mit dem Agenten-Kern. Bis dahin gelten die Vorgaben.</Hinweis>}
       {e && !darf && <Hinweis art="info">Die Einstellungen dieses Heads ändern volle Mitglieder des Haushalts. Anhalten kannst du ihn trotzdem.</Hinweis>}
-      {e && <div><Knopf leise farbe={LEUCHT.kritisch} onClick={notAus}>{e.notAus ? `Not-Aus für ${k.kurz} lösen` : `${k.kurz} anhalten (Not-Aus)`}</Knopf></div>}
+      {e && <Erklaert erklaerung="head.notaus" name="Not-Aus"><Knopf leise farbe={LEUCHT.kritisch} onClick={notAus}>{e.notAus ? `Not-Aus für ${k.kurz} lösen` : `${k.kurz} anhalten (Not-Aus)`}</Knopf></Erklaert>}
     </div>
   );
 }
@@ -533,7 +537,7 @@ function HeadInfo({ k, def, skills, offen, umschalten }: { k: HeadKarte; def: He
     <div style={einSpaltig(ABSTAND.l)}>
       <HeadUeber k={k} def={def} />
       {INFO_ABSCHNITTE.filter(a => (!a.nurUnterlagen || mitUnterlagen) && (!a.nurBusiness || k.bereich === 'business')).map(a => (
-        <Klappbar key={a.id} id={`agenten-${k.id}-${a.id}`} titel={a.id === 'auftrag' && k.ebene !== 'person' ? 'Auftrag des Haushalts' : a.label} offen={offen.includes(a.id)} umschalten={() => umschalten(a.id)}
+        <Klappbar key={a.id} id={`agenten-${k.id}-${a.id}`} titel={a.id === 'auftrag' && k.ebene !== 'person' ? 'Auftrag des Haushalts' : a.label} offen={offen.includes(a.id)} umschalten={() => umschalten(a.id)} erklaerung={`head.abschnitt.${a.id}`}
           rechts={a.id === 'auftrag' ? <span style={{ fontSize: TYP.bedien, color: auftragGesetzt ? C.ink : C.inkLeise }}>{auftragGesetzt ? 'gesetzt' : 'leer'}</span>
             : anzahl[a.id] ? <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums' }}>{anzahl[a.id]}</span> : undefined}>
           {a.id === 'auftrag' && <AuftragAbschnitt k={k} />}

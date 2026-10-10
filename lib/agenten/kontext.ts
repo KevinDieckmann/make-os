@@ -15,6 +15,7 @@
 
 import { daten } from '@/lib/brain';
 import type { HeadDef, KennzahlWert, KiKategorie } from './typen';
+import { kennzahlAbschnitte } from '@/lib/erklaerungen/kennzahlen';
 import type { KontoSicht } from './sicht';
 
 export interface HeadKontext {
@@ -252,10 +253,16 @@ export async function kennzahlWerte(head: HeadDef, sicht: KontoSicht): Promise<K
   const [{ KENNZAHL }, { TRAKTION_KENNZAHLEN }, { PRIVAT_KENNZAHLEN }, { GESUNDHEIT_KENNZAHLEN }] = await Promise.all([
     import('@/lib/business/register'), import('@/lib/crm/traktion-index'), import('@/lib/privat/index'), import('@/lib/gesundheit/index'),
   ]);
-  const label = (index: string, id: string): string => (index === 'business' ? KENNZAHL[id]?.label
-    : index === 'traktion' ? TRAKTION_KENNZAHLEN.find(k => k.id === id)?.label
-      : index === 'privat' ? PRIVAT_KENNZAHLEN.find(k => k.id === id)?.label
-        : GESUNDHEIT_KENNZAHLEN.find(k => k.id === id)?.label) ?? id;
+  const def = (index: string, id: string) => (index === 'business' ? KENNZAHL[id]
+    : index === 'traktion' ? TRAKTION_KENNZAHLEN.find(k => k.id === id)
+      : index === 'privat' ? PRIVAT_KENNZAHLEN.find(k => k.id === id)
+        : GESUNDHEIT_KENNZAHLEN.find(k => k.id === id));
+  const label = (index: string, id: string): string => def(index, id)?.label ?? id;
+  /** Erklärung aus dem Register (Wie gerechnet · Beispiel · Was ihr tun könnt, 10.10.). */
+  const erklaerung = (index: string, id: string): KennzahlWert['erklaerung'] => {
+    const d = def(index, id);
+    return d ? kennzahlAbschnitte({ label: d.label, einheit: d.einheit, richtung: d.richtung, gruen: d.gruen, rot: d.rot, formel: d.formel, ...(d.pflegen ? { pflegen: d.pflegen } : {}), luecke: d.luecke }) : undefined;
+  };
   const braucht = (i: string) => head.kennzahlen.some(k => k.index === i);
   const quellen: Partial<Record<string, Werte | null>> = {};
   if (braucht('business')) quellen.business = await businessWerte(sicht.person).catch(() => null);
@@ -264,7 +271,7 @@ export async function kennzahlWerte(head: HeadDef, sicht: KontoSicht): Promise<K
   if (braucht('gesundheit') && sicht.imHaushalt && sicht.gesundheit.verarbeiten) quellen.gesundheit = await gesundheitWerte(sicht.person).catch(() => null);
   return head.kennzahlen.map(k => {
     const w = quellen[k.index]?.get(k.id);
-    return { id: `${k.index}:${k.id}`, label: label(k.index, k.id), wert: w?.anzeige ?? null, ampel: w?.ampel ?? 'grau', ...(w && w.anzeige == null && w.luecke ? { hinweis: w.luecke } : {}) };
+    return { id: `${k.index}:${k.id}`, label: label(k.index, k.id), wert: w?.anzeige ?? null, ampel: w?.ampel ?? 'grau', ...(w && w.anzeige == null && w.luecke ? { hinweis: w.luecke } : {}), erklaerung: erklaerung(k.index, k.id) };
   });
 }
 

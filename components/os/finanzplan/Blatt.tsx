@@ -411,7 +411,7 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
         {werkzeuge}
         <Pillen liste={[{ id: 'plan' as Modus, label: 'Plan' }, { id: 'ist' as Modus, label: 'IST' }, { id: 'delta' as Modus, label: 'Abweichung' }]} aktiv={modus} onWahl={m => { setModus(m); setSel(null); }} einzeilig />
         <Pillen liste={[{ id: 'alle' as Jahr, label: 'Alle' }, { id: '2026' as Jahr, label: '2026' }, { id: '2027' as Jahr, label: '2027' }, { id: '2028' as Jahr, label: '2028' }]} aktiv={jahr} onWahl={setJahr} einzeilig />
-        {hist && <Schalter an={verlauf} onChange={setVerlauf}>IST Jan–Sep</Schalter>}
+        {hist && <Schalter erklaerung="finanzplan.istJanSep" an={verlauf} onChange={setVerlauf}>IST Jan–Sep</Schalter>}
         {modus === 'plan' && handZahl > 0 && (
           <button type="button" onClick={() => zuruecksetzen(blattKeys, `${titel}: alle Handwerte auf Formel zurückgesetzt`)} title="Alle von Hand überschriebenen Zahlen dieses Blatts auf die Formel zurücksetzen (Rückgängig mit Cmd+Z)"
             style={{ background: 'none', border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, color: LEUCHT.achtung, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, padding: '4px 10px' }}>

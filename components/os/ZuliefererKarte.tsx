@@ -99,7 +99,7 @@ export function ZuliefererKarte({ i = 0 }: { i?: number }) {
   return (
     <Karte i={i} akzent={lage.aktiv ? LEUCHT.achtung : undefined}>
       {dialog}
-      <Ueberschrift farbe={LEUCHT.puls} rechts={<Chip farbe={chip.farbe}>{chip.label}</Chip>}>Mac-Zulieferer</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.puls} erklaerung="dienste.zulieferer" rechts={<Chip farbe={chip.farbe}>{chip.label}</Chip>}>Mac-Zulieferer</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
         {lage.quelleText}{lage.uebernahmeAm ? ` · Erinnerungen übernommen am ${tag(lage.uebernahmeAm)}` : ''}. Kalender und Mail holt der Server selbst; am Mac bleibt nur der Mail-Zugang.
       </div>
@@ -117,8 +117,8 @@ export function ZuliefererKarte({ i = 0 }: { i?: number }) {
               <Wahl label={`Space für „${l.name}“`} liste={spaceListe} wert={spaces[l.name] ?? l.space} onWahl={id => setSpaces(x => ({ ...x, [l.name]: id }))} klein />
             </div>
           ))}
-          <Schalter an={nurIch} onChange={setNurIch}>Im Space Privat „nur ich“</Schalter>
-          {v.zaehler.erledigt > 0 && <Schalter an={erledigte} onChange={setErledigte}>Erledigte mitnehmen ({v.zaehler.erledigt})</Schalter>}
+          <Schalter erklaerung="zulieferer.nurIch" an={nurIch} onChange={setNurIch}>Im Space Privat „nur ich“</Schalter>
+          {v.zaehler.erledigt > 0 && <Schalter erklaerung="zulieferer.erledigte" an={erledigte} onChange={setErledigte}>Erledigte mitnehmen ({v.zaehler.erledigt})</Schalter>}
           <Klappbar id="zulieferer-zeilen" titel="Einzeln ansehen und abwählen" offen={zeilenOffen} umschalten={() => setZeilenOffen(o => !o)} zaehler={v.zeilen.length}>
             <div style={{ display: 'grid', gap: 2 }}>
               {v.zeilen.filter(z => erledigte || !z.erledigt || z.schon).map(z => (

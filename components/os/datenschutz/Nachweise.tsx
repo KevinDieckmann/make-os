@@ -62,7 +62,7 @@ export function NachweiseKarten({ i = 0 }: { i?: number }) {
   return (
     <>
       <Karte i={i}>
-        <Ueberschrift rechts={<Knopf leise onClick={() => void kettePruefen()} aus={pruefe}>{pruefe ? 'Prüft …' : 'Jetzt prüfen'}</Knopf>}>Protokolle — Hash-Kette</Ueberschrift>
+        <Ueberschrift erklaerung="datenschutz.nachweise.kette" rechts={<Knopf leise onClick={() => void kettePruefen()} aus={pruefe}>{pruefe ? 'Prüft …' : 'Jetzt prüfen'}</Knopf>}>Protokolle — Hash-Kette</Ueberschrift>
         {!k ? <Hinweis art="info" titel="Noch nicht geprüft">Die nächtliche Durchsicht prüft Änderungs-, Lese- und Anmeldeprotokoll ab 4 Uhr.</Hinweis>
           : k.ok ? <Hinweis art={k.warnungen ? 'achtung' : 'gut'} titel="Protokoll unverändert ✓">{`${k.dateien} Dateien · ${k.eintraege} Einträge · geprüft ${zeit(k.zeit)}${k.getilgt ? ` · ${k.getilgt} nach Art. 17 getilgt` : ''}${k.warnungen ? ` · ${k.warnungen} noch ohne vollständiges Siegel` : ''}`}</Hinweis>
           : <Hinweis art="kritisch" rolle="alert" titel={`${k.fehler} Datei${k.fehler === 1 ? '' : 'en'} mit Bruch`}>Ein Protokoll wurde verändert, gekürzt, vertauscht oder zurückgespielt. Mit den Sicherungen vom Vortag vergleichen und als mögliche Datenpanne prüfen (datenschutz/DATENPANNEN.md).</Hinweis>}
@@ -74,7 +74,7 @@ export function NachweiseKarten({ i = 0 }: { i?: number }) {
       </Karte>
 
       <Karte i={i + 1}>
-        <Ueberschrift>Lese-Protokoll</Ueberschrift>
+        <Ueberschrift erklaerung="datenschutz.nachweise.lese">Lese-Protokoll</Ueberschrift>
         <p style={{ color: C.inkLeise, margin: '0 0 10px' }}>Wer Gesundheit, Erholung, Finanzen, Kontakte, Firmen und das Gesellschafts-Register gelesen hat — nur Zeit, Person, Bereich und wessen Daten; nie Inhalte. Gleicher Zugriff höchstens alle 10 Minuten, Aufbewahrung {d.lesen.aufbewahrungMonate} Monate.</p>
         <Pillen liste={[{ id: '7' as const, label: '7 Tage' }, { id: '30' as const, label: '30 Tage' }, { id: '365' as const, label: '12 Monate' }]} aktiv={tage} onWahl={setTage} />
         <Pillen liste={bereiche} aktiv={bereich} onWahl={setBereich} />
@@ -93,7 +93,7 @@ export function NachweiseKarten({ i = 0 }: { i?: number }) {
       </Karte>
 
       <Karte i={i + 2}>
-        <Ueberschrift>Verschlüsselung im Ruhezustand</Ueberschrift>
+        <Ueberschrift erklaerung="datenschutz.nachweise.verschluesselung">Verschlüsselung im Ruhezustand</Ueberschrift>
         <Liste>
           <Zeile titel="Bestände" unter={v.verschluesselt ? `AES-256-GCM je Datei · Schlüssel aus ${v.schluesselQuelle === 'datei' ? 'Datei (0400)' : v.schluesselQuelle === 'umgebung' ? 'der Umgebung (.env)' : '—'}` : 'kein Datenschlüssel — Klartext'} rechts={<Chip farbe={v.verschluesselt ? STAND_FARBE.ok : STAND_FARBE.offen}>{v.verschluesselt ? 'an' : 'aus'}</Chip>} />
           <Zeile titel="Schreibformat" unter={v.modus === 'v2' ? 'v2 — Schlüssel-ID + AAD' : `Kompatibilitätsmodus (v1)${v.unbekannt ? ' — MAKE_OS_FORMAT unbekannt' : ''}`} rechts={<Chip farbe={v.modus === 'v2' ? STAND_FARBE.ok : C.inkLeise}>{v.modus}</Chip>} />
@@ -103,7 +103,7 @@ export function NachweiseKarten({ i = 0 }: { i?: number }) {
       </Karte>
 
       <Karte i={i + 3}>
-        <Ueberschrift>Format v2 — Bereitschaft</Ueberschrift>
+        <Ueberschrift erklaerung="datenschutz.nachweise.v2">Format v2 — Bereitschaft</Ueberschrift>
         <Hinweis art={d.v2.modus === 'v2' ? 'gut' : d.v2.bereit ? 'info' : 'achtung'} titel={d.v2.modus === 'v2' ? 'v2 ist aktiv' : d.v2.bereit ? 'Bereit für die Umstellung' : 'Vor der Umstellung offen'}>
           {d.v2.modus === 'v2' ? 'Jede Hülle trägt Schlüssel-ID und Bestandsnamen.' : 'Umstellen nur auf Kevins Wort: Anleitung in UPDATES.md (05.10.) — .env MAKE_OS_FORMAT=v2, einmal --verschluesseln.'}
         </Hinweis>

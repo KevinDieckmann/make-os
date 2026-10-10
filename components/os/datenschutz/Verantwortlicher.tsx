@@ -40,7 +40,7 @@ export function VerantwortlicherKarte({ d, onGeaendert, i = 0 }: { d: Einrichtun
   );
   return (
     <Karte i={i} id="verantwortlicher" akzent={w.v ? undefined : LEUCHT.achtung}>
-      <Ueberschrift rechts={<Chip farbe={w.v ? LEUCHT.gut : LEUCHT.achtung}>{w.quelle === 'einrichtung' ? 'eingetragen' : w.quelle === 'umgebung' ? 'aus der Umgebung' : 'fehlt'}</Chip>}>Verantwortlicher</Ueberschrift>
+      <Ueberschrift erklaerung="datenschutz.verantwortlicher" rechts={<Chip farbe={w.v ? LEUCHT.gut : LEUCHT.achtung}>{w.quelle === 'einrichtung' ? 'eingetragen' : w.quelle === 'umgebung' ? 'aus der Umgebung' : 'fehlt'}</Chip>}>Verantwortlicher</Ueberschrift>
       {!w.v && <Hinweis art="achtung" titel="Verantwortlicher fehlt — eintragen">Auskunft, Verzeichnis und Selbstprüfung zeigen das deutlich, bis Name/Firma, Anschrift und Kontakt-Mail eingetragen sind (Art. 13 Abs. 1 lit. a, Art. 30 Abs. 1 lit. a DSGVO).</Hinweis>}
       {w.v && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 10 }}>Wirksam: {verantwortlicherText(w.v)}{w.v.dsb?.name || w.v.dsb?.mail ? ` · Datenschutzbeauftragter: ${[w.v.dsb.name, w.v.dsb.mail].filter(Boolean).join(', ')}` : ''}</div>}
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>

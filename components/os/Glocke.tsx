@@ -14,6 +14,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Erklaert } from './ui';
 import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, Moon, ImageIcon, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
@@ -207,10 +208,12 @@ export function GlockeListe({ sicht, jetzt, oeffnen, alleGelesen, telegram, lage
           })}
         </ul>
       )}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderTop: `1px solid ${C.linie}`, fontSize: TYP.bedien, color: C.inkLeise, cursor: 'pointer' }}>
-        <input type="checkbox" checked={sicht.einstellungen.telegram} onChange={e => telegram(e.target.checked)} style={{ accentColor: C.aktiv }} />
-        <span>Auch per Telegram — folgt; es wird noch nichts gesendet.</span>
-      </label>
+      <div style={{ borderTop: `1px solid ${C.linie}`, padding: '0 6px 0 0' }}><Erklaert breit erklaerung="glocke.telegram" name="Telegram-Hinweise">
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', fontSize: TYP.bedien, color: C.inkLeise, cursor: 'pointer' }}>
+          <input type="checkbox" checked={sicht.einstellungen.telegram} onChange={e => telegram(e.target.checked)} style={{ accentColor: C.aktiv }} />
+          <span>Auch per Telegram — folgt; es wird noch nichts gesendet.</span>
+        </label>
+      </Erklaert></div>
     </div>
   );
 }

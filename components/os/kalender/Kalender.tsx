@@ -34,7 +34,7 @@ import { tagPlus, wandAus } from '@/lib/kalender/zeit';
 import { montagVon, monatsblatt } from '@/lib/kalender/layout';
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, Reiter, Chip, feld, LEUCHT, useBreit, FlussKarte } from '../ui';
+import { Erklaert, Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, Reiter, Chip, feld, LEUCHT, useBreit, FlussKarte } from '../ui';
 import { useKalender, TerminFenster, WER_FARBE, WER_LABEL, type KTermin, type Wer } from './teile';
 import { Zeitraster } from './Zeitraster';
 import { Monat } from './Monat';
@@ -407,19 +407,19 @@ export function Kalender() {
       <FlussKarte bereich="kalender" farbe={LEUCHT.schlaf} i={4} />
       <AuswertungKarte stichtag={ansicht === 'woche' || ansicht === 'vier' || ansicht === 'tag' ? anker : heute} i={4} />
       <Karte i={5}>
-        <Ueberschrift rechts={<Knopf leise onClick={() => setZeigeEinst(v => !v)}>{zeigeEinst ? 'zu' : 'öffnen'}</Knopf>}>Einstellungen</Ueberschrift>
+        <Ueberschrift erklaerung="kalender.einstellungen" rechts={<Knopf leise onClick={() => setZeigeEinst(v => !v)}>{zeigeEinst ? 'zu' : 'öffnen'}</Knopf>}>Einstellungen</Ueberschrift>
         {zeigeEinst && einst && (
           <div style={{ display: 'grid', gap: 10 }}>
             <IcloudVerbindung onGeaendert={() => void laden()} />
             <GoogleVerbindung onGeaendert={() => void laden()} />
             {(['kevin', 'malin', 'beide'] as Wer[]).map(w => (
-              <label key={w} style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender {WER_LABEL[w]}</span>
+              <label key={w} style={{ display: 'grid', gap: 4 }}><Erklaert erklaerung="kalender.zuordnung" name={`Kalender ${WER_LABEL[w]}`}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender {WER_LABEL[w]}</span></Erklaert>
                 <input value={einst.kalender[w]} onChange={e => einstSetzen({ kalender: { ...einst.kalender, [w]: e.target.value } })} placeholder="Name wie in der Kalender-App" style={{ ...feld, fontSize: 13 }} /></label>
             ))}
-            <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Standarddauer Termin (Min.)</span>
+            <label style={{ display: 'grid', gap: 4 }}><Erklaert erklaerung="kalender.dauer" name="Standarddauer"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Standarddauer Termin (Min.)</span></Erklaert>
               <input type="number" min={5} max={600} step={5} value={einst.dauer.termin} onChange={e => einstSetzen({ dauer: { ...einst.dauer, termin: Number(e.target.value) || 60 } })} style={{ ...feld, width: 100, fontSize: 13 }} /></label>
             <div style={{ display: 'grid', gap: 4 }}>
-              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender → Space</span>
+              <Erklaert erklaerung="kalender.space" name="Kalender einem Bereich zuordnen"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender → Space</span></Erklaert>
               {(daten?.kalender ?? []).map(k => { const sp = spaceVonKalender(einst, k.name); return (
                 <div key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien }}>
                   <span style={{ flex: 1, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}</span>

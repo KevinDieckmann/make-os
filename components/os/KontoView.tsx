@@ -93,7 +93,7 @@ export function KontoView() {
         <div style={{ fontSize: TYP.body, overflowWrap: 'anywhere' }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
         {anmeldungen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${ART_TEXT[e.art] ?? e.art}${e.detail ? ` ${e.detail}` : ''}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
         <Liste>
-          <Zeile titel="Andere Geräte abmelden" unter="Meldet alle anderen Geräte ab — dieses bleibt angemeldet." rechts={<Knopf leise onClick={alleAbmelden}>Alle anderen abmelden</Knopf>} />
+          <Zeile titel="Andere Geräte abmelden" unter="Meldet alle anderen Geräte ab — dieses bleibt angemeldet." erklaerung="konto.abmeldenAlle" rechts={<Knopf leise onClick={alleAbmelden}>Alle anderen abmelden</Knopf>} />
         </Liste>
         {meldung && <div style={{ marginTop: 10 }}><Hinweis art={meldungKritisch ? 'kritisch' : 'gut'}>{meldung}</Hinweis></div>}
       </Karte>
@@ -106,7 +106,7 @@ export function KontoView() {
         <Knopf leise onClick={() => speichern({ name }, 'Name gespeichert.')} aus={name.trim() === ich.name}>Speichern</Knopf>
       </div>
 
-      <Ueberschrift>Passwort ändern</Ueberschrift>
+      <Ueberschrift erklaerung="konto.passwort">Passwort ändern</Ueberschrift>
       <form className="konto-feldreihe konto-feldreihe-pw" onSubmit={e => { e.preventDefault(); if (pw.neu.length >= 10 && pw.alt) void speichern({ passwortAlt: pw.alt, passwortNeu: pw.neu }, 'Passwort geändert.'); }}>
         <Feldzeile label="Altes Passwort"><input type="password" value={pw.alt} onChange={e => setPw(p => ({ ...p, alt: e.target.value }))} style={feld} autoComplete="current-password" /></Feldzeile>
         <Feldzeile label="Neues Passwort (mindestens 10 Zeichen)"><input type="password" value={pw.neu} onChange={e => setPw(p => ({ ...p, neu: e.target.value }))} style={feld} autoComplete="new-password" /></Feldzeile>
@@ -119,7 +119,7 @@ export function KontoView() {
       </Kachel>
       <Kachel id="zwei-faktor" titel="Zweiter Faktor" breite={3}>
       <Karte i={2} ton={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung}>
-        <Ueberschrift farbe={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung} rechts={<span>{ich.zweiterFaktorAn ? 'an' : 'aus'}</span>}>Zweiter Faktor · Authenticator</Ueberschrift>
+        <Ueberschrift farbe={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung} erklaerung="konto.zweiFaktor" rechts={<span>{ich.zweiterFaktorAn ? 'an' : 'aus'}</span>}>Zweiter Faktor · Authenticator</Ueberschrift>
         {zf.phase === 'codes' && zf.codes && (
           <div style={{ display: 'grid', gap: 8 }}>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Diese acht Wiederherstellungscodes gelten je einmal, falls das Handy weg ist. Jetzt in den Passwort-Manager — sie werden nie wieder angezeigt.</div>
@@ -160,7 +160,7 @@ export function KontoView() {
       {ich.rolle === 'inhaber' && (
         <Kachel id="einladen" titel="Einladen" breite={3}>
         <Karte i={4} akzent={LEUCHT.schlaf}>
-          <Ueberschrift farbe={LEUCHT.schlaf}>Einladen</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.schlaf} erklaerung="konto.einladen">Einladen</Ueberschrift>
           <Liste>
             {einladung ? (
               <div style={{ padding: '14px 2px', borderBottom: `1px solid ${C.linie}` }}>
@@ -190,7 +190,7 @@ export function KontoView() {
       <Kachel id="team" titel="Team" breite={6}><TeamKarte i={3} /></Kachel>
       <Kachel id="teilen" titel="Gesundheit teilen" breite={3}>
       <Karte i={2}>
-      <Ueberschrift farbe={LEUCHT.gut}>Gesundheit teilen</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.gut} erklaerung="konto.gesundheitTeilen">Gesundheit teilen</Ueberschrift>
       <Liste>
         {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, dein Journal und deine Tagebücher sehen darf, entscheidest du je Person.</Leer>}
         {andere.map(a => {
@@ -204,7 +204,7 @@ export function KontoView() {
       {/* Eigene Ziele (08.10., Kevin): Vorgabe „nicht geteilt“ — wer meine eigenen Ziele lesen darf, entscheide nur ich (Server: lib/planung/eigene-ziele-sicht.ts). */}
       <Kachel id="ziele-teilen" titel="Eigene Ziele teilen" breite={3}>
       <Karte i={2}>
-      <Ueberschrift farbe={LEUCHT.planung}>Eigene Ziele teilen</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.planung} erklaerung="konto.zieleTeilen">Eigene Ziele teilen</Ueberschrift>
       <Liste>
         {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine eigenen Ziele lesen darf, entscheidest du je Person — ohne Haken sieht niemand etwas davon.</Leer>}
         {andere.map(a => {
@@ -221,7 +221,7 @@ export function KontoView() {
       <Kachel id="zoe-whatsapp" titel="ZOE auf WhatsApp" breite={3}><ZoeWhatsappKarte i={3} /></Kachel>
       <Kachel id="bote" titel="Der Bote · Telegram" breite={3}>
       <Karte i={3}>
-      <Ueberschrift farbe={LEUCHT.puls}>Der Bote · Telegram</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.puls} erklaerung="konto.telegram">Der Bote · Telegram</Ueberschrift>
       <Liste>
         {!tg ? <Leer>lade …</Leer>
           : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>TELEGRAM_BOT_TOKEN</code> in die Server-Umgebung (<code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>/srv/make-os/app/.env</code>) eintragen, dann <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>docker compose up -d</code> — macht der Inhaber.</Leer>

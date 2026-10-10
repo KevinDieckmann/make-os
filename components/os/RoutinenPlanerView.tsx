@@ -267,7 +267,7 @@ export function RoutinenPlanerView() {
         const aktivHier = eigene.filter(r => r.aktiv).length;
         return (
           <Karte key={w.id} i={2 + wi}>
-            <Ueberschrift farbe={LEUCHT.puls} rechts={<>{w.hint} · <b style={{ color: aktivHier ? C.inkDim : C.inkLeise, fontWeight: 600 }}>{aktivHier} aktiv</b></>}>{w.label}</Ueberschrift>
+            <Ueberschrift farbe={LEUCHT.puls} rechts={<>{w.hint} · <b style={{ color: aktivHier ? C.inkDim : C.inkLeise, fontWeight: 600 }}>{aktivHier} aktiv</b></>} erklaerung="routinen.planer">{w.label}</Ueberschrift>
             {!eigene.length && <Leer>Noch nichts{spaceFilter !== 'alle' ? ` in ${SPACE_LABEL[spaceFilter]}` : ''} — leg oben eine an.</Leer>}
             <Liste>
               {eigene.map(r => {
@@ -292,7 +292,7 @@ export function RoutinenPlanerView() {
                     mehr={[{ id: 'aktiv', label: r.aktiv ? 'Pausieren' : 'Wieder aktivieren', tun: () => patch(r.id, { aktiv: !r.aktiv }) }]}>
                   <div className="zeile" style={{ padding: '10px 2px', borderBottom: '1px solid rgba(255,255,255,.06)', opacity: r.aktiv ? 1 : 0.45, transition: 'opacity .2s ease' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <Schalter an={r.aktiv} farbe={LEUCHT.gut} onChange={v => patch(r.id, { aktiv: v })} titel={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} ariaLabel={`Routine ${r.label} aktiv`} />
+                      <Schalter erklaerungOhne="Zeile im Planer — der Tooltip sagt „aktiv/pausiert“, die Überschrift des Fensters erklärt Routinen" an={r.aktiv} farbe={LEUCHT.gut} onChange={v => patch(r.id, { aktiv: v })} titel={r.aktiv ? 'aktiv — klicken zum Pausieren' : 'pausiert — klicken zum Aktivieren'} ariaLabel={`Routine ${r.label} aktiv`} />
                       <Punkt farbe={katFarbe(r.kategorie)} groesse={8} />
                       <input value={r.label} onChange={e => patch(r.id, { label: e.target.value })} aria-label="Routine"
                         style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, fontWeight: 500 }} />

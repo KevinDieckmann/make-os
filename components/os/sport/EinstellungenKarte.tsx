@@ -24,7 +24,7 @@ export function EinstellungenKarte({ stand, schicke }: { stand: SportStand; schi
   );
   return (
     <Karte i={7}>
-      <Ueberschrift rechts={<button type="button" onClick={() => setOffen(o => !o)} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : 'Ändern'}</button>}>Einstellungen</Ueberschrift>
+      <Ueberschrift erklaerung="sport.einstellungen" rechts={<button type="button" onClick={() => setOffen(o => !o)} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : 'Ändern'}</button>}>Einstellungen</Ueberschrift>
       {!offen ? (
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
           Cockpit zuerst: {ZUERST_LABEL[e.zuerst ?? 'tagesform']} · Entlastung {en.aus ? 'aus' : `ab ${en.mindestTage ?? ENTLASTUNG_VORGABE.mindestTage} von ${en.fensterTage ?? ENTLASTUNG_VORGABE.fensterTage} Tagen`} · Deload {e.deloadProzent ?? PHASE_VORGABE.deloadProzent} % · Taper {e.taperProzent ?? PHASE_VORGABE.taperProzent} %
@@ -33,7 +33,7 @@ export function EinstellungenKarte({ stand, schicke }: { stand: SportStand; schi
         <div style={{ display: 'grid', gap: 14 }}>
           <Feld label="Im Gesundheits-Cockpit zuerst"><UiPillen liste={ZUERST.map(z => ({ id: z, label: ZUERST_LABEL[z] }))} aktiv={e.zuerst ?? 'tagesform'} onWahl={(z: Zuerst) => void setze({ zuerst: z === 'tagesform' ? null : z })} /></Feld>
           <div>
-            <Schalter an={!en.aus} onChange={an => void setze({ entlastung: { aus: an ? null : true } })}>Entlastung nach HRV-Trend vorschlagen</Schalter>
+            <Schalter erklaerung="sport.entlastung" an={!en.aus} onChange={an => void setze({ entlastung: { aus: an ? null : true } })}>Entlastung nach HRV-Trend vorschlagen</Schalter>
           </div>
           {!en.aus && (
             <>

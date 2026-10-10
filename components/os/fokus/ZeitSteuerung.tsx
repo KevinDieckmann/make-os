@@ -31,7 +31,7 @@ export function ZeitSteuerung({ s, bereich, sollSetzen, i = 0 }: {
   };
   return (
     <Karte i={i} akzent={s.passung.stufe === 'kritisch' ? LEUCHT.kritisch : undefined}>
-      <Ueberschrift farbe={STUFE_FARBE[s.passung.stufe]} rechts={<span style={{ fontVariantNumeric: 'tabular-nums' }}>{zeitText(s.gesamtSek)} in 7 Tagen</span>}>Zeit</Ueberschrift>
+      <Ueberschrift farbe={STUFE_FARBE[s.passung.stufe]} erklaerung="fokus.zeit" rechts={<span style={{ fontVariantNumeric: 'tabular-nums' }}>{zeitText(s.gesamtSek)} in 7 Tagen</span>}>Zeit</Ueberschrift>
       <Hinweis art={STUFE_ART[s.passung.stufe]} rolle="status">{s.passung.satz}</Hinweis>
       {meldung && <Hinweis art="achtung" rolle="status">{meldung}</Hinweis>}
       {!s.themen.length ? (

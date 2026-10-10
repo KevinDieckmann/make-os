@@ -31,7 +31,7 @@ import { eigenesZielFortschritt, meilensteineDesZiels } from '@/lib/planung/eige
 import { usePlanPersonen, type PlanPerson } from '@/lib/planung/ziele-client';
 import type { Ziel, ZielHorizont } from '@/lib/planung/typen';
 import { useTasks } from '@/context/TasksContext';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, Schalter, Segmentbalken, ZeileAktionen, feld, LEUCHT, type Rueckgaengig } from '../ui';
+import { Erklaert, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Haken, Schalter, Segmentbalken, ZeileAktionen, feld, LEUCHT, type Rueckgaengig } from '../ui';
 import { PfeilRang } from './PfeilRang';
 import { NordsternKarte } from './NordsternKarte';
 import { usePlanung, type PlanungStand } from './usePlanung';
@@ -188,10 +188,10 @@ function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf
       art === 'meine' && partner.length > 0 ? (
         abgeleitet
           ? <span key="gt" style={{ color: z.geteilt ? farbe : C.inkLeise }}>{z.geteilt ? 'geteilt wie das Jahresziel' : 'nur ich (wie das Jahresziel)'}</span>
-          : <span key="gt" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Schalter an={!!z.geteilt} onChange={() => teilen(z)} farbe={farbe} ariaLabel={`„${z.titel}“ ${teilenText}`} titel={z.geteilt ? 'Geteilt — Klick: nur ich' : `Nur ich — Klick: ${teilenText}`} />
+          : <Erklaert key="gt" erklaerung="ziele.teilen" name={`„${z.titel}“ teilen`}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Schalter erklaerungOhne="Teilen-Schalter im Satz der Zielzeile — das „i“ um den ganzen Satz erklärt das Teilen" an={!!z.geteilt} onChange={() => teilen(z)} farbe={farbe} ariaLabel={`„${z.titel}“ ${teilenText}`} titel={z.geteilt ? 'Geteilt — Klick: nur ich' : `Nur ich — Klick: ${teilenText}`} />
               <span style={{ color: z.geteilt ? farbe : C.inkLeise }}>{z.geteilt ? `geteilt mit ${partner.map(x => x.vorname).join(' und ')}` : 'nur ich'}</span>
-            </span>
+            </span></Erklaert>
       ) : null,
       z.erledigt && z.erledigtAm ? `erledigt ${dtKurz(z.erledigtAm)}` : null,
     ].filter(Boolean) as ReactNode[];

@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import Link from 'next/link';
 import { klickSperren, type KlickSperre } from '@/lib/make-one/klick-sperre';
 import { useHandy } from './medien';
+import { Erklaert, useAnZeileMelden, type ErklaerungsQuelle } from './erklaerung';
 import { FARBE as C, SCHRIFT, TIEF, TYP, LEUCHT, RAND, ECKE } from '@/lib/make-one/design';
 
 export type KnopfTon = 'haupt' | 'leise' | 'gut' | 'warn';
@@ -162,10 +163,15 @@ export function Reiter<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv
  *   · `karte` — eine ganze Zeile als Fläche (fett die Beschriftung, darunter `beschreibung`, optional `symbol` vorn), Schiene
  *     rechts; für Entscheidungen mit Folgen (Netzwerken: „Wir haben persönlich gesprochen“).
  * Farbe der Schiene im „an“-Zustand = Bereichsfarbe (Standard Aktiv-Türkis).
+ * ERKLÄRUNG (10.10., Kevin: „Wenn man auf die einzelnen Sachen klickt, möchte ich die Erklärung dahinter, mit Fallbeispiel“): jeder Schalter
+ * verlangt `erklaerung` (Schlüssel aus lib/erklaerungen oder fertige Abschnitte) — daneben steht ein „i“, das „Was es bedeutet · Beispiel ·
+ * Wenn an · Wenn aus“ darunter aufklappt. In einer `Zeile` klappt stattdessen deren Titel die Erklärung auf. Wo ein Schalter wirklich nichts
+ * zu erklären hat (ein Erledigt-Haken, eine Tabellenzelle), steht `erklaerungOhne` mit dem Grund — der Wächter (tests/erklaerungen.test.ts) zählt sie.
  */
 interface SchalterBasis { an: boolean; onChange: (v: boolean) => void; aus?: boolean; farbe?: string; titel?: string; testId?: string }
 type Beschriftet = { children: NonNullable<ReactNode>; ariaLabel?: string };
-export type SchalterProps = SchalterBasis & (
+type MitErklaerung = { erklaerung: ErklaerungsQuelle; erklaerungOhne?: undefined } | { erklaerungOhne: string; erklaerung?: undefined };
+export type SchalterProps = SchalterBasis & MitErklaerung & (
   | (Beschriftet & { karte?: false; beschreibung?: undefined; symbol?: undefined })
   | (Beschriftet & { karte: true; beschreibung?: ReactNode; symbol?: ReactNode })
   | { children?: undefined; ariaLabel: string; karte?: false; beschreibung?: undefined; symbol?: undefined }
@@ -179,7 +185,8 @@ function Schiene({ an, farbe, aus }: { an: boolean; farbe: string; aus?: boolean
   );
 }
 
-export function Schalter(p: SchalterProps) {
+/** Der Schalter ohne Erklärung — bewusst ohne Hooks (tests/schalter-eine-quelle.test.ts ruft `Schalter(...)` als Funktion auf). */
+function SchalterKern(p: SchalterProps) {
   const { an, onChange, aus, farbe = C.aktiv, titel, testId } = p;
   const gemeinsam = { type: 'button' as const, role: 'switch', 'aria-checked': an, 'aria-label': p.ariaLabel, title: titel, disabled: aus, onClick: () => onChange(!an), 'data-testid': testId };
   if (p.karte) {
@@ -208,6 +215,18 @@ export function Schalter(p: SchalterProps) {
       <Schiene an={an} farbe={farbe} aus={aus} />
     </button>
   );
+}
+
+function SchalterErklaert(p: SchalterProps & { erklaerung: ErklaerungsQuelle }) {
+  // In einer Zeile meldet der Schalter seine Erklärung an die Zeile (deren Titel klappt sie auf); sonst zeigt er sein eigenes „i“.
+  const inZeile = useAnZeileMelden(p.erklaerung);
+  if (inZeile) return SchalterKern(p);
+  const name = typeof p.children === 'string' ? p.children : p.ariaLabel;
+  return <Erklaert erklaerung={p.erklaerung} name={name} breit={!!p.karte}>{SchalterKern(p)}</Erklaert>;
+}
+
+export function Schalter(p: SchalterProps) {
+  return p.erklaerung === undefined ? SchalterKern(p) : <SchalterErklaert {...p} erklaerung={p.erklaerung} />;
 }
 
 /** Die Hauptaktion des Schritts: am Handy unten mitlaufend (globals.css › .ui-aktion), sonst ganz normal am Ende. */

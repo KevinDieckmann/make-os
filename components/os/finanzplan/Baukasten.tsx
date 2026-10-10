@@ -193,7 +193,7 @@ export function Baukasten() {
       <Spalten verhaeltnis="3:2">
         <Spalte>
           <Karte i={0} akzent={feldParam === 'umsatz' ? C.aktiv : undefined}>
-            <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}><KnopfKlein onClick={() => void bausteinDazu(neuerBaustein(neueKennung('b'), { art: 'umsatz', einheit: 'ug', name: 'Umsatz ohne Produkt', start: m0, laufzeit: 12 }), 'Umsatz angelegt')}>+ Umsatz</KnopfKlein></span>}>Umsatzbausteine — Kunde × Produkt × Preis × Menge</Ueberschrift>
+            <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}><KnopfKlein onClick={() => void bausteinDazu(neuerBaustein(neueKennung('b'), { art: 'umsatz', einheit: 'ug', name: 'Umsatz ohne Produkt', start: m0, laufzeit: 12 }), 'Umsatz angelegt')}>+ Umsatz</KnopfKlein></span>} erklaerung="finanzplan.bausteine">Umsatzbausteine — Kunde × Produkt × Preis × Menge</Ueberschrift>
             {umsatz.length ? (
               <Tabelle klein>
                 <thead><tr><th style={TH}></th><th style={TH}>Produkt</th><th style={TH}>Kunde / Segment</th><th style={TH}>Wo</th><th style={THr}>Preis netto</th><th style={THr}>Menge</th><th style={TH}>Rhythmus</th><th style={TH}>ab</th><th style={THr}>Monate</th><th style={TH}>Zahlungsziel</th><th style={THr}>Summe im Plan</th><th style={TH}></th></tr></thead>
@@ -236,7 +236,7 @@ export function Baukasten() {
           <Karte i={1} akzent={feldParam === 'privat' ? C.aktiv : undefined}>
             <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
               {(['stelle', 'tool', 'miete', 'rate'] as KostenArt[]).map(k => <KnopfKlein key={k} farbe={C.inkDim} onClick={() => void bausteinDazu(neuerBaustein(neueKennung('b'), { art: 'kosten', kostenArt: k, einheit: k === 'stelle' || k === 'tool' || business ? 'ug' : 'privat', name: KOSTENART_LABEL[k], start: m0, ...(k === 'rate' ? { laufzeit: 24 } : {}) }), `${KOSTENART_LABEL[k]} angelegt`)}>+ {KOSTENART_LABEL[k]}</KnopfKlein>)}
-            </span>}>Kostenbausteine — Stelle, Software, Miete, Rate</Ueberschrift>
+            </span>} erklaerung="finanzplan.bausteine">Kostenbausteine — Stelle, Software, Miete, Rate</Ueberschrift>
             {kosten.length ? (
               <Tabelle klein>
                 <thead><tr><th style={TH}></th><th style={TH}>Art</th><th style={TH}>Name</th><th style={TH}>Wo</th><th style={THr}>Betrag</th><th style={THr}>Menge</th><th style={TH}>Rhythmus</th><th style={TH}>ab</th><th style={THr}>Monate</th><th style={THr}>Summe im Plan</th><th style={TH}></th></tr></thead>
@@ -370,7 +370,7 @@ function UmsatzZeile({ b, ps, produkte, setze, summe, monate, entfernen }: { b: 
   const ziel = b.zahlungsziel ?? ps.annahmen.zahlungsziel ?? 0;
   return (
     <tr style={{ opacity: b.an ? 1 : 0.5 }}>
-      <td style={TD}><Schalter an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} ariaLabel={`${n} rechnet mit`} /></td>
+      <td style={TD}><Schalter erklaerungOhne="Tabellenzelle — die Überschrift der Bausteine erklärt die Spalte „an“" an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} ariaLabel={`${n} rechnet mit`} /></td>
       <td style={TD}>
         <select value={b.produktId && produkte.some(x => x.id === b.produktId) ? b.produktId : '__frei'} aria-label="Produkt" onChange={e => produktWahl(e.target.value)} style={{ ...feld, fontSize: TYP.bedien, padding: '6px 8px', borderRadius: 10, width: 170, appearance: 'auto' }} title={produkt?.fehlt.length ? `Für die Planung fehlt: ${produkt.fehlt.join(', ')}` : undefined}>
           <option value="__frei">{b.produktId && !produkte.some(x => x.id === b.produktId) ? `${b.produkt ?? 'Produkt'} (nicht im Katalog)` : 'ohne Produkt'}</option>
@@ -399,7 +399,7 @@ function KostenZeile({ b, setze, summe, monate, entfernen }: { b: Baustein; setz
   const n = `Baustein ${b.name}`;
   return (
     <tr style={{ opacity: b.an ? 1 : 0.5 }}>
-      <td style={TD}><Schalter an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} ariaLabel={`${n} rechnet mit`} /></td>
+      <td style={TD}><Schalter erklaerungOhne="Tabellenzelle — die Überschrift der Bausteine erklärt die Spalte „an“" an={b.an} onChange={v => void setze(p('an'), b.an, v, `${n} ${v ? 'an' : 'aus'}`)} ariaLabel={`${n} rechnet mit`} /></td>
       <td style={TD}><Auswahl wert={b.kostenArt ?? 'sonstiges'} onWahl={v => void setze(p('kostenArt'), b.kostenArt, v, `${n} · Art`)} optionen={KOSTENARTEN} titel="Art" /></td>
       <td style={TD}><TextFeld wert={b.name} onFertig={t => void setze(p('name'), b.name, t, `${n} · Name`)} breite={160} titel="Name" /></td>
       <td style={TD}><Auswahl wert={b.einheit} onWahl={v => void setze(p('einheit'), b.einheit, v, `${n} · Wo`)} optionen={einheitenFuer(sicht)} titel="Wo" /></td>

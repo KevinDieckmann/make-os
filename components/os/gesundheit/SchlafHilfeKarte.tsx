@@ -120,9 +120,9 @@ export function SchlafHilfeKarte({ i = 0, hinweis = false }: { i?: number; hinwe
             <Feldzeile label="Eigenes Schlafziel in Stunden (gilt ohne WHOOP-Bedarf)">
               <input inputMode="decimal" value={form.schlafziel} placeholder="z. B. 8" onChange={e => setForm(f => ({ ...f, schlafziel: e.target.value }))} style={eingabe} />
             </Feldzeile>
-            <Schalter karte an={form.erinnerung} onChange={v => setForm(f => ({ ...f, erinnerung: v }))} farbe={LEUCHT.schlaf} beschreibung="In der Glocke zur Schlafenszeit — ein neutraler Satz, keine Werte.">Abend-Erinnerung</Schalter>
+            <Schalter karte erklaerung="gesundheit.schlaf.erinnerung" an={form.erinnerung} onChange={v => setForm(f => ({ ...f, erinnerung: v }))} farbe={LEUCHT.schlaf} beschreibung="In der Glocke zur Schlafenszeit — ein neutraler Satz, keine Werte.">Abend-Erinnerung</Schalter>
             {form.erinnerung && <Pillen liste={VORLAUF} aktiv={form.vorlauf} onWahl={v => setForm(f => ({ ...f, vorlauf: v }))} farbe={LEUCHT.schlaf} />}
-            {form.erinnerung && <Schalter karte an={form.handy} onChange={v => setForm(f => ({ ...f, handy: v }))} farbe={LEUCHT.schlaf} beschreibung="Über deinen ZOE-Kanal (WhatsApp/Telegram) — nur „Zeit, den Tag ausklingen zu lassen“ mit Link.">Auch aufs Handy</Schalter>}
+            {form.erinnerung && <Schalter karte erklaerung="gesundheit.schlaf.handy" an={form.handy} onChange={v => setForm(f => ({ ...f, handy: v }))} farbe={LEUCHT.schlaf} beschreibung="Über deinen ZOE-Kanal (WhatsApp/Telegram) — nur „Zeit, den Tag ausklingen zu lassen“ mit Link.">Auch aufs Handy</Schalter>}
             <Knopf haupt typ="submit" farbe={LEUCHT.schlaf}>Speichern</Knopf>
           </form>
         </Klappbar>

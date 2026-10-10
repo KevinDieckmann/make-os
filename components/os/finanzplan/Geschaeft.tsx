@@ -46,7 +46,7 @@ function BausteinZeile({ b, ps }: { b: Baustein; ps: { id: string } }) {
   let summe = 0; for (let m = m0; m < m0 + 12 && m <= d.monate.length; m++) summe += betragImMonat(b, m);
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,.05)', opacity: b.an ? 1 : 0.5 }}>
-      <FeldK label="an"><Schalter an={b.an} onChange={v => setze('an', b.an, v, v ? 'an' : 'aus')} ariaLabel={`${n} rechnet mit`} /></FeldK>
+      <FeldK label="an"><Schalter erklaerungOhne="Feld „an“ eines Bausteins — die Überschrift der Bausteine erklärt es" an={b.an} onChange={v => setze('an', b.an, v, v ? 'an' : 'aus')} ariaLabel={`${n} rechnet mit`} /></FeldK>
       <FeldK label={umsatz ? 'Produkt' : KOSTENART_LABEL[b.kostenArt ?? 'sonstiges']} breit={170}><TextFeld wert={b.name} onFertig={t => setze('name', b.name, t.trim() || b.name, 'Name')} titel="Name" platzhalter={umsatz ? 'Was wird verkauft?' : 'Wofür?'} /></FeldK>
       {umsatz && <FeldK label="Kunde / Segment" breit={140}><TextFeld wert={b.kunde ?? ''} onFertig={t => setze('kunde', b.kunde, t.trim() || undefined, 'Kunde')} titel="Kunde oder Segment" platzhalter="optional" /></FeldK>}
       <FeldK label={umsatz ? 'Preis netto €' : b.kostenArt === 'stelle' ? 'Brutto € je Monat' : 'Betrag €'}><ZahlFeld wert={b.preis} dezimal={0} breite={92} titel={umsatz ? 'Preis netto' : b.kostenArt === 'stelle' ? 'Brutto je Monat (Arbeitgeberanteil kommt dazu)' : 'Betrag'} onFertig={v => setze('preis', b.preis, v ?? 0, 'Preis')} /></FeldK>
@@ -79,7 +79,7 @@ function BausteinKarten({ ort }: { ort: Gesellschaftskennung }) {
   return (
     <>
       <Karte i={1}>
-        <Ueberschrift rechts={<KnopfKlein onClick={() => dazu(neuesProdukt(neueKennung('b'), ort, { start: m0 }), 'Produkt angelegt')}>+ Produkt</KnopfKlein>}>Produkte und Umsatz — {finanzOrtName(ort)}</Ueberschrift>
+        <Ueberschrift rechts={<KnopfKlein onClick={() => dazu(neuesProdukt(neueKennung('b'), ort, { start: m0 }), 'Produkt angelegt')}>+ Produkt</KnopfKlein>} erklaerung="finanzplan.bausteine">Produkte und Umsatz — {finanzOrtName(ort)}</Ueberschrift>
         {umsatz.length ? umsatz.map(b => <BausteinZeile key={b.id} b={b} ps={ps!} />) : (
           <Nichts>Noch kein Produkt. „+ Produkt“ legt ein leeres an — Name, Preis, Anzahl, Start und Laufzeit stellst du direkt ein. Oder mit einer Vorlage beginnen:</Nichts>
         )}
@@ -97,7 +97,7 @@ function BausteinKarten({ ort }: { ort: Gesellschaftskennung }) {
         </Hinweis>
       </Karte>
       <Karte i={2}>
-        <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{KOSTEN_NEU.map(k => <KnopfKlein key={k} farbe={C.inkDim} onClick={() => dazu(neuerBaustein(neueKennung('b'), { art: 'kosten', kostenArt: k, einheit: ort, name: KOSTENART_LABEL[k], start: m0 }), `${KOSTENART_LABEL[k]} angelegt`)}>+ {KOSTENART_LABEL[k]}</KnopfKlein>)}</span>}>Kosten — Personal, Software, Miete</Ueberschrift>
+        <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{KOSTEN_NEU.map(k => <KnopfKlein key={k} farbe={C.inkDim} onClick={() => dazu(neuerBaustein(neueKennung('b'), { art: 'kosten', kostenArt: k, einheit: ort, name: KOSTENART_LABEL[k], start: m0 }), `${KOSTENART_LABEL[k]} angelegt`)}>+ {KOSTENART_LABEL[k]}</KnopfKlein>)}</span>} erklaerung="finanzplan.bausteine">Kosten — Personal, Software, Miete</Ueberschrift>
         {kosten.length ? kosten.map(b => <BausteinZeile key={b.id} b={b} ps={ps!} />) : <Nichts>Keine zusätzlichen Kosten. Stellen rechnen mit Arbeitgeberanteil; fixe Kosten stehen unter „Sachkosten“ im Blatt, hier kommen Stellen, Software, Miete und Sonstiges mit Start und Laufzeit dazu.</Nichts>}
       </Karte>
     </>

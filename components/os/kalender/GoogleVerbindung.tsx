@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { LEUCHT, useRueckfrage } from '../ui';
+import { Erklaert, LEUCHT, useRueckfrage } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
 import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_HINWEISE, GOOGLE_NICHT_EINGERICHTET } from './google-verbinden';
 import { googleKalenderBereit } from '@/lib/kalender/verbinden-anzeige';
@@ -145,7 +145,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
   return (
     <div style={box} data-google="verbindung">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, fontSize: 14 }}>Google Kalender (MAKE)</span>
+        <Erklaert erklaerung="kalender.google" name="Google Kalender"><span style={{ fontWeight: 700, fontSize: 14 }}>Google Kalender (MAKE)</span></Erklaert>
         {s?.verbunden && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.schlaf, border: `1px solid ${LEUCHT.schlaf}55`, borderRadius: 999, padding: '1px 8px' }}>verbunden</span>}
         {s?.getrennt && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.kritisch, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 999, padding: '1px 8px' }}>getrennt</span>}
         {s?.verbunden && !kalenderDa && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '1px 8px' }}>Kalender-Freigabe fehlt</span>}

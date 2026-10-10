@@ -279,7 +279,7 @@ export function WieWirArbeiten({ i: start = 0 }: { i?: number }) {
           Kein Zahlenwert, sondern ein Zustand: in welcher Lage läuft das
           System gerade. Alles andere auf dieser Seite justiert nur nach. */}
       <Karte i={k++} ton={aktLage.farbe}>
-        <Ueberschrift farbe={aktLage.farbe} rechts="wirkt in Aufgaben · Tag · Heute · Postfach">Lage</Ueberschrift>
+        <Ueberschrift farbe={aktLage.farbe} erklaerung="fokus.arbeiten" rechts="wirkt in Aufgaben · Tag · Heute · Postfach">Lage</Ueberschrift>
         <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
           <Zahl gross wert={aktLage.label} label="aktuelle Lage" farbe={aktLage.farbe} />
           <div style={{ flex: '1 1 260px', minWidth: 0 }}>

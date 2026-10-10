@@ -29,7 +29,7 @@ export function Tagesform({ i = 0 }: { i?: number }) {
         : 'Rot: Nur das Nötige. Termine schieben, Erholung einplanen.';
   return (
     <Karte i={i} akzent={zone ? zoneFarbe(rec) : undefined}>
-      <Ueberschrift farbe={zone ? zoneFarbe(rec) : undefined} rechts={<Link href={WEG.gesundheit()} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: TYP.bedien }}>Gesundheit ›</Link>}>Tagesform</Ueberschrift>
+      <Ueberschrift farbe={zone ? zoneFarbe(rec) : undefined} erklaerung="fokus.tagesform" rechts={<Link href={WEG.gesundheit()} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: TYP.bedien }}>Gesundheit ›</Link>}>Tagesform</Ueberschrift>
       <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,40px)', alignItems: 'center' }}>
         <Ring label="Recovery" wert={rec != null ? String(rec) : undefined} farbe={zoneFarbe(rec)} anteil={rec != null ? rec / 100 : undefined}
           unter={zone ? <Chip farbe={zoneFarbe(rec)}>{frisch ? `Zone ${zone}` : `${zone} · nicht von heute`}</Chip> : undefined} />
