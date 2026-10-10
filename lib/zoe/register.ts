@@ -328,7 +328,7 @@ export const REGISTER: Record<string, Eintrag> = {
   // Person selbst gesagt hat, und verlassen das System nicht.
   hake_routine: {
     gruppe: 'gesundheit', risiko: 'frei',
-    vorschau: schlicht('Routine abhaken', i => Array.isArray(i.routinen) ? (i.routinen as unknown[]).map(String).join(', ') : text(i.routine)),
+    vorschau: schlicht('Routine abhaken', i => `${Array.isArray(i.routinen) ? (i.routinen as unknown[]).map(String).join(', ') : text(i.routine)}${Number.isInteger(i.anzahl) && Number(i.anzahl) > 1 ? ` · ${Number(i.anzahl)}×` : ''}`),
   },
   haut_eintrag: {
     gruppe: 'gesundheit', risiko: 'frei',

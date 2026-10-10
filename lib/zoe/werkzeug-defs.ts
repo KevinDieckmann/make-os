@@ -314,10 +314,11 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
     },
     {
       name: 'hake_routine',
-      description: 'Hakt eine oder mehrere Routinen der sprechenden Person ab (so, wie sie heißen). Nutze das, sobald jemand sagt, dass er etwas gemacht hat — „Journal gemacht", „Lesen erledigt". Mehrere auf einmal erlaubt.',
+      description: 'Hakt eine oder mehrere Routinen der sprechenden Person ab (so, wie sie heißen). Nutze das, sobald jemand sagt, dass er etwas gemacht hat — „Journal gemacht", „Lesen erledigt". Mehrere auf einmal erlaubt. Zähler-Routinen und Routinen, die mehrmals am Tag dran sind („8 Gläser Wasser“, „Tabletten 2× täglich“), zählen hoch: „2 Gläser getrunken“ → anzahl 2; ohne anzahl zählt es einmal.',
       input_schema: obj({
         routinen: { type: 'array', items: { type: 'string' }, description: 'Namen der Routinen, wie genannt' },
-        erledigt: { type: 'boolean', description: 'false = zurücknehmen (Standard true)' }, datum: { type: 'string', description: 'YYYY-MM-DD (Standard heute)' },
+        erledigt: { type: 'boolean', description: 'false = zurücknehmen bzw. beim Zähler herunterzählen (Standard true)' }, datum: { type: 'string', description: 'YYYY-MM-DD (Standard heute)' },
+        anzahl: { type: 'integer', minimum: 1, maximum: 99, description: 'Nur bei Zählern / mehrmals täglich: wie oft (Standard 1). Bei einfachen Routinen ohne Wirkung.' },
       }, ['routinen']),
     },
     {

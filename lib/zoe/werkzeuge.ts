@@ -263,13 +263,13 @@ const HEUTE_ODER = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}
  */
 async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
   const { routineAusZuruf } = await import('@/lib/gesundheit/eintraege');
-  const { speicherFuer } = await import('./raum');
   if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const wer = person;
   const { gesundheitStandFuer } = await import('@/lib/datenschutz/gesundheit-einwilligung');
   const g = await gesundheitStandFuer(wer);
   if (!g.verarbeitungErlaubt) return fehlschlag('sperre', 'Abgelehnt: Für das Abhaken fehlt die Einwilligung dieser Person (System › Datenschutz › Gesundheit) — Routinen stehen im Gesundheits-Log. Nichts gespeichert.');
-  const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean; owner?: string; space?: string; einheit?: string }[] }>('routinen');
+  const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean; owner?: string; space?: string; einheit?: string; tagesZiel?: number; uhrzeiten?: string[]; zaehlWort?: string }[] }>('routinen');
+  const { tagesZielVon } = await import('@/lib/planung/rhythmus');
   // Nur Routinen, die diese Person sieht (eigene + gemeinsame) — nie die der anderen abhaken oder aufzählen.
   const { spaceVonRoutine } = await import('@/lib/planung/routinen');
   const privatAn = g.ki.an;
@@ -286,14 +286,20 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
   if (!ids.length) return fehlschlag('nicht_gefunden', `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ') || '—'}${privatAn ? '' : ' (Privat-Routinen nur mit der Einwilligung „An die KI geben“)'}${planungAn ? '' : ' (Business-Routinen: Bereich „Aufgaben & Ziele“ ist für ZOE ausgeschaltet)'}`);
   const erledigt = input.erledigt !== false;
   const datum = HEUTE_ODER(input.datum);
-  await updateJson<Record<string, string[]>>(speicherFuer('health-log', wer), current => {
-    const log = current ?? {};
-    const tag = new Set(log[datum] ?? []);
-    for (const id of ids) { if (erledigt) tag.add(id); else tag.delete(id); }
-    return { ...log, [datum]: Array.from(tag) };
-  });
-  const namen = ids.map(id => alle.find(r => r.id === id)?.label ?? id);
-  return `${erledigt ? 'Abgehakt' : 'Zurückgenommen'}: ${namen.join(', ')} (${datum === localDay() ? 'heute' : datum}).`;
+  // Routinen 2 (10.10.): Zähler („2 Gläser getrunken“) und mehrmals täglich — `anzahl` zählt hoch (bzw. mit erledigt=false herunter); einfache
+  // Routinen wie bisher an/aus. Geschrieben NUR über `routineHaken` (lib/planung/routinen-haken-server.ts: Zähler + Haken in einer Sperre).
+  const anzahl = input.anzahl === undefined ? undefined : Number(input.anzahl);
+  const { routineHaken } = await import('@/lib/planung/routinen-haken-server');
+  const zeilen: string[] = [];
+  for (const id of [...new Set(ids)]) {
+    const r = alle.find(x => x.id === id);
+    const zaehlt = !!r && tagesZielVon(r) > 1;
+    const op = zaehlt ? { art: erledigt ? 'plus' as const : 'minus' as const, ...(anzahl ? { n: anzahl } : {}) } : { art: erledigt ? 'an' as const : 'aus' as const };
+    const e = await routineHaken(wer, id, op, datum);
+    if (!e.ok) return fehlschlag('nicht_gefunden', e.fehler);
+    zeilen.push(e.ziel > 1 ? `${e.routine?.label ?? id} ${e.ist}/${e.ziel}${r?.zaehlWort ? ` ${r.zaehlWort}` : ''}${e.ist >= e.ziel ? ' — geschafft' : ''}` : (e.routine?.label ?? id));
+  }
+  return `${erledigt ? 'Abgehakt' : 'Zurückgenommen'}: ${zeilen.join(', ')} (${datum === localDay() ? 'heute' : datum}).`;
 }
 
 /**

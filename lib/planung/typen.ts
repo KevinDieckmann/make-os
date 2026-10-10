@@ -146,6 +146,42 @@ export const istRhythmus = (v: unknown): v is Rhythmus => RHYTHMEN.some(r => r.i
 /** Wem eine Routine gehört: eine Person (Speichername) oder „beide“ (gemeinsam, jede Person hakt selbst ab). */
 export const OWNER_BEIDE = 'beide';
 
+// ── Routinen 2 (10.10., Rückmeldung aus dem Onboarding: „mehr Einstellungen bei den einzelnen Routinen — täglich, mehrmals täglich,
+// 1× pro Woche und individuell einstellbar“) — alles optional; eine Routine ohne diese Felder rechnet genau wie bisher. ──────────────
+
+/**
+ * Art der Regel:
+ *   taeglich    jeden Tag (wie bisher ohne Rhythmus)
+ *   werktage    Mo–Fr ohne Feiertage (wie bei wiederkehrenden Aufgaben — lib/aufgaben/wiederholung.ts)
+ *   wochentage  feste Wochentage (`tage`), optional nur alle n Wochen (`alle`, Anker `start`)
+ *   pro-woche   x-mal pro Woche, egal an welchem Tag (`anzahl`; bisher fest „3× pro Woche“)
+ *   intervall   alle n Tage/Wochen/Monate, gerechnet ab dem letzten Mal (`alle`, `einheit`; bisher wöchentlich … jährlich)
+ *   monatlich   an einem festen Tag im Monat (`monatstag`) oder am n-ten Wochentag (`nter`), optional alle n Monate
+ */
+export type RegelArt = 'taeglich' | 'werktage' | 'wochentage' | 'pro-woche' | 'intervall' | 'monatlich';
+export type IntervallEinheit = 'tag' | 'woche' | 'monat';
+/** n-ter Wochentag im Monat: n 1–4 oder −1 (= der letzte), Wochentag 1 = Montag … 7 = Sonntag. */
+export interface NterWochentag { n: 1 | 2 | 3 | 4 | -1; tag: Wochentag }
+export interface RoutineRegel {
+  art: RegelArt;
+  /** wochentage: welche Tage (1 = Mo … 7 = So). */
+  tage?: Wochentag[];
+  /** pro-woche: wie oft je Woche (1–7). */
+  anzahl?: number;
+  /** intervall: alle n Einheiten; wochentage/monatlich: nur jede n-te Woche bzw. jeden n-ten Monat (fehlt = 1). */
+  alle?: number;
+  /** intervall: Tage, Wochen oder Monate (fehlt = Tage). */
+  einheit?: IntervallEinheit;
+  /** monatlich: Tag im Monat 1–31 (gibt es ihn nicht, gilt das Monatsende). */
+  monatstag?: number;
+  /** monatlich: statt des Tages der n-te Wochentag. */
+  nter?: NterWochentag;
+  /** wochentage/monatlich mit `alle` > 1: ab wann gezählt wird (YYYY-MM-DD) — legt fest, welche Woche bzw. welcher Monat dran ist. */
+  start?: string;
+}
+/** Eine Pause (Urlaub, krank …): an diesen Tagen ist die Routine nicht dran, und der Streak reißt nicht. */
+export interface RoutinePause { von: string; bis: string; grund?: 'urlaub' | 'krank' | 'sonst' }
+
 export interface Routine {
   id: string;
   label: string;
@@ -170,6 +206,31 @@ export interface Routine {
    * verdeckt (`routinenFuerBetrachter`, lib/planung/routinen.ts). Der Schreibweg (`sauberRoutine`) übernimmt das Feld nie.
    */
   belegt?: true;
+  // ── Routinen 2 (10.10.) — alle optional, gesäubert in `sauberRoutine`; lesen nur über lib/planung/rhythmus.ts ──
+  /**
+   * Die Regel, wenn sie mehr kann als `rhythmus` (feste Wochentage, x-mal pro Woche, alle n Tage, n-ter Wochentag …). Lässt sich eine Regel
+   * genau als alter `rhythmus` schreiben, speichert der Schreibweg den alten (die Form, die der alte Stand kennt) — `regel` steht nur, wo es
+   * nötig ist. Lesen NUR über `regelVon` (lib/planung/rhythmus.ts).
+   */
+  regel?: RoutineRegel;
+  /** Mehrmals täglich / Zähler: wie oft am Tag (2–50) — „8 Gläser“, „2× Tabletten“. Fehlt = einmal. Mit ≥ 2 Uhrzeiten = deren Zahl. */
+  tagesZiel?: number;
+  /** Wort für den Zähler (≤ 20 Zeichen): „Gläser“, „Seiten“ — fehlt = „mal“. */
+  zaehlWort?: string;
+  /** Feste Uhrzeiten (HH:MM, aufsteigend, ≤ 12): eine = feste Uhrzeit, mehrere = mehrmals täglich zu diesen Zeiten. */
+  uhrzeiten?: string[];
+  /** Zeitraum: die Routine gilt nur von–bis (YYYY-MM-DD, beide optional). */
+  zeitraum?: { von?: string; bis?: string };
+  /** Pausen (Urlaub, krank): an diesen Tagen nicht dran, der Streak reißt nicht (≤ 20). */
+  pausen?: RoutinePause[];
+  /** Ziel-Verknüpfung: Kennung eines Ziels, auf das die Routine einzahlt (nur Anzeige). */
+  zielId?: string;
+  /** Erinnerung: zur Uhrzeit (sonst zur Tageszeit) eine neutrale Meldung in die Glocke; aufs Handy nur mit der Einstellung der Person. */
+  erinnerung?: true;
+  /** Kalender-Block: MAKE OS legt die nächsten Termine als Block in den Kalender der Person (nur eigene Routine mit Uhrzeit). */
+  kalender?: true;
+  /** Angelegt am (YYYY-MM-DD) — ab hier zählt die Erfüllungsquote. Fehlt im Altbestand (dann ab dem ersten Haken). */
+  angelegtAm?: string;
 }
 
 /** Wochentag 1 = Montag … 7 = Sonntag. */

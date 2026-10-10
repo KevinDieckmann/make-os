@@ -144,6 +144,12 @@ export interface Wiederholung {
   wochentage?: number[];
   /** Tag im Monat 1–31 (bei `monatlich`). */
   monatstag?: number;
+  /**
+   * n-ter Wochentag im Monat (10.10., Routinen 2): bei `monatlich` statt `monatstag` — `n` 1–4 oder −1 (= der letzte), `wochentag`
+   * 0 = Sonntag … 6 = Samstag („jeden 1. Montag“, „am letzten Freitag“). Heute setzen es nur Routinen (lib/planung/rhythmus.ts); die
+   * Säuberung der Aufgaben kennt das Feld nicht (fällt dort weg).
+   */
+  nter?: { n: number; wochentag: number };
   /** Letzter Tag (YYYY-MM-DD). */
   bis?: string;
   /** Nächster Termin (YYYY-MM-DD). */
