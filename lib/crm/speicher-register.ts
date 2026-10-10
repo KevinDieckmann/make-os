@@ -659,7 +659,7 @@ const IN_BUSINESS: readonly string[] = [
 const JE_PERSON: readonly string[] = [
   // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber
   'sport', 'sport--*', 'vitals', 'vitals--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
-  'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
+  'gesundheit-alltag', 'gesundheit-alltag--*', 'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
   'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*',
   // Zugänge und Kanäle der Person
   'google-verbindung--*', 'icloud-verbindung--*', 'kalender-icloud--*', 'postfaecher--*', 'postfach-zugang--*', 'oauth-tokens',

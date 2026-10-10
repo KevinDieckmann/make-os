@@ -28,7 +28,7 @@ X11Forwarding no
 AllowAgentForwarding no
 AllowTcpForwarding no
 CONF
-[ "$ROOT_LOGIN" = no ] || echo "  Hinweis: root-Login per Schlüssel bleibt erlaubt, bis make einen Schlüssel UND sudo hat (deploy/server-einrichten.sh).
+[ "$ROOT_LOGIN" = no ] || echo "  Hinweis: root-Login per Schlüssel bleibt erlaubt, bis make einen Schlüssel UND sudo hat (deploy/server-einrichten.sh)."
 sshd -t && systemctl reload ssh
 
 echo "▸ Firewall drosselt SSH-Fluten"

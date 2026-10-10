@@ -79,7 +79,8 @@ mitdenken und bauen.“ Für jede neue oder geänderte Stelle gilt daher:
   `<bestand>--privat` bzw. je Gesellschaft), damit eine Firmen-Instanz nur die Business-Bestände bekommt und eine Privat-Instanz nie
   Firmendaten trägt. Kein neuer Bestand mischt Privat und Business; ein Feld `space`/`bereich` in einem gemeinsamen Bestand ist nur noch
   Übergang für Altbestände. Plan und Inventur der heute gemischten Bestände: `TRENNUNG_PRIVAT_BUSINESS.md` (Stufenplan, Umzug ohne Verlust,
-  Rückweg). Wächter: neuer Bestand → im Speicher-Register mit `bereich: 'privat' | 'business' | 'person' | 'instanz'`.
+  Rückweg). Wächter: neuer Bestand → in `lib/crm/speicher-register.ts` in genau eine der Listen `IN_PRIVAT` · `IN_BUSINESS` · `JE_PERSON` ·
+  `INSTANZ` (nie `GEMISCHT`); `tests/trennung-bereiche.test.ts` wird sonst rot, die Liste `ALTBESTAND_GEMISCHT` (78) darf nur sinken.
 - **Testkunden nie auf unserer Instanz** (Kevin: „dürfen nie unsere Daten sehen, sollen aber ihren eigenen Space aufbauen
   können“): keine fremden Konten auf app.makeinnovation.de anlegen; Testkunden bekommen eine eigene Instanz (eigener
   Container/Datenordner/Schlüssel/Adresse). Neues immer so bauen, dass eine leere Instanz sauber startet.
