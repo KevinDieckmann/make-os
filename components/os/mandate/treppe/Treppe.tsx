@@ -20,6 +20,9 @@ import { useTreppe, euro, type TreppeApi, type TreppeLage, type StufeMitStand } 
 import { AusDokument, DokumentVorschau } from './AusDokument';
 import { Kundenreise, Zielbild, Roadmap, PositionierungKarte } from './Teile';
 import { farbeVonEbene } from './bausteine';
+import { MandatAnlegen } from '../../crm/MandatAnlegen';
+import { useRouter } from 'next/navigation';
+import { WEG } from '@/lib/wege';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
 const beschriftung = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: C.inkLeise };
@@ -140,6 +143,9 @@ function Leistungstreppe({ api, lage, crmApi }: { api: TreppeApi; lage: TreppeLa
 
 function StufeDetail({ s, lage, crmApi, onBearbeiten, onEntfernen }: { s: StufeMitStand; lage: TreppeLage; crmApi: CrmApi; onBearbeiten: () => void; onEntfernen: () => void }) {
   const f = farbeVonEbene(s.ebene);
+  const router = useRouter();
+  // „+ Kunde“ aus der Stufe heraus (10.10.): derselbe Dialog wie „+ Mandat“ — Firma + Ansprechperson, Produkt und Stufe vorbelegt.
+  const [kundeNeu, setKundeNeu] = useState(false);
   const leistungen = (crmApi.crm?.stand.leistungen ?? []).filter(l => s.leistungIds.includes(l.id));
   const kapa = lage.kapa.jeStufe.find(x => x.stufeId === s.id);
   const regeln = [
@@ -150,7 +156,8 @@ function StufeDetail({ s, lage, crmApi, onBearbeiten, onEntfernen }: { s: StufeM
     void crmApi.teil('leistungen', lid, { phasen: phasen.map(p => (p.id === id ? { ...p, ...teil } : p)) });
   return (
     <Karte i={1} ton={f}>
-      <Ueberschrift farbe={f} rechts={<span style={{ display: 'flex', gap: 8 }}><Knopf leise onClick={onBearbeiten}>Bearbeiten</Knopf><Knopf leise onClick={onEntfernen}>Entfernen</Knopf></span>}>Stufe {s.ebene} · {s.name}</Ueberschrift>
+      <Ueberschrift farbe={f} rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}><Knopf onClick={() => setKundeNeu(true)}>+ Kunde</Knopf><Knopf leise onClick={onBearbeiten}>Bearbeiten</Knopf><Knopf leise onClick={onEntfernen}>Entfernen</Knopf></span>}>Stufe {s.ebene} · {s.name}</Ueberschrift>
+      {kundeNeu && <MandatAnlegen api={crmApi} modus="neu" stufe={{ id: s.id, name: s.name, ...(s.leistungIds[0] ? { leistungId: s.leistungIds[0] } : {}) }} onZu={() => setKundeNeu(false)} onFertig={id => { setKundeNeu(false); router.push(WEG.mandat(id)); }} />}
       <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))' }}>
         <Angabe label="Aufgabe — und warum vor der nächsten">{s.aufgabe || <span style={{ color: C.inkLeise }}>noch nicht beschrieben</span>}</Angabe>
         <Angabe label="Ergebnis">{s.ergebnis || <span style={{ color: C.inkLeise }}>noch nicht beschrieben</span>}</Angabe>

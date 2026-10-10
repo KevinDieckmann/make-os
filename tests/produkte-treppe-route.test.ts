@@ -267,3 +267,82 @@ describe('Anschlüsse', () => {
     for (const C of [Kundenreise, Zielbild, Roadmap, PositionierungKarte]) expect(renderToStaticMarkup(createElement(C as never, { api, lage } as never)).length).toBeGreaterThan(50);
   });
 });
+
+describe('„+ Mandat“ immer mit Lead (Firma + Ansprechperson) und „Firma zuordnen“', () => {
+  let lead: Mod;
+  const ALT = { ...MANDAT, id: 'm-alt-ohne-firma', kunde: 'Altkunde ohne Firma', kontaktIds: [], status: 'beendet', ziele: [], quelle: 'Altbestand' };
+  beforeAll(async () => {
+    lead = await import('@/app/api/crm/lead/route') as Mod;
+    const { firmaId: _f, leistungId: _l, ...alt } = ALT;
+    await db.updateJson<{ mandate: unknown[] }>('crm', cur => ({ ...cur!, mandate: [...cur!.mandate, alt] }));
+    await db.updateJson<{ kontakte: unknown[] }>('kontakte', cur => ({ ...cur!, kontakte: [...cur!.kontakte, { id: 'c-gesperrt', vorname: 'Gesa', nachname: 'Gesperrt', email: `gesa@kunde.${D}`, stufe: 'neu', importiertAm: '2026-09-01', geaendertAm: '2026-09-01', aktivitaeten: [], eingeschraenkt: { seit: '2026-09-01', grund: 'Art. 18 (Prüfung)', von: 'pa' } }] }));
+  });
+  const neu = (body: Record<string, unknown>, person = 'pa', extra: Record<string, string> = {}) => POST(lead, '/api/crm/lead', { aktion: 'mandat-neu', gesellschaft: 'ug', ...body }, person, extra);
+  const crmJetzt = async () => (await import('@/lib/crm/speicher')).ladeCrm();
+
+  it('vorhandene Firma + vorhandene Person: Mandat mit Firma, Firma/Lead → Kunde, Person → Lebensphase Kunde', async () => {
+    const r = await neu({ firma: { id: 'f-beispiel' }, person: { id: 'c-erika' }, titel: 'Zweites Mandat (Prüfung)' });
+    expect(r.status, JSON.stringify(r.d)).toBe(200);
+    const crm = await crmJetzt();
+    const m = crm.mandate.find(x => x.id === r.d.mandatId)!;
+    expect(m).toMatchObject({ firmaId: 'f-beispiel', kunde: 'Beispiel Werke GmbH', kontaktIds: ['c-erika'], status: 'aktiv', gesellschaft: 'ug', titel: 'Zweites Mandat (Prüfung)' });
+    expect(crm.firmen.find(f => f.id === 'f-beispiel')).toMatchObject({ rolle: 'kunde', lead: { status: 'kunde' } });
+    const k = (await db.loadJson<{ kontakte: { id: string; lebensphase?: string }[] }>('kontakte'))!.kontakte.find(x => x.id === 'c-erika');
+    expect(k?.lebensphase).toBe('kunde');
+  });
+  it('neue Firma + neue Person: genau eine Firma (auch bei anderer Schreibweise), Person bei der Firma; Dublette → 409, nichts geschrieben', async () => {
+    const r = await neu({ firma: { name: 'Erfundene Neukunde GmbH' }, person: { neu: { vorname: 'Nora', nachname: 'Neu', email: `nora@neukunde.${D}`, anrede: 'Du' } }, stufeId: 'ts-pruef-zwei', leistungId: 'l-analyse' });
+    expect(r.status, JSON.stringify(r.d)).toBe(200);
+    expect(r.d).toMatchObject({ firmaNeu: true, personNeu: true });
+    const crm = await crmJetzt();
+    expect(crm.firmen.filter(f => f.name.startsWith('Erfundene Neukunde'))).toHaveLength(1);
+    const kontakte = (await db.loadJson<{ kontakte: { id: string; email?: string; firmaId?: string; lebensphase?: string; anrede?: string }[] }>('kontakte'))!.kontakte;
+    expect(kontakte.find(x => x.id === r.d.kontaktId)).toMatchObject({ email: `nora@neukunde.${D}`, firmaId: r.d.firmaId, lebensphase: 'kunde', anrede: 'Du' });
+    expect(crm.mandate.find(x => x.id === r.d.mandatId)).toMatchObject({ leistungId: 'l-analyse', honorar: { betrag: 2000 } });
+    // Aus der Stufe heraus: der Fortschritt steht gleich in dieser Stufe.
+    const lage = (await GET(treppe, '/api/crm/treppe', 'pa')).d;
+    expect(lage.kunden.find((z: { mandatId: string }) => z.mandatId === r.d.mandatId)).toMatchObject({ stufe: { id: 'ts-pruef-zwei' }, stufeQuelle: 'hand' });
+    // Zweites Mal: Firma per Name (ohne Rechtsform) → dieselbe Firma; Person mit derselben Mail → 409 Dublette, NICHTS geschrieben.
+    const mandateVorher = (await crmJetzt()).mandate.length;
+    const d = await neu({ firma: { name: 'Erfundene Neukunde' }, person: { neu: { vorname: 'Nora', nachname: 'Neu', email: `nora@neukunde.${D}` } } });
+    expect(d.status).toBe(409);
+    expect(d.d.dublette).toMatchObject({ id: r.d.kontaktId });
+    expect((await crmJetzt()).mandate.length).toBe(mandateVorher);
+    const ok2 = await neu({ firma: { name: 'Erfundene Neukunde' }, person: { id: d.d.dublette.id } });
+    expect(ok2.status).toBe(200);
+    expect(ok2.d.firmaId).toBe(r.d.firmaId);
+    expect((await crmJetzt()).firmen.filter(f => f.name.startsWith('Erfundene Neukunde'))).toHaveLength(1);
+  });
+  it('Art. 18: eine eingeschränkte Person wird abgelehnt (vorhanden oder als „neu“ eingegeben) — keine Firma, kein Mandat', async () => {
+    const vorher = (await crmJetzt()).mandate.length;
+    const a = await neu({ firma: { name: 'Erfundene Sperrfirma GmbH' }, person: { id: 'c-gesperrt' } });
+    expect(a.status).toBe(409);
+    expect(a.d.eingeschraenkt).toBe(true);
+    const b = await neu({ firma: { name: 'Erfundene Sperrfirma GmbH' }, person: { neu: { vorname: 'Gesa', nachname: 'Gesperrt', email: `gesa@kunde.${D}` } } });
+    expect(b.status).toBe(409);
+    const crm = await crmJetzt();
+    expect(crm.mandate.length).toBe(vorher);
+    expect(crm.firmen.some(f => f.name.startsWith('Erfundene Sperrfirma'))).toBe(false);
+  });
+  it('ohne Person, ohne Firma, unbekannte Gesellschaft → 400; Dienstweg → 403; anderer Haushalt → 403', async () => {
+    expect((await neu({ firma: { id: 'f-beispiel' } })).status).toBe(400);
+    expect((await neu({ person: { id: 'c-erika' } })).status).toBe(400);
+    expect((await neu({ firma: { id: 'f-beispiel' }, person: { id: 'c-erika' }, gesellschaft: 'unsinn' })).status).toBe(400);
+    expect((await neu({ firma: { id: 'f-beispiel' }, person: { id: 'c-erika' } }, 'pa', { 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'pa' })).status).toBe(403);
+    expect((await neu({ firma: { id: 'f-beispiel' }, person: { id: 'c-erika' } }, 'px')).status).toBe(403);
+  });
+  it('Altbestand ohne Firma bleibt lesbar und unverändert; „Firma zuordnen“ nur auf Klick — danach Firma am Mandat, sonst alles wie vorher', async () => {
+    const vorher = (await crmJetzt()).mandate.find(m => m.id === ALT.id)!;
+    expect(vorher.firmaId).toBeUndefined();
+    expect(vorher).toMatchObject({ kunde: 'Altkunde ohne Firma', status: 'beendet', quelle: 'Altbestand' });
+    const r = await POST(lead, '/api/crm/lead', { aktion: 'mandat-firma', mandatId: ALT.id, firma: { name: 'Erfundene Altfirma GmbH' } }, 'pa');
+    expect(r.status, JSON.stringify(r.d)).toBe(200);
+    const nachher = (await crmJetzt()).mandate.find(m => m.id === ALT.id)!;
+    const { geaendert: _a, geaendertVon: _b, kunde: _k, firmaId, ...rest } = nachher;
+    const { geaendert: _c, geaendertVon: _d, kunde: _l, ...restVorher } = vorher;
+    expect(rest).toEqual(restVorher);
+    expect(firmaId).toBe(r.d.firmaId);
+    expect(nachher.kunde).toBe('Erfundene Altfirma GmbH');
+    expect((await POST(lead, '/api/crm/lead', { aktion: 'mandat-firma', mandatId: ALT.id, firma: { name: 'Noch eine GmbH' } }, 'pa')).status).toBe(409);
+  });
+});

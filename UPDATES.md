@@ -39,11 +39,18 @@ davon im Code); die Demo-Saat bringt eine erfundene Beispiel-Treppe.
   Sales „nächste Stufe anbieten“ → Freigabe legt ein Follow-up am Mandat an. Freigabe des Report-Vorschlags erstellt das PDF — verschickt wird nichts.
 - **Anschlüsse**: Markttraktion › Planung › Kreislauf zeigt bei Fulfillment „n im Paket · m reif für die nächste Stufe“ und je Kunde „Paket: … · n/m geliefert“ +
   „reif für: …“; Chat unten unter Produkte = Head of Sales.
+- **Mandat immer mit Lead (Entscheidung 10.10. ~20:30)**: „+ Mandat“ (und „+ Kunde“ in einer Stufe der Treppe) öffnet einen Dialog: Gesellschaft, **Firma** und
+  **Ansprechperson** — vorhandene per Klick wählen (Chip mit Suche; Personen der Firma zuerst) oder im Menü „„…“ anlegen“ (Firma ohne Dublette, auch bei anderer
+  Schreibweise/Rechtsform; Person über den einen Weg „Person anlegen“ mit Station bei der Firma). Danach: Mandat mit Firma + Ansprechperson (aktiv ab heute,
+  Vertrag/Kickoff als offene Punkte), Firma → Rolle Kunde, **Lead der Firma → Kunde**, Person → Lebensphase Kunde — dieselbe Folge wie „Mandat anlegen“ aus dem
+  gewonnenen Deal (eine Stelle `personenWerdenKunde`). Dublette → „Diese Person nehmen“, eingeschränkte Person (Art. 18) → abgelehnt, NICHTS geschrieben.
+  Bestehende Mandate ohne Firma: Chip „ohne Firma“, im Menü „⋯“ und im Mandat **„Firma zuordnen“** (gleicher Dialog, nur auf Klick — sonst bleibt alles, wie es ist).
 
 **Datenbestand bleibt (Live-Instanz):** neue Bestände nur `produkt-treppe--<haushalt>` (Business, Speicher-Register mit Angaben, `IN_BUSINESS`, `NICHT_PERSOENLICH`);
 an bestehenden Daten nur **optionale** Felder (`ProduktPhase.ziel/ergebnis/kennzahl/aufwandStunden`, im Säuberer). Nichts wird umgeschrieben, umbenannt oder beim
-Lesen verworfen, keine Migration beim Start; GET schreibt nie (Wächter im Routen-Test). Test „Altbestand ohne neue Felder wird gleich gelesen und bleibt nach
-Schreiben eines neuen Felds vollständig erhalten“ in `tests/produkte-treppe-route.test.ts`.
+Lesen verworfen, keine Migration beim Start; GET schreibt nie (Wächter im Routen-Test). Mandate ohne Firma bleiben, wie sie sind — eine Firma kommt nur per Klick
+(„Firma zuordnen“) dazu. Tests „Altbestand ohne neue Felder wird gleich gelesen und bleibt nach Schreiben eines neuen Felds vollständig erhalten“ (Produkt mit
+Phasen, Mandat) und „Altbestand ohne Firma bleibt lesbar; Zuordnen ändert nur Firma + Anzeigename“ in `tests/produkte-treppe-route.test.ts`.
 
 **Recht/Wächter:** Routen `/api/crm/treppe` (GET/PATCH), `/api/crm/treppe/dokument` (POST), `/api/crm/treppe/report` (GET PDF/POST) — Routen-Register
 `modul:markttraktion`, Haushalt des Inhabers (auch Konto „nur Business“), `?space=privat` → 400 (und die Middleware sperrt `/api/crm` für Privat), Schreiben nur per
@@ -66,7 +73,12 @@ angepasst `demo`.
    Freigabe-Stapel (Business) + Glocke „Produkte & Mandate“. Freigeben → Report liegt am Mandat, gesendet wird erst im Mandat per Klick.
 8. Alle Lieferobjekte einer Stufe abhaken → „reif für: …“; nach dem nächsten Morgenlauf schlägt der Head of Sales „nächste Stufe anbieten“ vor → Freigeben → Follow-up am Mandat.
 9. Markttraktion › Planung › Kreislauf → „Fulfillment“: „n im Paket“; „Nach der Leistung“ zeigt je Kunde Paket und Lieferungen.
-10. Am Handy (375 px): die Treppe als Liste, die Kundenreise als Liste, Fenster ganzflächig.
+10. Reiter Mandate → „+ Mandat“: Gesellschaft wählen, bei „Firma“ eine vorhandene suchen oder einen neuen Namen tippen → „„…“ anlegen“; bei „Ansprechperson“
+    eine Person wählen oder „„Vorname Nachname“ anlegen“ (Felder E-Mail, Position, Du/Sie erscheinen) → „Mandat anlegen“. Die Firma steht danach mit Rolle
+    Kunde, die Person mit Lebensphase Kunde. Dieselbe Mail noch einmal als neue Person → Hinweis „steht schon in der Kartei“ + „Diese Person nehmen“.
+11. Ein altes Mandat ohne Firma: Chip „ohne Firma“ → öffnen → „Firma zuordnen“ → Firma wählen/anlegen → zugeordnet; sonst ist am Mandat nichts verändert.
+12. Produkte → Stufe antippen → „+ Kunde“: derselbe Dialog, Produkt vorbelegt; das neue Mandat steht gleich in dieser Stufe.
+13. Am Handy (375 px): die Treppe als Liste, die Kundenreise als Liste, Fenster ganzflächig.
 
 **Offen / bewusst nicht:** der Report-Vorschlag landet bei der zuständigen Person des Mandats (Team-Kürzel; „beide“ → im Stapel des Haushalts); die Health-Zahlung
 liest hier nur den Wert am Mandat (nicht die Rechnungen des Finanzplans wie die Mandats-Übersicht); Gmail-Versand mit Anhang ist auf 4 MB begrenzt (Annahme zu

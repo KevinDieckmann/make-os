@@ -75,6 +75,12 @@ async function treppeAendern(mut: (d: TreppeDatei) => AnwendenErgebnis, wer?: We
   if (ergebnis.ok) await protokolliereBestand(name, vorher, nachher, wer);
   return ergebnis;
 }
+/** Ein neues Mandat steht gleich in der Stufe, aus der heraus es angelegt wurde („+ Kunde“ an einer Stufe) — false, wenn es die Stufe nicht gibt. */
+export async function treppeKundeStufe(mandatId: string, stufeId: string, person: string, jetzt = new Date()): Promise<boolean> {
+  const r = await treppeAendern(d => (d.kunden[mandatId] ? { ok: false, status: 400, fehler: 'schon da' } : treppeAnwenden(d, [{ op: 'kunde', mandatId, felder: { stufeId } }], kontext(person, jetzt))), { art: 'person', person }, jetzt);
+  return r.ok;
+}
+
 /** Server-Vermerk ohne Stand (Marken, Report erstellt) — nie über den Browser. */
 async function vermerken(f: (d: TreppeDatei) => TreppeDatei, jetzt = new Date()): Promise<void> {
   await treppeAendern(d => ({ ok: true, datei: f(d), geaendert: ['vermerk'] }), { art: 'system' }, jetzt);
