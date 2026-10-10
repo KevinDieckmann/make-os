@@ -30,6 +30,8 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschrit
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 import { useFokus } from '@/lib/planung/fokus-client';
 import { useNurBusiness } from './useInhaber';
+import { spaceVonZiel } from '@/lib/lichtfaeden/modell';
+import type { Ziel } from '@/lib/planung/typen';
 
 interface Routine { id: string; label: string; wann: 'morgen' | 'tag' | 'abend'; kategorie: string; dauerMin: number; aktiv: boolean }
 interface Fix { titel: string; startMin: number; dauerMin: number }
@@ -93,7 +95,10 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const [meldung, setMeldung] = useState<string | null>(null);
   const [routinen, setRoutinen] = useState<Routine[]>([]);
   const [hlog, setHlog] = useState<Record<string, string[]>>({});
-  const [ziele, setZiele] = useState<{ titel: string; fortschritt: number }[]>([]);
+  const [zieleAlle, setZiele] = useState<Ziel[]>([]);
+  // Nur die Monatsziele des Bereichs der Seite (10.10., Prüfung: in Privat stand ein Business-Zahlenziel unter „Fokus“) — dieselbe Regel wie überall.
+  const bereich = nurBusiness ? 'business' : (spaceAusAdresse ?? spaceAktiv);
+  const ziele = useMemo(() => zieleAlle.filter(z => spaceVonZiel(z) === bereich), [zieleAlle, bereich]);
   const [regler, setRegler] = useState<Record<string, number>>({});
   const [aktivBlock, setAktivBlock] = useState<string | null>(null);
   const [jetztMin, setJetztMin] = useState<number | null>(null);
@@ -113,7 +118,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
       }).catch(() => { setArchiv([]); setRehaVorher(false); });
     fetch('/api/state/routinen?sicht=ich').then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
     fetch('/api/state/health').then(r => r.json()).then(d => setHlog(d.log ?? {})).catch(() => {});
-    fetch('/api/state/ziele').then(r => r.json()).then(d => { setZiele((d.monat ?? []).filter((z: { erledigt?: boolean }) => !z.erledigt)); }).catch(() => {});
+    fetch('/api/state/ziele').then(r => r.json()).then(d => { setZiele(((d.monat ?? []) as Ziel[]).filter(z => !z.erledigt)); }).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
   }, [heute]);
 
