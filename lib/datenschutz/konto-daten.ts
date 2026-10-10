@@ -127,6 +127,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
   'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
+  'markttraktion-planung--*': 'Vertriebsplanung je Haushalt (Leadkanäle, Umsatzziele, Challenges — Personen nur als Team-Kürzel, Dritte nur als Mandat-Kennung)',
   'fokus-business--*': 'Unser Fokus · Business je Haushalt und Gesellschaft (Freitext der Mitglieder, ohne Personen-Feld)',
   'fokus-steuerung-privat--*': 'Prioritäten · Privat je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld) — wer sie geändert hat, steht nur im Änderungsprotokoll',
   'fokus-steuerung-business--*': 'Prioritäten · Business je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld)',

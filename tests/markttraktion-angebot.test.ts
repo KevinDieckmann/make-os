@@ -45,8 +45,8 @@ describe('Adresse — Bereich „angebot“', () => {
 });
 
 describe('Reiterleiste — links · Mitte · rechts', () => {
-  it('Schnellknöpfe in der Mitte: Qualifizierung, dann Angebot', () => {
-    expect(REITER_ZEILE.mitte).toEqual(['qualifizierung', 'angebot']);
+  it('Schnellknöpfe in der Mitte: Qualifizierung, dann Angebot, rechts daneben Planung (10.10.)', () => {
+    expect(REITER_ZEILE.mitte).toEqual(['qualifizierung', 'angebot', 'planung']);
     // Aufräumen Etappe 3 (08.10.): sechs Reiter, Stammdaten hinter dem Zahnrad.
     expect(REITER_ZEILE.links.map(r => r.id)).toEqual(['ueberblick', 'kontakte', 'deals', 'followup']);
     expect(REITER_ZEILE.rechts.map(r => r.id)).toEqual(['marketing', 'events']);

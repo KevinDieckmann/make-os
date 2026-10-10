@@ -9,7 +9,7 @@
 //   Follow-up           Fällig · Woche · Power Hour · Kadenz
 //   Marketing           Übersicht · Anfragen · Segmente · Kampagnen · Redaktionsplan · Newsletter · Positionierung — Head of Marketing
 //   Events              Besuchte Events (Kalender · Wirkung · Im Kundenauftrag, Event-Akte) · Make.One (unsere eigenen Abende)
-// In der Mitte die zwei Schnellknöpfe, leise pulsierend: Qualifizierung (Runde · Leads · Scoring) und Angebot. Die Stammdaten
+// In der Mitte die Schnellknöpfe, leise pulsierend: Qualifizierung (Runde · Leads · Scoring), Angebot und (seit 10.10.) Planung. Die Stammdaten
 // (Qualität, Wertelisten, Datenschutz, Import & Export) öffnet das Zahnrad oben rechts. Alte Adressen (Reiter „Sales“, Firmen › Leads,
 // Deals › Kunden …) übersetzt `aufloesen` und die Seite schreibt sie still auf den neuen Ort um.
 // Das Grundkonzept stammt aus der Markttraktion in KEMARIS Operations; die Daten sind ausschließlich unsere eigenen. Technisch heißt
@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TIEF } from '@/lib/make-one/design';
 import { Settings } from 'lucide-react';
 import { Seite, Knopf, SymbolKnopf, Reiter as ReiterLeiste, LEUCHT } from '../ui';
-import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, REITER_ZEILE, reiterVon, reiterStart, PFAD, type Bereich, type ReiterId, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht } from '@/lib/crm/adresse';
+import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, planungLink, REITER_ZEILE, reiterVon, reiterStart, PFAD, type Bereich, type ReiterId, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht } from '@/lib/crm/adresse';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
@@ -44,6 +44,7 @@ import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 import { AngebotStart } from './angebot/AngebotStart';
+import { MtPlanung } from './planung/Planung';
 import { ZoeFragenKnopf } from './ZoeFragen';
 import { zoeBezugFuer } from '@/lib/zoe/crm-bezug';
 import { markttraktionHead } from '@/lib/agenten/kontext-head';
@@ -61,6 +62,8 @@ const REITER_NAME: Record<ReiterId, { label: string; farbe?: string }> = {
 const SCHNELL_NAME: Partial<Record<Bereich, { label: string; farbe: string }>> = {
   qualifizierung: { label: 'Qualifizierung & Scoring', farbe: LEUCHT.business },
   angebot: { label: 'Angebot', farbe: LEUCHT.gut },
+  // 10.10. (Kevin: „Umsatzziele auf einzelne Aktivitäten runterplanen“): rechts neben „Angebot“.
+  planung: { label: 'Planung', farbe: LEUCHT.planung },
 };
 const eintrag = (r: { id: ReiterId }) => ({ id: r.id, ...REITER_NAME[r.id] });
 const LINKS = REITER_ZEILE.links.map(eintrag);
@@ -80,6 +83,7 @@ const UNTER: Record<Bereich, string> = {
   followup: 'Was heute dran ist — Zusagen, Wiedervorlagen, Kadenz, Power Hour.',
   qualifizierung: 'Lead für Lead bis zum SQL — mit den Scoring-Einstellungen von Marketing und Sales.',
   angebot: 'Angebot in einer Minute: Produkte anklicken, anpassen, senden.',
+  planung: 'Vom Umsatzziel zu den Aktivitäten je Leadkanal und Woche — mit Kapazität und Challenges.',
   marketing: 'Ansprechbar sein, nicht laut.',
   besuche: 'Veranstaltungen, die wir besuchen: planen, vor Ort erfassen, auswerten.',
   event: 'Make.One: unsere eigenen Abende — gemessen an den Gesprächen danach.',
@@ -249,6 +253,7 @@ export function MarkttraktionSeite() {
           {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} zuAkte={zuAkte} />}
         </>
       )}
+      {bereich === 'planung' && <MtPlanung ansicht={(ansicht ?? 'kreislauf') as PlanungAnsicht} kanal={params.get('kanal')} onOrt={(a, k) => { router.push(planungLink(a, k), { scroll: false }); if (a !== (ansicht ?? 'kreislauf')) nachOben(); }} />}
       {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} />}
       {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('qualifizierung', 'leads', id)}
         leads={<><SalesTrichter api={api} zuBereich={zuBereich} /><Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} /></>} />}

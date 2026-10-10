@@ -33,6 +33,7 @@ import { fuerDich, nameVon, TEAM } from './team';
 import { messlatte, sqlJeWoche } from './kennzahlen';
 import { localDay, tagVon } from '@/lib/zeit';
 import { isoWoche as kalenderwoche, montagVon as kernMontag } from '@/lib/zeit/kalender-kern';
+import type { PlanWoche } from './planung';
 
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 // 7.5 (08.10.): Berliner Tag eines Zeitstempels — vorher der UTC-Tag (0–2 Uhr landete am Vortag bzw. in der Vorwoche).
@@ -140,6 +141,8 @@ export interface ScoreZeile {
   werte: (number | null)[];
   ampeln: ScoreAmpel[];
   quelle: string;
+  /** Das Ziel kommt aus der Markttraktion-Planung (Schnellknopf „Planung“, lib/crm/planung.ts `wochenziele`) — Soll aus dem Plan. */
+  plan?: true;
 }
 export interface Scoreboard { heute: string; wochen: ScoreWoche[]; zeilen: ScoreZeile[] }
 
@@ -158,6 +161,7 @@ interface Spez {
   /** Ab wann gemessen wird — davor grau. null = gar nicht. */
   ab: string | null;
   zaehle: (w: ScoreWoche) => number | null;
+  plan?: true;
 }
 
 /**
@@ -179,7 +183,7 @@ export function salesAnteilAb(sitzungen: readonly { person: string; datum: strin
  * Teamziel geteilt durch die Zahl der Personen MIT Sales-Anteil, aufgerundet — `salesAnteilAb`).
  * Gespräche und neue SQL messen an DERSELBEN Messlatte wie Kennzahlen und Traktions-Index (`messlatte`, Ziele der Wertelisten, 7.2).
  */
-export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: string, wochen = 8): Scoreboard {
+export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: string, wochen = 8, plan?: PlanWoche | null): Scoreboard {
   const W = wochenBis(heute, Math.max(1, Math.min(52, Math.round(wochen) || 8)));
   const drin = (d: string, w: ScoreWoche) => d >= w.von && d <= w.bis && d <= heute;
 
@@ -202,13 +206,22 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
   const abChance = fruehestes(chancen.map(c => tag(c.angelegt)));
   const abBeitrag = fruehestes(beitraege.flatMap(b => [tag(b.datum), tag(b.geaendert)]));
   const abContent = veroeffentlicht.length || wirkung.length ? fruehestes([...veroeffentlicht.map(b => tag(b.datum)), ...wirkung.map(x => x.tag)]) : null;
+  // Für die Plan-Zeilen (10.10.): Tag der Anlage von Hand angelegter Personen (mit Vermerk) und Tage, an denen ein Deal die Stufe „Angebot“ erreichte.
+  const neueLeads = kontakte.filter(k => (k.aktivitaeten ?? []).some(a => a.von !== 'system' && a.art !== 'system')).map(k => (k.importiertAm ?? '').slice(0, 10)).filter(d => TAG_MUSTER.test(d));
+  const angebote = chancen.flatMap(c => { const h = (c.historie ?? []).find(x => x.stufe === 'angebot'); return h ? [tag(h.am)] : []; });
+  const abLeads = fruehestes(neueLeads);
   const abEvent = fruehestes(events.filter(e => !istNetzwerkenEvent(e)).flatMap(e => [e.datum, tag(e.geaendert)]));  // nur unsere Abende — besuchte Events (Events-Reiter) zählen hier nicht
 
   const anzahl = <T,>(liste: T[], datum: (x: T) => string) => (w: ScoreWoche) => liste.filter(x => drin(datum(x), w)).length;
   // 7.2 (08.10.): EINE Messlatte — die Ziele der Wertelisten (Gespräche je Woche, SQL je Monat → je Woche), sonst die Startwerte.
   const ml = messlatte(crm.wertelisten);
-  const zielGespraeche = ml.gespraeche.gruen, gelbGespraeche = ml.gespraeche.rot;
-  const zielSql = ml.ausZiel.sql ? sqlJeWoche(ml) : SCORE_ZIELE.neue_chancen;
+  // 10.10. (Schnellknopf „Planung“, Kevin: „Das Wochen-Scoreboard ist mega, aber nur, wenn ich weiß, was das Ziel war“): gibt es einen Plan,
+  // kommen die Wochenziele für Gespräche und neue SQL daraus (Soll aus dem Plan) — sonst wie bisher Messlatte bzw. Startwerte.
+  const ausPlan = (n: number | undefined) => (plan && n && n > 0 ? n : null);
+  const planGespraeche = ausPlan(plan?.gespraeche), planSql = ausPlan(plan?.sql);
+  const zielGespraeche = planGespraeche ?? ml.gespraeche.gruen, gelbGespraeche = planGespraeche ? Math.ceil(planGespraeche / 2) : ml.gespraeche.rot;
+  const zielSql = planSql ?? (ml.ausZiel.sql ? sqlJeWoche(ml) : SCORE_ZIELE.neue_chancen);
+  const planText = plan ? ` · Ziel aus der Planung` : '';
   // 6.3 (08.10.): Sales-Anteile nur für Personen mit Sales-Verantwortung bzw. ab ihrer ersten eigenen Power Hour (`salesAnteilAb`).
   const anteilAb = salesAnteilAb(sitzungen, abSitzung);
   const mitAnteil = Math.max(1, TEAM.filter(t => anteilAb[t.id] !== null).length);
@@ -223,15 +236,18 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
     const ziel = ab !== null ? anteil(id === 'power_hours' ? SCORE_ZIELE.power_hours : zielGespraeche) : null;
     return id === 'power_hours'
       ? { id: `power_hours:${t.id}`, welt: 'sales', label: 'Power Hours', person: t.id, ziel, gelbAb: ziel !== null ? Math.ceil(ziel / 2) : null, quelle: `Power Hours von ${t.name}`, ab: ab ?? abSitzung, zaehle: anzahl(sitzungen.filter(s => s.person === t.id), s => s.datum) }
-      : { id: `gespraeche:${t.id}`, welt: 'sales', label: 'Echte Gespräche', person: t.id, ziel, gelbAb: ziel !== null ? Math.ceil(ziel / 2) : null, quelle: `Gespräche und Termine, festgehalten von ${t.name}`, ab: gespraecheAb(t.verantwortet.includes('sales'), ab, abVerlauf), zaehle: anzahl(gespraeche.filter(g => g.von === t.id), g => g.tag) };
+      : { id: `gespraeche:${t.id}`, welt: 'sales', label: 'Echte Gespräche', person: t.id, ziel, gelbAb: ziel !== null ? Math.ceil(ziel / 2) : null, quelle: `Gespräche und Termine, festgehalten von ${t.name}${planGespraeche ? planText : ''}`, ab: gespraecheAb(t.verantwortet.includes('sales'), ab, abVerlauf), zaehle: anzahl(gespraeche.filter(g => g.von === t.id), g => g.tag), ...(planGespraeche && ziel !== null ? { plan: true as const } : {}) };
   });
 
   const spez: Spez[] = [
     { id: 'power_hours', welt: 'sales', label: 'Power Hours', ziel: SCORE_ZIELE.power_hours, gelbAb: SCORE_ZIELE.power_hours / 2, quelle: 'Power-Hour-Sitzungen', ab: abSitzung, zaehle: anzahl(sitzungen, s => s.datum) },
     ...personen('power_hours'),
-    { id: 'gespraeche', welt: 'sales', label: 'Echte Gespräche', ziel: zielGespraeche, gelbAb: gelbGespraeche, quelle: `Gespräche und Termine im Verlauf (ohne System)${ml.ausZiel.gespraeche ? ' · Ziel aus den Wertelisten' : ''}`, ab: abVerlauf, zaehle: anzahl(gespraeche, g => g.tag) },
+    { id: 'gespraeche', welt: 'sales', label: 'Echte Gespräche', ziel: zielGespraeche, gelbAb: gelbGespraeche, quelle: `Gespräche und Termine im Verlauf (ohne System)${planGespraeche ? planText : ml.ausZiel.gespraeche ? ' · Ziel aus den Wertelisten' : ''}`, ab: abVerlauf, zaehle: anzahl(gespraeche, g => g.tag), ...(planGespraeche ? { plan: true as const } : {}) },
     ...personen('gespraeche'),
-    { id: 'neue_chancen', welt: 'sales', label: 'Neue SQL → Deals', ziel: zielSql, gelbAb: null, quelle: `Leads, die SQL wurden (Deals angelegt)${ml.ausZiel.sql ? ' · Monatsziel der Wertelisten je Woche' : ''}`, ab: abChance, zaehle: anzahl(chancen, c => tag(c.angelegt)) },
+    { id: 'neue_chancen', welt: 'sales', label: 'Neue SQL → Deals', ziel: zielSql, gelbAb: planSql ? Math.ceil(planSql / 2) : null, quelle: `Leads, die SQL wurden (Deals angelegt)${planSql ? planText : ml.ausZiel.sql ? ' · Monatsziel der Wertelisten je Woche' : ''}`, ab: abChance, zaehle: anzahl(chancen, c => tag(c.angelegt)), ...(planSql ? { plan: true as const } : {}) },
+    // Nur mit Plan (10.10.): neue Leads und Angebote je Woche — dieselben Zählregeln wie die Challenges (lib/crm/planung.ts `wochenIst`).
+    ...(plan && plan.leads > 0 ? [{ id: 'neue_leads', welt: 'sales' as Welt, label: 'Neue Leads', ziel: plan.leads, gelbAb: Math.ceil(plan.leads / 2), quelle: `Von Hand bzw. aus Kanälen angelegte Personen${planText}`, ab: abLeads, zaehle: anzahl(neueLeads, x => x), plan: true as const }] : []),
+    ...(plan && plan.angebote > 0 ? [{ id: 'angebote', welt: 'sales' as Welt, label: 'Angebote raus', ziel: plan.angebote, gelbAb: Math.ceil(plan.angebote / 2), quelle: `Deals, die die Stufe „Angebot“ erreichten${planText}`, ab: abChance, zaehle: anzahl(angebote, x => x), plan: true as const }] : []),
     { id: 'gewonnen', welt: 'sales', label: 'Gewonnene Deals', ziel: null, gelbAb: null, quelle: 'Stufe „gewonnen“ in der Historie', ab: abChance,
       zaehle: w => chancen.filter(c => (c.historie ?? []).some(h => h.stufe === 'gewonnen' && drin(tag(h.am), w))).length },
     { id: 'beitraege', welt: 'marketing', label: 'Veröffentlichte Beiträge', ziel: SCORE_ZIELE.beitraege, gelbAb: SCORE_ZIELE.beitraege / 2, quelle: 'Redaktionsplan, Status veröffentlicht', ab: abBeitrag, zaehle: anzahl(veroeffentlicht, b => tag(b.datum)) },
@@ -249,7 +265,7 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
   const zeilen: ScoreZeile[] = spez.map(s => {
     const werte = W.map(w => (s.ab === null || w.bis < s.ab ? null : s.zaehle(w)));
     return {
-      id: s.id, welt: s.welt, label: s.label, ...(s.person ? { person: s.person } : {}),
+      id: s.id, welt: s.welt, label: s.label, ...(s.person ? { person: s.person } : {}), ...(s.plan ? { plan: true as const } : {}),
       ziel: s.ziel, zielText: s.ziel === null ? '—' : `≥ ${s.ziel}${s.quote ? ' %' : ''}`, ...(s.quote ? { einheit: '%' as const } : {}),
       werte, ampeln: werte.map((v, i) => bewerte(v, s.ziel, s.gelbAb, W[i].laufend, s.quote)), quelle: s.quelle,
     };

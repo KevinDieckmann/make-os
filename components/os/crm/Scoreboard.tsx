@@ -19,7 +19,7 @@
 
 import { useCallback, useEffect, useId, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { markttraktion } from '@/lib/crm/adresse';
+import { markttraktion, planungLink } from '@/lib/crm/adresse';
 import { FARBE as C, TYP, leuchtFarbe } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Punkt, LEUCHT } from '../ui';
 import { useAbgleich } from '@/hooks/useAbgleich';
@@ -40,6 +40,8 @@ interface Daten {
   telegram?: { konfiguriert: boolean; gekoppelt: boolean };
   /** 7.3: der Kanal des Boten für diese Person (ZOE auf WhatsApp bzw. Telegram) und ob überhaupt einer eingerichtet ist. */
   bote?: { kanal: 'whatsapp' | 'telegram' | null; eingerichtet: boolean };
+  /** 10.10.: die Wochenziele aus der Markttraktion-Planung (null ohne Plan) — die Zeilen mit `plan` tragen sie. */
+  planWoche?: { quelle: string } | null;
 }
 
 const AMPEL: Record<ScoreAmpel, string | null> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, grau: null, offen: null };
@@ -188,7 +190,7 @@ function Gruppe({ welt, zeilen, sb, erste }: { welt: Welt; zeilen: ScoreZeile[];
                 ? <Link href={markttraktion(undefined, undefined, SCORE_ZU_KENNZAHL[z.id])} scroll={false} title="Kennzahl im Traktions-Index öffnen" style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.25)' }}>{z.label}</Link>
                 : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{z.label}</span>}
           </th>
-          <td title={z.person ? (z.ziel === null ? 'kein Sales-Anteil — gezählt, ohne Ziel' : 'Anteil am Teamziel') : z.ziel === null ? 'kein Wochenziel' : 'Ziel je Woche'} style={{ textAlign: 'center', fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '3px 4px' }}>{z.zielText}</td>
+          <td title={z.plan ? 'Ziel je Woche aus der Planung (Markttraktion › Planung)' : z.person ? (z.ziel === null ? 'kein Sales-Anteil — gezählt, ohne Ziel' : 'Anteil am Teamziel') : z.ziel === null ? 'kein Wochenziel' : 'Ziel je Woche'} style={{ textAlign: 'center', fontSize: TYP.bedien, color: z.plan ? LEUCHT.planung : C.inkLeise, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', padding: '3px 4px' }}>{z.zielText}</td>
           {z.werte.map((wert, i) => {
             const w = sb.wochen[i];
             const wer = z.person ? ` · ${nameVon(z.person)}` : '';
@@ -218,7 +220,7 @@ export function Scoreboard(_: { api: CrmApi }) {
   const bote = d.bote;
   return (
     <Karte i={3}>
-      <Ueberschrift rechts={<span>{d.scoreboard.wochen.length} Wochen · Ziel je Woche</span>}>Wochen-Scoreboard</Ueberschrift>
+      <Ueberschrift rechts={<span>{d.scoreboard.wochen.length} Wochen · {d.planWoche ? <Link href={planungLink('ziele')} title={d.planWoche.quelle} style={{ color: LEUCHT.planung, textDecoration: 'none' }}>Ziele aus der Planung ›</Link> : <>Ziel je Woche · <Link href={planungLink('ziele')} style={{ color: C.inkDim }}>planen ›</Link></>}</span>}>Wochen-Scoreboard</Ueberschrift>
       <Verlauf tage={d.verlauf ?? []} heute={d.heute} />
       <Tabelle sb={d.scoreboard} />
       <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>
