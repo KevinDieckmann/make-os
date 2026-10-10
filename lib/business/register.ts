@@ -10,7 +10,7 @@
 // Jede Kennzahl sagt, wie sie rechnet (formel), woher (quelle), was gut ist
 // (gruen/rot) und — wenn Daten fehlen — wie man die Lücke schließt.
 
-export type SaeuleId = 'fh' | 'ud' | 'mt' | 'fz' | 'kp';
+export type SaeuleId = 'fh' | 'ud' | 'mt' | 'fz' | 'kp' | 'ff';
 // Sichten (28.09., eine Einheitenliste): Gesamt + die Gesellschaften aus lib/einheiten.ts — die MAKE Innovation GmbH ist eine
 // eigene Sicht; Namen kommen von dort. Seit 05.10. (Kevin: „Selbstständigkeit raus aus Business“) nur die Gesellschaften im
 // Business-Bereich (`bereichVon`, unsere Instanz: KD Ventures · MAKE) — die Selbstständigkeit gehört zu Privat und ist hier weder Sicht
@@ -28,14 +28,19 @@ export const scopeAus = (v: unknown): Scope => SCOPES.find(s => s.id === v)?.id 
 // zählt die Säule nicht, und der Index ist exakt der alte.
 // 04.10.: fünfte Säule „Kapazität“ (15 %, Kevin: „Verhältnis halten“) — alle bisherigen ×0,85. Sie trägt `nurMitMessung`:
 // ohne Messung fällt sie ganz heraus, der Index ist dann exakt der bisherige (lib/kapazitaet/kennzahlen.ts, Test).
+// 10.10.: sechste Säule „Fulfillment“ (10 %, Kevin 23:25: „sofort in den Business-Index“) — alle bisherigen ×0,9 (Verhältnis bleibt). Sie trägt
+// `nurMitMessung`: ohne laufenden Fall (bzw. ohne Messung) fällt sie ganz heraus, der Index ist dann exakt der bisherige (lib/fulfillment/prozesse/
+// kennzahlen.ts, Test tests/fulfillment-c1-index.test.ts).
 const REST = 1 - KP_GEWICHT;
+const REST_FF = 1 - FF_GEWICHT;
 export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: string; nurMitMessung?: boolean }[] = [
-  { id: 'fh', label: 'Finanzielle Gesundheit', gewicht: 0.5 * (1 - FZ_GEWICHT) * REST, satz: 'Liquidität, Forderungen, Ausgaben, Kapital' },
+  { id: 'fh', label: 'Finanzielle Gesundheit', gewicht: 0.5 * (1 - FZ_GEWICHT) * REST * REST_FF, satz: 'Liquidität, Forderungen, Ausgaben, Kapital' },
   // 04.10.: „Unternehmer-DNA“ heißt jetzt „Personal“ (Kevin). Kennung 'ud' bleibt — gespeicherte Verläufe lesen weiter.
-  { id: 'ud', label: 'Personal', gewicht: 0.3 * (1 - FZ_GEWICHT) * REST, satz: 'Produktivität, Auslastung und wie das Team arbeitet' },
-  { id: 'mt', label: 'Markttraktion', gewicht: 0.2 * (1 - FZ_GEWICHT) * REST, satz: 'Vertrieb, Kunden, Wachstum' },
-  { ...FZ_SAEULE, id: 'fz', gewicht: FZ_GEWICHT * REST },
-  { ...KP_SAEULE, id: 'kp' },
+  { id: 'ud', label: 'Personal', gewicht: 0.3 * (1 - FZ_GEWICHT) * REST * REST_FF, satz: 'Produktivität, Auslastung und wie das Team arbeitet' },
+  { id: 'mt', label: 'Markttraktion', gewicht: 0.2 * (1 - FZ_GEWICHT) * REST * REST_FF, satz: 'Vertrieb, Kunden, Wachstum' },
+  { ...FZ_SAEULE, id: 'fz', gewicht: FZ_GEWICHT * REST * REST_FF },
+  { ...KP_SAEULE, id: 'kp', gewicht: KP_GEWICHT * REST_FF },
+  { ...FF_SAEULE, id: 'ff' },
 ];
 /** Säulen mit ihrem echten Gewicht als Text — EINE Quelle für Cockpit, ZOE und Erklärungen (z. B. „Finanzielle Gesundheit 45 % · …“). */
 export const SAEULEN_TEXT = SAEULEN.map(s => `${s.label} ${Math.round(s.gewicht * 100)} %`).join(' · ');
@@ -45,6 +50,7 @@ import { KERN_EINHEITEN, istBusinessGesellschaft, type Gesellschaftskennung } fr
 import { WEG } from '@/lib/wege';
 import { FZ_SAEULE, FZ_GEWICHT, fzKennzahlen } from '@/lib/zeitmessung/kennzahlen';
 import { KP_SAEULE, KP_GEWICHT, KP_KENNZAHLEN } from '@/lib/kapazitaet/kennzahlen';
+import { FF_SAEULE, FF_GEWICHT, FF_KENNZAHLEN } from '@/lib/fulfillment/prozesse/kennzahlen';
 export type { Einheit, Richtung } from '@/lib/kennzahlen/kern';
 
 export interface KennzahlDef extends KennzahlDefBasis {
@@ -175,6 +181,8 @@ export const KENNZAHLEN: KennzahlDef[] = [
 KENNZAHLEN.push(...fzKennzahlen('business').map(k => ({ ...k, saeule: 'fz' as SaeuleId })));
 // Kapazität (04.10.): Team-Summen, personen- und firmenübergreifend — nur in der Gesamtsicht.
 KENNZAHLEN.push(...KP_KENNZAHLEN.map(k => ({ ...k, saeule: 'kp' as SaeuleId, nurGesamt: true })));
+// Fulfillment (10.10.): je Sicht die Fälle ihrer Gesellschaften (Gesamt = alle Business-Gesellschaften); operativ — gilt nicht für eine Holding.
+KENNZAHLEN.push(...FF_KENNZAHLEN.map(k => ({ ...k, saeule: 'ff' as SaeuleId, nichtFuer: ['kdv'] as Scope[] })));
 
 export const KENNZAHL = Object.fromEntries(KENNZAHLEN.map(k => [k.id, k])) as Record<string, KennzahlDef>;
 

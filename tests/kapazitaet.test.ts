@@ -229,10 +229,12 @@ describe('Säule „Kapazität“ im Business-Index', () => {
 
   it('15 %, die übrigen ×0,85 im alten Verhältnis; Gewichte summieren 1; der Text kommt aus derselben Quelle', () => {
     const g = Object.fromEntries(SAEULEN.map(s => [s.id, s.gewicht]));
-    expect(g.kp).toBe(0.15);
-    expect(g.fh).toBeCloseTo(0.45 * 0.85, 10); expect(g.ud).toBeCloseTo(0.27 * 0.85, 10); expect(g.mt).toBeCloseTo(0.18 * 0.85, 10); expect(g.fz).toBeCloseTo(0.1 * 0.85, 10);
+    // 10.10.: Säule „Fulfillment“ (10 %, nurMitMessung) dazu — alle bisherigen Säulen ×0,9, das Verhältnis untereinander bleibt.
+    expect(g.kp).toBeCloseTo(0.15 * 0.9, 10);
+    expect(g.fh).toBeCloseTo(0.45 * 0.85 * 0.9, 10); expect(g.ud).toBeCloseTo(0.27 * 0.85 * 0.9, 10); expect(g.mt).toBeCloseTo(0.18 * 0.85 * 0.9, 10); expect(g.fz).toBeCloseTo(0.1 * 0.85 * 0.9, 10);
+    expect(g.kp / g.fh).toBeCloseTo(0.15 / (0.45 * 0.85), 10);
     expect(Math.round(SAEULEN.reduce((s, x) => s + x.gewicht, 0) * 1e9) / 1e9).toBe(1);
-    expect(SAEULEN_TEXT).toContain('Kapazität 15 %');
+    expect(SAEULEN_TEXT).toContain('Kapazität 14 %');
     expect(KENNZAHLEN.filter(k => k.saeule === 'kp').every(k => k.nurGesamt)).toBe(true);
     expect(kennzahlenFuer('kdc').some(k => k.saeule === 'kp')).toBe(false);
   });

@@ -1,8 +1,13 @@
-// ─── Fulfillment — Mandats-Cockpit (STUB aus C0; gehört Paket C1) ─────────────────────────────────────────────────────────────────────
-// FULFILLMENT_KONZEPT.md 6.3: je aktivem Fall Phase, Fortschritt, wartet auf euch, Health, Puls (C2), Analyse (C3) — „was hängt“ zuerst. Nur lesen.
+// ─── Fulfillment — Mandats-Cockpit (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 6.3) ──────────────────────────────────────────────────────
+// GET → je laufendem Fall (Mandate von Business-Gesellschaften): Kunde, Paket, Phase, Fortschritt, nächster Schritt, „wartet auf euch“,
+//       Health-Ampel, Report fällig, Puls (C2), Analyse-Stand (C3), Onboarding, nächster Ritual-Termin — und „Was hängt“ zuerst (rot vor gelb,
+//       älteste zuerst). Dazu die Kapazität aus der Leistungstreppe (Aufwand je Woche gegen freie Stunden). Nur lesen, schreibt nie.
 
 import { NextResponse } from 'next/server';
 import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { cockpitDaten } from '@/lib/fulfillment/prozesse/server';
+import { allesWasHaengt } from '@/lib/fulfillment/prozesse/cockpit';
+import { localDay } from '@/lib/zeit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,5 +15,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const z = await fulfillmentZugang(req);
   if (z instanceof Response) return z;
-  return NextResponse.json({ ok: false, fehler: 'kommt mit Paket C1' }, { status: 501 });
+  const heute = localDay();
+  const { zeilen } = await cockpitDaten(heute);
+  const kapa = await import('@/lib/crm/treppe-server').then(t => t.treppeLage(z.person, heute)).then(l => ({ stundenWoche: l.kapa.stundenWoche, frei: l.kapa.frei ?? null, ueber: l.kapa.ueber })).catch(() => null);
+  return NextResponse.json({ ok: true, heute, zeilen: zeilen.map(({ gesellschaft: _g, ...r }) => r), haengt: allesWasHaengt(zeilen), kapa });
 }

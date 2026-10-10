@@ -201,6 +201,8 @@ async function ladeRohFrisch(heute: string) {
   const abschluesse = abschluesseAlle.filter(a => !abschlussVor(a, eroeffnung));
   // Kapazität (04.10.): nur die Team-Summen — eigener Lesefehler darf den Index nie kippen (null = Säule zählt nicht).
   const kapa = await kapaKennzahlenFuerIndex(heute);
+  // Fulfillment (10.10.): nur Summen je laufendem Fall — ohne Fall oder bei einem Lesefehler null (Säule zählt nicht, Index exakt wie bisher).
+  const fulfillment = await import('@/lib/fulfillment/prozesse/server').then(f => f.ffKennzahlenFuerIndex(heute)).catch(() => null);
   // V1-Export: nur die Business-Teile. Umsatz/Kosten = Selbständigkeit (Consulting);
   // Fixkosten getrennt: s = Selbständigkeit, u = „KD Management UG“ = Gründungsname der
   // KD Ventures UG (CLAUDE.md) → kdv, NICHT die MAKE Innovation GmbH. Private Kredite (p.sch) bleiben draußen.
@@ -259,6 +261,7 @@ async function ladeRohFrisch(heute: string) {
     meilensteine: (ms?.meilensteine ?? []).filter(m => !(m.bereich === 'business' && meilensteinSpace(m) === 'privat'))
       .map(m => (m.id && msOhneTitel.has(m.id) ? { bereich: m.bereich, ...(m.space ? { space: m.space } : {}), ...(m.einheit ? { einheit: m.einheit } : {}), ...(m.faellig ? { faellig: m.faellig } : {}), fortschritt: m.fortschritt, erledigt: m.erledigt } : m)),
     kapa,
+    fulfillment,
     fte: einst.fte,
     ziele: einst.ziele ?? {},
     kapazitaet: einst.kapazitaet ?? {},
