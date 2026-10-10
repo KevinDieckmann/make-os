@@ -40,6 +40,9 @@ import { EnergieView } from './EnergieView';
 import { GesundheitIndex, GesundheitIndexKurz } from './gesundheit/GesundheitIndex';
 import { SportKurz } from './sport/SportKurz';
 import { HeuteZuerst } from './gesundheit/HeuteZuerst';
+import { SchlafHilfeKarte } from './gesundheit/SchlafHilfeKarte';
+import { TagesCheckKarte } from './gesundheit/TagesCheckKarte';
+import { ErnaehrungHeuteKarte } from './gesundheit/ErnaehrungHeuteKarte';
 import { EinwilligungHinweis } from './gesundheit/EinwilligungHinweis';
 import { useZuZiel } from './ziel';
 import { WEG } from '@/lib/wege';
@@ -254,9 +257,11 @@ export function GesundheitView() {
         <>
           <Flaeche seite="gesundheit-heute">
           {/* „Zuerst“ (09.10.): was morgens oben steht — Tagesform · Schlaf · Training heute · Countdown, je Person einstellbar; nur die EIGENE
-              Ansicht (der Sport-Bestand ist persönlich). Platz für „Schlaf-Hilfe“ und „Ernährung heute“ (eigene Bauteile eines anderen Pakets:
-              components/os/gesundheit/SchlafHilfeKarte, ErnaehrungHeuteKarte) — hier einhängen, sobald es sie gibt. */}
+              Ansicht (der Sport-Bestand ist persönlich). Darunter (10.10.) Schlaf-Hilfe und Ernährung heute — nur die EIGENE Ansicht, ohne
+              Einwilligung (a) zeichnen die Karten nichts (der Hinweis steht oben). Der Tages-Check steht neben „Drei Fragen“. */}
           {eigene && <Kachel id="zuerst" titel="Zuerst" breite={6}><HeuteZuerst heute={heute} rec={rec} schlaf={schlaf} strain={strain} kw={kw && kw.tag === v?.stand ? kw : undefined} /></Kachel>}
+          {eigene && <Kachel id="schlaf-hilfe" titel="Schlaf-Hilfe" breite={3}><SchlafHilfeKarte i={1} /></Kachel>}
+          {eigene && <Kachel id="ernaehrung-heute" titel="Ernährung heute" breite={3}><ErnaehrungHeuteKarte i={2} /></Kachel>}
           {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
           {eigene && <Kachel id="fluss" titel="Für dich" breite={6}><FlussKarte bereich="gesundheit" farbe={LEUCHT.gut} /></Kachel>}
           <Kachel id="index-kurz" titel="Gesundheits-Index" breite={3}><GesundheitIndexKurz fuer={!eigene ? ansicht : undefined} onOeffnen={() => geheZu('index')} stand={hl} /></Kachel>
@@ -321,6 +326,7 @@ export function GesundheitView() {
             </div>
           </Karte>
           </Kachel>
+          {eigene && <Kachel id="tages-check" titel="Tages-Check" breite={3}><TagesCheckKarte i={2} /></Kachel>}
           {eigene && (
             <Kachel id="drei-fragen" titel="Drei Fragen" breite={3}>
             <Karte i={2} akzent={LEUCHT.schlaf}>
