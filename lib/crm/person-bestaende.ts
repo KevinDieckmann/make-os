@@ -970,7 +970,10 @@ export async function personAufzaehlen(id: string) {
   // Medien unterwegs (09.10., Paket 5): Fotos/Videos, auf denen die Person markiert ist, und ihre Einwilligungen (Angaben — Bilder auf Anfrage).
   const { medienAuskunft } = await import('@/lib/medien/datenschutz');
   const medien = await medienAuskunft(id).catch(() => null);
-  return { ...verweise, rechnungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
+  // Fulfillment (10.10.): Stakeholder-Einträge (C1), Antworten/Puls/Unterlagen-Metadaten (C2) und berufliche Personenkarten (C3) — Kopie (Art. 15 Abs. 3).
+  const { fulfillmentAuskunft } = await import('@/lib/fulfillment/auskunft');
+  const fulfillment = await fulfillmentAuskunft(m).catch(() => null);
+  return { ...verweise, fulfillment, rechnungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

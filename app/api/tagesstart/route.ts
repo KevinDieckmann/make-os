@@ -152,6 +152,20 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Produkte: Fortschritt', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0d3) Fulfillment (10.10., FULFILLMENT_KONZEPT.md): Onboarding-Vorschläge, Nachsorge, Puls, Art.-14-Uhr — nur Vorschläge in den Stapel
+  //      (+ Glocke), idempotent über Marken; verschickt, eingeladen oder gestartet wird nichts (lib/fulfillment/morgenlauf.ts → die drei Pakete).
+  try {
+    const h = (await imHaushaltOderSystemlauf(req)) ? await haushaltDesInhabers() : null;
+    if (!h) schritte.push({ name: 'Fulfillment', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { fulfillmentMorgenlauf } = await import('@/lib/fulfillment/morgenlauf');
+      const f = await fulfillmentMorgenlauf(h, today);
+      schritte.push({ name: 'Fulfillment', ok: true, info: f.text });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Fulfillment', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 0e) CRM-Papierkorb der übrigen Listen (04.10., lib/crm/ablage.ts): Firmen, Mandate, Events, Segmente, Beiträge, Ausgaben,
   //     Kampagnen — älter als 30 Tage und ohne Verweise → endgültig; Events mit Kalender-Termin/Übergaben nur von Hand.
   try {

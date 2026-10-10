@@ -715,6 +715,39 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'bis der Haushalt Stufen, Stationen und Pakete entfernt bzw. die Instanz gelöscht wird; der Fortschritt je Mandat bleibt so lange wie das Mandat; Konto löschen tilgt den Speichernamen nicht automatisch',
     kategorie: ['beschaeftigte'],
   }),
+  // Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1, lib/fulfillment/speicher.ts): fünf Einträge, alle Bereich Business, Haushalt des Inhabers.
+  mit(H('fulfillment--*', 'Fulfillment des Haushalts: Prozess-Vorlagen (Landkarte, Pakete, Abläufe), Bibliothek der Bausteine (Skripte, Workbooks, Checklisten, Mail-Vorlagen, Kennzahl-Definitionen), Rituale, Zuordnung Produkt → Vorlage, Zusatz-Aufträge der Analyse-Agenten, Einstellungen (Kunden-Link-Schalter, Puls-Schwelle), Import-Läufe (Vorher-Stände), Marken. Geschäftswissen, keine Daten Dritter; Personen nur als Speichername eines Kontos.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung und Erbringung der eigenen Leistungen durch die Mitglieder des Haushalts; Personen nur als Speichername',
+    art15: 'alle Konten des Haushalts sehen den Bestand unter Produkte & Mandate › Fulfillment (GET /api/fulfillment); Daten Dritter stehen hier nicht',
+    loeschfrist: 'bis der Haushalt Vorlagen und Bausteine entfernt bzw. die Instanz gelöscht wird; Import-Läufe 30 Tage (Rückgängig); Konto löschen tilgt den Speichernamen („[gelöscht]“)',
+    kategorie: ['vertraulich'],
+  }),
+  mit(T('fulfillment-faelle--*', 'Je Mandat der laufende Fall: Kopie der Prozess-Struktur mit Status, Freigaben, Onboarding, Zusammenarbeits-Vereinbarung, Stakeholder-Karte (nur Kontakt-Kennung + Rolle, Einfluss, Haltung, Notiz), Entscheidungs-Log, Rituale (Termin-Kennungen), Mitschriften im 4-Zeilen-Standard, Quick Wins, Kick-off-Fragen, Wert-Konto, Befähigung, Wirkungsbericht, Marken. Art. 17: Kennung der Person → „[gelöscht]“, ihre Notiz leer, der Fall bleibt (person-weitere.ts).', 'fulfillment-mandatsdaten'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Vertrag mit dem Kunden) und lit. f (Führung des Mandats: wer entscheidet, wer unterstützt)',
+    art15: 'Kontakt: die Auskunft nennt die Stakeholder-Einträge der Person (Rolle, Einfluss, Haltung, Notiz — lib/fulfillment/auskunft.ts); Konten des Haushalts sehen den Fall unter Fulfillment',
+    loeschfrist: 'Haltung und Notiz der Stakeholder 12 Monate nach Mandatsende (Frist „fulfillment-mandatsdaten“, einstellbar); sonst so lange wie das Mandat — wird es endgültig gelöscht, fällt der Fall im Fristen-Lauf weg',
+  }),
+  mit(E('fulfillment-kunde--*', 'Kunden-Links (nur Hash des Tokens), Formular-Antworten (Playbook, Workbooks), Puls-Anfragen (nur Hash) und Puls-Antworten (Wert, Satz), Metadaten der Unterlagen (Name, Typ, Größe, Status). Art. 17: Einträge, die die Person nennen, fallen weg (person-weitere.ts).', 'fulfillment-mandatsdaten'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Durchführung des Mandats); Information nach Art. 13 durch den Hinweis auf der Kunden-Seite',
+    art15: 'Kontakt: die Auskunft nennt Antworten, Puls-Sätze und Unterlagen-Metadaten, die die Person nennen (lib/fulfillment/auskunft.ts); der Kunde sieht seine eigenen Antworten über seinen Link',
+    loeschfrist: 'Antworten und Puls-Sätze 12 Monate nach Mandatsende (Frist „fulfillment-mandatsdaten“); Unterlagen 90 Tage nach Mandatsende (Frist „fulfillment-unterlagen“), außer sie wurden als Beleg übernommen',
+  }),
+  mit(T('fulfillment-dossiers--*', 'Je Mandat das Dossier der Analyse: Eingaben (Firma, Domains, Register), Abschnitte mit Aussagen (Quelle + Datum je Aussage), Quellen, Läufe der Analyse-Agenten mit Kosten und Entwürfen, Freigaben F1/F2, Interessenabwägung, Prüfbericht, Diagnose-Entwurf. Personen nur als Verweis auf eine Personenkarte (`pp-…`); Art. 17: Nennungen getilgt (person-weitere.ts).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Analyse im Mandat) und lit. f (öffentlich zugängliche Firmenangaben, Interessenabwägung je Dossier)',
+    art15: 'Kontakt: Nennungen der Person stehen in den Personenkarten (fulfillment-personen--*, Auskunft dort); Konten des Haushalts sehen das Dossier unter Fall › Analyse',
+    loeschfrist: 'Entwürfe von Läufen 90 Tage nach dem Lauf; sonst so lange wie das Mandat — wird es endgültig gelöscht, fällt das Dossier im Fristen-Lauf weg',
+    kategorie: ['vertraulich'],
+  }),
+  mit(E('fulfillment-personen--*', 'Berufliche Personenkarten je Mandat (Funktion, Name, optional Kontakt-Kennung, Werdegang/Themen/Auftritte — je Angabe Quelle und Datum, nur beruflich), Stand der Information nach Art. 14, Löschtag, Vermerke gelöschter Karten nur als Anzahl. Art. 17: Karten der Person fallen weg (person-weitere.ts).', 'fulfillment-personen'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — berufliche Recherche im Mandat, Interessenabwägung je Dossier dokumentiert; Information nach Art. 14 durch MAKE als Verantwortlicher (Hinweis, keine Rechtsberatung)',
+    art15: 'Kontakt: die Auskunft nennt die Karten, die die Person nennen (Name oder Kontakt-Kennung — lib/fulfillment/auskunft.ts); sehen dürfen sie nur der Inhaber und Mitglieder mit vollem Zugang',
+    loeschfrist: '90 Tage nach Mandatsende (Frist „fulfillment-personen“, einstellbar 30–365 Tage) — dann fällt die Karte weg, nur der Vermerk (Anzahl) bleibt',
+  }),
+  mit({ muster: 'fulfillment-unterlagen', bezug: 'dritte', behandlung: 'ausgenommen', frist: 'fulfillment-unterlagen', grund: 'Dateien der Fulfillment-Unterlagen (<daten>/fulfillment-unterlagen, verschlüsselt über die Bild-Ablage, Name ud-<uuid>.bin) — kein Bestand; Verweis, Art. 15/17 und Frist über die Metadaten in fulfillment-kunde--*.' }, {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Durchführung des Mandats)',
+    art15: 'über die Metadaten der Unterlage (fulfillment-kunde--*); Download nur intern als Anhang',
+    loeschfrist: '90 Tage nach Mandatsende (Frist „fulfillment-unterlagen“), außer als Beleg übernommen; fällt die Metadaten-Zeile weg, entfernt der Fristen-Lauf die Datei',
+  }),
   K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
@@ -785,6 +818,8 @@ const IN_BUSINESS: readonly string[] = [
   'medien--*', 'team--*', 'planung-einheiten--*', 'finance', 'business-eroeffnung',
   // Unternehmen › Schild (10.10.): nur Business-Gesellschaften — getrennt vom gemischten Register; Head of Recht (10.10.) ebenso
   'unternehmen-schild--*', 'recht-check--*',
+  // Fulfillment (10.10.): Vorlagen, Fälle, Kunde (Links/Antworten/Puls), Dossiers, Personenkarten und der Datei-Ordner — nur Business
+  'fulfillment--*', 'fulfillment-faelle--*', 'fulfillment-kunde--*', 'fulfillment-dossiers--*', 'fulfillment-personen--*', 'fulfillment-unterlagen',
 ];
 const JE_PERSON: readonly string[] = [
   // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber

@@ -369,8 +369,46 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'ereignisse--*', muster: /^ereignisse--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('eintraege') },
   // Terminbuchungen (29.09., K4): die Buchungen der Person fallen weg (Name, Adresse, Kontakt-Kennung); Seiten bleiben.
   { name: 'buchung--*', muster: /^buchung--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('buchungen') },
+  // Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1): Fall (Stakeholder-Kennung getilgt, Notiz weg), Kunde (Antworten/Puls/Unterlagen, die die
+  // Person nennen, raus), Dossier (getilgt), Personenkarten (Karten der Person raus).
+  { name: 'fulfillment-faelle--*', muster: /^fulfillment-faelle--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: fulfillmentFaelleOhne },
+  { name: 'fulfillment-kunde--*', muster: /^fulfillment-kunde--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: fulfillmentKundeOhne },
+  { name: 'fulfillment-dossiers--*', muster: /^fulfillment-dossiers--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  { name: 'fulfillment-personen--*', muster: /^fulfillment-personen--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('karten') },
 ];
 
+/**
+ * Fulfillment-Fälle (10.10., FULFILLMENT_KONZEPT.md 8.1): der Stakeholder-Eintrag der Person bleibt (Rolle, Einfluss, Haltung — der Fall braucht
+ * die Karte), ihre Kennung wird „[gelöscht]“, die Notiz fällt weg; Nennungen in Freitexten werden getilgt. Der Fall selbst bleibt.
+ */
+function fulfillmentFaelleOhne(cur: Obj, m: PersonMerkmale): { neu: Obj; n: number } {
+  const faelle = cur?.faelle && typeof cur.faelle === 'object' && !Array.isArray(cur.faelle) ? cur.faelle as Obj : null;
+  let n = 0;
+  let basis = cur;
+  if (faelle) {
+    let anders = false;
+    const neu: Obj = {};
+    for (const [k, f] of Object.entries(faelle)) {
+      const st = Array.isArray((f as Obj)?.stakeholder) ? (f as Obj).stakeholder as Obj[] : null;
+      if (!st?.some(s => s?.kontaktId === m.id)) { neu[k] = f; continue; }
+      anders = true;
+      neu[k] = { ...(f as Obj), stakeholder: st.map(s => { if (s?.kontaktId !== m.id) return s; n++; const { notiz: _notiz, ...rest } = s; return { ...rest, kontaktId: GELOESCHT }; }) };
+    }
+    if (anders) basis = { ...cur, faelle: neu };
+  }
+  const t = tilgeTief(basis, m);
+  return { neu: t.wert, n: n + t.n };
+}
+/** Fulfillment-Kunde (10.10.): Formular-Antworten, Puls-Anfragen/-Antworten und Unterlagen-Metadaten, die die Person nennen, fallen weg (Links bleiben). */
+function fulfillmentKundeOhne(cur: Obj, m: PersonMerkmale): { neu: Obj; n: number } {
+  let o = cur, n = 0;
+  for (const feld of ['formulare', 'pulsAnfragen', 'puls', 'unterlagen']) {
+    const r = ohneNennung(liste(o, feld), m);
+    if (r.n) { o = { ...o, [feld]: r.liste }; n += r.n; }
+  }
+  const t = tilgeTief(o, m);
+  return { neu: t.wert, n: n + t.n };
+}
 /** Welcher weitere Speicher gilt für diesen Bestandsnamen? */
 export const weitererSpeicher = (bestand: string) => WEITERE_SPEICHER.find(s => s.muster.test(bestand)) ?? null;
 

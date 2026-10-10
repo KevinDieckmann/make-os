@@ -30,6 +30,8 @@ export const KONTAKT_JE_BEREICH: Readonly<Record<string, readonly string[]>> = {
   whatsapp: ['vv-whatsapp'],
   // Medien (09.10., Nachzug): die Person ist auf Fotos/Videos markiert bzw. hat eingewilligt (lib/medien/datenschutz.ts `medienAuskunft`).
   medien: ['vv-medien'],
+  // Fulfillment (10.10.): Stakeholder-Einträge, Antworten/Puls/Unterlagen, berufliche Personenkarten (lib/fulfillment/auskunft.ts).
+  fulfillment: ['vv-fulfillment', 'vv-fulfillment-analyse', 'vv-kundenlink'],
 };
 
 const gefuellt = (v: unknown): boolean => Array.isArray(v) ? v.length > 0 : v && typeof v === 'object' ? Object.keys(v as object).length > 0 : !!v;
@@ -53,6 +55,8 @@ export function kontaktBereiche(a: Record<string, unknown>): string[] {
   if (gefuellt(a.aufgaben)) b.add('aufgaben');
   const md = (a.medien ?? {}) as { medien?: unknown; einwilligungen?: unknown };
   if (gefuellt(md.medien) || gefuellt(md.einwilligungen)) b.add('medien');
+  const ff = (a.fulfillment ?? {}) as { stakeholder?: unknown; kunde?: unknown; personen?: unknown };
+  if (gefuellt(ff.stakeholder) || gefuellt(ff.kunde) || gefuellt(ff.personen) || /fulfillment/.test(weitere)) b.add('fulfillment');
   return Array.from(b).sort();
 }
 

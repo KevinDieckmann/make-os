@@ -422,6 +422,62 @@ export function verarbeitungEmailKundenNachtragen(vorhanden: readonly Verarbeitu
   return vorhanden.some(v => v.id === VV_EMAIL_KUNDEN_ID) ? [...vorhanden] : [...vorhanden, verarbeitungEmailKunden(jetzt)];
 }
 
+// ── Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1/C0) — drei Verarbeitungen, idempotent nachgetragen wie `vv-email-imap` ─────────────────
+// Lieferung im Mandat (Fall, Stakeholder, Wert-Konto), die Analyse-Strecke mit beruflicher Personenrecherche (Art. 6 Abs. 1 lit. f, Art. 14 durch
+// MAKE als Verantwortlicher) und der Kunden-Link (Art. 6 Abs. 1 lit. b, Art. 13 auf der Seite; kommt ausgeschaltet). Hinweis, keine Rechtsberatung —
+// die Texte liest der Anwalt einmal gegen (FULFILLMENT_KONZEPT.md Abschnitt 13).
+export const VV_FULFILLMENT_ID = 'vv-fulfillment';
+export const VV_FULFILLMENT_ANALYSE_ID = 'vv-fulfillment-analyse';
+export const VV_KUNDENLINK_ID = 'vv-kundenlink';
+export function verarbeitungenFulfillment(jetzt: string): Verarbeitung[] {
+  const stand = tagVon(jetzt);
+  return [
+    {
+      id: VV_FULFILLMENT_ID, name: 'Fulfillment (Lieferung im Mandat)',
+      zweck: 'Leistungen im Mandat nach einer Prozess-Vorlage erbringen und steuern: Onboarding, Zusammenarbeits-Vereinbarung, Stakeholder-Karte (wer entscheidet, wer unterstützt), Entscheidungs-Log, Rituale, Mitschriften, Quick Wins, Wert-Konto (vorher → jetzt → Ziel), Befähigung und Wirkungsbericht.',
+      personen: 'Ansprechpersonen und Beschäftigte des Kunden (als Kontakt der Kartei); die Personen des Haushalts, die das Mandat führen',
+      daten: 'Kontakt-Kennung, Rolle, Einfluss, Haltung und Notiz je Stakeholder; Entscheidungen, Mitschriften (Anlass, Ergebnis, nächster Schritt, Frist), Status der Schritte, Freigaben, Zielwerte und Messungen',
+      rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Vertrag mit dem Kunden) und lit. f (Führung des Mandats)',
+      empfaenger: 'keine Weitergabe; Hetzner (Hosting); an den Kunden nur, was die Kunden-Ansicht zeigt (Positivliste, ohne Stakeholder-Karte)',
+      empfaengerIds: ['hetzner'],
+      drittland: 'keins',
+      loeschfrist: 'Haltung und Notiz der Stakeholder 12 Monate nach Mandatsende (Frist „fulfillment-mandatsdaten“); der Fall so lange wie das Mandat',
+      toms: 'nur Haushalt des Inhabers, Bereich Business serverseitig getrennt (Privat sieht nichts); Änderungen nur per Sitzung, Protokoll ohne Werte; verschlüsselte Bestände',
+      verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand,
+    },
+    {
+      id: VV_FULFILLMENT_ANALYSE_ID, name: 'Fulfillment: Analyse und berufliche Personenrecherche',
+      zweck: 'Vor und zu Beginn eines Mandats öffentlich zugängliche Angaben über die Firma des Kunden (Markt, Wettbewerb, Außendarstellung, Vertrieb, Register) und beruflich über Personen in Leitungsfunktion zusammentragen — als Dossier mit Quelle und Datum je Aussage, Grundlage für Diagnose und Kick-off.',
+      personen: 'Gesellschafter, Geschäftsführung und Leitungsfunktionen des Kunden (nur beruflich)',
+      daten: 'Name, Funktion, beruflicher Werdegang, öffentliche Auftritte und Themen — je Angabe Quelle und Abrufdatum; nie private Angaben, nie besondere Kategorien',
+      rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Vorbereitung des Mandats; Interessenabwägung je Dossier dokumentiert); Information der Personen nach Art. 14 durch MAKE als Verantwortlicher',
+      empfaenger: 'Hetzner (Hosting); Anthropic für die Auswertung erst nach Bestätigung je Lauf; Google Vertex AI nur für einen ausdrücklich bestätigten Tiefenbericht (nur für die auslösende Person)',
+      empfaengerIds: ['hetzner', 'anthropic', 'google-vertex'],
+      drittland: 'Anthropic: Standardvertragsklauseln/Data Privacy Framework — prüfen; Google Vertex AI: Verarbeitung in der EU nach Vertrag — prüfen',
+      loeschfrist: 'Personenkarten 90 Tage nach Mandatsende (Frist „fulfillment-personen“, einstellbar); Entwürfe der Läufe 90 Tage; das Dossier so lange wie das Mandat',
+      toms: 'Personenteil getrennt vom Dossier, nur Inhaber und Mitglieder mit vollem Zugang, Lese-Protokoll; Web-Abruf nur öffentlicher Adressen (Text, Größen- und Zeitgrenze); fremder Text nur als Daten; jeder Lauf einzeln bestätigt',
+      verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand,
+    },
+    {
+      id: VV_KUNDENLINK_ID, name: 'Fulfillment: Kunden-Link (Kunden-Ansicht, Formulare, Puls)',
+      zweck: 'Dem Kunden über einen geheimen Link seinen Stand zeigen (Zeitstrahl, wartet auf euch, Wert-Konto), das Kunden-Playbook und Workbooks ausfüllen lassen, Unterlagen annehmen und den Kunden-Puls (0–10) erfragen.',
+      personen: 'Ansprechpersonen des Kunden, die den Link nutzen',
+      daten: 'Formular-Antworten, Puls-Wert und -Satz, Metadaten und Inhalt hochgeladener Unterlagen; der Link selbst nur als Hash',
+      rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Durchführung des Mandats); Information nach Art. 13 auf der Seite',
+      empfaenger: 'keine Weitergabe; Hetzner (Hosting)',
+      empfaengerIds: ['hetzner'],
+      drittland: 'keins',
+      loeschfrist: 'Antworten und Puls-Sätze 12 Monate nach Mandatsende (Frist „fulfillment-mandatsdaten“); Unterlagen 90 Tage nach Mandatsende (Frist „fulfillment-unterlagen“), außer als Beleg übernommen',
+      toms: 'kommt ausgeschaltet (Betrieb und Inhaber schalten frei); Token nur im Fragment, nur als Hash gespeichert, zeitkonstanter Vergleich; gleiche Antwort für jede Fehlerart; Drossel, Größen, Typ am Inhalt; Unterlagen verschlüsselt, erst nach Prüfung für die Analyse',
+      verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand,
+    },
+  ];
+}
+export function verarbeitungenFulfillmentNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  const fehlt = verarbeitungenFulfillment(jetzt).filter(v => !vorhanden.some(x => x.id === v.id));
+  return fehlt.length ? [...vorhanden, ...fehlt] : [...vorhanden];
+}
+
 // ── Verarbeitung „WhatsApp Business (Meta, Auftragsverarbeiter)“ (07.10., Inbox 2 Paket 5) — idempotent nachgetragen ──
 // Kevin 06.10.: eigene Business-Nummer direkt bei Meta (Cloud API). Fakten: research/inbox/FAKTEN_WHATSAPP_IMAP.md (A4). Hinweis, keine
 // Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung ist ein To-do.
@@ -617,6 +673,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = verarbeitungEmailKundenNachtragen(l, jetzt);
+  // Fulfillment (10.10.): Lieferung im Mandat, Analyse mit beruflicher Personenrecherche, Kunden-Link.
+  l = verarbeitungenFulfillmentNachtragen(l, jetzt);
   l = alteFassungenHeben(l);
   l = verantwortlichHeben(l);
   // Mac-Zulieferer aus (08.10., Lücke 10): die Verarbeitung „Zulieferung vom Rechner …“ findet nicht mehr statt → archiviert (nie gelöscht).

@@ -75,6 +75,8 @@ function rm(methoden: Partial<Record<Methode, RoutenKlasse>>, warum: string, tor
 }
 
 const MT = 'modul:markttraktion' as const;
+/** Fulfillment (10.10.): eigenes Modul — einzeln verkaufbar (Plattform-Regel); bis zur Lizenz-Prüfung das Haushalts-Tor über `fulfillmentZugang`. */
+const FF = 'modul:fulfillment' as const;
 
 /** Schlüssel = Pfad unter app/api ohne `/route.ts` (z. B. `state/kompass`, `buchung/[slug]`). */
 export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
@@ -368,6 +370,26 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/umzug': r('POST', MT, 'Umzug.'),
   'crm/verbindungen': r('GET,POST', MT, 'Verbindungsprüfung.'),
   'crm/visitenkarte': r('POST', MT, 'Visitenkarte lesen (KI).'),
+
+  // ── Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 9) — Modul `fulfillment`, Tor `fulfillmentZugang` (Haushalt des Inhabers, Sicht Privat 403,
+  //    Schreiben nur per Sitzung + Bau-Kennung, Kunden-Link-Schalter nur Inhaber). C0 legt jede Route als Stub an (Tor + 501), die Pakete füllen sie.
+  'fulfillment': r('GET,PATCH', FF, 'Fulfillment (C1): Vorlagen, Bibliothek, Rituale, Zuordnung, Einstellungen, Onboarding-Kandidaten, Kennzahlen; PATCH Einzel-Ops mit Stand (409) — Business; Kunden-Link-Schalter nur Inhaber; Dienstweg schreibt nie.', 'fulfillmentZugang'),
+  'fulfillment/import': r('POST', FF, 'Import der Vorlagen/Abläufe (C1): Vorschau, Übernehmen mit vorschauId, Rückgängig mit laufId; ≤ 4 MB — nur per Sitzung.', 'fulfillmentZugang'),
+  'fulfillment/fall': r('GET,POST,PATCH', FF, 'Ein Fall je Mandat (C1): lesen (Lese-Protokoll „fulfillment“), starten (anfrageId), Ops am Fall mit Stand — nur Mandate von Business-Gesellschaften; Dienstweg schreibt nie.', 'fulfillmentZugang'),
+  'fulfillment/cockpit': r('GET', FF, 'Mandats-Cockpit (C1): Zusammenfassung je Fall, „was hängt“ — nur lesen.', 'fulfillmentZugang'),
+  'fulfillment/wirkung': r('GET,POST', FF, 'Wirkungsbericht (C1): PDF erzeugen (verschlüsselt in der Ablage), GET liefert es als Anhang — versendet wird nur per Klick in der Inbox.', 'fulfillmentZugang'),
+  'fulfillment/kunde': r('GET,POST', FF, 'Kunden-Link intern (C2): Stand (nie das Token), Link anlegen (Token genau einmal), widerrufen, Rechte, Puls, Unterlagen-Status — nur per Sitzung; Lese-Protokoll.', 'fulfillmentZugang'),
+  'fulfillment/kunde/datei': r('GET,POST,DELETE', FF, 'Interne Unterlagen (C2): hochladen (Typ am Inhalt), Download nur als Anhang, entfernen (nicht bei Beleg) — nur per Sitzung.', 'fulfillmentZugang'),
+  'fulfillment/kunde/vorschau': r('GET', FF, '„So sieht der Kunde es“ (C2): genau die serverseitig gefilterte Kunden-Sicht — nur lesen.', 'fulfillmentZugang'),
+  'fulfillment/dossier': r('GET,POST', FF, 'Dossier je Mandat (C3) ohne Personenteil: anlegen, Eingaben, F1/F2, Interessenabwägung, Übernehmen/Verwerfen, Prüfen — Lese-Protokoll; Dienstweg schreibt nie.', 'fulfillmentZugang'),
+  'fulfillment/analyse': r('GET,POST', FF, 'Analyse-Läufe (C3): Stand und Kostenschätzung je Lauf; Start NUR per Klick auf genau diesen Lauf mit bestätigtem Betrag (kein Autostart), Abbruch, Tiefenbericht — nur per Sitzung.', 'fulfillmentZugang'),
+  'fulfillment/personen': r('GET,POST', FF, 'Personenteil der Dossiers (C3): berufliche Personenkarten, Art.-14-Stand, Verknüpfen, Löschen — nur Inhaber oder Mitglied ohne finanzRecht „business“ (personenteilZugang); Lese-Protokoll „personenrecherche“.', 'personenteilZugang'),
+  'fulfillment/dossier/leseteil': r('GET', 'person', 'Leseteil „Tiefenbericht — nur für dich“ (C3): nur die Person der Sitzung, die ihn ausgelöst hat (andere 404); nie Dienstweg.'),
+  // ── Kunden-Link (öffentlich, C2) — kommt AUSGESCHALTET: enge Regex in der Middleware (KUNDE_OFFEN), handelt für niemanden, gleiche 404 für jede Fehlerart.
+  'kunde/[link]': r('GET', 'offen', 'Kunden-Sicht über den Kunden-Link (C2): Token im Kopf, nie als Person; Umgebung UND Instanz-Schalter müssen an sein, sonst dieselbe 404.'),
+  'kunde/[link]/formular': r('POST', 'offen', 'Formular-Antworten eines Abschnitts über den Kunden-Link (C2): Stempel, Honigtopf, ≤ 64 KB, Drossel — sonst dieselbe 404.'),
+  'kunde/[link]/upload': r('POST', 'offen', 'Eine Unterlage über den Kunden-Link (C2): nur mit Recht „upload“ (Vorgabe aus), Typ am Inhalt, Größen, Drossel — sonst dieselbe 404.'),
+  'kunde/[link]/puls': r('POST', 'offen', 'Kunden-Puls (C2): Wert 0–10 + ein Satz mit dem Puls-Token (öffnet nur den Puls) — sonst dieselbe 404.'),
 
   // ── Buchung (öffentlich) ───────────────────────────────────────────────────────────────────────────────────
   'buchung/[slug]': r('GET,POST', 'offen', 'Öffentliche Buchungsseite (K4): enge Regex in der Middleware, Drossel, Honigtopf, Stempel, Größe — handelt nie als Person.'),

@@ -44,6 +44,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   // Head of Recht (10.10.): Aufgabe aus dem Recht-Check, Katalog-Risiko übernehmen, Checkliste als Entwurf, Vertragsfrist am Vertrag, Anwalts-Mappe
   // (lib/recht/server.ts) — nur Personen mit Zugang zur Firmen-Akte; über die Schreibstellen von Schild, Register, Aufgaben und Ablage.
   recht: async () => (await import('@/lib/recht/server')).RECHT_STAPEL_ART,
+  // Fulfillment (10.10.): Onboarding starten, Nachsorge (C1), Puls → Gespräch anbieten (C2), Analyse-Hinweise (C3) — verteilt nach Präfix
+  // der Kennung (lib/fulfillment/stapel.ts); jeder Weg nur über die Schreibstellen des Pakets.
+  fulfillment: async () => (await import('@/lib/fulfillment/stapel')).FULFILLMENT_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */
