@@ -6,7 +6,9 @@
 // in der Software wird:
 //   • Datei → Head des Katalogs (lib/agenten/katalog.ts) über Kennung, Kurzname, Name und Sprach-Synonyme (`ALIASE`, z. B. „finance“ →
 //     Finanzen) — der Kopf `head`/`unter` (+ `type: mitarbeiter`) macht daraus einen Mitarbeiter unter diesem Head. Kein Treffer → übersprungen
-//     (in der Vorschau wählbar: anderer Head oder „als Mitarbeiter unter …“). NUR Business-Heads (Regel 09.10.: „Firma und Privat liegen
+//     (in der Vorschau wählbar: anderer Head oder „als Mitarbeiter unter …“). Abteilungen ohne eigenen Head im Katalog, die als Mitarbeiter unter
+//     einen Head gehören (`MITARBEITER_ALIASE`, z. B. People/Founder-Care → CEO-Office, Entscheidung 10.10.), schlagen „als Mitarbeiter unter …“ vor
+//     (in der Vorschau änderbar). NUR Business-Heads (Regel 09.10.: „Firma und Privat liegen
 //     getrennt — auch in der Datenhaltung“): eine Datei, die zu einem Privat-Head passt, wird übersprungen — Privat-Agenten richtet jede Person
 //     selbst ein, nie aus dem Firmen-Brain.
 //   • Abschnitte Auftrag/Mission, Darf, Freigabe/Grenzen → EIN Auftrag (`HeadEinstellung.auftrag`, ≤ 4.000 Zeichen — darüber nicht übernommen,
@@ -201,10 +203,22 @@ export const ALIASE: Readonly<Record<string, readonly string[]>> = {
   assistenz: ['assistant', 'persoenliche assistenz', 'assistent'],
 };
 
+/**
+ * Abteilungen, für die der Katalog KEINEN eigenen Head hat, die aber als Mitarbeiter unter einen (Business-)Head gehören — Head-Kennung →
+ * Sprach-Bezeichnungen der Abteilung (wie `ALIASE`: nur Bezeichnungen, keine Inhalte, keine Namen, keine Firma). Gelesen über dieselben
+ * Kandidaten (Kopf, Dateiname, Titel, Index); ein Treffer schlägt „als Mitarbeiter unter …“ vor — in der Vorschau änderbar wie jede Zuordnung.
+ * Ein eigener Head des Katalogs geht immer vor (dieselbe Bezeichnung darf hier nie zugleich ein Head-Schlüssel sein — Test).
+ * Entscheidung 10.10.: People/Founder-Care → als Mitarbeiter unter CEO-Office (Business). Bewusst NICHT „personal“ (englisch = privat).
+ */
+export const MITARBEITER_ALIASE: Readonly<Record<string, readonly string[]>> = {
+  strategie: ['people', 'founder care', 'people care', 'people culture', 'hr', 'human resources', 'personalwesen'],
+};
+
 const schluesselVon = (h: HeadDef): Set<string> => new Set([
   normal(h.id), normal(h.kurz), normal(h.name), normal(h.name.replace(/^head of\s+/i, '')), ...(ALIASE[h.id] ?? []).map(normal),
 ].filter(Boolean));
 const SCHLUESSEL: ReadonlyMap<string, Set<string>> = new Map(KATALOG.map(h => [h.id, schluesselVon(h)]));
+const MA_SCHLUESSEL: ReadonlyMap<string, Set<string>> = new Map(Object.entries(MITARBEITER_ALIASE).map(([id, l]) => [id, new Set(l.map(normal).filter(Boolean))]));
 
 /** Teile eines Titels: ganz, ohne Klammern, an „/“ und „&“ geteilt. Rein. */
 const titelTeile = (t: string): string[] => {
@@ -217,7 +231,8 @@ export interface Zuordnung { headId: string | null; als: ZielArt; grund: string 
 
 /**
  * Welcher Head gehört zu einer Agenten-Notiz? Reihenfolge der Kandidaten: Kopf `head`/`unter` (+ `type: mitarbeiter` → Mitarbeiter),
- * `abteilung`, Dateiname, Titel (ganz und in Teilen), Anzeigename im Index. Der erste Kandidat mit GENAU einem passenden Head gewinnt. Rein.
+ * `abteilung`, Dateiname, Titel (ganz und in Teilen), Anzeigename im Index. Der erste Kandidat mit GENAU einem passenden Head gewinnt —
+ * passt er auf keinen Head, aber auf genau eine Abteilung aus `MITARBEITER_ALIASE`, wird die Notiz ein Mitarbeiter unter deren Head. Rein.
  */
 export function zuordnen(d: AgentDatei, index: ReadonlyMap<string, string>): Zuordnung {
   const mitarbeiterArt = d.kopf.typ === 'mitarbeiter' || !!d.kopf.unter;
@@ -236,6 +251,12 @@ export function zuordnen(d: AgentDatei, index: ReadonlyMap<string, string>): Zuo
     if (treffer.length === 1) {
       const h = treffer[0];
       return { headId: h.id, als: mitarbeiterArt ? 'mitarbeiter' : 'head', grund: `${k.woher} „${k.text.slice(0, 60)}“ → ${h.name}` };
+    }
+    if (treffer.length) continue;
+    const ma = KATALOG.filter(h => MA_SCHLUESSEL.get(h.id)?.has(n));
+    if (ma.length === 1) {
+      const h = ma[0];
+      return { headId: h.id, als: 'mitarbeiter', grund: `${k.woher} „${k.text.slice(0, 60)}“ → kein eigener Head; als Mitarbeiter unter ${h.name}` };
     }
   }
   return { headId: null, als: mitarbeiterArt ? 'mitarbeiter' : 'head', grund: 'Kein passender Head im Katalog — in der Vorschau einen Head wählen (auch „als Mitarbeiter unter …“) oder überspringen.' };
