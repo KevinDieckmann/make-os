@@ -77,7 +77,8 @@ export async function POST(req: Request) {
     }
     if (b.aktion === 'entwurf') {
       const m = await mailGrundlage(mandatId, absender);
-      const basis = { ok: true, betreff: m.betreff, text: m.text, an: m.an, ...(m.ohneEmpfaenger ? { ohneEmpfaenger: m.ohneEmpfaenger } : {}), anrede: m.anrede, gesellschaft: m.gesellschaft, ...(m.datei ? { datei: m.datei } : {}) };
+      // `dok` (Fulfillment C2, 10.10.): die Vorschau zeigt Erledigt · Als Nächstes · Wartet auf euch · Wert-Konto · Puls — derselbe Inhalt wie das PDF.
+      const basis = { ok: true, betreff: m.betreff, text: m.text, an: m.an, ...(m.ohneEmpfaenger ? { ohneEmpfaenger: m.ohneEmpfaenger } : {}), anrede: m.anrede, gesellschaft: m.gesellschaft, ...(m.datei ? { datei: m.datei } : {}), dok: m.dok };
       if (b.ki !== true) return NextResponse.json(basis);
       const schranke = modellSchranke(req); if (schranke) return schranke;
       const { mailEntwurfKi } = await import('@/lib/crm/treppe-ki');

@@ -28,7 +28,7 @@ import {
   type TreppeDatei, type AnwendenErgebnis, type TreppeVorschlag,
 } from './treppe-daten';
 import { kundenZeilen, zielbild, kundenreise, kapaBedarf, stufeVonMandat, preisText, type KundenZeile } from './treppe';
-import { reportDokument, reportDateiname, mailVorlage, type ReportDokument } from './treppe-report';
+import { reportDokument, reportDateiname, mailVorlage, mitZusatz, type ReportDokument } from './treppe-report';
 import type { CrmBestand, FollowUp, Mandat } from './typen';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
@@ -190,7 +190,11 @@ async function grundlage(mandatId: string, heute: string): Promise<ReportGrundla
   const zeile = kundenZeilen({ datei, crm: { ...crm, mandate: [{ ...m, status: m.status === 'beendet' ? 'aktiv' : m.status }] }, heute })[0];
   if (!zeile) throw new TreppeFehler('Für dieses Mandat gibt es keinen Fortschritt (Status).', 400);
   const stufe = zeile.stufe ? datei.stufen.find(s => s.id === zeile.stufe!.id) ?? null : null;
-  return { h, datei, m, zeile, dok: reportDokument(zeile, stufe, m, heute, await absenderName(h, m.gesellschaft)) };
+  // Fulfillment (C2, 10.10.): mit Fall kommen „Wartet auf euch“, Wert-Konto, Puls (und bei aktivem Kunden-Link die Puls-Frage) dazu — ohne Fall
+  // liefert `reportZusatzFuer` null (wirft nie), und der Report bleibt Byte für Byte wie vorher.
+  const { reportZusatzFuer } = await import('@/lib/fulfillment/kunde/server');
+  const zusatz = await reportZusatzFuer(m.id, heute);
+  return { h, datei, m, zeile, dok: mitZusatz(reportDokument(zeile, stufe, m, heute, await absenderName(h, m.gesellschaft)), zusatz) };
 }
 
 /** Report-PDF erzeugen, verschlüsselt am Mandat ablegen und am Fortschritt vermerken. Verschickt wird NICHTS. */

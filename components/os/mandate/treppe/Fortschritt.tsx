@@ -6,6 +6,9 @@
 // nächste Stufe“ (Regel; der Head of Sales schlägt es im Stapel vor) — und der Fortschritts-Report: PDF erstellen (am Mandat abgelegt),
 // Mail vorbereiten (Vorlage Du/Sie oder KI-Entwurf mit Kennzeichnung), PDF angehängt, gesendet NUR per Klick über die Inbox
 // (POST /api/inbox/senden — Art. 18, § 7 UWG mit Rückfrage, Absender = Postfach des Business-Bereichs).
+// Fulfillment (C2, 10.10., FULFILLMENT_KONZEPT.md 5.2): mit Fall zeigt die Vorschau „Erledigt · Als Nächstes · Wartet auf euch · Wert-Konto · Kunden-Puls“;
+// EIN Klick „Senden“ macht nacheinander: PDF erstellen (wenn heute noch keins) → Puls-Link anlegen (nur wenn der Text den Platzhalter trägt, bei aktivem
+// Kunden-Link) → Mail über die Inbox → „gesendet“ vermerken. Ohne Fall ist alles wie vorher. Link „Fulfillment öffnen ›“ in den Fall.
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -17,6 +20,7 @@ import { Wahl } from '../../crm/Wahl';
 import { Feld } from '../../crm/teile';
 import { WEG } from '@/lib/wege';
 import type { Ampel } from '@/lib/crm/treppe';
+import { PULS_PLATZHALTER, hatZusatz, type ReportDokument } from '@/lib/crm/treppe-report';
 import { useTreppe, datum } from './daten';
 
 const AMPEL: Record<Ampel, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
@@ -49,7 +53,10 @@ export function MandatFortschritt({ mandatId }: { mandatId: string }) {
   return (
     <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={beschriftung}>Fortschritt im Paket</span>
+        <span style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={beschriftung}>Fortschritt im Paket</span>
+          <Link href={WEG.fall(mandatId, 'kunde')} style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Fulfillment öffnen ›</Link>
+        </span>
         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {z.ampel.gesamt && <Chip farbe={AMPEL[z.ampel.gesamt]}>{z.ampel.gesamt === 'gruen' ? 'läuft' : z.ampel.gesamt === 'gelb' ? 'im Blick behalten' : 'braucht Aufmerksamkeit'}</Chip>}
           {z.naechsteStufe && <Chip farbe={LEUCHT.gut}>reif für: {z.naechsteStufe.stufen.map(s => s.name).join(' oder ')}</Chip>}
@@ -80,12 +87,12 @@ export function MandatFortschritt({ mandatId }: { mandatId: string }) {
       {z.naechsteStufe && <div style={klein}>Reif für die nächste Stufe ({z.naechsteStufe.grund}) — der Head of Sales legt dazu einen Vorschlag in den <Link href={WEG.freigaben(undefined, 'business')} style={{ color: C.aktiv }}>Freigabe-Stapel</Link>.</div>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         <Knopf onClick={erstellen} aus={laeuft}>{laeuft ? 'Report entsteht …' : z.report.dateiId ? 'Neuen Report erstellen' : 'Fortschritts-Report erstellen'}</Knopf>
-        {z.report.dateiId && <Knopf leise onClick={() => setSenden(true)}>Mail vorbereiten</Knopf>}
+        <Knopf leise onClick={() => setSenden(true)}>{z.report.dateiId ? 'Mail vorbereiten' : 'Vorschau & senden'}</Knopf>
         {z.report.dateiId && <a href={`/api/crm/treppe/report?datei=${encodeURIComponent(z.report.dateiId)}`} download style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>↓ PDF</a>}
         <span style={klein}>{z.report.gesendetAm ? `zuletzt gesendet am ${datum(z.report.gesendetAm)}` : z.report.erstelltAm ? `erstellt am ${datum(z.report.erstelltAm)}, noch nicht gesendet` : 'noch kein Report'}{z.report.faellig ? ' · fällig (alle zwei Wochen)' : ''}</span>
       </div>
       {meldung && <Hinweis art="kritisch">{meldung}</Hinweis>}
-      {senden && <ReportSenden mandatId={mandatId} ki={lage.ki} onZu={() => setSenden(false)} onGesendet={() => { void api.schreibe([{ op: 'report-gesendet', mandatId }]); setSenden(false); }} />}
+      {senden && <ReportSenden mandatId={mandatId} ki={lage.ki} heuteErstellt={!!z.report.dateiId && z.report.erstelltAm === heuteTag()} onZu={() => setSenden(false)} onGesendet={() => { void api.schreibe([{ op: 'report-gesendet', mandatId }]); setSenden(false); }} />}
     </div>
   );
 }
@@ -106,10 +113,12 @@ function NaechsterSchritt({ wert, onSpeichern }: { wert?: { text: string; datum:
 }
 
 interface Postfach { id: string; anzeigename?: string; adresse?: string; bereich?: string | null; bereichName?: string; zustand?: string }
-interface Entwurf { betreff: string; text: string; an: { email: string; name?: string } | null; ohneEmpfaenger?: string; anrede: 'Du' | 'Sie'; gesellschaft: string; datei?: { id: string; name: string }; ki?: unknown; kiHinweis?: string }
+interface Entwurf { betreff: string; text: string; an: { email: string; name?: string } | null; ohneEmpfaenger?: string; anrede: 'Du' | 'Sie'; gesellschaft: string; datei?: { id: string; name: string }; ki?: unknown; kiHinweis?: string; dok?: ReportDokument }
+/** Heute (Berliner Tag) im Browser — nur für „heute schon ein PDF?“. */
+const heuteTag = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
 /** Mail mit dem Report: Vorlage oder KI-Entwurf, Postfach des Business-Bereichs, PDF angehängt — gesendet erst per Klick. */
-function ReportSenden({ mandatId, ki, onZu, onGesendet }: { mandatId: string; ki: boolean; onZu: () => void; onGesendet: () => void }) {
+function ReportSenden({ mandatId, ki, heuteErstellt, onZu, onGesendet }: { mandatId: string; ki: boolean; heuteErstellt: boolean; onZu: () => void; onGesendet: () => void }) {
   const { bestaetigen, dialog } = useRueckfrage();
   const [e, setE] = useState<Entwurf | null>(null);
   const [postfaecher, setPostfaecher] = useState<Postfach[] | null>(null);
@@ -121,6 +130,8 @@ function ReportSenden({ mandatId, ki, onZu, onGesendet }: { mandatId: string; ki
   const [fehler, setFehler] = useState<string | null>(null);
   const [fertig, setFertig] = useState(false);
   const anfrageId = useRef(neueId());
+  const pdfAnfrage = useRef(neueId());
+  const [schritt, setSchritt] = useState<string | null>(null);
   const laden = async (k: boolean) => {
     const r = await fetch('/api/crm/treppe/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'entwurf', mandatId, ki: k }) }).catch(() => null);
     const j = r ? await r.json().catch(() => ({})) : {};
@@ -139,13 +150,38 @@ function ReportSenden({ mandatId, ki, onZu, onGesendet }: { mandatId: string; ki
     const p = postfaecher.find(x => x.bereich === e.gesellschaft) ?? postfaecher[0];
     if (p) setPostfach(p.id);
   }, [postfaecher, postfach, e]);
+  // Ein Klick „Senden“ (Konzept 5.2): PDF (wenn heute noch keins) → Puls-Link (nur mit Platzhalter) → Mail → vermerken. Kein Schritt ohne diesen Klick.
+  const pdfSicher = async (): Promise<{ id: string; name: string } | null> => {
+    if (e?.datei && heuteErstellt) return e.datei;
+    setSchritt('PDF wird erstellt …');
+    const r = await fetch('/api/crm/treppe/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'erstellen', mandatId, anfrageId: pdfAnfrage.current }) }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok || !j.ok || !j.datei) { setFehler(String(j.fehler ?? 'Der Report wurde nicht erstellt.')); return null; }
+    setE(x => (x ? { ...x, datei: j.datei } : x));
+    return j.datei as { id: string; name: string };
+  };
+  const mitPulsLink = async (t: string): Promise<string | null> => {
+    if (!t.includes(PULS_PLATZHALTER)) return t;
+    setSchritt('Puls-Link wird angelegt …');
+    const r = await fetch('/api/fulfillment/kunde', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'puls-anfrage', mandatId }) }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok || !j.ok || typeof j.pfad !== 'string') { setFehler(`Der Puls-Link ließ sich nicht anlegen (${String(j.fehler ?? 'keine Antwort')}). Den Satz mit „${PULS_PLATZHALTER}“ aus dem Text nehmen oder später senden.`); return null; }
+    const url = typeof j.url === 'string' ? j.url : `${window.location.origin}${j.pfad}`;
+    return t.split(PULS_PLATZHALTER).join(url);
+  };
   const los = async (uwg = false): Promise<void> => {
-    if (!e?.datei) { setFehler('Erst den Report erstellen.'); return; }
     if (!postfach) { setFehler('Bitte ein Postfach des Business-Bereichs wählen (Inbox › Postfächer).'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(an.trim())) { setFehler('Bitte eine gültige Empfänger-Adresse.'); return; }
+    setFehler(null);
+    const datei = await pdfSicher();
+    if (!datei) { setSchritt(null); return; }
+    const endText = await mitPulsLink(text);
+    if (endText === null) { setSchritt(null); return; }
+    setSchritt('Mail wird gesendet …');
     const r = await fetch('/api/inbox/senden', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-      neu: { postfach, betreff }, an: [{ email: an.trim(), ...(e.an?.email === an.trim() && e.an.name ? { name: e.an.name } : {}) }], text, anhaenge: [{ datei: e.datei.id }], uwgBestaetigt: uwg, anfrageId: anfrageId.current,
+      neu: { postfach, betreff }, an: [{ email: an.trim(), ...(e?.an?.email === an.trim() && e.an.name ? { name: e.an.name } : {}) }], text: endText, anhaenge: [{ datei: datei.id }], uwgBestaetigt: uwg, anfrageId: anfrageId.current,
     }) }).catch(() => null);
+    setSchritt(null);
     const j = r ? await r.json().catch(() => ({})) : {};
     if (r?.status === 409 && j.code === 'uwg' && j.uwg) {
       const wer = (j.uwg.empfaenger as { name: string; grund: string }[]).map(x => `${x.name} (${x.grund})`).join('\n');
@@ -170,16 +206,34 @@ function ReportSenden({ mandatId, ki, onZu, onGesendet }: { mandatId: string; ki
           <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>Betreff</span><input value={betreff} onChange={x => setBetreff(x.target.value)} style={{ ...feld, fontSize: 16 }} /></label>
           <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>Text ({e.anrede})</span><textarea value={text} rows={12} onChange={x => setText(x.target.value)} style={{ ...feld, fontSize: 16, fontFamily: SCHRIFT.text }} /></label>
           {mitKi && <KiMarke />}
-          <div style={klein}>Anhang: {e.datei ? <a href={`/api/crm/treppe/report?datei=${encodeURIComponent(e.datei.id)}`} download style={{ color: C.aktiv }}>{e.datei.name}</a> : 'noch kein Report erstellt'}. Gesendet wird erst mit „Senden“ — aus dem gewählten Postfach, wie jede Mail der Inbox.</div>
+          {e.dok && hatZusatz(e.dok) && <FallVorschau dok={e.dok} />}
+          {text.includes(PULS_PLATZHALTER) && <div style={klein}>Beim Senden entsteht der Puls-Link (eigener Link, 14 Tage gültig, öffnet nur die Frage 0–10) und ersetzt „{PULS_PLATZHALTER}“.</div>}
+          <div style={klein}>Anhang: {e.datei && heuteErstellt ? <a href={`/api/crm/treppe/report?datei=${encodeURIComponent(e.datei.id)}`} download style={{ color: C.aktiv }}>{e.datei.name}</a> : 'das PDF entsteht beim Senden (Stand heute)'}. Gesendet wird erst mit „Senden“ — aus dem gewählten Postfach, wie jede Mail der Inbox.</div>
+          {schritt && <div role="status" style={klein}>{schritt}</div>}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             {ki && <Knopf leise onClick={() => laden(true)}>Mit KI formulieren</Knopf>}
             {mitKi && <Knopf leise onClick={() => laden(false)}>Vorlage nehmen</Knopf>}
             <Knopf leise onClick={onZu}>Abbrechen</Knopf>
-            <Knopf haupt onClick={() => los(false)} aus={!e.datei || !postfach || !an.trim() || !betreff.trim() || !text.trim()}>Senden</Knopf>
+            <Knopf haupt onClick={() => los(false)} aus={!!schritt || !postfach || !an.trim() || !betreff.trim() || !text.trim()}>Senden</Knopf>
           </div>
         </div>
       )}
       {dialog}
     </Fenster>
+  );
+}
+
+/** Vorschau der Fulfillment-Abschnitte (nur mit Fall): Wartet auf euch · Wert-Konto · Kunden-Puls — derselbe Inhalt wie im PDF. */
+function FallVorschau({ dok }: { dok: ReportDokument }) {
+  return (
+    <div style={{ display: 'grid', gap: 6, padding: 10, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+      <span style={beschriftung}>Wartet auf euch</span>
+      <div style={klein}>{dok.wartetAufEuch?.length ? dok.wartetAufEuch.map(x => <div key={x}>· {x}</div>) : 'Gerade nichts.'}</div>
+      {!!dok.wertKonto?.length && (<>
+        <span style={beschriftung}>Wert-Konto (vorher → jetzt → Ziel)</span>
+        <div style={klein}>{dok.wertKonto.map(w => <div key={w.name}>· {w.name}: {w.vorher} → {w.jetzt} → {w.ziel}{w.bis ? ` (bis ${w.bis})` : ''}</div>)}</div>
+      </>)}
+      {dok.puls && (<><span style={beschriftung}>Kunden-Puls</span><div style={klein}>{dok.puls.wert} von 10 ({dok.puls.am})</div></>)}
+    </div>
   );
 }

@@ -2,10 +2,12 @@
 // Gerüst wie das Angebot (lib/crm/angebot-pdf.ts: pdf-lib, Helvetica/WinAnsi, `sicherFuer` + `umbrechen` von dort): Kopf mit Absender,
 // Kunde/Paket/Stand, Abschnitte „Erreicht“, „Nächste Schritte“, „Kennzahlen“ und ein ruhiger Fuß mit „Seite n von m“. Aufbau aus
 // lib/crm/treppe-report.ts `reportDokument` — dieselbe Quelle wie die Mail. `erstellt` fest übergeben → gleiche Eingabe, gleiche Bytes.
+// Fulfillment (C2, 10.10.): trägt das Dokument den Zusatz eines Falls (`hatZusatz`), heißen die Abschnitte „Erledigt · Als Nächstes · Wartet auf euch ·
+// Wert-Konto · Kunden-Puls“; ohne Fall bleibt das PDF Byte für Byte wie vorher (tests/fulfillment-c2-report.test.ts).
 
 import { PDFDocument, StandardFonts, rgb, type PDFPage } from 'pdf-lib';
 import { sicherFuer, umbrechen } from './angebot-pdf';
-import type { ReportDokument } from './treppe-report';
+import { hatZusatz, type ReportDokument } from './treppe-report';
 
 const A4: [number, number] = [595.28, 841.89];
 const RAND = 56;
@@ -58,10 +60,33 @@ export async function reportPdf(d: ReportDokument, opt: { erstellt: Date }): Pro
   absatz([d.mandat, d.paket ? `Paket: ${d.paket}` : ''].filter(Boolean).join(' · '), 10.5, { farbe: LEISE });
   absatz(`Stand: ${d.stand}${d.schritt ? ` · aktueller Schritt: ${d.schritt}` : ''}`, 10.5, { farbe: LEISE });
 
-  abschnitt('Erreicht');
-  punkte(d.erreicht);
-  abschnitt('Nächste Schritte');
-  punkte(d.naechste);
+  if (hatZusatz(d)) {
+    // Fulfillment (C2, 10.10.): mit Fall die Abschnitte „Erledigt · Als Nächstes · Wartet auf euch · Wert-Konto · Kunden-Puls“ (Konzept 5.2).
+    abschnitt('Erledigt');
+    punkte(d.erreicht);
+    abschnitt('Als Nächstes');
+    punkte(d.naechste);
+    abschnitt('Wartet auf euch');
+    punkte(d.wartetAufEuch!.length ? d.wartetAufEuch! : ['Gerade nichts — danke!']);
+    if (d.wertKonto?.length) {
+      abschnitt('Wert-Konto (vorher → jetzt → Ziel)');
+      for (const w of d.wertKonto) {
+        platz(30);
+        absatz(w.name, 10.5, { fett: true });
+        absatz(`${w.vorher} → ${w.jetzt} → ${w.ziel}${w.bis ? ` (bis ${w.bis})` : ''}`, 10.5, { farbe: LEISE });
+        y -= 4;
+      }
+    }
+    if (d.puls) {
+      abschnitt('Kunden-Puls');
+      absatz(`${d.puls.wert} von 10 (${d.puls.am})`, 10.5);
+    }
+  } else {
+    abschnitt('Erreicht');
+    punkte(d.erreicht);
+    abschnitt('Nächste Schritte');
+    punkte(d.naechste);
+  }
   if (d.kennzahlen.length) {
     abschnitt('Kennzahlen');
     for (const k of d.kennzahlen) {
