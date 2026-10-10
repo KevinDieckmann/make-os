@@ -22,7 +22,7 @@ import { werktagAbOder } from '@/lib/zeit/kalender-kern';
 import { wartetText } from '@/lib/planung/meilenstein-kette';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
 
-export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal' | 'vertrag';
+export type FristArt = 'meilenstein' | 'etappe' | 'mandat' | 'zahlung' | 'eingang' | 'steuer' | 'dsgvo' | 'angebot' | 'deal' | 'vertrag' | 'pflicht';
 /**
  * `bereich` (29.09., K1): Privat oder Business — Mandate, Zahlungen, Eingänge, Bauplan-Etappen sind Business, Meilensteine
  * nach ihrem Space. `fuer` (K6a): wer zuständig ist (Mandat: `zustaendig`) — ohne Angabe der ganze Haushalt (Glocke).
@@ -59,6 +59,11 @@ export interface Quellen {
   steuer?: { datum: string; art: string; titel: string; hinweis: string; privat?: boolean }[];
   /** Verträge der eigenen Gesellschaften (04.10., Register): Beginn, Ende, „kündigen bis“, Optionen/Cliff — Business. */
   vertraege?: { id: string; tag: string; titel: string; unter?: string; gesellschaftId: string; vertragId: string; kuendigung?: true }[];
+  /**
+   * Unternehmen › Schild (10.10.): Pflichten des Pflichten-Kalenders (Jahresabschluss, Register, Ereignisse), Dokument-Abläufe (`pflicht`) und
+   * Marken/Domains/Versicherungen (`vertrag`, „kündigen bis“ als Kündigungsfrist) der Business-Gesellschaften — Weg schon fertig (`href`).
+   */
+  unternehmen?: { id: string; art: 'pflicht' | 'vertrag'; tag: string; titel: string; unter?: string; href: string; kuendigung?: true; erledigt?: true }[];
 }
 
 /** Alle Stichtage im Zeitraum [von, bis) — Berliner Tage. `heute` für die laufende Periode eines Mandats (Verlängerung). */
@@ -108,6 +113,9 @@ export function fristen(q: Quellen, von: string, bis: string, heute: string = vo
   }
   for (const v of q.vertraege ?? []) {
     if (imZeitraum(v.tag, von, bis)) raus.push({ id: v.id, art: 'vertrag', tag: v.tag.slice(0, 10), titel: v.titel, ...(v.unter ? { unter: v.unter } : {}), href: WEG.unternehmen(v.gesellschaftId, 'vertraege'), bereich: 'business', ...(v.kuendigung ? { kuendigung: true as const } : {}) });
+  }
+  for (const u of q.unternehmen ?? []) {
+    if (imZeitraum(u.tag, von, bis)) raus.push({ id: u.id, art: u.art, tag: u.tag.slice(0, 10), titel: u.titel, ...(u.unter ? { unter: u.unter } : {}), href: u.href, bereich: 'business', ...(u.kuendigung ? { kuendigung: true as const } : {}), ...(u.erledigt ? { erledigt: true } : {}) });
   }
   return raus.sort((a, b) => a.tag.localeCompare(b.tag) || a.titel.localeCompare(b.titel));
 }

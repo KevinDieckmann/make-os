@@ -67,6 +67,9 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   if (m.art === 'netzwerken') return 'Neue Person zugeteilt — Details in MAKE OS';
   // DSGVO-Prüfung 04.10.: auch „fällig/überfällig“ der Vertrags-Erinnerung (Aufgabe `vte-…`) nennt Vertrag und Gesellschaft nicht.
   if (m.bezug?.art === 'aufgabe' && m.bezug.id.startsWith('vte-')) return 'Eine Vertragsfrist naht — Details in MAKE OS';
+  // Unternehmen › Schild (10.10.): Erinnerungen (`usp-`, `usd-`, `usm-`, `usr-`; Glocke mit der vorhandenen Art „vertrag“ — eine neue Art bräche den
+  // Rückweg: die alte Glocke kennt sie nicht) und ihre Fälligkeit nennen weder Gesellschaft noch Pflicht.
+  if (m.bezug?.art === 'aufgabe' && /^us[pdmr]-/.test(m.bezug.id)) return 'Eine Unternehmens-Pflicht naht — Details in MAKE OS';
   if (m.art === 'sicherheit') return 'Am Zugang wurde etwas geändert — Details in MAKE OS';
   if (m.art === 'vertrag') return 'Eine Vertragsfrist naht — Details in MAKE OS';
   if (m.art === 'verbindung') return 'Eine Verbindung braucht eine neue Anmeldung — Details in MAKE OS';

@@ -114,6 +114,8 @@ describe('Saat', () => {
     expect(pl?.kanaele).toHaveLength(2);
     expect(pl?.ziele.map(z => z.gesellschaft)).toEqual(['ug']);
     expect(pl?.challenges).toHaveLength(1);
+
+    expect(n).toMatchObject({ Konten: 3, Team: 4, 'CRM: Kontakte': 8, 'CRM: Deals': 4, Gesellschaften: 4, Meilensteine: 5, 'Wochenpläne festgehalten': 4, 'Wissen (Notizen)': 4, 'Körper-Profil': 1, Erholung: 1, 'Unternehmen › Schild': 1 });
     // Erholung (10.10.): ein erfundenes Programm, eine Serie (2 von 6), ein Ziel, ein paar Einheiten — über die Erholungs-Route, mit Suffix.
     const eh = await db.loadJson<{ programme: { name: string }[]; behandlungen: { termine: { erledigt: boolean }[] }[]; einheiten: unknown[]; ziele: unknown[] }>('erholung--lena');
     expect(eh?.programme.map(p => p.name)).toEqual(['Mobility am Morgen (Beispiel)']);

@@ -1,9 +1,14 @@
 'use client';
 
-// ─── Unternehmen — das Gesellschafts-Register (/os/unternehmen, 04.10.) ─────────────────────────────────────────
-// Kevin 04.10.: „Kriegen wir dort jetzt alles sauber geplant?“ — eigene Gesellschaften als offene Liste, Steckbrief,
-// Cap-Table, Beteiligungen, Verträge mit Fristen, Unterlagen. Leitregel 80/20: klar, seriös, investor-tauglich.
-//   Übersicht   Reiter Gesellschaften · Struktur („wer hält wen“) · Archiv (ruhend/aufgelöst) · Papierkorb
+// ─── Unternehmen — Gesellschafts-Register und Schild (/os/unternehmen, 04.10. / 10.10.) ─────────────────────────────
+// Kevin 04.10.: „Kriegen wir dort jetzt alles sauber geplant?“ — eigene Gesellschaften als offene Liste, Steckbrief, Cap-Table,
+// Beteiligungen, Verträge mit Fristen, Unterlagen. Kevin 10.10.: „Welche Infos muss ich immer dokumentiert bei mir haben — rechtlich wie ein
+// Schild aufstellen, das Risiko immer wieder mitbewerten.“ Die Seite ist in Reiter gegliedert (`?s=`, Wege über `WEG.schild`):
+//   Überblick (Ampel je Gesellschaft und gesamt) · Gesellschaften (Liste · Archiv · Papierkorb, `?f=`) · Pflichten · Dokumente (mit Vorlagen) ·
+//   Risiken · Struktur (Organigramm + Cap-Table) · Marken & Versicherungen · Verträge & Organe. Pflichten/Dokumente/Risiken/Schutz gelten je
+//   BUSINESS-Gesellschaft (`?w=<kennung>`) — Daten im eigenen Business-Bestand (GET/PATCH /api/gesellschaften/schild); das Register selbst
+//   bleibt unverändert (nur gelesen).
+//   Alte Adressen: `?s=liste` → Gesellschaften, `?s=archiv|papierkorb` → Gesellschaften mit Filter.
 //   Detail      ?g=<kennung>&r=<reiter> (Detail.tsx)
 //   Ablage      ?ablage=<kennung>[&v=<vertrag>] (DSGVO-Nachtrag 04.10.): Unterlagen einer Gesellschaft bzw. eines Vertrags — auch
 //               nach dem endgültigen Löschen (Aufbewahrung § 257 HGB); der Bezug steht dann als „„Name“ (gelöscht)“ da.
@@ -11,26 +16,51 @@
 // window.confirm, „Rückgängig“ für 10 s. Daten: GET/POST/PATCH /api/gesellschaften (nur Haushalt des Inhabers).
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Building2, FileText, Network, Trash2 } from 'lucide-react';
-import { FARBE as C, TYP, LEUCHT, SCHRIFT, RAND } from '@/lib/make-one/design';
+import { Building2, FileText, Trash2 } from 'lucide-react';
+import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leerzustand, Leer, Reiter, Pillen, Feldzeile, eingabe, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import { zufallsUuid } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
+import { localDay } from '@/lib/zeit';
 import { istGesellschaft, gehoertZuPrivat } from '@/lib/einheiten';
 import { gesellschaftenGeaendert } from '@/lib/gesellschaften/client';
 import {
-  GES_STATUS, RECHTSFORMEN, istArchiviertStatus, statusLabel, rechtsformLabel, strukturBaum, gesellschafterKurz, verweiseAnzahl, verweiseSatz,
+  GES_STATUS, RECHTSFORMEN, istArchiviertStatus, statusLabel, rechtsformLabel, gesellschafterKurz, verweiseAnzahl, verweiseSatz,
   geloeschterBezug, geloeschtText,
-  type GesStatus, type Rechtsform, type StrukturKnoten,
+  type GesStatus, type Rechtsform,
 } from '@/lib/gesellschaften/modell';
+import { lageAus, type SchildReiter, type Lage } from '@/lib/gesellschaften/schild/ampel';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { bezugName, klein, tagText, UnterlagenBleiben, type GAnzeige, type RegisterDaten } from './teile';
 import { Detail } from './Detail';
+import { useSchild, useSchildSchreiber, type SEintrag, type SchildDaten } from './schild/daten';
+import { Ueberblick } from './schild/Ueberblick';
+import { Pflichten } from './schild/Pflichten';
+import { Dokumente } from './schild/Dokumente';
+import { Risiken } from './schild/Risiken';
+import { Struktur } from './schild/Struktur';
+import { Schutz } from './schild/Schutz';
+import { VertraegeOrgane } from './schild/VertraegeOrgane';
+import { GesellschaftWahl, AmpelChip } from './schild/teile';
 
-type Sicht = 'liste' | 'struktur' | 'archiv' | 'papierkorb';
-const SICHTEN: { id: Sicht; label: string }[] = [{ id: 'liste', label: 'Gesellschaften' }, { id: 'struktur', label: 'Struktur' }, { id: 'archiv', label: 'Archiv' }, { id: 'papierkorb', label: 'Papierkorb' }];
+type Sicht = SchildReiter;
+const SICHTEN: { id: Sicht; label: string }[] = [
+  { id: 'ueberblick', label: 'Überblick' }, { id: 'gesellschaften', label: 'Gesellschaften' }, { id: 'pflichten', label: 'Pflichten' },
+  { id: 'dokumente', label: 'Dokumente' }, { id: 'risiken', label: 'Risiken' }, { id: 'struktur', label: 'Struktur' },
+  { id: 'schutz', label: 'Marken & Versicherungen' }, { id: 'vertraege', label: 'Verträge & Organe' },
+];
+type Filter = 'liste' | 'archiv' | 'papierkorb';
+const FILTER: { id: Filter; label: string }[] = [{ id: 'liste', label: 'Aktiv' }, { id: 'archiv', label: 'Archiv' }, { id: 'papierkorb', label: 'Papierkorb' }];
+/** Reiter + Filter aus der Adresse — alte Adressen (`s=liste|archiv|papierkorb`) bleiben gültig. */
+export function sichtAus(s: string | null, f: string | null): { sicht: Sicht; filter: Filter } {
+  if (s === 'liste' || s === 'archiv' || s === 'papierkorb') return { sicht: 'gesellschaften', filter: s };
+  const sicht = SICHTEN.find(x => x.id === s)?.id ?? 'ueberblick';
+  return { sicht, filter: FILTER.find(x => x.id === f)?.id ?? 'liste' };
+}
+/** Reiter, die je Business-Gesellschaft gelten (Gesellschaft-Wahl `w`). */
+const JE_GESELLSCHAFT: readonly Sicht[] = ['pflichten', 'dokumente', 'risiken', 'schutz'];
 
 /** Status → Farbe der Pille: Zustand, keine Deko. */
 export const STATUS_FARBE: Record<GesStatus, string> = { geplant: C.inkDim, gruendung: LEUCHT.achtung, eingetragen: LEUCHT.gut, ruhend: C.inkLeise, aufgeloest: C.inkLeise };
@@ -40,10 +70,11 @@ export function UnternehmenView() {
   const router = useRouter();
   const params = useSearchParams();
   const offen = params.get('g');
-  const sicht: Sicht = (SICHTEN.find(s => s.id === params.get('s'))?.id) ?? 'liste';
+  const { sicht, filter } = sichtAus(params.get('s'), params.get('f'));
   const [daten, setDaten] = useState<RegisterDaten | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [neu, setNeu] = useState(false);
+  const schild = useSchild();
 
   const laden = useCallback(async () => {
     try {
@@ -55,41 +86,84 @@ export function UnternehmenView() {
   }, []);
   useEffect(() => { void laden(); }, [laden]);
 
-  const geh = (q: { g?: string; s?: Sicht; r?: string }) => {
+  const geh = (q: { g?: string; s?: Sicht; r?: string; f?: Filter; w?: string }) => {
     const u = new URLSearchParams();
     if (q.g) u.set('g', q.g);
     if (q.r) u.set('r', q.r);
-    if (q.s && q.s !== 'liste') u.set('s', q.s);
+    if (q.s && q.s !== 'ueberblick') u.set('s', q.s);
+    if (q.f && q.f !== 'liste') u.set('f', q.f);
+    if (q.w) u.set('w', q.w);
     router.push(`/os/unternehmen${u.size ? `?${u}` : ''}`, { scroll: false });
   };
   const ersetzen = (g: GAnzeige) => setDaten(d => (d ? { ...d, gesellschaften: d.gesellschaften.map(x => (x.id === g.id ? g : x)) } : d));
+  const heute = schild.daten?.heute ?? localDay();
+  const lage = useMemo(() => (daten && schild.daten ? lageAus({ gesellschaften: daten.gesellschaften }, { gesellschaften: schild.daten.eintraege }, heute) : null), [daten, schild.daten, heute]);
 
   if (!daten) {
     return (
-      <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Anteile und Verträge — eine Quelle.">
+      <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Pflichten, Risiken und Schutzrechte — eine Quelle.">
         {fehler ? <Hinweis art="kritisch" rolle="alert" titel="Register nicht geladen" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal versuchen</Knopf>}>{fehler}</Hinweis> : <Karte><Leer>lädt …</Leer></Karte>}
       </Seite>
     );
   }
 
   const ablage = params.get('ablage');
-  if (ablage) return <AblageAnsicht key={`${ablage}:${params.get('v') ?? ''}`} gesellschaftId={ablage} vertragId={params.get('v') ?? undefined} zurueck={() => geh({ s: sicht })} />;
+  if (ablage) return <AblageAnsicht key={`${ablage}:${params.get('v') ?? ''}`} gesellschaftId={ablage} vertragId={params.get('v') ?? undefined} zurueck={() => geh({ s: 'gesellschaften' })} />;
 
   const g = offen ? daten.gesellschaften.find(x => x.id === offen) : undefined;
   const weg = offen && !g ? geloeschterBezug(daten, 'gesellschaft', offen) : undefined;
-  if (offen && g) return <Detail key={g.id} g={g} daten={daten} reiter={params.get('r') ?? 'steckbrief'} onReiter={r => geh({ g: g.id, r })} zurueck={() => geh({ s: sicht })} onNeu={ersetzen} neuLaden={laden} oeffne={id => geh({ g: id })} />;
+  if (offen && g) return <Detail key={g.id} g={g} daten={daten} reiter={params.get('r') ?? 'steckbrief'} onReiter={r => geh({ g: g.id, r })} zurueck={() => geh({ s: 'gesellschaften' })} onNeu={ersetzen} neuLaden={laden} oeffne={id => geh({ g: id })} />;
+
+  const business = lage?.gesellschaften ?? [];
+  const gewaehlt = business.find(x => x.id === params.get('w'))?.id ?? business.find(x => x.kontext.aktiv)?.id ?? business[0]?.id;
+  const reiterListe = SICHTEN.map(x => (x.id === 'ueberblick' && lage?.gesamt.rot ? { ...x, label: `Überblick · ${lage.gesamt.rot}` } : x));
 
   return (
     // Unternehmen (10.10.): eigener Punkt in der Leiste, getrennt von Produkte & Mandate.
-    <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Anteile und Verträge — eine Quelle."
-      rechts={!neu && <Knopf haupt onClick={() => setNeu(true)}>+ Gesellschaft</Knopf>}>
+    <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Pflichten, Risiken und Schutzrechte — eine Quelle."
+      rechts={sicht === 'gesellschaften' && !neu && <Knopf haupt onClick={() => setNeu(true)}>+ Gesellschaft</Knopf>}>
       {offen && !g && (weg
         ? <Hinweis art="info" titel={geloeschtText(weg)}>Diese Gesellschaft wurde endgültig gelöscht. <UnterlagenBleiben href={WEG.unterlagen(weg.id)} /></Hinweis>
         : <Hinweis art="info" titel="Nicht gefunden">Diese Gesellschaft gibt es im Register nicht (mehr).</Hinweis>)}
-      {neu && <Anlegen onFertig={async id => { setNeu(false); await laden(); if (id) geh({ g: id }); }} />}
-      <div className="ui-reiter-zeile"><Reiter liste={SICHTEN} aktiv={sicht} onWahl={s => geh({ s })} ariaLabel="Ansicht" /></div>
-      {sicht === 'struktur' ? <Struktur daten={daten} oeffne={id => geh({ g: id })} /> : <Uebersicht daten={daten} sicht={sicht} oeffne={id => geh({ g: id })} neuLaden={laden} />}
+      <div className="ui-reiter-zeile"><Reiter liste={reiterListe} aktiv={sicht} onWahl={s => geh({ s, ...(JE_GESELLSCHAFT.includes(s) && gewaehlt ? { w: gewaehlt } : {}) })} ariaLabel="Bereiche des Unternehmens" /></div>
+      {schild.fehler && sicht !== 'gesellschaften' && <Hinweis art="kritisch" rolle="alert" titel="Schild nicht geladen" aktion={<Knopf leise onClick={() => void schild.laden()}>Noch einmal versuchen</Knopf>}>{schild.fehler}</Hinweis>}
+      {sicht === 'gesellschaften' && (
+        <>
+          {neu && <Anlegen onFertig={async id => { setNeu(false); await laden(); await schild.laden(); if (id) geh({ g: id }); }} />}
+          <div><Pillen liste={FILTER} aktiv={filter} onWahl={f => geh({ s: 'gesellschaften', f })} /></div>
+          <Uebersicht daten={daten} sicht={filter} oeffne={id => geh({ g: id })} neuLaden={async () => { await laden(); await schild.laden(); }} />
+        </>
+      )}
+      {sicht === 'struktur' && <Struktur daten={daten} schild={schild.daten?.eintraege ?? []} gewaehlt={params.get('w') ?? undefined} waehle={w => geh({ s: 'struktur', w })} oeffne={id => geh({ g: id })} />}
+      {sicht === 'vertraege' && <VertraegeOrgane daten={daten} liste={daten.gesellschaften.filter(x => !x.geloeschtAm && business.some(b => b.id === x.id))} heute={heute} />}
+      {sicht !== 'gesellschaften' && sicht !== 'struktur' && sicht !== 'vertraege' && (!lage || !schild.daten ? <Karte><Leer>lädt …</Leer></Karte>
+        : sicht === 'ueberblick' ? <Ueberblick lage={lage} />
+          : !gewaehlt ? <Karte><Leerzustand symbol={<Building2 size={22} />} titel="Keine Business-Gesellschaft" aktion={<Knopf leise onClick={() => geh({ s: 'gesellschaften' })}>Zu den Gesellschaften</Knopf>}>Pflichten, Dokumente, Risiken und Schutzrechte gelten je Gesellschaft im Bereich Business.</Leerzustand></Karte>
+            : <JeGesellschaft key={gewaehlt} sicht={sicht} lage={lage} id={gewaehlt} schild={schild.daten} ersetzen={schild.ersetzen} personen={daten.personen} waehle={w => geh({ s: sicht, w })} heute={heute} />)}
     </Seite>
+  );
+}
+
+/** Ein Reiter je Gesellschaft (Pflichten · Dokumente · Risiken · Marken & Versicherungen) mit EINEM Schreiber (Kette mit Stand). */
+function JeGesellschaft({ sicht, lage, id, schild, ersetzen, personen, waehle, heute }: {
+  sicht: Sicht; lage: Lage; id: string; schild: SchildDaten; ersetzen: (e: SEintrag) => void; personen: { id: string; name: string }[]; waehle: (id: string) => void; heute: string;
+}) {
+  const gl = lage.gesellschaften.find(x => x.id === id)!;
+  const e = schild.eintraege.find(x => x.id === id) ?? ({ id: gl.id, stand: '' } as SEintrag);
+  const sw = useSchildSchreiber(e, ersetzen);
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <GesellschaftWahl liste={lage.gesellschaften.map(x => ({ id: x.id, name: x.name }))} aktiv={id} onWahl={waehle} />
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}><span style={klein}>{gl.name}</span><AmpelChip a={gl.compliance.ampel} /><Link href={WEG.unternehmen(id)} style={{ ...klein, color: C.ink }}>Steckbrief ›</Link></span>
+      </div>
+      {sw.meldung && <Hinweis art="achtung" rolle="alert">{sw.meldung}</Hinweis>}
+      {sw.unterwegs > 0 && <div role="status" style={klein}>speichert …</div>}
+      {sicht === 'pflichten' && <Pflichten lage={gl} e={e} sw={sw} heute={heute} />}
+      {sicht === 'dokumente' && <Dokumente lage={gl} e={e} sw={sw} />}
+      {sicht === 'risiken' && <Risiken lage={gl} e={e} sw={sw} personen={personen} />}
+      {sicht === 'schutz' && <Schutz e={e} sw={sw} heute={heute} />}
+    </>
   );
 }
 
@@ -125,7 +199,7 @@ function Anlegen({ onFertig }: { onFertig: (id?: string) => void | Promise<void>
 }
 
 /** Gesellschaften · Archiv · Papierkorb — Zeilen mit ZeileAktionen. */
-function Uebersicht({ daten, sicht, oeffne, neuLaden }: { daten: RegisterDaten; sicht: Exclude<Sicht, 'struktur'>; oeffne: (id: string) => void; neuLaden: () => Promise<void> }) {
+function Uebersicht({ daten, sicht, oeffne, neuLaden }: { daten: RegisterDaten; sicht: Filter; oeffne: (id: string) => void; neuLaden: () => Promise<void> }) {
   const { melden, hinweis } = useRueckgaengig();
   const { fragen, dialog } = useRueckfrage();
   const [fehler, setFehler] = useState<string | null>(null);
@@ -243,44 +317,3 @@ function AblageAnsicht({ gesellschaftId, vertragId, zurueck }: { gesellschaftId:
     </Seite>
   );
 }
-
-/** Struktur: „wer hält wen“ als ruhiger Baum mit Linien — ohne Effekt. */
-function Struktur({ daten, oeffne }: { daten: RegisterDaten; oeffne: (id: string) => void }) {
-  const baum = strukturBaum(daten.gesellschaften);
-  const hatBeziehung = baum.some(k => k.kinder.length || k.fremde.length);
-  return (
-    <Karte>
-      <Ueberschrift>Wer hält wen</Ueberschrift>
-      {!hatBeziehung && <Leerzustand symbol={<Network size={22} />} titel="Noch keine Beteiligungen">Trage bei einer Gesellschaft unter „Gesellschafter“ eine andere eigene Gesellschaft ein — dann steht hier der Baum.</Leerzustand>}
-      {hatBeziehung && <ul role="tree" aria-label="Beteiligungsstruktur" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>{baum.map(k => <Knoten key={k.id} k={k} daten={daten} oeffne={oeffne} tiefe={0} />)}</ul>}
-      <div style={{ ...klein, marginTop: 10 }}>Abgeleitet aus den Gesellschafter-Einträgen — es wird nichts doppelt gespeichert. Fremde Beteiligungen stehen kursiv.</div>
-    </Karte>
-  );
-}
-
-function Knoten({ k, daten, oeffne, tiefe }: { k: StrukturKnoten; daten: RegisterDaten; oeffne: (id: string) => void; tiefe: number }) {
-  const linie = tiefe ? { borderLeft: `1px solid ${RAND.stark}`, marginLeft: 10, paddingLeft: 14 } : {};
-  return (
-    <li role="treeitem" aria-selected={false} style={{ ...linie, display: 'grid', gap: 6 }}>
-      <button type="button" onClick={() => oeffne(k.id)} className="fassbar" style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44, padding: '6px 10px', borderRadius: 12, border: `1px solid ${RAND.flaeche}`, background: 'rgba(255,255,255,.03)', color: C.ink, cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text }}>
-        {k.prozent !== undefined && <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums', minWidth: 64 }}>{k.prozent.toLocaleString('de-DE', { maximumFractionDigits: 2 })} %</span>}
-        <span style={{ fontSize: TYP.body, fontWeight: 600, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{k.name}{k.schonGezeigt ? ' (siehe oben)' : ''}</span>
-        <StatusPille s={k.status} />
-      </button>
-      {(k.kinder.length > 0 || k.fremde.length > 0) && (
-        <ul role="group" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
-          {k.kinder.map(x => <Knoten key={`${k.id}-${x.id}`} k={x} daten={daten} oeffne={oeffne} tiefe={tiefe + 1} />)}
-          {k.fremde.map(f => (
-            <li key={`${k.id}-f-${f.firmaId}`} role="treeitem" aria-selected={false} style={{ borderLeft: `1px solid ${RAND.stark}`, marginLeft: 10, paddingLeft: 14 }}>
-              <span style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 40, padding: '6px 10px', fontSize: TYP.bedien, color: C.inkDim, fontStyle: 'italic' }}>
-                {f.anteilProzent !== undefined && <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 64 }}>{f.anteilProzent.toLocaleString('de-DE')} %</span>}
-                <Link href={WEG.firma(f.firmaId)} style={{ color: 'inherit' }}>{bezugName({ art: 'firma', id: f.firmaId }, daten.namen)}</Link>
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-}
-

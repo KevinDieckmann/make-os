@@ -308,6 +308,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'controlling/analyse': r('POST', 'haushalt', 'Controlling-Agent über das Business des Haushalts.'),
   'gesellschaften': r('GET,POST,PATCH', 'haushalt', 'Gesellschafts-Register des Haushalts.'),
   'gesellschaften/unterlagen': r('GET,POST', 'haushalt', 'Unterlagen im Gesellschafts-Register.'),
+  'gesellschaften/schild': r('GET,PATCH', 'haushalt', 'Unternehmen › Schild: Pflichtdokumente, Pflichten, Risiken, Marken/Domains/Versicherungen der Business-Gesellschaften des Haushalts.'),
   'crm/gesellschaften': r('GET,POST,PATCH,DELETE', 'haushalt', 'Gesellschaften-Register (CRM-Sicht) des Haushalts.'),
 
   // ── Kartei, Netzwerk, Markttraktion ────────────────────────────────────────────────────────────────────────
