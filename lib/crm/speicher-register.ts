@@ -393,6 +393,9 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // Kapazität (04.10.) liest daraus NUR den Ø-Recovery-Wert, NUR mit eigener Einwilligung der Person und wenn sie mit allen Konten teilt, und nur als
   // Team-Faktor (lib/kapazitaet/server.ts); nie in Business-Index, ZOE oder Protokolle (`ohneGesundheit`, Test kapazitaet-route).
   mit(H('vitals--*', 'Körperwerte je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  // 10.10. (Inventur Trennung): der Name entsteht über speicherFuer('gesundheit-index', person) — der Scanner sah ihn nicht.
+  mit(H('gesundheit-index', 'Gesundheits-Index (Erstkonto) — Verlauf und Schwellen aus eigenen Gesundheitswerten.'), GESUNDHEIT),
+  mit(H('gesundheit-index--*', 'Gesundheits-Index je Person — Verlauf und Schwellen aus eigenen Gesundheitswerten.'), GESUNDHEIT),
   mit(H('haut', 'Symptom-Tagebuch (Erstkonto; Modul je Person, 09.10.) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('haut--*', 'Symptom-Tagebuch je Person (Modul) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   // Körper-Profil (08.10. abends, Fragebogen Teil 3): Leitsatz, Beschwerden, Hebel, Stufenplan, Zusammenhänge, Anzeige-Einstellungen —
@@ -658,7 +661,7 @@ const IN_BUSINESS: readonly string[] = [
 ];
 const JE_PERSON: readonly string[] = [
   // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber
-  'sport', 'sport--*', 'vitals', 'vitals--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
+  'sport', 'sport--*', 'vitals', 'vitals--*', 'gesundheit-index', 'gesundheit-index--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
   'gesundheit-alltag', 'gesundheit-alltag--*', 'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
   'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*',
   // Zugänge und Kanäle der Person

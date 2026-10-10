@@ -54,6 +54,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'gesundheit-koerper' },
   // Gesundheit im Alltag (09.10.): Einstellungen der Schlaf-Hilfe, des Tages-Checks und der Essens-Orientierung — gehören allein der Person.
   { basis: 'gesundheit-alltag' },
+  // Gesundheits-Index (10.10., Inventur Trennung): Verlauf/Schwellen aus eigenen Werten — Export und Löschen mit dem Konto (fehlte bis dahin).
+  { basis: 'gesundheit-index' },
   // Gesundheits-Unterlagen (09.10.): die Liste gehört allein der Person — IMMER mit Suffix; die Dateien entfernt `kontoLoeschen` vorher (Schritt 2e),
   // im Export steht die Liste, die Dateien einzeln über den Download (`nichtEnthalten`).
   { basis: 'gesundheit-unterlagen', nurMitSuffix: true },
