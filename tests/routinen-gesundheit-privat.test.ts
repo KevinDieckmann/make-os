@@ -54,3 +54,26 @@ describe('Wächter: Business zeigt keine Gesundheits-Routine', () => {
     expect(pv).toContain('GESUNDHEIT-MARKE');
   });
 });
+
+describe('Datenschutz-Prüfung N5 (11.10.): Business-Ansichten bekommen das Gesundheits-Log nicht', () => {
+  it('GET /api/state/health?bereich=business → nur Haken/Zähler der Business-Routinen (serverseitig)', async () => {
+    const db = await import('@/lib/store/local-db');
+    const { speicherFuer } = await import('@/lib/zoe/raum');
+    // r-ges (Gesundheit → Privat) und r-biz (Business) aus dem Test oben.
+    await db.saveJson(speicherFuer('health-log', 'olaf'), { '2026-10-10': ['r-ges', 'r-biz'], '2026-10-09': ['r-ges'] });
+    const health = (await import('@/app/api/state/health/route')) as unknown as { GET: Handler };
+    const voll = await (await health.GET(new Request('http://test/api/state/health?space=privat', { headers: kopf }))).json() as { log: Record<string, string[]> };
+    expect(voll.log['2026-10-10']).toEqual(['r-ges', 'r-biz']);
+    const biz = await (await health.GET(new Request('http://test/api/state/health?bereich=business', { headers: kopf }))).json() as { log: Record<string, string[]>; zaehler: Record<string, unknown> };
+    expect(biz.log).toEqual({ '2026-10-10': ['r-biz'] });
+    expect(JSON.stringify(biz)).not.toContain('r-ges');
+  });
+  it('Tagesplanung und Routinen-Planer fragen mit Bereich (Log nur in Privat, Ziele mit ?space=)', () => {
+    const lies = (d: string) => readFileSync(path.join(process.cwd(), d), 'utf8');
+    for (const d of ['components/os/TagesplanView.tsx', 'components/os/RoutinenPlanerView.tsx']) {
+      expect(lies(d), d).not.toMatch(/fetch\('\/api\/state\/health'\)/);
+      expect(lies(d), d).toContain("'/api/state/health?bereich=business' : '/api/state/health?space=privat'");
+    }
+    expect(lies('components/os/TagesplanView.tsx')).toContain('fetch(`/api/state/ziele?space=${bereich}`)');
+  });
+});

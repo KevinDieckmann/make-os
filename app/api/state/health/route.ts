@@ -14,6 +14,8 @@ import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { routineHaken, zaehlerVon } from '@/lib/planung/routinen-haken-server';
 import { hakenOpAus } from '@/lib/planung/routinen-person';
+import { spaceVonRoutine } from '@/lib/planung/routinen';
+import type { RoutinenDatei } from '@/lib/planung/typen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +30,30 @@ export async function GET(req: Request) {
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const log = (await loadJson<HealthLog>(speicherFuer('health-log', person))) ?? {};
   // Routinen 2 (10.10.): Zähler je Tag („5 von 8“) — dasselbe Tor wie der Log (die Person selbst oder wer ihre Gesundheit geteilt bekommt).
-  return NextResponse.json({ log, zaehler: await zaehlerVon(person) });
+  const zaehler = await zaehlerVon(person);
+  // Datenschutz-Prüfung N5 (11.10.): eine Ansicht der Sicht Business (Routinen-Planer, Tagesplanung) bekommt NUR die Haken/Zähler der
+  // Business-Routinen — serverseitig gefiltert (`?bereich=business`; `?space=business` sperrt die Middleware, weil der Log Privat ist).
+  if (new URL(req.url).searchParams.get('bereich') === 'business') {
+    const ids = await businessRoutinenIds();
+    return NextResponse.json({ log: nurIds(log, ids), zaehler: nurIds(zaehler, ids) });
+  }
+  return NextResponse.json({ log, zaehler });
+}
+
+/** Kennungen der Routinen im Business-Bereich (wirksamer Space). */
+async function businessRoutinenIds(): Promise<Set<string>> {
+  const f = await loadJson<RoutinenDatei>('routinen');
+  return new Set((Array.isArray(f?.routinen) ? f!.routinen : []).filter(r => spaceVonRoutine(r) === 'business').map(r => r.id));
+}
+
+/** Je Tag nur die Einträge dieser Kennungen (Liste bzw. Zähler-Objekt), leere Tage fallen weg. */
+function nurIds<T extends string[] | Record<string, number>>(je: Record<string, T> | null | undefined, ids: ReadonlySet<string>): Record<string, T> {
+  const aus: Record<string, T> = {};
+  for (const [tag, v] of Object.entries(je ?? {})) {
+    const gefiltert = (Array.isArray(v) ? v.filter(x => ids.has(x)) : Object.fromEntries(Object.entries(v ?? {}).filter(([k]) => ids.has(k)))) as T;
+    if (Array.isArray(gefiltert) ? gefiltert.length : Object.keys(gefiltert).length) aus[tag] = gefiltert;
+  }
+  return aus;
 }
 
 /**

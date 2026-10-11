@@ -174,7 +174,6 @@ export function RoutinenPlanerView() {
       if (me) { setIch(me); setBlockPerson(me); }
       setPersonen([...(me ? [{ speicher: me, name: (d.ich?.name ?? me).split(' ')[0] }] : []), ...((d.andere ?? []) as Person[]).map(a => ({ speicher: a.speicher, name: (a.name ?? a.speicher).split(' ')[0] }))]);
     }).catch(() => {});
-    fetch('/api/state/health').then(r => (r.ok ? r.json() : null)).then(d => { if (d) { setLog(d.log ?? {}); setZaehler(d.zaehler ?? {}); } }).catch(() => {});
     fetch('/api/planung/routinen-person').then(r => (r.ok ? r.json() : null)).then(d => { if (d?.ok) setHandy(!!d.handy); }).catch(() => {});
   }, [routinenSchreiber, blockSchreiber]); // beide stabil (useMemo ohne Abhängigkeiten) — läuft einmal
 
@@ -203,6 +202,12 @@ export function RoutinenPlanerView() {
       void blockSchreiber.senden().then(e => { nachSenden(e); if (e.sicht && !e.nichts) zeigeBloecke(e.sicht); });
     }, 500);
   }
+  // Datenschutz-Prüfung N5 (11.10.): Haken und Zähler serverseitig gefiltert — in Business nur die der Business-Routinen, das
+  // Gesundheits-Log nur in Privat.
+  useEffect(() => {
+    fetch(kopfSpace === 'business' ? '/api/state/health?bereich=business' : '/api/state/health?space=privat')
+      .then(r => (r.ok ? r.json() : null)).then(d => { if (d) { setLog(d.log ?? {}); setZaehler(d.zaehler ?? {}); } }).catch(() => {});
+  }, [kopfSpace]);
   // Beim Verlassen: noch Offenes senden.
   useEffect(() => () => {
     clearTimeout(saveTimer.current); clearTimeout(blockTimer.current);
