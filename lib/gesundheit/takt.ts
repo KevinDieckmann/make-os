@@ -121,7 +121,7 @@ export interface WochenEingabe {
 export function wochenText(e: WochenEingabe): string {
   const z: string[] = [`${e.name}, deine Woche:`];
   z.push(typeof e.recovery7 === 'number' ? `· Recovery Ø ${e.recovery7} %` : '· Recovery: keine Werte — Whoop verbinden oder morgens sagen');
-  z.push(`· Routinen: an ${e.routinenTage} von 7 Tagen etwas abgehakt, ${Math.round(e.routinenQuote * 100)} % vollständig`);
+  z.push(`· Routinen: an ${e.routinenTage} von 7 Tagen etwas abgehakt, ${Math.round(e.routinenQuote * 100)} % nach Rhythmus erfüllt`);
   z.push(`· Journal: ${e.journalTage} von 7 Abenden`);
   if (e.haut.tage && e.module?.haut !== false) {
     const r = e.haut.richtung === 'besser' ? 'besser als die Woche davor' : e.haut.richtung === 'schlechter' ? 'schlechter als die Woche davor' : e.haut.richtung === 'gleich' ? 'wie die Woche davor' : '';

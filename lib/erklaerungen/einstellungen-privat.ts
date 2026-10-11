@@ -150,10 +150,10 @@ export const EINSTELLUNGEN_PRIVAT = {
     daten: 'Der Hinweis geht über den Boten, den du verbunden hast. Er enthält keine Inhalte — keine Routine, keinen Wert. Einschalten geht nur mit deiner Einwilligung zur Verarbeitung von Gesundheitsdaten, weil die Erinnerung dein Gesundheits-Log liest.',
   },
   'routinen.kalender': {
-    was: 'MAKE OS trägt die Routine als Block in deinen Kalender ein — für die nächsten zwei Wochen, zur festen Uhrzeit oder zur Tageszeit, so lang wie die Dauer. Andere sehen den Block nur als „Belegt“. Geht nur bei Routinen einer Person.',
+    was: 'MAKE OS trägt die Routine als Block in deinen Kalender ein — für die nächsten zwei Wochen, zur festen Uhrzeit oder zur Tageszeit, so lang wie die Dauer. Bei mehr als drei Uhrzeiten steht je Tag nur ein Block (zur ersten Uhrzeit). Andere sehen den Block nur als „Belegt“. Die Blöcke zählen nicht als Termine in Glocke und Briefing. Geht nur bei Routinen einer Person.',
     beispiel: 'Laufen montags und donnerstags um 07:00 für 45 Minuten: In deinem Kalender stehen die nächsten vier Termine. Änderst du die Uhrzeit, zieht MAKE OS die Blöcke nach.',
     an: 'Die nächsten zwei Wochen stehen als private Blöcke im Kalender und werden jeden Morgen nachgezogen.',
-    aus: 'MAKE OS entfernt die künftigen Blöcke, die es für diese Routine angelegt hat. Vergangene bleiben stehen.',
+    aus: 'MAKE OS entfernt die künftigen Blöcke, die es für diese Routine angelegt hat — auch die von heute, die noch nicht begonnen haben. Vergangene bleiben stehen.',
   },
   'routinen.zeitraum': {
     was: 'Von wann bis wann die Routine gilt. Vorher und nachher ist sie nicht dran und zählt nicht in die Quote. Leer heißt: ohne Anfang und Ende.',

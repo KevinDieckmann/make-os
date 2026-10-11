@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { personAus, speicherFuer } from '@/lib/zoe/raum';
 import { sauberDatei, sauberLayout, seiteOk, type FlaecheDatei } from '@/lib/flaeche/modell';
-import { fremdePlaetze, layoutFuerSeite } from '@/lib/flaeche/sicht';
+import { fremdePlaetze, layoutFuerSeite, mitVerborgenenPlaetzen } from '@/lib/flaeche/sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,7 +37,9 @@ export async function PUT(req: Request) {
   if (fremd.length) return NextResponse.json({ ok: false, error: `Abgelehnt: ${fremd.length === 1 ? 'dieses Widget gehört' : 'diese Widgets gehören'} nicht in diese Sicht (${fremd.map(p => p.art).join(', ')}). Nichts gespeichert.` }, { status: 400 });
   const next = await updateJson<FlaecheDatei>(speicherFuer('flaeche', personAus(req)), cur => {
     const d = sauberDatei(cur);
-    if (!layout || (!layout.plaetze.length && !layout.versteckt.length)) delete d.seiten[seite]; else d.seiten[seite] = layout;
+    // Prüf-Fund 11.10.: Plätze, die GET nicht ausgeliefert hat (passen nicht in die Sicht), bleiben unverändert gespeichert.
+    const zusammen = mitVerborgenenPlaetzen(seite, layout, d.seiten[seite]);
+    if (!zusammen) delete d.seiten[seite]; else d.seiten[seite] = zusammen;
     return d;
   });
   const gespeichert = next.seiten[seite];

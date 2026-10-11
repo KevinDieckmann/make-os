@@ -5,7 +5,8 @@
 //
 // Rein und client-sicher: die Rangfolge, die Gründe, die Prüfung der Wahl, die Datei-Form. Laden und Schreiben: ./top3-server.ts.
 //
-// Rangfolge (Punkte, höher = weiter oben; ein Vorschlag braucht mindestens `VORSCHLAG_AB`):
+// Rangfolge: zuerst das Eisenhower-Feld (q1 wichtig & dringend → q2 wichtig → q3 dringend → q4), darin die Punkte (höher = weiter oben;
+// ein Vorschlag braucht mindestens `VORSCHLAG_AB`):
 //   überfällig 50 (+1 je Tag, höchstens +10) · heute fällig 40 · morgen 24 · in zwei Tagen 16
 //   kritisch 30 · hoch 14
 //   Meilenstein-Frist: überschritten/heute 26 · ≤ 3 Tage 22 · ≤ 7 Tage 16 · ≤ 14 Tage 8        (macht die Aufgabe „wichtig“ bis 7 Tage)
@@ -135,7 +136,7 @@ function bewerten(t: Task, k: Top3Kontext): { punkte: number; gruende: Grund[]; 
 
 /**
  * Alle Aufgaben, die als Top 3 in Frage kommen — in diesem Bereich, der Person zugewiesen, offen und machbar —, die beste zuerst
- * (Punkte, dann Feld der Eisenhower-Matrix, dann Deadline, dann Titel). Aufgaben ohne jeden Grund stehen mit 0 Punkten am Ende
+ * (Feld der Eisenhower-Matrix q1 → q4, dann Punkte, dann Deadline, dann Titel — seit 11.10.). Aufgaben ohne jeden Grund stehen mit 0 Punkten am Ende
  * (zum Selbst-Auswählen); vorgeschlagen werden nur welche ab `VORSCHLAG_AB`.
  */
 export function top3Kandidaten(tasks: readonly Task[], bereich: TopBereich, k: Top3Kontext, projektTitel: (id: string) => string | undefined = () => undefined): Top3Kandidat[] {
@@ -157,7 +158,9 @@ export function top3Kandidaten(tasks: readonly Task[], bereich: TopBereich, k: T
       quadrant: e.quadrant, kritisch: e.kritisch, punkte: b.punkte, gruende: b.gruende.map(x => x.text), erledigt: false,
     });
   }
-  return aus.sort((a, b) => b.punkte - a.punkte || quadrantRang(a.quadrant) - quadrantRang(b.quadrant) || (a.faellig ?? '9').localeCompare(b.faellig ?? '9') || a.titel.localeCompare(b.titel, 'de') || a.id.localeCompare(b.id));
+  // Prüf-Fund 11.10.: ZUERST das Feld der Eisenhower-Matrix (q1 → q4), DANN die Punkte — sonst stand eine nur dringende Aufgabe (q3,
+  // „heute fällig“) vor einer kritischen in fünf Tagen (q2).
+  return aus.sort((a, b) => quadrantRang(a.quadrant) - quadrantRang(b.quadrant) || b.punkte - a.punkte || (a.faellig ?? '9').localeCompare(b.faellig ?? '9') || a.titel.localeCompare(b.titel, 'de') || a.id.localeCompare(b.id));
 }
 
 /** ZOEs Vorschlag: die besten drei ab `VORSCHLAG_AB`. */

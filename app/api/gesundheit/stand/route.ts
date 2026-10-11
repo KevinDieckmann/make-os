@@ -12,7 +12,7 @@ import { ansichtPerson, personAus, darfGesundheitSehen, speicherFuer } from '@/l
 import { resolveVitals, type VitalsLog } from '@/lib/vitals';
 import { koerperwerteAus } from '@/lib/gesundheit/koerperwerte';
 import { localDay } from '@/lib/zeit';
-import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog } from '@/lib/gesundheit/eintraege';
+import { hautTrend, streakStand, rhythmusQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog } from '@/lib/gesundheit/eintraege';
 import { ladeStand, chatsFuerPerson, telegramKonfiguriert } from '@/lib/telegram';
 import type { TaktStand } from '@/lib/gesundheit/takt';
 import { routinenImUmfang, routinenSichtbarFuer } from '@/lib/planung/bereich-sicht-server';
@@ -61,8 +61,10 @@ export async function GET(req: Request) {
   // eine Business-Routine (z. B. Wochenplanung) steht nicht unter Körper & Routinen.
   const routinen = (await routinenImUmfang(await routinenSichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv), person), ich)).filter(r => routineImPrivat(r as Parameters<typeof routineImPrivat>[0]));
   const t14 = tageZurueck(heute, 14);
-  const q = routineQuote(hl ?? {}, routinen.map(r => r.id), heute, 7);
-  const je = (id: string) => routineQuote(hl ?? {}, [id], heute, 7).quote;
+  // Prüf-Fund 11.10.: die 7-Tage-Quote nach Rhythmus je Routine (nur fällige Tage, Pausen/Zeitraum zählen nicht gegen), gemittelt —
+  // früher „alle Routinen an jedem Tag“ (eine Routine 3×/Woche machte sie rot). null = nichts zu messen.
+  const q = rhythmusQuote(hl ?? {}, routinen as Parameters<typeof rhythmusQuote>[1], heute, 7);
+  const je = (id: string) => q.je.find(x => x.id === id)?.quote ?? null;
   // Routinen 2 (10.10.): „Heute“ nach Rhythmus — nur, was heute dran ist (oder schon erledigt), mit Zähler, Streak und Quote je Regel
   // (lib/planung/rhythmus.ts). Pausen und Zeitraum nimmt die Fälligkeit mit. `alle` = jede aktive Routine (für „Sätze unter Routinen“).
   const heuteListe = heuteFaellig(routinen, person, hl ?? {}, heute, 'alle', zaehler).map(x => {

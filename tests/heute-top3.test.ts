@@ -85,19 +85,29 @@ describe('Rangfolge der Top 3 (Regelwerk, ohne Modell)', () => {
     aufgabe('hoch', { title: 'Hoch', priority: 'high' }),
     aufgabe('ruhig', { title: 'Ruhige Aufgabe', dueDate: tagPlus(HEUTE, 30) }),
   ];
-  it('überfällig vor heute vor kritisch vor hoch; wer nichts hat, bekommt keine Punkte', () => {
+  it('erst das Eisenhower-Feld, dann die Punkte: wichtig (kritisch, hoch) vor nur dringend (überfällig, heute); wer nichts hat, bekommt keine Punkte', () => {
     const k = top3Kandidaten(lage(), 'business', kontext());
-    expect(k.map(x => x.id)).toEqual(['ueber', 'heute', 'krit', 'hoch', 'ruhig']);
+    // Prüf-Fund 11.10.: vorher Punkte zuerst (überfällig, heute, kritisch, hoch) — q3 stand vor q2.
+    expect(k.map(x => x.id)).toEqual(['krit', 'hoch', 'ueber', 'heute', 'ruhig']);
     expect(k.find(x => x.id === 'ueber')!.gruende[0]).toBe('überfällig seit 3 Tagen');
     expect(k.find(x => x.id === 'heute')!.gruende).toEqual(['heute fällig']);
     expect(k.find(x => x.id === 'ruhig')!.punkte).toBe(0);
   });
   it('ein Vorschlag sind höchstens drei und nur ab VORSCHLAG_AB — nie „zur Auffüllung“', () => {
     const v = top3Vorschlag(top3Kandidaten(lage(), 'business', kontext()));
-    expect(v.map(x => x.id)).toEqual(['ueber', 'heute', 'krit']);
+    expect(v.map(x => x.id)).toEqual(['krit', 'hoch', 'ueber']);
     expect(v.length).toBeLessThanOrEqual(TOP3_MAX);
     expect(top3Vorschlag(top3Kandidaten([aufgabe('nix', { dueDate: tagPlus(HEUTE, 30) })], 'business', kontext()))).toEqual([]);
     expect(VORSCHLAG_AB).toBeGreaterThan(0);
+  });
+  it('kritisch in 5 Tagen schlägt „niedrig, heute fällig“ (Prüf-Fund 11.10.)', () => {
+    const k = top3Kandidaten([
+      aufgabe('niedrig-heute', { title: 'Niedrig heute', priority: 'low', dueDate: HEUTE }),
+      aufgabe('krit-5', { title: 'Kritisch in 5 Tagen', priority: 'critical', dueDate: tagPlus(HEUTE, 5) }),
+    ], 'business', kontext());
+    expect(k.map(x => x.id)).toEqual(['krit-5', 'niedrig-heute']);
+    expect(k.map(x => x.quadrant)).toEqual(['q2', 'q3']);
+    expect(top3Vorschlag(k)[0].id).toBe('krit-5');
   });
   it('Gründe: höchstens zwei in der Zeile, die wichtigsten zuerst', () => {
     const z = alsZeile(top3Kandidaten([aufgabe('x', { priority: 'critical', dueDate: HEUTE })], 'business', kontext())[0]);
@@ -305,10 +315,10 @@ describe('Top 3 · Vorschlag je Bereich', () => {
     expect(b.festgelegt).toBeNull();
     expect(b.stand).toBe('');
   });
-  it('Privat: überfällig vor heute vor kritisch', async () => {
+  it('Privat: kritisch (wichtig) vor überfällig vor heute (nur dringend) — Eisenhower zuerst (11.10.)', async () => {
     const b = (await getTop3('?space=privat', sitzung('kevin'))).d.bereiche!.privat!;
-    expect(b.vorschlag.map(z => z.id)).toEqual(['p-ueber', 'p-heute', 'p-krit']);
-    expect(b.vorschlag[0].grund).toBe('überfällig seit 3 Tagen');
+    expect(b.vorschlag.map(z => z.id)).toEqual(['p-krit', 'p-ueber', 'p-heute']);
+    expect(b.vorschlag[1].grund).toBe('überfällig seit 3 Tagen');
     expect(b.auswahl.map(z => z.id)).toContain('p-spaeter'); // zum Selbst-Wählen, vorgeschlagen wird sie nicht
   });
   it('ohne `space` beide Bereiche der Person — mit `space` nur dieser', async () => {

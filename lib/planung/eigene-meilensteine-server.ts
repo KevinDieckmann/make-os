@@ -7,6 +7,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { listePatchen, type ListenOp, type Konflikt } from '@/lib/store/patch-liste';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 import { speicherFuer } from '@/lib/zoe/raum';
 import type { ZieleDatei } from './typen';
 import { eigeneMeilensteineFuerBetrachter, eigeneMeilensteineSicht, type EigeneZieleSicht } from './eigene-ziele-sicht';
@@ -30,7 +31,10 @@ export async function eigeneMeilensteineRoh(person: string): Promise<EigenerMeil
  * `eigeneMeilensteineFuerBetrachter`). `geteilte` ohne ein einziges geteiltes Ziel = dieselbe Antwort wie `nichts` (verrät nichts).
  */
 export async function eigeneMeilensteineFuer(eigentuemer: string, betrachter: string | null | undefined): Promise<{ sicht: Exclude<EigeneZieleSicht, 'nichts'>; meilensteine: EigenerMeilenstein[] } | { sicht: 'nichts' }> {
-  const sicht = eigeneMeilensteineSicht((await ladeKonten()).konten, eigentuemer, betrachter);
+  const st = await ladeKonten();
+  // Eigene: es genügt die Konto-Sicht Privat (Prüf-Fund 11.10. — der Haupt-Inhaber ohne Haushalt am Konto bekam sonst 403 für die eigenen).
+  const eigenPrivat = !!betrachter && betrachter === eigentuemer && kontoSichtAus(st, betrachter).privat;
+  const sicht = eigeneMeilensteineSicht(st.konten, eigentuemer, betrachter, { eigenPrivat });
   if (sicht === 'nichts') return { sicht };
   const [ms, ziele] = await Promise.all([eigeneMeilensteineRoh(eigentuemer), sicht === 'geteilte' ? loadJson<ZieleDatei>(zieleName(eigentuemer)) : Promise.resolve(null)]);
   if (sicht === 'geteilte' && ![...eigeneZieleNachId(ziele).values()].some(z => z.geteilt === true)) return { sicht: 'nichts' };

@@ -50,7 +50,7 @@ export function KapazitaetAnsicht() {
       {k.fehler && <Hinweis art="kritisch">{k.fehler}</Hinweis>}
       {k.zugang && !s && !k.fehler && <Karte><Leer>Rechnet die Kapazität …</Leer></Karte>}
       {s && <>
-        <Ueberblick s={s} heute={heute} />
+        <Ueberblick s={s} heute={heute} privat={space === 'privat'} />
         <TreueKarte s={s} />
         <MachbarKarte posten={s.posten} />
         {s.personen.map((p, i) => (
@@ -64,7 +64,7 @@ export function KapazitaetAnsicht() {
   );
 }
 
-function Ueberblick({ s, heute }: { s: KapaStand; heute: string }) {
+function Ueberblick({ s, heute, privat }: { s: KapaStand; heute: string; privat: boolean }) {
   const kz = s.kennzahlen;
   const lastFarbe = kz.last4 == null ? C.inkLeise : kz.last4 > 100 ? LEUCHT.kritisch : kz.last4 > 85 ? LEUCHT.achtung : LEUCHT.gut;
   return (
@@ -76,7 +76,8 @@ function Ueberblick({ s, heute }: { s: KapaStand; heute: string }) {
         <Zahl erklaerung={kennzahlTextVon('kapazitaet.puffer')} wert={kz.pufferStdWoche == null ? '—' : `${z(kz.pufferStdWoche)} h`} label="Puffer je Woche (Ø 4 Wochen)" farbe={kz.pufferStdWoche != null && kz.pufferStdWoche < 0 ? LEUCHT.kritisch : undefined} />
         <Zahl erklaerung={kennzahlTextVon('kapazitaet.planTreue')} wert={kz.planTreue == null ? '—' : `${z(kz.planTreue)} %`} label={kz.planTreue == null ? 'Plan-Treue · noch nicht messbar' : kz.planTreueQuelle === 'festgehalten' ? `Plan-Treue · ${kz.treueWochen?.length ?? 0} festgehaltene Woche${kz.treueWochen?.length === 1 ? '' : 'n'}` : 'Plan-Treue · Näherung'}
           farbe={kz.planTreue == null ? undefined : kz.planTreue >= 80 ? LEUCHT.gut : kz.planTreue >= 50 ? LEUCHT.achtung : LEUCHT.kritisch} />
-        <Zahl erklaerung={kennzahlTextVon('kapazitaet.kopf')} wert={`${Math.round(s.team.kopf.faktor * 100)} %`} label={s.team.kopf.personen ? 'Kopf & Energie (Team, 14 Tage)' : 'Kopf & Energie · ohne geteilte Messung'} />
+        {/* Datenschutz-Prüfung M1 (11.10.): „Kopf & Energie“ (Ableitung aus Erholung, Art. 9) nur in Privat — Business rechnet ohne. */}
+        {privat && <Zahl erklaerung={kennzahlTextVon('kapazitaet.kopf')} wert={`${Math.round(s.team.kopf.faktor * 100)} %`} label={s.team.kopf.personen ? 'Kopf & Energie (Team, 14 Tage)' : 'Kopf & Energie · ohne geteilte Messung'} />}
       </div>
       <LastBand stand={s} von={heute} bis={tagPlus(heute, WOCHEN * 7 - 1)} hoehe={34} />
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>

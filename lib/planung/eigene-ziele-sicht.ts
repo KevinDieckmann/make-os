@@ -153,10 +153,14 @@ export function hatGeteiltes(d: EigeneDatei | null | undefined): boolean {
 
 /**
  * Wie viel `betrachter` von den eigenen Meilensteinen von `eigentuemer` sieht: wie bei den eigenen Zielen (`eigeneZieleSicht`), aber nie für
- * ein Konto „nur Business“ oder eine Person ohne Konto im Haushalt (eigene Meilensteine sind immer Privat).
+ * ein Konto „nur Business“ oder eine Person ohne Konto im Haushalt (eigene Meilensteine sind immer Privat). `eigenPrivat` = die Konto-Sicht
+ * des Betrachters erlaubt Privat (Server) — dann sieht er seine eigenen immer.
  */
-export function eigeneMeilensteineSicht(konten: readonly KontoZieleTeilen[], eigentuemer: string, betrachter: string | null | undefined): EigeneZieleSicht {
+export function eigeneMeilensteineSicht(konten: readonly KontoZieleTeilen[], eigentuemer: string, betrachter: string | null | undefined, opts?: { eigenPrivat?: boolean }): EigeneZieleSicht {
   if (!betrachter) return 'nichts';
+  // Prüf-Fund 11.10.: die EIGENEN Meilensteine sieht die Person, sobald ihre Konto-Sicht Privat erlaubt (`kontoSichtAus(…).privat`, vom
+  // Server mitgegeben) — auch der Haupt-Inhaber ohne Haushalt am Konto (vorher 403 für die eigenen).
+  if (opts?.eigenPrivat && eigentuemer === betrachter) return 'alles';
   if (!vollesMitglied(konten.find(k => k.speicher === betrachter))) return 'nichts';
   return eigeneZieleSicht(konten, eigentuemer, betrachter);
 }

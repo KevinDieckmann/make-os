@@ -19,7 +19,9 @@ for (let i = 0; i < 30; i++) vitals[tag(i)] = i < 7 ? { rec: 70, sleep: 7.8, hrv
 const journal: GesundheitBestand['journal'] = {};
 for (let i = 0; i < 7; i++) journal[tag(i)] = { energy: 4, stress: 2, flags: i < 5 ? ['antiinflamm'] : [] };
 // Routinen: an 5 von 7 Tagen alles, an 2 Tagen ohne Supplements.
-const routinen = [{ id: 'reha', label: 'Reha & Mobilität', wann: 'morgen' }, { id: 'essen', label: 'Regelmäßig essen' }, { id: 'supps', label: 'Supplements' }];
+// Seit 11.10. (Prüf-Fund 3) rechnet die Quote je Routine nach ihrem Rhythmus ab `angelegtAm` (sonst ab dem ersten Haken).
+const ANGELEGT = tag(30);
+const routinen = [{ id: 'reha', label: 'Reha & Mobilität', wann: 'morgen', angelegtAm: ANGELEGT }, { id: 'essen', label: 'Regelmäßig essen', angelegtAm: ANGELEGT }, { id: 'supps', label: 'Supplements', angelegtAm: ANGELEGT }];
 const log: GesundheitBestand['log'] = {};
 for (let i = 0; i < 7; i++) log[tag(i)] = i < 5 ? ['reha', 'essen', 'supps'] : ['reha', 'essen'];
 // Haut: ruhige Woche (Ø 2), ein Schub in der Woche, einer vor 20 Tagen.
@@ -73,7 +75,8 @@ describe('Gesundheits-Index', () => {
     expect(k(pi, 'ruhepuls').ampel).toBe('gruen');
     expect(k(pi, 'stress')).toMatchObject({ wert: 2, ampel: 'gruen' });
     expect(k(pi, 'datenstand')).toMatchObject({ wert: 0, anzeige: 'heute', ampel: 'gruen' });
-    expect(k(pi, 'routinen').wert).toBeCloseTo(5 / 7 * 100, 5);
+    // Ø je Routine nach Rhythmus: Reha 7/7, Essen 7/7, Supplements 5/7 (früher: Tage mit ALLEN Routinen = 5/7).
+    expect(k(pi, 'routinen').wert).toBeCloseTo((1 + 1 + 5 / 7) / 3 * 100, 5);
     expect(k(pi, 'routinen').ampel).toBe('gruen');
     expect(k(pi, 'reha')).toMatchObject({ wert: 100, ampel: 'gruen' });
     expect(k(pi, 'bewegung')).toMatchObject({ wert: 3, ampel: 'gruen' });
@@ -138,5 +141,27 @@ describe('Gesundheits-Index', () => {
     const alt: GesundheitBestand['streak'] = {};
     for (let i = 5; i <= 20; i++) alt[tag(i)] = { sauber: true, at: `${tag(i)}T21:00:00.000Z` };
     expect(k(berechneGesundheit(bestand({ streak: alt })), 'streak')).toMatchObject({ gemessen: false, quelle: 'Seit über 3 Tagen kein Streak-Eintrag' });
+  });
+});
+
+describe('Routinen-Quote nach Rhythmus (Prüf-Fund 11.10.)', () => {
+  const nurRoutinen = (r: GesundheitBestand['routinen'], l: GesundheitBestand['log']) => berechneGesundheit(bestand({ routinen: r, log: l }));
+  it('3×/Woche, letzte Woche erfüllt, diese Woche erst einmal → nicht rot (früher 2/7 = rot)', () => {
+    const r = [{ id: 'dreimal', label: 'Krafttraining', angelegtAm: tag(30), regel: { art: 'pro-woche' as const, anzahl: 3 } }];
+    const l = { [tag(1)]: ['dreimal'], [tag(5)]: ['dreimal'], [tag(7)]: ['dreimal'], [tag(9)]: ['dreimal'] };
+    const x = k(nurRoutinen(r, l), 'routinen');
+    expect(x.wert).toBe(100);
+    expect(x.ampel).toBe('gruen');
+  });
+  it('eine Pause zählt nicht gegen (täglich, 5 Tage Urlaub, danach erledigt)', () => {
+    const r = [{ id: 'dehnen', label: 'Dehnen', angelegtAm: tag(30), pausen: [{ von: tag(6), bis: tag(2), grund: 'urlaub' as const }] }];
+    const l = { [tag(0)]: ['dehnen'], [tag(1)]: ['dehnen'] };
+    expect(k(nurRoutinen(r, l), 'routinen')).toMatchObject({ wert: 100, ampel: 'gruen' });
+  });
+  it('Reha nach Rhythmus (Werktage): das Wochenende zählt nicht', () => {
+    // HEUTE = Fr 25.09.; Werktage der letzten 7 Tage: 21.–25.09. (5), alle erledigt; Sa/So 19./20.09. nichts.
+    const r = [{ id: 'reha', label: 'Reha & Mobilität', kategorie: 'erholung', angelegtAm: tag(30), regel: { art: 'werktage' as const } }];
+    const l = Object.fromEntries([0, 1, 2, 3, 4].map(i => [tag(i), ['reha']]));
+    expect(k(nurRoutinen(r, l), 'reha')).toMatchObject({ wert: 100, ampel: 'gruen' });
   });
 });

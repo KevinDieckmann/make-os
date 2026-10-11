@@ -5,7 +5,9 @@
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { loadJson, saveJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
+import { bauPruefen } from '@/lib/bau/pruefen';
+import { journalZusammenfuehren } from '@/lib/gesundheit/zusammenfuehren';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 
 import { localDay } from '@/lib/zeit';
@@ -23,6 +25,8 @@ export interface JournalEntry {
   mood?: number;   // 1–5
   energy?: number; // 1–5
   stress?: number; // 1–5
+  /** Bewertung des Tages 1–5 (Abend-Ritual). */
+  tagesnote?: number;
   // Ältere Einträge tragen noch zwei feste Merkmale des früheren Tages-Checks (Werte „schub“/„schmerz“). Nichts schreibt sie
   // mehr; sie bleiben in den Daten (PUT schreibt den Bestand unverändert zurück) und die Oberfläche zeigt sie allgemein an.
   flags?: string[];// allgemeine Merkmale, z.B. bewegt, gutgeschlafen, sauber (Zähler laut Körper-Profil)
@@ -33,6 +37,11 @@ export interface JournalEntry {
 }
 export type Journal = Record<string, JournalEntry>;
 
+/** Textfelder des PATCH mit Höchstlänge (darüber 413). */
+const TEXT_FELDER = { gut: 800, dankbar: 800, hart: 800, text: 20_000 } as const;
+/** Zahlenfelder 1–5 des PATCH (`tagesnote` = Bewertung des Tages im Abend-Ritual). */
+const ZAHL_FELDER = ['mood', 'energy', 'stress', 'tagesnote'] as const;
+
 export async function GET(req: Request) {
   // Das Journal ist der persönlichste Bestand überhaupt — je Person getrennt.
   // Lesen dürfen sich beide gegenseitig (?fuer=, Kevins Entscheidung 23.09.).
@@ -42,26 +51,24 @@ export async function GET(req: Request) {
   return NextResponse.json({ journal });
 }
 
+/**
+ * PUT = Altweg (die Online-Version vor dem 09.10. und alte Tabs schicken das ganze Journal). Prüf-Fund 11.10.: so überschrieb ein alter Tab
+ * die `check`-Antworten des Tages-Checks und Felder, die per PATCH dazukamen. Darum (1) fremde Bau-Kennung → 409 „neu laden“ (`bauPruefen`),
+ * (2) tagesweise ZUSAMMENFÜHREN (`journalZusammenfuehren`): geschickte Felder gewinnen, `check` wird vereint, nicht genannte Tage bleiben.
+ * Die Oberflächen schreiben nur noch per PATCH (Ritual seit 11.10.).
+ */
 export async function PUT(req: Request) {
   // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
   { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let body: unknown;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!personStreng(req)) return ohnePerson();
+  { const alt = bauPruefen(req); if (alt) return alt; }
   const j = body as Journal;
   if (!j || typeof j !== 'object' || Array.isArray(j)) {
     return NextResponse.json({ ok: false, error: 'Ungültiges Journal.' }, { status: 400 });
   }
-  // Schrumpf-Wächter: verliert der neue Bestand mehr als die Hälfte der Tage,
-  // ist das fast immer ein Client-Fehler — nicht still überschreiben.
-  const speicher = speicherFuer('journal', personAus(req));
-  const bisher = (await loadJson<Record<string, unknown>>(speicher)) ?? {};
-  const alt = Object.keys(bisher).length;
-  const neu = Object.keys(j).length;
-  if (alt >= 6 && neu < alt / 2) {
-    return NextResponse.json({ ok: false, error: `Verweigert: der neue Stand hätte ${neu} statt ${alt} Tagen — sieht nach Datenverlust aus. Sicherung liegt unter .data/backup/.` }, { status: 409 });
-  }
-  await saveJson(speicher, j);
+  await updateJson<Journal>(speicherFuer('journal', personAus(req)), bisher => journalZusammenfuehren(bisher ?? {}, j as Record<string, unknown>));
   return NextResponse.json({ ok: true });
 }
 
@@ -76,26 +83,39 @@ export async function PATCH(req: Request) {
   let b: { datum?: string; eintrag?: Partial<JournalEntry> };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!personStreng(req)) return ohnePerson();
-  const datum = b.datum && /^\d{4}-\d{2}-\d{2}$/.test(b.datum) ? b.datum : localDay();
-  const e = b.eintrag ?? {};
-  const t = (v: unknown, n: number) => { const s = String(v ?? '').trim().slice(0, n); return s || undefined; };
-  const z = (v: unknown) => { const n = Number(v); return isFinite(n) && n >= 1 && n <= 5 ? Math.round(n) : undefined; };
-  const neu: Partial<JournalEntry> = {
-    ...(t(e.gut, 800) ? { gut: t(e.gut, 800) } : {}), ...(t(e.dankbar, 800) ? { dankbar: t(e.dankbar, 800) } : {}),
-    ...(t(e.hart, 800) ? { hart: t(e.hart, 800) } : {}), ...(t(e.text, 2000) ? { text: t(e.text, 2000) } : {}),
-    ...(z(e.mood) ? { mood: z(e.mood) } : {}), ...(z(e.energy) ? { energy: z(e.energy) } : {}), ...(z(e.stress) ? { stress: z(e.stress) } : {}),
-  };
+  const datum = b?.datum && /^\d{4}-\d{2}-\d{2}$/.test(b.datum) ? b.datum : localDay();
+  const e = (b?.eintrag && typeof b.eintrag === 'object' && !Array.isArray(b.eintrag) ? b.eintrag : {}) as Record<string, unknown>;
+  // Felder setzen (Text getrimmt, Zahlen 1–5) oder mit `null`/'' leeren (Prüf-Fund 11.10.: das Ritual schreibt jetzt hierüber und muss den
+  // Abendtext auch leeren können). Zu langer Text → 413, nie still gekürzt.
+  const neu: Partial<JournalEntry> = {};
+  const weg: (keyof JournalEntry)[] = [];
+  for (const [f, max] of Object.entries(TEXT_FELDER) as [keyof typeof TEXT_FELDER, number][]) {
+    if (!(f in e)) continue;
+    const v = e[f];
+    if (v === null || (typeof v === 'string' && !v.trim())) { weg.push(f); continue; }
+    if (typeof v !== 'string' && typeof v !== 'number') continue;
+    const s = String(v).trim();
+    if (s.length > max) return NextResponse.json({ ok: false, error: `${f}: höchstens ${max} Zeichen (${s.length}). Nichts gespeichert.` }, { status: 413 });
+    neu[f] = s;
+  }
+  for (const f of ZAHL_FELDER) {
+    if (!(f in e)) continue;
+    const v = e[f];
+    if (v === null) { weg.push(f); continue; }
+    const n = Number(v);
+    if (isFinite(n) && n >= 1 && n <= 5) neu[f] = Math.round(n);
+  }
   let check: Record<string, boolean | null> | null = null;
   if (e.check !== undefined) {
     const c = checkEingangSaeubern(e.check);
     if (!c.ok) return NextResponse.json({ ok: false, error: c.fehler }, { status: 400 });
     check = c.werte;
   }
-  if (!Object.keys(neu).length && !check) return NextResponse.json({ ok: false, error: 'Nichts zum Eintragen.' }, { status: 400 });
-  const { updateJson } = await import('@/lib/store/local-db');
+  if (!Object.keys(neu).length && !weg.length && !check) return NextResponse.json({ ok: false, error: 'Nichts zum Eintragen.' }, { status: 400 });
   const log = await updateJson<Journal>(speicherFuer('journal', personAus(req)), current => {
     const j = current ?? {};
     const tag: JournalEntry = { ...(j[datum] ?? {}), ...neu, at: new Date().toISOString() };
+    for (const f of weg) delete tag[f];
     if (check) { const c = checkAnwenden(tag.check, check); if (c) tag.check = c; else delete tag.check; }
     return { ...j, [datum]: tag };
   });

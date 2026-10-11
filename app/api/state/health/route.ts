@@ -5,13 +5,17 @@
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { loadJson, saveJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
+import { bauPruefen } from '@/lib/bau/pruefen';
+import { logZusammenfuehren } from '@/lib/gesundheit/zusammenfuehren';
 import { localDay } from '@/lib/zeit';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { gesundheitSchreibSperre } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { routineHaken, zaehlerVon } from '@/lib/planung/routinen-haken-server';
 import { hakenOpAus } from '@/lib/planung/routinen-person';
+import { spaceVonRoutine } from '@/lib/planung/routinen';
+import type { RoutinenDatei } from '@/lib/planung/typen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,29 +30,50 @@ export async function GET(req: Request) {
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const log = (await loadJson<HealthLog>(speicherFuer('health-log', person))) ?? {};
   // Routinen 2 (10.10.): Zähler je Tag („5 von 8“) — dasselbe Tor wie der Log (die Person selbst oder wer ihre Gesundheit geteilt bekommt).
-  return NextResponse.json({ log, zaehler: await zaehlerVon(person) });
+  const zaehler = await zaehlerVon(person);
+  // Datenschutz-Prüfung N5 (11.10.): eine Ansicht der Sicht Business (Routinen-Planer, Tagesplanung) bekommt NUR die Haken/Zähler der
+  // Business-Routinen — serverseitig gefiltert (`?bereich=business`; `?space=business` sperrt die Middleware, weil der Log Privat ist).
+  if (new URL(req.url).searchParams.get('bereich') === 'business') {
+    const ids = await businessRoutinenIds();
+    return NextResponse.json({ log: nurIds(log, ids), zaehler: nurIds(zaehler, ids) });
+  }
+  return NextResponse.json({ log, zaehler });
 }
 
+/** Kennungen der Routinen im Business-Bereich (wirksamer Space). */
+async function businessRoutinenIds(): Promise<Set<string>> {
+  const f = await loadJson<RoutinenDatei>('routinen');
+  return new Set((Array.isArray(f?.routinen) ? f!.routinen : []).filter(r => spaceVonRoutine(r) === 'business').map(r => r.id));
+}
+
+/** Je Tag nur die Einträge dieser Kennungen (Liste bzw. Zähler-Objekt), leere Tage fallen weg. */
+function nurIds<T extends string[] | Record<string, number>>(je: Record<string, T> | null | undefined, ids: ReadonlySet<string>): Record<string, T> {
+  const aus: Record<string, T> = {};
+  for (const [tag, v] of Object.entries(je ?? {})) {
+    const gefiltert = (Array.isArray(v) ? v.filter(x => ids.has(x)) : Object.fromEntries(Object.entries(v ?? {}).filter(([k]) => ids.has(k)))) as T;
+    if (Array.isArray(gefiltert) ? gefiltert.length : Object.keys(gefiltert).length) aus[tag] = gefiltert;
+  }
+  return aus;
+}
+
+/**
+ * PUT = Altweg (die Online-Version vor dem 09.10. und alte PWA-Tabs schicken den ganzen Log). Prüf-Fund 11.10.: so überschrieb ein alter Tab
+ * Haken, die inzwischen per PATCH gesetzt wurden. Darum (1) fremde Bau-Kennung → 409 „neu laden“ (`bauPruefen`), (2) tagesweise
+ * ZUSAMMENFÜHREN statt ersetzen: je Tag die Vereinigung aus gespeichertem und geschicktem Stand — ein Haken geht über PUT nie verloren,
+ * Tage, die der Körper nicht nennt, bleiben unverändert. Abhaken lösen geht nur über PATCH (die eine Schreibstelle `routineHaken`).
+ */
 export async function PUT(req: Request) {
   // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
   { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let body: unknown;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!personStreng(req)) return ohnePerson();
+  { const alt = bauPruefen(req); if (alt) return alt; }
   const log = body as HealthLog;
   if (!log || typeof log !== 'object' || Array.isArray(log)) {
     return NextResponse.json({ ok: false, error: 'Ungültiges Log.' }, { status: 400 });
   }
-  // Schrumpf-Wächter: verliert der neue Bestand mehr als die Hälfte der Tage,
-  // ist das fast immer ein Client-Fehler — nicht still überschreiben.
-  const speicher = speicherFuer('health-log', personAus(req));
-  const bisher = (await loadJson<Record<string, unknown>>(speicher)) ?? {};
-  const alt = Object.keys(bisher).length;
-  const neu = Object.keys(log).length;
-  if (alt >= 6 && neu < alt / 2) {
-    return NextResponse.json({ ok: false, error: `Verweigert: der neue Stand hätte ${neu} statt ${alt} Tagen — sieht nach Datenverlust aus. Sicherung liegt unter .data/backup/.` }, { status: 409 });
-  }
-  await saveJson(speicher, log);
+  await updateJson<HealthLog>(speicherFuer('health-log', personAus(req)), bisher => logZusammenfuehren(bisher ?? {}, log));
   return NextResponse.json({ ok: true });
 }
 

@@ -14,7 +14,7 @@ import { resolveVitals } from '@/lib/vitals';
 import { localDay } from '@/lib/zeit';
 import { anPersonMelden, botenEingerichtet, botenKanalFuer, inhalteErlaubtFuer } from '@/lib/zoe/an-person';
 import { faelligeSlots, markiere, morgenText, mittagText, abendText, wochenText, type Slot, type TaktStand } from './takt';
-import { hautTrend, streakStand, routineQuote, type HautLog, type StreakLog, type RoutinenLog } from './eintraege';
+import { hautTrend, streakStand, rhythmusQuote, type HautLog, type StreakLog, type RoutinenLog } from './eintraege';
 import { routinenSichtbarFuer } from '@/lib/planung/bereich-sicht-server';
 import { appLink, hinweisCheckIn } from '@/lib/datenschutz/telegram-text';
 import { aussenAdresse } from '@/lib/innen';
@@ -136,11 +136,12 @@ export async function nachrichtFuer(person: Person, slot: Slot, _origin: string,
   ]);
   const t7 = Array.from({ length: 7 }, (_, i) => { const d = new Date(`${heute}T12:00:00`); d.setDate(d.getDate() - i); return localDay(d); });
   const recs = t7.map(d => vitalsLog?.[d]?.rec).filter((x): x is number => typeof x === 'number');
-  const q = routineQuote(hl ?? {}, alleAktiv.map(r => r.id), heute, 7);
+  // Prüf-Fund 11.10.: Quote nach Rhythmus je Routine (nur fällige Tage), nicht „alle Routinen an jedem Tag“.
+  const q = rhythmusQuote(hl ?? {}, alleAktiv, heute, 7);
   return wochenText({
     name,
     recovery7: recs.length ? Math.round(recs.reduce((a, b) => a + b, 0) / recs.length) : undefined,
-    routinenQuote: q.quote, routinenTage: q.tage,
+    routinenQuote: q.quote ?? 0, routinenTage: q.tage,
     journalTage: t7.filter(d => journal?.[d]).length,
     haut: hautTrend(haut ?? {}, heute),
     streak: streakStand(streak ?? {}, heute),

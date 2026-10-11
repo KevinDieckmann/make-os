@@ -13,6 +13,7 @@
 // „Mit <Name> teilen“ gilt je Schlüssel (`geteilt`), Vorgabe nur ich — gefiltert NUR auf dem Server (lib/planung/fokus-server.ts).
 
 import { fokusImJahr } from './jahr-fokus';
+import { montagVon } from './zeitraum';
 
 export type FokusBereich = 'privat' | 'business';
 export type FokusHorizont = 'tag' | 'woche' | 'monat' | 'quartal' | 'jahr';
@@ -43,6 +44,21 @@ export interface FokusDatei {
   fokus?: Record<string, string>;
   /** Nur „Mein Fokus“: die Schlüssel, die die Person mit den anderen vollen Mitgliedern des Haushalts teilt. */
   geteilt?: string[];
+  /**
+   * Prüf-Fund 11.10. (additiv): für welchen Zeitraum ein Satz gesetzt wurde — je Schlüssel `JJJJ-MM-TT` (Tag), Montag der Woche, `JJJJ-MM`
+   * (Monat), `JJJJ-Qn` (Quartal). Ein Satz eines vergangenen Zeitraums gilt nicht mehr (die Zelle ist leer, gespeichert bleibt er); ein Satz
+   * ohne Angabe (vor dem 11.10. gesetzt) gilt als „unbekannt“ — sichtbar, aber nie als „heute“ im Briefing.
+   */
+  zeitraum?: Record<string, string>;
+}
+
+/** Der laufende Zeitraum eines Horizonts (`heute` = Berliner Tag) — null für das Jahr (dessen Schlüssel trägt das Jahr schon). */
+export function fokusZeitraum(h: FokusHorizont, heute: string): string | null {
+  if (h === 'tag') return heute;
+  if (h === 'woche') return montagVon(heute);
+  if (h === 'monat') return heute.slice(0, 7);
+  if (h === 'quartal') return `${heute.slice(0, 4)}-Q${Math.floor((Number(heute.slice(5, 7)) - 1) / 3) + 1}`;
+  return null;
 }
 
 /** Die vier Bestandsnamen — je einzeln, damit der Register-Wächter (tests/datenschutz-register.test.ts) jeden Namen sieht. */
@@ -76,7 +92,11 @@ export function fokusAlt(alt: Record<string, string> | null | undefined, h: Foku
 }
 
 export type FokusQuelle = 'neu' | 'alt' | 'leer';
-export interface FokusZelle { text: string; quelle: FokusQuelle; /** Der Stand, den der Browser beim Schreiben mitschickt (sonst 409). */ stand: string }
+export interface FokusZelle {
+  text: string; quelle: FokusQuelle; /** Der Stand, den der Browser beim Schreiben mitschickt (sonst 409). */ stand: string;
+  /** Der Satz trägt keinen Zeitraum (vor dem 11.10. gesetzt oder Altbestand) — er kann aus einem früheren Tag/einer früheren Woche stammen. */
+  unbekannt?: true;
+}
 
 /** Stand einer Zelle: FNV-1a über Quelle und Text (gleicher Text aus dem Altbestand ≠ neu gesetzt) — rein, auch im Browser. */
 export function fokusZellenStand(text: string, quelle: FokusQuelle): string {
@@ -85,14 +105,21 @@ export function fokusZellenStand(text: string, quelle: FokusQuelle): string {
   return `f${h.toString(36)}${text.length.toString(36)}`;
 }
 
-/** Die wirksame Zelle: der neue Bestand, sobald er den Schlüssel trägt (auch leer), sonst der Altbestand. */
-export function fokusZelle(neu: FokusDatei | null | undefined, schluessel: string, alt: string): FokusZelle {
+/**
+ * Die wirksame Zelle: der neue Bestand, sobald er den Schlüssel trägt (auch leer), sonst der Altbestand. Mit `aktuell` (laufender Zeitraum,
+ * `fokusZeitraum`, 11.10.): ein Satz eines VERGANGENEN Zeitraums ist leer (bleibt gespeichert, bis jemand neu schreibt); einer ohne Zeitraum
+ * (bzw. aus dem Altbestand) trägt `unbekannt`.
+ */
+export function fokusZelle(neu: FokusDatei | null | undefined, schluessel: string, alt: string, aktuell?: string | null): FokusZelle {
+  const leer: FokusZelle = { text: '', quelle: 'leer', stand: fokusZellenStand('', 'leer') };
   const n = neu?.fokus;
   if (n && Object.prototype.hasOwnProperty.call(n, schluessel) && typeof n[schluessel] === 'string') {
     const text = n[schluessel];
-    return { text, quelle: text ? 'neu' : 'leer', stand: fokusZellenStand(text, text ? 'neu' : 'leer') };
+    const zr = typeof neu?.zeitraum?.[schluessel] === 'string' ? neu!.zeitraum![schluessel] : null;
+    if (aktuell && zr && zr !== aktuell) return leer;
+    return { text, quelle: text ? 'neu' : 'leer', stand: fokusZellenStand(text, text ? 'neu' : 'leer'), ...(aktuell && text && !zr ? { unbekannt: true as const } : {}) };
   }
-  return alt ? { text: alt, quelle: 'alt', stand: fokusZellenStand(alt, 'alt') } : { text: '', quelle: 'leer', stand: fokusZellenStand('', 'leer') };
+  return alt ? { text: alt, quelle: 'alt', stand: fokusZellenStand(alt, 'alt'), ...(aktuell ? { unbekannt: true as const } : {}) } : leer;
 }
 
 /** Teilt die Person diesen Schlüssel? */
@@ -106,10 +133,13 @@ export function fokusTextPruefen(v: unknown): { ok: true; text: string } | { ok:
   return { ok: true, text };
 }
 
-/** Ein Schreibschritt im Bestand (rein): Text setzen (leer = bewusst leer) und/oder Teilen umschalten. */
-export function fokusAnwenden(d: FokusDatei | null | undefined, schluessel: string, o: { text?: string; geteilt?: boolean }): FokusDatei {
+/** Ein Schreibschritt im Bestand (rein): Text setzen (leer = bewusst leer, mit `zeitraum` des laufenden Zeitraums) und/oder Teilen umschalten. */
+export function fokusAnwenden(d: FokusDatei | null | undefined, schluessel: string, o: { text?: string; geteilt?: boolean; zeitraum?: string | null }): FokusDatei {
   const aus: FokusDatei = { ...(d ?? {}), fokus: { ...(d?.fokus ?? {}) } };
-  if (typeof o.text === 'string') aus.fokus![schluessel] = o.text;
+  if (typeof o.text === 'string') {
+    aus.fokus![schluessel] = o.text;
+    if (o.zeitraum) aus.zeitraum = { ...(d?.zeitraum ?? {}), [schluessel]: o.zeitraum };
+  }
   if (typeof o.geteilt === 'boolean') {
     const l = new Set(Array.isArray(d?.geteilt) ? d!.geteilt! : []);
     if (o.geteilt) l.add(schluessel); else l.delete(schluessel);

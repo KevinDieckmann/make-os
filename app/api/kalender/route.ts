@@ -38,7 +38,7 @@ import type { Termin } from '@/lib/kalender/ics';
 import { ladeBezuege } from '@/lib/kalender/bezug-server';
 import { mitBezug, maskieren, alsBelegt, type BezugBestand } from '@/lib/kalender/bezug';
 import { hauptZugangAuffrischen, ladePersonStand, ladeVerbindung, personAbgleichen, personAbgleichLaeuft, personenMitIcloud } from '@/lib/kalender/icloud-person';
-import { einstellungenFuerPerson } from '@/lib/kalender/einstellungen';
+import { einstellungenFuerPerson, einstellungenFuerBereich } from '@/lib/kalender/einstellungen';
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
@@ -151,7 +151,8 @@ export async function GET(req: Request) {
     ...(eigenIcloud ? { icloudEigen: { abgleich: abgleichAlter(eigenStand ?? {}) } } : {}),
     // Google (03.10.): je verbundenem Google-Kalender „letzter Abgleich vor X Min.“ (Name + Alter, nie Tokens/Adressen).
     ...(googleAbgleiche.length ? { google: googleAbgleiche } : {}),
-    kalender, einstellungen: einstellungenFuerPerson(einst, zugang.person),
+    // N6 (11.10.): mit `?space=` nur die Kalendernamen dieses Bereichs (auch in den Einstellungen).
+    kalender, einstellungen: bereich ? einstellungenFuerBereich(einstellungenFuerPerson(einst, zugang.person), imBereich) : einstellungenFuerPerson(einst, zugang.person),
     // Bezug + Sicherung anwenden, dann für die ansehende Person maskieren (privat der anderen → „Belegt“).
     termine: termine.map(t => { const m = maskieren({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, zugang.person); return imBereich(t.kalender) ? m : alsBelegt(m); }),
     fristen: sicht.fristen,

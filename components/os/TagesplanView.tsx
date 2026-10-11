@@ -124,8 +124,10 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
         setRehaVorher(rehaGewohnt(alle, heute));
       }).catch(() => { setArchiv([]); setRehaVorher(false); });
     fetch(`/api/state/routinen?sicht=ich&space=${bereich}`).then(r => r.json()).then(d => setRoutinen((d.routinen ?? []).filter((x: Routine) => x.aktiv))).catch(() => {});
-    fetch('/api/state/health').then(r => r.json()).then(d => setHlog(d.log ?? {})).catch(() => {});
-    fetch('/api/state/ziele').then(r => r.json()).then(d => { setZiele(((d.monat ?? []) as Ziel[]).filter(z => !z.erledigt)); }).catch(() => {});
+    // Datenschutz-Prüfung N5 (11.10.): serverseitig gefiltert — das Gesundheits-Log nur in Privat, in Business nur die Haken der
+    // Business-Routinen; die Ziele mit `?space=`.
+    fetch(bereich === 'business' ? '/api/state/health?bereich=business' : '/api/state/health?space=privat').then(r => r.json()).then(d => setHlog(d.log ?? {})).catch(() => {});
+    fetch(`/api/state/ziele?space=${bereich}`).then(r => r.json()).then(d => { setZiele(((d.monat ?? []) as Ziel[]).filter(z => !z.erledigt)); }).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
   }, [heute, bereich]);
 

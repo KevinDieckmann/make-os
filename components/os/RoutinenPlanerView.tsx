@@ -32,6 +32,7 @@ import { einheitName } from '@/lib/einheiten';
 import { hatPrivatEinheit } from '@/lib/planung/bereich';
 import { routineRhythmusKurz, routineStatistik, faelligkeit, tagesZielVon, pausiertAm } from '@/lib/planung/rhythmus';
 import { ROUTINEN_VORLAGEN, vorlageAnlegen } from '@/lib/planung/routinen-vorlagen';
+import { kalenderBetroffen } from '@/lib/planung/routinen-erinnerung';
 import { PlanerLeiste } from './PlanerLeiste';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen, ZeileAktionen, useRueckgaengig, Kennzahl, Hinweis, Zeile } from './ui';
 import { PfeilRang } from './planung/PfeilRang';
@@ -173,7 +174,6 @@ export function RoutinenPlanerView() {
       if (me) { setIch(me); setBlockPerson(me); }
       setPersonen([...(me ? [{ speicher: me, name: (d.ich?.name ?? me).split(' ')[0] }] : []), ...((d.andere ?? []) as Person[]).map(a => ({ speicher: a.speicher, name: (a.name ?? a.speicher).split(' ')[0] }))]);
     }).catch(() => {});
-    fetch('/api/state/health').then(r => (r.ok ? r.json() : null)).then(d => { if (d) { setLog(d.log ?? {}); setZaehler(d.zaehler ?? {}); } }).catch(() => {});
     fetch('/api/planung/routinen-person').then(r => (r.ok ? r.json() : null)).then(d => { if (d?.ok) setHandy(!!d.handy); }).catch(() => {});
   }, [routinenSchreiber, blockSchreiber]); // beide stabil (useMemo ohne Abhängigkeiten) — läuft einmal
 
@@ -202,6 +202,12 @@ export function RoutinenPlanerView() {
       void blockSchreiber.senden().then(e => { nachSenden(e); if (e.sicht && !e.nichts) zeigeBloecke(e.sicht); });
     }, 500);
   }
+  // Datenschutz-Prüfung N5 (11.10.): Haken und Zähler serverseitig gefiltert — in Business nur die der Business-Routinen, das
+  // Gesundheits-Log nur in Privat.
+  useEffect(() => {
+    fetch(kopfSpace === 'business' ? '/api/state/health?bereich=business' : '/api/state/health?space=privat')
+      .then(r => (r.ok ? r.json() : null)).then(d => { if (d) { setLog(d.log ?? {}); setZaehler(d.zaehler ?? {}); } }).catch(() => {});
+  }, [kopfSpace]);
   // Beim Verlassen: noch Offenes senden.
   useEffect(() => () => {
     clearTimeout(saveTimer.current); clearTimeout(blockTimer.current);
@@ -216,7 +222,8 @@ export function RoutinenPlanerView() {
     persist(routinenRef.current.filter(x => x.id !== r.id), r.kalender ? kalenderNachziehen : undefined);
     melden(`Routine „${r.label}“ gelöscht`, () => { if (!routinenRef.current.some(x => x.id === r.id)) persist([...routinenRef.current, r], r.kalender ? kalenderNachziehen : undefined); });
   };
-  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p } : x)));
+  // Prüf-Fund 11.10.: Aktiv/Kalender (oder Uhrzeit, Rhythmus …) direkt in der Liste geändert → Kalender-Blöcke gleich nachziehen.
+  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p } : x)), kalenderBetroffen(routinen.find(x => x.id === id), p) ? kalenderNachziehen : undefined);
 
   /** Kalender-Blöcke der eigenen Routinen nachziehen (sonst morgens im Morgenlauf) — Ergebnis als Hinweis. */
   async function kalenderNachziehen() {
@@ -230,13 +237,13 @@ export function RoutinenPlanerView() {
   /** Vom Editor: neue Routine anlegen bzw. eine bestehende ersetzen; Kalender-Blöcke nachziehen, wenn sie betroffen sind. */
   const ausEditor = (r: Routine) => {
     const vorher = routinen.find(x => x.id === r.id);
-    const kalenderBetroffen = !!r.kalender || !!vorher?.kalender;
+    const kalenderNoetig = !!r.kalender || !!vorher?.kalender;
     if (!vorher) {
       const neu: Routine = { ...r, id: neueKennung('r'), rang: naechsterRang(routinen) };
-      persist([...routinen, neu], kalenderBetroffen ? kalenderNachziehen : undefined);
+      persist([...routinen, neu], kalenderNoetig ? kalenderNachziehen : undefined);
       setNeuName('');
     } else {
-      persist(routinen.map(x => (x.id === r.id ? r : x)), kalenderBetroffen ? kalenderNachziehen : undefined);
+      persist(routinen.map(x => (x.id === r.id ? r : x)), kalenderNoetig ? kalenderNachziehen : undefined);
     }
     setEditor(null);
   };

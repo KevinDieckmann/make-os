@@ -122,7 +122,8 @@ describe('Route: Sicht A bekommt nichts aus B', () => {
     const lang = await setzen('person-a', { bereich: 'privat', wessen: 'unser', horizont: 'monat', text: 'x'.repeat(301), stand: (await holen('person-a')).d.horizonte.monat.unser.stand });
     expect(lang.status).toBe(413);
     expect(await db.loadJson('ziele')).toEqual(ZIELE_ALT);
-    expect(await db.loadJson('fokus-privat--haus-t')).toEqual({ fokus: { monat: 'UNSER-MONAT' } });
+    // Seit 11.10. trägt jeder Satz seinen Zeitraum (Monat JJJJ-MM).
+    expect(await db.loadJson('fokus-privat--haus-t')).toEqual({ fokus: { monat: 'UNSER-MONAT' }, zeitraum: { monat: (await import('@/lib/zeit')).localDay().slice(0, 7) } });
   });
 
   it('Mein Fokus: ungeteilt sieht ihn niemand sonst — geteilt nur volle Mitglieder des Haushalts, nur diesen Satz', async () => {
@@ -163,7 +164,7 @@ describe('Route: Sicht A bekommt nichts aus B', () => {
     const d = await holen('person-d', '?bereich=business');
     expect((await setzen('person-d', { bereich: 'business', wessen: 'unser', horizont: 'monat', text: 'D-UNSER', stand: d.d.horizonte.monat.unser.stand })).status).toBe(403);
     expect((await setzen('person-d', { bereich: 'business', wessen: 'mein', horizont: 'monat', text: 'D-MEIN', stand: d.d.horizonte.monat.mein.stand })).status).toBe(200);
-    expect(await db.loadJson('fokus-eigen-business--person-d')).toEqual({ fokus: { monat: 'D-MEIN' } });
+    expect(await db.loadJson('fokus-eigen-business--person-d')).toEqual({ fokus: { monat: 'D-MEIN' }, zeitraum: { monat: (await import('@/lib/zeit')).localDay().slice(0, 7) } });
     expect(await db.loadJson('fokus-eigen--person-d')).toBeNull();
     expect((await setzen('person-d', { bereich: 'privat', wessen: 'mein', horizont: 'monat', text: 'D-PRIVAT', stand: 'x' })).status).toBe(403);
     expect((await setzen('person-a', { bereich: 'business', wessen: 'unser', horizont: 'monat', einheit: 'gibt-es-nicht', text: 'x', stand: 'x' })).status).toBe(400);
@@ -220,5 +221,48 @@ describe('ZOE/Agenten lesen den Fokus der AUSLÖSENDEN Person — EINE Stelle', 
     expect(w).toContain('<FokusFeld wert=""');
     // Namen nur aus den Konten.
     expect(lies('components/os/planung/FokusTafel.tsx')).not.toMatch(/['"](kevin|malin)['"]/i);
+  });
+});
+
+describe('Prüf-Fund 11.10.: der Fokus trägt seinen Zeitraum — gelesen wird nur der laufende', () => {
+  it('rein: Zeitraum je Horizont; ein Satz von gestern ist heute leer; ohne Zeitraum „unbekannt“; Schreiben stempelt', async () => {
+    const { fokusZeitraum, fokusZelle, fokusAnwenden } = await import('@/lib/planung/fokus');
+    expect(fokusZeitraum('tag', '2026-10-11')).toBe('2026-10-11');
+    expect(fokusZeitraum('woche', '2026-10-11')).toBe('2026-10-05'); // Sonntag → Montag davor
+    expect(fokusZeitraum('monat', '2026-10-11')).toBe('2026-10');
+    expect(fokusZeitraum('quartal', '2026-10-11')).toBe('2026-Q4');
+    expect(fokusZeitraum('jahr', '2026-10-11')).toBeNull();
+    const gestern = { fokus: { tag: 'GESTERN' }, zeitraum: { tag: '2026-10-10' } };
+    expect(fokusZelle(gestern, 'tag', '', '2026-10-11')).toMatchObject({ text: '', quelle: 'leer' });
+    expect(fokusZelle(gestern, 'tag', '', '2026-10-10')).toMatchObject({ text: 'GESTERN', quelle: 'neu' });
+    expect(fokusZelle(gestern, 'tag', '')).toMatchObject({ text: 'GESTERN' }); // ohne `aktuell` wie bisher
+    expect(fokusZelle({ fokus: { tag: 'OHNE' } }, 'tag', '', '2026-10-11')).toMatchObject({ text: 'OHNE', unbekannt: true });
+    expect(fokusZelle(null, 'tag', 'ALT', '2026-10-11')).toMatchObject({ text: 'ALT', quelle: 'alt', unbekannt: true });
+    expect(fokusAnwenden(gestern, 'tag', { text: 'HEUTE', zeitraum: '2026-10-11' })).toEqual({ fokus: { tag: 'HEUTE' }, zeitraum: { tag: '2026-10-11' } });
+    // Gespeichert bleibt alles: der alte Satz wird nur nicht mehr als „heute“ gelesen.
+    expect(gestern.fokus.tag).toBe('GESTERN');
+  });
+
+  it('Route: ein Tagesfokus von gestern ist heute leer; ein Satz ohne Zeitraum steht nicht als „heute“ im Briefing', async () => {
+    const { localDay } = await import('@/lib/zeit');
+    const { tagPlus } = await import('@/lib/kalender/zeit');
+    const heute = localDay();
+    await db.saveJson('fokus-eigen--person-b', { fokus: { tag: 'B-GESTERN', woche: 'B-OHNE-ZEITRAUM' }, zeitraum: { tag: tagPlus(heute, -1) } });
+    const b = await holen('person-b');
+    expect(b.d.horizonte.tag.mein.text).toBe('');
+    expect(b.d.horizonte.woche.mein).toMatchObject({ text: 'B-OHNE-ZEITRAUM', unbekannt: true });
+    // Gespeichert bleibt der alte Satz (nichts beim Lesen verworfen).
+    expect((await db.loadJson<{ fokus: Record<string, string> }>('fokus-eigen--person-b'))!.fokus.tag).toBe('B-GESTERN');
+    const { fokusFuerBriefing } = await import('@/lib/heute/briefing-server');
+    const z = (text: string, unbekannt?: boolean) => ({ text, quelle: 'neu' as const, stand: 's', ...(unbekannt ? { unbekannt: true as const } : {}) });
+    const h = (mein: ReturnType<typeof z>, unser = z('')) => ({ unser, mein: { ...mein, geteilt: false }, partner: [] });
+    expect(fokusFuerBriefing({ tag: h(z('ALT-TAG', true)), woche: h(z('')), monat: h(z('MONAT-AKTUELL')) })).toEqual({ text: 'MONAT-AKTUELL', wann: 'monat' });
+    expect(fokusFuerBriefing({ tag: h(z('HEUTE-AKTUELL')), woche: h(z('')), monat: h(z('')) })).toEqual({ text: 'HEUTE-AKTUELL', wann: 'tag' });
+    expect(fokusFuerBriefing({ tag: h(z('ALT', true)), woche: h(z('', false)), monat: h(z('')) })).toBeNull();
+    // Neu gespeichert: der Satz gilt für heute.
+    const neu = await setzen('person-b', { bereich: 'privat', wessen: 'mein', horizont: 'tag', text: 'B-HEUTE', stand: b.d.horizonte.tag.mein.stand });
+    expect(neu.status).toBe(200);
+    expect((await holen('person-b')).d.horizonte.tag.mein).toMatchObject({ text: 'B-HEUTE', quelle: 'neu' });
+    expect((await holen('person-b')).d.horizonte.tag.mein).not.toHaveProperty('unbekannt');
   });
 });

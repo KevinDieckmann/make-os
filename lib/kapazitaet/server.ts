@@ -95,7 +95,7 @@ function erholungAus(v: VitalsLog | null, heute: string): number | null {
 const sicher = async <T>(f: () => Promise<T>, rueck: T): Promise<T> => { try { return await f(); } catch { return rueck; } };
 
 /** Alles laden und rechnen — ungefiltert (nur Server). Wer ausliefert, nimmt `kapaStandFuer`. */
-async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege: { art: 'mandat' | 'kunde'; id: string; label: string }[]; privat: Set<string> }> {
+async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; ohneKopf: KapaStand; bezuege: { art: 'mandat' | 'kunde'; id: string; label: string }[]; privat: Set<string> }> {
   const ende = tagPlus(montagVon(heute), 7 * WOCHEN_STANDARD);
   const istAb = tagPlus(montagVon(heute), -28);
   const [personen, konten, datei, msDatei, zieleDatei, aufgaben, crm, planDatei] = await Promise.all([
@@ -174,7 +174,11 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; bezuege:
   // Posten aus dem Privat-Bereich (Selbstständigkeit): sie zählen als Arbeit, ihre Titel gehen aber nie an Konten ohne Privatzugang
   // oder in den Business-Index (`ohnePrivatePosten`, 05.10. abends).
   const privat = new Set(posten.filter(p => (p.art === 'meilenstein' ? ms.some(m => m.id === p.id && meilensteinSpace(m) === 'privat') : (zieleDatei?.jahr ?? []).some(z => z.id === p.id && wirksamerSpace(z) === 'privat'))).map(postenSchluessel));
-  return { stand: kapazitaetRechnen({ heute, personen: eingaben, datei, posten, ist, bezugNamen, plaene: planDatei.wochen }), bezuege, privat };
+  const rechnung = { heute, personen: eingaben, datei, posten, ist, bezugNamen, plaene: planDatei.wochen };
+  // Datenschutz-Prüfung M1 (11.10.): dieselbe Rechnung OHNE Kopf & Energie (keine Erholung → Faktor 1, belastbar = netto) für die Sicht
+  // Business und Konten „nur Business“ — dort darf keine Art.-9-Ableitung ankommen (auch nicht als Team-Faktor oder in „belastbar“).
+  const ohneKopf = kapazitaetRechnen({ ...rechnung, personen: eingaben.map(({ erholung: _e, ...p }) => p) });
+  return { stand: kapazitaetRechnen(rechnung), ohneKopf, bezuege, privat };
 }
 
 /** Gemerkt (60 s) — jede Schreibung über local-db setzt den Speicher zurück. Schlüssel: Haushalt + Tag (ungefiltert, gefiltert wird danach). */
@@ -182,18 +186,41 @@ const gemerkt = async (heute: string) => merken(`kapazitaet:${await kapaSpeicher
 
 /** Der Stand für eine Person (Plattform-Regel: serverseitig gefiltert — Erholung/Titel nur die eigenen). */
 export async function kapaStandFuer(person: string, heute = localDay(), sicht?: 'privat' | 'business' | null) {
-  const [{ stand, bezuege, privat }, zugang, verborgen] = await Promise.all([gemerkt(heute), planZugangFuer(person), verborgeneMeilensteinPosten(person)]);
+  const [{ stand: mitKopf, ohneKopf, bezuege, privat }, zugang, verborgen] = await Promise.all([gemerkt(heute), planZugangFuer(person), verborgeneMeilensteinPosten(person)]);
   // Sicht Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): ohne Erholung (Gesundheit) und ohne Titel der
   // Abwesenheiten — auch die eigenen (wie für andere Personen, `fuerBetrachter(…, null)`).
-  const fuerIhn = ohneVerborgenePosten(fuerBetrachter(stand, sicht === 'business' ? null : kapaIdVon(person)), verborgen);
+  // Datenschutz-Prüfung M1 (11.10.): Sicht Business UND Konten „nur Business“ bekommen die Rechnung ohne Kopf & Energie (`ohneKopfSicht`):
+  // `team.kopf` neutral, `belastbar` = `netto`, Kennzahlen `ohneGesundheit` — keine Art.-9-Ableitung, auch nicht als Team-Faktor.
+  const businessSicht = zugang?.sicht === 'business' || sicht === 'business';
+  const stand = businessSicht ? ohneKopfSicht(ohneKopf) : mitKopf;
+  const fuerIhn = ohneVerborgenePosten(fuerBetrachter(stand, businessSicht ? null : kapaIdVon(person)), verborgen);
   // Konten ohne Privatzugang (finanzRecht „business“) und die Sicht Business: Posten der Selbstständigkeit nur als „Privat (belegt)“
   // (serverseitig, 05.10. abends). Sicht Privat (10.10.): Business-Posten nur als „Business (belegt)“, keine Namen der Mandate/Kunden.
-  if (zugang?.sicht === 'business' || sicht === 'business') return { stand: ohnePrivatePosten(fuerIhn, privat), bezuege };
+  if (businessSicht) return { stand: ohnePrivatePosten(fuerIhn, privat), bezuege };
   if (sicht === 'privat') {
     const business = new Set(fuerIhn.posten.map(postenSchluessel).filter(k => !privat.has(k)));
-    return { stand: ohnePrivatePosten(fuerIhn, business, BUSINESS_BELEGT), bezuege: [] };
+    // Datenschutz-Prüfung N4 (11.10.): auch die Zuweisungen (Person × Mandat/Kunde) tragen in Privat keinen Mandats-/Firmennamen.
+    return { stand: zuweisungenBelegt(ohnePrivatePosten(fuerIhn, business, BUSINESS_BELEGT)), bezuege: [] };
   }
   return { stand: fuerIhn, bezuege };
+}
+
+/** Zuweisungen in der Sicht Privat (N4, 11.10.): die Stunden bleiben, der Name des Mandats/Kunden nicht — „Business (belegt)“, ohne Kennung. */
+export function zuweisungenBelegt(stand: KapaStand): KapaStand {
+  return { ...stand, zuweisungen: stand.zuweisungen.map(z => ({ ...z, bezugId: '', label: BUSINESS_BELEGT })) };
+}
+
+/**
+ * Die Rechnung ohne Kopf & Energie für Business (M1, 11.10.): die Kennzahlen ohne Erholung, `team.kopf` neutral (Faktor 1, niemand), keine
+ * Erholungs-Einwilligung je Person (`erholungAm` verrät, wer Gesundheit teilt). Rein auf dem schon ohne Erholung gerechneten Stand.
+ */
+export function ohneKopfSicht(stand: KapaStand): KapaStand {
+  return {
+    ...stand,
+    personen: stand.personen.map(({ erholung: _e, erholungAm: _a, ...p }) => p),
+    team: { ...stand.team, kopf: { ...stand.team.kopf, faktor: 1, personen: 0 } },
+    kennzahlen: ohneGesundheit(stand.kennzahlen),
+  };
 }
 
 /**

@@ -124,6 +124,10 @@ describe('Regeln (rein)', () => {
     expect(eigeneMeilensteineSicht(konten, 'b', 'f')).toBe('nichts');
     expect(eigeneMeilensteineSicht(konten, 'b', 'unbekannt')).toBe('nichts');
     expect(eigeneMeilensteineSicht(konten, 'b', null)).toBe('nichts');
+    // Prüf-Fund 11.10.: die eigenen genügt die Konto-Sicht Privat (Haupt-Inhaber ohne Haushalt am Konto) — nie für andere.
+    expect(eigeneMeilensteineSicht(konten, 'f', 'f')).toBe('nichts');
+    expect(eigeneMeilensteineSicht(konten, 'f', 'f', { eigenPrivat: true })).toBe('alles');
+    expect(eigeneMeilensteineSicht(konten, 'b', 'f', { eigenPrivat: true })).toBe('nichts');
     const ms = [{ id: '1', zielId: 'g' }, { id: '2', zielId: 'u' }, { id: '3' }];
     const ziele = { jahr: [{ id: 'g', geteilt: true }, { id: 'u' }], monat: [{ id: 'x', geteilt: 'ja' }] };
     expect(eigeneMeilensteineFuerBetrachter(ms, ziele, 'alles').map(m => m.id)).toEqual(['1', '2', '3']);
@@ -157,6 +161,22 @@ describe('Route: anlegen, lesen, Sicht X bekommt nichts aus Y', () => {
       expect(d.meilensteine.map(m => m.id).sort(), q).toEqual(['mse-b1', 'mse-b2', 'mse-b3']);
       expect(d.darfSchreiben).toBe(true);
       expect(d.fuer).toBe('ich');
+    }
+  });
+
+  it('Prüf-Fund 11.10.: der Inhaber ohne Haushalt am Konto liest seine EIGENEN Meilensteine (vorher 403)', async () => {
+    await db.saveJson('konten', { konten: KONTEN.map(x => (x.speicher === 'person-a' ? (({ haushalt: _h, ...rest }) => rest)(x) : x)), einladungen: [] });
+    await db.saveJson('meilensteine-eigen--person-a', { meilensteine: [{ id: 'mse-a1', titel: 'EIGEN-MS-A', zielId: 'za-eigen', fortschritt: 0, erledigt: false }] });
+    try {
+      const r = await route.GET(anfrage(URL_MS, 'person-a'));
+      expect(r.status, await r.clone().text()).toBe(200);
+      const d = await r.json() as { meilensteine: { id: string }[] };
+      expect(d.meilensteine.map(m => m.id)).toEqual(['mse-a1']);
+      // Die Meilensteine von person-b sieht er ohne Haushalt weiter nicht.
+      expect((await route.GET(anfrage(`${URL_MS}?fuer=person-b`, 'person-a'))).status).toBe(403);
+    } finally {
+      await db.saveJson('konten', { konten: KONTEN, einladungen: [] });
+      await db.saveJson('meilensteine-eigen--person-a', { meilensteine: [] });
     }
   });
 

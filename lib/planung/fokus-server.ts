@@ -20,7 +20,7 @@ import { fokusFuerLaufendesJahr } from './jahr-fokus';
 import { eigeneZieleSicht, partnerVon } from './eigene-ziele-sicht';
 import {
   FOKUS_GESAMT, FOKUS_HORIZONTE, fokusAlt, fokusPrivatName, fokusBusinessName, fokusEigenName, fokusEigenBusinessName, fokusAnwenden, fokusBestand, fokusGeteilt, fokusSchluesselNeu, fokusZelle,
-  type FokusBereich, type FokusDatei, type FokusHorizont, type FokusWessen, type FokusZeile, type FokusZelle, fokusSatz,
+  type FokusBereich, type FokusDatei, type FokusHorizont, type FokusWessen, type FokusZeile, type FokusZelle, fokusSatz, fokusZeitraum,
 } from './fokus';
 
 const laufendesJahr = () => Number(localDay().slice(0, 4));
@@ -91,18 +91,21 @@ export async function fokusSichtFuer(person: string | null | undefined, bereich:
   })));
   const zAlt = fokusFuerLaufendesJahr(ziele?.fokus ?? {}, laufend);
   const horizonte = {} as Record<FokusHorizont, FokusHorizontSicht>;
+  const heute = localDay();
   for (const h of FOKUS_HORIZONTE) {
     const kU = fokusSchluesselNeu(h, { jahr, bereich, wessen: 'unser', einheit });
     const kM = fokusSchluesselNeu(h, { jahr, bereich, wessen: 'mein' });
-    const m = fokusZelle(mein, kM, fokusAlt(eigenAlt?.fokus, h, { jahr, laufend, bereich }));
+    // Prüf-Fund 11.10.: nur der laufende Zeitraum gilt (ein Tagesfokus von gestern ist heute leer).
+    const aktuell = fokusZeitraum(h, heute);
+    const m = fokusZelle(mein, kM, fokusAlt(eigenAlt?.fokus, h, { jahr, laufend, bereich }), aktuell);
     horizonte[h] = {
-      unser: fokusZelle(unser, kU, fokusAlt(zAlt, h, { jahr, laufend, bereich, einheit })),
+      unser: fokusZelle(unser, kU, fokusAlt(zAlt, h, { jahr, laufend, bereich, einheit }), aktuell),
       mein: { ...m, geteilt: fokusGeteilt(mein, kM) },
       // Partner: NUR einzeln Geteiltes (bzw. alles, wenn die Person ihre eigenen Ziele ganz teilt — Konto › teilt.ziele).
       partner: partnerDaten.flatMap(({ p, sicht, d, alt }) => {
         if (sicht === 'nichts') return [];
         if (sicht === 'geteilte' && !fokusGeteilt(d, kM)) return [];
-        const zelle = fokusZelle(d, kM, sicht === 'alles' ? fokusAlt(alt, h, { jahr, laufend, bereich }) : '');
+        const zelle = fokusZelle(d, kM, sicht === 'alles' ? fokusAlt(alt, h, { jahr, laufend, bereich }) : '', aktuell);
         return zelle.text ? [{ speicher: p.speicher, vorname: p.vorname, text: zelle.text }] : [];
       }),
     };
@@ -139,15 +142,18 @@ export async function fokusSchreiben(person: string | null | undefined, e: Fokus
   // Altbestand (nur lesen) für den Stand der Zelle — außerhalb der Sperre, er wird nie geschrieben.
   const altQuelle = e.wessen === 'unser' ? fokusFuerLaufendesJahr((await altLesen(z.alt, 'ziele'))?.fokus ?? {}, laufend) : (await altLesen(z.alt, speicherFuer('ziele-eigen', z.person)))?.fokus ?? {};
   const alt = fokusAlt(altQuelle, e.horizont, { jahr, laufend, bereich: e.bereich, einheit: e.einheit });
-  const zelleVon = (d: FokusDatei | null | undefined) => ({ ...fokusZelle(d, schluessel, alt), ...(e.wessen === 'mein' ? { geteilt: fokusGeteilt(d, schluessel) } : {}) });
+  // Prüf-Fund 11.10.: der Satz trägt seinen Zeitraum (Tag, Woche, Monat, Quartal) — gelesen wird nur der laufende.
+  const aktuell = fokusZeitraum(e.horizont, localDay());
+  const zelleVon = (d: FokusDatei | null | undefined) => ({ ...fokusZelle(d, schluessel, alt, aktuell), ...(e.wessen === 'mein' ? { geteilt: fokusGeteilt(d, schluessel) } : {}) });
   try {
     const neu = await fokusAendern(e.bereich, e.wessen, e.wessen === 'unser' ? z.haushalt : z.person, cur => {
-      if (fokusZelle(cur, schluessel, alt).stand !== e.stand) throw new NichtSchreiben('konflikt');
+      if (fokusZelle(cur, schluessel, alt, aktuell).stand !== e.stand) throw new NichtSchreiben('konflikt');
       const vorher = zelleVon(cur);
-      const textGleich = typeof e.text !== 'string' || (e.text === vorher.text && vorher.quelle !== 'alt');
+      // Derselbe Satz ohne Zeitraum (`unbekannt`) erneut gespeichert = für den laufenden Zeitraum bestätigt (11.10.).
+      const textGleich = typeof e.text !== 'string' || (e.text === vorher.text && vorher.quelle !== 'alt' && !vorher.unbekannt);
       const teilenGleich = typeof e.geteilt !== 'boolean' || e.geteilt === vorher.geteilt;
       if (textGleich && teilenGleich) throw new NichtSchreiben('gleich');
-      return fokusAnwenden(cur, schluessel, { ...(textGleich ? {} : { text: e.text }), ...(teilenGleich ? {} : { geteilt: e.geteilt }) });
+      return fokusAnwenden(cur, schluessel, { ...(textGleich ? {} : { text: e.text, zeitraum: aktuell }), ...(teilenGleich ? {} : { geteilt: e.geteilt }) });
     });
     await protokolliere(name, [{ op: 'geaendert', id: schluessel, felder: [typeof e.text === 'string' ? 'text' : '', typeof e.geteilt === 'boolean' ? 'geteilt' : ''].filter(Boolean) }], wer);
     return { ok: true, geaendert: true, zelle: zelleVon(neu) };
@@ -176,6 +182,9 @@ export async function fokusZeilenFuer(person: string | null | undefined, o: { be
         if ('fehler' in s) continue;
         for (const h of hs) {
           const v = s.horizonte[h];
+          // Prüf-Fund 11.10.: ein Tagesfokus ohne Zeitraum (vor dem 11.10. gesetzt) kann von einem früheren Tag sein — ZOE bekommt ihn nicht als „Heute“.
+          if (h === 'tag' && v.unser.unbekannt) v.unser = { ...v.unser, text: '' };
+          if (h === 'tag' && v.mein.unbekannt) v.mein = { ...v.mein, text: '' };
           if (v.unser.text) aus.push({ bereich: b, horizont: h, wer: 'Unser', ...(e !== FOKUS_GESAMT ? { einheit: s.einheiten.find(x => x.id === e)?.name ?? e } : {}), text: v.unser.text });
           // Mein Fokus und Geteiltes hängen nicht an der Gesellschaft — nur einmal je Bereich.
           if (k === 0) {

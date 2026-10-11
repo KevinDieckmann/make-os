@@ -170,7 +170,9 @@ export async function erholungSicht(person: string, betrachter: string, s: Erhol
     sicher(() => routinenJeTag(person, betrachter, ab), { jeTag: {}, ids: [] as string[] }),
     sicher(() => zeitJeTag(person, ab), {} as Record<string, number>),
     sicher(() => geplantJeTag(person, woche[0], tagPlus(woche[6], 1)), {} as Record<string, number>),
-    s.einstellungen.vorschlag === false ? Promise.resolve(null) : sicher(() => vorschlagEingabe(person, heute), null),
+    // Datenschutz-Prüfung M2 (11.10.): den Vorschlag (Recovery, Strain, Schlafschuld aus der Schlaf-Hilfe) bekommt NUR die Person selbst —
+    // in der geteilten Ansicht einer anderen Person gibt es keinen (auch nicht gerechnet).
+    s.einstellungen.vorschlag === false || person !== betrachter ? Promise.resolve(null) : sicher(() => vorschlagEingabe(person, heute), null),
     sicher(async () => (await import('./module-server')).moduleUndKoerper(person), null),
   ]);
   const q: ErholungQuellen = { aufgabenJeTag: aufgaben, routinenJeTag: routinen.jeTag, zeitJeTag: zeit, geplantJeTag: geplant };
