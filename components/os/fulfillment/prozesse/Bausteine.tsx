@@ -93,7 +93,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
             {liste.slice(0, 300).map(x => {
               const Zeichen = ART_ZEICHEN[x.art] ?? FileText;
               const o = orte[x.id];
-              const wo = o?.pakete.length ? `${o.pakete[0]}${o.phasen[0] ? ` › ${o.phasen[0]}` : ''}${o.pakete.length + o.phasen.length > 2 ? ' …' : ''}` : x.steckt ? `in ${x.steckt} Vorlage${x.steckt === 1 ? '' : 'n'}` : 'noch in keiner Vorlage';
+              const wo = o?.pakete.length ? `${o.pakete[0]}${o.phasen[0] ? ` › ${o.phasen[0]}` : ''}${o.pakete.length + o.phasen.length > 2 ? ' …' : ''}` : x.steckt ? null : 'noch in keiner Vorlage';
               return (
                 <button key={x.id} type="button" onClick={() => onOeffnen(x.id)} className="fassbar" aria-label={`${x.titel} — ${BAUSTEIN_ART_LABEL[x.art]} öffnen`}
                   style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: 12, display: 'grid', gap: 8, alignContent: 'start', textAlign: 'left', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0, minHeight: 44 }}>
@@ -104,7 +104,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
                       <span style={{ ...klein, color: C.inkLeise }}>{BAUSTEIN_ART_LABEL[x.art]}{x.steckt ? ` · in ${x.steckt} Vorlage${x.steckt === 1 ? '' : 'n'}` : ''}</span>
                     </span>
                   </span>
-                  <span style={{ ...klein, overflowWrap: 'anywhere' }}>{wo}</span>
+                  {wo && <span style={{ ...klein, overflowWrap: 'anywhere' }}>{wo}</span>}
                   {(x.nurIntern || x.rechtOffen || x.vorVerkaufOffen) && (
                     <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {x.nurIntern && <Marke farbe={LEUCHT.agenten}>nur intern</Marke>}
