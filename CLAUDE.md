@@ -1987,6 +1987,31 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   Merker-Fingerabdrücke `inbox-vorschlaege--<person>`), Stapel-Art `inbox` → `/api/tasks/create` über `aufgabeAusGespraech`. Stapel-Titel NIE mit Betreff/Namen
   (steht dauerhaft in den ZOE-Entscheidungen). Wächter `tests/inbox-teilen.test.ts`, `tests/inbox-suche-uebergeben.test.ts`.
 
+## Fulfillment — Kunden-Link (10.10., Paket C2, Branch `fulfillment-c2`, nur lokal; FULFILLMENT_KONZEPT.md 5.2/5.4/5.5/6.4, UPDATES.md)
+- **Kommt AUSGESCHALTET — zwei Schlüssel:** Umgebung `MAKE_OS_KUNDENLINK=an` (Betrieb, erst nach Prüfung 12.4 + Kevins Freigabe) UND Instanz-Schalter
+  `einstellungen.kundenLink.an` (nur Inhaber per Sitzung, `POST /api/fulfillment/kunde { aktion: 'schalter' }`). Gelesen NUR über `kundenLinkSchalter`/`umgebungAn`
+  (lib/fulfillment/kunde/server.ts). Aus → jeder öffentliche Weg dieselbe 404 (`NICHT_GUELTIG`) — für jede Fehlerart, nie verraten, was fehlte.
+- **Öffentlicher Weg:** nur die vier Formen von `KUNDE_OFFEN` (middleware.ts); jede Route ruft ZUERST `kundeZugriff` (lib/fulfillment/kunde/oeffentlich.ts: Drossel je Netz,
+  Kennung, Schalter, Link aktiv bis Ablauf bzw. Mandatsende + 30 Tage, Business-Mandat, Token, Recht) — vor dem Lesen des Körpers. Token NUR im Fragment (`#t=` Link,
+  `#p=` Puls), als Kopf `x-kunde-token`/`x-kunde-puls`, im Bestand NUR als Hash (`tokenHash`, eigener Vorsatz je Art, `timingSafeEqual`); im Klartext genau EINMAL in der
+  Antwort von `link-anlegen`/`puls-anfrage` — nie über `einmalig` (speichert Antworten), nie ins Log/Protokoll. Puls-Token öffnet NUR den Puls. Formulare: Stempel +
+  Honigtopf mit demselben Satz (`formularPruefen`), Bremse je Link (`bremse.ts`). Strenge Köpfe in next.config.mjs UND Caddy (`@kunde`, Wächter
+  `tests/fulfillment-kunde-middleware.test.ts`). Lesen schreibt nie (auch kein „zuletzt gesehen“ im GET).
+- **Was der Kunde sieht = EINE Positivliste** `kundenSicht` (lib/fulfillment/kunde/sicht.ts, `SICHT_SCHLUESSEL`; Wächter mit Fall voller interner Daten
+  `tests/fulfillment-c2-sicht.test.ts`) — öffentliche Seite und Vorschau „So sieht der Kunde es“ bekommen dasselbe Objekt und dieselbe Komponente `KundenAnsicht`.
+  Neuer Inhalt auf der Kunden-Seite = bewusste Änderung dort + im Wächter. Bausteine nur über `kundeTauglich` (nie `nur_intern`, nie „vor Verkauf/Einsatz prüfen“ ohne
+  Vermerk — liest die Marken optional, der C0-Typ kennt `nur_intern`/`pruefen_vor_verkauf` noch nicht). Formulare tragen `fo-<fnv>`, nie die Baustein-Kennung.
+- **Upload:** nur über `dateiPruefen` (Typ am INHALT, nur PDF/PNG/JPG/WEBP/HEIC/DOCX/XLSX/PPTX ohne Makros, `ohneMetadaten` für JPEG/PNG/WEBP/HEIC) und
+  `unterlageAblegen` (erst Datei über `bildAblegen('fulfillment-unterlagen', 'ud-….bin')`, dann Eintrag; scheitert der Eintrag, wird die Datei entfernt). Status
+  „ungeprüft“ bis ein Mensch freigibt; C3 liest NUR über `unterlagenFuer`/`unterlageText` (nur „freigegeben“). Intern nur Download als Anhang. Kein Virenscanner.
+- **Puls:** ≤ `einstellungen.pulsSchwelle` → `melde` (Art `produkte`, OHNE Wert) + Stapel-Vorschlag `k:puls:<puls>` (Marke `puls-gespraech:<puls>` im Vorlagen-Bestand,
+  Morgenlauf holt nach); Freigabe = Follow-up `fu-kp-<fnv>`. „In die Health übernehmen“ nur per Klick über den CRM-Schreibweg mit Stand.
+- **Report:** `reportZusatzFuer` (wirft nie, ohne Fall null) → `mitZusatz` in `lib/crm/treppe-server.ts grundlage`; PDF/Mail zeigen die neuen Abschnitte nur mit
+  `hatZusatz`. Ohne Fall Byte für Byte wie vorher (Schnappschuss `tests/fulfillment-c2-rein.test.ts`) — neue Report-Felder nur optional und nur hinter `hatZusatz`.
+  Puls-Link entsteht erst beim Klick „Senden“ (Platzhalter `PULS_PLATZHALTER` im Text).
+- **Fristen** (`kundeFristen`): nie bei leerem CRM löschen; verwaiste Dateien nur, wenn der Name in KEINEM Fulfillment-Bestand vorkommt und älter als ein Tag ist (C1-
+  Wirkungsbericht-PDFs müssen ihren Dateinamen im Fall tragen). Tests: `tests/fulfillment-c2-{rein,sicht,route}.test.ts`, `tests/fulfillment-kunde-middleware.test.ts`.
+
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — seit 05.10. mit Datenschlüssel nur im tmpfs/Arbeitsspeicher (`indexOrt`, nach jedem Start neu gebaut), lokal ohne Schlüssel als Datei (bei Zweifel löschen, der Takt baut neu).
 - Suche immer über `suche()` in `lib/zoe/vault.ts` (nimmt den Index, sonst Dateisuche). Sicht (`darfSehen`) gilt VOR dem Ranking — nie nachträglich filtern.

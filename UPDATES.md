@@ -207,6 +207,52 @@ Dateien vom 10.10. geprüft: 86 + 45 + 66 + 34 Bausteine und 6 Abläufe ohne Feh
 13. `npx vitest run tests/fulfillment-c1-*.test.ts` grün (die C0-Erwartungen „501“ in tests/fulfillment-fundament.test.ts sind mit C1 überholt — beim
     Zusammenführen von C1–C3 anpassen).
 
+## 10.10.2026 — Fulfillment C2: Kunden-Link, Kunden-Ansicht, Formulare, Upload, Puls, Report (nur lokal — Branch `fulfillment-c2`, Basis `update-0910b`; Konzept `FULFILLMENT_KONZEPT.md` 5.2/5.4/5.5/6.4)
+
+Der Kunde bekommt je Mandat eine eigene Seite `/kunde/kl-<24 hex>` (ohne Anmeldung, Token NUR im Fragment `#t=…`, gespeichert nur als Hash): Stand des Falls,
+„Wartet auf euch“, Wert-Konto, Playbook zum Ausfüllen, Upload, Kunden-Puls. **Kommt AUSGESCHALTET** — zwei Schlüssel: Umgebung `MAKE_OS_KUNDENLINK=an` UND
+Instanz-Schalter (nur Inhaber). Aus → jeder Link antwortet dieselbe 404 „Dieser Link ist nicht (mehr) gültig.“ Nur additiv: alles im Bestand `fulfillment-kunde--<h>`
+(neu seit C0) und im Ordner `fulfillment-unterlagen`; am Report nur optionale Felder.
+
+**Gebaut:**
+- **Öffentlicher Weg** (Middleware `KUNDE_OFFEN` aus C0, vier Formen): `GET /api/kunde/kl-…` (Sicht), `POST …/formular|upload|puls`. Handelt für niemanden, Drossel je Netz
+  (`kunde:` Fehlgriffe, `kunde-lesen:`), Bremse je Link (Formular 120/h, Upload 30/h, Puls 5/Tag), signierter Stempel (≥ 3 s, ≤ 12 h) + Honigtopf mit DEMSELBEN Satz,
+  Größen (Formular 64 KB, Antwort 4.000 Zeichen, Satz 500 → 413). Jede Fehlerart (unbekannt, falsches Token, abgelaufen, Schalter aus, Recht aus) = dieselbe 404.
+  Strenge Köpfe in der App (C0) UND jetzt auch in Caddy (Block `@kunde`: no-referrer, Permissions-Policy, noindex, no-store).
+- **Kunden-Sicht = Positivliste** (`lib/fulfillment/kunde/sicht.ts`): Firma, Mandat, Paket, Zeitstrahl der sichtbaren Phasen, erledigt (14 Tage), als Nächstes, wartet
+  auf euch, Wert-Konto, Rituale (ohne Termine), geteilte Entscheidungen, Formulare mit eigenen Antworten, „n Dateien eingegangen“ (keine Liste), Puls, Datenschutzhinweis
+  (Art. 13, Verantwortlicher aus der Einrichtung, Fristen der Instanz). Nie: Stakeholder, Haltungen, Notizen, interne Schritte, Health, Honorar, Dossier, Team-Namen,
+  Kennungen (Formulare tragen `fo-…`). Bausteine „nur intern“ bzw. „vor Verkauf/Einsatz prüfen“ (ohne Vermerk) erscheinen nie. Vorschau „So sieht der Kunde es“ =
+  dieselbe Komponente mit demselben Objekt.
+- **Puls-Link mit eigenem Token** (`#p=…`): öffnet NUR die Frage 0–10 + Satz, 14 Tage, eine Antwort. Wert ≤ Schwelle (Vorgabe 6, einstellbar) → Glocke an die zuständige
+  Person OHNE Wert + Stapel-Vorschlag „Gespräch anbieten“ → Freigabe legt ein Follow-up am Mandat an. „In die Health übernehmen“ (Klick) setzt die Zufriedenheit = Wert × 10.
+- **Upload** (Entscheidung 23:25: freigegeben, kein Virenscanner): nur PDF, PNG/JPG/WEBP/HEIC, DOCX/XLSX/PPTX ohne Makros — am INHALT geprüft (falsche Endung, SVG, ZIP,
+  CSV/TXT → 415), Exif/GPS/XMP weg (JPEG/PNG wie Netzwerken, WEBP-Teile raus, HEIC-Exif genullt), verschlüsselt, Status „ungeprüft“ bis ein Mensch freigibt — erst dann
+  sieht die Analyse (C3) sie. ≤ 25 MB je Datei, ≤ 20 Dateien/200 MB je Link. Intern nur als Download (`octet-stream`, `nosniff`, `sandbox`). Neutrale Glocke ohne Dateinamen.
+- **Intern** Fall › Kunde & Reports: Schalter, Link anlegen (Adresse genau EINMAL sichtbar, „Kopieren“), verlängern, widerrufen, Rechte je Link, Formulare ansehen und
+  gemeinsam ausfüllen, Antworten exportieren (CSV/PDF — das Playbook gehört dem Kunden), Unterlagen freigeben/sperren/als Beleg, Puls von Hand, Puls-Link, Schwelle.
+- **2-Wochen-Report** erweitert (nicht ersetzt): mit Fall „Erledigt · Als Nächstes · Wartet auf euch · Wert-Konto · Kunden-Puls“ in PDF, Mail und Vorschau; bei aktivem
+  Link fragt die Mail nach dem Puls (Platzhalter `[Puls-Link]`). EIN Klick „Senden“: PDF (wenn heute noch keins) → Puls-Link → Inbox → „gesendet“. **Ohne Fall Byte für Byte
+  wie vorher** (Schnappschuss-Test). Link „Fulfillment öffnen ›“ im Fortschritt.
+- Schnittstellen (C0-Stub gefüllt): `kundeKurzFuer`, `formularAntwortenFuer`, `unterlagenFuer`/`unterlageText` (nur freigegeben), `reportZusatzFuer`, Morgenlauf (abgelaufene
+  Links, Puls-Vorschläge nachholen), Fristen (Antworten/Puls-Sätze 12 Monate, Unterlagen 90 Tage nach Mandatsende außer Beleg, verwaiste Dateien), Art. 15, Stapel `k:`.
+- Demo-Saat: Schalter aus, ein ausgefülltes Playbook (sofern C1 einen Fall sät), Puls 8 und 5.
+
+**So testet ihr** (Klickdummy `localhost:3001`):
+1. Ohne `MAKE_OS_KUNDENLINK=an`: Mandat → Fulfillment öffnen › Kunde & Reports zeigt „aus (Betrieb)“; jede `/kunde/kl-…`-Adresse zeigt „Dieser Link ist nicht aktiv.“
+2. **Einschalten (nur lokal zum Prüfen):** in `.env.local` `MAKE_OS_KUNDENLINK=an` eintragen, Vorschau „make-os-entwicklung“ neu starten; dann als Inhaber unter Fall ›
+   Kunde & Reports den Schalter „Kunden-Link der Instanz“ an. (Auf dem Server erst nach der Prüfung 12.4 im Konzept — `.env` + `docker compose up -d`, und Kevin gibt frei.)
+3. „Link anlegen“ → Adresse kopieren → privates Fenster: Zeitstrahl, „Wartet auf euch“, Playbook (keine Stakeholder, keine Health) → einen Abschnitt ausfüllen und „fertig“ →
+   intern erscheinen die Antworten und der Prozentwert.
+4. Datei hochladen (z. B. ein Handyfoto) → intern „ungeprüft“ + Glocke → Herunterladen (kommt als Datei) → „Freigeben“. Eine `.svg` oder eine umbenannte Datei wird abgelehnt.
+5. Produkte & Mandate › Mandat › Fortschritt → „Vorschau & senden“ → Abschnitte „Wartet auf euch“ und Wert-Konto, Puls-Satz mit `[Puls-Link]` → Senden (Testpostfach) →
+   Puls-Link öffnen → 4 abgeben → Glocke „Kunden-Puls … braucht Aufmerksamkeit“ + Vorschlag im Stapel → Freigeben → Follow-up am Mandat.
+6. „Widerrufen“ → der alte Link zeigt „nicht (mehr) gültig“. „So sieht der Kunde es“ = dieselbe Ansicht.
+7. `npx tsc --noEmit` und `npx vitest run tests/fulfillment-c2-*.test.ts tests/fulfillment-kunde-middleware.test.ts` sind grün.
+
+**Rückweg:** nur neue Einträge im Bestand `fulfillment-kunde--<h>`, Dateien im Ordner `fulfillment-unterlagen`, Marken `puls-gespraech:*` im Vorlagen-Bestand; am Report
+nur optionale Felder (ohne Fall unverändert). Der alte Stand liest nichts davon und stört sich nicht daran. Vor dem Upload Sicherung (Live-Daten-Regel).
+
 ## 10.10.2026 — Fulfillment C0: Fundament (nur lokal — Branch `fulfillment-c0`, Basis `update-0910b`; Konzept `FULFILLMENT_KONZEPT.md`)
 
 Grundlage für den neuen Bereich Fulfillment (WIE wir liefern) unter Produkte & Mandate — die Pakete C1 (Prozesse, Fall, Onboarding), C2 (Kunden-Link)

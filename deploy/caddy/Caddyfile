@@ -38,6 +38,15 @@
 		Referrer-Policy no-referrer
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 	}
+	# Kunden-Link (10.10., Fulfillment C2 — kommt ausgeschaltet): das Token steht im Fragment (#t=…/#p=…) — dieselben strengen Werte wie die
+	# Buchung, dazu nie indexieren und nie zwischenspeichern (die App setzt sie ebenso, next.config.mjs; Caddy hält sie fest).
+	@kunde path /kunde /kunde/* /api/kunde /api/kunde/*
+	header @kunde {
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		X-Robots-Tag "noindex, nofollow"
+		Cache-Control no-store
+	}
 	reverse_proxy app:3000
 }
 
