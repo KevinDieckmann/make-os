@@ -229,6 +229,7 @@ export function StapelView() {
           )}
           {/* Art „crm“ (28.09., C7): Text zum Kopieren, Mail-Programm, Sprung in die Markttraktion. */}
           {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} />}
+          {v.bezug?.art === 'inbox' && <InboxStapelDetail v={v} />}
           {/* Art „recht“ (10.10., Head of Recht): Checkliste, Aufgabentext bzw. Fundstelle zum Lesen — keine Rechtsberatung. */}
           {v.bezug?.art === 'recht' && <RechtStapelDetail v={v} />}
           {/* Art „inbox“ (10.10.): Aufgabe aus einer Mail/WhatsApp — der Sprung zurück ins Gespräch (nur die eigene Inbox sieht es). */}
@@ -388,4 +389,16 @@ function AufgabeVorschlag({ v }: { v: Vorschlag }) {
       <Link href={WEG.aufgabe(v.bezug!.id)} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none' }}>Aufgabe öffnen ›</Link>
     </div>
   );
+}
+
+/**
+ * Inbox-Vorschlag (Prüf-Fund 11.10.): `nachher` ist neutral (geht in Prompts) — Titel der Aufgabe und Fälligkeit stehen nur in der Eingabe
+ * und werden NUR hier in der Oberfläche gezeigt.
+ */
+function InboxStapelDetail({ v }: { v: Vorschlag }) {
+  const a = v.eingabe?.aufgabe && typeof v.eingabe.aufgabe === 'object' ? v.eingabe.aufgabe as { title?: unknown; dueDate?: unknown } : null;
+  const titel = typeof a?.title === 'string' ? a.title : '';
+  if (!titel) return null;
+  const faellig = typeof a?.dueDate === 'string' ? a.dueDate : '';
+  return <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Aufgabe: <span style={{ color: C.ink, fontWeight: 600 }}>„{titel}“</span>{faellig ? ` · fällig ${faellig.slice(8, 10)}.${faellig.slice(5, 7)}.` : ''}</div>;
 }

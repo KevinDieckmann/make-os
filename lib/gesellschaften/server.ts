@@ -14,7 +14,7 @@ import { istGesellschaft, type GesellschaftId, type Gesellschaftskennung } from 
 import { inPapierkorb, ausPapierkorb, imPapierkorb } from '@/lib/eintraege/sicher';
 import {
   alleGesellschaften, gesellschaftVon, steckbriefAnwenden, gesellschafterSaeubern, beteiligungSaeubern, vertragSaeubern,
-  eintragAktion, gesellschaftArchiv, gesellschaftVerweise, verweiseAnzahl, verweiseSatz, registerAufraeumen, GRENZEN, PRAEFIX,
+  eintragAktion, gesellschaftArchiv, gesellschaftVerweise, verweiseAnzahl, verweiseSatz, registerAufraeumen, eintragVerweise, eintragVerweiseSatz, GRENZEN, PRAEFIX,
   type RegisterDatei, type RegisterGesellschaft, type RegisterFehler, type RegisterListe, type EintragAktion, type CrmVerweisTeil,
   beschlussSaeubern, organSaeubern, fassungSaeubern, faelligeErinnerungen, geloeschtVermerken, operativeBusinessGesellschaft,
   type Gesellschafter, type FremdBeteiligung, type Vertrag, type Beschluss, type Organ, type Fassung, type ListenEintrag,
@@ -143,14 +143,20 @@ export const eintragSchreiben = (liste: RegisterListe, roh: unknown, eintragId?:
   return { g: { ...alt, [liste]: neu } };
 };
 
-/** Archivieren/Zurückholen/Papierkorb/Wiederherstellen eines Listeneintrags; `endgueltig` nur aus dem Papierkorb. */
-export const eintragHandeln = (liste: RegisterListe, eintragId: string, aktion: EintragAktion | 'endgueltig'): Aenderung => alt => {
+/**
+ * Archivieren/Zurückholen/Papierkorb/Wiederherstellen eines Listeneintrags; `endgueltig` nur aus dem Papierkorb und nur ohne Verweise
+ * (Prüf-Fund 11.10.: Beschlüsse auf Gesellschafter/Organe/Verträge, Fassungen auf Beschlüsse, `ereignisVerweise` = Schild-Ereignisse auf
+ * einen Beschluss) — sonst 409 mit der Anzahl.
+ */
+export const eintragHandeln = (liste: RegisterListe, eintragId: string, aktion: EintragAktion | 'endgueltig', ereignisVerweise = 0): Aenderung => alt => {
   const l = (alt[liste] ?? []) as Eintrag[];
   const e = l.find(x => x.id === eintragId);
   if (!e) return { fehler: [{ feld: 'eintragId', text: 'Eintrag nicht gefunden.' }], status: 404 };
   if (liste === 'fassungen' && (aktion === 'archivieren' || aktion === 'zurueckholen')) return { fehler: [{ feld: 'aktion', text: 'Fassungen werden nicht archiviert — eine neue Fassung löst die alte ab; eine falsche geht in den Papierkorb.' }], status: 400 };
   if (aktion === 'endgueltig') {
     if (!imPapierkorb(e)) return { fehler: [{ feld: 'aktion', text: 'Endgültig löschen geht nur aus dem Papierkorb.' }], status: 409 };
+    const n = eintragVerweise(alt, liste, eintragId);
+    if (n || ereignisVerweise) return { fehler: [{ feld: 'aktion', text: eintragVerweiseSatz(liste, n, ereignisVerweise) }], status: 409 };
     return { g: { ...alt, [liste]: l.filter(x => x.id !== eintragId) } };
   }
   const neu = eintragAktion(liste, e, aktion, localDay(), new Date().toISOString());
@@ -173,16 +179,27 @@ export const gesellschaftHandeln = (aktion: EintragAktion | 'endgueltig', crm: C
   return { g: null };
 };
 
+/** Kennungen der Beschlüsse, auf die ein Ereignis des Schilds zeigt (`Ereignis.beschlussId`, auch im Papierkorb des Schilds). Wirft nie. */
+export async function schildBeschlussVerweise(haushalt: string, gesellschaftId?: string): Promise<Set<string>> {
+  try {
+    const { ladeSchild } = await import('./schild-server');
+    const d = await ladeSchild(haushalt);
+    return new Set((d?.gesellschaften ?? []).filter(x => !gesellschaftId || x.id === gesellschaftId).flatMap(x => (x.ereignisse ?? []).map(e => e.beschlussId).filter((b): b is string => !!b)));
+  } catch { return new Set(); }
+}
+
 /** Morgenlauf-Schritt „Gesellschaften-Papierkorb“: liest erst ohne Sperre, schreibt nur, wenn etwas fällig ist. */
 export async function registerPapierkorbAufraeumen(haushalt: string, jetzt = new Date()): Promise<{ eintraege: number }> {
   const iso = jetzt.toISOString();
   const crm = await crmVerweisTeil();
-  if (!registerAufraeumen(await ladeRegister(haushalt), crm, iso).n) return { eintraege: 0 };
+  // Beschlüsse, auf die ein Ereignis des Schilds zeigt, bleiben im Papierkorb (Prüf-Fund 11.10.).
+  const geschuetzt = await schildBeschlussVerweise(haushalt);
+  if (!registerAufraeumen(await ladeRegister(haushalt), crm, iso, geschuetzt).n) return { eintraege: 0 };
   let n = 0;
   let vorher: RegisterDatei | null = null;
   const nachher = await updateJson<RegisterDatei>(registerName(haushalt), cur => {
     vorher = cur;
-    const r = registerAufraeumen(cur, crm, iso);
+    const r = registerAufraeumen(cur, crm, iso, geschuetzt);
     n = r.n;
     return (r.d ?? cur) as RegisterDatei;
   });
@@ -201,7 +218,10 @@ export async function vertragsErinnerungen(haushalt: string, heute = localDay())
     const { alleGesellschaften } = await import('./modell');
     const faellig = faelligeErinnerungen(alleGesellschaften(await ladeRegister(haushalt)), heute);
     if (!faellig.length) return { neu: 0 };
-    const [{ systemAufgabenAendern }, { WEG }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege')]);
+    const [{ systemAufgabenAendern }, { WEG }, { rechtPersonen }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege'), import('@/lib/recht/server')]);
+    // Zuständig/beteiligt nur Konten mit Zugang zur Firmen-Akte (Prüf-Fund 11.10., wie das Schild) — nie Konten „nur Business“.
+    const personen = await rechtPersonen(haushalt);
+    const zustaendig = personen.length ? { assignee: personen[0], ...(personen.length > 1 ? { beteiligte: personen.slice(1) } : {}) } : { assignee: 'both' };
     const jetzt = new Date().toISOString();
     let neu: typeof faellig = [];
     await systemAufgabenAendern(stand => {
@@ -211,16 +231,15 @@ export async function vertragsErinnerungen(haushalt: string, heute = localDay())
         neu: neu.map(e => ({
           id: e.aufgabeId, title: e.titel, description: e.beschreibung, status: 'todo',
           // Der Weg zum Vertrag (kein Datenpunkt ins Leere): Link in der Notiz, sichere Markdown-Teilmenge (lib/aufgaben/notiz.ts).
-          notiz: `[Vertrag im Register öffnen](${WEG.unternehmen(e.gesellschaftId, 'vertraege')})`, priority: 'high', assignee: 'both', dueDate: e.kuendigenBis,
+          notiz: `[Vertrag im Register öffnen](${WEG.unternehmen(e.gesellschaftId, 'vertraege')})`, priority: 'high', ...zustaendig, dueDate: e.kuendigenBis,
           tags: ['vertrag', 'gesellschaft'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: 'business',
           ...(istGesellschaft(e.gesellschaftId) ? { spaceId: e.gesellschaftId } : {}),
         })),
       };
     }, { jetzt });
     if (neu.length) {
-      const { ladeKonten } = await import('@/lib/zugang/konten');
+      // Glocke NUR an Konten mit Zugang zur Firmen-Akte (Prüf-Fund 11.10., wie das Schild) — nie an Konten „nur Business“.
       const { melde } = await import('@/lib/meldungen/melden');
-      const personen = (await ladeKonten()).konten.filter(k => k.haushalt === haushalt).map(k => k.speicher);
       for (const e of neu) for (const an of personen) await melde({ an, art: 'vertrag', titel: e.titel, link: WEG.unternehmen(e.gesellschaftId, 'vertraege'), bezug: { art: 'aufgabe', id: e.aufgabeId } });
     }
     return { neu: neu.length };

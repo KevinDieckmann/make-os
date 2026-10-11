@@ -12,6 +12,7 @@
 // Unterschied ist nicht das Werkzeug, sondern dass niemand danach gefragt hat.
 // Was ZOE nachts allein erarbeitet, soll ein Mensch einmal gesehen haben.
 
+import { INBOX_VORSCHLAG_WERKZEUG } from '@/lib/inbox/aufgaben-vorschlag-server';
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { imHaushaltOderSystemlauf, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
@@ -182,7 +183,8 @@ export async function POST(req: Request) {
   const offeneVorschlaege = (await liesStapel('offen').catch(() => [])).filter(v => !v.person || v.person === person);
   const liegt = offeneVorschlaege.length
     ? `LIEGT SCHON IN SEINEM STAPEL (nicht noch einmal vorschlagen, auch nicht anders formuliert):\n`
-      + offeneVorschlaege.map(v => `- ${v.nachher}`).join('\n')
+      // Inbox-Vorschläge (Prüf-Fund 11.10.): nur der neutrale Satz — nie Betreff/Absender aus dem `nachher` älterer Einträge (fremder Text).
+      + offeneVorschlaege.map(v => `- ${v.werkzeug === INBOX_VORSCHLAG_WERKZEUG || v.bezug?.art === 'inbox' ? `${v.titel} (Einzelheiten nur in der Inbox)` : v.nachher}`).join('\n')
     : '';
 
   const r = await askText({

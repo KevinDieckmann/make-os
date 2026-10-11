@@ -153,6 +153,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Kontakt: Auskunft zählt die Übergaben, die die Person nennen; Konto: Konto › Meine Daten (eigene gegebene und erhaltene Übergaben)',
     loeschfrist: 'erledigte Übergaben 90 Tage nach „Erledigt“ (täglicher Löschfristen-Lauf und jeder Schreibvorgang räumen sie weg); jede Kopie höchstens so lange wie der Mail-Spiegel (Frist „mail-spiegel“, gemessen an der jüngsten kopierten Nachricht); „Zurückziehen“ entfernt die Kopie sofort; Konto löschen entfernt alle Übergaben der Person; mitgegebene Dateien fallen mit ihrer Übergabe weg (verwaiste räumt der tägliche Lauf)',
   }),
+  // Datei-Ordner der Übergaben (Prüf-Fund 11.10., Muster `fulfillment-unterlagen`): kein Bestand, die Dateien folgen ihrer Übergabe.
+  mit({ muster: 'inbox-uebergaben', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Dateien der Übergaben (<daten>/inbox-uebergaben, verschlüsselt über die Bild-Ablage, Name ua-<uuid>.bin) — kein Bestand; Verweis, Art. 15/17 und Frist über die Übergabe in inbox-uebergaben--*: fällt sie weg (Zurückziehen, Aufbewahrung, Mail-Frist, Art. 17, Konto löschen), geht die Datei mit (verwaiste räumt der tägliche Lauf).' }, {
+    rechtsgrundlage: 'wie die Übergabe (inbox-uebergaben--*): Art. 6 Abs. 1 lit. f DSGVO, bei Geschäftspostfächern zusätzlich lit. b',
+    art15: 'über die Übergabe (Anhänge als Liste in der Kopie); die Datei selbst nur als Download für die beiden beteiligten Personen',
+    loeschfrist: 'so lange wie ihre Übergabe — erledigt 90 Tage, höchstens wie der Mail-Spiegel; Konto löschen entfernt sie mit der Übergabe',
+  }),
   mit(T('inbox-geteilt--*', 'Gemeinsamer Zustand der Team-Postfächer je Haushalt: Wiedervorlage und „erledigt bis“ je Gespräch (nur Kennungen — bei WhatsApp trägt die Kennung die Nummer der Gegenseite), bestätigte Zuordnung (Kontakt-Kennung), „wer kümmert sich“ (Person des Haushalts) — Kennungen und Nummer der Person fallen weg bzw. werden getilgt.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — gemeinsame Post des Teams ordnen (wer kümmert sich, Wiedervorlage)',
     art15: 'Kontakt: Auskunft nennt die Zuordnung; Konto: Konto › Meine Daten (Gespräche, um die sich die Person kümmert)',
@@ -906,6 +912,7 @@ export const GEMISCHT: Readonly<Record<string, string>> = {
   'imap-text--*': 'mehrere Postfächer je Person in einem Bestand — postfachId → Bereich im Register postfaecher--*',
   'inbox-zustand--*': 'je Gespräch (Kennung → Postfach → Bereich) und Screener je Absender',
   'inbox-uebergaben--*': 'je Übergabe das Gespräch → Postfach → Bereich',
+  'inbox-uebergaben': 'Datei-Ordner der Übergaben — je Datei die Übergabe → Gespräch → Postfach → Bereich',
   'inbox-geteilt--*': 'je Gespräch → Postfach → Bereich',
   'inbox-absender': 'Altbestand: Screener aller Postfächer ohne Bereich (abgelöst durch inbox-zustand--*)',
   'inbox-triage': 'Altbestand: Einstufungen von Mails aller Postfächer ohne Bereich',

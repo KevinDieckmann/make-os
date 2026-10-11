@@ -13,7 +13,7 @@
 // Diese Datei entscheidet nur (Sicht, Regeln, Grenzen, Suche) — gespeichert und gefiltert wird auf dem Server
 // (lib/inbox/teilen-server.ts, uebergaben-*.ts, suche-server.ts). Kein Paket, keine Server-Importe.
 
-import { bereichVon } from '@/lib/einheiten';
+import { postfachRaum } from '@/lib/postfach/bereich';
 import { suchNorm, suchWoerter } from '@/lib/text/such-norm';
 import type { Adr } from '@/lib/gmail/typen';
 import type { GespraechZustand } from './strom';
@@ -23,8 +23,8 @@ import type { GespraechZustand } from './strom';
 /** Wer schaut: Speichername + (optional) das eingeschränkte Finanzrecht des Kontos. */
 export interface Betrachter { speicher: string; finanzRecht?: 'business' }
 
-/** Raum eines Postfach-Bereichs. Ohne Bereich (Gmail noch ohne Zuordnung) gilt STRENG Privat — nie „aus Versehen Business“. Rein. */
-export const raumVon = (bereich: string | null | undefined): 'privat' | 'business' => (bereich ? bereichVon(bereich) : 'privat');
+/** Raum eines Postfach-Bereichs — die EINE Regel `postfachRaum` (ohne Bereich STRENG Privat). Rein. */
+export const raumVon = (bereich: string | null | undefined): 'privat' | 'business' => postfachRaum(bereich);
 
 /**
  * Darf diese Person Post aus diesem Bereich sehen? Business: jedes Konto des Haushalts (auch `finanzRecht: 'business'`);
@@ -262,10 +262,14 @@ export function uebergabenAufbewahren(liste: readonly Uebergabe[], jetzt: Date):
 
 /**
  * Löschfrist „wie der Mail-Spiegel“ (10.10.): eine Kopie lebt nicht länger als das Original im Spiegel — Übergaben, deren JÜNGSTE kopierte
- * Nachricht vor dem Stichtag der Frist `mail-spiegel` liegt, fallen weg (jeder Status; „Kopie aktualisieren“ hält eine laufende frisch). Rein.
+ * Nachricht vor dem Stichtag der Frist `mail-spiegel` liegt, fallen weg (jeder Status; „Kopie aktualisieren“ mit neuen Nachrichten hält eine
+ * laufende frisch). Prüf-Fund 11.10.: es zählt die jüngste NACHRICHT — nicht der Tag der Kopie (der lag immer nach den Nachrichten und hielt
+ * jede Kopie ab der Übergabe noch eine ganze Frist lang). Nur ohne Nachrichten gilt der Tag der Kopie. Rein.
  */
+export const juengsteNachricht = (u: Pick<Uebergabe, 'nachrichten' | 'kopieAm'>): string =>
+  u.nachrichten.length ? u.nachrichten.reduce((m, n) => (n.am > m ? n.am : m), '') : u.kopieAm;
 export function uebergabenNachMailFrist(liste: readonly Uebergabe[], stichtag: string): Uebergabe[] {
-  return liste.filter(u => u.nachrichten.reduce((m, n) => (n.am > m ? n.am : m), u.kopieAm).slice(0, 10) >= stichtag);
+  return liste.filter(u => juengsteNachricht(u).slice(0, 10) >= stichtag);
 }
 
 /** Darf `person` diese Übergabe zurückziehen (die Kopie ganz entfernen)? Nur die übergebende Person — sonst 403. Rein, getestet. */

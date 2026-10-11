@@ -21,6 +21,8 @@ import { nameVon } from '@/lib/zoe/raum';
 import { regelnFuerPrompt } from '@/lib/brain/regeln';
 import { gespraechLesen } from './gespraech-server';
 import type { Zuordnung } from '@/lib/gmail/typen';
+import type { Kontakt } from '@/lib/make-one/crm';
+import { hatAdresse } from '@/lib/crm/emails';
 
 export const MAIL_MAX = 4000;
 export const BRAIN_MAX = 6000;
@@ -74,10 +76,24 @@ export async function inboxEntwurfUebergabe(person: string, id: string, hinweis?
   return entwurfSchreiben(person, { auf, z: undefined, quelle: u.quelle === 'gmail' ? 'gmail' : 'postfach', bereichName: name }, hinweis, ki);
 }
 
+/**
+ * Art. 18 LIVE gegen die Kartei (Prüf-Fund 11.10.): die Zuordnung im Strom bzw. das Kennzeichen einer Übergabe kann älter sein als die
+ * Einschränkung. Eingeschränkt ist das Gegenüber, wenn die zugeordnete Person (Kennung) oder eine Person mit dieser Adresse eingeschränkt ist.
+ * Rein (die Kartei kommt vom Aufrufer, MIT eingeschränkten Personen).
+ */
+export function gegenueberEingeschraenkt(kontaktId: string | undefined, email: string | undefined, kartei: readonly Pick<Kontakt, 'id' | 'email' | 'emails' | 'eingeschraenkt'>[]): boolean {
+  if (kontaktId && kartei.some(k => k.id === kontaktId && k.eingeschraenkt)) return true;
+  return !!email && kartei.some(k => k.eingeschraenkt && hatAdresse(k, email));
+}
+
 /** Der gemeinsame Teil: Brain-Kontext, Regeln, Prompt, Modell. */
 async function entwurfSchreiben(person: string, e: { auf: { von: { email: string; name?: string }; betreff: string; text: string }; z: Zuordnung | undefined; quelle: 'gmail' | 'postfach'; bereichName: string }, hinweis: string | undefined, ki: KiKontext): Promise<EntwurfErgebnis> {
   const { auf, z } = e;
   if (z?.sperre === 'eingeschraenkt') throw new EntwurfFehler(`${z.name}: Verarbeitung eingeschränkt (Art. 18) — kein ZOE-Entwurf, bitte selbst schreiben.`, 409);
+  {
+    const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
+    if (gegenueberEingeschraenkt(z?.kontaktId, auf.von.email, await kontakteFuerVerarbeitung({ mitEingeschraenkten: true }))) throw new EntwurfFehler('Verarbeitung eingeschränkt (Art. 18) — kein ZOE-Entwurf, bitte selbst schreiben.', 409);
+  }
   if (!hasAnthropicKey()) throw new EntwurfFehler('Kein Anthropic-Key hinterlegt — ZOE kann gerade keinen Entwurf schreiben.', 503, true);
   const agent = await resolveAgent('inbox');
   if (!agent.enabled) throw new EntwurfFehler('Der Inbox-Agent ist ausgeschaltet.', 409);

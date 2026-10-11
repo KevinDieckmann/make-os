@@ -25,6 +25,8 @@ const ALTBESTAND_GEMISCHT: readonly string[] = [
   // Postfächer
   'imap-stand--*', 'imap-text--*', 'inbox-zustand--*', 'inbox-uebergaben--*', 'inbox-geteilt--*', 'inbox-absender', 'inbox-triage',
   'inbox-status', 'apple-mail-cache',
+  // Kein neuer Bestand: der Datei-Ordner der Übergaben (seit 10.10.) — erst am 11.10. im Register eingetragen (Prüf-Fund N11), folgt inbox-uebergaben--*.
+  'inbox-uebergaben',
   // Finanzen und Steuern
   'finanzplan', 'rechnungswesen', 'finanzen-plan--*', 'liquiplan', 'buchungen', 'grundlage', 'business-abschluesse', 'abschluss-laeufe',
   'business-einstellungen', 'business-verlauf', 'finanzchef-einstellung', 'steuern', 'haushalt-*--*', 'haushalt-umzug--*', 'konten--*',

@@ -119,7 +119,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'crm-sperrliste--*': 'Sperrliste (nur Fingerabdrücke)',
   'familie--*': 'Familie je Haushalt',
   'finanzen-plan--*': 'Finanzplan je Haushalt (Aufbewahrungspflicht)',
-  'gesellschaften--*': 'Gesellschafts-Register je Haushalt',
+  'gesellschaften--*': 'Gesellschafts-Register je Haushalt — im Export die selbst angelegten Fassungen (ohne Wortlaut), beim Löschen bleiben die Einträge, der Speichername (Fassung „von“, Absender „geändert von“) wird „[gelöscht]“',
   'recht-check--*': 'Head of Recht je Haushalt (10.10., nur Business-Gesellschaften) — Wochen-Check, Risikorunden, Marken, Datei-Kennungen; keine Einträge je Person, keine Personendaten',
   'unternehmen-schild--*': 'Unternehmen › Schild je Haushalt (10.10., nur Business-Gesellschaften) — keine Einträge je Person; beim Löschen wird „wer“ (Vermerk, Bewertung, Entwurf, verantwortlich) „[gelöscht]“',
   'inbox-uebergaben--*': 'Übergaben je Haushalt (Inbox teilen, 08.10.) — im Export die eigenen (gegeben/erhalten), beim Konto-Löschen fallen sie ganz weg',
@@ -136,14 +136,14 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
   'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
-  'markttraktion-planung--*': 'Vertriebsplanung je Haushalt (Leadkanäle, Umsatzziele, Challenges — Personen nur als Team-Kürzel, Dritte nur als Mandat-Kennung)',
+  'markttraktion-planung--*': 'Vertriebsplanung je Haushalt (Leadkanäle, Umsatzziele, Challenges — Personen als Team-Kürzel, Dritte nur als Mandat-Kennung; „geändert von“/„abgehakt von“ als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
   // Fulfillment (10.10.): Bestände je Haushalt — keine Einträge je Person; beim Konto-Löschen wird der Speichername „[gelöscht]“ (fulfillmentKontoLoeschen).
   'fulfillment--*': 'Fulfillment je Haushalt (Vorlagen, Bausteine, Rituale, Einstellungen — Geschäftswissen, Personen nur als Speichername)',
   'fulfillment-faelle--*': 'Fälle je Haushalt (je Mandat; Dritte nur als Kontakt-Kennung — Art. 15/17 über die Kartei) — wer geändert hat nur als Speichername',
   'fulfillment-kunde--*': 'Kunden-Links, Antworten und Puls je Haushalt (Daten Dritter, Art. 15/17 über die Kartei) — keine Einträge je Konto',
   'fulfillment-dossiers--*': 'Dossiers je Haushalt (je Mandat; Firmenangaben, Läufe) — wer geändert/gestartet hat nur als Speichername',
   'fulfillment-personen--*': 'Berufliche Personenkarten je Haushalt (Dritte, Art. 15/17 über die Kartei, eigene Löschfrist) — keine Einträge je Konto',
-  'produkt-treppe--*':'Leistungstreppe je Haushalt (Stufen, Kundenreise, Roadmap, Positionierung, Fortschritt je Mandat-Kennung — wer geändert hat nur als Speichername)',
+  'produkt-treppe--*': 'Leistungstreppe je Haushalt (Stufen, Kundenreise, Roadmap, Positionierung, Fortschritt je Mandat-Kennung — wer geändert/erledigt/gesendet hat nur als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
   'fokus-business--*': 'Unser Fokus · Business je Haushalt und Gesellschaft (Freitext der Mitglieder, ohne Personen-Feld)',
   'fokus-steuerung-privat--*': 'Prioritäten · Privat je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld) — wer sie geändert hat, steht nur im Änderungsprotokoll',
   'fokus-steuerung-business--*': 'Prioritäten · Business je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld)',
@@ -302,6 +302,13 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     const wissenName = `agenten-wissen--${k.haushalt}`;
     const wissenRoh = await loadJson<import('@/lib/agenten/typen').WissenBestand>(wissenName).catch(() => null);
     if (wissenRoh) { const ws = await import('@/lib/agenten/wissen-server'); merke(wissenName, ws.wissenEintraegeVon(ws.wissenBestandLesen(wissenRoh), speicher)); }
+    // Leistungstreppe, Vertriebsplanung, Gesellschafts-Register (Prüf-Fund 11.10.): die eigenen Stempel (Art, Kennung, Zeit).
+    const treppeRoh = await loadJson<unknown>(`produkt-treppe--${k.haushalt}`).catch(() => null);
+    if (treppeRoh) { const td = await import('@/lib/crm/treppe-daten'); merke(`produkt-treppe--${k.haushalt}`, td.treppeEintraegeVon(td.treppeAus(treppeRoh, jetzt.getUTCFullYear()), speicher)); }
+    const planRoh = await loadJson<unknown>(`markttraktion-planung--${k.haushalt}`).catch(() => null);
+    if (planRoh) { const pd = await import('@/lib/crm/planung-daten'); merke(`markttraktion-planung--${k.haushalt}`, pd.planungEintraegeVon(pd.planungAus(planRoh), speicher)); }
+    const regRoh = await loadJson<import('@/lib/gesellschaften/modell').RegisterDatei>(`gesellschaften--${k.haushalt}`).catch(() => null);
+    if (regRoh) merke(`gesellschaften--${k.haushalt}`, (await import('@/lib/gesellschaften/modell')).registerEintraegeVon(regRoh, speicher));
     const kapa = await loadJson<Obj>(`kapazitaet--${k.haushalt}`).catch(() => null);
     const kid = `${KONTO_PRAEFIX}${speicher}`;
     if (kapa && JSON.stringify(kapa).includes(`"${kid}"`)) eintraege[`kapazitaet--${k.haushalt}`] = [{ hinweis: 'Ihre Kapazitätswerte stehen vollständig in der Kapazitäts-Auskunft (Planung › Kapazität).', person: kid }];
@@ -416,8 +423,9 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const h = await teamHaushalt();
     const ub = uebergabenName(h);
     if (namen.includes(ub)) {
-      let n = 0;
-      await updateJson<Obj>(ub, cur => { if (!cur) return cur as unknown as Obj; const l = liste(cur, 'uebergaben'); const r = l.filter(u => (u as Obj).von !== speicher && (u as Obj).an !== speicher); n = l.length - r.length; return n ? { ...cur, uebergaben: r } : cur; });
+      // Über die EINE Schreibstelle (Prüf-Fund 11.10.): mitgegebene Anhang-Dateien (`inbox-uebergaben/ua-….bin`) fallen mit weg.
+      const { aendereUebergaben } = await import('@/lib/inbox/uebergaben-speicher');
+      const n = await aendereUebergaben(l => { const r = l.filter(u => u.von !== speicher && u.an !== speicher); return { liste: r, wert: l.length - r.length }; }, jetzt);
       zaehl(bericht.eintraege, ub, n);
     }
     const teamPf = (await ladePostfaecher(speicher)).filter(p => p.geteilt).map(p => p.id);
@@ -524,6 +532,31 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       let n = 0;
       await updateJson<import('@/lib/agenten/typen').WissenBestand>(wissenName, cur => { if (!cur) return cur as unknown as import('@/lib/agenten/typen').WissenBestand; const r = ws.wissenOhnePerson(ws.wissenBestandLesen(cur), speicher); n = r.n; return n ? r.neu : cur; });
       if (n) await protokolliere(wissenName, [{ liste: 'heads', op: 'geaendert', id: 'konto', felder: ['geaendertVon'] }], { art: 'system' });
+      return n;
+    });
+    // Leistungstreppe, Vertriebsplanung, Gesellschafts-Register (Prüf-Fund 11.10.): Einträge bleiben, der Speichername in den Stempeln wird „[gelöscht]“.
+    const treppeN = `produkt-treppe--${konto.haushalt}`;
+    await nurWenn(treppeN, async () => {
+      const { treppeAus, treppeOhnePerson } = await import('@/lib/crm/treppe-daten');
+      let n = 0;
+      await updateJson<Obj>(treppeN, cur => { if (!cur) return cur as unknown as Obj; const r = treppeOhnePerson(treppeAus(cur, jetzt.getUTCFullYear()), speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
+      if (n) await protokolliere(treppeN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['geaendertVon', 'von', 'gesendetVon'] }], { art: 'system' });
+      return n;
+    });
+    const planN = `markttraktion-planung--${konto.haushalt}`;
+    await nurWenn(planN, async () => {
+      const { planungAus, planungOhnePerson } = await import('@/lib/crm/planung-daten');
+      let n = 0;
+      await updateJson<Obj>(planN, cur => { if (!cur) return cur as unknown as Obj; const r = planungOhnePerson(planungAus(cur), speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
+      if (n) await protokolliere(planN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['geaendertVon', 'von'] }], { art: 'system' });
+      return n;
+    });
+    const regN = `gesellschaften--${konto.haushalt}`;
+    await nurWenn(regN, async () => {
+      const { registerOhnePerson } = await import('@/lib/gesellschaften/modell');
+      let n = 0;
+      await updateJson<Obj>(regN, cur => { if (!cur || !Array.isArray(cur.gesellschaften)) return cur as unknown as Obj; const r = registerOhnePerson(cur as unknown as import('@/lib/gesellschaften/modell').RegisterDatei, speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
+      if (n) await protokolliere(regN, [{ liste: 'fassungen', op: 'geaendert', id: 'konto', felder: ['von', 'geaendertVon'] }], { art: 'system' });
       return n;
     });
     // Unternehmen › Schild (10.10.): Einträge bleiben (Geschäftsunterlagen), „wer“ wird „[gelöscht]“.

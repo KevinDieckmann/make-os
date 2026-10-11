@@ -58,6 +58,7 @@ import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { dealPersonenVorgabe } from '@/lib/crm/pipeline';
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { personenWerdenKunde } from '@/lib/crm/mandat-anlegen-server';
+import { honorarAusPreis } from '@/lib/crm/mandat-anlegen';
 import { einmalig } from '@/lib/store/anfragen';
 import { wer, BEIDE, nameVon } from '@/lib/crm/team';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
@@ -154,8 +155,9 @@ export async function POST(req: Request) {
       // Das Produkt reist mit (26.09.) — sonst sieht die Produkt-Auswertung das Mandat nie.
       ...(c.leistungId ? { leistungId: c.leistungId } : {}),
       vertragUnterschrieben: false, start: tagVon(jetzt), verlaengerung: 'offen',
-      honorar: { betrag: c.wert.basis === 'jahr' ? Math.round(c.wert.betrag / 12) : c.wert.betrag, basis: c.wert.basis === 'einmalig' ? 'einmalig' : 'monat', netto: true },
-      ustSatz: 19, rechnungsrhythmus: c.wert.basis === 'einmalig' ? 'einmalig' : 'monatlich', zahlungszielTage: 14, ziele: [],
+      // Prüf-Fund 11.10.: EINE Umrechnung mit „+ Mandat“ (je Jahr → ÷ 12 auf den Cent).
+      ...honorarAusPreis(c.wert),
+      ustSatz: 19, zahlungszielTage: 14, ziele: [],
       health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen'],
       quelle: `aus Deal „${c.titel}“`, zustaendig: c.besitzer, geaendert: jetzt, geaendertVon: person,
     };

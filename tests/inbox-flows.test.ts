@@ -24,7 +24,7 @@ describe('Space-Vorschlag', () => {
   });
   it('ohne aktives Mandat → Gesellschaft des Postfachs; ohne feste Gesellschaft → Business-Vorgabe der Instanz', () => {
     expect(spaceFuer(basis({ mandate: [{ id: 'm-alt', firmaId: 'f-kunde', status: 'beendet' }] })).spaceId).toBe('kdv');
-    expect(spaceFuer(basis({ bereich: null, zuordnung: null })).spaceId).toBe(BUSINESS_VORGABE_SPACE);
+    expect(spaceFuer(basis({ bereich: null, zuordnung: null })).spaceId).toBe('privat'); // ohne Bereich = Privat (EINE Regel, Prüf-Fund 11.10.)
     expect(spaceFuer(basis({ bereich: 'g-0b2c4d6e-0000-4000-8000-000000000009', zuordnung: null })).spaceId).toBe(BUSINESS_VORGABE_SPACE);
     expect(bezugFuer(basis({ mandate: [] }))).toEqual({ kontaktId: 'c-anna', firmaId: 'f-kunde', dealId: 'd-1' });
   });
@@ -35,7 +35,7 @@ describe('Space-Vorschlag', () => {
     expect(spaceFuer(basis({ bereich: 'privat' })).spaceId).toBe('privat');
     expect(spaceFuer(basis({ bereich: 'kdc' })).spaceId).toBe('kdc');
     expect(raumVonPostfach('privat')).toBe('privat');
-    expect(raumVonPostfach(null)).toBe('business');
+    expect(raumVonPostfach(null)).toBe('privat'); // EINE Regel (Prüf-Fund 11.10.): ohne Bereich Privat
   });
   it('Art. 18: der Bezug nennt die Person nicht (nur Firma/Deal/Mandat)', () => {
     expect(bezugFuer(basis({ zuordnung: { kontaktId: 'c-eva', firmaId: 'f-kunde', sperre: 'eingeschraenkt' } }))).toEqual({ firmaId: 'f-kunde', mandatId: 'm1' });
@@ -100,7 +100,7 @@ describe('Ablage', () => {
     expect(dateiArtAusName('Invoice 12.pdf')).toBe('rechnung');
     expect(dateiArtAusName('Foto.jpg')).toBe('sonstig');
     expect(crmTypPasst('a.PDF')).toBe(true); expect(crmTypPasst('a.xlsx')).toBe(false);
-    expect(bereichWechsel('privat', 'business')).toBe(true); expect(bereichWechsel('kdv', 'business')).toBe(false); expect(bereichWechsel(null, 'privat')).toBe(true);
+    expect(bereichWechsel('privat', 'business')).toBe(true); expect(bereichWechsel('kdv', 'business')).toBe(false); expect(bereichWechsel(null, 'privat')).toBe(false); expect(bereichWechsel(null, 'business')).toBe(true); // ohne Bereich = Privat (Prüf-Fund 11.10.)
     expect(ablageLink({ art: 'crm', firmaId: 'f' })).toContain('firmen');
     expect(ablageLink({ art: 'projekt', spaceId: 'kdv', projektId: 'p-a' })).toContain('t=dateien');
     expect(ablageLink({ art: 'projekt', spaceId: 'kdv', projektId: 'p-a', aufgabeId: 't1' })).toContain('offen=t1');

@@ -27,9 +27,11 @@ import {
   treppeAus, treppeAnwenden, vorschlagAnwenden, vorschlagSauber, vorschlagTeile, TREPPE_GRENZEN, PREIS_ARTEN, PAKET_STATUS, POSITIONIERUNG_FELDER, POSITIONIERUNG_LABEL,
   type TreppeDatei, type AnwendenErgebnis, type TreppeVorschlag,
 } from './treppe-daten';
-import { kundenZeilen, zielbild, kundenreise, kapaBedarf, stufeVonMandat, preisText, type KundenZeile } from './treppe';
+import { kundenZeilen, zielbild, kundenreise, kapaBedarf, stufeVonMandat, preisText, imBusiness, type KundenZeile } from './treppe';
 import { reportDokument, reportDateiname, mailVorlage, mitZusatz, type ReportDokument } from './treppe-report';
 import type { CrmBestand, FollowUp, Mandat } from './typen';
+import type { Kontakt } from '@/lib/make-one/crm';
+import { ausgenommen } from './einschraenkung';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
 
@@ -86,7 +88,10 @@ async function vermerken(f: (d: TreppeDatei) => TreppeDatei, jetzt = new Date())
   await treppeAendern(d => ({ ok: true, datei: f(d), geaendert: ['vermerk'] }), { art: 'system' }, jetzt);
 }
 
-/** Freie Stunden des Teams je Woche (Ø nächste vier Wochen: belastbar − verplant) — null, wenn die Kapazität nicht zu lesen ist. */
+/**
+ * Freie Stunden des Teams je Woche (Ø nächste vier Wochen: netto − verplant) — null, wenn die Kapazität nicht zu lesen ist. Bewusst `netto`
+ * (ohne „Kopf & Energie“): der Kopf-Faktor ist aus der Erholung abgeleitet (Art. 9) und gehört nicht in Business-Ansichten (Prüf-Fund 11.10.).
+ */
 async function freieTeamStunden(person: string, heute: string): Promise<number | null> {
   try {
     const { kapaStandFuer } = await import('@/lib/kapazitaet/server');
@@ -95,7 +100,7 @@ async function freieTeamStunden(person: string, heute: string): Promise<number |
     for (const p of stand.personen) {
       const w = (p.wochen ?? []).slice(0, 4);
       if (p.ohneKapa || !w.length) continue;
-      summe += w.reduce((a, x) => a + (x.belastbar - x.bedarf), 0) / w.length; gezaehlt++;
+      summe += w.reduce((a, x) => a + (x.netto - x.bedarf), 0) / w.length; gezaehlt++;
     }
     return gezaehlt ? Math.round(summe * 10) / 10 : null;
   } catch { return null; }
@@ -187,6 +192,7 @@ async function grundlage(mandatId: string, heute: string): Promise<ReportGrundla
   const [datei, crm] = await Promise.all([ladeTreppe(heute), ladeCrm()]);
   const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm);
   if (!m) throw new TreppeFehler('Dieses Mandat gibt es nicht (mehr).', 404);
+  if (!imBusiness(m)) throw new TreppeFehler('Dieses Mandat gehört zu einer Privat-Einheit — die Leistungstreppe führt nur Business-Mandate.', 400);
   const zeile = kundenZeilen({ datei, crm: { ...crm, mandate: [{ ...m, status: m.status === 'beendet' ? 'aktiv' : m.status }] }, heute })[0];
   if (!zeile) throw new TreppeFehler('Für dieses Mandat gibt es keinen Fortschritt (Status).', 400);
   const stufe = zeile.stufe ? datei.stufen.find(s => s.id === zeile.stufe!.id) ?? null : null;
@@ -205,7 +211,8 @@ export async function reportErstellen(mandatId: string, person: string, jetzt = 
   const bytes = Buffer.from(await reportPdf(g.dok, { erstellt: jetzt }));
   const name = reportDateiname(g.m.kunde, heute);
   const { ablegen } = await import('@/lib/dateien/ablage');
-  const e = await ablegen(g.h, person, { art: 'sonstig', titel: `Fortschrittsbericht ${g.m.kunde} ${heute}`.slice(0, 160), mandatId: g.m.id, ...(g.m.firmaId ? { firmaId: g.m.firmaId } : {}) }, { bytes, name, typ: 'application/pdf' }, jetzt.toISOString());
+  // Eigene Marke `bericht` (Prüf-Fund 11.10.): ein Fortschritts-Report ist keine Geschäftsunterlage wie Rechnung/Angebot — löschbar (`istBeleg`).
+  const e = await ablegen(g.h, person, { art: 'sonstig', titel: `Fortschrittsbericht ${g.m.kunde} ${heute}`.slice(0, 160), mandatId: g.m.id, ...(g.m.firmaId ? { firmaId: g.m.firmaId } : {}) }, { bytes, name, typ: 'application/pdf' }, jetzt.toISOString(), { bericht: 'fortschritt' });
   await vermerken(d => ({ ...d, reports: { ...d.reports, [g.m.id]: { ...(d.reports[g.m.id] ?? {}), erstelltAm: heute, dateiId: e.id } } }), jetzt);
   return { datei: { id: e.id, name }, dok: g.dok };
 }
@@ -231,6 +238,8 @@ export interface MailGrundlage {
   gesellschaft: string;
   dok: ReportDokument;
   datei?: { id: string; name: string };
+  /** Kennung der gelesenen Ansprechperson (fürs Lese-Protokoll der Route) — nie an den Browser. */
+  kontaktId?: string;
 }
 /**
  * Die vorformulierte Mail (Vorlage ohne KI): Empfänger = die erste Ansprechperson des Mandats mit Adresse, die verarbeitet werden darf
@@ -248,7 +257,22 @@ export async function mailGrundlage(mandatId: string, absender: string | undefin
     ...v, an: k?.email ? { email: k.email, ...(k.vorname || k.nachname ? { name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() } : {}) } : null,
     ...(k ? {} : { ohneEmpfaenger: g.m.kontaktIds.length ? 'Keine Ansprechperson mit Mail-Adresse, die wir anschreiben dürfen (Adresse fehlt oder Verarbeitung eingeschränkt).' : 'Am Mandat ist keine Ansprechperson eingetragen.' }),
     anrede, gesellschaft: g.m.gesellschaft, dok: g.dok, ...(r?.dateiId ? { datei: { id: r.dateiId, name: reportDateiname(g.m.kunde, r.erstelltAm ?? heute) } } : {}),
+    ...(k ? { kontaktId: k.id } : {}),
   };
+}
+
+// ── Upsell nur mit ansprechbarer Person (Prüf-Fund 11.10.: Art. 18 / Werbesperre) ─────────────────────────────────────
+
+/**
+ * Wen darf „nächste Stufe anbieten“ (Upsell = Werbung) ansprechen? `kontakte` = die Kartei MIT eingeschränkten Personen. Rein.
+ * Hat das Mandat keine (noch vorhandene) Ansprechperson, gilt der Vorschlag am Mandat (ohne Person); sind ALLE vorhandenen Ansprechpersonen
+ * ausgenommen (Art. 18 Einschränkung oder Werbesperre — `ausgenommen`), gibt es keinen Vorschlag und kein Follow-up.
+ */
+export function upsellAnsprechbar(kontaktIds: readonly string[], kontakte: readonly Pick<Kontakt, 'id' | 'werbesperre' | 'eingeschraenkt'>[]): { erlaubt: boolean; kontaktId?: string } {
+  const da = kontaktIds.map(id => kontakte.find(k => k.id === id)).filter((k): k is Pick<Kontakt, 'id' | 'werbesperre' | 'eingeschraenkt'> => !!k);
+  if (!da.length) return { erlaubt: true };
+  const frei = da.find(k => !ausgenommen(k));
+  return frei ? { erlaubt: true, kontaktId: frei.id } : { erlaubt: false };
 }
 
 // ── Morgenlauf: Report-Vorschläge (alle zwei Wochen) und „nächste Stufe“ (einmal je Stufe) ────────────────────────────
@@ -266,6 +290,8 @@ const empfaenger = (m: Pick<Mandat, 'zustaendig'>): string[] => { const p = fuer
 export async function treppeMorgenlauf(heute = localDay()): Promise<{ reports: number; stufen: number }> {
   const [datei, crm] = await Promise.all([ladeTreppe(heute), ladeCrm()]);
   if (!datei.stufen.length) return { reports: 0, stufen: 0 };
+  const { kontakteFuerVerarbeitung } = await import('./verarbeitung');
+  const kartei = await kontakteFuerVerarbeitung({ mitEingeschraenkten: true });
   const { lege } = await import('@/lib/zoe/stapel');
   const { melde } = await import('@/lib/meldungen/melden');
   const { WEG } = await import('@/lib/wege');
@@ -287,7 +313,7 @@ export async function treppeMorgenlauf(heute = localDay()): Promise<{ reports: n
       for (const an of empfaenger(m)) await melde({ an, art: 'produkte', titel: 'Ein Fortschritts-Report ist fällig — bitte prüfen und senden', link });
       reports++;
     }
-    if (z.naechsteStufe && z.stufe) {
+    if (z.naechsteStufe && z.stufe && upsellAnsprechbar(m.kontaktIds, kartei).erlaubt) {
       const offen = z.naechsteStufe.stufen.filter(s => !datei.marken[`stufe:${m.id}:${s.id}`]);
       if (offen.length) {
         const namen = z.naechsteStufe.stufen.map(s => s.name).join(' oder ');
@@ -322,13 +348,13 @@ export async function dokumentVorschlagAblegen(person: string, roh: unknown, dat
   return { id: v.id, vorschlag };
 }
 
-/** Follow-up „Nächste Stufe anbieten“ am Mandat (idempotent über die Kennung). */
-function naechsteStufeFollowup(b: CrmBestand, m: Mandat, namen: string, person: string, jetzt: Date, schluessel: string): CrmBestand {
+/** Follow-up „Nächste Stufe anbieten“ am Mandat (idempotent über die Kennung) — an die erste ansprechbare Person (`kontaktId`), sonst am Mandat. */
+function naechsteStufeFollowup(b: CrmBestand, m: Mandat, namen: string, person: string, jetzt: Date, schluessel: string, kontaktId: string | undefined): CrmBestand {
   const id = `fu-ts-${fnv(schluessel)}`;
   if ((b.followups ?? []).some(f => f.id === id)) return b;
   const iso = jetzt.toISOString();
   const fu: FollowUp = {
-    id, bezug: { art: 'mandat', id: m.id }, ...(m.kontaktIds[0] ? { kontaktId: m.kontaktIds[0] } : {}), art: 'termin', text: `Nächste Stufe „${namen}“ anbieten`.slice(0, 300),
+    id, bezug: { art: 'mandat', id: m.id }, ...(kontaktId ? { kontaktId } : {}), art: 'termin', text: `Nächste Stufe „${namen}“ anbieten`.slice(0, 300),
     faellig: tagPlus(localDay(jetzt), 3), zustaendig: zustaendig(m.zustaendig, 'sales'), status: 'offen', quelle: 'head', angelegt: iso, geaendert: iso, geaendertVon: person,
   } as FollowUp;
   return { ...b, followups: [...(b.followups ?? []), fu] };
@@ -370,8 +396,12 @@ export const TREPPE_STAPEL_ART: StapelArtFreigabe = {
         if (!m) { await loslassen(v.id); return { ok: false, status: 404, fehler: 'Dieses Mandat gibt es nicht (mehr).' }; }
         const namen = ids.map(id => datei.stufen.find(s => s.id === id)?.name).filter(Boolean).join(' oder ');
         if (!namen) { await loslassen(v.id); return { ok: false, status: 409, fehler: 'Die vorgeschlagene Stufe gibt es nicht mehr.' }; }
+        // Art. 18 / Werbesperre live gegen die Kartei (Prüf-Fund 11.10.): sind alle Ansprechpersonen ausgenommen, kein Follow-up.
+        const { kontakteFuerVerarbeitung } = await import('./verarbeitung');
+        const ziel = upsellAnsprechbar(m.kontaktIds, await kontakteFuerVerarbeitung({ mitEingeschraenkten: true }));
+        if (!ziel.erlaubt) { await loslassen(v.id); return { ok: false, status: 409, fehler: 'Die Ansprechpersonen dieses Mandats dürfen nicht angesprochen werden (Werbesperre bzw. eingeschränkte Verarbeitung) — kein Follow-up angelegt. Bitte ablehnen.' }; }
         const aktuell = stufeVonMandat(m, datei)?.stufe.id ?? '-';
-        await aendereCrm(b => naechsteStufeFollowup(b, m, namen, person, jetzt, `${mid}|${aktuell}|${ids.join(',')}`), { art: 'person', person });
+        await aendereCrm(b => naechsteStufeFollowup(b, m, namen, person, jetzt, `${mid}|${aktuell}|${ids.join(',')}`, ziel.kontaktId), { art: 'person', person });
         text = `Follow-up „Nächste Stufe „${namen}“ anbieten“ am Mandat angelegt (in drei Tagen fällig).`;
       }
       await entscheide(v.id, 'freigegeben', { ergebnis: text, von: person, ausArbeit: true });

@@ -592,3 +592,35 @@ export function vorschlagAnwenden(datei: TreppeDatei, vorschlag: TreppeVorschlag
   if (!geaendert.length && d.kreislauf.length === datei.kreislauf.length) return { ok: false, status: 400, fehler: 'Nichts ausgewählt — nichts übernommen.' };
   return { ok: true, datei: d, geaendert };
 }
+
+// ── Konto löschen / Export (Art. 15/17/20, Prüf-Fund 11.10. — Muster `schildOhnePerson`) ───────────────────────────────
+
+/** Speichername einer gelöschten Person in Stempeln. */
+export const TREPPE_GETILGT = '[gelöscht]';
+
+/** Konto gelöscht: der Speichername in allen Stempeln (geändert von, erledigt von, gesendet von) wird „[gelöscht]“ — Einträge bleiben. Rein. */
+export function treppeOhnePerson(d: TreppeDatei, speicher: string): { neu: TreppeDatei; n: number } {
+  let n = 0;
+  const v = <T extends { geaendertVon?: string }>(x: T): T => (x.geaendertVon === speicher ? (n++, { ...x, geaendertVon: TREPPE_GETILGT }) : x);
+  const neu: TreppeDatei = {
+    ...d,
+    stufen: d.stufen.map(v), kreislauf: d.kreislauf.map(v), roadmap: d.roadmap.map(v), positionierung: v(d.positionierung),
+    kunden: Object.fromEntries(Object.entries(d.kunden).map(([k, f]) => [k, { ...v(f), erledigt: f.erledigt.map(e => (e.von === speicher ? (n++, { ...e, von: TREPPE_GETILGT }) : e)) }])),
+    reports: Object.fromEntries(Object.entries(d.reports).map(([k, r]) => [k, r.gesendetVon === speicher ? (n++, { ...r, gesendetVon: TREPPE_GETILGT }) : r])),
+  };
+  return { neu, n };
+}
+
+/** Export: was die Person in der Treppe gestempelt hat — Art, Kennung, Zeit (keine Inhalte Dritter). Rein. */
+export function treppeEintraegeVon(d: TreppeDatei, speicher: string): { art: string; id: string; am?: string; was?: string }[] {
+  const raus: { art: string; id: string; am?: string; was?: string }[] = [];
+  const liste: [string, readonly { id: string; geaendert: string; geaendertVon: string }[]][] = [['stufe', d.stufen], ['station', d.kreislauf], ['roadmap', d.roadmap]];
+  for (const [art, l] of liste) for (const x of l) if (x.geaendertVon === speicher) raus.push({ art: `${art} geändert`, id: x.id, am: x.geaendert });
+  if (d.positionierung.geaendertVon === speicher) raus.push({ art: 'positionierung geändert', id: 'positionierung', ...(d.positionierung.geaendert ? { am: d.positionierung.geaendert } : {}) });
+  for (const [mid, f] of Object.entries(d.kunden)) {
+    if (f.geaendertVon === speicher) raus.push({ art: 'fortschritt geändert', id: mid, am: f.geaendert });
+    for (const e of f.erledigt) if (e.von === speicher) raus.push({ art: 'lieferung erledigt', id: mid, am: e.am, was: e.was });
+  }
+  for (const [mid, r] of Object.entries(d.reports)) if (r.gesendetVon === speicher) raus.push({ art: 'report gesendet', id: mid, ...(r.gesendetAm ? { am: r.gesendetAm } : {}) });
+  return raus;
+}

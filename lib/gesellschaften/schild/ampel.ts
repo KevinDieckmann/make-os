@@ -181,6 +181,9 @@ export interface SchildErinnerung { aufgabeId: string; gesellschaftId: Gesellsch
  * vor ihrem Ablauf (90 Tage), Marken/Domains/Versicherungen im Vorlauf, die Quartals-Runde der Risiken und jeder Neubewertungs-Anlass.
  * `erledigt` markiert Pflichten, die inzwischen vermerkt sind — deren offene Aufgabe schließt der Server.
  */
+/** Neutrale Beschreibung der Erinnerungs-Aufgaben (Prüf-Fund 11.10.): die Einzelheiten nur im Bereich Unternehmen (Link in der Notiz). */
+export const NEUTRAL_BESCHREIBUNG = 'Aus dem Bereich Unternehmen — die Einzelheiten stehen dort (Link in der Notiz).';
+
 export function faelligeSchildErinnerungen(lage: Lage): SchildErinnerung[] {
   const heute = lage.heute;
   const raus: SchildErinnerung[] = [];
@@ -191,29 +194,31 @@ export function faelligeSchildErinnerungen(lage: Lage): SchildErinnerung[] {
       if (p.status === 'erledigt' || p.status === 'nicht-zutreffend') { raus.push({ aufgabeId, gesellschaftId: g.id, titel: '', beschreibung: '', dueDate: p.frist, reiter: 'pflichten', erledigt: true }); continue; }
       if (p.status !== 'faellig' && p.status !== 'ueberfaellig') continue;
       if (p.inTagen < -60) continue; // sehr alte, nie vermerkte Pflichten nicht als neue Aufgabe — sie stehen rot im Bereich
+      // Aufgaben liegen im Business-Space — dort sehen sie auch Konten „nur Business“, die die Firmen-Akte nicht sehen dürfen (Prüf-Fund 11.10.):
+      // Titel und Beschreibung NEUTRAL (keine Pflicht, keine Norm, keine Folge bei Versäumnis) — die Einzelheiten stehen nur im Bereich.
       raus.push({ aufgabeId, gesellschaftId: g.id, dueDate: p.frist, reiter: 'pflichten',
-        titel: `Pflicht: ${p.titel} (${p.periodeLabel}) — ${g.name} — bis ${tagText(p.frist)}`,
-        beschreibung: `Aus dem Pflichten-Kalender (Unternehmen): ${p.norm}.${p.folge ? ` Folge bei Versäumnis: ${p.folge}.` : ''} Erledigt? Im Bereich vermerken und Beleg ablegen.${hinweis}` });
+        titel: `Unternehmen: Frist im Pflichten-Kalender — ${g.name} — bis ${tagText(p.frist)}`,
+        beschreibung: `${NEUTRAL_BESCHREIBUNG} Erledigt? Im Bereich vermerken und Beleg ablegen.${hinweis}` });
     }
     for (const d of g.dokumente) {
       const bis = d.katalog.ablauf ? d.dok?.gueltigBis : undefined;
       if (!bis || tagePlus(bis, -ABLAUF_VORLAUF_TAGE) > heute || bis < tagePlus(heute, -30)) continue;
       raus.push({ aufgabeId: `usd-${kurzHash(`${g.id}|${d.dok!.id}|${bis}`)}`, gesellschaftId: g.id, dueDate: bis, reiter: 'dokumente',
-        titel: `Läuft ab: ${d.katalog.titel} — ${g.name} — ${tagText(bis)}`, beschreibung: `Aus der Firmen-Akte (Unternehmen › Dokumente): rechtzeitig erneuern und die neue Fassung vermerken.${hinweis}` });
+        titel: `Unternehmen: Dokument läuft ab — ${g.name} — ${tagText(bis)}`, beschreibung: `${NEUTRAL_BESCHREIBUNG} Rechtzeitig erneuern und die neue Fassung vermerken.${hinweis}` });
     }
     for (const x of g.schutz) {
       if (x.tag < heute || tagePlus(x.tag, -x.vorlauf) > heute) continue;
       if (x.id.startsWith('vs-ende-')) continue;
       raus.push({ aufgabeId: `usm-${kurzHash(`${g.id}|${x.id}|${x.tag}`)}`, gesellschaftId: g.id, dueDate: x.tag, reiter: 'schutz',
-        titel: `${x.titel} — ${g.name} — ${tagText(x.tag)}`, beschreibung: `Aus Unternehmen › Marken & Versicherungen: entscheiden und vermerken.${hinweis}` });
+        titel: `Unternehmen: Frist bei Marken & Versicherungen — ${g.name} — ${tagText(x.tag)}`, beschreibung: `${NEUTRAL_BESCHREIBUNG} Entscheiden und vermerken.${hinweis}` });
     }
     if (g.runde.faellig) {
       raus.push({ aufgabeId: `usr-${kurzHash(`${g.id}|${g.runde.quartal}`)}`, gesellschaftId: g.id, dueDate: tagePlus(heute, 14), reiter: 'risiken',
-        titel: `Risiken neu bewerten (${g.runde.quartal.replace('-', ' ')}) — ${g.name}`, beschreibung: `Quartals-Runde des Risiko-Registers: ${g.runde.anzahl} Risiko${g.runde.anzahl === 1 ? '' : 's'} neu bewerten (Eintritt × Wirkung, Maßnahmen).${hinweis}` });
+        titel: `Unternehmen: Risiken neu bewerten (${g.runde.quartal.replace('-', ' ')}) — ${g.name}`, beschreibung: `${NEUTRAL_BESCHREIBUNG} Quartals-Runde des Risiko-Registers.${hinweis}` });
     }
     for (const a of g.anlaesse) {
       raus.push({ aufgabeId: `usr-${kurzHash(`${g.id}|${a.id}`)}`, gesellschaftId: g.id, dueDate: tagePlus(heute, 7), reiter: 'risiken',
-        titel: `Risiken neu bewerten — Anlass: ${a.text} — ${g.name}`, beschreibung: `Ein Ereignis seit der letzten Bewertung kann die Risiken verändern: ${a.text} (${tagText(a.am)}).${hinweis}` });
+        titel: `Unternehmen: Risiken neu bewerten (Anlass) — ${g.name}`, beschreibung: `${NEUTRAL_BESCHREIBUNG} Ein Ereignis seit der letzten Bewertung kann die Risiken verändern.${hinweis}` });
     }
   }
   return raus;

@@ -93,7 +93,7 @@ function ZielForm({ lage, z, api, onFertig }: { lage: PlanungLage; z: ZielMitSta
 
 function Trichter({ l, gesellschaft }: { l: ZielLage; gesellschaft: string }) {
   const kette: [string, string][] = [
-    ['Umsatz', euro(l.ziel.umsatz)], ['Ø Deal', l.dealWert.wert ? `${euro(l.dealWert.wert)}${l.dealWert.quelle === 'gemessen' ? ' (gemessen)' : ''}` : '—'],
+    ['Umsatz', euro(l.ziel.umsatz)], ...(l.ist.rest < l.ziel.umsatz ? [['noch offen', euro(l.ist.rest)] as [string, string]] : []), ['Ø Deal', l.dealWert.wert ? `${euro(l.dealWert.wert)}${l.dealWert.quelle === 'gemessen' ? ' (gemessen)' : ''}` : '—'],
     ['Deals', auf(l.summe.gewonnen)], ['Angebote', auf(l.summe.angebote)], ['SQL', auf(l.summe.sql)], ['Gespräche', auf(l.summe.gespraeche)], ['Leads', auf(l.summe.leads)],
   ];
   return (

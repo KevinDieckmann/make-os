@@ -19,12 +19,15 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 /**
- * Vertragsfristen aus dem Gesellschafts-Register (04.10.) — nur der Haushalt des Inhabers (dem gehört der Kalender, Business);
- * ohne Haushalt keine. Gerechnet rein in lib/gesellschaften/modell.ts `vertragsStichtage`.
+ * Vertragsfristen aus dem Gesellschafts-Register (04.10.) — nur für eine Person mit Zugang zur Firmen-Akte (`rechtZugangFuer`: Haushalt des
+ * Inhabers, voller Haushaltszugang; Prüf-Fund 11.10. — ein Konto „nur Business“ bekommt sie nicht). Ohne Person keine.
+ * Gerechnet rein in lib/gesellschaften/modell.ts `vertragsStichtage`.
  */
-export async function vertragsFristenLesen(): Promise<NonNullable<Quellen['vertraege']>> {
-  const h = await haushaltDesInhabers();
-  if (!h) return [];
+export async function vertragsFristenLesen(betrachter: string | null): Promise<NonNullable<Quellen['vertraege']>> {
+  const { rechtZugangFuer } = await import('@/lib/recht/server');
+  const z = await rechtZugangFuer(betrachter);
+  if (!z) return [];
+  const h = z.haushalt;
   const { ladeRegister } = await import('@/lib/gesellschaften/server');
   const { alleGesellschaften, vertragsStichtage } = await import('@/lib/gesellschaften/modell');
   return vertragsStichtage(alleGesellschaften(await ladeRegister(h)));
@@ -58,9 +61,10 @@ export async function fristenQuellenLesen(betrachter: string | null): Promise<Qu
     ladeCrm().catch(() => null),
     loadJson<{ zahlungen?: Quellen['zahlungen']; rechnungen?: Quellen['rechnungen'] }>('finanzplan').catch(() => null),
     ladeEinstellungen().catch(() => null),
-    vertragsFristenLesen().catch(() => []),
+    vertragsFristenLesen(betrachter).catch(() => []),
     // Unternehmen › Schild (10.10.): Pflichten, Dokument-Abläufe, Marken/Domains/Versicherungen — gerechnet in lib/gesellschaften/schild/ampel.ts.
-    import('@/lib/gesellschaften/schild-server').then(m => m.schildFristenLesen()).catch(() => []),
+    // Nur mit Zugang zur Firmen-Akte (Prüf-Fund 11.10.).
+    import('@/lib/gesellschaften/schild-server').then(m => m.schildFristenLesen(betrachter)).catch(() => []),
   ]);
   return {
     meilensteine: meilensteine?.meilensteine, etappen: bauplan?.etappen,

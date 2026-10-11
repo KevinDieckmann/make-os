@@ -40,6 +40,14 @@ export function bereichArt(bereich: string | null | undefined): BereichArt {
 /** Ein wählbarer bzw. bekannter Bereich (Antworten der Postfächer-Route, Ansicht). `archiv` = Kunde ohne aktives Mandat (nicht mehr wählbar). */
 export interface BereichEintrag { id: string; name: string; art: Exclude<BereichArt, 'ohne'>; archiv?: boolean }
 
+/**
+ * Privat oder Business für einen Postfach-Bereich — DIE Regel (Prüf-Fund 11.10.: vorher drei verschiedene — Strom/Teilen „Privat“, Flows und
+ * „aus Gespräch“ „Business“). Ohne Bereich (Gmail ohne Register-Eintrag) gilt STRENG Privat — nie „aus Versehen Business“: Aufgaben,
+ * Ablage und „Kontakt anlegen“ landen dann im Privat-Bereich bzw. brauchen den bewussten Bereichswechsel (Rückfrage, `bereichWechsel`).
+ * Rein, client-sicher.
+ */
+export const postfachRaum = (bereich: string | null | undefined): 'privat' | 'business' => (bereich ? bereichVon(bereich) : 'privat');
+
 export interface BereichAnzeige {
   name: string;
   /** Farbe des Bereichs-Labels: Privat wie der Privat-Space, Gesellschaften in ihrer Einheiten-Farbe, Kunden in der Mandanten-Farbe. */
@@ -57,7 +65,7 @@ export interface BereichAnzeige {
  */
 export function bereichAnzeige(bereich: string | null | undefined, namen: Readonly<Record<string, string>> = {}, archiv: ReadonlySet<string> = new Set()): BereichAnzeige {
   const art = bereichArt(bereich);
-  if (!bereich || art === 'ohne') return { name: 'Ohne Bereich', farbe: EINHEIT_GRAU, art, raum: 'privat' };
+  if (!bereich || art === 'ohne') return { name: 'Ohne Bereich', farbe: EINHEIT_GRAU, art, raum: postfachRaum(bereich) };
   if (art === 'privat') return { name: 'Privat', farbe: PRIVAT_FARBE, art, raum: 'privat' };
   const raum = bereichVon(bereich);
   if (art === 'kunde') return { name: namen[bereich] ?? 'Kunde (nicht mehr im CRM)', farbe: MANDANT_FARBE, art, raum, ...(archiv.has(bereich) ? { archiv: true } : {}) };
