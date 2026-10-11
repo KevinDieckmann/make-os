@@ -15,7 +15,6 @@ import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { localDay } from '@/lib/zeit';
 import { fristen, type Frist, type Quellen } from './eintraege';
 import { ladeEinstellungen } from './einstellungen';
-import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 
 /**
