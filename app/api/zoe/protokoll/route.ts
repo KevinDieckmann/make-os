@@ -15,15 +15,19 @@ import { fuehreAus } from '@/lib/zoe/ausfuehren';
 import { uebersicht } from '@/lib/zoe/ausfuehren';
 import { innenAdresse } from '@/lib/innen';
 import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { bereichAusGruppe } from '@/lib/werkzeuge/register';
+import { bereichPasst } from '@/lib/werkzeuge/vertrag';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** Werkzeug-Gruppen, die nur einem Bereich gehören (lib/datenschutz/ki-werkzeuge.ts `GRUPPE_KATEGORIE`); übrige Gruppen stehen in beiden Sichten. */
-const NUR_PRIVAT_GRUPPEN = new Set(['gesundheit', 'haushalt']);
-const NUR_BUSINESS_GRUPPEN = new Set(['kontakte', 'markttraktion', 'crm', 'kunden', 'business']);
+/**
+ * Gehört der Eintrag in die Sicht? Der Bereich der Werkzeug-Gruppe kommt aus der EINEN Regel der Verträge (`bereichAusGruppe`, lib/werkzeuge/
+ * register.ts — Business: Markttraktion, Kontakte, Kunden, CRM, Business, Bauplan, Finanzen; Privat: Gesundheit, Haushalt, Familie); übrige Gruppen
+ * stehen in beiden Sichten. Prüf-Funde 11.10.: vorher eine eigene Liste ohne `finanzen` und `bauplan` — Business-Finanzen standen unter Privat.
+ */
 const gruppeInSicht = (gruppe: unknown, sicht: 'privat' | 'business' | null): boolean =>
-  !sicht || typeof gruppe !== 'string' || !(sicht === 'business' ? NUR_PRIVAT_GRUPPEN : NUR_BUSINESS_GRUPPEN).has(gruppe);
+  !sicht || typeof gruppe !== 'string' || bereichPasst(bereichAusGruppe(gruppe), sicht);
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();

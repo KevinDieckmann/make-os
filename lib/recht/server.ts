@@ -125,8 +125,11 @@ export const istRechtAufgabe = (id: string) => id.startsWith(AUFGABE_PRAEFIX);
  * die Personen mit Zugang zur Firmen-Akte) und seine Vorschläge im Stapel; die Vorbereitung der Risikorunde je Gesellschaft, deren Runde fällig ist,
  * mit Vorschlägen für neue Katalog-Risiken. Ohne Modell. Wirft nie.
  */
-export async function rechtMorgenlauf(haushalt: string, heute = localDay()): Promise<{ check: boolean; vorschlaege: number; runden: number }> {
+export async function rechtMorgenlauf(haushalt: string, heute = localDay()): Promise<{ check: boolean; vorschlaege: number; runden: number; uebersprungen?: string }> {
   try {
+    // Prüf-Funde 11.10.: Not-Aus und „Head of Recht aus“ gelten auch für diesen Lauf ohne Modell — dann nichts prüfen, nichts in den Stapel.
+    const sperre = await (await import('@/lib/agenten/einstellung')).headAngehalten('recht', { haushalt });
+    if (sperre) return { check: false, vorschlaege: 0, runden: 0, uebersprungen: sperre.text };
     const stand = await ladeRechtStand(haushalt);
     const [{ ladeSchild }, { lage, check }] = await Promise.all([import('@/lib/gesellschaften/schild-server'), rechtCheckJetzt(haushalt, heute)]);
     const schild = await ladeSchild(haushalt);
@@ -235,6 +238,9 @@ export async function checklisteFuerDatei(haushalt: string, dateiId: string): Pr
 export async function vertragEingang(haushalt: string, person: string, dateiId: string): Promise<{ vorschlaege: number; uebersprungen?: string }> {
   try {
     if (!(await rechtZugangFuer(person))) return { vorschlaege: 0, uebersprungen: 'kein Zugang zur Firmen-Akte' };
+    // Prüf-Funde 11.10.: Not-Aus bzw. „Head of Recht aus“ → keine Checkliste, keine Fristen-Vorschläge (der Riegel bleibt frei — nach dem Lösen geht es).
+    const sperre = await (await import('@/lib/agenten/einstellung')).headAngehalten('recht', { haushalt });
+    if (sperre) return { vorschlaege: 0, uebersprungen: sperre.text };
     const stand = await ladeRechtStand(haushalt);
     if (stand.vertraege?.[dateiId]) return { vorschlaege: 0, uebersprungen: 'schon geprüft' };
     const r = await checklisteFuerDatei(haushalt, dateiId);

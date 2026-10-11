@@ -16,13 +16,15 @@ import { neueKennung } from '@/lib/kennung';
 import type { WerkzeugKontext } from '@/lib/zoe/werkzeuge';
 import { GRENZEN, agentSchluessel, type AgentRef, type HeadDef, type KiKategorie } from './typen';
 import { headDef, KATALOG } from './katalog';
-import { headSichtbar, kategorienFuer, headsFuer, type KontoSicht } from './sicht';
+import { headImBereich, headSichtbar, kategorienFuer, headsFuer, type KontoSicht } from './sicht';
 import { anhaengen, auftragText, gedaechtnisFuer, neuerFaden, offeneLaeufe, textPruefen, type AuftragKarte, type FadenKern, type FadenKopfKern, type NachrichtKern } from './faeden';
 import { ablageAendernFuer, bestandLesen, sichtLaden } from './faeden-server';
 import { fehlschlag, klasseAusStatus, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
 const KEINE_PERSON = 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).';
 const UNBEKANNT = 'Nicht ausgeführt: Diesen Head gibt es für diese Person nicht (oder er ist nicht sichtbar).';
+/** Prüf-Funde 11.10.: ein Head des anderen Bereichs ist in dieser Sicht nicht erreichbar — ohne Inhalte, nur der Satz. */
+const ANDERE_SICHT = (s: 'privat' | 'business') => `Nicht ausgeführt: Dieser Head gehört nicht in die Sicht ${s === 'business' ? 'Business' : 'Privat'} — sag der Person, dass sie ihn oben unter „${s === 'business' ? 'Privat' : 'Business'}“ fragen kann.`;
 const iso = () => new Date().toISOString();
 
 /** Einen Head aus der Eingabe des Modells — Kennung, Kurzname oder Name; nur, wenn die Person ihn sieht. */
@@ -76,6 +78,8 @@ export async function anHead(input: Record<string, unknown>, _origin: string, pe
   if (!sicht.imHaushalt) return fehlschlag('rechte', 'Nicht ausgeführt: Heads gibt es nur im Haushalt des Inhabers.');
   const head = headAusEingabe(input.head, sicht);
   if (!head) return fehlschlag('nicht_gefunden', UNBEKANNT);
+  // Sicht des Gesprächs (Prüf-Funde 11.10.): im Business-Gespräch kein Privat-Head (Gesundheit, Familie, Privat-Finanzen) und umgekehrt.
+  if (kontext?.sicht && !headImBereich(head.id, kontext.sicht)) return fehlschlag('rechte', ANDERE_SICHT(kontext.sicht));
   const t = textPruefen(input.auftrag, GRENZEN.auftragZeichen, 'Auftrag');
   if (!t.ok) return fehlschlag(klasseAusStatus(t.status), `Nicht ausgeführt: ${t.fehler}`);
   const { umfangFuer, einreihen } = await import('./delegation');
@@ -129,6 +133,7 @@ export async function headFragen(input: Record<string, unknown>, origin: string,
   if (!sicht.imHaushalt) return fehlschlag('rechte', 'Nicht ausgeführt: Heads gibt es nur im Haushalt des Inhabers.');
   const head = headAusEingabe(input.head, sicht);
   if (!head) return fehlschlag('nicht_gefunden', UNBEKANNT);
+  if (kontext?.sicht && !headImBereich(head.id, kontext.sicht)) return fehlschlag('rechte', ANDERE_SICHT(kontext.sicht));
   const t = textPruefen(input.frage, 2_000, 'Frage');
   if (!t.ok) return fehlschlag(klasseAusStatus(t.status), `Nicht ausgeführt: ${t.fehler}`);
   const [{ umfangFuer }, { agentLauf }] = await Promise.all([import('./delegation'), import('./gespraech')]);

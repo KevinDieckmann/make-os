@@ -219,9 +219,11 @@ async function entscheiden(person: string, k: ZoeKanal, art: 'ja' | 'nein', kenn
   const a = await beanspruche(v.id, person, x => (x.person === person ? null : { status: 404, fehler: 'Vorschlag nicht gefunden.' }));
   if (!a.ok) { await antworte(a.code === 'bereich-fehlt' ? KANAL_TEXTE.bereichFehlt(kennung, link(WEG.freigaben())) : KANAL_TEXTE.schonEntschieden(kennung)); return; }
   const { fuehreAus } = await import('@/lib/zoe/ausfuehren');
-  let erg: { ok: boolean; text: string };
+  let erg: Awaited<ReturnType<typeof fuehreAus>>;
   try { erg = await fuehreAus(a.v.werkzeug, a.v.eingabe, innenAdresse(), { erzwingen: true, person, freigegebenVon: person, vorschlagId: a.v.id, bereich: a.v.bereich ?? null }); }
   catch (x) { await loslassen(v.id); throw x; }
+  // Prüf-Funde 11.10. (wie /api/zoe/stapel): scheitert nur die Eingabe-Prüfung, ist nichts gelaufen — der Vorschlag bleibt offen.
+  if (!erg.ok && erg.ergebnis.klasse === 'eingabe') { await loslassen(v.id); await antworte(KANAL_TEXTE.eingabePasstNicht(kennung, link(WEG.freigaben()))); return; }
   await entscheide(v.id, erg.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: erg.text, von: person, ausArbeit: true });
   await weg();
   const ziel = link(WEG.freigaben('protokoll'));

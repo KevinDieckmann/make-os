@@ -310,7 +310,9 @@ export const AUFGABEN_WERKZEUG_DEFS = [
   {
     name: 'meine_aufgaben',
     description: 'Zeigt, welche Aufgaben die Person an dich (ZOE) gegeben hat und wo sie stehen: bei dir, in Arbeit, wartet auf Freigabe, abgelehnt, freigegeben. Nutze das bei „was liegt bei dir?“ oder „was wartet auf meine Freigabe?“.',
-    input_schema: { type: 'object', properties: {}, required: [] },
+    // `space` (Prüf-Funde 11.10.): optional — im Agenten-Bereich setzt der Server den Bereich des Heads, im ZOE-Gespräch mit Sicht den Bereich der
+    // Sicht (lib/zoe/ausfuehren.ts `eingabeInSicht`). Ohne diese Angabe im Schema scheiterte jeder Aufruf aus dem Agenten-Bereich an der Hülle.
+    input_schema: { type: 'object', properties: { space: { type: 'string', enum: ['privat', 'business'], description: 'Nur Aufgaben dieses Bereichs (optional)' } }, required: [] },
   },
   {
     name: 'aufgabe_an_zoe',

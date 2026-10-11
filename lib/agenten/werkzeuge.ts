@@ -14,6 +14,7 @@
 // beschränkt (`eingabeImBereich`, `BEREICHS_LESER`).
 
 import { gruppeVon } from '@/lib/zoe/register';
+import { BEREICH_IN_EINGABE } from '@/lib/zoe/bereich';
 import { WERKZEUGE, FINANZPLAN_ALTWEG_WERKZEUGE } from '@/lib/zoe/werkzeuge';
 import { werkzeugDefs, type WerkzeugDef } from '@/lib/zoe/werkzeug-defs';
 import { LESEND } from '@/lib/zoe/gespraech-schutz';
@@ -110,6 +111,17 @@ export const FACH_AGENTEN_BUSINESS: ReadonlySet<string> = new Set(['board', 'con
 export const fachAgentErlaubt = (agentId: string | undefined | null, bereich: 'privat' | 'business'): boolean =>
   !!agentId && (bereich !== 'business' || FACH_AGENTEN_BUSINESS.has(agentId));
 
+/**
+ * ZOE `run_agent` in einer Sicht (Prüf-Funde 11.10.) — dieselbe Regel wie unter einem Head, dazu die alten Business-Heads als Fach-Agenten
+ * (`head-sales` …, nur Markttraktion): in Business nur Fach-Agenten ohne private Daten (`FACH_AGENTEN_BUSINESS`; nicht die Ernährung, nicht die
+ * Tagesform, nicht die Lage ALLER Postfächer, nicht der Head of Finance mit dem Haushalt); in Privat keine reinen Business-Agenten
+ * (`NUR_BUSINESS_AGENTEN`). Ohne Sicht alles (wie bisher). Rein.
+ */
+export const NUR_BUSINESS_AGENTEN: ReadonlySet<string> = new Set(['board', 'controlling', 'finanzchef', 'crm', 'outreach', 'prospect', 'prospecting', 'content', 'head-sales', 'head-marketing', 'head-event']);
+const HEAD_FACH_AGENTEN: ReadonlySet<string> = new Set(['head-sales', 'head-marketing', 'head-event']);
+export const fachAgentInSicht = (agentId: string, sicht: 'privat' | 'business' | null | undefined): boolean =>
+  !sicht || (sicht === 'business' ? FACH_AGENTEN_BUSINESS.has(agentId) || HEAD_FACH_AGENTEN.has(agentId) : !NUR_BUSINESS_AGENTEN.has(agentId));
+
 // ── Angebot: die Schnittmenge ───────────────────────────────────────────────────────────────────────────────────────────
 
 /** Die Kategorien eines Heads, die gerade an die KI dürfen: Bereiche nach den Schaltern, Gesundheit nur mit (b), Web nur mit Web-Suche. */
@@ -196,8 +208,8 @@ export function eingabeImBereich(name: string, input: Record<string, unknown>, h
   return e;
 }
 
-/** Lesende Werkzeuge, die den Bereich als Eingabe `space` nehmen (der Kern setzt ihn fest auf den des Heads). */
-export const BEREICH_IN_EINGABE: ReadonlySet<string> = new Set(['meine_aufgaben', 'projekt_unterlagen', 'datei_lesen']);
+/** Lesende Werkzeuge, die den Bereich als Eingabe `space` nehmen (der Kern setzt ihn fest auf den des Heads) — EINE Liste mit ZOE (lib/zoe/bereich.ts). */
+export { BEREICH_IN_EINGABE };
 
 /** Lesende Werkzeuge, die der Kern selbst auf den Bereich beschränkt (statt des ZOE-Lesers über alle Bereiche). */
 export const BEREICHS_LESER = new Set(['lies_postfach', 'suche_arbeit']);

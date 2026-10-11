@@ -208,7 +208,7 @@ export async function POST(req: Request) {
       const { rechtMorgenlauf } = await import('@/lib/recht/server');
       const r = await rechtMorgenlauf(h, today);
       const was = [r.check ? 'Recht-Check erstellt' : '', r.runden ? `Risikorunde vorbereitet (${r.runden})` : '', r.vorschlaege ? `${r.vorschlaege} Vorschl${r.vorschlaege === 1 ? 'ag' : 'äge'} im Stapel` : ''].filter(Boolean).join(' · ');
-      schritte.push({ name: 'Head of Recht', ok: true, info: was || 'diese Woche schon geprüft' });
+      schritte.push({ name: 'Head of Recht', ok: true, info: r.uebersprungen ? `übersprungen — ${r.uebersprungen}` : was || 'diese Woche schon geprüft' });
     }
   } catch (err) {
     schritte.push({ name: 'Head of Recht', ok: false, info: err instanceof Error ? err.message : 'Fehler' });

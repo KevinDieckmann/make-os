@@ -345,6 +345,24 @@ describe('Eingang: Aufgabe/Notiz nur als Vorschlag, „ja“ nur für den eigene
     expect((await hole(id2))?.status).toBe('abgelehnt');
     expect(gesendet(KEVIN_NR).at(-1)).toBe(K.KANAL_TEXTE.abgelehnt(k2));
   });
+  it('Prüf-Funde 11.10.: passt die Eingabe nicht mehr zum Vertrag, bleibt der Vorschlag offen (nicht „fehlgeschlagen“) — neutraler Satz', async () => {
+    await verbinde('kevin', '+49 170 1111111', KEVIN_NR);
+    await schreibt('kevin', KEVIN_NR, 'Aufgabe: Unterlagen prüfen');
+    const k = kennungAus(gesendet(KEVIN_NR).at(-1)!);
+    const id = (await S.ladeKanal('kevin')).vorschlaege![k].stapelId;
+    // Ein alter Vorschlag aus der Zeit vor den Verträgen: ein Feld, das das Schema nicht kennt.
+    await db.updateJson<{ vorschlaege: { id: string; eingabe: Record<string, unknown> }[] }>('zoe-stapel', c => ({ ...c!, vorschlaege: c!.vorschlaege.map(v => (v.id === id ? { ...v, eingabe: { ...v.eingabe, altesFeld: 1 } } : v)) }));
+    await schreibt('kevin', KEVIN_NR, `ja ${k} privat`);
+    const { hole } = await import('@/lib/zoe/stapel');
+    expect((await hole(id))?.status).toBe('offen');
+    expect(hops.filter(h => h.url.endsWith('/api/tasks/create'))).toEqual([]);
+    const antwort = gesendet(KEVIN_NR).at(-1)!;
+    expect(antwort).toMatch(new RegExp(`^Vorschlag ${k} passt in dieser Form nicht mehr — er bleibt offen`));
+    expect(antwort).not.toContain('Unterlagen');
+    // Die Kennung bleibt gültig — „nein“ lehnt danach ab.
+    await schreibt('kevin', KEVIN_NR, `nein ${k}`);
+    expect((await hole(id))?.status).toBe('abgelehnt');
+  });
   it('dieselbe Aufgabe von zwei Personen → zwei eigene Vorschläge (nie einer für beide)', async () => {
     await verbinde('kevin', '+49 170 1111111', KEVIN_NR);
     await verbinde('malin', '+49 170 2222222', MALIN_NR);

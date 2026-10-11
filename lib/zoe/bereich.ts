@@ -95,6 +95,18 @@ export function eingabeMitBereich(werkzeug: string, eingabe: Record<string, unkn
 }
 
 /**
+ * Lesende Werkzeuge mit Bereich „beide“, die den Bereich als Eingabe `space` nehmen (Prüf-Funde 11.10.) — in einer Sicht (ZOE-Gespräch mit Space,
+ * Head mit seinem Bereich) setzt der Server ihn fest. EINE Liste für ZOE (`fuehreAus`) und den Agenten-Bereich (lib/agenten/werkzeuge.ts).
+ */
+export const BEREICH_IN_EINGABE: ReadonlySet<string> = new Set(['meine_aufgaben', 'projekt_unterlagen', 'datei_lesen']);
+
+/** In einer Sicht: `space` dieser Leser fest auf die Sicht (rein). Ohne Sicht bzw. bei anderen Werkzeugen unverändert. */
+export function eingabeInSicht(werkzeug: string, eingabe: Record<string, unknown>, sicht: Bereich | null | undefined): Record<string, unknown> {
+  if (!sicht || !BEREICH_IN_EINGABE.has(werkzeug) || eingabe.space === sicht) return eingabe;
+  return { ...eingabe, space: sicht };
+}
+
+/**
  * Was eine Lage für eine Sicht weglässt (rein, 09.10. spät — Empfang `/zoe` je Sicht): Privat ohne Markttraktion (CRM); Business ohne Familie,
  * Körperdaten und Haushaltsfinanzen. Weggelassenes steht gar nicht erst im Prompt (die Schalter von `promptBrain`). Ohne Sicht nichts weglassen.
  */

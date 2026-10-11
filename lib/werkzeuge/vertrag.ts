@@ -134,6 +134,8 @@ export const bereichPasst = (b: WerkzeugBereich, sicht: Sicht | null | undefined
  * Darf dieses Werkzeug in dieser Sicht laufen (rein — DIE Regel für Hülle und Angebot)? Bereich passt — oder es legt NUR einen Vorschlag in den
  * Stapel (`vorschlag`, z. B. `crm_vorschlag`): der Stapel ordnet jeden Vorschlag seinem Bereich zu und zeigt ihn nur dort („Wohin damit“, 09.10.
  * spät) — so kann ZOE im Privat-Gespräch einen Fakt über eine Firma dorthin vorschlagen, wo er hingehört, ohne dass Business-Daten in Privat landen.
+ * Prüf-Funde 11.10.: dafür nennt die ANTWORT an die Sicht Privat keine Inhalte (lib/zoe/crm-vorschlag.ts `PRIVAT_VORGESCHLAGEN`) — nur, dass der
+ * Vorschlag unter Business liegt. Ein neues Vorschlags-Werkzeug mit Bereich ≠ „beide“ muss das ebenso halten (`kontext.sicht`).
  */
 export const vertragPasstZurSicht = (v: { bereich: WerkzeugBereich; rechteklasse: Rechteklasse }, sicht: Sicht | null | undefined): boolean =>
   v.rechteklasse === 'vorschlag' || bereichPasst(v.bereich, sicht);

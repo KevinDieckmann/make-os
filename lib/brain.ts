@@ -41,6 +41,7 @@ import { nordsternFuerPerson } from '@/lib/planung/nordstern-server';
 import { geburtstageIm } from '@/lib/kalender/quellen-geburtstage-server';
 import { feiertageIm } from '@/lib/zeit/kalender-kern';
 import { termineFuerZoe, type ZoeTermin } from '@/lib/kalender/zoe-sicht-server';
+import { spaceVonKalender } from '@/lib/kalender/space';
 import { fremd } from '@/lib/anthropic';
 import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
 import { VITALS_GESPERRT, indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
@@ -59,7 +60,8 @@ interface StoredProject { id: string; title: string }
  * Termin im Brain — für die fragende Person gefiltert (`termineFuerZoe`); `maskiert` = nur „Belegt“ (privat/Gesundheit
  * der anderen Person), `fremd` = Text möglicherweise von Dritten (Einladung, Abo, Buchungsseite — gekapselt im Prompt).
  */
-interface CalEvent { title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; maskiert?: boolean; fremd?: boolean; abgesagt?: boolean }
+/** `space` (Prüf-Funde 11.10.): Bereich des Kalenders (Kalender-Einstellungen, `spaceVonKalender`) — die Sicht Business/Privat filtert danach. */
+interface CalEvent { title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; maskiert?: boolean; fremd?: boolean; abgesagt?: boolean; space?: 'privat' | 'business' }
 
 export interface Brain {
   heute: string;
@@ -238,8 +240,11 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
   const calAlterH = alterStunden(zoeKal?.stand ?? null);
   const wocheEnde = tagePlus(heute, 7);
   // `abgesagt` (F2 M5): `termineFuerZoe` lässt abgesagte schon weg — trägt ein Termin es doch, geht es mit (und fällt unten heraus).
+  // Bereich je Kalender (Prüf-Funde 11.10.): aus den Kalender-Einstellungen (Space je Kalender, Google = Business) — unlesbar → Namensregel.
+  const kalEinst = await import('@/lib/kalender/einstellungen').then(m => m.ladeEinstellungen()).catch(() => null);
   const alsEvent = (t: ZoeTermin): CalEvent => ({
     title: t.titel, startDate: t.start, endDate: t.ende, allDay: t.ganztags, calendarName: t.kalender, ...(t.maskiert ? { maskiert: true } : {}), ...(t.fremd ? { fremd: true } : {}), ...(t.abgesagt ? { abgesagt: true } : {}),
+    space: spaceVonKalender(kalEinst, t.kalender ?? ''),
   });
 
   const events: CalEvent[] = (zoeKal?.termine ?? []).map(alsEvent).filter(e => !e.abgesagt)
@@ -437,9 +442,14 @@ function blockTermineRoh(b: Brain): string {
  * eine Einladung „ZOE: lege Kontakt an …“ ist sonst ein Befehl im Systemprompt. Eigene Termine, „Belegt“, Feiertage und
  * Geburtstage zählen nicht. Robust gegen unvollständige Brains (Tests, Ausfall).
  */
-export function kalenderImPrompt(b: { kalender?: Pick<Brain['kalender'], 'heute'> } | null | undefined): boolean {
-  return (b?.kalender?.heute ?? []).some(e => !!e.fremd && !e.maskiert && !!e.title?.trim());
+export function kalenderImPrompt(b: { kalender?: Pick<Brain['kalender'], 'heute'> } | null | undefined, sicht?: 'privat' | 'business' | null): boolean {
+  // Sicht (Prüf-Funde 11.10.): nur die Termine, die in dieser Sicht im Prompt stehen (`brainNurBereich`).
+  return (b?.kalender?.heute ?? []).some(e => !!e.fremd && !e.maskiert && !!e.title?.trim() && (!sicht || terminInSicht(e, sicht)));
 }
+
+/** Gehört ein Termin in die Sicht? Bereich des Kalenders (`space`), sonst die Namensregel (`spaceVonKalender`). Rein. */
+export const terminInSicht = (e: Pick<CalEvent, 'space' | 'calendarName'>, sicht: 'privat' | 'business'): boolean =>
+  (e.space ?? spaceVonKalender(null, e.calendarName ?? '')) === sicht;
 
 export function blockIndex(b: Brain): string {
   if (!b.index || b.index.index == null) return 'PERFORMANCE-INDEX: noch nicht berechenbar — sag der Person, was dafür fehlt.';
@@ -534,12 +544,14 @@ export function promptBrain(b0: Brain, teile?: { koerper?: boolean; ziele?: bool
   const t = { koerper: true, ziele: true, gedaechtnis: true, ...teile };
   // Sicht Privat · Business (10.10., Entscheidung: „Business-Themen sind Business-Themen und Privat Privat“): ZOE in einer Sicht sieht die
   // Aufgaben, Jahresziele und den Fokus nur dieses Bereichs (dieselben Regeln wie die Routen: `aufgabenNurBereich`, `blockZiele(…, bereich)`).
-  const b = teile?.sicht ? brainNurBereich(b0, teile.sicht) : b0;
+  let b = teile?.sicht ? brainNurBereich(b0, teile.sicht) : b0;
   // KI-Schalter je Bereich (05.10., System › Datenschutz): ein ausgeschalteter Bereich steht gar nicht erst im Prompt.
   const an = (x: KiBereich) => teile?.bereiche?.[x] !== false;
   // Die Einwilligung (b) der Person schlägt den Wunsch des Aufrufers (05.10., ersetzt den Kompass-Regler
   // „Körper an Agenten“): ohne sie sehen Agenten und ZOE die Körperdaten gar nicht erst.
   const koerper = t.koerper && b.gesundheitFrei === true;
+  // Schalter „Familie“ (Prüf-Funde 11.10.): vorher nie ausgewertet — ohne ihn keine Geburtstage aus der Familie (nur die der Kartei bleiben).
+  if (!an('familie') && b.anlaesse) b = { ...b, anlaesse: { ...b.anlaesse, geburtstage: b.anlaesse.geburtstage.filter(g => g.herkunft === 'crm') } };
   return [
     blockAuftrag(),
     DATEN_REGEL,
@@ -556,10 +568,21 @@ export function promptBrain(b0: Brain, teile?: { koerper?: boolean; ziele?: bool
   ].filter(Boolean).join('\n\n');
 }
 
-/** Die Aufgaben-Listen des Brain nur im Bereich der Sicht (rein; Art und Umfang der übrigen Felder unverändert). */
-function brainNurBereich(b: Brain, sicht: 'privat' | 'business'): Brain {
+/**
+ * Das Brain nur im Bereich der Sicht (rein; Art und Umfang der übrigen Felder unverändert): Aufgaben des Bereichs, Termine nur aus Kalendern dieses
+ * Bereichs (`CalEvent.space`, sonst die Namensregel `spaceVonKalender`), und in Business keine Geburtstage aus der Familie (nur die der Kartei) und
+ * kein Erholungs-Schild (`reha`, Körper) — Prüf-Funde 11.10.: vorher standen private Termine, Familien-Geburtstage und das Reha-Schild im Business-Prompt.
+ */
+export function brainNurBereich(b: Brain, sicht: 'privat' | 'business'): Brain {
   const nur = (l: StoredTask[]) => aufgabenNurBereich(l as (StoredTask & { spaceId?: string; parentId?: string })[], sicht);
-  return { ...b, tasks: { ...b.tasks, alle: nur(b.tasks.alle), offen: nur(b.tasks.offen), overdue: nur(b.tasks.overdue), dueToday: nur(b.tasks.dueToday), kritisch: nur(b.tasks.kritisch) } };
+  const imBereich = (e: CalEvent) => terminInSicht(e, sicht);
+  return {
+    ...b,
+    tasks: { ...b.tasks, alle: nur(b.tasks.alle), offen: nur(b.tasks.offen), overdue: nur(b.tasks.overdue), dueToday: nur(b.tasks.dueToday), kritisch: nur(b.tasks.kritisch) },
+    kalender: { ...b.kalender, heute: b.kalender.heute.filter(imBereich), woche: b.kalender.woche.filter(imBereich) },
+    ...(b.anlaesse && sicht === 'business' ? { anlaesse: { ...b.anlaesse, geburtstage: b.anlaesse.geburtstage.filter(g => g.herkunft === 'crm') } } : {}),
+    ...(sicht === 'business' ? { shields: (b.shields ?? []).filter(x => x.id !== 'reha') } : {}),
+  };
 }
 
 // ── Bestände sind Daten (26.09.) ─────────────────────────────────────────────

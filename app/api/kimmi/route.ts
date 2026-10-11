@@ -49,6 +49,8 @@ import { werkzeugDefs, openAgentDef, type WerkzeugDef } from '@/lib/zoe/werkzeug
 import { zoeWerkzeugWahl } from '@/lib/zoe/werkzeug-wahl';
 import { schleife, type AufrufErgebnis } from '@/lib/agenten/schleife';
 import { headFrageKategorien, headsImPrompt, zoeHeadsFuer } from '@/lib/agenten/zoe-heads';
+import { headImBereich } from '@/lib/agenten/sicht';
+import { fachAgentInSicht } from '@/lib/agenten/werkzeuge';
 import { istFadenId } from '@/lib/agenten/faeden';
 import { eigenerZoeFaden, zoeAntwortAnhaengen, zoeFadenFuer, zoeHinweisAnhaengen, zoeVerlaufUebernehmen, type ZoeZug } from '@/lib/agenten/zoe-faden';
 import { einmalig } from '@/lib/store/anfragen';
@@ -79,7 +81,8 @@ async function liveContext(person: string, bereiche: Record<KiBereich, boolean>,
   try {
     const b = await gatherBrain(undefined, person);
     const o = { bereiche, ...(koerper ? {} : { koerper: false }), sicht };
-    return { text: promptBrain(b, o), kalenderFremd: bereiche.kalender && kalenderImPrompt(b), kategorien: brainKategorien(b, o) };
+    // „fremd gelesen“ nur nach den Terminen, die in DIESER Sicht wirklich im Prompt stehen (Prüf-Funde 11.10.).
+    return { text: promptBrain(b, o), kalenderFremd: bereiche.kalender && kalenderImPrompt(b, sicht), kategorien: brainKategorien(b, o) };
   } catch {
     return { text: '(Brain gerade nicht erreichbar — antworte vorsichtig und sag das offen.)', kalenderFremd: false, kategorien: ['allgemein'] };
   }
@@ -216,12 +219,18 @@ export async function POST(req: Request) {
   // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): dieselbe Regel wie der Empfang
   // (lib/zoe/bereich.ts `lageFuerSicht`) — in Business stehen Familie, Körperdaten und Haushaltsfinanzen gar nicht erst im Prompt, in Privat
   // keine Markttraktion. Ohne Space (Telegram, WhatsApp) wie bisher.
-  const sichtTeile = lageFuerSicht(bereichAus(payload.space));
+  const konto = await kontoSicht(person).catch(() => null);
+  const nurBusiness = !konto || konto.nurBusiness;
+  // Sicht des Gesprächs (V3; Prüf-Funde 11.10.): der Space der Seite — ein Konto „nur Business“ IMMER Business (auch wenn der Browser „privat“ schickt).
+  // Ohne Space (Alles, Telegram) keine Grenze. Dieselbe Sicht filtert den Live-Zustand, Heads, Fach-Agenten und Werkzeuge (`darf`) und geht an
+  // jedes Werkzeug (`fuehreAus` → `kontext.sicht`).
+  const werkzeugSicht = nurBusiness ? 'business' : bereichAus(payload.space);
+  const sichtTeile = lageFuerSicht(werkzeugSicht);
   const bereicheSicht = { ...kiS.bereiche, ...Object.fromEntries(sichtTeile.aus.map(x => [x, false])) } as typeof kiS.bereiche;
   const haushalt = sichtTeile.haushalt && kiS.bereiche.finanzen && (await kategorienMoeglich(['finanzen-privat'])) ? await haushaltVon(req).catch(() => null) : null;
   const haushaltBlock = haushalt ? await ladeHaushalt(haushalt.haushalt).then(h => blockHaushalt(h)).catch(() => '') : '';
   if (haushaltBlock) { kategorien.add('finanzen'); kategorien.add('finanzen-privat'); }
-  const lage = await liveContext(person, bereicheSicht, sichtTeile.koerper, bereichAus(payload.space));
+  const lage = await liveContext(person, bereicheSicht, sichtTeile.koerper, werkzeugSicht);
   lage.kategorien.forEach(k => kategorien.add(k));
   const live = [lage.text, haushaltBlock].filter(Boolean).join('\n\n');
   // Das Langzeit-Gedächtnis geht in jeden Zug mit — knapp gehalten, damit es
@@ -238,9 +247,9 @@ export async function POST(req: Request) {
   // KI-Etiketten (09.10.): nur Fach-Agenten, deren feste Kategorien für die Person frei sind (KI-Schalter je Bereich) — ein für ZOE
   // ausgeschalteter Bereich kommt so auch nicht über das Ergebnis eines Fach-Agenten zurück ins Gespräch (lib/zoe/agent-kategorien.ts).
   // EINE Konto-Sicht (09.10., E4): ein Konto „nur Business“ bekommt keine Fach-Agenten aus dem Privat-Bereich (`agentFuerKonto`).
-  const konto = await kontoSicht(person).catch(() => null);
-  const nurBusiness = !konto || konto.nurBusiness;
-  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)) && !agentSperre(a, kiS, gesundheitKi) && agentFuerKonto(a, nurBusiness));
+  // Fach-Agenten in einer Sicht (Prüf-Funde 11.10.): in Business keiner, dessen Ergebnis aus dem Privat-Bereich schöpft (Ernährung, Tagesform, alle
+  // Postfächer …), in Privat keiner, der nur Business trägt — `fachAgentInSicht` (lib/agenten/werkzeuge.ts, dieselbe Liste wie unter einem Head).
+  const agentenAngebot = (AUSFUEHRBAR as readonly string[]).filter(a => !(SYSTEM_LAEUFE as readonly string[]).includes(a) && (crmErlaubt || !(CRM_AGENTEN as readonly string[]).includes(a)) && !agentSperre(a, kiS, gesundheitKi) && agentFuerKonto(a, nurBusiness) && fachAgentInSicht(a, werkzeugSicht));
   // „ZOE fragen“ aus der Markttraktion (28.09., C7): nur Art + Kennung (geprüft, kein Text Dritter) — und nur im Haushalt.
   const crmBezug = crmErlaubt && kiS.bereiche.crm ? crmBezugAus(payload.bezug) : null;
 
@@ -255,7 +264,9 @@ export async function POST(req: Request) {
   }
 
   // Die Heads, die DIESE Person sieht (lib/agenten/sicht.ts) — nie die Privat-Heads einer anderen Person, ein Konto „nur Business“ nur Business.
-  const heads = (await zoeHeadsFuer(person).catch(() => null))?.heads ?? [];
+  // Prüf-Funde 11.10.: in einer Sicht nur die Heads dieses Bereichs (`headImBereich`) — im Business-Gespräch kein Gesundheits-, Familien- oder
+  // Privat-Finanzen-Head (weder im Prompt noch im Schema von an_head/head_fragen; das Werkzeug prüft es zusätzlich über `kontext.sicht`).
+  const heads = ((await zoeHeadsFuer(person).catch(() => null))?.heads ?? []).filter(h => headImBereich(h.id, werkzeugSicht));
 
   // Werkzeuge: EINE Quelle der Beschreibungen (lib/zoe/werkzeug-defs.ts), je Zug höchstens 20 (lib/zoe/werkzeug-wahl.ts) — Kern + Bereich
   // nach Regelwerk; Fach-Werkzeuge laufen über die Heads. Gesperrte Bereiche und Gesundheit ohne Einwilligung gar nicht erst anbieten.
@@ -266,8 +277,8 @@ export async function POST(req: Request) {
   const privatFinanzen = !!(await privatFinanzZugang(req).catch(() => null));
   // Werkzeug-Verträge (10.10., Paket V3): nur Werkzeuge MIT Vertrag, und nur die, deren Bereich zur Sicht passt — in der Sicht Privat kein
   // Business-Werkzeug und umgekehrt (serverseitig; `fuehreAus` lehnt es zusätzlich ab). Ausnahme nur Vorschlags-Werkzeuge (crm_vorschlag): der
-  // Stapel ordnet den Vorschlag seinem Bereich zu („Wohin damit“). Ohne Space (Alles, Telegram) keine Grenze, ein Konto „nur Business“ sieht nur Business.
-  const werkzeugSicht = bereichAus(payload.space) ?? (konto?.nurBusiness ? 'business' : null);
+  // Stapel ordnet den Vorschlag seinem Bereich zu („Wohin damit“); die Antwort an die Privat-Sicht nennt keine Inhalte. Werkzeuge mit Bereich
+  // „beide“ bekommen die Sicht als Kontext und liefern nur deren Daten (`werkzeugSicht` oben).
   const darf = (name: string): boolean => {
     const v = vertragVon(name);
     if (!v || !vertragPasstZurSicht(v, werkzeugSicht)) return false;
@@ -347,7 +358,7 @@ export async function POST(req: Request) {
       const grund = { name: await vornameVon(person), firmen: await gesellschaftenSatz(), gesundheit: gesundheitKi, ...(bf.frei && bf.bisWand ? { businessFrei: bisText(bf.bisWand, localDay()) } : {}), werkzeuge: angebotenSet as ReadonlySet<string>, heads: headsImPrompt(heads) };
       if (brain) kategorien.add('brain');
       if (crmBezug) kategorien.add('crm');
-      const sp = systemPrompt(payload.context, live, fortsetzung, gedaechtnis, brain, payload.space === 'privat' || payload.space === 'business' ? payload.space : null, grund);
+      const sp = systemPrompt(payload.context, live, fortsetzung, gedaechtnis, brain, werkzeugSicht, grund);
       const variabel = [sp.variabel, crmBezug ? crmBezugHinweis(crmBezug) : ''].filter(Boolean).join('\n\n');
 
       // Budgets je Zug (wie bisher): höchstens 8 Agentenläufe und 14 Werkzeuge.

@@ -502,21 +502,29 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
   }
 }
 
+/** Antwort an die Sicht Privat (Prüf-Funde 11.10.) — ohne Titel, ohne Namen, ohne Vorher/Nachher. */
+export const PRIVAT_VORGESCHLAGEN = 'VORGESCHLAGEN, NICHT AUSGEFÜHRT — Der Vorschlag liegt unter „Business“ im Freigabe-Stapel (Markttraktion). Sag der Person nur das: ein Vorschlag für die Markttraktion wartet unter Business auf ihre Freigabe — ohne Inhalte, die gehören zu Business. Behaupte NICHT, es sei erledigt.';
+export const PRIVAT_NICHT_VORGESCHLAGEN = 'Nicht vorgeschlagen: Die Prüfung in der Markttraktion hat nicht gepasst. Details gehören zu Business — sag der Person, dass sie es oben unter „Business“ fragen kann.';
+
 /** Das Werkzeug `crm_vorschlag`: prüfen, Vorher/Nachher rechnen, als Stapel-Art „crm“ ablegen — ändert nichts. */
-export async function crmVorschlag(input: Eingabe, _origin: string, person?: string, kontext?: { herkunft?: string }): Promise<WerkzeugRueckgabe> {
+export async function crmVorschlag(input: Eingabe, _origin: string, person?: string, kontext?: { herkunft?: string; sicht?: 'privat' | 'business' }): Promise<WerkzeugRueckgabe> {
   try {
     const s = await crmSicht(person);
     if (!s || !person) return fehlschlag('rechte', NICHT_IM_HINTERGRUND);
     const art = String(input.art ?? '') as VorschlagArt;
     if (!(VORSCHLAG_ARTEN as readonly string[]).includes(art)) return fehlschlag('eingabe', `Fehlgeschlagen: art ist eine von ${VORSCHLAG_ARTEN.join(', ')}.`);
+    // Sicht Privat (Prüf-Funde 11.10.): crm_vorschlag darf dort nur ABLEGEN — Titel, Vorher/Nachher und Prüf-Sätze nennen Namen und Stände aus der
+    // Markttraktion und gehören nicht ins Modell bzw. in den Privat-Thread. Die Antwort sagt nur, dass (bzw. dass nicht) etwas unter Business liegt.
+    const privatSicht = kontext?.sicht === 'privat';
     const p = await planen(art, input, s);
-    if (istWerkzeugErgebnis(p)) return p;
+    if (istWerkzeugErgebnis(p)) return privatSicht && !p.ok ? fehlschlag(p.klasse ?? 'eingabe', PRIVAT_NICHT_VORGESCHLAGEN) : p;
     const v = await lege({
       werkzeug: CRM_VORSCHLAG_WERKZEUG, gruppe: 'crm', titel: p.titel, ...(p.vorher ? { vorher: p.vorher } : {}), nachher: p.nachher,
       eingabe: p.eingabe, person, quelle: 'gespraech', bezug: { art: 'crm', id: p.bezugId },
       // Aus dem Agenten-Bereich (Durchstich 09.10.): „<Head>: …“ vorne — der Vorschlag zählt dann beim Head (Zähler, Annahmequote).
       ...(kontext?.herkunft || text(input.begruendung, 400) ? { anlass: [kontext?.herkunft, text(input.begruendung, 400)].filter(Boolean).join(' — ').slice(0, 600) } : {}),
     });
+    if (privatSicht) return brauchtFreigabe(PRIVAT_VORGESCHLAGEN, v.id);
     return brauchtFreigabe(`VORGESCHLAGEN, NICHT AUSGEFÜHRT — ${p.titel}: ${p.vorher ? `${p.vorher} → ` : ''}${p.nachher}. Liegt als Vorschlag ${v.id} im Freigabe-Stapel (und an der Kontakt-/Firmenakte). Sag knapp, was du vorbereitet hast, und dass es auf die Freigabe wartet — behaupte NICHT, es sei erledigt oder versendet.`, v.id);
   } catch (e) {
     console.error('[zoe/crm-vorschlag]', e instanceof Error ? e.message : e);

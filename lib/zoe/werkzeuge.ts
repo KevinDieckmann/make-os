@@ -261,7 +261,7 @@ const HEUTE_ODER = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}
  * `health-log` ist Art. 9) nur mit Einwilligung (a); Privat-Routinen (ihre Namen gehen an das Modell, oft Gesundheit) zusätzlich nur mit
  * (b) „an die KI“ — ohne (b) werden sie weder abgehakt noch aufgezählt.
  */
-async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   const { routineAusZuruf } = await import('@/lib/gesundheit/eintraege');
   if (!person) return fehlschlag('rechte', KEINE_PERSON);
   const wer = person;
@@ -279,11 +279,13 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
   // EINE Konto-Sicht (09.10., E4-Rest): `routinenSichtbarFuer` — ein Konto „nur Business“ hakt (und nennt) keine Routine des Privat-Bereichs,
   // auch nicht mit (b); außerhalb des Haushalts keine.
   const { routinenSichtbarFuer } = await import('@/lib/planung/bereich-sicht-server');
+  // Sicht (Prüf-Funde 11.10.): in der Sicht Business nur Business-Routinen, in Privat nur Privat-Routinen — weder abhaken noch aufzählen (vorher
+  // nannte der Fehlertext im Business-Gespräch alle Privat-Routinen).
   const alle = (await routinenSichtbarFuer((f?.routinen ?? []).filter(r => r.aktiv), wer))
-    .filter(r => (spaceVonRoutine(r as Parameters<typeof spaceVonRoutine>[0]) === 'privat' ? privatAn : planungAn));
+    .filter(r => { const sp = spaceVonRoutine(r as Parameters<typeof spaceVonRoutine>[0]); return (!kontext?.sicht || sp === kontext.sicht) && (sp === 'privat' ? privatAn : planungAn); });
   const zurufe = Array.isArray(input.routinen) ? (input.routinen as unknown[]).map(String) : [String(input.routine ?? '')];
   const ids = zurufe.map(z => routineAusZuruf(z, alle)).filter((x): x is string => !!x);
-  if (!ids.length) return fehlschlag('nicht_gefunden', `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ') || '—'}${privatAn ? '' : ' (Privat-Routinen nur mit der Einwilligung „An die KI geben“)'}${planungAn ? '' : ' (Business-Routinen: Bereich „Aufgaben & Ziele“ ist für ZOE ausgeschaltet)'}`);
+  if (!ids.length) return fehlschlag('nicht_gefunden', `Keine Routine passt zu „${zurufe.join(', ')}“. Es gibt: ${alle.map(r => r.label).join(' · ') || '—'}${kontext?.sicht === 'business' ? ' (in der Sicht Business nur Business-Routinen)' : !privatAn ? ' (Privat-Routinen nur mit der Einwilligung „An die KI geben“)' : ''}${kontext?.sicht === 'privat' ? ' (in der Sicht Privat nur Privat-Routinen)' : planungAn ? '' : ' (Business-Routinen: Bereich „Aufgaben & Ziele“ ist für ZOE ausgeschaltet)'}`);
   const erledigt = input.erledigt !== false;
   const datum = HEUTE_ODER(input.datum);
   // Routinen 2 (10.10.): Zähler („2 Gläser getrunken“) und mehrmals täglich — `anzahl` zählt hoch (bzw. mit erledigt=false herunter); einfache
@@ -467,8 +469,13 @@ async function setzeKunde(input: Record<string, unknown>, _o?: string, person?: 
  * die Post einer anderen Person, nie ohne Person. Nur Kopf und Ausschnitt (KI-Grundsatz: Volltext nur beim Entwurf auf Klick).
  * Read-only — es wird nie geantwortet, verschoben oder gelöscht.
  */
-async function liesPostfach(input: Record<string, unknown>, _origin: string, person?: string): Promise<WerkzeugRueckgabe> {
+async function liesPostfach(input: Record<string, unknown>, _origin: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   if (!person) return fehlschlag('rechte', KEINE_PERSON);
+  // Sicht (Prüf-Funde 11.10.): nur die Postfächer dieses Bereichs — derselbe Leser wie im Agenten-Bereich (Inbox 2 filtert serverseitig).
+  if (kontext?.sicht) {
+    try { return await (await import('@/lib/agenten/werkzeuge')).postfachImBereich(person, kontext.sicht, input); }
+    catch (err) { return fehlschlag('voruebergehend', `Postfach nicht lesbar: ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`); }
+  }
   const suche = String(input.suche ?? '').trim().slice(0, 60);
   const anzahl = Math.min(20, Math.max(1, Number(input.anzahl) || (suche ? 5 : 20)));
   try {
@@ -599,7 +606,7 @@ async function erstelleAufgabe(input: Record<string, unknown>, origin: string, p
  */
 /** Höchstzahl Aufträge je Aufruf von `starte_auftraege` — darüber wird abgelehnt, nie gekürzt. */
 export const AUFTRAEGE_MAX = 20;
-async function starteAuftraege(input: Record<string, unknown>, origin: string, person?: string): Promise<WerkzeugRueckgabe> {
+async function starteAuftraege(input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   const roh = Array.isArray(input.auftraege) ? input.auftraege : [];
   const auftraege = roh
     .map(x => (x && typeof x === 'object' ? x as Record<string, unknown> : null))
@@ -622,6 +629,13 @@ async function starteAuftraege(input: Record<string, unknown>, origin: string, p
   if (system.length) return fehlschlag('eingabe', `Nicht eingereiht: ${system.map(a => a.name).join(', ')} ist kein Fach-Agent (läuft nur im Takt).`);
   // Agenten, die die Kartei lesen, nur für Personen im Haushalt des Inhabers (28.09., K1).
   if (auftraege.some(a => (CRM_AGENTEN as readonly string[]).includes(a.name)) && !(await crmWerkzeugErlaubt(person))) return fehlschlag('rechte', KEIN_CRM);
+  // Sicht des Gesprächs (Prüf-Funde 11.10.): dieselbe Regel wie `run_agent` (lib/agenten/werkzeuge.ts `fachAgentInSicht`) — im Business-Gespräch kein
+  // Fach-Agent, der aus Privat schöpft, und umgekehrt.
+  if (kontext?.sicht) {
+    const { fachAgentInSicht } = await import('@/lib/agenten/werkzeuge');
+    const fremdeSicht = auftraege.filter(a => !fachAgentInSicht(a.name, kontext.sicht));
+    if (fremdeSicht.length) return fehlschlag('rechte', `Nicht eingereiht: ${fremdeSicht.map(a => a.name).join(', ')} gehört nicht in die Sicht ${kontext.sicht === 'business' ? 'Business' : 'Privat'} — nichts gestartet.`);
+  }
 
   try {
     const r = await fetch(`${origin}/api/zoe/auftraege`, {
@@ -796,13 +810,14 @@ async function fragGedaechtnis(input: Record<string, unknown>, _origin: string, 
 // Die Sicht: im Gespräch die Person, für die ZOE arbeitet; ohne Person
 // (Hintergrundlauf) ein Agent mit der Sicht des Haushalts — und Agenten bekommen nie Privates (Vertraulichkeitsregeln §1).
 // Aufgelöst aus den Konten in lib/zoe/vault.ts (09.10.: keine feste Person mehr).
-const sichtFuer = async (person?: string) => { const { AGENT } = await import('./vault'); return person ? { person } : AGENT; };
+// Sicht Business (Prüf-Funde 11.10.): wie ein Business-Head — die Agenten-Sicht der Person, nie `scope: privat` (auch nicht die eigenen privaten Notizen).
+const sichtFuer = async (person?: string, kontext?: WerkzeugKontext) => { const { AGENT } = await import('./vault'); return person ? (kontext?.sicht === 'business' ? { person, agent: true } : { person }) : AGENT; };
 
-async function sucheWissen(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+async function sucheWissen(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   const frage = String(input.frage ?? '').trim().slice(0, 300);
   if (!frage) return fehlschlag('eingabe', 'Fehlgeschlagen: frage fehlt.');
   const { suche } = await import('./vault');
-  const { treffer, durchsucht } = await suche(frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)), await sichtFuer(person));
+  const { treffer, durchsucht } = await suche(frage, Math.min(8, Math.max(1, Number(input.anzahl) || 5)), await sichtFuer(person, kontext));
   if (!treffer.length) return `Nichts gefunden zu „${frage}“ (${durchsucht} Notizen durchsucht).`;
   return `WISSEN — ${treffer.length} von ${durchsucht} Notizen:\n\n` + treffer.map(t =>
     `QUELLE ${t.id}\nTITEL ${t.titel} · ${t.bereich}${t.scope === 'privat' ? ' · 🔒 PRIVAT' : ''}${t.stand ? ` · Stand ${t.stand}` : ''}${t.ueberschriften.length ? `\nABSCHNITTE ${t.ueberschriften.slice(0, 4).join(' · ')}` : ''}\n${t.ausschnitt}`,
@@ -810,11 +825,11 @@ async function sucheWissen(input: Record<string, unknown>, _o: string, person?: 
   + '\n\nNenne die Quelle, aus der du zitierst. 🔒 PRIVAT heißt: nur im Gespräch mit der Person selbst verwenden — nie in Mails, Entwürfe, Briefings oder Texte nach außen.';
 }
 
-async function liesNotiz(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+async function liesNotiz(input: Record<string, unknown>, _o: string, person?: string, kontext?: WerkzeugKontext): Promise<WerkzeugRueckgabe> {
   const id = String(input.notiz ?? '').trim();
   if (!id) return fehlschlag('eingabe', 'Fehlgeschlagen: notiz fehlt.');
   const { notiz } = await import('./vault');
-  const d = await notiz(id, 12_000, await sichtFuer(person));
+  const d = await notiz(id, 12_000, await sichtFuer(person, kontext));
   if (!d.ok) return fehlschlag('voruebergehend', `Notiz nicht lesbar: ${d.fehler}`);
   return `NOTIZ ${d.pfad} — ${d.titel}${d.scope === 'privat' ? ' · 🔒 PRIVAT' : ''}${d.stand ? ` · Stand ${d.stand}` : ''}${d.oben ? `\nGÜLTIGER STAND (oberster 🔴-Block):\n${d.oben}\n───` : ''}\n\n${d.text}`;
 }
@@ -1077,6 +1092,12 @@ export interface WerkzeugKontext {
    * Gesprächs. „Fakt merken“ legt den Merksatz in diesem Bereich ab, „frag_gedaechtnis“ liest nur diesen Bereich und Neutrales.
    */
   bereich?: 'privat' | 'business';
+  /**
+   * Sicht des Laufs (Prüf-Funde 11.10.) — gesetzt NUR von `fuehreAus` (nie bei der Freigabe aus dem Stapel): ZOE = der Space der Seite bzw.
+   * „nur Business“ des Kontos, Head = sein Bereich. Werkzeuge mit Bereich „beide“ liefern dann NUR Daten dieses Bereichs (Postfach, Arbeitssuche,
+   * Wissen, Routinen) bzw. lehnen einen Head des anderen Bereichs ab (`an_head`, `head_fragen`) — „Sicht X bekommt nichts aus Y“.
+   */
+  sicht?: 'privat' | 'business';
 }
 type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<WerkzeugRueckgabe>;
 const nurImHaushalt = (lauf: Lauf): Lauf => async (input, origin, person, kontext) => {

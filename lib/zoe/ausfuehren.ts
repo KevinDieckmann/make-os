@@ -19,7 +19,7 @@ import type { Person } from './raum';
 import { SELBST_GEKAPSELT } from './fremd';
 import { LESEND } from './gespraech-schutz';
 import { ZOE_BUSINESS_GRUPPEN, ZOE_ZURUECKGEHALTEN } from '@/lib/arbeitsrahmen/regel';
-import { bereichAus, BEREICH_NAME, eingabeMitBereich, type Bereich } from './bereich';
+import { bereichAus, BEREICH_NAME, eingabeMitBereich, eingabeInSicht, type Bereich } from './bereich';
 import { brauchtFreigabe, fehlschlag, wirkungsEntscheid, type WerkzeugErgebnis } from '@/lib/werkzeuge/vertrag';
 import { ausgangVermerken, vertragsPruefung } from '@/lib/werkzeuge/huelle';
 
@@ -76,6 +76,11 @@ export async function fuehreAus(
 ): Promise<Lauf> {
   const werk = WERKZEUGE[name];
   if (!werk) return nein(name, fehlschlag('nicht_gefunden', `Unbekanntes Werkzeug: ${name}.`));
+  // Sicht des Laufs (Prüf-Funde 11.10.): Leser mit Bereich „beide“, die den Bereich als Eingabe nehmen (Aufgaben, Unterlagen, Dateien), lesen in
+  // einer Sicht NUR deren Bereich — der Server setzt `space` fest wie im Agenten-Bereich (`eingabeInSicht`), was das Modell angibt, gilt nicht.
+  // Die übrigen Leser mit Bereich „beide“ (Postfach, Arbeitssuche, Wissen, Routinen, Heads) bekommen die Sicht als Kontext (`kontext.sicht`).
+  const sicht = opt.erzwingen ? null : bereichAus(opt.sicht);
+  input = eingabeInSicht(name, input, sicht);
 
   // Stufe je Aufruf (29.09., #90/#93): z. B. create_task für eine andere Person → Freigabe.
   const risiko = risikoFuerAufruf(name, input, opt.person);
@@ -101,7 +106,7 @@ export async function fuehreAus(
 
   // Vertrag (V3): ohne Vertrag läuft nichts; ein Werkzeug des anderen Bereichs nicht in dieser Sicht; die Eingabe muss zum Schema passen —
   // sonst ein klarer Satz an das Modell bzw. in den Stapel, NICHTS ausgeführt und NICHTS vorgeschlagen (kein ungültiger Vorschlag im Stapel).
-  const pruefung = vertragsPruefung(name, opt.erzwingen ? eingabeMitBereich(name, input, bereichAus(opt.bereich)) : input, { sicht: opt.erzwingen ? null : bereichAus(opt.sicht) });
+  const pruefung = vertragsPruefung(name, opt.erzwingen ? eingabeMitBereich(name, input, bereichAus(opt.bereich)) : input, { sicht });
   if (!pruefung.ok) {
     await notiere({ werkzeug: name, gruppe, risiko, eingabe: {}, ergebnis: pruefung.ergebnis.klasse === 'eingabe' ? 'abgelehnt (Eingabe ungültig)' : pruefung.ergebnis.klasse === 'rechte' ? 'abgelehnt (anderer Bereich)' : 'abgelehnt (ohne Vertrag)', ok: false, quelle: opt.erzwingen ? 'stapel' : 'zoe', person: opt.person });
     return nein(name, pruefung.ergebnis);
@@ -168,7 +173,8 @@ export async function fuehreAus(
   const bereich = opt.erzwingen ? bereichAus(opt.bereich) : name === 'fakt_merken'
     ? await (async () => { try { const b = await (await import('./bereich-server')).bereichErmitteln({ werkzeug: name, gruppe, titel: vs.titel, nachher: vs.nachher, eingabe: input, ...(opt.anlass ? { anlass: opt.anlass } : {}) }, { gespraech: bereichAus(opt.bereich) }); return b.bereich === 'unklar' ? null : b.bereich; } catch { return bereichAus(opt.bereich); } })()
     : bereichAus(opt.bereich);
-  const kontext = opt.erzwingen || opt.zoe || opt.herkunft || bereich ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person, ...(opt.vorschlagId ? { vorschlagId: opt.vorschlagId } : {}) } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}), ...(opt.herkunft && !opt.erzwingen ? { herkunft: opt.herkunft.slice(0, 200) } : {}), ...(bereich ? { bereich } : {}) } : undefined;
+  // Sicht (Prüf-Funde 11.10.): Werkzeuge mit Bereich „beide“ liefern in einer Sicht nur deren Daten (lib/zoe/werkzeuge.ts `WerkzeugKontext.sicht`).
+  const kontext = opt.erzwingen || opt.zoe || opt.herkunft || bereich || sicht ? { ...(opt.erzwingen ? { freigegebenVon: opt.freigegebenVon ?? opt.person, ...(opt.vorschlagId ? { vorschlagId: opt.vorschlagId } : {}) } : {}), ...(opt.zoe && !opt.erzwingen ? { zoe: opt.zoe } : {}), ...(opt.herkunft && !opt.erzwingen ? { herkunft: opt.herkunft.slice(0, 200) } : {}), ...(bereich ? { bereich } : {}), ...(sicht ? { sicht } : {}) } : undefined;
   // Bei der Freigabe wirkt der Bereich des Vorschlags auf den Ort (eine Aufgabe ohne Ort landet dort, lib/zoe/bereich.ts `eingabeMitBereich`).
   let roh: Awaited<ReturnType<typeof werk.lauf>>;
   try {
@@ -191,7 +197,9 @@ export async function fuehreAus(
       ? { werkzeug: vs.zurueck.werkzeug, eingabe: vs.zurueck.eingabe, text: `Zurück auf ${vs.vorher ?? 'den vorherigen Stand'}` }
       : null,
   });
-  return { text, ok, gestapelt: false, ergebnis: erg };
+  // Prüf-Funde 11.10.: legt das Werkzeug SELBST in den Stapel (crm_vorschlag → `brauchtFreigabe`), gilt der Aufruf als gestapelt — mit der
+  // Kennung des Vorschlags (Freigeben-Knopf an der Karte im Chat, Spur „gestapelt“). Vorher stand hier immer `gestapelt: false`.
+  return { text, ok, gestapelt: erg.art === 'braucht_freigabe', ...(erg.vorschlagId ? { vorschlagId: erg.vorschlagId } : {}), ergebnis: erg };
 }
 
 /**
