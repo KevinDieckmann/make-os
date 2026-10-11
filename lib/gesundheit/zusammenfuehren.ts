@@ -26,16 +26,16 @@ export function logZusammenfuehren(bisher: HakenLog, neu: Record<string, unknown
 }
 
 /** Journal: je Tag Feld für Feld zusammenführen; `check` (Tages-Check) wird vereint — nie eine gespeicherte Antwort verlieren. */
-export function journalZusammenfuehren<E extends Record<string, unknown>>(bisher: Record<string, E>, neu: Record<string, unknown>): Record<string, E> {
+export function journalZusammenfuehren<E extends object>(bisher: Record<string, E>, neu: Record<string, unknown>): Record<string, E> {
   const aus: Record<string, E> = { ...bisher };
   for (const [tag, eintrag] of Object.entries(neu)) {
     if (!istObjekt(eintrag)) continue;
-    const alt = istObjekt(bisher[tag]) ? bisher[tag] : ({} as E);
+    const alt: Record<string, unknown> = istObjekt(bisher[tag]) ? (bisher[tag] as unknown as Record<string, unknown>) : {};
     const tagNeu: Record<string, unknown> = { ...alt, ...eintrag };
     const checkAlt = istObjekt(alt.check) ? alt.check : null;
     const checkNeu = istObjekt(eintrag.check) ? eintrag.check : null;
     if (checkAlt || checkNeu) tagNeu.check = { ...(checkAlt ?? {}), ...(checkNeu ?? {}) };
-    aus[tag] = tagNeu as E;
+    aus[tag] = tagNeu as unknown as E;
   }
   return aus;
 }

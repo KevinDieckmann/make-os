@@ -4,6 +4,46 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 11.10.2026 — Prüf-Funde 11.10. (Planung/Gesundheit/Heute) + Datenschutz-Zusatz (nur lokal — Branch `fix-planung-gesundheit`, Basis 82a44555 = `update-0910b`)
+
+Bestätigte Funde der Prüfung behoben, je Fund ein Test. Alles additiv — Live-Bestände (Routinen, Gesundheits-Log, Journal, Flächen, Fokus) werden beim Lesen
+nicht verändert oder verworfen.
+
+**Behoben:**
+1. **Gesundheits-Log/Journal per PUT** (Altweg alter Tabs/PWA): fremde Bau-Kennung → 409 „neu laden“; sonst **tagesweise zusammengeführt** — Haken gehen nie verloren,
+   `check`-Antworten werden vereint (`lib/gesundheit/zusammenfuehren.ts`). Der Schrumpf-Wächter des PUT entfällt (ein Zusammenführen verliert keine Tage).
+2. **Ritual** schreibt das Journal nur noch per PATCH (geänderte Felder). PATCH `/api/state/journal` nimmt dazu `tagesnote` an, leert Felder mit `null`/'' und lehnt
+   zu lange Texte mit 413 ab (vorher still gekürzt; Abendtext jetzt bis 20.000 Zeichen).
+3. **Routinen-Quote nach Rhythmus** (Gesundheits-Index „Routinen“, „Reha“, „Essen“; `/api/gesundheit/stand` `quote7`; Wochenbericht): je Routine
+   `routineStatistik` (nur fällige Tage/Wochen/Termine, Pausen und Zeitraum zählen nicht gegen), gemittelt — vorher „alle Routinen an jedem Tag“.
+   `routineStatistik` hat ein optionales Fenster (ohne Angabe wie bisher 28 Tage). Index-Wert ändert sich bei nicht täglichen Routinen (gewollt).
+4. **Top 3**: zuerst Eisenhower-Feld (q1 → q4), dann Punkte — eine kritische Aufgabe in 5 Tagen (q2) steht vor „niedrig, heute fällig“ (q3).
+5. **Sport → Kalender**: Trainings-Blöcke werden privat angelegt (andere sehen nur „Belegt“).
+6. **Routinen-Kalender**: höchstens 3 Uhrzeiten je Tag als eigener Block, darüber EIN Block je Tag (zur ersten Uhrzeit, Hinweis im Editor). Routinen-Blöcke
+   (`makeos-routine-…` bzw. Unterart „routine“) zählen nicht mehr als Termin in Glocke, „Steht an“ und Briefing (`istRoutinenBlock`).
+7. Heutige, **noch nicht begonnene** eigene Routinen-Blöcke werden beim Abgleich mit entfernt (vorher doppelt nach Uhrzeit-Änderung); verstrichene Uhrzeiten
+   heute werden nicht neu angelegt. Aktiv/Kalender/Uhrzeit in der Routinen-Liste stößt den Kalender-Abgleich an (`kalenderBetroffen`).
+8. **Flächen**: PUT legt gespeicherte Plätze, die GET (Sicht-Filter) nicht ausgeliefert hat, unverändert zurück (`mitVerborgenenPlaetzen`).
+9. **Routinen**: Gesundheit/Erholung nie im Business — der Schreibweg (`sauberRoutine`) legt sie nach Privat; der Editor bietet im Business nur „Business“.
+10. **Eigene Meilensteine**: die eigenen sieht, wer Konto-Sicht Privat hat — auch der Inhaber ohne Haushalt am Konto (vorher 403).
+11. **Fokus mit Zeitraum**: Fokus-Bestände tragen additiv `zeitraum` je Schlüssel (Tag, Montag der Woche, Monat, Quartal). Ein Satz eines vergangenen Zeitraums
+    ist leer (gespeichert bleibt er); ein Satz ohne Zeitraum (vor dem 11.10.) gilt als „unbekannt“ — sichtbar, aber nie „heute“ im Briefing, ZOE bekommt ihn nicht
+    als Tagesfokus. Derselbe Satz erneut gespeichert gilt für den laufenden Zeitraum.
+
+**Datenschutz-Zusatz:**
+- **M1 Kapazität**: Sicht Business und Konten „nur Business“ rechnen ohne Kopf & Energie (`belastbar` = `netto`, `team.kopf` neutral, Kennzahlen ohne Erholung,
+  kein `erholungAm`); „Kopf & Energie“ steht nur noch in Privat.
+- **M2 Erholung**: in der geteilten Ansicht einer anderen Person kein Vorschlag (enthielt die Schlafschuld aus deren Schlaf-Hilfe).
+- **N4 Kapazität Privat**: Zuweisungen ohne Mandats-/Firmennamen und ohne Kennung („Business (belegt)“).
+- **N5**: Tagesplanung und Routinen-Planer laden das Gesundheits-Log nur in Privat; in Business `GET /api/state/health?bereich=business` (serverseitig nur Haken/Zähler
+  der Business-Routinen); Ziele mit `?space=`.
+- **N6 Kalender**: mit `?space=` nur die Kalendernamen dieser Sicht in den `einstellungen` (`einstellungenFuerBereich`).
+
+**Tests:** `gesundheit-put-zusammenfuehren`, `gesundheit-index` (Rhythmus), `heute-top3`, `sport-plan-oberflaeche`, `routinen-2-erinnerung`, `flaeche-verborgen`,
+`routinen-gesundheit-privat`, `eigene-meilensteine`, `fokus-unser-mein`, `kapazitaet-sicht-business`, `erholung-route`, `kalender-einstellungen-bereich`.
+
+**Rückweg:** neue optionale Felder (`zeitraum` am Fokus-Bestand, `tagesnote` im Journal war schon da) — der alte Stand ignoriert sie. Kein Datenumzug.
+
 ## 10.10.2026 — Inbox: Suche über Anhang-Namen, Übergeben mit Anhängen + Zurückziehen, Aufgaben-Vorschläge aus Mails/WhatsApp (nur lokal — Branch `inbox-suche-uebergeben`, Basis 2e5ef5fb = `update-0910b`)
 
 ROADMAP_Q4.md › Lücke 6 („Mail nicht übergebbar, keine Inbox-Suche“, Kevin & Malin) und Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“. Suche, Übergaben (Kopie) und

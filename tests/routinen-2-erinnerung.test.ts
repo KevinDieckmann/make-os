@@ -140,9 +140,9 @@ describe('Kalender-Blöcke — rein', () => {
   });
   it('Prüf-Fund 11.10.: Aktiv/Kalender/Uhrzeit in der Liste ändern stößt den Abgleich an — nur bei Routinen mit Kalender', () => {
     expect(kalenderBetroffen({ kalender: true }, { aktiv: false })).toBe(true);
-    expect(kalenderBetroffen({ kalender: false }, { kalender: true })).toBe(true);
+    expect(kalenderBetroffen({}, { kalender: true })).toBe(true);
     expect(kalenderBetroffen({ kalender: true }, { uhrzeiten: ['09:00'] })).toBe(true);
-    expect(kalenderBetroffen({ kalender: false }, { aktiv: false })).toBe(false);
+    expect(kalenderBetroffen({}, { aktiv: false })).toBe(false);
     expect(kalenderBetroffen({ kalender: true }, { rang: 3 })).toBe(false);
     const quelle = readFileSync(path.join(process.cwd(), 'components/os/RoutinenPlanerView.tsx'), 'utf8');
     expect(quelle).toMatch(/const patch = [^\n]*kalenderBetroffen\(/);
