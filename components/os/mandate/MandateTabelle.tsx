@@ -39,9 +39,10 @@ export function MandateTabelle({ onGeaendert, i = 3 }: { onGeaendert: () => void
   const vorgabe = gesellschaft !== 'offen' ? { gesellschaft } : {};
 
   return (
-    <Karte i={i} akzent={LEUCHT.geld}>
+    // 11.10. (Ruhe): zugeklappt eine flache Zeile mit einem Satz — erst „Öffnen“ zeigt den Assistenten. Die Erklärung (Vorschau, Rückgängig) steht dann dort.
+    <Karte i={i} flach={!auf} akzent={auf ? LEUCHT.geld : undefined}>
       <Ueberschrift farbe={LEUCHT.geld} rechts={<Knopf leise onClick={() => setAuf(!auf)}>{auf ? 'Schließen' : 'Öffnen'}</Knopf>}>Mandate aus Excel einfügen</Ueberschrift>
-      {!auf && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Mehrere Mandate auf einmal — Kunde, Produkt, Honorar je Monat, Start, Laufzeit, Gesellschaft. Erst eine Vorschau, dann übernehmen; „Rückgängig“ nimmt Unverändertes zurück.</div>}
+      {!auf && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Mehrere Mandate auf einmal — erst Vorschau, dann übernehmen.</div>}
       {auf && (
         <div style={{ display: 'grid', gap: 12 }}>
           <EinfuegeTabelle felder={MANDAT_FELDER} einheit={{ eins: 'Mandat', viele: 'Mandate' }} farbe={LEUCHT.geld} kontext={gesellschaft}

@@ -111,11 +111,12 @@ export function HeuteView() {
   return (
     <Seite titel="Heute"
       unter={<span suppressHydrationWarning>{gruss}{vorname ? `, ${vorname}` : ''} · {datum} · <Link href={`/os/ritual?modus=${abend ? 'abend' : 'morgen'}`} style={{ color: C.inkDim }}>{abend ? 'Tagesende' : 'Tagesstart'} ›</Link></span>}
+      // Business-frei (08.10., Lücke 7): nur die eigene Person, nur solange es gilt — seit 11.10. ruhig als Pille im Kopf rechts statt einer
+      // eigenen Zeile über den Karten; das Wichtigste des Tages steht trotzdem darunter (die Regel, was wartet, bleibt unverändert).
+      rechts={<BusinessFreiStatus kompakt />}
 >
       {/* K2 (29.09.): Feiertag NRW heute/morgen. Geburtstage stehen nur in „Steht an“ (F2 M2, eine Stelle). */}
       <Anlaesse geburtstage={false} space={sicht} />
-      {/* Business-frei (08.10., Lücke 7): nur die eigene Person, nur solange es gilt. */}
-      <BusinessFreiStatus />
       {sicht === 'privat' && <ZielBezug bereich="privat" max={2} />}
       <Flaeche key={sicht} seite={HEUTE_FLAECHE[sicht]} widgets={HEUTE_STANDARD[sicht]} />
     </Seite>

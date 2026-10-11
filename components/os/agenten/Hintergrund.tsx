@@ -141,7 +141,7 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
           {risiko !== 'aussen' && !v.bereich && (['privat', 'business'] as const).map(b => <Knopf key={b} onClick={() => bereich(b)}>{b === 'privat' ? 'Privat' : 'Business'}</Knopf>)}
           {risiko !== 'aussen' && v.bereich && <Knopf onClick={() => entscheide('freigeben', risiko !== 'risikoarm')}>Freigeben</Knopf>}
           <Knopf leise onClick={() => entscheide('ablehnen', true)}>Ablehnen</Knopf>
-          <Knopf leise href={WEG.freigaben()}>Ansehen ›</Knopf>
+          {/* 11.10. (Ruhe): kein „Ansehen ›“ je Zeile mehr — es führte auf dieselbe Freigaben-Seite wie „Alle ›“ im Kopf des Blocks. */}
         </div>
       )}
     </div>
@@ -152,6 +152,9 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
     </li>
   );
 }
+
+/** So viele Freigaben stehen rechts im Hintergrund sichtbar (11.10.: höchstens drei, der Rest über „Alle n ansehen“). */
+const SICHTBAR = 3;
 
 export function WartetAufDich() {
   const { stapel, faeden, form, melde, agenten, space } = useAgenten();
@@ -175,7 +178,8 @@ export function WartetAufDich() {
       {zahl > 0 && (
         <ul style={LISTE}>
           {rueckfragen.map(f => <RueckfrageZeile key={f.id} f={f} />)}
-          {vorschlaege.slice(0, 6).map(v => <FreigabeZeile key={v.id} v={v} />)}
+          {/* Höchstens drei sichtbar (11.10., „Antwort zuerst“) — der Rest über „Alle n ansehen ›“ darunter. */}
+          {vorschlaege.slice(0, SICHTBAR).map(v => <FreigabeZeile key={v.id} v={v} />)}
           {beiHeads > 0 && (
             <li style={{ ...zeile, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: ABSTAND.s, flexWrap: 'wrap' }}>
               <span style={{ fontSize: TYP.body, color: C.ink }}>{beiHeads === 1 ? '1 Freigabe liegt' : `${beiHeads} Freigaben liegen`} bei den Heads (Markttraktion, Finanzen)</span>
@@ -184,10 +188,10 @@ export function WartetAufDich() {
           )}
         </ul>
       )}
-      {(risikoarm > 1 || vorschlaege.length > 6) && (
+      {(risikoarm > 1 || vorschlaege.length > SICHTBAR) && (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
           {risikoarm > 1 && <Knopf onClick={alle}>Alle {risikoarm} risikoarmen freigeben</Knopf>}
-          {vorschlaege.length > 6 && <Knopf leise href={WEG.freigaben()}>Alle {vorschlaege.length} ansehen ›</Knopf>}
+          {vorschlaege.length > SICHTBAR && <Knopf leise href={WEG.freigaben()}>Alle {vorschlaege.length} ansehen ›</Knopf>}
         </div>
       )}
       {form === 'handy' && risikoarm > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Risikoarme: nach rechts wischen = freigeben, nach links = ablehnen.</span>}

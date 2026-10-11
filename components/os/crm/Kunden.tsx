@@ -31,7 +31,7 @@ import { zoeFragen } from './ZoeFragen';
 import { rechnungPasst } from '@/lib/crm/kunden';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, useBreit, LEUCHT, ZeileAktionen } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, LEUCHT, ZeileAktionen } from '../ui';
 import { useCrmAblage, PapierkorbKarte } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
 import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson, GESELLSCHAFT_FILTER, passtGesellschaft, type GesellschaftFilter } from '@/lib/crm/kunden';
@@ -135,11 +135,22 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
         <Raster min={150}>
           <Zahl wert={kurzEuro(crm.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
           <Zahl wert={String(mandate.filter(m => m.status === 'aktiv').length)} label="aktive Mandate" />
-          <Zahl wert={crm.konzentration ? `${crm.konzentration.anteil} %` : '—'} label={crm.konzentration ? `größter Kunde: ${crm.konzentration.kunde.slice(0, 22)}` : 'Kundenkonzentration'} farbe={crm.konzentration && crm.konzentration.anteil > 50 ? LEUCHT.kritisch : undefined} />
+          {/* Konzentration ist ein Risiko, keine Dringlichkeit (11.10.: Rot nur für Dringendes) — gelb, mit dem Satz darunter. */}
+          <Zahl wert={crm.konzentration ? `${crm.konzentration.anteil} %` : '—'} label={crm.konzentration ? `größter Kunde: ${crm.konzentration.kunde.slice(0, 22)}` : 'Kundenkonzentration'} farbe={crm.konzentration && crm.konzentration.anteil > 50 ? LEUCHT.achtung : undefined} />
           <Zahl wert={String(offenePunkte)} label="offene Punkte & Widersprüche" farbe={offenePunkte ? LEUCHT.achtung : undefined} />
         </Raster>
-        {crm.konzentration && crm.konzentration.anteil > 50 && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 10 }}>Mehr als die Hälfte des wiederkehrenden Umsatzes hängt an einem Kunden — der Head of Sales priorisiert neue Mandate.</div>}
-        {radar.length > 0 && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 6 }}>Laufzeitradar: {radar.map(m => { const t = crm.mandate[m.id]?.endeIn ?? 0; return `${m.kunde} (${t < 0 ? `seit ${-t} Tagen abgelaufen — Status klären` : `endet in ${t} Tagen`})`; }).join(' · ')}</div>}
+        {/* Antwort zuerst (11.10.): „Als Nächstes“ steht direkt unter den Zahlen, danach worauf zu achten ist — als Hinweis-Karten statt farbiger Textzeilen. */}
+        {meine && (meine.kritisch > 0 || meine.reviews > 0) && (
+          <div style={{ marginTop: 12 }}><Hinweis art="info" titel="Als Nächstes">{meine.kritisch > 0 ? `${meine.kritisch} deiner Mandate ${meine.kritisch === 1 ? 'ist' : 'sind'} kritisch — Health prüfen, offene Punkte klären, Verlängerung ansprechen.` : `${meine.reviews} Kundenreview${meine.reviews === 1 ? '' : 's'} in den nächsten 7 Tagen — Health bewerten, offene Punkte klären.`}</Hinweis></div>
+        )}
+        {((crm.konzentration && crm.konzentration.anteil > 50) || radar.length > 0) && (
+          <div style={{ marginTop: 10 }}>
+            <Hinweis art="achtung" titel="Worauf achten">
+              {crm.konzentration && crm.konzentration.anteil > 50 && <div>Mehr als die Hälfte des wiederkehrenden Umsatzes hängt an einem Kunden — der Head of Sales priorisiert neue Mandate.</div>}
+              {radar.length > 0 && <div>Laufzeitradar: {radar.map(m => { const t = crm.mandate[m.id]?.endeIn ?? 0; return `${m.kunde} (${t < 0 ? `seit ${-t} Tagen abgelaufen — Status klären` : `endet in ${t} Tagen`})`; }).join(' · ')}</div>}
+            </Hinweis>
+          </div>
+        )}
         {jePerson.length > 1 && (
           <div style={{ display: 'grid', gap: 5, marginTop: 12 }}>
             {jePerson.map(x => (
@@ -153,9 +164,6 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
               </div>
             ))}
           </div>
-        )}
-        {meine && (meine.kritisch > 0 || meine.reviews > 0) && (
-          <div style={{ fontSize: TYP.bedien, color: C.ink, marginTop: 10 }}>Als Nächstes: {meine.kritisch > 0 ? `${meine.kritisch} deiner Mandate ${meine.kritisch === 1 ? 'ist' : 'sind'} kritisch — Health prüfen, offene Punkte klären, Verlängerung ansprechen.` : `${meine.reviews} Kundenreview${meine.reviews === 1 ? '' : 's'} in den nächsten 7 Tagen — Health bewerten, offene Punkte klären.`}</div>
         )}
       </Karte>
 

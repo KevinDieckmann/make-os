@@ -154,7 +154,10 @@ describe('Aufräumen Etappe 1 — eine Startseite „Heute“', () => {
     expect(lies('app/os/page.tsx')).toContain('<HeuteView />');
     // Nachbesserung 08.10.: kein zweiter Schalter auf Heute — die Sicht folgt dem Kopf.
     expect(v).not.toContain('<Segmente');
-    expect(v).not.toContain('rechts=');
+    // 11.10. (Übersichtlichkeit): rechts im Kopf steht nur noch die ruhige Business-frei-Pille — nie ein Schalter.
+    expect(v).not.toMatch(/rechts=\{<(Segmente|Pillen|Reiter|Wahl)/);
+    expect((v.match(/rechts=/g) ?? []).length).toBeLessThanOrEqual(1);
+    if (v.includes('rechts=')) expect(v).toContain('rechts={<BusinessFreiStatus kompakt />}');
     expect(v).toContain('useSpace().wahl');
     expect(lies('components/os/flaeche/widgets.tsx')).toContain("anstehend: { art: 'anstehend'");
   });

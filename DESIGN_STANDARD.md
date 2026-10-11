@@ -53,6 +53,7 @@ fehlt ein Wert, kommt er als Token nach `design.ts`.
 | `Klappbar` | Abschnitt einer Seite zum Auf- und Zuklappen (08.10.): Kopfzeile = Knopf (Anzeigeschrift 18, Pfeil, optional Zähler), zugeklappt wird der Inhalt NICHT gerendert, Anker `#<id>`; keine Karte (der Inhalt trägt seine Karten) — Finanzen › Planung |
 | `ZeileAktionen` | Aktionen an jeder Listenzeile: „⋯“ in eigener Spalte → Menü (Öffnen · Link · neuer Tab · `mehr` · Archivieren · Löschen); Handy wischen nach Einstellung (siehe „Zeilen-Aktionen“) |
 | `EinfuegeTabelle` | Daten-Assistent (09.10., B9 a–c): aus Excel einfügen (Tab-getrennt) oder CSV wählen → Spalten/Positionen zuordnen (Vorschlag, je Quelle eine Auswahl 44/16) → Vorschau vom Server (neu · geändert · gleich · entfällt · Fehler je Zeile, abwählbar per `HakenZiel`) → EINE Hauptaktion „n übernehmen“ → „Rückgängig“ im Hinweis. Liste statt breiter Tabelle (Handy). Leser: `lib/tabelle/einfuegen.ts` — kein zweiter CSV-Leser |
+| `Lage` | „Antwort zuerst“ (11.10.): höchstens fünf Kacheln oben in einer Ansicht — Zahl (Farbe = Bedeutung), ein Wort, ein Zusatz, optional Balken, Weg dorthin (`href`/`onClick`). Rechnet nichts; die Seite gibt fertige Werte (siehe „Übersichtlichkeit“) |
 | `Rueckfrage`/`useRueckfrage`, `RueckgaengigLeiste`/`useRueckgaengig` | Rückfrage statt `window.confirm` (Abbrechen hat den Fokus) · Hinweis unten mit „Rückgängig“ (10 s) |
 
 ## Regeln
@@ -433,3 +434,24 @@ antippbar, die geöffnete Kachel nimmt die ganze Rasterzeile ein. 5. **Index-Ken
 (`lib/erklaerungen/kennzahlen.ts`). 6. Beispiele sind **erfunden und neutral** („Beispiel GmbH“, „Mira“) — keine echten Namen, Firmen, Beträge, keine Gesundheitsangaben einer Person
 (Wächter). Abschnitte ≤ 560 Zeichen, ganze Sätze. 7. Neuer Schalter/neue Einstellung = ein Eintrag in `lib/erklaerungen/einstellungen-*.ts`; neuer Head oder neue Vorlage im
 Katalog = ein Eintrag in `lib/erklaerungen/agenten.ts`; neuer Onboarding-Schritt = ein Eintrag in `lib/erklaerungen/schritte.ts` — sonst wird der Wächter rot.
+
+## Übersichtlichkeit — Antwort zuerst (11.10.)
+Kevin 11.10.: „Bitte alles nochmal überarbeiten, das geht besser … es muss einfach zu verstehen sein, über die Visualisierungen; so ist es sehr
+unübersichtlich.“ Fünf Grundsätze für jede Ansicht (Wächter `tests/design-oberflaeche.test.ts`):
+1. **Antwort zuerst:** oben „Wo stehen wir · was kommt als Nächstes · was hängt“ als Bild — `Lage` (höchstens fünf Kacheln), Ring, Balken, Ampel oder
+   Zeitstrahl; Einzelheiten eingeklappt oder einen Klick tiefer. Listen zeigen 3–5 Einträge, der Rest über „Alle n ansehen ›“.
+2. **Eine Hauptaktion je Ansicht**, Nebenaktionen leise oder hinter „⋯“; ein seltener Schritt („Neu anfangen …“) ist leise, die Gefahr steht im Fenster.
+3. **Ruhe:** keine doppelten Überschriften oder Erklärsätze (was ein Balken schon zeigt, steht nicht noch als Satz daneben); Rot nur für echte
+   Dringlichkeit (überfällig, kritisch, abgelehnt) — ein Risiko oder ein offener Planungs-Punkt ist gelb; Text ≥ 13 px; Ziele ≥ 44 px; am Handy kein
+   Querscrollen. Der Handy-Kopf bricht nie einen Titel Buchstabe für Buchstabe: breite Aktionen rutschen in eine eigene Zeile unter den Titel.
+4. **Klare Sprache:** jede Zahl trägt ihr Wort („4 offen“, „0 fällig“), Kürzel in Klartext; Technik (Umgebungswerte, Skripte) nie im Fließtext — für den
+   Inhaber aufklappbar („Was fehlt“).
+5. **Felder erst bei Bedarf:** ein Anlege-Feld zeigt seine Zusatzfelder (Datum, Einheit, Mandat …) erst, wenn ein Titel getippt ist; leere Horizonte
+   (Fokus) stehen als eine Zeile mit „eintragen“.
+
+| Stelle | Antwort zuerst |
+|---|---|
+| Heute | Tages-Briefing: `Lage` (Termine · Top 3 · Überfällig · Freigaben · im Business Follow-ups) über dem Text — dieselben Zahlen vom Server (`/api/heute/briefing` → `zahlen`); Business-frei als Pille im Kopf statt eigener Zeile |
+| Indizes (Business, Privat, Gesundheit, Traktion) | je Säule erst die gemessenen Kennzahlen, die Messlücken als EINE aufklappbare Zeile mit Namen (`components/os/kennzahlen/SaeuleKacheln.tsx`, eine Stelle für IndexAnsicht und Cockpit) |
+| Markttraktion › Planung | Ring und gewählte Stufe nebeneinander, Wort unter jeder Zahl (`KREISLAUF_EINHEIT`), Plan und Ist als zwei Kacheln, Kanal-Filter als Auswahl-Chip im Kopf |
+| Produkte & Mandate | Überblick mit „Als Nächstes“/„Worauf achten“ (Hinweis-Karten) und Liste zuerst, Index-Streifen darunter; Leistungstreppe sichtbar, Kundenreise · Zielbild · Roadmap · Positionierung aufklappbar |

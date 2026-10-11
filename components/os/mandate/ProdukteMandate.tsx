@@ -41,11 +41,12 @@ export function ProdukteMandate() {
       // Produkte & Mandate (10.10.): das Gesellschafts-Register ist ein eigener Punkt in der Leiste (/os/unternehmen), kein Reiter mehr hier.
       rechts={<Segmente<Segment> liste={[{ id: 'mandate', label: 'Mandate' }, { id: 'produkte', label: 'Produkte' }, { id: 'fulfillment', label: 'Fulfillment' }]} aktiv={reiter} onWahl={zu} />}>
       {api.fehler && <Hinweis art="kritisch">{api.fehler}</Hinweis>}
-      {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Index · Kunden" />}
       {/* Fulfillment (10.10.): „Kundenonboarding starten“ für unterschriebene Mandate ohne Fall (Paket C1; bis dahin leer). */}
       {reiter === 'mandate' && <OnboardingHinweis api={api} />}
+      {/* Antwort zuerst (11.10.): oben der Überblick mit „Als Nächstes“ und die Liste — die Index-Kennzahlen (meist „fehlt“) stehen als Hintergrund darunter. */}
       {reiter === 'mandate' ? <MandateUebersicht api={api} zuKontakt={zuKontakt} /> : <Produkte api={api} />}
       {reiter === 'mandate' && <GewonneneOhneMandat api={api} />}
+      {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Index · Kunden" />}
       {/* Daten-Assistent B9 c (09.10.): mehrere Mandate aus Excel/CSV — Vorschau, Übernehmen, Rückgängig. */}
       {reiter === 'mandate' && <MandateTabelle onGeaendert={() => api.laden(true)} />}
       <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Neue Mandate entstehen meist aus einem gewonnenen Deal — <Link href={WEG.deals()} style={{ color: C.inkDim }}>Deals öffnen ›</Link></div>

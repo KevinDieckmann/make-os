@@ -81,8 +81,15 @@ export function WhoopKarte({ i = 0, eingebettet = false }: { i?: number; eingebe
         {!s && !ladeFehler && <div style={klein}>lädt …</div>}
         {!s && ladeFehler && <Hinweis art="achtung" aktion={<Knopf leise onClick={() => laden()}>Noch einmal laden</Knopf>}>Der Stand der WHOOP-Verbindung ließ sich gerade nicht laden.</Hinweis>}
 
+        {/* 11.10. (Ruhe): nicht eingerichtet = ein Satz; was fehlt, steht für den Inhaber aufklappbar darunter (vorher Technik im Fließtext). */}
         {s && !s.konfiguriert && (
-          <div style={klein}>WHOOP ist auf diesem Server noch nicht eingerichtet. Es fehlt: {s.fehlt.join(' · ')} (einmalig über das Einrichtungs-Skript).</div>
+          <div style={{ display: 'grid', gap: 2 }}>
+            <div style={klein}>WHOOP ist auf diesem Server noch nicht eingerichtet — danach verbindest du hier dein Konto.</div>
+            <details style={klein}>
+              <summary style={{ cursor: 'pointer', padding: '12px 0', color: C.inkDim }}>Was fehlt (für den Inhaber)</summary>
+              <div>Es fehlt: {s.fehlt.join(' · ')} (einmalig über das Einrichtungs-Skript).</div>
+            </details>
+          </div>
         )}
 
         {s?.konfiguriert && !s.einwilligung && (
@@ -117,9 +124,11 @@ export function WhoopKarte({ i = 0, eingebettet = false }: { i?: number; eingebe
             {(s.verbunden || s.getrennt) && <Knopf leise onClick={() => trennen()}>Trennen</Knopf>}
           </div>
         )}
-        <div style={klein}>
-          Verbunden heißt: Recovery, Schlaf, HRV und Ruhepuls kommen von selbst in deinen Morgen-Check, Workouts in Sport. Was du von Hand einträgst, überschreibt WHOOP nie. Nur du siehst diese Karte — andere Konten sehen deine Werte nur, wenn du sie teilst.
-        </div>
+        {s?.konfiguriert && (
+          <div style={klein}>
+            Verbunden heißt: Recovery, Schlaf, HRV und Ruhepuls kommen von selbst in deinen Morgen-Check, Workouts in Sport. Was du von Hand einträgst, überschreibt WHOOP nie. Nur du siehst diese Karte — andere Konten sehen deine Werte nur, wenn du sie teilst.
+          </div>
+        )}
       </div>
       {dialog}
     </Karte>

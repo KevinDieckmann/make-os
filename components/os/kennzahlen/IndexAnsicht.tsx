@@ -6,12 +6,14 @@
 // Säule ihre Kacheln (Wert, Ampel, die Punkte dahinter mit Link), dazwischen
 // eigene Karten des Bereichs, unten der Verlauf. Ein Klick auf eine Kachel
 // öffnet Formel, Schwellen, alle Punkte und den Verlauf der Kennzahl (?k=).
+// 11.10.: je Säule erst die gemessenen Kennzahlen, die Messlücken eingeklappt (./SaeuleKacheln.tsx).
 
 import { type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Erklaert, Karte, Ueberschrift, Ring, Fortschritt, Chip, LEUCHT, FadenLinie } from '../ui';
 import { useLinkAuswahl } from '../Verlauf';
-import { KennzahlKachel, KennzahlFenster, AMPEL_FARBE, scoreFarbe, type SchwelleSenden } from '../business/teile';
+import { KennzahlFenster, AMPEL_FARBE, scoreFarbe, type SchwelleSenden } from '../business/teile';
+import { SaeuleKacheln } from './SaeuleKacheln';
 import { VerlaufKarte, type Serie } from '../business/Verlauf';
 import { MIN_ABDECKUNG, type IndexErgebnis, type SaeulenStand } from '@/lib/kennzahlen/kern';
 import type { Wechsel, VerlaufPunkt } from '@/lib/kennzahlen/speicher';
@@ -106,7 +108,6 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
       </Karte>
 
       {pi?.saeulen.map((s, i) => {
-        const gruppen = Array.from(new Set(s.kennzahlen.map(k => k.gruppe)));
         return (
           <Karte key={s.id} i={i0 + i + 1} akzent={farben[s.id]}>
             <Ueberschrift farbe={farben[s.id]} rechts={<span>{s.kennzahlen.filter(k => k.gemessen).length} von {s.kennzahlen.length} gemessen{s.zuDuenn ? ' · zählt noch nicht' : s.gewicht === 0 ? ' · zählt nicht in den Index' : ''}</span>}>
@@ -114,16 +115,8 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
             </Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '-4px 0 12px' }}>{s.satz}</div>
             {saeuleKopf?.(s)}
-            <div style={{ display: 'grid', gap: 14 }}>
-              {gruppen.map(g => (
-                <div key={g} style={{ display: 'grid', gap: 8 }}>
-                  {gruppen.length > 1 && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase' }}>{g}</span>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 10 }}>
-                    {s.kennzahlen.filter(k => k.gruppe === g).map(k => <KennzahlKachel key={k.id} k={k} onOeffnen={() => setOffen(k.id)} />)}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* 11.10.: Gemessenes als Kacheln, die Messlücken als eine aufklappbare Zeile (SaeuleKacheln) — statt einer Wand aus „—“. */}
+            <SaeuleKacheln kennzahlen={s.kennzahlen} onOeffnen={setOffen} />
           </Karte>
         );
       })}

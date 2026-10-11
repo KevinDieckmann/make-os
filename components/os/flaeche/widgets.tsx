@@ -496,7 +496,9 @@ function IndexWidget({ e, titel, i }: WidgetProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
         <Ring groesse="klein" label="Index" wert={d?.index != null ? String(Math.round(d.index)) : undefined} farbe={farbe} anteil={d?.index != null ? d.index / 100 : undefined} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 6 }}>
-          <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{d === undefined ? 'lade …' : d.label || (d.index == null ? 'Noch keine Messung' : '')}</div>
+          {/* 11.10.: ohne Indexwert nicht „Noch keine Daten“ über Balken mit Werten — sondern was fehlt (der Index zählt erst ab genug Messung). */}
+          <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{d === undefined ? 'lade …' : d.index == null ? 'Noch zu wenig gemessen' : d.label}</div>
+          {d && d.index == null && d.saeulen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{d.saeulen.filter(s => s.score != null).length} von {d.saeulen.length} Säulen mit Wert — „öffnen“ zeigt, was fehlt.</div>}
           {(d?.saeulen ?? []).slice(0, 4).map(s => (
             <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>

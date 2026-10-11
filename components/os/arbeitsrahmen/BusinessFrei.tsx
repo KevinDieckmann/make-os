@@ -35,8 +35,12 @@ export function useArbeitsrahmen(von: string, bis: string): ArbeitsrahmenAntwort
   return d;
 }
 
-/** „Business-frei bis 23:59“ — nur für die eigene Person, nur wenn es gerade gilt. */
-export function BusinessFreiStatus() {
+/**
+ * „Business-frei bis 23:59“ — nur für die eigene Person, nur wenn es gerade gilt. `kompakt` (11.10., Heute): nur die Pille im Seitenkopf rechts
+ * (der Satz „Business-Hinweise warten bis danach“ steht am Rechner leise daneben, am Handy als Tooltip) — keine eigene Zeile über den Karten.
+ * Die Regel selbst (was wartet) ändert sich dadurch nicht.
+ */
+export function BusinessFreiStatus({ kompakt }: { kompakt?: boolean } = {}) {
   const [s, setS] = useState<ArbeitsrahmenAntwort['jetzt'] | null>(null);
   useEffect(() => {
     let weg = false;
@@ -46,6 +50,14 @@ export function BusinessFreiStatus() {
     return () => { weg = true; clearInterval(t); };
   }, []);
   if (!s?.frei) return null;
+  if (kompakt) return (
+    <span role="status" title="Business-Hinweise warten bis danach." style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, border: `1px solid ${LEUCHT.beziehung}55`, background: `${LEUCHT.beziehung}14`, color: LEUCHT.beziehung, fontWeight: 600, whiteSpace: 'nowrap' }}>
+        <Moon size={14} strokeWidth={2} aria-hidden /> Business-frei {s.bisText ?? ''}
+      </span>
+      <span className="ui-nur-breit">Business-Hinweise warten bis danach.</span>
+    </span>
+  );
   return (
     <div role="status" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, border: `1px solid ${LEUCHT.beziehung}55`, background: `${LEUCHT.beziehung}14`, color: LEUCHT.beziehung, fontWeight: 600 }}>

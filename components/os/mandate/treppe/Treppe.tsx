@@ -9,7 +9,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Leerzustand, Liste, Zeile, Segmente, feld, LEUCHT, useHandy, useRueckfrage } from '../../ui';
+import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Leerzustand, Liste, Zeile, Segmente, Klappbar, feld, LEUCHT, useHandy, useRueckfrage } from '../../ui';
 import { ebenenVon, preisText } from '@/lib/crm/treppe';
 import { TREPPE_GRENZEN, type PreisArt } from '@/lib/crm/treppe-daten';
 import type { CrmApi } from '../../crm/daten';
@@ -34,10 +34,13 @@ function Angabe({ label, children }: { label: string; children: ReactNode }) {
 
 type Reiter = 'reise' | 'zielbild' | 'roadmap' | 'positionierung';
 
-/** Der ganze Bereich über dem Produktkatalog: Treppe (immer sichtbar), Dokument-Vorschläge, dann Kundenreise · Zielbild · Roadmap · Positionierung. */
+/** Der ganze Bereich über dem Produktkatalog: Treppe (immer sichtbar), Dokument-Vorschläge, dann Kundenreise · Zielbild · Roadmap · Positionierung (zum Aufklappen, 11.10.). */
 export function TreppenBereich({ crmApi }: { crmApi: CrmApi }) {
   const api = useTreppe();
   const [reiter, setReiter] = useState<Reiter>('reise');
+  // 11.10. (Kevin: „sehr unübersichtlich“): sichtbar bleibt die Treppe; Kundenreise, Zielbild, Roadmap und Positionierung sind einen Klick tiefer —
+  // sonst stand der Produktkatalog erst unter vier weiteren Ansichten.
+  const [mehr, setMehr] = useState(false);
   const lage = api.lage;
   if (api.fehler && !lage) return <Hinweis art="kritisch">{api.fehler}</Hinweis>;
   if (!lage) return <Karte i={0}><span style={klein}>Leistungstreppe lädt …</span></Karte>;
@@ -46,11 +49,13 @@ export function TreppenBereich({ crmApi }: { crmApi: CrmApi }) {
       {api.hinweis && <Hinweis art="achtung" aktion={<Knopf leise onClick={() => api.setHinweis(null)}>Ok</Knopf>}>{api.hinweis}</Hinweis>}
       <Leistungstreppe api={api} lage={lage} crmApi={crmApi} />
       {lage.vorschlaege.map(v => <DokumentVorschau key={v.id} v={v} />)}
-      <Segmente<Reiter> liste={[{ id: 'reise', label: 'Kundenreise' }, { id: 'zielbild', label: 'Zielbild' }, { id: 'roadmap', label: 'Roadmap' }, { id: 'positionierung', label: 'Positionierung & Story' }]} aktiv={reiter} onWahl={setReiter} />
-      {reiter === 'reise' && <Kundenreise api={api} lage={lage} />}
-      {reiter === 'zielbild' && <Zielbild api={api} lage={lage} />}
-      {reiter === 'roadmap' && <Roadmap api={api} lage={lage} />}
-      {reiter === 'positionierung' && <PositionierungKarte api={api} lage={lage} />}
+      <Klappbar id="treppe-strategie" titel="Kundenreise · Zielbild · Roadmap · Positionierung" offen={mehr} umschalten={() => setMehr(!mehr)}>
+        <Segmente<Reiter> liste={[{ id: 'reise', label: 'Kundenreise' }, { id: 'zielbild', label: 'Zielbild' }, { id: 'roadmap', label: 'Roadmap' }, { id: 'positionierung', label: 'Positionierung & Story' }]} aktiv={reiter} onWahl={setReiter} />
+        {reiter === 'reise' && <Kundenreise api={api} lage={lage} />}
+        {reiter === 'zielbild' && <Zielbild api={api} lage={lage} />}
+        {reiter === 'roadmap' && <Roadmap api={api} lage={lage} />}
+        {reiter === 'positionierung' && <PositionierungKarte api={api} lage={lage} />}
+      </Klappbar>
     </>
   );
 }

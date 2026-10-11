@@ -36,7 +36,8 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
       <Ueberschrift farbe={farbe} rechts={<Link href={WEG.business()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Cockpit ›</Link>}>
         {titel}{bi?.index != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{bi.index}</span>}{bi && <span style={{ color: C.inkLeise, fontWeight: 600, letterSpacing: 0, textTransform: 'none', marginLeft: 6 }}>{bi.label}</span>}
       </Ueberschrift>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))', gap: 8 }}>
+      {/* 11.10.: 140 px Mindestbreite — am Handy zwei Kacheln je Zeile statt fünf Zeilen untereinander. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))', gap: 8 }}>
         {(bi ? liste : ids.map(id => ({ id }))).map((x: KennzahlStand | { id: string }) => {
           // Solange geladen wird: dieselben Kacheln, leer — nichts springt.
           const k = 'label' in x ? (x as KennzahlStand) : null;

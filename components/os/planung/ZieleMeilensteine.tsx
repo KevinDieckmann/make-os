@@ -391,6 +391,10 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   ) : null);
 
   const zieleAlle = p.ziele.length;
+  // 11.10. (Ruhe): die Zusatzfelder eines neuen Ziels/Meilensteins (Zahl, Termin, Einheit, Mandat, Space) und der Knopf erscheinen erst, wenn ein
+  // Titel getippt ist — vorher steht nur das eine Feld da. Enter legt wie bisher an; nichts an den Schreibwegen ändert sich.
+  const zielMehr = neu.titel.trim().length > 0;
+  const msMehr = msNeu.titel.trim().length > 0;
   const spaceHinweis = spaceFilter !== 'alle' ? ` in ${SPACE_LABEL[spaceFilter]}` : '';
 
   return (
@@ -428,16 +432,16 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input value={neu.titel} onChange={e => setNeu({ ...neu, titel: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') zielAnlegen(); }} aria-label="Neues Ziel"
               placeholder={`+ neues ${HORIZONT_WORT[horizont]}ziel …`} style={{ ...feld, width: 'auto', flex: '1 1 180px', minWidth: 0 }} />
-            {horizont === 'jahr' && (
+            {zielMehr && horizont === 'jahr' && (
               <>
                 <input value={neu.zahl} onChange={e => setNeu({ ...neu, zahl: e.target.value })} inputMode="decimal" aria-label="Zahlenziel" title="Zahlenziel — wird auf Quartal, Monat, Woche, Tag verteilt" placeholder="Zahl" style={{ ...feld, width: 'auto', flex: '0 1 84px', minWidth: 0 }} />
                 <input type="date" value={neu.termin} onChange={e => setNeu({ ...neu, termin: e.target.value })} aria-label="Termin" title="Ziel mit Datum — wird Meilenstein im passenden Quartal" style={{ ...feld, width: 'auto', flex: '0 1 150px', colorScheme: 'dark' }} />
               </>
             )}
-            {imBusiness && einheitWahl(neu.einheit, v => setNeu({ ...neu, einheit: v }), 'Einheit des Ziels')}
-            {einheitImPrivat && einheitWahl(neu.einheit, v => setNeu({ ...neu, einheit: v }), 'Einheit des Ziels (Privat)', true)}
-            {imBusiness && mandatZugang && <MandatWahl ohneLink wert={neu.mandatId || undefined} setzen={m => setNeu({ ...neu, mandatId: m?.id ?? '', einheit: m?.einheit ?? neu.einheit })} />}
-            <Knopf onClick={zielAnlegen}>+ Ziel</Knopf>
+            {zielMehr && imBusiness && einheitWahl(neu.einheit, v => setNeu({ ...neu, einheit: v }), 'Einheit des Ziels')}
+            {zielMehr && einheitImPrivat && einheitWahl(neu.einheit, v => setNeu({ ...neu, einheit: v }), 'Einheit des Ziels (Privat)', true)}
+            {zielMehr && imBusiness && mandatZugang && <MandatWahl ohneLink wert={neu.mandatId || undefined} setzen={m => setNeu({ ...neu, mandatId: m?.id ?? '', einheit: m?.einheit ?? neu.einheit })} />}
+            {zielMehr && <Knopf onClick={zielAnlegen}>+ Ziel</Knopf>}
           </div>
           {!p.geladen ? <Leer>lade …</Leer>
             : !zOffen.length && !zErledigt.length ? <Leer>{zieleAlle ? `Keine Ziele${spaceHinweis}${imBusiness && einheitFilter !== 'alle' ? ` für ${einheitFilter}` : ''}.` : `Noch keine Ziele für ${zeitLabel}${spaceHinweis}. Was soll am Ende stehen?`}</Leer>
@@ -453,17 +457,17 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <input value={msNeu.titel} onChange={e => setMsNeu({ ...msNeu, titel: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') msAnlegen(); }} aria-label="Neuer Meilenstein"
               placeholder="+ neuer Meilenstein …" style={{ ...feld, width: 'auto', flex: '1 1 160px', minWidth: 0 }} />
-            <input type="date" value={msNeu.faellig} onChange={e => setMsNeu({ ...msNeu, faellig: e.target.value })} aria-label="Fällig am" title={horizont === 'jahr' ? 'Fällig am' : `Fällig am — leer heißt ${dtKurz(p.zr.bis)}`} style={{ ...feld, width: 'auto', flex: '0 1 150px', colorScheme: 'dark' }} />
-            {spaceFilter === 'alle' && (
+            {msMehr && <input type="date" value={msNeu.faellig} onChange={e => setMsNeu({ ...msNeu, faellig: e.target.value })} aria-label="Fällig am" title={horizont === 'jahr' ? 'Fällig am' : `Fällig am — leer heißt ${dtKurz(p.zr.bis)}`} style={{ ...feld, width: 'auto', flex: '0 1 150px', colorScheme: 'dark' }} />}
+            {msMehr && spaceFilter === 'alle' && (
               <select value={msNeu.space} onChange={e => setMsNeu({ ...msNeu, space: e.target.value === 'privat' ? 'privat' : 'business' })} aria-label="Space" style={wahl}>
                 <option value="business">{SPACE_LABEL.business}</option>
                 <option value="privat">{SPACE_LABEL.privat}</option>
               </select>
             )}
-            {imBusiness && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins')}
-            {einheitImPrivat && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins (Privat)', true)}
-            {msBusiness && mandatZugang && <MandatWahl ohneLink wert={msNeu.mandatId || undefined} setzen={m => setMsNeu({ ...msNeu, mandatId: m?.id ?? '', einheit: m?.einheit ?? msNeu.einheit })} />}
-            <Knopf onClick={msAnlegen}>+ Meilenstein</Knopf>
+            {msMehr && imBusiness && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins')}
+            {msMehr && einheitImPrivat && einheitWahl(msNeu.einheit, v => setMsNeu({ ...msNeu, einheit: v }), 'Einheit des Meilensteins (Privat)', true)}
+            {msMehr && msBusiness && mandatZugang && <MandatWahl ohneLink wert={msNeu.mandatId || undefined} setzen={m => setMsNeu({ ...msNeu, mandatId: m?.id ?? '', einheit: m?.einheit ?? msNeu.einheit })} />}
+            {msMehr && <Knopf onClick={msAnlegen}>+ Meilenstein</Knopf>}
           </div>
           {!mOffen.length && !mErledigt.length ? <Leer>Noch kein Meilenstein für {zeitLabel}{spaceHinweis}.{horizont === 'jahr' ? ' Ein Jahresziel mit Termin legt ihn von selbst an.' : ''}</Leer>
             : !mOffen.length ? <Leer>Alle Meilensteine für {zeitLabel} erledigt.</Leer>

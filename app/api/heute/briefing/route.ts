@@ -1,5 +1,5 @@
 // ─── Heute: das Tages-Briefing als kurzer Text (10.10., Branch `heute-top3`) ───────────────────────────────────────────────────
-// GET ?space=privat|business → { ok, tag, space, saetze: string[3–5], text } — Regelwerk aus den Zahlen des Bereichs (Termine, Aufgaben, Freigaben,
+// GET ?space=privat|business → { ok, tag, space, saetze: string[3–5], text, zahlen } — Regelwerk aus den Zahlen des Bereichs (Termine, Aufgaben, Freigaben,
 // Top 3, Fokus), kein Modell, gemerkt. Ein Bereich je Antwort: Business bekommt nichts aus Privat (und umgekehrt); ein Konto „nur Business“
 // bekommt für Privat 403. Nur die Person selbst (Dienstweg 403) — das Briefing nennt Termine und Aufgaben dieser Person.
 
@@ -18,5 +18,6 @@ export async function GET(req: Request) {
   if (!istTopBereich(space)) return NextResponse.json({ ok: false, error: 'space ist privat oder business.' }, { status: 400 });
   const b = await briefingLesen(z.person, space);
   if (!b) return NextResponse.json({ ok: false, error: space === 'privat' ? 'Dieses Konto hat keinen Privat-Bereich.' : 'Dieses Konto gehört zu keinem Haushalt.' }, { status: 403 });
-  return NextResponse.json({ ok: true, tag: b.tag, space, saetze: b.saetze, text: b.text }, { headers: { 'Cache-Control': 'no-store' } });
+  // `zahlen` (11.10.): dieselben Zahlen wie im Text — die Karte zeichnet sie als Lage (Termine, Überfällig, Freigaben, Top 3).
+  return NextResponse.json({ ok: true, tag: b.tag, space, saetze: b.saetze, text: b.text, zahlen: b.zahlen }, { headers: { 'Cache-Control': 'no-store' } });
 }
