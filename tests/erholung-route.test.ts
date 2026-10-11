@@ -159,3 +159,16 @@ describe('Erholung: Sicht X bekommt nichts aus Y', () => {
     expect((f.json.sicht as typeof sicht).behandlungen[0].naechster?.terminId).toBeUndefined();
   });
 });
+
+describe('Datenschutz-Prüfung M2 (11.10.): der Vorschlag gehört nur der Person selbst', () => {
+  it('geteilte Ansicht: kein Vorschlag (keine Schlafschuld, keine Recovery der anderen Person) — die eigene Ansicht behält ihn', async () => {
+    const { localDay } = await import('@/lib/zeit');
+    await db.saveJson('vitals--anna', { [localDay()]: { rec: 22, hrv: 40, rhr: 60 } });
+    const eigen = await rufe('GET', '/api/gesundheit/erholung', sitzung('anna'));
+    expect(eigen.status).toBe(200);
+    expect((eigen.json.sicht as { vorschlag: unknown }).vorschlag).not.toBeNull();
+    const fremd = await rufe('GET', '/api/gesundheit/erholung?fuer=anna', sitzung('ben'));
+    expect(fremd.status).toBe(200);
+    expect((fremd.json.sicht as { vorschlag: unknown }).vorschlag).toBeNull();
+  });
+});
