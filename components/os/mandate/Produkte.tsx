@@ -42,7 +42,7 @@ const TYP_LABEL: Record<Leistung['typ'], string> = { diagnose: 'Diagnose', works
 const ART: { id: UnterlageArt; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'vertrag', label: 'Vertrag' }, { id: 'deck', label: 'Deck' }, { id: 'onepager', label: 'Onepager' }, { id: 'sonstiges', label: 'Sonstiges' }];
 const statusFarbe = (s: Leistung['status']) => (s === 'aktiv' ? LEUCHT.gut : s === 'entwurf' ? LEUCHT.achtung : C.inkLeise);
 const preisText = (l: Leistung) => (l.preis.betrag ? `${euro(l.preis.betrag)}${l.preis.bis ? `–${euro(l.preis.bis)}` : ''} ${produktEinheit(l)}` : 'Preis offen');
-const klein = { fontSize: 12.5, color: C.inkLeise, lineHeight: 1.5 } as const;
+const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
 const BASIS: { id: PreisBasis; label: string }[] = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }];
 
 type InSzenarien = Record<string, { id: string; name: string; arbeitsplan: boolean; menge: number }[]>;

@@ -5,6 +5,8 @@
 export { Seite, Karte, Ueberschrift, Abschnitt, Titel, Beschriftung, Kennzahl, Zahl, Raster, Liste, Zeile, Eigenschaft, Initialen, Fortschritt, SEITE_BREIT } from './flaechen';
 export { Knopf, Gross, Wahl, Pillen, MehrfachPillen, Chip, Segmente, Reiter, Schalter, Aktionsleiste, HakenZiel, SymbolKnopf, type KnopfProps, type KnopfTon, type ReiterEintrag } from './knoepfe';
 export { Hinweis, Leerzustand, Leer, Erfolg, Schritte } from './rueckmeldung';
+// Lage (11.10., „Antwort zuerst“): höchstens fünf Kacheln oben in einer Ansicht — wo wir stehen, was als Nächstes kommt, was hängt.
+export { Lage, LAGE_MAX, type LageEintrag } from './lage';
 // Erklärung (10.10.): „i“ → Was es bedeutet · Beispiel · Wenn an/aus (Texte als Daten: lib/erklaerungen). `Schalter`, `Zeile`, `Ueberschrift`, `Beschriftung`,
 // `Feldzeile`, `Kennzahl` und `Zahl` nehmen `erklaerung`; `Erklaert` legt ein „i“ um jedes andere Bedienelement.
 export { Erklaert, ErklaerKnopf, ErklaerPanel, ErklaerZeichen, useErklaerung, type ErklaerungsQuelle } from './erklaerung';

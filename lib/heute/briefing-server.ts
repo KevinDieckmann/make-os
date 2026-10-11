@@ -14,7 +14,8 @@ import { tagesDaten } from './top3-server';
 import { briefingSaetze, type BriefingZahlen } from './briefing';
 import type { TopBereich } from './top3';
 
-export interface BriefingAntwort { tag: string; bereich: TopBereich; saetze: string[]; text: string }
+/** `zahlen` (11.10.): dieselben Zahlen, aus denen die Sätze entstehen — die Karte zeigt sie als Lage-Kacheln über dem Text (nichts Neues, nur als Bild). */
+export interface BriefingAntwort { tag: string; bereich: TopBereich; saetze: string[]; text: string; zahlen: BriefingZahlen }
 
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
 
@@ -70,6 +71,6 @@ export async function briefingLesen(person: string, bereich: TopBereich, jetzt: 
     const r = await briefingZahlen(person, bereich, jetzt);
     if (!r) return null;
     const saetze = briefingSaetze(r.zahlen);
-    return { tag: r.tag, bereich, saetze, text: saetze.join(' ') };
+    return { tag: r.tag, bereich, saetze, text: saetze.join(' '), zahlen: r.zahlen };
   });
 }

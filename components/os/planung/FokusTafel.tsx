@@ -7,12 +7,14 @@
 //   · je Horizont: „Unser Fokus“ (gemeinsam, nur volle Mitglieder ändern) und „Mein Fokus“ (nur ich, optional „mit <Name> teilen“);
 //     darunter, was die andere Person mit mir teilt (der Server schickt nur das).
 // Ein Feld, Enter oder Verlassen speichert (Stand/409 — die neue Fassung kommt, die Eingabe bleibt). Lesen/Schreiben NUR über useFokus.
+// 11.10. (Kevin: „sehr unübersichtlich“): mit mehreren Horizonten steht ein Horizont ohne jeden Satz als EINE Zeile da (Frage + „Fokus
+// eintragen“); erst der Klick zeigt die beiden Felder. Gesetzte Horizonte stehen wie bisher — statt zehn leerer Felder untereinander.
 
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { FOKUS_FRAGE, FOKUS_HORIZONTE, FOKUS_LABEL, type FokusBereich, type FokusHorizont, type FokusWessen } from '@/lib/planung/fokus';
 import { useFokus } from '@/lib/planung/fokus-client';
-import { Erklaert, Hinweis, Pillen, Schalter, Segmente, feld, LEUCHT } from '../ui';
+import { Erklaert, Hinweis, Knopf, Pillen, Schalter, Segmente, feld, LEUCHT } from '../ui';
 import { useNurBusiness } from '../useInhaber';
 
 /** Ein Feld: lokaler Entwurf, Enter/Verlassen speichert; bei Fehler bleibt der Entwurf stehen. */
@@ -60,6 +62,7 @@ export function FokusTafel({ bereich: fest, vorgabe = 'privat', horizonte = FOKU
   const partnerNamen = (sicht?.partner ?? []).map(p => p.vorname).join(' und ');
 
   const setzen = (wessen: FokusWessen, h: FokusHorizont) => async (text: string) => schreiben(wessen, h, { text });
+  const [offen, setOffen] = useState<readonly FokusHorizont[]>([]);
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
@@ -74,6 +77,16 @@ export function FokusTafel({ bereich: fest, vorgabe = 'privat', horizonte = FOKU
       {fehler && <Hinweis art="achtung" rolle="status">{fehler}</Hinweis>}
       {sicht && horizonte.map(h => {
         const v = sicht.horizonte[h];
+        const leer = !v.unser.text.trim() && !v.mein.text.trim() && !v.partner.length;
+        if (horizonte.length > 1 && leer && !offen.includes(h)) return (
+          <section key={h} aria-label={`Fokus ${FOKUS_LABEL[h]}`} style={{ display: 'flex', gap: '4px 12px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: '1 1 220px' }}>
+              <span style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600 }}>{h === 'jahr' ? `${FOKUS_LABEL[h]} ${sicht.jahr}` : FOKUS_LABEL[h]}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{FOKUS_FRAGE[h]}</span>
+            </span>
+            <Knopf leise onClick={() => setOffen(o => [...o, h])}>Fokus eintragen</Knopf>
+          </section>
+        );
         return (
           <section key={h} aria-label={`Fokus ${FOKUS_LABEL[h]}`} style={{ display: 'grid', gap: 8 }}>
             {horizonte.length > 1 && <div style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600 }}>{h === 'jahr' ? `${FOKUS_LABEL[h]} ${sicht.jahr}` : FOKUS_LABEL[h]}</div>}

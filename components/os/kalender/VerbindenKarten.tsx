@@ -28,6 +28,20 @@ export const KALENDER_FREIGEBEN = 'Kalender bei Google freigeben';
 export function GoogleVerbindenKarte({ stand, firma = FIRMA, arbeit, fehler, onVerbinden }: { stand: GoogleKurz; firma?: string; arbeit?: boolean; fehler?: string | null; onVerbinden: () => void }) {
   const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55 } as const;
   const freigabe = googleKalenderFreigabeFehlt(stand);
+  // 11.10. (Ruhe): ist der Server noch nicht eingerichtet, kann hier niemand etwas tun — dann eine flache, kurze Karte; was fehlt (Namen der
+  // Umgebungswerte, Anleitung) steht für den Inhaber aufklappbar darunter, statt als gelber Absatz über dem Kalender.
+  if (!stand.konfiguriert) return (
+    <Karte i={0} flach>
+      <div data-verbinden="google" style={{ display: 'grid', gap: 6 }}>
+        <div style={{ fontWeight: 700, fontSize: TYP.body }}>{firma} verbinden <span style={{ fontWeight: 400, color: C.inkDim }}>· noch nicht eingerichtet</span></div>
+        <div style={klein}>Sobald der Server eingerichtet ist, erscheinen die Business-Termine von {firma} hier im Kalender.</div>
+        <details style={klein}>
+          <summary style={{ cursor: 'pointer', padding: '12px 0', color: C.inkDim }}>Was fehlt (für den Inhaber)</summary>
+          <div style={{ marginTop: 6 }}>{GOOGLE_NICHT_EINGERICHTET}</div>
+        </details>
+      </div>
+    </Karte>
+  );
   return (
     <Karte i={0} akzent={LEUCHT.puls}>
       <div data-verbinden="google" data-freigabe={freigabe ? '' : undefined} style={{ display: 'grid', gap: 8 }}>
@@ -43,9 +57,7 @@ export function GoogleVerbindenKarte({ stand, firma = FIRMA, arbeit, fehler, onV
               Du meldest dich bei Google mit deinem Workspace-Konto an; MAKE OS bekommt nur die Freigabe für den Kalender — keine Mails, keine Dateien.
             </div>}
         {fehler && <Hinweis art="achtung" rolle="status">{fehler}</Hinweis>}
-        {!stand.konfiguriert
-          ? <div style={{ ...klein, color: LEUCHT.achtung }}>{GOOGLE_NICHT_EINGERICHTET}</div>
-          : <div><Knopf haupt onClick={onVerbinden} aus={arbeit}>{arbeit ? 'öffnet Google …' : freigabe ? KALENDER_FREIGEBEN : stand.getrennt ? 'Neu verbinden' : `${firma} verbinden`}</Knopf></div>}
+        <div><Knopf haupt onClick={onVerbinden} aus={arbeit}>{arbeit ? 'öffnet Google …' : freigabe ? KALENDER_FREIGEBEN : stand.getrennt ? 'Neu verbinden' : `${firma} verbinden`}</Knopf></div>
       </div>
     </Karte>
   );

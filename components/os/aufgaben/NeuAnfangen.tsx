@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP, LEUCHT, RAND } from '@/lib/make-one/design';
 import { Fenster } from '../Fenster';
 import { Knopf, feld } from '../ui';
 import { useTasks } from '@/context/TasksContext';
@@ -31,8 +31,9 @@ export function NeuAnfangenKnopf({ klein }: { klein?: boolean }) {
   const knopf = useRef<HTMLButtonElement>(null);
   return (
     <>
+      {/* 11.10. (Ruhe): ein seltener Schritt, kein Alarm — leise im Kopf (Rot nur für echte Dringlichkeit); die Gefahr steht im Fenster (Bestätigung durch Tippen). */}
       <button ref={knopf} onClick={() => setAuf(true)} className="fassbar"
-        style={{ background: 'none', border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 10, color: LEUCHT.kritisch, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: klein ? 12.5 : TYP.bedien, padding: klein ? '6px 10px' : '8px 12px', minHeight: 36 }}>
+        style={{ background: 'none', border: `1px solid ${RAND.flaeche}`, borderRadius: 10, color: C.inkDim, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, padding: klein ? '6px 10px' : '8px 12px', minHeight: 40 }}>
         Neu anfangen …
       </button>
       {/* Über ein Portal an den Seitenrand — im Seitenkopf läge das Fenster sonst unter den Karten (Stapelkontext). */}

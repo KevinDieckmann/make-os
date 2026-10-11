@@ -19,7 +19,8 @@ import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT, 
 import { IndexFadenLinie } from '../kennzahlen/IndexAnsicht';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useLinkAuswahl } from '../Verlauf';
-import { KennzahlKachel, KennzahlFenster, SAEULE_FARBE, AMPEL_FARBE, scoreFarbe } from './teile';
+import { KennzahlFenster, SAEULE_FARBE, AMPEL_FARBE, scoreFarbe } from './teile';
+import { SaeuleKacheln } from '../kennzahlen/SaeuleKacheln';
 import { MonatsabschlussKarte, EinstellungenKarte } from './Abschluss';
 import { EroeffnungKarte } from './Eroeffnung';
 import { VerlaufKarte } from './Verlauf';
@@ -93,7 +94,8 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
     <>
       {eingebettet && (
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, maxWidth: 640, lineHeight: 1.5 }}>Business-Index: {SAEULEN_TEXT} — jede Zahl mit Formel, Quelle und den Punkten dahinter. Privates zählt nie.</span>
+          {/* 11.10.: die Säulen und Gewichte stehen schon als Balken im Index — hier nur noch der eine Satz, der sonst fehlt. */}
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, maxWidth: 640, lineHeight: 1.5 }}>Jede Zahl mit Formel, Quelle und den Punkten dahinter — Kachel antippen. Privates zählt nie.</span>
           {sichtWahl}
         </div>
       )}
@@ -140,7 +142,6 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
 
       {/* Die drei Säulen */}
       {bi?.saeulen.map((s, i) => {
-        const gruppen = Array.from(new Set(s.kennzahlen.map(k => k.gruppe)));
         return (
           <Kachel key={s.id} id={`saeule-${s.id}`} titel={s.label} breite={6}>
           <Karte i={i + 1} akzent={SAEULE_FARBE[s.id]}>
@@ -148,16 +149,8 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
               {s.label} · {Math.round(s.gewicht * 100)} % {s.score != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{s.score}</span>}
             </Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '-4px 0 12px' }}>{s.satz}</div>
-            <div style={{ display: 'grid', gap: 14 }}>
-              {gruppen.map(g => (
-                <div key={g} style={{ display: 'grid', gap: 8 }}>
-                  {gruppen.length > 1 && <span style={{ fontSize: 11.5, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase' }}>{g}</span>}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 10 }}>
-                    {s.kennzahlen.filter(k => k.gruppe === g).map(k => <KennzahlKachel key={k.id} k={k} onOeffnen={() => setOffen(k.id)} />)}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* 11.10.: Gemessenes als Kacheln, die Messlücken als eine aufklappbare Zeile (SaeuleKacheln, dieselbe Stelle wie IndexAnsicht). */}
+            <SaeuleKacheln kennzahlen={s.kennzahlen} onOeffnen={setOffen} />
           </Karte>
           </Kachel>
         );

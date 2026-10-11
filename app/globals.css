@@ -697,12 +697,15 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 @media (max-width: 720px) {
   .ui-seite { padding: 12px 16px 28px; }
   /* Kopf kompakt: Titel und Aktionen in einer Zeile, darunter der Satz über die ganze Breite (höchstens zwei Zeilen) — der Inhalt kommt zuerst. */
-  .ui-kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; margin-bottom: 10px; }
+  /* 11.10.: Flex statt Raster — der Titel behält mindestens rund neun Zeichen Breite; ist die Aktion (z. B. drei Segmente) breiter als der Rest,
+     rutscht sie in eine eigene Zeile unter den Titel (vorher brach „Produkte & Mandate“ Buchstabe für Buchstabe). Der Satz steht immer zuletzt. */
+  .ui-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 10px; }
   .ui-kopf-text { display: contents; }
   /* Lange Titel (z. B. Gesellschaftsnamen) umbrechen statt unter die Aktionen zu laufen (04.10.). */
-  .ui-kopf-titel { grid-column: 1; grid-row: 1; font-size: 24px; min-width: 0; overflow-wrap: anywhere; }
-  .ui-kopf-unter { grid-column: 1 / -1; grid-row: 2; font-size: 13px; margin-top: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .ui-kopf-aktion { grid-column: 2; grid-row: 1; flex-wrap: nowrap; gap: 8px; }
+  .ui-kopf-titel { order: 1; flex: 1 1 0; min-width: min(100%, 9em); font-size: 24px; overflow-wrap: break-word; }
+  .ui-kopf-aktion { order: 2; flex: 0 1 auto; max-width: 100%; margin-left: auto; flex-wrap: nowrap; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .ui-kopf-aktion::-webkit-scrollbar { display: none; }
+  .ui-kopf-unter { order: 3; flex: 1 0 100%; font-size: 13px; margin-top: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .ui-kopf-aktion .zoe-fragen { padding: 0 !important; width: 44px; height: 44px; min-height: 44px !important; justify-content: center; }
   .ui-kopf-aktion .zoe-fragen-text { display: none; }
   .ui-karten { gap: 14px; }
@@ -770,6 +773,19 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .ui-raster-kacheln { align-items: stretch !important; gap: 10px !important; }
 @media (max-width: 720px) { .ui-raster-kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
 .ui-raster-kacheln > .ui-zahl { padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); box-sizing: border-box; }
+
+/* Lage — „Antwort zuerst“ (11.10., components/os/ui/lage.tsx): höchstens fünf Kacheln oben in einer Ansicht; Zahl, Wort, Zusatz, optional Balken. */
+.ui-lage { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr)); gap: 10px; min-width: 0; }
+.ui-lage-kachel { display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 44px; padding: 12px 14px; box-sizing: border-box; text-align: left; font: inherit; color: inherit; text-decoration: none; }
+.ui-lage-klick { cursor: pointer; transition: transform .2s cubic-bezier(.22, 1, .36, 1), border-color .2s ease; }
+.ui-lage-klick:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, .16) !important; }
+.ui-lage-wert { font-weight: 700; font-size: clamp(22px, 2.6vw, 26px); letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.ui-lage-label { font-size: 13px; font-weight: 600; color: #E6ECEB; margin-top: 4px; line-height: 1.3; }
+.ui-lage-unter { font-size: 13px; color: #A2ADB0; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-lage-balken { display: block; height: 6px; margin-top: 8px; border-radius: 3px; overflow: hidden; background: rgba(255, 255, 255, .07); }
+.ui-lage-balken > span { display: block; height: 100%; border-radius: 3px; }
+@media (max-width: 720px) { .ui-lage { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .ui-lage-klick { transition: none; } .ui-lage-klick:hover { transform: none; } }
 
 /* Liste und Zeile */
 .ui-liste { display: block; }

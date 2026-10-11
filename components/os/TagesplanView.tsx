@@ -29,7 +29,7 @@ import { useTasks } from '@/context/TasksContext';
 import { einheitKurz } from '@/lib/aufgaben/einheit';
 import { localDay } from '@/lib/zeit';
 import { SAEULE_VON_PROJEKT, KATEGORIE_ZU_SAEULE, SAEULE_LABEL, SAEULE_FARBE, FOKUS_SCHWELLE } from '@/lib/make-one/fokus-data';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, LEUCHT, useRueckfrage } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Fortschritt, Zahl, Hinweis, LEUCHT, useRueckfrage } from './ui';
 import { ZieleMeilensteine } from './planung/ZieleMeilensteine';
 import { useFokus } from '@/lib/planung/fokus-client';
 import { useNurBusiness } from './useInhaber';
@@ -276,7 +276,8 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
     ];
   }, [meine, fix, faelligHeute, geplantTasks, erledigt, heute, rehaVorher, bereich]);
   const okN = check.filter(c => c.ok).length;
-  const checkFarbe = okN === check.length ? LEUCHT.gut : okN >= 3 ? LEUCHT.achtung : LEUCHT.kritisch;
+  // 11.10.: Rot nur für echte Dringlichkeit — ein offener Planungs-Punkt ist ein Hinweis (gelb), kein Alarm.
+  const checkFarbe = okN === check.length ? LEUCHT.gut : LEUCHT.achtung;
 
   const stunden = Array.from({ length: (ENDE - START) / 60 }, (_, i) => START / 60 + i);
   const datum = new Date(`${heute}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -316,7 +317,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
           <div style={{ flex: '1 1 240px', minWidth: 'min(240px, 100%)' }}>
             <Fortschritt anteil={okN / check.length} farbe={checkFarbe} />
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-              {check.map((c, i) => <Chip key={i} farbe={c.ok ? LEUCHT.gut : LEUCHT.kritisch}>{c.ok ? '✓' : '✗'} {c.text}</Chip>)}
+              {check.map((c, i) => <Chip key={i} farbe={c.ok ? LEUCHT.gut : LEUCHT.achtung}>{c.ok ? '✓' : '○'} {c.text}</Chip>)}
               {ueberfaellig.length > 0 && <Link href="/os/aufgaben" style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.achtung}>⚠ {ueberfaellig.length} überfällig ›</Chip></Link>}
             </div>
           </div>
@@ -330,8 +331,8 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
         {/* ── Der Tag als Kalender — Lücken sichtbar, alles reinziehbar ── */}
         <Karte i={2} style={{ flex: '0 1 440px', minWidth: 'min(300px, 100%)' }}>
           <Ueberschrift farbe={LEUCHT.puls} rechts="ziehen wie im Kalender (Planen)">Der Tag</Ueberschrift>
-          {meldung && <div role="alert" style={{ marginBottom: 8, fontSize: 12.5, color: LEUCHT.achtung, background: `${LEUCHT.achtung}14`, borderRadius: 8, padding: '6px 10px' }}>{meldung}</div>}
-          {kal && !kal.icloud && <div style={{ marginBottom: 8, fontSize: 12, color: C.inkLeise }}>Ohne iCloud nur lesen — Blöcke sind Termine im Kalender.</div>}
+          {meldung && <div style={{ marginBottom: 8 }}><Hinweis art="achtung" rolle="alert">{meldung}</Hinweis></div>}
+          {kal && !kal.icloud && <div style={{ marginBottom: 8, fontSize: TYP.bedien, color: C.inkDim }}>Ohne iCloud nur lesen — Blöcke sind Termine im Kalender.</div>}
           <div style={{ display: 'flex', gap: 4 }}>
             {/* Zeitspalte */}
             <div style={{ position: 'relative', height: H, width: 42, flex: '0 0 auto' }}>
