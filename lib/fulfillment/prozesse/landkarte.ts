@@ -1,8 +1,9 @@
 // ─── Fulfillment · Prozesse — Landkarte „Hochhaus“: Lage der Kästen (C1, 10.10.; FULFILLMENT_KONZEPT.md 2.2, 6.1, 6.2) ─────────────────
 // Gerechnet wird NUR hier (Vorbild Lichtfäden); die Komponente zeichnet die Kästen und Pfeile und rechnet nichts. Aufbau:
 //   Dach (Steuerung) oben als eine Reihe · Etagen gestapelt (Etage 1 unten über dem Fundament, Kreislauf-Reihenfolge von unten nach oben) ·
-//   Fundament (Unterstützung) als breite Reihe unten. Rechts laufen die Pfeile des Kreislaufs nach oben, links führt einer zurück nach unten
-//   („zurück in den Kreis“). Je Kasten: Titel, Zone, wie viele Kunden gerade dort stehen (`kundenJeKnoten`), Sprung in den Drill-down.
+//   Fundament (Unterstützung) als breite Reihe unten. Rechts EIN beschrifteter Pfeil nach oben („Weg des Kunden“), links einer gestrichelt zurück
+//   nach unten („zurück in den Kreis“) — seit 11.10. statt der kleinen Bögen je Etage (Rückmeldung: „Pfeile rechts unklar“). Je Kasten: Titel, Zone, wie
+//   viele Kunden gerade dort stehen (`kundenJeKnoten`), Sprung in den Drill-down.
 // Deterministisch: gleiche Vorlage, gleiche Zähler, gleiche Breite → gleiche Lage. Rein und client-sicher.
 
 import type { ProzessVorlage, Zone } from '../typen';
@@ -10,7 +11,8 @@ import { kinderVon } from '../regeln';
 import { WEG } from '@/lib/wege';
 
 export interface LandkartenKasten { id: string; x: number; y: number; b: number; h: number; titel: string; zone: Zone; anzahl: number; href: string; verweis?: string; unter: string[] }
-export interface LandkartenPfeil { pfad: string; art: 'kreislauf' | 'zurueck' }
+/** Ein Pfeil mit Beschriftung (senkrecht gedreht an `tx`/`ty`). */
+export interface LandkartenPfeil { pfad: string; art: 'kreislauf' | 'zurueck'; text: string; tx: number; ty: number }
 export interface LandkartenLage { breite: number; hoehe: number; kaesten: LandkartenKasten[]; pfeile: LandkartenPfeil[]; dach: { pfad: string } | null }
 
 export const LANDKARTE_MASS = { rand: 12, seite: 34, dachH: 58, etageH: 52, fundamentH: 58, luecke: 8, giebel: 28 } as const;
@@ -50,14 +52,13 @@ export function landkarteLage(v: Pick<ProzessVorlage, 'knoten'>, zaehler: Record
 
   const pfeile: LandkartenPfeil[] = [];
   const mitteY = (i: number) => etageY0 + (etagen.length - 1 - i) * (M.etageH + M.luecke) + M.etageH / 2;
-  const rechts = innenX + innenB + 6, links = innenX - 6;
-  for (let i = 0; i + 1 < etagen.length; i++) {
-    const y1 = mitteY(i) - 8, y2 = mitteY(i + 1) + 8;
-    pfeile.push({ art: 'kreislauf', pfad: `M ${r1(rechts)} ${r1(y1)} C ${r1(rechts + 22)} ${r1(y1 - 10)} ${r1(rechts + 22)} ${r1(y2 + 10)} ${r1(rechts)} ${r1(y2)}` });
-  }
+  const rechts = innenX + innenB + 10, links = innenX - 10;
   if (etagen.length > 1) {
-    const oben = mitteY(etagen.length - 1), unten = mitteY(0);
-    pfeile.push({ art: 'zurueck', pfad: `M ${r1(links)} ${r1(oben)} C ${r1(links - 28)} ${r1(oben + 20)} ${r1(links - 28)} ${r1(unten - 20)} ${r1(links)} ${r1(unten)}` });
+    const unten = mitteY(0), oben = mitteY(etagen.length - 1), mitte = (unten + oben) / 2;
+    // Rechts: von der ersten Etage (unten) bis zur letzten (oben) — so läuft ein Kunde durch das Unternehmen.
+    pfeile.push({ art: 'kreislauf', pfad: `M ${r1(rechts)} ${r1(unten)} L ${r1(rechts)} ${r1(oben)}`, text: 'Weg des Kunden', tx: r1(rechts + 14), ty: r1(mitte) });
+    // Links: nach der Leistung (oben) zurück in den Kreis (unten) — Empfehlung und Wiederkauf.
+    pfeile.push({ art: 'zurueck', pfad: `M ${r1(links)} ${r1(oben)} L ${r1(links)} ${r1(unten)}`, text: 'Zurück in den Kreis', tx: r1(links - 8), ty: r1(mitte) });
   }
   const dachPfad = dach.length
     ? { pfad: `M ${r1(innenX - 10)} ${r1(dachY - 4)} L ${r1(innenX + innenB / 2)} ${r1(M.rand)} L ${r1(innenX + innenB + 10)} ${r1(dachY - 4)}` }

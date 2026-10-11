@@ -2,17 +2,20 @@
 
 // ─── Fulfillment › Bausteine — Bibliothek, Editor, Import (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 2.1, 2.7) ──────────────────────────
 // Die Bibliothek: kleinste wiederverwendbare Einheiten (Dokument, Skript, Checkliste, Mail, Kennzahl, Ritual, Formular/Workbook …), die in
-// beliebig vielen Paket-Vorlagen stecken. Filter nach Art, Paket und Marken; `?b=<id>` öffnet den Editor (lange Texte erst dann vom Server).
+// beliebig vielen Paket-Vorlagen stecken. Seit 11.10. als Karten mit Art-Symbol; Filter nach Art, Paket, Phase und Marken; `?b=<id>` öffnet den
+// Editor (lange Texte erst dann vom Server).
 // Marken sichtbar am Baustein: „nur intern“, „vor Einsatz rechtlich prüfen“ (mit Vermerk „geprüft“), „vor Verkauf prüfen“ (Material Dritter).
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Pillen, Feldzeile, Schalter, useRueckfrage } from '../../ui';
+import { FARBE as C, TYP, MIKRO, TIEF, ECKE, FLAECHE_STIL, SCHRIFT } from '@/lib/make-one/design';
+import { SquareCheck, FileText, ScrollText, ListChecks, Mail, BarChart3, Repeat, ClipboardList, BookOpen, Search, Stamp, type LucideIcon } from 'lucide-react';
+import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Pillen, Feldzeile, Schalter, useRueckfrage, LEUCHT } from '../../ui';
 import { Wahl } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
 import { suchPasst } from '@/lib/text/such-norm';
 import { BAUSTEIN_ART_LABEL } from '@/lib/fulfillment/prozesse/bausteine';
+import { bausteinOrte } from '@/lib/fulfillment/prozesse/darstellung';
 import type { Baustein, BausteinArt, Frage } from '@/lib/fulfillment/typen';
 import { useUebersicht, holeJson, vorlagenOps, fehlerText, tagLang, neueAnfrageId, EREIGNIS, type Uebersicht } from './daten';
 import { BausteinMarken, Meldung, klein, feld, Leiste, useTextFrage } from './teile';
@@ -34,40 +37,86 @@ export function Bausteine({ b }: { b?: string }) {
   );
 }
 
+const ART_ZEICHEN: Record<BausteinArt, LucideIcon> = {
+  aufgabe: SquareCheck, dokument: FileText, skript: ScrollText, checkliste: ListChecks, mail: Mail, kennzahl: BarChart3, ritual: Repeat,
+  formular: ClipboardList, workbook: BookOpen, analyse: Search, freigabe: Stamp,
+};
+
+/** Eine Marke am Baustein — sichtbar, aber ruhig (Umriss statt Fläche). */
+function Marke({ farbe, children }: { farbe: string; children: string }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: TYP.bedien, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: 3, background: farbe }} />{children}</span>;
+}
+
+/**
+ * Die Bibliothek als Karten (11.10., Rückmeldung: „Bausteine filterbar nach Paket/Phase/Art, Karten mit Art-Symbol, Marken gut sichtbar aber ruhig“).
+ * Wo ein Baustein steckt (Paket › Phase), rechnet `bausteinOrte` aus den Paket-Vorlagen; ohne Vorlage gilt das Schlagwort `paket:…`.
+ */
 function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: string) => void }) {
   const [q, setQ] = useState('');
   const [art, setArt] = useState<BausteinArt | 'alle'>('alle');
   const [filter, setFilter] = useState<Filter>('alle');
   const [paket, setPaket] = useState<string | null>(null);
+  const [phase, setPhase] = useState<string | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
   const frage = useTextFrage();
-  const pakete = Array.from(new Set(daten.bausteine.flatMap(x => x.tags.filter(t => t.startsWith('paket:')).map(t => t.slice(6))))).sort();
+  const orte = bausteinOrte(daten.prozesse);
+  const paketeVon = (x: Uebersicht['bausteine'][number]) => orte[x.id]?.pakete.length ? orte[x.id].pakete : x.tags.filter(t => t.startsWith('paket:')).map(t => t.slice(6));
+  const pakete = Array.from(new Set(daten.bausteine.flatMap(paketeVon))).sort((x, y) => x.localeCompare(y, 'de'));
+  const phasen = Array.from(new Set(daten.prozesse.filter(v => v.art === 'paket' && (!paket || v.titel === paket)).flatMap(v => daten.bausteine.filter(b => orte[b.id]?.pakete.includes(v.titel)).flatMap(b => orte[b.id].phasen))));
   const liste = daten.bausteine.filter(x => (art === 'alle' || x.art === art) && (!q || suchPasst([x.titel, x.zweck, ...x.tags], q))
     && (filter === 'alle' || (filter === 'recht' && x.rechtOffen) || (filter === 'verkauf' && x.vorVerkaufOffen) || (filter === 'intern' && x.nurIntern))
-    && (!paket || x.tags.includes(`paket:${paket}`)));
+    && (!paket || paketeVon(x).includes(paket)) && (!phase || (orte[x.id]?.phasen ?? []).includes(phase)));
   const neu = async () => {
     const titel = await frage.fragen('Titel des neuen Bausteins');
     if (!titel) return;
     const a = await vorlagenOps([{ op: 'baustein', eintrag: { art: art === 'alle' ? 'dokument' : art, titel } }]);
     if (a.ok && a.j.geaendert?.[0]) onOeffnen(a.j.geaendert[0]); else setMeldung(fehlerText(a));
   };
+  const zaehl = (f: Filter) => daten.bausteine.filter(x => (f === 'recht' && x.rechtOffen) || (f === 'verkauf' && x.vorVerkaufOffen) || (f === 'intern' && x.nurIntern)).length;
   return (
     <Karte i={1}>
-      <Ueberschrift rechts={<Knopf leise onClick={neu}>+ Baustein</Knopf>}>Bibliothek</Ueberschrift>
+      <Ueberschrift erklaerung="fulfillment.bibliothek" rechts={<Knopf leise onClick={neu}>+ Baustein</Knopf>}>Bibliothek</Ueberschrift>
       <Meldung text={meldung} art="kritisch" />
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Suchen (Titel, Zweck, Schlagwort)" aria-label="Bausteine suchen" style={feld} />
-      <Pillen<BausteinArt | 'alle'> liste={[{ id: 'alle', label: 'Alle Arten' }, ...ARTEN.filter(a => daten.bausteine.some(x => x.art === a)).map(a => ({ id: a, label: BAUSTEIN_ART_LABEL[a] }))]} aktiv={art} onWahl={setArt} />
-      <Pillen<Filter> liste={[{ id: 'alle', label: 'Alle' }, { id: 'recht', label: `rechtlich prüfen (${daten.bausteine.filter(x => x.rechtOffen).length})` }, { id: 'verkauf', label: `vor Verkauf prüfen (${daten.bausteine.filter(x => x.vorVerkaufOffen).length})` }, { id: 'intern', label: `nur intern (${daten.bausteine.filter(x => x.nurIntern).length})` }]} aktiv={filter} onWahl={setFilter} />
-      {pakete.length > 0 && <Pillen<string> liste={[{ id: '', label: 'Alle Pakete' }, ...pakete.map(p => ({ id: p, label: p }))]} aktiv={paket ?? ''} onWahl={x => setPaket(x || null)} />}
+      <Pillen<BausteinArt | 'alle'> einzeilig liste={[{ id: 'alle', label: 'Alle Arten' }, ...ARTEN.filter(a => daten.bausteine.some(x => x.art === a)).map(a => ({ id: a, label: BAUSTEIN_ART_LABEL[a] }))]} aktiv={art} onWahl={setArt} />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        {pakete.length > 0 && <Wahl<string> label="Paket" leer="Alle Pakete" liste={pakete.map(p => ({ id: p, label: p }))} wert={paket} onWahl={p => { setPaket(p); setPhase(null); }} onLeeren={() => { setPaket(null); setPhase(null); }} leerenLabel="alle Pakete" />}
+        {phasen.length > 0 && <Wahl<string> label="Phase" leer="Alle Phasen" liste={phasen.map(p => ({ id: p, label: p }))} wert={phase} onWahl={setPhase} onLeeren={() => setPhase(null)} leerenLabel="alle Phasen" />}
+        <Pillen<Filter> liste={[{ id: 'alle', label: 'Alle Marken' }, { id: 'recht', label: `rechtlich prüfen (${zaehl('recht')})` }, { id: 'verkauf', label: `vor Verkauf prüfen (${zaehl('verkauf')})` }, { id: 'intern', label: `nur intern (${zaehl('intern')})` }]} aktiv={filter} onWahl={setFilter} />
+      </div>
       {!daten.bausteine.length ? (
-        <Leerzustand symbol="▤" titel="Noch keine Bausteine">Bausteine kommen per Import (unten) oder „+ Baustein“ — das Gerüst „Aus Muster anlegen“ bringt das Playbook-Formular mit.</Leerzustand>
+        <Leerzustand symbol="▤" titel="Noch keine Bausteine" aktion={<Knopf onClick={neu}>+ Baustein</Knopf>}>Bausteine kommen per Import (unten) oder „+ Baustein“ — das Gerüst „Aus Muster anlegen“ bringt das Playbook-Formular mit.</Leerzustand>
       ) : !liste.length ? <div style={klein}>Nichts passt zu diesem Filter.</div> : (
-        <Liste>
-          {liste.slice(0, 300).map(x => (
-            <Zeile key={x.id} titel={x.titel} umbrechen onClick={() => onOeffnen(x.id)}
-              unter={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>{BAUSTEIN_ART_LABEL[x.art]}{x.steckt ? ` · in ${x.steckt} Vorlage${x.steckt === 1 ? '' : 'n'}` : ''}<BausteinMarken b={x} /></span>} />
-          ))}
-        </Liste>
+        <>
+          <span style={{ ...MIKRO }}>{liste.length} von {daten.bausteine.length} Bausteinen</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: 10 }}>
+            {liste.slice(0, 300).map(x => {
+              const Zeichen = ART_ZEICHEN[x.art] ?? FileText;
+              const o = orte[x.id];
+              const wo = o?.pakete.length ? `${o.pakete[0]}${o.phasen[0] ? ` › ${o.phasen[0]}` : ''}${o.pakete.length + o.phasen.length > 2 ? ' …' : ''}` : x.steckt ? `in ${x.steckt} Vorlage${x.steckt === 1 ? '' : 'n'}` : 'noch in keiner Vorlage';
+              return (
+                <button key={x.id} type="button" onClick={() => onOeffnen(x.id)} className="fassbar" aria-label={`${x.titel} — ${BAUSTEIN_ART_LABEL[x.art]} öffnen`}
+                  style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: 12, display: 'grid', gap: 8, alignContent: 'start', textAlign: 'left', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0, minHeight: 44 }}>
+                  <span style={{ display: 'flex', gap: 10, alignItems: 'flex-start', minWidth: 0 }}>
+                    <span aria-hidden style={{ width: 34, height: 34, borderRadius: 10, flex: '0 0 auto', display: 'grid', placeItems: 'center', color: C.aktiv, background: TIEF.flaeche(C.aktiv), border: `1px solid ${TIEF.rand(C.aktiv)}` }}><Zeichen size={17} /></span>
+                    <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+                      <b style={{ fontSize: TYP.body, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{x.titel}</b>
+                      <span style={{ ...klein, color: C.inkLeise }}>{BAUSTEIN_ART_LABEL[x.art]}{x.steckt ? ` · in ${x.steckt} Vorlage${x.steckt === 1 ? '' : 'n'}` : ''}</span>
+                    </span>
+                  </span>
+                  <span style={{ ...klein, overflowWrap: 'anywhere' }}>{wo}</span>
+                  {(x.nurIntern || x.rechtOffen || x.vorVerkaufOffen) && (
+                    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {x.nurIntern && <Marke farbe={LEUCHT.agenten}>nur intern</Marke>}
+                      {x.rechtOffen && <Marke farbe={LEUCHT.achtung}>rechtlich prüfen</Marke>}
+                      {x.vorVerkaufOffen && <Marke farbe={LEUCHT.achtung}>vor Verkauf prüfen</Marke>}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
       {liste.length > 300 && <div style={klein}>{liste.length - 300} weitere — bitte filtern oder suchen.</div>}
       {frage.dialog}

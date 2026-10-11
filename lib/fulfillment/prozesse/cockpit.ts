@@ -7,6 +7,8 @@
 import type { DossierKurz, Fall, KundeKurz } from '../typen';
 import { aktuellerKnoten, fallFortschritt, tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
 import type { OnboardingStand } from './onboarding';
+import { fallReise, reiseKurz, type ReiseKurzPhase } from './reise';
+import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
 
 export type HaengerArt = 'willkommen' | 'freigabe' | 'wartet' | 'puls' | 'report' | 'art14' | 'faellig';
@@ -22,6 +24,10 @@ export interface CockpitZeile {
   onboarding: { offen: number; fertig: boolean; willkommenUeberfaellig: boolean };
   naechsterRitual?: string;
   haengt: Haenger[];
+  /** Die Phasen als Mini-Strahl (11.10., Design: „wo steht der Kunde“ als Bild) — Zustand, Anteil, Freigabe-Punkt. Nur lesen. */
+  phasen?: ReiseKurzPhase[];
+  /** Ø Zielerreichung des Wert-Kontos (vorher → jetzt → Ziel, 0–100) über die messbaren Ziele — null ohne Messung. */
+  wert?: { wert: number; ziele: number } | null;
 }
 export interface CockpitEingabe {
   fall: Fall; kunde: string; titel: string; paket?: string;
@@ -72,6 +78,8 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
     onboarding: { offen: e.onboarding.offen, fertig: e.onboarding.fertig, willkommenUeberfaellig: e.onboarding.willkommen.ueberfaellig },
     ...(e.naechsterRitual ? { naechsterRitual: e.naechsterRitual } : {}),
     haengt: wasHaengt(e),
+    phasen: reiseKurz(fallReise(e.fall, [], e.heute)),
+    wert: wertDurchschnitt(e.fall.wertKonto ?? {}),
   };
 }
 

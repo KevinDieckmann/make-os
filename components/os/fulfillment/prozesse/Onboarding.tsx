@@ -8,7 +8,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FARBE as C } from '@/lib/make-one/design';
+import { FARBE as C, TIEF } from '@/lib/make-one/design';
+import { MUSTER_ONBOARDING } from '@/lib/fulfillment/muster';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, Punkt, LEUCHT } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { Wahl } from '../../crm/Wahl';
@@ -113,10 +114,19 @@ export function Onboarding() {
         <Ueberschrift rechts={<span>{laufend.length}</span>}>Laufende Onboardings</Ueberschrift>
         {!laufend.length ? <div style={klein}>Gerade läuft kein Onboarding.</div> : (
           <Liste>
-            {laufend.map(f => (
-              <Zeile key={f.mandatId} links={<Punkt farbe={f.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.gut} />} titel={f.kunde} onClick={() => router.push(WEG.fall(f.mandatId))}
-                unter={`${f.onboardingOffen} Schritt${f.onboardingOffen === 1 ? '' : 'e'} offen${f.willkommenUeberfaellig ? ' · Willkommensmail überfällig' : ''}`} />
-            ))}
+            {laufend.map(f => {
+              const gesamt = MUSTER_ONBOARDING.length, fertig = Math.max(0, gesamt - f.onboardingOffen);
+              const farbe = f.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.planung;
+              return (
+                <Zeile key={f.mandatId} links={<Punkt farbe={f.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.gut} />} titel={f.kunde} onClick={() => router.push(WEG.fall(f.mandatId))} umbrechen
+                  unter={<span style={{ display: 'grid', gap: 6 }}>
+                    <span>{fertig} von {gesamt} Schritten erfüllt{f.willkommenUeberfaellig ? ' · Willkommensmail überfällig' : ''}</span>
+                    <span role="img" aria-label={`${fertig} von ${gesamt} Onboarding-Schritten erfüllt`} style={{ display: 'grid', gridTemplateColumns: `repeat(${gesamt}, minmax(0, 1fr))`, gap: 3, maxWidth: 260 }}>
+                      {Array.from({ length: gesamt }, (_, i) => <span key={i} style={{ height: 6, borderRadius: 3, background: i < fertig ? TIEF.verlauf(LEUCHT.gut) : `${farbe}33` }} />)}
+                    </span>
+                  </span>} />
+              );
+            })}
           </Liste>
         )}
       </Karte>

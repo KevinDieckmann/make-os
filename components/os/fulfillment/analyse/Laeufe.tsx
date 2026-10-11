@@ -4,6 +4,9 @@
 // Je Agent eine Zeile: Zustand, Schätzung („ca. x · höchstens y“), Gründe einer Sperre, Starten NUR für genau diesen Lauf nach einer Rückfrage mit
 // Kosten und Datenweg (kein „alle starten“; das Minimalset ist nur ein Vorschlag). Darunter die Läufe: laufend (Abbrechen), Entwurf (Abschnitte
 // anhaken → übernehmen, oder verwerfen), Fehler mit Satz.
+// 11.10. (Design, Rückmeldung: „Wellen-Bild mit Status je Agent, Kosten je Lauf vor dem Start klar“): oben das Wellen-Bild (Welle 0–3, je Agent eine
+// Marke in seiner Stufenfarbe) und EIN Vorschlag „nächster Lauf“ mit seiner Schätzung als Hauptaktion (`naechsterLauf`, startet nach derselben
+// Rückfrage wie jede Zeile). Sätze, die bei vielen Agenten gleich stehen (KI aus, Web-Suche aus), stehen EINMAL oben statt in jeder Zeile.
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -14,6 +17,8 @@ import type { AbschnittId, AnalyseLauf } from '@/lib/fulfillment/typen';
 import { ABSCHNITT_LABEL, LAUF_LABEL } from '@/lib/fulfillment/analyse/sicht';
 import { alsErgebnis, STECKBRIEF_LABEL, type SteckbriefFeld } from '@/lib/fulfillment/analyse/ausgabe';
 import { Karte, Ueberschrift, Zeile, Knopf, Chip, Hinweis, MehrfachPillen, Liste, eingabe, LEUCHT, useRueckfrage } from '../../ui';
+import { wellenBild, naechsterLauf, gemeinsameSaetze, ohneGemeinsame } from '@/lib/fulfillment/prozesse/darstellung';
+import { WellenBild, Legende, AgentMarke } from '../reise/bilder';
 import { senden, fehlerVon, anfrageId, type AgentLage, type AnalyseApi } from './daten';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
@@ -51,12 +56,32 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
     await api.laden();
   };
   const imMinimal = lage.minimalset.map(x => x.toUpperCase()).join(', ');
+  const wellen = wellenBild(lage.agenten);
+  const naechster = naechsterLauf(lage.agenten.filter(a => !a.funktionen), lage.minimalset);
+  const gemeinsam = new Set(gemeinsameSaetze(lage.agenten));
   return (
     <div style={{ display: 'grid', gap: 12 }}>
+      <Karte>
+        <Ueberschrift erklaerung="fulfillment.wellen" rechts={<span>bisher {euroText(lage.kostenCent)}</span>}>Stand der Analyse</Ueberschrift>
+        <WellenBild wellen={wellen} />
+        <Legende eintraege={[
+          { zeichen: <AgentMarke id="A" stufe="uebernommen" />, text: 'im Dossier' },
+          { zeichen: <AgentMarke id="A" stufe="entwurf" />, text: 'Entwurf prüfen' },
+          { zeichen: <AgentMarke id="A" stufe="bereit" />, text: 'bereit' },
+          { zeichen: <AgentMarke id="A" stufe="gesperrt" />, text: 'noch gesperrt' },
+        ]} />
+        {naechster ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+            <Knopf haupt onClick={() => starten(naechster)}>{naechster.art === 'regel' ? `${naechster.id.toUpperCase()} prüfen (ohne Kosten)` : `${naechster.id.toUpperCase()} · ${naechster.name} starten (${naechster.schaetzung.text})`}</Knopf>
+            <span style={klein}>{naechster.imMinimalset ? 'Nächster Lauf aus dem Minimalset' : 'Nächster bereiter Lauf'}{naechster.art === 'regel' ? '' : ` · höchstens ${naechster.schaetzung.hoechstensText}`} — startet erst nach deiner Bestätigung.</span>
+          </div>
+        ) : <div style={klein}>Gerade ist kein Lauf bereit — die Gründe stehen unten je Agent.</div>}
+      </Karte>
       <Ueberschrift erklaerung="fulfillment.laufBestaetigen">Läufe — jeder einzeln bestätigt</Ueberschrift>
       <Hinweis art="info" titel="Jeder Lauf einzeln">
         Vorschlag Minimalset: {imMinimal}. Nichts startet von selbst — jeder Lauf nur mit deinem Klick auf genau diesen Lauf. Gleichzeitig: {lage.gleichzeitig.laufend} von {lage.gleichzeitig.max}. Bisher {euroText(lage.kostenCent)}.
       </Hinweis>
+      {gemeinsam.size > 0 && <Hinweis art="neutral" titel="Gilt für viele Läufe">{[...gemeinsam].join(' ')}</Hinweis>}
       {meldung && <Hinweis art="achtung">{meldung}</Hinweis>}
       {WELLEN.map(({ w, t }) => (
         <Karte key={w}>
@@ -81,8 +106,8 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
                       </span>}
                     />
                     {a.id === 'tb' && <div style={klein}>Der Tiefenbericht startet unter „Tiefenbericht“ — nur für dich lesbar.</div>}
-                    {zustand === 'gesperrt' && a.gruende.length > 0 && <div style={klein}>{a.gruende.join(' ')}</div>}
-                    {a.hinweise.length > 0 && <div style={klein}>{a.hinweise.join(' ')}</div>}
+                    {zustand === 'gesperrt' && a.gruende.length > 0 && ohneGemeinsame(a.gruende.join(' '), gemeinsam) && <div style={klein}>{ohneGemeinsame(a.gruende.join(' '), gemeinsam)}</div>}
+                    {a.hinweise.length > 0 && ohneGemeinsame(a.hinweise.join(' '), gemeinsam) && <div style={klein}>{ohneGemeinsame(a.hinweise.join(' '), gemeinsam)}</div>}
                     {grundNoetig && zustand === 'bereit' && (
                       <input style={eingabe} maxLength={300} placeholder="Grund für einen weiteren Lauf (Pflicht ab dem vierten)" value={grund[key] ?? ''} onChange={e => setGrund(g => ({ ...g, [key]: e.target.value }))} aria-label="Grund für einen weiteren Lauf" />
                     )}

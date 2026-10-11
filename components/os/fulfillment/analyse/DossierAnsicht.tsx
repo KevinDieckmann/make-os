@@ -5,6 +5,8 @@
 // mit Datum, „veraltet?“ —, Aussage von Hand (mit Quelle; ohne Quelle nur in Hypothesen/offenen Fragen), Entfernen. Diagnose-Entwurf und Steckbrief
 // gehen NACH F2 per Klick weiter: Quick Wins und Kick-off-Fragen in den Fall (Route von C1), Steckbrief-Felder in die CRM-Firmenakte (CRM-Schreibweg
 // mit Stand) — nie automatisch.
+// 11.10. (Design, Rückmeldung: „Dossier mit Abschnitts-Navigation“): unter dem Deckblatt eine Leiste aller Abschnitte (Stand-Farbe, Zahl der Aussagen) —
+// ein Tipp springt zum Abschnitt. Nur Darstellung.
 
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -13,6 +15,7 @@ import { ABSCHNITT_LABEL, ABSCHNITT_REIHE } from '@/lib/fulfillment/analyse/sich
 import { alsErgebnis, STECKBRIEF_LABEL, type SteckbriefFeld } from '@/lib/fulfillment/analyse/ausgabe';
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Liste, Kennzahl, Raster, Feldzeile, Pillen, eingabe, auswahl, LEUCHT, useRueckfrage } from '../../ui';
 import { senden, fehlerVon, type AnalyseApi } from './daten';
+import { insBild } from '../reise/sprung';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
@@ -44,11 +47,24 @@ export function DossierAnsicht({ mandatId, api, rueck }: { mandatId: string; api
         </Raster>
         <div style={klein}>Personenteil: {db?.kartenAnzahl ?? 0} Karte(n) · gelöscht {db?.loeschAm ? `am ${db.loeschAm}` : `${lage.loeschRegelTage} Tage nach Mandatsende`}{(db?.geloescht ?? []).map(g => ` · Personenteil gelöscht am ${g.am} (${g.anzahl} Karten)`).join('')}</div>
       </Karte>
+      <nav aria-label="Abschnitte des Dossiers" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {ABSCHNITT_REIHE.map(id => {
+          const a = d.abschnitte[id];
+          const n = a?.aussagen.length ?? 0;
+          const f = a?.status === 'geprueft' ? LEUCHT.gut : a?.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise;
+          return (
+            <button key={id} type="button" className="fassbar" onClick={() => insBild(`dossier-${id}`)} aria-label={`${ABSCHNITT_LABEL[id]}: ${n} Aussage(n), ${a?.status === 'geprueft' ? 'geprüft' : a?.status ?? 'leer'}`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: TYP.bedien, color: n ? C.ink : C.inkDim, background: 'rgba(255,255,255,.04)', border: `1px solid ${n ? `${f}66` : 'rgba(255,255,255,.08)'}` }}>
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: 4, background: n ? f : 'transparent', border: `1px solid ${f}` }} />{ABSCHNITT_LABEL[id]}{n ? ` · ${n}` : ''}
+            </button>
+          );
+        })}
+      </nav>
       {ABSCHNITT_REIHE.map(id => {
         const a = d.abschnitte[id];
         const aussagen = a?.aussagen ?? [];
         return (
-          <Karte key={id}>
+          <Karte key={id} id={`dossier-${id}`}>
             <Ueberschrift rechts={a ? <Chip farbe={a.status === 'geprueft' ? LEUCHT.gut : a.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise}>{a.status === 'geprueft' ? 'geprüft' : a.status}</Chip> : undefined}>{ABSCHNITT_LABEL[id]}</Ueberschrift>
             {!aussagen.length && <div style={klein}>Noch nichts.</div>}
             <Liste>

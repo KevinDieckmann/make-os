@@ -1,27 +1,29 @@
 'use client';
 
-// ─── Fulfillment › Visualisierung — Landkarte groß, Mandats-Cockpit, Kennzahlen, Kunden-Ansicht (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 6.3, 1.4) ─
-// Das Cockpit zeigt „Was hängt“ zuerst (rot vor gelb, älteste zuerst), dann je laufendem Fall Phase, Fortschritt, „wartet auf euch“, Health,
-// Puls, Analyse, Onboarding, nächsten Termin. Die Kennzahlen aus 1.4 stehen je mit Erklärung; die Säule „Fulfillment“ im Business-Index
-// (Health, Takt, Puls, Wert-Konto) steht im Business-Cockpit. Die Kunden-Ansicht-Vorlage liefert Paket C2 (`KundenAnsichtVorschau`).
+// ─── Fulfillment › Visualisierung — Mandats-Cockpit, Kennzahlen, Landkarte, Kunden-Ansicht (Paket C1, 10.10.; Design-Überarbeitung 11.10.; FULFILLMENT_KONZEPT.md 6.3, 1.4) ─
+// Rückmeldung 11.10.: „Cockpit über alle Kunden — eine Kartenreihe je Kunde.“ Oben „Was hängt“ (rot vor gelb, älteste zuerst), darunter je laufendem Fall
+// EINE Karte, sortiert nach „braucht Aufmerksamkeit“ (lib/fulfillment/prozesse/darstellung.ts): Ampel, Fortschrittsring, Phase als Mini-Strahl, Wert-
+// Konto als Balken „vorher → jetzt → Ziel“, als Nächstes, wartet auf euch, nächster Termin. Dann die Erfolgsmaße aus 1.4 (je mit Erklärung; die Säule
+// „Fulfillment“ im Business-Index steht im Business-Cockpit), die Landkarte groß und die Kunden-Ansicht-Vorlage (C2 `KundenAnsichtVorschau`).
 
 import { useRouter } from 'next/navigation';
-import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Hinweis, Liste, Zeile, Chip, Punkt, Raster, Kennzahl, Fortschritt, LEUCHT } from '../../ui';
+import { FARBE as C, TYP, MIKRO, ECKE, FLAECHE_STIL, SCHRIFT, TIEF } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Hinweis, Liste, Zeile, Chip, Punkt, Raster, Kennzahl, Leerzustand, Knopf, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { useCockpit, useUebersicht, tagKurz } from './daten';
 import type { FfKennzahl } from '@/lib/fulfillment/prozesse/kennzahlen';
+import type { CockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
+import { knotenAmpel, kundenAmpel, nachAufmerksamkeit } from '@/lib/fulfillment/prozesse/darstellung';
 import { Landkarte } from './Zeichnung';
 import { klein } from './teile';
 import { KundenAnsichtVorschau } from '../kunde';
-
-const AMPEL_FARBE = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
-const AMPEL_TEXT = { gruen: 'grün', gelb: 'gelb', rot: 'rot' } as const;
+import { AMPEL_FARBE, AMPEL_TEXT, FortschrittsRing, MiniStrahl, WertBalken } from '../reise/bilder';
 
 export function Cockpit() {
   const router = useRouter();
   const { daten, fehler } = useCockpit();
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
+  const zeilen = nachAufmerksamkeit(daten.zeilen);
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <Karte i={1} akzent={daten.haengt.some(h => h.schwere === 'rot') ? LEUCHT.kritisch : LEUCHT.gut}>
@@ -33,34 +35,55 @@ export function Cockpit() {
         )}
       </Karte>
       <Karte i={2}>
-        <Ueberschrift erklaerung="fulfillment.fortschritt" rechts={<span>{daten.zeilen.length} laufend</span>}>Mandats-Cockpit</Ueberschrift>
+        <Ueberschrift erklaerung="fulfillment.kundenKarten" rechts={<span>{zeilen.length} laufend</span>}>Unsere Kunden</Ueberschrift>
         {daten.kapa && <div style={klein}>Kapazität: {daten.kapa.stundenWoche.toLocaleString('de-DE')} h Aufwand je Woche{daten.kapa.frei != null ? ` gegen ${daten.kapa.frei.toLocaleString('de-DE')} h frei` : ''}{daten.kapa.ueber ? ' — mehr verplant als frei' : ''}.</div>}
-        {!daten.zeilen.length ? <div style={klein}>Noch kein laufender Fall — unter Onboarding starten.</div> : (
-          <div style={{ display: 'grid', gap: 10 }}>
-            {daten.zeilen.map(z => (
-              <button key={z.mandatId} type="button" onClick={() => router.push(WEG.fall(z.mandatId))} className="fassbar"
-                style={{ display: 'grid', gap: 6, textAlign: 'left', padding: 12, borderRadius: 14, border: '1px solid rgba(255,255,255,.08)', background: 'rgba(255,255,255,.03)', cursor: 'pointer', color: C.ink }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-                  <b style={{ fontSize: TYP.body }}>{z.kunde}</b>
-                  <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6 }}>
-                    {z.health && <Chip farbe={AMPEL_FARBE[z.health]}>Health {AMPEL_TEXT[z.health]}</Chip>}
-                    {z.puls && <Chip farbe={z.pulsKritisch ? LEUCHT.kritisch : LEUCHT.gut}>Puls {z.puls.wert}/10</Chip>}
-                    {z.status === 'onboarding' && <Chip farbe={z.onboarding.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.planung}>Onboarding · {z.onboarding.offen} offen</Chip>}
-                    {z.analyse?.vorhanden && <Chip farbe={LEUCHT.agenten}>Dossier{z.analyse.f2 ? ' geprüft' : ''}</Chip>}
-                  </span>
-                </div>
-                <span style={klein}>{[z.paket, z.phase, z.schritt ? `als Nächstes: ${z.schritt}` : null].filter(Boolean).join(' · ')}</span>
-                <Fortschritt anteil={z.fortschritt / 100} farbe={LEUCHT.business} />
-                <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>
-                  {z.fortschritt} % · {z.wartet ? `${z.wartet} wartet auf Kunde${z.wartetAeltesterTage ? ` (ältester ${z.wartetAeltesterTage} Tage)` : ''}` : 'nichts wartet'}
-                  {z.naechsterRitual ? ` · nächster Termin ${tagKurz(z.naechsterRitual)}` : ''}{z.report.faellig ? ' · Report fällig' : ''}
-                </span>
-              </button>
-            ))}
+        {!zeilen.length ? (
+          <Leerzustand symbol="◎" ton={LEUCHT.business} titel="Noch kein laufender Fall" aktion={<Knopf onClick={() => router.push(WEG.fulfillment('onboarding'))}>Zum Onboarding ›</Knopf>}>
+            Ein Fall startet, sobald ein Mandat unterschrieben ist und ihr das Onboarding startet.
+          </Leerzustand>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: 12 }}>
+            {zeilen.map(z => <KundenKarte key={z.mandatId} z={z} onOeffnen={() => router.push(WEG.fall(z.mandatId))} />)}
           </div>
         )}
       </Karte>
     </div>
+  );
+}
+
+/** Eine Kunden-Karte im Cockpit: Ampel, Ring, Mini-Strahl, Wert-Konto, als Nächstes, wartet auf euch — ein Tipp öffnet den Fall. */
+function KundenKarte({ z, onOeffnen }: { z: CockpitZeile; onOeffnen: () => void }) {
+  const a = kundenAmpel(z);
+  const f = AMPEL_FARBE[a];
+  const rot = z.haengt.filter(h => h.schwere === 'rot');
+  return (
+    <button type="button" onClick={onOeffnen} className="fassbar" aria-label={`${z.kunde} — ${AMPEL_TEXT[a]}, ${z.fortschritt} % — Fall öffnen`}
+      style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: 14, display: 'grid', gap: 10, alignContent: 'start', textAlign: 'left', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0,
+        borderLeft: `3px solid ${TIEF.rand(f)}` }}>
+      <span style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
+        <FortschrittsRing prozent={z.fortschritt} label={`Fortschritt ${z.kunde}`} farbe={LEUCHT.business} />
+        <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: 1 }}>
+          <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, overflowWrap: 'anywhere' }}>{z.kunde}</b>
+          <span style={{ ...klein, color: C.inkLeise, overflowWrap: 'anywhere' }}>{z.paket ?? z.titel}</span>
+        </span>
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: f, whiteSpace: 'nowrap' }}><Punkt farbe={f} />{AMPEL_TEXT[a]}</span>
+      </span>
+      {z.phasen && z.phasen.length > 0 && <MiniStrahl phasen={z.phasen} hoehe={6} />}
+      <WertBalken wert={z.wert?.wert} ziele={z.wert?.ziele} kompakt />
+      <span style={{ display: 'grid', gap: 4 }}>
+        <span style={{ ...MIKRO }}>Als Nächstes</span>
+        <span style={{ fontSize: TYP.bedien, color: C.ink, overflowWrap: 'anywhere' }}>{rot[0]?.text ?? z.schritt ?? z.phase ?? '—'}</span>
+      </span>
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {z.status === 'onboarding' && <Chip farbe={z.onboarding.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.planung}>Onboarding · {z.onboarding.offen} offen</Chip>}
+        {z.wartet > 0 && <Chip farbe={(z.wartetAeltesterTage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung}>{z.wartet} wartet auf Kunde{z.wartetAeltesterTage ? ` · ${z.wartetAeltesterTage} T.` : ''}</Chip>}
+        {z.health && <Chip farbe={AMPEL_FARBE[z.health]}>Health {z.health === 'gruen' ? 'grün' : z.health}</Chip>}
+        {z.puls && <Chip farbe={z.pulsKritisch ? LEUCHT.kritisch : LEUCHT.gut}>Puls {z.puls.wert}/10</Chip>}
+        {z.report.faellig && <Chip farbe={LEUCHT.achtung}>Report fällig</Chip>}
+        {z.naechsterRitual && <Chip farbe={C.inkDim}>Termin {tagKurz(z.naechsterRitual)}</Chip>}
+        {z.analyse?.vorhanden && <Chip farbe={LEUCHT.agenten}>Dossier{z.analyse.f2 ? ' geprüft' : ''}</Chip>}
+      </span>
+    </button>
   );
 }
 
@@ -71,18 +94,13 @@ function Kz({ x, erklaerung }: { x: FfKennzahl | undefined; erklaerung: Paramete
 export function Visualisierung() {
   const router = useRouter();
   const { daten, fehler } = useUebersicht();
+  const cockpit = useCockpit();
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
   const lk = daten.prozesse.find(p => p.art === 'landkarte');
   const ersterFall = Object.keys(daten.faelle)[0];
   const k = (id: string) => daten.kennzahlen.find(x => x.id === id);
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      {lk && (
-        <Karte i={1} akzent={LEUCHT.business}>
-          <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.landkarte">Landkarte</Ueberschrift>
-          <Landkarte vorlage={lk} zaehler={daten.zaehler[lk.id] ?? {}} gross onKnoten={id => router.push(WEG.fulfillment('prozesse', { k: id }))} />
-        </Karte>
-      )}
       <Cockpit />
       <Karte i={3}>
         <Ueberschrift>Erfolgsmaße</Ueberschrift>
@@ -101,7 +119,13 @@ export function Visualisierung() {
         </Raster>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Health, Takt, Kunden-Puls und Wert-Konto zählen zusätzlich als Säule „Fulfillment“ im Business-Index — ohne laufenden Fall bleibt der Index genau wie bisher.</div>
       </Karte>
-      <Karte i={4}>
+      {lk && (
+        <Karte i={4} akzent={LEUCHT.business}>
+          <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.landkarte">Landkarte</Ueberschrift>
+          <Landkarte vorlage={lk} zaehler={daten.zaehler[lk.id] ?? {}} gross ampel={knotenAmpel(daten.zaehler[lk.id] ?? {}, cockpit.daten?.zeilen ?? [])} onKnoten={id => router.push(WEG.fulfillment('prozesse', { k: id }))} />
+        </Karte>
+      )}
+      <Karte i={5}>
         <Ueberschrift>Kunden-Ansicht (Vorlage)</Ueberschrift>
         <KundenAnsichtVorschau {...(ersterFall ? { mandatId: ersterFall } : {})} />
       </Karte>
