@@ -55,3 +55,17 @@ export function layoutFuerSeite(seite: string, layout: Layout): Layout {
 
 /** Plätze, die NICHT auf die Fläche passen (PUT → 400, nie still gespeichert). */
 export const fremdePlaetze = (seite: string, plaetze: readonly Platz[]): Platz[] => plaetze.filter(p => !widgetPasst(seite, p.art, p.einstellungen));
+
+/**
+ * Prüf-Fund 11.10.: GET liefert nur die Plätze, die auf die Fläche passen — schickte der Browser danach sein Layout zurück, waren die anderen
+ * (z. B. ein Privat-Widget, das in einem älteren Layout auf Heute › Business stand) dauerhaft weg. Darum legt der Schreibweg die gespeicherten,
+ * nicht ausgelieferten Plätze unverändert zurück (hinten an, nur wenn die Kennung nicht schon im neuen Layout steht). `null` = Eintrag löschen.
+ */
+export function mitVerborgenenPlaetzen(seite: string, neu: Layout | null, alt: Layout | undefined): Layout | null {
+  const verborgen = alt ? fremdePlaetze(seite, alt.plaetze) : [];
+  const leer = !neu || (!neu.plaetze.length && !neu.versteckt.length);
+  if (!verborgen.length) return leer ? null : neu;
+  const basis: Layout = neu ?? { plaetze: [], versteckt: [], stand: alt?.stand ?? '' };
+  const da = new Set(basis.plaetze.map(p => p.id));
+  return { ...basis, plaetze: [...basis.plaetze, ...verborgen.filter(p => !da.has(p.id))] };
+}
