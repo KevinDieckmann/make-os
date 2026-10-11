@@ -22,7 +22,14 @@
 
 // In Produktion mit __Host-: nur über HTTPS, nur für genau diesen Host, keine Domain-Cookies von
 // Nachbarn unter derselben Endung (sslip.io) — der Browser erzwingt das am Präfix (26.09.).
-export const SITZUNG_COOKIE = process.env.NODE_ENV === 'production' ? '__Host-make-os-sitzung' : 'make-os-sitzung';
+/**
+ * Lokale Vorschau eines Produktionsbaus (11.10., Safari): Safari verwirft „secure“-Cookies über http://localhost, Chrome nicht. Nur wenn
+ * `MAKE_OS_LOKALE_VORSCHAU=1` UND die Instanz-Adresse ausdrücklich `http://localhost`/`http://127.0.0.1` ist, gilt der Entwicklungs-Name
+ * ohne __Host-/secure. Auf dem Server (https-Adresse) ist die Variable wirkungslos (Test tests/sitzung-lokale-vorschau.test.ts).
+ */
+export const lokaleVorschau = (): boolean =>
+  process.env.MAKE_OS_LOKALE_VORSCHAU === '1' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test((process.env.MAKE_OS_ADRESSE ?? '').trim());
+export const SITZUNG_COOKIE = process.env.NODE_ENV === 'production' && !lokaleVorschau() ? '__Host-make-os-sitzung' : 'make-os-sitzung';
 /** Nicht signiert, nicht geheim: nur damit der Browser weiß, wer da ist. */
 export const WER_COOKIE = 'make-os-wer';
 export const SITZUNG_TAGE = 14;
