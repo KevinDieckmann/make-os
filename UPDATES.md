@@ -4,6 +4,21 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 11.10.2026 — Update-Probe mit Altbestand: Pflicht-Gate vor jedem Upload (nur lokal — Branch `update-probe`, Basis 82a44555 = `update-0910b`)
+
+Kevin: „Malin trägt schon aktuelle Daten ein — die müssen nach dem Update auch noch da sein!“ Werkzeug + Anleitung: DEPLOY.md › „Update-Probe“.
+- `node scripts/update-probe.mjs --alt <online-worktree> --neu <neu-worktree> --ordner <leerer Ordner> --bericht <pfad.md>` — sät mit der ONLINE-Version
+  (Format wie live), startet die neue darauf, vergleicht jeden Bestand (Kennungen, Felder, Dateien, Format v1, Sichtbarkeit), rechnet eine Gegenprobe
+  der alten Version ein und prüft den Rückweg. Ausgang 0 = verlustfrei. Logik rein in `lib/betrieb/update-probe.ts` (Tests `tests/update-probe.test.ts`).
+- **Lauf 11.10. (a063e73a → 82a44555): VERLUSTFREI ja.** 107 Bestände/658 Einträge vorher, 122/845 nachher, alles Hülle v1 ohne `_v`, Dateien MKOSDAT1,
+  35 Marken weiter sichtbar, Rückweg: alle Bestände mit der alten Datenschicht lesbar, keine 5xx.
+- **Bestehende Fehler (alt UND neu, nicht durch das Update):** (1) `lib/crm/speicher.ts` (Säuberer Mandat, `ziele`): ein Ziel als reiner Text in der
+  Liste fällt beim nächsten Speichern des Mandats weg (`text` aus einem String ist leer). Live nur relevant, wenn ein Bestand Text-Ziele trägt (kein
+  heutiger Schreibweg erzeugt sie). (2) `app/api/state/finanzplan/route.ts` GET: liegt `finanzplan` ohne Firmen (z. B. `null` nach dem Konten-Spiegel
+  `finanzplanSpiegeln`, wenn der Plan noch nie geöffnet war) und schreibt jemand vorher eine Rechnung/Zahlung per PATCH, ersetzt das nächste GET den
+  ganzen Bestand durch den Startbestand — die Einträge sind weg (in der Probe beobachtet, beim Säen umgangen). Beides: Kevins Entscheidung, ob/wann.
+- Erneut laufen lassen nach der Fulfillment-Integration: derselbe Befehl (bzw. `--ab neu`, wenn sich nur die neue Version geändert hat).
+
 ## 10.10.2026 — Inbox: Suche über Anhang-Namen, Übergeben mit Anhängen + Zurückziehen, Aufgaben-Vorschläge aus Mails/WhatsApp (nur lokal — Branch `inbox-suche-uebergeben`, Basis 2e5ef5fb = `update-0910b`)
 
 ROADMAP_Q4.md › Lücke 6 („Mail nicht übergebbar, keine Inbox-Suche“, Kevin & Malin) und Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“. Suche, Übergaben (Kopie) und
