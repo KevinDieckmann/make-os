@@ -55,7 +55,9 @@ export const VERTRAULICHE_QUELLEN = new Set(['postfach', 'kontakte', 'crm', 'ban
   // 09.10. (Paket 4a): die Antwort eines Heads (head_fragen) trägt Daten seines Bereichs — Kartei, Finanzen, Termine.
   'agent',
   // 09.10.: Gesundheits-Unterlagen der Person (Arztbriefe, Laborwerte — Art. 9), nur der Gesundheits-Head liest sie.
-  'gesundheit-unterlagen']);
+  'gesundheit-unterlagen',
+  // 10.10. (Fulfillment C3): Dossier eines Mandats, freigegebene Unterlagen/Playbook-Antworten des Kunden, Fulfillment-Lage (ZOE) — Geschäftswissen Dritter.
+  'dossier', 'mandat-unterlagen', 'fulfillment']);
 
 /** Soll dieser Agent nur als Vorschlag (Stapel) gestartet werden statt zu laufen? */
 export function agentNurVorschlag(agent: string, fremdGelesen: boolean, vertraulich: boolean): boolean {

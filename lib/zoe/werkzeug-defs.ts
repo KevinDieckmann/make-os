@@ -149,6 +149,16 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
       input_schema: obj({ name: { type: 'string', description: 'Optional: Teil des Namens einer Gesellschaft — ohne Angabe alle.' } }),
     },
     {
+      // 10.10. (Fulfillment C3): eine Lese-Tür auf Fulfillment eines Mandats (lib/fulfillment/analyse/zoe-werkzeug.ts).
+      name: 'fulfillment_lage',
+      description: `Liest Fulfillment eines Business-Mandats (Produkte & Mandate › Fulfillment): Fall (Status, Fortschritt, nächster Schritt, was beim Kunden wartet), Onboarding, Wert-Konto (vorher → jetzt → Ziel), Quick Wins und das Dossier der Analyse (Abschnitte mit Quellen, Diagnose-Entwurf, Freigaben F1/F2). Ohne \`mandat\` die Liste der Mandate. Den beruflichen Personenteil nur mit \`mitPersonen: true\` und nur, wenn die Person ihn sehen darf. Nur lesen. ${DATEN}`,
+      input_schema: obj({
+        mandat: { type: 'string', description: 'Kennung des Mandats oder ein Teil von Titel/Kunde — ohne Angabe die Liste.' },
+        mitPersonen: { type: 'boolean', description: 'Auch den beruflichen Personenteil (nur mit Zugang).' },
+        teil: { type: 'number', minimum: 1, maximum: 40, description: 'Teil 1 … n einer langen Antwort.' },
+      }),
+    },
+    {
       name: 'gesundheits_index',
       description: `Liest den Gesundheits-Index der Person (Erholung & Schlaf 40 · Bewegung & Aufbau 30 · Ernährung & Körper 30) — gesamt oder EINE Kennzahl mit Wert, Ampel, Schwellen, Formel, Quelle und den Punkten dahinter. Nutze das bei „Wie steht meine Gesundheit?“, „Wie war mein Schlaf diese Woche?“, „Was ist rot?“. Zahlen genau so nennen, wie sie kommen; Struktur und Tracking, keine ärztliche Beratung. ${DATEN}`,
       input_schema: obj({

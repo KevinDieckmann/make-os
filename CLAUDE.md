@@ -2136,6 +2136,26 @@ Kevin: „im Sales der Head of Sales, im Marketing der Head of Marketing usw. �
   (Rule of Two: `aussen`/`geld`/`loeschen` IMMER Stapel; nach fremdem Text nur `lesen`/`vorschlag` ohne Klick; Marke `fremdGelesen` gibt der Aufrufer mit).
   ZOE gibt `sicht` (Space der Seite) mit, Heads/Mitarbeiter den Bereich des Heads; Agenten-Werkzeuge prüfen gegen das in DIESEM Lauf angebotene Schema.
 
+## Fulfillment — Analyse (10.10., Paket C3, Branch `fulfillment-c3`, nur lokal; FULFILLMENT_KONZEPT.md 4, UPDATES.md)
+- **Dossier je Mandat** (`fulfillment-dossiers--<h>`, nur Business-Mandate): Abschnitte mit Aussagen (Art, Quelle + Abrufdatum je Aussage), Läufe, F1/F2, Interessenabwägung,
+  Prüfbericht, Diagnose-Entwurf, Leseteil-Verweis. Schritte NUR rein in `lib/fulfillment/analyse/dossier-anwenden.ts` über `fulfillmentAendern` (Stand → 409, jede inhaltliche
+  Änderung nimmt F2 und die Prüfung zurück). Agenten als Daten in `agenten.ts` (Wellen, Abhängigkeiten, KI-Kategorien, Schätzung, neutraler Auftrag) — neuer Agent = Zeile dort.
+- **Jeder Lauf einzeln bestätigt** (Kevin 22:30): Start NUR `laufStarten` aus `POST /api/fulfillment/analyse` mit bestätigtem Betrag; Schätzung neu > bestätigt → 409
+  `kostenRueckfrage`; Grenze 1,5×; ≤ 2 gleichzeitig (429), ≤ 3 je Agent (4. nur mit Grund), Pacht 10 Min. Kein Takt, kein Morgenlauf, keine Kette startet einen Lauf
+  (Wächter in `tests/fulfillment-c3-routen.test.ts`). Ergebnis = Entwurf (`ausgabePruefen`: ohne Quelle → offene Frage, nur belegbare URLs aus DIESEM Lauf, gesperrte
+  Domains raus, Negativliste raus mit Kategorie, Namen → Funktion); ins Dossier erst per Klick „übernehmen“.
+- **Web-Abruf** nur `web-lesen.ts` (`web_lesen`): DNS einmal prüfen (`lib/netz/oeffentlich.ts` — EINE Regel `ipIntern`, auch für Postfächer), mit festgehaltener Adresse
+  verbinden, 3 Weiterleitungen je neu geprüft, 5/15 s, 2 MB, nur Text, robots.txt, 1/s je Host, 20 je Lauf; erlaubt NUR Domains des Mandats, Adressen aus den ECHTEN
+  Suchergebnissen des Laufs (nie aus dem Text des Modells) und aus den Eingaben. LinkedIn, XING, Register-Portale, Transparenzregister nie (`GESPERRTE_DOMAINS`).
+- **Werkzeuge** `web_lesen`/`fall_unterlagen`/`dossier_teile` nur im Analyse-Handler (nie ZOE, nie Heads), mit Vertrag; ZOE liest über `fulfillment_lage` (Personenteil nur
+  mit `mitPersonen` + Zugang, Leseteil nie). KI ehrlich: Unternehmen ['crm','web'], A2/AP/A11–A13 ['crm'], A4 ['crm','web'] ohne Pseudonym, Zweck `fulfillment-a4-personen`.
+- **Personenteil getrennt** (`fulfillment-personen--<h>`): Karten nur aus einem bestätigten A4-Lauf (Status Entwurf, Funktion aus F1), Route `/api/fulfillment/personen` mit
+  `personenteilZugang` + Lese-Protokoll „personenrecherche“; die Dossier-Antwort trägt nie Namen (`sicht.ts`). Art.-14-Uhr (`dsgvo.ts`, verknüpfter CRM-Kontakt informiert →
+  gilt als gegeben, `mitKontaktArt14`), Löschfrist Mandatsende + Frist `fulfillment-personen` (Vermerk nur Anzahl). F2 nur mit bestandener Prüfung (`pruefen.ts`);
+  Datenschutz-Befunde nie überstimmbar.
+- **Tiefenbericht** nur als Leseteil der auslösenden Person: gelesen AUSSCHLIESSLICH über `lib/ki/leseteil.ts` in `app/api/fulfillment/dossier/leseteil` (Wächter: kein Modul
+  unter lib/fulfillment/** importiert ihn); nie an Agenten, Synthese, Brain, Suche, ZOE.
+
 ## Agenten — Querliegendes
 - **Ereignisstelle (09.10., E1; ANALYSE_AGENTEN_DATEN.md):** Agenten erfahren von Änderungen nur über `ereignis(e)` (`lib/ereignisse/server.ts`, wirft nie,
   Dedup über deterministische Kennung, nach dem Speichern der Quelle) → Bestand `ereignisse--<haushalt>` (nur Kennungen, nie Betreff/Text/Beträge; Frist

@@ -1,7 +1,8 @@
 // ─── Werkzeug-Verträge: das Register aller Werkzeuge (10.10., Paket V3, AGENTEN_KONZEPT_V2.md C3/T1) — nur Server ──────────────────────────
 // EIN Vertrag je Werkzeug, zusammengesetzt aus den Stellen, an denen das jeweilige Wissen schon steht — nichts wird doppelt gepflegt:
 //   Eingabe-Schema   lib/zoe/werkzeug-defs.ts `werkzeugDefs` (Register-Werkzeuge und run_agent; dieselbe Beschreibung, die das Modell sieht),
-//                    `openAgentDef`, lib/agenten/werkzeuge.ts `agentenDefs`, MEDIEN_DEFS, WISSEN_DEF, UNTERLAGEN_DEF, RECHT_DEFS (Agenten-Werkzeuge).
+//                    `openAgentDef`, lib/agenten/werkzeuge.ts `agentenDefs`, MEDIEN_DEFS, WISSEN_DEF, UNTERLAGEN_DEF, RECHT_DEFS (Agenten-Werkzeuge),
+//                    FULFILLMENT_ANALYSE_DEFS (Analyse-Strecke, lib/fulfillment/analyse/werkzeug-defs.ts — nur der Analyse-Handler bietet sie an).
 //                    Schemas mit Listen, die erst zur Laufzeit feststehen (Heads, Fach-Agenten), bekommen hier die VOLLE Liste (Katalog,
 //                    AUSFUEHRBAR) — wer sie wirklich nutzen darf, prüft das Werkzeug selbst; Mitarbeiter-Kennungen bleiben offen (leere enum).
 //   Gruppe, Stufe    lib/zoe/register.ts (`gruppeVon`, `risikoVon`, je Aufruf `risikoFuerAufruf`).
@@ -25,6 +26,7 @@ import { MEDIEN_DEFS } from '@/lib/agenten/medien-werkzeuge';
 import { WISSEN_DEF } from '@/lib/agenten/wissen-werkzeug';
 import { UNTERLAGEN_DEF } from '@/lib/agenten/unterlagen-werkzeug';
 import { RECHT_DEFS } from '@/lib/agenten/recht-werkzeuge';
+import { FULFILLMENT_ANALYSE_DEFS } from '@/lib/fulfillment/analyse/werkzeug-defs';
 import { EINORDNUNG } from './einordnung';
 import type { WerkzeugBereich, WerkzeugVertrag } from './vertrag';
 
@@ -46,6 +48,7 @@ function bauen(): ReadonlyMap<string, WerkzeugVertrag> {
     [WISSEN_DEF.name]: WISSEN_DEF,
     [UNTERLAGEN_DEF.name]: UNTERLAGEN_DEF,
     ...RECHT_DEFS,
+    ...FULFILLMENT_ANALYSE_DEFS,
   };
   const m = new Map<string, WerkzeugVertrag>();
   for (const [name, e] of Object.entries(EINORDNUNG)) {
@@ -85,6 +88,6 @@ export function werkzeugeMitVertragspflicht(): string[] {
     ...Object.keys(WERKZEUGE),
     'run_agent', ...(oa ? ['open_agent'] : []),
     ...Object.keys(agentenDefs({ mitarbeiter: [], headWerkzeuge: [] })),
-    ...Object.keys(MEDIEN_DEFS), WISSEN_DEF.name, UNTERLAGEN_DEF.name, ...Object.keys(RECHT_DEFS),
+    ...Object.keys(MEDIEN_DEFS), WISSEN_DEF.name, UNTERLAGEN_DEF.name, ...Object.keys(RECHT_DEFS), ...Object.keys(FULFILLMENT_ANALYSE_DEFS),
   ])).sort();
 }

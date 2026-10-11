@@ -39,7 +39,9 @@ import { EINORDNUNG, ALT_NAMEN } from '@/lib/werkzeuge/einordnung';
 import { LESEND_VOR_V3, FREMD_VOR_V3, GEKAPSELT_VOR_V3, KATEGORIE_VOR_V3 } from './fixtures/werkzeug-listen-vor-v3';
 
 /** Werkzeuge, die nach V3 dazukamen — ihre Einordnung steht in lib/werkzeuge/einordnung.ts; der Altbestand bleibt bit-gleich (Abschnitt b). */
-const NEU_SEIT_V3: ReadonlySet<string> = new Set(['recht_lage', 'vertrag_checkliste', 'recht_vorschlag']);
+const NEU_SEIT_V3: ReadonlySet<string> = new Set(['recht_lage', 'vertrag_checkliste', 'recht_vorschlag',
+  // 10.10. Fulfillment C3: drei Werkzeuge NUR für den Analyse-Handler + die ZOE-Lese-Tür.
+  'web_lesen', 'fall_unterlagen', 'dossier_teile', 'fulfillment_lage']);
 
 const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', extra: Record<string, unknown> = {}) =>
   ({ id, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'haus', ...extra });

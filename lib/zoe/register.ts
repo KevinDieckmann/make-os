@@ -393,6 +393,8 @@ export const REGISTER: Record<string, Eintrag> = {
   crm_datei_lesen: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('CRM-Datei lesen', i => `${text(i.datei, 40)}${i.teil ? ` · Teil ${text(i.teil, 4)}` : ''}`) },
   heads_lage: { gruppe: 'markttraktion', risiko: 'frei', vorschau: schlicht('Heads lesen', i => text(i.head) || 'Sales, Marketing, Event') },
   ...CRM_VORSCHLAG_REGISTER,
+  // Fulfillment (10.10., C3): nur lesen — Fall, Wert-Konto, Dossier; Personenteil nur mit Zugang und `mitPersonen`; den Leseteil nie.
+  fulfillment_lage: { gruppe: 'crm', risiko: 'frei', vorschau: schlicht('Fulfillment lesen', i => text(i.mandat) || 'alle Mandate') },
   entwurf_ansprache: {
     gruppe: 'kontakte', risiko: 'frei',
     vorschau: schlicht('Ansprache entwerfen — kein Versand', i => text(i.kontakt)),

@@ -425,15 +425,17 @@ describe('Routen: Business only, Tor, Stubs', () => {
 
   it('Personenteil: nie für ein Konto „nur Business“; Inhaber und volle Mitglieder erreichen den Stub', async () => {
     expect((await rufe('fulfillment/personen', 'GET', sitzung('partnerin'))).status).toBe(403);
-    expect((await rufe('fulfillment/personen', 'GET', sitzung('pia'))).status).toBe(501);
-    expect((await rufe('fulfillment/personen', 'GET', sitzung('olaf'))).status).toBe(501);
+    // C3 (10.10.): Inhaber und volle Mitglieder kommen durch das Tor — ohne Mandat (?m=) antwortet die Route mit 400.
+    expect((await rufe('fulfillment/personen', 'GET', sitzung('pia'))).status).toBe(400);
+    expect((await rufe('fulfillment/personen', 'GET', sitzung('olaf'))).status).toBe(400);
     // der Rest von Fulfillment ist Business — auch für „nur Business“ sichtbar
     expect((await rufe('fulfillment', 'GET', sitzung('partnerin'))).status).toBe(501);
   });
 
   it('Leseteil nur per Sitzung; öffentliche Wege antworten bis C2 mit derselben 404', async () => {
     expect((await rufe('fulfillment/dossier/leseteil', 'GET', dienst('pia'))).status).toBe(401);
-    expect((await rufe('fulfillment/dossier/leseteil', 'GET', sitzung('pia'))).status).toBe(501);
+    // C3 (10.10.): ohne Leseteil dieser Person (hier: kein Dossier) → 404.
+    expect((await rufe('fulfillment/dossier/leseteil', 'GET', sitzung('pia'))).status).toBe(404);
     for (const [pfad, m] of [['kunde/[link]', 'GET'], ['kunde/[link]/formular', 'POST'], ['kunde/[link]/upload', 'POST'], ['kunde/[link]/puls', 'POST']] as const) {
       const r = await rufe(pfad, m, {});
       expect(r.status, pfad).toBe(404);
