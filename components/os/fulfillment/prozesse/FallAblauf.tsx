@@ -19,7 +19,8 @@ import { Fenster } from '../../Fenster';
 import { Wahl } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
-import { fallReise, phaseGruppen, phasenVon, statusOps, FREIGABE_WER, type ReisePhase, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
+import { fallReise, phaseGruppen, phasenVon, statusOps, FREIGABE_WER, ONBOARDING_SPRUNG, type ReisePhase, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
+import { obSchluessel } from '@/lib/fulfillment/prozesse/onboarding';
 import { kinderVon } from '@/lib/fulfillment/regeln';
 import { OB_TEIL_ID } from '@/lib/fulfillment/prozesse/fall';
 import type { FallKnoten, KnotenStatus } from '@/lib/fulfillment/typen';
@@ -27,6 +28,7 @@ import { useFall, fallOps, fallAktion, fehlerText, tagKurz, STATUS_TEXT, type Fa
 import { klein, feld, Leiste, Meldung, useTextFrage } from './teile';
 import { FreigabeRaute, JETZT, ZUSTAND_FARBE } from '../reise/bilder';
 import { useSprung, insBild } from '../reise/sprung';
+import { useFallSprung } from '../reise/FallKopf';
 
 const STATUS_FARBE: Record<KnotenStatus, string> = { offen: C.inkLeise, in_arbeit: LEUCHT.planung, wartet_kunde: LEUCHT.achtung, erledigt: LEUCHT.gut, entfaellt: C.inkLeise };
 const WIE = [{ id: 'kickoff' as const, label: 'im Kick-off' }, { id: 'termin' as const, label: 'im Termin' }, { id: 'mail' as const, label: 'per Mail' }, { id: 'link' as const, label: 'über den Link' }];
@@ -181,8 +183,10 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
   z: SchrittZeile; phaseFreigabe?: string; daten: FallAntwort; bausteine: Bausteine; status: (z: SchrittZeile, s: KnotenStatus) => Promise<void>; ops: Ops; onFreigabe: (id: string) => void;
 }) {
   const router = useRouter();
+  const geh = useFallSprung(daten.mandat.id, 'ablauf');
   const k = z.knoten;
   const f = daten.fall!;
+  const sprung = obSchluessel(k.id);
   const eigeneFreigabe = k.freigabe && k.freigabe !== phaseFreigabe ? daten.vorlage?.freigaben.find(x => x.id === k.freigabe) ?? { id: k.freigabe, titel: k.freigabe, wer: 'beide' as const } : undefined;
   const sperreErledigt = !!k.freigabe;
   const setzbar = !z.abgeleitet;
@@ -204,7 +208,7 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
           ? <HakenZiel an={z.zustand === 'erledigt'} farbe={LEUCHT.gut} label={k.titel} onChange={() => status(z, z.zustand === 'erledigt' ? 'offen' : 'erledigt')} />
           : <span style={{ width: 44, display: 'inline-grid', placeItems: 'center', flex: '0 0 auto' }}><Punkt farbe={STATUS_FARBE[z.zustand]} /></span>}
         titel={<span style={{ color: z.fertig ? C.inkDim : C.ink, textDecoration: z.zustand === 'entfaellt' ? 'line-through' : 'none' }}>{k.titel}</span>}
-        unter={(z.bausteine.length || k.faelligAm || kunde || k.grund || (k.extra && !z.abgeleitet)) ? (
+        unter={(z.bausteine.length || k.faelligAm || kunde || k.grund || (k.extra && !z.abgeleitet) || (sprung && !z.fertig)) ? (
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             {z.bausteine.map(b => {
               const bb = b.bausteinId ? bausteine.get(b.bausteinId) : undefined;
@@ -221,6 +225,7 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
             {kunde && !z.fertig && <Chip farbe={LEUCHT.achtung}>macht der Kunde</Chip>}
             {k.extra && !z.abgeleitet && k.id !== OB_TEIL_ID && <Chip farbe={C.inkDim}>Zusatz</Chip>}
             {z.zustand === 'entfaellt' && k.grund && <span style={klein}>Entfällt: {k.grund}</span>}
+            {sprung && !z.fertig && <span style={{ ...klein, color: C.inkLeise }}>wird automatisch erledigt, sobald es da ist</span>}
           </span>
         ) : undefined}
         rechts={
@@ -229,7 +234,9 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
             {eigeneFreigabe && f.freigaben[eigeneFreigabe.id] && <Chip farbe={LEUCHT.gut}>{eigeneFreigabe.id} vermerkt {tagKurz(f.freigaben[eigeneFreigabe.id].am)}</Chip>}
             {setzbar
               ? <Wahl<KnotenStatus> label="Status" klein liste={wahl.map(s => ({ id: s, label: STATUS_TEXT[s] }))} wert={z.zustand} farbe={STATUS_FARBE[z.zustand]} onWahl={s => status(z, s)} />
-              : <Chip farbe={STATUS_FARBE[z.zustand]}>{STATUS_TEXT[z.zustand]} · automatisch</Chip>}
+              : sprung && !z.fertig
+                ? <Knopf leise onClick={() => (sprung === 'f0' ? onFreigabe('F0') : sprung === 'willkommen' ? geh('ueberblick', { art: 'willkommen' }) : geh(ONBOARDING_SPRUNG[sprung].reiter))}>{ONBOARDING_SPRUNG[sprung].text}{sprung === 'f0' ? '' : ' ›'}</Knopf>
+                : <Chip farbe={STATUS_FARBE[z.zustand]}>{STATUS_TEXT[z.zustand]} · automatisch</Chip>}
           </span>
         } />
     </ZeileAktionen>

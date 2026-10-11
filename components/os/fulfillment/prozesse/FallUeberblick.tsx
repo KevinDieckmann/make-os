@@ -11,7 +11,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP, MIKRO, TIEF, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Punkt, Pillen, HakenZiel, Erklaert, ZeileAktionen, LEUCHT, useHandy } from '../../ui';
 import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
-import { ONBOARDING_SPRUNG } from '@/lib/fulfillment/prozesse/reise';
+import { ONBOARDING_SPRUNG, seitTagen } from '@/lib/fulfillment/prozesse/reise';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
 import { useFall, useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, type FallAntwort } from './daten';
@@ -73,7 +73,7 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
           <Liste>{daten.wartet!.map(w => (
             <Zeile key={w.id} umbrechen links={<Punkt farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={w.titel}
               unter={w.art === 'entscheidung' ? 'Entscheidung des Kunden' : w.art === 'freigabe' ? 'Freigabe des Kunden' : 'Schritt beim Kunden'}
-              rechts={w.tage !== undefined ? <Chip farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : C.inkDim}>seit {w.tage} Tag{w.tage === 1 ? '' : 'en'}</Chip> : undefined}
+              rechts={w.tage !== undefined ? <Chip farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : C.inkDim}>{seitTagen(w.tage)}</Chip> : undefined}
               onClick={() => geh(w.art === 'entscheidung' ? 'menschen' : 'ablauf')} />
           ))}</Liste>
         </Karte>
@@ -83,7 +83,7 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
       <Karte i={5} flach>
         <Ueberschrift>Status des Falls</Ueberschrift>
         <Pillen liste={STATUS} aktiv={f.status === 'onboarding' ? null : f.status} onWahl={status => ops([{ op: 'fall-status', status }])} />
-        <div style={klein}>Gestartet am {tagKurz(f.gestartetAm)}{daten.unterschrift ? ` · Unterschrift ${tagKurz(daten.unterschrift.am)}` : ''}. Im Onboarding wechselt der Fall von selbst auf „läuft“, sobald die Schritte erfüllt sind.</div>
+        <div style={klein}>Gestartet am {tagKurz(f.gestartetAm)}{daten.unterschrift ? ` · Unterschrift ${tagKurz(daten.unterschrift.am)}` : ''} — im Onboarding wechselt der Fall von selbst auf „läuft“, sobald die Schritte erfüllt sind.</div>
       </Karte>
       {frage.dialog}
     </div>

@@ -63,10 +63,10 @@ function KundenKarte({ z, onOeffnen }: { z: CockpitZeile; onOeffnen: () => void 
       <span style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
         <FortschrittsRing prozent={z.fortschritt} label={`Fortschritt ${z.kunde}`} farbe={LEUCHT.business} />
         <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: 1 }}>
-          <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, overflowWrap: 'anywhere' }}>{z.kunde}</b>
-          <span style={{ ...klein, color: C.inkLeise, overflowWrap: 'anywhere' }}>{z.paket ?? z.titel}</span>
+          <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, overflowWrap: 'break-word' }}>{z.kunde}</b>
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: f }}><Punkt farbe={f} groesse={8} />{AMPEL_TEXT[a]}</span>
+          <span style={{ ...klein, color: C.inkLeise, overflowWrap: 'break-word' }}>{z.paket ?? z.titel}</span>
         </span>
-        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: f, whiteSpace: 'nowrap' }}><Punkt farbe={f} />{AMPEL_TEXT[a]}</span>
       </span>
       {z.phasen && z.phasen.length > 0 && <MiniStrahl phasen={z.phasen} hoehe={6} />}
       <WertBalken wert={z.wert?.wert} ziele={z.wert?.ziele} kompakt />

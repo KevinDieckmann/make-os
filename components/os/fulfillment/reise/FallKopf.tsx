@@ -12,7 +12,7 @@ import { Karte, Ueberschrift, Knopf, LEUCHT, useHandy } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import type { FallReiter } from '@/lib/fulfillment/adresse';
-import { fallReise, naechsteSchritte, naechsterHandgriff, type Handgriff } from '@/lib/fulfillment/prozesse/reise';
+import { fallReise, naechsteSchritte, naechsterHandgriff, seitTagen, type Handgriff } from '@/lib/fulfillment/prozesse/reise';
 import { useFall, tagKurz } from '../prozesse/daten';
 import { PhasenStrahl, MiniStrahl, Antworten, AntwortKachel, FortschrittsRing, Legende, FreigabeRaute, LegendenBalken, JETZT } from './bilder';
 import { springe, sprungAnker, type Sprung } from './sprung';
@@ -46,8 +46,8 @@ export function FallKopf({ mandatId, reiter }: { mandatId: string; reiter: FallR
   const mitAktion = reiter === 'ueberblick' || reiter === 'ablauf';
 
   const haengt = willkommenRot ? { ampel: LEUCHT.kritisch, antwort: 'Willkommensmail überfällig', unter: 'Die 24 Stunden nach der Unterschrift sind um.' }
-    : ueberfaellig.length ? { ampel: LEUCHT.kritisch, antwort: `${ueberfaellig.length} überfällig`, unter: ueberfaellig.slice(0, 2).map(k => `„${k.titel}“ seit ${tagKurz(k.faelligAm)}`).join(' · ') }
-      : wartet.length ? { ampel: LEUCHT.achtung, antwort: `${wartet.length} wartet auf den Kunden`, unter: `${wartet[0].titel}${wartet[0].tage !== undefined ? ` · seit ${wartet[0].tage} Tag${wartet[0].tage === 1 ? '' : 'en'}` : ''}` }
+    : ueberfaellig.length ? { ampel: LEUCHT.kritisch, antwort: `${ueberfaellig.length} überfällig`, unter: ueberfaellig.slice(0, 2).map(k => `„${k.titel}“ fällig ${tagKurz(k.faelligAm)}`).join(' · ') }
+      : wartet.length ? { ampel: LEUCHT.achtung, antwort: `${wartet.length} wartet auf den Kunden`, unter: `${wartet[0].titel}${wartet[0].tage !== undefined ? ` · ${seitTagen(wartet[0].tage)}` : ''}` }
         : { ampel: LEUCHT.gut, antwort: 'Nichts hängt', unter: 'Kein Schritt überfällig, nichts liegt beim Kunden.' };
 
   return (

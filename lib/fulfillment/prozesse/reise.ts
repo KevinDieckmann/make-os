@@ -199,6 +199,9 @@ const freigabeText = (id: string, freigaben: readonly Pick<Freigabepunkt, 'id' |
   return `Freigabe ${id} vermerken${f ? ` (${f.titel})` : ''}`;
 };
 
+/** „seit heute“ · „seit 1 Tag“ · „seit 9 Tagen“ — Wartezeit in Worten. */
+export const seitTagen = (tage: number): string => (tage <= 0 ? 'seit heute' : `seit ${tage} Tag${tage === 1 ? '' : 'en'}`);
+
 /** Die Phasen eines Falls in Rang-Reihenfolge (nur Ebene 2) — für Auswahl-Listen („Zusatz-Schritt in …“). */
 export function phasenVon(fall: Pick<Fall, 'knoten'>): FallKnoten[] {
   const w = wurzelVon(fall.knoten);

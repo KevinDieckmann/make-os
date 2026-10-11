@@ -34,10 +34,11 @@ const balkenFarbe = (p: StrahlPhase) => (p.zustand === 'fertig' ? LEUCHT.gut : p
 function Schiene({ p, hoehe = 8 }: { p: StrahlPhase; hoehe?: number }) {
   const f = balkenFarbe(p);
   const anteil = p.zustand === 'fertig' ? 1 : Math.max(p.zustand === 'jetzt' ? 0.04 : 0, p.anteil);
+  const raute = hoehe >= 8 ? 14 : 9;
   return (
     <span style={{ position: 'relative', display: 'block', height: hoehe, borderRadius: hoehe / 2, background: 'rgba(255,255,255,.07)', boxShadow: p.zustand === 'jetzt' ? TIEF.schein(f, 14) : undefined }}>
       <span style={{ position: 'absolute', inset: 0, width: `${Math.round(anteil * 100)}%`, borderRadius: hoehe / 2, background: anteil > 0 ? TIEF.verlauf(f) : 'transparent' }} />
-      {p.freigabe && <span style={{ position: 'absolute', right: -6, top: '50%', marginTop: -7 }}><FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} groesse={14} /></span>}
+      {p.freigabe && <span style={{ position: 'absolute', right: -raute / 2 + 1, top: '50%', marginTop: -raute / 2 }}><FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} groesse={raute} /></span>}
     </span>
   );
 }
@@ -56,9 +57,9 @@ export function PhasenStrahl({ phasen, onPhase, aktiv }: { phasen: readonly Stra
           <>
             <span style={{ ...MIKRO, color: p.zustand === 'jetzt' ? JETZT : C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.zustand === 'jetzt' ? 'Sie sind hier' : p.zustand === 'fertig' ? `✓ Phase ${i + 1}` : `Phase ${i + 1}`}</span>
             <Schiene p={p} />
-            <span style={{ fontSize: TYP.bedien, fontWeight: p.zustand === 'jetzt' ? 700 : 600, color: p.zustand === 'offen' ? C.inkDim : C.ink, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{p.titel}</span>
+            <span style={{ fontSize: TYP.bedien, fontWeight: p.zustand === 'jetzt' ? 700 : 600, color: p.zustand === 'offen' ? C.inkDim : C.ink, lineHeight: 1.3, overflowWrap: 'break-word', hyphens: 'auto' }}>{p.titel}</span>
             {p.gesamt !== undefined && p.gesamt > 0 && <span style={{ ...klein, color: C.inkLeise }}>{p.zustand === 'fertig' ? 'erledigt' : `${p.erledigt ?? 0} von ${p.gesamt}`}{p.wartet ? ` · ${p.wartet} beim Kunden` : ''}</span>}
-            {p.freigabe && <span style={{ ...klein, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, display: 'flex', gap: 6, alignItems: 'baseline' }}><span aria-hidden>◆</span><span style={{ overflowWrap: 'anywhere' }}>{p.freigabe.id}{p.freigabe.titel ? ` · ${p.freigabe.titel}` : ''}</span></span>}
+            {p.freigabe && <span style={{ ...klein, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, display: 'flex', gap: 6, alignItems: 'baseline' }}><span aria-hidden>◆</span><span style={{ overflowWrap: 'break-word', hyphens: 'auto', minWidth: 0 }}>{p.freigabe.id}{p.freigabe.titel ? ` · ${p.freigabe.titel}` : ''}</span></span>}
           </>
         );
         const stil: CSSProperties = { display: 'grid', gap: 6, alignContent: 'start', minWidth: 0, textAlign: 'left', padding: '6px 4px', borderRadius: ECKE.eingabe, minHeight: 44, color: C.ink, fontFamily: SCHRIFT.text,
@@ -86,7 +87,7 @@ export function MiniStrahl({ phasen, onPhase, unter = true, hoehe = 8 }: { phase
   const text = jetzt ? `Phase ${j + 1} von ${phasen.length} · ${jetzt.titel}` : alle ? `Alle ${phasen.length} Phasen erledigt` : `${phasen.length} Phasen`;
   return (
     <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-      <div role={onPhase ? undefined : 'img'} aria-label={onPhase ? undefined : `${text}. ${phasen.map((p, i) => phaseLabel(p, i)).join('. ')}`} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div role={onPhase ? undefined : 'img'} aria-label={onPhase ? undefined : `${text}. ${phasen.map((p, i) => phaseLabel(p, i)).join('. ')}`} style={{ display: 'flex', gap: hoehe >= 8 ? 8 : 6, alignItems: 'center' }}>
         {phasen.map((p, i) => onPhase && p.id ? (
           <button key={p.id} type="button" className="fassbar" aria-label={phaseLabel(p, i)} onClick={() => onPhase(p.id!)}
             style={{ flex: '1 1 0', minWidth: 0, minHeight: 44, padding: '0 2px', display: 'grid', alignContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}>
