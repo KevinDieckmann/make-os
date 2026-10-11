@@ -19,7 +19,7 @@ type R = { GET?: (r: Request) => Promise<Response>; POST?: (r: Request) => Promi
 let V: typeof import('@/lib/google/verbindung'), A: typeof import('@/lib/gmail/abgleich'), S: typeof import('@/lib/gmail/stand'), Z: typeof import('@/lib/gmail/zuordnung'), db: typeof import('@/lib/store/local-db');
 let AM: typeof import('@/lib/inbox/aus-gespraech'), anfrage: R, followup: R, tasks: R;
 // Inbox 2 (06.10.): die Bausteine arbeiten auf dem Gespräch (jede Quelle) — hier aus Gmail-Kopf + Zuordnung gebaut.
-const gz = (kopf: { threadId: string; betreff: string; von: { email: string; name?: string } }, z?: unknown) => ({ id: `gm~${kopf.threadId}`, betreff: kopf.betreff, gegenueber: kopf.von, zuordnung: (z ?? null) as never, bereich: null });
+const gz = (kopf: { threadId: string; betreff: string; von: { email: string; name?: string } }, z?: unknown) => ({ id: `gm~${kopf.threadId}`, betreff: kopf.betreff, gegenueber: kopf.von, zuordnung: (z ?? null) as never, bereich: 'ug' }); // Business-Postfach (ohne Bereich gilt seit 11.10. Privat — EINE Regel)
 let g: GmailFake;
 
 const k = (id: string, vorname: string, nachname: string, x: Partial<Kontakt> = {}): Kontakt => ({ id, vorname, nachname, stufe: 'kontakt', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', anrede: 'Sie', ...x } as Kontakt);

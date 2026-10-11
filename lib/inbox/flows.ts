@@ -19,7 +19,8 @@
 
 import type { AufgabeBezug, AufgabenListe, Project, Task } from '@/types/tasks';
 import type { Zuordnung } from '@/lib/gmail/typen';
-import { BUSINESS_VORGABE_SPACE, bereichVon, istFinanzOrt } from '@/lib/einheiten';
+import { BUSINESS_VORGABE_SPACE, istFinanzOrt } from '@/lib/einheiten';
+import { postfachRaum } from '@/lib/postfach/bereich';
 import { bereichVonSpace, istSonstigeProjekt, mandantSpaceId, sonstigeProjektId } from '@/lib/aufgaben/struktur';
 import type { DateiArt } from '@/lib/dateien/regeln';
 import { WEG } from '@/lib/wege';
@@ -28,8 +29,8 @@ import { gespraechPfad } from './strom';
 
 export type Raum = 'privat' | 'business';
 
-/** Bereich des Postfachs (ohne Bereich: Business — wie überall in der Inbox). */
-export const raumVonPostfach = (bereich: string | null | undefined): Raum => (bereich ? bereichVon(bereich) : 'business');
+/** Bereich des Postfachs — die EINE Regel `postfachRaum` (lib/postfach/bereich.ts): ohne Bereich Privat (Prüf-Fund 11.10.). */
+export const raumVonPostfach = (bereich: string | null | undefined): Raum => postfachRaum(bereich);
 
 /** Was die Zuordnung braucht (Browser: TasksContext + /api/aufgaben/crm; Tests: reine Daten). */
 export interface ZielEingabe {

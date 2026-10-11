@@ -283,6 +283,8 @@ function BeschlussForm({ g, daten, alt, entwurf, risiken, schreibe, fertig }: { 
   const kandidaten = [
     ...aktiveEintraege(g.gesellschafter).filter(x => !x.ausgeschiedenAm || beteiligte.includes(x.id)).map(x => ({ id: x.id, name: bezugName(x.wer, daten.namen), rolle: `Gesellschafter${x.ohneStimmrecht ? ' (ohne Stimmrecht)' : ''}` })),
     ...aktiveEintraege(g.organe).filter(x => !x.bis || x.bis > heute || beteiligte.includes(x.id)).map(x => ({ id: x.id, name: bezugName(x.wer, daten.namen), rolle: 'Organ' })),
+    // Altbestand (Prüf-Fund 11.10.): Beteiligte, deren Eintrag endgültig gelöscht ist, bleiben sichtbar — als „(gelöscht)“.
+    ...(alt?.beteiligte ?? []).filter(id => !(g.gesellschafter ?? []).some(x => x.id === id) && !(g.organe ?? []).some(x => x.id === id)).map(id => ({ id, name: beteiligtName(id, g, daten.namen), rolle: 'nicht mehr eingetragen' })),
   ];
   // Vorschau des Ergebnisses wie der Server: Gewicht aus der früheren Abstimmung, sonst der heutige Nennbetrag.
   const abstimmung: Stimmabgabe[] = beteiligte.filter(id => stimmen[id]).map(id => {

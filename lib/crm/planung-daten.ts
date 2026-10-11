@@ -453,3 +453,28 @@ export function planungAnwenden(datei: PlanungDatei, opsRoh: unknown, k: Anwende
   if (konflikte.length) return { ok: false, status: 409, konflikte };
   return { ok: true, datei: d, geaendert };
 }
+
+// ── Konto löschen / Export (Art. 15/17/20, Prüf-Fund 11.10. — Muster `schildOhnePerson`) ───────────────────────────────
+
+/** Speichername einer gelöschten Person in Stempeln. */
+export const PLANUNG_GETILGT = '[gelöscht]';
+
+/** Konto gelöscht: der Speichername in den Stempeln (geändert von, abgehakt von) wird „[gelöscht]“ — Einträge bleiben. Rein. */
+export function planungOhnePerson(d: PlanungDatei, speicher: string): { neu: PlanungDatei; n: number } {
+  let n = 0;
+  const v = <T extends { geaendertVon?: string }>(x: T): T => (x.geaendertVon === speicher ? (n++, { ...x, geaendertVon: PLANUNG_GETILGT }) : x);
+  const neu: PlanungDatei = {
+    ...d, kanaele: d.kanaele.map(v), ziele: d.ziele.map(v), challenges: d.challenges.map(v),
+    nachLeistung: Object.fromEntries(Object.entries(d.nachLeistung).map(([mid, m]) => [mid, Object.fromEntries(Object.entries(m).map(([k, x]) => [k, x && x.von === speicher ? (n++, { ...x, von: PLANUNG_GETILGT }) : x]))])),
+  };
+  return { neu, n };
+}
+
+/** Export: was die Person in der Vertriebsplanung gestempelt hat — Art, Kennung, Zeit. Rein. */
+export function planungEintraegeVon(d: PlanungDatei, speicher: string): { art: string; id: string; am?: string; was?: string }[] {
+  const raus: { art: string; id: string; am?: string; was?: string }[] = [];
+  const liste: [string, readonly { id: string; geaendert: string; geaendertVon: string }[]][] = [['leadkanal', d.kanaele], ['umsatzziel', d.ziele], ['challenge', d.challenges]];
+  for (const [art, l] of liste) for (const x of l) if (x.geaendertVon === speicher) raus.push({ art: `${art} geändert`, id: x.id, am: x.geaendert });
+  for (const [mid, m] of Object.entries(d.nachLeistung)) for (const [k, x] of Object.entries(m)) if (x && x.von === speicher) raus.push({ art: 'schritt nach der leistung', id: mid, am: x.am, was: k });
+  return raus;
+}

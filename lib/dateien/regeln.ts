@@ -84,6 +84,11 @@ export interface DateiEintrag {
    */
   gesellschaft?: import('@/lib/einheiten').GesellschaftId;
   /**
+   * Fortschritts-Report der Leistungstreppe (lib/crm/treppe-server.ts, Prüf-Fund 11.10.) — setzt NUR der Server beim Erstellen. Ein Report ist
+   * keine Geschäftsunterlage wie Rechnung/Angebot: trotz `mandatId` kein Beleg (`istBeleg`), also löschbar.
+   */
+  bericht?: 'fortschritt';
+  /**
    * Dateien an Projekten und Aufgaben (28.09., Paket C2) — nur im Bestand `aufgaben-dateien--<haushalt>`
    * (lib/dateien/aufgaben-ablage.ts), nie in der CRM-Ablage. Kennungen wie in lib/aufgaben/saeubern.ts.
    */
@@ -199,7 +204,8 @@ export function metaSaeubern(roh: unknown): Partial<Pick<DateiEintrag, 'art' | '
  * Hängt der Eintrag an einer Rechnung oder einem Mandat (28.09., K3 · #50/#81)? Dann ist er ein Beleg
  * und wird nicht gelöscht (DELETE → 409) — nur vom Bezug gelöst (PATCH `{ rechnungId: null, mandatId: null }`).
  */
-export const istBeleg = (e: Pick<DateiEintrag, 'rechnungId' | 'mandatId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'rechnungsPdf'>>) => !!(e.rechnungId || e.mandatId || e.angebotId || e.rechnungsPdf);
+export const istBeleg = (e: Pick<DateiEintrag, 'rechnungId' | 'mandatId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'rechnungsPdf' | 'bericht'>>) =>
+  !!(e.rechnungId || e.angebotId || e.rechnungsPdf || (e.mandatId && e.bericht !== 'fortschritt'));
 
 /**
  * Hängt der Eintrag an irgendetwas? Ohne Bezug wird nichts abgelegt (er wäre nirgends zu finden).
@@ -213,7 +219,7 @@ export const istAufgabenDatei = (e: Pick<DateiEintrag, 'projektId' | 'aufgabeId'
 export const nurCrm = <T extends Pick<DateiEintrag, 'projektId' | 'aufgabeId' | 'bereich'>>(l: readonly T[]): T[] => l.filter(e => !istAufgabenDatei(e));
 
 /** Bezüge, die nur der Server setzt (Angebots-PDF, Logo) — `metaSaeubern` liest sie nie aus dem Netz. */
-export interface FesteBezuege { angebotId?: string; /** Rechnungs-PDF (08.10.): Kennung der Rechnung. */ rechnungsPdf?: string; gesellschaft?: import('@/lib/einheiten').GesellschaftId }
+export interface FesteBezuege { angebotId?: string; /** Rechnungs-PDF (08.10.): Kennung der Rechnung. */ rechnungsPdf?: string; gesellschaft?: import('@/lib/einheiten').GesellschaftId; /** Fortschritts-Report (11.10.). */ bericht?: 'fortschritt' }
 
 export interface DateiFilter { kontaktId?: string; firmaId?: string; mandatIds?: string[]; dealIds?: string[]; rechnungIds?: string[] }
 /** Einträge eines Kontakts: an ihm, an seiner Firma, an seinen Mandaten, Deals oder Rechnungen. Neueste zuerst. */

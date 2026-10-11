@@ -137,6 +137,58 @@ Bestätigte Funde der Prüfung, Regel „Sicht Business bekommt nichts aus Priva
   gestapelte Ergebnisse als `gestapelt` mit `vorschlagId`.
 - **Rückweg:** keine Bestände, keine Formänderung — nur Code. Der alte Stand liest alles wie bisher.
 
+## 11.10.2026 — Prüf-Funde 11.10. (CRM/Inbox/Unternehmen) (nur lokal — Branch `fix-crm-inbox`, Basis 82a44555 = `update-0910b`)
+
+Bestätigte Funde der Prüfung (Inbox, Markttraktion, Produkte & Mandate, Unternehmen) und der Datenschutz-Prüfung behoben — alles additiv, keine Formänderung
+gespeicherter Bestände (nur optionale Felder: `DateiEintrag.bericht`, `ZielLage.ist.rest`). Tests: `tests/pruef-funde-1110-{rein,server,art18}.test.ts`,
+Zusatz in `tests/produkte-treppe-route.test.ts`; angepasst (altes Verhalten war der Fund): `inbox-flows`, `gmail-zuordnung`, `markttraktion-woche2a`,
+`markttraktion-planung`, `trennung-bereiche`.
+
+**CRM / Produkte & Mandate**
+- **Jahrespreis → Monatshonorar:** „+ Mandat“ mit Produkt „je Jahr“ legte den Jahrespreis als Monatshonorar an (12-fach in Mandat, Rhythmus, Liquiplan-Vorschlag,
+  Treppe, MRR). EINE Stelle `honorarAusPreis` (lib/crm/mandat-anlegen.ts) für „+ Mandat“ und „Mandat aus Deal“ — je Jahr ÷ 12 auf den Cent (der Deal-Weg rundete
+  bisher auf ganze Euro).
+- **Neue Leads:** EINE Regel `neuerLeadAm` (lib/crm/neue-leads.ts) für Scoreboard, Kreislauf/Kanal-Stand und Wochen-Ist: zählt nur, wenn die erste Aktivität eines
+  Menschen (der Anlege-Vermerk zählt) am Anlagetag oder bis 3 Tage danach liegt; Import „Liste“ nie; System-Einträge nie — kein rückwirkendes Zählen von Importen.
+- **Rückwärts-Trichter:** rechnet mit dem REST (`max(0, Ziel − gewonnener Umsatz im Zeitraum)`) — Wochenziele, Kapazitätsbedarf, Scoreboard-Soll; Anzeige „noch offen“.
+- **Upsell (Treppe):** Vorschlag und Follow-up „nächste Stufe“ nur mit ansprechbarer Ansprechperson (`upsellAnsprechbar`: Kartei über `kontakteFuerVerarbeitung`,
+  `ausgenommen` = Art. 18 oder Werbesperre); alle gesperrt → kein Vorschlag, Freigabe 409.
+- **Fortschritts-Report:** Marke `bericht: 'fortschritt'` (nur Server) → kein Beleg (`istBeleg`), löschbar. Ältere Reports ohne Marke bleiben Belege (Altbestand, nicht umgeschrieben).
+- **„Firma zuordnen“:** nur ein aktives Mandat macht Kunden; beendet/pausiert höchstens Ex-Kunde (Firma-Rolle, Lebensphase) — `zuordnenFolge`.
+- **Privat-Einheit raus:** Mandate/Deals einer Privat-Einheit zählen nicht in Treppe (Kundenzeilen), Zielbild und Kreislauf (`imBusiness`, lib/crm/treppe.ts);
+  Report für ein Privat-Mandat → 400.
+- **Treppe „frei“** rechnet mit `netto` statt `belastbar` (Kopf-Faktor = Gesundheitsableitung gehört nicht ins Business).
+- **Lese-Protokoll:** Report-Mail-Vorlage (erstellen/entwurf) notiert den Kartei-Zugriff (`leseZugriff(…, 'kontakte', { ids })`, Fingerabdruck).
+
+**Inbox**
+- **Postfach ohne Bereich = Privat** — EINE Regel `postfachRaum` (lib/postfach/bereich.ts) für Strom-Anzeige, Teilen, Flows, „aus Gespräch“ (vorher teils Business).
+  Folge: ohne Bereich kein „Kontakt anlegen“ (Lead), Aufgaben im Privat-Space, Ablegen in Business-Ablagen nur mit Bereichswechsel (Rückfrage). **Für Kevin:** ein
+  verbundenes Gmail ohne Register-Eintrag unter Inbox › Postfächer einem Bereich zuordnen.
+- **Anhänge aus der Ablage** (Senden): nur volle Mitglieder des Haushalts (`haushaltFuer`; Konto „nur Business“ → 403), keine Datei mit Privat-Bezug (`anhangPrivat`).
+- **Inbox-Vorschläge:** `nachher` neutral (`inboxNachher`) — Betreff/Absender nie mehr im Prompt des Morgen-/Abendlaufs; der Stapel zeigt den Titel aus der Eingabe.
+  Freigabe prüft Art. 18 live (409; Person nicht mehr da → ohne Personen-Bezug).
+- **Übergaben:** Mail-Frist ab der jüngsten Nachricht (`juengsteNachricht`), nicht ab der Kopie; Art. 18 → keine Anhang-Kopien (409).
+- **ZOE-Entwurf:** Art. 18 live gegen die Kartei (Kennung oder Adresse) vor dem Modell → 409.
+
+**Unternehmen**
+- **Offenlegung (§ 325 HGB) nur einmal:** im Schild nur für Gesellschaften, die das Steuer-Modul nicht führt (`steuerImModul`).
+- **Register-Verweise:** endgültig löschen von Gesellschaftern/Organen/Verträgen (Verweis aus Beschlüssen) und Beschlüssen (Fassung, Schild-Ereignis) → 409 mit Anzahl;
+  der Morgenlauf lässt solche Einträge im Papierkorb. Der Beschluss-Säuberer nimmt Kennungen, die schon im gespeicherten Beschluss stehen (Altbestand), Anzeige „(gelöscht)“.
+- **Firmen-Akte nur mit Zugang:** Pflicht- und Vertragsfristen im Kalender/Heute/Glocke nur für `rechtZugangFuer(betrachter)`; Glocke des Schilds und der
+  Vertrags-Erinnerungen nur an `rechtPersonen`; deren Aufgaben zuständig/beteiligt nur diese Konten (statt „beide“) und im Business-Space neutral betitelt
+  (keine Pflicht, Norm, Folge, kein Vertragstitel).
+
+**Datenschutz**
+- **Konto löschen/Export:** `treppeOhnePerson`, `planungOhnePerson`, `registerOhnePerson` (Speichername → „[gelöscht]“, Einträge bleiben), Export der eigenen Stempel;
+  Übergaben über `aendereUebergaben` (mitgegebene Dateien fallen mit weg, Zahl im Bericht). Gründe in `NICHT_PERSOENLICH` korrigiert.
+- **Speicher-Register:** Datei-Ordner `inbox-uebergaben` eingetragen (Muster `fulfillment-unterlagen`), Bereich gemischt wie seine Übergaben — **Kevin bitte bestätigen**
+  (die Regel „gemischt nur Altbestand“; der Ordner existiert seit 10.10., ist kein neuer Bestand).
+
+**Offen (nicht in diesem Paket, `lib/fulfillment/**` gesperrt):** `tests/produkte-treppe-route.test.ts` „Fortschritts-Report“ läuft schon auf der Basis 82a44555 in einen
+Speicher-Überlauf (Heap-OOM) im Fulfillment-Pfad `reportZusatzFuer` → `prozesse/server` `fallLesen` (Mandat ohne Fall) — mit diesem Pfad gemockt sind alle 24 Fälle grün.
+
+**Rückweg:** der alte Stand liest `bericht` nicht (der Report gilt dort wieder als Beleg) und ignoriert `ist.rest` — sonst nichts zu tun.
+
 ## 10.10.2026 — Inbox: Suche über Anhang-Namen, Übergeben mit Anhängen + Zurückziehen, Aufgaben-Vorschläge aus Mails/WhatsApp (nur lokal — Branch `inbox-suche-uebergeben`, Basis 2e5ef5fb = `update-0910b`)
 
 ROADMAP_Q4.md › Lücke 6 („Mail nicht übergebbar, keine Inbox-Suche“, Kevin & Malin) und Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“. Suche, Übergaben (Kopie) und

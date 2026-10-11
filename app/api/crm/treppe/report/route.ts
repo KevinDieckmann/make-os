@@ -71,12 +71,16 @@ export async function POST(req: Request) {
         const e = await reportErstellen(mandatId, zugang.person);
         await protokolliere('crm-dateien', [{ op: 'neu', id: e.datei.id, felder: ['fortschritts-report', 'mandatId'] }], werAus(req)).catch(() => { /* nur Protokoll */ });
         const m = await mailGrundlage(mandatId, absender);
+        // Lese-Protokoll (Prüf-Fund 11.10.): die Mail-Vorlage liest Anrede, Name und Adresse der Ansprechperson aus der Kartei.
+        if (m.kontaktId) leseZugriff(req, 'kontakte', { ids: [m.kontaktId] });
         return { status: 200, body: { ok: true, datei: e.datei, betreff: m.betreff, text: m.text, an: m.an, ...(m.ohneEmpfaenger ? { ohneEmpfaenger: m.ohneEmpfaenger } : {}), anrede: m.anrede, gesellschaft: m.gesellschaft } };
       }, undefined, { wer: zugang.person });
       return NextResponse.json(r.body, { status: r.status });
     }
     if (b.aktion === 'entwurf') {
       const m = await mailGrundlage(mandatId, absender);
+      // Lese-Protokoll (Prüf-Fund 11.10.): Kennung wird in leseZugriff zum Fingerabdruck (`leseKennung`), nie im Klartext.
+      if (m.kontaktId) leseZugriff(req, 'kontakte', { ids: [m.kontaktId] });
       // `dok` (Fulfillment C2, 10.10.): die Vorschau zeigt Erledigt · Als Nächstes · Wartet auf euch · Wert-Konto · Puls — derselbe Inhalt wie das PDF.
       const basis = { ok: true, betreff: m.betreff, text: m.text, an: m.an, ...(m.ohneEmpfaenger ? { ohneEmpfaenger: m.ohneEmpfaenger } : {}), anrede: m.anrede, gesellschaft: m.gesellschaft, ...(m.datei ? { datei: m.datei } : {}), dok: m.dok };
       if (b.ki !== true) return NextResponse.json(basis);

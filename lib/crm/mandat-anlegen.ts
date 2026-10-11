@@ -65,17 +65,45 @@ export function mandatEingabeAus(roh: unknown): { ok: true; e: MandatEingabe } |
   return { ok: true, e: { firma: f.wahl, person: p.wahl, gesellschaft: g as Gesellschaft, ...(titel ? { titel } : {}), ...(leistungId ? { leistungId } : {}), ...(stufeId ? { stufeId } : {}), ...(text(o.zustaendig) ? { zustaendig: text(o.zustaendig) } : {}) } };
 }
 
+/**
+ * Monatshonorar + Rechnungsrhythmus aus einem Preis (Produkt bzw. Deal-Wert) — EINE Stelle für „+ Mandat“ und „Mandat aus Deal“ (Prüf-Fund
+ * 11.10.: ein Jahrespreis stand sonst 12-fach als Monatshonorar im Mandat, im Rechnungsrhythmus, im Liquiplan-Vorschlag, in der Treppe und im MRR).
+ * „je Jahr“ → ÷ 12 auf den Cent, „einmalig“ bleibt einmalig, sonst monatlich. Rein.
+ */
+export function honorarAusPreis(p: { betrag?: number | null; basis?: 'monat' | 'jahr' | 'einmalig' | null } | null | undefined): { honorar: Mandat['honorar']; rechnungsrhythmus: Mandat['rechnungsrhythmus'] } {
+  const roh = typeof p?.betrag === 'number' && Number.isFinite(p.betrag) ? p.betrag : 0;
+  const einmalig = p?.basis === 'einmalig';
+  const betrag = p?.basis === 'jahr' ? Math.round((roh / 12) * 100) / 100 : roh;
+  return { honorar: { betrag, basis: einmalig ? 'einmalig' : 'monat', netto: true }, rechnungsrhythmus: einmalig ? 'einmalig' : 'monatlich' };
+}
+
 /** Das neue Mandat (wie aus einem gewonnenen Deal: aktiv ab heute, Vertrag und Kickoff als offene Punkte) — mit Firma, Ansprechperson, ggf. Produkt. */
 export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>; kontaktIds: string[]; gesellschaft: Gesellschaft; titel?: string; leistung?: { id: string; name: string; preis: { betrag: number; basis?: 'monat' | 'jahr' | 'einmalig' } } | null; zustaendig?: string; jetzt: string; person: string }): Mandat {
-  const basis = o.leistung?.preis.basis;
+  const h = honorarAusPreis(o.leistung?.preis);
   return {
     id: o.id, kunde: o.firma.name, firmaId: o.firma.id, kontaktIds: o.kontaktIds, titel: o.titel || o.leistung?.name || 'Mandat', art: 'retainer',
     ...(o.leistung ? { leistungId: o.leistung.id } : {}), gesellschaft: o.gesellschaft, status: 'aktiv', vertragUnterschrieben: false, start: tagVon(o.jetzt), verlaengerung: 'offen',
-    honorar: { betrag: o.leistung?.preis.betrag ?? 0, basis: basis === 'einmalig' ? 'einmalig' : 'monat', netto: true }, ustSatz: 19,
-    rechnungsrhythmus: basis === 'einmalig' ? 'einmalig' : 'monatlich', zahlungszielTage: 14, ziele: [],
+    honorar: h.honorar, ustSatz: 19,
+    rechnungsrhythmus: h.rechnungsrhythmus, zahlungszielTage: 14, ziele: [],
     health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen'],
     quelle: 'Von Hand angelegt (Produkte & Mandate)', ...(o.zustaendig ? { zustaendig: o.zustaendig } : {}), geaendert: o.jetzt, geaendertVon: o.person,
   };
+}
+
+/**
+ * Welche Folge hat „Firma zuordnen“ an einem BESTEHENDEN Mandat (Prüf-Fund 11.10.)? Nur ein aktives Mandat macht die Firma und die Person zu
+ * Kunden; ein beendetes oder pausiertes höchstens zu Ex-Kunden (BEAN, Lifecycle und Kanal-Ampel lesen das); Angebot/Verhandlung: keine. Rein.
+ */
+export function zuordnenFolge(status: Mandat['status']): 'kunde' | 'ex_kunde' | null {
+  if (status === 'aktiv') return 'kunde';
+  if (status === 'beendet' || status === 'pausiert') return 'ex_kunde';
+  return null;
+}
+
+/** Ex-Kunde an der Firma: Rolle „Ex-Kunde“ — nur, wenn sie nicht von Hand gesetzt ist und die Firma nicht schon (aus einem anderen Mandat) Kunde ist. */
+export function firmaWirdExKunde(f: Firma): Firma {
+  if (f.rolleVonHand || f.rolle === 'kunde') return f;
+  return { ...f, rolle: 'ex_kunde' as Firma['rolle'] };
 }
 
 /**

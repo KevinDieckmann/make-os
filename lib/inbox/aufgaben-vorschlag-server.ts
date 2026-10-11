@@ -32,6 +32,8 @@ import {
 
 export const INBOX_VORSCHLAG_WERKZEUG = 'inbox_aufgabe';
 export const INBOX_GRUPPE = 'inbox';
+/** Der neutrale Satz eines Inbox-Vorschlags (ohne Betreff, ohne Namen) — `nachher` im Stapel und im Prompt der Läufe. Rein. */
+export const inboxNachher = (faellig?: string): string => `Aufgabe aus einer Nachricht${faellig ? ` · fällig ${tagKurz(faellig)}` : ''} — Einzelheiten in der Inbox`;
 
 // ── Bestand je Person ───────────────────────────────────────────────────────
 
@@ -120,12 +122,13 @@ export async function inboxVorschlaegeLauf(person: string, o: { jetzt?: Date; qu
       if (!h) continue;
       const kurzG = { id: g.id, betreff: g.betreff, gegenueber: g.gegenueber, zuordnung: g.zuordnung ?? null, bereich: g.bereich, ...(g.whatsapp ? { whatsapp: { nummer: g.whatsapp.nummer, ...(g.whatsapp.profilname ? { profilname: g.whatsapp.profilname } : {}) } } : {}) };
       const aufgabe = aufgabeAusHandlung(kurzG, h);
-      const name = g.zuordnung?.name ?? g.gegenueber.name ?? (g.whatsapp ? 'WhatsApp' : g.gegenueber.email);
       const raum = raumVon(g.bereich);
       await lege({
         werkzeug: INBOX_VORSCHLAG_WERKZEUG, gruppe: INBOX_GRUPPE,
         titel: stapelTitel(h),
-        nachher: `„${aufgabe.title}“ · ${name}${aufgabe.dueDate ? ` · fällig ${tagKurz(aufgabe.dueDate)}` : ''}`,
+        // Neutral (Prüf-Fund 11.10.): `nachher` geht als „liegt schon im Stapel“ in den Prompt des Morgen-/Abendlaufs — dort nie Betreff oder
+        // Absender (fremder Text ohne `fremd()`). Titel und Absender zeigt der Stapel aus der Eingabe (nur Oberfläche).
+        nachher: inboxNachher(aufgabe.dueDate),
         anlass: stapelAnlass(h),
         // `space` = Bereich des Postfachs (die EINE Bereichs-Regel liest ihn aus der Eingabe); `gespraech` für den Sprung zurück.
         eingabe: { gespraech: g.id, space: raum, aufgabe },
@@ -193,6 +196,15 @@ export const INBOX_STAPEL_ART: StapelArtFreigabe = {
     try {
       const da = (await stromRoh(person)).gespraeche.some(g => g.id === gespraech);
       if (!da) { await loslassen(v.id); return { ok: false, status: 409, fehler: 'Dieses Gespräch steht nicht mehr in deiner Inbox — nichts angelegt. Bitte ablehnen.' }; }
+      // Art. 18 LIVE gegen die Kartei (Prüf-Fund 11.10.): der Vorschlag kann älter sein als die Einschränkung — dann nichts anlegen (409).
+      // Gibt es die Person nicht mehr, entsteht die Aufgabe ohne Personen-Bezug.
+      const bezug = aufgabe.bezug;
+      if (bezug?.kontaktId) {
+        const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
+        const k = (await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).find(x => x.id === bezug.kontaktId);
+        if (k?.eingeschraenkt) { await loslassen(v.id); return { ok: false, status: 409, fehler: 'Die Verarbeitung dieser Person ist eingeschränkt (Art. 18) — nichts angelegt. Bitte ablehnen.' }; }
+        if (!k) { const { kontaktId: _k, ...rest } = bezug; aufgabe.bezug = Object.keys(rest).length ? rest : undefined; if (!aufgabe.bezug) delete aufgabe.bezug; }
+      }
       const { innen } = await import('@/lib/zoe/innen');
       const r = await innen('/api/tasks/create', 'POST', aufgabe, person);
       if (r.status >= 400 || r.json.ok === false) {

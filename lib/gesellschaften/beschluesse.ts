@@ -370,7 +370,7 @@ export const eintragungNachfragenAb = (angemeldetAm: string) => tagePlus(angemel
 /** Name eines Beteiligten (`gs-…`/`og-…`) über seinen Eintrag — `namen` = `art:id` → Name (aus der Antwort des Servers). */
 export function beteiligtName(id: string, g: Pick<RegisterGesellschaft, 'gesellschafter' | 'organe'>, namen: Readonly<Record<string, string>>): string {
   const e = id.startsWith('gs-') ? (g.gesellschafter ?? []).find(x => x.id === id) : (g.organe ?? []).find(x => x.id === id);
-  if (!e) return id.startsWith('gs-') ? 'Gesellschafter (nicht mehr eingetragen)' : 'Organ (nicht mehr eingetragen)';
+  if (!e) return id.startsWith('gs-') ? 'Gesellschafter (gelöscht)' : 'Organ (gelöscht)';
   const n = namen[`${e.wer.art}:${e.wer.id}`];
   if (n) return n;
   return e.wer.id.includes('gelöscht') ? 'Eintrag (gelöscht)' : e.wer.art === 'gesellschaft' ? 'Gesellschaft' : e.wer.art === 'person' ? 'Person' : e.wer.art === 'firma' ? 'Firma' : 'Kontakt';

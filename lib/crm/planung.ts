@@ -27,6 +27,8 @@ import { alsMarketingAnmeldung, reiheVon } from './marke';
 import { MACHBAR_BIS, ENG_BIS } from '@/lib/kapazitaet/typen';
 import { tagPlus, montagVon } from '@/lib/zeit/kalender-kern';
 import { tagVon } from '@/lib/zeit';
+import { neuerLeadAm } from './neue-leads';
+import { imBusiness } from './treppe';
 import { WEG } from '@/lib/wege';
 import { mandateLink } from './adresse';
 import {
@@ -155,10 +157,12 @@ export function istQuoten(zeilen: readonly Pick<LeadZeile, 'status' | 'deal' | '
 
 // ── Kanal-Stand (Liste der Leadkanäle) ───────────────────────────────────────────────────────────────────────────
 
-/** Wann ein Lead entstand: die früheste Anlage einer seiner Personen, die von Hand bzw. aus einem Kanal angelegt wurde (mit Vermerk). */
-export function leadAngelegt(z: Pick<LeadZeile, 'personen'>, kontaktNach: ReadonlyMap<string, Pick<Kontakt, 'importiertAm' | 'aktivitaeten'>>): string | null {
-  const tageL = z.personen.map(p => kontaktNach.get(p.id)).filter((k): k is Pick<Kontakt, 'importiertAm' | 'aktivitaeten'> => !!k && !!(k.aktivitaeten ?? []).length)
-    .map(k => (k.importiertAm ?? '').slice(0, 10)).filter(t => /^\d{4}-\d{2}-\d{2}$/.test(t)).sort();
+/**
+ * Wann ein Lead entstand: die früheste Anlage einer seiner Personen, die als NEUER Lead zählt (von Hand bzw. aus einem Kanal angelegt —
+ * EINE Regel mit dem Wochen-Scoreboard, lib/crm/neue-leads.ts `neuerLeadAm`; Prüf-Fund 11.10.).
+ */
+export function leadAngelegt(z: Pick<LeadZeile, 'personen'>, kontaktNach: ReadonlyMap<string, Pick<Kontakt, 'importiertAm' | 'aktivitaeten'> & { quelle?: string }>): string | null {
+  const tageL = z.personen.map(p => kontaktNach.get(p.id)).map(k => (k ? neuerLeadAm(k) : null)).filter((t): t is string => !!t).sort();
   return tageL[0] ?? null;
 }
 
@@ -273,8 +277,9 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
   const aktiv = aktiveKanaele(e.kanaele).filter(k => filter === null || k.id === filter);
   const std = standardQuoten(e.crm.wahrscheinlichkeiten);
   const z = e.zeilen.filter(x => passtKanal(zo.lead.get(x.id), filter));
-  const deals = e.crm.chancen.filter(c => passtKanal(zo.deal.get(c.id), filter));
-  const mandate = e.crm.mandate.filter(m => !m.geloeschtAm && passtKanal(zo.mandat.get(m.id), filter));
+  // Nur Business (Prüf-Fund 11.10.): Deals und Mandate einer Privat-Einheit zählen im Kreislauf nicht (`imBusiness`, lib/crm/treppe.ts).
+  const deals = e.crm.chancen.filter(c => imBusiness(c) && passtKanal(zo.deal.get(c.id), filter));
+  const mandate = e.crm.mandate.filter(m => !m.geloeschtAm && imBusiness(m) && passtKanal(zo.mandat.get(m.id), filter));
   const ist = istQuoten(z, deals);
   // Plan über die gewählten Kanäle gemittelt (gewichtet nach Plan-Leads); ohne Kanal die Annahme.
   const gewicht = aktiv.reduce((a, k) => a + Math.max(k.leadsMonat, 0.0001), 0);
@@ -368,8 +373,10 @@ export interface ZielKanalZeile extends Aktivitaeten {
 export interface ZielLage {
   ziel: UmsatzZiel;
   dealWert: { wert: number | null; quelle: 'eingabe' | 'gemessen' | null };
+  /** Noch nötige Deals — für den REST des Ziels (Ziel − schon gewonnener Umsatz im Zeitraum). */
   deals: number | null;
-  ist: { umsatz: number; anteil: number | null; offenGewichtet: number };
+  /** `rest` = Ziel − gewonnener Umsatz im Zeitraum (nie unter 0) — daraus rechnet der Trichter. */
+  ist: { umsatz: number; rest: number; anteil: number | null; offenGewichtet: number };
   kanaele: ZielKanalZeile[];
   summe: Aktivitaeten & { kosten: number | null };
   fehlt: string[];
@@ -401,7 +408,13 @@ export function zielLage(ziel: UmsatzZiel, e: {
   const fehlt: string[] = [];
   if (!dealWert.wert) fehlt.push('Ø Deal-Wert fehlt — eintragen oder erst drei gewonnene Deals mit Wert abwarten.');
   if (!aktiv.length) fehlt.push('Kein aktiver Leadkanal — Leadkanäle anlegen, über die geplant wird.');
-  const deals = dealWert.wert ? Math.ceil(ziel.umsatz / dealWert.wert) : null;
+  // Ist zuerst (Prüf-Fund 11.10.): der Trichter rechnet mit dem REST des Ziels — schon gewonnener Umsatz im Zeitraum braucht keine Leads,
+  // Gespräche und Angebote mehr (Wochenziele, Kapazitätsbedarf, Scoreboard-Soll lesen alle hieraus).
+  const gewonnenAm = (c: Chance) => tagVon(c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert);
+  const eigene = e.crm.chancen.filter(c => c.gesellschaft === ziel.gesellschaft);
+  const umsatzIst = eigene.filter(c => c.stufe === 'gewonnen' && gewonnenAm(c) >= ziel.von && gewonnenAm(c) <= ziel.bis).reduce((a, c) => a + gesamtwert(c), 0);
+  const rest = Math.max(0, ziel.umsatz - umsatzIst);
+  const deals = dealWert.wert ? Math.ceil(rest / dealWert.wert) : null;
   const vorbei = e.heute > ziel.bis;
   const start = e.heute > ziel.von ? e.heute : ziel.von;
   const anteile = kanalAnteile(aktiv, ziel, std);
@@ -429,15 +442,12 @@ export function zielLage(ziel: UmsatzZiel, e: {
   });
   if (kanaele.some(k => k.zuSpaet)) fehlt.push('Für einige Kanäle ist es zu spät: ihr letzter Start (Ende − Sales Cycle) ist vorbei — neue Leads zählen fürs nächste Ziel.');
   const sum = (f: keyof Aktivitaeten) => kanaele.reduce((a, k) => a + k[f], 0);
-  // Ist: gewonnene Deals der Gesellschaft im Zeitraum (Tag des Gewinns) — und die offenen dieser Gesellschaft gewichtet.
-  const gewonnenAm = (c: Chance) => tagVon(c.historie.filter(h => h.stufe === 'gewonnen').pop()?.am ?? c.geaendert);
-  const eigene = e.crm.chancen.filter(c => c.gesellschaft === ziel.gesellschaft);
-  const umsatzIst = eigene.filter(c => c.stufe === 'gewonnen' && gewonnenAm(c) >= ziel.von && gewonnenAm(c) <= ziel.bis).reduce((a, c) => a + gesamtwert(c), 0);
+  // Ist: gewonnene Deals der Gesellschaft im Zeitraum (Tag des Gewinns, oben gerechnet) — und die offenen dieser Gesellschaft gewichtet.
   const offenGewichtet = eigene.filter(c => OFFENE_STUFEN.includes(c.stufe) && (!c.erwartetAm || c.erwartetAm <= ziel.bis)).reduce((a, c) => a + (gesamtwert(c) * wahrscheinlichkeit(c.stufe, e.crm.wahrscheinlichkeiten)) / 100, 0);
   const kostenL = kanaele.filter(k => k.kosten !== null);
   return {
     ziel, dealWert, deals, vorbei,
-    ist: { umsatz: Math.round(umsatzIst), anteil: ziel.umsatz > 0 ? Math.round((100 * umsatzIst) / ziel.umsatz) : null, offenGewichtet: Math.round(offenGewichtet) },
+    ist: { umsatz: Math.round(umsatzIst), rest: Math.round(rest), anteil: ziel.umsatz > 0 ? Math.round((100 * umsatzIst) / ziel.umsatz) : null, offenGewichtet: Math.round(offenGewichtet) },
     kanaele, summe: { leads: sum('leads'), gespraeche: sum('gespraeche'), sql: sum('sql'), angebote: sum('angebote'), gewonnen: sum('gewonnen'), kosten: kostenL.length ? kostenL.reduce((a, k) => a + (k.kosten ?? 0), 0) : null },
     fehlt,
   };
@@ -523,7 +533,7 @@ const ANSPRACHE = new Set(['anruf', 'mail', 'linkedin', 'gespraech', 'termin', '
  * zählen nie). Gespräche `echtesGespraech`, neue Leads = von Hand angelegte Personen, Angebote = Deals, die die Stufe „Angebot“ erreichten,
  * Deals = neu angelegt, Power Hours = Sitzungen, Reaktivieren = Ansprache nach ≥ 90 Tagen Stille, Events = Gäste „da“ auf Events der Woche.
  */
-export function wochenIst(kontakte: readonly Pick<Kontakt, 'id' | 'importiertAm' | 'aktivitaeten' | 'besitzer'>[], crm: Pick<CrmBestand, 'chancen' | 'sitzungen' | 'teilnahmen' | 'events'>, von: string, bis: string): { team: WochenZahlen; je: Record<string, WochenZahlen> } {
+export function wochenIst(kontakte: readonly (Pick<Kontakt, 'id' | 'importiertAm' | 'aktivitaeten' | 'besitzer'> & { quelle?: string })[], crm: Pick<CrmBestand, 'chancen' | 'sitzungen' | 'teilnahmen' | 'events'>, von: string, bis: string): { team: WochenZahlen; je: Record<string, WochenZahlen> } {
   const team = leer();
   const je: Record<string, WochenZahlen> = {};
   const plus = (art: ChallengeArt, wer: string | undefined) => { team[art]++; if (wer && wer !== 'system') (je[wer] ??= leer())[art]++; };
@@ -532,7 +542,8 @@ export function wochenIst(kontakte: readonly Pick<Kontakt, 'id' | 'importiertAm'
     const akt = (k.aktivitaeten ?? []).filter(a => a.von !== 'system' && (a.art as string) !== 'system').map(a => ({ ...a, tag: tagVon(a.am) })).sort((a, b) => a.tag.localeCompare(b.tag));
     for (const a of akt) if (drin(a.tag) && echtesGespraech(a)) plus('gespraeche', a.von);
     const angelegt = (k.importiertAm ?? '').slice(0, 10);
-    if (drin(angelegt) && akt.length) plus('leads', k.besitzer ?? akt[0]?.von);
+    const neu = neuerLeadAm(k);
+    if (neu && drin(neu)) plus('leads', k.besitzer ?? akt[0]?.von);
     const erste = akt.find(a => drin(a.tag) && ANSPRACHE.has(a.art));
     if (erste) {
       const vorher = akt.filter(a => a.tag < von).pop()?.tag ?? (/^\d{4}-\d{2}-\d{2}$/.test(angelegt) && angelegt < von ? angelegt : null);

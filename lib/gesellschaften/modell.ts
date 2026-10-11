@@ -782,7 +782,7 @@ export function gesellschaftArchiv(g: RegisterGesellschaft, aktion: 'archivieren
  * Morgenlauf: was länger als 30 Tage im Papierkorb liegt, geht endgültig — Listeneinträge immer, eine Gesellschaft nur,
  * wenn nichts mehr an ihr hängt (sonst bleibt sie im Papierkorb). Gibt den neuen Stand und die Zahl zurück (n = 0 → unverändert).
  */
-export function registerAufraeumen(d: RegisterDatei | null, crm: CrmVerweisTeil, jetzt: string): { d: RegisterDatei | null; n: number } {
+export function registerAufraeumen(d: RegisterDatei | null, crm: CrmVerweisTeil, jetzt: string, geschuetzt: ReadonlySet<string> = new Set()): { d: RegisterDatei | null; n: number } {
   if (!d?.gesellschaften?.length) return { d, n: 0 };
   let n = 0;
   const alle = d.gesellschaften;
@@ -792,13 +792,39 @@ export function registerAufraeumen(d: RegisterDatei | null, crm: CrmVerweisTeil,
     let neu = g;
     for (const l of REGISTER_LISTEN) {
       const liste = (g[l] ?? []) as { geloeschtAm?: string }[];
-      const bleibt = liste.filter(e => !papierkorbAbgelaufen(e, jetzt));
+      // Abgelaufen UND ohne Verweis (Prüf-Fund 11.10.: Beschlüsse/Fassungen/Schild-Ereignisse zeigen sonst ins Leere) — sonst bleibt er im Papierkorb.
+      const bleibt = (liste as { id?: string; geloeschtAm?: string }[]).filter(e => !papierkorbAbgelaufen(e, jetzt) || (!!e.id && (geschuetzt.has(e.id) || eintragVerweise(g, l, e.id) > 0)));
       if (bleibt.length !== liste.length) { n += liste.length - bleibt.length; neu = { ...neu, [l]: bleibt }; }
     }
     raus.push(neu);
   }
   // Was endgültig geht, bleibt als Vermerk lesbar — die Unterlagen in der Ablage bleiben (DSGVO-Nachtrag 04.10.).
   return n ? { d: geloeschtVermerken(d, { ...d, gesellschaften: raus }, jetzt), n } : { d, n: 0 };
+}
+
+// ── Verweise innerhalb einer Gesellschaft (Prüf-Fund 11.10.) ───────────────────────────────────────────────────────
+
+/**
+ * Wie viele Einträge DIESER Gesellschaft verweisen auf einen Listeneintrag? Beschlüsse → Gesellschafter/Organe (Beteiligte, Abstimmung,
+ * Verweis) und Verträge (Verweis); Fassungen → Beschluss (`beschlussId`). Auch Einträge im Papierkorb zählen (sie lassen sich wiederherstellen).
+ * Solange etwas verweist, wird der Eintrag nicht endgültig gelöscht (409 bzw. er bleibt im Papierkorb). Rein.
+ */
+export function eintragVerweise(g: Pick<RegisterGesellschaft, 'beschluesse' | 'fassungen'>, liste: RegisterListe, id: string): number {
+  const bs = g.beschluesse ?? [];
+  if (liste === 'gesellschafter' || liste === 'organe') {
+    return bs.filter(b => b.id !== id && ((b.beteiligte ?? []).includes(id) || (b.abstimmung ?? []).some(x => x.id === id) || (b.verweise ?? []).some(v => v.art === 'gesellschafter' && v.id === id))).length;
+  }
+  if (liste === 'vertraege') return bs.filter(b => (b.verweise ?? []).some(v => v.art === 'vertrag' && v.id === id)).length;
+  if (liste === 'beschluesse') return (g.fassungen ?? []).filter(f => f.beschlussId === id).length;
+  return 0;
+}
+/** Satz zur Sperre (ohne Namen). */
+export function eintragVerweiseSatz(liste: RegisterListe, n: number, zusatz = 0): string {
+  const teile = [
+    ...(n ? [liste === 'beschluesse' ? `${n} ${n === 1 ? 'Fassung' : 'Fassungen'} (Gegenstand & Satzung)` : `${n} ${n === 1 ? 'Beschluss' : 'Beschlüsse'}`] : []),
+    ...(zusatz ? [`${zusatz} ${zusatz === 1 ? 'Ereignis' : 'Ereignisse'} im Schild`] : []),
+  ];
+  return `Darauf ${n + zusatz === 1 ? 'verweist' : 'verweisen'} noch ${teile.join(' und ')} — erst dort lösen; so lange bleibt der Eintrag im Papierkorb.`;
 }
 
 // ── Gelöschte Bezüge (DSGVO-Nachtrag 04.10.): Unterlagen bleiben, der Bezug bleibt lesbar ──────────────────────────
@@ -913,7 +939,10 @@ export function beschlussSaeubern(roh: unknown, alt?: Beschluss, g?: Pick<Regist
     else if (GREMIEN.some(x => x.id === r.gremium)) gremium = r.gremium as Gremium;
     else fehler.push({ feld: 'gremium', text: 'Unbekanntes Gremium.' });
   }
-  const gibtEs = (id: string) => !g || (id.startsWith('gs-') ? (g.gesellschafter ?? []).some(x => x.id === id) : (g.organe ?? []).some(x => x.id === id));
+  // Altbestand (Prüf-Fund 11.10.): eine Kennung, die SCHON im gespeicherten Beschluss steht, bleibt gültig — auch wenn ihr Eintrag inzwischen
+  // endgültig gelöscht ist (sonst ließe sich der Beschluss nie wieder speichern, 400). Neu hinzufügen geht nur, was es gibt.
+  const altBeteiligt = new Set([...(alt?.beteiligte ?? []), ...(alt?.abstimmung ?? []).map(s => s.id)]);
+  const gibtEs = (id: string) => !g || altBeteiligt.has(id) || (id.startsWith('gs-') ? (g.gesellschafter ?? []).some(x => x.id === id) : (g.organe ?? []).some(x => x.id === id));
   // Beteiligte: nur Einträge dieser Gesellschaft (Gesellschafter/Organe) — nie Namen.
   let beteiligte = alt?.beteiligte;
   if (r.beteiligte !== undefined) {
@@ -964,8 +993,9 @@ export function beschlussSaeubern(roh: unknown, alt?: Beschluss, g?: Pick<Regist
       const v = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
       const a = v.art as VerweisArt;
       const id = typeof v.id === 'string' ? v.id : '';
+      const schonDa = (alt?.verweise ?? []).some(y => y.art === a && y.id === id);
       const ok = (a === 'vertrag' || a === 'gesellschafter' || a === 'risiko') && VERWEIS_MUSTER[a].test(id)
-        && (!g || a === 'risiko' || (a === 'vertrag' ? (g.vertraege ?? []).some(y => y.id === id) : (g.gesellschafter ?? []).some(y => y.id === id)));
+        && (!g || a === 'risiko' || schonDa || (a === 'vertrag' ? (g.vertraege ?? []).some(y => y.id === id) : (g.gesellschafter ?? []).some(y => y.id === id)));
       if (!ok) { fehler.push({ feld: 'verweise', text: 'Ein Verweis zeigt auf nichts in dieser Gesellschaft.' }); continue; }
       if (!neu.some(y => y.art === a && y.id === id)) neu.push({ art: a, id });
     }
@@ -1103,11 +1133,12 @@ export function faelligeErinnerungen(alle: readonly RegisterGesellschaft[], heut
       if (vorlauf <= 0) continue;
       const ab = new Date(Date.parse(`${v.kuendigenBis}T12:00:00Z`) - vorlauf * 86_400_000).toISOString().slice(0, 10);
       if (heute < ab) continue;
-      const name = v.titel || vertragArtLabel(v.art);
+      // Neutral (Prüf-Fund 11.10.): die Aufgabe liegt im Business-Space — auch Konten „nur Business“ sehen sie, die Firmen-Akte (Vertragsname,
+      // Kündigungsfrist) aber nicht. Die Art des Vertrags (Katalog-Name) bleibt, der eigene Titel nicht.
       raus.push({
         aufgabeId: erinnerungAufgabeId(v.id, v.kuendigenBis), gesellschaftId: g.id, vertragId: v.id, kuendigenBis: v.kuendigenBis,
-        titel: `Kündigen oder verlängern? ${name} (${anzeigeName(g)}) — bis ${v.kuendigenBis.slice(8, 10)}.${v.kuendigenBis.slice(5, 7)}.${v.kuendigenBis.slice(0, 4)}`,
-        beschreibung: `Erinnerung aus dem Gesellschafts-Register: „kündigen bis“ ${v.kuendigenBis}${v.kuendigungsfrist ? ` (${v.kuendigungsfrist})` : ''}. Entscheiden, ob gekündigt oder verlängert wird. Hinweis, keine Rechtsberatung.`,
+        titel: `Vertrag: kündigen oder verlängern? (${anzeigeName(g)}) — bis ${v.kuendigenBis.slice(8, 10)}.${v.kuendigenBis.slice(5, 7)}.${v.kuendigenBis.slice(0, 4)}`,
+        beschreibung: `Erinnerung aus dem Gesellschafts-Register: „kündigen bis“ ${v.kuendigenBis}. Die Einzelheiten stehen im Bereich Unternehmen (Link in der Notiz). Entscheiden, ob gekündigt oder verlängert wird. Hinweis, keine Rechtsberatung.`,
       });
     }
   }
@@ -1132,4 +1163,26 @@ export function registerTreffer(alle: readonly RegisterGesellschaft[], passt: (t
     for (const b of aktiveEintraege(g.beschluesse)) if (passt([b.titel, b.inhalt])) aus.push({ art: 'beschluss', gesellschaftId: g.id, id: b.id, titel: b.titel, unter: `Beschluss vom ${b.datum.slice(8, 10)}.${b.datum.slice(5, 7)}.${b.datum.slice(0, 4)} · ${name}` });
   }
   return aus.slice(0, max);
+}
+
+// ── Konto löschen / Export (Art. 15/17/20, Prüf-Fund 11.10.) ──────────────────────────────────────────────────────────
+
+/**
+ * Konto gelöscht: der Speichername in den Stempeln des Registers — `Fassung.von` und `geaendertVon` (Absender-Felder) — wird „[gelöscht]“.
+ * Fassungen bleiben (Historie, nie überschrieben); die Einträge der Cap-Table/Organe bleiben, wie sie sind (Geschäftsunterlagen). Rein.
+ */
+export function registerOhnePerson(d: RegisterDatei, speicher: string): { neu: RegisterDatei; n: number } {
+  let n = 0;
+  const gesellschaften = (d.gesellschaften ?? []).map(g => {
+    const x = g as RegisterGesellschaft & { geaendertVon?: string };
+    const geaendert = x.geaendertVon === speicher ? (n++, { geaendertVon: GETILGT }) : {};
+    const fassungen = g.fassungen ? { fassungen: g.fassungen.map(f => (f.von === speicher ? (n++, { ...f, von: GETILGT }) : f)) } : {};
+    return { ...g, ...geaendert, ...fassungen };
+  });
+  return { neu: { ...d, gesellschaften }, n };
+}
+
+/** Export: die Fassungen, die die Person angelegt hat (Gesellschaft, Kennung, Merkmal, ab, angelegt) — ohne Wortlaut. Rein. */
+export function registerEintraegeVon(d: RegisterDatei | null | undefined, speicher: string): { gesellschaftId: string; id: string; merkmal: string; ab: string; angelegt?: string }[] {
+  return (d?.gesellschaften ?? []).flatMap(g => (g.fassungen ?? []).filter(f => f.von === speicher).map(f => ({ gesellschaftId: g.id, id: f.id, merkmal: f.merkmal, ab: f.ab, ...(f.angelegt ? { angelegt: f.angelegt } : {}) })));
 }

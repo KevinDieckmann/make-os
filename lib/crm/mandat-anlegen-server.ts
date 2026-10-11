@@ -20,7 +20,7 @@ import { phaseHeben } from './lifecycle';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 import { eingabeSaeubern, dublettePruefen, dublettenText } from './person-anlegen';
 import { firmaSichern, personAnlegen } from './person-anlegen-server';
-import { mandatEntwurf, firmaWirdKunde, firmaWahlAus, personWahlAus, type MandatEingabe, type FirmaWahl, type PersonWahl } from './mandat-anlegen';
+import { mandatEntwurf, firmaWirdKunde, firmaWirdExKunde, zuordnenFolge, firmaWahlAus, personWahlAus, type MandatEingabe, type FirmaWahl, type PersonWahl } from './mandat-anlegen';
 import { anzeigename } from '@/lib/make-one/crm';
 import { neueKennung, neueKontaktKennung } from '@/lib/kennung';
 import { tagVon } from '@/lib/zeit';
@@ -40,6 +40,16 @@ export async function personenWerdenKunde(ids: readonly string[], jetzt: string,
     if (!menge.has(k.id) || k.eingeschraenkt) return k;
     const phase = phaseHeben(k.phase, 'kunde');
     return { ...k, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
+  }) }), wer);
+}
+
+/** Personen eines beendeten/pausierten Mandats (Firma zuordnen, 11.10.): höchstens Ex-Kunde — nie aus „Kunde“ zurück, nie eingeschränkte. */
+export async function personenWerdenExKunde(ids: readonly string[], jetzt: string, wer?: Wer): Promise<void> {
+  const menge = new Set(ids);
+  if (!menge.size) return;
+  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
+    if (!menge.has(k.id) || k.eingeschraenkt || k.lebensphase === 'kunde' || k.lebensphase === 'ex_kunde') return k;
+    return { ...k, lebensphase: 'ex_kunde', geaendertAm: tagVon(jetzt) };
   }) }), wer);
 }
 
@@ -132,9 +142,13 @@ export async function mandatFirmaZuordnen(mandatId: string, firmaRoh: unknown, p
     const m = b.mandate.find(x => x.id === mandatId);
     if (!m || (m.firmaId && b.firmen.some(x => x.id === m.firmaId))) { schon = true; return b; }
     const neu: Mandat = { ...m, kunde: f.firma.name, firmaId: f.firma.id, kontaktIds: kontaktId && !m.kontaktIds.includes(kontaktId) ? [...m.kontaktIds, kontaktId] : m.kontaktIds, geaendert: jetzt, geaendertVon: person };
-    return { ...b, mandate: b.mandate.map(x => (x.id === mandatId ? neu : x)), firmen: b.firmen.map(x => (x.id === f.firma.id && ['aktiv', 'pausiert', 'beendet'].includes(m.status) ? firmaWirdKunde(x) : x)) };
+    // Prüf-Fund 11.10.: nur ein AKTIVES Mandat macht Kunden; beendet/pausiert höchstens Ex-Kunden (zuordnenFolge).
+    const folge = zuordnenFolge(m.status);
+    return { ...b, mandate: b.mandate.map(x => (x.id === mandatId ? neu : x)), firmen: b.firmen.map(x => (x.id !== f.firma.id || !folge ? x : folge === 'kunde' ? firmaWirdKunde(x) : firmaWirdExKunde(x))) };
   }, wer);
   if (schon) return { ok: false, status: 409, fehler: 'Inzwischen hängt das Mandat an einer Firma — neu geladen.' };
-  if (kontaktId && ['aktiv', 'pausiert', 'beendet'].includes(alt.status)) await personenWerdenKunde([kontaktId], jetzt, wer);
+  const folge = zuordnenFolge(alt.status);
+  if (kontaktId && folge === 'kunde') await personenWerdenKunde([kontaktId], jetzt, wer);
+  else if (kontaktId && folge === 'ex_kunde') await personenWerdenExKunde([kontaktId], jetzt, wer);
   return { ok: true, mandatId, firmaId: f.firma.id, kontaktId: kontaktId ?? '', firmaNeu: f.neu, personNeu: !!(p && p.ok && p.neu), hinweise: [...(f.hinweis ? [f.hinweis] : []), ...(p && p.ok ? p.hinweise : [])] };
 }

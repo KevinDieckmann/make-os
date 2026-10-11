@@ -346,3 +346,70 @@ describe('„+ Mandat“ immer mit Lead (Firma + Ansprechperson) und „Firma zu
     expect((await POST(lead, '/api/crm/lead', { aktion: 'mandat-firma', mandatId: ALT.id, firma: { name: 'Noch eine GmbH' } }, 'pa')).status).toBe(409);
   });
 });
+
+describe('Prüf-Funde 11.10. — Treppe, Report, Anhänge, Firma zuordnen', () => {
+  it('Fund 8: der Report trägt die Marke `bericht` und ist kein Beleg (löschbar); N7: die Mail-Vorlage steht im Lese-Protokoll (Kontakte)', async () => {
+    const { istBeleg } = await import('@/lib/dateien/regeln');
+    const ablage = await db.loadJson<{ eintraege: { id: string; mandatId?: string; bericht?: 'fortschritt'; rechnungId?: string }[] }>('crm-dateien--h-pruef');
+    const e = ablage!.eintraege.find(x => x.id === dateiId)!;
+    expect(e).toMatchObject({ mandatId: 'm-pruef', bericht: 'fortschritt' });
+    expect(istBeleg(e)).toBe(false);
+    const L = await import('@/lib/store/leseprotokoll');
+    L.leseDrosselLeeren();
+    expect((await POST(report, '/api/crm/treppe/report', { aktion: 'entwurf', mandatId: 'm-pruef' }, 'pa')).status).toBe(200);
+    await L.leseprotokollWarten();
+    const monat = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }).slice(0, 7);
+    const eintraege = await L.leseprotokollMonat('h-pruef', monat);
+    const k = eintraege.filter(x => x.bereich === 'kontakte' && x.weg === '/api/crm/treppe/report');
+    expect(k.length).toBeGreaterThan(0);
+    expect(JSON.stringify(k)).not.toContain('c-erika');
+  });
+  it('H2: ein Konto „nur Business“ versendet keine Datei der Ablage (403); Privat-Bezug → 403', async () => {
+    const { anhaengeLaden } = await import('@/lib/inbox/anhaenge-server');
+    await expect(anhaengeLaden('pb', [{ datei: dateiId }])).rejects.toMatchObject({ status: 403 });
+    expect(await anhaengeLaden('pa', [{ datei: dateiId }])).toHaveLength(1);
+    const { ablegen } = await import('@/lib/dateien/ablage');
+    const privat = await ablegen('h-pruef', 'pa', { art: 'sonstig', titel: 'Unterlage', firmaId: 'f-beispiel' }, { bytes: Buffer.from('%PDF-1.4\n%%EOF\n'), name: 'u.pdf', typ: 'application/pdf' }, new Date().toISOString(), { gesellschaft: 'kdc' });
+    await expect(anhaengeLaden('pa', [{ datei: privat.id }])).rejects.toMatchObject({ status: 403 });
+  });
+  it('Fund 7: „nächste Stufe“ nicht bei Werbesperre bzw. Art. 18 — Freigabe → 409, kein Follow-up', async () => {
+    const { lege, lies } = await import('@/lib/zoe/stapel');
+    await db.updateJson<{ kontakte: Record<string, unknown>[] }>('kontakte', cur => ({ ...cur!, kontakte: cur!.kontakte.map(x => (x.id === 'c-erika' ? { ...x, werbesperre: { seit: '2026-10-11', grund: 'Widerspruch (Prüfung)' } } : x)) }));
+    try {
+      await lege({ werkzeug: 'naechste_stufe', gruppe: 'kunden', titel: 'Test nächste Stufe', nachher: 'Follow-up', eingabe: { mandatId: 'm-pruef', stufen: ['ts-pruef-drei'] }, anlass: 'Test', quelle: 'lauf', bezug: { art: 'produkte', id: 'stufe-pruef-sperre' }, person: 'pa' });
+      const v = (await lies('offen')).find(x => x.bezug?.id === 'stufe-pruef-sperre')!;
+      const vorher = ((await db.loadJson<{ followups: unknown[] }>('crm'))!.followups ?? []).length;
+      const f = await POST(stapel, '/api/zoe/stapel', { id: v.id, entscheidung: 'freigeben' }, 'pa');
+      expect(f.status, JSON.stringify(f.d)).toBe(409);
+      expect(((await db.loadJson<{ followups: unknown[] }>('crm'))!.followups ?? []).length).toBe(vorher);
+      // Der Morgenlauf legt für ein Mandat, dessen Ansprechpersonen alle gesperrt sind, keinen neuen Upsell-Vorschlag an.
+      const { treppeMorgenlauf } = await import('@/lib/crm/treppe-server');
+      await db.updateJson<Record<string, unknown>>('produkt-treppe--h-pruef', cur => ({ ...cur, marken: {} }));
+      expect(await treppeMorgenlauf()).toMatchObject({ stufen: 0 });
+    } finally {
+      await db.updateJson<{ kontakte: Record<string, unknown>[] }>('kontakte', cur => ({ ...cur!, kontakte: cur!.kontakte.map(x => { if (x.id !== 'c-erika') return x; const { werbesperre: _w, ...r } = x; return r; }) }));
+    }
+  });
+  it('Fund 9: „Firma zuordnen“ an einem beendeten Mandat macht Firma und Person höchstens zu Ex-Kunden', async () => {
+    const lead = await import('@/app/api/crm/lead/route') as Mod;
+    const { ladeCrm, aendereCrm } = await import('@/lib/crm/speicher');
+    await aendereCrm(b => ({ ...b, mandate: [...b.mandate, { ...MANDAT, id: 'm-beendet-pruef', kunde: 'Ohne Firma', firmaId: undefined, kontaktIds: [], status: 'beendet' } as never] }), { art: 'person', person: 'pa' });
+    const r = await POST(lead, '/api/crm/lead', { aktion: 'mandat-firma', mandatId: 'm-beendet-pruef', firma: { name: 'Erfundene Exfirma GmbH' }, person: { neu: { vorname: 'Ernst', nachname: 'Exkunde', email: `ernst@exfirma.${D}` } } }, 'pa');
+    expect(r.status, JSON.stringify(r.d)).toBe(200);
+    const f = (await ladeCrm()).firmen.find(x => x.id === r.d.firmaId)!;
+    expect(f.rolle).toBe('ex_kunde');
+    expect(f.lead?.status).not.toBe('kunde');
+    const k = (await db.loadJson<{ kontakte: { id: string; lebensphase?: string; stufe?: string }[] }>('kontakte'))!.kontakte.find(x => x.id === r.d.kontaktId)!;
+    expect(k.lebensphase).toBe('ex_kunde');
+    expect(k.stufe).not.toBe('gewonnen');
+  });
+  it('Fund 1: „+ Mandat“ mit einem Produkt „je Jahr“ → Monatshonorar ÷ 12', async () => {
+    const lead = await import('@/app/api/crm/lead/route') as Mod;
+    const { aendereCrm, ladeCrm } = await import('@/lib/crm/speicher');
+    await aendereCrm(b => ({ ...b, leistungen: [...b.leistungen, { ...LEISTUNG, id: 'l-jahr', name: 'Erfundenes Jahrespaket', preis: { betrag: 12_000, einheit: 'Jahr netto', basis: 'jahr' } } as never] }), { art: 'person', person: 'pa' });
+    const r = await POST(lead, '/api/crm/lead', { aktion: 'mandat-neu', firma: { id: 'f-beispiel' }, person: { id: 'c-erika' }, gesellschaft: 'ug', leistungId: 'l-jahr' }, 'pa');
+    expect(r.status, JSON.stringify(r.d)).toBe(200);
+    const m = (await ladeCrm()).mandate.find(x => x.id === r.d.mandatId)!;
+    expect(m.honorar).toEqual({ betrag: 1000, basis: 'monat', netto: true });
+  });
+});

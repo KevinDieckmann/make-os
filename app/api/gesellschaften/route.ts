@@ -37,7 +37,7 @@ import {
   type RegisterGesellschaft, type RegisterListe, type EintragAktion, type CrmVerweisTeil, type Bezug,
 } from '@/lib/gesellschaften/modell';
 import {
-  ladeRegister, standVon, registerAendern, registerAnlegen, crmVerweisTeil, steckbrief, eintragSchreiben, eintragHandeln, gesellschaftHandeln,
+  ladeRegister, standVon, registerAendern, registerAnlegen, crmVerweisTeil, steckbrief, eintragSchreiben, eintragHandeln, gesellschaftHandeln, schildBeschlussVerweise,
   vertragsErinnerungen, type Ergebnis,
 } from '@/lib/gesellschaften/server';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -188,7 +188,9 @@ export async function PATCH(req: Request) {
     const eintragId = typeof b.eintragId === 'string' ? b.eintragId : undefined;
     if (aktion) {
       if (!eintragId) return fehler('eintragId fehlt.', 400);
-      return antwort(await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragHandeln(liste, eintragId, aktion)), z.haushalt);
+      // Endgültig einen Beschluss löschen: zeigt noch ein Ereignis des Schilds darauf, sperrt eintragHandeln (409, Prüf-Fund 11.10.).
+      const ereignisse = aktion === 'endgueltig' && liste === 'beschluesse' && (await schildBeschlussVerweise(z.haushalt, b.id as string)).has(eintragId) ? 1 : 0;
+      return antwort(await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragHandeln(liste, eintragId, aktion, ereignisse)), z.haushalt);
     }
     if (!b.eintrag || typeof b.eintrag !== 'object') return fehler('eintrag fehlt.', 400);
     const r = await registerAendern(z.haushalt, z.person, b.id, b.stand, wer, eintragSchreiben(liste, b.eintrag, eintragId, z.person));

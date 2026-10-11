@@ -14,6 +14,13 @@ import type { CrmBestand, Mandat, Leistung } from './typen';
 import { mandatLage } from './kunden';
 import { mandatPhase } from './produkte';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { bereichVonGesellschaft } from '@/lib/einheiten';
+
+/**
+ * Nur Business (Prüf-Fund 11.10.): Mandate und Deals einer Privat-Einheit (z. B. der Selbstständigkeit, je Instanz) zählen nicht in der
+ * Leistungstreppe, im Zielbild und im Kreislauf der Planung — die Treppe ist ein Business-Bestand. EINE Filterstelle (Server rechnet hiermit).
+ */
+export const imBusiness = (x: { gesellschaft?: string | null }): boolean => bereichVonGesellschaft(x.gesellschaft) === 'business';
 import type { TreppeDatei, TreppenStufe, KundenFortschritt, ReportStand } from './treppe-daten';
 
 /** Alle so viele Tage je aktivem Mandat ein Vorschlag „Fortschritts-Report“ (Entscheidung 10.10.). */
@@ -140,7 +147,7 @@ export function kundenAmpel(e: {
 export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined> }): KundenZeile[] {
   const { datei, crm, heute } = e;
   const leistung = new Map<string, Leistung>(crm.leistungen.map(l => [l.id, l]));
-  return crm.mandate.filter(m => !m.geloeschtAm && (m.status === 'aktiv' || m.status === 'pausiert')).map(m => {
+  return crm.mandate.filter(m => !m.geloeschtAm && (m.status === 'aktiv' || m.status === 'pausiert') && imBusiness(m)).map(m => {
     const f = datei.kunden[m.id];
     const st = stufeVonMandat(m, datei);
     const stufe = st?.stufe ?? null;
@@ -200,7 +207,7 @@ export function zielbild(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate
   const nach = new Map(zeilen.map(z => [z.stufeId, z]));
   const gezaehlt = new Map<string, Set<string>>(zeilen.map(z => [z.stufeId, new Set<string>()]));
   for (const m of crm.mandate) {
-    if (m.geloeschtAm || !imJahr(m, jahr)) continue;
+    if (m.geloeschtAm || !imJahr(m, jahr) || !imBusiness(m)) continue;
     const st = stufeVonMandat(m, datei);
     if (!st) continue;
     const z = nach.get(st.stufe.id)!;
@@ -210,7 +217,7 @@ export function zielbild(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate
   }
   // Deals auf den Leistungen einer Stufe (z. B. kostenlose Einstiegsstufen ohne Mandat) — angelegt im Zieljahr, je Firma einmal.
   for (const c of crm.chancen) {
-    if (!c.leistungId || (c.angelegt ?? '').slice(0, 4) !== String(jahr)) continue;
+    if (!c.leistungId || (c.angelegt ?? '').slice(0, 4) !== String(jahr) || !imBusiness(c)) continue;
     for (const s of datei.stufen) {
       if (!s.leistungIds.includes(c.leistungId)) continue;
       const key = c.firmaId ?? `c:${c.id}`;

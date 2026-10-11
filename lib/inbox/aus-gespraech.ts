@@ -9,7 +9,7 @@
 import type { AnfrageEingabe } from '@/lib/crm/anfragen';
 import type { Vorgabe } from '@/lib/kalender/formular';
 import type { Adr, Zuordnung } from '@/lib/gmail/typen';
-import { bereichVon } from '@/lib/einheiten';
+import { postfachRaum } from '@/lib/postfach/bereich';
 import { gespraechPfad } from './strom';
 import { firmaAusDomain } from '@/lib/crm/firmen';
 
@@ -22,11 +22,11 @@ export const betreffOhneRe = (b: string): string => b.replace(/\s+/g, ' ').trim(
 const absender = (a: Adr): string => `${a.name ? `${a.name} ` : ''}<${a.email}>`;
 const kurz = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 const herkunft = (g: GespraechKurz) => (g.whatsapp ? `Aus WhatsApp · ${g.gegenueber.name ? `${g.gegenueber.name} ` : ''}${g.gegenueber.email}` : `Aus der Inbox · ${absender(g.gegenueber)}`);
-/** Privat- oder Business-Bereich des Postfachs (ohne Bereich: Business, wie bisher bei Gmail). */
-export const spaceVon = (g: Pick<GespraechKurz, 'bereich'>): 'privat' | 'business' => (g.bereich ? bereichVon(g.bereich) : 'business');
+/** Privat- oder Business-Bereich des Postfachs — die EINE Regel `postfachRaum` (ohne Bereich: Privat, Prüf-Fund 11.10.). */
+export const spaceVon = (g: Pick<GespraechKurz, 'bereich'>): 'privat' | 'business' => postfachRaum(g.bereich);
 /**
  * „Kontakt anlegen“ macht einen Business-Lead (Anfrage, Follow-up) — nur aus einem Postfach im Business-Bereich (Markttraktion 1.9, 09.10.).
- * Ohne Bereich gilt wie überall Business (Google Workspace ohne Register-Eintrag). Server (/api/crm/anfrage) UND Oberfläche fragen hier.
+ * Ohne Bereich gilt Privat (EINE Regel, 11.10.) — erst dem Postfach einen Business-Bereich geben. Server (/api/crm/anfrage) UND Oberfläche fragen hier.
  */
 export const kontaktAnlegenErlaubt = (bereich: string | null): boolean => spaceVon({ bereich }) === 'business';
 export const KONTAKT_NUR_BUSINESS = 'Kontakt anlegen geht nur aus einem Business-Postfach — aus Privat-Postfächern entsteht kein Lead.';

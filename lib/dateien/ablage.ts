@@ -137,7 +137,7 @@ export async function inhaltEntfernen(haushalt: string, id: string): Promise<voi
 export async function ablegen(haushalt: string, person: string, metaRoh: unknown, datei: NeueDatei | null, jetzt = new Date().toISOString(), feste: FesteBezuege = {}): Promise<DateiEintrag> {
   // Feste Bezüge (Angebots-PDF, Rechnungs-PDF, Logo einer Gesellschaft) kommen nur vom Server-Aufrufer, nie aus dem Netz.
   const rechnungsPdf = feste.rechnungsPdf && /^[a-z0-9][a-z0-9-]{1,39}$/.test(feste.rechnungsPdf) ? feste.rechnungsPdf : undefined;
-  const meta = { ...metaSaeubern(metaRoh), ...(feste.angebotId && /^[a-z0-9][a-z0-9-]{1,63}$/.test(feste.angebotId) ? { angebotId: feste.angebotId } : {}), ...(rechnungsPdf ? { rechnungsPdf, rechnungId: rechnungsPdf } : {}), ...(feste.gesellschaft ? { gesellschaft: feste.gesellschaft } : {}) };
+  const meta = { ...metaSaeubern(metaRoh), ...(feste.angebotId && /^[a-z0-9][a-z0-9-]{1,63}$/.test(feste.angebotId) ? { angebotId: feste.angebotId } : {}), ...(rechnungsPdf ? { rechnungsPdf, rechnungId: rechnungsPdf } : {}), ...(feste.gesellschaft ? { gesellschaft: feste.gesellschaft } : {}), ...(feste.bericht === 'fortschritt' ? { bericht: 'fortschritt' as const } : {}) };
   if (!meta.art) throw new AblageFehler('Art fehlt (vertrag, angebot, rechnung, sonstig).', 400);
   if (!hatBezug(meta)) throw new AblageFehler('Bezug fehlt (Kontakt, Firma, Mandat, Deal oder Rechnung).', 400);
   if (!datei && meta.art !== 'angebot') throw new AblageFehler('Datei fehlt.', 400);
@@ -177,7 +177,7 @@ export async function aendern(haushalt: string, person: string, id: string, feld
         const roh = { ...e, ...(felder && typeof felder === 'object' ? felder as Record<string, unknown> : {}), art: e.art };
         // Feste Bezüge (Angebot, Gesellschaft) bleiben, wie der Server sie setzte — ein PATCH ändert sie nie.
         // Rechnungs-PDF (08.10.): Bezug zur Rechnung bleibt fest — eine Geschäftsunterlage wird nie „vom Bezug gelöst“.
-        const m = { ...metaSaeubern(roh), ...(e.angebotId ? { angebotId: e.angebotId } : {}), ...(e.rechnungsPdf ? { rechnungsPdf: e.rechnungsPdf, rechnungId: e.rechnungsPdf } : {}), ...(e.gesellschaft ? { gesellschaft: e.gesellschaft } : {}) };
+        const m = { ...metaSaeubern(roh), ...(e.angebotId ? { angebotId: e.angebotId } : {}), ...(e.rechnungsPdf ? { rechnungsPdf: e.rechnungsPdf, rechnungId: e.rechnungsPdf } : {}), ...(e.gesellschaft ? { gesellschaft: e.gesellschaft } : {}), ...(e.bericht ? { bericht: e.bericht } : {}) };
         if (!hatBezug(m)) { ohneBezug = true; return e; }
         neu = { id: e.id, ...m, art: e.art, ...(e.datei ? { datei: e.datei } : {}), hochgeladenAm: e.hochgeladenAm, hochgeladenVon: e.hochgeladenVon, ...(e.dateiFehlt ? { dateiFehlt: e.dateiFehlt } : {}), geaendert: jetzt, geaendertVon: person };
         return neu;

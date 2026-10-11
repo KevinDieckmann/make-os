@@ -96,6 +96,11 @@ async function anhaengeMitgeben(person: string, quelle: 'gmail' | 'imap', kopie:
   return { kopie: kopie.map(n => ({ ...n, anhaenge: n.anhaenge.map(a => { const ab = zuordnung.get(`${n.id}|${a.teil}`); return ab ? { ...a, ablage: ab } : a; }) })), dateien };
 }
 
+/** Anhänge als Datei mitgeben bei Art. 18 → 409 (rein, getestet). Ohne gewählte Anhänge bleibt die Übergabe (Kopie mit Kennzeichen) möglich. */
+export function anhaengeBeiSperrePruefen(sperre: string | null | undefined, gewaehlt: number): void {
+  if (sperre === 'eingeschraenkt' && gewaehlt > 0) throw new TeilenFehler('Die Verarbeitung dieser Person ist eingeschränkt (Art. 18) — Anhänge gehen nicht als Datei mit. Ohne Anhänge übergeben oder nichts tun.', 409);
+}
+
 /**
  * Übergeben. Wirft `TeilenFehler` (400/403/404/409/413). `anhaengeRoh` (10.10.): ausdrücklich angehakte Anhänge `[{ nachricht, teil }]` —
  * nur diese gehen als (verschlüsselte) Datei mit, alle anderen stehen nur als Name in der Kopie.
@@ -112,6 +117,8 @@ export async function uebergeben(person: string, gespraech: string, an: string, 
   if (!empf) throw new TeilenFehler(an === person ? 'An dich selbst geht keine Übergabe.' : 'An diese Person geht keine Übergabe aus diesem Bereich (Privat nur an volle Mitglieder des Haushalts).', 403);
   const notiz = notizSauber(notizRoh);
   const wahl = anhangWahlSauber(anhaengeRoh);
+  // Art. 18 (Prüf-Fund 11.10.): bei eingeschränkter Verarbeitung keine Datei-Kopien in die Ablage — 409, nichts abgelegt, nichts übergeben.
+  anhaengeBeiSperrePruefen(g.zuordnung?.sperre, wahl.length);
   const schonDa = (l: readonly Uebergabe[]) => l.some(x => x.von === person && x.an === an && x.gespraech === gespraech && x.status !== 'erledigt');
   // Vorab prüfen (bevor Anhänge geholt werden) — in der Sperre unten noch einmal.
   if (schonDa(await uebergabenFuer(person, team))) throw new TeilenFehler(`Schon an ${empf.name} übergeben — dort „Kopie aktualisieren“.`, 409);

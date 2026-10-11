@@ -25,6 +25,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Event } from './typen';
 import type { KpiAmpel } from './kennzahlen';
 import { echtesGespraech } from './pipeline';
+import { neuerLeadAm } from './neue-leads';
 import type { Traktion, Welt } from './traktion';
 import { followUpBis } from './events';
 import { istNetzwerkenEvent } from './marke';
@@ -207,7 +208,8 @@ export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: st
   const abBeitrag = fruehestes(beitraege.flatMap(b => [tag(b.datum), tag(b.geaendert)]));
   const abContent = veroeffentlicht.length || wirkung.length ? fruehestes([...veroeffentlicht.map(b => tag(b.datum)), ...wirkung.map(x => x.tag)]) : null;
   // Für die Plan-Zeilen (10.10.): Tag der Anlage von Hand angelegter Personen (mit Vermerk) und Tage, an denen ein Deal die Stufe „Angebot“ erreichte.
-  const neueLeads = kontakte.filter(k => (k.aktivitaeten ?? []).some(a => a.von !== 'system' && a.art !== 'system')).map(k => (k.importiertAm ?? '').slice(0, 10)).filter(d => TAG_MUSTER.test(d));
+  // Prüf-Fund 11.10.: EINE Regel (lib/crm/neue-leads.ts) — kein rückwirkendes Zählen importierter Kontakte, keine System-Einträge.
+  const neueLeads = kontakte.map(neuerLeadAm).filter((d): d is string => !!d && TAG_MUSTER.test(d));
   const angebote = chancen.flatMap(c => { const h = (c.historie ?? []).find(x => x.stufe === 'angebot'); return h ? [tag(h.am)] : []; });
   const abLeads = fruehestes(neueLeads);
   const abEvent = fruehestes(events.filter(e => !istNetzwerkenEvent(e)).flatMap(e => [e.datum, tag(e.geaendert)]));  // nur unsere Abende — besuchte Events (Events-Reiter) zählen hier nicht

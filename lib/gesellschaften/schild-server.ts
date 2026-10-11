@@ -75,12 +75,16 @@ export async function unternehmenLage(haushalt: string, heute = localDay()): Pro
   return lageAus(register, schild, heute);
 }
 
-/** Stichtage für die Fristen-Ebene des Kalenders (lib/kalender/fristen-server.ts) — nur der Haushalt des Inhabers; wirft nie. */
-export async function schildFristenLesen(): Promise<SchildFrist[]> {
+/**
+ * Stichtage für die Fristen-Ebene des Kalenders (lib/kalender/fristen-server.ts) — nur für eine Person mit Zugang zur Firmen-Akte
+ * (`rechtZugangFuer`: Haushalt des Inhabers, voller Haushaltszugang; Prüf-Fund 11.10. — ein Konto „nur Business“ sah sonst „Pflicht: …“ in
+ * Kalender, Heute und Glocke). `betrachter` Pflicht; ohne Person nichts. Wirft nie.
+ */
+export async function schildFristenLesen(betrachter: string | null): Promise<SchildFrist[]> {
   try {
-    const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
-    const h = await haushaltDesInhabers();
-    return h ? schildFristen(await unternehmenLage(h)) : [];
+    const { rechtZugangFuer } = await import('@/lib/recht/server');
+    const z = await rechtZugangFuer(betrachter);
+    return z ? schildFristen(await unternehmenLage(z.haushalt)) : [];
   } catch { return []; }
 }
 
@@ -95,7 +99,11 @@ export async function schildErinnerungen(haushalt: string, heute = localDay()): 
   try {
     const alle = faelligeSchildErinnerungen(await unternehmenLage(haushalt, heute));
     if (!alle.length) return { neu: 0, geschlossen: 0 };
-    const [{ systemAufgabenAendern }, { WEG }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege')]);
+    const [{ systemAufgabenAendern }, { WEG }, { rechtPersonen }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege'), import('@/lib/recht/server')]);
+    // Zuständig und beteiligt NUR Konten mit Zugang zur Firmen-Akte (Prüf-Fund 11.10.) — „beide“ machte jedes Konto des Haushalts (auch
+    // „nur Business“) zum Beteiligten samt Glocke.
+    const personen = await rechtPersonen(haushalt);
+    const zustaendig = personen.length ? { assignee: personen[0], ...(personen.length > 1 ? { beteiligte: personen.slice(1) } : {}) } : { assignee: 'both' };
     const jetzt = new Date().toISOString();
     let neu: typeof alle = [];
     let geschlossen = 0;
@@ -106,7 +114,7 @@ export async function schildErinnerungen(haushalt: string, heute = localDay()): 
       geschlossen = schliessen.length;
       return {
         neu: neu.map(e => ({
-          id: e.aufgabeId, title: e.titel, description: e.beschreibung, status: 'todo', priority: 'high', assignee: 'both', dueDate: e.dueDate,
+          id: e.aufgabeId, title: e.titel, description: e.beschreibung, status: 'todo', priority: 'high', ...zustaendig, dueDate: e.dueDate,
           notiz: `[Im Bereich Unternehmen öffnen](${WEG.schild(e.reiter, e.gesellschaftId)})`,
           tags: ['unternehmen', 'pflicht'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: 'business',
           ...(istGesellschaft(e.gesellschaftId) ? { spaceId: e.gesellschaftId } : {}),
@@ -115,8 +123,8 @@ export async function schildErinnerungen(haushalt: string, heute = localDay()): 
       };
     }, { jetzt });
     if (neu.length) {
-      const [{ ladeKonten }, { melde }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/meldungen/melden')]);
-      const personen = (await ladeKonten()).konten.filter(k => k.haushalt === haushalt).map(k => k.speicher);
+      // Glocke NUR an Konten mit Zugang zur Firmen-Akte (Prüf-Fund 11.10.): ein Konto „nur Business“ sieht das Schild nicht (toter Link, Inhalte).
+      const { melde } = await import('@/lib/meldungen/melden');
       for (const e of neu) for (const an of personen) await melde({ an, art: 'vertrag', titel: e.titel, link: WEG.schild(e.reiter, e.gesellschaftId), bezug: { art: 'aufgabe', id: e.aufgabeId } });
     }
     return { neu: neu.length, geschlossen };

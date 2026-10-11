@@ -158,13 +158,13 @@ describe('1.6 · Firma mit gleichem Namen im Papierkorb wird zurückgeholt (mit 
 
 // ── 1.9 · Inbox ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 describe('1.9 · Inbox „Kontakt anlegen“ nur im Business-Bereich, Firma aus der Mail-Domain (nie Sammeldomains)', () => {
-  it('kontaktAnlegenErlaubt: Business ja, Privat nein, ohne Bereich wie überall Business', async () => {
+  it('kontaktAnlegenErlaubt: Business ja, Privat nein, ohne Bereich Privat (EINE Regel `postfachRaum`, Prüf-Fund 11.10.)', async () => {
     const { kontaktAnlegenErlaubt } = await import('@/lib/inbox/aus-gespraech');
     const { PRIVAT_GESELLSCHAFTEN, BUSINESS_GESELLSCHAFTEN } = await import('@/lib/einheiten');
     expect(kontaktAnlegenErlaubt('privat')).toBe(false);
     for (const g of PRIVAT_GESELLSCHAFTEN) expect(kontaktAnlegenErlaubt(g), g).toBe(false);
     for (const g of BUSINESS_GESELLSCHAFTEN) expect(kontaktAnlegenErlaubt(g), g).toBe(true);
-    expect(kontaktAnlegenErlaubt(null)).toBe(true);
+    expect(kontaktAnlegenErlaubt(null)).toBe(false);
   });
 
   it('firmaAusDomain: Firma mit der Domain, sonst ein Name aus der Domain; gmail, web.de, gmx, icloud, outlook, t-online nie', async () => {

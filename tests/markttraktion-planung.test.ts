@@ -170,8 +170,8 @@ describe('Rückwärts-Trichter — Umsatz → Deals → Angebote → SQL → Ges
     const gewonnen = [1, 2, 3].map(i => ch({ id: `ch-g${i}`, stufe: 'gewonnen', wert: { betrag: 6000, basis: 'einmalig' }, historie: [{ stufe: 'gewonnen', am: i === 3 ? '2026-10-01T10:00:00.000Z' : J, von: A }] }));
     const gem = zielLage(ziel({ dealWert: undefined }), { heute: HEUTE, kanaele: [kn], crm: crmMit({ chancen: gewonnen }) });
     expect(gem.dealWert).toEqual({ wert: 6000, quelle: 'gemessen' });
-    expect(gem.deals).toBe(20);
     expect(gem.ist.umsatz).toBe(12_000); // nur die im Zeitraum gewonnenen
+    expect(gem.deals).toBe(18); // Rest 108.000 € ÷ 6.000 € (Prüf-Fund 11.10.: der Trichter rechnet mit dem Rest)
   });
   it('Anteile: eigene des Ziels, sonst nach geplanter Leistung (Leads × Quoten), Annahme aus den Pipeline-Wahrscheinlichkeiten', () => {
     const std = standardQuoten();
