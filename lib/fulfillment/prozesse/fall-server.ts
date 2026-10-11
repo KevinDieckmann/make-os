@@ -12,7 +12,7 @@
 import type { Fall, ProzessVorlage, VorlagenDatei, AnwendenErgebnis, KundeKurz } from '../typen';
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
 import { fulfillmentAendern, fulfillmentLesen, fulfillmentHaushalt, eintragStand } from '../speicher';
-import { aktuellerKnoten, unterschriftAm } from '../regeln';
+import { aktuellerKnoten, unterschriftAm, istBestand, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { istBusinessGesellschaft, istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
@@ -41,11 +41,14 @@ export async function fallUmfeld(mandatIds?: readonly string[]) {
 /** Die Ableitung des Onboardings für einen Fall (Ziele, Playbook, Kick-off-Rituale, Unterschrift, 24-h-Uhr). */
 export function ableitungFuer(fall: Fall, m: Mandat | undefined, crm: Pick<CrmBestand, 'angebote' | 'chancen'>, vorlagen: VorlagenDatei, kunde: KundeKurz | undefined, jetzt: string): OnboardingAbleitung {
   const u = m ? unterschriftAm(m, crm, fall.gestartetAm) : null;
+  // Bestandsmandat (vor der Einrichtung unterschrieben, beim Start älter als 14 Tage): die 24-h-Uhr beginnt mit dem Start des Falls (Prüf-Fund 11.10.).
+  const uhrAb = u && istBestand(u.am, vorlagen.marken[MARKE_FULFILLMENT_SEIT], fall.gestartetAm) ? fall.gestartetAm : u?.am;
   return {
     ziele: mandatZieleLesen(m?.ziele).map(z => ({ id: z.id, text: z.text, ...(z.ziel ? { ziel: z.ziel } : {}) })),
-    formularProzent: kunde?.formularProzent ?? null,
+    // Der Schritt „Kunden-Playbook“ misst nur das Playbook (`playbookProzent`); ältere Kurzformen ohne das Feld: wie bisher.
+    formularProzent: kunde ? (kunde.playbookProzent !== undefined ? kunde.playbookProzent : kunde.formularProzent) : null,
     kickoffRitualIds: vorlagen.rituale.filter(istKickoff).map(r => r.id),
-    ...(u ? { unterschrift: u.am } : {}),
+    ...(uhrAb ? { unterschrift: uhrAb } : {}),
     willkommenStunden: vorlagen.einstellungen.willkommenStunden,
     jetzt,
   };
@@ -194,6 +197,11 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
         const l = letzteMessung(e);
         const neu = { ...z };
         if (l) neu.ist = istText(l.wert, e?.einheit, l.am);
+        else {
+          // Letzte Messung gelöscht (Prüf-Fund 11.10.): den Ist-Wert, den WIR aus ihr gesetzt hatten, wieder leeren — einen anderen (von Hand) nie.
+          const ea = alt.wertKonto[z.id], la = letzteMessung(ea);
+          if (la && z.ist === istText(la.wert, ea?.einheit, la.am)) delete neu.ist;
+        }
         if (!z.ziel && e?.zielZahl !== undefined) neu.ziel = zielText(e.zielZahl, e.einheit, e.zielBis);
         return neu;
       }), person, iso);

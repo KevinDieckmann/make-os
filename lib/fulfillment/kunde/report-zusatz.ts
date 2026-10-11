@@ -17,7 +17,8 @@ export const PULS_IM_REPORT_TAGE = 90;
 
 export function reportZusatz(fall: Fall | null, mandat: Pick<Mandat, 'id' | 'ziele'>, kunde: Pick<KundeDatei, 'puls'>, heute: string, pulsFrage: boolean, gesperrt: ReadonlySet<string> = new Set()): ReportZusatz | null {
   if (!fall) return null;
-  const wartet = wartetAufEuch({ ...fall, knoten: fall.knoten.filter(k => !knotenGesperrt(k, gesperrt)) }, heute).map(w => (w.tage !== undefined && w.tage > 0 ? `${w.titel} (seit ${w.tage} ${w.tage === 1 ? 'Tag' : 'Tagen'})` : w.titel));
+  // Der Report geht an den Kunden: nur geteilte Entscheidungen (Prüf-Fund 11.10.), keine gesperrten Knoten.
+  const wartet = wartetAufEuch({ ...fall, knoten: fall.knoten.filter(k => !knotenGesperrt(k, gesperrt)), entscheidungen: fall.entscheidungen.filter(x => x.geteilt) }, heute).map(w => (w.tage !== undefined && w.tage > 0 ? `${w.titel} (seit ${w.tage} ${w.tage === 1 ? 'Tag' : 'Tagen'})` : w.titel));
   const p = letzterPuls(kunde, mandat.id);
   const puls = p && tagVon(p.am) >= tagePlus(heute, -PULS_IM_REPORT_TAGE) ? { wert: p.wert, am: tagVon(p.am) } : undefined;
   return { wartetAufEuch: wartet, wertKonto: wertKontoZeilen(fall, mandat), ...(puls ? { puls } : {}), ...(pulsFrage ? { pulsFrage: true } : {}) };

@@ -25,6 +25,8 @@ import { hostPasst, hostVon, istGesperrt, urlNormal } from './quellen';
 export const WEB = {
   zeichen: 30_000,
   maxBytes: 2 * 1024 * 1024,
+  /** HTML wird höchstens bis hier zu Text (Prüf-Fund 11.10.: Säuberung fremder Seiten in Grenzen halten) — der Rest steht als „gekürzt“ im Kopf. */
+  htmlBytes: 500 * 1024,
   verbindenMs: 5_000,
   gesamtMs: 15_000,
   weiterleitungen: 3,
@@ -109,15 +111,47 @@ export function robotsLesen(text: string, agent = USER_AGENT_NAME): RobotsRegel[
   const eigene = gruppen.filter(g => g.agenten.some(a => a !== '*' && agent.toLowerCase().includes(a)));
   return (eigene.length ? eigene : gruppen.filter(g => g.agenten.includes('*'))).flatMap(g => g.regeln);
 }
-/** Darf dieser Pfad gelesen werden (längste passende Regel gewinnt, bei Gleichstand „erlaubt“)? */
+/** Grenzen der robots.txt-Prüfung (Prüf-Fund 11.10.: die frühere RegExp aus `*` → `.*` war bei fremden Regeln mit vielen Sternen
+ *  exponentiell — ein Lauf blockierte den einzigen App-Prozess, der AbortController greift dort nicht). Jetzt linear, dazu Deckel. */
+export const ROBOTS = { regelZeichen: 512, sterne: 16, pfadZeichen: 2048, regeln: 2000 } as const;
+
+/** Passt die robots.txt-Regel `regel` auf `pfad`? Linear: `*` = beliebig, `$` am Ende = Ende des Pfads (mitten im Pfad wörtlich).
+ *  Teilstücke zwischen den Sternen werden der Reihe nach mit `indexOf` gesucht (links zuerst — für reine `*`-Muster genügt das),
+ *  das letzte Stück bei `$` am Ende des Pfads. `null` = Regel sprengt die Grenzen (der Aufrufer entscheidet vorsichtig). */
+export function robotsPasst(regel: string, pfad: string): boolean | null {
+  if (regel.length > ROBOTS.regelZeichen) return null;
+  const anker = regel.endsWith('$');
+  const roh = (anker ? regel.slice(0, -1) : regel).replace(/\*{2,}/g, '*');
+  const stuecke = roh.split('*');
+  if (stuecke.length - 1 > ROBOTS.sterne) return null;
+  if (pfad.length > ROBOTS.pfadZeichen) return null;
+  const p = pfad;
+  if (!p.startsWith(stuecke[0])) return false;
+  if (stuecke.length === 1) return anker ? p.length === stuecke[0].length : true;
+  let pos = stuecke[0].length;
+  const letzte = stuecke.length - 1;
+  for (let i = 1; i < letzte; i++) {
+    const s = stuecke[i];
+    if (!s) continue;
+    const at = p.indexOf(s, pos);
+    if (at < 0) return false;
+    pos = at + s.length;
+  }
+  const ende = stuecke[letzte];
+  if (!anker) return ende ? p.indexOf(ende, pos) >= 0 : true;
+  return p.length - ende.length >= pos && p.endsWith(ende);
+}
+
+/** Darf dieser Pfad gelesen werden (längste passende Regel gewinnt, bei Gleichstand „erlaubt“)? Regeln über den Grenzen: ein Disallow
+ *  gilt dann als passend (vorsichtig), ein Allow zählt nicht. Mehr als `ROBOTS.regeln` Regeln oder ein Pfad über `ROBOTS.pfadZeichen`
+ *  → „nicht erlaubt“ (vorsichtig, statt eine Teilprüfung). */
 export function robotsErlaubt(regeln: readonly RobotsRegel[], pfad: string): boolean {
+  if (regeln.length > ROBOTS.regeln || pfad.length > ROBOTS.pfadZeichen) return false;
   let best: RobotsRegel | null = null;
   for (const r of regeln) {
     if (!r.pfad) continue;
-    // `*` = beliebig, `$` am Ende = Ende des Pfads; ein `$` mitten im Pfad wird wörtlich genommen.
-    const roh = r.pfad.endsWith('$') ? r.pfad.slice(0, -1) : r.pfad;
-    const muster = new RegExp(`^${roh.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}${r.pfad.endsWith('$') ? '$' : ''}`);
-    if (!muster.test(pfad)) continue;
+    const passt = robotsPasst(r.pfad, pfad);
+    if (passt === false || (passt === null && r.erlaubt)) continue;
     if (!best || r.pfad.length > best.pfad.length || (r.pfad.length === best.pfad.length && r.erlaubt)) best = r;
   }
   return !best || best.erlaubt;
@@ -201,16 +235,17 @@ async function robotsFuer(l: WebLauf, u: URL, signal: AbortSignal): Promise<Robo
 
 const typVon = (kopf: Record<string, string>): string => (kopf['content-type'] ?? '').split(';')[0].trim().toLowerCase();
 
-/** Text aus der Antwort (nur erlaubte Typen). */
-async function textAus(a: Antwort): Promise<string> {
+/** Text aus der Antwort (nur erlaubte Typen). HTML nur aus den ersten `WEB.htmlBytes` (`gekuerzt` sagt es dem Kopf). */
+export async function textAus(a: Antwort): Promise<{ text: string; gekuerzt: boolean }> {
   const typ = typVon(a.kopf);
   if (!(WEB.typen as readonly string[]).includes(typ)) throw new Abgelehnt('rechte', `Nur Text-Seiten (HTML, Text, PDF) — diese Antwort ist „${typ || 'ohne Typ'}“.`);
   if (typ === 'application/pdf') {
     const { textAuslesen } = await import('@/lib/dateien/text-auslesen');
-    return (await textAuslesen(a.bytes, 'application/pdf'))?.text ?? '';
+    return { text: (await textAuslesen(a.bytes, 'application/pdf'))?.text ?? '', gekuerzt: false };
   }
-  const roh = a.bytes.toString('utf8');
-  return typ === 'text/plain' ? roh : htmlZuText(roh).text;
+  if (typ === 'text/plain') return { text: a.bytes.toString('utf8'), gekuerzt: false };
+  const gekuerzt = a.bytes.length > WEB.htmlBytes;
+  return { text: htmlZuText((gekuerzt ? a.bytes.subarray(0, WEB.htmlBytes) : a.bytes).toString('utf8')).text, gekuerzt };
 }
 
 /** Den Text einer Seite in Teile zu 30.000 Zeichen schneiden (rein). */
@@ -230,6 +265,7 @@ export async function webLesen(eingabe: { url?: unknown; teil?: unknown }, l: We
     const schluessel = start.toString();
     let text = l.texte.get(schluessel);
     let endUrl = schluessel;
+    let gekuerzt = false;
     if (text === undefined) {
       const ctl = new AbortController();
       const uhr = setTimeout(() => ctl.abort(), WEB.gesamtMs);
@@ -254,7 +290,9 @@ export async function webLesen(eingabe: { url?: unknown; teil?: unknown }, l: We
           if (r.status === 404 || r.status === 410) throw new Abgelehnt('nicht_gefunden', `Seite nicht gefunden (${r.status}).`);
           if (r.status === 401 || r.status === 403) throw new Abgelehnt('rechte', `Kein Zugang (${r.status}) — Anmeldungen und Bezahlschranken umgehen wir nicht.`);
           if (r.status >= 400) throw new Abgelehnt(r.status === 429 || r.status >= 500 ? 'voruebergehend' : 'nicht_gefunden', `Die Seite antwortet mit ${r.status}.`);
-          text = (await textAus(r)).replace(/\u0000/g, '').trim();
+          const gelesen = await textAus(r);
+          gekuerzt = gelesen.gekuerzt;
+          text = gelesen.text.replace(/\u0000/g, '').trim();
           endUrl = u.toString();
           break;
         }
@@ -268,7 +306,7 @@ export async function webLesen(eingabe: { url?: unknown; teil?: unknown }, l: We
       l.gelesen.add(endUrl);
     }
     const t = teilVon(text, teil);
-    const kopf = `Seite: ${endUrl} · abgerufen ${l.heute} · ${text.length.toLocaleString('de-DE')} Zeichen${t.teile > 1 ? ` · Teil ${t.teil} von ${t.teile} (weiter mit "teil": ${t.teil < t.teile ? t.teil + 1 : t.teile})` : ''}`;
+    const kopf = `Seite: ${endUrl} · abgerufen ${l.heute} · ${text.length.toLocaleString('de-DE')} Zeichen${t.teile > 1 ? ` · Teil ${t.teil} von ${t.teile} (weiter mit "teil": ${t.teil < t.teile ? t.teil + 1 : t.teile})` : ''}${gekuerzt ? ' · nur die ersten 500 KB HTML gelesen' : ''}`;
     return erfolg(`${kopf}\n${fremd('web', t.inhalt || '(kein Text auf der Seite)')}`);
   } catch (e) {
     if (e instanceof Abgelehnt) return fehlschlag(e.klasse, `Nicht gelesen: ${e.message}`);

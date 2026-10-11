@@ -56,3 +56,13 @@ export function formularPruefen(linkId: string, stempel: unknown, webseite: unkn
   if (geladen === null || !ausfuellZeitOk(geladen, jetztMs)) return NICHT_ANGENOMMEN;
   return null;
 }
+
+/**
+ * Tokens aus Kunden-Links in einem Text schwärzen (rein, Prüf-Fund 11.10.): `/kunde/kl-<24 hex>#t=<Token>` bzw. `#p=<Token>` → `#t=[geschwärzt]`.
+ * Für Leser, die Text an ein Modell oder in Protokolle geben (der Mail-Spiegel trägt die Willkommensmail mit Playbook-Link bzw. den Report mit
+ * Puls-Link) — der Link bleibt erkennbar, das Geheimnis nicht. Auch maskiert (`%23t%3D…`, Quoted-Printable `#t=3D…`). Linear.
+ */
+export function tokenSchwaerzen(text: string): string {
+  if (!text || !text.includes('kl-')) return text;
+  return text.replace(/(\/kunde\/kl-[a-f0-9]{24})(#|%23)([tp])(=|%3D)[A-Za-z0-9_-]+/gi, (_, pfad: string, raute: string, art: string, gleich: string) => `${pfad}${raute}${art}${gleich}[geschwärzt]`);
+}

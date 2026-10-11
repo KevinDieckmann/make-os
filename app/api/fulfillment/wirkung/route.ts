@@ -20,6 +20,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,8 @@ async function berichtLesen(name: string): Promise<Buffer | null> {
 async function grundlage(mandatId: string, zitat?: { text: string; einwilligungAm: string; wie: string }) {
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { h, crm, vorlagen, faelle, kunde } = await fallUmfeld([mandatId]);
-  const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm);
+  const { istBusinessGesellschaft } = await import('@/lib/einheiten');
+  const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm && istBusinessGesellschaft(x.gesellschaft));
   const f = faelle.faelle[mandatId];
   if (!m || !f) return null;
   const w = fallWirksam(f, ableitungFuer(f, m, crm, vorlagen, kunde[mandatId], iso));
@@ -55,6 +57,8 @@ export async function GET(req: Request) {
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
   const g = await grundlage(m);
   if (!g) return NextResponse.json({ ok: false, fehler: 'Für dieses Mandat gibt es keinen Fall.' }, { status: 404 });
+  // Der Bericht nennt den Kunden (Firma) — Lese-Protokoll (Prüf-Fund 11.10.).
+  leseZugriff(req, 'fulfillment', { ids: [m], anzahl: 1 });
   if (url.searchParams.get('vorschau') === '1') return NextResponse.json({ ok: true, dokument: g.dok, erstellt: g.f.wirkung ?? null });
   const name = g.f.wirkung?.dateiName;
   if (!name) return NextResponse.json({ ok: false, fehler: 'Noch kein Wirkungsbericht erstellt.' }, { status: 404 });
@@ -97,8 +101,21 @@ export async function POST(req: Request) {
     if (!name) return NextResponse.json({ ok: false, fehler: 'Erst den Wirkungsbericht erstellen.' }, { status: 409 });
     const bytes = await berichtLesen(name);
     if (!bytes) return NextResponse.json({ ok: false, fehler: 'Die Datei des Berichts fehlt — bitte neu erstellen.' }, { status: 404 });
-    const { ablegen } = await import('@/lib/dateien/ablage');
-    const e = await ablegen(g.h, z.person, { art: 'sonstig', titel: `Wirkungsbericht ${g.m.kunde} ${g.heute}`.slice(0, 160), mandatId: g.m.id, ...(g.m.firmaId ? { firmaId: g.m.firmaId } : {}) }, { bytes, name: wirkungAnzeigename(g.heute), typ: 'application/pdf' }, g.jetzt.toISOString());
+    // Prüf-Fund 11.10.: jede Kopie in der Ablage ist ein Beleg (nicht löschbar) — dieselbe Fassung des Berichts nur EINMAL ablegen, die Kennung
+    // der Kopie merkt sich der Fall (Marke `wirkung-mail:<erstelltAm>` — je erstellter Fassung); fehlt die Kopie inzwischen, wird neu abgelegt.
+    const { ablegen, ablageListe } = await import('@/lib/dateien/ablage');
+    const marke = `wirkung-mail:${g.f.wirkung?.erstelltAm ?? name}`;
+    const vorhanden = g.f.marken?.[marke];
+    const da = vorhanden ? (await ablageListe(g.h)).some(x => x.id === vorhanden) : false;
+    const e = da ? { id: vorhanden! } : await ablegen(g.h, z.person, { art: 'sonstig', titel: `Wirkungsbericht ${g.m.kunde} ${g.heute}`.slice(0, 160), mandatId: g.m.id, ...(g.m.firmaId ? { firmaId: g.m.firmaId } : {}) }, { bytes, name: wirkungAnzeigename(g.heute), typ: 'application/pdf' }, g.jetzt.toISOString());
+    if (!da) {
+      await fulfillmentAendern('faelle', d => {
+        const f = d.faelle[mid];
+        if (!f) return { ok: true, datei: d, geaendert: [] };
+        return { ok: true, datei: { ...d, faelle: { ...d.faelle, [mid]: { ...f, marken: { ...f.marken, [marke]: e.id } } } }, geaendert: [mid] };
+      }, werAus(req), g.h);
+    }
+    leseZugriff(req, 'fulfillment', { ids: [mid], anzahl: 1 });
     const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
     const kontakte = await kontakteFuerVerarbeitung();
     const k = g.m.kontaktIds.map(id => kontakte.find(x => x.id === id)).find(x => !!x?.email);

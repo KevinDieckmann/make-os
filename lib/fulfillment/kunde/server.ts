@@ -36,8 +36,11 @@ import { anfrageAnlegen, letzterPuls, offeneAnfrage, pulsAnnehmen, pulsHand, pul
 import { kundenSicht, kundeTauglich, kundeHinweis, type KundenSicht } from './sicht';
 import { reportZusatz } from './report-zusatz';
 import { kundenGesperrt } from '../prozesse/bausteine';
+import { playbookBaustein } from '../prozesse/onboarding';
+import { OB_PLAYBOOK_FORMULAR_ID } from '../prozesse/fall';
 import { kundeFristenAnwenden, unterlageDatei, verwaisteDateien, alleTexte } from './fristen';
 import { kundeTypErkennen, ohneMetadaten, uploadFrei, UPLOAD_GRENZEN, type KundeDateiTyp } from './upload';
+import { aktiveInhalte, AKTIV_TEXT } from '@/lib/dateien/aktive-inhalte';
 import { neueLinkKennung, neuesToken, tokenHash, neuePulsAnfrageKennung, neuePulsKennung, neueUnterlageKennung } from './token';
 import type {
   Fall, FormularStand, FristenKontext, KundeAuskunft, KundeDatei, KundeKurz, KundenLink, MorgenlaufTeil, Puls, PulsAnfrage, ReportZusatz, Unterlage, VorlagenDatei,
@@ -149,8 +152,11 @@ function kurzAus(kunde: KundeDatei, mandatId: string, schalter: SchalterStand, f
   const link: KundeKurz['link'] = !schalter.an ? 'aus' : akt ? 'aktiv' : letzter ? linkStatus(letzter, heute, ende) : 'keiner';
   const p = letzterPuls(kunde, mandatId);
   const formulare = formulareDesFalls(fall, v.bausteine).filter(b => b.kundeFuellt === true && kundeTauglich(b, v));
+  // Der Schritt „Kunden-Playbook“ misst NUR das Playbook (das Formular unter dem Schritt, sonst das Playbook der Bibliothek) — nie andere Formulare.
+  const pbId = fall?.knoten.find(k => k.id === OB_PLAYBOOK_FORMULAR_ID && k.status !== 'entfaellt')?.bausteinId ?? playbookBaustein(v)?.id;
+  const pb = formulare.find(b => b.id === pbId);
   return {
-    link, formularProzent: formulareProzent(formulare, kunde, mandatId),
+    link, formularProzent: formulareProzent(formulare, kunde, mandatId), playbookProzent: pb ? formularProzent(pb, formularStandVon(kunde, mandatId, pb.id)) : null,
     ungepruefteUnterlagen: kunde.unterlagen.filter(u => u.mandatId === mandatId && u.status === 'ungeprueft').length,
     ...(p ? { letzterPuls: { wert: p.wert, am: tagVon(p.am) } } : {}), pulsOffen: !!offeneAnfrage(kunde, mandatId, heute),
   };
@@ -270,8 +276,13 @@ export async function pulsAnfrageAnlegen(mandatId: string, person: string, jetzt
 export async function pulsHandEintragen(mandatId: string, wert: unknown, satz: unknown, person: string, jetzt = new Date()): Promise<Ergebnis> {
   const x = await mandatMitFall(mandatId);
   if ('status' in x) return x;
-  const r = await fulfillmentAendern('kunde', d => pulsHand(d, { mandatId: x.m.id, id: neuePulsKennung(), wert, satz, am: jetzt.toISOString() }), wer(person));
-  return r.ok ? ok({ puls: pulsListe(r.datei, x.m.id)[0] }) : nein(r.status, r.fehler);
+  const id = neuePulsKennung();
+  const r = await fulfillmentAendern('kunde', d => pulsHand(d, { mandatId: x.m.id, id, wert, satz, am: jetzt.toISOString() }), wer(person));
+  if (!r.ok) return nein(r.status, r.fehler);
+  // Prüf-Fund 11.10.: auch ein Puls von Hand unter der Schwelle löst Glocke + Vorschlag „Gespräch anbieten“ aus (die Marke verhindert Doppelte).
+  const neu = r.datei.puls.find(p => p.id === id);
+  if (neu && pulsStufe(neu.wert, (await fulfillmentLesen('vorlagen')).einstellungen.pulsSchwelle) === 'kritisch') await pulsAufmerksamkeit(x.m, neu, localDay(jetzt)).catch(() => { /* Morgenlauf holt es nach */ });
+  return ok({ puls: pulsListe(r.datei, x.m.id)[0] });
 }
 
 /** „In die Health übernehmen“: `Mandat.health.stimmung = Wert × 10` über den CRM-Schreibweg mit Stand (die Zufriedenheits-Ampel rechnet unverändert). */
@@ -352,6 +363,8 @@ export function dateiPruefen(nameRoh: string, bytes: Buffer): { ok: true; name: 
   const name = dateinameSaeubern(nameRoh, 'pdf');
   const typ = kundeTypErkennen(name, bytes);
   if (!typ) return { ok: false, status: 415, fehler: 'Nur PDF, Bilder (PNG, JPG, WEBP, HEIC), Word, Excel oder PowerPoint ohne Makros — und der Inhalt muss zur Endung passen.' };
+  // Aktive Inhalte (Makros, eingebettete Objekte, externe Verweise, PDF-Skripte) → 415 (Prüf-Fund 11.10.; dieselbe Regel wie die Aufgaben-Ablage).
+  if (aktiveInhalte(typ, bytes)) return { ok: false, status: 415, fehler: AKTIV_TEXT };
   const sauber = ohneMetadaten(typ, new Uint8Array(bytes));
   if (!sauber) return { ok: false, status: 415, fehler: 'Das Bild ließ sich nicht sicher prüfen — bitte als PDF oder JPG senden.' };
   return { ok: true, name, typ, bytes: Buffer.from(sauber) };
@@ -440,7 +453,8 @@ export async function uploadKunde(z: Zugriff, nameRoh: string, bytes: Buffer, zw
   try {
     const { melde } = await import('@/lib/meldungen/melden');
     const { WEG } = await import('@/lib/wege');
-    for (const an of await empfaenger(z.mandat)) await melde({ an, art: 'produkte', titel: `Neue Unterlagen zu „${z.mandat.titel}“ eingegangen`, link: WEG.fall(z.mandat.id, 'kunde') });
+    // Bezug je Link (Prüf-Fund 11.10.): mehrere Uploads über denselben Link = EINE ungelesene Glocke (die neuere ersetzt die ältere).
+    for (const an of await empfaenger(z.mandat)) await melde({ an, art: 'produkte', titel: `Neue Unterlagen zu „${z.mandat.titel}“ eingegangen`, link: WEG.fall(z.mandat.id, 'kunde'), bezug: { art: 'kunden-link', id: z.link.id } });
   } catch { /* Meldung ist Zugabe */ }
   const frei = uploadFrei(unterlagenDesLinks((await fulfillmentLesen('kunde')), z.link.id));
   return ok({ eingegangen: true, frei: frei.dateien });
@@ -552,7 +566,7 @@ export async function reportZusatzFuer(mandatId: string, heute: string): Promise
   }
 }
 
-/** Morgenlauf: abgelaufene Links markieren; Puls ≤ Schwelle (über den Link, letzte 14 Tage) ohne Vorschlag → Vorschlag „Gespräch anbieten“. */
+/** Morgenlauf: abgelaufene Links markieren; Puls ≤ Schwelle (über den Link oder von Hand, letzte 14 Tage) ohne Vorschlag → Vorschlag „Gespräch anbieten“. */
 export async function kundeMorgenlauf(h: string, heute: string): Promise<MorgenlaufTeil> {
   const [kunde, vorlagen] = await Promise.all([fulfillmentLesen('kunde', h), fulfillmentLesen('vorlagen', h)]);
   if (!kunde.links.length && !kunde.puls.length) return { vorschlaege: 0 };
@@ -563,7 +577,7 @@ export async function kundeMorgenlauf(h: string, heute: string): Promise<Morgenl
   let vorschlaege = 0;
   const grenze = tagePlus(heute, -14);
   for (const p of kunde.puls) {
-    if (p.quelle !== 'link' || tagVon(p.am) < grenze || vorlagen.marken[pulsMarke(p.id)]) continue;
+    if (tagVon(p.am) < grenze || vorlagen.marken[pulsMarke(p.id)]) continue;
     if (pulsStufe(p.wert, vorlagen.einstellungen.pulsSchwelle) !== 'kritisch') continue;
     const m = businessMandat(crm, p.mandatId);
     if (m && await pulsAufmerksamkeit(m, p, heute)) vorschlaege++;
@@ -599,7 +613,24 @@ export async function kundeFristen(k: FristenKontext): Promise<Record<string, nu
   const namen = (await fs.readdir(ordner).catch(() => [] as string[])).filter(n => BILD_NAME.test(n));
   if (namen.length) {
     const bekannt = new Set<string>();
-    for (const art of ['kunde', 'faelle', 'dossiers', 'vorlagen'] as const) alleTexte(await loadJson<unknown>(fulfillmentSpeicherFuer(art, h)).catch(() => null), bekannt);
+    // Prüf-Fund 11.10.: ein UNLESBARER Bestand bricht die Prüfung ab (vorher galt er als leer — und jede Datei als verwaist). Ebenso ein Bestand,
+    // der beschädigt beiseitegelegt wurde (`<name>.json.corrupt-…` — er nennt vielleicht Dateien). Fehlt er einfach, ist er leer.
+    let lesbar = true;
+    const namenB = (['kunde', 'faelle', 'dossiers', 'vorlagen'] as const).map(art => fulfillmentSpeicherFuer(art, h));
+    for (const n of namenB) {
+      try { alleTexte(await loadJson<unknown>(n), bekannt); } catch { lesbar = false; break; }
+    }
+    // Erst NACH dem Lesen nachsehen — `loadJson` legt einen beschädigten Bestand beim Lesen beiseite und meldet „leer“. Eine solche Kopie der
+    // letzten 30 Tage hält die Prüfung an (Zeit zum Wiederherstellen); danach läuft sie wieder (Art. 17 braucht das Entfernen verwaister Dateien).
+    if (lesbar) {
+      const beiseite = await fs.readdir(datenOrdner()).catch(() => null);
+      const frisch = (x: string, n: string) => x.startsWith(`${n}.json.corrupt-`) && k.jetzt.getTime() - Number(x.slice(`${n}.json.corrupt-`.length)) < 30 * 86_400_000;
+      if (!beiseite || beiseite.some(x => namenB.some(n => frisch(x, n)))) lesbar = false;
+    }
+    if (!lesbar) {
+      if (Object.keys(zaehler).length) await protokolliere(name, [{ op: 'geaendert', id: 'loeschfristen', felder: Object.keys(zaehler) }], { art: 'system' }).catch(() => {});
+      return zaehler;
+    }
     const jetzt = k.jetzt.getTime();
     const dateien = await Promise.all(namen.map(async n => ({ name: n, alt: jetzt - ((await fs.stat(path.join(ordner, n)).catch(() => null))?.mtimeMs ?? jetzt) > 86_400_000 })));
     const verwaist = verwaisteDateien(dateien, bekannt);

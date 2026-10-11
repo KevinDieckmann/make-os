@@ -14,7 +14,7 @@
 // Rein und client-sicher; die Route (app/api/fulfillment/import) prüft Größe (≤ 4 MB) und Stand (vorschauId → 409).
 
 import type { AnwendenErgebnis, Baustein, BausteinArt, ImportLauf, ProzessKnoten, ProzessVorlage, Uebergang, VorlagenDatei } from '../typen';
-import { BAUSTEIN_ARTEN } from '../lesen';
+import { BAUSTEIN_ARTEN, vorlageAus } from '../lesen';
 import { GRENZEN, TEXT_MAX } from '../grenzen';
 import { ebeneVon, kinderVon, vorfahren } from '../regeln';
 import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
@@ -303,8 +303,20 @@ function bausteinVergleich(alt: Baustein | undefined, g: Gelesen): { status: Bau
   const status: BausteinStatus = abweichend.length ? (alt.vonHand ? 'konflikt' : 'abweichend') : ergaenzen.length ? 'ergaenzt' : 'gleich';
   return { status, ergaenzen, abweichend };
 }
-const ablaufStruktur = (v: Pick<ProzessVorlage, 'titel' | 'form' | 'knoten' | 'uebergaenge' | 'vorbehalt' | 'quelleHinweis' | 'zeichenhinweise'>) =>
-  JSON.stringify({ t: v.titel, f: v.form, k: v.knoten, u: v.uebergaenge, v: v.vorbehalt ?? null, q: v.quelleHinweis ?? null, z: v.zeichenhinweise ?? [] });
+/** JSON mit sortierten Schlüsseln (rein) — die Reihenfolge der Felder spielt für „gleich“ keine Rolle. */
+function stabil(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stabil).join(',')}]`;
+  if (v && typeof v === 'object') return `{${Object.keys(v as Record<string, unknown>).filter(k => (v as Record<string, unknown>)[k] !== undefined).sort().map(k => `${JSON.stringify(k)}:${stabil((v as Record<string, unknown>)[k])}`).join(',')}}`;
+  return JSON.stringify(v ?? null);
+}
+/**
+ * Struktur eines Ablaufs zum Vergleichen: beide Seiten laufen durch DENSELBEN Säuberer (`vorlageAus`) und werden mit sortierten Schlüsseln verglichen
+ * (Prüf-Fund 11.10.: der Re-Import derselben Datei galt wegen anderer Feld-Reihenfolge als „aktualisiert“ — nicht idempotent).
+ */
+const ablaufStruktur = (v: Pick<ProzessVorlage, 'id' | 'art' | 'titel' | 'form' | 'knoten' | 'uebergaenge' | 'vorbehalt' | 'quelleHinweis' | 'zeichenhinweise'>) => {
+  const x = vorlageAus(v as unknown as Record<string, unknown>) ?? (v as ProzessVorlage);
+  return stabil({ t: x.titel, f: x.form ?? null, k: x.knoten, u: x.uebergaenge, v: x.vorbehalt ?? null, q: x.quelleHinweis ?? null, z: x.zeichenhinweise ?? [] });
+};
 /** Wurde eine importierte Vorlage seither von Hand geändert? (Der Import setzt `geaendert` = Zeit des Imports.) */
 const vonHandGeaendert = (p: ProzessVorlage) => !(p.herkunft?.art === 'import' && p.herkunft.am === p.geaendert);
 
@@ -474,8 +486,12 @@ export function importAnwenden(d0: VorlagenDatei, roh: unknown, wahl: ImportWahl
 
 export interface RueckgaengigBericht { entfernt: number; zurueck: number; geblieben: number }
 
-/** Rückgängig (30 Tage): nur, was seit dem Import unverändert ist; der Rest bleibt und wird gezählt. */
-export function importRueckgaengig(d0: VorlagenDatei, laufId: unknown, jetzt: string): AnwendenErgebnis<VorlagenDatei> & { bericht?: RueckgaengigBericht } {
+/**
+ * Rückgängig (30 Tage): nur, was seit dem Import unverändert ist; der Rest bleibt und wird gezählt. Zurückgeholte Fassungen bekommen eine NEUE,
+ * höhere Fassung (Prüf-Fund 11.10.: vorher sank die Fassung — Formular-Stände und Fälle erkannten die Änderung nicht). Neue Bausteine bleiben, wenn
+ * eine Vorlage ODER ein Fall sie nutzt (`inFaellen` = Baustein-Kennungen aus den Knoten aller Fälle).
+ */
+export function importRueckgaengig(d0: VorlagenDatei, laufId: unknown, jetzt: string, inFaellen: ReadonlySet<string> = new Set()): AnwendenErgebnis<VorlagenDatei> & { bericht?: RueckgaengigBericht } {
   let bericht: RueckgaengigBericht = { entfernt: 0, zurueck: 0, geblieben: 0 };
   const r = ausfuehren(() => {
     const lauf = d0.importLaeufe.find(l => l.id === laufId) ?? nein('Diesen Import gibt es nicht (mehr).', 404);
@@ -485,10 +501,10 @@ export function importRueckgaengig(d0: VorlagenDatei, laufId: unknown, jetzt: st
     for (const g of lauf.geaendert) {
       if (g.id.startsWith('fp-')) {
         const p = d.prozesse.find(x => x.id === g.id);
-        if (p && p.geaendert === lauf.am) { d.prozesse = d.prozesse.map(x => (x.id === g.id ? g.vorher as ProzessVorlage : x)); b.zurueck++; } else b.geblieben++;
+        if (p && p.geaendert === lauf.am) { d.prozesse = d.prozesse.map(x => (x.id === g.id ? { ...(g.vorher as ProzessVorlage), fassung: p.fassung + 1, geaendert: jetzt } : x)); b.zurueck++; } else b.geblieben++;
       } else {
         const x = d.bausteine.find(y => y.id === g.id);
-        if (x && x.herkunft?.importLauf === lauf.id && !x.vonHand) { d.bausteine = d.bausteine.map(y => (y.id === g.id ? g.vorher as Baustein : y)); b.zurueck++; } else b.geblieben++;
+        if (x && x.herkunft?.importLauf === lauf.id && !x.vonHand) { d.bausteine = d.bausteine.map(y => (y.id === g.id ? { ...(g.vorher as Baustein), fassung: x.fassung + 1, geaendert: jetzt } : y)); b.zurueck++; } else b.geblieben++;
       }
     }
     for (const id of lauf.neu) {
@@ -497,7 +513,7 @@ export function importRueckgaengig(d0: VorlagenDatei, laufId: unknown, jetzt: st
         if (p && p.geaendert === lauf.am) { d.prozesse = d.prozesse.filter(x => x.id !== id); b.entfernt++; } else if (p) b.geblieben++;
       } else {
         const x = d.bausteine.find(y => y.id === id);
-        const genutzt = d.prozesse.some(p => p.knoten.some(kn => kn.bausteinId === id));
+        const genutzt = inFaellen.has(id) || d.prozesse.some(p => p.knoten.some(kn => kn.bausteinId === id));
         if (x && x.herkunft?.importLauf === lauf.id && !x.vonHand && !genutzt) { d.bausteine = d.bausteine.filter(y => y.id !== id); b.entfernt++; } else if (x) b.geblieben++;
       }
     }

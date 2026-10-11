@@ -11,7 +11,7 @@ import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { CrmBestand, FollowUp, Mandat } from '@/lib/crm/typen';
 import type { DossierKurz, Fall, FallKurz, FristenKontext, KundeKurz, MorgenlaufTeil, StakeholderAuskunft, VorlagenDatei } from '../typen';
 import { fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen } from '../speicher';
-import { aktuellerKnoten, fallFortschritt, mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus } from '../regeln';
+import { aktuellerKnoten, fallFortschritt, mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -137,7 +137,17 @@ async function empfaenger(m: Pick<Mandat, 'zustaendig'>): Promise<string[]> {
 export async function prozesseMorgenlauf(h: string, heute: string): Promise<MorgenlaufTeil> {
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const [crm, vorlagen, faelle] = await Promise.all([ladeCrm(), fulfillmentLesen('vorlagen', h), fulfillmentLesen('faelle', h)]);
-  const kandidaten = onboardingKandidaten(crm, faelle.faelle, vorlagen.marken, heute).filter(k => !vorlagen.marken[markeOnboardingVorschlag(k.mandatId)]);
+  // Prüf-Fund 11.10.: der ERSTE Lauf nach der Einrichtung merkt sich nur den Tag (Stichtag für „Bestand“) und legt nichts an — sonst bekäme jedes
+  // laufende Mandat am ersten Morgen einen Vorschlag, eine Glocke und „Willkommensmail überfällig“.
+  // Eine leere Instanz (kein Business-Mandat) schreibt nichts — die Marke entsteht beim ersten Lauf mit Mandaten.
+  if (!vorlagen.marken[MARKE_FULFILLMENT_SEIT]) {
+    const { istBusinessGesellschaft } = await import('@/lib/einheiten');
+    if (crm.mandate.some(m => !m.geloeschtAm && istBusinessGesellschaft(m.gesellschaft))) {
+      await fulfillmentAendern('vorlagen', d => (d.marken[MARKE_FULFILLMENT_SEIT] ? { ok: true, datei: d, geaendert: [] } : { ok: true, datei: { ...d, marken: { ...d.marken, [MARKE_FULFILLMENT_SEIT]: heute } }, geaendert: [MARKE_FULFILLMENT_SEIT] }), { art: 'system' }, h);
+    }
+    return { vorschlaege: 0 };
+  }
+  const kandidaten = onboardingKandidaten(crm, faelle.faelle, vorlagen.marken, heute).filter(k => !k.bestand && !vorlagen.marken[markeOnboardingVorschlag(k.mandatId)]);
   const enden: Record<string, string | null> = Object.fromEntries(crm.mandate.map(m => [m.id, mandatsEnde(m)]));
   const nachsorge = nachsorgeFaellig({ faelle: Object.values(faelle.faelle), enden, tage: vorlagen.einstellungen.nachsorgeTage, heute });
   if (!kandidaten.length && !nachsorge.length) return { vorschlaege: 0 };
@@ -296,7 +306,8 @@ export function kandidatenAnsicht(crm: Pick<CrmBestand, 'mandate' | 'angebote' |
   return onboardingKandidaten(crm, faelle, vorlagen.marken, heute).map(k => {
     const m = crm.mandate.find(x => x.id === k.mandatId)!;
     const v = vorlageFuerProdukt(vorlagen, m.leistungId);
-    return { ...k, uhr: willkommenUhr(k.unterschrift?.am, vorlagen.einstellungen.willkommenStunden, undefined, jetzt), ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}), vorgeschlagen: !!vorlagen.marken[markeOnboardingVorschlag(k.mandatId)] };
+    // Bestand: keine 24-h-Uhr (kein „überfällig“) — die Uhr beginnt erst mit dem Start des Falls (`ableitungFuer`).
+    return { ...k, uhr: k.bestand ? { ueberfaellig: false } : willkommenUhr(k.unterschrift?.am, vorlagen.einstellungen.willkommenStunden, undefined, jetzt), ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}), vorgeschlagen: !!vorlagen.marken[markeOnboardingVorschlag(k.mandatId)] };
   });
 }
 export { markeOnboardingAus, unterschriftAm };

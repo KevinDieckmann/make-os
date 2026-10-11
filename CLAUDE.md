@@ -1443,14 +1443,24 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
   (+ `du`/`sie`)) · `wert.ts` · `rituale.ts` (nur Vorbelegung des VORHANDENEN Kalender-Dialogs, kein neuer Kalender-Schreibweg) · `landkarte.ts`/`ablauf-bild.ts`
   (Lage rechnen; die Zeichner in `components/os/fulfillment/prozesse/Zeichnung.tsx` rechnen nichts; < 720 px Liste) · `cockpit.ts` · `kennzahlen.ts` · `wirkung.ts`.
 - **Baustein-Marken als Schlagworte** (der C0-Säuberer kennt keine Felder dafür): `nur-intern` (nie an Kunden: Kunden-Ansicht, Report, Wirkungsbericht,
-  Export — `kundeSichtbar` dann immer false), `pruefen-vor-verkauf` bzw. `urheberPruefen` (Prüfvermerk als Marke `urheber-geprueft:<id>`). Jeder Weg zum
-  Kunden fragt NUR `fuerKundenFrei(b, datei)` / `nurIntern(b)` (lib/fulfillment/prozesse/bausteine.ts). Messe-Nachfasstakt `MESSE_NACHFASS_TAGE` (1, 3, 7, 14, 30).
+  Export — `kundeSichtbar` dann immer false), `pruefen-vor-verkauf` bzw. `urheberPruefen` (Prüfvermerk als Marke `urheber-geprueft:<id>`), `rechtPruefen` ohne
+  `rechtGeprueft`. Jeder Weg zum Kunden fragt NUR `fuerKundenFrei(b, datei)` bzw. für Knoten `kundenGesperrt(bausteine, datei)` (streng: jede offene Marke sperrt;
+  lib/fulfillment/prozesse/bausteine.ts). Messe-Nachfasstakt `MESSE_NACHFASS_TAGE` (1, 3, 7, 14, 30): wird „Während der Messe“ erledigt, bekommen die Schritte
+  des nächsten Geschwisters `faelligAm` = Erledigt-Tag + `dauerTage` (`fallAnwenden`, gesetzte bleiben).
+- **Prüf-Funde 11.10. (Branch `fix-fulfillment`, UPDATES.md):** Fortschritt = erledigte BLÄTTER ab Ebene 2 (jede Ebene gleich), das Playbook-Formular
+  `fk-obf-playbook` folgt seinem Schritt (`fallWirksam`); der Schritt misst nur das Playbook (`KundeKurz.playbookProzent`). Bestandsmandate: erster Morgenlauf mit
+  Business-Mandaten setzt nur `MARKE_FULFILLMENT_SEIT`; `istBestand` (vor dem Stichtag und > 14 Tage) → Kandidat `bestand` ohne Vorschlag/Glocke/Uhr, im Fall
+  läuft die 24-h-Uhr ab Start. GET-Routen filtern Mandate einer Privat-Einheit (`istBusinessGesellschaft`, auch Fälle, deren Mandat privat wurde; `/fall`,
+  `/wirkung` → 404) und schreiben `leseZugriff(req, 'fulfillment')`. Ablauf-Import vergleicht über `vorlageAus` + sortierte Schlüssel; Rückgängig hebt die
+  Fassung und lässt Bausteine stehen, die ein Fall nutzt. Aktive Inhalte (Makros, `embeddings/` außer OOXML, ActiveX, externe Verweise außer Hyperlinks, PDF-JS/
+  Launch/Anhänge außer E-Rechnung-XML/OpenAction-Aktionen) → 415 über `aktiveInhalte` (lib/dateien/aktive-inhalte.ts, Kunden-Upload UND Aufgaben-Ablage).
 - **Server** `fall-server.ts` (EINE Schreibstelle der Fälle; `ziel-neu` legt das Ziel am Mandat an; Nachzug ins CRM: Phase nur vorwärts,
   Lieferobjekte über `treppeSchreiben`, Ist-Wert) und `server.ts` (`fallLesen` liefert den wirksamen Fall, Cockpit, `ffKennzahlenFuerIndex` → null ohne Fall,
   Morgenlauf-Vorschläge Onboarding/Nachsorge über den Stapel, Fristen, Art. 15). Fall nur für Business-Mandate (sonst 400). Messwerte trägt nur das Team ein.
 - **Routen** `/api/fulfillment` (GET Übersicht, `?nur=kurz` für Einhänger, `?baustein=`; PATCH Vorlagen-Ops), `/fall` (GET `?m=`, `?willkommen=1`;
-  POST `starten` idempotent über `anfrageId`, `vorlage-uebernehmen`, `nachziehen`; PATCH `{ mandatId, ops }`), `/import`, `/cockpit`, `/wirkung` (PDF in
-  `fulfillment-unterlagen`, „Per Mail“ legt eine Kopie in die Dateiablage am Mandat, Zitat nur mit Einwilligung). Erste Zeile immer `fulfillmentZugang`.
+  POST `starten` idempotent über `anfrageId`, `vorlage-uebernehmen`, `nachziehen`; PATCH `{ mandatId, ops }`), `/import`, `/cockpit`, `/wirkung` (Bericht
+  verschlüsselt als `wirkung-<fnv>-<tag>.bin` in `fulfillment-unterlagen`, Download/Anhang als `Wirkungsbericht-<tag>.pdf`; „Per Mail“ legt je erstellter Fassung
+  EINE Kopie in die Dateiablage am Mandat — Marke `wirkung-mail:<erstelltAm>` am Fall; Zitat nur mit Einwilligung). Erste Zeile immer `fulfillmentZugang`.
 - **Business-Index:** Säule `ff` (`FF_SAEULE`, 10 %, `nurMitMessung`), Kennzahlen `FF_KENNZAHLEN` mit Punkten je Fall; `Bestand.fulfillment` aus `ladeRoh`.
   Neue Fulfillment-Kennzahl = Eintrag dort + `ffMessung`; ohne Fall bleibt der Index bit-gleich (Wächter tests/fulfillment-c1-index.test.ts).
 - Erklärungen `lib/erklaerungen/fulfillment-prozesse.ts`; Oberfläche `components/os/fulfillment/prozesse/*` (Export über `index.tsx`, Namen fest).
@@ -1989,28 +1999,33 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
 
 ## Fulfillment — Kunden-Link (10.10., Paket C2, Branch `fulfillment-c2`, nur lokal; FULFILLMENT_KONZEPT.md 5.2/5.4/5.5/6.4, UPDATES.md)
 - **Kommt AUSGESCHALTET — zwei Schlüssel:** Umgebung `MAKE_OS_KUNDENLINK=an` (Betrieb, erst nach Prüfung 12.4 + Kevins Freigabe) UND Instanz-Schalter
-  `einstellungen.kundenLink.an` (nur Inhaber per Sitzung, `POST /api/fulfillment/kunde { aktion: 'schalter' }`). Gelesen NUR über `kundenLinkSchalter`/`umgebungAn`
-  (lib/fulfillment/kunde/server.ts). Aus → jeder öffentliche Weg dieselbe 404 (`NICHT_GUELTIG`) — für jede Fehlerart, nie verraten, was fehlte.
+  `einstellungen.kundenLink.an` (nur Inhaber per Sitzung, NUR über `POST /api/fulfillment/kunde { aktion: 'schalter' }` — der Vorlagen-PATCH lehnt Schalter und
+  Puls-Schwelle ab). Gelesen NUR über `kundenLinkSchalter`/`umgebungAn` (lib/fulfillment/kunde/server.ts). Aus → jeder öffentliche Weg dieselbe 404 (`NICHT_GUELTIG`).
+- **Je Mandat höchstens EIN nicht widerrufener Link** (`linkAnwenden`): ein neuer widerruft alle anderen (auch abgelaufene), „verlängern“ widerruft die anderen.
+  Rechte je Link (`formular`, `upload`, `puls`; Upload ab Werk an, je Link abschaltbar).
 - **Öffentlicher Weg:** nur die vier Formen von `KUNDE_OFFEN` (middleware.ts); jede Route ruft ZUERST `kundeZugriff` (lib/fulfillment/kunde/oeffentlich.ts: Drossel je Netz,
   Kennung, Schalter, Link aktiv bis Ablauf bzw. Mandatsende + 30 Tage, Business-Mandat, Token, Recht) — vor dem Lesen des Körpers. Token NUR im Fragment (`#t=` Link,
   `#p=` Puls), als Kopf `x-kunde-token`/`x-kunde-puls`, im Bestand NUR als Hash (`tokenHash`, eigener Vorsatz je Art, `timingSafeEqual`); im Klartext genau EINMAL in der
-  Antwort von `link-anlegen`/`puls-anfrage` — nie über `einmalig` (speichert Antworten), nie ins Log/Protokoll. Puls-Token öffnet NUR den Puls. Formulare: Stempel +
+  Antwort von `link-anlegen`/`puls-anfrage` — nie über `einmalig` (speichert Antworten), nie ins Log/Protokoll. Puls-Token öffnet NUR den Puls. Steht ein Link in
+  einer gesendeten Mail (Willkommen, Report), trägt der Mail-Spiegel das Fragment — Leser für Modelle/Protokolle schwärzen es mit `tokenSchwaerzen` (token.ts). Formulare: Stempel +
   Honigtopf mit demselben Satz (`formularPruefen`), Bremse je Link (`bremse.ts`). Strenge Köpfe in next.config.mjs UND Caddy (`@kunde`, Wächter
   `tests/fulfillment-kunde-middleware.test.ts`). Lesen schreibt nie (auch kein „zuletzt gesehen“ im GET).
 - **Was der Kunde sieht = EINE Positivliste** `kundenSicht` (lib/fulfillment/kunde/sicht.ts, `SICHT_SCHLUESSEL`; Wächter mit Fall voller interner Daten
   `tests/fulfillment-c2-sicht.test.ts`) — öffentliche Seite und Vorschau „So sieht der Kunde es“ bekommen dasselbe Objekt und dieselbe Komponente `KundenAnsicht`.
   Neuer Inhalt auf der Kunden-Seite = bewusste Änderung dort + im Wächter. Bausteine nur über `kundeTauglich` (nie `nur_intern`, nie „vor Verkauf/Einsatz prüfen“ ohne
   Vermerk — liest die Marken optional, der C0-Typ kennt `nur_intern`/`pruefen_vor_verkauf` noch nicht). Formulare tragen `fo-<fnv>`, nie die Baustein-Kennung.
-- **Upload:** nur über `dateiPruefen` (Typ am INHALT, nur PDF/PNG/JPG/WEBP/HEIC/DOCX/XLSX/PPTX ohne Makros, `ohneMetadaten` für JPEG/PNG/WEBP/HEIC) und
+- **Upload:** nur über `dateiPruefen` (Typ am INHALT, nur PDF/PNG/JPG/WEBP/HEIC/DOCX/XLSX/PPTX ohne aktive Inhalte (`aktiveInhalte`), `ohneMetadaten` für
+  JPEG/PNG/WEBP/HEIC — HEIC-`iloc` mit Grenzen, sonst 415) und
   `unterlageAblegen` (erst Datei über `bildAblegen('fulfillment-unterlagen', 'ud-….bin')`, dann Eintrag; scheitert der Eintrag, wird die Datei entfernt). Status
   „ungeprüft“ bis ein Mensch freigibt; C3 liest NUR über `unterlagenFuer`/`unterlageText` (nur „freigegeben“). Intern nur Download als Anhang. Kein Virenscanner.
-- **Puls:** ≤ `einstellungen.pulsSchwelle` → `melde` (Art `produkte`, OHNE Wert) + Stapel-Vorschlag `k:puls:<puls>` (Marke `puls-gespraech:<puls>` im Vorlagen-Bestand,
-  Morgenlauf holt nach); Freigabe = Follow-up `fu-kp-<fnv>`. „In die Health übernehmen“ nur per Klick über den CRM-Schreibweg mit Stand.
+- **Puls:** ≤ `einstellungen.pulsSchwelle` (über den Link UND von Hand) → `melde` (Art `produkte`, OHNE Wert) + Stapel-Vorschlag `k:puls:<puls>` (Marke
+  `puls-gespraech:<puls>` im Vorlagen-Bestand, Morgenlauf holt nach); Freigabe = Follow-up `fu-kp-<fnv>`. „In die Health übernehmen“ nur per Klick über den CRM-Schreibweg
+  mit Stand. Upload-Glocke mit Bezug `kunden-link:<link>` (mehrere Uploads = eine ungelesene). „Wartet auf euch“ (Sicht und Report) nur mit GETEILTEN Entscheidungen.
 - **Report:** `reportZusatzFuer` (wirft nie, ohne Fall null) → `mitZusatz` in `lib/crm/treppe-server.ts grundlage`; PDF/Mail zeigen die neuen Abschnitte nur mit
   `hatZusatz`. Ohne Fall Byte für Byte wie vorher (Schnappschuss `tests/fulfillment-c2-rein.test.ts`) — neue Report-Felder nur optional und nur hinter `hatZusatz`.
   Puls-Link entsteht erst beim Klick „Senden“ (Platzhalter `PULS_PLATZHALTER` im Text).
 - **Fristen** (`kundeFristen`): nie bei leerem CRM löschen; verwaiste Dateien nur, wenn der Name in KEINEM Fulfillment-Bestand vorkommt und älter als ein Tag ist (C1-
-  Wirkungsbericht-PDFs müssen ihren Dateinamen im Fall tragen). Tests: `tests/fulfillment-c2-{rein,sicht,route}.test.ts`, `tests/fulfillment-kunde-middleware.test.ts`.
+  Wirkungsbericht-PDFs müssen ihren Dateinamen im Fall tragen); ein unlesbarer bzw. in den letzten 30 Tagen beschädigt beiseitegelegter Bestand bricht die Prüfung ab. Tests: `tests/fulfillment-c2-{rein,sicht,route}.test.ts`, `tests/fulfillment-kunde-middleware.test.ts`.
 
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — seit 05.10. mit Datenschlüssel nur im tmpfs/Arbeitsspeicher (`indexOrt`, nach jedem Start neu gebaut), lokal ohne Schlüssel als Datei (bei Zweifel löschen, der Takt baut neu).
@@ -2170,12 +2185,15 @@ Kevin: „im Sales der Head of Sales, im Marketing der Head of Marketing usw. �
   (Wächter in `tests/fulfillment-c3-routen.test.ts`). Ergebnis = Entwurf (`ausgabePruefen`: ohne Quelle → offene Frage, nur belegbare URLs aus DIESEM Lauf, gesperrte
   Domains raus, Negativliste raus mit Kategorie, Namen → Funktion); ins Dossier erst per Klick „übernehmen“.
 - **Web-Abruf** nur `web-lesen.ts` (`web_lesen`): DNS einmal prüfen (`lib/netz/oeffentlich.ts` — EINE Regel `ipIntern`, auch für Postfächer), mit festgehaltener Adresse
-  verbinden, 3 Weiterleitungen je neu geprüft, 5/15 s, 2 MB, nur Text, robots.txt, 1/s je Host, 20 je Lauf; erlaubt NUR Domains des Mandats, Adressen aus den ECHTEN
+  verbinden, 3 Weiterleitungen je neu geprüft, 5/15 s, 2 MB (HTML nur die ersten 500 KB), nur Text, robots.txt LINEAR (`robotsPasst`, nie eine RegExp aus fremden Regeln;
+  Deckel `ROBOTS`), 1/s je Host, 20 je Lauf; `htmlZuText` (lib/gmail/html.ts) ist linear — neue Säuberungs-Schritte nie als `[\s\S]*?`-Regel über fremdes HTML; erlaubt NUR Domains des Mandats, Adressen aus den ECHTEN
   Suchergebnissen des Laufs (nie aus dem Text des Modells) und aus den Eingaben. LinkedIn, XING, Register-Portale, Transparenzregister nie (`GESPERRTE_DOMAINS`).
 - **Werkzeuge** `web_lesen`/`fall_unterlagen`/`dossier_teile` nur im Analyse-Handler (nie ZOE, nie Heads), mit Vertrag; ZOE liest über `fulfillment_lage` (Personenteil nur
   mit `mitPersonen` + Zugang, Leseteil nie). KI ehrlich: Unternehmen ['crm','web'], A2/AP/A11–A13 ['crm'], A4 ['crm','web'] ohne Pseudonym, Zweck `fulfillment-a4-personen`.
 - **Personenteil getrennt** (`fulfillment-personen--<h>`): Karten nur aus einem bestätigten A4-Lauf (Status Entwurf, Funktion aus F1), Route `/api/fulfillment/personen` mit
-  `personenteilZugang` + Lese-Protokoll „personenrecherche“; die Dossier-Antwort trägt nie Namen (`sicht.ts`). Art.-14-Uhr (`dsgvo.ts`, verknüpfter CRM-Kontakt informiert →
+  `personenteilZugang` + Lese-Protokoll „personenrecherche“ (auch `dossier_teile` für A11–A13 über `leseZugriffLauf`); die Dossier-Antwort trägt nie Namen (`sicht.ts`).
+  A4 und A11–A13 (`PERSONEN_AGENTEN`) sowie eine EIGENE Tiefenbericht-Frage (`tiefenberichtFrageGrund`: Negativliste, Kartennamen → 400) nur mit `personenteilErlaubt`
+  (sonst 403); Entwürfe von A11–A13 an Konten ohne Recht nur als Zähler; `namenErsetzen` auch Anrede/Titel, ohne Umlaute und Nachname allein. Art.-14-Uhr (`dsgvo.ts`, verknüpfter CRM-Kontakt informiert →
   gilt als gegeben, `mitKontaktArt14`), Löschfrist Mandatsende + Frist `fulfillment-personen` (Vermerk nur Anzahl). F2 nur mit bestandener Prüfung (`pruefen.ts`);
   Datenschutz-Befunde nie überstimmbar.
 - **Tiefenbericht** nur als Leseteil der auslösenden Person: gelesen AUSSCHLIESSLICH über `lib/ki/leseteil.ts` in `app/api/fulfillment/dossier/leseteil` (Wächter: kein Modul

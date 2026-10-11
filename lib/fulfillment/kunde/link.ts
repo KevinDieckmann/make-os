@@ -2,7 +2,7 @@
 // Der Kunden-Link kommt AUSGESCHALTET. Zwei Schlüssel müssen an sein, sonst antwortet jeder öffentliche Weg mit derselben 404:
 //   1. Umgebung `MAKE_OS_KUNDENLINK=an` (setzt der Betrieb erst nach der Prüfung in 12.4) — gelesen nur auf dem Server (lib/fulfillment/kunde/server.ts),
 //   2. Schalter der Instanz `einstellungen.kundenLink.an` (Bestand `fulfillment--<h>`, umlegen nur der Inhaber per Sitzung).
-// Je Mandat gibt es höchstens EINEN aktiven Link; ein neuer widerruft den alten. Ablauf: Vorgabe 90 Tage, verlängerbar, nie über Mandatsende + 30 Tage.
+// Je Mandat gibt es höchstens EINEN nicht widerrufenen Link; ein neuer widerruft die alten (auch abgelaufene), „verlängern“ widerruft die anderen. Ablauf: Vorgabe 90 Tage, verlängerbar, nie über Mandatsende + 30 Tage.
 // Gespeichert wird nur der Hash des Tokens (lib/fulfillment/kunde/token.ts); hier wird nur gerechnet. Alles oder nichts, nie gekürzt.
 
 import { tagePlus } from '@/lib/zeit';
@@ -105,8 +105,9 @@ export function linkAnwenden(d: KundeDatei, op: LinkOp, k: LinkKontext): Anwende
     const rechte = rechteAus(op.rechte, RECHTE_VORGABE);
     if (!rechte) return nein(400, 'Rechte: nur formular, upload, puls (an/aus).');
     const geaendert: string[] = [];
+    // Prüf-Fund 11.10.: auch ABGELAUFENE widerrufen — sonst machte „verlängern“ den alten Link neben dem neuen wieder gültig (zwei Tokens).
     const links = d.links.map(l => {
-      if (l.mandatId !== op.mandatId || l.status !== 'aktiv') return l;
+      if (l.mandatId !== op.mandatId || l.status === 'widerrufen') return l;
       geaendert.push(l.id);
       return { ...l, status: 'widerrufen' as const };
     });
@@ -128,6 +129,13 @@ export function linkAnwenden(d: KundeDatei, op: LinkOp, k: LinkKontext): Anwende
     const ablauf = linkAblauf(k.heute, k.mandatEnde, tage);
     if (ablauf < k.heute) return nein(409, 'Das Mandat ist seit mehr als 30 Tagen beendet — der Link lässt sich nicht mehr verlängern.');
     neu = { ...l, status: 'aktiv', ablaufAm: ablauf };
+    // Höchstens EIN gültiger Link je Mandat: jeder andere nicht widerrufene Link des Mandats wird widerrufen.
+    const andere = d.links.filter(x => x.id !== l.id && x.mandatId === l.mandatId && x.status !== 'widerrufen');
+    if (andere.length) {
+      const weg = new Set(andere.map(x => x.id));
+      const links = d.links.map(x => (x.id === l.id ? neu : weg.has(x.id) ? { ...x, status: 'widerrufen' as const } : x));
+      return { ok: true, datei: { ...d, links }, geaendert: [op.id, ...weg] };
+    }
   } else if (op.op === 'rechte') {
     if (status !== 'aktiv') return nein(409, 'Rechte ändern geht nur an einem aktiven Link.');
     const rechte = rechteAus(op.rechte, l.rechte);

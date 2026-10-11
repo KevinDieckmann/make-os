@@ -7,7 +7,9 @@ import type { AnalyseAgentId } from '../typen';
 import { fulfillmentLesen } from '../speicher';
 import { AGENTEN, AGENT_IDS, MINIMALSET, GLEICHZEITIG_MAX, LAEUFE_JE_AGENT, sperrGruende, hinweise, laufZahl, laufStatusAnzeige, laufVerwaist, letzterLauf } from './agenten';
 import { schaetzen } from './schaetzen';
-import { kiLage, KI_SAETZE, laufDaten, messungenAus, modelleJeStufe, tiefenberichtFrage } from './lauf';
+import { kiLage, KI_SAETZE, laufDaten, messungenAus, modelleJeStufe, tiefenberichtFrage, PERSONEN_AGENTEN } from './lauf';
+import { personenteilErlaubt } from './zoe-werkzeug';
+import { PERSONENTEIL_GESPERRT } from '../zugang';
 import { laufFuerAntwort } from './sicht';
 
 export interface AgentLage {
@@ -23,7 +25,7 @@ export async function analyseLage(mandatId: string, person: string): Promise<Rec
   const d = datei.dossiers[mandatId];
   if (!d) return null;
   const jetzt = Date.now();
-  const [daten, ki, modelle] = await Promise.all([laufDaten(mandatId), kiLage(person), modelleJeStufe()]);
+  const [daten, ki, modelle, darf] = await Promise.all([laufDaten(mandatId), kiLage(person), modelleJeStufe(), personenteilErlaubt(person)]);
   const messungen = messungenAus(datei);
   const laufendInstanz = Object.values(datei.dossiers).flatMap(x => x.laeufe).filter(l => l.status === 'laeuft' && !laufVerwaist(l, jetzt)).length;
   const kiGruende = (id: AnalyseAgentId): string[] => {
@@ -34,7 +36,7 @@ export async function analyseLage(mandatId: string, person: string): Promise<Rec
   };
   const agenten: AgentLage[] = AGENT_IDS.map(id => {
     const a = AGENTEN[id];
-    const gruende = [...sperrGruende(d, id, { playbook: daten.playbook, register: daten.register, jetztMs: jetzt }), ...kiGruende(id)];
+    const gruende = [...sperrGruende(d, id, { playbook: daten.playbook, register: daten.register, jetztMs: jetzt }), ...kiGruende(id), ...(!darf && PERSONEN_AGENTEN.has(id) ? [PERSONENTEIL_GESPERRT] : [])];
     const laeuft = d.laeufe.some(l => l.agent === id && laufStatusAnzeige(l, jetzt) === 'laeuft');
     const n = laufZahl(d, id);
     const letzter = letzterLauf(d, id);
@@ -56,7 +58,7 @@ export async function analyseLage(mandatId: string, person: string): Promise<Rec
     return basis;
   });
   return {
-    agenten, laeufe: d.laeufe.map(l => laufFuerAntwort(l, jetzt)), ki, kiSaetze: KI_SAETZE, minimalset: MINIMALSET,
+    agenten, laeufe: d.laeufe.map(l => laufFuerAntwort(l, jetzt, darf)), ki, kiSaetze: KI_SAETZE, minimalset: MINIMALSET,
     gleichzeitig: { laufend: laufendInstanz, max: GLEICHZEITIG_MAX }, kostenCent: Math.round(d.laeufe.reduce((s, l) => s + (l.kostenCent ?? 0), 0)),
     tiefenbericht: { frage: tiefenberichtFrage(d), vorhanden: !!d.leseteil, eigen: d.leseteil?.person === person },
   };

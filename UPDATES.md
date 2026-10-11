@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 11.10.2026 — Prüf-Funde 11.10. (Fulfillment) (nur lokal — Branch `fix-fulfillment`, Basis 69d8cdfe = `update-0910b`)
+Sicherheits-/Datenschutz-Prüfung und Funktions-/Live-Daten-Prüfung des Fulfillment-Bereichs — behoben, je Fund ein Test (`tests/fulfillment-pruef-funde{,-routen,-fristen}.test.ts`).
+- **Hoch/Mittel (Sicherheit):** robots.txt ohne RegExp aus fremden Regeln (linear, Deckel; vorher 9,5 s für 5 Sterne) · HEIC-`iloc` ohne Fortschritt → 415 (vorher bis
+  10 Min.) · `htmlZuText` linear (Mails UND `web_lesen`; 2 MB Bösartiges < 200 ms, wohlgeformtes HTML unverändert; `web_lesen` liest HTML nur bis 500 KB) ·
+  Privat-Mandate (Selbstständigkeit) fehlen in GET `/api/fulfillment`, `/fall`, `/wirkung` (auch Fälle, deren Mandat privat wurde) · A4/A11–A13 und eigene
+  Tiefenbericht-Frage nur mit Recht auf den Personenteil, Entwürfe sonst nur als Zähler, Namen auch mit Anrede/Nachname ersetzt.
+- **Niedrig:** Lese-Protokoll `dossier_teile`/GET-Routen · aktive Inhalte in Office/PDF → 415 (Kunden-Upload UND Aufgaben-Ablage; Diagramm-Tabellen und
+  E-Rechnung-XML bleiben erlaubt) · höchstens EIN gültiger Kunden-Link je Mandat · `tokenSchwaerzen` (lib/fulfillment/kunde/token.ts) für Mail-Spiegel-Leser —
+  **offen:** in `lib/inbox/zoe-sicht.ts` bzw. dem Entwurf-Leser (`lib/inbox/entwurf.ts`) den Text vor dem Prompt durch `tokenSchwaerzen` ziehen (nicht in diesem
+  Branch, andere Baustelle) · „Wartet auf euch“ beim Kunden nur geteilte Entscheidungen.
+- **Funktion:** Fortschritt über alle Blätter (P1/P2 vorher 89 % bzw. 0 %), Playbook-Formular folgt seinem Schritt (Phase „Onboarding“ wird fertig) ·
+  **Update auf Live-Bestand ohne Flut:** der erste Morgenlauf merkt nur den Stichtag (`fulfillment-eingerichtet`), Bestandsmandate stehen ruhig unter
+  Fulfillment › Onboarding („Bestandsmandate — Fall starten?“, ohne Vorschlag/Glocke/Uhr) · Puls von Hand ≤ Schwelle löst aus · Art.-14-Vorschlag einmal je Frist ·
+  Ablauf-Import idempotent, Rückgängig mit höherer Fassung und ohne von Fällen genutzte Bausteine zu löschen · Löschläufe nie auf unlesbarer Grundlage
+  (Unterlagen, Personenkarten ohne CRM) · Playbook-Schritt misst nur das Playbook · letzte Messung weg → Ist am Mandat leer · Messe-Nachfasstakt ab dem Messetag ·
+  `ff_*` ohne Messung keine Messlücken (Index bit-gleich) · Wirkungsbericht „per Mail“ nur EINE Ablage-Kopie je Fassung · Upload-Glocke je Link.
+- **Rückweg:** nur optionale Felder/Marken (`KundeKurz.playbookProzent`, Kandidat `bestand`, Marken `fulfillment-eingerichtet`, `art14-vorschlag:…`,
+  `wirkung-mail:…`, Meldungs-Bezug `kunden-link`); der alte Stand ignoriert sie. Demo: Lumen jetzt vor 3 Tagen unterschrieben (Story „Willkommensmail überfällig“ bleibt).
+
 ## 11.10.2026 — Fulfillment — zusammen (C1 + C2 + C3 gemeinsam lauffähig; nur lokal — Branch `fulfillment-zusammen`, Basis 82a44555 = `update-0910b`)
 
 Die drei parallel gebauten Pakete sind zusammengeführt und aufeinander abgestimmt. Nur additiv wie bisher (keine neuen Bestände); am CRM eine

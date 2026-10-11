@@ -23,14 +23,27 @@ export function belegt(a: Pick<Aussage, 'quellen'>, quellen: ReadonlyMap<string,
   return a.quellen.some(id => quelleGueltig(quellen.get(id)));
 }
 
-/** Ersetzt Namen aus Personenkarten durch ihre Funktion (Unternehmensteil nennt Personen nie beim Namen). */
+const maskiert = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const ohneUmlaute = (s: string) => s.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue').replace(/ß/g, 'ss');
+/** Anrede und Titel vor einem Namen („Herr“, „Frau Dr.“, „Prof.“) — gehören zum Namen und fallen mit weg. */
+const ANREDE = '(?:(?:Herrn?|Frau|Dr\\.|Prof\\.)\\s+)*';
+const VOR = '(?<![\\p{L}\\p{N}])', NACH = '(?![\\p{L}\\p{N}])';
+
+/**
+ * Ersetzt Namen aus Personenkarten durch ihre Funktion (Unternehmensteil nennt Personen nie beim Namen). Seit 11.10. (Prüf-Fund) auch mit Anrede/Titel
+ * („Frau Dr. Muster“), in der Schreibweise ohne Umlaute („Mueller“) und den Nachnamen allein (ab 3 Zeichen, groß geschrieben, als ganzes Wort,
+ * auch im Genitiv).
+ */
 export function namenErsetzen(text: string, karten: readonly Pick<PersonenKarte, 'name' | 'funktion'>[]): { text: string; ersetzt: number } {
   let t = text, ersetzt = 0;
+  const ersetze = (muster: RegExp, funktion: string) => { t = t.replace(muster, () => { ersetzt++; return `[${funktion}]`; }); };
   for (const k of karten) {
-    const name = k.name.trim();
+    const name = k.name.trim().replace(/\s+/g, ' ');
     if (name.length < 4) continue;
-    const muster = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    t = t.replace(muster, () => { ersetzt++; return `[${k.funktion}]`; });
+    for (const v of new Set([name, ohneUmlaute(name)])) ersetze(new RegExp(`${VOR}${ANREDE}${maskiert(v).replace(/ /g, '\\s+')}`, 'giu'), k.funktion);
+    const teile = name.split(' ').filter(x => !/^(Herrn?|Frau|Dr\.|Prof\.)$/i.test(x));
+    const nach = teile.length >= 2 ? teile[teile.length - 1] : null;
+    if (nach && nach.length >= 3) for (const v of new Set([nach, ohneUmlaute(nach)])) ersetze(new RegExp(`${VOR}${ANREDE}${maskiert(v)}(?:s|')?${NACH}`, 'gu'), k.funktion);
   }
   return { text: t, ersetzt };
 }

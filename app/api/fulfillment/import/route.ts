@@ -33,7 +33,10 @@ export async function POST(req: Request) {
   if (b.aktion === 'rueckgaengig') {
     const jetzt = new Date().toISOString();
     let bericht: { entfernt: number; zurueck: number; geblieben: number } | undefined;
-    const r = await fulfillmentAendern('vorlagen', d => { const x = importRueckgaengig(d, b.laufId, jetzt); if (x.ok) bericht = x.bericht; return x; }, wer, z.haushalt);
+    // Bausteine, die ein Fall nutzt, bleiben (Prüf-Fund 11.10.).
+    const faelle = await fulfillmentLesen('faelle', z.haushalt);
+    const inFaellen = new Set(Object.values(faelle.faelle).flatMap(f => f.knoten.map(k => k.bausteinId).filter((x): x is string => !!x)));
+    const r = await fulfillmentAendern('vorlagen', d => { const x = importRueckgaengig(d, b.laufId, jetzt, inFaellen); if (x.ok) bericht = x.bericht; return x; }, wer, z.haushalt);
     return r.ok ? NextResponse.json({ ok: true, bericht }) : NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
   }
   const text = typeof b.inhalt === 'string' ? b.inhalt : '';

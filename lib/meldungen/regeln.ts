@@ -40,7 +40,7 @@ export const GELESEN_IDS_MAX = 2000;
 
 export const PERSON_OK = /^[a-z0-9-]{1,40}$/;
 const BEZUG_ID_OK = /^[A-Za-z0-9_-]{1,80}$/;
-const BEZUG_ARTEN: readonly unknown[] = ['aufgabe', 'buchung', 'buchung-termin', 'netzwerken'];
+const BEZUG_ARTEN: readonly unknown[] = ['aufgabe', 'buchung', 'buchung-termin', 'netzwerken', 'kunden-link'];
 export const MELDUNG_ID_OK = /^[A-Za-z0-9:_.-]{1,160}$/;
 export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnung', 'faellig', 'ueberfaellig', 'zoe', 'buchung', 'kalender', 'netzwerken', 'sicherheit', 'vertrag', 'postfach', 'verbindung', 'agenten', 'medien', 'gesundheit', 'produkte'];
 

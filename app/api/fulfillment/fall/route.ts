@@ -53,13 +53,15 @@ export async function GET(req: Request) {
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { crm, vorlagen, faelle, kunde } = await fallUmfeld([m]);
-  const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm);
-  if (!mandat) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
   const { istBusinessGesellschaft } = await import('@/lib/einheiten');
-  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: istBusinessGesellschaft(mandat.gesellschaft) };
+  // Prüf-Fund 11.10.: Mandate einer Privat-Einheit (z. B. die Selbstständigkeit) gibt es hier nicht — 404 VOR jedem Aufbau, derselbe Satz wie „fehlt“.
+  const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm && istBusinessGesellschaft(x.gesellschaft));
+  if (!mandat) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
+  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: true };
   const f = faelle.faelle[m];
   const u = unterschriftAm(mandat, crm, f?.gestartetAm);
-  if (!f) return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await istInhaber(z.person) });
+  // Lese-Protokoll immer, wenn Firma/Kontakte des Mandats ausgeliefert werden (Prüf-Fund 11.10.: vorher nur mit Stakeholdern).
+  if (!f) { leseZugriff(req, 'fulfillment', { ids: [mandat.id], anzahl: mandat.kontaktIds.length }); return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await istInhaber(z.person) }); }
 
   if (url.searchParams.get('willkommen') === '1') {
     // Empfänger: erste Ansprechperson des Mandats mit Adresse, die verarbeitet werden darf (Art. 18 fehlt ganz) — Du/Sie aus ihrer Akte.
@@ -99,7 +101,7 @@ export async function GET(req: Request) {
   // Wählbar sind Ansprechpersonen des Mandats und Personen der Firma (laufende Station) — eingeschränkte fehlen schon in `kontakteFuerVerarbeitung`.
   const personenIds = new Set([...w.stakeholder.map(s => s.kontaktId), ...mandat.kontaktIds, ...(mandat.firmaId ? personenDerFirma(kontakte, mandat.firmaId, { nurAktiv: true }).map(k => k.id) : [])]);
   const personen = kontakte.filter(k => personenIds.has(k.id)).map(k => ({ id: k.id, name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() || k.email || 'Kontakt', position: k.position ?? null, email: k.email ?? null, firmaId: k.firmaId ?? null }));
-  if (w.stakeholder.length) leseZugriff(req, 'fulfillment', { anzahl: w.stakeholder.length });
+  leseZugriff(req, 'fulfillment', { ids: [mandat.id], anzahl: personen.length });
   const bezuege = await import('@/lib/kalender/bezug-server').then(x => x.ladeBezuege()).catch(() => ({ bezuege: {} }));
   const { uidVonSchluessel } = await import('@/lib/kalender/bezug');
   const terminTage = Object.entries(bezuege.bezuege).filter(([, b]) => b.mandatId === m && b.tag).map(([k, b]) => ({ uid: uidVonSchluessel(k), tag: b.tag! }));

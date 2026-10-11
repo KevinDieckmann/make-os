@@ -20,6 +20,8 @@ import { webLesen, teilVon, type WebLauf } from './web-lesen';
 export interface WerkzeugLauf {
   agent: AnalyseAgentId;
   mandatId: string;
+  /** Die auslösende Person (Lese-Protokoll des Personenteils). */
+  person?: string;
   web: WebLauf;
   /** Das Dossier, wie es JETZT im Bestand steht (frisch gelesen je Aufruf). */
   dossier: () => Promise<Dossier | null>;
@@ -64,6 +66,11 @@ async function dossierTeile(eingabe: { abschnitt?: unknown }, l: WerkzeugLauf): 
   if (eingabe.abschnitt === 'personen') {
     if (!LIEST_PERSONEN.has(l.agent)) return fehlschlag('rechte', 'Nicht gelesen: den Personenteil lesen nur der Risiko-, Redaktions- und Prüfer-Agent.');
     const karten = (await l.karten()).filter(k => k.mandatId === l.mandatId);
+    // Prüf-Fund 11.10.: der Personenteil geht an ein Modell — Lese-Protokoll „personenrecherche“ im Namen der auslösenden Person (nur Zähler/Kennungen).
+    if (karten.length) {
+      const { leseZugriffLauf } = await import('@/lib/store/leseprotokoll');
+      leseZugriffLauf(l.person ? { art: 'person', person: l.person } : { art: 'system' }, `agent:fulfillment-${l.agent}:dossier_teile`, 'personenrecherche', { ids: [l.mandatId], anzahl: karten.length });
+    }
     const z = karten.map(k => [
       `Karte ${k.id} · Funktion: ${k.funktion} · Identität ${k.identitaet} · Status ${k.status}${k.rolleSeit ? ` · Rolle seit ${k.rolleSeit}` : ''}`,
       ...(['werdegang', 'themen', 'auftritte', 'aufhaenger'] as const).flatMap(t => k[t].map(a => `  [${t}] (${a.id}; Quellen ${a.quellen.join(', ') || '—'}) ${a.text}`)),

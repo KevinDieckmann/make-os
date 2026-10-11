@@ -148,9 +148,9 @@ describe('Regeln: Fortschritt, aktueller Knoten, wartet auf euch', () => {
     fk('ph1', 'w', 1), fk('t1', 'ph1', 1), fk('s1', 't1', 1, 'erledigt'), fk('s2', 't1', 2, 'entfaellt'),
     fk('ph2', 'w', 2), fk('t2', 'ph2', 1), fk('s3', 't2', 1, 'erledigt'), fk('s4', 't2', 2, 'wartet_kunde', { seit: '2026-10-01', freigabe: 'F3' }), fk('b4', 's4', 1, 'offen', { bausteinId: 'fb-1' }),
   ];
-  it('Fortschritt = erledigte Knoten auf Ebene 4/5, „entfällt“ zählt nicht', () => {
-    // Ebene 4/5 ohne „entfällt“: s1 (erledigt), s3 (erledigt), s4, b4 → 2 von 4
-    expect(fallFortschritt(fall(knoten))).toBe(50);
+  it('Fortschritt = erledigte Blätter ab Ebene 2, „entfällt“ zählt nicht', () => {
+    // Blätter ohne „entfällt“ (seit 11.10. jede Ebene ab 2): s1 (erledigt), s3 (erledigt), b4 → 2 von 3 (s4 hat ein Kind, s2 entfällt)
+    expect(fallFortschritt(fall(knoten))).toBe(67);
     expect(fallFortschritt(fall([]))).toBe(0);
     // ohne Einzelschritte zählen die Blätter ab Ebene 2 (Fall aus einem Muster bis Ebene 3)
     expect(fallFortschritt(fall([fk('w', undefined, 1), fk('a', 'w', 1, 'erledigt'), fk('b', 'w', 2)]))).toBe(50);

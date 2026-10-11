@@ -55,7 +55,7 @@ export async function dossierLage(mandatId: string, person: string): Promise<Ant
   const quellenStand = d.quellen.map(q => q.abgerufenAm).sort().at(-1) ?? null;
   return {
     status: 200, body: {
-      ...basis, dossier: dossierFuerAntwort(d, person, Date.now()), stand: eintragStand(d),
+      ...basis, dossier: dossierFuerAntwort(d, person, Date.now(), darf), stand: eintragStand(d),
       deckblatt: { version: d.version, stand: d.geaendert, quellenStand, loeschAm: loeschAmFuer(ende, tage), kartenAnzahl: personen.karten.filter(k => k.mandatId === mandatId).length, geloescht: d.personenGeloescht ?? [] },
       belegQuote: belegQuote(d), tiefenberichtFrage: tiefenberichtFrage(d),
     },
@@ -98,8 +98,9 @@ async function pruefen(mandatId: string, person: string, wer: Wer, m: import('@/
 }
 
 async function antwort(mandatId: string, person: string, mehr: Record<string, unknown> = {}): Promise<Antwort> {
-  const d = (await fulfillmentLesen('dossiers')).dossiers[mandatId];
-  return { status: 200, body: { ok: true, ...mehr, dossier: d ? dossierFuerAntwort(d, person, Date.now()) : null, stand: d ? eintragStand(d) : null } };
+  const [datei, darf] = await Promise.all([fulfillmentLesen('dossiers'), personenteilErlaubt(person)]);
+  const d = datei.dossiers[mandatId];
+  return { status: 200, body: { ok: true, ...mehr, dossier: d ? dossierFuerAntwort(d, person, Date.now(), darf) : null, stand: d ? eintragStand(d) : null } };
 }
 
 const text = (v: unknown): string => (typeof v === 'string' ? v : '');
