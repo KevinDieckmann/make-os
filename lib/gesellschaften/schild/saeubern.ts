@@ -13,7 +13,7 @@ import {
   type SchildListe, type Vermerk, type Bewertung, type Massnahme, type Stufe, type EreignisArt, type DokStatus, type SchildDatei,
 } from './typen';
 import { DOK_ARTEN } from './dokumente';
-import { EREIGNIS_ARTEN, PFLICHT_REGELN, SCHWELLEN, ereignisDef } from './pflichten';
+import { EREIGNIS_ARTEN, PFLICHT_REGELN, SCHWELLEN, ZUSATZ_SCHRITTE, ereignisSchritte, zusatzSchritt } from './pflichten';
 import { RISIKO_KATALOG } from './risiken';
 import { istTag } from './zeit';
 
@@ -88,8 +88,17 @@ function ereignis(roh: Record<string, unknown>, alt: Ereignis | undefined, id: s
   const datum = feld(roh, alt?.datum, 'datum', tagLesen, fehler, 'Datum als JJJJ-MM-TT.');
   if (!datum) fehler.push({ feld: 'datum', text: 'Wann war das Ereignis?' });
   const notiz = hat(roh, 'notiz') ? lang(roh.notiz, 1000, 'notiz', fehler) : alt?.notiz;
+  // Zusatz-Schritte (Ereignis-Assistent, 11.10.): nur bekannte Kennungen, ohne Doppelte; fehlt das Feld, bleibt der gespeicherte Stand. Leer = weg.
+  let zusatz = alt?.zusatz;
+  if (hat(roh, 'zusatz')) {
+    const l = Array.isArray(roh.zusatz) ? roh.zusatz : roh.zusatz === null ? [] : null;
+    if (!l) fehler.push({ feld: 'zusatz', text: 'Zusatz-Schritte: eine Liste.' });
+    else if (l.length > ZUSATZ_SCHRITTE.length) fehler.push({ feld: 'zusatz', text: `Höchstens ${ZUSATZ_SCHRITTE.length} Zusatz-Schritte.` });
+    else if (l.some(x => typeof x !== 'string' || !zusatzSchritt(x))) fehler.push({ feld: 'zusatz', text: 'Unbekannter Zusatz-Schritt.' });
+    else zusatz = l.length ? [...new Set(l as string[])] : undefined;
+  }
   if (fehler.length) return { fehler };
-  return { fehler, e: rein({ id, art: art as EreignisArt, datum: datum!, notiz, beschlussId: alt?.beschlussId, angelegt: alt?.angelegt ?? k.jetzt, geloeschtAm: alt?.geloeschtAm }) };
+  return { fehler, e: rein({ id, art: art as EreignisArt, datum: datum!, notiz, beschlussId: alt?.beschlussId, zusatz, angelegt: alt?.angelegt ?? k.jetzt, geloeschtAm: alt?.geloeschtAm }) };
 }
 
 function massnahmenLesen(roh: unknown, fehler: RegisterFehler[]): Massnahme[] | undefined {
@@ -266,7 +275,7 @@ export function profilAnwenden(s: SchildGesellschaft, roh: unknown, k: Kontext):
 export function vermerkZiel(s: SchildGesellschaft, regelId: string, periode: string): boolean {
   if (regelId.startsWith('ev:')) {
     const e = (s.ereignisse ?? []).find(x => x.id === periode && !x.geloeschtAm);
-    return !!e && !!ereignisDef(e.art)?.pflichten.some(p => `ev:${p.key}` === regelId);
+    return !!e && ereignisSchritte(e).some(p => `ev:${p.key}` === regelId);
   }
   if (regelId.startsWith('schwelle:')) return periode === 'laufend' && SCHWELLEN.some(x => `schwelle:${x.id}` === regelId);
   return PFLICHT_REGELN.some(r => r.id === regelId) && /^(\d{4}-\d{2}-\d{2}|\d{4})$/.test(periode);

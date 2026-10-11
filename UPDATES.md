@@ -4,6 +4,60 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 11.10.2026 — Unternehmen „in einem Blick“: Schild je Gesellschaft, Bilder statt Listen, Ereignis-Assistent, Kanzlei-Status, Verlauf (nur lokal — Branch `design-unternehmen`, Basis d56e47fa = `update-0910b`)
+Kevin nach dem Ansehen: „Unternehmen nochmal ausbauen — denk immer 2–3 Schritte weiter — und denk dran, dass es einfach zu verstehen sein soll über die
+Visualisierungen. So ist es sehr unübersichtlich und keiner versteht, was da los ist.“
+- **Antwort zuerst:** Überblick = ein Satz + Schild gesamt, je Gesellschaft EINE Karte: Schild-Zeichen (Form + Symbol + Farbe), vier Balken Dokumente ·
+  Pflichten · Risiken · Schutz, „Das Wichtigste jetzt“ (höchstens drei Handgriffe nach Folge und Frist), der Rest gezählt. „Alles zu …“ (`?w=`) = Karte groß +
+  Firmen-Akte als Ring, „Bereit für Kanzlei und Steuerbüro“, Jahres-Zeitstrahl, Risiko-Matrix, Lebenslauf, Verlauf. Rechnung rein in
+  `lib/gesellschaften/schild/blick.ts`.
+- **Ruhige Tonalität:** rot nur, wenn eine Folge droht (gesetzliche Frist verstrichen, Eskalation, Schutzrecht abgelaufen, rotes Risiko ohne Maßnahme,
+  Tragfähigkeit überschritten); gelb = bald bzw. Vorschlagstermin verstrichen, abgelaufen/veraltet; grau = Lücken ohne Eile. Die Compliance-Ampel (Head of Recht,
+  `?lage=1`, Erinnerungen) bleibt unverändert.
+- **Bilder statt Listen:** Pflichten als Jahres-Zeitstrahl (12 Monate, 90 Tage hervorgehoben, darunter die Liste je Monat), Risiken als Matrix (Punkte =
+  Risiken, Klartext-Achsen, Nummern nach Schwere), Struktur mit Anteil als Linienbreite und Geschäftsführung an der Gesellschaft (auch am Handy), Dokumente als
+  Vollständigkeits-Ring mit „was zuerst“, Beschlüsse & Satzung mit dem **Lebenslauf der Gesellschaft** (`lib/gesellschaften/lebenslauf.ts`). Jede Karte mit „Was
+  sehe ich?“ und Erklärung samt Fallbeispiel (`unternehmen.blick.*`, `unternehmen.assistent`, `unternehmen.kanzlei`).
+- **Navigation:** Reiter in zwei Gruppen „Lage“ (Überblick · Pflichten & Fristen · Dokumente · Risiken · Schutz) und „Akte“ (Struktur · Beschlüsse & Satzung ·
+  Verträge & Organe · Gesellschaften), am Handy wischbar; darunter der Gesellschafts-Filter (Alle · je Gesellschaft). Ohne Wahl zeigen Pflichten (Jahresplan
+  aller), Dokumente (Ringe aller) und Risiken (gemeinsame Matrix) das Bild über alle. Alte Adressen (`?s=`, `?w=`) gelten weiter.
+- **Ereignis-Assistent „Was ist passiert?“** (Hauptknopf oben; `lib/gesellschaften/schild/assistent.ts`): neue Geschäftsführung, Gesellschafterwechsel,
+  Kapitalerhöhung, Sitz/Anschrift, neuer Firmenname, neue Beteiligung, Gründung, Auflösung → die Kette Beschluss → Notar → Einlage → Handelsregister →
+  Transparenzregister → Behörden → informieren mit Fristen. Anlegen per Klick NUR über vorhandene Wege: Beschluss als **Entwurf** (Register) + Ereignis(se) im
+  Pflichten-Kalender (Schild) mit angehakten **Zusatz-Schritten** (Bank, Versicherungen, Geschäftspartner, Steuerbüro …, `ZUSATZ_SCHRITTE`) und Verweis auf den
+  Beschluss (`ausBeschluss`, Server prüft: nur ein Beschluss dieser Gesellschaft) — wird der Beschluss später gefasst, schlägt das Beschluss-Buch das Ereignis
+  nicht noch einmal vor. Drei neue Ereignis-Arten: Gründung, Auflösung, neue Beteiligung (mit Normen; Fristen ohne gesetzliche Zahl als Vorschlag). Hinweis
+  „keine Rechtsberatung“ überall.
+- **Jahresplan der Pflichten** (alle Gesellschaften, ein Bild) mit „Im Kalender ansehen“ (die Fristen stehen schon in der Fristen-Ebene) und Kalenderdatei
+  (.ics, nur im Browser erzeugt, Erinnerung eine Woche vorher).
+- **„Bereit für Kanzlei und Steuerbüro“** je Gesellschaft (`lib/gesellschaften/schild/kanzlei.ts`): Profil, Jahresabschluss + Feststellung (Vermerk oder
+  Beschluss-Buch), Steuer-Stammdaten, ELSTER, Verfahrensdoku, Gesellschafterliste, Liquiditätsplanung; „Mappe für die Kanzlei erstellen“ = vorhandene
+  Anwalts-Mappe mit den offenen Punkten als Fragen.
+- **Gesundheits-Verlauf:** neuer Bestand `unternehmen-verlauf--<haushalt>` (Business, ohne Personenbezug: je Tag Ton + vier Prozentzahlen je
+  Business-Gesellschaft, rollend 400 Tage), geschrieben im Morgenlauf (`schildVerlaufMerken`, idempotent), gelesen über `GET /api/gesellschaften/schild?verlauf=1`
+  (dieselbe Zugangsprüfung, gefiltert auf die heutigen Business-Gesellschaften). Bis dahin zeigt der Streifen „beginnt heute“.
+- **Live-Daten / Rückweg:** nur additiv — optionale Felder `Ereignis.zusatz`, `beschlussId` jetzt auch aus dem Assistenten, drei neue Ereignis-Arten, neuer
+  Bestand (Verlauf). Ereignisse ohne Zusatz rechnen bit-gleich (Test). Der alte Stand zeigt die neuen Ereignis-Arten ohne Pflichten und ignoriert `zusatz`
+  (beim Ändern eines solchen Ereignisses im alten Stand fiele `zusatz` weg — die Pflichten blieben vermerkt). Register-Einträge unverändert.
+- Demo: „Neue Geschäftsführung“ in drei Wochen über den Assistenten (Beschluss-Entwurf + Ereignis mit Zusatz-Schritt) und ein Vermerk „erledigt“.
+- Tests: `tests/unternehmen-blick.test.ts` (Ton-Regeln, Wichtigstes, Dimensionen, Zeitstrahl + ICS, Matrix, Lebenslauf, Assistent, Zusatz-Schritte bit-gleich,
+  Kanzlei, Verlauf, Server: Rechte, Sicht X bekommt nichts aus Y, `ausBeschluss` 404/400, Folgen nicht doppelt).
+
+**So testet ihr** (Klickdummy `localhost:3001`; am einfachsten die Demo mit `MAKE_OS_DEMO=1`, `DEMO.md`, als Lena):
+1. Business › Unternehmen öffnen: oben „Das Schild in einem Blick“ mit einem Satz, darunter je Gesellschaft eine Karte — Schild-Zeichen, vier Balken,
+   höchstens drei Handgriffe. Prüfen: rot steht nur, wo eine Frist verstrichen ist; fehlende Unterlagen sind grau.
+2. Auf einer Karte „Alles zu …“: Ring der Firmen-Akte, „Bereit für Kanzlei und Steuerbüro“ (Haken-Liste), Zeitstrahl, Matrix, Lebenslauf, Verlauf
+   („beginnt heute“). Auf ein (i) neben einer Überschrift tippen → Erklärung mit Beispiel.
+3. Reiter „Pflichten & Fristen“ mit Filter „Alle“: Jahresplan aller Gesellschaften; „Als Kalenderdatei (.ics)“ lädt eine Datei; eine Gesellschaft wählen →
+   ihr Zeitstrahl oben, darunter wie bisher Vermerken, Ereignisse, Profil.
+4. Oben „Was ist passiert?“ → Gesellschaft wählen → „Neuer Firmenname“: die Kette (Beschluss → Notar → Handelsregister → Behörden → informieren) mit Daten;
+   Zusatz-Schritte an-/abhaken → „Als Vorschläge anlegen“. Danach: Beschluss-Buch zeigt den Entwurf, Pflichten & Fristen die Schritte, der Kalender die Fristen.
+   Den Entwurf auf „gefasst“ stellen → in den Freigaben kommt KEIN zweites „Pflichten anlegen“ (nur Fassung).
+5. Reiter „Risiken“ ohne Wahl: gemeinsame Matrix; mit Gesellschaft: Punkt in der Liste antippen → das Risiko öffnet sich.
+6. Reiter „Struktur“: Linien so breit wie der Anteil, an der Gesellschaft die Geschäftsführung (am Handy im Baum unter dem Namen).
+7. Handy (375 px): Reiter-Zeile und Filter wischen, nichts ragt über den Rand; Zeitstrahl zeigt Monats-Anfangsbuchstaben.
+8. Mit einem Konto „nur Business“ bzw. Testkunden: `/api/gesellschaften/schild?verlauf=1` → 403.
+
 ## 11.10.2026 — Prüf-Funde 11.10. (Fulfillment) (nur lokal — Branch `fix-fulfillment`, Basis 69d8cdfe = `update-0910b`)
 Sicherheits-/Datenschutz-Prüfung und Funktions-/Live-Daten-Prüfung des Fulfillment-Bereichs — behoben, je Fund ein Test (`tests/fulfillment-pruef-funde{,-routen,-fristen}.test.ts`).
 - **Hoch/Mittel (Sicherheit):** robots.txt ohne RegExp aus fremden Regeln (linear, Deckel; vorher 9,5 s für 5 Sterne) · HEIC-`iloc` ohne Fortschritt → 415 (vorher bis

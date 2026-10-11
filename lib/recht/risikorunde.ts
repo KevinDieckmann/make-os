@@ -31,6 +31,10 @@ export const EREIGNIS_RISIKEN: Readonly<Partial<Record<EreignisArt, readonly str
   'ug-drohende-zu': ['R1', 'R2'],
   zahlungsunfaehigkeit: ['R1'],
   ueberschuldung: ['R2'],
+  // Ereignis-Assistent (11.10.): weitere Lebensereignisse
+  'beteiligung-erwerb': ['R12', 'R13', 'R14'],
+  gruendung: ['R1', 'R5', 'R4'],
+  aufloesung: ['R1', 'R2', 'R5'],
 };
 
 /** Kandidaten aus dem Startkatalog (rein): Ereignisse seit der letzten Runde, erreichte Schwellen, Holding, Schutzrechte — ohne die schon erfassten. */

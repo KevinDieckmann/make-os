@@ -211,6 +211,39 @@ export const EINSTELLUNGEN_BUSINESS = {
     was: 'Zeigt, was an einem Tag galt: je Merkmal die jüngste Fassung mit „gültig ab“ bis zu diesem Tag. Ohne festgehaltene Fassung steht der Wert aus dem Steckbrief, solange er nicht schon durch eine neuere Fassung ersetzt ist.',
     beispiel: 'Du wählst den 31.12. des Vorjahres und siehst den damaligen Sitz und das damalige Stammkapital — etwa für einen Vertrag, der an diesem Tag geschlossen wurde.',
   },
+  // Unternehmen „in einem Blick“ (11.10.): jede Visualisierung mit Erklärung und Fallbeispiel.
+  'unternehmen.blick.schild': {
+    was: 'Je Gesellschaft ein Schild-Zeichen: rot nur, wenn eine Folge droht (eine gesetzliche Frist ist verstrichen, ein Schutzrecht abgelaufen, ein rotes Risiko ohne Maßnahme); gelb, wenn etwas bald fällig ist; grau bei Lücken ohne Eile (Unterlagen fehlen, Risiken nicht bewertet); grün, wenn nichts zu tun ist. Darunter vier Balken — Dokumente, Pflichten, Risiken, Schutz — und höchstens drei Handgriffe, nach Folge und Frist geordnet.',
+    beispiel: 'Bei einer Gesellschaft fehlen zehn Unterlagen, aber keine Frist ist verstrichen: Das Schild bleibt grau, oben steht „Satzung ablegen“. Verstreicht die Offenlegung des Jahresabschlusses, wird es rot und dieser Handgriff rückt nach vorn.',
+  },
+  'unternehmen.blick.jahresstrahl': {
+    was: 'Zwölf Monate auf einer Linie — zwei zurück, zehn voraus. Jeder Punkt ist eine Frist aus dem Pflichten-Kalender oder bei Marken, Domains und Versicherungen. Die getönte Fläche sind die nächsten 90 Tage, der helle Strich ist heute. Rot heißt: eine gesetzliche Frist ist verstrichen; ein verstrichener Vorschlagstermin ist gelb. Die Fristen stehen ohnehin im Kalender; als Datei (.ics) könnt ihr sie zusätzlich mitnehmen.',
+    beispiel: 'Im Juni liegt ein gelber Punkt „Jahresabschluss feststellen“, im Dezember ein grauer „Größenklasse bestimmen“. Mit „Als Kalenderdatei“ landen beide mit Erinnerung eine Woche vorher in einem anderen Kalender.',
+  },
+  'unternehmen.blick.matrix': {
+    was: 'Jedes bewertete Risiko ist ein nummerierter Punkt: je weiter oben, desto wahrscheinlicher; je weiter rechts, desto schwerer. Das Feld trägt die Farbe, die die Bewertung ergibt — rot ab 15 Punkten (Eintritt mal Wirkung) oder bei „bestandsgefährdend“, gelb von 8 bis 14. Die Nummer 1 wiegt am schwersten; die Liste darunter öffnet das Risiko.',
+    beispiel: 'Der Ausfall eines Großkunden ist „wahrscheinlich“ und „schwer“ (4 × 4 = 16): Punkt 1 im roten Feld oben rechts. Ein Domain-Verlust ist „selten“ und „spürbar“: ein Punkt unten links im grünen Feld.',
+  },
+  'unternehmen.blick.dokumente': {
+    was: 'Der Ring zeigt, wie viel der Soll-Liste einer Gesellschaft abgelegt und aktuell ist — Pflicht und Empfehlung getrennt gezählt. Darunter höchstens drei Unterlagen, die zuerst dran sind: Abgelaufenes und Veraltetes vor Fehlendem, Pflicht vor Empfehlung, Gesellschaftsrecht vor dem Rest. Fehlende Unterlagen ohne Frist sind grau, nicht rot.',
+    beispiel: 'Eine junge GmbH hat 6 von 30 Unterlagen: Der Ring ist zu einem Fünftel gefüllt, zuerst stehen Satzung, Gesellschafterliste und Transparenzregister.',
+  },
+  'unternehmen.blick.struktur': {
+    was: 'Wer hält wen: oben die Gesellschafter, darunter die eigenen Gesellschaften, unten fremde Beteiligungen. Die Breite einer Linie zeigt den Anteil, die Zahl steht daneben; weichen die Stimmrechte ab, stehen sie in Klammern. An jeder eigenen Gesellschaft steht, wer heute die Geschäftsführung ist. Alles kommt aus den Einträgen unter Gesellschafter, Organe und Beteiligungen.',
+    beispiel: 'Eine Holding hält 100 % der operativen Gesellschaft (dicke Linie) und 20 % an einer fremden Firma (dünn, gestrichelt).',
+  },
+  'unternehmen.blick.lebenslauf': {
+    was: 'Die Geschichte einer Gesellschaft auf einer Linie, das Neueste oben, nach Jahren: Gründung und Eintragung, Beschlüsse mit Nummer, neue Fassungen von Gegenstand, Satzung, Kapital, Sitz und Geschäftsführung, Ein- und Austritte von Gesellschaftern, Organe, Beteiligungen und Ereignisse. Ein gestrichelter Kreis ist beschlossen, gilt aber erst später.',
+    beispiel: 'Ganz unten „Gründung“, darüber „Nr. 1/2024 Bestellung der Geschäftsführung“, oben „Neue Fassung: Stammkapital 50.000 €“ aus der Kapitalerhöhung.',
+  },
+  'unternehmen.assistent': {
+    was: 'Du sagst, was passiert ist — neue Geschäftsführung, Gesellschafterwechsel, Kapitalerhöhung, Umzug, neuer Name, neue Beteiligung, Gründung oder Auflösung. MAKE OS zeigt die ganze Kette von Schritten mit Frist und legt sie auf Klick an: den Beschluss als Entwurf im Beschluss-Buch und das Ereignis im Pflichten-Kalender, mit den angehakten Zusatz-Schritten. Nichts geht nach außen; keine Rechtsberatung.',
+    beispiel: 'Neue Geschäftsführung ab 01.03.: Es entstehen der Beschluss-Entwurf „Bestellung“, die Anmeldung zum Handelsregister (Vorschlag binnen 14 Tagen), Briefbogen und Impressum, Vollmachten und Bank — jeweils mit Frist im Kalender.',
+  },
+  'unternehmen.kanzlei': {
+    was: 'Was Kanzlei und Steuerbüro für den Abschluss des letzten Geschäftsjahres brauchen: Größenklasse und Zahlen im Profil, Jahresabschluss und Feststellungsbeschluss, Steuer-Stammdaten, ELSTER-Zertifikat, Verfahrensdokumentation, Gesellschafterliste, Liquiditätsplanung. Ein Haken heißt: liegt in MAKE OS vor. Die Mappe für die Kanzlei nimmt die offenen Punkte als Fragen mit.',
+    beispiel: 'Sechs von acht Punkten liegen vor; offen sind die Feststellung des Jahresabschlusses und die Verfahrensdokumentation. Die Mappe fragt genau danach.',
+  },
 
   // ── Finanzplanung ──────────────────────────────────────────────────────────────────────────────────────────────────────
   'finanzplan.istJanSep': {

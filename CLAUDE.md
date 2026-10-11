@@ -47,6 +47,16 @@ lokal, Route `/os`, Port 3001.
   nach jeder Vertragsänderung. Neue Gesellschaften im Finanzplan: bewusst nicht (Kevin).
   Gründungsfahrplan: Vorlage `lib/gesellschaften/fahrplan.ts` (Ziel + 9 Meilensteine mit `wartetAuf` + Aufgaben), Karte im Steckbrief
   (`components/os/unternehmen/Fahrplan.tsx`), nur über die bestehenden Planungs-/Aufgaben-Schreibwege, feste Kennungen `z-fahrplan-…`/`ms-fahrplan-…`.
+- **Unternehmen „in einem Blick“ (11.10., Branch `design-unternehmen`; UPDATES.md):** Antwort zuerst, Bild statt Liste, ruhige Tonalität. Die Sprache der
+  Oberfläche ist der **Ton** (`lib/gesellschaften/schild/blick.ts`: rot NUR bei drohender Folge — gesetzliche Frist verstrichen, Eskalation, Schutzrecht
+  abgelaufen, rotes Risiko ohne Maßnahme, Tragfähigkeit; gelb = bald/Vorschlagstermin/abgelaufen; grau = Lücken ohne Eile); die Compliance-Ampel (`ampel.ts`,
+  Head of Recht, Erinnerungen) bleibt, wie sie ist. „Das Wichtigste jetzt“ = höchstens drei Handgriffe (`wichtigste`), alles andere gezählt. Bilder rechnen
+  rein in `lib/gesellschaften/schild/{jahresstrahl,matrix,kanzlei,verlauf,assistent}.ts` und `lib/gesellschaften/lebenslauf.ts`; Zeichner in
+  `components/os/unternehmen/blick/*` rechnen nichts. Jede neue Visualisierung: „Was sehe ich?“ (`WasSeheIch`) + Erklärung mit Beispiel. Reiter in zwei Gruppen
+  (Lage · Akte), Gesellschafts-Filter mit „Alle“ (Überblick, Pflichten, Dokumente, Risiken). **Ereignis-Assistent** legt nur über vorhandene Wege an
+  (Beschluss-Entwurf ins Register, Ereignis + `zusatz` ins Schild, `ausBeschluss` nur für einen Beschluss DIESER Gesellschaft) — neue Lage = Zeile in
+  `SITUATIONEN`, neuer Zusatz-Schritt = `ZUSATZ_SCHRITTE` (Kennung `z-…`, nie ändern); ein Ereignis ohne `zusatz` muss bit-gleich rechnen. Verlauf
+  `unternehmen-verlauf--<haushalt>` nur Zahlen (Morgenlauf, `GET …/schild?verlauf=1`).
   **Schild (10.10., Branch `unternehmen-schild`; UPDATES.md):** Pflichtdokumente, Pflichten-Kalender, Risiko-Register, Marken/Domains/Versicherungen, Entwürfe aus Vorlagen
   liegen im EIGENEN Business-Bestand `unternehmen-schild--<haushalt>` (nie im gemischten Register; nur Business-Gesellschaften, Privat-Einheit → 400), EINE Schreibstelle
   `lib/gesellschaften/schild-server.ts`, Route `/api/gesellschaften/schild` (Stand/409). Regeln rein in `lib/gesellschaften/schild/*` (Kataloge als Daten, Fristen/Ampel/

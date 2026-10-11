@@ -79,6 +79,8 @@ export interface EreignisPflicht {
   hinweis?: string;
   /** Hier lohnt eine anwaltliche/steuerliche Einschätzung, bevor ihr handelt. */
   eskalation?: true;
+  /** Die Frist ist ein FRÜHESTER Tag (Wartezeit, z. B. Sperrjahr) — in Worten „nach …“ statt „binnen …“ (11.10.). */
+  nach?: true;
 }
 export interface EreignisDef { id: EreignisArt; label: string; gilt: (k: SchildKontext) => boolean; pflichten: EreignisPflicht[] }
 
@@ -148,7 +150,60 @@ export const EREIGNIS_ARTEN: readonly EreignisDef[] = [
   { id: 'ueberschuldung', label: 'Überschuldung', gilt: k => k.kapital || k.hgbKapital, pflichten: [
     { key: 'insolvenzantrag', titel: 'Insolvenzantrag — ohne schuldhaftes Zögern, spätestens nach 6 Wochen', tage: 42, norm: '§ 15a InsO; § 19 InsO', verantwortlich: 'gf', quelle: 'Q14, Q81', eskalation: true, hinweis: ESKALATION },
   ] },
+  // ── Ereignis-Assistent (11.10., „Was ist passiert?“) — weitere Lebensereignisse; Quelle „Gesetzestext“ = Norm nicht aus der Recherche, sondern
+  //    aus dem Wortlaut; Fristen ohne gesetzliche Zahl sind Vorschläge (`annahme`). Hinweis, keine Rechtsberatung.
+  { id: 'beteiligung-erwerb', label: 'Neue Beteiligung erworben', gilt: () => true, pflichten: [
+    { key: 'notar', titel: 'Anteilskauf notariell beurkunden (bei GmbH-Anteilen)', tage: 0, norm: '§ 15 Abs. 3, 4 GmbHG', verantwortlich: 'gf', quelle: 'Gesetzestext' },
+    { key: 'register', titel: 'Beteiligung in MAKE OS eintragen (Gesellschaft › Beteiligungen)', tage: 7, norm: '—', verantwortlich: 'gf', quelle: 'Annahme', annahme: true, hinweis: 'Daraus zeichnet MAKE OS die Struktur „wer hält wen“.' },
+    U('transparenzregister', 'Transparenzregister: wirtschaftlich Berechtigte über die neue Kette prüfen', '§§ 19, 20 GwG', 'Q09', { annahme: true }),
+    { key: 'quote', titel: 'Beteiligungsquote zum nächsten 01.01. festhalten (Holding)', monate: 1, norm: '§ 8b Abs. 4 KStG, § 9 Nr. 2a GewStG', verantwortlich: 'gf', quelle: 'Q44, Q46', annahme: true, hinweis: 'Steuerlich zählt die Quote zu Beginn des Kalenderjahres.' },
+  ] },
+  { id: 'gruendung', label: 'Gründung der Gesellschaft', gilt: k => k.kapital, pflichten: [
+    { key: 'notar', titel: 'Gesellschaftsvertrag notariell beurkunden', tage: 0, norm: '§ 2 Abs. 1 GmbHG', verantwortlich: 'gesellschafter', quelle: 'Gesetzestext' },
+    { key: 'einlage', titel: 'Einlagen einzahlen — vor der Anmeldung', tage: 7, norm: '§ 7 Abs. 2, § 5a Abs. 2 GmbHG', verantwortlich: 'gesellschafter', quelle: 'Gesetzestext', annahme: true, hinweis: 'GmbH: auf jeden Anteil mindestens ein Viertel, zusammen mindestens die Hälfte des Mindeststammkapitals; UG: voll.' },
+    { key: 'hr', titel: 'Zum Handelsregister anmelden (über den Notar)', tage: 14, norm: '§§ 7, 8 GmbHG; § 12 HGB', verantwortlich: 'gf', quelle: 'Gesetzestext', annahme: true },
+    U('transparenzregister', 'Wirtschaftlich Berechtigte dem Transparenzregister mitteilen', '§ 20 GwG', 'Q09'),
+    { key: 'gewerbeamt', titel: 'Gewerbe anmelden (mit Beginn der Tätigkeit)', tage: 30, norm: '§ 14 GewO', verantwortlich: 'gf', quelle: 'Q60', annahme: true },
+    { key: 'finanzamt', titel: 'Fragebogen zur steuerlichen Erfassung', monate: 1, norm: '§ 138 AO', verantwortlich: 'gf', quelle: 'Q59' },
+  ] },
+  { id: 'aufloesung', label: 'Auflösung (Liquidation)', gilt: k => k.kapital, pflichten: [
+    { key: 'beschluss', titel: 'Auflösung beschließen (drei Viertel der Stimmen, wenn die Satzung nichts anderes sagt)', tage: 0, norm: '§ 60 Abs. 1 Nr. 2 GmbHG', verantwortlich: 'gesellschafter', quelle: 'Gesetzestext' },
+    U('hr', 'Auflösung und Liquidatoren zum Handelsregister anmelden', '§§ 65, 67 GmbHG', 'Gesetzestext'),
+    U('glaeubiger', 'Auflösung bekanntmachen und Gläubiger zur Meldung auffordern', '§ 65 Abs. 2 GmbHG', 'Gesetzestext'),
+    { key: 'finanzamt', titel: 'Finanzamt informieren (Besteuerung der Abwicklung)', monate: 1, norm: '§ 11 KStG, § 138 AO', verantwortlich: 'gf', quelle: 'Gesetzestext', annahme: true },
+    { key: 'sperrjahr', titel: 'Nach dem Sperrjahr: verbleibendes Vermögen verteilen', monate: 12, nach: true, norm: '§ 73 Abs. 1 GmbHG', verantwortlich: 'gf', quelle: 'Gesetzestext', annahme: true, hinweis: 'Vorher darf nichts verteilt werden. Das Jahr läuft ab der Bekanntmachung — im Kalender gerechnet ab dem Tag des Ereignisses.' },
+    { key: 'loeschung', titel: 'Schluss der Abwicklung zum Handelsregister anmelden (Löschung)', monate: 13, nach: true, norm: '§ 74 Abs. 1 GmbHG', verantwortlich: 'gf', quelle: 'Gesetzestext', annahme: true },
+  ] },
 ];
+
+/**
+ * Zusatz-Schritte des Ereignis-Assistenten (11.10.): was nach einem Ereignis üblicherweise noch zu tun ist, aber keine eigene Register- oder
+ * Behördenpflicht ist (Bank, Versicherungen, Geschäftspartner informieren …). Sie gelten NUR, wenn die Person sie im Assistenten anhakt
+ * (`Ereignis.zusatz`) — ein Ereignis ohne Zusatz rechnet bit-gleich wie bisher. Kennungen beginnen mit `z-` (keine Überschneidung mit den
+ * Pflicht-Kennungen) und ändern sich nie. Fristen sind Vorschläge (`annahme`).
+ */
+export const ZUSATZ_SCHRITTE: readonly EreignisPflicht[] = [
+  { key: 'z-bank', titel: 'Bank informieren (Vertretung, Anschrift bzw. Firma, Kontovollmachten)', tage: 14, norm: '—', verantwortlich: 'gf', quelle: 'Annahme', annahme: true },
+  { key: 'z-versicherungen', titel: 'Versicherungen informieren (Anschrift, versicherte Personen, Risiko)', tage: 14, norm: '§ 23 VVG (Gefahrerhöhung)', verantwortlich: 'gf', quelle: 'Gesetzestext', annahme: true, hinweis: 'Was das versicherte Risiko erhöht, ist dem Versicherer anzuzeigen.' },
+  { key: 'z-partner', titel: 'Kunden, Lieferanten und Dienstleister informieren (Rechnungsangaben, Verträge)', tage: 30, norm: '§ 14 Abs. 4 UStG (Rechnungsangaben)', verantwortlich: 'gf', quelle: 'Gesetzestext', annahme: true },
+  { key: 'z-marken-domains', titel: 'Marken, Domains und Verträge auf die neue Lage prüfen (Inhaber, Firma)', tage: 30, norm: '—', verantwortlich: 'gf', quelle: 'Annahme', annahme: true },
+  { key: 'z-steuerbuero', titel: 'Steuerbüro informieren (Folgen für Steuern und Abschluss)', tage: 14, norm: '—', verantwortlich: 'gf', quelle: 'Annahme', annahme: true, hinweis: 'Etwa beim Wechsel von Gesellschaftern: Verlustvorträge können wegfallen (§ 8c KStG).' },
+  { key: 'z-cap-table', titel: 'Gesellschafter in MAKE OS nachziehen (Cap-Table)', tage: 7, norm: '—', verantwortlich: 'gf', quelle: 'Annahme', annahme: true, hinweis: 'Unter Gesellschaft › Gesellschafter — daraus rechnet MAKE OS Anteile, Stimmen und die Struktur.' },
+  { key: 'z-einlage', titel: 'Einlage leisten und den Nachweis ablegen', tage: 0, norm: '§ 57 Abs. 2 GmbHG', verantwortlich: 'gesellschafter', quelle: 'Gesetzestext', hinweis: 'Angemeldet wird die Kapitalerhöhung erst, wenn die Einlage geleistet ist.' },
+  { key: 'z-notar-anteile', titel: 'Abtretung der Anteile notariell beurkunden', tage: 0, norm: '§ 15 Abs. 3 GmbHG', verantwortlich: 'gesellschafter', quelle: 'Gesetzestext' },
+  { key: 'z-konto', titel: 'Geschäftskonto eröffnen (für die Einlagen)', tage: 0, norm: '—', verantwortlich: 'gf', quelle: 'Annahme', annahme: true },
+  { key: 'z-impressum', titel: 'Impressum, Briefbogen und E-Mail-Signatur anpassen', tage: 0, norm: '§ 5 DDG, § 35a GmbHG', verantwortlich: 'gf', quelle: 'Q56, Q23', hinweis: 'Ab der Eintragung im Handelsregister.' },
+  { key: 'z-gewerbe', titel: 'Gewerbeamt: Ummeldung', tage: 30, norm: '§ 14 GewO', verantwortlich: 'gf', quelle: 'Q60', annahme: true },
+  { key: 'z-finanzamt', titel: 'Finanzamt informieren', monate: 1, norm: '§ 138 AO', verantwortlich: 'gf', quelle: 'Q59', annahme: true },
+];
+export const zusatzSchritt = (key: string): EreignisPflicht | undefined => ZUSATZ_SCHRITTE.find(z => z.key === key);
+/** Pflichten eines Ereignisses samt angehakter Zusatz-Schritte (unbekannte Kennungen fallen weg) — EINE Liste für Kalender, Vermerke und Assistent. */
+export function ereignisSchritte(e: Pick<Ereignis, 'art' | 'zusatz'>): EreignisPflicht[] {
+  const def = ereignisDef(e.art);
+  if (!def) return [];
+  const zusatz = (e.zusatz ?? []).map(zusatzSchritt).filter((z): z is EreignisPflicht => !!z && !def.pflichten.some(p => p.key === z.key));
+  return [...def.pflichten, ...zusatz];
+}
 export const ereignisDef = (art: string): EreignisDef | undefined => EREIGNIS_ARTEN.find(e => e.id === art);
 
 // ── Schwellen-Wächter (research › 2d) ────────────────────────────────────────────────────────────────────────────
@@ -268,7 +323,7 @@ export function pflichtenFuer(k: SchildKontext, s: SchildGesellschaft | null | u
 export function ereignisPflichten(e: Ereignis, k: SchildKontext, s: SchildGesellschaft | null | undefined, heute: string): PflichtEintrag[] {
   const def = ereignisDef(e.art);
   if (!def || !def.gilt(k)) return [];
-  return def.pflichten.map(p => {
+  return ereignisSchritte(e).map(p => {
     const frist = p.monate ? monatePlus(e.datum, p.monate) : tagePlus(e.datum, p.tage ?? 0);
     const regelId = `ev:${p.key}`;
     const v = vermerkVon(s, regelId, e.id);

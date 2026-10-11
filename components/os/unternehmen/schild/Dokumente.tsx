@@ -16,11 +16,14 @@ import { DOK_QUELLEN, DOK_STATUS, type Dokument, type DokStatus, type DokQuelle 
 import { DOK_GRUPPEN, DOK_ZUSTAND_TEXT, DOKUMENT_KATALOG, dokSchwere, katalogVon, type DokSoll } from '@/lib/gesellschaften/schild/dokumente';
 import { VORLAGEN, VORLAGE_HINWEIS } from '@/lib/gesellschaften/schild/vorlagen';
 import type { GesellschaftLage } from '@/lib/gesellschaften/schild/ampel';
+import { dokTon } from '@/lib/gesellschaften/schild/blick';
+import { DokumenteRing } from '../blick/DokumenteRing';
 import { Felder, Feldzeile } from '../teile';
 import { unterlageHochladen, dateiLink, type SEintrag, type Schreiben } from './daten';
 import { AMPEL_FARBE, SchildFuss, datum, klein } from './teile';
 
-const ZUSTAND_FARBE = (z: DokSoll) => { const s = dokSchwere(z); return s === 'rot' ? AMPEL_FARBE.rot : s === 'gelb' ? AMPEL_FARBE.gelb : z.zustand === 'vorhanden' ? AMPEL_FARBE.gruen : C.inkDim; };
+// Ruhige Tonalität (11.10.): Farbe aus dem Ton (lib/gesellschaften/schild/blick.ts `dokTon`) — gelb nur bei abgelaufen/veraltet, fehlend ist neutral.
+const ZUSTAND_FARBE = (z: DokSoll) => { const t = dokTon(z)?.ton; return t === 'rot' ? AMPEL_FARBE.rot : t === 'gelb' ? AMPEL_FARBE.gelb : z.zustand === 'vorhanden' ? AMPEL_FARBE.gruen : C.inkDim; };
 const aufbewahrung = (z: DokSoll) => (!z.aufbewahrenBis ? undefined : z.aufbewahrenBis === 'dauerhaft' ? 'aufbewahren: dauerhaft' : `aufbewahren bis ${datum(z.aufbewahrenBis)}`);
 
 export function Dokumente({ lage, e, sw }: { lage: GesellschaftLage; e: SEintrag; sw: Schreiben }) {
@@ -31,7 +34,9 @@ export function Dokumente({ lage, e, sw }: { lage: GesellschaftLage; e: SEintrag
   const fehlend = lage.dokumente.filter(d => dokSchwere(d) === 'rot').length;
   return (
     <>
-      {fehlend > 0 && <Hinweis art="kritisch" titel={`${fehlend} Pflichtdokument${fehlend === 1 ? '' : 'e'} fehlen oder sind abgelaufen`}>Unten rot markiert — erfassen, Datei ablegen oder mit Grund „nicht nötig“ vermerken.</Hinweis>}
+      {/* 11.10.: Bild zuerst — wie vollständig die Akte ist und was zuerst dran ist; die Liste darunter ist ruhig (nur Gelb, wenn etwas abläuft). */}
+      <DokumenteRing lage={lage} />
+      {fehlend > 0 && <div style={klein}>{fehlend} Pflichtunterlage{fehlend === 1 ? '' : 'n'} fehlt oder ist abgelaufen — erfassen, Datei ablegen oder mit Grund „nicht nötig“ vermerken.</div>}
       {form && <DokForm key={`${form.art}-${form.dok?.id ?? 'neu'}`} art={form.art} dok={form.dok} lage={lage} sw={sw} melden={melden} fertig={() => setForm(null)} />}
       {nachGruppe.map(g => (
         <Karte key={g.id}>
