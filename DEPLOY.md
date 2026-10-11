@@ -350,6 +350,48 @@ den Umzug startet:
    zusammengeführt wurde — sonst 409 mit Grund; danach leitet die Tabelle neue Kennungen auf die alten zurück.
 Per Kommandozeile (Dienstweg ist bewusst NICHT erlaubt — der Umzug steht mit der Person im Protokoll): nur über die Oberfläche.
 
+## Update-Probe mit Altbestand — Pflicht-Gate vor JEDEM Upload (10.10.)
+Kevin 10.10.: „Malin trägt schon aktuelle Daten ein — die müssen nach dem Update auch noch da sein!“ Seit 09.10. liegen live echte Daten.
+Vor jedem Push auf `main`: Bestand mit der ONLINE-Version anlegen, die neue Version darauf starten, je Bestand vorher/nachher vergleichen.
+**Steht im Bericht „VERLUSTFREI: nein“, wird nicht hochgeladen.**
+
+```bash
+# 1. Online-Stand als zweiten Worktree (node_modules als Symlink auf das Haupt-Repo; package.json-Unterschiede vorher prüfen)
+git worktree add <scratch>/probe-alt <online-commit>
+ln -s <repo>/node_modules <scratch>/probe-alt/node_modules
+# 2. Probe (ein Befehl; erneut laufen lassen = derselbe Befehl, der Probe-Ordner wird neu angelegt)
+node scripts/update-probe.mjs --alt <scratch>/probe-alt --neu <worktree der neuen Version> \
+     --ordner <scratch>/probe-daten --bericht <scratch>/update-probe-bericht.md
+#    Ausgang 0 = verlustfrei, 1 = Abweichung (kein Upload), 2/3 = Aufruf/Einrichtung falsch. ~1–2 Min.
+#    --ab neu         Saat überspringen, mit der Kopie <ordner>.vorher neu beginnen (nach Änderungen an der neuen Version)
+#    --ohne-rueckweg  Rückweg-Probe auslassen
+```
+
+Was passiert (scripts/update-probe.mjs, je Version ein eigener Prozess `scripts/update-probe/kind.mjs`, `nice -n 10`, ≤ 3 GB):
+1. **Saat mit der alten Version** in einen leeren Ordner, Format wie live (Datenschlüssel gesetzt, OHNE `MAKE_OS_FORMAT` = kompatibel/v1):
+   Demo-Saat (`lib/demo/server.ts`, Riegel `MAKE_OS_DEMO=1`) + Ergänzungen über die Routen der alten Version (`scripts/update-probe/saat-zusatz.mjs`):
+   Konten wie live (`kevin` Haupt-Inhaber/Erstkonto mit Beständen OHNE Suffix, `malin` Mitglied), Routinen mit Haken, Vitalwerte, Journal, eigene
+   Ziele + Fokus, Unteraufgaben über vier Ebenen, Serie, „nur ich“, Kommentar, Papierkorb, Kalender-Bezüge, Familie, Ernährung, Rechnungen/Zahlungen,
+   Beschlüsse/Organe, Inbox (Demo-Postfach, Zustand), laufender Fokus, Dateien (CRM-Ablage, Aufgabe), Fläche, Onboarding, Bauplan, CRM-Notiz.
+   Danach ein Grundlauf wie live seit Tagen (Start-Haken, alle GET, Takt + Arbeiter, Morgenlauf, Löschfristen) und zuletzt **Altformen** direkt
+   in den Bestand (Mandats-Ziele als reine Texte/ohne Kennung/gemischt). Alles erfunden.
+2. **Schnappschuss vorher** (`scripts/update-probe/lesen.mjs`): jeder Bestand entschlüsselt, jede Kennung, jedes Feld; Dateien mit Klartext-Fingerabdruck.
+3. **Gegenprobe**: die ALTE Version macht auf einer Kopie dasselbe wie gleich die neue — was sie genauso verliert, ist kein Verlust DURCH das Update
+   (steht als „bestehender Verlust“ im Bericht, blockiert nicht).
+4. **Neue Version** auf dem Ordner: Start-Haken (Start-Riegel, Betrieb, Absichten, Brain-Index), alle GET des Routen-Registers als Kevin, Malin,
+   Lena, Partner „nur Business“, Takt + Arbeiter, Morgenlauf (Systemlauf + Person), Löschfristen-Lauf, typische Klicks und je Bestand ein neuer
+   Eintrag über den Schreibweg der neuen Version (`scripts/update-probe/klicks.mjs` — so läuft jeder Bestand einmal durch ihre Säuberung).
+5. **Vergleich** (rein, `lib/betrieb/update-probe.ts`, Tests `tests/update-probe.test.ts`): jeder Bestand noch da und lesbar, jede Kennung noch da,
+   jedes Feld mit Wert noch da (auch `false`/`0`), Dateien gleich, Format v1 ohne `_v`; Sichtprobe (35 Marken müssen in einer Antwort an ihre
+   Person wieder auftauchen); Selbsttest (ein entfernter Eintrag + ein Feld im Nachher-Bild müssen gemeldet werden). Ausnahmen nur in `ERLAUBT`
+   (bzw. `KLICK_ERLAUBT` für die Klicks selbst) — jede mit Grund und Code-Stelle, nie pauschal.
+6. **Rückweg**: die alte Version wieder auf den neuen Stand — alle GET, jeder Bestand mit ihrer Datenschicht lesbar? (nur berichtet)
+
+Sicherheit: nie `.data` (Abbruch), nur ein leerer bzw. von der Probe angelegter Ordner (Marke `<ordner>.update-probe.json`), nur Test-Schlüssel,
+kein Netz (fetch gesperrt; interne Aufrufe `MAKE_OS_INTERN=http://probe.intern` laufen in-process), kein Server auf 3001/3011, keine echten Quellen.
+Grenzen der Probe: kein iCloud/Google/WHOOP/WhatsApp-Abgleich (Spiegel kommen von außen), kein Modell (Läufe fallen aufs Regelwerk), Next-Middleware
+nicht dabei (die Routen bekommen `x-make-user` wie danach). Neue Bestände/Felder einer Version → Saat-Ergänzung + ggf. Klick dazunehmen.
+
 ## Ausrollen seit 26.09. abends: Bild kommt fertig von GitHub
 Die Action baut das Docker-Image auf dem GitHub-Rechner (`docker build`) und schickt es per SSH-Stdin an den Server
 (`docker save | gzip | ssh make@… bild`). `deploy/ausrollen.sh` (Forced Command) unterscheidet über
