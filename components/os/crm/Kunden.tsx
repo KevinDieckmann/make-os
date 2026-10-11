@@ -42,7 +42,7 @@ import { type CrmApi, datum, euro, kurzEuro, nurFelder } from './daten';
 import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GesellschaftWahl } from './GesellschaftWahl';
-import { finanzFirmaFuer, NUR_GRUNDDATEN } from '@/lib/einheiten';
+import { finanzFirmaFuer, NUR_GRUNDDATEN, istBusinessGesellschaft } from '@/lib/einheiten';
 import { mandatGesellschaftOffen } from '@/lib/crm/kunden';
 import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 import { MandantLink } from './MandantLink';
@@ -245,6 +245,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
         </div>
       </Feldzeile>
       {m.chanceId && <Feldzeile label="Deal"><Link href={WEG.deal(m.chanceId)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Deal öffnen ›</Link></Feldzeile>}
+      {istBusinessGesellschaft(m.gesellschaft) && <Feldzeile label="Fulfillment"><Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Fulfillment öffnen ›</Link></Feldzeile>}
       <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={m.status} onWahl={status => setze({ status })} /></Feldzeile>
       <Feldzeile label="Vertrag"><Wahl label="Vertrag" liste={VERTRAG} wert={m.vertragUnterschrieben ? 'ja' : 'nein'} farbe={m.vertragUnterschrieben ? LEUCHT.gut : C.aktiv} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
       <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>

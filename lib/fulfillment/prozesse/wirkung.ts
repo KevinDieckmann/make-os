@@ -1,0 +1,94 @@
+// ─── Fulfillment · Prozesse — Wirkungsbericht und Nachsorge (C1, 10.10.; FULFILLMENT_KONZEPT.md 5.3) ────────────────────────────────
+// Der Wirkungsbericht schließt den Kreis: Wert-Konto vorher → nachher, erledigte Quick Wins, Lieferobjekte (erledigte, für Kunden sichtbare
+// Schritte), Befähigung „läuft ohne uns“ und — nur mit vermerkter Einwilligung (Tag, wie) — ein Kundenzitat. Er geht an den Kunden, also:
+// nie Bausteine „nur intern“, keine internen Schritte, keine Health, kein Honorar. Keine Garantie, kein Erfolgshonorar (Satz im Bericht).
+// Daraus per Klick: Testimonial anfragen (Aufgabe), Fallstudie (Baustein-Entwurf, anonym ohne Einwilligung), Empfehlung erfragen
+// (Follow-up), nächste Stufe (vorhandener Vorschlag der Leistungstreppe). Nachsorge: an Tag +14/+45/+90 nach Mandatsende je ein Vorschlag
+// im Stapel (Check-in · Empfehlung · nächste Stufe), Marken `nachsorge:<mandat>:<tag>` gegen Doppelte. Rein und client-sicher.
+
+import type { Baustein, Fall, WertKontoZeile } from '../typen';
+import type { Mandat } from '@/lib/crm/typen';
+import { wertKontoZeilen } from '../regeln';
+import { nurIntern } from './bausteine';
+
+export interface WirkungsDokument {
+  titel: string; kunde: string; mandat: string; paket?: string; absender?: string;
+  zeitraum: string; stand: string;
+  wertKonto: WertKontoZeile[];
+  quickWins: string[];
+  lieferobjekte: string[];
+  befaehigung: { text: string; erfuellt: boolean }[];
+  zitat?: { text: string };
+  hinweis: string;
+}
+
+const datum = (t: string) => (/^\d{4}-\d{2}-\d{2}/.test(t) ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : t);
+export const WIRKUNG_HINWEIS = 'Dieser Bericht hält fest, was gemeinsam erreicht wurde. Er ist keine Garantie künftiger Ergebnisse; es gibt kein Erfolgshonorar.';
+
+export function wirkungsDokument(e: {
+  fall: Fall; mandat: Pick<Mandat, 'kunde' | 'titel' | 'ziele' | 'start'>; paket?: string; absender?: string; heute: string;
+  bausteine: readonly Pick<Baustein, 'id' | 'tags'>[];
+  /** Ein Kundenzitat — nur mit vermerkter Einwilligung (der Aufrufer prüft `einwilligungAm`). */
+  zitat?: { text: string; einwilligungAm: string; wie: string };
+}): WirkungsDokument {
+  const intern = new Set(e.bausteine.filter(b => nurIntern(b)).map(b => b.id));
+  const lieferobjekte = e.fall.knoten
+    .filter(k => k.status === 'erledigt' && k.kundeSichtbar === true && !(k.bausteinId && intern.has(k.bausteinId)) && !k.id.startsWith('fk-ob-'))
+    .map(k => k.ergebnis ? `${k.titel}: ${k.ergebnis}` : k.titel);
+  const von = (e.mandat.start ?? e.fall.gestartetAm).slice(0, 10);
+  return {
+    titel: 'Wirkungsbericht', kunde: e.mandat.kunde, mandat: e.mandat.titel, ...(e.paket ? { paket: e.paket } : {}), ...(e.absender ? { absender: e.absender } : {}),
+    zeitraum: `${datum(von)} – ${datum(e.heute)}`, stand: datum(e.heute),
+    wertKonto: wertKontoZeilen(e.fall, e.mandat),
+    quickWins: e.fall.quickWins.filter(q => q.erledigtAm).map(q => `${q.text} (erledigt am ${datum(q.erledigtAm!)})`),
+    lieferobjekte,
+    befaehigung: e.fall.befaehigung.map(b => ({ text: b.text, erfuellt: b.erfuellt })),
+    ...(e.zitat?.einwilligungAm ? { zitat: { text: e.zitat.text } } : {}),
+    hinweis: WIRKUNG_HINWEIS,
+  };
+}
+
+/** Dateiname des PDFs in `fulfillment-unterlagen` (nur Kennung + Tag — kein Kundenname auf der Platte). */
+export const wirkungDateiname = (mandatId: string, heute: string) => `wirkung-${mandatId.replace(/[^A-Za-z0-9-]/g, '').slice(0, 60)}-${heute}.pdf`;
+
+/**
+ * Fallstudie als Baustein-Entwurf (Art „dokument“): ohne Einwilligung anonym („ein Kunde aus dem Bestand“), mit Einwilligung mit Namen.
+ * Nie mit Health, Honorar oder internen Schritten.
+ */
+export function fallstudieEntwurf(d: WirkungsDokument, mitNamen: boolean): { titel: string; text: string; gliederung: string[] } {
+  const wer = mitNamen ? d.kunde : 'ein Kunde';
+  const zeilen = [
+    `Ausgangslage und Ziel: ${d.wertKonto.map(z => `${z.name} (vorher ${z.vorher}, Ziel ${z.ziel})`).join('; ') || '—'}`,
+    `Was wir gemeinsam umgesetzt haben: ${d.lieferobjekte.join('; ') || '—'}`,
+    `Ergebnis: ${d.wertKonto.map(z => `${z.name}: jetzt ${z.jetzt}`).join('; ') || '—'}`,
+    ...(d.quickWins.length ? [`Schnelle Erfolge: ${d.quickWins.join('; ')}`] : []),
+    ...(mitNamen && d.zitat ? [`Stimme des Kunden: „${d.zitat.text}“`] : []),
+  ];
+  return { titel: `Fallstudie: ${mitNamen ? d.kunde : 'Kunde (anonym)'}`.slice(0, 120), text: `Fallstudie über ${wer}.\n\n${zeilen.join('\n\n')}`.slice(0, 30_000), gliederung: ['Ausgangslage', 'Umsetzung', 'Ergebnis', ...(mitNamen && d.zitat ? ['Stimme des Kunden'] : [])] };
+}
+
+export type NachsorgeArt = 'checkin' | 'empfehlung' | 'stufe';
+export const NACHSORGE_TEXT: Record<NachsorgeArt, string> = { checkin: 'Check-in nach dem Mandat', empfehlung: 'Nach einer Empfehlung fragen', stufe: 'Nächste Stufe anbieten' };
+export const markeNachsorge = (mandatId: string, tag: number) => `nachsorge:${mandatId}:${tag}`;
+
+/**
+ * Welche Nachsorge-Vorschläge heute fällig sind: je Fall nach Mandatsende die Tage aus den Einstellungen (Vorgabe 14, 45, 90) — die erste
+ * Stufe ist ein Check-in, die mittlere die Empfehlung, die letzte die nächste Stufe. Schon vorgeschlagen (Marke) → nicht noch einmal.
+ */
+export function nachsorgeFaellig(e: {
+  faelle: readonly Pick<Fall, 'mandatId' | 'marken'>[]; enden: Readonly<Record<string, string | null>>; tage: readonly number[]; heute: string;
+}): { mandatId: string; tag: number; art: NachsorgeArt; faelligAm: string }[] {
+  const tage = [...e.tage].sort((a, b) => a - b);
+  const art = (i: number): NachsorgeArt => (i === 0 ? 'checkin' : i === tage.length - 1 ? 'stufe' : 'empfehlung');
+  const raus: { mandatId: string; tag: number; art: NachsorgeArt; faelligAm: string }[] = [];
+  for (const f of e.faelle) {
+    const ende = e.enden[f.mandatId];
+    if (!ende) continue;
+    tage.forEach((t, i) => {
+      const am = plusTage(ende, t);
+      if (am <= e.heute && !f.marken[markeNachsorge(f.mandatId, t)]) raus.push({ mandatId: f.mandatId, tag: t, art: art(i), faelligAm: am });
+    });
+  }
+  return raus;
+}
+function plusTage(t: string, n: number): string { const d = new Date(`${t.slice(0, 10)}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }

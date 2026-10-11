@@ -40,7 +40,8 @@ describe('Punkte und Ampel', () => {
       expect(k.richtung === 'hoch' ? k.gruen > k.rot : k.gruen < k.rot, k.id).toBe(true);
     }
     expect(kennzahlenFuer('kdc').some(k => k.nurGesamt)).toBe(false);
-    expect(new Set(KENNZAHLEN.map(k => k.saeule))).toEqual(new Set(['fh', 'ud', 'mt', 'fz', 'kp']));
+    // 10.10.: Säule „Fulfillment“ (ff, nur mit Messung) — tests/fulfillment-c1-index.test.ts.
+    expect(new Set(KENNZAHLEN.map(k => k.saeule))).toEqual(new Set(['fh', 'ud', 'mt', 'fz', 'kp', 'ff']));
   });
 });
 

@@ -1,29 +1,165 @@
-// ─── Fulfillment — ein Fall je Mandat (STUB aus C0; gehört Paket C1) ──────────────────────────────────────────────────────────────────
-// FULFILLMENT_KONZEPT.md Abschnitt 9: GET `?m=` Fall + Vorlagen-Diff (Lese-Protokoll „fulfillment“) · POST `starten` (anfrageId), `vorlage-uebernehmen`
-// · PATCH Ops am Fall (knoten-status, freigabe, vereinbarung, stakeholder, entscheidung, … quickwins-setzen, kickoff-fragen) mit Stand.
+// ─── Fulfillment — ein Fall je Mandat (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 3, 7, 9) ───────────────────────────────────────────────
+// GET  ?m=<mandat> → Fall (wie er wirkt), Stand je Eintrag, Onboarding-Stand mit 24-h-Uhr, Vorlagen-Diff, „wartet auf euch“, Wert-Konto-Zeilen,
+//        Bausteine der Knoten (Titel, Marken), Stakeholder-Namen aus der Kartei (Lese-Protokoll „fulfillment“), Rituale, nächste Termine.
+//      ?m=&willkommen=1 → Grundlage der Willkommensmail (Vorlage der Bibliothek, Empfänger, Du/Sie, drei freie Kick-off-Zeiten — nur Zeiten).
+// POST { aktion: 'starten', mandatId, vorlageId, start?, anfrageId }  → Fall anlegen (Kopie der Paket-Vorlage), idempotent über anfrageId
+//      { aktion: 'vorlage-uebernehmen', mandatId }                    → neue Fassung der Vorlage übernehmen (nie entfernen)
+//      { aktion: 'nachziehen', mandatId }                             → Phase/Lieferobjekte noch einmal nachziehen (idempotent)
+// PATCH { mandatId, ops }  → Ops (lib/fulfillment/prozesse/fall.ts `fallAnwenden` + `ziel-neu` in fall-server.ts), Stand je Eintrag (409).
+//        Ops: knoten-status { id, status?, grund?, faelligAm?, stand? } · knoten-extra { eintrag | id+weg } · freigabe { id, kunde?: { wie, am },
+//        notiz?, zuruecknehmen? } · vereinbarung { felder, stand? } · stakeholder { eintrag | id+weg } · entscheidung { eintrag | id+weg } ·
+//        ritual-merken { ritualId, terminUid } · mitschrift { eintrag | id+weg } · quickwins-setzen { quickWins: [{ text, bis?, quelle? }] } ·
+//        quickwin { id, erledigt?, bis?, weg? } · kickoff-fragen { fragen: [{ frage, an?, warum?, quelle? }] } · kickoff-frage { id, erledigt?, weg? } ·
+//        wert-ziel { zielId, felder: { ausgang?, ausgangZahl?, zielZahl?, einheit?, richtung?, zielBis?, festlegen? } } · ziel-neu { text, ziel?, felder? } ·
+//        wert-messung { zielId, wert, am?, weg? } · befaehigung { id?, text?, erfuellt?, weg? } · willkommen-gesendet { zuruecknehmen? } ·
+//        fall-status { status } · onboarding-aus { aus } (ohne Fall: Karte „Kundenonboarding starten“ ausblenden).
+// Nur per Sitzung (Dienstweg 403), Bau-Kennung, nur Mandate von Business-Gesellschaften. Wirkung nach außen: keine (Mails gehen per Klick
+// über /api/inbox/senden, danach `willkommen-gesendet`).
 
 import { NextResponse } from 'next/server';
 import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
+import { fallUmfeld, ableitungFuer, fallSchreiben, fallStartenServer, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
+import { fallWirksam, onboardingStand, willkommenVorlage, vorschlagText, istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
+import { vorlagenDiff } from '@/lib/fulfillment/prozesse/fall';
+import { vorlagenAnwenden } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
+import { nurIntern, rechtOffen, vorVerkaufOffen } from '@/lib/fulfillment/prozesse/bausteine';
+import { naechsterTermin } from '@/lib/fulfillment/prozesse/rituale';
+import { wartetAufEuch, wertKontoZeilen, aktuellerKnoten, fallFortschritt, unterschriftAm } from '@/lib/fulfillment/regeln';
+import { MANDAT_ID } from '@/lib/fulfillment/grenzen';
+import { MUSTER_FREIGABEN } from '@/lib/fulfillment/muster';
+import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { einmalig } from '@/lib/store/anfragen';
+import { neueKennung } from '@/lib/kennung';
+import { localDay } from '@/lib/zeit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KOMMT = { ok: false, fehler: 'kommt mit Paket C1' } as const;
+const fehlerAntwort = (e: unknown) => {
+  if (e instanceof FallFehler) return NextResponse.json({ ok: false, fehler: e.message, ...((e as FallFehler & { konflikte?: unknown }).konflikte ? { konflikte: (e as FallFehler & { konflikte?: unknown }).konflikte } : {}) }, { status: e.status });
+  throw e;
+};
 
 export async function GET(req: Request) {
   const z = await fulfillmentZugang(req);
   if (z instanceof Response) return z;
-  return NextResponse.json(KOMMT, { status: 501 });
+  const url = new URL(req.url);
+  const m = url.searchParams.get('m') ?? '';
+  if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
+  const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
+  const { crm, vorlagen, faelle, kunde } = await fallUmfeld([m]);
+  const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm);
+  if (!mandat) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
+  const { istBusinessGesellschaft } = await import('@/lib/einheiten');
+  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandat.ziele, gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: istBusinessGesellschaft(mandat.gesellschaft) };
+  const f = faelle.faelle[m];
+  const u = unterschriftAm(mandat, crm, f?.gestartetAm);
+  if (!f) return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await istInhaber(z.person) });
+
+  if (url.searchParams.get('willkommen') === '1') {
+    // Empfänger: erste Ansprechperson des Mandats mit Adresse, die verarbeitet werden darf (Art. 18 fehlt ganz) — Du/Sie aus ihrer Akte.
+    const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
+    const kontakte = await kontakteFuerVerarbeitung();
+    const entscheider = f.stakeholder.filter(s => s.rolle === 'entscheider').map(s => s.kontaktId);
+    const k = [...entscheider, ...mandat.kontaktIds].map(id => kontakte.find(x => x.id === id)).find(x => !!x?.email);
+    const anrede = k?.anrede === 'Du' ? 'Du' : 'Sie';
+    const vorlage = willkommenVorlage(vorlagen.bausteine, anrede);
+    const kickoff = vorlagen.rituale.find(istKickoff);
+    let vorschlaege: string[] = [];
+    try {
+      const { freieZeitFuer } = await import('@/lib/kalender/freie-zeit');
+      const r = await freieZeitFuer({ personen: [z.person], dauerMin: kickoff?.dauerMin ?? 90, von: localDay(new Date(Date.now() + 86_400_000)), tage: 10, vorlaufMin: 0, rasterMin: 30, grenze: 30 });
+      const jeTag = new Map<string, number>();
+      vorschlaege = r.vorschlaege.filter(x => { const n = jeTag.get(x.tag) ?? 0; jeTag.set(x.tag, n + 1); return n === 0; }).slice(0, 3).map(x => vorschlagText(x.start, x.ende));
+    } catch { vorschlaege = []; }
+    leseZugriff(req, 'fulfillment', { anzahl: k ? 1 : 0 });
+    return NextResponse.json({
+      ok: true, anrede, vorlage: vorlage ? { id: vorlage.id, titel: vorlage.titel, text: vorlage.text ?? '' } : null,
+      an: k?.email ? { email: k.email, ...(k.vorname || k.nachname ? { name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() } : {}) } : null,
+      ...(k?.vorname ? { vorname: k.vorname } : {}), ...(k?.nachname ? { nachname: k.nachname } : {}),
+      ...(k ? {} : { ohneEmpfaenger: mandat.kontaktIds.length ? 'Keine Ansprechperson mit Mail-Adresse, die wir anschreiben dürfen (Adresse fehlt oder Verarbeitung eingeschränkt).' : 'Am Mandat ist keine Ansprechperson eingetragen.' }),
+      vorschlaege, gesellschaft: mandat.gesellschaft, gesendetAm: f.onboarding.willkommenGesendetAm ?? null,
+    });
+  }
+
+  const abl = ableitungFuer(f, mandat, crm, vorlagen, kunde[m], iso);
+  const w = fallWirksam(f, abl);
+  const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
+  const ids = new Set(w.knoten.map(x => x.bausteinId).filter((x): x is string => !!x));
+  const bausteine = vorlagen.bausteine.filter(b => ids.has(b.id)).map(b => ({ id: b.id, titel: b.titel, art: b.art, kundeFuellt: !!b.kundeFuellt, nurIntern: nurIntern(b), rechtOffen: rechtOffen(b), vorVerkaufOffen: vorVerkaufOffen(b, vorlagen), lieferobjekt: b.lieferobjekt ?? null }));
+  // Stakeholder: Namen nur aus der Kartei (Art. 18: eingeschränkte erscheinen nur als Kennung, ohne Namen).
+  const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
+  const kontakte = await kontakteFuerVerarbeitung();
+  const { personenDerFirma } = await import('@/lib/crm/stationen');
+  // Wählbar sind Ansprechpersonen des Mandats und Personen der Firma (laufende Station) — eingeschränkte fehlen schon in `kontakteFuerVerarbeitung`.
+  const personenIds = new Set([...w.stakeholder.map(s => s.kontaktId), ...mandat.kontaktIds, ...(mandat.firmaId ? personenDerFirma(kontakte, mandat.firmaId, { nurAktiv: true }).map(k => k.id) : [])]);
+  const personen = kontakte.filter(k => personenIds.has(k.id)).map(k => ({ id: k.id, name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() || k.email || 'Kontakt', position: k.position ?? null, email: k.email ?? null, firmaId: k.firmaId ?? null }));
+  if (w.stakeholder.length) leseZugriff(req, 'fulfillment', { anzahl: w.stakeholder.length });
+  const bezuege = await import('@/lib/kalender/bezug-server').then(x => x.ladeBezuege()).catch(() => ({ bezuege: {} }));
+  const { uidVonSchluessel } = await import('@/lib/kalender/bezug');
+  const terminTage = Object.entries(bezuege.bezuege).filter(([, b]) => b.mandatId === m && b.tag).map(([k, b]) => ({ uid: uidVonSchluessel(k), tag: b.tag! }));
+  const treppe = await import('@/lib/crm/treppe-server').then(t => t.ladeTreppe(heute)).catch(() => null);
+  return NextResponse.json({
+    ok: true, inhaber: await istInhaber(z.person), mandat: mandatKurz, unterschrift: u,
+    fall: { ...w, knoten: w.knoten.map(x => ({ ...x, stand: eintragStand(f.knoten.find(y => y.id === x.id) ?? x) })), stakeholder: w.stakeholder.map(s => ({ ...s, stand: eintragStand(s) })), entscheidungen: w.entscheidungen.map(e => ({ ...e, stand: eintragStand(e) })) },
+    staende: { vereinbarung: eintragStand(f.vereinbarung ?? {}), wertKonto: Object.fromEntries(mandat.ziele.map(zl => [zl.id, eintragStand(f.wertKonto[zl.id] ?? { messungen: [] })])) },
+    onboarding: onboardingStand(f, abl), diff: v ? vorlagenDiff(f, v) : null,
+    vorlage: v ? { id: v.id, titel: v.titel, fassung: v.fassung, freigaben: v.freigaben, rollen: v.rollen } : { id: f.vorlageId, titel: 'Vorlage entfernt', fassung: f.vorlageFassung, freigaben: MUSTER_FREIGABEN, rollen: [] },
+    wartet: wartetAufEuch(w, heute), wertKonto: wertKontoZeilen(w, mandat), fortschritt: fallFortschritt(w), aktuell: aktuellerKnoten(w),
+    bausteine, personen, rituale: vorlagen.rituale,
+    termine: Object.fromEntries(w.rituale.map(r => [r.ritualId, naechsterTermin(terminTage, r.terminUids, heute) ?? null])),
+    kunde: kunde[m] ?? null, report: treppe?.reports[m] ?? null,
+  });
 }
 
 export async function POST(req: Request) {
   const z = await fulfillmentZugang(req, { schreiben: true });
   if (z instanceof Response) return z;
-  return NextResponse.json(KOMMT, { status: 501 });
+  let b: Record<string, unknown>;
+  try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  const wer = werAus(req);
+  try {
+    if (b.aktion === 'starten') {
+      const r = await einmalig<Record<string, unknown>>('fulfillment-starten', b.anfrageId, async () => {
+        try {
+          const fall = await fallStartenServer({ mandatId: b.mandatId, vorlageId: b.vorlageId, start: b.start, person: z.person, wer });
+          return { status: 200, body: { ok: true, fall, text: 'Fall angelegt — Onboarding beginnt.' } };
+        } catch (e) { if (e instanceof FallFehler) return { status: e.status, body: { ok: false, fehler: e.message } }; throw e; }
+      }, undefined, { wer: z.person });
+      return NextResponse.json(r.body, { status: r.status });
+    }
+    if (b.aktion === 'vorlage-uebernehmen') return NextResponse.json({ ok: true, fall: await fallVorlageUebernehmen(b.mandatId, z.person, wer) });
+    if (b.aktion === 'nachziehen') return NextResponse.json({ ok: true, nachzug: await fallNachziehen(b.mandatId, z.person, wer) });
+    return NextResponse.json({ ok: false, fehler: 'aktion: starten, vorlage-uebernehmen oder nachziehen.' }, { status: 400 });
+  } catch (e) { return fehlerAntwort(e); }
 }
 
 export async function PATCH(req: Request) {
   const z = await fulfillmentZugang(req, { schreiben: true });
   if (z instanceof Response) return z;
-  return NextResponse.json(KOMMT, { status: 501 });
+  let b: { mandatId?: unknown; ops?: unknown };
+  try { b = await jsonBegrenzt(req, 512 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  const wer = werAus(req);
+  const ops = Array.isArray(b.ops) ? b.ops : [];
+  // Ohne Fall gibt es nur „Karte ausblenden“ (Marke im Vorlagen-Bestand).
+  const aus = ops.find(o => o && typeof o === 'object' && (o as { op?: unknown }).op === 'onboarding-aus') as { aus?: unknown } | undefined;
+  if (aus) {
+    if (ops.length > 1) return NextResponse.json({ ok: false, fehler: '„onboarding-aus“ steht allein.' }, { status: 400 });
+    if (typeof b.mandatId !== 'string' || !MANDAT_ID.test(b.mandatId)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt.' }, { status: 400 });
+    const faelle = await fulfillmentLesen('faelle', z.haushalt);
+    if (faelle.faelle[b.mandatId]) return NextResponse.json({ ok: false, fehler: 'Für dieses Mandat läuft schon ein Fall.' }, { status: 409 });
+    const jetzt = new Date();
+    const r = await fulfillmentAendern('vorlagen', d => vorlagenAnwenden(d, [{ op: 'onboarding-aus', mandatId: b.mandatId, aus: aus.aus !== false }], {
+      person: z.person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), standVon: eintragStand, neueId: p => neueKennung(p), inhaber: false,
+    }), wer, z.haushalt);
+    return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
+  }
+  try {
+    const r = await fallSchreiben(b.mandatId, ops, z.person, wer);
+    return NextResponse.json({ ok: true, fall: r.fall, geaendert: r.geaendert, nachzug: r.nachzug, stand: eintragStand(r.fall) });
+  } catch (e) { return fehlerAntwort(e); }
 }

@@ -15,6 +15,7 @@ import type { ZeitBild } from '@/lib/zeitmessung/modell';
 import { fzMessen } from '@/lib/zeitmessung/kennzahlen';
 import { kpMessen } from '@/lib/kapazitaet/kennzahlen';
 import type { KapaKennzahlen } from '@/lib/kapazitaet/typen';
+import { ffMessen, type FfIndexDaten } from '@/lib/fulfillment/prozesse/kennzahlen';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
 import { computeMetrics } from '@/lib/make-one/finance-data';
@@ -83,6 +84,8 @@ export interface Bestand {
   zeit?: ZeitBild | null;
   /** Kapazität (04.10.): nur die Team-Summen (lib/kapazitaet, `kapaKennzahlenFuerIndex`) — fehlt sie, zählt die Säule nicht. */
   kapa?: KapaKennzahlen | null;
+  /** Fulfillment (10.10.): je laufendem Fall nur Summen (lib/fulfillment/prozesse/server.ts `ffKennzahlenFuerIndex`) — fehlt es, zählt die Säule nicht. */
+  fulfillment?: FfIndexDaten | null;
 }
 
 export type { Messung, Detail } from '@/lib/kennzahlen/kern';
@@ -367,6 +370,7 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
   ...MESSEN_MODELL,
   ...fzMessen<Bestand>('business', b => b.zeit),
   ...kpMessen<Bestand>(b => b.kapa),
+  ...ffMessen<Bestand>(b => b.fulfillment, b => b.scope),
   liquiditaet(b) {
     const k = kasse(b), mk = monatsKosten(b);
     if (!k) return { luecke: 'Kontostände der Geschäftskonten fehlen', details: kontenDetails(b) };
