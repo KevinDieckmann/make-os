@@ -7,6 +7,7 @@
 // (Erklärung + Beispiel, lib/erklaerungen). Rechnen und Umrechnen NUR in lib/planung (routine-entwurf.ts, rhythmus.ts) — hier nur Darstellung.
 // Am Handy (≤ 640 px) ganzflächig (Fenster), eine Spalte, Eingaben 16 px, Ziele ≥ 44 px.
 
+import { KALENDER_UHRZEITEN_MAX } from '@/lib/planung/routinen-erinnerung';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Fenster } from '../Fenster';
 import { Beschriftung, Feldzeile, Hinweis, Knopf, MehrfachPillen, Pillen, Schalter, Segmente, SymbolKnopf, eingabe, auswahl, LEUCHT } from '../ui';
@@ -175,6 +176,9 @@ export function RoutineEditor({ routine, vorgabe, heute, ich, personen, kategori
         <Schalter erklaerung="routinen.erinnerung" an={e.erinnerung} onChange={v => setze({ erinnerung: v })}>Erinnern, wenn sie dran ist</Schalter>
         <Schalter erklaerung="routinen.kalender" an={e.kalender} aus={e.owner === OWNER_BEIDE} onChange={v => setze({ kalender: v })}>Als Block in meinen Kalender</Schalter>
         {e.owner === OWNER_BEIDE && <Leise>Kalender-Blöcke gibt es nur für die Routine einer Person.</Leise>}
+        {e.kalender && e.owner !== OWNER_BEIDE && e.uhrzeiten.length > KALENDER_UHRZEITEN_MAX && (
+          <Leise>Bei mehr als {KALENDER_UHRZEITEN_MAX} Uhrzeiten steht je Tag nur EIN Block im Kalender (zur ersten Uhrzeit) — sonst wäre er voll. Erinnern kann die Routine weiter zu jeder Uhrzeit.</Leise>
+        )}
       </Abschnitt>
 
       <Abschnitt>

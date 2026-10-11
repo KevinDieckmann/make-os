@@ -126,12 +126,21 @@ function betrifftPerson(t: { wer?: string; von?: string; art?: string }, person:
   return true;
 }
 
-/** Kommende (und laufende) Termine heute der Person. `jetztWand` = Berliner Wandzeit. */
+/**
+ * Ein Routinen-Block im Kalender (Prüf-Fund 11.10.): von MAKE OS für eine Routine angelegt (UID `makeos-routine-…`, lib/planung/routinen-erinnerung.ts)
+ * oder ein Block der Unterart „routine“. Er ist kein Termin — die Routine meldet sich schon selbst (Erinnerung, „Heute dran“); als Termin stünde sie
+ * doppelt in Glocke, „Steht an“ und Briefing.
+ */
+export const ROUTINE_BLOCK_UID = 'makeos-routine-';
+export const istRoutinenBlock = (t: { uid?: string; id?: string; blockArt?: string }): boolean =>
+  t.blockArt === 'routine' || !!t.uid?.startsWith(ROUTINE_BLOCK_UID) || /(^|\|)makeos-routine-/.test(t.id ?? '');
+
+/** Kommende (und laufende) Termine heute der Person. `jetztWand` = Berliner Wandzeit. Ohne Routinen-Blöcke (11.10.). */
 export function termineHeute(termine: readonly (TerminMitBezug & { wer?: string })[], person: string, heute: string, jetztWand: string): ATermin[] {
   const morgen = `${tagPlus(heute, 1)}T00:00:00`, tagesbeginn = `${heute}T00:00:00`;
   return termine
     // Maskierte Termine (privat der anderen Person, „Belegt“) nicht — sie hätten nur einen toten Link (F2 N1).
-    .filter(t => !t.abgesagt && !t.maskiert && t.art !== 'arbeitsort' && betrifftPerson(t, person))
+    .filter(t => !t.abgesagt && !t.maskiert && t.art !== 'arbeitsort' && !istRoutinenBlock(t) && betrifftPerson(t, person))
     .filter(t => t.start < morgen && (t.ganztags ? t.ende > tagesbeginn : t.ende > jetztWand))
     .map(t => ({
       id: t.id, titel: t.titel, start: t.start, ende: t.ende, ganztags: t.ganztags, ...(t.ort ? { ort: t.ort } : {}), art: t.art,

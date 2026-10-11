@@ -83,7 +83,7 @@ export async function routineBloeckeAbgleichen(person: string, jetzt = new Date(
   const heute = localDay(jetzt);
   const l = await lage(person);
   const soll = blockSoll(person, await routinenSichtbarFuer(l.routinen, person), l.log, heute);
-  const d = blockDiff(soll, l.stand.bloecke ?? {}, heute);
+  const d = blockDiff(soll, l.stand.bloecke ?? {}, heute, wandzeit(jetzt).slice(11, 16));
   if (!d.anlegen.length && !d.entfernen.length && Object.keys(d.behalten).length === Object.keys(l.stand.bloecke ?? {}).length) return { angelegt: 0, entfernt: 0 };
   const [{ blockAnlegen }, { terminLoeschenServer }] = await Promise.all([import('./bloecke-server'), import('@/lib/kalender/termin-server')]);
   const wer = { art: 'system' as const, person };

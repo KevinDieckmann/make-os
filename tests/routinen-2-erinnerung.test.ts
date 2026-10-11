@@ -25,7 +25,8 @@ vi.mock('@/lib/planung/bloecke-server', () => ({
 vi.mock('@/lib/kalender/termin-server', () => ({ terminLoeschenServer: async (uid: string) => { kal.geloescht.push(uid); } }));
 vi.mock('@/lib/meldungen/melden', () => ({ melde: async () => {} }));
 
-import { offeneErinnerungen, imFenster, blockSoll, blockDiff, routineBlockUid, erinnerungsZeiten, KALENDER_FENSTER_TAGE } from '@/lib/planung/routinen-erinnerung';
+import { offeneErinnerungen, imFenster, blockSoll, blockDiff, routineBlockUid, erinnerungsZeiten, KALENDER_FENSTER_TAGE, KALENDER_UHRZEITEN_MAX, uhrAusBlockUid, kalenderBetroffen } from '@/lib/planung/routinen-erinnerung';
+import { termineHeute, istRoutinenBlock } from '@/lib/heute/anstehend';
 import { ROUTINEN_VORLAGEN, vorlageAnlegen } from '@/lib/planung/routinen-vorlagen';
 import { entwurfAus, routineAusEntwurf, entwurfFehler, regelAusEntwurf } from '@/lib/planung/routine-entwurf';
 import { sauberRoutine } from '@/lib/planung/routinen';
@@ -115,6 +116,43 @@ describe('Kalender-Blöcke — rein', () => {
     expect(d.entfernen).toEqual(['weg']);
     expect(Object.keys(d.behalten).sort()).toEqual(['heute', soll[1].uid].sort());
   });
+  it('Prüf-Fund 11.10.: mehr als drei Uhrzeiten → EIN Block je Tag (zur ersten Uhrzeit); bis drei je Uhrzeit einer', () => {
+    const acht = { ...laufen, regel: undefined, uhrzeiten: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '21:00'] };
+    const s8 = blockSoll('pia', [acht], {}, HEUTE);
+    expect(s8).toHaveLength(KALENDER_FENSTER_TAGE);
+    expect(new Set(s8.map(b => b.uhr))).toEqual(new Set(['08:00']));
+    const drei = blockSoll('pia', [{ ...acht, uhrzeiten: ['08:00', '12:00', '18:00'] }], {}, HEUTE);
+    expect(drei).toHaveLength(KALENDER_FENSTER_TAGE * KALENDER_UHRZEITEN_MAX);
+  });
+  it('Prüf-Fund 11.10.: heute noch nicht begonnene eigene Blöcke werden mit entfernt; verstrichene heute nicht neu angelegt', () => {
+    const uid = (tag: string, uhr: string) => routineBlockUid('pia', 'laufen', tag, uhr);
+    expect(uhrAusBlockUid(uid(HEUTE, '07:00'))).toBe('07:00');
+    expect(uhrAusBlockUid('weg')).toBeNull();
+    const bestand = { [uid(HEUTE, '07:00')]: { r: 'laufen', tag: HEUTE }, [uid(HEUTE, '18:00')]: { r: 'laufen', tag: HEUTE } };
+    // Schalter aus um 09:00: der 07:00-Block hat begonnen bzw. ist vorbei → bleibt; 18:00 ist noch nicht dran → weg.
+    const d = blockDiff([], bestand, HEUTE, '09:00');
+    expect(d.entfernen).toEqual([uid(HEUTE, '18:00')]);
+    expect(Object.keys(d.behalten)).toEqual([uid(HEUTE, '07:00')]);
+    // Ohne Uhrzeit wie bisher: heute bleibt alles.
+    expect(blockDiff([], bestand, HEUTE).entfernen).toEqual([]);
+    // Anlegen: der heutige 07:00-Block ist um 09:00 verstrichen — nicht mehr neu.
+    expect(blockDiff(blockSoll('pia', [laufen], {}, HEUTE), {}, HEUTE, '09:00').anlegen.map(b => b.tag)).toEqual(['2026-10-15', '2026-10-19', '2026-10-22']);
+  });
+  it('Prüf-Fund 11.10.: Aktiv/Kalender/Uhrzeit in der Liste ändern stößt den Abgleich an — nur bei Routinen mit Kalender', () => {
+    expect(kalenderBetroffen({ kalender: true }, { aktiv: false })).toBe(true);
+    expect(kalenderBetroffen({ kalender: false }, { kalender: true })).toBe(true);
+    expect(kalenderBetroffen({ kalender: true }, { uhrzeiten: ['09:00'] })).toBe(true);
+    expect(kalenderBetroffen({ kalender: false }, { aktiv: false })).toBe(false);
+    expect(kalenderBetroffen({ kalender: true }, { rang: 3 })).toBe(false);
+    const quelle = readFileSync(path.join(process.cwd(), 'components/os/RoutinenPlanerView.tsx'), 'utf8');
+    expect(quelle).toMatch(/const patch = [^\n]*kalenderBetroffen\(/);
+  });
+  it('Prüf-Fund 11.10.: Routinen-Blöcke sind keine Termine (Glocke, Steht an, Briefing)', () => {
+    const t = (id: string, x: Record<string, unknown> = {}) => ({ id: `kal|${id}`, uid: id, titel: id, start: `${HEUTE}T18:00:00`, ende: `${HEUTE}T18:30:00`, ganztags: false, wer: 'pia', kalender: 'Pia', kalenderId: 'kal', ...x });
+    const liste = [t(routineBlockUid('pia', 'laufen', HEUTE, '18:00')), t('planen-1', { art: 'block', blockArt: 'routine' }), t('echt-1')];
+    expect(liste.map(x => istRoutinenBlock(x))).toEqual([true, true, false]);
+    expect(termineHeute(liste as unknown as Parameters<typeof termineHeute>[0], 'pia', HEUTE, `${HEUTE}T09:00:00`).map(x => x.titel)).toEqual(['echt-1']);
+  });
 });
 
 describe('Vorlagen und Editor-Entwurf', () => {
@@ -199,17 +237,18 @@ describe('Server: Glocke, Handy, Kalender, Einstellung', () => {
     const laufen = { ...basis, id: 'laufen', label: 'Laufen', owner: 'pia', kalender: true, regel: { art: 'wochentage', tage: [1, 4] }, uhrzeiten: ['07:00'], dauerMin: 45 };
     await db.saveJson('routinen', { routinen: [laufen, { ...laufen, id: 'gem', owner: 'beide' }] });
     kal.angelegt.length = 0; kal.geloescht.length = 0;
-    expect(await routineBloeckeAbgleichen('pia', JETZT)).toEqual({ angelegt: 4, entfernt: 0 });
+    // 09:00: der heutige 07:00-Termin ist verstrichen — er wird nicht mehr angelegt (Prüf-Fund 11.10.), die drei künftigen schon.
+    expect(await routineBloeckeAbgleichen('pia', JETZT)).toEqual({ angelegt: 3, entfernt: 0 });
     expect(kal.angelegt.every(b => b.person === 'pia' && b.privat === true && b.art === 'routine' && b.startMin === 420 && b.titel === 'Laufen')).toBe(true);
     expect(await routineBloeckeAbgleichen('pia', JETZT)).toEqual({ angelegt: 0, entfernt: 0 });
     expect(await routineBloeckeAbgleichen('olaf', JETZT)).toEqual({ angelegt: 0, entfernt: 0 });
-    // Uhrzeit geändert: neue Blöcke, die künftigen alten weg (der heutige bleibt).
+    // Uhrzeit geändert: neue Blöcke (auch heute 18:00), die künftigen alten weg.
     await db.saveJson('routinen', { routinen: [{ ...laufen, uhrzeiten: ['18:00'] }] });
     const r = await routineBloeckeAbgleichen('pia', JETZT);
     expect(r).toEqual({ angelegt: 4, entfernt: 3 });
-    // Schalter aus: alle künftigen eigenen weg.
+    // Schalter aus: alle künftigen eigenen weg — auch der heutige um 18:00, der noch nicht begonnen hat (Prüf-Fund 11.10.).
     await db.saveJson('routinen', { routinen: [{ ...laufen, kalender: undefined }] });
-    expect((await routineBloeckeAbgleichen('pia', JETZT)).entfernt).toBe(3);
+    expect((await routineBloeckeAbgleichen('pia', JETZT)).entfernt).toBe(4);
     // Kalender nicht erreichbar: Satz, nichts festgehalten, nichts doppelt.
     await db.saveJson('routinen', { routinen: [laufen] });
     kal.fehler = 'Kein Kalender verbunden';

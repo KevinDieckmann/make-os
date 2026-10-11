@@ -7,7 +7,8 @@
 //     Der Handy-Text ist IMMER neutral: kein Name der Routine, keine Zahl (lib/datenschutz/telegram-text.ts).
 //   • Kalender-Block: die geplanten Tage der nächsten zwei Wochen (`geplanteTage`) je Uhrzeit als Block mit FESTER UID — idempotent,
 //     nachgezogen im Morgenlauf und nach dem Speichern; entfernt werden nur Blöcke, die MAKE OS selbst angelegt hat (Kennungen im
-//     Bestand der Person), und nur künftige.
+//     Bestand der Person), und nur, was noch nicht begonnen hat (auch heute später). Mehr als `KALENDER_UHRZEITEN_MAX` Uhrzeiten → EIN
+//     Block je Tag (11.10.). Routinen-Blöcke zählen nie als Termin (Glocke, „Steht an“, Briefing — lib/heute/anstehend.ts `istRoutinenBlock`).
 // Tests: tests/routinen-2-erinnerung.test.ts.
 
 import type { Routine } from './typen';
@@ -68,6 +69,15 @@ export function imFenster(uhr: string, jetztUhr: string, fenster = 20): boolean 
 
 /** So weit legt MAKE OS Routinen-Blöcke im Voraus an (heute eingeschlossen). */
 export const KALENDER_FENSTER_TAGE = 14;
+/**
+ * Prüf-Fund 11.10.: höchstens so viele Uhrzeiten je Tag bekommen einen EIGENEN Block. Darüber (z. B. „8 Gläser, 8 Uhrzeiten“) stünde der
+ * Kalender voll (bis 168 Termine je Routine in zwei Wochen) — dann EIN Block je Tag zur ersten Uhrzeit (der Editor sagt das dazu).
+ */
+export const KALENDER_UHRZEITEN_MAX = 3;
+/** Die Uhrzeiten, die einen Kalender-Block bekommen: alle bis `KALENDER_UHRZEITEN_MAX`, sonst nur die erste. */
+export const blockZeiten = (r: Pick<Routine, 'uhrzeiten' | 'wann'>): string[] => { const z = erinnerungsZeiten(r); return z.length > KALENDER_UHRZEITEN_MAX ? z.slice(0, 1) : z; };
+/** Die Uhrzeit (HH:MM) aus einer festen Routinen-UID (`…-JJJJMMTT-HHMM`) — null, wenn sie keine trägt. */
+export const uhrAusBlockUid = (uid: string): string | null => { const m = /-\d{8}-(\d{2})(\d{2})$/.exec(uid); return m ? `${m[1]}:${m[2]}` : null; };
 
 const fnv = (s: string) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(36); };
 /** Feste UID eines Routinen-Blocks — erfüllt UID_FEST (lib/kalender/eingabe.ts), verrät weder Person noch Routine. */
@@ -83,20 +93,36 @@ export function blockSoll(person: string, routinen: readonly Routine[], log: Rec
   for (const r of routinen) {
     if (!r.kalender || !r.aktiv || r.owner !== person) continue;
     for (const tag of geplanteTage(r, erledigtTage(log, r.id), heute, bis)) {
-      for (const uhr of erinnerungsZeiten(r)) raus.push({ uid: routineBlockUid(person, r.id, tag, uhr), routineId: r.id, tag, uhr, titel: r.label, dauerMin: r.dauerMin, erholung: r.kategorie === 'erholung' });
+      for (const uhr of blockZeiten(r)) raus.push({ uid: routineBlockUid(person, r.id, tag, uhr), routineId: r.id, tag, uhr, titel: r.label, dauerMin: r.dauerMin, erholung: r.kategorie === 'erholung' });
     }
   }
   return raus;
 }
 
 /**
- * Was anlegen, was entfernen? Entfernt wird nur, was MAKE OS selbst angelegt hat (`bestand`) und erst ab morgen liegt — heutige und
- * vergangene Blöcke bleiben stehen (die Zeit ist schon verplant bzw. vorbei). `behalten` = der neue Bestand (ohne Vergangenes).
+ * Was anlegen, was entfernen? Entfernt wird nur, was MAKE OS selbst angelegt hat (`bestand`) und noch nicht begonnen hat: ab morgen und —
+ * mit `jetztUhr` (Prüf-Fund 11.10.) — auch heute, wenn die Uhrzeit noch nicht erreicht ist (vorher blieb ein heutiger Block nach einer
+ * geänderten Uhrzeit stehen und der neue kam dazu: doppelt). Begonnene und vergangene Blöcke bleiben stehen. Heute schon verstrichene
+ * Uhrzeiten werden nicht mehr neu angelegt. `behalten` = der neue Bestand (ohne Vergangenes).
  */
-export function blockDiff(soll: readonly BlockSoll[], bestand: Readonly<Record<string, { r: string; tag: string }>>, heute: string): { anlegen: BlockSoll[]; entfernen: string[]; behalten: Record<string, { r: string; tag: string }> } {
+export function blockDiff(soll: readonly BlockSoll[], bestand: Readonly<Record<string, { r: string; tag: string }>>, heute: string, jetztUhr?: string): { anlegen: BlockSoll[]; entfernen: string[]; behalten: Record<string, { r: string; tag: string }> } {
   const sollUids = new Set(soll.map(b => b.uid));
-  const anlegen = soll.filter(b => !bestand[b.uid]);
-  const entfernen = Object.entries(bestand).filter(([uid, x]) => x.tag > heute && !sollUids.has(uid)).map(([uid]) => uid);
+  const nochNichtBegonnen = (tag: string, uhr: string | null) => tag > heute || (!!jetztUhr && tag === heute && !!uhr && uhr > jetztUhr);
+  const anlegen = soll.filter(b => !bestand[b.uid] && (!jetztUhr || nochNichtBegonnen(b.tag, b.uhr)));
+  const entfernen = Object.entries(bestand).filter(([uid, x]) => nochNichtBegonnen(x.tag, uhrAusBlockUid(uid)) && !sollUids.has(uid)).map(([uid]) => uid);
   const behalten = Object.fromEntries(Object.entries(bestand).filter(([uid, x]) => x.tag >= heute && !entfernen.includes(uid)));
   return { anlegen, entfernen, behalten };
+}
+
+/** Felder einer Routine, von denen ihre Kalender-Blöcke abhängen (Uhrzeit, Rhythmus, Pause, Titel, Dauer, Besitz, an/aus). */
+const BLOCK_FELDER = ['aktiv', 'kalender', 'uhrzeiten', 'wann', 'rhythmus', 'regel', 'pausen', 'zeitraum', 'naechstesMal', 'dauerMin', 'label', 'owner', 'kategorie'] as const;
+
+/**
+ * Muss nach einer Änderung an einer Routine der Kalender nachgezogen werden? (Prüf-Fund 11.10.: Aktiv/Kalender in der Liste umschalten stieß
+ * keinen Abgleich an — die Blöcke standen bis zum nächsten Morgenlauf.) Ja, wenn ein Block-Feld geändert wird und die Routine vorher oder
+ * nachher Kalender-Blöcke hat.
+ */
+export function kalenderBetroffen(vorher: Pick<Routine, 'kalender'> | undefined, teil: Partial<Routine>): boolean {
+  if (!BLOCK_FELDER.some(f => f in teil)) return false;
+  return !!vorher?.kalender || !!teil.kalender;
 }

@@ -32,6 +32,7 @@ import { einheitName } from '@/lib/einheiten';
 import { hatPrivatEinheit } from '@/lib/planung/bereich';
 import { routineRhythmusKurz, routineStatistik, faelligkeit, tagesZielVon, pausiertAm } from '@/lib/planung/rhythmus';
 import { ROUTINEN_VORLAGEN, vorlageAnlegen } from '@/lib/planung/routinen-vorlagen';
+import { kalenderBetroffen } from '@/lib/planung/routinen-erinnerung';
 import { PlanerLeiste } from './PlanerLeiste';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen, ZeileAktionen, useRueckgaengig, Kennzahl, Hinweis, Zeile } from './ui';
 import { PfeilRang } from './planung/PfeilRang';
@@ -216,7 +217,8 @@ export function RoutinenPlanerView() {
     persist(routinenRef.current.filter(x => x.id !== r.id), r.kalender ? kalenderNachziehen : undefined);
     melden(`Routine „${r.label}“ gelöscht`, () => { if (!routinenRef.current.some(x => x.id === r.id)) persist([...routinenRef.current, r], r.kalender ? kalenderNachziehen : undefined); });
   };
-  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p } : x)));
+  // Prüf-Fund 11.10.: Aktiv/Kalender (oder Uhrzeit, Rhythmus …) direkt in der Liste geändert → Kalender-Blöcke gleich nachziehen.
+  const patch = (id: string, p: Partial<Routine>) => persist(routinen.map(x => (x.id === id ? { ...x, ...p } : x)), kalenderBetroffen(routinen.find(x => x.id === id), p) ? kalenderNachziehen : undefined);
 
   /** Kalender-Blöcke der eigenen Routinen nachziehen (sonst morgens im Morgenlauf) — Ergebnis als Hinweis. */
   async function kalenderNachziehen() {
@@ -230,13 +232,13 @@ export function RoutinenPlanerView() {
   /** Vom Editor: neue Routine anlegen bzw. eine bestehende ersetzen; Kalender-Blöcke nachziehen, wenn sie betroffen sind. */
   const ausEditor = (r: Routine) => {
     const vorher = routinen.find(x => x.id === r.id);
-    const kalenderBetroffen = !!r.kalender || !!vorher?.kalender;
+    const kalenderNoetig = !!r.kalender || !!vorher?.kalender;
     if (!vorher) {
       const neu: Routine = { ...r, id: neueKennung('r'), rang: naechsterRang(routinen) };
-      persist([...routinen, neu], kalenderBetroffen ? kalenderNachziehen : undefined);
+      persist([...routinen, neu], kalenderNoetig ? kalenderNachziehen : undefined);
       setNeuName('');
     } else {
-      persist(routinen.map(x => (x.id === r.id ? r : x)), kalenderBetroffen ? kalenderNachziehen : undefined);
+      persist(routinen.map(x => (x.id === r.id ? r : x)), kalenderNoetig ? kalenderNachziehen : undefined);
     }
     setEditor(null);
   };
