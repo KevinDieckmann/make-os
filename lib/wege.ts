@@ -128,6 +128,11 @@ export const WEG = {
   beschluss: (gesellschaftId?: string, beschlussId?: string, ansicht?: 'satzung') =>
     q('/os/unternehmen', { s: 'beschluesse', w: gesellschaftId, b: beschlussId, a: ansicht }),
   /**
+   * Unternehmen › Ereignis-Assistent „Was ist passiert?“ (11.10.): optional gleich für eine Gesellschaft (`w`) und eine Lage (`e`, Kennung aus
+   * lib/gesellschaften/schild/assistent.ts `SITUATIONEN`). Ohne Reiter `s` steht er über dem Überblick.
+   */
+  ereignisAssistent: (gesellschaftId?: string, situation?: string) => q('/os/unternehmen', { a: 'ereignis', w: gesellschaftId, e: situation }),
+  /**
    * Unterlagen einer Gesellschaft in der Ablage — optional nur die eines Vertrags (DSGVO-Nachtrag 04.10.): funktioniert auch,
    * wenn Gesellschaft bzw. Vertrag endgültig gelöscht sind (die Unterlagen bleiben, § 257 HGB).
    */

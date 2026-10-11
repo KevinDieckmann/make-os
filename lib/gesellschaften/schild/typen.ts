@@ -81,7 +81,10 @@ export interface Vermerk {
 export type EreignisArt =
   | 'anteilsuebertragung' | 'kapitalmassnahme' | 'gf-wechsel' | 'satzungsaenderung' | 'sitz-anschrift' | 'prokura'
   | 'gewerbe-aenderung' | 'betriebseroeffnung' | 'erste-beschaeftigung' | 'neuer-vertrag' | 'verlust-haelfte' | 'ug-drohende-zu'
-  | 'zahlungsunfaehigkeit' | 'ueberschuldung';
+  | 'zahlungsunfaehigkeit' | 'ueberschuldung'
+  // Ereignis-Assistent (11.10., „Was ist passiert?“): weitere Lebensereignisse einer Gesellschaft — nur additiv; ein älterer Stand kennt sie nicht
+  // und zeigt sie ohne Pflichten (ereignisDef → undefined), nichts geht verloren.
+  | 'beteiligung-erwerb' | 'gruendung' | 'aufloesung';
 export interface Ereignis {
   /** `ev-<uuid>` */
   id: string;
@@ -89,8 +92,16 @@ export interface Ereignis {
   /** Tag des Ereignisses — Anker der Ereignis-Pflichten. */
   datum: string;
   notiz?: string;
-  /** Aus diesem Beschluss des Registers (Beschluss-Buch, 10.10.) — setzt NUR der Server bei der Freigabe der Folge; bleibt beim Ändern. */
+  /**
+   * Aus diesem Beschluss des Registers (Beschluss-Buch, 10.10.) — setzt NUR der Server: bei der Freigabe der Folge bzw. (11.10.) beim Anlegen über den
+   * Ereignis-Assistenten, wenn der Beschluss im Register DIESER Gesellschaft steht (Server prüft); bleibt beim Ändern.
+   */
   beschlussId?: string;
+  /**
+   * Zusatz-Schritte aus dem Ereignis-Assistenten (11.10.): Kennungen aus `ZUSATZ_SCHRITTE` (lib/gesellschaften/schild/pflichten.ts, z. B. Bank,
+   * Versicherungen informieren) — nur, was die Person dort angehakt hat. Fehlt = nur die Pflichten des Ereignisses (Altbestand bit-gleich).
+   */
+  zusatz?: string[];
   angelegt?: string;
   geloeschtAm?: string;
 }

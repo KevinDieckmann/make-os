@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
-import { FARBE as C, TYP, RAND, TIEF } from '@/lib/make-one/design';
+import { FARBE as C, TYP, RAND } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Knopf, Hinweis, Leerzustand, Pillen, Segmente, MehrfachPillen, ZeileAktionen, useRueckgaengig, eingabe, feld } from '../../ui';
 import { neueKennung } from '@/lib/kennung';
 import { RISIKO_KATEGORIEN, BEHANDLUNGEN, RISIKO_STATUS, ROLLEN, type Risiko, type Massnahme, type RisikoKategorie, type Behandlung, type RisikoStatus, type Rolle, type Stufe } from '@/lib/gesellschaften/schild/typen';
@@ -16,7 +16,8 @@ import type { GesellschaftLage } from '@/lib/gesellschaften/schild/ampel';
 import { euroText } from '@/lib/gesellschaften/modell';
 import { TextFeld, Felder, Feldzeile, centEingabe } from '../teile';
 import type { SEintrag, Schreiben } from './daten';
-import { AmpelChip, AMPEL_FARBE, SchildFuss, datum, klein } from './teile';
+import { RisikoMatrixKarte } from '../blick/RisikoMatrix';
+import { AmpelChip, SchildFuss, datum, klein } from './teile';
 
 const kategorie = (k: string) => RISIKO_KATEGORIEN.find(x => x.id === k)?.label ?? k;
 const STUFEN: { id: string; label: string }[] = [1, 2, 3, 4, 5].map(n => ({ id: String(n), label: String(n) }));
@@ -50,7 +51,7 @@ export function Risiken({ lage, e, sw, personen }: { lage: GesellschaftLage; e: 
         {z && <RisikoDetail key={z.r.id} z={z} sw={sw} personen={personen} />}
         <SchildFuss>Skala: Eintritt (Wahrscheinlichkeit im Jahr) × Wirkung (relativ zur Tragfähigkeit); rot ab 15 oder Wirkung 5, gelb 8–14 — Annahmen der Recherche.</SchildFuss>
       </Karte>
-      <Matrix risiken={lage.risiken} />
+      <RisikoMatrixKarte je={[{ gesellschaftId: lage.id, gesellschaft: lage.name, risiken: lage.risiken }]} onWahl={p => setOffen(p.risikoId)} />
       <Karte>
         <Ueberschrift>Tragfähigkeit und Aggregation</Ueberschrift>
         <Felder>
@@ -71,35 +72,6 @@ export function Risiken({ lage, e, sw, personen }: { lage: GesellschaftLage; e: 
       )}
       {hinweis}
     </>
-  );
-}
-
-function Matrix({ risiken }: { risiken: RisikoZeile[] }) {
-  const bewertet = risiken.filter(x => x.bewertung && x.r.status !== 'erledigt');
-  if (!bewertet.length) return null;
-  const zelle = (e: number, w: number) => bewertet.filter(x => x.bewertung!.eintritt === e && x.bewertung!.wirkung === w);
-  return (
-    <Karte>
-      <Ueberschrift>Matrix (Eintritt × Wirkung)</Ueberschrift>
-      <div role="table" aria-label="Risiko-Matrix" style={{ display: 'grid', gridTemplateColumns: '64px repeat(5, minmax(0, 1fr))', gap: 4, fontSize: TYP.bedien }}>
-        {[5, 4, 3, 2, 1].map(e => (
-          <div key={e} role="row" style={{ display: 'contents' }}>
-            <span role="rowheader" style={{ color: C.inkDim, alignSelf: 'center' }}>Eintritt {e}</span>
-            {[1, 2, 3, 4, 5].map(w => {
-              const l = zelle(e, w);
-              const a = ampelVon({ eintritt: e as Stufe, wirkung: w as Stufe });
-              return (
-                <span key={w} role="cell" title={l.map(x => x.r.titel).join(' · ') || undefined} style={{ minHeight: 40, borderRadius: 8, display: 'grid', placeItems: 'center', border: `1px solid ${RAND.flaeche}`, background: l.length ? TIEF.flaeche(AMPEL_FARBE[a]) : 'transparent', color: l.length ? C.ink : C.inkLeise, fontWeight: l.length ? 700 : 400 }}>
-                  {l.length || '·'}
-                </span>
-              );
-            })}
-          </div>
-        ))}
-        <span />
-        {[1, 2, 3, 4, 5].map(w => <span key={w} style={{ color: C.inkDim, textAlign: 'center' }}>Wirkung {w}</span>)}
-      </div>
-    </Karte>
   );
 }
 

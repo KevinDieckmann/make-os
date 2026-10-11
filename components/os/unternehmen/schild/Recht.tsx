@@ -141,7 +141,7 @@ function AnwaltsMappeKarte({ lage, gesellschaften }: { lage: Lage; gesellschafte
           „{ergebnis.name}“ liegt in der Ablage der Gesellschaft{ergebnis.eingebunden ? ` · ${ergebnis.eingebunden} Anlage${ergebnis.eingebunden === 1 ? '' : 'n'} eingebunden` : ''}{ergebnis.ausgelassen ? ` · ${ergebnis.ausgelassen} nicht eingebunden (steht im Verzeichnis der Mappe)` : ''}. <a href={dateiLink(ergebnis.id)} style={{ color: 'inherit' }}>Herunterladen</a>
         </Hinweis>
       )}
-      <div><Knopf haupt onClick={erstellen}>Anwalts-Mappe erstellen</Knopf></div>
+      <div><Knopf onClick={erstellen}>Anwalts-Mappe erstellen</Knopf></div>
       <div style={{ ...klein, marginTop: 8 }}>{MAPPE_HINWEIS} {RECHT_HINWEIS}</div>
     </Karte>
   );

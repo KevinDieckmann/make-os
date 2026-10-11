@@ -5,7 +5,7 @@
 // Ein-/Austritte und ein geschichtetes Organigramm (Gesellschafter oben, eigene Gesellschaften darunter, fremde Beteiligungen unten).
 // Die Lage rechnet NUR hier; das Bild (components/os/unternehmen/schild/Struktur.tsx) zeichnet nur.
 
-import { aktiveEintraege, anteile, anzeigeName, type Bezug, type RegisterGesellschaft } from '@/lib/gesellschaften/modell';
+import { ORGAN_FUNKTIONEN, aktiveEintraege, anteile, anzeigeName, type Bezug, type RegisterGesellschaft } from '@/lib/gesellschaften/modell';
 import { imPapierkorb } from '@/lib/eintraege/sicher';
 import { ereignisDef } from './pflichten';
 import type { SchildGesellschaft } from './typen';
@@ -123,4 +123,23 @@ export function organigramm(alle: readonly RegisterGesellschaft[], name: (b: Bez
     r.forEach((k, j) => { k.x = start + j * (M.breite + M.abstandX); k.y = M.rand + i * (M.hoehe + M.abstandY); k.ebene = reihe.get(k.ebene) ?? 0; });
   });
   return { knoten: Array.from(knoten.values()), kanten, breite: breiteMax, hoehe: M.rand * 2 + proReihe.length * (M.hoehe + M.abstandY) - M.abstandY };
+}
+
+// ── Organe im Bild und Anteile als Breite (11.10.) ───────────────────────────────────────────────────────────────
+
+/** Strichstärke einer Linie im Organigramm aus dem Kapitalanteil (1,2 … 6 px) — Anteile sieht man an der Breite, die Zahl steht daneben. */
+export const strichStaerke = (anteil: number): number => Math.round((1.2 + (Math.max(0, Math.min(100, anteil)) / 100) * 4.8) * 10) / 10;
+
+/**
+ * Die laufenden Organe einer Gesellschaft für das Bild (rein): „Geschäftsführung: A, B“ · „Prokura: C“ — nur, wer heute im Amt ist (seit ≤ heute, ohne
+ * „bis“ oder bis ≥ heute). Namen über die übergebene Funktion (zur Laufzeit aus dem Register), nie im Code.
+ */
+export function organeKurz(g: Pick<RegisterGesellschaft, 'organe'>, name: (b: Bezug) => string, heute: string): string[] {
+  const je = new Map<string, string[]>();
+  for (const o of aktiveEintraege(g.organe)) {
+    if ((o.seit && o.seit > heute) || (o.bis && o.bis < heute)) continue;
+    const f = ORGAN_FUNKTIONEN.find(x => x.id === o.funktion)?.label ?? 'Organ';
+    je.set(f, [...(je.get(f) ?? []), name(o.wer)]);
+  }
+  return Array.from(je.entries()).map(([f, l]) => `${f}: ${l.join(', ')}`);
 }

@@ -12,35 +12,41 @@ import { FARBE as C, TYP, RAND, SCHRIFT, LEUCHT, TIEF } from '@/lib/make-one/des
 import { Karte, Ueberschrift, Liste, Zeile, Leerzustand, Hinweis, useHandy } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { strukturBaum, type StrukturKnoten } from '@/lib/gesellschaften/modell';
-import { capTable, durchgerechnet, strukturHistorie, organigramm, ORG_MASS } from '@/lib/gesellschaften/schild/struktur';
+import { capTable, durchgerechnet, strukturHistorie, organigramm, organeKurz, strichStaerke, ORG_MASS } from '@/lib/gesellschaften/schild/struktur';
+import { localDay } from '@/lib/zeit';
 import { bezugName, centText, type GAnzeige, type RegisterDaten } from '../teile';
 import { StatusPille } from '../UnternehmenView';
 import type { SEintrag } from './daten';
 import { GesellschaftWahl, SchildFuss, datum, klein } from './teile';
+import { WasSeheIch } from '../blick/teile';
 
 const prozent = (p: number) => `${p.toLocaleString('de-DE', { maximumFractionDigits: 2 })} %`;
+const kurzText = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
 export function Struktur({ daten, schild, gewaehlt, waehle, oeffne }: { daten: RegisterDaten; schild: SEintrag[]; gewaehlt?: string; waehle: (id: string) => void; oeffne: (id: string) => void }) {
   const handy = useHandy();
   const name = (b: Parameters<typeof bezugName>[0]) => bezugName(b, daten.namen);
   const aktiv = daten.gesellschaften.filter(g => !g.geloeschtAm);
   const bild = organigramm(aktiv, name);
+  // 11.10.: Organe (Geschäftsführung, Prokura …) stehen im Bild an der Gesellschaft; Anteile sieht man an der Breite der Linie.
+  const heute = localDay();
+  const organe = (id: string) => organeKurz(aktiv.find(x => x.id === id) ?? {}, name, heute);
   const hatBeziehung = bild.kanten.length > 0;
   const g = aktiv.find(x => x.id === gewaehlt) ?? aktiv.find(x => (x.gesellschafter ?? []).some(y => !y.geloeschtAm)) ?? aktiv[0];
   return (
     <>
       <Karte>
-        <Ueberschrift>Wer hält wen</Ueberschrift>
+        <Ueberschrift erklaerung="unternehmen.blick.struktur">Wer hält wen</Ueberschrift>
         {!hatBeziehung ? <Leerzustand symbol={<Network size={22} />} titel="Noch keine Beteiligungen">Trage bei einer Gesellschaft unter „Gesellschafter“ ein, wer sie hält — dann steht hier das Bild.</Leerzustand>
-          : handy ? <Baum daten={daten} oeffne={oeffne} /> : <Bild bild={bild} oeffne={oeffne} />}
-        <div style={{ ...klein, marginTop: 10 }}>Abgeleitet aus den Gesellschafter-Einträgen. Linien: Kapitalanteil, in Klammern abweichende Stimmrechte; gestrichelt: Beteiligung an einer fremden Firma.</div>
+          : handy ? <Baum daten={daten} oeffne={oeffne} organe={organe} /> : <Bild bild={bild} oeffne={oeffne} organe={organe} />}
+        <WasSeheIch>Oben stehen die Gesellschafter, darunter die eigenen Gesellschaften, ganz unten fremde Beteiligungen. Je breiter die Linie, desto größer der Anteil; in Klammern abweichende Stimmrechte, gestrichelt eine fremde Firma. An jeder eigenen Gesellschaft steht ihre Geschäftsführung.</WasSeheIch>
       </Karte>
       {g && <CapTableKarte g={g} daten={daten} schild={schild.find(x => x.id === g.id)} waehle={waehle} />}
     </>
   );
 }
 
-function Bild({ bild, oeffne }: { bild: ReturnType<typeof organigramm>; oeffne: (id: string) => void }) {
+function Bild({ bild, oeffne, organe }: { bild: ReturnType<typeof organigramm>; oeffne: (id: string) => void; organe: (id: string) => string[] }) {
   const M = ORG_MASS;
   const nach = new Map(bild.knoten.map(k => [k.schluessel, k]));
   return (
@@ -53,7 +59,7 @@ function Bild({ bild, oeffne }: { bild: ReturnType<typeof organigramm>; oeffne: 
           const my = (y1 + y2) / 2;
           return (
             <g key={i}>
-              <path d={`M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`} fill="none" stroke={RAND.stark} strokeWidth={1.4} strokeDasharray={k.fremd ? '5 4' : undefined} />
+              <path d={`M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`} fill="none" stroke={RAND.stark} strokeWidth={strichStaerke(k.anteil)} strokeDasharray={k.fremd ? '5 4' : undefined} />
               <text x={(x1 + x2) / 2} y={my - 4} textAnchor="middle" fontSize={12} fill={C.inkDim}>{k.anteil ? prozent(k.anteil) : ''}{k.stimmen !== undefined ? ` (${prozent(k.stimmen)} Stimmen)` : ''}</text>
             </g>
           );
@@ -66,7 +72,7 @@ function Bild({ bild, oeffne }: { bild: ReturnType<typeof organigramm>; oeffne: 
             <g key={k.schluessel} onClick={klick} style={{ cursor: klick ? 'pointer' : 'default' }} role={klick ? 'link' : undefined} aria-label={k.label}>
               <rect x={k.x} y={k.y} width={M.breite} height={M.hoehe} rx={12} fill={k.eigen ? TIEF.flaeche(farbe) : 'rgba(255,255,255,.03)'} stroke={k.eigen ? TIEF.rand(farbe) : RAND.flaeche} strokeDasharray={k.art === 'fremd' ? '5 4' : undefined} />
               <text x={k.x + 12} y={k.y + 24} fontSize={14} fontWeight={600} fill={C.ink}>{label}</text>
-              <text x={k.x + 12} y={k.y + 43} fontSize={12} fill={C.inkDim}>{k.eigen ? 'eigene Gesellschaft' : k.art === 'person' ? 'Person' : k.art === 'kontakt' ? 'Kontakt' : k.art === 'fremd' ? 'fremde Beteiligung' : k.art === 'firma' ? 'Firma' : 'Gesellschaft'}</text>
+              <text x={k.x + 12} y={k.y + 43} fontSize={12} fill={C.inkDim}>{k.eigen ? (kurzText(organe(k.id)[0] ?? 'eigene Gesellschaft', 30)) : k.art === 'person' ? 'Person' : k.art === 'kontakt' ? 'Kontakt' : k.art === 'fremd' ? 'fremde Beteiligung' : k.art === 'firma' ? 'Firma' : 'Gesellschaft'}</text>
             </g>
           );
         })}
@@ -76,22 +82,26 @@ function Bild({ bild, oeffne }: { bild: ReturnType<typeof organigramm>; oeffne: 
 }
 
 /** Handy: dieselbe Struktur als Liste (Baum „wer hält wen“). */
-function Baum({ daten, oeffne }: { daten: RegisterDaten; oeffne: (id: string) => void }) {
-  return <ul role="tree" aria-label="Beteiligungsstruktur" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>{strukturBaum(daten.gesellschaften).map(k => <Knoten key={k.id} k={k} daten={daten} oeffne={oeffne} tiefe={0} />)}</ul>;
+function Baum({ daten, oeffne, organe }: { daten: RegisterDaten; oeffne: (id: string) => void; organe: (id: string) => string[] }) {
+  return <ul role="tree" aria-label="Beteiligungsstruktur" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>{strukturBaum(daten.gesellschaften).map(k => <Knoten key={k.id} k={k} daten={daten} oeffne={oeffne} organe={organe} tiefe={0} />)}</ul>;
 }
 
-function Knoten({ k, daten, oeffne, tiefe }: { k: StrukturKnoten; daten: RegisterDaten; oeffne: (id: string) => void; tiefe: number }) {
+function Knoten({ k, daten, oeffne, organe, tiefe }: { k: StrukturKnoten; daten: RegisterDaten; oeffne: (id: string) => void; organe: (id: string) => string[]; tiefe: number }) {
+  const og = k.schonGezeigt ? [] : organe(k.id);
   const linie = tiefe ? { borderLeft: `1px solid ${RAND.stark}`, marginLeft: 10, paddingLeft: 14 } : {};
   return (
     <li role="treeitem" aria-selected={false} style={{ ...linie, display: 'grid', gap: 6 }}>
       <button type="button" onClick={() => oeffne(k.id)} className="fassbar" style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44, padding: '6px 10px', borderRadius: 12, border: `1px solid ${RAND.flaeche}`, background: 'rgba(255,255,255,.03)', color: C.ink, cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text }}>
         {k.prozent !== undefined && <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums', minWidth: 64 }}>{prozent(k.prozent)}</span>}
-        <span style={{ fontSize: TYP.body, fontWeight: 600, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{k.name}{k.schonGezeigt ? ' (siehe oben)' : ''}</span>
+        <span style={{ flex: 1, minWidth: 0, display: 'grid' }}>
+          <span style={{ fontSize: TYP.body, fontWeight: 600, overflowWrap: 'anywhere' }}>{k.name}{k.schonGezeigt ? ' (siehe oben)' : ''}</span>
+          {og.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflowWrap: 'anywhere' }}>{og.join(' · ')}</span>}
+        </span>
         <StatusPille s={k.status} />
       </button>
       {(k.kinder.length > 0 || k.fremde.length > 0) && (
         <ul role="group" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}>
-          {k.kinder.map(x => <Knoten key={`${k.id}-${x.id}`} k={x} daten={daten} oeffne={oeffne} tiefe={tiefe + 1} />)}
+          {k.kinder.map(x => <Knoten key={`${k.id}-${x.id}`} k={x} daten={daten} oeffne={oeffne} organe={organe} tiefe={tiefe + 1} />)}
           {k.fremde.map(f => (
             <li key={`${k.id}-f-${f.firmaId}`} role="treeitem" aria-selected={false} style={{ borderLeft: `1px solid ${RAND.stark}`, marginLeft: 10, paddingLeft: 14 }}>
               <span style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 40, padding: '6px 10px', fontSize: TYP.bedien, color: C.inkDim, fontStyle: 'italic' }}>

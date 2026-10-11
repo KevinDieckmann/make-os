@@ -193,6 +193,7 @@ export async function POST(req: Request) {
       const schild = await import('@/lib/gesellschaften/schild-server');
       const sp = await schild.schildPapierkorbAufraeumen(h);
       const se = await schild.schildErinnerungen(h);
+      await schild.schildVerlaufMerken(h); // 11.10.: Gesundheits-Verlauf — ein Punkt je Tag (Ton + vier Dimensionen), idempotent
       schritte.push({ name: 'Unternehmen › Schild', ok: true, info: [se.neu ? `${se.neu} neue Erinnerung${se.neu === 1 ? '' : 'en'}` : 'keine fällig', se.geschlossen ? `${se.geschlossen} erledigt` : '', sp.eintraege ? `Papierkorb: ${sp.eintraege} endgültig` : ''].filter(Boolean).join(' · ') });
     }
   } catch (err) {

@@ -354,6 +354,8 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'keine Personen-Felder — die Personen des Haushalts sehen den Check unter Unternehmen › Überblick (Titel wie im Schild)',
     loeschfrist: 'der Wochen-Check wird jede Woche ersetzt, Risikorunden je Quartal; Marken und Riegel rollend (höchstens 500); mit der Instanz gelöscht',
   }),
+  // Gesundheits-Verlauf des Schilds (11.10., lib/gesellschaften/schild/verlauf.ts): je Tag Ton + vier Dimensionen je Business-Gesellschaft — nur Zahlen.
+  K('unternehmen-verlauf--*', 'Gesundheits-Verlauf des Schilds je Haushalt (lib/gesellschaften/schild/verlauf.ts, Morgenlauf): je Tag Ton und vier ganze Prozentzahlen (Dokumente, Pflichten, Risiken, Schutz) je Business-Gesellschaft, nur deren Kennung — keine Personen, keine Titel; rollend 400 Tage, mit der Instanz gelöscht.'),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):
@@ -837,6 +839,8 @@ const IN_BUSINESS: readonly string[] = [
   'medien--*', 'team--*', 'planung-einheiten--*', 'finance', 'business-eroeffnung',
   // Unternehmen › Schild (10.10.): nur Business-Gesellschaften — getrennt vom gemischten Register; Head of Recht (10.10.) ebenso
   'unternehmen-schild--*', 'recht-check--*',
+  // Gesundheits-Verlauf des Schilds (11.10.): nur Zahlen je Business-Gesellschaft
+  'unternehmen-verlauf--*',
   // Fulfillment (10.10.): Vorlagen, Fälle, Kunde (Links/Antworten/Puls), Dossiers, Personenkarten und der Datei-Ordner — nur Business
   'fulfillment--*', 'fulfillment-faelle--*', 'fulfillment-kunde--*', 'fulfillment-dossiers--*', 'fulfillment-personen--*', 'fulfillment-unterlagen',
 ];

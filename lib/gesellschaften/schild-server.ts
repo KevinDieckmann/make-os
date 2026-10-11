@@ -17,6 +17,8 @@ import { ladeRegister } from './server';
 import { leererEintrag, schildName, type SchildDatei, type SchildGesellschaft } from './schild/typen';
 import { lageAus, schildFristen, faelligeSchildErinnerungen, eintragVon, istSchildAufgabe, type Lage, type SchildFrist } from './schild/ampel';
 import { schildAufraeumen, schildOhnePerson } from './schild/saeubern';
+import { lageBlick } from './schild/blick';
+import { verlaufName, verlaufPunkt, verlaufAnhaengen, type VerlaufDatei } from './schild/verlauf';
 
 export { schildName };
 export const schildStand = (s: SchildGesellschaft) => fingerabdruck(s as unknown as Record<string, unknown>);
@@ -160,6 +162,31 @@ export async function schildKontoLoeschen(haushalt: string, speicher: string): P
     return n ? r.neu : cur;
   });
   return n;
+}
+
+// ── Gesundheits-Verlauf (11.10.) ─────────────────────────────────────────────────────────────────────────────────
+
+/** Der Verlauf des Schilds (Ton und vier Dimensionen je Tag und Business-Gesellschaft) — nur lesen; gefiltert wird in der Route. */
+export async function ladeVerlauf(haushalt: string): Promise<VerlaufDatei | null> {
+  return loadJson<VerlaufDatei>(verlaufName(haushalt));
+}
+
+/**
+ * Morgenlauf: den heutigen Punkt des Gesundheits-Verlaufs merken (idempotent — ein Tag wird höchstens ersetzt, ohne Änderung nichts geschrieben).
+ * Nur Zahlen und Kennungen der Business-Gesellschaften. Wirft nie.
+ */
+export async function schildVerlaufMerken(haushalt: string, heute = localDay()): Promise<boolean> {
+  try {
+    const [register, schild] = await Promise.all([ladeRegister(haushalt), ladeSchild(haushalt)]);
+    const p = verlaufPunkt(lageBlick(lageAus(register, schild, heute), schild?.gesellschaften), heute);
+    if (!Object.keys(p.je).length || !verlaufAnhaengen(await ladeVerlauf(haushalt), p).geaendert) return false;
+    let neu = false;
+    await updateJson<VerlaufDatei>(verlaufName(haushalt), cur => { const r = verlaufAnhaengen(cur, p); neu = r.geaendert; return r.geaendert ? r.d : (cur ?? { tage: [] }); });
+    return neu;
+  } catch (e) {
+    console.error('[schild] Verlauf nicht gemerkt:', e instanceof Error ? e.message : e);
+    return false;
+  }
 }
 
 /** Ist diese Aufgaben-Kennung eine Erinnerung des Schilds? (Telegram-Text neutral.) */

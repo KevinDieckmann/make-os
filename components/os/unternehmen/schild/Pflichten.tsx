@@ -14,9 +14,11 @@ import { ROLLEN, GROESSENKLASSEN, type Groessenklasse, type EreignisArt } from '
 import { EREIGNIS_ARTEN, PFLICHT_GRUPPEN, STEUER_TAKT, steuerImModul, ereignisDef, type PflichtEintrag } from '@/lib/gesellschaften/schild/pflichten';
 import { katalogVon } from '@/lib/gesellschaften/schild/dokumente';
 import type { GesellschaftLage } from '@/lib/gesellschaften/schild/ampel';
+import { pflichtTon } from '@/lib/gesellschaften/schild/blick';
 import { TextFeld, Felder, Feldzeile, centEingabe } from '../teile';
 import type { SEintrag, Schreiben } from './daten';
 import { AmpelChip, AMPEL_FARBE, SchildFuss, datum, klein } from './teile';
+import { JahresstrahlKarte } from '../blick/Jahresstrahl';
 
 const rolle = (r: string) => ROLLEN.find(x => x.id === r)?.label ?? r;
 
@@ -33,7 +35,8 @@ export function Pflichten({ lage, e, sw, heute }: { lage: GesellschaftLage; e: S
       {!lage.kontext.rechtsform && <Hinweis art="achtung" titel="Rechtsform fehlt" aktion={<Knopf leise href={WEG.unternehmen(lage.id)}>Steckbrief öffnen</Knopf>}>Ohne Rechtsform lassen sich die Pflichten nicht rechnen.</Hinweis>}
       {!lage.kontext.aktiv && <Hinweis art="info">Diese Gesellschaft ist {lage.kontext.status === 'geplant' ? 'erst geplant' : 'aufgelöst'} — laufende Pflichten entstehen erst bzw. nicht mehr.</Hinweis>}
       {lage.kontext.status === 'gruendung' && !lage.kontext.gegruendet && <Hinweis art="info">In Gründung: der Jahreszyklus beginnt mit dem Gründungs- bzw. Eintragungsdatum im Steckbrief.</Hinweis>}
-      <Profil e={e} lage={lage} sw={sw} />
+      {/* 11.10.: Bild zuerst — die Fristen dieser Gesellschaft auf einer Jahreslinie, darunter die Liste zum Abhaken. */}
+      <JahresstrahlKarte lage={{ heute, gesellschaften: [lage] }} nur={lage.id} titel={`Pflichten im Jahr — ${lage.name}`} kompakt />
       <Karte>
         <Ueberschrift>Pflichten-Kalender</Ueberschrift>
         {!lage.pflichten.length ? <Leer symbol={<CalendarCheck size={16} />}>Keine Pflichten im Zeitraum (ein Jahr zurück, gut ein Jahr voraus).</Leer> : gruppen.filter(g => g.l.length).map(g => (
@@ -45,6 +48,7 @@ export function Pflichten({ lage, e, sw, heute }: { lage: GesellschaftLage; e: S
         <SchildFuss />
       </Karte>
       <Ereignisse e={e} sw={sw} heute={heute} lage={lage} />
+      <Profil e={e} lage={lage} sw={sw} />
       <Schwellen lage={lage} sw={sw} />
       <Karte>
         <Ueberschrift>Steuer-Takt</Ueberschrift>
@@ -62,7 +66,8 @@ function PflichtZeile({ p, e, sw, heute }: { p: PflichtEintrag; e: SEintrag; sw:
   const [beleg, setBeleg] = useState('');
   const belege = (e.dokumente ?? []).filter(d => !d.geloeschtAm && (!p.belegArt || d.art === p.belegArt));
   const vermerken = (status: 'erledigt' | 'nicht-zutreffend' | null) => sw.schreibe({ vermerk: { regelId: p.regelId, periode: p.periode, status, ...(status === 'erledigt' ? { am, ...(beleg ? { belegDokId: beleg } : {}) } : {}) } }).then(r => { if (r.ok) setAuf(false); });
-  const farbe = p.status === 'ueberfaellig' ? AMPEL_FARBE.rot : p.status === 'faellig' ? AMPEL_FARBE.gelb : p.status === 'erledigt' ? AMPEL_FARBE.gruen : C.inkDim;
+  const ton = pflichtTon(p);
+  const farbe = ton === 'rot' ? AMPEL_FARBE.rot : ton === 'gelb' ? AMPEL_FARBE.gelb : p.status === 'erledigt' ? AMPEL_FARBE.gruen : C.inkDim;
   const fertig = p.status === 'erledigt' || p.status === 'nicht-zutreffend';
   return (
     <div style={{ display: 'grid', gap: 6, padding: '4px 0' }}>
@@ -132,6 +137,7 @@ function Ereignisse({ e, sw, heute, lage }: { e: SEintrag; sw: Schreiben; heute:
     <Karte>
       <Ueberschrift>Ereignisse</Ueberschrift>
       <div style={{ ...klein, marginBottom: 8 }}>Ein Ereignis bringt seine Pflichten mit (Register, Behörden, Fristen ab dem Tag) und stößt die Neubewertung der Risiken an.</div>
+      <div style={{ marginBottom: 10 }}><Knopf leise href={WEG.ereignisAssistent(lage.id)}>Lieber geführt: „Was ist passiert?“ — mit der ganzen Kette ›</Knopf></div>
       <form onSubmit={x => { x.preventDefault(); void anlegen(); }} style={{ display: 'grid', gap: 10 }}>
         <Felder>
           <Feldzeile label="Was ist passiert?">
@@ -150,9 +156,10 @@ function Ereignisse({ e, sw, heute, lage }: { e: SEintrag; sw: Schreiben; heute:
         <div style={{ marginTop: 12 }}>
           <Liste>{liste.map(x => {
             const titel = ereignisDef(x.art)?.label ?? x.art;
+            const zusatz = (x.zusatz ?? []).length;
             return (
               <ZeileAktionen key={x.id} titel={titel} onLoeschen={() => weg(x.id, titel)}>
-                <Zeile titel={titel} unter={[datum(x.datum), x.notiz].filter(Boolean).join(' · ')} />
+                <Zeile titel={titel} unter={[datum(x.datum), x.notiz, zusatz ? `${zusatz} Zusatz-Schritt${zusatz === 1 ? '' : 'e'}` : undefined, x.beschlussId ? 'aus einem Beschluss' : undefined].filter(Boolean).join(' · ')} />
               </ZeileAktionen>
             );
           })}</Liste>

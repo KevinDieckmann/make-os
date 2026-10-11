@@ -5,8 +5,10 @@
 //
 // GET                                   → { heute, eintraege: [{ id, stand, …Eintrag }] } — nur Business-Gesellschaften des Registers
 // GET  ?lage=1                          → kompakte Lage (Ampel je Gesellschaft, „was fehlt“ mit Weg) — dieselbe Rechnung wie die Oberfläche
+// GET  ?verlauf=1                       → Gesundheits-Verlauf (11.10.): je Tag Ton + vier Dimensionen der heutigen Business-Gesellschaften (nur Zahlen)
 // PATCH { id, stand, profil }                              → Profil (Beschäftigte, Umsatz, Größenklasse …)
 // PATCH { id, stand, liste, eintrag, eintragId? }          → Dokument · Ereignis · Risiko · Marke · Domain · Versicherung · Entwurf
+//        (Ereignis neu: optional `ausBeschluss: 'bs-…'` — Ereignis-Assistent, 11.10.; nur ein Beschluss dieser Gesellschaft, sonst 404)
 // PATCH { id, stand, liste, eintragId, aktion }            → loeschen (Papierkorb 30 Tage) · wiederherstellen · endgueltig
 // PATCH { id, stand, vermerk: { regelId, periode, status } }→ Pflicht „erledigt am“ / „trifft nicht zu“ (status null = Vermerk weg)
 // PATCH { id, stand, bewertung: { risikoId, eintritt, wirkung, art } } → neue Bewertung ANHÄNGEN (Verlauf, nie überschrieben)
@@ -27,7 +29,9 @@ import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import { ladeRegister } from '@/lib/gesellschaften/server';
-import { ladeSchild, schildAendern, schildEintrag, schildStand, schildErinnerungen, type SchildErgebnis, type SchildAenderung } from '@/lib/gesellschaften/schild-server';
+import { aktiveEintraege } from '@/lib/gesellschaften/modell';
+import { ladeSchild, ladeVerlauf, schildAendern, schildEintrag, schildStand, schildErinnerungen, type SchildErgebnis, type SchildAenderung } from '@/lib/gesellschaften/schild-server';
+import { verlaufFuer } from '@/lib/gesellschaften/schild/verlauf';
 import { schildGesellschaften, lageAus, AMPEL_TEXT } from '@/lib/gesellschaften/schild/ampel';
 import { SCHILD_LISTEN, SCHILD_PRAEFIX, REGEL_STAND, SCHILD_HINWEIS, type SchildListe, type SchildGesellschaft } from '@/lib/gesellschaften/schild/typen';
 import { eintragAnwenden, eintragHandeln, profilAnwenden, vermerkAnwenden, bewertungAnwenden, katalogUebernehmen, SCHILD_AKTIONEN, type SchildAktion, type Kontext } from '@/lib/gesellschaften/schild/saeubern';
@@ -62,6 +66,10 @@ export async function GET(req: Request) {
       ok: true, stand: REGEL_STAND, hinweis: SCHILD_HINWEIS, heute, gesamt: { ...l.gesamt, text: AMPEL_TEXT[l.gesamt.ampel] },
       gesellschaften: l.gesellschaften.map(g => ({ id: g.id, name: g.name, ampel: g.compliance.ampel, teile: g.compliance.teile })),
     }, kopf);
+  }
+  // Gesundheits-Verlauf (11.10.): nur die Business-Gesellschaften, die das Schild heute führt — gefiltert hier, vor der Auslieferung.
+  if (new URL(req.url).searchParams.get('verlauf') === '1') {
+    return NextResponse.json({ ok: true, heute, tage: verlaufFuer(await ladeVerlauf(z.haushalt), schildGesellschaften(register).map(g => g.id)) }, kopf);
   }
   // Nur Business-Gesellschaften — ein Eintrag einer Privat-Einheit (falls je einer im Bestand stünde) geht nie hinaus.
   const eintraege = schildGesellschaften(register).map(g => mitStand(schildEintrag(schild, g.id)));
@@ -102,7 +110,16 @@ export async function PATCH(req: Request) {
     } else {
       if (!b.eintrag || typeof b.eintrag !== 'object') return fehler('eintrag fehlt.', 400);
       const neueId = neueKennung(SCHILD_PRAEFIX[l]);
-      mut = alt => eintragAnwenden(alt, l, b.eintrag, k, { ...(eintragId ? { eintragId } : { neueId }) });
+      // Ereignis-Assistent (11.10.): ein NEUES Ereignis darf auf den Beschluss zeigen, der im selben Zug als Entwurf angelegt wurde — nur, wenn er
+      // im Register DIESER Gesellschaft steht (sonst 404). Dann schlägt das Beschluss-Buch dasselbe Ereignis später nicht noch einmal vor.
+      const ausBeschluss = l === 'ereignisse' && !eintragId && b.ausBeschluss !== undefined ? b.ausBeschluss : undefined;
+      if (ausBeschluss !== undefined && (typeof ausBeschluss !== 'string' || !/^bs-[a-z0-9][a-z0-9-]{3,62}$/.test(ausBeschluss))) return fehler('ausBeschluss: Kennung eines Beschlusses.', 400);
+      mut = (alt, g) => {
+        if (typeof ausBeschluss === 'string' && !aktiveEintraege(g.beschluesse).some(x => x.id === ausBeschluss)) return { fehler: [{ feld: 'ausBeschluss', text: 'Beschluss nicht gefunden.' }], status: 404 };
+        const r = eintragAnwenden(alt, l, b.eintrag, k, { ...(eintragId ? { eintragId } : { neueId }) });
+        if (!r.s || typeof ausBeschluss !== 'string') return r;
+        return { ...r, s: { ...r.s, ereignisse: (r.s.ereignisse ?? []).map(e => (e.id === neueId ? { ...e, beschlussId: ausBeschluss } : e)) } };
+      };
     }
   } else if (b.profil !== undefined) {
     mut = alt => profilAnwenden(alt, b.profil, k);

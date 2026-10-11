@@ -21,6 +21,7 @@ import { localDay } from '@/lib/zeit';
 import { montagVon, tagPlus } from '@/lib/zeit/kalender-kern';
 import { einheitAusGesellschaft } from '@/lib/einheiten';
 import { bauKennung, BAU_KOPF } from '@/lib/bau/kennung';
+import type { RegisterGesellschaft } from '@/lib/gesellschaften/modell';
 import { fahrplanFuer } from '@/lib/gesellschaften/fahrplan';
 import { verantwortlich } from '@/lib/crm/team';
 import { EVENT_REIHEN } from '@/lib/crm/marke';
@@ -299,6 +300,20 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   await schild({ liste: 'marken', eintrag: { bezeichnung: 'Nordlicht Cockpit', amt: 'dpma', form: 'wort', registerNr: '30 2016 000 000 (Beispiel)', anmeldetag: tagPlus(heute, -3600), klassen: '9, 42', inhaberIstGesellschaft: true } });
   await schild({ liste: 'versicherungen', eintrag: { art: 'vermoegensschaden', versicherer: 'Beispiel Versicherung AG', deckungFallCent: '1.000.000', beginn: '2023-01-10', ablauf: tagPlus(heute, 75), kuendigungsfristMonate: 3 } });
   await schild({ liste: 'ereignisse', eintrag: { art: 'neuer-vertrag', datum: tagPlus(heute, -5), notiz: 'Rahmenvertrag mit einem Pilotkunden (Beispiel)' } });
+  // 4c) Unternehmen „in einem Blick“ (11.10.): ein Vermerk „erledigt“ (der Zeitstrahl zeigt auch Erledigtes) und der Ereignis-Assistent wie in der
+  //     Oberfläche — „Neue Geschäftsführung“ in drei Wochen: Beschluss als Entwurf über das Register, Ereignis mit Zusatz-Schritt und Verweis auf den
+  //     Beschluss über das Schild. Erfunden, über dieselben Routen.
+  await schild({ vermerk: { regelId: 'groessenklasse', periode: `${Number(heute.slice(0, 4)) - 1}-12-31`, status: 'erledigt', am: heute } });
+  const { situationVon, beschlussEntwurf, ereignisEintraege } = await import('@/lib/gesellschaften/schild/assistent');
+  const gfLage = situationVon('gf')!;
+  const regUg = ((await rufe(R.gesellschaften(), 'GET', '/api/gesellschaften', LENA)).gesellschaften as (RegisterGesellschaft & { stand: string })[]).find(g => g.id === 'ug')!;
+  const gfDatum = tagPlus(heute, 21);
+  const entwurf = beschlussEntwurf(gfLage, regUg, gfDatum, heute);
+  const nachEntwurf = entwurf ? ((await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: 'ug', stand: regUg.stand, liste: 'beschluesse', eintrag: entwurf })).gesellschaft as { beschluesse?: { id: string; status: string }[] }) : null;
+  const entwurfId = nachEntwurf?.beschluesse?.find(b => b.status === 'entwurf' && !(regUg.beschluesse ?? []).some(x => x.id === b.id))?.id;
+  for (const ev of ereignisEintraege(gfLage, null, gfDatum, { beschluss: !!entwurfId, zusatz: ['z-partner'] }, 'Zweite Geschäftsführung (Beispiel)')) {
+    await schild({ liste: 'ereignisse', eintrag: ev, ...(entwurfId ? { ausBeschluss: entwurfId } : {}) });
+  }
   schritt('Unternehmen › Schild', 1);
 
   // 5) Ziele (Jahr, Business + Privat) und Meilensteine mit Aufwand, Personen, Kette.
