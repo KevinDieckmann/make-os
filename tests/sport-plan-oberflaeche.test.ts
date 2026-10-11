@@ -128,10 +128,21 @@ describe('POST /api/sport/kalender — nur die Person, nur über blockAnlegen', 
   it('legt EINEN Block der Art „routine“ im Kalender der Person an — neutraler Titel, Dauer aus dem Plan; doppelt → 409', async () => {
     const r = await post({ datum: HEUTE, einheitId: 'h-1', startMin: 420 }, { 'x-make-user': 'pia' });
     expect(r.status).toBe(200);
-    expect(kal.angelegt).toEqual([{ person: 'pia', b: { date: HEUTE, startMin: 420, dauerMin: 45, titel: 'Training · Lauf · Intervall', art: 'routine' }, wer: { art: 'person', person: 'pia' } }]);
+    expect(kal.angelegt).toEqual([{ person: 'pia', b: { date: HEUTE, startMin: 420, dauerMin: 45, titel: 'Training · Lauf · Intervall', art: 'routine', privat: true }, wer: { art: 'person', person: 'pia' } }]);
     kal.vorhanden = [{ date: HEUTE, titel: 'Training · Lauf · Intervall', startMin: 420 }];
     expect((await post({ datum: HEUTE, einheitId: 'h-1', startMin: 420 }, { 'x-make-user': 'pia' })).status).toBe(409);
     expect(kal.angelegt).toHaveLength(1);
+  });
+  it('der Block ist privat: eine andere Person sieht nur „Belegt“ (Prüf-Fund 11.10.)', async () => {
+    const { blockAnfrage } = await import('@/lib/planung/bloecke');
+    const { maskieren } = await import('@/lib/kalender/bezug');
+    const a = blockAnfrage((kal.angelegt[0] as { b: Parameters<typeof blockAnfrage>[0] }).b, 'pia');
+    expect(a.sichtbarkeit).toBe('privat');
+    const termin = { id: 'kal|makeos-sport-1', uid: 'makeos-sport-1', titel: String(a.titel), start: String(a.start), ende: String(a.ende), ganztags: false, sichtbarkeit: 'privat' as const, wer: 'pia', von: 'pia', kalender: 'Pia', kalenderId: 'kal' };
+    const fremd = maskieren(termin as unknown as Parameters<typeof maskieren>[0], 'olaf') as unknown as { titel: string; maskiert?: boolean };
+    expect(fremd.titel).toBe('Belegt');
+    expect(fremd.maskiert).toBe(true);
+    expect((maskieren(termin as unknown as Parameters<typeof maskieren>[0], 'pia') as unknown as { titel: string }).titel).toBe('Training · Lauf · Intervall');
   });
   it('eine andere Person findet die Einheit nicht (eigener Bestand)', async () => {
     expect((await post({ datum: HEUTE, einheitId: 'h-1', startMin: 420 }, { 'x-make-user': 'olaf' })).status).toBe(404);

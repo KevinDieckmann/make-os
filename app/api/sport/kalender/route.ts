@@ -2,7 +2,7 @@
 // POST { datum, einheitId, startMin } — nur die angemeldete Person, nur nach ihrem Klick (Dienstweg → 403: ZOE, Takt und Skripte legen
 // keine Trainings-Blöcke an). Der Block geht über den VORHANDENEN Weg (lib/planung/bloecke-server.ts `blockAnlegen`: Art „routine“, Kalender
 // der Person, eigenes iCloud-Konto zuerst, Änderungsprotokoll) — kein eigener Kalenderweg daneben. Titel neutral („Training · Lauf · Intervall“),
-// Dauer aus der geplanten Einheit. Schon ein Block mit diesem Titel an dem Tag zur selben Zeit → 409 (nichts doppelt).
+// Dauer aus der geplanten Einheit. Seit 11.10. immer privat (andere sehen nur „Belegt“). Schon ein Block mit diesem Titel an dem Tag zur selben Zeit → 409 (nichts doppelt).
 
 import { NextResponse } from 'next/server';
 import { personStreng, istDienst } from '@/lib/zugang/tor';
@@ -43,7 +43,8 @@ export async function POST(req: Request) {
   try {
     const da = await planBloeckeLesen({ von: datum, bis: tagPlus(datum, 1), person, archiv: false });
     if (da.some(b => b.date === datum && b.titel === titel && Math.abs(b.startMin - startMin) < 15)) return nein(409, 'Dieser Block steht schon im Kalender.');
-    const r = await blockAnlegen(person, { date: datum, startMin, dauerMin, titel, art: 'routine' }, { art: 'person', person });
+    // Prüf-Fund 11.10.: privat — Training ist Gesundheit; andere sehen den Block nur „Belegt“ (ohne Titel).
+    const r = await blockAnlegen(person, { date: datum, startMin, dauerMin, titel, art: 'routine', privat: true }, { art: 'person', person });
     return NextResponse.json({ ok: true, uid: r.uid });
   } catch (e) {
     if (e instanceof KalenderFehler) return nein(e.status >= 400 && e.status < 600 ? e.status : 502, e.message);
