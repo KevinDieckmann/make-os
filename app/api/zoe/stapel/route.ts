@@ -87,8 +87,11 @@ function eingabeSauber(v: unknown, vorher: Record<string, unknown>): Sauber {
  */
 // EINE Konto-Sicht (09.10., E4): `privat` = die Person sieht den Privat-Bereich (lib/zugang/konto-sicht.ts) — ein Konto „nur Business“ sieht
 // und entscheidet von den Vorschlägen des Systems nur die sicher geschäftlichen (`vorschlagPrivat`), sonst 404.
-const meiner = (v: Vorschlag, person: string, privatFinanzen: boolean, privat: boolean) =>
-  vorschlagSichtbar(v, person, true, privat) && (privatFinanzen || !FINANZPLAN_ALTWEG_WERKZEUGE.has(v.werkzeug ?? ''));
+// Head of Recht (Prüf-Funde 11.10.): Vorschläge der Art „recht“ nur mit Zugang zur Firmen-Akte (`rechtZugangFuer`) — sehen, ablehnen, freigeben.
+const meiner = (v: Vorschlag, person: string, privatFinanzen: boolean, privat: boolean, recht: boolean) =>
+  vorschlagSichtbar(v, person, true, privat, recht) && (privatFinanzen || !FINANZPLAN_ALTWEG_WERKZEUGE.has(v.werkzeug ?? ''));
+/** Zugang zur Firmen-Akte (lib/recht/server.ts) — unlesbar → nein. */
+const rechtZugang = async (person: string) => !!(await (await import('@/lib/recht/server')).rechtZugangFuer(person).catch(() => null));
 const GESPERRT = () => NextResponse.json({ ...KARTEI_GESPERRT, error: KARTEI_GESPERRT.fehler }, { status: 403 });
 /** Ein Vorschlag, wie er an den Browser geht: mit seinem Stand. */
 const mitStand = (v: Vorschlag) => ({ ...v, stand: vorschlagStand(v) });
@@ -109,8 +112,9 @@ export async function GET(req: Request) {
   const person = zugang.person;
   const privatFinanzen = !!(await privatFinanzZugang(req));
   const privat = !(await privatAusgeblendetFuer(person));
+  const recht = await rechtZugang(person);
   // Sicht Privat/Business serverseitig (09.10. spät): unter Privat kein Business-Vorschlag und umgekehrt; „unklar“ in beiden.
-  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, privatFinanzen, privat) && passtZurSicht(v, space));
+  const liste = (await lies(alle ? undefined : 'offen')).filter(v => meiner(v, person, privatFinanzen, privat, recht) && passtZurSicht(v, space));
   const offen = liste.filter(v => v.status === 'offen');
   return NextResponse.json({ ok: true, space: space ?? 'alles', vorschlaege: liste.map(mitStand), offen: offen.length, unklar: offen.filter(v => !bereichAus(v.bereich)).length });
 }
@@ -144,7 +148,8 @@ export async function POST(req: Request) {
   const wer = zugang.person;
   const privatFinanzen = !!(await privatFinanzZugang(req));
   const privat = !(await privatAusgeblendetFuer(wer));
-  const darf = (v: Vorschlag) => (meiner(v, wer, privatFinanzen, privat) ? null : { status: 404 as const, fehler: 'Vorschlag nicht gefunden.' });
+  const recht = await rechtZugang(wer);
+  const darf = (v: Vorschlag) => (meiner(v, wer, privatFinanzen, privat, recht) ? null : { status: 404 as const, fehler: 'Vorschlag nicht gefunden.' });
   const stand = typeof body.stand === 'string' && body.stand ? body.stand.slice(0, 40) : null;
   const VERALTET = 'Inzwischen geändert (Bereich oder Inhalt) — bitte neu ansehen. Nichts freigegeben.';
   /** Sicht der Person UND (mit Stand) unverändert seit dem Ansehen — sonst nichts. */
@@ -166,10 +171,16 @@ export async function POST(req: Request) {
     const a = await beanspruche(id, wer, darfMitStand);
     if (!a.ok) return { ok: false as const, status: a.status, text: a.fehler, vorschlag: null, ...(a.code ? { code: a.code } : {}) };
     const eingabe = eingabeNeu ?? a.v.eingabe;
-    let lauf: { ok: boolean; text: string };
+    let lauf: Awaited<ReturnType<typeof fuehreAus>>;
     // Der Bereich des Vorschlags geht als Kontext an das Werkzeug (nie aus der Eingabe) — „Fakt merken“ legt den Merksatz in diesem Bereich ab.
     try { lauf = await fuehreAus(a.v.werkzeug, eingabe, origin, { erzwingen: true, person: wer, freigegebenVon: wer, vorschlagId: a.v.id, bereich: bereichAus(a.v.bereich) }); }
     catch (e) { await loslassen(id); throw e; }
+    // Prüf-Funde 11.10.: scheitert NUR die Eingabe-Prüfung des Vertrags (alter offener Vorschlag aus der Zeit vor V3, „Ändern & freigeben“ mit
+    // einem Wert außerhalb des Rasters), ist nichts gelaufen — der Vorschlag bleibt offen (loslassen) statt endgültig „fehlgeschlagen“; 400 mit Satz.
+    if (!lauf.ok && lauf.ergebnis.klasse === 'eingabe') {
+      await loslassen(id);
+      return { ok: false as const, status: 400 as const, text: `${lauf.text} Der Vorschlag bleibt offen — bitte die Werte ändern oder ablehnen.`, vorschlag: null };
+    }
     const raus = await entscheide(id, lauf.ok ? 'freigegeben' : 'fehlgeschlagen', { ergebnis: lauf.text, ...(eingabeNeu ? { eingabe } : {}), von: wer, ausArbeit: true });
     return { ok: lauf.ok, status: 200 as const, text: lauf.text, vorschlag: raus };
   };
@@ -178,7 +189,7 @@ export async function POST(req: Request) {
   if (body.alle) {
     const space = sichtAus(body.space);
     if (space === undefined) return SICHT_FALSCH();
-    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen, privat) && genauImBereich(v, space) && !!bereichAus(v.bereich));
+    const alleOffen = (await lies('offen')).filter(v => (!body.gruppe || v.gruppe === body.gruppe) && meiner(v, wer, privatFinanzen, privat, recht) && genauImBereich(v, space) && !!bereichAus(v.bereich));
     const offen = alleOffen.filter(sammelTauglich);
     const einzeln = alleOffen.length - offen.length;
     if (!offen.length) return NextResponse.json({ ok: true, erledigt: 0, ergebnisse: [], einzeln });
@@ -201,7 +212,7 @@ export async function POST(req: Request) {
   const id = String(body.id ?? '');
   const v = id ? await hole(id) : null;
   if (!v) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
-  if (!meiner(v, wer, privatFinanzen, privat)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
+  if (!meiner(v, wer, privatFinanzen, privat, recht)) return NextResponse.json({ ok: false, error: 'Vorschlag nicht gefunden.' }, { status: 404 });
   if (v.status === 'in_arbeit') return NextResponse.json({ ok: false, error: 'Wird gerade übernommen.' }, { status: 409 });
   if (v.status !== 'offen') return NextResponse.json({ ok: false, error: `Schon entschieden (${v.status}).` }, { status: 409 });
   // Freigeben mit Stand (09.10. spät): hat sich der Vorschlag seit dem Ansehen geändert (z. B. Bereich in einem anderen Fenster), nichts freigeben.

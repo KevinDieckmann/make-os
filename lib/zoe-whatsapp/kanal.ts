@@ -210,6 +210,8 @@ export const KANAL_TEXTE = {
     `Vorschlag ${k} liegt in deinen Freigaben: ${was === 'aufgabe' ? 'eine Aufgabe' : 'eine Notiz'}${titel ? ` „${titel}“` : ''}. ${bereichFehlt ? `Antworte „ja ${k} privat“ oder „ja ${k} business“ zum Freigeben` : `Antworte „ja ${k}“ zum Freigeben`} oder „nein ${k}“ — oder in MAKE OS: ${link}`,
   freigegeben: (k: string, link: string, ergebnis?: string) => (ergebnis ? `Freigegeben (${k}): ${ergebnis}` : `Freigegeben (${k}). Ergebnis in MAKE OS: ${link}`),
   fehlgeschlagen: (k: string, link: string) => `Vorschlag ${k} ließ sich nicht übernehmen — bitte in MAKE OS ansehen: ${link}`,
+  /** Prüf-Funde 11.10.: nur die Eingabe passte nicht mehr (z. B. alter Vorschlag) — nichts gelaufen, der Vorschlag bleibt offen. */
+  eingabePasstNicht: (k: string, link: string) => `Vorschlag ${k} passt in dieser Form nicht mehr — er bleibt offen. Bitte in MAKE OS ändern oder ablehnen: ${link}`,
   abgelehnt: (k: string) => `Vorschlag ${k} abgelehnt.`,
   schonEntschieden: (k: string) => `Vorschlag ${k} ist schon entschieden.`,
   /** Ohne Bereich keine Freigabe (09.10. spät) — neutral, ohne Inhalt. */

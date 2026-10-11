@@ -29,50 +29,14 @@ import { innenAdresse } from '@/lib/innen';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { kiSchalterFuer, type KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
+import { MORGEN_ERLAUBT, morgenEingabe, morgenWerkzeuge } from '@/lib/zoe/morgen-werkzeuge';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * Nur diese Werkzeuge darf der Morgenlauf vorschlagen.
- *
- * Bewusst eng: er soll den Tag vorbereiten, nicht die Buchhaltung umschreiben.
- * Alles, was Geld bewegt, bleibt draußen — dafür fehlt ihm nachts jede
- * Grundlage, und ein Vorschlag ohne Grundlage ist nur Arbeit für die Person.
- */
-const ERLAUBT = ['create_task', 'plan_block'] as const;
-
-const WERKZEUGE = [
-  {
-    name: 'create_task',
-    description: 'Schlägt eine Aufgabe vor. Nur für Dinge, die aus der Lage KLAR folgen — eine überfällige Rechnung, ein Termin ohne Vorbereitung, ein Meilenstein ohne nächsten Schritt. Keine Allgemeinplätze.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'Imperativ, konkret, unter 80 Zeichen' },
-        priority: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
-        why: { type: 'string', description: 'Ein Satz: woraus folgt das' },
-        faellig: { type: 'string', description: 'YYYY-MM-DD (optional)' },
-      },
-      required: ['title', 'why'],
-    },
-  },
-  {
-    name: 'plan_block',
-    description: 'Schlägt einen Block im Tagesplan vor — Fokuszeit, Routine, Vorbereitung. Nur in freie Zeit; feste Termine stehen im Live-Zustand. Fenster 06:00–22:00, Raster 15 Minuten.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        date: { type: 'string', description: 'YYYY-MM-DD, heute oder morgen' },
-        startMin: { type: 'number', description: 'Minuten ab 00:00 (540 = 09:00)' },
-        dauerMin: { type: 'number', description: '15–240' },
-        titel: { type: 'string' },
-        art: { type: 'string', enum: ['fokus', 'erholung', 'reha', 'routine', 'pause', 'aufgabe', 'block'] },
-      },
-      required: ['date', 'startMin', 'dauerMin', 'titel'],
-    },
-  },
-];
+// Nur create_task und plan_block — Schema von plan_block aus dem Vertrag (Prüf-Funde 11.10., lib/zoe/morgen-werkzeuge.ts): vorher wich das eigene
+// Schema vom Vertrag ab, und Blöcke neben dem Raster fielen seit V3 still weg; jetzt werden sie auf 15 Minuten gerundet (`morgenEingabe`).
+const ERLAUBT = MORGEN_ERLAUBT;
 
 type Tageszeit = import('@/lib/zoe/regelwerk').Tageszeit;
 
@@ -189,7 +153,7 @@ export async function POST(req: Request) {
     system: anweisung(await vornameVon(person), lage, zeit, liegt),
     user: zeit === 'abend' ? 'Schliess den Tag ab.' : 'Bereite den Tag vor.',
     maxTokens: 1500,
-    tools: WERKZEUGE,
+    tools: morgenWerkzeuge(), // beim Aufruf gebaut (die Quellen der Schemas importieren sich zum Teil gegenseitig)
     timeoutMs: 150_000,
     zweck: zeit === 'abend' ? 'abendlauf' : 'morgenlauf',
     ki: kiAus(req, [...kategorien, 'aufgaben'], { person }),
@@ -204,7 +168,7 @@ export async function POST(req: Request) {
 
   // Alles wird gestapelt, nichts ausgeführt — auch die sonst freien Werkzeuge.
   const ergebnisse = await Promise.all(gewuenscht.map(b =>
-    fuehreAus(b.name!, b.input ?? {}, origin, {
+    fuehreAus(b.name!, morgenEingabe(b.name!, b.input ?? {}), origin, {
       vorschlagen: true, person, quelle: 'lauf',
       anlass: String(b.input?.why ?? (zeit === 'abend' ? 'Abendlauf' : 'Morgenlauf')),
     }).catch(() => null),

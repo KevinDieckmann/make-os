@@ -13,7 +13,7 @@ import type { AppArt, AppTreffer } from '@/lib/brain/app-index';
 import type { Risiko, Vorschau } from './register';
 import { fehlschlag, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 
-type Lauf = (input: Record<string, unknown>, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
+type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: { sicht?: 'privat' | 'business' }) => Promise<WerkzeugRueckgabe>;
 
 export const ARBEIT_QUELLE = 'arbeitsbestaende';
 const ARTEN: readonly AppArt[] = ['aufgabe', 'kommentar', 'projekt', 'angebot', 'mandat'];
@@ -70,7 +70,7 @@ export async function arbeitKategorien(input: Record<string, unknown>, person: s
   return arbeitQuellen(input, { aufgaben: s.bereiche.aufgaben, crm: s.bereiche.crm, brain: s.bereiche.brain }).kategorien;
 }
 
-async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: string): Promise<WerkzeugRueckgabe> {
+async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: string, kontext?: { sicht?: 'privat' | 'business' }): Promise<WerkzeugRueckgabe> {
   if (!person) return fehlschlag('rechte', KEINE_PERSON);
   if (!(await personImHaushaltDesInhabers(person))) return NUR_HAUSHALT;
   const frage = String(input.frage ?? input.suche ?? '').replace(/\u0000/g, '').trim();
@@ -87,16 +87,21 @@ async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: 
   // über die EINE Konto-Sicht (09.10., E4, lib/zugang/konto-sicht.ts). Unlesbar → kein Privat.
   const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
   const privat = !!(await kontoSicht(person).catch(() => null))?.vollesMitglied;
+  // Sicht (Prüf-Funde 11.10., wie der Agenten-Bereich `arbeitImBereich`): in Business nur Business-Bestände und das Brain in der Agenten-Sicht (nie
+  // `scope: privat`), in Privat nur Privat-Bestände (und nur für volle Mitglieder). Ohne Sicht wie bisher alles, was die Person sieht.
+  const sicht = kontext?.sicht;
+  if (sicht === 'privat' && !privat) return fehlschlag('rechte', 'Nicht ausgeführt: Den Privat-Bereich sieht dieses Konto nicht.');
   let app: { treffer: AppTreffer[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
   if (q.arten.length) {
     const A = await import('@/lib/brain/app-index');
     try { await A.appIndexAktualisieren(); } catch (e) { return fehlschlag('voruebergehend', `Fehlgeschlagen: Such-Index nicht lesbar (${e instanceof Error ? e.message.slice(0, 120) : 'unbekannt'}).`); }
-    app = A.appSuche(frage, { haushalt, privat }, anzahl, q.arten);
+    const r = A.appSuche(frage, { haushalt, privat: sicht === 'business' ? false : privat }, anzahl, q.arten);
+    app = sicht ? { ...r, treffer: r.treffer.filter(t => (sicht === 'privat') === !!t.privat) } : r;
   }
-  // Das Brain (Vault) mit der Sicht der Person — Sicht vor dem Ranking (lib/zoe/vault.ts `suche`).
+  // Das Brain (Vault) mit der Sicht der Person — Sicht vor dem Ranking (lib/zoe/vault.ts `suche`); in Business die Agenten-Sicht der Person.
   let brain: { treffer: BrainTreffer[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
   if (q.brain) {
-    try { const { suche } = await import('./vault'); brain = await suche(frage, anzahl, { person }); } catch { /* Brain nicht lesbar — App-Treffer reichen */ }
+    try { const { suche } = await import('./vault'); brain = await suche(frage, anzahl, sicht === 'business' ? { person, agent: true } : { person }); } catch { /* Brain nicht lesbar — App-Treffer reichen */ }
   }
   const art = ARTEN.find(a => a === input.art);
   const wollteBrain = input.nur !== 'app' && !art;

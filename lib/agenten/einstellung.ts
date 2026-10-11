@@ -471,6 +471,22 @@ export async function laufSperre(person: string | null, headId: string, jetzt = 
   }
 }
 
+/**
+ * Not-Aus oder „Head aus“ für einen Lauf OHNE Modell (Prüf-Funde 11.10.: Recht-Morgenlauf, Vertragseingang) — dieselbe Regel wie `headSperre`,
+ * nur ohne Budget (es entstehen keine Modellkosten). Haushalt ausdrücklich (der Lauf kennt ihn) oder über die Person. Fail-closed: unlesbar → Sperre.
+ */
+export async function headAngehalten(headId: string, o: { haushalt?: string | null; person?: string | null } = {}): Promise<Sperre | null> {
+  const head = headDef(headId);
+  if (!head) return null;
+  try {
+    const haushalt = o.haushalt ?? (o.person ? await haushaltFuerPerson(o.person) : await (await import('@/lib/zugang/haushalt-inhaber')).haushaltDesInhabers());
+    return headSperre(await rohLesen(haushalt), head, o.person ?? null);
+  } catch (err) {
+    console.error('[agenten-einstellung] Sperre nicht prüfbar — angehalten (fail-closed):', err instanceof Error ? err.message.slice(0, 120) : err);
+    return { grund: 'not-aus', text: UNLESBAR_TEXT };
+  }
+}
+
 /** Eine Glocke je Stufe (80 % / 100 %) und Monat für das Budget eines Heads — an die zuständige Person, sonst die Besitzerin bzw. den Inhaber. */
 async function budgetGlocke(haushalt: string, head: HeadDef, person: string | null, budget: number, kosten: number, jetzt: Date): Promise<void> {
   const stufe = budget <= 0 || kosten >= budget ? 100 : kosten >= budget * HEAD_BUDGET_WARNUNG ? 80 : 0;

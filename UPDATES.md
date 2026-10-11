@@ -4,6 +4,30 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 11.10.2026 — Prüf-Funde (ZOE/Agenten-Sicht) (nur lokal — Branch `fix-zoe-sicht`, Basis 82a44555 = `update-0910b`)
+
+Bestätigte Funde der Prüfung, Regel „Sicht Business bekommt nichts aus Privat“ und umgekehrt — serverseitig. Wächter `tests/zoe-sicht-pruef-funde.test.ts`.
+
+- **ZOE je Sicht (H1):** Die Sicht des Gesprächs (`werkzeugSicht` in `app/api/kimmi`: Space der Seite, ein Konto „nur Business“ IMMER Business) filtert jetzt
+  auch Heads (`headImBereich` — Prompt + Schema von `an_head`/`head_fragen`) und Fach-Agenten (`fachAgentInSicht`, lib/agenten/werkzeuge.ts: Business ohne
+  Ernährung/Tagesform/alle Postfächer/Head of Finance …, Privat ohne reine Business-Agenten; auch `starte_auftraege`). Neu `WerkzeugKontext.sicht` (nur von
+  `fuehreAus` gesetzt, nie bei der Freigabe): `an_head`/`head_fragen` lehnen einen Head des anderen Bereichs ab; Werkzeuge mit Bereich „beide“ liefern nur
+  Daten der Sicht — `lies_postfach` (`postfachImBereich`), `suche_arbeit` (App-Treffer des Bereichs, Brain in Business in der Agenten-Sicht), `suche_wissen`/
+  `lies_notiz` (Business nie `scope: privat`), `hake_routine` (nur Routinen des Bereichs, auch im Fehlertext), `meine_aufgaben`/`projekt_unterlagen`/
+  `datei_lesen` (`eingabeInSicht` setzt `space`, EINE Liste `BEREICH_IN_EINGABE` in lib/zoe/bereich.ts). Der Live-Zustand nimmt dieselbe Sicht.
+- **Recht-Stapel (H3):** Vorschläge der Art „recht“ sieht und entscheidet nur, wer die Firmen-Akte sieht (`vorschlagSichtbar(…, rechtZugang)`, Route mit
+  `rechtZugangFuer`, `vorschlaegeFuer` mit `vollesMitglied`) — ein Konto „nur Business“ kann sie nicht mehr ablehnen (und so 28 Tage sperren).
+- **Brain-Prompt (M3):** `brainNurBereich` filtert Termine nach dem Bereich des Kalenders (`CalEvent.space` aus den Kalender-Einstellungen), in Business
+  keine Familien-Geburtstage und kein Reha-Schild; der Schalter `bereiche.familie` wirkt; „fremd gelesen“ nur nach Terminen der Sicht (`kalenderImPrompt(b, sicht)`).
+- **crm_vorschlag in Privat (N1):** nur „liegt unter Business im Stapel“ (`PRIVAT_VORGESCHLAGEN`), Prüf-Fehler ohne Namen. **Protokoll (N2):** Sicht über
+  `bereichAusGruppe` (Finanzen und Bauplan jetzt Business).
+- **Zusatz:** `space` optional im Schema der drei Aufgaben-Leser (Heads Operations/Kundenerfolg/IT/Assistenz scheiterten seit V3 an der Hülle) ·
+  Freigabe mit ungültiger Eingabe (Klasse `eingabe`) → 400, Vorschlag bleibt offen (Stapel-Route und ZOE auf WhatsApp) · `setze_ziele.startMonat` auch als
+  Zahl („Rückgängig“) · Recht-Morgenlauf/Vertragseingang halten bei Not-Aus bzw. „Head of Recht aus“ (`headAngehalten`, lib/agenten/einstellung.ts) ·
+  Morgenlauf: `plan_block` mit dem Schema des Vertrags, Start/Dauer auf 15 Min. gerundet (`lib/zoe/morgen-werkzeuge.ts`) · `fuehreAus` meldet selbst
+  gestapelte Ergebnisse als `gestapelt` mit `vorschlagId`.
+- **Rückweg:** keine Bestände, keine Formänderung — nur Code. Der alte Stand liest alles wie bisher.
+
 ## 10.10.2026 — Inbox: Suche über Anhang-Namen, Übergeben mit Anhängen + Zurückziehen, Aufgaben-Vorschläge aus Mails/WhatsApp (nur lokal — Branch `inbox-suche-uebergeben`, Basis 2e5ef5fb = `update-0910b`)
 
 ROADMAP_Q4.md › Lücke 6 („Mail nicht übergebbar, keine Inbox-Suche“, Kevin & Malin) und Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“. Suche, Übergaben (Kopie) und

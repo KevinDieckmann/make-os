@@ -237,8 +237,12 @@ export function vorschlagPrivat(v: { gruppe: string; eingabe?: Record<string, un
  * „nur Business“). Ohne ihn sieht sie von den Vorschlägen des Systems nur die sicher geschäftlichen (`vorschlagPrivat`). Fehlt das
  * Argument, gilt das Verhalten von vorher (volle Sicht) — jeder Leser an eine Person gibt es mit.
  */
-export const vorschlagSichtbar = (v: { person?: string; gruppe: string; eingabe?: Record<string, unknown>; bezug?: { art: string }; bereich?: unknown }, person: string | null, imHaushalt: boolean, privat = true): boolean => {
+export const vorschlagSichtbar = (v: { person?: string; gruppe: string; eingabe?: Record<string, unknown>; bezug?: { art: string }; bereich?: unknown }, person: string | null, imHaushalt: boolean, privat = true, rechtZugang = privat): boolean => {
   if (!person) return false;
+  // Head of Recht (Prüf-Funde 11.10.): Vorschläge zur Firmen-Akte (Art „recht“) nur mit Zugang zur Firmen-Akte (`rechtZugangFuer`, lib/recht/server.ts —
+  // nie ein Konto „nur Business“). Vorher sah jedes Konto im Haushalt die personlosen Recht-Vorschläge (Gruppe „business“) und konnte sie ablehnen —
+  // danach sperrte die Marke den Vorschlag 28 Tage für alle.
+  if (v.bezug?.art === 'recht' && !rechtZugang) return false;
   if (v.person) return v.person === person && (imHaushalt || v.gruppe !== 'haushalt');
   return imHaushalt && (privat || !vorschlagPrivat(v));
 };
@@ -272,7 +276,8 @@ export async function vorschlaegeFuer(person: string | null, nur?: VorschlagStat
   const k = await kontoSicht(person).catch(() => null);
   if (!k) return [];
   // Sicht Privat/Business (09.10. spät): nur Vorschläge dieses Bereichs und die unklaren (in beiden), lib/zoe/bereich.ts `passtZurSicht`.
-  return (await lies(nur)).filter(v => vorschlagSichtbar(v, person, k.imHaushalt, k.privat) && passtZurSicht(v, space));
+  // Firmen-Akte (Prüf-Funde 11.10.): dieselbe Regel wie `rechtZugangFuer` — volles Mitglied (Haushalt am Konto, nicht „nur Business“) im Haushalt der Inhaber.
+  return (await lies(nur)).filter(v => vorschlagSichtbar(v, person, k.imHaushalt, k.privat, k.vollesMitglied) && passtZurSicht(v, space));
 }
 
 export async function hole(id: string): Promise<Vorschlag | null> {
