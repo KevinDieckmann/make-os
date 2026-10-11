@@ -54,7 +54,8 @@ export function BriefingKarte({ i, sicht, titel, vorgabe, vorgabeZahlen }: { i: 
       setZahlen(d?.zahlen && typeof d.zahlen === 'object' ? d.zahlen : null);
     } catch { setSaetze(prev => prev ?? null); }
   }, [sicht]);
-  useEffect(() => { setSaetze(undefined); void laden(); }, [laden]);
+  // Bereich gewechselt: Text UND Kacheln leeren, bis die Zahlen des neuen Bereichs da sind (nie kurz die des anderen Bereichs zeigen).
+  useEffect(() => { setSaetze(undefined); setZahlen(null); void laden(); }, [laden]);
   useEffect(() => {
     const frisch = () => { if (document.visibilityState === 'visible') void laden(); };
     const spaeter = () => { window.setTimeout(() => { void laden(); }, 600); };
