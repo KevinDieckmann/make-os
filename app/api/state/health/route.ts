@@ -5,7 +5,9 @@
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { loadJson, saveJson } from '@/lib/store/local-db';
+import { loadJson, updateJson } from '@/lib/store/local-db';
+import { bauPruefen } from '@/lib/bau/pruefen';
+import { logZusammenfuehren } from '@/lib/gesundheit/zusammenfuehren';
 import { localDay } from '@/lib/zeit';
 import { personAus, ansichtPerson, darfGesundheitSehen, speicherFuer } from '@/lib/zoe/raum';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
@@ -29,26 +31,24 @@ export async function GET(req: Request) {
   return NextResponse.json({ log, zaehler: await zaehlerVon(person) });
 }
 
+/**
+ * PUT = Altweg (die Online-Version vor dem 09.10. und alte PWA-Tabs schicken den ganzen Log). Prüf-Fund 11.10.: so überschrieb ein alter Tab
+ * Haken, die inzwischen per PATCH gesetzt wurden. Darum (1) fremde Bau-Kennung → 409 „neu laden“ (`bauPruefen`), (2) tagesweise
+ * ZUSAMMENFÜHREN statt ersetzen: je Tag die Vereinigung aus gespeichertem und geschicktem Stand — ein Haken geht über PUT nie verloren,
+ * Tage, die der Körper nicht nennt, bleiben unverändert. Abhaken lösen geht nur über PATCH (die eine Schreibstelle `routineHaken`).
+ */
 export async function PUT(req: Request) {
   // Art. 9 (05.10.): erfasst wird nur mit Einwilligung (a) der Person (Bestand: wie bisher, bis sie erklärt).
   { const sperre = await gesundheitSchreibSperre(personAus(req)); if (sperre) return sperre; }
   let body: unknown;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   if (!personStreng(req)) return ohnePerson();
+  { const alt = bauPruefen(req); if (alt) return alt; }
   const log = body as HealthLog;
   if (!log || typeof log !== 'object' || Array.isArray(log)) {
     return NextResponse.json({ ok: false, error: 'Ungültiges Log.' }, { status: 400 });
   }
-  // Schrumpf-Wächter: verliert der neue Bestand mehr als die Hälfte der Tage,
-  // ist das fast immer ein Client-Fehler — nicht still überschreiben.
-  const speicher = speicherFuer('health-log', personAus(req));
-  const bisher = (await loadJson<Record<string, unknown>>(speicher)) ?? {};
-  const alt = Object.keys(bisher).length;
-  const neu = Object.keys(log).length;
-  if (alt >= 6 && neu < alt / 2) {
-    return NextResponse.json({ ok: false, error: `Verweigert: der neue Stand hätte ${neu} statt ${alt} Tagen — sieht nach Datenverlust aus. Sicherung liegt unter .data/backup/.` }, { status: 409 });
-  }
-  await saveJson(speicher, log);
+  await updateJson<HealthLog>(speicherFuer('health-log', personAus(req)), bisher => logZusammenfuehren(bisher ?? {}, log));
   return NextResponse.json({ ok: true });
 }
 

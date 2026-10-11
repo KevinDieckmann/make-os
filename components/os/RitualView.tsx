@@ -9,8 +9,9 @@ import Link from 'next/link';
 // Abends: Routinen → Abend-Journal → Blick auf morgen → ausloggen.
 // 24.09.: auf das lebendige Muster umgezogen — jeder Schritt ist eine Karte.
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
+import { journalPatchFelder } from '@/lib/gesundheit/zusammenfuehren';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import type { PlanBlock } from '@/types/planer';
 import { localDay } from '@/lib/zeit';
@@ -159,14 +160,19 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
     } catch { /* still */ }
   }
 
-  const journalSpaeter = useNachspeichern<Record<string, JournalEintrag>>(next => {
-    fetch('/api/state/journal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {});
+  // Prüf-Fund 11.10.: nur die geänderten Felder des Tages (PATCH, wie Journal und Gesundheit) — das frühere PUT des ganzen Journals
+  // überschrieb die Antworten des Tages-Checks und alles, was ZOE oder ein anderes Gerät inzwischen eingetragen hatte.
+  const journalOffen = useRef<Partial<JournalEintrag>>({});
+  const journalSpaeter = useNachspeichern<{ datum: string; eintrag: Partial<JournalEintrag> }>(({ datum, eintrag }) => {
+    journalOffen.current = {};
+    fetch('/api/state/journal', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ datum, eintrag: journalPatchFelder(eintrag) }) }).catch(() => {});
   }, 600);
 
   function journalSetzen(patch: Partial<JournalEintrag>) {
     const next = { ...journal, [heute]: { ...journal[heute], ...patch, at: new Date().toISOString() } };
     setJournal(next);
-    journalSpaeter(next);
+    journalOffen.current = { ...journalOffen.current, ...patch };
+    journalSpaeter({ datum: heute, eintrag: journalOffen.current });
   }
 
 
