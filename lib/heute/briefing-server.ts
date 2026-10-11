@@ -9,7 +9,7 @@ import { merken } from '@/lib/store/memo';
 import { anstehendLesen } from './anstehend-server';
 import { anstehendFuerSpace } from './anstehend';
 import { vorschlaegeFuer } from '@/lib/zoe/stapel';
-import { fokusSichtFuer } from '@/lib/planung/fokus-server';
+import { fokusSichtFuer, type FokusSicht } from '@/lib/planung/fokus-server';
 import { tagesDaten } from './top3-server';
 import { briefingSaetze, type BriefingZahlen } from './briefing';
 import type { TopBereich } from './top3';
@@ -17,6 +17,19 @@ import type { TopBereich } from './top3';
 export interface BriefingAntwort { tag: string; bereich: TopBereich; saetze: string[]; text: string }
 
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
+
+/**
+ * Der engste gesetzte Fokus: heute, sonst diese Woche, sonst diesen Monat — Mein Fokus vor Unser. Prüf-Fund 11.10.: nur Sätze des LAUFENDEN
+ * Zeitraums (`fokusSichtFuer` leert vergangene) — einer ohne Zeitraum (`unbekannt`, vor dem 11.10. gesetzt) steht nie als „heute“ da.
+ */
+export function fokusFuerBriefing(horizonte: Pick<FokusSicht['horizonte'], 'tag' | 'woche' | 'monat'>): BriefingZahlen['fokus'] {
+  for (const wann of ['tag', 'woche', 'monat'] as const) {
+    const h = horizonte[wann];
+    const text = ([h.mein, h.unser].find(c => c.text.trim() && !c.unbekannt)?.text ?? '').trim();
+    if (text) return { text, wann };
+  }
+  return null;
+}
 
 /** Die Zahlen des Briefings für eine Person und einen Bereich (rein aus Lesequellen). */
 export async function briefingZahlen(person: string, bereich: TopBereich, jetzt: Date): Promise<{ tag: string; zahlen: BriefingZahlen } | null> {
@@ -32,12 +45,7 @@ export async function briefingZahlen(person: string, bereich: TopBereich, jetzt:
   // Der erste mit Uhrzeit (Ganztägiges steht in der Liste vorn, hat aber keine Uhr).
   const erster = termine.find(x => !x.ganztags) ?? termine[0];
   const f = fokus && !('fehler' in fokus) ? fokus : null;
-  // Der engste gesetzte Fokus: heute, sonst diese Woche, sonst diesen Monat — Mein Fokus vor Unser.
-  let fokusText: BriefingZahlen['fokus'] = null;
-  if (f) for (const wann of ['tag', 'woche', 'monat'] as const) {
-    const h = f.horizonte[wann]; const text = (h.mein.text || h.unser.text || '').trim();
-    if (text) { fokusText = { text, wann }; break; }
-  }
+  const fokusText = f ? fokusFuerBriefing(f.horizonte) : null;
   const festgelegt = block.festgelegt?.zeilen ?? [];
   const top3: BriefingZahlen['top3'] = festgelegt.length
     ? { art: 'festgelegt', titel: festgelegt.map(x => x.titel), erledigt: festgelegt.filter(x => x.erledigt).length }
