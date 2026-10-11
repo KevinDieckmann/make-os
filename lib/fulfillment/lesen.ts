@@ -9,7 +9,7 @@ import type { KreislaufId } from '@/lib/crm/planung';
 import {
   FULFILLMENT_VERSION,
   type VorlagenDatei, type ProzessVorlage, type ProzessKnoten, type Uebergang, type Freigabepunkt, type Rolle, type Herkunft, type Baustein, type Frage,
-  type RitualVorlage, type FulfillmentEinstellungen, type ImportLauf, type AnalyseAgentId, type BausteinArt,
+  type RitualVorlage, type FulfillmentEinstellungen, type ImportLauf, type AnalyseAgentId, type BausteinArt, type AblaufForm, type Rhythmus,
   type FaelleDatei, type Fall, type FallKnoten, type Vereinbarung, type Stakeholder, type Entscheidung, type Mitschrift, type WertKontoEintrag,
   type KundeDatei, type KundenLink, type FormularStand, type PulsAnfrage, type Puls, type Unterlage,
   type DossierDatei, type Dossier, type Abschnitt, type AbschnittId, type Aussage, type Quelle, type AnalyseLauf, type Massnahme, type LaufStatus,
@@ -37,6 +37,10 @@ const textMap = (v: unknown): Record<string, string> => Object.fromEntries(Objec
 const ZUSTAENDIG = ['intern', 'kunde', 'beide'] as const;
 export const KREISLAUF_IDS = ['kanaele', 'leads', 'deals', 'followup', 'fulfillment', 'nachher', 'wiederkauf'] as const satisfies readonly KreislaufId[];
 export const ANALYSE_AGENTEN = ['a0', 'ap', 'tb', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10', 'a11', 'a12', 'a13'] as const satisfies readonly AnalyseAgentId[];
+/** Die Rhythmen eines Rituals — EINE Liste für Säuberer und Vorlagen-Ops (Typ `Rhythmus`; Texte in lib/fulfillment/prozesse/rituale.ts). */
+export const RITUAL_RHYTHMEN = ['einmal', 'taeglich', 'werktags', 'woche', 'zwei-wochen', 'monat', 'quartal'] as const satisfies readonly Rhythmus[];
+/** Die Zeichenformen eines Ablaufs — EINE Liste für Säuberer, Vorlagen-Ops und Import (Typ `AblaufForm`). */
+export const ABLAUF_FORMEN = ['baum', 'trichter', 'fluss', 'zeitachse', 'kreis'] as const satisfies readonly AblaufForm[];
 export const BAUSTEIN_ARTEN = ['aufgabe', 'dokument', 'skript', 'checkliste', 'mail', 'kennzahl', 'ritual', 'formular', 'workbook', 'analyse', 'freigabe'] as const satisfies readonly BausteinArt[];
 export const ABSCHNITT_IDS = ['fazit', 'unternehmen', 'gesellschafter', 'markt', 'aussen', 'vertrieb', 'reputation', 'finanzen', 'chancen_risiken', 'good_bad', 'hypothesen', 'fragen', 'recht'] as const satisfies readonly AbschnittId[];
 const LAUF_STATUS = ['bereit', 'laeuft', 'fertig', 'fehler', 'abgebrochen', 'uebernommen', 'verworfen'] as const satisfies readonly LaufStatus[];
@@ -85,7 +89,7 @@ export function vorlageAus(o: O): ProzessVorlage | null {
   if (!i || !art || !titel) return null;
   const zh = texte(o.zeichenhinweise);
   return sauber<ProzessVorlage>({
-    id: i, art, titel, beschreibung: s(o.beschreibung), form: wahl(o.form, ['baum', 'trichter', 'fluss', 'zeitachse'] as const),
+    id: i, art, titel, beschreibung: s(o.beschreibung), form: wahl(o.form, ABLAUF_FORMEN),
     quelleHinweis: s(o.quelleHinweis), vorbehalt: s(o.vorbehalt), zeichenhinweise: zh.length ? zh : undefined,
     knoten: liste(o.knoten, knoten), uebergaenge: liste(o.uebergaenge, uebergang), freigaben: liste(o.freigaben, freigabepunkt), rollen: liste(o.rollen, rolle),
     fassung: n(o.fassung) ?? 1, herkunft: herkunft(o.herkunft), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '',
@@ -121,7 +125,7 @@ export function bausteinAus(o: O): Baustein | null {
 }
 const TEILNEHMENDE = ['intern', 'entscheider', 'tagesverantwortlich', 'team'] as const;
 const ritual = (o: O): RitualVorlage | null => {
-  const i = id(o.id), titel = s(o.titel), rhythmus = wahl(o.rhythmus, ['einmal', 'woche', 'zwei-wochen', 'monat', 'quartal'] as const);
+  const i = id(o.id), titel = s(o.titel), rhythmus = wahl(o.rhythmus, RITUAL_RHYTHMEN);
   if (!i || !titel || !rhythmus) return null;
   return { id: i, titel, rhythmus, dauerMin: n(o.dauerMin) ?? 0, agenda: texte(o.agenda), teilnehmende: texte(o.teilnehmende).filter((x): x is (typeof TEILNEHMENDE)[number] => (TEILNEHMENDE as readonly string[]).includes(x)), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '' };
 };

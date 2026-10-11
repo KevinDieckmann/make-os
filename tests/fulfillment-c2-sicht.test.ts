@@ -46,7 +46,9 @@ const EINGABE = (extra: Partial<SichtEingabe> = {}): SichtEingabe => ({
   modus: 'voll', heute: '2026-10-10',
   mandat: { id: 'm-1', titel: 'Mandat Eins', kunde: 'Erfundene Werke GmbH', ziele: [{ id: 'z1', text: 'Termine', ziel: '10', ist: '4' }], honorar: { betrag: 77777 }, health: { stimmung: 12 }, notiz: 'MANDAT-NOTIZ' } as never,
   paket: 'Paket Eins', fall: FALL,
-  bausteine: [B('fb-ok'), B('fb-nurintern', { nur_intern: true }), B('fb-vorverkauf', { pruefen_vor_verkauf: true }), B('fb-urheber', { urheberPruefen: { seit: '2026-10-01', grund: 'x' } }), B('fb-intern-fuellt', { kundeFuellt: false })],
+  // Marken in der Form, die C1 speichert (Schlagworte `nur-intern`/`pruefen-vor-verkauf`, Vermerk `urheber-geprueft:<id>` in `marken`) — EINE Regel `fuerKundenFrei`.
+  bausteine: [B('fb-ok'), B('fb-nurintern', { tags: ['nur-intern'] }), B('fb-vorverkauf', { tags: ['pruefen-vor-verkauf'] }), B('fb-urheber', { urheberPruefen: { seit: '2026-10-01', grund: 'x' } }), B('fb-intern-fuellt', { kundeFuellt: false })],
+  marken: { m: 'MARKE-INTERN' },
   rituale: [{ id: 'fr-1', titel: 'Wochen-Check', rhythmus: 'woche', dauerMin: 15, agenda: ['AGENDA-INTERN'], teilnehmende: ['intern'], geaendert: '', geaendertVon: '' }],
   kunde: { ...leerKunde(), formulare: [{ mandatId: 'm-1', bausteinId: 'fb-ok', fassung: 1, antworten: { q1: 'Antwort eins', 'q-fremd': 'ANTWORT-FREMDE-FRAGE' }, fertig: [], geaendertAm: '2026-10-05', quelle: 'kunde' }, { mandatId: 'm-2', bausteinId: 'fb-ok', fassung: 1, antworten: { q1: 'ANTWORT-ANDERES-MANDAT' }, fertig: [], geaendertAm: '2026-10-05', quelle: 'kunde' }],
     unterlagen: [{ id: 'ud-1', mandatId: 'm-1', name: 'DATEINAME-INTERN.pdf', typ: 'application/pdf', groesse: 1, am: '2026-10-01', herkunft: 'kunde', zweck: 'sonstig', status: 'ungeprueft' }] },
@@ -90,6 +92,8 @@ describe('Kunden-Sicht: nur die Positivliste', () => {
     expect(s.wartet).toEqual([{ titel: 'Wartet', seit: '01.10.2026' }]);
     expect(s.entscheidungen).toEqual([{ titel: 'Geteilt', am: '02.10.2026', status: 'entschieden', inhalt: 'Inhalt geteilt' }]);
     expect(s.formulare.map(f => f.titel)).toEqual(['Formular ok']);
+    // Mit Vermerk „vor Verkauf geprüft“ (C1-Marke) erscheint das gekaufte Formular — ohne nie.
+    expect(kundenSicht(EINGABE({ marken: { 'urheber-geprueft:fb-vorverkauf': '2026-10-09|person-intern' } })).formulare.map(f => f.titel)).toEqual(['Formular ok', 'Formular vorverkauf']);
     expect(s.formulare[0].antworten).toEqual({ q1: 'Antwort eins' });
     expect(s.upload).toEqual({ erlaubt: true, eingegangen: 1, frei: 19 });
     expect(s.rituale).toEqual([{ titel: 'Wochen-Check', rhythmus: 'wöchentlich' }]);

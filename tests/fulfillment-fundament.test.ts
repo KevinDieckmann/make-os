@@ -295,7 +295,9 @@ describe('Muster und Code neutral (keine Namen, keine Preise)', () => {
     expect(MUSTER_ONBOARDING).toHaveLength(8);
     expect(MUSTER_ONBOARDING.filter(s => !s.zaehltFuerFertig).map(s => s.schluessel)).toEqual(['playbook']);
     expect(MUSTER_PLAYBOOK.fragen).toHaveLength(9);
-    expect(MUSTER_RITUALE.map(r => [r.rhythmus, r.dauerMin])).toEqual([['einmal', 90], ['woche', 15], ['monat', 60], ['quartal', 120]]);
+    // 11.10.: das tägliche Vertriebs-Huddle (werktags, 15 Min., MIT Zahlenrunde) gehört zum Muster.
+    expect(MUSTER_RITUALE.map(r => [r.rhythmus, r.dauerMin])).toEqual([['einmal', 90], ['werktags', 15], ['woche', 15], ['monat', 60], ['quartal', 120]]);
+    expect(MUSTER_RITUALE.find(r => r.rhythmus === 'werktags')!.agenda[0]).toMatch(/Zahlen/);
     // Zonen der Landkarte: Dach 4, Etagen 6, Fundament 5 — Etage 5 verweist auf die drei Pakete
     const zonen = MUSTER_LANDKARTE.knoten.filter(k => k.zone).map(k => k.zone);
     expect([zonen.filter(z => z === 'dach').length, zonen.filter(z => z === 'etage').length, zonen.filter(z => z === 'fundament').length]).toEqual([4, 6, 5]);
@@ -375,7 +377,7 @@ describe('Register, Löschfristen, Art. 17', () => {
   });
 });
 
-// ── Routen: Tor, Sicht, Stubs, Hubs ────────────────────────────────────────────────────────────────────────────────────────────────────
+// ── Routen: Tor, Sicht, Hubs ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 type H = (r: Request) => Promise<Response>;
 const sitzung = (person: string) => ({ 'content-type': 'application/json', 'x-make-user': person });
@@ -385,7 +387,7 @@ const rufe = async (pfad: string, methode: string, kopf: Record<string, string>,
   return m[methode](new Request(`http://test/api/${pfad}${suche}`, { method: methode, headers: kopf, ...(methode === 'GET' ? {} : { body: '{}' }) }));
 };
 
-describe('Routen: Business only, Tor, Stubs', () => {
+describe('Routen: Business only, Tor, Sicht', () => {
   beforeAll(async () => {
     const db = await import('@/lib/store/local-db');
     const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', extra: Record<string, unknown> = {}) =>
@@ -403,14 +405,15 @@ describe('Routen: Business only, Tor, Stubs', () => {
     rmSync(ordner, { recursive: true, force: true });
   });
 
-  it('?space=privat → 403 (Route und Middleware), ?space=business → Stub', async () => {
+  it('?space=privat → 403 (Route und Middleware), ?space=business → die echte Übersicht (C1)', async () => {
     expect((await rufe('fulfillment', 'GET', sitzung('pia'), '?space=privat')).status).toBe(403);
     expect((await rufe('fulfillment/fall', 'GET', sitzung('olaf'), '?space=privat')).status).toBe(403);
     const { sichtFremd } = await import('@/lib/zugang/sicht-bereich');
     for (const p of ['/api/fulfillment', '/api/fulfillment/fall', '/api/fulfillment/personen', '/api/kunde/kl-0123456789abcdef01234567']) expect(sichtFremd(p, 'privat'), p).toBe(true);
+    // Zusammengeführt (11.10.): C1 hat den Stub gefüllt — die Übersicht antwortet, ohne Vorlagen leer.
     const r = await rufe('fulfillment', 'GET', sitzung('pia'), '?space=business');
-    expect(r.status).toBe(501);
-    expect(await r.json()).toEqual({ ok: false, fehler: 'kommt mit Paket C1' });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ ok: true, prozesse: [] });
   });
 
   it('fremder Haushalt und Testkunde → 403; Dienstweg schreibt nie (403), liest mit Person aus dem Haushalt', async () => {
@@ -420,16 +423,16 @@ describe('Routen: Business only, Tor, Stubs', () => {
     }
     expect((await rufe('fulfillment', 'PATCH', dienst('pia'))).status).toBe(403);
     expect((await rufe('fulfillment/fall', 'POST', dienst('pia'))).status).toBe(403);
-    expect((await rufe('fulfillment', 'GET', dienst('pia'))).status).toBe(501);
+    expect((await rufe('fulfillment', 'GET', dienst('pia'))).status).toBe(200);
   });
 
-  it('Personenteil: nie für ein Konto „nur Business“; Inhaber und volle Mitglieder erreichen den Stub', async () => {
+  it('Personenteil: nie für ein Konto „nur Business“; Inhaber und volle Mitglieder erreichen die Route', async () => {
     expect((await rufe('fulfillment/personen', 'GET', sitzung('partnerin'))).status).toBe(403);
     // C3 (10.10.): Inhaber und volle Mitglieder kommen durch das Tor — ohne Mandat (?m=) antwortet die Route mit 400.
     expect((await rufe('fulfillment/personen', 'GET', sitzung('pia'))).status).toBe(400);
     expect((await rufe('fulfillment/personen', 'GET', sitzung('olaf'))).status).toBe(400);
     // der Rest von Fulfillment ist Business — auch für „nur Business“ sichtbar
-    expect((await rufe('fulfillment', 'GET', sitzung('partnerin'))).status).toBe(501);
+    expect((await rufe('fulfillment', 'GET', sitzung('partnerin'))).status).toBe(200);
   });
 
   it('Leseteil nur per Sitzung; öffentliche Wege antworten bis C2 mit derselben 404', async () => {

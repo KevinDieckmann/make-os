@@ -13,7 +13,7 @@ import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, eintragStand, UNTERLAGEN_ORDNER } from '@/lib/fulfillment/speicher';
 import { fallUmfeld, ableitungFuer, wirkungVermerken } from '@/lib/fulfillment/prozesse/fall-server';
 import { fallWirksam } from '@/lib/fulfillment/prozesse/onboarding';
-import { wirkungsDokument, wirkungDateiname, fallstudieEntwurf } from '@/lib/fulfillment/prozesse/wirkung';
+import { wirkungsDokument, wirkungDateiname, wirkungAnzeigename, fallstudieEntwurf } from '@/lib/fulfillment/prozesse/wirkung';
 import { vorlagenAnwenden } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import { MANDAT_ID } from '@/lib/fulfillment/grenzen';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -26,6 +26,12 @@ export const dynamic = 'force-dynamic';
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Das PDF aus der verschlüsselten Ablage — null, wenn es fehlt oder der Name nicht (mehr) zulässig ist (Fassung vor dem 11.10. hieß `….pdf`). */
+async function berichtLesen(name: string): Promise<Buffer | null> {
+  const { bildOeffnen } = await import('@/lib/store/bild-ablage');
+  try { return await bildOeffnen(UNTERLAGEN_ORDNER, name); } catch { return null; }
+}
+
 async function grundlage(mandatId: string, zitat?: { text: string; einwilligungAm: string; wie: string }) {
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { h, crm, vorlagen, faelle, kunde } = await fallUmfeld([mandatId]);
@@ -37,7 +43,7 @@ async function grundlage(mandatId: string, zitat?: { text: string; einwilligungA
     try { const { ladeRegister } = await import('@/lib/gesellschaften/server'); const reg = await ladeRegister(h); const x = (reg?.gesellschaften ?? []).find(e => e.id === m.gesellschaft) as { firmierung?: string; name?: string } | undefined; return x?.firmierung || x?.name; } catch { return undefined; }
   })();
   const z = zitat ?? f.wirkung?.zitat;
-  const dok = wirkungsDokument({ fall: w, mandat: m, paket: vorlagen.prozesse.find(p => p.id === f.vorlageId)?.titel, ...(absender ? { absender } : {}), heute, bausteine: vorlagen.bausteine, ...(z ? { zitat: z } : {}) });
+  const dok = wirkungsDokument({ fall: w, mandat: m, paket: vorlagen.prozesse.find(p => p.id === f.vorlageId)?.titel, ...(absender ? { absender } : {}), heute, bausteine: vorlagen.bausteine, marken: vorlagen.marken, ...(z ? { zitat: z } : {}) });
   return { h, m, f, dok, heute, jetzt, vorlagen };
 }
 
@@ -52,11 +58,11 @@ export async function GET(req: Request) {
   if (url.searchParams.get('vorschau') === '1') return NextResponse.json({ ok: true, dokument: g.dok, erstellt: g.f.wirkung ?? null });
   const name = g.f.wirkung?.dateiName;
   if (!name) return NextResponse.json({ ok: false, fehler: 'Noch kein Wirkungsbericht erstellt.' }, { status: 404 });
-  const { bildOeffnen } = await import('@/lib/store/bild-ablage');
-  const bytes = await bildOeffnen(UNTERLAGEN_ORDNER, name);
-  if (!bytes) return NextResponse.json({ ok: false, fehler: 'Die Datei des Berichts fehlt.' }, { status: 404 });
+  const bytes = await berichtLesen(name);
+  if (!bytes) return NextResponse.json({ ok: false, fehler: 'Die Datei des Berichts fehlt — bitte neu erstellen.' }, { status: 404 });
+  const tag = /^\d{4}-\d{2}-\d{2}/.test(g.f.wirkung?.erstelltAm ?? '') ? g.f.wirkung!.erstelltAm.slice(0, 10) : g.heute;
   return new NextResponse(new Uint8Array(bytes), {
-    headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="${name}"`, 'x-content-type-options': 'nosniff', 'content-security-policy': 'sandbox', 'cache-control': 'no-store' },
+    headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="${wirkungAnzeigename(tag)}"`, 'x-content-type-options': 'nosniff', 'content-security-policy': 'sandbox', 'cache-control': 'no-store' },
   });
 }
 
@@ -89,16 +95,15 @@ export async function POST(req: Request) {
   if (b.aktion === 'fuer-mail') {
     const name = g.f.wirkung?.dateiName;
     if (!name) return NextResponse.json({ ok: false, fehler: 'Erst den Wirkungsbericht erstellen.' }, { status: 409 });
-    const { bildOeffnen } = await import('@/lib/store/bild-ablage');
-    const bytes = await bildOeffnen(UNTERLAGEN_ORDNER, name);
-    if (!bytes) return NextResponse.json({ ok: false, fehler: 'Die Datei des Berichts fehlt.' }, { status: 404 });
+    const bytes = await berichtLesen(name);
+    if (!bytes) return NextResponse.json({ ok: false, fehler: 'Die Datei des Berichts fehlt — bitte neu erstellen.' }, { status: 404 });
     const { ablegen } = await import('@/lib/dateien/ablage');
-    const e = await ablegen(g.h, z.person, { art: 'sonstig', titel: `Wirkungsbericht ${g.m.kunde} ${g.heute}`.slice(0, 160), mandatId: g.m.id, ...(g.m.firmaId ? { firmaId: g.m.firmaId } : {}) }, { bytes, name, typ: 'application/pdf' }, g.jetzt.toISOString());
+    const e = await ablegen(g.h, z.person, { art: 'sonstig', titel: `Wirkungsbericht ${g.m.kunde} ${g.heute}`.slice(0, 160), mandatId: g.m.id, ...(g.m.firmaId ? { firmaId: g.m.firmaId } : {}) }, { bytes, name: wirkungAnzeigename(g.heute), typ: 'application/pdf' }, g.jetzt.toISOString());
     const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
     const kontakte = await kontakteFuerVerarbeitung();
     const k = g.m.kontaktIds.map(id => kontakte.find(x => x.id === id)).find(x => !!x?.email);
     return NextResponse.json({
-      ok: true, datei: { id: e.id, name }, anrede: k?.anrede === 'Du' ? 'Du' : 'Sie', gesellschaft: g.m.gesellschaft,
+      ok: true, datei: { id: e.id, name: wirkungAnzeigename(g.heute) }, anrede: k?.anrede === 'Du' ? 'Du' : 'Sie', gesellschaft: g.m.gesellschaft,
       an: k?.email ? { email: k.email, ...(k.vorname || k.nachname ? { name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() } : {}) } : null,
       ...(k?.vorname ? { vorname: k.vorname } : {}),
     });
@@ -107,7 +112,7 @@ export async function POST(req: Request) {
     const mitNamen = b.mitNamen === true && !!g.f.wirkung?.zitat?.einwilligungAm;
     const e = fallstudieEntwurf(g.dok, mitNamen);
     const r = await fulfillmentAendern('vorlagen', d => vorlagenAnwenden(d, [{ op: 'baustein', eintrag: { art: 'dokument', titel: e.titel, text: e.text, gliederung: e.gliederung, tags: ['fallstudie', 'entwurf'], kundeSichtbar: false } }], {
-      person: z.person, jetzt: g.jetzt.toISOString(), heute: g.heute, standVon: eintragStand, neueId: p => neueKennung(p), inhaber: false,
+      person: z.person, jetzt: g.jetzt.toISOString(), heute: g.heute, standVon: eintragStand, neueId: p => neueKennung(p),
     }), werAus(req), g.h);
     if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
     return NextResponse.json({ ok: true, bausteinId: r.geaendert[0], text: mitNamen ? 'Fallstudie als Entwurf in der Bibliothek (mit Namen — Einwilligung vermerkt).' : 'Fallstudie als anonymer Entwurf in der Bibliothek.' });

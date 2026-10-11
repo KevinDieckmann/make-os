@@ -35,11 +35,12 @@ import { formulareDesFalls, formularProzent, formularStandVon, formulareProzent,
 import { anfrageAnlegen, letzterPuls, offeneAnfrage, pulsAnnehmen, pulsHand, pulsListe } from './puls';
 import { kundenSicht, kundeTauglich, kundeHinweis, type KundenSicht } from './sicht';
 import { reportZusatz } from './report-zusatz';
+import { kundenGesperrt } from '../prozesse/bausteine';
 import { kundeFristenAnwenden, unterlageDatei, verwaisteDateien, alleTexte } from './fristen';
 import { kundeTypErkennen, ohneMetadaten, uploadFrei, UPLOAD_GRENZEN, type KundeDateiTyp } from './upload';
 import { neueLinkKennung, neuesToken, tokenHash, neuePulsAnfrageKennung, neuePulsKennung, neueUnterlageKennung } from './token';
 import type {
-  Baustein, Fall, FormularStand, FristenKontext, KundeAuskunft, KundeDatei, KundeKurz, KundenLink, MorgenlaufTeil, Puls, PulsAnfrage, ReportZusatz, Unterlage, VorlagenDatei,
+  Fall, FormularStand, FristenKontext, KundeAuskunft, KundeDatei, KundeKurz, KundenLink, MorgenlaufTeil, Puls, PulsAnfrage, ReportZusatz, Unterlage, VorlagenDatei,
 } from '../typen';
 
 // ── Schalter, Mandat, Fall ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ export async function sichtFuer(e: { mandat: Mandat; modus: 'voll' | 'puls'; lin
   const rechte = e.link?.rechte ?? { formular: true, upload: true, puls: true };
   const frei = e.link ? uploadFrei(unterlagenDesLinks(e.kunde, e.link.id)).dateien : UPLOAD_GRENZEN.dateienJeLink;
   return kundenSicht({
-    modus: e.modus, heute: e.heute, mandat: e.mandat, paket: paketName(e.mandat, e.crm, fall, e.vorlagen), fall, bausteine: e.vorlagen.bausteine, rituale: e.vorlagen.rituale,
+    modus: e.modus, heute: e.heute, mandat: e.mandat, paket: paketName(e.mandat, e.crm, fall, e.vorlagen), fall, bausteine: e.vorlagen.bausteine, marken: e.vorlagen.marken, rituale: e.vorlagen.rituale,
     kunde: e.kunde, rechte, standVon, datenschutz: await hinweisLaden(), uploadFrei: frei,
     ...(e.anfrage ? { pulsOffen: !e.anfrage.beantwortetAm && e.anfrage.offenBis >= e.heute } : {}),
   });
@@ -131,23 +132,23 @@ export interface KundeStand {
   unterlagen: Unterlage[]; upload: { dateien: number; bytes: number } | null; kurz: KundeKurz;
 }
 
-function internFormulare(fall: Fall | null, bausteine: readonly Baustein[], kunde: KundeDatei, mandatId: string): InternFormular[] {
-  return formulareDesFalls(fall, bausteine).map(b => {
+function internFormulare(fall: Fall | null, v: Pick<VorlagenDatei, 'bausteine' | 'marken'>, kunde: KundeDatei, mandatId: string): InternFormular[] {
+  return formulareDesFalls(fall, v.bausteine).map(b => {
     const st = formularStandVon(kunde, mandatId, b.id);
     return {
-      bausteinId: b.id, schluessel: formularSchluessel(mandatId, b.id), titel: b.titel, kundeFuellt: b.kundeFuellt === true, kundeTauglich: kundeTauglich(b), prozent: formularProzent(b, st), stand: st ? standVon(st) : 'neu',
+      bausteinId: b.id, schluessel: formularSchluessel(mandatId, b.id), titel: b.titel, kundeFuellt: b.kundeFuellt === true, kundeTauglich: kundeTauglich(b, v), prozent: formularProzent(b, st), stand: st ? standVon(st) : 'neu',
       abschnitte: abschnitteVon(b).map(a => ({ schluessel: a.schluessel, titel: a.titel, fertig: !!st?.fertig.includes(a.schluessel), fragen: a.fragen.map(q => ({ id: q.id, frage: q.frage, art: q.art, ...(q.optionen?.length ? { optionen: [...q.optionen] } : {}) })) })),
       antworten: { ...(st?.antworten ?? {}) }, ...(st ? { geaendertAm: st.geaendertAm, quelle: st.quelle, fassung: st.fassung } : {}), aktuelleFassung: b.fassung,
     };
   });
 }
 
-function kurzAus(kunde: KundeDatei, mandatId: string, schalter: SchalterStand, fall: Fall | null, bausteine: readonly Baustein[], heute: string, ende: string | null): KundeKurz {
+function kurzAus(kunde: KundeDatei, mandatId: string, schalter: SchalterStand, fall: Fall | null, v: Pick<VorlagenDatei, 'bausteine' | 'marken'>, heute: string, ende: string | null): KundeKurz {
   const akt = aktiverLink(kunde, mandatId, heute, ende);
   const letzter = letzterLink(kunde, mandatId);
   const link: KundeKurz['link'] = !schalter.an ? 'aus' : akt ? 'aktiv' : letzter ? linkStatus(letzter, heute, ende) : 'keiner';
   const p = letzterPuls(kunde, mandatId);
-  const formulare = formulareDesFalls(fall, bausteine).filter(b => b.kundeFuellt === true && kundeTauglich(b));
+  const formulare = formulareDesFalls(fall, v.bausteine).filter(b => b.kundeFuellt === true && kundeTauglich(b, v));
   return {
     link, formularProzent: formulareProzent(formulare, kunde, mandatId),
     ungepruefteUnterlagen: kunde.unterlagen.filter(u => u.mandatId === mandatId && u.status === 'ungeprueft').length,
@@ -169,11 +170,11 @@ export async function kundeStand(mandatId: string, heute = localDay()): Promise<
     mandat: { id: m.id, titel: m.titel, kunde: m.kunde }, schalter, fall: !!fall,
     link: akt ? linkOeffentlich(akt, heute, ende) : null,
     verlauf: kunde.links.filter(l => l.mandatId === m.id).sort((a, b) => (a.erstelltAm < b.erstelltAm ? 1 : -1)).slice(0, 5).map(l => linkOeffentlich(l, heute, ende)),
-    formulare: internFormulare(fall, vorlagen.bausteine, kunde, m.id),
+    formulare: internFormulare(fall, vorlagen, kunde, m.id),
     puls: { liste: pulsListe(kunde, m.id).slice(0, 26), offen: offen ? { id: offen.id, offenBis: offen.offenBis } : null, schwelle: vorlagen.einstellungen.pulsSchwelle, health: m.health?.stimmung ?? null },
     unterlagen: kunde.unterlagen.filter(u => u.mandatId === m.id).sort((a, b) => (a.am < b.am ? 1 : -1)),
     upload: akt ? uploadFrei(unterlagenDesLinks(kunde, akt.id)) : null,
-    kurz: kurzAus(kunde, m.id, schalter, fall, vorlagen.bausteine, heute, ende),
+    kurz: kurzAus(kunde, m.id, schalter, fall, vorlagen, heute, ende),
   };
 }
 
@@ -333,7 +334,7 @@ export async function antwortenExport(mandatId: string, format: 'csv' | 'pdf', j
   const x = await mandatMitFall(mandatId);
   if ('status' in x) return x;
   const [v, kunde] = await Promise.all([fulfillmentLesen('vorlagen'), fulfillmentLesen('kunde')]);
-  const liste = formulareDesFalls(x.fall, v.bausteine).filter(kundeTauglich)
+  const liste = formulareDesFalls(x.fall, v.bausteine).filter(b => kundeTauglich(b, v))
     .map(b => ({ titel: b.titel, fragen: b.fragen ?? [], antworten: formularStandVon(kunde, x.m.id, b.id)?.antworten ?? {} }));
   if (!liste.length) return nein(404, 'Dieser Fall hat (noch) kein Formular mit Antworten.');
   const stamm = `Antworten-${x.m.kunde.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'Kunde'}-${localDay(jetzt)}`;
@@ -412,7 +413,7 @@ export interface Zugriff { art: 'voll' | 'puls'; link: KundenLink; mandat: Manda
 /** Antworten über den Link — nur Formulare, die der Kunde füllt und die für Kunden taugen. */
 export async function formularKunde(z: Zugriff, roh: Record<string, unknown>, jetzt = new Date()): Promise<Ergebnis> {
   const fall = await fallVon(z.mandat.id);
-  const b = formulareDesFalls(fall, z.vorlagen.bausteine).filter(x => x.kundeFuellt === true && kundeTauglich(x)).find(x => formularSchluessel(z.mandat.id, x.id) === roh.formular);
+  const b = formulareDesFalls(fall, z.vorlagen.bausteine).filter(x => x.kundeFuellt === true && kundeTauglich(x, z.vorlagen)).find(x => formularSchluessel(z.mandat.id, x.id) === roh.formular);
   // 409 (nicht 404): der Link selbst ist gültig — die 404 bleibt dem einen Satz „nicht (mehr) gültig“ vorbehalten.
   if (!b) return nein(409, 'Dieses Formular gibt es hier nicht (mehr) — bitte neu laden.', { neuLaden: true });
   const heute = localDay(jetzt);
@@ -485,17 +486,23 @@ async function pulsAufmerksamkeit(m: Mandat, p: Puls, heute: string): Promise<bo
 
 // ── Schnittstellen für die anderen Pakete (feste Signaturen aus C0) ─────────────────────────────────────────────────────────────────────
 
-/** Kurzform je Mandat für Cockpit und Fall (Link-Stand, Formular in %, ungeprüfte Unterlagen, Puls) — Schlüssel = Mandat-Kennung. */
+/**
+ * Kurzform je Mandat für Cockpit und Fall (Link-Stand, Formular in %, ungeprüfte Unterlagen, Puls) — Schlüssel = Mandat-Kennung.
+ * Liest NUR rohe Bestände (Regel „Kurzfassungen lesen roh“, 11.10.): nie `fallLesen`/`fallVon` — `fallLesen` ruft über `fallUmfeld` genau diese
+ * Funktion; das war eine Endlos-Schleife (Speicherfehler beim Zusammenführen). Für die Formulare genügt der gespeicherte Fall: die Ableitung
+ * (`fallWirksam`) ändert nur den Status der Onboarding-Schritte, nie welche Knoten einen Baustein tragen oder „entfällt“ sind.
+ * Wächter: tests/fulfillment-zusammen.test.ts.
+ */
 export async function kundeKurzFuer(mandatIds: readonly string[]): Promise<Record<string, KundeKurz>> {
   const h = await fulfillmentHaushalt();
-  const [kunde, vorlagen, crm] = await Promise.all([fulfillmentLesen('kunde', h), fulfillmentLesen('vorlagen', h), crmLaden()]);
+  const [kunde, vorlagen, crm, faelle] = await Promise.all([fulfillmentLesen('kunde', h), fulfillmentLesen('vorlagen', h), crmLaden(), fulfillmentLesen('faelle', h)]);
   const schalter = schalterStand(vorlagen.einstellungen, umgebungAn());
   const heute = localDay();
   const raus: Record<string, KundeKurz> = {};
   for (const id of mandatIds) {
     const m = businessMandat(crm, id);
-    const fall = m ? await fallVon(id) : null;
-    raus[id] = kurzAus(kunde, id, schalter, fall, vorlagen.bausteine, heute, m ? mandatsEnde(m) : null);
+    const fall = m ? faelle.faelle[id] ?? null : null;
+    raus[id] = kurzAus(kunde, id, schalter, fall, vorlagen, heute, m ? mandatsEnde(m) : null);
   }
   return raus;
 }
@@ -538,7 +545,7 @@ export async function reportZusatzFuer(mandatId: string, heute: string): Promise
     const m = businessMandat(crm, mandatId);
     if (!m) return null;
     const link = schalterStand(vorlagen.einstellungen, umgebungAn()).an ? aktiverLink(kunde, m.id, heute, mandatsEnde(m)) : null;
-    return reportZusatz(fall, m, kunde, heute, !!link?.rechte.puls);
+    return reportZusatz(fall, m, kunde, heute, !!link?.rechte.puls, kundenGesperrt(vorlagen.bausteine, vorlagen));
   } catch (e) {
     console.error('[fulfillment] Report-Zusatz:', e instanceof Error ? e.message.slice(0, 160) : e);
     return null;
@@ -587,7 +594,9 @@ export async function kundeFristen(k: FristenKontext): Promise<Record<string, nu
   }
   // Verwaiste Dateien (Art. 17 entfernt nur die Metadaten): Namen, die in keinem Fulfillment-Bestand mehr vorkommen, älter als ein Tag.
   const ordner = path.join(datenOrdner(), UNTERLAGEN_ORDNER);
-  const namen = await fs.readdir(ordner).catch(() => [] as string[]);
+  // Nur Namen, die die Ablage selbst vergibt (`BILD_NAME`) — alles andere gehört nicht uns und würde `bildEntfernen` ablehnen (ganzer Lauf scheitert).
+  const { BILD_NAME } = await import('@/lib/store/datei-huelle.mjs');
+  const namen = (await fs.readdir(ordner).catch(() => [] as string[])).filter(n => BILD_NAME.test(n));
   if (namen.length) {
     const bekannt = new Set<string>();
     for (const art of ['kunde', 'faelle', 'dossiers', 'vorlagen'] as const) alleTexte(await loadJson<unknown>(fulfillmentSpeicherFuer(art, h)).catch(() => null), bekannt);

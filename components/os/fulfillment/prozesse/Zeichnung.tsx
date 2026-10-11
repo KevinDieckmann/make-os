@@ -94,7 +94,7 @@ export function Landkarte({ vorlage, zaehler, aktiv, onKnoten, gross }: { vorlag
 const ART_FARBE: Record<string, string> = { einstieg: LEUCHT.gut, stufe: LEUCHT.planung, ausstieg: LEUCHT.kritisch, routine: LEUCHT.agenten };
 const KANTE_TEXT: Record<Uebergang['art'], string> = { weiter: 'weiter', rueckweg: 'Rückweg', ausstieg: 'Ausstieg', schleife: 'Schleife', kreislauf: 'zurück an den Anfang' };
 
-/** Ein Ablauf in seiner Zeichenform (Trichter · Fluss · Zeitachse · Baum) — am Handy als Liste mit Wegen. */
+/** Ein Ablauf in seiner Zeichenform (Trichter · Fluss · Zeitachse · Kreis · Baum) — am Handy als Liste mit Wegen. Lage rechnet NUR ablauf-bild.ts. */
 export function AblaufBild({ vorlage, aktiv, onStufe }: { vorlage: Pick<ProzessVorlage, 'knoten' | 'uebergaenge' | 'form'>; aktiv?: string; onStufe: (id: string) => void }) {
   const [ref, breite] = useBreite();
   const handy = breite > 0 && breite < HANDY_BREITE;
@@ -124,6 +124,12 @@ export function AblaufBild({ vorlage, aktiv, onStufe }: { vorlage: Pick<ProzessV
               <marker id="ff-ab-pfeil" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={C.inkDim} /></marker>
             </defs>
             {lage.form === 'zeitachse' && lage.stufen.length > 0 && <line x1={16} x2={lage.breite - 16} y1={120} y2={120} stroke={C.inkLeise} strokeOpacity={0.5} />}
+            {(lage.ringe ?? []).filter(r => !r.nurLage).map((r, i) => (
+              <g key={`ring-${i}`}>
+                <circle cx={r.cx} cy={r.cy} r={r.r} fill="none" stroke={r.gestrichelt ? LEUCHT.gut : C.inkLeise} strokeOpacity={r.gestrichelt ? 0.6 : 0.22} strokeWidth={r.gestrichelt ? 1.4 : 1} strokeDasharray={r.gestrichelt ? '6 5' : undefined} />
+                {r.titel && r.tx !== undefined && r.ty !== undefined && <text x={r.tx} y={r.ty} fill={C.inkDim} fontSize={11} textAnchor="middle">{r.titel}</text>}
+              </g>
+            ))}
             {lage.phasen.map(p => (
               <g key={p.id}>
                 <rect x={p.x} y={p.y} width={p.b} height={p.h} rx={8} fill={`${LEUCHT.planung}14`} stroke={LEUCHT.planung} strokeOpacity={0.35} />

@@ -17,7 +17,7 @@
 import { promises as fs } from 'fs';
 import { loadJson, updateJson, datenOrdner } from './local-db';
 import { anhaengenVerkettet, type KettenDatei } from './protokoll-kette';
-import { werAus, monatBerlin, protokollKennung, type WerArt } from './aenderungsprotokoll';
+import { werAus, monatBerlin, protokollKennung, type WerArt, type Wer } from './aenderungsprotokoll';
 import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
@@ -92,11 +92,26 @@ export interface LeseOpt { betroffen?: string | null; ids?: readonly string[]; a
 
 /** Einen Lesezugriff notieren (gedrosselt). Wirft nie. */
 export async function protokolliereLesen(req: Request, bereich: LeseBereich, opt: LeseOpt = {}): Promise<void> {
+  let weg: string | undefined;
+  try { weg = new URL(req.url).pathname.slice(0, 80); } catch { weg = undefined; }
+  let wer: Wer;
+  try { wer = werAus(req); } catch { wer = { art: 'system' }; }
+  return protokolliereLesenAls(wer, weg, bereich, opt);
+}
+
+/**
+ * Dasselbe ohne Anfrage — für Leser, die KEINE Route sind, aber im Namen einer Person lesen (ZOE-Werkzeuge, Agenten-Läufe; 11.10.,
+ * erstmals `fulfillment_lage` mit Personenteil). `weg` ist eine feste Kennung des Lesers (z. B. `zoe:fulfillment_lage`), nie ein Inhalt.
+ */
+export function leseZugriffLauf(wer: Wer, weg: string, bereich: LeseBereich, opt: LeseOpt = {}): void {
+  const p = protokolliereLesenAls(wer, weg.slice(0, 80), bereich, opt);
+  offen.add(p);
+  void p.finally(() => offen.delete(p));
+}
+
+async function protokolliereLesenAls(wer: Wer, weg: string | undefined, bereich: LeseBereich, opt: LeseOpt): Promise<void> {
   try {
-    const wer = werAus(req);
     const jetzt = opt.jetzt ?? new Date();
-    let weg: string | undefined;
-    try { weg = new URL(req.url).pathname.slice(0, 80); } catch { weg = undefined; }
     const betroffen = opt.betroffen && PERSON.test(opt.betroffen) ? opt.betroffen : undefined;
     const ids = (opt.ids ?? []).filter(x => typeof x === 'string' && x).slice(0, IDS_MAX).map(leseKennung);
     const schluessel = [wer.art, wer.person ?? '', bereich, betroffen ?? '', weg ?? '', ids.join(',')].join('|');

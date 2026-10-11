@@ -3,7 +3,7 @@
 //        Produkt → Vorlage, Einstellungen, Onboarding-Kandidaten, Fälle (Kurzform), „welcher Kunde steht wo“, Kennzahlen (1.4), Import-Läufe.
 //        `?nur=kurz` → nur Kandidaten, Zuordnung, Vorlagen-Titel und Fälle (für die Einhänger in Produkte & Mandate). Lesen schreibt nie.
 // PATCH { ops } → Einzel-Ops mit Stand (lib/fulfillment/prozesse/vorlagen-anwenden.ts), alles oder nichts: 400/403/404/409/413.
-//        Kunden-Link-Schalter nur Inhaber (403). Nur per Sitzung (Dienstweg 403), Bau-Kennung. `?space=privat` → 403 (Business only).
+//        Kunden-Link-Schalter und Puls-Schwelle NICHT hier (400) — EIN Weg: POST /api/fulfillment/kunde (C2). Nur per Sitzung (Dienstweg 403), Bau-Kennung. `?space=privat` → 403 (Business only).
 // Tor: `fulfillmentZugang` (Routen-Register, Modul fulfillment).
 
 import { NextResponse } from 'next/server';
@@ -95,14 +95,14 @@ export async function PATCH(req: Request) {
   let b: { ops?: unknown };
   try { b = await jsonBegrenzt(req, 2 * 1024 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const jetzt = new Date();
-  const [inhaber, crm] = await Promise.all([istInhaber(z.person), import('@/lib/crm/speicher').then(c => c.ladeCrm())]);
+  const crm = await import('@/lib/crm/speicher').then(c => c.ladeCrm());
   const ops = Array.isArray(b.ops) ? b.ops : [];
   // Zuordnung nur auf Produkte des Katalogs; „onboarding-aus“ nur für Mandate, die es gibt.
   for (const o of ops) if (o && typeof o === 'object' && (o as { op?: unknown }).op === 'onboarding-aus' && !(typeof (o as { mandatId?: unknown }).mandatId === 'string' && MANDAT_ID.test((o as { mandatId: string }).mandatId) && crm.mandate.some(m => m.id === (o as { mandatId: string }).mandatId))) {
     return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
   }
   const r = await fulfillmentAendern('vorlagen', d => vorlagenAnwenden(d, b.ops, {
-    person: z.person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), standVon: eintragStand, neueId: p => neueKennung(p), inhaber,
+    person: z.person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), standVon: eintragStand, neueId: p => neueKennung(p),
     leistungen: crm.leistungen.filter(l => !l.geloeschtAm).map(l => l.id),
   }), werAus(req), z.haushalt);
   if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler, ...(r.konflikte ? { konflikte: r.konflikte } : {}) }, { status: r.status });

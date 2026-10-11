@@ -12,6 +12,7 @@ import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Punkt, Raster,
 import { WEG } from '@/lib/wege';
 import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId } from '@/lib/fulfillment/prozesse/onboarding';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
+import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
 import type { FallReiter } from '@/lib/fulfillment/adresse';
 import { useFall, useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, type FallAntwort } from './daten';
 import { StartDialog } from './Onboarding';
@@ -135,10 +136,11 @@ function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung }: { daten: Fal
     if (a.ok) await laden(); else onMeldung({ text: fehlerText(a), art: 'kritisch' });
   };
   const linkAnlegen = async () => {
-    // Paket C2: Kunden-Link anlegen — das Token steht genau einmal in der Antwort. Ohne C2 bzw. bei ausgeschaltetem Schalter: kein Absatz.
-    const a = await holeJson<{ url?: string; link?: { id?: string }; token?: string }>('/api/fulfillment/kunde', { method: 'POST', body: JSON.stringify({ aktion: 'link-anlegen', mandatId: m }) });
-    const url = a.ok ? (a.j.url ?? (a.j.link?.id && a.j.token ? `/kunde/${a.j.link.id}#t=${a.j.token}` : null)) : null;
-    if (url) setLink(url.startsWith('http') ? url : `${window.location.origin}${url}`); else setLinkAus(a.ok ? 'Der Link kam ohne Adresse zurück.' : fehlerText(a));
+    // Paket C2: Kunden-Link anlegen — das Token steht genau einmal in der Antwort (`url` bzw. `pfad`, gelesen NUR über `linkAdresseAus`).
+    // Bei ausgeschaltetem Schalter (409): kein Absatz zum Playbook.
+    const a = await holeJson<{ url?: string; pfad?: string }>('/api/fulfillment/kunde', { method: 'POST', body: JSON.stringify({ aktion: 'link-anlegen', mandatId: m }) });
+    const url = a.ok ? linkAdresseAus(a.j, window.location.origin) : null;
+    if (url) setLink(url); else setLinkAus(a.ok ? 'Der Link kam ohne Adresse zurück.' : fehlerText(a));
   };
   const vorbereiten = () => {
     if (!g?.vorlage) return;

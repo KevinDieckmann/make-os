@@ -137,9 +137,13 @@ function bausteinLesen(x: Record<string, unknown>): Gelesen {
 }
 
 type Form = NonNullable<ProzessVorlage['form']>;
-/** Zeichenform aus dem Text der Datei — die Daten nennen sie teils frei („drei Spalten mit Weichen …“). Unbekannt: Fluss. */
+/**
+ * Zeichenform aus dem Text der Datei — die Daten nennen sie teils frei („drei Spalten mit Weichen …“, „Kreis im Uhrzeigersinn …“). Unbekannt: Fluss.
+ * „kreis“ (Sales Circle) bis 11.10. als Fluss abgebildet — jetzt eine eigene Form (Entscheidung: „schön visualisieren“).
+ */
 export function formAus(v: unknown): Form {
   const t = typeof v === 'string' ? v.toLowerCase() : '';
+  if (/kreis|circle|zyklus|uhrzeigersinn/.test(t)) return 'kreis';
   if (/trichter/.test(t)) return 'trichter';
   if (/zeitachse|zeitstrahl/.test(t)) return 'zeitachse';
   if (/^baum$/.test(t)) return 'baum';

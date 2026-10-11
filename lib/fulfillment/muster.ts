@@ -167,12 +167,14 @@ export const MUSTER_ONBOARDING: readonly OnboardingSchritt[] = [
   ob('f0', 'F0 bestätigt', 'beide', true, 'F0'),
 ];
 
-// ── Rituale-Gerüst (5.1) — Agenden sind Instanz-Daten ────────────────────────────────────────────────────────────────────────────────
+// ── Rituale-Gerüst (5.1) — Agenden sind Instanz-Daten; nur das Huddle trägt die neutrale Zahlenrunde ─────────────────────────────
 
 const rit = (id: string, titel: string, rhythmus: RitualVorlage['rhythmus'], dauerMin: number, teilnehmende: RitualVorlage['teilnehmende']): RitualVorlage =>
   ({ id: `fr-muster-${id}`, titel, rhythmus, dauerMin, agenda: [], teilnehmende, geaendert: '', geaendertVon: '' });
 export const MUSTER_RITUALE: readonly RitualVorlage[] = [
   rit('kickoff', 'Kick-off', 'einmal', 90, ['intern', 'entscheider', 'tagesverantwortlich']),
+  // Entscheidung 10.10., 23:30: tägliches Vertriebs-Huddle, kurz, MIT Zahlenrunde (ersetzt das frühere Huddle ohne Zahlen) — Methode, keine Instanz-Inhalte.
+  { ...rit('huddle', 'Vertriebs-Huddle mit Zahlenrunde', 'werktags', 15, ['tagesverantwortlich', 'team']), agenda: ['Zahlen von gestern', 'Ziel für heute', 'Wo hängt es?'] },
   rit('wochencheck', 'Wochen-Check', 'woche', 15, ['intern', 'tagesverantwortlich']),
   rit('steering', 'Steering', 'monat', 60, ['intern', 'entscheider']),
   rit('quartal', 'Quartals-Review', 'quartal', 120, ['intern', 'entscheider', 'team']),

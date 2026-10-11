@@ -494,7 +494,7 @@ Onboarding-Stand, Wert-Konto und Dossier-Unternehmensteil eines Mandats und gibt
 1. Umgebung `MAKE_OS_KUNDENLINK=an`, gesetzt vom Betrieb erst nach der Prüfung in 12.4.
 2. Schalter der Instanz `einstellungen.kundenLink.an`, umlegen nur durch den Inhaber per Sitzung, mit Erklärung.
 
-Teilrechte je Link sind `formular` (Playbook/Workbooks), `upload` und `puls`. **`upload` ist voreingestellt aus**, bis die Frage zum Virenscan entschieden ist (Abschnitt 13).
+Teilrechte je Link sind `formular` (Playbook/Workbooks), `upload` und `puls`. **`upload` ist je neuem Link AN** (Kevin 10.10., 23:25: Upload freigegeben — nur sichere Dateitypen, am INHALT geprüft, verschlüsselt, nur als Download, kein Virenscanner), **je Link abschaltbar**. Der ganze Kunden-Link kommt trotzdem ausgeschaltet (Umgebung + Instanz-Schalter).
 
 **Adresse und Token:**
 - Öffentliche Kennung `kl-<24 hex>` (96 Bit, `randomBytes(12)`) im Pfad.
@@ -1152,8 +1152,8 @@ Ein Paket ändert **keine** Datei eines anderen. Braucht es dort etwas, nutzt es
 ## 13 · Offene Fragen (nur, was Kevin entscheiden muss)
 
 1. **Virenscan für Kunden-Uploads.** Im Projekt gibt es keinen. Ein ClamAV im Arbeiter-Container braucht ≈ 1 GB RAM, der Server hat 1,9 GB; ein externer Dienst wäre ein neuer Datenweg.
-   *Vorschlag:* Upload über den Link bleibt **aus**, bis entschieden ist. Bis dahin legen wir interne Unterlagen selbst ab. Später kommt entweder ein Scan auf einem größeren Server oder ein
-   „Upload nur PDF/Bild, neu gerendert“.
+   *Entschieden (Kevin 10.10., 23:25):* Upload freigegeben, **nur sichere Dateitypen** (PDF, Bilder, Office ohne Makros, am Inhalt geprüft), nie öffnen/ausführen, verschlüsselt,
+   nur als Download — **kein Virenscanner**. Recht `upload` ist je neuem Link an und je Link abschaltbar; der Kunden-Link selbst kommt ausgeschaltet.
 2. **Kunden-Link auf eigener Adresse?** Getrennte Subdomain (z. B. `kunde.<domain>`) heißt: keine Sitzungs-Cookies im selben Ursprung, sauberere Trennung.
    *Vorschlag:* erst die Instanz-Adresse (der Cookie ist `__Host-`, CSP streng), die Subdomain beim nächsten Server-Schritt.
 3. **Befähigung „läuft ohne uns“:** Die Kriterien sind ein Vorschlag aus der Recherche [FT §2 Phase 8, A] (≥ 2 Abschlüsse ohne Gründer, Rhythmen 4 Wochen ohne uns, Coverage und Pflichtfeldquote ≥ Ziel).

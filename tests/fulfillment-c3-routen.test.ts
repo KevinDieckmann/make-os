@@ -330,9 +330,25 @@ describe('Personenteil, F1, Art. 14, Löschfrist', () => {
     expect(ohne).not.toContain('tb-geheim');
     const mit = String(((await WERKZEUGE.fulfillment_lage.lauf({ mandat: 'm-1', mitPersonen: true }, 'http://test', 'pia')) as { meldung: string }).meldung);
     expect(mit).toContain('Erika Beispiel');
+    // Wächter (zusammengeführt 11.10.): ZOE liest den Personenteil nur MIT Lese-Protokoll — ohne Anfrage über den Lauf im Namen der Person.
+    {
+      const { leseprotokollWarten, leseprotokollMonat } = await import('@/lib/store/leseprotokoll');
+      await leseprotokollWarten();
+      const { monatBerlin } = await import('@/lib/store/aenderungsprotokoll');
+      const zoe = (await leseprotokollMonat('haus-ff', monatBerlin(new Date()))).filter(e => e.weg === 'zoe:fulfillment_lage');
+      expect(zoe.some(e => e.bereich === 'personenrecherche' && e.wer === 'zoe' && e.person === 'pia' && (e.anzahl ?? 0) >= 1)).toBe(true);
+      expect(JSON.stringify(zoe)).not.toContain('Erika');
+    }
     const partnerin = String(((await WERKZEUGE.fulfillment_lage.lauf({ mandat: 'm-1', mitPersonen: true }, 'http://test', 'partnerin')) as { meldung: string }).meldung);
     expect(partnerin).not.toContain('Erika');
     expect(partnerin).toMatch(/nicht freigegeben/);
+    {
+      const { leseprotokollWarten, leseprotokollMonat } = await import('@/lib/store/leseprotokoll');
+      await leseprotokollWarten();
+      const { monatBerlin } = await import('@/lib/store/aenderungsprotokoll');
+      // Ohne Freigabe nichts gelesen → kein Eintrag für „nur Business“.
+      expect((await leseprotokollMonat('haus-ff', monatBerlin(new Date()))).some(e => e.weg === 'zoe:fulfillment_lage' && e.person === 'partnerin')).toBe(false);
+    }
     expect(String(((await WERKZEUGE.fulfillment_lage.lauf({ mandat: 'm-1' }, 'http://test', 'gast')) as { meldung: string }).meldung)).toMatch(/Nicht ausgeführt/);
   });
   it('Leseteil nur für die auslösende Person (andere 404, Dienstweg 401)', async () => {

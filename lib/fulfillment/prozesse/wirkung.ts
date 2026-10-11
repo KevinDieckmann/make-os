@@ -1,15 +1,16 @@
 // ─── Fulfillment · Prozesse — Wirkungsbericht und Nachsorge (C1, 10.10.; FULFILLMENT_KONZEPT.md 5.3) ────────────────────────────────
 // Der Wirkungsbericht schließt den Kreis: Wert-Konto vorher → nachher, erledigte Quick Wins, Lieferobjekte (erledigte, für Kunden sichtbare
 // Schritte), Befähigung „läuft ohne uns“ und — nur mit vermerkter Einwilligung (Tag, wie) — ein Kundenzitat. Er geht an den Kunden, also:
-// nie Bausteine „nur intern“, keine internen Schritte, keine Health, kein Honorar. Keine Garantie, kein Erfolgshonorar (Satz im Bericht).
+// nie Bausteine, die `fuerKundenFrei` sperrt („nur intern“, ungeprüft „vor Verkauf“/„rechtlich“), keine internen Schritte, keine Health, kein Honorar. Keine Garantie, kein Erfolgshonorar (Satz im Bericht).
 // Daraus per Klick: Testimonial anfragen (Aufgabe), Fallstudie (Baustein-Entwurf, anonym ohne Einwilligung), Empfehlung erfragen
 // (Follow-up), nächste Stufe (vorhandener Vorschlag der Leistungstreppe). Nachsorge: an Tag +14/+45/+90 nach Mandatsende je ein Vorschlag
 // im Stapel (Check-in · Empfehlung · nächste Stufe), Marken `nachsorge:<mandat>:<tag>` gegen Doppelte. Rein und client-sicher.
 
-import type { Baustein, Fall, WertKontoZeile } from '../typen';
+import type { Baustein, Fall, VorlagenDatei, WertKontoZeile } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 import { wertKontoZeilen } from '../regeln';
-import { nurIntern } from './bausteine';
+import { kundenGesperrt } from './bausteine';
+import { fnv } from './pruefen';
 
 export interface WirkungsDokument {
   titel: string; kunde: string; mandat: string; paket?: string; absender?: string;
@@ -27,11 +28,13 @@ export const WIRKUNG_HINWEIS = 'Dieser Bericht hält fest, was gemeinsam erreich
 
 export function wirkungsDokument(e: {
   fall: Fall; mandat: Pick<Mandat, 'kunde' | 'titel' | 'ziele' | 'start'>; paket?: string; absender?: string; heute: string;
-  bausteine: readonly Pick<Baustein, 'id' | 'tags'>[];
+  bausteine: readonly Pick<Baustein, 'id' | 'tags' | 'urheberPruefen' | 'rechtPruefen' | 'rechtGeprueft'>[];
+  /** Marken der Vorlagen-Datei (Vermerk „vor Verkauf geprüft“) — für die EINE Regel `fuerKundenFrei`. */
+  marken?: VorlagenDatei['marken'];
   /** Ein Kundenzitat — nur mit vermerkter Einwilligung (der Aufrufer prüft `einwilligungAm`). */
   zitat?: { text: string; einwilligungAm: string; wie: string };
 }): WirkungsDokument {
-  const intern = new Set(e.bausteine.filter(b => nurIntern(b)).map(b => b.id));
+  const intern = kundenGesperrt(e.bausteine, { marken: e.marken ?? {} });
   const lieferobjekte = e.fall.knoten
     .filter(k => k.status === 'erledigt' && k.kundeSichtbar === true && !(k.bausteinId && intern.has(k.bausteinId)) && !k.id.startsWith('fk-ob-'))
     .map(k => k.ergebnis ? `${k.titel}: ${k.ergebnis}` : k.titel);
@@ -48,8 +51,15 @@ export function wirkungsDokument(e: {
   };
 }
 
-/** Dateiname des PDFs in `fulfillment-unterlagen` (nur Kennung + Tag — kein Kundenname auf der Platte). */
-export const wirkungDateiname = (mandatId: string, heute: string) => `wirkung-${mandatId.replace(/[^A-Za-z0-9-]/g, '').slice(0, 60)}-${heute}.pdf`;
+/**
+ * Name des PDFs im verschlüsselten Ordner `fulfillment-unterlagen` — nur Fingerabdruck der Mandat-Kennung + Tag (kein Kundenname auf der Platte).
+ * Die Ablage nimmt nur Namen der Form `[a-z0-9-]{8,60}.bin` (`BILD_NAME`, lib/store/datei-huelle.mjs) — der frühere Name `wirkung-<mandat>-<tag>.pdf`
+ * wurde dort abgelehnt (zusammengeführt 11.10.). Der Name steht im Fall (`wirkung.dateiName`), damit die Fristen von C2 die Datei nicht als verwaist
+ * entfernen. Heruntergeladen bzw. angehängt wird sie als `wirkungAnzeigename`.
+ */
+export const wirkungDateiname = (mandatId: string, heute: string) => `wirkung-${fnv(mandatId)}-${heute}.bin`;
+/** Name beim Herunterladen und in der Dateiablage (für den Mail-Anhang). */
+export const wirkungAnzeigename = (heute: string) => `Wirkungsbericht-${heute}.pdf`;
 
 /**
  * Fallstudie als Baustein-Entwurf (Art „dokument“): ohne Einwilligung anonym („ein Kunde aus dem Bestand“), mit Einwilligung mit Namen.

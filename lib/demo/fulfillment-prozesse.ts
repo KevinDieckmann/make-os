@@ -1,8 +1,9 @@
 // ─── MAKE OS — Demo-Instanz: Fulfillment · Prozesse (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 12.7) ────────────────────────────────────
 // Landkarte und drei Paket-Vorlagen aus dem Muster, rund 25 erfundene Bausteine über den Import (zwei „rechtlich prüfen“, einer „nur intern“,
-// einer „vor Verkauf prüfen“, ein Huddle mit Zahlenrunde), drei erfundene Abläufe (Trichter, Fluss mit Weichen, Zeitachse — mit Rückweg und
-// gestrichelter Ergänzung), Zuordnung der Demo-Produkte, zwei Fälle: Lumen im Onboarding (Willkommensmail überfällig), Nordwerk in der
-// Umsetzung (Wert-Konto mit drei Messungen, Stakeholder, Entscheidungen, Mitschrift, Kick-off). Alles über die Routen (`k.rufe`), erfunden
+// einer „vor Verkauf prüfen“, ein Huddle mit Zahlenrunde), vier erfundene Abläufe (Trichter, Fluss mit Weichen, Kreis mit Empfehlungsring,
+// Zeitachse — mit Rückweg und gestrichelter Ergänzung), Zuordnung der Demo-Produkte, zwei Fälle: Lumen im Onboarding (Willkommensmail überfällig), Nordwerk in der
+// Umsetzung (Wert-Konto mit drei Messungen, Stakeholder, Entscheidungen, Mitschrift, Kick-off; das Kunden-Playbook hängt als Formular im Fall —
+// die Antworten sät lib/demo/fulfillment-kunde.ts). Alles über die Routen (`k.rufe`), erfunden
 // und neutral (Wächter tests/demo.test.ts).
 
 import type { FulfillmentSaatKontext, SaatSchritt } from './saat-fulfillment';
@@ -46,7 +47,7 @@ function demoBausteine(): J {
   };
 }
 
-/** Drei erfundene Abläufe im Format der Ablauf-Dateien (je Ablauf `stufen`, `uebergaenge`). */
+/** Vier erfundene Abläufe im Format der Ablauf-Dateien (je Ablauf `stufen`, `uebergaenge`) — Trichter, Fluss, Kreis, Zeitachse. */
 function demoAblaeufe(): J {
   return {
     erstgespraech: {
@@ -82,6 +83,23 @@ function demoAblaeufe(): J {
         { von: 'pruefen', nach: 'unterlage', art: 'vorwaerts', bedingung: 'später', herkunft: 'ergaenzung' }, { von: 'pruefen', nach: 'absage', art: 'ausstieg', bedingung: 'passt nicht' },
         { von: 'termin', nach: 'angebot', art: 'vorwaerts' }, { von: 'termin', nach: 'pruefen', art: 'rueckweg', bedingung: 'Angaben fehlen' },
         { von: 'unterlage', nach: 'termin', art: 'vorwaerts' },
+      ],
+    },
+    kreis: {
+      titel: 'Vertriebs-Kreislauf', form: 'Kreis im Uhrzeigersinn',
+      stufen: [
+        { id: 'kontakt', name: 'Kontakt', art: 'einstieg', zweck: 'Ein Anlass, eine Ansprechperson.' },
+        { id: 'gespraech', name: 'Gespräch', zweck: 'Bedarf verstehen.' },
+        { id: 'angebot', name: 'Angebot', zweck: 'Eine klare Stufe der Angebotsleiter.' },
+        { id: 'abschluss', name: 'Abschluss' },
+        { id: 'betreuung', name: 'Betreuung', zweck: 'Regelmäßig nachfragen, wie es läuft.' },
+        { id: 'empfehlung', name: 'Empfehlung', zweck: 'Zufriedene Kunden nach passenden Kontakten fragen.', herkunft: 'ergaenzung' },
+      ],
+      uebergaenge: [
+        { von: 'kontakt', nach: 'gespraech', art: 'vorwaerts' }, { von: 'gespraech', nach: 'angebot', art: 'vorwaerts' },
+        { von: 'angebot', nach: 'abschluss', art: 'vorwaerts' }, { von: 'abschluss', nach: 'betreuung', art: 'vorwaerts' },
+        { von: 'betreuung', nach: 'kontakt', art: 'kreislauf' }, { von: 'angebot', nach: 'gespraech', art: 'rueckweg', bedingung: 'Einwand' },
+        { von: 'betreuung', nach: 'empfehlung', art: 'vorwaerts', herkunft: 'ergaenzung' }, { von: 'empfehlung', nach: 'kontakt', art: 'vorwaerts', herkunft: 'ergaenzung' },
       ],
     },
     messe: {
@@ -162,9 +180,9 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
       { op: 'entscheidung', eintrag: { titel: 'Zielgruppe zuerst: Maschinenbau im Umkreis', status: 'entschieden', wer: 'beide', geteilt: true } },
       { op: 'entscheidung', eintrag: { titel: 'Neues Angebot für Bestandskunden', status: 'offen', wer: 'kunde', geteilt: true, frist: tagPlus(k.heute, 5) } },
       ...(kickoff ? [{ op: 'ritual-merken', ritualId: kickoff, terminUid: 'makeos-demo-kickoff-nordwerk' }] : []),
-      { op: 'knoten-status', id: `${OB_PRAEFIX}playbook`, status: 'entfaellt', grund: 'Im Kick-off gemeinsam besprochen.' },
+      // Die Ziele stehen am Mandat (auch in der alten Text-Form — lib/crm/mandat-ziele.ts erhält sie); erstes Ziel: Reviews je Jahr.
       ...ziele.slice(0, 2).map((z, i) => ({ op: 'wert-ziel', zielId: z.id, felder: i === 0
-        ? { ausgangZahl: 4, zielZahl: 12, einheit: 'Termine/Monat', zielBis: tagPlus(k.heute, 60), richtung: 'hoch', festlegen: true }
+        ? { ausgang: 'Kennzahlen nur einmal im Quartal angesehen', ausgangZahl: 4, zielZahl: 12, einheit: 'Reviews/Jahr', zielBis: tagPlus(k.heute, 60), richtung: 'hoch', festlegen: true }
         : { ausgang: 'Planung nur für drei Monate', ausgangZahl: 3, zielZahl: 12, einheit: 'Monate', zielBis: tagPlus(k.heute, 90), richtung: 'hoch', festlegen: true } })),
       ...(ziele[0] ? [[-50, 5], [-30, 7], [-10, 9]].map(([t, wert]) => ({ op: 'wert-messung', zielId: ziele[0].id, wert, am: tagPlus(k.heute, t) })) : []),
       { op: 'freigabe', id: 'F0', kunde: { wie: 'kickoff', am: tagPlus(k.heute, -55) } },
@@ -183,7 +201,7 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
     const freigaben = new Set<string>();
     for (const p of phasen.slice(0, 2)) {
       for (const x of [p, ...unter(p.id)]) {
-        if (x.id.startsWith(OB_PRAEFIX)) continue;
+        if (x.id.startsWith('fk-ob')) continue; // Onboarding-Schritte (abgeleitet) samt Playbook-Formular bleiben, wie sie sind
         if (x.freigabe) freigaben.add(x.freigabe);
         else if (x.status !== 'erledigt') weiter.push({ op: 'knoten-status', id: x.id, status: 'erledigt' });
       }

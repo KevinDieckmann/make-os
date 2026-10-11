@@ -90,14 +90,20 @@ describe('Update-Probe und Ablauf', () => {
     expect(await ffKennzahlenFuerIndex('2026-10-10')).toBeNull();
   });
 
-  it('Vorlagen aus dem Muster; Kunden-Link-Schalter nur Inhaber; Arbeit an Vorlagen ändert kein Mandat', async () => {
+  it('Vorlagen aus dem Muster; Kunden-Link-Schalter nur über C2 und nur Inhaber; Arbeit an Vorlagen ändert kein Mandat', async () => {
     const db = await import('@/lib/store/local-db');
     const vorher = JSON.stringify(await db.loadJson('crm'));
     expect((await rufe('fulfillment', 'PATCH', sitzung('olaf'), { ops: [{ op: 'aus-muster' }] })).status).toBe(200);
     const ue = await rufe('fulfillment', 'GET', sitzung('partnerin'));
     expect(ue.status).toBe(200);
     expect((ue.j.prozesse as { art: string }[]).filter(p => p.art === 'paket')).toHaveLength(3);
-    expect((await rufe('fulfillment', 'PATCH', sitzung('olaf'), { ops: [{ op: 'einstellungen', felder: { kundenLink: { an: true } } }] })).status).toBe(403);
+    // EIN Schreibweg für den Schalter (zusammengeführt 11.10.): POST /api/fulfillment/kunde { aktion: 'schalter' } — nur der Inhaber; die Vorlagen-Ops lehnen ab.
+    expect((await rufe('fulfillment', 'PATCH', sitzung('pia'), { ops: [{ op: 'einstellungen', felder: { kundenLink: { an: true } } }] })).status).toBe(400);
+    expect((await rufe('fulfillment/kunde', 'POST', sitzung('olaf'), { aktion: 'schalter', an: true })).status).toBe(403);
+    expect((await rufe('fulfillment/kunde', 'POST', dienst('pia'), { aktion: 'schalter', an: true })).status).toBe(403);
+    const sch = await rufe('fulfillment/kunde', 'POST', sitzung('pia'), { aktion: 'schalter', an: false });
+    expect(sch.status).toBe(200);
+    expect(sch.j.schalter).toMatchObject({ instanz: false, an: false });
     expect(JSON.stringify(await db.loadJson('crm'))).toBe(vorher);
   });
 
