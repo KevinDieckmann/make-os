@@ -102,9 +102,11 @@ export function Kreislauf({ api, lage, zuKanaele, kanalWahl }: { api: PlanungApi
   const oeffnen = s.id === 'kanaele' ? <Knopf onClick={zuKanaele}>{s.hrefLabel}</Knopf> : s.href ? <Knopf href={s.href}>{s.hrefLabel}</Knopf> : null;
   return (
     <>
+      {/* Rechner (11.10.): Ring links, die gewählte Stufe rechts daneben — antippen und sofort sehen, ohne zu scrollen; schmal untereinander. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap: 16, alignItems: 'start' }}>
       <Karte i={0}>
         <Ueberschrift rechts={kanalWahl}>Der Kreislauf</Ueberschrift>
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '-4px 0 8px' }}>Eine Stufe antippen — darunter stehen Plan und Ist und der Weg in die Liste.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '-4px 0 8px' }}>Eine Stufe antippen, um Plan, Ist und den Weg in die Liste zu sehen.</div>
         {handy ? (
           <Liste>
             {k.stufen.map(x => <Zeile key={x.id} aktiv={x.id === aktiv} onClick={() => setAktiv(x.id)} titel={x.label} unter={x.zusatz}
@@ -141,6 +143,7 @@ export function Kreislauf({ api, lage, zuKanaele, kanalWahl }: { api: PlanungApi
           </div>
         )}
       </Karte>
+      </div>
       {(s.id === 'nachher' || s.id === 'fulfillment') && (
         <Karte i={2}>
           <Ueberschrift rechts={<Chip farbe={LEUCHT.gut}>{k.kunden.filter(x => x.offen > 0).length} mit offenen Schritten</Chip>}>Nach der Leistung — je Kunde</Ueberschrift>

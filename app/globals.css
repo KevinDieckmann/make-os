@@ -777,6 +777,8 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 /* Lage — „Antwort zuerst“ (11.10., components/os/ui/lage.tsx): höchstens fünf Kacheln oben in einer Ansicht; Zahl, Wort, Zusatz, optional Balken. */
 .ui-lage { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr)); gap: 10px; min-width: 0; }
 .ui-lage-kachel { display: flex; flex-direction: column; gap: 2px; min-width: 0; min-height: 44px; padding: 12px 14px; box-sizing: border-box; text-align: left; font: inherit; color: inherit; text-decoration: none; }
+/* Das Handy-Netz (`.ui-seite a.fassbar { display: inline-flex; align-items: center }`) würde die Kachel zentrieren — hier links bündig, volle Breite. */
+.ui-lage [role=listitem] > .ui-lage-kachel { display: flex; align-items: stretch; }
 .ui-lage-klick { cursor: pointer; transition: transform .2s cubic-bezier(.22, 1, .36, 1), border-color .2s ease; }
 .ui-lage-klick:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, .16) !important; }
 .ui-lage-wert { font-weight: 700; font-size: clamp(22px, 2.6vw, 26px); letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
