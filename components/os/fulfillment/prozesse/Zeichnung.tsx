@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP, MIKRO, RAND } from '@/lib/make-one/design';
 import { LEUCHT, Chip } from '../../ui';
 import { landkarteLage } from '@/lib/fulfillment/prozesse/landkarte';
+import type { Ampel } from '@/lib/fulfillment/prozesse/darstellung';
 import { ablaufLage, ablaufListe } from '@/lib/fulfillment/prozesse/ablauf-bild';
 import type { ProzessKnoten, ProzessVorlage, Uebergang, Zone } from '@/lib/fulfillment/typen';
 
@@ -27,12 +28,19 @@ export function useBreite(): [React.RefObject<HTMLDivElement>, number] {
   return [ref, b];
 }
 
-const ZONE_FARBE: Record<Zone, string> = { dach: LEUCHT.planung, etage: LEUCHT.business, fundament: LEUCHT.agenten };
+export const ZONE_FARBE: Record<Zone, string> = { dach: LEUCHT.planung, etage: LEUCHT.business, fundament: LEUCHT.agenten };
 export const ZONE_TEXT: Record<Zone, string> = { dach: 'Dach · Steuerung', etage: 'Etage · Kernprozess', fundament: 'Fundament · Unterstützung' };
 const kuerzen = (t: string, n: number) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
 
-/** Die Landkarte als Hochhaus — Klick auf einen Kasten öffnet seinen Steckbrief. */
-export function Landkarte({ vorlage, zaehler, aktiv, onKnoten, gross }: { vorlage: Pick<ProzessVorlage, 'knoten'>; zaehler: Record<string, readonly string[]>; aktiv?: string; onKnoten: (id: string) => void; gross?: boolean }) {
+const AMPEL: Record<Ampel, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
+const AMPEL_SATZ: Record<Ampel, string> = { gruen: 'läuft rund', gelb: 'braucht einen Blick', rot: 'braucht Aufmerksamkeit' };
+const kundenText = (n: number) => `${n} Kund${n === 1 ? 'e' : 'en'}`;
+
+/**
+ * Die Landkarte als Hochhaus — Klick auf einen Kasten öffnet seinen Steckbrief. `ampel` (11.10.): je Kasten der schlechteste Stand der Kunden dort
+ * (lib/fulfillment/prozesse/darstellung.ts `knotenAmpel`) — färbt die Kunden-Marke; ohne Kunden keine Marke.
+ */
+export function Landkarte({ vorlage, zaehler, aktiv, onKnoten, gross, ampel = {} }: { vorlage: Pick<ProzessVorlage, 'knoten'>; zaehler: Record<string, readonly string[]>; aktiv?: string; onKnoten: (id: string) => void; gross?: boolean; ampel?: Record<string, Ampel> }) {
   const [ref, breite] = useBreite();
   const handy = breite > 0 && breite < HANDY_BREITE;
   const lage = breite ? landkarteLage(vorlage, zaehler, Math.max(breite, 320)) : null;
@@ -52,7 +60,7 @@ export function Landkarte({ vorlage, zaehler, aktiv, onKnoten, gross }: { vorlag
                     style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, minHeight: 44, padding: '10px 12px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
                       border: `1px solid ${aktiv === k.id ? ZONE_FARBE[z] : RAND.flaeche}`, background: `${ZONE_FARBE[z]}12`, color: C.ink, fontSize: TYP.bedien }}>
                     <span style={{ minWidth: 0 }}>{k.titel}</span>
-                    {k.anzahl > 0 && <Chip farbe={ZONE_FARBE[z]}>{k.anzahl} Kund{k.anzahl === 1 ? 'e' : 'en'}</Chip>}
+                    {k.anzahl > 0 && <Chip farbe={ampel[k.id] ? AMPEL[ampel[k.id]] : ZONE_FARBE[z]}>{kundenText(k.anzahl)}</Chip>}
                   </button>
                 ))}
               </div>
@@ -66,20 +74,26 @@ export function Landkarte({ vorlage, zaehler, aktiv, onKnoten, gross }: { vorlag
             <marker id="ff-pfeil" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={C.inkLeise} /></marker>
           </defs>
           {lage.dach && <path d={lage.dach.pfad} fill="none" stroke={ZONE_FARBE.dach} strokeOpacity={0.5} strokeWidth={1.5} />}
-          {lage.pfeile.map((p, i) => <path key={i} d={p.pfad} fill="none" stroke={p.art === 'zurueck' ? LEUCHT.business : C.inkLeise} strokeOpacity={0.6} strokeWidth={1.3} strokeDasharray={p.art === 'zurueck' ? '4 4' : undefined} markerEnd="url(#ff-pfeil)" />)}
+          {lage.pfeile.map((p, i) => (
+            <g key={i}>
+              <path d={p.pfad} fill="none" stroke={p.art === 'zurueck' ? LEUCHT.business : C.inkDim} strokeOpacity={0.7} strokeWidth={1.5} strokeDasharray={p.art === 'zurueck' ? '5 5' : undefined} markerEnd="url(#ff-pfeil)" />
+              <text x={p.tx} y={p.ty} transform={`rotate(-90 ${p.tx} ${p.ty})`} textAnchor="middle" fill={p.art === 'zurueck' ? LEUCHT.business : C.inkLeise} fontSize={11} fontWeight={600} letterSpacing=".1em" style={{ textTransform: 'uppercase' }}>{p.text}</text>
+            </g>
+          ))}
           {lage.kaesten.map(k => {
             const f = ZONE_FARBE[k.zone];
             const an = aktiv === k.id;
             return (
-              <g key={k.id} role="button" tabIndex={0} aria-label={`${k.titel}${k.anzahl ? `, ${k.anzahl} Kunden` : ''}`} style={{ cursor: 'pointer' }}
+              <g key={k.id} role="button" tabIndex={0} aria-label={`${k.titel}${k.anzahl ? `, ${kundenText(k.anzahl)}${ampel[k.id] ? ` — ${AMPEL_SATZ[ampel[k.id]]}` : ''}` : ''}`} style={{ cursor: 'pointer' }}
                 onClick={() => onKnoten(k.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onKnoten(k.id); } }}>
                 <rect x={k.x} y={k.y} width={k.b} height={k.h} rx={10} fill={`${f}${an ? '30' : '16'}`} stroke={f} strokeOpacity={an ? 0.9 : 0.45} strokeWidth={an ? 2 : 1} />
                 <text x={k.x + 12} y={k.y + (k.unter.length && k.zone === 'etage' ? 21 : k.h / 2 + 5)} fill={C.ink} fontSize={13} fontWeight={600}>{kuerzen(k.titel, Math.max(8, Math.floor(k.b / 8)))}</text>
-                {k.zone === 'etage' && k.unter.length > 0 && <text x={k.x + 12} y={k.y + 39} fill={C.inkLeise} fontSize={11}>{kuerzen(k.unter.join(' · '), Math.floor(k.b / 6.5))}</text>}
+                {k.zone === 'etage' && k.unter.length > 0 && <text x={k.x + 12} y={k.y + 40} fill={C.inkDim} fontSize={13}>{kuerzen(k.unter.join(" · "), Math.floor(k.b / 7.5))}</text>}
                 {k.anzahl > 0 && (
                   <g>
-                    <rect x={k.x + k.b - 74} y={k.y + 8} width={64} height={20} rx={10} fill={`${f}33`} />
-                    <text x={k.x + k.b - 42} y={k.y + 22} fill={C.ink} fontSize={11} textAnchor="middle">{k.anzahl} Kund{k.anzahl === 1 ? 'e' : 'en'}</text>
+                    <rect x={k.x + k.b - 92} y={k.y + 8} width={82} height={22} rx={11} fill={`${ampel[k.id] ? AMPEL[ampel[k.id]] : f}26`} stroke={ampel[k.id] ? AMPEL[ampel[k.id]] : f} strokeOpacity={0.6} />
+                    {ampel[k.id] && <circle cx={k.x + k.b - 80} cy={k.y + 19} r={4} fill={AMPEL[ampel[k.id]]} />}
+                    <text x={k.x + k.b - 44} y={k.y + 23} fill={C.ink} fontSize={13} fontWeight={600} textAnchor="middle">{kundenText(k.anzahl)}</text>
                   </g>
                 )}
               </g>

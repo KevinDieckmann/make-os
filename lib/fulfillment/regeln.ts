@@ -102,8 +102,8 @@ export function fallFortschritt(fall: Pick<Fall, 'knoten'>): number {
   return Math.round((zaehlend.filter(k => k.status === 'erledigt').length / zaehlend.length) * 100);
 }
 
-/** Ist eine Phase (Ebene 2) abgeschlossen? Eigener Status fertig — oder sie hat Blätter, und alle sind fertig. */
-function phaseFertig(p: FallKnoten, liste: readonly FallKnoten[]): boolean {
+/** Ist eine Phase (Ebene 2) abgeschlossen? Eigener Status fertig — oder sie hat Blätter, und alle sind fertig. (Exportiert seit 11.10. für die Reise, lib/fulfillment/prozesse/reise.ts.) */
+export function phaseFertig(p: FallKnoten, liste: readonly FallKnoten[]): boolean {
   if (fertig(p)) return true;
   const b = blaetterUnter(p.id, liste);
   return b.length > 0 && b.every(fertig);

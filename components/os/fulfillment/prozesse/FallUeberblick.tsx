@@ -1,37 +1,36 @@
 'use client';
 
-// ─── Fulfillment › Fall › Überblick (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 3.2, 7.2, 1.3) ──────────────────────────────────────────
-// Kopf (Fortschritt, aktuelle Phase, wartet auf euch, Status), „Vorlage geändert“ mit Übernehmen, die acht Onboarding-Schritte (Stand
-// abgeleitet, je mit Sprung dorthin, wo man ihn erfüllt), die Willkommensmail (Vorlage der Bibliothek, drei freie Kick-off-Zeiten, Playbook-Link
-// aus C2 — gesendet nur per Klick), „wartet auf euch“, Quick Wins und Kick-off-Fragen. Ohne Fall: „Onboarding starten“.
+// ─── Fulfillment › Fall › Überblick (Paket C1, 10.10.; neu gezeichnet 11.10. — FULFILLMENT_KONZEPT.md 3.2, 7.2, 1.3) ───────────────────
+// Über dem Reiter steht der Kopf des Falls (components/os/fulfillment/reise/FallKopf.tsx: Phasen-Strahl, „Als Nächstes“, „Hängt etwas?“ und die
+// eine Hauptaktion). Hier darunter nur, was im Überblick zu tun ist: das Onboarding als Band (grün/gelb/rot) mit NUR den offenen Schritten
+// (jeder mit Sprung dorthin, wo er erfüllt wird; „entfällt“ hinter „⋯“, erledigte klappen weg), die Willkommensmail solange sie fehlt (Vorlage
+// der Bibliothek, drei freie Kick-off-Zeiten, Playbook-Link aus C2 — gesendet nur per Klick), „wartet auf euch“, Quick Wins, Kick-off-Fragen,
+// Status. „Vorlage geändert“ mit Übernehmen bleibt oben. Ohne Fall: „Onboarding starten“.
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Punkt, Raster, Kennzahl, Pillen, HakenZiel, Erklaert, LEUCHT } from '../../ui';
-import { WEG } from '@/lib/wege';
-import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId } from '@/lib/fulfillment/prozesse/onboarding';
+import { useEffect, useState, type ReactNode } from 'react';
+import { FARBE as C, TYP, MIKRO, TIEF, SCHRIFT } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Punkt, Pillen, HakenZiel, Erklaert, ZeileAktionen, LEUCHT, useHandy } from '../../ui';
+import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
+import { ONBOARDING_SPRUNG, seitTagen } from '@/lib/fulfillment/prozesse/reise';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
-import type { FallReiter } from '@/lib/fulfillment/adresse';
 import { useFall, useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, type FallAntwort } from './daten';
 import { StartDialog } from './Onboarding';
 import { MailSenden, type MailEntwurf } from './MailSenden';
 import { klein, feld, Leiste, Meldung, useTextFrage } from './teile';
+import { useFallSprung } from '../reise/FallKopf';
+import { useSprung, insBild } from '../reise/sprung';
 
-const SPRUNG: Record<OnboardingSchluessel, { reiter: FallReiter; text: string }> = {
-  willkommen: { reiter: 'ueberblick', text: 'Mail vorbereiten' }, kickoff: { reiter: 'takt', text: 'Kick-off terminieren' }, vereinbarung: { reiter: 'menschen', text: 'Vereinbarung' },
-  playbook: { reiter: 'kunde', text: 'Kunden-Link' }, stakeholder: { reiter: 'menschen', text: 'Stakeholder' }, wertkonto: { reiter: 'wert', text: 'Wert-Konto' },
-  entscheidungslog: { reiter: 'menschen', text: 'Entscheidungen' }, f0: { reiter: 'ablauf', text: 'Freigabe vermerken' },
-};
 const STATUS = [{ id: 'laeuft' as const, label: 'läuft' }, { id: 'pausiert' as const, label: 'pausiert' }, { id: 'abgeschlossen' as const, label: 'abgeschlossen' }];
+const schrittFarbe = (s: OnboardingSchrittStand) => (s.erfuellt || s.entfaellt ? LEUCHT.gut : s.ueberfaellig ? LEUCHT.kritisch : s.zaehlt ? LEUCHT.achtung : C.inkLeise);
 
 export function FallUeberblick({ mandatId }: { mandatId: string }) {
-  const router = useRouter();
   const { daten, fehler } = useFall(mandatId);
   const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' | 'achtung' } | null>(null);
   const [mail, setMail] = useState(false);
   const frage = useTextFrage();
+  const geh = useFallSprung(mandatId, 'ueberblick');
+  useSprung(s => { if (s.art === 'willkommen') { setMail(true); insBild('willkommen'); } });
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
   if (!daten.fall) return <KeinFall daten={daten} />;
   const f = daten.fall, ob = daten.onboarding!;
@@ -48,6 +47,13 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
     const grund = await frage.fragen('Warum entfällt dieser Schritt?');
     if (grund) await ops([{ op: 'knoten-status', id: k.id, status: 'entfaellt', grund, stand: k.stand }]);
   };
+  const zuSchritt = (s: OnboardingSchluessel) => {
+    if (s === 'willkommen') { setMail(true); insBild('willkommen'); return; }
+    if (s === 'f0') { geh('ablauf', { art: 'freigabe', wert: 'F0' }); return; }
+    geh(ONBOARDING_SPRUNG[s].reiter);
+  };
+  const gesendet = f.onboarding.willkommenGesendetAm;
+  const kickoffOffen = f.kickoffFragen.some(q => !q.erledigt);
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <Meldung text={meldung?.text ?? null} art={meldung?.art} />
@@ -58,41 +64,96 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
           {daten.diff.neu.length} neu · {daten.diff.geaendert.length} geändert{daten.diff.entfernt.length ? ` · ${daten.diff.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''}
         </Hinweis>
       )}
-      <Raster min={160}>
-        <Kennzahl wert={`${daten.fortschritt ?? 0} %`} label="Fortschritt" erklaerung="fulfillment.fortschritt" />
-        <Kennzahl wert={daten.aktuell?.phase?.titel ?? '—'} label="Aktuelle Phase" unter={daten.aktuell?.schritt?.titel} />
-        <Kennzahl wert={String(daten.wartet?.length ?? 0)} label="Wartet auf euch" unter={daten.wartet?.[0]?.tage ? `ältester ${daten.wartet[0].tage} Tage` : undefined} erklaerung="fulfillment.wartetAufEuch" />
-        <Kennzahl wert={daten.vorlage?.titel ?? '—'} label="Paket" unter={`Fassung ${f.vorlageFassung}`} />
-      </Raster>
-      <Karte i={1} akzent={ob.fertig ? LEUCHT.gut : LEUCHT.planung}>
-        <Ueberschrift farbe={ob.fertig ? LEUCHT.gut : LEUCHT.planung} rechts={<span>{ob.fertig ? 'fertig' : `${ob.offen} offen`}</span>}>Onboarding</Ueberschrift>
-        <Liste>
-          {ob.schritte.map(s => (
-            <Zeile key={s.schluessel} umbrechen links={<Punkt farbe={s.erfuellt || s.entfaellt ? LEUCHT.gut : s.ueberfaellig ? LEUCHT.kritisch : s.zaehlt ? LEUCHT.achtung : C.inkLeise} />}
-              titel={<span>{s.titel}{!s.zaehlt && <span style={{ color: C.inkLeise }}> · darf noch laufen</span>}</span>} unter={s.text}
-              rechts={<Leiste>
-                {!s.erfuellt && (s.schluessel === 'willkommen' ? <Knopf leise onClick={() => setMail(true)}>Mail vorbereiten</Knopf> : <Knopf leise onClick={() => router.push(WEG.fall(mandatId, SPRUNG[s.schluessel].reiter), { scroll: false })}>{SPRUNG[s.schluessel].text} ›</Knopf>)}
-                {!s.erfuellt && <Knopf leise onClick={() => entfaellt(s.schluessel)}>{s.entfaellt ? 'wieder offen' : 'entfällt'}</Knopf>}
-              </Leiste>} />
-          ))}
-        </Liste>
-      </Karte>
-      <WillkommenKarte daten={daten} oeffnen={mail} setOeffnen={setMail} onMeldung={setMeldung} />
+      <OnboardingKarte schritte={ob.schritte} fertig={ob.fertig} gesendetAm={gesendet} onSchritt={zuSchritt} onEntfaellt={entfaellt}
+        onWillkommenZurueck={async () => { await fallOps(mandatId, [{ op: 'willkommen-gesendet', zuruecknehmen: true }]); }} />
+      {!gesendet && <WillkommenKarte daten={daten} oeffnen={mail} setOeffnen={setMail} onMeldung={setMeldung} />}
       {(daten.wartet?.length ?? 0) > 0 && (
-        <Karte i={2}>
-          <Ueberschrift erklaerung="fulfillment.wartetAufEuch" rechts={<span>{daten.wartet!.length}</span>}>Wartet auf euch</Ueberschrift>
-          <Liste>{daten.wartet!.map(w => <Zeile key={w.id} titel={w.titel} unter={`${w.art === 'entscheidung' ? 'Entscheidung' : w.art === 'freigabe' ? 'Freigabe' : 'Schritt'}${w.tage !== undefined ? ` · seit ${w.tage} Tagen` : ''}`} />)}</Liste>
+        <Karte i={2} akzent={LEUCHT.achtung}>
+          <Ueberschrift farbe={LEUCHT.achtung} erklaerung="fulfillment.wartetAufEuch" rechts={<span>{daten.wartet!.length}</span>}>Wartet auf euch</Ueberschrift>
+          <Liste>{daten.wartet!.map(w => (
+            <Zeile key={w.id} umbrechen links={<Punkt farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={w.titel}
+              unter={w.art === 'entscheidung' ? 'Entscheidung des Kunden' : w.art === 'freigabe' ? 'Freigabe des Kunden' : 'Schritt beim Kunden'}
+              rechts={w.tage !== undefined ? <Chip farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : C.inkDim}>{seitTagen(w.tage)}</Chip> : undefined}
+              onClick={() => geh(w.art === 'entscheidung' ? 'menschen' : 'ablauf')} />
+          ))}</Liste>
         </Karte>
       )}
       <QuickWins daten={daten} ops={ops} />
-      <KickoffFragen daten={daten} ops={ops} />
-      <Karte i={5}>
+      {(!ob.fertig || kickoffOffen || !f.kickoffFragen.length) ? <KickoffFragen daten={daten} ops={ops} /> : <KickoffZu anzahl={f.kickoffFragen.length}><KickoffFragen daten={daten} ops={ops} /></KickoffZu>}
+      <Karte i={5} flach>
         <Ueberschrift>Status des Falls</Ueberschrift>
         <Pillen liste={STATUS} aktiv={f.status === 'onboarding' ? null : f.status} onWahl={status => ops([{ op: 'fall-status', status }])} />
-        <div style={klein}>Gestartet am {tagKurz(f.gestartetAm)}{daten.unterschrift ? ` · Unterschrift ${tagKurz(daten.unterschrift.am)}` : ''}. Im Onboarding wechselt der Fall von selbst auf „läuft“, sobald die Schritte erfüllt sind.</div>
+        <div style={klein}>Gestartet am {tagKurz(f.gestartetAm)}{daten.unterschrift ? ` · Unterschrift ${tagKurz(daten.unterschrift.am)}` : ''} — im Onboarding wechselt der Fall von selbst auf „läuft“, sobald die Schritte erfüllt sind.</div>
       </Karte>
       {frage.dialog}
     </div>
+  );
+}
+
+/** Nach dem Onboarding sind die Kick-off-Fragen erledigt — sie klappen weg, ein Tipp holt sie zurück. */
+function KickoffZu({ anzahl, children }: { anzahl: number; children: ReactNode }) {
+  const [auf, setAuf] = useState(false);
+  return auf ? <>{children}</> : <div><Knopf leise onClick={() => setAuf(true)}>Fragen fürs Kick-off zeigen ({anzahl}, alle erledigt)</Knopf></div>;
+}
+
+/**
+ * Das Onboarding als Band: je Schritt ein Abschnitt (grün erfüllt, gelb offen, rot überfällig, grau gestrichelt „darf noch laufen“), darunter
+ * NUR die offenen Schritte mit ihrem Weg; Erledigte klappen weg („n erledigt — zeigen“). „entfällt“, „wieder offen“, „Vermerk zurücknehmen“ hinter „⋯“.
+ */
+function OnboardingKarte({ schritte, fertig, gesendetAm, onSchritt, onEntfaellt, onWillkommenZurueck }: {
+  schritte: OnboardingSchrittStand[]; fertig: boolean; gesendetAm?: string; onSchritt: (s: OnboardingSchluessel) => void; onEntfaellt: (s: OnboardingSchluessel) => Promise<void>; onWillkommenZurueck: () => Promise<void>;
+}) {
+  const [zeigen, setZeigen] = useState(false);
+  const handy = useHandy();
+  const erledigt = schritte.filter(s => s.erfuellt || s.entfaellt);
+  const offen = schritte.filter(s => !s.erfuellt && !s.entfaellt);
+  const farbe = fertig ? LEUCHT.gut : offen.some(s => s.ueberfaellig) ? LEUCHT.kritisch : LEUCHT.planung;
+  return (
+    <Karte i={1} akzent={farbe}>
+      <Ueberschrift farbe={farbe} erklaerung="fulfillment.onboardingBand" rechts={<span>{erledigt.length} von {schritte.length}</span>}>Onboarding</Ueberschrift>
+      <ol aria-label="Onboarding-Schritte" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, schritte.length)}, minmax(0, 1fr))`, gap: handy ? 4 : 8 }}>
+        {schritte.map(s => {
+          const f = schrittFarbe(s);
+          const voll = s.erfuellt || s.entfaellt;
+          return (
+            <li key={s.schluessel} style={{ minWidth: 0 }}>
+              <button type="button" className="fassbar" onClick={() => (voll ? setZeigen(true) : onSchritt(s.schluessel))} aria-label={`${s.titel}: ${voll ? (s.entfaellt ? 'entfällt' : 'erfüllt') : s.ueberfaellig ? 'überfällig' : 'offen'}`}
+                style={{ display: 'grid', gap: 6, alignContent: 'start', width: '100%', minHeight: 44, padding: '6px 2px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text }}>
+                <span style={{ display: 'block', height: 8, borderRadius: 4, background: voll || s.zaehlt ? TIEF.verlauf(f) : 'transparent', opacity: voll ? 1 : 0.6, border: s.zaehlt || voll ? 'none' : `1px dashed ${C.inkLeise}` }} />
+                {!handy && <span style={{ fontSize: TYP.bedien, lineHeight: 1.3, color: voll ? C.inkDim : C.ink, overflowWrap: 'anywhere' }}>{voll ? '✓ ' : ''}{s.titel}</span>}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      {fertig && !offen.length && <div style={klein}>Onboarding fertig — alle Schritte sind erfüllt.</div>}
+      {offen.length > 0 && (
+        <Liste>
+          {offen.map(s => (
+            <ZeileAktionen key={s.schluessel} titel={s.titel} mehr={[{ id: 'entfaellt', label: 'Entfällt für diesen Fall …', hinweis: 'Mit Grund — der Schritt zählt dann nicht mehr.', tun: () => onEntfaellt(s.schluessel) }]}>
+              <Zeile umbrechen links={<Punkt farbe={schrittFarbe(s)} />}
+                titel={<span>{s.titel}{!s.zaehlt && <span style={{ color: C.inkLeise }}> · darf noch laufen</span>}</span>} unter={s.text}
+                rechts={<Knopf leise onClick={() => onSchritt(s.schluessel)}>{ONBOARDING_SPRUNG[s.schluessel].text}{s.schluessel === 'willkommen' ? '' : ' ›'}</Knopf>} />
+            </ZeileAktionen>
+          ))}
+        </Liste>
+      )}
+      {erledigt.length > 0 && <div><Knopf leise onClick={() => setZeigen(!zeigen)}>{zeigen ? 'Erledigte ausblenden' : `${erledigt.length} erledigt — zeigen`}</Knopf></div>}
+      {zeigen && erledigt.length > 0 && (
+        <Liste>
+          {erledigt.map(s => (
+            <ZeileAktionen key={s.schluessel} titel={s.titel} mehr={[
+              ...(s.entfaellt ? [{ id: 'offen', label: 'Wieder offen', tun: () => onEntfaellt(s.schluessel) }] : []),
+              ...(s.schluessel === 'willkommen' && gesendetAm ? [{ id: 'zurueck', label: 'Vermerk „gesendet“ zurücknehmen', tun: onWillkommenZurueck }] : []),
+            ]}>
+              <Zeile umbrechen links={<Punkt farbe={LEUCHT.gut} />} titel={<span style={{ color: C.inkDim, textDecoration: s.entfaellt ? 'line-through' : 'none' }}>{s.titel}</span>}
+                unter={s.schluessel === 'willkommen' && gesendetAm ? `Willkommensmail gesendet am ${tagKurz(gesendetAm)}` : s.text} />
+            </ZeileAktionen>
+          ))}
+        </Liste>
+      )}
+      <span style={{ ...MIKRO }}>Grün erfüllt · Gelb offen · Rot überfällig · Gestrichelt darf noch laufen</span>
+    </Karte>
   );
 }
 
@@ -149,7 +210,7 @@ function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung }: { daten: Fal
   };
   const vermerken = async () => { const a = await fallOps(m, [{ op: 'willkommen-gesendet' }]); onMeldung(a.ok ? { text: 'Willkommensmail als gesendet vermerkt.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); };
   return (
-    <Karte i={1} akzent={uhr.ueberfaellig ? LEUCHT.kritisch : LEUCHT.gut}>
+    <Karte i={1} id="willkommen" akzent={uhr.ueberfaellig ? LEUCHT.kritisch : LEUCHT.gut}>
       <Ueberschrift erklaerung="fulfillment.willkommen24h" rechts={gesendet ? <Chip farbe={LEUCHT.gut}>gesendet {tagKurz(gesendet)}</Chip> : uhr.ueberfaellig ? <Chip farbe={LEUCHT.kritisch}>überfällig</Chip> : uhr.faellig ? <Chip farbe={LEUCHT.achtung}>bis {tagKurz(uhr.faellig)}</Chip> : undefined}>Willkommen</Ueberschrift>
       {gesendet ? <div style={klein}>Die Willkommensmail ist raus. <Knopf leise onClick={async () => { await fallOps(m, [{ op: 'willkommen-gesendet', zuruecknehmen: true }]); }}>Vermerk zurücknehmen</Knopf></div> : !oeffnen ? (
         <Leiste>
@@ -171,7 +232,7 @@ function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung }: { daten: Fal
               </div>
               <Leiste>
                 {link ? <Chip farbe={LEUCHT.gut}>Playbook-Link angelegt</Chip> : linkAus ? <Chip farbe={C.inkLeise}>Playbook-Link: aus</Chip> : <Knopf leise onClick={linkAnlegen}>Playbook-Link anlegen</Knopf>}
-                <Knopf haupt onClick={vorbereiten}>Mail ansehen und senden</Knopf>
+                <Knopf onClick={vorbereiten}>Mail ansehen und senden</Knopf>
               </Leiste>
               {linkAus && <div style={klein}>Ohne Kunden-Link fällt der Absatz zum Playbook weg ({linkAus}).</div>}
             </>

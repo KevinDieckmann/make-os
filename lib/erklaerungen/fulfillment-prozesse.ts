@@ -7,8 +7,8 @@ import type { EinstellungsText } from './typen';
 
 export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   'fulfillment.landkarte': {
-    was: 'Die Landkarte zeigt das ganze Unternehmen als Hochhaus: oben die Steuerung, in den Etagen die Kernprozesse entlang des Kundenkreislaufs, unten die Unterstützung. Jeder Kasten führt in die Seite, in der dieser Prozess heute in MAKE OS wohnt.',
-    beispiel: 'Die Etage „Leads & Qualifizierung“ zeigt „2 Kunden“ — ein Klick öffnet den Steckbrief mit Eingang, Ergebnis und Kennzahl, „öffnen ›“ führt in die Qualifizierung.',
+    was: 'Was ihr seht: das ganze Unternehmen als Hochhaus. Das Dach steuert (Ziele, Kennzahlen), die Etagen sind der Weg eines Kunden durch euch — von unten (Marketing) nach oben (Follow-up) —, das Fundament trägt alles (CRM, Recht, Finanzen). Je Etage stehen die Kunden, die gerade dort sind, mit Ampel. Ein Tipp auf einen Kasten öffnet darunter, was dort passiert.',
+    beispiel: 'Die Etage „Fulfillment“ zeigt „2 Kunden“ mit gelber Ampel — ein Tipp öffnet die Paket-Vorlagen dieser Etage und die zwei Kunden; einer wartet seit neun Tagen auf eine Freigabe.',
   },
   'fulfillment.vorlageAusMuster': {
     was: 'Legt das neutrale Gerüst an: die Landkarte und drei Paket-Vorlagen mit Phasen und Freigabepunkten, dazu die Rituale und das Playbook-Formular. Inhalte (Texte, Skripte, Preise) kommen später per Import oder Editor dazu.',
@@ -157,5 +157,41 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   'fulfillment.kennzahl.kosten': {
     was: 'Durchschnittliche Kosten der Analyse-Läufe je Dossier in Euro — jeder Lauf wird einzeln bestätigt.',
     beispiel: 'Zwei Dossiers mit 6,40 und 9,10 Euro ergeben 7,75 Euro je Dossier.',
+  },
+  'fulfillment.reise': {
+    was: 'Was ihr seht: die Reise des Kunden durch die Phasen des Pakets. Jeder Abschnitt ist eine Phase, gefüllt so weit, wie ihre Schritte erledigt sind; „Sie sind hier“ markiert die laufende Phase. Die Rauten sind Freigaben — Haltepunkte, an denen der Kunde (oder ihr) bestätigt, bevor es weitergeht. Darunter steht, was als Nächstes kommt und ob etwas hängt.',
+    beispiel: 'Phase 3 von 8 „Diagnose“ ist zur Hälfte gefüllt, die Raute F3 „Diagnose-Abnahme“ ist noch offen. Als Nächstes steht „Diagnosebericht“, und „1 wartet auf den Kunden“ zeigt die offene Entscheidung.',
+  },
+  'fulfillment.ablaufPhasen': {
+    was: 'Der Ablauf zeigt jede Phase als Zeile mit Stand und Freigabe. Die laufende Phase ist aufgeklappt — mit ihren nächsten Schritten; erledigte Phasen sind zu und öffnen sich mit einem Tipp. Bausteine hängen als Chip am Schritt. Mehr (Zusatz-Schritt, zurücknehmen) steht hinter „⋯“.',
+    beispiel: 'In „Aufbau“ stehen „Skripte“ und „Einwände“ offen, „Prozess“ ist abgehakt; der Chip „Leitfaden Erstgespräch“ öffnet den Baustein. Am Ende der Phase wartet die Freigabe F4.',
+  },
+  'fulfillment.lage': {
+    was: 'Die Lage aller Kunden in Lieferung in drei Antworten: wie viele laufen, was gerade hängt und welcher Handgriff als Nächstes am meisten bringt. Ein Tipp springt an die Stelle.',
+    beispiel: '„3 Kunden in Lieferung, 1 im Onboarding“ · „2 hängen — Willkommensmail überfällig“ · „Als Nächstes: Willkommensmail an den neuen Kunden“.',
+  },
+  'fulfillment.kundenKarten': {
+    was: 'Je Kunde eine Karte: Ampel, Phase als Mini-Strahl, Fortschritt, das Wert-Konto als Balken von „vorher“ bis „Ziel“, der nächste Schritt und was auf euch wartet. Oben steht, wer zuerst Aufmerksamkeit braucht.',
+    beispiel: 'Ganz oben die rote Karte des neuen Kunden (Willkommensmail überfällig), darunter der laufende Kunde in Phase 3 mit 63 % des Wegs im Wert-Konto.',
+  },
+  'fulfillment.paketKarten': {
+    was: 'Jede Paket-Vorlage als Karte: ihre Phasen als Mini-Strahl mit den Freigabe-Punkten, wie viele Schritte und Bausteine darin stecken, welches Produkt sie liefert und wie viele Kunden gerade darin laufen.',
+    beispiel: 'Die Karte „Sales-Systematik“ zeigt sechs Phasen, 54 Schritte, 18 Bausteine, liefert das Produkt „Cockpit-Lizenz“ — ein Kunde läuft gerade darin.',
+  },
+  'fulfillment.ebenen': {
+    was: 'Prozesse haben fünf Ebenen: Gesamt (das Paket) › Prozess (Phase) › Teilprozess › Schritt › Baustein (das Werkzeug, z. B. ein Skript). Die Leiter zeigt, auf welcher Ebene ihr gerade seid; die Brotkrumen führen zurück.',
+    beispiel: '„Vertriebsleitung auf Zeit › Aufbau › Skripte › Leitfaden schreiben › Leitfaden Erstgespräch“ — ganz unten der Baustein, den der Schritt benutzt.',
+  },
+  'fulfillment.bibliothek': {
+    was: 'Die Bibliothek zeigt jeden Baustein als Karte mit seiner Art (Skript, Mail, Checkliste …), wo er steckt und seinen Marken. Filter nach Art, Paket und Phase grenzen ein; die Marken zeigen, was vor dem Einsatz beim Kunden geprüft werden muss.',
+    beispiel: 'Filter „Paket: Netzwerk-Vertrieb“ und „Phase: Messen & Events“ zeigt vier Bausteine; einer trägt „vor Einsatz rechtlich prüfen“.',
+  },
+  'fulfillment.onboardingBand': {
+    was: 'Die acht Onboarding-Schritte als Band: grün erledigt, gelb offen, rot überfällig, grau „darf noch laufen“. Darunter stehen nur die offenen Schritte, jeder mit dem Weg dorthin, wo er erledigt wird. Erledigte klappen weg.',
+    beispiel: 'Fünf Abschnitte sind grün, „Kick-off terminieren“ ist gelb und führt in den Takt, die Willkommensmail ist rot, weil die 24 Stunden um sind.',
+  },
+  'fulfillment.wellen': {
+    was: 'Die Analyse läuft in vier Wellen: Start, Unternehmen, Vertiefung, Synthese und Prüfung. Jede Marke ist ein Agent — grün heißt im Dossier, gelb Entwurf zum Prüfen, blau läuft, gestrichelt noch gesperrt. Nichts startet von selbst; der Knopf schlägt den nächsten sinnvollen Lauf mit seinen Kosten vor.',
+    beispiel: 'Welle 0 ist grün, in Welle 1 sind A1 und A7 grün, A2 ist bereit — der Knopf heißt „A2 starten“ mit der geschätzten Summe dahinter.',
   },
 } as const satisfies Record<string, EinstellungsText>;
