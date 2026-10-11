@@ -35,7 +35,11 @@ export function sauberRoutine(roh: unknown): Routine | null {
     aktiv: r.aktiv !== false,
   };
   // Speicherform (05.10. abends): Privat + Privat-Einheit (Selbstständigkeit) → Business + Einheit, wie der alte Stand sie kennt.
-  const space = speicherSpace(istSpace(r.space) ? r.space : undefined, r.einheit);
+  let wunsch = istSpace(r.space) ? r.space : undefined;
+  // Prüf-Fund 11.10.: Gesundheit und Erholung sind Privat (Art. 9; „Business zeigt keine Gesundheits-Routine“) — eine solche Routine, die im
+  // Business stehen soll, wird Privat (die Business-Einheit fällt dann weg). Nur im Schreibweg; Gelesenes bleibt, wie es gespeichert ist.
+  if ((aus.kategorie === 'gesundheit' || aus.kategorie === 'erholung') && wunsch === 'business' && !hatPrivatEinheit(r)) wunsch = 'privat';
+  const space = speicherSpace(wunsch, r.einheit);
   if (space) aus.space = space;
   if (r.owner !== undefined && r.owner !== null && r.owner !== '') aus.owner = sauberOwner(r.owner);
   // Routinen 2 (10.10.): eine Regel, die sich GENAU als alter Rhythmus schreiben lässt, wird als alter Rhythmus gespeichert (die Form, die
@@ -314,3 +318,6 @@ export function standardBloecke(person: string, von = '09:00', bis = '18:00'): B
  * Energie-Seite und in den Lichtfäden wie „Gesundheit“. Ohne Kategorie (Altbestand) gilt wie bisher Gesundheit.
  */
 export const istGesundheitsKategorie = (k: unknown): boolean => !k || k === 'gesundheit' || k === 'erholung';
+
+/** Welche Kategorie passt in welchen Bereich (Editor, Prüf-Fund 11.10.): Business nur „Business“, Privat alles außer „Business“. */
+export const kategoriePasst = (space: SpaceId | undefined, kategorie: Routine['kategorie']): boolean => (space === 'business' ? kategorie === 'business' : kategorie !== 'business');

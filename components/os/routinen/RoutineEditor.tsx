@@ -8,6 +8,7 @@
 // Am Handy (≤ 640 px) ganzflächig (Fenster), eine Spalte, Eingaben 16 px, Ziele ≥ 44 px.
 
 import { KALENDER_UHRZEITEN_MAX } from '@/lib/planung/routinen-erinnerung';
+import { kategoriePasst } from '@/lib/planung/routinen';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Fenster } from '../Fenster';
 import { Beschriftung, Feldzeile, Hinweis, Knopf, MehrfachPillen, Pillen, Schalter, Segmente, SymbolKnopf, eingabe, auswahl, LEUCHT } from '../ui';
@@ -106,7 +107,8 @@ export function RoutineEditor({ routine, vorgabe, heute, ich, personen, kategori
         )}
         <Pillen liste={[{ id: OWNER_BEIDE, label: 'gemeinsam' }, ...personen.map(p => ({ id: p.speicher, label: p.speicher === ich ? `${p.name} (ich)` : p.name }))]} aktiv={e.owner}
           onWahl={o => setze({ owner: o, ...(o === OWNER_BEIDE ? { kalender: false } : {}) })} farbe={LEUCHT.puls} />
-        <Pillen liste={kategorien.filter(k => e.space === 'business' || k.id !== 'business').map(k => ({ id: k.id, label: k.label }))} aktiv={e.kategorie} onWahl={k => setze({ kategorie: k })}
+        {/* Prüf-Fund 11.10.: im Business nur die Kategorie „Business“ — Gesundheit/Erholung sind Privat (der Server verschiebt sie sonst nach Privat). */}
+        <Pillen liste={kategorien.filter(k => kategoriePasst(e.space, k.id)).map(k => ({ id: k.id, label: k.label }))} aktiv={e.kategorie} onWahl={k => setze({ kategorie: k })}
           farbe={kategorien.find(k => k.id === e.kategorie)?.farbe} />
       </Abschnitt>
 
