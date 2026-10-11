@@ -134,7 +134,11 @@ export interface PersonenDatei { version: number; karten: PersonenKarte[] }
 
 // Schnittstellen zwischen den Paketen (Signaturen in den Stub-Dateien, Abschnitt 11):
 export interface FallKurz { mandatId: string; status: Fall['status']; phase?: string; fortschritt: number; naechster?: string; wartet: number; wartetAeltesterTage?: number; onboardingOffen: number; willkommenUeberfaellig: boolean }
-export interface KundeKurz { link: 'keiner' | 'aktiv' | 'abgelaufen' | 'widerrufen' | 'aus'; formularProzent: number | null; ungepruefteUnterlagen: number; letzterPuls?: { wert: number; am: string }; pulsOffen: boolean }
+export interface KundeKurz {
+  link: 'keiner' | 'aktiv' | 'abgelaufen' | 'widerrufen' | 'aus'; formularProzent: number | null; ungepruefteUnterlagen: number; letzterPuls?: { wert: number; am: string }; pulsOffen: boolean;
+  /** Nur das Kunden-Playbook des Falls (Formular unter dem Schritt „Kunden-Playbook“) in % — misst den Onboarding-Schritt (Prüf-Fund 11.10.: vorher alle Formulare). */
+  playbookProzent?: number | null;
+}
 export interface DossierKurz { vorhanden: boolean; f1: boolean; f2: boolean; laeufe: Partial<Record<AnalyseAgentId, LaufStatus>>; kostenCent: number; art14Bald: number }
 
 // ── Schnittstellen der Hub-Dateien (C0) — Signaturen, die C1/C2/C3 in ihren Stubs liefern ─────────────────────────────────────────────
@@ -183,6 +187,8 @@ export interface OnboardingKandidat {
   /** Warum er Kandidat ist (der erste zutreffende Grund). */
   grund: 'vertrag' | 'angebot' | 'deal';
   unterschrift: Unterschrift | null;
+  /** Bestandsmandat (vor der Einrichtung von Fulfillment unterschrieben, älter als 14 Tage) — nur ruhig „Fall starten?“, ohne Vorschlag/Glocke/Uhr. */
+  bestand?: true;
 }
 /** Zeitpunkt der Unterschrift (Regel `unterschriftAm`) und woher er kommt. `am` ist eine ISO-Zeit oder ein Tag (YYYY-MM-DD). */
 export interface Unterschrift { am: string; quelle: 'angebot' | 'deal' | 'start' | 'fall' }

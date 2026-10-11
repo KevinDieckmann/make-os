@@ -27,7 +27,10 @@ import { schaetzen, grenzeCent, SUCHE_USD_CENT, type LaufSchaetzung } from './sc
 import { ausgabePruefen } from './ausgabe';
 import { dossierAnwenden, type DossierOp } from './dossier-anwenden';
 import { personenAnwenden } from './personen-anwenden';
-import { art14FaelligAm, loeschAmFuer } from './dsgvo';
+import { art14FaelligAm, loeschAmFuer, negativTreffer } from './dsgvo';
+import { namenErsetzen } from './pruefen';
+import { personenteilErlaubt } from './zoe-werkzeug';
+import { PERSONENTEIL_GESPERRT } from '../zugang';
 import { istGesperrt, urlNormal } from './quellen';
 import { neuerWebLauf } from './web-lesen';
 import { analyseWerkzeug, werkzeugeFuer } from './werkzeuge';
@@ -132,6 +135,8 @@ export async function laufStarten(e: StartEingabe, person: string): Promise<Star
   if (e.grund !== undefined && (typeof e.grund !== 'string' || e.grund.length > GRUND_MAX)) return { status: 413, body: { ok: false, fehler: `Grund: höchstens ${GRUND_MAX} Zeichen.` } };
   const mandat = await mandatFuer(e.mandatId);
   if (!mandat.ok) return { status: mandat.status, body: { ok: false, fehler: mandat.fehler } };
+  // Prüf-Fund 11.10.: Läufe, die den Personenteil schreiben (A4) oder lesen (A11–A13), nur mit Recht auf den Personenteil — sonst 403.
+  if (PERSONEN_AGENTEN.has(e.agent) && !(await personenteilErlaubt(person))) return { status: 403, body: { ok: false, fehler: PERSONENTEIL_GESPERRT } };
   const datei = await fulfillmentLesen('dossiers');
   const d = datei.dossiers[e.mandatId];
   if (!d) return { status: 404, body: { ok: false, fehler: 'Erst das Dossier anlegen.' } };
@@ -345,7 +350,7 @@ async function laufAusfuehren(mandatId: string, laufId: string, person: string, 
     zustand: { fremdGelesen: false, vertraulich: false, kategorien },
     ask: { model: modell, maxTokens: 8000, timeoutMs: 120_000, zweck, ki: { lauf: 'aufruf', person } },
     abbrechen: async () => ((await nochAktiv(mandatId, laufId)) ? null : 'abgebrochen'),
-    ausfuehren: u => analyseWerkzeug(u, { agent: l.agent, mandatId, web, dossier: async () => (await fulfillmentLesen('dossiers')).dossiers[mandatId] ?? null, karten: kartenAlle }),
+    ausfuehren: u => analyseWerkzeug(u, { agent: l.agent, mandatId, person, web, dossier: async () => (await fulfillmentLesen('dossiers')).dossiers[mandatId] ?? null, karten: kartenAlle }),
   });
   usdCent += ausgang.cent;
   if (ausgang.status === 'abgebrochen' && ausgang.grund === 'abgebrochen') { await dossierSchreiben({ op: 'lauf-ende', mandatId, laufId, status: 'fehler', kostenCent: inEuroCent(usdCent) }, person); return; }
@@ -397,6 +402,17 @@ export async function laufAbbrechen(mandatId: string, laufId: string, person: st
   return r.ok ? { status: 200, body: { ok: true } } : { status: r.status, body: { ok: false, fehler: r.fehler } };
 }
 
+/** Agenten, die den Personenteil schreiben (A4) bzw. lesen (A11–A13) — Start und Entwürfe nur mit Recht auf den Personenteil. */
+export const PERSONEN_AGENTEN: ReadonlySet<AnalyseAgentId> = new Set(['a4', 'a11', 'a12', 'a13']);
+export const TIEFENBERICHT_FRAGE_MAX = 2000;
+/** Eine eigene Frage des Tiefenberichts prüfen (rein): Negativliste (wie Personenkarten) und Namen der Personenkarten des Mandats. null = in Ordnung. */
+export function tiefenberichtFrageGrund(frage: string, karten: readonly Pick<PersonenKarte, 'name' | 'funktion'>[]): string | null {
+  const n = negativTreffer(frage, 'person');
+  if (n) return `Die Frage berührt die Negativliste (${n}) — der Tiefenbericht fragt nur nach dem Unternehmen.`;
+  if (namenErsetzen(frage, karten).ersetzt) return 'Die Frage nennt eine Person beim Namen — der Tiefenbericht fragt nur nach dem Unternehmen (Funktionen statt Namen).';
+  return null;
+}
+
 /** Die neutrale Frage des Tiefenberichts (Firma, Branche, Domain) — die Person kann sie ändern (≤ 2.000 Zeichen). */
 export const tiefenberichtFrage = (d: Pick<Dossier, 'eingaben'>): string =>
   `Überblick über das Unternehmen ${d.eingaben.firma}${d.eingaben.domains[0] ? ` (${d.eingaben.domains[0]})` : ''}${d.eingaben.branche ? ` in der Branche ${d.eingaben.branche}` : ''}: Markt, Wettbewerb, Angebot und Positionierung, öffentliche Wahrnehmung und Vertriebsaufstellung — nur öffentliche Unternehmensinformationen, keine Angaben zu Privatpersonen.`;
@@ -410,6 +426,14 @@ export async function tiefenberichtStarten(e: { mandatId: string; frage?: string
   const gruende = sperrGruende(d, 'tb', { playbook: false, register: false, jetztMs: Date.now() });
   if (gruende.length) return { status: 409, body: { ok: false, gesperrt: gruende, fehler: gruende.join(' ') } };
   const frage = (e.frage ?? tiefenberichtFrage(d)).trim();
+  // Prüf-Fund 11.10.: eine EIGENE Frage kann nach Personen fragen — nur mit Recht auf den Personenteil, nie mit Treffern der Negativliste oder
+  // dem Namen einer Personenkarte dieses Mandats (die Vorgabe-Frage nennt nur Firma, Domain und Branche).
+  if (frage !== tiefenberichtFrage(d).trim()) {
+    if (frage.length > TIEFENBERICHT_FRAGE_MAX) return { status: 413, body: { ok: false, fehler: `Frage: höchstens ${TIEFENBERICHT_FRAGE_MAX} Zeichen.` } };
+    if (!(await personenteilErlaubt(person))) return { status: 403, body: { ok: false, fehler: `Eine eigene Frage nur mit Zugang zum Personenteil. ${PERSONENTEIL_GESPERRT}` } };
+    const grund = tiefenberichtFrageGrund(frage, (await fulfillmentLesen('personen')).karten.filter(k => k.mandatId === e.mandatId));
+    if (grund) return { status: 400, body: { ok: false, fehler: grund } };
+  }
   const ki = await kiLage(person);
   if (!ki.tiefenbericht) return { status: 409, body: { ok: false, gesperrt: [KI_SAETZE.tiefenbericht], schalter: 'tiefenbericht', fehler: KI_SAETZE.tiefenbericht } };
   const { kiTiefenberichtStarten } = await import('@/lib/ki/aufruf');

@@ -16,7 +16,8 @@
  * Erledigt-Regel „Termin gelöst“: erledigt, sobald die Buchung keinen Termin-Verweis mehr hat oder der Termin nicht mehr
  * im iCloud-Stand steht (lib/meldungen/regeln.ts `buchungenErledigen`).
  */
-export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin' | 'netzwerken'; id: string }
+/** `kunden-link` (11.10.): Uploads über DENSELBEN Kunden-Link (Fulfillment) fallen in eine ungelesene Meldung zusammen. */
+export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin' | 'netzwerken' | 'kunden-link'; id: string }
 /**
  * `netzwerken` (02.10.): jemand hat dir beim Netzwerken einen Termin gebucht oder eine Person zugeteilt (Bezug `netzwerken` =
  * Kennung der Erfassung, eine Meldung je Erfassung) — gespeichert in der Glocke der anderen Person, das Pop-up zeigt sie einmal.

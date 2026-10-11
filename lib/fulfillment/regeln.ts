@@ -8,7 +8,7 @@
 
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
 import { istBusinessGesellschaft } from '@/lib/einheiten';
-import { tagVon } from '@/lib/zeit';
+import { tagVon, tagePlus } from '@/lib/zeit';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 import type {
   Fall, FallKnoten, KnotenStatus, OnboardingKandidat, ProzessVorlage, Unterschrift, WartetPunkt, WertKontoZeile,
@@ -91,13 +91,13 @@ const blaetterUnter = (id: string, liste: readonly FallKnoten[]) => {
 };
 
 /**
- * Fortschritt eines Falls in Prozent (0–100, gerundet): Anteil der erledigten Knoten auf Ebene 4 und 5; „entfällt“ zählt nicht (7.4).
- * Hat der Fall (noch) keine Einzelschritte, zählen seine Blätter ab Ebene 2 — so steht ein Fall aus einem Muster bis Ebene 3 nicht ewig auf 0.
+ * Fortschritt eines Falls in Prozent (0–100, gerundet): Anteil der erledigten BLÄTTER ab Ebene 2 (Knoten ohne Kinder); „entfällt“ zählt nicht (7.4).
+ * Bis 11.10. zählten nur Ebene 4/5, sobald es sie gab — in einem Fall aus Muster bis Ebene 3 + Onboarding-Schritten (Ebene 4) zählte dann nur
+ * das Onboarding (Prüf-Fund: nach dem Onboarding 89 %, sonst 0 %). Jetzt zählt jedes Blatt gleich, egal auf welcher Ebene.
  */
 export function fallFortschritt(fall: Pick<Fall, 'knoten'>): number {
   const l = fall.knoten;
-  let zaehlend = l.filter(k => { const e = ebeneVon(k, l); return (e === 4 || e === 5) && k.status !== 'entfaellt'; });
-  if (!zaehlend.length) zaehlend = l.filter(k => ebeneVon(k, l) >= 2 && kinderVon(k.id, l).length === 0 && k.status !== 'entfaellt');
+  const zaehlend = l.filter(k => ebeneVon(k, l) >= 2 && kinderVon(k.id, l).length === 0 && k.status !== 'entfaellt');
   if (!zaehlend.length) return 0;
   return Math.round((zaehlend.filter(k => k.status === 'erledigt').length / zaehlend.length) * 100);
 }
@@ -215,16 +215,32 @@ export function unterschriftAm(
 /** Marke „nicht mehr vorschlagen“ für ein Mandat (Ausblenden der Onboarding-Karte). */
 export const markeOnboardingAus = (mandatId: string) => `onboarding-aus:${mandatId}`;
 
+/** Marke (in `vorlagen.marken`): Tag, an dem Fulfillment eingerichtet wurde — setzt der erste Morgenlauf (der legt dabei nichts an). */
+export const MARKE_FULFILLMENT_SEIT = 'fulfillment-eingerichtet';
+/** So viele Tage nach der Unterschrift gilt ein Mandat noch als „neu“ (sonst Bestand, wenn es vor der Einrichtung unterschrieben wurde). */
+export const BESTAND_TAGE = 14;
+/**
+ * Bestandsmandat (Prüf-Fund 11.10.: am ersten Morgen nach dem Update bekam JEDES aktive Mandat einen Vorschlag, eine Glocke und „Willkommensmail
+ * überfällig“)? Neu ist, was NACH der Einrichtung (`stichtag`) unterschrieben wurde oder höchstens `BESTAND_TAGE` vor `bezugTag` (heute bzw. Start des
+ * Falls). Ohne Tag der Unterschrift: Bestand. Rein.
+ */
+export function istBestand(unterschrift: string | null | undefined, stichtag: string | undefined, bezugTag: string): boolean {
+  if (!unterschrift) return true;
+  const u = tagVon(unterschrift);
+  if (stichtag && u >= tagVon(stichtag)) return false;
+  return u < tagePlus(tagVon(bezugTag), -BESTAND_TAGE);
+}
+
 /**
  * Mandate, für die „Kundenonboarding starten“ angeboten wird (3.1): Status aktiv oder Angebot, Business-Gesellschaft, nicht gelöscht, noch
  * kein Fall, nicht ausgeblendet — UND unterschrieben, Angebot angenommen oder Deal gewonnen. Älteste Unterschrift zuerst.
- * `heute` gehört zur festen Signatur (spätere Regeln nach Alter); heute ohne Wirkung.
+ * `bestand: true` (Regel `istBestand`, Stichtag aus `marken`): nur ruhig „Fall starten?“ — kein Vorschlag, keine Glocke, keine Uhr.
  */
 export function onboardingKandidaten(
   crm: Pick<CrmBestand, 'mandate' | 'angebote' | 'chancen'>,
   faelle: Readonly<Record<string, unknown>>,
   marken: Readonly<Record<string, string>>,
-  _heute: string,
+  heute: string,
 ): OnboardingKandidat[] {
   const raus: OnboardingKandidat[] = [];
   for (const m of crm.mandate ?? []) {
@@ -234,8 +250,9 @@ export function onboardingKandidaten(
     const deal = !!m.chanceId && (crm.chancen ?? []).some(c => c.id === m.chanceId && c.stufe === 'gewonnen');
     const grund = m.vertragUnterschrieben ? 'vertrag' as const : angebot ? 'angebot' as const : deal ? 'deal' as const : null;
     if (!grund) continue;
+    const unterschrift = unterschriftAm(m, crm);
     raus.push({
-      mandatId: m.id, titel: m.titel, kunde: m.kunde, grund, unterschrift: unterschriftAm(m, crm),
+      mandatId: m.id, titel: m.titel, kunde: m.kunde, grund, unterschrift, ...(istBestand(unterschrift?.am, marken[MARKE_FULFILLMENT_SEIT], heute) ? { bestand: true as const } : {}),
       ...(m.leistungId ? { leistungId: m.leistungId } : {}), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}),
     });
   }

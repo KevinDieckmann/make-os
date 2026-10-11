@@ -38,6 +38,9 @@ export async function dossierKurzFuer(mandatIds: readonly string[]): Promise<Rec
   }));
 }
 
+/** Marke „Art.-14-Vorschlag gelegt“ je Karte und Frist (in `vorlagen.marken`). */
+export const markeArt14 = (karteId: string, faelligAm: string): string => `art14-vorschlag:${karteId}:${faelligAm}`.slice(0, 120);
+
 /** Morgenlauf: verwaiste Läufe abschließen, Art.-14-Hinweise in den Stapel. Startet nie einen Lauf. */
 export async function analyseMorgenlauf(h: string, heute: string): Promise<MorgenlaufTeil> {
   const jetzt = Date.now();
@@ -48,14 +51,18 @@ export async function analyseMorgenlauf(h: string, heute: string): Promise<Morge
     verwaist = n;
     return n ? { ok: true, datei: { ...cur, dossiers }, geaendert: [] } : { ok: false, status: 400, fehler: 'nichts' };
   }, { art: 'system' }, h);
-  const [personen, dossiers, stapel, { mitKontaktArt14 }] = await Promise.all([fulfillmentLesen('personen', h), fulfillmentLesen('dossiers', h), import('@/lib/zoe/stapel'), import('./personen-server')]);
+  const [personen, dossiers, vorlagen, stapel, { mitKontaktArt14 }] = await Promise.all([fulfillmentLesen('personen', h), fulfillmentLesen('dossiers', h), fulfillmentLesen('vorlagen', h), import('@/lib/zoe/stapel'), import('./personen-server')]);
   const offen = new Set((await stapel.lies('offen')).filter(v => v.bezug?.art === 'fulfillment').map(v => v.bezug!.id));
   let vorschlaege = 0;
+  const neueMarken: Record<string, string> = {};
   for (const k of await mitKontaktArt14(personen.karten)) {
     const st = art14Stand(k, heute);
     if (st.stufe !== 'bald' && st.stufe !== 'ueberfaellig') continue;
     const id = `a:art14:${k.id}`;
-    if (offen.has(id)) continue;
+    // Prüf-Fund 11.10.: je Karte und Frist nur EIN Vorschlag — auch wenn der vorige abgelehnt oder entschieden ist (vorher kam er täglich neu).
+    const marke = markeArt14(k.id, st.faelligAm ?? '');
+    if (offen.has(id) || vorlagen.marken[marke]) continue;
+    neueMarken[marke] = heute;
     const d = dossiers.dossiers[k.mandatId];
     const person = d?.f1?.von || d?.geaendertVon || undefined;
     await stapel.lege({
@@ -66,11 +73,15 @@ export async function analyseMorgenlauf(h: string, heute: string): Promise<Morge
     });
     vorschlaege++;
   }
+  if (Object.keys(neueMarken).length) await fulfillmentAendern('vorlagen', d => ({ ok: true, datei: { ...d, marken: { ...d.marken, ...neueMarken } }, geaendert: Object.keys(neueMarken) }), { art: 'system' }, h);
   return { vorschlaege, ...(verwaist ? { info: `${verwaist} verwaiste Analyse(n) abgeschlossen` } : {}) };
 }
 
 /** Löschfristen (8.1) — Zähler je Name, keine Namen, keine Kennungen. */
 export async function personenFristen(k: FristenKontext): Promise<Record<string, number>> {
+  // CRM-Wächter (Prüf-Fund 11.10.): fehlt der CRM-Bestand, gälte jede Karte als „Mandat endgültig gelöscht“ → nie etwas löschen.
+  const { loadJson } = await import('@/lib/store/local-db');
+  if ((await loadJson<unknown>('crm')) === null) return {};
   const { ladeCrmMitPapierkorb } = await import('@/lib/crm/speicher');
   const mandate = new Map((await ladeCrmMitPapierkorb()).mandate.map(m => [m.id, m]));
   const loeschAm = (karte: PersonenKarte): string | null => {

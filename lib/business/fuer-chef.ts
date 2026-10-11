@@ -4,11 +4,14 @@
 // ist oder der Monatsabschluss fehlt. ZOE beantwortet Fragen dazu.
 
 import { localDay } from '@/lib/zeit';
-import { SCOPES, SAEULEN_TEXT, KENNZAHL, type Scope } from './register';
+import { SCOPES, SAEULEN, SAEULEN_TEXT, KENNZAHL, type Scope } from './register';
 import { ladeRoh, bestandFuer, businessSchreibStand } from './speicher';
 import { berechne, type BusinessIndex, type KennzahlStand } from './index';
 import { schwellenText } from './text';
 import { BUSINESS_GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
+
+/** Säulen „nur mit Messung“ (Kapazität, Fulfillment): ohne Messung keine Messlücken (Prüf-Fund 11.10.). */
+const NUR_MIT_MESSUNG: ReadonlySet<string> = new Set(SAEULEN.filter(s => s.nurMitMessung).map(s => s.id));
 
 export interface ChefHinweis { schwere: 'hoch' | 'mittel' | 'niedrig'; bereich: 'business' | 'daten'; text: string; quelle: string }
 
@@ -57,7 +60,8 @@ export async function businessFuerChef(heute = localDay()): Promise<{ block: Rec
     saeulen: g.saeulen.map(s => ({ saeule: s.label, score: s.zuDuenn ? null : s.score, gemessen: `${s.kennzahlen.filter(k => k.gemessen).length}/${s.kennzahlen.length}` })),
     finanzielle_gesundheit: g.saeulen.find(s => s.id === 'fh')!.kennzahlen.filter(k => k.gemessen).map(kurz),
     rot: g.saeulen.flatMap(s => s.kennzahlen.filter(k => k.ampel === 'rot').map(kurz)),
-    messluecken: g.saeulen.flatMap(s => s.kennzahlen.filter(k => !k.gemessen).map(k => ({ kennzahl: k.label, fehlt: k.quelle }))),
+    // Säulen „nur mit Messung“ (Kapazität, Fulfillment) ohne Messung sind keine Lücke — sie zählen dann gar nicht (wie im Kern).
+    messluecken: g.saeulen.filter(s => !(NUR_MIT_MESSUNG.has(s.id) && (s.score == null || s.zuDuenn))).flatMap(s => s.kennzahlen.filter(k => !k.gemessen).map(k => ({ kennzahl: k.label, fehlt: k.quelle }))),
     monatsabschluss_fehlt: abschlussFehlt.map(f => `${FIRMA[f.firma]} ${f.monat}`),
   };
   return { block, hinweise };

@@ -196,6 +196,16 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           const fa = optTag(o.faelligAm, 'Fällig am');
           if (fa !== undefined) { if (fa === null) delete neu.faelligAm; else neu.faelligAm = fa; }
           if (JSON.stringify(neu) !== JSON.stringify(n)) setzeKnoten(neu);
+          // Takt ab einem Ereignis (Prüf-Fund 11.10., Messe-Nachfasstakt Tag 1/3/7/14/30): wird ein Knoten erledigt, bekommen die offenen
+          // Einzelschritte des NÄCHSTEN Geschwisters mit `dauerTage` und ohne Fälligkeit `faelligAm` = Tag der Erledigung + dauerTage
+          // („Während der Messe“ erledigt → „Nach der Messe“: Nachfassen am Tag 1, 3, 7, 14, 30). Gesetzte Fälligkeiten bleiben.
+          if (neu.status === 'erledigt' && n.status !== 'erledigt') {
+            const geschwister = kinderVon(n.elternId, f.knoten);
+            const naechstes = geschwister[geschwister.findIndex(x => x.id === n.id) + 1];
+            if (naechstes) for (const s of kinderVon(naechstes.id, f.knoten)) {
+              if (s.dauerTage && !s.faelligAm && s.status === 'offen') setzeKnoten({ ...s, faelligAm: tagPlus(k.heute, s.dauerTage) });
+            }
+          }
           break;
         }
         case 'knoten-extra': {

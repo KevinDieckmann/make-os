@@ -19,6 +19,8 @@ import { MUSTER_ONBOARDING, MUSTER_PLAYBOOK, type OnboardingSchluessel } from '.
 import { ausWandzeit } from '@/lib/kalender/zeit';
 
 export const OB_PRAEFIX = 'fk-ob-';
+/** Kennung des Playbook-Formulars unter dem Schritt „Playbook“ (dieselbe wie OB_PLAYBOOK_FORMULAR_ID in fall.ts — hier ohne Import-Kreis). */
+const OB_PLAYBOOK_FORMULAR = 'fk-obf-playbook';
 export const obKnotenId = (s: OnboardingSchluessel) => `${OB_PRAEFIX}${s}`;
 export const obSchluessel = (id: string): OnboardingSchluessel | null => {
   const s = id.startsWith(OB_PRAEFIX) ? id.slice(OB_PRAEFIX.length) : '';
@@ -111,7 +113,12 @@ export function onboardingStand(fall: Fall, a: OnboardingAbleitung): OnboardingS
 export function fallWirksam(fall: Fall, a: OnboardingAbleitung): Fall {
   const st = onboardingStand(fall, a);
   const erfuellt = new Map(st.schritte.map(s => [obKnotenId(s.schluessel), s.erfuellt]));
+  // Der Formular-Knoten unter dem Playbook-Schritt (`fk-obf-playbook`) folgt dem Stand seines Schritts (Prüf-Fund 11.10.: er blieb sonst ewig offen —
+  // die Phase „Onboarding“ wurde nie fertig). Entfällt der Schritt, entfällt das Formular mit.
+  const pbSchritt = fall.knoten.find(k => k.id === obKnotenId('playbook'));
+  if (pbSchritt) erfuellt.set(OB_PLAYBOOK_FORMULAR, erfuellt.get(pbSchritt.id) ?? false);
   const knoten = fall.knoten.map(k => {
+    if (k.id === OB_PLAYBOOK_FORMULAR && pbSchritt?.status === 'entfaellt') return k.status === 'entfaellt' ? k : { ...k, status: 'entfaellt' as const };
     if (!erfuellt.has(k.id) || k.status === 'entfaellt') return k;
     if (erfuellt.get(k.id)) return k.status === 'erledigt' ? k : { ...k, status: 'erledigt' as const };
     return k.status === 'erledigt' ? { ...k, status: 'offen' as const } : k;

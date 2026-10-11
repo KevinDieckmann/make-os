@@ -25,6 +25,8 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import { MANDAT_ID, KENNUNG } from '@/lib/fulfillment/grenzen';
+import { istBusinessGesellschaft } from '@/lib/einheiten';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,11 +46,18 @@ export async function GET(req: Request) {
     if (!b) return NextResponse.json({ ok: false, fehler: 'Diesen Baustein gibt es nicht (mehr).' }, { status: 404 });
     return NextResponse.json({ ok: true, baustein: { ...b, stand: eintragStand(b) }, steckt: vorlagenMitBaustein(d, b.id), urheberGeprueft: urheberGeprueft(d, b.id) });
   }
-  const { crm, vorlagen, faelle, kunde } = await fallUmfeld();
-  const kurz = await faelleKurz();
-  const mandate = Object.fromEntries(crm.mandate.filter(m => faelle.faelle[m.id] || !m.geloeschtAm).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
+  const { crm, vorlagen, faelle: faelleRoh, kunde } = await fallUmfeld();
+  // Prüf-Fund 11.10.: nur Mandate von Business-Gesellschaften (die Selbstständigkeit gehört zu Privat) — auch Fälle, deren Mandat inzwischen privat
+  // ist, fallen heraus. Ein Fall ohne Mandat im CRM bleibt als „Mandat (gelöscht)“ (ohne Namen).
+  const mandatVon = new Map(crm.mandate.map(m => [m.id, m] as const));
+  const imBusiness = (mandatId: string): boolean => { const m = mandatVon.get(mandatId); return !m || istBusinessGesellschaft(m.gesellschaft); };
+  const faelle = { ...faelleRoh, faelle: Object.fromEntries(Object.entries(faelleRoh.faelle).filter(([id]) => imBusiness(id))) };
+  const kurz = await faelleKurz(Object.keys(faelle.faelle));
+  const mandate = Object.fromEntries(crm.mandate.filter(m => istBusinessGesellschaft(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
   const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '' }]));
   const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso);
+  // Firmen-/Kundennamen gehen raus → Lese-Protokoll (Prüf-Fund 11.10.), nur die Anzahl.
+  leseZugriff(req, 'fulfillment', { anzahl: Object.keys(mandate).length + kandidaten.length });
   if (url.searchParams.get('nur') === 'kurz') {
     return NextResponse.json({
       ok: true, kandidaten, zuordnung: vorlagen.zuordnung, faelle: faelleAnsicht,

@@ -108,7 +108,8 @@ export function kundenSicht(e: SichtEingabe): KundenSicht {
   const offenSichtbar = (k: FallKnoten | undefined) => !!k && sichtbar(k) && (k.status === 'offen' || k.status === 'in_arbeit');
   const naechstes = reihe.filter(k => ebeneVon(k, l) >= 2 && offenSichtbar(k) && !phaseFertig(k, l) && !teilbaum(k.id, l).some(x => x !== k.id && offenSichtbar(nach.get(x))))
     .slice(0, 5).map(k => (k.faelligAm ? `${k.titel} — bis ${tagText(k.faelligAm)}` : k.titel));
-  const wartet = f ? wartetAufEuch({ ...f, knoten: l.filter(k => !knotenGesperrt(k, gesperrt)) }, e.heute).map(w => ({ titel: w.titel, ...(w.seit ? { seit: tagText(tagVon(w.seit)) } : {}) })) : [];
+  // Nur geteilte Entscheidungen (Prüf-Fund 11.10.: ungeteilte erschienen hier mit Titel) und keine gesperrten Knoten.
+  const wartet = f ? wartetAufEuch({ ...f, knoten: l.filter(k => !knotenGesperrt(k, gesperrt)), entscheidungen: f.entscheidungen.filter(x => x.geteilt) }, e.heute).map(w => ({ titel: w.titel, ...(w.seit ? { seit: tagText(tagVon(w.seit)) } : {}) })) : [];
   const wertKonto = wertKontoZeilen(f, e.mandat).map(z => ({ name: z.name, vorher: z.vorher, jetzt: z.jetzt, ziel: z.ziel, ...(z.bis ? { bis: tagText(z.bis) } : {}) }));
   const ritNach = new Map(e.rituale.map(r => [r.id, r]));
   const rituale = (f?.rituale ?? []).map(r => ritNach.get(r.ritualId)).filter((r): r is RitualVorlage => !!r).map(r => ({ titel: r.titel, rhythmus: RHYTHMUS_TEXT[r.rhythmus] }));

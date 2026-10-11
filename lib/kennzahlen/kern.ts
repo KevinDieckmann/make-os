@@ -140,7 +140,8 @@ export function berechneModell<B>(m: {
   }
   return {
     scope: m.scope, stand: m.stand, index, label: indexLabel(index), abdeckung: Math.round(abdeckung * 100) / 100, teil,
-    saeulen, hebel, luecken: saeulen.reduce((a, s) => a + s.kennzahlen.filter(k => !k.gemessen).length, 0),
+    // Säulen „nur mit Messung“ ohne Messung zählen auch hier nicht (Prüf-Fund 11.10.: ohne Fall zählten die vier ff_* als Messlücken).
+    saeulen, hebel, luecken: saeulen.filter(s => !ohneMessung.has(s.id)).reduce((a, s) => a + s.kennzahlen.filter(k => !k.gemessen).length, 0),
     ...(m.anlaufBis && m.stand < m.anlaufBis ? { vorlaeufig: { bis: m.anlaufBis } } : {}),
   };
 }

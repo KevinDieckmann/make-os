@@ -26,6 +26,7 @@ import { einwilligungenMitBeleg, belegGesperrtText } from './einwilligung-beleg'
 import { AblageFehler, inhaltAblegen, inhaltEntfernen, inhaltLaden, neueDateiId } from './ablage';
 import { DATEI_ID, dateinameSaeubern, endung, type DateiEintrag } from './regeln';
 import { AUFGABEN_DATEI_PRAEFIX, MAX_AUFGABEN_EINTRAEGE, aufgabenMetaSaeubern, type AufgabenDateiTyp, type Bereich } from './aufgaben-regeln';
+import { aktiveInhalte, AKTIV_TEXT } from './aktive-inhalte';
 
 export const aufgabenAblageName = (haushalt: string) => {
   if (!HAUSHALT_OK.test(haushalt)) throw new AblageFehler('Unzulässiger Haushalt.', 400);
@@ -120,6 +121,9 @@ export interface NeueAufgabenDatei { bytes: Buffer; name: string; typ: AufgabenD
  * Eintrag. Scheitert der Eintrag, wird der Inhalt wieder entfernt — keine verwaisten Dateien.
  */
 export async function aufgabenDateiAblegen(haushalt: string, person: string, metaRoh: unknown, datei: NeueAufgabenDatei, jetzt = new Date().toISOString()): Promise<AufgabenDatei> {
+  // Aktive Inhalte (Makros, eingebettete Objekte, externe Verweise, PDF-Skripte) nie ablegen (Prüf-Fund 11.10.).
+  const aktiv = aktiveInhalte(datei.typ, datei.bytes);
+  if (aktiv) throw new AblageFehler(`${AKTIV_TEXT} (${aktiv})`, 415);
   const meta = aufgabenMetaSaeubern(metaRoh);
   const bezug = await bezugAufloesen(meta.projektId, meta.aufgabeId, person);
   // Datei an einer Liste (30.09.): die Liste muss im Projekt liegen.

@@ -28,7 +28,7 @@ function uhrText(k: Kandidat): { text: string; farbe: string } | null {
 }
 
 /** Kandidaten-Liste mit Start-Dialog — geteilt von Fulfillment › Onboarding und dem Einhänger in Produkte & Mandate. */
-function KandidatenKarte({ kandidaten, pakete, i }: { kandidaten: Kandidat[]; pakete: { id: string; titel: string }[]; i: number }) {
+function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten: Kandidat[]; pakete: { id: string; titel: string }[]; i: number; ruhig?: boolean }) {
   const [start, setStart] = useState<Kandidat | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
   const aus = async (k: Kandidat) => {
@@ -36,8 +36,11 @@ function KandidatenKarte({ kandidaten, pakete, i }: { kandidaten: Kandidat[]; pa
     if (a.ok) geaendert(); else setMeldung(fehlerText(a));
   };
   return (
-    <Karte i={i} akzent={LEUCHT.gut}>
-      <Ueberschrift farbe={LEUCHT.gut} erklaerung="fulfillment.willkommen24h" rechts={<span>{kandidaten.length}</span>}>Kundenonboarding starten</Ueberschrift>
+    <Karte i={i} {...(ruhig ? {} : { akzent: LEUCHT.gut })}>
+      {ruhig
+        ? <Ueberschrift rechts={<span>{kandidaten.length}</span>}>Bestandsmandate — Fall starten?</Ueberschrift>
+        : <Ueberschrift farbe={LEUCHT.gut} erklaerung="fulfillment.willkommen24h" rechts={<span>{kandidaten.length}</span>}>Kundenonboarding starten</Ueberschrift>}
+      {ruhig && <div style={klein}>Vor der Einrichtung von Fulfillment unterschrieben — ohne Uhr und ohne Glocke. Ein Fall startet nur, wenn du ihn anlegst.</div>}
       <Meldung text={meldung} art="kritisch" />
       <Liste>
         {kandidaten.map(k => {
@@ -88,8 +91,10 @@ export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' 
 /** Einhänger in Produkte & Mandate › Mandate: die Karte erscheint NUR, wenn es Kandidaten gibt (sonst bleibt die Seite wie bisher). */
 export function OnboardingHinweis(_p: { api: CrmApi }) {
   const { daten } = useUebersichtKurz();
-  if (!daten?.kandidaten.length) return null;
-  return <KandidatenKarte kandidaten={daten.kandidaten} pakete={daten.prozesse.filter(p => p.art === 'paket')} i={1} />;
+  // Nur neue Kandidaten — Bestandsmandate stehen ruhig unter Fulfillment › Onboarding (Prüf-Fund 11.10.).
+  const neu = daten?.kandidaten.filter(k => !k.bestand) ?? [];
+  if (!neu.length || !daten) return null;
+  return <KandidatenKarte kandidaten={neu} pakete={daten.prozesse.filter(p => p.art === 'paket')} i={1} />;
 }
 
 export function Onboarding() {
@@ -100,9 +105,10 @@ export function Onboarding() {
   const pakete = daten.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel }));
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      {daten.kandidaten.length > 0
-        ? <KandidatenKarte kandidaten={daten.kandidaten} pakete={pakete} i={1} />
+      {daten.kandidaten.some(k => !k.bestand)
+        ? <KandidatenKarte kandidaten={daten.kandidaten.filter(k => !k.bestand)} pakete={pakete} i={1} />
         : <Hinweis art="info">Kein Mandat wartet aufs Onboarding. Ein Mandat erscheint hier, sobald der Vertrag unterschrieben, ein Angebot angenommen oder der Deal gewonnen ist.</Hinweis>}
+      {daten.kandidaten.some(k => k.bestand) && <KandidatenKarte kandidaten={daten.kandidaten.filter(k => k.bestand)} pakete={pakete} i={2} ruhig />}
       <Karte i={2}>
         <Ueberschrift rechts={<span>{laufend.length}</span>}>Laufende Onboardings</Ueberschrift>
         {!laufend.length ? <div style={klein}>Gerade läuft kein Onboarding.</div> : (

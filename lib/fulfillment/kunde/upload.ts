@@ -85,6 +85,8 @@ function uN(b: Uint8Array, o: number, n: number): number | null {
   if (n === 8) { const hoch = u32be(b, o); if (hoch > 0x1fffff) return null; return hoch * 2 ** 32 + u32be(b, o + 4); }
   return null;
 }
+/** Höchstens so viele Ausdehnungen (extents) im `iloc` — ein echtes Foto hat eine Handvoll je Element. */
+export const HEIC_AUSDEHNUNGEN = 100_000;
 interface Box { art: string; start: number; inhalt: number; ende: number }
 function boxen(b: Uint8Array, von: number, bis: number): Box[] | null {
   const raus: Box[] = [];
@@ -148,9 +150,15 @@ export function heicOhneMetadaten(b: Uint8Array): Uint8Array | null {
   if (v > 2) return null;
   let o = iloc.inhalt + 4;
   const offsetGr = b[o] >> 4, laengeGr = b[o] & 0x0f, basisGr = b[o + 1] >> 4, indexGr = v === 1 || v === 2 ? b[o + 1] & 0x0f : 0;
+  // Nur die Größen der Norm (0, 4, 8) — sonst ist der Aufbau nicht sicher lesbar.
+  if (![offsetGr, laengeGr, basisGr, indexGr].every(g => g === 0 || g === 4 || g === 8)) return null;
+  const schritt = indexGr + offsetGr + laengeGr;
   o += 2;
   const anzahl = v < 2 ? u16be(b, o) : u32be(b, o);
   o += v < 2 ? 2 : 4;
+  // Prüf-Fund 11.10.: Einträge ohne Fortschritt (alle Größen 0, bis 65.535 je Element) liefen minutenlang. Jeder Durchlauf muss Bytes
+  // verbrauchen, die es im `iloc` gibt; insgesamt höchstens HEIC_AUSDEHNUNGEN Durchläufe.
+  let durchlaeufe = 0;
   for (let i = 0; i < anzahl; i++) {
     if (o + 4 > iloc.ende) return null;
     const id = v < 2 ? u16be(b, o) : u32be(b, o);
@@ -158,10 +166,14 @@ export function heicOhneMetadaten(b: Uint8Array): Uint8Array | null {
     let methode = 0;
     if (v === 1 || v === 2) { methode = u16be(b, o) & 0x0f; o += 2; }
     o += 2; // data_reference_index
+    if (o + basisGr + 2 > iloc.ende) return null;
     const basis = uN(b, o, basisGr); if (basis === null) return null;
     o += basisGr;
     const n = u16be(b, o);
     o += 2;
+    if (schritt === 0 ? n > 1 : o + n * schritt > iloc.ende) return null;
+    durchlaeufe += n;
+    if (durchlaeufe > HEIC_AUSDEHNUNGEN) return null;
     for (let j = 0; j < n; j++) {
       o += indexGr;
       const off = uN(b, o, offsetGr); o += offsetGr;
