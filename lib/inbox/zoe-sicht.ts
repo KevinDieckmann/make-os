@@ -5,6 +5,7 @@
 // KI-Grundsatz (INBOX_KONZEPT.md Abschnitt 10): die KI sieht nur Kopf + Ausschnitt (Volltext nur beim Entwurf auf Klick).
 
 import { FACH_LABEL } from './faecher';
+import { tokenSchwaerzen } from '@/lib/fulfillment/kunde/token';
 import { stromFuer } from './strom-server';
 import type { Gespraech, LageZeile } from './strom';
 
@@ -31,7 +32,7 @@ export function lageText(l: LageZeile, name: string): string {
   return `${name}: ${t.length ? t.join(' · ') : 'nichts offen'}`;
 }
 
-const zeile = (g: Gespraech) => `• [${FACH_LABEL[g.fach as keyof typeof FACH_LABEL] ?? g.fach}] ${(g.zuordnung?.name ?? g.gegenueber.name ?? g.gegenueber.email).slice(0, 40)} — ${g.betreff.slice(0, 90)}${g.ausschnitt ? ` · ${g.ausschnitt.slice(0, 160)}` : ''}`;
+const zeile = (g: Gespraech) => `• [${FACH_LABEL[g.fach as keyof typeof FACH_LABEL] ?? g.fach}] ${(g.zuordnung?.name ?? g.gegenueber.name ?? g.gegenueber.email).slice(0, 40)} — ${g.betreff.slice(0, 90)}${g.ausschnitt ? ` · ${tokenSchwaerzen(g.ausschnitt.slice(0, 160))}` : ''}`; // Kunden-Link-Tokens nie ans Modell (Prüf-Fund 11.10.)
 
 /** Für ZOE: offene Gespräche (ohne Suchwort) bzw. Treffer zu einem Suchwort — nur Kopf + Ausschnitt. */
 export async function postfachFuerZoe(person: string, suche: string, anzahl = 20): Promise<{ text: string; treffer: number }> {

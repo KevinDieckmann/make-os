@@ -12,6 +12,7 @@
 //     (`uebergabeFinden`), mit dem mitgeführten Kennzeichen der Gegenseite (Art. 18 → 409); gesendet wird über ein EIGENES Postfach.
 
 import { askText, hasAnthropicKey, fremd, FREMD_REGEL } from '@/lib/anthropic';
+import { tokenSchwaerzen } from '@/lib/fulfillment/kunde/token';
 import type { AnbieterId } from '@/lib/ki/anbieter';
 import type { KiKontext } from '@/lib/datenschutz/ki-tor';
 import { resolveAgent } from '@/lib/agent-config';
@@ -113,7 +114,7 @@ async function entwurfSchreiben(person: string, e: { auf: { von: { email: string
     fremd(e.quelle, [
       `Von: ${auf.von.name ? `${auf.von.name} ` : ''}<${auf.von.email}>`,
       `Betreff: ${auf.betreff || '(kein Betreff)'}`, '',
-      auf.text.slice(0, MAIL_MAX) || '(kein Inhalt verfügbar)',
+      tokenSchwaerzen(auf.text.slice(0, MAIL_MAX)) || '(kein Inhalt verfügbar)', // Kunden-Link-Tokens nie ans Modell (Prüf-Fund 11.10.)
     ].join('\n')),
     '',
     ...(z ? [`Zur Person im CRM: ${z.name}${z.firma ? `, ${z.firma}` : ''}${z.dealTitel ? `; offener Deal „${z.dealTitel}“` : ''}.`, ''] : []),
