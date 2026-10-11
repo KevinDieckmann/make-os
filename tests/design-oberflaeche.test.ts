@@ -169,10 +169,10 @@ describe('Ruhe: Rot nur für echte Dringlichkeit, Felder erst bei Bedarf, Techni
 });
 
 describe('Handy-Kopf: breite Aktionen rutschen unter den Titel (kein Buchstabenbruch mehr)', () => {
-  it('Flex mit Umbruch, der Titel behält rund neun Zeichen, der Satz steht zuletzt', () => {
+  it('Flex mit Umbruch, der Titel misst sich an seiner ganzen Breite, der Satz steht zuletzt', () => {
     const css = lies('app/globals.css');
     expect(css).toContain('.ui-kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 10px; }');
-    expect(css).toContain('.ui-kopf-titel { order: 1; flex: 1 1 0; min-width: min(100%, 9em);');
+    expect(css).toContain('.ui-kopf-titel { order: 1; flex: 1 1 auto; min-width: 0;');
     expect(css).toContain('.ui-kopf-unter { order: 3; flex: 1 0 100%;');
     expect(css).not.toContain('.ui-kopf-titel { grid-column: 1; grid-row: 1;');
   });
