@@ -15,7 +15,7 @@
 import { istErholungsArt } from '@/lib/kalender/arten';
 import { berechneModell, type KennzahlDefBasis, type SaeuleDef, type Messung, type Detail, type Ampel, type Schwelle, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import type { VitalsLog } from '@/lib/vitals';
-import { hautTrend, streakStand, routineQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog } from './eintraege';
+import { hautTrend, streakStand, rhythmusQuote, tageZurueck, type HautLog, type StreakLog, type RoutinenLog, type RhythmusRoutine } from './eintraege';
 import type { ErnaehrungFile } from '@/lib/make-one/ernaehrung-data';
 import { TAGE } from '@/lib/make-one/ernaehrung-data';
 import { WEG } from '@/lib/wege';
@@ -59,9 +59,9 @@ export const GESUNDHEIT_KENNZAHLEN: KennzahlDefBasis[] = [
     formel: 'Tage seit dem letzten Whoop-Wert', quelle: 'Morgen-Check / Whoop-Sync', luecke: 'Noch kein Whoop-Wert eingetragen', pflegen: { text: 'Whoop verbinden', href: WEG.verbindungen() } },
   // ── Bewegung & Aufbau
   { id: 'routinen', label: 'Routinen', saeule: 'ba', gruppe: 'Routinen', gewicht: 1.25, einheit: 'prozent', richtung: 'hoch', gruen: 70, rot: 40,
-    formel: 'Tage mit allen Gesundheits-Routinen ÷ 7', quelle: 'Routinen-Häkchen', luecke: 'In 7 Tagen keine Routine abgehakt', pflegen: ROUTINEN },
+    formel: 'Ø je Routine: erledigt ÷ fällig nach ihrem Rhythmus (7 Tage, Pausen zählen nicht)', quelle: 'Routinen-Häkchen', luecke: 'In 7 Tagen keine Routine abgehakt', pflegen: ROUTINEN },
   { id: 'reha', label: 'Reha & Mobilität', saeule: 'ba', gruppe: 'Routinen', einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
-    formel: 'Tage mit Reha-Routine ÷ 7', quelle: 'Routinen-Häkchen', luecke: 'Keine Reha-Routine angelegt oder abgehakt', pflegen: ROUTINEN },
+    formel: 'Reha-Routine: erledigt ÷ fällig nach ihrem Rhythmus (7 Tage)', quelle: 'Routinen-Häkchen', luecke: 'Keine Reha-Routine angelegt oder abgehakt', pflegen: ROUTINEN },
   { id: 'bewegung', label: 'Bewegung geplant', saeule: 'ba', gruppe: 'Kalender', einheit: 'stunden', richtung: 'hoch', gruen: 3, rot: 1,
     formel: 'Ø Stunden Sport-/Reha-Blöcke je Woche (letzte 4 Wochen)', quelle: 'Wochenplan', luecke: 'In 4 Wochen kein Block im Wochenplan', pflegen: { text: 'Woche planen', href: WEG.woche() } },
   // Belastung zur Tagesform (09.10.): Rahmen je Recovery-Zone aus lib/gesundheit/belastung.ts (eigene Regel, Annahme) — nur mit Strain-Werten.
@@ -75,7 +75,7 @@ export const GESUNDHEIT_KENNZAHLEN: KennzahlDefBasis[] = [
     formel: 'Ø Fortschritt offener Gesundheits-Meilensteine (überfällig = 0)', quelle: 'Meilensteine', luecke: 'Keine Gesundheits-Meilensteine', pflegen: { text: 'Meilensteine pflegen', href: WEG.jahr() } },
   // ── Ernährung & Körper
   { id: 'essen', label: 'Regelmäßig gegessen', saeule: 'ek', gruppe: 'Ernährung', gewicht: 1.25, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
-    formel: 'Tage mit Essens-Routine ÷ 7', quelle: 'Routinen-Häkchen', luecke: 'Keine Essens-Routine angelegt oder abgehakt', pflegen: ROUTINEN },
+    formel: 'Essens-Routine: erledigt ÷ fällig nach ihrem Rhythmus (7 Tage)', quelle: 'Routinen-Häkchen', luecke: 'Keine Essens-Routine angelegt oder abgehakt', pflegen: ROUTINEN },
   { id: 'plan', label: 'Essensplan gefüllt', saeule: 'ek', gruppe: 'Ernährung', einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 40,
     formel: 'Mahlzeiten mit Eintrag ÷ 21', quelle: 'Ernährung', luecke: 'Noch kein Essensplan', pflegen: { text: 'Woche planen', href: WEG.ernaehrung() } },
   // Kennung `antiinflamm` bleibt (gespeichertes Journal-Merkmal); der Name ist allgemein (09.10.).
@@ -94,8 +94,8 @@ export interface GesundheitBestand {
   heute: string;
   person: string;
   vitals: VitalsLog;
-  /** Aktive Gesundheits-Routinen (id, label, wann). */
-  routinen: { id: string; label: string; wann?: string; kategorie?: string }[];
+  /** Aktive Gesundheits-Routinen (id, label, wann) — seit 11.10. mit ihrem Rhythmus (Regel, Pausen, Zeitraum; fehlt = täglich). */
+  routinen: (RhythmusRoutine & { label: string; wann?: string; kategorie?: string })[];
   log: RoutinenLog;
   journal: Record<string, { energy?: number; stress?: number; mood?: number; flags?: string[] }>;
   haut: HautLog;
@@ -142,6 +142,16 @@ function journal(b: GesundheitBestand, feld: 'energy' | 'stress'): { tag: string
   return tageZurueck(b.heute, 7).map(t => ({ tag: t, wert: b.journal[t]?.[feld] })).filter((x): x is { tag: string; wert: number } => typeof x.wert === 'number');
 }
 const routine = (b: GesundheitBestand, muster: RegExp) => b.routinen.find(r => muster.test(r.id) || muster.test(r.label));
+
+/** Eine Routine nach ihrem Rhythmus (Reha, Essen; Prüf-Fund 11.10.): Lücke ohne Häkchen in 7 Tagen bzw. ohne fälligen Termin. */
+function einzelQuote(b: GesundheitBestand, r: GesundheitBestand['routinen'][number]): Messung {
+  const q = rhythmusQuote(b.log, [r], b.heute, 7);
+  if (!q.tage) return { luecke: 'In 7 Tagen nichts abgehakt', details: [{ titel: 'Heute abhaken', href: WEG.gesundheit('routinen', b.person) }] };
+  const x = q.je[0];
+  if (x.quote === null) return { luecke: `„${r.label}“ war in 7 Tagen nach ihrem Rhythmus nicht dran`, details: [{ titel: 'Routinen ansehen', href: WEG.gesundheit('routinen', b.person) }] };
+  const w = x.quote * 100;
+  return { wert: w, anzeige: pz(w), quelle: `${x.erfuellt} von ${x.soll} fälligen Mal „${r.label}“ (nach Rhythmus)`, details: quoteDetails(b, [r.id], b.person) };
+}
 
 function quoteDetails(b: GesundheitBestand, ids: string[], fuer: string): Detail[] {
   return tageZurueck(b.heute, 7).slice(0, 3).map(t => {
@@ -211,21 +221,20 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
   routinen(b) {
     const ids = b.routinen.map(r => r.id);
     if (!ids.length) return { luecke: 'Keine Gesundheits-Routine angelegt', details: [{ titel: 'Routinen anlegen', href: WEG.routinen() }] };
-    const q = routineQuote(b.log, ids, b.heute, 7);
+    // Prüf-Fund 11.10.: Quote nach Rhythmus je Routine (nur fällige Tage/Wochen/Termine, Pausen zählen nicht gegen), gemittelt.
+    const q = rhythmusQuote(b.log, b.routinen, b.heute, 7);
     if (!q.tage) return { luecke: 'In 7 Tagen keine Routine abgehakt', details: [{ titel: 'Heute abhaken', href: WEG.gesundheit('routinen', b.person) }] };
+    if (q.quote === null) return { luecke: 'In 7 Tagen war keine Routine nach ihrem Rhythmus dran', details: [{ titel: 'Routinen ansehen', href: WEG.gesundheit('routinen', b.person) }] };
     const w = q.quote * 100;
-    const je = b.routinen.map(r => ({ r, q: routineQuote(b.log, [r.id], b.heute, 7).quote })).sort((x, y) => x.q - y.q);
-    return { wert: w, anzeige: pz(w), quelle: `${Math.round(q.quote * 7)} von 7 Tagen alle ${ids.length} Routinen · ${q.tage} Tage mit Häkchen`,
-      details: je.slice(0, 3).map(x => ({ titel: x.r.label, wert: `${Math.round(x.q * 7)}/7`, unter: x.r.wann ? `${x.r.wann}s` : undefined, href: WEG.gesundheit('routinen', b.person), ampel: x.q >= 0.7 ? 'gruen' as Ampel : x.q >= 0.4 ? 'gelb' as Ampel : 'rot' as Ampel })) };
+    const je = b.routinen.map(r => ({ r, x: q.je.find(y => y.id === r.id)! })).filter(y => y.x.quote !== null).sort((a, c) => (a.x.quote as number) - (c.x.quote as number));
+    return { wert: w, anzeige: pz(w), quelle: `Ø nach Rhythmus über ${je.length} Routine${je.length === 1 ? '' : 'n'} · ${q.tage} Tage mit Häkchen`,
+      details: je.slice(0, 3).map(({ r, x }) => ({ titel: r.label, wert: `${x.erfuellt}/${x.soll}`, unter: r.wann ? `${r.wann}s` : undefined, href: WEG.gesundheit('routinen', b.person), ampel: (x.quote as number) >= 0.7 ? 'gruen' as Ampel : (x.quote as number) >= 0.4 ? 'gelb' as Ampel : 'rot' as Ampel })) };
   },
   reha(b) {
     // Seit 10.10.: eine Routine der Kategorie „Erholung“ zuerst, sonst wie bisher nach dem Namen.
     const r = b.routinen.find(x => x.kategorie === 'erholung') ?? routine(b, /erholung|reha|mobil|dehn|physio/i);
     if (!r) return { luecke: 'Keine Reha-Routine angelegt', details: [{ titel: 'Routine „Reha & Mobilität“ anlegen', href: WEG.routinen() }] };
-    const q = routineQuote(b.log, [r.id], b.heute, 7);
-    if (!q.tage) return { luecke: 'In 7 Tagen nichts abgehakt', details: [{ titel: 'Heute abhaken', href: WEG.gesundheit('routinen', b.person) }] };
-    const w = q.quote * 100;
-    return { wert: w, anzeige: pz(w), quelle: `${Math.round(q.quote * 7)} von 7 Tagen „${r.label}“`, details: quoteDetails(b, [r.id], b.person) };
+    return einzelQuote(b, r);
   },
   bewegung(b) {
     const ab = tagPlus(b.heute, -27);
@@ -265,10 +274,7 @@ export const GESUNDHEIT_MESSEN: Record<string, (b: GesundheitBestand) => Messung
   essen(b) {
     const r = routine(b, /ess|mahlzeit|frühst|fruehst/i);
     if (!r) return { luecke: 'Keine Essens-Routine angelegt', details: [{ titel: 'Routine „Regelmäßig essen“ anlegen', href: WEG.routinen() }] };
-    const q = routineQuote(b.log, [r.id], b.heute, 7);
-    if (!q.tage) return { luecke: 'In 7 Tagen nichts abgehakt', details: [{ titel: 'Heute abhaken', href: WEG.gesundheit('routinen', b.person) }] };
-    const w = q.quote * 100;
-    return { wert: w, anzeige: pz(w), quelle: `${Math.round(q.quote * 7)} von 7 Tagen „${r.label}“`, details: quoteDetails(b, [r.id], b.person) };
+    return einzelQuote(b, r);
   },
   plan(b) {
     const e = b.ernaehrung;

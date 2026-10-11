@@ -14,6 +14,8 @@
 // Beratung. Beim Streak: unterstützend, nie wertend. Ein Rückfall ist ein
 // Datum, kein Urteil.
 
+import { routineStatistik, type FaelligEingabe } from '@/lib/planung/rhythmus';
+
 export interface HautTag {
   /** 0 = nichts, 10 = unerträglich. */
   juckreiz: number;
@@ -155,6 +157,34 @@ export function routineQuote(log: RoutinenLog, ids: string[], heute: string, n =
   const t = tageZurueck(heute, n);
   const voll = t.filter(d => ids.every(id => (log[d] ?? []).includes(id))).length;
   return { quote: t.length ? voll / t.length : 0, tage: t.filter(d => (log[d] ?? []).length).length };
+}
+
+/** Eine Routine mit ihrem Rhythmus (Regel, Pausen, Zeitraum, angelegt am) — alles optional, ohne Regel gilt „täglich“. */
+export type RhythmusRoutine = { id: string } & Partial<FaelligEingabe>;
+
+export interface RhythmusQuote {
+  /** Ø der Quoten je Routine (0–1) — null, solange keine Routine etwas zu messen hat. */
+  quote: number | null;
+  /** Tage mit mindestens einem Häkchen in den letzten `n` Tagen (wie bisher — 0 = „nichts abgehakt“ ist eine Messlücke). */
+  tage: number;
+  /** Je Routine: Quote nach ihrer Regel, erfüllt/Soll im Fenster. */
+  je: { id: string; quote: number | null; erfuellt: number; soll: number }[];
+}
+
+/**
+ * Erfüllungsquote nach Rhythmus (Prüf-Fund 11.10.): früher verlangte die Quote „alle Routinen an jedem Tag“ — eine Routine „3×/Woche“, eine
+ * Pause oder ein Zeitraum machten die Kennzahl rot. Jetzt rechnet je Routine `routineStatistik` (nur fällige Tage/Wochen/Termine, Pausen und
+ * Tage außerhalb des Zeitraums zählen nie gegen), gemittelt über die Routinen mit Messung. Fenster `n` Tage (Index: 7).
+ */
+export function rhythmusQuote(log: RoutinenLog, routinen: readonly RhythmusRoutine[], heute: string, n = 7): RhythmusQuote {
+  const t = tageZurueck(heute, n);
+  const je = routinen.map(r => {
+    const tage = Object.entries(log ?? {}).filter(([, ids]) => Array.isArray(ids) && ids.includes(r.id)).map(([tag]) => tag).filter(d => d <= heute).sort();
+    const st = routineStatistik({ ...r, rhythmus: r.rhythmus, naechstesMal: r.naechstesMal } as FaelligEingabe, tage, heute, { fensterTage: n });
+    return { id: r.id, quote: st.quote, erfuellt: st.erfuellt, soll: st.soll };
+  });
+  const gemessen = je.filter(x => x.quote !== null).map(x => x.quote as number);
+  return { quote: gemessen.length ? gemessen.reduce((a, b) => a + b, 0) / gemessen.length : null, tage: t.filter(d => (log[d] ?? []).length).length, je };
 }
 
 /** Routine-ID aus einem Zuruf: „Reha", „Supplements genommen", „gelesen" → id. */

@@ -360,7 +360,7 @@ export interface RoutineStatistik {
 }
 
 export type StatistikEingabe = FaelligEingabe;
-const FENSTER_TAGE = 28;
+const FENSTER_STANDARD = 28;
 const STREAK_TAGE = 400;
 
 /**
@@ -372,7 +372,11 @@ const STREAK_TAGE = 400;
  * Pausen und Tage außerhalb des Zeitraums zählen nie gegen — weder für die Quote noch für den Streak („ohne Streak-Verlust“).
  * Gemessen wird ab `angelegtAm` bzw. (Altbestand) ab dem ersten Haken; ohne beides: noch nichts zu messen.
  */
-export function routineStatistik(r: StatistikEingabe, erledigtTage: readonly string[], heute: string): RoutineStatistik {
+export function routineStatistik(r: StatistikEingabe, erledigtTage: readonly string[], heute: string, opts?: { fensterTage?: number }): RoutineStatistik {
+  // Fenster (Prüf-Fund 11.10.): der Gesundheits-Index misst „7 Tage“ — Tagesregeln die letzten n Tage, x-mal pro Woche die letzten
+  // ⌈n/7⌉ abgeschlossenen Wochen, „alle n …“ mindestens n Tage. Ohne Angabe wie bisher 28 Tage. Monatlich: immer die letzten 6 Termine.
+  const FENSTER_TAGE = Math.max(1, Math.round(opts?.fensterTage ?? FENSTER_STANDARD));
+  const WOCHEN = Math.max(1, Math.ceil(FENSTER_TAGE / 7));
   const g = regelVon(r);
   const erledigt = new Set(erledigtTage);
   const erster = erledigtTage.reduce<string | null>((m, d) => (m == null || d < m ? d : m), null);
@@ -408,7 +412,7 @@ export function routineStatistik(r: StatistikEingabe, erledigtTage: readonly str
     const auswerten = (k: number) => woche(tagePlus(mo0, -7 * k));
     // Fenster: die letzten 4 abgeschlossenen Wochen + die laufende, sobald sie erfüllt ist.
     let erfuellt = 0, soll = 0;
-    for (let k = 0; k <= 4; k++) {
+    for (let k = 0; k <= WOCHEN; k++) {
       const w = auswerten(k);
       if (w.soll === 0 || w.ende < start) continue;
       if (k === 0 && w.ist < w.soll) continue; // laufende Woche: erst, wenn erfüllt
@@ -423,7 +427,7 @@ export function routineStatistik(r: StatistikEingabe, erledigtTage: readonly str
       if (k === 0) continue; // laufende Woche, noch nicht erfüllt: reißt nicht
       break;
     }
-    return { streak, einheit, quote: soll ? erfuellt / soll : null, erfuellt, soll, fenster: 35 };
+    return { streak, einheit, quote: soll ? erfuellt / soll : null, erfuellt, soll, fenster: 7 * (WOCHEN + 1) };
   }
 
   if (g.art === 'monatlich') {

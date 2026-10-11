@@ -4,6 +4,7 @@
 // Wochenplan, Kalender, Meilensteine, Ernährung) zu einem Bestand; eigene Schwellen und Schnappschuss je Tag in
 // `gesundheit-index[--person]` (lib/kennzahlen/speicher).
 
+import type { FaelligEingabe } from '@/lib/planung/rhythmus';
 import { istGesundheitsKategorie } from '@/lib/planung/routinen';
 import { loadJson } from '@/lib/store/local-db';
 import { merken } from '@/lib/store/memo';
@@ -30,7 +31,7 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     loadJson<GesundheitBestand['journal']>(speicherFuer('journal', person)),
     loadJson<HautLog>(speicherFuer('haut', person)),
     loadJson<StreakLog>(speicherFuer('streak', person)),
-    loadJson<{ routinen?: { id: string; label: string; wann?: string; aktiv: boolean; kategorie?: string; owner?: string; space?: string; einheit?: string }[] }>('routinen'),
+    loadJson<{ routinen?: ({ id: string; label: string; wann?: string; aktiv: boolean; kategorie?: string; owner?: string; space?: string; einheit?: string } & Partial<FaelligEingabe>)[] }>('routinen'),
     // Blöcke = Kalender-Termine der Art Fokus/Block (+ Archiv des alten Wochenplans) — K5, 29.09.
     planBloeckeLesen({ person, von: tagPlus(heute, -35), bis: tagPlus(heute, 1) }).catch(() => []),
     loadJson<{ events?: { title?: string; startDate?: string; endDate?: string; allDay?: boolean; owner?: string }[]; at?: string; quelle?: string }>('calendar-cache'),
@@ -48,7 +49,8 @@ export async function ladeGesundheitBestand(person: string, heute = localDay()):
     // gemeinsame (`sichtbarFuer`, dieselbe Regel wie Routinen-Planer und Heute; Praxis-Fund 04.10.: vorher standen die
     // Routinen der Partnerin mit Titel im Index und verfälschten die eigene Quote).
     // Seit 09.10. (E4-Rest) im Umfang der Person (lib/planung/bereich-sicht-server.ts): „nur Business“ ohne Privat, außerhalb des Haushalts keine.
-    routinen: (await routinenSichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv && istGesundheitsKategorie(r.kategorie)), person)).map(r => ({ id: r.id, label: r.label, wann: r.wann, kategorie: r.kategorie })),
+    routinen: (await routinenSichtbarFuer((routinenF?.routinen ?? []).filter(r => r.aktiv && istGesundheitsKategorie(r.kategorie)), person))// Prüf-Fund 11.10.: mit Rhythmus (Regel, Pausen, Zeitraum, angelegt am) — die Quote rechnet nur fällige Tage.
+      .map(r => ({ id: r.id, label: r.label, wann: r.wann, kategorie: r.kategorie, rhythmus: r.rhythmus, naechstesMal: r.naechstesMal, regel: r.regel, pausen: r.pausen, zeitraum: r.zeitraum, angelegtAm: r.angelegtAm })),
     log: log ?? {},
     journal: journal ?? {},
     haut: haut ?? {},
