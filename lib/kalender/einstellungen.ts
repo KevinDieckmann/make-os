@@ -141,6 +141,20 @@ export function einstellungenFuerPerson(e: KalenderEinstellungen, person: string
 }
 
 /**
+ * Datenschutz-Prüfung N6 (11.10.): mit `?space=` nur die Kalendernamen dieses Bereichs — die Namen der anderen Kalender (z. B. „Familie“,
+ * private iCloud-Kalender) verraten Privates. Gekürzt werden alle Felder mit Kalendernamen (Zuordnung Wer → Name: fremde leer; Space,
+ * „zählt als belegt“, Google, persönlich: nur Namen des Bereichs). Rein; `imBereich` = die Regel der Route (`spaceVonKalender`).
+ */
+export function einstellungenFuerBereich(e: KalenderEinstellungen, imBereich: (name: string) => boolean): KalenderEinstellungen {
+  const nur = <T>(m: Record<string, T> | undefined) => (m ? Object.fromEntries(Object.entries(m).filter(([name]) => imBereich(name))) : m);
+  const kalender = Object.fromEntries(Object.entries(e.kalender).map(([w, name]) => [w, name && imBereich(name) ? name : ''])) as Record<Wer, string>;
+  return {
+    ...e, kalender, space: nur(e.space) ?? {}, belegt: nur(e.belegt) ?? {},
+    ...(e.google ? { google: nur(e.google) } : {}), ...(e.persoenlich ? { persoenlich: nur(e.persoenlich) } : {}),
+  };
+}
+
+/**
  * Wem gehört ein Kalender (nach Name)? Zuerst die Einstellungen, dann der
  * Name selbst („Kevin Dieckmann“ ist Kevins Arbeitskalender) — sonst gemeinsam.
  */
