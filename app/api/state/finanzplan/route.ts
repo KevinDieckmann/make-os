@@ -36,7 +36,11 @@ export async function GET(req: Request) {
   leseZugriff(req, 'rechnungen'); // der Altweg liefert die Rechnungen mit
   let f = await loadJson<FinanzplanFile>('finanzplan');
   if (!f || !Array.isArray(f.firmen) || !f.firmen.length) {
-    f = await updateJson<FinanzplanFile>('finanzplan', () => SEED);
+    // Erststart: Startdaten — aber NIE vorhandene Einträge ersetzen (Update-Probe 11.10.: ein Bestand ohne Firmen, in dem schon
+    // Rechnungen/Zahlungen/Posten stehen, verlor sie beim nächsten GET). Nur die fehlenden Firmen kommen aus den Startdaten.
+    f = await updateJson<FinanzplanFile>('finanzplan', current => (current && typeof current === 'object'
+      ? { ...SEED, ...current, firmen: Array.isArray(current.firmen) && current.firmen.length ? current.firmen : SEED.firmen }
+      : SEED));
   } else if (!Array.isArray(f.produkte) || !f.produkte.length || !Array.isArray(f.uhrwerk?.agenda) || !f.uhrwerk.agenda.length) {
     // Bestand aus der Zeit vor Produkten/Uhrwerk → neue Abschnitte nachziehen.
     f = await updateJson<FinanzplanFile>('finanzplan', current => ({
