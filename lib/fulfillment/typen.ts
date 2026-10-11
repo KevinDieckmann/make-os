@@ -27,12 +27,14 @@ export interface ProzessKnoten {
   art?: 'einstieg' | 'stufe' | 'ausstieg' | 'routine'; optional?: boolean; ausgang?: string; original?: string;
   beleg?: 'quelle' | 'ergaenzung';                                                 // ergaenzung = gestrichelt
 }
+/** Zeichenform eines Ablaufs — `kreis` (Entscheidung 11.10.: Sales Circle „schön visualisieren“): Stufen im Uhrzeigersinn, Ergänzungen auf einem gestrichelten äußeren Ring. */
+export type AblaufForm = 'baum' | 'trichter' | 'fluss' | 'zeitachse' | 'kreis';
 export interface Uebergang { von: string; nach: string; art: 'weiter' | 'rueckweg' | 'ausstieg' | 'schleife' | 'kreislauf'; weiche?: string; beleg?: 'quelle' | 'ergaenzung' }
 export interface Freigabepunkt { id: string; titel: string; wer: Zustaendig }
 export interface Rolle { id: string; titel: string; aufgabe?: string }
 export interface ProzessVorlage {
   id: string; art: ProzessArt; titel: string; beschreibung?: string;
-  form?: 'baum' | 'trichter' | 'fluss' | 'zeitachse';   // Zeichenform (Ablauf); fehlt = baum
+  form?: AblaufForm;                                    // Zeichenform (Ablauf); fehlt = baum
   quelleHinweis?: string; vorbehalt?: string; zeichenhinweise?: string[];
   knoten: ProzessKnoten[]; uebergaenge: Uebergang[]; freigaben: Freigabepunkt[]; rollen: Rolle[];
   fassung: number; herkunft?: Herkunft; geaendert: string; geaendertVon: string;
@@ -56,7 +58,8 @@ export interface Baustein {
   tags: string[]; vonHand?: true; herkunft?: Herkunft;
   fassung: number; geaendert: string; geaendertVon: string;
 }
-export type Rhythmus = 'einmal' | 'woche' | 'zwei-wochen' | 'monat' | 'quartal';
+/** Rhythmus eines Rituals — `taeglich`/`werktags` seit 11.10. (Entscheidung: tägliches Vertriebs-Huddle, kurz, MIT Zahlenrunde). */
+export type Rhythmus = 'einmal' | 'taeglich' | 'werktags' | 'woche' | 'zwei-wochen' | 'monat' | 'quartal';
 export interface RitualVorlage { id: string; titel: string; rhythmus: Rhythmus; dauerMin: number; agenda: string[]; teilnehmende: ('intern' | 'entscheider' | 'tagesverantwortlich' | 'team')[]; geaendert: string; geaendertVon: string }
 export interface FulfillmentEinstellungen { kundenLink: { an: boolean; am?: string; von?: string }; pulsSchwelle: number; willkommenStunden: number; nachsorgeTage: number[] }
 export interface ImportLauf { id: string; am: string; von: string; datei: string; neu: string[]; geaendert: { id: string; vorher: Baustein | ProzessVorlage }[] }

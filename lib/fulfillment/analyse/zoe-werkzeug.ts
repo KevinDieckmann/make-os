@@ -2,7 +2,8 @@
 // Entscheidung 10.10. („alle Daten in der KI“): eine LESE-Tür für ZOE auf Fulfillment eines Mandats — Fall (Status, Fortschritt, was wartet), Onboarding-Stand,
 // Wert-Konto, Dossier (Unternehmensteil mit Quellen, Diagnose-Entwurf, Freigaben). Regeln:
 //   · nur eine Person im Haushalt des Inhabers, nur Mandate von Business-Gesellschaften (Gruppe `crm`, Bereich Business)
-//   · den Personenteil NUR mit `mitPersonen: true` UND wenn die Person ihn sehen darf (Inhaber oder Mitglied ohne „nur Business“)
+//   · den Personenteil NUR mit `mitPersonen: true` UND wenn die Person ihn sehen darf (Inhaber oder Mitglied ohne „nur Business“) — jedes Lesen
+//     steht im Lese-Protokoll (Bereich „personenrecherche“, `leseZugriffLauf`, wer = ZOE im Namen der Person; 11.10.)
 //   · den Leseteil (Tiefenbericht) NIE — er steht nicht im Dossier, und dieses Modul liest ihn nicht
 //   · Kopfzeile (nur Kennungen/Zahlen) außerhalb, alles Inhaltliche in `fremd('fulfillment', …)`; über 30.000 Zeichen „Teil x von y“.
 
@@ -70,6 +71,11 @@ export async function fulfillmentLage(input: Record<string, unknown>, _origin: s
     else {
       const karten = personen.karten.filter(k => k.mandatId === m.id);
       personenZahl = karten.length;
+      // Lese-Protokoll wie die Route /api/fulfillment/personen (Bereich „personenrecherche“) — ohne Anfrage über den Lauf im Namen der Person.
+      if (karten.length) {
+        const { leseZugriffLauf } = await import('@/lib/store/leseprotokoll');
+        leseZugriffLauf({ art: 'zoe', person }, 'zoe:fulfillment_lage', 'personenrecherche', { ids: [m.id], anzahl: karten.length });
+      }
       z.push('## Personenteil (nur beruflich)', ...karten.map(k => `- ${k.funktion}: ${k.name} · Identität ${k.identitaet} · ${k.status}\n  ${[...k.werdegang, ...k.themen, ...k.auftritte, ...k.aufhaenger].map(a => a.text).join(' · ')}`));
     }
   }

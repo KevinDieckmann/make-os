@@ -4,33 +4,23 @@
 // interner Daten: tests/fulfillment-c2-sicht.test.ts). Was er NIE sieht: Stakeholder-Karte, Haltungen, Notizen, interne Knoten, Health/Ampel, Zahlungen,
 // Honorar, Rechnungen, Dossier, Personenteil, Leseteil, Kosten, andere Mandate, die Liste der Dateien, Namen oder Adressen unseres Teams, Kennungen
 // anderer Bestände (Formulare tragen einen eigenen Schlüssel `fo-…`, nie die Baustein-Kennung).
-// Bausteine nur, wenn sie für Kunden taugen (`kundeTauglich`): nie „nur intern“ (Material der früheren Agentur), nie „vor Verkauf prüfen“ bzw. „vor
-// Einsatz Urheberrecht/rechtlich prüfen“, solange nicht als geprüft vermerkt.
+// Bausteine nur nach der EINEN Regel `fuerKundenFrei` (lib/fulfillment/prozesse/bausteine.ts, zusammengeführt 11.10.): nie „nur intern“ (Material der
+// früheren Agentur), nie „vor Verkauf prüfen“ bzw. „vor Einsatz rechtlich prüfen“, solange nicht als geprüft vermerkt — das gilt für Formulare UND für
+// Knoten, die auf einen solchen Baustein zeigen (Zeitstrahl, erledigt, als Nächstes).
 
 import { aktuellerKnoten, ebeneVon, inReihenfolge, kinderVon, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { abschnitteVon, formularProzent, formularSchluessel, formularStandVon, formulareDesFalls } from './formular';
 import { offeneAnfrage } from './puls';
 import { HINWEIS_VERSION } from './link';
-import type { Baustein, Fall, FallKnoten, Frage, KundeDatei, RitualVorlage, Rhythmus } from '../typen';
+import { fuerKundenFrei, kundenGesperrt } from '../prozesse/bausteine';
+import { RHYTHMUS_TEXT } from '../prozesse/rituale';
+import type { Baustein, Fall, FallKnoten, Frage, KundeDatei, RitualVorlage, VorlagenDatei } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 
-/**
- * Taugt ein Baustein für die Kunden-Seite, das Kunden-PDF, den Report und den Export? Liest die Marken OPTIONAL — `nur_intern` und
- * `pruefen_vor_verkauf` (Entscheidung 10.10., 00:20/23:20) kennt der Typ von C0 (noch) nicht; dazu die vorhandenen Vermerke „Urheberrecht prüfen“ und
- * „rechtlich prüfen“ (gilt, bis „geprüft“ vermerkt ist). Im Zweifel: nein.
- */
-export function kundeTauglich(b: Baustein): boolean {
-  const x = b as Baustein & Record<string, unknown>;
-  if (x.nur_intern === true || x.nurIntern === true) return false;
-  const geprueft = (feld: unknown) => !!feld && typeof feld === 'object';
-  if ((x.pruefen_vor_verkauf === true || x.pruefenVorVerkauf === true) && !geprueft(x.vorVerkaufGeprueft ?? x.vor_verkauf_geprueft)) return false;
-  if (b.urheberPruefen && !geprueft(x.urheberGeprueft)) return false;
-  if (b.rechtPruefen && !b.rechtGeprueft) return false;
-  return true;
-}
+/** Taugt ein Baustein für Kunden? Nur die Regel aus C1 (`fuerKundenFrei`) — hier kein eigenes Urteil. */
+export const kundeTauglich = (b: Baustein, d: Pick<VorlagenDatei, 'marken'>): boolean => fuerKundenFrei(b, d).frei;
 
-export const RHYTHMUS_TEXT: Record<Rhythmus, string> = { einmal: 'einmalig', woche: 'wöchentlich', 'zwei-wochen': 'alle zwei Wochen', monat: 'monatlich', quartal: 'quartalsweise' };
 
 export interface KundenFrage { id: string; frage: string; art: Frage['art']; optionen?: string[]; pflicht?: boolean; hilfe?: string }
 export interface KundenFormular {
@@ -66,6 +56,8 @@ export interface SichtEingabe {
   paket?: string;
   fall: Fall | null;
   bausteine: readonly Baustein[];
+  /** Marken der Vorlagen-Datei (Vermerk „vor Verkauf geprüft“ = `urheber-geprueft:<id>`) — für `fuerKundenFrei`. */
+  marken: VorlagenDatei['marken'];
   rituale: readonly RitualVorlage[];
   kunde: KundeDatei;
   rechte: { formular: boolean; upload: boolean; puls: boolean };
@@ -80,7 +72,10 @@ export interface SichtEingabe {
 
 const tagText = (t: string) => (/^\d{4}-\d{2}-\d{2}/.test(t) ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : t);
 const FERTIG = new Set(['erledigt', 'entfaellt']);
-const sichtbar = (k: Pick<FallKnoten, 'kundeSichtbar' | 'status'>) => k.kundeSichtbar === true && k.status !== 'entfaellt';
+/** Zeigt der Knoten auf einen Baustein, der (noch) nicht an Kunden geht? Dann taucht er auf keinem Kunden-Weg auf (auch nicht unter „wartet“). */
+export const knotenGesperrt = (k: Pick<FallKnoten, 'bausteinId'>, gesperrt: ReadonlySet<string>): boolean => !!k.bausteinId && gesperrt.has(k.bausteinId);
+const sichtbarMit = (gesperrt: ReadonlySet<string>) => (k: Pick<FallKnoten, 'kundeSichtbar' | 'status' | 'bausteinId'>) =>
+  k.kundeSichtbar === true && k.status !== 'entfaellt' && !knotenGesperrt(k, gesperrt);
 
 /** Ist eine Phase (Ebene 2) abgeschlossen? Eigener Status fertig — oder sie hat Blätter, und alle sind fertig (wie lib/fulfillment/regeln.ts). */
 function phaseFertig(p: FallKnoten, l: readonly FallKnoten[]): boolean {
@@ -99,6 +94,8 @@ export function kundenSicht(e: SichtEingabe): KundenSicht {
   }
   const f = e.fall;
   const l = f?.knoten ?? [];
+  const gesperrt = kundenGesperrt(e.bausteine, { marken: e.marken });
+  const sichtbar = sichtbarMit(gesperrt);
   const reihe = inReihenfolge(l);
   const akt = f ? aktuellerKnoten(f) : { phase: null, schritt: null };
   const zeitstrahl = reihe.filter(k => ebeneVon(k, l) === 2 && sichtbar(k))
@@ -111,14 +108,14 @@ export function kundenSicht(e: SichtEingabe): KundenSicht {
   const offenSichtbar = (k: FallKnoten | undefined) => !!k && sichtbar(k) && (k.status === 'offen' || k.status === 'in_arbeit');
   const naechstes = reihe.filter(k => ebeneVon(k, l) >= 2 && offenSichtbar(k) && !phaseFertig(k, l) && !teilbaum(k.id, l).some(x => x !== k.id && offenSichtbar(nach.get(x))))
     .slice(0, 5).map(k => (k.faelligAm ? `${k.titel} — bis ${tagText(k.faelligAm)}` : k.titel));
-  const wartet = f ? wartetAufEuch(f, e.heute).map(w => ({ titel: w.titel, ...(w.seit ? { seit: tagText(tagVon(w.seit)) } : {}) })) : [];
+  const wartet = f ? wartetAufEuch({ ...f, knoten: l.filter(k => !knotenGesperrt(k, gesperrt)) }, e.heute).map(w => ({ titel: w.titel, ...(w.seit ? { seit: tagText(tagVon(w.seit)) } : {}) })) : [];
   const wertKonto = wertKontoZeilen(f, e.mandat).map(z => ({ name: z.name, vorher: z.vorher, jetzt: z.jetzt, ziel: z.ziel, ...(z.bis ? { bis: tagText(z.bis) } : {}) }));
   const ritNach = new Map(e.rituale.map(r => [r.id, r]));
   const rituale = (f?.rituale ?? []).map(r => ritNach.get(r.ritualId)).filter((r): r is RitualVorlage => !!r).map(r => ({ titel: r.titel, rhythmus: RHYTHMUS_TEXT[r.rhythmus] }));
   const entscheidungen = (f?.entscheidungen ?? []).filter(x => x.geteilt).sort((a, b) => (a.am < b.am ? 1 : -1))
     .map(x => ({ titel: x.titel, am: tagText(tagVon(x.am)), status: x.status, ...(x.inhalt ? { inhalt: x.inhalt } : {}) }));
   const formulare: KundenFormular[] = e.rechte.formular
-    ? formulareDesFalls(f, e.bausteine).filter(b => b.kundeFuellt === true && kundeTauglich(b)).map(b => {
+    ? formulareDesFalls(f, e.bausteine).filter(b => b.kundeFuellt === true && kundeTauglich(b, { marken: e.marken })).map(b => {
       const st = formularStandVon(e.kunde, e.mandat.id, b.id);
       return {
         schluessel: formularSchluessel(e.mandat.id, b.id), titel: b.titel, ...(b.zweck ? { zweck: b.zweck } : {}), prozent: formularProzent(b, st), stand: st ? e.standVon(st) : 'neu',

@@ -179,6 +179,8 @@ function Unterlagen({ mandatId, s, laden, setMeldung, bestaetigen }: { mandatId:
               {u.status !== 'freigegeben' && <Knopf leise onClick={() => status(u.id, { status: 'freigegeben' })}>Freigeben</Knopf>}
               {u.status !== 'gesperrt' && <Knopf leise onClick={() => status(u.id, { status: 'gesperrt' })}>Sperren</Knopf>}
               <Knopf leise onClick={() => status(u.id, { beleg: !u.beleg })}>{u.beleg ? 'Kein Beleg' : 'Als Beleg aufbewahren'}</Knopf>
+              {/* Zusammengeführt 11.10.: A2 (Register & Finanzsignale) liest nur freigegebene Unterlagen mit Zweck „Registerauszug“ — hier intern setzen. */}
+              <Knopf leise onClick={() => status(u.id, { zweck: u.zweck === 'register' ? 'sonstig' : 'register' })}>{u.zweck === 'register' ? 'Kein Registerauszug' : 'Ist Registerauszug'}</Knopf>
               {!u.beleg && <Knopf leise onClick={() => weg(u.id, u.name)}>Entfernen</Knopf>}
             </div>
           </div>

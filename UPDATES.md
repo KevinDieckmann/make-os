@@ -4,6 +4,60 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 11.10.2026 — Fulfillment — zusammen (C1 + C2 + C3 gemeinsam lauffähig; nur lokal — Branch `fulfillment-zusammen`, Basis 82a44555 = `update-0910b`)
+
+Die drei parallel gebauten Pakete sind zusammengeführt und aufeinander abgestimmt. Nur additiv wie bisher (keine neuen Bestände); am CRM eine
+Erhaltungs-Regel für alte Daten (unten). Vorher Sicherung (Live-Daten-Regel).
+
+**Behoben / angeglichen:**
+- **Speicherfehler (Endlos-Schleife):** `fallLesen` → `fallUmfeld` → `kundeKurzFuer` (C2) → `fallLesen` … — beim Lesen eines Business-Mandats lief der
+  Prozess voll (Timeout + Worker tot). Ursache: die Kurzform von C2 las den Fall über die Schnittstelle von C1, die wiederum die Kurzform von C2 liest.
+  Jetzt gilt: **Kurzfassungen lesen nur rohe Bestände** (`kundeKurzFuer` nimmt den gespeicherten Fall). Wächter `tests/fulfillment-zusammen.test.ts`:
+  jede exportierte Funktion der drei Schnittstellen ist umhüllt — ruft eine Kette dieselbe Funktion erneut auf, wird der Test rot (mit dem Weg).
+- **EINE Regel für Kunden-Wege:** `fuerKundenFrei`/`kundenGesperrt` (lib/fulfillment/prozesse/bausteine.ts) — „nur intern“ nie, „vor Verkauf prüfen“ und
+  „rechtlich prüfen“ erst mit Vermerk. Gilt für Kunden-Seite, Vorschau, Report („wartet auf euch“), Wirkungsbericht, Antworten-Export — für Formulare UND
+  für Schritte, die auf so einen Baustein zeigen. C2 las vorher eigene Felder, die es im Bestand gar nicht gibt.
+- **Kunden-Link-Schalter:** EIN Schreibweg (`POST /api/fulfillment/kunde { aktion: 'schalter' }`, nur Inhaber). Die Vorlagen-Op `einstellungen` nimmt
+  `kundenLink`/`pulsSchwelle` nicht mehr an (400 mit Hinweis). Willkommen-Karte liest die Antwort von `link-anlegen` über `linkAdresseAus` (`url`, sonst `pfad`).
+- **Analyse → Fall:** Quick Wins/Kick-off-Fragen gehen als `{ mandatId, ops }` an die Fall-Route (vorher `{ m, … }` → 400).
+- **Playbook im Fall:** jeder neue Fall hängt das Kunden-Playbook (Bibliothek, aus dem Muster) als Formular unter „Kunden-Playbook“ (Ebene 5); die
+  Onboarding-Schritte stehen immer auf Ebene 4 (fehlt ein Teilprozess „Onboarding“, legt der Start `fk-obt` an). Antworten → Schritt erfüllt.
+  Damit sind A2 (Registerauszug) und AP (Playbook-Auswertung) mit echten Daten von C2 freigeschaltet.
+- **Wirkungsbericht:** das PDF wurde von der Ablage abgelehnt (Name `….pdf` statt `[a-z0-9-].bin`) — jetzt `wirkung-<Fingerabdruck>-<Tag>.bin` im Fall
+  verzeichnet (die Fristen von C2 lassen es liegen), Download/Anhang als `Wirkungsbericht-<Tag>.pdf`. Der Fristenlauf überspringt fremde Dateinamen.
+- **Kevins Wünsche:** Ablauf-Form **Kreis** (Sales Circle) — Stufen im Uhrzeigersinn, „zurück an den Anfang“ als Bogen, Ergänzungen (z. B. Empfehlung)
+  auf einem gestrichelten äußeren Ring; Rhythmus **täglich/werktags** für Rituale und das Muster „Vertriebs-Huddle mit Zahlenrunde“ (werktags, 15 Min.);
+  ZOE `fulfillment_lage` mit `mitPersonen` steht im Lese-Protokoll („personenrecherche“, `leseZugriffLauf`).
+- **Live-Daten (wichtig):** Mandate können ihre Ziele noch als **Text** tragen (`ziele: ['…']`). Der CRM-Säuberer (so auch online, a063e73a) las nur
+  Objekte und verwarf solche Texte beim nächsten Speichern des Mandats — mit Fulfillment schreiben neue Wege (Phase, Ist-Wert, neues Ziel) automatisch an
+  Mandate. Jetzt EINE Stelle `lib/crm/mandat-ziele.ts`: Texte werden als `{ id: 'z<i>', text }` erhalten (dieselbe Kennung, die der Säuberer schon immer
+  vergab), Objekte bit-gleich wie bisher; alle Fulfillment-Leser lesen darüber. **Rückweg:** der alte Stand liest Objekte — nichts geht verloren.
+
+**So testet ihr** (Klickdummy `localhost:3001`, Demo-Instanz oder eigene Business-Daten; Kunden-Link nur lokal mit `MAKE_OS_KUNDENLINK=an` in `.env.local`):
+1. **Produkt zuweisen:** Produkte & Mandate › Fulfillment › Prozesse → „Aus Muster anlegen“ (falls leer) → Produkte › ein Produkt → Zeile „Fulfillment: …“ →
+   „Vertriebsleitung auf Zeit“ wählen. Kreislauf: der „Vertriebs-Kreislauf“ der Demo erscheint als Kreis, „Empfehlung“ gestrichelt außen.
+2. **Deal gewonnen:** Markttraktion › Deals → einen Deal mit diesem Produkt auf „gewonnen“, Mandat anlegen (Business-Gesellschaft, Vertrag unterschrieben).
+3. **Onboarding starten:** Produkte & Mandate › Mandate → Karte „Kundenonboarding starten“ → „Starten“ → Paket bestätigen → der Fall öffnet.
+   Fall › Ablauf: unter „Onboarding“ die acht Schritte, unter „Kunden-Playbook“ das Formular.
+4. **Willkommen:** Fall › Überblick › Willkommen → „Mail vorbereiten“ → „Playbook-Link anlegen“ (ohne Kunden-Link: „aus“, der Absatz fällt weg) →
+   „Mail ansehen und senden“ → erst der Klick sendet.
+5. **Analyse-Lauf bestätigen:** Fall › Analyse → „Dossier anlegen“ → A0 „Prüfen“ → A1 „Starten“ → Rückfrage mit Kosten bestätigen (ohne KI-Schlüssel steht
+   dort ehrlich, was fehlt). Fall › Kunde & Reports › Unterlagen → eine PDF „Ablegen“ → „Ist Registerauszug“ (neu) → „Freigeben“ → A2 ist nicht mehr gesperrt.
+6. **Dossier:** Abschnitte übernehmen → Recht & Freigaben → „Jetzt prüfen“ → „F2 setzen“.
+7. **Quick Wins in den Fall:** Dossier › „Quick Wins in den Fall“ und „Kick-off-Fragen in den Fall“ → Fall › Überblick zeigt sie mit „aus der Analyse“.
+8. **Kunden-Link (Schalter):** Fall › Kunde & Reports → als Inhaber „Kunden-Link der Instanz“ an → „Link anlegen“ → Adresse im privaten Fenster: Zeitstrahl,
+   Playbook zum Ausfüllen, Upload; kein „nur intern“-Baustein, keine Stakeholder. „So sieht der Kunde es“ = dieselbe Ansicht. Am Ende Schalter wieder aus.
+9. **Puls:** Kunde & Reports → „Puls von Hand“ 4 → Glocke + Vorschlag „Gespräch anbieten“ im Stapel → Freigeben → Follow-up am Mandat.
+10. **Report:** Mandat › Fortschritt → „Vorschau & senden“ → Abschnitte „Wartet auf euch“, Wert-Konto, Puls → Senden (Testpostfach).
+11. **Wirkungsbericht:** Fall › Takt → „Bericht erstellen“ → PDF herunterladen (heißt `Wirkungsbericht-<Tag>.pdf`) → „Per Mail senden …“ (Anhang dabei).
+12. Tests (einzeln, schonend): `tests/fulfillment-zusammen.test.ts` und alle `tests/fulfillment-*.test.ts`, dazu demo, business-index/-modell, kapazitaet,
+    werkzeug-vertraege, agenten-p4a-zoe, routen-register, datenschutz-register, trennung-bereiche, sicht-business-privat, messlatte-malin, repo-sauber,
+    erklaerungen, caddy — alle grün; `tsc` 0 Fehler, ESLint der geänderten Dateien sauber.
+
+**Offen:** die Willkommensmail-Vorlage prüft `fuerKundenFrei` nicht (sie wird vor dem Senden gelesen); `components/os/fulfillment/KommtMit.tsx` ist
+ungenutzt (C0-Platzhalter); die Projektregeln in CLAUDE.md (C1/C2-Abschnitte: „liest die Marken optional“, „Rückfrage bei vor Verkauf“, Wirkungsbericht
+`….pdf`) beschreiben noch den Stand vor dem Zusammenführen.
+
 ## 10.10.2026 — Inbox: Suche über Anhang-Namen, Übergeben mit Anhängen + Zurückziehen, Aufgaben-Vorschläge aus Mails/WhatsApp (nur lokal — Branch `inbox-suche-uebergeben`, Basis 2e5ef5fb = `update-0910b`)
 
 ROADMAP_Q4.md › Lücke 6 („Mail nicht übergebbar, keine Inbox-Suche“, Kevin & Malin) und Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“. Suche, Übergaben (Kopie) und

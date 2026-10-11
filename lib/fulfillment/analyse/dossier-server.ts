@@ -182,7 +182,7 @@ async function firmaUebernehmen(mandatId: string, laufId: string, feld: string, 
   return { status: 200, body: { ok: true, vorher: typeof vorher === 'string' ? vorher : null, op: { liste: 'firmen', op: 'teil', id: firmaId, felder: { [feld]: wert }, stand: f.stand } } };
 }
 
-/** Quick Wins bzw. Kick-off-Fragen (A12, nach F2) als Schritte für die Route des Falls (C1) — der Browser schickt sie. */
+/** Quick Wins bzw. Kick-off-Fragen (A12, nach F2) als Schritte für die Route des Falls (C1) — der Browser schickt sie. Form = die der Fall-Route: `{ mandatId, ops }` (Ende-zu-Ende-Test tests/fulfillment-zusammen.test.ts). */
 async function nachFall(mandatId: string, was: string, m: import('@/lib/crm/typen').Mandat): Promise<Antwort> {
   const d = (await fulfillmentLesen('dossiers')).dossiers[mandatId];
   if (!d) return nein(404, 'Kein Dossier.');
@@ -192,7 +192,7 @@ async function nachFall(mandatId: string, was: string, m: import('@/lib/crm/type
   const fall = await fallLesen(mandatId).catch(() => null);
   const basis = (fall?.gestartetAm ?? m.start ?? localDay()).slice(0, 10);
   const bis = tagPlus(basis < localDay() ? localDay() : basis, 30);
-  if (was === 'quickwins') return { status: 200, body: { ok: true, ziel: '/api/fulfillment/fall', methode: 'PATCH', body: { m: mandatId, ops: [{ op: 'quickwins-setzen', quickWins: d.diagnose.quickWins.slice(0, 3).map(text => ({ text, bis, quelle: 'analyse' })) }] } } };
-  if (was === 'fragen') return { status: 200, body: { ok: true, ziel: '/api/fulfillment/fall', methode: 'PATCH', body: { m: mandatId, ops: [{ op: 'kickoff-fragen', fragen: d.diagnose.fragen.map(f => ({ frage: f.frage, an: f.an, warum: f.warum, quelle: 'analyse' })) }] } } };
+  if (was === 'quickwins') return { status: 200, body: { ok: true, ziel: '/api/fulfillment/fall', methode: 'PATCH', body: { mandatId, ops: [{ op: 'quickwins-setzen', quickWins: d.diagnose.quickWins.slice(0, 3).map(text => ({ text, bis, quelle: 'analyse' })) }] } } };
+  if (was === 'fragen') return { status: 200, body: { ok: true, ziel: '/api/fulfillment/fall', methode: 'PATCH', body: { mandatId, ops: [{ op: 'kickoff-fragen', fragen: d.diagnose.fragen.map(f => ({ frage: f.frage, an: f.an, warum: f.warum, quelle: 'analyse' })) }] } } };
   return nein(400, 'Was: quickwins oder fragen.');
 }

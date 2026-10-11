@@ -20,6 +20,18 @@ export const RECHTE_VORGABE: KundenLink['rechte'] = { formular: true, upload: tr
 /** Fassung des Datenschutzhinweises (Art. 13) auf der Kunden-Seite — hochzählen, wenn sich der Text ändert. */
 export const HINWEIS_VERSION = 1;
 
+/**
+ * Die Adresse aus der Antwort von `POST /api/fulfillment/kunde { aktion: 'link-anlegen' }` — EINE Form (zusammengeführt 11.10.): `url` (mit
+ * `MAKE_OS_ADRESSE`), sonst `pfad` (`/kunde/kl-…#t=…`) an den Ursprung des Browsers gehängt. Nur `/kunde/kl-…`-Pfade bzw. http(s); sonst null.
+ * Genutzt von der Willkommen-Karte (C1) — nie selbst aus Kennung und Token zusammensetzen.
+ */
+export function linkAdresseAus(j: { url?: unknown; pfad?: unknown } | null | undefined, ursprung: string): string | null {
+  if (!j) return null;
+  if (typeof j.url === 'string' && /^https?:\/\/[^\s]+\/kunde\/kl-[a-f0-9]{24}#t=[A-Za-z0-9_-]+$/.test(j.url)) return j.url;
+  if (typeof j.pfad === 'string' && /^\/kunde\/kl-[a-f0-9]{24}#t=[A-Za-z0-9_-]+$/.test(j.pfad)) return `${ursprung.replace(/\/+$/, '')}${j.pfad}`;
+  return null;
+}
+
 /** Stand der zwei Schlüssel. `grund` sagt, welcher fehlt (Betrieb zuerst). */
 export interface SchalterStand { umgebung: boolean; instanz: boolean; an: boolean; grund?: 'betrieb' | 'instanz' }
 export function schalterStand(einst: Pick<FulfillmentEinstellungen, 'kundenLink'>, umgebungAn: boolean): SchalterStand {

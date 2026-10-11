@@ -10,6 +10,7 @@ import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { wendeAn, type ListenOp } from '@/lib/sync';
+import { mandatZieleLesen } from './mandat-ziele';
 import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
 import { firmaIdsErgaenzen, firmaIdsNachziehen } from './firmen-bezug';
 import { localDay, istKalendertag, tagVon } from '@/lib/zeit';
@@ -199,7 +200,8 @@ function mandat(o: Record<string, unknown>, jetzt: string): Mandat | null {
     ...(opt(o.planpostenId, 80) ? { planpostenId: opt(o.planpostenId, 80) } : {}),
     rechnungsrhythmus: aus(o.rechnungsrhythmus, ['monatlich', 'quartal', 'einmalig'] as const, 'monatlich'), zahlungszielTage: zahl(o.zahlungszielTage ?? 14, 0, 120),
     ...(tag(o.naechstesReview) ? { naechstesReview: tag(o.naechstesReview) } : {}),
-    ziele: Array.isArray(o.ziele) ? (o.ziele as Record<string, unknown>[]).slice(0, grenzeVon('mandate', 'ziele')).map((z, i) => ({ id: txt(z.id, 40) || `z${i}`, text: txt(z.text, 300), ...(opt(z.ziel, 80) ? { ziel: opt(z.ziel, 80) } : {}), ...(opt(z.ist, 80) ? { ist: opt(z.ist, 80) } : {}) })).filter(z => z.text) : [],
+    // EINE Stelle (lib/crm/mandat-ziele.ts, 11.10.): Objekte wie bisher, Ziele in der alten Text-Form werden erhalten statt verworfen.
+    ziele: mandatZieleLesen(o.ziele, grenzeVon('mandate', 'ziele')),
     health: { beteiligung: hv(he.beteiligung), umsetzung: hv(he.umsetzung), wirkung: hv(he.wirkung), zahlung: hv(he.zahlung), stimmung: hv(he.stimmung) },
     leistungen: texte(o.leistungen, grenzeVon('mandate', 'leistungen'), 400), offen: texte(o.offen, grenzeVon('mandate', 'offen'), 800), ...(opt(o.phase, 40) ? { phase: opt(o.phase, 40) } : {}),
     ...(opt(o.quelle, 600) ? { quelle: opt(o.quelle, 600) } : {}), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,

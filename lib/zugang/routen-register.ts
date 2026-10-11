@@ -393,7 +393,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Kunden-Link (öffentlich, C2) — kommt AUSGESCHALTET: enge Regex in der Middleware (KUNDE_OFFEN), handelt für niemanden, gleiche 404 für jede Fehlerart.
   'kunde/[link]': r('GET', 'offen', 'Kunden-Sicht über den Kunden-Link (C2): Token im Kopf, nie als Person; Umgebung UND Instanz-Schalter müssen an sein, sonst dieselbe 404.'),
   'kunde/[link]/formular': r('POST', 'offen', 'Formular-Antworten eines Abschnitts über den Kunden-Link (C2): Stempel, Honigtopf, ≤ 64 KB, Drossel — sonst dieselbe 404.'),
-  'kunde/[link]/upload': r('POST', 'offen', 'Eine Unterlage über den Kunden-Link (C2): nur mit Recht „upload“ (Vorgabe aus), Typ am Inhalt, Größen, Drossel — sonst dieselbe 404.'),
+  'kunde/[link]/upload': r('POST', 'offen', 'Eine Unterlage über den Kunden-Link (C2): nur mit Recht „upload“ (je neuem Link an, je Link abschaltbar — Entscheidung 10.10. 23:25), Typ am Inhalt, Größen, Drossel — sonst dieselbe 404.'),
   'kunde/[link]/puls': r('POST', 'offen', 'Kunden-Puls (C2): Wert 0–10 + ein Satz mit dem Puls-Token (öffnet nur den Puls) — sonst dieselbe 404.'),
 
   // ── Buchung (öffentlich) ───────────────────────────────────────────────────────────────────────────────────

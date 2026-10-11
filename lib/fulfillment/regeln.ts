@@ -9,6 +9,7 @@
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
 import { istBusinessGesellschaft } from '@/lib/einheiten';
 import { tagVon } from '@/lib/zeit';
+import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 import type {
   Fall, FallKnoten, KnotenStatus, OnboardingKandidat, ProzessVorlage, Unterschrift, WartetPunkt, WertKontoZeile,
 } from './typen';
@@ -159,7 +160,8 @@ const zahlText = (n: number, einheit?: string) => `${n.toLocaleString('de-DE')}$
  * des Falls, sonst `ziele[].ist`; fehlt etwas: „—“. Ohne Fall nur die Werte des Mandats.
  */
 export function wertKontoZeilen(fall: Pick<Fall, 'wertKonto'> | null | undefined, mandat: Pick<Mandat, 'ziele'>): WertKontoZeile[] {
-  return (mandat.ziele ?? []).map(z => {
+  // Roh gelesen (ladeCrm säubert nicht) — auch Ziele in der alten Text-Form zählen (EINE Stelle lib/crm/mandat-ziele.ts).
+  return mandatZieleLesen(mandat.ziele).map(z => {
     const e = fall?.wertKonto?.[z.id];
     const letzte = e?.messungen?.length ? [...e.messungen].sort((a, b) => (a.am < b.am ? -1 : a.am > b.am ? 1 : 0)).at(-1)! : null;
     const vorher = e?.ausgangZahl !== undefined ? zahlText(e.ausgangZahl, e.einheit) : e?.ausgang ?? '—';

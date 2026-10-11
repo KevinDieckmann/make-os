@@ -2,7 +2,7 @@
 
 // ─── Fulfillment › Kreislauf — heutiger Sales-Kreislauf und gezeichnete Abläufe (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 2.6) ──────────
 // Der heutige Kreislauf aus Markttraktion › Planung GILT (Entscheidung 22:30); die früheren Vertriebsabläufe sind Wissen — klickbar und gezeichnet
-// (Trichter, Fluss mit Weichen, Zeitachse), Ergänzungen gestrichelt, Rückwege als Bögen. Ein Klick auf eine Stufe öffnet ihren Steckbrief,
+// (Trichter, Fluss mit Weichen, Kreis mit Empfehlungsring, Zeitachse), Ergänzungen gestrichelt, Rückwege als Bögen. Ein Klick auf eine Stufe öffnet ihren Steckbrief,
 // „heute“ springt in den heutigen Kreislauf. „Als Paket-Vorlage übernehmen“ kopiert einen Ablauf in eine Paket-Vorlage.
 
 import { useState } from 'react';

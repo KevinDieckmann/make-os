@@ -6,7 +6,8 @@
 //   · „vor Verkauf prüfen“            → `urheberPruefen` (gekauftes/fremdes Material); geprüft = Marke `urheber-geprueft:<id>` in `VorlagenDatei.marken`
 //   · „nur intern“                    → Schlagwort `nur-intern` (Material der früheren Agentur): NIE in Kunden-Ansicht, Kunden-PDF, Report oder Export
 //     an Dritte; `kundeSichtbar` ist dann immer false. Der C0-Typ `Baustein` kennt kein eigenes Feld dafür (der Säuberer behielte es nicht) —
-//     deshalb das Schlagwort; C2 filtert den Kunden-Weg über `nurIntern(b)` bzw. `fuerKundenFrei(b, datei)` aus dieser Datei.
+//     deshalb das Schlagwort. JEDER Kunden-Weg (C1 Wirkungsbericht, C2 Ansicht/PDF/Report/Export) fragt NUR `fuerKundenFrei(b, datei)` bzw.
+//     `kundenGesperrt(bausteine, datei)` aus dieser Datei.
 // Rein und client-sicher.
 
 import type { Baustein, BausteinArt, Frage, VorlagenDatei, Zustaendig } from '../typen';
@@ -44,13 +45,22 @@ export const vorVerkaufOffen = (b: Pick<Baustein, 'id' | 'urheberPruefen' | 'tag
 /** Steht noch eine Rechtsprüfung aus? */
 export const rechtOffen = (b: Pick<Baustein, 'rechtPruefen' | 'rechtGeprueft'>): boolean => !!b.rechtPruefen && !b.rechtGeprueft;
 /**
- * Darf dieser Baustein an Kunden gehen (Kunden-Ansicht, Kunden-PDF, Report, Export)? Nie, wenn „nur intern“; bei offener Prüfung
- * „vor Verkauf“ nur nach Rückfrage (`rueckfrage: true`). Die EINE Regel für C2 und den Export.
+ * Darf dieser Baustein an Kunden gehen (Kunden-Ansicht, Kunden-PDF, Report, Wirkungsbericht, Antworten-Export)? Die EINE Regel für alle
+ * Kunden-Wege (zusammengeführt 11.10. — C2 hatte daneben eigene Felder gelesen, die es im Bestand gar nicht gibt):
+ *   · nie, wenn „nur intern“ (Schlagwort `nur-intern`);
+ *   · nicht, solange „vor Verkauf prüfen“ (Schlagwort `pruefen-vor-verkauf` bzw. `urheberPruefen`) ohne Vermerk `urheber-geprueft:<id>` ist;
+ *   · nicht, solange „vor Einsatz rechtlich prüfen“ (`rechtPruefen`) ohne `rechtGeprueft` ist.
+ * Kein Kunden-Weg fragt etwas anderes (Wächter tests/fulfillment-zusammen.test.ts). Intern bleibt alles frei nutzbar.
  */
-export function fuerKundenFrei(b: Pick<Baustein, 'id' | 'tags' | 'urheberPruefen' | 'kundeSichtbar'>, d: Pick<VorlagenDatei, 'marken'>): { frei: boolean; rueckfrage: boolean; grund?: string } {
-  if (nurIntern(b)) return { frei: false, rueckfrage: false, grund: 'nur intern (Material, das nie an Kunden geht)' };
-  if (vorVerkaufOffen(b, d)) return { frei: true, rueckfrage: true, grund: 'Material Dritter — vor Weitergabe Urheberrecht prüfen' };
-  return { frei: true, rueckfrage: false };
+export function fuerKundenFrei(b: Pick<Baustein, 'id' | 'tags' | 'urheberPruefen' | 'rechtPruefen' | 'rechtGeprueft'>, d: Pick<VorlagenDatei, 'marken'>): { frei: boolean; grund?: string } {
+  if (nurIntern(b)) return { frei: false, grund: 'nur intern (Material, das nie an Kunden geht)' };
+  if (vorVerkaufOffen(b, d)) return { frei: false, grund: 'Material Dritter — erst nach dem Vermerk „vor Verkauf geprüft“' };
+  if (rechtOffen(b)) return { frei: false, grund: 'erst nach dem Vermerk „rechtlich geprüft“' };
+  return { frei: true };
+}
+/** Die Kennungen aller Bausteine, die (noch) nicht an Kunden gehen — für Knoten, die per `bausteinId` auf sie zeigen. */
+export function kundenGesperrt(bausteine: readonly Pick<Baustein, 'id' | 'tags' | 'urheberPruefen' | 'rechtPruefen' | 'rechtGeprueft'>[], d: Pick<VorlagenDatei, 'marken'>): Set<string> {
+  return new Set(bausteine.filter(b => !fuerKundenFrei(b, d).frei).map(b => b.id));
 }
 
 const ZUSTAENDIG: readonly Zustaendig[] = ['intern', 'kunde', 'beide'];

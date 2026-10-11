@@ -7,6 +7,7 @@
 import type { Mandat } from './typen';
 import type { KundenZeile } from './treppe';
 import type { TreppenStufe } from './treppe-daten';
+import { mandatZieleLesen } from './mandat-ziele';
 
 export interface ReportDokument {
   titel: string;
@@ -66,7 +67,7 @@ export function reportDokument(z: KundenZeile, stufe: TreppenStufe | null, m: Pi
   ];
   const kennzahlen = [
     ...(stufe?.kennzahl ? [{ name: 'Woran wir es messen', wert: stufe.kennzahl }] : []),
-    ...(m.ziele ?? []).map(x => ({ name: x.text, wert: [x.ist ? `Ist: ${x.ist}` : '', x.ziel ? `Ziel: ${x.ziel}` : ''].filter(Boolean).join(' · ') || 'noch offen' })),
+    ...mandatZieleLesen(m.ziele).map(x => ({ name: x.text, wert: [x.ist ? `Ist: ${x.ist}` : '', x.ziel ? `Ziel: ${x.ziel}` : ''].filter(Boolean).join(' · ') || 'noch offen' })),
     ...(z.lieferobjekte.length ? [{ name: 'Lieferobjekte', wert: `${z.lieferobjekte.filter(x => x.erledigt).length} von ${z.lieferobjekte.length} erledigt` }] : []),
   ];
   return {

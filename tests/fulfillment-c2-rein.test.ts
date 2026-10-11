@@ -238,14 +238,18 @@ describe('Upload: nur sichere Typen am Inhalt, Metadaten weg', () => {
 });
 
 describe('Bausteine für Kunden: nie „nur intern“, nie „vor Verkauf/Einsatz prüfen“ ohne Vermerk', () => {
-  it('kundeTauglich liest die Marken optional', () => {
-    expect(kundeTauglich(PLAYBOOK)).toBe(true);
-    expect(kundeTauglich({ ...PLAYBOOK, nur_intern: true } as Baustein)).toBe(false);
-    expect(kundeTauglich({ ...PLAYBOOK, pruefen_vor_verkauf: true } as Baustein)).toBe(false);
-    expect(kundeTauglich({ ...PLAYBOOK, pruefen_vor_verkauf: true, vorVerkaufGeprueft: { am: '2026-10-10', von: 'p' } } as Baustein)).toBe(true);
-    expect(kundeTauglich({ ...PLAYBOOK, urheberPruefen: { seit: '2026-10-10', grund: 'Material Dritter' } })).toBe(false);
-    expect(kundeTauglich({ ...PLAYBOOK, rechtPruefen: { seit: '2026-10-10', grund: 'UWG' } })).toBe(false);
-    expect(kundeTauglich({ ...PLAYBOOK, rechtPruefen: { seit: '2026-10-10', grund: 'UWG' }, rechtGeprueft: { am: '2026-10-11', von: 'p', notiz: 'ok' } })).toBe(true);
+  it('kundeTauglich = die EINE Regel aus C1 (Schlagworte + Vermerke der Vorlagen-Datei)', () => {
+    const leer = { marken: {} };
+    expect(kundeTauglich(PLAYBOOK, leer)).toBe(true);
+    expect(kundeTauglich({ ...PLAYBOOK, tags: ['nur-intern'] }, leer)).toBe(false);
+    expect(kundeTauglich({ ...PLAYBOOK, tags: ['nur-intern'] }, { marken: { [`urheber-geprueft:${PLAYBOOK.id}`]: '2026-10-10|p' } })).toBe(false);
+    expect(kundeTauglich({ ...PLAYBOOK, tags: ['pruefen-vor-verkauf'] }, leer)).toBe(false);
+    expect(kundeTauglich({ ...PLAYBOOK, tags: ['pruefen-vor-verkauf'] }, { marken: { [`urheber-geprueft:${PLAYBOOK.id}`]: '2026-10-10|p' } })).toBe(true);
+    expect(kundeTauglich({ ...PLAYBOOK, urheberPruefen: { seit: '2026-10-10', grund: 'Material Dritter' } }, leer)).toBe(false);
+    expect(kundeTauglich({ ...PLAYBOOK, rechtPruefen: { seit: '2026-10-10', grund: 'UWG' } }, leer)).toBe(false);
+    expect(kundeTauglich({ ...PLAYBOOK, rechtPruefen: { seit: '2026-10-10', grund: 'UWG' }, rechtGeprueft: { am: '2026-10-11', von: 'p', notiz: 'ok' } }, leer)).toBe(true);
+    // Felder, die es im Bestand gar nicht gibt (C2-Vorfassung), zählen nicht mehr — der Säuberer behielte sie ohnehin nicht.
+    expect(kundeTauglich({ ...PLAYBOOK, nur_intern: true } as Baustein, leer)).toBe(true);
   });
 });
 

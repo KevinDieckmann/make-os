@@ -13,9 +13,9 @@
 // Platzhaltern {{anrede}}, {{vorname}}, {{kickoff_vorschlaege}}, {{playbook_link}} — ohne Link fällt der Absatz mit dem Link weg.
 // Rein und client-sicher.
 
-import type { Baustein, Fall, KnotenStatus, RitualVorlage } from '../typen';
+import type { Baustein, Fall, KnotenStatus, RitualVorlage, VorlagenDatei } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
-import { MUSTER_ONBOARDING, type OnboardingSchluessel } from '../muster';
+import { MUSTER_ONBOARDING, MUSTER_PLAYBOOK, type OnboardingSchluessel } from '../muster';
 import { ausWandzeit } from '@/lib/kalender/zeit';
 
 export const OB_PRAEFIX = 'fk-ob-';
@@ -153,6 +153,16 @@ export const WILLKOMMEN_GERUEST: Record<'Du' | 'Sie', string> = {
 export const TAG_WILLKOMMEN = 'willkommen';
 
 /** Die passende Vorlage der Bibliothek: Schlagwort `willkommen` und (wenn vorhanden) `du` bzw. `sie`. */
+/**
+ * Das Kunden-Playbook der Bibliothek, das ein neuer Fall unter „Kunden-Playbook“ einhängt: der aus dem Muster angelegte Baustein (Marke
+ * `muster:fb-muster-playbook`), sonst ein Formular/Workbook mit Schlagwort „playbook“, das der Kunde ausfüllt. Ohne: null (Start ohne Formular).
+ */
+export function playbookBaustein(d: Pick<VorlagenDatei, 'bausteine' | 'marken'>): Baustein | null {
+  const ausMuster = d.marken[`muster:${MUSTER_PLAYBOOK.id}`];
+  const passt = (b: Baustein) => (b.art === 'formular' || b.art === 'workbook') && b.kundeFuellt === true && !!b.fragen?.length;
+  return d.bausteine.find(b => b.id === ausMuster && passt(b)) ?? d.bausteine.find(b => passt(b) && b.tags.includes('playbook')) ?? null;
+}
+
 export function willkommenVorlage(bausteine: readonly Baustein[], anrede: 'Du' | 'Sie'): Baustein | null {
   const l = bausteine.filter(b => b.art === 'mail' && b.tags.includes(TAG_WILLKOMMEN) && !!b.text);
   return l.find(b => b.tags.includes(anrede.toLowerCase())) ?? l.find(b => !b.tags.includes('du') && !b.tags.includes('sie')) ?? l[0] ?? null;

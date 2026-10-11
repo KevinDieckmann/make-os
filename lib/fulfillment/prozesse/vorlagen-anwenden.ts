@@ -14,7 +14,7 @@
 
 import type { Baustein, Freigabepunkt, ProzessKnoten, ProzessVorlage, RitualVorlage, Rolle, Uebergang, VorlagenDatei, AnwendenErgebnis, AnalyseAgentId, Rhythmus } from '../typen';
 import { GRENZEN, ID_FREI, KENNUNG, TEXT_MAX } from '../grenzen';
-import { ANALYSE_AGENTEN, KREISLAUF_IDS } from '../lesen';
+import { ANALYSE_AGENTEN, KREISLAUF_IDS, ABLAUF_FORMEN, RITUAL_RHYTHMEN } from '../lesen';
 import { ebeneVon, kinderVon, kreisBei, teilbaum, EBENEN_MAX, KREIS, markeOnboardingAus } from '../regeln';
 import { MUSTER_LANDKARTE, MUSTER_P1, MUSTER_P2, MUSTER_P3, MUSTER_RITUALE, MUSTER_PLAYBOOK } from '../muster';
 import { istOrt } from '../orte';
@@ -28,8 +28,6 @@ export interface VorlagenKontext {
   /** Fingerabdruck eines Eintrags (Server: lib/fulfillment/speicher.ts `eintragStand`). */
   standVon: (x: object) => string;
   neueId: (praefix: 'fp' | 'fk' | 'fb' | 'fr') => string;
-  /** Ist die schreibende Person Inhaber? (Kunden-Link-Schalter nur Inhaber, 403.) */
-  inhaber: boolean;
   /** Produkte des Katalogs (Kennungen) — die Zuordnung Produkt → Vorlage nur auf diese. Fehlt: keine Prüfung (Tests). */
   leistungen?: readonly string[];
 }
@@ -158,7 +156,7 @@ function rollenAus(v: unknown): Rolle[] {
     return r;
   });
 }
-const RHYTHMEN: readonly Rhythmus[] = ['einmal', 'woche', 'zwei-wochen', 'monat', 'quartal'];
+const RHYTHMEN: readonly Rhythmus[] = RITUAL_RHYTHMEN;
 const TEILNEHMENDE = ['intern', 'entscheider', 'tagesverantwortlich', 'team'] as const;
 
 /** Eine Muster-Vorlage mit NEUEN Kennungen (Knoten, Eltern, Verweise über `verweise`). */
@@ -237,7 +235,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           const teil: Record<string, unknown> = {};
           if (e.titel !== undefined || !alt) teil.titel = pflichtText(e.titel, 'titel', 'Titel');
           for (const [f, feld] of [['beschreibung', 'beschreibung'], ['vorbehalt', 'hinweis'], ['quelleHinweis', 'kurz']] as const) { const x = optText(e[f], feld, f); if (x !== undefined) teil[f] = x; }
-          const form = optWahl(e.form, ['baum', 'trichter', 'fluss', 'zeitachse'] as const, 'Zeichenform'); if (form !== undefined) teil.form = form;
+          const form = optWahl(e.form, ABLAUF_FORMEN, 'Zeichenform'); if (form !== undefined) teil.form = form;
           if (e.freigaben !== undefined) teil.freigaben = freigabenAus(e.freigaben);
           if (e.rollen !== undefined) teil.rollen = rollenAus(e.rollen);
           const zh = textListe(e.zeichenhinweise, 'kurz', 'Zeichenhinweise', 20); if (zh !== undefined) teil.zeichenhinweise = zh.length ? zh : null;
@@ -439,13 +437,10 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
         }
         case 'einstellungen': {
           const f = istObj(o.felder) ? o.felder : nein('felder fehlen.');
-          for (const key of Object.keys(f)) if (!['kundenLink', 'pulsSchwelle', 'willkommenStunden', 'nachsorgeTage'].includes(key)) nein(`Unbekannte Einstellung „${key}“.`);
-          if (f.kundenLink !== undefined) {
-            if (!k.inhaber) nein('Den Kunden-Link schaltet nur der Inhaber.', 403);
-            const an = istObj(f.kundenLink) && typeof f.kundenLink.an === 'boolean' ? f.kundenLink.an : nein('kundenLink: { an: true|false }.');
-            d.einstellungen.kundenLink = { an, am: k.jetzt, von: k.person };
-          }
-          const p = optZahl(f.pulsSchwelle, 0, 10, 'Puls-Schwelle'); if (p != null) d.einstellungen.pulsSchwelle = Math.round(p);
+          // Kunden-Link-Schalter und Puls-Schwelle haben EINEN Schreibweg: POST /api/fulfillment/kunde { aktion: 'schalter' | 'puls-schwelle' }
+          // (C2; Schalter nur Inhaber per Sitzung) — zusammengeführt 11.10. Hier nur der Takt des Onboardings.
+          if (f.kundenLink !== undefined || f.pulsSchwelle !== undefined) nein('Kunden-Link und Puls-Schwelle stellst du unter Fall › Kunde & Reports ein (dort gilt: Schalter nur der Inhaber).');
+          for (const key of Object.keys(f)) if (!['willkommenStunden', 'nachsorgeTage'].includes(key)) nein(`Unbekannte Einstellung „${key}“.`);
           const w = optZahl(f.willkommenStunden, 1, 168, 'Willkommen (Stunden)'); if (w != null) d.einstellungen.willkommenStunden = Math.round(w);
           if (f.nachsorgeTage !== undefined) {
             if (!Array.isArray(f.nachsorgeTage) || !f.nachsorgeTage.length || f.nachsorgeTage.length > 6 || f.nachsorgeTage.some(x => !Number.isInteger(x) || (x as number) < 1 || (x as number) > 365)) nein('Nachsorge: ein bis sechs Tage zwischen 1 und 365.');

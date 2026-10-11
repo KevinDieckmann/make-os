@@ -18,8 +18,9 @@ import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { fallAnwenden, fallStarten, vorlageUebernehmen } from './fall';
-import { fallWirksam, istKickoff, onboardingStand, type OnboardingAbleitung } from './onboarding';
+import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
+import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 
 export class FallFehler extends Error { constructor(msg: string, readonly status: 400 | 403 | 404 | 409 | 413) { super(msg); } }
 
@@ -41,7 +42,7 @@ export async function fallUmfeld(mandatIds?: readonly string[]) {
 export function ableitungFuer(fall: Fall, m: Mandat | undefined, crm: Pick<CrmBestand, 'angebote' | 'chancen'>, vorlagen: VorlagenDatei, kunde: KundeKurz | undefined, jetzt: string): OnboardingAbleitung {
   const u = m ? unterschriftAm(m, crm, fall.gestartetAm) : null;
   return {
-    ziele: (m?.ziele ?? []).map(z => ({ id: z.id, text: z.text, ...(z.ziel ? { ziel: z.ziel } : {}) })),
+    ziele: mandatZieleLesen(m?.ziele).map(z => ({ id: z.id, text: z.text, ...(z.ziel ? { ziel: z.ziel } : {}) })),
     formularProzent: kunde?.formularProzent ?? null,
     kickoffRitualIds: vorlagen.rituale.filter(istKickoff).map(r => r.id),
     ...(u ? { unterschrift: u.am } : {}),
@@ -74,7 +75,8 @@ export async function fallStartenServer(e: { mandatId: unknown; vorlageId: unkno
   let neu: Fall | null = null;
   const r = await fulfillmentAendern('faelle', d => {
     if (d.faelle[m.id]) return { ok: false, status: 409, fehler: 'Für dieses Mandat läuft schon ein Fall.' };
-    neu = fallStarten({ mandatId: m.id, vorlage: v, person: e.person, jetzt: iso, start, ...(bis ? { willkommenBis: bis } : {}), neueId: p => neueKennung(p) });
+    const pb = playbookBaustein(vorlagen);
+    neu = fallStarten({ mandatId: m.id, vorlage: v, person: e.person, jetzt: iso, start, ...(bis ? { willkommenBis: bis } : {}), ...(pb ? { playbookId: pb.id } : {}), neueId: p => neueKennung(p) });
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: [m.id] };
   }, e.wer ?? { art: 'person', person: e.person }, h);
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
@@ -106,7 +108,8 @@ async function zieleAendern(mandatId: string, f: (z: Mandat['ziele']) => Mandat[
   await aendereCrm(b => {
     const m = b.mandate.find(x => x.id === mandatId);
     if (!m) return b;
-    const neu = f(m.ziele ?? []);
+    // Roh kann noch die alte Text-Form stehen — gelesen über die EINE Stelle, der Säuberer erhält sie beim Schreiben (nie verworfen).
+    const neu = f(mandatZieleLesen(m.ziele));
     if (JSON.stringify(neu) === JSON.stringify(m.ziele ?? [])) { ok = true; return b; }
     const r = wendeCrmAn(b, [{ liste: 'mandate', op: 'teil', id: mandatId, felder: { ziele: neu } }], iso, person);
     ok = r.angewandt > 0 && !r.konflikte.length && !r.grenze.length && !r.abgelehnt?.length;
@@ -130,7 +133,7 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
   if (!Array.isArray(opsRoh)) throw new FallFehler('ops: Liste erwartet.', 400);
   const nachzug: Nachzug = {};
   // Neue Ziele: erst am Mandat (eine Wahrheit für „was ist das Ziel“), dann im Wert-Konto.
-  let ziele = m.ziele ?? [];
+  let ziele: Mandat['ziele'] = mandatZieleLesen(m.ziele);
   const ops: unknown[] = [];
   for (const o of opsRoh) {
     if (o && typeof o === 'object' && (o as { op?: unknown }).op === 'ziel-neu') {

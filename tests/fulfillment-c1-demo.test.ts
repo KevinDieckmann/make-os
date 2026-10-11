@@ -40,11 +40,11 @@ describe('Demo: Fulfillment', () => {
   it('Muster, Bausteine, Abläufe, zwei Fälle', async () => {
     expect(schritte['Fulfillment: Vorlagen aus dem Muster']).toBe(3);
     expect(schritte['Fulfillment: Bausteine']).toBeGreaterThanOrEqual(25);
-    expect(schritte['Fulfillment: Abläufe']).toBe(3);
+    expect(schritte['Fulfillment: Abläufe']).toBe(4);
     expect(schritte['Fulfillment: Fälle']).toBe(2);
     const ue = await lese('fulfillment');
     const prozesse = ue.prozesse as { art: string; form?: string }[];
-    expect(prozesse.filter(p => p.art === 'ablauf').map(p => p.form).sort()).toEqual(['fluss', 'trichter', 'zeitachse']);
+    expect(prozesse.filter(p => p.art === 'ablauf').map(p => p.form).sort()).toEqual(['fluss', 'kreis', 'trichter', 'zeitachse']);
     const bausteine = ue.bausteine as { rechtOffen: boolean; nurIntern: boolean; vorVerkaufOffen: boolean }[];
     expect(bausteine.filter(b => b.rechtOffen)).toHaveLength(2);
     expect(bausteine.filter(b => b.nurIntern)).toHaveLength(1);
@@ -64,6 +64,11 @@ describe('Demo: Fulfillment', () => {
     expect(fall.rituale).toHaveLength(1);
     expect(fall.mitschriften).toHaveLength(1);
     expect(f.fortschritt as number).toBeGreaterThan(0);
+    // Zusammengeführt 11.10.: der Demo-Fall trägt das Kunden-Playbook als Formular — die Saat von C2 füllt es (Kunden-Link bleibt aus).
+    expect(schritte['Fulfillment · Playbook-Antworten (Kunden-Link aus)']).toBeGreaterThan(0);
+    const k = await lese('fulfillment/kunde', '?m=m-demo-nordwerk');
+    expect((k.formulare as { titel: string; prozent: number }[]).map(x => [x.titel, x.prozent])).toEqual([['Kunden-Playbook', 100]]);
+    expect((f.onboarding as { schritte: { schluessel: string; erfuellt: boolean }[] }).schritte.find(s => s.schluessel === 'playbook')!.erfuellt).toBe(true);
   });
 
   it('Lumen im Onboarding: Willkommensmail überfällig, im Cockpit rot oben', async () => {

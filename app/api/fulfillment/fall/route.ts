@@ -35,6 +35,7 @@ import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { einmalig } from '@/lib/store/anfragen';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
+import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
   const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm);
   if (!mandat) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
   const { istBusinessGesellschaft } = await import('@/lib/einheiten');
-  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandat.ziele, gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: istBusinessGesellschaft(mandat.gesellschaft) };
+  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: istBusinessGesellschaft(mandat.gesellschaft) };
   const f = faelle.faelle[m];
   const u = unterschriftAm(mandat, crm, f?.gestartetAm);
   if (!f) return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await istInhaber(z.person) });
@@ -106,7 +107,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true, inhaber: await istInhaber(z.person), mandat: mandatKurz, unterschrift: u,
     fall: { ...w, knoten: w.knoten.map(x => ({ ...x, stand: eintragStand(f.knoten.find(y => y.id === x.id) ?? x) })), stakeholder: w.stakeholder.map(s => ({ ...s, stand: eintragStand(s) })), entscheidungen: w.entscheidungen.map(e => ({ ...e, stand: eintragStand(e) })) },
-    staende: { vereinbarung: eintragStand(f.vereinbarung ?? {}), wertKonto: Object.fromEntries(mandat.ziele.map(zl => [zl.id, eintragStand(f.wertKonto[zl.id] ?? { messungen: [] })])) },
+    staende: { vereinbarung: eintragStand(f.vereinbarung ?? {}), wertKonto: Object.fromEntries(mandatZieleLesen(mandat.ziele).map(zl => [zl.id, eintragStand(f.wertKonto[zl.id] ?? { messungen: [] })])) },
     onboarding: onboardingStand(f, abl), diff: v ? vorlagenDiff(f, v) : null,
     vorlage: v ? { id: v.id, titel: v.titel, fassung: v.fassung, freigaben: v.freigaben, rollen: v.rollen } : { id: f.vorlageId, titel: 'Vorlage entfernt', fassung: f.vorlageFassung, freigaben: MUSTER_FREIGABEN, rollen: [] },
     wartet: wartetAufEuch(w, heute), wertKonto: wertKontoZeilen(w, mandat), fortschritt: fallFortschritt(w), aktuell: aktuellerKnoten(w),
@@ -154,7 +155,7 @@ export async function PATCH(req: Request) {
     if (faelle.faelle[b.mandatId]) return NextResponse.json({ ok: false, fehler: 'Für dieses Mandat läuft schon ein Fall.' }, { status: 409 });
     const jetzt = new Date();
     const r = await fulfillmentAendern('vorlagen', d => vorlagenAnwenden(d, [{ op: 'onboarding-aus', mandatId: b.mandatId, aus: aus.aus !== false }], {
-      person: z.person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), standVon: eintragStand, neueId: p => neueKennung(p), inhaber: false,
+      person: z.person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), standVon: eintragStand, neueId: p => neueKennung(p),
     }), wer, z.haushalt);
     return r.ok ? NextResponse.json({ ok: true }) : NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
   }

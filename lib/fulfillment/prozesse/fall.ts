@@ -4,8 +4,11 @@
 // den der Kunde sieht, nie still, wenn jemand die Vorlage für künftige Kunden verbessert. Lange Texte (Gliederung, Skript, Fragen) liest der
 // Fall LIVE aus der Bibliothek über `bausteinId`. Neue Fassung der Vorlage → `vorlagenDiff` zeigt neue/geänderte/entfernte Knoten,
 // „Übernehmen“ fügt hinzu und ändert — erledigte oder entfallene Knoten werden nie entfernt.
-// Onboarding: unter dem Teilprozess „Onboarding“ (bzw. einer neuen Phase „Onboarding“) stehen die acht Schritte als Knoten `fk-ob-*`
-// (`extra`, zählen im Fortschritt mit); ihr Stand wird abgeleitet (lib/fulfillment/prozesse/onboarding.ts) — nie von Hand „erledigt“.
+// Onboarding: unter dem Teilprozess „Onboarding“ (Ebene 3; fehlt er, legt der Start ihn an — als `fk-obt` unter einer Phase „Onboarding“
+// bzw. unter der neuen Phase `fk-ob`) stehen die acht Schritte als Einzelschritte (Ebene 4) `fk-ob-*` (`extra`, zählen im Fortschritt mit); ihr
+// Stand wird abgeleitet (lib/fulfillment/prozesse/onboarding.ts) — nie von Hand „erledigt“. Unter „Kunden-Playbook“ hängt (Ebene 5) das
+// Playbook-Formular der Bibliothek (`fk-obf-playbook`, `bausteinId`) — das füllt der Kunde über seinen Link bzw. wir gemeinsam im Kick-off
+// (Paket C2 liest Formulare NUR aus Knoten mit `bausteinId`; zusammengeführt 11.10.).
 // Alle Änderungen über `fallAnwenden(fall, ops, kontext)` (rein, alles oder nichts); geschrieben wird in lib/fulfillment/prozesse/fall-server.ts.
 
 import type { AnwendenErgebnis, Fall, FallKnoten, KnotenStatus, ProzessKnoten, ProzessVorlage, Stakeholder, Entscheidung, Mitschrift, WertKontoEintrag, Vereinbarung } from '../typen';
@@ -33,8 +36,14 @@ export interface StartEingabe {
   start: string;
   /** Bis wann die Willkommensmail raus sein soll (Unterschrift + 24 h, Tag) — Fälligkeit des ersten Schritts. */
   willkommenBis?: string;
+  /** Kennung des Kunden-Playbooks in der Bibliothek (`playbookBaustein`) — hängt als Formular unter dem Schritt „Kunden-Playbook“. */
+  playbookId?: string;
   neueId: (p: string) => string;
 }
+/** Teilprozess, den der Start anlegt, wenn die Vorlage keinen „Onboarding“-Knoten auf Ebene 3 hat (die Schritte stehen immer auf Ebene 4). */
+export const OB_TEIL_ID = 'fk-obt';
+/** Der Formular-Knoten (Ebene 5) unter „Kunden-Playbook“. */
+export const OB_PLAYBOOK_FORMULAR_ID = 'fk-obf-playbook';
 
 /** Den Fall anlegen: Struktur-Kopie + Onboarding-Schritte + Befähigungs-Kriterien (Vorgabe, je Fall änderbar). */
 export function fallStarten(e: StartEingabe): Fall {
@@ -56,6 +65,13 @@ export function fallStarten(e: StartEingabe): Fall {
     container = { id: 'fk-ob', elternId: wurzel.id, titel: 'Onboarding', rang: 0, status: 'offen', extra: true, kundeSichtbar: true };
     knoten = [...knoten, container].map(k => (k.elternId === wurzel.id ? { ...k, rang: k.id === 'fk-ob' ? 1 : k.rang + 1 } : k));
   }
+  // Die Schritte stehen auf Ebene 4 (Einzelschritt) — liegt der Container auf Ebene 2, kommt ein Teilprozess dazwischen. Nur so kann das
+  // Playbook-Formular (ein Baustein, Ebene 5) unter „Kunden-Playbook“ hängen.
+  if (container && ebeneVon(container, knoten) === 2 && !knoten.some(k => k.id.startsWith(OB_PRAEFIX) && k.elternId)) {
+    const teil: FallKnoten = { id: OB_TEIL_ID, elternId: container.id, titel: 'Onboarding-Schritte', rang: kinderVon(container.id, knoten).length + 1, status: 'offen', extra: true, kundeSichtbar: true };
+    knoten = [...knoten, teil];
+    container = teil;
+  }
   if (container && ebeneVon(container, knoten) < EBENEN_MAX - 1 && !knoten.some(k => k.id.startsWith(OB_PRAEFIX) && k.elternId)) {
     const c = container;
     const vorhanden = kinderVon(c.id, knoten).length;
@@ -66,6 +82,11 @@ export function fallStarten(e: StartEingabe): Fall {
         ...(s.schluessel === 'playbook' ? { kundeSichtbar: true } : {}),
       });
     });
+    const pb = knoten.find(k => k.id === obKnotenId('playbook'));
+    if (e.playbookId && pb && ebeneVon(pb, knoten) === EBENEN_MAX - 1) {
+      // Nicht „für Kunden sichtbar“ als Schritt — der Kunde sieht das Formular selbst (C2), im Zeitstrahl steht der Schritt „Kunden-Playbook“.
+      knoten.push({ id: OB_PLAYBOOK_FORMULAR_ID, elternId: pb.id, titel: 'Kunden-Playbook (Formular)', rang: 1, status: 'offen', extra: true, bausteinId: e.playbookId });
+    }
   }
   return {
     mandatId: e.mandatId, vorlageId: v.id, vorlageFassung: v.fassung, gestartetAm: e.jetzt, gestartetVon: e.person, status: 'onboarding',
@@ -180,7 +201,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
         case 'knoten-extra': {
           if (o.weg === true) {
             const n = knoten(o.id);
-            if (!n.extra || obSchluessel(n.id) || n.id === 'fk-ob') nein('Nur eigene Zusatz-Schritte lassen sich entfernen — Schritte der Vorlage entfallen mit Grund.');
+            if (!n.extra || obSchluessel(n.id) || n.id === 'fk-ob' || n.id === OB_TEIL_ID || n.id === OB_PLAYBOOK_FORMULAR_ID) nein('Nur eigene Zusatz-Schritte lassen sich entfernen — Schritte der Vorlage entfallen mit Grund.');
             const weg = new Set(teilbaum(n.id, f.knoten));
             f.knoten = f.knoten.filter(x => !weg.has(x.id)); geaendert.push(n.id);
             break;

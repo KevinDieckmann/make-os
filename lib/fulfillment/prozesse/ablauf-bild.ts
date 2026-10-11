@@ -3,6 +3,9 @@
 //   trichter  — gestapelte, nach unten schmalere Scheiben; mehrere Stufen derselben Stufe nebeneinander; Ausstiege rechts daneben
 //   fluss     — Spalten von links nach rechts (Stufe = längster Weg über „weiter“), Weichen-Texte an den Kanten, Rückwege als Bögen unterhalb
 //   zeitachse — Kreise auf einer Linie, nach Phasen gruppiert; Rückwege als Bögen oberhalb, Schleifen als kleine Rundpfeile
+//   kreis     — (Sales Circle, 11.10.) Stufen aus der Quelle im Uhrzeigersinn auf einem inneren Kreis ab 12 Uhr, „weiter“/„zurück an den Anfang“
+//               als Bögen auf dem Kreis, Rückwege als Sehnen durch die Mitte; Ergänzungen (`beleg: 'ergaenzung'`, z. B. Empfehlung) auf einem
+//               GESTRICHELTEN äußeren Ring neben ihrer Herkunftsstufe; Ausstiege außen (rot, gestrichelt)
 //   baum      — eingerückte Liste (Ebenen)
 // Alles mit `beleg: 'ergaenzung'` (nicht aus der Quelle) ist gestrichelt, ebenso Ausstiege. `kreislauf` führt zurück an den Anfang.
 // Gerechnet wird NUR hier (die Komponente zeichnet), deterministisch. Rein und client-sicher.
@@ -13,7 +16,9 @@ import { ebeneVon, inReihenfolge, kinderVon } from '../regeln';
 export interface AblaufStufe { id: string; x: number; y: number; b: number; h: number; titel: string; art: NonNullable<ProzessKnoten['art']>; gestrichelt: boolean; optional: boolean; heute?: string; phase?: string; rund?: boolean }
 export interface AblaufPhase { id: string; x: number; y: number; b: number; h: number; titel: string }
 export interface AblaufKante { von: string; nach: string; art: Uebergang['art']; pfad: string; weiche?: string; lx: number; ly: number; gestrichelt: boolean }
-export interface AblaufLage { form: NonNullable<ProzessVorlage['form']>; breite: number; hoehe: number; stufen: AblaufStufe[]; phasen: AblaufPhase[]; kanten: AblaufKante[] }
+/** Ein Ring der Kreis-Form (innen = Führung, außen = Empfehlungsring, gestrichelt). Gezeichnet als Kreis; rechnet nur dieses Modul. */
+export interface AblaufRing { cx: number; cy: number; r: number; gestrichelt: boolean; titel?: string; tx?: number; ty?: number; /** nur Lage (Mitte, Radius) — nicht zeichnen; die Bögen zeigen den Kreis */ nurLage?: boolean }
+export interface AblaufLage { form: NonNullable<ProzessVorlage['form']>; breite: number; hoehe: number; stufen: AblaufStufe[]; phasen: AblaufPhase[]; kanten: AblaufKante[]; ringe?: AblaufRing[] }
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -79,6 +84,102 @@ function kantenFuer(v: Pick<ProzessVorlage, 'uebergaenge'>, st: Map<string, Abla
   });
 }
 
+// ── Kreis (Sales Circle) ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Punkt auf dem Rand einer Stufe in Richtung (zx, zy) — damit Pfeile an der Kante enden, nicht unter dem Kasten. */
+function randPunkt(s: Pick<AblaufStufe, 'x' | 'y' | 'b' | 'h'>, zx: number, zy: number, luft = 3): [number, number] {
+  const mx = s.x + s.b / 2, my = s.y + s.h / 2, dx = zx - mx, dy = zy - my;
+  if (!dx && !dy) return [mx, my];
+  const f = Math.min(dx ? (s.b / 2 + luft) / Math.abs(dx) : 1e9, dy ? (s.h / 2 + luft) / Math.abs(dy) : 1e9);
+  return [mx + dx * Math.min(1, f), my + dy * Math.min(1, f)];
+}
+/** Winkel-Abstand vom Mittelpunkt einer Stufe auf dem Kreis bis zu ihrem Rand (Schritte von 0,01 rad) — Bögen beginnen außerhalb des Kastens. */
+function austritt(s: Pick<AblaufStufe, 'b' | 'h'>, cx: number, cy: number, r: number, theta: number, richtung: 1 | -1): number {
+  const mx = cx + r * Math.cos(theta), my = cy + r * Math.sin(theta);
+  for (let d = 0; d < Math.PI; d += 0.01) {
+    const x = cx + r * Math.cos(theta + richtung * d), y = cy + r * Math.sin(theta + richtung * d);
+    if (Math.abs(x - mx) > s.b / 2 + 4 || Math.abs(y - my) > s.h / 2 + 4) return d;
+  }
+  return 0.3;
+}
+
+function kreisLage(v: Pick<ProzessVorlage, 'knoten' | 'uebergaenge'>, stufen: ProzessKnoten[], breite: number, roh: (s: ProzessKnoten) => Omit<AblaufStufe, 'x' | 'y' | 'b' | 'h'>): AblaufLage {
+  const R = 16, H = 32;
+  // Reihenfolge im Kreis = Lese-Reihenfolge der Stufen (Rang) — NICHT die Tiefe über „weiter“: in einem Kreis führen Wege (z. B. Empfehlung → Kontakt)
+  // zurück an den Anfang, die Tiefe wäre dort bedeutungslos.
+  const ordnung = new Map(stufen.map((s, i) => [s.id, i]));
+  const nachReihe = (a: ProzessKnoten, b: ProzessKnoten) => (ordnung.get(a.id) ?? 0) - (ordnung.get(b.id) ?? 0);
+  const innen = stufen.filter(s => s.art !== 'ausstieg' && s.beleg !== 'ergaenzung').sort(nachReihe);
+  const aussen = stufen.filter(s => !innen.includes(s)).sort(nachReihe);
+  const ring = aussen.some(s => s.beleg === 'ergaenzung');
+  const n = Math.max(1, innen.length);
+  const platz = Math.max(160, Math.min(breite - 2 * R, 760));
+  const rI = r1(Math.max(90, platz / 2 - (aussen.length ? 120 : 70)));
+  const rA = r1(rI + 84);
+  const bI = r1(Math.max(76, Math.min(140, 2 * rI * Math.sin(Math.PI / n) - 14)));
+  const cx = r1(Math.max(breite, platz + 2 * R) / 2), cy = r1(R + 20 + (aussen.length ? rA : rI) + H / 2);
+  const winkel = new Map<string, number>();
+  const st: AblaufStufe[] = [];
+  innen.forEach((s, i) => {
+    const t = -Math.PI / 2 + (2 * Math.PI * i) / n;
+    winkel.set(s.id, t);
+    st.push({ ...roh(s), x: r1(cx + rI * Math.cos(t) - bI / 2), y: r1(cy + rI * Math.sin(t) - H / 2), b: bI, h: H, rund: true });
+  });
+  // Außen: neben der Stufe, aus der sie kommt (sonst: zu der sie führt; sonst gleichmäßig) — mehrere am selben Anker gefächert.
+  const proAnker = new Map<string, number>();
+  aussen.forEach((s, i) => {
+    const von = v.uebergaenge.find(u => u.nach === s.id && winkel.has(u.von))?.von ?? v.uebergaenge.find(u => u.von === s.id && winkel.has(u.nach))?.nach;
+    const anker = von ? winkel.get(von)! : -Math.PI / 2 + (2 * Math.PI * (i + 0.5)) / Math.max(1, aussen.length);
+    const k = von ?? `frei-${i}`;
+    const nr = proAnker.get(k) ?? 0; proAnker.set(k, nr + 1);
+    const t = anker + (nr === 0 ? 0.28 : nr % 2 ? -0.28 - 0.3 * nr : 0.28 + 0.3 * nr);
+    winkel.set(s.id, t);
+    const bA = r1(Math.min(130, Math.max(76, bI)));
+    st.push({ ...roh(s), x: r1(cx + rA * Math.cos(t) - bA / 2), y: r1(cy + rA * Math.sin(t) - H / 2), b: bA, h: H, rund: true });
+  });
+  const nach = new Map(st.map(x => [x.id, x]));
+  const kanten: AblaufKante[] = v.uebergaenge.filter(u => nach.has(u.von) && nach.has(u.nach)).map(u => {
+    const a = nach.get(u.von)!, b = nach.get(u.nach)!;
+    const gestrichelt = u.beleg === 'ergaenzung' || u.art === 'ausstieg' || a.gestrichelt || b.gestrichelt;
+    const beideInnen = innen.some(x => x.id === a.id) && innen.some(x => x.id === b.id);
+    const ta = winkel.get(a.id)!, tb = winkel.get(b.id)!;
+    let pfad: string, lx: number, ly: number;
+    if (u.art === 'schleife' || a.id === b.id) {
+      const x = a.x + a.b, y = a.y + 6;
+      pfad = `M ${r1(x)} ${r1(y)} c 22 -16 22 ${r1(a.h - 4)} 0 ${r1(a.h - 12)}`; lx = x + 18; ly = a.y - 4;
+    } else if (beideInnen && (u.art === 'weiter' || u.art === 'kreislauf')) {
+      // Bogen auf dem Kreis im Uhrzeigersinn (Sweep 1), vom Rand der einen bis zum Rand der anderen Stufe.
+      let sweep = tb - ta; while (sweep <= 0) sweep += 2 * Math.PI;
+      const s0 = ta + austritt(a, cx, cy, rI, ta, 1), s1 = tb - austritt(b, cx, cy, rI, tb, -1);
+      const bogen = s1 > s0 ? s1 - s0 : s1 + 2 * Math.PI - s0;
+      pfad = `M ${r1(cx + rI * Math.cos(s0))} ${r1(cy + rI * Math.sin(s0))} A ${rI} ${rI} 0 ${bogen > Math.PI ? 1 : 0} 1 ${r1(cx + rI * Math.cos(s1))} ${r1(cy + rI * Math.sin(s1))}`;
+      const m = ta + sweep / 2;
+      lx = cx + (rI + 18) * Math.cos(m); ly = cy + (rI + 18) * Math.sin(m);
+    } else if (beideInnen) {
+      // Rückweg (bzw. Abkürzung) als Sehne durch das Innere.
+      const [x1, y1] = randPunkt(a, cx, cy), [x2, y2] = randPunkt(b, cx, cy);
+      const kx = (x1 + x2) / 2 * 0.5 + cx * 0.5, ky = (y1 + y2) / 2 * 0.5 + cy * 0.5;
+      pfad = `M ${r1(x1)} ${r1(y1)} Q ${r1(kx)} ${r1(ky)} ${r1(x2)} ${r1(y2)}`;
+      lx = kx; ly = ky;
+    } else {
+      const [x1, y1] = randPunkt(a, b.x + b.b / 2, b.y + b.h / 2), [x2, y2] = randPunkt(b, a.x + a.b / 2, a.y + a.h / 2);
+      pfad = `M ${r1(x1)} ${r1(y1)} L ${r1(x2)} ${r1(y2)}`;
+      lx = (x1 + x2) / 2; ly = (y1 + y2) / 2;
+    }
+    return { von: u.von, nach: u.nach, art: u.art, pfad, ...(u.weiche ? { weiche: u.weiche } : {}), lx: r1(lx), ly: r1(ly), gestrichelt };
+  });
+  // Beschriftung des Empfehlungsrings dort, wo außen am wenigsten steht (acht Kandidaten, der mit dem größten Abstand gewinnt).
+  const aussenWinkel = aussen.map(s => winkel.get(s.id)!);
+  const abstand = (t: number) => Math.min(Math.PI, ...aussenWinkel.map(w => { const d = Math.abs(((t - w) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI); return d; }));
+  const tT = [0, 1, 2, 3, 4, 5, 6, 7].map(i => -Math.PI / 2 + (i * Math.PI) / 4).reduce((best, t) => (abstand(t) > abstand(best) + 1e-9 ? t : best));
+  const ringe: AblaufRing[] = [
+    { cx, cy, r: rI, gestrichelt: false, nurLage: true },
+    ...(ring ? [{ cx, cy, r: rA, gestrichelt: true, titel: 'Empfehlungen', tx: r1(cx + (rA + 14) * Math.cos(tT)), ty: r1(cy + (rA + 14) * Math.sin(tT) + 4) }] : []),
+  ];
+  const hoehe = r1(cy + (aussen.length ? rA : rI) + H / 2 + 24 + R);
+  return { form: 'kreis', breite: r1(Math.max(breite, platz + 2 * R)), hoehe, stufen: st, phasen: [], kanten, ringe };
+}
+
 /** Die Lage eines Ablaufs für eine Breite (px) in seiner Zeichenform (fehlt sie: Baum). */
 export function ablaufLage(v: Pick<ProzessVorlage, 'knoten' | 'uebergaenge' | 'form'>, breite: number): AblaufLage {
   const form = v.form ?? 'baum';
@@ -92,6 +193,8 @@ export function ablaufLage(v: Pick<ProzessVorlage, 'knoten' | 'uebergaenge' | 'f
     const st: AblaufStufe[] = l.map((k, i) => ({ ...roh(k), x: R + (ebeneVon(k, v.knoten) - 2) * 22, y: R + i * 40, b: Math.max(160, breite - 2 * R - (ebeneVon(k, v.knoten) - 2) * 22), h: 32 }));
     return { form, breite, hoehe: R * 2 + l.length * 40, stufen: st, phasen: [], kanten: [] };
   }
+
+  if (form === 'kreis') return kreisLage(v, stufen, breite, roh);
 
   const tiefe = stufenTiefe(stufen.map(s => s.id), v.uebergaenge);
   const ebenen = Math.max(1, ...Array.from(tiefe.values()).map(x => x + 1));

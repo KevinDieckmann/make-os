@@ -11,7 +11,10 @@ import type { Vorgabe } from '@/lib/kalender/formular';
 import type { GastWahl } from '@/lib/kalender/gaeste';
 import { tagPlus } from '@/lib/kalender/zeit';
 
-export const RHYTHMUS_TEXT: Record<Rhythmus, string> = { einmal: 'einmal', woche: 'wöchentlich', 'zwei-wochen': 'alle zwei Wochen', monat: 'monatlich', quartal: 'quartalsweise' };
+/** Text je Rhythmus — EINE Tabelle für intern (Takt) und Kunden-Sicht (C2). */
+export const RHYTHMUS_TEXT: Record<Rhythmus, string> = {
+  einmal: 'einmalig', taeglich: 'täglich', werktags: 'werktags (Mo–Fr)', woche: 'wöchentlich', 'zwei-wochen': 'alle zwei Wochen', monat: 'monatlich', quartal: 'quartalsweise',
+};
 export const TEILNEHMENDE_TEXT: Record<RitualVorlage['teilnehmende'][number], string> = { intern: 'wir', entscheider: 'Entscheider', tagesverantwortlich: 'Tagesverantwortliche', team: 'Team des Kunden' };
 
 const plus = (hhmm: string, min: number) => { const [h, m] = hhmm.split(':').map(Number); const g = Math.min(23 * 60 + 59, h * 60 + m + min); return `${String(Math.floor(g / 60)).padStart(2, '0')}:${String(g % 60).padStart(2, '0')}`; };

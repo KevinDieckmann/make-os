@@ -27,7 +27,7 @@ const stand = (x: object) => createHash('sha1').update(JSON.stringify(x)).digest
 let N = 0;
 /** Kennungen wie im Betrieb eindeutig (dort `neueKennung`) — ein Zähler für alle Aufrufe. */
 function zaehler() { return (p: string) => `${p}-t${++N}`; }
-const vk = (x: Partial<VorlagenKontext> = {}): VorlagenKontext => ({ person: 'pia', jetzt: JETZT, heute: HEUTE, standVon: stand, neueId: zaehler(), inhaber: true, ...x });
+const vk = (x: Partial<VorlagenKontext> = {}): VorlagenKontext => ({ person: 'pia', jetzt: JETZT, heute: HEUTE, standVon: stand, neueId: zaehler(), ...x });
 function ok<D>(r: { ok: true; datei: D } | { ok: false; status: number; fehler: string }): D {
   if (!r.ok) throw new Error(`${r.status}: ${r.fehler}`);
   return r.datei;
@@ -71,7 +71,9 @@ describe('Vorlagen: Muster, Struktur, Zuordnung', () => {
     expect(fremd).toMatchObject({ ok: false, status: 404 });
     const d2 = ok(vorlagenAnwenden(d, [{ op: 'zuordnung', leistungId: 'l-1', vorlageId: paketVon(d).id }], vk({ leistungen: ['l-1'] })));
     expect(d2.zuordnung['l-1']).toEqual({ vorlageId: paketVon(d).id });
-    expect(vorlagenAnwenden(d, [{ op: 'einstellungen', felder: { kundenLink: { an: true } } }], vk({ inhaber: false }))).toMatchObject({ ok: false, status: 403 });
+    // EIN Schreibweg für den Kunden-Link-Schalter (C2, POST /api/fulfillment/kunde) — die Vorlagen-Ops lehnen ihn ab, auch für den Inhaber.
+    expect(vorlagenAnwenden(d, [{ op: 'einstellungen', felder: { kundenLink: { an: true } } }], vk())).toMatchObject({ ok: false, status: 400 });
+    expect(vorlagenAnwenden(d, [{ op: 'einstellungen', felder: { pulsSchwelle: 4 } }], vk())).toMatchObject({ ok: false, status: 400 });
   });
 
   it('Baustein „nur intern“ geht nie an Kunden; „vor Verkauf prüfen“ fragt bis zur Prüfung zurück', () => {
@@ -83,9 +85,10 @@ describe('Vorlagen: Muster, Struktur, Zuordnung', () => {
     expect(nurIntern(intern)).toBe(true);
     expect(intern.kundeSichtbar).toBe(false);
     expect(fuerKundenFrei(intern, d).frei).toBe(false);
-    expect(fuerKundenFrei(fremd, d)).toMatchObject({ frei: true, rueckfrage: true });
+    // Zusammengeführt 11.10.: EINE strenge Regel für jeden Kunden-Weg — Material Dritter erst nach dem Vermerk „vor Verkauf geprüft“.
+    expect(fuerKundenFrei(fremd, d)).toMatchObject({ frei: false });
     const d2 = ok(vorlagenAnwenden(d, [{ op: 'urheber-geprueft', id: fremd.id }], vk()));
-    expect(fuerKundenFrei(fremd, d2)).toMatchObject({ frei: true, rueckfrage: false });
+    expect(fuerKundenFrei(fremd, d2)).toEqual({ frei: true });
   });
 });
 
