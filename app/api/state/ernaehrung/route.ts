@@ -25,7 +25,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const STORE = 'ernaehrung';
-const KEIN = { ok: false, error: 'Ernährung und Einkauf gehören zum Haushalt des Inhabers (System → Konto).' };
+const KEIN = { ok: false, error: 'Ernährung und Einkauf gehören zum Haushalt des Inhabers (Einstellungen › Konto).' };
 
 // Startbestand: LEER (09.10., Paket „neutral-rest“ — die früheren Start-Grundsätze waren aus dem Profil einer Person abgeleitet).
 // Grundsätze pflegt der Haushalt selbst; Bedürfnisse je Person stehen seit 26.09. in den Profilen. Gespeicherte bleiben, wie sie sind.

@@ -198,7 +198,7 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
                       <li key={ph.id} style={{ display: 'inline-flex', gap: 4, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
                         <span style={{ display: 'inline-grid', placeItems: 'center', width: 22, height: 22, borderRadius: 11, fontSize: TYP.bedien, fontWeight: 700, color: C.ink, background: TIEF.flaeche(LEUCHT.business), border: `1px solid ${TIEF.rand(LEUCHT.business)}` }}>{i + 1}</span>
                         <span>{ph.titel}</span>
-                        {ph.freigabe && <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', color: C.inkLeise }}><FreigabeRaute gegeben={false} groesse={9} />{ph.freigabe}</span>}
+                        {ph.freigabe && <span title={`Freigabe ${ph.freigabe}${p.freigaben.find(f => f.id === ph.freigabe)?.titel ? ` · ${p.freigaben.find(f => f.id === ph.freigabe)?.titel}` : ''}`} style={{ display: 'inline-flex', gap: 3, alignItems: 'center', color: C.inkLeise }}><FreigabeRaute gegeben={false} groesse={9} />Freigabe {ph.freigabe}</span>}
                         {i < sb.phasen.length - 1 && <span aria-hidden style={{ color: C.inkLeise, margin: '0 2px' }}>→</span>}
                       </li>
                     ))}

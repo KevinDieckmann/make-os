@@ -349,7 +349,7 @@ export const kontoGrabsteinKennung = (kontoId: string, v = kennungsVersion()) =>
  */
 export function loeschenErlaubt(k: Pick<Konto, 'speicher' | 'rolle'>, alle: readonly Pick<Konto, 'speicher' | 'rolle'>[], einstellungen?: Pick<ZugangEinstellungen, 'hauptInhaber'>): { ok: true } | { ok: false; fehler: string } {
   if (k.rolle !== 'inhaber' || !alle.some(x => x.speicher !== k.speicher)) return { ok: true };
-  if (istHauptInhaber({ konten: alle, einstellungen }, k.speicher)) return { ok: false, fehler: 'Als Inhaber können Sie Ihr Konto erst löschen, wenn es keine anderen Konten mehr gibt — entfernen Sie zuerst die anderen Konten bzw. lassen Sie sie ihr Konto selbst löschen. Für das Ende der ganzen Instanz gibt es den Instanz-Export und das Löschskript (System › Datenschutz).' };
+  if (istHauptInhaber({ konten: alle, einstellungen }, k.speicher)) return { ok: false, fehler: 'Als Inhaber können Sie Ihr Konto erst löschen, wenn es keine anderen Konten mehr gibt — entfernen Sie zuerst die anderen Konten bzw. lassen Sie sie ihr Konto selbst löschen. Für das Ende der ganzen Instanz gibt es den Instanz-Export und das Löschskript (Einstellungen › Datenschutz).' };
   return { ok: false, fehler: 'Geben Sie zuerst die Inhaber-Rolle ab (Konto › Inhaber) — danach können Sie Ihr Konto löschen.' };
 }
 

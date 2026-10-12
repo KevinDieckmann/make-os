@@ -24,7 +24,7 @@ import { auszugVorschau, auszugUebernehmen, auszugZuruecknehmen, laeufeFuerKonto
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Konten. Der Inhaber trägt den Haushalt unter System → Konto ein.' };
+const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Konten. Der Inhaber trägt den Haushalt unter Einstellungen › Konto ein.' };
 const NICHT_DIENSTWEG = { ok: false, fehler: 'Kontoauszüge liest ein Mensch in der App ein — nicht ZOE oder ein Hintergrundlauf.' };
 /** base64 einer 5-MB-Datei (≈ 6,7 MB) + Spaltenzuordnung. */
 const MAX_BODY = Math.ceil(AUSZUG_GRENZEN.bytes * 4 / 3) + 64_000;

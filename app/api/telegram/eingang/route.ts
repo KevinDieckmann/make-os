@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     await aendereStand(s => { const r = loeseCode(s, code, chatId, jetzt, m.from?.first_name); person = r.person; grund = r.grund; return r.stand; });
     if (!person) { await sendeAnChat(chatId, grund ?? 'Code unbekannt.'); return NextResponse.json({ ok: true, was: 'code abgelehnt' }); }
     // Gekoppelt — und wenn heute gerade ein Slot offen ist, kommt er sofort.
-    let gruss = `Gekoppelt als ${nameVon(person)}. Ich melde mich morgens, mittags und abends — und du kannst mir jederzeit schreiben. Meine Antworten liegen in MAKE OS; hier kommt nur ein Hinweis (außer du schaltest unter System › Datenschutz die Telegram-Ausnahme ein).`;
+    let gruss = `Gekoppelt als ${nameVon(person)}. Ich melde mich morgens, mittags und abends — und du kannst mir jederzeit schreiben. Meine Antworten liegen in MAKE OS; hier kommt nur ein Hinweis (außer du schaltest unter Einstellungen › Datenschutz die Telegram-Ausnahme ein).`;
     try {
       const st = (await loadJson<TaktStand>('gesundheit-takt')) ?? {};
       const slot = faelligeSlots(st, person, jetzt, localDay(jetzt))[0];

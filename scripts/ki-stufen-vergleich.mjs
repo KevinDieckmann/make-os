@@ -9,7 +9,7 @@
 //
 // Kostet Modell-Aufrufe: zwei Sätze × n Fälle × k Wiederholungen je Head (Vorgabe 5 × 3). Ohne --ja nur die Übersicht, was laufen würde.
 // Der Dienstschlüssel kommt aus der Umgebung bzw. .env.local (MAKE_OS_KEY) und wird nie ausgegeben. Umgestellt wird NICHT — das macht Kevin
-// (Umgebung MAKE_OS_KI_STUFEN=neu oder System › Datenschutz › KI › Modellstufen).
+// (Umgebung MAKE_OS_KI_STUFEN=neu oder Einstellungen › Datenschutz › KI › Modellstufen).
 
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';

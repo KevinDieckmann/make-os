@@ -58,7 +58,7 @@ export const RECHT_DEFS: Readonly<Record<RechtWerkzeug, WerkzeugDef>> = {
   },
   vertrag_checkliste: {
     name: 'vertrag_checkliste',
-    description: `Checkliste zu einer Vertragsdatei der Firmen-Akte (Kennung d-… aus Unternehmen › Verträge bzw. vt-… eines Vertrags): je Punkt Laufzeit · Kündigung · Haftung · Datenschutz/AVV · Gerichtsstand · IP die Fundstellen als wörtliches Zitat, erkannte Stichtage und die Kündigungsfrist. Das ist KEINE rechtliche Bewertung — nenne nie eine Klausel „gut“, „riskant“ oder „wirksam“, sondern zeige die Stelle und was üblicherweise geprüft wird. Mit \`volltext: true\` der Text selbst (je Aufruf höchstens 30.000 Zeichen, weitere mit \`teil\`). ${DATEN}`,
+    description: `Checkliste zu einer Vertragsdatei der Firmen-Akte (Kennung d-… aus Unternehmen › Verträge & Organe bzw. vt-… eines Vertrags): je Punkt Laufzeit · Kündigung · Haftung · Datenschutz/AVV · Gerichtsstand · IP die Fundstellen als wörtliches Zitat, erkannte Stichtage und die Kündigungsfrist. Das ist KEINE rechtliche Bewertung — nenne nie eine Klausel „gut“, „riskant“ oder „wirksam“, sondern zeige die Stelle und was üblicherweise geprüft wird. Mit \`volltext: true\` der Text selbst (je Aufruf höchstens 30.000 Zeichen, weitere mit \`teil\`). ${DATEN}`,
     input_schema: obj({ datei: S('Kennung d-… der Datei'), vertrag: S('Oder: Kennung vt-… des Vertrags'), volltext: { type: 'boolean', description: 'Auch den Text lesen (Standard nein)' }, teil: { type: 'number', description: 'Teil 1 … n des Volltexts' } }),
   },
   recht_vorschlag: {
@@ -140,7 +140,7 @@ export async function rechtWerkzeugAusfuehren(name: RechtWerkzeug, input: Record
         const v = schildGesellschaften(await ladeRegister(z.haushalt)).flatMap(g => (g.vertraege ?? []).filter(x => !x.geloeschtAm)).find(x => x.id === vt);
         if (!v) return nein('nicht_gefunden', 'diesen Vertrag gibt es bei keiner Business-Gesellschaft.');
         dateiId = v.dateiIds?.[0] ?? '';
-        if (!dateiId) return nein('nicht_gefunden', 'an diesem Vertrag hängt noch keine Datei — erst unter Unternehmen › Verträge hochladen.');
+        if (!dateiId) return nein('nicht_gefunden', 'an diesem Vertrag hängt noch keine Datei — erst unter Unternehmen › Verträge & Organe hochladen.');
       }
       if (!DATEI.test(dateiId)) return nein('eingabe', 'datei (d-…) oder vertrag (vt-…) fehlt.');
       const r = await s.checklisteFuerDatei(z.haushalt, dateiId);

@@ -162,7 +162,7 @@ export async function prozesseMorgenlauf(h: string, heute: string): Promise<Morg
     const v = vorlageFuerProdukt(vorlagen, m.leistungId);
     await lege({
       werkzeug: WERKZEUG.onboarding, gruppe: STAPEL_GRUPPE, titel: `Kundenonboarding starten: ${m.kunde}`.slice(0, 200),
-      nachher: v ? `Fall nach „${v.titel}“ anlegen — die Willkommensmail bereitest du danach vor, gesendet wird erst per Klick` : 'Fall anlegen — vorher dem Produkt eine Paket-Vorlage zuordnen (Produkte › Fulfillment)',
+      nachher: v ? `Fall nach „${v.titel}“ anlegen — die Willkommensmail bereitest du danach vor, gesendet wird erst per Klick` : 'Fall anlegen — vorher dem Produkt eine Paket-Vorlage zuordnen (Produkte & Mandate › Fulfillment)',
       eingabe: { mandatId: m.id, ...(v ? { vorlageId: v.id } : {}) }, anlass: k.grund === 'vertrag' ? 'Vertrag unterschrieben' : k.grund === 'angebot' ? 'Angebot angenommen' : 'Deal gewonnen',
       quelle: 'lauf', bezug: { art: 'fulfillment', id: `p:onboarding:${m.id}` }, ...(person ? { person } : {}),
     });
@@ -275,7 +275,7 @@ export const PROZESSE_STAPEL: StapelArtFreigabe = {
             const m = (await ladeCrm()).mandate.find(x => x.id === mandatId);
             return vorlageFuerProdukt(await fulfillmentLesen('vorlagen'), m?.leistungId)?.id;
           })();
-          if (!vorlageId) { await loslassen(v.id); return { ok: false, status: 409, fehler: 'Erst dem Produkt eine Paket-Vorlage zuordnen (Produkte › Fulfillment) — oder unter Fulfillment › Onboarding mit Vorlage starten.' }; }
+          if (!vorlageId) { await loslassen(v.id); return { ok: false, status: 409, fehler: 'Erst dem Produkt eine Paket-Vorlage zuordnen (Produkte & Mandate › Fulfillment) — oder unter Fulfillment › Onboarding mit Vorlage starten.' }; }
           await fallStartenServer({ mandatId, vorlageId, person });
           text = 'Fall angelegt — unter Fulfillment › Fall: Willkommensmail vorbereiten (gesendet wird erst per Klick).';
         }

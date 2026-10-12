@@ -49,6 +49,99 @@ Assistent „neue Geschäftsführung“, Beschluss-Buch, Anwalts-Mappe), Head of
 **So testet ihr:** als Ben Kalender öffnen (Woche mit dem Demo-Abendessen) → nur „Arbeit“, kein Privat-Kalender, auch nicht im Jahr; Fall › Überblick ›
 Willkommen → drei Termine an drei Tagen; Heute am Nachmittag → Briefing sagt „kein Termin mehr“. **Rückweg:** keine Daten-/Formänderung.
 
+## Update 12.10. — was neu ist (für Kevin & Malin)
+
+**Online läuft `a063e73a` (Stand 09.10.). Dieses Update bringt `update-0910b` (46 Zusammenführungen, rund 200 Commits).** Diese Übersicht sagt in einfachen
+Worten, was neu ist und wo ihr es findet. Die Technik, die Tests und „So testet ihr“ stehen in den Einzelabschnitten darunter (neueste zuerst). Alles ist
+additiv gebaut: eure Daten bleiben, neue Felder und Bestände kommen dazu (Rückweg siehe unten).
+
+### Was neu ist — nach Bereich
+| Bereich | Was neu ist | Wo ihr es findet |
+|---|---|---|
+| Oben im Kopf | Nur noch **Privat · Business** (kein „Alles“ mehr); rechts der **Fokus-Knopf**; die Zeit wird immer im Hintergrund gemessen. Business hat keinen eigenen Punkt „Kontakte“ mehr. | Kopf; Kontakte im Business: Markttraktion › Kontakte & Firmen |
+| Heute | **Tages-Briefing** (Sätze + Zahlen), **Top 3 des Tages** (ZOE schlägt vor, ihr legt per Klick fest, abhaken geht), **Freigaben von ZOE** (die ersten drei), **Jahresziele** mit Fortschritt, **Eisenhower-Zeichen** an Aufgaben (nur „kritisch“ pulsiert), Karte „Zeit · Privat gegen Business“, Business-frei als kleine Pille | Heute, je Bereich eigene Karten |
+| Fokus (Knopf oben rechts) | **Fokus + Kompass + Wachstum zusammen**: Abschnitte Fokus (Unser Fokus · Mein Fokus) · Prioritäten · Zeit (Soll und Ist je Thema) · Wirkung (Wachstums-Score) · nur Privat Tagesform und „Wie wir arbeiten“. Privat und Business getrennt. **Planung ist nur noch Planung.** | Fokus-Knopf im Kopf |
+| Planung & Ziele | Privat: **Unsere Ziele · Meine Ziele · <Name der anderen Person>** (je Ziel „teilen“), **eigene Meilensteine** an eigenen Zielen. **Routinen 2**: Rhythmus nach Wahl, mehrmals täglich, Zähler („5 von 8“), Erinnerung, Pausen ohne Streak-Verlust, Kalender-Block, Vorlagen | Planung › Jahr · Quartal · Monat; Planung › Routinen; Gesundheit › Heute |
+| Kalender | **Ansicht wie Google**: volle Höhe, eine Kopfzeile, mehrtägige Aufgaben als ein Balken, lesbare Blöcke, Darstellung je Gerät (Zeilenhöhe, Zoom); **Wischen** blättert (Trackpad zwei Finger, Handy ein Finger über die Tage); Google-Kalender-Freigabe ergänzen ohne Trennen | Kalender; Knopf „Darstellung“; Einstellungen › Bedienung |
+| Gesundheit | **Erholung** als eigener Reiter (Programme, Reha, Behandlungen, Ziele, überall einstellbar); **Training sichtbar** (WHOOP-Workouts, Wettkampf-Prognose, Plan-Baukasten); **Schlaf-Hilfe** und **Tages-Check** (Stress nur als Anspannung 1–5); Ernährung nach WHOOP-Kalorien; **Cockpit** mit allen WHOOP-Werten und Strain-Ring. Alles nur mit eurer Einwilligung und nur für die Person selbst. | Gesundheit › Heute · Erholung · Sport › Training |
+| Inbox | **Bereichs-Leiste** mit Ungelesen-Zähler; drei Wege im Gespräch: **Antworten · Ablegen · Aufgabe** (mit Zuordnung Bereich › Projekt › Liste); weitere und **Kunden-Postfächer** (Gmail mit App-Passwort); **Übergeben mit Anhängen** und Zurückziehen; Suche auch über Anhang-Namen; **Aufgaben-Vorschläge** aus Mails und WhatsApp (nur Vorschlag, erst der Klick legt an) | Inbox; Inbox › Postfächer |
+| Markttraktion | Neuer Knopf **Planung** neben „Angebot“: vom Umsatzziel zu den Aktivitäten, Leadkanäle, Kreislauf, Challenges | Markttraktion › Planung |
+| Produkte & Mandate | **Leistungstreppe**, Kundenreise, Zielbild, Fortschritt je Kunde, **Fortschritts-Report** (Mail-Entwurf mit PDF, Versand per Klick); „+ Mandat“ legt immer den Lead mit an. **Fulfillment**: Prozesse (Hochhaus-Landkarte), Bausteine, Onboarding, Analysen, Kreislauf, Visualisierung; je Mandat ein Fall mit Wert-Konto und Takt; Analyse-Strecke (jeder Lauf einzeln bestätigt); **Kunden-Link kommt ausgeschaltet** | Produkte & Mandate (Mandate · Produkte · Fulfillment) |
+| Unternehmen | **Schild in einem Blick** je Gesellschaft: Pflichtdokumente, Pflichten & Fristen als Jahres-Zeitstrahl, Risiko-Matrix, Marken/Versicherungen, Struktur; **Beschlüsse & Satzung** (Beschluss-Buch, Fassungen, Folgen als Vorschlag); **„Was ist passiert?“** (Ereignis-Assistent); „Bereit für Kanzlei und Steuerbüro“; **Head of Recht** als Chat | Business › Unternehmen |
+| ZOE & Agenten | ZOE **erkennt den Bereich** (Freigaben und Merksätze je Bereich, ohne Bereich keine Freigabe); der **Chat unten nimmt den passenden Head** an („↔ ZOE“ schaltet um); **Kosten je Auftrag**; schärfere Prüfung jedes Werkzeugs; **Agenten-Grundausstattung** aus dem Brain und Wissen je Business-Head | ZOE › Agenten · Freigaben; Chat unten rechts; Agenten › „⋯“ › Kosten je Auftrag |
+| Bedienung & Verständnis | „⋯“ in eigener Spalte statt Knöpfen über dem Inhalt, Wischen am Handy; **Erklärung zum Antippen** („i“ mit Fallbeispiel) bei Einstellungen, Kennzahlen und Heads; „Antwort zuerst“-Bilder statt Listen | Einstellungen › Bedienung; das „i“ überall |
+| Privat und Business getrennt | Business zeigt **nie** Privat-Themen (Familie, Gesundheit, Erholung, Wachstum …) — auf dem Server gefiltert; neue Bestände liegen getrennt (`TRENNUNG_PRIVAT_BUSINESS.md`) | überall; Konto „nur Business“ sieht nichts Privates |
+| Betrieb & Sicherheit | **Update-Probe mit Altbestand** als Pflicht-Gate vor jedem Upload; ISO-orientierte Dokumente (Audit); lokale Vorschau für Safari (nur am Mac) | `DEPLOY.md` › Update-Probe |
+
+### Vor dem Upload / Einmal-Schritte
+Alles nur auf Kevins Wort. Befehle auf dem Server als `make` im Ordner `/srv/make-os/app`, außer wo „am Mac“ steht. Werte (Schlüssel, Passwörter) nie in Chat oder Repo.
+1. **Update-Probe (am Mac, Pflicht):** die ONLINE-Version `a063e73a` als zweiten Worktree anlegen, die neue Version darauf starten, je Bestand vorher/nachher vergleichen
+   (Befehl und Erklärung: `DEPLOY.md` › „Update-Probe mit Altbestand“):
+   `git worktree add <scratch>/probe-alt a063e73a` · `ln -s <repo>/node_modules <scratch>/probe-alt/node_modules` ·
+   `node scripts/update-probe.mjs --alt <scratch>/probe-alt --neu <Worktree der neuen Version> --ordner <scratch>/probe-daten --bericht <scratch>/update-probe-bericht.md`
+   (Ausgang 0 = verlustfrei). **Steht im Bericht „VERLUSTFREI: nein“, wird nicht hochgeladen.**
+2. **Wie jedes Mal:** `git status --short` leer · Platz `df -h /` ≥ 5 GB frei (sonst `docker builder prune -af`) · `grep '^MAKE_OS_FORMAT=' .env` → **leer** (Kompatibilitätsmodus
+   bleibt, Rückweg offen) · Kevin und Malin schließen alle MAKE-OS-Tabs bis nach „Direkt nach dem Upload“.
+3. **Server-Sicherung (Pflicht):** `docker compose stop app arbeiter` → `sudo tar -C /srv/make-os --exclude='daten/brain-index.sqlite*' -czf /srv/make-os/sicherungen/vor-upload-$(date +%F-%H%M).tar.gz daten grabsteine`
+   → `docker tag make-os:aktuell make-os:a063e73a` → `docker compose start app arbeiter` → Probe `docker run --rm --entrypoint sh make-os:a063e73a -c 'test -e lib/postfach/register.ts && test ! -e lib/fulfillment/prozesse/bausteine.ts && echo ALTES-BILD-OK'`
+   (am Mac gegenprüfbar: `git cat-file -e a063e73a:lib/postfach/register.ts` ok, `git cat-file -e a063e73a:lib/fulfillment/prozesse/bausteine.ts` meldet „not in“). Dann die Nachtsicherung von Hand:
+   `bash /srv/make-os/app/deploy/sicherung.sh` → letzte Zeile endet auf `: ok (Ping: …)`. Weiter nur bei `tar`-Ergebnis 0 und `ALTES-BILD-OK`. Die Reihenfolge Zeile für Zeile steht in `GO_LIVE_CHECKLISTE.md`.
+4. **Hochladen** (nur auf Kevins Wort): `git push origin entwicklung:main` — die GitHub-Action baut das Bild (~10–12 Min.). Abhängigkeiten unverändert (`package.json`/`compose.yml`/`Dockerfile` seit `a063e73a` nicht geändert).
+5. **Caddy neu laden (einmal, direkt nach dem Ausrollen):** die Caddyfile hat einen neuen Block für die Kunden-Link-Adressen (`/kunde…`, strenge Köpfe). Am Mac vorab prüfen (Befehl `GO_LIVE_CHECKLISTE.md`, „Zugang & Schlüssel härten“), am Server:
+   `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`
+6. **Einmal in der App (Kevin):** (a) Inbox › Postfächer: ein verbundenes Gmail ohne Bereich **einem Bereich zuordnen** (ohne Bereich zählt es als Privat; die Karte „noch keinem Bereich zugeordnet“ führt hin) ·
+   (b) Einstellungen › Datenschutz: kurz ansehen, dass Verantwortlicher und Einwilligungen noch stehen · (c) Entscheidung bestätigen: der Datei-Ordner `inbox-uebergaben` steht im Speicher-Register als „gemischt“ (Übergangsregel, `speicher-register.ts`).
+7. **Nur falls noch nicht geschehen — Agenten-Grundausstattung aus dem Archiv** (Server-Schritte mit Probelauf, Grabsteine, „Aus dem Brain übernehmen“): Abschnitt „09.10.2026 — Agenten-Grundausstattung aus dem Brain“ weiter unten.
+8. **Optional, einmal je Kunde:** ein Kunden-Postfach per App-Passwort verbinden (Schritte beim Kunden: Abschnitt „09.10.2026 — Inbox: weitere Postfächer und Kundenpostfächer“).
+9. **Nicht in den ersten Tagen:** `MAKE_OS_FORMAT=v2`, `MAKE_OS_KUNDENLINK=an`, Kennungs-Umzug der Kontakte, `MAKE_OS_APP_SPIEGEL=an`.
+
+### Umgebungsvariablen — neu seit `a063e73a` (geprüft über alle `process.env`/`NEXT_PUBLIC_*` im Code und in `deploy/`)
+| Name | Wofür | Auf dem Server setzen? |
+|---|---|---|
+| `MAKE_OS_KUNDENLINK` | Der Kunden-Link (öffentliche Adresse `/kunde/kl-…`) schaltet erst mit `an` — zusätzlich braucht es den Instanz-Schalter des Inhabers | **Nein.** Bleibt aus; ohne die Zeile antwortet jede Kunden-Adresse „Dieser Link ist nicht aktiv.“ Erst nach der Prüfung `FULFILLMENT_KONZEPT.md` 12.4 und auf Kevins Wort |
+| `MAKE_OS_LOKALE_VORSCHAU` | Safari-Anmeldung über `http://localhost` (nur zusammen mit einer lokalen `MAKE_OS_ADRESSE`) | **Nie.** Nur am Mac in `.env.local`; mit https-Adresse wirkungslos |
+| alle anderen `MAKE_OS_*`, `GOOGLE_*`, `WHATSAPP_*`, `NEXT_PUBLIC_*` | unverändert (`deploy/env.server.beispiel`) | nichts Neues; `MAKE_OS_FORMAT` bleibt leer, `MAKE_OS_DEMO` nie auf dem Server |
+
+### Nach dem Upload prüfen (Klickliste)
+Erst `docker compose ps` (app healthy, arbeiter läuft) und `docker compose logs --since 10m app | grep -iE "local-db|MAKE OS\]|klartext|schluessel fehlt|entschlüsselung|nicht lesbar|beschädigt|gescheitert|lockfile|⨯"`
+— erwartet: `Absichten beim Start: … 0 gescheitert`; bei jeder anderen Zeile anhalten und den Rückweg prüfen. Dann auf allen Geräten neu laden und durchklicken:
+1. **Anmelden** (Kevin, Malin): Heute zeigt Briefing, Top 3, Freigaben, Jahresziele; der Kopf hat nur Privat · Business und den Fokus-Knopf.
+2. **Fokus-Knopf** → Fokus-Seite mit Abschnitten; in Planung gibt es keine Reiter Fokus/Kompass/Wachstum mehr.
+3. **Planung › Jahr:** Unsere · Meine · <Name>; ein eigenes Ziel mit Meilenstein anlegen. **Planung › Routinen:** vorhandene Routinen (Malins Haken!) sind unverändert da; eine mit „8-mal am Tag“ anlegen → Gesundheit › Heute zeigt den Zähler.
+4. **Aufgaben:** anlegen, abhaken, „Rückgängig“; Unteraufgabe; „⋯“ an einer Zeile (Öffnen · Link · Archivieren · Löschen).
+5. **Kalender:** Woche in voller Höhe; mit zwei Fingern wischen = nächste Woche; Termin anlegen; Punkte für iCloud/Google grün.
+6. **Inbox:** Bereichs-Leiste; Gmail einem Bereich zuordnen (falls die Karte erscheint); ein Gespräch öffnen → Antworten (nur Entwurf) · Ablegen · Aufgabe.
+7. **Gesundheit (jede Person nur sich):** Reiter Erholung, Sport › Training mit den WHOOP-Einheiten, Heute-Karten; Kachel „WHOOP“ → „Jetzt abgleichen“ (der erste Lauf holt einmal die 90 Tage voll, weil der Spiegel neue Felder bekommt); die andere Person sieht davon nichts ohne Teilen.
+8. **Markttraktion:** Kontakt öffnen, ein Feld ändern; Knopf Planung; Follow-up.
+9. **Produkte & Mandate:** Mandat öffnen (alle Daten da), Produkte → Leistungstreppe; **Fulfillment › Onboarding** zeigt Bestandsmandate ruhig als „Fall starten?“ (keine Glocke-Flut); Kunden-Link steht auf „aus“.
+10. **Unternehmen:** Schild in einem Blick; Beschluss-Buch, Organe und Verträge von vorher sind da; Chat unten = Head of Recht.
+11. **ZOE:** je eine Frage in Privat und in Business; Freigaben tragen das Etikett ihres Bereichs; der Chat unten bietet den passenden Head an („↔ ZOE“).
+12. **Finanzen:** Privat und Business ansehen (Zahlen unverändert, 0-Punkt steht), Finanzplanung öffnen, Rechnungen.
+13. **Bereiche trennen:** im Kopf Business — Heute, Kalender, Glocke und ZOE zeigen keine Familien-/Gesundheits-/Erholungsthemen; ein Konto „nur Business“ sieht nichts Privates.
+14. **Einstellungen:** Bedienung (Wischen, Dichte), Datenschutz (Verantwortlicher, Einwilligungen noch gesetzt), Verbindungen (WHOOP · Google · iCloud grün). **`/os/hoi`:** kein roter Befund außer den erwarteten gelben (Kompatibilitätsmodus …).
+15. **Datenvergleich:** die Zahlen aus dem Bericht der Update-Probe stichprobenartig gegen die Live-Daten halten (Aufgaben, Ziele, Routinen-Haken, Journal, Kontakte, Rechnungen).
+16. **Kunden-Adresse:** `https://app.makeinnovation.de/kunde/kl-000000000000000000000000` → „Dieser Link ist nicht aktiv.“
+Danach die Sicherung von Hand wie in Schritt 3 (zweiter Lauf) und am nächsten Morgen `/os/hoi`: „Sicherung“ und „Kalender-Sicherung“ grün.
+
+### Rückweg — was der alte Stand (`a063e73a`) mit den neuen Feldern macht
+Grundsatz: nur neue Bestände und optionale Felder; Kompatibilitätsmodus (`MAKE_OS_FORMAT` leer) = zurück ist möglich. **Zurück:** `docker compose stop app arbeiter` → `docker tag make-os:a063e73a make-os:aktuell` →
+`docker compose up -d --no-build`; danach `main` am Mac zurückdrehen (`git revert`-Block in `GO_LIVE_CHECKLISTE.md` › „Rückweg“, mit `a063e73a` statt `f0c5526`) und `caddy reload` mit der alten Caddyfile. Vorher prüfen:
+keine offene Absicht (`/api/intern/absichten`), offene Inbox-Vorschläge der Art „inbox“ und Produkt-Vorschläge der Art „produkte“ vorher freigeben oder ablehnen (der alte Stand kennt die Arten nicht, Freigabe dort 409).
+- **Ignoriert er einfach (Daten bleiben liegen):** `fokus-privat--*`/`fokus-business--*`/`fokus-eigen*--*` (er zeigt den alten Fokus-Satz aus `ziele`), `heute-top3--*`, `unternehmen-schild--*`, `unternehmen-verlauf--*`, `markttraktion-planung--*`, `produkt-treppe--*`, `fulfillment-*` (Vorlagen, Fälle, Kunde, Dossiers, Personen) und `fulfillment-unterlagen`,
+  `fokus-steuerung-*`/`fokus-soll-*` (er liest weiter `fokus-regler`, `ordnung`, `kompass`; die Gewichte stehen gespiegelt im Fokus-Regler), `erholung--*`, `routinen-person--*`, `meilensteine-eigen--*`, `lauf-spur--*`,
+  `agenten-wissen--*`, `inbox-uebergaben--*` samt Bild-Ordner; die Seiten `/os/fokus`, Fulfillment, Kunden-Link, Beschluss-Buch gibt es dort nicht. Der alte Stand hat `/os/kompass` und `/os/wachstum` wieder.
+- **Verwirft er beim nächsten Speichern des betroffenen Eintrags:** neue Routinen-Felder (`regel`, Uhrzeiten, Zeitraum … — die Routine gilt dort als „täglich“, der Haken im Log bleibt) · neue Felder an Beschlüssen/Ereignissen
+  (`Ereignis.zusatz`, Beschluss-Nummer, Fassungen bleiben liegen; Ändern eines Beschlusses mit neuer Art/Status „angemeldet“ lehnt er mit 400 ab) · Phasen-Felder am Produkt (Treppe) · `Task.erholung` und Erholungs-Blöcke
+  (`X-MAKE-BLOCK:erholung` liest er als „Block“, die Routine-Kategorie „erholung“ wird „Leben“) · Zonen/Messwerte an Läufen und Training-Einheiten/Plan-Arten im Sport (der nächste WHOOP-Abgleich bringt Zonen zurück —
+  **vor einem Rückweg nichts im Plan-Baukasten speichern**) · `check` im Journal bleibt bei PATCH erhalten, die Meldungsart `gesundheit` verwirft die alte Glocke · `ist.rest`/`bericht` am Report (ein Report gilt dort wieder als Beleg).
+- **Mandats-Ziele als Text** (`ziele: ['…']`): der neue Stand erhält sie als `{ id, text }`; der alte liest Objekte — es geht nichts verloren.
+- **Lauf-Spur:** das Siegel `protokoll-siegel` kennt die Spur-Dateien, der alte Stand nicht → seine nächtliche Prüfung meldet „Datei fehlt — das Siegel kennt …“ (HOI rot); beim Rückweg die Schlüssel `lauf-spur--*` aus `protokoll-siegel` entfernen oder den roten Befund hinnehmen.
+- **Grundausstattung (Nachholen/Übernahme):** je Head unter Info › „Dein Auftrag“ leeren bzw. „Wissen im Brain“ leeren; die Nachhol-Datei aus `/srv/make-os/daten/archiv/nachholen-vor-<name>-<zeit>.json` zurückkopieren (App angehalten).
+- **Nur Oberfläche, nichts zu tun:** Kalender-Ansicht (ein Browser-Merker), Erklärungen, Zeilen-Aktionen, Design, Heute-Layouts (ein gespeichertes Heute-Layout verliert beim nächsten Speichern die Widgets des anderen Bereichs).
+- Zurück nur mit der Sicherung aus Schritt 3, wenn neue Beschlüsse bearbeitet wurden — dann ist alles seit dem Upload weg.
+
+---
+
 ## 11.10.2026 — Unternehmen „in einem Blick“: Schild je Gesellschaft, Bilder statt Listen, Ereignis-Assistent, Kanzlei-Status, Verlauf (nur lokal — Branch `design-unternehmen`, Basis d56e47fa = `update-0910b`)
 Kevin nach dem Ansehen: „Unternehmen nochmal ausbauen — denk immer 2–3 Schritte weiter — und denk dran, dass es einfach zu verstehen sein soll über die
 Visualisierungen. So ist es sehr unübersichtlich und keiner versteht, was da los ist.“
@@ -654,7 +747,7 @@ ein Block (wie bisher), im Monat je Tag eine Pille. **Rückweg:** nur Oberfläch
 ## 10.10.2026 — Head of Recht: Recht-Check, Risikorunde, Vertrags-Checkliste, Anwalts-Mappe (nur lokal — Branch `head-recht`, Basis 7c9e1335 = `update-0910b`)
 
 Entscheidungen 10.10.: ein eigener Business-Head **„Head of Recht“** (aus „Recht & Datenschutz“, Kennung bleibt `recht`), Chat je Bereich auf
-**Unternehmen** und unter **System › Datenschutz** (Business-Sicht); von sich aus — alles nur Vorschlag + Freigabe: wöchentlicher Recht-Check,
+**Unternehmen** und unter **Einstellungen › Datenschutz** (Business-Sicht); von sich aus — alles nur Vorschlag + Freigabe: wöchentlicher Recht-Check,
 Quartals-Risikorunde vorbereiten, neuer Vertrag → Checkliste, Anwalts-Mappe auf Knopfdruck. Grundlage `research/unternehmen/FAKTEN_UNTERNEHMEN_RECHT.md` › 6
 (Aufgaben, Grenzen, Hinweistexte). **Grenze RDG:** für die eigenen Gesellschaften ein Werkzeug — Checklisten, Fundstellen, Vorlagen, Fristen; KEINE rechtliche
 Bewertung; überall „Hinweis, keine Rechtsberatung — anwaltlich prüfen“. Nichts wird eingereicht, versandt oder unterschrieben.
@@ -788,7 +881,7 @@ Geprüft: `routinen-*`, `planung-*`, `aufgaben-serie`, `gesundheit-*`, `erholung
    ist sie bis Montag nicht mehr dran, der Streak zählt in Wochen.
 6. **Pause:** eine Routine **Einstellen** → **Pausen**: von heute bis in drei Tagen, Grund „Urlaub“ → **Pause eintragen** → **Speichern**. Sie steht heute nicht in
    Gesundheit › Heute; im Planer steht „heute in Pause“, der Streak bleibt.
-7. **Handy:** Planung › Routinen → Karte „Dein Rhythmus“ → **Erinnerungen auch aufs Handy** an (braucht die Einwilligung unter System › Datenschutz › Gesundheit).
+7. **Handy:** Planung › Routinen → Karte „Dein Rhythmus“ → **Erinnerungen auch aufs Handy** an (braucht die Einwilligung unter Einstellungen › Datenschutz › Gesundheit).
    Zur Uhrzeit kommt über den Boten nur „Eine Routine steht an — Details in MAKE OS: <Link>“ — kein Name, keine Zahl.
 8. **Kalender-Block:** bei „Laufen“ (für mich) **Als Block in meinen Kalender** an → Speichern → im **Kalender** stehen die nächsten Montage und Donnerstage um
    07:00 als Block „Laufen“; die andere Person sieht dort nur „Belegt“. Uhrzeit auf 18:00 ändern → die künftigen Blöcke ziehen um; Schalter aus → sie
@@ -883,7 +976,7 @@ Entscheidung 10.10.: „Wenn man auf die einzelnen Sachen klickt, möchte ich, d
   (Register-Kennzahlen **aus dem Register gebaut**: Formel + Schwellen, ein gerechnetes Beispiel mit denselben Funktionen wie der Index, der Pflege-Weg; dazu
   Texte für Kapazität, Wirkung, Scoreboard, Leistung der Heads), `schritte.ts` (ein Beispiel je Onboarding-Schritt, 91 Schritte). Alle Beispiele sind erfunden
   („Beispiel GmbH“, „Mira“) — keine echten Namen, Firmen, Beträge, Gesundheitsangaben.
-- **Angeschlossen:** System › Datenschutz & KI (Gesundheit a/b/c, KI-Schalter der Person und der Instanz, Telegram, KI-Protokoll, Verantwortlicher, Empfänger/AVV,
+- **Angeschlossen:** Einstellungen › Datenschutz & KI (Gesundheit a/b/c, KI-Schalter der Person und der Instanz, Telegram, KI-Protokoll, Verantwortlicher, Empfänger/AVV,
   Selbstprüfung, Verzeichnis, Pannen, Dokumente, Art. 14, Instanz-Ende, Nachweise), Einstellungen › Bedienung, Konto & Sicherheit (Passwort, Adressen, zweiter
   Faktor, Pflicht, Leerlauf, Einladen, Haushalt, Inhaber, Gesundheit/Ziele teilen, Telegram, Meine Daten, Team), ZOE auf WhatsApp, Agenten (Head-Info: tut/nie/Beispiel,
   jeder Abschnitt, Modell/Aufwand/Autonomie/Budget/Zuständig/an-aus/Not-Aus, Skill-Werkstatt, Brain-Übernahme, Mitarbeiter, Leistung), Kalender-Einstellungen
@@ -901,7 +994,7 @@ Entscheidung 10.10.: „Wenn man auf die einzelnen Sachen klickt, möchte ich, d
   Personennamen oder festen Firmen in den Texten; Baustein-Maße (44 px, `aria-expanded`). `tests/schalter-eine-quelle.test.ts` angepasst (Pflicht-Prop).
 
 **So testet ihr (Klicks):**
-1. **System › Datenschutz:** bei „Hintergrund-KI für mich“ das „i“ rechts neben dem Schalter antippen → „Was es bedeutet“, „Beispiel“, „Wenn an“, „Wenn aus“, „Kosten und
+1. **Einstellungen › Datenschutz:** bei „Hintergrund-KI für mich“ das „i“ rechts neben dem Schalter antippen → „Was es bedeutet“, „Beispiel“, „Wenn an“, „Wenn aus“, „Kosten und
    Datenweg“. Der Schalter selbst schaltet wie vorher (nur das „i“ klappt auf). Ebenso bei Gesundheit (a)/(b)/(c), Web-Suche, jedem Bereich, „Bilder an die KI“, Telegram.
    Die Überschriften (KI-Schalter, Instanz, Telegram, KI-Protokoll, Verantwortlicher, Empfänger …) tragen ebenfalls ein „i“.
 2. **Konto:** „Zugang der Instanz“ → in der Zeile „Zweiter Faktor für alle Pflicht“ den **Titel** antippen (nicht den Schalter) → die Erklärung klappt unter der Zeile auf.
@@ -990,7 +1083,7 @@ angepasst `demo`.
 5. Reiter **Mandate** → ein aktives Mandat öffnen → „Fortschritt im Paket“: Stufe (aus dem Produkt), Lieferobjekte abhaken, nächster Schritt + Datum, Ampel-Chips.
 6. „Fortschritts-Report erstellen“ → das Fenster „Fortschritts-Report senden“ öffnet: Postfach (Business), An, Betreff, Text (Du/Sie nach der Akte), Anhang. „Mit KI
    formulieren“ → KI-Marke erscheint. „Senden“ → die Mail geht aus dem gewählten Postfach mit dem PDF; danach „zuletzt gesendet am …“. „↓ PDF“ lädt den Report.
-7. Morgenlauf (System › Tagesstart erneut auslösen oder am nächsten Morgen): bei Mandaten, die seit zwei Wochen keinen Report hatten, steht ein Vorschlag im
+7. Morgenlauf (Einstellungen › Tagesstart erneut auslösen oder am nächsten Morgen): bei Mandaten, die seit zwei Wochen keinen Report hatten, steht ein Vorschlag im
    Freigabe-Stapel (Business) + Glocke „Produkte & Mandate“. Freigeben → Report liegt am Mandat, gesendet wird erst im Mandat per Klick.
 8. Alle Lieferobjekte einer Stufe abhaken → „reif für: …“; nach dem nächsten Morgenlauf schlägt der Head of Sales „nächste Stufe anbieten“ vor → Freigeben → Follow-up am Mandat.
 9. Markttraktion › Planung › Kreislauf → „Fulfillment“: „n im Paket“; „Nach der Leistung“ zeigt je Kunde Paket und Lieferungen.
@@ -1308,7 +1401,7 @@ Tests: `tests/erholung-modell.test.ts` (rein), `tests/erholung-route.test.ts` (S
 Planungs-Ziele (sie liegen im Art.-9-Bestand — in der Planung nur als Karte); Programme als Kalender-Serie anlegen (Planen-Baustein statt dessen).
 
 **So testet ihr** (lokal `localhost:3001`, eigene Testdaten)
-1. Gesundheit › Reiter **Erholung**. Ohne Einwilligung (a) zeigt der Kopf den Hinweis — erst einwilligen (System › Datenschutz › Gesundheit).
+1. Gesundheit › Reiter **Erholung**. Ohne Einwilligung (a) zeigt der Kopf den Hinweis — erst einwilligen (Einstellungen › Datenschutz › Gesundheit).
 2. Rechts „Vorlagen“ › bei „Mobility“ **Übernehmen** → links unter „Programme“ steht es, oben unter „Erholung heute“ ist es dran. **Schalter**
    antippen → „1 von 4 diese Woche“, „Diese Woche“ zeigt den Balken; nochmal antippen nimmt es zurück.
 3. „Programme“ › **+ Programm**: Name, Mo/Mi/Fr antippen, eine Übung mit 10 Min. → Speichern. An einem Nicht-Tag ist es heute nicht dran.
@@ -1421,7 +1514,7 @@ umschalten.“
 4. Einen Kontakt öffnen („Kontakt öffnen“) → im Chat steht „Bezug · Kontakt · c-…“; fragen „Was weißt du über diesen Kontakt?“ → der Head liest nach.
    ✕ löst den Bezug.
 5. Oben „Mit Head of Sales sprechen“ klicken → der Chat öffnet beim Head (auch wenn „Immer ZOE“ eingestellt ist).
-6. Kopf auf Privat stellen, Gesundheit öffnen: mit Einwilligung (System › Datenschutz › Gesundheit, „an die KI“) → „Gesundheit & Sport“; ohne → ZOE
+6. Kopf auf Privat stellen, Gesundheit öffnen: mit Einwilligung (Einstellungen › Datenschutz › Gesundheit, „an die KI“) → „Gesundheit & Sport“; ohne → ZOE
    antwortet, darüber der Hinweis mit „Einwilligung ›“.
 7. Heute, Inbox, Kalender → ZOE. Finanzen Business → Head of Finance, Finanzen Privat → Finanzen privat.
 8. Im Chat ☰ → „Im Chat antwortet: Immer ZOE“ → überall ZOE, „↔ <Head>“ bleibt zum Umschalten. Zurück auf „Passender Head“.
@@ -2854,7 +2947,7 @@ weg, aus `personen` wird sie gestrichen (`NICHT_PERSOENLICH` mit Grund). Keine n
 einschalten. 2. Eine Mail von einer Person der Kartei an das eigene Gmail/IMAP-Postfach schicken → nach dem Abgleich (~2 Min.) und dem nächsten Takt
 (~1 Min.) steht rechts unter „Läuft“ der Skill-Lauf; der Thread nennt „Eingaben: ereignis: neue Mail, kontakt: c-…“. Dieselbe Mail an Malins Postfach →
 bei Kevins Skill nichts. 3. Eine Aufgabe „An ZOE geben“ → in Agenten › Läuft steht sofort „ZOE-Aufgaben“ (vorher erst am nächsten Morgen); nach
-22 Uhr erst um 7 Uhr. 4. Deal in eine andere Stufe ziehen → ein Skill „Deal in neuer Stufe“ läuft einmal. 5. System › Head of IT → „Ereignisse für
+22 Uhr erst um 7 Uhr. 4. Deal in eine andere Stufe ziehen → ein Skill „Deal in neuer Stufe“ läuft einmal. 5. Einstellungen › Head of IT → „Ereignisse für
 die Agenten“.
 
 **Tests:** neu `tests/ereignisse.test.ts` (37: rein — Kennung, nur Kennungen, Sichtregel, Auswertung mit allen Sperren, Entprellen, Riegel, Cursor;
@@ -3390,7 +3483,7 @@ Fehler-Einspeisung (`tests/fixtures/ki-fake.ts`, kein Netz). Wächter: `tests/ag
 6. „+ Neu › Skill“ → Name `pipeline-blick`, Beschreibung, Anleitung, Werkzeug `pipeline`, drei Tests → Speichern → „Testlauf starten“ (bei „kostet … — bestätigen“
    auf Starten) → „Testlauf bestanden“ bzw. Ergebnisse je Test; erst danach „Einschalten“.
 7. „+ Neu › Hintergrundaufgabe“ → wiederkehrend, täglich, Uhrzeit in 2–3 Minuten (zwischen 7 und 22 Uhr) → in „Geplant“ steht sie; zur Uhrzeit läuft sie
-   (Hintergrund-KI muss unter System › Datenschutz › KI an sein).
+   (Hintergrund-KI muss unter Einstellungen › Datenschutz › KI an sein).
 8. Kosten ansehen: Balken oben (Euro, gesamt), ⋯ › Budget (je Head), an jeder Agenten-Antwort und jedem Lauf.
 9. **Not-Aus** (roter Knopf oben) → Rückfrage → „Not-Aus gesetzt — n Läufe angehalten“. Jetzt: Head-Chat sagt „Not-Aus ist gesetzt“, ZOE gibt nichts mehr an
    Heads, Zeitpläne ruhen; mit ZOE sprechen geht weiter.
@@ -3508,7 +3601,7 @@ Die offenen Folgeschritte aus Medien V1 (Paket 5) und den KI-Medien (4c). Hinwei
   **Art. 15:** `vv-medien` in der Konto-Auskunft; Kontakt-Auskunft nennt sie, wenn es Medien bzw. Einwilligungen der Person gibt.
 - **Head of IT:** „Speicher fast voll“ im Ordner-Rückfall (≥ 80 % gelb, ≥ 95 % rot von MAKE_OS_MEDIEN_ORDNER_MB, Vorgabe 2 GB) gab es schon —
   jetzt mit Wächtertest über `medienLage` und deutscher Zahl („1,7 GB von 2,0 GB“).
-- **Selbstprüfung** (System › Datenschutz): Punkt „Medien: Einwilligungen und Freigaben“ — nur Zähler, nur wenn es Business-Medien bzw.
+- **Selbstprüfung** (Einstellungen › Datenschutz): Punkt „Medien: Einwilligungen und Freigaben“ — nur Zähler, nur wenn es Business-Medien bzw.
   Einwilligungen gibt: offen bei Freigaben, die heute nicht mehr tragen; teilweise bei „freigegeben, aber gesperrt“, abgelaufenen Freigaben und
   Rohmaterial über der Prüffrist; Weg in Fotos & Videos.
 - Tests: `tests/medien-nachzug.test.ts` (19, S3-Fake mit Listen und Seiten, kein Netz); S3-Fake versteht jetzt ListObjectsV2/ListMultipartUploads.
@@ -3796,7 +3889,7 @@ AGENTEN_KONZEPT.md C11 Entscheidung 10; Antworten 12/14 (Agenten-Bereich), Frage
   **Thread-Route** (Senden an Heads/Mitarbeiter 409) und vor jedem **Thread-Lauf**. Wartung (Morgenlauf-Vorbereitung, Löschfristen, Durchsicht,
   Lagebild …) läuft weiter. Mit ZOE sprechen geht weiter.
 - **Budget** (Anbieter-Tor `lib/ki/tor.ts`): Instanz-Grenze **je Kalendermonat** (Vorgabe) **oder/und gesamt ab jetzt** (Test-Budget) — gesetzt nur vom
-  Inhaber über dieselbe Schreibstelle wie System › Datenschutz (`budgetAnwenden`). Gesamt zählt über einen fortlaufenden Zähler in `ki-verbrauch`
+  Inhaber über dieselbe Schreibstelle wie Einstellungen › Datenschutz (`budgetAnwenden`). Gesamt zählt über einen fortlaufenden Zähler in `ki-verbrauch`
   (`summe`), Beginn = Stand beim Setzen. Glocke bei 80/95/100 % (je Stufe einmal je Monat bzw. je Gesamt-Grenze), bei 100 % ruft kein Weg mehr ein
   Modell (`ki-gesperrt:budget` → Regelwerk). Ohne Grenze: nur messen. **Budget je Head** (Monat): Kosten aus der Kostenmessung (Zweck `agent-<head>`,
   `head-<id>-…`, `finanzchef…`; Privat-Heads nur aus den eigenen Threads), ab 80 % eine Glocke, ab 100 % pausiert der Head (Chat, Lauf, Takt).
@@ -3831,7 +3924,7 @@ Monatsersten neu.
 6. Daumen an einer Head-Antwort → Leistung zeigt „Daumen hoch · runter“.
 7. Rechts „Geplant“: Pausieren/Fortsetzen/Löschen.
 8. Mitarbeiter › Duplizieren › „Plan ansehen“ › „Probelauf“ → Testeingabe → öffnet einen Thread „Probelauf: …“ (nichts gespeichert/gesendet).
-9. System › Datenschutz › KI: Bereich „Familie & Partnerschaft“ ausschalten → der Familie-Head antwortet nicht mehr mit KI.
+9. Einstellungen › Datenschutz › KI: Bereich „Familie & Partnerschaft“ ausschalten → der Familie-Head antwortet nicht mehr mit KI.
 
 **Rückweg:** nur neue optionale Felder (`personen`, `notAus`/`foto` je Head, `budget.gesamt*`, `ki-verbrauch.summe`, `daumen`, `wartetAuf`) — der alte
 Stand liest sie nicht und lässt sie stehen; Einstellungen der Privat-Heads gelten dort nicht.
@@ -3859,7 +3952,7 @@ sichtbar bei realistischen Personen/Orten) und Fragerunde Teil 2 Nr. 11/12 (Head
   lesen mit `medien_suchen`. Bilder: Schätzung in Euro, Budget/Grenze je Auftrag prüft das Anbieter-Tor VOR dem Aufruf; Ergebnis als Medium
   „Vorschlag offen“ + Stapel (`ki_bild`: übernehmen / ablehnen → Papierkorb). Nach fremdem Text im Thread und für JEDES Video nur ein Auftrag im Stapel
   (`ki_auftrag`) — erst der Klick erzeugt, mit genau der gezeigten Schätzung (nie als Sammelfreigabe).
-- **KI-Kategorie `medien` + Schalter „Bilder an die KI“** je Person (System › Datenschutz › KI-Schalter, Vorgabe aus; KI-Tor `medien-aus`). Fotos mit
+- **KI-Kategorie `medien` + Schalter „Bilder an die KI“** je Person (Einstellungen › Datenschutz › KI-Schalter, Vorgabe aus; KI-Tor `medien-aus`). Fotos mit
   erkennbaren Personen gehen nur hinaus, wenn jede markierte Person eine Einwilligung mit Zweck „KI“ hat — nie Unbekannte, nie Minderjährige, nie
   Privat, nie fremde Fotografen (`anKiGruende`, lib/medien/regeln.ts; Prüfstelle `kiVorlageLaden`). Google Vertex nimmt dafür die Kategorie `medien`.
 - **„An Head geben …“** nur an Heads mit Medien-Bezug (Marketing, Event, Sales — `MEDIEN_HEADS`); legt danach EINEN Thread beim Head über den
@@ -4019,7 +4112,7 @@ Bilder/Video/Tiefenbericht/Transkription sind aus. Sofort wirksam sind nur: die 
    24-h-Cache abschalten (MODELLE.md 4.7) · Dienstkonto mit NUR der Rolle „Vertex AI User“ anlegen, JSON-Schlüssel erzeugen, per `scp` nach
    `/tmp/vertex.json` auf den Server · `… ki-anbieter-verbinden.sh vertex` (fragt Projekt, Datei, Claude an?, Region, Medien an?, ZDR bestätigt?;
    löscht die Datei danach) · Prüfen: `docker compose exec app node scripts/ki-anbieter-pruefen.mjs --token`.
-3. **In MAKE OS:** System › Datenschutz › Empfänger „Google Cloud Vertex AI“ → „Zurückholen“ + AVV „bestätigt“ (Tag, Unterlage). Ohne das sperrt
+3. **In MAKE OS:** Einstellungen › Datenschutz › Empfänger „Google Cloud Vertex AI“ → „Zurückholen“ + AVV „bestätigt“ (Tag, Unterlage). Ohne das sperrt
    das Tor den Zugang.
 4. **Tor einschalten:** `… ki-anbieter-verbinden.sh tor` → `an`. Ab dann gehen Gesundheit (nur mit ZDR), Familie und Privat-Finanzen nur noch in
    die EU; ohne Vertex bleiben sie aus den Prompts.
@@ -4038,11 +4131,11 @@ Bilder/Video/Tiefenbericht/Transkription sind aus. Sofort wirksam sind nur: die 
 
 **So testet ihr (lokal, ohne Anbieter, in Klicks/Befehlen):**
 1. `npx vitest run tests/ki-anbieter.test.ts tests/ki-anbieter-tor.test.ts --maxWorkers=1` → alles grün.
-2. System › Datenschutz › Empfänger: „Anthropic (KI, ZOE)“ zeigt „Standardvertragsklauseln“ und „Vertragspartner in der EU: Anthropic Ireland“; darunter
+2. Einstellungen › Datenschutz › Empfänger: „Anthropic (KI, ZOE)“ zeigt „Standardvertragsklauseln“ und „Vertragspartner in der EU: Anthropic Ireland“; darunter
    „Google Cloud Vertex AI …“ und „Mistral AI …“ als „nicht in Gebrauch“.
-3. Markttraktion › Stammdaten › Verzeichnis (bzw. System › Datenschutz › Verzeichnis-Export): „KI-Funktionen“ nennt im Drittland
+3. Markttraktion › Stammdaten › Verzeichnis (bzw. Einstellungen › Datenschutz › Verzeichnis-Export): „KI-Funktionen“ nennt im Drittland
    „Standardvertragsklauseln (Anthropic; nicht im EU-US Data Privacy Framework)“.
-4. ZOE etwas fragen → System › Datenschutz › KI-Protokoll: Zeile wie bisher; Empfänger-Satz unten nennt „Standardvertragsklauseln“.
+4. ZOE etwas fragen → Einstellungen › Datenschutz › KI-Protokoll: Zeile wie bisher; Empfänger-Satz unten nennt „Standardvertragsklauseln“.
 5. `MAKE_OS_DATEN_DIR=<leerer Ordner> node scripts/ki-anbieter-pruefen.mjs` → vier Zugänge „eingerichtet: nein“, Budget „nur gemessen“, Stufen „bisher“.
 6. Budget lokal (Dev-Server): in `.env.local` `MAKE_OS_KI_BUDGET_MONAT_EURO=0.01` → Vorschau „make-os-entwicklung“ neu starten → ZOE fragen → Antwort
    „Das KI-Budget des Monats ist erreicht“, Glocke zeigt „erreicht“. Zeile danach wieder entfernen und neu starten.
@@ -4169,7 +4262,7 @@ Hinweis, keine Rechtsberatung — Einwilligungs- und Schildtext sind Entwürfe (
   Mitglied; bei erkennbaren Personen Vier-Augen (nie die Person allein, die angefragt hat). Pflichtfrage „Erkennbare Personen?“, „unklar“ geht nie hinaus,
   Porträts/nicht öffentliche Events nur mit Einwilligung, Minderjährige nur mit Sorgeberechtigten, fremde Fotografen nur mit Lizenz-Nachweis (Datei).
   Ablauf → gesperrt + Aufgabe; Widerruf und Art. 18 sperren sofort (Widerruf zusätzlich Aufgabe „aus den Kanälen entfernen“).
-- **Einwilligung am Handy:** Wortlaut aus der Vorlage (Verantwortlicher aus System › Datenschutz), Zwecke einzeln (+ KI-Bearbeitung), Unterschrift mit dem
+- **Einwilligung am Handy:** Wortlaut aus der Vorlage (Verantwortlicher aus Einstellungen › Datenschutz), Zwecke einzeln (+ KI-Bearbeitung), Unterschrift mit dem
   Finger (PNG, verschlüsselt), Fassung geprüft, nur anhängend.
 - **Heads:** nur Business-Medien, die ausdrücklich „an Head gegeben“ sind (Auftrag: Auswahl · Zuschnitt · Texte). Für Paket 1: `medienFuerHead(person, headId,
   auftragId)` (Vorschau ≤ 1568 px auf Abruf, `mitPersonen` für den KI-Schalter) und `medienVorschlagAblegen` → Stapel-Art **`medien`**; der Klick übernimmt
@@ -4186,7 +4279,7 @@ Hinweis, keine Rechtsberatung — Einwilligungs- und Schildtext sind Entwürfe (
 **Kevins Schritte (Server — erst beim Upload, auf Kevins Wort):**
 1. Hetzner Cloud Console → Object Storage → Bucket anlegen: **Nürnberg (nbg1) oder Falkenstein (fsn1)** (gleiche Netzzone wie der Server), **privat**,
    Versionierung aus. Lebenszyklus-Regel „abgebrochene Multipart-Uploads nach 2 Tagen löschen“. S3-Zugangsdaten erzeugen (Secret nur einmal sichtbar).
-2. Prüfen, ob der Hetzner-AVV den Object Storage abdeckt (System › Datenschutz › Empfänger „Hetzner“ — Notiz ergänzen).
+2. Prüfen, ob der Hetzner-AVV den Object Storage abdeckt (Einstellungen › Datenschutz › Empfänger „Hetzner“ — Notiz ergänzen).
 3. `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/medien-speicher-verbinden.sh` (fragt Endpunkt, Bucket, Zugang, Geheimnis verdeckt). Kommt beim
    ersten Upload „Signature …“: das Skript erneut ausführen und beim Adress-Stil `host` wählen.
 4. DSFA erweitern (Medien), externen DSB benennen, Anwalt prüft Einwilligung/Schild (Fragerunde Teil 2, Punkt 14).
@@ -4630,7 +4723,7 @@ nicht (Abholer nur am Mac) und ist ein Drittland-Dienst ohne AVV. Fragebogen Tei
 8. **In MAKE OS** (als Inhaber): Einstellungen › Verbindungen › „ZOE auf WhatsApp“ › **ZOE-Nummer registrieren** (Zwei-Schritt-PIN, Speicherort
    Deutschland; höchstens 10 Versuche in 72 h — https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/registration)
    → „bei Meta prüfen“ zeigt Nummer und „Vorlage genehmigt“.
-9. **Datenschutz:** System › Datenschutz › Empfänger: „Meta (ZOE-Kanal)“ zurückholen (liegt archiviert) und die WhatsApp Business Data Processing
+9. **Datenschutz:** Einstellungen › Datenschutz › Empfänger: „Meta (ZOE-Kanal)“ zurückholen (liegt archiviert) und die WhatsApp Business Data Processing
    Terms mit Datum ablegen; der VVT-Eintrag „ZOE auf WhatsApp (Meta, ZOE-Kanal)“ erscheint von selbst, sobald die Werte auf dem Server stehen.
 10. **Jede Person verbindet sich selbst** (Konto › ZOE auf WhatsApp) — Kevin und Malin je mit eigener Nummer.
 11. Danach entscheidet Kevin, ob der Telegram-Bot bleibt (er ist der Rückfall, solange jemand nicht verbunden ist).
@@ -4715,7 +4808,7 @@ Kevin 08.10.: „alles nur auf dem Server führen; wir brauchen nachher im Mac n
 kein launchd-Dienst), der Kalender vom Mac (war Teil des Zulieferers; der Server holt iCloud/Google selbst).
 
 ## 09.10.2026 — Instanz-Export ohne Zugangsdaten (Sicherheits-Korrektur, Branch `instanz-export-schutz`)
-Befund der Medien-Prüfung: Der Instanz-Export (System › Datenschutz, nur Inhaber + Passwort/zweiter Faktor) schrieb JEDEN Bestand entschlüsselt in die Datei —
+Befund der Medien-Prüfung: Der Instanz-Export (Einstellungen › Datenschutz, nur Inhaber + Passwort/zweiter Faktor) schrieb JEDEN Bestand entschlüsselt in die Datei —
 auch Postfach-Passwörter, Google-/WHOOP-Token, das iCloud-App-Passwort, OAuth-Zustände sowie Passwort-Hashes, Salz und das 2FA-Geheimnis der Konten.
 Jetzt: Bestände mit `export: false` (dieselbe Liste wie im Konto-Export, `PERSON_BESTAENDE`) und die OAuth-Bestände stehen nur als Vermerk „entfernt“ im Export;
 Konten ohne Hash/Salz/KDF/zweiten Faktor (`zweiterFaktorAn` zeigt nur ja/nein), Einladungen ohne Code. „Nicht enthalten“ im Kopf nennt beides.
@@ -4947,7 +5040,7 @@ Kevin (Frage 2): „Alles als eigene Daten je Person/Instanz (pflegbar, verschl�
   Nach dem Start (≈ 10 s): `docker compose logs app | grep Altbestand` zeigt „Altbestand „koerper“: uebernommen.“ — danach Gesundheit › Körper
   ansehen. Erst dann im Körper-Profil eigene Inhalte anlegen: wer vorher Inhalte einträgt, bekommt den Altbestand nicht mehr („ziel-belegt“
   im Log; Regler/Zähler allein schaden nicht).
-  Andere Log-Zeilen: „übersprungen — keine Einwilligung (a)“ → erst System › Datenschutz › Gesundheit bestätigen, dann App neu starten ·
+  Andere Log-Zeilen: „übersprungen — keine Einwilligung (a)“ → erst Einstellungen › Datenschutz › Gesundheit bestätigen, dann App neu starten ·
   „die Variable nennt nicht den Inhaber“ / „kein Konto zur Variable“ → Speichername prüfen · „Konten nicht lesbar“ → App neu starten.
   Läuft vor dem übernächsten Upload nichts davon durch, ist der Altinhalt nach dem Löschen des Moduls nur noch in der Git-Historie.
 - Mit dem übernächsten Upload: `lib/altbestand/uebernahme.ts`, den Start-Haken in `lib/store/betrieb.ts`, den Übernahme-Teil von
@@ -4988,7 +5081,7 @@ Inhalte einmalig übernehmen, dann aus dem Code löschen“ — „Dates/Vereinb
 **Offene Einmal-Schritte (A2):**
 - Auf unserem Server `MAKE_OS_ALTBESTAND_PERSON=<Speichername des Inhabers>` in die `.env` (dieselbe Variable wie A1; nie in Demo- oder
   Kunden-Instanzen), dann `docker compose up -d`.
-- Für das persönliche Jahresziel vorher unter System › Datenschutz die Einwilligung (a) „Gesundheitsdaten verarbeiten“ ausdrücklich erklären —
+- Für das persönliche Jahresziel vorher unter Einstellungen › Datenschutz die Einwilligung (a) „Gesundheitsdaten verarbeiten“ ausdrücklich erklären —
   sonst bleibt es außen vor (Log „kernziel: übersprungen“); nach dem Erklären einmal neu starten.
 - Prüfen: Log zeigt „Altbestand „nordstern“: uebernommen“ und „„kernziel“: uebernommen“; Planung › Jahr zeigt den Nordstern; das
   persönliche Jahresziel liegt in den eigenen Zielen der Person (`ziele-eigen`, z. B. in den Lichtfäden „Alle Stränge“ — andere sehen es nur,

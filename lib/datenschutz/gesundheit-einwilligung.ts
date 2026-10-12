@@ -203,7 +203,7 @@ export async function gesundheitFuerZoe(eigentuemer: string, betrachter: string)
 }
 
 /** Antwort der Schreibwege ohne Einwilligung (a) — ein Satz überall. */
-export const GESUNDHEIT_OHNE_EINWILLIGUNG = { ok: false, error: 'Gesundheitsdaten werden erst nach deiner Einwilligung erfasst (System › Datenschutz).', einwilligung: 'gesundheit' } as const;
+export const GESUNDHEIT_OHNE_EINWILLIGUNG = { ok: false, error: 'Gesundheitsdaten werden erst nach deiner Einwilligung erfasst (Einstellungen › Datenschutz).', einwilligung: 'gesundheit' } as const;
 
 /**
  * Tor der Schreibwege für Gesundheitsdaten (Vitalwerte, Haut, Journal, Streak, Routinen-Log, Sport, Whoop): ohne

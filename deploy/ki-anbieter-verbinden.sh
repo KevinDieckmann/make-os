@@ -18,8 +18,8 @@
 # mistral fragt: den API-Schlüssel (verdeckt, genau EINMAL einfügen) und ob Training-Opt-out + ZDR bei Mistral gesetzt sind.
 # Schreibt in /srv/make-os/app/.env (nur für make lesbar) und startet MAKE OS neu. Werte NIE in den Chat, NIE ins Repo; Schlüssel
 # erscheinen nirgends (nicht auf dem Bildschirm außer den letzten vier Zeichen, nicht in der Prozessliste, nicht im Log).
-# Danach in MAKE OS: System › Empfänger „Google Cloud Vertex AI“ bzw. „Mistral AI“ → „Zurückholen“ + AVV bestätigen (sonst sperrt das Tor),
-# System › Datenschutz › KI: Fähigkeiten einschalten.
+# Danach in MAKE OS: Einstellungen › Datenschutz › Empfänger „Google Cloud Vertex AI“ bzw. „Mistral AI“ → „Zurückholen“ + AVV bestätigen (sonst sperrt das Tor),
+# Einstellungen › Datenschutz › KI: Fähigkeiten einschalten.
 set -euo pipefail
 cd /srv/make-os/app
 ENV_DATEI=/srv/make-os/app/.env
@@ -172,7 +172,7 @@ budget)
   [[ "$AUFTRAG" =~ ^[0-9]{1,6}(\.[0-9]{1,2})?$ ]] || { echo "Abbruch: Betrag wie 10 oder 7.50."; exit 1; }
   schreibe_env "$BUDGET_MUSTER" "${EURO:+MAKE_OS_KI_BUDGET_MONAT_EURO=${EURO}
 }MAKE_OS_KI_GRENZE_AUFTRAG_EURO=${AUFTRAG}"
-  echo "Hinweis: Eine Inhaber-Einstellung in MAKE OS (System › Datenschutz › KI) geht der Umgebung vor."
+  echo "Hinweis: Eine Inhaber-Einstellung in MAKE OS (Einstellungen › Datenschutz › KI) geht der Umgebung vor."
   ;;
 *)
   echo "Aufruf: ki-anbieter-verbinden.sh anthropic | vertex | mistral | tor | budget   (oder --entfernen <dasselbe>)"; exit 1 ;;

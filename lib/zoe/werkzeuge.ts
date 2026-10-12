@@ -267,7 +267,7 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
   const wer = person;
   const { gesundheitStandFuer } = await import('@/lib/datenschutz/gesundheit-einwilligung');
   const g = await gesundheitStandFuer(wer);
-  if (!g.verarbeitungErlaubt) return fehlschlag('sperre', 'Abgelehnt: Für das Abhaken fehlt die Einwilligung dieser Person (System › Datenschutz › Gesundheit) — Routinen stehen im Gesundheits-Log. Nichts gespeichert.');
+  if (!g.verarbeitungErlaubt) return fehlschlag('sperre', 'Abgelehnt: Für das Abhaken fehlt die Einwilligung dieser Person (Einstellungen › Datenschutz › Gesundheit) — Routinen stehen im Gesundheits-Log. Nichts gespeichert.');
   const f = await loadJson<{ routinen?: { id: string; label: string; aktiv: boolean; owner?: string; space?: string; einheit?: string; tagesZiel?: number; uhrzeiten?: string[]; zaehlWort?: string }[] }>('routinen');
   const { tagesZielVon } = await import('@/lib/planung/rhythmus');
   // Nur Routinen, die diese Person sieht (eigene + gemeinsame) — nie die der anderen abhaken oder aufzählen.
@@ -311,7 +311,7 @@ async function hakeRoutine(input: Record<string, unknown>, _o: string, person?: 
  */
 async function gesundheitsModulSperre(person: string, modul: 'haut' | 'serie'): Promise<WerkzeugErgebnis | null> {
   const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung');
-  if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (System › Datenschutz). Nichts gespeichert.');
+  if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (Einstellungen › Datenschutz). Nichts gespeichert.');
   const [{ moduleFuer }, { modulAusText }] = await Promise.all([import('@/lib/gesundheit/module-server'), import('@/lib/gesundheit/module')]);
   if (!(await moduleFuer(person))[modul]) return fehlschlag('sperre', `Abgelehnt: ${modulAusText(modul)} Nichts gespeichert.`);
   return null;
@@ -360,7 +360,7 @@ async function journalEintrag(input: Record<string, unknown>, _o: string, person
   if (!person) return fehlschlag('rechte', KEINE_PERSON);
   // Wie die Oberfläche (PATCH /api/state/journal): das Journal trägt Gesundheitsdaten (seit 09.10. auch den Tages-Check) — nur mit
   // Einwilligung (a) der Person (Bestandskonten ohne Erklärung wie bisher).
-  { const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung'); if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (System › Datenschutz). Nichts gespeichert.'); }
+  { const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung'); if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Abgelehnt: Für Gesundheitsdaten fehlt die Einwilligung dieser Person (Einstellungen › Datenschutz). Nichts gespeichert.'); }
   const { speicherFuer } = await import('./raum');
   const datum = HEUTE_ODER(input.datum);
   const t = (v: unknown, n = 800) => { const s = String(v ?? '').trim().slice(0, n); return s || undefined; };
@@ -762,7 +762,7 @@ async function gesundheitsIndex(input: Record<string, unknown>, _origin: string,
   const { gesundheitFuerZoe } = await import('@/lib/datenschutz/gesundheit-einwilligung');
   if (!(await gesundheitFuerZoe(fuer, person))) {
     return fuer === person
-      ? fehlschlag('sperre', 'Kein Zugang: Gesundheitsdaten gehen nur mit deiner Einwilligung „An die KI geben“ an ZOE (System › Datenschutz).')
+      ? fehlschlag('sperre', 'Kein Zugang: Gesundheitsdaten gehen nur mit deiner Einwilligung „An die KI geben“ an ZOE (Einstellungen › Datenschutz).')
       : fehlschlag('rechte', 'Kein Zugang: Diese Person gibt ihre Gesundheitsdaten nicht an deine ZOE frei.');
   }
   const { gesundheitsIndexFuer } = await import('@/lib/gesundheit/speicher');

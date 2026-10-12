@@ -98,7 +98,7 @@ Legende Status: **umgesetzt** · **teilweise** (gebaut, aber nicht überall akti
 | Protokoll | Inhalt | Aufbewahrung |
 |---|---|---|
 | Änderungsprotokoll (`aenderungsprotokoll--*`) | wer, wann, Bestand, Feldnamen, Kontakt nur als HMAC-Fingerabdruck — **nie Werte**; Hash-Kette + Siegel | 36 Monate (Monatsdateien) |
-| **Lese-Protokoll** (`leseprotokoll--*`, seit 05.10.) | wer (Konto · ZOE im Auftrag · System), wann, Bereich (Gesundheit, Erholung, Finanzplan, Haushalt, Rechnungen, Kontakte, Firmen/CRM, Gesellschafts-Register), wessen Daten (Konto), Kennungen nur als Fingerabdruck, Pfad ohne Abfrage — **nie Inhalte**; gleicher Zugriff höchstens alle 10 Min.; Hash-Kette + Siegel; Ansicht nur Inhaber (System › Nachweise) — `lib/store/leseprotokoll.ts` | 12 Monate |
+| **Lese-Protokoll** (`leseprotokoll--*`, seit 05.10.) | wer (Konto · ZOE im Auftrag · System), wann, Bereich (Gesundheit, Erholung, Finanzplan, Haushalt, Rechnungen, Kontakte, Firmen/CRM, Gesellschafts-Register), wessen Daten (Konto), Kennungen nur als Fingerabdruck, Pfad ohne Abfrage — **nie Inhalte**; gleicher Zugriff höchstens alle 10 Min.; Hash-Kette + Siegel; Ansicht nur Inhaber (Einstellungen › Datenschutz › Nachweise) — `lib/store/leseprotokoll.ts` | 12 Monate |
 | Anmelde-Protokoll (`anmeldungen`) | Zeit, Konto, Gerät, **gekürzte** IP (/24), Erfolg; Hash-Kette (rollend) + Siegel | letzte 300 Einträge |
 | ZOE-Entscheidungen / -Protokoll | Freigaben/Ablehnungen mit Person; Protokoll nur Kennungen + Feldnamen | 36 Monate / 90 Tage |
 | Löschprotokoll (`crm-loeschprotokoll`) | Protokoll-ID `lp-…`, Tag, Grund, wer — nie die Kennung | — [[KEVIN: Frist festlegen]] |
@@ -196,7 +196,7 @@ Absichtsprotokoll. Docker-Härtung: `no-new-privileges`, alle Kernel-Fähigkeite
 | CI vor jedem Ausrollen: Typprüfung, Tests (inkl. Datenschutz-Wächter), Lint | jeder Push auf `main` | GitHub Action |
 | Wächtertests Datenschutz (Speicher-Register, Rechte, Repo ohne Daten, Sicht-Trennung, Demo ohne echte Daten) | jeder Testlauf | `tests/datenschutz-register.test.ts`, `tests/sicher-s1.test.ts`, `tests/repo-sauber.test.ts`, `tests/demo.test.ts` u. a. |
 | Head of IT (Lage, Sicherung, Abholung, CSP, Anmeldungen, Schreibformat, Pepper, Schlüssel, Brain-Index-Ort, Protokoll-Kette) | täglich ab 07:45, stündlich auf neues Rot | `/os/hoi`, `lib/hoi/` |
-| Protokoll-Kette (Änderungs-, Lese-, Anmeldeprotokoll) und Lese-Protokoll-Ansicht | nächtlich ab 04:00 + auf Knopfdruck | System › Nachweise (`/os/datenschutz/nachweise`, nur Inhaber) |
+| Protokoll-Kette (Änderungs-, Lese-, Anmeldeprotokoll) und Lese-Protokoll-Ansicht | nächtlich ab 04:00 + auf Knopfdruck | Einstellungen › Datenschutz › Nachweise (`/os/datenschutz/nachweise`, nur Inhaber) |
 | Durchsicht aller Bestände (lesbar?) | nächtlich ab 04:00 | `lib/store/durchsicht.ts` |
 | Selbstprüfung DSGVO (VVT, Rechtsgrundlagen, Art. 13/14, Widersprüche, Fristen, Zugang) | aus den echten Beständen gerechnet | Markttraktion › Stammdaten › Datenschutz (`lib/crm/datenschutz.ts` `selbstpruefung`) |
 | Abhängigkeiten | wöchentlich | Dependabot |
@@ -237,7 +237,7 @@ Absichtsprotokoll. Docker-Härtung: `no-new-privileges`, alle Kernel-Fähigkeite
 | L8 | `sudo` ohne Passwort für `make` | SSH-Schlüssel = root | sudo mit Passwort oder Hardware-Schlüssel für SSH | [[KEVIN]] |
 | L9 | Unverschlüsselt im Ruhezustand: Vault (Server + GitHub inkl. Historie). ~~Bauplan-Bilder, Brain-Index~~ **erledigt 05.10.** (Bilder in der Hülle, Index nur im tmpfs/Arbeitsspeicher) | Notizen können Personendaten tragen | Vault-Inhalte prüfen; Vault-Repo ggf. verschlüsseln (git-crypt/age) — eigene Entscheidung | [[KEVIN]] |
 | L18 | ✓ **erledigt 05.10.:** Lesezugriffe auf Art.-9-Daten, Finanzen, Kontakt-/Firmenakten und das Gesellschafts-Register waren nicht protokolliert; Protokolle ohne Manipulationsschutz | Nachweis Art. 5 Abs. 2 | Lese-Protokoll (12 Monate) + Hash-Kette mit Siegel über Änderungs-, Lese- und Anmeldeprotokoll | — |
-| L19 | `MAKE_OS_FORMAT=v2` (Schlüssel-ID + AAD) noch nicht aktiv — Code bereit, Bereitschaftsliste unter System › Nachweise | vertauschte Dateien fallen im Kompatibilitätsmodus nicht auf (die Protokoll-Kette schon) | Umstellung nach stabilen Tagen (UPDATES.md 05.10.) | [[KEVIN]] |
+| L19 | `MAKE_OS_FORMAT=v2` (Schlüssel-ID + AAD) noch nicht aktiv — Code bereit, Bereitschaftsliste unter Einstellungen › Datenschutz › Nachweise | vertauschte Dateien fallen im Kompatibilitätsmodus nicht auf (die Protokoll-Kette schon) | Umstellung nach stabilen Tagen (UPDATES.md 05.10.) | [[KEVIN]] |
 | L10 | Hetzner-Abbilder enthalten Daten + Schlüssel | Kompromittiertes Hoster-Konto = Klartext | 2FA am Hoster, Zugriff auf das Projekt minimal halten, Schlüssel nur als Datei mit getrenntem Volume prüfen | [[KEVIN]] |
 | L11 | Mac als Sicherungsort ohne dokumentierte Geräteschutz-Maßnahmen | Verlust/Diebstahl des Mac | FileVault, Sperre, Notiz im Notfall-Dokument | [[KEVIN]] |
 | L12 | Nur ein Server, 1 vCPU / 1,9 GB | Verfügbarkeit, Belastbarkeit | Server vergrößern (Empfehlung DEPLOY.md: 2 vCPU / 4 GB) | [[KEVIN]] |

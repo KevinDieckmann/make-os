@@ -279,13 +279,13 @@ export interface KettenLage { zeit: string; ok: boolean; dateien: number; eintra
 /** Befund zur Protokoll-Kette (rein): Bruch = rot, ungesiegelt/alt = gelb, sonst „Protokoll unverändert ✓“. */
 export function kettenBefunde(k: KettenLage | null | undefined, jetzt?: string): Befund[] {
   if (k === undefined) return [];
-  if (k === null) return [{ id: 'protokoll-kette', bereich: 'sicherheit', label: 'Protokolle (Hash-Kette)', ampel: 'grau', wert: 'noch nicht geprüft', satz: 'die nächtliche Durchsicht prüft Änderungs-, Lese- und Anmeldeprotokoll ab 4 Uhr — oder System › Nachweise › „Jetzt prüfen“' }];
+  if (k === null) return [{ id: 'protokoll-kette', bereich: 'sicherheit', label: 'Protokolle (Hash-Kette)', ampel: 'grau', wert: 'noch nicht geprüft', satz: 'die nächtliche Durchsicht prüft Änderungs-, Lese- und Anmeldeprotokoll ab 4 Uhr — oder Einstellungen › Datenschutz › Nachweise › „Jetzt prüfen“' }];
   const alt = jetzt ? (Date.parse(jetzt) - Date.parse(k.zeit)) / 3_600_000 : 0;
   const ampel: Ampel = !k.ok ? 'rot' : k.warnungen || alt > 30 ? 'gelb' : 'gruen';
   return [{
     id: 'protokoll-kette', bereich: 'sicherheit', label: 'Protokolle (Hash-Kette)', ampel,
     wert: k.ok ? `Protokoll unverändert ✓ · ${k.dateien} Dateien · ${k.eintraege} Einträge${k.getilgt ? ` · ${k.getilgt} nach Art. 17 getilgt` : ''}` : `${k.fehler} Datei${k.fehler === 1 ? '' : 'en'} mit Bruch: ${k.namen.slice(0, 3).join(', ')}${k.namen.length > 3 ? ' …' : ''}`,
-    satz: !k.ok ? 'ein Protokoll wurde verändert, gekürzt, vertauscht oder zurückgespielt — System › Nachweise zeigt wo; mit den Sicherungen vom Vortag vergleichen und als mögliche Datenpanne prüfen (datenschutz/DATENPANNEN.md)'
+    satz: !k.ok ? 'ein Protokoll wurde verändert, gekürzt, vertauscht oder zurückgespielt — Einstellungen › Datenschutz › Nachweise zeigt wo; mit den Sicherungen vom Vortag vergleichen und als mögliche Datenpanne prüfen (datenschutz/DATENPANNEN.md)'
       : k.warnungen ? `${k.warnungen} Datei${k.warnungen === 1 ? '' : 'en'} noch ohne vollständiges Siegel — wird beim nächsten Anhängen bzw. nachts nachgeholt`
       : alt > 30 ? 'letzte Prüfung älter als 30 Stunden — läuft die nächtliche Durchsicht?' : 'Änderungs-, Lese- und Anmeldeprotokoll lückenlos verkettet und gesiegelt',
   }];

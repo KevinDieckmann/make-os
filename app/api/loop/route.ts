@@ -247,7 +247,7 @@ export async function POST(req: Request) {
     const kopf = `Du bist ZOE, Chief of Staff von ${name}. Du bekommst FERTIGE Zahlen aus echten Stores — rechne nicht neu, erfinde nichts, sei ehrlich auch wenn es unbequem ist. Deutsch, knapp, kein Startup-Sprech.`;
 
     // Gesundheits-Loop nur mit Einwilligung (b) — sonst geht kein Wert an die KI (Art. 9, 05.10.).
-    if (loop === 'gesundheit' && !g.gesundheitFrei) return NextResponse.json({ error: 'Der Gesundheits-Loop braucht deine Einwilligung „An die KI geben“ (System › Datenschutz).', loop, einwilligung: 'gesundheit' });
+    if (loop === 'gesundheit' && !g.gesundheitFrei) return NextResponse.json({ error: 'Der Gesundheits-Loop braucht deine Einwilligung „An die KI geben“ (Einstellungen › Datenschutz).', loop, einwilligung: 'gesundheit' });
     let system = '', user = '', label = '';
     if (loop === 'finanzen') {
       label = 'Finanz-Loop';

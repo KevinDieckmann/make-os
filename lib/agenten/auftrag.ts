@@ -46,12 +46,12 @@ export const auftragBrauchtEinwilligung = (head: Pick<HeadDef, 'kategorien' | 'k
 
 /** Sätze, warum ein Auftrag gerade nicht an das Modell geht (Oberfläche und Hinweis im Chat). */
 export const AUFTRAG_GRUND: Readonly<Record<'gesundheit' | 'gesundheit-weg' | 'familie' | 'familie-weg' | 'finanzen-privat' | 'aus', string>> = {
-  gesundheit: 'Geht erst an die KI, wenn du zur Gesundheit „An die KI geben“ (b) erklärt hast (System › Datenschutz) — er kann Gesundheitsangaben enthalten.',
-  'gesundheit-weg': 'Gesundheitsangaben gehen nur über einen KI-Weg in der EU an das Modell — der ist noch nicht eingerichtet (System › Datenschutz › KI).',
-  familie: 'Familie & Partnerschaft ist für die KI ausgeschaltet (System › Datenschutz) — der Auftrag bleibt solange draußen.',
-  'familie-weg': 'Familien-Angaben gehen nur über einen KI-Weg in der EU an das Modell — der ist noch nicht eingerichtet (System › Datenschutz › KI).',
+  gesundheit: 'Geht erst an die KI, wenn du zur Gesundheit „An die KI geben“ (b) erklärt hast (Einstellungen › Datenschutz) — er kann Gesundheitsangaben enthalten.',
+  'gesundheit-weg': 'Gesundheitsangaben gehen nur über einen KI-Weg in der EU an das Modell — der ist noch nicht eingerichtet (Einstellungen › Datenschutz › KI).',
+  familie: 'Familie & Partnerschaft ist für die KI ausgeschaltet (Einstellungen › Datenschutz) — der Auftrag bleibt solange draußen.',
+  'familie-weg': 'Familien-Angaben gehen nur über einen KI-Weg in der EU an das Modell — der ist noch nicht eingerichtet (Einstellungen › Datenschutz › KI).',
   'finanzen-privat': 'Private Finanzen gehen gerade nicht an die KI (Schalter oder KI-Weg) — der Auftrag bleibt solange draußen.',
-  aus: 'Dieser Bereich ist für die KI ausgeschaltet (System › Datenschutz) — der Auftrag bleibt solange draußen.',
+  aus: 'Dieser Bereich ist für die KI ausgeschaltet (Einstellungen › Datenschutz) — der Auftrag bleibt solange draußen.',
 };
 
 export interface AuftragKiLage { an: boolean; kategorie: KiKategorie; grund?: string }

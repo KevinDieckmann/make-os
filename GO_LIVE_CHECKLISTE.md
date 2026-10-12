@@ -1,4 +1,33 @@
-# Go-Live-Checkliste — Update vom 04.10.2026 (online läuft `f0c5526`)
+# Go-Live-Checkliste — Update vom 12.10.2026 (online läuft `a063e73a`)
+
+**Zuerst `UPDATES.md` › „Update 12.10. — was neu ist“** (Übersicht, Einmal-Schritte, Umgebungsvariablen, Klickliste, Rückweg in einfacher Sprache). Diese Datei hält die Befehle fest. Online läuft `a063e73a` (Stand 09.10.,
+neue Instanz mit Kartei/CRM/Aufgaben übernommen); hochgeladen wird `a063e73a..update-0910b` (rund 200 Commits). **Rückweg ist möglich** (Kompatibilitätsmodus, `MAKE_OS_FORMAT` leer; `package.json`, `compose.yml` und
+`Dockerfile` sind seit `a063e73a` unverändert, an `deploy/` hat sich nur die Caddyfile geändert).
+
+**Vor dem Upload (alle Punkte Pflicht):**
+1. **Update-Probe mit Altbestand** (`DEPLOY.md` › „Update-Probe mit Altbestand“, `--alt` = Worktree von `a063e73a`) → Bericht **„VERLUSTFREI: ja“**, Rückweg-Probe ohne 5xx. „nein“ = kein Upload.
+2. Wie im Vorgänger unten, „Vor dem Upload“ 1–5 und 7 (sauberer Git-Stand, ≥ 5 GB frei, `MAKE_OS_FORMAT` leer, alle MAKE-OS-Tabs zu, Repo-Variable `AUSROLLEN` nicht `aus`).
+3. **Sicherung und altes Bild merken** — der Befehlsblock aus „Vor dem Upload“ 6 des Vorgängers, mit dem Tag **`make-os:a063e73a`** und der Bild-Probe
+   `docker run --rm --entrypoint sh make-os:a063e73a -c 'test -e lib/postfach/register.ts && test ! -e lib/fulfillment/prozesse/bausteine.ts && echo ALTES-BILD-OK'`
+   (am Mac gegenprüfbar: `git cat-file -e a063e73a:lib/postfach/register.ts` ok, `git cat-file -e a063e73a:lib/fulfillment/prozesse/bausteine.ts` → „not in“). Danach `bash /srv/make-os/app/deploy/sicherung.sh` → letzte Zeile `: ok (Ping: …)`.
+4. **Umgebung:** nichts Neues setzen. `MAKE_OS_KUNDENLINK` bleibt aus, `MAKE_OS_LOKALE_VORSCHAU` und `MAKE_OS_DEMO` gehören nie auf den Server (`deploy/env.server.beispiel`, `UPDATES.md` › Umgebungsvariablen). Am Server prüfen:
+   `grep -E '^(MAKE_OS_KUNDENLINK|MAKE_OS_LOKALE_VORSCHAU|MAKE_OS_DEMO)=' .env` → leer.
+5. **Caddyfile geändert** (Block `@kunde`): am Mac vorher validieren (Befehl unter „Zusatz: Zugang & Schlüssel härten“ unten), nach dem Ausrollen am Server `caddy validate` + `caddy reload`
+   (`docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`).
+
+**Direkt nach dem Upload:** `docker compose ps` (app healthy, arbeiter läuft) → Log-Zeilen wie im Vorgänger „Direkt nach dem Upload“ 2 (erwartet: `Absichten beim Start: … 0 gescheitert`) → Caddy neu laden → auf allen Geräten neu laden →
+die **Klickliste** aus `UPDATES.md` (16 Punkte) → Sicherung von Hand → am nächsten Morgen `/os/hoi` (Sicherung, Kalender-Sicherung grün).
+
+**Neue Verarbeitungen im Datenschutz** (Details `DATENSCHUTZ_APP.md` › 2c): Fulfillment, Fulfillment-Analyse mit beruflichen Personenkarten (Art. 14), Kunden-Link (ausgeschaltet), Inbox-Übergaben, Routinen-Zähler und Erholung (Art. 9), Unternehmen-Schild und -Verlauf,
+Agenten-Lauf-Spur, Top 3, Vertriebsplanung, Leistungstreppe. Im Verzeichnis (Art. 30) kommen `vv-fulfillment`, `vv-fulfillment-analyse`, `vv-kundenlink` und `vv-email-kunden` beim Öffnen von Einstellungen › Datenschutz von selbst dazu;
+neue Löschfristen `fulfillment-personen`, `fulfillment-unterlagen`, `fulfillment-mandatsdaten`. Anwalt: Interessenabwägung/Art.-14-Muster der Personenrecherche, Kunden-Hinweis, Einwilligung Erholung gegenlesen.
+
+**Rückweg:** wie im Vorgänger „Rückweg, falls nötig“ mit Tag `make-os:a063e73a` und `git revert --no-commit a063e73a..HEAD`; was der alte Stand mit den neuen Feldern macht, steht gesammelt in `UPDATES.md` › „Update 12.10.“ › Rückweg.
+Zusätzlich Caddyfile aus dem alten Stand + `caddy reload`.
+
+---
+
+## Vorgänger: Update vom 04.10.2026 (online lief `f0c5526`) — Geschichte; die Befehle gelten sinngemäß weiter, die Rückweg-Hinweise ab „Was beim Rückweg …“ für die dort genannten Felder
 
 **Urteil: Ja, mit Bedingungen.** Im Code blockiert nichts: tsc, Build und alle Tests (4606) sind grün; Code-Review und
 Praxis-Prüfung sind abgearbeitet. Hochgeladen wird `f0c5526..entwicklung`: Lichtfäden v2 (Fokus-Baum, Planung/Ziel/Meilenstein/Fokus),
@@ -213,7 +242,7 @@ Neu seit 04.10. (Lichtfäden v2, Design Kern/Privat, Fokus Innovation `Event.rei
   - Oberfläche, Editor, Gesprächsmodus, Herkunft sind Code ohne Daten.
   Nach einem erneuten Upload: nichts nachzuziehen (fehlende Stufen = „noch offen“, es gilt der neue Standard, bis `crm-scoring` gelesen wird).
 - **Mehrere Anmelde-Adressen (03.10., Branch `konto-mail`):** keine Formänderung, nur optionale Felder; der alte Stand (5202a69) liest am Konto nur `email` und behält Zusatzfelder beim Schreiben (`...k`):
-  - Konto `weitereEmails` (höchstens drei): der alte Stand ignoriert sie — **dort meldet sich nur die Hauptadresse (`email`) an.** **Vor dem Rückweg** (System › Konto › Anmelde-Adressen) die **Hauptadresse auf die gewünschte stellen** („Als Hauptadresse“), sonst geht beim alten Bild nur die bisherige Hauptadresse. Die Konten selbst bleiben unversehrt (Passwort, zweiter Faktor, Speichername ändern sich nicht).
+  - Konto `weitereEmails` (höchstens drei): der alte Stand ignoriert sie — **dort meldet sich nur die Hauptadresse (`email`) an.** **Vor dem Rückweg** (Einstellungen › Konto › Anmelde-Adressen) die **Hauptadresse auf die gewünschte stellen** („Als Hauptadresse“), sonst geht beim alten Bild nur die bisherige Hauptadresse. Die Konten selbst bleiben unversehrt (Passwort, zweiter Faktor, Speichername ändern sich nicht).
   - Einladung `email` (reservierte Adresse): der alte Stand ignoriert sie — die Einladung gilt dort für jede Adresse.
   - Sicherheitsprotokoll `anmeldungen`: neue Arten `adresse-hinzu`/`adresse-haupt`/`adresse-weg` mit `detail` (maskierte Adresse) — der alte Stand zeigt sie roh an, nichts bricht.
   - Glocke: Meldungsart `sicherheit` — der alte Säuberer verwirft Meldungen unbekannter Art beim nächsten Schreiben (nur die Hinweise „Anmelde-Adresse geändert“ gehen verloren, das Protokoll bleibt).
@@ -231,13 +260,13 @@ Neu seit 04.10. (Lichtfäden v2, Design Kern/Privat, Fokus Innovation `Event.rei
 - **Reihenfolge bei Google (Details `GOOGLE_GMAIL_EINRICHTEN.md`):** Gmail API aktivieren → im Zustimmungsbildschirm den Bereich `gmail.modify` ergänzen (App bleibt „Intern“) → in der Admin-Konsole prüfen, dass die App Gmail darf → je Person in der Inbox „Gmail verbinden“. **Erst danach** die Mail-Adresse umstellen: Konten + `hello@` (Alias/Gruppe) anlegen und testen, **MX zuletzt** (SPF, DKIM, DMARC davor).
 - **Neue Umgebungsvariablen (alle optional, nur Server-`.env`, nie ins Repo):** `GMAIL_PUBSUB_THEMA`, `GMAIL_PUSH_DIENSTKONTO`, `GMAIL_PUSH_AUDIENCE` (Echtzeit per Pub/Sub-Push; ohne sie Abfrage alle 2 Minuten). Setzen per `deploy/google-verbinden.sh` (fragt optional). Fehlt etwas, antwortet der Webhook IMMER 403 (nie offen).
 - **Nach dem Upload prüfen (nichts eingeben, nur ansehen):** `docker compose logs app --since 10m | grep -i "\[gmail\]"` → leer oder einzelne Zeilen (`watch: …` ohne Pub/Sub ist erwartbar). Verdächtig: wiederholte `Abgleich: …`-Zeilen. HOI zeigt den Befund „Gmail (Inbox)“.
-- **Geänderte Formen:** nur neue Bestände (`gmail-stand--<person>`, `gmail-text--<person>`, im Speicher-Register) und optional `Aktivitaet.mailLink` (Verlauf der Kontaktakte); neue Löschfrist `mail-spiegel` (180 Tage, einstellbar unter System › Datenschutz). Im Kompatibilitätsmodus sind sie wie jeder Bestand verschlüsselt und für den alten Stand unsichtbar.
+- **Geänderte Formen:** nur neue Bestände (`gmail-stand--<person>`, `gmail-text--<person>`, im Speicher-Register) und optional `Aktivitaet.mailLink` (Verlauf der Kontaktakte); neue Löschfrist `mail-spiegel` (180 Tage, einstellbar unter Einstellungen › Datenschutz). Im Kompatibilitätsmodus sind sie wie jeder Bestand verschlüsselt und für den alten Stand unsichtbar.
 - **Rückweg auf den Online-Stand:**
   1. **Vorher je Person „Gmail ausschalten“** (Inbox, unten) bzw. Kalender › Einstellungen › Google › **Trennen**: beendet die Überwachung (`users.stop`), löscht den Spiegel, widerruft (beim Trennen) den Zugriff bei Google. Ohne das läuft eine Pub/Sub-Überwachung bis zu ~7 Tage weiter und ruft die dann unbekannte Adresse auf (harmlos, Google gibt auf).
   2. Was der alte Stand nicht kennt, fällt weg: die Gmail-Quelle in der Inbox, die Spiegel-Bestände (bleiben ungenutzt liegen), `Aktivitaet.mailLink` (der alte Säuberer verwirft das Feld; die Verlaufszeile „Betreff: …“ bleibt ohne Link).
   3. **Mails selbst sind nie verloren:** das Original liegt in Gmail. Gesendete Antworten stehen in Gmail unter „Gesendet“.
   4. **DNS-Rückweg** (falls die Mail-Adresse wieder zu IONOS soll): MX/SPF auf die alten IONOS-Werte (Abschrift aus Teil D der Anleitung) — Mails, die in der Zwischenzeit bei Google ankamen, bleiben in Gmail.
-- **Datenschutz:** AVV (Datenverarbeitungszusatz) in der Workspace-Admin-Konsole bestätigen (gilt auch für Gmail); Verzeichnis nach Art. 30 bekommt „E-Mail (Google Workspace)“ automatisch, sobald Google eingerichtet ist (System › Datenschutz öffnen). Art. 17: der Löschlauf zählt „n Einträge in … Gmail nennen die Person — bitte dort löschen“.
+- **Datenschutz:** AVV (Datenverarbeitungszusatz) in der Workspace-Admin-Konsole bestätigen (gilt auch für Gmail); Verzeichnis nach Art. 30 bekommt „E-Mail (Google Workspace)“ automatisch, sobald Google eingerichtet ist (Einstellungen › Datenschutz öffnen). Art. 17: der Löschlauf zählt „n Einträge in … Gmail nennen die Person — bitte dort löschen“.
 
 ## Google Kalender (03.10.2026, Branch `google-kal`) — Umgebung, Einrichtung, Rückweg
 **Ohne Zutun ändert sich beim Upload nichts:** solange `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` fehlen, ist Google sichtbar aus („noch nicht eingerichtet“), iCloud läuft wie bisher.
@@ -252,7 +281,7 @@ Neu seit 04.10. (Lichtfäden v2, Design Kern/Privat, Fokus Innovation `Event.rei
   2. Was der alte Stand nicht kennt, fällt weg: die Google-Termine verschwinden aus der Oberfläche (sie bleiben in Google), der Kalender „MAKE … (Google)“ ist weg, `kalender-bezug`-Einträge `google-<person>|…` bleiben ungenutzt liegen (kommen nach erneutem Upload + Verbinden zurück, die UIDs sind dieselben).
   3. **Umgezogene Termine** (iCloud → Google) fehlen im alten Stand in iCloud — sie stehen nur noch in Google; Meetings/Follow-ups zeigen im alten Stand auf einen Termin, den es dort nicht gibt (Verbindungsprüfung „Termin fehlt“, harmlos). Die Sicherung des Umzugs (`kalender-umzug-sicherung--<person>`, 30 Tage) hält den iCloud-Text jedes Termins; zurückgespielt wird er nur auf Anweisung (Entwickler: `objektWiederherstellen`, `lib/kalender/icloud.ts`).
   4. Neue Business-Termine, die ab dem Upload in Google angelegt wurden, stehen nur in Google; der alte Stand legt wieder alles in iCloud an.
-- **Datenschutz:** AVV (Datenverarbeitungszusatz) in der Workspace-Admin-Konsole bestätigen; Verzeichnis nach Art. 30 bekommt „Kalender (Google Workspace)“ automatisch, sobald Google eingerichtet ist (System › Datenschutz öffnen).
+- **Datenschutz:** AVV (Datenverarbeitungszusatz) in der Workspace-Admin-Konsole bestätigen; Verzeichnis nach Art. 30 bekommt „Kalender (Google Workspace)“ automatisch, sobald Google eingerichtet ist (Einstellungen › Datenschutz öffnen).
 
 ## DSGVO-Prüfung S2 (04.10.) — nach dem Upload kurz prüfen
 - **Kapazität:** Kopf & Energie zählt jetzt erst nach eigener Einwilligung — Kevin und Malin schalten in Planung › Kapazität

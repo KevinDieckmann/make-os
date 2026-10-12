@@ -27,7 +27,7 @@ export const RISIKO_KATALOG: readonly KatalogRisiko[] = [
   { id: 'R6', titel: 'Verdeckte Gewinnausschüttung / Gesellschafterverträge steuerlich nicht anerkannt', kategorie: 'steuern', indikator: 'Verträge mit Gesellschaftern ohne Datum oder Unterschrift', schild: 'Vertragsakte, Beschlüsse im Voraus' },
   { id: 'R7', titel: 'SV-Nachforderung Gesellschafter-GF / Scheinselbständigkeit', kategorie: 'personen', indikator: 'Anteilsänderung, Dauer-Freelancer', schild: 'Statusfeststellung' },
   { id: 'R8', titel: 'Datenpanne, Cyberangriff, Ransomware', kategorie: 'it', indikator: 'Datum des letzten Backup-Tests, Abdeckung zweiter Faktor', schild: 'TOM, Notfallhandbuch IT, Cyber-Police' },
-  { id: 'R9', titel: 'DSGVO-Verstoß (fehlende AVV/VVT, Art. 13)', kategorie: 'recht', indikator: 'Ampel der Datenschutz-Selbstprüfung', schild: 'Datenschutz-Akte (System › Datenschutz)' },
+  { id: 'R9', titel: 'DSGVO-Verstoß (fehlende AVV/VVT, Art. 13)', kategorie: 'recht', indikator: 'Ampel der Datenschutz-Selbstprüfung', schild: 'Datenschutz-Akte (Einstellungen › Datenschutz)' },
   { id: 'R10', titel: 'Haftung aus Kundenverträgen (unbegrenzt, Pönalen)', kategorie: 'recht', indikator: 'Verträge ohne Haftungsbegrenzung', schild: 'Klausel-Checkliste, Vermögensschaden-Haftpflicht' },
   { id: 'R11', titel: 'Verlust von Marken-, Domain- oder IP-Rechten', kategorie: 'recht', indikator: 'Ablaufdaten; Inhaber ≠ Gesellschaft', schild: 'Marken-/Domain-Wächter, Rechte-Kette' },
   { id: 'R12', titel: 'Holding-Steuerprivilegien verloren / Organschaft gescheitert', kategorie: 'struktur', indikator: 'Beteiligungsquote zum 01.01., Durchführung des GAV', schild: 'Holding-Check im Pflichten-Kalender' },

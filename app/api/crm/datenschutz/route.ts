@@ -195,7 +195,7 @@ export async function POST(req: Request) {
     leseZugriff(req, 'kontakte', { ids: [id] });
     const e = await ladeEinrichtung();
     const v = verantwortlicherWirksam(e).v;
-    if (!v) return NextResponse.json({ ok: false, fehler: 'Verantwortlicher fehlt — erst unter System › Datenschutz eintragen.' }, { status: 409 });
+    if (!v) return NextResponse.json({ ok: false, fehler: 'Verantwortlicher fehlt — erst unter Einstellungen › Datenschutz eintragen.' }, { status: 409 });
     const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {}).fristen);
     const r = art14Fuellen(e.art14 ?? ART14_STANDARD, {
       anrede: anredeSatz(k), name: [k.vorname, k.nachname].filter(Boolean).join(' '), herkunft: herkunftSatz(k), verantwortlicher: verantwortlicherText(v),

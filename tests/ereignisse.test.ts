@@ -427,6 +427,8 @@ describe('Leser: Power Hour und Heads-Paket', () => {
     expect(ohne.ausgefiltert.geschrieben).toBe(1);
   });
   it('Heads „seit dem letzten Lauf“: nur Business, nur Sichtbares; Systemlauf ohne personengebundene; Art.-18-Personen nie', async () => {
+    // Die Leser rechnen „jetzt − 72 h“ (hoechstalterStunden): ohne festes „jetzt“ verfielen die Ereignisse vom 09.10. ab dem 12.10. (Zeitbombe, 12.10. gefunden).
+    vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(TAG);
     await S.ereignis([mail('h1', 'person-a', 'c-anna'), { id: 'crm:deal:ch-9:angebot', art: 'deal-stufe', quelle: 'crm', stufe: 'angebot', bezug: { dealId: 'ch-9', kontaktId: 'c-gesperrt' }, bereich: 'business' }, { id: 'bank:p1', art: 'zahlungseingang', quelle: 'kontoauszug', bezug: { buchungId: 'p1' }, bereich: 'privat' }], { jetzt: TAG });
     expect((await S.ereignisseSeit('person-a', '')).map(e => e.id)).toEqual(['gmail:h1', 'crm:deal:ch-9:angebot']);
     expect((await S.ereignisseSeit('person-b', '')).map(e => e.id)).toEqual(['crm:deal:ch-9:angebot']);

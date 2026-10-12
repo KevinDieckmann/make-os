@@ -50,7 +50,7 @@ export async function probelauf(a: ProbelaufAuftrag): Promise<ProbeErgebnis> {
     zweck: `agent-${a.head.id}-skill-test`, model: MODEL_BY_TIER.schnell, maxTokens: 1200,
     ki: { lauf: 'aufruf', person: a.person, kategorien: e.kategorien?.length ? e.kategorien : ['allgemein'] },
   });
-  if (!r.ok || !r.data) return { ok: false, werkzeuge, notiz: r.error?.startsWith('ki-gesperrt') ? 'KI gesperrt (System › Datenschutz)' : 'kein auswertbares Ergebnis' };
+  if (!r.ok || !r.data) return { ok: false, werkzeuge, notiz: r.error?.startsWith('ki-gesperrt') ? 'KI gesperrt (Einstellungen › Datenschutz)' : 'kein auswertbares Ergebnis' };
   const erfuellt = Array.isArray(r.data.erfuellt) ? r.data.erfuellt : [];
   const ok = erfuellt.length >= a.test.erwartet.length && erfuellt.slice(0, a.test.erwartet.length).every(x => x === true);
   return { ok, werkzeuge, ...(typeof r.data.notiz === 'string' && r.data.notiz ? { notiz: r.data.notiz.slice(0, 200) } : {}) };

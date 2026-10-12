@@ -210,7 +210,7 @@ export function slugVorsatz(titel: string): string {
  * Buchungsseite aus einer Eingabe säubern. Feste Felder (id, slug, angelegt) kommen aus `alt` bzw. vom Server.
  * Liefert den Fehlertext statt still zu kürzen (Regel „nie abschneiden, ablehnen“).
  */
-export function seiteSauber(roh: Record<string, unknown>, fest: Pick<BuchungsSeite, 'id' | 'slug' | 'angelegt'>, person: string, jetzt: string, opt: { /** Steht ein Verantwortlicher in der Einrichtung (System › Datenschutz)? Dann ist das Feld der Seite freiwillig. */ einrichtung?: boolean } = {}): { ok: true; seite: BuchungsSeite } | { ok: false; fehler: string } {
+export function seiteSauber(roh: Record<string, unknown>, fest: Pick<BuchungsSeite, 'id' | 'slug' | 'angelegt'>, person: string, jetzt: string, opt: { /** Steht ein Verantwortlicher in der Einrichtung (Einstellungen › Datenschutz)? Dann ist das Feld der Seite freiwillig. */ einrichtung?: boolean } = {}): { ok: true; seite: BuchungsSeite } | { ok: false; fehler: string } {
   const titel = txt(roh.titel);
   if (!titel) return { ok: false, fehler: 'Titel fehlt.' };
   if (titel.length > GRENZEN.titel) return { ok: false, fehler: `Titel höchstens ${GRENZEN.titel} Zeichen.` };
@@ -225,8 +225,8 @@ export function seiteSauber(roh: Record<string, unknown>, fest: Pick<BuchungsSei
   if (verantwortlich.length > GRENZEN.verantwortlich) return { ok: false, fehler: `Verantwortlicher höchstens ${GRENZEN.verantwortlich} Zeichen.` };
   // Art. 13 Abs. 1 a DSGVO: ohne Verantwortlichen kein Datenschutz-Hinweis — und damit keine Seite (R-K2 #79). Seit 05.10. kommt er aus der
   // Einrichtung; ein eigener Eintrag an der Seite ist nur noch eine Abweichung (leer lassen = wie in System › Datenschutz).
-  if (verantwortlich.length > 0 && verantwortlich.length < 5) return { ok: false, fehler: 'Verantwortlich: Name/Firma und Kontakt (mindestens 5 Zeichen) — oder leer lassen, dann gilt System › Datenschutz.' };
-  if (!verantwortlich && !opt.einrichtung) return { ok: false, fehler: 'Verantwortlich fehlt — unter System › Datenschutz eintragen (gilt dann für alle Seiten) oder hier für diese Seite (Name/Firma und Kontakt).' };
+  if (verantwortlich.length > 0 && verantwortlich.length < 5) return { ok: false, fehler: 'Verantwortlich: Name/Firma und Kontakt (mindestens 5 Zeichen) — oder leer lassen, dann gilt Einstellungen › Datenschutz.' };
+  if (!verantwortlich && !opt.einrichtung) return { ok: false, fehler: 'Verantwortlich fehlt — unter Einstellungen › Datenschutz eintragen (gilt dann für alle Seiten) oder hier für diese Seite (Name/Firma und Kontakt).' };
   const f = (roh.fragen && typeof roh.fragen === 'object' ? roh.fragen : {}) as Record<string, unknown>;
   return {
     ok: true,

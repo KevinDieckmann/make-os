@@ -28,7 +28,7 @@ import type { WerkzeugKontext } from './werkzeuge';
 export const FINANZPLAN_ALTWEG_WERKZEUGE: ReadonlySet<string> = new Set(['setze_kontostand', 'erfasse_rechnung', 'erfasse_zahlung', 'erfasse_planposten']);
 
 const KEINE_PERSON_NEIN = fehlschlag('rechte', 'Nicht ausgeführt: Dieses Werkzeug braucht eine angemeldete Person (kein Systemlauf).');
-export const KEIN_FINANZZUGANG = 'Nicht ausgeführt: Kontostände, Rechnungen, Zahlungen und Planposten liegen in den Finanzbeständen des Haushalts — dafür fehlt diesem Konto der Zugang (System › Konto). Nichts gespeichert.';
+export const KEIN_FINANZZUGANG = 'Nicht ausgeführt: Kontostände, Rechnungen, Zahlungen und Planposten liegen in den Finanzbeständen des Haushalts — dafür fehlt diesem Konto der Zugang (Einstellungen › Konto). Nichts gespeichert.';
 const PRIVAT_HINWEIS = fehlschlag('rechte', 'Nicht erfasst: Das ist privat. Private Zahlungen und Rechnungen gehören in die Haushaltsfinanzen (Finanzen › Privat) — dafür gibt es eigene Werkzeuge.');
 const istPrivatAngabe = (rein: unknown) => /privat|haushalt|n26/i.test(String(rein ?? ''));
 /** Auf den Cent (CLAUDE.md „Geld auf den Cent“) — nie auf ganze Euro. */

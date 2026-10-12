@@ -72,7 +72,7 @@ export function leadNachGespraech(alt: Lead | undefined, personen: Kontakt[], of
   const gesetzt = !!alt?.status;
   const von: LeadStatus = alt?.status ?? abgeleitet(personen, offenerDeal);
   const bleibt = (grund: string): LeadHebung => ({ von, nach: von, gesetzt, geaendert: false, grund });
-  if (gesetzt && (von === 'kein_fit' || von === 'ruht')) return bleibt(`Lead steht bewusst auf „${statusLabel(von)}“ — nicht angehoben. Unter Firmen › Leads ändern.`);
+  if (gesetzt && (von === 'kein_fit' || von === 'ruht')) return bleibt(`Lead steht bewusst auf „${statusLabel(von)}“ — nicht angehoben. Unter Markttraktion › Qualifizierung ändern.`);
   if (RANG[von] >= RANG[HEBEN_AUF]) return bleibt(`Lead steht schon auf „${statusLabel(von)}“ — bleibt.`);
   const lead: Lead = {
     status: HEBEN_AUF,
