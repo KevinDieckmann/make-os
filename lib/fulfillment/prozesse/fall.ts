@@ -97,6 +97,8 @@ export function fallStarten(e: StartEingabe): Fall {
     knoten, freigaben: {}, onboarding: {}, stakeholder: [], entscheidungen: [], rituale: [], mitschriften: [], quickWins: [], kickoffFragen: [], wertKonto: {},
     befaehigung: MUSTER_BEFAEHIGUNG.map((text, i) => ({ id: `bf-${i + 1}`, text, erfuellt: false })),
     marken: {}, geaendert: e.jetzt, geaendertVon: e.person,
+    // Phasen der Vorlage von Hand geordnet (12.10.) → der Fall behält diese Reihenfolge (sonst ordnet der Säuberer nach ./phasen.ts).
+    ...(v.phasenVonHand ? { phasenVonHand: true as const } : {}),
   };
 }
 

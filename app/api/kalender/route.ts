@@ -20,6 +20,7 @@ import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze'
 import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
+import { kalenderBereich } from '@/lib/kalender/konto-bereich';
 import { verbunden, abgleichen, termineImZeitraum, kontoAnzeige, CACHE, ladeStand, naechsterVersuchFaellig, abgleichAlter } from '@/lib/kalender/icloud';
 import { googleKalenderNamen } from '@/lib/kalender/google/namen';
 import { ladeGoogleStand } from '@/lib/kalender/google/stand';
@@ -40,7 +41,6 @@ import { mitBezug, maskieren, alsBelegt, type BezugBestand } from '@/lib/kalende
 import { hauptZugangAuffrischen, ladePersonStand, ladeVerbindung, personAbgleichen, personAbgleichLaeuft, personenMitIcloud } from '@/lib/kalender/icloud-person';
 import { einstellungenFuerPerson, einstellungenFuerBereich } from '@/lib/kalender/einstellungen';
 import { spaceVonKalender } from '@/lib/kalender/space';
-import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -135,8 +135,9 @@ export async function GET(req: Request) {
   // aus Kalendern dieses Bereichs (`spaceVonKalender` — die Zuordnung der Kalender-Einstellungen), Fristen nach ihrem `bereich`, die Apple-
   // Erinnerungen (persönlich, vom Mac) nur im Privat-Bereich. Ohne `?space=` wie bisher alles (Kalender-Sicht „Alles“).
   // `&belegt=1` (Tagesplanung): Termine des anderen Bereichs kommen nur als „Belegt“ (`alsBelegt`) — die Zeit ist belegt, womit, steht nicht da.
-  const bereich = sichtDerAnfrage(req);
-  const belegtAndere = !!bereich && q.get('belegt') === '1';
+  // Konten „nur Business“ (Gesamtprüfung 12.10.): IMMER nur der Business-Bereich, nie „Belegt“-Zeilen aus Privat-Kalendern (`kalenderBereich`).
+  const { bereich, nurBusiness } = await kalenderBereich(req, zugang.person);
+  const belegtAndere = !!bereich && !nurBusiness && q.get('belegt') === '1';
   const imBereich = (name: string) => !bereich || spaceVonKalender(einst, name) === bereich;
   if (bereich) {
     if (!belegtAndere) termine = termine.filter(t => imBereich(t.kalender));

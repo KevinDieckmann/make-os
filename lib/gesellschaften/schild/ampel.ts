@@ -174,30 +174,98 @@ export function kurzHash(t: string): string { let h = 2166136261; for (let i = 0
 export const SCHILD_AUFGABEN_PRAEFIXE = ['usp-', 'usd-', 'usm-', 'usr-'] as const;
 export const istSchildAufgabe = (id: string) => SCHILD_AUFGABEN_PRAEFIXE.some(p => id.startsWith(p));
 
-export interface SchildErinnerung { aufgabeId: string; gesellschaftId: GesellschaftId; titel: string; beschreibung: string; dueDate: string; reiter: SchildReiter; erledigt?: true }
+/**
+ * Eine fällige Erinnerung. `titel` = Titel der Aufgabe; `glocke` = Titel der Glocke, wenn er vom Aufgabentitel abweicht (Pflichten: neutral —
+ * die Glocke bleibt so, wie sie seit dem Prüf-Fund H4 ist; Telegram ist ohnehin neutral über die Kennung, lib/meldungen/speicher.ts).
+ */
+export interface SchildErinnerung { aufgabeId: string; gesellschaftId: GesellschaftId; titel: string; glocke?: string; beschreibung: string; dueDate: string; reiter: SchildReiter; erledigt?: true }
+
+/** Neutrale Beschreibung der Erinnerungs-Aufgaben (Prüf-Fund 11.10.): die Einzelheiten nur im Bereich Unternehmen (Link in der Notiz). */
+export const NEUTRAL_BESCHREIBUNG = 'Aus dem Bereich Unternehmen — die Einzelheiten stehen dort (Link in der Notiz).';
+
+// ── Titel der Pflicht-Erinnerungen (12.10.) ──────────────────────────────────────────────────────────────────────────
+// Seit dem Prüf-Fund H4 (11.10.) hießen alle Pflicht-Aufgaben „Unternehmen: Frist im Pflichten-Kalender — <Gesellschaft> — bis <Datum>“ — zwei
+// Pflichten am selben Tag sahen in Heute › Top 3 gleich aus. Die Aufgaben gehen inzwischen NUR an Konten mit Zugang zur Firmen-Akte
+// (`rechtPersonen`), darum trägt der Titel wieder die Pflicht im Klartext — kurz, OHNE Norm und OHNE Folge bei Versäumnis; die Beschreibung bleibt
+// neutral, die Glocke auch (`glocke`). Zwei verschiedene Pflichten tragen nie denselben Titel (`pflichtTitel`).
+
+/** Präfix der früheren neutralen Pflicht-Titel — der Erinnerungslauf zieht offene Aufgaben mit diesem Titel auf den neuen nach. */
+export const ALT_PFLICHT_TITEL_PRAEFIX = 'Unternehmen: Frist im Pflichten-Kalender — ';
+/** Der neutrale Titel (Glocke; früher auch die Aufgabe). */
+export const neutralerPflichtTitel = (name: string, frist: string) => `${ALT_PFLICHT_TITEL_PRAEFIX}${name} — bis ${tagText(frist)}`;
+const KURZ_MAX = 72;
+
+/**
+ * Klartext einer Pflicht, kurz (rein): ohne Klammer-Zusatz, ohne „— Zusatz“, bei „A, B“ nur A (wenn A mehr als ein Wort ist — „Laufzeit,
+ * Kündigung, …“ bleibt ganz), höchstens 72 Zeichen. Normen und Folgen stehen in den Regeln in eigenen Feldern, nie im Titel.
+ */
+export function pflichtKurz(titel: string): string {
+  const ganz = titel.replace(/\s+/g, ' ').trim();
+  let t = ganz;
+  const schnitt = (sep: string, mehrereWoerter = false) => {
+    const i = t.indexOf(sep);
+    if (i <= 0) return;
+    const vor = t.slice(0, i).trim();
+    if (vor && (!mehrereWoerter || vor.includes(' '))) t = vor;
+  };
+  schnitt(' (');
+  schnitt(' — ');
+  schnitt(', ', true);
+  if (t.length > KURZ_MAX) { const i = t.lastIndexOf(' ', KURZ_MAX - 1); t = `${t.slice(0, i > 20 ? i : KURZ_MAX - 1)}…`; }
+  return t || ganz;
+}
+
+/**
+ * Titel der Erinnerungs-Aufgabe je offener Pflicht (rein; Kennung `usp-…` → Titel): „<Pflicht kurz> — <Gesellschaft> — bis <Datum>“. Gleiche
+ * Titel (zwei Pflichten mit gleichem Klartext am selben Tag) bekommen den Zeitraum dazu, bleiben sie gleich, eine laufende Nummer — zwei
+ * verschiedene Pflichten tragen nie denselben Titel. Erledigte und nicht zutreffende Pflichten fehlen.
+ */
+export function pflichtTitel(lage: Lage): Map<string, string> {
+  const zeilen: { id: string; kurz: string; zeitraum: string; rest: string }[] = [];
+  for (const g of lage.gesellschaften) {
+    for (const p of g.pflichten) {
+      if (p.status === 'erledigt' || p.status === 'nicht-zutreffend') continue;
+      zeilen.push({ id: pflichtAufgabeId(g.id, p.schluessel), kurz: pflichtKurz(p.titel), zeitraum: p.periodeLabel, rest: ` — ${g.name} — bis ${tagText(p.frist)}` });
+    }
+  }
+  const zaehle = (l: string[]) => l.reduce((m, x) => m.set(x, (m.get(x) ?? 0) + 1), new Map<string, number>());
+  const erst = zeilen.map(z => `${z.kurz}${z.rest}`);
+  const n1 = zaehle(erst);
+  const zweit = zeilen.map((z, i) => (n1.get(erst[i])! > 1 && z.zeitraum ? `${z.kurz} (${z.zeitraum})${z.rest}` : erst[i]));
+  const n2 = zaehle(zweit);
+  const lfd = new Map<string, number>();
+  const raus = new Map<string, string>();
+  zeilen.forEach((z, i) => {
+    let t = zweit[i];
+    if (n2.get(t)! > 1) { const k = (lfd.get(t) ?? 0) + 1; lfd.set(t, k); t = `${t} · ${k}`; }
+    raus.set(z.id, t);
+  });
+  return raus;
+}
+
+/** Kennung der Erinnerungs-Aufgabe einer Pflicht (fest je Gesellschaft und Pflicht-Schlüssel). */
+export const pflichtAufgabeId = (gesellschaftId: string, schluessel: string) => `usp-${kurzHash(`${gesellschaftId}|${schluessel}`)}`;
 
 /**
  * Welche Erinnerungen sind heute fällig (rein)? Offene Pflichten im Vorlauf (auch überfällige, die noch keine Aufgabe haben), Dokumente
  * vor ihrem Ablauf (90 Tage), Marken/Domains/Versicherungen im Vorlauf, die Quartals-Runde der Risiken und jeder Neubewertungs-Anlass.
  * `erledigt` markiert Pflichten, die inzwischen vermerkt sind — deren offene Aufgabe schließt der Server.
  */
-/** Neutrale Beschreibung der Erinnerungs-Aufgaben (Prüf-Fund 11.10.): die Einzelheiten nur im Bereich Unternehmen (Link in der Notiz). */
-export const NEUTRAL_BESCHREIBUNG = 'Aus dem Bereich Unternehmen — die Einzelheiten stehen dort (Link in der Notiz).';
-
 export function faelligeSchildErinnerungen(lage: Lage): SchildErinnerung[] {
   const heute = lage.heute;
   const raus: SchildErinnerung[] = [];
   const hinweis = ` ${SCHILD_HINWEIS}`;
+  const titelJe = pflichtTitel(lage);
   for (const g of lage.gesellschaften) {
     for (const p of g.pflichten) {
-      const aufgabeId = `usp-${kurzHash(`${g.id}|${p.schluessel}`)}`;
+      const aufgabeId = pflichtAufgabeId(g.id, p.schluessel);
       if (p.status === 'erledigt' || p.status === 'nicht-zutreffend') { raus.push({ aufgabeId, gesellschaftId: g.id, titel: '', beschreibung: '', dueDate: p.frist, reiter: 'pflichten', erledigt: true }); continue; }
       if (p.status !== 'faellig' && p.status !== 'ueberfaellig') continue;
       if (p.inTagen < -60) continue; // sehr alte, nie vermerkte Pflichten nicht als neue Aufgabe — sie stehen rot im Bereich
-      // Aufgaben liegen im Business-Space — dort sehen sie auch Konten „nur Business“, die die Firmen-Akte nicht sehen dürfen (Prüf-Fund 11.10.):
-      // Titel und Beschreibung NEUTRAL (keine Pflicht, keine Norm, keine Folge bei Versäumnis) — die Einzelheiten stehen nur im Bereich.
+      // Titel: die Pflicht im Klartext, kurz — ohne Norm, ohne Folge bei Versäumnis (12.10., `pflichtTitel`); Beschreibung und Glocke NEUTRAL
+      // (Prüf-Fund 11.10.) — die Einzelheiten stehen nur im Bereich (Link in der Notiz).
       raus.push({ aufgabeId, gesellschaftId: g.id, dueDate: p.frist, reiter: 'pflichten',
-        titel: `Unternehmen: Frist im Pflichten-Kalender — ${g.name} — bis ${tagText(p.frist)}`,
+        titel: titelJe.get(aufgabeId) ?? neutralerPflichtTitel(g.name, p.frist), glocke: neutralerPflichtTitel(g.name, p.frist),
         beschreibung: `${NEUTRAL_BESCHREIBUNG} Erledigt? Im Bereich vermerken und Beleg ablegen.${hinweis}` });
     }
     for (const d of g.dokumente) {

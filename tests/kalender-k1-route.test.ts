@@ -5,6 +5,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const speicher = new Map<string, unknown>();
 vi.mock('@/lib/store/local-db', () => ({
+  // Konto-Sicht (Gesamtprüfung 12.10.): die Kalender-Routen fragen, ob das Konto „nur Business“ ist — ohne Konten-Bestand = kein Konto, nichts beschädigt.
+  beschaedigt: async () => false,
   loadJson: async (n: string) => (speicher.has(n) ? structuredClone(speicher.get(n)) : null),
   saveJson: async (n: string, d: unknown) => { speicher.set(n, structuredClone(d)); },
   updateJson: async (n: string, f: (c: unknown) => unknown) => { const neu = f(speicher.has(n) ? structuredClone(speicher.get(n)) : null); speicher.set(n, structuredClone(neu)); return neu; },

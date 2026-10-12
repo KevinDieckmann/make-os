@@ -52,6 +52,9 @@ const KNOTEN_FELDER = new Set(['id', 'elternId', 'vor', 'titel', 'zone', 'kreisl
 /** Felder, die ein Baustein-Knoten (Ebene 5) tragen darf. */
 const EBENE5_FELDER = new Set(['id', 'elternId', 'titel', 'rang', 'kundeSichtbar', 'bausteinId']);
 
+/** Kennung des obersten Knotens (Ebene 1) einer Vorlage. */
+const wurzelId = (v: ProzessVorlage): string | undefined => v.knoten.find(k => !k.elternId)?.id;
+
 /** Geschwister lückenlos nummerieren; `vorId` setzt `id` direkt davor (sonst ans Ende, wenn `ansEnde`). */
 function rangNeu(liste: ProzessKnoten[], elternId: string | undefined, id?: string, vorId?: string | null, ansEnde = false): ProzessKnoten[] {
   const geschwister = kinderVon(elternId, liste).filter(k => k.id !== id);
@@ -284,6 +287,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
         }
         case 'knoten': {
           const v = vorlage(o.vorlageId);
+          let handGeordnet = false;
           const e = istObj(o.eintrag) ? o.eintrag : nein('eintrag fehlt.');
           const teil = knotenTeil(e, v);
           let knoten = v.knoten;
@@ -303,6 +307,8 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
             knoten = knoten.map(x => (x.id === alt.id ? { ...mischen<ProzessKnoten>(x, teil), ...(eltern ? { elternId: eltern } : {}) } : x));
             if (eltern !== alt.elternId) knoten = rangNeu(rangNeu(knoten, alt.elternId), eltern, alt.id, vor ?? null, true);
             else if (vor !== undefined) knoten = rangNeu(knoten, eltern, alt.id, vor);
+            // Eine Phase (Ebene 2) von Hand an eine Stelle gesetzt → die Reihenfolge der Phasen gehört ab jetzt der Hand (12.10., ./phasen.ts).
+            if (eltern && eltern === wurzelId(v) && (eltern !== alt.elternId || typeof vor === 'string')) handGeordnet = true;
           } else {
             if (!teil.titel) nein('Titel fehlt.');
             const eltern = typeof e.elternId === 'string' ? knoten.find(x => x.id === e.elternId) : undefined;
@@ -311,8 +317,9 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
             const id = k.neueId('fk');
             const neu = mischen<ProzessKnoten>({ id, titel: '', rang: 9999, ...(eltern ? { elternId: eltern.id } : {}) }, teil);
             knoten = rangNeu([...knoten, neu], eltern?.id, id, vor ?? null, true);
+            if (eltern && eltern.id === wurzelId(v) && typeof vor === 'string') handGeordnet = true;
           }
-          setze({ ...v, knoten }); geaendert.push(v.id);
+          setze({ ...v, knoten, ...(handGeordnet && v.art === 'paket' ? { phasenVonHand: true as const } : {}) }); geaendert.push(v.id);
           break;
         }
         case 'knoten-weg': {
@@ -335,7 +342,9 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           const reihe = g.map(y => y.id);
           [reihe[i], reihe[j]] = [reihe[j], reihe[i]];
           const rang = new Map(reihe.map((id, n) => [id, n + 1]));
-          setze({ ...v, knoten: v.knoten.map(y => (rang.has(y.id) ? { ...y, rang: rang.get(y.id)! } : y)) }); geaendert.push(v.id);
+          // Eine Phase (Ebene 2) hoch/runter → die Reihenfolge der Phasen gehört ab jetzt der Hand (12.10., ./phasen.ts).
+          const phase = v.art === 'paket' && !!x.elternId && x.elternId === wurzelId(v);
+          setze({ ...v, knoten: v.knoten.map(y => (rang.has(y.id) ? { ...y, rang: rang.get(y.id)! } : y)), ...(phase ? { phasenVonHand: true as const } : {}) }); geaendert.push(v.id);
           break;
         }
         case 'uebergang': {
