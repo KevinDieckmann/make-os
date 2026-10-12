@@ -4,6 +4,19 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 12.10.2026 — Zwei Kleinfunde aus dem Ende-zu-Ende-Test (nur lokal — Branch `kleinfunde-1210`, Basis 11f34e35 = `update-0910b`)
+- **Register nie still doppelt:** `PATCH /api/gesellschaften` mit `liste` + `eintrag`, aber ohne `eintragId`, legt einen neuen Listeneintrag an (Kennung vom Server); trug der
+  Körper die Kennung eines VORHANDENEN Eintrags (Gesellschafter, Vertrag, Beschluss, Organ, Beteiligung, Fassung — auch im Papierkorb), hängte die Route still eine Dublette mit neuer
+  Kennung an. Jetzt 409 „Diesen Eintrag gibt es schon — zum Ändern die eintragId mitschicken. Es wurde nichts angelegt.“ (`eintragSchreiben`, lib/gesellschaften/server.ts); die
+  Oberfläche schickt bei Änderungen immer `eintragId` und bei neuen Einträgen nie eine Kennung — nichts bricht. Test `tests/gesellschaften-eintrag-dublette.test.ts`.
+- **Gewonnener Deal nicht still „verloren“:** das war schon online so (a063e73a: nur der Grund war Pflicht). Neu nur die Absicherung: ein NEUER Wechsel gewonnen → verloren wird mit 409
+  abgelehnt, solange ein laufendes Mandat (`chanceId`, nicht beendet, nicht im Papierkorb) oder ein angenommenes, nicht archiviertes Angebot am Deal hängt — Text „… erst das Mandat
+  „…“ beenden und das angenommene Angebot … archivieren; danach lässt sich der Deal mit Grund auf „Verloren“ setzen.“ (`gewonnenVerlorenSperre` in lib/crm/pipeline.ts, eingehängt in
+  `regelnAbgelehnt`). Der Grund bleibt Pflicht, die Historie behält Gewonnen und Verloren; Bestandsdaten (auch schon verlorene frühere Gewinne) bleiben unberührt. Die Oberfläche lädt nach
+  einer solchen Ablehnung neu (409 `abgelehnt`), damit die Karte nicht „verloren“ zeigt. Test `tests/gewonnen-verloren-sperre.test.ts`.
+**So testet ihr:** Deal gewonnen mit Mandat → im Board nach „Verloren“ ziehen, Grund wählen → Hinweis „erst das Mandat … beenden“, Karte bleibt gewonnen; Mandat beenden → jetzt geht es.
+Unternehmen › Gesellschafter: bearbeiten ändert den Eintrag (keine zweite Zeile). **Rückweg:** keine Daten-/Formänderung (nur zwei zusätzliche Ablehnungen).
+
 ## 12.10.2026 — Feinschliff aus der Demo: Pflicht-Titel und Phasen-Reihenfolge (nur lokal — Branch `feinschliff-phasen`, Basis d0b700a1 = `update-0910b`)
 - **Pflicht-Erinnerungen mit Klartext:** Heute › Top 3 zeigte zweimal „Unternehmen: Frist im Pflichten-Kalender — <Gesellschaft> — bis …“. Titel jetzt
   „<Pflicht kurz> — <Gesellschaft> — bis <Datum>“ (`pflichtKurz`/`pflichtTitel` in `lib/gesellschaften/schild/ampel.ts`, ohne Norm und ohne Folge); zwei
