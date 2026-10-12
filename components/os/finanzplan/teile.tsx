@@ -95,7 +95,7 @@ export function Gruppenzeile({ text, spalten }: { text: string; spalten: number 
 
 // ── Eingaben ────────────────────────────────────────────────────────────────
 export const eingabeStil: CSSProperties = { ...feld, minHeight: ZIEL.rechner, fontSize: TYP.bedien, padding: '7px 10px', borderRadius: ECKE.eingabe };
-export const auswahlStil: CSSProperties = { ...eingabeStil, appearance: 'auto', width: 'auto', minWidth: 0 };
+export const auswahlStil: CSSProperties = { ...eingabeStil, appearance: 'auto', width: 'auto', minWidth: 0, maxWidth: '100%' };
 
 /** Betrag-Feld: übernimmt beim Verlassen oder Enter; leer = null; Unsinn wird verworfen. */
 export function ZahlFeld({ wert, onFertig, breite = 110, dezimal = 2, platzhalter, leer, rechts = true, titel }: { wert: number | null | undefined; onFertig: (v: number | null) => void; breite?: number | string; dezimal?: number; platzhalter?: string; leer?: boolean; rechts?: boolean; titel?: string }) {

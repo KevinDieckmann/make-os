@@ -38,7 +38,8 @@ function StrangZeile({ s }: { s: SeilStrang }) {
 export function SeilHandy({ ansicht, fokus, onFokus }: { ansicht: SeilAnsicht; fokus: string | null; onFokus: (id: string | null) => void }) {
   const gruppen = [...ansicht.seile.map(s => ({ s, ids: s.straenge })), ...(ansicht.ohneZiel.length ? [{ s: null, ids: ansicht.ohneZiel }] : [])];
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
+    // `minmax(0, 1fr)` (Gesamtprüfung 12.10.): sonst zog der längste Titel (nowrap) die Spalte über den Handy-Rand.
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
       {gruppen.map(({ s, ids }) => {
         const offen = !fokus || fokus === s?.zielId;
         // Unten mündet zuerst — am Handy von oben nach unten in Zeitfolge.

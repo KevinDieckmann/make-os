@@ -300,7 +300,9 @@ export function BrainKugel() {
 
   const satz = `${punkte.length} Datensätze als Sterne${aus.size ? ` (${sichtbar.length} eingeblendet)` : ''}${antwort.gekuerzt ? ` — ${antwort.gekuerzt} ältere nicht gezeigt (höchstens ${antwort.deckel})` : ''}.`;
   return (
-    <div data-brain-kugel="" style={{ display: 'grid', gap: 14 }}>
+    // `minmax(0, 1fr)` hier und an der Liste (Gesamtprüfung 12.10.): ohne zog der längste Titel (nowrap) die Spalte auf ~690 px — am Handy ließ
+    // sich die Seite quer schieben.
+    <div data-brain-kugel="" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
       {mitGl && (
         <div
           ref={flaeche}
@@ -385,7 +387,7 @@ export function BrainKugel() {
         <summary style={{ cursor: 'pointer', fontSize: TYP.bedien, color: C.inkDim, minHeight: 40, display: 'flex', alignItems: 'center' }}>Alle Punkte als Liste ({sichtbar.length})</summary>
         <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen — Titel oder Art …" aria-label="Punkte der Brain-Kugel durchsuchen"
           style={{ ...feld, fontSize: 16, margin: '8px 0' }} />
-        <ul aria-label="Punkte der Brain-Kugel" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 2 }}>
+        <ul aria-label="Punkte der Brain-Kugel" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 2 }}>
           {gefiltert.slice(0, LISTE_MAX).map(p => {
             const n = netz.get(p.id)?.length ?? 0;
             return (
