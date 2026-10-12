@@ -194,7 +194,7 @@ export async function POST(req: Request) {
       const sp = await schild.schildPapierkorbAufraeumen(h);
       const se = await schild.schildErinnerungen(h);
       await schild.schildVerlaufMerken(h); // 11.10.: Gesundheits-Verlauf — ein Punkt je Tag (Ton + vier Dimensionen), idempotent
-      schritte.push({ name: 'Unternehmen › Schild', ok: true, info: [se.neu ? `${se.neu} neue Erinnerung${se.neu === 1 ? '' : 'en'}` : 'keine fällig', se.geschlossen ? `${se.geschlossen} erledigt` : '', sp.eintraege ? `Papierkorb: ${sp.eintraege} endgültig` : ''].filter(Boolean).join(' · ') });
+      schritte.push({ name: 'Unternehmen › Schild', ok: true, info: [se.neu ? `${se.neu} neue Erinnerung${se.neu === 1 ? '' : 'en'}` : 'keine fällig', se.geschlossen ? `${se.geschlossen} erledigt` : '', se.umbenannt ? `${se.umbenannt} Titel nachgezogen` : '', sp.eintraege ? `Papierkorb: ${sp.eintraege} endgültig` : ''].filter(Boolean).join(' · ') });
     }
   } catch (err) {
     schritte.push({ name: 'Gesellschaften-Papierkorb', ok: false, info: err instanceof Error ? err.message : 'Fehler' });

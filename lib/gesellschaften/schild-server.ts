@@ -15,7 +15,7 @@ import { imPapierkorb } from '@/lib/eintraege/sicher';
 import { gesellschaftVon, type RegisterDatei, type RegisterFehler, type RegisterGesellschaft } from './modell';
 import { ladeRegister } from './server';
 import { leererEintrag, schildName, type SchildDatei, type SchildGesellschaft } from './schild/typen';
-import { lageAus, schildFristen, faelligeSchildErinnerungen, eintragVon, istSchildAufgabe, type Lage, type SchildFrist } from './schild/ampel';
+import { lageAus, schildFristen, faelligeSchildErinnerungen, pflichtTitel, eintragVon, istSchildAufgabe, ALT_PFLICHT_TITEL_PRAEFIX, type Lage, type SchildFrist } from './schild/ampel';
 import { schildAufraeumen, schildOhnePerson } from './schild/saeubern';
 import { lageBlick } from './schild/blick';
 import { verlaufName, verlaufPunkt, verlaufAnhaengen, type VerlaufDatei } from './schild/verlauf';
@@ -95,12 +95,17 @@ export async function schildFristenLesen(betrachter: string | null): Promise<Sch
  * Quartals-Runde und Neubewertungs-Anlass EINE Aufgabe mit fester Kennung (`usp-…`, `usd-…`, `usm-…`, `usr-…`; Business, beide) — gibt es sie
  * schon (auch erledigt oder im Papierkorb), passiert nichts. Eine inzwischen als erledigt VERMERKTE Pflicht schließt ihre offene Aufgabe.
  * Nur für NEU angelegte eine Meldung (vorhandene Art `vertrag` — eine neue Art bräche den Rückweg der Glocke; Telegram neutral über die Kennung) an jede Person des Haushalts. Läuft im Morgenlauf und nach Änderungen.
+ * Seit 12.10. trägt die Pflicht-Aufgabe die Pflicht im Klartext (`pflichtTitel`, ohne Norm/Folge; Glocke weiter neutral): offene Aufgaben mit dem
+ * früheren neutralen Titel (`ALT_PFLICHT_TITEL_PRAEFIX`) zieht derselbe Lauf nach — nur den Titel, nur unerledigte, nie einen von Hand geänderten,
+ * idempotent (danach passt der Titel nicht mehr zum Präfix).
  * Wirft nie.
  */
-export async function schildErinnerungen(haushalt: string, heute = localDay()): Promise<{ neu: number; geschlossen: number }> {
+export async function schildErinnerungen(haushalt: string, heute = localDay()): Promise<{ neu: number; geschlossen: number; umbenannt?: number }> {
   try {
-    const alle = faelligeSchildErinnerungen(await unternehmenLage(haushalt, heute));
-    if (!alle.length) return { neu: 0, geschlossen: 0 };
+    const lage = await unternehmenLage(haushalt, heute);
+    const alle = faelligeSchildErinnerungen(lage);
+    const titelJe = pflichtTitel(lage);
+    if (!alle.length && !titelJe.size) return { neu: 0, geschlossen: 0 };
     const [{ systemAufgabenAendern }, { WEG }, { rechtPersonen }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege'), import('@/lib/recht/server')]);
     // Zuständig und beteiligt NUR Konten mit Zugang zur Firmen-Akte (Prüf-Fund 11.10.) — „beide“ machte jedes Konto des Haushalts (auch
     // „nur Business“) zum Beteiligten samt Glocke.
@@ -109,11 +114,17 @@ export async function schildErinnerungen(haushalt: string, heute = localDay()): 
     const jetzt = new Date().toISOString();
     let neu: typeof alle = [];
     let geschlossen = 0;
+    let umbenannt = 0;
     await systemAufgabenAendern(stand => {
       const nachId = new Map(stand.tasks.map(t => [t.id, t]));
+      const offen = (t: (typeof stand.tasks)[number] | undefined): t is (typeof stand.tasks)[number] => !!t && !t.geloeschtAm && t.status !== 'done' && t.status !== 'cancelled';
       neu = alle.filter(e => !e.erledigt && !nachId.has(e.aufgabeId));
-      const schliessen = alle.filter(e => e.erledigt).map(e => nachId.get(e.aufgabeId)).filter(t => !!t && !t.geloeschtAm && t.status !== 'done' && t.status !== 'cancelled');
+      const schliessen = alle.filter(e => e.erledigt).map(e => nachId.get(e.aufgabeId)).filter(offen);
       geschlossen = schliessen.length;
+      // Früherer neutraler Titel → Klartext (nur offene, nur solange der Titel noch der neutrale ist — eine Änderung von Hand bleibt).
+      const umbenennen = [...titelJe].map(([id, title]) => ({ t: nachId.get(id), title }))
+        .filter(x => offen(x.t) && typeof x.t.title === 'string' && x.t.title.startsWith(ALT_PFLICHT_TITEL_PRAEFIX) && x.t.title !== x.title);
+      umbenannt = umbenennen.length;
       return {
         neu: neu.map(e => ({
           id: e.aufgabeId, title: e.titel, description: e.beschreibung, status: 'todo', priority: 'high', ...zustaendig, dueDate: e.dueDate,
@@ -121,15 +132,19 @@ export async function schildErinnerungen(haushalt: string, heute = localDay()): 
           tags: ['unternehmen', 'pflicht'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: 'business',
           ...(istGesellschaft(e.gesellschaftId) ? { spaceId: e.gesellschaftId } : {}),
         })),
-        teile: schliessen.map(t => ({ id: t!.id, felder: { status: 'done' } })),
+        teile: [
+          ...schliessen.map(t => ({ id: t.id, felder: { status: 'done' } })),
+          ...umbenennen.map(x => ({ id: x.t!.id, felder: { title: x.title } })),
+        ],
       };
     }, { jetzt });
     if (neu.length) {
       // Glocke NUR an Konten mit Zugang zur Firmen-Akte (Prüf-Fund 11.10.): ein Konto „nur Business“ sieht das Schild nicht (toter Link, Inhalte).
+      // Titel der Glocke neutral (`glocke`, Pflichten) — Telegram nennt ohnehin nur „Eine Unternehmens-Pflicht naht“ (Kennung `usp-…`).
       const { melde } = await import('@/lib/meldungen/melden');
-      for (const e of neu) for (const an of personen) await melde({ an, art: 'vertrag', titel: e.titel, link: WEG.schild(e.reiter, e.gesellschaftId), bezug: { art: 'aufgabe', id: e.aufgabeId } });
+      for (const e of neu) for (const an of personen) await melde({ an, art: 'vertrag', titel: e.glocke ?? e.titel, link: WEG.schild(e.reiter, e.gesellschaftId), bezug: { art: 'aufgabe', id: e.aufgabeId } });
     }
-    return { neu: neu.length, geschlossen };
+    return { neu: neu.length, geschlossen, ...(umbenannt ? { umbenannt } : {}) };
   } catch (e) {
     console.error('[schild] Erinnerungen nicht angelegt:', e instanceof Error ? e.message : e);
     return { neu: 0, geschlossen: 0 };
