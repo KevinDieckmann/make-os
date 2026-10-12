@@ -75,9 +75,10 @@ export async function GET(req: Request) {
     let vorschlaege: string[] = [];
     try {
       const { freieZeitFuer } = await import('@/lib/kalender/freie-zeit');
-      const r = await freieZeitFuer({ personen: [z.person], dauerMin: kickoff?.dauerMin ?? 90, von: localDay(new Date(Date.now() + 86_400_000)), tage: 10, vorlaufMin: 0, rasterMin: 30, grenze: 30 });
-      const jeTag = new Map<string, number>();
-      vorschlaege = r.vorschlaege.filter(x => { const n = jeTag.get(x.tag) ?? 0; jeTag.set(x.tag, n + 1); return n === 0; }).slice(0, 3).map(x => vorschlagText(x.start, x.ende));
+      // Drei Termine an drei verschiedenen Tagen (Gesamtprüfung 12.10.): vorher füllten die ersten zwei Tage die Grenze von 30 Plätzen,
+      // nach dem Filter „ein Platz je Tag“ blieben nur zwei Vorschläge. Jetzt begrenzt die Suche selbst je Tag (`maxJeTag`).
+      const r = await freieZeitFuer({ personen: [z.person], dauerMin: kickoff?.dauerMin ?? 90, von: localDay(new Date(Date.now() + 86_400_000)), tage: 10, vorlaufMin: 0, rasterMin: 30, grenze: 3, maxJeTag: 1 });
+      vorschlaege = r.vorschlaege.slice(0, 3).map(x => vorschlagText(x.start, x.ende));
     } catch { vorschlaege = []; }
     leseZugriff(req, 'fulfillment', { anzahl: k ? 1 : 0 });
     return NextResponse.json({
