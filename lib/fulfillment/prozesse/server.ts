@@ -181,7 +181,8 @@ export async function prozesseMorgenlauf(h: string, heute: string): Promise<Morg
       nachher: 'Follow-up am Mandat anlegen — gesprochen bzw. geschrieben wird erst per Klick', eingabe: { mandatId: m.id, tag: x.tag, art: x.art },
       anlass: `Nachsorge ${x.tag} Tage nach dem Mandatsende`, quelle: 'lauf', bezug: { art: 'fulfillment', id: `p:nachsorge:${m.id}:${x.tag}` }, ...(person ? { person } : {}),
     });
-    for (const an of await empfaenger(m)) await melde({ an, art: 'produkte', titel: 'Nachsorge für einen früheren Kunden — Vorschlag im Stapel', link: WEG.fall(m.id) });
+    // 12.10.: der Link führt dorthin, wo die Nachsorge steht (Abschluss & Kreislauf) — vorher in den Überblick, der sie nicht zeigte.
+    for (const an of await empfaenger(m)) await melde({ an, art: 'produkte', titel: 'Nachsorge für einen früheren Kunden — Vorschlag im Stapel', link: WEG.fall(m.id, 'kreislauf') });
     (fallMarken[m.id] ??= {})[markeNachsorge(m.id, x.tag)] = heute;
     n++;
   }
