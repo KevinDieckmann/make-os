@@ -138,12 +138,12 @@ function checkVorschlaege(lage: Lage, d: DatenschutzZahlen | null): CheckVorschl
     }
     for (const z of g.schwellen) {
       if (z.stand !== 'erreicht' || z.umgesetzt) continue;
-      raus.push({ schluessel: `sw:${g.id}:${z.def.id}`, art: 'aufgabe', gesellschaftId: g.id, titel: `Schwelle umsetzen: ${z.def.titel} — ${g.name}`, text: `Aus dem Recht-Check: ${z.def.pflicht} (${z.def.norm}). Umgesetzt? Unter Unternehmen › Pflichten vermerken.`, weg: WEG.schild('pflichten', g.id) });
+      raus.push({ schluessel: `sw:${g.id}:${z.def.id}`, art: 'aufgabe', gesellschaftId: g.id, titel: `Schwelle umsetzen: ${z.def.titel} — ${g.name}`, text: `Aus dem Recht-Check: ${z.def.pflicht} (${z.def.norm}). Umgesetzt? Unter Unternehmen › Pflichten & Fristen vermerken.`, weg: WEG.schild('pflichten', g.id) });
     }
     const esk = g.pflichten.filter(eskalationOffen);
     if (esk.length) raus.push({ schluessel: `esk:${g.id}:${esk.map(p => p.schluessel).sort().join(',')}`, art: 'mappe', gesellschaftId: g.id, titel: `Anwalts-Mappe zusammenstellen — ${g.name}`, text: eskalationText(esk.map(p => p.titel).join('; ')), weg: WEG.schild('ueberblick', g.id) });
   }
-  if (d?.avvOffen) raus.push({ schluessel: 'avv', art: 'aufgabe', titel: `AVV prüfen: ${d.avvOffen} Auftragsverarbeiter ohne bestätigten Vertrag`, text: 'Aus dem Recht-Check: Im Empfänger-Register (System › Datenschutz) fehlt bei Auftragsverarbeitern der bestätigte AVV (Art. 28 DSGVO). Vertrag abschließen bzw. Bestätigung mit Datum und Unterlage eintragen.', weg: WEG.datenschutz('empfaenger') });
+  if (d?.avvOffen) raus.push({ schluessel: 'avv', art: 'aufgabe', titel: `AVV prüfen: ${d.avvOffen} Auftragsverarbeiter ohne bestätigten Vertrag`, text: 'Aus dem Recht-Check: Im Empfänger-Register (Einstellungen › Datenschutz) fehlt bei Auftragsverarbeitern der bestätigte AVV (Art. 28 DSGVO). Vertrag abschließen bzw. Bestätigung mit Datum und Unterlage eintragen.', weg: WEG.datenschutz('empfaenger') });
   // Reihenfolge: Eskalation zuerst, dann Pflichtdokumente, Schwellen, AVV.
   const rang = (v: CheckVorschlag) => (v.art === 'mappe' ? 0 : v.schluessel.startsWith('dok:') ? 1 : v.schluessel.startsWith('sw:') ? 2 : 3);
   return raus.sort((a, b) => rang(a) - rang(b) || a.schluessel.localeCompare(b.schluessel));
@@ -162,7 +162,7 @@ export function checkText(c: Omit<WochenCheck, 'text'>): string {
   z.push('', `FRISTEN der nächsten ${CHECK_TAGE} Tage (${c.fristen.length}):`);
   if (!c.fristen.length) z.push('keine');
   for (const f of c.fristen.slice(0, 20)) z.push(`• ${tagText(f.tag)} — ${f.titel} · ${f.unter}${f.inTagen < 0 ? ' · ÜBERFÄLLIG' : ''}${f.eskalation ? ' · Anwalt/Steuerbüro einbeziehen' : ''}`);
-  if (c.fristen.length > 20) z.push(`… und ${c.fristen.length - 20} weitere (Unternehmen › Pflichten)`);
+  if (c.fristen.length > 20) z.push(`… und ${c.fristen.length - 20} weitere (Unternehmen › Pflichten & Fristen)`);
   z.push('', `WAS FEHLT (${c.fehlt.length}):`);
   if (!c.fehlt.length) z.push('nichts');
   for (const f of c.fehlt.slice(0, 20)) z.push(`• ${f.schwere === 'rot' ? '[rot] ' : ''}${f.gesellschaft ? `${f.gesellschaft}: ` : ''}${f.text}`);

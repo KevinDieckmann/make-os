@@ -30,7 +30,7 @@ import { fuerBrowser, ladeKarten, visitenkartenName, type KartenDatei } from '@/
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEIN = { ok: false, fehler: 'Visitenkarten gibt es nur für Konten mit Haushalt. Der Inhaber schaltet das unter System → Konto frei.' };
+const KEIN = { ok: false, fehler: 'Visitenkarten gibt es nur für Konten mit Haushalt. Der Inhaber schaltet das unter Einstellungen › Konto frei.' };
 /** Höchstens so viele Änderungen je Anruf — darüber 413, nie still gekürzt. */
 const OPS_MAX = 40;
 /** Ganzer Körper einer Änderung: höchstens OPS_MAX Profile mit je einem Logo am Limit (LOGO_MAX Zeichen) plus Text — darüber 413, bevor irgendetwas gelesen oder geparst wird. */

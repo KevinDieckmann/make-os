@@ -35,7 +35,7 @@ const TEXT: Record<WhoopFehlerCode, string> = {
   netz: 'WHOOP ist gerade nicht erreichbar.',
   person: 'Diese Anmeldung gehört einer anderen Person.',
   belegt: 'Dieses WHOOP-Konto ist schon mit einer anderen Person verbunden.',
-  einwilligung: 'Gesundheitsdaten werden erst nach deiner Einwilligung erfasst (System › Datenschutz).',
+  einwilligung: 'Gesundheitsdaten werden erst nach deiner Einwilligung erfasst (Einstellungen › Datenschutz).',
 };
 export const whoopFehlerText = (c: WhoopFehlerCode): string => TEXT[c];
 

@@ -416,7 +416,7 @@ async function fristEintragen(v: Vorschlag, haushalt: string, person: string): P
     const register = await ladeRegister(haushalt);
     const g = gesellschaftVon(register, gid);
     const vt = aktiveEintraege(g?.vertraege).find(x => (x.dateiIds ?? []).includes(dateiId));
-    if (!g || !vt) throw new RechtFehler('Die Datei hängt noch an keinem Vertrag — erst unter Unternehmen › Verträge dem Vertrag zuordnen, dann freigeben.', 409);
+    if (!g || !vt) throw new RechtFehler('Die Datei hängt noch an keinem Vertrag — erst unter Unternehmen › Verträge & Organe dem Vertrag zuordnen, dann freigeben.', 409);
     const fristen = vt.fristen ?? [];
     const textFrist = `Laut Vertragstext: ${fristArtText(art as 'kuendigung' | 'ende' | 'beginn' | 'sonstig')}`;
     if (fristen.some(f => f.datum === datum && f.text === textFrist)) return 'Der Stichtag steht schon am Vertrag.';
@@ -455,7 +455,7 @@ export const RECHT_STAPEL_ART: StapelArtFreigabe = {
         : v.werkzeug === 'recht_risiko' ? await risikoUebernehmen(v, z.haushalt, person)
           : v.werkzeug === 'recht_checkliste' ? await checklisteAblegen(v, z.haushalt, person)
             : v.werkzeug === 'recht_frist' ? await fristEintragen(v, z.haushalt, person)
-              : `Anwalts-Mappe „${(await mappeErstellen(z.haushalt, person, themaAus(v.eingabe.thema) ?? { art: 'gesellschaft', gesellschaftId: gid }, v.eingabe.fragen ?? [])).datei.name}“ liegt in der Ablage der Gesellschaft (Unternehmen › Unterlagen) — weitergegeben wird nur von Hand.`;
+              : `Anwalts-Mappe „${(await mappeErstellen(z.haushalt, person, themaAus(v.eingabe.thema) ?? { art: 'gesellschaft', gesellschaftId: gid }, v.eingabe.fragen ?? [])).datei.name}“ liegt in der Ablage der Gesellschaft (Unternehmen › Gesellschaften › Unterlagen) — weitergegeben wird nur von Hand.`;
       await entscheide(v.id, 'freigegeben', { ergebnis: `${ergebnis} ${RECHT_HINWEIS}`, von: person, ausArbeit: true });
       return { ok: true, text: ergebnis };
     } catch (e) {

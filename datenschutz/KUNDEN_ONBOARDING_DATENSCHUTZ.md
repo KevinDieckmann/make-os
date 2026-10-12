@@ -88,7 +88,7 @@ Kunde: ‹Firma› · Instanz: ‹kennung› · Domain: ‹instanz-domain› · 
 
 - [ ] Kündigung/Ende erfasst; Frist zur Wahl Rückgabe ‹Datum›.
 - [ ] Lizenz auf „nur lesen“ (kein Sperren, kein Löschen vor der Rückgabe — Kunde behält Zugriff/Export).
-- [ ] **Export** (seit 05.10. ein Klick, Paket „Betroffenenrechte v2“): der Inhaber des Kunden unter **System › Datenschutz › Vertragsende**
+- [ ] **Export** (seit 05.10. ein Klick, Paket „Betroffenenrechte v2“): der Inhaber des Kunden unter **Einstellungen › Datenschutz › Vertragsende**
       → „Alles exportieren“ (Passwort + zweiter Faktor) = EINE JSON-Datei mit allen Beständen, Dateien und Bildern, entschlüsselt
       (`/api/datenschutz/instanz-export`, nur Inhaber-Sitzung, steht im Lese- und Anmeldeprotokoll). Die Datei sofort verschlüsselt
       weitergeben (age-Empfänger des Kunden oder Passwort getrennt übermittelt) und danach löschen. Zusätzlich auf Wunsch die CSV-Exporte.

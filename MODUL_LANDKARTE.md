@@ -4,6 +4,11 @@
 > + Hotfix 1de19d8c vom 08.10.); **nur lokal** = nur auf `entwicklung`. Achtung: der lokale Zweig `main` ist veraltet (27.09.) — Online-Stand immer gegen
 > `origin/main` messen (`git fetch && git cat-file -e origin/main:<pfad>`). Diese Landkarte ist die Grundlage für jede Modulfrage an Kevin („Heute gibt es …“);
 > nach jedem Upload bzw. größeren Bau nachziehen.
+>
+> **Hinweis 12.10.:** Diese Landkarte beschreibt den Stand vom 08.10. (online damals `38f88dc0`, heute `a063e73a`). Seitdem anders bzw. neu — maßgeblich ist `UPDATES.md` › „Update 12.10. — was neu ist“:
+> der Kopf kennt nur noch Privat · Business (kein „Alles“), „Produkte & Mandate“ und „Unternehmen“ sind zwei getrennte Punkte (der Sammelpunkt „Mandate & Unternehmen“ ist weg), Business hat keinen Punkt „Kontakte“
+> (die Kartei liegt in Markttraktion), Fokus + Kompass + Wachstum sind die Fokus-Seite oben rechts (Planung ist nur Planung), und neu sind Fulfillment, Unternehmen › Schild, Beschlüsse & Satzung, Head of Recht,
+> Erholung, Routinen 2, Heute (Top 3, Briefing), Inbox-Flows und Kundenpostfächer. Beim nächsten Nachziehen die betroffenen Abschnitte neu prüfen.
 
 ## Wichtigste Befunde (08.10.)
 - **Fast alles ist online** seit dem Upload am 07.10. Nur lokal (wartet auf den Upload am 09.10.): 0-Punkt, WHOOP-Direktverbindung (API v2), Seil-Zeitstrahl,

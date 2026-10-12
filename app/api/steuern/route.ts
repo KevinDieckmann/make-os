@@ -27,7 +27,7 @@ async function sichtFuer(req: Request, person: string): Promise<'privat' | 'busi
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Steuern — sie gehören zum Haushalt des Inhabers (System → Konto).' };
+const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Steuern — sie gehören zum Haushalt des Inhabers (Einstellungen › Konto).' };
 
 export async function GET(req: Request) {
   const wer = await imHaushaltDesInhabers(req);

@@ -42,11 +42,17 @@ lokal, Route `/os`, Port 3001.
   Nachtrag 04.10. (Kevins Antworten): Rolle `operativ | holding` im Steckbrief — Holding-Sichten liest der Business-Index aus dem
   Register (`holdingSichten` → `Bestand.holdings` → `kennzahlenFuer(scope, holdings)`; `HOLDING_VORGABE` nur, solange keine feste Gesellschaft
   eine Rolle trägt). Organe (`organe[]`: Funktion, Person/Kontakt, seit/bis) und Beschlüsse (`beschluesse[]`: Datum, Art, Titel, Inhalt,
-  Status, Unterlagen) als Listen je Gesellschaft (Reiter „Organe & Beschlüsse“). Erinnerung vor „kündigen bis“: `Vertrag.erinnerungTage`
+  Status, Unterlagen — seit 10.10. erweitert um Nummer, Gremium, Beteiligte, Abstimmung, Wirkung und Fassungen, siehe „Beschlüsse & Satzung“ unten) als Listen je Gesellschaft (Reiter „Organe & Beschlüsse“). Erinnerung vor „kündigen bis“: `Vertrag.erinnerungTage`
   (Vorgabe 30, 0 = keine) → `vertragsErinnerungen` (Aufgabe `vte-…` + Meldung Art `vertrag` an den Haushalt, idempotent) im Morgenlauf und
   nach jeder Vertragsänderung. Neue Gesellschaften im Finanzplan: bewusst nicht (Kevin).
   Gründungsfahrplan: Vorlage `lib/gesellschaften/fahrplan.ts` (Ziel + 9 Meilensteine mit `wartetAuf` + Aufgaben), Karte im Steckbrief
   (`components/os/unternehmen/Fahrplan.tsx`), nur über die bestehenden Planungs-/Aufgaben-Schreibwege, feste Kennungen `z-fahrplan-…`/`ms-fahrplan-…`.
+- **Unternehmen — die Schichten und Reiter (Karte, Stand 12.10.; Details in den folgenden Absätzen):** Seite `/os/unternehmen` (Business › Unternehmen), Reiter in zwei Gruppen —
+  **Lage** (Überblick · Pflichten & Fristen · Dokumente · Risiken · Schutz) und **Akte** (Struktur · Beschlüsse & Satzung · Verträge & Organe · Gesellschaften; darin je Gesellschaft Steckbrief ·
+  Gesellschafter · Organe & Beschlüsse · Beteiligungen · Verträge · Unterlagen · Absender), darunter der Gesellschafts-Filter (Alle · je Gesellschaft); Adressen NUR über `WEG.unternehmen`/`WEG.schild`/
+  `WEG.beschluss`/`WEG.ereignisAssistent` (`?s=`, `?w=`). **Vier Schichten, jede mit EINER Schreibstelle:** (1) das **Register** `gesellschaften--<haushalt>` (Steckbrief, Gesellschafter, Organe,
+  Beteiligungen, Verträge, Beschlüsse, Fassungen — auch Privat-Einheiten und weitere `g-…`), (2) das **Schild** `unternehmen-schild--<haushalt>` (Pflichten, Dokumente, Risiken, Schutz — nur Business),
+  (3) der **Blick** (rechnet rein, Zeichner rechnen nichts), (4) der **Head of Recht** (liest nur `unternehmenLage`, schlägt nur vor).
 - **Unternehmen „in einem Blick“ (11.10., Branch `design-unternehmen`; UPDATES.md):** Antwort zuerst, Bild statt Liste, ruhige Tonalität. Die Sprache der
   Oberfläche ist der **Ton** (`lib/gesellschaften/schild/blick.ts`: rot NUR bei drohender Folge — gesetzliche Frist verstrichen, Eskalation, Schutzrecht
   abgelaufen, rotes Risiko ohne Maßnahme, Tragfähigkeit; gelb = bald/Vorschlagstermin/abgelaufen; grau = Lücken ohne Eile); die Compliance-Ampel (`ampel.ts`,
@@ -378,7 +384,7 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
   Gelöschtes (`RegisterDatei.geloescht`, `geloeschtVermerken` — neue Schreibwege auf das Register IMMER darüber), Bezüge „„Name“ (gelöscht)“.
 
 ## Sicherheit & DSGVO — S3: Grundlagen im Code (05.10., Branch `dsgvo-grund`, nur lokal; Dokumente `datenschutz/`)
-- **System › Datenschutz** (`/os/datenschutz`, `components/os/DatenschutzView.tsx` + `components/os/datenschutz/*`): Selbstprüfung,
+- **Einstellungen › Datenschutz** (`/os/datenschutz`, `components/os/DatenschutzView.tsx` + `components/os/datenschutz/*`): Selbstprüfung,
   Verantwortlicher, Empfänger/AVV, Verzeichnis-Export, Pannen-Register (nur Inhaber), Dokumente. CRM-Datenschutz bleibt unter Stammdaten.
 - **Einrichtung** `lib/datenschutz/einrichtung.ts` (rein, client-sicher) + `einrichtung-server.ts`; Bestand `datenschutz-einrichtung`;
   Route `/api/datenschutz/einrichtung` (GET Haushalt, `?nur=angaben` für die Danke-Mail; POST nur Inhaber, nie Dienstweg, `bauPruefen`).
@@ -466,12 +472,12 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
 - **Lese-Protokoll** (`lib/store/leseprotokoll.ts`): GET-Routen mit Gesundheit/Erholung, Finanzplan/Haushalt/Rechnungen, Kontakten, Firmen/CRM
   oder dem Gesellschafts-Register rufen nach der Zugangsprüfung `leseZugriff(req, bereich, { betroffen?, ids?, anzahl? })` — nie Inhalte,
   Suchbegriffe oder Abfragen, Kennungen nur über `leseKennung`. Neue Route auf solchen Daten: Zeile dazunehmen. 12 Monate, Ansicht nur
-  Inhaber: System › Nachweise (`/os/datenschutz/nachweise`, `/api/datenschutz/nachweise`, Karten `NachweiseKarten` auch einbettbar).
+  Inhaber: Einstellungen › Datenschutz › Nachweise (`/os/datenschutz/nachweise`, `/api/datenschutz/nachweise`, Karten `NachweiseKarten` auch einbettbar).
 - **Hash-Kette** (`lib/store/protokoll-kette.ts`): Änderungs-, Lese- und Anmeldeprotokoll hängen NUR über `anhaengenVerkettet` an (nie
   `updateJson` mit eigenem `{ eintraege }` — das ließe `kette`/`h` fallen). Neue Protokoll-Familie = `MONATS_FAMILIEN`/`ROLLENDE_FAMILIEN`.
   Rechtmäßige Umschreibungen (Art. 17, Fingerabdruck-Umrechnung, Umzug, Löschfrist mit `bereinigt`) bleiben gültig; jede andere Änderung
   an Protokolldateien ist ein Bruch (HOI rot). Prüfung nächtlich in der Durchsicht, Siegel `protokoll-siegel`, Ergebnis `protokoll-pruefung`.
-- **Format v2** stellt nur Kevin um (Anleitung UPDATES.md 05.10.); System › Nachweise zeigt Modus und Bereitschaft (`v2Bereitschaft`).
+- **Format v2** stellt nur Kevin um (Anleitung UPDATES.md 05.10.); Einstellungen › Datenschutz › Nachweise zeigt Modus und Bereitschaft (`v2Bereitschaft`).
 
 ## KI, Gesundheit, Telegram — DSGVO-Paket 05.10. (Branch `dsgvo-ki`; Doku `DATENSCHUTZ_APP.md`)
 - **EINE Stelle für Daten an das Modell:** `askText` (lib/anthropic.ts) ruft vor jedem Aufruf das KI-Tor (`lib/datenschutz/ki-tor.ts`).
@@ -496,7 +502,7 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
 - **Telegram:** nur neutrale Hinweise mit Link (`lib/datenschutz/telegram-text.ts`); Inhalte nur mit der Ausnahme je Person
   (`telegramVollFuer`); `sendeAnPerson` hat ein Sicherheitsnetz (`telegramSicher`). Neue Telegram-Texte: ohne Werte, Beträge, Namen.
 - **KI-VO Art. 50:** Routen mit KI-Text, der an Dritte gehen kann, liefern `ki: kiKennzeichen()`; die Oberfläche zeigt `<KiMarke />`.
-- **Oberfläche:** System › Datenschutz (`/os/datenschutz`, components/os/DatenschutzView.tsx); Hinweis im Bereich Gesundheit.
+- **Oberfläche:** Einstellungen › Datenschutz (`/os/datenschutz`, components/os/DatenschutzView.tsx); Hinweis im Bereich Gesundheit.
 
 ## Betroffenenrechte v2 (05.10., Branch `betroffenenrechte`, nur lokal; Doku `DATENSCHUTZ_APP.md` › 2b, Wächter `tests/betroffenenrechte.test.ts`)
 - **Art. 15 an EINER Stelle:** `lib/datenschutz/art15.ts` (rein: `art15Angaben`, `auskunftHtml`, `HTML_KOPF`) + `auskunft-server.ts`
@@ -532,6 +538,14 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
 - **Zeilen-Aktionen (10.10., Kevin: „Löschen und Archivieren muss anders laufen“):** nie Knöpfe ÜBER dem Inhalt — jede Listenzeile mit Aktionen hängt an
   `ZeileAktionen` („⋯“ in eigener Spalte → Menü: Öffnen · Link · neuer Tab · `mehr` · ─ · Archivieren · Löschen; Handy wischen nach Einstellung des Geräts,
   Einstellungen › Bedienung `/os/system/bedienung`). Neue Liste: `href` über `WEG`, Extras als `mehr`, `loeschenFragt` wenn sie selbst fragt (DESIGN_STANDARD.md).
+- **Erklärung überall (10.10.; DESIGN_STANDARD.md › Erklärung):** jede Einstellung, Kennzahl, Überschrift und jeder Head trägt ein „i“ mit Erklärung und Fallbeispiel — EIN Baustein
+  (`components/os/ui/erklaerung.tsx`: `erklaerung`-Prop, `ErklaerKnopf`, `ErklaerPanel`, `Erklaert`), die Texte als Daten in `lib/erklaerungen/` (Einstellungen · Konto · Datenschutz · Business · Agenten ·
+  Kennzahlen aus dem Register · Fulfillment · Schritte). Jeder `Schalter` verlangt `erklaerung` (oder `erklaerungOhne="Grund"`); neue Einstellung/neuer Head/neuer Onboarding-Schritt = ein Eintrag dort,
+  sonst wird `tests/erklaerungen.test.ts` rot. Beispiele erfunden und neutral (keine Namen, Firmen, Beträge, Gesundheitsangaben).
+- **Übersichtlichkeit — Antwort zuerst (11.10.; DESIGN_STANDARD.md › Übersichtlichkeit, Wächter `tests/design-oberflaeche.test.ts`):** oben „Wo stehen wir · was kommt als Nächstes · was hängt“ als Bild
+  (`Lage` höchstens fünf Kacheln, Ring, Balken, Ampel, Zeitstrahl), Einzelheiten eingeklappt; eine Hauptaktion je Ansicht; Rot nur für echte Dringlichkeit; jede Zahl trägt ihr Wort; Zusatzfelder erst bei Bedarf.
+- **Kalender wie Google (10.10.; DESIGN_STANDARD.md › Kalender):** volle Höhe (Raster und linke Spalte rollen je in sich), EINE Kopfzeile, Ganztags-Bahnen (`ganztagsLegen`), lesbare Blöcke (`BLOCK_ALPHA`),
+  Darstellung je Gerät (`kalenderDarstellungAendern`); Wischen blättert Tag · 4 Tage · Woche · Monat (Trackpad zwei Finger, Handy ein Finger über die Tageskopfzeile). Lage nur über `lib/kalender/layout.ts`.
 - Startseite heißt „Heute“ (`/os`, seit 08.10.; vorher „Dashboard“/„Home“). Interne Navigation immer `next/link`, nie `<a>`.
 - Charts: die drei Teals (health/planning/finance) nie gemeinsam als Serien —
   Finanzen im Chart = Kupfer `#DE9E63`.
@@ -625,7 +639,7 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
 - Bilder liegen unter `.data/bauplan-bilder` (auf dem Server in `daten`, mit gesichert).
 
 ## Kalender — iCloud direkt (seit 25.09.2026)
-- **EIN Kalender (seit 29.09., K5):** Kopf-Knopf „Kalender“ → `/os/kalender` (Woche, `?space=`); der frühere
+- **EIN Kalender (seit 29.09., K5):** Leisten-Punkt „Kalender“ (bis 08.10. Kopf-Knopf) → `/os/kalender` (Woche, `?space=`); der frühere
   Wochenplaner ist dort der Modus „Planen“ (`?modus=planen`), `/os/planung/woche` und `/os/woche` leiten dorthin um
   (`WEG.woche(tag)`), das Alt-Dashboard `/calendar` (Beispieldaten, `CalendarContext`) ist weg. Details: Abschnitt
   „Kalender — Ein Kalender“ unten.
@@ -671,7 +685,7 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
     `icloudInGebrauch`). Tests `tests/kalender-icloud-person.test.ts` (Fake je Konto: `IcloudFake({ nr, zugang })`).
   - **Verbinden dort, wo es hingehört (07.10., Kevin):** Im Kalender-Bereich **Business** steht „<Firma> verbinden“ (Google Workspace,
     Firma = `UG_NAME` ohne Rechtsform, `firmaOhneRechtsform`), im Bereich **Privat** die iCloud-Karte — nur für die eigene Person, „Alles“
-    zeigt keine Karte; verbunden → nur kleiner Hinweis. Welche Anzeige: `verbindenAnzeige` (lib/kalender/verbinden-anzeige.ts, rein);
+    zeigt keine Karte; verbunden → seit 10.10. gar nichts über dem Raster (`ohneHinweis`, „Kalender wie Google“), nur die Karte zum Verbinden bzw. „Kalender bei Google freigeben“, solange es nötig ist. Welche Anzeige: `verbindenAnzeige` (lib/kalender/verbinden-anzeige.ts, rein);
     Oberfläche `components/os/kalender/VerbindenKarten.tsx` (`BereichVerbindungen`). Google-Anmeldung für Karte UND Einstellungen über
     EINEN Weg `components/os/kalender/google-verbinden.ts` (`googleKalenderVerbinden`, `GOOGLE_HINWEISE`). Tests `tests/kalender-verbinden-karten.test.ts`.
   - **Blöcke ins eigene Konto (07.10., Kevin):** Blöcke aus Planen/ZOE (`blockAnlegen`) und der Wochenplan-Übernahme tragen `eigenesIcloud: true` → `terminAnlegenServer` schreibt sie für eine Person mit EIGENER Verbindung (nicht Haupt-Person) in ihr eigenes Konto (`eigenesBlockZiel`: gewählter `blockKalender`, sonst erster gezeigter + schreibbarer Kalender), sonst wie bisher in den Haushalts-Kalender. Wahl in der iCloud-Karte („Blöcke aus Planen und ZOE landen in“), Route-Aktion `blockkalender`. Andere sehen die Blöcke nur „Belegt“ (Kevin 07.10.: „Belegt“ bleibt).
@@ -698,9 +712,8 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
 - **Eine Wahrheit:** Business-Säule des Wachstums-Scores = Business-Index (Gesamt);
   Business-Hälfte der Finanzen = Finanzielle Gesundheit. Neue Business-Kennzahlen gehören ins
   Register, nicht als Einzelfaktor in `performance.ts`.
-- Sichten: gesamt · kdc (Consulting) · kdv (KD Ventures); Privates nie (offen seit 05.10.: die Finanzplanung führt die Selbstständigkeit jetzt
-  unter Privat — ob der Business-Index sie weiter als Sicht/Quelle führt, entscheidet Kevin; bis dahin unverändert). Die Kredite im
-  V1-Export (`grundlage.schulden`) sind PRIVAT — nie in Business-Kennzahlen.
+- Sichten: Gesamt + die Business-Gesellschaften (`BUSINESS_GESELLSCHAFTEN`, Vorgabe kdv · ug); Privates nie. Die Selbstständigkeit (kdc) gehört seit 05.10. zu Privat und ist keine
+  Sicht mehr (`?scope=kdc` → 400; Abschnitt „Bereich je Einheit“, je Instanz umstellbar). Die Kredite im V1-Export (`grundlage.schulden`) sind PRIVAT — nie in Business-Kennzahlen.
 - Zugang: Haushalt des Inhabers (`lib/zugang/haushalt-inhaber.ts`, auch für den Kalender).
 - Verankert: Fachseiten zeigen ihre Kennzahlen (`IndexStreifen`: Zahlen, Markttraktion,
   Mandate); ZOE `business_index` (frei) und `monatsabschluss_erfassen` (Freigabe); der
@@ -710,7 +723,7 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
 
 ## Business-Modell, Privat-Index, Steuern (seit 25.09.2026, online)
 - **Finanzen in zwei Ebenen (08.10., Aufräumen Etappe 2; bis dahin „Alles unter Zahlen“)** (`components/os/FinanzenView.tsx`, Aufbau NUR in
-  `lib/finanzen/navigation.ts`): Bereich aus `?space=` → Reiter → Kopf-Schalter („Alles“ = Privat; ohne Haushalt Business). Privat: Überblick
+  `lib/finanzen/navigation.ts`): Bereich aus `?space=` → Reiter → Kopf-Schalter (Privat · Business; ohne Haushalt Business). Privat: Überblick
   (inkl. Gesamt `#gesamt`) · Konten & Buchungen (Ebene 2) · Planung (Blätter als EINE Pillenreihe, `blaetterFuer`; Altbestand unter
   Selbstständigkeit) · Steuern. Business: Überblick (Cockpit · Controlling & Ziele) · Rechnungen & Zahlungen · Liquidität · Buchungen · Planung ·
   Steuern. Head of Finance = Knopf. Keine Nebenseiten unter app/os/finanzen — neue Finanz-Ansicht = Reiter/Ebene 2 dort, nie eine dritte Ebene,
@@ -810,7 +823,7 @@ abgekündigt, v1-Webhooks entfernt). Der alte gemeinsame Weg (`lib/oauth.ts` who
   Zugang `export: false`), Konto löschen widerruft bei WHOOP (`bericht.whoop`); VVT `vv-whoop` (nachgetragen, sobald `whoopKonfiguriert`), in
   `KONTO_VERARBEITUNGEN`; Empfänger `whoop` Garantie **`pruefen`** (neue Garantie-Stufe „zu prüfen (nicht belegt)“ — DPF nicht behauptet). Andere Konten
   sehen WHOOP-Werte nur über die vorhandenen Wege mit `teilt.gesundheit`; KI nur über die vorhandenen Art.-9-Wege. HOI `whoopBefunde` (nur Zähler).
-- **Oberfläche** `components/os/gesundheit/WhoopKarte.tsx` (Kachel „whoop“ unter Gesundheit nur in der EIGENEN Ansicht, System › Verbindungen mit dem
+- **Oberfläche** `components/os/gesundheit/WhoopKarte.tsx` (Kachel „whoop“ unter Gesundheit nur in der EIGENEN Ansicht, Einstellungen › Verbindungen mit dem
   Export darunter). Tests `tests/whoop-*.test.ts`, Fake `tests/fixtures/whoop-fake.ts` (Rotation, Seiten, 429, Widerruf, mehrere Konten).
 
 ## Körper-Profil je Person — keine persönlichen Gesundheitsinhalte im Code (08.10. abends, Branch `privat-raus-koerper`; UPDATES.md)
@@ -890,6 +903,23 @@ Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehm
   `/api/state/zeit?sicht=` (`bildFuerSicht`), `/api/state/zeit/einheiten|mandate?sicht=` (`sichtPruefer`, `zeilenFuerSicht`); Konto „nur Business“: Privat 403,
   ohne Parameter Business. Neue Leser der Fokus-Seite: immer mit Sicht. Wächter `tests/fokus-steuerung.test.ts`.
 
+## Nachträge 09./10.10. — Training, Schlaf, Ziele, Fokus, Google (Branches lokal; Details je Abschnitt in UPDATES.md)
+- **Training sichtbar (09.10., `training-sichtbar`):** EINE Stelle `lib/sport/training.ts` `alleEinheiten` (Läufe, Gym, Hyrox, Trainings aller Quellen; Sportart → Sparte nur über `SPORT_ZUORDNUNG`, eigene
+  Zuordnung `SportStand.sportArten`, „zählt als“ je Einheit). Nichts doppelt (Import am selben Tag in derselben Sparte wie ein Handeintrag = eine Einheit, Hand führt). Plan/Ist, Sport-Kachel und „Für dich“
+  zählen alle Einheiten; Sport hat den Reiter „Training“, der Einstieg nur noch unter „Ziele & Plan“. Wettkampf-Prognose als Spanne `lib/sport/wettkampf.ts` — Vorschläge, keine Trainingsberatung.
+- **Schlaf-Hilfe, Tages-Check, Ernährung nach WHOOP (09.10., `schlaf-ernaehrung`):** Einstellungen JE PERSON `gesundheit-alltag[--<person>]` (`lib/gesundheit/alltag*.ts`, Route NUR die Person selbst, Dienstweg
+  403, Rechnen nur mit Einwilligung (a), Ausschalten geht immer); Aufstehzeit wandert schrittweise zum Ziel (`lib/gesundheit/schlaf.ts`), Abend-Erinnerung im Takt (neutral), nichts Persönliches im Code.
+  **Stress nur als Anspannung 1–5 (10.10.):** die Ja/Nein-Frage ist aus dem Katalog (`CHECK_ABGELOEST`), Stress in der Auswertung kommt aus der Anspannung des Morgen-Checks (`gestresstAusAnspannung`, ≥ 4);
+  alte `check.stress`-Antworten bleiben liegen, werden nicht gezeigt.
+- **Gesundheits-Cockpit (09.10., `gesundheit-cockpit`):** alle WHOOP-Werte der API v2 in `vitals--<person>` (`MESS_FELDER`/`ZUSATZ_FELDER` in lib/vitals.ts: Strain, kcal, Schritte, SpO2, Schlafphasen …), Strain-Ring;
+  Handwert gewinnt weiter; die große Neugestaltung wartet (`research/gesundheit/COCKPIT_VORSCHLAG.md`).
+- **Ziele und Fokus gemeinsam und je Person (09.10., `ziele-und-wischen`):** Privat hat auf jedem Horizont drei Spalten **Unsere Ziele · Meine Ziele · <Name der anderen Person> (nur Geteiltes)**
+  (`components/os/planung/ZieleUebersicht.tsx`; je Ziel teilen über das optionale Feld `Ziel.geteilt`, Speicherort bleibt `ziele-eigen--<person>`). **Fokus** liegt in getrennten Beständen
+  (`lib/planung/fokus.ts`): Unser Fokus `fokus-privat--<haushalt>` / `fokus-business--<haushalt>` (je Gesellschaft), Mein Fokus `fokus-eigen--<person>` / `fokus-eigen-business--<person>`, je Satz teilbar;
+  Altbestand (`ziele`, `ziele-eigen`) wird nur gelesen, nichts mehr dorthin geschrieben. Die Tafel „Unser Fokus · Mein Fokus“ steht seit 10.10. in der Fokus-Seite (Abschnitt „Fokus-Steuerung“).
+- **Google: Kalender-Freigabe ergänzen ohne Trennen (09.10., `google-freigabe`):** `googleKalenderBereit` (verbunden UND `bereit` enthält „kalender“) statt nur „verbunden“; fehlt nur die Kalender-Freigabe, zeigt
+  die Business-Karte „Kalender bei Google freigeben“ (Gmail bleibt verbunden), Einstellungen „Kalender-Freigabe ergänzen“ (`POST /api/google/verbinden { funktionen: ['kalender'] }`).
+
 ## Ziele & Planung — Ziele, Meilensteine, Kaskade, Routinen (27.09. abends, nur lokal)
 - Ein Bauteil für alle Ebenen Tag · Woche · Monat · Quartal · Jahr: `components/os/planung/ZieleMeilensteine.tsx` (Ziele links,
   Meilensteine rechts, „+ neu“ oben, offen nach Rang, Erledigtes unten scrollend) + `usePlanung.ts` (laden/schreiben) +
@@ -911,7 +941,7 @@ Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehm
   (`EinheitWahl` = `Wahl` mit `onNeu`, `EinheitFilterPillen`, `EinheitMarke`, `useEinheiten`), Filter/Vorgabe rein (`passtEinheitFilter`,
   `einheitFilterOptionen`, `vorgabeEinheit`, Merker `make-aufgaben-einheit`). ZOE `create_task` nimmt `einheit`. Routinen im Business
   ebenso optional `einheit` (`sauberRoutine`). Tests `tests/aufgaben-einheit.test.ts`.
-- **Routinen** (Speicher `routinen`): `space` (fehlt = privat), `owner` (Person oder `beide`, fehlt = beide), `rhythmus`
+- **Routinen** (Speicher `routinen`; seit 10.10. erweitert, siehe „Routinen 2“ unten — die Felder hier bleiben die Kurzform): `space` (fehlt = privat), `owner` (Person oder `beide`, fehlt = beide), `rhythmus`
   (fehlt = täglich) + `naechstesMal`, `rang`; Fälligkeit in `lib/planung/rhythmus.ts` (rein, YYYY-MM-DD, Monatsende geklemmt),
   „heute dran“ je Person in `lib/planung/routinen.ts` (`heuteFaellig`, `sichtbarFuer`). Blöcke (Wochenvorlage je Person) liegen
   als `bloecke` im selben Bestand — geschrieben nur per `PATCH { bloecke: ops }`, nur eigene Blöcke (`personStreng`, sonst 403). Wer Routinen liest, filtert mit `sichtbarFuer(…, person)`.
@@ -927,7 +957,7 @@ Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehm
   Business-Blöcke als Soll). Server-Leser (Verfügbarkeit, Kapazität, Auswertung) lesen den Bestand direkt und geben nur Zahlen aus. Planer: grau „Belegt“.
   **Keine Startroutinen (08.10. abends, Fragebogen Teil 3):** ein leerer Bestand bleibt leer (die früheren Startroutinen waren die einer echten
   Person) — GET liest nur, `planung/vorschlag` nimmt nur den Bestand. Beispiele gibt es nur in der Demo-Saat (erfunden, über den PATCH).
-- Home-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im `HOME_STANDARD` je Space.
+- Heute-Widget `routinen-heute` (Einstellung `space`) in `components/os/flaeche/widgets.tsx`, im Katalog der Heute-Fläche (der Standard zeigt in Privat `routinen` = „Routinen & Streak“).
 - **Routinen 2 (10.10., Branch `routinen-2`, UPDATES.md):** Regeln (Werktage, feste Wochentage/jede n-te Woche, x-mal pro Woche, alle n Tage/Wochen/Monate,
   monatlich am Tag/n-ten Wochentag), mehrmals täglich (`uhrzeiten`), Zähler (`tagesZiel`, `zaehlWort`), `zeitraum`, `pausen`, `zielId`, `erinnerung`, `kalender`,
   `angelegtAm` — alles optional. Regel lesen NUR über `regelVon` (alter `rhythmus` = Kurzform, rechnet bit-gleich — Wächter gegen den alten Code in
@@ -1140,6 +1170,11 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
 - Gebaut und überarbeitet wird lokal auf `entwicklung`; Kevin klickt den Stand im Dev-Server (`localhost:3001`) durch
   („Klickdummy“). Nach `main`/Hetzner geht NICHTS ohne Kevins ausdrückliche Freigabe für genau diesen Stand — auch keine
   Tempo-Fixes, keine Deploy-Skripte. Frühere Freigaben gelten nicht pauschal.
+- **Live-Daten-Regel (seit 10.10., Kevin: „Malin trägt schon aktuelle Daten ein — die müssen nach dem Update auch noch da sein!“):** Seit dem Neustart am 09.10. liegen live echte Daten. Pakete erweitern
+  nur additiv (optionale Felder, neue Bestände — nie umschreiben, umbenennen oder beim Lesen verwerfen; Migrationen nur mit Archivkopie + Absichtsprotokoll + Rückweg). **Vor JEDEM Upload zwei Pflicht-Gates:**
+  (1) die **Update-Probe mit Altbestand** (`scripts/update-probe.mjs`, DEPLOY.md › „Update-Probe mit Altbestand“: Saat mit der ONLINE-Version, neue Version darauf, je Bestand vorher/nachher; steht im Bericht
+  „VERLUSTFREI: nein“, wird nicht hochgeladen; neue Bestände/Felder einer Version → Saat-Ergänzung in `scripts/update-probe/saat-zusatz.mjs` + ggf. Klick in `klicks.mjs`), (2) die **Server-Sicherung**
+  direkt davor (`deploy/sicherung.sh`, Ablauf GO_LIVE_CHECKLISTE.md). Die Schritte in einfacher Sprache stehen am Anfang von UPDATES.md („Update 12.10. — was neu ist“).
 
 ## Spaces Privat/Business (26.09., online seit 22:47)
 - Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Home/Heute/ZOE sehen beides. Regeln in
@@ -1147,38 +1182,41 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
   Fokus gemeinsam oder `privat:jahr`/`business:jahr`). Menü/Kopf: `lib/make-one/spaces.ts` (SPACES · `leisteFuer` · ZOE_EINTRAG,
   `passtZu` Pfad+Parameter), `hooks/useSpace.ts` (Adresse `?space=` gewinnt, sonst Merker). Tests `tests/spaces.test.ts`.
 - **Aufräumen Etappe 1 (08.10., Branch `aufraeumen-1`, nur lokal; Kevin: „ich weiß gar nicht mehr wo alles ist“):**
-  - **EINE Startseite „Heute“** = `/os` (`components/os/HeuteView.tsx`, gestaltbare Fläche): ohne Parameter Privat + Business zusammen, `?space=`
-    nur dieser Space — seit der Nachbesserung OHNE eigenen Schalter, die Sicht folgt `useSpace().wahl` (Kopf). Gruß + Datum einmal; Standard je Sicht `HEUTE_STANDARD` (Steht an = Widget `anstehend`,
-    Fokus, Termine, Aufgaben, Index, Wachstums-Score als Karte). **Flächen-Kennungen bleiben** (`HEUTE_FLAECHE`: `home`, `uebersicht-privat`,
-    `uebersicht-business`) — nie umbenennen, sonst sind gespeicherte Layouts weg. `/os/heute` und `/os/uebersicht` leiten in `next.config.mjs` nach
-    `/os` (Parameter wandern mit); Links nur über `WEG.heute(space?)`. `/os/wachstum` bleibt Seite (Score-Karte, Planung).
+  - **EINE Startseite „Heute“** = `/os` (`components/os/HeuteView.tsx`, gestaltbare Fläche): immer EIN Bereich — Privat oder Business, wie im Kopf gewählt
+    (`useSpace().wahl`, `?space=` gewinnt; Heute hat keinen eigenen Schalter). Gruß + Datum einmal; Standard je Sicht `HEUTE_STANDARD` (im Code lesen, nie hier
+    nachzählen): Einrichtung (solange offen) · Briefing + Fokus · Top 3 + Freigaben von ZOE · Steht an · Termine · Index · Zeit (Privat gegen Business) · Jahresziele ·
+    Aufgaben, dann Privat: Körper, Erholung, Finanzen, Familie, Essen, Routinen, Wachstums-Score | Business: Traktion, „Dran“ (Aufbau und Regeln: Abschnitt
+    „Heute: Top 3, Tages-Briefing …“). **Flächen-Kennungen bleiben** (`HEUTE_FLAECHE`: `uebersicht-privat`, `uebersicht-business`; `home` war die frühere Sicht „Alles“,
+    sie wird nicht mehr gezeigt, gespeicherte Layouts darunter bleiben liegen) — nie umbenennen, sonst sind gespeicherte Layouts weg. `/os/heute` und `/os/uebersicht`
+    leiten in `next.config.mjs` nach `/os` (Parameter wandern mit); Links nur über `WEG.heute(space?)`. Der Wachstums-Score ist nur in Privat eine Karte (`score`) und sonst
+    der Abschnitt „Wirkung“ der Fokus-Seite; `/os/wachstum` leitet dorthin (Abschnitt „Fokus-Steuerung“).
   - **Nur zwei Bereiche (09.10. spät, Kevin: „oben der Knopf Alles kann raus, es gibt nur Business oder Privat und die Zeit wird jedesmal
     gemessen im Hintergrund“) — ersetzt das „Alles“ der Nachbesserung unten:** `SPACE_WAHLEN = ['privat', 'business']`, ohne Merker gilt
     `SPACE_VORGABE` (Business). Ein altes `?space=alles` zählt wie kein Parameter (`altesAlles`; der Kopf ersetzt die Adresse per `replace`), ein
     gemerktes „alles“ wird zum zuletzt konkreten Space. Kopf: Schalter Privat · Business. „Privat gegen Business“ zeigt die Zeit-Karte auf Heute
     in beiden Sichten (`space: 'beide'`, `privatGegenBusiness` in lib/zeitmessung/modell.ts) — gemessen wird immer im Hintergrund. Neues nie
     mit einer dritten Wahl „alles“ bauen; Sammel-Sichten (Kalender „Alles“, Planung „alle“) setzen ihren Filter selbst.
-  - **Nachbesserung (08.10., Branch `aufraeumen-1b`, Kevin: „ein Schalter, oben, mit Alles“):** `SpaceWahl` = `alles` | `privat` | `business`
-    (`SPACE_WAHLEN`). `useSpace()` liefert `wahl` (Schalter/Leiste/Heute), `space` (immer konkret: Seite, sonst zuletzt konkret — Suche, ZOE,
-    Zeit) und `filter` (Space der Adresse, sonst Wahl; „alle“ bei Alles — Aufgaben, Planung, Ziele, Kalender). Wahl nur über `wahlVon`: `?space=`
-    gewinnt (auch `alles`, wird gelesen, nie erzeugt); gemerktes „Alles“ bleibt auf Seiten eines Bereichs (Gesundheit, Markttraktion … zeigen ihren
-    Bereich, der Schalter springt nicht); gemerkter Space folgt der Seite wie bisher. Merker `make-space` (Wahl, ohne = Alles) + `make-space-zuletzt`.
-    „Alles“ in der Leiste: `ALLES_EINTRAEGE` (Heute · Inbox · Kalender · Aufgaben · Planung · Finanzen `?s=gesamt` · Kontakte = Kartei · ZOE, ohne
-    `?space=`) + `ALLES_GRUPPEN` (Privat: Gesundheit, Familie · Business: Markttraktion, Mandate & Unternehmen), zusammen ≤ 12. Handy unten
-    `HANDY_LEISTE` = Heute · Inbox · Menü · ZOE · Netzwerken (≤ 5, Spalten kürzen mit „…“); „Menü“ = Blatt mit Schalter, allen Punkten der Wahl,
-    Einstellungen, Melden. Serverseitige Filter unverändert (nur Darstellung/Adresse).
-  - **Kopf** (`components/os/Kopf.tsx`): nur Schalter Privat · Business (bis 09.10. mit „Alles“) (`wechselZiel`: Gegenstück in der neuen Wahl, schon da → stehen bleiben, sonst deren Heute; am Handy kompakt) ·
-    Suche (⌘K) · Glocke · Fokus-Zähler. Kein Score, kein Index-Schalter, keine Heute/Inbox/Kalender-Knöpfe.
-  - **Leiste** (`components/os/Leiste.tsx`): nur die Punkte des aktiven Space, `leisteFuer(space)` in `lib/make-one/spaces.ts` (≤ 12): Heute ·
-    Inbox · Kalender · Aufgaben · Planung · Finanzen · (Privat: Gesundheit · Familie · Kontakte `/os/menschen` | Business: Markttraktion ·
-    Produkte & Mandate · Unternehmen — seit 10.10. getrennt, Kontakte nicht mehr im Business: Kartei über Markttraktion) · ZOE. Unten Einstellungen (`/os/system`), „Problem oder Idee melden“, Konto. Handy unten:
-    siehe Nachbesserung (fünf Einträge). `SpaceEintrag.passt` legt den Space fest, `auch` hebt nur hervor (gemeinsame
-    Seiten), Muster `=/os` = genau die Startseite; `zeitId` hält den Zeitmessungs-Schlüssel bei Umbenennung (Planung = `ziele-planung`).
-  - **Unterbereiche:** ZOE-Reiter (`components/os/ZoeReiter.tsx`, `ZOE_BEREICH`: Freigaben · Agenten · Loops · Brain · Empfang) auf allen
-    ZOE-Seiten inkl. Research/Content/Meeting/Board/Prospecting (erreichbar über ZOE › Agenten). Fokus · Kompass · Wachstum sind seit 10.10.
-    die Fokus-Seite oben rechts (Abschnitt „Fokus-Steuerung“), nicht mehr Reiter der `PlanerLeiste`. Mandate-Seite hat „Unternehmen“ als dritten Reiter.
-  - **Einstellungen** (`/os/system`, Titel „Einstellungen“): Gruppen nur in `lib/make-one/einstellungen.ts` (`EINSTELLUNGEN_GRUPPEN`: Konto &
-    Sicherheit · Verbindungen · Daten & Datenschutz · Betrieb) — jede Seite genau einmal, keine ZOE-Dinge.
+  - **Mechanik von Schalter, Merker und Handy (08.10., Branch `aufraeumen-1b`, Kevin: „ein Schalter, oben“; das dritte „Alles“ dieser Nachbesserung ist seit 09.10. zurückgenommen):**
+    `useSpace()` liefert `wahl` (Schalter/Leiste/Heute), `space` und `filter` (seit 09.10. dieselbe Wahl; Listen mit eigenem „alle“-Filter — Kalender, Planung — setzen ihn
+    selbst). Wahl nur über `wahlVon`: `?space=` gewinnt, sonst legt die Seite den Space fest (Gesundheit → Privat, Markttraktion → Business …), sonst der gemerkte (Merker
+    `make-space` + `make-space-zuletzt`, `gemerkteWahlAus`). Handy unten `HANDY_LEISTE` = Heute · Inbox · Menü · ZOE · Netzwerken (≤ 5, Spalten kürzen mit „…“); „Menü“ = Blatt
+    mit Schalter, allen Punkten der Wahl, Einstellungen, Melden. Serverseitige Filter unverändert (nur Darstellung/Adresse). Die frühere Leiste „Alles“
+    (`ALLES_EINTRAEGE`/`ALLES_GRUPPEN`) gibt es nicht mehr.
+  - **Kopf** (`components/os/Kopf.tsx`): Schalter Privat · Business (`wechselZiel`: Gegenstück in der neuen Wahl, schon da → stehen bleiben, sonst deren Heute; die Fokus-Seite
+    bleibt stehen und folgt dem Schalter, `KOPF_SEITEN`; am Handy kompakt) · Suche (⌘K) · Glocke · Fokus-Knopf (öffnet `/os/fokus`; läuft ein Fokus: Uhr, Klick beendet).
+    Kein Score, kein Index-Schalter, keine Heute/Inbox/Kalender-Knöpfe.
+  - **Leiste** (`components/os/Leiste.tsx`): nur die Punkte des aktiven Space, `leisteFuer(space)` in `lib/make-one/spaces.ts` (≤ 12): Heute · Inbox · Kalender · Aufgaben ·
+    Planung (nur Planung: Tag · Woche · Monat · Quartal · Jahr & Ziele · Routinen · Kapazität) · Finanzen · Privat: Gesundheit · Familie · Kontakte `/os/menschen` |
+    Business: Markttraktion · Produkte & Mandate · Unternehmen · ZOE. **Business hat keinen Kontakte-Punkt mehr** (Entscheidung 10.10.): die Kartei liegt in
+    Markttraktion › Kontakte & Firmen. Unten Einstellungen (`/os/system`), „Problem oder Idee melden“, Konto. Handy unten: siehe Mechanik (fünf Einträge). `SpaceEintrag.passt`
+    legt den Space fest, `auch` hebt nur hervor (gemeinsame Seiten), Muster `=/os` = genau die Startseite; `zeitId` hält den Zeitmessungs-Schlüssel bei Umbenennung
+    (Planung = `ziele-planung`, Produkte & Mandate = `mandate`).
+  - **Unterbereiche:** ZOE-Reiter (`components/os/ZoeReiter.tsx`, `ZOE_BEREICH`: Freigaben · Agenten · Loops · Brain · Empfang) auf allen ZOE-Seiten inkl.
+    Research/Content/Meeting/Board/Prospecting (erreichbar über ZOE › Agenten). Fokus · Kompass · Wachstum sind seit 10.10. die Fokus-Seite oben rechts (Abschnitt „Fokus-Steuerung“),
+    nicht mehr Reiter der `PlanerLeiste`. „Produkte & Mandate“ (`/os/mandate`: Mandate · Produkte · Fulfillment) und „Unternehmen“ (`/os/unternehmen`) sind seit 10.10. zwei
+    getrennte Punkte (Abschnitte „Produkte & Mandate · Leistungstreppe …“, „Fulfillment“, „Gesellschafts-Register“); die frühere Seite „Mandate & Unternehmen“ gibt es nicht mehr.
+  - **Einstellungen** (`/os/system`, Titel „Einstellungen“; bis 08.10. „System“ — Texte verweisen nur noch auf „Einstellungen › …“): Gruppen nur in `lib/make-one/einstellungen.ts`
+    (`EINSTELLUNGEN_GRUPPEN`: Konto & Sicherheit · Bedienung (seit 10.10., je Gerät) · Verbindungen · Daten & Datenschutz · Betrieb) — jede Seite genau einmal, keine ZOE-Dinge.
   - **Schnellsuche:** alle Seiten in `lib/make-one/seiten.ts` (`SEITEN_SUCHE`) — jede neue Seite dort eintragen. Namen: „Finanzen“ (nicht
     „Zahlen“), „Brain“ (Adresse `/os/wissen`).
   - Wächter `tests/aufraeumen-etappe1.test.ts` (≤ 12 je Space, jede Seite unter app/os erreichbar und in der Suche, Einstellungen ohne Doppel,
@@ -1441,10 +1479,18 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
   Tests `tests/produkte-treppe{,-route}.test.ts` (inkl. Altbestand bleibt unverändert).
 
 ## Fulfillment (10.10., Konzept `FULFILLMENT_KONZEPT.md`; Seite Produkte & Mandate › Fulfillment, `WEG.fulfillment`/`WEG.fall`)
+### C0 — Fundament (Branch `fulfillment-c0`; UPDATES.md)
+- **Fünf NEUE Bestände, alle Business** (`IN_BUSINESS`): `fulfillment--<h>` (Vorlagen: Prozesse, Bausteine, Einstellungen), `fulfillment-faelle--<h>`, `fulfillment-kunde--<h>`,
+  `fulfillment-dossiers--<h>`, `fulfillment-personen--<h>`, dazu der Datei-Ordner `fulfillment-unterlagen` (verschlüsselt über `bildAblegen`). Nichts wird beim Lesen angelegt; Grenzen → 413, nie kürzen.
+  Typen/Säuberer/reine Regeln/neutrale Muster (Hochhaus, Paket-Gerüste, Onboarding-Checkliste, Rituale, Playbook-Gerüst) unter `lib/fulfillment/`; Orte → `WEG` in `orte.ts`.
+- **Adressen** nur über `WEG.fulfillment(u?)` · `WEG.fall(mandatId, r?)` · `WEG.dossier` (`lib/fulfillment/adresse.ts`): die Seite ist `/os/mandate/fulfillment` (Segment „Fulfillment“ in
+  Produkte & Mandate, kein eigener Leistenpunkt; in der Schnellsuche einzeln) mit den Bereichen Prozesse · Bausteine · Onboarding · Analysen · Kreislauf · Visualisierung; ein Fall hat die Reiter
+  Überblick · Ablauf · Wert-Konto · Menschen & Entscheidungen · Takt · Kunde & Reports · Analyse. Tor `fulfillmentZugang` (Business only, `?space=privat` 403, Dienstweg schreibt nie) bzw.
+  `personenteilZugang`; öffentlich nur `/kunde/kl-…` (Abschnitt C2). Register: Routen-Modul `fulfillment`, Speicher mit Angaben, Art. 15/17, Löschfristen, VVT, Stapel-Art `fulfillment`, Morgenlauf-Schritt.
 ### C1 — Prozesse, Bausteine, Fall, Onboarding, Takt, Wert-Konto, Wirkung, Cockpit (Branch `fulfillment-c1`; UPDATES.md)
 - **Rein, EINE Stelle je Regel** in `lib/fulfillment/prozesse/`: `vorlagen-anwenden.ts` (Vorlagen-Ops mit Stand: `aus-muster` idempotent über Marken
   `muster:<id>`, `knoten`/`knoten-weg`/`knoten-rang`, `uebergang`, `baustein`, `recht-geprueft`, `urheber-geprueft`, `ritual`, `zuordnung` nur Paket-Vorlagen,
-  `einstellungen` (Kunden-Link nur Inhaber → 403), `onboarding-aus`; Struktur: eine Wurzel, ≤ 5 Ebenen, Ebene 5 nur Baustein-Verweis, Übergänge nur im
+  `einstellungen` (ohne Kunden-Link und Puls-Schwelle → 400 mit Hinweis; der Schalter nur über `POST /api/fulfillment/kunde`, Abschnitt C2), `onboarding-aus`; Struktur: eine Wurzel, ≤ 5 Ebenen, Ebene 5 nur Baustein-Verweis, Übergänge nur im
   Ablauf und auf derselben Ebene) · `import.ts` (Bausteine `vorlagen: […]` und Abläufe je `stufen`/`uebergaenge`; Kennungen `fb-imp-<quelle>`/`fp-imp-<titel>`,
   unbekannte Felder egal, nie Links/Quellenverzeichnis/Instanzwerte, nur LEERE Felder ergänzen außer „Import nehmen“, Rückgängig 30 Tage, Vorschau-Kennung
   mit Bestands-Stand → 409) · `fall.ts` (Start = Kopie der Vorlage + 8 Onboarding-Schritte `fk-ob-*` im Knoten „Onboarding“ + 4 Befähigungs-Kriterien;
@@ -1475,6 +1521,73 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
   Neue Fulfillment-Kennzahl = Eintrag dort + `ffMessung`; ohne Fall bleibt der Index bit-gleich (Wächter tests/fulfillment-c1-index.test.ts).
 - Erklärungen `lib/erklaerungen/fulfillment-prozesse.ts`; Oberfläche `components/os/fulfillment/prozesse/*` (Export über `index.tsx`, Namen fest).
   Tests `tests/fulfillment-c1-{rein,index,routen,demo}.test.ts`; Demo `lib/demo/fulfillment-prozesse.ts`.
+
+### C2 — Kunden-Link (10.10., Paket C2, Branch `fulfillment-c2`, nur lokal; FULFILLMENT_KONZEPT.md 5.2/5.4/5.5/6.4, UPDATES.md)
+- **Kommt AUSGESCHALTET — zwei Schlüssel:** Umgebung `MAKE_OS_KUNDENLINK=an` (Betrieb, erst nach Prüfung 12.4 + Kevins Freigabe) UND Instanz-Schalter
+  `einstellungen.kundenLink.an` (nur Inhaber per Sitzung, NUR über `POST /api/fulfillment/kunde { aktion: 'schalter' }` — der Vorlagen-PATCH lehnt Schalter und
+  Puls-Schwelle ab). Gelesen NUR über `kundenLinkSchalter`/`umgebungAn` (lib/fulfillment/kunde/server.ts). Aus → jeder öffentliche Weg dieselbe 404 (`NICHT_GUELTIG`).
+- **Je Mandat höchstens EIN nicht widerrufener Link** (`linkAnwenden`): ein neuer widerruft alle anderen (auch abgelaufene), „verlängern“ widerruft die anderen.
+  Rechte je Link (`formular`, `upload`, `puls`; Upload ab Werk an, je Link abschaltbar).
+- **Öffentlicher Weg:** nur die vier Formen von `KUNDE_OFFEN` (middleware.ts); jede Route ruft ZUERST `kundeZugriff` (lib/fulfillment/kunde/oeffentlich.ts: Drossel je Netz,
+  Kennung, Schalter, Link aktiv bis Ablauf bzw. Mandatsende + 30 Tage, Business-Mandat, Token, Recht) — vor dem Lesen des Körpers. Token NUR im Fragment (`#t=` Link,
+  `#p=` Puls), als Kopf `x-kunde-token`/`x-kunde-puls`, im Bestand NUR als Hash (`tokenHash`, eigener Vorsatz je Art, `timingSafeEqual`); im Klartext genau EINMAL in der
+  Antwort von `link-anlegen`/`puls-anfrage` — nie über `einmalig` (speichert Antworten), nie ins Log/Protokoll. Puls-Token öffnet NUR den Puls. Steht ein Link in
+  einer gesendeten Mail (Willkommen, Report), trägt der Mail-Spiegel das Fragment — Leser für Modelle/Protokolle schwärzen es mit `tokenSchwaerzen` (token.ts). Formulare: Stempel +
+  Honigtopf mit demselben Satz (`formularPruefen`), Bremse je Link (`bremse.ts`). Strenge Köpfe in next.config.mjs UND Caddy (`@kunde`, Wächter
+  `tests/fulfillment-kunde-middleware.test.ts`). Lesen schreibt nie (auch kein „zuletzt gesehen“ im GET).
+- **Was der Kunde sieht = EINE Positivliste** `kundenSicht` (lib/fulfillment/kunde/sicht.ts, `SICHT_SCHLUESSEL`; Wächter mit Fall voller interner Daten
+  `tests/fulfillment-c2-sicht.test.ts`) — öffentliche Seite und Vorschau „So sieht der Kunde es“ bekommen dasselbe Objekt und dieselbe Komponente `KundenAnsicht`.
+  Neuer Inhalt auf der Kunden-Seite = bewusste Änderung dort + im Wächter. Bausteine nur über `kundeTauglich` — das ist die EINE Kunden-Regel `fuerKundenFrei` aus C1
+  (nie eigene Marken-Logik; Abschnitt „Zusammen“). Formulare tragen `fo-<fnv>`, nie die Baustein-Kennung.
+- **Upload:** nur über `dateiPruefen` (Typ am INHALT, nur PDF/PNG/JPG/WEBP/HEIC/DOCX/XLSX/PPTX ohne aktive Inhalte (`aktiveInhalte`), `ohneMetadaten` für
+  JPEG/PNG/WEBP/HEIC — HEIC-`iloc` mit Grenzen, sonst 415) und
+  `unterlageAblegen` (erst Datei über `bildAblegen('fulfillment-unterlagen', 'ud-….bin')`, dann Eintrag; scheitert der Eintrag, wird die Datei entfernt). Status
+  „ungeprüft“ bis ein Mensch freigibt; C3 liest NUR über `unterlagenFuer`/`unterlageText` (nur „freigegeben“). Intern nur Download als Anhang. Kein Virenscanner.
+- **Puls:** ≤ `einstellungen.pulsSchwelle` (über den Link UND von Hand) → `melde` (Art `produkte`, OHNE Wert) + Stapel-Vorschlag `k:puls:<puls>` (Marke
+  `puls-gespraech:<puls>` im Vorlagen-Bestand, Morgenlauf holt nach); Freigabe = Follow-up `fu-kp-<fnv>`. „In die Health übernehmen“ nur per Klick über den CRM-Schreibweg
+  mit Stand. Upload-Glocke mit Bezug `kunden-link:<link>` (mehrere Uploads = eine ungelesene). „Wartet auf euch“ (Sicht und Report) nur mit GETEILTEN Entscheidungen.
+- **Report:** `reportZusatzFuer` (wirft nie, ohne Fall null) → `mitZusatz` in `lib/crm/treppe-server.ts grundlage`; PDF/Mail zeigen die neuen Abschnitte nur mit
+  `hatZusatz`. Ohne Fall Byte für Byte wie vorher (Schnappschuss `tests/fulfillment-c2-rein.test.ts`) — neue Report-Felder nur optional und nur hinter `hatZusatz`.
+  Puls-Link entsteht erst beim Klick „Senden“ (Platzhalter `PULS_PLATZHALTER` im Text).
+- **Fristen** (`kundeFristen`): nie bei leerem CRM löschen; verwaiste Dateien nur, wenn der Name in KEINEM Fulfillment-Bestand vorkommt und älter als ein Tag ist (C1-
+  Wirkungsbericht-PDFs müssen ihren Dateinamen im Fall tragen); ein unlesbarer bzw. in den letzten 30 Tagen beschädigt beiseitegelegter Bestand bricht die Prüfung ab. Tests: `tests/fulfillment-c2-{rein,sicht,route}.test.ts`, `tests/fulfillment-kunde-middleware.test.ts`.
+### C3 — Analyse (10.10., Paket C3, Branch `fulfillment-c3`, nur lokal; FULFILLMENT_KONZEPT.md 4, UPDATES.md)
+- **Dossier je Mandat** (`fulfillment-dossiers--<h>`, nur Business-Mandate): Abschnitte mit Aussagen (Art, Quelle + Abrufdatum je Aussage), Läufe, F1/F2, Interessenabwägung,
+  Prüfbericht, Diagnose-Entwurf, Leseteil-Verweis. Schritte NUR rein in `lib/fulfillment/analyse/dossier-anwenden.ts` über `fulfillmentAendern` (Stand → 409, jede inhaltliche
+  Änderung nimmt F2 und die Prüfung zurück). Agenten als Daten in `agenten.ts` (Wellen, Abhängigkeiten, KI-Kategorien, Schätzung, neutraler Auftrag) — neuer Agent = Zeile dort.
+- **Jeder Lauf einzeln bestätigt** (Kevin 22:30): Start NUR `laufStarten` aus `POST /api/fulfillment/analyse` mit bestätigtem Betrag; Schätzung neu > bestätigt → 409
+  `kostenRueckfrage`; Grenze 1,5×; ≤ 2 gleichzeitig (429), ≤ 3 je Agent (4. nur mit Grund), Pacht 10 Min. Kein Takt, kein Morgenlauf, keine Kette startet einen Lauf
+  (Wächter in `tests/fulfillment-c3-routen.test.ts`). Ergebnis = Entwurf (`ausgabePruefen`: ohne Quelle → offene Frage, nur belegbare URLs aus DIESEM Lauf, gesperrte
+  Domains raus, Negativliste raus mit Kategorie, Namen → Funktion); ins Dossier erst per Klick „übernehmen“.
+- **Web-Abruf** nur `web-lesen.ts` (`web_lesen`): DNS einmal prüfen (`lib/netz/oeffentlich.ts` — EINE Regel `ipIntern`, auch für Postfächer), mit festgehaltener Adresse
+  verbinden, 3 Weiterleitungen je neu geprüft, 5/15 s, 2 MB (HTML nur die ersten 500 KB), nur Text, robots.txt LINEAR (`robotsPasst`, nie eine RegExp aus fremden Regeln;
+  Deckel `ROBOTS`), 1/s je Host, 20 je Lauf; `htmlZuText` (lib/gmail/html.ts) ist linear — neue Säuberungs-Schritte nie als `[\s\S]*?`-Regel über fremdes HTML; erlaubt NUR Domains des Mandats, Adressen aus den ECHTEN
+  Suchergebnissen des Laufs (nie aus dem Text des Modells) und aus den Eingaben. LinkedIn, XING, Register-Portale, Transparenzregister nie (`GESPERRTE_DOMAINS`).
+- **Werkzeuge** `web_lesen`/`fall_unterlagen`/`dossier_teile` nur im Analyse-Handler (nie ZOE, nie Heads), mit Vertrag; ZOE liest über `fulfillment_lage` (Personenteil nur
+  mit `mitPersonen` + Zugang, Leseteil nie). KI ehrlich: Unternehmen ['crm','web'], A2/AP/A11–A13 ['crm'], A4 ['crm','web'] ohne Pseudonym, Zweck `fulfillment-a4-personen`.
+- **Personenteil getrennt** (`fulfillment-personen--<h>`): Karten nur aus einem bestätigten A4-Lauf (Status Entwurf, Funktion aus F1), Route `/api/fulfillment/personen` mit
+  `personenteilZugang` + Lese-Protokoll „personenrecherche“ (auch `dossier_teile` für A11–A13 über `leseZugriffLauf`); die Dossier-Antwort trägt nie Namen (`sicht.ts`).
+  A4 und A11–A13 (`PERSONEN_AGENTEN`) sowie eine EIGENE Tiefenbericht-Frage (`tiefenberichtFrageGrund`: Negativliste, Kartennamen → 400) nur mit `personenteilErlaubt`
+  (sonst 403); Entwürfe von A11–A13 an Konten ohne Recht nur als Zähler; `namenErsetzen` auch Anrede/Titel, ohne Umlaute und Nachname allein. Art.-14-Uhr (`dsgvo.ts`, verknüpfter CRM-Kontakt informiert →
+  gilt als gegeben, `mitKontaktArt14`), Löschfrist Mandatsende + Frist `fulfillment-personen` (Vermerk nur Anzahl). F2 nur mit bestandener Prüfung (`pruefen.ts`);
+  Datenschutz-Befunde nie überstimmbar.
+- **Tiefenbericht** nur als Leseteil der auslösenden Person: gelesen AUSSCHLIESSLICH über `lib/ki/leseteil.ts` in `app/api/fulfillment/dossier/leseteil` (Wächter: kein Modul
+  unter lib/fulfillment/** importiert ihn); nie an Agenten, Synthese, Brain, Suche, ZOE.
+### Zusammen — C1 + C2 + C3 gemeinsam lauffähig (11.10., Branch `fulfillment-zusammen`; UPDATES.md) — diese Regeln gelten für alle drei Pakete
+- **Kurzfassungen lesen NUR rohe Bestände** (`kundeKurzFuer` nimmt den gespeicherten Fall, nie `fallLesen`) — sonst Endlos-Schleife `fallLesen` → `fallUmfeld` → `kundeKurzFuer` → `fallLesen`.
+  Wächter `tests/fulfillment-zusammen.test.ts`: jede exportierte Funktion der drei Schnittstellen ist umhüllt; ruft eine Kette dieselbe Funktion erneut auf, wird er rot (mit dem Weg).
+- **EINE Kunden-Regel** `fuerKundenFrei`/`kundenGesperrt` (lib/fulfillment/prozesse/bausteine.ts): „nur intern“ nie, „vor Verkauf prüfen“ und „rechtlich prüfen“ erst mit Vermerk — für Kunden-Seite,
+  Vorschau, Report („wartet auf euch“), Wirkungsbericht, Antworten-Export, für Formulare UND für Schritte, die auf so einen Baustein zeigen. Nie ein eigenes Feld daneben lesen.
+- **EIN Schalter-Weg** für den Kunden-Link (`POST /api/fulfillment/kunde { aktion: 'schalter' }`, nur Inhaber); die Willkommen-Karte liest die Antwort von `link-anlegen` über `linkAdresseAus` (`url`, sonst `pfad`).
+- **Playbook im Fall:** jeder neue Fall hängt das Kunden-Playbook (Bibliothek, aus dem Muster) als Formular unter „Kunden-Playbook“ (Ebene 5); die Onboarding-Schritte stehen immer auf Ebene 4 (fehlt der
+  Teilprozess „Onboarding“, legt der Start `fk-obt` an). Antworten → Schritt erfüllt → A2 (Registerauszug) und AP (Playbook-Auswertung) laufen mit echten Daten. Analyse → Fall: Quick Wins und
+  Kick-off-Fragen gehen als `{ mandatId, ops }` an die Fall-Route.
+- **Wirkungsbericht:** Datei `wirkung-<fnv>-<tag>.bin` im Fall verzeichnet (die Fristen von C2 lassen sie liegen), Download/Anhang als `Wirkungsbericht-<tag>.pdf`; der Fristenlauf überspringt fremde Dateinamen.
+- **Ablauf-Form Kreis** (Sales Circle: Stufen im Uhrzeigersinn, „zurück an den Anfang“ als Bogen, Ergänzungen wie „Empfehlung“ auf einem gestrichelten äußeren Ring), Rhythmus täglich/werktags für Rituale
+  (Muster „Vertriebs-Huddle mit Zahlenrunde“). ZOE `fulfillment_lage` mit `mitPersonen` steht im Lese-Protokoll („personenrecherche“, `leseZugriffLauf`).
+- **Mandats-Ziele als Text bleiben erhalten:** `lib/crm/mandat-ziele.ts` ist die EINE Stelle — Texte werden als `{ id: 'z<i>', text }` gelesen (dieselbe Kennung, die der Säuberer immer vergab), Objekte bit-gleich wie bisher;
+  der CRM-Säuberer des Standes `a063e73a` hätte Text-Ziele beim ersten Fulfillment-Schreiben am Mandat verworfen. Alle Fulfillment-Leser lesen darüber; Rückweg: der alte Stand liest Objekte.
+- Offen: die Willkommensmail-Vorlage prüft `fuerKundenFrei` nicht (sie wird vor dem Senden gelesen); `components/os/fulfillment/KommtMit.tsx` ist ungenutzt (C0-Platzhalter). Mail-Spiegel-Leser für Modelle schwärzen Kunden-Link-Tokens mit `tokenSchwaerzen` (zoe-sicht, Entwurf).
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
@@ -1932,7 +2045,7 @@ Code-Kopf), sonst „Annahme“ im Kommentar.
 - **Recht:** Speicher-Register `whatsapp-spiegel` (Art. 17 `waOhnePerson` über `PersonMerkmale.telefone` + Nennung; Art. 15 `zaehlen`),
   `whatsapp-zustand`, `whatsapp-medien` (ausgenommen, über die Nachricht); VVT `vv-whatsapp` (`verzeichnisVervollstaendigen({ whatsapp })`),
   Empfänger `meta-whatsapp` (Start archiviert), Art. 15 Bereich `whatsapp`, Konto löschen → `von` „[gelöscht]“, Konto-Export eigene gesendete.
-- **Oberfläche** `components/os/whatsapp/`: `WhatsappKarte` (System › Verbindungen), `FensterUhr`, `WhatsappAntwort`, `VorlagenWaehler`,
+- **Oberfläche** `components/os/whatsapp/`: `WhatsappKarte` (Einstellungen › Verbindungen), `FensterUhr`, `WhatsappAntwort`, `VorlagenWaehler`,
   `WaMedium` (Medien NUR auf Klick aus dem eigenen Server: Bild-Vorschau über blob: nur jpeg/png/webp/gif — nie SVG —, Audio-Element ohne
   Autoplay, sonst Download; `mediumAnzeige`), `WaSymbol`. **In der Inbox eingehängt (07.10. abends):** `components/os/inbox/WhatsappTeile.tsx`
   (`WaEtikett`, `WaKopf` = Profilname + Nummer + Fenster-Uhr, `WaZustell`, `WaAntwortInbox` = WhatsappAntwort + ZOE-Entwurf als Vorschlag),
@@ -1992,6 +2105,14 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   lib/inbox/strom-server.ts, dieselbe Stelle `imBereich`): nur Postfächer mit Business-Bereich (ohne Bereich zählt nicht), nur Business-Bereiche zur
   Wahl, nur Absender-Entscheidungen aus Gesprächen dieser Postfächer. Ohne Parameter bzw. `space=privat`: alles Eigene. Wächter in
   `tests/inbox-whatsapp-ui.test.ts`.
+- **Postfach ohne Bereich ist STRENG Privat (11.10., Prüf-Fund):** EINE Regel `postfachRaum` (lib/postfach/bereich.ts) für Teilen, Flows (Aufgaben, Ablegen, „aus Gespräch“) und die Anzeige;
+  der Strom-Filter `imBereich` zeigt es nur ohne `space` (unter „Alle“) und bietet in jeder Sicht die Karte „… ist noch keinem Bereich zugeordnet“ (Server liefert nur `unzugeordnet`/`waehlbar`, nie
+  eine Nachricht). Ohne Bereich kein „Kontakt anlegen“ (Lead), Aufgaben im Privat-Space, Ablegen in Business-Ablagen nur mit Bereichswechsel (Rückfrage). Ein verbundenes Gmail ohne Register-Eintrag
+  deshalb unter Inbox › Postfächer einem Bereich zuordnen.
+- **Ansicht, Flows, Kundenpostfächer (09.10., Branches `inbox-ansicht`/`inbox-flows`/`inbox-postfaecher`; UPDATES.md):** Bereichs-Leiste oben („Alle“ + je Bereich mit Ungelesen-Zähler, Server filtert);
+  im Gespräch EIN Aktions-Block mit drei Hauptwegen Antworten · Ablegen · Aufgabe (Zuordnung Bereich › Projekt › Liste an EINER Stelle `lib/inbox/flows.ts` `aufgabenZiel`; Business-Postfach → Mandanten-Space
+  `m-<firmaId>`, wenn die Firma ein aktives Mandat hat), Häkchen „danach erledigen“ je Browser. **Kundenpostfächer:** Bereich `m-<firmaId>` (CRM-Firma mit aktivem Mandat, Raum immer Business),
+  Anbieter „Google Workspace / Gmail (App-Passwort)“ über IMAP (`research/inbox/KUNDENPOSTFAECHER.md`: unsere Google-App ist „Intern“, Fremd-Domains gehen deshalb nicht per OAuth).
 - **Recht:** Speicher-Register (5 neue Bestände mit Angaben), Art. 15/17 (`imap-stand/-text` wie Gmail, `inbox-zustand` getilgt), Konto-Export/-Löschen
   (`postfach-zugang` nie im Export), VVT `vv-email-imap` (immer nachgetragen), Empfänger-Vorgaben `ionos`/`apple-icloud-mail`, HOI `postfachBefunde`.
 - **Tests:** `tests/inbox2-rein.test.ts` (Lesen, Fächer, Fristen, Gespräche, Filter, Übernahme, Anbieter, Fehler, Vorschläge), `tests/inbox2-postfach.test.ts` (von Ende
@@ -2006,36 +2127,6 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
   Gespräche bzw. Team/WhatsApp mit „kümmert sich“ = Person), Server `aufgaben-vorschlag-server.ts` (Takt 15 Min. mit Schalter je Person, Klick „Vorschläge holen“,
   Merker-Fingerabdrücke `inbox-vorschlaege--<person>`), Stapel-Art `inbox` → `/api/tasks/create` über `aufgabeAusGespraech`. Stapel-Titel NIE mit Betreff/Namen
   (steht dauerhaft in den ZOE-Entscheidungen). Wächter `tests/inbox-teilen.test.ts`, `tests/inbox-suche-uebergeben.test.ts`.
-
-## Fulfillment — Kunden-Link (10.10., Paket C2, Branch `fulfillment-c2`, nur lokal; FULFILLMENT_KONZEPT.md 5.2/5.4/5.5/6.4, UPDATES.md)
-- **Kommt AUSGESCHALTET — zwei Schlüssel:** Umgebung `MAKE_OS_KUNDENLINK=an` (Betrieb, erst nach Prüfung 12.4 + Kevins Freigabe) UND Instanz-Schalter
-  `einstellungen.kundenLink.an` (nur Inhaber per Sitzung, NUR über `POST /api/fulfillment/kunde { aktion: 'schalter' }` — der Vorlagen-PATCH lehnt Schalter und
-  Puls-Schwelle ab). Gelesen NUR über `kundenLinkSchalter`/`umgebungAn` (lib/fulfillment/kunde/server.ts). Aus → jeder öffentliche Weg dieselbe 404 (`NICHT_GUELTIG`).
-- **Je Mandat höchstens EIN nicht widerrufener Link** (`linkAnwenden`): ein neuer widerruft alle anderen (auch abgelaufene), „verlängern“ widerruft die anderen.
-  Rechte je Link (`formular`, `upload`, `puls`; Upload ab Werk an, je Link abschaltbar).
-- **Öffentlicher Weg:** nur die vier Formen von `KUNDE_OFFEN` (middleware.ts); jede Route ruft ZUERST `kundeZugriff` (lib/fulfillment/kunde/oeffentlich.ts: Drossel je Netz,
-  Kennung, Schalter, Link aktiv bis Ablauf bzw. Mandatsende + 30 Tage, Business-Mandat, Token, Recht) — vor dem Lesen des Körpers. Token NUR im Fragment (`#t=` Link,
-  `#p=` Puls), als Kopf `x-kunde-token`/`x-kunde-puls`, im Bestand NUR als Hash (`tokenHash`, eigener Vorsatz je Art, `timingSafeEqual`); im Klartext genau EINMAL in der
-  Antwort von `link-anlegen`/`puls-anfrage` — nie über `einmalig` (speichert Antworten), nie ins Log/Protokoll. Puls-Token öffnet NUR den Puls. Steht ein Link in
-  einer gesendeten Mail (Willkommen, Report), trägt der Mail-Spiegel das Fragment — Leser für Modelle/Protokolle schwärzen es mit `tokenSchwaerzen` (token.ts). Formulare: Stempel +
-  Honigtopf mit demselben Satz (`formularPruefen`), Bremse je Link (`bremse.ts`). Strenge Köpfe in next.config.mjs UND Caddy (`@kunde`, Wächter
-  `tests/fulfillment-kunde-middleware.test.ts`). Lesen schreibt nie (auch kein „zuletzt gesehen“ im GET).
-- **Was der Kunde sieht = EINE Positivliste** `kundenSicht` (lib/fulfillment/kunde/sicht.ts, `SICHT_SCHLUESSEL`; Wächter mit Fall voller interner Daten
-  `tests/fulfillment-c2-sicht.test.ts`) — öffentliche Seite und Vorschau „So sieht der Kunde es“ bekommen dasselbe Objekt und dieselbe Komponente `KundenAnsicht`.
-  Neuer Inhalt auf der Kunden-Seite = bewusste Änderung dort + im Wächter. Bausteine nur über `kundeTauglich` (nie `nur_intern`, nie „vor Verkauf/Einsatz prüfen“ ohne
-  Vermerk — liest die Marken optional, der C0-Typ kennt `nur_intern`/`pruefen_vor_verkauf` noch nicht). Formulare tragen `fo-<fnv>`, nie die Baustein-Kennung.
-- **Upload:** nur über `dateiPruefen` (Typ am INHALT, nur PDF/PNG/JPG/WEBP/HEIC/DOCX/XLSX/PPTX ohne aktive Inhalte (`aktiveInhalte`), `ohneMetadaten` für
-  JPEG/PNG/WEBP/HEIC — HEIC-`iloc` mit Grenzen, sonst 415) und
-  `unterlageAblegen` (erst Datei über `bildAblegen('fulfillment-unterlagen', 'ud-….bin')`, dann Eintrag; scheitert der Eintrag, wird die Datei entfernt). Status
-  „ungeprüft“ bis ein Mensch freigibt; C3 liest NUR über `unterlagenFuer`/`unterlageText` (nur „freigegeben“). Intern nur Download als Anhang. Kein Virenscanner.
-- **Puls:** ≤ `einstellungen.pulsSchwelle` (über den Link UND von Hand) → `melde` (Art `produkte`, OHNE Wert) + Stapel-Vorschlag `k:puls:<puls>` (Marke
-  `puls-gespraech:<puls>` im Vorlagen-Bestand, Morgenlauf holt nach); Freigabe = Follow-up `fu-kp-<fnv>`. „In die Health übernehmen“ nur per Klick über den CRM-Schreibweg
-  mit Stand. Upload-Glocke mit Bezug `kunden-link:<link>` (mehrere Uploads = eine ungelesene). „Wartet auf euch“ (Sicht und Report) nur mit GETEILTEN Entscheidungen.
-- **Report:** `reportZusatzFuer` (wirft nie, ohne Fall null) → `mitZusatz` in `lib/crm/treppe-server.ts grundlage`; PDF/Mail zeigen die neuen Abschnitte nur mit
-  `hatZusatz`. Ohne Fall Byte für Byte wie vorher (Schnappschuss `tests/fulfillment-c2-rein.test.ts`) — neue Report-Felder nur optional und nur hinter `hatZusatz`.
-  Puls-Link entsteht erst beim Klick „Senden“ (Platzhalter `PULS_PLATZHALTER` im Text).
-- **Fristen** (`kundeFristen`): nie bei leerem CRM löschen; verwaiste Dateien nur, wenn der Name in KEINEM Fulfillment-Bestand vorkommt und älter als ein Tag ist (C1-
-  Wirkungsbericht-PDFs müssen ihren Dateinamen im Fall tragen); ein unlesbarer bzw. in den letzten 30 Tagen beschädigt beiseitegelegter Bestand bricht die Prüfung ab. Tests: `tests/fulfillment-c2-{rein,sicht,route}.test.ts`, `tests/fulfillment-kunde-middleware.test.ts`.
 
 ## Brain (lib/brain, seit 27.09.)
 - Wahrheit ist der Vault (Markdown, Obsidian). Der Index (`lib/brain/index.ts`, SQLite FTS5 + Vektoren) ist abgeleitet — seit 05.10. mit Datenschlüssel nur im tmpfs/Arbeitsspeicher (`indexOrt`, nach jedem Start neu gebaut), lokal ohne Schlüssel als Datei (bei Zweifel löschen, der Takt baut neu).
@@ -2186,29 +2277,6 @@ Kevin: „im Sales der Head of Sales, im Marketing der Head of Marketing usw. �
   (Rule of Two: `aussen`/`geld`/`loeschen` IMMER Stapel; nach fremdem Text nur `lesen`/`vorschlag` ohne Klick; Marke `fremdGelesen` gibt der Aufrufer mit).
   ZOE gibt `sicht` (Space der Seite) mit, Heads/Mitarbeiter den Bereich des Heads; Agenten-Werkzeuge prüfen gegen das in DIESEM Lauf angebotene Schema.
 
-## Fulfillment — Analyse (10.10., Paket C3, Branch `fulfillment-c3`, nur lokal; FULFILLMENT_KONZEPT.md 4, UPDATES.md)
-- **Dossier je Mandat** (`fulfillment-dossiers--<h>`, nur Business-Mandate): Abschnitte mit Aussagen (Art, Quelle + Abrufdatum je Aussage), Läufe, F1/F2, Interessenabwägung,
-  Prüfbericht, Diagnose-Entwurf, Leseteil-Verweis. Schritte NUR rein in `lib/fulfillment/analyse/dossier-anwenden.ts` über `fulfillmentAendern` (Stand → 409, jede inhaltliche
-  Änderung nimmt F2 und die Prüfung zurück). Agenten als Daten in `agenten.ts` (Wellen, Abhängigkeiten, KI-Kategorien, Schätzung, neutraler Auftrag) — neuer Agent = Zeile dort.
-- **Jeder Lauf einzeln bestätigt** (Kevin 22:30): Start NUR `laufStarten` aus `POST /api/fulfillment/analyse` mit bestätigtem Betrag; Schätzung neu > bestätigt → 409
-  `kostenRueckfrage`; Grenze 1,5×; ≤ 2 gleichzeitig (429), ≤ 3 je Agent (4. nur mit Grund), Pacht 10 Min. Kein Takt, kein Morgenlauf, keine Kette startet einen Lauf
-  (Wächter in `tests/fulfillment-c3-routen.test.ts`). Ergebnis = Entwurf (`ausgabePruefen`: ohne Quelle → offene Frage, nur belegbare URLs aus DIESEM Lauf, gesperrte
-  Domains raus, Negativliste raus mit Kategorie, Namen → Funktion); ins Dossier erst per Klick „übernehmen“.
-- **Web-Abruf** nur `web-lesen.ts` (`web_lesen`): DNS einmal prüfen (`lib/netz/oeffentlich.ts` — EINE Regel `ipIntern`, auch für Postfächer), mit festgehaltener Adresse
-  verbinden, 3 Weiterleitungen je neu geprüft, 5/15 s, 2 MB (HTML nur die ersten 500 KB), nur Text, robots.txt LINEAR (`robotsPasst`, nie eine RegExp aus fremden Regeln;
-  Deckel `ROBOTS`), 1/s je Host, 20 je Lauf; `htmlZuText` (lib/gmail/html.ts) ist linear — neue Säuberungs-Schritte nie als `[\s\S]*?`-Regel über fremdes HTML; erlaubt NUR Domains des Mandats, Adressen aus den ECHTEN
-  Suchergebnissen des Laufs (nie aus dem Text des Modells) und aus den Eingaben. LinkedIn, XING, Register-Portale, Transparenzregister nie (`GESPERRTE_DOMAINS`).
-- **Werkzeuge** `web_lesen`/`fall_unterlagen`/`dossier_teile` nur im Analyse-Handler (nie ZOE, nie Heads), mit Vertrag; ZOE liest über `fulfillment_lage` (Personenteil nur
-  mit `mitPersonen` + Zugang, Leseteil nie). KI ehrlich: Unternehmen ['crm','web'], A2/AP/A11–A13 ['crm'], A4 ['crm','web'] ohne Pseudonym, Zweck `fulfillment-a4-personen`.
-- **Personenteil getrennt** (`fulfillment-personen--<h>`): Karten nur aus einem bestätigten A4-Lauf (Status Entwurf, Funktion aus F1), Route `/api/fulfillment/personen` mit
-  `personenteilZugang` + Lese-Protokoll „personenrecherche“ (auch `dossier_teile` für A11–A13 über `leseZugriffLauf`); die Dossier-Antwort trägt nie Namen (`sicht.ts`).
-  A4 und A11–A13 (`PERSONEN_AGENTEN`) sowie eine EIGENE Tiefenbericht-Frage (`tiefenberichtFrageGrund`: Negativliste, Kartennamen → 400) nur mit `personenteilErlaubt`
-  (sonst 403); Entwürfe von A11–A13 an Konten ohne Recht nur als Zähler; `namenErsetzen` auch Anrede/Titel, ohne Umlaute und Nachname allein. Art.-14-Uhr (`dsgvo.ts`, verknüpfter CRM-Kontakt informiert →
-  gilt als gegeben, `mitKontaktArt14`), Löschfrist Mandatsende + Frist `fulfillment-personen` (Vermerk nur Anzahl). F2 nur mit bestandener Prüfung (`pruefen.ts`);
-  Datenschutz-Befunde nie überstimmbar.
-- **Tiefenbericht** nur als Leseteil der auslösenden Person: gelesen AUSSCHLIESSLICH über `lib/ki/leseteil.ts` in `app/api/fulfillment/dossier/leseteil` (Wächter: kein Modul
-  unter lib/fulfillment/** importiert ihn); nie an Agenten, Synthese, Brain, Suche, ZOE.
-
 ## Agenten — Querliegendes
 - **Ereignisstelle (09.10., E1; ANALYSE_AGENTEN_DATEN.md):** Agenten erfahren von Änderungen nur über `ereignis(e)` (`lib/ereignisse/server.ts`, wirft nie,
   Dedup über deterministische Kennung, nach dem Speichern der Quelle) → Bestand `ereignisse--<haushalt>` (nur Kennungen, nie Betreff/Text/Beträge; Frist
@@ -2314,9 +2382,8 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   120 s gepuffert (keine Schreibung alle 30 s). Route `/api/state/zeit` (GET Bild, POST Fokus-Block).
   Der Ping in `components/os/Mitarbeit.tsx` schickt `pfad`, `suche`, `space`; verbucht wird in
   `app/api/state/anwesenheit/route.ts`.
-- **Kopf (`components/os/Kopf.tsx`):** ganz links `WachstumsZahl` (Score, Klick → Wachstum),
-  Suchfeld mittig, `FokusZaehler` (localStorage `make-fokus`), rechts `SpaceSchalter` (Klick =
-  Modus-Wechsel, Pfeil = Index-Seite, Zeit heute). Ereignis `make-zeit-geaendert` frischt auf.
+- **Kopf (`components/os/Kopf.tsx`):** seit 08.10./10.10. Schalter Privat · Business, Suche, Glocke und der Fokus-Knopf (Abschnitt „Spaces Privat/Business“ › Kopf und „Fokus-Steuerung“);
+  der Score und `WachstumsZahl` stehen nicht mehr im Kopf. Der laufende Fokus (Merker `make-fokus`, `lib/zeitmessung/fokus-laufend.ts`) wird über `components/os/zeit/fokus-beenden.ts` beendet. Ereignis `make-zeit-geaendert` frischt auf.
 - **Säule `fz` „Fokus & Zeit“** in beiden Indizes: `lib/zeitmessung/kennzahlen.ts` (`FZ_SAEULE`,
   `fzKennzahlen(space)`, `fzMessen`). Gewicht 10 %, andere Säulen ×0,9 (Verhältnis bleibt; Tests
   prüfen das). Unter 1 h in 7 Tagen: Lücke, keine Note (`MIN_MESSUNG_SEK`). Die Zeit ist
@@ -2349,6 +2416,14 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   jede Schreibung über local-db setzt den Speicher zurück. Schlüssel MÜSSEN Person/Haushalt tragen. Neue teure Routen
   genauso kapseln, nie Rohdaten je Seitenwechsel neu lesen. Client: Widgets holen über `useDaten` (20 s), Kopf-Index 5 min.
 - Nie auf dem Server bauen: Auslieferung = Bild von GitHub (siehe DEPLOY.md). Server ist 1 vCPU/2 GB.
+- Messen und Laufzeit (27.09.; früher der eigene Abschnitt „Tempo (27.09.)“) — gilt gleichermaßen:
+- Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).
+- **Prüfbau und Dev-Server teilen `.data` (28.09., K1 #40):** `make-os-pruefbau` (3011) und `make-os-entwicklung` (3001) lesen und schreiben denselben Datenordner — nie gleichzeitig schreibend benutzen (einen anhalten, bevor im anderen geklickt wird). `scripts/daten-verschluesselung.mjs` bricht ab, solange eine lebende App das Lockfile `.data/.schreiber` hält (29.09.), und warnt zusätzlich, wenn auf 3000/3001/3011 eine App läuft; der HOI meldet einen zweiten Schreiber.
+- Der Live-Server hat **1 vCPU / 1,9 GB**: alles, was pro Anfrage rechnet, reiht sich hintereinander. Deshalb: keine externen Aufrufe (iCloud, Modell) im Seitenpfad, keine neuen Poller unter 30 s, jede große GET-Antwort mit `etagAus`/`unveraendert`/`jsonAntwort` (`lib/http/json-antwort.ts`).
+- Der **Anfrage-Bündler** (`lib/http/anfrage-buendel.ts`) liegt vor dem Browser-fetch: gleiche GETs an /api teilen sich eine Antwort (laufend immer, fertig 8 s; `cache: 'no-store'` = nur laufend). Schreibende Aufrufe leeren ihn und zählen die Generation hoch (Start + Ende) — ein GET aus einer älteren Generation wird weder geteilt noch frisch gehalten. Wer wirklich frisch lesen muss, nimmt `no-store`.
+- **Memo** merkt unter dem Stand vom START der Rechnung — wer während der Rechnung schreibt, macht das Ergebnis ungültig; eine ältere Rechnung überschreibt nie eine jüngere.
+- **Memo-Rauschen** (`lib/store/memo.ts` RAUSCHEN): Bestände, die oft geschrieben werden, aber in keinen Index eingehen. Neuer Bestand mit hoher Schreibfrequenz? Dort eintragen, sonst ist der Zwischenspeicher der Indizes wieder nie warm.
+- Embeddings laufen nur ab 3 CPUs (`embeddingsErlaubt`), Brain-Index-Abgleich alle 30 Min., Arbeiter höchstens 2 Läufe auf kleinen Maschinen.
 
 ## Technik
 - TypeScript strikt: vor jedem Commit `npx tsc --noEmit` — null Fehler.
@@ -2395,7 +2470,7 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   (`TIEF.schein`/`svgSchein`) — nie Vollfarbe mit Leuchtkranz. Zahlen in Ringen bleiben
   WEISS. Hauptknopf = `TIEF.knopf(farbe)`. Leuchtkränze höchstens mit Alpha 33/40.
 - **`Knopf` sperrt sich selbst (28.09., K4):** liefert `onClick` ein Promise, ist der Knopf bis zu dessen Ende gesperrt (`aria-busy`, `lib/make-one/klick-sperre.ts`). Speichern/Anlegen als `async` übergeben (`onClick={async () => { await … }}`), nicht `() => void …` — sonst greift die Sperre nicht.
-- **Schlanke, lebendige Oberfläche (seit 23./24.09.2026):** neue Seiten nur mit
+- **Schlanke, lebendige Oberfläche (seit 23./24.09.2026; Bausteine seit 04.10. in `components/os/ui`, Leiste/Kopf seit 08.10. neu — maßgeblich sind „Design & Produkt“ und die Abschnitte „Spaces Privat/Business“ und „Fokus-Steuerung“):**
   den Bauteilen aus `components/os/schlank.tsx` (Seite, Karte, Ring, Zahl,
   Balken, Chip, Zeile, Haken, Segmente) und den Leuchtfarben `LEUCHT` aus
   design.ts — Karten mit Tiefe, Glow, hochzählende Zahlen, gestaffeltes
@@ -2451,7 +2526,7 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   Konzept: `docs/konzepte/familie-und-partnerschaft.md`.
 - **Markttraktion (25.09.2026, vorher „CRM“): alles zur Kundengewinnung unter
   `/os/markttraktion`** (`/os/crm` leitet mit allen Parametern um; Adressen und
-  alte Bereiche in `lib/crm/adresse.ts`). Aufbau (seit 27.09., acht Reiter): **Überblick** (Traktions-Index, Heads, Übergaben, Befunde — `/api/crm/traktion`) · **Kontakte** · **Firmen** (Kartei + Leads) · **Deals** (Board · Liste · Kunden · Auswertung) · **Follow-up** (Fällig · Woche · Power Hour · Kadenz — `lib/crm/followup.ts` ist DIE Fälligkeitsliste, auch für Power Hour, „Für dich“ und Befunde) · **Marketing** · **Events** · **Stammdaten**. Eine Person im CRM-Bestand entfernen/umbiegen/aufzählen geht nur über `lib/crm/person-verweise.ts`; Win Rate nur über `winRate`/`WIN_RATE`, Gespräche nur über `echtesGespraech` (beide `lib/crm/pipeline.ts`). **Traction-Score** (`lib/crm/traktion.ts`):
+  alte Bereiche in `lib/crm/adresse.ts`). Aufbau: sechs Reiter (Überblick · Kontakte & Firmen · Deals · Follow-up · Marketing · Events) plus Schnellknöpfe Qualifizierung, Angebot, Planung und das Zahnrad für die Stammdaten — seit 08.10. (Aufräumen Etappe 3) NUR in `REITER_ZEILE` (`lib/crm/adresse.ts`, Abschnitt „Markttraktion — Deal- und Follow-up-Ebene“ › Reiter); `lib/crm/followup.ts` ist DIE Fälligkeitsliste, auch für Power Hour, „Für dich“ und Befunde. Eine Person im CRM-Bestand entfernen/umbiegen/aufzählen geht nur über `lib/crm/person-verweise.ts`; Win Rate nur über `winRate`/`WIN_RATE`, Gespräche nur über `echtesGespraech` (beide `lib/crm/pipeline.ts`). **Traction-Score** (`lib/crm/traktion.ts`):
   Gewichte aus dem KEMARIS-Konzept (Sichtbarkeit 15, Marketing 25, Vertrieb 30,
   Events 10, Conversions 20) → Sales 50 · Marketing 40 · Event 10; Punkte aus der
   Ampel, grau zählt nicht, gesamt = gewichtetes geometrisches Mittel, fehlende
@@ -2493,12 +2568,10 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   Rechts-Ampel). LinkedIn-Export (Connections.csv) gleicht nur mit vorhandenen
   Kontakten ab und markiert Annahmen. Head of Marketing Modus `netzwerk` (werktags ab
   8, reines Regelwerk, Art `vernetzen_runde`). MAKE OS versendet nichts.
-- **Produkte & Mandate (25.09.2026, Kevin: „Mandaten-Abteil links unter Aufgaben“):** `/os/mandate`
-  (`components/os/mandate/`, Regeln `lib/crm/produkte.ts`). Reiter Mandate (die frühere
-  Kunden-Ansicht, `MandateUebersicht` in `crm/Kunden.tsx`, jetzt mit Produkt + Phase) und
-  Produkte (Katalog = Liste `leistungen`, nach Linien, Zahlen je Produkt, Ablauf in Phasen,
-  Unterlagen als https-/Brain-Links). Sales › 3 · Kunden ist nur noch `KundenKurz` mit Sprung
-  dorthin; Links: `mandateLink(s, k)` in `lib/crm/adresse.ts`.
+- **Produkte & Mandate (25.09.2026, Kevin: „Mandaten-Abteil links unter Aufgaben“; seit 10.10. ohne „Unternehmen“ — das ist ein eigener Punkt):** `/os/mandate`
+  (`components/os/mandate/`, Regeln `lib/crm/produkte.ts`). Segmente Mandate (die frühere Kunden-Ansicht, `MandateUebersicht` in `crm/Kunden.tsx`, mit Produkt + Phase), Produkte
+  (Katalog = Liste `leistungen`, nach Linien, Zahlen je Produkt, Ablauf in Phasen, Unterlagen als https-/Brain-Links; seit 10.10. die Leistungstreppe, Abschnitt „Produkte & Mandate ·
+  Leistungstreppe …“) und Fulfillment (Abschnitt „Fulfillment“). Sales › 3 · Kunden gibt es nicht mehr; Links: `mandateLink(s, k)` in `lib/crm/adresse.ts`.
 - **Kontaktakte (25.09.2026, Kevin: „die ganze Matrix … auf einem Bild“):**
   Karteikarte oben rechts „Akte öffnen ⤢“ → `/os/markttraktion?s=kontakte&a=akte&k=<id>`
   (`components/os/crm/Akte.tsx`, Regeln `lib/crm/akte.ts`). Kopf: Zurück (Knopf, Esc,
@@ -2730,15 +2803,6 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   Ermäßigungshöchstbetrag; `estJahre` nutzt DENSELBEN Steuerrechner wie die Achse (`selbstSteuerrechner`, `Steuerrechner.jahre()`) — nie eine zweite
   Steuerrechnung daneben. (6) **Kennzahlen** je Bereich mit dessen Arbeitsplan (`arbeitsplanFuer`). (7) Neue optionale Felder: `kernStand`, `handAlt`,
   `selbst.lohn2VorPlan` (Gehalt 2 Jan–Sep, nur bei Zusammenveranlagung), `Aenderung.eintrag`. **Rückweg nur mit Sicherung** (UPDATES.md).
-
-## Tempo (27.09.)
-- Tempo misst man im **Prüfbau** (`make-os-pruefbau`, Port 3011, `MAKE_OS_DIST=.next-pruefbau npx next build`) oder auf dem Server — nie auf 3001 (Entwicklungsmodus übersetzt jede Seite beim ersten Aufruf).
-- **Prüfbau und Dev-Server teilen `.data` (28.09., K1 #40):** `make-os-pruefbau` (3011) und `make-os-entwicklung` (3001) lesen und schreiben denselben Datenordner — nie gleichzeitig schreibend benutzen (einen anhalten, bevor im anderen geklickt wird). `scripts/daten-verschluesselung.mjs` bricht ab, solange eine lebende App das Lockfile `.data/.schreiber` hält (29.09.), und warnt zusätzlich, wenn auf 3000/3001/3011 eine App läuft; der HOI meldet einen zweiten Schreiber.
-- Der Live-Server hat **1 vCPU / 1,9 GB**: alles, was pro Anfrage rechnet, reiht sich hintereinander. Deshalb: keine externen Aufrufe (iCloud, Modell) im Seitenpfad, keine neuen Poller unter 30 s, jede große GET-Antwort mit `etagAus`/`unveraendert`/`jsonAntwort` (`lib/http/json-antwort.ts`).
-- Der **Anfrage-Bündler** (`lib/http/anfrage-buendel.ts`) liegt vor dem Browser-fetch: gleiche GETs an /api teilen sich eine Antwort (laufend immer, fertig 8 s; `cache: 'no-store'` = nur laufend). Schreibende Aufrufe leeren ihn und zählen die Generation hoch (Start + Ende) — ein GET aus einer älteren Generation wird weder geteilt noch frisch gehalten. Wer wirklich frisch lesen muss, nimmt `no-store`.
-- **Memo** merkt unter dem Stand vom START der Rechnung — wer während der Rechnung schreibt, macht das Ergebnis ungültig; eine ältere Rechnung überschreibt nie eine jüngere.
-- **Memo-Rauschen** (`lib/store/memo.ts` RAUSCHEN): Bestände, die oft geschrieben werden, aber in keinen Index eingehen. Neuer Bestand mit hoher Schreibfrequenz? Dort eintragen, sonst ist der Zwischenspeicher der Indizes wieder nie warm.
-- Embeddings laufen nur ab 3 CPUs (`embeddingsErlaubt`), Brain-Index-Abgleich alle 30 Min., Arbeiter höchstens 2 Läufe auf kleinen Maschinen.
 
 ## ZOE (27.09.)
 - Der Assistent heißt **ZOE** (immer groß in Texten). Code: `lib/zoe`, `app/zoe`, `/api/zoe/*`, Bestände `zoe-*`. Alte `jarvis-*`-Dateien werden beim ersten Lesen übernommen (local-db); `/jarvis` und `/api/jarvis/*` leiten um — beides nicht entfernen, solange alte Arbeiter, Boten oder Lesezeichen leben.

@@ -33,7 +33,7 @@ export const INFO_FRIST_TAGE = 3;
  * so da, damit Next sie einsetzt). Fehlt beides, steht im Entwurf sichtbar `VERANTWORTLICHER_FEHLT` bzw. `KONTAKTWEG_FEHLT` und `fehlt: true`
  * — die Oberfläche zeigt dazu einen Hinweis; nie ein Name oder eine Adresse aus dem Code.
  */
-export const KONTAKTWEG_FEHLT = '[Kontaktweg fehlt — unter System › Datenschutz eintragen]';
+export const KONTAKTWEG_FEHLT = '[Kontaktweg fehlt — unter Einstellungen › Datenschutz eintragen]';
 export interface DatenschutzAngaben { mail: string; seite: string; verantwortlich: string; /** Nichts eingerichtet: Verantwortlicher und/oder Kontaktweg fehlen. */ fehlt?: boolean }
 export function datenschutzAngaben(): DatenschutzAngaben {
   const mail = process.env.NEXT_PUBLIC_MAKE_DATENSCHUTZ_MAIL || '';

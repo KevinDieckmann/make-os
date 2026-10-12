@@ -33,7 +33,7 @@ export function Analysen() {
     <div style={{ display: 'grid', gap: 12 }}>
       <Raster min={160}>
         <Kennzahl label="Dossiers" wert={String(daten.dossiers.length)} />
-        <Kennzahl label="Geprüft (F2)" wert={String(daten.dossiers.filter(d => d.f2).length)} />
+        <Kennzahl label="Dossier geprüft (F2)" wert={String(daten.dossiers.filter(d => d.f2).length)} />
         <Kennzahl label="Kosten gesamt" wert={euroText(daten.kostenCent)} />
         <Kennzahl label="Art. 14 bald fällig" wert={String(art14)} ton={art14 ? LEUCHT.achtung : undefined} />
       </Raster>

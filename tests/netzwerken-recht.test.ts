@@ -80,7 +80,7 @@ describe('3 · Art. 13: der Datenschutzhinweis in der Danke-Mail', () => {
   it('steht am Ende der Entwurfs-Mail (nach Gruß und Absender); ohne Einrichtung sichtbar „fehlt“ statt fester Angaben aus dem Code', () => {
     const e = dankeEntwurf({ vorname: 'Anna', nachname: 'Beispiel', anrede: 'Sie', eventTitel: 'X', wann: 'gestern', absender: 'Kevin' });
     expect(e.text.split('\n').slice(-2)[0]).toBe('—');
-    expect(e.text).toMatch(/Datenschutz: Ich habe mir Ihre Kontaktdaten .*Verantwortlich: Verantwortlicher fehlt — unter System › Datenschutz eintragen\).* \[Kontaktweg fehlt — unter System › Datenschutz eintragen\]$/);
+    expect(e.text).toMatch(/Datenschutz: Ich habe mir Ihre Kontaktdaten .*Verantwortlich: Verantwortlicher fehlt — unter Einstellungen › Datenschutz eintragen\).* \[Kontaktweg fehlt — unter Einstellungen › Datenschutz eintragen\]$/);
     expect(e.text).not.toMatch(/makeinnovation|MAKE Innovation/);
     expect(dankeEntwurf({ nachname: 'B', anrede: 'Sie', eventTitel: 'X', wann: 'neulich', absender: 'Kevin', datenschutz: a }).text).toContain('datenschutz@beispiel.example');
   });

@@ -82,7 +82,7 @@ export function rechte(art: AuskunftArt): Recht[] {
     { recht: 'Einschränkung der Verarbeitung', norm: 'Art. 18 DSGVO', text: 'Statt zu löschen, können Sie verlangen, dass wir Ihre Daten nur noch aufbewahren, aber nicht mehr verwenden.' },
     { recht: 'Datenübertragbarkeit', norm: 'Art. 20 DSGVO', text: art === 'konto' ? 'Unter Konto › Meine Daten › „Meine Daten herunterladen“ (maschinenlesbar, JSON).' : 'Die Daten, die Sie uns gegeben haben, erhalten Sie maschinenlesbar (diese JSON-Datei).' },
     { recht: 'Widerspruch', norm: 'Art. 21 DSGVO', text: 'Gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 6 Abs. 1 lit. f) aus Gründen Ihrer besonderen Situation; gegen Werbung jederzeit und ohne Begründung — dann sprechen wir Sie nicht mehr werblich an (Werbesperre).' },
-    { recht: 'Widerruf einer Einwilligung', norm: 'Art. 7 Abs. 3 DSGVO', text: art === 'konto' ? 'Einwilligungen (z. B. Gesundheit, KI) widerrufen Sie selbst unter System › Datenschutz — mit Wirkung für die Zukunft.' : 'Eine Einwilligung können Sie jederzeit mit Wirkung für die Zukunft widerrufen — auch über den Abmeldelink in jeder Werbe-Mail.' },
+    { recht: 'Widerruf einer Einwilligung', norm: 'Art. 7 Abs. 3 DSGVO', text: art === 'konto' ? 'Einwilligungen (z. B. Gesundheit, KI) widerrufen Sie selbst unter Einstellungen › Datenschutz — mit Wirkung für die Zukunft.' : 'Eine Einwilligung können Sie jederzeit mit Wirkung für die Zukunft widerrufen — auch über den Abmeldelink in jeder Werbe-Mail.' },
   ];
 }
 
