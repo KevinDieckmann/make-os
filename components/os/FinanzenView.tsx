@@ -139,7 +139,10 @@ function Inhalt({ ort, zugang, inhaber, planZugang, altbestand, u, t }: { ort: F
   if (reiter === 'liquiditaet') return <LiquiditaetView />;
   if (reiter === 'buchungen') return <BuchungenView bereich="business" />;
   if (ort.unter === 'controlling' && inhaber) return <ControllingView />;
-  return inhaber ? <BusinessCockpit eingebettet darunter={<ZahlenBusiness ohneStreifen />} /> : inhaber === false ? <ZahlenBusiness /> : null;
+  // Konten, Fälliges und Monat (ZahlenBusiness) lesen die GEMEINSAMEN Finanz-Bestände (Finanzplan-Listen, Liquiplan, Buchungen) — die tragen
+  // Privates und gehen nur an volle Mitglieder (`privatFinanzZugang`). Ein Konto „nur Business“ sieht hier das Cockpit ohne sie, statt
+  // leerer Nullen (Gesamtprüfung 12.10.: vorher brach die Seite für dieses Konto ab).
+  return inhaber ? <BusinessCockpit eingebettet darunter={zugang ? <ZahlenBusiness ohneStreifen /> : undefined} /> : inhaber === false && zugang ? <ZahlenBusiness /> : null;
 }
 
 /** Altbestand der Selbstständigkeit — geladen erst auf Klick. */

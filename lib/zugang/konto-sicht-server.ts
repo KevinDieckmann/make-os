@@ -28,6 +28,16 @@ export async function kontoSichtLaden(person: string): Promise<KontoSicht> {
   return kontoSichtAus(st, person, { verarbeiten: !!g?.verarbeitungErlaubt, ki: !!g?.ki.an });
 }
 
+/**
+ * Haushalt für BUSINESS-Bestände je Haushalt bzw. Person (Netzwerken, Visitenkarten — Gesamtprüfung 12.10.): `haushaltFuer` schließt Konten
+ * „nur Business“ aus, weil es für die PRIVATEN Haushaltsfinanzen gedacht ist — Netzwerken ist aber Business, und ein Vertriebspartner sah dort
+ * nur 403. Hier: jedes Konto im Haushalt der Inhaber, das Business sieht, mit eingetragenem Haushalt — sonst null (fremder Haushalt, Testkunde).
+ */
+export async function businessHaushaltFuer(person: string | null | undefined): Promise<{ person: string; haushalt: string } | null> {
+  const s = await kontoSicht(person);
+  return s && s.imHaushalt && s.business && s.haushalt ? { person: s.person, haushalt: s.haushalt } : null;
+}
+
 /** Wird für diese Person der Privat-Bereich ausgeblendet („nur Business“)? Systemlauf → nein. Unlesbarer Konten-Bestand wirft. */
 export async function privatAusgeblendetFuer(person: string | null | undefined): Promise<boolean> {
   return !!(await kontoSicht(person))?.nurBusiness;

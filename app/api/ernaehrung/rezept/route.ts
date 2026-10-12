@@ -11,6 +11,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey, fremd } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { sauberDatei, wendeAn, neueId, TAGE, MAHLZEITEN, type ErnaehrungFile, type Gericht, type Tag, type Mahlzeit, type Op, PROFIL_DISKRET } from '@/lib/ernaehrung/modell';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
@@ -20,8 +21,15 @@ import { namenFuer, gerichtNeutral, ohneNamen } from '@/lib/ernaehrung/neutral';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+/** Ernährung ist Privat-Bereich des Haushalts — ein Konto „nur Business“ (`finanzRecht: 'business'`) bekommt nichts (Gesamtprüfung 12.10.). */
+async function zugang(req: Request) {
   const z = await imHaushaltDesInhabers(req);
+  if (!z || (await privatAusgeblendetFuer(z.person).catch(() => true))) return null;
+  return z;
+}
+
+export async function POST(req: Request) {
+  const z = await zugang(req);
   if (!z) return NextResponse.json({ error: 'Nur für den Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { name?: string; beschreibung?: string; text?: string; tag?: string; mahlzeit?: string } = {};

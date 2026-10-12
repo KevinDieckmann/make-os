@@ -105,7 +105,7 @@ export function Leiste() {
 
   // Handy unten: fünf Einträge (HANDY_LEISTE). Heute und Inbox folgen der Wahl; „Menü“ leuchtet, wenn das Blatt offen ist oder die
   // Seite ein Punkt der Leiste ist, der unten nicht eigens steht (Aufgaben, Finanzen, Gesundheit …), oder in den Einstellungen.
-  const inboxEintrag = leisteFuer(wahl).find(e => e.label === 'Inbox') ?? { href: WEG.inbox() };
+  const inboxEintrag = leisteFuer(wahl, !!nurBusiness).find(e => e.label === 'Inbox') ?? { href: WEG.inbox() };
   const unten = [
     { art: 'link' as const, href: sp.start, label: 'Heute', icon: Sun, an: pfad === '/os' },
     { art: 'link' as const, href: inboxEintrag.href, label: 'Inbox', icon: Inbox, an: pfad === '/os/inbox' || pfad.startsWith('/os/inbox/') },
@@ -134,7 +134,7 @@ export function Leiste() {
         {/* Die Wahl (oben im Kopf) — nur als Beschriftung, in ihrer Farbe. */}
         {!zu && <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: sp.farbe, padding: '0 10px 6px' }}>{sp.label}</div>}
         {/* Die Punkte des Space, dann ZOE (gemeinsam). */}
-        {leisteFuer(wahl).map(e => zeile(e, punktAn?.href === e.href, e === ZOE_EINTRAG ? C.aktiv : sp.farbe))}
+        {leisteFuer(wahl, !!nurBusiness).map(e => zeile(e, punktAn?.href === e.href, e === ZOE_EINTRAG ? C.aktiv : sp.farbe))}
 
         <div style={{ marginTop: 'auto', display: 'grid', gap: 1 }}>
           <div style={{ borderTop: `1px solid ${C.linie}`, margin: '10px 0 8px' }} />
@@ -160,7 +160,7 @@ export function Leiste() {
               ); })}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
-              {leisteFuer(blattWahl).map(e => { const Icon = e.icon; const an = blattWahl === wahl && punktAn?.href === e.href; const farbe = e === ZOE_EINTRAG ? C.aktiv : spaceVon(blattWahl).farbe; return (
+              {leisteFuer(blattWahl, !!nurBusiness).map(e => { const Icon = e.icon; const an = blattWahl === wahl && punktAn?.href === e.href; const farbe = e === ZOE_EINTRAG ? C.aktiv : spaceVon(blattWahl).farbe; return (
                 <Link key={e.href} href={e.href} onClick={() => { setzen(blattWahl); setOffen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 10px', minHeight: 44, minWidth: 0, boxSizing: 'border-box', borderRadius: 12, textDecoration: 'none', color: an ? farbe : C.ink, background: an ? `${farbe}14` : 'transparent', fontSize: TYP.body, fontWeight: an ? 600 : 500 }}>
                   <Icon size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>
                 </Link>
