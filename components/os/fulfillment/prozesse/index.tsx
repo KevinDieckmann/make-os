@@ -15,3 +15,4 @@ export { FallAblauf } from './FallAblauf';
 export { FallWert } from './FallWert';
 export { FallMenschen } from './FallMenschen';
 export { FallTakt } from './FallTakt';
+export { FallKreislauf } from './FallKreislauf';

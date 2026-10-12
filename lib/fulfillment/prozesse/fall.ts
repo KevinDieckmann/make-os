@@ -24,6 +24,9 @@ export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis',
 /** Felder, die ein Diff vergleicht (ohne Rang — die Reihenfolge darf der Fall behalten). */
 const DIFF_FELDER = STRUKTUR_FELDER.filter(f => f !== 'rang');
 
+/** Der Starttag eines Falls: der gewählte (`startAm`), sonst der Tag des Anlegens. EINE Stelle für Anzeige, Quick-Win-Frist und Kennzahl. */
+export const fallStartTag = (f: Pick<Fall, 'startAm' | 'gestartetAm'>): string => f.startAm ?? f.gestartetAm.slice(0, 10);
+
 const kopie = (k: ProzessKnoten): FallKnoten => {
   const x: Record<string, unknown> = { id: k.id, status: 'offen' };
   for (const f of STRUKTUR_FELDER) if (k[f] !== undefined) x[f] = k[f];
@@ -90,6 +93,7 @@ export function fallStarten(e: StartEingabe): Fall {
   }
   return {
     mandatId: e.mandatId, vorlageId: v.id, vorlageFassung: v.fassung, gestartetAm: e.jetzt, gestartetVon: e.person, status: 'onboarding',
+    ...(e.start && e.start !== e.jetzt.slice(0, 10) ? { startAm: e.start } : {}),
     knoten, freigaben: {}, onboarding: {}, stakeholder: [], entscheidungen: [], rituale: [], mitschriften: [], quickWins: [], kickoffFragen: [], wertKonto: {},
     befaehigung: MUSTER_BEFAEHIGUNG.map((text, i) => ({ id: `bf-${i + 1}`, text, erfuellt: false })),
     marken: {}, geaendert: e.jetzt, geaendertVon: e.person,
@@ -346,7 +350,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
             if (!istObj(x)) nein(`Quick Win ${i + 1}: Objekt erwartet.`);
             const text = pflichtText(x.text, 'kurz', `Quick Win ${i + 1}`);
             if (f.quickWins.some(q => q.text.toLowerCase() === text.toLowerCase())) continue;
-            const bis = optTag(x.bis, `Quick Win ${i + 1}: bis`) ?? tagPlus(f.gestartetAm.slice(0, 10), 30);
+            const bis = optTag(x.bis, `Quick Win ${i + 1}: bis`) ?? tagPlus([fallStartTag(f), k.heute].sort().at(-1)!, 30);
             f.quickWins.push({ id: k.neueId('fq'), text, bis, quelle: x.quelle === 'analyse' ? 'analyse' : 'hand' });
           }
           geaendert.push('quickwins');

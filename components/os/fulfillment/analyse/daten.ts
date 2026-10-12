@@ -43,6 +43,23 @@ export async function senden(url: string, body: unknown, methode: 'POST' | 'PATC
 }
 export const fehlerVon = (a: Antwort): string | null => (a.status >= 200 && a.status < 300 && a.j.ok !== false ? null : String(a.j.fehler ?? `Fehler (${a.status || 'keine Verbindung'}).`));
 
+/** Was aus der Diagnose in den Fall geht (nach F2): Quick Wins, Kick-off-Fragen, Maßnahmen (Zusatz-Schritte der Phase nach der Diagnose). */
+export type NachFallWas = 'quickwins' | 'fragen' | 'massnahmen';
+export const NACH_FALL_TEXT: Record<NachFallWas, string> = { quickwins: 'Quick Wins stehen im Fall.', fragen: 'Kick-off-Fragen stehen im Fall.', massnahmen: 'Maßnahmen stehen als Zusatz-Schritte im Ablauf.' };
+/**
+ * Übernimmt einen Teil der Diagnose in den Fall — der Server liefert den Schritt (`nach-fall`), der Browser schickt ihn über den Schreibweg des Falls
+ * (PATCH /api/fulfillment/fall). Danach laden alle Ansichten des Falls neu. Ergebnis: Fehlertext oder null.
+ */
+export async function inDenFall(mandatId: string, was: NachFallWas): Promise<string | null> {
+  const r = await senden('/api/fulfillment/dossier', { aktion: 'nach-fall', mandatId, was });
+  const f = fehlerVon(r);
+  if (f) return f;
+  const w = await senden(String(r.j.ziel), r.j.body, 'PATCH');
+  const g = fehlerVon(w);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('make-fulfillment-geaendert'));
+  return g ? `Fall: ${g}` : null;
+}
+
 export function useAnalyse(mandatId: string) {
   const [dossier, setDossier] = useState<DossierLage | null>(null);
   const [lage, setLage] = useState<AnalyseLage | null>(null);

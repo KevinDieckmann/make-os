@@ -11,6 +11,7 @@ import type { KennzahlDefBasis, Messung, Detail, Ampel } from '@/lib/kennzahlen/
 import type { DossierKurz, Fall } from '../typen';
 import { tageZwischen, wartetAufEuch } from '../regeln';
 import { wertDurchschnitt } from './wert';
+import { fallStartTag } from './fall';
 import { WEG } from '@/lib/wege';
 
 // ── 1. Erfolgsmaße (1.4) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -64,7 +65,7 @@ export function ffKennzahlenRechnen(faelle: readonly FfFallDaten[], e: { heute: 
     return fest.length > 0 && fest.every(t => tageZwischen(x.kickoffTag!, t) !== undefined && t <= addTage(x.kickoffTag!, 7));
   });
   k('ff_wertkonto', 'Wert-Konto bis Kick-off + 7', 'fulfillment.kennzahl.wertkonto', wk.length ? (wk.filter(Boolean).length / wk.length) * 100 : null, pz, wk.length, 'Noch kein Kick-off, das sieben Tage zurückliegt');
-  const qw = faelle.filter(x => tageZwischen(tag(x.fall.gestartetAm), e.heute)! >= 30).map(x => x.fall.quickWins.some(q => q.erledigtAm && q.erledigtAm <= addTage(tag(x.fall.gestartetAm)!, 30)));
+  const qw = faelle.filter(x => tageZwischen(fallStartTag(x.fall), e.heute)! >= 30).map(x => x.fall.quickWins.some(q => q.erledigtAm && q.erledigtAm <= addTage(fallStartTag(x.fall), 30)));
   k('ff_quickwin_30', 'Quick Win in 30 Tagen', 'fulfillment.kennzahl.quickwin', qw.length ? (qw.filter(Boolean).length / qw.length) * 100 : null, pz, qw.length, 'Noch kein Fall, der 30 Tage läuft');
   const rt = aktiv.filter(x => x.fall.status === 'laeuft').map(x => !!x.reportLetzter && (tageZwischen(x.reportLetzter, e.heute) ?? 99) <= 14);
   k('ff_report_takt', 'Report-Takt eingehalten', 'fulfillment.kennzahl.reporttakt', rt.length ? (rt.filter(Boolean).length / rt.length) * 100 : null, pz, rt.length, 'Noch kein laufender Fall nach dem Onboarding');

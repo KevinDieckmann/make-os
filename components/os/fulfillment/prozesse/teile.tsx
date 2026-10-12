@@ -7,6 +7,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Chip, Feldzeile, Schalter, LEUCHT, feld as FELD_STIL } from '../../ui';
+import { Lock, Scale, BookLock } from 'lucide-react';
 import { Fenster } from '../../Fenster';
 import { Wahl } from '../../crm/Wahl';
 import { ORTE, type OrtId } from '@/lib/fulfillment/orte';
@@ -35,13 +36,29 @@ export function Meldung({ text, art = 'gut' }: { text: string | null; art?: 'gut
   return text ? <Hinweis art={art} rolle={art === 'kritisch' ? 'alert' : 'status'}>{text}</Hinweis> : null;
 }
 
-/** Marken eines Bausteins: nur intern · rechtlich prüfen · vor Verkauf prüfen. */
+/** Texte der internen Marken (Tooltip und Vorleser) — EINE Stelle. */
+export const MARKE_TEXT = {
+  nurIntern: 'Nur intern — geht nie an Kunden (Kunden-Seite, Report, Wirkungsbericht, Export).',
+  rechtOffen: 'Vor Einsatz rechtlich prüfen — bis zum Vermerk „geprüft“ nicht beim Kunden.',
+  vorVerkaufOffen: 'Material Dritter — vor Verkauf prüfen; bis zum Vermerk nicht beim Kunden.',
+} as const;
+
+/**
+ * Marken eines Bausteins (nur intern · rechtlich prüfen · vor Verkauf prüfen) — seit 12.10. ruhig: ein kleines Zeichen mit Tooltip statt eines
+ * farbigen Chips (Kevin: „interne Marken ruhig“). Erscheint nur in internen Ansichten; die Kunden-Sicht kennt die Marken gar nicht (Positivliste).
+ */
 export function BausteinMarken({ b }: { b: Pick<BausteinKurz, 'nurIntern' | 'rechtOffen' | 'vorVerkaufOffen'> & { rechtGeprueft?: unknown } }) {
+  const z = (k: keyof typeof MARKE_TEXT, Zeichen: typeof Lock) => (
+    <span key={k} role="img" aria-label={MARKE_TEXT[k]} title={MARKE_TEXT[k]} style={{ display: 'inline-grid', placeItems: 'center', width: 22, height: 22, borderRadius: 11, color: C.inkDim, border: `1px solid ${C.linie}` }}>
+      <Zeichen size={13} aria-hidden />
+    </span>
+  );
+  if (!b.nurIntern && !b.rechtOffen && !b.vorVerkaufOffen) return null;
   return (
-    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6 }}>
-      {b.nurIntern && <Chip farbe={LEUCHT.agenten}>nur intern</Chip>}
-      {b.rechtOffen && <Chip farbe={LEUCHT.achtung}>vor Einsatz rechtlich prüfen</Chip>}
-      {b.vorVerkaufOffen && <Chip farbe={LEUCHT.achtung}>Material Dritter — vor Verkauf prüfen</Chip>}
+    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+      {b.nurIntern && z('nurIntern', Lock)}
+      {b.rechtOffen && z('rechtOffen', Scale)}
+      {b.vorVerkaufOffen && z('vorVerkaufOffen', BookLock)}
     </span>
   );
 }

@@ -13,6 +13,7 @@ import type { FfKennzahl } from '@/lib/fulfillment/prozesse/kennzahlen';
 import type { CockpitZeile, Haenger } from '@/lib/fulfillment/prozesse/cockpit';
 import type { MusterWahl } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import type { Mandat } from '@/lib/crm/typen';
+import type { NachsorgePunkt } from '@/lib/fulfillment/prozesse/ansichten';
 
 export const EREIGNIS = 'make-fulfillment-geaendert';
 export const geaendert = () => { if (typeof window !== 'undefined') window.dispatchEvent(new Event(EREIGNIS)); };
@@ -61,6 +62,14 @@ export interface FallAntwort {
   termine?: Record<string, string | null>;
   kunde?: KundeKurz | null;
   report?: { erstelltAm?: string; gesendetAm?: string } | null;
+  /** Erstellte Fortschritts-Reports (Kennung + Zeit) — die Report-Zeitachse (12.10.). */
+  reports?: { id: string; am: string }[];
+  /** Follow-ups am Mandat (Nachsorge, Puls-Gespräch, Empfehlung) — Text, Tag, Stand. */
+  followups?: { id: string; text: string; faellig: string; status: string }[];
+  /** Was aus der Diagnose (Dossier, nach F2) noch nicht im Fall steht. */
+  analyse?: { f2: boolean; diagnose: boolean; quickWins: string[]; fragen: number; massnahmen: string[]; ziel: string | null } | null;
+  /** Die Nachsorge als Plan ab Mandatsende. */
+  nachsorge?: { ende: string | null; plan: NachsorgePunkt[] };
 }
 export interface CockpitAntwort { heute: string; zeilen: CockpitZeile[]; haengt: Haenger[]; kapa: { stundenWoche: number; frei: number | null; ueber: boolean } | null }
 export type { KnotenStatus };

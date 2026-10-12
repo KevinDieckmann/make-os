@@ -81,6 +81,8 @@ export interface WertKontoEintrag { ausgang?: string; ausgangZahl?: number; ziel
 export interface Fall {
   mandatId: string; vorlageId: string; vorlageFassung: number;
   gestartetAm: string; gestartetVon: string; status: 'onboarding' | 'laeuft' | 'pausiert' | 'abgeschlossen';
+  /** Gewählter Starttag (YYYY-MM-DD, 12.10.) — kann vor dem Anlegen liegen (Bestandsmandat). Fehlt: Tag von `gestartetAm`. Lesen nur über `fallStartTag`. */
+  startAm?: string;
   knoten: FallKnoten[];
   freigaben: Record<string, { am: string; von: string; kunde?: { wie: 'kickoff' | 'mail' | 'link' | 'termin'; am: string }; notiz?: string }>;
   onboarding: { willkommenGesendetAm?: string; willkommenVon?: string };

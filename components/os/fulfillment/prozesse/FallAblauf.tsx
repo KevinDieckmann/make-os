@@ -21,14 +21,16 @@ import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { fallReise, phaseGruppen, phasenVon, statusOps, FREIGABE_WER, ONBOARDING_SPRUNG, type ReisePhase, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
 import { obSchluessel } from '@/lib/fulfillment/prozesse/onboarding';
+import { schrittVerweis, type SchrittVerweis } from '@/lib/fulfillment/prozesse/ansichten';
 import { kinderVon } from '@/lib/fulfillment/regeln';
 import { OB_TEIL_ID } from '@/lib/fulfillment/prozesse/fall';
 import type { FallKnoten, KnotenStatus } from '@/lib/fulfillment/typen';
 import { useFall, fallOps, fallAktion, fehlerText, tagKurz, STATUS_TEXT, type FallAntwort } from './daten';
-import { klein, feld, Leiste, Meldung, useTextFrage } from './teile';
+import { klein, feld, Leiste, Meldung, useTextFrage, BausteinMarken } from './teile';
 import { FreigabeRaute, JETZT, ZUSTAND_FARBE } from '../reise/bilder';
 import { useSprung, insBild } from '../reise/sprung';
 import { useFallSprung } from '../reise/FallKopf';
+import type { FallReiter } from '@/lib/fulfillment/adresse';
 
 const STATUS_FARBE: Record<KnotenStatus, string> = { offen: C.inkLeise, in_arbeit: LEUCHT.planung, wartet_kunde: LEUCHT.achtung, erledigt: LEUCHT.gut, entfaellt: C.inkLeise };
 const WIE = [{ id: 'kickoff' as const, label: 'im Kick-off' }, { id: 'termin' as const, label: 'im Termin' }, { id: 'mail' as const, label: 'per Mail' }, { id: 'link' as const, label: 'über den Link' }];
@@ -197,10 +199,15 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
       id: `s-${b.id}`, label: `Stand von „${b.titel}“`, hinweis: STATUS_TEXT[b.status],
       auswahl: { titel: `Stand von „${b.titel}“`, eintraege: (Object.keys(STATUS_TEXT) as KnotenStatus[]).filter(s => s !== 'entfaellt').map(s => ({ id: s, label: STATUS_TEXT[s], punkt: STATUS_FARBE[s] })), waehlen: (s: string) => { const st = f.knoten.find(x => x.id === b.id)?.stand; void ops([{ op: 'knoten-status', id: b.id, status: s, ...(st ? { stand: st } : {}) }]); } },
     })) : []),
-    ...(k.extra && !z.abgeleitet && k.id !== OB_TEIL_ID ? [{ id: 'weg', label: 'Zusatz-Schritt entfernen', gefahr: true, tun: () => ops([{ op: 'knoten-extra', id: k.id, weg: true }]) }] : []),
+    ...(k.extra && !z.abgeleitet && k.id !== OB_TEIL_ID ? [
+      { id: 'sichtbar', label: k.kundeSichtbar ? 'Für den Kunden verbergen' : 'Für den Kunden sichtbar machen', hinweis: k.kundeSichtbar ? 'Steht dann nicht mehr in seiner Reise und im Report.' : 'Steht dann in seiner Reise („als Nächstes“) und im Report.', tun: () => ops([{ op: 'knoten-extra', eintrag: { id: k.id, kundeSichtbar: !k.kundeSichtbar }, ...(f.knoten.find(x => x.id === k.id)?.stand ? { stand: f.knoten.find(x => x.id === k.id)!.stand } : {}) }]) },
+      { id: 'weg', label: 'Zusatz-Schritt entfernen', gefahr: true, tun: () => ops([{ op: 'knoten-extra', id: k.id, weg: true }]) },
+    ] : []),
     ...(eigeneFreigabe && f.freigaben[eigeneFreigabe.id] ? [{ id: 'fg-weg', label: `Freigabe ${eigeneFreigabe.id} zurücknehmen`, tun: () => ops([{ op: 'freigabe', id: eigeneFreigabe.id, zuruecknehmen: true }]) }] : []),
   ];
   const kunde = k.zustaendig === 'kunde';
+  const verweis = schrittVerweis(k);
+  const v = verweis ? verweisAnzeige(verweis, daten) : null;
   return (
     <ZeileAktionen titel={k.titel} mehr={mehr}>
       <Zeile umbrechen
@@ -208,7 +215,7 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
           ? <HakenZiel an={z.zustand === 'erledigt'} farbe={LEUCHT.gut} label={k.titel} onChange={() => status(z, z.zustand === 'erledigt' ? 'offen' : 'erledigt')} />
           : <span style={{ width: 44, display: 'inline-grid', placeItems: 'center', flex: '0 0 auto' }}><Punkt farbe={STATUS_FARBE[z.zustand]} /></span>}
         titel={<span style={{ color: z.fertig ? C.inkDim : C.ink, textDecoration: z.zustand === 'entfaellt' ? 'line-through' : 'none' }}>{k.titel}</span>}
-        unter={(z.bausteine.length || k.faelligAm || kunde || k.grund || (k.extra && !z.abgeleitet) || (sprung && !z.fertig)) ? (
+        unter={(z.bausteine.length || k.faelligAm || kunde || k.grund || (k.extra && !z.abgeleitet) || (sprung && !z.fertig) || v) ? (
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             {z.bausteine.map(b => {
               const bb = b.bausteinId ? bausteine.get(b.bausteinId) : undefined;
@@ -216,14 +223,19 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
               return (
                 <span key={b.id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                   {bb ? <Link href={WEG.fulfillment('bausteine', { b: bb.id })} style={{ color: C.aktiv, fontSize: TYP.bedien }} onClick={e => e.stopPropagation()}>▤ {name}</Link> : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>▤ {name}</span>}
-                  {bb?.nurIntern && <Chip farbe={LEUCHT.agenten}>nur intern</Chip>}
-                  {bb?.rechtOffen && <Chip farbe={LEUCHT.achtung}>rechtlich prüfen</Chip>}
+                  {bb && <BausteinMarken b={bb} />}
                 </span>
               );
             })}
             {k.faelligAm && !z.fertig && <Chip farbe={z.ueberfaellig ? LEUCHT.kritisch : C.inkDim}>{z.ueberfaellig ? 'überfällig ' : 'bis '}{tagKurz(k.faelligAm)}</Chip>}
             {kunde && !z.fertig && <Chip farbe={LEUCHT.achtung}>macht der Kunde</Chip>}
-            {k.extra && !z.abgeleitet && k.id !== OB_TEIL_ID && <Chip farbe={C.inkDim}>Zusatz</Chip>}
+            {v && (
+              <button type="button" className="fassbar" onClick={e => { e.stopPropagation(); geh(v.reiter, v.stelle ? { art: 'stelle', wert: v.stelle } : undefined); }}
+                style={{ background: 'none', border: 'none', padding: '4px 0', minHeight: 44, cursor: 'pointer', color: v.farbe, fontSize: TYP.bedien, fontFamily: SCHRIFT.text, textAlign: 'left' }}>
+                {v.text} ›
+              </button>
+            )}
+            {k.extra && !z.abgeleitet && k.id !== OB_TEIL_ID && <Chip farbe={C.inkDim}>Zusatz{k.kundeSichtbar ? ' · für den Kunden sichtbar' : ''}</Chip>}
             {z.zustand === 'entfaellt' && k.grund && <span style={klein}>Entfällt: {k.grund}</span>}
             {sprung && !z.fertig && <span style={{ ...klein, color: C.inkLeise }}>wird automatisch erledigt, sobald es da ist</span>}
           </span>
@@ -303,4 +315,37 @@ function ExtraDialog({ phaseId, fall, onZu, ops }: { phaseId: string; fall: NonN
       </form>
     </Fenster>
   );
+}
+
+/**
+ * Ein Schritt, den der Fall selbst führt (Quick Wins, Befähigung, Wirkungsbericht, Diagnose, Dossier), zeigt seinen Stand und führt dorthin (12.10.,
+ * „keine losen Enden“: der Schritt „Quick Wins“ im Ablauf kannte die Quick Wins des Überblicks nicht).
+ */
+function verweisAnzeige(v: SchrittVerweis, d: FallAntwort): { text: string; reiter: FallReiter; stelle?: string; farbe: string } {
+  const f = d.fall!;
+  switch (v) {
+    case 'quickwins': {
+      const n = f.quickWins.length, e = f.quickWins.filter(q => q.erledigtAm).length;
+      if (n) return { text: e === n ? `alle ${n} Quick Wins erledigt — Schritt abhaken` : `${e} von ${n} Quick Wins erledigt`, reiter: 'ueberblick', stelle: 'quickwins', farbe: e === n ? LEUCHT.gut : C.aktiv };
+      return d.analyse?.quickWins.length
+        ? { text: `${d.analyse.quickWins.length} Quick Wins aus der Analyse bereit`, reiter: 'ueberblick', stelle: 'ausanalyse', farbe: LEUCHT.achtung }
+        : { text: 'Quick Wins festlegen', reiter: 'ueberblick', stelle: 'quickwins', farbe: C.aktiv };
+    }
+    case 'befaehigung': {
+      const n = f.befaehigung.length, e = f.befaehigung.filter(b => b.erfuellt).length;
+      return { text: `Befähigung: ${e} von ${n} Kriterien erfüllt`, reiter: 'kreislauf', stelle: 'kreislauf-befaehigung', farbe: n && e === n ? LEUCHT.gut : C.aktiv };
+    }
+    case 'wirkung':
+      return f.wirkung
+        ? { text: `Wirkungsbericht vom ${tagKurz(f.wirkung.erstelltAm)}`, reiter: 'kreislauf', stelle: 'kreislauf-wirkung', farbe: LEUCHT.gut }
+        : { text: 'Wirkungsbericht erstellen', reiter: 'kreislauf', stelle: 'kreislauf-wirkung', farbe: C.aktiv };
+    case 'diagnose':
+      return !d.analyse?.diagnose
+        ? { text: 'Der Diagnose-Entwurf kommt aus der Analyse (A12)', reiter: 'analyse', farbe: C.aktiv }
+        : d.analyse.massnahmen.length
+          ? { text: `${d.analyse.massnahmen.length} Maßnahme${d.analyse.massnahmen.length === 1 ? '' : 'n'} der Diagnose noch nicht im Fall`, reiter: 'ueberblick', stelle: 'ausanalyse', farbe: LEUCHT.achtung }
+          : { text: 'Diagnose-Entwurf im Fall — Maßnahmen stehen im Ablauf', reiter: 'analyse', farbe: LEUCHT.gut };
+    case 'dossier':
+      return !d.analyse ? { text: 'Dossier anlegen', reiter: 'analyse', farbe: C.aktiv } : d.analyse.f2 ? { text: 'Dossier geprüft (F2)', reiter: 'analyse', farbe: LEUCHT.gut } : { text: 'Dossier in Arbeit', reiter: 'analyse', farbe: C.aktiv };
+  }
 }

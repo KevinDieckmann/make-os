@@ -24,6 +24,7 @@ import { Landkarte, ZONE_TEXT, ZONE_FARBE } from './Zeichnung';
 import { KnotenFormular, Meldung, klein, Leiste, useTextFrage } from './teile';
 import { Legende, FreigabeRaute, AMPEL_FARBE } from '../reise/bilder';
 import { insBild } from '../reise/sprung';
+import { PraesentationWahl } from '../reise/Praesentation';
 
 const ZUST: Record<string, string> = { intern: 'wir', kunde: 'Kunde', beide: 'beide' };
 const ZonenZeichen = ({ zone }: { zone: Zone }) => <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: 4, background: `${ZONE_FARBE[zone]}30`, border: `1px solid ${ZONE_FARBE[zone]}` }} />;
@@ -58,7 +59,7 @@ export function Prozesse({ k }: { k?: string }) {
       )}
       {landkarte && (
         <Karte i={1} akzent={LEUCHT.business}>
-          <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.landkarte" rechts={<span>{Object.keys(daten.faelle).length} Fälle</span>}>{landkarte.titel}</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.landkarte" rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>{Object.keys(daten.faelle).length} Fälle</span><PraesentationWahl faelle={Object.values(daten.faelle)} /></span>}>{landkarte.titel}</Ueberschrift>
           <Legende eintraege={[
             { zeichen: <ZonenZeichen zone="dach" />, text: 'Dach — was steuert' },
             { zeichen: <ZonenZeichen zone="etage" />, text: 'Etagen — der Weg eines Kunden durch uns, von unten nach oben' },

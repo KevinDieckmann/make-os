@@ -1,6 +1,8 @@
 // ─── Fulfillment — ein Fall je Mandat (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 3, 7, 9) ───────────────────────────────────────────────
 // GET  ?m=<mandat> → Fall (wie er wirkt), Stand je Eintrag, Onboarding-Stand mit 24-h-Uhr, Vorlagen-Diff, „wartet auf euch“, Wert-Konto-Zeilen,
-//        Bausteine der Knoten (Titel, Marken), Stakeholder-Namen aus der Kartei (Lese-Protokoll „fulfillment“), Rituale, nächste Termine.
+//        Bausteine der Knoten (Titel, Marken), Stakeholder-Namen aus der Kartei (Lese-Protokoll „fulfillment“), Rituale, nächste Termine;
+//        seit 12.10. auch `reports` (erstellte Fortschritts-Reports: Kennung + Zeit), `followups` (am Mandat: Text, Tag, Stand), `analyse` (was aus
+//        der Diagnose noch nicht im Fall steht) und `nachsorge` (Plan ab Mandatsende) — nur lesen.
 //      ?m=&willkommen=1 → Grundlage der Willkommensmail (Vorlage der Bibliothek, Empfänger, Du/Sie, drei freie Kick-off-Zeiten — nur Zeiten).
 // POST { aktion: 'starten', mandatId, vorlageId, start?, anfrageId }  → Fall anlegen (Kopie der Paket-Vorlage), idempotent über anfrageId
 //      { aktion: 'vorlage-uebernehmen', mandatId }                    → neue Fassung der Vorlage übernehmen (nie entfernen)
@@ -106,6 +108,17 @@ export async function GET(req: Request) {
   const { uidVonSchluessel } = await import('@/lib/kalender/bezug');
   const terminTage = Object.entries(bezuege.bezuege).filter(([, b]) => b.mandatId === m && b.tag).map(([k, b]) => ({ uid: uidVonSchluessel(k), tag: b.tag! }));
   const treppe = await import('@/lib/crm/treppe-server').then(t => t.ladeTreppe(heute)).catch(() => null);
+  // 12.10. (lose Enden): Report-Zeitachse (erstellte Reports aus der Dateiablage — nur Tag + Kennung), was aus der Diagnose noch nicht im Fall steht,
+  // die Nachsorge als Plan (ab Mandatsende) und die Follow-ups am Mandat (Nachsorge, Puls-Gespräch, Empfehlung) — nur Text, Tag, Stand.
+  const reports = await import('@/lib/dateien/ablage').then(a => a.ablageListe(z.haushalt)).then(l => l.filter(e => e.mandatId === m && e.bericht === 'fortschritt').map(e => ({ id: e.id, am: e.hochgeladenAm })).sort((a, b) => (a.am < b.am ? -1 : 1))).catch(() => []);
+  const dossier = await fulfillmentLesen('dossiers', z.haushalt).then(d => d.dossiers[m]).catch(() => undefined);
+  const { diagnoseUebergabe } = await import('@/lib/fulfillment/analyse/nach-fall');
+  const ue = diagnoseUebergabe(dossier?.diagnose, w);
+  const { nachsorgePlan } = await import('@/lib/fulfillment/prozesse/ansichten');
+  const { mandatsEnde } = await import('@/lib/fulfillment/regeln');
+  const ende = mandatsEnde(mandat);
+  const followups = (crm.followups ?? []).filter(x => x.bezug?.art === 'mandat' && x.bezug.id === m).sort((a, b) => (a.faellig < b.faellig ? 1 : -1)).slice(0, 12)
+    .map(x => ({ id: x.id, text: x.text, faellig: x.faellig, status: x.status }));
   return NextResponse.json({
     ok: true, inhaber: await istInhaber(z.person), mandat: mandatKurz, unterschrift: u,
     fall: { ...w, knoten: w.knoten.map(x => ({ ...x, stand: eintragStand(f.knoten.find(y => y.id === x.id) ?? x) })), stakeholder: w.stakeholder.map(s => ({ ...s, stand: eintragStand(s) })), entscheidungen: w.entscheidungen.map(e => ({ ...e, stand: eintragStand(e) })) },
@@ -116,6 +129,9 @@ export async function GET(req: Request) {
     bausteine, personen, rituale: vorlagen.rituale,
     termine: Object.fromEntries(w.rituale.map(r => [r.ritualId, naechsterTermin(terminTage, r.terminUids, heute) ?? null])),
     kunde: kunde[m] ?? null, report: treppe?.reports[m] ?? null,
+    reports, followups,
+    analyse: dossier ? { f2: !!dossier.f2, diagnose: !!dossier.diagnose, quickWins: ue.quickWins, fragen: ue.fragen.length, massnahmen: ue.massnahmen.map(x => x.text), ziel: ue.ziel?.titel ?? null } : null,
+    nachsorge: { ende, plan: nachsorgePlan({ mandatId: m, ende, tage: vorlagen.einstellungen.nachsorgeTage, marken: f.marken, heute }) },
   });
 }
 

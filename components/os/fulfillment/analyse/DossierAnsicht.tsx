@@ -3,7 +3,7 @@
 // ─── Fulfillment · Analyse — das Dossier lesen und pflegen (C3, 10.10.; FULFILLMENT_KONZEPT.md 4.6) ──────────────────────────────────────────
 // Deckblatt (Version, Stand, Quellenstand, Löschtag des Personenteils, Beleg-Quote), die Abschnitte in fester Reihenfolge — je Aussage Art, Quelle
 // mit Datum, „veraltet?“ —, Aussage von Hand (mit Quelle; ohne Quelle nur in Hypothesen/offenen Fragen), Entfernen. Diagnose-Entwurf und Steckbrief
-// gehen NACH F2 per Klick weiter: Quick Wins und Kick-off-Fragen in den Fall (Route von C1), Steckbrief-Felder in die CRM-Firmenakte (CRM-Schreibweg
+// gehen NACH F2 per Klick weiter: Quick Wins, Kick-off-Fragen und (seit 12.10.) die Maßnahmen als Zusatz-Schritte in den Fall (Route von C1), Steckbrief-Felder in die CRM-Firmenakte (CRM-Schreibweg
 // mit Stand) — nie automatisch.
 // 11.10. (Design, Rückmeldung: „Dossier mit Abschnitts-Navigation“): unter dem Deckblatt eine Leiste aller Abschnitte (Stand-Farbe, Zahl der Aussagen) —
 // ein Tipp springt zum Abschnitt. Nur Darstellung.
@@ -14,7 +14,7 @@ import type { AbschnittId, Aussage } from '@/lib/fulfillment/typen';
 import { ABSCHNITT_LABEL, ABSCHNITT_REIHE } from '@/lib/fulfillment/analyse/sicht';
 import { alsErgebnis, STECKBRIEF_LABEL, type SteckbriefFeld } from '@/lib/fulfillment/analyse/ausgabe';
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Liste, Kennzahl, Raster, Feldzeile, Pillen, eingabe, auswahl, LEUCHT, useRueckfrage } from '../../ui';
-import { senden, fehlerVon, type AnalyseApi } from './daten';
+import { senden, fehlerVon, inDenFall, NACH_FALL_TEXT, type AnalyseApi, type NachFallWas } from './daten';
 import { insBild } from '../reise/sprung';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
@@ -122,13 +122,7 @@ function Weitergeben({ mandatId, api }: { mandatId: string; api: AnalyseApi }) {
   const a1 = [...d.laeufe].reverse().find(l => l.agent === 'a1' && (l.status === 'uebernommen' || l.status === 'fertig') && alsErgebnis(l.ergebnis)?.steckbrief);
   const steckbrief = alsErgebnis(a1?.ergebnis)?.steckbrief;
   if (!d.diagnose && !steckbrief) return null;
-  const nachFall = async (was: 'quickwins' | 'fragen') => {
-    const r = await senden('/api/fulfillment/dossier', { aktion: 'nach-fall', mandatId, was });
-    const f = fehlerVon(r);
-    if (f) { setMeldung(f); return; }
-    const w = await senden(String(r.j.ziel), r.j.body, 'PATCH');
-    setMeldung(fehlerVon(w) ? `Fall: ${fehlerVon(w)}` : was === 'quickwins' ? 'Quick Wins stehen im Fall.' : 'Kick-off-Fragen stehen im Fall.');
-  };
+  const nachFall = async (was: NachFallWas) => { setMeldung((await inDenFall(mandatId, was)) ?? NACH_FALL_TEXT[was]); };
   const inFirma = async (feld: SteckbriefFeld) => {
     const r = await senden('/api/fulfillment/dossier', { aktion: 'firma-uebernehmen', mandatId, laufId: a1!.id, feld });
     const f = fehlerVon(r);
@@ -150,6 +144,7 @@ function Weitergeben({ mandatId, api }: { mandatId: string; api: AnalyseApi }) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Knopf aus={!d.f2 || !d.diagnose.quickWins.length} onClick={() => nachFall('quickwins')}>Quick Wins in den Fall</Knopf>
             <Knopf aus={!d.f2 || !d.diagnose.fragen.length} onClick={() => nachFall('fragen')}>Kick-off-Fragen in den Fall</Knopf>
+            <Knopf aus={!d.f2 || !d.diagnose.top5.length} onClick={() => nachFall('massnahmen')}>Maßnahmen in den Ablauf</Knopf>
           </div>
         </div>
       )}

@@ -237,6 +237,7 @@ export function fallAus(o: O): Fall | null {
   })();
   return sauber<Fall>({
     mandatId, vorlageId, vorlageFassung: n(o.vorlageFassung) ?? 1, gestartetAm, gestartetVon: s(o.gestartetVon) ?? '', status,
+    startAm: (() => { const t = s(o.startAm); return t && /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : undefined; })(),
     knoten: liste(o.knoten, fallKnoten), freigaben,
     onboarding: sauber({ willkommenGesendetAm: s(ob.willkommenGesendetAm), willkommenVon: s(ob.willkommenVon) }),
     vereinbarung: vereinbarung(o.vereinbarung), stakeholder: liste(o.stakeholder, stakeholder), entscheidungen: liste(o.entscheidungen, entscheidung),

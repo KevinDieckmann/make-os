@@ -194,4 +194,21 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     was: 'Die Analyse läuft in vier Wellen: Start, Unternehmen, Vertiefung, Synthese und Prüfung. Jede Marke ist ein Agent — grün heißt im Dossier, gelb Entwurf zum Prüfen, blau läuft, gestrichelt noch gesperrt. Nichts startet von selbst; der Knopf schlägt den nächsten sinnvollen Lauf mit seinen Kosten vor.',
     beispiel: 'Welle 0 ist grün, in Welle 1 sind A1 und A7 grün, A2 ist bereit — der Knopf heißt „A2 starten“ mit der geschätzten Summe dahinter.',
   },
+  // 12.10. (kundenreif): Kreislauf-Rad, „Dem Kunden zeigen“, Report-Takt, Übergabe aus der Analyse.
+  'fulfillment.kreislauf': {
+    was: 'Der Kreislauf der Markttraktion als Rad: Kanäle → Leads → Deals → Abschluss → Fulfillment → nach der Leistung → Wiederkauf. Im Fall steht dort, wo dieser Kunde gerade ist; unter Fulfillment › Kreislauf stehen an jeder Stufe die heutigen Zahlen. Jede Stufe öffnet ihre Ansicht.',
+    beispiel: 'Ein erfundener Kunde in der Umsetzung steht bei „Fulfillment“; nach dem Wirkungsbericht und dem Mandatsende wandert er zu „Nach der Leistung“, nach der Nachsorge zurück in den Kreis.',
+  },
+  'fulfillment.praesentation': {
+    was: 'Öffnet die Seite des Kunden im Vollbild — genau das, was er über seinen Link sieht: Reise, Wert-Konto, nächste Schritte, „wartet auf euch“. Interne Marken, Notizen, Stakeholder, Kosten, Personenteil und ungeprüfte Bausteine fehlen, weil der Server sie nie mitschickt. Esc schließt; ausdrucken geht über den Druck-Knopf, das PDF über den Fortschritts-Report.',
+    beispiel: 'Im Termin mit einem erfundenen Kunden „Beispiel Werkzeugbau“: „Dem Kunden zeigen“, auf den Bildschirm drehen, Reise und Wert-Konto besprechen — Esc, und ihr seid zurück im Fall.',
+  },
+  'fulfillment.reportTakt': {
+    was: 'Alle zwei Wochen ein Fortschritts-Report: erledigt · als Nächstes · wartet auf euch · Wert-Konto · Kunden-Puls. Die Zeitachse zeigt jeden erstellten Report als Punkt, die Soll-Termine im Zwei-Wochen-Takt als Striche und den nächsten fälligen Tag. Gesendet wird nur per Klick.',
+    beispiel: 'Start vor sechs Wochen, Reports vor vier und vor zwei Wochen — heute ist der dritte fällig; „Report erstellen“ legt das PDF an, „Mail vorbereiten“ zeigt den Text vor dem Senden.',
+  },
+  'fulfillment.ausAnalyse': {
+    was: 'Was die geprüfte Analyse (nach F2) für den Fall liefert und noch nicht drin ist: Quick Wins (sichtbarer Erfolg in 30 Tagen), Fragen fürs Kick-off und die Top-Maßnahmen der Diagnose. Ein Klick übernimmt sie — Maßnahmen als Zusatz-Schritte der Phase nach der Diagnose, zuerst nur intern.',
+    beispiel: 'Ein erfundenes Dossier schlägt drei Quick Wins und drei Maßnahmen vor; zwei Quick Wins stehen schon im Fall — übernommen werden nur der dritte und die drei Maßnahmen in „Aufbau“.',
+  },
 } as const satisfies Record<string, EinstellungsText>;

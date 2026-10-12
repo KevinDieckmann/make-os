@@ -191,9 +191,19 @@ async function nachFall(mandatId: string, was: string, m: import('@/lib/crm/type
   if (!d.diagnose) return nein(409, 'Noch kein Diagnose-Entwurf übernommen.');
   const { fallLesen } = await import('../prozesse/server');
   const fall = await fallLesen(mandatId).catch(() => null);
-  const basis = (fall?.gestartetAm ?? m.start ?? localDay()).slice(0, 10);
+  const { fallStartTag } = await import('../prozesse/fall');
+  const basis = fall ? fallStartTag(fall) : (m.start ?? localDay()).slice(0, 10);
   const bis = tagPlus(basis < localDay() ? localDay() : basis, 30);
   if (was === 'quickwins') return { status: 200, body: { ok: true, ziel: '/api/fulfillment/fall', methode: 'PATCH', body: { mandatId, ops: [{ op: 'quickwins-setzen', quickWins: d.diagnose.quickWins.slice(0, 3).map(text => ({ text, bis, quelle: 'analyse' })) }] } } };
   if (was === 'fragen') return { status: 200, body: { ok: true, ziel: '/api/fulfillment/fall', methode: 'PATCH', body: { mandatId, ops: [{ op: 'kickoff-fragen', fragen: d.diagnose.fragen.map(f => ({ frage: f.frage, an: f.an, warum: f.warum, quelle: 'analyse' })) }] } } };
-  return nein(400, 'Was: quickwins oder fragen.');
+  // 12.10. (lose Enden): die Top-5-Maßnahmen als Zusatz-Schritte der Phase nach der Diagnose — nur, was noch kein Schritt ist (`diagnoseUebergabe`).
+  if (was === 'massnahmen') {
+    if (!fall) return nein(409, 'Für dieses Mandat läuft noch kein Fall — erst das Onboarding starten.');
+    const { diagnoseUebergabe, massnahmenOps } = await import('./nach-fall');
+    const u = diagnoseUebergabe(d.diagnose, fall);
+    if (!u.ziel) return nein(409, 'Der Fall hat keine Phase, in die die Maßnahmen gehören.');
+    if (!u.massnahmen.length) return nein(409, 'Alle Maßnahmen stehen schon im Fall.');
+    return { status: 200, body: { ok: true, ziel: '/api/fulfillment/fall', methode: 'PATCH', phase: u.ziel.titel, body: { mandatId, ops: massnahmenOps(u.massnahmen, u.ziel.id) } } };
+  }
+  return nein(400, 'Was: quickwins, fragen oder massnahmen.');
 }

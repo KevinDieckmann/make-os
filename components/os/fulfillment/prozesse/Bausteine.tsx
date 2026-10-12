@@ -42,11 +42,6 @@ const ART_ZEICHEN: Record<BausteinArt, LucideIcon> = {
   formular: ClipboardList, workbook: BookOpen, analyse: Search, freigabe: Stamp,
 };
 
-/** Eine Marke am Baustein — sichtbar, aber ruhig (Umriss statt Fläche). */
-function Marke({ farbe, children }: { farbe: string; children: string }) {
-  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: TYP.bedien, color: farbe, border: `1px solid ${farbe}55`, borderRadius: 999, padding: '2px 9px', whiteSpace: 'nowrap' }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: 3, background: farbe }} />{children}</span>;
-}
-
 /**
  * Die Bibliothek als Karten (11.10., Rückmeldung: „Bausteine filterbar nach Paket/Phase/Art, Karten mit Art-Symbol, Marken gut sichtbar aber ruhig“).
  * Wo ein Baustein steckt (Paket › Phase), rechnet `bausteinOrte` aus den Paket-Vorlagen; ohne Vorlage gilt das Schlagwort `paket:…`.
@@ -105,13 +100,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
                     </span>
                   </span>
                   {wo && <span style={{ ...klein, overflowWrap: 'anywhere' }}>{wo}</span>}
-                  {(x.nurIntern || x.rechtOffen || x.vorVerkaufOffen) && (
-                    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {x.nurIntern && <Marke farbe={LEUCHT.agenten}>nur intern</Marke>}
-                      {x.rechtOffen && <Marke farbe={LEUCHT.achtung}>rechtlich prüfen</Marke>}
-                      {x.vorVerkaufOffen && <Marke farbe={LEUCHT.achtung}>vor Verkauf prüfen</Marke>}
-                    </span>
-                  )}
+                  <BausteinMarken b={x} />
                 </button>
               );
             })}
