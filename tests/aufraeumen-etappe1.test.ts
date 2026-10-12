@@ -51,7 +51,11 @@ describe('Aufräumen Etappe 1 — Leiste', () => {
   it('nur zwei Bereiche (09.10.): die Leiste zeigt genau die Punkte des gewählten Space, ohne Gruppen „Alles“', () => {
     expect(SPACE_WAHLEN).toEqual(SPACES.map(s => s.id));
     const l = lies('components/os/Leiste.tsx');
-    expect(l).toContain('leisteFuer(wahl).map(');
+    // Gesamtprüfung 12.10.: ein Konto „nur Business“ sieht Punkte `nurVolleMitglieder` (Unternehmen) gar nicht erst.
+    expect(l).toContain('leisteFuer(wahl, !!nurBusiness).map(');
+    expect(leisteFuer('business').map(e => e.label)).toContain('Unternehmen');
+    expect(leisteFuer('business', true).map(e => e.label)).not.toContain('Unternehmen');
+    expect(leisteFuer('business', true).map(e => e.label)).toContain('Markttraktion');
     for (const raus of ['ALLES_EINTRAEGE', 'ALLES_GRUPPEN', 'leistenBloecke', 'wahlInfo', "'alles'"]) expect(l, raus).not.toContain(raus);
   });
   // 10.10. (Entscheidung: „Planung soll nur Planung sein … den Fokus-Bereich oben rechts aufbauen“): Fokus, Kompass und Wachstum sind

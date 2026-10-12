@@ -7,6 +7,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { sauberDatei, wendeAn, type ErnaehrungFile } from '@/lib/ernaehrung/modell';
 import { gerichtBildSpeichern, gerichtBildLesen, gerichtBildLoeschen } from '@/lib/ernaehrung/bilder';
@@ -16,8 +17,15 @@ export const dynamic = 'force-dynamic';
 
 const KEIN = { ok: false, error: 'Nur für den Haushalt des Inhabers.' };
 
-export async function GET(req: Request) {
+/** Ernährung ist Privat-Bereich des Haushalts — ein Konto „nur Business“ (`finanzRecht: 'business'`) bekommt nichts (Gesamtprüfung 12.10.). */
+async function zugang(req: Request) {
   const z = await imHaushaltDesInhabers(req);
+  if (!z || (await privatAusgeblendetFuer(z.person).catch(() => true))) return null;
+  return z;
+}
+
+export async function GET(req: Request) {
+  const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   const name = new URL(req.url).searchParams.get('name') ?? '';
   const b = await gerichtBildLesen(name);
@@ -26,7 +34,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const z = await imHaushaltDesInhabers(req);
+  const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   if (zuGross(req, 3_500_000)) return ZU_GROSS(3_500_000);
   let b: { id?: string; daten?: string };
@@ -43,7 +51,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const z = await imHaushaltDesInhabers(req);
+  const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   let b: { id?: string };
   try { b = await jsonBegrenzt(req, 3_500_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }

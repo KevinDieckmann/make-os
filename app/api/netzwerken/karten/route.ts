@@ -15,7 +15,8 @@
 
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
-import { haushaltVon, haushaltFuer, type HaushaltZugang } from '@/lib/finanzen/haushalt/zugriff';
+import { haushaltVon, haushaltFuer, personStreng, type HaushaltZugang } from '@/lib/finanzen/haushalt/zugriff';
+import { businessHaushaltFuer } from '@/lib/zugang/konto-sicht-server';
 import { istDienst } from '@/lib/zugang/dienst';
 import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { loadJson } from '@/lib/store/local-db';
@@ -40,7 +41,8 @@ const ZU_GROSS_KARTEN = () => NextResponse.json({ ok: false, fehler: `Die Änder
 /** Die eigene Person mit Haushalt — nur von Hand angemeldet, nie über den Dienstweg (auch nicht mit `x-make-person`). */
 async function eigene(req: Request): Promise<HaushaltZugang | null> {
   if (istDienst(req)) return null;
-  return haushaltVon(req);
+  // Visitenkarten sind Business (eigene Profile je Person): auch ein Konto „nur Business“ im Haushalt der Inhaber (Gesamtprüfung 12.10. — vorher 403).
+  return (await haushaltVon(req)) ?? businessHaushaltFuer(personStreng(req));
 }
 
 /** Firmen-Vorschläge aus den Gesellschaften des Haushalts: nur Name und öffentliche Kontaktangaben. */
@@ -60,7 +62,7 @@ async function zielPerson(req: Request, z: { person: string; haushalt: string })
   if (!fuer || fuer === z.person) return { person: z.person, fuerAndere: false };
   if (!/^[a-z0-9-]{1,40}$/.test(fuer)) return NextResponse.json({ ok: false, fehler: 'Ungültige Person.' }, { status: 400 });
   if (!(await istInhaber(z.person))) return NextResponse.json({ ok: false, fehler: 'Profile für andere anlegen darf nur die Inhaberin oder der Inhaber des Haushalts.' }, { status: 403 });
-  const ziel = await haushaltFuer(fuer);
+  const ziel = (await haushaltFuer(fuer)) ?? (await businessHaushaltFuer(fuer));
   if (!ziel || ziel.haushalt !== z.haushalt) return NextResponse.json({ ok: false, fehler: 'Diese Person gehört nicht zu eurem Haushalt.' }, { status: 403 });
   if (await istInhaber(fuer)) return NextResponse.json({ ok: false, fehler: 'Ein anderer Inhaber pflegt seine Visitenkarten selbst.' }, { status: 403 });
   return { person: fuer, fuerAndere: true };

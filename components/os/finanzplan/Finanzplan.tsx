@@ -131,7 +131,7 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
     void aendere([{ pfad: `/bereiche/${bereich}`, alt: roh.bereiche?.[bereich], neu: { arbeitsplan: neu } }], `Bereich ${bereich === 'business' ? 'Business' : 'Privat'}: rechnet ${neu ? (roh.planszenarien ?? []).find(p => p.id === neu)?.name : 'Basis'}`);
   };
   const szenarioWahl = (
-    <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
+    <label style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, maxWidth: '100%', minWidth: 0 }}>
       {bereich === 'business' ? 'Business rechnet' : 'Privat rechnet'}
       <Auswahl<string> wert={wahlWert} onWahl={waehle} titel={`Szenario des Bereichs ${bereich === 'business' ? 'Business' : 'Privat'}`}
         optionen={[{ id: '__gemeinsam', label: `gemeinsamer Arbeitsplan (${gemeinsamName})${sicht !== 'business' && roh && !bereichEigen(roh, bereich === 'business' ? 'privat' : 'business') ? ` — wie ${anderer}` : ''}` }, { id: '__basis', label: 'eigenes: Basis (nur Treiber)' }, ...(roh?.planszenarien ?? []).map(p => ({ id: p.id, label: `eigenes: ${p.name}` }))]} />

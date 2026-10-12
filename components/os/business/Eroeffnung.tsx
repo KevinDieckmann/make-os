@@ -216,7 +216,8 @@ export function EroeffnungKarte({ i = 4, onGeaendert }: { i?: number; onGeaender
       </div>
       {darf && (
         <div style={{ marginTop: 12 }}>
-          <Knopf leise onClick={() => setTabelle(!tabelle)}>{tabelle ? '▾ Einfügen schließen' : '▸ Offene Posten aus Excel oder OP-Liste einfügen'}</Knopf>
+          {/* Darf umbrechen (Gesamtprüfung 12.10.): der lange Text ragte am Handy ~30 px über die Karte hinaus. */}
+          <Knopf leise onClick={() => setTabelle(!tabelle)} style={{ whiteSpace: 'normal', maxWidth: '100%' }}>{tabelle ? '▾ Einfügen schließen' : '▸ Offene Posten aus Excel oder OP-Liste einfügen'}</Knopf>
           {tabelle && (
             <div style={{ marginTop: 10 }}>
               <EinfuegeTabelle felder={POSTEN_FELDER} einheit={{ eins: 'Posten', viele: 'Posten' }} farbe={LEUCHT.geld} kontext={`${aktiv}|${art}|${modus}|${geltend?.id ?? ''}`} aus={einfuegenAus}

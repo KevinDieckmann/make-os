@@ -98,7 +98,10 @@ export function FokusView() {
     <Seite titel="Fokus" ton={bereich === 'privat' ? LEUCHT.beziehung : LEUCHT.business}
       unter={`${name}: was wir wollen, welche Zeit wir hineingeben und wo der Fokus draufgeht.`}
       rechts={<FokusStart bereich={bereich} themen={steuerung.sicht?.themen ?? []} />}>
-      <Reiter<FokusAbschnitt> ariaLabel="Abschnitte der Fokus-Seite" liste={abschnitte.map(a => ({ id: a.id, label: a.label }))} aktiv={null} onWahl={springen} />
+      {/* In der wischbaren Zeile wie überall (Gesamtprüfung 12.10.: ohne sie ragten die Reiter am Handy über den Rand). */}
+      <div className="ui-reiter-zeile">
+        <Reiter<FokusAbschnitt> ariaLabel="Abschnitte der Fokus-Seite" liste={abschnitte.map(a => ({ id: a.id, label: a.label }))} aktiv={null} onWahl={springen} />
+      </div>
 
       <Klappbar id="fokus" titel="Fokus" offen={istOffen('fokus')} umschalten={() => setzen('fokus')}>
         <Karte i={i++} ton="fokus" netz>

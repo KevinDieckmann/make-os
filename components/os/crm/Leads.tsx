@@ -170,9 +170,10 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
         {zeigen.slice(0, 120).map(z => (
           <div key={z.id}>
             <div onClick={() => setWahl(aktiv?.id === z.id && !breit ? null : z.id)} className="zeile zeile-klick fassbar"
-              style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 6px', margin: '0 -6px', borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', borderRadius: aktiv?.id === z.id ? 10 : 0, background: aktiv?.id === z.id ? 'rgba(255,255,255,.05)' : 'transparent' }}>
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '10px 6px', margin: '0 -6px', borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', borderRadius: aktiv?.id === z.id ? 10 : 0, background: aktiv?.id === z.id ? 'rgba(255,255,255,.05)' : 'transparent' }}>
               <Person id={z.besitzer} groesse={18} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              {/* Umbruch statt Überlauf (Gesamtprüfung 12.10.): am Handy ragten Score- und Status-Chip ~50 px über den Rand — sie rutschen in eine zweite Zeile. */}
+              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                 <div style={{ fontSize: TYP.body, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.name}</div>
                 <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {[z.art === 'firma' ? z.personen.map(p => p.name).join(', ') : z.personen[0]?.position, z.naechsterSchritt ? `→ ${z.naechsterSchritt.text}` : '', z.letzterKontakt ? `zuletzt ${datum(z.letzterKontakt)}` : ''].filter(Boolean).join(' · ')}
