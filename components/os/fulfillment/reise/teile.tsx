@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Fulfillment · Reise — gemeinsame Bausteine der Fall-Reiter (12.10., „kundenreif“) ──────────────────────────────────────────────────────
-// Kevin 12.10.: „Antwort zuerst, Bild statt Liste, eine Hauptaktion, der Rest hinter ⋯.“ Hier nur Zeichen-Bausteine (gerechnet wird in
+// Rückmeldung 12.10.: „Antwort zuerst, Bild statt Liste, eine Hauptaktion, der Rest hinter ⋯.“ Hier nur Zeichen-Bausteine (gerechnet wird in
 // lib/fulfillment/prozesse/ansichten.ts): die Antwort-Karte über einem Reiter, ein „⋯“-Menü für Karten (dasselbe Menü wie an den Zeilen —
 // `ZeilenMenueFenster`), eine Zeitachse mit Punkten und Strecken, und das Kreislauf-Rad (die sieben Stufen der Markttraktion als Kreis, „hier steht
 // dieser Kunde“). Farben nur aus den Token; Tippziele ≥ 44 px; Text ≥ 13 px; jedes Bild trägt seinen Inhalt als Text für Vorleser.

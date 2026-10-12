@@ -1,5 +1,5 @@
 // ─── Fulfillment · Fall — Antworten und Bilder für die Reiter „Menschen & Entscheidungen“, „Takt“, „Kunde & Reports“, „Kreislauf“ (12.10.) ─────
-// Kevin 12.10.: „Kann ich das einem Kunden zeigen? … keine losen Enden, alles strukturiert sauber — auch aus der Visualisierung heraus. Denk immer einen
+// Rückmeldung 12.10.: „Kann ich das einem Kunden zeigen? … keine losen Enden, alles strukturiert sauber — auch aus der Visualisierung heraus. Denk immer einen
 // Schritt weiter.“ Je Reiter zuerst EINE Antwort (Satz + Ampel), dann ein Bild statt einer Liste: Stakeholder als Raster Einfluss × Haltung,
 // Entscheidungen als Zeitstrahl, Rituale als Kalender-Leiste mit dem nächsten Termin, Reports als Zeitachse im Zwei-Wochen-Takt, der Kunden-Puls als
 // Verlauf neben der Health, der Kreislauf mit „hier steht dieser Kunde“, die Nachsorge als Plan nach dem Mandatsende. Dazu die Verweise, die die

@@ -180,7 +180,14 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
     const knoten = (id: unknown): FallKnoten => f.knoten.find(x => x.id === id) ?? nein('Diesen Schritt gibt es im Fall nicht (mehr).', 404);
     const setzeKnoten = (n: FallKnoten) => { f.knoten = f.knoten.map(x => (x.id === n.id ? n : x)); geaendert.push(n.id); };
     const freigabenErlaubt = new Set([...k.freigaben, ...f.knoten.map(x => x.freigabe).filter((x): x is string => !!x)]);
-    const erledigen = (n: FallKnoten): FallKnoten => ({ ...n, status: 'erledigt', seit: k.heute, erledigtAm: k.heute, erledigtVon: k.person });
+    const erledigen = (n: FallKnoten, am = k.heute): FallKnoten => ({ ...n, status: 'erledigt', seit: am, erledigtAm: am, erledigtVon: k.person });
+    // Nachtragen (12.10.): optional `am` — was schon passiert ist (Kick-off vor zwei Wochen), steht mit seinem Tag da; nie in der Zukunft.
+    const nachtrag = (x: unknown, name: string): string | undefined => {
+      const t = optTag(x, name);
+      if (t === undefined || t === null) return undefined;
+      if (t > k.heute) nein(`${name}: nie in der Zukunft.`);
+      return t;
+    };
 
     for (const roh of opsRoh) {
       if (!istObj(roh) || typeof roh.op !== 'string') nein('Jede Änderung braucht „op“.');
@@ -191,12 +198,13 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           standPruefen(o.stand, k.standVon(n), n.id);
           let neu: FallKnoten = { ...n };
           const status = optWahl(o.status, KNOTEN_STATUS, 'Status');
+          const am = nachtrag(o.am, 'Am') ?? k.heute;
           if (status && status !== n.status) {
             if (status === 'erledigt' && obSchluessel(n.id)) nein('Dieser Onboarding-Schritt wird abgeleitet — er wird erledigt, sobald das Dazugehörige da ist.');
             if (status === 'erledigt' && n.freigabe) nein(`Dieser Schritt endet mit der Freigabe ${n.freigabe} — bitte „Freigabe vermerken“.`);
             if (status === 'entfaellt' && !(typeof o.grund === 'string' && o.grund.trim())) nein('„Entfällt“ braucht einen Grund.');
             const { erledigtAm: _a, erledigtVon: _b, grund: _g, ...rest } = n;
-            neu = status === 'erledigt' ? erledigen(n) : { ...rest, status, seit: k.heute };
+            neu = status === 'erledigt' ? erledigen(n, am) : { ...rest, status, seit: am };
             if (status === 'entfaellt') neu.grund = pflichtText(o.grund, 'notiz', 'Grund');
           }
           const fa = optTag(o.faelligAm, 'Fällig am');
@@ -209,7 +217,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
             const geschwister = kinderVon(n.elternId, f.knoten);
             const naechstes = geschwister[geschwister.findIndex(x => x.id === n.id) + 1];
             if (naechstes) for (const s of kinderVon(naechstes.id, f.knoten)) {
-              if (s.dauerTage && !s.faelligAm && s.status === 'offen') setzeKnoten({ ...s, faelligAm: tagPlus(k.heute, s.dauerTage) });
+              if (s.dauerTage && !s.faelligAm && s.status === 'offen') setzeKnoten({ ...s, faelligAm: tagPlus(neu.erledigtAm ?? k.heute, s.dauerTage) });
             }
           }
           break;
@@ -256,8 +264,9 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
             ? { wie: optWahl(o.kunde.wie, WIE, 'Freigabe: wie') ?? nein('Freigabe: wie bestätigt (Kick-off, Mail, Link, Termin)?'), am: optTag(o.kunde.am, 'Freigabe: am') ?? k.heute }
             : nein('kunde: { wie, am }.');
           const notiz = optText(o.notiz, 'notiz', 'Notiz');
-          f.freigaben[id] = { am: k.heute, von: k.person, ...(kunde ? { kunde } : {}), ...(notiz ? { notiz } : {}) };
-          for (const n of f.knoten.filter(x => x.freigabe === id && x.status !== 'erledigt' && x.status !== 'entfaellt')) setzeKnoten(erledigen(n));
+          const am = nachtrag(o.am, 'Vermerkt am') ?? k.heute;
+          f.freigaben[id] = { am, von: k.person, ...(kunde ? { kunde } : {}), ...(notiz ? { notiz } : {}) };
+          for (const n of f.knoten.filter(x => x.freigabe === id && x.status !== 'erledigt' && x.status !== 'entfaellt')) setzeKnoten(erledigen(n, am));
           geaendert.push(`freigabe:${id}`);
           break;
         }
@@ -314,7 +323,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           const wer = optWahl(e.wer, ['intern', 'kunde', 'beide'] as const, 'Wer entscheidet'); if (wer) teil.wer = wer;
           const fr = optTag(e.frist, 'Frist'); if (fr !== undefined) teil.frist = fr;
           const ge = optBool(e.geteilt, 'Mit dem Kunden geteilt'); if (ge !== undefined && ge !== null) teil.geteilt = ge;
-          const neu = mischen<Entscheidung>(alt ?? { id: k.neueId('fe'), am: k.heute, titel: '', status: 'offen', wer: 'intern', geteilt: false, von: k.person }, teil);
+          const neu = mischen<Entscheidung>(alt ?? { id: k.neueId('fe'), am: nachtrag(e.am, 'Am') ?? k.heute, titel: '', status: 'offen', wer: 'intern', geteilt: false, von: k.person }, teil);
           f.entscheidungen = alt ? f.entscheidungen.map(x => (x.id === neu.id ? neu : x)) : [...f.entscheidungen, neu];
           geaendert.push(neu.id);
           break;
@@ -364,10 +373,11 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           else {
             const er = optBool(o.erledigt, 'Erledigt');
             const bis = optTag(o.bis, 'Bis');
+            const am = nachtrag(o.am, 'Erledigt am');
             f.quickWins = f.quickWins.map(x => {
               if (x.id !== q.id) return x;
               const { erledigtAm: _e, ...r } = x;
-              return { ...(er === true ? { ...r, erledigtAm: x.erledigtAm ?? k.heute } : er === false ? r : x), ...(bis ? { bis } : {}) };
+              return { ...(er === true ? { ...r, erledigtAm: am ?? x.erledigtAm ?? k.heute } : er === false ? r : x), ...(bis ? { bis } : {}) };
             });
           }
           geaendert.push(q.id);
@@ -435,7 +445,8 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           const text = o.text !== undefined || !alt ? pflichtText(o.text, 'kurz', 'Kriterium') : alt.text;
           const er = optBool(o.erfuellt, 'Erfüllt');
           const erfuellt = er === undefined || er === null ? alt?.erfuellt ?? false : er;
-          const x = { id: alt?.id ?? k.neueId('bf'), text, erfuellt, ...(erfuellt ? { am: alt?.erfuellt ? alt.am ?? k.heute : k.heute } : {}) };
+          const amNeu = nachtrag(o.am, 'Erfüllt am');
+          const x = { id: alt?.id ?? k.neueId('bf'), text, erfuellt, ...(erfuellt ? { am: amNeu ?? (alt?.erfuellt ? alt.am ?? k.heute : k.heute) } : {}) };
           f.befaehigung = alt ? f.befaehigung.map(y => (y.id === x.id ? x : y)) : [...f.befaehigung, x];
           if (f.befaehigung.length > 30) nein('Höchstens 30 Befähigungs-Kriterien.', 413);
           geaendert.push(x.id);

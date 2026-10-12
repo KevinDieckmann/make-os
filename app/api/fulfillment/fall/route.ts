@@ -8,12 +8,13 @@
 //      { aktion: 'vorlage-uebernehmen', mandatId }                    → neue Fassung der Vorlage übernehmen (nie entfernen)
 //      { aktion: 'nachziehen', mandatId }                             → Phase/Lieferobjekte noch einmal nachziehen (idempotent)
 // PATCH { mandatId, ops }  → Ops (lib/fulfillment/prozesse/fall.ts `fallAnwenden` + `ziel-neu` in fall-server.ts), Stand je Eintrag (409).
-//        Ops: knoten-status { id, status?, grund?, faelligAm?, stand? } · knoten-extra { eintrag | id+weg } · freigabe { id, kunde?: { wie, am },
-//        notiz?, zuruecknehmen? } · vereinbarung { felder, stand? } · stakeholder { eintrag | id+weg } · entscheidung { eintrag | id+weg } ·
+//        Ops: knoten-status { id, status?, grund?, faelligAm?, am?, stand? } · knoten-extra { eintrag | id+weg } · freigabe { id, kunde?: { wie, am },
+//        notiz?, am?, zuruecknehmen? } · vereinbarung { felder, stand? } · stakeholder { eintrag | id+weg } · entscheidung { eintrag (+ am?) | id+weg } ·
 //        ritual-merken { ritualId, terminUid } · mitschrift { eintrag | id+weg } · quickwins-setzen { quickWins: [{ text, bis?, quelle? }] } ·
-//        quickwin { id, erledigt?, bis?, weg? } · kickoff-fragen { fragen: [{ frage, an?, warum?, quelle? }] } · kickoff-frage { id, erledigt?, weg? } ·
+//        quickwin { id, erledigt?, am?, bis?, weg? } · kickoff-fragen { fragen: [{ frage, an?, warum?, quelle? }] } · kickoff-frage { id, erledigt?, weg? } ·
 //        wert-ziel { zielId, felder: { ausgang?, ausgangZahl?, zielZahl?, einheit?, richtung?, zielBis?, festlegen? } } · ziel-neu { text, ziel?, felder? } ·
-//        wert-messung { zielId, wert, am?, weg? } · befaehigung { id?, text?, erfuellt?, weg? } · willkommen-gesendet { zuruecknehmen? } ·
+//        wert-messung { zielId, wert, am?, weg? } · befaehigung { id?, text?, erfuellt?, am?, weg? } · willkommen-gesendet { zuruecknehmen? } ·
+//        (12.10.: `am` = nachtragen, was schon passiert ist — ein Tag, nie in der Zukunft; ohne `am` gilt heute.)
 //        fall-status { status } · onboarding-aus { aus } (ohne Fall: Karte „Kundenonboarding starten“ ausblenden).
 // Nur per Sitzung (Dienstweg 403), Bau-Kennung, nur Mandate von Business-Gesellschaften. Wirkung nach außen: keine (Mails gehen per Klick
 // über /api/inbox/senden, danach `willkommen-gesendet`).

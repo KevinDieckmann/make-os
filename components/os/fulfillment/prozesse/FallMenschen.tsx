@@ -4,7 +4,7 @@
 // Stakeholder-Karte (Entscheider, Unterstützer, Skeptiker … — Personen NUR aus der Kartei, eingeschränkte Personen (Art. 18) lassen sich nicht
 // eintragen; Haltung und Notiz sind intern und fallen 12 Monate nach Mandatsende weg), Zusammenarbeits-Vereinbarung (im Kick-off bestätigt) und
 // das Entscheidungs-Log (geteilte Entscheidungen sieht der Kunde in seiner Ansicht).
-// 12.10. (Kevin: „Antwort zuerst, Bild statt Liste“): oben drei Antworten (trägt der Entscheider? liegt etwas beim Kunden? ist die Vereinbarung
+// 12.10. (Rückmeldung: „Antwort zuerst, Bild statt Liste“): oben drei Antworten (trägt der Entscheider? liegt etwas beim Kunden? ist die Vereinbarung
 // bestätigt?) und EINE Hauptaktion; die Stakeholder als Raster Einfluss × Haltung (jede Person ein Tippziel zum Bearbeiten), die Entscheidungen
 // als Zeitstrahl (offene mit Frist als Strecke), die bestätigte Vereinbarung als ruhige Zusammenfassung — Bearbeiten und Lösen hinter „⋯“.
 // Gerechnet in lib/fulfillment/prozesse/ansichten.ts; geschrieben nur über die vorhandenen Fall-Ops.

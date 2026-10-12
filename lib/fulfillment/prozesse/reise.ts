@@ -11,6 +11,7 @@ import type { OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
 import { aktuellerKnoten, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, teilbaum, wurzelVon } from '../regeln';
 import { obSchluessel, type OnboardingStand } from './onboarding';
+import { WEITERE_BAUSTEINE } from './phasen';
 
 const FERTIG: ReadonlySet<KnotenStatus> = new Set(['erledigt', 'entfaellt']);
 const fertig = (k: Pick<FallKnoten, 'status'>) => FERTIG.has(k.status);
@@ -108,19 +109,25 @@ export function phaseGruppen(fall: Pick<Fall, 'knoten'>, phaseId: string, heute:
   const teile = kinderVon(phaseId, l);
   if (!teile.length) return [gruppe(null, [zeile({ ...phase }, [], heute)])];
   const raus: SchrittGruppe[] = [];
+  const ohneTitel = (z: SchrittZeile[]) => {
+    const letzte = raus.at(-1);
+    if (letzte && !letzte.teil) raus[raus.length - 1] = gruppe(null, [...letzte.zeilen, ...z]);
+    else raus.push(gruppe(null, z));
+  };
   for (const t of teile) {
     const schritte = kinderVon(t.id, l);
-    if (!schritte.length) {
-      const z = zeile(t, l, heute);
-      const letzte = raus.at(-1);
-      if (letzte && !letzte.teil) raus[raus.length - 1] = gruppe(null, [...letzte.zeilen, z]);
-      else raus.push(gruppe(null, [z]));
-      continue;
-    }
+    if (!schritte.length) { ohneTitel([zeile(t, l, heute)]); continue; }
+    // Ein Sammel-Teilprozess („Weitere Bausteine“ aus dem Import, bzw. einer, der wie seine Phase heißt) ist keine eigene Gruppe — seine Schritte
+    // stehen direkt in der Phase (12.10., Fund aus dem Ende-zu-Ende-Test: „Weitere Bausteine“ stand je Phase als doppelte Überschrift).
+    if (istSammelTeil(t, phase)) { ohneTitel(schritte.map(s => zeile(s, l, heute))); continue; }
     raus.push(gruppe(t, schritte.map(s => zeile(s, l, heute))));
   }
   return raus;
 }
+const titelVergleich = (t: string) => t.normalize('NFC').toLowerCase().replace(/[^a-z0-9äöüß]+/g, ' ').trim();
+/** Sammel-Teilprozess: „Weitere Bausteine“ (Titel des Imports für Bausteine ohne Unterphase) oder gleichnamig mit seiner Phase. */
+export const istSammelTeil = (t: Pick<FallKnoten, 'titel'>, phase: Pick<FallKnoten, 'titel'>): boolean =>
+  titelVergleich(t.titel) === titelVergleich(WEITERE_BAUSTEINE) || titelVergleich(t.titel) === titelVergleich(phase.titel);
 const gruppe = (teil: FallKnoten | null, zeilen: SchrittZeile[]): SchrittGruppe => ({ teil, zeilen, erledigt: zeilen.filter(z => z.zustand === 'erledigt').length, gesamt: zeilen.filter(z => z.zustand !== 'entfaellt').length });
 
 /** Die nächsten offenen Schritte der Phase „jetzt“ (höchstens `n`) — in der Reihenfolge des Ablaufs. */

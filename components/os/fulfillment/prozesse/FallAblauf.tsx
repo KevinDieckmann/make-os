@@ -264,7 +264,7 @@ function FreigabeMeilenstein({ p, gegeben, onVermerken, onZurueck }: { p: ReiseP
       <Zeile umbrechen
         links={<span style={{ width: 44, display: 'inline-grid', placeItems: 'center', flex: '0 0 auto' }}><FreigabeRaute gegeben={!!gegeben} aktiv groesse={14} /></span>}
         titel={<span>Freigabe {fg.id} · {fg.titel}</span>}
-        unter={gegeben ? `vermerkt am ${tagKurz(gegeben.am)}${wie ? ` · ${wie}` : ''}${gegeben.notiz ? ` · ${gegeben.notiz}` : ''}` : `Haltepunkt am Ende der Phase — ${FREIGABE_WER[fg.wer]}, dann geht es weiter.`}
+        unter={gegeben ? `${gegeben.kunde ? `bestätigt am ${tagKurz(gegeben.kunde.am)}${wie ? ` ${wie}` : ''} · ` : ''}vermerkt am ${tagKurz(gegeben.am)}${gegeben.notiz ? ` · ${gegeben.notiz}` : ''}` : `Haltepunkt am Ende der Phase — ${FREIGABE_WER[fg.wer]}, dann geht es weiter.`}
         rechts={gegeben ? <Chip farbe={LEUCHT.gut}>vermerkt</Chip> : <Erklaert erklaerung="fulfillment.freigabe" name={`Freigabe ${fg.id}`}><Knopf onClick={onVermerken}>Freigabe vermerken</Knopf></Erklaert>} />
     </ZeileAktionen>
   );

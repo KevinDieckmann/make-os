@@ -45,7 +45,7 @@ export const MARKE_TEXT = {
 
 /**
  * Marken eines Bausteins (nur intern · rechtlich prüfen · vor Verkauf prüfen) — seit 12.10. ruhig: ein kleines Zeichen mit Tooltip statt eines
- * farbigen Chips (Kevin: „interne Marken ruhig“). Erscheint nur in internen Ansichten; die Kunden-Sicht kennt die Marken gar nicht (Positivliste).
+ * farbigen Chips (Rückmeldung: „interne Marken ruhig“). Erscheint nur in internen Ansichten; die Kunden-Sicht kennt die Marken gar nicht (Positivliste).
  */
 export function BausteinMarken({ b }: { b: Pick<BausteinKurz, 'nurIntern' | 'rechtOffen' | 'vorVerkaufOffen'> & { rechtGeprueft?: unknown } }) {
   const z = (k: keyof typeof MARKE_TEXT, Zeichen: typeof Lock) => (

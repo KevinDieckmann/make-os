@@ -1,6 +1,6 @@
 // ─── MAKE OS — Demo-Instanz: Fulfillment · Kunde (C2, 10.10.; FULFILLMENT_KONZEPT.md 12.7) ─────────────────────────────────────────────────────────
 // Kunden-Link-Schalter bleibt AUS (die Vorschau „So sieht der Kunde es“ ist trotzdem sichtbar), ein ausgefülltes Playbook (gemeinsam im Kick-off,
-// `formular-intern`) und zwei Puls-Werte (8 und 5) — alles über die Routen, erfunden und neutral. Ohne Fall (Paket C1 nicht da) gibt es kein Formular:
+// `formular-intern`) und ein Puls (8, heute; der frühere vor 16 Tagen kommt aus `geschichteSaeen`) — alles über die Routen, erfunden und neutral. Ohne Fall (Paket C1 nicht da) gibt es kein Formular:
 // dann nur die Puls-Werte. Kein Link wird angelegt (der Schalter ist aus) — also auch kein Token.
 
 import type { FulfillmentSaatKontext, SaatSchritt } from './saat-fulfillment';
@@ -16,7 +16,7 @@ const ANTWORT: Record<string, string> = {
 export async function kundeSaeen(k: FulfillmentSaatKontext): Promise<SaatSchritt[]> {
   const pfad = '/api/fulfillment/kunde';
   let antworten = 0;
-  const [erstes, zweites] = k.mandate;
+  const [erstes] = k.mandate;
   if (erstes) {
     const stand = await k.rufe(k.routen.kunde(), 'GET', `${pfad}?m=${encodeURIComponent(erstes.id)}`, k.inhaber);
     const formulare = (stand.formulare ?? []) as { bausteinId: string; stand: string; abschnitte: { schluessel: string; fragen: { id: string; art: string; optionen?: string[] }[] }[] }[];
@@ -32,7 +32,7 @@ export async function kundeSaeen(k: FulfillmentSaatKontext): Promise<SaatSchritt
     }
     await k.rufe(k.routen.kunde(), 'POST', pfad, k.inhaber, { aktion: 'puls-hand', mandatId: erstes.id, wert: 8, satz: 'Die Termine sind gut vorbereitet.' });
   }
-  const zweiter = zweites ?? erstes;
-  if (zweiter) await k.rufe(k.routen.kunde(), 'POST', pfad, k.mitglied, { aktion: 'puls-hand', mandatId: zweiter.id, wert: 5, satz: 'Die Datenanbindung hakt noch.' });
-  return [{ name: 'Fulfillment · Playbook-Antworten (Kunden-Link aus)', anzahl: antworten }, { name: 'Fulfillment · Kunden-Puls', anzahl: zweiter ? 2 : 0 }];
+  // 12.10. (Geschichte ohne Widersprüche): der zweite Kunde steht erst im Onboarding — von ihm gibt es noch keinen Puls (vorher: 5 „Datenanbindung
+  // hakt“ drei Tage nach der Unterschrift). Der frühere Puls des ersten Kunden (vor 16 Tagen) sät lib/demo/fulfillment-prozesse.ts `geschichteSaeen`.
+  return [{ name: 'Fulfillment · Playbook-Antworten (Kunden-Link aus)', anzahl: antworten }, { name: 'Fulfillment · Kunden-Puls', anzahl: erstes ? 1 : 0 }];
 }

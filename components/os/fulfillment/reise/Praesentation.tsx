@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Fulfillment — „Dem Kunden zeigen“: die Kunden-Seite im Vollbild (12.10., „kundenreif“) ───────────────────────────────────────────────────
-// Kevin 12.10.: „Kann ich das einem Kunden zeigen?“ Ein Knopf am Fall (und auf der Landkarte) öffnet die Seite des Kunden im Vollbild — für den Termin
+// Rückmeldung 12.10.: „Kann ich das einem Kunden zeigen?“ Ein Knopf am Fall (und auf der Landkarte) öffnet die Seite des Kunden im Vollbild — für den Termin
 // am Bildschirm. Inhalt NUR aus `GET /api/fulfillment/kunde/vorschau?m=` (serverseitig gebaut, Positivliste `SICHT_SCHLUESSEL` in
 // lib/fulfillment/kunde/sicht.ts — dieselbe, die der Kunde über seinen Link bekommt) und NUR gezeichnet mit `KundenAnsicht` (dieselbe Komponente wie
 // die öffentliche Seite, hier ohne Aktionen = gesperrt). Keine zweite Filterlogik, kein eigenes Layout: was intern ist (Marken, Notizen, Kosten,

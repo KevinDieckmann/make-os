@@ -2,9 +2,10 @@
 // Landkarte und drei Paket-Vorlagen aus dem Muster, rund 25 erfundene Bausteine über den Import (zwei „rechtlich prüfen“, einer „nur intern“,
 // einer „vor Verkauf prüfen“, ein Huddle mit Zahlenrunde), vier erfundene Abläufe (Trichter, Fluss mit Weichen, Kreis mit Empfehlungsring,
 // Zeitachse — mit Rückweg und gestrichelter Ergänzung), Zuordnung der Demo-Produkte, zwei Fälle: Lumen im Onboarding (Willkommensmail überfällig), Nordwerk in der
-// Umsetzung (Wert-Konto mit drei Messungen, Stakeholder, Entscheidungen, Mitschrift, Kick-off; das Kunden-Playbook hängt als Formular im Fall —
-// die Antworten sät lib/demo/fulfillment-kunde.ts). Alles über die Routen (`k.rufe`), erfunden
-// und neutral (Wächter tests/demo.test.ts).
+// Diagnose — seit 12.10. eine durchgehende Geschichte ohne Widersprüche (Unterschrift → Kick-off → Analyse → F2 → Diagnose mit Quick Wins aus der
+// Analyse, Wert-Konto mit drei Messungen, zwei Reports, Puls 7 → 8, Wochen-Check im Kalender; das Kunden-Playbook hängt als Formular im Fall —
+// die Antworten sät lib/demo/fulfillment-kunde.ts). Alles über die Routen (`k.rufe`), erfunden und neutral (Wächter tests/demo.test.ts);
+// die wenigen direkten Wege (Kalender-Bezug, Report und Puls mit Datum in der Vergangenheit) stehen begründet an ihrer Stelle.
 
 import type { FulfillmentSaatKontext, SaatSchritt } from './saat-fulfillment';
 import { MUSTER_P1, MUSTER_P2, MUSTER_P3 } from '@/lib/fulfillment/muster';
@@ -159,55 +160,68 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
   const lumen = k.mandate.find(m => m.id === 'm-demo-lumen');
   let faelle = 0;
   if (nordwerk && pakete['hos-cso']) {
-    await k.rufe(k.routen.fall(), 'POST', '/api/fulfillment/fall', L, { aktion: 'starten', mandatId: nordwerk.id, vorlageId: pakete['hos-cso'], start: tagPlus(k.heute, -60), anfrageId: 'ff-demo-start-nordwerk' });
+    // Die Geschichte (12.10., „kundenreif“ — ein Musterfall von Anfang bis zur Mitte, ohne Widersprüche): Unterschrift vor 46 Tagen, Start vor 45,
+    // Kick-off vor 42 (Vereinbarung, F0, F1), Analyse bis vor 26 Tagen (Dossier geprüft, F2), seitdem Diagnose. Quick Wins, Fragen und Maßnahmen
+    // kommen aus der geprüften Diagnose (`geschichteSaeen`, nach der Analyse-Saat); Reports vor 28 und 14 Tagen, Puls vor 16 Tagen 7, heute 8.
+    await k.rufe(k.routen.fall(), 'POST', '/api/fulfillment/fall', L, { aktion: 'starten', mandatId: nordwerk.id, vorlageId: pakete['hos-cso'], start: tagPlus(k.heute, -45), anfrageId: 'ff-demo-start-nordwerk' });
     faelle++;
     // Ziele am Mandat (die Wahrheit für „was ist das Ziel“) — fehlen sie, legt der Fall sie über `ziel-neu` an.
     let f0 = await fallLesen(nordwerk.id);
     if (!(((f0.mandat as J | undefined)?.ziele ?? []) as unknown[]).length) {
-      await fallOps(nordwerk.id, [{ op: 'ziel-neu', text: 'Qualifizierte Termine je Monat' }, { op: 'ziel-neu', text: 'Planung über zwölf Monate' }]);
+      await fallOps(nordwerk.id, [{ op: 'ziel-neu', text: 'Monatliches Kennzahlen-Review etabliert' }, { op: 'ziel-neu', text: 'Qualifizierte Erstgespräche je Monat' }]);
       f0 = await fallLesen(nordwerk.id);
     }
     const ziele = ((f0.mandat as J | undefined)?.ziele ?? []) as { id: string }[];
+    // Der Wochen-Check steht im Kalender (Termin-Stand der Saat, „Wochen-Check Nordwerk“): Bezug zum Mandat + am Fall vermerkt.
+    const wochenTermine = await wochenCheckTermine(nordwerk.id, k.heute, L);
     const ops: J[] = [
       { op: 'willkommen-gesendet' },
-      ...(nordwerk.kontaktIds[0] ? [{ op: 'stakeholder', eintrag: { kontaktId: nordwerk.kontaktIds[0], rolle: 'entscheider', einfluss: 3, haltung: 'positiv' } }] : []),
+      ...(nordwerk.kontaktIds[0] ? [{ op: 'stakeholder', eintrag: { kontaktId: nordwerk.kontaktIds[0], rolle: 'entscheider', einfluss: 3, haltung: 'positiv', notiz: 'Trägt das Projekt, will die Zahlen jede Woche sehen.' } }] : []),
       { op: 'vereinbarung', felder: {
         rollen: 'Geschäftsführung entscheidet, Vertriebsleitung führt den Alltag.', reaktionszeiten: 'Antwort binnen zwei Werktagen.',
         wirBrauchen: 'Die Zahlen der Woche bis Montag 12 Uhr.', eskalation: 'Im Steering, sonst direkt an die Geschäftsführung.',
         scopeDrin: 'Vertrieb und Kennzahlen.', scopeDraussen: 'Marketing-Kampagnen und Website.', entscheidungsrechte: 'Preise entscheidet der Kunde.',
-        bestaetigtAm: tagPlus(k.heute, -55), bestaetigtWie: 'kickoff',
+        bestaetigtAm: tagPlus(k.heute, -42), bestaetigtWie: 'kickoff',
       } },
-      { op: 'entscheidung', eintrag: { titel: 'Zielgruppe zuerst: Maschinenbau im Umkreis', status: 'entschieden', wer: 'beide', geteilt: true } },
-      { op: 'entscheidung', eintrag: { titel: 'Neues Angebot für Bestandskunden', status: 'offen', wer: 'kunde', geteilt: true, frist: tagPlus(k.heute, 5) } },
+      { op: 'entscheidung', eintrag: { titel: 'Zielgruppe zuerst: Maschinenbau im Umkreis', status: 'entschieden', wer: 'beide', geteilt: true, am: tagPlus(k.heute, -40) } },
+      { op: 'entscheidung', eintrag: { titel: 'Erstgespräche nach fester Agenda', inhalt: 'Bedarf, Engpass, Ziel, nächster Schritt — für alle im Vertrieb.', status: 'entschieden', wer: 'beide', geteilt: true, am: tagPlus(k.heute, -21) } },
+      { op: 'entscheidung', eintrag: { titel: 'Neues Angebot für Bestandskunden', status: 'offen', wer: 'kunde', geteilt: true, frist: tagPlus(k.heute, 5), am: tagPlus(k.heute, -4) } },
       ...(kickoff ? [{ op: 'ritual-merken', ritualId: kickoff, terminUid: 'makeos-demo-kickoff-nordwerk' }] : []),
-      // Die Ziele stehen am Mandat (auch in der alten Text-Form — lib/crm/mandat-ziele.ts erhält sie); erstes Ziel: Reviews je Jahr.
+      ...(wochencheck ? wochenTermine.map(uid => ({ op: 'ritual-merken', ritualId: wochencheck, terminUid: uid })) : []),
+      // Die Ziele stehen am Mandat (auch in der alten Text-Form — lib/crm/mandat-ziele.ts erhält sie); je Ziel Ausgang, Zielwert, Datum, festgelegt im Kick-off.
       ...ziele.slice(0, 2).map((z, i) => ({ op: 'wert-ziel', zielId: z.id, felder: i === 0
         ? { ausgang: 'Kennzahlen nur einmal im Quartal angesehen', ausgangZahl: 4, zielZahl: 12, einheit: 'Reviews/Jahr', zielBis: tagPlus(k.heute, 60), richtung: 'hoch', festlegen: true }
-        : { ausgang: 'Planung nur für drei Monate', ausgangZahl: 3, zielZahl: 12, einheit: 'Monate', zielBis: tagPlus(k.heute, 90), richtung: 'hoch', festlegen: true } })),
-      ...(ziele[0] ? [[-50, 5], [-30, 7], [-10, 9]].map(([t, wert]) => ({ op: 'wert-messung', zielId: ziele[0].id, wert, am: tagPlus(k.heute, t) })) : []),
-      { op: 'freigabe', id: 'F0', kunde: { wie: 'kickoff', am: tagPlus(k.heute, -55) } },
-      { op: 'quickwins-setzen', quickWins: [{ text: 'Nachfass-Liste der offenen Angebote', bis: tagPlus(k.heute, 3) }, { text: 'Wochen-Zahlen auf einer Seite', bis: tagPlus(k.heute, 10) }] },
+        : { ausgang: 'Drei Erstgespräche im Monat, ohne festen Ablauf', ausgangZahl: 3, zielZahl: 8, einheit: 'Gespräche/Monat', zielBis: tagPlus(k.heute, 90), richtung: 'hoch', festlegen: true } })),
+      ...(ziele[0] ? [[-35, 5], [-21, 7], [-7, 9]].map(([t, wert]) => ({ op: 'wert-messung', zielId: ziele[0].id, wert, am: tagPlus(k.heute, t) })) : []),
+      ...(ziele[1] ? [[-21, 4], [-7, 5]].map(([t, wert]) => ({ op: 'wert-messung', zielId: ziele[1].id, wert, am: tagPlus(k.heute, t) })) : []),
+      { op: 'freigabe', id: 'F0', kunde: { wie: 'kickoff', am: tagPlus(k.heute, -42) }, am: tagPlus(k.heute, -42) },
+      { op: 'mitschrift', eintrag: { anlass: 'Kick-off', ergebnis: 'Ziele, Rollen und Takt vereinbart; Analyse-Umfang bestätigt.', naechster: 'Analyse starten und Unterlagen anfordern', frist: tagPlus(k.heute, -35), am: tagPlus(k.heute, -42), ...(kickoff ? { ritualId: kickoff } : {}) } },
       { op: 'mitschrift', eintrag: { anlass: 'Wochen-Check', ergebnis: 'Zwei neue Termine aus der Nachfass-Liste.', naechster: 'Angebot für den Bestandskunden vorbereiten', frist: tagPlus(k.heute, 4), am: tagPlus(k.heute, -3), ...(wochencheck ? { ritualId: wochencheck } : {}) } },
-      { op: 'befaehigung', id: 'bf-1', erfuellt: true },
+      { op: 'befaehigung', id: 'bf-1', erfuellt: true, am: tagPlus(k.heute, -8) },
     ];
     await fallOps(nordwerk.id, ops);
-    // Fortschritt bis in die Umsetzung: die ersten beiden Phasen erledigt (Freigaben vermerkt), die dritte läuft.
+    // Fortschritt bis in die Diagnose: Vorlauf erledigt (Kick-off vor 42 Tagen), Analyse erledigt (F2 vor 26 Tagen), die Diagnose läuft.
     const f1 = await fallLesen(nordwerk.id);
     const knoten = (((f1.fall as J | undefined)?.knoten ?? []) as KnotenJ[]);
     const wurzel = knoten.find(x => !x.elternId);
     const phasen = knoten.filter(x => x.elternId === wurzel?.id).sort((a, b) => a.rang - b.rang);
     const unter = (id: string): KnotenJ[] => knoten.filter(x => x.elternId === id).flatMap(x => [x, ...unter(x.id)]);
     const weiter: J[] = [];
-    const freigaben = new Set<string>();
-    for (const p of phasen.slice(0, 2)) {
+    const freigaben = new Map<string, string>();
+    phasen.slice(0, 2).forEach((p, i) => {
+      const am = tagPlus(k.heute, i === 0 ? -42 : -26);
       for (const x of [p, ...unter(p.id)]) {
         if (x.id.startsWith('fk-ob')) continue; // Onboarding-Schritte (abgeleitet) samt Playbook-Formular bleiben, wie sie sind
-        if (x.freigabe) freigaben.add(x.freigabe);
-        else if (x.status !== 'erledigt') weiter.push({ op: 'knoten-status', id: x.id, status: 'erledigt' });
+        if (x.freigabe) freigaben.set(x.freigabe, am);
+        else if (x.status !== 'erledigt') weiter.push({ op: 'knoten-status', id: x.id, status: 'erledigt', am });
       }
+    });
+    for (const [id, am] of freigaben) if (id !== 'F0') weiter.push({ op: 'freigabe', id, am });
+    if (phasen[2] && !phasen[2].id.startsWith(OB_PRAEFIX)) {
+      weiter.push({ op: 'knoten-status', id: phasen[2].id, status: 'in_arbeit', am: tagPlus(k.heute, -26) });
+      const bericht = unter(phasen[2].id).find(x => /diagnosebericht/i.test(x.titel));
+      if (bericht) weiter.push({ op: 'knoten-status', id: bericht.id, status: 'in_arbeit', am: tagPlus(k.heute, -10) });
     }
-    for (const id of freigaben) if (id !== 'F0') weiter.push({ op: 'freigabe', id, kunde: { wie: 'termin', am: tagPlus(k.heute, -20) } });
-    if (phasen[2] && !phasen[2].id.startsWith(OB_PRAEFIX)) weiter.push({ op: 'knoten-status', id: phasen[2].id, status: 'in_arbeit' });
     if (weiter.length) await fallOps(nordwerk.id, weiter);
   }
   if (lumen && pakete['sales-systematik']) {
@@ -221,4 +235,59 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
     { name: 'Fulfillment: Abläufe', anzahl: ablaeufe },
     { name: 'Fulfillment: Fälle', anzahl: faelle },
   ];
+}
+
+/**
+ * Die Termine „Wochen-Check Nordwerk“ aus dem Termin-Stand der Saat (`calendar-cache`, lib/demo/saat.ts) bekommen ihren Bezug zum Mandat
+ * (`kalender-bezug`, wie ihn der Kalender-Dialog beim Anlegen schreibt) — Ausnahme (hier begründet, wie der Termin-Stand selbst): die Demo hat keinen
+ * iCloud-Kalender, also auch keinen Anlege-Weg. Liefert die Kennungen ab heute (für `ritual-merken`).
+ */
+async function wochenCheckTermine(mandatId: string, heute: string, von: string): Promise<string[]> {
+  const { loadJson } = await import('@/lib/store/local-db');
+  const { bezugSetzen } = await import('@/lib/kalender/bezug-server');
+  const stand = await loadJson<{ events?: { id: string; title: string; startDate: string; calendarName: string }[] }>('calendar-cache');
+  const termine = (stand?.events ?? []).filter(e => e.title === 'Wochen-Check Nordwerk');
+  for (const e of termine) await bezugSetzen(`${e.calendarName.toLowerCase()}|${e.id}`, { mandatId, tag: e.startDate.slice(0, 10), art: 'termin', von });
+  return termine.filter(e => e.startDate.slice(0, 10) >= heute).map(e => e.id);
+}
+
+/**
+ * Der zweite Teil der Geschichte — NACH der Analyse-Saat (das Dossier ist dann geprüft): Quick Wins, Fragen und Maßnahmen der Diagnose gehen per
+ * „in den Fall“ über (dieselben zwei Schritte wie im Browser: die Dossier-Route liefert die Ops, die Fall-Route schreibt), ein Quick Win ist erledigt,
+ * die Fragen wurden im Wochen-Check gestellt. Dazu zwei Fortschritts-Reports (vor 28 und 14 Tagen, gesendet) und der frühere Puls (vor 16 Tagen: 7) —
+ * Ausnahme (begründet): die Routen kennen nur „jetzt“, darum über die EINE Schreibstelle mit `jetzt` in der Vergangenheit.
+ */
+export async function geschichteSaeen(k: FulfillmentSaatKontext): Promise<SaatSchritt[]> {
+  const L = k.inhaber;
+  const m = k.mandate.find(x => x.id === 'm-demo-nordwerk');
+  if (!m) return [];
+  let n = 0;
+  for (const was of ['quickwins', 'fragen', 'massnahmen'] as const) {
+    try {
+      const r = await k.rufe(k.routen.dossier(), 'POST', '/api/fulfillment/dossier', L, { aktion: 'nach-fall', mandatId: m.id, was });
+      const body = r.body as { mandatId: string; ops: J[] } | undefined;
+      if (body?.ops?.length) { await k.rufe(k.routen.fall(), 'PATCH', '/api/fulfillment/fall', L, body); n += body.ops.length; }
+    } catch { /* ohne Diagnose (z. B. Analyse ausgelassen) bleibt der Fall, wie er ist */ }
+  }
+  const f = (await k.rufe(k.routen.fall(), 'GET', `/api/fulfillment/fall?m=${encodeURIComponent(m.id)}`, L)).fall as { quickWins: { id: string; text: string }[]; kickoffFragen: { id: string }[] } | null;
+  const ops: J[] = [];
+  const erster = f?.quickWins.find(q => /agenda/i.test(q.text)) ?? f?.quickWins[0];
+  if (erster) ops.push({ op: 'quickwin', id: erster.id, erledigt: true, am: tagPlus(k.heute, -18) });
+  for (const q of f?.kickoffFragen ?? []) ops.push({ op: 'kickoff-frage', id: q.id, erledigt: true });
+  if (ops.length) await k.rufe(k.routen.fall(), 'PATCH', '/api/fulfillment/fall', L, { mandatId: m.id, ops });
+  // Reports (Leistungstreppe): erstellt und gesendet vor 28 und vor 14 Tagen — heute ist der dritte fällig.
+  let reports = 0;
+  try {
+    const { reportErstellen, treppeSchreiben } = await import('@/lib/crm/treppe-server');
+    for (const t of [-28, -14]) {
+      const jetzt = new Date(`${tagPlus(k.heute, t)}T10:00:00Z`);
+      await reportErstellen(m.id, L, jetzt);
+      await treppeSchreiben([{ op: 'report-gesendet', mandatId: m.id }], L, { art: 'person', person: L }, jetzt);
+      reports++;
+    }
+  } catch { /* ohne Leistungstreppe kein Report — der Fall zeigt dann „noch kein Report“ */ }
+  // Der frühere Puls (vor 16 Tagen 7 — damals in die Health übernommen: Stimmung 70 am Mandat); der heutige (8) kommt aus lib/demo/fulfillment-kunde.ts.
+  const { pulsHandEintragen } = await import('@/lib/fulfillment/kunde/server');
+  await pulsHandEintragen(m.id, 7, 'Gute Struktur, die Zahlen kommen noch zu spät.', L, new Date(`${tagPlus(k.heute, -16)}T09:00:00Z`));
+  return [{ name: 'Fulfillment · Aus der Diagnose in den Fall', anzahl: n }, { name: 'Fulfillment · Reports', anzahl: reports }];
 }

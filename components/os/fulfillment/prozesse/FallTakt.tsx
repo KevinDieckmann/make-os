@@ -4,7 +4,7 @@
 // Rituale: „Termin anlegen“ öffnet den VORHANDENEN Anlege-Dialog des Kalenders (vorbelegt: Titel, Dauer, Bezug zum Mandat, Gäste aus der
 // Stakeholder-Karte — eingeladen wird erst nach der Rückfrage im Dialog); danach merkt sich der Fall die Termin-Kennung. Mitschriften im
 // 4-Zeilen-Standard (Anlass · Ergebnis · nächster Schritt · Frist) — per Klick ins Entscheidungs-Log oder als Aufgabe (mit Link dorthin).
-// 12.10. (Kevin: „Antwort zuerst, Bild statt Liste“): oben „Wann ist der nächste Termin?“ und „Was kam zuletzt heraus?“, dann die Rituale als
+// 12.10. (Rückmeldung: „Antwort zuerst, Bild statt Liste“): oben „Wann ist der nächste Termin?“ und „Was kam zuletzt heraus?“, dann die Rituale als
 // Kalender-Leiste über sechs Wochen (echter Termin gefüllt, im Rhythmus erwartete gestrichelt — nie ein erfundener Termin ohne Kalender), darunter
 // die Mitschriften. Befähigung und Wirkungsbericht stehen seit 12.10. unter „Abschluss & Kreislauf“ (dort schließt sich der Kreis).
 

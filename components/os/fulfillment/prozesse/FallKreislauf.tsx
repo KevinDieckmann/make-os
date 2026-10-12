@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Fulfillment › Fall › Abschluss & Kreislauf (12.10.; vorher Teil von „Takt“ — FULFILLMENT_KONZEPT.md 5.3) ─────────────────────────────────
-// Kevin 12.10.: „Wirkungsbericht + Nachsorge — zurück in den Kreislauf/Markttraktion. Keine losen Enden.“ Das Ende der Reise an EINER Stelle:
+// Rückmeldung 12.10.: „Wirkungsbericht + Nachsorge — zurück in den Kreislauf/Markttraktion. Keine losen Enden.“ Das Ende der Reise an EINER Stelle:
 //   1. Antwort zuerst: wo steht dieser Kunde im Kreislauf, was ist der nächste Handgriff am Ende (`abschlussSchritt`: Fall abschließen →
 //      Wirkungsbericht → Mandat beenden → Nachsorge), Befähigung „läuft ohne uns“.
 //   2. Das Kreislauf-Rad (dieselben sieben Stufen wie Markttraktion › Planung) mit „hier steht dieser Kunde“ — jede Stufe springt in ihre Ansicht.
@@ -202,7 +202,7 @@ function WirkungKarte({ daten, melde, ops }: { daten: FallAntwort; melde: Melde;
         </Leiste>
       )}
       <Leiste>
-        <Knopf haupt onClick={erstellen} aus={laeuft || (!!zitat.text.trim() && (!zitat.am || !zitat.wie.trim()))}>{erstellt ? 'Neu erstellen' : 'Bericht erstellen'}</Knopf>
+        <Knopf onClick={erstellen} aus={laeuft || (!!zitat.text.trim() && (!zitat.am || !zitat.wie.trim()))}>{erstellt ? 'Neu erstellen' : 'Bericht erstellen'}</Knopf>
         {erstellt?.dateiName && <a href={`/api/fulfillment/wirkung?m=${encodeURIComponent(m.id)}`} download style={{ color: C.aktiv, fontSize: TYP.bedien, alignSelf: 'center', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>↓ PDF</a>}
         {erstellt?.dateiName && <Knopf onClick={perMail}>Per Mail senden …</Knopf>}
         {erstellt && f.status !== 'abgeschlossen' && <Knopf leise onClick={() => ops([{ op: 'fall-status', status: 'abgeschlossen' }], 'Fall abgeschlossen — die Nachsorge zählt ab dem Mandatsende.')}>Fall abschließen</Knopf>}

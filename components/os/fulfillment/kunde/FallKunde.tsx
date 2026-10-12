@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Fulfillment · Fall › Kunde & Reports (C2, 10.10.; neu gezeichnet 12.10. — FULFILLMENT_KONZEPT.md 5.2, 5.4, 5.5) ──────────────────────────────
-// Die INTERNE Steuerung dessen, was beim Kunden ankommt und was zurückkommt. 12.10. (Kevin: „Antwort zuerst, Bild statt Liste, keine losen Enden“):
+// Die INTERNE Steuerung dessen, was beim Kunden ankommt und was zurückkommt. 12.10. (Rückmeldung: „Antwort zuerst, Bild statt Liste, keine losen Enden“):
 //   1. Drei Antworten: Report im Takt? · Wie zufrieden ist der Kunde (Puls ↔ Health)? · Was sieht der Kunde (Link, Playbook, Unterlagen)? — und EINE
 //      Hauptaktion (Report fällig → Report; sonst „Dem Kunden zeigen“).
 //   2. Fortschritts-Report: die Zeitachse im Zwei-Wochen-Takt (erstellte Reports aus der Dateiablage, Soll-Termine, nächster fälliger Tag), darunter
