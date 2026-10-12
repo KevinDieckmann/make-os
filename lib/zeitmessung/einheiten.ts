@@ -176,6 +176,19 @@ export interface PersonAuswertung { person: string; name: string; auswertung: Ei
 export interface ZeitJeEinheit { zeitraum: Zeitraum; von: string; bis: string; label: string; personen: PersonAuswertung[]; gesamt: EinheitAuswertung }
 
 export const TOP_AUFGABEN = 3;
+
+/** Titel einer Aufgabe, die die betrachtende Person nicht sieht (fremde „nur ich“, Privat für „nur Business“, Firmen-Akte ohne Zugang). */
+export const AUFGABE_NICHT_SICHTBAR = 'Aufgabe (nicht sichtbar)';
+
+/**
+ * Die Top-Aufgaben ohne Titel der Aufgaben, die die betrachtende Person nicht sieht (12.10., rein) — die Zeit bleibt (sie gehört der Person, die
+ * sie gearbeitet hat), nur der Titel fällt weg. `verborgen` = `verborgeneAufgabenFuer(betrachter)` (lib/aufgaben/sicht.ts).
+ */
+export function aufgabenTitelVerbergen(z: ZeitJeEinheit, verborgen: ReadonlySet<string>): ZeitJeEinheit {
+  if (!verborgen.size) return z;
+  const aw = (a: EinheitAuswertung): EinheitAuswertung => ({ ...a, zeilen: a.zeilen.map(r => ({ ...r, aufgaben: r.aufgaben.map(x => (verborgen.has(x.id) ? { ...x, titel: AUFGABE_NICHT_SICHTBAR } : x)) })) });
+  return { ...z, personen: z.personen.map(p => ({ ...p, auswertung: aw(p.auswertung) })), gesamt: aw(z.gesamt) };
+}
 const norm = (s: string) => s.toLocaleLowerCase('de-DE');
 
 /** Wer entscheidet, ob ein Block Arbeit ist — `arbeitsPruefer`; ohne Angabe nur Business-Blöcke (wie bis 05.10.). */

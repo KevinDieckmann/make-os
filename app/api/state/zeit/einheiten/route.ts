@@ -14,7 +14,8 @@ import { NextResponse } from 'next/server';
 import { personStreng, planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { merken } from '@/lib/store/memo';
 import { ladeZeit, aufgabenKurz, zeitBloeckeStand } from '@/lib/zeitmessung/speicher';
-import { zeitJeEinheit, berlinTag, brauchtMandate, type Zeitraum } from '@/lib/zeitmessung/einheiten';
+import { zeitJeEinheit, berlinTag, brauchtMandate, aufgabenTitelVerbergen, type Zeitraum } from '@/lib/zeitmessung/einheiten';
+import { verborgeneAufgabenFuer } from '@/lib/aufgaben/sicht';
 import { mandateKurz } from '@/lib/planung/mandat-server';
 import { zeitPersonenVon } from '@/lib/zeitmessung/personen';
 import { sichtAus } from '@/lib/zugang/sicht-bereich';
@@ -45,5 +46,9 @@ export async function GET(req: Request) {
     const mandate = brauchtMandate(dateien, aufgaben) ? await mandateKurz() : null;
     return zeitJeEinheit(personen.map((p, i) => ({ ...p, datei: dateien[i] })), aufgaben, zeitraum, stichtag, mandate, nurBusiness, sicht ?? undefined);
   });
-  return NextResponse.json({ ok: true, ich: person, ...daten }, { headers: { 'Cache-Control': 'no-store' } });
+  // Titel von Aufgaben, die die Person nicht sieht (12.10.: auch die Firmen-Akte ohne Zugang zu ihr; fremde „nur ich“), gehen nicht hinaus —
+  // nach dem Merken, weil der gemerkte Stand je Haushalt gilt. Unlesbar → keine Titel der Top-Aufgaben.
+  const verborgen = await verborgeneAufgabenFuer(person).catch(() => null);
+  const raus = verborgen ? aufgabenTitelVerbergen(daten, verborgen) : aufgabenTitelVerbergen(daten, new Set([...daten.personen.flatMap(p => p.auswertung.zeilen), ...daten.gesamt.zeilen].flatMap(r => r.aufgaben.map(a => a.id))));
+  return NextResponse.json({ ok: true, ich: person, ...raus }, { headers: { 'Cache-Control': 'no-store' } });
 }

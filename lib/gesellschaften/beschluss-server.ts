@@ -147,8 +147,9 @@ async function fassungAnlegen(haushalt: string, person: string, gid: Gesellschaf
 }
 
 async function capTableAufgabe(g: RegisterGesellschaft, b: Beschluss, nr: string, person: string): Promise<string> {
-  const [{ systemAufgabenAendern }, { rechtHash }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/recht/check')]);
-  const id = `bfc-${rechtHash(`${g.id}|${b.id}`)}`;
+  const [{ systemAufgabenAendern }, { rechtHash }, { BESCHLUSS_CAPTABLE_PRAEFIX }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/recht/check'), import('@/lib/aufgaben/firmenakte-sicht')]);
+  // Kennung `bfc-…` = Aufgabe der Firmen-Akte (lib/aufgaben/firmenakte-sicht.ts): nur Personen mit Zugang zur Firmen-Akte sehen sie.
+  const id = `${BESCHLUSS_CAPTABLE_PRAEFIX}${rechtHash(`${g.id}|${b.id}`)}`;
   const jetzt = new Date().toISOString();
   let schonDa = false;
   await systemAufgabenAendern(stand => {

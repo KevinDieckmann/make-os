@@ -4,6 +4,9 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 12.10.2026 — Aufgaben der Firmen-Akte nur mit Zugang zur Firmen-Akte (nur lokal — Branch `aufgaben-firmenakte`, Basis 8cd50a56 = `update-0910b`)
+- Aufgaben mit Kennung `usp-`/`usd-`/`usm-`/`usr-`/`vte-`/`rcw-`/`bfc-` (samt Unteraufgaben, `lib/aufgaben/firmenakte-sicht.ts`) bekommt nur, wer Zugang zur Firmen-Akte hat (`rechtZugangFuer`) — serverseitig in `sichtFuerKonto` (Liste, Heute/Top 3, Glocke, Kalender, Briefing, ZOE), dazu Suche (`appSuche` `ohneAufgaben`), Lichtfäden, Schilde, Delegation, Anlegen, Zeit je Einheit (Titel neutral); Schreiben → 404, zuständig/beteiligt → 400, keine Meldungen. Nur Lese-Filter, kein Datenumbau. Wächter `tests/aufgaben-firmenakte-sicht.test.ts`.
+
 ## 12.10.2026 — Feinschliff aus der Demo: Pflicht-Titel und Phasen-Reihenfolge (nur lokal — Branch `feinschliff-phasen`, Basis d0b700a1 = `update-0910b`)
 - **Pflicht-Erinnerungen mit Klartext:** Heute › Top 3 zeigte zweimal „Unternehmen: Frist im Pflichten-Kalender — <Gesellschaft> — bis …“. Titel jetzt
   „<Pflicht kurz> — <Gesellschaft> — bis <Datum>“ (`pflichtKurz`/`pflichtTitel` in `lib/gesellschaften/schild/ampel.ts`, ohne Norm und ohne Folge); zwei

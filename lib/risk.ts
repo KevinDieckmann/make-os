@@ -9,7 +9,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { computeMetrics, mitKasse, type FinanceState } from '@/lib/make-one/finance-data';
 import { schwellen } from '@/lib/schwellen';
-import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { ladeAufgabenSicht, firmenAkteAusgeblendetFuer } from '@/lib/aufgaben/sicht';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
@@ -17,6 +17,7 @@ import { WEG } from '@/lib/wege';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { bereichVonFirma } from '@/lib/einheiten';
 import { ohnePrivatBereich } from '@/lib/aufgaben/bereich-sicht';
+import { ohneFirmenAkte } from '@/lib/aufgaben/firmenakte-sicht';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
@@ -55,7 +56,9 @@ export async function computeShields(today = localDay(), person?: string | null)
     fuer ? planBloeckeLesen({ person: fuer, von: tagPlus(today, -REHA_GEWOHNHEIT_TAGE), bis: tagPlus(today, 1) }).catch(() => []) : Promise.resolve([] as Awaited<ReturnType<typeof planBloeckeLesen>>),
   ]);
 
-  const tasksF = tasksRoh && ohnePrivat ? ohnePrivatBereich(tasksRoh) : tasksRoh;
+  const tasksP = tasksRoh && ohnePrivat ? ohnePrivatBereich(tasksRoh) : tasksRoh;
+  // Firmen-Akte (12.10.): ohne Zugang (`rechtZugangFuer`) nennen die Schilde keine ihrer Aufgaben. Unlesbar → ebenso ausblenden.
+  const tasksF = tasksP && (await firmenAkteAusgeblendetFuer(person).catch(() => true)) ? ohneFirmenAkte(tasksP) : tasksP;
   const msF = msRoh && ohnePrivat ? { ...msRoh, meilensteine: msRoh.meilensteine.filter(m => meilensteinSpace(m) !== 'privat') } : msRoh;
 
   // 0-Punkt (05.10.): Posten vor der Eröffnung einer Gesellschaft sind archiviert — sie lösen keinen Alarm mehr aus (lib/business/eroeffnung.ts).
