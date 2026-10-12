@@ -5,7 +5,9 @@
 //   · `ladeAufgabenSicht(person)` — übernommen OHNE Papierkorb und durch den Sichtfilter „nur ich“ (29.09.): ALLE Leser
 //     (Listen, Heute, Glocke, Kalender, Board, Indizes, ZOE, Brain, Suche). Seit 09.10. (E4, Kevin: „Ja, Privates bleibt privat“) dazu
 //     die EINE Konto-Sicht: ein Konto „nur Business“ bekommt den Privat-Bereich gar nicht (./bereich-sicht.ts) — `sichtFuerKonto`
-//     ist dieselbe Regel für Leser, die den Bestand schon haben (GET /api/state/tasks, Export, 409-Antworten).
+//     ist dieselbe Regel für Leser, die den Bestand schon haben (GET /api/state/tasks, Export, 409-Antworten). Seit 12.10. dazu die Firmen-Akte:
+//     ihre Aufgaben (Schild, Vertrags-Erinnerung, Recht-Check, Beschluss-Folgen — ./firmenakte-sicht.ts) bekommt nur, wer Zugang zur Firmen-Akte
+//     hat (`rechtZugangFuer`, lib/recht/server.ts — dieselbe Regel wie Unternehmen › Schild und Register).
 // Nie `loadJson('tasks')` roh lesen — dort fehlt die Übernahme, und der Papierkorb stünde mitten in den Listen.
 // Ausnahmen mit Grund: Art. 15/17 (lib/crm/person-bestaende.ts — auch der Papierkorb ist personenbezogen), die
 // Verbindungsprüfung (lib/crm/verbindungen-laden.ts — Dateien an Papierkorb-Einträgen sind nicht „tot“) und Server-
@@ -19,6 +21,7 @@ import { uebernehmen } from './struktur';
 import { aufgabenSicht } from './papierkorb';
 import { istNurIch, darfSehen } from './sicht-regel';
 import { aufgabeImPrivat, ohnePrivatBereich } from './bereich-sicht';
+import { aufgabeInFirmenAkte, hatFirmenAkte, ohneFirmenAkte } from './firmenakte-sicht';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 
@@ -91,13 +94,39 @@ export async function ladeAufgabenSicht(person: string | null, orgs?: Record<str
 
 /**
  * Die Sicht der Person auf einen schon geladenen Bestand (09.10., E4): „nur ich“ (`sichtFuer`), für Konten „nur Business“ ohne den
- * Privat-Bereich (lib/zugang/konto-sicht.ts `privatAusblenden`, ./bereich-sicht.ts), Listen verborgener Meilensteine neutral benannt.
+ * Privat-Bereich (lib/zugang/konto-sicht.ts `privatAusblenden`, ./bereich-sicht.ts), ohne Zugang zur Firmen-Akte ohne deren Aufgaben
+ * (12.10., ./firmenakte-sicht.ts), Listen verborgener Meilensteine neutral benannt.
  * `null` = Systemlauf (keine „nur ich“-Aufgabe, kein Bereichsfilter). Jede Ausgabe des Bestands an eine Person läuft hier durch.
  */
 export async function sichtFuerKonto<S extends TasksState>(state: S, person: string | null): Promise<S> {
-  const nurIch = sichtFuer(state, person);
-  const bereich = (await privatAusgeblendetFuer(person)) ? ohnePrivatBereich(nurIch) : nurIch;
-  return mitNeutralenListen(bereich, person);
+  return mitNeutralenListen(await kontoBereicheFiltern(sichtFuer(state, person), person), person);
+}
+
+/**
+ * Die zwei Bereichs-Filter der Konto-Sicht auf einen Bestand, der „nur ich“ schon hinter sich hat (bzw. die Systemsicht): Privat-Bereich
+ * für Konten „nur Business“ (09.10., E4) und Aufgaben der Firmen-Akte für Personen ohne Zugang zur Firmen-Akte (12.10.). Für Leser, die
+ * die Systemsicht laden und für eine Person ausgeben (Schilde, Delegation, Anlegen per Route). `null` = Systemlauf: beides nicht.
+ */
+export async function kontoBereicheFiltern<S extends TasksState>(state: S, person: string | null | undefined): Promise<S> {
+  const bereich = (await privatAusgeblendetFuer(person)) ? ohnePrivatBereich(state) : state;
+  return hatFirmenAkte(bereich.tasks) && (await firmenAkteAusgeblendetFuer(person)) ? ohneFirmenAkte(bereich) : bereich;
+}
+
+/**
+ * Bekommt diese Person die Aufgaben der Firmen-Akte NICHT (12.10.)? Dieselbe Regel wie Unternehmen › Schild, Register und Head of Recht —
+ * `rechtZugangFuer` (lib/recht/server.ts: Haushalt der Inhaber + voller Haushaltszugang; nie ein Konto „nur Business“). Nicht neu erfunden,
+ * nur gefragt. Systemlauf (`null`) → nein (filtert wie bisher selbst). Unlesbarer Konten-Bestand wirft (wie `privatAusgeblendetFuer`).
+ */
+export async function firmenAkteAusgeblendetFuer(person: string | null | undefined): Promise<boolean> {
+  if (!person) return false;
+  const { rechtZugangFuer } = await import('@/lib/recht/server');
+  return !(await rechtZugangFuer(person));
+}
+
+/** Personen mit der Marke `ohneFirmenAkte` (kein Zugang zur Firmen-Akte) — für Meldungen und Zuständigkeit im Schreibweg (./speicher.ts). */
+export async function mitFirmenAkteZugang<P extends { speicher: string }>(personen: readonly P[]): Promise<(P & { ohneFirmenAkte?: true })[]> {
+  const ohne = await Promise.all(personen.map(p => firmenAkteAusgeblendetFuer(p.speicher)));
+  return personen.map((p, i) => (ohne[i] ? { ...p, ohneFirmenAkte: true as const } : p));
 }
 
 /**
@@ -137,7 +166,9 @@ export async function verborgeneAufgabenFuer(person: string): Promise<Set<string
   const { tasks } = await ladeAufgaben();
   // Konto „nur Business“ (09.10., E4): Aufgaben im Privat-Bereich sind für diese Person ebenso verborgen (Dateien daran: 404).
   const ohnePrivat = await privatAusgeblendetFuer(person);
-  if (!ohnePrivat && !tasks.some(istNurIch)) return new Set();
+  // Ohne Zugang zur Firmen-Akte (12.10.): ihre Aufgaben samt Unteraufgaben ebenso (Dateien, Zeit, Suche, Ablage daran).
+  const ohneAkte = hatFirmenAkte(tasks) && await firmenAkteAusgeblendetFuer(person);
+  if (!ohnePrivat && !ohneAkte && !tasks.some(istNurIch)) return new Set();
   const nachId = new Map(tasks.map(t => [t.id, t]));
-  return new Set(tasks.filter(t => !darfSehen(t, person, nachId) || (ohnePrivat && aufgabeImPrivat(t, nachId))).map(t => t.id));
+  return new Set(tasks.filter(t => !darfSehen(t, person, nachId) || (ohnePrivat && aufgabeImPrivat(t, nachId)) || (ohneAkte && aufgabeInFirmenAkte(t, nachId))).map(t => t.id));
 }

@@ -166,8 +166,12 @@ export function appIndexStand(): { zeilen: number; letzterLauf: string | null } 
   return { zeilen: Number((d.prepare('SELECT COUNT(*) n FROM app_chunks').get() as { n: number }).n), letzterLauf: meta(d, 'app_letzterLauf') };
 }
 
-/** Wer was sehen darf: der Haushalt der Person; Privates nur, wenn sie zu diesem Haushalt gehört. */
-export interface AppSicht { haushalt: string; privat: boolean }
+/**
+ * Wer was sehen darf: der Haushalt der Person; Privates nur, wenn sie zu diesem Haushalt gehört. `ohneAufgaben` (12.10.): Kennungen von
+ * Aufgaben, die die Person nicht sieht (`verborgeneAufgabenFuer` — z. B. die Firmen-Akte ohne Zugang zu ihr); ihre Zeilen (Aufgabe + Kommentare)
+ * fallen IN der Abfrage weg, vor dem Ranking.
+ */
+export interface AppSicht { haushalt: string; privat: boolean; ohneAufgaben?: ReadonlySet<string> }
 
 /**
  * Volltextsuche (BM25, Titel 3× gewichtet). Die Sicht steht IN der Abfrage — Zeilen anderer Haushalte und (ohne
@@ -175,7 +179,11 @@ export interface AppSicht { haushalt: string; privat: boolean }
  */
 export function appSuche(frage: string, sicht: AppSicht, anzahl = 8, arten?: readonly AppArt[]): { treffer: AppTreffer[]; durchsucht: number } {
   const d = appTabellen();
-  const durchsucht = Number((d.prepare('SELECT COUNT(*) n FROM app_chunks WHERE haushalt = ? AND (privat = 0 OR ? = 1)').get(sicht.haushalt, sicht.privat ? 1 : 0) as { n: number }).n);
+  // Verborgene Aufgaben (12.10.): EIN Parameter als JSON-Liste (`json_each`) — keine Grenze für die Zahl der Platzhalter.
+  const ohne = sicht.ohneAufgaben?.size ? JSON.stringify([...sicht.ohneAufgaben]) : null;
+  const ohneFilter = (c: string) => (ohne ? ` AND NOT (${c}art IN ('aufgabe','kommentar') AND ${c}ref_id IN (SELECT value FROM json_each(?)))` : '');
+  const ohneParam = ohne ? [ohne] : [];
+  const durchsucht = Number((d.prepare(`SELECT COUNT(*) n FROM app_chunks WHERE haushalt = ? AND (privat = 0 OR ? = 1)${ohneFilter('')}`).get(sicht.haushalt, sicht.privat ? 1 : 0, ...ohneParam) as { n: number }).n);
   const anfrage = ftsAnfrage(frage);
   if (!anfrage) return { treffer: [], durchsucht };
   const artFilter = arten?.length ? ` AND c.art IN (${arten.map(() => '?').join(',')})` : '';
@@ -183,8 +191,8 @@ export function appSuche(frage: string, sicht: AppSicht, anzahl = 8, arten?: rea
   try {
     zeilen = d.prepare(`SELECT c.art, c.ref_id, c.titel, c.text, c.link, c.privat, c.geaendert, bm25(app_chunks_fts, 3.0, 1.0) AS r
       FROM app_chunks_fts f JOIN app_chunks c ON c.id = f.rowid
-      WHERE app_chunks_fts MATCH ? AND c.haushalt = ? AND (c.privat = 0 OR ? = 1)${artFilter}
-      ORDER BY r LIMIT ?`).all(anfrage, sicht.haushalt, sicht.privat ? 1 : 0, ...(arten ?? []), Math.max(1, Math.min(50, anzahl))) as never;
+      WHERE app_chunks_fts MATCH ? AND c.haushalt = ? AND (c.privat = 0 OR ? = 1)${artFilter}${ohneFilter('c.')}
+      ORDER BY r LIMIT ?`).all(anfrage, sicht.haushalt, sicht.privat ? 1 : 0, ...(arten ?? []), ...ohneParam, Math.max(1, Math.min(50, anzahl))) as never;
   } catch { return { treffer: [], durchsucht }; }
   return {
     durchsucht,

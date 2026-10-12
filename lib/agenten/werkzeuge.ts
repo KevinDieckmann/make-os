@@ -248,7 +248,9 @@ export async function arbeitImBereich(person: string, bereich: 'privat' | 'busin
   let app: { treffer: import('@/lib/brain/app-index').AppTreffer[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
   if (q.arten.length) {
     try { await A.appIndexAktualisieren(); } catch { /* ohne frischen Index: der vorhandene */ }
-    const r = A.appSuche(frage, { haushalt, privat: bereich === 'privat' }, anzahl, q.arten);
+    // Aufgaben, die die Person nicht sieht (12.10.: auch die Firmen-Akte ohne Zugang zu ihr) — in der Abfrage. Unlesbar → keine App-Treffer.
+    const ohneAufgaben = await (await import('@/lib/aufgaben/sicht')).verborgeneAufgabenFuer(person).catch(() => null);
+    const r: typeof app = ohneAufgaben ? A.appSuche(frage, { haushalt, privat: bereich === 'privat', ohneAufgaben }, anzahl, q.arten) : { treffer: [], durchsucht: 0 };
     app = { treffer: bereich === 'privat' ? r.treffer.filter(t => t.privat) : r.treffer.filter(t => !t.privat), durchsucht: r.durchsucht };
   }
   let brain: { treffer: { id: string; titel: string; ausschnitt: string }[]; durchsucht: number } = { treffer: [], durchsucht: 0 };
