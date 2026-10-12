@@ -337,7 +337,7 @@ export async function einwilligungAnlegen(person: string, a: Record<string, unkn
   if (sorge === null) return { ok: false, status: 413, fehler: 'Name zu lang.' };
   const album = typeof a.album === 'string' && /^al-[a-z0-9-]{1,94}$/.test(a.album) ? a.album : undefined;
   const vorlage = await einwilligungVorlage(zwecke, a.anlass, !!sorge);
-  if (vorlage.verantwortlicherFehlt) return { ok: false, status: 409, fehler: 'Verantwortlicher fehlt — erst unter System › Datenschutz eintragen, sonst ist die Einwilligung nicht informiert.' };
+  if (vorlage.verantwortlicherFehlt) return { ok: false, status: 409, fehler: 'Verantwortlicher fehlt — erst unter Einstellungen › Datenschutz eintragen, sonst ist die Einwilligung nicht informiert.' };
   if (a.fassung !== vorlage.fassung) return { ok: false, status: 409, fehler: 'Der Text der Einwilligung hat sich geändert — bitte neu laden und erneut zeigen.' };
   if (wer.kontaktId) {
     const lage = await lageFuer({ ...leererKatalog(), medien: [{ personen: [{ art: 'kontakt', kontaktId: wer.kontaktId }] } as unknown as Medium] });

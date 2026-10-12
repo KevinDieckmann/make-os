@@ -24,7 +24,7 @@ import { ladeKonten } from '@/lib/zugang/konten';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Konten. Der Inhaber trägt den Haushalt unter System → Konto ein.' };
+const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Konten. Der Inhaber trägt den Haushalt unter Einstellungen › Konto ein.' };
 const NICHT_DIENSTWEG = { ok: false, fehler: 'Konten und Kontostände trägt ein Mensch in der App ein — nicht ZOE oder ein Hintergrundlauf.' };
 const MAX_BODY = 256_000;
 

@@ -97,7 +97,7 @@ describe('Lese-Protokoll ohne Inhalte', () => {
   });
 });
 
-describe('Ansicht System › Nachweise', () => {
+describe('Ansicht Einstellungen › Datenschutz › Nachweise', () => {
   it('nur der Inhaber — nicht ein anderes Konto, nicht der Dienstweg', async () => {
     expect((await nachweise.GET!(anfrage('/api/datenschutz/nachweise', sitzung('malin')))).status).toBe(403);
     expect((await nachweise.GET!(anfrage('/api/datenschutz/nachweise', dienst()))).status).toBe(403);

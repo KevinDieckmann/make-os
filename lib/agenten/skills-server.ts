@@ -132,7 +132,7 @@ async function headKontext(person: string, headId: unknown): Promise<Ergebnis<{ 
   if (!(await headSichtbar(person, head.id))) return fehler(403, 'Diesen Head siehst du nicht.');
   const umfang = await umfangFuer(person);
   const name = werkstattBestandFuer(head.ebene, umfang);
-  if (!name) return fehler(409, 'Für Business-Heads braucht die Instanz einen Haushalt (System › Konto).');
+  if (!name) return fehler(409, 'Für Business-Heads braucht die Instanz einen Haushalt (Einstellungen › Konto).');
   return { ok: true, head, name, umfang };
 }
 
@@ -350,7 +350,7 @@ export const kiProbelauf: Probelaeufer = async a => {
     system, user, zweck: `agent-${a.head.id}-skill-test`, model: MODEL_BY_TIER[a.skill.stufe], maxTokens: 1500,
     ki: { lauf: 'aufruf', person: a.person, kategorien: [...a.head.kategorien] },
   });
-  if (!r.ok || !r.data) return { ok: false, notiz: r.error?.startsWith('ki-gesperrt') ? 'KI gesperrt (System › Datenschutz)' : 'kein auswertbares Ergebnis' };
+  if (!r.ok || !r.data) return { ok: false, notiz: r.error?.startsWith('ki-gesperrt') ? 'KI gesperrt (Einstellungen › Datenschutz)' : 'kein auswertbares Ergebnis' };
   const erfuellt = Array.isArray(r.data.erfuellt) ? r.data.erfuellt : [];
   const werkzeuge = Array.isArray(r.data.werkzeuge) ? r.data.werkzeuge.filter((x): x is string => typeof x === 'string').slice(0, 30) : [];
   const ok = erfuellt.length >= a.test.erwartet.length && erfuellt.slice(0, a.test.erwartet.length).every(x => x === true);
@@ -435,7 +435,7 @@ export const kiMitarbeiterProbelauf: MitarbeiterProbelaeufer = async a => {
     system, user: `<testeingabe>\n${a.eingabe}\n</testeingabe>`, zweck: `agent-${a.head.id}`, model: MODEL_BY_TIER[a.mitarbeiter.stufe], maxTokens: 2500,
     ki: { lauf: 'aufruf', person: a.person, kategorien: [...a.head.kategorien] },
   });
-  if (!r.ok || !r.data) return { ok: false, text: r.error?.startsWith('ki-gesperrt') ? 'Probelauf gesperrt (System › Datenschutz).' : 'Kein auswertbares Ergebnis.' };
+  if (!r.ok || !r.data) return { ok: false, text: r.error?.startsWith('ki-gesperrt') ? 'Probelauf gesperrt (Einstellungen › Datenschutz).' : 'Kein auswertbares Ergebnis.' };
   const werkzeuge = Array.isArray(r.data.werkzeuge) ? r.data.werkzeuge.filter((x): x is string => typeof x === 'string').slice(0, 30) : [];
   return { ok: true, text: String(r.data.ergebnis ?? '').slice(0, 3_000) || '(leer)', werkzeuge };
 };

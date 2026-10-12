@@ -105,9 +105,9 @@ export async function kiLage(person: string): Promise<KiLage> {
 /** Sätze für die KI-Lage (für Antworten und Oberfläche). */
 export const KI_SAETZE = {
   kiZugang: 'Kein KI-Zugang eingerichtet — ohne Modell laufen nur der Start-Prüfer und Handeinträge.',
-  bereichCrm: 'Der KI-Bereich „Markttraktion“ ist für dich aus (System › Datenschutz › KI) — die Analyse sendet Unternehmensdaten an das Modell. Bitte dort einschalten, wenn du das willst.',
-  websuche: 'Web-Suche ist aus (System › Datenschutz › KI) — dieser Agent sucht im Web. Bitte dort einschalten, wenn du das willst; nichts wird automatisch umgeschaltet.',
-  tiefenbericht: 'Der Tiefenbericht ist in dieser Instanz aus — der Inhaber schaltet ihn unter System › Datenschutz › KI ein (Google Vertex, Kosten je Bericht).',
+  bereichCrm: 'Der KI-Bereich „Markttraktion“ ist für dich aus (Einstellungen › Datenschutz › KI) — die Analyse sendet Unternehmensdaten an das Modell. Bitte dort einschalten, wenn du das willst.',
+  websuche: 'Web-Suche ist aus (Einstellungen › Datenschutz › KI) — dieser Agent sucht im Web. Bitte dort einschalten, wenn du das willst; nichts wird automatisch umgeschaltet.',
+  tiefenbericht: 'Der Tiefenbericht ist in dieser Instanz aus — der Inhaber schaltet ihn unter Einstellungen › Datenschutz › KI ein (Google Vertex, Kosten je Bericht).',
 } as const;
 
 const fnv = (s: string): string => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };

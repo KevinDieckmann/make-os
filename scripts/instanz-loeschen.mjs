@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ─── Instanz löschen bei Vertragsende (05.10., Paket „Betroffenenrechte v2“; AVV § 11, LOESCHKONZEPT.md › 6) ─────────────
-// NIE automatisch, nie aus der App. Zuerst der Instanz-Export (System › Datenschutz, nur Inhaber), dann dieses Skript:
+// NIE automatisch, nie aus der App. Zuerst der Instanz-Export (Einstellungen › Datenschutz, nur Inhaber), dann dieses Skript:
 //
 //   1) Trockenlauf (Vorgabe):  node scripts/instanz-loeschen.mjs --ordner /srv/make-os/<kunde>/daten
 //        → zeigt, was gelöscht würde (Datenordner, Grabstein-Ordner), nennt die Sicherungen samt dem Tag, an dem sie spätestens
@@ -110,7 +110,7 @@ if (!hat('--ausfuehren')) {
   console.log(`Grabstein-Ordner: ${grab} — ${grabDa ? `${gStand.dateien} Dateien` : 'nicht vorhanden'}`);
   for (const z of medien.zeilen) console.log(z);
   console.log(`\nSicherungen (werden NICHT einzeln gelöscht):\n   ${sicherungsText}`);
-  console.log(`\nVorher erledigt? Instanz-Export (System › Datenschutz) an den Kunden übergeben, App angehalten.`);
+  console.log(`\nVorher erledigt? Instanz-Export (Einstellungen › Datenschutz) an den Kunden übergeben, App angehalten.`);
   const weitere = [envDatei ? `--env ${envDatei}` : '', hat('--ohne-medien') ? '--ohne-medien' : ''].filter(Boolean).join(' ');
   console.log(`\nZum Ausführen (gilt nur heute, nur für diesen Stand):\n   node scripts/instanz-loeschen.mjs --ordner ${roh}${weitere ? ` ${weitere}` : ''} --ausfuehren --code ${code}`);
   process.exit(0);

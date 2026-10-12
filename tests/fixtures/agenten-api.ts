@@ -136,7 +136,7 @@ export const HEADS: HeadKarte[] = [
   karte('marketing', { zaehler: { freigaben: 0, laufend: 1, faeden: 1 } }),
   karte('finanzen', { kennzahlen: [{ id: 'liquiditaet', label: 'Liquidität', wert: '4,2 Monate', ampel: 'gruen' }, { id: 'runway', label: 'Runway', wert: null, ampel: 'grau' }] }),
   karte('it', { gesperrt: { grund: 'business-frei', text: 'Business-frei bis 18:00 — Hintergrundläufe ruhen.' } }),
-  karte('gesundheit', { aktiv: false, gesperrt: { grund: 'einwilligung', text: 'Erscheint mit der Einwilligung „An die KI geben“ (System › Datenschutz).' } }),
+  karte('gesundheit', { aktiv: false, gesperrt: { grund: 'einwilligung', text: 'Erscheint mit der Einwilligung „An die KI geben“ (Einstellungen › Datenschutz).' } }),
   karte('familie'),
   karte('assistenz', { zaehler: { freigaben: 0, laufend: 0, faeden: 0 } }),
 ];

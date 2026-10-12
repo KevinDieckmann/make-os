@@ -43,7 +43,7 @@ export function DossierAnsicht({ mandatId, api, rueck }: { mandatId: string; api
           <Kennzahl label="Version" wert={String(db?.version ?? d.version)} />
           <Kennzahl label="Quellenstand" wert={db?.quellenStand ?? '—'} />
           <Kennzahl label="Belegt" wert={lage.belegQuote == null ? '—' : `${Math.round(lage.belegQuote * 100)} %`} />
-          <Kennzahl label="Freigaben" wert={`${d.f1 ? 'F1' : '–'} · ${d.f2 ? 'F2' : '–'}`} />
+          <Kennzahl label="Freigaben" wert={`${d.f1 ? 'Umfang (F1)' : 'Umfang offen'} · ${d.f2 ? 'Geprüft (F2)' : 'ungeprüft'}`} />
         </Raster>
         <div style={klein}>Personenteil: {db?.kartenAnzahl ?? 0} Karte(n) · gelöscht {db?.loeschAm ? `am ${db.loeschAm}` : `${lage.loeschRegelTage} Tage nach Mandatsende`}{(db?.geloescht ?? []).map(g => ` · Personenteil gelöscht am ${g.am} (${g.anzahl} Karten)`).join('')}</div>
       </Karte>

@@ -31,7 +31,7 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zum Business-Index — er gehört zum Haushalt des Inhabers (System → Konto).' };
+const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zum Business-Index — er gehört zum Haushalt des Inhabers (Einstellungen › Konto).' };
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_ZUGANG, { status: 403 });

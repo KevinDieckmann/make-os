@@ -125,7 +125,7 @@ erreicht Kevins Mac über ein privates, verschlüsseltes Netz, von überall.
    `/Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg 3001`
 5. Die ausgegebene Adresse (`https://….ts.net`) in `.env.local` als
    `MAKE_OS_ADRESSE` eintragen, MAKE OS neu starten.
-6. System → Konto → „Jemanden einladen" → Link an Malin.
+6. Einstellungen › Konto → „Jemanden einladen" → Link an Malin.
 
 HTTPS ist Pflicht, nicht Kür: ohne sichere Verbindung gibt Safari kein
 Mikrofon frei (ZOE per Sprache) und legt keine App auf den Home-Bildschirm.
@@ -357,7 +357,7 @@ Vor jedem Push auf `main`: Bestand mit der ONLINE-Version anlegen, die neue Vers
 
 ```bash
 # 1. Online-Stand als zweiten Worktree (node_modules als Symlink auf das Haupt-Repo; package.json-Unterschiede vorher prüfen)
-git worktree add <scratch>/probe-alt <online-commit>
+git worktree add <scratch>/probe-alt <online-commit>      # online ist heute a063e73a (git rev-parse origin/main)
 ln -s <repo>/node_modules <scratch>/probe-alt/node_modules
 # 2. Probe (ein Befehl; erneut laufen lassen = derselbe Befehl, der Probe-Ordner wird neu angelegt)
 node scripts/update-probe.mjs --alt <scratch>/probe-alt --neu <worktree der neuen Version> \
@@ -391,6 +391,20 @@ Sicherheit: nie `.data` (Abbruch), nur ein leerer bzw. von der Probe angelegter 
 kein Netz (fetch gesperrt; interne Aufrufe `MAKE_OS_INTERN=http://probe.intern` laufen in-process), kein Server auf 3001/3011, keine echten Quellen.
 Grenzen der Probe: kein iCloud/Google/WHOOP/WhatsApp-Abgleich (Spiegel kommen von außen), kein Modell (Läufe fallen aufs Regelwerk), Next-Middleware
 nicht dabei (die Routen bekommen `x-make-user` wie danach). Neue Bestände/Felder einer Version → Saat-Ergänzung + ggf. Klick dazunehmen.
+
+## Update 12.10. (online `a063e73a` → `update-0910b`) — Umgebung, Pfade, Ordner im Überblick
+Die Schritte in Reihenfolge stehen in `UPDATES.md` › „Update 12.10. — was neu ist“ (Einmal-Schritte, Klickliste, Rückweg) und in `GO_LIVE_CHECKLISTE.md`. Hier nur die Listen, die der Betrieb braucht:
+- **Neue Umgebungsvariablen (geprüft über alle `process.env`/`NEXT_PUBLIC_*`):** nur zwei, beide **nicht** auf dem Server setzen — `MAKE_OS_KUNDENLINK` (Kunden-Link; bleibt aus, erst nach der Prüfung
+  `FULFILLMENT_KONZEPT.md` 12.4 und auf Kevins Wort `an`) und `MAKE_OS_LOKALE_VORSCHAU=1` (nur am Mac in `.env.local`, für die Safari-Anmeldung über `http://localhost`; mit https-Adresse wirkungslos).
+  Beide stehen kommentiert in `deploy/env.server.beispiel`. `MAKE_OS_FORMAT` bleibt leer (Kompatibilitätsmodus), `MAKE_OS_DEMO` nie auf dem Server.
+- **Dateien, die sich geändert haben (`git diff --stat a063e73a HEAD -- deploy compose.yml Dockerfile package.json`):** nur `deploy/caddy/Caddyfile` (neuer Block `@kunde` für `/kunde…` und `/api/kunde…`: Referrer-Policy,
+  Permissions-Policy, `X-Robots-Tag noindex`, `Cache-Control no-store`) und ein Tippfehler in `deploy/server-haerten.sh`. `compose.yml`, `Dockerfile`, `package.json` unverändert → kein neues Bild-Rezept, `caddy reload` genügt:
+  `docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
+- **Öffentliche Wege (ohne Sitzung)** kommen genau einer dazu und sind ausgeschaltet, solange `MAKE_OS_KUNDENLINK` fehlt: `/kunde/kl-<24 hex>` (GET) und `/api/kunde/kl-<24 hex>[/formular|/upload|/puls]` (`KUNDE_OFFEN`
+  in `middleware.ts`) — jede andere Form bleibt 401/404. Alle Antworten sind dann dieselbe 404 „Dieser Link ist nicht aktiv.“
+- **Neue Ordner im Datenordner (verschlüsselt, in der Nachtsicherung enthalten):** `fulfillment-unterlagen` (Kunden-Unterlagen, Wirkungsberichte) und `inbox-uebergaben` (angehakte Anhänge übergebener Mails);
+  beide stehen in `BILD_ORDNER` (Schlüssel-Rotation, Umschlüsseln und Sicherungsprüfung nehmen sie mit). Neue Bestände sind nur additiv; der alte Stand ignoriert sie (Rückweg: `UPDATES.md`).
+- **Nach dem Ausrollen einmal von Hand:** Caddy neu laden (oben), `bash deploy/sicherung.sh` (letzte Zeile `: ok`), danach die Klickliste. Ein Gmail ohne Bereichs-Eintrag einem Bereich zuordnen (Inbox › Postfächer).
 
 ## Ausrollen seit 26.09. abends: Bild kommt fertig von GitHub
 Die Action baut das Docker-Image auf dem GitHub-Rechner (`docker build`) und schickt es per SSH-Stdin an den Server

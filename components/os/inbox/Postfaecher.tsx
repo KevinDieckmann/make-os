@@ -119,7 +119,7 @@ function Hinzufuegen({ d, onFertig, gmail, onGeaendert, meldung }: { d: Antwort;
               {a.link && <a href={a.link.url} target="_blank" rel="noopener noreferrer" style={{ color: C.aktiv, minHeight: 32, display: 'inline-flex', alignItems: 'center' }}>{a.link.text} ↗</a>}
             </div>
           )}
-          {weg === 'google' && !kunden.length && <Hinweis art="info">Noch kein Kunde mit aktivem Mandat im CRM — ein Kundenpostfach bekommt den Bereich des Kunden. Mandate legst du unter Mandate & Unternehmen an; bis dahin geht auch eine Gesellschaft.</Hinweis>}
+          {weg === 'google' && !kunden.length && <Hinweis art="info">Noch kein Kunde mit aktivem Mandat im CRM — ein Kundenpostfach bekommt den Bereich des Kunden. Mandate legst du unter Produkte & Mandate an; bis dahin geht auch eine Gesellschaft.</Hinweis>}
           {fehler && <Hinweis art="kritisch" rolle="alert" titel="Nicht verbunden — nichts gespeichert">{fehler}</Hinweis>}
           <Feldzeile label="E-Mail-Adresse"><input value={adresse} onChange={e => setAdresse(e.target.value)} type="email" inputMode="email" autoComplete="off" required style={eingabe} /></Feldzeile>
           <Feldzeile label={a?.passwortWort ?? 'Passwort'}><input value={passwort} onChange={e => setPasswort(e.target.value)} type="password" autoComplete="new-password" required style={eingabe} /></Feldzeile>

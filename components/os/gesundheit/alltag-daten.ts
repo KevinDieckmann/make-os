@@ -26,7 +26,7 @@ type Antwort = { ok: boolean; fehler?: string };
 const lesen = async (r: Response): Promise<Antwort> => {
   const d = await r.json().catch(() => ({})) as { ok?: boolean; error?: string; fehler?: string; einwilligung?: string };
   if (r.ok && d.ok !== false) return { ok: true };
-  if (d.einwilligung) return { ok: false, fehler: 'Dafür fehlt deine Einwilligung in Gesundheitsdaten (System › Datenschutz).' };
+  if (d.einwilligung) return { ok: false, fehler: 'Dafür fehlt deine Einwilligung in Gesundheitsdaten (Einstellungen › Datenschutz).' };
   return { ok: false, fehler: d.error ?? d.fehler ?? (r.status === 409 ? 'Inzwischen geändert — neu geladen, bitte noch einmal.' : 'Nicht gespeichert.') };
 };
 const senden = (pfad: string, body: unknown, methode = 'PATCH') => fetch(pfad, { method: methode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

@@ -130,8 +130,10 @@ function PhaseBlock({ p, letzte, offen, umschalten, daten, heute, bausteine, sta
           )}
         </span>
         {p.freigabe && (
-          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, whiteSpace: 'nowrap' }} title={`Freigabe ${p.freigabe.id} · ${p.freigabe.titel}`}>
-            <FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} />{p.freigabe.id}
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, whiteSpace: 'nowrap', maxWidth: 'min(240px, 42%)', minWidth: 0 }} title={`Freigabe ${p.freigabe.id} · ${p.freigabe.titel}`}>
+            <FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} />
+            {/* Klartext statt nur „F2“ (Gesamtprüfung 12.10.): die Kennung bleibt, der Titel steht dabei */}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.freigabe.id} · {p.freigabe.titel}</span>
           </span>
         )}
         <span aria-hidden style={{ color: C.inkLeise, display: 'inline-flex' }}>{offen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>

@@ -51,7 +51,7 @@ export async function kontextFuer(o: { head: HeadDef; sicht: KontoSicht; kategor
 }
 
 async function headsKontext(head: HeadDef, person: string, kats: Set<KiKategorie>, heute: string): Promise<HeadKontext> {
-  if (!kats.has('crm')) return LEER('Die Markttraktion ist für die KI ausgeschaltet (System › Datenschutz) — ohne sie hat dieser Head keine Daten.');
+  if (!kats.has('crm')) return LEER('Die Markttraktion ist für die KI ausgeschaltet (Einstellungen › Datenschutz) — ohne sie hat dieser Head keine Daten.');
   const [{ kontakteFuerVerarbeitung }, { ladeCrm }, { vollesPaket }, { datenBlock, HEADS }, { standName, leererStand }, { loadJson }] = await Promise.all([
     import('@/lib/crm/verarbeitung'), import('@/lib/crm/speicher'), import('@/lib/heads/paket'), import('@/lib/heads/prompt'), import('@/lib/heads/stand'), import('@/lib/store/local-db'),
   ]);
@@ -77,7 +77,7 @@ async function headsKontext(head: HeadDef, person: string, kats: Set<KiKategorie
  * persönlicher Merksatz, „Skill aus Thread“ ohne Agenten-Text, Werkstatt-Vorschläge gekapselt).
  */
 async function finanzKontext(head: HeadDef, sicht: KontoSicht, kats: Set<KiKategorie>): Promise<HeadKontext> {
-  if (!kats.has('finanzen')) return LEER('Finanzen sind für die KI ausgeschaltet (System › Datenschutz).');
+  if (!kats.has('finanzen')) return LEER('Finanzen sind für die KI ausgeschaltet (Einstellungen › Datenschutz).');
   const { ladeFinanzbild } = await import('@/lib/finanzen/chef/lauf');
   if (head.bereich === 'business') {
     // Ohne Haushalt = Business-Sicht (09.10., Funde Abdeckung #2): das Finanzbild selbst lässt die Grundlage einer Privat-Einheit (V1-Export der
@@ -162,9 +162,9 @@ async function brainKontext(head: HeadDef, person: string, kats: Set<KiKategorie
  * Auszug draußen und der Head sagt es (statt dass der ganze Aufruf gesperrt wird). Lesen schreibt nie (kein Startbestand).
  */
 export async function familienTeil(person: string, heute: string, kats: ReadonlySet<KiKategorie>): Promise<{ text: string; hinweis?: string }> {
-  if (!kats.has('familie')) return { text: '', hinweis: 'Familie & Partnerschaft ist für die KI ausgeschaltet (System › Datenschutz) — der Head sieht die Einträge nicht.' };
+  if (!kats.has('familie')) return { text: '', hinweis: 'Familie & Partnerschaft ist für die KI ausgeschaltet (Einstellungen › Datenschutz) — der Head sieht die Einträge nicht.' };
   const { kategorienMoeglich } = await import('@/lib/ki/tor');
-  if (!(await kategorienMoeglich(['familie']).catch(() => false))) return { text: '', hinweis: 'Familien-Einträge gehen nur über einen KI-Weg in der EU an das Modell — der ist noch nicht eingerichtet (System › Datenschutz › KI).' };
+  if (!(await kategorienMoeglich(['familie']).catch(() => false))) return { text: '', hinweis: 'Familien-Einträge gehen nur über einen KI-Weg in der EU an das Modell — der ist noch nicht eingerichtet (Einstellungen › Datenschutz › KI).' };
   const [{ haushaltFuer }, { loadJson }, { familieName, startBestand }, { familieAuszug }] = await Promise.all([
     import('@/lib/finanzen/haushalt/zugriff'), import('@/lib/store/local-db'), import('@/lib/familie/speicher'), import('@/lib/familie/logik'),
   ]);
@@ -228,7 +228,7 @@ export async function rechtTeil(person: string, heute: string, kats: ReadonlySet
   const teile: string[] = [];
   const p = await datenschutzPunkte(heute).catch(() => null);
   if (p) teile.push(daten('datenschutz', p));
-  if (!kats.has('finanzen')) return { text: teile.join('\n\n'), finanzen: false, hinweis: 'Gesellschafts-Daten sind für die KI ausgeschaltet (System › Datenschutz › KI, Bereich Finanzen) — der Head of Recht sieht die Firmen-Akte nicht.' };
+  if (!kats.has('finanzen')) return { text: teile.join('\n\n'), finanzen: false, hinweis: 'Gesellschafts-Daten sind für die KI ausgeschaltet (Einstellungen › Datenschutz › KI, Bereich Finanzen) — der Head of Recht sieht die Firmen-Akte nicht.' };
   const { rechtZugangFuer, rechtCheckJetzt, ladeRechtStand } = await import('@/lib/recht/server');
   const z = await rechtZugangFuer(person);
   if (!z) return { text: teile.join('\n\n'), finanzen: false, hinweis: 'Die Firmen-Akte (Unternehmen) ist für dieses Konto nicht freigegeben — der Head of Recht sieht nur die Datenschutz-Zähler.' };

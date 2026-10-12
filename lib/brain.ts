@@ -497,7 +497,7 @@ export function blockZiele(b?: Brain, bereich?: 'privat' | 'business'): string {
   const meilensteine = ms.length ? daten('meilensteine', ms.map(m => `- ${m}`).join('\n')) : 'keine hinterlegt.';
   // Fokus (09.10.): ein Head nur den seines Bereichs; Text der Mitglieder im <daten>-Rahmen.
   const fz = (b?.fokus ?? []).filter(z => !bereich || z.bereich === bereich);
-  const fokus = fz.length ? daten('fokus', fokusZeilenText(fz)) : 'keiner gesetzt — er wird unter Planung › Fokus gepflegt.';
+  const fokus = fz.length ? daten('fokus', fokusZeilenText(fz)) : 'keiner gesetzt — er wird auf der Fokus-Seite (Knopf oben rechts) gepflegt.';
   const team = b?.team ?? [];
   const teamText = team.length ? team.map(t => `- ${t}`).join('\n') : 'kein Team hinterlegt — es wird unter Konto › Team gepflegt. Nenne keine Person, die hier nicht steht.';
   return `NORDSTERN-ZIEL: ${nordstern}\n\nJAHRESZIELE (Planung › Jahr): ${jahresziele}\n\n${FOKUS_KOPF}: ${fokus}\n\nMEILENSTEINE (pflegbar unter /os/planung/jahr): ${meilensteine}\n\nTEAM & VERANTWORTUNG (für Delegations-Vorschläge die richtige Person nennen):\n${teamText}`;

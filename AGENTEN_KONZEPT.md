@@ -627,7 +627,7 @@ C11 und C8/C4 abweichen, gilt C11. Kevins Antworten 1–16 (ENTSCHEIDUNGEN_FRAGE
 - **`lib/agenten/typen.ts`** — die EINE Stelle für Typen, Bestandsnamen, Grenzen und die Form der Schnittstellen (Anfragen und Antworten
   aller Agenten-Routen). Rein und client-sicher. **Nur additiv ändern** (neue optionale Felder, neue Union-Glieder) — nie umbenennen.
 - **`lib/agenten/katalog.ts`** — Kevins Auswahl als neutrale Daten: 11 Business-Heads (Sales, Marketing, Event, Finance, IT/Betrieb,
-  Operations, Kundenerfolg, Strategie/CEO-Office, Produkt, Recht & Datenschutz, Research) und 5 Privat-Heads (Gesundheit & Sport, Ernährung
+  Operations, Kundenerfolg, Strategie/CEO-Office, Produkt, Recht & Datenschutz (seit 10.10. „Head of Recht“, Kennung `recht`), Research) und 5 Privat-Heads (Gesundheit & Sport, Ernährung
   & Einkauf, Familie & Partnerschaft, Finanzen privat, Persönliche Assistenz), je Head 1–5 Mitarbeiter-Vorlagen (zuerst ausgestattet:
   Marketing, Sales, Finance). Werkzeuge je Head als ausdrückliche Liste aus dem ZOE-Register, KI-Kategorien, Ton, Farb-Token, Kennzahlen,
   eingebaute Skills (= vorhandene Modi), Voraussetzungen. Kennungen nie ändern.

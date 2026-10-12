@@ -11,7 +11,7 @@ import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from
 import type { Kontakt } from '@/lib/make-one/crm';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { mandatZieleLesen } from './mandat-ziele';
-import { STUFEN, wechsleStufe, erwartetVerschiebung } from './pipeline';
+import { STUFEN, wechsleStufe, erwartetVerschiebung, gewonnenVerlorenSperre } from './pipeline';
 import { firmaIdsErgaenzen, firmaIdsNachziehen } from './firmen-bezug';
 import { localDay, istKalendertag, tagVon } from '@/lib/zeit';
 import { istKontaktKennung } from '@/lib/kennung';
@@ -499,11 +499,21 @@ function saeubernRoh(liste: CrmListe, roh: Record<string, unknown>, jetzt: strin
  *  · Angebote nur über /api/crm/angebot — Entwurf, Stellen (Nummer, PDF), Annahme, Ablehnung, Version.
  *  · Ein Produkt geht erst mit Leistungstext (Angebotstexte) auf „aktiv“; ein aktives verliert ihn nicht.
  *    Bestehende aktive Produkte ohne Text bleiben aktiv (das Tool markiert „Text fehlt“).
+ *  · Ein gewonnener Deal wird nicht „verloren“, solange ein laufendes Mandat oder ein angenommenes Angebot an ihm hängt (12.10.).
  */
 export function regelnAbgelehnt(b: CrmBestand, ops: ListenOp[]): string[] {
   const raus: string[] = [];
   for (const o of ops) {
     if (o.liste === 'angebote') { raus.push('Angebote werden nur im Angebots-Tool geändert (/api/crm/angebot).'); continue; }
+    // Gewonnen → Verloren (Fund 12.10.): nicht, solange ein laufendes Mandat oder ein angenommenes Angebot am Deal hängt (409 mit dem Weg).
+    // Der Grund bleibt Pflicht (`wechsleStufe`/`dealRegeln`); nur ein NEUER Wechsel wird geprüft, Bestandsdaten bleiben unberührt.
+    if (o.liste === 'chancen' && o.op !== 'delete') {
+      const rohC = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;
+      const idC = String(o.op === 'teil' ? o.id : (o.eintrag as { id?: unknown } | undefined)?.id ?? '');
+      const altC = b.chancen.find(c => c.id === idC);
+      if (altC?.stufe === 'gewonnen' && rohC.stufe === 'verloren') { const sperre = gewonnenVerlorenSperre(altC, b); if (sperre) raus.push(sperre); }
+      continue;
+    }
     if (o.liste === 'events' && o.op !== 'delete') {
       // „Für wen“ (besuchte Events): die Kunden-Firma muss es geben, das Mandat muss zu ihr gehören — nur wenn sich `fuer` ändert (Altbestand blockiert keine andere Änderung).
       const rohE = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;

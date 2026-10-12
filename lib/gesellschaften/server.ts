@@ -114,6 +114,12 @@ export const eintragSchreiben = (liste: RegisterListe, roh: unknown, eintragId?:
   const l = (alt[liste] ?? []) as Eintrag[];
   const vorhanden = eintragId ? l.find(e => e.id === eintragId) : undefined;
   if (eintragId && !vorhanden) return { fehler: [{ feld: 'eintragId', text: 'Eintrag nicht gefunden.' }], status: 404 };
+  // Nie still doppelt (Fund 12.10.): ohne `eintragId` vergibt der Server die Kennung — trägt der Körper aber die Kennung eines schon vorhandenen Eintrags
+  // (auch im Papierkorb), wäre das ein gemeinter Änderungsversuch ohne `eintragId`; der würde sonst eine Dublette mit neuer Kennung anhängen.
+  const mitgeschickt = !eintragId && roh && typeof roh === 'object' ? (roh as { id?: unknown }).id : undefined;
+  if (typeof mitgeschickt === 'string' && mitgeschickt && l.some(e => e.id === mitgeschickt)) {
+    return { fehler: [{ feld: 'eintragId', text: 'Diesen Eintrag gibt es schon — zum Ändern die eintragId mitschicken. Es wurde nichts angelegt.' }], status: 409 };
+  }
   if (!vorhanden && l.length >= GRENZEN[liste]) return { fehler: [{ feld: liste, text: `Höchstens ${GRENZEN[liste]} Einträge.` }], status: 413 };
   const mitId = vorhanden ? roh : { ...((roh && typeof roh === 'object' ? roh : {}) as object), id: neueKennung(PRAEFIX[liste]) };
   const jetzt = new Date().toISOString();

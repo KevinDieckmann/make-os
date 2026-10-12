@@ -432,7 +432,7 @@ function AuftragAbschnitt({ k }: { k: HeadKarte }) {
     if (r.ok) melde(text.trim() ? `Auftrag an ${k.kurz} gespeichert.` : `Auftrag an ${k.kurz} entfernt.`, 'gut');
     else {
       const einwilligung = (r.daten as { einwilligung?: string } | undefined)?.einwilligung === 'gesundheit';
-      setFehler(r.status === 409 ? 'Inzwischen geändert — neu geladen, bitte noch einmal.' : einwilligung ? 'Erst die Einwilligung (a) zur Gesundheit erklären (System › Datenschutz) — nichts gespeichert.' : r.text);
+      setFehler(r.status === 409 ? 'Inzwischen geändert — neu geladen, bitte noch einmal.' : einwilligung ? 'Erst die Einwilligung (a) zur Gesundheit erklären (Einstellungen › Datenschutz) — nichts gespeichert.' : r.text);
     }
   };
   return (
@@ -595,7 +595,7 @@ export function HeadMitte({ headId, fadenId: ausAdresse, startReiter = 'chat' }:
         {w.agenten.zustand === 'da'
           ? def?.voraussetzung === 'gesundheit-ki'
             // 09.10.: der Gesundheits-Head erscheint erst mit (a) „verarbeiten“ UND (b) „An die KI geben“ (lib/agenten/sicht.ts) — sagen, wie.
-            ? <Hinweis art="info" titel={`${def.name} braucht deine Einwilligung`}>Dieser Agent arbeitet mit deinen Gesundheitsdaten — er erscheint, sobald du unter System › Datenschutz › Gesundheit (a) „Verarbeiten“ und (b) „An die KI geben“ erklärt hast. Unterlagen kannst du schon mit (a) unter Gesundheit hochladen.</Hinweis>
+            ? <Hinweis art="info" titel={`${def.name} braucht deine Einwilligung`}>Dieser Agent arbeitet mit deinen Gesundheitsdaten — er erscheint, sobald du unter Einstellungen › Datenschutz › Gesundheit (a) „Verarbeiten“ und (b) „An die KI geben“ erklärt hast. Unterlagen kannst du schon mit (a) unter Gesundheit hochladen.</Hinweis>
             : <Hinweis art="info">Diesen Head gibt es für dich nicht — welche Heads du siehst, entscheidet der Server.</Hinweis>
           : <Leerzustand symbol="✦" titel={def ? `${def.kurz} kommt` : 'Head'}>{w.agenten.zustand === 'laedt' ? 'Wird geladen …' : 'Der Chat mit den Heads kommt mit dem Agenten-Kern. ZOE ist schon da.'}</Leerzustand>}
       </div>

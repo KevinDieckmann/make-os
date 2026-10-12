@@ -34,9 +34,9 @@ export const kategorieVonGruppe = (gruppe: string): KiKategorie | null => GRUPPE
 export const kategorieVonWerkzeug = (name: string, gruppe: string): KiKategorie | null =>
   (name in WERKZEUG_KATEGORIE ? WERKZEUG_KATEGORIE[name] : kategorieVonGruppe(gruppe));
 
-export const SPERRE_BEREICH = (k: KiKategorie) => `Nicht ausgeführt: Der Bereich „${istBereich(k) ? KI_BEREICH_LABEL[k] : k}“ ist für ZOE ausgeschaltet (System › Datenschutz).`;
-export const SPERRE_GESUNDHEIT = 'Nicht ausgeführt: Gesundheitsdaten gehen nur mit der Einwilligung „An die KI geben“ an ZOE (System › Datenschutz › Gesundheit). Sag das der Person ruhig und ohne Druck.';
-export const SPERRE_MEDIEN = 'Nicht ausgeführt: Fotos gehen nur an die KI, wenn die Person „Bilder an die KI“ einschaltet (System › Datenschutz › KI). Sag das ruhig und ohne Druck.';
+export const SPERRE_BEREICH = (k: KiKategorie) => `Nicht ausgeführt: Der Bereich „${istBereich(k) ? KI_BEREICH_LABEL[k] : k}“ ist für ZOE ausgeschaltet (Einstellungen › Datenschutz).`;
+export const SPERRE_GESUNDHEIT = 'Nicht ausgeführt: Gesundheitsdaten gehen nur mit der Einwilligung „An die KI geben“ an ZOE (Einstellungen › Datenschutz › Gesundheit). Sag das der Person ruhig und ohne Druck.';
+export const SPERRE_MEDIEN = 'Nicht ausgeführt: Fotos gehen nur an die KI, wenn die Person „Bilder an die KI“ einschaltet (Einstellungen › Datenschutz › KI). Sag das ruhig und ohne Druck.';
 
 /** Warum ein Werkzeug dieser Gruppe gerade nicht laufen darf — oder null (rein). */
 export function werkzeugSperre(k: KiKategorie | null, s: KiSchalter, gesundheitKi: boolean): string | null {

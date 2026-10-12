@@ -19,7 +19,7 @@ const VORLAGE: KundenSicht = {
   wertKonto: [{ name: 'Neue Termine je Monat', vorher: '4', jetzt: '7', ziel: '12' }], rituale: [{ titel: 'Wochen-Check', rhythmus: 'wöchentlich' }],
   entscheidungen: [{ titel: 'Zielgruppe zuerst Maschinenbau', am: '—', status: 'entschieden' }], formulare: [],
   upload: { erlaubt: true, eingegangen: 1, frei: 19 }, puls: { offen: false },
-  datenschutz: { verantwortlich: 'aus der Einrichtung (System › Datenschutz)', fassung: '—', absaetze: ['Der Hinweis nach Art. 13 DSGVO steht hier — mit Verantwortlichem und Speicherfristen der Instanz.'] },
+  datenschutz: { verantwortlich: 'aus der Einrichtung (Einstellungen › Datenschutz)', fassung: '—', absaetze: ['Der Hinweis nach Art. 13 DSGVO steht hier — mit Verantwortlichem und Speicherfristen der Instanz.'] },
 };
 
 export function KundenAnsichtVorschau({ mandatId }: { mandatId?: string }) {

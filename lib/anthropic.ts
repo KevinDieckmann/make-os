@@ -236,23 +236,23 @@ export const kiGesperrt = (r: { error?: string } | null | undefined): boolean =>
 /** Ein Satz zur Sperre — für Lauf-Zeilen und Antworten an die Oberfläche. */
 export function kiSperrText(r: { error?: string } | null | undefined): string {
   const g = r?.error?.replace(/^ki-gesperrt:/, '') ?? '';
-  if (g === 'hintergrund-aus') return 'Hintergrund-KI ist ausgeschaltet (System › Datenschutz)';
-  if (g === 'einwilligung-gesundheit') return 'Gesundheitsdaten nur mit Einwilligung an die KI (System › Datenschutz)';
-  if (g.startsWith('bereich-')) return `Bereich „${g.slice(8)}“ ist für die KI ausgeschaltet (System › Datenschutz)`;
+  if (g === 'hintergrund-aus') return 'Hintergrund-KI ist ausgeschaltet (Einstellungen › Datenschutz)';
+  if (g === 'einwilligung-gesundheit') return 'Gesundheitsdaten nur mit Einwilligung an die KI (Einstellungen › Datenschutz)';
+  if (g.startsWith('bereich-')) return `Bereich „${g.slice(8)}“ ist für die KI ausgeschaltet (Einstellungen › Datenschutz)`;
   // Anbieter-Tor (09.10., lib/ki/tor.ts):
-  if (g === 'anbieter-stufe') return 'Gesundheit, Privat-Finanzen und Familie gehen nur an eine KI in der EU (Gesundheit zusätzlich ohne Speicherung beim Anbieter) — dieser Weg ist nicht eingerichtet (System › Datenschutz › KI)';
+  if (g === 'anbieter-stufe') return 'Gesundheit, Privat-Finanzen und Familie gehen nur an eine KI in der EU (Gesundheit zusätzlich ohne Speicherung beim Anbieter) — dieser Weg ist nicht eingerichtet (Einstellungen › Datenschutz › KI)';
   if (g === 'anbieter-nicht-eingerichtet') return 'Für diese Aufgabe ist kein KI-Anbieter eingerichtet';
-  if (g === 'avv-offen') return 'Der KI-Anbieter ist im Empfänger-Register nicht freigegeben — „Zurückholen“ und AVV bestätigen (System › Datenschutz)';
+  if (g === 'avv-offen') return 'Der KI-Anbieter ist im Empfänger-Register nicht freigegeben — „Zurückholen“ und AVV bestätigen (Einstellungen › Datenschutz)';
   if (g === 'kategorie-nicht-erlaubt') return 'Diese Daten dürfen an den KI-Anbieter dieser Funktion nicht gehen';
   if (g === 'anbieter-ausgefallen') return 'Der KI-Anbieter ist gerade nicht erreichbar — ein schwächer geschützter Ersatz ist nicht erlaubt';
-  if (g === 'faehigkeit-aus') return 'Diese KI-Funktion ist ausgeschaltet (System › Datenschutz › KI)';
+  if (g === 'faehigkeit-aus') return 'Diese KI-Funktion ist ausgeschaltet (Einstellungen › Datenschutz › KI)';
   if (g === 'budget') return 'Das KI-Budget ist erreicht (Monat bzw. gesamt)';
   if (g === 'finanzen-privat') return 'Private Finanzen gehen nur mit privatem Finanzzugang an die KI';
-  if (g === 'grenze-auftrag') return 'Der Auftrag kostet mehr als die Grenze je Auftrag (System › Datenschutz › KI)';
+  if (g === 'grenze-auftrag') return 'Der Auftrag kostet mehr als die Grenze je Auftrag (Einstellungen › Datenschutz › KI)';
   if (g === 'kosten-rueckfrage') return 'Erst die Kostenschätzung bestätigen';
   // Paket 4c: Pixel eines Fotos ohne den Schalter der Person.
-  if (g === 'medien-aus') return 'Fotos gehen nur an die KI, wenn du „Bilder an die KI“ einschaltest (System › Datenschutz › KI)';
-  return 'Durch die Datenschutz-Einstellungen gesperrt (System › Datenschutz)';
+  if (g === 'medien-aus') return 'Fotos gehen nur an die KI, wenn du „Bilder an die KI“ einschaltest (Einstellungen › Datenschutz › KI)';
+  return 'Durch die Datenschutz-Einstellungen gesperrt (Einstellungen › Datenschutz)';
 }
 
 const istWebSuche = (t: unknown) => /^web_search/.test(String((t as { type?: unknown } | null)?.type ?? ''));
