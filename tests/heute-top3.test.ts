@@ -211,7 +211,7 @@ describe('Briefing: 3 bis 5 Sätze aus Zahlen, kein Modell', () => {
   it('ruhiger Tag: vier Sätze, ehrlich leer', () => {
     const s = briefingSaetze({ ...basis, termine: { anzahl: 0 }, ueberfaellig: 0, heuteFaellig: 0, kritisch: 0, followups: 0, freigaben: 0, top3: { art: 'keine', titel: [], erledigt: 0 }, fokus: null });
     expect(s).toEqual([
-      'Heute steht kein Termin im Kalender.', 'Bei den Aufgaben brennt nichts.',
+      'Heute steht kein Termin mehr an.', 'Bei den Aufgaben brennt nichts.',
       'Noch keine Top 3: nichts drängt von allein — leg dir selbst bis zu drei Aufgaben fest.', 'Noch kein Fokus gesetzt — ein Satz unter „Fokus“ genügt.',
     ]);
   });

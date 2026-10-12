@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { spaceVonKalender } from '@/lib/kalender/space';
-import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 import { AUF_DEM_MAC } from '@/lib/mac';
 import { kalenderLesen, KEIN_KALENDER } from '@/lib/kalender/zugang';
+import { kalenderBereich } from '@/lib/kalender/konto-bereich';
 import { verbunden, ladeStand, abgleichen, naechsterVersuchFaellig } from '@/lib/kalender/icloud';
 import { spawn } from 'child_process';
 import { loadJson, saveJson } from '@/lib/store/local-db';
@@ -136,7 +136,8 @@ export async function GET(req: Request) {
   // Lesen: auch der Systemlauf ohne Person (Zulieferer vom Mac) — Regel 5 gilt über `kalenderLesen` (28.09.).
   const zugang = await kalenderLesen(req);
   if (!zugang) return NextResponse.json(KEIN_KALENDER, { status: 403 });
-  const sicht = await sichtFuer(zugang.person, sichtDerAnfrage(req));
+  // Konten „nur Business“ (Gesamtprüfung 12.10.): immer nur Termine aus Business-Kalendern (`kalenderBereich`).
+  const sicht = await sichtFuer(zugang.person, (await kalenderBereich(req, zugang.person)).bereich);
   const force = new URL(req.url).searchParams.get('refresh') === '1';
 
   // Seit 25.09.: iCloud direkt (Server) — der Abgleich schreibt den calendar-cache.
