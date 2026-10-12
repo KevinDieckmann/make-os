@@ -38,6 +38,8 @@ export interface ProzessVorlage {
   quelleHinweis?: string; vorbehalt?: string; zeichenhinweise?: string[];
   knoten: ProzessKnoten[]; uebergaenge: Uebergang[]; freigaben: Freigabepunkt[]; rollen: Rolle[];
   fassung: number; herkunft?: Herkunft; geaendert: string; geaendertVon: string;
+  /** Phasen (Ebene 2) von Hand umgestellt (12.10.) — dann gilt diese Reihenfolge statt der Regel in lib/fulfillment/prozesse/phasen.ts. Nur Pakete. */
+  phasenVonHand?: true;
 }
 
 export type BausteinArt = 'aufgabe' | 'dokument' | 'skript' | 'checkliste' | 'mail' | 'kennzahl' | 'ritual' | 'formular' | 'workbook' | 'analyse' | 'freigabe';
@@ -92,6 +94,8 @@ export interface Fall {
   befaehigung: { id: string; text: string; erfuellt: boolean; am?: string }[];
   wirkung?: { erstelltAm: string; dateiName?: string; zitat?: { text: string; einwilligungAm: string; wie: string } };
   marken: Record<string, string>; geaendert: string; geaendertVon: string;
+  /** Aus der Vorlage beim Start (12.10.): ihre Phasen waren von Hand geordnet — der Fall behält dann seine Reihenfolge. */
+  phasenVonHand?: true;
 }
 export interface FaelleDatei { version: number; faelle: Record<string, Fall> }
 

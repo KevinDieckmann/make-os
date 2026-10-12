@@ -15,6 +15,7 @@ import {
   type DossierDatei, type Dossier, type Abschnitt, type AbschnittId, type Aussage, type Quelle, type AnalyseLauf, type Massnahme, type LaufStatus,
   type PersonenDatei, type PersonenKarte, type FulfillmentArt, type FulfillmentDateien,
 } from './typen';
+import { hohlerFallKnoten, hohlerVorlagenKnoten, phasenOrdnen } from './prozesse/phasen';
 
 type O = Record<string, unknown>;
 
@@ -88,11 +89,16 @@ export function vorlageAus(o: O): ProzessVorlage | null {
   const i = id(o.id), art = wahl(o.art, ['landkarte', 'paket', 'ablauf'] as const), titel = s(o.titel);
   if (!i || !art || !titel) return null;
   const zh = texte(o.zeichenhinweise);
+  const phasenVonHand = art === 'paket' && o.phasenVonHand === true ? true as const : undefined;
+  const kn = liste(o.knoten, knoten);
   return sauber<ProzessVorlage>({
     id: i, art, titel, beschreibung: s(o.beschreibung), form: wahl(o.form, ABLAUF_FORMEN),
     quelleHinweis: s(o.quelleHinweis), vorbehalt: s(o.vorbehalt), zeichenhinweise: zh.length ? zh : undefined,
-    knoten: liste(o.knoten, knoten), uebergaenge: liste(o.uebergaenge, uebergang), freigaben: liste(o.freigaben, freigabepunkt), rollen: liste(o.rollen, rolle),
-    fassung: n(o.fassung) ?? 1, herkunft: herkunft(o.herkunft), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '',
+    // Paket-Vorlagen: Phasen nach der EINEN Regel geordnet, hohle Dach-Phasen zusammengelegt (12.10., ./prozesse/phasen.ts) — nur beim Lesen;
+    // gespeichert wird die geordnete Fassung erst mit dem nächsten Schreibvorgang. Von Hand geordnete Phasen bleiben.
+    knoten: art === 'paket' && !phasenVonHand ? phasenOrdnen(kn, { hohl: hohlerVorlagenKnoten }) : kn,
+    uebergaenge: liste(o.uebergaenge, uebergang), freigaben: liste(o.freigaben, freigabepunkt), rollen: liste(o.rollen, rolle),
+    fassung: n(o.fassung) ?? 1, herkunft: herkunft(o.herkunft), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '', phasenVonHand,
   });
 }
 const frage = (o: O): Frage | null => {
@@ -237,7 +243,9 @@ export function fallAus(o: O): Fall | null {
   })();
   return sauber<Fall>({
     mandatId, vorlageId, vorlageFassung: n(o.vorlageFassung) ?? 1, gestartetAm, gestartetVon: s(o.gestartetVon) ?? '', status,
-    knoten: liste(o.knoten, fallKnoten), freigaben,
+    // Phasen nach der EINEN Regel (12.10., ./prozesse/phasen.ts): hohle Dach-Phasen („Strategie“, „Steuerung“) mit der passenden Phase
+    // zusammengelegt — nur beim Lesen; der nächste Schreibvorgang speichert es. Hatte die Vorlage ihre Phasen von Hand geordnet, bleibt die Reihenfolge.
+    knoten: o.phasenVonHand === true ? liste(o.knoten, fallKnoten) : phasenOrdnen(liste(o.knoten, fallKnoten), { hohl: hohlerFallKnoten }), freigaben,
     onboarding: sauber({ willkommenGesendetAm: s(ob.willkommenGesendetAm), willkommenVon: s(ob.willkommenVon) }),
     vereinbarung: vereinbarung(o.vereinbarung), stakeholder: liste(o.stakeholder, stakeholder), entscheidungen: liste(o.entscheidungen, entscheidung),
     rituale: liste(o.rituale, r => { const ri = id(r.ritualId), am = s(r.angelegtAm); return ri && am ? { ritualId: ri, terminUids: texte(r.terminUids), angelegtAm: am } : null; }),
@@ -250,6 +258,7 @@ export function fallAus(o: O): Fall | null {
     wertKonto,
     befaehigung: liste(o.befaehigung, x => { const xi = id(x.id), text = s(x.text); return xi && text ? sauber({ id: xi, text, erfuellt: x.erfuellt === true, am: s(x.am) }) : null; }),
     wirkung, marken: textMap(o.marken), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '',
+    phasenVonHand: o.phasenVonHand === true ? true : undefined,
   });
 }
 export const leerFaelle = (): FaelleDatei => ({ version: FULFILLMENT_VERSION, faelle: {} });

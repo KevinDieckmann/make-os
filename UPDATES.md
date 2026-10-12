@@ -4,6 +4,23 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 12.10.2026 — Feinschliff aus der Demo: Pflicht-Titel und Phasen-Reihenfolge (nur lokal — Branch `feinschliff-phasen`, Basis d0b700a1 = `update-0910b`)
+- **Pflicht-Erinnerungen mit Klartext:** Heute › Top 3 zeigte zweimal „Unternehmen: Frist im Pflichten-Kalender — <Gesellschaft> — bis …“. Titel jetzt
+  „<Pflicht kurz> — <Gesellschaft> — bis <Datum>“ (`pflichtKurz`/`pflichtTitel` in `lib/gesellschaften/schild/ampel.ts`, ohne Norm und ohne Folge); zwei
+  Pflichten tragen nie denselben Titel (Zeitraum, sonst laufende Nummer). Beschreibung und Erinnerungs-Glocke (Art `vertrag`) bleiben neutral, Telegram ohnehin
+  über die Kennung `usp-…`. Die Aufgaben gehen weiter nur an Konten mit Zugang zur Firmen-Akte (`rechtPersonen`). Offene Aufgaben mit dem alten neutralen
+  Titel zieht der nächste Erinnerungslauf (Morgenlauf bzw. nach einer Änderung) nach — nur den Titel, nur unerledigte, nie einen von Hand geänderten, idempotent.
+  Hinweis: Aufgaben im Business-Bereich sieht ein Konto „nur Business“ weiterhin in der Aufgabenliste (zuständig wird es nie) — jetzt mit dem Klartext-Titel.
+- **Phasen: EINE Regel** (`lib/fulfillment/prozesse/phasen.ts`): kanonische Reihenfolge Vorlauf/Onboarding · Analyse · Diagnose · Aufbau · Recruiting ·
+  Umsetzung · Führung · Übergabe; eigene Phasen eines Pakets (z. B. „Skripte & Workbooks“) sind Kern-Arbeit (zwischen Aufbau und Recruiting); Dach-Themen
+  „Strategie“ → Diagnose, „Steuerung“ → Führung (keine eigene Phase im Kundenfall). Der Import sortiert Bausteine in die passende Phase bzw. legt sie an IHRER
+  Stelle an (vorher hinten angehängt). Gespeicherte Vorlagen und Fälle werden NICHT umgeschrieben: der Säuberer ordnet beim Lesen und legt hohle Dach-Phasen
+  (nur Titel, im Fall noch „offen“) mit der passenden Phase zusammen — Schritte und Bausteine bleiben, der nächste Schreibvorgang speichert die geordnete Fassung.
+  Phasen von Hand umgestellt (hoch/runter, an eine Stelle gesetzt) → `phasenVonHand` (optional, auch am Fall) — dann bleibt die Reihenfolge der Hand.
+- **Rückweg:** der alte Stand kennt `phasenVonHand` nicht (fällt beim Speichern weg — die Reihenfolge der Ränge bleibt); geordnete Ränge und zusammengelegte
+  Dach-Phasen liest er wie jede andere Struktur. Pflicht-Titel sind normale Aufgabentitel.
+- Tests: `tests/fulfillment-phasen.test.ts`, `tests/unternehmen-pflicht-titel.test.ts`; angepasst `tests/pruef-funde-1110-rein.test.ts` (H4: Titel ohne Norm/Folge).
+
 ## 11.10.2026 — Unternehmen „in einem Blick“: Schild je Gesellschaft, Bilder statt Listen, Ereignis-Assistent, Kanzlei-Status, Verlauf (nur lokal — Branch `design-unternehmen`, Basis d56e47fa = `update-0910b`)
 Kevin nach dem Ansehen: „Unternehmen nochmal ausbauen — denk immer 2–3 Schritte weiter — und denk dran, dass es einfach zu verstehen sein soll über die
 Visualisierungen. So ist es sehr unübersichtlich und keiner versteht, was da los ist.“
