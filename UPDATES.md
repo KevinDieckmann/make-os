@@ -4,6 +4,21 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 12.10.2026 — Gesamtprüfung vor dem Upload, Teil 2: Abläufe Ende zu Ende (nur lokal — Branch `gesamt-ablaeufe`, Basis d0b700a1 = `update-0910b`)
+Kevin: „Es muss alles bestens zusammen laufen, die Infos müssen passen.“ Zehn Abläufe über die API der Demo-Instanz (Lena Inhaberin, Jonas volles
+Mitglied, Ben „nur Business“), je Schritt Antwort UND Folge an anderer Stelle: Routinen mit Zähler, Aufgaben/Top 3/Briefing, Ziele/Meilensteine/Fokus,
+Kalender je Sicht, Inbox (Suche, Übergeben, Zurückziehen, Aufgaben-Vorschlag → Freigabe), Markttraktion › Planung (Rest-Rechnung mit echtem Ist,
+Scoreboard), „+ Mandat“ (Jahrespreis ÷ 12, Report), Fulfillment (12 Schritte, Onboarding nur für neue Mandate), Unternehmen (Nummer, Folgen ≤ 90 Tage,
+Assistent „neue Geschäftsführung“, Beschluss-Buch, Anwalts-Mappe), Head of Recht/Stapel, Rechte quer (alle GET-Routen als Ben und Jonas).
+**Behoben (je Fund ein Wächter in `tests/gesamt-ablaeufe.test.ts`):**
+- **Kalender „nur Business“:** Ben bekam über GET `/api/kalender` und `/api/apple-calendar` Termine aus Privat-Kalendern MIT Titel, `/api/kalender/jahr`
+  zählte den Privat-Kalender, `/api/kalender/termin` schrieb/änderte/löschte dort. Jetzt EINE Stelle `lib/kalender/konto-bereich.ts` (`kalenderBereich`,
+  `kalenderNurBusiness`): immer Business-Bereich (auch ohne/mit anderem `?space=`), nie „Belegt“-Zeilen aus Privat, Schreiben außerhalb → 403.
+- **Willkommensmail:** nur zwei statt drei Kick-off-Vorschläge (Suche voll nach 30 Plätzen an zwei Tagen) — `freieZeitFuer` kennt `maxJeTag`.
+- **Briefing:** „Heute steht kein Termin im Kalender“, obwohl am Morgen einer war (gezählt werden nur kommende) → „Heute steht kein Termin mehr an.“
+**So testet ihr:** als Ben Kalender öffnen (Woche mit dem Demo-Abendessen) → nur „Arbeit“, kein Privat-Kalender, auch nicht im Jahr; Fall › Überblick ›
+Willkommen → drei Termine an drei Tagen; Heute am Nachmittag → Briefing sagt „kein Termin mehr“. **Rückweg:** keine Daten-/Formänderung.
+
 ## 11.10.2026 — Unternehmen „in einem Blick“: Schild je Gesellschaft, Bilder statt Listen, Ereignis-Assistent, Kanzlei-Status, Verlauf (nur lokal — Branch `design-unternehmen`, Basis d56e47fa = `update-0910b`)
 Kevin nach dem Ansehen: „Unternehmen nochmal ausbauen — denk immer 2–3 Schritte weiter — und denk dran, dass es einfach zu verstehen sein soll über die
 Visualisierungen. So ist es sehr unübersichtlich und keiner versteht, was da los ist.“
