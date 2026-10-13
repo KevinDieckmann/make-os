@@ -3,6 +3,7 @@
 // (Vorschläge von ZOE) gibt es `_App/` — GENERIERT, nie von Hand bearbeiten:
 //   _App/Projekte/<Space>/<Projekt>.md   Beschreibung, Notiz, offene und erledigte Aufgaben mit Links
 //   _App/Projekte/Privat.md              (Standard) aus dem Privat-Space nur Zahlen — „voll“ legt Privat/<Projekt>.md an
+//   _App/Projekte/Firmen-Akte.md         (12.10.) Pflichten aus der Firmen-Akte (Schild, Verträge, Recht, Beschlüsse) nur als Zahlen — immer, ohne „voll“
 //   _App/Mandate/<Firma>.md              Mandate, Aufgaben, Zeit je Monat, Angebote
 //   _App/Angebote.md                     alle Angebote mit Status und Link
 //   _App/Entscheidungen/<JJJJ-MM>.md     ZOE-Freigaben/-Ablehnungen des Monats (aus zoe-entscheidungen)
@@ -27,7 +28,7 @@ import type { Task } from '@/types/tasks';
 import type { ZeitJeMandat } from '@/lib/zeitmessung/mandate';
 import { vaultZiel } from './vault-ziel';
 import {
-  appDatenLaden, aufgabeSichtbar, privatAufgabe, privatProjekt, imPapierkorb, material, materialLeer, materialMarkdown, entscheidungZeile,
+  appDatenLaden, aufgabeSichtbar, firmenAkteAufgabe, privatAufgabe, privatProjekt, imPapierkorb, material, materialLeer, materialMarkdown, entscheidungZeile,
   md, zitat, link, stunden, monatVon, vormonatVon, einstellungLesen, einstellungName, zeitBestaende, type AppDaten,
 } from './app-material';
 import { kinderKarte, AUFGABEN_EBENEN_MAX } from '@/lib/aufgaben/ebenen';
@@ -80,7 +81,11 @@ export function spiegelDateien(d: AppDaten): Map<string, string> {
   const dateien = new Map<string, string>();
   const voll = d.einstellung.privat === 'voll';
   const spaces = alleSpaces(d.crm, d.state.tasks);
-  const sichtbar = d.state.tasks.filter(t => aufgabeSichtbar(t, d));
+  const erlaubt = d.state.tasks.filter(t => aufgabeSichtbar(t, d));
+  // Firmen-Akte (12.10.): das Brain liest jedes Konto des Haushalts, auch eines ohne Zugang zur Firmen-Akte — ihre Aufgaben nur als Zahl, nie als Titel.
+  const sichtbar = erlaubt.filter(t => !firmenAkteAufgabe(t, d));
+  const akte = erlaubt.filter(t => !t.parentId && firmenAkteAufgabe(t, d));
+  const akteOffen = akte.filter(t => t.status !== 'done' && t.status !== 'cancelled').length, akteErledigt = akte.filter(t => t.status === 'done').length;
   const belegt = new Set<string>();
   const eindeutig = (p: string, id: string) => { let x = p; if (belegt.has(x.toLowerCase())) x = p.replace(/\.md$/, ` (${dateiName(id).slice(-8)}).md`); belegt.add(x.toLowerCase()); return x; };
 
@@ -123,6 +128,14 @@ export function spiegelDateien(d: AppDaten): Map<string, string> {
       kopf({ scope: 'intern', art: 'privat-zahlen' }, 'Privat (nur Zahlen)'),
       'Aus dem Privat-Space gehen nur Zahlen ins Brain — so ist es für den Haushalt eingestellt (Brücke App → Brain, Einstellung „Privat“: nur Zahlen).', '',
       `- Projekte: ${privatProjekte}`, `- offene Aufgaben: ${privatOffen}`, `- erledigte Aufgaben: ${privatErledigt}`, '',
+    ].join('\n'));
+  }
+
+  if (akte.length) {
+    dateien.set('Projekte/Firmen-Akte.md', [
+      kopf({ scope: 'intern', art: 'firmen-akte-zahlen' }, 'Firmen-Akte (nur Zahlen)'),
+      'Pflichten aus der Firmen-Akte (Unternehmen › Schild, Verträge, Recht, Beschlüsse) stehen im Brain nur als Zahl — Titel sehen nur Personen mit Zugang zur Firmen-Akte, in der App.', '',
+      `- offene Pflichten: ${akteOffen}`, `- erledigte Pflichten: ${akteErledigt}`, '',
     ].join('\n'));
   }
 

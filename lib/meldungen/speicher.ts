@@ -139,7 +139,10 @@ export async function meldungenStand(person: string, jetzt: Date = new Date()): 
   const bf = await businessFreiJetzt(person, jetzt).catch(() => ({ frei: false, bisIso: undefined }));
   // Routinen 2 (10.10.): die Erinnerungen hängen an Routinen, dem eigenen Log und den eigenen Zählern — samt 10-Minuten-Uhr (aus `anstehendStand`).
   const routinenQuellen = ['routinen', speicherFuer('health-log', person), routinenPersonName(person)];
-  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', eigenerRahmenName(person), ...(h ? [familieName(h.haushalt)] : []), ...(bh ? [`buchung--${bh}`] : []), ...routinenQuellen])}|${await anstehendStand(jetzt)}|bf:${bf.frei ? bf.bisIso : '-'}`;
+  // Konten (12.10.): Zugang und Sicht der Person (`finanzRecht`, Haushalt, Rolle) bestimmen, was die Glocke zeigt (Privat-Bereich, Firmen-Akte) — ohne
+  // den Konten-Stand lieferte die Glocke nach einer Zugangsänderung den alten Stand (304). Er steckt mittelbar auch in `anstehendStand`; hier
+  // ausdrücklich, damit die Glocke nicht an dieser Nebenwirkung hängt (Wächter tests/meldungen-etag-konten.test.ts prüft das Verhalten).
+  return `${await speicherStand([meldungenSpeicher(person), 'tasks', 'kontakte', 'konten', eigenerRahmenName(person), ...(h ? [familieName(h.haushalt)] : []), ...(bh ? [`buchung--${bh}`] : []), ...routinenQuellen])}|${await anstehendStand(jetzt)}|bf:${bf.frei ? bf.bisIso : '-'}`;
 }
 
 /**

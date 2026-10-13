@@ -9,12 +9,18 @@
 //   4. Meldungen zu archivierten Aufgaben als gelesen (Glocke), Änderungsprotokoll ohne Werte, Lauf „fertig“.
 // Zurückholen (ganz oder einzeln) läuft denselben Weg rückwärts; Sperr-Reihenfolge immer Bestand außen → Protokoll innen.
 // CRM (Follow-ups, Deals), Routinen, Blöcke, Vorlagen, eigene Status und der Papierkorb bleiben unberührt.
+// ZUGANG (12.10., Restpunkt Sicht-Trennung): „Neu anfangen“ nimmt Aufgaben, Ziele und Meilensteine des GANZEN Haushalts heraus — Privat,
+// Selbstständigkeit und die Aufgaben der Firmen-Akte eingeschlossen. Darum nur für VOLLE Mitglieder: ein Konto „nur Business“
+// (`finanzRecht: 'business'`) bekommt Vorschau, Archiv, Neustart und Zurückholen mit 403 (`nurVolleMitglieder`) — keine Teil-Sicht, die einen
+// Lauf je Bereich zuschneiden müsste (das Archiv eines Laufs mischt Bereiche, „Alles zurückholen“ ebenso). Entschieden NUR über die
+// Konto-Sicht (lib/zugang/konto-sicht.ts), dieselbe Regel wie für jeden anderen Leser.
 
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { archivSchreiben, archivZeit } from '@/lib/store/archiv';
 import { protokolliere, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
+import { kontoSicht } from '@/lib/zugang/konto-sicht-server';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
 import { meldungenSicht, meldungenGelesen } from '@/lib/meldungen/speicher';
@@ -90,6 +96,7 @@ export interface NeustartVorschau extends AufgabenVorschau {
 }
 
 export async function neustartVorschau(person: string | null = null): Promise<NeustartVorschau> {
+  await nurVolleMitglieder(person);
   const orgs = await orgZuordnung();
   const tasks = uebernehmen(alsStand(await loadJson<TasksState>(AUFGABEN_BESTAND)), orgs).state;
   const zieleJe = Object.fromEntries(ZIEL_HORIZONTE.map(h => [h, 0])) as Record<ZielHorizont, number>;
@@ -110,6 +117,20 @@ export async function neustartVorschau(person: string | null = null): Promise<Ne
 
 export class NeustartFehler extends Error { constructor(msg: string, readonly status = 400) { super(msg); } }
 
+/** 403-Satz für Konten „nur Business“ (ein Satz für Vorschau, Archiv, Neustart und Zurückholen). */
+export const NEUSTART_NUR_VOLL = 'Neu anfangen betrifft den ganzen Haushalt, auch Privat und die Firmen-Akte — dieses Konto sieht nur den Business-Bereich. Nichts geändert.';
+
+/**
+ * Darf diese Person „Neu anfangen“ sehen und ausführen? Nur volle Mitglieder des Haushalts (im Haushalt der Inhaber, nicht
+ * `finanzRecht: 'business'`). Wirft `NeustartFehler` 403 — vor jedem Lesen und Schreiben. `null` = Systemlauf ohne Person: die Route lässt
+ * ihn nie durch, hier nur der Vollständigkeit halber ohne Prüfung.
+ */
+export async function nurVolleMitglieder(person: string | null | undefined): Promise<void> {
+  if (person == null) return;
+  const k = await kontoSicht(person);
+  if (!k || !k.privat) throw new NeustartFehler(NEUSTART_NUR_VOLL, 403);
+}
+
 const vereint = (a: readonly string[], b: readonly string[]) => Array.from(new Set([...a, ...b]));
 function erfasstVereinen(a: AufgabenErfasst, b: AufgabenErfasst): AufgabenErfasst {
   const schon = new Set(a.pausiert.map(p => `${p.art}:${p.id}`));
@@ -127,6 +148,7 @@ export interface NeustartErgebnis { lauf: NeustartLauf; schon: boolean }
  * `person` = wer gedrückt hat (Haushalt des Inhabers, von der Route geprüft).
  */
 export async function neuAnfangen(o: { laufId: string; person: string; wer?: Wer; jetzt?: Date }): Promise<NeustartErgebnis> {
+  await nurVolleMitglieder(o.person);
   if (!LAUF_ID.test(o.laufId)) throw new NeustartFehler('Ungültige Lauf-Kennung.');
   const jetzt = (o.jetzt ?? new Date()).toISOString();
   const name = neustartSpeicher(await karteiHaushalt());
@@ -255,6 +277,7 @@ export interface ArchivLaufSicht {
  * fremde „nur ich“-Aufgaben (und ihre Unteraufgaben) erscheinen nicht — „Alles wiederherstellen“ holt sie trotzdem mit zurück.
  */
 export async function neustartArchiv(person: string | null): Promise<ArchivLaufSicht[]> {
+  await nurVolleMitglieder(person);
   const name = neustartSpeicher(await karteiHaushalt());
   const laeufe = bestand(await loadJson<NeustartBestand>(name)).laeufe;
   if (!laeufe.length) return [];
@@ -285,6 +308,7 @@ export interface ZurueckBericht { aufgaben: number; projekte: number; ziele: num
 
 /** Ganz oder einzeln zurückholen. Idempotent: schon Zurückgeholtes zählt als `schon`/0. */
 export async function neustartZurueck(o: { laufId: string; auswahl: NeustartAuswahl; person: string; wer?: Wer; jetzt?: Date }): Promise<ZurueckBericht> {
+  await nurVolleMitglieder(o.person);
   if (!LAUF_ID.test(o.laufId)) throw new NeustartFehler('Ungültige Lauf-Kennung.');
   const jetzt = (o.jetzt ?? new Date()).toISOString();
   const name = neustartSpeicher(await karteiHaushalt());
