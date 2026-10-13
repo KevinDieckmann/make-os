@@ -432,7 +432,7 @@ function eigeneDefs(o: DefOptionen): WerkzeugDef[] {
     },
     {
       name: 'setze_kunde',
-      description: 'Aktualisiert oder erfasst einen Kunden als Mandat in der Markttraktion (Deals › Kunden; Status, Honorar €/Monat, nächster Schritt als offener Punkt). Trifft nur den GENAUEN Namen (Rechtsform egal) oder die mandat_id — bei Rückfrage nachfragen, nicht raten.',
+      description: 'Aktualisiert oder erfasst einen Kunden als Mandat in der Markttraktion (Produkte & Mandate › Mandate; Status, Honorar €/Monat, nächster Schritt als offener Punkt). Trifft nur den GENAUEN Namen (Rechtsform egal) oder die mandat_id — bei Rückfrage nachfragen, nicht raten.',
       input_schema: obj({
         name: { type: 'string', maxLength: 120 }, status: { type: 'string', enum: ['aktiv', 'gespraech', 'ruht'] }, cashflow: { type: 'number', description: '€/Monat' },
         naechsterSchritt: { type: 'string', maxLength: 300 }, mandat_id: { type: 'string', maxLength: 80, description: 'Kennung des Mandats, wenn der Name nicht eindeutig ist (aus der Rückfrage)' },

@@ -82,4 +82,4 @@ export async function planZugangFuer(person: string | null | undefined): Promise
 }
 export async function planZugangVon(req: Request): Promise<PlanZugang | null> { return planZugangFuer(personStreng(req)); }
 
-export const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Haushaltsfinanzen. Der Inhaber schaltet ihn unter System → Konto frei.' };
+export const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zu den Haushaltsfinanzen. Der Inhaber schaltet ihn unter Einstellungen › Konto frei.' };

@@ -1,4 +1,4 @@
-# Datenschutz in MAKE OS (Anwendung) — Stand 05.10.2026
+# Datenschutz in MAKE OS (Anwendung) — Stand 05.10.2026, ergänzt 12.10.2026 (Abschnitt 2c)
 
 Arbeitsdokument aus der DSGVO-Prüfung vor dem Upload (Teil 2). **Hinweis, keine Rechtsberatung — einmal anwaltlich gegenlesen.**
 Die Website-Erklärung (`website/datenschutz.html`) verweist für `app.makeinnovation.de` auf „einen eigenen Hinweis in der
@@ -13,7 +13,7 @@ Anwendung“ — den gibt es noch nicht. Abschnitt 4 ist ein **Entwurf** dafür;
 | Löschkonzept | `LOESCHREGELN` (dort, **neu: Papierkorb 30 Tage**) + `lib/crm/loeschfristen*.ts` | — |
 | Art. 15 (Auskunft Kontakt) | `personAufzaehlen` in `lib/crm/person-bestaende.ts` (**neu: `gesellschaften`**, Papierkorb mit) | `tests/gesellschaften-dsgvo.test.ts`, `tests/besuche-route.test.ts` |
 | Art. 17 (Löschen Kontakt) | `personEntfernen` + `lib/crm/person-weitere.ts` (`WEITERE_SPEICHER`) | dieselben |
-| **Verantwortlicher, Empfänger/AVV (05.10.)** | `lib/datenschutz/einrichtung.ts` (Bestand `datenschutz-einrichtung`), System › Datenschutz | `tests/datenschutz-einrichtung.test.ts` |
+| **Verantwortlicher, Empfänger/AVV (05.10.)** | `lib/datenschutz/einrichtung.ts` (Bestand `datenschutz-einrichtung`), Einstellungen › Datenschutz | `tests/datenschutz-einrichtung.test.ts` |
 | **Selbstprüfung mit Umfeld (05.10.)** | `selbstpruefung` + `lib/datenschutz/umfeld.ts`, `/api/datenschutz/pruefung` | `tests/datenschutz-selbstpruefung.test.ts` |
 | **Verzeichnis vollständig + Export (05.10.)** | `verzeichnisVervollstaendigen`, `lib/datenschutz/verzeichnis-export.ts`, `/api/datenschutz/verzeichnis` | `tests/datenschutz-verzeichnis.test.ts` |
 | **Sicherungsfrist (05.10.)** | `SICHERUNG_GENERATIONEN`/`SICHERUNG_SATZ` (lib/crm/loeschfristen.ts) ↔ `deploy/generationen.sh` | `tests/datenschutz-sicherungsfrist.test.ts` |
@@ -76,12 +76,12 @@ Spiegel (Frist „Mail-Spiegel“ 180 Tage, höchstens 1.500 je Postfach, „Tre
 Zuordnungen, Screener-Entscheidungen je Absender-Adresse). Trennung serverseitig: jede Person sieht nur ihre Postfächer, ein Business-Bereich
 nie Privates. KI sieht nur Kopf + Ausschnitt (ZOE-Werkzeug, Tageslauf); Volltext nur beim Antwort-Entwurf auf Klick. Verlauf der Kontaktakte
 nur nach „Zuordnen“ (auch für Gmail). Empfänger: IONOS (AVV im Kundenbereich, EU) und Apple iCloud Mail (kein AVV, nur private Post) —
-Vorgaben für neue Instanzen; bei uns von Hand unter System › Datenschutz › Empfänger ergänzen. WhatsApp ist nur vorbereitet (Cloud API,
+Vorgaben für neue Instanzen; bei uns von Hand unter Einstellungen › Datenschutz › Empfänger ergänzen. WhatsApp ist nur vorbereitet (Cloud API,
 Meta als Auftragsverarbeiter, Speicherort „DE“/„No Storage“ VOR der Registrierung der Nummer wählen) — VVT-Eintrag erst mit dem Adapter.
 
 ## 2a. DSGVO-Grundlagen im Code (05.10., Branch `dsgvo-grund`)
 
-- **Verantwortlicher** kommt aus der Einrichtung (System › Datenschutz; Rückfall Umgebung) — Auskunft, Verzeichnis, Danke-Mail und
+- **Verantwortlicher** kommt aus der Einrichtung (Einstellungen › Datenschutz; Rückfall Umgebung) — Auskunft, Verzeichnis, Danke-Mail und
   Selbstprüfung lesen dort; ohne Eintrag steht deutlich „Verantwortlicher fehlt — eintragen“. Kein Name mehr im Code.
 - **Empfänger/AVV-Register** mit Startwerten (Hetzner, Google Workspace, Microsoft 365, Apple iCloud, Anthropic, Telegram, GitHub,
   Healthchecks, Newsletter-Werkzeug [archiviert, bis in Gebrauch], WHOOP [eigener Verantwortlicher]) — AVV-Status startet „offen“.
@@ -94,7 +94,7 @@ Meta als Auftragsverarbeiter, Speicherort „DE“/„No Storage“ VOR der Regi
 - **Löschprotokoll** 36 Monate (abgeschlossene Einträge).
 
 **KI, Gesundheit (Art. 9) und Telegram** (05.10., Branch `dsgvo-ki`) — die EINE Stelle: `askText` → `lib/datenschutz/ki-tor.ts`
-- **Gesundheits-Einwilligung** (`lib/datenschutz/gesundheit-einwilligung.ts`, Bestand `gesundheit-einwilligungen`, Oberfläche System ›
+- **Gesundheits-Einwilligung** (`lib/datenschutz/gesundheit-einwilligung.ts`, Bestand `gesundheit-einwilligungen`, Oberfläche Einstellungen ›
   Datenschutz): drei getrennte, ausdrückliche Einwilligungen je Person — (a) in MAKE OS verarbeiten, (b) an die KI geben (Anthropic, USA),
   (c) mit dem Partner teilen inkl. Weitergabe an dessen ZOE. Wortlaut + Fassung + Zeitpunkt + Widerruf; Nachweis nur anhängend (Art. 7
   Abs. 1). Vorgabe (b)/(c) aus. Bestands-Konten (vor der Einführung, kompatible Instanz): Hinweis „bitte bestätigen“, Verarbeitung wie
@@ -110,7 +110,7 @@ Meta als Auftragsverarbeiter, Speicherort „DE“/„No Storage“ VOR der Regi
   `fuehreAus`; Prompt-Bauer lassen gesperrte Bereiche weg. **Vorgaben:** neue Instanz „sparsam“ (Hintergrund-KI und Web-Suche AUS,
   Bereiche an); eine Instanz mit Altbestand (Kevin) „kompatibel“ (alles an wie bisher) — beim ersten Lesen festgeschrieben.
 - **KI-Protokoll** (`lib/datenschutz/ki-protokoll.ts`, `ki-protokoll--JJJJ-MM`): je Modellaufruf nur Metadaten (Zeit, Zweck, Lauf, Person,
-  Kategorien, Anzahl, pseudonymisiert, gesperrt + Grund) — nie Inhalte, nie Kennungen Dritter; 12 Monate. Einsehbar unter System ›
+  Kategorien, Anzahl, pseudonymisiert, gesperrt + Grund) — nie Inhalte, nie Kennungen Dritter; 12 Monate. Einsehbar unter Einstellungen ›
   Datenschutz; Art. 15: `GET /api/datenschutz/ki-protokoll?auskunft=1` (Konto-Person), Kontakt-Auskunft `personAufzaehlen.kiEmpfaenger`
   (Empfänger + Aufrufe der Kategorie „crm“ mit Zeitraum). Verzeichnis: eigener Eintrag `vv-ki` (`lib/datenschutz/vvt-ki.ts`).
 - **Pseudonymisierung** (`lib/datenschutz/pseudonym.ts`): in Hintergrund-Läufen Vor-+Nachname / „Nachname, Vorname“ / Adresse der
@@ -138,7 +138,7 @@ Meta als Auftragsverarbeiter, Speicherort „DE“/„No Storage“ VOR der Regi
 - **Instanz-Export bei Vertragsende** (nur Inhaber-Sitzung + Passwort/2FA, Strom, Lese-/Anmeldeprotokoll) und **Löschskript**
   `scripts/instanz-loeschen.mjs` (Trockenlauf, Bestätigungs-Code, nennt Sicherungen, nie automatisch) — `LOESCHKONZEPT.md` › 6,
   `KUNDEN_ONBOARDING_DATENSCHUTZ.md` › E.
-- **Art. 14** — Vorlage in der Einrichtung (System › Datenschutz, Platzhalter, Pflicht `{{verantwortlicher}}`/`{{herkunft}}`), Entwurf in der
+- **Art. 14** — Vorlage in der Einrichtung (Einstellungen › Datenschutz, Platzhalter, Pflicht `{{verantwortlicher}}`/`{{herkunft}}`), Entwurf in der
   Akte (`art14-entwurf`, nie versendet → Mail-Programm per Klick → „ist raus“ = `art14InformiertAm` + Verlauf). Uhr `art14Frist`: spätestens
   1 Monat nach der Aufnahme; Selbstprüfung „bald“ ab Tag 25, „überfällig“ danach. Pflicht bei `fremddaten` oder Herkunft Recherche/Empfehlung.
 - **Buchungsseiten** — Verantwortlicher kommt aus der Einrichtung (das Feld der Seite ist nur noch eine Abweichung; ohne Einrichtung weiter
@@ -148,6 +148,27 @@ Meta als Auftragsverarbeiter, Speicherort „DE“/„No Storage“ VOR der Regi
   /api/abmelden/<token>` ohne Anmeldung; Antwort immer gleich (verrät nicht, ob die Adresse existiert); Wirkung: Werbesperre + Widerruf der
   Werbe-Einwilligungen + Sperrliste + Verlauf/Protokoll. Ohne Pepper oder `MAKE_OS_ADRESSE` bleiben die Spalten leer.
 - **Register:** `anmeldungen` (12 Monate) und `konten` mit Angaben; jedes `…--*`-Muster ist für Konto-Export/-Löschung eingeordnet (Wächter).
+
+## 2c. Neue Verarbeitungen seit dem Online-Stand `a063e73a` (Update 12.10., nur lokal — Quelle: Speicher-Register `lib/crm/speicher-register.ts`, dort stehen Rechtsgrundlage, Art.-15-Weg und Löschfrist je Bestand)
+
+Neu im Verzeichnis (Art. 30, `verzeichnisVervollstaendigen`, wird beim Öffnen von Stammdaten/Einstellungen › Datenschutz einmal nachgetragen): `vv-fulfillment`,
+`vv-fulfillment-analyse`, `vv-kundenlink`, `vv-email-kunden`. Alles Folgende ist Business bzw. je Person getrennt abgelegt (`IN_BUSINESS` / `JE_PERSON`), additiv und für den alten Stand unsichtbar.
+
+| Verarbeitung | Bestand / Ort | Wer sieht es | Rechtsgrundlage (kurz) | Löschfrist |
+|---|---|---|---|---|
+| **Fulfillment** — Prozess-Vorlagen, laufender Fall je Mandat, Onboarding, Wert-Konto, Takt, Wirkungsbericht (`vv-fulfillment`) | `fulfillment--<h>`, `fulfillment-faelle--<h>` | Business-Mitglieder mit Zugang (`fulfillmentZugang`), nie Privat | Art. 6 Abs. 1 lit. b, f | Haltung/Notiz der Stakeholder 12 Monate nach Mandatsende (Frist `fulfillment-mandatsdaten`); Fall so lange wie das Mandat |
+| **Fulfillment-Analyse und Personenrecherche** — Dossier, Web-Abruf, Analyse-Agenten, **berufliche Personenkarten** (A4, A11–A13), Tiefenbericht (`vv-fulfillment-analyse`) | `fulfillment-dossiers--<h>`, `fulfillment-personen--<h>` | Personenteil nur Inhaber und Mitglieder mit `personenteilErlaubt`; Tiefenbericht nur die auslösende Person (Leseteil), nie an Agenten | Art. 6 Abs. 1 lit. f (Interessenabwägung je Dossier, F1), **Art. 14 binnen eines Monats**; jeder KI-Lauf einzeln bestätigt, Kosten sichtbar | Personenkarten 90 Tage nach Mandatsende (Frist `fulfillment-personen`, 30–365); Entwürfe von Läufen 90 Tage |
+| **Kunden-Link** — öffentliche Seite, Formulare, Upload, Puls (`vv-kundenlink`) | `fulfillment-kunde--<h>`, Ordner `fulfillment-unterlagen` | der Kunde nur über den Link (Token nur als Hash, Positivliste `kundenSicht`); **kommt ausgeschaltet** (`MAKE_OS_KUNDENLINK` + Instanz-Schalter) | Art. 6 Abs. 1 lit. b; Information nach Art. 13 auf der Kunden-Seite | Antworten/Puls-Sätze 12 Monate nach Mandatsende; Unterlagen 90 Tage nach Mandatsende (Frist `fulfillment-unterlagen`), außer als Beleg übernommen |
+| **Inbox-Übergaben** — freigegebene Kopie eines Gesprächs an eine andere Person des Haushalts, Anhänge nur ausdrücklich angehakt | `inbox-uebergaben--<h>`, Bild-Ordner `inbox-uebergaben` (verschlüsselt) | Absender und Empfänger der Übergabe; Art. 18/Werbesperre wandern mit, ohne Anhang-Kopie | Art. 6 Abs. 1 lit. f (interne Zusammenarbeit); Teil von `vv-email-*` | erledigte Übergaben 90 Tage nach „Erledigt“, höchstens so lange wie der Mail-Spiegel; „Zurückziehen“ sofort |
+| **Routinen je Person** — Zähler, Erinnerung aufs Handy, Kennungen eigener Routinen-Blöcke | `routinen-person--<person>` | nur die Person; andere bei „Teilen“ | Art. 9 Abs. 2 lit. a (Gesundheit, Einwilligung (a)) | mit dem Konto |
+| **Erholung** — Programme, Einheiten, Behandlungsserien, Ziele | `erholung--<person>` | nur die Person; andere lesend bei „Teilen“ (ohne Unterlagen- und Kalender-Verweise) | Art. 9 Abs. 2 lit. a | mit dem Konto |
+| **Unternehmen › Schild und Verlauf** — Pflichtdokumente, Pflichten, Risiko-Register, Marken/Versicherungen, Beschluss-Buch; Verlauf nur Ton + vier Prozentzahlen je Gesellschaft | `unternehmen-schild--<h>`, `unternehmen-verlauf--<h>`, `recht-check--<h>`, im Register `gesellschaften--<h>` | Business-Mitglieder mit Zugang zum Schild (`rechtZugangFuer`); der Head of Recht schlägt nur vor | Art. 6 Abs. 1 lit. c (§ 257 HGB, § 147 AO), lit. f | Verlauf 400 Tage rollend; Papierkorb 30 Tage; Unterlagen bleiben (Aufbewahrungspflicht) |
+| **Agenten-Lauf-Spur** — Metadaten je Abschnitt (Dauer, Token, Kosten, Ergebnis-Klasse), nie Inhalte | `lauf-spur--privat\|business--JJJJ-MM` (Hash-Kette) | eigene Ketten; der Inhaber zusätzlich Summen | Art. 6 Abs. 1 lit. f (Betrieb, Kostenkontrolle, Nachvollziehbarkeit) | 12 Monate |
+| Planung und Wirkung — Top 3, Prioritäten, Vertriebsplanung, Leistungstreppe, eigene Meilensteine, Wissen der Business-Heads | `heute-top3--<person>`, `fokus-steuerung-*`, `markttraktion-planung--<h>`, `produkt-treppe--<h>`, `meilensteine-eigen--<person>`, `agenten-wissen--<h>` | je Bereich/Person getrennt | Art. 6 Abs. 1 lit. b, f | Top 3 rollend 45 Tage; die übrigen mit der Instanz bzw. dem Konto |
+
+**Offen für den Anwalt (Hinweis, keine Rechtsberatung):** Interessenabwägung und Art.-14-Muster der Personenrecherche gegenlesen; Hinweistext der Kunden-Seite; Tiefenbericht (Google Vertex, Drittland/Garantie `pruefen`);
+Einwilligungstext Erholung bei Beschäftigten. Inbox-Übergaben, Routinen-Zähler, Erholung, Schild-Verlauf und Lauf-Spur haben noch keine eigene Zeile im Verzeichnis — sie hängen an `vv-email-*`, `vv-gesundheit`, `vv-gesellschaften` und `vv-ki`;
+eigene Zeilen nachtragen, wenn der Anwalt es verlangt.
 
 ## 3. Offene Punkte (Entscheidung Kevin)
 **Aus dem Paket 05.10. (KI/Gesundheit/Telegram):** Einwilligungstexte (a)/(b)/(c) und der Telegram-Hinweis anwaltlich gegenlesen;
@@ -161,7 +182,7 @@ einer Gesellschaft/eines Vertrags behalten, mit Hinweis und Link.
 
 ## 4. Entwurf: Datenschutzhinweis der Anwendung (nicht veröffentlicht)
 
-> **Datenschutz in MAKE OS.** Verantwortlich: [[aus System › Datenschutz › Verantwortlicher — dort eintragen]]. MAKE OS ist ein geschlossener Bereich
+> **Datenschutz in MAKE OS.** Verantwortlich: [[aus Einstellungen › Datenschutz › Verantwortlicher — dort eintragen]]. MAKE OS ist ein geschlossener Bereich
 > für eingeladene Personen. Wir verarbeiten: Konto (Name, Anmelde-Adressen, Passwort-Hash, zweiter Faktor, Anmeldungen) zur
 > Bereitstellung (Art. 6 Abs. 1 lit. b); Ihre eigenen Inhalte (Aufgaben, Kalender, Notizen, Planung) zur Bereitstellung der
 > Funktionen; Gesundheitsdaten nur, wenn Sie sie selbst erfassen oder verbinden (Art. 9 Abs. 2 lit. a) — andere Konten sehen sie
@@ -170,7 +191,7 @@ einer Gesellschaft/eines Vertrags behalten, mit Hinweis und Link.
 > Auftragsverarbeitung); Daten verschlüsselt gespeichert. KI-Funktionen (ZOE) nutzen Anthropic (USA; Standardvertragsklauseln/Data
 > Privacy Framework) — wenn Sie ZOE fragen oder einen Entwurf anfordern UND, soweit eingeschaltet, in automatischen Läufen der Software
 > (z. B. Morgenlauf, Lagebilder); dabei werden Namen von Kontakten durch Platzhalter ersetzt. Was an die KI geht, stellen Sie unter
-> System › Datenschutz ein (Hintergrund-KI, Web-Suche, Bereiche); jeder Aufruf wird ohne Inhalte protokolliert (12 Monate). Telegram
+> Einstellungen › Datenschutz ein (Hintergrund-KI, Web-Suche, Bereiche); jeder Aufruf wird ohne Inhalte protokolliert (12 Monate). Telegram
 > erhält nur Hinweise ohne Inhalte, außer Sie schalten die Ausnahme selbst ein. Optional verbundene Dienste
 > (Google Workspace, Apple iCloud, Microsoft 365, Whoop) nur nach Ihrer Verbindung. Speicherdauer: solange das Konto besteht;
 > Gelöschtes liegt 30 Tage im Papierkorb; verschlüsselte Sicherungen bis zu 12 Monate, danach werden sie überschrieben (gelöschte Daten

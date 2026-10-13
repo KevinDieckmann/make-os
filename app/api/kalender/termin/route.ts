@@ -61,6 +61,8 @@ import { terminAktivitaetenSetzen, terminAktivitaetenLoeschen } from '@/lib/crm/
 import { terminVorbei } from '@/lib/crm/termin-aktivitaet';
 import { istDienst } from '@/lib/zugang/dienst';
 import { spaceVonKalender } from '@/lib/kalender/space';
+import { kalenderNurBusiness } from '@/lib/kalender/konto-bereich';
+import { NUR_BUSINESS_PRIVAT } from '@/lib/zugang/konto-sicht';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { terminIstBusiness, ueberlappt, BUSINESS_FREI_FEHLER } from '@/lib/arbeitsrahmen/regel';
 import { businessFreiFensterFuer } from '@/lib/arbeitsrahmen/server';
@@ -104,6 +106,9 @@ async function vorab(req: Request): Promise<{ person: string } | NextResponse> {
 async function fremdPrivatFuer(t: Termin | null, person: string): Promise<boolean> {
   if (!t) return false;
   const [einst, bezuege] = await Promise.all([ladeEinstellungen(), ladeBezuege().catch(() => null)]);
+  // Konten „nur Business“ (Gesamtprüfung 12.10.): Termine außerhalb der Business-Kalender gibt es für sie gar nicht (GET filtert sie
+  // weg, `kalenderBereich`) — auch nicht mit bekannter UID ändern oder löschen.
+  if (spaceVonKalender(einst, t.kalender) !== 'business' && await kalenderNurBusiness(person)) return true;
   return fremdPrivat({ ...mitBezug(t, bezuege), wer: wemGehoert(einst, t.kalender) }, person);
 }
 /** Gehört ein schon vorhandener Termin (feste UID, `schonDa`) der anfragenden Person? Bezug mit Anleger → der zählt; ohne
@@ -169,6 +174,8 @@ export async function POST(req: Request) {
   // Ohne gewählten Kalender: `bereich` (Standard „privat“ wie bisher) → EINE Zuordnung (`kalenderZiel`): Business → Google Kalender der Person, sonst iCloud.
   const kalender = e.kalender || (await kalenderZiel(wer!, e.bereich ?? 'privat', einst)).kalender;
   if (!kalender) return NextResponse.json({ ok: false, fehler: 'Für diese Person ist kein Kalender hinterlegt — bitte einen Kalender wählen.' }, { status: 400 });
+  // Konten „nur Business“ (Gesamtprüfung 12.10.): nur in Business-Kalender — der Privat-Bereich des Haushalts bleibt zu.
+  if (spaceVonKalender(einst, kalender) !== 'business' && await kalenderNurBusiness(z.person)) return NextResponse.json({ ok: false, fehler: NUR_BUSINESS_PRIVAT }, { status: 403 });
   // iCloud je Person (06.10.): in den Kalender aus der eigenen Verbindung einer anderen Person schreibt niemand sonst.
   if (persoenlichFremd(await kalenderEintrag(kalender), z.person)) return NextResponse.json({ ok: false, fehler: 'Dieser Kalender gehört zur iCloud-Verbindung einer anderen Person — nur sie kann dort Termine anlegen.' }, { status: 403 });
   // Business-frei (Lücke 7): Rückfrage statt still anlegen — die Antwort sagt nur ja/nein, nie wann oder warum.

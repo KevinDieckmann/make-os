@@ -21,11 +21,9 @@ import { logRun } from '@/lib/agent-log';
 import { teamFuerAnfrage } from '@/lib/make-one/team-speicher';
 import { delegierbar, personZuKurz, teamZeilenAus } from '@/lib/make-one/team-typen';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { ladeAufgabenSicht, kontoBereicheFiltern } from '@/lib/aufgaben/sicht';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
-import { ohnePrivatBereich } from '@/lib/aufgaben/bereich-sicht';
-import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,8 +68,9 @@ export async function POST(req: Request) {
 
   // Delegations-Runde geht an ein Modell und an Dritte: nie „nur ich“-Aufgaben (Systemsicht, 29.09.).
   // Löst ein Konto „nur Business“ die Runde aus (ZOE `run_agent` „task“), geht nichts aus dem Privat-Bereich hinein (09.10., E4).
-  const [f0, team, ohnePrivat] = await Promise.all([ladeAufgabenSicht(null), teamFuerAnfrage(req), privatAusgeblendetFuer(personStreng(req))]);
-  const f = ohnePrivat ? ohnePrivatBereich(f0) : f0;
+  // Ebenso nichts aus der Firmen-Akte für eine Person ohne Zugang zu ihr (12.10.) — EINE Stelle für beide Bereichs-Filter (`kontoBereicheFiltern`).
+  const [f0, team] = await Promise.all([ladeAufgabenSicht(null), teamFuerAnfrage(req)]);
+  const f = await kontoBereicheFiltern(f0, personStreng(req));
   // Wer delegiert: der Inhaber laut Team (Konto-Rolle bzw. Haupt-Inhaber) — nie über einen Namen erkannt.
   const inhaber = team.find(p => p.inhaber && p.speicher);
   const projekte = new Map((f?.projects ?? []).map(p => [p.id, p.category ?? '']));

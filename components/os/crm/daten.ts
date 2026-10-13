@@ -138,11 +138,13 @@ export function useCrm() {
    * Deal-Regeln als Fehler zeigen); 409 mit `konflikte` → Hinweis und neu laden; 409 mit `sperren` (Löschen trotz
    * Verweisen) oder 413 → nur der Text. Gibt zurück, ob neu geladen werden muss.
    */
-  const schreibAntwort = useCallback((r: { ok?: boolean; fehler?: string | string[]; hinweise?: string[]; konflikte?: unknown[]; neuLaden?: boolean } & Partial<CrmAntwort>, sonst: string): boolean => {
+  const schreibAntwort = useCallback((r: { ok?: boolean; fehler?: string | string[]; hinweise?: string[]; konflikte?: unknown[]; abgelehnt?: string[]; neuLaden?: boolean } & Partial<CrmAntwort>, sonst: string): boolean => {
     if (r.ok) { uebernehmen(r as CrmAntwort); if (Array.isArray(r.fehler) && r.fehler.length) setFehler(r.fehler.join(' · ')); if (Array.isArray(r.hinweise) && r.hinweise.length) setHinweis(r.hinweise.join(' · ')); return false; }
     // Alter Tab nach dem Hochladen (29.09., A2, lib/bau): nicht neu laden (die Eingabe bleibt sichtbar), Hinweis stehen lassen.
     if (r.neuLaden) { fehlschlag(`${sonst.replace(/\.$/, '')} — ${NEU_LADEN_TEXT}`); return false; }
     if (r.konflikte?.length) { fehlschlag(KONFLIKT_HINWEIS); return true; }
+    // Regel abgelehnt (409 `abgelehnt`, z. B. gewonnener Deal mit laufendem Mandat): die Anzeige hat vorab geändert — mit dem Text neu laden, damit sie den Serverstand zeigt.
+    if (r.abgelehnt?.length) { fehlschlag(typeof r.fehler === 'string' ? r.fehler : sonst); return true; }
     fehlschlag(typeof r.fehler === 'string' ? r.fehler : sonst);
     return false;
   }, [uebernehmen]); // eslint-disable-line react-hooks/exhaustive-deps

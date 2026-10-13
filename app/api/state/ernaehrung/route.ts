@@ -12,6 +12,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
 import { ladeHaushalt } from '@/lib/finanzen/haushalt/speicher';
@@ -25,7 +26,17 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const STORE = 'ernaehrung';
-const KEIN = { ok: false, error: 'Ernährung und Einkauf gehören zum Haushalt des Inhabers (System → Konto).' };
+const KEIN = { ok: false, error: 'Ernährung und Einkauf gehören zum Privat-Bereich des Haushalts des Inhabers (Einstellungen › Konto).' };
+
+/**
+ * Ernährung & Einkauf sind Privat-Bereich des Haushalts (dazu das Lebensmittel-Budget aus den Haushaltsfinanzen): ein Konto „nur Business“
+ * (`finanzRecht: 'business'`) bekommt nichts — Gesamtprüfung 12.10.: vorher lieferte die Route ihm Einkauf, Plan, Gerichte und Budget.
+ */
+async function zugang(req: Request) {
+  const z = await imHaushaltDesInhabers(req);
+  if (!z || (await privatAusgeblendetFuer(z.person).catch(() => true))) return null;
+  return z;
+}
 
 // Startbestand: LEER (09.10., Paket „neutral-rest“ — die früheren Start-Grundsätze waren aus dem Profil einer Person abgeleitet).
 // Grundsätze pflegt der Haushalt selbst; Bedürfnisse je Person stehen seit 26.09. in den Profilen. Gespeicherte bleiben, wie sie sind.
@@ -77,14 +88,14 @@ function fremdeAusgeliefert(profile: ErnaehrungFile['profile'], ich: string): st
 const FREMD = { ok: false, error: 'Nicht erlaubt: das Profil einer anderen Person pflegt nur sie selbst. Nichts gespeichert.' };
 
 export async function GET(req: Request) {
-  const z = await imHaushaltDesInhabers(req);
+  const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   const [f, b, p] = await Promise.all([laden(), budget(), personen()]);
   return NextResponse.json({ ...(await ausliefern(req, z.person, f)), ich: z.person, personen: p, budget: b });
 }
 
 export async function PATCH(req: Request) {
-  const z = await imHaushaltDesInhabers(req);
+  const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   if (zuGross(req, 1_000_000)) return ZU_GROSS(1_000_000);
   let body: { ops?: Op[] };
@@ -108,7 +119,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const z = await imHaushaltDesInhabers(req);
+  const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN, { status: 403 });
   let body: Partial<ErnaehrungFile>;
   try { body = await jsonBegrenzt(req, 1_000_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }

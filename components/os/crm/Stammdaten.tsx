@@ -281,7 +281,7 @@ function Verzeichnis({ liste, api, laden, verantwortlicher }: { liste: Verarbeit
       <Ueberschrift rechts={<Knopf leise onClick={() => { const id = neueId('vv'); void setze({ id, name: 'Neue Verarbeitung', zweck: '', personen: '', daten: '', rechtsgrundlage: '', empfaenger: '', drittland: '', loeschfrist: '', toms: '', verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: '' }); setOffen(id); }}>+ Verarbeitung</Knopf>}>Verzeichnis der Verarbeitungen (Art. 30)</Ueberschrift>
       {/* Verantwortlicher aus EINER Quelle (05.10.): Einrichtung unter System › Datenschutz; dort auch Export (HTML/JSON) und Empfänger. */}
       <div style={{ fontSize: TYP.bedien, color: verantwortlicher?.fehlt ? LEUCHT.achtung : C.inkLeise, marginBottom: 8, lineHeight: 1.5 }}>
-        Verantwortlich: {verantwortlicher?.text ?? '—'} · <a href={WEG.datenschutz('verantwortlicher')} style={{ color: 'inherit' }}>System › Datenschutz</a>
+        Verantwortlich: {verantwortlicher?.text ?? '—'} · <a href={WEG.datenschutz('verantwortlicher')} style={{ color: 'inherit' }}>Einstellungen › Datenschutz</a>
       </div>
       <Liste>
         {liste.map(v => (

@@ -142,7 +142,7 @@ export const vertragPasstZurSicht = (v: { bereich: WerkzeugBereich; rechteklasse
 const BEREICH_NAME: Readonly<Record<Sicht, string>> = { privat: 'Privat', business: 'Business' };
 /** Der Satz, wenn ein Werkzeug nicht in die Sicht gehört — ohne Inhalte, nur der Name des Werkzeugs. */
 export const bereichAbgelehntText = (name: string, b: Sicht, sicht: Sicht): string =>
-  `Nicht ausgeführt: „${name}“ gehört zu ${BEREICH_NAME[b]} — in der Sicht ${BEREICH_NAME[sicht]} nicht verfügbar. Sag der Person, dass sie es oben unter „${BEREICH_NAME[b]}“ (oder „Alles“) fragen kann.`;
+  `Nicht ausgeführt: „${name}“ gehört zu ${BEREICH_NAME[b]} — in der Sicht ${BEREICH_NAME[sicht]} nicht verfügbar. Sag der Person, dass sie es oben unter „${BEREICH_NAME[b]}“ fragen kann.`;
 
 /**
  * Die Wirkung EINES Aufrufs („Rule of Two“ an einer Stelle, C10/T9) — rein. Eingang: Rechteklasse und Register-Stufe des Werkzeugs, Marken des

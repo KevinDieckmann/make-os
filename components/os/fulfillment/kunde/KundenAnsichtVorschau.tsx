@@ -26,7 +26,7 @@ const VORLAGE: KundenSicht = {
   rituale: [{ titel: 'Wochen-Check', rhythmus: 'wöchentlich' }],
   entscheidungen: [{ titel: 'Zielgruppe zuerst Maschinenbau', am: '—', status: 'entschieden' }], formulare: [],
   upload: { erlaubt: true, eingegangen: 1, frei: 19, geprueft: 1, offen: 0 }, puls: { offen: false },
-  datenschutz: { verantwortlich: 'aus der Einrichtung (System › Datenschutz)', fassung: '—', absaetze: ['Der Hinweis nach Art. 13 DSGVO steht hier — mit Verantwortlichem und Speicherfristen der Instanz.'] },
+  datenschutz: { verantwortlich: 'aus der Einrichtung (Einstellungen › Datenschutz)', fassung: '—', absaetze: ['Der Hinweis nach Art. 13 DSGVO steht hier — mit Verantwortlichem und Speicherfristen der Instanz.'] },
 };
 
 export function KundenAnsichtVorschau({ mandatId }: { mandatId?: string }) {
@@ -50,7 +50,7 @@ export function KundenAnsichtVorschau({ mandatId }: { mandatId?: string }) {
       {!mandatId && (
         <Karte flach>
           <Ueberschrift>Kunden-Ansicht — Vorlage</Ueberschrift>
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>So ist die Seite eines Kunden aufgebaut (Beispielwerte, erfunden). Nie zu sehen: Stakeholder, Haltungen, Notizen, interne Schritte, Health, Honorar, Dossier, Personenteil, andere Mandate, die Liste der Dateien und Namen eures Teams.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>So ist die Seite eines Kunden aufgebaut (Beispielwerte, erfunden). Nie zu sehen: Stakeholder, Haltungen, Notizen, interne Schritte, Health, Honorar, Dossier, Personenteil, andere Mandate, die Liste der Dateien und Namen eures Teams (außer dem Namen der Ansprechperson).</div>
         </Karte>
       )}
       <div style={{ maxWidth: 1080 }}><KundenAnsicht sicht={sicht} vorschau /></div>

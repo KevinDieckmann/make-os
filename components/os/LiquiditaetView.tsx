@@ -104,8 +104,9 @@ export function LiquiditaetView() {
   // Zu zweit: nur Einzeländerungen; Malins Änderungen kommen per Abgleich herein.
   const speichernHook = useSpeichern('/api/state/liquiplan', { verzoegerung: 400, listen: ['posten'], uebernehmen: st => setPosten((st.posten as Planposten[]) ?? []) });
   const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, standFeld: 'fassung', uebernehmen: st => setPlan(st as unknown as typeof plan) });
-  const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => r.json()).then(d => {
-    if (planSpeichern.hatOffenes()) return;
+  // Nur ein echter Bestand wird zum Plan (Gesamtprüfung 12.10.): eine Fehlerantwort (403/5xx) ließe sonst die Vorschau abbrechen.
+  const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => (r.ok ? r.json() : null)).then(d => {
+    if (!d || !Array.isArray(d.firmen) || planSpeichern.hatOffenes()) return;
     setPlan(d); planSpeichern.kenne(d);
   }).catch(() => {}), [planSpeichern]);
   const ladePosten = useCallback(() => fetch('/api/state/liquiplan').then(r => r.json()).then(d => {

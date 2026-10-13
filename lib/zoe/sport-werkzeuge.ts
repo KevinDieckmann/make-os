@@ -18,7 +18,7 @@ import { fehlschlag, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib
 type Lauf = (input: Record<string, unknown>, origin: string, person?: string, kontext?: WerkzeugKontext) => Promise<WerkzeugRueckgabe>;
 
 const KEINE = 'Nicht ausgeführt: Trainingspläne gibt es nur im Gespräch einer angemeldeten Person — für sich selbst.';
-const OHNE_EINWILLIGUNG = 'Nicht ausgeführt: Trainingsdaten gehen nur mit der Einwilligung „An die KI geben“ an ZOE (System › Datenschutz › Gesundheit). Sag das ruhig und ohne Druck.';
+const OHNE_EINWILLIGUNG = 'Nicht ausgeführt: Trainingsdaten gehen nur mit der Einwilligung „An die KI geben“ an ZOE (Einstellungen › Datenschutz › Gesundheit). Sag das ruhig und ohne Druck.';
 
 async function erlaubt(person?: string): Promise<WerkzeugErgebnis | null> {
   if (!person) return fehlschlag('rechte', KEINE);
@@ -111,7 +111,7 @@ async function trainingsplanUebernehmen(input: Record<string, unknown>, _origin:
   if (!kontext?.freigegebenVon) return fehlschlag('rechte', 'Nicht ausgeführt: Ein Trainingsplan wird nur nach Freigabe der Person gespeichert.');
   if (kontext.freigegebenVon !== person) return fehlschlag('rechte', 'Nicht ausgeführt: Nur die Person selbst übernimmt ihren Trainingsplan.');
   const { gesundheitVerarbeitungErlaubt } = await import('@/lib/datenschutz/gesundheit-einwilligung');
-  if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Nicht ausgeführt: Gesundheitsdaten werden erst nach deiner Einwilligung erfasst (System › Datenschutz).');
+  if (!(await gesundheitVerarbeitungErlaubt(person))) return fehlschlag('sperre', 'Nicht ausgeführt: Gesundheitsdaten werden erst nach deiner Einwilligung erfasst (Einstellungen › Datenschutz).');
   const { woche, fehler } = wocheAusEingabe(input);
   if (fehler) return fehlschlag('eingabe', `Nicht ausgeführt: ${fehler}`);
   const name = nameAus(input);

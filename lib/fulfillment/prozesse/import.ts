@@ -17,6 +17,7 @@ import type { AnwendenErgebnis, Baustein, BausteinArt, ImportLauf, ProzessKnoten
 import { BAUSTEIN_ARTEN, vorlageAus } from '../lesen';
 import { GRENZEN, TEXT_MAX } from '../grenzen';
 import { ebeneVon, kinderVon, vorfahren } from '../regeln';
+import { PHASEN, WEITERE_BAUSTEINE, phaseEinfuegen, phaseFinden, phaseTitel, phaseVon } from './phasen';
 import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
 import { ausfuehren, fnv, istObj, nein, slug, titelForm } from './pruefen';
@@ -359,10 +360,6 @@ export function importVorschau(roh: unknown, d: VorlagenDatei, datei: string): I
 
 // ── Übernehmen ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-const PHASE_TITEL: Record<string, string> = {
-  vorlauf: 'Vorlauf / Onboarding', analyse: 'Analyse', diagnose: 'Diagnose', aufbau: 'Aufbau', recruiting: 'Recruiting (nur Prozess)', umsetzung: 'Umsetzung',
-  fuehrung: 'Führung', uebergabe: 'Follow-up / Übergabe',
-};
 const UNTER_TITEL: Record<string, string> = { prozess: 'Prozess', crm: 'CRM', skripte: 'Skripte', einwaende: 'Einwände', kennzahlen: 'Kennzahlen', zielgruppe_leads: 'Zielgruppe & Leads' };
 const schoen = (k: string) => k.replace(/[_-]+/g, ' ').replace(/^./, c => c.toUpperCase()).slice(0, TEXT_MAX.titel);
 /** Passt ein Knoten-Titel zu einem Schlüssel der Daten (Titel-Abgleich ohne Groß-/Kleinschreibung, Umlaute gefaltet)? */
@@ -371,7 +368,12 @@ export function titelPasst(titel: string, schluessel: string): boolean {
   return t === s2 || t.split(' ').includes(s2) || t.startsWith(`${s2} `) || (s2.includes(' ') && t.includes(s2));
 }
 
-/** Einsortieren: Ebene 2 = Phase · Ebene 3 = Unterphase · Ebene 4 = Einzelschritt (Titel des Bausteins) · Ebene 5 = der Baustein. */
+/**
+ * Einsortieren: Ebene 2 = Phase · Ebene 3 = Unterphase · Ebene 4 = Einzelschritt (Titel des Bausteins) · Ebene 5 = der Baustein.
+ * Die Phase nach der EINEN Regel (./phasen.ts, 12.10.): eine kanonische Phase (auch über ein Dach-Thema — „strategie“ → Diagnose, „steuerung“ →
+ * Führung) landet in der vorhandenen passenden Phase; fehlt sie, entsteht sie mit dem kanonischen Titel an IHRER Stelle (vorher hinten angehängt).
+ * Ein unbekannter Schlüssel bleibt wie bisher (Titel-Abgleich, sonst neue eigene Phase).
+ */
 function einsortieren(v: ProzessVorlage, b: Baustein, phase: string | undefined, unterphase: string | undefined, neueId: () => string): ProzessVorlage {
   if (v.knoten.some(k => k.bausteinId === b.id)) return v;
   const wurzel = v.knoten.find(k => !k.elternId);
@@ -381,10 +383,14 @@ function einsortieren(v: ProzessVorlage, b: Baustein, phase: string | undefined,
     const da = kinderVon(eltern, knoten).find(k => titelPasst(k.titel, schluessel));
     if (da) return da.id;
     const id = neueId();
-    knoten.push({ id, elternId: eltern, titel, rang: kinderVon(eltern, knoten).length + 1 });
+    if (eltern === wurzel.id) knoten = phaseEinfuegen(knoten, wurzel.id, { id, elternId: eltern, titel, rang: 0 });
+    else knoten.push({ id, elternId: eltern, titel, rang: kinderVon(eltern, knoten).length + 1 });
     return id;
   };
-  const p = kind(wurzel.id, phase ?? 'weitere bausteine', phase ? PHASE_TITEL[phase] ?? schoen(phase) : 'Weitere Bausteine');
+  const kanon = phase ? phaseVon(phase) : null;
+  const p = kanon
+    ? phaseFinden(kinderVon(wurzel.id, knoten), kanon.id)?.id ?? kind(wurzel.id, PHASEN.find(x => x.id === kanon.id)!.woerter[0], phaseTitel(kanon.id))
+    : kind(wurzel.id, phase ?? 'weitere bausteine', phase ? schoen(phase) : WEITERE_BAUSTEINE);
   const u = kind(p, unterphase ?? 'weitere bausteine', unterphase ? UNTER_TITEL[unterphase] ?? schoen(unterphase) : 'Weitere Bausteine');
   const schritt = neueId();
   knoten.push({ id: schritt, elternId: u, titel: b.titel, rang: kinderVon(u, knoten).length + 1 });

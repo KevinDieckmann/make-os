@@ -237,13 +237,15 @@ describe('Fund 10 — Wächter „Business bekommt nichts aus Privat“: Treppe,
   });
 });
 
-describe('H4 — Erinnerungs-Aufgaben im Business-Space nennen weder Pflicht, Norm noch Folge', () => {
-  it('Schild: neutraler Titel und Beschreibung', () => {
+describe('H4 — Erinnerungs-Aufgaben im Business-Space nennen weder Norm noch Folge (Pflicht im Klartext seit 12.10.)', () => {
+  // Seit 12.10. trägt der Titel die Pflicht im Klartext (die Aufgaben gehen nur an Konten mit Zugang zur Firmen-Akte, `rechtPersonen`) — weiterhin
+  // OHNE Norm und OHNE Folge; Beschreibung und Glocke bleiben neutral (tests/unternehmen-pflicht-titel.test.ts).
+  it('Schild: Titel ohne Norm und Folge, Beschreibung neutral', () => {
     const g: RegisterGesellschaft = { id: 'ug', rechtsform: 'gmbh', status: 'eingetragen', gegruendetAm: '2023-01-10', stammkapitalCent: 2_500_000, gesellschafter: [{ id: 'gs-aaaa-0001', wer: { art: 'gesellschaft', id: 'kdv' }, nennbetragCent: 2_500_000, einlage: 'ja' }] };
     const e = faelligeSchildErinnerungen(lageAus({ gesellschaften: [g] }, null, '2026-10-10')).filter(x => !x.erledigt);
     expect(e.length).toBeGreaterThan(0);
     for (const x of e) {
-      expect(x.titel).not.toMatch(/§|Pflicht:|Folge|Insolvenz|Jahresabschluss/);
+      expect(x.titel).not.toMatch(/§|Pflicht:|Folge|Bußgeld|Ordnungsgeld/);
       expect(x.beschreibung).toContain(NEUTRAL_BESCHREIBUNG);
       expect(x.beschreibung).not.toMatch(/§|Folge bei Versäumnis/);
     }

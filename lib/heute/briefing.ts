@@ -30,7 +30,9 @@ const WANN: Record<'tag' | 'woche' | 'monat', string> = { tag: 'heute', woche: '
 export function briefingSaetze(z: BriefingZahlen): string[] {
   const s: string[] = [];
   // 1) Was ansteht.
-  if (z.termine.anzahl === 0) s.push('Heute steht kein Termin im Kalender.');
+  // Gezählt werden nur kommende/laufende Termine (`termineHeute`) — „kein Termin im Kalender“ stimmte nachmittags nicht, wenn am Morgen einer
+  // war (Gesamtprüfung 12.10.: Briefing und Kalender widersprachen sich). „mehr“ ist in beiden Fällen wahr.
+  if (z.termine.anzahl === 0) s.push('Heute steht kein Termin mehr an.');
   else if (z.termine.anzahl === 1) s.push(`Heute steht ein Termin an${z.termine.erster ? `: „${kuerzen(z.termine.erster.titel, 40)}“${z.termine.erster.uhr ? ` um ${z.termine.erster.uhr}` : ''}` : ''}.`);
   else s.push(`Heute stehen ${z.termine.anzahl} Termine an${z.termine.erster?.uhr ? `, der erste um ${z.termine.erster.uhr}` : ''}.`);
   // 2) Was brennt.

@@ -37,6 +37,7 @@ import { NordsternKarte } from './NordsternKarte';
 import { usePlanung, type PlanungStand } from './usePlanung';
 import { loescheZiel } from './ziel-loeschen';
 import { useEigeneMeilensteine, type EigeneMeilensteineStand } from './useEigeneMeilensteine';
+import { useNurBusiness } from '../useInhaber';
 import { EigeneMeilensteineListe } from './EigeneMeilensteineListe';
 
 export type SpaltenArt = 'unsere' | 'meine' | 'partner';
@@ -71,7 +72,9 @@ export function ZieleUebersicht({ horizont, gemeinsam, planJahr, rueck, i = 0, k
   const personen = usePlanPersonen();
   const meine = usePlanung(horizont, true, 'ich');
   // Eigene Meilensteine (10.10.): nach jedem Speichern zieht der Server den Fortschritt der eigenen Ziele nach — dann die Ziele neu laden.
-  const meineMs = useEigeneMeilensteine('ich', true, meine.zieleNeuLaden);
+  // Eigene Meilensteine sind immer Privat — ein Konto „nur Business“ bekommt sie nicht (403); dann gar nicht erst fragen (Gesamtprüfung 12.10.).
+  const nurBusiness = useNurBusiness();
+  const meineMs = useEigeneMeilensteine('ich', nurBusiness === false, meine.zieleNeuLaden);
   const partner = personen?.partner ?? [];
   return (
     <div className="ziele-spalten" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 14, alignItems: 'start' }}>

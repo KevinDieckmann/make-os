@@ -16,7 +16,7 @@ import { pruefeDokument, leeresDokument } from '@/lib/finanzen/plan/operationen'
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zur Finanzplanung. Der Inhaber trägt den Haushalt unter System → Konto ein.' };
+const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zur Finanzplanung. Der Inhaber trägt den Haushalt unter Einstellungen › Konto ein.' };
 const MAX_BYTES = 8_000_000;
 const ja = (v: unknown) => v === true || v === 'true' || v === '1' || v === 1;
 

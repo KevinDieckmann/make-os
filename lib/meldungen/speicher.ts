@@ -21,7 +21,8 @@ import {
 } from './regeln';
 import { lebendAus, verweisLebt } from '@/lib/kalender/bezug';
 import { anstehendLesen, anstehendStand } from '@/lib/heute/anstehend-server';
-import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
+import { ladeAufgabenSicht, firmenAkteAusgeblendetFuer } from '@/lib/aufgaben/sicht';
+import { istFirmenAkteAufgabe } from '@/lib/aufgaben/firmenakte-sicht';
 import { geburtstageIm } from '@/lib/kalender/quellen-geburtstage-server';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { familieName } from '@/lib/familie/speicher';
@@ -93,12 +94,30 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   return m.titel;
 }
 
+/**
+ * Meldung aus der Firmen-Akte (12.10.)? Art „vertrag“ (Schild, Vertrags-Erinnerung, Head of Recht, Beschluss-Buch) oder Bezug auf eine ihrer
+ * Aufgaben (lib/aufgaben/firmenakte-sicht.ts). Rein.
+ */
+const ausFirmenAkte = (m: { art: string; bezug?: { art: string; id: string } }): boolean =>
+  m.art === 'vertrag' || (m.bezug?.art === 'aufgabe' && istFirmenAkteAufgabe({ id: m.bezug.id }));
+
+/**
+ * Gespeicherte Meldungen aus der Firmen-Akte nur für Personen mit Zugang zu ihr (12.10., `rechtZugangFuer`) — Altbestand vor dem 11.10. ging an
+ * jedes Konto des Haushalts. Nur Lese-Filter, der Bestand bleibt. Unlesbar → ausblenden.
+ */
+async function akteFilterFuer(person: string): Promise<(b: MeldungenBestand) => MeldungenBestand> {
+  const ohne = await firmenAkteAusgeblendetFuer(person).catch(() => true);
+  return b => (ohne && b.eintraege.some(ausFirmenAkte) ? { ...b, eintraege: b.eintraege.filter(e => !ausFirmenAkte(e)) } : b);
+}
+
 /** Eine Meldung ablegen. Wirft nie nach außen weiter als bis `melde()`; Grund bei Ablehnung. */
 export async function meldungAblegen(m: MeldungEingabe, jetzt: Date = new Date()): Promise<{ ok: boolean; grund?: string }> {
   const p = pruefeEingabe(m);
   if (!p.ok) return p;
   // Nur an Personen im Haushalt des Inhabers — nie ein Bestand für ein fremdes Konto.
   if (!(await personImHaushaltDesInhabers(m.an))) return { ok: false, grund: 'Empfänger nicht im Haushalt des Inhabers' };
+  // Sicherheitsnetz (12.10.): nichts aus der Firmen-Akte an eine Person ohne Zugang zu ihr — egal, welcher Schreiber meldet.
+  if (ausFirmenAkte(m) && (await firmenAkteAusgeblendetFuer(m.an).catch(() => true))) return { ok: false, grund: 'Empfänger sieht die Firmen-Akte nicht' };
   const roh = eintragAus(m, `m-${jetzt.getTime().toString(36)}-${randomBytes(4).toString('hex')}`, jetzt.toISOString());
   // Business-frei (08.10., Lücke 7, Regel 6): in einer Business-freien Zeit der Empfängerin trägt die Meldung das Ende des
   // Fensters — ob sie Business ist, entscheidet die Sicht (lib/meldungen/regeln.ts); Business ruht dann bis danach.
@@ -255,7 +274,7 @@ export async function meldungenSicht(person: string, jetzt: Date = new Date(), s
   const heute = heuteBerlin(jetzt);
   const [roh, q0] = await Promise.all([loadJson<unknown>(meldungenSpeicher(person)), quellenLesen(person, heute, jetzt)]);
   const q = quellenFuerSicht(q0, sicht);
-  const gespeichert = bestandSaeubern(roh);
+  const gespeichert = (await akteFilterFuer(person))(bestandSaeubern(roh));
   // Nachtrag F1: entschiedene Terminanfragen zählen nicht mehr an der Glocke; Restpunkte 29.09.: gelöste Termine auch nicht.
   const bestand = bestandFuerSicht(buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt)), sicht, q0.aufgaben);
   return sichtBauen(bestand, abgeleitet(bestand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, await businessFreiLage(person, q0.aufgaben, jetzt));
@@ -277,7 +296,8 @@ export async function meldungenGelesen(person: string, auswahl0: GelesenAuswahl,
     return gelesenSetzen(b, { ...auswahl, ...(ids ? { ids } : {}) }, heute, abg.map(m => m.id), s.ruhen);
   });
   if (sicht) return meldungenSicht(person, jetzt, sicht);
-  const stand = buchungenErledigen(next, await buchungenLage(next, jetzt));
+  const akte = await akteFilterFuer(person);
+  const stand = akte(buchungenErledigen(next, await buchungenLage(next, jetzt)));
   return sichtBauen(stand, abgeleitet(stand, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, lage);
 }
 
@@ -286,6 +306,6 @@ export async function meldungenEinstellen(person: string, e: { telegram: boolean
   const heute = heuteBerlin(jetzt);
   const q = await quellenLesen(person, heute, jetzt);
   const gespeichert = await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => ({ ...bestandSaeubern(cur), einstellungen: { telegram: e.telegram === true } }));
-  const next = buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt));
+  const next = (await akteFilterFuer(person))(buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt)));
   return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, await businessFreiLage(person, q.aufgaben, jetzt));
 }

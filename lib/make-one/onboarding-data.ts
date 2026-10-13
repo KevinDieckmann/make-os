@@ -655,7 +655,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
       'Den Weg für ZOE über WhatsApp vorher gemeinsam entscheiden.',
       'Anleitung in UPDATES.md, Abschnitt „WhatsApp Business“; Zugangsdaten über das Skript am Server (fragt verdeckt).',
     ],
-    danach: 'System › Verbindungen zeigt den Zustand der Nummer; der Head of IT meldet Probleme.',
+    danach: 'Einstellungen › Verbindungen zeigt den Zustand der Nummer; der Head of IT meldet Probleme.',
     befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/whatsapp-verbinden.sh',
     wo: { href: WEG.verbindungen(), label: 'Einstellungen › Verbindungen' },
   },
@@ -701,8 +701,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     titel: 'Gesellschafter, Organe, Beschlüsse, Beteiligungen, Verträge',
     warum: 'Wer hält was, wer führt, was wurde beschlossen — und welche Verträge laufen. Verträge mit „kündigen bis“ erinnern rechtzeitig.',
     wie: [
-      'Je Gesellschaft: Gesellschafter (die Nennbeträge ergeben das Stammkapital), Organe (je Kapitalgesellschaft eine Geschäftsführung), Beschlüsse.',
-      'Beteiligungen an fremden Firmen und laufende Verträge samt Unterlagen.',
+      'Unternehmen › Gesellschaften: je Gesellschaft die Gesellschafter (die Nennbeträge ergeben das Stammkapital), Organe (je Kapitalgesellschaft eine Geschäftsführung) und Beteiligungen; Beschlüsse stehen im Beschluss-Buch unter „Beschlüsse & Satzung“.',
+      'Beteiligungen an fremden Firmen und laufende Verträge samt Unterlagen (Reiter „Verträge & Organe“).',
       'Verträge mit „kündigen bis“ erzeugen eine Erinnerung (Vorgabe 30 Tage vorher) und einen Kalendereintrag.',
     ],
     danach: 'Fristen erscheinen im Kalender und in der Glocke.',
@@ -797,11 +797,11 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     titel: 'Grundlagen des Business-Index',
     warum: 'Ohne Köpfe, Beratertage und Jahresziel bleiben Personal und Auslastung im Index „keine Daten“.',
     wie: [
-      'Business › Feinjustierung: Köpfe (FTE), verfügbare Beratertage je Monat, Jahresziel je Gesellschaft (dieselbe Zahl wie in Planung › Jahr, Schritt 5.1).',
+      'Finanzen › Business › Überblick › Einstellungen (Feinjustierung): Köpfe (FTE), verfügbare Beratertage je Monat, Jahresziel je Gesellschaft (dieselbe Zahl wie in Planung › Jahr, Schritt 5.1).',
       'Bei Bedarf eigene Schwellen.',
     ],
     danach: 'Geprüft wird: Köpfe und Jahresziel je Business-Gesellschaft gesetzt. Dann rechnet der Index alle Säulen.',
-    wo: { href: WEG.einstellungen(), label: 'Finanzen › Business › Einstellungen' },
+    wo: { href: WEG.einstellungen(), label: 'Finanzen › Business › Überblick › Einstellungen' },
   },
   {
     id: 'ich-privatkonten', privatFinanzen: true, spaeter: true, etappe: 3, nr: '3.10', ebene: 'ich', minuten: 45, pruefung: 'konten-register',
@@ -861,11 +861,11 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     titel: 'Produkte',
     warum: 'Produkte sind die eine Quelle für Angebote, Mandate und die Umsatz-Bausteine der Finanzplanung.',
     wie: [
-      'Mandate & Unternehmen › Produkte: Preis, Basis, Laufzeit, Gesellschaft und Leistungstext (ohne Leistungstext kein „aktiv“).',
+      'Produkte & Mandate › Produkte: Preis, Basis, Laufzeit, Gesellschaft und Leistungstext (ohne Leistungstext kein „aktiv“).',
       'Die alte Karte „Produkte“ unter Rechnungen nicht mehr pflegen.',
     ],
     danach: 'Geprüft wird: mindestens ein aktives Produkt mit Leistungstext. Angebote und Finanzplan greifen auf denselben Katalog zu.',
-    wo: { href: WEG.produkt(), label: 'Mandate & Unternehmen › Produkte' },
+    wo: { href: WEG.produkt(), label: 'Produkte & Mandate › Produkte' },
   },
   {
     id: 'mandate', spaeter: true, etappe: 4, nr: '4.4', ebene: 'gemeinsam', nurInhaber: true, minuten: 30, pruefung: 'mandate',
@@ -874,7 +874,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     warum: 'Mandate sind Umsatz, Zeit und Kapazität. Ohne sie fehlen Index, Liquidität und Planung die wichtigste Größe.',
     wie: ['Je laufendem Mandat: Firma (aus der Kartei), Produkt, Honorar, Rhythmus, Gesellschaft, Zahlungsziel, Zuständigkeit.'],
     danach: 'Geprüft wird: jedes laufende Mandat mit Firma aus der Kartei, Honorar und Gesellschaft. Ohne laufendes Mandat zählt dein Häkchen.',
-    wo: { href: WEG.mandat(), label: 'Mandate & Unternehmen › Mandate' },
+    wo: { href: WEG.mandat(), label: 'Produkte & Mandate › Mandate' },
   },
   {
     id: 'deals', spaeter: true, etappe: 4, nr: '4.5', ebene: 'gemeinsam', nurInhaber: true, minuten: 20,
@@ -1065,7 +1065,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
   {
     id: 'kompass', spaeter: true, etappe: 5, nr: '5.11', ebene: 'gemeinsam', minuten: 15, pruefung: 'kompass',
     modul: 'planung', nach: ['jahresziele'],
-    titel: 'Kompass stellen',
+    titel: 'Kompass stellen („Wie wir arbeiten“)',
     warum: 'Die Regler steuern, wie das System euch behandelt — wie hart es schützt, wie viel es zumutet, wann es Alarm schlägt. Er gilt vorerst für beide.',
     wie: ['Lage wählen, die Regler durchgehen und die Wirkung mitlesen.', 'Unten die Abweichungen ansehen: dort steht, wo der Alltag dem Kompass widerspricht.'],
     danach: 'ZOE und die Agenten richten sich nach dem Kompass.',
@@ -1203,8 +1203,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     titel: 'Rundgang durch die Software',
     warum: 'Wer weiß, wo was liegt, findet sich in fünf Minuten zurecht statt in zwei Wochen.',
     wie: [
-      'Oben der Schalter Alles · Privat · Business — die Leiste darunter folgt ihm. Am Handy öffnet „Menü“ unten dasselbe.',
-      'Heute ist die Startseite — über „Anpassen“ gestaltest du sie selbst. Fokus, Prioritäten, Zeit und Wirkung liegen hinter dem Fokus-Knopf oben rechts; Freigaben, Agenten und Brain unter ZOE.',
+      'Oben der Schalter Privat · Business — du bist immer in genau einem Bereich, die Leiste darunter zeigt dessen Punkte. Am Handy öffnet „Menü“ unten dasselbe.',
+      'Heute ist die Startseite — über „Anpassen“ gestaltest du sie selbst. Fokus, Prioritäten, Zeit und Wirkung liegen hinter dem Fokus-Knopf oben rechts; Freigaben, Agenten und Brain unter ZOE. Business: Markttraktion (mit der Kartei), Produkte & Mandate, Unternehmen.',
       'Unten links Einstellungen. ⌘K (am Handy die Lupe) springt zu jeder Seite. Netzwerken erfasst unterwegs.',
     ],
     danach: 'Du findest dich zurecht.',
@@ -1582,7 +1582,7 @@ export const NEUSTART: readonly NeustartEintrag[] = [
   { id: 'mandate', etappe: 7, gruppe: KERN, bestaetigen: true, texte: {
     titel: 'Laufende Mandate prüfen',
     wie: [
-      'Mandate & Unternehmen › Mandate: jedes laufende Mandat mit Firma aus der Kartei, Produkt, Honorar, Rhythmus, Gesellschaft, Zahlungsziel und Zuständigkeit.',
+      'Produkte & Mandate › Mandate: jedes laufende Mandat mit Firma aus der Kartei, Produkt, Honorar, Rhythmus, Gesellschaft, Zahlungsziel und Zuständigkeit.',
       'Fehlende Mandate von Hand oder aus Excel („Mandate aus Excel einfügen“, mit Vorschau und Rückgängig).',
     ],
   } },
@@ -1917,16 +1917,16 @@ export const DATENKARTE: DatenkartenZeile[] = [
   { id: 'konto-stichtag', fakt: 'Kontostand einer Gesellschaft am Stichtag (01.10.2026)', hier: '0-Punkt', nicht: 'Finanzplanung (Posten „Konto“), Startwerte der Planung', href: WEG.eroeffnung(), etappe: 3, allgemein: { fakt: 'Kontostand einer Gesellschaft am Stichtag' } },
   { id: 'konto-danach', fakt: 'Kontostand einer Gesellschaft danach', hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum ab 02.10.)', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3, allgemein: { hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum nach dem Stichtag)' } },
   { id: 'konto-privat', fakt: 'Kontostand privat', hier: 'Konten-Register: Privat › Konten & Buchungen › Konten (die Finanzplanung liest daraus)', nicht: 'Finanzplanung (Posten „Konto“) — vorhandene Stände einmal übernehmen', href: WEG.kontenRegister('privat'), etappe: 5 },
-  { id: 'posten-stichtag', fakt: 'Offene Posten am Stichtag', hier: '0-Punkt (auch Rechnungen mit Datum vor dem Stichtag)', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.eroeffnung(), etappe: 3 },
-  { id: 'posten-danach', fakt: 'Offene Posten danach', hier: 'Rechnungen & Zahlungen', nicht: 'Finanzplanung › Verpflichtungen', href: WEG.rechnungen(), etappe: 3 },
+  { id: 'posten-stichtag', fakt: 'Offene Posten am Stichtag', hier: '0-Punkt (auch Rechnungen mit Datum vor dem Stichtag)', nicht: 'Finanzplanung › Fällig & Schulden', href: WEG.eroeffnung(), etappe: 3 },
+  { id: 'posten-danach', fakt: 'Offene Posten danach', hier: 'Rechnungen & Zahlungen', nicht: 'Finanzplanung › Fällig & Schulden', href: WEG.rechnungen(), etappe: 3 },
   { id: 'monatszahlen', fakt: 'Monatszahlen Business', hier: 'Monatsabschluss ab Oktober 2026 (Januar bis September nicht nachtragen)', nicht: 'alte Monatswerte im Controlling', href: WEG.abschluss(), etappe: 3, allgemein: { hier: 'Monatsabschluss ab dem Stichtag (frühere Monate nicht nachtragen)' } },
-  { id: 'koepfe', fakt: 'Köpfe und Beratertage je Gesellschaft', hier: 'Business › Einstellungen', nicht: 'Kapazität (rechnet je Person, nicht je Firma)', href: WEG.einstellungen(), etappe: 3 },
-  { id: 'firmendaten', fakt: 'Firmendaten, Bank', hier: 'Unternehmen › Steckbrief und Absender', nicht: 'Einstellungen › Stammdaten › Firmen und Konten', href: WEG.unternehmen(), etappe: 3 },
-  { id: 'beteiligungen', fakt: 'Beteiligungen an fremden Firmen', hier: 'Unternehmen › Beteiligungen', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'koepfe', fakt: 'Köpfe und Beratertage je Gesellschaft', hier: 'Finanzen › Business › Überblick › Einstellungen', nicht: 'Kapazität (rechnet je Person, nicht je Firma)', href: WEG.einstellungen(), etappe: 3 },
+  { id: 'firmendaten', fakt: 'Firmendaten, Bank', hier: 'Unternehmen › Gesellschaften (Steckbrief und Absender)', nicht: 'Einstellungen › Stammdaten › Firmen und Konten', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'beteiligungen', fakt: 'Beteiligungen an fremden Firmen', hier: 'Unternehmen › Gesellschaften › Beteiligungen', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
   { id: 'selbst-jan-sep', fakt: 'Selbstständigkeit Januar bis September', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Privat-Monatsabschluss derselben Monate', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5, allgemein: { fakt: 'Selbstständigkeit: Monate vor dem Planbeginn' } },
   { id: 'est-voraus', fakt: 'Vorauszahlungen Einkommensteuer der Selbstständigkeit', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Steuer-Einstellungen (zählen mit Finanzplanung nicht)', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
   { id: 'steuerparameter', fakt: 'Steuerparameter der Selbstständigkeit', hier: 'Finanzplanung › Zahnrad', nicht: 'Steuer-Modul (liest bei vorhandener Finanzplanung daraus)', href: WEG.finanzplanung('privat'), etappe: 5 },
-  { id: 'produkte', fakt: 'Produkte und Preise', hier: 'Mandate & Unternehmen › Produkte', nicht: 'Rechnungen › Karte „Produkte“', href: WEG.produkt(), etappe: 4 },
+  { id: 'produkte', fakt: 'Produkte und Preise', hier: 'Produkte & Mandate › Produkte', nicht: 'Rechnungen › Karte „Produkte“', href: WEG.produkt(), etappe: 4 },
   { id: 'jahresziel', fakt: 'Jahresziel Umsatz', hier: 'Planung › Jahr — dieselbe Zahl in Controlling und Business-Einstellungen', nicht: '–', href: WEG.jahr(), etappe: 5 },
   { id: 'arbeitszeit', fakt: 'Arbeitszeit', hier: 'Wochenvorlage (Planung › Routinen)', nicht: 'Kalender-Arbeitsfenster, Beratertage', href: WEG.routinen(), etappe: 5 },
   { id: 'arbeitszeit-aussen', fakt: 'Arbeitszeit außerhalb (fremder Kalender)', hier: 'Blöcke bzw. Abwesenheit (Schritt 2.6)', nicht: '–', href: WEG.routinen(), etappe: 2 },
@@ -1936,7 +1936,7 @@ export const DATENKARTE: DatenkartenZeile[] = [
   { id: 'ruecklage', fakt: 'Rücklage privat', hier: 'Privat-Index', nicht: '–', href: WEG.privatIndex('ruecklage'), etappe: 3 },
   { id: 'geburtstage', fakt: 'Geburtstage', hier: 'Familie (privat) bzw. CRM (geschäftlich)', nicht: '–', href: WEG.familie(), etappe: 6 },
   { id: 'kennungen', fakt: 'Persönliche Kennungen (Steuer-ID, SV-Nummer)', hier: 'vorerst nirgends', nicht: 'Einstellungen › Stammdaten', etappe: 3 },
-  { id: 'vertraege', fakt: 'Verträge', hier: 'Gesellschaften: Unternehmen › Verträge · privat: noch kein Ort', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'vertraege', fakt: 'Verträge', hier: 'Gesellschaften: Unternehmen › Verträge & Organe · privat: noch kein Ort', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
 ];
 
 /** Eine Zeile der Datenkarte per Kennung (null = unbekannt). */

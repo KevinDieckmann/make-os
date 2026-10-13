@@ -135,6 +135,23 @@ export function wechsleStufe(c: Chance, ziel: ChancenStufe, von: string, jetzt: 
   };
 }
 
+/**
+ * Ein GEWONNENER Deal wird nicht still „verloren“ (Fund 12.10., Ende-zu-Ende-Test): solange ein laufendes Mandat (nicht beendet, nicht im Papierkorb)
+ * oder ein angenommenes, nicht archiviertes Angebot an ihm hängt, lehnt der Server den Wechsel ab (409) und sagt, was zuerst zu tun ist.
+ * Der Grund bleibt Pflicht (`wechsleStufe`); die Historie behält Gewonnen UND Verloren. Wirkt nur auf neue Wechsel — Bestandsdaten (auch schon
+ * „verlorene“ ehemals gewonnene Deals) bleiben, wie sie sind. Rein; `null` = keine Sperre.
+ */
+export function gewonnenVerlorenSperre(deal: Pick<Chance, 'id' | 'titel'>, bestand: Pick<CrmBestand, 'mandate' | 'angebote'>): string | null {
+  const mandate = (bestand.mandate ?? []).filter(m => m.chanceId === deal.id && m.status !== 'beendet' && !m.geloeschtAm);
+  const angebote = (bestand.angebote ?? []).filter(a => a.dealId === deal.id && a.status === 'angenommen' && !a.archiviertAm && !a.geloeschtAm);
+  if (!mandate.length && !angebote.length) return null;
+  const zuerst = [
+    ...mandate.map(m => `das Mandat „${m.titel || m.kunde}“ beenden`),
+    ...angebote.map(a => `das angenommene Angebot${a.nummer ? ` ${a.nummer}` : ''} archivieren`),
+  ].join(' und ');
+  return `„${deal.titel}“ ist gewonnen und wird noch gebraucht — erst ${zuerst}; danach lässt sich der Deal mit Grund auf „Verloren“ setzen. Nichts geändert.`;
+}
+
 export interface Prognose {
   offen: number; gewichtet: number;
   /** Gewichtet ohne die Deals, die hängen (Ampel rot) — die ehrlichere Zahl für Finanzen (28.09., K4, #85). */

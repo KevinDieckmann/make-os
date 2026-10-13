@@ -26,7 +26,7 @@ import { familieSpiegelNachziehen, spiegelHinweiseMelden } from '@/lib/kalender/
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEIN = { ok: false, fehler: 'Familie & Partnerschaft gibt es nur für Konten mit Haushalt. Der Inhaber schaltet das unter System → Konto frei.' };
+const KEIN = { ok: false, fehler: 'Familie & Partnerschaft gibt es nur für Konten mit Haushalt. Der Inhaber schaltet das unter Einstellungen › Konto frei.' };
 
 // Sicht der Person: die EINE Filterstelle des Familien-Moduls (`familieFuerPerson`, lib/familie/logik.ts) — dieselbe liest der
 // Agenten-Kontext des Heads „Familie & Partnerschaft“.

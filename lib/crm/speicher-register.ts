@@ -251,7 +251,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // Gesellschafts-Register gelesen hat — nur Metadaten, Kennungen als Fingerabdruck, mit Hash-Kette.
   mit(T('leseprotokoll--*', 'Lese-Protokoll je Haushalt und Monat — wer (Konto/ZOE/System), wann, welcher Bereich, wessen Daten (Konto), Umfang und Kennungen nur als Fingerabdruck; nie Inhalte. Art. 17: Fingerabdruck der Person → c#geloescht, der Zugriff bleibt belegt.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. c i. V. m. Art. 5 Abs. 2 und Art. 32 Abs. 1 lit. b/d DSGVO (Nachweis- und Sicherheitspflicht: Zugriffe auf besonders schutzwürdige Daten nachvollziehbar)',
-    art15: 'Konten: System › Nachweise (Inhaber) bzw. auf Anfrage beim Inhaber; Kontakte: Fingerabdrücke über die Auskunft auflösbar',
+    art15: 'Konten: Einstellungen › Datenschutz › Nachweise (Inhaber) bzw. auf Anfrage beim Inhaber; Kontakte: Fingerabdrücke über die Auskunft auflösbar',
     loeschfrist: '12 Monate (ältere Monate leert die nächtliche Durchsicht, Vermerk mit Anzahl bleibt), in Sicherungen bis zu 12 Monate länger',
   }),
   T('agent-log', 'Agenten-Log — Titel/Texte getilgt (Art. 17 Kontakt); je Lauf optional `person` (wer ihn ausgelöst hat, 08.10.): gelesen nur eigene + Systemläufe, Konto löschen nimmt die Läufe der Person heraus.'),
@@ -533,12 +533,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // nach Privat und Business, Mein Fokus je Person (Privat und Business getrennt) — Freitext der Mitglieder, keine Dritten (lib/planung/fokus.ts).
   mit(H('fokus-privat--*', 'Unser Fokus · Privat je Haushalt — ein Satz je Horizont, von den Mitgliedern selbst gepflegt; Freitext ohne Personen-Feld, keine Dritten.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Nutzung der Planung durch die Mitglieder des Haushalts',
-    art15: 'die vollen Mitglieder des Haushalts sehen ihn unter Planung › Fokus und auf Heute (Privat)',
-    loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird; Konto löschen tilgt im Freitext nicht automatisch — die übrigen Mitglieder ändern ihn unter Planung › Fokus',
+    art15: 'die vollen Mitglieder des Haushalts sehen ihn auf der Fokus-Seite (Knopf oben rechts) und auf Heute (Privat)',
+    loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird; Konto löschen tilgt im Freitext nicht automatisch — die übrigen Mitglieder ändern ihn auf der Fokus-Seite (Knopf oben rechts)',
   }),
   mit(H('fokus-business--*', 'Unser Fokus · Business je Haushalt und Gesellschaft — ein Satz je Horizont; Freitext ohne Personen-Feld, keine Dritten.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung der Gesellschaften durch die Mitglieder des Haushalts',
-    art15: 'alle Konten des Haushalts sehen ihn unter Planung › Fokus (Business) und auf Heute (Business-Konten lesend)',
+    art15: 'alle Konten des Haushalts sehen ihn auf der Fokus-Seite (Business) und auf Heute (Business-Konten lesend)',
     loeschfrist: 'bis der Haushalt ihn leert bzw. die Instanz gelöscht wird',
   }),
   mit(H('fokus-eigen--*', 'Mein Fokus · Privat je Person — eigene Sätze je Horizont, einzelne mit den anderen Mitgliedern geteilt (`geteilt`); keine Dritten.'), {
@@ -599,7 +599,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     kategorie: ['beschaeftigte'],
   }),
   H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
-  mit(H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter System › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'), {
+  mit(H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter Einstellungen › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung der Anwendung) bzw. § 26 BDSG für Beschäftigte; lit. f (Sicherheit)',
     art15: 'Konto › Meine Daten: Auskunft (HTML), „Meine Daten herunterladen“ (JSON, alle Bestände laut Register — lib/datenschutz/konto-daten.ts); nie Hash, Salz, zweiter Faktor',
     loeschfrist: 'bis die Person „Mein Konto löschen“ wählt (Konto › Meine Daten; Inhaber erst ohne andere Konten) bzw. die Instanz endet (scripts/instanz-loeschen.mjs); Grabstein (nur Fingerabdruck der Konto-Kennung) 13 Monate',
@@ -623,12 +623,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // ── KI, Gesundheit, Telegram (05.10., DSGVO-Paket; lib/datenschutz/) ──
   mit(H('gesundheit-einwilligungen', 'Nachweis der Art.-9-Einwilligungen Gesundheit je Person (Zweck a/b/c, an/aus, Zeitpunkt, Fassung, Fingerabdruck des Wortlauts, wer) — nur anhängend, nie geändert (lib/datenschutz/gesundheit-einwilligung.ts). Keine Gesundheitswerte.'), {
     rechtsgrundlage: 'Art. 7 Abs. 1 DSGVO (Nachweis der Einwilligung) i. V. m. Art. 6 Abs. 1 lit. c',
-    art15: 'GET /api/datenschutz/gesundheit (eigener Nachweis), System › Datenschutz',
+    art15: 'GET /api/datenschutz/gesundheit (eigener Nachweis), Einstellungen › Datenschutz',
     loeschfrist: 'solange das Konto besteht; danach 3 Jahre (Nachweis, Verjährung § 195 BGB) — automatisches Löschen nach Kontoende noch offen',
   }),
   mit(H('ki-einstellungen', 'KI-Schalter der Instanz (Inhaber) und je Person (Hintergrund-KI, Web-Suche, Bereiche) und die Telegram-Ausnahme je Person (Zeitpunkt, Fassung des Hinweises) — keine Inhalte (lib/datenschutz/ki-einstellungen.ts).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. c/f DSGVO (Datenschutz durch Technikgestaltung, Art. 25); Telegram-Ausnahme: Art. 6 Abs. 1 lit. a',
-    art15: 'GET /api/datenschutz/ki (eigene Schalter), System › Datenschutz',
+    art15: 'GET /api/datenschutz/ki (eigene Schalter), Einstellungen › Datenschutz',
     loeschfrist: 'solange das Konto bzw. die Instanz besteht',
   }),
   mit(H('ki-protokoll--*', 'KI-Protokoll je Tag (seit E3, 09.10.: ki-protokoll--JJJJ-MM-TT; Altbestand je Monat ki-protokoll--JJJJ-MM, weiter gelesen): je Modell-Aufruf NUR Metadaten — Zeit, Zweck, Lauf-Art, Person (Konto), Datenkategorien, Anzahl, pseudonymisiert ja/nein, gesperrt mit Grund. Nie Inhalte, nie Kennungen oder Namen Dritter (lib/datenschutz/ki-protokoll.ts).'), {
@@ -786,9 +786,9 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   K('aufgaben-dateien--*', 'Aufgaben-Ablage (Dateien zu Aufgaben, lib/dateien/aufgaben-ablage.ts) — Kontakt-Dateien liegen in crm-dateien--*.'),
   // Datenschutz-Einrichtung der Instanz (05.10., lib/datenschutz/einrichtung.ts): Verantwortlicher (Name/Firma, Anschrift, Kontakt, ggf.
   // Datenschutzbeauftragter — Pflichtangabe nach Art. 13/30) und das Empfänger-/AVV-Register (Firmen, keine Personen Dritter).
-  mit(H('datenschutz-einrichtung', 'Datenschutz-Einrichtung: Verantwortlicher (Name/Firma, Anschrift, Kontakt-Mail, optional Telefon, Vertretung, Datenschutzbeauftragter) und Empfänger/Auftragsverarbeiter mit AVV-Nachweis — schreibt nur der Inhaber (System › Datenschutz), Protokoll nur mit Feldnamen.'), {
+  mit(H('datenschutz-einrichtung', 'Datenschutz-Einrichtung: Verantwortlicher (Name/Firma, Anschrift, Kontakt-Mail, optional Telefon, Vertretung, Datenschutzbeauftragter) und Empfänger/Auftragsverarbeiter mit AVV-Nachweis — schreibt nur der Inhaber (Einstellungen › Datenschutz), Protokoll nur mit Feldnamen.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO (Pflichtangaben Art. 13 Abs. 1 lit. a/b, Art. 30 Abs. 1 lit. a, Nachweis Art. 5 Abs. 2, Art. 28)',
-    art15: 'System › Datenschutz zeigt dem Haushalt des Inhabers alles; die Angaben stehen in jeder Auskunft (GET /api/crm/datenschutz › verantwortlich) und im Verzeichnis-Export',
+    art15: 'Einstellungen › Datenschutz zeigt dem Haushalt des Inhabers alles; die Angaben stehen in jeder Auskunft (GET /api/crm/datenschutz › verantwortlich) und im Verzeichnis-Export',
     loeschfrist: 'solange die Instanz betrieben wird; der Inhaber ändert bzw. leert die Angaben jederzeit (frühere Fassungen nur in den Sicherungen, bis zu 12 Monate)',
   }),
   // Ereignisse (09.10., E1 „Ereignisstelle“, lib/ereignisse): NUR Kennungen (Mail-, Buchungs-, Deal-, Aufgaben-Kennung, Kontakt-/Firmen-Kennung im
@@ -801,7 +801,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // Pannen-Register (05.10., Zusatz; Art. 33 Abs. 5): nur Kategorien/Anzahl Betroffener, keine Namen; nur der Inhaber.
   mit(H('datenschutz-pannen', 'Pannen-Register (lib/datenschutz/pannen.ts): Kenntnis, Beschreibung, Art, Betroffene nur als Kategorien/Anzahl, Datenkategorien, Risiko, Meldung an die Behörde, Benachrichtigung, Maßnahmen, Abschluss, wer — liest und schreibt nur der Inhaber.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. Art. 33 Abs. 5 (Dokumentationspflicht)',
-    art15: 'System › Datenschutz › Pannen-Register (nur Inhaber); Betroffene sind dort nicht namentlich geführt',
+    art15: 'Einstellungen › Datenschutz › Pannen-Register (nur Inhaber); Betroffene sind dort nicht namentlich geführt',
     loeschfrist: 'abgeschlossene Pannen 36 Monate ab Abschluss (Frist „pannen“, einstellbar 12–120 Monate); offene bleiben',
   }),
   K('datenschutz-grabsteine', 'Marke „Grabsteine zuletzt angewendet“ (Fingerabdruck der Grabstein-Datei, Zahl).'),

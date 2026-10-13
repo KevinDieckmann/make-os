@@ -16,7 +16,8 @@ export type SEintrag = SchildGesellschaft & { stand: string };
 export interface SchildDaten { heute: string; eintraege: SEintrag[] }
 export const SCHILD_EREIGNIS = 'make-schild-geaendert';
 
-export function useSchild() {
+/** `an: false` lädt nichts (z. B. ein Konto „nur Business“ — die Route antwortet ihm 403, Gesamtprüfung 12.10.). */
+export function useSchild(an = true) {
   const [daten, setDaten] = useState<SchildDaten | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const laden = useCallback(async () => {
@@ -27,11 +28,12 @@ export function useSchild() {
     } catch { setFehler('Keine Verbindung.'); }
   }, []);
   useEffect(() => {
+    if (!an) return;
     void laden();
     const neu = () => void laden();
     window.addEventListener(SCHILD_EREIGNIS, neu);
     return () => window.removeEventListener(SCHILD_EREIGNIS, neu);
-  }, [laden]);
+  }, [laden, an]);
   const ersetzen = useCallback((e: SEintrag) => setDaten(d => (d ? { ...d, eintraege: d.eintraege.some(x => x.id === e.id) ? d.eintraege.map(x => (x.id === e.id ? e : x)) : [...d.eintraege, e] } : d)), []);
   return { daten, fehler, laden, ersetzen };
 }

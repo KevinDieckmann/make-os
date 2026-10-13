@@ -30,7 +30,7 @@ async function zugang(req: Request): Promise<{ person: string; haushalt: string 
   if (!w) return NextResponse.json(KARTEI_GESPERRT, { status: 403 });
   if (!w.person) return NextResponse.json({ ok: false, fehler: 'Das Team braucht eine angemeldete Person (kein Systemlauf).' }, { status: 403 });
   const haushalt = await haushaltDesInhabers();
-  if (!haushalt) return NextResponse.json({ ok: false, fehler: 'Am Inhaber-Konto ist kein Haushalt eingetragen (System → Konto).' }, { status: 403 });
+  if (!haushalt) return NextResponse.json({ ok: false, fehler: 'Am Inhaber-Konto ist kein Haushalt eingetragen (Einstellungen › Konto).' }, { status: 403 });
   return { person: w.person, haushalt };
 }
 

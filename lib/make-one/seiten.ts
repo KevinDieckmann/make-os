@@ -1,5 +1,5 @@
 // ─── MAKE OS — Alle Seiten für die Schnellsuche (⌘K) ────────────────────────
-// Aufräumen Etappe 1 (08.10.): die Leiste zeigt nur noch zehn Punkte je Space — die Schnellsuche findet weiterhin JEDE Seite,
+// Aufräumen Etappe 1 (08.10.): die Leiste zeigt nur noch höchstens zwölf Punkte je Space — die Schnellsuche findet weiterhin JEDE Seite,
 // auch die, die nicht mehr im Menü stehen (Wächter tests/aufraeumen-etappe1.test.ts: jede Seite unter app/os steht hier).
 // Namen wie in Leiste und Einstellungen: „Finanzen“ (nicht mehr „Zahlen“), „Brain“ (Adresse /os/wissen), „Heute“ (/os).
 // Rein (kein React), damit Schnellsuche und Wächter dieselbe Liste lesen. `space` = zuerst im passenden Space vorgeschlagen.
@@ -76,8 +76,8 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('events', 'Markttraktion · Events (besuchte Veranstaltungen)', WEG.besuch(), 'business'),
   s('makeone', 'Markttraktion · Make.One (eigene Abende)', WEG.event(), 'business'),
   s('mt-stammdaten', 'Markttraktion · Stammdaten', WEG.stammdaten(), 'business'),
-  s('mandate', 'Mandate & Unternehmen · Mandate', WEG.mandat(), 'business'),
-  s('produkte', 'Mandate & Unternehmen · Produkte (Leistungskatalog)', WEG.produkt(), 'business'),
+  s('mandate', 'Produkte & Mandate · Mandate', WEG.mandat(), 'business'),
+  s('produkte', 'Produkte & Mandate · Produkte (Leistungskatalog)', WEG.produkt(), 'business'),
   // Fulfillment (10.10.): eigene Seite unter Produkte & Mandate — die sechs Unterpunkte einzeln auffindbar.
   s('fulfillment', 'Produkte & Mandate · Fulfillment (Prozesse)', WEG.fulfillment(), 'business'),
   s('fulfillment-bausteine', 'Produkte & Mandate · Fulfillment · Bausteine', WEG.fulfillment('bausteine'), 'business'),
@@ -85,13 +85,15 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('fulfillment-analysen', 'Produkte & Mandate · Fulfillment · Analysen', WEG.fulfillment('analysen'), 'business'),
   s('fulfillment-kreislauf', 'Produkte & Mandate · Fulfillment · Kreislauf', WEG.fulfillment('kreislauf'), 'business'),
   s('fulfillment-visualisierung', 'Produkte & Mandate · Fulfillment · Visualisierung', WEG.fulfillment('visualisierung'), 'business'),
-  s('unternehmen', 'Unternehmen · Überblick (Compliance-Ampel)', WEG.unternehmen(), 'business'),
+  s('unternehmen', 'Unternehmen · Überblick (Schild in einem Blick, Compliance-Ampel)', WEG.unternehmen(), 'business'),
+  s('unternehmen-ereignis', 'Unternehmen · Was ist passiert? (Ereignis-Assistent: Geschäftsführung, Gesellschafterwechsel, Sitz …)', WEG.ereignisAssistent(), 'business'),
   // Unternehmen › Schild (10.10.): die Reiter einzeln auffindbar.
   s('unternehmen-gesellschaften', 'Unternehmen · Gesellschaften, Anteile, Verträge', WEG.schild('gesellschaften'), 'business'),
   s('unternehmen-pflichten', 'Unternehmen · Pflichten-Kalender (Jahresabschluss, Register, Fristen)', WEG.schild('pflichten'), 'business'),
   s('unternehmen-dokumente', 'Unternehmen · Pflichtdokumente und Vorlagen', WEG.schild('dokumente'), 'business'),
   s('unternehmen-risiken', 'Unternehmen · Risiko-Register', WEG.schild('risiken'), 'business'),
   s('unternehmen-struktur', 'Unternehmen · Struktur und Cap-Table', WEG.schild('struktur'), 'business'),
+  s('unternehmen-vertraege', 'Unternehmen · Verträge und Organe', WEG.schild('vertraege'), 'business'),
   s('unternehmen-schutz', 'Unternehmen · Marken, Domains, Versicherungen', WEG.schild('schutz'), 'business'),
   s('unternehmen-beschluesse', 'Unternehmen · Beschlüsse & Satzung (Beschluss-Buch, Gegenstand, Fassungen)', WEG.beschluss(), 'business'),
   // Netzwerken (03.10.): unterwegs erfassen und die eigenen Visitenkarten (QR) — in jedem Space auffindbar.

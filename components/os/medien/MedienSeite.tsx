@@ -203,7 +203,7 @@ function Schild({ onZu }: { onZu: () => void }) {
     <Fenster titel="Hinweisschild für Veranstaltungen" onZu={onZu} breit={620}>
       <div style={{ display: 'grid', gap: 12 }}>
         <Hinweis art="info">Das Schild informiert (Art. 13) — es ersetzt keine Einwilligung. Porträts und nicht öffentliche Veranstaltungen nur mit Einwilligung. Entwurf, einmal anwaltlich gegenlesen. {TEXTE.hinweis}</Hinweis>
-        {fehlt && <Hinweis art="achtung">Verantwortlicher fehlt — unter System › Datenschutz eintragen.</Hinweis>}
+        {fehlt && <Hinweis art="achtung">Verantwortlicher fehlt — unter Einstellungen › Datenschutz eintragen.</Hinweis>}
         {text && <div style={{ fontSize: TYP.body, lineHeight: 1.6, color: C.ink, background: 'rgba(255,255,255,.05)', borderRadius: 14, padding: '14px 16px' }}>{text}</div>}
         {text && <Knopf leise onClick={async () => { try { await navigator.clipboard.writeText(text); } catch { /* ohne Zwischenablage */ } }}>Text kopieren</Knopf>}
       </div>

@@ -70,6 +70,8 @@ export interface FreieZeitAnfrage {
   vorlaufMin?: number;
   rasterMin?: number;
   grenze?: number;
+  /** Höchstens so viele Vorschläge je Tag (Gesamtprüfung 12.10.: „drei Termine an drei Tagen“ — sonst füllen die ersten Tage die `grenze`). */
+  maxJeTag?: number;
   jetzt?: Date;
 }
 
@@ -90,6 +92,7 @@ export async function freieZeitFuer(a: FreieZeitAnfrage): Promise<{ vorschlaege:
     belegungen: [...je.flatMap(belegungenAus), ...personen.flatMap(p => buchungenAlsBelegung(bestand, p, jetzt.toISOString()))],
     arbeitszeitJeTag: Object.fromEntries(je.map(v => [v.person, ohneFreie(arbeitszeitAus(v))])),
     dauerMin: a.dauerMin, von, tage, jetzt, vorlaufMin: a.vorlaufMin ?? 0, pufferMin: a.pufferMin ?? 0, rasterMin: a.rasterMin ?? 15, feiertage, grenze: a.grenze ?? 200,
+    ...(a.maxJeTag !== undefined ? { maxJeTag: a.maxJeTag } : {}),
   });
   return { vorschlaege, von, bis, feiertage };
 }

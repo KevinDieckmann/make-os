@@ -95,7 +95,10 @@ async function sucheArbeit(input: Record<string, unknown>, _o: string, person?: 
   if (q.arten.length) {
     const A = await import('@/lib/brain/app-index');
     try { await A.appIndexAktualisieren(); } catch (e) { return fehlschlag('voruebergehend', `Fehlgeschlagen: Such-Index nicht lesbar (${e instanceof Error ? e.message.slice(0, 120) : 'unbekannt'}).`); }
-    const r = A.appSuche(frage, { haushalt, privat: sicht === 'business' ? false : privat }, anzahl, q.arten);
+    // Aufgaben, die die Person nicht sieht (12.10.: auch die Firmen-Akte ohne Zugang zu ihr) — in der Abfrage, nie nachträglich. Unlesbar → keine Aufgaben.
+    let ohneAufgaben: ReadonlySet<string>;
+    try { ohneAufgaben = await (await import('@/lib/aufgaben/sicht')).verborgeneAufgabenFuer(person); } catch { return fehlschlag('voruebergehend', 'Fehlgeschlagen: Aufgaben-Sicht nicht lesbar.'); }
+    const r = A.appSuche(frage, { haushalt, privat: sicht === 'business' ? false : privat, ohneAufgaben }, anzahl, q.arten);
     app = sicht ? { ...r, treffer: r.treffer.filter(t => (sicht === 'privat') === !!t.privat) } : r;
   }
   // Das Brain (Vault) mit der Sicht der Person — Sicht vor dem Ranking (lib/zoe/vault.ts `suche`); in Business die Agenten-Sicht der Person.

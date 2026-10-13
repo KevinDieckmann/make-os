@@ -17,7 +17,7 @@ import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zur Finanzplanung. Der Inhaber trägt den Haushalt unter System → Konto ein.' };
+const KEIN_ZUGANG = { ok: false, fehler: 'Kein Zugang zur Finanzplanung. Der Inhaber trägt den Haushalt unter Einstellungen › Konto ein.' };
 
 export async function GET(req: Request) {
   const z = await haushaltVon(req);

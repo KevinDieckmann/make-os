@@ -155,7 +155,7 @@ Schriftliche **Löschbestätigung** an den Kunden mit Datum, Umfang, Restbestän
 `AVV_VORLAGE.md` › § 11. Checkliste in `KUNDEN_ONBOARDING_DATENSCHUTZ.md` › E.
 
 **Seit 05.10. (Betroffenenrechte v2) mit Werkzeug — nie automatisch:**
-1. **Rückgabe:** System › Datenschutz › Vertragsende → „Alles exportieren“ (nur Inhaber-Sitzung + Passwort + zweiter Faktor; alle Bestände,
+1. **Rückgabe:** Einstellungen › Datenschutz › Vertragsende → „Alles exportieren“ (nur Inhaber-Sitzung + Passwort + zweiter Faktor; alle Bestände,
    Dateien, Bilder entschlüsselt in EINER JSON-Datei; Eintrag im Lese- und Anmeldeprotokoll). Nicht enthalten: `backup/`, `archiv/`,
    Grabsteine, Schlüssel (steht im Kopf der Datei). Medien (seit 09.10.): die Kataloge ohne Schlüssel je Medium und unter `medien` die
    Liste der Objekte im Medienspeicher (Bucket bzw. Ordner, abgeglichen mit den Katalogen) — die Dateien selbst (Videos bis 2 GB) nicht;

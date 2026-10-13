@@ -7,13 +7,13 @@
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
+import { kalenderBereich } from '@/lib/kalender/konto-bereich';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
 import { termineLesen } from '@/lib/kalender/termine-lesen';
 import { jahrVerdichten } from '@/lib/kalender/jahr';
 import { maskieren } from '@/lib/kalender/bezug';
 import { localDay } from '@/lib/zeit';
 import { spaceVonKalender } from '@/lib/kalender/space';
-import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,7 +26,8 @@ export async function GET(req: Request) {
   const einst = await ladeEinstellungen();
   const g = await termineLesen(einst, `${jahr}-01-01`, `${jahr + 1}-01-01`);
   // Sicht Privat · Business (10.10.): mit `?space=` nur Kalender dieses Bereichs (`spaceVonKalender`, wie GET /api/kalender).
-  const bereich = sichtDerAnfrage(req);
+  // Konten „nur Business“ (Gesamtprüfung 12.10.): immer nur Business-Kalender — auch keine Zähler aus Privat-Kalendern.
+  const { bereich } = await kalenderBereich(req, zugang.person);
   const imBereich = (name: string) => !bereich || spaceVonKalender(einst, name) === bereich;
   // Private Termine der ANDEREN Person nur als „Belegt“ (K1 `maskieren`) — auch in den ganztägigen Titeln.
   const termine = g.termine.filter(t => imBereich(t.kalender)).map(t => maskieren(t, zugang.person));

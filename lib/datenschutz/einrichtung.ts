@@ -99,7 +99,7 @@ export interface DatenschutzEinrichtung {
 // ── Verantwortlicher ────────────────────────────────────────────────────────
 
 /** Was Auskunft, Verzeichnis und Selbstprüfung zeigen, solange niemand eingetragen ist. */
-export const VERANTWORTLICHER_FEHLT = 'Verantwortlicher fehlt — unter System › Datenschutz eintragen';
+export const VERANTWORTLICHER_FEHLT = 'Verantwortlicher fehlt — unter Einstellungen › Datenschutz eintragen';
 /**
  * Platzhalter im Verzeichnis (Feld `verantwortlich` einer Verarbeitung): „wie in der Einrichtung“. So steht der Name an EINER
  * Stelle; Anzeige und Export lösen ihn mit `verantwortlichAufloesen` auf. Von Hand Eingetragenes bleibt, wie es ist.

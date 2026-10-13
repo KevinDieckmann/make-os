@@ -22,6 +22,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, FileText, Trash2 } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leerzustand, Leer, Reiter, Pillen, Feldzeile, eingabe, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
+import { useNurBusiness } from '../useInhaber';
 import { zufallsUuid } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
@@ -92,7 +93,10 @@ export function UnternehmenView() {
   const [daten, setDaten] = useState<RegisterDaten | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [neu, setNeu] = useState(false);
-  const schild = useSchild();
+  // Konto „nur Business“: das Register (Gesellschafter, Verträge, Beschlüsse) und das Schild gibt der Server ihm nicht (403, Wächter
+  // tests/unternehmen-schild.test.ts) — die Seite fragt dann gar nicht erst und sagt es ruhig statt mit „Register nicht geladen“ (Gesamtprüfung 12.10.).
+  const nurBusiness = useNurBusiness();
+  const schild = useSchild(nurBusiness === false);
 
   const laden = useCallback(async () => {
     try {
@@ -102,7 +106,7 @@ export function UnternehmenView() {
       else setFehler(d?.fehler ?? `Antwort ${r.status}.`);
     } catch { setFehler('Keine Verbindung.'); }
   }, []);
-  useEffect(() => { void laden(); }, [laden]);
+  useEffect(() => { if (nurBusiness === false) void laden(); }, [laden, nurBusiness]);
 
   const geh = (q: { g?: string; s?: Sicht; r?: string; f?: Filter; w?: string; a?: string; e?: string }) => {
     const u = new URLSearchParams();
@@ -118,6 +122,16 @@ export function UnternehmenView() {
   const ersetzen = (g: GAnzeige) => setDaten(d => (d ? { ...d, gesellschaften: d.gesellschaften.map(x => (x.id === g.id ? g : x)) } : d));
   const heute = schild.daten?.heute ?? localDay();
   const lage = useMemo(() => (daten && schild.daten ? lageAus({ gesellschaften: daten.gesellschaften }, { gesellschaften: schild.daten.eintraege }, heute) : null), [daten, schild.daten, heute]);
+
+  if (nurBusiness) {
+    return (
+      <Seite titel="Unternehmen">
+        <Leerzustand symbol={<Building2 size={18} />} titel="Für dieses Konto nicht freigegeben" aktion={<Knopf haupt voll href={WEG.markttraktion()}>Zur Markttraktion</Knopf>}>
+          Gesellschaften, Gesellschafter, Verträge und Beschlüsse sehen nur die vollen Mitglieder des Haushalts.
+        </Leerzustand>
+      </Seite>
+    );
+  }
 
   if (!daten) {
     return (

@@ -55,7 +55,7 @@ export const EINSTELLUNGEN_KONTO = {
   'konto.gesundheitTeilen': {
     was: 'Wer deine Recovery, dein Journal und deine Tagebücher sehen darf. Du entscheidest je Person mit einem Haken; ohne Haken sieht niemand etwas.',
     beispiel: 'Du setzt den Haken bei deinem Partner: Er sieht deine Erholungszahl auf seiner Seite. Seine ZOE darf sie nur abfragen, wenn du zusätzlich Einwilligung (c) erteilt hast.',
-    daten: 'Die Einwilligungen (a), (b), (c) stehen unter System › Datenschutz.',
+    daten: 'Die Einwilligungen (a), (b), (c) stehen unter Einstellungen › Datenschutz.',
   },
   'konto.zieleTeilen': {
     was: 'Wer deine eigenen Ziele lesen darf — nicht die gemeinsamen. Vorgabe: niemand. Du entscheidest je Person.',
@@ -64,7 +64,7 @@ export const EINSTELLUNGEN_KONTO = {
   'konto.telegram': {
     was: 'Koppelt dein Telegram mit MAKE OS. ZOE schreibt dir dann morgens, mittags und abends aufs Handy, und du antwortest mit einem Satz. Es kommen nur neutrale Hinweise mit Link, wenn du die Ausnahme nicht einschaltest.',
     beispiel: 'Du sendest dem Bot den Code „/start 123456“. Danach kommt jeden Morgen „Dein Tag in MAKE OS“ mit einem Link.',
-    daten: 'Telegram läuft über einen Anbieter im Ausland. Was inhaltlich hinausgehen darf, regelt System › Datenschutz › Telegram.',
+    daten: 'Telegram läuft über einen Anbieter im Ausland. Was inhaltlich hinausgehen darf, regelt Einstellungen › Datenschutz › Telegram.',
   },
   'konto.meineDaten': {
     was: 'Deine Rechte nach der DSGVO an einer Stelle: Auskunft (was ist über mich gespeichert), Herunterladen, Konto löschen. Folgenschwere Schritte verlangen noch einmal dein Passwort und, falls an, den zweiten Faktor.',
@@ -222,7 +222,7 @@ export const EINSTELLUNGEN_KONTO = {
     beispiel: 'Du setzt den Haken. Sobald der Versand läuft, kommt „Neue Freigabe in MAKE OS“ mit Link aufs Handy — heute passiert noch nichts.',
     an: 'Dein Wunsch ist gespeichert; zugestellt wird, sobald der Versand freigeschaltet ist.',
     aus: 'Die Glocke bleibt in MAKE OS.',
-    daten: 'Telegram bekäme nur neutrale Hinweise mit Link (System › Datenschutz › Telegram), keine Inhalte.',
+    daten: 'Telegram bekäme nur neutrale Hinweise mit Link (Einstellungen › Datenschutz › Telegram), keine Inhalte.',
   },
 
   // ── Medien (Fotos & Videos) ────────────────────────────────────────────────────────────────────────────────────────────
