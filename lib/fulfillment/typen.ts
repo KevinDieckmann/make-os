@@ -9,6 +9,7 @@
 // seine Kinder Ebene 2 (Prozess/Phase/Zone), dann 3 (Teilprozess), 4 (Einzelschritt), 5 (Baustein — nur `bausteinId`).
 
 import type { KreislaufId } from '@/lib/crm/planung';
+import type { KundenAnrede, KundenLage, KundenPhase, KundenQuickWin } from './kunde/bild';
 
 export const FULFILLMENT_VERSION = 1;
 export type Zone = 'dach' | 'etage' | 'fundament';
@@ -176,9 +177,19 @@ export interface FulfillmentAuskunft { stakeholder: StakeholderAuskunft[]; kunde
 /** Zusatz zum 2-Wochen-Report (C2 `reportZusatzFuer`, Abschnitt 5.2) — ohne Fall null (Report Byte für Byte wie heute). */
 export interface ReportZusatz {
   wartetAufEuch: string[];
-  wertKonto: WertKontoZeile[];
+  /** Mit `anteil` (0–100), wenn das Ziel messbar ist (seit 12.10.). */
+  wertKonto: (WertKontoZeile & { anteil?: number })[];
   puls?: { wert: number; am: string };
   pulsFrage?: boolean;
+  // Seit 12.10. (Fulfillment extern): dieselben Teile wie die Kunden-Seite (`kundenTeile`, lib/fulfillment/kunde/bild.ts) — für Seite 1 des Reports.
+  anrede?: KundenAnrede;
+  lage?: KundenLage;
+  phasen?: KundenPhase[];
+  fortschritt?: number;
+  erledigt?: string[];
+  naechstes?: string[];
+  quickWins?: KundenQuickWin[];
+  naechsterTermin?: { titel: string; am: string };
 }
 /** Eine Zeile „vorher → jetzt → Ziel“ (Regel `wertKontoZeilen`), schon als Text. */
 export interface WertKontoZeile { zielId: string; name: string; vorher: string; jetzt: string; ziel: string; bis?: string; festgelegt: boolean }

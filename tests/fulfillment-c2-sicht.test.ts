@@ -3,6 +3,8 @@
 // Termin-Kennungen, Quick Wins, Kick-off-Fragen, Health, Honorar …) und darf nur die Pfade der Positivliste liefern — jeder neue Pfad macht diesen
 // Test rot (bewusste Änderung hier UND in lib/fulfillment/kunde/sicht.ts). Dazu: „nur intern“/„vor Verkauf prüfen“ erscheinen nie, Puls-Modus zeigt nur
 // den Puls, und die Komponente `KundenAnsicht` zeigt in der Vorschau nichts zum Ausfüllen. Erfundene Daten, rein, kein Netz.
+// Seit 12.10. (Fulfillment extern): Quick Wins gehen bewusst an den Kunden („Erste Erfolge“), dazu Anrede, Anbieter, Ansprechperson (nur der Name), Lage,
+// Fortschritt, Anteil/Abstimmungspunkt je Phase, Frist/Formular je „wartet“, nächster Termin (nur Tag, nie die Termin-Kennung), Upload-Status als Zahlen.
 import { describe, it, expect, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -37,7 +39,7 @@ const FALL: Fall = {
   entscheidungen: [{ id: 'fe-1', am: '2026-10-02', titel: 'Geteilt', inhalt: 'Inhalt geteilt', status: 'entschieden', wer: 'beide', geteilt: true, von: 'person-intern' }, { id: 'fe-2', am: '2026-10-02', titel: 'ENTSCHEIDUNG-INTERN', status: 'offen', wer: 'intern', geteilt: false, von: 'person-intern' }],
   rituale: [{ ritualId: 'fr-1', terminUids: ['TERMIN-UID-INTERN'], angelegtAm: '2026-09-02' }],
   mitschriften: [{ id: 'fn-1', am: '2026-10-01', anlass: 'MITSCHRIFT-INTERN', ergebnis: 'x', naechster: 'y', von: 'person-intern' }],
-  quickWins: [{ id: 'fq-1', text: 'QUICKWIN-INTERN', bis: '2026-10-30', quelle: 'analyse' }], kickoffFragen: [{ id: 'fx-1', frage: 'KICKOFF-INTERN', an: 'gruender', quelle: 'analyse' }],
+  quickWins: [{ id: 'fq-1', text: 'Angebotsvorlage vereinheitlichen', bis: '2026-10-30', quelle: 'analyse' }, { id: 'fq-2', text: 'Nachfass-Rhythmus (nur intern) eingeführt', bis: '2026-10-05', erledigtAm: '2026-10-04T09:00:00Z', quelle: 'hand' }], kickoffFragen: [{ id: 'fx-1', frage: 'KICKOFF-INTERN', an: 'gruender', quelle: 'analyse' }],
   wertKonto: { z1: { ausgang: 'wenig', zielZahl: 10, festgelegtAm: '2026-09-02', messungen: [{ am: '2026-10-01', wert: 5, quelle: 'hand' }] } },
   befaehigung: [{ id: 'bf-1', text: 'BEFAEHIGUNG-INTERN', erfuellt: false }], wirkung: { erstelltAm: '2026-10-01', zitat: { text: 'ZITAT-INTERN', einwilligungAm: '2026-10-01', wie: 'mail' } },
   marken: { m: 'MARKE-INTERN' }, geaendert: '2026-10-01T00:00:00Z', geaendertVon: 'person-intern',
@@ -54,6 +56,8 @@ const EINGABE = (extra: Partial<SichtEingabe> = {}): SichtEingabe => ({
     unterlagen: [{ id: 'ud-1', mandatId: 'm-1', name: 'DATEINAME-INTERN.pdf', typ: 'application/pdf', groesse: 1, am: '2026-10-01', herkunft: 'kunde', zweck: 'sonstig', status: 'ungeprueft' }] },
   rechte: { formular: true, upload: true, puls: true }, standVon: () => 'stand-1',
   datenschutz: kundeHinweis({ verantwortlich: 'Erfundene Firma, Musterweg 1, 12345 Musterstadt', seite: null, mandatsdatenMonate: 12, unterlagenTage: 90 }), uploadFrei: 19,
+  anbieter: { name: 'Erfundene Gesellschaft', email: 'kontakt@example.invalid' }, ansprechperson: 'Pia Probe',
+  freigaben: [{ id: 'F3', titel: 'Diagnose-Abnahme', wer: 'beide' }], terminTage: [{ uid: 'TERMIN-UID-INTERN', tag: '2026-10-14' }],
   ...extra,
 });
 
@@ -69,6 +73,12 @@ const ERLAUBT = new Set([
   'formulare[].abschnitte[].fragen[].pflicht', 'formulare[].abschnitte[].fragen[].hilfe',
   'upload', 'upload.erlaubt', 'upload.eingegangen', 'upload.frei', 'puls', 'puls.offen',
   'datenschutz', 'datenschutz.verantwortlich', 'datenschutz.seite', 'datenschutz.fassung', 'datenschutz.absaetze',
+  // 12.10. (Fulfillment extern) — bewusst dazu:
+  'anrede', 'anbieter', 'anbieter.name', 'anbieter.logo', 'anbieter.email', 'anbieter.telefon', 'anbieter.web', 'ansprechperson',
+  'lage', 'lage.ampel', 'lage.titel', 'lage.saetze', 'fortschritt', 'zeitstrahl[].anteil', 'zeitstrahl[].abstimmung', 'zeitstrahl[].abstimmung.titel', 'zeitstrahl[].abstimmung.erledigt',
+  'wartet[].frist', 'wartet[].ueberfaellig', 'wartet[].formular', 'wertKonto[].anteil',
+  'quickWins', 'quickWins[].text', 'quickWins[].erledigt', 'quickWins[].am', 'quickWins[].bis', 'rituale[].naechster', 'naechsterTermin', 'naechsterTermin.titel', 'naechsterTermin.am',
+  'upload.geprueft', 'upload.offen',
 ]);
 
 describe('Kunden-Sicht: nur die Positivliste', () => {
@@ -80,13 +90,14 @@ describe('Kunden-Sicht: nur die Positivliste', () => {
   });
   it('kein interner Inhalt, keine Kennungen anderer Bestände, keine Dateiliste, nichts aus anderen Mandaten', () => {
     const text = JSON.stringify(kundenSicht(EINGABE()));
-    for (const x of ['INTERN', 'STAKEHOLDER', 'skeptiker', 'kritisch', 'c-geheim', 'person-intern', '77777', 'stimmung', 'MANDAT-NOTIZ', 'fb-', 'fp-x', 'fk-', 'TERMIN-UID', 'DATEINAME', 'ANDERES-MANDAT', 'FREMDE-FRAGE', 'm-2', 'Hilfe-intern']) {
+    // `"stimmung"` = das Health-Feld als Schlüssel (das Wort „Abstimmung“ — Abstimmungspunkte am Strahl — ist erlaubt).
+    for (const x of ['INTERN', 'STAKEHOLDER', 'skeptiker', 'kritisch', 'c-geheim', 'person-intern', '77777', '"stimmung"', 'MANDAT-NOTIZ', 'fb-', 'fp-x', 'fk-', 'TERMIN-UID', 'DATEINAME', 'ANDERES-MANDAT', 'FREMDE-FRAGE', 'm-2', 'Hilfe-intern']) {
       expect(text, x).not.toContain(x);
     }
   });
   it('Inhalt: sichtbare Phasen, sichtbare offene Schritte, „wartet auf euch“, geteilte Entscheidungen, nur taugliche Formulare, Upload zählt', () => {
     const s = kundenSicht(EINGABE());
-    expect(s.zeitstrahl).toEqual([{ titel: 'Phase sichtbar', stand: 'aktuell' }]);
+    expect(s.zeitstrahl).toEqual([{ titel: 'Phase sichtbar', stand: 'aktuell', anteil: 0.14, abstimmung: { titel: 'Diagnose-Abnahme', erledigt: false } }]);
     expect(s.erledigt).toEqual([]);
     expect(s.naechstes).toEqual(['Schritt sichtbar — bis 20.10.2026']);
     expect(s.wartet).toEqual([{ titel: 'Wartet', seit: '01.10.2026' }]);
@@ -95,8 +106,38 @@ describe('Kunden-Sicht: nur die Positivliste', () => {
     // Mit Vermerk „vor Verkauf geprüft“ (C1-Marke) erscheint das gekaufte Formular — ohne nie.
     expect(kundenSicht(EINGABE({ marken: { 'urheber-geprueft:fb-vorverkauf': '2026-10-09|person-intern' } })).formulare.map(f => f.titel)).toEqual(['Formular ok', 'Formular vorverkauf']);
     expect(s.formulare[0].antworten).toEqual({ q1: 'Antwort eins' });
-    expect(s.upload).toEqual({ erlaubt: true, eingegangen: 1, frei: 19 });
-    expect(s.rituale).toEqual([{ titel: 'Wochen-Check', rhythmus: 'wöchentlich' }]);
+    expect(s.upload).toEqual({ erlaubt: true, eingegangen: 1, frei: 19, geprueft: 0, offen: 1 });
+    expect(s.rituale).toEqual([{ titel: 'Wochen-Check', rhythmus: 'wöchentlich', naechster: 'Mi, 14.10.2026' }]);
+    expect(s.naechsterTermin).toEqual({ titel: 'Wochen-Check', am: 'Mi, 14.10.2026' });
+    // Erste Erfolge: erreichte zuerst, interne Zusätze in Klammern fallen weg.
+    expect(s.quickWins).toEqual([{ text: 'Nachfass-Rhythmus eingeführt', erledigt: true, am: '04.10.2026' }, { text: 'Angebotsvorlage vereinheitlichen', erledigt: false, bis: '30.10.2026' }]);
+    expect(s.lage).toMatchObject({ ampel: 'gelb', titel: 'Wir warten auf Ihren Input' });
+    expect(s.lage!.saetze).toHaveLength(3);
+    expect(s.lage!.saetze[2]).toBe('Von Ihnen brauchen wir eine Sache — sie wartet seit 9 Tagen.');
+    expect([s.anrede, s.anbieter?.name, s.ansprechperson]).toEqual(['sie', 'Erfundene Gesellschaft', 'Pia Probe']);
+  });
+  it('keine internen Begriffe: Freigabe-Kürzel heißen „Abstimmungspunkt“ (bzw. tragen den Titel der Abstimmung), interne Zusätze fallen weg; Abstimmungen ohne Kunde nie', () => {
+    const knoten = [
+      { id: 'w', titel: 'Wurzel', rang: 1, status: 'offen' as const },
+      { id: 'p1', elternId: 'w', titel: 'Recruiting (nur Prozess)', rang: 1, status: 'in_arbeit' as const, kundeSichtbar: true, freigabe: 'F2' },
+      { id: 's1', elternId: 'p1', titel: 'F3 bestätigt', rang: 1, status: 'offen' as const, kundeSichtbar: true, freigabe: 'F3' },
+      { id: 's2', elternId: 'p1', titel: 'Abnahme F5 vorbereiten', rang: 2, status: 'wartet_kunde' as const, kundeSichtbar: true, seit: '2026-10-08', faelligAm: '2026-10-09' },
+    ];
+    const s = kundenSicht(EINGABE({ fall: { ...FALL, knoten, freigaben: {} }, freigaben: [{ id: 'F2', titel: 'Dossier geprüft', wer: 'intern' }, { id: 'F3', titel: 'Diagnose-Abnahme', wer: 'beide' }] }));
+    const text = JSON.stringify(s);
+    expect(text).not.toMatch(/\bF\d\b/);
+    expect(text).not.toContain('nur Prozess');
+    expect(text).not.toContain('Dossier');
+    expect(s.zeitstrahl).toEqual([{ titel: 'Recruiting', stand: 'aktuell', anteil: 0 }]);
+    expect(s.naechstes).toEqual(['Abstimmung: Diagnose-Abnahme']);
+    expect(s.wartet).toEqual([{ titel: 'Abnahme Abstimmungspunkt vorbereiten', seit: '08.10.2026', frist: '09.10.2026', ueberfaellig: true }]);
+  });
+  it('„wartet“ auf ein Formular trägt dessen öffentlichen Schlüssel (direkt ausfüllbar) — nie die Baustein-Kennung', () => {
+    const knoten = [...FALL.knoten.filter(k => k.id !== 's3'), { id: 's3', elternId: 'p1', titel: 'Playbook ausfüllen', rang: 3, status: 'wartet_kunde' as const, seit: '2026-10-01', bausteinId: 'fb-ok' }];
+    const s = kundenSicht(EINGABE({ fall: { ...FALL, knoten } }));
+    const w = s.wartet.find(x => x.titel === 'Playbook ausfüllen');
+    expect(w?.formular).toBe(s.formulare[0].schluessel);
+    expect(w?.formular).toMatch(/^fo-[a-f0-9]{16}$/);
   });
   it('Rechte aus → kein Formular, kein Upload, kein Puls; Puls-Modus zeigt nur Kopf, Puls und Hinweis', () => {
     const ohne = kundenSicht(EINGABE({ rechte: { formular: false, upload: false, puls: false } }));
@@ -119,9 +160,23 @@ describe('KundenAnsicht (dieselbe Komponente für Seite und Vorschau)', () => {
     const { KundenAnsicht } = await import('@/components/os/fulfillment/kunde/KundenAnsicht');
     const s = kundenSicht(EINGABE());
     const html = renderToStaticMarkup(createElement(KundenAnsicht, { sicht: s, vorschau: true }));
-    for (const x of ['Erfundene Werke GmbH', 'Wartet auf euch', 'Phase sichtbar', 'Wert-Konto', 'Formular ok', 'Unterlagen', 'Datenschutz', 'Vorschau']) expect(html, x).toContain(x);
+    for (const x of ['Erfundene Werke GmbH', 'Das brauchen wir von Ihnen', 'Ihr Ziel', 'Erste Erfolge', 'So weit sind wir', 'hier stehen wir', 'Phase sichtbar', 'Wert-Konto', 'Formular ok', 'Unterlagen', 'Datenschutz', 'Vorschau', 'Erfundene Gesellschaft', 'Pia Probe', 'Mi, 14.10.2026']) expect(html, x).toContain(x);
     expect(html).not.toContain('Hochladen</');
+    expect(html).not.toContain('Zwischenspeichern');
     expect(html).not.toContain('INTERN');
     expect(html).toMatch(/<input[^>]*type="file"[^>]*disabled/);
+    // Sprünge innerhalb der Seite nie über „#…“ — das Fragment trägt das Token.
+    expect(html).not.toMatch(/href="#/);
+  });
+  it('Du-Anrede: „ihr/euch“ überall; Präsentation ohne Eingaben, ohne Datenschutz-Kasten', async () => {
+    const { KundenAnsicht } = await import('@/components/os/fulfillment/kunde/KundenAnsicht');
+    const s = kundenSicht(EINGABE({ anrede: 'du' }));
+    const html = renderToStaticMarkup(createElement(KundenAnsicht, { sicht: s }));
+    for (const x of ['Das braucht es von euch', 'Euer Ziel', 'Wir warten auf euren Input', 'Von euch brauchen wir eine Sache']) expect(html, x).toContain(x);
+    expect(html).not.toMatch(/\bIhnen\b|\bIhr Ziel\b/);
+    const p = renderToStaticMarkup(createElement(KundenAnsicht, { sicht: s, praesentation: true }));
+    expect(p).toContain('kunde-praesentation');
+    expect(p).not.toMatch(/<input|<textarea|<select/);
+    expect(p).not.toContain('Datenschutz &amp; Hinweise');
   });
 });

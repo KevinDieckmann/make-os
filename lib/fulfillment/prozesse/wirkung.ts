@@ -6,21 +6,31 @@
 // (Follow-up), nächste Stufe (vorhandener Vorschlag der Leistungstreppe). Nachsorge: an Tag +14/+45/+90 nach Mandatsende je ein Vorschlag
 // im Stapel (Check-in · Empfehlung · nächste Stufe), Marken `nachsorge:<mandat>:<tag>` gegen Doppelte. Rein und client-sicher.
 
-import type { Baustein, Fall, VorlagenDatei, WertKontoZeile } from '../typen';
+import type { Baustein, Fall, Freigabepunkt, VorlagenDatei, WertKontoZeile } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 import { wertKontoZeilen } from '../regeln';
 import { kundenGesperrt } from './bausteine';
 import { fnv } from './pruefen';
+import { zielErreichung } from './wert';
+import { kundenTeile, kundenText, type KundenPhase, type KundenQuickWin } from '../kunde/bild';
 
 export interface WirkungsDokument {
   titel: string; kunde: string; mandat: string; paket?: string; absender?: string;
   zeitraum: string; stand: string;
-  wertKonto: WertKontoZeile[];
+  /** Mit `anteil` (0–100, seit 12.10.), wenn das Ziel messbar ist — für die Vorher/Nachher-Grafik. */
+  wertKonto: (WertKontoZeile & { anteil?: number })[];
   quickWins: string[];
   lieferobjekte: string[];
   befaehigung: { text: string; erfuellt: boolean }[];
   zitat?: { text: string };
   hinweis: string;
+  // Seit 12.10. (Fulfillment extern, „ein Bild“) — dieselben Teile wie Kunden-Seite und Report (lib/fulfillment/kunde/bild.ts):
+  /** Die Meilensteine als Phasen-Strahl (nur geteilte Phasen, Abstimmungspunkte nur mit Kunde). */
+  phasen?: KundenPhase[];
+  /** Erreichte erste Erfolge mit Datum (dieselben wie `quickWins`, strukturiert für die Grafik). */
+  erfolge?: KundenQuickWin[];
+  /** Wie es weitergehen kann: die nächste Stufe der Leistungstreppe — Name und Ergebnis, nie ein Preis. */
+  naechsteStufe?: { name: string; text?: string };
 }
 
 const datum = (t: string) => (/^\d{4}-\d{2}-\d{2}/.test(t) ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : t);
@@ -33,21 +43,29 @@ export function wirkungsDokument(e: {
   marken?: VorlagenDatei['marken'];
   /** Ein Kundenzitat — nur mit vermerkter Einwilligung (der Aufrufer prüft `einwilligungAm`). */
   zitat?: { text: string; einwilligungAm: string; wie: string };
+  /** Abstimmungspunkte der Vorlage (für die Meilensteine am Strahl; seit 12.10.). */
+  freigaben?: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
+  /** Die nächste Stufe der Leistungstreppe (Name, Ergebnis) — als Hinweis „Wie es weitergehen kann“, nie mit Preis (seit 12.10.). */
+  naechsteStufe?: { name: string; text?: string };
 }): WirkungsDokument {
   const intern = kundenGesperrt(e.bausteine, { marken: e.marken ?? {} });
   const lieferobjekte = e.fall.knoten
     .filter(k => k.status === 'erledigt' && k.kundeSichtbar === true && !(k.bausteinId && intern.has(k.bausteinId)) && !k.id.startsWith('fk-ob-'))
-    .map(k => k.ergebnis ? `${k.titel}: ${k.ergebnis}` : k.titel);
+    .map(k => { const t = kundenText(k.titel); return k.ergebnis ? `${t}: ${k.ergebnis}` : t; });
   const von = (e.mandat.start ?? e.fall.gestartetAm).slice(0, 10);
+  const teile = kundenTeile({ fall: e.fall, mandat: e.mandat, heute: e.heute, anrede: 'sie', gesperrt: intern, ...(e.freigaben ? { freigaben: e.freigaben } : {}) });
   return {
     titel: 'Wirkungsbericht', kunde: e.mandat.kunde, mandat: e.mandat.titel, ...(e.paket ? { paket: e.paket } : {}), ...(e.absender ? { absender: e.absender } : {}),
     zeitraum: `${datum(von)} – ${datum(e.heute)}`, stand: datum(e.heute),
-    wertKonto: wertKontoZeilen(e.fall, e.mandat),
-    quickWins: e.fall.quickWins.filter(q => q.erledigtAm).map(q => `${q.text} (erledigt am ${datum(q.erledigtAm!)})`),
+    wertKonto: wertKontoZeilen(e.fall, e.mandat).map(z => { const a = zielErreichung(e.fall.wertKonto?.[z.zielId]); return a != null ? { ...z, anteil: a } : z; }),
+    quickWins: e.fall.quickWins.filter(q => q.erledigtAm).map(q => `${kundenText(q.text)} (erledigt am ${datum(q.erledigtAm!)})`),
     lieferobjekte,
-    befaehigung: e.fall.befaehigung.map(b => ({ text: b.text, erfuellt: b.erfuellt })),
+    befaehigung: e.fall.befaehigung.map(b => ({ text: kundenText(b.text), erfuellt: b.erfuellt })),
     ...(e.zitat?.einwilligungAm ? { zitat: { text: e.zitat.text } } : {}),
     hinweis: WIRKUNG_HINWEIS,
+    ...(teile.phasen.length ? { phasen: teile.phasen } : {}),
+    ...(teile.quickWins.some(q => q.erledigt) ? { erfolge: teile.quickWins.filter(q => q.erledigt) } : {}),
+    ...(e.naechsteStufe?.name ? { naechsteStufe: { name: e.naechsteStufe.name, ...(e.naechsteStufe.text ? { text: e.naechsteStufe.text } : {}) } } : {}),
   };
 }
 

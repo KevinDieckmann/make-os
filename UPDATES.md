@@ -4,10 +4,33 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+<<<<<<< HEAD
 ## 12.10.2026 — Drei Restpunkte der Sicht-Trennung (nur lokal — Branch `restpunkte-sicht`, Basis fa97a3cf, danach `update-0910b` eingemergt)
 - **„Neu anfangen“ nur für volle Mitglieder:** Vorschau, Archiv, Neustart und Zurückholen (`/api/neustart`, `nurVolleMitglieder` in `lib/aufgaben/neustart-server.ts`, auch in jeder Bibliotheksfunktion) geben einem Konto „nur Business“ (`finanzRecht: 'business'`) 403 mit Satz — ein Lauf nimmt Aufgaben, Ziele und Meilensteine des GANZEN Haushalts heraus (Privat, Selbstständigkeit, Firmen-Akte), und ein Archiv-Lauf mischt die Bereiche; eine Teil-Sicht je Bereich wäre verschachtelt und fehleranfällig. Test `tests/neustart-business-sicht.test.ts`.
 - **Glocke-ETag:** `konten` steht jetzt ausdrücklich in `meldungenStand` (steckte schon mittelbar in `anstehendStand`); Wächter `tests/meldungen-etag-konten.test.ts` hält das Verhalten fest (Zugangsänderung → neuer Stand statt 304, Privat-Meldungen fallen heraus).
 - **Brain (Tagesbericht, `_App`-Spiegel):** Aufgaben der Firmen-Akte nur als Zahl („n Pflichten aus der Firmen-Akte erledigt“, `_App/Projekte/Firmen-Akte.md` mit offen/erledigt) — keine Titel, Kennungen, Links, auch nicht bei Privat-Stufe „voll“; ZOE-Entscheidungen zu Recht-Vorschlägen ohne Titel. Test `tests/brain-firmenakte.test.ts`. **Hinweis:** schon abgelegte Tagesberichte in `_inbox/zoe` (und, falls der Spiegel an war, `_App/Projekte/<Space>/Sonstige.md`) können Titel aus der Zeit davor tragen — nach dem Upload kurz prüfen bzw. ablehnen; der Spiegel räumt seine Dateien beim nächsten Lauf selbst auf. **Rückweg:** keine Daten-/Formänderung (neue Datei `Projekte/Firmen-Akte.md` im Spiegel ist optional).
+=======
+## 12.10.2026 — Fulfillment extern: Was der Kunde sieht (nur lokal — Branch `fulfillment-extern`, Basis d0b700a1 = `update-0910b`)
+Kevin: „Das ganze Fulfillment massiv überarbeiten — intern wie extern muss alles sauber sein.“ EIN Bild für Kunden-Seite, 2-Wochen-Report,
+Wirkungsbericht und „Dem Kunden zeigen“ — gerechnet nur in `lib/fulfillment/kunde/bild.ts` (`kundenTeile`, `kundenLage`, `strahlModell`, `wertModell`),
+gezeichnet dünn (`components/os/fulfillment/kunde/bilder.tsx`, PDF: `lib/fulfillment/kunde/pdf-bild.ts`).
+- **Kunden-Seite** (`/kunde/kl-…`, `KundenAnsicht`): Kopf mit Projekt und Anbieter (Name/Logo aus dem Bestand der Gesellschaft, nie im Code) · „So weit
+  sind wir“ (Ampel + drei Sätze, Fortschritt, Phasen-Strahl „hier stehen wir“, Abstimmungspunkte) · „Euer Ziel“ (Wert-Balken je Ziel) · „Erste Erfolge“ ·
+  „Das braucht es von euch“ (mit Frist, „Jetzt ausfüllen“) · Playbook · „Als Nächstes“ · „Nächster Termin“ + Takt + Ansprechperson · Unterlagen (Status
+  als Zahlen) · Puls · Entscheidungen · Datenschutz (aufklappbar). Du/Sie aus der Akte der Ansprechperson (sonst Sie). Handy eine Spalte, ab ~900 px zwei,
+  druckbar. `praesentation` = Vollbild ohne Eingaben (für „Dem Kunden zeigen“). Sprünge in der Seite nie über `#…` (das Fragment trägt das Token).
+- **Positivliste** (`sicht.ts`, Wächter `tests/fulfillment-c2-sicht.test.ts` erweitert): neu Anrede, Anbieter, Ansprechperson (nur der Anzeigename),
+  Lage, Fortschritt, Anteil/Abstimmung je Phase, Frist/Formular je „wartet“, erste Erfolge, nächster Termin (nur Tag), Upload geprüft/in Prüfung.
+  Freigabe-Kürzel heißen „Abstimmungspunkt“, „(nur …)“ fällt weg, Abstimmungen ohne Kunde nie.
+- **Formulare**: „3 von 8 Fragen“, Zwischenspeichern (auch beim Wechsel des Abschnitts), Pflichtfragen vor „Abschnitt abschließen“, Warnung beim Verlassen
+  mit Ungespeichertem, Bestätigung am Ende.
+- **2-Wochen-Report mit Fall**: Seite 1 Zusammenfassung (Ampel, drei Sätze, Strahl, Ziele, Erledigt · Als Nächstes · Wartet, erste Erfolge, Puls), dann
+  „Im Detail“. Mail kurz und persönlich. Ohne Fall Byte für Byte wie vorher (Schnappschuss unverändert grün).
+- **Wirkungsbericht**: Vorher/Nachher je Ziel als Grafik, Meilensteine, erste Erfolge, „Läuft ohne uns“, Zitat nur mit Einwilligung, „Wie es weitergehen
+  kann“ (nächste Stufe der Leistungstreppe, nie ein Preis).
+- **Mails**: Willkommensmail-Gerüst neu (Kick-off, Projektseite, erste 30 Tage); Puls-Mail als Text (`pulsMail`, Knopf „Mail-Text kopieren“ beim Puls-Link).
+- Tests: `tests/fulfillment-extern.test.ts` (neu), `fulfillment-c2-sicht`, `fulfillment-c2-route` angepasst. Rückweg: nur Darstellung + optionale Felder.
+>>>>>>> fulfillment-extern
 
 ## 12.10.2026 — Zwei Kleinfunde aus dem Ende-zu-Ende-Test (nur lokal — Branch `kleinfunde-1210`, Basis 11f34e35 = `update-0910b`)
 - **Register nie still doppelt:** `PATCH /api/gesellschaften` mit `liste` + `eintrag`, aber ohne `eintragId`, legt einen neuen Listeneintrag an (Kennung vom Server); trug der
@@ -75,6 +98,7 @@ additiv gebaut: eure Daten bleiben, neue Felder und Bestände kommen dazu (Rück
 | Inbox | **Bereichs-Leiste** mit Ungelesen-Zähler; drei Wege im Gespräch: **Antworten · Ablegen · Aufgabe** (mit Zuordnung Bereich › Projekt › Liste); weitere und **Kunden-Postfächer** (Gmail mit App-Passwort); **Übergeben mit Anhängen** und Zurückziehen; Suche auch über Anhang-Namen; **Aufgaben-Vorschläge** aus Mails und WhatsApp (nur Vorschlag, erst der Klick legt an) | Inbox; Inbox › Postfächer |
 | Markttraktion | Neuer Knopf **Planung** neben „Angebot“: vom Umsatzziel zu den Aktivitäten, Leadkanäle, Kreislauf, Challenges | Markttraktion › Planung |
 | Produkte & Mandate | **Leistungstreppe**, Kundenreise, Zielbild, Fortschritt je Kunde, **Fortschritts-Report** (Mail-Entwurf mit PDF, Versand per Klick); „+ Mandat“ legt immer den Lead mit an. **Fulfillment**: Prozesse (Hochhaus-Landkarte), Bausteine, Onboarding, Analysen, Kreislauf, Visualisierung; je Mandat ein Fall mit Wert-Konto und Takt; Analyse-Strecke (jeder Lauf einzeln bestätigt); **Kunden-Link kommt ausgeschaltet** | Produkte & Mandate (Mandate · Produkte · Fulfillment) |
+| Was der Kunde sieht | **Kunden-Seite** wie ein Projekt-Cockpit: Lage in drei Sätzen mit Ampel, Weg durch die Phasen („hier stehen wir“), Ziele als Balken (vorher → jetzt → Ziel), erste Erfolge, „Das braucht es von euch“ mit Frist, Playbook mit Fortschritt; **2-Wochen-Report** mit einer Seite Zusammenfassung zuerst; **Wirkungsbericht** mit Vorher/Nachher-Grafik; Du/Sie nach der Akte | Fall › Kunde & Reports › „So sieht der Kunde es“ · Mandat › Fortschritt |
 | Unternehmen | **Schild in einem Blick** je Gesellschaft: Pflichtdokumente, Pflichten & Fristen als Jahres-Zeitstrahl, Risiko-Matrix, Marken/Versicherungen, Struktur; **Beschlüsse & Satzung** (Beschluss-Buch, Fassungen, Folgen als Vorschlag); **„Was ist passiert?“** (Ereignis-Assistent); „Bereit für Kanzlei und Steuerbüro“; **Head of Recht** als Chat | Business › Unternehmen |
 | ZOE & Agenten | ZOE **erkennt den Bereich** (Freigaben und Merksätze je Bereich, ohne Bereich keine Freigabe); der **Chat unten nimmt den passenden Head** an („↔ ZOE“ schaltet um); **Kosten je Auftrag**; schärfere Prüfung jedes Werkzeugs; **Agenten-Grundausstattung** aus dem Brain und Wissen je Business-Head | ZOE › Agenten · Freigaben; Chat unten rechts; Agenten › „⋯“ › Kosten je Auftrag |
 | Bedienung & Verständnis | „⋯“ in eigener Spalte statt Knöpfen über dem Inhalt, Wischen am Handy; **Erklärung zum Antippen** („i“ mit Fallbeispiel) bei Einstellungen, Kennzahlen und Heads; „Antwort zuerst“-Bilder statt Listen | Einstellungen › Bedienung; das „i“ überall |

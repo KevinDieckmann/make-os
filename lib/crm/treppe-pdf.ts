@@ -2,8 +2,8 @@
 // Gerüst wie das Angebot (lib/crm/angebot-pdf.ts: pdf-lib, Helvetica/WinAnsi, `sicherFuer` + `umbrechen` von dort): Kopf mit Absender,
 // Kunde/Paket/Stand, Abschnitte „Erreicht“, „Nächste Schritte“, „Kennzahlen“ und ein ruhiger Fuß mit „Seite n von m“. Aufbau aus
 // lib/crm/treppe-report.ts `reportDokument` — dieselbe Quelle wie die Mail. `erstellt` fest übergeben → gleiche Eingabe, gleiche Bytes.
-// Fulfillment (C2, 10.10.): trägt das Dokument den Zusatz eines Falls (`hatZusatz`), heißen die Abschnitte „Erledigt · Als Nächstes · Wartet auf euch ·
-// Wert-Konto · Kunden-Puls“; ohne Fall bleibt das PDF Byte für Byte wie vorher (tests/fulfillment-c2-report.test.ts).
+// Fulfillment: trägt das Dokument den Zusatz eines Falls (`hatZusatz`), zeichnet seit 12.10. lib/fulfillment/kunde/report-pdf.ts (Seite 1 Zusammenfassung
+// im Bild der Kunden-Seite, dann Details); ohne Fall bleibt das PDF Byte für Byte wie vorher (tests/fulfillment-c2-rein.test.ts).
 
 import { PDFDocument, StandardFonts, rgb, type PDFPage } from 'pdf-lib';
 import { sicherFuer, umbrechen } from './angebot-pdf';
@@ -20,6 +20,8 @@ const LINIE = rgb(0.82, 0.82, 0.85);
 const AKZENT = rgb(0.13, 0.71, 0.67);
 
 export async function reportPdf(d: ReportDokument, opt: { erstellt: Date }): Promise<Uint8Array> {
+  // Mit Fall (seit 12.10., Fulfillment extern): Seite 1 Zusammenfassung im Bild der Kunden-Seite, dann Details — lib/fulfillment/kunde/report-pdf.ts.
+  if (hatZusatz(d)) return (await import('@/lib/fulfillment/kunde/report-pdf')).reportPdfMitFall(d, opt);
   const doc = await PDFDocument.create();
   doc.setTitle(`${d.titel} – ${d.kunde}`);
   doc.setSubject(d.paket ?? d.titel);
@@ -60,33 +62,10 @@ export async function reportPdf(d: ReportDokument, opt: { erstellt: Date }): Pro
   absatz([d.mandat, d.paket ? `Paket: ${d.paket}` : ''].filter(Boolean).join(' · '), 10.5, { farbe: LEISE });
   absatz(`Stand: ${d.stand}${d.schritt ? ` · aktueller Schritt: ${d.schritt}` : ''}`, 10.5, { farbe: LEISE });
 
-  if (hatZusatz(d)) {
-    // Fulfillment (C2, 10.10.): mit Fall die Abschnitte „Erledigt · Als Nächstes · Wartet auf euch · Wert-Konto · Kunden-Puls“ (Konzept 5.2).
-    abschnitt('Erledigt');
-    punkte(d.erreicht);
-    abschnitt('Als Nächstes');
-    punkte(d.naechste);
-    abschnitt('Wartet auf euch');
-    punkte(d.wartetAufEuch!.length ? d.wartetAufEuch! : ['Gerade nichts — danke!']);
-    if (d.wertKonto?.length) {
-      abschnitt('Wert-Konto (vorher → jetzt → Ziel)');
-      for (const w of d.wertKonto) {
-        platz(30);
-        absatz(w.name, 10.5, { fett: true });
-        absatz(`${w.vorher} → ${w.jetzt} → ${w.ziel}${w.bis ? ` (bis ${w.bis})` : ''}`, 10.5, { farbe: LEISE });
-        y -= 4;
-      }
-    }
-    if (d.puls) {
-      abschnitt('Kunden-Puls');
-      absatz(`${d.puls.wert} von 10 (${d.puls.am})`, 10.5);
-    }
-  } else {
-    abschnitt('Erreicht');
-    punkte(d.erreicht);
-    abschnitt('Nächste Schritte');
-    punkte(d.naechste);
-  }
+  abschnitt('Erreicht');
+  punkte(d.erreicht);
+  abschnitt('Nächste Schritte');
+  punkte(d.naechste);
   if (d.kennzahlen.length) {
     abschnitt('Kennzahlen');
     for (const k of d.kennzahlen) {
