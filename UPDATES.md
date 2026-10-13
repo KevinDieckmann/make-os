@@ -4,12 +4,10 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
-<<<<<<< HEAD
 ## 12.10.2026 — Drei Restpunkte der Sicht-Trennung (nur lokal — Branch `restpunkte-sicht`, Basis fa97a3cf, danach `update-0910b` eingemergt)
 - **„Neu anfangen“ nur für volle Mitglieder:** Vorschau, Archiv, Neustart und Zurückholen (`/api/neustart`, `nurVolleMitglieder` in `lib/aufgaben/neustart-server.ts`, auch in jeder Bibliotheksfunktion) geben einem Konto „nur Business“ (`finanzRecht: 'business'`) 403 mit Satz — ein Lauf nimmt Aufgaben, Ziele und Meilensteine des GANZEN Haushalts heraus (Privat, Selbstständigkeit, Firmen-Akte), und ein Archiv-Lauf mischt die Bereiche; eine Teil-Sicht je Bereich wäre verschachtelt und fehleranfällig. Test `tests/neustart-business-sicht.test.ts`.
 - **Glocke-ETag:** `konten` steht jetzt ausdrücklich in `meldungenStand` (steckte schon mittelbar in `anstehendStand`); Wächter `tests/meldungen-etag-konten.test.ts` hält das Verhalten fest (Zugangsänderung → neuer Stand statt 304, Privat-Meldungen fallen heraus).
 - **Brain (Tagesbericht, `_App`-Spiegel):** Aufgaben der Firmen-Akte nur als Zahl („n Pflichten aus der Firmen-Akte erledigt“, `_App/Projekte/Firmen-Akte.md` mit offen/erledigt) — keine Titel, Kennungen, Links, auch nicht bei Privat-Stufe „voll“; ZOE-Entscheidungen zu Recht-Vorschlägen ohne Titel. Test `tests/brain-firmenakte.test.ts`. **Hinweis:** schon abgelegte Tagesberichte in `_inbox/zoe` (und, falls der Spiegel an war, `_App/Projekte/<Space>/Sonstige.md`) können Titel aus der Zeit davor tragen — nach dem Upload kurz prüfen bzw. ablehnen; der Spiegel räumt seine Dateien beim nächsten Lauf selbst auf. **Rückweg:** keine Daten-/Formänderung (neue Datei `Projekte/Firmen-Akte.md` im Spiegel ist optional).
-=======
 ## 12.10.2026 — Fulfillment extern: Was der Kunde sieht (nur lokal — Branch `fulfillment-extern`, Basis d0b700a1 = `update-0910b`)
 Kevin: „Das ganze Fulfillment massiv überarbeiten — intern wie extern muss alles sauber sein.“ EIN Bild für Kunden-Seite, 2-Wochen-Report,
 Wirkungsbericht und „Dem Kunden zeigen“ — gerechnet nur in `lib/fulfillment/kunde/bild.ts` (`kundenTeile`, `kundenLage`, `strahlModell`, `wertModell`),
@@ -30,7 +28,6 @@ gezeichnet dünn (`components/os/fulfillment/kunde/bilder.tsx`, PDF: `lib/fulfil
   kann“ (nächste Stufe der Leistungstreppe, nie ein Preis).
 - **Mails**: Willkommensmail-Gerüst neu (Kick-off, Projektseite, erste 30 Tage); Puls-Mail als Text (`pulsMail`, Knopf „Mail-Text kopieren“ beim Puls-Link).
 - Tests: `tests/fulfillment-extern.test.ts` (neu), `fulfillment-c2-sicht`, `fulfillment-c2-route` angepasst. Rückweg: nur Darstellung + optionale Felder.
->>>>>>> fulfillment-extern
 
 ## 12.10.2026 — Zwei Kleinfunde aus dem Ende-zu-Ende-Test (nur lokal — Branch `kleinfunde-1210`, Basis 11f34e35 = `update-0910b`)
 - **Register nie still doppelt:** `PATCH /api/gesellschaften` mit `liste` + `eintrag`, aber ohne `eintragId`, legt einen neuen Listeneintrag an (Kennung vom Server); trug der
