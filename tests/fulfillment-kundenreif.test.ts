@@ -269,9 +269,9 @@ const INTERN = ['STAKEHOLDER-NOTIZ', 'c-geheim', 'kritisch', 'VEREINBARUNG-INTER
 
 describe('Wächter: „Dem Kunden zeigen“ zeigt nur die Kunden-Ansicht der Positivliste', () => {
   const sicht = kundenSicht(EINGABE);
-  it('die Präsentation ist GENAU die Kunden-Ansicht (dieselbe Komponente, gesperrt) — keine zweite Filterlogik, kein eigenes Layout', () => {
+  it('die Präsentation ist GENAU die Kunden-Ansicht (dieselbe Komponente, Variante „praesentation“) — keine zweite Filterlogik, kein eigenes Layout', () => {
     const html = renderToStaticMarkup(h(PraesentationInhalt, { sicht }));
-    expect(html).toContain(renderToStaticMarkup(h(KundenAnsicht, { sicht })));
+    expect(html).toContain(renderToStaticMarkup(h(KundenAnsicht, { sicht, praesentation: true })));
     expect(Object.keys(sicht).every(x => (SICHT_SCHLUESSEL as readonly string[]).includes(x))).toBe(true);
   });
   it('bei einem Fall VOLLER interner Daten steht nichts davon in der Präsentation', () => {
@@ -279,8 +279,8 @@ describe('Wächter: „Dem Kunden zeigen“ zeigt nur die Kunden-Ansicht der Pos
     expect(html).toContain('Erfundene Werke GmbH');
     expect(html).toContain('Schritt sichtbar');
     for (const x of INTERN) expect(html, x).not.toContain(x);
-    // nichts auszufüllen: jedes Feld der Kunden-Ansicht ist gesperrt (ohne Aktionen = Vorschau-Modus der Komponente)
-    for (const feld of html.match(/<(input|textarea|select)\b[^>]*>/g) ?? []) expect(feld).toContain('disabled');
+    // nichts auszufüllen: die Präsentations-Variante zeigt keine Eingaben, keine Formulare, keinen Datenschutz-Kasten
+    expect(html).not.toMatch(/<(input|textarea|select)\b/);
   });
   it('die Präsentation holt ihre Daten NUR über die Route der Kunden-Sicht und zeichnet NUR mit KundenAnsicht', () => {
     const src = readFileSync(path.join(process.cwd(), 'components/os/fulfillment/reise/Praesentation.tsx'), 'utf8');
@@ -288,7 +288,7 @@ describe('Wächter: „Dem Kunden zeigen“ zeigt nur die Kunden-Ansicht der Pos
     const fetches = [...src.matchAll(/fetch\((`[^`]*`|'[^']*')/g)].map(m => m[1]);
     expect(fetches).toEqual(['`${PRAESENTATION_QUELLE}?m=${encodeURIComponent(mandatId)}`', "'/api/crm/treppe/report'"]); // Daten nur von dort; das PDF ist der vorhandene Report-Weg (POST)
     expect(src).not.toMatch(/useFall|useCrm|useAnalyse|from '\.\.\/prozesse\/daten'|from '@\/lib\/fulfillment\/kunde\/server'/);
-    expect(src).toMatch(/<KundenAnsicht sicht=\{sicht\} \/>/);
+    expect(src).toMatch(/<KundenAnsicht sicht=\{sicht\} praesentation \/>/);
     expect(src).toMatch(/key === 'Escape'/);
   });
 });

@@ -1527,7 +1527,7 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
   `lib/fulfillment/prozesse/ansichten.ts` (Verweise der Schritte `schrittVerweis`, Raster, Strahl, Takt-Leiste ohne erfundene Termine, Report-Achse,
   Puls ↔ Health, Nachsorge-Plan, `abschlussSchritt`). Analyse → Fall NUR über `lib/fulfillment/analyse/nach-fall.ts` (nur Neues; Maßnahmen als Zusatz-Schritte der
   Phase nach der Diagnose, intern). **„Dem Kunden zeigen“** (`reise/Praesentation.tsx`): Daten NUR aus `/api/fulfillment/kunde/vorschau`, gezeichnet NUR mit
-  `KundenAnsicht` — keine zweite Filterlogik (Wächter tests/fulfillment-kundenreif.test.ts). Fall-Ops nehmen optional `am` (nachtragen, nie Zukunft);
+  `KundenAnsicht praesentation` — keine zweite Filterlogik (Wächter tests/fulfillment-kundenreif.test.ts). Fall-Ops nehmen optional `am` (nachtragen, nie Zukunft);
   `Fall.startAm` (gewählter Starttag) nur über `fallStartTag`. Interne Marken nur als Zeichen mit Tooltip (`BausteinMarken`). Ein Sammel-Teilprozess
   („Weitere Bausteine“ bzw. gleichnamig mit der Phase) ist im Ablauf keine eigene Gruppe (`istSammelTeil`).
 

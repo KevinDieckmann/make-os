@@ -33,7 +33,8 @@ import {
 } from './link';
 import { formulareDesFalls, formularProzent, formularStandVon, formulareProzent, abschnitteVon, antwortenAnwenden, antwortenCsv, fnv, formularSchluessel } from './formular';
 import { anfrageAnlegen, letzterPuls, offeneAnfrage, pulsAnnehmen, pulsHand, pulsListe } from './puls';
-import { kundenSicht, kundeTauglich, kundeHinweis, type KundenSicht } from './sicht';
+import { kundenSicht, kundeTauglich, kundeHinweis, type KundenAnbieter, type KundenSicht } from './sicht';
+import { anredeAus, type KundenAnrede } from './bild';
 import { reportZusatz } from './report-zusatz';
 import { kundenGesperrt } from '../prozesse/bausteine';
 import { playbookBaustein } from '../prozesse/onboarding';
@@ -43,7 +44,7 @@ import { kundeTypErkennen, ohneMetadaten, uploadFrei, UPLOAD_GRENZEN, type Kunde
 import { aktiveInhalte, AKTIV_TEXT } from '@/lib/dateien/aktive-inhalte';
 import { neueLinkKennung, neuesToken, tokenHash, neuePulsAnfrageKennung, neuePulsKennung, neueUnterlageKennung } from './token';
 import type {
-  Fall, FormularStand, FristenKontext, KundeAuskunft, KundeDatei, KundeKurz, KundenLink, MorgenlaufTeil, Puls, PulsAnfrage, ReportZusatz, Unterlage, VorlagenDatei,
+  Fall, FormularStand, Freigabepunkt, FristenKontext, KundeAuskunft, KundeDatei, KundeKurz, KundenLink, MorgenlaufTeil, Puls, PulsAnfrage, ReportZusatz, Unterlage, VorlagenDatei,
 } from '../typen';
 
 // ── Schalter, Mandat, Fall ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -76,13 +77,100 @@ function paketName(m: Mandat, crm: Pick<CrmBestand, 'leistungen'>, fall: Fall | 
   return l?.name ?? (fall ? v.prozesse.find(p => p.id === fall.vorlageId)?.titel : undefined);
 }
 
-/** Der Datenschutzhinweis mit Verantwortlichem (Einrichtung) und wirksamen Fristen. */
-async function hinweisLaden(): Promise<ReturnType<typeof kundeHinweis>> {
+/** Der Datenschutzhinweis mit Verantwortlichem (Einrichtung) und wirksamen Fristen — in der Anrede der Seite. */
+async function hinweisLaden(anrede?: KundenAnrede): Promise<ReturnType<typeof kundeHinweis>> {
   const { datenschutzOeffentlichLaden } = await import('@/lib/datenschutz/einrichtung-server');
   const { fristenWirksam, LOESCHFRISTEN_SPEICHER } = await import('@/lib/crm/loeschfristen');
   const [ds, b] = await Promise.all([datenschutzOeffentlichLaden().catch(() => ({ verantwortlich: null, seite: null })), loadJson<{ fristen?: Record<string, number> }>(LOESCHFRISTEN_SPEICHER).catch(() => null)]);
   const f = fristenWirksam(b?.fristen as never);
-  return kundeHinweis({ verantwortlich: ds.verantwortlich, seite: ds.seite, mandatsdatenMonate: f['fulfillment-mandatsdaten'], unterlagenTage: f['fulfillment-unterlagen'] });
+  return kundeHinweis({ verantwortlich: ds.verantwortlich, seite: ds.seite, mandatsdatenMonate: f['fulfillment-mandatsdaten'], unterlagenTage: f['fulfillment-unterlagen'], ...(anrede ? { anrede } : {}) });
+}
+
+// ── Umfeld der Kunden-Wege (12.10., Fulfillment extern): Anrede, Anbieter, Ansprechperson, Abstimmungspunkte, Termin-Tage ─────────────────────────
+
+/** Größtes Logo, das die Kunden-Seite als Bild-Daten mitnimmt (sonst ohne Logo — die Seite lädt nichts von außen). */
+export const LOGO_MAX_BYTES = 300 * 1024;
+/** Ein Web-Auftritt nur als https-Adresse (ohne Schema: https:// davor) — sonst keiner. */
+const webAdresse = (v: unknown): string | undefined => {
+  const t = typeof v === 'string' ? v.trim() : '';
+  if (!t || /\s/.test(t)) return undefined;
+  const u = /^https:\/\//i.test(t) ? t : /^http:\/\//i.test(t) ? undefined : `https://${t}`;
+  return u && /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}(\/[^\s"<>]*)?$/i.test(u) ? u.slice(0, 200) : undefined;
+};
+
+/**
+ * Der Anbieter eines Mandats aus den Daten der Instanz (Bestand `gesellschaften--<haushalt>`, derselbe wie Register und Absender — nie fest im Code):
+ * Firmierung bzw. Name, Logo (nur PNG/JPG aus der Ablage, ≤ 300 KB, als Bild-Daten) und der Kontaktweg der GESELLSCHAFT (Mail, Telefon, Web).
+ */
+export async function anbieterFuer(h: string, gesellschaft: string): Promise<KundenAnbieter | undefined> {
+  try {
+    const [{ gesellschaftenName, mitVorgaben }, { istGesellschaft }] = await Promise.all([import('@/lib/crm/gesellschaften'), import('@/lib/crm/angebote')]);
+    const d = await loadJson<{ gesellschaften?: Record<string, unknown>[] }>(gesellschaftenName(h));
+    const roh = (d?.gesellschaften ?? []).find(g => g && g.id === gesellschaft) ?? null;
+    const zeile = (v: unknown, n: number) => (typeof v === 'string' && v.trim() ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, n) : undefined);
+    const name = zeile(roh?.firmierung, 160) ?? zeile(roh?.name, 160) ?? (istGesellschaft(gesellschaft) ? mitVorgaben({ id: gesellschaft }).name : undefined);
+    if (!name) return undefined;
+    let logo: string | undefined;
+    const logoId = zeile(roh?.logoDateiId, 80);
+    if (logoId) {
+      const { lesen } = await import('@/lib/dateien/ablage');
+      const x = await lesen(h, logoId).catch(() => null);
+      const typ = x?.eintrag.datei?.typ;
+      if (x && (typ === 'image/png' || typ === 'image/jpeg') && x.bytes.length <= LOGO_MAX_BYTES) logo = `data:${typ};base64,${x.bytes.toString('base64')}`;
+    }
+    const email = zeile(roh?.email, 160);
+    const telefon = zeile(roh?.telefon, 40);
+    const web = webAdresse(roh?.web);
+    return { name, ...(logo ? { logo } : {}), ...(email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? { email } : {}), ...(telefon && /^[+0-9 ()/-]{5,40}$/.test(telefon) ? { telefon } : {}), ...(web ? { web } : {}) };
+  } catch { return undefined; }
+}
+
+/**
+ * Die Ansprache für Mails an den Kunden (intern: Puls-Mail): die erste Ansprechperson des Mandats, die verarbeitet werden darf (Art. 18: eingeschränkte
+ * zählen nicht) — Du/Sie aus ihrer Akte (ohne Angabe Sie), Vor- und Nachname. Nur Server, nie an die öffentliche Seite (dort nur `anredeFuer`).
+ */
+export async function anspracheFuer(m: Pick<Mandat, 'kontaktIds'>): Promise<{ anrede: 'Du' | 'Sie'; vorname?: string; nachname?: string }> {
+  try {
+    const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
+    const kontakte = await kontakteFuerVerarbeitung();
+    const k = (m.kontaktIds ?? []).map(id => kontakte.find(x => x.id === id)).find(x => !!x);
+    return { anrede: anredeAus(k?.anrede) === 'du' ? 'Du' : 'Sie', ...(k?.vorname ? { vorname: k.vorname } : {}), ...(k?.nachname ? { nachname: k.nachname } : {}) };
+  } catch { return { anrede: 'Sie' }; }
+}
+/** Du oder Sie (für die Kunden-Seite): dieselbe Ansprechperson wie `anspracheFuer` — ohne Angabe Sie. Der Name geht nie an die Seite. */
+export async function anredeFuer(m: Pick<Mandat, 'kontaktIds'>): Promise<KundenAnrede> {
+  return (await anspracheFuer(m)).anrede === 'Du' ? 'du' : 'sie';
+}
+
+/** Anzeigename der zuständigen Person unseres Teams (aus ihrem Konto, sonst aus der Team-Liste) — „beide“/unbekannt: keiner. */
+export async function ansprechpersonFuer(h: string, m: Pick<Mandat, 'zustaendig'>): Promise<string | undefined> {
+  try {
+    const { BEIDE, TEAM } = await import('@/lib/crm/team-liste');
+    const { zustaendig } = await import('@/lib/crm/team');
+    const z = zustaendig(m.zustaendig, 'sales');
+    if (!z || z === BEIDE) return undefined;
+    const { kontenDesHaushalts } = await import('@/lib/make-one/team-speicher');
+    const name = (await kontenDesHaushalts(h)).find(k => k.speicher === z)?.name ?? TEAM.find(t => t.id === z)?.name;
+    return name?.trim() ? name.trim().slice(0, 80) : undefined;
+  } catch { return undefined; }
+}
+
+/** Tage der Termine mit Bezug zum Mandat (`kalender-bezug`, nur Kennung + Tag — keine Titel, kein Kalender). */
+export async function terminTageFuer(mandatId: string): Promise<{ uid: string; tag: string }[]> {
+  try {
+    const [{ ladeBezuege }, { uidVonSchluessel }] = await Promise.all([import('@/lib/kalender/bezug-server'), import('@/lib/kalender/bezug')]);
+    const b = await ladeBezuege();
+    return Object.entries(b.bezuege).filter(([, x]) => x.mandatId === mandatId && x.tag).map(([k, x]) => ({ uid: uidVonSchluessel(k), tag: x.tag! }));
+  } catch { return []; }
+}
+
+export interface KundenUmfeld { anrede: KundenAnrede; anbieter?: KundenAnbieter; ansprechperson?: string; freigaben: Freigabepunkt[]; terminTage: { uid: string; tag: string }[] }
+/** Alles, was Seite, Report und Präsentation über den Fall hinaus brauchen — jeder Teil fällt bei einem Lesefehler still weg. */
+export async function kundenUmfeld(m: Mandat, fall: Pick<Fall, 'vorlageId'> | null, v: Pick<VorlagenDatei, 'prozesse'>, h?: string): Promise<KundenUmfeld> {
+  const haus = h ?? await fulfillmentHaushalt();
+  const [anrede, anbieter, ansprechperson, terminTage] = await Promise.all([anredeFuer(m), anbieterFuer(haus, m.gesellschaft), ansprechpersonFuer(haus, m), terminTageFuer(m.id)]);
+  const freigaben = fall ? [...(v.prozesse.find(p => p.id === fall.vorlageId)?.freigaben ?? [])] : [];
+  return { anrede, ...(anbieter ? { anbieter } : {}), ...(ansprechperson ? { ansprechperson } : {}), freigaben, terminTage };
 }
 
 /** Wer etwas zu einem Mandat erfährt: die zuständige Team-Person, sonst das ganze Team (wie die Leistungstreppe; nie ein fester Name). */
@@ -104,10 +192,12 @@ export async function sichtFuer(e: { mandat: Mandat; modus: 'voll' | 'puls'; lin
   const fall = e.modus === 'voll' ? await fallVon(e.mandat.id) : null;
   const rechte = e.link?.rechte ?? { formular: true, upload: true, puls: true };
   const frei = e.link ? uploadFrei(unterlagenDesLinks(e.kunde, e.link.id)).dateien : UPLOAD_GRENZEN.dateienJeLink;
+  const u = await kundenUmfeld(e.mandat, fall, e.vorlagen);
   return kundenSicht({
     modus: e.modus, heute: e.heute, mandat: e.mandat, paket: paketName(e.mandat, e.crm, fall, e.vorlagen), fall, bausteine: e.vorlagen.bausteine, marken: e.vorlagen.marken, rituale: e.vorlagen.rituale,
-    kunde: e.kunde, rechte, standVon, datenschutz: await hinweisLaden(), uploadFrei: frei,
+    kunde: e.kunde, rechte, standVon, datenschutz: await hinweisLaden(u.anrede), uploadFrei: frei,
     ...(e.anfrage ? { pulsOffen: !e.anfrage.beantwortetAm && e.anfrage.offenBis >= e.heute } : {}),
+    anrede: u.anrede, ...(u.anbieter ? { anbieter: u.anbieter } : {}), ...(u.ansprechperson ? { ansprechperson: u.ansprechperson } : {}), freigaben: u.freigaben, terminTage: u.terminTage,
   });
 }
 
@@ -133,6 +223,8 @@ export interface KundeStand {
   link: LinkOeffentlich | null; verlauf: LinkOeffentlich[]; formulare: InternFormular[];
   puls: { liste: Puls[]; offen: { id: string; offenBis: string } | null; schwelle: number; health: number | null };
   unterlagen: Unterlage[]; upload: { dateien: number; bytes: number } | null; kurz: KundeKurz;
+  /** Ansprache der Ansprechperson (Du/Sie, Vor- und Nachname) — für den Text der Puls-Mail (seit 12.10.). */
+  ansprache: { anrede: 'Du' | 'Sie'; vorname?: string; nachname?: string };
 }
 
 function internFormulare(fall: Fall | null, v: Pick<VorlagenDatei, 'bausteine' | 'marken'>, kunde: KundeDatei, mandatId: string): InternFormular[] {
@@ -180,7 +272,7 @@ export async function kundeStand(mandatId: string, heute = localDay()): Promise<
     puls: { liste: pulsListe(kunde, m.id).slice(0, 26), offen: offen ? { id: offen.id, offenBis: offen.offenBis } : null, schwelle: vorlagen.einstellungen.pulsSchwelle, health: m.health?.stimmung ?? null },
     unterlagen: kunde.unterlagen.filter(u => u.mandatId === m.id).sort((a, b) => (a.am < b.am ? 1 : -1)),
     upload: akt ? uploadFrei(unterlagenDesLinks(kunde, akt.id)) : null,
-    kurz: kurzAus(kunde, m.id, schalter, fall, vorlagen, heute, ende),
+    kurz: kurzAus(kunde, m.id, schalter, fall, vorlagen, heute, ende), ansprache: await anspracheFuer(m),
   };
 }
 
@@ -559,7 +651,8 @@ export async function reportZusatzFuer(mandatId: string, heute: string): Promise
     const m = businessMandat(crm, mandatId);
     if (!m) return null;
     const link = schalterStand(vorlagen.einstellungen, umgebungAn()).an ? aktiverLink(kunde, m.id, heute, mandatsEnde(m)) : null;
-    return reportZusatz(fall, m, kunde, heute, !!link?.rechte.puls, kundenGesperrt(vorlagen.bausteine, vorlagen));
+    const u = await kundenUmfeld(m, fall, vorlagen, h);
+    return reportZusatz(fall, m, kunde, heute, !!link?.rechte.puls, kundenGesperrt(vorlagen.bausteine, vorlagen), { anrede: u.anrede, freigaben: u.freigaben, rituale: vorlagen.rituale, terminTage: u.terminTage });
   } catch (e) {
     console.error('[fulfillment] Report-Zusatz:', e instanceof Error ? e.message.slice(0, 160) : e);
     return null;

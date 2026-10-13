@@ -191,20 +191,24 @@ describe('Öffentlicher Weg: dieselbe 404, Positivliste, Link A ↛ Mandat B', (
     expect(r.r.headers.get('cache-control')).toBe('no-store');
     expect(r.r.headers.get('x-robots-tag')).toContain('noindex');
     expect(Object.keys(r.d.sicht).every(k => (SICHT_SCHLUESSEL as readonly string[]).includes(k))).toBe(true);
-    const text = JSON.stringify(r.d);
-    for (const geheim of ['GEHEIM-NOTIZ', 'INTERN-ENTSCHEIDUNG', 'INTERNER-SCHRITT', 'INTERN-MITSCHRIFT', 'INTERN-AGENDA', 'INTERN-OFFEN', 'INTERN-MANDAT-NOTIZ', '98765', 'stimmung', 'skeptiker', 'kritisch', 'uid-geheim', 'fb-playbook', 'fb-intern', 'Internes Workbook', 'tokenHash', 'pia', 'olaf', 'c-erika', 'm-b']) {
+    // Die Ansprechperson (Konto „olaf“, Anzeigename) steht seit 12.10. bewusst in der Sicht (Entscheidung 12.10.: „keine Personennamen außer Ansprechpartnern“) — nur dort.
+    expect(r.d.sicht.ansprechperson).toBe('olaf Probe');
+    const text = JSON.stringify({ ...r.d, sicht: { ...r.d.sicht, ansprechperson: undefined } });
+    for (const geheim of ['GEHEIM-NOTIZ', 'INTERN-ENTSCHEIDUNG', 'INTERNER-SCHRITT', 'INTERN-MITSCHRIFT', 'INTERN-AGENDA', 'INTERN-OFFEN', 'INTERN-MANDAT-NOTIZ', '98765', '"stimmung"', 'skeptiker', 'kritisch', 'uid-geheim', 'fb-playbook', 'fb-intern', 'Internes Workbook', 'tokenHash', 'pia', 'olaf', 'c-erika', 'm-b']) {
       expect(text, geheim).not.toContain(geheim);
     }
     const s = r.d.sicht;
     expect(s.firma).toBe('Beispiel m-a GmbH');
     expect(s.paket).toBe('Vertriebsleitung auf Zeit');
-    expect(s.zeitstrahl).toEqual([{ titel: 'Onboarding', stand: 'erledigt' }, { titel: 'Analyse', stand: 'aktuell' }, { titel: 'Diagnose', stand: 'kommt' }]);
+    expect(s.zeitstrahl).toEqual([{ titel: 'Onboarding', stand: 'erledigt', anteil: 1 }, { titel: 'Analyse', stand: 'aktuell', anteil: 0 }, { titel: 'Diagnose', stand: 'kommt' }]);
     expect(s.wartet.map((w: J) => w.titel)).toEqual(['Preisliste freigeben']);
     expect(s.entscheidungen.map((e: J) => e.titel)).toEqual(['Zielgruppe Maschinenbau']);
     expect(s.rituale).toEqual([{ titel: 'Wochen-Check', rhythmus: 'wöchentlich' }]);
     expect(s.wertKonto[0]).toMatchObject({ name: 'Neue Termine je Monat', vorher: '4', jetzt: '7', ziel: '12' });
     expect(s.formulare.map((f: J) => f.titel)).toEqual(['Kunden-Playbook']);
-    expect(s.upload).toEqual({ erlaubt: true, eingegangen: 0, frei: 20 });
+    expect(s.upload).toEqual({ erlaubt: true, eingegangen: 0, frei: 20, geprueft: 0, offen: 0 });
+    expect(s.anbieter?.name).toBeTruthy();
+    expect(s.lage?.saetze).toHaveLength(3);
     expect(JSON.stringify(await db.loadJson(`fulfillment-kunde--${H}`))).toBe(vorher);
     const v = await vorschau.GET(new Request('http://test/api/fulfillment/kunde/vorschau?m=m-a', { headers: kopf('olaf') })).then(antw);
     expect(v.d.sicht).toEqual(r.d.sicht);
@@ -287,7 +291,7 @@ describe('Upload über den Link', () => {
     expect(dl.headers.get('content-security-policy')).toContain('sandbox');
     // Die Kunden-Seite zählt nur — keine Liste
     const s = (await pGET(id, t)).d.sicht;
-    expect(s.upload).toEqual({ erlaubt: true, eingegangen: 1, frei: 19 });
+    expect(s.upload).toEqual({ erlaubt: true, eingegangen: 1, frei: 19, geprueft: 1, offen: 0 });
     expect(JSON.stringify(s)).not.toContain('Lager');
   });
 

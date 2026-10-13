@@ -13,12 +13,19 @@ import type { KundenSicht } from '@/lib/fulfillment/kunde/sicht';
 
 /** Die Vorlage (erfunden, neutral) — dieselben Schlüssel wie eine echte Sicht. */
 const VORLAGE: KundenSicht = {
-  modus: 'voll', firma: 'Beispiel Werkzeugbau', mandat: 'Vertrieb neu aufstellen', paket: 'Vertriebsleitung auf Zeit', stand: '—',
-  zeitstrahl: [{ titel: 'Vorlauf & Onboarding', stand: 'erledigt' }, { titel: 'Analyse', stand: 'aktuell' }, { titel: 'Diagnose', stand: 'kommt' }, { titel: 'Aufbau', stand: 'kommt' }],
-  erledigt: ['Kick-off'], naechstes: ['Wettbewerb sichten', 'Diagnose vorstellen'], wartet: [{ titel: 'Preisliste freigeben' }],
-  wertKonto: [{ name: 'Neue Termine je Monat', vorher: '4', jetzt: '7', ziel: '12' }], rituale: [{ titel: 'Wochen-Check', rhythmus: 'wöchentlich' }],
+  modus: 'voll', anrede: 'du', anbieter: { name: 'Eure Gesellschaft' }, ansprechperson: 'Eure Ansprechperson',
+  firma: 'Beispiel Werkzeugbau', mandat: 'Vertrieb neu aufstellen', paket: 'Vertriebsleitung auf Zeit', stand: '—', fortschritt: 34,
+  lage: { ampel: 'gelb', titel: 'Wir warten auf euren Input', saetze: ['Wir sind in Phase 2 von 4 („Analyse“) — insgesamt sind 34 % des Weges geschafft.', 'In den letzten zwei Wochen haben wir 3 Schritte abgeschlossen.', 'Von euch brauchen wir eine Sache — sie wartet seit 9 Tagen.'] },
+  zeitstrahl: [
+    { titel: 'Vorlauf & Onboarding', stand: 'erledigt', anteil: 1, abstimmung: { titel: 'Rahmen & Zugänge', erledigt: true } },
+    { titel: 'Analyse', stand: 'aktuell', anteil: 0.5 }, { titel: 'Diagnose', stand: 'kommt', anteil: 0, abstimmung: { titel: 'Diagnose-Abnahme', erledigt: false } }, { titel: 'Aufbau', stand: 'kommt', anteil: 0 },
+  ],
+  erledigt: ['Kick-off', 'Zugänge eingerichtet'], naechstes: ['Wettbewerb sichten', 'Diagnose vorstellen'], wartet: [{ titel: 'Preisliste freigeben', seit: '—', frist: '—' }],
+  wertKonto: [{ name: 'Neue Termine je Monat', vorher: '4', jetzt: '7', ziel: '12', anteil: 38 }],
+  quickWins: [{ text: 'Angebotsvorlage vereinheitlicht', erledigt: true, am: '—' }, { text: 'Nachfass-Rhythmus eingeführt', erledigt: false, bis: '—' }],
+  rituale: [{ titel: 'Wochen-Check', rhythmus: 'wöchentlich' }],
   entscheidungen: [{ titel: 'Zielgruppe zuerst Maschinenbau', am: '—', status: 'entschieden' }], formulare: [],
-  upload: { erlaubt: true, eingegangen: 1, frei: 19 }, puls: { offen: false },
+  upload: { erlaubt: true, eingegangen: 1, frei: 19, geprueft: 1, offen: 0 }, puls: { offen: false },
   datenschutz: { verantwortlich: 'aus der Einrichtung (Einstellungen › Datenschutz)', fassung: '—', absaetze: ['Der Hinweis nach Art. 13 DSGVO steht hier — mit Verantwortlichem und Speicherfristen der Instanz.'] },
 };
 
@@ -43,10 +50,10 @@ export function KundenAnsichtVorschau({ mandatId }: { mandatId?: string }) {
       {!mandatId && (
         <Karte flach>
           <Ueberschrift>Kunden-Ansicht — Vorlage</Ueberschrift>
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>So ist die Seite eines Kunden aufgebaut (Beispielwerte, erfunden). Nie zu sehen: Stakeholder, Haltungen, Notizen, interne Schritte, Health, Honorar, Dossier, Personenteil, andere Mandate, die Liste der Dateien und Namen eures Teams.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>So ist die Seite eines Kunden aufgebaut (Beispielwerte, erfunden). Nie zu sehen: Stakeholder, Haltungen, Notizen, interne Schritte, Health, Honorar, Dossier, Personenteil, andere Mandate, die Liste der Dateien und Namen eures Teams (außer dem Namen der Ansprechperson).</div>
         </Karte>
       )}
-      <div style={{ maxWidth: 720 }}><KundenAnsicht sicht={sicht} vorschau /></div>
+      <div style={{ maxWidth: 1080 }}><KundenAnsicht sicht={sicht} vorschau /></div>
     </div>
   );
 }

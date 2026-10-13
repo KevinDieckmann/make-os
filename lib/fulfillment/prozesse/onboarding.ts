@@ -128,33 +128,45 @@ export function fallWirksam(fall: Fall, a: OnboardingAbleitung): Fall {
 
 // ── Willkommensmail ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Neutrales Gerüst (nur Struktur, kein Instanz-Inhalt) — wird erst per Klick „Vorlage aus Gerüst anlegen“ ein Baustein der Bibliothek. */
+/**
+ * Neutrales Gerüst (nur Struktur, kein Instanz-Inhalt) — wird erst per Klick „Vorlage aus Gerüst anlegen“ ein Baustein der Bibliothek.
+ * Neu gefasst 12.10. (Fulfillment extern: „sichtbarer Erfolg, Takt, Transparenz“): kurz, warm, in drei klaren Schritten — Kick-off, Projektseite
+ * mit Playbook (der Absatz mit dem Link fällt ohne Link weg), was als Nächstes passiert. Keine Namen, keine Firma, keine Preise im Gerüst.
+ */
 export const WILLKOMMEN_GERUEST: Record<'Du' | 'Sie', string> = {
   Sie: [
-    'Betreff: Willkommen — unsere nächsten Schritte',
+    'Betreff: Willkommen — so starten wir gemeinsam',
     '',
     '{{anrede}},',
     '',
-    'vielen Dank für Ihr Vertrauen. Damit wir gut starten, schlagen wir für das Kick-off diese Termine vor:',
+    'vielen Dank für Ihr Vertrauen — wir freuen uns sehr auf die Zusammenarbeit. Damit Sie wissen, was jetzt passiert:',
+    '',
+    'Zuerst das Kick-off: Wir lernen Ihr Team kennen und legen gemeinsam fest, woran wir den Erfolg messen. Passt Ihnen einer dieser Termine?',
     '{{kickoff_vorschlaege}}',
     '',
-    'Vorab bitten wir Sie, das Playbook auszufüllen:',
+    'Ihre Projektseite: Dort sehen Sie jederzeit, wo wir stehen, was als Nächstes kommt und was wir von Ihnen brauchen. Vorab beantworten Sie dort ein paar Fragen zu Ihrem Unternehmen (Playbook) — in Ihrem Tempo, Zwischenspeichern geht jederzeit:',
     '{{playbook_link}}',
     '',
-    'Wir freuen uns auf die Zusammenarbeit.',
+    'Danach: Erste Erfolge planen wir für die ersten 30 Tage, und alle zwei Wochen erhalten Sie einen kurzen Bericht zum Stand.',
+    '',
+    'Bei Fragen antworten Sie einfach auf diese Mail. Wir freuen uns auf den Start!',
   ].join('\n'),
   Du: [
-    'Betreff: Willkommen — unsere nächsten Schritte',
+    'Betreff: Willkommen — so starten wir gemeinsam',
     '',
     '{{anrede}},',
     '',
-    'danke für dein Vertrauen. Damit wir gut starten, schlage ich für das Kick-off diese Termine vor:',
+    'danke für dein Vertrauen — ich freue mich sehr auf die Zusammenarbeit. Damit du weißt, was jetzt passiert:',
+    '',
+    'Zuerst das Kick-off: Wir lernen dein Team kennen und legen gemeinsam fest, woran wir den Erfolg messen. Passt dir einer dieser Termine?',
     '{{kickoff_vorschlaege}}',
     '',
-    'Vorab bitte ich dich, das Playbook auszufüllen:',
+    'Eure Projektseite: Dort siehst du jederzeit, wo wir stehen, was als Nächstes kommt und was wir von euch brauchen. Vorab beantwortest du dort ein paar Fragen zu eurem Unternehmen (Playbook) — in deinem Tempo, Zwischenspeichern geht jederzeit:',
     '{{playbook_link}}',
     '',
-    'Ich freue mich auf die Zusammenarbeit.',
+    'Danach: Erste Erfolge planen wir für die ersten 30 Tage, und alle zwei Wochen bekommst du einen kurzen Bericht zum Stand.',
+    '',
+    'Bei Fragen antworte einfach auf diese Mail. Ich freue mich auf den Start!',
   ].join('\n'),
 };
 export const TAG_WILLKOMMEN = 'willkommen';
