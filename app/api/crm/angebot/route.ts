@@ -14,12 +14,17 @@
 // GET liefert seit 04.10. `papierkorb` getrennt (Entwürfe im Papierkorb) — `angebote` enthält sie nicht mehr.
 // Zugang: Haushalt des Inhabers (Default-Deny); Stellen braucht dazu eine benannte Person mit Haushalt
 // (Dateiablage und Gesellschaften liegen je Haushalt). Nichts wird versendet — das Mail-Programm öffnet der Browser.
+// Rolle „nur Business“ (13.10., Kevin: „Nur lesen + Entwürfe“; Regel lib/crm/nur-business.ts): liest nur Angebote einer Business-Gesellschaft
+// (GET mit `nurEntwuerfe: true`, Absender nur Business), darf Entwürfe speichern und Entwürfe ablegen/löschen — stellen, annehmen, ablehnen,
+// version, gesendet → 403 (NUR_ENTWURF). Haushalt über `businessHaushaltVon` (sonst bekäme sie keine Absender-Vorgaben).
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { businessHaushaltVon } from '@/lib/zugang/konto-sicht-server';
+import { angebotAktionNurBusiness, angebotFuerNurBusiness, gesellschaftenFuerNurBusiness } from '@/lib/crm/nur-business';
+import { imBusiness } from '@/lib/crm/treppe';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeCrmMitPapierkorb } from '@/lib/crm/speicher';
 import { absenderFuerAnzeige } from '@/lib/crm/gesellschaften';
@@ -44,11 +49,19 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(GESPERRT, { status: 403 });
   try {
     await ablaufNachziehen();
-    const h = await haushaltVon(req);
+    const h = await businessHaushaltVon(req);
+    const nurBusiness = !!h?.nurBusiness;
     const crm = await ladeCrmMitPapierkorb();
-    const alle = crm.angebote ?? [];
+    // Rolle „nur Business“ (13.10.): nur Angebote und Absender einer Business-Gesellschaft — serverseitig, nie nur ausgeblendet.
+    const alle = (crm.angebote ?? []).filter(a => !nurBusiness || angebotFuerNurBusiness(a));
     // Absender mit `luecken` (08.10., Sofort-Paket 3.1): sonst erschien „Absender … fehlt“ nie und erst „Senden“ scheiterte. Nur Absender-Felder — nie Cap-Table/Verträge.
-    return NextResponse.json({ ok: true, angebote: alle.filter(a => !a.geloeschtAm).map(mitStand), papierkorb: alle.filter(a => a.geloeschtAm).map(mitStand), gesellschaften: (await gesellschaftenLaden(h?.haushalt)).map(absenderFuerAnzeige), vorgabe: await absenderVorgabe(h?.haushalt), haushalt: !!h }, { headers: { 'Cache-Control': 'no-store' } });
+    const absender = (await gesellschaftenLaden(h?.haushalt)).map(absenderFuerAnzeige);
+    const vorgabe = await absenderVorgabe(h?.haushalt);
+    return NextResponse.json({
+      ok: true, angebote: alle.filter(a => !a.geloeschtAm).map(mitStand), papierkorb: alle.filter(a => a.geloeschtAm).map(mitStand),
+      gesellschaften: nurBusiness ? gesellschaftenFuerNurBusiness(absender) : absender,
+      vorgabe: nurBusiness && vorgabe && !imBusiness({ gesellschaft: vorgabe }) ? null : vorgabe, haushalt: !!h, ...(nurBusiness ? { nurEntwuerfe: true } : {}),
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return ausFehler(e); }
 }
 
@@ -63,18 +76,23 @@ export async function POST(req: Request) {
   const person = z.person;
   const wer = werAus(req);
   const id = typeof b.id === 'string' ? b.id : '';
+  const h = await businessHaushaltVon(req);
+  // Rolle „nur Business“ (13.10.): nur Entwürfe einer Business-Gesellschaft — alles andere 403, BEVOR etwas geschrieben wird.
+  if (h?.nurBusiness) {
+    const alt = id ? (await ladeCrmMitPapierkorb()).angebote?.find(a => a.id === id) ?? null : null;
+    const nein = angebotAktionNurBusiness(b.aktion, { alt, felder: b.felder && typeof b.felder === 'object' && !Array.isArray(b.felder) ? b.felder as Record<string, unknown> : null });
+    if (nein) return fehler(nein, 403, { nurEntwuerfe: true });
+  }
   try {
     switch (b.aktion) {
       case 'speichern': {
         const felder = b.felder && typeof b.felder === 'object' && !Array.isArray(b.felder) ? b.felder as Record<string, unknown> : null;
         if (!felder) return fehler('felder fehlen.', 400);
-        const h = await haushaltVon(req);
         const a = await angebotSpeichern({ id: b.id, felder, stand: b.stand, person, haushalt: h?.haushalt, wer });
         return NextResponse.json({ ok: true, angebot: mitStand(a) });
       }
       case 'stellen': {
-        const h = await haushaltVon(req);
-        if (!h) return fehler('Stellen nur mit angemeldeter Person und Haushalt — PDF und Absender liegen je Haushalt.', 403);
+        if (!h || h.nurBusiness) return fehler('Stellen nur mit angemeldeter Person und Haushalt — PDF und Absender liegen je Haushalt.', 403);
         const r = await angebotStellen({ id, stand: b.stand, person: h.person, haushalt: h.haushalt, nachfassenAm: b.nachfassenAm, wer });
         return NextResponse.json({ ok: true, ...r });
       }
@@ -87,7 +105,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, angebot: mitStand(r.angebot), dealId: r.dealId, ...(r.dealFehler ? { hinweis: r.dealFehler } : {}) });
       }
       case 'version': {
-        const h = await haushaltVon(req);
         const a = await angebotVersion({ id, person, haushalt: h?.haushalt, wer });
         return NextResponse.json({ ok: true, angebot: mitStand(a) });
       }

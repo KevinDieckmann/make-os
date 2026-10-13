@@ -35,7 +35,7 @@ import {
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { absenderAus, empfaengerAus, angebotDokument } from '@/lib/crm/angebot-dokument';
-import { angebotPost, letzteGesellschaft, merkeGesellschaft, pdfLaden, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
+import { angebotPost, letzteGesellschaft, merkeGesellschaft, pdfLaden, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 import { Katalog, PositionZeile, freiePosition } from './Positionen';
 import { TerminVorschlag } from './TerminVorschlag';
 import { Vorschau, NUMMER_PLATZHALTER, type MailEntwurf } from './Vorschau';
@@ -262,7 +262,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   }
 
   if (ansicht === 'vorschau') {
-    return <Vorschau dok={dokEntwurf} logoUrl={logoUrl} mail={mail} setMail={setMail} ampel={ampel} luecken={luecken} absenderWeg={absenderWeg} nachfassen={nachfassen} setNachfassen={setNachfassen} onZurueck={() => setAnsicht('bearbeiten')} onSenden={senden} meldung={meldung} />;
+    return <Vorschau dok={dokEntwurf} logoUrl={logoUrl} mail={mail} setMail={setMail} ampel={ampel} luecken={luecken} absenderWeg={absenderWeg} nachfassen={nachfassen} setNachfassen={setNachfassen} onZurueck={() => setAnsicht('bearbeiten')} onSenden={senden} meldung={meldung} nurEntwurf={daten.nurEntwuerfe ? NUR_ENTWURF : null} />;
   }
 
   const statusText = { ruhig: 'noch nicht gespeichert', wartet: 'Änderung …', speichert: 'speichert …', gespeichert: 'Entwurf gespeichert', fehler: 'nicht gespeichert' }[status];
@@ -358,8 +358,11 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
           <Summe label="Gesamtwert" netto={s.gesamt.netto} brutto={s.gesamt.brutto} ku={ku} stark />
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {fehlt.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 180px', minWidth: 0 }}>fehlt: {fehlt.join(', ')}</span>}
-          <Knopf farbe={LEUCHT.gut} aus={fehlt.length > 0} onClick={zurVorschau}>Mail versenden ›</Knopf>
+          {daten.nurEntwuerfe
+            ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 180px', minWidth: 0 }}>{NUR_ENTWURF}</span>
+            : fehlt.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 180px', minWidth: 0 }}>fehlt: {fehlt.join(', ')}</span>}
+          {/* Rolle „nur Business“ (13.10.): nur die Vorschau — gestellt wird durch Inhaber oder volle Mitglieder (Server: 403). */}
+          <Knopf farbe={LEUCHT.gut} aus={!daten.nurEntwuerfe && fehlt.length > 0} onClick={zurVorschau}>{daten.nurEntwuerfe ? 'Vorschau ›' : 'Mail versenden ›'}</Knopf>
         </div>
       </Aktionsleiste>
     </div>

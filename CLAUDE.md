@@ -88,6 +88,7 @@ lokal, Route `/os`, Port 3001.
   `recht_lage` · `vertrag_checkliste` (Text Dritter gekapselt) · `recht_vorschlag` (nur Stapel) in `lib/agenten/recht-werkzeuge.ts`. Jede Wirkung erst nach
   Klick; geschrieben nur über die Schreibstellen von Schild, Register, Aufgaben, Ablage. Neues Agenten-Werkzeug nach V3 → `NEU_SEIT_V3` in
   `tests/werkzeug-vertraege.test.ts`. Wächter `tests/head-recht.test.ts`.
+- **Rolle „nur Business“ in der Markttraktion (13.10., Kevin: „Nur lesen + Entwürfe“):** Konto mit `finanzRecht: 'business'` liest Angebote/Unterlagen an Business-Bezügen und speichert Angebots-Entwürfe; stellen, annehmen, ablehnen, version, Gesellschaften verwalten, Firmen-Akte, Rechnungen → 403 — EINE Regel `lib/crm/nur-business.ts`, Haushalt über `businessHaushaltVon`, Wächter `tests/partner-rolle.test.ts`.
 - **Malin ist Gesundheits-Beauftragte** (Sport, Ernährung, Hyrox-Pro-Ziel) —
   Gesundheitsthemen laufen über sie.
 - **Kritisch pulsiert:** Priorisierung nach Eisenhower; kritische Aufgaben

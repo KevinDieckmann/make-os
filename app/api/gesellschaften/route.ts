@@ -17,12 +17,16 @@
 // Konto — alles andere (Testkunde, Partner/Teammitglied eines anderen Haushalts, Dienstweg ohne Person) 403, beim Lesen
 // wie beim Schreiben. Cap-Table und Verträge sind sensibel: die Antwort enthält nie etwas aus einem anderen Haushalt.
 // Speicher und Schreibstelle: lib/gesellschaften/server.ts (dieselbe wie /api/crm/gesellschaften).
+// Rolle „nur Business“ (13.10., Kevin: „Nur lesen + Entwürfe“; lib/crm/nur-business.ts): NUR `?wahl=1` (Kennung, Name, Status der Business-
+// Gesellschaften — für die Auswahl in Deals/Mandaten/Produkten); alles andere (Steckbrief, Cap-Table, Verträge, Suche, Schreiben) → 403.
 
 import { jsonBegrenzt, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { businessHaushaltVon } from '@/lib/zugang/konto-sicht-server';
+import { gesellschaftenFuerNurBusiness } from '@/lib/crm/nur-business';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
@@ -54,6 +58,11 @@ async function zugang(req: Request): Promise<{ person: string; haushalt: string 
   if (!(await imHaushaltDesInhabers(req))) return null;
   const h = await haushaltVon(req);
   return h ? { person: h.person, haushalt: h.haushalt } : null;
+}
+/** Nur für die Auswahl (`?wahl=1`): dazu die Rolle „nur Business“ im Haushalt der Inhaber (`nurBusiness: true` → nur Business-Gesellschaften). */
+async function auswahlZugang(req: Request): Promise<{ person: string; haushalt: string; nurBusiness: boolean } | null> {
+  if (!(await imHaushaltDesInhabers(req))) return null;
+  return businessHaushaltVon(req);
 }
 
 /** Für den Browser: IBAN maskiert, Stand, Lücken, Verweise (für die Rückfrage vor dem Löschen). */
@@ -89,15 +98,17 @@ async function personenImHaushalt(haushalt: string) {
 }
 
 export async function GET(req: Request) {
-  const z = await zugang(req);
+  const q = new URL(req.url).searchParams;
+  const wahl = q.get('wahl') === '1';
+  const z = wahl ? await auswahlZugang(req) : await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   leseZugriff(req, 'gesellschaften'); // Lese-Protokoll (05.10.)
-  const q = new URL(req.url).searchParams;
   const d = await ladeRegister(z.haushalt);
   const kopf = { headers: { 'Cache-Control': 'no-store' } };
 
-  if (q.get('wahl') === '1') {
-    return NextResponse.json({ ok: true, gesellschaften: alleGesellschaften(d).map(g => ({ id: g.id, name: anzeigeName(g), ...(g.status ? { status: g.status } : {}) })) }, kopf);
+  if (wahl) {
+    const l = alleGesellschaften(d).map(g => ({ id: g.id, name: anzeigeName(g), ...(g.status ? { status: g.status } : {}) }));
+    return NextResponse.json({ ok: true, gesellschaften: 'nurBusiness' in z && z.nurBusiness ? gesellschaftenFuerNurBusiness(l) : l }, kopf);
   }
   const suche = q.get('suche');
   if (suche === 'register') {

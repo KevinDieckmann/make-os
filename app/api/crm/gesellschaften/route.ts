@@ -7,12 +7,17 @@
 // Speicher NUR `gesellschaften--<haushalt>` (verschlüsselt wie jeder Bestand) — nie im Code. Seit 04.10. ist er das
 // Gesellschafts-Register (/os/unternehmen, /api/gesellschaften); hier nur die Absender der drei festen Gesellschaften.
 // Zugang: Haushalt des Inhabers UND benannte Person mit Haushalt (wie die Dateiablage).
+// Rolle „nur Business“ (13.10., Kevin: „Nur lesen + Entwürfe“; lib/crm/nur-business.ts): GET nur die Auswahlliste der Business-Gesellschaften
+// (Kennung, Name, Kürzel, Logo — kein Absender-Steckbrief, kein Stand), PATCH/POST/DELETE → 403 (Gesellschaften verwalten Inhaber und volle Mitglieder).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { businessHaushaltVon } from '@/lib/zugang/konto-sicht-server';
+import { gesellschaftenFuerNurBusiness, NUR_LESEN } from '@/lib/crm/nur-business';
+import { imBusiness } from '@/lib/crm/treppe';
+import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { loadJson } from '@/lib/store/local-db';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { absenderVorgabe, registerAendern, standVon as registerStand } from '@/lib/gesellschaften/server';
@@ -36,11 +41,21 @@ function zurAnzeige(g: Gesellschaft) {
   return { ...absenderFuerAnzeige(g), stand: registerStand(g as unknown as RegisterGesellschaft) };
 }
 
-async function zugang(req: Request): Promise<{ person: string; haushalt: string } | null> {
+async function zugang(req: Request): Promise<{ person: string; haushalt: string; nurBusiness: boolean } | null> {
   if (!(await imHaushaltDesInhabers(req))) return null;
-  const h = await haushaltVon(req);
-  return h ? { person: h.person, haushalt: h.haushalt } : null;
+  return businessHaushaltVon(req);
 }
+/** Schreiben (Absender ändern, Logo): nur Inhaber und volle Mitglieder — die Rolle „nur Business“ liest nur (403). */
+async function schreibZugang(req: Request): Promise<{ person: string; haushalt: string } | NextResponse> {
+  const z = await zugang(req);
+  if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  if (z.nurBusiness) return fehler(NUR_LESEN, 403);
+  return z;
+}
+/** Rolle „nur Business“: nur die Auswahlliste (Kennung, Name, Kürzel, Logo) der Business-Gesellschaften — nie der Absender-Steckbrief. */
+const auswahlFuerNurBusiness = (l: Gesellschaft[]) => gesellschaftenFuerNurBusiness(l).map(g => ({
+  id: g.id, name: g.firmierung ?? KERN_EINHEITEN.find(e => e.id === g.id)?.label ?? g.id, ...(g.kurz ? { kurz: g.kurz } : {}), ...(g.logoDateiId ? { logoDateiId: g.logoDateiId } : {}),
+}));
 
 async function liste(haushalt: string) {
   return alleGesellschaften(await loadJson<GesellschaftenDatei>(gesellschaftenName(haushalt))).map(zurAnzeige);
@@ -50,6 +65,11 @@ export async function GET(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   leseZugriff(req, 'gesellschaften'); // Lese-Protokoll (05.10.)
+  if (z.nurBusiness) {
+    const vorgabe = await absenderVorgabe(z.haushalt);
+    const roh = alleGesellschaften(await loadJson<GesellschaftenDatei>(gesellschaftenName(z.haushalt)));
+    return NextResponse.json({ ok: true, gesellschaften: auswahlFuerNurBusiness(roh), vorgabe: vorgabe && imBusiness({ gesellschaft: vorgabe }) ? vorgabe : null, nurLesen: true }, { headers: { 'Cache-Control': 'no-store' } });
+  }
   return NextResponse.json({ ok: true, gesellschaften: await liste(z.haushalt), vorgabe: await absenderVorgabe(z.haushalt) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
@@ -66,8 +86,8 @@ async function aendern(haushalt: string, person: string, id: Gesellschaft['id'],
 }
 
 export async function PATCH(req: Request) {
-  const z = await zugang(req);
-  if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const z = await schreibZugang(req);
+  if (z instanceof NextResponse) return z;
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
   let b: { id?: unknown; felder?: unknown; stand?: unknown };
@@ -83,8 +103,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const z = await zugang(req);
-  if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const z = await schreibZugang(req);
+  if (z instanceof NextResponse) return z;
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
   const art = req.headers.get('content-type') ?? '';
@@ -120,8 +140,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const z = await zugang(req);
-  if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  const z = await schreibZugang(req);
+  if (z instanceof NextResponse) return z;
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
   const q = new URL(req.url).searchParams;

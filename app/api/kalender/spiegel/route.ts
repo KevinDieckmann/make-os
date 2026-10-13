@@ -8,6 +8,8 @@
 //                                              gemeinsamen Kalender — die UID landet in der Familie.
 // Nachziehen (Datum/Absage) passiert nach jeder Änderung im Modul durch eine Person (lib/kalender/spiegel-server.ts).
 // Nur Haushalt des Inhabers; Familie nur, wenn es DESSEN Familie ist. Nie Teilnehmer, nie Einladungen.
+// Konto „nur Business“ (13.10., Rolle Partner): Event-Spiegel lesen ja; schreiben (anlegen, löschen) nur in Business-Kalender — dieselbe
+// Regel wie die Termin-Route (`kalenderNurBusiness`, lib/kalender/konto-bereich.ts → 403 vor dem Schreiben); Date/Gespräch (Familie) nie.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
@@ -19,6 +21,7 @@ import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { istDienst } from '@/lib/zugang/dienst';
+import { kalenderNurBusiness } from '@/lib/kalender/konto-bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,11 +34,12 @@ function fehler(e: unknown) {
 }
 
 export async function GET(req: Request) {
-  if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
+  const z = await kalenderZugang(req);
+  if (!z) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const q = new URL(req.url).searchParams;
   const id = q.get('id') ?? '';
   if (q.get('art') !== 'event' || !KENNUNG.test(id)) return NextResponse.json({ ok: false, fehler: 'art=event&id=… nötig.' }, { status: 400 });
-  try { return NextResponse.json({ ok: true, ...(await eventSpiegelLage(id)) }, { headers: { 'Cache-Control': 'no-store' } }); } catch (e) { return fehler(e); }
+  try { return NextResponse.json({ ok: true, ...(await eventSpiegelLage(id, { nurBusiness: await kalenderNurBusiness(z.person) })) }, { headers: { 'Cache-Control': 'no-store' } }); } catch (e) { return fehler(e); }
 }
 
 export async function POST(req: Request) {
@@ -47,13 +51,14 @@ export async function POST(req: Request) {
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const id = typeof b.id === 'string' ? b.id : '';
   if (!KENNUNG.test(id)) return NextResponse.json({ ok: false, fehler: 'id fehlt.' }, { status: 400 });
+  const recht = { nurBusiness: await kalenderNurBusiness(z.person) };
   try {
     // S1: Löschen eines Spiegel-Termins nur von Hand — nie über ZOE oder Skripte (Dienstweg → 403).
     if (b.art === 'event' && b.aktion === 'loeschen') {
       if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Löschen nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
-      return NextResponse.json({ ok: true, ...(await eventSpiegelLoeschen(id, werAus(req))) });
+      return NextResponse.json({ ok: true, ...(await eventSpiegelLoeschen(id, werAus(req), recht)) });
     }
-    if (b.art === 'event') return NextResponse.json({ ok: true, ...(await eventSpiegelAnlegen(id, z.person, werAus(req))) });
+    if (b.art === 'event') return NextResponse.json({ ok: true, ...(await eventSpiegelAnlegen(id, z.person, werAus(req), recht)) });
     if (b.art === 'date' || b.art === 'gespraech') {
       const h = await haushaltVon(req);
       if (!h || h.haushalt !== await haushaltDesInhabers()) return NextResponse.json({ ok: false, fehler: 'Nur für die Familie des Inhabers (sein Kalender).' }, { status: 403 });

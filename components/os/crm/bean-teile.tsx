@@ -38,11 +38,11 @@ function ladeAngebote(): Promise<AngebotHinweis[]> {
 /** Offene Angebote (nur Bezüge) — leer, solange nichts geladen ist oder die Ablage nicht zugänglich ist. */
 export function useOffeneAngebote(): AngebotHinweis[] {
   const [a, setA] = useState<AngebotHinweis[]>([]);
-  // Ein Konto „nur Business“ bekommt die Dateiablage nicht (403, sie liegt je Haushalt) — dann gar nicht erst fragen, statt auf jeder
-  // Markttraktion-Seite eine abgelehnte Anfrage zu erzeugen (Gesamtprüfung 12.10.); gerechnet wird wie bisher ohne Ablage.
+  // Erst fragen, wenn das Konto bekannt ist. Seit 13.10. (Rolle „nur Business“: „Nur lesen + Entwürfe“) bekommt auch ein Konto „nur Business“
+  // die Ablage — serverseitig nur Unterlagen an Business-Bezügen (lib/crm/nur-business.ts); vorher 403 (Gesamtprüfung 12.10.).
   const nurBusiness = useNurBusiness();
   useEffect(() => {
-    if (nurBusiness !== false) return;
+    if (nurBusiness === null) return;
     let an = true; void ladeAngebote().then(x => { if (an) setA(x); }); return () => { an = false; };
   }, [nurBusiness]);
   return a;

@@ -35,6 +35,7 @@ import { angeboteZu, angebotMandatWeg, ANGEBOT_STATUS_LABEL } from '@/lib/crm/an
 import { mandatAusDeal } from '../angebot/angebot-daten';
 import { useRouter } from 'next/navigation';
 import { entwurfAnlegen, type EntwurfNeu } from '../../rechnung/daten';
+import { useNurBusiness } from '../../useInhaber';
 
 export interface UmsatzReiterProps {
   k: Kontakt;
@@ -169,6 +170,8 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
   const [gruppe, setGruppe] = useState(false);
   const vorgabe = useRechnungsVorgabe();
   const router = useRouter();
+  /** Rolle „nur Business“ (13.10.): Unterlagen lesen und hochladen ja — ändern und löschen nicht (Server: 403). */
+  const nurLesen = useNurBusiness() === true;
   /**
    * Rechnung schreiben mit PDF (08.10.): legt den Entwurf an (vorbelegt aus Kontakt, Firma, Mandat bzw. dem angenommenen Angebot)
    * und öffnet den Editor unter Finanzen › Rechnungen & Zahlungen — dort wird gestellt (Nummer + PDF).
@@ -292,7 +295,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
           return (
             <ZeileKlein key={e.id} titel={e.titel || e.datei?.name || 'Vertrag'}
               unter={[VERTRAGSARTEN.find(a => a.id === e.vertrag?.vertragsart)?.label, e.vertrag?.von || e.vertrag?.bis ? `gültig ${e.vertrag?.von ? datum(e.vertrag.von) : '…'} – ${e.vertrag?.bis ? datum(e.vertrag.bis) : 'offen'}` : null, e.vertrag?.kuendigungsfrist ? `Kündigung ${e.vertrag.kuendigungsfrist}` : null, bezugText(e)].filter(Boolean).join(' · ')}
-              rechts={<>{abgelaufen ? <Chip farbe={C.inkLeise}>abgelaufen</Chip> : endetBald ? <Chip farbe={LEUCHT.achtung}>endet {datum(e.vertrag!.bis!, heute)}</Chip> : null}<DateiLink e={e} /><LoeschKnopf beleg={istBeleg(e)} onJa={() => void eintragLoeschen(e)} /></>} />
+              rechts={<>{abgelaufen ? <Chip farbe={C.inkLeise}>abgelaufen</Chip> : endetBald ? <Chip farbe={LEUCHT.achtung}>endet {datum(e.vertrag!.bis!, heute)}</Chip> : null}<DateiLink e={e} />{!nurLesen && <LoeschKnopf beleg={istBeleg(e)} onJa={() => void eintragLoeschen(e)} />}</>} />
           );
         })}
       </KachelKarte>
@@ -301,7 +304,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
         rechts={<Link href={angebotLink({ kontaktId: k.id, firmaId: bezug.firma?.id })} style={leiseLink}>+ Angebot</Link>}>
         <AngebotNeu bezugListe={bezugListe} bezugFelder={bezugFelder} heute={heute} onFertig={ablageLaden} setMeldung={setMeldung} />
         {!angebote.length ? <Leer>Noch kein Angebot — „+ Angebot“ oben rechts öffnet das Angebots-Tool.</Leer> : angebote.map(a => (
-          <AngebotZeileAnsicht key={a.schluessel} a={a} heute={heute} zuDeal={zuDeal} aendern={eintragAendern} loeschen={eintragLoeschen}
+          <AngebotZeileAnsicht key={a.schluessel} a={a} heute={heute} zuDeal={zuDeal} aendern={eintragAendern} loeschen={eintragLoeschen} nurLesen={nurLesen}
             rechnungAusAngebot={kein ? undefined : (angebotId: string) => rechnungSchreibenOeffnen({ quelle: 'angebot', angebotId })}
             mandatWeg={a.angebot && stand ? angebotMandatWeg(a.angebot, stand) : null}
             mandatAnlegen={async dealId => { const r = await mandatAusDeal(dealId); setMeldung(r.ok ? r.text ?? 'Mandat angelegt.' : r.fehler ?? 'Mandat nicht angelegt.'); if (r.ok) await api.laden(true); }}
@@ -513,7 +516,7 @@ function AngebotNeu({ bezugListe, bezugFelder, heute, onFertig, setMeldung }: { 
   );
 }
 
-function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung, rechnungAusAngebot, mandatWeg, mandatAnlegen }: { a: AngebotZeile; heute: string; zuDeal?: (id: string) => void; aendern: (id: string, felder: Record<string, unknown>) => Promise<void>; loeschen: (e: DateiEintrag) => Promise<void>; alsRechnung?: () => Promise<void>; /** Angebots-Tool (08.10.): angenommen → Rechnungsentwurf mit den Positionen. */ rechnungAusAngebot?: (angebotId: string) => Promise<void>;
+function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung, rechnungAusAngebot, mandatWeg, mandatAnlegen, nurLesen }: { a: AngebotZeile; /** Rolle „nur Business“: Status und Löschen nur lesen. */ nurLesen?: boolean; heute: string; zuDeal?: (id: string) => void; aendern: (id: string, felder: Record<string, unknown>) => Promise<void>; loeschen: (e: DateiEintrag) => Promise<void>; alsRechnung?: () => Promise<void>; /** Angebots-Tool (08.10.): angenommen → Rechnungsentwurf mit den Positionen. */ rechnungAusAngebot?: (angebotId: string) => Promise<void>;
   /** Angenommen → Mandat (Woche 2 · 3.10): „Mandat ›“ bzw. „Mandat anlegen ›“ (`angebotMandatWeg`). */ mandatWeg?: ReturnType<typeof angebotMandatWeg>; mandatAnlegen?: (dealId: string) => Promise<void> }) {
   const e = a.eintrag;
   // Aus dem Angebots-Tool (28.09.): Status des Tools, öffnen im Tool (dort annehmen/ablehnen/neue Version).
@@ -532,13 +535,13 @@ function AngebotZeileAnsicht({ a, heute, zuDeal, aendern, loeschen, alsRechnung,
       titel={<>{a.nummer ? `${a.nummer} · ` : ''}{a.titel}</>}
       unter={[a.datum ? datum(a.datum, heute) : null, a.betrag != null ? euro(a.betrag) : null, quelle].filter(Boolean).join(' · ')}
       rechts={<>
-        {e ? <Wahl<AngebotStatus> klein liste={ANGEBOT_STATUS} wert={a.status} label="Status" farbe={STATUS_FARBE[a.status]} onWahl={s => void aendern(e.id, { angebot: { ...(e.angebot ?? {}), status: s } })} />
+        {e && !nurLesen ? <Wahl<AngebotStatus> klein liste={ANGEBOT_STATUS} wert={a.status} label="Status" farbe={STATUS_FARBE[a.status]} onWahl={s => void aendern(e.id, { angebot: { ...(e.angebot ?? {}), status: s } })} />
           : <Chip farbe={STATUS_FARBE[a.status]}>{a.status}</Chip>}
         {a.quelle === 'deal' && a.dealId && zuDeal && <button onClick={() => zuDeal(a.dealId!)} style={leiseLink}>Deal ›</button>}
         {a.rechnungId && <Link href={WEG.rechnung(a.rechnungId)} style={leiseLink}>Rechnung ›</Link>}
         {e && a.status === 'angenommen' && !e.rechnungId && alsRechnung && <button onClick={() => void alsRechnung()} style={leiseLink}>→ als Rechnung planen</button>}
         {e && <DateiLink e={e} />}
-        {e && <LoeschKnopf beleg={istBeleg(e)} onJa={() => void loeschen(e)} />}
+        {e && !nurLesen && <LoeschKnopf beleg={istBeleg(e)} onJa={() => void loeschen(e)} />}
       </>} />
   );
 }

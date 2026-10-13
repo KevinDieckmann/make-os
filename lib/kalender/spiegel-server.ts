@@ -25,6 +25,8 @@ import { kalenderQuelleDa as quelleDa } from './google/namen';
 import { termineAus, type Termin } from './ics';
 import { tagPlus } from './zeit';
 import { ladeEinstellungen } from './einstellungen';
+import { spaceVonKalender } from './space';
+import { NUR_BUSINESS_PRIVAT } from '@/lib/zugang/konto-sicht';
 import { terminAnlegenServer, terminAendernServer, terminLoeschenServer } from './termin-server';
 import { eventSoll, dateSoll, gespraechSoll, spiegelAbweichung, spiegelUid, istScheinUid, scheinAufloesen, gespraecheUmziehen, spiegelMarke, spiegelSchritt, type Soll, type SpiegelArt } from './spiegel';
 import { bezugVon, type BezugBestand, type TerminBezug } from './bezug';
@@ -126,7 +128,16 @@ async function eventUidSetzen(id: string, uid: string | null, wer: ProtokollWer)
   }) }), wer);
 }
 
-export async function eventSpiegelLage(id: string): Promise<SpiegelLage> {
+/**
+ * Konto „nur Business“ (13.10., Rolle Partner): Spiegel-Termine nur in Business-Kalendern schreiben — dieselbe Regel wie die Termin-Route
+ * (`spaceVonKalender`, lib/kalender/konto-bereich.ts). Liegt der vorhandene Termin anderswo (z. B. „Gemeinsam“), wirft das 403.
+ */
+export interface SpiegelRecht { nurBusiness?: boolean }
+async function nurBusinessKalender(kalender: string, recht: SpiegelRecht): Promise<void> {
+  if (recht.nurBusiness && spaceVonKalender(await ladeEinstellungen(), kalender) !== 'business') throw new KalenderFehler(NUR_BUSINESS_PRIVAT, 403);
+}
+
+export async function eventSpiegelLage(id: string, recht: SpiegelRecht = {}): Promise<SpiegelLage> {
   const e = (await ladeCrm()).events.find(x => x.id === id);
   if (!e) throw new KalenderFehler('Event nicht gefunden.', 404);
   const soll = eventSoll(e);
@@ -134,11 +145,13 @@ export async function eventSpiegelLage(id: string): Promise<SpiegelLage> {
   if (!e.kalenderUid) return soll.art === 'keiner' ? { lage: 'keiner', grund: soll.grund } : { lage: 'fehlt' };
   if (istScheinUid(e.kalenderUid)) return { lage: 'schein', uid: e.kalenderUid };
   const t = terminNachUid(await ladeStand(), e.kalenderUid);
-  return t ? { lage: 'da', uid: e.kalenderUid, bearbeitbar: t.bearbeitbar } : { lage: 'fehlt', uid: e.kalenderUid };
+  // „nur Business“: ein Termin außerhalb der Business-Kalender ist für dieses Konto nicht bearbeitbar (es sieht ihn nicht).
+  const bearbeitbar = !!t?.bearbeitbar && !(recht.nurBusiness && spaceVonKalender(await ladeEinstellungen(), t.kalender) !== 'business');
+  return t ? { lage: 'da', uid: e.kalenderUid, bearbeitbar } : { lage: 'fehlt', uid: e.kalenderUid };
 }
 
 /** Termin zum Event anlegen (Kalender „Gemeinsam“, echte feste UID, Bezug eventId) — auf Klick. */
-export async function eventSpiegelAnlegen(id: string, person: string, wer: ProtokollWer): Promise<{ uid: string }> {
+export async function eventSpiegelAnlegen(id: string, person: string, wer: ProtokollWer, recht: SpiegelRecht = {}): Promise<{ uid: string }> {
   const e = (await ladeCrm()).events.find(x => x.id === id);
   if (!e) throw new KalenderFehler('Event nicht gefunden.', 404);
   const soll = eventSoll(e);
@@ -150,13 +163,16 @@ export async function eventSpiegelAnlegen(id: string, person: string, wer: Proto
   if (istScheinUid(e.kalenderUid)) {
     const t = scheinAufloesen(termineImZeitraum(s, e.datum, tagPlus(e.datum, 1)), e);
     if (t?.bearbeitbar) {
+      await nurBusinessKalender(t.kalender, recht);
       await terminAendernServer(t.uid, {}, wer, { eventId: e.id });
       await eventUidSetzen(e.id, t.uid, wer);
       await klickAbgleich(t.uid, soll, wer);
       return { uid: t.uid };
     }
   }
-  if (e.kalenderUid && !istScheinUid(e.kalenderUid) && terminNachUid(s, e.kalenderUid)) {
+  const vorhanden = e.kalenderUid && !istScheinUid(e.kalenderUid) ? terminNachUid(s, e.kalenderUid) : null;
+  if (e.kalenderUid && vorhanden) {
+    await nurBusinessKalender(vorhanden.kalender, recht);
     await klickAbgleich(e.kalenderUid, soll, wer);
     return { uid: e.kalenderUid };
   }
@@ -165,7 +181,7 @@ export async function eventSpiegelAnlegen(id: string, person: string, wer: Proto
   const hin = e.wer?.length === 1 ? e.wer[0] : undefined;
   const kalenderWer = (hin && (einst.kalender as Record<string, string | undefined>)[hin] ? hin : 'beide') as 'beide';
   // Business (03.10., Google): ein besuchtes Event einer Person kommt in deren Google Kalender (MAKE), sobald sie verbunden ist — sonst wie bisher iCloud.
-  const r = await terminAnlegenServer({ ...soll.t, wer: kalenderWer, bereich: 'business', art: 'termin', beschaeftigt: true, uid: spiegelUid('event', e.id), von: person, bezug: { eventId: e.id }, notiz: 'Aus MAKE OS · Event' }, wer);
+  const r = await terminAnlegenServer({ ...soll.t, wer: kalenderWer, bereich: 'business', art: 'termin', beschaeftigt: true, uid: spiegelUid('event', e.id), von: person, bezug: { eventId: e.id }, notiz: 'Aus MAKE OS · Event', ...(recht.nurBusiness ? { nurBusinessKalender: true } : {}) }, wer);
   // Marke setzen (und bei `schonDa` auf das Soll bringen) — ab jetzt zieht der Abgleich nur nach Änderungen im Event nach.
   await klickAbgleich(r.uid, soll, wer);
   await eventUidSetzen(e.id, r.uid, wer);
@@ -176,12 +192,14 @@ export async function eventSpiegelAnlegen(id: string, person: string, wer: Proto
  * Den Termin eines ABGESAGTEN Events löschen — nur auf Klick (Event-Seite; der Takt meldet die Absage nur, U1 B3).
  * Nur unser Spiegel (Bezug `eventId`), nur Einzeltermine, die MAKE OS ändern darf.
  */
-export async function eventSpiegelLoeschen(id: string, wer: ProtokollWer): Promise<{ geloescht: boolean }> {
+export async function eventSpiegelLoeschen(id: string, wer: ProtokollWer, recht: SpiegelRecht = {}): Promise<{ geloescht: boolean }> {
   const e = (await ladeCrm()).events.find(x => x.id === id);
   if (!e) throw new KalenderFehler('Event nicht gefunden.', 404);
   if (e.status !== 'abgesagt') throw new KalenderFehler('Nur der Termin eines abgesagten Events wird hier gelöscht.', 400);
   if (!(await quelleDa())) throw new KalenderFehler('iCloud ist noch nicht verbunden.', 409);
   if (!e.kalenderUid || istScheinUid(e.kalenderUid)) throw new KalenderFehler('Kein verknüpfter Termin.', 400);
+  const t = terminNachUid(await ladeStand(), e.kalenderUid);
+  if (t) await nurBusinessKalender(t.kalender, recht);
   const r = await abgleichen(await ladeStand(), e.kalenderUid, eventSoll(e), wer, { bezuege: await ladeBezuege(), gehoert: b => b?.eventId === e.id, loeschenErlaubt: true });
   if (r === 'weg') await eventUidSetzen(e.id, null, wer);
   else if (!terminNachUid(await ladeStand(), e.kalenderUid)) await eventUidSetzen(e.id, null, wer);
