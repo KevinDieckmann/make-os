@@ -4,23 +4,48 @@
 // Der heutige Kreislauf aus Markttraktion › Planung GILT (Entscheidung 22:30); die früheren Vertriebsabläufe sind Wissen — klickbar und gezeichnet
 // (Trichter, Fluss mit Weichen, Kreis mit Empfehlungsring, Zeitachse), Ergänzungen gestrichelt, Rückwege als Bögen. Ein Klick auf eine Stufe öffnet ihren Steckbrief,
 // „heute“ springt in den heutigen Kreislauf. „Als Paket-Vorlage übernehmen“ kopiert einen Ablauf in eine Paket-Vorlage.
+// 12.10. (kundenreif): der heutige Kreislauf als Rad mit den Zahlen der Markttraktion (GET /api/crm/planung) — jede Stufe springt in ihre Ansicht;
+// die Etagen der Landkarte darunter öffnen ihren Drill-down (vorher Zeilen ohne Ziel).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Pillen, Chip, LEUCHT, Liste, Zeile } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { kinderVon } from '@/lib/fulfillment/regeln';
 import type { KreislaufId } from '@/lib/crm/planung';
-import { useUebersicht, vorlagenOps, fehlerText } from './daten';
+import { useUebersicht, vorlagenOps, fehlerText, holeJson } from './daten';
+import { KreislaufRad, type RadStufe } from '../reise/teile';
+import { KREISLAUF_REIHE } from '@/lib/fulfillment/prozesse/ansichten';
 import { AblaufBild, AblaufLegende } from './Zeichnung';
 import { klein, Leiste, Meldung } from './teile';
 
 const ART_TEXT: Record<string, string> = { einstieg: 'Einstieg', stufe: 'Stufe', ausstieg: 'Ausstieg', routine: 'Routine' };
 const KREIS_TEXT: Record<KreislaufId, string> = { kanaele: 'Kanäle', leads: 'Leads', deals: 'Deals', followup: 'Abschluss & Follow-up', fulfillment: 'Fulfillment', nachher: 'Nach der Leistung', wiederkauf: 'Wiederkauf' };
 
+/** Die Stufen des heutigen Kreislaufs (Markttraktion › Planung, `GET /api/crm/planung`) — Zahl, Satz, Weg. Ohne Zugang/Fehler: null. */
+function useKreislaufStufen(): { stufen: RadStufe[] | null; fehler: string | null } {
+  const [stufen, setStufen] = useState<RadStufe[] | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  useEffect(() => {
+    let aus = false;
+    void holeJson<{ kreislauf?: { stufen?: { id: KreislaufId; label: string; anzahl: number; zusatz: string; href: string }[] } }>('/api/crm/planung').then(a => {
+      if (aus) return;
+      if (!a.ok) { setFehler(fehlerText(a)); return; }
+      setStufen((a.j.kreislauf?.stufen ?? []).map(s => ({ id: s.id, label: s.label, anzahl: s.anzahl, zusatz: s.zusatz,
+        // Fulfillment zeigt auf sich selbst → hier die Kunden in Lieferung; „Nach der Leistung“ hat keine eigene Seite → der Kreislauf der Markttraktion.
+        href: s.id === 'fulfillment' ? WEG.fulfillment('visualisierung') : s.href || WEG.vertriebsplanung(s.id === 'kanaele' ? 'kanaele' : 'kreislauf') })));
+    });
+    return () => { aus = true; };
+  }, []);
+  return { stufen, fehler };
+}
+
 export function Kreislauf() {
+  const router = useRouter();
   const { daten, fehler } = useUebersicht();
+  const kreis = useKreislaufStufen();
   const [wahl, setWahl] = useState<string | null>(null);
   const [stufe, setStufe] = useState<string | null>(null);
   const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' } | null>(null);
@@ -37,12 +62,16 @@ export function Kreislauf() {
   };
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      <Karte i={1} akzent={LEUCHT.business}>
-        <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={WEG.vertriebsplanung()} style={{ color: C.aktiv, fontSize: TYP.bedien }}>öffnen ›</Link>}>Der heutige Kreislauf</Ueberschrift>
-        <div style={klein}>Es gilt der Kreislauf aus Markttraktion › Planung (Kanäle → Leads → Deals → Abschluss → Fulfillment → nach der Leistung → Wiederkauf). Die Abläufe unten sind Wissen aus früheren Prozessen — keine zweite Wahrheit.</div>
+      <Karte i={1} ton="fokus" licht={LEUCHT.business}>
+        <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.kreislauf" rechts={<Link href={WEG.vertriebsplanung('kreislauf')} style={{ color: C.aktiv, fontSize: TYP.bedien }}>in der Markttraktion ›</Link>}>Der heutige Kreislauf</Ueberschrift>
+        {kreis.fehler && <Hinweis art="achtung">Die Zahlen der Markttraktion ließen sich nicht laden ({kreis.fehler}) — die Stufen stehen trotzdem da.</Hinweis>}
+        <KreislaufRad stufen={kreis.stufen ?? KREISLAUF_REIHE.map(id => ({ id }))} hier="fulfillment" beschreibung="Der Kreislauf der Markttraktion mit den heutigen Zahlen je Stufe."
+          mitte={<span style={{ display: 'grid', gap: 4 }}><span style={MIKRO}>hier liefern wir</span><b style={{ fontSize: TYP.body, color: C.ink }}>{Object.values(daten.faelle).filter(f => f.status !== 'abgeschlossen').length} Kunden</b><span style={klein}>in Lieferung</span></span>}
+          onStufe={st => { if (st.href) router.push(st.href); }} />
+        <div style={klein}>Es gilt der Kreislauf aus Markttraktion › Planung. Jede Stufe öffnet ihre Ansicht; die Zahl ist der heutige Stand (Kanäle, Leads in Arbeit, offene Deals, fällige Follow-ups, aktive Mandate, Kunden mit offenen Schritten nach der Leistung, Wiederkäufer). Die Abläufe unten sind Wissen aus früheren Prozessen — keine zweite Wahrheit.</div>
         {etagen.length > 0 && (
           <Liste>
-            {etagen.map(e => <Zeile key={e.id} titel={e.titel} unter={(e.kreislauf ?? []).map(k => KREIS_TEXT[k]).join(' · ') || 'keiner Kreislauf-Stufe zugeordnet'} />)}
+            {etagen.map(e => <Zeile key={e.id} titel={e.titel} onClick={() => router.push(WEG.fulfillment('prozesse', { k: e.id }))} unter={(e.kreislauf ?? []).map(k => KREIS_TEXT[k]).join(' · ') || 'keiner Kreislauf-Stufe zugeordnet'} />)}
           </Liste>
         )}
       </Karte>

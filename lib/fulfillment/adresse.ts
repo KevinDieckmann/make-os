@@ -2,7 +2,7 @@
 // Die Fulfillment-Seite liegt unter Produkte & Mandate: `/os/mandate/fulfillment` (Segment „Fulfillment“, kein eigener Leistenpunkt).
 //   u   Unternavigation: prozesse (Standard, weggelassen) · bausteine · onboarding · analysen · kreislauf · visualisierung
 //   k   ein Knoten im Drill-down (nur unter Prozesse) · b ein Baustein (nur unter Bausteine)
-//   m   ein Fall (Mandat-Kennung) — dann `r` = Reiter des Falls: ueberblick (Standard) · ablauf · wert · menschen · takt · kunde · analyse
+//   m   ein Fall (Mandat-Kennung) — dann `r` = Reiter des Falls: ueberblick (Standard) · ablauf · wert · menschen · takt · kunde · analyse · kreislauf
 // Links nur über `WEG.fulfillment` / `WEG.fall` / `WEG.dossier` (lib/wege.ts); gelesen nur über `fulfillmentAusAdresse` (ungültige Werte fallen weg).
 // Alte Links gibt es nicht. Rein und client-sicher — keine Importe aus lib/wege.ts (WEG importiert DIESE Datei).
 
@@ -18,7 +18,7 @@ export const FULFILLMENT_BEREICHE: readonly { id: FulfillmentBereich; label: str
   { id: 'visualisierung', label: 'Visualisierung' },
 ];
 
-export type FallReiter = 'ueberblick' | 'ablauf' | 'wert' | 'menschen' | 'takt' | 'kunde' | 'analyse';
+export type FallReiter = 'ueberblick' | 'ablauf' | 'wert' | 'menschen' | 'takt' | 'kunde' | 'analyse' | 'kreislauf';
 export const FALL_REITER: readonly { id: FallReiter; label: string; paket: 'C1' | 'C2' | 'C3' }[] = [
   { id: 'ueberblick', label: 'Überblick', paket: 'C1' },
   { id: 'ablauf', label: 'Ablauf', paket: 'C1' },
@@ -27,6 +27,8 @@ export const FALL_REITER: readonly { id: FallReiter; label: string; paket: 'C1' 
   { id: 'takt', label: 'Takt', paket: 'C1' },
   { id: 'kunde', label: 'Kunde & Reports', paket: 'C2' },
   { id: 'analyse', label: 'Analyse', paket: 'C3' },
+  // 12.10.: das Ende der Reise — Befähigung, Wirkungsbericht, Nachsorge und „wo steht dieser Kunde im Kreislauf“ (vorher unter Takt).
+  { id: 'kreislauf', label: 'Abschluss & Kreislauf', paket: 'C1' },
 ];
 
 const BEREICH_IDS = FULFILLMENT_BEREICHE.map(b => b.id) as readonly string[];

@@ -6,6 +6,7 @@
 // (jeder mit Sprung dorthin, wo er erfüllt wird; „entfällt“ hinter „⋯“, erledigte klappen weg), die Willkommensmail solange sie fehlt (Vorlage
 // der Bibliothek, drei freie Kick-off-Zeiten, Playbook-Link aus C2 — gesendet nur per Klick), „wartet auf euch“, Quick Wins, Kick-off-Fragen,
 // Status. „Vorlage geändert“ mit Übernehmen bleibt oben. Ohne Fall: „Onboarding starten“.
+// 12.10. (kundenreif): „Aus der Analyse“ — was die geprüfte Diagnose noch für den Fall hat (Quick Wins, Fragen, Maßnahmen), je ein Klick.
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP, MIKRO, TIEF, SCHRIFT } from '@/lib/make-one/design';
@@ -20,6 +21,8 @@ import { MailSenden, type MailEntwurf } from './MailSenden';
 import { klein, feld, Leiste, Meldung, useTextFrage } from './teile';
 import { useFallSprung } from '../reise/FallKopf';
 import { useSprung, insBild } from '../reise/sprung';
+import { inDenFall, NACH_FALL_TEXT, type NachFallWas } from '../analyse/daten';
+import { WEG } from '@/lib/wege';
 
 const STATUS = [{ id: 'laeuft' as const, label: 'läuft' }, { id: 'pausiert' as const, label: 'pausiert' }, { id: 'abgeschlossen' as const, label: 'abgeschlossen' }];
 const schrittFarbe = (s: OnboardingSchrittStand) => (s.erfuellt || s.entfaellt ? LEUCHT.gut : s.ueberfaellig ? LEUCHT.kritisch : s.zaehlt ? LEUCHT.achtung : C.inkLeise);
@@ -30,7 +33,7 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
   const [mail, setMail] = useState(false);
   const frage = useTextFrage();
   const geh = useFallSprung(mandatId, 'ueberblick');
-  useSprung(s => { if (s.art === 'willkommen') { setMail(true); insBild('willkommen'); } });
+  useSprung(s => { if (s.art === 'willkommen') { setMail(true); insBild('willkommen'); } if (s.art === 'stelle') insBild(s.wert); });
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
   if (!daten.fall) return <KeinFall daten={daten} />;
   const f = daten.fall, ob = daten.onboarding!;
@@ -78,6 +81,7 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
           ))}</Liste>
         </Karte>
       )}
+      <AusAnalyse daten={daten} onMeldung={setMeldung} />
       <QuickWins daten={daten} ops={ops} />
       {(!ob.fertig || kickoffOffen || !f.kickoffFragen.length) ? <KickoffFragen daten={daten} ops={ops} /> : <KickoffZu anzahl={f.kickoffFragen.length}><KickoffFragen daten={daten} ops={ops} /></KickoffZu>}
       <Karte i={5} flach>
@@ -244,12 +248,39 @@ function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung }: { daten: Fal
   );
 }
 
+/**
+ * Aus der Analyse (12.10., „keine losen Enden“): was die geprüfte Diagnose (nach F2) für den Fall liefert und noch nicht drin ist — Quick Wins, Kick-off-
+ * Fragen, Maßnahmen (Zusatz-Schritte der Phase nach der Diagnose). Ein Klick je Teil; vorher stand das nur im Dossier. Ohne Dossier/Diagnose: nichts.
+ */
+function AusAnalyse({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: { text: string; art: 'gut' | 'kritisch' | 'achtung' } | null) => void }) {
+  const a = daten.analyse;
+  const [laeuft, setLaeuft] = useState<NachFallWas | null>(null);
+  if (!a || !a.diagnose) return null;
+  const offen = a.quickWins.length + a.fragen + a.massnahmen.length;
+  if (a.f2 && !offen) return null;
+  const tun = async (was: NachFallWas) => { setLaeuft(was); const f = await inDenFall(daten.mandat.id, was); setLaeuft(null); onMeldung(f ? { text: f, art: 'kritisch' } : { text: NACH_FALL_TEXT[was], art: 'gut' }); };
+  return (
+    <Karte i={2} id="ausanalyse" akzent={LEUCHT.agenten}>
+      <Ueberschrift farbe={LEUCHT.agenten} erklaerung="fulfillment.ausAnalyse" rechts={<span>{offen}</span>}>Aus der Analyse</Ueberschrift>
+      {!a.f2 ? (
+        <Hinweis art="info" aktion={<Knopf leise href={WEG.dossier(daten.mandat.id)}>Zum Dossier ›</Knopf>}>Der Diagnose-Entwurf liegt vor — erst das Dossier prüfen (F2), dann gehen Quick Wins, Fragen und Maßnahmen per Klick in den Fall.</Hinweis>
+      ) : (
+        <Liste>
+          {a.quickWins.length > 0 && <Zeile umbrechen titel={`${a.quickWins.length} Quick Win${a.quickWins.length === 1 ? '' : 's'}`} unter={a.quickWins.join(' · ')} rechts={<Knopf leise aus={!!laeuft} onClick={() => tun('quickwins')}>Übernehmen</Knopf>} />}
+          {a.fragen > 0 && <Zeile umbrechen titel={`${a.fragen} Frage${a.fragen === 1 ? '' : 'n'} fürs Kick-off`} unter="an Entscheider, Gründer oder Vertrieb — mit dem Warum" rechts={<Knopf leise aus={!!laeuft} onClick={() => tun('fragen')}>Übernehmen</Knopf>} />}
+          {a.massnahmen.length > 0 && <Zeile umbrechen titel={`${a.massnahmen.length} Maßnahme${a.massnahmen.length === 1 ? '' : 'n'} der Diagnose`} unter={`als Zusatz-Schritte in „${a.ziel ?? 'die nächste Phase'}“ — zuerst nur intern · ${a.massnahmen.join(' · ')}`} rechts={<Knopf leise aus={!!laeuft} onClick={() => tun('massnahmen')}>In den Ablauf</Knopf>} />}
+        </Liste>
+      )}
+    </Karte>
+  );
+}
+
 function QuickWins({ daten, ops }: { daten: FallAntwort; ops: (o: Record<string, unknown>[]) => Promise<void> }) {
   const [text, setText] = useState('');
   const [bis, setBis] = useState('');
   const f = daten.fall!;
   return (
-    <Karte i={3}>
+    <Karte i={3} id="quickwins">
       <Ueberschrift erklaerung="fulfillment.quickWins" rechts={<span>{f.quickWins.filter(q => q.erledigtAm).length} von {f.quickWins.length}</span>}>Quick Wins (30 Tage)</Ueberschrift>
       {f.quickWins.length > 0 && (
         <Liste>

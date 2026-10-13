@@ -13,6 +13,7 @@ import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import type { FallReiter } from '@/lib/fulfillment/adresse';
 import { fallReise, naechsteSchritte, naechsterHandgriff, seitTagen, type Handgriff } from '@/lib/fulfillment/prozesse/reise';
+import { abschlussSchritt } from '@/lib/fulfillment/prozesse/ansichten';
 import { useFall, tagKurz } from '../prozesse/daten';
 import { PhasenStrahl, MiniStrahl, Antworten, AntwortKachel, FortschrittsRing, Legende, FreigabeRaute, LegendenBalken, JETZT } from './bilder';
 import { springe, sprungAnker, type Sprung } from './sprung';
@@ -44,6 +45,8 @@ export function FallKopf({ mandatId, reiter }: { mandatId: string; reiter: FallR
   const zurPhase = (id: string) => geh('ablauf', { art: 'phase', wert: id });
   const strahl = reise.phasen.map(p => ({ ...p, ...(p.freigabe ? { freigabe: { ...p.freigabe } } : {}) }));
   const mitAktion = reiter === 'ueberblick' || reiter === 'ablauf';
+  // 12.10.: nach dem letzten Schritt geht es weiter — Fall abschließen → Wirkungsbericht → Mandat beenden → Nachsorge („Abschluss & Kreislauf“).
+  const abschluss = griff.art === 'fertig' ? abschlussSchritt({ fall: f, allePhasenFertig: reise.fertig, mandatEnde: daten.nachsorge?.ende ?? null, nachsorge: daten.nachsorge?.plan ?? [] }) : null;
 
   const haengt = willkommenRot ? { ampel: LEUCHT.kritisch, antwort: 'Willkommensmail überfällig', unter: 'Die 24 Stunden nach der Unterschrift sind um.' }
     : ueberfaellig.length ? { ampel: LEUCHT.kritisch, antwort: `${ueberfaellig.length} überfällig`, unter: ueberfaellig.slice(0, 2).map(k => `„${k.titel}“ fällig ${tagKurz(k.faelligAm)}`).join(' · ') }
@@ -76,6 +79,12 @@ export function FallKopf({ mandatId, reiter }: { mandatId: string; reiter: FallR
           onClick={wartet.length && !ueberfaellig.length && !willkommenRot ? () => geh(wartet[0].art === 'entscheidung' ? 'menschen' : 'ablauf') : undefined} />
       </Antworten>
       {mitAktion && griff.art !== 'fertig' && <Handgriffknopf griff={griff} geh={geh} />}
+      {mitAktion && griff.art === 'fertig' && abschluss && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          <Knopf haupt onClick={() => geh('kreislauf', { art: 'stelle', wert: abschluss.art === 'nachsorge' || abschluss.art === 'mandat-beenden' ? 'kreislauf-nachher' : 'kreislauf-wirkung' })}>{abschluss.text} ›</Knopf>
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{abschluss.unter}</span>
+        </div>
+      )}
       {f.status === 'pausiert' && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Der Fall ist pausiert — Uhren und Erinnerungen ruhen.</div>}
     </Karte>
   );

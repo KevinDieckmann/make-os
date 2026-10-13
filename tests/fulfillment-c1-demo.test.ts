@@ -60,9 +60,9 @@ describe('Demo: Fulfillment', () => {
     expect(fall.status).toBe('laeuft');
     expect(Object.values(fall.wertKonto).some(e => e.messungen.length === 3)).toBe(true);
     expect(fall.stakeholder).toHaveLength(1);
-    expect(fall.entscheidungen).toHaveLength(2);
-    expect(fall.rituale).toHaveLength(1);
-    expect(fall.mitschriften).toHaveLength(1);
+    expect(fall.entscheidungen).toHaveLength(3);
+    expect(fall.rituale).toHaveLength(2); // Kick-off + Wochen-Check (im Kalender, Bezug zum Mandat)
+    expect(fall.mitschriften).toHaveLength(2);
     expect(f.fortschritt as number).toBeGreaterThan(0);
     // Zusammengeführt 11.10.: der Demo-Fall trägt das Kunden-Playbook als Formular — die Saat von C2 füllt es (Kunden-Link bleibt aus).
     expect(schritte['Fulfillment · Playbook-Antworten (Kunden-Link aus)']).toBeGreaterThan(0);
@@ -71,11 +71,42 @@ describe('Demo: Fulfillment', () => {
     expect((f.onboarding as { schritte: { schluessel: string; erfuellt: boolean }[] }).schritte.find(s => s.schluessel === 'playbook')!.erfuellt).toBe(true);
   });
 
+  it('Geschichte ohne Widersprüche (12.10.): Start vor 45 Tagen, Diagnose läuft, Quick Wins/Fragen/Maßnahmen aus der Analyse, zwei Reports, Puls 7 → 8', async () => {
+    const f = await lese('fulfillment/fall', '?m=m-demo-nordwerk');
+    const fall = f.fall as { startAm?: string; gestartetAm: string; quickWins: { text: string; quelle: string; erledigtAm?: string }[]; kickoffFragen: { erledigt?: boolean }[]; knoten: { id: string; titel: string; extra?: boolean; elternId?: string; status: string; erledigtAm?: string }[]; entscheidungen: { am: string }[]; freigaben: Record<string, { am: string }> };
+    const heute = localDay();
+    const minus = (n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
+    expect(fall.startAm).toBe(minus(45));
+    expect(fall.freigaben.F0.am).toBe(minus(42));
+    expect((f.aktuell as { phase: { titel: string } | null }).phase?.titel).toBe('Diagnose');
+    // Quick Wins aus der Analyse, einer erledigt innerhalb der ersten 30 Tage; die Fragen gestellt
+    expect(fall.quickWins.map(q => q.quelle)).toEqual(['analyse', 'analyse', 'analyse']);
+    expect(fall.quickWins.filter(q => q.erledigtAm).map(q => q.erledigtAm)).toEqual([minus(18)]);
+    expect(fall.kickoffFragen.length).toBeGreaterThan(0);
+    expect(fall.kickoffFragen.every(q => q.erledigt)).toBe(true);
+    // Maßnahmen der Diagnose als Zusatz-Schritte in „Aufbau“
+    const aufbau = fall.knoten.find(k => k.titel === 'Aufbau')!;
+    expect(fall.knoten.filter(k => k.extra && k.elternId === aufbau.id)).toHaveLength(3);
+    expect((f.analyse as { massnahmen: string[]; quickWins: string[] }).massnahmen).toEqual([]);
+    expect((f.analyse as { quickWins: string[] }).quickWins).toEqual([]);
+    // Entscheidungen auf dem Zeitstrahl (nachgetragen), zwei Reports, Puls 7 → 8, Nachsorge wartet aufs Mandatsende
+    expect(fall.entscheidungen.map(e => e.am).sort()).toEqual([minus(40), minus(21), minus(4)].sort());
+    expect((f.reports as { am: string }[]).map(r => r.am.slice(0, 10))).toEqual([minus(28), minus(14)]);
+    const k = await lese('fulfillment/kunde', '?m=m-demo-nordwerk');
+    expect((k.puls as { liste: { wert: number }[]; health: number }).liste.map(p => p.wert)).toEqual([8, 7]);
+    expect((k.puls as { health: number }).health).toBe(70);
+    expect((f.nachsorge as { ende: string | null }).ende).toBeNull();
+    expect(Object.values((f.termine as Record<string, string | null>)).some(Boolean)).toBe(true); // der nächste Wochen-Check steht im Kalender
+  });
+
   it('Lumen im Onboarding: Willkommensmail überfällig, im Cockpit rot oben', async () => {
     const f = await lese('fulfillment/fall', '?m=m-demo-lumen');
     expect((f.fall as { status: string }).status).toBe('onboarding');
     expect((f.onboarding as { willkommen: { ueberfaellig: boolean } }).willkommen.ueberfaellig).toBe(true);
     const c = await lese('fulfillment/cockpit');
     expect((c.haengt as { art: string; mandatId: string }[])[0]).toMatchObject({ art: 'willkommen', mandatId: 'm-demo-lumen' });
+    // Kein Puls vor dem Onboarding (vorher: 5 „Datenanbindung hakt“ drei Tage nach der Unterschrift — ein Widerspruch).
+    const k = await lese('fulfillment/kunde', '?m=m-demo-lumen');
+    expect((k.puls as { liste: unknown[] }).liste).toEqual([]);
   });
 });

@@ -1521,6 +1521,15 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
   Neue Fulfillment-Kennzahl = Eintrag dort + `ffMessung`; ohne Fall bleibt der Index bit-gleich (Wächter tests/fulfillment-c1-index.test.ts).
 - Erklärungen `lib/erklaerungen/fulfillment-prozesse.ts`; Oberfläche `components/os/fulfillment/prozesse/*` (Export über `index.tsx`, Namen fest).
   Tests `tests/fulfillment-c1-{rein,index,routen,demo}.test.ts`; Demo `lib/demo/fulfillment-prozesse.ts`.
+- **Kundenreif (12.10., Branch `kundenreif-fulfillment`; UPDATES.md):** Fall-Reiter `kreislauf` („Abschluss & Kreislauf“: Kreislauf-Rad, Befähigung, Wirkungsbericht,
+  Nach der Leistung = Schritte aus Markttraktion › Planung über deren Schreibweg, Nachsorge-Plan, Follow-ups am Mandat). Jeder Fall-Reiter: Antwort zuerst
+  (`ReiterAntwort`), Bild statt Liste, EINE Hauptaktion, Seltenes hinter „⋯“ (`MehrKnopf`, components/os/fulfillment/reise/teile.tsx). Gerechnet NUR in
+  `lib/fulfillment/prozesse/ansichten.ts` (Verweise der Schritte `schrittVerweis`, Raster, Strahl, Takt-Leiste ohne erfundene Termine, Report-Achse,
+  Puls ↔ Health, Nachsorge-Plan, `abschlussSchritt`). Analyse → Fall NUR über `lib/fulfillment/analyse/nach-fall.ts` (nur Neues; Maßnahmen als Zusatz-Schritte der
+  Phase nach der Diagnose, intern). **„Dem Kunden zeigen“** (`reise/Praesentation.tsx`): Daten NUR aus `/api/fulfillment/kunde/vorschau`, gezeichnet NUR mit
+  `KundenAnsicht praesentation` — keine zweite Filterlogik (Wächter tests/fulfillment-kundenreif.test.ts). Fall-Ops nehmen optional `am` (nachtragen, nie Zukunft);
+  `Fall.startAm` (gewählter Starttag) nur über `fallStartTag`. Interne Marken nur als Zeichen mit Tooltip (`BausteinMarken`). Ein Sammel-Teilprozess
+  („Weitere Bausteine“ bzw. gleichnamig mit der Phase) ist im Ablauf keine eigene Gruppe (`istSammelTeil`).
 
 ### C2 — Kunden-Link (10.10., Paket C2, Branch `fulfillment-c2`, nur lokal; FULFILLMENT_KONZEPT.md 5.2/5.4/5.5/6.4, UPDATES.md)
 - **Kommt AUSGESCHALTET — zwei Schlüssel:** Umgebung `MAKE_OS_KUNDENLINK=an` (Betrieb, erst nach Prüfung 12.4 + Kevins Freigabe) UND Instanz-Schalter

@@ -29,7 +29,8 @@ const beschriftung = { fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08
 const neueId = () => `report-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Array.from({ length: 4 }, () => Math.random().toString(36).slice(2, 10)).join('-')}`;
 
 /** Fortschritt im Paket — eingehängt im geöffneten Mandat (Produkte & Mandate › Mandate). Ohne Treppe: ein Satz mit Weg. */
-export function MandatFortschritt({ mandatId }: { mandatId: string }) {
+/** `imFall` (12.10.): eingebettet unter Fulfillment › Fall › Kunde & Reports — dann ohne den Sprung „Fulfillment öffnen ›“ (er zeigte auf sich selbst). */
+export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFall?: boolean }) {
   const api = useTreppe();
   const [senden, setSenden] = useState(false);
   const [laeuft, setLaeuft] = useState(false);
@@ -55,7 +56,7 @@ export function MandatFortschritt({ mandatId }: { mandatId: string }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={beschriftung}>Fortschritt im Paket</span>
-          <Link href={WEG.fall(mandatId, 'kunde')} style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Fulfillment öffnen ›</Link>
+          {!imFall && <Link href={WEG.fall(mandatId, 'kunde')} style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Fulfillment öffnen ›</Link>}
         </span>
         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {z.ampel.gesamt && <Chip farbe={AMPEL[z.ampel.gesamt]}>{z.ampel.gesamt === 'gruen' ? 'läuft' : z.ampel.gesamt === 'gelb' ? 'im Blick behalten' : 'braucht Aufmerksamkeit'}</Chip>}

@@ -8,6 +8,8 @@
 // (Messung eintragen). Die Zielwerte selbst stehen offen, solange das Ziel nicht festgelegt ist; danach klappen sie hinter „Zielwerte ändern“.
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Chip, Feldzeile, Pillen, LEUCHT } from '../../ui';
 import { zielErreichung, wertReihe } from '@/lib/fulfillment/prozesse/wert';
@@ -32,7 +34,7 @@ export function FallWert({ mandatId }: { mandatId: string }) {
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <Meldung text={meldung?.text ?? null} art={meldung?.art} />
-      <Hinweis art="info" titel="Gemeinsames Zielbild">Im Kick-off mit dem Kunden festlegen: Ausgangslage, Zielwert, Datum. Jeder Report zeigt vorher → jetzt → Ziel. Keine Garantie, kein Erfolgshonorar.</Hinweis>
+      <Hinweis art="info" titel="Gemeinsames Zielbild">Im Kick-off mit dem Kunden festlegen: Ausgangslage, Zielwert, Datum. Jede Messung steht im nächsten <Link href={WEG.fall(mandatId, 'kunde')} style={{ color: C.aktiv }}>2-Wochen-Report</Link> (vorher → jetzt → Ziel) und am Ende im <Link href={WEG.fall(mandatId, 'kreislauf')} style={{ color: C.aktiv }}>Wirkungsbericht</Link>. Keine Garantie, kein Erfolgshonorar.</Hinweis>
       {!daten.mandat.ziele.length && <div style={klein}>Am Mandat stehen noch keine Ziele — unten das erste anlegen.</div>}
       {daten.mandat.ziele.map((z, i) => <ZielKarte key={z.id} i={i + 1} daten={daten} zielId={z.id} ops={ops} />)}
       <Karte i={9}>
@@ -103,8 +105,8 @@ function ZielKarte({ i, daten, zielId, ops }: { i: number; daten: FallAntwort; z
       <Ueberschrift erklaerung="fulfillment.wertKonto" rechts={e.festgelegtAm ? <Chip farbe={LEUCHT.gut}>festgelegt {tagKurz(e.festgelegtAm)}</Chip> : <Chip farbe={LEUCHT.achtung}>noch nicht festgelegt</Chip>}>{z.text}</Ueberschrift>
       {zeile && !leer && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'baseline' }}>
-          {[['vorher', zeile.vorher], ['jetzt', zeile.jetzt], ['Ziel', `${zeile.ziel}${zeile.bis ? ` bis ${tagKurz(zeile.bis)}` : ''}`]].map(([k, v]) => (
-            <span key={k} style={{ display: 'grid', gap: 2 }}><span style={MIKRO}>{k}</span><span style={{ fontSize: TYP.body, color: C.ink }}>{v}</span></span>
+          {[['vorher', zeile.vorher], ['jetzt', zeile.jetzt === '—' ? 'noch keine Messung' : zeile.jetzt], ['Ziel', `${zeile.ziel}${zeile.bis ? ` bis ${tagKurz(zeile.bis)}` : ''}`]].map(([k, v]) => (
+            <span key={k} style={{ display: 'grid', gap: 2 }}><span style={MIKRO}>{k}</span><span style={{ fontSize: TYP.body, color: v === 'noch keine Messung' ? C.inkLeise : C.ink }}>{v}</span></span>
           ))}
         </div>
       )}

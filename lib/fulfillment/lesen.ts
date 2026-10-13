@@ -243,6 +243,7 @@ export function fallAus(o: O): Fall | null {
   })();
   return sauber<Fall>({
     mandatId, vorlageId, vorlageFassung: n(o.vorlageFassung) ?? 1, gestartetAm, gestartetVon: s(o.gestartetVon) ?? '', status,
+    startAm: (() => { const t = s(o.startAm); return t && /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : undefined; })(),
     // Phasen nach der EINEN Regel (12.10., ./prozesse/phasen.ts): hohle Dach-Phasen („Strategie“, „Steuerung“) mit der passenden Phase
     // zusammengelegt — nur beim Lesen; der nächste Schreibvorgang speichert es. Hatte die Vorlage ihre Phasen von Hand geordnet, bleibt die Reihenfolge.
     knoten: o.phasenVonHand === true ? liste(o.knoten, fallKnoten) : phasenOrdnen(liste(o.knoten, fallKnoten), { hohl: hohlerFallKnoten }), freigaben,

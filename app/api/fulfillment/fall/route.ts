@@ -1,17 +1,20 @@
 // ─── Fulfillment — ein Fall je Mandat (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 3, 7, 9) ───────────────────────────────────────────────
 // GET  ?m=<mandat> → Fall (wie er wirkt), Stand je Eintrag, Onboarding-Stand mit 24-h-Uhr, Vorlagen-Diff, „wartet auf euch“, Wert-Konto-Zeilen,
-//        Bausteine der Knoten (Titel, Marken), Stakeholder-Namen aus der Kartei (Lese-Protokoll „fulfillment“), Rituale, nächste Termine.
+//        Bausteine der Knoten (Titel, Marken), Stakeholder-Namen aus der Kartei (Lese-Protokoll „fulfillment“), Rituale, nächste Termine;
+//        seit 12.10. auch `reports` (erstellte Fortschritts-Reports: Kennung + Zeit), `followups` (am Mandat: Text, Tag, Stand), `analyse` (was aus
+//        der Diagnose noch nicht im Fall steht) und `nachsorge` (Plan ab Mandatsende) — nur lesen.
 //      ?m=&willkommen=1 → Grundlage der Willkommensmail (Vorlage der Bibliothek, Empfänger, Du/Sie, drei freie Kick-off-Zeiten — nur Zeiten).
 // POST { aktion: 'starten', mandatId, vorlageId, start?, anfrageId }  → Fall anlegen (Kopie der Paket-Vorlage), idempotent über anfrageId
 //      { aktion: 'vorlage-uebernehmen', mandatId }                    → neue Fassung der Vorlage übernehmen (nie entfernen)
 //      { aktion: 'nachziehen', mandatId }                             → Phase/Lieferobjekte noch einmal nachziehen (idempotent)
 // PATCH { mandatId, ops }  → Ops (lib/fulfillment/prozesse/fall.ts `fallAnwenden` + `ziel-neu` in fall-server.ts), Stand je Eintrag (409).
-//        Ops: knoten-status { id, status?, grund?, faelligAm?, stand? } · knoten-extra { eintrag | id+weg } · freigabe { id, kunde?: { wie, am },
-//        notiz?, zuruecknehmen? } · vereinbarung { felder, stand? } · stakeholder { eintrag | id+weg } · entscheidung { eintrag | id+weg } ·
+//        Ops: knoten-status { id, status?, grund?, faelligAm?, am?, stand? } · knoten-extra { eintrag | id+weg } · freigabe { id, kunde?: { wie, am },
+//        notiz?, am?, zuruecknehmen? } · vereinbarung { felder, stand? } · stakeholder { eintrag | id+weg } · entscheidung { eintrag (+ am?) | id+weg } ·
 //        ritual-merken { ritualId, terminUid } · mitschrift { eintrag | id+weg } · quickwins-setzen { quickWins: [{ text, bis?, quelle? }] } ·
-//        quickwin { id, erledigt?, bis?, weg? } · kickoff-fragen { fragen: [{ frage, an?, warum?, quelle? }] } · kickoff-frage { id, erledigt?, weg? } ·
+//        quickwin { id, erledigt?, am?, bis?, weg? } · kickoff-fragen { fragen: [{ frage, an?, warum?, quelle? }] } · kickoff-frage { id, erledigt?, weg? } ·
 //        wert-ziel { zielId, felder: { ausgang?, ausgangZahl?, zielZahl?, einheit?, richtung?, zielBis?, festlegen? } } · ziel-neu { text, ziel?, felder? } ·
-//        wert-messung { zielId, wert, am?, weg? } · befaehigung { id?, text?, erfuellt?, weg? } · willkommen-gesendet { zuruecknehmen? } ·
+//        wert-messung { zielId, wert, am?, weg? } · befaehigung { id?, text?, erfuellt?, am?, weg? } · willkommen-gesendet { zuruecknehmen? } ·
+//        (12.10.: `am` = nachtragen, was schon passiert ist — ein Tag, nie in der Zukunft; ohne `am` gilt heute.)
 //        fall-status { status } · onboarding-aus { aus } (ohne Fall: Karte „Kundenonboarding starten“ ausblenden).
 // Nur per Sitzung (Dienstweg 403), Bau-Kennung, nur Mandate von Business-Gesellschaften. Wirkung nach außen: keine (Mails gehen per Klick
 // über /api/inbox/senden, danach `willkommen-gesendet`).
@@ -107,6 +110,17 @@ export async function GET(req: Request) {
   const { uidVonSchluessel } = await import('@/lib/kalender/bezug');
   const terminTage = Object.entries(bezuege.bezuege).filter(([, b]) => b.mandatId === m && b.tag).map(([k, b]) => ({ uid: uidVonSchluessel(k), tag: b.tag! }));
   const treppe = await import('@/lib/crm/treppe-server').then(t => t.ladeTreppe(heute)).catch(() => null);
+  // 12.10. (lose Enden): Report-Zeitachse (erstellte Reports aus der Dateiablage — nur Tag + Kennung), was aus der Diagnose noch nicht im Fall steht,
+  // die Nachsorge als Plan (ab Mandatsende) und die Follow-ups am Mandat (Nachsorge, Puls-Gespräch, Empfehlung) — nur Text, Tag, Stand.
+  const reports = await import('@/lib/dateien/ablage').then(a => a.ablageListe(z.haushalt)).then(l => l.filter(e => e.mandatId === m && e.bericht === 'fortschritt').map(e => ({ id: e.id, am: e.hochgeladenAm })).sort((a, b) => (a.am < b.am ? -1 : 1))).catch(() => []);
+  const dossier = await fulfillmentLesen('dossiers', z.haushalt).then(d => d.dossiers[m]).catch(() => undefined);
+  const { diagnoseUebergabe } = await import('@/lib/fulfillment/analyse/nach-fall');
+  const ue = diagnoseUebergabe(dossier?.diagnose, w);
+  const { nachsorgePlan } = await import('@/lib/fulfillment/prozesse/ansichten');
+  const { mandatsEnde } = await import('@/lib/fulfillment/regeln');
+  const ende = mandatsEnde(mandat);
+  const followups = (crm.followups ?? []).filter(x => x.bezug?.art === 'mandat' && x.bezug.id === m).sort((a, b) => (a.faellig < b.faellig ? 1 : -1)).slice(0, 12)
+    .map(x => ({ id: x.id, text: x.text, faellig: x.faellig, status: x.status }));
   return NextResponse.json({
     ok: true, inhaber: await istInhaber(z.person), mandat: mandatKurz, unterschrift: u,
     fall: { ...w, knoten: w.knoten.map(x => ({ ...x, stand: eintragStand(f.knoten.find(y => y.id === x.id) ?? x) })), stakeholder: w.stakeholder.map(s => ({ ...s, stand: eintragStand(s) })), entscheidungen: w.entscheidungen.map(e => ({ ...e, stand: eintragStand(e) })) },
@@ -117,6 +131,9 @@ export async function GET(req: Request) {
     bausteine, personen, rituale: vorlagen.rituale,
     termine: Object.fromEntries(w.rituale.map(r => [r.ritualId, naechsterTermin(terminTage, r.terminUids, heute) ?? null])),
     kunde: kunde[m] ?? null, report: treppe?.reports[m] ?? null,
+    reports, followups,
+    analyse: dossier ? { f2: !!dossier.f2, diagnose: !!dossier.diagnose, quickWins: ue.quickWins, fragen: ue.fragen.length, massnahmen: ue.massnahmen.map(x => x.text), ziel: ue.ziel?.titel ?? null } : null,
+    nachsorge: { ende, plan: nachsorgePlan({ mandatId: m, ende, tage: vorlagen.einstellungen.nachsorgeTage, marken: f.marken, heute }) },
   });
 }
 
