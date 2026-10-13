@@ -11,12 +11,20 @@
 // Dateien liegen je Haushalt (lib/dateien/ablage.ts, verschlüsselt). Ein
 // Dienstaufruf ohne Person bekommt 403, mit Person sieht er nur deren Haushalt.
 // Kein ZOE-Werkzeug, kein Agent liest hier. Dateien an Projekten/Aufgaben: app/api/aufgaben/dateien (eigener Bestand).
+// Rolle „nur Business“ (13.10., Kevin: „Nur lesen + Entwürfe“; Regel lib/crm/nur-business.ts `dateiFuerNurBusiness`): liest Liste und
+// Download nur an Business-Bezügen (Kontakt/Firma, Angebot/Mandat/Deal einer Business-Gesellschaft) — nie Firmen-Akte (Gesellschafts-
+// Unterlagen), nie Rechnungen; das Logo eines Business-Absenders per Kennung (Angebots-Vorschau). Hochladen nur an Business-Bezügen;
+// ändern und löschen → 403. Fremdes gibt es für sie nicht (404 wie „nicht gefunden“).
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
+import { businessHaushaltVon } from '@/lib/zugang/konto-sicht-server';
+import { loadJson } from '@/lib/store/local-db';
+import { ladeCrm } from '@/lib/crm/speicher';
+import { alleGesellschaften, gesellschaftenName, type GesellschaftenDatei } from '@/lib/crm/gesellschaften';
+import { dateiFuerNurBusiness, logoFuerNurBusiness, NUR_BUSINESS_SICHT, NUR_LESEN } from '@/lib/crm/nur-business';
 import { ablageListe, ablegen, aendern, entfernen, lesen, AblageFehler } from '@/lib/dateien/ablage';
-import { DATEI_ID, MAX_DATEI_BYTES, dateinameAscii, dateinameSaeubern, eintraegeFuer, endung, nurCrm, typErkennen } from '@/lib/dateien/regeln';
+import { DATEI_ID, MAX_DATEI_BYTES, dateinameAscii, dateinameSaeubern, eintraegeFuer, endung, metaSaeubern, nurCrm, typErkennen } from '@/lib/dateien/regeln';
 import { begrenztLesen } from '@/lib/dateien/begrenzt-lesen';
 
 export const runtime = 'nodejs';
@@ -29,11 +37,16 @@ const fehler = (text: string, status: number) => NextResponse.json({ ok: false, 
 const ZU_GROSS = () => fehler(`Datei zu groß (höchstens ${MAX_DATEI_BYTES / 1024 / 1024} MB).`, 413);
 const FALSCHER_TYP = () => fehler('Nur PDF, PNG, JPG oder DOCX — und der Inhalt muss zur Endung passen.', 415);
 
-async function zugang(req: Request): Promise<{ person: string; haushalt: string } | null> {
+async function zugang(req: Request): Promise<{ person: string; haushalt: string; nurBusiness: boolean } | null> {
   const w = await imHaushaltDesInhabers(req);
   if (!w) return null;
-  const h = await haushaltVon(req);
-  return h ? { person: h.person, haushalt: h.haushalt } : null;
+  return businessHaushaltVon(req);
+}
+
+/** Rolle „nur Business“: welche Einträge sie sieht (EINE Regel, lib/crm/nur-business.ts) — das CRM wird nur für sie geladen. */
+async function nurBusinessFilter(): Promise<(e: Parameters<typeof dateiFuerNurBusiness>[0]) => boolean> {
+  const crm = await ladeCrm();
+  return e => dateiFuerNurBusiness(e, crm);
 }
 
 function ausFehler(e: unknown) {
@@ -54,6 +67,8 @@ export async function GET(req: Request) {
       if (!DATEI_ID.test(id)) return fehler('Unzulässige Kennung.', 400);
       const d = await lesen(z.haushalt, id);
       if (!d) return fehler('Nicht gefunden.', 404);
+      if (z.nurBusiness && !(await (await nurBusinessFilter())(d.eintrag))
+        && !(d.eintrag.gesellschaft && logoFuerNurBusiness(id, alleGesellschaften(await loadJson<GesellschaftenDatei>(gesellschaftenName(z.haushalt)))))) return fehler('Nicht gefunden.', 404);
       const name = d.eintrag.datei!.name;
       return new Response(new Uint8Array(d.bytes), {
         headers: {
@@ -67,7 +82,8 @@ export async function GET(req: Request) {
       });
     }
     // Schutz in der Tiefe (28.09., C2): Aufgaben-Dateien liegen in einem eigenen Bestand — stünde je einer hier, bliebe er draußen.
-    const alle = nurCrm(await ablageListe(z.haushalt));
+    const roh = nurCrm(await ablageListe(z.haushalt));
+    const alle = z.nurBusiness ? roh.filter(await nurBusinessFilter()) : roh;
     const filter = { kontaktId: q.get('kontakt') ?? undefined, firmaId: q.get('firma') ?? undefined, mandatIds: idListe(q.get('mandat')), dealIds: idListe(q.get('deal')), rechnungIds: idListe(q.get('rechnung')) };
     const gefiltert = filter.kontaktId || filter.firmaId || filter.mandatIds.length || filter.dealIds.length || filter.rechnungIds.length;
     // Nie abschneiden (28.09.): vorher nur die letzten 500 von bis zu 2.000 — jetzt alle (neueste zuerst), mit Anzahl.
@@ -84,6 +100,7 @@ export async function POST(req: Request) {
     if (art.startsWith('application/json')) {
       let b: { meta?: unknown };
       try { b = JSON.parse((await begrenztLesen(req, UMSCHLAG))?.toString('utf8') ?? 'null') ?? {}; } catch { return fehler('Kein gültiges JSON.', 400); }
+      if (z.nurBusiness && !(await (await nurBusinessFilter())(metaSaeubern(b.meta)))) return fehler(NUR_BUSINESS_SICHT, 403);
       const e = await ablegen(z.haushalt, z.person, b.meta, null);
       return NextResponse.json({ ok: true, eintrag: e });
     }
@@ -102,6 +119,8 @@ export async function POST(req: Request) {
     if (!typ) return FALSCHER_TYP();
     let meta: unknown = {};
     try { meta = JSON.parse(String(form.get('meta') ?? '{}')); } catch { return fehler('meta ist kein gültiges JSON.', 400); }
+    // Rolle „nur Business“: hochladen nur an Business-Bezügen (vor dem Schreiben).
+    if (z.nurBusiness && !(await (await nurBusinessFilter())(metaSaeubern(meta)))) return fehler(NUR_BUSINESS_SICHT, 403);
     const e = await ablegen(z.haushalt, z.person, meta, { bytes, name, typ });
     return NextResponse.json({ ok: true, eintrag: e });
   } catch (e) { return ausFehler(e); }
@@ -110,6 +129,7 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  if (z.nurBusiness) return fehler(NUR_LESEN, 403);
   let b: { id?: unknown; felder?: unknown };
   try { b = JSON.parse((await begrenztLesen(req, UMSCHLAG))?.toString('utf8') ?? 'null') ?? {}; } catch { return fehler('Kein gültiges JSON.', 400); }
   const id = String(b.id ?? '');
@@ -123,6 +143,7 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   const z = await zugang(req);
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
+  if (z.nurBusiness) return fehler(NUR_LESEN, 403);
   const id = new URL(req.url).searchParams.get('id') ?? '';
   if (!DATEI_ID.test(id)) return fehler('Unzulässige Kennung.', 400);
   try {

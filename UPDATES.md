@@ -113,6 +113,21 @@ gezeichnet dünn (`components/os/fulfillment/kunde/bilder.tsx`, PDF: `lib/fulfil
   kann“ (nächste Stufe der Leistungstreppe, nie ein Preis).
 - **Mails**: Willkommensmail-Gerüst neu (Kick-off, Projektseite, erste 30 Tage); Puls-Mail als Text (`pulsMail`, Knopf „Mail-Text kopieren“ beim Puls-Link).
 - Tests: `tests/fulfillment-extern.test.ts` (neu), `fulfillment-c2-sicht`, `fulfillment-c2-route` angepasst. Rückweg: nur Darstellung + optionale Felder.
+## 13.10.2026 — Rolle „nur Business“ in der Markttraktion: „Nur lesen + Entwürfe“ (nur lokal — Branch `partner-rolle`, Basis fb71cac8 = `update-0910b`)
+Kevins Entscheidung für Konten mit `finanzRecht: 'business'` (z. B. Vertriebspartner). Befund Klick-Durchlauf 12.10.: Angebote, CRM-Ablage, Absender und die
+Gesellschafts-Auswahl sperrten die Rolle ganz aus (Haushalt über `haushaltVon`/`haushaltFuer`). EINE Regel `lib/crm/nur-business.ts` (rein), Haushalt über
+`businessHaushaltVon` (lib/zugang/konto-sicht-server.ts, Rückfall `businessHaushaltFuer` nur im Haushalt der Inhaber) — die Sperre sitzt im SERVER:
+- **/api/crm/angebot:** GET nur Angebote/Absender einer Business-Gesellschaft (`nurEntwuerfe: true`); Entwurf speichern ja (mit Absender-Vorgaben), Entwürfe
+  in Archiv/Papierkorb ja; `stellen`, `annehmen`, `ablehnen`, `version`, `gesendet`, Archiv gestellter Angebote → 403 „… nur durch Inhaber oder volle Mitglieder — dein Entwurf ist gespeichert.“
+- **/api/crm/dateien:** Liste/Download nur an Business-Bezügen (Kontakt/Firma; Angebot/Mandat/Deal einer Business-Gesellschaft) — nie Firmen-Akte (Unterlagen einer eigenen
+  Gesellschaft; nur das Logo eines Business-Absenders per Kennung), nie Rechnungen; Fremdes = 404. Hochladen nur an Business-Bezügen; PATCH/DELETE 403.
+- **/api/crm/gesellschaften:** GET nur Kennung/Name/Kürzel/Logo der Business-Gesellschaften (`nurLesen`), Schreiben 403. **/api/gesellschaften:** nur `?wahl=1`
+  (ohne Privat-Einheit), alles andere 403.
+- **/api/kalender/spiegel:** Event-Lage lesen ja; anlegen/löschen nur in Business-Kalendern (`spaceVonKalender`, wie die Termin-Route; `ServerTermin.nurBusinessKalender`) → sonst 403 vor iCloud.
+- **Oberfläche:** Editor „Vorschau ›“ statt „Mail versenden ›“, in der Vorschau kein „Senden“ (Hinweis); Ansicht ohne Angenommen/Abgelehnt/Neue Version/gesendet/Mandat/Rechnung;
+  Liste ohne Archiv/Löschen für gestellte; Umsatz-Reiter ohne Löschen/Status ändern; BEAN liest die (gefilterte) Ablage wieder.
+**So testet ihr:** als Partner-Konto Markttraktion › Angebot → Entwurf anlegen, Vorschau ansehen (kein „Senden“); ein gestelltes Angebot öffnen → PDF laden geht, Knöpfe
+„Angenommen“/„Neue Version“ fehlen. **Rückweg:** keine Daten-/Formänderung (nur Lese-Filter und zusätzliche 403). Wächter `tests/partner-rolle.test.ts`.
 
 ## 12.10.2026 — Zwei Kleinfunde aus dem Ende-zu-Ende-Test (nur lokal — Branch `kleinfunde-1210`, Basis 11f34e35 = `update-0910b`)
 - **Register nie still doppelt:** `PATCH /api/gesellschaften` mit `liste` + `eintrag`, aber ohne `eintragId`, legt einen neuen Listeneintrag an (Kennung vom Server); trug der

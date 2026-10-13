@@ -5,6 +5,7 @@
 
 import { ladeKonten } from './konten';
 import { kontoSichtAus, keineKontoSicht, type KontoSicht } from './konto-sicht';
+import { haushaltVon, personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export type { KontoSicht } from './konto-sicht';
 
@@ -36,6 +37,19 @@ export async function kontoSichtLaden(person: string): Promise<KontoSicht> {
 export async function businessHaushaltFuer(person: string | null | undefined): Promise<{ person: string; haushalt: string } | null> {
   const s = await kontoSicht(person);
   return s && s.imHaushalt && s.business && s.haushalt ? { person: s.person, haushalt: s.haushalt } : null;
+}
+
+/**
+ * Haushalt für BUSINESS-Bestände je Haushalt aus der Anfrage (Markttraktion: Angebote, CRM-Ablage, Absender — 13.10., Rolle „nur Business“):
+ * volles Mitglied wie bisher über `haushaltVon` (`nurBusiness: false`), sonst ein Konto „nur Business“ im Haushalt der Inhaber
+ * (`businessHaushaltFuer`, `nurBusiness: true`) — was diese Rolle dort darf, regelt lib/crm/nur-business.ts. Sonst null (→ 403).
+ * Die Routen prüfen vorher ihr Tor (Haushalt des Inhabers); ein volles Mitglied eines anderen Haushalts kommt dort nicht vorbei.
+ */
+export async function businessHaushaltVon(req: Request): Promise<{ person: string; haushalt: string; nurBusiness: boolean } | null> {
+  const voll = await haushaltVon(req);
+  if (voll) return { ...voll, nurBusiness: false };
+  const s = await kontoSicht(personStreng(req));
+  return s && s.imHaushalt && s.nurBusiness && s.haushalt ? { person: s.person, haushalt: s.haushalt, nurBusiness: true } : null;
 }
 
 /** Wird für diese Person der Privat-Bereich ausgeblendet („nur Business“)? Systemlauf → nein. Unlesbarer Konten-Bestand wirft. */

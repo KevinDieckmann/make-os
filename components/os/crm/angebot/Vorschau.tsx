@@ -19,10 +19,12 @@ export const NUMMER_PLATZHALTER = '{Nummer}';
 
 export interface MailEntwurf { an: string; betreff: string; text: string }
 
-export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, absenderWeg, nachfassen, setNachfassen, onZurueck, onSenden, meldung }: {
+export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, absenderWeg, nachfassen, setNachfassen, onZurueck, onSenden, meldung, nurEntwurf }: {
   dok: AngebotDokument; logoUrl?: string | null; mail: MailEntwurf; setMail: (m: MailEntwurf) => void;
   ampel: { sperre?: string; hinweise: string[] }; luecken: string[]; /** Unternehmen › Gesellschaft › Absender (08.10.) — dort werden die Lücken ergänzt. */ absenderWeg?: string | null; nachfassen: string; setNachfassen: (t: string) => void;
   onZurueck: () => void; onSenden: () => Promise<void>; meldung?: string | null;
+  /** Rolle „nur Business“ (13.10.): statt „Senden“ dieser Hinweis — gestellt wird nur durch Inhaber oder volle Mitglieder (Server: 403). */
+  nurEntwurf?: string | null;
 }) {
   const breit = useBreit();
   const absenderFehlt = luecken.includes('Firmierung') || luecken.includes('Anschrift');
@@ -57,9 +59,9 @@ export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, absender
         {meldung && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{meldung}</div>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Knopf leise onClick={onZurueck}>‹ Zurück</Knopf>
-          <Knopf farbe={LEUCHT.gut} aus={gesperrt} onClick={onSenden}>Senden</Knopf>
+          {!nurEntwurf && <Knopf farbe={LEUCHT.gut} aus={gesperrt} onClick={onSenden}>Senden</Knopf>}
         </div>
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Senden stellt das Angebot: es bekommt seine Nummer und ist danach festgeschrieben (Änderungen nur als neue Version). Deal, Follow-up und Verlauf ziehen mit.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{nurEntwurf ?? 'Senden stellt das Angebot: es bekommt seine Nummer und ist danach festgeschrieben (Änderungen nur als neue Version). Deal, Follow-up und Verlauf ziehen mit.'}</div>
       </div>
       <Blatt d={dok} logoUrl={logoUrl} />
     </div>

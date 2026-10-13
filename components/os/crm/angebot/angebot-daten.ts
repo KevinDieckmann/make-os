@@ -35,6 +35,8 @@ export function useAngebote() {
   const [vorgabe, setVorgabe] = useState<Gesellschaftskennung | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [gesperrt, setGesperrt] = useState(false);
+  /** Rolle „nur Business“ (13.10.): der Server liefert `nurEntwuerfe` — Entwürfe ja, stellen/annehmen/ablehnen nein (die Sperre sitzt im Server). */
+  const [nurEntwuerfe, setNurEntwuerfe] = useState(false);
   const laeuft = useRef(false);
   const laden = useCallback(async () => {
     if (laeuft.current) return;
@@ -42,8 +44,8 @@ export function useAngebote() {
     try {
       const r = await fetch('/api/crm/angebot', { cache: 'no-store' });
       if (r.status === 403) { setGesperrt(true); setAngebote([]); return; }
-      const d = await r.json().catch(() => null) as { ok?: boolean; angebote?: AngebotMitStand[]; papierkorb?: AngebotMitStand[]; gesellschaften?: GesellschaftAnzeige[]; vorgabe?: string | null; fehler?: string } | null;
-      if (d?.ok) { setAngebote(d.angebote ?? []); setPapierkorb(d.papierkorb ?? []); setGesellschaften(d.gesellschaften ?? []); setVorgabe(istGesellschaft(d.vorgabe) ? d.vorgabe : null); setFehler(null); }
+      const d = await r.json().catch(() => null) as { ok?: boolean; angebote?: AngebotMitStand[]; papierkorb?: AngebotMitStand[]; gesellschaften?: GesellschaftAnzeige[]; vorgabe?: string | null; nurEntwuerfe?: boolean; fehler?: string } | null;
+      if (d?.ok) { setAngebote(d.angebote ?? []); setPapierkorb(d.papierkorb ?? []); setGesellschaften(d.gesellschaften ?? []); setVorgabe(istGesellschaft(d.vorgabe) ? d.vorgabe : null); setNurEntwuerfe(d.nurEntwuerfe === true); setFehler(null); }
       else setFehler(d?.fehler ?? `Antwort ${r.status}.`);
     } catch { setFehler('Keine Verbindung.'); }
     finally { laeuft.current = false; }
@@ -52,9 +54,12 @@ export function useAngebote() {
   /** Ein Angebot aus einer Server-Antwort in die Liste übernehmen. */
   const uebernehmen = useCallback((a: AngebotMitStand) => setAngebote(alt => (alt ? (alt.some(x => x.id === a.id) ? alt.map(x => (x.id === a.id ? a : x)) : [...alt, a]) : [a])), []);
   const entfernen = useCallback((id: string) => setAngebote(alt => (alt ? alt.filter(x => x.id !== id) : alt)), []);
-  return { angebote, papierkorb, gesellschaften, vorgabe, fehler, gesperrt, laden, uebernehmen, entfernen, setFehler };
+  return { angebote, papierkorb, gesellschaften, vorgabe, fehler, gesperrt, nurEntwuerfe, laden, uebernehmen, entfernen, setFehler };
 }
 export type AngebotDaten = ReturnType<typeof useAngebote>;
+
+/** Hinweis für die Rolle „nur Business“ statt „Senden“/„Angenommen“ — derselbe Satz wie die 403 des Servers. */
+export { NUR_ENTWURF } from '@/lib/crm/nur-business';
 
 /** Zuletzt genutzte Gesellschaft (Vorbelegung, nur dieser Browser). */
 const MERKER = 'mt-angebot-gesellschaft';

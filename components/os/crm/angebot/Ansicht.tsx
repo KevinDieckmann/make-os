@@ -25,7 +25,7 @@ import { angebotDokument } from '@/lib/crm/angebot-dokument';
 import { ANGEBOT_STATUS_LABEL, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, mailtoLink } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { Blatt } from './Blatt';
-import { angebotPost, mandatAusDeal, pdfDateiHolen, pdfLaden, pdfTeilen, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
+import { angebotPost, mandatAusDeal, pdfDateiHolen, pdfLaden, pdfTeilen, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 
 export const STATUS_FARBE: Record<Angebot['status'], string> = { entwurf: C.inkDim, gestellt: LEUCHT.business, angenommen: LEUCHT.gut, abgelehnt: LEUCHT.kritisch, abgelaufen: C.inkLeise, ersetzt: C.inkLeise };
 const datumDe = (d?: string) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
@@ -35,6 +35,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   onOeffnen: (id: string) => void; onListe: () => void; zuKontakt?: (id: string) => void; zuDeal?: (id: string) => void;
 }) {
   const crm = api.crm!;
+  /** Rolle „nur Business“ (13.10.): lesen ja — gesendet, annehmen, ablehnen, neue Version, Mandat/Rechnung nicht (Server: 403). */
+  const nur = daten.nurEntwuerfe;
   const [meldung, setMeldung] = useState<string | null>(null);
   const [ablehnen, setAblehnen] = useState(false);
   const [grund, setGrund] = useState<string | null>(null);
@@ -145,24 +147,25 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           {a.pdfDateiId && <Knopf leise onClick={() => pdfLaden(a.pdfDateiId!, `Angebot ${a.nummer}.pdf`)}>PDF laden</Knopf>}
           {a.pdfDateiId && !meldungStart && <PdfTeilenKnopf dateiId={a.pdfDateiId} name={`Angebot ${a.nummer}.pdf`} titel={a.titel} onText={setMeldung} knopf />}
-          {(a.status === 'gestellt' || a.status === 'abgelaufen' || a.status === 'angenommen') && k && !gesendet && !meldungStart && <Knopf leise onClick={alsGesendet}>Mail ist raus — als gesendet vermerken</Knopf>}
+          {(a.status === 'gestellt' || a.status === 'abgelaufen' || a.status === 'angenommen') && k && !gesendet && !meldungStart && !nur && <Knopf leise onClick={alsGesendet}>Mail ist raus — als gesendet vermerken</Knopf>}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && <Knopf leise onClick={mailOeffnen}>Mail öffnen</Knopf>}
-          {(a.status === 'gestellt' || a.status === 'abgelaufen') && <Knopf farbe={LEUCHT.gut} onClick={annehmen}>Angenommen</Knopf>}
-          {(a.status === 'gestellt' || a.status === 'abgelaufen') && !ablehnen && <Knopf leise onClick={() => setAblehnen(true)}>Abgelehnt …</Knopf>}
-          {a.status !== 'angenommen' && a.status !== 'ersetzt' && !(nachfolger && nachfolger.status === 'entwurf') && (
+          {(a.status === 'gestellt' || a.status === 'abgelaufen') && !nur && <Knopf farbe={LEUCHT.gut} onClick={annehmen}>Angenommen</Knopf>}
+          {(a.status === 'gestellt' || a.status === 'abgelaufen') && !ablehnen && !nur && <Knopf leise onClick={() => setAblehnen(true)}>Abgelehnt …</Knopf>}
+          {nur && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, alignSelf: 'center' }}>{NUR_ENTWURF}</span>}
+          {!nur && a.status !== 'angenommen' && a.status !== 'ersetzt' && !(nachfolger && nachfolger.status === 'entwurf') && (
             <Knopf leise onClick={async () => { const r = await angebotPost({ aktion: 'version', id: a.id }); if (r.ok && r.angebot) { daten.uebernehmen(r.angebot); onOeffnen(r.angebot.id); } else setMeldung(r.fehler ?? 'Keine neue Version.'); }}>Neue Version</Knopf>
           )}
-          {a.status === 'angenommen' && deal && !hatMandat && !mandat && <Knopf farbe={LEUCHT.gut} onClick={mandatAnlegen}>Mandat anlegen</Knopf>}
+          {!nur && a.status === 'angenommen' && deal && !hatMandat && !mandat && <Knopf farbe={LEUCHT.gut} onClick={mandatAnlegen}>Mandat anlegen</Knopf>}
           {mandat && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, alignSelf: 'center' }}>{mandat}</span>}
           {a.status === 'angenommen' && hatMandat && !mandat && <Chip farbe={LEUCHT.gut}>Mandat angelegt</Chip>}
           {a.status === 'angenommen' && mandatZiel && <Link href={WEG.mandat(mandatZiel)} style={{ ...link, alignSelf: 'center' }}>Zum Mandat ›</Link>}
-          {a.status === 'angenommen' && mandatZiel && <Knopf leise onClick={ersteRechnung}>Erste Rechnung</Knopf>}
-          {a.status === 'angenommen' && mandatZiel && gemischt && !einmal?.id && <Knopf leise onClick={einmalPlanen}>Einmalbetrag als Rechnung planen</Knopf>}
+          {!nur && a.status === 'angenommen' && mandatZiel && <Knopf leise onClick={ersteRechnung}>Erste Rechnung</Knopf>}
+          {!nur && a.status === 'angenommen' && mandatZiel && gemischt && !einmal?.id && <Knopf leise onClick={einmalPlanen}>Einmalbetrag als Rechnung planen</Knopf>}
           {einmal?.id && <Link href={WEG.rechnungSchreiben(einmal.id)} style={{ ...link, alignSelf: 'center' }}>Einmalbetrag: Rechnung (geplant) ›</Link>}
           {einmal?.fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, alignSelf: 'center' }}>{einmal.fehler}</span>}
           {/* Angebot → Rechnung (08.10.): Entwurf mit den Positionen, Kunde, Mandat und Gesellschaft — gestellt wird im Editor. */}
           {/* Gemischt mit Mandat (3.6): Einmalbetrag und Monatsrechnung laufen getrennt — keine Rechnung über alle Positionen daneben. */}
-          {a.status === 'angenommen' && !(gemischt && mandatZiel) && <RechnungAusAngebot angebotId={a.id} onFehler={setMeldung} />}
+          {!nur && a.status === 'angenommen' && !(gemischt && mandatZiel) && <RechnungAusAngebot angebotId={a.id} onFehler={setMeldung} />}
         </div>
         {ablehnen && (
           <div style={{ display: 'grid', gap: 8, marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>

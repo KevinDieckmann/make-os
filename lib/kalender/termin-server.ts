@@ -22,6 +22,8 @@ import { uidVonSchluessel, type BezugKennungen } from './bezug';
 import type { Aenderung } from './ics';
 import type { IcsArt, BlockArt } from './arten';
 import { protokolliere, type Wer as ProtokollWer } from '@/lib/store/aenderungsprotokoll';
+import { spaceVonKalender } from './space';
+import { NUR_BUSINESS_PRIVAT } from '@/lib/zugang/konto-sicht';
 
 export interface ServerTermin {
   titel: string; start: string; ende: string; ganztags?: boolean;
@@ -46,6 +48,11 @@ export interface ServerTermin {
   bezug?: BezugKennungen;
   /** Wer ihn in MAKE OS anlegt (Speichername) — Eigentümer im Neben-Bestand. */
   von: string;
+  /**
+   * Konto „nur Business“ (13.10., Rolle Partner): nur in einen Business-Kalender (`spaceVonKalender`, dieselbe Regel wie die Termin-Route) —
+   * sonst 403, BEVOR etwas geschrieben wird.
+   */
+  nurBusinessKalender?: boolean;
 }
 
 /** Der Kalender (Eintrag im Stand) zu einem Namen — Lesefehler → unbekannt (das Anlegen selbst scheitert dann ohnehin). */
@@ -71,6 +78,7 @@ export async function terminAnlegenServer(t: ServerTermin, wer: ProtokollWer): P
   const ziel = t.kalender || eigen ? null : await kalenderZiel(t.wer, t.bereich ?? 'privat', einst);
   const kalender = t.kalender || eigen || ziel?.kalender;
   if (!kalender) throw new KalenderFehler('Für diese Person ist kein Kalender hinterlegt — der Termin wurde nicht angelegt.', 409);
+  if (t.nurBusinessKalender && spaceVonKalender(einst, kalender) !== 'business') throw new KalenderFehler(NUR_BUSINESS_PRIVAT, 403);
   // iCloud je Person (06.10.): in den Kalender aus der eigenen Verbindung einer Person schreibt nur sie selbst (auch kein Systemlauf für andere).
   if (persoenlichFremd(await zielKalender(kalender), t.von)) throw new KalenderFehler('Dieser Kalender gehört zur iCloud-Verbindung einer anderen Person — dort legt MAKE OS nichts an.', 403);
   // Liegt der Zielkalender in iCloud, braucht es iCloud (ein Google-Ziel braucht es nicht).

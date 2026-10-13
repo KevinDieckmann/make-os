@@ -7,7 +7,7 @@
 // „Archiv“, zurückholbar) und Löschen = Papierkorb (nur Entwürfe, 30 Tage, Rückgängig). Ein gestelltes Angebot ist eine
 // Geschäftsunterlage: es wird nie gelöscht — die Rückfrage bietet das Archiv an. Server: /api/crm/angebot `ablage`.
 
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import type { Angebot, AngebotsStatus } from '@/lib/crm/typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -93,13 +93,18 @@ export function AngebotListe({ api, daten, onOeffnen, onNeu }: { api: CrmApi; da
                   unter={`${name(a) || 'ohne Empfänger'} · gelöscht ${a.geloeschtAm ? `${a.geloeschtAm.slice(8, 10)}.${a.geloeschtAm.slice(5, 7)}.` : ''} · endgültig ab ${a.geloeschtAm ? papierkorbBis(a.geloeschtAm).split('-').reverse().join('.') : '—'}`}
                   rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}><Knopf leise onClick={() => wiederherstellen(a)}>Wiederherstellen</Knopf><Knopf leise farbe={LEUCHT.kritisch} onClick={() => endgueltig(a as Angebot & { stand: string })}>Endgültig löschen</Knopf></span>} />
               );
-              return (
-                <ZeileAktionen key={a.id} titel={titel(a)} archiviert={!!a.archiviertAm} onArchivieren={() => archivieren(a)} onLoeschen={() => loeschen(a)}
-                  loeschenFragt={a.status !== 'entwurf'} href={WEG.angebot({ angebotId: a.id })} onOeffnen={() => onOeffnen(a.id)} mehr={[{ id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'angebot', id: a.id }) }]}>
+              const zeile = (
                 <Zeile onClick={() => onOeffnen(a.id)} links={<Punkt farbe={STATUS_FARBE[a.status]} />}
                   titel={<>{a.nummer ? `${a.nummer} · ` : ''}{a.titel || 'ohne Titel'}</>}
                   unter={[name(a) || 'ohne Empfänger', gesellschaftLabel(a.gesellschaft), a.gestelltAm ? `gestellt ${a.gestelltAm.slice(8, 10)}.${a.gestelltAm.slice(5, 7)}.` : `geändert ${a.geaendert.slice(8, 10)}.${a.geaendert.slice(5, 7)}.`, `${euroCent(s.gesamt.netto)} netto`].join(' · ')}
                   rechts={<Chip farbe={STATUS_FARBE[a.status]}>{ANGEBOT_STATUS_LABEL[a.status]}</Chip>} />
+              );
+              // Rolle „nur Business“ (13.10.): gestellte Angebote nur lesen — kein Archiv, kein Löschen (Server: 403).
+              if (daten.nurEntwuerfe && a.status !== 'entwurf') return <Fragment key={a.id}>{zeile}</Fragment>;
+              return (
+                <ZeileAktionen key={a.id} titel={titel(a)} archiviert={!!a.archiviertAm} onArchivieren={() => archivieren(a)} onLoeschen={() => loeschen(a)}
+                  loeschenFragt={a.status !== 'entwurf'} href={WEG.angebot({ angebotId: a.id })} onOeffnen={() => onOeffnen(a.id)} mehr={[{ id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'angebot', id: a.id }) }]}>
+                {zeile}
                 </ZeileAktionen>
               );
             })}
