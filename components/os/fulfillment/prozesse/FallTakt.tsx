@@ -22,7 +22,7 @@ import { taktLeiste, taktLage, type TaktZeile } from '@/lib/fulfillment/prozesse
 import type { Mitschrift, RitualVorlage } from '@/lib/fulfillment/typen';
 import type { Vorgabe } from '@/lib/kalender/formular';
 import { useFall, fallOps, fehlerText, holeJson, tagKurz, tagLang, type FallAntwort } from './daten';
-import { klein, feld, Leiste, Meldung } from './teile';
+import { klein, feld, Leiste } from './teile';
 import { ReiterAntwort, MehrKnopf } from '../reise/teile';
 import { JETZT } from '../reise/bilder';
 import { insBild, useStellenSprung } from '../reise/sprung';
@@ -93,28 +93,34 @@ function KalenderLeiste({ leiste, rituale, heute, onTermin }: { leiste: ReturnTy
       <div style={klein}>Die Bibliothek hat noch keine Rituale — unter Fulfillment › Prozesse „Aus Muster anlegen“.</div>
     </Karte>
   );
-  const spalten = `minmax(0, ${handy ? '1.3fr' : '1.6fr'}) repeat(${wochen.length}, minmax(0, 1fr))`;
+  // Am Handy steht der Name des Rituals als eigene Zeile über seinen Wochen — eine schmale Namensspalte bräche die Wörter.
+  const spalten = handy ? `repeat(${wochen.length}, minmax(0, 1fr))` : `minmax(0, 1.6fr) repeat(${wochen.length}, minmax(0, 1fr))`;
   const lageImTag = (t: string, woche: string) => { const d = Math.round((Date.parse(`${t}T12:00:00Z`) - Date.parse(`${woche}T12:00:00Z`)) / 864e5); return d >= 0 && d < 7 ? d : -1; };
   return (
     <Karte i={1} id="takt-leiste">
       <Ueberschrift erklaerung="fulfillment.rituale" rechts={<span>nächste {wochen.length} Wochen</span>}>Rituale</Ueberschrift>
       <div role="table" aria-label={`Rituale bis ${tagLang(ende)}`} style={{ display: 'grid', gridTemplateColumns: spalten, gap: '6px 4px', alignItems: 'center' }}>
         <span role="row" style={{ display: 'contents' }}>
-          <span role="columnheader" style={MIKRO}>Ritual</span>
+          {!handy && <span role="columnheader" style={MIKRO}>Ritual</span>}
           {wochen.map(w => <span key={w} role="columnheader" style={{ ...MIKRO, textAlign: 'center', color: heute >= w && heute <= tagPlus(w, 6) ? JETZT : C.inkLeise }}>{heute >= w && heute <= tagPlus(w, 6) ? 'diese Woche' : `ab ${tagKurz(w)}`}</span>)}
         </span>
         {leiste.zeilen.map(z => {
           const r = rituale.find(x => x.id === z.ritualId)!;
           return (
             <span key={z.ritualId} role="row" style={{ display: 'contents' }}>
-              <span role="rowheader" style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, minHeight: 44 }}>
+              <span role="rowheader" style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, minHeight: 44, ...(handy ? { gridColumn: '1 / -1', marginTop: 4 } : {}) }}>
                 <span style={{ display: 'grid', gap: 1, minWidth: 0, flex: 1 }}>
-                  <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink, overflowWrap: 'anywhere' }}>{z.titel}</span>
+                  <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink, overflowWrap: 'break-word' }}>{z.titel}</span>
                   <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{RHYTHMUS_TEXT[z.rhythmus]} · {z.dauerMin} Min.</span>
                 </span>
                 <MehrKnopf titel={z.titel} mehr={[{ id: 'termin', label: z.naechster ? 'Weiteren Termin anlegen' : 'Termin anlegen', hinweis: 'Öffnet den Kalender-Dialog — Gäste erst nach der Rückfrage.', tun: () => onTermin(r) }]} />
               </span>
-              {wochen.map(w => <WochenZelle key={w} z={z} woche={w} lage={lageImTag} onTermin={() => onTermin(r)} />)}
+              {z.rhythmus === 'einmal' && z.angelegt && !z.tage.some(t => wochen.some(w => lageImTag(t.tag, w) >= 0))
+                // Ein einmaliges Ritual außerhalb des Fensters: ein Satz statt leerer Zellen.
+                ? <span role="cell" style={{ gridColumn: `span ${wochen.length}`, display: 'flex', alignItems: 'center', minHeight: 44, padding: '0 10px', borderRadius: ECKE.eingabe, border: `1px solid ${RAND.haar}`, fontSize: TYP.bedien, color: C.inkDim }}>
+                    {z.naechster ? `Einmalig — Termin am ${tagKurz(z.naechster)}` : 'Einmalig — schon gelaufen'}
+                  </span>
+                : wochen.map(w => <WochenZelle key={w} z={z} woche={w} lage={lageImTag} onTermin={() => onTermin(r)} />)}
             </span>
           );
         })}

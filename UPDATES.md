@@ -4,6 +4,90 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 12.10.2026 — Fulfillment kundenreif: keine losen Enden, „Dem Kunden zeigen“, die vier Fall-Reiter neu, Demo-Geschichte (nur lokal — Branch `kundenreif-fulfillment`, Basis d0b700a1 = `update-0910b`, `update-0910b` bis 40d935a8 eingemischt)
+Kevin: „Kann ich das einem Kunden zeigen? Ist der Fulfillment-Prozess auch sinnig so — kann man das wirklich gut zeigen und weitermachen? … keine losen
+Enden. Alles muss strukturiert sauber sein, auch aus der Visualisierung heraus. Denk immer einen Schritt weiter.“ Einmal wie ein Berater im Kundentermin
+durchgegangen — von „Deal gewonnen“ bis „Wirkungsbericht + Nachsorge“ — und jedes lose Ende geschlossen (nur über vorhandene Schreibwege und den
+Freigabe-Stapel; nichts geht automatisch nach außen).
+
+**Geschlossene lose Enden**
+- **Diagnose → Fall:** die Top-Maßnahmen der Diagnose blieben im Dossier liegen. Jetzt „Maßnahmen in den Ablauf“ (Dossier › Weitergeben) — als Zusatz-Schritte
+  der Phase NACH der Diagnose (meist „Aufbau“), zuerst nur intern; im Ablauf „⋯ › Für den Kunden sichtbar machen“. EINE Stelle `lib/fulfillment/analyse/nach-fall.ts`
+  (nur, was noch nicht im Fall steht; zu lange Titel an einer Wortgrenze gekürzt, der volle Text steht im Ziel).
+- **Dossier-Erkenntnisse sichtbar im Fall:** Überblick › „Aus der Analyse“ — Quick Wins, Fragen, Maßnahmen, die die geprüfte Diagnose (F2) noch für den Fall hat,
+  je ein Klick; ohne F2 der Weg zum Dossier. Vorher nur im Unter-Reiter Analyse › Dossier erreichbar.
+- **Tote Schritte im Ablauf:** „Quick Wins“, „Befähigung“, „Wirkungsbericht“, „Diagnosebericht“, „Dossier“ kannten die Stellen nicht, die der Fall selbst führt.
+  Jetzt zeigen sie den Stand („1 von 3 Quick Wins erledigt“, „Befähigung 1 von 4“, „Diagnose-Entwurf: 2 Maßnahmen noch nicht im Fall“) und springen dorthin
+  (`schrittVerweis`, Sprung `#stelle-…`).
+- **Report im Fulfillment:** der 2-Wochen-Report stand nur unter Produkte & Mandate › Mandat. Kunde & Reports zeigt jetzt die Report-Zeitachse (erstellte Reports,
+  Soll-Termine alle 14 Tage, nächster fälliger Tag) und darunter den vorhandenen Report-Weg (erstellen, Mail vorbereiten, Health) — derselbe Baustein, ohne den
+  Sprung „Fulfillment öffnen“, der dort auf sich selbst zeigte.
+- **Kunden-Puls → Health → Gespräch:** Puls als Verlauf mit Schwelle, daneben die Health des Mandats; weicht sie vom letzten Puls ab, schlägt die Karte
+  „In die Health übernehmen (80)“ vor. Unter der Schwelle steht der Weg zum Gespräch (Vorschlag im Freigabe-Stapel bzw. das Follow-up am Mandat).
+- **Ende der Reise:** Befähigung und Wirkungsbericht waren unter „Takt“ versteckt, ein fertiger Fall hatte keinen nächsten Handgriff. Neuer Reiter
+  **Abschluss & Kreislauf**: Kreislauf-Rad „hier steht <Kunde>“ (Kanäle → Leads → Deals → Abschluss → Fulfillment → nach der Leistung → Wiederkauf, jede Stufe öffnet
+  ihre Ansicht), Befähigung, Wirkungsbericht (mit „Fall abschließen“), **Nach der Leistung** = dieselben Schritte wie Markttraktion › Planung › Kreislauf
+  (Testimonial, Bewertung, Upselling, Cross-Selling, Newsletter, Leistung beendet — abgehakt über deren Schreibweg), Kundenstimme/Empfehlung/Fallstudie/nächste
+  Stufe, **Nachsorge-Plan** (Tag 14 · 45 · 90 ab Mandatsende mit Datum und Zustand; „startet mit dem Mandatsende“ + Weg „Mandat beenden“) und die Follow-ups
+  am Mandat. Der Kopf des Falls zeigt nach dem letzten Schritt den Handgriff: Wirkungsbericht → Mandat beenden → Nachsorge (`abschlussSchritt`).
+  Die Nachsorge-Glocke führt jetzt dorthin (vorher in den Überblick).
+- **Kreislauf (Bereich):** die Etagen standen als Zeilen ohne Ziel da. Jetzt das Rad mit den heutigen Zahlen der Markttraktion (GET `/api/crm/planung`), jede
+  Stufe springt in ihre Ansicht; die Etagen öffnen ihren Drill-down.
+- **Kleinere:** Mitschrift → Aufgabe mit „Aufgabe öffnen ›“; Wert-Konto „jetzt —“ heißt „noch keine Messung“ und nennt, wo die Messung landet (Report,
+  Wirkungsbericht); Freigaben zeigen „bestätigt am … im Kick-off · vermerkt am …“; „Weitere Bausteine“ stand im Ablauf je Phase als doppelte Überschrift —
+  ein Sammel-Teilprozess (bzw. einer, der wie seine Phase heißt) ist keine eigene Gruppe mehr (`istSammelTeil`; Ursache ist der Import in `import.ts`
+  `einsortieren`, dort nicht geändert).
+
+**Die vier alten Reiter im Stil der Reise** (Antwort zuerst · Bild statt Liste · EINE Hauptaktion · Seltenes hinter „⋯“; gerechnet in
+`lib/fulfillment/prozesse/ansichten.ts`, gezeichnet mit `components/os/fulfillment/reise/teile.tsx`):
+- **Menschen & Entscheidungen:** „Wer trägt das Projekt? · Was ist entschieden? · Spielregeln“; Stakeholder als Raster Einfluss × Haltung (jede Person ein
+  Tippziel zum Bearbeiten; am Handy nach Einfluss gruppiert), Entscheidungen als Zeitstrahl (offene mit Frist als Strecke, ◆ = der Kunde entscheidet), die
+  bestätigte Vereinbarung als ruhige Zusammenfassung.
+- **Takt:** „Wann sehen wir uns? · Was kam zuletzt heraus?“; Rituale als Kalender-Leiste über sechs Wochen (am Handy drei) — gefüllt = Termin im Kalender,
+  Umriss = im Rhythmus erwartet, „+“ = noch kein Termin (nie ein erfundener Termin); Mitschriften darunter.
+- **Kunde & Reports:** „Report im Takt? · Wie zufrieden ist der Kunde? · Was sieht der Kunde?“; Report-Zeitachse, Puls-Verlauf, Kunden-Link (Verwaltung hinter „⋯“),
+  Playbook mit Fortschrittsbalken, Unterlagen (Freigeben direkt, Rest hinter „⋯“), Vorschau + „Dem Kunden zeigen“.
+- **Abschluss & Kreislauf** (neu, siehe oben).
+
+**Neu: „Dem Kunden zeigen“** — Knopf am Fall (neben „‹ Fulfillment“, in Kunde & Reports) und auf der Landkarte (erst den Kunden wählen — die Landkarte mit den
+Zählern aller Kunden wird nie gezeigt). Vollbild mit der Seite des Kunden: Daten NUR aus `/api/fulfillment/kunde/vorschau` (dieselbe Positivliste wie der Link),
+gezeichnet NUR mit `KundenAnsicht` — keine zweite Filterlogik, kein eigenes Layout. Esc schließt (Fokus zurück), „Drucken“ druckt nur die Kunden-Seite,
+„PDF (Fortschritts-Report)“ ist der vorhandene Report-Weg. Wächter `tests/fulfillment-kundenreif.test.ts`.
+
+**Interne Marken ruhig:** „nur intern“ · „rechtlich prüfen“ · „vor Verkauf prüfen“ nur noch als kleines Zeichen mit Tooltip (Bibliothek, Ablauf, Baustein);
+die Kunden-Sicht kennt sie gar nicht.
+
+**Demo-Geschichte ohne Widersprüche** (Nordwerk = Musterfall bis zur Mitte, Lumen im Onboarding): Unterschrift vor 46 Tagen, Start vor 45, Kick-off vor 42
+(Vereinbarung, F0, F1), Analyse vor 4 Wochen, Art.-14-Hinweis per Mail, F2 vor 26 Tagen, seitdem Diagnose; Quick Wins, Fragen und drei Maßnahmen kommen aus der
+geprüften Diagnose (ein Quick Win erledigt innerhalb der ersten 30 Tage), Entscheidungen auf dem Zeitstrahl, Wert-Konto mit drei (und zwei) Messungen, zwei
+Reports (vor 28 und 14 Tagen — heute ist der dritte fällig), Puls 7 → 8 mit Health 70 (übernehmen schlägt 80 vor), Wochen-Check im Kalender. Vorher: Health
+in der falschen Skala (4 statt 80 → jedes Mandat „kritisch“), Puls 5 drei Tage nach der Unterschrift, alles „heute“ erledigt, Ziel „Liquiditätsplanung“ im
+Vertriebs-Paket. Lumen: nur noch Onboarding, kein Puls.
+
+**Datenform (nur additiv):** `Fall.startAm` (optional, gewählter Starttag — gelesen nur über `fallStartTag`; Anzeige, Quick-Win-Frist, Kennzahl „Quick Win in
+30 Tagen“); Fall-Ops nehmen optional `am` (nachtragen: `knoten-status`, `freigabe`, neue `entscheidung`, `quickwin`, `befaehigung` — ein Tag, nie in der Zukunft);
+GET `/api/fulfillment/fall` liefert zusätzlich `reports`, `followups`, `analyse`, `nachsorge`; Dossier `nach-fall` kennt `was: 'massnahmen'`; Fall-Reiter `kreislauf`.
+**Rückweg:** der alte Stand kennt `startAm` nicht (fällt beim Speichern weg — Anzeige dann „gestartet am Anlegetag“), `am` war nur ein Eingabefeld, der Reiter
+`?r=kreislauf` landet im Überblick. Keine Formänderung bestehender Felder.
+
+**So zeigt ihr es einem Kunden** (Demo: Produkte & Mandate › Fulfillment):
+1. Fulfillment › Prozesse — das Hochhaus erklären (Dach steuert, Etagen = Weg eines Kunden, Fundament trägt); oben die Lage in drei Antworten.
+2. Fulfillment › Kreislauf — das Rad: „hier liefern wir“, jede Stufe mit der Zahl von heute.
+3. Fall „Strategie-Begleitung Nordwerk“ öffnen → Kopf „Wo steht der Kunde?“ (Phase 3 von …: Diagnose, „Als Nächstes“, „Hängt etwas?“).
+4. Überblick → Quick Wins (aus der Analyse, einer erledigt); Ablauf → Diagnose aufklappen: der Schritt „Quick Wins“ zeigt den Stand und springt hin.
+5. Wert-Konto → „vorher → jetzt → Ziel“ als Balken mit Verlauf.
+6. Menschen & Entscheidungen → Raster (der Entscheider trägt das Projekt) und Zeitstrahl (eine Entscheidung liegt beim Kunden, Frist).
+7. Takt → nächster Wochen-Check, Leiste der Rituale; Kunde & Reports → „Report heute fällig“, Puls 7 → 8, Health übernehmen.
+8. **„Dem Kunden zeigen“** (oben rechts im Fall) → Bildschirm zum Kunden drehen: Reise, Wert-Konto, nächste Schritte, „wartet auf euch“ — Esc zurück.
+9. Abschluss & Kreislauf → wohin es am Ende geht: Wirkungsbericht (Vorschau), Nach der Leistung, Nachsorge-Plan.
+10. Zum Vergleich der Fall „Cockpit-Einführung Lumen“: Onboarding, Willkommensmail überfällig (rot) — der Kopf sagt, was jetzt zu tun ist.
+
+**Offen für das Paket „Extern“ (Kunden-Seite, Report, PDF — nicht hier geändert):** Quick Wins in die Positivliste (`lib/fulfillment/kunde/sicht.ts` +
+`KundenAnsicht`) und in den 2-Wochen-Report (`report-zusatz.ts` + Report-PDF/Mail) — dann zeigt auch „Dem Kunden zeigen“ sie; eine Präsentations-Variante von
+`KundenAnsicht` ohne gesperrte Eingabefelder (heute: ohne Aktionen = gesperrt, Upload-Feld sichtbar); der Mailtext des Wirkungsberichts steht (unverändert
+verschoben) in `FallKreislauf.tsx` — ggf. als Vorlage übernehmen.
+Tests: `tests/fulfillment-kundenreif.test.ts` (neu, 20), angepasst `tests/fulfillment-c1-demo.test.ts` (Geschichte, Lumen ohne Puls).
+
 ## 12.10.2026 — Zwei Kleinfunde aus dem Ende-zu-Ende-Test (nur lokal — Branch `kleinfunde-1210`, Basis 11f34e35 = `update-0910b`)
 - **Register nie still doppelt:** `PATCH /api/gesellschaften` mit `liste` + `eintrag`, aber ohne `eintragId`, legt einen neuen Listeneintrag an (Kennung vom Server); trug der
   Körper die Kennung eines VORHANDENEN Eintrags (Gesellschafter, Vertrag, Beschluss, Organ, Beteiligung, Fassung — auch im Papierkorb), hängte die Route still eine Dublette mit neuer

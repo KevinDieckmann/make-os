@@ -30,7 +30,6 @@ export interface FfKennzahl { id: string; label: string; wert: number | null; an
 
 const pz = (n: number) => `${Math.round(n)} %`;
 const median = (l: number[]) => { if (!l.length) return null; const s = [...l].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-const tag = (x?: string) => (x ? x.slice(0, 10) : undefined);
 
 /** Tag des Kick-offs: Mitschrift eines Kick-off-Rituals, sonst die Bestätigung der Vereinbarung bzw. von F0 „im Kick-off“. */
 export function kickoffTag(f: Fall, kickoffRitualIds: readonly string[]): string | undefined {

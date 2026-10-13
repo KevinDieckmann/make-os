@@ -6,7 +6,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Knopf, Hinweis, Chip, Feldzeile, Schalter, LEUCHT, feld as FELD_STIL } from '../../ui';
+import { Knopf, Hinweis, Feldzeile, Schalter, feld as FELD_STIL } from '../../ui';
 import { Lock, Scale, BookLock } from 'lucide-react';
 import { Fenster } from '../../Fenster';
 import { Wahl } from '../../crm/Wahl';

@@ -131,7 +131,7 @@ export function KreislaufRad({ stufen, hier, durchlaufen = [], mitte, onStufe, b
         </span>
         <span style={{ display: 'grid', gap: 1, minWidth: 0 }}>
           {z === 'hier' && <span style={{ ...MIKRO, color: JETZT }}>hier</span>}
-          <span style={{ fontSize: TYP.bedien, fontWeight: z === 'hier' ? 700 : 600, color: z === 'kommt' ? C.inkDim : C.ink, lineHeight: 1.25, overflowWrap: 'anywhere' }}>{label}</span>
+          <span style={{ fontSize: TYP.bedien, fontWeight: z === 'hier' ? 700 : 600, color: z === 'kommt' ? C.inkDim : C.ink, lineHeight: 1.25, overflowWrap: 'break-word' }}>{label}</span>
           {handy && s.zusatz && <span style={{ ...klein, color: C.inkLeise }}>{s.zusatz}</span>}
         </span>
       </>
@@ -167,7 +167,7 @@ export function KreislaufRad({ stufen, hier, durchlaufen = [], mitte, onStufe, b
       {mitte && <div style={{ position: 'absolute', left: '24%', right: '24%', top: '30%', bottom: '30%', display: 'grid', placeItems: 'center', textAlign: 'center' }}>{mitte}</div>}
       {reihe.map((s, i) => {
         const p = lage(i);
-        return knopf(s, { position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, transform: 'translate(-50%, -50%)', maxWidth: '30%' });
+        return knopf(s, { position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, transform: 'translate(-50%, -50%)', width: 'max-content', maxWidth: '34%' });
       })}
     </div>
   );

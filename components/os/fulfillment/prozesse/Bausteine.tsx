@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO, TIEF, ECKE, FLAECHE_STIL, SCHRIFT } from '@/lib/make-one/design';
 import { SquareCheck, FileText, ScrollText, ListChecks, Mail, BarChart3, Repeat, ClipboardList, BookOpen, Search, Stamp, type LucideIcon } from 'lucide-react';
-import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Pillen, Feldzeile, Schalter, useRueckfrage, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Pillen, Feldzeile, Schalter, useRueckfrage } from '../../ui';
 import { Wahl } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
 import { suchPasst } from '@/lib/text/such-norm';

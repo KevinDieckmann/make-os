@@ -96,7 +96,9 @@ function StakeholderKarte({ daten, ops, hinzufuegen, setHinzufuegen }: { daten: 
       style={{ display: 'grid', gap: 1, textAlign: 'left', minHeight: 44, padding: '6px 10px', borderRadius: ECKE.eingabe, cursor: 'pointer', fontFamily: SCHRIFT.text, color: C.ink,
         background: TIEF.flaeche(HALTUNG_FARBE[s.haltung ?? 'offen']), border: `1px solid ${auf === s.id ? JETZT_RAND : TIEF.rand(HALTUNG_FARBE[s.haltung ?? 'offen'])}` }}>
       <span style={{ fontSize: TYP.bedien, fontWeight: 600, overflowWrap: 'anywhere' }}>{name(s)}</span>
-      <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{ROLLEN.find(r => r.id === s.rolle)?.label}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{ROLLEN.find(r => r.id === s.rolle)?.label}
+        {/* Am Handy fehlen die Haltungs-Spalten — dann steht die Haltung als Wort dabei, nie nur als Farbe. */}
+        {handy && <span style={{ color: HALTUNG_FARBE[s.haltung ?? 'offen'] }}> · {HALTUNG_TEXT[s.haltung ?? 'offen']}</span>}</span>
     </button>
   );
   return (
