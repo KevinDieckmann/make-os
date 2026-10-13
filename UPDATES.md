@@ -4,6 +4,27 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 12.10.2026 — Fulfillment extern: Was der Kunde sieht (nur lokal — Branch `fulfillment-extern`, Basis d0b700a1 = `update-0910b`)
+Kevin: „Das ganze Fulfillment massiv überarbeiten — intern wie extern muss alles sauber sein.“ EIN Bild für Kunden-Seite, 2-Wochen-Report,
+Wirkungsbericht und „Dem Kunden zeigen“ — gerechnet nur in `lib/fulfillment/kunde/bild.ts` (`kundenTeile`, `kundenLage`, `strahlModell`, `wertModell`),
+gezeichnet dünn (`components/os/fulfillment/kunde/bilder.tsx`, PDF: `lib/fulfillment/kunde/pdf-bild.ts`).
+- **Kunden-Seite** (`/kunde/kl-…`, `KundenAnsicht`): Kopf mit Projekt und Anbieter (Name/Logo aus dem Bestand der Gesellschaft, nie im Code) · „So weit
+  sind wir“ (Ampel + drei Sätze, Fortschritt, Phasen-Strahl „hier stehen wir“, Abstimmungspunkte) · „Euer Ziel“ (Wert-Balken je Ziel) · „Erste Erfolge“ ·
+  „Das braucht es von euch“ (mit Frist, „Jetzt ausfüllen“) · Playbook · „Als Nächstes“ · „Nächster Termin“ + Takt + Ansprechperson · Unterlagen (Status
+  als Zahlen) · Puls · Entscheidungen · Datenschutz (aufklappbar). Du/Sie aus der Akte der Ansprechperson (sonst Sie). Handy eine Spalte, ab ~900 px zwei,
+  druckbar. `praesentation` = Vollbild ohne Eingaben (für „Dem Kunden zeigen“). Sprünge in der Seite nie über `#…` (das Fragment trägt das Token).
+- **Positivliste** (`sicht.ts`, Wächter `tests/fulfillment-c2-sicht.test.ts` erweitert): neu Anrede, Anbieter, Ansprechperson (nur der Anzeigename),
+  Lage, Fortschritt, Anteil/Abstimmung je Phase, Frist/Formular je „wartet“, erste Erfolge, nächster Termin (nur Tag), Upload geprüft/in Prüfung.
+  Freigabe-Kürzel heißen „Abstimmungspunkt“, „(nur …)“ fällt weg, Abstimmungen ohne Kunde nie.
+- **Formulare**: „3 von 8 Fragen“, Zwischenspeichern (auch beim Wechsel des Abschnitts), Pflichtfragen vor „Abschnitt abschließen“, Warnung beim Verlassen
+  mit Ungespeichertem, Bestätigung am Ende.
+- **2-Wochen-Report mit Fall**: Seite 1 Zusammenfassung (Ampel, drei Sätze, Strahl, Ziele, Erledigt · Als Nächstes · Wartet, erste Erfolge, Puls), dann
+  „Im Detail“. Mail kurz und persönlich. Ohne Fall Byte für Byte wie vorher (Schnappschuss unverändert grün).
+- **Wirkungsbericht**: Vorher/Nachher je Ziel als Grafik, Meilensteine, erste Erfolge, „Läuft ohne uns“, Zitat nur mit Einwilligung, „Wie es weitergehen
+  kann“ (nächste Stufe der Leistungstreppe, nie ein Preis).
+- **Mails**: Willkommensmail-Gerüst neu (Kick-off, Projektseite, erste 30 Tage); Puls-Mail als Text (`pulsMail`, Knopf „Mail-Text kopieren“ beim Puls-Link).
+- Tests: `tests/fulfillment-extern.test.ts` (neu), `fulfillment-c2-sicht`, `fulfillment-c2-route` angepasst. Rückweg: nur Darstellung + optionale Felder.
+
 ## 11.10.2026 — Unternehmen „in einem Blick“: Schild je Gesellschaft, Bilder statt Listen, Ereignis-Assistent, Kanzlei-Status, Verlauf (nur lokal — Branch `design-unternehmen`, Basis d56e47fa = `update-0910b`)
 Kevin nach dem Ansehen: „Unternehmen nochmal ausbauen — denk immer 2–3 Schritte weiter — und denk dran, dass es einfach zu verstehen sein soll über die
 Visualisierungen. So ist es sehr unübersichtlich und keiner versteht, was da los ist.“

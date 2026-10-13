@@ -15,6 +15,7 @@ import { WEG } from '@/lib/wege';
 import type { KundeStand, InternFormular } from '@/lib/fulfillment/kunde/server';
 import type { KundenFormular } from '@/lib/fulfillment/kunde/sicht';
 import { KUNDE_ANNEHMEN, ZWECK_TEXT } from '@/lib/fulfillment/kunde/upload';
+import { pulsMail } from '@/lib/fulfillment/kunde/puls';
 import { FormularKarte, type SpeicherErgebnis } from './KundenAnsicht';
 import { KundenAnsichtVorschau } from './KundenAnsichtVorschau';
 
@@ -95,7 +96,11 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
           )}
           {frisch && (
             <Hinweis art="gut" titel={frisch.art === 'link' ? 'Der Link — nur jetzt sichtbar' : 'Der Puls-Link — nur jetzt sichtbar'}
-              aktion={<Knopf leise onClick={() => { void navigator.clipboard?.writeText(frisch.url); setMeldung({ art: 'gut', text: 'Kopiert. Verschickt wird er nur von euch — z. B. in der Willkommensmail.' }); }}>Kopieren</Knopf>}>
+              aktion={<span style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <Knopf leise onClick={() => { void navigator.clipboard?.writeText(frisch.url); setMeldung({ art: 'gut', text: 'Kopiert. Verschickt wird er nur von euch — z. B. in der Willkommensmail.' }); }}>Kopieren</Knopf>
+                {/* Puls-Mail (12.10.): kurzer Text mit Du/Sie aus der Akte — kopiert, gesendet wird nur von euch. */}
+                {frisch.art === 'puls' && <Knopf leise onClick={() => { const m = pulsMail({ ...s.ansprache, link: frisch.url }); void navigator.clipboard?.writeText(`${m.betreff}\n\n${m.text}`); setMeldung({ art: 'gut', text: 'Mail-Text kopiert (Betreff in der ersten Zeile). Gesendet wird nur von euch.' }); }}>Mail-Text kopieren</Knopf>}
+              </span>}>
               <code style={{ overflowWrap: 'anywhere', fontSize: TYP.bedien }}>{frisch.url}</code>
               <div style={klein}>Wir speichern nur einen Fingerabdruck. Verloren? Einfach neu erzeugen — der alte gilt dann nicht mehr.</div>
             </Hinweis>

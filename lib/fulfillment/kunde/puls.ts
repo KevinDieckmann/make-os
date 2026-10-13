@@ -70,6 +70,23 @@ export function pulsHand(d: KundeDatei, e: { mandatId: string; id: string; wert:
   return { ok: true, datei: { ...d, puls: [...d.puls, puls] }, geaendert: [puls.id], puls };
 }
 
+/**
+ * Die Puls-Frage als eigene, kurze Mail (12.10., Fulfillment extern) — wenn sie nicht mit dem 2-Wochen-Report rausgeht. Du/Sie nach der Akte (ohne
+ * Angabe Sie), ein Satz, ein Klick. Versendet wird NICHTS: die Oberfläche kopiert den Text, gesendet wird per Klick aus dem eigenen Postfach.
+ */
+export function pulsMail(e: { anrede?: 'Du' | 'Sie'; vorname?: string; nachname?: string; link: string; absender?: string }): { betreff: string; text: string } {
+  const du = e.anrede === 'Du';
+  const gruss = du ? `Hey${e.vorname ? ` ${e.vorname}` : ''},` : e.nachname ? `Guten Tag ${[e.vorname, e.nachname].filter(Boolean).join(' ')},` : 'Guten Tag,';
+  const text = du ? [
+    gruss, '', 'eine kurze Frage, die uns hilft, noch besser zu werden: Wie zufrieden bist du gerade mit unserer Zusammenarbeit — von 0 bis 10?', '',
+    'Ein Klick genügt, es dauert keine Minute:', e.link, '', 'Danke dir!', 'Viele Grüße', ...(e.absender ? [e.absender] : []),
+  ] : [
+    gruss, '', 'eine kurze Frage, die uns hilft, noch besser zu werden: Wie zufrieden sind Sie gerade mit unserer Zusammenarbeit — von 0 bis 10?', '',
+    'Ein Klick genügt, es dauert keine Minute:', e.link, '', 'Vielen Dank!', 'Freundliche Grüße', ...(e.absender ? [e.absender] : []),
+  ];
+  return { betreff: 'Eine kurze Frage zu unserer Zusammenarbeit', text: text.join('\n') };
+}
+
 /** Puls-Werte eines Mandats, jüngste zuerst (für die interne Ansicht). */
 export const pulsListe = (d: Pick<KundeDatei, 'puls'>, mandatId: string): Puls[] =>
   d.puls.filter(p => p.mandatId === mandatId).sort((a, b) => (a.am < b.am ? 1 : a.am > b.am ? -1 : 0));
