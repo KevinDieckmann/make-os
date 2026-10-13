@@ -11,7 +11,7 @@ import type { OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
 import { aktuellerKnoten, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, teilbaum, wurzelVon } from '../regeln';
 import { obSchluessel, type OnboardingStand } from './onboarding';
-import { WEITERE_BAUSTEINE } from './phasen';
+import { SAMMEL_ALLGEMEIN, WEITERE_BAUSTEINE } from './phasen';
 
 const FERTIG: ReadonlySet<KnotenStatus> = new Set(['erledigt', 'entfaellt']);
 const fertig = (k: Pick<FallKnoten, 'status'>) => FERTIG.has(k.status);
@@ -125,9 +125,13 @@ export function phaseGruppen(fall: Pick<Fall, 'knoten'>, phaseId: string, heute:
   return raus;
 }
 const titelVergleich = (t: string) => t.normalize('NFC').toLowerCase().replace(/[^a-z0-9äöüß]+/g, ' ').trim();
-/** Sammel-Teilprozess: „Weitere Bausteine“ (Titel des Imports für Bausteine ohne Unterphase) oder gleichnamig mit seiner Phase. */
+/**
+ * Sammel-Teilprozess: „Weitere Bausteine“ (Titel des Imports für Bausteine ohne Unterphase), gleichnamig mit seiner Phase (ältere Importe) oder „Allgemein“
+ * in der Sammel-Phase „Weitere Bausteine“ (Import seit 13.10.).
+ */
 export const istSammelTeil = (t: Pick<FallKnoten, 'titel'>, phase: Pick<FallKnoten, 'titel'>): boolean =>
-  titelVergleich(t.titel) === titelVergleich(WEITERE_BAUSTEINE) || titelVergleich(t.titel) === titelVergleich(phase.titel);
+  titelVergleich(t.titel) === titelVergleich(WEITERE_BAUSTEINE) || titelVergleich(t.titel) === titelVergleich(phase.titel)
+  || (titelVergleich(t.titel) === titelVergleich(SAMMEL_ALLGEMEIN) && titelVergleich(phase.titel) === titelVergleich(WEITERE_BAUSTEINE));
 const gruppe = (teil: FallKnoten | null, zeilen: SchrittZeile[]): SchrittGruppe => ({ teil, zeilen, erledigt: zeilen.filter(z => z.zustand === 'erledigt').length, gesamt: zeilen.filter(z => z.zustand !== 'entfaellt').length });
 
 /** Die nächsten offenen Schritte der Phase „jetzt“ (höchstens `n`) — in der Reihenfolge des Ablaufs. */

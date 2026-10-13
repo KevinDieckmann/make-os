@@ -38,6 +38,13 @@ export const PHASEN: readonly PhaseDef[] = [
 export const DACH_ZUORDNUNG: Readonly<Record<string, PhaseSchluessel>> = { strategie: 'diagnose', steuerung: 'fuehrung' };
 /** Titel des Sammelknotens für Bausteine ohne Phase (Import) — steht immer am Ende. */
 export const WEITERE_BAUSTEINE = 'Weitere Bausteine';
+/**
+ * Sammel-Schritt (Ebene 4) des Imports (13.10.): Bausteine ohne Unterphase hängen als Ebene-5-Knoten direkt unter EINEM Schritt je Phase — nicht mehr
+ * je Baustein unter einem eigenen, gleichnamigen Einzelschritt. Der Titel ist bewusst ein anderer als der des Sammel-Teilprozesses (Ebene 3).
+ */
+export const SAMMEL_SCHRITT = 'Zugeordnete Bausteine';
+/** Titel des Sammel-Teilprozesses (Ebene 3) in der Sammel-Phase „Weitere Bausteine“ (Ebene 2) — dort darf er nicht noch einmal „Weitere Bausteine“ heißen. */
+export const SAMMEL_ALLGEMEIN = 'Allgemein';
 
 const RANG: Readonly<Record<PhaseSchluessel, number>> = Object.fromEntries(PHASEN.map((p, i) => [p.id, i])) as Record<PhaseSchluessel, number>;
 /** Rang der eigenen Phasen eines Pakets (Kern-Arbeit): hinter „Aufbau“, vor „Recruiting“. */
