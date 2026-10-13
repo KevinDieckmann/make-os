@@ -4,7 +4,7 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
-## 12.10.2026 — Fulfillment kundenreif: keine losen Enden, „Dem Kunden zeigen“, die vier Fall-Reiter neu, Demo-Geschichte (nur lokal — Branch `kundenreif-fulfillment`, Basis d0b700a1 = `update-0910b`, `update-0910b` bis 40d935a8 eingemischt)
+## 12.10.2026 — Fulfillment kundenreif: keine losen Enden, „Dem Kunden zeigen“, die vier Fall-Reiter neu, Demo-Geschichte (nur lokal — Branch `kundenreif-fulfillment`, Basis d0b700a1 = `update-0910b`, `update-0910b` bis 8f7717fb eingemischt)
 Kevin: „Kann ich das einem Kunden zeigen? Ist der Fulfillment-Prozess auch sinnig so — kann man das wirklich gut zeigen und weitermachen? … keine losen
 Enden. Alles muss strukturiert sauber sein, auch aus der Visualisierung heraus. Denk immer einen Schritt weiter.“ Einmal wie ein Berater im Kundentermin
 durchgegangen — von „Deal gewonnen“ bis „Wirkungsbericht + Nachsorge“ — und jedes lose Ende geschlossen (nur über vorhandene Schreibwege und den
@@ -88,6 +88,11 @@ GET `/api/fulfillment/fall` liefert zusätzlich `reports`, `followups`, `analyse
 verschoben) in `FallKreislauf.tsx` — ggf. als Vorlage übernehmen.
 Tests: `tests/fulfillment-kundenreif.test.ts` (neu, 20), angepasst `tests/fulfillment-c1-demo.test.ts` (Geschichte, Lumen ohne Puls).
 
+## 12.10.2026 — Drei Restpunkte der Sicht-Trennung (nur lokal — Branch `restpunkte-sicht`, Basis fa97a3cf, danach `update-0910b` eingemergt)
+- **„Neu anfangen“ nur für volle Mitglieder:** Vorschau, Archiv, Neustart und Zurückholen (`/api/neustart`, `nurVolleMitglieder` in `lib/aufgaben/neustart-server.ts`, auch in jeder Bibliotheksfunktion) geben einem Konto „nur Business“ (`finanzRecht: 'business'`) 403 mit Satz — ein Lauf nimmt Aufgaben, Ziele und Meilensteine des GANZEN Haushalts heraus (Privat, Selbstständigkeit, Firmen-Akte), und ein Archiv-Lauf mischt die Bereiche; eine Teil-Sicht je Bereich wäre verschachtelt und fehleranfällig. Test `tests/neustart-business-sicht.test.ts`.
+- **Glocke-ETag:** `konten` steht jetzt ausdrücklich in `meldungenStand` (steckte schon mittelbar in `anstehendStand`); Wächter `tests/meldungen-etag-konten.test.ts` hält das Verhalten fest (Zugangsänderung → neuer Stand statt 304, Privat-Meldungen fallen heraus).
+- **Brain (Tagesbericht, `_App`-Spiegel):** Aufgaben der Firmen-Akte nur als Zahl („n Pflichten aus der Firmen-Akte erledigt“, `_App/Projekte/Firmen-Akte.md` mit offen/erledigt) — keine Titel, Kennungen, Links, auch nicht bei Privat-Stufe „voll“; ZOE-Entscheidungen zu Recht-Vorschlägen ohne Titel. Test `tests/brain-firmenakte.test.ts`. **Hinweis:** schon abgelegte Tagesberichte in `_inbox/zoe` (und, falls der Spiegel an war, `_App/Projekte/<Space>/Sonstige.md`) können Titel aus der Zeit davor tragen — nach dem Upload kurz prüfen bzw. ablehnen; der Spiegel räumt seine Dateien beim nächsten Lauf selbst auf. **Rückweg:** keine Daten-/Formänderung (neue Datei `Projekte/Firmen-Akte.md` im Spiegel ist optional).
+
 ## 12.10.2026 — Zwei Kleinfunde aus dem Ende-zu-Ende-Test (nur lokal — Branch `kleinfunde-1210`, Basis 11f34e35 = `update-0910b`)
 - **Register nie still doppelt:** `PATCH /api/gesellschaften` mit `liste` + `eintrag`, aber ohne `eintragId`, legt einen neuen Listeneintrag an (Kennung vom Server); trug der
   Körper die Kennung eines VORHANDENEN Eintrags (Gesellschafter, Vertrag, Beschluss, Organ, Beteiligung, Fassung — auch im Papierkorb), hängte die Route still eine Dublette mit neuer
@@ -100,6 +105,9 @@ Tests: `tests/fulfillment-kundenreif.test.ts` (neu, 20), angepasst `tests/fulfil
   einer solchen Ablehnung neu (409 `abgelehnt`), damit die Karte nicht „verloren“ zeigt. Test `tests/gewonnen-verloren-sperre.test.ts`.
 **So testet ihr:** Deal gewonnen mit Mandat → im Board nach „Verloren“ ziehen, Grund wählen → Hinweis „erst das Mandat … beenden“, Karte bleibt gewonnen; Mandat beenden → jetzt geht es.
 Unternehmen › Gesellschafter: bearbeiten ändert den Eintrag (keine zweite Zeile). **Rückweg:** keine Daten-/Formänderung (nur zwei zusätzliche Ablehnungen).
+
+## 12.10.2026 — Aufgaben der Firmen-Akte nur mit Zugang zur Firmen-Akte (nur lokal — Branch `aufgaben-firmenakte`, Basis 8cd50a56 = `update-0910b`)
+- Aufgaben mit Kennung `usp-`/`usd-`/`usm-`/`usr-`/`vte-`/`rcw-`/`bfc-` (samt Unteraufgaben, `lib/aufgaben/firmenakte-sicht.ts`) bekommt nur, wer Zugang zur Firmen-Akte hat (`rechtZugangFuer`) — serverseitig in `sichtFuerKonto` (Liste, Heute/Top 3, Glocke, Kalender, Briefing, ZOE), dazu Suche (`appSuche` `ohneAufgaben`), Lichtfäden, Schilde, Delegation, Anlegen, Zeit je Einheit (Titel neutral); Schreiben → 404, zuständig/beteiligt → 400, keine Meldungen. Nur Lese-Filter, kein Datenumbau. Wächter `tests/aufgaben-firmenakte-sicht.test.ts`.
 
 ## 12.10.2026 — Feinschliff aus der Demo: Pflicht-Titel und Phasen-Reihenfolge (nur lokal — Branch `feinschliff-phasen`, Basis d0b700a1 = `update-0910b`)
 - **Pflicht-Erinnerungen mit Klartext:** Heute › Top 3 zeigte zweimal „Unternehmen: Frist im Pflichten-Kalender — <Gesellschaft> — bis …“. Titel jetzt

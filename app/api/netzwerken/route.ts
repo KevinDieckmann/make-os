@@ -29,6 +29,7 @@ import { PersonenSchrankeFehler } from '@/lib/crm/personen-schranke';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { businessHaushaltFuer } from '@/lib/zugang/konto-sicht-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,8 @@ async function eigene(req: Request): Promise<{ person: string; haushalt: string 
   if (istDienst(req)) return null;
   const w = await imHaushaltDesInhabers(req);
   if (!w || personStreng(req) !== w.person) return null;
-  const h = await haushaltFuer(w.person);
+  // Netzwerken ist Business: auch ein Konto „nur Business“ (Vertriebspartner) erfasst hier (Gesamtprüfung 12.10. — vorher 403).
+  const h = (await haushaltFuer(w.person)) ?? (await businessHaushaltFuer(w.person));
   return h ? { person: w.person, haushalt: h.haushalt } : null;
 }
 

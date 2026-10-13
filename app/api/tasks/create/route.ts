@@ -22,8 +22,9 @@ import { istSpaceId, spaceFuerAltAufgabe, sonstigeProjektId, istOffen, bereichVo
 import { bezugSauber, beteiligteSauber, ZuGross } from '@/lib/aufgaben/saeubern';
 import { orgZuordnung, aufgabenAendern, keineOps } from '@/lib/aufgaben/speicher';
 import { aufgabenSicht } from '@/lib/aufgaben/papierkorb';
-import { sichtFuer } from '@/lib/aufgaben/sicht';
+import { sichtFuer, firmenAkteAusgeblendetFuer } from '@/lib/aufgaben/sicht';
 import { ohnePrivatBereich } from '@/lib/aufgaben/bereich-sicht';
+import { ohneFirmenAkte } from '@/lib/aufgaben/firmenakte-sicht';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import type { Task, TaskStatus } from '@/types/tasks';
 import type { Owner, Priority } from '@/types/common';
@@ -84,6 +85,8 @@ export async function POST(req: Request) {
   // (sonst verriete „gibt es schon“ eine Privat-Aufgabe samt Kennung). Ohne ausdrücklichen Ort legt es im Business an; ausdrücklich nach
   // Privat lehnt der Schreibweg ab (403).
   const ohnePrivat = await privatAusgeblendetFuer(zugang.person);
+  // Ebenso die Firmen-Akte (12.10.): ohne Zugang zu ihr (`rechtZugangFuer`) ist keine ihrer Aufgaben Elternteil oder Duplikat.
+  const ohneAkte = await firmenAkteAusgeblendetFuer(zugang.person);
 
   // Aufgabe am Meilenstein (30.09.): seine Liste sichern (idempotent) und dort anlegen — Space/Projekt/Liste kommen von ihm.
   if (body.meilensteinId !== undefined) {
@@ -102,7 +105,8 @@ export async function POST(req: Request) {
   // Anlegerin + Beteiligte), Prüfregeln (Datum, Person), Verlauf „angelegt“, Protokoll, Meldungen (gebündelt).
   const r = await aufgabenAendern(state0 => {
     const nurIch = sichtFuer(aufgabenSicht(state0), zugang.person);
-    const state = ohnePrivat ? ohnePrivatBereich(nurIch) : nurIch;
+    const bereich = ohnePrivat ? ohnePrivatBereich(nurIch) : nurIch;
+    const state = ohneAkte ? ohneFirmenAkte(bereich) : bereich;
     // Duplikat-Schutz: gleiche (normalisierte) Überschrift + noch offen → nicht doppelt anlegen (der Papierkorb zählt nicht).
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
     // Am Meilenstein (30.09.) nur in seiner Liste prüfen — sonst landete „Vertrag prüfen“ bei einer gleichnamigen Aufgabe woanders.

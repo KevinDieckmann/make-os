@@ -16,6 +16,7 @@ import { LEUCHT, Karte, Ueberschrift } from '../ui';
 import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, BEAN_WAHL, offeneAngebote, type AngebotHinweis, type BeanErgebnis, type BeanId } from '@/lib/crm/bean';
 import { karteiBean } from '@/lib/crm/adresse';
 import { Wahl } from './Wahl';
+import { useNurBusiness } from '../useInhaber';
 
 /** Farbe je Gruppe: Bestand grün, Angebot Geld, Ehemalige violett, Neue orange (Vertrieb). */
 export const BEAN_FARBE: Record<BeanId, string> = { B: LEUCHT.gut, E: LEUCHT.agenten, A: LEUCHT.geld, N: LEUCHT.business };
@@ -37,7 +38,13 @@ function ladeAngebote(): Promise<AngebotHinweis[]> {
 /** Offene Angebote (nur Bezüge) — leer, solange nichts geladen ist oder die Ablage nicht zugänglich ist. */
 export function useOffeneAngebote(): AngebotHinweis[] {
   const [a, setA] = useState<AngebotHinweis[]>([]);
-  useEffect(() => { let an = true; void ladeAngebote().then(x => { if (an) setA(x); }); return () => { an = false; }; }, []);
+  // Ein Konto „nur Business“ bekommt die Dateiablage nicht (403, sie liegt je Haushalt) — dann gar nicht erst fragen, statt auf jeder
+  // Markttraktion-Seite eine abgelehnte Anfrage zu erzeugen (Gesamtprüfung 12.10.); gerechnet wird wie bisher ohne Ablage.
+  const nurBusiness = useNurBusiness();
+  useEffect(() => {
+    if (nurBusiness !== false) return;
+    let an = true; void ladeAngebote().then(x => { if (an) setA(x); }); return () => { an = false; };
+  }, [nurBusiness]);
   return a;
 }
 

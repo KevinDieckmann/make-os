@@ -16,6 +16,7 @@ import { askJson, hasAnthropicKey, fremd } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { TAGE, MAHLZEITEN, KATEGORIEN, sauberDatei, neueId, kategorieRaten, gleichesLebensmittel, type ErnaehrungFile, type Tag, type Mahlzeiten, type Gericht, type EinkaufPosten, type PlanGerichte, type Kategorie, PROFIL_DISKRET } from '@/lib/ernaehrung/modell';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
@@ -41,16 +42,23 @@ const profilText = (p: ErnaehrungFile['profile'][number]) => [
 
 const VORSCHLAG = 'ernaehrung-vorschlag';
 
+/** Ernährung ist Privat-Bereich des Haushalts — ein Konto „nur Business“ (`finanzRecht: 'business'`) bekommt nichts (Gesamtprüfung 12.10.). */
+async function zugang(req: Request) {
+  const z = await imHaushaltDesInhabers(req);
+  if (!z || (await privatAusgeblendetFuer(z.person).catch(() => true))) return null;
+  return z;
+}
+
 /** Der abgelegte Vorschlag (höchstens 14 Tage alt). */
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
+  if (!(await zugang(req))) return nurHaushalt();
   const s = await loadJson<{ zeit: string; vorschlag: unknown }>(VORSCHLAG);
   const frisch = s && Date.now() - Date.parse(s.zeit) < 14 * 864e5 ? s : null;
   return NextResponse.json({ ok: true, ...(frisch ?? { zeit: null, vorschlag: null }) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
-  const z = await imHaushaltDesInhabers(req);
+  const z = await zugang(req);
   if (!z) return NextResponse.json({ error: 'Nur für den Haushalt des Inhabers.' }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   let body: { hinweis?: string; gaeste?: string[] } = {};

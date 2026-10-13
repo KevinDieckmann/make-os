@@ -43,6 +43,11 @@ export interface SpaceEintrag {
   auch?: string[];
   /** Fester Schlüssel für die Zeitmessung, wenn der Name sich geändert hat (gespeicherte Zeit bleibt beim alten Schlüssel). */
   zeitId?: string;
+  /**
+   * Nur für volle Mitglieder des Haushalts — ein Konto „nur Business“ (`finanzRecht: 'business'`) bekommt den Bereich serverseitig nicht
+   * (403, z. B. das Gesellschafts-Register), darum steht der Punkt für es gar nicht erst in der Leiste (Gesamtprüfung 12.10.).
+   */
+  nurVolleMitglieder?: true;
 }
 export interface Space {
   id: SpaceId; label: string; farbe: string; icon: LucideIcon; start: string;
@@ -100,13 +105,14 @@ export const SPACES: Space[] = [
       // Produkte & Mandate und Unternehmen (10.10., Entscheidung: getrennt, Unternehmen eigener Punkt und eigener Ausbau). Kontakte stehen im
       // Business nicht mehr in der Leiste (Entscheidung 10.10.) — die Kartei liegt in Markttraktion › Kontakte & Firmen; `zeitId` bleibt für die Zeitmessung.
       { href: '/os/mandate', label: 'Produkte & Mandate', icon: Briefcase, zeitId: 'mandate', passt: ['/os/mandate'] },
-      { href: '/os/unternehmen', label: 'Unternehmen', icon: Building2, passt: ['/os/unternehmen'] },
+      { href: '/os/unternehmen', label: 'Unternehmen', icon: Building2, passt: ['/os/unternehmen'], nurVolleMitglieder: true },
     ],
   },
 ];
 
-/** Die Leiste eines Space: seine Punkte, dann ZOE (gemeinsam für beide). */
-export const leisteFuer = (id: SpaceWahl): SpaceEintrag[] => [...spaceVon(id).eintraege, ZOE_EINTRAG];
+/** Die Leiste eines Space: seine Punkte, dann ZOE (gemeinsam für beide). `nurBusiness`: ohne Punkte `nurVolleMitglieder`. */
+export const leisteFuer = (id: SpaceWahl, nurBusiness = false): SpaceEintrag[] =>
+  [...spaceVon(id).eintraege.filter(e => !(nurBusiness && e.nurVolleMitglieder)), ZOE_EINTRAG];
 
 /**
  * Passt eine Adresse zu einem Muster? Pfad: gleich oder Unterpfad („/os/planung“

@@ -6,6 +6,8 @@
 // POST { aktion: 'zurueck', laufId, auswahl: { art: 'alles' } | { art: 'projekt'|'aufgabe'|'meilenstein', id }
 //        | { art: 'ziel', speicher, horizont, id } } → zurückholen (ganz oder einzeln, idempotent).
 // Nur Personen im Haushalt des Inhabers mit eigener Sitzung — kein Dienstweg (ZOE und Takt fangen nie neu an).
+// Und nur VOLLE Mitglieder (12.10.): „Neu anfangen“ nimmt den ganzen Haushalt heraus, auch Privat und die Firmen-Akte — ein Konto
+// „nur Business“ (`finanzRecht: 'business'`) bekommt bei GET (Vorschau, Archiv) und POST (Neustart, Zurückholen) 403 mit Satz.
 // Logik: lib/aufgaben/neustart-server.ts (Server), lib/aufgaben/neustart.ts + lib/planung/neustart.ts (rein).
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
@@ -16,7 +18,7 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { zuGross } from '@/lib/zugang/umfang';
 import { istZielHorizont } from '@/lib/planung/typen';
 import { LAUF_ID, NEUSTART_BESTAETIGUNG } from '@/lib/aufgaben/neustart';
-import { neuAnfangen, neustartArchiv, neustartVorschau, neustartZurueck, NeustartFehler, type NeustartAuswahl } from '@/lib/aufgaben/neustart-server';
+import { neuAnfangen, neustartArchiv, neustartVorschau, neustartZurueck, nurVolleMitglieder, NeustartFehler, type NeustartAuswahl } from '@/lib/aufgaben/neustart-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,11 +33,19 @@ async function zugang(req: Request) {
   return z && !z.dienst ? z : null;
 }
 
+const FEHLER = (e: NeustartFehler) => NextResponse.json({ ok: false, fehler: e.message, error: e.message }, { status: e.status });
+
 export async function GET(req: Request) {
   const z = await zugang(req);
   if (!z) return GESPERRT();
-  if (new URL(req.url).searchParams.get('archiv') === '1') return NextResponse.json({ laeufe: await neustartArchiv(z.person) });
-  return NextResponse.json({ vorschau: await neustartVorschau(z.person), bestaetigung: BESTAETIGUNG });
+  try {
+    await nurVolleMitglieder(z.person);
+    if (new URL(req.url).searchParams.get('archiv') === '1') return NextResponse.json({ laeufe: await neustartArchiv(z.person) });
+    return NextResponse.json({ vorschau: await neustartVorschau(z.person), bestaetigung: BESTAETIGUNG });
+  } catch (e) {
+    if (e instanceof NeustartFehler) return FEHLER(e);
+    throw e;
+  }
 }
 
 function auswahlLesen(a: unknown): NeustartAuswahl | null {
@@ -52,6 +62,8 @@ function auswahlLesen(a: unknown): NeustartAuswahl | null {
 export async function POST(req: Request) {
   const z = await zugang(req);
   if (!z) return GESPERRT();
+  // Vor allem anderen (auch vor Bau-Kennung und Körper): ein Konto „nur Business“ erfährt nichts und ändert nichts.
+  try { await nurVolleMitglieder(z.person); } catch (e) { if (e instanceof NeustartFehler) return FEHLER(e); throw e; }
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   if (zuGross(req, 64 * 1024)) return NextResponse.json({ ok: false, error: 'Abgelehnt: zu groß.' }, { status: 413 });

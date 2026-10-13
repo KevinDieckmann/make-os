@@ -110,8 +110,9 @@ export function FinanzplanungView() {
     listen: FINANZPLAN_LISTEN, standFeld: 'fassung', uebernehmen: st => setPlan(st as unknown as Plan),
     danach: (ok, f) => { if (!ok && f && f.status >= 400) setHinweis(`${f.fehler ?? 'Nicht gespeichert.'}${f.status === 409 ? ' Der aktuelle Stand ist geladen.' : ''}`); },
   });
-  const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => r.json()).then((d: Plan) => {
-    if (planSpeichern.hatOffenes()) return;
+  // Nur ein echter Bestand wird zum Plan (Gesamtprüfung 12.10.): eine Fehlerantwort (403/5xx) ließe sonst die Ansicht abbrechen.
+  const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => (r.ok ? r.json() : null)).then((d: Plan | null) => {
+    if (!d || !Array.isArray(d.firmen) || planSpeichern.hatOffenes()) return;
     setPlan(d); planSpeichern.kenne(d);
   }).catch(() => {}), [planSpeichern]);
   useEffect(() => {

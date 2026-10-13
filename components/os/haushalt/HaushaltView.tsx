@@ -31,7 +31,7 @@ import { PrueflisteDialog } from './Pruefliste';
 import { KategorienDialog } from './Kategorien';
 import { StammdatenDialog } from './Stammdaten';
 import { PrivatIndex } from '../privat/PrivatIndex';
-import { KontenKarte } from '../konten/KontenKarte';
+import { KontenKarte, usePrivatKasse } from '../konten/KontenKarte';
 
 type Reiter = 'uebersicht' | typeof HAUSHALT_UNTER[number]['id'];
 
@@ -44,6 +44,8 @@ export function HaushaltView({ ansicht, reiter }: { ansicht: 'uebersicht' | 'kon
   const [pruefAnzahl, setPruefAnzahl] = useState(0);
   const [katAuf, setKatAuf] = useState(false);
   const [stammAuf, setStammAuf] = useState(false);
+  // Konten führt das Register (08.10.) — der Leerzustand fragt es, sonst hieße es „Noch keine Konten“ trotz Konten im Register (Gesamtprüfung 12.10.).
+  const privatKasse = usePrivatKasse();
   useEffect(() => { fetch('/api/haushalt/pruefliste').then(r => r.json()).then(d => setPruefAnzahl(d.ok ? d.posten.length : 0)).catch(() => {}); }, [h]);
   const katName = useMemo(() => (h ? katNamen(h.stamm) : () => ''), [h]);
   const aktiv: Reiter = ansicht === 'uebersicht' ? 'uebersicht' : HAUSHALT_UNTER.find(r => r.id === reiter)?.id ?? 'buchungen';
@@ -81,6 +83,11 @@ export function HaushaltView({ ansicht, reiter }: { ansicht: 'uebersicht' | 'kon
             // Generalprobe 09.10.: hier stand ein zweites „Konto anlegen“ (alte Stammdaten-Konten) unter dem des Konten-Registers — eine neue
             // Instanz legte so Konten an der falschen Stelle an („Bisherige Stände noch nicht im Register“). Das Register darüber führt.
             <Leer>Noch keine Buchungen. Konto oben im Register anlegen, es antippen und dort „Kontoauszug einlesen“ (CAMT.053 oder CSV).</Leer>
+          ) : privatKasse?.konten ? (
+            <Leerzustand symbol="€" ton={LEUCHT.geld} titel="Noch keine Buchungen"
+              aktion={<Knopf haupt voll farbe={LEUCHT.geld} href={WEG.privat('buchungen')}>Zu Konten &amp; Buchungen</Knopf>}>
+              {privatKasse.konten === 1 ? 'Ein Konto steht' : `${privatKasse.konten} Konten stehen`} im Register. Die Übersicht füllt sich mit den Buchungen: unter Konten &amp; Buchungen das Konto antippen und „Kontoauszug einlesen“ (CAMT.053 oder CSV).
+            </Leerzustand>
           ) : (
             <Leerzustand symbol="€" ton={LEUCHT.geld} titel="Noch keine Konten und Buchungen"
               aktion={<Knopf haupt voll farbe={LEUCHT.geld} href={WEG.privat('buchungen')}>Konto anlegen</Knopf>}>

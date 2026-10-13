@@ -39,8 +39,10 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
   const [grund, setGrund] = useState<{ vorhanden: boolean; stand?: string; kennzahlen?: Kennzahlen } | null>(null);
 
   useEffect(() => {
-    fetch('/api/state/finanzplan').then(r => r.json()).then(setPlan).catch(() => {});
-    fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
+    // Nur echte Bestände übernehmen (Gesamtprüfung 12.10.): eine 403-Antwort (z. B. Konto „nur Business“ — die gemeinsamen Finanz-Bestände
+    // tragen Privates) ist kein Plan; vorher landete `{ ok: false }` als Plan und die Seite brach mit „Application error“ ab.
+    fetch('/api/state/finanzplan').then(r => (r.ok ? r.json() : null)).then(d => setPlan(d && Array.isArray(d.firmen) ? d : null)).catch(() => {});
+    fetch('/api/state/liquiplan').then(r => (r.ok ? r.json() : null)).then(d => setPosten(d?.posten ?? [])).catch(() => {});
     // Nur Firmen-Buchungen des Business: ohne „ort“ gilt eine Buchung als privat (Regel der Buchungs-Route), die der Selbstständigkeit
     // gehören seit 05.10. zu Privat (`istBusinessGesellschaft`).
     fetch('/api/state/buchungen').then(r => r.json()).then(d => setBuchungen((d.buchungen ?? []).filter((b: Buchung) => istBusinessGesellschaft(b.ort)))).catch(() => {});

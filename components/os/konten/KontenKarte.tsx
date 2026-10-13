@@ -40,6 +40,25 @@ export function useKontenKasse(sicht: KontenSicht = 'business'): GesellschaftsKa
   return kasse;
 }
 
+/**
+ * Die private Kasse aus dem Register (Konten mit Ort privat/gemeinsam) — für Ansichten, die sagen müssen, ob es schon Konten gibt
+ * (Gesamtprüfung 12.10.: der Privat-Überblick sagte „Noch keine Konten“, obwohl das Register zwei führte). `undefined` = noch nicht geladen,
+ * `null` = keine (bzw. kein Zugang).
+ */
+export function usePrivatKasse(): Kasse | null | undefined {
+  const [kasse, setKasse] = useState<Kasse | null | undefined>(undefined);
+  useEffect(() => {
+    let lebt = true;
+    const laden = () => fetch('/api/finanzen/konten?sicht=privat&nur=kasse', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null))
+      .then(d => { if (lebt) setKasse(d?.ok ? d.privat ?? null : null); }).catch(() => { if (lebt) setKasse(null); });
+    void laden();
+    const neu = () => void laden();
+    window.addEventListener(KONTEN_GEAENDERT, neu);
+    return () => { lebt = false; window.removeEventListener(KONTEN_GEAENDERT, neu); };
+  }, []);
+  return kasse;
+}
+
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const tag = (t?: string | null) => (t ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : '—');
 const QUELLE: Record<string, string> = { konten: 'von Hand', liquiditaet: 'aus Liquidität', eroeffnung: 'aus dem 0-Punkt', finanzplanung: 'aus der Planung', zoe: 'über ZOE', uebernahme: 'übernommen', bank: 'von der Bank', auszug: 'aus dem Kontoauszug' };

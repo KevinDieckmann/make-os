@@ -49,6 +49,7 @@ import { ErholungReiter } from './gesundheit/Erholung';
 import { useZuZiel } from './ziel';
 import { RoutineSteuer, routineHakenSenden, streakText } from './routinen/haken';
 import { WEG } from '@/lib/wege';
+import { useNurBusiness } from './useInhaber';
 
 type Segment = 'heute' | 'erholung' | 'index' | 'verlauf' | 'ernaehrung' | 'koerper';
 // Erholung (10.10., Kevin): eigener Reiter direkt nach „Heute“ — Programme, Behandlungen, Regeneration, Beschwerden-Verlauf
@@ -145,7 +146,10 @@ export function GesundheitView() {
   // geladenem Stand. Die Route liefert ohnehin nur das eigene Profil — die Oberfläche zeigt es nie unter fremdem Namen.
   const eigeneSicher = !!stand && stand.ich === ansicht;
   const koerper = useKoerper(eigeneSicher);
-  const segmente = !stand || eigeneSicher ? SEGMENTE : SEGMENTE.filter(s => s.id !== 'koerper');
+  // Ernährung & Einkauf sind Privat-Bereich des HAUSHALTS (Einkauf, Plan, Gerichte) — ein Konto „nur Business“ bekommt sie serverseitig nicht
+  // (403, Gesamtprüfung 12.10.); den Reiter gibt es für es darum gar nicht.
+  const nurBusiness = useNurBusiness();
+  const segmente = (!stand || eigeneSicher ? SEGMENTE : SEGMENTE.filter(s => s.id !== 'koerper')).filter(s => !(nurBusiness && s.id === 'ernaehrung'));
   // Module (09.10., lib/gesundheit/module.ts): Symptom-Regler und Zähler „Sauber geblieben“ nur, wenn die angezeigte Person das
   // Modul führt (`stand.module` — der Server liefert ein ausgeschaltetes leer). Eigene Ansicht mit dem eigenen Namen des
   // Reglers; geteilte Ansicht nur mit Einträgen und neutral benannt (die Einstellungen der anderen Person bleiben bei ihr).
@@ -426,7 +430,8 @@ export function GesundheitView() {
         </Karte>
       )}
 
-      {segment === 'ernaehrung' && <ErnaehrungView eingebettet />}
+      {segment === 'ernaehrung' && nurBusiness === false && <ErnaehrungView eingebettet />}
+      {segment === 'ernaehrung' && nurBusiness && <Leer>Ernährung und Einkauf gehören zum Privat-Bereich des Haushalts.</Leer>}
 
       {segment === 'koerper' && stand && !eigeneSicher && (
         <Leer>Das Körper-Profil sieht nur die Person selbst.</Leer>

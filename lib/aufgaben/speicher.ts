@@ -15,7 +15,8 @@ import { WEG } from '@/lib/wege';
 import type { Task, TasksState, Project, AufgabenListe, AufgabenStatus, AufgabeKommentar, AufgabenGruppe, AufgabenVorlage } from '@/types/tasks';
 import { uebernehmen, alleSpaces, type AufgabenSpace } from './struktur';
 import { taskSauber, projektSauber, listeSauber, statusSauber, gruppeSauber, vorlageSauber, feldWerteTypisieren, auswahlUmbenennungen, kommentareVereinen, AUFGABEN_GRENZEN, ZuGross } from './saeubern';
-import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen, nurIchBesitzer } from './sicht';
+import { alsStand, orgZuordnung, darfSehen, istNurIch, haushaltsPersonen, nurIchBesitzer, firmenAkteAusgeblendetFuer, mitFirmenAkteZugang } from './sicht';
+import { aufgabeInFirmenAkte } from './firmenakte-sicht';
 import { aufgabeImPrivat, listeImPrivat, projektImPrivat, spacesOhnePrivat, statusImPrivat, vorlageImPrivat } from './bereich-sicht';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { NUR_BUSINESS_PRIVAT } from '@/lib/zugang/konto-sicht';
@@ -257,7 +258,8 @@ function nachPrivat(nachher: TasksState, ops: AufgabenOps, nachId: ReadonlyMap<s
 export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, opt: Optionen): Promise<SchreibErgebnis> {
   const orgs = opt.orgs ?? await orgZuordnung();
   const jetzt = opt.jetzt ?? new Date().toISOString();
-  const personenListe = await haushaltsPersonen();
+  // Marke `ohneFirmenAkte` (12.10.): wer die Firmen-Akte nicht sieht, wird für ihre Aufgaben weder zuständig noch gemeldet.
+  const personenListe = await mitFirmenAkteZugang(await haushaltsPersonen());
   const personen = personenListe.map(p => p.speicher);
   const echtePerson = !!opt.person && opt.person !== SYSTEM;
   let ops: AufgabenOps = typeof opsOderRechnen === 'function' ? leereOps() : opsOderRechnen;
@@ -276,6 +278,9 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
   // Vorhandenes dort gibt es für es nicht (404, wie „nur ich“), Neues dorthin (anlegen, verschieben, umhängen) → 403. Server-Schreiber
   // (`system`) und Systemläufe ohne Person sind ausgenommen — sie haben keine Konto-Sicht.
   const ohnePrivat = !opt.system && echtePerson && await privatAusgeblendetFuer(opt.person);
+  // Firmen-Akte (12.10.): wer keinen Zugang zur Firmen-Akte hat (`rechtZugangFuer` — z. B. ein Konto „nur Business“), für den gibt es ihre
+  // Aufgaben samt Unteraufgaben nicht: ändern/löschen/darunter anlegen → 404 (wie „nur ich“). Server-Schreiber und Systemläufe ausgenommen.
+  const ohneAkte = !opt.system && echtePerson && await firmenAkteAusgeblendetFuer(opt.person);
   let erg: SchreibErgebnis = { ok: false, status: 409, angewandt: 0, zeilen: [] };
   let vorher: TasksState = leer();
   let nachher: TasksState = leer();
@@ -306,6 +311,12 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
       if (ohnePrivat) {
         const grund = privatBeruehrt(vorher, ops, alleVorher);
         if (grund) { erg = { ok: false, status: 404, fehler: grund, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+      }
+      if (ohneAkte) {
+        for (const o of ops.tasks) {
+          const alt = alleVorher.get(o.op === 'delete' ? o.id! : o.eintrag!.id);
+          if (alt && aufgabeInFirmenAkte(alt, alleVorher)) { erg = { ok: false, status: 404, fehler: 'Aufgabe nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+        }
       }
     }
     // Gruppen (Umbau v3, 06.10.): auch Server-Schreiber legen keine mehr an.
@@ -495,6 +506,8 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
     if (!opt.system) {
       const nachId = new Map(nachher.tasks.map(t => [t.id, t]));
       for (const id of upserts) { const t = nachId.get(id); if (t && !darfSehen(t, echtePerson ? opt.person : null, nachId)) { erg = { ok: false, status: 404, fehler: 'Aufgabe nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; } }
+      // Firmen-Akte (12.10.): auch NEU darunter (Unteraufgabe, umgehängt) bzw. mit ihrer Kennung gibt es nichts für eine Person ohne Zugang.
+      if (ohneAkte) for (const id of upserts) { const t = nachId.get(id); if (t && aufgabeInFirmenAkte(t, nachId)) { erg = { ok: false, status: 404, fehler: 'Aufgabe nicht gefunden.', angewandt: 0, zeilen: [] }; throw ABBRUCH; } }
       // Konto „nur Business“ (09.10., E4): nichts landet durch diese Änderung im Privat-Bereich (neu, verschoben, umgehängt) → 403.
       if (ohnePrivat && nachPrivat(nachher, ops, nachId)) { erg = { ok: false, status: 403, fehler: NUR_BUSINESS_PRIVAT, angewandt: 0, zeilen: [] }; throw ABBRUCH; }
     }
@@ -511,6 +524,19 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
           const a = vorId.get(id);
           const neu = [t.assignee, ...(t.beteiligte ?? [])].filter(p => nurBusiness.has(p) && p !== a?.assignee && !(a?.beteiligte ?? []).includes(p));
           if (neu.length) { erg = { ok: false, status: 400, fehler: 'Diese Person sieht den Privat-Bereich nicht (Konto „nur Business“) — sie kann für eine Privat-Aufgabe nicht zuständig oder beteiligt sein. Nichts gespeichert.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
+        }
+      }
+      // Ebenso die Firmen-Akte (12.10.): zuständig/beteiligt an einer ihrer Aufgaben wird nur, wer die Firmen-Akte sieht (nur neu gesetzte zählen).
+      const ohneAkteSet = new Set(personenListe.filter(p => p.ohneFirmenAkte).map(p => p.speicher));
+      if (ohneAkteSet.size) {
+        const nachId = new Map(nachher.tasks.map(t => [t.id, t]));
+        const vorId = new Map(vorher.tasks.map(t => [t.id, t]));
+        for (const id of upserts) {
+          const t = nachId.get(id);
+          if (!t || !aufgabeInFirmenAkte(t, nachId)) continue;
+          const a = vorId.get(id);
+          const neu = [t.assignee, ...(t.beteiligte ?? [])].filter(p => ohneAkteSet.has(p) && p !== a?.assignee && !(a?.beteiligte ?? []).includes(p));
+          if (neu.length) { erg = { ok: false, status: 400, fehler: 'Diese Person sieht die Firmen-Akte nicht — sie kann für eine Aufgabe aus dem Bereich Unternehmen nicht zuständig oder beteiligt sein. Nichts gespeichert.', angewandt: 0, zeilen: [] }; throw ABBRUCH; }
         }
       }
     }
@@ -617,7 +643,7 @@ const vorname = (n: string | undefined, rueck: string) => (n ?? '').trim().split
  */
 export function meldungenBerechnen(
   vorher: TasksState, nachher: TasksState, neueKommentare: readonly { task: Task; k: AufgabeKommentar }[], person: string,
-  personen: readonly { speicher: string; name: string; nurBusiness?: boolean }[],
+  personen: readonly { speicher: string; name: string; nurBusiness?: boolean; ohneFirmenAkte?: boolean }[],
 ): MeldungEingabe[] {
   const alle = personen.map(p => p.speicher);
   const ichName = person === SYSTEM ? 'MAKE OS' : vorname(personen.find(p => p.speicher === person)?.name, person);
@@ -627,7 +653,9 @@ export function meldungenBerechnen(
   const nachId = new Map(nachher.tasks.map(t => [t.id, t]));
   // „nur ich“ — und Konten „nur Business“ (09.10., E4) erfahren nie etwas über eine Aufgabe im Privat-Bereich.
   const nurBusiness = new Set(personen.filter(p => p.nurBusiness).map(p => p.speicher));
-  const sieht = (t: Task, an: string) => darfSehen(t, an, nachId) && !(nurBusiness.has(an) && aufgabeImPrivat(t, nachId));
+  // … und wer die Firmen-Akte nicht sieht (12.10.), erfährt nichts über ihre Aufgaben (Zuweisung, Erwähnung, Kommentar).
+  const ohneAkte = new Set(personen.filter(p => p.ohneFirmenAkte).map(p => p.speicher));
+  const sieht = (t: Task, an: string) => darfSehen(t, an, nachId) && !(nurBusiness.has(an) && aufgabeImPrivat(t, nachId)) && !(ohneAkte.has(an) && aufgabeInFirmenAkte(t, nachId));
   const zuweisungen = new Map<string, MeldungEingabe[]>();
   const merke = (m: MeldungEingabe) => zuweisungen.set(m.an, [...(zuweisungen.get(m.an) ?? []), m]);
   for (const t of nachher.tasks) {
@@ -663,9 +691,9 @@ export function meldungenBerechnen(
   return raus;
 }
 
-async function meldungenNachSchreiben(vorher: TasksState, nachher: TasksState, neueKommentare: { task: Task; k: AufgabeKommentar }[], person: string, personen?: readonly { speicher: string; name: string; nurBusiness?: boolean }[]) {
+async function meldungenNachSchreiben(vorher: TasksState, nachher: TasksState, neueKommentare: { task: Task; k: AufgabeKommentar }[], person: string, personen?: readonly { speicher: string; name: string; nurBusiness?: boolean; ohneFirmenAkte?: boolean }[]) {
   try {
-    const liste = meldungenBerechnen(vorher, nachher, neueKommentare, person, personen ?? await haushaltPersonen());
+    const liste = meldungenBerechnen(vorher, nachher, neueKommentare, person, personen ?? await mitFirmenAkteZugang(await haushaltPersonen()));
     for (const m of liste) await melde(m);
   } catch (e) {
     // Eine Meldung darf nie einen Schreibweg brechen (er ist schon geschehen).

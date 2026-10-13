@@ -26,10 +26,11 @@ export function SeitenChip({ s, name, kurz }: { s: SeitenErgebnis; name: 'MQL' |
   }
   const f = s.erreicht ? LEUCHT.gut : C.inkDim;
   const text = `${name} ${s.erreicht ? '✓' : ''} ${punkteText(s.punkte)}/${punkteText(s.schwelle)}`.replace('  ', ' ');
+  // „fehlt: …“ darf umbrechen (Gesamtprüfung 12.10.: am Handy schob die lange Liste die Runde ~70 px über den Rand); die Zahl bleibt beisammen.
   return (
     <span title={`${name === 'MQL' ? 'Marketing' : 'Sales'}: ${punkteText(s.punkte)} Punkte, Schwelle ${punkteText(s.schwelle)} (möglich ${punkteText(s.max)})${s.fehlt.length ? ` — fehlt: ${s.fehlt.join(', ')}` : ''}`}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, fontWeight: 700, color: f, border: `1px solid ${f}55`, background: s.erreicht ? `${f}14` : 'transparent', borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>
-      {text}{!kurz && !s.erreicht && s.fehlt.length > 0 && <span style={{ fontWeight: 500, color: C.inkLeise }}>· fehlt: {s.fehlt.join(', ')}</span>}
+      style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, maxWidth: '100%', fontSize: TYP.bedien, fontWeight: 700, color: f, border: `1px solid ${f}55`, background: s.erreicht ? `${f}14` : 'transparent', borderRadius: 999, padding: '3px 10px' }}>
+      <span style={{ whiteSpace: 'nowrap' }}>{text}</span>{!kurz && !s.erreicht && s.fehlt.length > 0 && <span style={{ fontWeight: 500, color: C.inkLeise }}>· fehlt: {s.fehlt.join(', ')}</span>}
     </span>
   );
 }
@@ -51,7 +52,7 @@ export function ScoreKopf({ score, kompakt }: { score: LeadScore; kompakt?: bool
   const f = temperaturFarbe(score.temperatur);
   const sql = sqlFortschritt(score);
   return (
-    <div style={{ display: 'grid', gap: 8, padding: kompakt ? '10px 12px' : '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,.04)', border: `1px solid ${f}33` }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0, gap: 8, padding: kompakt ? '10px 12px' : '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,.04)', border: `1px solid ${f}33` }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span title="Lead-Score — die Temperatur kommt aus den Grenzen der Scoring-Einstellungen" style={{ fontFamily: SCHRIFT.display, fontSize: kompakt ? 26 : 30, fontWeight: 700, letterSpacing: '-.02em', color: f, fontVariantNumeric: 'tabular-nums' }}>{score.punkte}</span>
         <Chip farbe={f}>{temperaturLabel(score.temperatur)}</Chip>
