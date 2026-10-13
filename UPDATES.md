@@ -4,6 +4,12 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 13.10.2026 — Fulfillment-Import: Bausteine ohne Unterphase doppelten ihren Titel (nur lokal — Branch `import-sammel`, Basis a39abd25 = `update-0910b`)
+- **Import (`einsortieren`):** Bausteine ohne Unterphase standen je Phase unter „Weitere Bausteine“, jeder mit einem gleichnamigen Einzelschritt davor (in der Sammel-Phase hieß sogar
+  der Teilprozess wie die Phase). Jetzt EIN Sammel-Teilprozess je Phase („Weitere Bausteine“, in der Sammel-Phase „Allgemein“) → EIN Sammel-Schritt „Zugeordnete Bausteine“ (Ebene 4) → die
+  Bausteine als Ebene 5. Gespeicherte Vorlagen und Fälle bleiben unberührt (Rückweg: additiv, nur neue Knoten; die Anzeige `istSammelTeil` kennt alte und neue Form); mit Unterphase unverändert;
+  Idempotenz und Phasen-Regel unverändert. Test `tests/fulfillment-import-sammel.test.ts`.
+
 ## 12.10.2026 — Fulfillment kundenreif: keine losen Enden, „Dem Kunden zeigen“, die vier Fall-Reiter neu, Demo-Geschichte (nur lokal — Branch `kundenreif-fulfillment`, Basis d0b700a1 = `update-0910b`, `update-0910b` bis ffcbe39f eingemischt — mit dem Paket „Extern“)
 Kevin: „Kann ich das einem Kunden zeigen? Ist der Fulfillment-Prozess auch sinnig so — kann man das wirklich gut zeigen und weitermachen? … keine losen
 Enden. Alles muss strukturiert sauber sein, auch aus der Visualisierung heraus. Denk immer einen Schritt weiter.“ Einmal wie ein Berater im Kundentermin
@@ -36,7 +42,7 @@ Freigabe-Stapel; nichts geht automatisch nach außen).
 - **Kleinere:** Mitschrift → Aufgabe mit „Aufgabe öffnen ›“; Wert-Konto „jetzt —“ heißt „noch keine Messung“ und nennt, wo die Messung landet (Report,
   Wirkungsbericht); Freigaben zeigen „bestätigt am … im Kick-off · vermerkt am …“; „Weitere Bausteine“ stand im Ablauf je Phase als doppelte Überschrift —
   ein Sammel-Teilprozess (bzw. einer, der wie seine Phase heißt) ist keine eigene Gruppe mehr (`istSammelTeil`; Ursache ist der Import in `import.ts`
-  `einsortieren`, dort nicht geändert).
+  `einsortieren`, dort nicht geändert — seit 13.10. an der Wurzel behoben, siehe oben).
 
 **Die vier alten Reiter im Stil der Reise** (Antwort zuerst · Bild statt Liste · EINE Hauptaktion · Seltenes hinter „⋯“; gerechnet in
 `lib/fulfillment/prozesse/ansichten.ts`, gezeichnet mit `components/os/fulfillment/reise/teile.tsx`):

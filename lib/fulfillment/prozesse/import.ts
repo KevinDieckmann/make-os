@@ -17,7 +17,7 @@ import type { AnwendenErgebnis, Baustein, BausteinArt, ImportLauf, ProzessKnoten
 import { BAUSTEIN_ARTEN, vorlageAus } from '../lesen';
 import { GRENZEN, TEXT_MAX } from '../grenzen';
 import { ebeneVon, kinderVon, vorfahren } from '../regeln';
-import { PHASEN, WEITERE_BAUSTEINE, phaseEinfuegen, phaseFinden, phaseTitel, phaseVon } from './phasen';
+import { PHASEN, SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE, phaseEinfuegen, phaseFinden, phaseTitel, phaseVon } from './phasen';
 import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
 import { ausfuehren, fnv, istObj, nein, slug, titelForm } from './pruefen';
@@ -369,10 +369,17 @@ export function titelPasst(titel: string, schluessel: string): boolean {
 }
 
 /**
- * Einsortieren: Ebene 2 = Phase · Ebene 3 = Unterphase · Ebene 4 = Einzelschritt (Titel des Bausteins) · Ebene 5 = der Baustein.
+ * Einsortieren: Ebene 2 = Phase · Ebene 3 = Unterphase (Teilprozess) · Ebene 4 = Schritt · Ebene 5 = der Baustein.
  * Die Phase nach der EINEN Regel (./phasen.ts, 12.10.): eine kanonische Phase (auch über ein Dach-Thema — „strategie“ → Diagnose, „steuerung“ →
  * Führung) landet in der vorhandenen passenden Phase; fehlt sie, entsteht sie mit dem kanonischen Titel an IHRER Stelle (vorher hinten angehängt).
  * Ein unbekannter Schlüssel bleibt wie bisher (Titel-Abgleich, sonst neue eigene Phase).
+ *
+ * Mit Unterphase (13.10. unverändert): der Teilprozess der Unterphase, darunter ein Einzelschritt mit dem Titel des Bausteins und genau diesem Baustein.
+ * OHNE Unterphase (Bausteine ohne passenden Teilprozess; Wurzelfix 13.10.): kein Einzelschritt je Baustein mehr — vorher stand jeder dieser Bausteine
+ * unter „Weitere Bausteine“ doppelt (Schritt und Baustein gleichnamig), in der Sammel-Phase sogar „Weitere Bausteine“ unter „Weitere Bausteine“.
+ * Jetzt: EIN Sammel-Teilprozess je Phase (Ebene 3, „Weitere Bausteine“; in der Sammel-Phase selbst „Allgemein“), darunter EIN Sammel-Schritt
+ * (Ebene 4, „Zugeordnete Bausteine“), darunter die Bausteine als Ebene 5. Kein Titel steht unter einem gleichnamigen Knoten. Gespeicherte Vorlagen
+ * werden nicht umgeschrieben (ein Baustein, der schon in der Vorlage steht, bleibt wo er ist); die Anzeige ist für beide Formen tolerant (`istSammelTeil`).
  */
 function einsortieren(v: ProzessVorlage, b: Baustein, phase: string | undefined, unterphase: string | undefined, neueId: () => string): ProzessVorlage {
   if (v.knoten.some(k => k.bausteinId === b.id)) return v;
@@ -387,15 +394,31 @@ function einsortieren(v: ProzessVorlage, b: Baustein, phase: string | undefined,
     else knoten.push({ id, elternId: eltern, titel, rang: kinderVon(eltern, knoten).length + 1 });
     return id;
   };
+  /** Ein Kind mit GENAU diesem Titel (Vergleichsform) — für die Sammel-Knoten; sonst wird es angelegt. */
+  const genau = (eltern: string, titel: string): string => {
+    const da = kinderVon(eltern, knoten).find(k => titelForm(k.titel) === titelForm(titel));
+    if (da) return da.id;
+    const id = neueId();
+    knoten.push({ id, elternId: eltern, titel, rang: kinderVon(eltern, knoten).length + 1 });
+    return id;
+  };
   const kanon = phase ? phaseVon(phase) : null;
   const p = kanon
     ? phaseFinden(kinderVon(wurzel.id, knoten), kanon.id)?.id ?? kind(wurzel.id, PHASEN.find(x => x.id === kanon.id)!.woerter[0], phaseTitel(kanon.id))
     : kind(wurzel.id, phase ?? 'weitere bausteine', phase ? schoen(phase) : WEITERE_BAUSTEINE);
-  const u = kind(p, unterphase ?? 'weitere bausteine', unterphase ? UNTER_TITEL[unterphase] ?? schoen(unterphase) : 'Weitere Bausteine');
-  const schritt = neueId();
-  knoten.push({ id: schritt, elternId: u, titel: b.titel, rang: kinderVon(u, knoten).length + 1 });
-  knoten.push({ id: neueId(), elternId: schritt, titel: b.titel, rang: 1, bausteinId: b.id });
-  knoten = knoten.map(k => k);
+  if (unterphase) {
+    const u = kind(p, unterphase, UNTER_TITEL[unterphase] ?? schoen(unterphase));
+    const schritt = neueId();
+    knoten.push({ id: schritt, elternId: u, titel: b.titel, rang: kinderVon(u, knoten).length + 1 });
+    knoten.push({ id: neueId(), elternId: schritt, titel: b.titel, rang: 1, bausteinId: b.id });
+  } else {
+    // Sammel-Teilprozess (Ebene 3) → Sammel-Schritt (Ebene 4) → Baustein (Ebene 5): jeweils genau einer je Phase, nie gleichnamig mit dem Elternknoten.
+    const phaseTitelHier = knoten.find(k => k.id === p)?.titel ?? '';
+    const teilTitel = titelForm(phaseTitelHier) === titelForm(WEITERE_BAUSTEINE) ? SAMMEL_ALLGEMEIN : WEITERE_BAUSTEINE;
+    const teil = titelForm(teilTitel) === titelForm(WEITERE_BAUSTEINE) ? kind(p, 'weitere bausteine', WEITERE_BAUSTEINE) : genau(p, teilTitel);
+    const sammel = genau(teil, SAMMEL_SCHRITT);
+    knoten.push({ id: neueId(), elternId: sammel, titel: b.titel, rang: kinderVon(sammel, knoten).length + 1, bausteinId: b.id });
+  }
   return { ...v, knoten };
 }
 
