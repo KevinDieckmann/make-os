@@ -9,6 +9,9 @@
 //   · keine Aufgaben mit Sichtbarkeit „nur ich“ (Feld kommt mit dem Aufgaben-Paket — `nurIch` liest es tolerant)
 //   · nichts aus dem Papierkorb (`geloeschtAm`, tolerant)
 //   · Privat-Space nur, wenn der Haushalt es zulässt (`brain-bruecke--<haushalt>`, Standard „anzahl“: nur Zahlen)
+//   · Aufgaben der Firmen-Akte (12.10., lib/aufgaben/firmenakte-sicht.ts: Schild, Vertrags-Erinnerung, Recht-Check, Beschluss-Folge) NUR als Zahl —
+//     das Brain liest jedes Konto des Haushalts, auch eines „nur Business“ ohne Zugang zur Firmen-Akte; Titel wie „Jahresabschluss feststellen —
+//     <Gesellschaft>“ gehören dort nicht hin. Anders als Privat gibt es dafür keine Stufe „voll“. Ebenso ZOE-Entscheidungen zu Recht-Vorschlägen: ohne Titel.
 //   · Zeit-Auswertung einer Person (`_App/Woche`) nur mit IHRER ausdrücklichen Einwilligung (`zeitFreigabe`, Standard: niemand)
 // Alles hier ist rein bis auf `appDatenLaden` und die Einstellung.
 
@@ -18,6 +21,7 @@ import { WEG } from '@/lib/wege';
 import { alleSpaces, bereichVonSpace, istSonstigeProjekt } from '@/lib/aufgaben/struktur';
 import type { Task, Project, TasksState } from '@/types/tasks';
 import { istNurIch } from '@/lib/aufgaben/sicht';
+import { aufgabeInFirmenAkte, hatFirmenAkte } from '@/lib/aufgaben/firmenakte-sicht';
 import type { CrmBestand, ChancenStufe } from '@/lib/crm/typen';
 import type { DauerEintrag } from '@/lib/zoe/entscheidungen';
 import type { ZeitJeMandat } from '@/lib/zeitmessung/mandate';
@@ -167,7 +171,26 @@ export function nurIch(t: object): boolean {
 export const privatAufgabe = (t: Pick<Task, 'spaceId' | 'space'>) => bereichVonSpace(t.spaceId ?? (t.space === 'privat' ? 'privat' : undefined)) === 'privat';
 export const privatProjekt = (p: Pick<Project, 'spaceId'>) => bereichVonSpace(p.spaceId) === 'privat';
 
-/** Darf diese Aufgabe überhaupt ins Brain? (Papierkorb, „nur ich“, Art. 18 am Bezug, Projekt im Papierkorb) */
+/**
+ * Kennungen der Aufgaben, die in der Firmen-Akte liegen (die Aufgabe selbst oder ein Vorfahre, lib/aufgaben/firmenakte-sicht.ts) —
+ * einmal je Aufgabenliste gerechnet, nicht je Frage.
+ */
+const akteMerk = new WeakMap<readonly Task[], ReadonlySet<string>>();
+export function firmenAkteIds(state: Pick<TasksState, 'tasks'>): ReadonlySet<string> {
+  const g = akteMerk.get(state.tasks);
+  if (g) return g;
+  const ids = new Set<string>();
+  if (hatFirmenAkte(state.tasks)) {
+    const nachId = new Map(state.tasks.map(t => [t.id, t]));
+    for (const t of state.tasks) if (aufgabeInFirmenAkte(t, nachId)) ids.add(t.id);
+  }
+  akteMerk.set(state.tasks, ids);
+  return ids;
+}
+/** Liegt die Aufgabe in der Firmen-Akte? Dann im Brain nur als Zahl (kein Titel, kein Link, keine Notiz). */
+export const firmenAkteAufgabe = (t: Pick<Task, 'id'>, d: Pick<AppDaten, 'state'>): boolean => firmenAkteIds(d.state).has(t.id);
+
+/** Darf diese Aufgabe überhaupt ins Brain? (Papierkorb, „nur ich“, Art. 18 am Bezug, Projekt im Papierkorb) — die Firmen-Akte zählt `firmenAkteAufgabe` eigens (nur Zahl). */
 export function aufgabeSichtbar(t: Task, d: Pick<AppDaten, 'eingeschraenkt' | 'state'>): boolean {
   if (imPapierkorb(t) || nurIch(t)) return false;
   if (t.bezug?.kontaktId && d.eingeschraenkt.has(t.bezug.kontaktId)) return false;
@@ -202,6 +225,8 @@ export interface Material {
   von: string; bis: string;
   erledigt: { projekt: string; link: string; aufgaben: { titel: string; link: string }[] }[];
   privatErledigt: number;
+  /** Erledigte Pflichten (Hauptaufgaben) aus der Firmen-Akte — nur die Zahl (12.10.). */
+  akteErledigt: number;
   projekte: { titel: string; link: string; kurz: string }[];
   privatProjekte: number;
   angebote: { was: 'gestellt' | 'angenommen' | 'abgelehnt'; titel: string; firma?: string; link: string }[];
@@ -232,10 +257,11 @@ export function material(d: AppDaten, von: string, bis: string, zeit: ZeitJeMand
   let ausgeblendet = 0;
   // Erledigte Hauptaufgaben je Projekt.
   const jeProjekt = new Map<string, Material['erledigt'][number]>();
-  let privatErledigt = 0;
+  let privatErledigt = 0, akteErledigt = 0;
   for (const t of d.state.tasks) {
     if (t.parentId || t.status !== 'done' || !imZeitraum(t.completedAt, von, bis)) continue;
     if (!aufgabeSichtbar(t, d)) { if (!imPapierkorb(t)) ausgeblendet++; continue; }
+    if (firmenAkteAufgabe(t, d)) { akteErledigt++; continue; }
     if (privatAufgabe(t) && !voll) { privatErledigt++; continue; }
     const key = t.projectId || `sonstige-${t.spaceId ?? ''}`;
     const e = jeProjekt.get(key) ?? { projekt: projektName(d, t.projectId, t.spaceId), link: t.spaceId ? WEG.aufgaben({ s: t.spaceId, ...(d.state.projects.some(p => p.id === t.projectId) ? { p: t.projectId } : {}) }) : WEG.aufgaben(), aufgaben: [] };
@@ -283,7 +309,7 @@ export function material(d: AppDaten, von: string, bis: string, zeit: ZeitJeMand
   const zeilen = (zeit?.gesamt.zeilen ?? []).filter(z => z.art !== 'ohne' && z.sek > 0);
   return {
     von, bis, erledigt: Array.from(jeProjekt.values()).sort((a, b) => b.aufgaben.length - a.aufgaben.length || a.projekt.localeCompare(b.projekt, 'de')),
-    privatErledigt, projekte, privatProjekte, angebote, deals, mandateNeu, mandateBeendet, entscheidungen,
+    privatErledigt, akteErledigt, projekte, privatProjekte, angebote, deals, mandateNeu, mandateBeendet, entscheidungen,
     zeit: zeilen.map(z => ({ label: z.label, sek: z.sek, link: z.art === 'mandat' ? WEG.mandat(z.id) : WEG.mandat() })),
     zeitOhneSek: zeit ? zeit.gesamt.sek - zeit.gesamt.mitMandatSek : 0,
     zeitLabel: zeit ? `${zeit.label} (${zeit.von} bis ${zeit.bis})` : null,
@@ -291,13 +317,14 @@ export function material(d: AppDaten, von: string, bis: string, zeit: ZeitJeMand
   };
 }
 
-export const materialLeer = (m: Material) => !m.erledigt.length && !m.privatErledigt && !m.projekte.length && !m.privatProjekte && !m.angebote.length && !m.deals.length
+export const materialLeer = (m: Material) => !m.erledigt.length && !m.privatErledigt && !m.akteErledigt && !m.projekte.length && !m.privatProjekte && !m.angebote.length && !m.deals.length
   && !m.mandateNeu.length && !m.mandateBeendet.length && !m.entscheidungen.length && !m.zeit.length;
 
 const ENTSCHEIDUNG_LABEL: Record<string, string> = { freigegeben: 'freigegeben', abgelehnt: 'abgelehnt', fehlgeschlagen: 'fehlgeschlagen', zurueck: 'zurück an ZOE' };
 /** Eine Entscheidung als Zeile — bei CRM-Vorschlägen ohne Titel (er kann Namen tragen), nur die Art. */
 export function entscheidungZeile(e: DauerEintrag): string {
-  const was = e.bezug?.art === 'crm' ? `CRM-Vorschlag (${md(e.vorschlagArt ?? 'crm', 40)})` : e.titel ? `„${md(e.titel, 120)}“` : md(e.werkzeug, 60);
+  // Recht-Vorschläge (Firmen-Akte, 12.10.): der Titel nennt Vertrag und Gesellschaft — im Brain nur die Art (wie bei CRM), Konten ohne Zugang lesen es mit.
+  const was = e.bezug?.art === 'crm' ? `CRM-Vorschlag (${md(e.vorschlagArt ?? 'crm', 40)})` : e.bezug?.art === 'recht' ? `Recht-Vorschlag (${md(e.werkzeug, 40)})` : e.titel ? `„${md(e.titel, 120)}“` : md(e.werkzeug, 60);
   return `${ENTSCHEIDUNG_LABEL[e.entscheidung ?? ''] ?? md(e.entscheidung, 20)} · ${was}${e.person ? ` · von ${md(e.person, 40)}` : ' · Systemlauf'}${e.grund ? ` · Grund: „${md(e.grund, 200)}“` : ''}`;
 }
 
@@ -308,6 +335,7 @@ export function materialMarkdown(m: Material): string {
   liste('Erledigte Aufgaben je Projekt', [
     ...m.erledigt.map(e => `- **${link(e.projekt, e.link)}** (${e.aufgaben.length})\n${e.aufgaben.slice(0, 30).map(a => `  - ${link(a.titel, a.link)}`).join('\n')}${e.aufgaben.length > 30 ? `\n  - … und ${e.aufgaben.length - 30} weitere` : ''}`),
     ...(m.privatErledigt ? [`- Privat: ${m.privatErledigt} erledigt (nur als Anzahl)`] : []),
+    ...(m.akteErledigt ? [`- ${m.akteErledigt} ${m.akteErledigt === 1 ? 'Pflicht' : 'Pflichten'} aus der Firmen-Akte erledigt (nur als Anzahl)`] : []),
   ]);
   liste('Projekt-Notizen neu oder geändert', [
     ...m.projekte.map(p => `- ${link(p.titel, p.link)}${p.kurz ? ` — „${p.kurz}“` : ''}`),

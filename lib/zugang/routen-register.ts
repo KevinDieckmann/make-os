@@ -155,7 +155,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'planung/meilenstein': r('GET,POST', 'haushalt', 'Meilenstein-Detail und Austausch des Haushalts.'),
   'planung/bezuege': r('POST', 'haushalt', 'Seil (07.10.): Bezüge auf ein zurückgeholtes Ziel wieder setzen (Unterziele, Meilensteine, Aufgaben, Projekte) — nur Sitzung, nur wo das Feld leer ist, dieselben Prüfungen.'),
   'planung/vorschlag': r('POST', 'haushalt', 'Wochenvorschlag (KI) aus Kalender und Aufgaben des Haushalts.'),
-  'neustart': r('GET,POST', 'haushalt', '„Neu anfangen“ für Ziele und Aufgaben des Haushalts.'),
+  'neustart': r('GET,POST', 'haushalt', '„Neu anfangen“ für Ziele und Aufgaben des Haushalts — nur volle Mitglieder (ein Konto mit finanzRecht „business“ bekommt Vorschau, Archiv, Neustart und Zurückholen mit 403, nurVolleMitglieder).'),
   'lichtfaeden': r('GET', 'haushalt', 'Lichtfäden aus allen Beständen des Haushalts (Privat der anderen nur „Belegt“).'),
   'seil': r('GET', 'haushalt', 'Seil (07.10.): Stränge → Ziele, Abhängigkeiten, kritischer Pfad — Aufgaben in der Sicht der Person, Bereich serverseitig (finanzRecht „business“ nur Business), Dienstweg 403.'),
   'fluss': r('GET', 'haushalt', 'Überblick „Für dich“ aus den Beständen des Haushalts.'),
