@@ -149,7 +149,7 @@ if [ "$MODUS" = "produktion" ]; then
     echo "  Der Code hat sich geändert — ich baue MAKE OS neu. Das dauert gut eine Minute."
     echo ""
     mkdir -p .data
-    if node node_modules/next/dist/bin/next build > .data/bau.log 2>&1; then
+    if NODE_OPTIONS=--max-old-space-size=4096 node node_modules/next/dist/bin/next build > .data/bau.log 2>&1; then
       echo "  Gebaut."
       echo ""
     else

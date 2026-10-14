@@ -15,7 +15,8 @@ ARG NEXT_PUBLIC_MAKE_OS_CRM_TEAM=""
 ARG NEXT_PUBLIC_MAKE_OS_EVENT_MARKE=""
 ENV NEXT_PUBLIC_MAKE_OS_EINHEITEN=$NEXT_PUBLIC_MAKE_OS_EINHEITEN NEXT_PUBLIC_MAKE_OS_CRM_TEAM=$NEXT_PUBLIC_MAKE_OS_CRM_TEAM NEXT_PUBLIC_MAKE_OS_EVENT_MARKE=$NEXT_PUBLIC_MAKE_OS_EVENT_MARKE
 # pdf.js-Worker nach public/ (sonst macht das postinstall)
-RUN node scripts/pdf-worker.mjs && node node_modules/next/dist/bin/next build && npm prune --omit=dev
+# Heap (14.10.): der Bau braucht inzwischen > 2 GB — Node nimmt sonst nur ~¼ des Arbeitsspeichers (Runner 7 GB → ~1,75 GB → Abbruch).
+RUN node scripts/pdf-worker.mjs && NODE_OPTIONS=--max-old-space-size=4096 node node_modules/next/dist/bin/next build && npm prune --omit=dev
 
 FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c
 ENV NODE_ENV=production TZ=Europe/Berlin PORT=3000 NEXT_TELEMETRY_DISABLED=1
