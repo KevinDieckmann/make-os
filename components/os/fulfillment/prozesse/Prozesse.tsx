@@ -17,7 +17,7 @@ import { WEG } from '@/lib/wege';
 import { ortHref, ORTE, istOrt } from '@/lib/fulfillment/orte';
 import { ebeneVon, inReihenfolge, kinderVon, wurzelVon } from '@/lib/fulfillment/regeln';
 import { brotkrumen } from '@/lib/fulfillment/prozesse/landkarte';
-import { knotenAmpel, paketSteckbrief, EBENEN_NAME } from '@/lib/fulfillment/prozesse/darstellung';
+import { knotenAmpel, paketSteckbrief, EBENEN_NAME, abstimmungsNummern, abstimmungName, titelOhneZusatz, titelZusatz } from '@/lib/fulfillment/prozesse/darstellung';
 import type { ProzessKnoten, Zone } from '@/lib/fulfillment/typen';
 import { useUebersicht, useCockpit, vorlagenOps, fehlerText, type Uebersicht, type VorlageMitStand, type MitStand } from './daten';
 import { Landkarte, ZONE_TEXT, ZONE_FARBE } from './Zeichnung';
@@ -59,7 +59,7 @@ export function Prozesse({ k }: { k?: string }) {
       )}
       {landkarte && (
         <Karte i={1} akzent={LEUCHT.business}>
-          <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.landkarte" rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>{Object.keys(daten.faelle).length} Fälle</span><PraesentationWahl faelle={Object.values(daten.faelle)} /></span>}>{landkarte.titel}</Ueberschrift>
+          <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.landkarte" rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>{(n => `${n} Kunde${n === 1 ? '' : 'n'}`)(Object.values(daten.faelle).filter(f => f.status !== 'abgeschlossen').length)}</span><PraesentationWahl faelle={Object.values(daten.faelle)} /></span>}>{landkarte.titel}</Ueberschrift>
           <Legende eintraege={[
             { zeichen: <ZonenZeichen zone="dach" />, text: 'Dach — was steuert' },
             { zeichen: <ZonenZeichen zone="etage" />, text: 'Etagen — der Weg eines Kunden durch uns, von unten nach oben' },
@@ -106,6 +106,8 @@ function Steckbrief({ vorlage, id, daten, onKnoten }: { vorlage: VorlageMitStand
   const baustein = kn.bausteinId ? daten.bausteine.find(b => b.id === kn.bausteinId) : undefined;
   const freigabe = kn.freigabe ? vorlage.freigaben.find(f => f.id === kn.freigabe) : undefined;
   const ebene = ebeneVon(kn, vorlage.knoten);
+  const nummern = abstimmungsNummern(vorlage.knoten);
+  const zusatz = titelZusatz(kn.titel);
   const e = (label: string, wert?: string | number | null) => (wert === undefined || wert === null || wert === '' ? null : (
     <div style={{ display: 'grid', gap: 2 }}><span style={MIKRO}>{label}</span><span style={{ fontSize: TYP.bedien, color: C.ink, lineHeight: 1.5 }}>{wert}</span></div>
   ));
@@ -115,7 +117,7 @@ function Steckbrief({ vorlage, id, daten, onKnoten }: { vorlage: VorlageMitStand
       <nav aria-label="Ebenen" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: TYP.bedien }}>
         {brotkrumen(vorlage, id).map((b, i, l) => (
           <span key={b.id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-            {i < l.length - 1 ? <button type="button" onClick={() => onKnoten(b.id)} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', padding: '6px 0', minHeight: 44, fontSize: TYP.bedien }}>{b.titel}</button> : <b style={{ color: C.ink, fontSize: TYP.body }}>{b.titel}</b>}
+            {i < l.length - 1 ? <button type="button" onClick={() => onKnoten(b.id)} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', padding: '6px 0', minHeight: 44, fontSize: TYP.bedien }}>{titelOhneZusatz(b.titel)}</button> : <b style={{ color: C.ink, fontSize: TYP.body }}>{titelOhneZusatz(b.titel)}</b>}
             {i < l.length - 1 && <span style={{ color: C.inkLeise }}>›</span>}
           </span>
         ))}
@@ -123,11 +125,11 @@ function Steckbrief({ vorlage, id, daten, onKnoten }: { vorlage: VorlageMitStand
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {kn.zone && <Chip farbe={ZONE_FARBE[kn.zone]}>{ZONE_TEXT[kn.zone]}</Chip>}
         {kn.zustaendig && <Chip farbe={LEUCHT.planung}>Zuständig: {ZUST[kn.zustaendig]}</Chip>}
-        {freigabe && <Chip farbe={LEUCHT.achtung}>◆ Freigabe {freigabe.id} · {freigabe.titel}</Chip>}
+        {freigabe && <Chip farbe={LEUCHT.achtung}>◆ {abstimmungName(freigabe.id, nummern, freigabe.titel)}</Chip>}
         {kn.kundeSichtbar && <Chip farbe={LEUCHT.gut}>für Kunden sichtbar</Chip>}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-        {e('Ziel', kn.ziel)}{e('Warum', kn.warum)}{e('Eingang', kn.eingang)}{e('Ergebnis', kn.ergebnis)}{e('Kennzahl', kn.kennzahl)}{e('Rolle', kn.rolle)}
+        {e('Ziel', kn.ziel)}{e('Warum', kn.warum ?? (zusatz ? `${zusatz.charAt(0).toUpperCase()}${zusatz.slice(1)}.` : undefined))}{e('Eingang', kn.eingang)}{e('Ergebnis', kn.ergebnis)}{e('Kennzahl', kn.kennzahl)}{e('Rolle', kn.rolle)}
         {e('Dauer', kn.dauerTage ? `${kn.dauerTage} Tage` : null)}{e('Aufwand', kn.aufwandStunden ? `${kn.aufwandStunden} Stunden` : null)}
       </div>
       <Leiste>
@@ -147,7 +149,7 @@ function Steckbrief({ vorlage, id, daten, onKnoten }: { vorlage: VorlageMitStand
         <div style={{ display: 'grid', gap: 6 }}>
           <span style={MIKRO}>Eine Ebene tiefer: {EBENEN_NAME[ebene] ?? 'Schritte'}</span>
           <Liste>
-            {kinder.map(x => <Zeile key={x.id} titel={x.titel} unter={x.ergebnis ?? (x.bausteinId ? 'Baustein' : x.freigabe ? `◆ endet mit Freigabe ${x.freigabe}` : undefined)} rechts={(daten.zaehler[vorlage.id]?.[x.id]?.length ?? 0) > 0 ? <Chip farbe={LEUCHT.business}>{daten.zaehler[vorlage.id][x.id].length}</Chip> : undefined} onClick={() => onKnoten(x.id)} />)}
+            {kinder.map(x => <Zeile key={x.id} titel={titelOhneZusatz(x.titel)} unter={x.ergebnis ?? (x.bausteinId ? 'Baustein' : x.freigabe ? `◆ endet mit ${abstimmungName(x.freigabe, nummern, vorlage.freigaben.find(f => f.id === x.freigabe)?.titel)}` : titelZusatz(x.titel))} rechts={(daten.zaehler[vorlage.id]?.[x.id]?.length ?? 0) > 0 ? <Chip farbe={LEUCHT.business}>{daten.zaehler[vorlage.id][x.id].length}</Chip> : undefined} onClick={() => onKnoten(x.id)} />)}
           </Liste>
         </div>
       )}
@@ -198,14 +200,14 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
                     {sb.phasen.map((ph, i) => (
                       <li key={ph.id} style={{ display: 'inline-flex', gap: 4, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
                         <span style={{ display: 'inline-grid', placeItems: 'center', width: 22, height: 22, borderRadius: 11, fontSize: TYP.bedien, fontWeight: 700, color: C.ink, background: TIEF.flaeche(LEUCHT.business), border: `1px solid ${TIEF.rand(LEUCHT.business)}` }}>{i + 1}</span>
-                        <span>{ph.titel}</span>
-                        {ph.freigabe && <span title={`Freigabe ${ph.freigabe}${p.freigaben.find(f => f.id === ph.freigabe)?.titel ? ` · ${p.freigaben.find(f => f.id === ph.freigabe)?.titel}` : ''}`} style={{ display: 'inline-flex', gap: 3, alignItems: 'center', color: C.inkLeise }}><FreigabeRaute gegeben={false} groesse={9} />Freigabe {ph.freigabe}</span>}
+                        <span title={ph.zusatz ? `${ph.titel} — ${ph.zusatz}` : undefined}>{ph.titel}</span>
+                        {ph.freigabe && <span title={abstimmungName(ph.freigabe, new Map(ph.nr ? [[ph.freigabe, ph.nr]] : []), p.freigaben.find(f => f.id === ph.freigabe)?.titel)} style={{ display: 'inline-flex', gap: 3, alignItems: 'center', color: C.inkLeise }}><FreigabeRaute gegeben={false} groesse={9} />{ph.nr ?? ''}</span>}
                         {i < sb.phasen.length - 1 && <span aria-hidden style={{ color: C.inkLeise, margin: '0 2px' }}>→</span>}
                       </li>
                     ))}
                   </ol>
                 )}
-                <span style={{ ...klein, color: C.inkLeise }}>{sb.phasen.length} Phasen · {sb.schritte} Schritte · {sb.bausteine} Bausteine{sb.freigaben ? ` · ${sb.freigaben} Freigaben` : ''}</span>
+                <span style={{ ...klein, color: C.inkLeise }}>{sb.phasen.length} Phasen · {sb.schritte} Schritte · {sb.bausteine} Bausteine{sb.freigaben ? ` · ${sb.freigaben} Abstimmungspunkt${sb.freigaben === 1 ? '' : 'e'} (◆)` : ''}</span>
                 <Leiste>
                   {wurzel && <Knopf leise onClick={() => onKnoten(wurzel.id)}>Ansehen ›</Knopf>}
                   <Knopf leise onClick={() => setOffen(offen === p.id ? null : p.id)}>{offen === p.id ? 'Editor schließen' : 'Bearbeiten'}</Knopf>

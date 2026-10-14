@@ -72,7 +72,7 @@ describe('Import: Phasen aus Bausteinen kommen an IHRE Stelle, Dach-Themen in di
   const d = mitImport();
   it('Vertriebsleitung auf Zeit: genau die acht Phasen des Musters — keine „Strategie“, keine „Steuerung“', () => {
     const p1 = paket(d, MUSTER_P1.titel);
-    expect(phasen(p1.knoten)).toEqual(['Vorlauf / Onboarding', 'Analyse', 'Diagnose', 'Aufbau', 'Recruiting (nur Prozess)', 'Umsetzung', 'Führung', 'Follow-up / Übergabe']);
+    expect(phasen(p1.knoten)).toEqual(['Vorlauf / Onboarding', 'Analyse', 'Diagnose', 'Aufbau', 'Recruiting', 'Umsetzung', 'Führung', 'Follow-up / Übergabe']);
     // Strategie-Baustein hängt unter Diagnose, Steuerung unter Führung.
     const unter = (bausteinId: string) => { const nach = new Map(p1.knoten.map(k => [k.id, k])); let x = p1.knoten.find(k => k.bausteinId === bausteinId); while (x?.elternId && nach.get(x.elternId)?.elternId) x = nach.get(x.elternId); return x?.titel; };
     expect(unter('fb-imp-p-strategie')).toBe('Diagnose');
@@ -99,7 +99,7 @@ describe('Import: Phasen aus Bausteinen kommen an IHRE Stelle, Dach-Themen in di
   });
   it('der Fall aus der Vorlage hat dieselben Phasen — keine Dach-Phase hinter der Übergabe', () => {
     const f = fallStarten({ mandatId: 'm-probe', vorlage: paket(d, MUSTER_P1.titel), person: 'pia', jetzt: JETZT, start: HEUTE, neueId: zaehler() });
-    expect(phasen(f.knoten)).toEqual(['Vorlauf / Onboarding', 'Analyse', 'Diagnose', 'Aufbau', 'Recruiting (nur Prozess)', 'Umsetzung', 'Führung', 'Follow-up / Übergabe']);
+    expect(phasen(f.knoten)).toEqual(['Vorlauf / Onboarding', 'Analyse', 'Diagnose', 'Aufbau', 'Recruiting', 'Umsetzung', 'Führung', 'Follow-up / Übergabe']);
   });
 });
 
@@ -124,7 +124,7 @@ describe('Altbestand: beim Lesen geordnet, hohle Dach-Phasen zusammengelegt — 
   it('Vorlage: „Strategie“ → Diagnose, „Steuerung“ → Führung; alle Schritte und Bausteine bleiben', () => {
     const roh = altP1();
     const v = vorlagenAus(roh).prozesse[0];
-    expect(phasen(v.knoten)).toEqual(['Vorlauf / Onboarding', 'Analyse', 'Diagnose', 'Aufbau', 'Recruiting (nur Prozess)', 'Umsetzung', 'Führung', 'Follow-up / Übergabe']);
+    expect(phasen(v.knoten)).toEqual(['Vorlauf / Onboarding', 'Analyse', 'Diagnose', 'Aufbau', 'Recruiting', 'Umsetzung', 'Führung', 'Follow-up / Übergabe']);
     expect(v.knoten.find(k => k.bausteinId === 'fb-strategie')).toBeTruthy();
     expect(v.knoten.find(k => k.id === 'alt-strategie-u')!.elternId).toBe(v.knoten.find(k => k.titel === 'Diagnose')!.id);
     expect(v.knoten.find(k => k.id === 'alt-steuerung-u')!.elternId).toBe(v.knoten.find(k => k.titel === 'Führung')!.id);

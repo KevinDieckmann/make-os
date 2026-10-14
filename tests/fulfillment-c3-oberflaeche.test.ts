@@ -58,7 +58,7 @@ describe('Oberfläche der Analyse', () => {
     const html = zeige(r => createElement(Recht, { mandatId: 'm-1', api, rueck: r }));
     expect(html).toContain('Name im Unternehmensteil.');
     expect((html.match(/>Überstimmen</g) ?? []).length).toBe(1);
-    expect(html).toContain('F2 geht nur mit bestandener Prüfung.');
+    expect(html).toContain('„Dossier geprüft“ geht nur mit bestandener Prüfung.');
     expect(html).toContain('Hinweis, keine Rechtsberatung.');
   });
 });

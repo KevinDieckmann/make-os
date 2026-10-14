@@ -45,7 +45,7 @@ export function Personen({ mandatId, firmaId, rueck }: { mandatId: string; firma
       <div style={klein}>{hinweis}</div>
       <Ueberschrift erklaerung="fulfillment.loeschfristPersonen">Löschfrist und Art. 14</Ueberschrift>
       {fehler && <Hinweis art="achtung">{fehler}</Hinweis>}
-      {!karten.length && <Leer>Noch keine Karten. Sie entstehen nur aus einem bestätigten Personen-Lauf („Personen, nur beruflich“, A4) zu einer Funktion aus dem festgelegten Umfang (F1).</Leer>}
+      {!karten.length && <Leer>Noch keine Karten. Sie entstehen nur aus einem bestätigten Personen-Lauf („Personen, nur beruflich“, A4) zu einer Funktion aus dem festgelegten Umfang.</Leer>}
       {karten.map(k => <KarteAnsicht key={k.id} k={k} kandidaten={kandidaten} schritt={b => schritt(k, b)} rueck={rueck} />)}
     </div>
   );

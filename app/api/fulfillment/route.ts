@@ -70,6 +70,8 @@ export async function GET(req: Request) {
   const kickoffIds = vorlagen.rituale.filter(istKickoff).map(r => r.id);
   const treppe = await import('@/lib/crm/treppe-server').then(t => t.ladeTreppe(heute)).catch(() => null);
   const dossiers = await import('@/lib/fulfillment/analyse/server').then(a => a.dossierKurzFuer(Object.keys(faelle.faelle))).catch(() => ({} as Record<string, never>));
+  // Die erstellten Fortschritts-Reports je Mandat (nur Tag) — dieselbe Quelle wie die Report-Zeitachse im Fall (GET /api/fulfillment/fall `reports`).
+  const reportListe = await import('@/lib/dateien/ablage').then(a => a.ablageListe(z.haushalt)).then(l => l.filter(e => e.mandatId && e.bericht === 'fortschritt').map(e => ({ mandatId: e.mandatId!, am: e.hochgeladenAm }))).catch(() => null);
   const kennzahlen = ffKennzahlenRechnen(wirksam.map(f => {
     const m = crm.mandate.find(x => x.id === f.mandatId);
     const r = treppe?.reports[f.mandatId];
@@ -77,7 +79,8 @@ export async function GET(req: Request) {
     const kt = kickoffTag(f, kickoffIds);
     return {
       fall: f, kunde: m?.kunde ?? '', ...(u ? { unterschrift: u.am } : {}), ...(kt ? { kickoffTag: kt } : {}),
-      ...(r?.gesendetAm ? { reportLetzter: r.gesendetAm } : {}), ...(kunde[f.mandatId]?.letzterPuls ? { puls: kunde[f.mandatId].letzterPuls } : {}),
+      ...(r?.gesendetAm ? { reportLetzter: r.gesendetAm } : {}), ...(reportListe ? { reports: reportListe.filter(x => x.mandatId === f.mandatId) } : {}),
+      ...(kunde[f.mandatId]?.letzterPuls ? { puls: kunde[f.mandatId].letzterPuls } : {}),
       ...(dossiers[f.mandatId] ? { dossier: dossiers[f.mandatId] } : {}), mandatsEnde: m ? mandatsEnde(m) : null,
     };
   }), { heute, jetzt: iso, willkommenStunden: vorlagen.einstellungen.willkommenStunden });

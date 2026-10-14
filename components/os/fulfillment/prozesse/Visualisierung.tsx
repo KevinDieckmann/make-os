@@ -70,10 +70,16 @@ function KundenKarte({ z, onOeffnen }: { z: CockpitZeile; onOeffnen: () => void 
       </span>
       {z.phasen && z.phasen.length > 0 && <MiniStrahl phasen={z.phasen} hoehe={6} />}
       <WertBalken wert={z.wert?.wert} ziele={z.wert?.ziele} kompakt />
+      {/* 14.10. (Abnahme B6): „Als Nächstes“ ist der nächste Schritt (dieselbe Rechnung wie Fall-Kopf und Lage) — was hängt, steht darunter für sich. */}
       <span style={{ display: 'grid', gap: 4 }}>
         <span style={{ ...MIKRO }}>Als Nächstes</span>
-        <span style={{ fontSize: TYP.bedien, color: C.ink, overflowWrap: 'anywhere' }}>{rot[0]?.text ?? z.schritt ?? z.phase ?? '—'}</span>
+        <span style={{ fontSize: TYP.bedien, color: C.ink, overflowWrap: 'anywhere' }}>{z.schritt ?? z.phase ?? '—'}</span>
       </span>
+      {z.haengt[0] && (
+        <span style={{ display: 'flex', gap: 6, alignItems: 'baseline', fontSize: TYP.bedien, color: rot.length ? LEUCHT.kritisch : LEUCHT.achtung, overflowWrap: 'anywhere' }}>
+          <Punkt farbe={rot.length ? LEUCHT.kritisch : LEUCHT.achtung} groesse={7} />Hängt: {(rot[0] ?? z.haengt[0]).text}{z.haengt.length > 1 ? ` (+${z.haengt.length - 1})` : ''}
+        </span>
+      )}
       <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {z.status === 'onboarding' && <Chip farbe={z.onboarding.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.planung}>Onboarding · {z.onboarding.offen} offen</Chip>}
         {z.wartet > 0 && <Chip farbe={(z.wartetAeltesterTage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung}>{z.wartet} wartet auf Kunde{z.wartetAeltesterTage ? ` · ${z.wartetAeltesterTage} T.` : ''}</Chip>}

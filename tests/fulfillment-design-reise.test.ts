@@ -55,10 +55,11 @@ describe('Reise eines Falls', () => {
     expect(d.anteil).toBeCloseTo(0.25);
     expect(d.ueberfaellig).toBe(true);
     expect(d.wartet).toBe(1);
-    expect(d.freigabe).toEqual({ id: 'F3', titel: 'Diagnose-Abnahme', wer: 'beide', gegeben: false });
+    // 14.10. (Abnahme B19): mit der Nummer des Abstimmungspunkts — lückenlos in der Reihenfolge des Ablaufs (F0 → 1, F3 → 2).
+    expect(d.freigabe).toEqual({ id: 'F3', titel: 'Diagnose-Abnahme', wer: 'beide', gegeben: false, nr: 2 });
     expect(r.phasen[0].freigabe).toMatchObject({ id: 'F0', gegeben: true, am: '2026-10-02' });
     expect(r.phasen[2].anteil).toBe(0);
-    expect(reiseKurz(r)[1]).toEqual({ titel: 'Diagnose', zustand: 'jetzt', anteil: 0.25, freigabe: { id: 'F3', gegeben: false } });
+    expect(reiseKurz(r)[1]).toEqual({ titel: 'Diagnose', zustand: 'jetzt', anteil: 0.25, freigabe: { id: 'F3', gegeben: false, nr: 2 } });
   });
 
   it('Schritte einer Phase: Teilprozess als Gruppe, Baustein hängt am Schritt (keine doppelte Zeile), wirksamer Stand', () => {
@@ -115,7 +116,7 @@ describe('Der nächste Handgriff (eine Hauptaktion)', () => {
     expect(naechsterHandgriff(fall(), undefined, FREIGABEN, HEUTE)).toMatchObject({ art: 'schritt', id: 'p2-s2', text: 'Als Nächstes: Leitfaden schreiben' });
     const f = fall();
     f.knoten = f.knoten.map(x => (x.id.startsWith('p2-') ? { ...x, status: 'erledigt' } : x));
-    expect(naechsterHandgriff(f, undefined, FREIGABEN, HEUTE)).toEqual({ art: 'freigabe', id: 'F3', text: 'Freigabe F3 vermerken (Diagnose-Abnahme)' });
+    expect(naechsterHandgriff(f, undefined, FREIGABEN, HEUTE)).toEqual({ art: 'freigabe', id: 'F3', text: 'Abstimmungspunkt 2 vermerken (Diagnose-Abnahme)' });
     expect(naechsterHandgriff({ ...fall(), status: 'abgeschlossen' }, undefined, FREIGABEN, HEUTE).art).toBe('fertig');
   });
 });
@@ -200,7 +201,8 @@ describe('Zeichen-Bausteine rendern (ohne Browser)', () => {
   it('Phasen-Strahl: „Sie sind hier“, Freigabe in Klartext, aria-current an der laufenden Phase', () => {
     const html = renderToStaticMarkup(h(PhasenStrahl, { phasen: r.phasen, onPhase: () => {} }));
     expect(html).toContain('Sie sind hier');
-    expect(html).toContain('F3 · Diagnose-Abnahme');
+    expect(html).toContain('2 · Diagnose-Abnahme');
+    expect(html).toContain('Abstimmungspunkt 2 offen');
     expect(html).toContain('aria-current="step"');
   });
   it('Mini-Strahl: „Phase n von m“; Wert-Balken ohne Messung ein leiser Satz; Wellen kompakt mit Text für Vorleser', () => {

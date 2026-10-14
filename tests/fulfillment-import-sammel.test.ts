@@ -79,7 +79,7 @@ describe('Import ohne Unterphase: EIN Sammel-Teilprozess, EIN Sammel-Schritt je 
     expect(b.map(k => k.bausteinId)).toEqual(['fb-imp-st']);
     expect(titelUnter(v, phaseNamens(v, 'Diagnose').id)).toEqual(expect.arrayContaining(['Diagnosebericht', 'Quick Wins']));
     expect(phasen(v).map(p => p.titel)).toEqual([
-      'Vorlauf / Onboarding', 'Analyse', 'Diagnose', 'Aufbau', 'Recruiting (nur Prozess)', 'Umsetzung', 'Führung', 'Follow-up / Übergabe', WEITERE_BAUSTEINE,
+      'Vorlauf / Onboarding', 'Analyse', 'Diagnose', 'Aufbau', 'Recruiting', 'Umsetzung', 'Führung', 'Follow-up / Übergabe', WEITERE_BAUSTEINE,
     ]);
   });
   it('ganz ohne Phase: die Sammel-Phase hat „Allgemein“ als Teilprozess — nie „Weitere Bausteine“ unter „Weitere Bausteine“', () => {

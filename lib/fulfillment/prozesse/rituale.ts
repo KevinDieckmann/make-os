@@ -64,3 +64,22 @@ export function naechsterTermin(terminTage: readonly { uid: string; tag: string 
   const s = new Set(uids);
   return terminTage.filter(t => s.has(t.uid) && t.tag >= heute).map(t => t.tag).sort()[0];
 }
+
+/**
+ * DER nächste Termin eines Falls (14.10., Abnahme B8 — vorher „23.10.“ hier, „20.10.“ dort): der früheste Termin im Kalender (`kalender-bezug`) ab heute,
+ * der zu einem Ritual des Falls gehört (Kick-off, Wochen-Check, Steering …). EINE Regel für Takt, Cockpit, Kunden-Seite, Report und die Health
+ * „Termine“ der Leistungstreppe. Mit `rituale` trägt er den Titel des Rituals. Nie ein erfundener Termin — ohne Kalender-Eintrag null.
+ */
+export function naechsterFallTermin(e: {
+  fallRituale: readonly { ritualId: string; terminUids: readonly string[] }[]; terminTage: readonly { uid: string; tag: string }[]; heute: string;
+  rituale?: readonly Pick<RitualVorlage, 'id' | 'titel'>[];
+}): { tag: string; ritualId: string; titel?: string } | null {
+  let best: { tag: string; ritualId: string } | null = null;
+  for (const r of e.fallRituale) {
+    const tag = naechsterTermin(e.terminTage, r.terminUids, e.heute);
+    if (tag && (!best || tag < best.tag)) best = { tag, ritualId: r.ritualId };
+  }
+  if (!best) return null;
+  const titel = e.rituale?.find(x => x.id === best!.ritualId)?.titel;
+  return { ...best, ...(titel ? { titel } : {}) };
+}

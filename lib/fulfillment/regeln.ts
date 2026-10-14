@@ -262,9 +262,14 @@ export function onboardingKandidaten(
 
 // ── Landkarte: welcher Kunde steht wo (2.2) ──────────────────────────────────────────────────────────────────────────────────────────
 
+/** Der Ort der Landkarte, an dem ein Fall im Onboarding steht (Etage „Onboarding“ des Musters). */
+export const ORT_ONBOARDING = 'fulfillment.onboarding';
+
 /**
  * Je Knoten einer Vorlage die Mandate, deren aktueller Knoten (`aktuellerKnoten`) in seinem Teilbaum liegt. Ein Verweis auf eine Paket-Vorlage
- * (`verweis: fp-…`) zählt deren Fälle mit (und damit auch seine Vorfahren). Nur laufende Fälle (nicht „abgeschlossen“).
+ * (`verweis: fp-…`) zählt deren Fälle mit (und damit auch seine Vorfahren). Nur laufende Fälle (nicht „abgeschlossen“), wirksam (`fallWirksam`).
+ * 14.10. (Abnahme B6): ein Fall im Onboarding (wirksamer Status „onboarding“ — dieselbe Regel wie Lage und Fall-Kopf) steht auf der Etage mit dem Ort
+ * „Onboarding“, nicht schon auf der Etage seines Pakets; fehlt sie (eigene Landkarte), bleibt es beim Verweis.
  */
 export function kundenJeKnoten(vorlage: Pick<ProzessVorlage, 'id' | 'knoten'>, faelle: readonly Fall[]): Record<string, string[]> {
   const raus: Record<string, Set<string>> = {};
@@ -272,6 +277,7 @@ export function kundenJeKnoten(vorlage: Pick<ProzessVorlage, 'id' | 'knoten'>, f
     for (const k of [knotenId, ...vorfahren(knotenId, vorlage.knoten)]) (raus[k] ??= new Set()).add(mandatId);
   };
   const ids = new Set(vorlage.knoten.map(k => k.id));
+  const onboardingEtage = vorlage.knoten.find(k => k.ort === ORT_ONBOARDING && !k.verweis);
   for (const f of faelle) {
     if (f.status === 'abgeschlossen') continue;
     if (f.vorlageId === vorlage.id) {
@@ -279,7 +285,9 @@ export function kundenJeKnoten(vorlage: Pick<ProzessVorlage, 'id' | 'knoten'>, f
       const hier = [a.schritt?.id, a.phase?.id].find(x => x && ids.has(x));
       if (hier) dazu(hier, f.mandatId);
     }
-    for (const k of vorlage.knoten) if (k.verweis && k.verweis === f.vorlageId) dazu(k.id, f.mandatId);
+    const verweise = vorlage.knoten.filter(k => k.verweis && k.verweis === f.vorlageId);
+    if (verweise.length && f.status === 'onboarding' && onboardingEtage) { dazu(onboardingEtage.id, f.mandatId); continue; }
+    for (const k of verweise) dazu(k.id, f.mandatId);
   }
   return Object.fromEntries(Object.entries(raus).map(([k, v]) => [k, Array.from(v).sort()]));
 }

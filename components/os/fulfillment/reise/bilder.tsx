@@ -20,9 +20,12 @@ export const ZUSTAND_FARBE: Record<PhasenZustand, string> = { fertig: LEUCHT.gut
 const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 };
 
 /** Ein Phasen-Eintrag für die Strahlen (aus `fallReise` bzw. `reiseKurz`). */
-export interface StrahlPhase { id?: string; titel: string; zustand: PhasenZustand; anteil: number; erledigt?: number; gesamt?: number; ueberfaellig?: boolean; wartet?: number; freigabe?: Pick<ReiseFreigabe, 'id' | 'gegeben'> & { titel?: string } }
+export interface StrahlPhase { id?: string; titel: string; zusatz?: string; zustand: PhasenZustand; anteil: number; erledigt?: number; gesamt?: number; ueberfaellig?: boolean; wartet?: number; freigabe?: Pick<ReiseFreigabe, 'id' | 'gegeben'> & { titel?: string; nr?: number } }
 
-/** Die Raute eines Freigabe-Punkts: gefüllt grün = vermerkt, Umriss = noch offen. */
+/** „Abstimmungspunkt 3“ (14.10., Abnahme B19: „Freigabe“ meint in MAKE OS die Vorschläge von ZOE) — Nummer lückenlos aus dem Ablauf. */
+export const abstimmungKurz = (f: { nr?: number }) => `Abstimmungspunkt${f.nr ? ` ${f.nr}` : ''}`;
+
+/** Die Raute eines Abstimmungspunkts: gefüllt grün = vermerkt, Umriss = noch offen. */
 export function FreigabeRaute({ gegeben, groesse = 12, aktiv }: { gegeben: boolean; groesse?: number; aktiv?: boolean }) {
   const f = gegeben ? LEUCHT.gut : aktiv ? LEUCHT.achtung : C.inkLeise;
   return <span aria-hidden style={{ display: 'inline-block', width: groesse, height: groesse, transform: 'rotate(45deg)', flex: '0 0 auto', borderRadius: 2, border: `2px solid ${f}`, background: gegeben ? f : 'transparent' }} />;
@@ -43,23 +46,25 @@ function Schiene({ p, hoehe = 8 }: { p: StrahlPhase; hoehe?: number }) {
   );
 }
 
-const phaseLabel = (p: StrahlPhase, i: number) => `Phase ${i + 1}: ${p.titel} — ${p.zustand === 'fertig' ? 'erledigt' : p.zustand === 'jetzt' ? 'hier stehen wir' : 'kommt noch'}${p.gesamt ? `, ${p.erledigt ?? 0} von ${p.gesamt} Schritten erledigt` : ''}${p.freigabe ? `, Freigabe ${p.freigabe.id} ${p.freigabe.gegeben ? 'vermerkt' : 'offen'}` : ''}`;
+const phaseLabel = (p: StrahlPhase, i: number) => `Phase ${i + 1}: ${p.titel}${p.zusatz ? ` (${p.zusatz})` : ''} — ${p.zustand === 'fertig' ? 'erledigt' : p.zustand === 'jetzt' ? 'hier stehen wir' : 'kommt noch'}${p.gesamt ? `, ${p.erledigt ?? 0} von ${p.gesamt} Schritten erledigt` : ''}${p.freigabe ? `, ${abstimmungKurz(p.freigabe)} ${p.freigabe.gegeben ? 'vermerkt' : 'offen'}` : ''}`;
 
 /**
  * Der Phasen-Strahl (Rechner): eine Spalte je Phase — oben „Sie sind hier“ bzw. „Phase n“, darunter die Schiene mit dem erledigten Anteil und
  * der Freigabe-Raute am Ende, dann Titel, Zähler und der Freigabe-Punkt in Klartext. `onPhase` macht die Spalten anklickbar.
  */
 export function PhasenStrahl({ phasen, onPhase, aktiv }: { phasen: readonly StrahlPhase[]; onPhase?: (id: string) => void; aktiv?: string }) {
+  // Ab acht Spalten passt „Sie sind hier“ nicht mehr in die Spalte (Abnahme C2: „SIE SIND …“) — dann kurz „Hier“.
+  const hier = phasen.length > 7 ? 'Hier' : 'Sie sind hier';
   return (
     <ol aria-label="Phasen des Falls" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, phasen.length)}, minmax(0, 1fr))`, gap: 10 }}>
       {phasen.map((p, i) => {
         const inhalt = (
           <>
-            <span style={{ ...MIKRO, color: p.zustand === 'jetzt' ? JETZT : C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.zustand === 'jetzt' ? 'Sie sind hier' : p.zustand === 'fertig' ? `✓ Phase ${i + 1}` : `Phase ${i + 1}`}</span>
+            <span style={{ ...MIKRO, color: p.zustand === 'jetzt' ? JETZT : C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.zustand === 'jetzt' ? hier : p.zustand === 'fertig' ? `✓ Phase ${i + 1}` : `Phase ${i + 1}`}</span>
             <Schiene p={p} />
-            <span style={{ fontSize: TYP.bedien, fontWeight: p.zustand === 'jetzt' ? 700 : 600, color: p.zustand === 'offen' ? C.inkDim : C.ink, lineHeight: 1.3, overflowWrap: 'break-word', hyphens: 'auto' }}>{p.titel}</span>
+            <span title={p.zusatz ? `${p.titel} — ${p.zusatz}` : undefined} style={{ fontSize: TYP.bedien, fontWeight: p.zustand === 'jetzt' ? 700 : 600, color: p.zustand === 'offen' ? C.inkDim : C.ink, lineHeight: 1.3, overflowWrap: 'break-word', hyphens: 'auto' }}>{p.titel}</span>
             {p.gesamt !== undefined && p.gesamt > 0 && <span style={{ ...klein, color: C.inkLeise }}>{p.zustand === 'fertig' ? 'erledigt' : `${p.erledigt ?? 0} von ${p.gesamt}`}{p.wartet ? ` · ${p.wartet} beim Kunden` : ''}</span>}
-            {p.freigabe && <span style={{ ...klein, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, display: 'flex', gap: 6, alignItems: 'baseline' }}><span aria-hidden>◆</span><span style={{ overflowWrap: 'break-word', hyphens: 'auto', minWidth: 0 }}>{p.freigabe.id}{p.freigabe.titel ? ` · ${p.freigabe.titel}` : ''}</span></span>}
+            {p.freigabe && <span title={abstimmungKurz(p.freigabe)} style={{ ...klein, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, display: 'flex', gap: 6, alignItems: 'baseline' }}><span aria-hidden>◆</span><span style={{ overflowWrap: 'break-word', hyphens: 'auto', minWidth: 0 }}>{p.freigabe.nr ?? ''}{p.freigabe.titel ? `${p.freigabe.nr ? ' · ' : ''}${p.freigabe.titel}` : ''}</span></span>}
           </>
         );
         const stil: CSSProperties = { display: 'grid', gap: 6, alignContent: 'start', minWidth: 0, textAlign: 'left', padding: '6px 4px', borderRadius: ECKE.eingabe, minHeight: 44, color: C.ink, fontFamily: SCHRIFT.text,

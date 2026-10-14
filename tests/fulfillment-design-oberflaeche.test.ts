@@ -74,7 +74,8 @@ describe('Fall', () => {
     expect(html).toContain('rechtlich prüfen');
     expect((html.match(/>Leitfaden schreiben</g) ?? []).length).toBe(1);
     expect((html.match(/\+ Zusatz-Schritt/g) ?? []).length).toBe(1);
-    expect(html).toContain('Freigabe F3 · Diagnose-Abnahme');
+    expect(html).toContain('Abstimmungspunkt 2 · Diagnose-Abnahme'); // 14.10. (Abnahme B19): Nummer lückenlos statt „Freigabe F3“
+    expect(html).not.toMatch(/Freigabe F\d/);
     expect(html).not.toContain('Interviews führen'); // erledigt — in der laufenden Phase zuerst nur die offenen
     expect(html).toContain('Alle 3 Schritte zeigen');
   });

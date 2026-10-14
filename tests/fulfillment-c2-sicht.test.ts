@@ -113,7 +113,8 @@ describe('Kunden-Sicht: nur die Positivliste', () => {
     expect(s.quickWins).toEqual([{ text: 'Nachfass-Rhythmus eingeführt', erledigt: true, am: '04.10.2026' }, { text: 'Angebotsvorlage vereinheitlichen', erledigt: false, bis: '30.10.2026' }]);
     expect(s.lage).toMatchObject({ ampel: 'gelb', titel: 'Wir warten auf Ihren Input' });
     expect(s.lage!.saetze).toHaveLength(3);
-    expect(s.lage!.saetze[2]).toBe('Von Ihnen brauchen wir eine Sache — sie wartet seit 9 Tagen.');
+    // 14.10. (Abnahme A3): dieselbe Zählung wie die Karte „Das brauchen wir von Ihnen“ — „Wartet“ und das offene „Formular ok“ (Abschluss fehlt).
+    expect(s.lage!.saetze[2]).toBe('Von Ihnen brauchen wir 2 Dinge — die älteste wartet seit 9 Tagen.');
     expect([s.anrede, s.anbieter?.name, s.ansprechperson]).toEqual(['sie', 'Erfundene Gesellschaft', 'Pia Probe']);
   });
   it('keine internen Begriffe: Freigabe-Kürzel heißen „Abstimmungspunkt“ (bzw. tragen den Titel der Abstimmung), interne Zusätze fallen weg; Abstimmungen ohne Kunde nie', () => {
@@ -172,7 +173,7 @@ describe('KundenAnsicht (dieselbe Komponente für Seite und Vorschau)', () => {
     const { KundenAnsicht } = await import('@/components/os/fulfillment/kunde/KundenAnsicht');
     const s = kundenSicht(EINGABE({ anrede: 'du' }));
     const html = renderToStaticMarkup(createElement(KundenAnsicht, { sicht: s }));
-    for (const x of ['Das braucht es von euch', 'Euer Ziel', 'Wir warten auf euren Input', 'Von euch brauchen wir eine Sache']) expect(html, x).toContain(x);
+    for (const x of ['Das braucht es von euch', 'Euer Ziel', 'Wir warten auf euren Input', 'Von euch brauchen wir 2 Dinge', '2 offen']) expect(html, x).toContain(x);
     expect(html).not.toMatch(/\bIhnen\b|\bIhr Ziel\b/);
     const p = renderToStaticMarkup(createElement(KundenAnsicht, { sicht: s, praesentation: true }));
     expect(p).toContain('kunde-praesentation');

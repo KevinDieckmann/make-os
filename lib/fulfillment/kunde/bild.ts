@@ -18,7 +18,9 @@
 import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, tageZwischen, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { zielErreichung } from '../prozesse/wert';
-import { RHYTHMUS_TEXT } from '../prozesse/rituale';
+import { RHYTHMUS_TEXT, naechsterFallTermin } from '../prozesse/rituale';
+import { titelOhneZusatz } from '../prozesse/darstellung';
+import { istSammelSchritt } from '../prozesse/reise';
 import type { Fall, FallKnoten, Freigabepunkt, RitualVorlage } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 
@@ -71,8 +73,6 @@ export type Worte = (typeof WORTE)[KundenAnrede];
 
 /** Ein Freigabe-Kürzel (F0, F7 …) als ganzes Wort. */
 const KUERZEL = /\bF\d{1,2}\b/g;
-/** Interne Zusätze in Klammern: „(nur Prozess)“, „(intern)“, „(nur intern …)“. */
-const INTERN_ZUSATZ = /\s*\((?:nur\b[^)]*|intern[^)]*)\)/gi;
 
 /**
  * Ein Titel, wie der Kunde ihn liest: Freigabe-Kürzel → „Abstimmungspunkt“ (ist der Titel nur „F0 bestätigt“ und der Abstimmungspunkt bekannt, sein
@@ -81,7 +81,8 @@ const INTERN_ZUSATZ = /\s*\((?:nur\b[^)]*|intern[^)]*)\)/gi;
 export function kundenText(titel: string, abstimmung?: string): string {
   const roh = String(titel ?? '');
   if (abstimmung && /^\s*F\d{1,2}\b\s*(bestätigt|erteilt|vermerkt|freigegeben)?\s*$/i.test(roh)) return `Abstimmung: ${abstimmung}`;
-  const t = roh.replace(INTERN_ZUSATZ, '').replace(KUERZEL, 'Abstimmungspunkt').replace(/\s+/g, ' ').trim();
+  // Interne Zusätze („(nur Prozess)“) nur an EINER Stelle (lib/fulfillment/prozesse/darstellung.ts `titelOhneZusatz`) — intern und für Kunden dieselbe.
+  const t = titelOhneZusatz(roh).replace(KUERZEL, 'Abstimmungspunkt').replace(/\s+/g, ' ').trim();
   return t || 'Abstimmungspunkt';
 }
 
@@ -108,6 +109,11 @@ export interface KundenPhase {
   abstimmung?: { titel: string; erledigt: boolean };
 }
 export interface KundenWartet { titel: string; seit?: string; frist?: string; ueberfaellig?: true; formular?: string }
+/**
+ * Ein Hänger des Falls, wie ihn das Cockpit rechnet (`wasHaengt`, lib/fulfillment/prozesse/cockpit.ts) — nur Art, Schwere und Alter in Tagen. Die
+ * Kunden-Seite übersetzt ihn nur in Worte (`kundenLage`), nie den internen Text (14.10., Abnahme A3: „im Plan“ neben internem Rot).
+ */
+export interface KundenHaenger { art: string; schwere: 'rot' | 'gelb'; tage?: number }
 export interface KundenWert { name: string; vorher: string; jetzt: string; ziel: string; bis?: string; anteil?: number }
 export interface KundenQuickWin { text: string; erledigt: boolean; am?: string; bis?: string }
 export interface KundenRitual { titel: string; rhythmus: string; naechster?: string }
@@ -143,6 +149,13 @@ export interface TeileEingabe {
   rituale?: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus'>[];
   /** Tage der Termine mit Bezug zum Mandat (aus `kalender-bezug`): Kennung des Termins + Tag. */
   terminTage?: readonly { uid: string; tag: string }[];
+  /**
+   * Öffentliche Schlüssel der Formulare, die der Kunde noch ausfüllt (ein Abschnitt offen) — sie zählen in „Von Ihnen brauchen wir …“ mit, genau wie
+   * in der Karte „Das brauchen wir von Ihnen“ (`brauchtAnzahl`; 14.10., Abnahme A3: „nichts nötig“ neben „1 offen“).
+   */
+  formulareOffen?: readonly string[];
+  /** Was intern hängt (dieselbe Rechnung wie das Cockpit) — ohne: die Lage nur aus „wartet“ und Verzug der sichtbaren Schritte (wie bis 13.10.). */
+  haengt?: readonly KundenHaenger[];
 }
 
 /** Ab so vielen Tagen „wartet“ wird die Lage gelb bzw. rot; ab so vielen Tagen Verzug rot. */
@@ -152,6 +165,16 @@ export const KURZ_MAX = 4;
 
 const sichtbarMit = (gesperrt: ReadonlySet<string>) => (k: Pick<FallKnoten, 'kundeSichtbar' | 'status' | 'bausteinId'>) =>
   k.kundeSichtbar === true && k.status !== 'entfaellt' && !(k.bausteinId && gesperrt.has(k.bausteinId));
+
+/**
+ * Wie viele Dinge der Kunde gerade liefern soll — EINE Zählung für die Lage („Von Ihnen brauchen wir …“) und die Karte „Das brauchen wir von Ihnen“:
+ * alles unter „wartet“ und jedes offene Formular, das nicht schon über ein „wartet“ verlinkt ist.
+ */
+export function brauchtAnzahl(wartet: readonly Pick<KundenWartet, 'formular'>[], formulareOffen: readonly string[]): number {
+  return wartet.length + formulareOffen.filter(f => !wartet.some(w => w.formular === f)).length;
+}
+/** Ein Formular ist offen, solange ein Abschnitt nicht abgeschlossen ist — EINE Regel für Lage, Karte und Report. */
+export const formularOffen = (f: { abschnitte: readonly { fertig: boolean }[] }): boolean => f.abschnitte.some(a => !a.fertig);
 
 /** Die Teile, die der Kunde sieht — EINE Rechnung für Seite, Report, Präsentation. Ohne Fall nur das Wert-Konto des Mandats. */
 export function kundenTeile(e: TeileEingabe): KundenTeile {
@@ -164,8 +187,9 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   const freigabe = new Map((e.freigaben ?? []).map(x => [x.id, x]));
   const abstimmungTitel = (k: Pick<FallKnoten, 'freigabe'>) => { const x = k.freigabe ? freigabe.get(k.freigabe) : undefined; return x && x.wer !== 'intern' ? kundenText(x.titel) : undefined; };
 
-  // Phasen (Ebene 2), nur geteilte — mit Anteil der erledigten Schritte (Blätter darunter) und Abstimmungspunkt am Ende.
-  const phasen: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && sichtbar(k)).map(p => {
+  // Phasen (Ebene 2), nur geteilte — mit Anteil der erledigten Schritte (Blätter darunter) und Abstimmungspunkt am Ende. Die LAUFENDE Phase steht immer
+  // da (14.10., Abnahme A3: sonst fehlte „hier stehen wir“, wenn sie nicht geteilt war) — mit neutralem Titel (`kundenText`).
+  const phasen: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && (sichtbar(k) || (k.id === akt.phase?.id && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))).map(p => {
     const fertig = phaseFertig(p, l);
     const blaetter = teilbaum(p.id, l).filter(x => x !== p.id && kinderVon(x, l).length === 0).map(x => nach.get(x)!).filter(k => k && k.status !== 'entfaellt');
     const a = abstimmungTitel(p);
@@ -185,7 +209,8 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   const phasenReihe = reihe.filter(k => ebeneVon(k, l) === 2);
   const jetztIdx = akt.phase ? phasenReihe.findIndex(p => p.id === akt.phase!.id) : -1;
   const naheIds = jetztIdx >= 0 ? new Set(phasenReihe.slice(jetztIdx, jetztIdx + 2).flatMap(p => teilbaum(p.id, l))) : null;
-  const naechsteKnoten = reihe.filter(k => ebeneVon(k, l) >= 2 && (!naheIds || naheIds.has(k.id)) && offenSichtbar(k) && !phaseFertig(k, l) && !teilbaum(k.id, l).some(x => x !== k.id && offenSichtbar(nach.get(x)))).slice(0, 5);
+  // Ein Sammel-Schritt des Imports („Zugeordnete Bausteine“) steht nie als „Als Nächstes“ da — höchstens seine geteilten Bausteine.
+  const naechsteKnoten = reihe.filter(k => ebeneVon(k, l) >= 2 && (!naheIds || naheIds.has(k.id)) && offenSichtbar(k) && !istSammelSchritt(k) && !phaseFertig(k, l) && !teilbaum(k.id, l).some(x => x !== k.id && offenSichtbar(nach.get(x)))).slice(0, 5);
   const naechstes = naechsteKnoten.map(k => (k.faelligAm ? `${kundenText(k.titel, abstimmungTitel(k))} — bis ${tagText(k.faelligAm)}` : kundenText(k.titel, abstimmungTitel(k))));
   const verzug = naechsteKnoten.map(k => (k.faelligAm && k.faelligAm < e.heute ? tageZwischen(k.faelligAm, e.heute) ?? 0 : 0));
 
@@ -217,26 +242,28 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
     .sort((a, b) => (a.erledigtAm ? 0 : 1) - (b.erledigtAm ? 0 : 1) || (a.erledigtAm && b.erledigtAm ? (a.erledigtAm < b.erledigtAm ? 1 : -1) : (a.bis < b.bis ? -1 : a.bis > b.bis ? 1 : 0)))
     .map(q => ({ text: kundenText(q.text), erledigt: !!q.erledigtAm, ...(q.erledigtAm ? { am: tagText(tagVon(q.erledigtAm)) } : {}), ...(!q.erledigtAm && q.bis ? { bis: tagText(q.bis) } : {}) }));
 
-  // Takt: Rituale des Falls mit dem nächsten Termin (Tag aus `kalender-bezug`); der früheste ist „Nächster Termin“.
+  // Takt: Rituale des Falls mit dem nächsten Termin (Tag aus `kalender-bezug`); „Nächster Termin“ = DIE Regel `naechsterFallTermin` (wie Takt, Cockpit,
+  // Health „Termine“ — 14.10., Abnahme B8), nur mit bekanntem Ritual (Titel).
   const ritNach = new Map((e.rituale ?? []).map(r => [r.id, r]));
-  let naechsterTermin: { titel: string; am: string; tag: string } | undefined;
   const rituale: KundenRitual[] = (f?.rituale ?? []).map(r => {
     const v = ritNach.get(r.ritualId);
     if (!v) return null;
     const uids = new Set(r.terminUids);
     const tag = (e.terminTage ?? []).filter(t => uids.has(t.uid) && t.tag >= e.heute).map(t => t.tag).sort()[0];
-    if (tag && (!naechsterTermin || tag < naechsterTermin.tag)) naechsterTermin = { titel: kundenText(v.titel), am: tagMitWochentag(tag), tag };
     return { titel: kundenText(v.titel), rhythmus: RHYTHMUS_TEXT[v.rhythmus], ...(tag ? { naechster: tagMitWochentag(tag) } : {}) };
   }).filter((r): r is KundenRitual => !!r);
+  const nt = f ? naechsterFallTermin({ fallRituale: (f.rituale ?? []).filter(r => ritNach.has(r.ritualId)), terminTage: e.terminTage ?? [], heute: e.heute, rituale: e.rituale ?? [] }) : null;
+  const naechsterTermin = nt?.titel ? { titel: kundenText(nt.titel), am: tagMitWochentag(nt.tag) } : undefined;
 
   const fortschritt = f ? fallFortschritt(f) : null;
   const lage = kundenLage({
     phasen, fortschritt, erledigt: erledigt.length, quickWinsErledigt: quickWins.filter(q => q.erledigt).length, naechstes, wertKonto,
     wartetTage: wartendRoh.map(w => w.tage ?? 0), verzugTage: verzug, anrede: e.anrede,
+    ...(e.formulareOffen ? { braucht: brauchtAnzahl(wartet, e.formulareOffen) } : {}), ...(e.haengt ? { haengt: e.haengt } : {}),
   });
   return {
     phasen, fortschritt, erledigt, naechstes, wartet, wertKonto, quickWins, rituale,
-    ...(naechsterTermin ? { naechsterTermin: { titel: naechsterTermin.titel, am: naechsterTermin.am } } : {}), lage,
+    ...(naechsterTermin ? { naechsterTermin } : {}), lage,
   };
 }
 
@@ -247,10 +274,14 @@ export const AMPEL_KURZ: Record<KundenAmpel, string> = { gruen: 'im Plan', gelb:
 /**
  * Die Lage in Worten (Kunden-Sicht): Ampel nach dem, was hakt — beim Kunden (wartet ≥ 7 Tage gelb, ≥ 21 rot) oder bei uns (Schritte über der Frist:
  * gelb, ≥ 14 Tage rot) — und drei Sätze: wo wir stehen · was passiert ist · was wir brauchen. Ehrlich, ohne Health und ohne interne Gründe.
+ * Seit 14.10. (Abnahme A3) mit `haengt`: dieselbe Rechnung wie intern (Cockpit „Was hängt“), nur übersetzt — hängt etwas beim Kunden → „Wir warten auf …“
+ * (rot ab 21 Tagen), hängt etwas bei uns (z. B. die Willkommensmail) → „Wir sind dran“ (rot ab 14 Tagen Verzug), sonst „im Plan“. Health zählt nicht
+ * (unsere Einschätzung der Beziehung, nie auf der Kunden-Seite). `braucht` = dieselbe Zählung wie die Karte „Das brauchen wir von Ihnen“.
  */
 export function kundenLage(e: {
   phasen: readonly KundenPhase[]; fortschritt: number | null; erledigt: number; quickWinsErledigt: number; naechstes: readonly string[];
   wertKonto: readonly KundenWert[]; wartetTage: readonly number[]; verzugTage: readonly number[]; anrede: KundenAnrede;
+  braucht?: number; haengt?: readonly KundenHaenger[];
 }): KundenLage {
   const du = e.anrede === 'du';
   const n = e.phasen.length;
@@ -268,14 +299,27 @@ export function kundenLage(e: {
       : bestesZiel ? `Beim Ziel „${bestesZiel.name}“ ${bestesZiel.anteil! >= 100 ? 'ist der Zielwert erreicht' : `sind ${bestesZiel.anteil} % des Weges geschafft`}.`
         : e.naechstes.length ? `Als Nächstes steht an: ${e.naechstes[0]}.` : 'Die nächsten Schritte stimmen wir im nächsten Termin ab.';
   const wer = du ? 'euch' : 'Ihnen';
-  const anzahl = e.wartetTage.length;
+  const anzahl = e.braucht ?? e.wartetTage.length;
   const s3 = !anzahl ? (du ? 'Von euch brauchen wir gerade nichts — danke!' : 'Von Ihnen brauchen wir gerade nichts — vielen Dank!')
     : `Von ${wer} brauchen wir ${anzahl === 1 ? 'eine Sache' : `${anzahl} Dinge`}${wartetMax >= 1 ? ` — ${anzahl === 1 ? 'sie' : 'die älteste'} wartet seit ${wartetMax} ${wartetMax === 1 ? 'Tag' : 'Tagen'}` : ''}.`;
   let ampel: KundenAmpel = 'gruen';
   let titel = alle ? 'Alles abgeschlossen' : 'Wir liegen im Plan';
-  if (wartetMax >= LAGE_GRENZEN.wartetRot) { ampel = 'rot'; titel = du ? 'Wir kommen gerade nur mit euch weiter' : 'Wir kommen gerade nur mit Ihnen weiter'; }
-  else if (verzugMax >= LAGE_GRENZEN.verzugRot) { ampel = 'rot'; titel = du ? 'Wir sind im Verzug — lasst uns kurz sprechen' : 'Wir sind im Verzug — lassen Sie uns kurz sprechen'; }
-  else if (wartetMax >= LAGE_GRENZEN.wartetGelb) { ampel = 'gelb'; titel = du ? 'Wir warten auf euren Input' : 'Wir warten auf Ihren Input'; }
+  const nurMitEuch = du ? 'Wir kommen gerade nur mit euch weiter' : 'Wir kommen gerade nur mit Ihnen weiter';
+  const imVerzug = du ? 'Wir sind im Verzug — lasst uns kurz sprechen' : 'Wir sind im Verzug — lassen Sie uns kurz sprechen';
+  const warten = du ? 'Wir warten auf euren Input' : 'Wir warten auf Ihren Input';
+  if (e.haengt) {
+    const beimKunden = e.haengt.filter(h => h.art === 'wartet');
+    const beiUns = e.haengt.filter(h => h.art !== 'wartet');
+    const verzugUns = Math.max(0, ...beiUns.filter(h => h.art === 'faellig' || h.art === 'freigabe').map(h => h.tage ?? 0));
+    if (beimKunden.some(h => h.schwere === 'rot') || wartetMax >= LAGE_GRENZEN.wartetRot) { ampel = 'rot'; titel = nurMitEuch; }
+    else if (verzugUns >= LAGE_GRENZEN.verzugRot) { ampel = 'rot'; titel = imVerzug; }
+    else if (beimKunden.length) { ampel = 'gelb'; titel = warten; }
+    else if (beiUns.length) { ampel = 'gelb'; titel = 'Wir sind dran'; }
+    return { ampel, titel, saetze: [s1, s2, s3] };
+  }
+  if (wartetMax >= LAGE_GRENZEN.wartetRot) { ampel = 'rot'; titel = nurMitEuch; }
+  else if (verzugMax >= LAGE_GRENZEN.verzugRot) { ampel = 'rot'; titel = imVerzug; }
+  else if (wartetMax >= LAGE_GRENZEN.wartetGelb) { ampel = 'gelb'; titel = warten; }
   else if (verzugMax > 0) { ampel = 'gelb'; titel = 'Leicht im Verzug'; }
   return { ampel, titel, saetze: [s1, s2, s3] };
 }
@@ -299,11 +343,18 @@ export function strahlModell(phasen: readonly KundenPhase[]): { segmente: Strahl
   return { segmente, jetzt, text };
 }
 
-/** Ein Wert-Balken: Anteil des Wegs (0–1) oder null (nicht messbar), dazu die Zeile „vorher → jetzt → Ziel“. */
-export function wertModell(w: KundenWert): { anteil: number | null; erreicht: boolean; zeile: string } {
+/** Ein leeres Ziel (weder vorher noch jetzt noch Ziel) — ein ruhiger Satz statt „vorher — → jetzt — → Ziel —“ (14.10., Abnahme A3). */
+export const WERT_LEER_SATZ = 'Ausgangswert und Zielwert legen wir im Kick-off gemeinsam fest.';
+const leerWert = (x: string) => !x.trim() || x.trim() === '—';
+/** Ein Wert-Balken: Anteil des Wegs (0–1) oder null (nicht messbar), dazu die Zeile „vorher → jetzt → Ziel“ — bzw. bei leerem Ziel der ruhige Satz (`leer`). */
+export function wertModell(w: KundenWert): { anteil: number | null; erreicht: boolean; zeile: string; leer?: true } {
   const anteil = w.anteil != null ? Math.max(0, Math.min(1, w.anteil / 100)) : null;
+  if (anteil == null && leerWert(w.vorher) && leerWert(w.jetzt) && leerWert(w.ziel)) return { anteil, erreicht: false, zeile: WERT_LEER_SATZ, leer: true };
   return { anteil, erreicht: anteil != null && anteil >= 1, zeile: `${w.vorher} → ${w.jetzt} → ${w.ziel}${w.bis ? ` (bis ${w.bis})` : ''}` };
 }
+
+/** Zahl und Einheit nie getrennt (Abnahme B18: „36 / %“ brach um) — für jede Anzeige auf Kunden-Wegen. */
+export const ohneUmbruch = (t: string): string => t.replace(/(\d) (%|€|Tage?n?\b)/g, '$1\u00A0$2');
 
 // ── Formulare: wie weit, was fehlt ──────────────────────────────────────────────────────────────────────────────────────────────────
 

@@ -140,7 +140,11 @@ export interface PersonenKarte {
 export interface PersonenDatei { version: number; karten: PersonenKarte[] }
 
 // Schnittstellen zwischen den Paketen (Signaturen in den Stub-Dateien, Abschnitt 11):
-export interface FallKurz { mandatId: string; status: Fall['status']; phase?: string; fortschritt: number; naechster?: string; wartet: number; wartetAeltesterTage?: number; onboardingOffen: number; willkommenUeberfaellig: boolean }
+export interface FallKurz {
+  mandatId: string; status: Fall['status']; phase?: string; fortschritt: number; naechster?: string; wartet: number; wartetAeltesterTage?: number; onboardingOffen: number; willkommenUeberfaellig: boolean;
+  /** Onboarding-Schritte, die erfüllt sind oder entfallen (alle acht, auch „darf noch laufen“) — dieselbe Zahl wie das Band im Fall (14.10.). */
+  onboardingErfuellt?: number;
+}
 export interface KundeKurz {
   link: 'keiner' | 'aktiv' | 'abgelaufen' | 'widerrufen' | 'aus'; formularProzent: number | null; ungepruefteUnterlagen: number; letzterPuls?: { wert: number; am: string }; pulsOffen: boolean;
   /** Nur das Kunden-Playbook des Falls (Formular unter dem Schritt „Kunden-Playbook“) in % — misst den Onboarding-Schritt (Prüf-Fund 11.10.: vorher alle Formulare). */

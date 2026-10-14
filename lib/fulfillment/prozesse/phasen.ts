@@ -29,7 +29,7 @@ export const PHASEN: readonly PhaseDef[] = [
   { id: 'analyse', titel: 'Analyse', woerter: ['analyse', 'bestandsaufnahme', 'ist aufnahme'] },
   { id: 'diagnose', titel: 'Diagnose', woerter: ['diagnose'] },
   { id: 'aufbau', titel: 'Aufbau', woerter: ['aufbau'] },
-  { id: 'recruiting', titel: 'Recruiting (nur Prozess)', woerter: ['recruiting'] },
+  { id: 'recruiting', titel: 'Recruiting', woerter: ['recruiting'] },
   { id: 'umsetzung', titel: 'Umsetzung', woerter: ['umsetzung'] },
   { id: 'fuehrung', titel: 'Führung', woerter: ['fuehrung'] },
   { id: 'uebergabe', titel: 'Follow-up / Übergabe', woerter: ['uebergabe', 'follow up', 'followup', 'nachbetreuung'] },

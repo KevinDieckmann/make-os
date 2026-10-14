@@ -12,7 +12,7 @@ import { Karte, Ueberschrift, Knopf, LEUCHT, useHandy } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import type { FallReiter } from '@/lib/fulfillment/adresse';
-import { fallReise, naechsteSchritte, naechsterHandgriff, seitTagen, type Handgriff } from '@/lib/fulfillment/prozesse/reise';
+import { fallReise, naechsterHandgriff, naechsterPunkt, seitTagen, type Handgriff } from '@/lib/fulfillment/prozesse/reise';
 import { abschlussSchritt } from '@/lib/fulfillment/prozesse/ansichten';
 import { useFall, tagKurz } from '../prozesse/daten';
 import { PhasenStrahl, MiniStrahl, Antworten, AntwortKachel, FortschrittsRing, Legende, FreigabeRaute, LegendenBalken, JETZT } from './bilder';
@@ -37,7 +37,8 @@ export function FallKopf({ mandatId, reiter }: { mandatId: string; reiter: FallR
   const freigaben = daten.vorlage?.freigaben ?? [];
   const reise = fallReise(f, freigaben, heute);
   const jetzt = reise.jetzt >= 0 ? reise.phasen[reise.jetzt] : null;
-  const naechste = naechsteSchritte(f, heute, 1)[0];
+  // „Als Nächstes“ aus der EINEN Rechnung (`naechsterPunkt`) — dieselbe wie Lage, Cockpit, Landkarte (14.10., Abnahme B6). Nie ein Sammel-Schritt.
+  const naechste = naechsterPunkt(f, freigaben, heute);
   const griff = naechsterHandgriff(f, daten.onboarding, freigaben, heute);
   const ueberfaellig = f.knoten.filter(k => k.status !== 'erledigt' && k.status !== 'entfaellt' && k.faelligAm && k.faelligAm < heute && kinderLos(k.id, f.knoten));
   const wartet = daten.wartet ?? [];
@@ -63,8 +64,8 @@ export function FallKopf({ mandatId, reiter }: { mandatId: string; reiter: FallR
         <Legende eintraege={[
           { zeichen: <LegendenBalken farbe={LEUCHT.gut} />, text: 'erledigt' },
           { zeichen: <LegendenBalken farbe={JETZT} />, text: 'hier stehen wir' },
-          { zeichen: <FreigabeRaute gegeben />, text: 'Freigabe vermerkt' },
-          { zeichen: <FreigabeRaute gegeben={false} aktiv />, text: 'Freigabe offen — erst nach Bestätigung geht es weiter' },
+          { zeichen: <FreigabeRaute gegeben />, text: 'Abstimmungspunkt vermerkt' },
+          { zeichen: <FreigabeRaute gegeben={false} aktiv />, text: 'Abstimmungspunkt offen — erst nach Bestätigung geht es weiter' },
         ]} />
       )}
       <Antworten>
@@ -72,9 +73,9 @@ export function FallKopf({ mandatId, reiter }: { mandatId: string; reiter: FallR
           antwort={jetzt ? `Phase ${jetzt.nr} von ${reise.phasen.length}: ${jetzt.titel}` : reise.fertig ? 'Alle Phasen erledigt' : 'Noch keine Phase'}
           unter={jetzt ? `${jetzt.erledigt} von ${jetzt.gesamt} Schritten dieser Phase erledigt${jetzt.faelligAm ? ` · Phase bis ${tagKurz(jetzt.faelligAm)}` : ''}` : f.status === 'pausiert' ? 'Der Fall ist pausiert.' : undefined} />
         <AntwortKachel frage="Als Nächstes" ampel={naechste?.ueberfaellig ? LEUCHT.kritisch : JETZT}
-          antwort={naechste ? naechste.knoten.titel : griff.art === 'fertig' ? '—' : griff.text}
-          unter={naechste ? [naechste.zustand === 'wartet_kunde' ? 'liegt beim Kunden' : naechste.zustand === 'in_arbeit' ? 'in Arbeit' : null, naechste.knoten.faelligAm ? `fällig ${tagKurz(naechste.knoten.faelligAm)}` : null, `in „${naechste.phase}“`].filter(Boolean).join(' · ') : undefined}
-          onClick={naechste && jetzt ? () => zurPhase(jetzt.id) : undefined} ariaLabel={naechste ? `Als Nächstes: ${naechste.knoten.titel} — im Ablauf öffnen` : undefined} />
+          antwort={naechste ? naechste.titel : griff.art === 'fertig' ? '—' : griff.text}
+          unter={naechste ? [naechste.zustand === 'wartet_kunde' ? 'liegt beim Kunden' : naechste.zustand === 'in_arbeit' ? 'in Arbeit' : null, naechste.ueberfaellig ? 'überfällig' : naechste.faelligAm ? `fällig ${tagKurz(naechste.faelligAm)}` : null, naechste.phase ? `in „${naechste.phase}“` : null].filter(Boolean).join(' · ') : undefined}
+          onClick={naechste?.phaseId ? () => zurPhase(naechste.phaseId!) : undefined} ariaLabel={naechste ? `Als Nächstes: ${naechste.titel} — im Ablauf öffnen` : undefined} />
         <AntwortKachel frage="Hängt etwas?" ampel={haengt.ampel} antwort={haengt.antwort} unter={haengt.unter}
           onClick={wartet.length && !ueberfaellig.length && !willkommenRot ? () => geh(wartet[0].art === 'entscheidung' ? 'menschen' : 'ablauf') : undefined} />
       </Antworten>

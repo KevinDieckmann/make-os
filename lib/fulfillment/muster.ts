@@ -75,7 +75,7 @@ export const MUSTER_FREIGABEN: Freigabepunkt[] = [
   F('F7', 'Übergabe-Freigabe', 'beide'),
 ];
 const P1 = 'fk-muster-p1';
-const phase = (id: string, titel: string, freigabe?: string, kreislauf: KreislaufId[] = ['fulfillment']): K => ({ id: `${P1}-${id}`, elternId: `${P1}-wurzel`, titel, kreislauf, kundeSichtbar: true, ...(freigabe ? { freigabe } : {}) });
+const phase = (id: string, titel: string, freigabe?: string, kreislauf: KreislaufId[] = ['fulfillment'], warum?: string): K => ({ id: `${P1}-${id}`, elternId: `${P1}-wurzel`, titel, kreislauf, kundeSichtbar: true, ...(freigabe ? { freigabe } : {}), ...(warum ? { warum } : {}) });
 const teil = (eltern: string, id: string, titel: string): K => ({ id: `${P1}-${eltern}-${id}`, elternId: `${P1}-${eltern}`, titel });
 export const MUSTER_P1: ProzessVorlage = vorlage({
   id: 'fp-muster-p1', art: 'paket', titel: 'Vertriebsleitung auf Zeit',
@@ -86,7 +86,8 @@ export const MUSTER_P1: ProzessVorlage = vorlage({
     phase('analyse', 'Analyse', 'F2'),
     phase('diagnose', 'Diagnose', 'F3'),
     phase('aufbau', 'Aufbau', 'F4'),
-    phase('recruiting', 'Recruiting (nur Prozess)', 'F5'),
+    // 14.10. (Abnahme B20): der Zusatz „nur Prozess“ ist eine Erklärung, kein Titel — er steht im „Warum“ (früher „Recruiting (nur Prozess)“).
+    phase('recruiting', 'Recruiting', 'F5', undefined, 'Nur der Prozess: Profil, Vergütungsmodell und Auswahl — eingestellt wird beim Kunden.'),
     phase('umsetzung', 'Umsetzung', 'F6'),
     phase('fuehrung', 'Führung'),
     phase('uebergabe', 'Follow-up / Übergabe', 'F7', ['nachher', 'wiederkauf']),

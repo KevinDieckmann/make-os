@@ -13,7 +13,7 @@ import { wartetAufEuch, wertKontoZeilen } from '../regeln';
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { letzterPuls } from './puls';
 import { knotenGesperrt } from './sicht';
-import { kundenTeile, kundenText, type KundenAnrede } from './bild';
+import { fragenText, kundenTeile, kundenText, type KundenAnrede, type KundenHaenger } from './bild';
 import type { Fall, Freigabepunkt, KundeDatei, ReportZusatz, RitualVorlage } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 
@@ -26,6 +26,11 @@ export interface ReportUmfeld {
   freigaben?: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
   rituale?: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus'>[];
   terminTage?: readonly { uid: string; tag: string }[];
+  /** 14.10.: dieselben offenen Formulare wie die Kunden-Seite (Baustein → öffentlicher Schlüssel; offene mit Zählung) — zählen unter „wartet auf euch“. */
+  formulare?: ReadonlyMap<string, string>;
+  formulareOffen?: readonly { schluessel: string; titel: string; beantwortet: number; gesamt: number }[];
+  /** Was intern hängt (Cockpit) — die Lage übersetzt es in Worte, wie auf der Kunden-Seite. */
+  haengt?: readonly KundenHaenger[];
 }
 
 export function reportZusatz(fall: Fall | null, mandat: Pick<Mandat, 'id' | 'ziele'>, kunde: Pick<KundeDatei, 'puls'>, heute: string, pulsFrage: boolean, gesperrt: ReadonlySet<string> = new Set(), umfeld: ReportUmfeld = {}): ReportZusatz | null {
@@ -38,11 +43,15 @@ export function reportZusatz(fall: Fall | null, mandat: Pick<Mandat, 'id' | 'zie
   const anrede = umfeld.anrede ?? 'sie';
   const t = kundenTeile({
     fall, mandat, heute, anrede, gesperrt, ...(umfeld.freigaben ? { freigaben: umfeld.freigaben } : {}), ...(umfeld.rituale ? { rituale: umfeld.rituale } : {}),
-    ...(umfeld.terminTage ? { terminTage: umfeld.terminTage } : {}),
+    ...(umfeld.terminTage ? { terminTage: umfeld.terminTage } : {}), ...(umfeld.formulare ? { formulare: umfeld.formulare } : {}),
+    ...(umfeld.formulareOffen ? { formulareOffen: umfeld.formulareOffen.map(x => x.schluessel) } : {}), ...(umfeld.haengt ? { haengt: umfeld.haengt } : {}),
   });
+  // Offene Formulare, die nicht schon über „wartet“ verlinkt sind, stehen mit in der Liste — dieselbe Zählung wie Lage und Kunden-Seite (`brauchtAnzahl`).
+  const formularZeilen = (umfeld.formulareOffen ?? []).filter(x => !t.wartet.some(w => w.formular === x.schluessel))
+    .map(x => `${kundenText(x.titel)} ${x.gesamt && x.beantwortet === x.gesamt ? 'abschließen' : `ausfüllen (${fragenText(x)})`}`);
   const anteil = new Map(t.wertKonto.map(w => [w.name, w.anteil]));
   return {
-    wartetAufEuch: wartet, wertKonto: wertKontoZeilen(fall, mandat).map(z => (anteil.get(z.name) != null ? { ...z, anteil: anteil.get(z.name)! } : z)),
+    wartetAufEuch: [...wartet, ...formularZeilen], wertKonto: wertKontoZeilen(fall, mandat).map(z => (anteil.get(z.name) != null ? { ...z, anteil: anteil.get(z.name)! } : z)),
     ...(puls ? { puls } : {}), ...(pulsFrage ? { pulsFrage: true } : {}),
     anrede, lage: t.lage, phasen: t.phasen, ...(t.fortschritt ? { fortschritt: t.fortschritt } : {}), erledigt: t.erledigt, naechstes: t.naechstes,
     quickWins: t.quickWins, ...(t.naechsterTermin ? { naechsterTermin: t.naechsterTermin } : {}),

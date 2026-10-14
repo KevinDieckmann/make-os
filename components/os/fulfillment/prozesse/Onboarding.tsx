@@ -106,16 +106,20 @@ export function Onboarding() {
   const pakete = daten.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel }));
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {/* Abnahme B7: der Satz passt zur Liste darunter — „kein neues Mandat wartet auf den Start“, wenn schon Onboardings laufen. */}
       {daten.kandidaten.some(k => !k.bestand)
         ? <KandidatenKarte kandidaten={daten.kandidaten.filter(k => !k.bestand)} pakete={pakete} i={1} />
-        : <Hinweis art="info">Kein Mandat wartet aufs Onboarding. Ein Mandat erscheint hier, sobald der Vertrag unterschrieben, ein Angebot angenommen oder der Deal gewonnen ist.</Hinweis>}
+        : <Hinweis art="info">{laufend.length
+          ? `Kein neues Mandat wartet auf den Start — ${laufend.length === 1 ? 'ein Onboarding läuft' : `${laufend.length} Onboardings laufen`} (unten). Ein neues Mandat erscheint hier, sobald der Vertrag unterschrieben, ein Angebot angenommen oder der Deal gewonnen ist.`
+          : 'Kein Mandat wartet aufs Onboarding. Ein Mandat erscheint hier, sobald der Vertrag unterschrieben, ein Angebot angenommen oder der Deal gewonnen ist.'}</Hinweis>}
       {daten.kandidaten.some(k => k.bestand) && <KandidatenKarte kandidaten={daten.kandidaten.filter(k => k.bestand)} pakete={pakete} i={2} ruhig />}
       <Karte i={2}>
         <Ueberschrift rechts={<span>{laufend.length}</span>}>Laufende Onboardings</Ueberschrift>
         {!laufend.length ? <div style={klein}>Gerade läuft kein Onboarding.</div> : (
           <Liste>
             {laufend.map(f => {
-              const gesamt = MUSTER_ONBOARDING.length, fertig = Math.max(0, gesamt - f.onboardingOffen);
+              // Dieselbe Zahl wie das Band im Fall (erfüllt oder entfallen, alle acht — Abnahme: hier „1 von 8“, im Fall „0 von 8“).
+              const gesamt = MUSTER_ONBOARDING.length, fertig = f.onboardingErfuellt ?? 0;
               const farbe = f.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.planung;
               return (
                 <Zeile key={f.mandatId} links={<Punkt farbe={f.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.gut} />} titel={f.kunde} onClick={() => router.push(WEG.fall(f.mandatId))} umbrechen

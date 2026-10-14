@@ -18,6 +18,7 @@ import { MUSTER_BEFAEHIGUNG, MUSTER_ONBOARDING } from '../muster';
 import { OB_PRAEFIX, obKnotenId, obSchluessel } from './onboarding';
 import { ausfuehren, istObj, mischen, nein, optBool, optTag, optText, optWahl, optZahl, pflichtText, standPruefen, titelForm } from './pruefen';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { tagVon } from '@/lib/zeit';
 
 /** Felder, die beim Start aus der Vorlage kopiert werden (7.2). */
 export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis', 'kennzahl', 'zustaendig', 'freigabe', 'kundeSichtbar', 'phaseId', 'bausteinId', 'dauerTage'] as const;
@@ -93,7 +94,7 @@ export function fallStarten(e: StartEingabe): Fall {
   }
   return {
     mandatId: e.mandatId, vorlageId: v.id, vorlageFassung: v.fassung, gestartetAm: e.jetzt, gestartetVon: e.person, status: 'onboarding',
-    ...(e.start && e.start !== e.jetzt.slice(0, 10) ? { startAm: e.start } : {}),
+    ...(e.start && e.start !== tagVon(e.jetzt) ? { startAm: e.start } : {}),
     knoten, freigaben: {}, onboarding: {}, stakeholder: [], entscheidungen: [], rituale: [], mitschriften: [], quickWins: [], kickoffFragen: [], wertKonto: {},
     befaehigung: MUSTER_BEFAEHIGUNG.map((text, i) => ({ id: `bf-${i + 1}`, text, erfuellt: false })),
     marken: {}, geaendert: e.jetzt, geaendertVon: e.person,
@@ -455,7 +456,9 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
         case 'willkommen-gesendet': {
           if (o.zuruecknehmen === true) { f.onboarding = {}; geaendert.push('willkommen'); break; }
           if (f.onboarding.willkommenGesendetAm) break;
-          f.onboarding = { willkommenGesendetAm: k.jetzt, willkommenVon: k.person };
+          // Nachtragen (14.10., wie bei Schritten und Abstimmungspunkten): mit `am` (Tag, nie in der Zukunft) gilt dieser Tag — sonst jetzt.
+          const am = nachtrag(o.am, 'Gesendet am');
+          f.onboarding = { willkommenGesendetAm: am && am < k.heute ? am : k.jetzt, willkommenVon: k.person };
           geaendert.push('willkommen');
           break;
         }

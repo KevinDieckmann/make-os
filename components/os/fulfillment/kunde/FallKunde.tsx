@@ -182,7 +182,7 @@ function PulsKarte({ s, tun, onLink, voll, followups }: { s: KundeStand; tun: Tu
           <svg viewBox={`0 0 ${B} ${H}`} width="100%" style={{ maxWidth: 420, display: 'block' }} role="img" aria-label={`Kunden-Puls: ${reihe.punkte.map(p => `${tagKurz(p.tag)} ${p.wert}`).join(', ')}; Schwelle ${s.puls.schwelle}.`}>
             <rect x={0} y={y(s.puls.schwelle)} width={B} height={H - 8 - y(s.puls.schwelle)} fill={`${LEUCHT.kritisch}12`} />
             <line x1={0} x2={B} y1={y(s.puls.schwelle)} y2={y(s.puls.schwelle)} stroke={LEUCHT.kritisch} strokeOpacity={0.6} strokeDasharray="4 4" />
-            <text x={B - 4} y={y(s.puls.schwelle) - 4} textAnchor="end" fontSize={11} fill={C.inkLeise}>Schwelle {s.puls.schwelle}</text>
+            <text x={B - 4} y={Math.min(H - 2, y(s.puls.schwelle) + 13)} textAnchor="end" fontSize={11} fill={C.inkLeise}>Schwelle {s.puls.schwelle}</text>
             {reihe.punkte.length > 1 && <polyline fill="none" stroke={LEUCHT.puls} strokeWidth={2} points={reihe.punkte.map(p => `${10 + p.x * (B - 20)},${y(p.wert)}`).join(' ')} />}
             {reihe.punkte.map((p, i) => <circle key={i} cx={10 + p.x * (B - 20)} cy={y(p.wert)} r={4} fill={pulsStufe(p.wert, s.puls.schwelle) === 'kritisch' ? LEUCHT.kritisch : LEUCHT.puls} />)}
           </svg>
@@ -245,7 +245,7 @@ function LinkKarte({ s, tun, frisch, setFrisch, setMeldung, bestaetigen, voll }:
     { id: 'widerrufen', label: 'Widerrufen', gefahr: true, tun: async () => { if (await bestaetigen({ titel: 'Link widerrufen?', text: 'Der Kunde sieht danach nur noch „nicht (mehr) gültig“. Antworten, Unterlagen und Puls bleiben hier.', ja: 'Widerrufen', gefahr: true })) await tun({ aktion: 'widerrufen', linkId: l.id }, 'Widerrufen.'); } },
   ] : [];
   return (
-    <Karte i={3}>
+    <Karte i={3} id="kunde-link">
       <Ueberschrift erklaerung="fulfillment.kundenLink" rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Chip farbe={l?.status === 'aktiv' ? STATUS_FARBE.aktiv : s.schalter.an ? C.inkDim : C.inkLeise}>{l ? l.status : s.schalter.an ? 'kein Link' : s.schalter.grund === 'betrieb' ? 'aus (Betrieb)' : 'aus'}</Chip><MehrKnopf titel="Kunden-Link" mehr={mehr} /></span>}>Kunden-Link</Ueberschrift>
       <Schalter an={s.schalter.instanz} onChange={an => void tun({ aktion: 'schalter', an }, an ? 'Kunden-Link für diese Instanz eingeschaltet.' : 'Kunden-Link ausgeschaltet — alle Links antworten „nicht gültig“.')} erklaerung="fulfillment.kundenLink">
         Kunden-Link der Instanz (nur Inhaber)
@@ -257,6 +257,8 @@ function LinkKarte({ s, tun, frisch, setFrisch, setMeldung, bestaetigen, voll }:
       ) : (
         <div style={{ display: 'grid', gap: 8 }}>
           <div style={klein}>{s.verlauf.length ? `Kein aktiver Link (zuletzt: ${s.verlauf[0].status}).` : 'Noch kein Link für dieses Mandat.'} Ein neuer Link gilt 90 Tage; die Adresse seht ihr genau einmal.</div>
+          {/* Abnahme C15: „Link anlegen“ war grau ohne Grund — jetzt steht dabei, was fehlt und wer es einschaltet. */}
+          {s.fall && !s.schalter.instanz && s.schalter.umgebung && <Hinweis art="info" titel="Erst den Kunden-Link einschalten">Der Schalter „Kunden-Link der Instanz“ (oben) ist aus — einschalten kann ihn nur die Inhaberin bzw. der Inhaber. Danach legt ihr hier den Link an. Bis dahin zeigen „Vorschau hier“ und „Dem Kunden zeigen“ dieselbe Seite.</Hinweis>}
           <div><Knopf aus={!s.schalter.an || !s.fall} onClick={neu}>Link anlegen</Knopf></div>
         </div>
       )}
@@ -308,7 +310,7 @@ function FormulareKarte({ s, mandatId, laden }: { s: KundeStand; mandatId: strin
           ))}
         </div>
       )}
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Playbook gehört dem Kunden — die Antworten wertet die Analyse (AP) aus, sobald sie freigegeben ist.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Playbook gehört dem Kunden — die Analyse wertet die Antworten aus, sobald sie freigegeben sind.</div>
     </Karte>
   );
 }

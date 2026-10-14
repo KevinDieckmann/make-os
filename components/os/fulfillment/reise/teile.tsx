@@ -94,8 +94,12 @@ export function Zeitachse({ punkte, strecken = [], heuteX, links, rechts, beschr
         })}
       </div>
       {(links || rechts || heuteX !== undefined) && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, ...MIKRO }}>
-          <span>{links ?? ''}</span>{heuteX !== undefined && <span style={{ color: JETZT }}>heute</span>}<span>{rechts ?? ''}</span>
+        // Abnahme C3: „heute“ steht unter dem Heute-Strich (nicht in der Mitte); am Rand rückt es nach innen, damit es Start/Ende nicht überdeckt.
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: 8, margin: '0 10px', minHeight: 16, ...MIKRO }}>
+          <span>{links ?? ''}</span><span>{rechts ?? ''}</span>
+          {heuteX !== undefined && (
+            <span style={{ position: 'absolute', top: 0, left: pz(heuteX), transform: `translateX(${heuteX < 0.12 ? '0' : heuteX > 0.88 ? '-100%' : '-50%'})`, color: JETZT, padding: '0 4px', whiteSpace: 'nowrap' }}>heute</span>
+          )}
         </div>
       )}
     </div>

@@ -12,6 +12,7 @@ import type { DossierKurz, Fall } from '../typen';
 import { tageZwischen, wartetAufEuch } from '../regeln';
 import { wertDurchschnitt } from './wert';
 import { fallStartTag } from './fall';
+import { reportAchse } from './ansichten';
 import { WEG } from '@/lib/wege';
 
 // ── 1. Erfolgsmaße (1.4) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -22,6 +23,8 @@ export interface FfFallDaten {
   unterschrift?: string;
   kickoffTag?: string;
   reportLetzter?: string;
+  /** Die erstellten Fortschritts-Reports (Tag) — dieselbe Liste wie die Report-Zeitachse im Fall (Kunde & Reports). */
+  reports?: readonly { am: string }[];
   puls?: { wert: number; am: string };
   dossier?: DossierKurz;
   mandatsEnde?: string | null;
@@ -66,8 +69,10 @@ export function ffKennzahlenRechnen(faelle: readonly FfFallDaten[], e: { heute: 
   k('ff_wertkonto', 'Wert-Konto bis Kick-off + 7', 'fulfillment.kennzahl.wertkonto', wk.length ? (wk.filter(Boolean).length / wk.length) * 100 : null, pz, wk.length, 'Noch kein Kick-off, das sieben Tage zurückliegt');
   const qw = faelle.filter(x => tageZwischen(fallStartTag(x.fall), e.heute)! >= 30).map(x => x.fall.quickWins.some(q => q.erledigtAm && q.erledigtAm <= addTage(fallStartTag(x.fall), 30)));
   k('ff_quickwin_30', 'Quick Win in 30 Tagen', 'fulfillment.kennzahl.quickwin', qw.length ? (qw.filter(Boolean).length / qw.length) * 100 : null, pz, qw.length, 'Noch kein Fall, der 30 Tage läuft');
-  const rt = aktiv.filter(x => x.fall.status === 'laeuft').map(x => !!x.reportLetzter && (tageZwischen(x.reportLetzter, e.heute) ?? 99) <= 14);
-  k('ff_report_takt', 'Report-Takt eingehalten', 'fulfillment.kennzahl.reporttakt', rt.length ? (rt.filter(Boolean).length / rt.length) * 100 : null, pz, rt.length, 'Noch kein laufender Fall nach dem Onboarding');
+  // 14.10. (Abnahme B6): aus DERSELBEN Rechnung wie die Report-Zeitachse im Fall (`reportAchse`) — Anteil der Soll-Termine (alle 14 Tage ab Start, bis heute),
+  // vor denen ein Report entstand. Vorher zählte nur „letzter Report ≤ 14 Tage“: 100 %, während die Zeitachse einen verpassten Termin rot zeigte.
+  const soll = aktiv.flatMap(x => reportAchse({ start: fallStartTag(x.fall), heute: e.heute, reports: x.reports ?? (x.reportLetzter ? [{ am: x.reportLetzter }] : []) }).takt.filter(t => t.tag <= e.heute));
+  k('ff_report_takt', 'Report-Takt eingehalten', 'fulfillment.kennzahl.reporttakt', soll.length ? (soll.filter(t => t.erfuellt).length / soll.length) * 100 : null, pz, soll.length, 'Noch kein Report-Termin fällig (alle 14 Tage ab Start)');
   const alt = aktiv.flatMap(x => wartetAufEuch(x.fall, e.heute).map(p => p.tage ?? 0));
   k('ff_wartet_alt', 'Ältester Punkt „wartet auf euch“', 'fulfillment.kennzahl.wartet', alt.length ? Math.max(...alt) : aktiv.length ? 0 : null, x => `${x} Tage`, alt.length, 'Kein laufender Fall');
   const p = faelle.map(x => x.puls).filter((x): x is { wert: number; am: string } => !!x && (tageZwischen(x.am, e.heute) ?? 999) <= 90);

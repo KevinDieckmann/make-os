@@ -122,8 +122,10 @@ async function offeneDokumentVorschlaege(person: string) {
 export async function treppeLage(person: string, heute = localDay()) {
   const name = await treppeSpeicher();
   return merken(`produkt-treppe:${name}:${person}:${heute}`, 60_000, async () => {
+    // Der nächste Termin je Fall (Fulfillment, EINE Regel `naechsterFallTermin`) — damit „Termine: nächster am …“ derselbe Tag ist wie Takt und Kunden-Seite.
+    const termine = await import('@/lib/fulfillment/prozesse/server').then(x => x.naechsteFallTermine(heute)).catch(() => ({} as Record<string, string>));
     const [datei, crm, frei, vorschlaege, ki] = await Promise.all([ladeTreppe(heute), ladeCrm(), freieTeamStunden(person, heute), offeneDokumentVorschlaege(person).catch(() => []), kiVerfuegbar()]);
-    const kunden = kundenZeilen({ datei, crm, heute }).map(z => ({ ...z, stand: eintragStand(datei.kunden[z.mandatId] ?? {}) }));
+    const kunden = kundenZeilen({ datei, crm, heute, termine }).map(z => ({ ...z, stand: eintragStand(datei.kunden[z.mandatId] ?? {}) }));
     const zb = zielbild({ datei, crm, heute });
     const bedarf = kapaBedarf(datei, kunden);
     return {

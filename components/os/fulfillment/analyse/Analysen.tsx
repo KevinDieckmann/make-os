@@ -33,7 +33,7 @@ export function Analysen() {
     <div style={{ display: 'grid', gap: 12 }}>
       <Raster min={160}>
         <Kennzahl label="Dossiers" wert={String(daten.dossiers.length)} />
-        <Kennzahl label="Dossier geprüft (F2)" wert={String(daten.dossiers.filter(d => d.f2).length)} />
+        <Kennzahl label="Dossier geprüft" wert={String(daten.dossiers.filter(d => d.f2).length)} />
         <Kennzahl label="Kosten gesamt" wert={euroText(daten.kostenCent)} />
         <Kennzahl label="Art. 14 bald fällig" wert={String(art14)} ton={art14 ? LEUCHT.achtung : undefined} />
       </Raster>
@@ -48,8 +48,8 @@ export function Analysen() {
                 <span>{Object.values(d.laeufe ?? {}).filter(x => x === 'uebernommen').length} im Dossier · {euroText(d.kostenCent ?? 0)}</span>
               </span>}
               rechts={<span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <Chip farbe={d.f1 ? LEUCHT.gut : C.inkLeise}>{d.f1 ? '✓' : '○'} F1 Umfang</Chip>
-                <Chip farbe={d.f2 ? LEUCHT.gut : C.inkLeise}>{d.f2 ? '✓' : '○'} F2 geprüft</Chip>
+                <Chip farbe={d.f1 ? LEUCHT.gut : C.inkLeise}>{d.f1 ? '✓' : '○'} Umfang bestätigt</Chip>
+                <Chip farbe={d.f2 ? LEUCHT.gut : C.inkLeise}>{d.f2 ? '✓' : '○'} Dossier geprüft</Chip>
                 {(d.art14Bald ?? 0) > 0 && <Chip farbe={LEUCHT.achtung}>Art. 14 · {d.art14Bald}</Chip>}
               </span>} />
           ))}

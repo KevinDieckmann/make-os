@@ -20,6 +20,7 @@ import { Wahl } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { fallReise, phaseGruppen, phasenVon, statusOps, FREIGABE_WER, ONBOARDING_SPRUNG, type ReisePhase, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
+import { abstimmungName, abstimmungsNummern, anzeigeTitel } from '@/lib/fulfillment/prozesse/darstellung';
 import { obSchluessel } from '@/lib/fulfillment/prozesse/onboarding';
 import { schrittVerweis, type SchrittVerweis } from '@/lib/fulfillment/prozesse/ansichten';
 import { kinderVon } from '@/lib/fulfillment/regeln';
@@ -117,7 +118,7 @@ function PhaseBlock({ p, letzte, offen, umschalten, daten, heute, bausteine, sta
         <PhasenNummer nr={p.nr} zustand={p.zustand} ueberfaellig={p.ueberfaellig} />
         <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
           <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
-            <b style={{ fontSize: TYP.body, color: p.zustand === 'offen' ? C.inkDim : C.ink, textDecoration: p.entfaellt ? 'line-through' : 'none' }}>{p.titel}</b>
+            <b title={p.zusatz ? `${p.titel} — ${p.zusatz}` : undefined} style={{ fontSize: TYP.body, color: p.zustand === 'offen' ? C.inkDim : C.ink, textDecoration: p.entfaellt ? 'line-through' : 'none' }}>{p.titel}</b>
             {p.zustand === 'jetzt' && <span style={{ ...MIKRO, color: JETZT }}>Sie sind hier</span>}
           </span>
           <span style={{ ...klein, color: C.inkLeise }}>
@@ -130,17 +131,17 @@ function PhaseBlock({ p, letzte, offen, umschalten, daten, heute, bausteine, sta
           )}
         </span>
         {p.freigabe && (
-          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, whiteSpace: 'nowrap', maxWidth: 'min(240px, 42%)', minWidth: 0 }} title={`Freigabe ${p.freigabe.id} · ${p.freigabe.titel}`}>
+          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, whiteSpace: 'nowrap', maxWidth: 'min(240px, 42%)', minWidth: 0 }} title={`Abstimmungspunkt${p.freigabe.nr ? ` ${p.freigabe.nr}` : ''}${p.freigabe.titel ? ` · ${p.freigabe.titel}` : ''}`}>
             <FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} />
-            {/* Klartext statt nur „F2“ (Gesamtprüfung 12.10.): die Kennung bleibt, der Titel steht dabei */}
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.freigabe.id} · {p.freigabe.titel}</span>
+            {/* 14.10. (Abnahme B19): „Abstimmungspunkt n“ statt „Freigabe F…“ — Nummer lückenlos in der Reihenfolge des Ablaufs, die Kennung bleibt in den Daten */}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.freigabe.nr ?? ''}{p.freigabe.titel ? `${p.freigabe.nr ? ' · ' : ''}${p.freigabe.titel}` : ''}</span>
           </span>
         )}
         <span aria-hidden style={{ color: C.inkLeise, display: 'inline-flex' }}>{offen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
       </button>
       {offen && (
         <div style={{ display: 'grid', gap: 8, padding: '0 0 14px clamp(0px, 3vw, 40px)' }}>
-          {freigabeOffenVor?.freigabe && <Hinweis art="achtung">Diese Phase läuft, obwohl die Freigabe {freigabeOffenVor.freigabe.id} („{freigabeOffenVor.freigabe.titel}“) der Phase „{freigabeOffenVor.titel}“ noch nicht vermerkt ist.</Hinweis>}
+          {freigabeOffenVor?.freigabe && <Hinweis art="achtung">Diese Phase läuft, obwohl der Abstimmungspunkt{freigabeOffenVor.freigabe.nr ? ` ${freigabeOffenVor.freigabe.nr}` : ''}{freigabeOffenVor.freigabe.titel ? ` („${freigabeOffenVor.freigabe.titel}“)` : ''} der Phase „{freigabeOffenVor.titel}“ noch nicht vermerkt ist.</Hinweis>}
           {gruppen.map((g, gi) => {
             const z = g.zeilen.filter(x => sichtbar.has(x.knoten.id));
             if (!z.length) return null;
@@ -191,7 +192,10 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
   const k = z.knoten;
   const f = daten.fall!;
   const sprung = obSchluessel(k.id);
-  const eigeneFreigabe = k.freigabe && k.freigabe !== phaseFreigabe ? daten.vorlage?.freigaben.find(x => x.id === k.freigabe) ?? { id: k.freigabe, titel: k.freigabe, wer: 'beide' as const } : undefined;
+  const nummern = abstimmungsNummern(f.knoten);
+  const titel = anzeigeTitel(k.titel, nummern);
+  const eigeneFreigabe = k.freigabe && k.freigabe !== phaseFreigabe ? daten.vorlage?.freigaben.find(x => x.id === k.freigabe) ?? { id: k.freigabe, titel: '', wer: 'beide' as const } : undefined;
+  const fgName = eigeneFreigabe ? abstimmungName(eigeneFreigabe.id, nummern) : '';
   const sperreErledigt = !!k.freigabe;
   const setzbar = !z.abgeleitet;
   const wahl = (Object.keys(STATUS_TEXT) as KnotenStatus[]).filter(s => !(s === 'erledigt' && sperreErledigt));
@@ -205,18 +209,18 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
       { id: 'sichtbar', label: k.kundeSichtbar ? 'Für den Kunden verbergen' : 'Für den Kunden sichtbar machen', hinweis: k.kundeSichtbar ? 'Steht dann nicht mehr in seiner Reise und im Report.' : 'Steht dann in seiner Reise („als Nächstes“) und im Report.', tun: () => ops([{ op: 'knoten-extra', eintrag: { id: k.id, kundeSichtbar: !k.kundeSichtbar }, ...(f.knoten.find(x => x.id === k.id)?.stand ? { stand: f.knoten.find(x => x.id === k.id)!.stand } : {}) }]) },
       { id: 'weg', label: 'Zusatz-Schritt entfernen', gefahr: true, tun: () => ops([{ op: 'knoten-extra', id: k.id, weg: true }]) },
     ] : []),
-    ...(eigeneFreigabe && f.freigaben[eigeneFreigabe.id] ? [{ id: 'fg-weg', label: `Freigabe ${eigeneFreigabe.id} zurücknehmen`, tun: () => ops([{ op: 'freigabe', id: eigeneFreigabe.id, zuruecknehmen: true }]) }] : []),
+    ...(eigeneFreigabe && f.freigaben[eigeneFreigabe.id] ? [{ id: 'fg-weg', label: `${fgName} zurücknehmen`, tun: () => ops([{ op: 'freigabe', id: eigeneFreigabe.id, zuruecknehmen: true }]) }] : []),
   ];
   const kunde = k.zustaendig === 'kunde';
   const verweis = schrittVerweis(k);
   const v = verweis ? verweisAnzeige(verweis, daten) : null;
   return (
-    <ZeileAktionen titel={k.titel} mehr={mehr}>
+    <ZeileAktionen titel={titel} mehr={mehr}>
       <Zeile umbrechen
         links={setzbar && !sperreErledigt
-          ? <HakenZiel an={z.zustand === 'erledigt'} farbe={LEUCHT.gut} label={k.titel} onChange={() => status(z, z.zustand === 'erledigt' ? 'offen' : 'erledigt')} />
+          ? <HakenZiel an={z.zustand === 'erledigt'} farbe={LEUCHT.gut} label={titel} onChange={() => status(z, z.zustand === 'erledigt' ? 'offen' : 'erledigt')} />
           : <span style={{ width: 44, display: 'inline-grid', placeItems: 'center', flex: '0 0 auto' }}><Punkt farbe={STATUS_FARBE[z.zustand]} /></span>}
-        titel={<span style={{ color: z.fertig ? C.inkDim : C.ink, textDecoration: z.zustand === 'entfaellt' ? 'line-through' : 'none' }}>{k.titel}</span>}
+        titel={<span style={{ color: z.fertig ? C.inkDim : C.ink, textDecoration: z.zustand === 'entfaellt' ? 'line-through' : 'none' }}>{titel}</span>}
         unter={(z.bausteine.length || k.faelligAm || kunde || k.grund || (k.extra && !z.abgeleitet) || (sprung && !z.fertig) || v) ? (
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             {z.bausteine.map(b => {
@@ -244,12 +248,12 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
         ) : undefined}
         rechts={
           <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {eigeneFreigabe && !f.freigaben[eigeneFreigabe.id] && <Erklaert erklaerung="fulfillment.freigabe" name={`Freigabe ${eigeneFreigabe.id}`}><Knopf leise onClick={() => onFreigabe(eigeneFreigabe.id)}>Freigabe {eigeneFreigabe.id} vermerken</Knopf></Erklaert>}
-            {eigeneFreigabe && f.freigaben[eigeneFreigabe.id] && <Chip farbe={LEUCHT.gut}>{eigeneFreigabe.id} vermerkt {tagKurz(f.freigaben[eigeneFreigabe.id].am)}</Chip>}
+            {eigeneFreigabe && !f.freigaben[eigeneFreigabe.id] && <Erklaert erklaerung="fulfillment.freigabe" name={fgName}><Knopf leise onClick={() => onFreigabe(eigeneFreigabe.id)}>{fgName} vermerken</Knopf></Erklaert>}
+            {eigeneFreigabe && f.freigaben[eigeneFreigabe.id] && <Chip farbe={LEUCHT.gut}>{fgName} vermerkt {tagKurz(f.freigaben[eigeneFreigabe.id].am)}</Chip>}
             {setzbar
               ? <Wahl<KnotenStatus> label="Status" klein liste={wahl.map(s => ({ id: s, label: STATUS_TEXT[s] }))} wert={z.zustand} farbe={STATUS_FARBE[z.zustand]} onWahl={s => status(z, s)} />
               : sprung && !z.fertig
-                ? <Knopf leise onClick={() => (sprung === 'f0' ? onFreigabe('F0') : sprung === 'willkommen' ? geh('ueberblick', { art: 'willkommen' }) : geh(ONBOARDING_SPRUNG[sprung].reiter))}>{ONBOARDING_SPRUNG[sprung].text}{sprung === 'f0' ? '' : ' ›'}</Knopf>
+                ? <Knopf leise onClick={() => (sprung === 'f0' ? onFreigabe('F0') : sprung === 'willkommen' ? geh('ueberblick', { art: 'willkommen' }) : sprung === 'playbook' ? geh('kunde', { art: 'stelle', wert: 'kunde-link' }) : geh(ONBOARDING_SPRUNG[sprung].reiter))}>{ONBOARDING_SPRUNG[sprung].text}{sprung === 'f0' ? '' : ' ›'}</Knopf>
                 : <Chip farbe={STATUS_FARBE[z.zustand]}>{STATUS_TEXT[z.zustand]} · automatisch</Chip>}
           </span>
         } />
@@ -262,23 +266,24 @@ function FreigabeMeilenstein({ p, gegeben, onVermerken, onZurueck }: { p: ReiseP
   const fg = p.freigabe!;
   const wie = gegeben?.kunde ? WIE.find(w => w.id === gegeben.kunde!.wie)?.label : undefined;
   return (
-    <ZeileAktionen titel={`Freigabe ${fg.id}`} mehr={gegeben ? [{ id: 'zurueck', label: 'Vermerk zurücknehmen', hinweis: 'Die Freigabe gilt dann wieder als offen.', tun: onZurueck }] : []}>
+    <ZeileAktionen titel={`Abstimmungspunkt${fg.nr ? ` ${fg.nr}` : ''}`} mehr={gegeben ? [{ id: 'zurueck', label: 'Vermerk zurücknehmen', hinweis: 'Der Abstimmungspunkt gilt dann wieder als offen.', tun: onZurueck }] : []}>
       <Zeile umbrechen
         links={<span style={{ width: 44, display: 'inline-grid', placeItems: 'center', flex: '0 0 auto' }}><FreigabeRaute gegeben={!!gegeben} aktiv groesse={14} /></span>}
-        titel={<span>Freigabe {fg.id} · {fg.titel}</span>}
+        titel={<span>Abstimmungspunkt{fg.nr ? ` ${fg.nr}` : ''}{fg.titel ? ` · ${fg.titel}` : ''}</span>}
         unter={gegeben ? `${gegeben.kunde ? `bestätigt am ${tagKurz(gegeben.kunde.am)}${wie ? ` ${wie}` : ''} · ` : ''}vermerkt am ${tagKurz(gegeben.am)}${gegeben.notiz ? ` · ${gegeben.notiz}` : ''}` : `Haltepunkt am Ende der Phase — ${FREIGABE_WER[fg.wer]}, dann geht es weiter.`}
-        rechts={gegeben ? <Chip farbe={LEUCHT.gut}>vermerkt</Chip> : <Erklaert erklaerung="fulfillment.freigabe" name={`Freigabe ${fg.id}`}><Knopf onClick={onVermerken}>Freigabe vermerken</Knopf></Erklaert>} />
+        rechts={gegeben ? <Chip farbe={LEUCHT.gut}>vermerkt</Chip> : <Erklaert erklaerung="fulfillment.freigabe" name="Abstimmungspunkt"><Knopf onClick={onVermerken}>Abstimmung vermerken</Knopf></Erklaert>} />
     </ZeileAktionen>
   );
 }
 
 function FreigabeDialog({ id, daten, onZu, ops }: { id: string; daten: FallAntwort; onZu: () => void; ops: Ops }) {
   const fg = daten.vorlage?.freigaben.find(x => x.id === id);
+  const name = abstimmungName(id, abstimmungsNummern(daten.fall?.knoten ?? []), fg?.titel);
   const [wie, setWie] = useState<typeof WIE[number]['id'] | null>(null);
   const [am, setAm] = useState(localDay());
   const [notiz, setNotiz] = useState('');
   return (
-    <Fenster titel={`Freigabe ${id}${fg ? ` · ${fg.titel}` : ''} vermerken`} onZu={onZu} breit={520}>
+    <Fenster titel={`${name} vermerken`} onZu={onZu} breit={520}>
       <form onSubmit={e => { e.preventDefault(); void ops([{ op: 'freigabe', id, ...(wie ? { kunde: { wie, am } } : {}), ...(notiz.trim() ? { notiz: notiz.trim() } : {}) }]).then(onZu); }} style={{ display: 'grid', gap: 10 }}>
         {fg && <div style={klein}>{FREIGABE_WER[fg.wer].replace(/^./, c => c.toUpperCase())} — danach gilt die Phase als abgeschlossen.</div>}
         {fg?.wer !== 'intern' && (
@@ -348,6 +353,6 @@ function verweisAnzeige(v: SchrittVerweis, d: FallAntwort): { text: string; reit
           ? { text: `${d.analyse.massnahmen.length} Maßnahme${d.analyse.massnahmen.length === 1 ? '' : 'n'} der Diagnose noch nicht im Fall`, reiter: 'ueberblick', stelle: 'ausanalyse', farbe: LEUCHT.achtung }
           : { text: 'Diagnose-Entwurf im Fall — Maßnahmen stehen im Ablauf', reiter: 'analyse', farbe: LEUCHT.gut };
     case 'dossier':
-      return !d.analyse ? { text: 'Dossier anlegen', reiter: 'analyse', farbe: C.aktiv } : d.analyse.f2 ? { text: 'Dossier geprüft (F2)', reiter: 'analyse', farbe: LEUCHT.gut } : { text: 'Dossier in Arbeit', reiter: 'analyse', farbe: C.aktiv };
+      return !d.analyse ? { text: 'Dossier anlegen', reiter: 'analyse', farbe: C.aktiv } : d.analyse.f2 ? { text: 'Dossier geprüft', reiter: 'analyse', farbe: LEUCHT.gut } : { text: 'Dossier in Arbeit', reiter: 'analyse', farbe: C.aktiv };
   }
 }

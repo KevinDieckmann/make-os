@@ -4,10 +4,11 @@
 // nächster Ritual-Termin (nur `kalender-bezug`). „Was hängt“ zuerst: überfällige Willkommensmails, überfällige Freigaben, „wartet auf euch“
 // über 7 Tage, Puls an oder unter der Schwelle, Report über 14 Tage, Art.-14-Frist bald, überfällige Schritte. Rein und client-sicher.
 
-import type { DossierKurz, Fall, KundeKurz } from '../typen';
-import { aktuellerKnoten, fallFortschritt, tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
+import type { DossierKurz, Fall, Freigabepunkt, KundeKurz } from '../typen';
+import { tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
 import type { OnboardingStand } from './onboarding';
-import { fallReise, reiseKurz, type ReiseKurzPhase } from './reise';
+import { fallReise, fallStelle, reiseKurz, type ReiseKurzPhase } from './reise';
+import { abstimmungName, abstimmungsNummern, anzeigeTitel } from './darstellung';
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
 
@@ -15,7 +16,8 @@ export type HaengerArt = 'willkommen' | 'freigabe' | 'wartet' | 'puls' | 'report
 export interface Haenger { art: HaengerArt; mandatId: string; kunde: string; text: string; schwere: 'rot' | 'gelb'; href: string; seit?: string }
 export interface CockpitZeile {
   mandatId: string; kunde: string; titel: string; paket?: string; status: Fall['status'];
-  phase?: string; schritt?: string; fortschritt: number;
+  /** Phase und „Als Nächstes“ aus `fallStelle` (lib/fulfillment/prozesse/reise.ts) — dieselbe Rechnung wie Fall-Kopf, Landkarte, Kunden-Seite. */
+  phase?: string; phaseNr?: number; phasenAnzahl?: number; schritt?: string; fortschritt: number;
   wartet: number; wartetAeltesterTage?: number;
   health: 'gruen' | 'gelb' | 'rot' | null;
   report: { faellig: boolean; letzter?: string };
@@ -37,9 +39,13 @@ export interface CockpitEingabe {
   report: { faellig: boolean; letzter?: string };
   naechsterRitual?: string;
   pulsSchwelle: number; heute: string;
+  /** Abstimmungspunkte der Vorlage (Titel) — für „Als Nächstes“ in Klartext; ohne: nur die Nummer. */
+  freigaben?: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
 }
 
 export const WARTET_ALT_TAGE = 7;
+/** Ab so vielen Tagen ist „wartet auf den Kunden“ rot (14.10.: dieselbe Grenze wie die Kunden-Seite „Wir kommen gerade nur mit Ihnen weiter“). */
+export const WARTET_ROT_TAGE = 21;
 export const REPORT_ALT_TAGE = 14;
 
 /** Was an einem Fall hängt — die Regeln aus 6.3, je mit Sprung in den passenden Reiter. */
@@ -48,12 +54,13 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
   const raus: Haenger[] = [];
   const h = (art: HaengerArt, text: string, schwere: 'rot' | 'gelb', href: string, seit?: string) => raus.push({ art, mandatId: f.mandatId, kunde: e.kunde, text, schwere, href, ...(seit ? { seit } : {}) });
   if (f.status !== 'abgeschlossen' && e.onboarding.willkommen.ueberfaellig) h('willkommen', 'Willkommensmail überfällig (24 Stunden nach der Unterschrift)', 'rot', WEG.fall(f.mandatId), e.onboarding.willkommen.faellig?.slice(0, 10));
+  const nummern = abstimmungsNummern(f.knoten);
   for (const k of f.knoten) {
     if (k.status === 'erledigt' || k.status === 'entfaellt' || !k.faelligAm || k.faelligAm >= heute) continue;
-    if (k.freigabe && !f.freigaben[k.freigabe]) h('freigabe', `Freigabe ${k.freigabe} „${k.titel}“ überfällig`, 'rot', WEG.fall(f.mandatId, 'ablauf'), k.faelligAm);
-    else if (!k.id.startsWith('fk-ob-willkommen')) h('faellig', `„${k.titel}“ überfällig`, 'gelb', WEG.fall(f.mandatId, 'ablauf'), k.faelligAm);
+    if (k.freigabe && !f.freigaben[k.freigabe]) h('freigabe', `${abstimmungName(k.freigabe, nummern)} „${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'rot', WEG.fall(f.mandatId, 'ablauf'), k.faelligAm);
+    else if (!k.id.startsWith('fk-ob-willkommen')) h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'gelb', WEG.fall(f.mandatId, 'ablauf'), k.faelligAm);
   }
-  for (const w of wartetAufEuch(f, heute)) if ((w.tage ?? 0) > WARTET_ALT_TAGE) h('wartet', `Wartet seit ${w.tage} Tagen auf den Kunden: ${w.titel}`, 'gelb', WEG.fall(f.mandatId), w.seit);
+  for (const w of wartetAufEuch(f, heute)) if ((w.tage ?? 0) > WARTET_ALT_TAGE) h('wartet', `Wartet seit ${w.tage} Tagen auf den Kunden: ${anzeigeTitel(w.titel, nummern)}`, (w.tage ?? 0) >= WARTET_ROT_TAGE ? 'rot' : 'gelb', WEG.fall(f.mandatId), w.seit);
   const p = e.kunde2?.letzterPuls;
   if (p && pulsStufe(p.wert, e.pulsSchwelle) === 'kritisch') h('puls', `Kunden-Puls ${p.wert} von 10 — Gespräch anbieten`, 'rot', WEG.fall(f.mandatId, 'kunde'), p.am);
   if (e.report.faellig && f.status !== 'abgeschlossen') {
@@ -65,12 +72,12 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
 }
 
 export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
-  const a = aktuellerKnoten(e.fall);
+  const st = fallStelle(e.fall, e.freigaben ?? [], e.heute);
   const w = wartetAufEuch(e.fall, e.heute);
   const p = e.kunde2?.letzterPuls;
   return {
     mandatId: e.fall.mandatId, kunde: e.kunde, titel: e.titel, ...(e.paket ? { paket: e.paket } : {}), status: e.fall.status,
-    ...(a.phase ? { phase: a.phase.titel } : {}), ...(a.schritt ? { schritt: a.schritt.titel } : {}), fortschritt: fallFortschritt(e.fall),
+    ...(st.phase ? { phase: st.phase.titel, phaseNr: st.phase.nr, phasenAnzahl: st.phase.von } : {}), ...(st.naechster ? { schritt: st.naechster.titel } : {}), fortschritt: st.fortschritt,
     wartet: w.length, ...(w[0]?.tage !== undefined ? { wartetAeltesterTage: w[0].tage } : {}),
     health: e.health, report: e.report,
     ...(p ? { puls: p } : {}), pulsKritisch: !!p && pulsStufe(p.wert, e.pulsSchwelle) === 'kritisch', pulsOffen: !!e.kunde2?.pulsOffen, link: e.kunde2?.link ?? 'aus',
@@ -78,7 +85,7 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
     onboarding: { offen: e.onboarding.offen, fertig: e.onboarding.fertig, willkommenUeberfaellig: e.onboarding.willkommen.ueberfaellig },
     ...(e.naechsterRitual ? { naechsterRitual: e.naechsterRitual } : {}),
     haengt: wasHaengt(e),
-    phasen: reiseKurz(fallReise(e.fall, [], e.heute)),
+    phasen: reiseKurz(fallReise(e.fall, e.freigaben ?? [], e.heute)),
     wert: wertDurchschnitt(e.fall.wertKonto ?? {}),
   };
 }

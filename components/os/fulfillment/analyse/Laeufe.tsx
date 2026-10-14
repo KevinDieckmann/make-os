@@ -158,7 +158,7 @@ function LaufListe({ mandatId, api, rueck }: { mandatId: string; api: AnalyseApi
                   {abschnitte.map(([k, v]) => <div key={k} style={klein}>{ABSCHNITT_LABEL[k]}: {v.length} Aussage(n)</div>)}
                   {e.steckbrief && <div style={klein}>Steckbrief: {Object.entries(e.steckbrief).map(([f, x]) => `${STECKBRIEF_LABEL[f as SteckbriefFeld]} ${x!.wert}`).join(' · ')}</div>}
                   {e.diagnose && <div style={klein}>Diagnose-Entwurf: {e.diagnose.top5.length} Maßnahmen, {e.diagnose.quickWins.length} Quick Wins, {e.diagnose.fragen.length} Fragen</div>}
-                  {e.befunde && <div style={klein}>Prüfer: {e.befunde.length} Befund(e) — nach dem Übernehmen unter „Recht & Freigaben“ neu prüfen.</div>}
+                  {e.befunde && <div style={klein}>Prüfer: {e.befunde.length} Befund(e) — nach dem Übernehmen unter „Recht & Prüfung“ neu prüfen.</div>}
                   {(e.zaehler.ohneQuelle + e.zaehler.verworfen + e.zaehler.negativ + e.zaehler.gesperrt) > 0 && (
                     <div style={klein}>Gesäubert: {e.zaehler.ohneQuelle} ohne Beleg → offene Fragen · {e.zaehler.verworfen} verworfen · {e.zaehler.gesperrt} gesperrte Quellen · {e.zaehler.negativ} laut Negativliste{e.ausgelassen.length ? ` (${e.ausgelassen.join(', ')})` : ''}{e.zaehler.gekuerzt ? ` · ${e.zaehler.gekuerzt} gekürzt` : ''}</div>
                   )}
