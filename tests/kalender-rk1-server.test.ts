@@ -195,6 +195,26 @@ describe('#96 Rechte, #68 abgesagt', () => {
     expect(server.home['arzt.ics'].ics).toContain('SUMMARY:Arzt');
     expect((await PATCH(anfrage('PATCH', { uid: 'home|arzt', titel: 'Arzt Kevin' }, 'kevin'))).status).toBe(200);
   });
+  it('fail-closed (Abnahme 14.10.): privater Termin der anderen Person WEIT außerhalb des Holfensters → 403, nie „unbekannt = nicht fremd“', async () => {
+    // 2028 liegt hinter dem Holfenster (+400 Tage) — früher galt der Termin als „nicht gelesen“ und damit als nicht fremd (200).
+    server.home['fern.ics'] = { ics: vcal('fern', ...TERMIN('Arzt fern', '20280601', ['CLASS:PRIVATE'])), etag: 'h9' };
+    ctag++;
+    expect((await PATCH(anfrage('PATCH', { uid: 'home|fern', bezug: { kontaktId: 'c-x' } }, 'malin'))).status).toBe(403);
+    expect((await PATCH(anfrage('PATCH', { uid: 'fern', bezug: { kontaktId: 'c-x' } }, 'malin'))).status).toBe(403);
+    expect((await PATCH(anfrage('PATCH', { uid: 'home|fern', titel: 'Gehackt' }, 'malin'))).status).toBe(403);
+    expect((await DELETE(anfrage('DELETE', undefined, 'malin', '?uid=home%7Cfern'))).status).toBe(403);
+    expect(server.home['fern.ics'].ics).toContain('SUMMARY:Arzt fern');
+    expect(JSON.stringify(speicher.get('kalender-bezug') ?? {})).not.toContain('c-x');
+    // Die Eigentümerin selbst darf weiter (Bezug am fernen Termin).
+    expect((await PATCH(anfrage('PATCH', { uid: 'home|fern', bezug: { kontaktId: 'c-k' } }, 'kevin'))).status).toBe(200);
+  });
+  it('fail-closed: ein Objekt, das da, aber nicht lesbar ist (ohne Beginn), ändert niemand — 409', async () => {
+    server.home['kaputt.ics'] = { ics: vcal('kaputt', 'SUMMARY:Ohne Beginn', 'CLASS:PRIVATE'), etag: 'h8' };
+    ctag++;
+    const r = await PATCH(anfrage('PATCH', { uid: 'home|kaputt', bezug: { kontaktId: 'c-x' } }, 'malin'));
+    expect([403, 404, 409]).toContain(r.status); // 404: der Abgleich nimmt ein Objekt ohne Beginn gar nicht erst auf
+    expect(JSON.stringify(speicher.get('kalender-bezug') ?? {})).not.toContain('c-x');
+  });
   it('STATUS:CANCELLED: im Kalender als abgesagt markiert, belegt nicht', async () => {
     const t = (await lesen()).termine.find((x: { uid: string }) => x.uid === 'abgesagt');
     expect(t).toMatchObject({ status: 'abgesagt', abgesagt: true, beschaeftigt: false });

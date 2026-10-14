@@ -738,6 +738,30 @@ export async function terminLesen(uid: string): Promise<Termin | null> {
 }
 
 /**
+ * Rechte-Prüfung, fail-closed (Abnahme 14.10.): JEDES Objekt zu einem Verweis (Schlüssel oder alte UID, auch mehrdeutig) mit
+ * seinem Termin — im Holfenster, sonst gezielt ab seinem eigenen Starttag (Termine weit in der Zukunft, Serien, die vor dem Fenster
+ * endeten). `null` je Objekt = da, aber nicht lesbar → der Aufrufer lehnt ab; `da: false` = es gibt kein solches Objekt.
+ * Vorher galt ein Termin außerhalb des Fensters als „unbekannt“ und damit als „nicht fremd“ — die zweite Person konnte den Bezug
+ * eines privaten Termins der ersten setzen.
+ */
+export async function termineZurPruefung(ref: string): Promise<{ da: false } | { da: true; termine: (Termin | null)[] }> {
+  const s = await frischerStand();
+  const funde = objekteZu(s, ref);
+  if (!funde.length) return { da: false };
+  const heute = localDay();
+  const termine = funde.map(({ kal, obj }) => {
+    try {
+      const ich = kal.ich ?? kontoAdressen(s);
+      const im = persoenlichMarkieren(termineAus(obj, kal, tagPlus(heute, HOLEN_VON), tagPlus(heute, HOLEN_BIS), ich), kal)[0];
+      if (im) return im;
+      const tag = objektKurz(obj.ics).tag;
+      return tag ? persoenlichMarkieren(termineAus(obj, kal, tag, tagPlus(tag, 2), ich), kal)[0] ?? null : null;
+    } catch { return null; }
+  });
+  return { da: true, termine };
+}
+
+/**
  * Einzeltermin ändern (Zeit, Titel, Ort, Notiz, Art, Farbe, frei/beschäftigt, Sichtbarkeit) — mit ETag, nie blind.
  * `stand` = das ETag, das der Browser zuletzt gesehen hat: weicht es vom aktuellen ab (am iPhone geändert, schon
  * abgeglichen), gibt es 409 mit dem aktuellen Termin statt still zu überschreiben.
