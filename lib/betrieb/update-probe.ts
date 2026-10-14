@@ -206,6 +206,18 @@ export const ERLAUBT: readonly ErlaubtRegel[] = [
     bestand: /^calendar-cache$|^kalender-icloud$|^apple-reminders-cache$|^apple-contacts-cache$/,
     grund: 'Spiegel eines fremden Kalenders bzw. Mac-Zulieferung — wird bei jedem Abgleich neu geschrieben, Wahrheit liegt in Apple.',
   },
+  {
+    // 14.10. (Abnahme B13, lib/planung/kaskade.ts `istRatenziel`/`abgeleiteterTitel`): ein Raten-Ziel („25.000 € je Monat“) wird nicht mehr durch 12
+    // geteilt, Teilbeträge tragen die Einheit. Nur ABGELEITETE Ziele (Kennung `<eltern>~<ebene>`), nur Titel/Zielwert; von Hand angepasste zieht die
+    // Kaskade nie nach. Der Titel behält den Teil des Jahresziels vor „ · “.
+    bestand: /^ziele(-eigen--[a-z0-9-]+)?$/, pfad: /^(quartal|monat|woche|tag)\[id=[^\]]+~(quartal|monat|woche|tag)\]\.(titel|zielwert)$/, arten: ['wert-geaendert'],
+    wenn: a => {
+      if (a.pfad.endsWith('.zielwert')) return Number(a.nachher) > 0;
+      const kopf = (t: string | undefined) => (t ?? '').replace(/^"|"$/g, '').split(' · ')[0];
+      return !!kopf(a.vorher) && kopf(a.vorher) === kopf(a.nachher);
+    },
+    grund: 'Kaskade nach Regel neu gerechnet (Abnahme B13): abgeleitete Ziele eines Raten-Ziels tragen den Zielwert ungeteilt, Teilbeträge mit Einheit — nur abgeleitete Ziele, nichts von Hand Eingegebenes.',
+  },
 ];
 
 function erlaubtFuer(a: Abweichung, regeln: readonly ErlaubtRegel[], ctx: PruefKontext): ErlaubtRegel | null {

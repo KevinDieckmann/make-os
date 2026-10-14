@@ -186,3 +186,20 @@ describe('berichtMarkdown', () => {
     expect(ok).toContain('**VERLUSTFREI: ja**');
   });
 });
+
+describe('Kaskade nach Regel (14.10., Abnahme B13)', () => {
+  const ziel = (titel: string, zielwert: number) => ({ id: 'z-u~monat', titel, zielwert, abgeleitetVon: 'z-u' });
+  it('abgeleitetes Ziel: Titel behält den Teil des Jahresziels, Zielwert neu → erlaubt', () => {
+    const v = schnapp({ ziele: { monat: [ziel('Umsatz 25.000 € je Monat · 2083 im Monat (Rest 4 im Jahr)', 2083)] } });
+    const n = schnapp({ ziele: { monat: [ziel('Umsatz 25.000 € je Monat', 25000)] } });
+    const e = vergleiche(v, n, { mitSchluessel: true });
+    expect(e.abweichungen).toEqual([]);
+    expect(e.erlaubt.length).toBe(2);
+  });
+  it('anderer Titel oder ein von Hand angelegtes Ziel (ohne „~“) bleibt eine echte Abweichung', () => {
+    const v = schnapp({ ziele: { monat: [ziel('Umsatz 25.000 € je Monat · 2083 im Monat', 2083), { id: 'z-hand', titel: 'Eigenes Ziel', zielwert: 5 }] } });
+    const n = schnapp({ ziele: { monat: [ziel('Ganz anderer Titel', 2083), { id: 'z-hand', titel: 'Eigenes Ziel', zielwert: 9 }] } });
+    const e = vergleiche(v, n, { mitSchluessel: true });
+    expect(e.abweichungen.map(a => a.pfad).sort()).toEqual(['monat[id=z-hand].zielwert', 'monat[id=z-u~monat].titel']);
+  });
+});
