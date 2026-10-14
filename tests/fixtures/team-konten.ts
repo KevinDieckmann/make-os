@@ -12,3 +12,6 @@ export function teamWieKonten(erste = 'kevin', zweite = 'malin'): void {
     { speicher: zweite, name: gross(zweite), rolle: 'mitglied', haushalt: 'h', angelegt: '2026-01-02' },
   ]));
 }
+
+/** Kalendernamen einer Instanz mit den Konten „kevin“ und „malin“ — wie die Vorgabe sie aus den Konten bildet bzw. wie sie gespeichert sind. */
+export const KALENDER_WIE_LIVE = { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Gemeinsam' } as const;

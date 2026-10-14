@@ -3,6 +3,7 @@
 // Antwort (#43), Zeitüberschreitung beim Anlegen ohne Duplikat (#38), ohne ETag nie blind (#37), fremd-private
 // Termine per API unantastbar (#96), abgesagt belegt nicht (#68). Nie echtes iCloud, erfundene Daten (@example.invalid).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { KALENDER_WIE_LIVE } from './fixtures/team-konten';
 // Die Uhr steht fest (Zeitbomben-Suche 14.10.): die Termine liegen an festen Tagen (Ende Sep./Anfang Okt. 2026, mit Sommerzeit), die Holfenster
 // rechnen ab „heute“ (Stand −90 Tage, Cache −30 Tage) — mit der echten Uhr fielen sie ab Ende Okt. bzw. Ende Dez. 2026 heraus. Nur `Date` steht, Zeitgeber laufen.
 vi.hoisted(() => { vi.useFakeTimers({ now: new Date('2026-10-14T08:00:00Z'), toFake: ['Date'], shouldAdvanceTime: true }); });
@@ -77,7 +78,7 @@ const anfrage = (methode: string, body?: unknown, person = 'kevin', suche = '') 
 const lesen = (person = 'kevin') => GET(new Request('http://localhost/api/kalender?von=2026-09-28&bis=2026-10-05', { headers: { 'x-make-user': person } })).then(r => r.json());
 
 beforeEach(() => {
-  speicher.clear(); protokoll.length = 0; puts = []; ctag = 1; status = {};
+  speicher.clear(); speicher.set('kalender-einstellungen', { kalender: KALENDER_WIE_LIVE }); /* gespeicherte Kalendernamen gewinnen (14.10.) */ protokoll.length = 0; puts = []; ctag = 1; status = {};
   server = {
     home: { 'gleich.ics': { ics: vcal('gleich', ...TERMIN('Kopie Kevin')), etag: 'h1' }, 'arzt.ics': { ics: vcal('arzt', ...TERMIN('Arzt', '20261002', ['CLASS:PRIVATE'])), etag: 'h2' } },
     'ABC-work-7': { 'gleich.ics': { ics: vcal('gleich', ...TERMIN('Kopie Gemeinsam')), etag: 'w1' }, 'abgesagt.ics': { ics: vcal('abgesagt', ...TERMIN('Fällt aus', '20261003', ['STATUS:CANCELLED'])), etag: 'w2' } },

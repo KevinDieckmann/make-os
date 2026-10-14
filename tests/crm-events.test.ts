@@ -4,6 +4,9 @@ import type { Event, Teilnahme, Firma } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
 import { eventZahlen, nachfassenRest, followUpBis } from '../lib/crm/events';
 import { VORLAGEN, vorlageAnwenden, mix, mixGruppe, checklisteFaellig, checklisteStand, checklisteAlsAufgaben, aufgabenId, budgetSumme, gaesteVorschlag, icsText, icsEscape, icsDateiname, zielHinweis } from '../lib/crm/eventplanung';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-24';
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id: `c-${id}`, vorname: id, nachname: 'Test', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });

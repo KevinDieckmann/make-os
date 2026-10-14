@@ -4,6 +4,7 @@
 // Adressen. CRM: Termin → genau eine Meeting-Aktivität mit `terminUid` (ohne `wann`), gelöst/gelöscht in der Zukunft →
 // weg. Als Gast nur antworten (nach Bestätigung). Nie echtes iCloud, Gäste nur @example.invalid, erfundene Daten.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { KALENDER_WIE_LIVE } from './fixtures/team-konten';
 
 const speicher = new Map<string, unknown>();
 vi.mock('@/lib/store/local-db', () => ({
@@ -69,7 +70,7 @@ const MORGEN = '2026-10-02';
 const fremdeEinladung = (partstat = 'NEEDS-ACTION') => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:fremd\r\nDTSTAMP:20260901T100000Z\r\nDTSTART:20261002T080000Z\r\nDTEND:20261002T090000Z\r\nSUMMARY:Workshop Nord\r\nORGANIZER;CN=Nora Nord:mailto:nora@example.invalid\r\nATTENDEE;CN=Nora Nord;PARTSTAT=ACCEPTED:mailto:nora@example.invalid\r\nATTENDEE;PARTSTAT=${partstat};RSVP=TRUE:mailto:kevin.konto@example.invalid\r\nEND:VEVENT\r\nEND:VCALENDAR`;
 
 beforeEach(() => {
-  speicher.clear(); protokoll.length = 0; puts.length = 0; ctag = 1;
+  speicher.clear(); speicher.set('kalender-einstellungen', { kalender: KALENDER_WIE_LIVE }); /* gespeicherte Kalendernamen gewinnen (14.10.) */ protokoll.length = 0; puts.length = 0; ctag = 1;
   server = { 'fremd.ics': { ics: fremdeEinladung(), etag: 'f1' } };
   speicher.set('kontakte', { kontakte: [
     { id: 'c-anna1', vorname: 'Anna', nachname: 'Beispiel', email: 'anna@example.invalid', stufe: 'neu', aktivitaeten: [] },

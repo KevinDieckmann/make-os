@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 14.10.2026 — Abnahme-Reste + Kevins Entscheidungen 14.10. (nur lokal — Branch `abnahme-reste`, Basis 8fda5db0 = `update-0910b`)
+- **Sicherheit (zuerst):** Termin-Route fail-closed — PATCH (Termin, Bezug, Antwort) und DELETE lesen jedes Objekt zum Verweis gezielt, auch weit außerhalb des
+  Holfensters (`termineZurPruefung`, lib/kalender/icloud.ts); privat der anderen Person → 403, da aber unlesbar → 409. Vorher: Termin außerhalb des Fensters = „nicht fremd“ (200).
+- **B9 Inbox:** ein Gespräch, ein Fach — eigene, nicht erledigte Übergaben verdecken das Original (`nurUnterUebergeben`, lib/inbox/teilen.ts), Vorrang „Übergeben“; ZOE sagt „ansehen“, wenn nicht unter „Antworten“.
+- **B10 Freigaben:** jeder Eintrag Titel · Was · Wofür · Bezug-Link (`vorschlagAnzeige`, lib/zoe/vorschlag-anzeige.ts) — Heute, Agenten › Hintergrund, Freigaben-Seite; leere Alt-Einträge beschriftet.
+- **B11 Liquidität:** gleiche Szenarien zusammengefasst (`szenarioGruppen`, alle gleich → ein Satz); ein Satz erklärt „heute auf den Konten“ gegen „frei verfügbar“ (`CASH_GEGEN_FREI`).
+- **B15 Demo:** Absender der operativen Gesellschaft + ein GESTELLTES Angebot zum Deal in Stufe „Angebot“ (über die Routen). **B21:** Gründungsfahrplan nur für noch nicht
+  eingetragene Gesellschaften (`fahrplanAnbieten`). **B16:** neue Aufgaben folgen dem aktiven Bereich (`wohinVorgabe`).
+- **B17 Partner „nur Business“:** Gründungsfahrplan-Aufgaben/-Listen (`lm-ms-fahrplan-…`) serverseitig wie die Firmen-Akte gefiltert; keine Privat-Einheit als Auswahl (Angebot,
+  Mandate, `gesellschaftFilterFuer`); Zeit-Auswertung ohne Privat-Anteile (`nurBusiness`); Heute-Zeitkarte ohne Privat. Business-Finanzen bleiben sichtbar.
+- **C8:** EINE Regel „neuer Lead“ (`neuerLeadSeit` auf `neuerLeadAm`) für Überblick und Kreislauf-Ist; Demo-Notizen am Anlagetag.
+- **Kevins Entscheidungen (nichts Persönliches fest, die Live-Instanz zeigt dasselbe):** CRM-Team ohne `NEXT_PUBLIC_MAKE_OS_CRM_TEAM` aus den KONTEN (`teamAusKonten`:
+  Inhaber Sales, zweite Person Marketing + Event; gesetzt beim Lesen der Konten, beim Start und im Browser über `TeamQuelle`; ohne Konten Rollen-Platzhalter) ·
+  Kalendernamen „Privat <Vorname>“ aus den Konten (`kalenderNamenVorgabe`; ein gespeicherter Name gewinnt, PUT schreibt dieselben Namen fest wie vorher) · Entnahme-Kategorie
+  `Entnahme (Selbstständigkeit)` (`istEntnahmeKategorie` erkennt auch den gespeicherten Namen mit Vorname) · Zeilen „Ertragsteuer/Holding-Umlage“ über `finanzOrtName` (Zahlen
+  bit-gleich, Regressionstest grün) · Event-Reihen = Instanz-Daten (Wertelisten `reihen`, Startwert aus Events bzw. der Betreiber-Instanz `BETREIBER_REIHEN`, Name aus der
+  Kennung; neue Instanz leer; Demo „Abendreihe Nord (Beispiel)“) · alte Titel abgeleiteter Ziele beim Lesen nach der Regel (`titelNachRegel`, Stand bleibt der gespeicherte).
+- **Rückweg:** neue optionale Felder (`wertelisten.reihen`, Antwort-Felder `reihen`, `nurBusiness`); keine Kennung umbenannt, keine Daten umgeschrieben.
+
 ## 14.10.2026 — Abnahme B1/B2/B3/B5/B12/B13/B14: die Zahlen passen überall zusammen (nur lokal — Branch `abnahme-zahlen`, Basis 33ed604c = `update-0910b`)
 Grundsatz: je Größe EINE Rechnung, alle Orte lesen sie — nie zwei Zahlen für dasselbe ohne Erklärung daneben.
 - **B1 Index-Status:** `indexStatus` (lib/kennzahlen/kern.ts) — Kurzwort + Satz für Heute, Cockpit, Fachseiten-Streifen, IndexAnsicht und Head of Finance. Ohne Wert, aber

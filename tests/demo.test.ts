@@ -142,8 +142,16 @@ describe('Saat', () => {
     const offenLena = (stapel?.vorschlaege ?? []).filter(v => v.person === 'lena' && v.status === 'offen');
     expect(offenLena.length).toBeGreaterThanOrEqual(2);
     expect(offenLena.some(v => v.nachher?.includes('Angebot Grünfeld Bau nachfassen'))).toBe(true);
-    const crm = await db.loadJson<{ chancen: unknown[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[] }>('crm');
+    const crm = await db.loadJson<{ chancen: { id: string; stufe: string }[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[]; angebote?: { status: string; dealId?: string; nummer?: string }[]; wertelisten?: { reihen?: { id: string; name: string }[] } }>('crm');
     expect(crm?.chancen).toHaveLength(4);
+    // Abnahme 14.10. (B15): der Deal in Stufe „Angebot“ hat ein GESTELLTES Angebot (Nummer, über die Route) — keine neue Chance dafür.
+    const gestellt = (crm?.angebote ?? []).filter(a => a.status === 'gestellt');
+    expect(gestellt).toHaveLength(1);
+    expect(gestellt[0].nummer).toBeTruthy();
+    expect(crm?.chancen.find(c => c.id === gestellt[0].dealId)?.stufe).toBe('angebot');
+    expect(n['Angebot (gestellt)']).toBe(1);
+    // Reihen sind Instanz-Daten (14.10.): die Demo hat eine erfundene Reihe in den Wertelisten.
+    expect(crm?.wertelisten?.reihen?.map(r => r.name)).toEqual(['Abendreihe Nord (Beispiel)']);
     expect(crm?.mandate).toHaveLength(2);
     expect(crm?.leistungen.every(l => l.status === 'aktiv')).toBe(true);
     const konten = await db.loadJson<{ konten: { email: string; haushalt: string }[] }>('konten');

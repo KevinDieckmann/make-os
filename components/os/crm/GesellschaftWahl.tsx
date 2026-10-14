@@ -13,12 +13,14 @@ import { istGesellschaftId } from '@/lib/einheiten';
 import { FARBE as C } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
 import type { Gesellschaft } from '@/lib/crm/typen';
+import { useNurBusiness } from '../useInhaber';
 
 export function GesellschaftWahl({ wert, onWahl }: { wert: Gesellschaft; onWahl: (g: Gesellschaft) => void }) {
   const register = useGesellschaftenKurz();
+  const nurBusiness = useNurBusiness();
   const weg = istGesellschaftId(wert) ? WEG.unternehmen(wert) : WEG.unternehmen();
   return (
-    <Wahl label="Gesellschaft" liste={gesellschaftWahl(register, wert)} wert={wert} onWahl={onWahl}
+    <Wahl label="Gesellschaft" liste={gesellschaftWahl(register, wert, nurBusiness)} wert={wert} onWahl={onWahl}
       fuss={<Link href={weg} style={{ color: C.inkLeise, textDecoration: 'none', padding: '4px 2px' }}>{istGesellschaftId(wert) ? 'Im Register öffnen ›' : 'Register pflegen ›'}</Link>} />
   );
 }

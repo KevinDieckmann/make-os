@@ -13,6 +13,9 @@ import {
   kalenderwoche, montagVon, wochenBis, wochenScoreboard, bewerte, type Scoreboard,
   morgenText, wochenText, faelligeRhythmen, markiereRhythmus, rhythmusStand, RHYTHMUS_VERSUCHE,
 } from '../lib/crm/scoreboard';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-25'; // Freitag, KW 39
 const J = (d: string, h = '10:00') => `${d}T${h}:00.000Z`;

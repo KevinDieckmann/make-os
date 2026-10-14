@@ -7,6 +7,9 @@ import { saeubern, wendeCrmAn, leererBestand } from '../lib/crm/speicher';
 import { loeschSperren } from '../lib/crm/crm-stand';
 import { personEntfernen, personUmbiegen, personVerweise } from '../lib/crm/person-verweise';
 import type { CrmBestand, Event } from '../lib/crm/typen';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const J = '2026-10-03T08:00:00.000Z';
 const ev = (x: Partial<Event> = {}): Event => ({ id: 'ev-1', titel: 'Mittelstandstag Beispielstadt', format: 'sonstig', ziel: '', datum: '2026-10-20', status: 'geplant', marke: 'Netzwerken', geaendert: '2026-10-01', ...x });

@@ -10,6 +10,7 @@ import { firmaFuerGesellschaft } from '@/lib/einheiten';
 import { SEED, UG_FIRMA, ugFirmaNachziehen, type FinanzplanFile } from '@/lib/finanzen/finanzplan-bestand';
 import { vorschau } from '@/lib/make-one/liquiditaet';
 import { GESELLSCHAFT_FILTER, gesellschaftFilterFuer, passtGesellschaft } from '@/lib/crm/kunden';
+import { gesellschaftWahl } from '@/lib/crm/wahl';
 import { meilensteinSpace, bereichAusSpace, sauberMeilenstein, sauberMeilensteine } from '@/lib/planung/meilensteine';
 import { meilensteineAbleiten } from '@/lib/planung/kaskade';
 import { sauberBlock } from '@/lib/planung/routinen';
@@ -84,6 +85,10 @@ describe('Mandate nach Gesellschaft filtern', () => {
     // Abnahme 14.10. (B17): ein Konto „nur Business“ bekommt die Privat-Einheit (Selbstständigkeit) nicht als Auswahl.
     expect(gesellschaftFilterFuer(true).map(g => g.id)).toEqual(['alle', 'kdv', 'ug']);
     expect(gesellschaftFilterFuer(false)).toBe(GESELLSCHAFT_FILTER);
+    // Deals/Mandate/Produkte (GesellschaftWahl): dieselbe Regel — eine gespeicherte Privat-Einheit bleibt sichtbar, sonst nie zur Wahl.
+    expect(gesellschaftWahl(null, null, true).map(e => e.id)).toEqual(['kdv', 'ug', 'offen']);
+    expect(gesellschaftWahl(null, 'kdc', true).map(e => e.id)).toContain('kdc');
+    expect(gesellschaftWahl(null).map(e => e.id)).toEqual(['kdc', 'kdv', 'ug', 'offen']);
   });
   it('„Alle“ lässt alles durch, auch „offen“; sonst nur die gewählte Gesellschaft', () => {
     const mandate = [{ g: 'kdc' }, { g: 'kdv' }, { g: 'ug' }, { g: 'offen' }];

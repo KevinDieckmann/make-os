@@ -10,6 +10,9 @@ import {
   ausZeile, importieren, zusammenfuehren, schluessel, besitzerAusOwner, vonHandMarkieren, istVonHand,
   normName, normFirma, normTelefon, moeglicheDubletten, saeubereKontakt, type Kontakt,
 } from '../lib/make-one/crm';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-27';
 const SPAETER = '2026-10-04';

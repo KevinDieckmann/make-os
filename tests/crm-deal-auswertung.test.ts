@@ -4,6 +4,9 @@ import { dealBauen } from '../lib/crm/deal-anlegen';
 import { verweildauer, verweildauerJeStufe, umwandlung, winLoss, zyklus, prognoseNachMonat, haengtNachWert } from '../lib/crm/deal-auswertung';
 import type { Chance } from '../lib/crm/typen';
 import type { Kontakt } from '../lib/make-one/crm';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-27';
 const J = (d: string) => `${d}T10:00:00.000Z`;

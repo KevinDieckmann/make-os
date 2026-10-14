@@ -3,6 +3,9 @@ import type { Kontakt } from '../lib/make-one/crm';
 import { leererBestand } from '../lib/crm/speicher';
 import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, planen, kampagnenZahlen } from '../lib/crm/kampagnen';
 import type { Mandat } from '../lib/crm/typen';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-24', J = `${HEUTE}T10:00:00Z`;
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id: `c-${id}`, vorname: id, nachname: 'Test', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });

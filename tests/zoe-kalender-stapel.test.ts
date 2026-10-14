@@ -29,7 +29,7 @@ vi.mock('@/lib/brain', async importOriginal => ({ ...(await importOriginal<typeo
 vi.mock('@/lib/zoe/vault', async importOriginal => ({ ...(await importOriginal<typeof import('@/lib/zoe/vault')>()), brainAnweisung: async () => '' }));
 vi.mock('@/lib/meldungen/melden', () => ({ melde: async () => {} }));
 
-const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied') => ({ id, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'haus' });
+const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied') => ({ id, speicher, email: `${speicher}@example.invalid`, name: `${speicher[0].toUpperCase()}${speicher.slice(1)}`, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'haus' });
 const sitzung = (p: string) => ({ 'content-type': 'application/json', 'x-make-user': p });
 const dienst = (p: string) => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': p });
 let db: typeof import('@/lib/store/local-db');
@@ -162,7 +162,8 @@ describe('Nachtrag — Vorschlags-Kalender aus den Einstellungen', () => {
     const einst = { kalender: { kevin: 'Kevin Arbeit', malin: 'Malin Privat', beide: 'Familie' } };
     expect(vorschlagsKalender(einst, 'malin')).toMatchObject({ eigen: 'Malin Privat', gemeinsam: 'Familie' });
     expect([...vorschlagsKalender(einst, 'kevin').erlaubt]).toEqual(['Kevin Arbeit', 'Familie']);
-    expect(vorschlagsKalender(null, 'kevin').eigen).toBe('Privat Kevin');
+    // Ohne Einstellungen die reine Vorgabe (14.10.: ohne Konten ein Platzhalter, nie ein fester Vorname — auf dem Server aus den Konten).
+    expect(vorschlagsKalender(null, 'kevin').eigen).toBe('Privat Person 1');
   });
   it('Malin lässt analysieren: der Block landet in ihrem eigenen Kalender, nicht fest in Kevins', async () => {
     const stapel = await import('@/lib/zoe/stapel');

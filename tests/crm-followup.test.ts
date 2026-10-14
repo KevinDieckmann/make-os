@@ -4,6 +4,9 @@ import { faellige, zaehlen, puenktlichkeit, neuesFollowUp, virtuell, gruppeVon, 
 import { leererBestand } from '../lib/crm/speicher';
 import type { Kontakt } from '../lib/make-one/crm';
 import type { CrmBestand, FollowUp } from '../lib/crm/typen';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-27';
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id, vorname: 'Anna', nachname: id.toUpperCase(), eignung: 'hoch', prio: 'A', stufe: 'gespraech', aktivitaeten: [], importiertAm: HEUTE, geaendertAm: HEUTE, besitzer: 'kevin', ...x } as Kontakt);
