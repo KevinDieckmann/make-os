@@ -8,6 +8,8 @@ import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { localDay } from '@/lib/zeit';
+import { tagPlus } from '@/lib/kalender/zeit';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-zoe-crm-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
@@ -29,6 +31,8 @@ vi.mock('@/lib/zoe/vault', async importOriginal => ({ ...(await importOriginal<t
 vi.mock('@/lib/meldungen/melden', () => ({ melde: async () => {} }));
 
 const T = '2026-09-01T08:00:00.000Z';
+/** Fälligkeiten relativ zu heute (Berliner Tag) — feste Daten kippen sonst, sobald sie in der Vergangenheit liegen (ZOE lehnt vergangene Fälligkeiten ab). */
+const inTagen = (n: number) => tagPlus(localDay(), n);
 // Öffentliche Beispiel-IBAN aus der Bankdokumentation, zusammengesetzt, damit der Repo-Scan (repo-sauber) sie nicht als Kontodaten meldet.
 const IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
 const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', haushalt?: string) => ({ id, speicher, email: `${speicher}@test.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...(haushalt ? { haushalt } : {}) });
@@ -80,7 +84,7 @@ beforeAll(async () => {
     chancen: [{ id: 'ch-eins', titel: 'Beratung Beispiel', kontaktIds: ['c-anna-1', 'c-bernd-1'], firmaId: 'f-beispiel', firma: 'Beispiel GmbH', art: 'retainer', wert: { betrag: 2000, basis: 'monat' }, stufe: 'bedarf', historie: [{ stufe: 'qualifiziert', am: T, von: 'kevin' }], qualifizierung: { schmerz: 'ja', entscheider: 'ja', budget: 'unklar', zeitpunkt: 'ja', wirkung: 'unklar', alternative: 'unklar' }, gesellschaft: 'kdc', besitzer: 'kevin', angelegt: T, geaendert: T, naechsterSchritt: { text: 'Termin vereinbaren', datum: '2026-10-05' } }],
     leistungen: [{ id: 'l-diagnose', name: 'Diagnose', typ: 'diagnose', stufe: 'einstieg', preis: { betrag: 3000, einheit: 'pauschal' }, lieferumfang: [], gesellschaft: 'kdc', status: 'entwurf', geaendert: T }],
   });
-  const hv = (id: string, kontakt_id: string | null, titel: string) => ({ id, art: 'nachfassen', titel, begruendung: 'Seit drei Wochen still.', kontakt_id, chance_id: null, mandat_id: null, event_id: null, frist: '2026-10-20', prioritaet: 'mittel', dedup_schluessel: id, quelle: [], entwurf: null, status: 'offen', erstellt: T, aktualisiert: T, berichtId: 'b-1' });
+  const hv = (id: string, kontakt_id: string | null, titel: string) => ({ id, art: 'nachfassen', titel, begruendung: 'Seit drei Wochen still.', kontakt_id, chance_id: null, mandat_id: null, event_id: null, frist: inTagen(6), prioritaet: 'mittel', dedup_schluessel: id, quelle: [], entwurf: null, status: 'offen', erstellt: T, aktualisiert: T, berichtId: 'b-1' });
   await db.saveJson('head-sales', { berichte: [], letzte: {}, versuche: {}, vorschlaege: [hv('hv-anna', 'c-anna-1', 'Anna anrufen'), hv('hv-bernd', 'c-bernd-1', 'Bernd Geheimname anrufen')] });
   W = await import('@/lib/zoe/werkzeuge');
   stapel = await import('@/lib/zoe/stapel');
@@ -282,8 +286,8 @@ describe('Vorschläge ändern nichts bis zur Freigabe', () => {
   });
   it('Aktivität und Follow-up über ihre Routen (in-process, kein Netz)', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    await lauf('crm_vorschlag', { art: 'aktivitaet', kontakt: 'c-anna-1', aktivitaet_art: 'gespraech', text: 'Bedarf geklärt', naechster_schritt: 'Angebot schicken', faellig: '2026-10-09' }, 'kevin');
-    await lauf('crm_vorschlag', { art: 'followup', kontakt: 'c-anna-1', text: 'Nachfassen', faellig: '2026-10-12', followup_art: 'anruf' }, 'kevin');
+    await lauf('crm_vorschlag', { art: 'aktivitaet', kontakt: 'c-anna-1', aktivitaet_art: 'gespraech', text: 'Bedarf geklärt', naechster_schritt: 'Angebot schicken', faellig: inTagen(3) }, 'kevin');
+    await lauf('crm_vorschlag', { art: 'followup', kontakt: 'c-anna-1', text: 'Nachfassen', faellig: inTagen(5), followup_art: 'anruf' }, 'kevin');
     for (const v of await offeneCrm()) { const r = await entscheiden(v.id, 'kevin', 'freigeben'); expect(r.status, `${v.titel}: ${JSON.stringify(await r.json())}`).toBe(200); }
     const anna = (await kontakte()).find(k => k.id === 'c-anna-1')!;
     expect((anna.aktivitaeten as { text?: string }[]).some(a => a.text === 'Bedarf geklärt')).toBe(true);
