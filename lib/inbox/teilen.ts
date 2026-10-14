@@ -313,6 +313,16 @@ export function ablageUebernehmen(alt: readonly UebergabeNachricht[], neu: reado
   return neu.map(n => ({ ...n, anhaenge: n.anhaenge.map(a => { const ab = da.get(`${n.id}|${a.teil}`); return ab ? { ...a, ablage: ab } : a; }) }));
 }
 
+/**
+ * Jedes Gespräch steht in genau EINEM Fach (Abnahme 14.10., B9) — Vorrang: „Übergeben“ vor allen übrigen Fächern. Solange eine
+ * Übergabe, die ICH gemacht habe, nicht erledigt ist (offen: die andere Person kümmert sich; zurück: sie kam mit Notiz zurück), steht
+ * das Original nur unter „Übergeben“ — nicht noch einmal unter „Antworten“, „Geld & Papier“ usw. Erledigt → wieder im eigenen Fach.
+ * Erhaltene Übergaben sind Kopien (eigene Kennung `ub-…`), sie verdecken nichts. Liefert die Gesprächs-Kennungen, die dort fehlen.
+ */
+export function nurUnterUebergeben(liste: readonly Pick<UebergabeZeile, 'rolle' | 'status' | 'gespraech'>[]): Set<string> {
+  return new Set(liste.filter(u => u.rolle === 'gegeben' && u.status !== 'erledigt').map(u => u.gespraech));
+}
+
 /** Was die Liste einer Person zeigt — ohne Texte (die holt die Ansicht). */
 export interface UebergabeZeile {
   id: string;

@@ -31,7 +31,7 @@ import { whatsappFuer } from '@/lib/whatsapp/server';
 import { absenderSchluessel, ladeInboxZustand, type InboxZustand } from './zustand';
 import { gespraecheBauen, lageBauen, zoeSatz, type Gespraech, type GespraechZustand, type LageZeile, type PostfachKurz, type StromKopf, type ZoeSatz } from './strom';
 import { geteiltePostfaecherFuer, ladeGeteilt, personenMitBlick, teamPersonen, type TeamPerson } from './teilen-server';
-import { postfachTeilbar, standVon, type GespraechTeam, type TeamZustand, type UebergabeZeile } from './teilen';
+import { nurUnterUebergeben, postfachTeilbar, standVon, type GespraechTeam, type TeamZustand, type UebergabeZeile } from './teilen';
 import { uebergabeZeilenFuer } from './uebergaben-speicher';
 import { leisteBauen, type LeisteEintrag } from './ansicht';
 
@@ -225,7 +225,11 @@ export async function stromFuer(person: string, f: StromFilter = {}): Promise<St
   const inSicht = r.postfaecher.filter(p => imBereich(p.bereich, sichtSpace));
   const sicht = inSicht.filter(p => imBereich(p.bereich, f) && (!f.postfach || p.id === f.postfach));
   const ids = new Set(sicht.map(p => p.id));
-  const gespraeche = r.gespraeche.filter(g => ids.has(g.postfachId));
+  // Ein Gespräch, ein Fach (B9, 14.10.): was ich übergeben habe und noch nicht erledigt ist, steht nur unter „Übergeben“.
+  const alleUebergaben = await uebergabeZeilenFuer(person, r.team);
+  const uebergeben = nurUnterUebergeben(alleUebergaben);
+  const eigeneFaecher = r.gespraeche.filter(g => !uebergeben.has(g.id));
+  const gespraeche = eigeneFaecher.filter(g => ids.has(g.postfachId));
   const idsSicht = new Set(inSicht.map(p => p.id));
   const bereicheDa = Array.from(new Set(r.postfaecher.map(p => p.bereich).filter((b): b is string => !!b)));
   // Unzugeordnet: nur EIGENE Postfächer (nie ein Team-Postfach einer anderen Person), nur Angaben zum Postfach — keine Nachricht.
@@ -244,8 +248,8 @@ export async function stromFuer(person: string, f: StromFilter = {}): Promise<St
     bereiche: bereicheDa.filter(b => imBereich(b, sichtSpace)).map(b => ({ id: b, name: bereichName(b, r.namen) })),
     google: r.google,
     heute,
-    uebergaben: (await uebergabeZeilenFuer(person, r.team)).filter(u => imBereich(u.bereich, f)),
-    leiste: leisteBauen(inSicht.map(p => p.oeffentlich), r.gespraeche.filter(g => idsSicht.has(g.postfachId)), b => bereichName(b, r.namen)),
+    uebergaben: alleUebergaben.filter(u => imBereich(u.bereich, f)),
+    leiste: leisteBauen(inSicht.map(p => p.oeffentlich), eigeneFaecher.filter(g => idsSicht.has(g.postfachId)), b => bereichName(b, r.namen)),
     unzugeordnet,
     waehlbar,
   };

@@ -12,7 +12,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { PostSpeicher as PS } from '@/lib/postfach/post-speicher';
 import {
-  ausschnittUm, bereichZugang, frageSauber, kopiePruefen, markieren, nachrichtTreffer, postfachSichtbar, raumVon, standVon, TeilenFehler,
+  ausschnittUm, bereichZugang, frageSauber, kopiePruefen, markieren, nachrichtTreffer, nurUnterUebergeben, postfachSichtbar, raumVon, standVon, TeilenFehler,
   uebergabeAnwenden, uebergabeEmpfaenger, uebergabenAufbewahren, uebergabeSichtbar, uebergabeZeile, UEBERGABE_GRENZEN, type Uebergabe, type UebergabeNachricht,
 } from '@/lib/inbox/teilen';
 
@@ -124,6 +124,15 @@ const ub = (x: Partial<Uebergabe> = {}): Uebergabe => ({
 });
 
 describe('Regeln (rein)', () => {
+  it('Ein Gespräch, ein Fach (B9, 14.10.): eigene, nicht erledigte Übergaben verdecken das Original — erhaltene und erledigte nie', () => {
+    const l = [
+      { rolle: 'gegeben' as const, status: 'offen' as const, gespraech: 'gm~a' },
+      { rolle: 'gegeben' as const, status: 'zurueck' as const, gespraech: 'gm~b' },
+      { rolle: 'gegeben' as const, status: 'erledigt' as const, gespraech: 'gm~c' },
+      { rolle: 'erhalten' as const, status: 'offen' as const, gespraech: 'gm~d' },
+    ];
+    expect([...nurUnterUebergeben(l)].sort()).toEqual(['gm~a', 'gm~b']);
+  });
   it('Raum und Zugang: ohne Bereich streng Privat; Business für jedes Konto, Privat nie für finanzRecht business', () => {
     expect(raumVon(null)).toBe('privat');
     expect(raumVon('privat')).toBe('privat');
@@ -231,6 +240,10 @@ describe('Übergeben — freigegebene Kopie, nur per Klick', () => {
     expect(s.uebergaben).toHaveLength(1);
     expect(s.uebergaben[0]).toMatchObject({ id, rolle: 'erhalten', vonName: 'Erster', notiz: 'Bitte du — ich bin unterwegs.', kuemmert: 'malin', status: 'offen' });
     expect(s.gespraeche).toEqual([]);
+    // Kevin: das Original steht nur unter „Übergeben“, nicht zusätzlich in einem Fach (B9, 14.10.)
+    const sk = (await GET(inbox, '/api/inbox')).d;
+    expect(sk.uebergaben.map((u: { gespraech: string; rolle: string }) => [u.gespraech, u.rolle])).toEqual([[g.id, 'gegeben']]);
+    expect(sk.gespraeche.map((x: { id: string }) => x.id)).not.toContain(g.id);
     const d = await GET(uebergaben, `/api/inbox/uebergaben?id=${id}`, sitzung('malin'));
     expect(d.status).toBe(200);
     expect(d.d.uebergabe.nachrichten[0].text).toContain('Angebot für Müller');
@@ -300,6 +313,8 @@ describe('Übergeben — freigegebene Kopie, nur per Klick', () => {
     expect((await POST(uebergaben, '/api/inbox/uebergaben', { aktion: 'erledigt', id }, sitzung('malin'))).status).toBe(200);
     expect((await zeile('kevin')).status).toBe('erledigt');
     expect((await zeile('malin')).status).toBe('erledigt');
+    // erledigt → das Original steht wieder in seinem eigenen Fach (genau einmal)
+    expect(((await GET(inbox, '/api/inbox')).d.gespraeche as { id: string }[]).filter(x => x.id === g.id)).toHaveLength(1);
   });
 
   it('Kopie aktualisieren: neue Nachrichten wandern NICHT von selbst mit — erst auf Klick der übergebenden Person', async () => {
@@ -316,15 +331,14 @@ describe('Übergeben — freigegebene Kopie, nur per Klick', () => {
   });
 
   it('Antworten nur aus einem EIGENEN Postfach desselben Raums: Re: + In-Reply-To aus der Kopie; Privat-Postfach für Business-Übergabe → 403', async () => {
-    await verbinden();
+    const { kdv: kdvId } = await verbinden();
     const zwei = await zweiteVerbinden();
     const g = await angebot();
     const id = (await POST(uebergaben, '/api/inbox/uebergaben', { aktion: 'uebergeben', gespraech: g.id, an: 'malin' })).d.id as string;
     const d = (await GET(uebergaben, `/api/inbox/uebergaben?id=${id}`, sitzung('malin'))).d;
     expect(d.postfaecher.map((p: { id: string }) => p.id)).toEqual([zwei.business]);
     expect((await POST(senden, '/api/inbox/senden', { uebergabe: id, postfach: zwei.privat, text: 'Hallo' }, sitzung('malin'))).status).toBe(403);
-    // Kevins Postfach ist nicht Malins → 403
-    const kdvId = (await gespraecheVon('kevin')).find(x => x.betreff === 'Angebot Müller')!.postfachId;
+    // Kevins Postfach ist nicht Malins → 403 (das Original steht bei Kevin jetzt nur unter „Übergeben“, B9 — Kennung aus dem Verbinden)
     expect((await POST(senden, '/api/inbox/senden', { uebergabe: id, postfach: kdvId, text: 'Hallo' }, sitzung('malin'))).status).toBe(403);
     // Kevin selbst antwortet nicht über die Übergabe (er hat das Original)
     expect((await POST(senden, '/api/inbox/senden', { uebergabe: id, postfach: kdvId, text: 'Hallo' })).status).toBe(403);
