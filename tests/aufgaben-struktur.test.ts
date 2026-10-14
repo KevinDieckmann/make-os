@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
   alleSpaces, mandantenSpaces, istSpaceId, einheitVonSpace, uebernehmen, baum, statusListe, statusVon, statusTeil, grundVon,
   passtFilter, erwaehnungen, unteraufgabeId, sonstigeProjektId, istSonstigeProjekt, spaceFuerAltProjekt, FILTER_STANDARD, MANDANT_EINHEIT,
+  wohinVorgabe,
 } from '@/lib/aufgaben/struktur';
 import { taskSauber, kommentareVereinen, statusSauber, ZuGross, AUFGABEN_GRENZEN } from '@/lib/aufgaben/saeubern';
 import { spaceVonAufgabe } from '@/lib/make-one/space-regeln';
@@ -243,5 +244,28 @@ describe('Filter, Erwähnungen, Säuberung', () => {
     // Fremden Text ändern geht nicht: der gespeicherte bleibt.
     const r2 = kommentareVereinen(alt, [{ ...alt[0], text: 'umgeschrieben' }, alt[1]], 'kevin');
     expect(r2.kommentare![0].text).toBe('von Malin');
+  });
+});
+
+describe('wohinVorgabe (Abnahme 14.10., B16): neue Aufgaben folgen dem aktiven Bereich', () => {
+  const sp = [
+    { id: 'privat', art: 'privat' as const, bereich: 'privat' as const },
+    { id: 'kdc', art: 'firma' as const, bereich: 'privat' as const },
+    { id: 'kdv', art: 'firma' as const, bereich: 'business' as const },
+    { id: 'ug', art: 'firma' as const, bereich: 'business' as const },
+  ];
+  it('Business ohne gemerkten Raum → erster Firmen-Space im Business, nie Privat', () => {
+    expect(wohinVorgabe(sp, 'business')).toBe('kdv');
+    expect(wohinVorgabe(sp, 'business', 'privat')).toBe('kdv');
+    expect(wohinVorgabe(sp, 'business', 'kdc')).toBe('kdv'); // Selbstständigkeit gehört zu Privat
+  });
+  it('gemerkter Raum nur im passenden Bereich; Privat → Privat', () => {
+    expect(wohinVorgabe(sp, 'business', 'ug')).toBe('ug');
+    expect(wohinVorgabe(sp, 'privat', 'ug')).toBe('privat');
+    expect(wohinVorgabe(sp, 'privat', 'kdc')).toBe('kdc');
+    expect(wohinVorgabe(sp, 'privat')).toBe('privat');
+  });
+  it('ohne Privat-Space (Konto „nur Business“) immer Business', () => {
+    expect(wohinVorgabe(sp.filter(s => s.bereich === 'business'), 'privat')).toBe('kdv');
   });
 });

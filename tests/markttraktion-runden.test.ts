@@ -10,6 +10,9 @@ import { leererBestand } from '../lib/crm/speicher';
 import {
   kreisKandidaten, kreisBilanz, kreisZusammenfassung, letzteNotiz, kurzDatum, KREIS_WAHL,
 } from '../lib/crm/runden';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-25'; // Freitag
 const J = '2026-09-25T10:00:00.000Z';

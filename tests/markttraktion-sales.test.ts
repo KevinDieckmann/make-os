@@ -9,6 +9,9 @@ import { bearbeiterFuer, werZahlen, prognoseJePerson, prognose, teamZahlen, echt
 import { kundenJePerson } from '../lib/crm/kunden';
 import { werIstDran } from '../lib/crm/heute';
 import { leererBestand } from '../lib/crm/speicher';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-25'; // Freitag
 const ch = (x: Partial<Chance> = {}): Chance => ({

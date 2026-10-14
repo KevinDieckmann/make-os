@@ -268,19 +268,20 @@ export function ReiheAbzeichen({ e }: { e: Pick<Event, 'reihe' | 'marke'> }) {
   return <span className="ui-chip" title={`Reihe: ${r.name} (${MARKE_EVENTS})`} style={{ border: `1px solid ${RAND.stark}`, borderRadius: RADIUS.pille, color: C.ink, whiteSpace: 'nowrap' }}>{r.name}</span>;
 }
 
-/** Werteliste der Reihen für die Wahl (Kennung → Name). */
-export const REIHEN_WAHL: { id: string; label: string }[] = EVENT_REIHEN.map(r => ({ id: r.id, label: r.name }));
+/** Werteliste der Reihen für die Wahl (Kennung → Name) — die Reihen DIESER Instanz (14.10.: Instanz-Daten, zur Laufzeit gesetzt). */
+export const reihenWahl = (): { id: string; label: string }[] => EVENT_REIHEN.map(r => ({ id: r.id, label: r.name }));
 
 /**
  * Reihe wählen — im Anlegen und im Überblick. Leer = gewöhnlicher Make.One-Abend; „ohne Reihe“ im Menü nimmt sie wieder weg.
  * Eine unbekannte Kennung aus dem Bestand bleibt wählbar sichtbar (Rückweg), statt still zu verschwinden.
  */
 export function ReiheWahl({ wert, onWahl }: { wert?: string; onWahl: (reihe: string | undefined) => void }) {
-  const liste = wert && !REIHEN_WAHL.some(r => r.id === wert) ? [...REIHEN_WAHL, { id: wert, label: reiheName(wert) }] : REIHEN_WAHL;
+  const alle = reihenWahl();
+  const liste = wert && !alle.some(r => r.id === wert) ? [...alle, { id: wert, label: reiheName(wert) }] : alle;
   return (
     <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
       <Wahl label="Reihe" leer="+ Reihe wählen" liste={liste} wert={wert ?? null} onWahl={id => onWahl(id)} onLeeren={() => onWahl(undefined)} leerenLabel="ohne Reihe" />
-      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{wert ? `läuft als ${MARKE_EVENTS} · ${reiheName(wert)}` : `gewöhnlicher ${MARKE_EVENTS}-Abend`}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{wert ? `läuft als ${MARKE_EVENTS} · ${reiheName(wert)}` : alle.length ? `gewöhnlicher ${MARKE_EVENTS}-Abend` : 'Noch keine Reihe — eigene legt ihr unter Stammdaten › Wertelisten an.'}</span>
     </span>
   );
 }

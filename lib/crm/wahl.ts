@@ -4,7 +4,7 @@
 // steht hier und ist getestet (tests/crm-wahl.test.ts): Filtern mit Suche,
 // Tastatur-Index, Startpunkt im Menü, Lage des Menüs im Fenster.
 
-import { KERN_EINHEITEN } from '@/lib/einheiten';
+import { KERN_EINHEITEN, gehoertZuPrivat } from '@/lib/einheiten';
 import type { Gesellschaft } from './typen';
 
 /** Ein Wert in einer Wahl. `hinweis` steht leise hinter dem Namen (z. B. „30 T“ beim Kreis); `punkt` = farbiger Punkt davor (z. B. Einheit). */
@@ -132,11 +132,12 @@ export const GESELLSCHAFT_WAHL: readonly WahlEintrag<Gesellschaft>[] = [
  * kein Zugang) ist das genau `GESELLSCHAFT_WAHL`. Eine unbekannte gespeicherte `g-…` bleibt als „Gesellschaft (nicht im
  * Register)“ wählbar, damit nichts still verloren geht.
  */
-export function gesellschaftWahl(register: readonly { id: string; name: string; status?: string }[] | null | undefined, aktuell?: string | null): WahlEintrag<Gesellschaft>[] {
+export function gesellschaftWahl(register: readonly { id: string; name: string; status?: string }[] | null | undefined, aktuell?: string | null, nurBusiness?: boolean | null): WahlEintrag<Gesellschaft>[] {
   const weitere = (register ?? []).filter(g => /^g-/.test(g.id));
   const ruht = (s?: string) => s === 'ruhend' || s === 'aufgeloest';
   const l: WahlEintrag<Gesellschaft>[] = [
-    ...KERN_EINHEITEN.map(e => ({ id: e.id as Gesellschaft, label: e.label })),
+    // Konto „nur Business“ (Abnahme 14.10., B17): keine Privat-Einheit (Selbstständigkeit) zur Wahl — eine gespeicherte bleibt sichtbar.
+    ...KERN_EINHEITEN.filter(e => !nurBusiness || !gehoertZuPrivat(e.id) || e.id === aktuell).map(e => ({ id: e.id as Gesellschaft, label: e.label })),
     ...weitere.filter(g => !ruht(g.status) || g.id === aktuell).map(g => ({ id: g.id as Gesellschaft, label: g.name, ...(ruht(g.status) ? { hinweis: g.status === 'ruhend' ? 'ruhend' : 'aufgelöst' } : {}) })),
   ];
   if (aktuell && /^g-/.test(aktuell) && !l.some(x => x.id === aktuell)) l.push({ id: aktuell as Gesellschaft, label: 'Gesellschaft (nicht im Register)' });

@@ -33,7 +33,14 @@ const AKTE = {
   recht: 'FIRMENAKTE-RECHT-CHECK',
   beschluss: 'FIRMENAKTE-BESCHLUSS-CAPTABLE',
   unter: 'FIRMENAKTE-UNTERAUFGABE',
+  // B17 (14.10.): Aufgaben und Listen des Gründungsfahrplans (freie Kennung, Liste `lm-ms-fahrplan-…`)
+  fahrplan: 'FIRMENAKTE-FAHRPLAN-AUFGABE',
+  fahrplanUnter: 'FIRMENAKTE-FAHRPLAN-UNTER',
+  fahrplanListe: 'FIRMENAKTE-FAHRPLAN-LISTE',
 };
+// Die Liste eines Fahrplan-Meilensteins — genau wie die Erzeuger sie bilden.
+const FP_MS = 'ms-fahrplan-register-11111111-1111-4111-8111-111111111111';
+const FP_LISTE = `lm-${FP_MS.slice(0, 40)}-x`;
 const BUSINESS = 'FIRMENAKTE-BUSINESS-SICHTBAR';
 const lecks = (text: string) => Object.entries(AKTE).filter(([, m]) => text.includes(m)).map(([n]) => n);
 
@@ -66,7 +73,8 @@ beforeAll(async () => {
   GESTERN = (await import('@/lib/kalender/zeit')).tagPlus(HEUTE, -1);
   await db.saveJson('konten', { konten: KONTEN, einladungen: [] });
   await db.saveJson('tasks', {
-    projects: [], listen: [], statusEigen: [], gruppen: [], vorlagen: [],
+    projects: [{ id: 'pm-ug', title: 'Meilensteine', spaceId: 'ug', space: 'business', createdAt: T0, updatedAt: T0 }],
+    listen: [{ id: FP_LISTE, projektId: 'pm-ug', titel: AKTE.fahrplanListe, sortOrder: 0 }], statusEigen: [], gruppen: [], vorlagen: [],
     tasks: [
       aufgabe('usp-fa0001', AKTE.pflicht, { dueDate: HEUTE, beteiligte: ['zweite'] }),
       aufgabe('t-fa-unter', AKTE.unter, { parentId: 'usp-fa0001', dueDate: HEUTE }),
@@ -76,6 +84,8 @@ beforeAll(async () => {
       aufgabe('rcw-fa0004', AKTE.recht, { priority: 'medium' }),
       aufgabe('bfc-fa0005', AKTE.beschluss, { priority: 'medium' }),
       aufgabe('t-fa-biz', BUSINESS, { assignee: 'partner', dueDate: HEUTE, tags: [] }),
+      aufgabe('t-fa-fahrplan', AKTE.fahrplan, { projectId: 'pm-ug', listeId: FP_LISTE, tags: [] }),
+      aufgabe('t-fa-fahrplan-u', AKTE.fahrplanUnter, { projectId: 'pm-ug', listeId: FP_LISTE, parentId: 't-fa-fahrplan', tags: [] }),
     ],
   });
 }, 60_000);
@@ -95,6 +105,14 @@ describe('Die reine Regel (lib/aufgaben/firmenakte-sicht.ts)', () => {
     expect(readFileSync(path.join(process.cwd(), 'lib/gesellschaften/beschluss-server.ts'), 'utf8')).toMatch(/\$\{BESCHLUSS_CAPTABLE_PRAEFIX\}\$\{rechtHash/);
     for (const id of ['t-abc', 'mtg-20261001-abcd', 'steuer-ust-2026', 'w-abc-20261001', 'us-x', 'vt-x', 'rc-x', 'bf-x', '']) expect(R.istFirmenAkteAufgabe({ id }), id).toBe(false);
     expect(R.istFirmenAkteAufgabe(null)).toBe(false);
+    // Gründungsfahrplan (B17, 14.10.): an der LISTE erkannt — die Erzeuger bilden genau dieses Präfix.
+    const { fahrplanMeilensteinId } = await import('@/lib/gesellschaften/fahrplan');
+    const { meilensteinListeId } = await import('@/lib/planung/meilenstein-aufgaben');
+    const liste = meilensteinListeId(fahrplanMeilensteinId('g-11111111-1111-4111-8111-111111111111', 'register'));
+    expect(R.istFahrplanListe(liste)).toBe(true);
+    expect(R.istFirmenAkteAufgabe({ id: 't-frei', listeId: liste })).toBe(true);
+    expect(R.istFirmenAkteAufgabe({ id: 't-frei', listeId: meilensteinListeId('ms-demo-pipeline') })).toBe(false);
+    expect(R.istFahrplanListe(FP_LISTE)).toBe(true);
   });
 
   it('Unteraufgaben erben über die ganze Kette (kreisfest); ohne Firmen-Akte bleibt der Bestand dasselbe Objekt', async () => {
@@ -134,7 +152,7 @@ describe('Lesen: Konto „nur Business“ bekommt keine Firmen-Akte-Aufgabe', ()
       const s = JSON.stringify(await ladeAufgabenSicht(wer));
       for (const m of Object.values(AKTE)) expect(s, `${wer}: ${m}`).toContain(m);
     }
-    expect([...await verborgeneAufgabenFuer('partner')].sort()).toEqual(['bfc-fa0005', 'rcw-fa0004', 't-fa-unter', 'usd-fa0002', 'usp-fa0001', 'vte-fa0003-20261101']);
+    expect([...await verborgeneAufgabenFuer('partner')].sort()).toEqual(['bfc-fa0005', 'rcw-fa0004', 't-fa-fahrplan', 't-fa-fahrplan-u', 't-fa-unter', 'usd-fa0002', 'usp-fa0001', 'vte-fa0003-20261101']);
     expect([...await verborgeneAufgabenFuer('inhaberin')]).toEqual([]);
   });
 

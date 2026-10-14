@@ -6,6 +6,9 @@ import { leererBestand, wendeCrmAn } from '../lib/crm/speicher';
 import { wendeAn } from '../lib/sync';
 import { verantwortlich, zustaendig, istMeins, haeltBeziehung, wer, fuerDich, teamFeed, BEIDE } from '../lib/crm/team';
 import { werIstDran, karteGehoert } from '../lib/crm/heute';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-25';
 const J = '2026-09-25T10:00:00.000Z';

@@ -157,6 +157,29 @@ export type Szenario = 'schlecht' | 'real' | 'gut';
 export const SZENARIO_LABEL: Record<Szenario, string> = {
   schlecht: 'Wenn es schlecht läuft', real: 'Realistisch', gut: 'Wenn es gut läuft',
 };
+/**
+ * Szenarien, die sich wirklich unterscheiden (Abnahme 14.10., B11): gleiche Verläufe (Ende, Tiefpunkt, Engpass) werden zu EINER Kachel
+ * zusammengefasst — drei identische Kacheln sagen nichts. Eine einzige Gruppe = alle gleich → die Ansicht zeigt statt der Kacheln einen Satz
+ * (`SZENARIEN_GLEICH`). Reihenfolge schlecht → real → gut bleibt. Rein, getestet.
+ */
+export function szenarioGruppen(drei: Readonly<Record<Szenario, Pick<Vorschau, 'wochen' | 'tiefpunkt' | 'engpass'>>>): { szenarien: Szenario[]; label: string }[] {
+  const schluessel = (f: Pick<Vorschau, 'wochen' | 'tiefpunkt' | 'engpass'>) => `${Math.round((f.wochen.at(-1)?.stand ?? 0) * 100)}|${Math.round(f.tiefpunkt.stand * 100)}|${f.engpass?.label ?? ''}`;
+  const gruppen: { k: string; szenarien: Szenario[] }[] = [];
+  for (const sz of ['schlecht', 'real', 'gut'] as const) {
+    const k = schluessel(drei[sz]);
+    const da = gruppen.find(g => g.k === k);
+    if (da) da.szenarien.push(sz); else gruppen.push({ k, szenarien: [sz] });
+  }
+  return gruppen.map(g => ({ szenarien: g.szenarien, label: g.szenarien.map(sz => SZENARIO_LABEL[sz]).join(' = ') }));
+}
+/** Der Satz, wenn alle drei Szenarien gleich rechnen (keine unsicheren Eingänge im Zeitraum). */
+export const SZENARIEN_GLEICH = 'Schlecht, realistisch und gut rechnen hier gleich — im Zeitraum gibt es keine unsicheren Eingänge (alles ist fest erwartet oder bezahlt).';
+/**
+ * „Heute auf den Konten“ gegen „frei verfügbar“ (Abnahme 14.10., B11) — EIN Satz für beide Ansichten: Liquidität zeigt das Geld auf den Konten
+ * und wie es sich Woche für Woche aus Rechnungen, Zahlungen und Planposten bewegt; die Finanzplanung rechnet „frei verfügbar“ aus dem Kontostand
+ * am Monatsende laut Plan, minus Steuerrücklage und offener Umsatzsteuer.
+ */
+export const CASH_GEGEN_FREI = 'Heute auf den Konten = was jetzt da ist. „Frei verfügbar“ in der Planung = Kontostand am Monatsende laut Plan, minus Steuerrücklage und offener Umsatzsteuer — darum weichen die Zahlen ab.';
 /** Ab welcher Wahrscheinlichkeit ein unsicherer Eingang im Szenario zählt. */
 const SZENARIO_SCHWELLE: Record<Szenario, number> = { schlecht: 100, real: 60, gut: 1 };
 

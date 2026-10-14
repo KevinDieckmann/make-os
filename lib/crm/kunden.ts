@@ -9,7 +9,7 @@ import type { Mandat } from './typen';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { TEAM, BEIDE, zustaendig } from './team';
 import { bruttoAusNetto } from '@/lib/finanzen/ust';
-import { KERN_EINHEITEN, gesellschaftAusEinheit, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
+import { KERN_EINHEITEN, gesellschaftAusEinheit, gehoertZuPrivat, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
 function plusMonate(datum: string, n: number): string {
@@ -166,6 +166,13 @@ export const GESELLSCHAFT_FILTER: readonly { id: GesellschaftFilter; label: stri
   { id: 'alle', label: 'Alle', kurz: 'Alle' },
   ...KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label, kurz: e.kurz })),
 ];
+/**
+ * Die Gesellschafts-Auswahl für ein Konto (Abnahme 14.10., B17): ein Konto „nur Business“ (`finanzRecht: 'business'`) bekommt keine
+ * Privat-Einheit (die Selbstständigkeit gehört zu Privat — `gehoertZuPrivat`, lib/einheiten.ts) als Auswahl. Rein.
+ */
+export function gesellschaftFilterFuer(nurBusiness: boolean | null | undefined): readonly { id: GesellschaftFilter; label: string; kurz: string }[] {
+  return nurBusiness ? GESELLSCHAFT_FILTER.filter(g => g.id === 'alle' || !gehoertZuPrivat(g.id)) : GESELLSCHAFT_FILTER;
+}
 /** Passt ein Mandat (bzw. seine Gesellschaft) zum Filter? `alle` lässt alles durch. */
 export const passtGesellschaft = (filter: GesellschaftFilter, gesellschaft: string | null | undefined): boolean =>
   filter === 'alle' || gesellschaft === filter;

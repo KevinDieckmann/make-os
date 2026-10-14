@@ -84,7 +84,8 @@ export function AuswertungKarte({ stichtag, i = 5 }: { stichtag: string; i?: num
       {!a && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fehler ? 'Auswertung gerade nicht möglich.' : 'rechnet …'}</div>}
       {a && <>
         <KennzahlZeilen a={a} />
-        <div style={{ marginTop: 10 }}><SpaceBalken privat={a.woche.space.privat} business={a.woche.space.business} /></div>
+        {/* Konto „nur Business“ (B17, 14.10.): der Server rechnet nur Business — dann kein Privat/Business-Balken. */}
+        {!a.nurBusiness && <div style={{ marginTop: 10 }}><SpaceBalken privat={a.woche.space.privat} business={a.woche.space.business} /></div>}
         {a.quelle === 'ohne-kalender' && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>Ohne iCloud nur die Fokus-Zeit aus der Zeitmessung.</div>}
       </>}
       {offen && a && <AuswertungFenster start={stichtag} onZu={() => setOffen(false)} />}
@@ -132,8 +133,8 @@ export function AuswertungInhalt({ a }: { a: AuswertungAntwort }) {
           </div>
         ))}
       </div>
-      {abschnitt('Privat / Business')}
-      <SpaceBalken privat={w.space.privat} business={w.space.business} />
+      {!a.nurBusiness && <>{abschnitt('Privat / Business')}
+      <SpaceBalken privat={w.space.privat} business={w.space.business} /></>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
         <div>
           {abschnitt('Je Firma')}

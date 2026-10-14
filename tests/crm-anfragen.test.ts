@@ -5,6 +5,9 @@ import type { CrmBestand } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
 import { anfrageBauen, anfragenListe, stufeNachAnfrage, leadNachAnfrage, anfrageText, ANFRAGE_KANAELE, type AnfrageKontext } from '../lib/crm/anfragen';
 import { istAnfrage, ANFRAGE_FOLLOWUP } from '../lib/crm/marketing';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-27', JETZT = `${HEUTE}T10:00:00.000Z`;
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id: `c-${id}`, vorname: id, nachname: 'Test', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });

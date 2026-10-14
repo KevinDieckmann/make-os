@@ -290,7 +290,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
         </div>
         <KontaktSuche kontakte={kontakte} gewaehlt={k} firma={firma} onWahl={kontaktWaehlen} />
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
-          <Wahl<Gesellschaftskennung> label="Gesellschaft" liste={GES_WAHL} wert={form.gesellschaft} onWahl={x => { merkeGesellschaft(x); aendern({ gesellschaft: x }); }} />
+          {/* B17 (14.10.): Konto „nur Business“ wählt nur unter den Gesellschaften, die der Server liefert (nie die Privat-Einheit). */}
+          <Wahl<Gesellschaftskennung> label="Gesellschaft" liste={daten.nurEntwuerfe ? GES_WAHL.filter(g => daten.gesellschaften.some(x => x.id === g.id)) : GES_WAHL} wert={form.gesellschaft} onWahl={x => { merkeGesellschaft(x); aendern({ gesellschaft: x }); }} />
           {(deals.length > 0 || deal) && (
             <Wahl<string> label="Deal" leer="+ Deal" liste={[...(deal && !deals.some(d => d.id === deal.id) ? [deal] : []), ...deals].map(d => ({ id: d.id, label: d.titel, hinweis: crm.stufen.find(x => x.id === d.stufe)?.label }))}
               wert={form.dealId ?? null} onWahl={x => aendern({ dealId: x })} onLeeren={() => aendern({ dealId: undefined })} leerenLabel="ohne Deal (beim Senden neu)" />

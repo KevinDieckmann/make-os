@@ -20,6 +20,9 @@ import type { Kontakt, Aktivitaet } from '../lib/make-one/crm';
 import type { Chance, CrmBestand, FollowUp, Mandat } from '../lib/crm/typen';
 import type { KalenderPruefBestand } from '../lib/crm/verbindungen-kalender';
 import type { TerminMitBezug } from '../lib/kalender/bezug';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-29';
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id, vorname: 'Test', nachname: id.toUpperCase(), email: `${id}@example.invalid`, eignung: 'hoch', prio: 'A', stufe: 'gespraech', aktivitaeten: [], importiertAm: HEUTE, geaendertAm: HEUTE, besitzer: 'kevin', ...x } as Kontakt);

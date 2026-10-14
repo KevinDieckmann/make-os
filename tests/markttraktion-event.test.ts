@@ -13,6 +13,9 @@ import {
   einlader, einladerMit, punktWer, aufgabenBearbeiter, checklisteAlsAufgaben, aufgabeAbgleichen, punktAendern,
   arbeitJePerson, nachfassGruppen, teilAenderung, type ChecklistenPunkt,
 } from '../lib/crm/eventplanung';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-25';
 const JETZT = '2026-09-25T08:00:00.000Z';

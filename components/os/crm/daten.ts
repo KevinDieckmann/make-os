@@ -6,6 +6,7 @@
 // schickt eine Einzeländerung; der Abgleich holt alle 20 Sekunden den Stand,
 // damit Kevin und Malin gleichzeitig arbeiten können.
 
+import { reihenSetzen, type EventReihe } from '@/lib/crm/marke';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -23,6 +24,8 @@ import { NEU_LADEN_TEXT } from '@/lib/bau/kennung';
 
 export interface CrmAntwort {
   ok: boolean; heute: string; stand: CrmBestand;
+  /** Die Reihen dieser Instanz (14.10., Instanz-Daten — lib/crm/reihen-server.ts); im Browser als Laufzeit-Liste gesetzt. */
+  reihen?: EventReihe[];
   /** Wer hier angemeldet ist (Team-Kürzel) — für „Meins“, Übergaben und Freigaben. */
   ich: string;
   stufen: { id: ChancenStufe; label: string; p: number; weiterWenn: string; offen: boolean }[];
@@ -113,7 +116,7 @@ export function useCrm() {
   // Eine Kette für CRM-Bestand UND Kontakte (lib/crm/kontakt-schreiben.ts `nacheinanderKette`, getestet).
   const kette = useRef(nacheinanderKette());
   const nacheinander = useCallback(<T,>(f: () => Promise<T>): Promise<T> => kette.current(f), []);
-  const uebernehmen = useCallback((a: CrmAntwort) => { zeilen.current = crmStaende(a.stand); setCrm(a); }, []);
+  const uebernehmen = useCallback((a: CrmAntwort) => { zeilen.current = crmStaende(a.stand); reihenSetzen(a.reihen); setCrm(a); }, []);
 
   /** `erzwingen` (nach einem 409): auch laden, wenn gerade noch andere Schreibvorgänge unterwegs sind. */
   const laden = useCallback(async (erzwingen?: boolean) => {

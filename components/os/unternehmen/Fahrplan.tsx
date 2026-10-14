@@ -13,7 +13,7 @@ import { Karte, Ueberschrift, Knopf, Hinweis, Leer } from '../ui';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { einheitAusGesellschaft } from '@/lib/einheiten';
-import { fahrplanFuer, fahrplanZielId, FAHRPLAN_SCHRITTE } from '@/lib/gesellschaften/fahrplan';
+import { fahrplanAnbieten, fahrplanFuer, fahrplanZielId, FAHRPLAN_SCHRITTE } from '@/lib/gesellschaften/fahrplan';
 import { klein, type GAnzeige, type RegisterDaten } from './teile';
 
 const json = (r: Response) => r.json().catch(() => ({ ok: false, error: `Antwort ${r.status}.` }));
@@ -61,6 +61,8 @@ export function FahrplanKarte({ g, daten }: { g: GAnzeige; daten: RegisterDaten 
     } finally { setLaeuft(null); }
   };
 
+  // B21 (14.10.): einer eingetragenen Gesellschaft (Status, HRB, Eintragung) wird kein Gründungsfahrplan angeboten — ein schon angelegter bleibt erreichbar.
+  if (da !== true && !fahrplanAnbieten(g, localDay())) return null;
   return (
     <Karte>
       <Ueberschrift>Gründungsfahrplan</Ueberschrift>

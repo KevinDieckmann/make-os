@@ -1,11 +1,13 @@
 // Fokus Innovation (03.10.): Reihe unter Make.One — Werteliste, Säuberung, Schreibweg mit Stand, Name nach außen,
 // Herkunft in der Qualifizierung, Filter und Kennzahlen je Reihe (eine Rechnung: eventZahlen + zahlenSumme).
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Chance, CrmBestand, Event, Teilnahme } from '@/lib/crm/typen';
 import { saeubern, wendeCrmAn, leererBestand } from '@/lib/crm/speicher';
 import { standVon } from '@/lib/crm/crm-stand';
-import { EVENT_REIHEN, OHNE_REIHE, reiheKennung, reiheName, reiheVon, titelMitReihe, eventName, alsMarketingAnmeldung, NETZWERKEN_MARKE } from '@/lib/crm/marke';
+import { EVENT_REIHEN, OHNE_REIHE, reiheKennung, reiheName, reiheVon, titelMitReihe, eventName, alsMarketingAnmeldung, NETZWERKEN_MARKE, reihenListe, reihenSetzen, kennungAusName } from '@/lib/crm/marke';
+import { BETREIBER_REIHEN } from '@/lib/crm/reihen-server';
+import { wertelistenPruefen, wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { reihenUebersicht, reihenFilter, passtReihe, zahlenSumme, reiheSchluessel } from '@/lib/crm/reihen';
 import { eventZahlen } from '@/lib/crm/events';
 import { marketingHerkunft } from '@/lib/crm/scoring';
@@ -22,10 +24,31 @@ const sauber = (roh: Record<string, unknown>) => saeubern('events', roh, J, 'kev
 const FI = 'fokus-innovation';
 
 describe('Werteliste und Namen', () => {
-  it('Fokus Innovation steht in der Werteliste, Kennung fest', () => {
-    expect(EVENT_REIHEN).toContainEqual({ id: FI, name: 'Fokus Innovation' });
+  // 14.10. (Kevins Entscheidung): Reihen sind Instanz-Daten — keine Reihe im Code; die Betreiber-Instanz behält ihre über die Start-Kennung,
+  // eine neue Instanz startet leer und legt eigene in den Wertelisten an.
+  it('Instanz-Daten: ohne Bestand keine Reihe; Wertelisten, Start-Kennung und Events ergeben die Liste, Name aus der Kennung', () => {
+    reihenSetzen([]);
+    expect(EVENT_REIHEN).toEqual([]);
+    expect(reihenListe({})).toEqual([]);
+    expect(reihenListe({ start: BETREIBER_REIHEN })).toEqual([{ id: FI, name: 'Fokus Innovation' }]);
+    expect(reihenListe({ events: [ev('a', { reihe: FI })] })).toEqual([{ id: FI, name: 'Fokus Innovation' }]);
+    expect(reihenListe({ gespeichert: [{ id: 'abend-nord', name: 'Abend Nord' }], events: [ev('a', { reihe: FI }), ev('b', { reihe: 'messe-x', marke: NETZWERKEN_MARKE })] }))
+      .toEqual([{ id: 'abend-nord', name: 'Abend Nord' }, { id: FI, name: 'Fokus Innovation' }]);
     expect(reiheName(FI)).toBe('Fokus Innovation');
-    expect(reiheName('salon-x')).toBe('salon-x'); // unbekannt: steht für sich (Rückweg aus einem neueren Stand)
+    expect(reiheName('salon-x')).toBe('Salon X'); // unbekannt: Name aus der Kennung (Rückweg aus einem neueren Stand)
+    reihenSetzen([{ id: 'abend-nord', name: 'Gründer-Abend Nord' }]);
+    expect(reiheName('abend-nord')).toBe('Gründer-Abend Nord'); // gespeicherter Name gewinnt
+    expect(kennungAusName('Gründer-Frühstück Nord')).toBe('gruender-fruehstueck-nord');
+  });
+  it('Wertelisten: Reihen per Name anlegen — Kennung aus dem Namen, bei gleichem Namen dieselbe; „fest“ = aus dem Bestand', () => {
+    const p = wertelistenPruefen({ reihen: ['Abend Nord', 'abend nord', 'Gründer-Frühstück'] }, {});
+    expect(p.ok).toBe(true);
+    expect(p.wertelisten.reihen).toEqual([{ id: 'abend-nord', name: 'Abend Nord' }, { id: 'gruender-fruehstueck', name: 'Gründer-Frühstück' }]);
+    const q = wertelistenPruefen({ reihen: ['Gründer-Frühstück', 'ABEND NORD'] }, p.wertelisten);
+    expect(q.wertelisten.reihen?.map(r => r.id)).toEqual(['gruender-fruehstueck', 'abend-nord']);
+    expect(wertelistenPruefen({ reihen: ['x'] }, {}).ok).toBe(false);
+    expect(wertelistenVollstaendig(p.wertelisten, [{ id: FI, name: 'Fokus Innovation' }, { id: 'abend-nord', name: 'Abend Nord' }]).reihen)
+      .toEqual([{ wert: 'Fokus Innovation', fest: true }, { wert: 'Abend Nord', fest: false }, { wert: 'Gründer-Frühstück', fest: false }]);
   });
   it('Kennung: klein, Ziffern, Bindestriche, höchstens 40 Zeichen', () => {
     expect(reiheKennung(FI)).toBe(FI);
@@ -126,6 +149,8 @@ describe('Filter und Kennzahlen je Reihe', () => {
   const chancen = [{ id: 'ch-1', titel: 'Deal', stufe: 'qualifiziert', kontaktIds: ['c-a'], wert: { betrag: 12000, basis: 'einmalig' }, quelle: 'event', quelleBezug: 'e1', angelegt: '2026-09-12', geaendert: J } as unknown as Chance];
   const zahlen = Object.fromEntries(events.map(e => [e.id, eventZahlen(e, teilnahmen, kontakte, chancen)]));
 
+  // Die Liste der Instanz (sonst zur Laufzeit gesetzt): hier wie in der Betreiber-Instanz.
+  beforeAll(() => { reihenSetzen(reihenListe({ start: BETREIBER_REIHEN })); });
   it('eventZahlen zählt entstandene Deals (Anzahl neben dem Wert)', () => {
     expect(zahlen.e1.dealsVerursacht).toBe(1);
     expect(zahlen.e1.verursacht).toBeGreaterThan(0);

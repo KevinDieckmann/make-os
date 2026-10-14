@@ -218,7 +218,8 @@ export function zoeSatz(g: readonly Gespraech[]): ZoeSatz {
   if (wv) return { text: `Heute wieder dran: „${wv.betreff}“ mit ${name(wv)}.`, gespraech: wv.id };
   const alt = (l: Gespraech[]) => [...l].sort((a, b) => (b.wartetAufUns ?? b.wartetTage ?? 0) - (a.wartetAufUns ?? a.wartetTage ?? 0) || a.am.localeCompare(b.am));
   const frist = alt(arbeit.filter(x => x.frist && x.fach !== 'info' && x.fach !== 'warten')).sort((a, b) => a.frist!.datum.localeCompare(b.frist!.datum))[0];
-  if (frist) return { text: `${name(frist)} braucht „${frist.betreff}“ ${frist.frist!.text.replace(/^spätestens\s+/i, 'bis ')} — am besten heute antworten.`, gespraech: frist.id };
+  // Der Satz nennt, was im Fach zu tun ist (B9, 14.10.): „antworten“ nur, wenn das Gespräch auch unter „Antworten“ steht.
+  if (frist) return { text: `${name(frist)} braucht „${frist.betreff}“ ${frist.frist!.text.replace(/^spätestens\s+/i, 'bis ')} — am besten heute ${frist.fach === 'antworten' ? 'antworten' : 'ansehen'}.`, gespraech: frist.id };
   const bekannt = alt(arbeit.filter(x => x.fach === 'antworten' && x.zuordnung))[0];
   if (bekannt) return { text: `Wichtigste Antwort heute: ${name(bekannt)} wartet ${tageWort(bekannt.wartetAufUns ?? 0)} auf eine Antwort zu „${bekannt.betreff}“.`, gespraech: bekannt.id };
   const nach = alt(arbeit.filter(x => x.fach === 'warten' && x.nachfassen))[0];

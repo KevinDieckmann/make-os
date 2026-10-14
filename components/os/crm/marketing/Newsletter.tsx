@@ -25,7 +25,7 @@ import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte } from '../
 import type { NewsletterAusgabe, Beitrag } from '@/lib/crm/typen';
 import { TEAM, anderer, nameVon } from '@/lib/crm/team';
 import {
-  AUSGABE_STATUS, STIMMEN_WAHL, newsletterEmpfaenger, abmeldequote, quotenAmpel, prozent, stimmeText,
+  AUSGABE_STATUS, stimmenWahl, newsletterEmpfaenger, abmeldequote, quotenAmpel, prozent, stimmeText,
   autorVon, ausgabeFreigabeStand, ausgabeSperre, ausgabeStatusWechsel, ausgabeNachTextAenderung, ausgabeNaechsterSchritt, freigabeAnfrage, freigabeOk, aenderungsWunsch, type Teil,
 } from '@/lib/crm/marketing';
 import { type CrmApi, neueId, datum } from '../daten';
@@ -167,7 +167,7 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
       </Feldzeile>
       <Feldzeile label="Erscheint als">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={a.stimme ?? null} onWahl={s => void teil({ stimme: s })} />
+          <Wahl label="Erscheint als" leer="+ Absender" liste={stimmenWahl()} wert={a.stimme ?? null} onWahl={s => void teil({ stimme: s })} />
           {!a.stimme && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Absender im Versandwerkzeug — {[...TEAM.map(m => m.name), 'die Marke'].join(', ')}?</span>}
         </div>
       </Feldzeile>

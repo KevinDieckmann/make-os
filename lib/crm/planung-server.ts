@@ -25,7 +25,7 @@ import { ladeCrm } from './speicher';
 import { leads } from './leads';
 import { faellige } from './followup';
 import { zyklus } from './deal-auswertung';
-import { EVENT_REIHEN } from './marke';
+import { reihenDerInstanz } from './reihen-server';
 import { TEAM } from './team-liste';
 import { SCORE_ZIELE } from './scoreboard';
 import { BUSINESS_GESELLSCHAFTEN, finanzOrtName, istRegisterKennung } from '@/lib/einheiten';
@@ -144,7 +144,7 @@ export async function planungLage(person: string, filter: string | null, heute =
       auswahl: {
         herkunft: KANAL_HERKUNFT, quoten: PLAN_QUOTEN, challengeArten: CHALLENGE_ARTEN, nachLeistung: NACH_LEISTUNG, zeiten: ZEITEN_LABEL, grenzen: PLANUNG_GRENZEN,
         kampagnen: (crm.kampagnen ?? []).filter(k => !k.geloeschtAm && !k.archiviertAm).map(k => ({ id: k.id, name: k.name })),
-        reihen: EVENT_REIHEN.map(r => ({ id: r.id, name: r.name })),
+        reihen: (await reihenDerInstanz(crm)).map(r => ({ id: r.id, name: r.name })),
         gesellschaften, zahlenziele: zz,
       },
       standard: { quoten: standardQuoten(crm.wahrscheinlichkeiten), dealWert: z.dealGroesse, zyklusWochen: z.median != null ? Math.max(1, Math.round(z.median / 7)) : null },

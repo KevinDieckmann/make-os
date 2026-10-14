@@ -161,6 +161,14 @@ describe('B5 · Leads: EINE Zählung über leads(), Kunden nie „neue Leads“'
     const business = h.slice(h.indexOf('  business: ['), h.indexOf('};', h.indexOf('  business: [')));
     expect(business).not.toMatch(/art: '(kanal|leads)'/);
   });
+  it('C8 (14.10.): keine Aktivität vor dem Anlagetag; „Neue Leads ohne Schritt“ und das Kreislauf-Ist zählen nach EINER Regel (neuerLeadAm)', async () => {
+    const { tagVon } = await import('@/lib/zeit');
+    const { neuerLeadAm } = await import('@/lib/crm/neue-leads');
+    for (const k of kontakte) for (const a of k.aktivitaeten ?? []) expect(tagVon(a.am) >= k.importiertAm, `${k.vorname}: ${a.am} vor ${k.importiertAm}`).toBe(true);
+    const neu = neueOhneSchritt(kontakte, crm, HEUTE);
+    for (const k of neu) expect(neuerLeadAm(k), k.vorname).toBeTruthy();
+    expect(quelle('lib/crm/person-anlegen.ts')).toContain('neuerLeadSeit(k, heute)');
+  });
   it('kein Kunde (aktives Mandat bzw. BEAN „B“) steht unter „Neue Leads ohne nächsten Schritt“; der Filter „Kunden“ zählt BEAN „B“', () => {
     const kunden = kontakte.filter(k => istKunde(k, crm));
     expect(kunden.length).toBeGreaterThanOrEqual(2); // die Ansprechpartner der zwei Demo-Mandate

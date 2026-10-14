@@ -48,7 +48,7 @@ import { estGemeinsam, steuerParameter } from './steuern';
 import { estTarif, jahresSteuer, neuerSteuerrechner, type Steuerparameter, type SteuerHand, type SteuerMonat, type Steuerrechner } from './ertragsteuer';
 import type { Formeln } from './handwerte';
 import type { Schwellen } from './schwellen';
-import { UG_KURZ, UG_NAME } from '@/lib/einheiten';
+import { UG_KURZ, UG_NAME, finanzOrtName } from '@/lib/einheiten';
 
 export type Einheit = 'privat' | 'selbststaendigkeit' | 'ug' | 'kdv';
 
@@ -865,7 +865,8 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 10, 'Umsatzsteuer an Finanzamt', -u.ustZahlung, 'ug');
     add(m, 1, 'Björn-Rate', -u.bjoern, 'kdv');
     add(m, 31, `Ertragsteuer ${UG_KURZ}`, -u.steuer, 'ug');
-    add(m, 31, 'Ertragsteuer KD Ventures', -u.kdvSt.zahlung, 'kdv');
+    // 14.10. (Kevins Entscheidung): nur die Zeilen-NAMEN der Holding aus lib/einheiten.ts — Zahlen und Formeln unverändert.
+    add(m, 31, `Ertragsteuer ${finanzOrtName('kdv')}`, -u.kdvSt.zahlung, 'kdv');
     add(m, 5, 'Eingang One Banking', u.ob, 'ug');   // ohne USt — Absicht (Kevin 05.10.), siehe rechneUG
     // Formel-Prüfung 05.10.: USt-Satz aus den Annahmen (vorher fest 19 %); Provision/Events, Umsatz von Hand, Kapital, Holding-Umlage und
     // Darlehen fehlten im Kalender, obwohl sie im Konto stehen.
@@ -875,7 +876,7 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 15, 'Eingang aus Bausteinen', u.bausteineEingang * brutto, 'ug');
     add(m, 15, 'Eingang aus Umsatz von Hand', (u.umsatzEingang ?? 0) * brutto, 'ug');
     add(m, 1, 'Stammkapital und Gesellschafterdarlehen', u.kapital, 'ug');
-    add(m, 1, 'Holding-Umlage an KD Ventures', -u.holding, 'ug');
+    add(m, 1, `Holding-Umlage an ${finanzOrtName('kdv')}`, -u.holding, 'ug');
     // Darlehen (05.10.): je Seite ein Termin — Auszahlung beim Geber, Eingang beim Nehmer, Rückzahlung umgekehrt.
     add(m, 1, 'Darlehen ausgezahlt oder zurückgezahlt', -u.darlehen, 'ug');
     add(m, 1, 'Darlehen erhalten oder zurückerhalten', u.darlehenEin ?? 0, 'ug');

@@ -67,6 +67,8 @@ import { offenErledigt } from '@/lib/planung/rang';
 import type { Ziel, ZielHorizont } from '@/lib/planung/typen';
 import { indexStatus, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import { TRAKTION_IM_BUSINESS_INDEX } from '@/lib/business/register';
+import { vorschlagAnzeige, type VorschlagAnzeige, type VorschlagFuerAnzeige } from '@/lib/zoe/vorschlag-anzeige';
+import { useNurBusiness } from '../useInhaber';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -546,16 +548,17 @@ function FinanzenPrivatWidget({ titel, i }: WidgetProps) {
 // Seit 10.10. (Kevin 08.10.: „offene Freigaben von ZOE“): die Zahl UND die ersten drei Vorschläge mit dem, was die Freigabe bewirken würde, dazu der
 // Weg in die Freigaben. Quelle ist der Stapel selbst (GET /api/zoe/stapel?space=) — er liefert der Person nur ihre eigenen Vorschläge und die des
 // Systems, auf Heute nur die des Bereichs der Fläche (und die „unklaren“); nichts anderes steht hier.
-interface FreigabeKurz { id: string; titel: string; nachher?: string; anlass?: string }
+// B10 (14.10.): jede Zeile zeigt Titel · Was · Wofür und den Bezug — aus EINER Stelle (`vorschlagAnzeige`), nie nur „Einzelheiten in der Inbox“.
+interface FreigabeKurz { id: string; anzeige: VorschlagAnzeige }
 function ZoeWidget({ e, titel, i, seite }: WidgetProps) {
   const router = useRouter();
   // Je Sicht der Fläche (09.10. spät): Heute › Privat zählt nur Vorschläge aus Privat, › Business nur aus Business — der Server filtert.
   const sicht = spaceAusFlaeche(seite);
   const stapel = useDaten<{ n: number; erste: FreigabeKurz[] }>(`/api/zoe/stapel${sicht === 'alle' ? '' : `?space=${sicht}`}`, x => {
-    const d = x as { offen?: number | unknown[]; vorschlaege?: (FreigabeKurz & { status?: string })[] };
+    const d = x as { offen?: number | unknown[]; vorschlaege?: (VorschlagFuerAnzeige & { id: string; status?: string })[] };
     const offen = (d.vorschlaege ?? []).filter(v => !v.status || v.status === 'offen');
     const n = typeof d.offen === 'number' ? d.offen : Array.isArray(d.offen) ? d.offen.length : offen.length;
-    return { n, erste: offen.slice(0, 3).map(v => ({ id: v.id, titel: v.titel, ...(v.nachher ? { nachher: v.nachher } : {}), ...(v.anlass ? { anlass: v.anlass } : {}) })) };
+    return { n, erste: offen.slice(0, 3).map(v => ({ id: v.id, anzeige: vorschlagAnzeige(v) })) };
   });
   const mitInbox = e.inbox === true;
   // Inbox 2 (06.10.): offen = Gespräche in Arbeit ohne Rundschreiben (EIN Strom, nur die eigenen Postfächer, /api/inbox).
@@ -575,7 +578,8 @@ function ZoeWidget({ e, titel, i, seite }: WidgetProps) {
       </div>
       {stapel && stapel.erste.length > 0 && (
         <Liste>
-          {stapel.erste.map(v => <Zeile key={v.id} onClick={() => { router.push(freigaben); }} links={<Punkt farbe={LEUCHT.achtung} />} titel={v.nachher || v.titel} unter={v.nachher && v.titel !== v.nachher ? v.titel : undefined} />)}
+          {stapel.erste.map(({ id, anzeige: a }) => <Zeile key={id} onClick={() => { router.push(freigaben); }} links={<Punkt farbe={LEUCHT.achtung} />} titel={a.titel} unter={`${a.was} · ${a.wofuer}`}
+            rechts={a.link ? <Link href={a.link.href} onClick={ev => ev.stopPropagation()} style={{ ...link, whiteSpace: 'nowrap' }}>{a.link.text} ›</Link> : undefined} />)}
           {stapel.n > stapel.erste.length && <Zeile onClick={() => { router.push(freigaben); }} titel={<span style={{ color: C.inkDim }}>+ {stapel.n - stapel.erste.length} weitere</span>} />}
         </Liste>
       )}
@@ -655,6 +659,9 @@ function ZeitBeideWidget({ titel, i, seite }: WidgetProps) {
   // Server nicht mit (`?space=`, lib/zeitmessung/modell.ts `bildFuerSicht`). Die Karte zeigt ohnehin nur die Summen (Kevin 09.10.).
   const fs = spaceAusFlaeche(seite);
   const d = useDaten<ZeitBild>(`/api/state/zeit${fs === 'alle' ? '' : `?sicht=${fs}&summen=beide`}`, x => ((x as { bild?: ZeitBild }).bild ?? null));
+  // Konto „nur Business“ (B17, 14.10.): der Server liefert keine Privat-Zeit — die Karte heißt dann nur „Zeit“, ohne Privat-Spalte und
+  // ohne den Hinweis auf einen Privat-Schalter, den es für dieses Konto nicht gibt.
+  const nurBusiness = useNurBusiness() === true;
   if (d === null) return null;
   const heute = d ? privatGegenBusiness(d.tagHeute) : null;
   const sieben = d ? privatGegenBusiness(d.sieben) : null;
@@ -672,8 +679,12 @@ function ZeitBeideWidget({ titel, i, seite }: WidgetProps) {
   };
   return (
     <Karte i={i} akzent={anteil !== null ? C.aktiv : undefined}>
-      <Ueberschrift rechts={<Link href={WEG.fokus('zeit')} style={link}>Zeit ›</Link>}>{titel ?? 'Zeit · Privat und Business'}</Ueberschrift>
-      {d === undefined ? <div style={{ fontSize: TYP.body, color: C.inkLeise }}>lade …</div> : anteil === null ? (
+      <Ueberschrift rechts={<Link href={WEG.fokus('zeit')} style={link}>Zeit ›</Link>}>{titel ?? (nurBusiness ? 'Zeit' : 'Zeit · Privat und Business')}</Ueberschrift>
+      {d === undefined ? <div style={{ fontSize: TYP.body, color: C.inkLeise }}>lade …</div> : nurBusiness ? (
+        (sieben?.business ?? 0) > 0 || (heute?.business ?? 0) > 0
+          ? <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>{spalte('business')}</div>
+          : <Leer>Noch nichts gemessen — die Zeit läuft im Hintergrund mit, sobald du in MAKE OS arbeitest.</Leer>
+      ) : anteil === null ? (
         <Leer>Noch nichts gemessen — die Zeit läuft im Hintergrund mit, sobald du in MAKE OS arbeitest: oben Privat oder Business wählen.</Leer>
       ) : (
         <>

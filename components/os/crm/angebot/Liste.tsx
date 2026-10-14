@@ -79,7 +79,8 @@ export function AngebotListe({ api, daten, onOeffnen, onNeu }: { api: CrmApi; da
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>{offen.length ? `${offen.length} offen · ${euroCent(offenWert)} netto Gesamtwert` : 'Kein offenes Angebot.'}{alle.filter(a => a.status === 'entwurf').length ? ` · ${alle.filter(a => a.status === 'entwurf').length} Entwürfe` : ''}</div>
         <div style={{ display: 'grid', gap: 8 }}>
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={setFilter} /></div>
-          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={GES} aktiv={ges} onWahl={setGes} /></div>
+          {/* B17 (14.10.): Konto „nur Business“ — nur die Gesellschaften, die der Server liefert (nie die Privat-Einheit). */}
+          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={daten.nurEntwuerfe ? GES.filter(g => g.id === 'alle' || daten.gesellschaften.some(x => x.id === g.id)) : GES} aktiv={ges} onWahl={setGes} /></div>
           <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen — Nummer, Titel, Empfänger" aria-label="Angebote durchsuchen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
         </div>
       </Karte>

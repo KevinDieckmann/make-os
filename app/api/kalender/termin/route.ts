@@ -44,7 +44,7 @@
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
-import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, ladeStand, kalenderNachName, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
+import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, termineZurPruefung, ladeStand, kalenderNachName, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
 import { hauptZugangAuffrischen, personenMitIcloud, persoenlichFremd } from '@/lib/kalender/icloud-person';
 import { kalenderZiel, googleKalenderNamen } from '@/lib/kalender/google/ziel';
 import { ladeEinstellungen, wemGehoert, type Wer } from '@/lib/kalender/einstellungen';
@@ -103,8 +103,7 @@ async function vorab(req: Request): Promise<{ person: string } | NextResponse> {
  * Rechte (R-K1 #96): ein privater Termin der ANDEREN Person (in geteilten Sichten nur „Belegt“) lässt sich über die API
  * weder ändern noch löschen — auch nicht mit bekannter UID. Der Bezug (Kennungen) zählt mit (`von` = Eigentümer).
  */
-async function fremdPrivatFuer(t: Termin | null, person: string): Promise<boolean> {
-  if (!t) return false;
+async function fremdPrivatFuer(t: Termin, person: string): Promise<boolean> {
   const [einst, bezuege] = await Promise.all([ladeEinstellungen(), ladeBezuege().catch(() => null)]);
   // Konten „nur Business“ (Gesamtprüfung 12.10.): Termine außerhalb der Business-Kalender gibt es für sie gar nicht (GET filtert sie
   // weg, `kalenderBereich`) — auch nicht mit bekannter UID ändern oder löschen.
@@ -120,6 +119,19 @@ async function schonDaGehoert(schluessel: string, uid: string, kalender: string,
   return wemGehoert(einst, kalender) === person;
 }
 const nichtDeiner = () => NextResponse.json({ ok: false, fehler: 'Privater Termin der anderen Person — nur sie kann ihn ändern oder löschen.' }, { status: 403 });
+
+/**
+ * Rechte vor JEDEM Schreiben (PATCH: Termin, Bezug, Antwort; DELETE) — fail-closed (Abnahme 14.10.): jedes Objekt zum Verweis
+ * wird gezielt gelesen, auch weit außerhalb des Holfensters. Ein privates Objekt der anderen Person → 403; ein Objekt, das da,
+ * aber nicht lesbar ist → 409 (nie „unbekannt = nicht fremd“). Liefert sonst den ersten Termin (für Protokoll und CRM-Folgen).
+ */
+async function rechteVorSchreiben(ref: string, person: string): Promise<{ termin: Termin | null } | NextResponse> {
+  const p = await termineZurPruefung(ref);
+  if (!p.da) return { termin: null };
+  if (p.termine.some(t => !t)) return NextResponse.json({ ok: false, fehler: 'Diesen Termin kann MAKE OS gerade nicht lesen — er bleibt unverändert. Bitte in Apple bzw. Google ansehen.' }, { status: 409 });
+  for (const t of p.termine) if (t && await fremdPrivatFuer(t, person)) return nichtDeiner();
+  return { termin: p.termine[0] ?? null };
+}
 
 /** Der Kalender (Eintrag im Stand) zu einem Namen — Lesefehler → unbekannt (das Anlegen scheitert dann ohnehin). */
 async function kalenderEintrag(name: string) {
@@ -242,8 +254,9 @@ export async function PATCH(req: Request) {
   try {
     // Rechte zuerst (R-K1 #96): fremd-private Termine gibt es für diese Person nur als „Belegt“.
     // Fehler beim Lesen → Abbruch (antwortFehler), nie „kein Termin“ und dann doch schreiben (08.10., fail-closed).
-    const bisher = await terminLesen(uid);
-    if (await fremdPrivatFuer(bisher, z.person)) return nichtDeiner();
+    const recht = await rechteVorSchreiben(uid, z.person);
+    if (recht instanceof NextResponse) return recht;
+    const bisher = recht.termin;
     // Als Gast antworten (K3): nur PARTSTAT, nach Bestätigung — sonst nichts an diesem Aufruf.
     if (antwort) {
       await antwortSenden(uid, antwort, { ...(stand ? { stand } : {}), einladungBestaetigt });
@@ -311,8 +324,10 @@ export async function DELETE(req: Request) {
   const einladungBestaetigt = q.get('einladungBestaetigt') === '1';
   if (einladungBestaetigt && istDienst(req)) return nurVonHand();
   try {
-    const vorher = await terminLesen(uid); // Lesefehler → Abbruch, nie blind löschen (08.10.)
-    if (await fremdPrivatFuer(vorher, z.person)) return nichtDeiner();
+    // Lesefehler → Abbruch, nie blind löschen (08.10.); außerhalb des Holfensters gezielt gelesen (14.10.).
+    const recht = await rechteVorSchreiben(uid, z.person);
+    if (recht instanceof NextResponse) return recht;
+    const vorher = recht.termin;
     const r = await loeschen(uid, { ...(stand ? { stand } : {}), einladungBestaetigt });
     const schluessel = r.schluessel ?? uid;
     // Bezug weg — unter dem Schlüssel und (UID nur in diesem Kalender) auch der alte Eintrag ohne Kalender.

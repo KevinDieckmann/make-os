@@ -3,6 +3,7 @@
 // Bezug zu groß), ist ein Hinweis, kein 502/413 — sonst sendet der Browser erneut. Nachgebauter CalDAV-Server wie in
 // tests/kalender-k1-route.test.ts, nie echtes iCloud, erfundene Daten.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { KALENDER_WIE_LIVE } from './fixtures/team-konten';
 
 const speicher = new Map<string, unknown>();
 vi.mock('@/lib/store/local-db', () => ({
@@ -57,7 +58,7 @@ const anfrage = (methode: string, body?: unknown, person = 'kevin', extra: Recor
   new Request(`http://localhost/api/kalender/termin${suche}`, { method: methode, headers: { 'content-type': 'application/json', 'x-make-user': person, ...extra }, ...(body ? { body: JSON.stringify(body) } : {}) });
 
 beforeEach(() => {
-  speicher.clear(); protokoll.length = 0; puts = 0; ctag = 1; zustand.protokollScheitert = false;
+  speicher.clear(); speicher.set('kalender-einstellungen', { kalender: KALENDER_WIE_LIVE }); /* gespeicherte Kalendernamen gewinnen (14.10.) */ protokoll.length = 0; puts = 0; ctag = 1; zustand.protokollScheitert = false;
   server = { 'serie.ics': { ics: `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:serie\r\nDTSTAMP:20260901T100000Z\r\nDTSTART:20260928T060000Z\r\nDTEND:20260928T063000Z\r\nRRULE:FREQ=DAILY\r\nSUMMARY:Tagesstart\r\nEND:VEVENT\r\nEND:VCALENDAR`, etag: 's1' } };
   vi.stubEnv('ICLOUD_APPLE_ID', 'kevin@example.invalid');
   vi.stubEnv('ICLOUD_APP_PASSWORT', 'abcd-efgh-ijkl-mnop');

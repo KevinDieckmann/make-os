@@ -179,6 +179,11 @@ export function InboxZwei() {
   useEffect(() => {
     if (offenId?.startsWith('gmail-')) void holen<{ id?: string }>(`/api/inbox/gespraech?gmail=${encodeURIComponent(offenId.slice(6))}`).then(r => setOffenId(r.d.ok && r.d.id ? r.d.id : null));
   }, [offenId, setOffenId]);
+  // Ein Gespräch, ein Fach (B9, 14.10.): ein selbst übergebenes Gespräch steht nur unter „Übergeben“ — ein Link darauf öffnet die Übergabe.
+  useEffect(() => {
+    const u = offenId ? s?.uebergaben?.find(x => x.rolle === 'gegeben' && x.status !== 'erledigt' && x.gespraech === offenId) : undefined;
+    if (u) setOffenId(u.id);
+  }, [offenId, s, setOffenId]);
   // „In der Inbox schreiben“ aus Akte/Prospecting.
   useEffect(() => { if (params.get('neu') === '1') { const m = neueMailHolen(); if (m) setNeueMail(m); } }, [params]);
 

@@ -9,8 +9,11 @@ import {
   freigabeNoetig, freigabeStand, planSperre, darfPlanen, beitragStatusWechsel, beitragNachTextAenderung, rollenWechsel,
   freigabeAnfrage, freigabeOk, aenderungsWunsch, ausgabeFreigabeStand, ausgabeSperre, ausgabeStatusWechsel, ausgabeNachTextAenderung,
   freigabeLage, liegtBei, beitraegeJePerson, wocheWerSchreibt, redaktionFuerMich, naechsterSchritt, ausgabeNaechsterSchritt,
-  autorVon, stimmPerson, stimmeText, genitiv, STIMMEN_WAHL,
+  autorVon, stimmPerson, stimmeText, genitiv, stimmenWahl,
 } from '../lib/crm/marketing';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-25'; // Freitag, KW 39 (21.–27.9.)
 const JETZT = '2026-09-25T10:00:00.000Z';
@@ -34,7 +37,7 @@ describe('Autor und Stimme', () => {
     expect(stimmPerson({})).toBeNull();
     expect(stimmeText('marke')).toBe('Marke');
     expect(stimmeText(undefined)).toBe('offen');
-    expect(STIMMEN_WAHL.map(s => s.id)).toEqual(['kevin', 'malin', 'marke']);
+    expect(stimmenWahl().map(s => s.id)).toEqual(['kevin', 'malin', 'marke']);
   });
   it('Genitiv: Kevins, Malins — bei s-Endung nur Apostroph', () => {
     expect(genitiv('Kevin')).toBe('Kevins');

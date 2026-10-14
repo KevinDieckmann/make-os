@@ -11,6 +11,9 @@ import { leererBestand, wendeCrmAn, kundenAusMandaten } from '../lib/crm/speiche
 import { dubletten, zusammenfuehren, verweiseUmbiegen } from '../lib/crm/dubletten';
 import { sauberRolle, ausBrain } from '../lib/crm/umzug';
 import type { Chance, Mandat } from '../lib/crm/typen';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-24'; // Donnerstag
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id: `c-${id}`, vorname: id, nachname: 'Test', eignung: '', prio: '', stufe: 'neu', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });

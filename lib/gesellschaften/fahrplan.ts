@@ -40,6 +40,19 @@ export const FAHRPLAN_SCHRITTE: readonly Schritt[] = [
 /** Kurzform der Gesellschafts-Kennung für feste Kennungen (Planung erlaubt [A-Za-z0-9_~:.-], ≤ 80). */
 const kurz = (gid: string) => gid.replace(/^g-/, '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 36);
 /** Kennungs-Anfang der Fahrplan-Ziele — daran erkennt das Ziel-Detail seine Gesellschaft (Weg zurück ins Register). */
+/**
+ * Wird der Gründungsfahrplan angeboten? (Abnahme 14.10., B21: eine längst eingetragene GmbH bekam „Fahrplan anlegen“.) Nur, solange die
+ * Gesellschaft noch NICHT eingetragen ist: nie bei Status „eingetragen“, „ruhend“ oder „aufgelöst“, nie mit Registereintrag (HRB) oder
+ * Eintragungsdatum. Ohne Status zählt zusätzlich ein Gründungsdatum, das schon vorbei ist (dann ist sie längst gegründet). Rein, getestet.
+ * Ein schon angelegter Fahrplan bleibt sichtbar (die Karte führt dann nur hin) — das entscheidet die Oberfläche.
+ */
+export function fahrplanAnbieten(g: { status?: string; register?: string; eingetragenAm?: string; gegruendetAm?: string }, heute: string): boolean {
+  if (g.status === 'eingetragen' || g.status === 'ruhend' || g.status === 'aufgeloest') return false;
+  if (g.register?.trim() || g.eingetragenAm) return false;
+  if (!g.status && g.gegruendetAm && g.gegruendetAm <= heute) return false;
+  return true;
+}
+
 export const FAHRPLAN_ZIEL_PRAEFIX = 'z-fahrplan-';
 export const fahrplanZielId = (gid: string) => `${FAHRPLAN_ZIEL_PRAEFIX}${kurz(gid)}`;
 export const fahrplanMeilensteinId = (gid: string, key: string) => `ms-fahrplan-${key}-${kurz(gid)}`;

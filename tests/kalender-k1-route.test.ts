@@ -2,6 +2,7 @@
 // Person), Bezug nur im Neben-Bestand, Stand/409 mit aktuellem Termin, Bezug an Serien ohne iCloud-Schreiben,
 // Build-Kennung, Änderungsprotokoll ohne Titel. Nie echtes iCloud, erfundene Daten.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { KALENDER_WIE_LIVE } from './fixtures/team-konten';
 // Die Uhr steht fest (Zeitbomben-Suche 14.10.): die Termine liegen an festen Tagen (Ende Sep./Anfang Okt. 2026, mit Sommerzeit), die Holfenster
 // rechnen ab „heute“ (Stand −90 Tage, Cache −30 Tage) — mit der echten Uhr fielen sie ab Ende Okt. bzw. Ende Dez. 2026 heraus. Nur `Date` steht, Zeitgeber laufen.
 vi.hoisted(() => { vi.useFakeTimers({ now: new Date('2026-10-14T08:00:00Z'), toFake: ['Date'], shouldAdvanceTime: true }); });
@@ -59,7 +60,7 @@ const anfrage = (methode: string, body?: unknown, person = 'kevin', extra: Recor
 const lesen = (person: string) => GET(new Request('http://localhost/api/kalender?von=2026-09-28&bis=2026-10-05', { headers: { 'x-make-user': person } })).then(r => r.json());
 
 beforeEach(() => {
-  speicher.clear(); protokoll.length = 0; puts = 0; ctag = 1;
+  speicher.clear(); speicher.set('kalender-einstellungen', { kalender: KALENDER_WIE_LIVE }); /* gespeicherte Kalendernamen gewinnen (14.10.) */ protokoll.length = 0; puts = 0; ctag = 1;
   server = { 'serie.ics': { ics: `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:serie\r\nDTSTAMP:20260901T100000Z\r\nDTSTART:20260928T060000Z\r\nDTEND:20260928T063000Z\r\nRRULE:FREQ=DAILY\r\nSUMMARY:Tagesstart\r\nEND:VEVENT\r\nEND:VCALENDAR`, etag: 's1' } };
   vi.stubEnv('ICLOUD_APPLE_ID', 'kevin@example.invalid');
   vi.stubEnv('ICLOUD_APP_PASSWORT', 'abcd-efgh-ijkl-mnop');

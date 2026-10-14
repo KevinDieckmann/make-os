@@ -14,12 +14,13 @@
 // geschätzten (Malins wichtigster Satz).
 
 import type { Haushalt } from './typen';
-import { katNamen, einordnen } from './einordnung';
+import { katNamen, einordnen, istEntnahmeKategorie } from './einordnung';
 import { luft } from './fixkosten';
 import { inMonaten } from './kennzahlen';
 import { vollMonate, heuteBerlin } from './monat';
 
-export const ENTNAHME_KATEGORIEN = ['Entnahme Kevin (Selbstständigkeit)', 'Selbstständigkeit'];
+/** Ist das eine Entnahme aus der Selbstständigkeit? (14.10.: EINE Regel ohne Namen im Code — lib/finanzen/haushalt/einordnung.ts.) */
+export { istEntnahmeKategorie } from './einordnung';
 
 export interface BusinessZahlen { umsatzProMonat: number; fixkostenMonatBrutto: number; bisMonat: string; monate: number } // Euro (aus der Grundlage)
 
@@ -40,7 +41,7 @@ export function bruecke(h: Haushalt, business: BusinessZahlen | null, steuerquot
   let planbar = 0, entnahme = 0;
   for (const b of drei) {
     if (einordnen(b, katName) !== 'einnahme-planbar') continue;
-    if (ENTNAHME_KATEGORIEN.includes(katName(b.kategorie_id))) entnahme += b.betrag; else planbar += b.betrag;
+    if (istEntnahmeKategorie(katName(b.kategorie_id))) entnahme += b.betrag; else planbar += b.betrag;
   }
   const planbarOhneEntnahme = planbar / 3, entnahmeIst = entnahme / 3;
   const noetigeEntnahme = Math.max(0, sockel - planbarOhneEntnahme);

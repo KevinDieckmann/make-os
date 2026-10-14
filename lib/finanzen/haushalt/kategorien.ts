@@ -7,7 +7,7 @@
 
 import type { Buchung, Kategorie, Regel, Stamm } from './typen';
 import { normal } from './regeln';
-import { ART } from './einordnung';
+import { ART, istEntnahmeKategorie } from './einordnung';
 
 /** Bekannte Synonyme: alter/unscharfer Name → der Name, der bleibt. Aus Malins Altdaten-Zuordnung (KATEGORIE_ALT_NEU) und ihren eigenen Umbenennungen. */
 export const SYNONYME: Record<string, string> = {
@@ -19,8 +19,9 @@ export const SYNONYME: Record<string, string> = {
   'Sport & Fitness': 'Sport',
   'Software/Tech': 'Investitionen & Tech',
   'Geschenk': 'Geschenk & Familie', 'Erstattung': 'Erstattung / Retoure', 'Einmalig': 'Sonstige Einnahme',
-  'Selbstständigkeit': 'Entnahme Kevin (Selbstständigkeit)',
 };
+/** „Selbstständigkeit“ (alter Name) geht in die vorhandene Entnahme-Kategorie, wie immer sie heißt (14.10.: kein Name im Code). */
+const ALTER_ENTNAHME_NAME = 'Selbstständigkeit';
 
 const schluessel = (n: string) => normal(n).replace(/[^a-z0-9]/g, '');
 
@@ -34,7 +35,8 @@ export function vorschlag(stamm: Stamm, buchungen: Buchung[]): Zusammenlegung[] 
   const vergeben = new Set<string>();
   // 1. Synonyme mit vorhandenem Ziel
   for (const k of stamm.kategorien) {
-    const ziel = SYNONYME[k.name] ? nachName.get(SYNONYME[k.name]) : undefined;
+    const ziel = SYNONYME[k.name] ? nachName.get(SYNONYME[k.name])
+      : k.name === ALTER_ENTNAHME_NAME ? stamm.kategorien.find(x => x.id !== k.id && x.name !== ALTER_ENTNAHME_NAME && istEntnahmeKategorie(x.name)) : undefined;
     if (!ziel || ziel.id === k.id || ziel.typ !== k.typ) continue;
     const n = nutzung(k.id);
     raus.push({ von: k.id, nach: ziel.id, vonName: k.name, nachName: ziel.name, buchungen: n.b, regeln: n.r, grund: 'gleiche Bedeutung' });
@@ -62,7 +64,7 @@ export function vorschlag(stamm: Stamm, buchungen: Buchung[]): Zusammenlegung[] 
 /** Leere Kategorien, die niemand braucht (keine Buchung, keine Regel, keine Einnahme-Art aus Malins Tabelle, kein Budget). */
 export function ungenutzt(stamm: Stamm, buchungen: Buchung[]): Kategorie[] {
   return stamm.kategorien.filter(k => !buchungen.some(b => b.kategorie_id === k.id) && !stamm.regeln.some(r => r.kategorie_id === k.id)
-    && !(k.typ === 'einnahme' && k.name in ART) && !k.monatsbudget && k.typ !== 'umbuchung');
+    && !(k.typ === 'einnahme' && (k.name in ART || istEntnahmeKategorie(k.name))) && !k.monatsbudget && k.typ !== 'umbuchung');
 }
 
 /** Zusammenlegen anwenden: Buchungen und Regeln umhängen, Alias merken, alte Kategorie entfernen. Rein — schreibt nichts. */

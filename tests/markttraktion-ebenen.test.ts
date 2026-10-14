@@ -7,6 +7,9 @@ import { sqlBereit, fehltBisSql, abgeleitet, leads, trichter, leereKriterien, ge
 import { dealBauen } from '../lib/crm/deal-anlegen';
 import { leadSaeubern } from '../lib/crm/lead-form';
 import { grundlauf } from '../lib/heads/grundlauf';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-25';
 const J = '2026-09-25T10:00:00.000Z';

@@ -65,6 +65,18 @@ export const firmaVonSpace = (id: string | undefined | null): string | undefined
 /** Bereich eines Space (05.10.: Privat-Einheiten wie die Selbstständigkeit → privat; Business-Firmen und Mandanten → business). */
 export const bereichVonSpace = (id: string | undefined | null): SpaceId => (id ? spaceBereich(id) : 'business');
 
+/**
+ * Wohin eine neue Aufgabe ohne Raum in der Adresse geht (Abnahme 14.10., B16: im Business landete sie in Privat) — sie folgt dem AKTIVEN
+ * Bereich (Adresse `?space=`, sonst die Wahl im Kopf, `useSpace()`): der zuletzt gemerkte Raum, wenn er zu diesem Bereich gehört; sonst im
+ * Business der erste Firmen-Space, in Privat der Privat-Space. Ohne Privat-Space (Konto „nur Business“) immer Business. Rein, getestet.
+ */
+export function wohinVorgabe(spaces: readonly Pick<AufgabenSpace, 'id' | 'art' | 'bereich' | 'archiv'>[], bereich: SpaceId, gemerkt?: string | null): string {
+  const ohnePrivat = !spaces.some(s => s.id === 'privat');
+  const ziel: SpaceId = ohnePrivat ? 'business' : bereich;
+  if (gemerkt && spaces.some(s => s.id === gemerkt && !s.archiv) && bereichVonSpace(gemerkt) === ziel) return gemerkt;
+  return ziel === 'business' ? spaces.find(s => s.art === 'firma' && s.bereich === 'business' && !s.archiv)?.id ?? 'kdv' : 'privat';
+}
+
 /** Die Einheit eines Space: Kerneinheit bzw. „Kunden“; Privat keine. */
 export function einheitVonSpace(id: string | undefined | null): string | undefined {
   if (!id || id === 'privat') return undefined;

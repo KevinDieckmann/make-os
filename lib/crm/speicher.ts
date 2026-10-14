@@ -21,7 +21,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { eventsAlsGeloeschtMerken } from './events-geloescht';
 import { leadSaeubern } from './lead-form';
 import { vernetzenSaeubern } from './netzwerk-form';
-import { MARKE_MAX, reiheKennung, istNetzwerkenEvent } from './marke';
+import { MARKE_MAX, reiheKennung, istNetzwerkenEvent, reihenListe, reihenSetzen, reihenStart } from './marke';
 import { fuerSaeubern, anmeldungSaeubern, werSaeubern, linkSaeubern, linkNormal, LINK_FEHLER, zielpersonenSaeubern, uebergabenSaeubern, ZIELPERSONEN_MAX, UEBERGABEN_MAX, WER_MAX } from './besuche-form';
 import { netzwerkenAngabeSaeubern, teilnahmeHerkunftSaeubern } from './netzwerken';
 import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
@@ -68,6 +68,8 @@ export async function ladeCrmMitPapierkorb(): Promise<CrmBestand> {
   // 27.09.: alte Deals und Mandate bekommen die Firmen-Kennung nachgetragen — hier im Speicher, dauerhaft mit der nächsten Änderung (aendereCrm).
   // 03.10.: die Scoring-Einstellungen (eigener Bestand `crm-scoring`) werden beim LESEN angehängt — jede Stelle, die Leads rechnet, sieht dieselben Werte;
   // geschrieben wird `scoring` nie mit dem CRM (crmSchreiben liest den rohen Bestand).
+  // Reihen sind Instanz-Daten (14.10.): die Laufzeit-Liste (`EVENT_REIHEN`) folgt dem Bestand — Namen aus den Wertelisten für jeden Text.
+  reihenSetzen(reihenListe({ gespeichert: roh.wertelisten?.reihen, start: reihenStart(), events: roh.events }));
   return { ...firmaIdsErgaenzen(roh).bestand, scoring: await ladeScoring() };
 }
 

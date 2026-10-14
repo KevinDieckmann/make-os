@@ -13,6 +13,7 @@
 // sagen, dass sie hier nur Vorschläge sind. Werkzeuge ohne eigenen Bereich (Postfach, Arbeitssuche) sind auf den Bereich des Heads
 // beschränkt (`eingabeImBereich`, `BEREICHS_LESER`).
 
+import { TEAM } from '@/lib/crm/team-liste';
 import { gruppeVon } from '@/lib/zoe/register';
 import { BEREICH_IN_EINGABE } from '@/lib/zoe/bereich';
 import { WERKZEUGE, FINANZPLAN_ALTWEG_WERKZEUGE } from '@/lib/zoe/werkzeuge';
@@ -56,8 +57,18 @@ export function agentenDef(d: WerkzeugDef): WerkzeugDef {
   return { name: d.name, description: text, input_schema: { ...schema, properties: props, required } };
 }
 
-/** Alle Beschreibungen der Register-Werkzeuge, die ein Agent bekommen kann — abgeleitet aus lib/zoe/werkzeug-defs.ts. */
-export const REGISTER_DEFS: ReadonlyMap<string, WerkzeugDef> = new Map(Array.from(werkzeugDefs().values()).map(d => [d.name, agentenDef(d)]));
+/**
+ * Alle Beschreibungen der Register-Werkzeuge, die ein Agent bekommen kann — abgeleitet aus lib/zoe/werkzeug-defs.ts. Eine FUNKTION (14.10.):
+ * die Enums der Zuständigen hängen am Team der Instanz (zur Laufzeit aus den Konten gesetzt) — neu gerechnet, sobald sich das Team ändert.
+ */
+let registerZwischen: { schluessel: string; defs: ReadonlyMap<string, WerkzeugDef> } | null = null;
+export function registerDefs(): ReadonlyMap<string, WerkzeugDef> {
+  const schluessel = TEAM.map(t => t.id).join(',');
+  if (registerZwischen?.schluessel === schluessel) return registerZwischen.defs;
+  const defs: ReadonlyMap<string, WerkzeugDef> = new Map(Array.from(werkzeugDefs().values()).map(d => [d.name, agentenDef(d)]));
+  registerZwischen = { schluessel, defs };
+  return defs;
+}
 
 // ── Agenten-Werkzeuge (nur im Agenten-Bereich, nie im ZOE-Register) ─────────────────────────────────────────────────────
 
@@ -163,7 +174,7 @@ export function werkzeugAngebot(o: {
 }): Angebot {
   const register = new Set<string>();
   for (const w of o.liste) {
-    if (!WERKZEUGE[w] || !REGISTER_DEFS.has(w)) continue;
+    if (!WERKZEUGE[w] || !registerDefs().has(w)) continue;
     if ((o.helfer || o.nurLesen) && !o.lesend.has(w)) continue;
     if (o.nurLesen && w === 'crm_vorschlag') continue; // legt in den Stapel — eine Frage legt nichts an
     if (o.privatFinanzen === false && FINANZPLAN_ALTWEG_WERKZEUGE.has(w)) continue;
@@ -184,7 +195,7 @@ export function werkzeugAngebot(o: {
     if (fachAgentErlaubt(o.agentId, o.head.bereich)) agenten.add('fach_agent');
   }
   const defs = agentenDefs({ mitarbeiter: o.mitarbeiter, headWerkzeuge: o.head.werkzeuge });
-  const tools = [...Array.from(register).map(n => REGISTER_DEFS.get(n)!), ...Array.from(agenten).map(n => defs[n]).filter(Boolean)];
+  const tools = [...Array.from(register).map(n => registerDefs().get(n)!), ...Array.from(agenten).map(n => defs[n]).filter(Boolean)];
   return { tools, register, agenten };
 }
 

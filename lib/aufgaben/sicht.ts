@@ -21,7 +21,7 @@ import { uebernehmen } from './struktur';
 import { aufgabenSicht } from './papierkorb';
 import { istNurIch, darfSehen } from './sicht-regel';
 import { aufgabeImPrivat, ohnePrivatBereich } from './bereich-sicht';
-import { aufgabeInFirmenAkte, hatFirmenAkte, ohneFirmenAkte } from './firmenakte-sicht';
+import { aufgabeInFirmenAkte, bestandHatFirmenAkte, hatFirmenAkte, ohneFirmenAkte } from './firmenakte-sicht';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 
@@ -109,7 +109,7 @@ export async function sichtFuerKonto<S extends TasksState>(state: S, person: str
  */
 export async function kontoBereicheFiltern<S extends TasksState>(state: S, person: string | null | undefined): Promise<S> {
   const bereich = (await privatAusgeblendetFuer(person)) ? ohnePrivatBereich(state) : state;
-  return hatFirmenAkte(bereich.tasks) && (await firmenAkteAusgeblendetFuer(person)) ? ohneFirmenAkte(bereich) : bereich;
+  return bestandHatFirmenAkte(bereich) && (await firmenAkteAusgeblendetFuer(person)) ? ohneFirmenAkte(bereich) : bereich;
 }
 
 /**

@@ -5,6 +5,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-import-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
@@ -33,6 +36,8 @@ beforeAll(async () => {
   await db.saveJson('konten', { konten: [
     // Inhaber ohne Haushalt: das Änderungsprotokoll landet wie bisher unter „ohne-haushalt“.
     { id: 'k1', speicher: 'kevin', email: 'k@test.invalid', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] } },
+    // Das CRM-Team kommt seit 14.10. aus den Konten — der Owner „Malin …“ der Liste trifft nur mit ihrem Konto eine Person im Team.
+    { id: 'k2', speicher: 'malin', email: 'm@test.invalid', name: 'Malin Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-02', teilt: { gesundheit: [] } },
   ], einladungen: [] });
   speicher = await import('@/lib/crm/speicher');
   route = (await import('@/app/api/crm/import/route')) as unknown as Mod;

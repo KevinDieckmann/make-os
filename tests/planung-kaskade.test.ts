@@ -2,7 +2,7 @@
 // anteilig, Termin-Ziele als Meilenstein; nie dupliziert, Angepasstes bleibt.
 
 import { describe, expect, it } from 'vitest';
-import { anteil, teile, abgeleiteterTitel, ebeneAbleiten, kaskadeAnwenden, meilensteineAbleiten, loesen, abgeleiteteId, meilensteinId } from '@/lib/planung/kaskade';
+import { anteil, teile, abgeleiteterTitel, ebeneAbleiten, kaskadeAnwenden, meilensteineAbleiten, loesen, abgeleiteteId, meilensteinId, titelNachRegel } from '@/lib/planung/kaskade';
 import type { Ziel, ZieleDatei, Meilenstein } from '@/lib/planung/typen';
 
 const jahrZiel = (p: Partial<Ziel> = {}): Ziel => ({ id: 'z-neukunden', titel: 'Neukunden gewinnen', fortschritt: 10, space: 'business', einheit: 'Kunden', zielwert: 120, ...p });
@@ -37,6 +37,23 @@ describe('Titel des Abgeleiteten', () => {
     expect(abgeleiteterTitel(jahrZiel(), 'woche', 2026)).toBe('Neukunden gewinnen · 2 je Woche (Rest 16 im Jahr)');
     expect(abgeleiteterTitel(jahrZiel(), 'tag', 2026)).toMatch(/^Neukunden gewinnen · 0,3 je Tag \(Rest/);
     expect(abgeleiteterTitel(jahrZiel({ zielwert: 10 }), 'quartal', 2026)).toBe('Neukunden gewinnen · 3 im Quartal (Puffer 2)');
+  });
+});
+
+describe('Alte Titel beim Lesen nach der geltenden Regel (14.10., nur Anzeige)', () => {
+  it('abgeleitet + nicht angepasst → Titel neu gerechnet; angepasst, eigene und andere Felder bleiben; ohne Änderung dasselbe Objekt', () => {
+    const rate = jahrZiel({ id: 'z-rate', titel: 'Wiederkehrender Umsatz 25.000 € je Monat', zielwert: 25000, jahr: 2026 });
+    const alt = { id: 'z-rate~monat', titel: 'Wiederkehrender Umsatz 25.000 € je Monat · 2083 im Monat (Rest 4 im Jahr)', fortschritt: 0, zielwert: 2083, abgeleitetVon: 'z-rate', stand: 's1' } as Ziel & { stand: string };
+    const angepasst = { ...alt, id: 'z-x', titel: 'Eigener Titel', angepasst: true } as Ziel;
+    const eigen = { id: 'z-eigen', titel: 'Frei · 2083 im Monat', fortschritt: 0 } as Ziel;
+    const d = { jahr: [rate], quartal: [], monat: [alt, angepasst, eigen], woche: [], tag: [] } as unknown as ZieleDatei;
+    const n = titelNachRegel(d, 2026);
+    expect(n.monat![0]).toMatchObject({ titel: 'Wiederkehrender Umsatz 25.000 € je Monat', stand: 's1', zielwert: 2083 });
+    expect(n.monat![1].titel).toBe('Eigener Titel');
+    expect(n.monat![2].titel).toBe('Frei · 2083 im Monat');
+    expect(d.monat![0].titel).toContain('2083'); // Lesen schreibt nicht: die Eingabe bleibt unverändert
+    const ohne = { jahr: [], monat: [eigen] } as unknown as ZieleDatei;
+    expect(titelNachRegel(ohne, 2026)).toBe(ohne);
   });
 });
 

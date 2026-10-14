@@ -7,6 +7,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-mt-woche2b-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
@@ -568,6 +571,7 @@ describe('6.8 · Übergabe prüft Kennungen wie die Kartei', () => {
 describe('7.3 · Morgen-Nachricht/Scoreboard: neutral ohne Werte und Namen — Inhalte nur mit Ausnahme der Person', () => {
   it('Vorgabe ist der neutrale Hinweis mit Link; mit `inhalte` die Zahlen', async () => {
     const { morgenText, wochenText } = await import('@/lib/crm/scoreboard');
+    teamWieKonten(); // die Routen-Tests davor lasen andere Konten — hier wieder die Instanz mit „kevin“ und „malin“
     const kontakte = [k('m', { besitzer: 'malin', kreis: 'B', naechsterSchritt: { text: 'Rückruf', datum: T } })];
     const m = morgenText('malin', kontakte, crmLeer(), T, { adresse: 'https://make.example' });
     expect(m).toBe('Markttraktion: für heute liegt etwas bei dir — Details in MAKE OS.\n→ https://make.example/os/markttraktion');

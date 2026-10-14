@@ -15,6 +15,9 @@ import { notizAnhaengen, anfrageBauen, LEAD_NOTIZ_MAX } from '@/lib/crm/anfragen
 import { neuanlageSperre, sperrlisteMit, SPERR_HINWEIS } from '@/lib/crm/sperrliste';
 import { werIstDran } from '@/lib/crm/heute';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const HEUTE = '2026-09-28';
 const JETZT = '2026-09-28T09:00:00.000Z';

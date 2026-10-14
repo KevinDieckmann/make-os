@@ -33,7 +33,7 @@ import { anzeigename } from '@/lib/make-one/crm';
 import type { Beitrag, MarketingEinstellung } from '@/lib/crm/typen';
 import { BEIDE, anderer, nameVon, verantwortlich } from '@/lib/crm/team';
 import {
-  BEITRAG_STATUS, BEITRAG_KANAELE, WIRKUNG_ARTEN, STIMMEN_WAHL, MARKE, planFenster, imFenster, nachStatus, wirkungZahlen, stimmenAus, ideeAusStimme, schonUebernommen, einstellungAus,
+  BEITRAG_STATUS, BEITRAG_KANAELE, WIRKUNG_ARTEN, stimmenWahl, MARKE, planFenster, imFenster, nachStatus, wirkungZahlen, stimmenAus, ideeAusStimme, schonUebernommen, einstellungAus,
   autorVon, stimmPerson, stimmeText, freigabeStand, planSperre, beitragStatusWechsel, beitragNachTextAenderung, rollenWechsel, freigabeAnfrage, freigabeOk, aenderungsWunsch,
   naechsterSchritt, redaktionFuerMich, wocheWerSchreibt, type PlanSicht, type Teil, type FreigabeStand,
 } from '@/lib/crm/marketing';
@@ -324,7 +324,7 @@ function BeitragKarte({ b, api, ablage, einstellung, heute, zuKontakt, schliesse
       </Feldzeile>
       <Feldzeile label="Erscheint als">
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Wahl label="Erscheint als" leer="+ Absender" liste={STIMMEN_WAHL} wert={b.stimme ?? null} onWahl={s => void teil(rollenWechsel(b, { stimme: s }))} />
+          <Wahl label="Erscheint als" leer="+ Absender" liste={stimmenWahl()} wert={b.stimme ?? null} onWahl={s => void teil(rollenWechsel(b, { stimme: s }))} />
           {!b.stimme && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>In wessen Namen erscheint es — Profil, Absender?</span>}
         </div>
       </Feldzeile>

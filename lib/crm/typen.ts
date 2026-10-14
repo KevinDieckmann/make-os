@@ -676,6 +676,8 @@ export interface Wertelisten {
   branchen?: string[]; typen?: string[]; kategorien?: string[];
   /** Labels (28.09.): frei vergebbar, keine Standardwerte — nur eigene. */
   labels?: string[];
+  /** Reihen eigener Abende (14.10.: Instanz-Daten, keine im Code) — Kennung (gespeichert am Event) + Name. lib/crm/marke.ts `reihenListe`. */
+  reihen?: { id: string; name: string }[];
 }
 
 export interface CrmBestand {

@@ -14,10 +14,21 @@ import type { Buchung, Kategorie, Stamm } from './typen';
 
 export type Topf = 'planbar' | 'einmalig' | 'durchlauf' | 'schuld' | 'offen';
 
-/** Malins Tabelle (ansicht-einnahmen.js), samt der alten Namen. */
+/**
+ * Entnahme aus der Selbstständigkeit (14.10., Kevins Entscheidung: keine Personennamen in Vorgaben). Der neutrale Name für neue Bestände ist
+ * `ENTNAHME_NAME`; erkannt wird JEDE Fassung „Entnahme … (Selbstständigkeit)“ — auch der gespeicherte Altbestand mit Vorname dazwischen — und
+ * der alte Name „Selbstständigkeit“. Gespeicherte Kategorien behalten ihren Namen (nie umbenannt), sie zählen wie bisher. Rein.
+ */
+export const ENTNAHME_NAME = 'Entnahme (Selbstständigkeit)';
+export const istEntnahmeKategorie = (name: unknown): boolean => {
+  const n = String(name ?? '').trim();
+  return n === 'Selbstständigkeit' || /^Entnahme(?:\s+[^()\n]{1,40}?)?\s*\(Selbstständigkeit\)$/.test(n);
+};
+
+/** Malins Tabelle (ansicht-einnahmen.js), samt der alten Namen. Die Entnahme aus der Selbstständigkeit erkennt `istEntnahmeKategorie`. */
 export const ART: Record<string, Topf> = {
   'Gehalt': 'planbar',
-  'Entnahme Kevin (Selbstständigkeit)': 'planbar',
+  [ENTNAHME_NAME]: 'planbar',
   'Selbstständigkeit': 'planbar',
   'Mieteinnahme': 'planbar',
   'Kindergeld & Sozialleistung': 'planbar',
@@ -42,7 +53,7 @@ export const KREDIT = 'Kredit erhalten';
 
 /** Unbekanntes fällt auf „einmalig“ — echtes Geld, aber nicht planbar. */
 export function artVon(name: string | null | undefined): Topf {
-  return ART[String(name ?? '')] ?? 'einmalig';
+  return ART[String(name ?? '')] ?? (istEntnahmeKategorie(name) ? 'planbar' : 'einmalig');
 }
 export const istRegelmaessig = (name: string) => artVon(name) === 'planbar';
 

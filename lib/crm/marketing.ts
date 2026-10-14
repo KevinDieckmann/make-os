@@ -359,7 +359,8 @@ export function newsletterCsv(kontakte: Kontakt[], abmelde?: AbmeldeLinkFn): str
 
 export const MARKE = 'marke';
 /** Wählbare Stimmen: jede Person im Team und die Marke. */
-export const STIMMEN_WAHL: { id: string; label: string }[] = [...TEAM.map(t => ({ id: t.id, label: t.name })), { id: MARKE, label: 'Marke' }];
+/** Die Stimmen zur Wahl — aus dem Team (seit 14.10. aus den Konten, `TEAM` wird zur Laufzeit gesetzt) plus die Marke. Eine Funktion, kein Wert beim Laden. */
+export const stimmenWahl = (): { id: string; label: string }[] => [...TEAM.map(t => ({ id: t.id, label: t.name })), { id: MARKE, label: 'Marke' }];
 /** Felder einer Einzeländerung — `null` löscht ein Feld (der Server-Säuberer lässt es weg). */
 export type Teil<T> = { [K in keyof T]?: T[K] | null };
 export type FreigabeStand = 'nicht_noetig' | 'fehlt' | 'offen' | 'aenderung' | 'ok';

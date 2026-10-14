@@ -23,6 +23,8 @@ export interface WertelistenAntwort {
   kategorien: { wert: string; fest: boolean }[];
   /** Labels (28.09.) — nur eigene. */
   labels: { wert: string; fest: boolean }[];
+  /** Reihen eigener Abende (14.10.): eigene + „fest“ (aus dem Bestand bzw. der Betreiber-Instanz). */
+  reihen: { wert: string; fest: boolean }[];
   ziele: { umsatzNeuMonat?: number; sqlMonat?: number; gespraecheWoche?: number };
   /** Ist zu den Zielen — null, solange nichts gemessen ist. */
   ist: { umsatzNeu30: number | null; sql30: number | null; gespraecheWoche: number | null; dealsOffen: number };

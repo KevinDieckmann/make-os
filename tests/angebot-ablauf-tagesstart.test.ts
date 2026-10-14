@@ -10,6 +10,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Angebot, AngebotPosition, Chance, CrmBestand, FollowUp } from '@/lib/crm/typen';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-angebot-ablauf-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;

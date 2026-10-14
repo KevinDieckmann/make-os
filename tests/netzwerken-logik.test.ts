@@ -13,6 +13,9 @@ import { bewerten, Warteschlange, ramSpeicher, WARTET_TEXT, wartendFuer, type Se
 import { sprachnotizTypErkennen } from '@/lib/dateien/regeln';
 import { anstehendAbleiten, pruefeEingabe, ARTEN } from '@/lib/meldungen/regeln';
 import { kanalStatus } from '@/lib/crm/recht';
+import { teamWieKonten } from './fixtures/team-konten';
+// Team wie auf einer Instanz mit den Konten „kevin“ (Inhaber) und „malin“ — seit 14.10. kommt das CRM-Team aus den Konten.
+teamWieKonten();
 
 const ID = '3f2b9c1e-1a2b-4c3d-8e4f-0123456789ab';
 // Ein strukturell gültiges Mini-JPEG (JFIF + Scan + Ende) — der Server säubert Metadaten (netz-recht) und lehnt kaputte Aufbauten ab.

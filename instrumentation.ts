@@ -18,6 +18,9 @@ export async function register(): Promise<void> {
     if (process.env.NEXT_PHASE !== 'phase-production-build') {
       const { hauptZugangAuffrischen } = await import('./lib/kalender/icloud-person');
       await hauptZugangAuffrischen();
+      // CRM-Team aus den Konten (14.10., lib/crm/team-liste.ts): einmal beim Start lesen — Takt und Läufe ohne Anfrage rechnen sofort mit dem
+      // Team der Instanz (jedes weitere Lesen der Konten zieht es nach). Fehler stören nie.
+      await (await import('./lib/zugang/konten')).ladeKonten().catch(() => {});
     }
     // ZOE auf WhatsApp (08.10.): gleicht die ZOE-Nummer der Business-Nummer, steht es einmal im Log (nur Namen) — die ZOE-Nummer bleibt
     // aus, der Head of IT zeigt es rot (lib/zoe-whatsapp/konfig.ts).

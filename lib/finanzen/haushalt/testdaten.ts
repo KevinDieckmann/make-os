@@ -6,10 +6,11 @@
 import type { Beleg, Buchung, Haushalt, Kategorie, Konto, Planwert, Regel, Schuld } from './typen';
 import { vollMonate, heuteBerlin, monatVon, tagPlus } from './monat';
 import { fingerabdruck } from './import';
+import { ENTNAHME_NAME } from './einordnung';
 
 /** Malins Kategorien (Schema + Einnahme-Arten + was die alten Daten brauchten). */
 export const START_KATEGORIEN: [string, Kategorie['typ'], number][] = [
-  ['Gehalt', 'einnahme', 11], ['Entnahme Kevin (Selbstständigkeit)', 'einnahme', 12], ['Aktien & Krypto', 'einnahme', 13],
+  ['Gehalt', 'einnahme', 11], [ENTNAHME_NAME, 'einnahme', 12], ['Aktien & Krypto', 'einnahme', 13],
   ['Kredit erhalten', 'einnahme', 14], ['Erstattung / Retoure', 'einnahme', 15], ['Geschenk & Familie', 'einnahme', 16],
   ['Sonstige Einnahme', 'einnahme', 17], ['Mieteinnahme', 'einnahme', 18], ['Kindergeld & Sozialleistung', 'einnahme', 19],
   ['Zinsen', 'einnahme', 20], ['Bonus & Prämie', 'einnahme', 21], ['Verkauf privat', 'einnahme', 22], ['Steuererstattung', 'einnahme', 23],
@@ -46,7 +47,7 @@ export function testHaushalt(heute: string = heuteBerlin()): Haushalt {
     const tag = (t: number) => `${m}-${String(t).padStart(2, '0')}`;
     if (laufend && Number(heute.slice(8, 10)) < 2) return;
     add('test-konto-b', tag(1), 280000, 'Beispiel GmbH Gehalt', 'Gehalt');
-    add('test-konto-a', tag(2), 150000, 'Entnahme Beispiel-Selbstständigkeit', 'Entnahme Kevin (Selbstständigkeit)');
+    add('test-konto-a', tag(2), 150000, 'Entnahme Beispiel-Selbstständigkeit', ENTNAHME_NAME);
     add('test-konto-g', tag(3), -125000, 'Vermieter Beispiel', 'Miete & Wohnen', { ist_fixkosten: true });
     add('test-konto-g', tag(4), -8500, 'Stadtwerke Beispiel', 'Miete & Wohnen', { ist_fixkosten: true });
     add('test-konto-a', tag(5), -3999, 'Mobilfunk Beispiel', 'Abos & Verträge', { ist_fixkosten: true });

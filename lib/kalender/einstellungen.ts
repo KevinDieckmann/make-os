@@ -7,6 +7,7 @@
 import { loadJson } from '@/lib/store/local-db';
 import { freieTageSauber, FREIE_TAGE_STANDARD, type FreierTag } from './freie-tage';
 import { zuordnung } from './belegt';
+import { FACH_ERSATZ, fachPersonen, vorname } from '@/lib/make-one/fach-namen';
 
 export type Wer = 'kevin' | 'malin' | 'beide';
 export interface KalenderEinstellungen {
@@ -54,8 +55,18 @@ export interface KalenderEinstellungen {
 export interface SteuerVorlage { an: boolean }
 export const STEUER_VORLAGE_AUS: SteuerVorlage = { an: false };
 
+/**
+ * Vorgabe der Kalendernamen (14.10., Kevins Entscheidung „feste Vorgaben aus den Konten ableiten“): „Privat <Vorname>“ je Personen-Fach
+ * (Fächer `kevin`/`malin` = Kennungen aus dem Altbestand, lib/make-one/fach-namen.ts) und „Gemeinsam“ — der Vorname kommt aus den Konten
+ * (`kalenderNamenVorgabe` auf dem Server), ohne Konten ein Platzhalter. Nur die VORGABE: ein gespeicherter Name gewinnt immer und geht nie
+ * verloren. Für Kevins Instanz ergibt das dieselben Namen wie bisher. Rein.
+ */
+export function kalenderNamen(vornamen: Partial<Record<Exclude<Wer, 'beide'>, string>> = {}): Record<Wer, string> {
+  return { kevin: `Privat ${vornamen.kevin || FACH_ERSATZ.kevin}`, malin: `Privat ${vornamen.malin || FACH_ERSATZ.malin}`, beide: 'Gemeinsam' };
+}
+
 export const EINSTELLUNGEN_LEER: KalenderEinstellungen = {
-  kalender: { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Gemeinsam' },
+  kalender: kalenderNamen(),
   dauer: { termin: 60, fokus: 90, routine: 30, aufgabe: 45, reha: 30 },
   vonStunde: 7,
   bisStunde: 20,
@@ -92,11 +103,12 @@ export function einstellungenTeilMischen(aktuell: KalenderEinstellungen, teil: R
   return raus as Partial<KalenderEinstellungen>;
 }
 
-export function einstellungenSauber(d: Partial<KalenderEinstellungen> | null): KalenderEinstellungen {
+/** `vorgabe`: die Kalendernamen, die gelten, wo nichts gespeichert ist (Server: `kalenderNamenVorgabe()` aus den Konten). */
+export function einstellungenSauber(d: Partial<KalenderEinstellungen> | null, vorgabe: Record<Wer, string> = EINSTELLUNGEN_LEER.kalender): KalenderEinstellungen {
   const L = EINSTELLUNGEN_LEER;
   const sicht = ['alle', 'kevin', 'malin', 'beide'].includes(String(d?.standardSicht)) ? d!.standardSicht! : L.standardSicht;
   return {
-    kalender: { kevin: text(d?.kalender?.kevin, L.kalender.kevin), malin: text(d?.kalender?.malin, L.kalender.malin), beide: text(d?.kalender?.beide, L.kalender.beide) },
+    kalender: { kevin: text(d?.kalender?.kevin, vorgabe.kevin), malin: text(d?.kalender?.malin, vorgabe.malin), beide: text(d?.kalender?.beide, vorgabe.beide) },
     dauer: {
       termin: zahl(d?.dauer?.termin, 5, 600, L.dauer.termin), fokus: zahl(d?.dauer?.fokus, 5, 600, L.dauer.fokus),
       routine: zahl(d?.dauer?.routine, 5, 600, L.dauer.routine), aufgabe: zahl(d?.dauer?.aufgabe, 5, 600, L.dauer.aufgabe), reha: zahl(d?.dauer?.reha, 5, 600, L.dauer.reha),
@@ -115,7 +127,24 @@ export function einstellungenSauber(d: Partial<KalenderEinstellungen> | null): K
 export { spaceVonKalender } from './space';
 
 export async function ladeEinstellungen(): Promise<KalenderEinstellungen> {
-  return mitGoogleNamen(einstellungenSauber(await loadJson<KalenderEinstellungen>('kalender-einstellungen')));
+  return mitGoogleNamen(einstellungenSauber(await loadJson<KalenderEinstellungen>('kalender-einstellungen'), await kalenderNamenVorgabe()));
+}
+
+/**
+ * Die Vorgabe der Kalendernamen aus den Konten (14.10.): Personen im Haushalt der Inhaberin/des Inhabers, Inhaber zuerst — wer hinter
+ * welchem Fach steht, sagt `fachPersonen` (gleicher Speichername gewinnt). Konten nicht lesbar → Platzhalter (nie ein fester Name).
+ */
+export async function kalenderNamenVorgabe(): Promise<Record<Wer, string>> {
+  try {
+    const { ladeKonten } = await import('@/lib/zugang/konten');
+    const konten = (await ladeKonten()).konten;
+    const inhaber = konten.find(k => k.rolle === 'inhaber');
+    const haus = konten
+      .filter(k => k === inhaber || (k.finanzRecht !== 'business' && (inhaber?.haushalt ? k.haushalt === inhaber.haushalt : !k.haushalt)))
+      .sort((a, b) => Number(b === inhaber) - Number(a === inhaber) || String(a.angelegt ?? '').localeCompare(String(b.angelegt ?? '')));
+    const p = fachPersonen(haus.map(k => ({ id: k.speicher, name: vorname(k.name) })));
+    return kalenderNamen({ ...(p.kevin ? { kevin: p.kevin.name } : {}), ...(p.malin ? { malin: p.malin.name } : {}) });
+  } catch { return EINSTELLUNGEN_LEER.kalender; }
 }
 
 /** Die Google-Kalender und die Kalender je Person aus iCloud (Name → Person) zur Laufzeit dazulegen — gespeichert wird das nie. */
