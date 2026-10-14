@@ -11,11 +11,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ListenSchreiber, absichten, type MitStand } from '@/lib/make-one/liste-stand';
 import type { Meilenstein, Ziel } from '@/lib/planung/typen';
+import { localDay } from '@/lib/zeit';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-planung-zwei-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
 process.env.MAKE_OS_KEY = 'pruef-schluessel-pz';
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
+/** Termin im LAUFENDEN Jahr — nur dessen Ziele kaskadieren (ein festes „2026-12-01“ kippte am 1.1.2027; Zeitbomben-Suche 14.10.). */
+const TERMIN = `${localDay().slice(0, 4)}-12-31`;
 
 type Handler = (r: Request) => Promise<Response>;
 type Mod = { GET: Handler; PATCH: Handler; PUT: Handler };
@@ -99,10 +102,10 @@ describe('Ziele: zwei Schreiber, keiner verliert etwas', () => {
     const s = schreiber();
     const stand = await ladeZiele();
     s.kenne(stand);
-    s.aendern(stand, [...stand, { id: 'z-zahl', titel: 'Neukunden', fortschritt: 0, zielwert: 120, termin: '2026-12-01' }]);
+    s.aendern(stand, [...stand, { id: 'z-zahl', titel: 'Neukunden', fortschritt: 0, zielwert: 120, termin: TERMIN }]);
     expect((await s.senden()).ok).toBe(true);
     expect((await ladeZiele('quartal')).find(z => z.abgeleitetVon === 'z-zahl')).toMatchObject({ id: 'z-zahl~quartal', zielwert: 30 });
-    expect((await ladeMs()).find(m => m.abgeleitetVon === 'z-zahl')).toMatchObject({ faellig: '2026-12-01' });
+    expect((await ladeMs()).find(m => m.abgeleitetVon === 'z-zahl')).toMatchObject({ faellig: TERMIN });
   });
 });
 

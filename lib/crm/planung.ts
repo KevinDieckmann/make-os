@@ -16,7 +16,7 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Chance, CrmBestand, Mandat } from './typen';
-import type { LeadZeile } from './leads';
+import { inArbeit, type LeadZeile } from './leads';
 import type { KanalId } from './kanal';
 import type { Welt } from './traktion';
 import type { Mitglied } from './team-liste';
@@ -190,7 +190,8 @@ export function kanalStaende(e: { kanaele: readonly LeadKanal[]; zeilen: readonl
     const kSql = plan.leadZuGespraech.wert * plan.gespraechZuSql.wert / 10_000;
     return {
       id: k.id, name: k.name, herkunft: k.herkunft, welt: herkunftVon(k.herkunft).welt, aktiv: k.aktiv,
-      leads: z.length, inArbeit: z.filter(x => ['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(x.status)).length,
+      // „In Arbeit“ = EINE Zählregel mit der Leads-Liste und dem Trichter (lib/crm/leads.ts `inArbeit`, Abnahme 14.10., B5).
+      leads: z.length, inArbeit: z.filter(inArbeit).length,
       neueLeadsMonat: rund1(neu / 3), dealsOffen: offen.length, wertOffen: Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)),
       gewonnen: deals.filter(c => c.stufe === 'gewonnen').length,
       quoten: Object.fromEntries(PLAN_QUOTE_IDS.map(q => [q, { plan: plan[q], ist: ist.werte[q], n: ist.n[q] }])) as KanalStand['quoten'],
@@ -289,7 +290,9 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
   const ab = tagPlus(e.heute, -91);
   const neueLeads = z.filter(x => { const t = leadAngelegt(x, kontaktNach); return !!t && t >= ab; }).length;
   const planLeads = aktiv.reduce((a, k) => a + k.leadsMonat, 0);
-  const inArbeit = z.filter(x => ['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(x.status));
+  // „In Arbeit“ = EINE Zählregel mit der Leads-Liste und dem Trichter (lib/crm/leads.ts `inArbeit`, Abnahme 14.10., B5) — vorher eine eigene
+  // Statusliste, die auch kalte Leads zählte.
+  const leadsInArbeit = z.filter(inArbeit);
   const offen = deals.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const leadZuSqlPlan = planQ('leadZuGespraech') * planQ('gespraechZuSql') / 100;
   const leadZuSqlIst = ist.werte.leadZuGespraech != null && ist.werte.gespraechZuSql != null ? (ist.werte.leadZuGespraech * ist.werte.gespraechZuSql) / 100 : null;
@@ -333,7 +336,7 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
   const stufen: KreislaufStufe[] = [
     { id: 'kanaele', label: 'Leadkanäle', anzahl: aktiv.length, zusatz: aktiv.length ? `${rund1(planLeads)} Leads/Monat geplant` : 'noch kein Leadkanal angelegt',
       plan: `${rund1(planLeads)} neue Leads/Monat`, ist: `${rund1(neueLeads / 3)} neue Leads/Monat (Ø 3 Monate)`, href: '', hrefLabel: 'Leadkanäle pflegen' },
-    { id: 'leads', label: 'Leads & Qualifizierung', anzahl: inArbeit.length, zusatz: `${z.length} Leads gesamt`,
+    { id: 'leads', label: 'Leads & Qualifizierung', anzahl: leadsInArbeit.length, zusatz: `${z.length} Leads gesamt`,
       plan: `Lead → SQL ${pz(leadZuSqlPlan)}`, ist: `Lead → SQL ${pz(leadZuSqlIst)}`, annahme: annahme('leadZuGespraech', 'gespraechZuSql'), href: WEG.qualifizierung(), hrefLabel: 'Qualifizierung öffnen' },
     { id: 'deals', label: 'Deals (SQL … Abschluss)', anzahl: offen.length, zusatz: `${Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)).toLocaleString('de-DE')} € offen`,
       plan: `SQL → Gewonnen ${pz(sqlZuGewPlan)}`, ist: `SQL → Gewonnen ${pz(gq?.quote)}`, annahme: annahme('sqlZuAngebot', 'angebotZuGewonnen'), href: WEG.deals(), hrefLabel: 'Deals öffnen' },

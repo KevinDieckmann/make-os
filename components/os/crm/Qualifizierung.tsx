@@ -19,7 +19,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
 import { wochenBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { qualifiziertJeWoche } from './fokus-reihen';
-import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, kalteAusgeblendet, leadsAnderer, QUALI_WIEDERVORLAGE_TAGE, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, kalteAusgeblendet, leadsAnderer, inQualifizierungNichtInRunde, QUALI_WIEDERVORLAGE_TAGE, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
 import { DealAnlegen } from './DealAnlegen';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
@@ -114,6 +114,8 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
   // 1.10 (09.10.): „Meine“ blendet Leads anderer aus — die Zahl steht dabei, ein Klick zeigt alle.
   const andererZahl = d ? leadsAnderer(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : 0;
   const sqlOffen = karten.filter(sqlEntscheidungOffen).length;
+  // 14.10. (B5): die Runde zeigt weniger als „Leads in Qualifizierung“ (Überblick, Leads-Liste) — der Satz sagt, warum (lib/crm/leads.ts).
+  const nichtInRunde = d ? inQualifizierungNichtInRunde(d.leads, { wer, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : 0;
   const andere = anderer(ich);
   const WER: { id: RundenFilter['wer']; label: string }[] = [
     { id: ich, label: `Meine ${zaehl(ich)}` }, { id: andere, label: `${nameVon(andere)} ${zaehl(andere)}` },
@@ -130,6 +132,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
         <Karte i={0} ton="fokus" licht={LEUCHT.business}>
           <Ueberschrift farbe={LEUCHT.business} rechts={karten.length ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.min(pos + 1, karten.length)} von {karten.length}{erledigt ? ` · ${erledigt} geprüft` : ''}</span> : undefined}>Qualifizierungsrunde</Ueberschrift>
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, marginBottom: 10 }}>Lead für Lead: woher er kommt, wie weit er ist, die Fragen — und im Gespräch Schritt für Schritt bis zum Ergebnis. Kontakt und Firma öffnen rechts zur Bearbeitung; wer qualifiziert, übernimmt nicht zugeordnete Leads. Kalte Leads warten im Marketing-Segment „Vernetzen“, bis sie warm werden.</div>
+          {nichtInRunde > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, marginBottom: 10 }}>{nichtInRunde} {nichtInRunde === 1 ? 'weiterer Lead steht' : 'weitere Leads stehen'} in Qualifizierung, {nichtInRunde === 1 ? 'braucht' : 'brauchen'} aber gerade keine Antwort — schon ein Deal oder nach der Prüfung in Ruhe bis zur Wiedervorlage. Alle zeigt die <button type="button" onClick={() => zuLeads()} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', fontSize: TYP.bedien, textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.25)' }}>Leads-Liste</button>.</div>}
           {proWoche && proWoche.some(v => v > 0) && (
             <FadenLinie reihe={proWoche} heute={proWoche.length - 1} label="Qualifizierte Leads je Woche, letzte 8 Wochen" beschriftung={wochenBeschriftung(heute, proWoche.length)}
               farbe={LEUCHT.business} hoehe={40} achse={[`vor ${proWoche.length - 1} Wochen`, `Qualifiziert · ${proWoche.reduce((a, v) => a + v, 0)}`, 'diese Woche']} style={{ marginBottom: 12 }} />

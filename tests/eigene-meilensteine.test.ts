@@ -333,7 +333,9 @@ describe('Recht und Oberfläche', () => {
 
   it('„Meine Ziele“ trägt eigene Meilensteine (schreiben), die Spalte der anderen Person nur lesend — keine Namen im Code', () => {
     const zu = lies('components/os/planung/ZieleUebersicht.tsx');
-    for (const s of ["useEigeneMeilensteine('ich', true, meine.zieleNeuLaden)", 'useEigeneMeilensteine(person.speicher)', '<EigeneMeilensteineListe', 'eigenesZielFortschritt(z, eigeneMs.ms)']) expect(zu).toContain(s);
+    for (const s of ["useEigeneMeilensteine('ich', nurBusiness === false, meine.zieleNeuLaden)", 'useEigeneMeilensteine(person.speicher)', '<EigeneMeilensteineListe', 'eigenesZielFortschritt(z, eigeneMs.ms)']) expect(zu).toContain(s);
+    // Eigene Meilensteine sind Privat — ein Konto „nur Business“ fragt sie gar nicht erst ab (Gesamtprüfung 12.10., 2272e528).
+    expect(zu).toContain('const nurBusiness = useNurBusiness();');
     const liste = lies('components/os/planung/EigeneMeilensteineListe.tsx');
     for (const s of ['<ZeileAktionen', 'rueck.melden(', '<HakenZiel', "if (e.key === 'Enter') anlegen();", "from '../ui'"]) expect(liste).toContain(s);
     for (const f of [zu, liste, lies('components/os/planung/useEigeneMeilensteine.ts')]) expect(f).not.toMatch(/['"](kevin|malin)['"]/i);

@@ -33,6 +33,8 @@ import { datum } from './daten';
 import { neueOhneSchritt } from '@/lib/crm/person-anlegen';
 import { anzeigename } from '@/lib/make-one/crm';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
+import { leadsFilterSetzen } from './Leads';
+import type { LeadFilter } from '@/lib/crm/leads';
 
 /** Farbe je Welt — dieselbe in der Leiste, im Überblick und an den Übergaben. */
 export const WELT_FARBE: Record<Welt, string> = { sales: LEUCHT.business, marketing: LEUCHT.puls, event: LEUCHT.beziehung };
@@ -51,7 +53,8 @@ const leise = { background: 'none', border: 'none', color: C.inkLeise, cursor: '
 export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: string, a?: string, k?: string) => void }) {
   const router = useRouter();
   // 6.7 (08.10.): Ziele außerhalb der Markttraktion (Mandate) tragen `href` — sonst der Bereich der Markttraktion.
-  const geh = (z: { s: string; a?: string; k?: string; href?: string }) => (z.href ? router.push(z.href) : zuBereich(z.s, z.a, z.k));
+  // `filter` (14.10., B5): der Sprung in die Leads-Liste öffnet den Filter, nach dem die Zahl gezählt hat (dieselbe Regel `passtLeadFilter`).
+  const geh = (z: { s: string; a?: string; k?: string; href?: string; filter?: LeadFilter }) => { if (z.filter) leadsFilterSetzen(z.filter); return z.href ? router.push(z.href) : zuBereich(z.s, z.a, z.k); };
   const [d, setD] = useState<Daten | null>(null);
   const [alle, setAlle] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);

@@ -12,6 +12,7 @@ import { Karte, Ueberschrift, LEUCHT } from '../ui';
 import { AMPEL_FARBE, scoreFarbe } from './teile';
 import type { BusinessIndex, KennzahlStand } from '@/lib/business/index';
 import { WEG } from '@/lib/wege';
+import { indexStatus } from '@/lib/kennzahlen/kern';
 
 /** Welche Kennzahlen eine Fachseite zeigt. */
 export const STREIFEN = {
@@ -34,7 +35,7 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
   return (
     <Karte i={i}>
       <Ueberschrift farbe={farbe} rechts={<Link href={WEG.business()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Cockpit ›</Link>}>
-        {titel}{bi?.index != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{bi.index}</span>}{bi && <span style={{ color: C.inkLeise, fontWeight: 600, letterSpacing: 0, textTransform: 'none', marginLeft: 6 }}>{bi.label}</span>}
+        {titel}{bi?.index != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{bi.index}</span>}{bi && <span title={indexStatus(bi).satz} style={{ color: C.inkLeise, fontWeight: 600, letterSpacing: 0, textTransform: 'none', marginLeft: 6 }}>{indexStatus(bi).titel}</span>}
       </Ueberschrift>
       {/* 11.10.: 140 px Mindestbreite — am Handy zwei Kacheln je Zeile statt fünf Zeilen untereinander. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))', gap: 8 }}>
@@ -56,6 +57,7 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
           );
         })}
       </div>
+      {bi && indexStatus(bi).vorlaeufig && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{indexStatus(bi).satz}</div>}
       {bi && liste.some(k => !k.gemessen) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>„fehlt“ = Messlücke — im Cockpit steht, wie ihr sie schließt.</div>}
       {bi && liste.some(k => k.ampel === 'rot') && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 4 }}>Rot: {liste.filter(k => k.ampel === 'rot').map(k => k.label).join(', ')}</div>}
     </Karte>

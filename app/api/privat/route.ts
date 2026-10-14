@@ -1,7 +1,7 @@
 // ─── Privat-Index (25.09.) ──────────────────────────────────────────────────
 // GET  → Index, Säulen, Kennzahlen (Wert, Ampel, Formel, Quelle oder Messlücke,
 //        die Punkte dahinter mit Links), Verlauf, Trend, Ampel-Wechsel, Rücklage
-//        ?kompakt=1 → nur Index und Säulen (Kopfzeile, Wachstums-Score)
+//        ?kompakt=1 → nur Index, Status (Abdeckung, Lücken, Teilwert — indexStatus, 14.10.) und Säulen (Kopfzeile, Wachstums-Score)
 // POST { ruecklage: 12000 | null }            → Rücklage in Euro (Stand = heute)
 //      { schwelle: { id, gruen, rot } }       → eigene Schwelle
 //      { schwelle: { id, zuruecksetzen: true } }
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   // Zeit & Fokus der Person fließt als vierte Säule ein (26.09. spät).
   const st = await privatStand(z.haushalt, undefined, await zeitBildFuer(z.person).catch(() => null), z.person);
   if (new URL(req.url).searchParams.get('kompakt') === '1') {
-    return NextResponse.json({ ok: true, index: st.pi.index, label: st.pi.label, frisch: st.frisch, saeulen: st.pi.saeulen.map(s => ({ id: s.id, label: s.label, score: s.score })) }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ ok: true, index: st.pi.index, label: st.pi.label, abdeckung: st.pi.abdeckung, luecken: st.pi.luecken, ...(st.pi.teil ? { teil: st.pi.teil } : {}), ...(st.pi.vorlaeufig ? { vorlaeufig: st.pi.vorlaeufig } : {}), frisch: st.frisch, saeulen: st.pi.saeulen.map(s => ({ id: s.id, label: s.label, score: s.score })) }, { headers: { 'Cache-Control': 'no-store' } });
   }
   return NextResponse.json({ ok: true, ...st }, { headers: { 'Cache-Control': 'no-store' } });
 }

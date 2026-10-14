@@ -306,7 +306,9 @@ describe('CRM-Altwerkzeuge auf dem einen Weg (Funde #4)', () => {
   });
   it('chance_anlegen über die Deal-Route: dieselbe Freigabe zweimal (auch mit „trotzdem“) ergibt EINEN Deal', async () => {
     const k = { vorschlagId: 'v-probe-deal-1' };
-    const e = { kontakt: 'c-tom-1', naechster_schritt: 'Angebot schicken', faellig: '2026-12-01', wert_monat: 1000, trotzdem: true };
+    // Fälligkeit relativ zu heute (Zeitbomben-Suche 14.10.: ein festes Datum wird zum vergangenen „nächsten Schritt“ und abgelehnt).
+    const { tagPlus } = await import('@/lib/kalender/zeit');
+    const e = { kontakt: 'c-tom-1', naechster_schritt: 'Angebot schicken', faellig: tagPlus(await heute(), 30), wert_monat: 1000, trotzdem: true };
     expect(await lauf('chance_anlegen', e, 'pia', k)).toMatch(/^Deal angelegt/);
     expect(await lauf('chance_anlegen', e, 'pia', k)).toMatch(/schon da/);
     const crm = (await db.loadJson<{ chancen: { id: string }[] }>('crm'))!;

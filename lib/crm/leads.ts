@@ -326,14 +326,25 @@ export function sqlEntscheidungOffen(z: Pick<LeadZeile, 'status' | 'kriterien' |
  * Die Leads für die Qualifizierungsrunde — zuerst „SQL bereit — Entscheidung offen“ (ohne Temperaturfilter: da wartet eine Entscheidung),
  * dann die übrigen: eigene zuerst, warm vor kalt, dann die zuletzt angefassten.
  */
+/** Die Auswahl der Runde ohne „braucht Qualifizierung“ und ohne Temperatur: Person, Kanal, BEAN (EINE Stelle für Runde und Hinweis). */
+const passtRundenAuswahl = (z: LeadZeile, f: RundenFilter): boolean =>
+  (f.wer === 'alle' ? true : f.wer === 'ohne' ? z.ohneBesitzer : !z.ohneBesitzer && (z.besitzer === f.wer || z.besitzer === 'beide'))
+  && (!f.kanal || z.kanal === f.kanal) && (!f.bean || z.bean === f.bean);
 export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile[] {
   return zeilen
     .filter(z => brauchtQualifizierung(z, f.heute) || sqlEntscheidungOffen(z))
-    .filter(z => (f.wer === 'alle' ? true : f.wer === 'ohne' ? z.ohneBesitzer : !z.ohneBesitzer && (z.besitzer === f.wer || z.besitzer === 'beide')))
+    .filter(z => passtRundenAuswahl(z, f))
     .filter(z => f.auchKalt || !istKalt(z) || sqlEntscheidungOffen(z))
-    .filter(z => !f.kanal || z.kanal === f.kanal)
-    .filter(z => !f.bean || z.bean === f.bean)
     .sort((a, b) => Number(sqlEntscheidungOffen(b)) - Number(sqlEntscheidungOffen(a)) || b.score.punkte - a.score.punkte || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));
+}
+/**
+ * Warum die Runde weniger zeigt als die Zahl „Leads in Qualifizierung“ (Abnahme 14.10., B5: Überblick 2, Runde 1): Leads derselben Auswahl im Filter
+ * „Qualifizierung“ der Leads-Liste (`passtLeadFilter`), die die Runde gerade nicht zeigt — sie haben schon einen Deal oder ruhen nach der Prüfung bis
+ * zur Wiedervorlage (`brauchtQualifizierung`). Die Runde nennt die Zahl mit diesem Grund, damit zwei Zahlen nie ohne Erklärung nebeneinander stehen.
+ */
+export function inQualifizierungNichtInRunde(zeilen: LeadZeile[], f: RundenFilter): number {
+  const inRunde = new Set(zuQualifizieren(zeilen, { ...f, auchKalt: true }).map(z => z.id));
+  return zeilen.filter(z => passtLeadFilter(z, 'qualifizierung') && passtRundenAuswahl(z, f) && !inRunde.has(z.id)).length;
 }
 /**
  * Wie viele Leads in der Runde ANDEREN gehören (1.10, 09.10.): die Runde startet mit „Meine“ — Leads, die jemand anders angelegt hat bzw.

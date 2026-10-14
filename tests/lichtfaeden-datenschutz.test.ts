@@ -5,6 +5,9 @@
 // ganze Antwort (Bündel, Brotkrumen, Markierungen, Engstellen samt „top“, Text) — und mit eingeschaltetem Zwischenspeicher
 // (MAKE_OS_MEMO=an), dass sich die Sichten von Kevin und Malin nie vermischen.
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+// Die Uhr steht fest (Zeitbomben-Suche 14.10.): die Fristen liegen an festen Tagen im Nov./Dez. 2026 — mit der echten Uhr wären sie ab Dez. vorbei
+// und die Engstellen leer. Nur `Date` steht, Zeitgeber laufen.
+vi.hoisted(() => { vi.useFakeTimers({ now: new Date('2026-10-14T08:00:00Z'), toFake: ['Date'], shouldAdvanceTime: true }); });
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

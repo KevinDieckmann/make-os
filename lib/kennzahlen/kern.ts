@@ -55,6 +55,33 @@ export function ampel(wert: number, k: Pick<KennzahlDefBasis, 'richtung' | 'grue
 
 export const indexLabel = (n: number | null) => (n == null ? 'Noch keine Daten' : n >= 80 ? 'Souverän' : n >= 60 ? 'Solide' : n >= 40 ? 'Verbesserungsfähig' : 'Kritisch');
 
+/** Der EINE Status eines Index für jede Ansicht (Abnahme 14.10., B1): Kurzwort und ein Satz — Heute, Cockpit, Fachseiten und IndexAnsicht lesen nur ihn. */
+export interface IndexStatus {
+  /** Kurzwort unter dem Ring bzw. in der Überschrift: das Label („Solide“), „Vorläufig“ oder „Noch keine Daten“. */
+  titel: string;
+  /** Ein Satz daneben: wie viel gemessen ist und warum (noch) keine Zahl steht. */
+  satz: string;
+  /** Kein Indexwert, aber schon gemessen (unter der Mindestabdeckung) — die Säulen zeigen Werte, der Index zählt noch nicht. */
+  vorlaeufig: boolean;
+}
+const tagKurzDe = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
+/**
+ * Status aus einem Index-Ergebnis — vorher stand „Noch zu wenig gemessen · 6 von 6 Säulen mit Wert“ (Heute) neben „Noch keine Daten“ (Cockpit,
+ * Fachseiten) neben „31 % auf echten Daten“ für dieselbe Lage. Ohne Wert, aber mit Messung: „Vorläufig — 31 % gemessen“; ganz ohne Messung
+ * „Noch keine Daten“; mit Wert das Label und die Abdeckung (Anlaufphase mit „vorläufig bis …“).
+ */
+export function indexStatus(e: Pick<IndexErgebnis, 'index' | 'label' | 'abdeckung' | 'luecken'> & Partial<Pick<IndexErgebnis, 'teil' | 'vorlaeufig'>>): IndexStatus {
+  const pct = Math.round((e.abdeckung ?? 0) * 100);
+  const luecken = e.luecken ? ` · ${e.luecken} Messlücke${e.luecken === 1 ? '' : 'n'}` : '';
+  if (e.index != null) {
+    return { titel: e.label, satz: `${pct} % auf echten Daten${luecken}${e.vorlaeufig ? ` · vorläufig bis ${tagKurzDe(e.vorlaeufig.bis)}` : ''}`, vorlaeufig: false };
+  }
+  if (pct > 0 || e.teil) {
+    return { titel: 'Vorläufig', satz: `Vorläufig — ${pct} % gemessen; der Index zählt ab ${Math.round(MIN_ABDECKUNG * 100)} %${luecken}.`, vorlaeufig: true };
+  }
+  return { titel: 'Noch keine Daten', satz: `Noch nichts gemessen${luecken} — jede Kachel sagt, was fehlt.`, vorlaeufig: false };
+}
+
 export interface KennzahlStand {
   id: string; label: string; gruppe: string; einheit: Einheit; richtung: Richtung;
   gruen: number; rot: number; formel: string; pflegen?: KennzahlDefBasis['pflegen'];

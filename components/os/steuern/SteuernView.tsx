@@ -17,7 +17,8 @@ import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Knopf, Segmente, Fortschritt, feld, auswahl, Spalten, Spalte, LEUCHT, Hinweis } from '../ui';
 import { useZuZiel } from '../ziel';
-import { EINHEIT_LABEL, STEUER_EINHEITEN, UG_NICHT_HINTERLEGT, steuerBereich, type Einheit, type Frist, type SteuerEinstellungen, type UstZeitraum, type Prognose, type BelegPunkt, type UebergabePunkt, type Jahresgewinn } from '@/lib/steuern/rechnen';
+import { deckungStand } from '@/lib/kennzahlen/anteil';
+import { EINHEIT_LABEL, STEUER_EINHEITEN, UG_NICHT_HINTERLEGT, UG_STEUER_WEG, steuerBereich, type Einheit, type Frist, type SteuerEinstellungen, type UstZeitraum, type Prognose, type BelegPunkt, type UebergabePunkt, type Jahresgewinn } from '@/lib/steuern/rechnen';
 import type { EstGemeinsam } from '@/lib/finanzen/est-gemeinsam';
 import { WEG } from '@/lib/wege';
 
@@ -85,6 +86,7 @@ export function SteuernView({ bereich = 'business' }: { bereich?: 'privat' | 'bu
   const sichtbar = [...offenVorbei, ...(alleFristen ? kommend : kommend.filter(f => f.tage <= 90))];
   const summeSoll = EINHEITEN.reduce((s, x) => s + d.prognose.je[x].soll, 0);
   const summeIst = EINHEITEN.reduce((s, x) => s + (d.prognose.je[x].ist ?? 0), 0);
+  const ruecklage = deckungStand(summeIst, summeSoll);
 
   return (
     <>
@@ -105,8 +107,14 @@ export function SteuernView({ bereich = 'business' }: { bereich?: 'privat' | 'bu
           </Link>
           <Link href="#ruecklage" style={{ textDecoration: 'none', color: C.ink, display: 'grid', gap: 4 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase' }}>Rücklage</span>
-            <span style={{ fontFamily: SCHRIFT.display, fontSize: 26, fontWeight: 700, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: summeSoll > summeIst ? LEUCHT.achtung : LEUCHT.gut }}>{euro(summeIst)} <span style={{ fontSize: 15, color: C.inkLeise }}>von {euro(summeSoll)}</span></span>
-            <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{summeSoll > summeIst ? `${euro(summeSoll - summeIst)} fehlen` : 'gedeckt'} · Schätzung {d.prognose.jahr}</span>
+            {/* B14 (14.10.): ohne Schätzung kein grünes „0 € von 0 € — gedeckt“, sondern ein Leerzustand mit Weg (lib/kennzahlen/anteil.ts deckungStand). */}
+            {ruecklage.stufe === 'leer' ? (<>
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: 26, fontWeight: 700, letterSpacing: '-.02em', color: C.inkLeise }}>—</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Noch keine Schätzung {d.prognose.jahr} — was fehlt, steht unter Rücklage &amp; Prognose ›</span>
+            </>) : (<>
+              <span style={{ fontFamily: SCHRIFT.display, fontSize: 26, fontWeight: 700, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: ruecklage.stufe === 'gut' ? LEUCHT.gut : LEUCHT.achtung }}>{euro(summeIst)} <span style={{ fontSize: 15, color: C.inkLeise }}>von {euro(summeSoll)}</span></span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{ruecklage.stufe === 'achtung' ? `${euro(ruecklage.fehlt)} fehlen` : 'gedeckt'} · Schätzung {d.prognose.jahr}</span>
+            </>)}
           </Link>
           <Link href="#uebergabe" style={{ textDecoration: 'none', color: C.ink, display: 'grid', gap: 4 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase' }}>Übergabe {monatName(d.uebergabe.monat)}</span>
@@ -133,7 +141,7 @@ export function SteuernView({ bereich = 'business' }: { bereich?: 'privat' | 'bu
                 <Link href={f.href} style={{ color: C.inkLeise, textDecoration: 'none', fontSize: 15 }} aria-label="dazu">›</Link>
               </span>} />
           ))}
-          {!sichtbar.length && <Leer>{filter === 'ug' ? UG_NICHT_HINTERLEGT : 'Keine Frist in den nächsten 90 Tagen.'}</Leer>}
+          {!sichtbar.length && <Leer>{filter === 'ug' ? <>{UG_NICHT_HINTERLEGT} <Link href={UG_STEUER_WEG.href} style={{ color: C.aktiv, textDecoration: 'none' }}>{UG_STEUER_WEG.text} ›</Link></> : 'Keine Frist in den nächsten 90 Tagen.'}</Leer>}
         </Liste>
         <div style={{ display: 'flex', gap: 12, marginTop: 10, flexWrap: 'wrap', alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise }}>
           <button onClick={() => setAlleFristen(!alleFristen)} style={{ background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', padding: 0, fontSize: TYP.bedien }}>{alleFristen ? 'nur 90 Tage' : `alle ${kommend.length} der nächsten 12 Monate`}</button>

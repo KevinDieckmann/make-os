@@ -35,6 +35,7 @@ import { kapazitaetNeu } from '../kapazitaet/useKapazitaet';
 import { PfeilRang } from './PfeilRang';
 import { loescheZiel } from './ziel-loeschen';
 import { hatPrivatEinheit, wirksamerSpace, zaehltAlsArbeit } from '@/lib/planung/bereich';
+import { zielwertText } from '@/lib/planung/kaskade';
 
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 const mikro: CSSProperties = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.inkLeise };
@@ -207,7 +208,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
           {z.einheit && (space === 'business' || hatPrivatEinheit(z)) && <Chip farbe={hatPrivatEinheit(z) ? SPACE_FARBE.privat : SPACE_FARBE.business}>{z.einheit}</Chip>}
           {z.id.startsWith(FAHRPLAN_ZIEL_PRAEFIX) && <FahrplanHerkunft zielId={z.id} />}
           {z.termin && <span>Frist {dt(z.termin)}</span>}
-          {z.zielwert ? <span>Zahlenziel {z.zielwert}</span> : null}
+          {z.zielwert ? <span>Zahlenziel {zielwertText(z)}</span> : null}
           {abgeleitet && <span style={{ color: LEUCHT.agenten }}>abgeleitet aus dem Jahresziel</span>}
           {z.erledigt && z.erledigtAm && <span>erledigt {dt(z.erledigtAm)}</span>}
         </div>

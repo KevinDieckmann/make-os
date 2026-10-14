@@ -63,6 +63,7 @@ import { wartetText } from '@/lib/planung/meilenstein-kette';
 import { loescheMeilenstein } from './meilenstein-loeschen';
 import { loescheZiel } from './ziel-loeschen';
 import { ZieleUebersicht } from './ZieleUebersicht';
+import { zielwertText } from '@/lib/planung/kaskade';
 
 type SpaceFilter = SpaceId | 'alle';
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
@@ -288,7 +289,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
           mandatChip(z, z.space === 'business', m => zPatch(z.id, mandatFelder(m), true)),
           spaceFilter === 'alle' && zs ? <span style={{ color: SPACE_FARBE[zs] }}>{SPACE_LABEL[zs]}</span> : null,
           z.termin ? `bis ${dtKurz(z.termin)}` : null,
-          horizont === 'jahr' && z.zielwert ? `Ziel ${z.zielwert}` : null,
+          horizont === 'jahr' && z.zielwert ? `Ziel ${zielwertText(z)}` : null,
           zMs.length ? <Link href={WEG.ziel(z.id)} title={zMs.map(x => x.titel).join(' · ')} style={{ color: 'inherit' }}>{zMs.length === 1 ? '1 Meilenstein' : `${zMs.length} Meilensteine`}{zMs.some(x => !x.erledigt && wartetText(x, p.ms)) ? ' · Kette' : ''}</Link> : null,
           herkunft(z, 'Jahresziel'),
           z.erledigt && z.erledigtAm ? `erledigt ${dtKurz(z.erledigtAm)}` : null,

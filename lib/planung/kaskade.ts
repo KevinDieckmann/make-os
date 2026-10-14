@@ -38,17 +38,65 @@ export function anteil(zahl: number, n: number): Anteil {
   return { genau, gerundet, rest: rund1(zahl - gerundet * n) };
 }
 
-const zahlText = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ','));
+// 14.10. (Abnahme B13): ab 1.000 mit Tausenderpunkt („2.083“ statt „2083“) — kleine Zahlen wie bisher („30“, „0,3“).
+const zahlText = (n: number) => (Number.isInteger(n) ? (Math.abs(n) >= 1000 ? n.toLocaleString('de-DE') : String(n)) : n.toFixed(1).replace('.', ','));
 const JE: Record<Unterhorizont, string> = { quartal: 'im Quartal', monat: 'im Monat', woche: 'je Woche', tag: 'je Tag' };
+
+export type ZielTakt = 'tag' | 'woche' | 'monat' | 'quartal' | 'jahr';
+/** Was ein Zahlenziel zählt (aus dem Titel): die Einheit hinter der Zahl und ob es eine Rate „je Monat“ usw. ist. */
+export interface ZahlenzielArt { einheit?: string; takt?: ZielTakt }
+const SYMBOL = /^\s*(T€|k€|€|EUR|%)/;
+const WORT = /^\s+([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß-]*)/;
+const KEIN_EINHEITSWORT = new Set(['je', 'pro', 'im', 'in', 'bis', 'für', 'ab', 'pa', 'p']);
+const TAKT_WORT: Record<string, ZielTakt> = { tag: 'tag', woche: 'woche', monat: 'monat', quartal: 'quartal', jahr: 'jahr', täglich: 'tag', wöchentlich: 'woche', monatlich: 'monat', quartalsweise: 'quartal', jährlich: 'jahr' };
+const TAKT = /^\s*(?:(?:je|pro|im|\/)\s*(Tag|Woche|Monat|Quartal|Jahr)|(täglich|wöchentlich|monatlich|quartalsweise|jährlich))(?![A-Za-zÄÖÜäöüß])/i;
+const zahlAus = (t: string) => Number(t.replace(/\./g, '').replace(',', '.'));
+/**
+ * Einheit und Takt eines Zahlenziels aus seinem Titel (Abnahme 14.10., B13 — vorher „2083 im Monat“ ohne Einheit, aus einem Ziel „25.000 € je Monat“
+ * durch 12 geteilt): die Zahl im Titel, die dem Zielwert entspricht, und was direkt dahinter steht. „120 Neukunden“ → Einheit „Neukunden“;
+ * „Umsatz 300.000 €“ → „€“; „25.000 € je Monat“ → „€“ mit Takt „monat“. Ohne passende Zahl im Titel: nichts (die Kaskade bleibt, wie sie war).
+ */
+export function zahlenzielArt(z: Pick<Ziel, 'titel' | 'zielwert'>): ZahlenzielArt {
+  if (!(typeof z.zielwert === 'number' && z.zielwert > 0)) return {};
+  for (const m of z.titel.matchAll(/\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?/g)) {
+    if (Math.abs(zahlAus(m[0]) - z.zielwert) > 0.001) continue;
+    let rest = z.titel.slice((m.index ?? 0) + m[0].length);
+    let einheit: string | undefined;
+    const sy = rest.match(SYMBOL);
+    if (sy) { einheit = sy[1] === 'EUR' ? '€' : sy[1]; rest = rest.slice(sy[0].length); }
+    else { const w = rest.match(WORT); if (w && !KEIN_EINHEITSWORT.has(w[1].toLowerCase())) { einheit = w[1]; rest = rest.slice(w[0].length); } }
+    const t = rest.match(TAKT);
+    const takt = t ? TAKT_WORT[(t[1] ?? t[2]).toLowerCase()] : undefined;
+    return { ...(einheit ? { einheit } : {}), ...(takt ? { takt } : {}) };
+  }
+  return {};
+}
+/**
+ * Eine Rate („25.000 € je Monat“, „3 Gespräche je Woche“) ist ein STAND, der erreicht werden soll — keine Jahressumme. Sie wird nicht auf Quartal,
+ * Monat, Woche und Tag aufgeteilt: jede Ebene trägt dasselbe Ziel (B13). „… im Jahr“ ist eine Summe und wird aufgeteilt wie bisher.
+ */
+export const istRatenziel = (z: Pick<Ziel, 'titel' | 'zielwert'>): boolean => { const t = zahlenzielArt(z).takt; return !!t && t !== 'jahr'; };
+/** Der Zielwert als Text mit Einheit und Takt aus dem Titel (B13): „25.000 € je Monat“, „120 Neukunden“, ohne Angabe nur die Zahl. */
+export function zielwertText(z: Pick<Ziel, 'titel' | 'zielwert'>): string {
+  if (!(typeof z.zielwert === 'number' && z.zielwert > 0)) return '';
+  const a = zahlenzielArt(z);
+  const TAKT_TEXT: Record<ZielTakt, string> = { tag: 'je Tag', woche: 'je Woche', monat: 'je Monat', quartal: 'je Quartal', jahr: 'im Jahr' };
+  return `${zahlText(z.zielwert)}${a.einheit ? (a.einheit === '%' ? ' %' : ` ${a.einheit}`) : ''}${a.takt ? ` ${TAKT_TEXT[a.takt]}` : ''}`;
+}
 
 /** Kennung des abgeleiteten Ziels — je Elternziel und Ebene genau eine. */
 export const abgeleiteteId = (elternId: string, h: Unterhorizont) => `${elternId}~${h}`;
 
 /** Der Titel eines abgeleiteten Zahlenziels, z. B. „Neukunden · 30 im Quartal“, „… · 2 je Woche (Rest 16 im Jahr)“. */
 export function abgeleiteterTitel(eltern: Ziel, h: Unterhorizont, jahr: number): string {
+  // Rate (B13): dasselbe Ziel auf jeder Ebene — nie „25.000 € je Monat · 2083 im Monat“.
+  if (istRatenziel(eltern)) return eltern.titel;
   const a = anteil(eltern.zielwert ?? 0, teile(h, jahr));
-  const rest = a.rest > 0 ? ` (Rest ${zahlText(a.rest)} im Jahr)` : a.rest < 0 ? ` (Puffer ${zahlText(-a.rest)})` : '';
-  return `${eltern.titel} · ${zahlText(a.gerundet)} ${JE[h]}${rest}`;
+  // Mit der Einheit aus dem Titel (B13): „… · 2.083 € im Monat“ statt „2083 im Monat“.
+  const e = zahlenzielArt(eltern).einheit;
+  const mit = (n: number) => `${zahlText(n)}${e ? (e === '%' ? ' %' : ` ${e}`) : ''}`;
+  const rest = a.rest > 0 ? ` (Rest ${mit(a.rest)} im Jahr)` : a.rest < 0 ? ` (Puffer ${mit(-a.rest)})` : '';
+  return `${eltern.titel} · ${mit(a.gerundet)} ${JE[h]}${rest}`;
 }
 
 /** Das abgeleitete Ziel — mit dem, was ein bestehender Stand beisteuert (Fortschritt, Rang, Erledigt). */
@@ -66,7 +114,8 @@ export function abgeleitetesZiel(eltern: Ziel, h: Unterhorizont, jahr: number, b
     // Mandat an Zielen (28.09.): das abgeleitete Ziel zahlt auf dasselbe Mandat ein.
     ...(eltern.mandatId ? { mandatId: eltern.mandatId } : {}),
     ...(eltern.firmaId ? { firmaId: eltern.firmaId } : {}),
-    zielwert: anteil(eltern.zielwert ?? 0, teile(h, jahr)).gerundet,
+    // Rate (B13): nicht aufgeteilt — jede Ebene trägt den Zielwert des Jahresziels.
+    zielwert: istRatenziel(eltern) ? (eltern.zielwert ?? 0) : anteil(eltern.zielwert ?? 0, teile(h, jahr)).gerundet,
     abgeleitetVon: eltern.id,
     // Geteilt (09.10., eigene Ziele): das abgeleitete Ziel folgt dem Jahresziel — geteilt ist es, wenn das Jahresziel es ist.
     ...(eltern.geteilt ? { geteilt: true } : {}),

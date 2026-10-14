@@ -49,7 +49,7 @@ export interface SeilZielRoh {
   /** Ziel-Frist (YYYY-MM-DD) bzw. Jahresende des Planungsjahres (dann `ankerArt: 'jahresende'`). */
   anker?: string; ankerArt?: AnkerArt;
   erledigt?: boolean; erledigtAm?: string;
-  /** 0 … 100 (nur, wenn keine Stränge da sind). */
+  /** 0 … 100 — der Ziel-Fortschritt (gespeichert, vom Server aus den Meilensteinen nachgezogen); fürs Momentum nur, wenn keine Stränge da sind. */
   fortschritt?: number;
   /** Eltern-Ziel (von Hand bzw. Kaskade, schon aufgelöst — lib/planung/bezuege.ts `zielEltern`). */
   elternId?: string;
@@ -124,8 +124,14 @@ export interface Seil {
   zielId: string; titel: string; farbe: string; link?: string; rang: number; space: SpaceId;
   anker: string; ankerArt: AnkerArt;
   erledigt: boolean; ueberfaellig: boolean;
-  /** Mittel des Strang-Fortschritts 0 … 1 (ohne Stränge: der Fortschritt des Ziels). */
+  /** Mittel des Strang-Fortschritts 0 … 1 (ohne Stränge: der Fortschritt des Ziels) — nur fürs Zeichnen (Drall, Glühen), nie als Zahl gezeigt. */
   momentum: number;
+  /**
+   * Der Fortschritt des Ziels 0 … 1 — DIESELBE Zahl wie auf Heute, in der Ziele-Liste und im Ziel-Detail (Abnahme 14.10., B3: vorher zeigte das Seil
+   * das Momentum 25/13/17 % neben 33/0/0 % auf Heute). Regel: erledigt = 100 %, sonst der gespeicherte `fortschritt`, den der Server aus dem
+   * wirksamen Fortschritt der Meilensteine nachzieht (lib/planung/meilenstein-aufgaben.ts `zieleFortschrittAnwenden`, `zielFortschrittLive`).
+   */
+  fortschritt: number;
   /** Erledigtes der letzten Tage 0 … 1. */
   schwung: number;
   /** Stränge in Spur-Reihenfolge (oben → unten, das unterste mündet zuerst). */
@@ -365,6 +371,8 @@ export function seilRechnen(e: SeilEingang): SeilAnsicht {
     const ids = ordne(je.get(id) ?? []);
     const l = ids.map(x => straenge[x]);
     const momentum = l.length ? l.reduce((n, s) => n + s.fortschritt, 0) / l.length : Math.max(0, Math.min(1, (z.erledigt ? 100 : z.fortschritt ?? 0) / 100));
+    // B3 (14.10.): die gezeigte Zahl ist der Ziel-Fortschritt (EINE Regel mit Heute und der Ziele-Liste), das Momentum bleibt fürs Zeichnen.
+    const zielFortschritt = Math.max(0, Math.min(1, (z.erledigt ? 100 : z.fortschritt ?? 0) / 100));
     const juengst = [
       ...ids.flatMap(x => kartenJe.get(x) ?? []).filter(k => k.status === 'erledigt' && istSeilTag(k.erledigtAm?.slice(0, 10)) && k.erledigtAm!.slice(0, 10) >= schwungAb && k.erledigtAm!.slice(0, 10) <= heute),
       ...ids.map(x => strangNach.get(x)!).filter(s => s.erledigt && istSeilTag(s.erledigtAm?.slice(0, 10)) && s.erledigtAm!.slice(0, 10) >= schwungAb && s.erledigtAm!.slice(0, 10) <= heute),
@@ -396,7 +404,7 @@ export function seilRechnen(e: SeilEingang): SeilAnsicht {
     const ueberfaellig = !z.erledigt && a.art === 'frist' && a.tag < heute;
     const blockiert = l.filter(s => s.status === 'blockiert').length;
     const satz = [
-      `${zitat(z.titel)}: ${l.length ? `${fertig} von ${l.length} ${l.length === 1 ? 'Strang' : 'Strängen'} fertig, Momentum ${Math.round(momentum * 100)} %` : 'noch kein Strang zahlt ein'}${blockiert ? `, ${blockiert} blockiert` : ''}${a.art === 'frist' ? `, Frist am ${kurz(a.tag)}${ueberfaellig ? ' (überschritten)' : ''}` : ''}`,
+      `${zitat(z.titel)}: Fortschritt ${Math.round(zielFortschritt * 100)} %${l.length ? `, ${fertig} von ${l.length} ${l.length === 1 ? 'Strang' : 'Strängen'} fertig` : ', noch kein Strang zahlt ein'}${blockiert ? `, ${blockiert} blockiert` : ''}${a.art === 'frist' ? `, Frist am ${kurz(a.tag)}${ueberfaellig ? ' (überschritten)' : ''}` : ''}`,
       pfadText ? `Kritischer Pfad: ${pfadText}` : '',
       engpass ? `Engpass: ${zitat(engpass.titel)} — ${engpass.wartende} warten darauf` : '',
     ].filter(Boolean);
@@ -404,7 +412,7 @@ export function seilRechnen(e: SeilEingang): SeilAnsicht {
     return {
       zielId: id, titel: z.titel, farbe: z.farbe, ...(z.link ? { link: z.link } : {}), rang: z.rang ?? 1e9, space: z.space,
       anker: a.tag, ankerArt: a.art, erledigt: !!z.erledigt, ueberfaellig,
-      momentum: Math.round(momentum * 1000) / 1000, schwung: Math.round(schwungAus(juengst) * 1000) / 1000,
+      momentum: Math.round(momentum * 1000) / 1000, fortschritt: Math.round(zielFortschritt * 1000) / 1000, schwung: Math.round(schwungAus(juengst) * 1000) / 1000,
       straenge: ids, fertig, pfad, ...(pfadText ? { pfadText } : {}), ...(engpass ? { engpass } : {}), text,
     };
   });

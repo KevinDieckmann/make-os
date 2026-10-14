@@ -103,7 +103,8 @@ const passtFilter = passtLeadFilter;
 /** Der Trichter gibt beim Sprung den Filter mit (1.4) — die Liste darunter hört zu (gleiche Seite, auch nach dem Laden). */
 const LEADS_FILTER_EREIGNIS = 'make-leads-filter';
 let gemerkterFilter: Filter | null = null;
-function leadsFilterSetzen(f: Filter) {
+/** Auch für Sprünge von außen (Überblick „Für dich“, 14.10.): die Liste öffnet mit genau dem Filter, nach dem die Zahl dort gezählt hat. */
+export function leadsFilterSetzen(f: Filter) {
   gemerkterFilter = f;
   try { window.dispatchEvent(new CustomEvent(LEADS_FILTER_EREIGNIS, { detail: f })); } catch { /* ohne Fenster: nur gemerkt */ }
 }

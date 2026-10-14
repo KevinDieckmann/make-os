@@ -235,9 +235,11 @@ export function FinanzplanungView() {
       {m && finance && (
         <Karte i={1}>
           <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={WEG.controlling()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Controlling ›</Link>}>Jahresziel</Ueberschrift>
+          {/* B12 (14.10.): ohne Jahresziel kein „0 €“ als Ziel — Leerzustand mit Weg ins Controlling (dort wird es eingetragen). */}
+          {!(finance.zielUmsatz > 0) && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginBottom: 10 }}>Noch kein Jahresziel für den Umsatz — <Link href={WEG.controlling()} style={{ color: C.aktiv, textDecoration: 'none' }}>im Controlling eintragen ›</Link></div>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
-            <Zahl wert={eur(finance.zielUmsatz)} label="Jahresziel" />
-            <Zahl wert={eur(m.istUmsatz)} label={`Ist · ${Math.round(m.fortschritt * 100)} %`} farbe={LEUCHT.gut} />
+            {finance.zielUmsatz > 0 && <Zahl wert={eur(finance.zielUmsatz)} label="Jahresziel" />}
+            <Zahl wert={eur(m.istUmsatz)} label={finance.zielUmsatz > 0 ? `Ist · ${Math.round(m.fortschritt * 100)} %` : 'Ist'} farbe={LEUCHT.gut} />
             <Zahl wert={eur(sum(gestellt))} label="gestellt offen" farbe={gestellt.length ? LEUCHT.achtung : C.inkLeise} />
             <Zahl wert={eur(sum(geplant))} label="in Vorbereitung" />
           </div>

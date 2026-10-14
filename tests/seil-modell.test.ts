@@ -107,6 +107,12 @@ describe('Seil-Dichte, kritischer Pfad, Engpass', () => {
     expect(a.seile.find(s => s.zielId === 'leer')!.momentum).toBe(0.2);
     expect(umsatz.fertig).toBe(1);
   });
+  it('gezeigte Zahl = Ziel-Fortschritt (EINE Regel mit Heute und der Ziele-Liste, 14.10. B3) — das Momentum bleibt fürs Zeichnen', () => {
+    for (const s of a.seile) {
+      const z = eingang().ziele.find(x => x.id === s.zielId)!;
+      expect(s.fortschritt).toBe(z.erledigt ? 1 : Math.round(((z.fortschritt ?? 0) / 100) * 1000) / 1000);
+    }
+  });
   it('Schwung zählt Erledigtes der letzten 14 Tage (Karten und Stränge)', () => {
     expect(umsatz.schwung).toBeCloseTo(schwungAus(2), 3); // a1 (05.10.) + Vertrag (02.10.)
     expect(schwungAus(0)).toBe(0);
@@ -146,7 +152,8 @@ describe('Seil-Dichte, kritischer Pfad, Engpass', () => {
   });
   it('deterministisch und mit Vorleser-Text', () => {
     expect(JSON.stringify(seilRechnen(eingang()))).toBe(JSON.stringify(seilRechnen(eingang())));
-    expect(a.text).toContain('„Umsatz verdoppeln“: 1 von 6 Strängen fertig');
+    // 14.10. (B3): der Satz nennt den Ziel-Fortschritt (dieselbe Zahl wie Heute), dann die Stränge.
+    expect(a.text).toMatch(/„Umsatz verdoppeln“: Fortschritt \d+ %, 1 von 6 Strängen fertig/);
     expect(seilRechnen({ heute: HEUTE, von: '2026-09-01', bis: '2026-12-31', ziele: [], straenge: [], karten: [] }).text).toBe('Im Zeitraum zahlt noch nichts auf ein Ziel ein.');
   });
 });

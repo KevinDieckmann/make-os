@@ -2,6 +2,9 @@
 // Person), Bezug nur im Neben-Bestand, Stand/409 mit aktuellem Termin, Bezug an Serien ohne iCloud-Schreiben,
 // Build-Kennung, Änderungsprotokoll ohne Titel. Nie echtes iCloud, erfundene Daten.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+// Die Uhr steht fest (Zeitbomben-Suche 14.10.): die Termine liegen an festen Tagen (Ende Sep./Anfang Okt. 2026, mit Sommerzeit), die Holfenster
+// rechnen ab „heute“ (Stand −90 Tage, Cache −30 Tage) — mit der echten Uhr fielen sie ab Ende Okt. bzw. Ende Dez. 2026 heraus. Nur `Date` steht, Zeitgeber laufen.
+vi.hoisted(() => { vi.useFakeTimers({ now: new Date('2026-10-14T08:00:00Z'), toFake: ['Date'], shouldAdvanceTime: true }); });
 
 const speicher = new Map<string, unknown>();
 vi.mock('@/lib/store/local-db', () => ({

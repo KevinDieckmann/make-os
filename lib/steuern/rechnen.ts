@@ -26,7 +26,16 @@ export const EINHEIT_LABEL: Record<Einheit, string> = { kdc: finanzOrtName('kdc'
 /** Firmen MIT hinterlegter Steuerlogik — die MAKE Innovation GmbH fehlt hier bewusst (UG_NICHT_HINTERLEGT). */
 export type SteuerFirma = Exclude<Gesellschaftskennung, 'ug'>;
 export const STEUER_FIRMEN: readonly SteuerFirma[] = ['kdc', 'kdv'];
-export const UG_NICHT_HINTERLEGT = `Steuerlogik der ${UG_NAME} (Körperschaft) noch nicht hinterlegt — keine Fristen, keine Schätzung.`;
+// 14.10. (Abnahme B14): ein klarer Satz statt „Steuerlogik … noch nicht hinterlegt“ allein — und ein Weg. Keine erfundenen Werte.
+export const UG_NICHT_HINTERLEGT = `Für die ${UG_NAME} rechnen wir noch keine Steuern — Fristen und Schätzung fehlen (Steuerlogik noch nicht hinterlegt).`;
+/**
+ * Der Weg dazu (B14): eine Näherung der Ertragsteuern der Gesellschaft rechnet die Finanzplanung (Blatt Gesellschaften, Steuerkarte genau dieser
+ * Gesellschaft, `steuern=ug`); verbindliche Fristen und Beträge kommen vom Steuerberater.
+ */
+export const UG_STEUER_WEG = {
+  text: 'Näherung in der Finanzplanung ansehen',
+  href: `${WEG.finanzplanung(bereichVon('ug') === 'privat' ? 'privat' : 'business', 'gesellschaften')}&steuern=ug`,
+} as const;
 
 export interface FirmaSteuer {
   rechtsform: 'freiberuf' | 'einzel' | 'ug' | 'gmbh';
@@ -283,7 +292,7 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
     z.push({ id: 'kst', einheit: 'kdv', titel: `Körperschaft- und Gewerbesteuer ${jahr}`, betrag: Math.max(0, kst + gew - vz), formel: `${Math.round(gv.hochgerechnet).toLocaleString('de-DE')} € Gewinn × (15,825 % KSt+Soli${e.kdv.gewerbe ? ` + ${(3.5 * e.hebesatz / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} % GewSt` : ''}) − ${Math.round(vz).toLocaleString('de-DE')} € Vorauszahlungen`, href: R });
   }
   // MAKE Innovation GmbH: sichtbar, aber nicht gerechnet (Körperschaft ≠ Selbstständigkeit) — Betrag bleibt leer.
-  z.push({ id: 'ug', einheit: 'ug', titel: `Steuern ${UG_NAME} ${jahr}`, betrag: null, formel: `Körperschaft-, Gewerbe- und Umsatzsteuer der ${UG_NAME}`, luecke: `${UG_NICHT_HINTERLEGT}${ug.rechnungen ? ` ${ug.rechnungen} ${UG_KURZ}-Rechnung${ug.rechnungen === 1 ? '' : 'en'} zählen noch in keiner Umsatzsteuer.` : ''}`, href: R });
+  z.push({ id: 'ug', einheit: 'ug', titel: `Steuern ${UG_NAME} ${jahr}`, betrag: null, formel: `Körperschaft-, Gewerbe- und Umsatzsteuer der ${UG_NAME}`, luecke: `${UG_NICHT_HINTERLEGT}${ug.rechnungen ? ` ${ug.rechnungen} ${UG_KURZ}-Rechnung${ug.rechnungen === 1 ? '' : 'en'} zählen noch in keiner Umsatzsteuer.` : ''}`, href: UG_STEUER_WEG.href });
   for (const zl of z) zl.href = hrefImBereich(zl.href, zl.einheit);
   const je = Object.fromEntries(FINANZ_ORT_IDS.map(x => {
     const soll = z.filter(y => y.einheit === x).reduce((s, y) => s + (y.betrag ?? 0), 0);

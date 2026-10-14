@@ -16,6 +16,7 @@ import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { UG_KURZ, finanzOrtName, finanzOrtKurz } from '@/lib/einheiten';
 import { entscheidungen, kontostand } from '@/lib/finanzen/szenarien';
 import { schwellenVon } from '@/lib/finanzen/schwellen';
+import { anteilStand } from '@/lib/kennzahlen/anteil';
 import { luecken } from '@/lib/finanzen/luecken';
 import { nurBusinessPunkte, nurBusinessTermine } from '@/lib/finanzen/plan/sicht';
 import { usePlan } from './daten';
@@ -41,6 +42,18 @@ export function ZielKurz({ s, bjoernStart }: { s: ZielStand; bjoernStart: number
   );
 }
 
+/**
+ * „Ziele im Plan“ als Kachel (14.10., B12): mit Zielen „n / m“ (grün nur, wenn alle im Plan sind), ohne Ziel ein Leerzustand mit Weg — nie „0 / 0“.
+ * Die Ziele hier sind die Finanz-Ziele des Plans (Kontostand, Darlehen …), nicht die Jahresziele der Planung.
+ */
+export function ZieleKachel({ label, imPlan, gesamt, unter, anlegen }: { label: string; imPlan: number; gesamt: number; unter: string; anlegen: () => void }) {
+  const st = anteilStand(imPlan, gesamt);
+  if (st.stufe === 'leer') {
+    return <Kachel label={label} wert="—" unter={<>Noch kein Finanz-Ziel (Kontostand, Darlehen) — die Jahresziele der Planung zählen hier nicht. <KnopfKlein onClick={anlegen}>Ziel anlegen ›</KnopfKlein></>} />;
+  }
+  return <Kachel label={label} punkt={st.stufe === 'gut' ? LEUCHT.gut : LEUCHT.achtung} wert={st.wert} unter={unter} />;
+}
+
 /** Einstieg (Kevin 27.09.): drei Zahlen — frei verfügbar diesen Monat, Runway, Ziele im Plan — und „Was jetzt zu entscheiden ist“ mit Sprung. */
 function LageKopf() {
   const { d, ug, pr, aw, ps, sz, geh } = usePlan();
@@ -57,7 +70,7 @@ function LageKopf() {
         <Kachel label="Frei verfügbar privat" punkt={aw.frei.privat >= sw.freiGut ? LEUCHT.gut : aw.frei.privat >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.frei.privat} /> €</>}
           unter={<>Konten <Geld v={aw.frei.privatKonten} farbe={C.inkDim} /> · Luft diesen Monat <Geld v={aw.frei.privatLuft} farbe={C.inkDim} /> · mit Selbstständigkeit <Geld v={aw.frei.privatBereich} farbe={C.inkDim} /> · alles zusammen <Geld v={aw.frei.gesamt} farbe={C.inkDim} />{aw.frei.kontenFehlen ? <span style={{ color: LEUCHT.achtung }}> · {aw.frei.kontenFehlen} Konten fehlen</span> : null}</>} />
         <Kachel label="Runway Privat" punkt={rwFarbe(aw.runway.privat)} wert={rw(aw.runway.privat, aw.runway.horizont)} unter={<>Monate ab jetzt, bis die privaten Konten unter null fallen · {UG_KURZ} {rw(aw.runway.ug, aw.runway.horizont)}</>} />
-        <Kachel label="Ziele im Plan" punkt={aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${aw.ziele.imPlan} / ${aw.ziele.gesamt}`} unter={aw.ziele.gesamt ? `${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp` : 'noch keine Ziele'} />
+        <ZieleKachel label="Ziele im Plan" imPlan={aw.ziele.imPlan} gesamt={aw.ziele.gesamt} unter={`${aw.ziele.gekippt} gekippt · ${aw.ziele.knapp} knapp`} anlegen={() => geh('ziele')} />
       </Kacheln>
       <Karte i={0} ton={C.aktiv}>
         <Ueberschrift rechts={<Knopf onClick={() => geh('planen')}>Planungsrunde öffnen ›</Knopf>}>Was jetzt zu entscheiden ist</Ueberschrift>
@@ -252,7 +265,9 @@ export function LageBusiness() {
         <Kachel label="Frei verfügbar Business" punkt={freiBusiness >= sw.freiGut ? LEUCHT.gut : freiBusiness >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={freiBusiness} /> €</>}
           unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · {KDV_KURZ} <Geld v={aw.frei.kdv} farbe={C.inkDim} /></>} />
         <Kachel label={`Runway ${UG_KURZ}`} punkt={rw == null || rw >= sw.runwayGutMonate ? LEUCHT.gut : rw >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={rw == null ? `> ${aw.runway.horizont} M` : rw === 0 ? 'jetzt' : `${rw} M`} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
-        <Kachel label="Business-Ziele im Plan" punkt={zs.length - imPlan ? LEUCHT.achtung : LEUCHT.gut} wert={`${imPlan} / ${zs.length}`} unter={zs.length ? 'MAKE frei · Partnerdarlehen' : 'noch keine Business-Ziele'} />
+        {/* B12 (14.10.): ohne Finanz-Ziel nie „0 / 0“ in Grün — Leerzustand mit Weg (lib/kennzahlen/anteil.ts). Die Jahresziele der Planung sind ein
+            eigenes Zielsystem und zählen hier nicht — der Satz sagt es. */}
+        <ZieleKachel label="Business-Ziele im Plan" imPlan={imPlan} gesamt={zs.length} unter={`${UG_KURZ} frei · Darlehen`} anlegen={() => geh('ziele')} />
         <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={ampel(kz.minFrei >= sw.tiefpunktGut, kz.minFrei >= 0)} wert={<><Geld v={kz.minFrei} /> €</>} unter={monatLabel(d, kz.minMonat)} />
       </Kacheln>
       <Karte i={0} ton={C.aktiv}>

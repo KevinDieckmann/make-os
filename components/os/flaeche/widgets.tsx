@@ -65,6 +65,8 @@ import { FokusFeld } from '../planung/FokusTafel';
 import { useSpace } from '@/hooks/useSpace';
 import { offenErledigt } from '@/lib/planung/rang';
 import type { Ziel, ZielHorizont } from '@/lib/planung/typen';
+import { indexStatus, type IndexErgebnis } from '@/lib/kennzahlen/kern';
+import { TRAKTION_IM_BUSINESS_INDEX } from '@/lib/business/register';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -479,26 +481,34 @@ function EssenWidget({ titel, i }: WidgetProps) {
 }
 
 // ── Index je Säule ──────────────────────────────────────────────────────────
-const INDEX_QUELLEN: Record<string, { url: string; label: string; farbe: string; ziel: string; lies: (d: unknown) => { index: number | null; label: string; saeulen: { id: string; label: string; score: number | null }[] } | null }> = {
-  business: { url: '/api/business?scope=gesamt&kompakt=1', label: 'Business-Index', farbe: LEUCHT.business, ziel: WEG.business(), lies: d => { const bi = (d as { bi?: { index: number | null; label: string; saeulen: { id: string; label: string; score: number | null }[] } }).bi; return bi ? { index: bi.index, label: bi.label, saeulen: bi.saeulen } : null; } },
-  privat: { url: '/api/privat?kompakt=1', label: 'Privat-Index', farbe: LEUCHT.geld, ziel: WEG.privatIndex(), lies: d => { const r = d as { ok?: boolean; index?: number | null; label?: string; saeulen?: { id: string; label: string; score: number | null }[] }; return r?.ok ? { index: r.index ?? null, label: r.label ?? '', saeulen: r.saeulen ?? [] } : null; } },
-  gesundheit: { url: '/api/gesundheit/index?kompakt=1', label: 'Gesundheits-Index', farbe: LEUCHT.gut, ziel: WEG.gesundheit('index'), lies: d => { const r = d as { ok?: boolean; index?: number | null; label?: string; saeulen?: { id: string; label: string; score: number | null }[] }; return r?.ok ? { index: r.index ?? null, label: r.label ?? '', saeulen: r.saeulen ?? [] } : null; } },
-  traktion: { url: '/api/crm/traktion', label: 'Traktions-Score', farbe: LEUCHT.business, ziel: markttraktion(), lies: d => { const r = (d as { index?: { index: number | null; label: string; saeulen: { id: string; label: string; score: number | null }[] } }).index; return r ? { index: r.index, label: r.label, saeulen: r.saeulen } : null; } },
+// 14.10. (Abnahme B1): der Status steht nur noch aus `indexStatus` (lib/kennzahlen/kern.ts) da — derselbe Satz wie im Cockpit und auf den Fachseiten.
+type IndexKurz = Pick<IndexErgebnis, 'index' | 'label' | 'abdeckung' | 'luecken'> & Partial<Pick<IndexErgebnis, 'teil' | 'vorlaeufig'>> & { saeulen: { id: string; label: string; score: number | null }[] };
+const indexKurz = (r: Partial<IndexKurz> | null | undefined): IndexKurz | null => (r && Array.isArray(r.saeulen) ? {
+  index: r.index ?? null, label: r.label ?? '', abdeckung: typeof r.abdeckung === 'number' ? r.abdeckung : 0, luecken: typeof r.luecken === 'number' ? r.luecken : 0,
+  ...(r.teil ? { teil: r.teil } : {}), ...(r.vorlaeufig ? { vorlaeufig: r.vorlaeufig } : {}), saeulen: r.saeulen,
+} : null);
+const INDEX_QUELLEN: Record<string, { url: string; label: string; farbe: string; ziel: string; lies: (d: unknown) => IndexKurz | null; hinweis?: string }> = {
+  business: { url: '/api/business?scope=gesamt&kompakt=1', label: 'Business-Index', farbe: LEUCHT.business, ziel: WEG.business(), lies: d => indexKurz((d as { bi?: Partial<IndexKurz> }).bi) },
+  privat: { url: '/api/privat?kompakt=1', label: 'Privat-Index', farbe: LEUCHT.geld, ziel: WEG.privatIndex(), lies: d => { const r = d as { ok?: boolean } & Partial<IndexKurz>; return r?.ok ? indexKurz({ ...r, saeulen: r.saeulen ?? [] }) : null; } },
+  gesundheit: { url: '/api/gesundheit/index?kompakt=1', label: 'Gesundheits-Index', farbe: LEUCHT.gut, ziel: WEG.gesundheit('index'), lies: d => { const r = d as { ok?: boolean } & Partial<IndexKurz>; return r?.ok ? indexKurz({ ...r, saeulen: r.saeulen ?? [] }) : null; } },
+  // B2 (14.10.): der Traktions-Score ist EINE Kennzahl der Business-Säule „Markt & Kunden“ — der Satz darunter sagt, warum die Säule eine andere Zahl trägt.
+  traktion: { url: '/api/crm/traktion', label: 'Traktions-Score', farbe: LEUCHT.business, ziel: markttraktion(), lies: d => indexKurz((d as { index?: Partial<IndexKurz> }).index), hinweis: TRAKTION_IM_BUSINESS_INDEX },
 };
 function IndexWidget({ e, titel, i }: WidgetProps) {
   const q = INDEX_QUELLEN[str(e.saeule, 'business')] ?? INDEX_QUELLEN.business;
   const d = useDaten(q.url, q.lies);
   if (d === null) return null;
   const farbe = d?.index == null ? C.inkLeise : zoneFarbe(d.index);
+  const status = d ? indexStatus(d) : null;
   return (
     <Karte i={i} akzent={d?.index != null ? farbe : undefined}>
       <Ueberschrift farbe={q.farbe} rechts={<Link href={q.ziel} style={link}>öffnen ›</Link>}>{titel ?? q.label}</Ueberschrift>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
         <Ring groesse="klein" label="Index" wert={d?.index != null ? String(Math.round(d.index)) : undefined} farbe={farbe} anteil={d?.index != null ? d.index / 100 : undefined} />
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 6 }}>
-          {/* 11.10.: ohne Indexwert nicht „Noch keine Daten“ über Balken mit Werten — sondern was fehlt (der Index zählt erst ab genug Messung). */}
-          <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{d === undefined ? 'lade …' : d.index == null ? 'Noch zu wenig gemessen' : d.label}</div>
-          {d && d.index == null && d.saeulen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{d.saeulen.filter(s => s.score != null).length} von {d.saeulen.length} Säulen mit Wert — „öffnen“ zeigt, was fehlt.</div>}
+          {/* Ein Status für alle Orte (indexStatus): Label bzw. „Vorläufig“/„Noch keine Daten“ — und ein Satz, wie viel gemessen ist. */}
+          <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{status ? status.titel : 'lade …'}</div>
+          {status && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{status.satz}</div>}
           {(d?.saeulen ?? []).slice(0, 4).map(s => (
             <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
@@ -506,6 +516,8 @@ function IndexWidget({ e, titel, i }: WidgetProps) {
               <div style={{ gridColumn: '1 / -1' }}><Fortschritt anteil={(s.score ?? 0) / 100} farbe={s.score == null ? C.inkLeise : zoneFarbe(s.score)} /></div>
             </div>
           ))}
+          {(d?.saeulen.length ?? 0) > 4 && <Link href={q.ziel} style={{ ...link, fontSize: TYP.bedien }}>+ {(d?.saeulen.length ?? 0) - 4} weitere Säulen ›</Link>}
+          {q.hinweis && d && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.4 }}>{q.hinweis}</div>}
         </div>
       </div>
     </Karte>

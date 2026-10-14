@@ -1,7 +1,7 @@
 // ─── Gesundheits-Index (25.09.) ─────────────────────────────────────────────
 // GET  ?fuer=<person> → Index, Säulen, Kennzahlen (Wert, Ampel, Formel, Quelle
 //        oder Messlücke, die Punkte dahinter mit Links), Verlauf, Trend, Wechsel.
-//        ?kompakt=1 → nur Index und Säulen.
+//        ?kompakt=1 → nur Index, Status (Abdeckung, Lücken, Teilwert — indexStatus, 14.10.) und Säulen.
 // POST { schwelle: { id, gruen, rot } | { id, zuruecksetzen: true } } — nur die eigenen.
 // Sehen: die eigenen immer, fremde nur, wenn die Person teilt (Konto → teilt.gesundheit).
 
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   leseZugriff(req, 'gesundheit', { betroffen: person }); // Lese-Protokoll (Art. 9, 05.10.)
   const st = await gesundheitStand(person);
   if (new URL(req.url).searchParams.get('kompakt') === '1') {
-    return NextResponse.json({ ok: true, person, index: st.pi.index, label: st.pi.label, saeulen: st.pi.saeulen.map(s => ({ id: s.id, label: s.label, score: s.score })) }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ ok: true, person, index: st.pi.index, label: st.pi.label, abdeckung: st.pi.abdeckung, luecken: st.pi.luecken, ...(st.pi.teil ? { teil: st.pi.teil } : {}), ...(st.pi.vorlaeufig ? { vorlaeufig: st.pi.vorlaeufig } : {}), saeulen: st.pi.saeulen.map(s => ({ id: s.id, label: s.label, score: s.score })) }, { headers: { 'Cache-Control': 'no-store' } });
   }
   return NextResponse.json({ ok: true, ...st }, { headers: { 'Cache-Control': 'no-store' } });
 }

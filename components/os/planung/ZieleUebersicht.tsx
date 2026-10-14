@@ -39,6 +39,7 @@ import { loescheZiel } from './ziel-loeschen';
 import { useEigeneMeilensteine, type EigeneMeilensteineStand } from './useEigeneMeilensteine';
 import { useNurBusiness } from '../useInhaber';
 import { EigeneMeilensteineListe } from './EigeneMeilensteineListe';
+import { zielwertText } from '@/lib/planung/kaskade';
 
 export type SpaltenArt = 'unsere' | 'meine' | 'partner';
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
@@ -182,7 +183,7 @@ function ZielSpalte({ art, titel, p, horizont, planJahr, rueck, i, kompakt, kopf
         : <span style={{ fontWeight: 600, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none' }}>{z.titel}</span>;
     const unter = [
       z.termin ? `bis ${dtKurz(z.termin)}` : null,
-      horizont === 'jahr' && z.zielwert ? `Ziel ${z.zielwert}` : null,
+      horizont === 'jahr' && z.zielwert ? `Ziel ${zielwertText(z)}` : null,
       nMs || (mitEigenen && darfMs) ? (
         <button key="ms" type="button" onClick={() => umschalten(z.id)} aria-expanded={offenMs} aria-label={`Meilensteine von „${z.titel}“ ${offenMs ? 'zuklappen' : 'aufklappen'}`}
           style={{ ...leiseKnopf, padding: 0, color: C.inkDim }}>{offenMs ? '▾' : '▸'} {nMs ? (nMs === 1 ? '1 Meilenstein' : `${nMs} Meilensteine`) : 'Meilensteine'}</button>
