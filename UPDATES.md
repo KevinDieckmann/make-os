@@ -4,6 +4,28 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 14.10.2026 — Abnahme B1/B2/B3/B5/B12/B13/B14: die Zahlen passen überall zusammen (nur lokal — Branch `abnahme-zahlen`, Basis 33ed604c = `update-0910b`)
+Grundsatz: je Größe EINE Rechnung, alle Orte lesen sie — nie zwei Zahlen für dasselbe ohne Erklärung daneben.
+- **B1 Index-Status:** `indexStatus` (lib/kennzahlen/kern.ts) — Kurzwort + Satz für Heute, Cockpit, Fachseiten-Streifen, IndexAnsicht und Head of Finance. Ohne Wert, aber
+  gemessen: „Vorläufig — 31 % gemessen; der Index zählt ab 40 %“ (vorher „Noch zu wenig gemessen · 6 von 6 Säulen“ neben „Noch keine Daten“). Heute zeigt „+ n weitere Säulen ›“.
+- **B2 Traktion:** zwei Größen, zwei Namen. Die Business-Index-Säule heißt **„Markt & Kunden“** (Kennung `mt` bleibt, Verläufe/Schwellen lesen weiter) — sie enthält den
+  Traktions-Score als EINE Kennzahl neben Umsatz-Kurs, Pipeline, Win Rate, Kunden. Der Score selbst ist überall derselbe (`alsTraktion`); der Satz `TRAKTION_IM_BUSINESS_INDEX`
+  steht am Traktions-Widget.
+- **B3 Ziel-Fortschritt:** das Seil zeigt `Seil.fortschritt` = gespeicherter Ziel-Fortschritt (vom Server aus dem wirksamen Fortschritt der Meilensteine nachgezogen) — dieselbe
+  Zahl wie Heute und die Ziele-Liste. Das Momentum (Mittel der Stränge) bleibt nur fürs Zeichnen.
+- **B5 Leads:** `istKunde` (BEAN „B“, lib/crm/bean.ts) — Kartei-Filter „Kunden“, Kunden nie unter „Neue Leads ohne nächsten Schritt“. „In Arbeit“ (Kreislauf, Kanäle) über
+  `inArbeit`; „Leads in Qualifizierung“ (Für dich) = Filter „Qualifizierung“ der Leads-Liste, der Sprung öffnet ihn; die Runde nennt, warum sie weniger zeigt
+  (`inQualifizierungNichtInRunde`: schon ein Deal oder nach der Prüfung in Ruhe). Heute führt keine eigene Lead-Zahl.
+- **B12/B14 „0 von 0“:** `anteilStand`/`deckungStand` (lib/kennzahlen/anteil.ts) — ohne Gesamt/Soll nie grün, sondern Leerzustand mit Weg: Finanzplan „Ziele im Plan“
+  (Lage, Business-Lage, Baukasten: „Noch kein Finanz-Ziel … Ziel anlegen ›“), Rechnungen › Jahresziel („im Controlling eintragen ›“), Steuer-Rücklage („Noch keine Schätzung“).
+- **B13 Kaskade:** Einheit und Takt aus dem Titel (`zahlenzielArt`): Raten („25.000 € je Monat“) werden nicht geteilt — jede Ebene trägt dasselbe Ziel; Summen mit Einheit
+  („Umsatz 300.000 € im Jahr · 25.000 € im Monat“). Ohne Zahl im Titel wie bisher. **Bestehende abgeleitete Ziele** tragen den alten Titel bis zur nächsten Änderung an den Zielen
+  (die Kaskade läuft im Ziele-PATCH) — nichts wird gelöscht.
+- **B14 Steuern Hauptgesellschaft:** „Für die … rechnen wir noch keine Steuern — Fristen und Schätzung fehlen“ mit Weg zur Steuerkarte der Finanzplanung (`UG_STEUER_WEG`, `steuern=ug`).
+- **Tests:** Wächter `tests/zahlen-stimmigkeit.test.ts` (Demo-Saat: Traktion, Ziel-Fortschritt Heute = Seil, Leads Überblick = Liste = Kreislauf, kein Kunde unter „Neue Leads“,
+  kein Grün bei „0 von 0“, Kaskade, Steuern). Vorher rote Tests repariert: `eigene-meilensteine` (Quelltext-Prüfung an 2272e528 angepasst), `zoe-crm` (Fälligkeiten relativ zu heute).
+- **Rückweg:** nur Anzeige, reine Funktionen und ein neues Lese-Feld (`Seil.fortschritt`); keine Kennung, keine gespeicherten Daten geändert.
+
 ## 14.10.2026 — Abnahme A1/A2/B4: keine festen Namen, Betreiber-Texte nur in der Betreiber-Instanz, EINE Einrichtungs-Zahl (nur lokal — Branch `abnahme-namen`, Basis ac5e3c9e = `update-0910b`)
 Kevin: Betreiber-Einrichtungsschritte „nur in eurer Instanz“. Plattform-Regel: eine fremde Instanz sieht keine Namen, Firmen oder Server-Anleitungen von uns.
 - **Betreiber-Instanz — EINE Regel** `betreiberAus` (lib/betrieb/betreiber.ts, rein) + `istBetreiberInstanz` (betreiber-server.ts): Demo immer aus; `MAKE_OS_BETREIBER=an|aus`

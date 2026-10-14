@@ -8,6 +8,7 @@ import { SCOPES, SAEULEN, SAEULEN_TEXT, KENNZAHL, type Scope } from './register'
 import { ladeRoh, bestandFuer, businessSchreibStand } from './speicher';
 import { berechne, type BusinessIndex, type KennzahlStand } from './index';
 import { schwellenText } from './text';
+import { indexStatus } from '@/lib/kennzahlen/kern';
 import { BUSINESS_GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
 
 /** Säulen „nur mit Messung“ (Kapazität, Fulfillment): ohne Messung keine Messlücken (Prüf-Fund 11.10.). */
@@ -83,7 +84,8 @@ export async function businessText(sicht: Scope, kennzahl?: string, heute = loca
   const saeulen = bi.saeulen.map(s => `${s.label} ${s.zuDuenn ? '— (zu wenig Daten)' : s.score ?? '—'}`).join(' · ');
   const rot = bi.saeulen.flatMap(s => s.kennzahlen.filter(k => k.ampel === 'rot').map(k => `${k.label} ${k.anzeige}`));
   const gelb = bi.saeulen.flatMap(s => s.kennzahlen.filter(k => k.ampel === 'gelb').map(k => `${k.label} ${k.anzeige}`));
-  return `Business-Index ${FIRMA[sicht]}: ${bi.index ?? '—'} (${bi.label}), ${Math.round(bi.abdeckung * 100)} % auf echten Daten. ${saeulen}.` +
+  // Derselbe Status wie in der Oberfläche (14.10., B1: indexStatus) — „Vorläufig“ statt „Noch keine Daten“, wenn schon gemessen ist.
+  return `Business-Index ${FIRMA[sicht]}: ${bi.index ?? '—'} (${indexStatus(bi).titel}), ${Math.round(bi.abdeckung * 100)} % auf echten Daten. ${saeulen}.` +
     `${rot.length ? ` Rot: ${rot.join(', ')}.` : ' Nichts rot.'}${gelb.length ? ` Gelb: ${gelb.join(', ')}.` : ''}` +
     `${bi.hebel ? ` Größter Hebel: ${bi.hebel.label}.` : ''} ${bi.luecken} Messlücken. Cockpit: /os/finanzen?s=business${sicht !== 'gesamt' ? `&f=${sicht}` : ''}`;
 }
