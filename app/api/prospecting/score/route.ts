@@ -9,6 +9,7 @@ import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
+import { KI_SCHLUESSEL_FEHLT } from '@/lib/betrieb/betreiber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   if (!p.company) return NextResponse.json({ error: 'Kein Unternehmen angegeben.' }, { status: 400 });
   // Ohne Kundenprofil gibt es nichts zu messen (09.10.: kein Standard-Profil mehr im Code).
   if (!icp) return NextResponse.json({ error: 'Erst das ideale Kundenprofil eintragen — dagegen wird bewertet.' }, { status: 400 });
-  if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key (.env.local).', needsKey: true });
+  if (!hasAnthropicKey()) return NextResponse.json({ error: KI_SCHLUESSEL_FEHLT, needsKey: true });
 
   // Deine Einstellungen aus /os/agenten gelten wirklich.
   const agent = await resolveAgent('prospect');

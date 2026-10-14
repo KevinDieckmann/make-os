@@ -4,7 +4,7 @@
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
-import { PROVIDER, konfiguriert, tokenStatus, trennen } from '@/lib/oauth';
+import { PROVIDER, REDIRECT_URI, konfiguriert, tokenStatus, trennen } from '@/lib/oauth';
 import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
 
 export const runtime = 'nodejs';
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
       seit: s.seit ?? null,
       laeuftAb: s.laeuftAb ?? null,
       scope: s.scope ?? null,
-      anleitung: p.anleitung,
+      anleitung: p.anleitung.replace('{rueckruf}', REDIRECT_URI),
       envId: p.envId,
       envSecret: p.envSecret,
     };

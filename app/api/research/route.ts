@@ -11,6 +11,7 @@ import { resolveAgent, disabledResponse } from '@/lib/agent-config';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
+import { KI_SCHLUESSEL_FEHLT } from '@/lib/betrieb/betreiber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   const query = (payload.query ?? '').trim();
   if (!query) return NextResponse.json({ reply: 'Sag mir, was ich recherchieren soll.' });
 
-  if (!hasAnthropicKey()) return NextResponse.json({ reply: 'Mir fehlt der Anthropic-Key (.env.local), dann recherchiere ich mit Quellen für dich.', needsKey: true });
+  if (!hasAnthropicKey()) return NextResponse.json({ reply: `${KI_SCHLUESSEL_FEHLT} Dann recherchiere ich mit Quellen für dich.`, needsKey: true });
   const agent = await resolveAgent('research');
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), reply: '' });
 

@@ -17,7 +17,8 @@ import { WhatsappKarte } from './whatsapp/WhatsappKarte';
 import { ZoeWhatsappKarte } from './zoe-whatsapp/ZoeWhatsappKarte';
 import { ZuliefererKarte } from './ZuliefererKarte';
 import { Seite, Karte, Ueberschrift, Leer, Chip, Knopf, Zeile, Liste, Hinweis, LEUCHT, Raster } from './ui';
-import { useInhaber } from './useInhaber';
+import { useInhaber, useBetreiber } from './useInhaber';
+import { BETREIBER_RICHTET_EIN } from '@/lib/betrieb/betreiber';
 
 interface Verbindung { id: string; name: string; konfiguriert: boolean; verbunden: boolean; seit: string | null; laeuftAb: number | null; scope: string | null; anleitung: string; envId: string; envSecret: string }
 
@@ -31,6 +32,8 @@ export function VerbindungenView() {
   const laden = () => fetch('/api/oauth/status').then(r => r.json()).then(d => { setListe(d.verbindungen ?? []); setGeladen(true); }).catch(() => setGeladen(true));
   // OAuth-Verbindungen (WHOOP/M365) verwaltet nur ein Inhaber — die Route ist die Schranke, hier nur keine sinnlose Anfrage (09.10.).
   const inhaber = useInhaber();
+  // Anleitung am Server nur in der Betreiber-Instanz (14.10., Abnahme A2) — sonst „richtet der Betreiber ein“.
+  const betreiber = useBetreiber();
   useEffect(() => { if (inhaber) laden(); else if (inhaber === false) setGeladen(true); }, [inhaber]); // eslint-disable-line react-hooks/exhaustive-deps
   async function trennen(id: string) { await fetch('/api/oauth/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: id, aktion: 'trennen' }) }).catch(() => {}); laden(); }
   const zustand = (v: Verbindung) => (v.verbunden ? { label: 'verbunden', farbe: LEUCHT.gut } : v.konfiguriert ? { label: 'bereit', farbe: LEUCHT.achtung } : { label: 'nicht konfiguriert', farbe: C.inkLeise });
@@ -50,8 +53,10 @@ export function VerbindungenView() {
             {v.verbunden && v.seit && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>verbunden seit {v.seit.slice(8, 10)}.{v.seit.slice(5, 7)}.{v.seit.slice(0, 4)}{v.scope ? ` · ${v.scope}` : ''}</div>}
             {!v.konfiguriert && (
               <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
-                <b style={{ color: C.ink, fontWeight: 600 }}>Was du brauchst:</b> {v.anleitung}
-                <div style={{ marginTop: 6, fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, color: C.inkLeise }}>{v.envId} · {v.envSecret} in .env.local, dann neu starten.</div>
+                {betreiber ? <>
+                  <b style={{ color: C.ink, fontWeight: 600 }}>Was du brauchst:</b> {v.anleitung}
+                  <div style={{ marginTop: 6, fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, color: C.inkLeise }}>{v.envId} · {v.envSecret} in der Server-Umgebung setzen, dann neu starten.</div>
+                </> : BETREIBER_RICHTET_EIN}
               </div>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>

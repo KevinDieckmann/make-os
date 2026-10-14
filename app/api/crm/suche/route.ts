@@ -6,7 +6,7 @@
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { WEG, eventLink } from '@/lib/wege';
-import { istNetzwerkenEvent } from '@/lib/crm/marke';
+import { MARKE_EVENTS, istNetzwerkenEvent } from '@/lib/crm/marke';
 import { anmeldungVon, anmeldungLabel, fuerFirmaId } from '@/lib/crm/besuche-form';
 import { NextResponse } from 'next/server';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
     const besuch = istNetzwerkenEvent(e);
     const kunde = besuch ? fuerFirmaId(e) : null;
     return { art: besuch ? 'besuch' : 'event', id: e.id, titel: e.titel, p: 1, href: eventLink(e),
-      unter: [besuch ? `Event · ${anmeldungLabel(anmeldungVon(e))}` : `Make.One · ${e.status}`, `${e.datum.slice(8, 10)}.${e.datum.slice(5, 7)}.${e.datum.slice(0, 4)}`, e.ort, kunde ? `für ${firmen.get(kunde)?.name ?? 'Kunde'}` : ''].filter(Boolean).join(' · ') };
+      unter: [besuch ? `Event · ${anmeldungLabel(anmeldungVon(e))}` : `${MARKE_EVENTS} · ${e.status}`, `${e.datum.slice(8, 10)}.${e.datum.slice(5, 7)}.${e.datum.slice(0, 4)}`, e.ort, kunde ? `für ${firmen.get(kunde)?.name ?? 'Kunde'}` : ''].filter(Boolean).join(' · ') };
   });
   return NextResponse.json({ ok: true, treffer: [...personen, ...fs, ...ch, ...md, ...kp, ...ev] });
 }

@@ -19,6 +19,7 @@ import { TeamKarte } from './TeamKarte';
 import { AnmeldeAdressen } from './AnmeldeAdressen';
 import { MeineDaten } from './MeineDaten';
 import { ZoeWhatsappKarte } from './zoe-whatsapp/ZoeWhatsappKarte';
+import { useBetreiber } from './useInhaber';
 
 interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[]; ziele?: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 /** Anzeige im „Zuletzt“-Protokoll; unbekannte Arten erscheinen unverändert. */
@@ -37,6 +38,8 @@ export function KontoView() {
   const [meldung, setMeldung] = useState('');
   const [einladung, setEinladung] = useState<{ code: string; stunden: number; link: string } | null>(null);
   const [tg, setTg] = useState<Telegram | null>(null);
+  // Wie der Bot an den Server kommt, steht nur in der Betreiber-Instanz (14.10., Abnahme A2).
+  const betreiber = useBetreiber();
 
   const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string; detail?: string }[]>([]);
   const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setHaupt(!!d.hauptInhaber); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
@@ -224,7 +227,9 @@ export function KontoView() {
       <Ueberschrift farbe={LEUCHT.puls} erklaerung="konto.telegram">Der Bote · Telegram</Ueberschrift>
       <Liste>
         {!tg ? <Leer>lade …</Leer>
-          : !tg.konfiguriert ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>TELEGRAM_BOT_TOKEN</code> in die Server-Umgebung (<code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>/srv/make-os/app/.env</code>) eintragen, dann <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>docker compose up -d</code> — macht der Inhaber.</Leer>
+          : !tg.konfiguriert ? (betreiber
+            ? <Leer>Noch kein Bot. In Telegram @BotFather anschreiben, /newbot, den Token als <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>TELEGRAM_BOT_TOKEN</code> in die Server-Umgebung eintragen und die App neu starten — macht der Inhaber.</Leer>
+            : <Leer>Noch kein Bot — den richtet der Betreiber eurer Instanz ein.</Leer>)
           : tg.chats > 0 ? <Zeile titel="Gekoppelt" unter="ZOE schreibt dir morgens, mittags und abends; du antwortest mit einem Satz." rechts={<Knopf leise onClick={tgWeg}>Entkoppeln</Knopf>} />
           : tg.code ? <Zeile titel={<>Dem Bot {tg.bot ? <b>@{tg.bot}</b> : ''} senden: <span style={{ ...mono, fontSize: 17 }}>/start {tg.code}</span></>} unter={`${tg.minuten} Minuten gültig`} />
           : <Zeile titel="Noch nicht gekoppelt" unter="ZOE schreibt dir morgens, mittags und abends aufs Handy." rechts={<Knopf onClick={tgCode}>Code holen</Knopf>} />}

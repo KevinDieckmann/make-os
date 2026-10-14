@@ -18,7 +18,7 @@ import { eventPapierkorb, eventEndgueltig } from '../events/gemeinsam';
 import type { CrmApi } from '../daten';
 import { anmeldungVon, anmeldungLabel, besuchAbgesagt, istBesuch } from '@/lib/crm/besuche-form';
 import { budgetSumme } from '@/lib/crm/eventplanung';
-import { eventName } from '@/lib/crm/marke';
+import { MARKE_EVENTS, eventName } from '@/lib/crm/marke';
 import type { Event, EventAnmeldung } from '@/lib/crm/typen';
 import { WEG } from '@/lib/wege';
 import { datum, euro } from '../daten';
@@ -55,8 +55,8 @@ export function BesuchKalender({ api, crm, ablage, onAkte }: Pick<BesuchProps, '
     if (art === 'makeone') {
       return (
         <Zeile key={e.id} onClick={() => router.push(WEG.event(e.id))} links={<Punkt farbe={LEUCHT.beziehung} />}
-          titel={eventName(e)} unter={`${unter} · eigener Abend — nur lesen, öffnet Make.One`}
-          rechts={<Chip farbe={C.inkDim}>Make.One</Chip>} />
+          titel={eventName(e)} unter={`${unter} · eigener Abend — nur lesen, öffnet ${MARKE_EVENTS}`}
+          rechts={<Chip farbe={C.inkDim}>{MARKE_EVENTS}</Chip>} />
       );
     }
     return (

@@ -9,7 +9,9 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO, TIEF, FLAECHE_STIL, ECKE, ZIEL } from '@/lib/make-one/design';
 import { LEUCHT, feld, Knopf, Chip, Pillen as UiPillen, Leer, Hinweis as UiHinweis, Schalter } from '../ui';
-import { mitglied, nameVon } from '@/lib/crm/team';
+import { mitglied, nameVon, TEAM } from '@/lib/crm/team';
+import { teamStandJetzt } from '@/hooks/useTeam';
+import { FAECHER, fachNamen, fachPersonen, istFach, vorname, type FachPerson } from '@/lib/make-one/fach-namen';
 import type { Einheit } from '@/lib/finanzen/rechenkern';
 import { EINHEIT_LABEL, eur, parseBetrag, personKennung } from '@/lib/finanzen/plan/hilfen';
 import { usePlan, type Meldung } from './daten';
@@ -19,8 +21,26 @@ export const LILA = C.lavendel;
 export const HAAR = 'rgba(255,255,255,.06)';
 export const EINHEIT_FARBE: Record<Einheit, string> = { privat: LEUCHT.schlaf, selbststaendigkeit: LEUCHT.business, ug: LEUCHT.geld, kdv: LEUCHT.puls };
 
-export const personFarbe = (wer: string | null | undefined): string => mitglied(personKennung(wer))?.farbe ?? C.inkLeise;
-export const personName = (wer: string | null | undefined): string => { const k = personKennung(wer); return k === 'beide' ? 'Beide' : mitglied(k)?.name ?? (wer ? String(wer) : '—'); };
+/**
+ * Personen des Haushalts (Konten aus dem Team, sobald geladen) — für die Fächer `kevin`/`malin` (Kennungen, nie umbenennen) und den Namen
+ * hinter einem Speichernamen. 14.10. (Abnahme A1): die Fächer zeigen die Person dahinter, nie einen festen Namen (lib/make-one/fach-namen.ts).
+ */
+function kontoPersonen(): FachPerson[] {
+  const s = teamStandJetzt();
+  return s.geladen ? s.team.filter(p => p.quelle === 'konto' && p.speicher && p.aktiv !== false).map(p => ({ id: p.speicher!, name: vorname(p.name) || p.speicher! })) : [];
+}
+export const personFarbe = (wer: string | null | undefined): string => {
+  const k = personKennung(wer);
+  if (istFach(k)) return mitglied(fachPersonen(kontoPersonen())[k]?.id ?? k)?.farbe ?? TEAM[FAECHER.indexOf(k)]?.farbe ?? C.inkLeise;
+  return mitglied(k)?.farbe ?? C.inkLeise;
+};
+export const personName = (wer: string | null | undefined): string => {
+  const k = personKennung(wer);
+  if (k === 'beide') return 'Beide';
+  const personen = kontoPersonen();
+  if (istFach(k)) return fachNamen(personen)[k];
+  return personen.find(p => p.id === k)?.name ?? mitglied(k)?.name ?? (wer ? String(wer) : '—');
+};
 export { nameVon };
 
 /** Zustandsfarbe für eine Kennzahl: gut · achtung · kritisch. */

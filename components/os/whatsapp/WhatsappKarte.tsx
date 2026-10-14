@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, KUGEL } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Chip, Knopf, Hinweis, Feldzeile, Segmente, eingabe, LEUCHT, useRueckfrage } from '../ui';
 import type { WhatsappStatus } from '@/lib/whatsapp/typen';
+import { useBetreiber } from '../useInhaber';
 
 const META = {
   start: 'https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started',
@@ -40,19 +41,23 @@ function vor(iso?: string): string {
 const A = ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: C.aktiv }}>{children} ↗</a>;
 
 function Anleitung({ s }: { s: WhatsappStatus }) {
+  // Der Schritt am Server (Skript) nur in der Betreiber-Instanz (14.10., Abnahme A2) — sonst „trägt der Betreiber ein“.
+  const betreiber = useBetreiber();
   const schritte: React.ReactNode[] = [
     <>Im <A href={META.business}>Meta Business Manager</A> das Business-Portfolio der Gesellschaft öffnen (bzw. anlegen).</>,
     <>Im <A href={META.apps}>App-Dashboard</A> eine App vom Typ „Business“ anlegen und das Produkt „WhatsApp“ hinzufügen (<A href={META.start}>Anleitung von Meta</A>).</>,
     <>Die neue Business-Nummer hinzufügen — sie darf nicht in der WhatsApp-App aktiv sein. Registriert wird später hier in MAKE OS (mit Speicherort Deutschland).</>,
     <>In den Unternehmenseinstellungen einen System-User anlegen und einen dauerhaften Zugriffsschlüssel erzeugen (<A href={META.token}>Anleitung</A>).</>,
-    <>Auf dem Server <code style={{ fontFamily: SCHRIFT.mono }}>deploy/whatsapp-verbinden.sh</code> ausführen — es fragt die Werte verdeckt ab und zeigt den Verify-Token.</>,
+    betreiber
+      ? <>Auf dem Server <code style={{ fontFamily: SCHRIFT.mono }}>deploy/whatsapp-verbinden.sh</code> ausführen — es fragt die Werte verdeckt ab und zeigt den Verify-Token.</>
+      : <>Die Zugangsdaten trägt der Betreiber eurer Instanz am Server ein (verdeckt) und gibt euch den Verify-Token.</>,
     <>Bei Meta den Webhook eintragen (<A href={META.webhook}>Anleitung</A>): Rückruf-URL {s.webhookAdresse ? <code style={{ fontFamily: SCHRIFT.mono, wordBreak: 'break-all' }}>{s.webhookAdresse}</code> : 'https://<eure Adresse>/api/whatsapp/webhook'} + Verify-Token, dann das Feld „messages“ abonnieren.</>,
   ];
   return (
     <div style={{ display: 'grid', gap: 10, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
       <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 6 }}>{schritte.map((x, i) => <li key={i}>{x}</li>)}</ol>
       {s.fehlend.length > 0 && <div style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien, color: C.inkLeise, wordBreak: 'break-word' }}>Auf dem Server fehlt noch: {s.fehlend.join(' · ')}</div>}
-      <div style={{ color: C.inkLeise }}>Ausführlich: UPDATES.md › 07.10. „WhatsApp Business“. Werte nie in den Chat.</div>
+      <div style={{ color: C.inkLeise }}>Werte nie in den Chat.</div>
     </div>
   );
 }

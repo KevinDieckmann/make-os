@@ -218,7 +218,8 @@ describe('4. Einrichtung ohne Altbestand: kein festes Datum, kein Mac-Zulieferer
   it('die Einrichtungs-Seite (vor dem Laden = ohne Altbestand) zeigt den neutralen Ablauf', async () => {
     const { OnboardingUebersicht } = await import('@/components/os/OnboardingView');
     const html = renderToStaticMarkup(h(OnboardingUebersicht, {}));
-    expect(html).toContain('Zuerst · am Server');
+    // 14.10. (Abnahme A2): vor dem Laden ist nicht bekannt, ob es die Betreiber-Instanz ist — der Server-Teil fehlt also (neutral zuerst).
+    expect(html).not.toContain('Zuerst · am Server');
     expect(html).toContain('Der Kern');
     for (const re of VERBOTEN) expect(html, String(re)).not.toMatch(re);
   });

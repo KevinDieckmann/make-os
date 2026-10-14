@@ -75,7 +75,7 @@ export async function zoeVorlagenLaden(k: ZoeWaKonfig, o: { neu?: boolean } = {}
  */
 export function briefingVorlagePruefen(liste: readonly Vorlage[], name: string, sprache: string): { ok: true; v: Vorlage } | { ok: false; fehler: string } {
   const v = liste.find(x => x.name === name && x.sprache === sprache);
-  if (!v) return { ok: false, fehler: `Die Vorlage „${name}“ (${sprache}) gibt es bei Meta nicht — bitte im WhatsApp Manager einreichen (UPDATES.md › 08.10. „ZOE auf WhatsApp“).` };
+  if (!v) return { ok: false, fehler: `Die Vorlage „${name}“ (${sprache}) gibt es bei Meta nicht — bitte im WhatsApp Manager einreichen.` };
   if (v.status !== 'APPROVED') return { ok: false, fehler: `Die Vorlage „${name}“ ist bei Meta noch nicht genehmigt (${v.status}).` };
   if (v.kategorie === 'MARKETING') return { ok: false, fehler: `Die Vorlage „${name}“ ist als Werbung (MARKETING) eingestuft — für ZOE bitte als UTILITY einreichen.` };
   if (v.parameter.length > 1) return { ok: false, fehler: `Die Vorlage „${name}“ hat ${v.parameter.length} Platzhalter — erlaubt ist höchstens einer (der Link).` };

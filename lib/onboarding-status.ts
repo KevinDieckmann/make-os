@@ -27,12 +27,14 @@ import { localDay } from '@/lib/zeit';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { ladePostfaecher } from '@/lib/postfach/register';
 import { BUSINESS_GESELLSCHAFTEN, bereichVonFirma } from '@/lib/einheiten';
-import { fortschrittVon, istFertig, schritteFuer, type Kontext, type PruefBefund } from '@/lib/make-one/onboarding-data';
+import { einrichtungStand, betreiberBefundeWeg, istFertig, schritteFuer, type Kontext, type PruefBefund } from '@/lib/make-one/onboarding-data';
 import { gruenFesthalten, hakenLesen } from '@/lib/onboarding-haken';
 import { hauptInhaber, istWirksamerInhaber, kontenImHaushaltDerInhaber, wirksameInhaber } from '@/lib/zugang/inhaber';
 import type { SpaceId } from '@/lib/make-one/space-regeln';
 import { speicherFuer } from '@/lib/zoe/raum';
 import { neustartMarke, neustartSatz } from '@/lib/onboarding-neustart';
+import { ALTBESTAND_BIS } from '@/lib/betrieb/betreiber';
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 
 export type Befund = PruefBefund;
 
@@ -48,8 +50,8 @@ const tageZwischen = (von: string, bis: string) => Math.round((Date.parse(`${bis
 export const KONTOSTAND_FRISCH_TAGE = 7;
 /** Höchstes Alter eines Stands im Konten-Register für Privat- und gemeinsame Konten (Tage, ONBOARDING_PLAN.md 3.10). */
 export const PRIVATKONTO_FRISCH_TAGE = 31;
-/** Bis zu diesem Tag stand persönlicher Altbestand im Code (Übernahme lib/altbestand/*): ein Inhaber-Konto davor hat einen. */
-export const ALTBESTAND_BIS = '2026-10-09';
+/** Bis zu diesem Tag stand persönlicher Altbestand im Code (Übernahme lib/altbestand/*): ein Inhaber-Konto davor hat einen. Steht seit 14.10. bei der Betreiber-Regel. */
+export { ALTBESTAND_BIS };
 
 /** Persönliche Prüfungen — IMMER nur für `person` (die Person der Sitzung), nie für eine andere. */
 export const PERSOENLICHE_PRUEFUNGEN = [
@@ -687,6 +689,8 @@ export async function kontextFuer(person: string | null): Promise<(Kontext & { h
     // wurde, an dem die Inhalte den Code verließen — neue Kunden- und Demo-Instanzen haben keinen (dort fehlt der Schritt ganz).
     altbestand: !neustart && process.env.MAKE_OS_DEMO !== '1' && !!inhaber && String(inhaber.angelegt ?? '').slice(0, 10) < ALTBESTAND_BIS,
     ...(neustart ? { neustart: true } : {}),
+    // Betreiber-Instanz (14.10., lib/betrieb/betreiber.ts): sonst keine Betreiber-Schritte (Server, Repo-Dateien) — immer gesetzt.
+    betreiber: await istBetreiberInstanz({ hauptInhaberAngelegt: inhaber?.angelegt ?? null }),
     ...(k.haushalt ? { haushalt: k.haushalt } : {}),
   };
 }
@@ -715,10 +719,10 @@ export async function pruefeAlles(person: string | null): Promise<Record<string,
   });
 }
 
-/** Wie weit die Einrichtung für diese Person ist (Freitag + Samstag-Kern; Späteres zählt erst, wenn getan). */
+/** Wie weit die Einrichtung für diese Person ist — DIE Zählung `einrichtungStand` (dieselbe Zahl wie Heute und die Einrichtungsseite). */
 export async function fortschritt(person: string | null): Promise<{ fertig: number; gesamt: number; offeneMinuten: number }> {
   const [kontext, haken, befunde] = await Promise.all([kontextFuer(person), hakenLesen(person), pruefeAlles(person)]);
-  const f = fortschrittVon(schritteFuer(kontext), { erledigt: haken.erledigt, befunde });
+  const f = einrichtungStand(kontext, { erledigt: haken.erledigt, befunde: betreiberBefundeWeg(befunde, kontext) });
   return { fertig: f.fertig, gesamt: f.gesamt, offeneMinuten: f.offeneMinuten };
 }
 

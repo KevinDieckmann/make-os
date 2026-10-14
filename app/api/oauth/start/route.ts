@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const p = PROVIDER[url.searchParams.get('provider') ?? ''];
   if (!p) return NextResponse.json({ error: 'Unbekannter Anbieter.' }, { status: 400 });
   if (!konfiguriert(p)) {
-    return NextResponse.json({ error: `${p.name} ist nicht konfiguriert — ${p.envId}/${p.envSecret} fehlen in .env.local.` }, { status: 400 });
+    return NextResponse.json({ error: `${p.name} ist nicht konfiguriert — ${p.envId}/${p.envSecret} fehlen in der Server-Umgebung.` }, { status: 400 });
   }
   const state = randomBytes(24).toString('hex');
   await stateMerken(state, p.id);

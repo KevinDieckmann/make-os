@@ -20,6 +20,7 @@ import { bestand, darfSehen, neueste, notiz, suche, sichtAufloesen, WURZELN } fr
 import { frageBrain, type Zug } from '@/lib/zoe/brain-chat';
 import { hasAnthropicKey } from '@/lib/anthropic';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { KI_SCHLUESSEL_FEHLT } from '@/lib/betrieb/betreiber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
   const frage = String(b.frage ?? '').trim().slice(0, 1500);
   if (!frage) return NextResponse.json({ ok: false, fehler: 'Frage fehlt.' }, { status: 400 });
   if (!hasAnthropicKey()) {
-    return NextResponse.json({ ok: false, fehler: 'Ohne Anthropic-Schlüssel kann das Brain nicht antworten. Er gehört in .env.local (ANTHROPIC_API_KEY).' });
+    return NextResponse.json({ ok: false, fehler: `Ohne KI kann das Brain nicht antworten. ${KI_SCHLUESSEL_FEHLT}` });
   }
   const verlauf: Zug[] = Array.isArray(b.verlauf)
     ? (b.verlauf as { rolle?: unknown; text?: unknown }[])

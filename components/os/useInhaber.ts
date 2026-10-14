@@ -7,14 +7,14 @@
 // Kopf-Schalter und den Fokus-Satz in „Alles“. Die Trennung selbst geschieht auf dem Server; der Browser blendet nur aus, was leer bliebe.
 import { useEffect, useState } from 'react';
 
-interface Ich { inhaber: boolean; nurBusiness: boolean }
+interface Ich { inhaber: boolean; nurBusiness: boolean; betreiber: boolean }
 let anfrage: Promise<Ich> | null = null;
 const ich = (): Promise<Ich> => {
   if (!anfrage) {
     anfrage = fetch('/api/konto/ich', { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => ({ inhaber: !!(d as { inhaber?: boolean } | null)?.inhaber, nurBusiness: !!(d as { nurBusiness?: boolean } | null)?.nurBusiness }))
-      .catch(() => ({ inhaber: false, nurBusiness: false }));
+      .then(d => ({ inhaber: !!(d as { inhaber?: boolean } | null)?.inhaber, nurBusiness: !!(d as { nurBusiness?: boolean } | null)?.nurBusiness, betreiber: !!(d as { betreiber?: boolean } | null)?.betreiber }))
+      .catch(() => ({ inhaber: false, nurBusiness: false, betreiber: false }));
   }
   return anfrage;
 };
@@ -31,6 +31,14 @@ function useIchFeld(feld: keyof Ich): boolean | null {
 
 export function useInhaber(): boolean | null {
   return useIchFeld('inhaber');
+}
+
+/**
+ * Ist das die Betreiber-Instanz (14.10., lib/betrieb/betreiber.ts — der Server entscheidet)? Nur dann nennen Texte den Weg am Server; sonst
+ * „richtet der Betreiber eurer Instanz ein“. `null` = noch unbekannt (dann neutral).
+ */
+export function useBetreiber(): boolean | null {
+  return useIchFeld('betreiber');
 }
 
 /** Sieht das angemeldete Konto nur den Business-Bereich (`finanzRecht: 'business'`)? `null` = noch unbekannt. */

@@ -13,9 +13,12 @@ import { sollBudget, tempo, histIndex } from '@/lib/finanzen/rechenkern';
 import type { Buchung } from '@/lib/finanzen/rechenkern';
 import { achse, heuteIndex, tageIm, planMonatAus, eur, prozent, tagKurz, zeileName, alleZeilen, offeneBuchungen, SONDER_ZEILEN, BUDGET_GRUPPEN, neueKennung } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
-import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, Gruppenzeile, AnteilBalken, KnopfKlein, Auswahl, Hinweis, Dialog, Feld, Formular, TextFeld, Etikett, Schalter, StatusPille, PersonMarke, auswahlStil, eingabeStil, Nichts, LILA } from './teile';
+import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, Gruppenzeile, AnteilBalken, KnopfKlein, Auswahl, Hinweis, Dialog, Feld, Formular, TextFeld, Etikett, Schalter, StatusPille, PersonMarke, auswahlStil, eingabeStil, Nichts, LILA, personName } from './teile';
 
-const KONTEN = [{ id: 'gemeinsam', label: 'Gemeinsam' }, { id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'bar', label: 'Bar' }];
+/** Konten des Monats (Fächer `kevin`/`malin` = Kennungen; angezeigt wird die Person dahinter aus den Konten, 14.10.). */
+const kontoOptionen = () => [{ id: 'gemeinsam', label: 'Gemeinsam' }, { id: 'kevin', label: personName('kevin') }, { id: 'malin', label: personName('malin') }, { id: 'bar', label: 'Bar' }];
+/** Anzeigename eines Kontos: die bekannten mit Namen (Fächer → Person), sonst die Kennung groß geschrieben. */
+const kontoName = (k: string): string => kontoOptionen().find(o => o.id === k)?.label ?? (k.charAt(0).toUpperCase() + k.slice(1));
 
 /** Auswahl aller Planzeilen für eine Buchung — Budget · Schulden · Einnahmen & Sonstiges. */
 function ZeilenAuswahl({ wert, onWahl, offen, breite = 220 }: { wert: string; onWahl: (z: string) => void; offen?: boolean; breite?: number | string }) {
@@ -150,7 +153,7 @@ export function Buchungen() {
     <>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         <Auswahl wert={String(monat)} onWahl={v => { setMonat(Number(v)); setMehr(0); }} optionen={lab.map((l, j) => ({ id: String(j), label: `${l}${h.anzahl[j] ? ` · ${h.anzahl[j]}` : ''}` })).filter((_, j) => j <= heuteIndex(d) + 3 || h.anzahl[j])} titel="Monat" />
-        <Auswahl wert={konto} onWahl={setKonto} optionen={[{ id: 'alle', label: 'Alle Konten' }, ...konten.map(k => ({ id: k, label: k.charAt(0).toUpperCase() + k.slice(1) }))]} titel="Konto" />
+        <Auswahl wert={konto} onWahl={setKonto} optionen={[{ id: 'alle', label: 'Alle Konten' }, ...konten.map(k => ({ id: k, label: kontoName(k) }))]} titel="Konto" />
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
           <select value={zeile} aria-label="Planzeile filtern" onChange={e => setZeile(e.target.value)} style={{ ...auswahlStil, maxWidth: 220 }}>
             <option value="alle">Alle Zeilen</option>
@@ -195,7 +198,7 @@ export function Buchungen() {
                     <tr key={b.id}>
                       <td style={{ ...TDleise, fontVariantNumeric: 'tabular-nums' }}>{tagKurz(b.d)}</td>
                       <td style={TD}><span title={b.notiz}>{b.n}</span>{b.hand && <span style={{ ...MIKRO, marginLeft: 6, fontSize: 11 }}>Hand</span>}</td>
-                      <td style={TD}><Etikett text={b.k} /></td>
+                      <td style={TD}><Etikett text={kontoName(b.k)} /></td>
                       <td style={TDr}><Geld v={b.b} dezimal={2} farbe={b.b > 0 ? LEUCHT.gut : undefined} /></td>
                       <td style={TD}><ZeilenAuswahl wert={b.z} onWahl={z => zuordnen(b, z)} offen={b.z === 'x.offen'} /></td>
                       <td style={TD}><Schalter erklaerungOhne="Tabellenzelle — die Überschrift der Buchungsliste erklärt „merken“" an={merken[b.id] ?? true} onChange={v => setMerken({ ...merken, [b.id]: v })} ariaLabel={`Zuordnung für ${b.n} merken`} /></td>
@@ -216,7 +219,7 @@ export function Buchungen() {
             <Feld label="Datum"><input type="date" value={neu.d} aria-label="Datum" onChange={e => setNeu({ ...neu, d: e.target.value })} style={{ ...eingabeStil }} /></Feld>
             <Feld label="Betrag (− Ausgabe)"><input value={neu.b} inputMode="decimal" placeholder="-25,90" aria-label="Betrag" onChange={e => setNeu({ ...neu, b: e.target.value })} style={{ ...eingabeStil, textAlign: 'right' }} /></Feld>
             <Feld label="Empfänger" breit><TextFeld wert={neu.n} onFertig={t => { const r = d.regeln[t.trim().toLowerCase()]; setNeu(n => (n ? { ...n, n: t, z: r ?? n.z } : n)); }} platzhalter="Empfänger" titel="Empfänger" /></Feld>
-            <Feld label="Konto"><Auswahl wert={neu.k} onWahl={k => setNeu({ ...neu, k })} optionen={KONTEN} titel="Konto" /></Feld>
+            <Feld label="Konto"><Auswahl wert={neu.k} onWahl={k => setNeu({ ...neu, k })} optionen={kontoOptionen()} titel="Konto" /></Feld>
             <Feld label="Planzeile"><ZeilenAuswahl wert={neu.z} onWahl={z => setNeu({ ...neu, z })} breite="100%" /></Feld>
             <Feld label="Notiz" breit><TextFeld wert={neu.notiz} onFertig={t => setNeu({ ...neu, notiz: t })} titel="Notiz" /></Feld>
           </Formular>

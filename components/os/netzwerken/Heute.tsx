@@ -25,6 +25,7 @@ import { Karte, useRueckfrage } from '../ui';
 import type { EventWahl } from './EventModus';
 import type { Person } from './useNetzwerken';
 import type { Kontakt } from '@/lib/make-one/crm';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 const KEINE: Kontakt[] = [];
 
@@ -78,7 +79,7 @@ export function Heute({ api, ich, personen, heute, wahl, eventId, setEventId, on
               </div>
               {bericht.offenGesamt > 0 && <div style={{ fontSize: 12.5, color: C.inkLeise, marginTop: 2, lineHeight: 1.5 }}>Offen = was nach dem Erfassen noch zu tun ist (Danke-Mail, Follow-up, Termin, Datenschutzhinweis). Jeder Punkt zählt einzeln — die Gelben unter jeder Person nennen sie.</div>}
               {/* Bericht und Danke-Mails hängen am Event — von hier geht es in seine Akte (Events) bzw. ins Make.One-Event (03.10.). */}
-              <Link href={eventLink(event)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>{istBesuch(event) ? 'Event-Akte öffnen ›' : 'Make.One-Event öffnen ›'}</Link>
+              <Link href={eventLink(event)} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, color: C.aktiv, fontSize: TYP.bedien, fontWeight: 600, textDecoration: 'none' }}>{istBesuch(event) ? 'Event-Akte öffnen ›' : `${MARKE_EVENTS}-Event öffnen ›`}</Link>
             </div>
             {/* Ist es das Event von heute, stehen dieselben Zahlen schon oben im Kopf — nur ältere Events zeigen sie hier. */}
             {!(wahl && wahl.eventId === event.id) && <AbendZaehler zahlen={zahlen} eventTitel={event.titel} farbe={LEUCHT.beziehung} />}

@@ -16,7 +16,6 @@ import { ZONEN } from '@/lib/make-one/onboarding-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './ui';
 
 const ZONENFARBE: Record<string, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
-const PERSONFARBE: Record<string, string> = { Malin: LEUCHT.beziehung, Kevin: LEUCHT.puls };
 const linkKnopf: CSSProperties = {
   fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, padding: '9px 15px', borderRadius: 11, whiteSpace: 'nowrap',
   background: 'rgba(255,255,255,.06)', color: C.ink, textDecoration: 'none',
@@ -35,7 +34,7 @@ export function ZusammenarbeitView() {
   }, []);
 
   const setzen = (aktiv: boolean, text: string) => {
-    const neu: Bauzeit = { aktiv, woran: text, seit: aktiv ? (b?.seit ?? new Date().toISOString()) : null, von: 'Kevin' };
+    const neu: Bauzeit = { aktiv, woran: text, seit: aktiv ? (b?.seit ?? new Date().toISOString()) : null, von: b?.von ?? '' }; // `von` setzt der Server aus der Sitzung
     setB(neu);
     fetch('/api/state/bauzeit', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -166,7 +165,7 @@ function Aenderungen() {
       <Liste>
         {zeigen.map((e, i) => (
           <Zeile key={e.at + i}
-            links={<Chip farbe={PERSONFARBE[e.person] ?? C.inkDim}>{e.person}</Chip>}
+            links={<Chip farbe={C.inkDim}>{e.person}</Chip>}
             titel={<>{BESTAND_NAME[e.bestand] ?? e.bestand}{e.art === 'DELETE' && <span style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien, fontWeight: 400 }}> · gelöscht</span>}</>}
             rechts={<span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}><Punkt farbe={C.inkLeise} groesse={6} />{wann(e.at)}</span>} />
         ))}

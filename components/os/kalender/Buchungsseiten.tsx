@@ -265,7 +265,7 @@ function SeiteBearbeiten({ start, datenschutz, onZu, onSpeichern, onLoeschen, fe
   return (
     <Fenster titel={start.id ? 'Buchungsseite bearbeiten' : 'Neue Buchungsseite'} onZu={onZu} breit={620}>
       <div style={{ display: 'grid', gap: 12 }}>
-        {zeile('Titel * (steht öffentlich auf der Seite)', <><input value={s.titel} maxLength={80} required aria-required="true" aria-invalid={fehlt.titel || undefined} onChange={e => setS({ ...s, titel: e.target.value })} style={klein} />{fehlt.titel ? hinweis('Titel fehlt — z. B. „30 min mit Kevin“.') : null}</>)}
+        {zeile('Titel * (steht öffentlich auf der Seite)', <><input value={s.titel} maxLength={80} required aria-required="true" aria-invalid={fehlt.titel || undefined} onChange={e => setS({ ...s, titel: e.target.value })} style={klein} />{fehlt.titel ? hinweis('Titel fehlt — z. B. „30 min Kennenlernen“.') : null}</>)}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
           {zeile('Für wen', <select value={s.person} onChange={e => setS({ ...s, person: e.target.value })} style={klein}>{personen.map(p => <option key={p.speicher} value={p.speicher}>{p.name}</option>)}</select>)}
           {zeile('Dauer (Min.)', <input type="number" min={10} max={240} step={5} value={s.dauerMin} onChange={zahl('dauerMin', 10, 240)} style={klein} />)}

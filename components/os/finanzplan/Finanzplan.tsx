@@ -32,6 +32,7 @@ import type { Operation } from '@/lib/finanzen/plan/operationen';
 import { FinanzplanKontext, useFinanzplanDaten, useGerechnet, type PlanKontext } from './daten';
 import { Meldungen, PersonMarke, personName, Auswahl } from './teile';
 import { Einrichtung } from './Einrichtung';
+import { useTeam } from '@/hooks/useTeam';
 import { BlattSeite } from './Blaetter';
 
 /**
@@ -44,6 +45,8 @@ export function Finanzplan({ bereich = 'privat', eingebettet = false }: { bereic
 }
 
 function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebettet: boolean }) {
+  // Namen der Personen-Fächer kommen aus den Konten (14.10., `personName`): sobald das Team geladen ist, zeichnet der Plan neu.
+  useTeam();
   const router = useRouter(); const pfad = usePathname() ?? '/os/finanzen'; const params = useSearchParams();
   const { dokument: roh, zustand, person, sicht, laden, aendern, rueckgaengig, undoAnzahl, meldungen, melde, weg, gespeichert, verbergen, setVerbergen } = useFinanzplanDaten(bereich);
   // Das Dokument, wie dieser Bereich es sieht: sein eigenes Planszenario als Arbeitsplan (ohne eigene Wahl: der gemeinsame).

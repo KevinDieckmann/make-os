@@ -13,7 +13,7 @@ import { zielStaende, zahlungskalender, istSchnitt, sollBudget } from '@/lib/fin
 import type { ZielStand } from '@/lib/finanzen/rechenkern';
 import { eur, prozent, tagKurz, datumLang, plusTage, offeneBuchungen, heuteIndex, letzterVoller, tageIm, achse, monatLabel, neueKennung, postenOffen } from '@/lib/finanzen/plan/hilfen';
 import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
-import { UG_KURZ, finanzOrtName } from '@/lib/einheiten';
+import { UG_KURZ, finanzOrtName, finanzOrtKurz } from '@/lib/einheiten';
 import { entscheidungen, kontostand } from '@/lib/finanzen/szenarien';
 import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { luecken } from '@/lib/finanzen/luecken';
@@ -23,6 +23,8 @@ import { Geld, Kachel, Kacheln, Etikett, StatusPille, PersonMarke, AnteilBalken,
 import { Linie } from './diagramme';
 /** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
 const KDV = finanzOrtName('kdv');
+/** Kurzname der Gesellschaft `kdv` (14.10., Abnahme A1: stand fest als Kürzel im Code). */
+const KDV_KURZ = finanzOrtKurz('kdv');
 
 export function ZielKurz({ s, bjoernStart }: { s: ZielStand; bjoernStart: number }) {
   const { d } = usePlan();
@@ -211,7 +213,7 @@ export function Lage() {
             {!d.fokus.schritte.some(s => !s.erledigt) && <Nichts>Keine offenen Schritte.</Nichts>}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10, alignItems: 'center' }}>
               <input value={neu.text} placeholder="Neuer Schritt" aria-label="Neuer Schritt" onChange={e => setNeu({ ...neu, text: e.target.value })} style={{ ...feld, flex: '1 1 220px', width: 'auto' }} />
-              <Auswahl wert={neu.wer} onWahl={w => setNeu({ ...neu, wer: w })} optionen={[{ id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Beide' }]} titel="Wer" />
+              <Auswahl wert={neu.wer} onWahl={w => setNeu({ ...neu, wer: w })} optionen={[{ id: 'kevin', label: personName('kevin') }, { id: 'malin', label: personName('malin') }, { id: 'beide', label: 'Beide' }]} titel="Wer" />
               <input type="date" value={neu.bis} aria-label="bis wann" onChange={e => setNeu({ ...neu, bis: e.target.value })} style={{ ...feld, width: 'auto' }} />
               <Knopf aus={!neu.text.trim()} onClick={async () => { const t = neu.text.trim(); if (!t) return; if (await aendere([{ pfad: '/fokus/schritte/-', neu: { id: neueKennung('st'), text: t, wer: neu.wer, bis: neu.bis || d.einstellungen.heute, erledigt: false } }], `Schritt angelegt: ${t}`)) setNeu({ ...neu, text: '' }); }} ariaLabel="Schritt anlegen" style={{ minWidth: 44 }}>+</Knopf>
             </div>
@@ -248,7 +250,7 @@ export function LageBusiness() {
     <>
       <Kacheln min={220}>
         <Kachel label="Frei verfügbar Business" punkt={freiBusiness >= sw.freiGut ? LEUCHT.gut : freiBusiness >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={freiBusiness} /> €</>}
-          unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /></>} />
+          unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · {KDV_KURZ} <Geld v={aw.frei.kdv} farbe={C.inkDim} /></>} />
         <Kachel label={`Runway ${UG_KURZ}`} punkt={rw == null || rw >= sw.runwayGutMonate ? LEUCHT.gut : rw >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={rw == null ? `> ${aw.runway.horizont} M` : rw === 0 ? 'jetzt' : `${rw} M`} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
         <Kachel label="Business-Ziele im Plan" punkt={zs.length - imPlan ? LEUCHT.achtung : LEUCHT.gut} wert={`${imPlan} / ${zs.length}`} unter={zs.length ? 'MAKE frei · Partnerdarlehen' : 'noch keine Business-Ziele'} />
         <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={ampel(kz.minFrei >= sw.tiefpunktGut, kz.minFrei >= 0)} wert={<><Geld v={kz.minFrei} /> €</>} unter={monatLabel(d, kz.minMonat)} />

@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
   const d = await loadJson<Datei>('grundlage');
   if (!d?.roh) {
-    return NextResponse.json({ vorhanden: false, hinweis: 'Noch kein Export aus Malins Finanz-Dashboard geladen.' });
+    return NextResponse.json({ vorhanden: false, hinweis: 'Noch kein Export aus dem Finanz-Dashboard geladen.' });
   }
   const g = lesen(d.roh, d.stand);
   // 24.09.: Privates bleibt draußen. Das Privatkonto (p.bank) und die privaten

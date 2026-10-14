@@ -322,8 +322,9 @@ describe('Onboarding-Häkchen (Route): je Person, sicherer Schreibweg', () => {
     expect((await fs.readdir(DATEN)).sort()).toEqual(vorher);
     expect(e.befunde['zwei-faktor'].erfuellt).toBe(true);
     expect(z.befunde['zwei-faktor'].erfuellt).toBe(false);
-    expect(e.ich).toEqual({ inhaber: true, haupt: true, eingeladen: false, personen: 2, privatFinanzen: true, altbestand: true });
-    expect(z.ich).toEqual({ inhaber: false, haupt: false, eingeladen: true, personen: 2, privatFinanzen: true, altbestand: true });
+    // `betreiber` (14.10.): mit Altbestand ist es die Betreiber-Instanz (lib/betrieb/betreiber.ts).
+    expect(e.ich).toEqual({ inhaber: true, haupt: true, eingeladen: false, personen: 2, privatFinanzen: true, altbestand: true, betreiber: true });
+    expect(z.ich).toEqual({ inhaber: false, haupt: false, eingeladen: true, personen: 2, privatFinanzen: true, altbestand: true, betreiber: true });
     expect(z.befunde.altbestand).toBeUndefined();
   });
 

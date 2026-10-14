@@ -17,7 +17,7 @@ export interface OAuthProvider {
   scope: string;
   envId: string;      // Name der .env-Variable für die Client-ID
   envSecret: string;  // … und fürs Secret
-  /** Was Kevin beim Anbieter anlegen muss — für die Verbindungen-Seite. */
+  /** Was der Betreiber beim Anbieter anlegen muss — für die Verbindungen-Seite (nur in der Betreiber-Instanz gezeigt, 14.10.). `{rueckruf}` = REDIRECT_URI. */
   anleitung: string;
 }
 
@@ -30,7 +30,7 @@ export const PROVIDER: Record<string, OAuthProvider> = {
     scope: 'offline_access User.Read Mail.Read Calendars.Read',
     envId: 'MS_CLIENT_ID',
     envSecret: 'MS_CLIENT_SECRET',
-    anleitung: 'portal.azure.com → App-Registrierung (Konten: alle Organisationen + persönlich) → Redirect-URL (Web) http://localhost:3001/api/oauth/callback → Client-ID + Secret in .env.local (MS_CLIENT_ID / MS_CLIENT_SECRET), Server neu starten.',
+    anleitung: 'portal.azure.com → App-Registrierung (Konten: alle Organisationen + persönlich) → Redirect-URL (Web) {rueckruf} → Client-ID + Secret in die Server-Umgebung (MS_CLIENT_ID / MS_CLIENT_SECRET), App neu starten.',
   },
 };
 

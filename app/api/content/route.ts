@@ -18,6 +18,7 @@ import { kiKennzeichen } from '@/lib/datenschutz/ki-kennzeichnung';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { absenderLaden, absenderZeilen } from '@/lib/crm/absender';
 import { regelnFuerPrompt } from '@/lib/brain/regeln';
+import { KI_SCHLUESSEL_FEHLT } from '@/lib/betrieb/betreiber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
   const notizen = (payload.notizen ?? '').trim();
   if (!thema) return NextResponse.json({ reply: 'Gib mir ein Thema, dann schreibe ich den Entwurf.' });
 
-  if (!hasAnthropicKey()) return NextResponse.json({ reply: 'Kein Anthropic-Key (.env.local) — mit Key schreibe ich dir den Entwurf in CI.', needsKey: true });
+  if (!hasAnthropicKey()) return NextResponse.json({ reply: `${KI_SCHLUESSEL_FEHLT} Danach schreibe ich dir den Entwurf in CI.`, needsKey: true });
   const agent = await resolveAgent('content');
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), reply: '' });
 

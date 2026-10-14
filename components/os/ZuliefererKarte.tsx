@@ -13,7 +13,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Chip, Knopf, Hinweis, Schalter, Klappbar, Leer, LEUCHT, useRueckfrage } from './ui';
 import { Wahl } from './crm/Wahl';
 import type { Vorschau } from '@/lib/zulieferer/erinnerungen';
-import { useInhaber } from './useInhaber';
+import { useInhaber, useBetreiber } from './useInhaber';
 
 interface Lage { aktiv: boolean; quelle: string; quelleText: string; umgebung: 'an' | 'aus' | null; uebernahmeAm: string | null; altbestand: boolean; spiegel: { erinnerungen: boolean; kontakte: boolean } }
 interface Stand {
@@ -43,12 +43,14 @@ export function ZuliefererKarte({ i = 0 }: { i?: number }) {
     if (d?.ok) setS(d);
   };
   // Nur Inhaber (die Route ist die Schranke) — sonst gar keine Anfrage (09.10., Seiten-Durchlauf: 403 in der Konsole der zweiten Person).
+  // Der Mac-Zulieferer gehört nur zur Betreiber-Instanz (14.10., Abnahme A2) — eine fremde Instanz sieht die Karte gar nicht.
   const inhaber = useInhaber();
-  useEffect(() => { if (inhaber) void laden(); else if (inhaber === false) setDarf(false); }, [inhaber]);
+  const betreiber = useBetreiber();
+  useEffect(() => { if (inhaber && betreiber) void laden(); else if (inhaber === false || betreiber === false) setDarf(false); }, [inhaber, betreiber]);
 
   const v = s?.uebernahme.vorschau;
   const neue = useMemo(() => (v?.zeilen ?? []).filter(z => !z.schon && !ohne.has(z.kennung) && (erledigte || !z.erledigt)), [v, ohne, erledigte]);
-  if (!darf) return null;
+  if (!darf || !betreiber) return null;
   if (!s) return <Karte i={i}><Ueberschrift farbe={LEUCHT.puls}>Mac-Zulieferer</Ueberschrift><Leer>lade …</Leer></Karte>;
 
   const { lage } = s;

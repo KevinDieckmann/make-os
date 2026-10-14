@@ -141,7 +141,7 @@ export function Anmelden() {
         {art === 'einrichten' && (
           <>
             <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: 0 }}>
-              Es gibt noch kein Konto. Das erste ist der Inhaber — es darf später andere einladen. Zum Beweis, dass du diese Installation besitzt, den Einrichtungs-Code aus dem Terminal: <code>node scripts/einrichtung-token.mjs</code> (am Server mit <code>docker compose exec app</code> davor). Er gilt einmal.
+              Es gibt noch kein Konto. Das erste ist der Inhaber — es darf später andere einladen. Zum Beweis, dass du diese Installation besitzt, den Einrichtungs-Code eingeben — ihn erzeugt, wer die Instanz am Server aufgesetzt hat (der Betreiber). Er gilt einmal.
             </p>
             <input placeholder="Einrichtungs-Code (XXXX-XXXX-XXXX-XXXX-XXXX)" value={f.schluessel} onChange={s('schluessel')} style={{ ...feld, fontFamily: SCHRIFT.mono, letterSpacing: '.08em', textTransform: 'uppercase' }} autoComplete="off" spellCheck={false} />
           </>

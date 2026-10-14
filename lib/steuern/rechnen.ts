@@ -275,7 +275,7 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
   }
   // KD Ventures: Körperschaftsteuer + Soli, Gewerbesteuer.
   const gv = gewinn.kdv;
-  if (!gv) z.push({ id: 'kst', einheit: 'kdv', titel: `Körperschaft- und Gewerbesteuer ${jahr}`, betrag: null, formel: 'Gewinn × (15,825 % + 3,5 % × Hebesatz)', luecke: 'Ist-Monate KD Ventures fehlen', href: WEG.abschluss('kdv') });
+  if (!gv) z.push({ id: 'kst', einheit: 'kdv', titel: `Körperschaft- und Gewerbesteuer ${jahr}`, betrag: null, formel: 'Gewinn × (15,825 % + 3,5 % × Hebesatz)', luecke: `Ist-Monate ${EINHEIT_LABEL.kdv} fehlen`, href: WEG.abschluss('kdv') });
   else {
     const kst = Math.max(0, gv.hochgerechnet) * 0.15825;
     const gew = e.kdv.gewerbe ? Math.max(0, gv.hochgerechnet) * 0.035 * e.hebesatz / 100 : 0;
@@ -352,7 +352,7 @@ export const JAHRES_PUNKTE: { id: string; titel: string; unter: string; einheit:
   { id: 'darlehen', titel: 'Darlehen und Zinsbescheinigungen', unter: 'Business-Kredite, Jahreskontoauszüge', einheit: 'kdc' },
   { id: 'entnahmen', titel: 'Privatentnahmen und -einlagen', unter: 'Summe je Monat, Abgleich mit dem Privatkonto', einheit: 'kdc' },
   { id: 'kfz', titel: 'Fahrzeug: Fahrtenbuch oder 1-%-Regel', unter: 'Kosten, Kilometer, Nutzung', einheit: 'kdc' },
-  { id: 'jahresabschluss', titel: 'KD Ventures: Unterlagen Jahresabschluss', unter: 'Saldenlisten, Verträge, Gesellschafterbeschlüsse', einheit: 'kdv' },
+  { id: 'jahresabschluss', titel: `${EINHEIT_LABEL.kdv}: Unterlagen Jahresabschluss`, unter: 'Saldenlisten, Verträge, Gesellschafterbeschlüsse', einheit: 'kdv' },
   { id: 'versicherungen', titel: 'Versicherungen und Vorsorge', unter: 'Kranken-, Pflege-, Renten-, Haftpflichtbeiträge', einheit: 'privat' },
   { id: 'sonderausgaben', titel: 'Spenden, Handwerker, Haushaltsnahes', unter: 'Belege und Rechnungen mit Arbeitslohn-Anteil', einheit: 'privat' },
   { id: 'bescheide', titel: 'Steuerbescheide und Vorauszahlungen', unter: 'letzte Bescheide, geänderte Vorauszahlungen', einheit: 'privat' },

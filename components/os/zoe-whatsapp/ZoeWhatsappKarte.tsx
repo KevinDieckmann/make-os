@@ -84,10 +84,10 @@ export function ZoeWhatsappKarte({ i = 0 }: { i?: number }) {
         Fragen stellen, „Aufgabe: …“ oder „Notiz: …“ schicken (landen als Vorschlag in deinen Freigaben). Ohne Ausnahme kommen nur Hinweise mit Link.
       </div>
 
-      {s?.konflikt && <Hinweis art="kritisch" titel="Gleiche Nummer wie die Business-Nummer">Die ZOE-Nummer muss eine eigene Nummer sein — sie bleibt aus, bis auf dem Server eine andere eingetragen ist (deploy/zoe-whatsapp-verbinden.sh).</Hinweis>}
+      {s?.konflikt && <Hinweis art="kritisch" titel="Gleiche Nummer wie die Business-Nummer">Die ZOE-Nummer muss eine eigene Nummer sein — sie bleibt aus, bis auf dem Server eine andere eingetragen ist.</Hinweis>}
       {s && !s.eingerichtet && !s.konflikt && (
         <div style={{ display: 'grid', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
-          <div>Auf dieser Instanz ist noch keine ZOE-Nummer eingerichtet.{s.inhaber ? ' Schritte bei Meta und das Skript stehen in UPDATES.md › 08.10. „ZOE auf WhatsApp“.' : ' Das richtet der Inhaber ein.'}</div>
+          <div>Auf dieser Instanz ist noch keine ZOE-Nummer eingerichtet.{s.inhaber ? ' Die eigene ZOE-Nummer legt ihr bei Meta an; die Zugangsdaten trägt der Betreiber eurer Instanz am Server ein.' : ' Das richtet der Inhaber ein.'}</div>
           {s.inhaber && s.fehlend.length > 0 && <div style={{ fontFamily: SCHRIFT.mono, color: C.inkLeise, wordBreak: 'break-word' }}>Auf dem Server fehlt noch: {s.fehlend.join(' · ')}</div>}
           {s.inhaber && <div style={{ color: C.inkLeise }}>Webhook bei Meta: {s.webhookAdresse ? <code style={{ fontFamily: SCHRIFT.mono, wordBreak: 'break-all' }}>{s.webhookAdresse}</code> : 'https://<eure Adresse>/api/zoe/whatsapp/webhook'}</div>}
         </div>

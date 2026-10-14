@@ -22,6 +22,7 @@ import { einheitName } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
 import { SEITEN_SUCHE } from '@/lib/make-one/seiten';
 import type { Task } from '@/types/tasks';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 interface Treffer { art: string; id: string; titel: string; unter?: string; href: string; space?: 'privat' | 'business'; /** Treffer aus dem anderen Bereich (Knopf „Auch in … suchen“). */ anders?: SpaceId }
 // Alle Seiten (08.10., Aufräumen Etappe 1): EINE Liste in lib/make-one/seiten.ts — auch Seiten, die nicht mehr im Menü stehen.
@@ -31,7 +32,7 @@ const ART: Record<string, { label: string; farbe: string }> = {
   mandat: { label: 'Mandat', farbe: LEUCHT.geld }, kampagne: { label: 'Kampagne', farbe: LEUCHT.beziehung }, seite: { label: 'Bereich', farbe: C.inkDim }, mensch: { label: 'Mensch', farbe: LEUCHT.beziehung },
   aufgabe: { label: 'Aufgabe', farbe: LEUCHT.achtung },
   // Events (M4): besuchte Veranstaltungen (Reiter „Events“) und unsere eigenen Abende (Make.One) getrennt gekennzeichnet — der Link kommt vom Server (`eventLink`).
-  besuch: { label: 'Event', farbe: LEUCHT.beziehung }, event: { label: 'Make.One', farbe: LEUCHT.beziehung },
+  besuch: { label: 'Event', farbe: LEUCHT.beziehung }, event: { label: MARKE_EVENTS, farbe: LEUCHT.beziehung },
   // Gesellschafts-Register (04.10.): Treffer kommen vom Server (/api/gesellschaften?suche=register, nur Haushalt des Inhabers).
   gesellschaft: { label: 'Gesellschaft', farbe: LEUCHT.business }, vertrag: { label: 'Vertrag', farbe: LEUCHT.business }, beschluss: { label: 'Beschluss', farbe: LEUCHT.business },
 };

@@ -12,7 +12,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, LEUCHT } from '../ui';
 import { rechneSelbst } from '@/lib/finanzen/rechenkern';
 import { monatLabel, prozent } from '@/lib/finanzen/plan/hilfen';
-import { UG_NAME, UG_KURZ, finanzOrtName } from '@/lib/einheiten';
+import { UG_NAME, UG_KURZ, finanzOrtName, finanzOrtKurz } from '@/lib/einheiten';
 import { STEUER_HINWEIS, AUSSCHUETTUNG_STEUER_VORGABE } from '@/lib/finanzen/szenarien';
 import { zeigeSteuer } from '@/lib/finanzen/steuern';
 import { usePlan } from './daten';
@@ -25,6 +25,8 @@ import { ProzentFeld } from './Steuern';
 import { EntnahmeFelder } from './Entnahme';
 /** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
 const KDV = finanzOrtName('kdv');
+/** Kurzname der Gesellschaft `kdv` (14.10., Abnahme A1: stand fest als Kürzel im Code). */
+const KDV_KURZ = finanzOrtKurz('kdv');
 
 /** Übergänge von der Gesellschaft nach Privat einstellen: Gehälter, Ausschüttung, Steuer darauf — an der Stelle, die gerade gilt (Arbeitsplan, sonst Plan). */
 function UebergaengeKarte() {
@@ -98,7 +100,7 @@ function GesamtBusiness() {
   return (
     <>
       <Kacheln min={170}>
-        <Kachel label="Frei verfügbar Business jetzt" wert={<><Geld v={aw.frei.business} /> €</>} unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /></>} />
+        <Kachel label="Frei verfügbar Business jetzt" wert={<><Geld v={aw.frei.business} /> €</>} unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · {KDV_KURZ} <Geld v={aw.frei.kdv} farbe={C.inkDim} /></>} />
         <Kachel label={`Mindestumsatz ${UG_KURZ} je Monat`} wert={<><Geld v={aw.mindestumsatz.schnitt12} /> €</>} unter={<>Ø 12 Monate · Umsatz Ø <Geld v={aw.mindestumsatz.umsatzSchnitt12} farbe={C.inkDim} /> €</>} />
         <Kachel label="Steuerrücklage jetzt" punkt={LEUCHT.achtung} wert={<><Geld v={aw.steuer.ruecklageBusiness} /> €</>} unter={nz ? <>nächste Zahlung {monatLabel(d, nz.monat)}: <Geld v={nz.betrag} farbe={C.inkDim} /> €</> : 'keine Zahlung im Planzeitraum'} />
         <Kachel label="Gehälter brutto je Monat" wert={<><Geld v={aw.uebergaenge.gehaelterBrutto} /> €</>} unter="Abfluss der Gesellschaft" />
@@ -183,9 +185,9 @@ export function Gesamt() {
   return (
     <>
       <Kacheln min={170}>
-        <Kachel label="Frei verfügbar jetzt" wert={<><Geld v={aw.frei.gesamt} /> €</>} unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · KDV <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Selbst. <Geld v={aw.frei.kdc} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} /></>} />
+        <Kachel label="Frei verfügbar jetzt" wert={<><Geld v={aw.frei.gesamt} /> €</>} unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · {KDV_KURZ} <Geld v={aw.frei.kdv} farbe={C.inkDim} /> · Selbst. <Geld v={aw.frei.kdc} farbe={C.inkDim} /> · Privat <Geld v={aw.frei.privat} farbe={C.inkDim} /></>} />
         <Kachel label={`Mindestumsatz ${UG_KURZ} je Monat`} punkt={deckung >= 1 ? LEUCHT.gut : deckung >= 0.8 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={aw.mindestumsatz.schnitt12} /> €</>} unter={<>Ø 12 Monate · Umsatz Ø <Geld v={aw.mindestumsatz.umsatzSchnitt12} farbe={C.inkDim} /> € · Deckung {Math.round(deckung * 100)} %</>} />
-        {(ertragAn || ustAn) && <Kachel label="Steuerrücklage jetzt" punkt={LEUCHT.achtung} wert={<><Geld v={aw.steuer.ruecklageGesamt} /> €</>} unter={<><>{UG_KURZ} <Geld v={aw.steuer.ruecklage} farbe={C.inkDim} /> · KDV <Geld v={aw.steuer.ruecklageKdv} farbe={C.inkDim} /> · Selbst. <Geld v={aw.steuer.ruecklageKdc} farbe={C.inkDim} /> · </>{aw.steuer.naechsteZahlung ? <>nächste Zahlung {monatLabel(d, aw.steuer.naechsteZahlung.monat)}: <Geld v={aw.steuer.naechsteZahlung.betrag} farbe={C.inkDim} /> €</> : 'keine Zahlung im Planzeitraum'}{ustAn && aw.steuer.ust ? <> · USt im Durchlauf <Geld v={aw.steuer.ust} farbe={C.inkDim} /> €</> : null}</>} />}
+        {(ertragAn || ustAn) && <Kachel label="Steuerrücklage jetzt" punkt={LEUCHT.achtung} wert={<><Geld v={aw.steuer.ruecklageGesamt} /> €</>} unter={<><>{UG_KURZ} <Geld v={aw.steuer.ruecklage} farbe={C.inkDim} /> · {KDV_KURZ} <Geld v={aw.steuer.ruecklageKdv} farbe={C.inkDim} /> · Selbst. <Geld v={aw.steuer.ruecklageKdc} farbe={C.inkDim} /> · </>{aw.steuer.naechsteZahlung ? <>nächste Zahlung {monatLabel(d, aw.steuer.naechsteZahlung.monat)}: <Geld v={aw.steuer.naechsteZahlung.betrag} farbe={C.inkDim} /> €</> : 'keine Zahlung im Planzeitraum'}{ustAn && aw.steuer.ust ? <> · USt im Durchlauf <Geld v={aw.steuer.ust} farbe={C.inkDim} /> €</> : null}</>} />}
         <Kachel label={`Gehälter ${UG_KURZ} → Privat`} wert={<><Geld v={aw.uebergaenge.gehaelterNetto} /> €</>} unter={<>netto je Monat · brutto <Geld v={aw.uebergaenge.gehaelterBrutto} farbe={C.inkDim} /> €</>} />
         <Kachel label={`Ausschüttung ${UG_KURZ} → Privat`} wert={<><Geld v={aw.uebergaenge.ausschuettungNetto} /> €</>} unter={aw.uebergaenge.ausschuettung ? <>netto je Monat · brutto <Geld v={aw.uebergaenge.ausschuettung} farbe={C.inkDim} /> € · Steuer pauschal <Geld v={aw.uebergaenge.ausschuettungSteuer} farbe={C.inkDim} /> €</> : 'keine im Szenario'} />
  {aw.uebergaenge.entnahme > 0 && <Kachel label="Entnahme Selbstständigkeit → Privat" wert={<><Geld v={aw.uebergaenge.entnahme} /> €</>} unter="je Monat, schon versteuert" />}

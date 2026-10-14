@@ -38,7 +38,7 @@ import { ZONEN, gmtText, ausWandzeitIn } from '@/lib/kalender/zeitzone';
 import { wiederholungVorlagen, wiederholungBeschreiben, wochentagVon, wochentagNr, WOCHENTAGE, TAG_KURZ, type Wiederholung, type WiederholungFreq } from '@/lib/kalender/wiederholung';
 import { neueTerminUid } from '@/lib/kalender/eingabe';
 import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, vonAendern, speicherFehlerText, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
-import { FarbPunkte, WER_FARBE, WER_LABEL, type Wer } from './teile';
+import { FarbPunkte, WER_FARBE, useWerLabel, type Wer } from './teile';
 import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 import { BUSINESS_FREI_FRAGE, BUSINESS_FREI_HINWEIS } from '@/lib/arbeitsrahmen/regel';
 
@@ -57,6 +57,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   bereich?: 'privat' | 'business';
   onZu: () => void; onAngelegt: (was: { uid?: string; aufgabeId?: string; gaeste?: number; hinweis?: string }) => void;
 }) {
+  const WER_LABEL = useWerLabel(); // Namen der Fächer aus den Konten (14.10.) — nie fest im Code
   const { state, dispatch, spaces } = useTasks();
   const [f, setFRoh] = useState<Formular>(() => formularStart(vorgabe, standardDauer, fokusDauer));
   const [alt] = useState<Entwurf | null>(() => { const e = lese(); return e && entwurfWertvoll(e.f) ? { ...e, f: formularErgaenzen(e.f) } : null; });
@@ -284,7 +285,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
         <div style={{ display: 'grid', gap: 6 }}>
           <span style={beschr}>Für wen · Kalender · Farbe</span>
           <div style={zeile}>
-            <Segmente liste={(['kevin', 'malin', 'beide'] as Wer[]).map(x => ({ id: x, label: WER_LABEL[x] }))} aktiv={f.wer} onWahl={x => setF({ ...f, wer: x, kalender: '' })} />
+            <Segmente liste={(WER_LABEL.belegt.includes(f.wer) ? WER_LABEL.belegt : [...WER_LABEL.belegt, f.wer]).map(x => ({ id: x, label: WER_LABEL[x] }))} aktiv={f.wer} onWahl={x => setF({ ...f, wer: x, kalender: '' })} />
             {schreibbar.length > 0 && (
               <select value={f.kalender} onChange={e => setF({ ...f, kalender: e.target.value })} aria-label="Kalender" style={{ ...eingabe, width: 'auto' }}>
                 <option value="">{kalStandardName ? `${kalStandardName} (Standard)` : `Standard für ${WER_LABEL[f.wer]}`}</option>

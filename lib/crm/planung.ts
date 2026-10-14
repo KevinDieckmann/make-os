@@ -23,7 +23,7 @@ import type { Mitglied } from './team-liste';
 import { TEAM, BEIDE } from './team-liste';
 import { gesamtwert, wahrscheinlichkeit, echtesGespraech, OFFENE_STUFEN } from './pipeline';
 import { gemesseneQuoten, zyklus, MINDESTMENGE } from './deal-auswertung';
-import { alsMarketingAnmeldung, reiheVon } from './marke';
+import { MARKE_EVENTS, alsMarketingAnmeldung, reiheVon } from './marke';
 import { MACHBAR_BIS, ENG_BIS } from '@/lib/kapazitaet/typen';
 import { tagPlus, montagVon } from '@/lib/zeit/kalender-kern';
 import { tagVon } from '@/lib/zeit';
@@ -578,7 +578,7 @@ export function challengeLink(art: ChallengeArt, kanal?: Pick<LeadKanal, 'herkun
     case 'events': return { href: WEG.besuch(), label: 'Events' };
     case 'leads':
       if (kanal?.herkunft === 'kampagne') return { href: WEG.kampagne(kanal.bezug), label: 'Kampagne' };
-      if (kanal?.herkunft === 'eventreihe') return { href: WEG.event(), label: 'Make.One' };
+      if (kanal?.herkunft === 'eventreihe') return { href: WEG.event(), label: MARKE_EVENTS };
       if (kanal?.herkunft === 'netzwerk') return { href: WEG.netzwerken(), label: 'Netzwerken' };
       if (kanal?.herkunft === 'empfehlung') return { href: WEG.kreisRunde(), label: 'Kreis-Runde' };
       if (kanal?.herkunft === 'inbound') return { href: WEG.marketing('anfragen'), label: 'Anfragen' };

@@ -185,6 +185,38 @@ describe('Saat', () => {
     expect(PRIVAT.filter(t => !lena.includes(t))).toEqual([]);
   });
 
+  // 14.10. (Abnahme A2/B4): die Demo zeigt keinen Betreiber-Schritt (Server, Repo-Dateien) — auch nicht mit MAKE_OS_BETREIBER=an (Demo-Riegel) —,
+  // und „Einrichtung x von y“ ist an allen Orten dieselbe Zahl (Route/Heute/Einrichtung über `einrichtungStand`, Startfläche über `fortschritt`).
+  it('Einrichtung in der Demo: kein Betreiber-Schritt, keine Betreiber-Befunde, eine Zählung', async () => {
+    const vorher = { demo: process.env.MAKE_OS_DEMO, betreiber: process.env.MAKE_OS_BETREIBER };
+    process.env.MAKE_OS_DEMO = '1'; process.env.MAKE_OS_BETREIBER = 'an';
+    try {
+      const route = (await import('@/app/api/onboarding/route')) as unknown as { GET: Handler; POST: Handler };
+      const D = await import('@/lib/make-one/onboarding-data');
+      const { fortschritt } = await import('@/lib/onboarding-status');
+      for (const wer of ['lena', 'jonas']) {
+        const r = await route.GET(new Request('http://test/api/onboarding', { headers: sitzung(wer) }));
+        expect(r.status, wer).toBe(200);
+        const d = (await r.json()) as { erledigt: Record<string, { at: string; von: string }>; befunde: Record<string, { erfuellt: boolean; wert: string }>; ich: import('@/lib/make-one/onboarding-data').Kontext };
+        expect(d.ich.betreiber, wer).toBe(false);
+        const meine = D.schritteFuer(d.ich);
+        expect(meine.filter(s => s.betreiber).map(s => s.id), wer).toEqual([]);
+        expect(Object.keys(d.befunde).filter(k => D.BETREIBER_PRUEFUNGEN.includes(k)), wer).toEqual([]);
+        const texte = meine.flatMap(s => [s.titel, s.warum, ...s.wie, s.danach ?? '', s.befehl ?? '']).join('\n');
+        expect(texte, wer).not.toMatch(/\b(?:git|docker)\s+[a-z]|\.env\b|\/srv\/|\b[A-Z][A-Z0-9_]+\.md\b/);
+        const stand = D.einrichtungStand(d.ich, d);
+        const start = await fortschritt(wer);
+        expect({ fertig: start.fertig, gesamt: start.gesamt }, wer).toEqual({ fertig: stand.fertig, gesamt: stand.gesamt });
+      }
+      // Abhaken eines Betreiber-Schritts geht in der Demo nicht (403, nichts gespeichert).
+      const post = await route.POST(new Request('http://test/api/onboarding', { method: 'POST', headers: sitzung('lena'), body: JSON.stringify({ id: 'update', an: true }) }));
+      expect(post.status).toBe(403);
+    } finally {
+      if (vorher.demo === undefined) delete process.env.MAKE_OS_DEMO; else process.env.MAKE_OS_DEMO = vorher.demo;
+      if (vorher.betreiber === undefined) delete process.env.MAKE_OS_BETREIBER; else process.env.MAKE_OS_BETREIBER = vorher.betreiber;
+    }
+  });
+
   it('nichts aus unserem Bestand: keine echten Namen, Firmen oder Adressen in den Dateien der Demo', () => {
     const VERBOTEN = new RegExp(['Kev' + 'in', 'Mal' + 'in', 'Dieck' + 'mann', 'KEM' + 'ARIS', 'POIN' + 'CAP', 'KD Ven' + 'tures', 'MAKE Inno' + 'vation', 'kemaris\\.de', 'makeinnovation\\.de'].join('|'), 'i');
     const funde: string[] = [];

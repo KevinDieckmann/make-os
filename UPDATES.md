@@ -4,6 +4,23 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 14.10.2026 — Abnahme A1/A2/B4: keine festen Namen, Betreiber-Texte nur in der Betreiber-Instanz, EINE Einrichtungs-Zahl (nur lokal — Branch `abnahme-namen`, Basis ac5e3c9e = `update-0910b`)
+Kevin: Betreiber-Einrichtungsschritte „nur in eurer Instanz“. Plattform-Regel: eine fremde Instanz sieht keine Namen, Firmen oder Server-Anleitungen von uns.
+- **Betreiber-Instanz — EINE Regel** `betreiberAus` (lib/betrieb/betreiber.ts, rein) + `istBetreiberInstanz` (betreiber-server.ts): Demo immer aus; `MAKE_OS_BETREIBER=an|aus`
+  übersteuert; sonst die DATEI der Neustart-Marke `system/neustart.json` oder ein Altbestand (Haupt-Inhaber vor 09.10. angelegt). **Unsere Live-Instanz trägt die
+  Marke — kein Server-Schritt nötig.** Kunden-/Testinstanzen: ohne Marke → aus. `Kontext.betreiber` (kontextFuer, GET /api/onboarding), `betreiber` in /api/konto/ich (`useBetreiber`).
+- **Einrichtung:** 13 Schritte mit Befehl/Repo-Datei tragen `betreiber: true` (0.1–0.13, 1.12, 2.9) — ohne Betreiber-Instanz weder sichtbar, gezählt, abhakbar (POST 403) noch
+  ihre Befunde in der Antwort (`betreiberBefundeWeg`); Ablauf ohne „Zuerst · am Server“. 2.1/2.8 ohne `.env`/Repo-Datei.
+- **EINE Zählung „Einrichtung x von y“** `einrichtungStand` (alle nicht-optionalen Schritte der Person, unabhängig vom Bereich): Heute › Privat, Heute › Business, Einrichtungsseite,
+  Ebenen und Startfläche zeigen dieselbe Zahl (B4). Nur „Als Nächstes“ folgt der Sicht der Fläche.
+- **Namen:** Kalender-Sicht und Finanzplan zeigen hinter den Fächern `kevin`/`malin` (Kennungen bleiben) den Vornamen aus den Konten (lib/make-one/fach-namen.ts, `useWerLabel`,
+  `personName`); Steuern/Finanzplan/Finanzchef/Handwerte über `finanzOrtName`/`finanzOrtKurz`; Angebotsnummern-Kürzel nur bei eigenem Kurznamen anders.
+- **Veranstaltungsmarke je Instanz:** `NEXT_PUBLIC_MAKE_OS_EVENT_MARKE` (Build-Argument, Dockerfile/DEMO.md; Demo „Abendrunde“), ohne Variable „Make.One“ wie bisher — überall `MARKE_EVENTS`.
+- **Neutrale Texte:** ZOE-Empfang/Brain/Recherche/Fokus/Meeting (`KI_SCHLUESSEL_FEHLT`), Verbindungen (OAuth-Anleitung, Telegram, WhatsApp, Mac-Zulieferer nur Betreiber), Nachweise,
+  Kalender „Zwischenstand (nur lesen)“, Head of IT (`betreiberNeutral` für Sätze mit Befehl/Pfad außerhalb der Betreiber-Instanz), Datenschutz-Register ohne Personennamen.
+- **Wächter** `tests/oberflaeche-neutral.test.ts` (Texte in components/, app/os, Liste aus lib, app/api; Einrichtung; Regel; Fächer) + Laufzeit in `tests/demo.test.ts`.
+- **Rückweg:** nur Anzeige und optionale Felder; keine Kennung umbenannt, keine Daten geändert.
+
 ## 14.10.2026 — Fulfillment: Funde der unabhängigen Abnahme — EINE Rechnung je Größe (nur lokal — Branch `abnahme-fulfillment`, Basis abdddebb = `update-0910b`)
 Kevin: „Der Fulfillment-Bereich sollte wirklich sehr gut sein, bevor wir das Ganze weiter ausbauen und hochladen.“ Abnahme-Bericht A3, B6–B8, B18–B20, C15 (+ C2/C3/C6).
 - **Wo steht der Fall, was ist als Nächstes — EINE Stelle** `fallStelle`/`naechsterPunkt` (lib/fulfillment/prozesse/reise.ts): Fall-Kopf, Cockpit-Zeile (Lage, Kunden-Karte),

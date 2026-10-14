@@ -132,7 +132,7 @@ export const KENNZAHLEN: KennzahlDef[] = [
     formel: 'geplante Fokus-Blöcke je Woche (Ø 4 Wochen)', quelle: 'Kalender · Wochenplan',
     luecke: 'Noch keine Fokus-Blöcke geplant', pflegen: { text: 'Fokus-Blöcke planen', href: WEG.woche() } },
   { id: 'meetinglast', label: 'Meeting-Last', saeule: 'ud', gruppe: 'Arbeitsweise', einheit: 'stunden', richtung: 'niedrig', gruen: 20, rot: 30, nurGesamt: true,
-    formel: 'Termin-Stunden je Woche in Kevins und den gemeinsamen Kalendern (Ø 4 Wochen)', quelle: 'Apple Kalender (iCloud)',
+    formel: 'Termin-Stunden je Woche in den Kalendern der Personen und den gemeinsamen (Ø 4 Wochen)', quelle: 'Apple Kalender (iCloud)',
     luecke: 'Kalender-Stand fehlt', pflegen: { text: 'Kalender öffnen', href: WEG.woche() } },
   { id: 'delegation', label: 'Delegation an Agenten', saeule: 'ud', gruppe: 'Arbeitsweise', einheit: 'anzahl', richtung: 'hoch', gruen: 10, rot: 3, nurGesamt: true,
     formel: 'erledigte Agenten-Aufträge je Woche, die ihr angestoßen habt (ohne Routine-Takt, Ø 4 Wochen)', quelle: 'ZOE-Aufträge',
