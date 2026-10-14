@@ -15,7 +15,7 @@ import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import {
-  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, SZENARIO_LABEL,
+  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, szenarioGruppen, SZENARIEN_GLEICH, CASH_GEGEN_FREI,
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
@@ -275,12 +275,18 @@ export function LiquiditaetView() {
               <Zahl wert={ende != null ? eur(ende) : undefined} farbe={(ende ?? 0) < 0 ? LEUCHT.kritisch : C.ink} label={`am Ende · in ${wochen} Wochen`} />
             </div>
 
-            {/* Ebene 2: drei Szenarien nebeneinander */}
-            {dreiFaelle && (
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5, margin: '-6px 0 14px' }}>{CASH_GEGEN_FREI}</div>
+
+            {/* Ebene 2: die Szenarien nebeneinander — gleiche zusammengefasst (B11, 14.10.); alle gleich → ein Satz statt drei Kacheln. */}
+            {dreiFaelle && szenarioGruppen(dreiFaelle).length === 1 && (
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginBottom: 16 }}>{SZENARIEN_GLEICH}</div>
+            )}
+            {dreiFaelle && szenarioGruppen(dreiFaelle).length > 1 && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
-                {(['schlecht', 'real', 'gut'] as const).map(sz => {
+                {szenarioGruppen(dreiFaelle).map(gr => {
+                  const sz = gr.szenarien.includes(szenario) ? szenario : gr.szenarien[0];
                   const f = dreiFaelle[sz];
-                  const an = szenario === sz;
+                  const an = gr.szenarien.includes(szenario);
                   const szEnde = f.wochen.at(-1)?.stand ?? 0;
                   const farbe = f.engpass ? LEUCHT.kritisch : szEnde < 2000 ? LEUCHT.achtung : LEUCHT.gut;
                   return (
@@ -288,7 +294,7 @@ export function LiquiditaetView() {
                       textAlign: 'left', padding: '10px 12px', borderRadius: 12, cursor: 'pointer', border: 'none', fontFamily: SCHRIFT.text,
                       background: an ? `${farbe}14` : 'rgba(255,255,255,.04)', boxShadow: an ? `inset 0 0 0 1px ${farbe}66, 0 0 20px -8px ${farbe}40` : undefined,
                     }}>
-                      <div style={mikro}>{SZENARIO_LABEL[sz]}</div>
+                      <div style={mikro}>{gr.label}</div>
                       <div style={{ fontFamily: SCHRIFT.display, fontSize: 19, fontWeight: 700, color: an ? farbe : C.inkDim, fontVariantNumeric: 'tabular-nums', marginTop: 4, letterSpacing: '-.02em' }}>{eur(szEnde)}</div>
                       <div style={{ fontSize: TYP.mikro, color: f.engpass ? LEUCHT.kritisch : C.inkLeise, marginTop: 2 }}>
                         {f.engpass ? `eng ab ${f.engpass.label}` : `Tief ${eur(f.tiefpunkt.stand)}`}
