@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO, TIEF, RAND } from '@/lib/make-one/design';
 import { Karte, Knopf, Hinweis, Ueberschrift, Chip, Leer, Erfolg, Fortschritt, eingabe, LEUCHT } from '../../ui';
 import type { KundenFormular, KundenFrage, KundenSicht } from '@/lib/fulfillment/kunde/sicht';
-import { WORTE, formularZaehlung, fragenText, uploadText, type Worte } from '@/lib/fulfillment/kunde/bild';
+import { WORTE, brauchtAnzahl, formularOffen, formularZaehlung, fragenText, uploadText, wertModell, type Worte } from '@/lib/fulfillment/kunde/bild';
 import { KUNDE_ANNEHMEN, KUNDE_TYPEN_TEXT } from '@/lib/fulfillment/kunde/upload';
 import { KundenStrahl, KundenWertBalken, LageBlock, FortschrittZahl, WEG_FARBE } from './bilder';
 
@@ -55,8 +55,9 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
       </div>
     );
   }
-  const offeneFormulare = sicht.formulare.filter(f => f.abschnitte.some(a => !a.fertig));
-  const braucht = sicht.wartet.length + offeneFormulare.length;
+  // EINE Zählung mit der Lage („Von Ihnen brauchen wir …“ — `brauchtAnzahl`, lib/fulfillment/kunde/bild.ts): nie zugleich „nichts nötig“ und „1 offen“.
+  const offeneFormulare = sicht.formulare.filter(formularOffen);
+  const braucht = brauchtAnzahl(sicht.wartet, offeneFormulare.map(f => f.schluessel));
   return (
     <div className={klasse}>
       {vorschau && <Hinweis art="info" titel="Vorschau">So sieht der Kunde seine Seite — mit denselben Daten, die der Server ihm schickt. Hier lässt sich nichts ausfüllen.</Hinweis>}
@@ -80,7 +81,8 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
           {sicht.wertKonto.length ? (
             <div style={{ display: 'grid', gap: 18 }}>
               {sicht.wertKonto.map(z => <KundenWertBalken key={z.name} w={z} gross={praesentation} />)}
-              <div style={{ ...klein, color: C.inkLeise }}>{w.zielSatz}</div>
+              {/* Nur mit Werten: bei leeren Zielen steht schon der ruhige Satz („legen wir im Kick-off fest“) — kein Erklärsatz für Striche. */}
+              {sicht.wertKonto.some(z => !wertModell(z).leer) && <div style={{ ...klein, color: C.inkLeise }}>{w.zielSatz}</div>}
             </div>
           ) : <Leer symbol="◎">{w.zielLeer}</Leer>}
         </Karte>

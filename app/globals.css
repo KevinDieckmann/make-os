@@ -1050,6 +1050,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .kunde-strahl-titel { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 10px 6px; }
 @media (max-width: 640px) {
   .kunde-strahl-titel { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .kunde-strahl-marke { display: none; }
   .kunde-held { padding: 18px 16px 16px; }
 }
 .kunde-liste { margin: 0; padding: 0 0 0 18px; display: grid; gap: 8px; font-size: 15px; line-height: 1.55; color: #E8ECEA; }

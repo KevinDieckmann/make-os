@@ -32,6 +32,7 @@ import {
   type LinkOeffentlich, type LinkOp, type SchalterStand,
 } from './link';
 import { formulareDesFalls, formularProzent, formularStandVon, formulareProzent, abschnitteVon, antwortenAnwenden, antwortenCsv, fnv, formularSchluessel } from './formular';
+import { formularZaehlung } from './bild';
 import { anfrageAnlegen, letzterPuls, offeneAnfrage, pulsAnnehmen, pulsHand, pulsListe } from './puls';
 import { kundenSicht, kundeTauglich, kundeHinweis, type KundenAnbieter, type KundenSicht } from './sicht';
 import { anredeAus, type KundenAnrede } from './bild';
@@ -193,13 +194,23 @@ export async function sichtFuer(e: { mandat: Mandat; modus: 'voll' | 'puls'; lin
   const rechte = e.link?.rechte ?? { formular: true, upload: true, puls: true };
   const frei = e.link ? uploadFrei(unterlagenDesLinks(e.kunde, e.link.id)).dateien : UPLOAD_GRENZEN.dateienJeLink;
   const u = await kundenUmfeld(e.mandat, fall, e.vorlagen);
+  // 14.10. (Abnahme A3): die Lage folgt dem, was intern hängt — dieselbe Rechnung wie das Cockpit, nur in Worten (die Texte gehen nie hinaus).
+  const haengt = fall ? await haengerVon(e.mandat.id, e.heute) : null;
   return kundenSicht({
     modus: e.modus, heute: e.heute, mandat: e.mandat, paket: paketName(e.mandat, e.crm, fall, e.vorlagen), fall, bausteine: e.vorlagen.bausteine, marken: e.vorlagen.marken, rituale: e.vorlagen.rituale,
     kunde: e.kunde, rechte, standVon, datenschutz: await hinweisLaden(u.anrede), uploadFrei: frei,
     ...(e.anfrage ? { pulsOffen: !e.anfrage.beantwortetAm && e.anfrage.offenBis >= e.heute } : {}),
     anrede: u.anrede, ...(u.anbieter ? { anbieter: u.anbieter } : {}), ...(u.ansprechperson ? { ansprechperson: u.ansprechperson } : {}), freigaben: u.freigaben, terminTage: u.terminTage,
+    ...(haengt ? { haengt } : {}),
   });
 }
+
+/** Was an einem Fall hängt (Cockpit-Rechnung, nur Art/Schwere/Tage) — über die Schnittstelle von C1; Fehler → null (Lage wie bis 13.10.). */
+async function haengerVon(mandatId: string, heute: string) {
+  try { return await (await import('../prozesse/server')).haengerFuer(mandatId, heute); } catch { return null; }
+}
+/** Nur die Zählung (ohne Pflichtfragen-Texte) — für den Report. */
+const zaehl = (z: { beantwortet: number; gesamt: number }) => ({ beantwortet: z.beantwortet, gesamt: z.gesamt });
 
 /** „So sieht der Kunde es“ (6.4) — genau die Sicht des aktiven Links (ohne Link: wie ein neuer Link). */
 export async function vorschauFuer(mandatId: string, heute = localDay()): Promise<{ sicht: KundenSicht; schalter: SchalterStand } | null> {
@@ -652,7 +663,15 @@ export async function reportZusatzFuer(mandatId: string, heute: string): Promise
     if (!m) return null;
     const link = schalterStand(vorlagen.einstellungen, umgebungAn()).an ? aktiverLink(kunde, m.id, heute, mandatsEnde(m)) : null;
     const u = await kundenUmfeld(m, fall, vorlagen, h);
-    return reportZusatz(fall, m, kunde, heute, !!link?.rechte.puls, kundenGesperrt(vorlagen.bausteine, vorlagen), { anrede: u.anrede, freigaben: u.freigaben, rituale: vorlagen.rituale, terminTage: u.terminTage });
+    // 14.10.: dieselben offenen Formulare (Regel der Kunden-Seite: Recht „Formulare“ des aktiven Links, ohne Link wie ein neuer) und dieselben Hänger.
+    const fb = (link?.rechte.formular ?? true) ? formulareDesFalls(fall, vorlagen.bausteine).filter(b => b.kundeFuellt === true && kundeTauglich(b, vorlagen)) : [];
+    const formulareOffen = fb.map(b => ({ b, st: formularStandVon(kunde, m.id, b.id) })).filter(({ b, st }) => abschnitteVon(b).some(a => !st?.fertig.includes(a.schluessel)))
+      .map(({ b, st }) => ({ schluessel: formularSchluessel(m.id, b.id), titel: b.titel, ...zaehl(formularZaehlung(b.fragen ?? [], st?.antworten ?? {})) }));
+    const haengt = await haengerVon(m.id, heute);
+    return reportZusatz(fall, m, kunde, heute, !!link?.rechte.puls, kundenGesperrt(vorlagen.bausteine, vorlagen), {
+      anrede: u.anrede, freigaben: u.freigaben, rituale: vorlagen.rituale, terminTage: u.terminTage,
+      formulare: new Map(fb.map(b => [b.id, formularSchluessel(m.id, b.id)])), formulareOffen, ...(haengt ? { haengt } : {}),
+    });
   } catch (e) {
     console.error('[fulfillment] Report-Zusatz:', e instanceof Error ? e.message.slice(0, 160) : e);
     return null;

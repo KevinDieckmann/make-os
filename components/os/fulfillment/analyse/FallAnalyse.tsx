@@ -31,7 +31,7 @@ export function FallAnalyse({ mandatId }: { mandatId: string }) {
   const teile: { id: Teil; label: string }[] = [
     { id: 'laeufe', label: 'Läufe' }, { id: 'dossier', label: 'Dossier' },
     ...(d.personenteil ? [{ id: 'personen' as const, label: 'Personen' }] : []),
-    { id: 'recht', label: 'Recht & Freigaben' }, { id: 'tiefenbericht', label: 'Tiefenbericht' },
+    { id: 'recht', label: 'Recht & Prüfung' }, { id: 'tiefenbericht', label: 'Tiefenbericht' },
   ];
   const ki = lage?.ki;
   const kiLuecken = ki ? (['kiZugang', 'bereichCrm', 'websuche'] as const).filter(k => !ki[k]) : [];

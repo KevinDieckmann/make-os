@@ -11,15 +11,16 @@ import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { CrmBestand, FollowUp, Mandat } from '@/lib/crm/typen';
 import type { DossierKurz, Fall, FallKurz, FristenKontext, KundeKurz, MorgenlaufTeil, StakeholderAuskunft, VorlagenDatei } from '../typen';
 import { fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen } from '../speicher';
-import { aktuellerKnoten, fallFortschritt, mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
+import { mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { fallUmfeld, ableitungFuer, fallStartenServer, FallFehler } from './fall-server';
 import { fallWirksam, onboardingStand, willkommenUhr } from './onboarding';
-import { cockpitZeile, type CockpitZeile } from './cockpit';
+import { cockpitZeile, type CockpitZeile, type HaengerArt } from './cockpit';
 import { ffIndexZeile, type FfIndexDaten } from './kennzahlen';
-import { naechsterTermin } from './rituale';
+import { naechsterFallTermin } from './rituale';
+import { fallStelle } from './reise';
 import { nachsorgeFaellig, markeNachsorge, NACHSORGE_TEXT, type NachsorgeArt } from './wirkung';
 import { vorlageFuerProdukt } from './vorlagen-anwenden';
 import { fnv } from './pruefen';
@@ -44,12 +45,13 @@ export async function faelleKurz(mandatIds?: readonly string[]): Promise<Record<
     const abl = ableitungFuer(f, m, crm, vorlagen, kunde[f.mandatId], jetzt);
     const w = fallWirksam(f, abl);
     const st = onboardingStand(f, abl);
-    const a = aktuellerKnoten(w);
+    // Phase und „Als Nächstes“ aus der EINEN Rechnung (`fallStelle`) — wie Fall-Kopf, Cockpit, Landkarte und Kunden-Seite (14.10.).
+    const stelle = fallStelle(w, vorlagen.prozesse.find(p => p.id === f.vorlageId)?.freigaben ?? [], heute);
     const wa = wartetAufEuch(w, heute);
     raus[f.mandatId] = {
-      mandatId: f.mandatId, status: w.status, ...(a.phase ? { phase: a.phase.titel } : {}), fortschritt: fallFortschritt(w),
-      ...(a.schritt ? { naechster: a.schritt.titel } : {}), wartet: wa.length, ...(wa[0]?.tage !== undefined ? { wartetAeltesterTage: wa[0].tage } : {}),
-      onboardingOffen: st.offen, willkommenUeberfaellig: st.willkommen.ueberfaellig,
+      mandatId: f.mandatId, status: w.status, ...(stelle.phase ? { phase: stelle.phase.titel } : {}), fortschritt: stelle.fortschritt,
+      ...(stelle.naechster ? { naechster: stelle.naechster.titel } : {}), wartet: wa.length, ...(wa[0]?.tage !== undefined ? { wartetAeltesterTage: wa[0].tage } : {}),
+      onboardingOffen: st.offen, onboardingErfuellt: st.schritte.filter(x => x.erfuellt || x.entfaellt).length, willkommenUeberfaellig: st.willkommen.ueberfaellig,
     };
   }
   return raus;
@@ -59,10 +61,13 @@ export async function faelleKurz(mandatIds?: readonly string[]): Promise<Record<
 
 async function sicher<T>(f: () => Promise<T>, ersatz: T): Promise<T> { try { return await f(); } catch { return ersatz; } }
 
-/** Die Zeilen des Mandats-Cockpits (laufende Fälle von Mandaten einer Business-Gesellschaft). Leer ohne Fall. */
-export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOString()): Promise<{ zeilen: (CockpitZeile & { gesellschaft: string })[]; vorlagen: VorlagenDatei }> {
-  const { crm, vorlagen, faelle, kunde } = await fallUmfeld();
-  const laufend = Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen');
+/**
+ * Die Zeilen des Mandats-Cockpits (laufende Fälle von Mandaten einer Business-Gesellschaft). Leer ohne Fall. `nur` = nur dieses Mandat (für die
+ * Kunden-Seite und den Report: dieselbe Rechnung „was hängt“ wie intern, `haengerFuer`).
+ */
+export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOString(), nur?: string): Promise<{ zeilen: (CockpitZeile & { gesellschaft: string })[]; vorlagen: VorlagenDatei }> {
+  const { crm, vorlagen, faelle, kunde } = await fallUmfeld(nur ? [nur] : undefined);
+  const laufend = Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen' && (!nur || f.mandatId === nur));
   if (!laufend.length) return { zeilen: [], vorlagen };
   const ids = laufend.map(f => f.mandatId);
   const { istBusinessGesellschaft } = await import('@/lib/einheiten');
@@ -71,10 +76,12 @@ export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOS
     sicher(async () => (await import('../analyse/server')).dossierKurzFuer(ids), {} as Record<string, DossierKurz>),
     sicher(async () => (await import('@/lib/kalender/bezug-server')).ladeBezuege(), { bezuege: {} }),
   ]);
-  const { kundenZeilen } = await import('@/lib/crm/treppe');
-  const kz = treppe ? kundenZeilen({ datei: treppe, crm, heute }) : [];
   const { uidVonSchluessel } = await import('@/lib/kalender/bezug');
   const terminTage = Object.entries(bezuege.bezuege).filter(([, b]) => b.mandatId && b.tag).map(([k, b]) => ({ uid: uidVonSchluessel(k), tag: b.tag!, mandatId: b.mandatId! }));
+  // Der nächste Termin je Fall — EINE Regel (`naechsterFallTermin`), auch für die Health „Termine“ der Leistungstreppe (14.10., Abnahme B8).
+  const termine = Object.fromEntries(laufend.map(f => [f.mandatId, naechsterFallTermin({ fallRituale: f.rituale, terminTage: terminTage.filter(t => t.mandatId === f.mandatId), heute })?.tag]).filter((x): x is [string, string] => !!x[1]));
+  const { kundenZeilen } = await import('@/lib/crm/treppe');
+  const kz = treppe ? kundenZeilen({ datei: treppe, crm, heute, termine }) : [];
   const zeilen: (CockpitZeile & { gesellschaft: string })[] = [];
   for (const f of laufend) {
     const m = crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
@@ -82,11 +89,11 @@ export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOS
     const abl = ableitungFuer(f, m, crm, vorlagen, kunde[m.id], jetzt);
     const w = fallWirksam(f, abl);
     const z = kz.find(x => x.mandatId === m.id);
-    const uids = f.rituale.flatMap(r => r.terminUids);
-    const naechster = naechsterTermin(terminTage.filter(t => t.mandatId === m.id), uids, heute);
+    const naechster = termine[m.id];
+    const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
     zeilen.push({
       ...cockpitZeile({
-        fall: w, kunde: m.kunde, titel: m.titel, paket: vorlagen.prozesse.find(p => p.id === f.vorlageId)?.titel,
+        fall: w, kunde: m.kunde, titel: m.titel, paket: v?.titel, ...(v ? { freigaben: v.freigaben } : {}),
         onboarding: onboardingStand(f, abl), ...(kunde[m.id] ? { kunde2: kunde[m.id] } : {}), ...(dossiers[m.id] ? { dossier: dossiers[m.id] } : {}),
         health: z?.ampel.gesamt ?? null, report: { faellig: z?.report.faellig ?? false, ...(z?.report.gesendetAm || z?.report.letzter ? { letzter: z?.report.gesendetAm ?? z?.report.letzter } : {}) },
         ...(naechster ? { naechsterRitual: naechster } : {}), pulsSchwelle: vorlagen.einstellungen.pulsSchwelle, heute,
@@ -95,6 +102,33 @@ export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOS
     });
   }
   return { zeilen, vorlagen };
+}
+
+/**
+ * Was an EINEM Fall hängt — dieselbe Rechnung wie das Cockpit (`wasHaengt`), für die Kunden-Seite und den Report: dort nur in Worten übersetzt
+ * (lib/fulfillment/kunde/bild.ts `kundenLage`), nie die Texte selbst. Je Hänger Art, Schwere und wie viele Tage er schon hängt. Fehler → null.
+ */
+export async function haengerFuer(mandatId: string, heute = localDay()): Promise<{ art: HaengerArt; schwere: 'rot' | 'gelb'; tage?: number }[] | null> {
+  try {
+    const { tageZwischen } = await import('../regeln');
+    const { zeilen } = await cockpitDaten(heute, new Date().toISOString(), mandatId);
+    const z = zeilen.find(x => x.mandatId === mandatId);
+    if (!z) return null;
+    return z.haengt.map(h => { const t = h.seit ? tageZwischen(h.seit, heute) : undefined; return { art: h.art, schwere: h.schwere, ...(t !== undefined ? { tage: t } : {}) }; });
+  } catch { return null; }
+}
+
+/** Der nächste Termin je laufendem Fall (Mandat → Tag) — EINE Regel `naechsterFallTermin`; für die Health „Termine“ der Leistungstreppe. Fehler → {}. */
+export async function naechsteFallTermine(heute = localDay()): Promise<Record<string, string>> {
+  try {
+    const faelle = await fulfillmentLesen('faelle');
+    const [{ ladeBezuege }, { uidVonSchluessel }] = await Promise.all([import('@/lib/kalender/bezug-server'), import('@/lib/kalender/bezug')]);
+    const b = await ladeBezuege();
+    const tage = Object.entries(b.bezuege).filter(([, x]) => x.mandatId && x.tag).map(([k, x]) => ({ uid: uidVonSchluessel(k), tag: x.tag!, mandatId: x.mandatId! }));
+    return Object.fromEntries(Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen')
+      .map(f => [f.mandatId, naechsterFallTermin({ fallRituale: f.rituale, terminTage: tage.filter(t => t.mandatId === f.mandatId), heute })?.tag])
+      .filter((x): x is [string, string] => !!x[1]));
+  } catch { return {}; }
 }
 
 /**

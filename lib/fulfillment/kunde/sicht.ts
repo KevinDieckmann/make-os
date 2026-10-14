@@ -19,7 +19,7 @@ import { abschnitteVon, formularProzent, formularSchluessel, formularStandVon, f
 import { offeneAnfrage } from './puls';
 import { HINWEIS_VERSION } from './link';
 import { fuerKundenFrei, kundenGesperrt } from '../prozesse/bausteine';
-import { kundenTeile, tagText, type KundenAnrede, type KundenLage, type KundenPhase, type KundenQuickWin, type KundenRitual, type KundenWartet, type KundenWert } from './bild';
+import { formularOffen, kundenTeile, tagText, type KundenAnrede, type KundenHaenger, type KundenLage, type KundenPhase, type KundenQuickWin, type KundenRitual, type KundenWartet, type KundenWert } from './bild';
 import type { Baustein, Fall, FallKnoten, Frage, Freigabepunkt, KundeDatei, RitualVorlage, VorlagenDatei } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 
@@ -95,7 +95,11 @@ export interface SichtEingabe {
   freigaben?: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
   /** Tage der Termine mit Bezug zum Mandat (`kalender-bezug`) — für „Nächster Termin“. */
   terminTage?: readonly { uid: string; tag: string }[];
+  /** Was intern hängt (Cockpit `wasHaengt`, nur Art/Schwere/Tage) — die Lage übersetzt es in Worte (14.10.). Geht selbst NIE an den Kunden. */
+  haengt?: readonly KundenHaenger[];
 }
+
+export { formularOffen };
 
 /** Zeigt der Knoten auf einen Baustein, der (noch) nicht an Kunden geht? Dann taucht er auf keinem Kunden-Weg auf (auch nicht unter „wartet“). */
 export const knotenGesperrt = (k: Pick<FallKnoten, 'bausteinId'>, gesperrt: ReadonlySet<string>): boolean => !!k.bausteinId && gesperrt.has(k.bausteinId);
@@ -114,13 +118,6 @@ export function kundenSicht(e: SichtEingabe): KundenSicht {
   const f = e.fall;
   const gesperrt = kundenGesperrt(e.bausteine, { marken: e.marken });
   const formularBausteine = e.rechte.formular ? formulareDesFalls(f, e.bausteine).filter(b => b.kundeFuellt === true && kundeTauglich(b, { marken: e.marken })) : [];
-  const t = kundenTeile({
-    fall: f, mandat: e.mandat, heute: e.heute, anrede, gesperrt, ...(e.freigaben ? { freigaben: e.freigaben } : {}), rituale: e.rituale,
-    formulare: new Map(formularBausteine.map(b => [b.id, formularSchluessel(e.mandat.id, b.id)])), ...(e.terminTage ? { terminTage: e.terminTage } : {}),
-  });
-  // Nur geteilte Entscheidungen (Prüf-Fund 11.10.: ungeteilte erschienen hier mit Titel).
-  const entscheidungen = (f?.entscheidungen ?? []).filter(x => x.geteilt).sort((a, b) => (a.am < b.am ? 1 : -1))
-    .map(x => ({ titel: x.titel, am: tagText(tagVon(x.am)), status: x.status, ...(x.inhalt ? { inhalt: x.inhalt } : {}) }));
   const formulare: KundenFormular[] = formularBausteine.map(b => {
     const st = formularStandVon(e.kunde, e.mandat.id, b.id);
     return {
@@ -129,6 +126,15 @@ export function kundenSicht(e: SichtEingabe): KundenSicht {
       antworten: Object.fromEntries(Object.entries(st?.antworten ?? {}).filter(([k]) => (b.fragen ?? []).some(q => q.id === k))),
     };
   });
+  const t = kundenTeile({
+    fall: f, mandat: e.mandat, heute: e.heute, anrede, gesperrt, ...(e.freigaben ? { freigaben: e.freigaben } : {}), rituale: e.rituale,
+    formulare: new Map(formularBausteine.map(b => [b.id, formularSchluessel(e.mandat.id, b.id)])), ...(e.terminTage ? { terminTage: e.terminTage } : {}),
+    // 14.10.: offene Formulare zählen in der Lage mit (wie in der Karte), und die Ampel folgt dem, was intern hängt.
+    formulareOffen: formulare.filter(formularOffen).map(x => x.schluessel), ...(e.haengt ? { haengt: e.haengt } : {}),
+  });
+  // Nur geteilte Entscheidungen (Prüf-Fund 11.10.: ungeteilte erschienen hier mit Titel).
+  const entscheidungen = (f?.entscheidungen ?? []).filter(x => x.geteilt).sort((a, b) => (a.am < b.am ? 1 : -1))
+    .map(x => ({ titel: x.titel, am: tagText(tagVon(x.am)), status: x.status, ...(x.inhalt ? { inhalt: x.inhalt } : {}) }));
   const vomKunden = e.kunde.unterlagen.filter(u => u.mandatId === e.mandat.id && u.herkunft === 'kunde');
   return {
     modus: 'voll', ...basis, mandat: e.mandat.titel, ...(e.paket ? { paket: e.paket } : {}),

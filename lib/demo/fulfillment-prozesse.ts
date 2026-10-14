@@ -10,6 +10,7 @@
 import type { FulfillmentSaatKontext, SaatSchritt } from './saat-fulfillment';
 import { MUSTER_P1, MUSTER_P2, MUSTER_P3 } from '@/lib/fulfillment/muster';
 import { WILLKOMMEN_GERUEST, OB_PRAEFIX } from '@/lib/fulfillment/prozesse/onboarding';
+import { WEITERE_BAUSTEINE } from '@/lib/fulfillment/prozesse/phasen';
 import { tagPlus } from '@/lib/kalender/zeit';
 
 type J = Record<string, unknown>;
@@ -145,6 +146,33 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
   const bausteine = await importieren(k, 'demo-bausteine.json', demoBausteine(), { pakete });
   const ablaeufe = await importieren(k, 'demo-ablaeufe.json', demoAblaeufe());
 
+  // 2b) 14.10. (Abnahme B20: „Strategie-Begleitung läuft nach Vertriebsleitung auf Zeit“): die Pakete heißen wie das, was sie in der Demo liefern —
+  //     Vorlage UND ihr Kasten auf der Landkarte. Das dritte Muster (Netzwerk-Vertrieb) passt zu keinem Demo-Produkt und fällt weg (seine Bausteine
+  //     bleiben in der Bibliothek). Nur über die Vorlagen-Route (Ops `vorlage`, `knoten`, `knoten-weg`, `vorlage-weg`).
+  ue = await fulfillment('GET', '/api/fulfillment');
+  type VorlageJ = { id: string; art: string; knoten: { id: string; elternId?: string; titel: string; verweis?: string; kundeSichtbar?: boolean }[] };
+  const alle = (ue.prozesse ?? []) as VorlageJ[];
+  const lk = alle.find(p => p.art === 'landkarte');
+  const umbenennen: J[] = [];
+  for (const [schluessel, titel] of [['hos-cso', 'Strategie-Begleitung'], ['sales-systematik', 'Cockpit-Einführung']] as const) {
+    const id = pakete[schluessel];
+    if (!id) continue;
+    umbenennen.push({ op: 'vorlage', eintrag: { id, titel } });
+    const kasten = lk?.knoten.find(x => x.verweis === id);
+    if (lk && kasten) umbenennen.push({ op: 'knoten', vorlageId: lk.id, eintrag: { id: kasten.id, titel } });
+    // Die Phasen, die der Import angelegt hat (Vorlauf, Analyse, Diagnose …), sind — wie die Phasen des Musters — für den Kunden sichtbar: so zeigt die
+    // Kunden-Seite dieselbe Reise (Phase 1 von 11) wie der Fall. Der Sammelknoten „Weitere Bausteine“ bleibt intern.
+    const v = alle.find(p => p.id === id);
+    const w = v?.knoten.find(x => !x.elternId);
+    for (const ph of v && w ? v.knoten.filter(x => x.elternId === w.id && !x.kundeSichtbar && x.titel !== WEITERE_BAUSTEINE) : []) umbenennen.push({ op: 'knoten', vorlageId: id, eintrag: { id: ph.id, kundeSichtbar: true } });
+  }
+  if (pakete['netzwerk-vertrieb']) {
+    const kasten = lk?.knoten.find(x => x.verweis === pakete['netzwerk-vertrieb']);
+    if (lk && kasten) umbenennen.push({ op: 'knoten-weg', vorlageId: lk.id, id: kasten.id });
+    umbenennen.push({ op: 'vorlage-weg', id: pakete['netzwerk-vertrieb'] });
+  }
+  if (umbenennen.length) await fulfillment('PATCH', '/api/fulfillment', { ops: umbenennen });
+
   // 3) Produkte ↔ Paket-Vorlage.
   const zuordnung: J[] = [];
   if (pakete['hos-cso'] && k.leistungen.includes('l-demo-retainer')) zuordnung.push({ op: 'zuordnung', leistungId: 'l-demo-retainer', vorlageId: pakete['hos-cso'] });
@@ -175,7 +203,8 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
     // Der Wochen-Check steht im Kalender (Termin-Stand der Saat, „Wochen-Check Nordwerk“): Bezug zum Mandat + am Fall vermerkt.
     const wochenTermine = await wochenCheckTermine(nordwerk.id, k.heute, L);
     const ops: J[] = [
-      { op: 'willkommen-gesendet' },
+      // Am Tag der Unterschrift gesendet (vor 46 Tagen) — sonst zählte das Erfolgsmaß „Willkommen in 24 Stunden“ den Musterfall als verspätet (Abnahme B6).
+      { op: 'willkommen-gesendet', am: tagPlus(k.heute, -46) },
       ...(nordwerk.kontaktIds[0] ? [{ op: 'stakeholder', eintrag: { kontaktId: nordwerk.kontaktIds[0], rolle: 'entscheider', einfluss: 3, haltung: 'positiv', notiz: 'Trägt das Projekt, will die Zahlen jede Woche sehen.' } }] : []),
       { op: 'vereinbarung', felder: {
         rollen: 'Geschäftsführung entscheidet, Vertriebsleitung führt den Alltag.', reaktionszeiten: 'Antwort binnen zwei Werktagen.',

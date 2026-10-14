@@ -13,6 +13,8 @@ import { FARBE as C, TYP, MIKRO, TIEF, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Punkt, Pillen, HakenZiel, Erklaert, ZeileAktionen, LEUCHT, useHandy } from '../../ui';
 import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
 import { ONBOARDING_SPRUNG, seitTagen } from '@/lib/fulfillment/prozesse/reise';
+import { abstimmungsNummern, anzeigeTitel } from '@/lib/fulfillment/prozesse/darstellung';
+import { fallStartTag } from '@/lib/fulfillment/prozesse/fall';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
 import { useFall, useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, type FallAntwort } from './daten';
@@ -53,6 +55,8 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
   const zuSchritt = (s: OnboardingSchluessel) => {
     if (s === 'willkommen') { setMail(true); insBild('willkommen'); return; }
     if (s === 'f0') { geh('ablauf', { art: 'freigabe', wert: 'F0' }); return; }
+    // Abnahme C15: das Playbook braucht den Kunden-Link — direkt an die Link-Karte (dort steht, wie er angeht), nicht nur in den Reiter.
+    if (s === 'playbook') { geh('kunde', { art: 'stelle', wert: 'kunde-link' }); return; }
     geh(ONBOARDING_SPRUNG[s].reiter);
   };
   const gesendet = f.onboarding.willkommenGesendetAm;
@@ -67,15 +71,16 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
           {daten.diff.neu.length} neu · {daten.diff.geaendert.length} geändert{daten.diff.entfernt.length ? ` · ${daten.diff.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''}
         </Hinweis>
       )}
-      <OnboardingKarte schritte={ob.schritte} fertig={ob.fertig} gesendetAm={gesendet} onSchritt={zuSchritt} onEntfaellt={entfaellt}
+      <OnboardingKarte schritte={ob.schritte.map(s => ({ ...s, titel: anzeigeTitel(s.titel, abstimmungsNummern(f.knoten)) }))} fertig={ob.fertig} gesendetAm={gesendet} onSchritt={zuSchritt} onEntfaellt={entfaellt}
         onWillkommenZurueck={async () => { await fallOps(mandatId, [{ op: 'willkommen-gesendet', zuruecknehmen: true }]); }} />
       {!gesendet && <WillkommenKarte daten={daten} oeffnen={mail} setOeffnen={setMail} onMeldung={setMeldung} />}
       {(daten.wartet?.length ?? 0) > 0 && (
         <Karte i={2} akzent={LEUCHT.achtung}>
-          <Ueberschrift farbe={LEUCHT.achtung} erklaerung="fulfillment.wartetAufEuch" rechts={<span>{daten.wartet!.length}</span>}>Wartet auf euch</Ueberschrift>
+          {/* Intern heißt es „Wartet auf den Kunden“ — „wartet auf euch“ ist die Sicht des Kunden (Abnahme C6). */}
+          <Ueberschrift farbe={LEUCHT.achtung} erklaerung="fulfillment.wartetAufEuch" rechts={<span>{daten.wartet!.length}</span>}>Wartet auf den Kunden</Ueberschrift>
           <Liste>{daten.wartet!.map(w => (
-            <Zeile key={w.id} umbrechen links={<Punkt farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={w.titel}
-              unter={w.art === 'entscheidung' ? 'Entscheidung des Kunden' : w.art === 'freigabe' ? 'Freigabe des Kunden' : 'Schritt beim Kunden'}
+            <Zeile key={w.id} umbrechen links={<Punkt farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={anzeigeTitel(w.titel, abstimmungsNummern(f.knoten))}
+              unter={w.art === 'entscheidung' ? 'Entscheidung des Kunden' : w.art === 'freigabe' ? 'Abstimmung mit dem Kunden' : 'Schritt beim Kunden'}
               rechts={w.tage !== undefined ? <Chip farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : C.inkDim}>{seitTagen(w.tage)}</Chip> : undefined}
               onClick={() => geh(w.art === 'entscheidung' ? 'menschen' : 'ablauf')} />
           ))}</Liste>
@@ -87,7 +92,8 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
       <Karte i={5} flach>
         <Ueberschrift>Status des Falls</Ueberschrift>
         <Pillen liste={STATUS} aktiv={f.status === 'onboarding' ? null : f.status} onWahl={status => ops([{ op: 'fall-status', status }])} />
-        <div style={klein}>Gestartet am {tagKurz(f.gestartetAm)}{daten.unterschrift ? ` · Unterschrift ${tagKurz(daten.unterschrift.am)}` : ''} — im Onboarding wechselt der Fall von selbst auf „läuft“, sobald die Schritte erfüllt sind.</div>
+        {/* Abnahme B8: der Starttag des Falls (`fallStartTag` — der gewählte, nicht der Tag des Anlegens), Unterschrift zuerst. */}
+        <div style={klein}>{daten.unterschrift ? `Unterschrift ${tagKurz(daten.unterschrift.am)} · ` : ''}Fall gestartet {tagKurz(fallStartTag(f))} — im Onboarding wechselt der Fall von selbst auf „läuft“, sobald die Schritte erfüllt sind.</div>
       </Karte>
       {frage.dialog}
     </div>
@@ -263,7 +269,7 @@ function AusAnalyse({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: {
     <Karte i={2} id="ausanalyse" akzent={LEUCHT.agenten}>
       <Ueberschrift farbe={LEUCHT.agenten} erklaerung="fulfillment.ausAnalyse" rechts={<span>{offen}</span>}>Aus der Analyse</Ueberschrift>
       {!a.f2 ? (
-        <Hinweis art="info" aktion={<Knopf leise href={WEG.dossier(daten.mandat.id)}>Zum Dossier ›</Knopf>}>Der Diagnose-Entwurf liegt vor — erst das Dossier prüfen (F2), dann gehen Quick Wins, Fragen und Maßnahmen per Klick in den Fall.</Hinweis>
+        <Hinweis art="info" aktion={<Knopf leise href={WEG.dossier(daten.mandat.id)}>Zum Dossier ›</Knopf>}>Der Diagnose-Entwurf liegt vor — erst das Dossier prüfen („Dossier geprüft“), dann gehen Quick Wins, Fragen und Maßnahmen per Klick in den Fall.</Hinweis>
       ) : (
         <Liste>
           {a.quickWins.length > 0 && <Zeile umbrechen titel={`${a.quickWins.length} Quick Win${a.quickWins.length === 1 ? '' : 's'}`} unter={a.quickWins.join(' · ')} rechts={<Knopf leise aus={!!laeuft} onClick={() => tun('quickwins')}>Übernehmen</Knopf>} />}

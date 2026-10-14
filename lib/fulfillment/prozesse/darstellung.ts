@@ -4,8 +4,56 @@
 // Analyse, gemeinsame Sperrgründe) — die Komponenten zeichnen nur. Nur lesen: kein Bestand, keine Route, kein Schreibweg. Rein, client-sicher.
 
 import type { AnalyseAgentId, ProzessKnoten, ProzessVorlage } from '../typen';
-import { ebeneVon, kinderVon, wurzelVon } from '../regeln';
+import { ebeneVon, inReihenfolge, kinderVon, wurzelVon } from '../regeln';
 import type { CockpitZeile } from './cockpit';
+
+// ── Titel und Abstimmungspunkte in der Anzeige (14.10., Abnahme B19/B20) ─────────────────────────────────────────────────────────────
+// Die Daten bleiben, wie sie sind (Kennungen F0–F7, gespeicherte Titel) — nur die ANZEIGE ist einheitlich: interne Klammer-Zusätze („(nur Prozess)“)
+// stehen nie im Titel, sondern als Erklärung daneben; Freigabe-Punkte heißen im Fulfillment „Abstimmungspunkt n“ (lückenlos in der Reihenfolge des
+// Ablaufs — „Freigabe“ meint in MAKE OS die Vorschläge von ZOE). Rein, client-sicher.
+
+/** Interne Zusätze in Klammern: „(nur Prozess)“, „(intern)“, „(nur intern …)“. */
+const INTERN_ZUSATZ = /\s*\((?:nur\b[^)]*|intern[^)]*)\)/gi;
+/** Ein Titel ohne internen Klammer-Zusatz (Leerraum geglättet) — so steht er in jeder Ansicht. */
+export const titelOhneZusatz = (t: string): string => String(t ?? '').replace(INTERN_ZUSATZ, '').replace(/\s+/g, ' ').trim() || String(t ?? '').trim();
+/** Der interne Zusatz eines Titels als Erklärung („nur Prozess“) — sonst undefined. */
+export function titelZusatz(t: string): string | undefined {
+  const m = /\((nur\b[^)]*|intern[^)]*)\)/i.exec(String(t ?? ''));
+  return m ? m[1].trim() : undefined;
+}
+
+type MitFreigabe = { id: string; elternId?: string; rang: number; freigabe?: string };
+/**
+ * Die Nummer jedes Abstimmungspunkts (Freigabe-Kennung → 1, 2, 3 …) in der Reihenfolge, in der er im Ablauf zum ersten Mal vorkommt — lückenlos,
+ * auch wenn ein Punkt der Vorlage (z. B. F1 „Analyse-Umfang“, der in der Analyse geführt wird) an keiner Phase hängt. Nur Anzeige.
+ */
+export function abstimmungsNummern(knoten: readonly MitFreigabe[]): Map<string, number> {
+  const raus = new Map<string, number>();
+  for (const k of inReihenfolge(knoten)) if (k.freigabe && !raus.has(k.freigabe)) raus.set(k.freigabe, raus.size + 1);
+  return raus;
+}
+/** „Abstimmungspunkt 3 · Diagnose-Abnahme“ (ohne Titel: „Abstimmungspunkt 3“; unbekannt: „Abstimmungspunkt“). */
+export function abstimmungName(id: string, nummern: ReadonlyMap<string, number>, titel?: string): string {
+  const n = nummern.get(id);
+  return `Abstimmungspunkt${n ? ` ${n}` : ''}${titel ? ` · ${titelOhneZusatz(titel)}` : ''}`;
+}
+/** Ein Titel mit Freigabe-Kürzel („F0 bestätigt“) in der Anzeige: „Abstimmungspunkt 1 bestätigt“, Zusätze weg. */
+export function anzeigeTitel(titel: string, nummern?: ReadonlyMap<string, number>): string {
+  return titelOhneZusatz(titel).replace(/\bF(\d{1,2})\b/g, (_x, d: string) => { const n = nummern?.get(`F${d}`); return `Abstimmungspunkt${n ? ` ${n}` : ''}`; });
+}
+
+/**
+ * Wie verteilen sich die laufenden Fälle (Lage „Kunden in Lieferung“)? Aus derselben Rechnung wie Fall-Kopf und Landkarte (`fallStelle` → Cockpit-Zeile):
+ * Fälle im Onboarding als „im Onboarding“, sonst nach ihrer Phase („in Diagnose“). Häufigste zuerst, höchstens drei Gruppen.
+ */
+export function lageVerteilung(zeilen: readonly Pick<CockpitZeile, 'status' | 'phase'>[]): string {
+  const n = new Map<string, number>();
+  for (const z of zeilen) { const k = z.status === 'onboarding' ? 'im Onboarding' : z.phase ? `in ${z.phase}` : z.status === 'pausiert' ? 'pausiert' : 'ohne Phase'; n.set(k, (n.get(k) ?? 0) + 1); }
+  const l = [...n.entries()].sort((a, b) => b[1] - a[1] || (a[0] === 'im Onboarding' ? -1 : b[0] === 'im Onboarding' ? 1 : a[0].localeCompare(b[0], 'de')));
+  const teile = l.slice(0, 3).map(([k, v]) => `${v} ${k}`);
+  const rest = l.slice(3).reduce((s, [, v]) => s + v, 0);
+  return [...teile, ...(rest ? [`${rest} weitere`] : [])].join(' · ');
+}
 
 // ── Landkarte: Ampel je Kasten ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -39,15 +87,19 @@ export const EBENEN_NAME = ['Gesamt', 'Prozess', 'Teilprozess', 'Schritt', 'Baus
 
 // ── Paket-Vorlagen als Karten ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export interface PaketSteckbrief { phasen: { id: string; titel: string; freigabe?: string }[]; schritte: number; bausteine: number; freigaben: number }
+export interface PaketSteckbrief { phasen: { id: string; titel: string; zusatz?: string; freigabe?: string; nr?: number }[]; schritte: number; bausteine: number; freigaben: number }
 
-/** Was eine Paket-Vorlage enthält: Phasen (Ebene 2, mit Freigabe-Punkt), Zahl der Schritte (ohne Wurzel), Zahl der Bausteine (Ebene 5). */
+/**
+ * Was eine Paket-Vorlage enthält: Phasen (Ebene 2, mit Abstimmungspunkt und dessen Nummer), Zahl der Schritte (ohne Wurzel), Zahl der Bausteine (Ebene 5).
+ * Titel ohne internen Zusatz (14.10.: „Recruiting (nur Prozess)“ stand so auf der Karte) — der Zusatz steht als Erklärung daneben.
+ */
 export function paketSteckbrief(v: Pick<ProzessVorlage, 'knoten' | 'freigaben'>): PaketSteckbrief {
   const w = wurzelVon(v.knoten);
   const phasen = w ? kinderVon(w.id, v.knoten) : [];
   const bausteine = new Set(v.knoten.filter(k => k.bausteinId).map(k => k.bausteinId!));
+  const nr = abstimmungsNummern(v.knoten);
   return {
-    phasen: phasen.map(p => ({ id: p.id, titel: p.titel, ...(p.freigabe ? { freigabe: p.freigabe } : {}) })),
+    phasen: phasen.map(p => { const z = titelZusatz(p.titel); return { id: p.id, titel: titelOhneZusatz(p.titel), ...(z ? { zusatz: z } : {}), ...(p.freigabe ? { freigabe: p.freigabe, ...(nr.get(p.freigabe) ? { nr: nr.get(p.freigabe)! } : {}) } : {}) }; }),
     schritte: v.knoten.filter(k => k.elternId).length,
     bausteine: bausteine.size,
     freigaben: new Set(v.knoten.map(k => k.freigabe).filter(Boolean)).size,

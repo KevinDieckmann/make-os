@@ -116,10 +116,12 @@ export interface KundenZeile {
 /** Health-Ampel eines Kunden: Termine · Lieferungen · Zahlungen · Zufriedenheit — dazu die Ampel der Mandat-Health (Laufzeit, Health). */
 export function kundenAmpel(e: {
   m: Mandat; stufe: TreppenStufe | null; f: KundenFortschritt | undefined; seit?: string; heute: string; zahlung?: number | null;
+  /** Der nächste Termin im Kalender (Fulfillment `naechsterFallTermin`, 14.10.) — sonst wie bisher nur nächster Schritt und Review. */
+  termin?: string;
 }): { gesamt: Ampel | null; teile: AmpelTeil[] } {
   const { m, stufe, f, heute } = e;
-  // Termine: der nächste Schritt (Fortschritt) bzw. das nächste Review am Mandat.
-  const termine = [f?.naechster?.datum, m.naechstesReview?.slice(0, 10)].filter((x): x is string => !!x).sort();
+  // Termine: der nächste Termin im Kalender (Rituale des Falls), der nächste Schritt (Fortschritt) bzw. das nächste Review am Mandat — der früheste zählt.
+  const termine = [e.termin, f?.naechster?.datum, m.naechstesReview?.slice(0, 10)].filter((x): x is string => !!x).sort();
   const ueber = termine.find(t => t < heute);
   const kommend = termine.find(t => t >= heute);
   const t: AmpelTeil = ueber ? { id: 'termine', label: 'Termine', farbe: 'rot', text: `überfällig seit ${kurz(ueber)}` }
@@ -144,7 +146,7 @@ export function kundenAmpel(e: {
 }
 
 /** Je aktivem (bzw. pausiertem) Mandat die Zeile „Fortschritt im Paket“. */
-export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined> }): KundenZeile[] {
+export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined>; termine?: Readonly<Record<string, string | undefined>> }): KundenZeile[] {
   const { datei, crm, heute } = e;
   const leistung = new Map<string, Leistung>(crm.leistungen.map(l => [l.id, l]));
   return crm.mandate.filter(m => !m.geloeschtAm && (m.status === 'aktiv' || m.status === 'pausiert') && imBusiness(m)).map(m => {
@@ -163,7 +165,7 @@ export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'man
       schritt,
       lieferobjekte: (stufe?.lieferobjekte ?? []).map(was => { const x = f?.erledigt.find(y => y.was === was); return { was, erledigt: !!x, ...(x ? { am: x.am } : {}) }; }),
       ...(f?.naechster ? { naechster: { ...f.naechster, ueberfaellig: f.naechster.datum < heute } } : {}),
-      ampel: kundenAmpel({ m, stufe, f, seit, heute, zahlung: e.zahlung?.[m.id]?.wert ?? null }),
+      ampel: kundenAmpel({ m, stufe, f, seit, heute, zahlung: e.zahlung?.[m.id]?.wert ?? null, ...(e.termine?.[m.id] ? { termin: e.termine[m.id] } : {}) }),
       naechsteStufe: stufe ? stufeReif({ stufe, stufen: datei.stufen, erledigt, phase: schritt, seit, heute }) : null,
       report: { ...rep, ...(r?.erstelltAm ? { erstelltAm: r.erstelltAm } : {}), ...(r?.dateiId ? { dateiId: r.dateiId } : {}), ...(r?.gesendetAm ? { gesendetAm: r.gesendetAm } : {}) },
     };

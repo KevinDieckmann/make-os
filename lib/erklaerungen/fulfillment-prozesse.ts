@@ -77,8 +77,8 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Mit 24 Stunden wird eine Unterschrift vom Freitagabend am Samstagabend rot; mit 72 Stunden erst am Montagabend.',
   },
   'fulfillment.freigabe': {
-    was: 'Ein Freigabepunkt ist ein Halt, an dem der Kunde und ihr bestätigen. Vermerkt werden Tag, wer intern und wie der Kunde bestätigt hat; damit ist die Phase abgeschlossen. Die nächste Phase darf schon beginnen, dann erscheint ein Hinweis.',
-    beispiel: 'F3 Diagnose-Abnahme: im Steering bestätigt, Notiz „Top-5 Maßnahmen angenommen, Maßnahme 4 später“.',
+    was: 'Ein Abstimmungspunkt (◆) ist ein Halt, an dem der Kunde und ihr bestätigen — durchnummeriert in der Reihenfolge des Ablaufs. Vermerkt werden Tag, wer intern und wie der Kunde bestätigt hat; damit ist die Phase abgeschlossen. Die nächste Phase darf schon beginnen, dann erscheint ein Hinweis. („Freigabe“ meint in MAKE OS die Vorschläge von ZOE.)',
+    beispiel: 'Abstimmungspunkt 3 · Diagnose-Abnahme: im Steering bestätigt, Notiz „Top-5 Maßnahmen angenommen, Maßnahme 4 später“.',
   },
   'fulfillment.vorlageDiff': {
     was: 'Der Fall arbeitet mit einer Kopie der Vorlage. Ändert ihr die Vorlage für künftige Kunden, zeigt der Fall, was neu oder geändert ist. „Übernehmen“ fügt hinzu und ändert — erledigte Schritte werden nie entfernt.',
@@ -135,8 +135,8 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Drei Fälle laufen länger als 30 Tage, zwei hatten bis dahin einen erledigten Quick Win — 67 %.',
   },
   'fulfillment.kennzahl.reporttakt': {
-    was: 'Anteil der laufenden Fälle, deren letzter Report höchstens 14 Tage alt ist.',
-    beispiel: 'Vier laufende Fälle, einer ohne Report seit drei Wochen — 75 %.',
+    was: 'Anteil der Report-Termine (alle 14 Tage ab Start des Falls, bis heute), vor denen ein Fortschritts-Report entstand — dieselben Rauten wie auf der Report-Zeitachse im Fall. „aus n“ = Zahl der Termine.',
+    beispiel: 'Ein Fall läuft sechs Wochen: drei Termine, zwei mit Report, einer ohne — 67 % aus 3.',
   },
   'fulfillment.kennzahl.wartet': {
     was: 'Der älteste offene Punkt „wartet auf euch“ über alle laufenden Fälle, in Tagen.',
@@ -159,16 +159,16 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Zwei Dossiers mit 6,40 und 9,10 Euro ergeben 7,75 Euro je Dossier.',
   },
   'fulfillment.reise': {
-    was: 'Was ihr seht: die Reise des Kunden durch die Phasen des Pakets. Jeder Abschnitt ist eine Phase, gefüllt so weit, wie ihre Schritte erledigt sind; „Sie sind hier“ markiert die laufende Phase. Die Rauten sind Freigaben — Haltepunkte, an denen der Kunde (oder ihr) bestätigt, bevor es weitergeht. Darunter steht, was als Nächstes kommt und ob etwas hängt.',
-    beispiel: 'Phase 3 von 8 „Diagnose“ ist zur Hälfte gefüllt, die Raute F3 „Diagnose-Abnahme“ ist noch offen. Als Nächstes steht „Diagnosebericht“, und „1 wartet auf den Kunden“ zeigt die offene Entscheidung.',
+    was: 'Was ihr seht: die Reise des Kunden durch die Phasen des Pakets. Jeder Abschnitt ist eine Phase, gefüllt so weit, wie ihre Schritte erledigt sind; „Sie sind hier“ markiert die laufende Phase. Die Rauten sind Abstimmungspunkte — Haltepunkte, an denen der Kunde (oder ihr) bestätigt, bevor es weitergeht. Darunter steht, was als Nächstes kommt und ob etwas hängt.',
+    beispiel: 'Phase 3 von 8 „Diagnose“ ist zur Hälfte gefüllt, die Raute „Abstimmungspunkt 3 · Diagnose-Abnahme“ ist noch offen. Als Nächstes steht „Diagnosebericht“, und „1 wartet auf den Kunden“ zeigt die offene Entscheidung.',
   },
   'fulfillment.ablaufPhasen': {
     was: 'Der Ablauf zeigt jede Phase als Zeile mit Stand und Freigabe. Die laufende Phase ist aufgeklappt — mit ihren nächsten Schritten; erledigte Phasen sind zu und öffnen sich mit einem Tipp. Bausteine hängen als Chip am Schritt. Mehr (Zusatz-Schritt, zurücknehmen) steht hinter „⋯“.',
     beispiel: 'In „Aufbau“ stehen „Skripte“ und „Einwände“ offen, „Prozess“ ist abgehakt; der Chip „Leitfaden Erstgespräch“ öffnet den Baustein. Am Ende der Phase wartet die Freigabe F4.',
   },
   'fulfillment.lage': {
-    was: 'Die Lage aller Kunden in Lieferung in drei Antworten: wie viele laufen, was gerade hängt und welcher Handgriff als Nächstes am meisten bringt. Ein Tipp springt an die Stelle.',
-    beispiel: '„3 Kunden in Lieferung, 1 im Onboarding“ · „2 hängen — Willkommensmail überfällig“ · „Als Nächstes: Willkommensmail an den neuen Kunden“.',
+    was: 'Die Lage aller Kunden in Lieferung in drei Antworten: wie viele laufen und in welcher Phase (dieselbe Phase wie im Fall und auf der Landkarte), was gerade hängt und welcher Schritt als Nächstes dran ist. Ein Tipp springt an die Stelle.',
+    beispiel: '„3 Kunden · 1 im Onboarding · 2 in Diagnose“ · „2 hängen — Willkommensmail überfällig“ · „Als Nächstes: Willkommen in 24 Stunden“.',
   },
   'fulfillment.kundenKarten': {
     was: 'Je Kunde eine Karte: Ampel, Phase als Mini-Strahl, Fortschritt, das Wert-Konto als Balken von „vorher“ bis „Ziel“, der nächste Schritt und was auf euch wartet. Oben steht, wer zuerst Aufmerksamkeit braucht.',

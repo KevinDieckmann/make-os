@@ -4,6 +4,32 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 14.10.2026 — Fulfillment: Funde der unabhängigen Abnahme — EINE Rechnung je Größe (nur lokal — Branch `abnahme-fulfillment`, Basis abdddebb = `update-0910b`)
+Kevin: „Der Fulfillment-Bereich sollte wirklich sehr gut sein, bevor wir das Ganze weiter ausbauen und hochladen.“ Abnahme-Bericht A3, B6–B8, B18–B20, C15 (+ C2/C3/C6).
+- **Wo steht der Fall, was ist als Nächstes — EINE Stelle** `fallStelle`/`naechsterPunkt` (lib/fulfillment/prozesse/reise.ts): Fall-Kopf, Cockpit-Zeile (Lage, Kunden-Karte),
+  Kurzform (`faelleKurz`) und Handgriff rechnen damit. Reihenfolge wie der Handgriff (Onboarding → Abstimmungspunkt einer fertigen Phase → erster offener Schritt);
+  ein Sammel-Schritt („Zugeordnete Bausteine“) ist nie „als Nächstes“, sondern sein erster offener Baustein (`offeneSchritte`). Lage: „1 im Onboarding · 1 in Diagnose“
+  (`lageVerteilung`) statt „in der Umsetzung“. Landkarte: Fälle im Onboarding stehen auf der Etage mit Ort „Onboarding“ (`kundenJeKnoten`, `ORT_ONBOARDING`).
+- **Kunden-Ansicht (A3):** die laufende Phase steht immer im Strahl (neutraler Titel); „Von Ihnen brauchen wir …“ zählt wie die Karte (`brauchtAnzahl`: wartet +
+  offene Formulare); die Ampel folgt dem, was intern hängt (Cockpit `wasHaengt` → `haengerFuer` → `kundenLage({ haengt })`): beim Kunden → „Wir warten auf …“,
+  bei uns (z. B. Willkommensmail überfällig) → „Wir sind dran“, nie „im Plan“ neben internem Rot (Health zählt nicht). Leeres Ziel = ruhiger Satz statt Striche.
+  Report: dieselben Hänger und offenen Formulare (unter „wartet auf euch“). Positivliste unverändert.
+- **Nächster Termin — EINE Regel** `naechsterFallTermin` (rituale.ts): Takt, Cockpit, Kunden-Seite, Report und die Health „Termine“ der Leistungstreppe
+  (`kundenZeilen({ termine })`, `naechsteFallTermine`) — vorher 23.10. hier, 20.10. dort.
+- **Erfolgsmaße aus denselben Daten:** Report-Takt = Anteil der Soll-Termine (alle 14 Tage ab Start, `reportAchse`) mit Report — dieselben Rauten wie die Zeitachse im
+  Fall; Willkommen: Demo vermerkt die Mail am Tag der Unterschrift (Op `willkommen-gesendet` nimmt optional `am`, nie Zukunft). Onboarding-Liste zählt wie das Band
+  (`FallKurz.onboardingErfuellt`, optional). Status-Karte: „Unterschrift … · Fall gestartet …“ mit `fallStartTag` (vorher Tag des Anlegens).
+- **„Abstimmungspunkt n“ statt „Freigabe F…“ (B19, nur Anzeige):** Nummern lückenlos in der Reihenfolge des Ablaufs (`abstimmungsNummern`, `anzeigeTitel`,
+  darstellung.ts) — Fall-Kopf, Ablauf, Paket-Karten, Drill-down, Editor, Hänger-Text; Prüfschritte der Analyse ohne Kürzel („Umfang bestätigt“, „Dossier geprüft“,
+  Reiter „Recht & Prüfung“). Daten (F0–F7, `f1`/`f2`) unverändert. Kunden-Seite: Legende zur Raute ◆.
+- **Titel ohne Klammer-Zusatz (B20):** `titelOhneZusatz`/`titelZusatz` (Zusatz als Erklärung/Tooltip); Muster und kanonische Phase heißen jetzt „Recruiting“ (Erklärung im
+  „Warum“). Demo: Pakete heißen wie ihre Produkte („Strategie-Begleitung“, „Cockpit-Einführung“), „Netzwerk-Vertrieb“ fällt weg, die importierten Phasen sind geteilt.
+- **Weiter:** Kunden-Link-Karte erklärt, warum „Link anlegen“ grau ist und wer einschaltet; „Kunden-Link fürs Playbook“ springt an die Karte (C15). Onboarding-Hinweis passt
+  zur Liste (B7). Handy: Strahl bleibt in der Karte, Zahl und % brechen nie um (B18). „heute“ unter dem Heute-Strich, „Schwelle“ unter der Linie, „Hier“ statt „SIE SIND …“,
+  Landkarte „2 Kunden“ statt „2 Fälle“, intern „Wartet auf den Kunden“. Vorbestehend mitgenommen: `fallStarten` vergleicht den Starttag als Berliner Tag (repo-sauber).
+- **Rückweg:** nur Anzeige + optionale Felder (`onboardingErfuellt`, Op-Feld `am`); gespeicherte Vorlagen/Fälle unverändert (alte Titel mit Zusatz zeigt die Anzeige ohne ihn).
+  Wächter `tests/fulfillment-stimmigkeit.test.ts` (Demo gesät: Phase, Fortschritt, „Als Nächstes“, Termin, Lage/Ampel, Erfolgsmaße je Ort gleich).
+
 ## 13.10.2026 — Fulfillment-Import: Bausteine ohne Unterphase doppelten ihren Titel (nur lokal — Branch `import-sammel`, Basis a39abd25 = `update-0910b`)
 - **Import (`einsortieren`):** Bausteine ohne Unterphase standen je Phase unter „Weitere Bausteine“, jeder mit einem gleichnamigen Einzelschritt davor (in der Sammel-Phase hieß sogar
   der Teilprozess wie die Phase). Jetzt EIN Sammel-Teilprozess je Phase („Weitere Bausteine“, in der Sammel-Phase „Allgemein“) → EIN Sammel-Schritt „Zugeordnete Bausteine“ (Ebene 4) → die

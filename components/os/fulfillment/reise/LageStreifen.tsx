@@ -7,7 +7,7 @@
 import { useRouter } from 'next/navigation';
 import { Ueberschrift, Karte, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
-import { nachAufmerksamkeit, kundenAmpel } from '@/lib/fulfillment/prozesse/darstellung';
+import { nachAufmerksamkeit, kundenAmpel, lageVerteilung } from '@/lib/fulfillment/prozesse/darstellung';
 import { useCockpit } from '../prozesse/daten';
 import { Antworten, AntwortKachel, AMPEL_FARBE } from './bilder';
 
@@ -16,7 +16,6 @@ export function LageStreifen() {
   const { daten } = useCockpit();
   if (!daten) return null;
   const zeilen = nachAufmerksamkeit(daten.zeilen);
-  const onboarding = zeilen.filter(z => z.status === 'onboarding').length;
   const rot = daten.haengt.filter(h => h.schwere === 'rot');
   const erster = zeilen[0];
   const zuerst = daten.haengt[0];
@@ -26,7 +25,7 @@ export function LageStreifen() {
       <Antworten>
         <AntwortKachel frage="Kunden in Lieferung" ampel={zeilen.length ? AMPEL_FARBE[zeilen.some(z => kundenAmpel(z) === 'rot') ? 'rot' : zeilen.some(z => kundenAmpel(z) === 'gelb') ? 'gelb' : 'gruen'] : undefined}
           antwort={zeilen.length ? `${zeilen.length} Kunde${zeilen.length === 1 ? '' : 'n'}` : 'Noch keiner'}
-          unter={zeilen.length ? `${onboarding ? `${onboarding} im Onboarding · ` : ''}${zeilen.length - onboarding} in der Umsetzung` : 'Ein Fall startet mit dem Onboarding eines Mandats.'}
+          unter={zeilen.length ? lageVerteilung(zeilen) : 'Ein Fall startet mit dem Onboarding eines Mandats.'}
           onClick={() => router.push(zeilen.length ? WEG.fulfillment('visualisierung') : WEG.fulfillment('onboarding'))} />
         <AntwortKachel frage="Was hängt?" ampel={rot.length ? LEUCHT.kritisch : daten.haengt.length ? LEUCHT.achtung : LEUCHT.gut}
           antwort={daten.haengt.length ? `${daten.haengt.length} Punkt${daten.haengt.length === 1 ? '' : 'e'}${rot.length ? ` · ${rot.length} dringend` : ''}` : 'Nichts'}

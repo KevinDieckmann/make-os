@@ -43,7 +43,7 @@ export function DossierAnsicht({ mandatId, api, rueck }: { mandatId: string; api
           <Kennzahl label="Version" wert={String(db?.version ?? d.version)} />
           <Kennzahl label="Quellenstand" wert={db?.quellenStand ?? '—'} />
           <Kennzahl label="Belegt" wert={lage.belegQuote == null ? '—' : `${Math.round(lage.belegQuote * 100)} %`} />
-          <Kennzahl label="Freigaben" wert={`${d.f1 ? 'Umfang (F1)' : 'Umfang offen'} · ${d.f2 ? 'Geprüft (F2)' : 'ungeprüft'}`} />
+          <Kennzahl label="Prüfschritte" wert={`${d.f1 ? 'Umfang bestätigt' : 'Umfang offen'} · ${d.f2 ? 'Dossier geprüft' : 'ungeprüft'}`} />
         </Raster>
         <div style={klein}>Personenteil: {db?.kartenAnzahl ?? 0} Karte(n) · gelöscht {db?.loeschAm ? `am ${db.loeschAm}` : `${lage.loeschRegelTage} Tage nach Mandatsende`}{(db?.geloescht ?? []).map(g => ` · Personenteil gelöscht am ${g.am} (${g.anzahl} Karten)`).join('')}</div>
       </Karte>
@@ -82,7 +82,7 @@ export function DossierAnsicht({ mandatId, api, rueck }: { mandatId: string; api
                       <span key={q!.id}>{i ? ' · ' : ''}{q!.url ? <a href={q!.url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: C.aktiv }}>{q!.domain ?? q!.url}</a> : `Unterlage ${q!.unterlageId}`} ({q!.abgerufenAm})</span>
                     ))}</div>
                   )}
-                  <div><Knopf leise onClick={async () => { if (await rueck.bestaetigen({ titel: 'Aussage entfernen?', text: 'Sie verschwindet aus dem Dossier; F2 muss danach neu gesetzt werden.', ja: 'Entfernen', gefahr: true })) await schritt({ aktion: 'aussage-entfernen', abschnitt: id, id: x.id }); }}>Entfernen</Knopf></div>
+                  <div><Knopf leise onClick={async () => { if (await rueck.bestaetigen({ titel: 'Aussage entfernen?', text: 'Sie verschwindet aus dem Dossier; „Dossier geprüft“ muss danach neu vermerkt werden.', ja: 'Entfernen', gefahr: true })) await schritt({ aktion: 'aussage-entfernen', abschnitt: id, id: x.id }); }}>Entfernen</Knopf></div>
                 </div>
               ))}
             </Liste>
@@ -132,8 +132,8 @@ function Weitergeben({ mandatId, api }: { mandatId: string; api: AnalyseApi }) {
   };
   return (
     <Karte>
-      <Ueberschrift erklaerung="fulfillment.f2">Weitergeben (nach F2)</Ueberschrift>
-      {!d.f2 && <Hinweis art="info">Erst F2 („Dossier geprüft“) — dann gehen Quick Wins, Kick-off-Fragen und Steckbrief-Felder per Klick weiter.</Hinweis>}
+      <Ueberschrift erklaerung="fulfillment.f2">Weitergeben (nach der Prüfung)</Ueberschrift>
+      {!d.f2 && <Hinweis art="info">Erst „Dossier geprüft“ vermerken — dann gehen Quick Wins, Kick-off-Fragen und Steckbrief-Felder per Klick weiter.</Hinweis>}
       {meldung && <Hinweis art="info">{meldung}</Hinweis>}
       {d.diagnose && (
         <div style={{ display: 'grid', gap: 6 }}>

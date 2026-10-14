@@ -48,14 +48,14 @@ export function Recht({ mandatId, api, rueck }: { mandatId: string; api: Analyse
         </form>
       </Karte>
       <Karte>
-        <Ueberschrift erklaerung="fulfillment.f1" rechts={d.f1 ? <Chip farbe={LEUCHT.gut}>F1 {d.f1.am.slice(0, 10)}</Chip> : <Chip farbe={LEUCHT.achtung}>offen</Chip>}>F1 · Umfang und Personenfunktionen</Ueberschrift>
+        <Ueberschrift erklaerung="fulfillment.f1" rechts={d.f1 ? <Chip farbe={LEUCHT.gut}>bestätigt {d.f1.am.slice(0, 10)}</Chip> : <Chip farbe={LEUCHT.achtung}>offen</Chip>}>Umfang und Personenfunktionen</Ueberschrift>
         <form onSubmit={e => { e.preventDefault(); void schritt({ aktion: 'f1', umfang, funktionen: funktionen.split('\n').map(x => x.trim()).filter(Boolean), ...(bestaetigtAm ? { kundeBestaetigtAm: bestaetigtAm, wie } : {}) }); }} style={{ display: 'grid', gap: 8 }}>
           <div style={klein}>Welche Analysen laufen dürfen:</div>
           <MehrfachPillen liste={AGENT_IDS.filter(a => a !== 'a0').map(a => ({ id: a, label: `${a.toUpperCase()} ${AGENTEN[a].name}` }))} aktiv={umfang} onWahl={x => setUmfang(x as AnalyseAgentId[])} />
           <Feldzeile label="Funktionen für die berufliche Personenrecherche — je Zeile eine, keine Namen"><textarea style={{ ...eingabe, minHeight: 72 }} value={funktionen} onChange={e => setFunktionen(e.target.value)} placeholder={'Geschäftsführung\nVertriebsleitung'} /></Feldzeile>
           <Feldzeile label="Vom Kunden bestätigt am"><input type="date" style={eingabe} value={bestaetigtAm} onChange={e => setBestaetigtAm(e.target.value)} /></Feldzeile>
           <Pillen liste={[{ id: 'kickoff', label: 'im Kick-off' }, { id: 'mail', label: 'per Mail' }]} aktiv={wie} onWahl={x => setWie(x as 'kickoff' | 'mail')} />
-          <div><Knopf typ="submit" aus={!d.interessenabwaegung}>F1 festhalten</Knopf></div>
+          <div><Knopf typ="submit" aus={!d.interessenabwaegung}>Umfang festhalten</Knopf></div>
           {!d.interessenabwaegung && <div style={klein}>Erst die Interessenabwägung speichern.</div>}
         </form>
       </Karte>
@@ -84,9 +84,9 @@ export function Recht({ mandatId, api, rueck }: { mandatId: string; api: Analyse
         </Liste>
       </Karte>
       <Karte>
-        <Ueberschrift erklaerung="fulfillment.f2" rechts={d.f2 ? <Chip farbe={LEUCHT.gut}>F2 {d.f2.am.slice(0, 10)}</Chip> : undefined}>F2 · Dossier geprüft</Ueberschrift>
-        <Knopf haupt aus={!p?.bestanden || !!d.f2} onClick={async () => { if (await rueck.bestaetigen({ titel: 'F2 setzen?', text: 'Das Dossier gilt dann als geprüft. Danach können Quick Wins, Kick-off-Fragen und Steckbrief-Felder per Klick weitergegeben werden.', ja: 'F2 setzen' })) await schritt({ aktion: 'f2' }); }}>F2 setzen</Knopf>
-        {!p?.bestanden && <div style={klein}>F2 geht nur mit bestandener Prüfung.</div>}
+        <Ueberschrift erklaerung="fulfillment.f2" rechts={d.f2 ? <Chip farbe={LEUCHT.gut}>vermerkt {d.f2.am.slice(0, 10)}</Chip> : undefined}>Dossier geprüft</Ueberschrift>
+        <Knopf haupt aus={!p?.bestanden || !!d.f2} onClick={async () => { if (await rueck.bestaetigen({ titel: 'Dossier als geprüft vermerken?', text: 'Das Dossier gilt dann als geprüft. Danach können Quick Wins, Kick-off-Fragen und Steckbrief-Felder per Klick weitergegeben werden.', ja: 'Als geprüft vermerken' })) await schritt({ aktion: 'f2' }); }}>Als geprüft vermerken</Knopf>
+        {!p?.bestanden && <div style={klein}>„Dossier geprüft“ geht nur mit bestandener Prüfung.</div>}
       </Karte>
     </div>
   );
