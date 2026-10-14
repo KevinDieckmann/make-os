@@ -120,13 +120,14 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
 
   // Gemerkt (Prüfbericht 27.09., Punkt 20): zehn Filter über alle Kontakte liefen bei jedem Tastendruck in der Suche neu.
   const filter = useMemo<Record<Ansicht, (k: Kontakt) => boolean>>(() => ({
-    alle: () => true, kunden: k => k.lebensphase === 'kunde', kreis: k => k.kreis === 'A' || k.kreis === 'B', prio: k => k.prio === 'A',
+    // Kunden (14.10., B5): EINE Regel mit der BEAN-Spalte — „B“ (aktives Mandat der Person oder Firma, als Kunde geführt; lib/crm/bean.ts `istKunde`).
+    alle: () => true, kunden: k => beans.get(k.id)?.bean === 'B', kreis: k => k.kreis === 'A' || k.kreis === 'B', prio: k => k.prio === 'A',
     chancen: k => mitChance.has(k.id), mail: k => !!k.email, anreichern: k => !k.email && !k.telefon && !k.sms || !k.firma,
     art14: k => !!art14(k, heute)?.faellig, gesperrt: k => ausgenommen(k), dubletten: k => paare.some(([a, b]) => a.id === k.id || b.id === k.id),
     // Arbeitslisten aus „Netzwerken“ (N3): die Labels „Dublette prüfen“ und „Lead prüfen“ setzt die Erfassung — hier stehen die Personen, die ein Mensch ansehen soll.
     'dublette-pruefen': k => !ausgenommen(k) && labelsVon(k).includes(LABEL_DUBLETTE), 'lead-pruefen': k => !ausgenommen(k) && labelsVon(k).includes(LABEL_LEAD_PRUEFEN),
     archiv: () => true,
-  }), [mitChance, paare, heute]);
+  }), [mitChance, paare, heute, beans]);
   const zaehlung = useMemo(() => { const z = {} as Record<Ansicht, number>; for (const id of Object.keys(filter) as Ansicht[]) z[id] = id === 'archiv' ? archivKontakte.length : kontakte.filter(filter[id]).length; return z; }, [kontakte, archivKontakte, filter]);
   const ANSICHTEN: { id: Ansicht; label: string }[] = ([
     ['alle', 'Alle'], ['kunden', 'Kunden'], ['kreis', 'Kreis A/B'], ['prio', 'Prio A'], ['chancen', 'Mit Deal'], ['mail', 'Mit E-Mail'], ['anreichern', 'Anreichern'], ['art14', 'Art. 14'], ['gesperrt', 'Gesperrt'], ['dubletten', 'Dubletten'],

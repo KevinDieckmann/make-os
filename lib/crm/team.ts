@@ -18,7 +18,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, CrmListe } from './typen';
 import type { Welt } from './traktion';
-import { leads, salesBereit } from './leads';
+import { leads, salesBereit, passtLeadFilter, type LeadFilter } from './leads';
 import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
 import { istNetzwerkenEvent } from './marke';
@@ -101,7 +101,8 @@ export function teamFeed(kontakte: Kontakt[], crm: CrmBestand, seit: string, max
 }
 
 // ── Für dich ────────────────────────────────────────────────────────────────
-export interface FuerDich { id: string; welt: Welt; titel: string; anzahl: number; text: string; ziel: { s: string; a?: string; href?: string } }
+/** `ziel.filter`: der Filter der Leads-Liste, den der Sprung mitgibt (14.10., B5) — dieselbe Regel wie die Zahl (`passtLeadFilter`). */
+export interface FuerDich { id: string; welt: Welt; titel: string; anzahl: number; text: string; ziel: { s: string; a?: string; href?: string; filter?: LeadFilter } }
 
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
@@ -156,8 +157,11 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   const sqlOffen = meineLeads.filter(z => salesBereit(z) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
   // Woche 1 · 2.6 (08.10.): der Text nennt die Regel der Scoring-Einstellungen, nicht die alte feste; der Sprung führt in die Runde (SQL-bereite oben).
   if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Muss-Kriterien und Sales-Schwelle erreicht — die Entscheidung steht oben in der Runde', ziel: { s: 'qualifizierung' } });
-  const inQuali = meineLeads.filter(z => z.status === 'qualifizierung' && !salesBereit(z)).length;
-  if (inQuali) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQuali, text: 'was bis zum SQL fehlt, steht am Lead (Scoring-Einstellungen)', ziel: { s: 'qualifizierung', a: 'leads' } });
+  // „Leads in Qualifizierung“ zählt wie die Leads-Liste dahinter (Filter „Qualifizierung“, `passtLeadFilter`; Abnahme 14.10., B5) — vorher ohne die
+  // SQL-bereiten und mit den kalten, die Liste beim Sprung zeigte eine andere Zahl. Der Sprung öffnet genau diesen Filter.
+  const inQualiListe = meineLeads.filter(z => passtLeadFilter(z, 'qualifizierung'));
+  const davonBereit = inQualiListe.filter(z => salesBereit(z)).length;
+  if (inQualiListe.length) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQualiListe.length, text: davonBereit ? `davon ${davonBereit} SQL-bereit — was bis zum SQL fehlt, steht am Lead` : 'was bis zum SQL fehlt, steht am Lead (Scoring-Einstellungen)', ziel: { s: 'qualifizierung', a: 'leads', filter: 'qualifizierung' } });
   const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, weltDerKampagne(k), person));
   const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);
   if (kpOffen) l.push({ id: 'kampagnen', welt: 'marketing', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'marketing', a: 'kampagnen' } });

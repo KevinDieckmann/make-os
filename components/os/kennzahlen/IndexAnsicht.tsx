@@ -15,7 +15,7 @@ import { useLinkAuswahl } from '../Verlauf';
 import { KennzahlFenster, AMPEL_FARBE, scoreFarbe, type SchwelleSenden } from '../business/teile';
 import { SaeuleKacheln } from './SaeuleKacheln';
 import { VerlaufKarte, type Serie } from '../business/Verlauf';
-import { MIN_ABDECKUNG, type IndexErgebnis, type SaeulenStand } from '@/lib/kennzahlen/kern';
+import { MIN_ABDECKUNG, indexStatus, type IndexErgebnis, type SaeulenStand } from '@/lib/kennzahlen/kern';
 import type { Wechsel, VerlaufPunkt } from '@/lib/kennzahlen/speicher';
 
 export interface IndexDaten { pi: IndexErgebnis; vor30: number | null; wechsel: Wechsel[]; verlauf: VerlaufPunkt[] }
@@ -76,16 +76,17 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
       <Karte i={i0} ton={farbe} id={kopfId} style={kopfId ? { scrollMarginTop: 90 } : undefined}>
         {kopfRechts && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>{kopfRechts}</div>}
         <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 44px)', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Ring groesse="gross" wert={pi?.index != null ? String(pi.index) : undefined} anteil={pi?.index != null ? pi.index / 100 : undefined} farbe={farbe} label={pi ? `${name} · ${pi.label}` : 'lädt …'} />
+          <Ring groesse="gross" wert={pi?.index != null ? String(pi.index) : undefined} anteil={pi?.index != null ? pi.index / 100 : undefined} farbe={farbe} label={pi ? `${name} · ${indexStatus(pi).titel}` : 'lädt …'} />
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Erklaert erklaerung="index.gesamt" name={`${name}-Index`}><Chip farbe={farbe}>{chip}</Chip></Erklaert>
               {trend != null && trend !== 0 && <Chip farbe={trend > 0 ? LEUCHT.gut : LEUCHT.kritisch}>{trend > 0 ? '▲' : '▼'} {Math.abs(trend)} in 30 Tagen</Chip>}
               {chips}
-              {pi && <Erklaert erklaerung="index.abdeckung" name="Abdeckung"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.round(pi.abdeckung * 100)} % auf echten Daten · {pi.luecken} Messlücke{pi.luecken === 1 ? '' : 'n'}</span></Erklaert>}
+              {/* Ein Status für alle Orte (14.10., B1): lib/kennzahlen/kern.ts indexStatus — derselbe Satz wie auf Heute. */}
+              {pi && <Erklaert erklaerung="index.abdeckung" name="Abdeckung"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{indexStatus(pi).satz}</span></Erklaert>}
               {pi?.teil && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Erst {pi.teil.saeulen} von {pi.teil.von} Säulen haben genug Daten (Teilwert {pi.teil.wert}) — der Index zählt ab {Math.round(MIN_ABDECKUNG * 100)} % des Gewichts.</span>}
-              {/* Anlaufphase (08.10., 7.1): gerechnet wie immer, aber noch nicht belastbar — die Daten laufen erst an. */}
-              {pi?.vorlaeufig && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Vorläufig bis {pi.vorlaeufig.bis.slice(8, 10)}.{pi.vorlaeufig.bis.slice(5, 7)}. — Anlaufphase nach dem ersten Lauf.</span>}
+              {/* Anlaufphase (08.10., 7.1): gerechnet wie immer, aber noch nicht belastbar — die Daten laufen erst an. (Das Datum steht im Status-Satz.) */}
+              {pi?.vorlaeufig && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Anlaufphase nach dem ersten Lauf — die Zahl ist noch nicht belastbar.</span>}
             </div>
             {zaehlende.map(s => (
               <div key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(70px, 2fr) 40px', gap: 12, alignItems: 'center' }}>

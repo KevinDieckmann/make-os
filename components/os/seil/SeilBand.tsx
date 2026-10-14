@@ -175,7 +175,7 @@ export function SeilBand({ ansicht, heute, fokus, onFokus, onBlaettern, onBreite
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titel}</span>
                     </Link>
                     <span style={{ fontFamily: SCHRIFT.display, fontSize: 12, color: C.inkDim, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
-                      {prozent(s.momentum)} · {s.fertig}/{s.straenge.length} fertig{blockiert ? ` · ${blockiert} wartet` : ''}{s.ankerArt === 'frist' ? ` · Frist ${kurz(s.anker)}` : ''}{s.ueberfaellig ? ' (überschritten)' : ''}
+                      {prozent(s.fortschritt)} · {s.fertig}/{s.straenge.length} fertig{blockiert ? ` · ${blockiert} wartet` : ''}{s.ankerArt === 'frist' ? ` · Frist ${kurz(s.anker)}` : ''}{s.ueberfaellig ? ' (überschritten)' : ''}
                     </span>
                     <button type="button" onClick={() => onFokus(fokus === s.zielId ? null : s.zielId)} aria-pressed={fokus === s.zielId} className="fassbar"
                       aria-label={fokus === s.zielId ? `Fokus auf „${s.titel}“ lösen` : `Fokus auf „${s.titel}“ — nur seine Stränge, kritischer Pfad`}
@@ -217,7 +217,7 @@ export function SeilBand({ ansicht, heute, fokus, onFokus, onBlaettern, onBreite
               })}
               {/* Anker (◎ → Ziel-Seite) bzw. Hinweis, wenn er hinter dem Fenster liegt */}
               {s && g.ankerAusserhalb == null && g.xAnker + b.zug >= 0 && g.xAnker + b.zug <= breite && (
-                <Link data-seil-eintrag="" href={s.link ?? '#'} aria-label={`Ziel „${s.titel}“ — ${s.ankerArt === 'frist' ? `Frist ${kurz(s.anker)}` : s.ankerArt === 'jahresende' ? `bis Jahresende ${s.anker.slice(0, 4)}` : 'ohne Frist'}, Momentum ${prozent(s.momentum)}`}
+                <Link data-seil-eintrag="" href={s.link ?? '#'} aria-label={`Ziel „${s.titel}“ — ${s.ankerArt === 'frist' ? `Frist ${kurz(s.anker)}` : s.ankerArt === 'jahresende' ? `bis Jahresende ${s.anker.slice(0, 4)}` : 'ohne Frist'}, Fortschritt ${prozent(s.fortschritt)}`}
                   title={`${s.titel} · ${s.ankerArt === 'frist' ? `Frist ${kurz(s.anker)}` : s.ankerArt === 'jahresende' ? `bis Ende ${s.anker.slice(0, 4)}` : 'ohne Frist'}`}
                   style={{ position: 'absolute', left: rand + g.xAnker - 14 + b.zug, top: g.seilY - 14, width: 28, height: 28, borderRadius: 999 }} />
               )}

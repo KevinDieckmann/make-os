@@ -86,7 +86,7 @@ export function Seil({ ebene, bereich, fenster, titel = 'Ziele als Seil', kopfRe
           <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, border: `1px solid ${fokusSeil.farbe}55`, background: `${fokusSeil.farbe}12` }}>
             <div style={{ flex: '1 1 260px', minWidth: 0, fontSize: TYP.bedien, color: C.ink, lineHeight: 1.5 }}>
               <b style={{ color: fokusSeil.farbe }}>Fokus: {fokusSeil.titel}</b>
-              {' — '}{fokusSeil.fertig} von {fokusSeil.straenge.length} {fokusSeil.straenge.length === 1 ? 'Strang' : 'Strängen'} fertig, Momentum {Math.round(fokusSeil.momentum * 100)} %.
+              {' — '}Fortschritt {Math.round(fokusSeil.fortschritt * 100)} %, {fokusSeil.fertig} von {fokusSeil.straenge.length} {fokusSeil.straenge.length === 1 ? 'Strang' : 'Strängen'} fertig.
               {fokusSeil.pfadText
                 ? <div style={{ color: LEUCHT.achtung }}>Kritischer Pfad: {fokusSeil.pfadText}</div>
                 : <div style={{ color: C.inkDim }}>Keine Kette offener Abhängigkeiten — die Stränge können parallel laufen.</div>}

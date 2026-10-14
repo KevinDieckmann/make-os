@@ -30,6 +30,8 @@ import { usePlan, rechne, type Gerechnet } from './daten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Dialog, Feld, Formular, Schalter, StatusPille, Legende, Pillen, Nichts, Etikett, KUPFER, LILA, personName } from './teile';
 import { Linie } from './diagramme';
 import { SteuerKarte } from './Steuern';
+import { ZieleKachel } from './Ueberblick';
+import { anteilStand } from '@/lib/kennzahlen/anteil';
 /** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
 const KDV = finanzOrtName('kdv');
 
@@ -290,7 +292,8 @@ export function Baukasten() {
               <Kachel label={`Runway ${UG_KURZ}`} punkt={g.aw.runway.ug == null || g.aw.runway.ug >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.ug >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.ug, g.aw.runway.horizont)} unter={`Basis: ${runwayText(basis.aw.runway.ug, basis.aw.runway.horizont)}`} />
               {!business && <Kachel label="Privat Luft, schlechtester Monat" punkt={g.kz.privatLuftMin >= sw.privatLuftGut ? LEUCHT.gut : g.kz.privatLuftMin >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.privatLuftMin} /> €</>} unter={delta(g.kz.privatLuftMin, basis.kz.privatLuftMin)} />}
               {!business && <Kachel label="Runway Privat" punkt={g.aw.runway.privat == null || g.aw.runway.privat >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.privat >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.privat, g.aw.runway.horizont)} unter={g.aw.frei.kontenFehlen ? `${g.aw.frei.kontenFehlen} Kontostände fehlen` : `Basis: ${runwayText(basis.aw.runway.privat, basis.aw.runway.horizont)}`} />}
-              <Kachel label="Ziele im Plan" punkt={g.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut} wert={`${g.aw.ziele.imPlan} / ${g.aw.ziele.gesamt}`} unter={g.aw.ziele.gekippt ? `${g.aw.ziele.gekippt} gekippt` : g.aw.ziele.knapp ? `${g.aw.ziele.knapp} knapp` : 'alle im Plan'} />
+              {/* B12 (14.10.): ohne Finanz-Ziel ein Leerzustand mit Weg statt „0 / 0“ in Grün (ZieleKachel, lib/kennzahlen/anteil.ts). */}
+              <ZieleKachel label="Ziele im Plan" imPlan={g.aw.ziele.imPlan} gesamt={g.aw.ziele.gesamt} unter={g.aw.ziele.gekippt ? `${g.aw.ziele.gekippt} gekippt` : g.aw.ziele.knapp ? `${g.aw.ziele.knapp} knapp` : 'alle im Plan'} anlegen={() => geh('ziele')} />
               {!business && <Kachel label="Gruppe Dez 28" wert={<><Geld v={g.kz.gruppeDez28} /> €</>} unter={delta(g.kz.gruppeDez28, basis.kz.gruppeDez28)} />}
               <Kachel label="Steuerrücklage jetzt" wert={<><Geld v={business ? g.aw.steuer.ruecklageBusiness : g.aw.steuer.ruecklageGesamt} /> €</>} unter="Näherung, keine Steuerberatung" />
             </Kacheln>
@@ -443,7 +446,8 @@ function VergleichTabelle({ spalten, d, alsArbeitsplan, business = false }: { sp
     { l: 'Privat angespart Dez 27', w: s => <><Geld v={s.g.kz.privatAngespartDez27} /> €</> },
     { l: `${KDV} Dez 28`, w: s => <><Geld v={s.g.kz.kdvDez28} /> €</> },
     { l: 'Gruppe Dez 28', w: s => <b><Geld v={s.g.kz.gruppeDez28} /> €</b> },
-    { l: 'Ziele im Plan', w: s => <span style={{ color: s.aw.ziele.gekippt ? LEUCHT.achtung : LEUCHT.gut }}>{s.aw.ziele.imPlan} / {s.aw.ziele.gesamt}{s.aw.ziele.gekippt ? ` · ${s.aw.ziele.gekippt} gekippt` : ''}</span> },
+    // B12 (14.10.): ohne Ziel kein grünes „0 / 0“ (anteilStand).
+    { l: 'Ziele im Plan', w: s => { const st = anteilStand(s.aw.ziele.imPlan, s.aw.ziele.gesamt); return st.stufe === 'leer' ? <span style={{ color: C.inkLeise }}>kein Ziel</span> : <span style={{ color: st.stufe === 'gut' ? LEUCHT.gut : LEUCHT.achtung }}>{st.wert}{s.aw.ziele.gekippt ? ` · ${s.aw.ziele.gekippt} gekippt` : ''}</span>; } },
     { l: 'Steuerrücklage jetzt', w: s => <><Geld v={business ? s.aw.steuer.ruecklageBusiness : s.aw.steuer.ruecklageGesamt} farbe={C.inkDim} /> €</> },
   ];
   const zeilen = alleZeilen.filter(z => !business || !/Privat|Gruppe/.test(z.l));

@@ -31,6 +31,7 @@ import type { BusinessIndex } from '@/lib/business/index';
 import type { Monatsabschluss } from '@/lib/business/messen';
 import type { LaufKurz } from '@/lib/business/abschluss-tabelle';
 import { SCOPES, SAEULEN_TEXT, scopeAus, type Scope } from '@/lib/business/register';
+import { indexStatus } from '@/lib/kennzahlen/kern';
 import { GEHOERT_ZU_PRIVAT, gehoertZuPrivat, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 interface Antwort {
@@ -107,13 +108,14 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
       <Kachel id="index" titel="Business-Index" breite={6}>
       <Karte i={0} ton={farbe}>
         <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 44px)', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Ring groesse="gross" wert={bi?.index != null ? String(bi.index) : undefined} anteil={bi?.index != null ? bi.index / 100 : undefined} farbe={farbe} label={bi ? bi.label : 'lädt …'} />
+          <Ring groesse="gross" wert={bi?.index != null ? String(bi.index) : undefined} anteil={bi?.index != null ? bi.index / 100 : undefined} farbe={farbe} label={bi ? indexStatus(bi).titel : 'lädt …'} />
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Chip farbe={farbe}>{SCOPE_LABEL[scope]}</Chip>
               {d?.holding && d.scope === scope && scope !== 'gesamt' && <Link href={WEG.unternehmen(scope)} style={{ fontSize: TYP.bedien, color: C.inkLeise }} title="Rolle im Steckbrief — operative Vertriebs- und Produktivitätskennzahlen zählen hier nicht">Holding laut Register ›</Link>}
               {trend != null && trend !== 0 && <Chip farbe={trend > 0 ? LEUCHT.gut : LEUCHT.kritisch}>{trend > 0 ? '▲' : '▼'} {Math.abs(trend)} in 30 Tagen</Chip>}
-              {bi && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{Math.round(bi.abdeckung * 100)} % des Index auf echten Daten · {bi.luecken} Messlücke{bi.luecken === 1 ? '' : 'n'}</span>}
+              {/* Ein Status für alle Orte (14.10., B1): derselbe Satz wie auf Heute und den Fachseiten (lib/kennzahlen/kern.ts indexStatus). */}
+              {bi && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{indexStatus(bi).satz}</span>}
             </div>
             {bi?.saeulen.map(s => (
               <div key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(70px, 2fr) 40px', gap: 12, alignItems: 'center' }}>

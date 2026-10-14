@@ -10,15 +10,15 @@ import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift } from '../ui';
 import { SAEULE_FARBE } from './teile';
+import { SAEULEN } from '@/lib/business/register';
 
 export interface VerlaufPunkt { tag: string; index: number | null; saeulen: Record<string, number | null> }
 
 export interface Serie { id: string; label: string; farbe: string; dick: number }
 const SERIEN: Serie[] = [
   { id: 'index', label: 'Index', farbe: C.ink, dick: 2.6 },
-  { id: 'fh', label: 'Finanzielle Gesundheit', farbe: SAEULE_FARBE.fh, dick: 1.8 },
-  { id: 'ud', label: 'Personal', farbe: SAEULE_FARBE.ud, dick: 1.8 },
-  { id: 'mt', label: 'Markttraktion', farbe: SAEULE_FARBE.mt, dick: 1.8 },
+  // Namen aus dem Register (14.10.: „Markt & Kunden“ statt „Markttraktion“) — nie eine zweite Schreibweise.
+  ...(['fh', 'ud', 'mt'] as const).map(id => ({ id, label: SAEULEN.find(s => s.id === id)!.label, farbe: SAEULE_FARBE[id], dick: 1.8 })),
 ];
 const BAENDER = [{ ab: 80, label: 'Souverän' }, { ab: 60, label: 'Solide' }, { ab: 40, label: 'Verbesserungsfähig' }];
 

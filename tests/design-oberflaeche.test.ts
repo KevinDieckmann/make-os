@@ -74,8 +74,10 @@ describe('Heute: das Tages-Briefing zeigt die Lage als Bild über dem Text', () 
     expect(h).toContain('rechts={<BusinessFreiStatus kompakt />}');
     expect(h.match(/<BusinessFreiStatus/g)?.length).toBe(1);
   });
-  it('Index-Widget ohne Wert: „Noch zu wenig gemessen“ statt „Noch keine Daten“ über Balken mit Werten', () => {
-    expect(lies('components/os/flaeche/widgets.tsx')).toContain("d.index == null ? 'Noch zu wenig gemessen' : d.label");
+  it('Index-Widget ohne Wert: kein „Noch keine Daten“ über Balken mit Werten — EIN Status (indexStatus) wie Cockpit und Fachseiten (14.10., B1)', () => {
+    const w = lies('components/os/flaeche/widgets.tsx');
+    expect(w).toContain('const status = d ? indexStatus(d) : null;');
+    expect(w).not.toMatch(/Säulen mit Wert/);
   });
 });
 

@@ -27,6 +27,7 @@ import { zusammenfuehrung, NETZWERKEN_QUELLE, type Treffer } from './netzwerken'
 import { istKalendertag } from '@/lib/zeit';
 import { firmaZurueckholen } from './ablage';
 import { MARKE_EVENTS } from './marke';
+import { istKunde } from './bean';
 
 export type AnlegeWeg = 'kartei' | 'firmenkarte' | 'schnell' | 'prospecting' | 'makeone' | 'anfrage' | 'netzwerken' | 'import';
 /** Die Wege, die über POST /api/crm/person anlegen (von Hand, eine Person). */
@@ -231,14 +232,15 @@ export function leadZiel(alt: Lead | undefined, ziel: 'kontaktiert' | 'qualifizi
 /**
  * Frisch von Hand angelegte Personen (`frischAngelegt`: ≤ 14 Tage, mit Anlege-Vermerk — Listen-Importe zählen nicht) ohne nächsten Schritt,
  * ohne offenes Follow-up und ohne offenen Deal — sie fallen sonst durch „Für dich“. Ohne Archivierte, Art. 18 und Werbesperre (`ausgenommen`),
- * ohne Kein Fit/Ruht. Jüngste zuerst.
+ * ohne Kein Fit/Ruht und ohne Kunden (`istKunde`, BEAN „B“ — Abnahme 14.10., B5: Ansprechpartner aktiver Mandate sind nie „neue Leads“). Jüngste zuerst.
  */
-export function neueOhneSchritt(kontakte: readonly Kontakt[], crm: Pick<CrmBestand, 'followups' | 'chancen' | 'firmen'>, heute: string): Kontakt[] {
+export function neueOhneSchritt(kontakte: readonly Kontakt[], crm: Pick<CrmBestand, 'followups' | 'chancen' | 'firmen'> & Partial<Pick<CrmBestand, 'mandate' | 'angebote'>>, heute: string): Kontakt[] {
   const mitFollowUp = new Set((crm.followups ?? []).filter(f => f.status === 'offen' && f.kontaktId).map(f => f.kontaktId!));
   const mitDeal = new Set(crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).flatMap(c => c.kontaktIds));
   const firmen = new Map(crm.firmen.map(f => [f.id, f]));
   const steht = (k: Kontakt) => { const l = k.firmaId ? firmen.get(k.firmaId)?.lead : k.lead; return l?.status === 'kein_fit' || l?.status === 'ruht'; };
   return kontakte
-    .filter(k => !k.archiviertAm && !ausgenommen(k) && frischAngelegt(k, heute) && !k.naechsterSchritt && !mitFollowUp.has(k.id) && !mitDeal.has(k.id) && !steht(k))
+    .filter(k => !k.archiviertAm && !ausgenommen(k) && frischAngelegt(k, heute) && !k.naechsterSchritt && !mitFollowUp.has(k.id) && !mitDeal.has(k.id) && !steht(k)
+      && !istKunde(k, { mandate: crm.mandate ?? [], chancen: crm.chancen, firmen: crm.firmen, ...(crm.angebote ? { angebote: crm.angebote } : {}) }))
     .sort((a, b) => (b.importiertAm ?? '').localeCompare(a.importiertAm ?? '') || anzeigename(a).localeCompare(anzeigename(b), 'de'));
 }

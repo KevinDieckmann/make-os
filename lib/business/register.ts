@@ -2,7 +2,7 @@
 // Kevin 25.09.2026: „Die ganzen Kennzahlen des KSI-Scores sind Gold wert für
 // den kompletten Business-Bereich.“ Entschieden: eigener Name (Business-Index),
 // dieselbe Logik — Finanzielle Gesundheit 50 % · Personal 30 % ·
-// Markttraktion 20 % —, gerechnet NUR mit unseren eigenen Zahlen. Übernommen
+// Markttraktion 20 % (seit 14.10. „Markt & Kunden“) —, gerechnet NUR mit unseren eigenen Zahlen. Übernommen
 // sind Struktur und Standard-Kennzahlen (Lehrbuch: Runway, DSO, Quick Ratio,
 // Win Rate, NRR …), kein Code und keine Daten aus KEMARIS/POINCAP/HubSpot.
 // Schwellen: FH-/MDNA-Marktanalyse und DevSpec 08.07. (Win Rate ≥ 25 %).
@@ -37,11 +37,18 @@ export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: stri
   { id: 'fh', label: 'Finanzielle Gesundheit', gewicht: 0.5 * (1 - FZ_GEWICHT) * REST * REST_FF, satz: 'Liquidität, Forderungen, Ausgaben, Kapital' },
   // 04.10.: „Unternehmer-DNA“ heißt jetzt „Personal“ (Kevin). Kennung 'ud' bleibt — gespeicherte Verläufe lesen weiter.
   { id: 'ud', label: 'Personal', gewicht: 0.3 * (1 - FZ_GEWICHT) * REST * REST_FF, satz: 'Produktivität, Auslastung und wie das Team arbeitet' },
-  { id: 'mt', label: 'Markttraktion', gewicht: 0.2 * (1 - FZ_GEWICHT) * REST * REST_FF, satz: 'Vertrieb, Kunden, Wachstum' },
+  // 14.10. (Abnahme B2): die Säule heißt „Markt & Kunden“ (vorher „Markttraktion“) — sie ist NICHT der Traktions-Score der Markttraktion, sondern
+  // enthält ihn als eine Kennzahl neben Umsatz-Kurs, Pipeline, Win Rate und den Kundenkennzahlen. Kennung 'mt' bleibt (Verläufe, Schwellen).
+  { id: 'mt', label: 'Markt & Kunden', gewicht: 0.2 * (1 - FZ_GEWICHT) * REST * REST_FF, satz: 'Traktions-Score der Markttraktion plus Umsatz-Kurs, Pipeline, Win Rate und Kunden' },
   { ...FZ_SAEULE, id: 'fz', gewicht: FZ_GEWICHT * REST * REST_FF },
   { ...KP_SAEULE, id: 'kp', gewicht: KP_GEWICHT * REST_FF },
   { ...FF_SAEULE, id: 'ff' },
 ];
+/**
+ * Warum der Traktions-Score (Markttraktion, z. B. 64) und die Säule „Markt & Kunden“ im Business-Index (z. B. 59) verschiedene Zahlen sind — EIN Satz
+ * für jede Stelle, an der beide nebeneinander stehen (Abnahme 14.10., B2).
+ */
+export const TRAKTION_IM_BUSINESS_INDEX = `Im Business-Index ist der Traktions-Score eine Kennzahl der Säule „${SAEULEN.find(s => s.id === 'mt')!.label}“ — dort zusammen mit Umsatz-Kurs, Pipeline und Kundenkennzahlen, darum eine andere Zahl.`;
 /** Säulen mit ihrem echten Gewicht als Text — EINE Quelle für Cockpit, ZOE und Erklärungen (z. B. „Finanzielle Gesundheit 45 % · …“). */
 export const SAEULEN_TEXT = SAEULEN.map(s => `${s.label} ${Math.round(s.gewicht * 100)} %`).join(' · ');
 

@@ -119,6 +119,15 @@ export function beanVon(k: Pick<Kontakt, 'id' | 'firmaId' | 'bean' | 'lebensphas
   return { bean: abgeleitet.bean, vonHand: false, grund: abgeleitet.grund, abgeleitet };
 }
 
+/**
+ * Ist die Person Kunde? EINE Regel für jede Stelle (Abnahme 14.10., B5): BEAN „B“ — ein aktives Mandat der Person oder ihrer Firma, als Kunde
+ * geführt oder von Hand „Bestandskunde“. Vorher zählte der Kartei-Filter „Kunden“ nur die Lebensphase (0, obwohl zwei Mandate liefen), und
+ * Ansprechpartner aktiver Mandate standen unter „Neue Leads ohne nächsten Schritt“. Kunden sind nie „neue Leads“.
+ */
+export function istKunde(k: Pick<Kontakt, 'id' | 'firmaId' | 'bean' | 'lebensphase'>, crm: BeanBestand | null | undefined, opts: BeanOpts = {}): boolean {
+  return beanVon(k, crm, opts).bean === 'B';
+}
+
 /** Die BEAN-Gruppe einer Firma: von Hand, sonst aus den Mandaten/Deals der Firma und ihrer Personen. */
 export function beanFirma(f: Pick<Firma, 'id' | 'name' | 'rolle' | 'bean'>, crm: BeanBestand | null | undefined, personen: readonly Pick<Kontakt, 'id' | 'firmaId' | 'lebensphase' | 'stationen' | 'position'>[] = [], opts: BeanOpts = {}): BeanErgebnis {
   // Personen der Firma nur über die Stationen (28.09.) — laufende Stationen.
