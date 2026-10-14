@@ -704,7 +704,7 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
 
 ## Business-Index (seit 25.09.2026)
 - Business-Index mit eigenen Zahlen: Finanzielle Gesundheit 50 · Personal 30 (bis 04.10. „Unternehmer-DNA“,
-  Kennung `ud` bleibt) · Markttraktion 20 (arithmetisch), dazu Fokus & Zeit 10 % (die drei skaliert ×0,9) und seit 04.10.
+  Kennung `ud` bleibt) · Markt & Kunden 20 (bis 14.10. „Markttraktion“, Kennung `mt` bleibt; enthält den Traktions-Score als EINE Kennzahl — Kevin 14.10.) (arithmetisch), dazu Fokus & Zeit 10 % (die drei skaliert ×0,9) und seit 04.10.
   Kapazität 15 % (alle übrigen ×0,85, zählt nur mit Messung — Abschnitt „Kapazität“) — Text
   überall aus `SAEULEN_TEXT` (lib/business/register.ts). Nur Struktur + Standard-Kennzahlen übernommen — kein Code,
   keine Daten aus KEMARIS/POINCAP/HubSpot. Plan + Entscheidungen: `BUSINESS_KSI_PLAN.md`.
