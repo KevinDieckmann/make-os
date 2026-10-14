@@ -27,9 +27,12 @@ import { teile, type ZeitDatei } from '@/lib/zeitmessung/modell';
 import { mandateKurz } from '@/lib/planung/mandat-server';
 import { mandatLabel } from '@/lib/planung/mandat';
 import { einheitName } from '@/lib/einheiten';
+import { kalenderNurBusiness } from './konto-bereich';
 
 export interface AuswertungAntwort extends Auswertung {
   quelle: 'icloud' | 'mac' | 'ohne-kalender';
+  /** Konto „nur Business“ (Abnahme 14.10., B17): nur Business-Kalender und Business-Zeit gerechnet — keine Privat-Anteile in der Antwort. */
+  nurBusiness?: true;
   /** Anzeigenamen zu Einheit/Mandat (Mandat → Firma · Titel, gelöschte als „Mandat (gelöscht)“). */
   namen: { einheiten: Record<string, string>; mandate: Record<string, string> };
 }
@@ -45,6 +48,9 @@ export async function zeitAuswertungFuer(person: string, stichtag: string, woche
   const mo = montagDer(stichtag);
   const von = tagPlus(mo, -7 * wochen), bis = tagPlus(mo, 7);
   const einst = await ladeEinstellungen();
+  // Konto „nur Business“ (B17, 14.10.): Privat-Kalender gibt es für diese Person nicht (wie GET /api/kalender) und Privat-Zeit wird nicht
+  // gerechnet — serverseitig, damit keine Privat-Anteile („Privat 32 %“) in der Antwort stehen. Unlesbarer Konten-Bestand → wie „nur Business“.
+  const nurBusiness = await kalenderNurBusiness(person).catch(() => true);
   const [zeit, aufgaben, mandate, gelesen, routinen] = await Promise.all([
     ladeZeit(person).catch(() => ({ tage: {} }) as ZeitDatei),
     aufgabenKurz().catch(() => []),
@@ -55,7 +61,7 @@ export async function zeitAuswertungFuer(person: string, stichtag: string, woche
 
   // Abgesagte/abgelehnte Termine fanden nicht statt (R-K1 #68) — sie zählen nicht als verbrachte Zeit.
   // Privates der anderen Person nur als „Belegt“ (F1 #7) — `maskieren` nimmt Bezug (Mandat, Kontakt) und Gäste weg.
-  const eigene = gelesen.termine.map(t => maskieren(t, person)).filter(t => betrifft(t, person) && !t.abgesagt);
+  const eigene = gelesen.termine.map(t => maskieren(t, person)).filter(t => betrifft(t, person) && !t.abgesagt && (!nurBusiness || spaceVonKalender(einst, t.kalender) === 'business'));
   const termine: ATermin[] = eigene.map(t => ({
     id: t.id, start: t.start, ende: t.ende, ganztags: t.ganztags, space: spaceVonKalender(einst, t.kalender), mitTeilnehmern: t.maskiert ? false : t.mitTeilnehmern,
     art: t.art, ...(t.beschaeftigt === false ? { frei: true } : {}), ...(t.blockArt ? { blockArt: t.blockArt } : {}),
@@ -70,7 +76,7 @@ export async function zeitAuswertungFuer(person: string, stichtag: string, woche
   const arbeitszeitJeTag = mitVorlage ? Object.fromEntries(verfuegbarkeitAus({ person, von, bis, termine: eigene, bloecke: bloeckeVorlage }).tage.map(t => [t.tag, t.arbeitszeit])) : undefined;
 
   const aufgabenKarte = new Map(aufgaben.map(a => [a.id, a]));
-  const bloecke: ABlock[] = bloeckeIn(zeit, von, bis).map(b => {
+  const bloecke: ABlock[] = bloeckeIn(zeit, von, bis).filter(b => !nurBusiness || teile(b.schluessel).space === 'business').map(b => {
     const space = teile(b.schluessel).space;
     const einheit = space === 'business' ? einheitVonBlock(b, aufgabenKarte, mandate) : undefined;
     return { von: b.von, bis: b.bis, space, ...(einheit ? { einheit } : {}), ...(space === 'business' && b.mandatId ? { mandatId: b.mandatId } : {}) };
@@ -83,5 +89,5 @@ export async function zeitAuswertungFuer(person: string, stichtag: string, woche
     for (const e of w.jeEinheit) einheiten[e.einheit] ??= einheitName(e.einheit) ?? e.einheit;
     for (const m of w.jeMandat) { const k = mandate.get(m.mandatId); mandatNamen[m.mandatId] ??= k ? mandatLabel(k) : 'Mandat (gelöscht)'; }
   }
-  return { ...a, quelle: gelesen.quelle === 'leer' ? 'ohne-kalender' : gelesen.quelle, namen: { einheiten, mandate: mandatNamen } };
+  return { ...a, quelle: gelesen.quelle === 'leer' ? 'ohne-kalender' : gelesen.quelle, namen: { einheiten, mandate: mandatNamen }, ...(nurBusiness ? { nurBusiness: true as const } : {}) };
 }

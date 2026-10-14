@@ -77,6 +77,32 @@ describe('Kalender — nur Business', () => {
     expect(await lies(jahr, `/api/kalender/jahr?jahr=${H.slice(0, 4)}`, 'lena')).toContain('Privat');
   }, 60_000);
 
+  // Abnahme 14.10. (B17): die Zeit-Auswertung zeigte dem Partner „Privat 32 % · 2 h“ — jetzt rechnet der Server für ihn nur Business.
+  it('GET /api/kalender/auswertung: Partner bekommt keine Privat-Anteile (nurBusiness, Privat = 0) — volle Mitglieder wie bisher', async () => {
+    const db = await import('@/lib/store/local-db');
+    const { localDay } = await import('@/lib/zeit');
+    const H = localDay();
+    await db.saveJson('konten', { konten: KONTEN, einladungen: [] });
+    await db.saveJson('calendar-cache', { at: new Date().toISOString(), quelle: 'mac', events: [
+      { id: 'e-ga-arbeit2', title: 'GA Arbeitstermin', startDate: `${H}T09:00:00`, endDate: `${H}T10:00:00`, allDay: false, calendarName: 'Arbeit' },
+      { id: 'e-ga-privat2', title: 'GA Abendessen privat', startDate: `${H}T19:00:00`, endDate: `${H}T21:00:00`, allDay: false, calendarName: 'Privat' },
+    ] });
+    const aw = await import('@/app/api/kalender/auswertung/route');
+    const lies = async (wer: string) => {
+      const r = await aw.GET(new Request(`http://x/api/kalender/auswertung?stichtag=${H}`, { headers: sitzung(wer) }));
+      expect(r.status).toBe(200);
+      return await r.json() as { nurBusiness?: boolean; woche: { space: { privat: number; business: number } }; schnitt: { privat: number }; vorher: { space: { privat: number } }[] };
+    };
+    const ben = await lies('ben');
+    expect(ben.nurBusiness).toBe(true);
+    expect(ben.woche.space.privat).toBe(0);
+    expect(ben.schnitt.privat).toBe(0);
+    expect(ben.vorher.every(w => w.space.privat === 0)).toBe(true);
+    const jonas = await lies('jonas');
+    expect(jonas.nurBusiness).toBeUndefined();
+    expect(jonas.woche.space.privat).toBeGreaterThan(0);
+  }, 60_000);
+
   it('POST /api/kalender/termin: Partner legt nichts in einem Privat-Kalender an (403, kein Aufruf an iCloud)', async () => {
     const db = await import('@/lib/store/local-db');
     await db.saveJson('konten', { konten: KONTEN, einladungen: [] });

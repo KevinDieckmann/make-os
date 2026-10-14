@@ -34,7 +34,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, LEUCHT, ZeileAktionen } from '../ui';
 import { useCrmAblage, PapierkorbKarte } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
-import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson, GESELLSCHAFT_FILTER, passtGesellschaft, type GesellschaftFilter } from '@/lib/crm/kunden';
+import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson, gesellschaftFilterFuer, passtGesellschaft, type GesellschaftFilter } from '@/lib/crm/kunden';
 import { werZahlen } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon } from '@/lib/crm/team';
 import type { Mandat } from '@/lib/crm/typen';
@@ -54,6 +54,7 @@ import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
 import { monatsName } from '@/lib/finanzen/rechnung/regeln';
 import { MandatFortschritt } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
+import { useNurBusiness } from '../useInhaber';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -75,8 +76,9 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const [liqui, setLiqui] = useState<{ mandate: LiquiLage[]; freiePosten: { id: string; titel: string; betrag: number }[] } | null>(null);
   const [alle, setAlle] = useState(false);
   const [wahl, setWahl] = useWerFilter('kunden');
-  // Filter nach Gesellschaft (28.09.): Alle · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH — zusätzlich zur Person.
+  // Filter nach Gesellschaft (28.09.): Alle · die festen Gesellschaften — zusätzlich zur Person. Konto „nur Business“ ohne Privat-Einheit (B17, 14.10.).
   const [ges, setGes] = useState<GesellschaftFilter>('alle');
+  const nurBusiness = useNurBusiness();
   // Kommt man über einen Link auf ein Mandat, springt die Liste einmal dorthin.
   useZuZiel(useZiel('k'), !!api.crm);
   const ablage = useCrmAblage(api, 'mandate');
@@ -172,7 +174,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
-            <span role="group" aria-label="Nach Gesellschaft filtern"><Segmente liste={GESELLSCHAFT_FILTER.map(g => ({ id: g.id, label: breit ? g.label : g.kurz }))} aktiv={ges} onWahl={setGes} /></span>
+            <span role="group" aria-label="Nach Gesellschaft filtern"><Segmente liste={gesellschaftFilterFuer(nurBusiness).map(g => ({ id: g.id, label: breit ? g.label : g.kurz }))} aktiv={ges} onWahl={setGes} /></span>
           </div>
           <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
             <button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 44 }}>{alle ? 'Beendete ausblenden' : `Beendete zeigen (${beendetVerborgen})`}</button>

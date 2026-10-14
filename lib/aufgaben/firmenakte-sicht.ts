@@ -13,6 +13,9 @@
 // Unteraufgaben (von Hand darunter angelegt) erben das über die Kette — wie beim Privat-Bereich. Projekte/Listen gehören nicht dazu (die
 // Aufgaben liegen in „Sonstige“ der Gesellschaft). Neuer Erzeuger in der Firmen-Akte → Präfix HIER eintragen (Wächter
 // tests/aufgaben-firmenakte-sicht.test.ts prüft die Erzeuger gegen diese Liste).
+// Gründungsfahrplan (Abnahme 14.10., B17): seine Aufgaben haben freie Kennungen, liegen aber in den Meilenstein-Listen der Fahrplan-
+// Meilensteine (`ms-fahrplan-…` → Liste `lm-ms-fahrplan-…`, lib/gesellschaften/fahrplan.ts + lib/planung/meilenstein-aufgaben.ts) — sie
+// gehören zur Firmen-Akte (Register, Gründung) und erkennt man an der LISTE; die Listen selbst (Namen der Gründungsschritte) fallen mit weg.
 
 import type { Task, TasksState } from '@/types/tasks';
 
@@ -22,11 +25,16 @@ export const BESCHLUSS_CAPTABLE_PRAEFIX = 'bfc-';
 /** Alle Kennungs-Präfixe der Aufgaben, die die Firmen-Akte anlegt. */
 export const FIRMEN_AKTE_PRAEFIXE = ['usp-', 'usd-', 'usm-', 'usr-', 'vte-', 'rcw-', BESCHLUSS_CAPTABLE_PRAEFIX] as const;
 
-type AufgabeKern = Pick<Task, 'id' | 'parentId'>;
+type AufgabeKern = Pick<Task, 'id' | 'parentId'> & { listeId?: string };
 
-/** Hat die Firmen-Akte diese Aufgabe angelegt? (nur die Kennung — Tags/Titel kann man von Hand ändern, die Kennung nicht) */
-export const istFirmenAkteAufgabe = (t: Pick<Task, 'id'> | null | undefined): boolean =>
-  !!t && typeof t.id === 'string' && FIRMEN_AKTE_PRAEFIXE.some(p => t.id.startsWith(p));
+/** Listen-Präfix der Meilenstein-Listen des Gründungsfahrplans (`lm-` + `ms-fahrplan-…`; Wächter prüft es gegen die Erzeuger). */
+export const FAHRPLAN_LISTE_PRAEFIX = 'lm-ms-fahrplan-';
+/** Ist das eine Liste des Gründungsfahrplans? */
+export const istFahrplanListe = (listeId: string | null | undefined): boolean => typeof listeId === 'string' && listeId.startsWith(FAHRPLAN_LISTE_PRAEFIX);
+
+/** Hat die Firmen-Akte diese Aufgabe angelegt? (Kennung — Tags/Titel kann man von Hand ändern, die Kennung nicht; beim Fahrplan die Liste) */
+export const istFirmenAkteAufgabe = (t: (Pick<Task, 'id'> & { listeId?: string }) | null | undefined): boolean =>
+  !!t && typeof t.id === 'string' && (FIRMEN_AKTE_PRAEFIXE.some(p => t.id.startsWith(p)) || istFahrplanListe(t.listeId));
 
 /** Liegt die Aufgabe (oder ein Vorfahre) in der Firmen-Akte? `nachId` = alle Aufgaben (für die Kette). Kreisfest. */
 export function aufgabeInFirmenAkte(t: AufgabeKern, nachId?: ReadonlyMap<string, AufgabeKern>): boolean {
@@ -38,6 +46,7 @@ export function aufgabeInFirmenAkte(t: AufgabeKern, nachId?: ReadonlyMap<string,
     if (FIRMEN_AKTE_PRAEFIXE.some(p => pid!.startsWith(p))) return true;
     const e = nachId?.get(pid);
     if (!e) break;
+    if (istFirmenAkteAufgabe(e)) return true;
     pid = e.parentId;
   }
   return false;
@@ -45,6 +54,9 @@ export function aufgabeInFirmenAkte(t: AufgabeKern, nachId?: ReadonlyMap<string,
 
 /** Steht im Bestand überhaupt eine Aufgabe der Firmen-Akte? (schneller Weg: sonst muss niemand den Zugang prüfen) */
 export const hatFirmenAkte = (tasks: readonly AufgabeKern[]): boolean => tasks.some(t => istFirmenAkteAufgabe(t) || (!!t.parentId && FIRMEN_AKTE_PRAEFIXE.some(p => t.parentId!.startsWith(p))));
+
+/** Trägt der Bestand etwas aus der Firmen-Akte (Aufgaben oder Listen des Gründungsfahrplans)? */
+export const bestandHatFirmenAkte = (state: Pick<TasksState, 'tasks' | 'listen'>): boolean => hatFirmenAkte(state.tasks) || (state.listen ?? []).some(l => istFahrplanListe(l.id));
 
 /** Nur die Aufgaben-Liste ohne die Firmen-Akte (samt Unteraufgaben). Rein; dieselben Objekte. */
 export function aufgabenOhneFirmenAkte<T extends AufgabeKern>(tasks: readonly T[]): T[] {
@@ -55,6 +67,8 @@ export function aufgabenOhneFirmenAkte<T extends AufgabeKern>(tasks: readonly T[
 
 /** Der Bestand ohne die Aufgaben der Firmen-Akte — für Personen ohne Zugang. Alles andere unverändert (dieselben Objekte, Stände bleiben). */
 export function ohneFirmenAkte<T extends TasksState>(state: T): T {
-  if (!hatFirmenAkte(state.tasks)) return state;
-  return { ...state, tasks: aufgabenOhneFirmenAkte(state.tasks) };
+  const listen = state.listen ?? [];
+  const fahrplanListen = listen.some(l => istFahrplanListe(l.id));
+  if (!hatFirmenAkte(state.tasks) && !fahrplanListen) return state;
+  return { ...state, tasks: aufgabenOhneFirmenAkte(state.tasks), ...(fahrplanListen ? { listen: listen.filter(l => !istFahrplanListe(l.id)) } : {}) };
 }

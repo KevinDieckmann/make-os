@@ -68,6 +68,7 @@ import type { Ziel, ZielHorizont } from '@/lib/planung/typen';
 import { indexStatus, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import { TRAKTION_IM_BUSINESS_INDEX } from '@/lib/business/register';
 import { vorschlagAnzeige, type VorschlagAnzeige, type VorschlagFuerAnzeige } from '@/lib/zoe/vorschlag-anzeige';
+import { useNurBusiness } from '../useInhaber';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -658,6 +659,9 @@ function ZeitBeideWidget({ titel, i, seite }: WidgetProps) {
   // Server nicht mit (`?space=`, lib/zeitmessung/modell.ts `bildFuerSicht`). Die Karte zeigt ohnehin nur die Summen (Kevin 09.10.).
   const fs = spaceAusFlaeche(seite);
   const d = useDaten<ZeitBild>(`/api/state/zeit${fs === 'alle' ? '' : `?sicht=${fs}&summen=beide`}`, x => ((x as { bild?: ZeitBild }).bild ?? null));
+  // Konto „nur Business“ (B17, 14.10.): der Server liefert keine Privat-Zeit — die Karte heißt dann nur „Zeit“, ohne Privat-Spalte und
+  // ohne den Hinweis auf einen Privat-Schalter, den es für dieses Konto nicht gibt.
+  const nurBusiness = useNurBusiness() === true;
   if (d === null) return null;
   const heute = d ? privatGegenBusiness(d.tagHeute) : null;
   const sieben = d ? privatGegenBusiness(d.sieben) : null;
@@ -675,8 +679,12 @@ function ZeitBeideWidget({ titel, i, seite }: WidgetProps) {
   };
   return (
     <Karte i={i} akzent={anteil !== null ? C.aktiv : undefined}>
-      <Ueberschrift rechts={<Link href={WEG.fokus('zeit')} style={link}>Zeit ›</Link>}>{titel ?? 'Zeit · Privat und Business'}</Ueberschrift>
-      {d === undefined ? <div style={{ fontSize: TYP.body, color: C.inkLeise }}>lade …</div> : anteil === null ? (
+      <Ueberschrift rechts={<Link href={WEG.fokus('zeit')} style={link}>Zeit ›</Link>}>{titel ?? (nurBusiness ? 'Zeit' : 'Zeit · Privat und Business')}</Ueberschrift>
+      {d === undefined ? <div style={{ fontSize: TYP.body, color: C.inkLeise }}>lade …</div> : nurBusiness ? (
+        (sieben?.business ?? 0) > 0 || (heute?.business ?? 0) > 0
+          ? <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>{spalte('business')}</div>
+          : <Leer>Noch nichts gemessen — die Zeit läuft im Hintergrund mit, sobald du in MAKE OS arbeitest.</Leer>
+      ) : anteil === null ? (
         <Leer>Noch nichts gemessen — die Zeit läuft im Hintergrund mit, sobald du in MAKE OS arbeitest: oben Privat oder Business wählen.</Leer>
       ) : (
         <>
