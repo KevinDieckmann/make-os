@@ -32,12 +32,14 @@ const plus = (n: number) => { const d = new Date(`${heute()}T12:00:00Z`); d.setU
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
   route = (await import('@/app/api/crm/planung/route')) as unknown as Mod;
-  TEAM_ID = (await import('@/lib/crm/team-liste')).TEAM[0].id;
   await db.saveJson('konten', { konten: [
     { id: '1', speicher: 'pa', email: 'pa@example.invalid', name: 'Anna Prüf', rolle: 'inhaber', hash: 'x', salz: 'x', angelegt: '2026-09-01', haushalt: 'h-pruef' },
     { id: '2', speicher: 'pb', email: 'pb@example.invalid', name: 'Bert Prüf', rolle: 'mitglied', hash: 'x', salz: 'x', angelegt: '2026-09-01', haushalt: 'h-pruef', finanzRecht: 'business' },
     { id: '3', speicher: 'px', email: 'px@example.invalid', name: 'Testkunde', rolle: 'mitglied', hash: 'x', salz: 'x', angelegt: '2026-09-01', haushalt: 'h-fremd' },
   ], einladungen: [] });
+  // Das CRM-Team kommt seit 14.10. aus den Konten (lib/crm/team-liste.ts) — erst nach dem Lesen der Konten steht es fest.
+  await (await import('@/lib/zugang/konten')).ladeKonten();
+  TEAM_ID = (await import('@/lib/crm/team-liste')).TEAM[0].id;
   const J = `${heute()}T09:00:00.000Z`;
   await db.saveJson('kontakte', { kontakte: [
     { id: 'c-erfunden1', vorname: 'Erika', nachname: 'Erfunden', eignung: '', prio: '', stufe: 'gespraech', herkunft: 'veranstaltung', importiertAm: heute(), geaendertAm: heute(), firmaId: 'f-beispiel', firma: 'Beispiel AG', aktivitaeten: [{ am: J, art: 'gespraech', von: 'pa' }] },

@@ -8,6 +8,7 @@
 //         `konflikte` (aktueller Eintrag); ohne Stand nur `teil`/`delete`. Löschen einer Firma/eines Mandats mit
 //         Verweisen → 409 mit `sperren` (nur Anzahlen). Über der Grenze der Deal-Historie → 413. Nichts geschrieben.
 
+import { reihenDerInstanz } from '@/lib/crm/reihen-server';
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
@@ -57,6 +58,8 @@ async function antwort(voll: CrmBestand, ich: string) {
     // IBAN der Firmen nur maskiert (28.09., H4) — Speichern: maskiert/leer = unverändert (lib/crm/speicher.ts `ibanSchuetzen`).
     // Stand je Eintrag (28.09., K4) aus dem GESPEICHERTEN Eintrag — erst danach maskieren, sonst passt er nie.
     ok: true, ich, heute, stand: ohneIban(crmMitStand(b)), papierkorb: crmPapierkorb(voll),
+    // Reihen dieser Instanz (14.10.: Instanz-Daten, Startwert ohne Server-Schritt) — der Browser setzt daraus seine Laufzeit-Liste.
+    reihen: await reihenDerInstanz(voll),
     stufen: STUFEN.map(s => ({ ...s, p: wahrscheinlichkeit(s.id, b.wahrscheinlichkeiten) })),
     prognose: prognose(b.chancen, heute, b.wahrscheinlichkeiten),
     gewinnquote: winRate(b.chancen, localDay()),

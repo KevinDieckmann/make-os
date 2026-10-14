@@ -14,7 +14,7 @@ import { katNamen } from '../haushalt/einordnung';
 import { kennzahlen as hhKennzahlen, schuldenbild } from '../haushalt/kennzahlen';
 import { luft } from '../haushalt/fixkosten';
 import { faelligeZeilen } from '../haushalt/zoe';
-import { bruecke, ENTNAHME_KATEGORIEN } from '../haushalt/gesamt';
+import { bruecke, istEntnahmeKategorie } from '../haushalt/gesamt';
 import { vollMonate, monatVon, tageZwischen, tagPlus, monatPlus } from '../haushalt/monat';
 import { steuertermine, type SteuerEinstellung, type Termin } from './steuertermine';
 import { auffaelligkeiten, type Auffaelligkeit } from './auffaellig';
@@ -217,7 +217,7 @@ export function baueFinanzbild(e: Eingaben) {
     if (e.grundlage) {
       const mb = monatsBild(e.grundlage.g);
       const hhEntnahme = new Map<string, number>();
-      for (const x of privat) if (x.betrag > 0 && ENTNAHME_KATEGORIEN.includes(katName(x.kategorie_id))) hhEntnahme.set(monatVon(x.datum), (hhEntnahme.get(monatVon(x.datum)) ?? 0) + x.betrag);
+      for (const x of privat) if (x.betrag > 0 && istEntnahmeKategorie(katName(x.kategorie_id))) hhEntnahme.set(monatVon(x.datum), (hhEntnahme.get(monatVon(x.datum)) ?? 0) + x.betrag);
       const bis = mb[mb.length - 1]?.monat;
       entnahmen = mb.filter(z => bis && z.monat > monatPlus(bis, -6))
         .map(z => ({ monat: z.monat, business_grundlage: z.entnahmen, haushalt_eingang: ce(hhEntnahme.get(z.monat) ?? 0), differenz: r2(z.entnahmen - ce(hhEntnahme.get(z.monat) ?? 0)) }))

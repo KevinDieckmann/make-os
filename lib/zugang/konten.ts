@@ -17,6 +17,7 @@
 
 import { scrypt, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson, beschaedigt } from '@/lib/store/local-db';
+import { teamAusKonten, teamSetzen } from '@/lib/crm/team-liste';
 import type { Wiederherstellung } from './totp';
 import type { Aenderung } from '@/lib/store/aenderungsprotokoll';
 
@@ -267,6 +268,8 @@ export async function ladeKonten(): Promise<KontenStand> {
     if (await beschaedigt(STORE)) throw new Error('Kontenbestand beschädigt — Sicherung zurückspielen (konten.json.corrupt-*).');
     return leererStand();
   }
+  // CRM-Team aus den Konten (14.10., Kevins Entscheidung — lib/crm/team-liste.ts): bei jedem Lesen nachgezogen, dasselbe Array für alle Leser.
+  teamSetzen(teamAusKonten(s.konten));
   return { konten: s.konten, einladungen: Array.isArray(s.einladungen) ? s.einladungen : [], ...(einstellungenAus(s) ? { einstellungen: einstellungenAus(s) } : {}) };
 }
 
@@ -312,6 +315,7 @@ export async function aendereKonten(mut: (s: KontenStand) => KontenStand): Promi
   });
   // Änderungsprotokoll (05.10.): wer wann welches Konto angelegt, gelöscht oder an Rolle/Haushalt/Finanzrecht/2FA geändert
   // hat — nur Kennungen. Dynamisch geladen (das Protokoll liest selbst Konten). Wirft nie.
+  teamSetzen(teamAusKonten(ergebnis.konten));
   const aenderungen = kontoAenderungen(vorher, ergebnis);
   if (aenderungen.length) await import('@/lib/store/aenderungsprotokoll').then(m => m.protokolliere('konten', aenderungen)).catch(() => {});
   return ergebnis;

@@ -13,7 +13,7 @@
 //   • Neues Register-Werkzeug = Beschreibung hier (oder in einer der Teil-Quellen) + Eintrag im Register + Zuordnung in
 //     lib/zoe/werkzeug-wahl.ts (Kern, Bereich oder nur über einen Head).
 
-import { CRM_WERKZEUG_DEFS } from './crm-werkzeug-defs';
+import { crmWerkzeugDefs } from './crm-werkzeug-defs';
 import { AUFGABEN_WERKZEUG_DEFS } from './aufgaben-werkzeuge';
 import { ARBEIT_WERKZEUG_DEFS } from './arbeit-werkzeug';
 import { SPORT_WERKZEUG_DEFS } from './sport-werkzeuge';
@@ -485,7 +485,7 @@ export function werkzeugDefs(o: DefOptionen = {}): ReadonlyMap<string, WerkzeugD
     ...(AUFGABEN_WERKZEUG_DEFS as unknown as WerkzeugDef[]),
     ...(ARBEIT_WERKZEUG_DEFS as unknown as WerkzeugDef[]),
     ...(SPORT_WERKZEUG_DEFS as unknown as WerkzeugDef[]),
-    ...(CRM_WERKZEUG_DEFS as unknown as WerkzeugDef[]),
+    ...(crmWerkzeugDefs() as unknown as WerkzeugDef[]),
   ];
   return new Map(alle.map(d => [d.name, d]));
 }

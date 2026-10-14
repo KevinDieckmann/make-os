@@ -24,7 +24,7 @@ import { bauKennung, BAU_KOPF } from '@/lib/bau/kennung';
 import type { RegisterGesellschaft } from '@/lib/gesellschaften/modell';
 import { fahrplanFuer } from '@/lib/gesellschaften/fahrplan';
 import { verantwortlich } from '@/lib/crm/team';
-import { EVENT_REIHEN } from '@/lib/crm/marke';
+import { kennungAusName } from '@/lib/crm/marke';
 import { DEMO_MARKE, DEMO_SAAT_VERSION, DEMO_DOMAIN, demoUuid } from './schutz';
 
 export class DemoFehler extends Error {}
@@ -98,6 +98,7 @@ const R = {
   planung: () => import('@/app/api/crm/planung/route') as Promise<Modul>,
   treppe: () => import('@/app/api/crm/treppe/route') as Promise<Modul>,
   absender: () => import('@/app/api/crm/gesellschaften/route') as Promise<Modul>,
+  stammdaten: () => import('@/app/api/crm/stammdaten/route') as Promise<Modul>,
   angebot: () => import('@/app/api/crm/angebot/route') as Promise<Modul>,
 };
 
@@ -219,7 +220,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
 
   // 3b) Markttraktion › Planung (10.10.): zwei erfundene Leadkanäle (Netzwerk, eigene Eventreihe), ein Umsatzziel bis Jahresende, eine
   //     Challenge dieser Woche und ein abgehakter Schritt „nach der Leistung“ — über die Planungs-Route (Einzel-Schritte), wie im Browser.
-  const reihe = EVENT_REIHEN[0]?.id;
+  // Reihen sind Instanz-Daten (14.10.): die Demo legt eine erfundene Reihe in den Wertelisten an — über die Stammdaten-Route, wie im Browser.
+  const REIHE_NAME = 'Abendreihe Nord (Beispiel)';
+  await rufe(R.stammdaten(), 'POST', '/api/crm/stammdaten', LENA, { aktion: 'wertelisten', wertelisten: { reihen: [REIHE_NAME] } });
+  const reihe = kennungAusName(REIHE_NAME);
   await rufe(R.planung(), 'PATCH', '/api/crm/planung', LENA, { ops: [
     { op: 'kanal', eintrag: { id: 'lk-demo-netzwerk', name: 'Netzwerk & Empfehlung (Beispiel)', herkunft: 'netzwerk', kanaele: ['netzwerk', 'empfehlung', 'outreach'], leadsMonat: 6, zyklusWochen: 8, quoten: { leadZuGespraech: 45, gespraechZuSql: 50 }, kostenJeLead: 20, verantwortlich: verantwortlich('sales'), rang: 1 } },
     { op: 'kanal', eintrag: { id: 'lk-demo-reihe', name: 'Eigene Abendreihe (Beispiel)', herkunft: 'eventreihe', ...(reihe ? { bezug: reihe } : {}), leadsMonat: 8, zyklusWochen: 10, quoten: { leadZuGespraech: 30 }, kostenJeLead: 35, minutenJeLead: 25, beitraegeWoche: 2, verantwortlich: verantwortlich('event'), rang: 2 } },

@@ -47,6 +47,7 @@ import { art14 } from '@/lib/crm/recht';
 import { STUFEN, OFFENE_STUFEN, gesamtwert, wahrscheinlichkeit } from '@/lib/crm/pipeline';
 import { gemesseneQuoten } from '@/lib/crm/deal-auswertung';
 import { wertelistenVollstaendig, wertelistenPruefen, type Pruefung } from '@/lib/crm/wertelisten';
+import { reihenDerInstanz } from '@/lib/crm/reihen-server';
 import type { ChancenStufe } from '@/lib/crm/typen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { laeufeFuer } from '@/lib/agent-log';
@@ -85,7 +86,7 @@ export async function GET(req: Request) {
   const verlust: Record<string, number> = {};
   for (const c of crm.chancen.filter(c => c.stufe === 'verloren' && c.grund)) verlust[c.grund!] = (verlust[c.grund!] ?? 0) + 1;
   const kpis = kennzahlen(kontakte, crm, heute);
-  const voll = wertelistenVollstaendig(crm.wertelisten);
+  const voll = wertelistenVollstaendig(crm.wertelisten, await reihenDerInstanz(crm));
   const gemessen = gemesseneQuoten(crm.chancen);
   // Ist zu den Zielen: Umsatz neu = Gesamtwert der in den letzten 30 Tagen gewonnenen Deals; SQL und Gespräche aus den Kennzahlen (null = noch nichts gemessen).
   const vor30 = new Date(`${heute}T12:00:00Z`); vor30.setUTCDate(vor30.getUTCDate() - 29);
@@ -182,7 +183,8 @@ export async function POST(req: Request) {
     await aendereCrm(cur => { halter.p = wertelistenPruefen(b.wertelisten, cur.wertelisten); return halter.p.ok ? { ...cur, wertelisten: halter.p.wertelisten } : cur; });
     const p = halter.p!;
     if (!p.ok) return NextResponse.json({ ok: false, fehler: p.fehler.join(' · ') }, { status: 400 });
-    return NextResponse.json({ ok: true, wertelisten: wertelistenVollstaendig(p.wertelisten) });
+    const frisch = await ladeCrm();
+    return NextResponse.json({ ok: true, wertelisten: wertelistenVollstaendig(p.wertelisten, await reihenDerInstanz(frisch)) });
   }
   return NextResponse.json({ ok: false, fehler: 'aktion unbekannt.' }, { status: 400 });
 }

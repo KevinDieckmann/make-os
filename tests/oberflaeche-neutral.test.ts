@@ -40,6 +40,7 @@ const REGELN: { id: string; muster: RegExp; grund: string }[] = [
 const ERLAUBT: { datei: string; regel: string; text: string; grund: string }[] = [
   { datei: 'lib/oauth.ts', regel: 'datei', text: 'http://localhost:3001', grund: 'Rückfall der Rückruf-Adresse nur ohne MAKE_OS_ADRESSE (lokale Entwicklung) — eine Adresse, kein angezeigter Satz; die Anleitung sieht nur die Betreiber-Instanz' },
   { datei: 'app/api/oauth/callback/route.ts', regel: 'datei', text: 'http://localhost:3001', grund: 'Weiterleitung nach dem Anbieter nur ohne öffentliche Adresse (lokale Entwicklung) — kein angezeigter Text' },
+  { datei: 'lib/crm/marke.ts', regel: 'marke', text: 'Make.One', grund: 'DIE eine Stelle der Veranstaltungsmarke (`MARKE_EVENTS`): Vorgabe unserer Instanz, je Instanz über NEXT_PUBLIC_MAKE_OS_EVENT_MARKE — alle Texte lesen nur die Konstante' },
 ];
 
 /** Weitere Dateien mit Texten an die Oberfläche (außerhalb von components/ und app/os). */
@@ -47,7 +48,11 @@ const WEITERE = ['lib/make-one/seiten.ts', 'lib/make-one/einstellungen.ts', 'lib
   'lib/crm/planung.ts', 'lib/zoe/crm-bezug.ts', 'lib/steuern/rechnen.ts', 'lib/oauth.ts', 'lib/zoe-whatsapp/meta.ts', 'lib/make-one/backlog-data.ts',
   'lib/crm/scoring.ts', 'lib/crm/person-anlegen.ts', 'lib/crm/netzwerken-server.ts', 'lib/finanzen/handwerte.ts', 'lib/finanzen/annahmen-felder.ts',
   'lib/business/register.ts', 'lib/zoe/crm-werkzeuge.ts', 'lib/zoe/crm-werkzeug-defs.ts', 'lib/crm/speicher-register.ts', 'lib/datenschutz/einrichtung.ts',
-  'lib/crm/loeschfristen.ts', 'lib/brain/vault-ziel.ts', 'lib/betrieb/betreiber.ts', 'lib/make-one/fach-namen.ts'];
+  'lib/crm/loeschfristen.ts', 'lib/brain/vault-ziel.ts', 'lib/betrieb/betreiber.ts', 'lib/make-one/fach-namen.ts',
+  // 14.10. (Kevins Entscheidungen): Vorgaben, die vorher feste Vornamen bzw. Firmen trugen — jetzt aus Konten, Einheiten oder Instanz-Daten.
+  'lib/crm/team-liste.ts', 'lib/kalender/einstellungen.ts', 'lib/finanzen/haushalt/einordnung.ts', 'lib/finanzen/haushalt/kategorien.ts',
+  'lib/finanzen/haushalt/gesamt.ts', 'lib/crm/marke.ts', 'lib/crm/reihen-server.ts', 'lib/crm/wertelisten.ts',
+  'lib/zoe/vorschlag-anzeige.ts', 'lib/make-one/liquiditaet.ts'];
 
 function dateien(ordner: string): string[] {
   const aus: string[] = [];
@@ -205,5 +210,41 @@ describe('Fächer der Daten (`kevin`/`malin` als Kennung) → Namen aus den Kont
     expect(fachNamen([{ id: 'lena', name: 'Lena' }, { id: 'jonas', name: 'Jonas' }])).toMatchObject({ kevin: 'Lena', malin: 'Jonas' });
     expect(fachNamen([{ id: 'lena', name: 'Lena' }])).toMatchObject({ kevin: 'Lena', malin: 'Person 2', belegt: ['kevin'] });
     expect(fachNamen([])).toMatchObject({ kevin: 'Person 1', malin: 'Person 2', belegt: [] });
+  });
+});
+
+// ── 14.10. (Kevins Entscheidungen): feste Vorgaben aus den Konten — die Live-Instanz zeigt dasselbe wie vorher ─────────────────────────
+describe('Vorgaben aus den Konten statt fester Vornamen', () => {
+  const konten = [
+    { speicher: 'p-eins', name: 'Erste Beispiel', rolle: 'inhaber', haushalt: 'h', angelegt: '2026-01-01' },
+    { speicher: 'p-zwei', name: 'Zweite Beispiel', rolle: 'mitglied', haushalt: 'h', angelegt: '2026-01-02' },
+    { speicher: 'p-partner', name: 'Partner Beispiel', rolle: 'mitglied', haushalt: 'h', finanzRecht: 'business', angelegt: '2026-01-03' },
+    { speicher: 'p-fremd', name: 'Fremd Beispiel', rolle: 'mitglied', haushalt: 'anders', angelegt: '2025-01-01' },
+  ];
+  it('CRM-Team: Inhaber Sales, zweite Person Marketing + Event — Kennung = Speichername, Name = Vorname; Partner und fremde Haushalte nie', async () => {
+    const { teamAusKonten } = await import('@/lib/crm/team-liste');
+    expect(teamAusKonten(konten)).toEqual([
+      { id: 'p-eins', name: 'Erste', farbe: '#58D9CD', verantwortet: ['sales'] },
+      { id: 'p-zwei', name: 'Zweite', farbe: '#A79BFF', verantwortet: ['marketing', 'event'] },
+    ]);
+    expect(teamAusKonten([konten[0]])![0].verantwortet).toEqual(['sales', 'marketing', 'event']);
+    expect(teamAusKonten([])).toBeNull();
+  });
+  it('Platzhalter ohne Konten: Rollen, nie ein Vorname', async () => {
+    const { TEAM } = await import('@/lib/crm/team-liste');
+    for (const m of TEAM) expect(m.name).not.toMatch(/\b(?:Kevin|Malin)\b/);
+  });
+  it('Kalender: „Privat <Vorname>“ aus den Personen-Fächern, ohne Konten ein Platzhalter; gespeicherte Namen gewinnen', async () => {
+    const { kalenderNamen, einstellungenSauber } = await import('@/lib/kalender/einstellungen');
+    expect(kalenderNamen({ kevin: 'Erste', malin: 'Zweite' })).toEqual({ kevin: 'Privat Erste', malin: 'Privat Zweite', beide: 'Gemeinsam' });
+    expect(Object.values(kalenderNamen()).join(' ')).not.toMatch(/\b(?:Kevin|Malin)\b/);
+    const vorgabe = kalenderNamen({ kevin: 'Erste', malin: 'Zweite' });
+    expect(einstellungenSauber(null, vorgabe).kalender.kevin).toBe('Privat Erste');
+    expect(einstellungenSauber({ kalender: { kevin: 'Mein Kalender', malin: '', beide: '' } } as never, vorgabe).kalender).toEqual({ kevin: 'Mein Kalender', malin: 'Privat Zweite', beide: 'Gemeinsam' });
+  });
+  it('Haushaltsfinanzen: Entnahme ohne Namen — gespeicherte Namen (auch mit Vorname) zählen weiter', async () => {
+    const { ENTNAHME_NAME, istEntnahmeKategorie } = await import('@/lib/finanzen/haushalt/einordnung');
+    expect(ENTNAHME_NAME).not.toMatch(/\b(?:Kevin|Malin)\b/);
+    expect(istEntnahmeKategorie(ENTNAHME_NAME)).toBe(true);
   });
 });

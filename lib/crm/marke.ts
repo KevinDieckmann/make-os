@@ -42,19 +42,58 @@ export const nachgefasstText = (e: Pick<Event, 'titel' | 'marke' | 'reihe'>, erg
 // die Reihe ist das dritte, optionale Merkmal (`Event.reihe`, Kennung aus dieser Werteliste). Ein Event ohne Reihe ist ein
 // gewöhnlicher Make.One-Abend — der Altbestand liest ohne Migration. Besuchte Events (Netzwerken) haben nie eine Reihe.
 
+//
+// Seit 14.10. (Kevins Entscheidung) sind Reihen INSTANZ-DATEN — keine Reihe steht mehr im Code:
+//   · gespeichert in den Wertelisten (`crm.wertelisten.reihen`, Stammdaten › Wertelisten — dort legt eine Instanz eigene an);
+//   · Startwert ohne Server-Schritt: jede Kennung, die im Bestand an einem eigenen Event steht (Altbestand), und in der Betreiber-
+//     Instanz deren Start-Kennungen (`BETREIBER_REIHEN`, lib/crm/reihen-server.ts) — der Name entsteht dann aus der Kennung
+//     („fokus-innovation“ → „Fokus Innovation“, `nameAusKennung`); eine neue Instanz startet ohne Reihe.
+//   · `EVENT_REIHEN` ist die Liste DIESER Instanz zur Laufzeit (dasselbe Array, an Ort und Stelle gesetzt über `reihenSetzen`: auf dem
+//     Server beim Laden des CRM, im Browser aus der Antwort von GET /api/crm/bestand) — alle Leser bleiben synchron.
+
 /** Eine Reihe: feste Kennung (gespeichert) und ihr Name (angezeigt). */
 export interface EventReihe { id: string; name: string }
-/** Die Werteliste der Reihen — neue Reihe = neue Zeile hier (Kennung nie ändern, sie steht im Bestand). */
-export const EVENT_REIHEN: readonly EventReihe[] = [{ id: 'fokus-innovation', name: 'Fokus Innovation' }];
+/** Die Reihen dieser Instanz (Laufzeit-Liste, anfangs leer — siehe oben). Kennungen nie ändern, sie stehen im Bestand. */
+export const EVENT_REIHEN: EventReihe[] = [];
 /** Höchstlänge einer Reihen-Kennung im Bestand. */
 export const REIHE_MAX = 40;
+/** Start-Kennungen der Betreiber-Instanz, sobald der Server sie kennt (lib/crm/reihen-server.ts) — der Laufzeit-Stand für `ladeCrm`. */
+let startKennungen: string[] = [];
+export const reihenStart = (): readonly string[] => startKennungen;
+export const reihenStartSetzen = (l: readonly string[]): void => { startKennungen = [...l]; };
+/** Die Liste der Instanz an Ort und Stelle ersetzen (dasselbe Array). Gleiche Liste: nichts. */
+export function reihenSetzen(liste: readonly EventReihe[] | null | undefined): void {
+  if (!liste) return;
+  if (liste.length === EVENT_REIHEN.length && liste.every((r, i) => r.id === EVENT_REIHEN[i].id && r.name === EVENT_REIHEN[i].name)) return;
+  EVENT_REIHEN.splice(0, EVENT_REIHEN.length, ...liste.map(r => ({ id: r.id, name: r.name })));
+}
+/** Name aus einer Kennung, wenn keine Liste ihn kennt: „fokus-innovation“ → „Fokus Innovation“. Rein. */
+export const nameAusKennung = (id: string): string => id.split('-').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || id;
+/** Kennung aus einem Namen (Umlaute ausgeschrieben, klein, Bindestriche, höchstens REIHE_MAX) — leer, wenn nichts übrig bleibt. Rein. */
+export function kennungAusName(name: string): string {
+  return name.normalize('NFC').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, REIHE_MAX).replace(/-+$/g, '');
+}
+/**
+ * Die Reihen einer Instanz (rein): gespeicherte (Wertelisten) zuerst, dann Start-Kennungen (Betreiber-Instanz), dann jede gültige Kennung
+ * an einem eigenen Event, die noch fehlt — ohne Doppelte, Name aus der Liste bzw. aus der Kennung.
+ */
+export function reihenListe(q: { gespeichert?: readonly EventReihe[] | null; start?: readonly string[]; events?: readonly Pick<Event, 'reihe' | 'marke'>[] }): EventReihe[] {
+  const aus: EventReihe[] = [];
+  const da = new Set<string>();
+  const dazu = (id: string | undefined, name?: string) => { if (!id || da.has(id)) return; da.add(id); aus.push({ id, name: name?.trim() || nameAusKennung(id) }); };
+  for (const r of q.gespeichert ?? []) dazu(reiheKennung(r?.id), r?.name);
+  for (const id of q.start ?? []) dazu(reiheKennung(id));
+  for (const e of q.events ?? []) if (!istNetzwerkenEvent(e)) dazu(reiheKennung(e.reihe));
+  return aus;
+}
 /** Pillen-Kennung für „Events ohne Reihe“ im Filter und in der Übersicht (keine gültige Reihen-Kennung, kollidiert also nie). */
 export const OHNE_REIHE = '-';
 /** Eine gültige Reihen-Kennung (klein, Ziffern, Bindestriche) — sonst undefined. Unbekannte, aber gültige Kennungen bleiben (Rückweg). */
 export const reiheKennung = (v: unknown): string | undefined =>
   typeof v === 'string' && v.length <= REIHE_MAX && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v) ? v : undefined;
-/** Der Name einer Reihe; eine unbekannte Kennung (z. B. aus einem neueren Stand) steht für sich selbst. */
-export const reiheName = (id: string): string => EVENT_REIHEN.find(r => r.id === id)?.name ?? id;
+/** Der Name einer Reihe; eine unbekannte Kennung (z. B. aus einem neueren Stand) bekommt ihren Namen aus der Kennung. */
+export const reiheName = (id: string): string => EVENT_REIHEN.find(r => r.id === id)?.name ?? nameAusKennung(id);
 /** Die Reihe eines Events — nur bei eigenen Abenden (Make.One), nie bei besuchten Events. */
 export function reiheVon(e: Pick<Event, 'reihe' | 'marke'>): EventReihe | undefined {
   if (istNetzwerkenEvent(e)) return undefined;

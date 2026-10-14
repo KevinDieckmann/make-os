@@ -185,8 +185,8 @@ describe('Kein stiller Rückfall auf die Privat-Einheit (Funde #3)', () => {
     expect(lp[1].betrag).toBe(-10);
   });
   it('Agenten-Schema: erfasse_zahlung trägt die Gesellschaft nur aus dem Business', async () => {
-    const { REGISTER_DEFS } = await import('@/lib/agenten/werkzeuge');
-    const props = (REGISTER_DEFS.get('erfasse_zahlung')!.input_schema as { properties: Record<string, { enum?: string[] }> }).properties;
+    const { registerDefs } = await import('@/lib/agenten/werkzeuge');
+    const props = (registerDefs().get('erfasse_zahlung')!.input_schema as { properties: Record<string, { enum?: string[] }> }).properties;
     expect(props.firma?.enum).toEqual(['kdv', 'ug']);
   });
 });

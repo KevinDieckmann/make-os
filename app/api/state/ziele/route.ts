@@ -22,7 +22,7 @@ import { mitStand } from '@/lib/store/fingerabdruck';
 import { personAus, speicherFuer } from '@/lib/zoe/raum';
 import { haushaltVon } from '@/lib/finanzen/haushalt/zugriff';
 import { ZIEL_HORIZONTE, istZielHorizont, type Ziel, type ZielHorizont, type ZieleDatei, type Meilenstein } from '@/lib/planung/typen';
-import { kaskadeAnwenden, meilensteineAbleiten } from '@/lib/planung/kaskade';
+import { kaskadeAnwenden, meilensteineAbleiten, titelNachRegel } from '@/lib/planung/kaskade';
 import { sauberZiel, jahrStempeln } from '@/lib/planung/ziele';
 import { fokusFuerLaufendesJahr, fokusSchreibSchluessel, istJahrFokusSchluessel } from '@/lib/planung/jahr-fokus';
 import { mitMandatBezug } from '@/lib/planung/mandat';
@@ -99,7 +99,8 @@ export async function GET(req: Request) {
   if (sp.nurGeteilte && !hatGeteiltes(roh)) return nichtGeteilt();
   const f = datei(sp.nurGeteilte ? nurGeteilte(roh) : roh);
   // Sicht Privat · Business (10.10.): mit `?space=` nur der Bereich der Sicht (Ziele aller Horizonte + Fokus-Sätze; lib/planung/bereich-sicht.ts).
-  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...(sp.nurGeteilte ? { nurGeteilte: true } : {}), ...zieleDateiNurBereich(await mitStaenden(f, await ohnePrivatFuer(req)), sichtDerAnfrage(req)) });
+  // Titel abgeleiteter Ziele nach der geltenden Regel (14.10., nur Anzeige — der Stand bleibt der gespeicherte; geschrieben wird über die Kaskade).
+  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...(sp.nurGeteilte ? { nurGeteilte: true } : {}), ...zieleDateiNurBereich(titelNachRegel(await mitStaenden(f, await ohnePrivatFuer(req)), laufendesJahr()), sichtDerAnfrage(req)) });
 }
 
 /** Konto „nur Business“ (09.10., EINE Konto-Sicht)? Systemlauf → nein; Konten unlesbar → ja (fail-closed, nie auf Verdacht zeigen). */

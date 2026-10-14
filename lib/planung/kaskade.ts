@@ -167,6 +167,28 @@ export function kaskadeAnwenden(datei: ZieleDatei, jahr: number): ZieleDatei {
   return aus;
 }
 
+/**
+ * Titel abgeleiteter Ziele nach der GELTENDEN Regel — nur zur Anzeige (14.10., Kevins Entscheidung zu B13: alte Titel wie „· 2083 im Monat“
+ * standen weiter da, bis die Kaskade wieder lief). Lesen schreibt nicht: der Stand der Zeile bleibt der gespeicherte, gespeichert wird der neue
+ * Titel beim nächsten Schreiben über die Kaskade (`kaskadeAnwenden`). Angepasste und eigene Ziele bleiben, wie sie sind. Rein.
+ */
+export function titelNachRegel<D extends ZieleDatei>(datei: D, jahr: number): D {
+  const eltern = new Map((datei.jahr ?? []).filter(z => zielJahr(z, jahr) === jahr && hatZahl(z)).map(z => [z.id, z]));
+  if (!eltern.size) return datei;
+  const aus: D = { ...datei };
+  for (const h of UNTERHORIZONTE) {
+    const l = datei[h];
+    if (!l?.length) continue;
+    aus[h] = l.map(z => {
+      const e = z.abgeleitetVon && !z.angepasst ? eltern.get(z.abgeleitetVon) : undefined;
+      if (!e) return z;
+      const titel = abgeleiteterTitel(e, h, jahr);
+      return titel === z.titel ? z : { ...z, titel };
+    });
+  }
+  return aus;
+}
+
 export const meilensteinId = (zielId: string) => `ms~${zielId}`;
 
 /**

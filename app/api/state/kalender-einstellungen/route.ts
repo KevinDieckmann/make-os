@@ -20,14 +20,12 @@ import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { bauPruefen } from '@/lib/bau/pruefen';
-import { EINSTELLUNGEN_LEER, einstellungenSauber, einstellungenTeilMischen, mitGoogleNamen, einstellungenFuerPerson, type KalenderEinstellungen } from '@/lib/kalender/einstellungen';
+import { einstellungenSauber, einstellungenTeilMischen, mitGoogleNamen, einstellungenFuerPerson, kalenderNamenVorgabe, type KalenderEinstellungen } from '@/lib/kalender/einstellungen';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type Datei = KalenderEinstellungen;
-const LEER = EINSTELLUNGEN_LEER;
-const sauber = einstellungenSauber;
 
 const istObjekt = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
@@ -35,7 +33,8 @@ export async function GET(req: Request) {
   const z = await kalenderZugang(req);
   if (!z) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   // iCloud je Person (06.10.): echte Kalendernamen anderer Personen nie (`einstellungenFuerPerson`).
-  return NextResponse.json(einstellungenFuerPerson(await mitGoogleNamen(sauber(await loadJson<Datei>('kalender-einstellungen'))), z.person));
+  // Vorgabe der Kalendernamen aus den Konten (14.10.) — ein gespeicherter Name gewinnt immer.
+  return NextResponse.json(einstellungenFuerPerson(await mitGoogleNamen(einstellungenSauber(await loadJson<Datei>('kalender-einstellungen'), await kalenderNamenVorgabe())), z.person));
 }
 
 export async function PUT(req: Request) {
@@ -46,8 +45,11 @@ export async function PUT(req: Request) {
   if (!istObjekt(body)) return NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 });
   if (body.teil !== undefined && !istObjekt(body.teil)) return NextResponse.json({ ok: false, error: '`teil` muss ein Objekt sein.' }, { status: 400 });
   const teil = body.teil as Record<string, unknown> | undefined;
+  // Fehlt ein Kalendername im Bestand, gilt die Vorgabe aus den Konten (14.10.) — so schreibt ein PUT dieselben Namen fest, die vorher galten.
+  const vorgabe = await kalenderNamenVorgabe();
+  const sauber = (d: Partial<Datei> | null) => einstellungenSauber(d, vorgabe);
   const next = await updateJson<Datei>('kalender-einstellungen', current => {
-    const jetzt = sauber(current ?? LEER);
+    const jetzt = sauber(current ?? null);
     return sauber(teil ? einstellungenTeilMischen(jetzt, teil) : { ...jetzt, ...body });
   });
   return NextResponse.json({ ok: true, ...next });

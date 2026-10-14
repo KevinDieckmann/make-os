@@ -241,8 +241,11 @@ describe('ZOE ≤ 20 Werkzeuge (Fragerunde Teil 1 Nr. 13)', () => {
 
 describe('Eine Quelle der Werkzeug-Beschreibungen', () => {
   it('die Agenten lesen dieselbe Stelle wie ZOE (abgeleitet, nicht abgeschrieben) — ohne Personen-Kürzel', async () => {
+    // Das Team der Instanz kommt aus den Konten (14.10.) — einmal lesen, dann rechnen alle Beschreibungen mit demselben Team.
+    await (await import('@/lib/zugang/konten')).ladeKonten();
     const { werkzeugDefs } = await import('@/lib/zoe/werkzeug-defs');
-    const { REGISTER_DEFS, agentenDef } = await import('@/lib/agenten/werkzeuge');
+    const { registerDefs, agentenDef } = await import('@/lib/agenten/werkzeuge');
+    const REGISTER_DEFS = registerDefs();
     const { WERKZEUGE } = await import('@/lib/zoe/werkzeuge');
     const quelle = werkzeugDefs();
     for (const [n, d] of REGISTER_DEFS) {

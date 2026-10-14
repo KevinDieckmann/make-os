@@ -163,7 +163,12 @@ describe('Einnahmen: planbar, einmalig, durchlaufend, geliehen', () => {
     expect(istRegelmaessig('Gehalt')).toBe(true);
     expect(istRegelmaessig('Aktien & Krypto')).toBe(false);
     expect(istRegelmaessig('Kredit erhalten')).toBe(false);
+    // Altbestand mit Vorname dazwischen zählt weiter (14.10.: gespeicherte Namen bleiben gültig); neu heißt sie ohne Namen.
     expect(artVon('Entnahme Kevin (Selbstständigkeit)')).toBe('planbar');
+    expect(artVon('Entnahme (Selbstständigkeit)')).toBe('planbar');
+    expect(artVon('Entnahme Lena (Selbstständigkeit)')).toBe('planbar');
+    expect(artVon('Selbstständigkeit')).toBe('planbar');
+    expect(artVon('Entnahme')).toBe('einmalig');
     expect(artVon('Kindergeld & Sozialleistung')).toBe('planbar');
     expect(artVon('Geschenk & Familie')).toBe('einmalig');
     expect(artVon('Verkauf privat')).toBe('einmalig');

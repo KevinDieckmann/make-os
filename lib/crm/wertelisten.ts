@@ -12,6 +12,7 @@
 import { ERGEBNISSE, KREIS_TAKT, type Kreis, type Ergebnis } from '@/lib/make-one/crm';
 import { VERLUSTGRUENDE, verlustgruende } from './pipeline';
 import type { Wertelisten } from './typen';
+import { kennungAusName, reiheKennung, type EventReihe } from './marke';
 
 export const KREISE: readonly Kreis[] = ['A', 'B', 'C', 'D'];
 /** Ein Wort je Kreis — dieselben wie in runden.ts KREIS_WAHL. */
@@ -56,7 +57,14 @@ export interface WertelistenVoll {
   kategorien: { wert: string; fest: boolean }[];
   /** Labels (28.09.) — nur eigene, keine festen. */
   labels: { wert: string; fest: boolean }[];
+  /**
+   * Reihen eigener Abende (14.10., Instanz-Daten): eigene (gespeichert, löschbar) und — als „fest“ — die aus dem Bestand bzw. der Betreiber-
+   * Instanz (`reihenDerInstanz`), die nicht gespeichert sind. `wert` = Name.
+   */
+  reihen: { wert: string; fest: boolean }[];
 }
+/** Grenzen einer Reihe in den Wertelisten. */
+export const REIHEN_MAX = 40;
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
 const schluessel = (s: string) => norm(s).toLowerCase().replace(/_/g, ' ');
@@ -88,7 +96,7 @@ const mitFest = (feste: readonly string[], eig: string[]) => [...feste.map(wert 
 export const eigeneVerlustgruende = (w?: Wertelisten | null): string[] => verlustgruende(w).slice(VERLUSTGRUENDE.length);
 
 /** Standard + Eigenes, so wie Oberfläche und Regeln es brauchen. */
-export function wertelistenVollstaendig(w?: Wertelisten | null): WertelistenVoll {
+export function wertelistenVollstaendig(w?: Wertelisten | null, instanzReihen: readonly EventReihe[] = []): WertelistenVoll {
   const kadenzTage = { ...KREIS_TAKT };
   for (const k of KREISE) {
     const v = w?.kadenzTage?.[k];
@@ -108,6 +116,10 @@ export function wertelistenVollstaendig(w?: Wertelisten | null): WertelistenVoll
     typen: mitFest(TYPEN_STANDARD, eigene(w?.typen, TYPEN_STANDARD)),
     kategorien: mitFest(KATEGORIEN_STANDARD, eigene(w?.kategorien, KATEGORIEN_STANDARD)),
     labels: mitFest([], eigene(w?.labels, [])),
+    reihen: [
+      ...instanzReihen.filter(r => !(w?.reihen ?? []).some(x => x.id === r.id)).map(r => ({ wert: r.name, fest: true })),
+      ...(w?.reihen ?? []).map(r => ({ wert: r.name, fest: false })),
+    ],
   };
 }
 
@@ -186,6 +198,32 @@ export function wertelistenPruefen(roh: unknown, alt?: Wertelisten | null): Prue
   liste('typen', WERT_MIN, WERT_MAX, new Set(TYPEN_STANDARD.map(schluessel)), 'Lead-Typ');
   liste('kategorien', WERT_MIN, WERT_MAX, new Set(KATEGORIEN_STANDARD.map(schluessel)), 'Kategorie');
   liste('labels', WERT_MIN, WERT_MAX, new Set<string>(), 'Label');
+
+  // Reihen (14.10.): Namen kommen als Liste (Strings oder { id?, name }); die Kennung bleibt bei gleichem Namen erhalten, neu entsteht
+  // sie aus dem Namen (`kennungAusName`, eindeutig). Gespeichert wird { id, name } — die Kennung steht danach an den Events.
+  if ('reihen' in roh) {
+    const v = roh.reihen;
+    if (v === null) delete neu.reihen;
+    else if (!Array.isArray(v)) fehler.push('Reihen: Liste erwartet.');
+    else if (v.length > REIHEN_MAX) fehler.push(`Reihen: höchstens ${REIHEN_MAX}.`);
+    else {
+      const alte = alt?.reihen ?? [];
+      const aus: { id: string; name: string }[] = [];
+      for (const x of v) {
+        const o: Record<string, unknown> = istObjekt(x) ? x : { name: x };
+        const name = norm(String(o.name ?? ''));
+        if (!name) continue;
+        if (name.length < WERT_MIN || name.length > WERT_MAX) { fehler.push(`Reihe „${name.slice(0, 20)}${name.length > 20 ? '…' : ''}“: ${WERT_MIN}–${WERT_MAX} Zeichen.`); continue; }
+        if (aus.some(r => schluessel(r.name) === schluessel(name))) continue;
+        const gleich = alte.find(r => schluessel(r.name) === schluessel(name));
+        let id = reiheKennung(o.id) ?? gleich?.id ?? kennungAusName(name);
+        if (!reiheKennung(id)) { fehler.push(`Reihe „${name.slice(0, 20)}“: braucht Buchstaben oder Ziffern.`); continue; }
+        for (let n = 2; aus.some(r => r.id === id); n++) id = `${kennungAusName(name).slice(0, 36)}-${n}`;
+        aus.push({ id, name });
+      }
+      if (aus.length) neu.reihen = aus; else delete neu.reihen;
+    }
+  }
 
   if ('kadenzTage' in roh) {
     const v = roh.kadenzTage;
