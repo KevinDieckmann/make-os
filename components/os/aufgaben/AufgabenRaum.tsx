@@ -23,7 +23,7 @@ import { nachOben } from '../Verlauf';
 import { useTasks } from '@/context/TasksContext';
 import { useSpace } from '@/hooks/useSpace';
 import { localDay } from '@/lib/zeit';
-import { baum, passtFilter, statusListe, bereichVonSpace, FILTER_STANDARD, sonstigeProjektId, istSonstigeProjekt, type AufgabenFilter, type FaelligFilter } from '@/lib/aufgaben/struktur';
+import { baum, passtFilter, statusListe, bereichVonSpace, wohinVorgabe, FILTER_STANDARD, sonstigeProjektId, istSonstigeProjekt, type AufgabenFilter, type FaelligFilter } from '@/lib/aufgaben/struktur';
 import { adresseLesen, aufgabenLink, alteAdresseUmleiten, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import type { Task } from '@/types/tasks';
 import { Seil } from '../seil/Seil';
@@ -168,10 +168,9 @@ export function AufgabenRaum() {
 
   const vorbelegt = raumId
     ? { spaceId: raumId, ...(projektId ? { projectId: projektId } : {}), ...(projektId && adresse.l ? { listeId: adresse.l } : {}) }
-    // Gemerkter Raum nur, wenn er zum Bereich passt (05.10.: die Selbstständigkeit steht im Privat-Bereich); sonst der erste Firmen-Space
-    // des Business-Bereichs bzw. Privat.
-    // Ohne Privat-Space (Konto „nur Business“, 09.10., E4 — der Server liefert ihn dann nicht) immer der erste Firmen-Space des Business.
-    : { spaceId: raumGemerkt && spaces.some(s => s.id === raumGemerkt && !s.archiv) && (adresse.bereich !== 'business' || bereichVonSpace(raumGemerkt) === 'business') ? raumGemerkt : adresse.bereich === 'business' || !spaces.some(s => s.id === 'privat') ? (spaces.find(s => s.art === 'firma' && s.bereich === 'business' && !s.archiv)?.id ?? 'kdv') : 'privat' };
+    // B16 (14.10.): der AKTIVE Bereich (Adresse, sonst die Wahl im Kopf) entscheidet — gemerkter Raum nur, wenn er zu ihm gehört (die
+    // Selbstständigkeit steht im Privat-Bereich); ohne Privat-Space (Konto „nur Business“) immer Business. Regel: `wohinVorgabe`.
+    : { spaceId: wohinVorgabe(spaces, adresse.bereich ?? bereichGemerkt, raumGemerkt) };
 
   const filterZeile = raum && (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '0 0 12px' }}>
