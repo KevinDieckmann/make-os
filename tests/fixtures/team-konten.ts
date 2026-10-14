@@ -15,3 +15,12 @@ export function teamWieKonten(erste = 'kevin', zweite = 'malin'): void {
 
 /** Kalendernamen einer Instanz mit den Konten „kevin“ und „malin“ — wie die Vorgabe sie aus den Konten bildet bzw. wie sie gespeichert sind. */
 export const KALENDER_WIE_LIVE = { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Gemeinsam' } as const;
+
+/**
+ * Konten wie auf der Live-Instanz (14.10., Abnahme-Reste 2): Speichernamen `kevin`/`malin`, Vornamen Kevin/Malin. Der volle Name der ersten
+ * Person steht nur für den AppleScript-Altweg (Apples Vorgabe-Kalender trägt den Namen des Kontos) — dort stand er bis 14.10. fest im Code.
+ */
+export const KONTEN_WIE_LIVE = [
+  { speicher: 'kevin', name: 'Kevin Dieckmann', rolle: 'inhaber', haushalt: 'h', angelegt: '2026-01-01' },
+  { speicher: 'malin', name: 'Malin', rolle: 'mitglied', haushalt: 'h', angelegt: '2026-01-02' },
+] as const;

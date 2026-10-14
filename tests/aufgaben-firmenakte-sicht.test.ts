@@ -265,3 +265,125 @@ describe('Schreiben: Konto „nur Business“ → 404, wie „nur ich“', () =>
     expect(lecks(JSON.stringify(m ?? {}))).toEqual([]);
   });
 });
+
+// ── Gründungsfahrplan in der Planung (14.10., Abnahme-Reste 2) ─────────────────────────────────────────────────────────────────────────────
+// Befund: der Partner („nur Business“) sah die Aufgaben des Fahrplans nicht mehr (B17), aber noch dessen Ziel und Meilensteine — in Planung,
+// Seil, Lichtfäden und der Brain-Kugel. Jetzt dieselbe Regel (`firmenAkteAusgeblendetFuer`) für Ziele und Meilensteine, serverseitig.
+describe('Planung: Ziel und Meilensteine des Gründungsfahrplans nur mit Zugang zur Firmen-Akte', () => {
+  const PLAN = { ziel: 'FAHRPLAN-ZIEL-GRUENDUNG', ms: 'FAHRPLAN-MEILENSTEIN-REGISTER', amZiel: 'FAHRPLAN-MEILENSTEIN-AM-ZIEL' };
+  const BIZ_ZIEL = 'PLANUNG-BUSINESS-ZIEL-SICHTBAR', BIZ_MS = 'PLANUNG-BUSINESS-MEILENSTEIN-SICHTBAR';
+  const planLecks = (text: string) => Object.entries(PLAN).filter(([, m]) => text.includes(m)).map(([n]) => n);
+  const GID = 'g-22222222-2222-4222-8222-222222222222';
+  let FZ = '', FM = '';
+  const stand = async () => JSON.stringify([await db.loadJson('ziele'), await db.loadJson('meilensteine')]);
+
+  beforeAll(async () => {
+    const { fahrplanZielId, fahrplanMeilensteinId } = await import('@/lib/gesellschaften/fahrplan');
+    FZ = fahrplanZielId(GID); FM = fahrplanMeilensteinId(GID, 'register');
+    const jahr = Number(HEUTE.slice(0, 4));
+    const bald = (await import('@/lib/kalender/zeit')).tagPlus(HEUTE, 30);
+    await db.saveJson('ziele', {
+      tag: [], woche: [], monat: [], quartal: [], fokus: {},
+      jahr: [
+        { id: FZ, titel: PLAN.ziel, fortschritt: 0, space: 'business', einheit: 'ug', jahr },
+        { id: 'z-biz-plan', titel: BIZ_ZIEL, fortschritt: 0, space: 'business', einheit: 'ug', jahr },
+      ],
+    });
+    await db.saveJson('meilensteine', { meilensteine: [
+      { id: FM, titel: PLAN.ms, space: 'business', bereich: 'business', einheit: 'ug', faellig: bald, fortschritt: 0, erledigt: false, zielId: FZ, rang: 1 },
+      { id: 'ms-frei-am-fahrplan', titel: PLAN.amZiel, space: 'business', bereich: 'business', faellig: bald, fortschritt: 0, erledigt: false, zielId: FZ, rang: 2 },
+      { id: 'ms-biz-plan', titel: BIZ_MS, space: 'business', bereich: 'business', faellig: bald, fortschritt: 0, erledigt: false, zielId: 'z-biz-plan', rang: 3 },
+    ] });
+  }, 60_000);
+
+  it('die reine Regel erkennt Ziel, Abgeleitetes und Meilensteine des Fahrplans — die Kennungen bildet nur lib/gesellschaften/fahrplan.ts', async () => {
+    const R = await import('@/lib/aufgaben/firmenakte-sicht');
+    const { meilensteinId } = await import('@/lib/planung/kaskade');
+    expect(R.istFahrplanZiel({ id: FZ })).toBe(true);
+    expect(R.istFahrplanZiel({ id: `${FZ}~quartal`, abgeleitetVon: FZ })).toBe(true);
+    expect(R.istFahrplanZiel({ id: 'z-biz-plan' })).toBe(false);
+    expect(R.istFahrplanMeilenstein({ id: FM })).toBe(true);
+    expect(R.istFahrplanMeilenstein({ id: 'ms-x', zielId: FZ })).toBe(true);
+    expect(R.istFahrplanMeilenstein({ id: meilensteinId(FZ), abgeleitetVon: FZ })).toBe(true);
+    expect(R.istFahrplanMeilenstein({ id: 'ms-biz-plan', zielId: 'z-biz-plan' })).toBe(false);
+    expect(R.istFahrplanMeilenstein(null)).toBe(false);
+  });
+
+  it('Ziele, Meilensteine, Seil, Lichtfäden, Brain-Kugel, Detail, Kalender: Partner nichts — Inhaberin sieht es', async () => {
+    const wege: [string, () => Promise<{ GET: H }>][] = [
+      ['/api/state/ziele', () => import('@/app/api/state/ziele/route') as never],
+      ['/api/state/ziele?space=business', () => import('@/app/api/state/ziele/route') as never],
+      ['/api/state/meilensteine', () => import('@/app/api/state/meilensteine/route') as never],
+      ['/api/seil?ebene=jahr&bereich=business', () => import('@/app/api/seil/route') as never],
+      ['/api/seil?ebene=aufgaben', () => import('@/app/api/seil/route') as never],
+      ['/api/lichtfaeden', () => import('@/app/api/lichtfaeden/route') as never],
+      ['/api/brain/punkte', () => import('@/app/api/brain/punkte/route') as never],
+      [`/api/planung/meilenstein?id=${FM}`, () => import('@/app/api/planung/meilenstein/route') as never],
+      ['/api/kalender', () => import('@/app/api/kalender/route') as never],
+      ['/api/agenten', () => import('@/app/api/agenten/route') as never],
+    ];
+    for (const [pfad, laden] of wege) {
+      const { GET } = await laden();
+      const p = await rufe(GET, pfad, 'partner');
+      expect(planLecks(p.text), `${pfad} (${p.status}) ${p.text.slice(0, 160)}`).toEqual([]);
+    }
+    const { GET: ziele } = (await import('@/app/api/state/ziele/route')) as unknown as { GET: H };
+    expect((await rufe(ziele, '/api/state/ziele', 'partner')).text).toContain(BIZ_ZIEL);
+    const { GET: ms } = (await import('@/app/api/state/meilensteine/route')) as unknown as { GET: H };
+    expect((await rufe(ms, '/api/state/meilensteine', 'partner')).text).toContain(BIZ_MS);
+    // Gegenprobe: Inhaberin und volles Mitglied sehen Ziel und Meilensteine (Ziele, Meilensteine, Seil, Brain-Kugel).
+    for (const wer of ['inhaberin', 'zweite']) {
+      expect(planLecks((await rufe(ziele, '/api/state/ziele', wer)).text), wer).toEqual(['ziel']);
+      expect(planLecks((await rufe(ms, '/api/state/meilensteine', wer)).text).sort(), wer).toEqual(['amZiel', 'ms']);
+    }
+    const { GET: seil } = (await import('@/app/api/seil/route')) as unknown as { GET: H };
+    expect(planLecks((await rufe(seil, '/api/seil?ebene=jahr', 'inhaberin')).text).length).toBeGreaterThan(0);
+    const { GET: kugel } = (await import('@/app/api/brain/punkte/route')) as unknown as { GET: H };
+    expect(planLecks((await rufe(kugel, '/api/brain/punkte', 'inhaberin')).text).length).toBeGreaterThan(0);
+  });
+
+  it('ZOE und Heads (Jahresziele im Kontext) und die Lesestelle der Meilensteine: Partner nichts', async () => {
+    const { jahreszieleFuer, zieleFuerHead } = await import('@/lib/planung/jahresziele-sicht');
+    expect(planLecks(JSON.stringify(await jahreszieleFuer({ privat: false, person: 'partner' })))).toEqual([]);
+    expect(JSON.stringify(await jahreszieleFuer({ privat: false, person: 'partner' }))).toContain(BIZ_ZIEL);
+    expect(planLecks(JSON.stringify(await jahreszieleFuer({ privat: true, person: 'inhaberin' })))).toEqual(['ziel']);
+    expect(planLecks(JSON.stringify(await zieleFuerHead({ person: 'partner', privat: false })))).toEqual([]);
+    const { meilensteineSichtbarFuer } = await import('@/lib/planung/eigene-ziele-sicht-server');
+    const alle = (await db.loadJson<{ meilensteine: { id: string; zielId?: string }[] }>('meilensteine'))!.meilensteine;
+    expect((await meilensteineSichtbarFuer(alle, 'partner')).map(m => m.id)).toEqual(['ms-biz-plan']);
+    expect((await meilensteineSichtbarFuer(alle, 'inhaberin')).length).toBe(3);
+    expect((await meilensteineSichtbarFuer(alle, null)).length).toBe(3);
+  });
+
+  it('Schreiben: ändern, löschen, mit seiner Kennung anlegen, an sein Ziel hängen → 404; der Bestand bleibt bit-gleich', async () => {
+    const Z = (await import('@/app/api/state/ziele/route')) as unknown as { PATCH: H; GET: H };
+    const M = (await import('@/app/api/state/meilensteine/route')) as unknown as { PATCH: H; PUT: H };
+    const vorher = await stand();
+    const jahr = Number(HEUTE.slice(0, 4));
+    const faelle: [string, H, string, unknown][] = [
+      ['Fahrplan-Ziel löschen', Z.PATCH, '/api/state/ziele', { horizont: 'jahr', ops: [{ op: 'delete', id: FZ }] }],
+      ['Fahrplan-Ziel ändern', Z.PATCH, '/api/state/ziele', { horizont: 'jahr', ops: [{ op: 'upsert', eintrag: { id: FZ, titel: 'neu', fortschritt: 0, space: 'business', jahr } }] }],
+      ['mit Fahrplan-Kennung anlegen', Z.PATCH, '/api/state/ziele', { horizont: 'jahr', ops: [{ op: 'upsert', eintrag: { id: `${FZ}x`, titel: 'neu', fortschritt: 0, space: 'business', jahr } }] }],
+      ['Fahrplan-Meilenstein löschen', M.PATCH, '/api/state/meilensteine', { ops: [{ op: 'delete', id: FM }] }],
+      ['Fahrplan-Meilenstein ändern', M.PATCH, '/api/state/meilensteine', { ops: [{ op: 'teil', id: FM, felder: { titel: 'neu' } }] }],
+      ['eigenen Meilenstein an das Fahrplan-Ziel hängen', M.PATCH, '/api/state/meilensteine', { ops: [{ op: 'teil', id: 'ms-biz-plan', felder: { zielId: FZ } }] }],
+    ];
+    for (const [name, h, pfad, body] of faelle) {
+      const r = await rufe(h, pfad, 'partner', 'PATCH', body);
+      expect(r.status, `${name}: ${r.text.slice(0, 200)}`).toBe(404);
+      expect(planLecks(r.text), name).toEqual([]);
+    }
+    // Altweg PUT: die Fahrplan-Meilensteine kennt der Partner nicht — sie bleiben; nennt der Körper einen davon → 404.
+    const put = await rufe(M.PUT, '/api/state/meilensteine', 'partner', 'PUT', { meilensteine: [{ id: FM, titel: 'neu', space: 'business', faellig: HEUTE, fortschritt: 0, erledigt: false }] });
+    expect(put.status, put.text).toBe(404);
+    expect(await stand()).toBe(vorher);
+    // Gegenprobe: im Business schreibt der Partner weiter; die Inhaberin ändert das Fahrplan-Ziel wie bisher.
+    const ok = await rufe(M.PATCH, '/api/state/meilensteine', 'partner', 'PATCH', { ops: [{ op: 'teil', id: 'ms-biz-plan', felder: { fortschritt: 10 } }] });
+    expect(ok.status, ok.text).toBe(200);
+    expect(planLecks(ok.text)).toEqual([]);
+    const ms = (await db.loadJson<{ meilensteine: { id: string }[] }>('meilensteine'))!.meilensteine.map(m => m.id).sort();
+    expect(ms).toEqual([FM, 'ms-biz-plan', 'ms-frei-am-fahrplan'].sort());
+    const inh = await rufe(Z.PATCH, '/api/state/ziele', 'inhaberin', 'PATCH', { horizont: 'jahr', ops: [{ op: 'upsert', eintrag: { id: FZ, titel: `${PLAN.ziel} geprüft`, fortschritt: 0, space: 'business', einheit: 'ug', jahr } }] });
+    expect(inh.status, inh.text).toBe(200);
+  });
+});

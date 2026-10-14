@@ -167,9 +167,9 @@ const NAMEN_DRITTER = new RegExp([
 const NAMEN_AUSNAHMEN: Record<string, string> = {
   'homepage/pruefen.mjs': 'Sperrliste der Homepage-Prüfung (Paket Homepage) — dort auf Teilstücke umstellen',
 };
-/** Kevins geprüfter Rechenkern: zwei Beschriftungen im Zahlungskalender bleiben (nur mit Kevins Wort ändern). */
+/** Kevins geprüfter Rechenkern: eine Beschriftung im Zahlungskalender bleibt (nur mit Kevins Wort ändern; die Raten-Zeile heißt seit 14.10. neutral). */
 const ERLAUBTE_STELLEN: Record<string, string[]> = {
-  'lib/finanzen/rechenkern.ts': ["'" + 'Bj' + "örn-Rate'", "'Eingang One" + " Banking'"],
+  'lib/finanzen/rechenkern.ts': ["'Eingang One" + " Banking'"],
   'tests/finanzplan-rechenkern.test.ts': ["'Eingang One" + " Banking'"],
 };
 

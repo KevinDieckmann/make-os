@@ -42,7 +42,7 @@ export async function haushaltsPersonen(): Promise<Person[]> {
 }
 
 async function planung(heute: string, betrachter: string): Promise<PlanungErgebnis> {
-  const [ziele, ms, aufgaben0, lesbar, ohneAkte] = await Promise.all([
+  const [ziele0, ms0, aufgaben0, lesbar, ohneAkte] = await Promise.all([
     // Alle Ziele des Haushalts MIT Farbe — dieselbe Menge und Farbe wie GET /api/state/ziele (lib/planung/ziel-farben-server.ts).
     sicher(async () => (await import('@/lib/planung/ziel-farben-server')).haushaltsZiele(), []),
     sicher(loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'), null),
@@ -51,7 +51,11 @@ async function planung(heute: string, betrachter: string): Promise<PlanungErgebn
     // Firmen-Akte (12.10.): ohne Zugang (`rechtZugangFuer`) gar keine ihrer Aufgaben als Strang (auch kein „Belegt“). Unlesbar → ebenso.
     sicher(async () => (await import('@/lib/aufgaben/sicht')).firmenAkteAusgeblendetFuer(betrachter), true),
   ]);
-  const aufgaben = aufgaben0 && ohneAkte ? (await import('@/lib/aufgaben/firmenakte-sicht')).ohneFirmenAkte(aufgaben0) : aufgaben0;
+  const akte = await import('@/lib/aufgaben/firmenakte-sicht');
+  const aufgaben = aufgaben0 && ohneAkte ? akte.ohneFirmenAkte(aufgaben0) : aufgaben0;
+  // Gründungsfahrplan (14.10., Abnahme-Reste 2): ohne Zugang zur Firmen-Akte auch sein Ziel und seine Meilensteine nicht (kein „Belegt“).
+  const ziele = ohneAkte ? akte.zieleOhneFahrplan(ziele0) : ziele0;
+  const ms = ms0 && ohneAkte ? { ...ms0, meilensteine: akte.meilensteineOhneFahrplan(ms0.meilensteine ?? []) } : ms0;
   // Eigene Ziele der anderen Person (08.10., Kevin): nicht geteilt → gar nicht erst hinein (kein „Belegt“, auch ihre Meilensteine
   // nicht); geteilt → wie bisher als privat (Knoten weg, Stränge „Belegt“, `fuerBetrachter`).
   const verborgen = verborgeneZielIds(ziele, lesbar);

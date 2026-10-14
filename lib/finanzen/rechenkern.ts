@@ -863,7 +863,8 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, d.annahmen.gehaltTag ?? 28, 'Gehälter inkl. Arbeitgeber', -(u.personal ?? u.kevin + u.malin + u.unterstuetzung), 'ug');
     add(m, 1, 'Sachkosten', -u.sach, 'ug');
     add(m, 10, 'Umsatzsteuer an Finanzamt', -u.ustZahlung, 'ug');
-    add(m, 1, 'Björn-Rate', -u.bjoern, 'kdv');
+    // 14.10. (Kevin: „neutral benennen“): nur der Anzeigename — Kennung `ug.bjoern`/`u.bjoern` bleibt (gespeicherte Pläne, Handwerte).
+    add(m, 1, 'Partnerdarlehen-Rate', -u.bjoern, 'kdv');
     add(m, 31, `Ertragsteuer ${UG_KURZ}`, -u.steuer, 'ug');
     // 14.10. (Kevins Entscheidung): nur die Zeilen-NAMEN der Holding aus lib/einheiten.ts — Zahlen und Formeln unverändert.
     add(m, 31, `Ertragsteuer ${finanzOrtName('kdv')}`, -u.kdvSt.zahlung, 'kdv');

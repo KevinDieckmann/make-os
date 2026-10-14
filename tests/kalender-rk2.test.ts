@@ -86,10 +86,12 @@ describe('#72 frei, aber nicht gesetzlich · Feiertage NRW bis 2030', () => {
 });
 
 describe('#69 zählt als belegt', () => {
-  const e = { kalender: { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Gemeinsam' } };
+  // Vornamen aus den Konten (14.10., zur Laufzeit dazugelegt) — wie auf der Live-Instanz.
+  const e = { kalender: { kevin: 'Privat Kevin', malin: 'Privat Malin', beide: 'Gemeinsam' }, vornamen: { kevin: 'Kevin', malin: 'Malin' } };
   it('zugeordnet zählt, nicht zugeordnet nicht — Schalter gewinnt', () => {
     expect(zuordnung(e, 'Privat Kevin')).toBe('kevin');
     expect(zuordnung(e, 'Kevin Dieckmann')).toBe('kevin');
+    expect(zuordnung({ kalender: e.kalender }, 'Kevin Dieckmann')).toBeNull();
     expect(zuordnung(e, 'Kalender')).toBeNull();
     expect(zaehltAlsBelegt(e, 'Gemeinsam')).toBe(true);
     expect(zaehltAlsBelegt(e, 'Kalender')).toBe(false);

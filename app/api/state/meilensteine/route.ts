@@ -26,7 +26,9 @@ import { zieleFuerBezug } from '@/lib/planung/bezuege-server';
 import { meilensteineFuerBetrachter, meilensteinVerborgen } from '@/lib/planung/eigene-ziele-sicht';
 import { verborgeneZieleFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
-import { konflikteOhnePrivat, meilensteinImPrivat, meilensteineOhnePrivat, nurBereich, privatBehalten, privatSchreibPruefen, privatStatus } from '@/lib/planung/bereich-sicht';
+import { PLANUNG_NICHT_GEFUNDEN, konflikteOhnePrivat, meilensteinImPrivat, meilensteineOhnePrivat, nurBereich, privatBehalten, privatSchreibPruefen, privatStatus } from '@/lib/planung/bereich-sicht';
+import { fahrplanAusgeblendetFuer } from '@/lib/planung/bereich-sicht-server';
+import { istFahrplanMeilenstein, meilensteineOhneFahrplan } from '@/lib/aufgaben/firmenakte-sicht';
 import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
@@ -57,19 +59,24 @@ const VERBORGEN = 'Dieser Meilenstein hängt an einem eigenen Ziel einer anderen
 // EINE Konto-Sicht (09.10., E4-Rest — Kevin: „Ja, Privates bleibt privat“): ein Konto „nur Business“ bekommt Meilensteine des Privat-Bereichs
 // (`meilensteinSpace` — Privat, Gesundheit, die Selbstständigkeit) in keiner Antwort (auch nicht im 409); Vorhandenes dort ändern/löschen → 404,
 // Neues/Verschobenes dorthin → 403, der Altweg PUT behält sie in ihrer gespeicherten Fassung (lib/planung/bereich-sicht.ts).
-const sichtbar = (liste: readonly Meilenstein[] | undefined, verborgen: ReadonlySet<string>, ohnePrivat = false) => {
+// Gründungsfahrplan (14.10., Abnahme-Reste 2): ohne Zugang zur Firmen-Akte (z. B. Konto „nur Business“) gibt es seine Meilensteine nicht —
+// in keiner Antwort (auch nicht im 409), ändern/löschen/mit seiner Kennung anlegen → 404, der Altweg PUT behält sie (lib/aufgaben/firmenakte-sicht.ts).
+const ohneAkteListe = (l: Meilenstein[], ohneAkte: boolean) => (ohneAkte ? meilensteineOhneFahrplan(l) : l);
+const sichtbar = (liste: readonly Meilenstein[] | undefined, verborgen: ReadonlySet<string>, ohnePrivat = false, ohneAkte = false) => {
   const l = meilensteineFuerBetrachter(Array.isArray(liste) ? liste : [], verborgen);
-  return mitStand(ohnePrivat ? meilensteineOhnePrivat(l) : l);
+  return mitStand(ohneAkteListe(ohnePrivat ? meilensteineOhnePrivat(l) : l, ohneAkte));
 };
 /** Konto „nur Business“? Systemlauf → nein; Konten unlesbar → ja (fail-closed). */
 const ohnePrivatFuer = (req: Request) => privatAusgeblendetFuer(personStreng(req)).catch(() => true);
+/** Ohne Zugang zur Firmen-Akte (Gründungsfahrplan, 14.10.)? Systemlauf → nein; unlesbar → ja. */
+const ohneAkteFuer = (req: Request) => fahrplanAusgeblendetFuer(personStreng(req));
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
-  const [f, verborgen, ohnePrivat] = await Promise.all([loadJson<MeilensteinFile>('meilensteine'), verborgeneZieleFuer(personStreng(req)), ohnePrivatFuer(req)]);
+  const [f, verborgen, ohnePrivat, ohneAkte] = await Promise.all([loadJson<MeilensteinFile>('meilensteine'), verborgeneZieleFuer(personStreng(req)), ohnePrivatFuer(req), ohneAkteFuer(req)]);
   // Jede Zeile trägt ihren Stand — Änderungen kommen als PATCH mit diesem Stand zurück (28.09.).
   // Sicht Privat · Business (10.10.): mit `?space=` nur der Bereich der Sicht (`meilensteinSpace`, lib/planung/bereich-sicht.ts).
-  return NextResponse.json({ meilensteine: nurBereich(sichtbar(f?.meilensteine, verborgen, ohnePrivat), sichtDerAnfrage(req), meilensteinImPrivat) });
+  return NextResponse.json({ meilensteine: nurBereich(sichtbar(f?.meilensteine, verborgen, ohnePrivat, ohneAkte), sichtDerAnfrage(req), meilensteinImPrivat) });
 }
 
 export async function PUT(req: Request) {
@@ -83,13 +90,18 @@ export async function PUT(req: Request) {
   // nennt der Körper einen davon, ist das ein Schreiben auf Fremdes → 403.
   const verborgen = await verborgeneZieleFuer(personStreng(req));
   const ohnePrivat = await ohnePrivatFuer(req);
-  const gespeichert = verborgen.size || ohnePrivat ? (await loadJson<MeilensteinFile>('meilensteine'))?.meilensteine : [];
+  const ohneAkte = await ohneAkteFuer(req);
+  const gespeichert = verborgen.size || ohnePrivat || ohneAkte ? (await loadJson<MeilensteinFile>('meilensteine'))?.meilensteine : [];
   const fremd = (Array.isArray(gespeichert) ? gespeichert : []).filter(m => meilensteinVerborgen(m, verborgen));
   if (fremd.some(m => gesaeubert.some(x => x.id === m.id))) return NextResponse.json({ ok: false, error: VERBORGEN }, { status: 403 });
   // Konto „nur Business“ (09.10.): die Meilensteine des Privat-Bereichs kennt es nicht — sie bleiben stehen; nennt der Körper einen davon → 404,
   // einen neuen dort → 403.
-  const p = ohnePrivat ? privatBehalten(Array.isArray(gespeichert) ? gespeichert : [], gesaeubert, meilensteinImPrivat) : { liste: gesaeubert };
-  if ('fehler' in p) return NextResponse.json({ ok: false, error: p.fehler }, { status: privatStatus(p.fehler) ?? 403 });
+  const p0 = ohnePrivat ? privatBehalten(Array.isArray(gespeichert) ? gespeichert : [], gesaeubert, meilensteinImPrivat) : { liste: gesaeubert };
+  if ('fehler' in p0) return NextResponse.json({ ok: false, error: p0.fehler }, { status: privatStatus(p0.fehler) ?? 403 });
+  // Gründungsfahrplan (14.10.): kennt das Konto nicht — bleibt stehen; nennt der Körper einen davon (oder einen neuen mit seiner Kennung) → 404.
+  const p1 = ohneAkte ? privatBehalten((Array.isArray(gespeichert) ? gespeichert : []).filter(m => !p0.liste.some(x => x.id === m.id)), p0.liste, istFahrplanMeilenstein) : p0;
+  if ('fehler' in p1) return NextResponse.json({ ok: false, error: PLANUNG_NICHT_GEFUNDEN }, { status: 404 });
+  const p = p1;
   const behalten = [...p.liste, ...fremd.filter(m => !p.liste.some(x => x.id === m.id))];
   // Kette (01.10.): Verweise ins Leere fallen weg (die Liste ist ja gerade DER Bestand), Kreise und zu viele Vorgänger lehnt der Weg ab.
   const sauber = ohneToteVerweise(behalten).liste;
@@ -109,7 +121,7 @@ export async function PUT(req: Request) {
   // Meilenstein ↔ Aufgaben (30.09.): jeder Meilenstein hat seine Liste im Aufgaben-Bestand (idempotent).
   await meilensteinStrukturSichern(null, { person: personStreng(req) });
   const l = meilensteineFuerBetrachter(next.meilensteine, verborgen);
-  return NextResponse.json({ ok: true, meilensteine: ohnePrivat ? meilensteineOhnePrivat(l) : l });
+  return NextResponse.json({ ok: true, meilensteine: ohneAkteListe(ohnePrivat ? meilensteineOhnePrivat(l) : l, ohneAkte) });
 }
 
 /**
@@ -127,6 +139,7 @@ export async function PATCH(req: Request) {
   // Eigene Ziele nur geteilt (08.10.): Änderungen an verborgenen Meilensteinen (Altbestand) → 403, nichts geschrieben.
   const verborgen = await verborgeneZieleFuer(personStreng(req));
   const ohnePrivat = await ohnePrivatFuer(req);
+  const ohneAkte = await ohneAkteFuer(req);
   if (verborgen.size) {
     const fremd = new Set(((await loadJson<MeilensteinFile>('meilensteine'))?.meilensteine ?? []).filter(m => meilensteinVerborgen(m, verborgen)).map(m => m.id));
     if (ops.some(o => fremd.has(o.op === 'upsert' ? o.eintrag?.id ?? '' : o.id ?? ''))) return NextResponse.json({ ok: false, error: VERBORGEN }, { status: 403 });
@@ -144,6 +157,8 @@ export async function PATCH(req: Request) {
       // über dieselbe Säuberung wie der Schreibweg).
       const privat = ohnePrivat ? privatSchreibPruefen(liste, o, meilensteinImPrivat, (alt, felder) => sauberListe([{ ...alt, ...felder }])[0] ?? null) : null;
       if (privat) return privat;
+      // Gründungsfahrplan ohne Zugang zur Firmen-Akte (14.10.): vorhanden, mit seiner Kennung neu oder an sein Ziel gehängt — gibt es nicht (404).
+      if (ohneAkte && privatSchreibPruefen(liste, o, istFahrplanMeilenstein, (alt, felder) => sauberListe([{ ...alt, ...felder }])[0] ?? null)) return PLANUNG_NICHT_GEFUNDEN;
       const ids = new Set(liste.map(m => m.id));
       const neu = new Set(o.filter(x => x.op === 'upsert' && !ids.has(x.eintrag!.id)).map(x => x.eintrag!.id)).size;
       if (neu && liste.length + neu > GRENZE) return `Abgelehnt: höchstens ${GRENZE} Meilensteine.`;
@@ -158,8 +173,9 @@ export async function PATCH(req: Request) {
   if (!r.ok) {
     const aktuell = await loadJson<MeilensteinFile>('meilensteine');
     const status = privatStatus(r.fehler) ?? (r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler === BEREICH_GETRENNT || r.fehler === ZIEL_FEHLT ? 400 : r.konflikte?.length || r.fehler?.startsWith('Abgelehnt') ? 409 : 400);
-    const konflikte = ohnePrivat ? konflikteOhnePrivat(r.konflikte ?? [], meilensteinImPrivat) : (r.konflikte ?? []);
-    return NextResponse.json({ ok: false, error: r.fehler, konflikte, meilensteine: sichtbar(aktuell?.meilensteine, verborgen, ohnePrivat) }, { status });
+    const k0 = ohnePrivat ? konflikteOhnePrivat(r.konflikte ?? [], meilensteinImPrivat) : (r.konflikte ?? []);
+    const konflikte = ohneAkte ? konflikteOhnePrivat(k0, istFahrplanMeilenstein) : k0;
+    return NextResponse.json({ ok: false, error: r.fehler, konflikte, meilensteine: sichtbar(aktuell?.meilensteine, verborgen, ohnePrivat, ohneAkte) }, { status });
   }
   // Meilenstein ↔ Aufgaben (30.09.): neue/geänderte bekommen ihre Liste (Space, Titel, Reihenfolge nachgezogen), gelöschte
   // archivieren ihre Liste (Aufgaben bleiben; kommt der Meilenstein zurück, wird sie wieder aktiv). Ziele ziehen nach.
@@ -170,5 +186,5 @@ export async function PATCH(req: Request) {
   if (upserts.length) await meilensteinStrukturSichern(upserts, { person });
   if (weg.length) await meilensteinListenArchivieren(weg, { person });
   await zieleNachziehen(r.next?.meilensteine ?? []);
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, meilensteine: sichtbar(r.next?.meilensteine, verborgen, ohnePrivat) });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, meilensteine: sichtbar(r.next?.meilensteine, verborgen, ohnePrivat, ohneAkte) });
 }

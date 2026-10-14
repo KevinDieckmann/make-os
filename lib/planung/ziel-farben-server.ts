@@ -14,13 +14,19 @@ import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { BEIDE, OHNE_FARBE, zielFarben } from '@/lib/lichtfaeden/modell';
 import { ZIEL_HORIZONTE, type Ziel, type ZielHorizont, type ZieleDatei } from './typen';
+import { titelNachRegel } from './kaskade';
+import { localDay } from '@/lib/zeit';
 
 /** Ein Ziel des Haushalts mit Herkunft und Farbe. `person` = BEIDE (gemeinsamer Bestand) oder der Speichername. */
 export interface HaushaltsZiel extends Ziel { person: string; horizont: ZielHorizont; farbe: string }
 
 const sicher = async <T>(p: () => Promise<T>, sonst: T): Promise<T> => { try { return await p(); } catch { return sonst; } };
 
-/** Alle Ziele aller Horizonte des Haushalts — die feste Eingabemenge der Farbregel. */
+/**
+ * Alle Ziele aller Horizonte des Haushalts — die feste Eingabemenge der Farbregel. Titel abgeleiteter Ziele zur Anzeige nach der geltenden
+ * Regel (14.10., Abnahme-Reste 2): DIESELBE Funktion wie GET /api/state/ziele (`titelNachRegel`, lib/planung/kaskade.ts) — damit zeigen Seil,
+ * Lichtfäden, Brain-Kugel und Fluss denselben Titel. Lesen schreibt nicht (gespeichert wird der neue Titel erst über die Kaskade).
+ */
 async function zieleLaden(): Promise<Omit<HaushaltsZiel, 'farbe'>[]> {
   const h = await sicher(() => haushaltDesInhabers(), null);
   const personen = h ? await sicher(() => kontenDesHaushalts(h), []) : [];
@@ -29,7 +35,10 @@ async function zieleLaden(): Promise<Omit<HaushaltsZiel, 'farbe'>[]> {
     Promise.all(personen.map(k => sicher(() => loadJson<ZieleDatei>(speicherFuer('ziele-eigen', k.speicher)), null).then(d => ({ person: k.speicher, d })))),
   ]);
   const aus: Omit<HaushaltsZiel, 'farbe'>[] = [];
-  const dazu = (d: ZieleDatei | null, person: string) => {
+  const jahr = Number(localDay().slice(0, 4));
+  const dazu = (d0: ZieleDatei | null, person: string) => {
+    let d = d0;
+    try { if (d0 && typeof d0 === 'object') d = titelNachRegel(d0, jahr); } catch { /* beschädigte Form: Titel wie gespeichert */ }
     for (const horizont of ZIEL_HORIZONTE) for (const z of Array.isArray(d?.[horizont]) ? d![horizont] : []) if (z && typeof z.id === 'string') aus.push({ ...z, person, horizont });
   };
   dazu(gemeinsam, BEIDE);

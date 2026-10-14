@@ -289,7 +289,7 @@ export async function agentenAntwort(person: string, seit: string, space: SichtB
 
   // Jahresziele über die EINE Lesestelle — dieselbe, aus der ZOE und die Heads sie im Kontext bekommen (Durchstich 09.10.).
   const { jahreszieleFuer } = await import('@/lib/planung/jahresziele-sicht');
-  const ziele: Ueberblick['ziele'] = (await jahreszieleFuer({ privat: sicht.vollesMitglied })).filter(z => !space || z.bereich === space).map(z => ({ id: z.id, titel: z.titel, fortschritt: z.fortschritt, link: WEG.ziel(z.id) }));
+  const ziele: Ueberblick['ziele'] = (await jahreszieleFuer({ privat: sicht.vollesMitglied, person })).filter(z => !space || z.bereich === space).map(z => ({ id: z.id, titel: z.titel, fortschritt: z.fortschritt, link: WEG.ziel(z.id) }));
 
   const teile = [
     passiert.length ? `${passiert.length} ${passiert.length === 1 ? 'Ergebnis' : 'Ergebnisse'} seit deinem letzten Besuch` : 'Seit deinem letzten Besuch nichts Neues',

@@ -167,7 +167,9 @@ async function setzeMeilenstein(input: Record<string, unknown>, _origin?: string
     const [{ privatAusgeblendetFuer }, { zieleOhnePrivat }] = await Promise.all([import('@/lib/zugang/konto-sicht-server'), import('@/lib/planung/bereich-sicht')]);
     const ohnePrivat = await privatAusgeblendetFuer(person).catch(() => true);
     const roh = ZIEL_HORIZONTE.flatMap(h => (Array.isArray(zd?.[h]) ? zd![h] : []).filter(z => !z.abgeleitetVon));
-    const alle = ohnePrivat ? zieleOhnePrivat(roh) : roh;
+    // Gründungsfahrplan (14.10., Abnahme-Reste 2): ohne Zugang zur Firmen-Akte gibt es sein Ziel nicht — auch nicht zur Wahl.
+    const { ohneFahrplanFuer } = await import('@/lib/planung/bereich-sicht-server');
+    const alle = await ohneFahrplanFuer(ohnePrivat ? zieleOhnePrivat(roh) : roh, person, 'ziel');
     const t = treffer(alle, zielText, 'Ziel');
     if (istWerkzeugErgebnis(t)) return t;
     zielWahl = t;

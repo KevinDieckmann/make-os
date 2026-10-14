@@ -11,18 +11,33 @@ export interface BelegtEinstellungen {
   google?: Record<string, string>;
   /** iCloud je Person (06.10.): Kalendername (auch der neutrale „iCloud · <Vorname>“) → Person — gehört ihr, nie „beide“. */
   persoenlich?: Record<string, string>;
+  /**
+   * Vornamen hinter den Fächern (14.10., Abnahme-Reste 2): aus den Konten, zur Laufzeit dazugelegt (`mitGoogleNamen`), NIE gespeichert. Erkennt
+   * einen Kalender am Vornamen im Namen (Apples Vorgabe-Kalender trägt den vollen Namen der Person) — vorher stand der Vorname fest im Code.
+   */
+  vornamen?: Partial<Record<Exclude<KalenderWer, 'beide'>, string>>;
 }
 
-/** Zugeordnet (Einstellungen oder eindeutiger Name wie „Kevin Dieckmann“) — sonst null („nicht zugeordnet“). */
-export function zuordnung(e: Pick<BelegtEinstellungen, 'kalender' | 'google' | 'persoenlich'>, kalenderName: string): KalenderWer | null {
+/** Steht der Vorname als eigenes Wort im (kleingeschriebenen) Kalendernamen? Ohne Vornamen: nein. Rein. */
+export function vornameImNamen(nameKlein: string, vorname: string | null | undefined): boolean {
+  const v = String(vorname ?? '').trim().toLowerCase();
+  if (!v) return false;
+  const esc = v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Wortgrenze für jeden Buchstaben (auch Umlaute) — ohne Lookbehind (ältere Browser).
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}_])${esc}(?![\\p{L}\\p{N}_])`, 'u').test(nameKlein);
+}
+
+/** Zugeordnet (Einstellungen oder eindeutiger Vorname im Namen, z. B. Apples Kalender mit dem vollen Namen) — sonst null („nicht zugeordnet“). */
+export function zuordnung(e: Pick<BelegtEinstellungen, 'kalender' | 'google' | 'persoenlich' | 'vornamen'>, kalenderName: string): KalenderWer | null {
   const g = e.google?.[kalenderName.trim()] ?? e.persoenlich?.[kalenderName.trim()];
   if (g === 'kevin' || g === 'malin') return g;
   const n = kalenderName.trim().toLowerCase();
   if (n === e.kalender.kevin.trim().toLowerCase()) return 'kevin';
   if (n === e.kalender.malin.trim().toLowerCase()) return 'malin';
   if (n === e.kalender.beide.trim().toLowerCase()) return 'beide';
-  const kevin = /\bkevin\b/.test(n), malin = /\bmalin\b/.test(n);
-  return kevin && !malin ? 'kevin' : malin && !kevin ? 'malin' : null;
+  // Vorname als eigenes Wort (14.10.: aus den Konten statt fest im Code) — nur eindeutig (beide Vornamen im Namen → nicht zugeordnet).
+  const eins = vornameImNamen(n, e.vornamen?.kevin), zwei = vornameImNamen(n, e.vornamen?.malin);
+  return eins && !zwei ? 'kevin' : zwei && !eins ? 'malin' : null;
 }
 
 /** Zählt der Kalender als belegt? Schalter aus den Einstellungen, sonst: zugeordnet ja, nicht zugeordnet nein. */

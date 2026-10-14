@@ -4,6 +4,21 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 14.10.2026 — Abnahme-Reste 2 (nur lokal — Branch `abnahme-reste-2`, Basis 40808275 = `update-0910b`)
+- **Zeile neutral (Kevin 14.10.):** Zahlungskalender „Partnerdarlehen-Rate“ statt eines Vornamens (`lib/finanzen/rechenkern.ts`) — nur der Anzeigename; Kennungen `ug.bjoern`/
+  `bjoern…` (Handwerte, Annahmen, Ziel-Quelle) bleiben, Zahlen bit-gleich (Regressions-/Kern-Tests grün).
+- **Partner „nur Business“:** Ziel `z-fahrplan-…` und Meilensteine `ms-fahrplan-…` (samt Abgeleitetem und Meilensteinen an diesem Ziel) des Gründungsfahrplans nur mit Zugang zur
+  Firmen-Akte — dieselbe Regel wie seine Aufgaben (`firmenAkteAusgeblendetFuer`; WAS: `istFahrplanZiel`/`istFahrplanMeilenstein` in lib/aufgaben/firmenakte-sicht.ts; WER:
+  `fahrplanAusgeblendetFuer` in lib/planung/bereich-sicht-server.ts). Ziele-/Meilenstein-Routen (auch 409, PUT behält sie, Schreiben → 404), `meilensteineImUmfang` (Detail,
+  Kalender-Fristen, ZOE-Kontext …), Seil, Lichtfäden, Brain-Kugel, Bezüge-Rückgängig, Jahresziele für ZOE/Heads/Agenten-Überblick, ZOE `setze_meilenstein`. Ben bleibt außerhalb
+  des CRM-Teams.
+- **Feste Namen raus (Kalender):** AppleScript-Altweg liest die Kalender aus den Einstellungen (gespeicherter Name gewinnt, sonst „Privat <Vorname>“) + dem vollen Kontonamen der
+  ersten Person (`lib/kalender/apple-altweg.ts`, je Name auch mit Leerzeichen am Ende); `zuordnung` erkennt den Vornamen aus den Konten (`vornamen`, zur Laufzeit von
+  `mitGoogleNamen`, nie gespeichert); Schnelleingabe „@<Vorname>“ aus den Konten. Live-Instanz bit-gleich (Wächter mit `KONTEN_WIE_LIVE`).
+- **Ziel-Titel:** Seil, Lichtfäden, Brain-Kugel, Fluss (`haushaltsZiele`) und die Jahresziele für ZOE lesen über `titelNachRegel` — dieselbe Funktion wie GET /api/state/ziele.
+- **Wächter:** tests/oberflaeche-neutral.test.ts (Vorname „Björn“, Vornamen in Regex/Texten der Kalender-Dateien, bit-gleich Zuordnung/Altweg), tests/aufgaben-firmenakte-sicht.test.ts
+  (Planung). **Rückweg:** nur optionale Laufzeit-Felder (`vornamen`), keine Daten umgeschrieben.
+
 ## 14.10.2026 — Abnahme-Reste + Kevins Entscheidungen 14.10. (nur lokal — Branch `abnahme-reste`, Basis 8fda5db0 = `update-0910b`)
 - **Sicherheit (zuerst):** Termin-Route fail-closed — PATCH (Termin, Bezug, Antwort) und DELETE lesen jedes Objekt zum Verweis gezielt, auch weit außerhalb des
   Holfensters (`termineZurPruefung`, lib/kalender/icloud.ts); privat der anderen Person → 403, da aber unlesbar → 409. Vorher: Termin außerhalb des Fensters = „nicht fremd“ (200).
