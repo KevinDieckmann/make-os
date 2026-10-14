@@ -32,6 +32,7 @@ import { beanVerteilung } from '@/lib/crm/bean';
 import { datum } from './daten';
 import { neueOhneSchritt } from '@/lib/crm/person-anlegen';
 import { anzeigename } from '@/lib/make-one/crm';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 /** Farbe je Welt — dieselbe in der Leiste, im Überblick und an den Übergaben. */
 export const WELT_FARBE: Record<Welt, string> = { sales: LEUCHT.business, marketing: LEUCHT.puls, event: LEUCHT.beziehung };
@@ -73,7 +74,7 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
       const b = d.bestand;
       return (
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12, display: 'flex', gap: '4px 10px', flexWrap: 'wrap' }}>
-          {zahl(b.kontakte, 'Kontakte', WEG.kontakt())} · {zahl(b.firmen, 'Firmen', WEG.firma())} · {zahl(b.chancen, 'Deals', WEG.deals())} · {zahl(b.mandate, 'Mandate', WEG.mandat())} · {zahl(b.events, 'Make.One-Abende', WEG.event())} · {zahl(b.besuche ?? 0, 'besuchte Events', WEG.besuch())} · {zahl(b.kampagnen, 'Kampagnen', WEG.kampagne())}
+          {zahl(b.kontakte, 'Kontakte', WEG.kontakt())} · {zahl(b.firmen, 'Firmen', WEG.firma())} · {zahl(b.chancen, 'Deals', WEG.deals())} · {zahl(b.mandate, 'Mandate', WEG.mandat())} · {zahl(b.events, `${MARKE_EVENTS}-Abende`, WEG.event())} · {zahl(b.besuche ?? 0, 'besuchte Events', WEG.besuch())} · {zahl(b.kampagnen, 'Kampagnen', WEG.kampagne())}
           <button onClick={() => zuBereich('stammdaten')} style={leise}>Stammdaten ›</button>
         </div>
       );

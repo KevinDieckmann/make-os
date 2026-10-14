@@ -27,7 +27,7 @@ import {
 import { bausteinAusProdukt, einheitAusGesellschaft, RHYTHMUS_AUS_BASIS, type ProduktVorschlag, type IstBasisVorschlag } from '@/lib/finanzen/produkte';
 import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { usePlan, rechne, type Gerechnet } from './daten';
-import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Dialog, Feld, Formular, Schalter, StatusPille, Legende, Pillen, Nichts, Etikett, KUPFER, LILA } from './teile';
+import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Dialog, Feld, Formular, Schalter, StatusPille, Legende, Pillen, Nichts, Etikett, KUPFER, LILA, personName } from './teile';
 import { Linie } from './diagramme';
 import { SteuerKarte } from './Steuern';
 /** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
@@ -133,7 +133,7 @@ export function Baukasten() {
     if (k === 'kevinBrutto' || k === 'malinBrutto' || k === 'steuerUG') {
       const alt = ps.annahmen[k]; const dok = d.annahmen[k];
       if (v === (alt ?? dok)) return;
-      void setze(`/annahmen/${k}`, alt, v === dok ? undefined : v, k === 'steuerUG' ? `Steuerquote ${UG_KURZ}` : k === 'kevinBrutto' ? 'Kevin brutto' : 'Malin brutto');
+      void setze(`/annahmen/${k}`, alt, v === dok ? undefined : v, k === 'steuerUG' ? `Steuerquote ${UG_KURZ}` : k === 'kevinBrutto' ? `${personName('kevin')} brutto` : `${personName('malin')} brutto`);
       return;
     }
     const art = k.slice(7) as Regler;
@@ -250,8 +250,8 @@ export function Baukasten() {
           <Karte i={2}>
             <Ueberschrift>Annahmen dieses Szenarios</Ueberschrift>
             <Formular>
-              <Feld label={`Kevin brutto (Plan: ${eur(d.annahmen.kevinBrutto)} €)`}><ZahlFeld wert={ps.annahmen.kevinBrutto ?? null} leer platzhalter="wie Plan" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/kevinBrutto', ps.annahmen.kevinBrutto, v ?? undefined, 'Kevin brutto')} titel="Kevin brutto" /></Feld>
-              <Feld label={`Malin brutto (Plan: ${eur(d.annahmen.malinBrutto)} €)`}><ZahlFeld wert={ps.annahmen.malinBrutto ?? null} leer platzhalter="wie Plan" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/malinBrutto', ps.annahmen.malinBrutto, v ?? undefined, 'Malin brutto')} titel="Malin brutto" /></Feld>
+              <Feld label={`${personName('kevin')} brutto (Plan: ${eur(d.annahmen.kevinBrutto)} €)`}><ZahlFeld wert={ps.annahmen.kevinBrutto ?? null} leer platzhalter="wie Plan" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/kevinBrutto', ps.annahmen.kevinBrutto, v ?? undefined, `${personName('kevin')} brutto`)} titel={`${personName('kevin')} brutto`} /></Feld>
+              <Feld label={`${personName('malin')} brutto (Plan: ${eur(d.annahmen.malinBrutto)} €)`}><ZahlFeld wert={ps.annahmen.malinBrutto ?? null} leer platzhalter="wie Plan" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/malinBrutto', ps.annahmen.malinBrutto, v ?? undefined, `${personName('malin')} brutto`)} titel={`${personName('malin')} brutto`} /></Feld>
               <Feld label={`Ertragsteuer ${UG_KURZ} gesamt, Vorgabe (Plan: ${prozent(d.annahmen.steuerUG)})`}><ZahlFeld wert={ps.annahmen.steuerUG ?? null} leer platzhalter="wie Plan" dezimal={2} breite="100%" onFertig={v => void setze('/annahmen/steuerUG', ps.annahmen.steuerUG, v ?? undefined, `Steuerquote ${UG_KURZ}`)} titel={`Steuerquote ${UG_KURZ} als Dezimalzahl`} /></Feld>
               <Feld label={`Zahlungsziel Umsatz ${UG_KURZ}`}><Auswahl wert={String(ps.annahmen.zahlungsziel ?? 0)} onWahl={v => void setze('/annahmen/zahlungsziel', ps.annahmen.zahlungsziel, Number(v) || undefined, 'Zahlungsziel')} optionen={ZIELE} titel="Zahlungsziel" /></Feld>
               <Feld label={`Ausschüttung ${UG_KURZ} → Privat je Monat`}><ZahlFeld wert={ps.annahmen.ausschuettung?.betrag ?? null} leer platzhalter="keine" dezimal={0} breite="100%" onFertig={v => void setze('/annahmen/ausschuettung', ps.annahmen.ausschuettung, v ? { betrag: v, ab: ps.annahmen.ausschuettung?.ab ?? m0 } : undefined, 'Ausschüttung')} titel="Ausschüttung je Monat" /></Feld>
@@ -272,8 +272,8 @@ export function Baukasten() {
           <Karte i={3}>
             <Ueberschrift rechts={Object.keys(live).length ? <span style={{ color: LEUCHT.achtung, fontSize: TYP.bedien }}>Loslassen speichert</span> : undefined}>Was wäre, wenn — Regler</Ueberschrift>
             <ReglerZeile label={`Umsatz ${UG_KURZ} je Monat zusätzlich`} wert={reglerWert('regler:umsatz')} min={0} max={20000} schritt={250} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:umsatz': v }))} onFest={() => reglerFest('regler:umsatz')} />
-            <ReglerZeile label="Kevin brutto" wert={reglerWert('kevinBrutto')} min={0} max={10000} schritt={100} einheit="€" onLive={v => setLive(l => ({ ...l, kevinBrutto: v }))} onFest={() => reglerFest('kevinBrutto')} />
-            <ReglerZeile label="Malin brutto" wert={reglerWert('malinBrutto')} min={0} max={10000} schritt={100} einheit="€" onLive={v => setLive(l => ({ ...l, malinBrutto: v }))} onFest={() => reglerFest('malinBrutto')} />
+            <ReglerZeile label={`${personName('kevin')} brutto`} wert={reglerWert('kevinBrutto')} min={0} max={10000} schritt={100} einheit="€" onLive={v => setLive(l => ({ ...l, kevinBrutto: v }))} onFest={() => reglerFest('kevinBrutto')} />
+            <ReglerZeile label={`${personName('malin')} brutto`} wert={reglerWert('malinBrutto')} min={0} max={10000} schritt={100} einheit="€" onLive={v => setLive(l => ({ ...l, malinBrutto: v }))} onFest={() => reglerFest('malinBrutto')} />
             {!business && <ReglerZeile label="Fixkosten privat ± (z. B. Miete)" wert={reglerWert('regler:miete')} min={-1000} max={2000} schritt={50} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:miete': v }))} onFest={() => reglerFest('regler:miete')} />}
             {!business && <ReglerZeile label="Neue Rate privat je Monat" wert={reglerWert('regler:rate')} min={0} max={2000} schritt={25} einheit="€" onLive={v => setLive(l => ({ ...l, 'regler:rate': v }))} onFest={() => reglerFest('regler:rate')} />}
             <ReglerZeile label={`Steuerquote ${UG_KURZ}`} wert={reglerWert('steuerUG')} min={0} max={0.5} schritt={0.01} einheit="%" prozent onLive={v => setLive(l => ({ ...l, steuerUG: v }))} onFest={() => reglerFest('steuerUG')} />

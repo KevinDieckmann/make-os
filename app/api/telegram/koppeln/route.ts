@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!personStreng(req)) return ohnePerson();
-  if (!telegramKonfiguriert()) return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN fehlt in .env.local.' }, { status: 200 });
+  if (!telegramKonfiguriert()) return NextResponse.json({ error: 'Der Bot ist auf dieser Instanz noch nicht eingerichtet — das macht die Inhaberin bzw. der Betreiber eurer Instanz.' }, { status: 200 });
   const person = personAus(req);
   let code = '';
   await aendereStand(s => { const r = codeAnlegen(s, person, new Date()); code = r.code; return r.stand; });

@@ -21,6 +21,7 @@ import type { Temperatur } from '@/lib/crm/typen';
 import type { CrmApi } from '../daten';
 import type { ScoringEntwurf, ScoringDaten } from './ScoringEntwurf';
 import { punkteText, useScoringEinstellungen } from './hilfen';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 const TEMPS: Temperatur[] = ['kalt', 'lau', 'warm', 'heiss'];
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55 } as const;
@@ -195,7 +196,7 @@ export function ScoringSeite({ api, seite, z, i = 0 }: { api: CrmApi; seite: Sco
       <Karte i={i} akzent={mql ? LEUCHT.agenten : LEUCHT.business}>
         <Ueberschrift farbe={mql ? LEUCHT.agenten : LEUCHT.business}>{mql ? 'Marketing-Scoring · bis zum MQL' : 'Sales-Scoring · von MQL zu SQL'}</Ueberschrift>
         <div style={{ ...klein, marginBottom: 12 }}>{mql
-          ? 'Signale und Interaktionen, die zeigen, dass jemand ansprechbar ist: Gespräche, Antworten, Events, Make.One, Newsletter mit Double-Opt-in, Empfehlung, Anfrage. Gemessen werden sie aus den Daten — du stellst ein, wie viele Punkte welche Stufe bringt und ab wann ein Lead als MQL (Marketing Qualified Lead) gilt.'
+          ? `Signale und Interaktionen, die zeigen, dass jemand ansprechbar ist: Gespräche, Antworten, Events, ${MARKE_EVENTS}, Newsletter mit Double-Opt-in, Empfehlung, Anfrage. Gemessen werden sie aus den Daten — du stellst ein, wie viele Punkte welche Stufe bringt und ab wann ein Lead als MQL (Marketing Qualified Lead) gilt.`
           : 'Die Qualifikation im Gespräch: Fit, Schmerz, Budget, Entscheider, Zeit, Fürsprecher, Prozess, Potenzial (angelehnt an MEDDICC und BANT). Du stellst ein, was gefragt wird, wie viele Punkte jede Stufe bringt, welche Antworten Pflicht sind (Muss) und ab wann ein Lead als SQL (Sales Qualified Lead) gilt.'}</div>
         {mql && <div style={{ ...klein, marginBottom: 12, color: C.ink }}>Gilt nur für Leads aus dem Marketing (Kampagne, Newsletter, Anfrage, Inhalte). Leads von Events, Empfehlungen und Direktansprache gehen direkt in die Qualifizierung.</div>}
         <div style={{ display: 'flex', gap: '10px 22px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -272,7 +273,7 @@ function UebernehmenDialog({ api, art, daten, aktuell, onZu, onJa, laeuft }: { a
       {art === 'bisherig' ? (
         <div style={klein}>Die Rechnung von vor dem 03.10.: Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10, MQL ab 35 Marketing-Punkten, SQL bei Schmerz + Entscheider + Budget oder Zeitpunkt. Wer MQL werden kann, bestimmt weiterhin die Herkunft (Marketing), nicht diese Rechnung.</div>
       ) : (
-        <div style={klein}>Der Standard schärft die Kriterien nach MEDDICC (Schmerz, Entscheider, Fürsprecher, Prozess, Kennzahl, Wettbewerb) und BANT (Budget, Entscheider, Bedarf, Zeit): je Kriterium vier Stufen mit 1 · 3 · 5 Punkten, Schmerz und Entscheider doppelt gewichtet und als Muss, dazu Fit, Potenzial und im Marketing die Signale Event, Make.One, Newsletter, Termin, Empfehlung, Anfrage. Er gilt für alle, die nichts Eigenes gespeichert haben. Der Grund steht in SCORING.md.</div>
+        <div style={klein}>Der Standard schärft die Kriterien nach MEDDICC (Schmerz, Entscheider, Fürsprecher, Prozess, Kennzahl, Wettbewerb) und BANT (Budget, Entscheider, Bedarf, Zeit): je Kriterium vier Stufen mit 1 · 3 · 5 Punkten, Schmerz und Entscheider doppelt gewichtet und als Muss, dazu Fit, Potenzial und im Marketing die Signale Event, {MARKE_EVENTS}, Newsletter, Termin, Empfehlung, Anfrage. Er gilt für alle, die nichts Eigenes gespeichert haben. Der Grund steht in SCORING.md.</div>
       )}
       <Unterschiede a={aktuell} b={ziel} />
       <VorschauKarte api={api} alt={api.crm?.stand.scoring} neu={ziel} titel="So würden deine aktuellen Leads dann eingestuft" />

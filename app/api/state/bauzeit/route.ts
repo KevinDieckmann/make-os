@@ -23,7 +23,7 @@ export interface Bauzeit {
   von: string;
 }
 
-const LEER: Bauzeit = { aktiv: false, woran: '', seit: null, von: 'Kevin' };
+const LEER: Bauzeit = { aktiv: false, woran: '', seit: null, von: '' };
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();

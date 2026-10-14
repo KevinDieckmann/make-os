@@ -10,6 +10,8 @@ import { notiere, adresseGekuerzt, letzte } from '@/lib/zugang/anmeldungen';
 import { eigeneZieleLesbar, partnerVon } from '@/lib/planung/eigene-ziele-sicht';
 import { istHauptInhaber, istWirksamerInhaber } from '@/lib/zugang/inhaber';
 import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
+import { hauptInhaber } from '@/lib/zugang/inhaber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +30,8 @@ export async function GET(req: Request) {
     // EINE Konto-Sicht (09.10., E4-Rest): sieht dieses Konto nur den Business-Bereich? Der Kopf blendet dann „Privat“ aus — die Trennung selbst
     // geschieht auf dem Server (jede Route filtert), das hier spart nur einen Schalter, hinter dem nichts kommt.
     nurBusiness: kontoSichtAus(s, wer).nurBusiness,
+    // Betreiber-Instanz (14.10., lib/betrieb/betreiber.ts): nur dann zeigen Verbindungen, Konto und Nachweise den Weg am Server — sonst neutral.
+    betreiber: await istBetreiberInstanz({ hauptInhaberAngelegt: hauptInhaber(s)?.angelegt ?? null }),
     // 2FA-Pflicht der Instanz (05.10.): /anmelden führt dann zur Einrichtung statt weiter.
     zweiterFaktorEinrichten: zweiFaktorOffen(s.einstellungen, ich),
     anmeldungen: await letzte(wer, 5),

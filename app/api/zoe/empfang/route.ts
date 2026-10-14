@@ -21,6 +21,7 @@ import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { kiSchalterFuer, type KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { bereichAus, lageFuerSicht } from '@/lib/zoe/bereich';
+import { KI_SCHLUESSEL_FEHLT } from '@/lib/betrieb/betreiber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -80,7 +81,7 @@ export async function GET(req: Request) {
   if (da?.text) return NextResponse.json({ text: da.text, gehalten: true });
 
   if (!hasAnthropicKey()) {
-    return NextResponse.json({ text: 'Ich bin da. Mir fehlt nur der Schlüssel zum Denken — trag ihn in die Datei .env.local ein.' });
+    return NextResponse.json({ text: `Ich bin da. ${KI_SCHLUESSEL_FEHLT}` });
   }
 
   // Nur die Vorschläge, die diese Person sieht (Sicherheitsprüfung 09.10.: vorher zählte die Zahl die der anderen Person mit).

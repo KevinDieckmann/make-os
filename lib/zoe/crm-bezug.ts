@@ -3,6 +3,8 @@
 // Kennung. Der Bezug ist KEIN Text Dritter — nur eine geprüfte Kennung —, er macht das Gespräch nicht „fremd gelesen“.
 // Dieselbe Form trägt ein CRM-Vorschlag im Stapel (`bezug: { art: 'crm', id: '<art>:<kennung>' }`).
 
+import { MARKE_EVENTS } from '@/lib/crm/marke';
+
 /** Ereignis, mit dem ein Knopf ZOE mit Bezug öffnet (components/os/ZoePanel.tsx hört darauf). */
 export const ZOE_FRAGEN_EREIGNIS = 'make-zoe-fragen';
 
@@ -15,7 +17,7 @@ const KENNUNG = /^[a-z0-9][a-z0-9-]{1,63}$/;
 
 export const CRM_BEZUG_LABEL: Record<CrmBezugArt, string> = {
   kontakt: 'Kontakt', firma: 'Firma', deal: 'Deal', angebot: 'Angebot', mandat: 'Mandat', event: 'Event', markttraktion: 'Markttraktion',
-  sales: 'Sales', marketing: 'Marketing', 'event-welt': 'Make.One', qualifizierung: 'Qualifizierung', stammdaten: 'Stammdaten',
+  sales: 'Sales', marketing: 'Marketing', 'event-welt': MARKE_EVENTS, qualifizierung: 'Qualifizierung', stammdaten: 'Stammdaten',
 };
 
 /** Den Bezug aus dem Browser prüfen — unbekannte Art oder Kennung fallen weg (null). */

@@ -18,6 +18,7 @@ import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { wochentag } from '@/lib/zeit/kalender-kern';
 import type { RoutinenDatei } from '@/lib/planung/typen';
+import { KI_SCHLUESSEL_FEHLT } from '@/lib/betrieb/betreiber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   const koerperWerte = b.gesundheitFrei ? { recovery: rec, zone } : {};
 
   if (!hasAnthropicKey()) {
-    return NextResponse.json({ reply: 'Mir fehlt noch dein Anthropic-Key (.env.local), dann richte ich deinen Tag nach deiner Recovery aus.', ...koerperWerte, needsKey: true });
+    return NextResponse.json({ reply: `${KI_SCHLUESSEL_FEHLT} Danach richte ich deinen Tag nach deiner Recovery aus.`, ...koerperWerte, needsKey: true });
   }
   const agent = await resolveAgent('fokus');
   if (!agent.enabled) return NextResponse.json({ ...disabledResponse(agent), reply: '', ...koerperWerte });

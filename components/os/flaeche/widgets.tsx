@@ -57,7 +57,7 @@ import { Top3Karte } from '../heute/Top3';
 import { BriefingKarte } from '../heute/Briefing';
 import { EisenhowerZeichen } from '../aufgaben/Zeichen';
 import { aufgabeEinordnung, quadrantRang } from '@/lib/aufgaben/eisenhower';
-import { fortschrittVon, restzeitText, schritteFuer, schrittInSicht, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
+import { einrichtungStand, fortschrittVon, restzeitText, schritteFuer, schrittInSicht, texteFuer, zurueckgefallen, type HakenZustand, type Kontext as OnboardingKontext } from '@/lib/make-one/onboarding-data';
 import { useZieleSpalten } from '@/lib/planung/ziele-client';
 import { useFokus } from '@/lib/planung/fokus-client';
 import { FOKUS_FRAGE } from '@/lib/planung/fokus';
@@ -792,7 +792,7 @@ function EventWidget({ titel, i }: WidgetProps) {
   const tage = e ? Math.round((Date.parse(`${e.datum}T12:00:00Z`) - Date.parse(`${d!.heute}T12:00:00Z`)) / 864e5) : null;
   return (
     <Karte i={i} akzent={e ? LEUCHT.beziehung : undefined}>
-      <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href={WEG.event()} style={link}>Make.One ›</Link>}>{titel ?? `Nächstes Event · ${MARKE_EVENTS}`}</Ueberschrift>
+      <Ueberschrift farbe={LEUCHT.beziehung} rechts={<Link href={WEG.event()} style={link}>{MARKE_EVENTS} ›</Link>}>{titel ?? `Nächstes Event · ${MARKE_EVENTS}`}</Ueberschrift>
       {d === undefined && <Leer>lade …</Leer>}
       {e && (
         <Zeile onClick={() => router.push(WEG.event(e.id))}
@@ -842,14 +842,17 @@ function EinrichtungWidget({ titel, i, seite }: WidgetProps) {
       </Karte>
     );
   }
-  const f = fortschrittVon(meine, d.z, { alle: true, kernZuerst: !!d.ich.neustart });
+  // „x von y“ (14.10., Abnahme B4): EINE Zählung je Person (`einrichtungStand`) — dieselbe Zahl auf Heute › Privat, Heute › Business, in der
+  // Einrichtung und auf der Startfläche. Nur „Als Nächstes“ folgt der Sicht der Fläche (kein Privat-Schritt auf Heute › Business).
+  const f = einrichtungStand(d.ich, d.z);
   if (!f.gesamt || f.fertig >= f.gesamt) return null;
+  const naechster = fortschrittVon(meine, d.z, { alle: true, kernZuerst: !!d.ich.neustart }).naechster;
   return (
     <Karte i={i} akzent={LEUCHT.schlaf}>
       <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href="/os/onboarding" style={link}>alle Schritte ›</Link>}>{titel ?? `Einrichtung · ${f.fertig} von ${f.gesamt}`}</Ueberschrift>
       <Fortschritt anteil={f.fertig / f.gesamt} farbe={LEUCHT.schlaf} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}>
-        {f.naechster && <span style={{ flex: '1 1 220px', minWidth: 0 }}>Als Nächstes: <Link href="/os/onboarding" style={{ color: C.ink, fontWeight: 600, textDecoration: 'none' }}>{f.naechster.nr} · {texteFuer(f.naechster, d.ich).titel} ›</Link></span>}
+        {naechster && <span style={{ flex: '1 1 220px', minWidth: 0 }}>Als Nächstes: <Link href="/os/onboarding" style={{ color: C.ink, fontWeight: 600, textDecoration: 'none' }}>{naechster.nr} · {texteFuer(naechster, d.ich).titel} ›</Link></span>}
         <span style={{ color: C.inkLeise }}>noch {restzeitText(f.offeneMinuten)}</span>
       </div>
     </Karte>

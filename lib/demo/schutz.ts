@@ -87,6 +87,7 @@ export function namenHinweise(env: Umgebung): string[] {
   const h: string[] = [];
   if (!env.NEXT_PUBLIC_MAKE_OS_EINHEITEN) h.push('NEXT_PUBLIC_MAKE_OS_EINHEITEN fehlt — die drei festen Gesellschaften hießen sonst wie in unserer Instanz.');
   if (!env.NEXT_PUBLIC_MAKE_OS_CRM_TEAM) h.push('NEXT_PUBLIC_MAKE_OS_CRM_TEAM fehlt — Markttraktion zeigte sonst unser Team als Zuständige.');
+  if (!env.NEXT_PUBLIC_MAKE_OS_EVENT_MARKE) h.push('NEXT_PUBLIC_MAKE_OS_EVENT_MARKE fehlt — die eigenen Abende hießen sonst wie unsere Veranstaltungsmarke.');
   return h;
 }
 

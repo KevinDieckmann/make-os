@@ -7,8 +7,18 @@
 
 import type { Event, Teilnahme } from './typen';
 
-/** Unsere Veranstaltungsmarke. */
-export const MARKE_EVENTS = 'Make.One';
+/**
+ * Die Veranstaltungsmarke DIESER Instanz (14.10., Abnahme A1: stand fest im Code und erschien so in jeder fremden Instanz). Je Instanz über
+ * `NEXT_PUBLIC_MAKE_OS_EVENT_MARKE` (wie `NEXT_PUBLIC_MAKE_OS_EINHEITEN`: beim Bauen eingesetzt, Dockerfile-Argument; ≤ MARKE_MAX Zeichen,
+ * Ungültiges zählt nicht). Ohne Variable gilt die Vorgabe unserer Instanz — die Live-Instanz bleibt gleich. Angezeigt wird die Marke NUR über
+ * diese Konstante bzw. `markeVon`/`eventName` (Wächter tests/oberflaeche-neutral.test.ts: kein fester Markenname in der Oberfläche).
+ */
+export const MARKE_EVENTS = markeAusUmgebung() ?? 'Make.One';
+function markeAusUmgebung(): string | null {
+  const roh = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_MAKE_OS_EVENT_MARKE : undefined;
+  const m = typeof roh === 'string' ? roh.trim() : '';
+  return m && m.length <= 40 && !/[<>]/.test(m) && ![...m].some(c => c < ' ') ? m : null;
+}
 /** Höchstlänge einer Marke im Bestand (Säuberung in lib/crm/speicher.ts). */
 export const MARKE_MAX = 40;
 /** Die Marke eines Events: gesetzt, sonst Make.One — abgeleitet, nie in den Bestand zurückgeschrieben. */

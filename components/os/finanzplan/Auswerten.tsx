@@ -14,7 +14,7 @@ import { istSchnitt, sollBudget, wert } from '@/lib/finanzen/rechenkern';
 import { achse, letzterVoller, prozent, monatLabel } from '@/lib/finanzen/plan/hilfen';
 import { usePlan } from './daten';
 import { UG_NAME } from '@/lib/einheiten';
-import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, Auswahl, Hinweis, Legende, PersonMarke, KUPFER, LILA, Nichts, Pillen } from './teile';
+import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, Auswahl, Hinweis, Legende, PersonMarke, KUPFER, LILA, Nichts, Pillen, personName } from './teile';
 import { Linie, Fluss, type FlussKante } from './diagramme';
 
 // ── Entwicklung ─────────────────────────────────────────────────────────────
@@ -84,7 +84,7 @@ export function Geldfluss() {
   if (art === 'privat') {
     if (m > 0) {
       const p = pr[m - 1];
-      const quellen: [string, number][] = [['Kevin netto', p.kevinNetto], ['Malin netto', p.malinNetto], ...d.privatEinnahmen.map((z): [string, number] => [z.name, wert(z, m, d.plan)])];
+      const quellen: [string, number][] = [[`${personName('kevin')} netto`, p.kevinNetto], [`${personName('malin')} netto`, p.malinNetto], ...d.privatEinnahmen.map((z): [string, number] => [z.name, wert(z, m, d.plan)])];
       quellen.filter(x => x[1] > 0).forEach(([n, v]) => kanten.push({ von: n, nach: 'Haushalt', wert: v, farbe: C.inkDim, sv: 0, sn: 1 }));
       if (p.luft < 0) kanten.push({ von: 'Fehlbetrag', nach: 'Haushalt', wert: -p.luft, farbe: LEUCHT.kritisch, sv: 0, sn: 1 });
       const ziele: [string, number][] = [['Fixkosten', p.fix], ['Jahreskosten & Puffer', p.jahr], ['Flexibel', p.flex], ['Sparen', p.sparenSoll], ['Schulden', p.schulden], ['Ereignisse', p.ereignisse], ['Luft', Math.max(0, p.luft)]];
@@ -104,7 +104,7 @@ export function Geldfluss() {
     const mm = Math.max(1, m); const u = ug[mm - 1]; const steuer = u.st.summe;
     ([['Ankermandat', u.ob], ['Retainer', u.retainer], ['Provision', u.astarna], ['Events', u.events]] as [string, number][]).filter(x => x[1] > 0).forEach(([n, v]) => kanten.push({ von: n, nach: 'Umsatz', wert: v, farbe: C.inkDim, sv: 0, sn: 1 }));
     if (u.gewinn < 0) kanten.push({ von: 'Verlust', nach: 'Umsatz', wert: -u.gewinn, farbe: LEUCHT.kritisch, sv: 0, sn: 1 });
-    ([['Kevin', u.kevin], ['Malin', u.malin], ['Unterstützung', u.unterstuetzung], ['Sachkosten', u.sach + u.gruendung], ['Holding', u.holding], ['Steuerrücklage', steuer], ['Gewinn nach Steuer', Math.max(0, u.gewinn - steuer)]] as [string, number][]).filter(x => x[1] > 0)
+    ([[personName('kevin'), u.kevin], [personName('malin'), u.malin], ['Unterstützung', u.unterstuetzung], ['Sachkosten', u.sach + u.gruendung], ['Holding', u.holding], ['Steuerrücklage', steuer], ['Gewinn nach Steuer', Math.max(0, u.gewinn - steuer)]] as [string, number][]).filter(x => x[1] > 0)
       .forEach(([n, v]) => kanten.push({ von: 'Umsatz', nach: n, wert: v, farbe: n === 'Gewinn nach Steuer' ? C.aktiv : n === 'Steuerrücklage' ? LEUCHT.achtung : n === 'Sachkosten' ? LEUCHT.puls : KUPFER, sv: 1, sn: 2 }));
   }
   return (

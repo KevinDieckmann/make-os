@@ -5,7 +5,7 @@
 // (lib/finanzen/steuern.ts) — jedes Feld hat genau einen Ort. (`ruecklage5a` war ohne Wirkung und ist seit dem
 // Kern-Umbau 02.10. gelöscht.) `nettoTabelle` hat einen eigenen Editor.
 
-import { UG_KURZ } from '@/lib/einheiten';
+import { finanzOrtName, UG_KURZ } from '@/lib/einheiten';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import type { Annahmen } from './rechenkern';
 
@@ -28,7 +28,7 @@ export function annahmeGruppen(person1: string, person2: string): AnnahmeGruppe[
       f('stammkapital', 'Stammkapital'), f('gruendungskosten', 'Gründungskosten'), f('darlehenKevin', `Gesellschafterdarlehen an ${UG_KURZ} (alt)`, 'betrag', DARLEHEN_ALT_HINWEIS), f('darlehenRueckMonat', 'Rückzahlung in Monat', 'monat'),
     ] },
     { id: 'umsatz', label: `Umsatz-Treiber ${UG_KURZ}`, ort: 'ug', felder: [f('retainerVerzug', 'Retainer-Zahlungsverzug (Monate)', 'zahl'), f('astarnaProvision', 'Provision je vermitteltem Kunden')] },
-    { id: 'holding', label: 'Holding und Start KD Ventures', ort: 'kdv', felder: [f('holdingKosten', 'Holdingkosten je Monat'), f('holdingAb', 'Holding ab Monat', 'monat'), f('kdvStart', 'Kontostand zum Start')] },
+    { id: 'holding', label: `Holding und Start ${finanzOrtName('kdv')}`, ort: 'kdv', felder: [f('holdingKosten', 'Holdingkosten je Monat'), f('holdingAb', 'Holding ab Monat', 'monat'), f('kdvStart', 'Kontostand zum Start')] },
     { id: 'darlehen', label: 'Partnerdarlehen', ort: 'kdv', felder: [
       f('bjoernBetrag', 'Darlehen offen'), f('bjoernRate', 'Rate je Monat'), f('bjoernRateVon', 'Rate ab Monat', 'monat'), f('bjoernRateBis', 'Rate bis Monat', 'monat'),
       f('bjoernSchluss', 'Schlussrate'), f('bjoernSchlussMonat', 'Schlussrate in Monat', 'monat'), f('bjoernZinsMonat', 'Zins je Monat'), f('bjoernZinsDeckel', 'Zins-Deckel'),

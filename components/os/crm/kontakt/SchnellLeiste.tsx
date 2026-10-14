@@ -26,7 +26,7 @@ import { Knopf, LEUCHT } from '../../ui';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { kanalStatus, type KanalStatus } from '@/lib/crm/recht';
 import { kanalLink } from '@/lib/crm/erfassen';
-import { istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
+import { MARKE_EVENTS, istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
 import { kontextAus } from '@/lib/crm/segmente';
 import { gastVormerkenMitNachfassen } from '../events/gemeinsam';
 import { WEG } from '@/lib/wege';
@@ -41,7 +41,7 @@ type Aktion = 'anruf' | 'mail' | 'termin' | 'notiz' | 'followup' | 'qualifiziere
 const MIN = 44;
 /** Ein Symbol je Weg — gleiche Strichstärke und Größe statt gemischter Zeichen (Schliff 03.10.). */
 const SYM = { size: 18, strokeWidth: 2 } as const;
-const AKTION_TITEL: Record<Aktion, string> = { anruf: 'Anruf festhalten', mail: 'Mail', termin: 'Termin', notiz: 'Notiz', followup: 'Follow-up', qualifizieren: 'Qualifizieren', vermitteln: 'Vermitteln', einladen: 'Make.One einladen' };
+const AKTION_TITEL: Record<Aktion, string> = { anruf: 'Anruf festhalten', mail: 'Mail', termin: 'Termin', notiz: 'Notiz', followup: 'Follow-up', qualifizieren: 'Qualifizieren', vermitteln: 'Vermitteln', einladen: `${MARKE_EVENTS} einladen` };
 const pille = (an: boolean, aus: boolean, farbe?: string): CSSProperties => ({
   flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: MIN, padding: '0 14px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap', scrollSnapAlign: 'start',
   border: `1px solid ${an ? (farbe ?? C.aktiv) : 'rgba(255,255,255,.14)'}`, background: an ? `${farbe ?? C.aktiv}22` : 'rgba(255,255,255,.05)', color: aus ? C.inkLeise : an ? (farbe ?? C.aktiv) : C.ink,
@@ -55,7 +55,7 @@ function EventEinladen({ k, api, heute, onFertig }: { k: Kontakt; api: CrmApi; h
   const schon = new Set((crm?.stand.teilnahmen ?? []).filter(t => t.kontaktId === k.id).map(t => t.eventId));
   const [laeuft, setLaeuft] = useState<string | null>(null);
   if (!crm) return <Hinweis>Die Events laden noch …</Hinweis>;
-  if (!events.length) return <Hinweis>Kein kommendes Event geplant — zuerst unter Markttraktion › Events › Make.One eines anlegen.</Hinweis>;
+  if (!events.length) return <Hinweis>Kein kommendes Event geplant — zuerst unter Markttraktion › Events › {MARKE_EVENTS} eines anlegen.</Hinweis>;
   const ctx = kontextAus(crm.stand, heute);
   const bez = { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) };
   const einl = kanalStatus(k, 'einladung', bez);
@@ -177,7 +177,7 @@ export function SchnellLeiste({ k, api, heute, ampel }: { k: Kontakt; api: CrmAp
             ? <span title={grund('angebot')} aria-disabled="true" style={pille(false, true)}><span aria-hidden><Euro {...SYM} /></span>Angebot</span>
             : <Link href={WEG.angebot({ kontaktId: k.id, firmaId: k.firmaId })} style={pille(false, false)}><span aria-hidden><Euro {...SYM} /></span>Angebot</Link>}
           <button type="button" onClick={() => void insHandy()} disabled={!!handyAus} title={handyAus ?? 'Kontakt im Handy speichern'} data-testid="ins-handy" style={pille(false, !!handyAus)}><span aria-hidden><BookUser {...SYM} /></span>Ins Handy</button>
-          {knopf('einladen', 'Make.One einladen', <Sparkles {...SYM} />)}
+          {knopf('einladen', `${MARKE_EVENTS} einladen`, <Sparkles {...SYM} />)}
         </div>
       </div>
       {meldung && <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut, marginTop: 10, padding: '10px 14px', borderRadius: 12, border: `1px solid ${LEUCHT.gut}55`, background: `${LEUCHT.gut}12`, lineHeight: 1.45 }}>✓ {meldung}</div>}

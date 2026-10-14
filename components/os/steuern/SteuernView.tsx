@@ -318,7 +318,7 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
     setHebe(String(e.hebesatz)); setVorlauf(String(e.vorlaufTage));
   }, [e]);
   // Business-Sicht (05.10.): nur die Felder der Business-Gesellschaften — Privates und die Selbstständigkeit schickt sie nie mit.
-  const vzFelder = ([['est', 'ESt je Quartal'], ['kst', 'KSt je Quartal'], ['gewstKdc', 'GewSt Selbstständigkeit'], ['gewstKdv', 'GewSt KD Ventures']] as const)
+  const vzFelder = ([['est', 'ESt je Quartal'], ['kst', 'KSt je Quartal'], ['gewstKdc', 'GewSt Selbstständigkeit'], ['gewstKdv', `GewSt ${EINHEIT_LABEL.kdv}`]] as const)
     .filter(([k]) => bereich === 'privat' || k === 'kst' || k === 'gewstKdv');
   const vzSenden = Object.fromEntries(vzFelder.map(([k]) => [k, vz[k]]));
   const eingabe = { ...feld, width: 110 };
@@ -356,7 +356,7 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
     <Karte i={5} id="einstellungen">
       <Ueberschrift rechts={<Knopf leise onClick={() => setOffen(!offen)}>{offen ? 'schließen' : 'öffnen'}</Knopf>}>Steuer-Einstellungen</Ueberschrift>
       {!offen ? (
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{bereich === 'privat' && <>{EINHEIT_LABEL.kdc}: {e.kdc.rechtsform === 'freiberuf' ? 'Freiberufler' : e.kdc.rechtsform === 'einzel' ? 'Gewerbe' : e.kdc.rechtsform}, USt {e.kdc.ust} · Einkommensteuer gemeinsam aus der Finanzplanung · </>}{EINHEIT_LABEL.kdv}: {e.kdv.rechtsform.toUpperCase()}, USt {e.kdv.ust} · {e.mitBerater ? 'mit Steuerberater' : 'ohne Steuerberater'} · Hebesatz KD Ventures {e.hebesatz} %</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{bereich === 'privat' && <>{EINHEIT_LABEL.kdc}: {e.kdc.rechtsform === 'freiberuf' ? 'Freiberufler' : e.kdc.rechtsform === 'einzel' ? 'Gewerbe' : e.kdc.rechtsform}, USt {e.kdc.ust} · Einkommensteuer gemeinsam aus der Finanzplanung · </>}{EINHEIT_LABEL.kdv}: {e.kdv.rechtsform.toUpperCase()}, USt {e.kdv.ust} · {e.mitBerater ? 'mit Steuerberater' : 'ohne Steuerberater'} · Hebesatz {EINHEIT_LABEL.kdv} {e.hebesatz} %</div>
       ) : (
         <div style={{ display: 'grid', gap: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 18 }}>
@@ -371,11 +371,11 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
             {vzFelder.map(([k, l]) => (
               <label key={k} style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{l} (€)</span><input inputMode="decimal" value={vz[k]} onChange={ev => setVz({ ...vz, [k]: ev.target.value })} placeholder="laut Bescheid" style={eingabe} /></label>
             ))}
-            <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Hebesatz KD Ventures (%)</span><input inputMode="numeric" value={hebe} onChange={ev => setHebe(ev.target.value)} style={eingabe} /></label>
+            <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Hebesatz {EINHEIT_LABEL.kdv} (%)</span><input inputMode="numeric" value={hebe} onChange={ev => setHebe(ev.target.value)} style={eingabe} /></label>
             <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Aufgabe Tage vorher</span><input inputMode="numeric" value={vorlauf} onChange={ev => setVorlauf(ev.target.value)} style={eingabe} /></label>
             <Knopf onClick={() => void tun({ einstellungen: { vorauszahlung: vzSenden, hebesatz: hebe, vorlaufTage: vorlauf } })}>Speichern</Knopf>
           </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{bereich === 'privat' && est && <>Vorauszahlungen auf Einkommen- und Gewerbesteuer der Selbstständigkeit: für die Rücklage zählen die der Finanzplanung (eine Quelle) — „ESt je Quartal“ und „GewSt Selbstständigkeit“ hier gelten nur ohne Finanzplanung und als Betrag an den Fristen. </>}{bereich === 'privat' && <>Einkommensteuer und Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (gemeinsam mit dem Gehalt, Gewerbesteuer mit Freibetrag 24.500 € und dem Hebesatz aus „Welche Steuern gelten?“, Anrechnung § 35, Soli) — die frühere Steuerquote gilt nicht mehr. </>}KD Ventures rechnet mit 15,825 % (KSt + Soli) und 3,5 % × Hebesatz Gewerbesteuer.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{bereich === 'privat' && est && <>Vorauszahlungen auf Einkommen- und Gewerbesteuer der Selbstständigkeit: für die Rücklage zählen die der Finanzplanung (eine Quelle) — „ESt je Quartal“ und „GewSt Selbstständigkeit“ hier gelten nur ohne Finanzplanung und als Betrag an den Fristen. </>}{bereich === 'privat' && <>Einkommensteuer und Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (gemeinsam mit dem Gehalt, Gewerbesteuer mit Freibetrag 24.500 € und dem Hebesatz aus „Welche Steuern gelten?“, Anrechnung § 35, Soli) — die frühere Steuerquote gilt nicht mehr. </>}{EINHEIT_LABEL.kdv} rechnet mit 15,825 % (KSt + Soli) und 3,5 % × Hebesatz Gewerbesteuer.</div>
         </div>
       )}
     </Karte>

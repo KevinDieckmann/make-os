@@ -12,6 +12,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Raster, Zahl, LEUCHT } f
 import { besuchKennzahlen, besuchUebersicht, URTEIL_AB_TAGE, FOLLOWUP_QUOTE_DEFINITION, type BesuchKontext, type UrteilArt } from '@/lib/crm/besuche';
 import { datum, euro } from '../daten';
 import { FuerChip, type BesuchProps } from './gemeinsam';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 const URTEIL_FARBE: Record<UrteilArt, string> = { lohnt: LEUCHT.gut, laeuft: LEUCHT.achtung, frueh: C.inkDim, ohne: LEUCHT.kritisch };
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, grau: undefined } as const;
@@ -32,7 +33,7 @@ export function BesuchWirkung({ api, crm, onAkte }: Pick<BesuchProps, 'api' | 'c
         </Raster>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>
           <b style={{ color: C.inkDim }}>Follow-up-Quote:</b> {FOLLOWUP_QUOTE_DEFINITION}<br />
-          Eigene Zahlen — getrennt von Make.One (Gäste, Zusagen und Nachfassen unserer Abende). Erfasste Kontakte, Deals und Umsatz zählen trotzdem normal in Sales.
+          Eigene Zahlen — getrennt von {MARKE_EVENTS} (Gäste, Zusagen und Nachfassen unserer Abende). Erfasste Kontakte, Deals und Umsatz zählen trotzdem normal in Sales.
         </div>
       </Karte>
 

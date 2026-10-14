@@ -6,7 +6,7 @@
 // Aufgaben mit Datum, Apple-Erinnerungen, Fristen aus dem ganzen System.
 // Hier: Daten laden (useKalender), Farben und das Termin-Fenster.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf, Segmente, Chip, feld, LEUCHT } from '../ui';
 import { Fenster } from '../Fenster';
@@ -20,6 +20,9 @@ import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 import { fokusFuerTermin } from '@/lib/zeitmessung/fokus-laufend';
 import { ZuordnungWahl, type Zuordnung } from '../zeit/Zuordnung';
 import type { Teilnahme, Teilnehmer } from '@/lib/kalender/gaeste';
+import { useFachNamen } from '../useFachNamen';
+import { istFach } from '@/lib/make-one/fach-namen';
+import { usePersonen } from '../aufgaben/hilfe';
 
 export type Wer = 'kevin' | 'malin' | 'beide';
 /** Ein Termin, wie ihn /api/kalender liefert (Bezug angewandt, für die ansehende Person maskiert). */
@@ -71,7 +74,25 @@ export interface KalenderStand {
 }
 
 export const WER_FARBE: Record<Wer, string> = { kevin: LEUCHT.puls, malin: LEUCHT.beziehung, beide: LEUCHT.geld };
-export const WER_LABEL: Record<Wer, string> = { kevin: 'Kevin', malin: 'Malin', beide: 'Gemeinsam' };
+/**
+ * Anzeigename je Fach (14.10., Abnahme A1): `kevin`/`malin` sind Kennungen der Zuordnung — angezeigt wird die Person dahinter aus den Konten
+ * (lib/make-one/fach-namen.ts), nie ein fester Name. `belegt`: Fächer mit Person (eine Instanz mit einer Person zeigt nur eins).
+ */
+export function useWerLabel(): Record<Wer, string> & { belegt: Wer[] } {
+  const n = useFachNamen();
+  return useMemo(() => ({ kevin: n.kevin, malin: n.malin, beide: 'Gemeinsam', belegt: [...n.belegt, 'beide' as const] }), [n]);
+}
+
+/** Name hinter einer Kennung (`von` eines Termins: Fach oder Speichername) — für „Privater Termin von …“. */
+export function useNameVon(): (von: string | null | undefined) => string | null {
+  const wer = useWerLabel();
+  const personen = usePersonen();
+  return useCallback((von: string | null | undefined) => {
+    if (!von) return null;
+    if (istFach(von)) return wer[von];
+    return personen.find(p => p.speicher === von)?.name ?? null;
+  }, [wer, personen]);
+}
 export const FRIST_ZEICHEN: Record<KFrist['art'], { zeichen: string; farbe: string; label: string }> = {
   meilenstein: { zeichen: '◆', farbe: LEUCHT.agenten, label: 'Meilenstein' },
   etappe: { zeichen: '◇', farbe: LEUCHT.agenten, label: 'Bauplan-Etappe' },
@@ -126,15 +147,15 @@ const uhr = (wand: string) => wand.slice(11, 16);
 // ein mehrtägiger Eintrag = EIN Balken).
 
 /** Warum ein Termin nur in Apple änderbar ist — in Worten. */
-export function nurAppleGrund(t: KTermin, icloud = true): string | null {
+export function nurAppleGrund(t: KTermin, icloud = true, nameVon: (von: string | null | undefined) => string | null = () => null): string | null {
   if (t.bearbeitbar) return null;
-  if (t.maskiert) return `Privater Termin${t.von ? ` von ${WER_LABEL[t.von as Wer] ?? t.von}` : ''} — du siehst nur, dass die Zeit belegt ist.`;
+  if (t.maskiert) { const n = nameVon(t.von); return `Privater Termin${n ? ` von ${n}` : ''} — du siehst nur, dass die Zeit belegt ist.`; }
   if (istGoogleTermin(t)) {
     if (t.serie) return 'Serientermin — Änderungen bitte in Google Kalender (dort fragt Google „nur dieser oder alle?“).';
     if (t.mitTeilnehmern && !t.ichOrganisator) return 'Du bist hier Gast — ändern kann nur, wer eingeladen hat. Zusagen oder absagen geht unten (nach Bestätigung).';
     return 'Dieser Google-Kalender ist nur lesbar (geteilt ohne Schreibrecht).';
   }
-  if (!icloud) return 'iCloud ist noch nicht verbunden — du siehst den zuletzt vom Mac gelieferten Stand. Ändern geht hier, sobald die Verbindung steht.';
+  if (!icloud) return 'iCloud ist noch nicht verbunden — du siehst den zuletzt gespeicherten Stand. Ändern geht hier, sobald die Verbindung steht.';
   if (t.serie) return 'Serientermin — Änderungen bitte in Apple Kalender (dort fragt Apple „nur dieser oder alle?“).';
   if (t.mitTeilnehmern && !t.ichOrganisator) return 'Du bist hier Gast — ändern kann nur, wer eingeladen hat. Zusagen oder absagen geht unten (nach Bestätigung).';
   return 'Dieser Kalender ist nur lesbar (geteilt ohne Schreibrecht).';
@@ -197,7 +218,9 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
   const [gaeste, setGaeste] = useState<GastWahl[]>(gaesteStart);
   const [frage, setFrage] = useState<{ was: 'einladung' | 'aenderung' | 'absage' | 'antwort'; adressen: string[]; tun: () => void } | null>(null);
   const [fokusMeldung, setFokusMeldung] = useState<string | null>(null);
-  const grund = nurAppleGrund(basis, icloud);
+  const werLabel = useWerLabel();
+  const nameVon = useNameVon();
+  const grund = nurAppleGrund(basis, icloud, nameVon);
   const aus = !!grund;
   const art = f.art;
   const setF = (n: Fassung) => { setFRoh(n); schreibeMerker(MERKER_AENDERUNG(termin.uid), JSON.stringify(n) === JSON.stringify(start) ? null : { f: n, start }); };
@@ -289,7 +312,7 @@ export function TerminFenster({ termin, icloud = true, space = 'privat', kalende
     <Fenster breit={580} onZu={onZu} titel={<span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ width: 12, height: 12, borderRadius: 4, background: art === 'abwesend' ? LEUCHT.kritisch : farbe, flex: '0 0 auto' }} />{basis.titel}</span>}>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
         {basis.ganztags ? `${tagText(basis.start.slice(0, 10))}${endeTag > basis.start.slice(0, 10) ? ` – ${tagText(new Date(Date.parse(`${endeTag}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10))}` : ''} · ganztägig` : `${tagText(basis.start.slice(0, 10))} · ${uhr(basis.start)}–${uhr(basis.ende)} ${gmtText('Europe/Berlin', ausWandzeit(basis.start))}`}
-        {zonenHinweis ? ` · ${zonenHinweis}` : ''}{' · '}{basis.kalender} ({WER_LABEL[basis.wer]}){istGoogleTermin(basis) ? ' · Google' : ''}
+        {zonenHinweis ? ` · ${zonenHinweis}` : ''}{' · '}{basis.kalender} ({werLabel[basis.wer]}){istGoogleTermin(basis) ? ' · Google' : ''}
         {/* Meet-Link aus Google (nur lesen, nur https) — öffnet in einem neuen Tab, ohne Verweis auf MAKE OS. */}
         {basis.link && <> · <a href={basis.link} target="_blank" rel="noopener noreferrer" style={{ color: LEUCHT.agenten, textDecoration: 'none', fontWeight: 600, display: 'inline-block', minHeight: 24 }}>Meet-Link öffnen ↗</a></>}
       </div>

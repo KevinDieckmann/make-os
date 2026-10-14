@@ -125,7 +125,7 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
           ))}
         </div>
       )}
-      {feld('Firmierung', 'firmierung', firmierungVorschlag(g.id) ? `Vorschlag: ${firmierungVorschlag(g.id)}` : 'z. B. KD Ventures UG (haftungsbeschränkt)')}
+      {feld('Firmierung', 'firmierung', firmierungVorschlag(g.id) ? `Vorschlag: ${firmierungVorschlag(g.id)}` : 'z. B. Beispiel Holding UG (haftungsbeschränkt)')}
       {feld('Straße', 'strasse')}
       <Feldzeile label="PLZ · Ort"><span style={{ display: 'flex', gap: 8 }}><Feld wert={g.plz ?? ''} platzhalter="PLZ" breite={90} onFertig={t => void setze({ plz: t.trim() }, 'PLZ')} /><Feld wert={g.ort ?? ''} platzhalter="Ort" onFertig={t => void setze({ ort: t.trim() }, 'Ort')} /></span></Feldzeile>
       {feld('Land', 'land', 'Deutschland (leer lassen)')}

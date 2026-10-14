@@ -79,7 +79,7 @@ export const SEED: Omit<BacklogItem, 'angelegt'>[] = [
   {
     id: 'whoop-api', titel: 'Whoop-API anbinden', kategorie: 'anbindung', status: 'offen', prio: 1, block: 'inhaber',
     warum: 'Dann kommen Recovery, Schlaf, HRV und Ruhepuls jeden Morgen von selbst — der Morgen-Check entfällt und der Tagesstart hat echte Tageswerte.',
-    brauche: 'App auf developer.whoop.com registrieren → Client-ID + Secret in .env.local. Danach einmal autorisieren (OAuth), Refresh-Token bleibt lokal.',
+    brauche: 'App auf developer.whoop.com registrieren → Client-ID + Secret in die Server-Umgebung. Danach einmal autorisieren (OAuth), Refresh-Token bleibt lokal.',
     quelle: 'Gespräch 31.07.',
   },
   {

@@ -41,7 +41,7 @@ import { LEUCHT } from '../ui';
 import { spaltenLegen, ziehSpanne, spanneText, rasterLage, zeitumstellung, letzterTag, verschiebeDifferenz, endeAmTag, startMinute } from '@/lib/kalender/layout';
 import { ART_INFO, ARBEITSORTE } from '@/lib/kalender/arten';
 import { ART_FARBE } from '@/types/planer';
-import { WER_FARBE, WER_LABEL, istVorlaeufig, istGoogleTermin, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
+import { WER_FARBE, useWerLabel, istVorlaeufig, istGoogleTermin, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
 import { mitZeitAm, zeitAusMinuten, type KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { aufgabeZiehStart, aufgabeAusZiehen, ziehtAufgabe } from './aufgaben';
 import { wandAus, wandzeit, minutenVon } from '@/lib/kalender/zeit';
@@ -132,6 +132,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
   /** Arbeitsbeginn (Minute) — dorthin rollt das Raster, wenn heute nicht sichtbar ist (sonst eine Stunde vor jetzt). */
   arbeitsbeginn?: number | null;
 }) {
+  const WER_LABEL = useWerLabel(); // Namen der Fächer aus den Konten (14.10.) — nie fest im Code
   const spalten = useRef<HTMLDivElement | null>(null);
   const rollen = useRef<HTMLDivElement | null>(null);
   const [zieh, setZiehRoh] = useState<Zieh | null>(null);

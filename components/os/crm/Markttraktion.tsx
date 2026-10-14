@@ -48,6 +48,7 @@ import { MtPlanung } from './planung/Planung';
 import { ZoeFragenKnopf } from './ZoeFragen';
 import { zoeBezugFuer } from '@/lib/zoe/crm-bezug';
 import { markttraktionHead } from '@/lib/agenten/kontext-head';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 // Die Reiterzeile (Aufräumen Etappe 3, 08.10.): links die Arbeit, in der Mitte die Schnellknöpfe, rechts die Welten Marketing und
 // Events. Reihenfolge und Zuordnung stehen in `REITER_ZEILE` (lib/crm/adresse.ts).
@@ -72,7 +73,7 @@ const MITTE = REITER_ZEILE.mitte.map(b => ({ id: b, label: SCHNELL_NAME[b]?.labe
 const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }, { id: 'auswertung', label: 'Auswertung' }];
 const FOLLOWUP: { id: FollowupAnsicht; label: string }[] = [{ id: 'faellig', label: 'Fällig' }, { id: 'woche', label: 'Woche' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kadenz', label: 'Kadenz' }];
 const KONTAKTE: { id: Bereich; label: string }[] = [{ id: 'kontakte', label: 'Personen' }, { id: 'firmen', label: 'Firmen' }];
-const EVENTS: { id: Bereich; label: string }[] = [{ id: 'besuche', label: 'Besuchte Events' }, { id: 'event', label: 'Make.One' }];
+const EVENTS: { id: Bereich; label: string }[] = [{ id: 'besuche', label: 'Besuchte Events' }, { id: 'event', label: MARKE_EVENTS }];
 
 // Untertitel: eine Zeile (Aufräumen Etappe 3) — was hier passiert, kein Werbesatz.
 const UNTER: Record<Bereich, string> = {
@@ -86,7 +87,7 @@ const UNTER: Record<Bereich, string> = {
   planung: 'Vom Umsatzziel zu den Aktivitäten je Leadkanal und Woche — mit Kapazität und Challenges.',
   marketing: 'Ansprechbar sein, nicht laut.',
   besuche: 'Veranstaltungen, die wir besuchen: planen, vor Ort erfassen, auswerten.',
-  event: 'Make.One: unsere eigenen Abende — gemessen an den Gesprächen danach.',
+  event: 'Unsere eigenen Abende — gemessen an den Gesprächen danach.',
   stammdaten: 'Qualität, Wertelisten, Datenschutz, Import und Export.',
 };
 

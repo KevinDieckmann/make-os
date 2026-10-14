@@ -533,7 +533,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
         // Wie „Make.One einladen“ in der Kontaktakte: Gast für ein KOMMENDES Event vormerken (Teilnahme „vorgemerkt“), der Einladungsweg
         // folgt der Ampel (Mail nur bei grün, sonst persönlich) — gesendet wird nichts. Ohne wählbares Event: Aufgabe + Label als Vormerkung.
         // Eine Person mit Werbesperre (Art. 21) wird NICHT vorgemerkt — weder als Gast noch als Aufgabe/Label: das wäre die Einladung, die sie ausgeschlossen hat.
-        if (kontakt0.werbesperre) { hinweise.push('Werbesperre — nicht für Make.One vorgemerkt (Widerspruch, Art. 21 DSGVO).'); makeoneGesperrt = true; break; }
+        if (kontakt0.werbesperre) { hinweise.push(`Werbesperre — nicht für ${MARKE_EVENTS} vorgemerkt (Widerspruch, Art. 21 DSGVO).`); makeoneGesperrt = true; break; }
         const crmJetzt = await ladeCrm();
         const ziel = e.makeone?.eventId ? crmJetzt.events.find(x => x.id === e.makeone!.eventId && x.id !== eventId && !istNetzwerkenEvent(x) && x.datum >= heute && (x.status === 'idee' || x.status === 'geplant' || x.status === 'einladung')) : undefined;
         if (ziel) {

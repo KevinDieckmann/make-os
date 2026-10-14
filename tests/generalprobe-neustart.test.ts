@@ -90,7 +90,11 @@ describe('(2) „Als Nächstes“ im Neustart zuerst aus dem Kern', () => {
     const w = await fs.readFile(path.join(process.cwd(), 'components/os/flaeche/widgets.tsx'), 'utf8');
     const o = await fs.readFile(path.join(process.cwd(), 'components/os/OnboardingView.tsx'), 'utf8');
     expect(w).toMatch(/fortschrittVon\(meine, d\.z, \{ alle: true, kernZuerst: !!d\.ich\.neustart \}\)/);
-    expect(o).toMatch(/kernZuerst: neustart/);
+    // Seit 14.10. (Abnahme B4) zählen Heute-Karte, Einrichtung und Startfläche über EINE Funktion — sie gibt `kernZuerst` im Neustart mit.
+    expect(w).toMatch(/einrichtungStand\(d\.ich, d\.z\)/);
+    expect(o).toMatch(/einrichtungStand\(z\?\.ich \?\? null, z\)/);
+    const daten = await fs.readFile(path.join(process.cwd(), 'lib/make-one/onboarding-data.ts'), 'utf8');
+    expect(daten).toMatch(/fortschrittVon\(schritteFuer\(k\), z, \{ alle: true, kernZuerst: !!k\?\.neustart \}\)/);
   });
 });
 

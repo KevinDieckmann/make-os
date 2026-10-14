@@ -17,13 +17,14 @@ import { EINHEIT_LABEL, KAL, monatLabel, tagKurz, plusTage, letzterVoller, neueK
 import { usePlan } from './daten';
 import { UG_NAME } from '@/lib/einheiten';
 import { ZeileDialog } from './ZeileDialog';
-import { Geld, Kachel, Kacheln, Etikett, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Nichts, eingabeStil, KUPFER, Pillen } from './teile';
+import { Geld, Kachel, Kacheln, Etikett, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Nichts, eingabeStil, KUPFER, Pillen, personName } from './teile';
 import { Linie } from './diagramme';
 
 const EINHEITEN = (Object.keys(EINHEIT_LABEL) as Einheit[]).map(e => ({ id: e, label: EINHEIT_LABEL[e] }));
 /** Business-Sicht (04.10.; seit 05.10. ohne die Selbstständigkeit — sie gehört zu Privat): nur die Gesellschaften; neue Einträge starten bei der MAKE Innovation GmbH. */
 const einheitenFuer = (business: boolean) => (business ? EINHEITEN.filter(e => e.id === 'ug' || e.id === 'kdv') : EINHEITEN);
-const WER = [{ id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Beide' }];
+/** Wer zahlt (Fächer `kevin`/`malin` = Kennungen; angezeigt wird die Person dahinter aus den Konten, 14.10.). */
+const werOptionen = () => [{ id: 'kevin', label: personName('kevin') }, { id: 'malin', label: personName('malin') }, { id: 'beide', label: 'Beide' }];
 
 // ── Schulden ────────────────────────────────────────────────────────────────
 export function Schulden() {
@@ -147,7 +148,7 @@ export function ZuErledigen() {
     <>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         <Pillen liste={[{ id: 'offen' as const, label: 'Offen' }, { id: 'alle' as const, label: 'Alle' }]} aktiv={filter} onWahl={setFilter} />
-        <Auswahl wert={wer} onWahl={setWer} optionen={[{ id: 'alle', label: 'Kevin & Malin' }, ...WER]} titel="Wer" />
+        <Auswahl wert={wer} onWahl={setWer} optionen={[{ id: 'alle', label: 'Alle' }, ...werOptionen()]} titel="Wer" />
       </div>
       <Kacheln min={150}>
         {ARTEN.map(a => <Kachel key={a.id} label={a.label} wert={a.id === 'konto' ? String(d.posten.filter(p => p.art === 'konto' && p.betrag == null).length) : <><Geld v={summe(a.id)} /> €</>} unter={a.id === 'konto' ? 'fehlen noch' : `${d.posten.filter(p => p.art === a.id && postenOffen(p)).length} offen`} />)}
@@ -167,7 +168,7 @@ export function ZuErledigen() {
                       <td style={TD}>{a.id !== 'konto' && <Haken an={!offen} onChange={() => setze(p, 'status', p.status, offen ? (p.art === 'rechnung' ? 'bezahlt' : 'erledigt') : 'offen', offen ? 'erledigt' : 'wieder offen')} />}</td>
                       <td style={TD}><TextFeld wert={p.name} onFertig={v => setze(p, 'name', p.name, v, 'Name')} breite={170} titel="Name" /></td>
                       <td style={TD}><Auswahl wert={p.einheit} onWahl={v => setze(p, 'einheit', p.einheit, v, 'Einheit')} optionen={einheitenFuer(business)} titel="Einheit" /></td>
-                      <td style={TD}><Auswahl wert={personKennung(p.wer || 'beide')} onWahl={v => setze(p, 'wer', p.wer, v, 'wer')} optionen={WER} titel="Wer" /></td>
+                      <td style={TD}><Auswahl wert={personKennung(p.wer || 'beide')} onWahl={v => setze(p, 'wer', p.wer, v, 'wer')} optionen={werOptionen()} titel="Wer" /></td>
                       <td style={TD}><input type="date" value={p.faellig ?? ''} aria-label="fällig" onChange={e => setze(p, 'faellig', p.faellig, e.target.value, 'fällig')} style={{ ...eingabeStil, width: 140, borderColor: ueber ? LEUCHT.kritisch : bald ? LEUCHT.achtung : undefined, color: ueber ? LEUCHT.kritisch : C.ink }} /></td>
                       <td style={TD}><Auswahl wert={p.status} onWahl={v => setze(p, 'status', p.status, v, 'Status')} optionen={statusFuer(a.id)} titel="Status" /></td>
                       <td style={TDr}><ZahlFeld wert={p.betrag} leer onFertig={v => setze(p, 'betrag', p.betrag, v, 'Betrag')} platzhalter="eintragen" breite={110} titel="Betrag" /></td>

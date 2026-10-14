@@ -17,7 +17,7 @@
 
 import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, CrmBestand, FollowUp, Leistung, Mandat } from './typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
-import { KERN_EINHEITEN, UG_KURZ } from '@/lib/einheiten';
+import { KERN_EINHEITEN, UG_KURZ, EINHEITEN_UEBERSCHRIEBEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
 import { preisBasisVon } from '@/lib/finanzen/produkte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
@@ -140,7 +140,13 @@ export function kuerzelAus(name: string, rueckfall: string): string {
  * Kürzel für die Nummer, solange die Gesellschaft keines trägt. `ug` kommt aus dem Kurznamen der Instanz (`UG_KURZ`, lib/einheiten.ts —
  * 08.10., Markttraktion Woche 2 · 3.15: vorher stand hier noch das Kürzel des Altnamens). Vergebene Nummern bleiben, wie sie sind.
  */
-export const KURZ_VORGABE: Record<Gesellschaftskennung, string> = { kdc: 'KDC', kdv: 'KDV', ug: kuerzelAus(UG_KURZ, 'UG') };
+// 14.10. (Abnahme A1): `kdc`/`kdv` nehmen den Kurznamen der Instanz, wenn sie einen eigenen trägt (NEXT_PUBLIC_MAKE_OS_EINHEITEN) — ohne Variable bleibt
+// die Vorgabe unserer Instanz (vergebene und künftige Nummern unverändert).
+export const KURZ_VORGABE: Record<Gesellschaftskennung, string> = {
+  kdc: EINHEITEN_UEBERSCHRIEBEN.kdc?.kurz ? kuerzelAus(EINHEITEN_UEBERSCHRIEBEN.kdc.kurz, 'KDC') : 'KDC',
+  kdv: EINHEITEN_UEBERSCHRIEBEN.kdv?.kurz ? kuerzelAus(EINHEITEN_UEBERSCHRIEBEN.kdv.kurz, 'KDV') : 'KDV',
+  ug: kuerzelAus(UG_KURZ, 'UG'),
+};
 
 /** Ein Format ist gültig, wenn es genau eine laufende Nummer trägt und nur erlaubte Zeichen. */
 export function nummernformatOk(f: string): boolean {

@@ -5,6 +5,7 @@
 // Rein (kein React), damit Schnellsuche und Wächter dieselbe Liste lesen. `space` = zuerst im passenden Space vorgeschlagen.
 
 import { WEG } from '@/lib/wege';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 export interface SeitenTreffer { art: 'seite'; id: string; titel: string; href: string; space?: 'privat' | 'business' }
 
@@ -74,7 +75,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('marketing', 'Markttraktion · Marketing', WEG.marketing(), 'business'),
   s('kampagnen', 'Markttraktion · Kampagnen', '/os/markttraktion?s=marketing&a=kampagnen', 'business'),
   s('events', 'Markttraktion · Events (besuchte Veranstaltungen)', WEG.besuch(), 'business'),
-  s('makeone', 'Markttraktion · Make.One (eigene Abende)', WEG.event(), 'business'),
+  s('makeone', `Markttraktion · ${MARKE_EVENTS} (eigene Abende)`, WEG.event(), 'business'),
   s('mt-stammdaten', 'Markttraktion · Stammdaten', WEG.stammdaten(), 'business'),
   s('mandate', 'Produkte & Mandate · Mandate', WEG.mandat(), 'business'),
   s('produkte', 'Produkte & Mandate · Produkte (Leistungskatalog)', WEG.produkt(), 'business'),

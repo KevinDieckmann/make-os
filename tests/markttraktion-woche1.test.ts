@@ -678,7 +678,8 @@ describe('F · Namen, Texte, Links, Mindestmengen, Berliner Tag', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.fehler).toBe('Kanal: website, mail, linkedin, telefon, empfehlung, event oder whatsapp.');
     expect(quelle('components/os/crm/marketing/Newsletter.tsx')).not.toContain('unter „Recht“');
-    expect(quelle('components/os/crm/kontakt/SchnellLeiste.tsx')).toContain('Markttraktion › Events › Make.One');
+    // Seit 14.10. (Abnahme A1) steht die Marke nicht mehr fest im Text — sie kommt aus `MARKE_EVENTS` (lib/crm/marke.ts, je Instanz).
+    expect(quelle('components/os/crm/kontakt/SchnellLeiste.tsx')).toContain('Markttraktion › Events › {MARKE_EVENTS}');
   });
 
   it('5.19 · WEG.event ohne Kennung mit Reiter: ein Abfrageteil, kein zweites „?“', async () => {

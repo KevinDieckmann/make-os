@@ -84,6 +84,12 @@ export interface Schritt {
   pruefung?: string;
   /** Am Server (nur der Inhaber, per SSH). */
   server?: true;
+  /**
+   * Betreiber-Schritt (14.10., Abnahme A2, Kevin: „Nur in eurer Instanz“): Server-Befehle, Repo-Dateien, Geheimnisse der Instanz. Es gibt ihn
+   * nur in der Betreiber-Instanz (`Kontext.betreiber`, Regel lib/betrieb/betreiber.ts) — sonst weder sichtbar noch gezählt noch abhakbar, und
+   * seine Befunde gehen nicht raus (`betreiberBefundeWeg`). Jeder Schritt mit `befehl`/`server` trägt die Marke (Wächter tests/oberflaeche-neutral.test.ts).
+   */
+  betreiber?: true;
   /** Nur der Inhaber darf abhaken (Server und Einstellungen der Instanz, Firmen-Grundlagen) — sonst 403. */
   nurInhaber?: true;
   /** Optional: zählt nicht im Fortschritt mit, solange er offen ist. */
@@ -174,8 +180,14 @@ export const ETAPPEN: Etappe[] = [
  * Uploads, dann der Samstag-Kern (`samstag`), der Rest einzeln bis 16.10. (`spaeter`). Die Minuten des Samstags je Rolle hält der
  * Wächter tests/onboarding-stand.test.ts unter acht Stunden.
  */
-export const ABLAUF: { wann: string; was: string }[] = [
-  { wann: 'Freitag 09.10., nach dem Upload', was: 'Etappe 0 am Server (Inhaber, etwa 2½ Stunden). Zuerst 1.8 (eigene Einwilligung (a) zur Gesundheit), dann 0.1 Update, 0.2 Pepper, 0.5 Altbestand, 0.6 Sicherung, 0.8 Vault, 0.9 Adresse, 0.10 WHOOP- und 0.11 Google-Anwendung.' },
+/**
+ * Eine Zeile des Ablaufs. `betreiber`: nur in der Betreiber-Instanz (Server-Teil); `ohneBetreiber`: der Satz für eine Instanz ohne Betreiber-Schritte
+ * (14.10., Abnahme A2) — gelesen nur über `ablaufFuer`.
+ */
+export interface AblaufZeile { wann: string; was: string; betreiber?: true; ohneBetreiber?: string }
+
+export const ABLAUF: AblaufZeile[] = [
+  { wann: 'Freitag 09.10., nach dem Upload', betreiber: true, was: 'Etappe 0 am Server (Inhaber, etwa 2½ Stunden). Zuerst 1.8 (eigene Einwilligung (a) zur Gesundheit), dann 0.1 Update, 0.2 Pepper, 0.5 Altbestand, 0.6 Sicherung, 0.8 Vault, 0.9 Adresse, 0.10 WHOOP- und 0.11 Google-Anwendung.' },
   { wann: 'Samstag 10.10. (höchstens etwa 8 Stunden)', was: 'Alle Schritte mit „Samstag“: vormittags jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele, Finanzplan, Gesundheit und Familie. Die zweite Person braucht deutlich weniger Zeit.' },
   { wann: 'Einzeln bis 16.10.', was: 'Alles mit „einzeln“: zweite Kopie am Mac und Probe (frühestens Sonntag), Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug und WhatsApp als eigene Termine. Der erste Monatsabschluss (Oktober) kommt Anfang November. Der Altbestand (0.5) muss vor dem Update am 16.10. übernommen sein.' },
 ];
@@ -184,26 +196,32 @@ export const ABLAUF: { wann: string; was: string }[] = [
  * Der Ablauf einer Instanz ohne Altbestand (Rundgang 09.10.: eine neue bzw. fremde Instanz sah sonst den Upload-Fahrplan der gewachsenen
  * Instanz mit festen Tagen): dieselbe Reihenfolge, ohne Datum.
  */
-export const ABLAUF_ALLGEMEIN: { wann: string; was: string }[] = [
-  { wann: 'Zuerst · am Server', was: 'Etappe 0 — nur die Inhaber: Update, Schlüssel, Sicherung, Vault, Adresse und die Anwendungen für die Verbindungen, jeweils mit Befehl. Wer Gesundheitsdaten nutzt, gibt vorher die eigene Einwilligung (1.8).' },
+export const ABLAUF_ALLGEMEIN: AblaufZeile[] = [
+  { wann: 'Zuerst · am Server', betreiber: true, was: 'Etappe 0 — nur die Inhaber: Update, Schlüssel, Sicherung, Vault, Adresse und die Anwendungen für die Verbindungen, jeweils mit Befehl. Wer Gesundheitsdaten nutzt, gibt vorher die eigene Einwilligung (1.8).' },
   { wann: 'Der Kern', was: 'Alle Schritte mit „Der Kern“: zuerst jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele, Finanzplan, Gesundheit und Familie. Weitere Personen brauchen deutlich weniger Zeit.' },
-  { wann: 'Nach und nach', was: 'Alles mit „Nach und nach“: zweite Kopie der Sicherung und Probe, Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug und WhatsApp als eigene Termine. Der erste Monatsabschluss kommt nach dem ersten vollen Monat ab dem Stichtag.' },
+  { wann: 'Nach und nach', ohneBetreiber: 'Alles mit „Nach und nach“: Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug als eigener Termin. Der erste Monatsabschluss kommt nach dem ersten vollen Monat ab dem Stichtag.', was: 'Alles mit „Nach und nach“: zweite Kopie der Sicherung und Probe, Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug und WhatsApp als eigene Termine. Der erste Monatsabschluss kommt nach dem ersten vollen Monat ab dem Stichtag.' },
 ];
 
 /**
  * Der Ablauf im Neustart (Kevin 09.10., Nachtrag: „dass wir alles einmal eingeben müssen, was wir wollen. Dann können wir alle Schnittstellen
  * extrem sauber ziehen“): Zugang → alles eingeben → Schnittstellen → Agenten. Ohne Datum, ohne Namen.
  */
-export const ABLAUF_NEUSTART: { wann: string; was: string }[] = [
-  { wann: 'Zuerst · am Server', was: 'Etappe 0 — nur die Inhaber. Auf einem bestehenden Server ist das meiste schon grün; offen bleibt, was die neue Instanz braucht.' },
+export const ABLAUF_NEUSTART: AblaufZeile[] = [
+  { wann: 'Zuerst · am Server', betreiber: true, was: 'Etappe 0 — nur die Inhaber. Auf einem bestehenden Server ist das meiste schon grün; offen bleibt, was die neue Instanz braucht.' },
   { wann: 'Der Kern · Zugang', was: 'Etappe 1 — jede Person: zweiter Faktor, Einwilligungen, eigene KI-Schalter, Handy, ein kurzer Rundgang; die Inhaber: Haushalt, Datenschutz, KI der Instanz.' },
   { wann: 'Der Kern · alles eingeben', was: 'Etappen 2 bis 7 — jede Person ihre eigenen Ziele, ihren Alltag und ihre Gesundheit; gemeinsam Planung, Familie und Finanzen; dann „Business online“: Gesellschaft & Konten, Angebot & Vertrieb. Zahlen eintragen oder hochladen (Kontoauszug, Excel, OP-Liste).' },
   { wann: 'Danach · Schnittstellen', was: 'Etappe 8 — Kalender, Postfächer, WHOOP und WhatsApp sauber neu verbinden, jede Person ihre eigenen.' },
   { wann: 'Danach · Agenten und Abschluss', was: 'Etappen 9 und 10 — Agenten einstellen, ZOE und Brain; zum Schluss Datenstand und Head of IT.' },
 ];
 
-/** Der Ablauf für diese Instanz: im Neustart dessen Ablauf, mit Altbestand der Fahrplan ihres Uploads (`ABLAUF`), sonst der neutrale ohne Datum. Rein. */
-export const ablaufFuer = (altbestand: boolean, neustart = false): readonly { wann: string; was: string }[] => (neustart ? ABLAUF_NEUSTART : altbestand ? ABLAUF : ABLAUF_ALLGEMEIN);
+/**
+ * Der Ablauf für diese Instanz: im Neustart dessen Ablauf, mit Altbestand der Fahrplan ihres Uploads (`ABLAUF`), sonst der neutrale ohne Datum.
+ * Ohne Betreiber-Instanz (`betreiber === false`) fehlt der Server-Teil, und Zeilen mit `ohneBetreiber` nehmen diesen Satz. Rein.
+ */
+export function ablaufFuer(altbestand: boolean, neustart = false, betreiber = true): readonly { wann: string; was: string }[] {
+  const l = neustart ? ABLAUF_NEUSTART : altbestand ? ABLAUF : ABLAUF_ALLGEMEIN;
+  return betreiber ? l : l.filter(a => !a.betreiber).map(a => ({ wann: a.wann, was: a.ohneBetreiber ?? a.was }));
+}
 
 /**
  * Die Etappen für diese Instanz: im Neustart die des Neustarts (`NEUSTART_ETAPPEN`); ohne Altbestand mit neutralem Titel/Satz und ohne Hinweise,
@@ -230,7 +248,7 @@ const BUSINESS = BUSINESS_EINHEITEN_NAMEN.length ? ` (bei euch: ${BUSINESS_EINHE
 const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
   // ── Etappe 0 — Am Upload-Tag und direkt danach (Server, nur der Inhaber) ─────────────────────────────────────────────────────
   {
-    id: 'update', etappe: 0, nr: '0.1', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25,
+    id: 'update', betreiber: true, etappe: 0, nr: '0.1', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25,
     modul: 'grundlage',
     titel: 'Update einspielen',
     warum: 'Erst mit dem neuen Stand gibt es diese Einrichtung, die Prüfungen und alle Verbindungen. Vorher wird gesichert, damit es einen Weg zurück gibt.',
@@ -244,7 +262,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: HOI,
   },
   {
-    id: 'pepper', etappe: 0, nr: '0.2', ebene: 'instanz', server: true, nurInhaber: true, minuten: 10, pruefung: 'pepper',
+    id: 'pepper', betreiber: true, etappe: 0, nr: '0.2', ebene: 'instanz', server: true, nurInhaber: true, minuten: 10, pruefung: 'pepper',
     modul: 'grundlage', nach: ['update'],
     titel: 'Pepper und strenger Start-Riegel',
     warum: 'Mit dem Pepper sind die Fingerabdrücke gesperrter oder gelöschter Personen nicht mehr zu erraten. Der strenge Start-Riegel sorgt dafür, dass MAKE OS ohne seine Geheimnisse gar nicht erst startet.',
@@ -258,7 +276,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: HOI,
   },
   {
-    id: 'altbestand', nurAltbestand: true, etappe: 0, nr: '0.5', ebene: 'instanz', server: true, nurInhaber: true, minuten: 15,
+    id: 'altbestand', betreiber: true, nurAltbestand: true, etappe: 0, nr: '0.5', ebene: 'instanz', server: true, nurInhaber: true, minuten: 15,
     modul: 'grundlage', nach: ['update', 'ich-gesundheit'],
     titel: 'Altbestand übernehmen — vor dem Update am 16.10.',
     warum: 'Bisherige persönliche Inhalte standen im Code: das Körper-Profil und der Nordstern (gemeinsamer Satz und persönliches Kernziel). Sie wandern genau einmal in die Daten des Inhabers bzw. des Haushalts und fliegen danach aus dem Code — nichts geht verloren.',
@@ -274,7 +292,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     befehl: 'cd /srv/make-os/app && nano .env      # MAKE_OS_ALTBESTAND_PERSON=<Speichername>\ncd /srv/make-os/app && docker compose up -d\ncd /srv/make-os/app && docker compose logs app | grep Altbestand',
   },
   {
-    id: 'sicherung', etappe: 0, nr: '0.6', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25, pruefung: 'sicherung',
+    id: 'sicherung', betreiber: true, etappe: 0, nr: '0.6', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25, pruefung: 'sicherung',
     modul: 'grundlage', nach: ['update'],
     titel: 'Nachtsicherung mit age und Wächter',
     warum: 'Jede Nacht sichert der Server alles verschlüsselt. Den privaten Schlüssel habt nur ihr — ohne ihn ist die Sicherung für niemanden lesbar. Fällt die Sicherung aus, schlägt der Wächter (Healthchecks) Alarm.',
@@ -289,7 +307,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: HOI,
   },
   {
-    id: 'sicherung-mac', spaeter: true, etappe: 0, nr: '0.7', ebene: 'instanz', server: true, nurInhaber: true, minuten: 45, pruefung: 'abholung', bestaetigen: true,
+    id: 'sicherung-mac', betreiber: true, spaeter: true, etappe: 0, nr: '0.7', ebene: 'instanz', server: true, nurInhaber: true, minuten: 45, pruefung: 'abholung', bestaetigen: true,
     modul: 'grundlage', nach: ['sicherung'], wartetAuf: 'die erste Nachtsicherung (03:15) — vorher gibt es kein age-Archiv',
     titel: 'Zweite Kopie am Mac — und einmal zurückspielen',
     warum: 'Eine Sicherung, die nie zurückgespielt wurde, ist ein Versprechen. Der zweite Ort holt jede Nacht das neueste Archiv auf den Mac; die Probe beweist, dass es sich wiederherstellen lässt.',
@@ -303,7 +321,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: HOI,
   },
   {
-    id: 'vault', etappe: 0, nr: '0.8', ebene: 'instanz', server: true, nurInhaber: true, minuten: 30, pruefung: 'vault',
+    id: 'vault', betreiber: true, etappe: 0, nr: '0.8', ebene: 'instanz', server: true, nurInhaber: true, minuten: 30, pruefung: 'vault',
     modul: 'zoe', nach: ['update'],
     titel: 'Vault umziehen, Abgleich und App-Spiegel an',
     warum: 'Das Brain ist euer Wissen. Der Server-Vault wird die Wahrheit; der Abgleich hält ihn alle fünf Minuten mit dem Mac gleich. Der App-Spiegel schreibt Projekte, Mandate und Wochen als Notizen ins Brain.',
@@ -316,7 +334,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: HOI,
   },
   {
-    id: 'adresse', etappe: 0, nr: '0.9', ebene: 'instanz', server: true, nurInhaber: true, minuten: 5, pruefung: 'adresse',
+    id: 'adresse', betreiber: true, etappe: 0, nr: '0.9', ebene: 'instanz', server: true, nurInhaber: true, minuten: 5, pruefung: 'adresse',
     modul: 'grundlage', nach: ['update'],
     titel: 'Adresse der Instanz prüfen',
     warum: 'Aus MAKE_OS_ADRESSE entstehen Rückruf-Adressen (Google, WHOOP), Einladungslinks und Cookies. Sie muss genau die Adresse sein, unter der ihr arbeitet — mit https.',
@@ -325,7 +343,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     befehl: 'cd /srv/make-os/app && grep -c "^MAKE_OS_ADRESSE=https://" .env',
   },
   {
-    id: 'whoop-app', etappe: 0, nr: '0.10', ebene: 'instanz', server: true, nurInhaber: true, minuten: 15, pruefung: 'whoop-konfig',
+    id: 'whoop-app', betreiber: true, etappe: 0, nr: '0.10', ebene: 'instanz', server: true, nurInhaber: true, minuten: 15, pruefung: 'whoop-konfig',
     modul: 'gesundheit', nach: ['adresse'],
     titel: 'WHOOP-Anwendung einmal je Instanz',
     warum: 'Damit jede Person ihr eigenes WHOOP-Konto verbinden kann, braucht die Instanz einmal eine eigene WHOOP-Anwendung (Schnittstelle v2).',
@@ -337,7 +355,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/whoop-verbinden.sh',
   },
   {
-    id: 'google-app', etappe: 0, nr: '0.11', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25, pruefung: 'google-konfig',
+    id: 'google-app', betreiber: true, etappe: 0, nr: '0.11', ebene: 'instanz', server: true, nurInhaber: true, minuten: 25, pruefung: 'google-konfig',
     modul: 'kalender', nach: ['adresse'],
     titel: 'Google prüfen und Gmail freischalten',
     warum: 'Business-Kalender und Gmail laufen über eine Google-Verbindung je Person. Die Instanz braucht dafür einmal ein Google-Projekt mit Gmail-Schnittstelle.',
@@ -350,7 +368,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/google-verbinden.sh',
   },
   {
-    id: 'notfallmappe', samstag: true, etappe: 0, nr: '0.12', ebene: 'gemeinsam', minuten: 20,
+    id: 'notfallmappe', betreiber: true, samstag: true, etappe: 0, nr: '0.12', ebene: 'gemeinsam', minuten: 20,
     modul: 'grundlage', nach: ['pepper', 'sicherung'],
     titel: 'Notfallmappe',
     warum: 'Fällt der Inhaber aus, muss jemand an Pepper, age-Schlüssel, Datenschlüssel, Server-Zugang und Wiederherstellungs-Codes kommen — sonst ist alles verschlüsselt und unerreichbar.',
@@ -361,7 +379,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     danach: 'Beide wissen, was im Ernstfall zu tun ist.',
   },
   {
-    id: 'medienspeicher', spaeter: true, etappe: 0, nr: '0.13', ebene: 'instanz', server: true, nurInhaber: true, minuten: 20, pruefung: 'medien',
+    id: 'medienspeicher', betreiber: true, spaeter: true, etappe: 0, nr: '0.13', ebene: 'instanz', server: true, nurInhaber: true, minuten: 20, pruefung: 'medien',
     modul: 'grundlage', nach: ['update'],
     titel: 'Medienspeicher (Object Storage) einrichten',
     warum: 'Fotos und Videos aus „Medien unterwegs“ liegen sonst im Ordner auf dem Server — außerhalb der Nachtsicherung und mit einer festen Grenze. Im Object Storage liegen sie verschlüsselt (je Medium ein eigener Schlüssel, der auf dem Server bleibt).',
@@ -532,7 +550,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: { href: `${WEG.konto()}#inhaber`, label: 'Konto › Inhaber' },
   },
   {
-    id: 'ssh-zweiter-schluessel', spaeter: true, etappe: 1, nr: '1.12', ebene: 'instanz', server: true, nurInhaber: true, nurMitMehreren: true, minuten: 15,
+    id: 'ssh-zweiter-schluessel', betreiber: true, spaeter: true, etappe: 1, nr: '1.12', ebene: 'instanz', server: true, nurInhaber: true, nurMitMehreren: true, minuten: 15,
     modul: 'grundlage', nach: ['weitere-inhaber'],
     titel: 'Eigener Server-Zugang für die zweite Inhaberin',
     warum: 'Wer Inhaber ist, muss im Ernstfall auch an den Server kommen (Update, Sicherung, Schlüssel). Jede Person bekommt einen EIGENEN Schlüssel — nie einen geteilten: geht ein Gerät verloren, wird genau dieser herausgenommen.',
@@ -554,7 +572,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wie: [
       'Auf appleid.apple.com › Anmelden und Sicherheit › App-spezifische Passwörter ein Passwort anlegen. Nicht das normale Apple-Passwort.',
       'Kalender › Bereich Privat › Karte „iCloud Kalender“: Apple-ID und App-Passwort eintragen, Kalender wählen.',
-      'Inhaber: zeigt die Prüfung „über die Server-Umgebung verbunden“, die Verbindung hier in der Oberfläche eintragen — der Eintrag ersetzt die Server-Einrichtung; danach die alten ICLOUD-Zeilen von Hand aus der .env nehmen.',
+      'Inhaber: zeigt die Prüfung „über die Server-Umgebung verbunden“, die Verbindung hier in der Oberfläche eintragen — der Eintrag ersetzt die Server-Einrichtung; die alte Einrichtung am Server nimmt danach der Betreiber heraus.',
       'Wechselst du später dein Apple-Passwort, wird das App-Passwort ungültig — dann „Verbindung erneuern“.',
     ],
     danach: 'Verbunden und gesund: Apple nimmt das App-Passwort an.',
@@ -642,12 +660,12 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
       'Reihenfolge: gemeinsame Adressen als Gruppe, „Senden als“, Testmail, SPF/DKIM/DMARC — die MX-Einträge ganz zuletzt.',
       'Alte Mails optional mitnehmen.',
       'Den bisherigen Anbieter mindestens vier Wochen weiterlaufen lassen.',
-      'Anleitung: GOOGLE_GMAIL_EINRICHTEN.md, Teil D. An einem Werktag-Vormittag nach dem Gmail-Test.',
+      'An einem Werktag-Vormittag nach dem Gmail-Test — die Einträge beim Domain-Anbieter setzt, wer die Domain verwaltet.',
     ],
     danach: 'Neue Post kommt bei Google an; die Inbox zeigt sie über die Gmail-Verbindung.',
   },
   {
-    id: 'whatsapp', spaeter: true, etappe: 2, nr: '2.9', ebene: 'instanz', nurInhaber: true, minuten: 90,
+    id: 'whatsapp', betreiber: true, spaeter: true, etappe: 2, nr: '2.9', ebene: 'instanz', nurInhaber: true, minuten: 90,
     modul: 'postfach', nach: ['datenschutz'], wartetAuf: 'die Verifizierung bei Meta (dauert Tage)',
     titel: 'WhatsApp Business (eigener Termin)',
     warum: 'Die Business-Nummer der Instanz erscheint in der Inbox. Die Verifizierung bei Meta dauert Tage — deshalb früh anstoßen, sobald der Weg entschieden ist.',
@@ -1699,6 +1717,11 @@ export interface Kontext {
   neustart?: boolean;
   /** Konto „nur Business“ (Konto-Sicht `nurBusiness`): kein Privat-Bereich — keine Privat-Schritte (`istPrivatSchritt`). */
   nurBusiness?: boolean;
+  /**
+   * Betreiber-Instanz (14.10., lib/betrieb/betreiber.ts — der Server setzt es immer): `false` → keine Betreiber-Schritte (`Schritt.betreiber`),
+   * kein Server-Teil im Ablauf. Fehlt die Angabe (reine Aufrufe ohne Server), gilt das Verhalten von vorher.
+   */
+  betreiber?: boolean;
 }
 
 /** Etappen-Reihenfolge (Etappe, dann die Reihenfolge der Fassung bzw. in SCHRITTE). */
@@ -1734,6 +1757,8 @@ export function schrittInSicht(s: Pick<Schritt, 'privatFinanzen' | 'privat' | 'm
 
 /** Sieht diese Person den Schritt überhaupt (Privat-Bereich, Altbestand, Neustart)? Gilt auch auf den Ebenen-Seiten. */
 export function sichtbarFuer(s: Schritt, k: Kontext | null): boolean {
+  // Betreiber-Schritte (14.10.): nur in der Betreiber-Instanz — ohne Kontext (keine Person) nie.
+  if (s.betreiber && (!k || k.betreiber === false)) return false;
   if (s.privatFinanzen && k && k.privatFinanzen === false) return false;
   if (k && (k.nurBusiness || k.privatFinanzen === false) && istPrivatSchritt(s)) return false;
   if (s.nurNeustart && !k?.neustart) return false;
@@ -1800,6 +1825,29 @@ export function fortschrittVon(schritte: readonly Schritt[], z: HakenZustand | n
   return { fertig: zaehlen.length - offen.length, gesamt: zaehlen.length, offeneMinuten: offen.reduce((n, s) => n + s.minuten, 0), naechster };
 }
 
+/**
+ * DIE Zählung „Einrichtung x von y“ einer Person (14.10., Abnahme B4: Heute › Business, Heute › Privat und die Einrichtungsseite zeigten
+ * verschiedene Zahlen): alle Schritte der Person (`schritteFuer`) — unabhängig vom Bereich der Ansicht —, jeder nicht-optionale zählt sofort
+ * (`alle`), im Neustart zuerst der Kern. Heute-Karte, Einrichtungsseite und Startfläche fragen nur das. Rein.
+ */
+export function einrichtungStand(k: Kontext | null, z: HakenZustand | null | undefined): { fertig: number; gesamt: number; offeneMinuten: number; naechster: Schritt | null } {
+  return fortschrittVon(schritteFuer(k), z, { alle: true, kernZuerst: !!k?.neustart });
+}
+
+/**
+ * Prüf-Schlüssel, die NUR Betreiber-Schritte haben (Server, Sicherung, Pepper, Anwendungen) — außerhalb der Betreiber-Instanz gehen sie nicht
+ * raus (`betreiberBefundeWeg`, GET /api/onboarding).
+ */
+export const BETREIBER_PRUEFUNGEN: readonly string[] = (() => {
+  const andere = new Set(SCHRITTE.filter(s => !s.betreiber && s.pruefung).map(s => s.pruefung!));
+  return [...new Set(SCHRITTE.filter(s => s.betreiber && s.pruefung && !andere.has(s.pruefung)).map(s => s.pruefung!))];
+})();
+/** Befunde ohne die der Betreiber-Schritte, wenn diese Instanz keine Betreiber-Instanz ist (`k.betreiber !== true`). Rein. */
+export function betreiberBefundeWeg<B>(befunde: Record<string, B>, k: Pick<Kontext, 'betreiber'> | null | undefined): Record<string, B> {
+  if (k?.betreiber) return befunde;
+  return Object.fromEntries(Object.entries(befunde).filter(([id]) => !BETREIBER_PRUEFUNGEN.includes(id)));
+}
+
 /** Restzeit als Text — EINE Stelle für Übersicht und Heute-Widget, deutsche Zahlform („rund 8,8 Std.“, nie „8.8“). */
 export function restzeitText(minuten: number): string {
   if (minuten < 60) return `${minuten} Min.`;
@@ -1852,13 +1900,13 @@ export const gruppeVon = (s: Schritt): Gruppe => (s.samstag ? 'samstag' : s.spae
 export const GRUPPEN: Record<Gruppe, { titel: string; satz: string }> = {
   freitag: { titel: 'Freitag · am Server', satz: 'Etappe 0 am Abend des Uploads — nur der Inhaber.' },
   samstag: { titel: 'Samstag', satz: 'Der Kern an einem langen Tag — von oben nach unten.' },
-  spaeter: { titel: 'Einzeln bis 16.10.', satz: 'Zählt erst, wenn getan — nach und nach, jede Person und gemeinsam.' },
+  spaeter: { titel: 'Einzeln bis 16.10.', satz: 'Nach und nach, jede Person und gemeinsam. Zählt mit: die Karte auf Heute bleibt, bis alles steht.' },
 };
 /** Dieselben drei Gruppen ohne Wochentage und Datum (Instanz ohne Altbestand, Rundgang 09.10.). Die Zuordnung `gruppeVon` bleibt. */
 export const GRUPPEN_ALLGEMEIN: Record<Gruppe, { titel: string; satz: string }> = {
   freitag: { titel: 'Zuerst · am Server', satz: 'Etappe 0 — nur die Inhaber, bevor die anderen loslegen.' },
   samstag: { titel: 'Der Kern', satz: 'Das Wichtigste in einem Zug — von oben nach unten.' },
-  spaeter: { titel: 'Nach und nach', satz: 'Zählt erst, wenn getan — in eigenem Tempo, jede Person und gemeinsam.' },
+  spaeter: { titel: 'Nach und nach', satz: 'In eigenem Tempo, jede Person und gemeinsam. Zählt mit: die Karte auf Heute bleibt, bis alles steht.' },
 };
 /** Die drei Gruppen im Neustart: zuerst der Server, dann der Kern (Zugang + alles eingeben), danach Schnittstellen, Agenten, Abschluss. */
 export const GRUPPEN_NEUSTART: Record<Gruppe, { titel: string; satz: string }> = {

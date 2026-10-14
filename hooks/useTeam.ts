@@ -32,6 +32,10 @@ async function laden(): Promise<void> {
   return laeuft;
 }
 
+/** Der zuletzt geladene Stand — für reine Anzeige-Funktionen, die keinen Haken rufen können (Finanzplan `personName`); wer neu zeichnen
+ * muss, wenn das Team kommt, ruft irgendwo oben `useTeam()` (gleicher Speicher, keine zweite Anfrage). */
+export const teamStandJetzt = (): Stand => stand;
+
 export type TeamOp = { op: 'upsert'; eintrag: TeamEintrag; stand?: string } | { op: 'teil'; id: string; felder: Partial<TeamEintrag>; stand?: string };
 
 /** Eine Änderung senden — { ok } oder { ok: false, fehler } (409: Sicht zeigt schon den aktuellen Stand). */

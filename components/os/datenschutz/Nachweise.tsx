@@ -105,7 +105,7 @@ export function NachweiseKarten({ i = 0 }: { i?: number }) {
       <Karte i={i + 3}>
         <Ueberschrift erklaerung="datenschutz.nachweise.v2">Format v2 — Bereitschaft</Ueberschrift>
         <Hinweis art={d.v2.modus === 'v2' ? 'gut' : d.v2.bereit ? 'info' : 'achtung'} titel={d.v2.modus === 'v2' ? 'v2 ist aktiv' : d.v2.bereit ? 'Bereit für die Umstellung' : 'Vor der Umstellung offen'}>
-          {d.v2.modus === 'v2' ? 'Jede Hülle trägt Schlüssel-ID und Bestandsnamen.' : 'Umstellen nur auf Kevins Wort: Anleitung in UPDATES.md (05.10.) — .env MAKE_OS_FORMAT=v2, einmal --verschluesseln.'}
+          {d.v2.modus === 'v2' ? 'Jede Hülle trägt Schlüssel-ID und Bestandsnamen.' : 'Die Umstellung übernimmt der Betreiber eurer Instanz — einmalig und mit Sicherung vorher; danach führt der Weg zurück nur über eine Sicherung.'}
         </Hinweis>
         <Liste>
           {d.v2.punkte.map(p => <Zeile key={p.id} umbrechen titel={p.titel} unter={p.text} rechts={<Chip farbe={STAND_FARBE[p.stand]}>{p.stand}</Chip>} />)}

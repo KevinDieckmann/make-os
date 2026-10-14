@@ -9,7 +9,7 @@
 
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Liste, Zeile, Leer, Punkt, Chip, Haken, prioFarbe, LEUCHT } from '../ui';
-import { FRIST_ZEICHEN, WER_LABEL, type KTermin, type KFrist, type KErinnerung } from './teile';
+import { FRIST_ZEICHEN, useWerLabel, type KTermin, type KFrist, type KErinnerung } from './teile';
 import type { KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { letzterTag, laeuftWeiter } from '@/lib/kalender/layout';
 import { anderesJahr, tagKurz } from '@/lib/zeit/kalender-kern';
@@ -24,6 +24,7 @@ export function Agenda({ tage, heute, termine, fristen, erinnerungen, farbe, suc
   tage: string[]; heute: string; termine: KTermin[]; fristen: KFrist[]; erinnerungen: KErinnerung[]; farbe: (t: KTermin) => string; suche: string; onOeffnen: (t: KTermin) => void;
   aufgaben?: KalenderAufgabe[]; onAufgabe?: (id: string) => void; onAufgabeHaken?: (id: string) => void;
 }) {
+  const WER_LABEL = useWerLabel(); // Namen der Fächer aus den Konten (14.10.) — nie fest im Code
   const treffer = tage.map(tag => ({
     tag,
     termine: termine.filter(t => t.start.slice(0, 10) === tag || (t.ganztags && t.start.slice(0, 10) < tag && t.ende.slice(0, 10) > tag) || laeuftWeiter(t, tag))

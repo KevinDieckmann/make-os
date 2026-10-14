@@ -30,7 +30,7 @@ export function vaultZiel(opt: { spiegel?: boolean } = {}): VaultZiel {
   if (roh.includes('Mobile Documents') || macOrte().some(o => unter(pfad, echt(o)) || unter(pfad, o))) {
     return { ok: false, grund: `Vault ${pfad} liegt auf dem Mac (Schreibtisch/iCloud/Vaults) — die App schreibt nur in den Server-Vault.` };
   }
-  if (opt.spiegel && process.env.MAKE_OS_APP_SPIEGEL?.trim() !== 'an') return { ok: false, grund: '_App-Spiegel ist aus (MAKE_OS_APP_SPIEGEL=an schaltet ihn ein — erst auf Kevins Wort).' };
+  if (opt.spiegel && process.env.MAKE_OS_APP_SPIEGEL?.trim() !== 'an') return { ok: false, grund: '_App-Spiegel ist aus (MAKE_OS_APP_SPIEGEL=an schaltet ihn ein — erst auf Wort des Inhabers).' };
   return { ok: true, pfad };
 }
 

@@ -40,7 +40,7 @@ import { montagVon, monatsblatt } from '@/lib/kalender/layout';
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
 import { Erklaert, Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, SymbolKnopf, Punkt, Segmente, feld, LEUCHT, useBreit, useHandy, FlussKarte } from '../ui';
-import { useKalender, TerminFenster, WER_FARBE, WER_LABEL, type KTermin, type Wer } from './teile';
+import { useKalender, TerminFenster, WER_FARBE, useWerLabel, type KTermin, type Wer } from './teile';
 import { Zeitraster } from './Zeitraster';
 import { Monat } from './Monat';
 import { Agenda } from './Agenda';
@@ -157,6 +157,7 @@ function AnsichtMenue({ liste, aktiv, onWahl }: { liste: readonly { id: Ansicht;
 }
 
 export function Kalender() {
+  const WER_LABEL = useWerLabel(); // Namen der Fächer aus den Konten (14.10., Abnahme A1) — nie fest im Code
   const breit = useBreit();
   const handy = useHandy();
   const router = useRouter();
@@ -357,7 +358,8 @@ export function Kalender() {
   // Mini-Monat (Leiste)
   const miniBlatt = useMemo(() => monatsblatt(Number(anker.slice(0, 4)), Number(anker.slice(5, 7))), [anker]);
   const tageMitTermin = useMemo(() => new Set((daten?.termine ?? []).map(t => t.start.slice(0, 10))), [daten]);
-  const sichten: { id: 'alle' | Wer; label: string }[] = [{ id: 'alle', label: 'Alle' }, { id: 'kevin', label: 'Kevin' }, { id: 'malin', label: 'Malin' }, { id: 'beide', label: 'Gemeinsam' }];
+  // Sicht je Person (14.10.): die Fächer der Zuordnung mit dem Namen der Person dahinter (Konten), ein leeres Fach nur, wenn es gerade gewählt ist.
+  const sichten: { id: 'alle' | Wer; label: string }[] = [{ id: 'alle', label: 'Alle' }, ...WER_LABEL.belegt.map(w => ({ id: w, label: WER_LABEL[w] })), ...(sicht !== 'alle' && !WER_LABEL.belegt.includes(sicht) ? [{ id: sicht, label: WER_LABEL[sicht] }] : [])];
   // Quellen (03.10.): iCloud und/oder Google — je nachdem, was verbunden ist.
   const mitGoogle = !!daten?.google?.length;
   // iCloud je Person (06.10.): die eigene Verbindung zählt auch als Live-Quelle.
@@ -371,7 +373,7 @@ export function Kalender() {
   ], [daten]);
   // Arbeitsbeginn (10.10.): dorthin rollt das Raster, wenn heute nicht zu sehen ist — aus den eigenen Business-freien Zeiten, sonst 7 Uhr.
   const arbeitsbeginn = useMemo(() => arbeitsbeginnAus(rahmen?.fenster, tage), [rahmen, tage]);
-  const quelleText = daten?.quelle === 'icloud' ? [daten.icloud ? `iCloud${daten.konto ? ` · ${daten.konto}` : ''}` : '', mitGoogle ? 'Google' : ''].filter(Boolean).join(' + ') : daten?.quelle === 'mac' ? 'Stand vom Mac (nur lesen)' : 'noch keine Quelle';
+  const quelleText = daten?.quelle === 'icloud' ? [daten.icloud ? `iCloud${daten.konto ? ` · ${daten.konto}` : ''}` : '', mitGoogle ? 'Google' : ''].filter(Boolean).join(' + ') : daten?.quelle === 'mac' ? 'Zwischenstand (nur lesen)' : 'noch keine Quelle';
 
   const leiste = (
     <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
@@ -465,7 +467,7 @@ export function Kalender() {
           <div style={{ display: 'grid', gap: 10 }}>
             <IcloudVerbindung onGeaendert={() => void laden()} />
             <GoogleVerbindung onGeaendert={() => void laden()} />
-            {(['kevin', 'malin', 'beide'] as Wer[]).map(w => (
+            {WER_LABEL.belegt.map(w => (
               <label key={w} style={{ display: 'grid', gap: 4 }}><Erklaert erklaerung="kalender.zuordnung" name={`Kalender ${WER_LABEL[w]}`}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender {WER_LABEL[w]}</span></Erklaert>
                 <input value={einst.kalender[w]} onChange={e => einstSetzen({ kalender: { ...einst.kalender, [w]: e.target.value } })} placeholder="Name wie in der Kalender-App" style={{ ...feld, fontSize: 13 }} /></label>
             ))}

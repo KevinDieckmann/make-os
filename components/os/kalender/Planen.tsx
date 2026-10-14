@@ -27,7 +27,7 @@ import { uebernahmeTexte, type ArchivBlock } from '@/lib/planung/wochenplan-uebe
 import { wandAus } from '@/lib/kalender/zeit';
 import { ZieleMeilensteine } from '../planung/ZieleMeilensteine';
 import { WEG } from '@/lib/wege';
-import type { KTermin, Wer } from './teile';
+import { useWerLabel, useNameVon, type KTermin, type Wer } from './teile';
 import { ErholungZielePlanung } from '../gesundheit/ErholungHeute';
 import { FokusTafel } from '../planung/FokusTafel';
 
@@ -69,6 +69,8 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   aktiv: boolean; tage: string[]; termine: KTermin[]; sicht: 'alle' | Wer;
   laden: () => Promise<void> | void; melden: (text: string | null) => void;
 }) {
+  const WER_LABEL = useWerLabel(); // Namen der Fächer aus den Konten (14.10.) — nie fest im Code
+  const nameVon = useNameVon();
   const { state: aufgabenStand } = useTasks();
   const { ausAdresse: spaceAusAdresse, space: spaceAktiv } = useSpace();
   // Sicht Privat · Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): Routinen, Aufgaben und Erholung nur aus
@@ -235,7 +237,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
       </div>
       {gewaehlt && (
         <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.ink, background: `${ART_FARBE[gewaehlt.art]}1c`, border: `1px solid ${ART_FARBE[gewaehlt.art]}55`, borderRadius: 10, padding: '8px 12px' }}>
-          <span><b style={{ color: ART_FARBE[gewaehlt.art] }}>{gewaehlt.titel}</b> · {gewaehlt.dauerMin} Min — jetzt in den Kalender klicken (oder aufziehen). Er landet im Kalender {wer === 'malin' ? 'von Malin' : wer === 'kevin' ? 'von Kevin' : 'Gemeinsam'}.</span>
+          <span><b style={{ color: ART_FARBE[gewaehlt.art] }}>{gewaehlt.titel}</b> · {gewaehlt.dauerMin} Min — jetzt in den Kalender klicken (oder aufziehen). Er landet im Kalender {wer === 'beide' ? 'Gemeinsam' : `von ${WER_LABEL[wer]}`}.</span>
           <button type="button" onClick={() => setGewaehlt(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontFamily: SCHRIFT.text }}>Abbrechen (Esc)</button>
         </div>
       )}
@@ -280,7 +282,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
           <div style={{ display: 'grid', gap: 4, marginTop: 8 }}>
             {uebernahme.personen.filter(p => p.zukuenftig).map(p => (
               <div key={p.person} style={{ fontSize: TYP.bedien, color: C.inkDim }}>
-                <b style={{ color: C.ink }}>{p.person === 'malin' ? 'Malin' : p.person === 'kevin' ? 'Kevin' : p.person}</b>: {p.zukuenftig} künftig{p.mitApple ? ` (${p.mitApple} schon in Apple)` : ''} · {p.vergangen} vergangen (Archiv)
+                <b style={{ color: C.ink }}>{nameVon(p.person) ?? p.person}</b>: {p.zukuenftig} künftig{p.mitApple ? ` (${p.mitApple} schon in Apple)` : ''} · {p.vergangen} vergangen (Archiv)
                 <div style={{ color: C.inkLeise }}>{p.beispiele.map(x => `${x.tag.slice(8)}.${x.tag.slice(5, 7)}. ${x.zeit} ${x.titel}`).join(' · ')}</div>
               </div>
             ))}

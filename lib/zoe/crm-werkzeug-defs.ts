@@ -7,6 +7,7 @@ import { VORSCHLAG_ARTEN } from './crm-vorschlag';
 import type { CrmBezug, CrmBezugArt } from './crm-bezug';
 import { BEIDE, TEAM } from '@/lib/crm/team';
 import { GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 export { crmBezugAus } from './crm-bezug';
 
@@ -53,7 +54,7 @@ export const CRM_WERKZEUG_DEFS = [
   { name: 'mandate_lage', description: `Mandate (Kunden): Status, Honorar, MRR, Laufzeit/Kündigungsfrist, Health, Reviews, Ziele, offene Punkte. ${DATEN}`, input_schema: { type: 'object', properties: { mandat: { type: 'string', description: 'optional: Kennung oder Titel' }, teil: TEIL }, required: [] } },
   { name: 'angebote_lage', description: `Angebote aus dem Angebots-Tool: nach Status, auslaufende (7 Tage), Entwürfe, abgelaufene, Produkte ohne Angebotstext. Mit angebot: Positionen, Summen, Texte. ${DATEN}`, input_schema: { type: 'object', properties: { angebot: { type: 'string', description: 'optional: Kennung, Nummer oder Titel' }, teil: TEIL }, required: [] } },
   { name: 'kampagnen_lage', description: `Kampagnen: Playbook, Status, Zahlen (angesprochen, reagiert, Gespräche, Deals), Schritte. Versendet wird nichts. ${DATEN}`, input_schema: { type: 'object', properties: { kampagne: { type: 'string' }, teil: TEIL }, required: [] } },
-  { name: 'events_lage', description: `Events (Make.One, unsere EIGENEN Abende — besuchte Veranstaltungen: besuche_lage): Termine, Gäste und Teilnahmen, Erscheinquote, Nachfassen, Checkliste, Kosten. ${DATEN}`, input_schema: { type: 'object', properties: { event: { type: 'string' }, teil: TEIL }, required: [] } },
+  { name: 'events_lage', description: `Events (${MARKE_EVENTS}, unsere EIGENEN Abende — besuchte Veranstaltungen: besuche_lage): Termine, Gäste und Teilnahmen, Erscheinquote, Nachfassen, Checkliste, Kosten. ${DATEN}`, input_schema: { type: 'object', properties: { event: { type: 'string' }, teil: TEIL }, required: [] } },
   { name: 'besuche_lage', description: `Besuchte Events (Reiter „Events“: fremde Veranstaltungen, Messen, Kunden-Events): Anmeldestand, für wen, erfasste Personen mit nächstem Schritt, was noch offen ist (Danke-Mail, Follow-up, Sprachnotiz ohne Abschrift), Wirkung (Termine, Deals, Pipeline, Kosten je Kontakt, Urteil), Zielpersonen. ${DATEN}`, input_schema: { type: 'object', properties: { event: { type: 'string', description: 'optional: Kennung oder Titel' }, teil: TEIL }, required: [] } },
   { name: 'marketing_lage', description: `Marketing: Positionierung, Kennzahlen, Beiträge, Newsletter-Ausgaben, Empfänger mit Double-Opt-in, Segmente mit zulässig erreichbaren Personen, offene Freigaben. ${DATEN}`, input_schema: { type: 'object', properties: { teil: TEIL }, required: [] } },
   { name: 'kennzahlen', description: `Traktions-Index mit Säulen und allen Kennzahlen (Sales, Marketing, Event), Übergaben zwischen den Welten und die Befunde (was zu tun ist). ${DATEN}`, input_schema: { type: 'object', properties: { teil: TEIL }, required: [] } },

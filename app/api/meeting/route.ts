@@ -18,6 +18,7 @@ import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
+import { KI_SCHLUESSEL_FEHLT } from '@/lib/betrieb/betreiber';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
   if (transcript.length < 20) return NextResponse.json({ error: 'Bitte Transkript oder Notizen einfügen (etwas mehr Text).' }, { status: 400 });
   const heute = payload.datum && /^\d{4}-\d{2}-\d{2}$/.test(payload.datum) ? payload.datum : localDay();
 
-  if (!hasAnthropicKey()) return NextResponse.json({ error: 'Kein Anthropic-Key (.env.local).', needsKey: true }, { status: 200 });
+  if (!hasAnthropicKey()) return NextResponse.json({ error: KI_SCHLUESSEL_FEHLT, needsKey: true }, { status: 200 });
   const agent = await resolveAgent('meeting');
   if (!agent.enabled) return NextResponse.json(disabledResponse(agent));
 

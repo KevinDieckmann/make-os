@@ -22,6 +22,7 @@ import type { Schritt } from '@/lib/finanzen/chef/ist-stand';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WEG } from '@/lib/wege';
+import { finanzOrtName } from '@/lib/einheiten';
 
 interface Stand {
   ok: boolean; umfang: 'business' | 'business+haushalt'; haushaltZugang: boolean;
@@ -331,8 +332,8 @@ function Einstellung({ e, onGespeichert }: { e: ChefEinstellung; onGespeichert: 
           {schalter('kstVorauszahlung', 'Körperschaftsteuer-Vorauszahlungen (UG/GmbH)')}
           {schalter('gewstVorauszahlung', 'Gewerbesteuer-Vorauszahlungen')}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform KD Ventures<input value={x.rechtsform.kdv ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdv: ev.target.value || null } })} placeholder="z. B. UG (haftungsbeschränkt)" style={{ ...feld, marginTop: 4 }} /></label>
-            <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform Consulting<input value={x.rechtsform.kdc ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdc: ev.target.value || null } })} placeholder="z. B. Einzelunternehmen, freiberuflich" style={{ ...feld, marginTop: 4 }} /></label>
+            <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform {finanzOrtName('kdv')}<input value={x.rechtsform.kdv ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdv: ev.target.value || null } })} placeholder="z. B. UG (haftungsbeschränkt)" style={{ ...feld, marginTop: 4 }} /></label>
+            <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform {finanzOrtName('kdc')}<input value={x.rechtsform.kdc ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdc: ev.target.value || null } })} placeholder="z. B. Einzelunternehmen, freiberuflich" style={{ ...feld, marginTop: 4 }} /></label>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <Knopf onClick={speichern} farbe={LEUCHT.geld}>Speichern</Knopf>

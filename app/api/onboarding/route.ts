@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { pruefeAlles, kontextFuer } from '@/lib/onboarding-status';
 import { hakenLesen, hakenSetzen, type Haken, type HakenSicht } from '@/lib/onboarding-haken';
-import { schrittMitId, sichtbarFuer } from '@/lib/make-one/onboarding-data';
+import { schrittMitId, sichtbarFuer, betreiberBefundeWeg } from '@/lib/make-one/onboarding-data';
 import { ladeKonten } from '@/lib/zugang/konten';
 
 export const runtime = 'nodejs';
@@ -41,8 +41,9 @@ export async function GET(req: Request) {
     kontextFuer(person),
   ]);
   // `neustart` nur, wenn die Instanz die Marke trägt (09.10.) — dann gilt in der Oberfläche der Neustart-Ablauf.
-  const ich = kontext ? { inhaber: kontext.inhaber, haupt: kontext.haupt, eingeladen: kontext.eingeladen, personen: kontext.personen, privatFinanzen: kontext.privatFinanzen, altbestand: kontext.altbestand, ...(kontext.neustart ? { neustart: true } : {}), ...(kontext.nurBusiness ? { nurBusiness: true } : {}) } : null;
-  return NextResponse.json({ ...(await mitAnzeige(haken, z.person)), befunde, ich });
+  // `betreiber` (14.10.): ohne Betreiber-Instanz gibt es keine Betreiber-Schritte — und ihre Befunde gehen gar nicht erst raus.
+  const ich = kontext ? { inhaber: kontext.inhaber, haupt: kontext.haupt, eingeladen: kontext.eingeladen, personen: kontext.personen, privatFinanzen: kontext.privatFinanzen, altbestand: kontext.altbestand, betreiber: !!kontext.betreiber, ...(kontext.neustart ? { neustart: true } : {}), ...(kontext.nurBusiness ? { nurBusiness: true } : {}) } : null;
+  return NextResponse.json({ ...(await mitAnzeige(haken, z.person)), befunde: betreiberBefundeWeg(befunde, kontext), ich });
 }
 
 /** Einen Schritt von Hand abhaken (`an: true`) oder das Häkchen wieder entfernen (`an: false`). */

@@ -388,7 +388,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   { muster: 'liquiplan', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Planposten/Zahlungen — Geschäftsunterlage, Aufbewahrungspflicht § 147 AO.' },
   { muster: 'buchungen', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Buchungen — Aufbewahrungspflicht § 147 AO / § 257 HGB.' },
   { muster: 'finance', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Controlling-Zahlen, Rechnungen — Aufbewahrungspflicht § 147 AO.' },
-  { muster: 'grundlage', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanz-Export aus Malins Dashboard (Original, nur gelesen) — Buchführung, Aufbewahrungspflicht.' },
+  { muster: 'grundlage', bezug: 'dritte', behandlung: 'ausgenommen', grund: 'Finanz-Export aus dem früheren Finanz-Dashboard (Original, nur gelesen) — Buchführung, Aufbewahrungspflicht.' },
   K('business-abschluesse', 'Monatszahlen der Gesellschaften — keine Personen.'),
   // Daten-Assistenten (09.10., B9 a/c): Lauf-Protokolle für „Rückgängig“ — nur Kennungen, Fingerabdrücke, Gesellschaft, Monate und Zahlen der
   // Gesellschaften (alte/neue Werte der eingefügten Felder); keine Namen, keine Personen (wer eingefügt hat, steht im Abschluss bzw. Änderungsprotokoll).
@@ -417,15 +417,15 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   H('ernaehrung-vorschlag', 'Essens-Vorschlag des Haushalts.'),
   // Seit 29.09. (K2) findet der Wächter auch Namen aus Konstanten, Namens-Funktionen und speicherFuer() — diese
   // Bestände standen schon im Code, fehlten aber hier:
-  H('zeit', 'Zeit & Fokus (Kevin) — eigene Messung des Haushalts.'),
+  H('zeit', 'Zeit & Fokus (Erstkonto) — eigene Messung des Haushalts.'),
   H('zeit--*', 'Zeit & Fokus je Person — eigene Messung des Haushalts.'),
   H('fokus-laufend--*', 'Laufender Fokus-Block je Person.'),
   H('wochenplan--*', 'Alter Wochenplan je Person (bis 29.09., K5) — nur noch Archiv; liest allein die Übernahme in den Kalender.'),
   H('wochenplan-uebernahme', 'Stand der Übernahme alter Wochenplan-Blöcke in den Kalender (K5): nur Block-Kennung → Termin-UID, keine Titel.'),
   K('zulieferer-uebernahme', 'Stand der einmaligen Übernahme der Apple-Erinnerungen als Aufgaben (08.10., Lücke 10, lib/zulieferer/server.ts): nur Zeitpunkte und Zahlen (wann bestätigt, wie viele neu/schon da, wann der Spiegel gelöscht wurde) — keine Titel, keine Namen, keine Person; die Aufgaben selbst liegen in `tasks`.'),
-  mit(H('sport', 'Sport (Kevin) — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('sport', 'Sport (Erstkonto) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('sport--*', 'Sport je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
-  mit(H('vitals', 'Körperwerte (Kevin, Whoop) — eigene Gesundheitsdaten.'), GESUNDHEIT),
+  mit(H('vitals', 'Körperwerte (Erstkonto, Whoop) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   // Kapazität (04.10.) liest daraus NUR den Ø-Recovery-Wert, NUR mit eigener Einwilligung der Person und wenn sie mit allen Konten teilt, und nur als
   // Team-Faktor (lib/kapazitaet/server.ts); nie in Business-Index, ZOE oder Protokolle (`ohneGesundheit`, Test kapazitaet-route).
   mit(H('vitals--*', 'Körperwerte je Person — eigene Gesundheitsdaten.'), GESUNDHEIT),
@@ -584,7 +584,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // Austausch am Meilenstein (30.09.): Verlauf, Notiz, Links — Texte können Dritte nennen (Kunden, Partner) → getilgt.
   T('meilenstein-raum--*', 'Verlauf/Notiz/Links je Meilenstein — bleiben, Namen/Adressen der Person getilgt (lib/crm/person-weitere.ts).'),
   H('kompass', 'Eigener Kompass des Haushalts.'),
-  H('wochenplan', 'Alter Wochenplan (Kevin, bis 29.09., K5) — nur noch Archiv; liest allein die Übernahme in den Kalender.'),
+  H('wochenplan', 'Alter Wochenplan (bis 29.09., K5) — nur noch Archiv; liest allein die Übernahme in den Kalender.'),
   H('anwesenheit', 'Wer vom Haushalt gerade online ist.'),
   H('nutzung', 'Nutzung der Oberfläche durch den Haushalt (Zähler).'),
   H('aenderungen', 'Altes Browser-Änderungsprotokoll (nur Person des Haushalts, Bestand, Seite) — nur gelesen.'),
@@ -611,7 +611,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'Ausnahmen/Zuweisungen bis zur Löschung durch Person bzw. Inhaber (Planung › Kapazität); Team-Person ohne Konto: 30 Tage nach dem Deaktivieren automatisch (Morgenlauf `kapaDeaktivierteAufraeumen`, Zeitpunkt `deaktiviertAm` am Team-Eintrag, Reaktivieren davor erhält alles); Konto entfernt: beim nächsten Morgenlauf (`kapaEntfernteKontenAufraeumen`, 05.10.)',
     kategorie: ['beschaeftigte'],
   }),
-  mit(H('kapazitaet-plan--*', 'Festgehaltene Wochenpläne je Haushalt (Kevin 05.10.): montags je Person verfügbare Zeit (Netto, OHNE Erholungs-Faktor), geplante Stunden und gebundene Stunden, je Meilenstein/Ziel und Zuweisung nur als Kennung — Grundlage der Plan-Treue „geplant vs. Ist“ (lib/kapazitaet/plan.ts). Kein Gesundheitswert, keine Namen.'), {
+  mit(H('kapazitaet-plan--*', 'Festgehaltene Wochenpläne je Haushalt (seit 05.10.): montags je Person verfügbare Zeit (Netto, OHNE Erholungs-Faktor), geplante Stunden und gebundene Stunden, je Meilenstein/Ziel und Zuweisung nur als Kennung — Grundlage der Plan-Treue „geplant vs. Ist“ (lib/kapazitaet/plan.ts). Kein Gesundheitswert, keine Namen.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO / § 26 BDSG (Arbeitszeitplanung im Beschäftigungs- bzw. Auftragsverhältnis), lit. f (Vergleich Plan gegen Umsetzung)',
     art15: 'in der Kapazitäts-Auskunft `wochenplaene` (GET /api/kapazitaet?auskunft=<person>, Rechte wie dort; Kontakt-Auskunft für Team-Personen ohne Konto) — lib/kapazitaet/aufraeumen.ts',
     loeschfrist: '24 Monate je Woche (Morgenlauf „Wochenplan festhalten“, `PLAN_LOESCHEN_NACH_MONATEN`); Team-Person ohne Konto: ihre Zeilen 30 Tage nach dem Deaktivieren mit den übrigen Kapazitätsdaten (`kapaDeaktivierteAufraeumen`). Konto entfernt: beim nächsten Morgenlauf (`kapaEntfernteKontenAufraeumen`, 05.10.)',
@@ -773,7 +773,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
   K('performance--*', 'Wachstums-Score je Person (Zahlen).'),
-  K('flaeche', 'Anordnung der Flächen (Kevin).'),
+  K('flaeche', 'Anordnung der Flächen (Erstkonto).'),
   K('flaeche--*', 'Anordnung der Flächen je Person.'),
   K('hoi-aussen', 'Außenprüfung des Head of IT (Zeiten, Status).'),
   K('hoi-csp', 'CSP-Meldungen des Browsers (Adressen der App, keine Personen).'),

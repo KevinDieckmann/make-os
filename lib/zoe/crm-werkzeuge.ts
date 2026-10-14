@@ -17,6 +17,7 @@ import type { Chance, Firma, Mandat, Angebot, Kampagne, Event, CrmBestand } from
 import { hatTerminVerweise, kontakteMitTerminZeit } from '@/lib/crm/aktivitaeten';
 import { crmSicht, crmAntwort, ausgeblendetText, eindeutig, NICHT_IM_HINTERGRUND, ABLAGE_QUELLE, EINGESCHRAENKT_NAME, type CrmSicht } from './crm-sicht';
 import { fehlschlag, istWerkzeugErgebnis, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 type Eingabe = Record<string, unknown>;
 type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
@@ -238,7 +239,7 @@ async function crmSuche(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
     treffer += l.length;
     // Kennzeichnung (M4): „Make.One“ = unser eigener Abend (events_lage), „besucht“ = fremde Veranstaltung aus dem Reiter „Events“ (besuche_lage).
     const { istNetzwerkenEvent } = await import('@/lib/crm/marke');
-    teile.push(block(`Events — ${l.length} Treffer`, l.slice(0, n).map(e => `- ${e.id} · ${istNetzwerkenEvent(e) ? 'besucht (besuche_lage)' : 'Make.One (events_lage)'} · ${e.titel} · ${e.datum} · ${e.status}${e.ort ? ` · ${e.ort}` : ''}`)));
+    teile.push(block(`Events — ${l.length} Treffer`, l.slice(0, n).map(e => `- ${e.id} · ${istNetzwerkenEvent(e) ? 'besucht (besuche_lage)' : `${MARKE_EVENTS} (events_lage)`} · ${e.titel} · ${e.datum} · ${e.status}${e.ort ? ` · ${e.ort}` : ''}`)));
   }
   const kopf = `MARKTTRAKTION-SUCHE ${frage ? `„${frage.length > 40 ? `${frage.slice(0, 40)}…` : frage}“` : '(ohne Suchwort)'} · ${treffer} Treffer in ${[...nur].join(', ')}${ausgeblendetText(s.eingeschraenkt.size)} · Einzelnes: kontakt_akte, firma_akte, pipeline mit deal`;
   return crmAntwort(kopf, teile.join('\n\n'), i.teil, t => `crm_suche mit denselben Angaben und teil: ${t}`);
@@ -498,7 +499,7 @@ async function eventsLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
       + `${l.length <= 3 ? `\n  Gäste: ${gaeste.filter(t => !s.eingeschraenkt.has(t.kontaktId)).map(t => `${t.kontaktId} ${s.name(t.kontaktId)} (${t.status}${t.einladenDurch ? `, lädt ${t.einladenDurch}` : ''}${t.followUpAm ? `, nachfassen ${t.followUpAm}` : ''}${t.feedback?.note ? `, Note ${t.feedback.note}` : ''})`).join(', ') || 'keine'}${ausgeblendet ? ` · ${ausgeblendet} eingeschränkte ausgeblendet` : ''}`
       + `${e.checkliste?.length ? `\n  Checkliste: ${e.checkliste.map(c => `${c.text}${c.erledigt ? ' ✓' : ` (−${c.tageVorher} T)`}`).join(' | ')}` : ''}${e.notiz ? `\n  Notiz: ${e.notiz}` : ''}` : ''}`;
   });
-  return crmAntwort(`EVENTS (Make.One) · ${l.length} · kommend ${l.filter(e => e.datum >= s.heute).length}`, block('Events', zeilen), i.teil, t => `events_lage mit teil: ${t}`);
+  return crmAntwort(`EVENTS (${MARKE_EVENTS}) · ${l.length} · kommend ${l.filter(e => e.datum >= s.heute).length}`, block('Events', zeilen), i.teil, t => `events_lage mit teil: ${t}`);
 }
 
 /**

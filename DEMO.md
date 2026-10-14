@@ -50,8 +50,9 @@ angelegt; eine im Privat-Bereich lehnt der Server ab (403). Zum Vergleich als Le
 3. **Umgebung**: Zurücksetzen ist gesperrt, solange die Instanz echte Quellen erreichen könnte — `MAKE_OS_OHNE_APPLE=1`,
    `MAKE_OS_DOKU_WURZEL=aus`, `MAKE_VAULT_DIR` im Datenordner, `MAKE_OS_INTERN`/`PORT` gesetzt (sonst gingen interne Aufrufe an
    `localhost:3001`), kein `ICLOUD_*`, `GOOGLE_*`, `TELEGRAM_BOT_TOKEN`, `WHOOP_*`, `MS_*`.
-4. **Namen**: `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (Namen der drei festen Gesellschaften) und `NEXT_PUBLIC_MAKE_OS_CRM_TEAM`
-   (Zuständige in Markttraktion) — ohne sie zeigte die Demo die Namen unserer Instanz. Das Skript weist darauf hin.
+4. **Namen**: `NEXT_PUBLIC_MAKE_OS_EINHEITEN` (Namen der drei festen Gesellschaften), `NEXT_PUBLIC_MAKE_OS_CRM_TEAM`
+   (Zuständige in Markttraktion) und `NEXT_PUBLIC_MAKE_OS_EVENT_MARKE` (Veranstaltungsmarke, 14.10.) — ohne sie zeigte die Demo die Namen
+   unserer Instanz. Das Skript weist darauf hin. Betreiber-Schritte der Einrichtung zeigt eine Demo nie (lib/betrieb/betreiber.ts).
 
 Zurücksetzen leert den Datenordner (bis auf den Such-Index `brain-index.sqlite*`, der sich selbst nachbaut) und sät neu;
 Hash/Salz der Konten bleiben, damit die Sitzung des Vorführenden gültig bleibt.
@@ -68,6 +69,7 @@ export MAKE_OS_DEMO=1 MAKE_OS_OHNE_APPLE=1 MAKE_OS_DOKU_WURZEL=aus MAKE_OS_EMBED
 export PORT=3200 MAKE_OS_INTERN=http://localhost:3200 MAKE_OS_DIST=.next-demo
 export NEXT_PUBLIC_MAKE_OS_EINHEITEN='{"kdc":{"label":"Hartmann Beratung","kurz":"Beratung"},"kdv":{"label":"Hartmann Holding","kurz":"Holding"},"ug":{"label":"Nordlicht Labs GmbH","kurz":"Nordlicht"}}'
 export NEXT_PUBLIC_MAKE_OS_CRM_TEAM='[{"id":"lena","name":"Lena","farbe":"#58D9CD","verantwortet":["sales"]},{"id":"jonas","name":"Jonas","farbe":"#A79BFF","verantwortet":["marketing","event"]}]'
+export NEXT_PUBLIC_MAKE_OS_EVENT_MARKE='Abendrunde'    # erfundene Veranstaltungsmarke (lib/crm/marke.ts)
 node scripts/demo-saat.mjs                       # Passwort: MAKE_OS_DEMO_PASSWORT oder erzeugt → $DEMO/daten.zugang.txt (600)
 node node_modules/next/dist/bin/next dev -p 3200 # bzw. Preview über .claude/launch.json mit derselben Umgebung
 ```
@@ -84,7 +86,8 @@ Eigenes Bild (die Namen werden beim Bauen eingesetzt), eigener Datenordner, eige
 # 1) Bild bauen (auf dem Server, im App-Ordner)
 docker build -t make-os:demo \
   --build-arg NEXT_PUBLIC_MAKE_OS_EINHEITEN='{"kdc":{"label":"Hartmann Beratung"},"kdv":{"label":"Hartmann Holding"},"ug":{"label":"Nordlicht Labs GmbH"}}' \
-  --build-arg NEXT_PUBLIC_MAKE_OS_CRM_TEAM='[{"id":"lena","name":"Lena","verantwortet":["sales"]},{"id":"jonas","name":"Jonas","verantwortet":["marketing","event"]}]' .
+  --build-arg NEXT_PUBLIC_MAKE_OS_CRM_TEAM='[{"id":"lena","name":"Lena","verantwortet":["sales"]},{"id":"jonas","name":"Jonas","verantwortet":["marketing","event"]}]' \
+  --build-arg NEXT_PUBLIC_MAKE_OS_EVENT_MARKE='Abendrunde' .
 # 2) Ordner + eigene Geheimnisse
 sudo install -d -m 700 -o make -g make /srv/make-os-demo/daten
 #    /srv/make-os-demo/.env: MAKE_OS_KEY, SESSION_SECRET, MAKE_OS_DATEN_SCHLUESSEL, MAKE_OS_PEPPER (alle neu: openssl rand -hex 32),

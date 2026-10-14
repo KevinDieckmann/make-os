@@ -39,7 +39,7 @@ import { OhneTerminKnopf, linksAusAntwort } from './Ergebnis';
 import type { EventWahl } from './EventModus';
 import type { Person, useWarteschlange } from './useNetzwerken';
 import { NUR_RAM_HINWEIS } from '@/lib/netzwerken/warteschlange';
-import { istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
+import { MARKE_EVENTS, istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
 import { handyKarteAusErfassung, handyKarteAusKontakt, handyTeilen, handyMeldung, HANDY_SPEICHER_KEY, type HandyErgebnis } from '@/lib/netzwerken/handy';
 
 type Warte = ReturnType<typeof useWarteschlange>;
@@ -422,7 +422,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
                   {kommende.map(ev => <Wahl key={ev.id} an={e.makeoneEventId === ev.id} onClick={() => up({ makeoneEventId: e.makeoneEventId === ev.id ? undefined : ev.id })}>{titelMitReihe(ev)} · {tagText(ev.datum)}</Wahl>)}
                 </div>
               ) : <Hinweis>{api.crm ? 'Kein kommendes Event geplant — die Person wird mit Label und Aufgabe vorgemerkt.' : 'Die Events werden geladen …'}</Hinweis>}
-              <Hinweis>Vorgemerkt wird als Gast („vorgemerkt“, wie „Make.One einladen“ in der Kontaktakte); der Einladungsweg folgt der Ampel (§ 7 UWG). Eingeladen wird nicht von hier — das machst du später von Hand.</Hinweis>
+              <Hinweis>Vorgemerkt wird als Gast („vorgemerkt“, wie „{MARKE_EVENTS} einladen“ in der Kontaktakte); der Einladungsweg folgt der Ampel (§ 7 UWG). Eingeladen wird nicht von hier — das machst du später von Hand.</Hinweis>
             </section>
           )}
           {sch === 'nur-kontakt' && <Hinweis>Nur der Kontakt wird gespeichert — „Kennengelernt bei {wahl?.titel ?? 'dem Event'}“ steht im Verlauf.</Hinweis>}

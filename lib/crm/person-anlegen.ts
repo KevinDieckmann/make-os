@@ -26,6 +26,7 @@ import { firmaZurKarte } from './visitenkarte';
 import { zusammenfuehrung, NETZWERKEN_QUELLE, type Treffer } from './netzwerken';
 import { istKalendertag } from '@/lib/zeit';
 import { firmaZurueckholen } from './ablage';
+import { MARKE_EVENTS } from './marke';
 
 export type AnlegeWeg = 'kartei' | 'firmenkarte' | 'schnell' | 'prospecting' | 'makeone' | 'anfrage' | 'netzwerken' | 'import';
 /** Die Wege, die über POST /api/crm/person anlegen (von Hand, eine Person). */
@@ -67,7 +68,7 @@ export const ANLEGE_REGELN: Record<AnlegeWeg, AnlegeRegel> = {
     anders: 'Die Aktivität im selben Dialog ist der nächste Schritt — kein eigenes Follow-up.' },
   prospecting: { label: 'Prospecting', welt: 'sales', zustaendig: 'welt', herkunft: 'recherche', rechtsgrundlage: 'berechtigt', lebensphase: 'kontakt', lead: 'bleibt', firmaAnlegen: true, followUp: 'aus-schritt', quelle: 'Prospecting (Recherche)', vermerk: 'Aus der Zielliste (Prospecting) übernommen',
     anders: 'Recherche: die Daten stammen nicht von der Person — Art. 14 (Information binnen eines Monats) gilt.' },
-  makeone: { label: 'Make.One-Abend', welt: 'event', zustaendig: 'wer-anlegt', herkunft: 'veranstaltung', lebensphase: 'kontakt', lead: 'bleibt', firmaAnlegen: true, followUp: 'nie', quelle: 'Visitenkarte', vermerk: 'Per Visitenkarte am Einlass angelegt',
+  makeone: { label: `${MARKE_EVENTS}-Abend`, welt: 'event', zustaendig: 'wer-anlegt', herkunft: 'veranstaltung', lebensphase: 'kontakt', lead: 'bleibt', firmaAnlegen: true, followUp: 'nie', quelle: 'Visitenkarte', vermerk: 'Per Visitenkarte am Einlass angelegt',
     anders: 'Wer am Einlass eincheckt, hat die Person getroffen und hält die Beziehung; nachgefasst wird über die Teilnahme (Nachfassen nach dem Abend).' },
   anfrage: { label: 'Anfrage / Inbox', welt: 'marketing', zustaendig: 'wer-anlegt', herkunft: 'selbst', rechtsgrundlage: 'vertrag', lebensphase: 'interessent', lead: 'kontaktiert', firmaAnlegen: true, followUp: 'immer', quelle: 'Anfrage über …', vermerk: 'Anfrage über …',
     anders: 'Die Person hat selbst angefragt (Art. 6 Abs. 1 lit. b) — wer die Anfrage aufnimmt, beantwortet sie (Follow-up heute).' },

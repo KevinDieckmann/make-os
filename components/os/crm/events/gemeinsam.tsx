@@ -265,7 +265,7 @@ export function MarkeWahl({ wert, onWahl }: { wert?: string; onWahl: (marke: str
 export function ReiheAbzeichen({ e }: { e: Pick<Event, 'reihe' | 'marke'> }) {
   const r = reiheVon(e);
   if (!r) return null;
-  return <span className="ui-chip" title={`Reihe: ${r.name} (Make.One)`} style={{ border: `1px solid ${RAND.stark}`, borderRadius: RADIUS.pille, color: C.ink, whiteSpace: 'nowrap' }}>{r.name}</span>;
+  return <span className="ui-chip" title={`Reihe: ${r.name} (${MARKE_EVENTS})`} style={{ border: `1px solid ${RAND.stark}`, borderRadius: RADIUS.pille, color: C.ink, whiteSpace: 'nowrap' }}>{r.name}</span>;
 }
 
 /** Werteliste der Reihen für die Wahl (Kennung → Name). */

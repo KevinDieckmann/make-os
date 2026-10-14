@@ -13,6 +13,8 @@
 // Geschrieben wird nur über die Operationen (PATCH /api/finanzplan, Stand/409, Protokoll, Rückgängig) — kein zweiter Weg.
 // Handwerte gelten für den ganzen Plan (alle Szenarien), wie die Zellen-Überschreibungen schon bisher.
 
+import { finanzOrtName } from '@/lib/einheiten';
+
 export type HandOrt = 'ug' | 'kdv' | 'kdc' | 'privat' | 'gruppe' | 'abschluss';
 export interface HandFeld {
   /** Name für Protokoll, Tooltip und Meldungen. */
@@ -48,7 +50,7 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'ug.personal': f('Personal inkl. Arbeitgeber', 'ug', 'Kosten, Ergebnis, Auszahlungen, Mindestumsatz', { summe: true }),
   'ug.einmalig': f('Einmalige Kosten und Ereignisse', 'ug', 'Sachkosten, Ergebnis, Auszahlungen'),
   'ug.gruendung': f('Gründung', 'ug', 'Kosten, Ergebnis, Auszahlungen'),
-  'ug.holding': f('Holding-Umlage', 'ug', 'Kosten, Ergebnis, Auszahlungen; die Umlage bei KD Ventures folgt der Formel'),
+  'ug.holding': f('Holding-Umlage', 'ug', `Kosten, Ergebnis, Auszahlungen; die Umlage bei ${finanzOrtName('kdv')} folgt der Formel`),
   'ug.laufend': f('Laufende Kosten (Mindestumsatz)', 'ug', 'Mindestumsatz, Reserve-Ziel, Kosten gesamt, Ergebnis, Auszahlungen', { summe: true }),
   'ug.kosten': f('Kosten gesamt', 'ug', 'Ergebnis vor Steuern, Ertragsteuer, Auszahlungen', { summe: true }),
   // ── Ergebnis und Steuern ──
@@ -70,7 +72,7 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'ug.ustEin': f('USt vereinnahmt', 'ug', 'Einzahlungen, USt offen, USt-Zahlung im Folgemonat'),
   'ug.einzahlungen': f('Einzahlungen', 'ug', 'Kontostand, frei verfügbar', { summe: true }),
   'ug.ausschuettung': f('Ausschüttung an Privat', 'ug', 'Auszahlungen, Kontostand; Privat folgt der Formel'),
-  'ug.bjoern': f('Partnerdarlehen-Rate', 'ug', 'Auszahlungen, Kontostand; KD Ventures folgt der Formel'),
+  'ug.bjoern': f('Partnerdarlehen-Rate', 'ug', `Auszahlungen, Kontostand; ${finanzOrtName('kdv')} folgt der Formel`),
   'ug.darlehen': f('Darlehen ausgezahlt oder zurückgezahlt', 'ug', 'Auszahlungen, Kontostand (die Gegenseite folgt dem Handwert)'),
   'ug.darlehenEin': f('Darlehen erhalten oder zurückerhalten', 'ug', 'Einzahlungen, Kontostand (die Gegenseite folgt dem Handwert)'),
   'ug.ustZahlung': f('USt an Finanzamt', 'ug', 'Auszahlungen, Kontostand'),
@@ -91,7 +93,7 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'kdv.holding': f('Holdingkosten', 'kdv', 'Ausgaben, laufendes Ergebnis, Kontostand'),
   'kdv.tilgung': f('Partnerdarlehen-Tilgung', 'kdv', 'Ausgaben, laufendes Ergebnis, Kontostand, Partnerdarlehen offen'),
   'kdv.ausgaben': f('Ausgaben', 'kdv', 'Ergebnis, Ertragsteuer, Kontostand', { summe: true }),
-  'kdv.ergebnis': f('Ergebnis vor Steuern', 'kdv', 'Ertragsteuer KD Ventures (der Ausstieg hat seine eigene Steuer)', { summe: true }),
+  'kdv.ergebnis': f('Ergebnis vor Steuern', 'kdv', `Ertragsteuer ${finanzOrtName('kdv')} (der Ausstieg hat seine eigene Steuer)`, { summe: true }),
   'kdv.kst': f('Körperschaftsteuer', 'kdv', ERTRAG),
   'kdv.soli': f('Solidaritätszuschlag', 'kdv', ERTRAG),
   'kdv.gewst': f('Gewerbesteuer', 'kdv', ERTRAG),
@@ -105,8 +107,8 @@ export const HAND_FELDER: Record<string, HandFeld> = {
   'kdv.steuerRuecklage': f('Steuerrücklage', 'kdv', 'Frei verfügbar'),
   'kdv.darlehenEin': f('Darlehen erhalten oder zurückerhalten', 'kdv', 'Kontostand (kein Ergebnis; die Gegenseite folgt dem Handwert)'),
   'kdv.darlehenAus': f('Darlehen ausgezahlt oder zurückgezahlt', 'kdv', 'Kontostand (kein Ergebnis; die Gegenseite folgt dem Handwert)'),
-  'kdv.konto': f('Kontostand KD Ventures', 'kdv', 'Frei verfügbar und alle Folgemonate', { stand: true }),
-  'kdv.frei': f('Frei verfügbar KD Ventures', 'kdv', 'Kennzahlen, Ziele, Gruppe', { stand: true }),
+  'kdv.konto': f(`Kontostand ${finanzOrtName('kdv')}`, 'kdv', 'Frei verfügbar und alle Folgemonate', { stand: true }),
+  'kdv.frei': f(`Frei verfügbar ${finanzOrtName('kdv')}`, 'kdv', 'Kennzahlen, Ziele, Gruppe', { stand: true }),
   'kdv.darlehenOffen': f('Partnerdarlehen offen', 'kdv', 'Ziele (Partnerdarlehen) und alle Folgemonate', { stand: true }),
 
   // ── Selbstständigkeit (Kennung kdc) ──

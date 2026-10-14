@@ -25,7 +25,7 @@ import type { Event, Kampagne, Kriterien, Lead, Qual, Teilnahme } from './typen'
 import { kanalVon } from './kanal';
 import { echtesGespraech } from './pipeline';
 import { hatTyp, kategorieBeginnt } from './mehrfach';
-import { istNetzwerkenEvent, alsMarketingAnmeldung } from './marke';
+import { MARKE_EVENTS, istNetzwerkenEvent, alsMarketingAnmeldung } from './marke';
 import { nachweisLuecken } from './einwilligung';
 
 export const SCORING_VERSION = 1;
@@ -290,9 +290,9 @@ export const MESSUNGEN: Record<MessungId, MessungDef> = {
     messen: (p, k) => { const n = dabei(p, k, true); return n >= 3 ? { stufe: 'drei', grund: `Bei ${n} besuchten Events getroffen` } : n === 2 ? { stufe: 'zwei', grund: 'Bei zwei besuchten Events getroffen' } : n === 1 ? { stufe: 'eins', grund: 'Bei einem besuchten Event getroffen' } : { stufe: 'keine', grund: 'Kein besuchtes Event' }; },
   },
   makeone: {
-    label: 'Make.One-Gast', hinweis: 'War Gast an einem unserer eigenen Make.One-Abende.',
+    label: `${MARKE_EVENTS}-Gast`, hinweis: `War Gast an einem unserer eigenen ${MARKE_EVENTS}-Abende.`,
     stufen: [{ id: 'mehrere', text: 'Zwei oder mehr Abende' }, { id: 'eins', text: 'Ein Abend' }, { id: 'keine', text: 'Nie dabei' }],
-    messen: (p, k) => { const n = dabei(p, k, false); return n >= 2 ? { stufe: 'mehrere', grund: `Gast an ${n} Make.One-Abenden` } : n === 1 ? { stufe: 'eins', grund: 'Gast an einem Make.One-Abend' } : { stufe: 'keine', grund: 'Kein Make.One-Abend' }; },
+    messen: (p, k) => { const n = dabei(p, k, false); return n >= 2 ? { stufe: 'mehrere', grund: `Gast an ${n} ${MARKE_EVENTS}-Abenden` } : n === 1 ? { stufe: 'eins', grund: `Gast an einem ${MARKE_EVENTS}-Abend` } : { stufe: 'keine', grund: `Kein ${MARKE_EVENTS}-Abend` }; },
   },
   newsletter: {
     label: 'Newsletter mit Double-Opt-in', hinweis: 'Newsletter-Anmeldung — zählt voll nur mit vollständig nachgewiesenem Double-Opt-in.',

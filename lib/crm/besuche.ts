@@ -30,6 +30,7 @@ import { NETZWERKEN_QUELLE } from './netzwerken';
 import { tagVon } from '@/lib/zeit';
 import { HERKUNFT } from '@/lib/make-one/crm';
 import { KEINE_WERBE_EINWILLIGUNG } from './netzwerken-recht';
+import { MARKE_EVENTS } from './marke';
 
 const plusTage = (datum: string, n: number): string => { const d = new Date(`${datum}T12:00:00Z`); if (Number.isNaN(d.getTime())) return datum; d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const tageZwischen = (von: string, bis: string): number => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von}T12:00:00Z`)) / 864e5);
@@ -246,7 +247,7 @@ export function begegnungenFuerFirma(events: readonly Event[], teilnahmen: reado
  * steht als „angemeldet“/„geplant“ (Praxis-Prüfung), Make.One-Abende als „Make.One“.
  */
 export function begegnungStatus(b: Pick<FirmenBegegnung, 'event' | 'getroffen'>, heute: string): string {
-  if (!istBesuch(b.event)) return 'Make.One';
+  if (!istBesuch(b.event)) return MARKE_EVENTS;
   if (b.getroffen || (besucht(b.event) && b.event.datum <= heute)) return 'besucht';
   const a = anmeldungVon(b.event);
   return a === 'besucht' ? 'angemeldet' : anmeldungLabel(a).toLowerCase();

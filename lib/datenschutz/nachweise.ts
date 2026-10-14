@@ -23,9 +23,9 @@ export function v2Bereitschaft(e: V2Eingabe): V2Bereitschaft {
   const p: V2Punkt[] = [];
   p.push({ id: 'modus', titel: 'Schreibformat', stand: e.modus === 'v2' ? 'ok' : 'hinweis',
     text: e.modus === 'v2' ? 'v2 aktiv — Schlüssel-ID und AAD (Bestandsname) in jeder Hülle; zurück nur per Sicherung'
-      : `Kompatibilitätsmodus${e.unbekannt ? ' (MAKE_OS_FORMAT unbekannt → kompatibel)' : ''} — Rückweg zum alten Stand offen; Umstellung: UPDATES.md (05.10.) „Format v2“` });
+      : `Kompatibilitätsmodus${e.unbekannt ? ' (MAKE_OS_FORMAT unbekannt → kompatibel)' : ''} — Rückweg zum alten Stand offen; die Umstellung übernimmt der Betreiber der Instanz` });
   p.push({ id: 'schluessel', titel: 'Datenschlüssel', stand: !e.verschluesselt ? 'offen' : e.schluesselQuelle === 'datei' ? 'ok' : 'hinweis',
-    text: !e.verschluesselt ? 'kein Datenschlüssel gesetzt — Bestände im Klartext' : e.schluesselQuelle === 'datei' ? 'als Datei (0400), nicht in der Umgebung' : 'aus der .env — empfohlen: als Datei (NOTFALL.md)' });
+    text: !e.verschluesselt ? 'kein Datenschlüssel gesetzt — Bestände im Klartext' : e.schluesselQuelle === 'datei' ? 'als Datei (0400), nicht in der Umgebung' : 'aus der Server-Umgebung — empfohlen: als Datei' });
   p.push({ id: 'pepper', titel: 'Pepper (Fingerabdrücke v2)', stand: e.pepper ? 'ok' : 'offen',
     text: e.pepper ? 'gesetzt — nach der Umstellung rechnet der Löschfristen-Lauf Sperrliste und Protokoll-Kennungen einmal auf v2 um' : 'MAKE_OS_PEPPER fehlt — ohne ihn bleiben Sperrliste/Protokoll-Kennungen v1 (ungesalzen), auch in v2' });
   p.push({ id: 'bestaende', titel: 'Bestände, Archiv, Ablage', stand: e.klartextBestaende ? 'offen' : e.alteHuellen === null ? 'hinweis' : 'ok',
@@ -37,7 +37,7 @@ export function v2Bereitschaft(e: V2Eingabe): V2Bereitschaft {
   p.push({ id: 'brain-index', titel: 'Brain-Index', stand: e.brainIndexKlartext ? 'offen' : 'ok',
     text: e.brainIndexKlartext ? 'Klartext-Index auf der Platte — App neu starten (wird überschrieben und gelöscht) bzw. MAKE_OS_BRAIN_INDEX_PLATTE entfernen' : 'nur im tmpfs bzw. Arbeitsspeicher, nie auf der Platte' });
   p.push({ id: 'aussen', titel: 'Bewusst außerhalb der Hülle', stand: 'hinweis',
-    text: 'Obsidian-Vault (eigenes Git-Repo), Grabsteine (nur HMAC), Lagebericht system/*.json (nur Zähler) — siehe datenschutz/TOM.md' });
+    text: 'Obsidian-Vault (eigenes Git-Repo), Grabsteine (nur HMAC), Lagebericht system/*.json (nur Zähler) — beschrieben in den technischen und organisatorischen Maßnahmen (TOM)' });
   const bereit = e.verschluesselt && !e.klartextBestaende && !e.bilderKlartext && !e.brainIndexKlartext;
   return { modus: e.modus, bereit, punkte: p };
 }
