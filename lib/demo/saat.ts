@@ -19,7 +19,7 @@ import { saveJson, updateJson } from '@/lib/store/local-db';
 import { aendereKonten, passwortHashen, type Konto } from '@/lib/zugang/konten';
 import { localDay } from '@/lib/zeit';
 import { montagVon, tagPlus } from '@/lib/zeit/kalender-kern';
-import { einheitAusGesellschaft } from '@/lib/einheiten';
+import { einheitAusGesellschaft, UG_NAME } from '@/lib/einheiten';
 import { bauKennung, BAU_KOPF } from '@/lib/bau/kennung';
 import type { RegisterGesellschaft } from '@/lib/gesellschaften/modell';
 import { fahrplanFuer } from '@/lib/gesellschaften/fahrplan';
@@ -97,6 +97,8 @@ const R = {
   erholung: () => import('@/app/api/gesundheit/erholung/route') as Promise<Modul>,
   planung: () => import('@/app/api/crm/planung/route') as Promise<Modul>,
   treppe: () => import('@/app/api/crm/treppe/route') as Promise<Modul>,
+  absender: () => import('@/app/api/crm/gesellschaften/route') as Promise<Modul>,
+  angebot: () => import('@/app/api/crm/angebot/route') as Promise<Modul>,
 };
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -315,6 +317,24 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     await schild({ liste: 'ereignisse', eintrag: ev, ...(entwurfId ? { ausBeschluss: entwurfId } : {}) });
   }
   schritt('Unternehmen › Schild', 1);
+
+  // 4d) Angebot (Abnahme 14.10., B15): der Deal „Diagnose Grünfeld Bau“ steht in Stufe „Angebot“ — also gibt es auch ein GESTELLTES Angebot. Erst
+  //     der Absender der operativen Gesellschaft (Pflichtangaben § 35a GmbHG, erfunden), dann Entwurf und Stellen über die Angebots-Route
+  //     (Nummer, PDF in der Ablage, Deal/Follow-up/Aktivität wie in der Oberfläche). Der Name der Gesellschaft kommt aus der Instanz (lib/einheiten.ts).
+  const abs = ((await rufe(R.absender(), 'GET', '/api/crm/gesellschaften', LENA)).gesellschaften as { id: string; stand?: string }[]).find(g => g.id === 'ug');
+  await rufe(R.absender(), 'PATCH', '/api/crm/gesellschaften', LENA, { id: 'ug', ...(abs?.stand ? { stand: abs.stand } : {}), felder: {
+    firmierung: UG_NAME, strasse: 'Beispielweg 1', plz: '33602', ort: 'Bielefeld', email: `kontakt@${DEMO_DOMAIN}`, steuernummer: '000/000/00000 (Beispiel)',
+    geschaeftsfuehrung: `${DEMO_PERSONEN[0].name} (Beispiel)`, register: 'Amtsgericht Bielefeld, HRB 00000 (Beispiel)',
+  } });
+  const diagnose = PRODUKTE[0];
+  const entwurfA = (await rufe(R.angebot(), 'POST', '/api/crm/angebot', LENA, { aktion: 'speichern', id: 'ang-demo-gruenfeld', felder: {
+    gesellschaft: 'ug', kontaktId: kontaktId('elif'), firmaId: 'f-demo-gruenfeld', titel: 'Klarheits-Diagnose für Grünfeld Bau (Beispiel)',
+    positionen: [{ id: 'p1', leistungId: diagnose.id, titel: diagnose.name, text: diagnose.text, menge: 1, einheit: 'pauschal', einzelpreisCent: diagnose.preis.betrag * 100, ustSatz: 19, basis: 'einmalig' }],
+    einleitung: 'vielen Dank für das offene Gespräch. Wie besprochen schlagen wir eine Diagnose in zwei Wochen vor (Beispiel).',
+    schluss: 'Wir freuen uns auf Ihre Rückmeldung.', gueltigBis: tagPlus(heute, 21), zahlungszielTage: 14,
+  } })).angebot as { id: string; stand: string };
+  await rufe(R.angebot(), 'POST', '/api/crm/angebot', LENA, { aktion: 'stellen', id: entwurfA.id, stand: entwurfA.stand, nachfassenAm: tagPlus(heute, 2) });
+  schritt('Angebot (gestellt)', 1);
 
   // 5) Ziele (Jahr, Business + Privat) und Meilensteine mit Aufwand, Personen, Kette.
   const opsLabel = einheitAusGesellschaft('ug') ?? 'Operativ';

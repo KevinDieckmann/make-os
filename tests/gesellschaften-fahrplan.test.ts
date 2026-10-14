@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fahrplanFuer, fahrplanZielId, fahrplanMeilensteinId, FAHRPLAN_SCHRITTE } from '@/lib/gesellschaften/fahrplan';
+import { fahrplanFuer, fahrplanZielId, fahrplanMeilensteinId, FAHRPLAN_SCHRITTE, fahrplanAnbieten } from '@/lib/gesellschaften/fahrplan';
 import { kettePruefen, datumVorVorgaenger } from '@/lib/planung/meilenstein-kette';
 import { sauberMeilenstein, sauberWartetAuf } from '@/lib/planung/meilensteine';
 import { sauberZiel } from '@/lib/planung/ziele';
@@ -50,5 +50,22 @@ describe('Gründungsfahrplan', () => {
   it('keine echten Namen in der Vorlage', () => {
     const text = readFileSync(path.resolve(__dirname, '../lib/gesellschaften/fahrplan.ts'), 'utf8');
     expect(text).not.toMatch(/KEMARIS|KD Ventures|MAKE Innovation|Dieckmann/);
+  });
+});
+
+describe('fahrplanAnbieten (Abnahme 14.10., B21)', () => {
+  const heute = '2026-10-14';
+  it('eingetragen, ruhend, aufgelöst, mit HRB oder Eintragungsdatum → nicht anbieten', () => {
+    expect(fahrplanAnbieten({ status: 'eingetragen', gegruendetAm: '2023-01-10' }, heute)).toBe(false);
+    expect(fahrplanAnbieten({ status: 'ruhend' }, heute)).toBe(false);
+    expect(fahrplanAnbieten({ status: 'aufgeloest' }, heute)).toBe(false);
+    expect(fahrplanAnbieten({ status: 'gruendung', register: 'Amtsgericht Beispiel, HRB 1' }, heute)).toBe(false);
+    expect(fahrplanAnbieten({ eingetragenAm: '2024-01-01' }, heute)).toBe(false);
+    expect(fahrplanAnbieten({ gegruendetAm: '2023-01-10' }, heute)).toBe(false);
+  });
+  it('geplant, in Gründung oder ganz ohne Angaben → anbieten', () => {
+    expect(fahrplanAnbieten({ status: 'geplant' }, heute)).toBe(true);
+    expect(fahrplanAnbieten({ status: 'gruendung', gegruendetAm: '2026-10-01' }, heute)).toBe(true);
+    expect(fahrplanAnbieten({}, heute)).toBe(true);
   });
 });
