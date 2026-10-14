@@ -4,9 +4,10 @@
 // „Fr 9 Uhr Power Hour jede Woche“. Was erkannt wird: Tag (heute/morgen/
 // übermorgen, Wochentag, TT.MM.[JJJJ]), Uhrzeit (9, 9:30, 9.30 Uhr, 14-16),
 // Dauer (30min, 1h, 1,5h), ganztags, Wiederholung (täglich, jede Woche,
-// wöchentlich, monatlich, jährlich), Person (@kevin/@malin/@beide), Ort („in
-// Berlin“ am Ende). Der Rest ist der Titel. Nichts wird geraten: fehlt die
-// Uhrzeit, gilt die Vorgabe (9:00, Standarddauer).
+// wöchentlich, monatlich, jährlich), Person (@<Vorname>/@beide/@gemeinsam — die
+// Vornamen kommen seit 14.10. aus den Konten, `namen`), Ort („in Berlin“ am Ende).
+// Der Rest ist der Titel. Nichts wird geraten: fehlt die Uhrzeit, gilt die
+// Vorgabe (9:00, Standarddauer).
 
 export interface Schnell {
   titel: string;
@@ -29,15 +30,29 @@ const plusTage = (heute: string, n: number) => { const d = new Date(`${heute}T12
 const zeitText = (h: number, m: number) => `${zwei(h)}:${zwei(m)}`;
 const plusMin = (hhmm: string, min: number) => { const [h, m] = hhmm.split(':').map(Number); const g = Math.min(24 * 60, h * 60 + m + min); return zeitText(Math.floor(g / 60) % 24 || (g === 1440 ? 24 : 0), g % 60); };
 
-/** Einen Satz zerlegen. `heute` als YYYY-MM-DD (Berliner Tag), `standardDauer` in Minuten. */
-export function schnellLesen(eingabe: string, heute: string, standardDauer = 60): Schnell {
+type FachWer = Exclude<NonNullable<Schnell['wer']>, 'beide'>;
+const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Einen Satz zerlegen. `heute` als YYYY-MM-DD (Berliner Tag), `standardDauer` in Minuten, `namen` = Vornamen hinter den Fächern (aus den
+ * Konten, 14.10. — vorher standen sie fest im Code): „@<Vorname>“ wählt die Person, ohne Namen nur „@beide“/„@gemeinsam“.
+ */
+export function schnellLesen(eingabe: string, heute: string, standardDauer = 60, namen: Partial<Record<FachWer, string>> = {}): Schnell {
   let rest = ` ${eingabe.trim().replace(/\s+/g, ' ')} `;
   const erkannt: string[] = [];
   const nimm = (re: RegExp, was: (m: RegExpMatchArray) => void) => { const m = rest.match(re); if (m) { was(m); rest = rest.replace(m[0], ' '); } };
   const out: Schnell = { titel: '', tag: heute, ganztags: false, erkannt };
 
   // Person
-  nimm(/\s@(kevin|malin|beide|gemeinsam)\b/i, m => { out.wer = m[1].toLowerCase() === 'gemeinsam' ? 'beide' : (m[1].toLowerCase() as Schnell['wer']); erkannt.push(`für ${out.wer}`); });
+  const personen: [string, NonNullable<Schnell['wer']>][] = [
+    ...(['kevin', 'malin'] as const).flatMap(f => { const v = String(namen[f] ?? '').trim().toLowerCase(); return v && !/\s/.test(v) ? [[v, f] as [string, FachWer]] : []; }),
+    ['beide', 'beide'], ['gemeinsam', 'beide'],
+  ];
+  nimm(new RegExp(`\\s@(${personen.map(([w]) => esc(w)).join('|')})(?![\\p{L}\\p{N}_])`, 'iu'), m => {
+    const wer = personen.find(([w]) => w === m[1].toLowerCase())?.[1] ?? 'beide';
+    out.wer = wer;
+    erkannt.push(`für ${wer === 'beide' ? 'beide' : String(namen[wer] ?? '').trim() || wer}`);
+  });
   // Wiederholung
   nimm(/\s(täglich|jeden tag|jede woche|wöchentlich|jeden monat|monatlich|jedes jahr|jährlich)\b/i, m => {
     const w = m[1].toLowerCase();

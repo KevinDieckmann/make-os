@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   if (!(await kalenderZugang(req))) return NextResponse.json(KEIN_KALENDER, { status: 403 });
   const q = new URL(req.url).searchParams;
   const personen = Array.from(new Set((q.get('personen') ?? '').split(',').map(s => s.trim()).filter(Boolean)));
-  if (!personen.length || personen.length > 4) return NextResponse.json({ ok: false, fehler: 'Für wen? (personen=kevin,malin)' }, { status: 400 });
+  if (!personen.length || personen.length > 4) return NextResponse.json({ ok: false, fehler: 'Für wen? (personen=<Speichername>,… — höchstens 4)' }, { status: 400 });
   for (const p of personen) if (!(await personImHaushaltDesInhabers(p))) return NextResponse.json({ ok: false, fehler: 'Nur Personen des Haushalts.' }, { status: 400 });
   const von = TAG.test(q.get('von') ?? '') ? q.get('von')! : undefined;
   const r = await freieZeitFuer({ personen, dauerMin: zahl(q.get('dauer'), 10, 480, 30), tage: zahl(q.get('tage'), 1, 60, 14), pufferMin: zahl(q.get('puffer'), 0, 120, 0), ...(von ? { von } : {}) });

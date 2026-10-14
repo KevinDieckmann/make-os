@@ -72,8 +72,11 @@ describe('Zugang und Zuordnung', () => {
     expect(await kalenderZugang(req({ 'x-make-key': 'geheim', 'x-make-person': 'test' }))).toBeNull();
   });
   it('Kalender gehören Kevin, Malin oder beiden — Groß/klein und Leerzeichen egal', () => {
-    const e = einstellungenSauber(null);
+    // Vornamen hinter den Fächern kommen aus den Konten (14.10., `mitGoogleNamen` legt sie zur Laufzeit dazu) — hier wie auf der Live-Instanz.
+    const e = { ...einstellungenSauber(null), vornamen: { kevin: 'Kevin', malin: 'Malin' } };
     expect(e.kalender).toEqual(EINSTELLUNGEN_LEER.kalender);
     expect(['Privat Kevin', 'privat malin ', 'Kalender', 'Familie', 'Kevin Dieckmann', 'Malin Sport', 'Kevin & Malin'].map(n => wemGehoert(e, n))).toEqual(['kevin', 'malin', 'beide', 'beide', 'kevin', 'malin', 'beide']);
+    // Ohne Vornamen (Konten nicht lesbar) erkennt der Name niemanden — kein fester Vorname im Code.
+    expect(wemGehoert(einstellungenSauber(null), 'Kevin Dieckmann')).toBe('beide');
   });
 });

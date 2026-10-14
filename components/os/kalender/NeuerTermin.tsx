@@ -72,7 +72,9 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   const [fehler, setFehler] = useState<string | null>(null);
   const setF = (n: Formular) => { setFRoh(n); if (entwurfWertvoll(n)) schreibe({ f: n, am: new Date().toISOString() }); };
 
-  const schnell = useMemo(() => (f.titel.trim() && f.art !== 'arbeitsort' ? schnellLesen(f.titel, heute, f.art === 'fokus' ? fokusDauer : standardDauer) : null), [f.titel, f.art, heute, standardDauer, fokusDauer]);
+  // „@<Vorname>“ (14.10.): Vornamen der belegten Fächer aus den Konten — nie fest im Code.
+  const schnellNamen = useMemo(() => ({ ...(WER_LABEL.belegt.includes('kevin') ? { kevin: WER_LABEL.kevin } : {}), ...(WER_LABEL.belegt.includes('malin') ? { malin: WER_LABEL.malin } : {}) }), [WER_LABEL]);
+  const schnell = useMemo(() => (f.titel.trim() && f.art !== 'arbeitsort' ? schnellLesen(f.titel, heute, f.art === 'fokus' ? fokusDauer : standardDauer, schnellNamen) : null), [f.titel, f.art, heute, standardDauer, fokusDauer, schnellNamen]);
   const schnellAnwenden = (x: Formular): Formular => {
     if (!schnell?.erkannt.length) return x;
     const tagErkannt = schnell.erkannt.some(e => /^(am |heute|morgen|übermorgen|Mo|Di|Mi|Do|Fr|Sa|So)/.test(e));

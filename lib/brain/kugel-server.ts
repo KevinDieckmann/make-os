@@ -50,11 +50,18 @@ async function crm(): Promise<RohPunkt[]> {
   return aus;
 }
 
-async function planung(person: string, ms: Meilenstein[]): Promise<RohPunkt[]> {
+async function planung(person: string, ms0: Meilenstein[]): Promise<RohPunkt[]> {
   const [{ ladeAufgabenSicht, nurIchBesitzer }, { haushaltsZiele }, { meilensteinVonAufgabe, zielVonMeilenstein }, { meilensteinSpace }, { spaceVonZiel, zielThema }] = await Promise.all([
     import('@/lib/aufgaben/sicht'), import('@/lib/planung/ziel-farben-server'), import('@/lib/planung/meilenstein-aufgaben'), import('@/lib/planung/meilensteine'), import('@/lib/lichtfaeden/modell'),
   ]);
-  const [s, ziele] = await Promise.all([ladeAufgabenSicht(person), sicher(() => haushaltsZiele(), [])]);
+  const [s, ziele0, ohneAkte, akte] = await Promise.all([
+    ladeAufgabenSicht(person), sicher(() => haushaltsZiele(), []),
+    // Gründungsfahrplan (14.10., Abnahme-Reste 2): ohne Zugang zur Firmen-Akte weder sein Ziel noch seine Meilensteine (wie seine Aufgaben).
+    sicher(async () => (await import('@/lib/planung/bereich-sicht-server')).fahrplanAusgeblendetFuer(person), true),
+    import('@/lib/aufgaben/firmenakte-sicht'),
+  ]);
+  const ziele = ohneAkte ? akte.zieleOhneFahrplan(ziele0) : ziele0;
+  const ms = ohneAkte ? akte.meilensteineOhneFahrplan(ms0) : ms0;
   const aus: RohPunkt[] = [];
   const zielPerson = new Map(ziele.map(z => [z.id, z.person]));
   const msJeZiel = new Map<string, Meilenstein[]>();

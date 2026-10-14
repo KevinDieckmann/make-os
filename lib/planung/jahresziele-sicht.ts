@@ -10,15 +10,22 @@ import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { zielJahr } from './zeitstrahl';
 import { wirksamerSpace } from './bereich';
+import { titelNachRegel } from './kaskade';
 import type { ZieleDatei } from './typen';
 
 export interface JahreszielKurz { id: string; titel: string; bereich: 'privat' | 'business'; fortschritt: number | null }
 
-/** Offene Jahresziele des laufenden Jahres, die diese Person sehen darf (Privat nur mit `privat`). */
-export async function jahreszieleFuer(o: { privat: boolean; heute?: string }): Promise<JahreszielKurz[]> {
+/**
+ * Offene Jahresziele des laufenden Jahres, die diese Person sehen darf (Privat nur mit `privat`). Mit `person` (14.10., Abnahme-Reste 2) ohne
+ * das Ziel des Gründungsfahrplans, wenn sie die Firmen-Akte nicht sieht (`fahrplanAusgeblendetFuer`, wie seine Aufgaben und Meilensteine).
+ */
+export async function jahreszieleFuer(o: { privat: boolean; heute?: string; person?: string | null }): Promise<JahreszielKurz[]> {
   try {
     const jahr = Number((o.heute ?? localDay()).slice(0, 4));
-    const d = await loadJson<ZieleDatei>('ziele');
+    // Titel zur Anzeige über DIESELBE Funktion wie GET /api/state/ziele (14.10., Abnahme-Reste 2 — `titelNachRegel`; Jahresziele selbst sind
+    // nie abgeleitet, die Lesestelle bleibt aber dieselbe wie überall). Lesen schreibt nicht.
+    const roh = await loadJson<ZieleDatei>('ziele');
+    const d = roh && Array.isArray(roh.jahr) ? titelNachRegel(roh, jahr) : roh;
     const raus: JahreszielKurz[] = [];
     for (const z of d?.jahr ?? []) {
       if (z.erledigt || zielJahr(z, jahr) !== jahr) continue;
@@ -26,7 +33,9 @@ export async function jahreszieleFuer(o: { privat: boolean; heute?: string }): P
       if (bereich === 'privat' && !o.privat) continue;
       raus.push({ id: z.id, titel: z.titel, bereich, fortschritt: typeof z.fortschritt === 'number' ? z.fortschritt : null });
     }
-    return raus;
+    if (!o.person) return raus;
+    const { ohneFahrplanFuer } = await import('./bereich-sicht-server');
+    return await ohneFahrplanFuer(raus, o.person, 'ziel');
   } catch {
     return [];
   }
@@ -57,7 +66,7 @@ export async function zieleFuerHead(o: { person: string | null; privat: boolean;
       ? ((await nordsternLaden(o.haushalt).catch(() => null))?.text || null)
       : o.person ? await nordsternFuerPerson(o.person) : inhaberHaushalt ? ((await nordsternLaden(inhaberHaushalt).catch(() => null))?.text || null) : null;
     const nordstern = roh ? ohneRahmenMarken(roh).replace(/\s+/g, ' ').trim() || null : null;
-    const jahresziele = imHaushalt ? (await jahreszieleFuer({ privat: o.privat, ...(o.heute ? { heute: o.heute } : {}) })).map(z => ({ ...z, titel: ohneRahmenMarken(z.titel) })) : [];
+    const jahresziele = imHaushalt ? (await jahreszieleFuer({ privat: o.privat, person: o.person, ...(o.heute ? { heute: o.heute } : {}) })).map(z => ({ ...z, titel: ohneRahmenMarken(z.titel) })) : [];
     return { nordstern, jahresziele };
   } catch {
     return { nordstern: null, jahresziele: [] };

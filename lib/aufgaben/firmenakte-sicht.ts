@@ -16,8 +16,12 @@
 // Gründungsfahrplan (Abnahme 14.10., B17): seine Aufgaben haben freie Kennungen, liegen aber in den Meilenstein-Listen der Fahrplan-
 // Meilensteine (`ms-fahrplan-…` → Liste `lm-ms-fahrplan-…`, lib/gesellschaften/fahrplan.ts + lib/planung/meilenstein-aufgaben.ts) — sie
 // gehören zur Firmen-Akte (Register, Gründung) und erkennt man an der LISTE; die Listen selbst (Namen der Gründungsschritte) fallen mit weg.
+// Seit 14.10. (Abnahme-Reste 2) ebenso das Ziel und die Meilensteine des Gründungsfahrplans in der PLANUNG (Ziele, Meilensteine, Seil,
+// Lichtfäden, Brain-Kugel, Detail, Kalender-Fristen …): `istFahrplanZiel`/`istFahrplanMeilenstein` unten (WAS), WER = dieselbe Regel wie oben
+// (`firmenAkteAusgeblendetFuer`, angewandt in lib/planung/bereich-sicht-server.ts `fahrplanAusgeblendetFuer`).
 
 import type { Task, TasksState } from '@/types/tasks';
+import { FAHRPLAN_MEILENSTEIN_PRAEFIX, FAHRPLAN_ZIEL_PRAEFIX } from '@/lib/gesellschaften/fahrplan';
 
 /** Präfix der Beschluss-Folge „Cap-Table anpassen“ (eine Stelle — der Erzeuger liest es von hier). */
 export const BESCHLUSS_CAPTABLE_PRAEFIX = 'bfc-';
@@ -72,3 +76,23 @@ export function ohneFirmenAkte<T extends TasksState>(state: T): T {
   if (!hatFirmenAkte(state.tasks) && !fahrplanListen) return state;
   return { ...state, tasks: aufgabenOhneFirmenAkte(state.tasks), ...(fahrplanListen ? { listen: listen.filter(l => !istFahrplanListe(l.id)) } : {}) };
 }
+
+// ── Gründungsfahrplan in der Planung (14.10., Abnahme-Reste 2) ─────────────────────────────────────────────────────────────────────────────
+// Das Ziel `z-fahrplan-…` (samt dem, was die Kaskade daraus ableitet: `abgeleitetVon`), die neun Meilensteine `ms-fahrplan-…` und jeder
+// Meilenstein, der an einem Fahrplan-Ziel hängt (`zielId`/`abgeleitetVon`, auch `ms~z-fahrplan-…` aus einem Termin) — die Kennungen bildet
+// NUR lib/gesellschaften/fahrplan.ts (Präfixe von dort, Wächter tests/aufgaben-firmenakte-sicht.test.ts).
+
+const mitPraefix = (x: unknown, p: string): boolean => typeof x === 'string' && x.startsWith(p);
+
+/** Ist das ein Ziel des Gründungsfahrplans (oder daraus abgeleitet)? */
+export const istFahrplanZiel = (z: { id?: unknown; abgeleitetVon?: unknown } | null | undefined): boolean =>
+  !!z && (mitPraefix(z.id, FAHRPLAN_ZIEL_PRAEFIX) || mitPraefix(z.abgeleitetVon, FAHRPLAN_ZIEL_PRAEFIX));
+
+/** Ist das ein Meilenstein des Gründungsfahrplans bzw. einer an seinem Ziel? */
+export const istFahrplanMeilenstein = (m: { id?: unknown; zielId?: unknown; abgeleitetVon?: unknown } | null | undefined): boolean =>
+  !!m && (mitPraefix(m.id, FAHRPLAN_MEILENSTEIN_PRAEFIX) || mitPraefix(m.zielId, FAHRPLAN_ZIEL_PRAEFIX) || mitPraefix(m.abgeleitetVon, FAHRPLAN_ZIEL_PRAEFIX));
+
+/** Ziele ohne den Gründungsfahrplan (rein; dieselben Objekte). */
+export const zieleOhneFahrplan = <Z extends { id?: unknown; abgeleitetVon?: unknown }>(l: readonly Z[]): Z[] => l.filter(z => !istFahrplanZiel(z));
+/** Meilensteine ohne den Gründungsfahrplan (rein; dieselben Objekte). */
+export const meilensteineOhneFahrplan = <M extends { id?: unknown; zielId?: unknown; abgeleitetVon?: unknown }>(l: readonly M[]): M[] => l.filter(m => !istFahrplanMeilenstein(m));

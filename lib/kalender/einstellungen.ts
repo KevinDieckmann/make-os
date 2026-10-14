@@ -50,6 +50,8 @@ export interface KalenderEinstellungen {
    * Person nur ihre eigenen Namen heraus (die anderen verrieten Kalendernamen).
    */
   persoenlich?: Record<string, string>;
+  /** Vornamen hinter den Fächern (14.10., aus den Konten) — NIE gespeichert, wie `google` beim Lesen dazugelegt (lib/kalender/belegt.ts). */
+  vornamen?: Partial<Record<Exclude<Wer, 'beide'>, string>>;
 }
 
 export interface SteuerVorlage { an: boolean }
@@ -136,23 +138,45 @@ export async function ladeEinstellungen(): Promise<KalenderEinstellungen> {
  */
 export async function kalenderNamenVorgabe(): Promise<Record<Wer, string>> {
   try {
-    const { ladeKonten } = await import('@/lib/zugang/konten');
-    const konten = (await ladeKonten()).konten;
-    const inhaber = konten.find(k => k.rolle === 'inhaber');
-    const haus = konten
-      .filter(k => k === inhaber || (k.finanzRecht !== 'business' && (inhaber?.haushalt ? k.haushalt === inhaber.haushalt : !k.haushalt)))
-      .sort((a, b) => Number(b === inhaber) - Number(a === inhaber) || String(a.angelegt ?? '').localeCompare(String(b.angelegt ?? '')));
-    const p = fachPersonen(haus.map(k => ({ id: k.speicher, name: vorname(k.name) })));
-    return kalenderNamen({ ...(p.kevin ? { kevin: p.kevin.name } : {}), ...(p.malin ? { malin: p.malin.name } : {}) });
+    return kalenderNamen(vornamenAus(await fachKonten()));
   } catch { return EINSTELLUNGEN_LEER.kalender; }
 }
 
-/** Die Google-Kalender und die Kalender je Person aus iCloud (Name → Person) zur Laufzeit dazulegen — gespeichert wird das nie. */
+/**
+ * Wer steht hinter den Fächern — mit VOLLEM Namen aus dem Konto (14.10.): Personen im Haushalt der Inhaberin/des Inhabers, Inhaber zuerst,
+ * `fachPersonen` (gleicher Speichername gewinnt). Wirft, wenn die Konten nicht lesbar sind (Aufrufer entscheiden über den Rückfall).
+ */
+export async function fachKonten(): Promise<Partial<Record<Exclude<Wer, 'beide'>, { id: string; name: string }>>> {
+  const { ladeKonten } = await import('@/lib/zugang/konten');
+  const konten = (await ladeKonten()).konten;
+  const inhaber = konten.find(k => k.rolle === 'inhaber');
+  const haus = konten
+    .filter(k => k === inhaber || (k.finanzRecht !== 'business' && (inhaber?.haushalt ? k.haushalt === inhaber.haushalt : !k.haushalt)))
+    .sort((a, b) => Number(b === inhaber) - Number(a === inhaber) || String(a.angelegt ?? '').localeCompare(String(b.angelegt ?? '')));
+  return fachPersonen(haus.map(k => ({ id: k.speicher, name: String(k.name ?? '').trim() })));
+}
+
+/** Nur die Vornamen der Fach-Personen (leere fallen weg). Rein. */
+export function vornamenAus(p: Partial<Record<Exclude<Wer, 'beide'>, { name: string }>>): Partial<Record<Exclude<Wer, 'beide'>, string>> {
+  const eins = vorname(p.kevin?.name), zwei = vorname(p.malin?.name);
+  return { ...(eins ? { kevin: eins } : {}), ...(zwei ? { malin: zwei } : {}) };
+}
+
+/** Die Vornamen hinter den Fächern aus den Konten — Konten nicht lesbar: keine (dann erkennt `zuordnung` nichts am Namen). */
+export async function fachVornamen(): Promise<Partial<Record<Exclude<Wer, 'beide'>, string>>> {
+  try { return vornamenAus(await fachKonten()); } catch { return {}; }
+}
+
+/**
+ * Die Google-Kalender und die Kalender je Person aus iCloud (Name → Person) zur Laufzeit dazulegen — gespeichert wird das nie. Seit 14.10.
+ * auch die Vornamen hinter den Fächern (`vornamen`, aus den Konten): `zuordnung` erkennt einen Kalender daran (vorher fest im Code).
+ */
 export async function mitGoogleNamen(e: KalenderEinstellungen): Promise<KalenderEinstellungen> {
   const { googleNamenZuPerson } = await import('./google/namen');
   const g = await googleNamenZuPerson();
   const p = await import('./icloud-person').then(m => m.persoenlicheNamen()).catch(() => ({} as Record<string, string>));
-  return { ...e, ...(Object.keys(g).length ? { google: g } : {}), ...(Object.keys(p).length ? { persoenlich: p } : {}) };
+  const v = await fachVornamen();
+  return { ...e, ...(Object.keys(g).length ? { google: g } : {}), ...(Object.keys(p).length ? { persoenlich: p } : {}), ...(Object.keys(v).length ? { vornamen: v } : {}) };
 }
 
 /** Vorsatz des neutralen Namens, unter dem andere Personen die Kalender je Person sehen („iCloud · <Vorname>“). */

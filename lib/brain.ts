@@ -221,7 +221,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
   const { jahreszieleFuer } = await import('@/lib/planung/jahresziele-sicht');
   const konto = await kontoSicht(person).catch(() => null);
   const jahresziele = konto?.imHaushalt
-    ? (await jahreszieleFuer({ privat: konto.vollesMitglied, heute }).catch(() => [])).map(z => ({ titel: z.titel, bereich: z.bereich, fortschritt: z.fortschritt }))
+    ? (await jahreszieleFuer({ privat: konto.vollesMitglied, heute, person }).catch(() => [])).map(z => ({ titel: z.titel, bereich: z.bereich, fortschritt: z.fortschritt }))
     : [];
   const val = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === 'fulfilled' ? r.value : null);
 

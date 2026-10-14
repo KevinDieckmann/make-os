@@ -31,15 +31,20 @@ export async function seilBereichFuer(person: string, gewuenscht: SeilBereich): 
 /** Alle Daten für das Seil — gelesen mit den vorhandenen Lesewegen. */
 export async function seilDatenLaden(person: string, bereich: SeilBereich, von: string, bis: string, heute: string): Promise<SeilDaten> {
   const [{ haushaltsZiele }, { ladeAufgabenSicht }] = await Promise.all([import('@/lib/planung/ziel-farben-server'), import('@/lib/aufgaben/sicht')]);
-  const [ziele, ms0, aufgaben, lesbar] = await Promise.all([
+  const [ziele0, ms0, aufgaben, lesbar, ohneAkte] = await Promise.all([
     sicher(haushaltsZiele, []),
     sicher(() => loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine'), null),
     sicher(() => ladeAufgabenSicht(person), null),
     sicher(() => lesbareEigentuemerFuer(person), new Set<string>()),
+    // Gründungsfahrplan (14.10., Abnahme-Reste 2): ohne Zugang zur Firmen-Akte weder sein Ziel noch seine Meilensteine (wie seine Aufgaben).
+    sicher(async () => (await import('@/lib/planung/bereich-sicht-server')).fahrplanAusgeblendetFuer(person), true),
   ]);
+  const { zieleOhneFahrplan, meilensteineOhneFahrplan } = await import('@/lib/aufgaben/firmenakte-sicht');
+  const ziele = ohneAkte ? zieleOhneFahrplan(ziele0) : ziele0;
   // Altbestand (08.10., Kevin „eigene Ziele nur geteilt“): Meilensteine, die noch an einem nicht geteilten eigenen Ziel der anderen
   // Person hängen, kommen gar nicht erst hinein (lib/planung/eigene-ziele-sicht.ts).
-  const ms = ms0 ? { ...ms0, meilensteine: meilensteineFuerBetrachter(ms0.meilensteine ?? [], verborgeneZielIds(ziele, lesbar)) } : null;
+  const ms1 = ms0 ? meilensteineFuerBetrachter(ms0.meilensteine ?? [], verborgeneZielIds(ziele0, lesbar)) : null;
+  const ms = ms1 ? { ...ms0, meilensteine: ohneAkte ? meilensteineOhneFahrplan(ms1) : ms1 } : null;
   const tasks = aufgaben?.tasks ?? [];
   const ids = new Set(tasks.map(t => t.id));
   // Termine mit Aufgabe (nur die eigenen bzw. gemeinsamen — maskierte bleiben draußen).

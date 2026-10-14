@@ -13,6 +13,7 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 import { sichtbarFuer } from './routinen';
 import { meilensteineOhnePrivat, routineImPrivat } from './bereich-sicht';
+import { istFahrplanMeilenstein, istFahrplanZiel, meilensteineOhneFahrplan } from '@/lib/aufgaben/firmenakte-sicht';
 import type { Routine } from './typen';
 
 export type PlanungsUmfang = 'alles' | 'business' | 'nichts';
@@ -43,9 +44,36 @@ export async function routinenSichtbarFuer<R extends { owner?: string; space?: s
   return sichtbarFuer(await routinenImUmfang(routinen, person), person);
 }
 
-/** Meilensteine im Umfang der Person (ohne die Regel „eigene Ziele nur geteilt“ — die steht in ./eigene-ziele-sicht-server.ts). */
+/**
+ * Sieht `person` den Gründungsfahrplan in der Planung NICHT (14.10., Abnahme-Reste 2)? Er gehört zur Firmen-Akte — dieselbe Regel wie ihre
+ * Aufgaben und Listen (`firmenAkteAusgeblendetFuer`, lib/aufgaben/sicht.ts: kein Zugang zur Firmen-Akte, z. B. Konto „nur Business“). WAS
+ * dazugehört, steht in lib/aufgaben/firmenakte-sicht.ts (`istFahrplanZiel`/`istFahrplanMeilenstein`). Systemlauf → nein; unlesbar → ja.
+ * Jeder Leser von Zielen/Meilensteinen, der an eine Person ausliefert, fragt hier (Routen, Seil, Lichtfäden, Brain-Kugel, `meilensteineImUmfang`).
+ */
+export async function fahrplanAusgeblendetFuer(person: string | null | undefined): Promise<boolean> {
+  if (!person) return false;
+  try {
+    return await (await import('@/lib/aufgaben/sicht')).firmenAkteAusgeblendetFuer(person);
+  } catch {
+    return true;
+  }
+}
+
+/** Schneller Weg: nur wenn die Liste überhaupt etwas vom Gründungsfahrplan trägt, wird der Zugang gefragt. */
+export async function ohneFahrplanFuer<E>(liste: readonly E[], person: string | null | undefined, art: 'ziel' | 'meilenstein'): Promise<E[]> {
+  const ist = (art === 'ziel' ? istFahrplanZiel : istFahrplanMeilenstein) as unknown as (e: E) => boolean;
+  if (!liste.some(ist) || !(await fahrplanAusgeblendetFuer(person))) return [...liste];
+  return liste.filter(e => !ist(e));
+}
+
+/**
+ * Meilensteine im Umfang der Person (ohne die Regel „eigene Ziele nur geteilt“ — die steht in ./eigene-ziele-sicht-server.ts). Seit 14.10.
+ * ohne den Gründungsfahrplan für Personen ohne Zugang zur Firmen-Akte (`fahrplanAusgeblendetFuer`).
+ */
 export async function meilensteineImUmfang<M>(liste: readonly M[], person: string | null | undefined): Promise<M[]> {
   const u = await planungsUmfangFuer(person);
   if (u === 'nichts') return [];
-  return u === 'business' ? meilensteineOhnePrivat(liste as readonly (M & { space?: unknown })[]) as M[] : [...liste];
+  const l = u === 'business' ? meilensteineOhnePrivat(liste as readonly (M & { space?: unknown })[]) as M[] : [...liste];
+  const fp = l as unknown as readonly { id?: unknown; zielId?: unknown; abgeleitetVon?: unknown }[];
+  return fp.some(istFahrplanMeilenstein) && await fahrplanAusgeblendetFuer(person) ? meilensteineOhneFahrplan(fp) as unknown as M[] : l;
 }

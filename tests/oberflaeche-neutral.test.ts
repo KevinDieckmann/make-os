@@ -28,7 +28,9 @@ const wurzel = path.resolve(__dirname, '..');
 
 /** Was nie in einem sichtbaren Text stehen darf. */
 const REGELN: { id: string; muster: RegExp; grund: string }[] = [
-  { id: 'name', muster: /\b(?:Kevin|Malin)s?\b/, grund: 'Vorname einer Person der Gründer — Namen kommen aus Konten/Team' },
+  // 14.10. (Abnahme-Reste 2): auch der Vorname des Darlehensgebers (Rechenkern-Zeile „…-Rate“) — Kennungen wie `ug.bjoern` bleiben (klein).
+  // (Teilstücke zur Laufzeit zusammengesetzt — tests/repo-sauber.test.ts meldet den Namen sonst in dieser Datei.)
+  { id: 'name', muster: new RegExp('\\b(?:Kevin|Malin|Bj' + '(?:ö|oe)rn)s?\\b'), grund: 'Vorname einer Person — Namen kommen aus Konten/Team, Zeilen heißen neutral' },
   { id: 'firma', muster: /KD Ventures|KD Management|\bKDV\b/, grund: 'feste Firma — Namen aus lib/einheiten.ts (finanzOrtName/finanzOrtKurz) oder dem Register' },
   { id: 'datei', muster: /\b(?:UPDATES|CLAUDE)\.md\b|\.env\.local\b|localhost:/, grund: 'Repo-Datei, lokale Umgebung oder Port — Betreiber-Wissen' },
   { id: 'befehl', muster: /\bgit\s+[a-z]|\bdocker\s+[a-z]/, grund: 'Server- bzw. Repo-Befehl — Betreiber-Wissen' },
@@ -52,7 +54,9 @@ const WEITERE = ['lib/make-one/seiten.ts', 'lib/make-one/einstellungen.ts', 'lib
   // 14.10. (Kevins Entscheidungen): Vorgaben, die vorher feste Vornamen bzw. Firmen trugen — jetzt aus Konten, Einheiten oder Instanz-Daten.
   'lib/crm/team-liste.ts', 'lib/kalender/einstellungen.ts', 'lib/finanzen/haushalt/einordnung.ts', 'lib/finanzen/haushalt/kategorien.ts',
   'lib/finanzen/haushalt/gesamt.ts', 'lib/crm/marke.ts', 'lib/crm/reihen-server.ts', 'lib/crm/wertelisten.ts',
-  'lib/zoe/vorschlag-anzeige.ts', 'lib/make-one/liquiditaet.ts'];
+  'lib/zoe/vorschlag-anzeige.ts', 'lib/make-one/liquiditaet.ts',
+  // 14.10. (Abnahme-Reste 2): Zeilennamen des Rechenkerns (Zahlungskalender) und die Kalender-Dateien mit Namen (Altweg, Zuordnung, Schnelleingabe).
+  'lib/finanzen/rechenkern.ts', 'lib/kalender/apple-altweg.ts', 'lib/kalender/belegt.ts', 'lib/kalender/schnell.ts', 'app/api/apple-calendar/route.ts'];
 
 function dateien(ordner: string): string[] {
   const aus: string[] = [];
@@ -83,6 +87,19 @@ function texte(datei: string): { text: string; zeile: number }[] {
 
 const erlaubt = (datei: string, regel: string, text: string) => ERLAUBT.some(e => e.datei === datei && e.regel === regel && text.includes(e.text));
 
+/** Alle Regex-Literale einer Datei (Quelltext samt Flags). */
+function regexe(datei: string): { text: string; zeile: number }[] {
+  const src = readFileSync(path.join(wurzel, datei), 'utf8');
+  const sf = ts.createSourceFile(datei, src, ts.ScriptTarget.Latest, true, datei.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const aus: { text: string; zeile: number }[] = [];
+  const besuch = (n: ts.Node): void => {
+    if (n.kind === ts.SyntaxKind.RegularExpressionLiteral) aus.push({ text: n.getText(sf), zeile: sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1 });
+    ts.forEachChild(n, besuch);
+  };
+  besuch(sf);
+  return aus;
+}
+
 describe('Oberfläche: keine festen Namen, Firmen, Marken und Betreiber-Texte', () => {
   it('components/, app/os und Texte in lib (Liste WEITERE)', () => {
     const liste = [...dateien('components'), ...dateien('app/os'), ...WEITERE];
@@ -99,6 +116,21 @@ describe('Oberfläche: keine festen Namen, Firmen, Marken und Betreiber-Texte', 
     const funde: string[] = [];
     const r = REGELN.find(x => x.id === 'datei')!;
     for (const d of dateien('app/api')) for (const t of texte(d)) if (r.muster.test(t.text) && !erlaubt(d, r.id, t.text)) funde.push(`${d}:${t.zeile} ${t.text.trim().slice(0, 140)}`);
+    expect(funde, funde.join('\n')).toEqual([]);
+  });
+
+  it('Kalender-Dateien (14.10., Abnahme-Reste 2): kein Vorname in Regex oder Texten — Namen kommen aus Konten bzw. Kalender-Einstellungen', () => {
+    const vorhanden = (d: string) => { try { return statSync(path.join(wurzel, d)).isDirectory(); } catch { return false; } };
+    const liste = ['lib/kalender', 'app/api/kalender', 'app/api/apple-calendar', 'components/os/kalender'].filter(vorhanden).flatMap(dateien);
+    expect(liste.length).toBeGreaterThan(20);
+    const name = REGELN.find(x => x.id === 'name')!.muster;
+    const funde: string[] = [];
+    for (const d of liste) {
+      // Regex: auch klein geschrieben (`/\bkevin\b/` erkannte früher einen Kalender am festen Vornamen).
+      for (const r of regexe(d)) if (/kevin|malin|bj(?:ö|oe)rn/i.test(r.text)) funde.push(`${d}:${r.zeile} [regex] ${r.text.slice(0, 140)}`);
+      // Texte: Vornamen (groß) — die Fach-Kennungen `'kevin'`/`'malin'` (klein) sind Daten-Schlüssel und bleiben.
+      for (const t of texte(d)) if (name.test(t.text)) funde.push(`${d}:${t.zeile} [text] ${t.text.trim().slice(0, 140)}`);
+    }
     expect(funde, funde.join('\n')).toEqual([]);
   });
 
@@ -246,5 +278,70 @@ describe('Vorgaben aus den Konten statt fester Vornamen', () => {
     const { ENTNAHME_NAME, istEntnahmeKategorie } = await import('@/lib/finanzen/haushalt/einordnung');
     expect(ENTNAHME_NAME).not.toMatch(/\b(?:Kevin|Malin)\b/);
     expect(istEntnahmeKategorie(ENTNAHME_NAME)).toBe(true);
+  });
+});
+
+// ── 14.10. (Abnahme-Reste 2): Kalender-Zuordnung und AppleScript-Altweg aus Konten/Einstellungen — auf der Live-Instanz bit-gleich ─────────
+describe('Kalender: Namen aus Konten statt fest im Code — Live-Instanz unverändert', () => {
+  // Die Regeln VOR dem 14.10. wörtlich (Referenz für „bit-gleich“).
+  const altZuordnung = (e: { kalender: Record<'kevin' | 'malin' | 'beide', string> }, kalenderName: string) => {
+    const n = kalenderName.trim().toLowerCase();
+    if (n === e.kalender.kevin.trim().toLowerCase()) return 'kevin';
+    if (n === e.kalender.malin.trim().toLowerCase()) return 'malin';
+    if (n === e.kalender.beide.trim().toLowerCase()) return 'beide';
+    const kevin = /\bkevin\b/.test(n), malin = /\bmalin\b/.test(n);
+    return kevin && !malin ? 'kevin' : malin && !kevin ? 'malin' : null;
+  };
+  const ALT_CAL_MAP: Record<string, { category: string; owner: string }> = {
+    'Privat Kevin': { category: 'private-kevin', owner: 'kevin' },
+    'Privat Malin': { category: 'private-malin', owner: 'malin' },
+    'Kevin Dieckmann': { category: 'holding', owner: 'kevin' },
+    'Kalender': { category: 'joint', owner: 'both' },
+  };
+  const ALT_LISTE = ['Privat Kevin', 'Privat Malin ', 'Kevin Dieckmann', 'Kalender'];
+
+  it('Vornamen und Kalendernamen aus den Konten der Live-Instanz = die früheren festen Werte', async () => {
+    const { KONTEN_WIE_LIVE, KALENDER_WIE_LIVE } = await import('./fixtures/team-konten');
+    const { fachPersonen } = await import('@/lib/make-one/fach-namen');
+    const { vornamenAus, kalenderNamen } = await import('@/lib/kalender/einstellungen');
+    const p = fachPersonen(KONTEN_WIE_LIVE.map(k => ({ id: k.speicher, name: k.name })));
+    expect(vornamenAus(p)).toEqual({ kevin: 'Kevin', malin: 'Malin' });
+    expect(kalenderNamen(vornamenAus(p))).toEqual(KALENDER_WIE_LIVE);
+  });
+
+  it('Zuordnung am Namen (lib/kalender/belegt.ts): mit den Vornamen der Live-Instanz dieselbe Antwort wie die frühere feste Regel', async () => {
+    const { zuordnung } = await import('@/lib/kalender/belegt');
+    const { KALENDER_WIE_LIVE } = await import('./fixtures/team-konten');
+    const e = { kalender: { ...KALENDER_WIE_LIVE }, vornamen: { kevin: 'Kevin', malin: 'Malin' } };
+    const namen = ['Privat Kevin', 'privat malin ', 'Gemeinsam', 'Kalender', 'Familie', 'Kevin Dieckmann', 'Malin Sport', 'Kevin & Malin', 'MAKE Kevin (Google)',
+      'Kevins Kalender', 'kevin2', 'Kevin_Arbeit', 'Arbeit-Kevin', 'Malin/Kevin', 'Kevinä', 'Geburtstage', 'iCloud · Malin', 'Work', ''];
+    for (const n of namen.filter(x => x !== 'Kevinä')) expect(zuordnung(e, n), n).toBe(altZuordnung(e, n));
+    // Eine fremde Instanz: ihre Vornamen zählen, feste Namen nie.
+    const fremd = { kalender: { kevin: 'Privat Lena', malin: 'Privat Jonas', beide: 'Gemeinsam' }, vornamen: { kevin: 'Lena', malin: 'Jonas' } };
+    expect(zuordnung(fremd, 'Lena Beispiel')).toBe('kevin');
+    expect(zuordnung(fremd, 'Jonas Sport')).toBe('malin');
+    expect(zuordnung(fremd, 'Kevin Dieckmann')).toBeNull();
+    expect(zuordnung({ kalender: fremd.kalender, vornamen: { kevin: 'Jörg', malin: 'René' } }, 'Kalender René')).toBe('malin');
+    expect(zuordnung({ kalender: fremd.kalender, vornamen: { kevin: 'Jörg', malin: 'René' } }, 'Jörgen')).toBeNull();
+  });
+
+  it('AppleScript-Altweg (lib/kalender/apple-altweg.ts): dieselben Kalender, dieselbe Zuordnung, dieselbe Reihenfolge', async () => {
+    const { altwegKalender, altwegSkript } = await import('@/lib/kalender/apple-altweg');
+    const { KONTEN_WIE_LIVE, KALENDER_WIE_LIVE } = await import('./fixtures/team-konten');
+    const a = altwegKalender(KALENDER_WIE_LIVE, KONTEN_WIE_LIVE[0].name);
+    expect(a.zuordnung).toEqual(ALT_CAL_MAP);
+    // Jeder frühere Name wird weiter gefragt, in derselben Reihenfolge (dazu je die andere Fassung mit/ohne Leerzeichen am Ende).
+    const pos = ALT_LISTE.map(n => a.liste.indexOf(n));
+    expect(pos.every(i => i >= 0), JSON.stringify(a.liste)).toBe(true);
+    expect([...pos].sort((x, y) => x - y)).toEqual(pos);
+    expect(new Set(a.liste.map(n => n.trimEnd()))).toEqual(new Set(Object.keys(ALT_CAL_MAP)));
+    const skript = altwegSkript(a.liste);
+    for (const n of ALT_LISTE) expect(skript).toContain(`"${n}"`);
+    // Gespeicherter Name gewinnt; eine fremde Instanz liest ihre eigenen Kalender, nie feste Namen; Anführungszeichen sind maskiert.
+    const fremd = altwegKalender({ kevin: 'Mein "Kalender"', malin: 'Privat Jonas' }, 'Lena Beispiel');
+    expect(Object.keys(fremd.zuordnung)).toEqual(['Mein "Kalender"', 'Privat Jonas', 'Lena Beispiel', 'Kalender']);
+    expect(altwegSkript(fremd.liste)).toContain('"Mein \\"Kalender\\""');
+    expect(altwegSkript(fremd.liste)).not.toMatch(/Kevin|Malin/);
+    expect(Object.keys(altwegKalender({ kevin: 'Privat Lena', malin: '' }, null).zuordnung)).toEqual(['Privat Lena', 'Kalender']);
   });
 });

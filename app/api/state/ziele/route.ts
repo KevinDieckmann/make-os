@@ -39,7 +39,9 @@ import { eigeneZieleNachziehen } from '@/lib/planung/eigene-meilensteine-server'
 import { BEREICH_GETRENNT, ZIEL_FEHLT, oberzielLoesen, oberzielPruefen, type BezuegeGeloest } from '@/lib/planung/bezuege';
 import { zielBezuegeInAufgabenLoesen } from '@/lib/aufgaben/ziel-bezug-server';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
-import { NUR_BUSINESS_PRIVAT, fokusOhnePrivat, fokusSchluesselImPrivat, konflikteOhnePrivat, privatSchreibPruefen, privatStatus, zielImPrivat, zieleOhnePrivat, zieleDateiNurBereich } from '@/lib/planung/bereich-sicht';
+import { NUR_BUSINESS_PRIVAT, PLANUNG_NICHT_GEFUNDEN, fokusOhnePrivat, fokusSchluesselImPrivat, konflikteOhnePrivat, privatSchreibPruefen, privatStatus, zielImPrivat, zieleOhnePrivat, zieleDateiNurBereich } from '@/lib/planung/bereich-sicht';
+import { fahrplanAusgeblendetFuer } from '@/lib/planung/bereich-sicht-server';
+import { istFahrplanZiel, zieleOhneFahrplan } from '@/lib/aufgaben/firmenakte-sicht';
 import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 
 export const runtime = 'nodejs';
@@ -100,11 +102,17 @@ export async function GET(req: Request) {
   const f = datei(sp.nurGeteilte ? nurGeteilte(roh) : roh);
   // Sicht Privat · Business (10.10.): mit `?space=` nur der Bereich der Sicht (Ziele aller Horizonte + Fokus-Sätze; lib/planung/bereich-sicht.ts).
   // Titel abgeleiteter Ziele nach der geltenden Regel (14.10., nur Anzeige — der Stand bleibt der gespeicherte; geschrieben wird über die Kaskade).
-  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...(sp.nurGeteilte ? { nurGeteilte: true } : {}), ...zieleDateiNurBereich(titelNachRegel(await mitStaenden(f, await ohnePrivatFuer(req)), laufendesJahr()), sichtDerAnfrage(req)) });
+  return NextResponse.json({ fuer: sp.fuer, darfSchreiben: sp.darfSchreiben, ...(sp.nurGeteilte ? { nurGeteilte: true } : {}), ...zieleDateiNurBereich(titelNachRegel(await mitStaenden(f, await ohnePrivatFuer(req), await ohneAkteFuer(req)), laufendesJahr()), sichtDerAnfrage(req)) });
 }
 
 /** Konto „nur Business“ (09.10., EINE Konto-Sicht)? Systemlauf → nein; Konten unlesbar → ja (fail-closed, nie auf Verdacht zeigen). */
 const ohnePrivatFuer = (req: Request) => privatAusgeblendetFuer(personStreng(req)).catch(() => true);
+/**
+ * Ohne Zugang zur Firmen-Akte (14.10., Abnahme-Reste 2 — z. B. Konto „nur Business“)? Dann gibt es das Ziel des Gründungsfahrplans (samt
+ * Abgeleitetem) für die Person nicht: in keiner Antwort (auch nicht im 409), ändern/löschen/mit seiner Kennung anlegen → 404 — wie die Aufgaben
+ * der Firmen-Akte (lib/aufgaben/firmenakte-sicht.ts). Systemlauf → nein; unlesbar → ja.
+ */
+const ohneAkteFuer = (req: Request) => fahrplanAusgeblendetFuer(personStreng(req));
 
 /**
  * Jede Zeile trägt ihren Stand (Fingerabdruck — der Browser schickt ihn mit jeder Änderung zurück) und ihre Farbe (Review
@@ -113,12 +121,15 @@ const ohnePrivatFuer = (req: Request) => privatAusgeblendetFuer(personStreng(req
  * `ohnePrivat` (Konto „nur Business“, 09.10.): Ziele des Privat-Bereichs und Fokus-Sätze außer `business:…` fallen weg — JEDE Antwort
  * dieser Route geht hier durch. Der Fokus wird NACH der Jahres-Ableitung gefiltert (sie setzt auch Schlüssel ohne Präfix).
  */
-async function mitStaenden(f: ZieleDatei, ohnePrivat: boolean): Promise<ZieleDatei> {
+async function mitStaenden(f: ZieleDatei, ohnePrivat: boolean, ohneAkte = false): Promise<ZieleDatei> {
   const farben = await zielFarbenDesHaushalts();
   // Fokus des laufenden Jahres unter dem Schlüssel ohne Jahr — der vorgeplante Satz gilt ab Januar (30.09.).
   const fokus = fokusFuerLaufendesJahr(f.fokus, laufendesJahr());
   const aus: ZieleDatei = { ...f, fokus: ohnePrivat ? fokusOhnePrivat(fokus) : fokus };
-  for (const h of ZIEL_HORIZONTE) aus[h] = mitFarbe(mitStand(ohnePrivat ? zieleOhnePrivat(f[h] ?? []) : (f[h] ?? [])), farben);
+  for (const h of ZIEL_HORIZONTE) {
+    const l = ohnePrivat ? zieleOhnePrivat(f[h] ?? []) : (f[h] ?? []);
+    aus[h] = mitFarbe(mitStand(ohneAkte ? zieleOhneFahrplan(l) : l), farben);
+  }
   return aus;
 }
 
@@ -155,7 +166,7 @@ export async function PUT(req: Request) {
   });
   // Änderungsprotokoll (09.10., „ZOE-Schreibwege“ — `setze_fokus` schreibt seither über diesen Weg): nur „fokus geändert“, nie der Satz.
   await protokolliereBestand(sp.name, { fokus: fokusVorher }, { fokus: datei(next).fokus }, werAus(req));
-  return NextResponse.json({ ok: true, fuer: sp.fuer, ...await mitStaenden(datei(next), ohnePrivat) });
+  return NextResponse.json({ ok: true, fuer: sp.fuer, ...await mitStaenden(datei(next), ohnePrivat, await ohneAkteFuer(req)) });
 }
 
 /**
@@ -184,6 +195,7 @@ export async function PATCH(req: Request) {
   if (!ops) return NextResponse.json({ ok: false, error: opsFehler(body.ops, JE_HORIZONT * 2) }, { status: Array.isArray(body.ops) ? 413 : 400 });
   const jahr = laufendesJahr();
   const ohnePrivat = await ohnePrivatFuer(req);
+  const ohneAkte = await ohneAkteFuer(req);
   // Oberziel (07.10., Seil): Ziele, deren „zahlt ein auf“ mit einem gelöschten Ziel wegfiel — für die Antwort und „Rückgängig“.
   let oberGeloest = new Map<string, string[]>();
   const alleIn = (f: ZieleDatei | Record<string, unknown>): Ziel[] => ZIEL_HORIZONTE.flatMap(x => (Array.isArray((f as ZieleDatei)[x]) ? (f as ZieleDatei)[x] : []));
@@ -194,6 +206,8 @@ export async function PATCH(req: Request) {
     pruefen: (liste, o) => {
       const privat = ohnePrivat ? privatSchreibPruefen(liste, o, zielImPrivat) : null;
       if (privat) return privat;
+      // Gründungsfahrplan ohne Zugang zur Firmen-Akte (14.10.): vorhanden oder mit seiner Kennung neu — es gibt ihn nicht (404).
+      if (ohneAkte && privatSchreibPruefen(liste, o, istFahrplanZiel)) return PLANUNG_NICHT_GEFUNDEN;
       const ids = new Set(liste.map(z => z.id));
       const neu = new Set(o.filter(x => x.op === 'upsert' && !ids.has(x.eintrag!.id)).map(x => x.eintrag!.id));
       return liste.length + neu.size > JE_HORIZONT && neu.size > 0 ? `Abgelehnt: höchstens ${JE_HORIZONT} Ziele je Horizont.` : null;
@@ -223,8 +237,9 @@ export async function PATCH(req: Request) {
     const aktuell = datei(await loadJson<ZieleDatei>(sp.name));
     // Bereich/Ziel fehlt (07.10.) = 400; Kreis und andere Ablehnungen 409; Grenzen 413.
     const status = privatStatus(r.fehler) ?? (r.konflikte?.length ? 409 : r.fehler?.startsWith('Abgelehnt: höchstens') ? 413 : r.fehler === BEREICH_GETRENNT || r.fehler === ZIEL_FEHLT ? 400 : r.fehler?.startsWith('Abgelehnt') ? 409 : 400);
-    const konflikte = ohnePrivat ? konflikteOhnePrivat(r.konflikte ?? [], zielImPrivat) : (r.konflikte ?? []);
-    return NextResponse.json({ ok: false, error: r.fehler, konflikte, fuer: sp.fuer, horizont: h, ...await mitStaenden(aktuell, ohnePrivat) }, { status });
+    const k0 = ohnePrivat ? konflikteOhnePrivat(r.konflikte ?? [], zielImPrivat) : (r.konflikte ?? []);
+    const konflikte = ohneAkte ? konflikteOhnePrivat(k0, istFahrplanZiel) : k0;
+    return NextResponse.json({ ok: false, error: r.fehler, konflikte, fuer: sp.fuer, horizont: h, ...await mitStaenden(aktuell, ohnePrivat, ohneAkte) }, { status });
   }
   const next = datei(r.next);
 
@@ -275,7 +290,7 @@ export async function PATCH(req: Request) {
   // Eigene Ziele (10.10.): dieselbe Regel mit den EIGENEN Meilensteinen der Person (`meilensteine-eigen--<person>`, lib/planung/eigene-meilensteine.ts).
   if (sp.fuer === 'wir' ? await zieleNachziehen() : await eigeneZieleNachziehen(sp.fuer)) {
     const f = datei(await loadJson<ZieleDatei>(sp.name));
-    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(f, ohnePrivat) });
+    return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(f, ohnePrivat, ohneAkte) });
   }
-  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(next, ohnePrivat) });
+  return NextResponse.json({ ok: true, angewandt: r.angewandt, fuer: sp.fuer, horizont: h, zielBezugGeloest, bezuegeGeloest, ...await mitStaenden(next, ohnePrivat, ohneAkte) });
 }

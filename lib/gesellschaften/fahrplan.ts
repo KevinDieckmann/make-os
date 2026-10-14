@@ -55,7 +55,8 @@ export function fahrplanAnbieten(g: { status?: string; register?: string; einget
 
 export const FAHRPLAN_ZIEL_PRAEFIX = 'z-fahrplan-';
 export const fahrplanZielId = (gid: string) => `${FAHRPLAN_ZIEL_PRAEFIX}${kurz(gid)}`;
-export const fahrplanMeilensteinId = (gid: string, key: string) => `ms-fahrplan-${key}-${kurz(gid)}`;
+export const FAHRPLAN_MEILENSTEIN_PRAEFIX = 'ms-fahrplan-';
+export const fahrplanMeilensteinId = (gid: string, key: string) => `${FAHRPLAN_MEILENSTEIN_PRAEFIX}${key}-${kurz(gid)}`;
 
 export interface Fahrplan { ziel: Ziel; meilensteine: Meilenstein[]; aufgaben: { meilensteinId: string; titel: string }[] }
 

@@ -18,6 +18,8 @@ import { zielBezuegeInAufgabenSetzen } from '@/lib/aufgaben/ziel-bezug-server';
 import { zieleNachziehen } from '@/lib/planung/meilenstein-aufgaben-server';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 import { PLANUNG_NICHT_GEFUNDEN, meilensteineOhnePrivat, zielImPrivat, zieleOhnePrivat } from '@/lib/planung/bereich-sicht';
+import { fahrplanAusgeblendetFuer } from '@/lib/planung/bereich-sicht-server';
+import { istFahrplanZiel, meilensteineOhneFahrplan, zieleOhneFahrplan } from '@/lib/aufgaben/firmenakte-sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -50,8 +52,12 @@ export async function POST(req: Request) {
   // noch an Privat-Zielen/-Meilensteinen (die Kennungen kommen aus dem Körper). Ein Privat-Ziel gibt es für es nicht (404).
   const ohnePrivat = await privatAusgeblendetFuer(zugang.person).catch(() => true);
   if (ohnePrivat && alle.some(z => z.id === g.zielId && zielImPrivat(z))) return NextResponse.json({ ok: false, fehler: PLANUNG_NICHT_GEFUNDEN }, { status: 404 });
+  // Gründungsfahrplan (14.10., Abnahme-Reste 2): ohne Zugang zur Firmen-Akte gibt es sein Ziel/seine Meilensteine nicht (404 bzw. nicht dabei).
+  const ohneAkte = await fahrplanAusgeblendetFuer(zugang.person);
+  if (ohneAkte && alle.some(z => z.id === g.zielId && istFahrplanZiel(z))) return NextResponse.json({ ok: false, fehler: PLANUNG_NICHT_GEFUNDEN }, { status: 404 });
+  const zl = ohnePrivat ? zieleOhnePrivat(alle) : alle, ml = ohnePrivat ? meilensteineOhnePrivat(ms?.meilensteine ?? []) : (ms?.meilensteine ?? []);
   const wer = bezuegeZurueck(g, {
-    zielLebt: lebt, ziele: ohnePrivat ? zieleOhnePrivat(alle) : alle, meilensteine: ohnePrivat ? meilensteineOhnePrivat(ms?.meilensteine ?? []) : (ms?.meilensteine ?? []),
+    zielLebt: lebt, ziele: ohneAkte ? zieleOhneFahrplan(zl) : zl, meilensteine: ohneAkte ? meilensteineOhneFahrplan(ml) : ml,
     aufgaben: aufgaben.tasks, projekte: aufgaben.projects,
   });
   const gesetzt = { ziele: 0, meilensteine: 0, aufgaben: 0, projekte: 0 };

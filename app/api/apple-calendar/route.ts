@@ -9,7 +9,8 @@ import { loadJson, saveJson } from '@/lib/store/local-db';
 import { cacheFuerPerson, cacheMitBezug, type CacheEreignis } from '@/lib/kalender/zoe-sicht';
 import { ladeBezuege } from '@/lib/kalender/bezug-server';
 import type { BezugBestand } from '@/lib/kalender/bezug';
-import { ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
+import { EINSTELLUNGEN_LEER, fachKonten, ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
+import { altwegKalender, altwegSkript, type AltwegKalender } from '@/lib/kalender/apple-altweg';
 
 // Apple Kalender via osascript ist zäh (whose-Datumsfilter) und wird unter Last
 // >60s → Timeout. Deshalb Cache: frische Reads werden gespeichert, bei
@@ -40,39 +41,15 @@ function parseGermanDate(str: string): string | null {
 }
 
 // ─── Calendar → EventCategory / owner mapping ────────────────────────────────
-
-const CAL_MAP: Record<string, { category: string; owner: string }> = {
-  'Privat Kevin':    { category: 'private-kevin', owner: 'kevin' },
-  'Privat Malin':    { category: 'private-malin', owner: 'malin' },
-  'Kevin Dieckmann': { category: 'holding',        owner: 'kevin' },
-  'Kalender':        { category: 'joint',          owner: 'both'  },
-};
-
-// ─── AppleScript (piped via stdin) ───────────────────────────────────────────
-
-const SCRIPT = `
-tell application "Calendar"
-  set startDate to (current date) - (1 * days)
-  set endDate to (current date) + (21 * days)
-  set out to ""
-  set calNames to {"Privat Kevin", "Privat Malin ", "Kevin Dieckmann", "Kalender"}
-  repeat with calName in calNames
-    try
-      set cal to calendar calName
-      set evts to (every event of cal whose start date >= startDate and start date <= endDate)
-      repeat with ev in evts
-        set evLoc to ""
-        try
-          set evLoc to location of ev
-          if evLoc is missing value then set evLoc to ""
-        end try
-        set out to out & calName & "||" & (summary of ev) & "||" & ((start date of ev) as string) & "||" & ((end date of ev) as string) & "||" & (allday event of ev) & "||" & evLoc & linefeed
-      end repeat
-    end try
-  end repeat
-  return out
-end tell
-`;
+// 14.10. (Abnahme-Reste 2): keine festen Namen mehr — welche Kalender gelesen werden und wem sie gehören, kommt aus den Kalender-Einstellungen
+// (gespeicherter Name gewinnt, sonst „Privat <Vorname>“ aus den Konten) und dem vollen Namen der Person im ersten Fach (lib/kalender/apple-altweg.ts).
+async function altweg(): Promise<AltwegKalender> {
+  const [einst, voll] = await Promise.all([
+    ladeEinstellungen().catch(() => null),
+    fachKonten().then(p => p.kevin?.name ?? null).catch(() => null),
+  ]);
+  return altwegKalender(einst?.kalender ?? EINSTELLUNGEN_LEER.kalender, voll);
+}
 
 // ─── osascript runner (stdin, avoids temp-file + different TCC path) ─────────
 
@@ -162,7 +139,8 @@ export async function GET(req: Request) {
   }
 
   try {
-    const stdout = await runOsascript(SCRIPT);
+    const kal = await altweg();
+    const stdout = await runOsascript(altwegSkript(kal.liste));
 
     const seen = new Set<string>();
     const events: object[] = [];
@@ -192,7 +170,7 @@ export async function GET(req: Request) {
       seen.add(dedupKey);
 
       const calName = calRaw.replace(/\s+$/, '');
-      const mapping = CAL_MAP[calName] ?? { category: 'joint', owner: 'both' };
+      const mapping = Object.prototype.hasOwnProperty.call(kal.zuordnung, calName) ? kal.zuordnung[calName] : { category: 'joint', owner: 'both' };
 
       events.push({
         id:           `apple-${idx++}`,

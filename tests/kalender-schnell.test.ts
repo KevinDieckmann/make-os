@@ -11,8 +11,18 @@ describe('schnellLesen', () => {
     expect(s).toMatchObject({ titel: 'Kaffee mit Anna', tag: '2026-09-28', von: '10:00', bis: '10:45', dauerMin: 45, ganztags: false });
   });
   it('morgen mit Zeitspanne, Person und Ort', () => {
-    const s = schnellLesen('morgen 14:30-16 Steuerberater @kevin in Berlin', HEUTE);
+    // Vornamen hinter den Fächern aus den Konten (14.10.) — eine Instanz mit den Konten des Altbestands erkennt „@kevin“ wie vorher.
+    const s = schnellLesen('morgen 14:30-16 Steuerberater @kevin in Berlin', HEUTE, 60, { kevin: 'Kevin', malin: 'Malin' });
     expect(s).toMatchObject({ titel: 'Steuerberater', tag: '2026-09-28', von: '14:30', bis: '16:00', wer: 'kevin', ort: 'Berlin' });
+  });
+  it('Person über die Vornamen der Konten (14.10.): kein fester Name im Code, @beide/@gemeinsam immer', () => {
+    const namen = { kevin: 'Lena', malin: 'Jonas' };
+    expect(schnellLesen('Mo 10 Uhr Termin @lena', HEUTE, 60, namen)).toMatchObject({ titel: 'Termin', wer: 'kevin', erkannt: expect.arrayContaining(['für Lena']) });
+    expect(schnellLesen('Mo 10 Uhr Termin @JONAS', HEUTE, 60, namen).wer).toBe('malin');
+    expect(schnellLesen('Mo 10 Uhr Termin @kevin', HEUTE, 60, namen)).toMatchObject({ titel: 'Termin @kevin' });
+    expect(schnellLesen('Mo 10 Uhr Termin @lenak', HEUTE, 60, namen).wer).toBeUndefined();
+    expect(schnellLesen('Mo 10 Uhr Essen @gemeinsam', HEUTE).wer).toBe('beide');
+    expect(schnellLesen('Mo 10 Uhr Essen @kevin', HEUTE).wer).toBeUndefined();
   });
   it('Datum ohne Jahr springt ins nächste Vorkommen, ganztags ohne Zeiten, Wiederholung', () => {
     const g = schnellLesen('3.10. Geburtstag Oma ganztags', HEUTE);
