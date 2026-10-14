@@ -17,7 +17,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { saveJson, updateJson } from '@/lib/store/local-db';
 import { aendereKonten, passwortHashen, type Konto } from '@/lib/zugang/konten';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
 import { montagVon, tagPlus } from '@/lib/zeit/kalender-kern';
 import { einheitAusGesellschaft, UG_NAME } from '@/lib/einheiten';
 import { bauKennung, BAU_KOPF } from '@/lib/bau/kennung';
@@ -194,11 +194,15 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     ...FIRMEN.map(f => ({ liste: 'firmen', ...upsert({ ...f, webseite: `https://${f.id.slice(7)}.example`, notiz: 'Erfundene Beispiel-Firma (Demo).' }) })),
     ...PRODUKTE.map(l => ({ liste: 'leistungen', ...upsert({ id: l.id, name: l.name, typ: l.typ, stufe: l.stufe, preis: l.preis, lieferumfang: l.lieferumfang, beschreibung: l.text, gesellschaft: 'ug', status: 'aktiv', angebot: { titel: l.name, leistungstext: l.text } }) })),
   ] });
+  // Anlagetag = der Tag der Saat (den stempelt der Server, `serverStempel`) — die erste Notiz liegt daher AM Anlagetag, nie davor (Abnahme
+  // 14.10., C8: „angelegt heute, letzte Aktivität vor 17 Tagen“). Damit zählen die Personen nach EINER Regel (`neuerLeadAm`) als neue Leads.
+  const jetztIso = new Date().toISOString();
+  const anlageAm = tagVon(jetztIso) === heute ? jetztIso : `${heute}T10:00:00.000Z`;
   await rufe(R.kontakte(), 'PATCH', '/api/state/kontakte', LENA, { ops: KONTAKTE.map((k, i) => upsert({
     id: kontaktId(k.k), vorname: k.vorname, nachname: k.nachname, email: `${k.k}@${DEMO_DOMAIN}`, position: k.position,
     ...(k.firma ? { firma: firmenName(k.firma), firmaId: k.firma } : {}), stufe: k.stufe, prio: k.prio, eignung: 'ja', herkunft: 'Demo (erfunden)',
-    besitzer: i % 3 === 2 ? JONAS : LENA, importiertAm: tagPlus(heute, -60 + i * 3), geaendertAm: tagPlus(heute, -i),
-    aktivitaeten: [{ am: `${tagPlus(heute, -10 - i)}T10:00:00.000Z`, art: 'notiz', text: 'Erstgespräch (erfunden) — Interesse an Kennzahlen und Planung.', von: LENA }],
+    besitzer: i % 3 === 2 ? JONAS : LENA,
+    aktivitaeten: [{ am: anlageAm, art: 'notiz', text: 'Erstgespräch (erfunden) — Interesse an Kennzahlen und Planung.', von: LENA }],
   })) });
   await rufe(R.crm(), 'PATCH', '/api/crm/bestand', LENA, { ops: [
     { liste: 'mandate', ...upsert({ id: 'm-demo-nordwerk', kunde: 'Nordwerk Maschinenbau GmbH', firmaId: 'f-demo-nordwerk', kontaktIds: [kontaktId('sophie')], titel: 'Strategie-Begleitung Nordwerk', art: 'retainer', leistungId: 'l-demo-retainer', gesellschaft: 'ug', status: 'aktiv', vertragUnterschrieben: true, start: tagPlus(heute, -46), verlaengerung: 'auto', honorar: { betrag: 3500, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: ['Monatliches Kennzahlen-Review etabliert', 'Qualifizierte Erstgespräche je Monat'], health: { beteiligung: 80, umsetzung: 75, wirkung: 70, zahlung: 90, stimmung: 70 }, leistungen: ['Steuerungstermin', 'Review'], offen: [], zustaendig: LENA }) },

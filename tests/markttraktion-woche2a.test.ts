@@ -219,10 +219,14 @@ describe('1.10/1.11/1.12 · Runde „Meine“ nennt Leads anderer; aktives Manda
 
   it('1.12 · neueOhneSchritt: frisch von Hand angelegt, ohne Schritt/Follow-up/Deal — Importe, Gesperrte, Archivierte nie', async () => {
     const { neueOhneSchritt } = await import('@/lib/crm/person-anlegen');
-    const angelegt = (id: string, x: Partial<Kontakt> = {}) => k(id, { importiertAm: vor(2), aktivitaeten: [{ am: J, art: 'system', text: 'Von Hand angelegt', von: 'system' }], ...x });
+    // Der Anlege-Vermerk trägt die anlegende PERSON (lib/crm/person-anlegen.ts) — EINE Regel mit dem Kreislauf-Ist (`neuerLeadAm`, Abnahme 14.10., C8).
+    const angelegt = (id: string, x: Partial<Kontakt> = {}) => k(id, { importiertAm: vor(2), aktivitaeten: [{ am: `${vor(2)}T09:00:00.000Z`, art: 'system', text: 'Von Hand angelegt', von: 'kevin' }], ...x });
     const kontakte = [
       angelegt('offen'), angelegt('schritt', { naechsterSchritt: { text: 'x', datum: T } }), angelegt('fu'), angelegt('deal'),
       angelegt('alt', { importiertAm: vor(30) }), k('import', { importiertAm: vor(1) }), angelegt('sperre', { werbesperre: { seit: T, grund: 'Widerspruch' } }), angelegt('archiv', { archiviertAm: J }),
+      // nur System-Einträge bzw. erste Ansprache lange nach der Anlage: kein neuer Lead (wie im Kreislauf-Ist)
+      angelegt('nursystem', { aktivitaeten: [{ am: `${vor(2)}T09:00:00.000Z`, art: 'system', text: 'Import', von: 'system' }] }),
+      angelegt('spaet', { importiertAm: vor(12), aktivitaeten: [{ am: `${vor(1)}T09:00:00.000Z`, art: 'notiz', text: 'erst jetzt', von: 'kevin' }] }),
     ];
     const c = crmLeer({ followups: [{ id: 'fu-1', kontaktId: 'c-fu', status: 'offen' }] as never, chancen: [{ id: 'ch-1', stufe: 'qualifiziert', kontaktIds: ['c-deal'] }] as never });
     expect(neueOhneSchritt(kontakte, c, T).map(x => x.id)).toEqual(['c-offen']);

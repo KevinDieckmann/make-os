@@ -27,3 +27,15 @@ export function neuerLeadAm(k: Pick<Kontakt, 'importiertAm' | 'aktivitaeten'> & 
   if (!erste) return null;
   return erste >= angelegt && erste <= tagPlus(angelegt, NEUER_LEAD_SPANNE_TAGE) ? angelegt : null;
 }
+
+/** Wie lange ein neuer Lead „neu“ ist (Überblick „Neue Leads ohne nächsten Schritt“) — dieselbe Spanne wie „frisch angelegt“ (lib/crm/leads.ts). */
+export const NEUER_LEAD_FENSTER_TAGE = 14;
+/**
+ * Ist die Person ein NEUER Lead der letzten `tage` Tage? (Abnahme 14.10., C8: „neuer Lead“ hatte zwei Regeln — „14 Tage frisch angelegt“ im
+ * Überblick gegen `neuerLeadAm` im Kreislauf-Ist; die Demo zeigte „3 neue Leads, angelegt heute“ neben „IST 0 neue Leads/Monat“.) EINE Regel:
+ * `neuerLeadAm`, dazu nur das Zeitfenster. Rein.
+ */
+export function neuerLeadSeit(k: Pick<Kontakt, 'importiertAm' | 'aktivitaeten'> & { quelle?: string }, heute: string, tage = NEUER_LEAD_FENSTER_TAGE): boolean {
+  const am = neuerLeadAm(k);
+  return !!am && am <= heute && am >= tagPlus(heute, -tage);
+}
