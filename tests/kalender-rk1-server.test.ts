@@ -3,6 +3,9 @@
 // Antwort (#43), Zeitüberschreitung beim Anlegen ohne Duplikat (#38), ohne ETag nie blind (#37), fremd-private
 // Termine per API unantastbar (#96), abgesagt belegt nicht (#68). Nie echtes iCloud, erfundene Daten (@example.invalid).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+// Die Uhr steht fest (Zeitbomben-Suche 14.10.): die Termine liegen an festen Tagen (Ende Sep./Anfang Okt. 2026, mit Sommerzeit), die Holfenster
+// rechnen ab „heute“ (Stand −90 Tage, Cache −30 Tage) — mit der echten Uhr fielen sie ab Ende Okt. bzw. Ende Dez. 2026 heraus. Nur `Date` steht, Zeitgeber laufen.
+vi.hoisted(() => { vi.useFakeTimers({ now: new Date('2026-10-14T08:00:00Z'), toFake: ['Date'], shouldAdvanceTime: true }); });
 
 const speicher = new Map<string, unknown>();
 vi.mock('@/lib/store/local-db', () => ({

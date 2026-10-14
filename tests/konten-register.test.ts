@@ -244,6 +244,8 @@ const anfrage = (url: string, person?: string, body?: unknown, methode?: string,
   method: methode ?? (body ? 'POST' : 'GET'), headers: { 'content-type': 'application/json', ...(person ? { 'x-make-user': person } : {}), ...kopf }, ...(body ? { body: JSON.stringify(body) } : {}),
 });
 const tag = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }); };
+/** Der alte Kontostand liegt fest VOR dem ersten Planmonat (Okt. 2026) — relativ zu heute rutschte er ab Jan. 2027 in Planmonat 2 (Zeitbomben-Suche 14.10.). */
+const STAND_ALT = '2026-08-15';
 
 let db: typeof import('@/lib/store/local-db');
 let konten: Route, business: Route, finanzplan: Route, altplan: Route, eroeffnung: Route;
@@ -264,9 +266,9 @@ beforeAll(async () => {
   ], einladungen: [] });
   await db.saveJson('finanzplan', {
     firmen: [
-      { id: 'ug', name: 'MAKE', bank: 'Beispielbank', kontostand: 5000, stand: tag(-60) },
-      { id: 'kdv', name: 'KDV', bank: '', kontostand: 1000, stand: tag(-60) },
-      { id: 'kdc', name: 'Selbst', bank: '', kontostand: 300, stand: tag(-60) },
+      { id: 'ug', name: 'MAKE', bank: 'Beispielbank', kontostand: 5000, stand: STAND_ALT },
+      { id: 'kdv', name: 'KDV', bank: '', kontostand: 1000, stand: STAND_ALT },
+      { id: 'kdc', name: 'Selbst', bank: '', kontostand: 300, stand: STAND_ALT },
     ],
     rechnungen: [{ id: 'r-neu', firmaId: 'ug', kunde: 'Neukunde', titel: 'neu', betrag: 3000, status: 'gestellt', datum: tag(-5), faellig: tag(20) }],
     zahlungen: [], merkposten: [], produkte: [{ id: 'p1', name: 'P', beschreibung: '', preis: 0, einheit: 'einmalig', status: 'entwurf' }],
@@ -343,7 +345,7 @@ describe('Route /api/finanzen/konten — Zugang, Übernahme, Wirkung', () => {
 
   it('Finanzplanung liest daraus: Start MAKE/KD Ventures aus dem Register, Privat-Konten und „Kontostand heute“ der Selbstständigkeit — Business-Sicht ohne Privates', async () => {
     const d = (await (await finanzplan.GET!(anfrage('/api/finanzplan', 'pa'))).json()).dokument;
-    expect(d.eroeffnung.ug).toEqual({ monat: 1, betrag: 5000, stichtag: tag(-60), quelle: 'register' });
+    expect(d.eroeffnung.ug).toEqual({ monat: 1, betrag: 5000, stichtag: STAND_ALT, quelle: 'register' });
     expect(d.kontenIst.privat).toMatchObject({ betrag: 2500, konten: 1 });
     expect(d.selbst.kontoStart).toBe(300);
     for (const [p, q] of [['pa', '?sicht=business'], ['pt', '']] as const) {

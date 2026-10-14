@@ -24,6 +24,10 @@ Grundsatz: je Größe EINE Rechnung, alle Orte lesen sie — nie zwei Zahlen fü
 - **B14 Steuern Hauptgesellschaft:** „Für die … rechnen wir noch keine Steuern — Fristen und Schätzung fehlen“ mit Weg zur Steuerkarte der Finanzplanung (`UG_STEUER_WEG`, `steuern=ug`).
 - **Tests:** Wächter `tests/zahlen-stimmigkeit.test.ts` (Demo-Saat: Traktion, Ziel-Fortschritt Heute = Seil, Leads Überblick = Liste = Kreislauf, kein Kunde unter „Neue Leads“,
   kein Grün bei „0 von 0“, Kaskade, Steuern). Vorher rote Tests repariert: `eigene-meilensteine` (Quelltext-Prüfung an 2272e528 angepasst), `zoe-crm` (Fälligkeiten relativ zu heute).
+- **Zeitbomben in Tests:** alle 377 Testdateien mit festen Daten Okt. 2026–Apr. 2027 einmal mit um 185 Tage vorgestellter Uhr gelaufen (nur `Date`).
+  Echte Kipper repariert: relativ zu heute (`angebot-route`, `zoe-schreibwege`, `planung-zwei-schreiber`, `zoe-crm`), fester Altstand vor dem Plan
+  (`konten-register`), Uhr fest auf den 14.10.2026 (`kalender-icloud-abgleich`, `kalender-k1-route`, `kalender-rk1-server`, `lichtfaeden-datenschutz`: feste
+  Termine mit Sommerzeit, Holfenster ab „heute“). Kein Kipper (nur Verfahren — echte Datei-/Prozess-Zeit): `fulfillment-c2-route`, `phase0-oberflaeche`, `sicher-zugang-einrichten`.
 - **Rückweg:** nur Anzeige, reine Funktionen und ein neues Lese-Feld (`Seil.fortschritt`); keine Kennung, keine gespeicherten Daten geändert.
 
 ## 14.10.2026 — Abnahme A1/A2/B4: keine festen Namen, Betreiber-Texte nur in der Betreiber-Instanz, EINE Einrichtungs-Zahl (nur lokal — Branch `abnahme-namen`, Basis ac5e3c9e = `update-0910b`)

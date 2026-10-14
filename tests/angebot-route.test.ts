@@ -8,6 +8,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { Angebot, Chance, CrmBestand, Leistung } from '@/lib/crm/typen';
 import type { Kontakt } from '@/lib/make-one/crm';
+import { localDay } from '@/lib/zeit';
+import { tagPlus } from '@/lib/kalender/zeit';
 // Öffentliche Beispiel-IBAN aus der Bankdokumentation, zusammengesetzt, damit der Repo-Scan (repo-sauber) sie nicht als Kontodaten meldet.
 const BEISPIEL_IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
 const BEISPIEL_IBAN_LESBAR = ['DE89', '3704', '0044', '0532', '0130', '00'].join(' ');
@@ -30,6 +32,8 @@ const crm = () => speicher.ladeCrm();
 const kontakte = async () => (await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte;
 
 const J = '2026-09-01T10:00:00.000Z';
+/** Nachfassen in der Zukunft — relativ zu heute (ein festes Datum kippt, sobald es vorbei ist: dann gilt die Vorgabe). */
+const NACHFASSEN = tagPlus(localDay(), 30);
 const L: Leistung = { id: 'l-strategie', name: 'Strategie-Retainer', typ: 'retainer', stufe: 'kern', preis: { betrag: 2500, einheit: 'Monat netto', basis: 'monat' }, laufzeitMonate: 6, lieferumfang: [], gesellschaft: 'kdv', status: 'aktiv', angebot: { leistungstext: 'Monatlich zwei Strategietermine, Vorbereitung und Protokoll.' }, geaendert: J };
 const k = (id: string, x: Partial<Kontakt> = {}): Kontakt => ({ id, vorname: 'Anna', nachname: `Test ${id}`, email: `${id}@example.invalid`, eignung: '', prio: '', stufe: 'gespraech', aktivitaeten: [], importiertAm: '2026-08-01', geaendertAm: '2026-08-01', ...x });
 
@@ -105,7 +109,7 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
   it('stellt fest: Nummer, PDF verschlüsselt in der Ablage, Prüfsumme, Deal/Follow-up/Aktivität/BEAN', async () => {
     const a = (await crm()).angebote.find(x => x.id === 'ang-entwurf1')!;
     const { standVon } = await import('@/lib/crm/crm-stand');
-    const r = await post({ aktion: 'stellen', id: a.id, stand: standVon(a), nachfassenAm: '2026-12-01' });
+    const r = await post({ aktion: 'stellen', id: a.id, stand: standVon(a), nachfassenAm: NACHFASSEN });
     expect(r.status).toBe(200);
     gestellt = r.d.angebot;
     pdfId = r.d.pdf.id;
@@ -125,8 +129,8 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
     // Deal neu über dealAnlegen, Stufe Angebot, Wert aus dem Angebot, nächster Schritt = Nachfassen.
     const b = await crm();
     const deal = b.chancen.find(c => c.id === gestellt.dealId)!;
-    expect(deal).toMatchObject({ stufe: 'angebot', wert: { betrag: 2635, basis: 'monat', laufzeitMonate: 6 } /* 2.500 + (900 − 10 %) / 6 */, naechsterSchritt: { datum: '2026-12-01' }, gesellschaft: 'kdv', firmaId: 'f-muster' });
-    expect(b.followups.find(f => f.id === 'fu-ang-entwurf1')).toMatchObject({ faellig: '2026-12-01', status: 'offen', bezug: { art: 'chance', id: deal.id }, kontaktId: 'c-anna1' });
+    expect(deal).toMatchObject({ stufe: 'angebot', wert: { betrag: 2635, basis: 'monat', laufzeitMonate: 6 } /* 2.500 + (900 − 10 %) / 6 */, naechsterSchritt: { datum: NACHFASSEN }, gesellschaft: 'kdv', firmaId: 'f-muster' });
+    expect(b.followups.find(f => f.id === 'fu-ang-entwurf1')).toMatchObject({ faellig: NACHFASSEN, status: 'offen', bezug: { art: 'chance', id: deal.id }, kontaktId: 'c-anna1' });
     const anna = (await kontakte()).find(x => x.id === 'c-anna1')!;
     // Woche 2 · 3.15 (08.10.): beim Stellen steht nur „gestellt“ (Notiz, kein Kontakt) — „gesendet“ erst nach Bestätigung (eigener Test).
     expect(anna.aktivitaeten.some(x => x.art === 'notiz' && x.text?.startsWith(`Angebot KDV-A-${jahr}-0001 gestellt`) && x.bezug === deal.id)).toBe(true);
