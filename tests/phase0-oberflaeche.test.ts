@@ -386,7 +386,9 @@ describe('Freigaben › Protokoll (vorher /os/stapel/voll)', () => {
     expect(v).toContain('aus={busy === v.id || feldFehler.length > 0}');
     expect(v).toContain('if (aenderung && !aenderung.ok)'); // kommt der Klick trotzdem an: nichts an den Server
     expect(v).toContain('= {zahlAnzeige(lage.wert)}');
-    expect(v).toContain('unter={anlassText(v) ??');
+    // Der Anlass (mit Herkunft) steht seit B10 (14.10.) als „Wofür“ — aus EINER Stelle, die anlassText nutzt.
+    expect(v).toContain('unter={`${a.was} · ${a.wofuer}`}');
+    expect(lies('lib/zoe/vorschlag-anzeige.ts')).toContain('anlassText(');
   });
   it('„Offen“ lädt nur im eigenen Reiter (kein 5-s-Takt, keine Head-Abfragen hinter dem Protokoll)', () => {
     const v = lies('components/os/StapelView.tsx');

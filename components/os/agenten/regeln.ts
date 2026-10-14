@@ -232,6 +232,8 @@ export function kostenImMonat(laeufe: readonly Lauf[], jetzt: Date = new Date())
 export interface VorschlagKurz {
   id: string; titel: string; nachher?: string; werkzeug: string; gruppe?: string; zeit?: string; anlass?: string;
   bezug?: { art: string; id: string }; status?: string;
+  /** Für die Anzeige (B10, 14.10.: `vorschlagAnzeige`) — Eingabe, vorher, Herkunft. */
+  vorher?: string; eingabe?: Record<string, unknown>; quelle?: 'gespraech' | 'lauf';
   /** Bereich (09.10. spät) — fehlt = unklar: dann erst „Bereich wählen“, keine Freigabe. `stand` geht beim Wählen/Freigeben zurück. */
   bereich?: 'privat' | 'business'; stand?: string;
 }

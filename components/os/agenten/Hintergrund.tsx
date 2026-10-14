@@ -23,11 +23,13 @@ import { useAgenten } from './kontext';
 import { BudgetBalken, MehrMenue, NotAusKnopf } from './Kopfleiste';
 import { TASTE_TEXT } from './klappen';
 import {
-  dauerText, euro, freigabenBeiHeads, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, naechstesTitel, schrittAnteil, vorschlagDetail, wartendeFaeden,
+  dauerText, euro, freigabenBeiHeads, laufGruppen, nachEisenhower, QUADRANT_NAME, risikoVon, RISIKO_NAME, naechstesTitel, schrittAnteil, wartendeFaeden,
   wiederholText, zeitKurz,
   type Risiko, type VorschlagKurz,
 } from './regeln';
 import { WEG } from '@/lib/wege';
+import { vorschlagAnzeige } from '@/lib/zoe/vorschlag-anzeige';
+import Link from 'next/link';
 
 const RISIKO_FARBE: Readonly<Record<Risiko, string>> = { risikoarm: LEUCHT.gut, intern: LEUCHT.achtung, aussen: LEUCHT.kritisch };
 const LAUF_FARBE: Readonly<Record<Lauf['status'], string>> = { wartet: LEUCHT.achtung, laeuft: C.aktiv, fertig: LEUCHT.gut, fehler: LEUCHT.kritisch, abgebrochen: C.inkLeise };
@@ -116,17 +118,19 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
   const { form, melde, bestaetigen, jetzt } = useAgenten();
   const [erledigt, setErledigt] = useState<string | null>(null);
   const risiko = risikoVon(v);
-  const detail = vorschlagDetail(v);
+  // Abnahme 14.10. (B10): Titel · Was · Wofür · Bezug — nie nur „Einzelheiten in der Inbox“.
+  const a = vorschlagAnzeige(v);
+  const detail = `${a.was} ${a.wofuer}`;
   const entscheide = async (entscheidung: 'freigeben' | 'ablehnen', fragen: boolean) => {
-    if (fragen && !(await bestaetigen({ titel: entscheidung === 'freigeben' ? 'Freigeben?' : 'Ablehnen?', text: `„${v.titel}“${detail ? ` — ${detail}` : ''}`, ja: entscheidung === 'freigeben' ? 'Freigeben' : 'Ablehnen', gefahr: entscheidung === 'ablehnen' }))) return;
+    if (fragen && !(await bestaetigen({ titel: entscheidung === 'freigeben' ? 'Freigeben?' : 'Ablehnen?', text: `„${a.titel}“ — ${detail}`, ja: entscheidung === 'freigeben' ? 'Freigeben' : 'Ablehnen', gefahr: entscheidung === 'ablehnen' }))) return;
     const r = await stapelEntscheiden({ id: v.id, entscheidung, ...(v.stand ? { stand: v.stand } : {}) });
-    if (r.ok) { setErledigt(entscheidung === 'freigeben' ? 'freigegeben' : 'abgelehnt'); melde(`„${v.titel}“ ${entscheidung === 'freigeben' ? 'freigegeben' : 'abgelehnt'}.`, 'gut'); }
+    if (r.ok) { setErledigt(entscheidung === 'freigeben' ? 'freigegeben' : 'abgelehnt'); melde(`„${a.titel}“ ${entscheidung === 'freigeben' ? 'freigegeben' : 'abgelehnt'}.`, 'gut'); }
     else melde(r.text, 'kritisch');
   };
   /** Ohne Bereich keine Freigabe (09.10. spät): erst Privat oder Business — danach steht hier „Freigeben“. */
   const bereich = async (b: 'privat' | 'business') => {
     const r = await stapelBereich(v.id, b, v.stand);
-    if (r.ok) melde(`„${v.titel}“ gehört jetzt zu ${b === 'privat' ? 'Privat' : 'Business'} — jetzt freigeben.`, 'gut'); else melde(r.text, 'kritisch');
+    if (r.ok) melde(`„${a.titel}“ gehört jetzt zu ${b === 'privat' ? 'Privat' : 'Business'} — jetzt freigeben.`, 'gut'); else melde(r.text, 'kritisch');
   };
   const inhalt = (
     <div style={{ ...zeile, background: FLAECHE_STIL.gehoben.background, borderColor: TIEF.rand(RISIKO_FARBE[risiko]) }}>
@@ -134,8 +138,10 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
         <Chip farbe={RISIKO_FARBE[risiko]}>{RISIKO_NAME[risiko]}</Chip>
         {v.zeit && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{zeitKurz(v.zeit, jetzt)}</span>}
       </div>
-      <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.4 }}>{v.titel}</div>
-      {detail && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{detail}</div>}
+      <div style={{ fontSize: TYP.body, color: a.leer ? C.inkDim : C.ink, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{a.titel}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, overflowWrap: 'anywhere' }}><span style={{ color: C.inkLeise }}>Was: </span>{a.was}</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, overflowWrap: 'anywhere' }}><span style={{ color: C.inkLeise }}>Wofür: </span>{a.wofuer}</div>
+      {a.link && <Link href={a.link.href} style={{ fontSize: TYP.bedien, color: C.ink, textDecoration: 'none', alignSelf: 'flex-start' }}>{a.link.text} ›</Link>}
       {erledigt ? <div role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Erledigt: {erledigt}.</div> : (
         <div style={{ display: 'flex', gap: ABSTAND.s, flexWrap: 'wrap' }}>
           {risiko !== 'aussen' && !v.bereich && (['privat', 'business'] as const).map(b => <Knopf key={b} onClick={() => bereich(b)}>{b === 'privat' ? 'Privat' : 'Business'}</Knopf>)}

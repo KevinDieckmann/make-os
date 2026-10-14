@@ -145,7 +145,9 @@ describe('(4)(7)(9) Oberfläche verdrahtet', () => {
     expect(seite).toMatch(/laufBeendet\(laufendVorher\.current, jetzt\)\) meldeNeu\(\)/);
     const hg = quelle('components/os/agenten/Hintergrund.tsx');
     expect(hg).toContain('{naechstesTitel(n)}');
-    expect(hg).toMatch(/const detail = vorschlagDetail\(v\)/);
+    // B10 (14.10.): Titel · Was · Wofür · Bezug aus EINER Stelle (lib/zoe/vorschlag-anzeige.ts)
+    expect(hg).toMatch(/const a = vorschlagAnzeige\(v\)/);
+    expect(hg).toContain('{a.wofuer}');
     expect(hg).toMatch(/\{h \? h\.kurz : 'ZOE'\}/); // Freigaben ohne Head = ZOE-Stapel, beschriftet
   });
   it('Thread löschen: Head-Chat, Mitarbeiter-Thread und ZOE-Gespräch bieten es an — über EINEN Weg (daten.ts fadenLoeschen)', () => {

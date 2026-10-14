@@ -25,7 +25,8 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { eur } from '@/lib/make-one/finance-data';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Fortschritt, Hinweis, Pillen, feld, LEUCHT, Spalten, Spalte, useRueckfrage } from './ui';
 import { WEG, freigabenReiterAus, type FreigabenReiter } from '@/lib/wege';
-import { aenderbareFelder, aenderungFehler, anlassText, darfAendern, eingabeMitAenderung, feldNachAenderung, hatAenderung, zahlAnzeige } from '@/lib/zoe/stapel-aendern';
+import { vorschlagAnzeige } from '@/lib/zoe/vorschlag-anzeige';
+import { aenderbareFelder, aenderungFehler, darfAendern, eingabeMitAenderung, feldNachAenderung, hatAenderung, zahlAnzeige } from '@/lib/zoe/stapel-aendern';
 import { StapelProtokoll } from './StapelProtokoll';
 import { markttraktion } from '@/lib/crm/adresse';
 import { CrmStapelDetail } from './crm/ZoeFragen';
@@ -181,9 +182,11 @@ export function StapelView() {
   /** Eine Zeile des Stapels mit aufklappbarem Detail (Vorher/Nachher, Ändern, Bereich, Art-Details, Grund). */
   const zeileVon = (v: Vorschlag) => {
     const feldFehler = darfAendern(v) && aendern[v.id] ? aenderungFehler(v.eingabe, aendern[v.id]) : [];
+    // B10 (14.10.): Titel · Was · Wofür · Bezug aus EINER Stelle — leere Alt-Einträge lesbar beschriftet.
+    const a = vorschlagAnzeige(v);
     return (
     <div key={v.id}>
-      <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={v.titel} unter={anlassText(v) ?? `${v.vorher ? `${v.vorher} → ` : ''}${v.nachher}`}
+      <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={a.titel} unter={`${a.was} · ${a.wofuer}`}
         rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{bereichVonVorschlag(v) === 'unklar' ? <>
           {/* Ohne Bereich keine Freigabe (Kevin 09.10. spät): erst Privat oder Business wählen, danach steht hier „Freigeben“. */}
           {(['privat', 'business'] as const).map(x => <Knopf key={x} farbe={BEREICH_FARBE[x]} aus={busy === v.id} onClick={() => bereichWaehlen(v, x)}>{BEREICH_NAME[x]}</Knopf>)}
@@ -196,6 +199,7 @@ export function StapelView() {
             <span style={{ color: C.inkLeise }}>Werkzeug</span><span style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{v.werkzeug}</span>
             <span style={{ color: C.inkLeise }}>seit</span><span>{her(v.zeit)}</span>
           </div>
+          {a.link && v.bezug?.art !== 'inbox' && <div style={{ marginTop: 8 }}><Knopf leise href={a.link.href}>{a.link.text} ›</Knopf></div>}
           {/* Ändern & freigeben (08.10., vorher nur in der Vollansicht): die Felder, die das Werkzeug bekommt — Text und Zahl. */}
           {darfAendern(v) && (aendern[v.id] ? (
             <div style={{ marginTop: 12 }}>
