@@ -205,7 +205,7 @@ describe('Kalender, Tilgung, Tempo, Selbstständigkeit', () => {
     const d = mini({ privatBudget: [zeile({ id: 'p.b.fix', soll: 300, typ: 'fix', tag: 5, name: 'Miete' })] });
     const ug = rechneUG(d, d.szenarien[0]); const t = zahlungskalender(d, ug, rechnePrivat(d, ug), 30);
     expect(t.find(x => x.text === 'Miete')).toMatchObject({ datum: '2026-10-05', betrag: -300, einheit: 'privat' });
-    expect(t.find(x => x.text === 'Eingang One Banking')).toMatchObject({ datum: '2026-10-05', betrag: 1000, einheit: 'ug' });
+    expect(t.find(x => x.text === 'Eingang Ankermandat')).toMatchObject({ datum: '2026-10-05', betrag: 1000, einheit: 'ug' });
     expect(t.some(x => x.text.startsWith('Gehälter'))).toBe(false); // Tag 28 liegt hinter dem 30-Tage-Fenster (endet 27.10.)
     expect(t.every(x => x.datum >= '2026-09-27' && x.datum <= '2026-10-27')).toBe(true);
   });

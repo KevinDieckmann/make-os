@@ -868,7 +868,7 @@ export function zahlungskalender(d: FinanzDaten, ug: MonatUG[], pr: MonatPrivat[
     add(m, 31, `Ertragsteuer ${UG_KURZ}`, -u.steuer, 'ug');
     // 14.10. (Kevins Entscheidung): nur die Zeilen-NAMEN der Holding aus lib/einheiten.ts — Zahlen und Formeln unverändert.
     add(m, 31, `Ertragsteuer ${finanzOrtName('kdv')}`, -u.kdvSt.zahlung, 'kdv');
-    add(m, 5, 'Eingang One Banking', u.ob, 'ug');   // ohne USt — Absicht (Kevin 05.10.), siehe rechneUG
+    add(m, 5, 'Eingang Ankermandat', u.ob, 'ug');   // ohne USt — Absicht (Kevin 05.10.), siehe rechneUG
     // Formel-Prüfung 05.10.: USt-Satz aus den Annahmen (vorher fest 19 %); Provision/Events, Umsatz von Hand, Kapital, Holding-Umlage und
     // Darlehen fehlten im Kalender, obwohl sie im Konto stehen.
     const brutto = 1 + d.annahmen.ust;
