@@ -12,7 +12,7 @@ Stand hier und einen Stand, der online ist.“
 - **B8:** Konto „nur Business“ kommt über keine Adresse in den Privat-Bereich — Middleware leitet Privat-Seiten (`lib/zugang/privat-seite.ts`, `?space=privat`, Gesundheit, Sport,
   Journal, Familie, Kontakte …) nach `/os?space=business` (Stand-Prüfung trägt `nurBusiness`), `wahlVon` nie „privat“. Keine 403 mehr aus Business-Seiten (`/api/konto/ich`
   liefert `haushaltZugang`/`privatFinanzen`; Controlling lädt Liquiplan/Finanzplan nur mit Zugang). Keine Links ins Private (Business-freie Zeiten, WHOOP, V1-Export,
-  Datenkarte), kein iCloud-Schritt. Head of IT nur für Inhaber (Routen-Register `inhaber`, Einstellungen, Suche; Unternehmen in der Suche nur volle Mitglieder).
+  Datenkarte), kein iCloud-Schritt. Head of IT für alle vollen Mitglieder, nie „nur Business“ (`hoiSehen`, lib/hoi/zugang.ts; Register-Klasse `haushalt` + `tor`, Einstellungen, Suche; Unternehmen in der Suche ebenso).
 - **B9:** „Einladung annehmen“ ist erfüllt, wer angemeldet ist (Prüfung `angemeldet`). **B14:** Umzug/Altbestand nur in der Betreiber-Instanz (Ist-Stand, Gesamt-Hinweis, Körper-Profil).
 - **C13:** Sicht Business der Inhaberin — Zeit-Karte nur Business, Aufgaben ohne Reiter Privat/Selbstständigkeit, Head of Finance › Ist-Stand ohne Privat (`?space=business`).
   **C18:** „Fokus & Zeit ist persönlich“ in der Erklärung der Abdeckung; eine Säule unter 40 % steht auf Heute als „messen ›“ statt „0“.

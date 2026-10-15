@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { hoiSehen } from '@/lib/hoi/zugang';
 import { cspMeldungenAus, cspZusammenfuehren } from '@/lib/hoi/rechnen';
 import { HOI_CSP, type CspSpeicher } from '@/lib/hoi/innen';
 
@@ -33,8 +33,8 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  // Sicherheitslage nur für Inhaber (15.10., Abnahme 2 B8) — vorher jedes Konto im Haushalt, auch „nur Business“. Der HOI-Schlüssel bleibt.
-  if (req.headers.get('x-make-hoi') !== '1' && !(await nurInhaber(req))) return NextResponse.json({ ok: false, fehler: 'Nur der Inhaber.' }, { status: 403 });
+  // Volle Mitglieder im Haushalt des Inhabers (15.10., Abnahme 2 B8 — nie „nur Business“, fremder Haushalt, Testkunde). Der HOI-Schlüssel bleibt.
+  if (!(await hoiSehen(req))) return NextResponse.json({ ok: false, fehler: 'Nur für volle Mitglieder des Haushalts.' }, { status: 403 });
   const s = await loadJson<CspSpeicher>(HOI_CSP);
   return NextResponse.json({ ok: true, meldungen: s?.meldungen ?? [] }, { headers: { 'Cache-Control': 'no-store' } });
 }

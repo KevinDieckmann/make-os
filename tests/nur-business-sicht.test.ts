@@ -221,6 +221,25 @@ describe('Konto „nur Business“: ALLE lesenden Routen ohne Privat, Selbststä
   });
 });
 
+describe('Head of IT: alle vollen Mitglieder, nie „nur Business“ (CLAUDE.md: beide haben vollen Zugriff)', () => {
+  it('Inhaberin und zweite volle Person → 200, Konto „nur Business“ → 403 (Lage, Außenblick, CSP-Meldungen)', async () => {
+    for (const pfad of ['hoi/lage', 'hoi/aussen', 'hoi/csp']) {
+      for (const [wer, status] of [['inhaberin', 200], ['zweite', 200], ['partner', 403]] as const) {
+        const r = await rufeGet(pfad, '', wer);
+        expect(r === 'frist' || 'fehler' in r ? r : r.status, `${pfad} ${wer}`).toBe(status);
+      }
+    }
+    const { einstellungenFuer } = await import('@/lib/make-one/einstellungen');
+    const { SEITEN_SUCHE, seitenFuer } = await import('@/lib/make-one/seiten');
+    const hoi = (nurBusiness: boolean) => ({
+      einstellung: einstellungenFuer({ nurBusiness }).some(g => g.eintraege.some(e => e.href === '/os/hoi')),
+      suche: seitenFuer(SEITEN_SUCHE, { nurBusiness }).some(x => x.href === '/os/hoi'),
+    });
+    expect(hoi(false)).toEqual({ einstellung: true, suche: true });
+    expect(hoi(true)).toEqual({ einstellung: false, suche: false });
+  }, 120_000);
+});
+
 describe('Space-Wahl und Seiten für das Konto „nur Business“', () => {
   it('die Wahl im Kopf ist nie „privat“ — auch nicht über die Adresse oder eine Privat-Seite', async () => {
     const { wahlVon, gemerkteWahlAus } = await import('@/lib/make-one/spaces');

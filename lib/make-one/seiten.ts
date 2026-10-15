@@ -10,10 +10,10 @@ import { MARKE_EVENTS } from '@/lib/crm/marke';
 export interface SeitenTreffer {
   art: 'seite'; id: string; titel: string; href: string; space?: 'privat' | 'business';
   /**
-   * Wer die Seite überhaupt öffnen darf (15.10., Abnahme 2 B8 — die Routen lehnen die anderen ohnehin ab): `inhaber` (Head of IT),
-   * `volle` = volle Mitglieder (Unternehmen: die Firmen-Akte sagt einem Konto „nur Business“ „nicht freigegeben“).
+   * Wer die Seite überhaupt öffnen darf (15.10., Abnahme 2 B8 — die Routen lehnen die anderen ohnehin ab): `volle` = volle Mitglieder (Head of IT;
+   * Unternehmen — die Firmen-Akte sagt einem Konto „nur Business“ „nicht freigegeben“).
    */
-  nur?: 'inhaber' | 'volle';
+  nur?: 'volle';
 }
 
 const s = (id: string, titel: string, href: string, space?: 'privat' | 'business', nur?: SeitenTreffer['nur']): SeitenTreffer => ({ art: 'seite', id, titel, href, ...(space ? { space } : {}), ...(nur ? { nur } : {}) });
@@ -128,7 +128,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('datenschutz', 'Einstellungen · Datenschutz', WEG.datenschutz()),
   s('stammdaten', 'Einstellungen · Stammdaten', '/os/stammdaten'),
   s('datenbasis', 'Einstellungen · Datenbasis', '/os/datenbasis'),
-  s('hoi', 'Einstellungen · Head of IT', '/os/hoi', undefined, 'inhaber'),
+  s('hoi', 'Einstellungen · Head of IT', '/os/hoi', undefined, 'volle'),
   s('bauplan', 'Einstellungen · Bauplan', '/os/bauplan'),
   s('roadmap', 'Bauplan · Phasen (Roadmap)', '/os/bauplan?s=phasen'),
   s('onboarding', 'Einstellungen · Onboarding (Einrichtung)', '/os/onboarding'),
@@ -139,9 +139,9 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
 ];
 
 /**
- * Die Seiten für ein Konto (rein): ohne Inhaber-Rechte kein Head of IT, für ein Konto „nur Business“ keine Seiten nur für volle Mitglieder
- * (Unternehmen). `null` = noch unbekannt → wie ohne Recht.
+ * Die Seiten für ein Konto (rein): für ein Konto „nur Business“ keine Seiten nur für volle Mitglieder (Head of IT, Unternehmen). `null` = noch
+ * unbekannt → wie „nur Business“.
  */
-export function seitenFuer<T extends Pick<SeitenTreffer, 'nur'>>(liste: readonly T[], k: { inhaber: boolean | null; nurBusiness: boolean | null }): T[] {
-  return liste.filter(x => (x.nur !== 'inhaber' || k.inhaber === true) && (x.nur !== 'volle' || k.nurBusiness === false));
+export function seitenFuer<T extends Pick<SeitenTreffer, 'nur'>>(liste: readonly T[], k: { nurBusiness: boolean | null }): T[] {
+  return liste.filter(x => x.nur !== 'volle' || k.nurBusiness === false);
 }

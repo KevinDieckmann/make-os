@@ -12,11 +12,11 @@ import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { MeldenKnopf } from './Leiste';
 import { DemoKarte } from './DemoKarte';
 import { einstellungenFuer } from '@/lib/make-one/einstellungen';
-import { useInhaber, useNurBusiness } from './useInhaber';
+import { useNurBusiness } from './useInhaber';
 
 export function SystemView() {
-  // Head of IT nur für Inhaber, Wege ins Private nicht für ein Konto „nur Business“ (15.10., Abnahme 2 B8 — die Routen lehnen ohnehin ab).
-  const gruppen = einstellungenFuer({ inhaber: useInhaber(), nurBusiness: useNurBusiness() });
+  // Head of IT und Wege ins Private nur für volle Mitglieder, nie für ein Konto „nur Business“ (15.10., Abnahme 2 B8 — die Routen lehnen ab).
+  const gruppen = einstellungenFuer({ nurBusiness: useNurBusiness() });
   return (
     <Seite titel="Einstellungen"
       // Am Handy steht in der Leiste unten Netzwerken — „Problem oder Idee melden“ bleibt hier und im Blatt von Privat/Business erreichbar.
