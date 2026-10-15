@@ -18,6 +18,7 @@ import type { WertKontoEintrag } from '@/lib/fulfillment/typen';
 import { useFall, fallOps, fehlerText, tagKurz, type FallAntwort } from './daten';
 import { klein, feld, Leiste, Meldung } from './teile';
 import { WertBalken } from '../reise/bilder';
+import { insBild } from '../reise/sprung';
 
 export function FallWert({ mandatId }: { mandatId: string }) {
   const { daten, fehler } = useFall(mandatId);
@@ -66,7 +67,7 @@ function ZielKarte({ i, daten, zielId, ops }: { i: number; daten: FallAntwort; z
   const leer = !zeile || [zeile.vorher, zeile.jetzt, zeile.ziel].every(x => x === '—');
   const messen = (
     <>
-      <form onSubmit={x => { x.preventDefault(); const n = zahl(messung); if (n !== null && Number.isFinite(n)) void ops([{ op: 'wert-messung', zielId, wert: n, am }], 'Messung gespeichert — der Ist-Wert am Mandat ist mitgezogen.').then(() => setMessung('')); }} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
+      <form id={`wert-messen-${zielId}`} onSubmit={x => { x.preventDefault(); const n = zahl(messung); if (n !== null && Number.isFinite(n)) void ops([{ op: 'wert-messung', zielId, wert: n, am }], 'Messung gespeichert — der Ist-Wert am Mandat ist mitgezogen.').then(() => setMessung('')); }} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
         <Feldzeile label={`Neue Messung${e.einheit ? ` (${e.einheit})` : ''}`}><input inputMode="decimal" value={messung} onChange={x => setMessung(x.target.value)} style={{ ...feld, width: 140 }} /></Feldzeile>
         <Feldzeile label="am"><input type="date" value={am} max={localDay()} onChange={x => setAm(x.target.value)} style={{ ...feld, width: 170 }} /></Feldzeile>
         <Knopf typ="submit" aus={!messung.trim()}>Messung eintragen</Knopf>
@@ -112,11 +113,15 @@ function ZielKarte({ i, daten, zielId, ops }: { i: number; daten: FallAntwort; z
       )}
       {erreicht != null && <div style={{ maxWidth: 520 }}><WertBalken wert={erreicht} /></div>}
       {reihe.punkte.length > 1 && (
-        <svg viewBox="0 0 300 70" width="100%" style={{ maxWidth: 420, display: 'block' }} role="img" aria-label="Verlauf der Messungen">
-          {reihe.zielY != null && <line x1={0} x2={300} y1={64 - reihe.zielY * 56} y2={64 - reihe.zielY * 56} stroke={LEUCHT.gut} strokeDasharray="4 4" strokeOpacity={0.6} />}
-          <polyline fill="none" stroke={LEUCHT.business} strokeWidth={2} points={reihe.punkte.map(p => `${8 + p.x * 284},${64 - p.y * 56}`).join(' ')} />
-          {reihe.punkte.map((p, n) => <circle key={n} cx={8 + p.x * 284} cy={64 - p.y * 56} r={3} fill={LEUCHT.business} />)}
-        </svg>
+        // 15.10. (Abnahme B7): die Linie führt weiter — ein Tipp springt zu den Messungen (eintragen, ansehen, entfernen).
+        <button type="button" className="fassbar" onClick={() => insBild(`wert-messen-${zielId}`)} aria-label={`Verlauf der Messungen (${e.messungen.length}) — zu den Messungen`} title="Zu den Messungen"
+          style={{ display: 'block', width: '100%', maxWidth: 420, padding: 0, background: 'none', border: 'none', cursor: 'pointer' }}>
+          <svg viewBox="0 0 300 70" width="100%" style={{ display: 'block' }} aria-hidden>
+            {reihe.zielY != null && <line x1={0} x2={300} y1={64 - reihe.zielY * 56} y2={64 - reihe.zielY * 56} stroke={LEUCHT.gut} strokeDasharray="4 4" strokeOpacity={0.6} />}
+            <polyline fill="none" stroke={LEUCHT.business} strokeWidth={2} points={reihe.punkte.map(p => `${8 + p.x * 284},${64 - p.y * 56}`).join(' ')} />
+            {reihe.punkte.map((p, n) => <circle key={n} cx={8 + p.x * 284} cy={64 - p.y * 56} r={3} fill={LEUCHT.business} />)}
+          </svg>
+        </button>
       )}
       {e.festgelegtAm ? (
         <>

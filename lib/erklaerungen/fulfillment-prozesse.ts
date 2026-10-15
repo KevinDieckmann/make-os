@@ -164,7 +164,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   },
   'fulfillment.ablaufPhasen': {
     was: 'Der Ablauf zeigt jede Phase als Zeile mit Stand und Freigabe. Die laufende Phase ist aufgeklappt — mit ihren nächsten Schritten; erledigte Phasen sind zu und öffnen sich mit einem Tipp. Bausteine hängen als Chip am Schritt. Mehr (Zusatz-Schritt, zurücknehmen) steht hinter „⋯“.',
-    beispiel: 'In „Aufbau“ stehen „Skripte“ und „Einwände“ offen, „Prozess“ ist abgehakt; der Chip „Leitfaden Erstgespräch“ öffnet den Baustein. Am Ende der Phase wartet die Freigabe F4.',
+    beispiel: 'In „Aufbau“ stehen „Skripte“ und „Einwände“ offen, „Prozess“ ist abgehakt; der Chip „Leitfaden Erstgespräch“ öffnet den Baustein. Am Ende der Phase wartet ein Abstimmungspunkt mit dem Kunden.',
   },
   'fulfillment.lage': {
     was: 'Die Lage aller Kunden in Lieferung in drei Antworten: wie viele laufen und in welcher Phase (dieselbe Phase wie im Fall und auf der Landkarte), was gerade hängt und welcher Schritt als Nächstes dran ist. Ein Tipp springt an die Stelle.',
@@ -208,7 +208,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Start vor sechs Wochen, Reports vor vier und vor zwei Wochen — heute ist der dritte fällig; „Report erstellen“ legt das PDF an, „Mail vorbereiten“ zeigt den Text vor dem Senden.',
   },
   'fulfillment.ausAnalyse': {
-    was: 'Was die geprüfte Analyse (nach F2) für den Fall liefert und noch nicht drin ist: Quick Wins (sichtbarer Erfolg in 30 Tagen), Fragen fürs Kick-off und die Top-Maßnahmen der Diagnose. Ein Klick übernimmt sie — Maßnahmen als Zusatz-Schritte der Phase nach der Diagnose, zuerst nur intern.',
+    was: 'Was die geprüfte Analyse (nach „Dossier geprüft“) für den Fall liefert und noch nicht drin ist: Quick Wins (sichtbarer Erfolg in 30 Tagen), Fragen fürs Kick-off und die Top-Maßnahmen der Diagnose. Ein Klick übernimmt sie — Maßnahmen als Zusatz-Schritte der Phase nach der Diagnose, zuerst nur intern.',
     beispiel: 'Ein erfundenes Dossier schlägt drei Quick Wins und drei Maßnahmen vor; zwei Quick Wins stehen schon im Fall — übernommen werden nur der dritte und die drei Maßnahmen in „Aufbau“.',
   },
 } as const satisfies Record<string, EinstellungsText>;

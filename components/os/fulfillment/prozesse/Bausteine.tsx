@@ -88,7 +88,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
             {liste.slice(0, 300).map(x => {
               const Zeichen = ART_ZEICHEN[x.art] ?? FileText;
               const o = orte[x.id];
-              const wo = o?.pakete.length ? `${o.pakete[0]}${o.phasen[0] ? ` › ${o.phasen[0]}` : ''}${o.pakete.length + o.phasen.length > 2 ? ' …' : ''}` : x.steckt ? null : 'noch in keiner Vorlage';
+              const wo = o?.pakete.length ? `${o.pakete[0]}${o.phasen[0] ? ` › ${o.phasen[0]}` : ''}${o.pakete.length + o.phasen.length > 2 ? ' …' : ''}` : x.steckt ? null : x.imOnboarding ? 'im Onboarding jedes Falls' : 'noch in keiner Vorlage';
               return (
                 <button key={x.id} type="button" onClick={() => onOeffnen(x.id)} className="fassbar" aria-label={`${x.titel} — ${BAUSTEIN_ART_LABEL[x.art]} öffnen`}
                   style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: 12, display: 'grid', gap: 8, alignContent: 'start', textAlign: 'left', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0, minHeight: 44 }}>
@@ -113,7 +113,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
   );
 }
 
-interface Detail { baustein: Baustein & { stand: string }; steckt: { id: string; titel: string }[]; urheberGeprueft: { am: string; von: string } | null }
+interface Detail { baustein: Baustein & { stand: string }; steckt: { id: string; titel: string }[]; imOnboarding?: boolean; urheberGeprueft: { am: string; von: string } | null }
 
 function BausteinDetail({ id, daten, onZurueck }: { id: string; daten: Uebersicht; onZurueck: () => void }) {
   const { bestaetigen, dialog } = useRueckfrage();
@@ -176,9 +176,10 @@ function BausteinDetail({ id, daten, onZurueck }: { id: string; daten: Uebersich
       {formular && <FragenEditor fragen={b.fragen ?? []} onSpeichern={fragen => setze({ fragen })} />}
       <Karte i={3}>
         <Ueberschrift>Steckt in</Ueberschrift>
-        {d.steckt.length ? <Liste>{d.steckt.map(v => <Zeile key={v.id} titel={v.titel} />)}</Liste> : <div style={klein}>Noch in keiner Vorlage — im Editor einer Paket-Vorlage als Baustein (Ebene 5) unter einen Einzelschritt hängen.</div>}
+        {d.imOnboarding && <div style={klein}>Läuft im Onboarding jedes Falls{b.art === 'mail' ? ' (Willkommensmail)' : ' (Kunden-Playbook)'}.</div>}
+        {d.steckt.length ? <Liste>{d.steckt.map(v => <Zeile key={v.id} titel={v.titel} />)}</Liste> : !d.imOnboarding && <div style={klein}>Noch in keiner Vorlage — im Editor einer Paket-Vorlage als Baustein (Ebene 5) unter einen Einzelschritt hängen.</div>}
         <span style={MIKRO}>Herkunft</span>
-        <div style={klein}>{b.herkunft?.art === 'import' ? `Import „${b.herkunft.datei ?? ''}“ am ${tagLang(b.herkunft.am)}` : b.herkunft?.art === 'muster' ? 'Muster' : 'von Hand'}{b.herkunftText ? ` · ${b.herkunftText}` : ''}{b.herkunft?.quelleIds?.length ? ` · Quellen ${b.herkunft.quelleIds.join(', ')}` : ''}</div>
+        <div style={klein}>{b.herkunft?.art === 'import' ? `Import vom ${tagLang(b.herkunft.am)}` : b.herkunft?.art === 'muster' ? 'Muster' : 'von Hand'}{b.herkunftText ? ` · ${b.herkunftText}` : ''}{b.herkunft?.quelleIds?.length ? ` · Quellen ${b.herkunft.quelleIds.join(', ')}` : ''}</div>
         <Leiste>
           <Knopf leise onClick={async () => {
             if (!(await bestaetigen({ titel: `„${b.titel}“ löschen?`, text: d.steckt.length ? `Er steckt in ${d.steckt.length} Vorlage(n) — dort fällt der Baustein mit weg. Laufende Fälle zeigen „Baustein entfernt“.` : 'Er steckt in keiner Vorlage.', ja: 'Löschen', gefahr: true }))) return;

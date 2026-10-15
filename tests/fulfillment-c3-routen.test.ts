@@ -380,7 +380,8 @@ describe('Personenteil, F1, Art. 14, Löschfrist', () => {
     const f = await FULFILLMENT_STAPEL_ART.freigeben(v, 'pia', {});
     expect(f.ok).toBe(true);
     const tasks = await db.loadJson<{ tasks: { id: string; title: string; dueDate?: string }[] }>('tasks');
-    expect(tasks?.tasks.find(t => t.id.startsWith('ff-art14-'))?.title).toBe('Art.-14-Hinweis geben: Geschäftsführung');
+    // 15.10. (Abnahme C20): Aufgaben aus Fulfillment tragen den Kunden im Titel und liegen im Space des Mandanten.
+    expect(tasks?.tasks.find(t => t.id.startsWith('ff-art14-'))?.title).toMatch(/^Art\.-14-Hinweis geben: Geschäftsführung — /);
     expect(modell.aufrufe).toEqual([]);
   });
   it('Art. 15 nennt die Karte; Löschfrist: Mandatsende + 90 Tage entfernt Karten, am Dossier bleibt nur der Vermerk', async () => {

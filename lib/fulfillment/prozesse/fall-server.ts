@@ -21,6 +21,8 @@ import { fallAnwenden, fallStarten, vorlageUebernehmen } from './fall';
 import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
+import { fallTermine } from './termine-server';
+import type { FallTermin } from './termine';
 
 export class FallFehler extends Error { constructor(msg: string, readonly status: 400 | 403 | 404 | 409 | 413) { super(msg); } }
 
@@ -35,11 +37,17 @@ export async function fallUmfeld(mandatIds?: readonly string[]) {
   const kunde: Record<string, KundeKurz> = await (async () => {
     try { return await (await import('../kunde/server')).kundeKurzFuer(ids); } catch { return {}; }
   })();
-  return { h, crm, vorlagen, faelle, kunde };
+  // Die Termine des Kunden (15.10., Abnahme B3) — nur für Mandate mit Fall (sonst leer, z. B. beim Starten).
+  const mitFall = ids.filter(id => faelle.faelle[id]).map(id => crm.mandate.find(m => m.id === id)).filter((m): m is Mandat => !!m);
+  const termine: Record<string, FallTermin[]> = mitFall.length ? await fallTermine(mitFall.map(m => ({ id: m.id, firmaId: m.firmaId ?? null }))).catch(() => ({})) : {};
+  return { h, crm, vorlagen, faelle, kunde, termine };
 }
 
-/** Die Ableitung des Onboardings für einen Fall (Ziele, Playbook, Kick-off-Rituale, Unterschrift, 24-h-Uhr). */
-export function ableitungFuer(fall: Fall, m: Mandat | undefined, crm: Pick<CrmBestand, 'angebote' | 'chancen'>, vorlagen: VorlagenDatei, kunde: KundeKurz | undefined, jetzt: string): OnboardingAbleitung {
+/**
+ * Die Ableitung des Onboardings für einen Fall (Ziele, Playbook, Kick-off-Rituale, Unterschrift, 24-h-Uhr). `termine` = die Termine des Kunden
+ * (`fallTermine`) — der erste ab dem Start macht „Kick-off terminiert“ wahr (15.10., Abnahme B3).
+ */
+export function ableitungFuer(fall: Fall, m: Mandat | undefined, crm: Pick<CrmBestand, 'angebote' | 'chancen'>, vorlagen: VorlagenDatei, kunde: KundeKurz | undefined, jetzt: string, termine?: readonly Pick<FallTermin, 'tag'>[]): OnboardingAbleitung {
   const u = m ? unterschriftAm(m, crm, fall.gestartetAm) : null;
   // Bestandsmandat (vor der Einrichtung unterschrieben, beim Start älter als 14 Tage): die 24-h-Uhr beginnt mit dem Start des Falls (Prüf-Fund 11.10.).
   const uhrAb = u && istBestand(u.am, vorlagen.marken[MARKE_FULFILLMENT_SEIT], fall.gestartetAm) ? fall.gestartetAm : u?.am;
@@ -51,6 +59,7 @@ export function ableitungFuer(fall: Fall, m: Mandat | undefined, crm: Pick<CrmBe
     ...(uhrAb ? { unterschrift: uhrAb } : {}),
     willkommenStunden: vorlagen.einstellungen.willkommenStunden,
     jetzt,
+    ...(termine?.length ? { kundenTermine: termine.map(t => t.tag) } : {}),
   };
 }
 
@@ -129,7 +138,7 @@ export interface FallSchreibErgebnis { fall: Fall; geaendert: string[]; nachzug:
  */
 export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: string, wer?: Wer, jetzt = new Date()): Promise<FallSchreibErgebnis> {
   const iso = jetzt.toISOString(), heute = localDay(jetzt);
-  const { h, crm, vorlagen, faelle, kunde } = await fallUmfeld(typeof mandatId === 'string' ? [mandatId] : []);
+  const { h, crm, vorlagen, faelle, kunde, termine } = await fallUmfeld(typeof mandatId === 'string' ? [mandatId] : []);
   const m = mandatPruefen(crm, mandatId);
   const alt = faelle.faelle[m.id];
   if (!alt) throw new FallFehler('Für dieses Mandat gibt es noch keinen Fall — erst „Kundenonboarding starten“.', 404);
@@ -152,7 +161,7 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
       if (x.felder && typeof x.felder === 'object') ops.push({ op: 'wert-ziel', zielId: id, felder: x.felder });
     } else ops.push(o);
   }
-  if (!ops.length) return { fall: fallWirksam(alt, ableitungFuer(alt, { ...m, ziele }, crm, vorlagen, kunde[m.id], iso)), geaendert: [], nachzug };
+  if (!ops.length) return { fall: fallWirksam(alt, ableitungFuer(alt, { ...m, ziele }, crm, vorlagen, kunde[m.id], iso, termine[m.id])), geaendert: [], nachzug };
   const vorlage = vorlagen.prozesse.find(p => p.id === alt.vorlageId);
   const kontakte = new Set((await (await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung()).map(k => k.id));
   let ergebnis: AnwendenErgebnis<Fall> = { ok: false, status: 400, fehler: 'Nichts geändert.' };
@@ -167,24 +176,25 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
     if (!ergebnis.ok) return ergebnis as AnwendenErgebnis<typeof d>;
     // Onboarding fertig → „läuft“ (gespeichert, damit der Status nicht nur abgeleitet ist).
     let neu = ergebnis.datei;
-    const st = onboardingStand(neu, ableitungFuer(neu, { ...m, ziele }, crm, vorlagen, kunde[m.id], iso));
+    const st = onboardingStand(neu, ableitungFuer(neu, { ...m, ziele }, crm, vorlagen, kunde[m.id], iso, termine[m.id]));
     if (neu.status === 'onboarding' && st.fertig) neu = { ...neu, status: 'laeuft' };
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: ergebnis.geaendert };
   }, wer ?? { art: 'person', person }, h);
   if (!r.ok) throw Object.assign(new FallFehler(r.fehler, r.status === 403 ? 403 : r.status), { konflikte: r.konflikte });
   const fall = r.datei.faelle[m.id];
   // ── Nachzug (7.4/7.5) — jeder Schritt in eigener Hülle ──
-  const abl = ableitungFuer(fall, { ...m, ziele }, crm, vorlagen, kunde[m.id], iso);
+  const abl = ableitungFuer(fall, { ...m, ziele }, crm, vorlagen, kunde[m.id], iso, termine[m.id]);
   try {
     const vorher = aktuellerKnoten(fallWirksam(alt, abl)).phase, nachher = aktuellerKnoten(fallWirksam(fall, abl)).phase;
     if (nachher?.phaseId && nachher.id !== vorher?.id && await phaseNachziehen(m, nachher.phaseId, crm, person, iso)) nachzug.phase = 'gesetzt';
   } catch (e) { nachzug.phase = 'fehler'; nachzug.fehler = e instanceof Error ? e.message.slice(0, 200) : 'Phase nicht nachgezogen'; }
   try {
     const neuErledigt = fall.knoten.filter(k => k.status === 'erledigt' && k.bausteinId && alt.knoten.find(a => a.id === k.id)?.status !== 'erledigt');
-    const was = neuErledigt.map(k => vorlagen.bausteine.find(b => b.id === k.bausteinId)?.lieferobjekt).filter((x): x is string => !!x);
+    // Mit dem Tag, an dem der Schritt erledigt wurde (15.10., Abnahme B6) — nicht der Tag des Nachzugs.
+    const was = neuErledigt.map(k => ({ was: vorlagen.bausteine.find(b => b.id === k.bausteinId)?.lieferobjekt, am: k.erledigtAm?.slice(0, 10) })).filter((x): x is { was: string; am: string | undefined } => !!x.was);
     if (was.length) {
       const { treppeSchreiben } = await import('@/lib/crm/treppe-server');
-      const t = await treppeSchreiben(was.map(w => ({ op: 'lieferobjekt', mandatId: m.id, was: w, erledigt: true })), person, wer);
+      const t = await treppeSchreiben(was.map(w => ({ op: 'lieferobjekt', mandatId: m.id, was: w.was, erledigt: true, ...(w.am ? { am: w.am } : {}) })), person, wer);
       if (t.ok) nachzug.lieferobjekte = was.length; else { nachzug.fehler = 'Lieferobjekte nicht nachgezogen'; }
     }
   } catch (e) { nachzug.fehler = e instanceof Error ? e.message.slice(0, 200) : 'Lieferobjekte nicht nachgezogen'; }
@@ -214,11 +224,11 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
 /** „Erneut nachziehen“: Phase (vorwärts) und alle erledigten Lieferobjekte noch einmal — idempotent. */
 export async function fallNachziehen(mandatId: unknown, person: string, wer?: Wer, jetzt = new Date()): Promise<Nachzug> {
   const iso = jetzt.toISOString();
-  const { crm, vorlagen, faelle, kunde } = await fallUmfeld(typeof mandatId === 'string' ? [mandatId] : []);
+  const { crm, vorlagen, faelle, kunde, termine } = await fallUmfeld(typeof mandatId === 'string' ? [mandatId] : []);
   const m = mandatPruefen(crm, mandatId);
   const f = faelle.faelle[m.id];
   if (!f) throw new FallFehler('Für dieses Mandat gibt es keinen Fall.', 404);
-  const w = fallWirksam(f, ableitungFuer(f, m, crm, vorlagen, kunde[m.id], iso));
+  const w = fallWirksam(f, ableitungFuer(f, m, crm, vorlagen, kunde[m.id], iso, termine[m.id]));
   const nz: Nachzug = {};
   const ph = aktuellerKnoten(w).phase;
   if (ph?.phaseId && await phaseNachziehen(m, ph.phaseId, crm, person, iso)) nz.phase = 'gesetzt';

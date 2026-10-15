@@ -14,13 +14,14 @@ import type { CockpitZeile, Haenger } from '@/lib/fulfillment/prozesse/cockpit';
 import type { MusterWahl } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import type { Mandat } from '@/lib/crm/typen';
 import type { NachsorgePunkt } from '@/lib/fulfillment/prozesse/ansichten';
+import { abstimmungsNummern, ohneKuerzel } from '@/lib/fulfillment/prozesse/darstellung';
 
 export const EREIGNIS = 'make-fulfillment-geaendert';
 export const geaendert = () => { if (typeof window !== 'undefined') window.dispatchEvent(new Event(EREIGNIS)); };
 export const neueAnfrageId = () => `ff-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)}`;
 
 export type MitStand<T> = T & { stand: string };
-export type BausteinKurz = MitStand<Omit<Baustein, 'text' | 'fragen' | 'gliederung'>> & { gliederungAnzahl: number; fragenAnzahl: number; nurIntern: boolean; rechtOffen: boolean; vorVerkaufOffen: boolean; steckt: number };
+export type BausteinKurz = MitStand<Omit<Baustein, 'text' | 'fragen' | 'gliederung'>> & { gliederungAnzahl: number; fragenAnzahl: number; nurIntern: boolean; rechtOffen: boolean; vorVerkaufOffen: boolean; steckt: number; /** läuft im Onboarding jedes Falls (Playbook, Willkommensmail) */ imOnboarding?: boolean };
 export type VorlageMitStand = MitStand<Omit<ProzessVorlage, 'knoten'>> & { knoten: MitStand<ProzessKnoten>[] };
 export interface Kandidat extends OnboardingKandidat { uhr: WillkommenUhr; vorlage?: { id: string; titel: string }; vorgeschlagen: boolean }
 export interface FallZeile extends FallKurz { vorlageId: string; kunde: string; titel: string }
@@ -60,6 +61,10 @@ export interface FallAntwort {
   personen?: { id: string; name: string; position: string | null; email: string | null; firmaId: string | null }[];
   rituale?: RitualVorlage[];
   termine?: Record<string, string | null>;
+  /** Alle Termine mit dem Kunden ab dem Montag dieser Woche (Bezug zum Mandat bzw. zur Firma) — je mit Ritual, wenn er an einem hängt (15.10.). */
+  kalender?: { uid: string; tag: string; von?: string; titel?: string; ritualId?: string }[];
+  /** Was der Kunde auf seiner Seite als Nächstes liest (`kundenTeile`) — der Fall-Kopf nennt es, wenn es vom internen Punkt abweicht. */
+  kundeNaechster?: { text: string | null; gleich: boolean; wartet: boolean };
   kunde?: KundeKurz | null;
   report?: { erstelltAm?: string; gesendetAm?: string } | null;
   /** Erstellte Fortschritts-Reports (Kennung + Zeit) — die Report-Zeitachse (12.10.). */
@@ -110,6 +115,17 @@ export const useUebersicht = () => useLaden<Uebersicht>('/api/fulfillment');
 export const useUebersichtKurz = () => useLaden<UebersichtKurz>('/api/fulfillment?nur=kurz');
 export const useFall = (mandatId: string) => useLaden<FallAntwort>(`/api/fulfillment/fall?m=${encodeURIComponent(mandatId)}`);
 export const useCockpit = () => useLaden<CockpitAntwort>('/api/fulfillment/cockpit');
+
+/**
+ * Texte ohne Freigabe-Kürzel (F0–F7) für die Anzeige im Fall — „Abstimmungspunkt n („Titel“)“ mit den Nummern des Ablaufs dieses Falls (15.10., Abnahme B5).
+ * Liest dieselbe Antwort wie die Reiter (`useFall`, der Anfrage-Bündler teilt sie).
+ */
+export function useOhneKuerzel(mandatId: string): (t: string) => string {
+  const { daten } = useFall(mandatId);
+  const nummern = abstimmungsNummern(daten?.fall?.knoten ?? []);
+  const freigaben = daten?.vorlage?.freigaben ?? [];
+  return (t: string) => ohneKuerzel(t, nummern, freigaben);
+}
 
 /** Vorlagen-Ops (PATCH /api/fulfillment) — bei Erfolg laden alle Ansichten neu. */
 export async function vorlagenOps(ops: Record<string, unknown>[]): Promise<Antwort<{ geaendert?: string[] }>> {

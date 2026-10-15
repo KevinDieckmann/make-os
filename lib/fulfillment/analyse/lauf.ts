@@ -208,7 +208,7 @@ async function startPruefer(mandatId: string, d: Dossier, daten: LaufDaten, pers
     { punkt: 'Domain', ok: d.eingaben.domains.length > 0, hinweis: 'Ohne Domain laufen die Web-Agenten nicht.' },
     { punkt: 'Registernummer oder Sitz', ok: !!(d.eingaben.registerNr || d.eingaben.sitz), hinweis: 'Hilft bei der Zuordnung.' },
     { punkt: 'Interessenabwägung', ok: !!d.interessenabwaegung, hinweis: 'Pflicht vor der Personenrecherche.' },
-    { punkt: 'F1 (Umfang, Personenfunktionen)', ok: !!d.f1, hinweis: 'Ohne F1 bleiben Gesellschafter- und Personen-Analyse gesperrt.' },
+    { punkt: 'Analyse-Umfang und Personenfunktionen (Abstimmungspunkt)', ok: !!d.f1, hinweis: 'Ohne diesen Abstimmungspunkt bleiben Gesellschafter- und Personen-Analyse gesperrt.' },
     { punkt: 'Playbook-Antworten', ok: daten.playbook, hinweis: 'Ohne Antworten fehlt die Playbook-Auswertung.' },
     { punkt: 'Registerauszug (Unterlage)', ok: daten.register, hinweis: 'Ein Mensch legt Handelsregisterauszug und Gesellschafterliste als PDF ab — kein Agent liest Register-Portale.' },
   ];
@@ -219,16 +219,17 @@ async function startPruefer(mandatId: string, d: Dossier, daten: LaufDaten, pers
     const { WEG } = await import('@/lib/wege');
     const jetzt = jetztIso();
     let da = false;
+    const { fallAufgabeOrt } = await import('../regeln');
+    const ort = fallAufgabeOrt(mandat);
     await systemAufgabenAendern(stand => {
       da = stand.tasks.some(t => t.id === id);
       if (da) return { neu: [], teile: [] };
       return {
         neu: [{
-          id, title: 'Registerauszug und Gesellschafterliste als PDF ablegen', status: 'todo', priority: 'high', assignee: person,
+          id, title: ort.titel('Registerauszug und Gesellschafterliste als PDF ablegen'), status: 'todo', priority: 'high', assignee: person,
           description: 'Für die Analyse: aktuellen Handelsregisterauszug und die Gesellschafterliste von Hand abrufen und unter Fall › Kunde & Reports als interne Unterlage (Zweck „Register“) ablegen und freigeben. Kein automatischer Abruf aus Register-Portalen.',
           notiz: `[Analyse öffnen](${WEG.dossier(mandatId)})`, tags: ['fulfillment', 'analyse'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt,
-          space: 'business', ...(['kdc', 'kdv', 'ug'].includes(mandat.gesellschaft) ? { spaceId: mandat.gesellschaft } : {}),
-          bezug: { mandatId, ...(mandat.firmaId ? { firmaId: mandat.firmaId } : {}) },
+          space: ort.space, ...(ort.spaceId ? { spaceId: ort.spaceId } : {}), bezug: ort.bezug,
         }],
         teile: [],
       };

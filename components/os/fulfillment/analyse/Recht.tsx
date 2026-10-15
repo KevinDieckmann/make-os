@@ -10,6 +10,7 @@ import type { AnalyseAgentId } from '@/lib/fulfillment/typen';
 import { AGENTEN, AGENT_IDS, MINIMALSET } from '@/lib/fulfillment/analyse/agenten';
 import { LIA_FELDER, type LiaFeld } from '@/lib/fulfillment/analyse/dsgvo';
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Liste, Feldzeile, MehrfachPillen, Pillen, eingabe, LEUCHT, useRueckfrage } from '../../ui';
+import { useOhneKuerzel } from '../prozesse/daten';
 import { senden, fehlerVon, type AnalyseApi } from './daten';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
@@ -28,6 +29,8 @@ export function Recht({ mandatId, api, rueck }: { mandatId: string; api: Analyse
   const [bestaetigtAm, setBestaetigtAm] = useState(d.f1?.kundeBestaetigtAm ?? '');
   const [wie, setWie] = useState<'kickoff' | 'mail'>(d.f1?.wie ?? 'kickoff');
   const [grund, setGrund] = useState<Record<number, string>>({});
+  // 15.10. (Abnahme B5): Befunde nennen nie „F1“/„F2“ — der Abstimmungspunkt heißt wie im Ablauf des Falls.
+  const kuerzel = useOhneKuerzel(mandatId);
   const schritt = async (body: Record<string, unknown>) => {
     const r = await senden('/api/fulfillment/dossier', { mandatId, stand: lage.stand, ...body });
     setMeldung(fehlerVon(r));
@@ -72,7 +75,7 @@ export function Recht({ mandatId, api, rueck }: { mandatId: string; api: Analyse
                 <Chip farbe={ART_FARBE[b.art]}>{ART_LABEL[b.art]}</Chip>
                 {b.ueberstimmt && <Chip farbe={C.inkLeise}>überstimmt: {b.ueberstimmt.grund}</Chip>}
               </div>
-              <div style={{ fontSize: TYP.body, color: C.ink }}>{b.text}</div>
+              <div style={{ fontSize: TYP.body, color: C.ink }}>{kuerzel(b.text)}</div>
               {b.art === 'qualitaet' && !b.ueberstimmt && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <input style={{ ...eingabe, flex: '1 1 220px' }} maxLength={300} placeholder="Grund (mindestens 10 Zeichen)" value={grund[i] ?? ''} onChange={e => setGrund(g => ({ ...g, [i]: e.target.value }))} aria-label="Grund für das Überstimmen" />

@@ -81,7 +81,8 @@ describe('Demo: Fulfillment', () => {
     expect((f.aktuell as { phase: { titel: string } | null }).phase?.titel).toBe('Diagnose');
     // Quick Wins aus der Analyse, einer erledigt innerhalb der ersten 30 Tage; die Fragen gestellt
     expect(fall.quickWins.map(q => q.quelle)).toEqual(['analyse', 'analyse', 'analyse']);
-    expect(fall.quickWins.filter(q => q.erledigtAm).map(q => q.erledigtAm)).toEqual([minus(18)]);
+    // 15.10. (Abnahme B6): die Quick Wins liegen im 30-Tage-Fenster des Falls (Start + 30) — alle drei erreicht, der erste vor 18 Tagen.
+    expect(fall.quickWins.filter(q => q.erledigtAm).map(q => q.erledigtAm).sort()).toEqual([minus(18), minus(16), minus(15)]);
     expect(fall.kickoffFragen.length).toBeGreaterThan(0);
     expect(fall.kickoffFragen.every(q => q.erledigt)).toBe(true);
     // Maßnahmen der Diagnose als Zusatz-Schritte in „Aufbau“

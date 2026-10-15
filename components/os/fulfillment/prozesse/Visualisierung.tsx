@@ -65,6 +65,8 @@ function KundenKarte({ z, onOeffnen }: { z: CockpitZeile; onOeffnen: () => void 
         <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: 1 }}>
           <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, overflowWrap: 'break-word' }}>{z.kunde}</b>
           <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: f }}><Punkt farbe={f} groesse={8} />{AMPEL_TEXT[a]}</span>
+          {/* 15.10. (Abnahme B1): dieselbe Rechnung, für den Kunden übersetzt — mit Grund, wenn sie abweicht */}
+          {z.kundeSieht && <span style={{ fontSize: TYP.bedien, color: C.inkDim, overflowWrap: 'break-word' }}>Der Kunde sieht: „{z.kundeSieht.titel}“{z.kundeSieht.grund ? ` — ${z.kundeSieht.grund}` : ''}</span>}
           <span style={{ ...klein, color: C.inkLeise, overflowWrap: 'break-word' }}>{z.paket ?? z.titel}</span>
         </span>
       </span>

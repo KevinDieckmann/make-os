@@ -60,14 +60,17 @@ export function mitZusatz(d: ReportDokument, z: {
   if (!z) return d;
   // Die Ziele stehen dann im Wert-Konto (vorher → jetzt → Ziel) — nicht noch einmal unter „Kennzahlen“.
   const ziele = new Set(z.wertKonto.map(w => w.name));
-  // Erledigt/als Nächstes: zuerst die Schritte des Falls (wie die Kunden-Seite), dann die der Leistungstreppe — ohne Doppelte, Platzhalter nur, wenn leer.
+  // Erledigt: zuerst die Schritte des Falls (wie die Kunden-Seite), dann die der Leistungstreppe — ohne Doppelte, Platzhalter nur, wenn leer.
   const zusammen = (vorne: readonly string[] | undefined, hinten: readonly string[], leer: string) => {
     const l = Array.from(new Set([...(vorne ?? []), ...hinten.filter(x => x !== leer)]));
     return l.length ? l : [leer];
   };
+  // Als Nächstes (15.10., Abnahme B1): mit Fall NUR die Schritte des Falls — derselbe nächste Schritt wie Fall-Kopf, Kunden-Seite und Leistungstreppe
+  // (vorher hingen „Quartals-Review vorbereiten“ und offene Lieferobjekte der Treppe dahinter, auch Phasen wie „Diagnose · Aufbau“).
+  const naechste = z.naechstes ? (z.naechstes.length ? [...z.naechstes] : [NAECHSTE_LEER]) : zusammen(undefined, d.naechste, NAECHSTE_LEER);
   return {
     ...d, kennzahlen: d.kennzahlen.filter(k => !ziele.has(k.name)), wartetAufEuch: [...z.wartetAufEuch],
-    erreicht: zusammen(z.erledigt, d.erreicht, ERREICHT_LEER), naechste: zusammen(z.naechstes, d.naechste, NAECHSTE_LEER),
+    erreicht: zusammen(z.erledigt, d.erreicht, ERREICHT_LEER), naechste,
     wertKonto: z.wertKonto.map(w => ({ name: w.name, vorher: w.vorher, jetzt: w.jetzt, ziel: w.ziel, ...(w.bis ? { bis: datum(w.bis) } : {}), ...(w.anteil != null ? { anteil: w.anteil } : {}) })),
     ...(z.puls ? { puls: { wert: z.puls.wert, am: datum(z.puls.am) } } : {}), ...(z.pulsFrage ? { pulsFrage: true } : {}),
     ...(z.anrede ? { anrede: z.anrede } : {}), ...(z.lage ? { lage: { ...z.lage, saetze: [...z.lage.saetze] } } : {}), ...(z.phasen ? { phasen: z.phasen.map(p => ({ ...p })) } : {}),
@@ -82,19 +85,21 @@ const datum = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)
 
 /** Der Report eines Kunden — aus der Zeile „Fortschritt im Paket“, der Stufe und den Zielen des Mandats. */
 export function reportDokument(z: KundenZeile, stufe: TreppenStufe | null, m: Pick<Mandat, 'kunde' | 'titel' | 'ziele'>, heute: string, absender?: string): ReportDokument {
+  // Nur, was bis zum Stand des Reports erledigt war (15.10., Abnahme B6: ein Report vom 01.10. nannte ein Lieferobjekt vom 15.10.).
+  const bisStand = (x: { erledigt: boolean; am?: string }) => x.erledigt && (!x.am || x.am.slice(0, 10) <= heute);
   const erreicht = [
-    ...z.lieferobjekte.filter(x => x.erledigt).map(x => `${x.was}${x.am ? ` (${datum(x.am)})` : ''}`),
+    ...z.lieferobjekte.filter(bisStand).map(x => `${x.was}${x.am ? ` (${datum(x.am)})` : ''}`),
     ...(z.schritt && z.schritt.nr > 1 ? [`Schritt ${z.schritt.nr} von ${z.schritt.von} erreicht: ${z.schritt.name}`] : []),
   ];
   const naechste = [
     ...(z.naechster ? [`${z.naechster.text} — bis ${datum(z.naechster.datum)}`] : []),
     ...(z.schritt?.naechste ? [`Nächster Schritt im Ablauf: ${z.schritt.naechste}`] : []),
-    ...z.lieferobjekte.filter(x => !x.erledigt).slice(0, 4).map(x => x.was),
+    ...z.lieferobjekte.filter(x => !bisStand(x)).slice(0, 4).map(x => x.was),
   ];
   const kennzahlen = [
     ...(stufe?.kennzahl ? [{ name: 'Woran wir es messen', wert: stufe.kennzahl }] : []),
     ...mandatZieleLesen(m.ziele).map(x => ({ name: x.text, wert: [x.ist ? `Ist: ${x.ist}` : '', x.ziel ? `Ziel: ${x.ziel}` : ''].filter(Boolean).join(' · ') || 'noch offen' })),
-    ...(z.lieferobjekte.length ? [{ name: 'Lieferobjekte', wert: `${z.lieferobjekte.filter(x => x.erledigt).length} von ${z.lieferobjekte.length} erledigt` }] : []),
+    ...(z.lieferobjekte.length ? [{ name: 'Lieferobjekte', wert: `${z.lieferobjekte.filter(bisStand).length} von ${z.lieferobjekte.length} erledigt` }] : []),
   ];
   return {
     titel: 'Fortschrittsbericht', kunde: m.kunde, mandat: m.titel, ...(stufe ? { paket: stufe.name } : {}), stand: datum(heute),

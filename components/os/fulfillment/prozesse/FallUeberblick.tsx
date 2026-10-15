@@ -39,6 +39,7 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
   if (!daten.fall) return <KeinFall daten={daten} />;
   const f = daten.fall, ob = daten.onboarding!;
+  const linkAus = daten.kunde?.link === 'aus';
   const ops = async (o: Record<string, unknown>[]) => {
     const a = await fallOps(mandatId, o);
     if (!a.ok) setMeldung({ text: fehlerText(a), art: 'kritisch' });
@@ -55,8 +56,9 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
   const zuSchritt = (s: OnboardingSchluessel) => {
     if (s === 'willkommen') { setMail(true); insBild('willkommen'); return; }
     if (s === 'f0') { geh('ablauf', { art: 'freigabe', wert: 'F0' }); return; }
-    // Abnahme C15: das Playbook braucht den Kunden-Link — direkt an die Link-Karte (dort steht, wie er angeht), nicht nur in den Reiter.
-    if (s === 'playbook') { geh('kunde', { art: 'stelle', wert: 'kunde-link' }); return; }
+    // Abnahme C15: das Playbook braucht den Kunden-Link — direkt an die Link-Karte (dort steht, wie er angeht), nicht nur in den Reiter. 15.10. (Abnahme C14):
+    // ist der Link der Instanz aus, führt der Weg für die Inhaberin zum Schalter, für alle anderen zum gemeinsamen Ausfüllen (das geht auch ohne Link).
+    if (s === 'playbook') { geh('kunde', { art: 'stelle', wert: linkAus && !daten.inhaber ? 'kunde-formulare' : 'kunde-link' }); return; }
     geh(ONBOARDING_SPRUNG[s].reiter);
   };
   const gesendet = f.onboarding.willkommenGesendetAm;
@@ -71,7 +73,9 @@ export function FallUeberblick({ mandatId }: { mandatId: string }) {
           {daten.diff.neu.length} neu · {daten.diff.geaendert.length} geändert{daten.diff.entfernt.length ? ` · ${daten.diff.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''}
         </Hinweis>
       )}
-      <OnboardingKarte schritte={ob.schritte.map(s => ({ ...s, titel: anzeigeTitel(s.titel, abstimmungsNummern(f.knoten)) }))} fertig={ob.fertig} gesendetAm={gesendet} onSchritt={zuSchritt} onEntfaellt={entfaellt}
+      <OnboardingKarte schritte={ob.schritte.map(s => ({ ...s, titel: anzeigeTitel(s.titel, abstimmungsNummern(f.knoten)), ...(s.schluessel === 'playbook' && linkAus ? { text: `${s.text} Der Kunden-Link ist aus — ${daten.inhaber ? 'du schaltest ihn unter Kunde & Reports › Kunden-Link ein' : 'einschalten kann ihn die Inhaberin bzw. der Inhaber'}; bis dahin füllt ihr das Playbook gemeinsam aus.` } : {}) }))}
+        knopf={{ ...(linkAus ? { playbook: daten.inhaber ? 'Kunden-Link einschalten' : 'Playbook gemeinsam ausfüllen' } : {}) }}
+        fertig={ob.fertig} gesendetAm={gesendet} onSchritt={zuSchritt} onEntfaellt={entfaellt}
         onWillkommenZurueck={async () => { await fallOps(mandatId, [{ op: 'willkommen-gesendet', zuruecknehmen: true }]); }} />
       {!gesendet && <WillkommenKarte daten={daten} oeffnen={mail} setOeffnen={setMail} onMeldung={setMeldung} />}
       {(daten.wartet?.length ?? 0) > 0 && (
@@ -110,8 +114,10 @@ function KickoffZu({ anzahl, children }: { anzahl: number; children: ReactNode }
  * Das Onboarding als Band: je Schritt ein Abschnitt (grün erfüllt, gelb offen, rot überfällig, grau gestrichelt „darf noch laufen“), darunter
  * NUR die offenen Schritte mit ihrem Weg; Erledigte klappen weg („n erledigt — zeigen“). „entfällt“, „wieder offen“, „Vermerk zurücknehmen“ hinter „⋯“.
  */
-function OnboardingKarte({ schritte, fertig, gesendetAm, onSchritt, onEntfaellt, onWillkommenZurueck }: {
+function OnboardingKarte({ schritte, fertig, gesendetAm, onSchritt, onEntfaellt, onWillkommenZurueck, knopf = {} }: {
   schritte: OnboardingSchrittStand[]; fertig: boolean; gesendetAm?: string; onSchritt: (s: OnboardingSchluessel) => void; onEntfaellt: (s: OnboardingSchluessel) => Promise<void>; onWillkommenZurueck: () => Promise<void>;
+  /** Abweichender Wortlaut des Knopfs je Schritt (z. B. Playbook bei ausgeschaltetem Kunden-Link). */
+  knopf?: Partial<Record<OnboardingSchluessel, string>>;
 }) {
   const [zeigen, setZeigen] = useState(false);
   const handy = useHandy();
@@ -120,7 +126,8 @@ function OnboardingKarte({ schritte, fertig, gesendetAm, onSchritt, onEntfaellt,
   const farbe = fertig ? LEUCHT.gut : offen.some(s => s.ueberfaellig) ? LEUCHT.kritisch : LEUCHT.planung;
   return (
     <Karte i={1} akzent={farbe}>
-      <Ueberschrift farbe={farbe} erklaerung="fulfillment.onboardingBand" rechts={<span>{erledigt.length} von {schritte.length}</span>}>Onboarding</Ueberschrift>
+      {/* 15.10. (Abnahme C16): dieselbe Zählung wie Cockpit und Fall-Kopf — nur die Schritte, die für „fertig“ zählen (das Playbook darf noch laufen). */}
+      <Ueberschrift farbe={farbe} erklaerung="fulfillment.onboardingBand" rechts={<span>{erledigt.filter(s => s.zaehlt).length} von {schritte.filter(s => s.zaehlt).length}</span>}>Onboarding</Ueberschrift>
       <ol aria-label="Onboarding-Schritte" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, schritte.length)}, minmax(0, 1fr))`, gap: handy ? 4 : 8 }}>
         {schritte.map(s => {
           const f = schrittFarbe(s);
@@ -143,7 +150,7 @@ function OnboardingKarte({ schritte, fertig, gesendetAm, onSchritt, onEntfaellt,
             <ZeileAktionen key={s.schluessel} titel={s.titel} mehr={[{ id: 'entfaellt', label: 'Entfällt für diesen Fall …', hinweis: 'Mit Grund — der Schritt zählt dann nicht mehr.', tun: () => onEntfaellt(s.schluessel) }]}>
               <Zeile umbrechen links={<Punkt farbe={schrittFarbe(s)} />}
                 titel={<span>{s.titel}{!s.zaehlt && <span style={{ color: C.inkLeise }}> · darf noch laufen</span>}</span>} unter={s.text}
-                rechts={<Knopf leise onClick={() => onSchritt(s.schluessel)}>{ONBOARDING_SPRUNG[s.schluessel].text}{s.schluessel === 'willkommen' ? '' : ' ›'}</Knopf>} />
+                rechts={<Knopf leise onClick={() => onSchritt(s.schluessel)}>{knopf[s.schluessel] ?? ONBOARDING_SPRUNG[s.schluessel].text}{s.schluessel === 'willkommen' ? '' : ' ›'}</Knopf>} />
             </ZeileAktionen>
           ))}
         </Liste>

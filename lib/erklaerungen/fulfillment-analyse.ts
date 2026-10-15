@@ -14,12 +14,12 @@ export const EINSTELLUNGEN_FULFILLMENT_ANALYSE = {
     daten: 'Firma, Domain und die gelesenen Seiten gehen über das KI-Tor an das Modell (Kategorien Markttraktion und Web). Die Kosten zählen ins KI-Budget; über dem 1,5-fachen der Bestätigung bricht der Lauf ab.',
   },
   'fulfillment.f1': {
-    was: 'F1 legt fest, welche Analysen laufen dürfen und welche Funktionen beruflich recherchiert werden — Funktionen, keine Namen. Ohne F1 und ohne Interessenabwägung bleiben Gesellschafter- und Personen-Analyse gesperrt.',
+    was: 'Der Abstimmungspunkt „Analyse-Umfang & Personenliste“ legt fest, welche Analysen laufen dürfen und welche Funktionen beruflich recherchiert werden — Funktionen, keine Namen. Ohne ihn und ohne Interessenabwägung bleiben Gesellschafter- und Personen-Analyse gesperrt.',
     beispiel: 'Im Kick-off bestätigt der Kunde: Umfang Steckbrief, Register, Markt, Personen; Funktionen „Geschäftsführung“ und „Vertriebsleitung“. Du trägst das mit Datum und „im Kick-off“ ein.',
   },
   'fulfillment.f2': {
-    was: 'F2 heißt „Dossier geprüft“. Es geht nur mit bestandener Prüfung: Datenschutz- und Quellen-Befunde müssen behoben sein, Qualitäts-Hinweise des Prüfers dürfen mit Grund überstimmt werden. Erst danach gehen Quick Wins, Kick-off-Fragen und Steckbrief-Felder weiter.',
-    beispiel: 'Die Prüfung meldet eine Aussage ohne Quelle. Du entfernst sie, prüfst neu, überstimmst einen Qualitäts-Hinweis mit „Zahl stammt aus dem Kick-off“ und setzt F2.',
+    was: 'Der Abstimmungspunkt „Dossier geprüft“ geht nur mit bestandener Prüfung: Datenschutz- und Quellen-Befunde müssen behoben sein, Qualitäts-Hinweise des Prüfers dürfen mit Grund überstimmt werden. Erst danach gehen Quick Wins, Kick-off-Fragen und Steckbrief-Felder weiter.',
+    beispiel: 'Die Prüfung meldet eine Aussage ohne Quelle. Du entfernst sie, prüfst neu, überstimmst einen Qualitäts-Hinweis mit „Zahl stammt aus dem Kick-off“ und vermerkst „Dossier geprüft“.',
   },
   'fulfillment.tiefenbericht': {
     was: 'Der Tiefenbericht ist ein langer Recherche-Bericht über einen Dienst von Google. Er ist nur eine Lesehilfe für dich: er fließt nie in das Dossier, an Agenten, ins Brain oder in die Suche und nur du siehst ihn, mit den Suchvorschlägen des Dienstes.',
@@ -27,7 +27,7 @@ export const EINSTELLUNGEN_FULFILLMENT_ANALYSE = {
     daten: 'Die Frage geht an Google Vertex (EU-Zugang laut KI-Einstellungen). Der Bericht wird 30 Tage für dich aufbewahrt und dann gelöscht; die Kosten zählen ins KI-Budget.',
   },
   'fulfillment.personenteil': {
-    was: 'Der Personenteil liegt getrennt vom Dossier: berufliche Karten zu den Funktionen aus F1, je Angabe mit Quelle und Datum, nur nach Positivliste. Sehen dürfen ihn der Inhaber und Mitglieder mit vollem Zugang; jede Ansicht steht im Lese-Protokoll.',
+    was: 'Der Personenteil liegt getrennt vom Dossier: berufliche Karten zu den Funktionen aus dem vereinbarten Analyse-Umfang, je Angabe mit Quelle und Datum, nur nach Positivliste. Sehen dürfen ihn der Inhaber und Mitglieder mit vollem Zugang; jede Ansicht steht im Lese-Protokoll.',
     beispiel: 'Die Karte „Vertriebsleitung“ zeigt Werdegang und zwei Vorträge mit Quellen. Ein Konto mit „nur Business“ sieht im Dossier nur, dass es eine Karte gibt.',
   },
   'fulfillment.loeschfristPersonen': {
@@ -44,7 +44,7 @@ export const FULFILLMENT_AGENT_TEXTE: Partial<Record<AnalyseAgentId, AgentText>>
   a1: { tut: 'Erstellt den Unternehmens-Steckbrief aus Website und Impressum.', nie: 'Nennt Personen mit Namen oder übernimmt unbelegte Werte.', beispiel: 'Sitz Musterstadt, rund 40 Mitarbeitende, drei Leistungsbereiche — je mit Seite und Abrufdatum.' },
   a2: { tut: 'Wertet abgelegte Registerunterlagen aus: Eckdaten und Kennzahlen je Jahr.', nie: 'Übernimmt Geburtsdatum oder Wohnort von Personen.', beispiel: 'Bilanzsumme drei Jahre in Folge gestiegen; Jahresabschluss zuletzt verspätet hinterlegt.' },
   a3: { tut: 'Ordnet Gesellschafter und Beteiligungen aus den Unterlagen.', nie: 'Nennt natürliche Personen mit Namen oder fragt das Transparenzregister ab.', beispiel: 'Eine Holding hält die Mehrheit; Geschäftsführung hält eine Minderheit.' },
-  a4: { tut: 'Recherchiert eine Funktion aus F1 nur beruflich, mit Identitätsprüfung.', nie: 'Sammelt Privates, Art.-9-Angaben oder liest LinkedIn und XING.', beispiel: 'Vertriebsleitung seit 2022, vorher Key Account in der Branche, zwei Fachvorträge.' },
+  a4: { tut: 'Recherchiert eine Funktion aus dem vereinbarten Analyse-Umfang nur beruflich, mit Identitätsprüfung.', nie: 'Sammelt Privates, Art.-9-Angaben oder liest LinkedIn und XING.', beispiel: 'Vertriebsleitung seit 2022, vorher Key Account in der Branche, zwei Fachvorträge.' },
   a5: { tut: 'Sammelt Presse und Bewertungen als Zeitleiste mit Good und Bad News.', nie: 'Übernimmt Namen Dritter aus Bewertungstexten.', beispiel: 'Auszeichnung als Ausbildungsbetrieb; wiederkehrende Kritik an langen Antwortzeiten.' },
   a6: { tut: 'Baut Marktbild und Wettbewerbsmatrix aus Käufersicht.', nie: 'Stellt Hypothesen als Fakten dar.', beispiel: 'Drei Wettbewerber mit Festpreis-Paketen; Mandant gewinnt vermutlich über Service vor Ort.' },
   a7: { tut: 'Bewertet die Website nach Botschaft, Beweisen, Handlungsaufforderung, Ton und Rechtsminimum.', nie: 'Ändert etwas an der Website oder füllt Formulare aus.', beispiel: 'Kein klarer nächster Schritt auf der Startseite; Referenzen ohne Zahlen.' },

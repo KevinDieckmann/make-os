@@ -420,7 +420,9 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           if (fe.festlegen === true) {
             const fehlt = [!(neu.ausgangZahl !== undefined || neu.ausgang) && 'Ausgangslage', !(neu.zielZahl !== undefined || z.ziel) && 'Zielwert', !neu.zielBis && 'Datum'].filter(Boolean);
             if (fehlt.length) nein(`Zum Festlegen fehlt noch: ${fehlt.join(', ')}.`);
-            neu = { ...neu, festgelegtAm: neu.festgelegtAm ?? k.heute };
+            // Nachtragen (15.10., Abnahme B6): festgelegt im Kick-off vor zwei Wochen steht mit seinem Tag da — nie in der Zukunft.
+            const am = nachtrag(fe.festgelegtAm, 'Festgelegt am');
+            neu = { ...neu, festgelegtAm: am ?? neu.festgelegtAm ?? k.heute };
           } else if (fe.festlegen === false) { const { festgelegtAm: _f, ...r } = neu; neu = r as WertKontoEintrag; }
           if (neu.ausgangZahl !== undefined && neu.zielZahl !== undefined && neu.zielZahl !== neu.ausgangZahl && !neu.richtung) neu.richtung = neu.zielZahl > neu.ausgangZahl ? 'hoch' : 'runter';
           f.wertKonto[z.id] = neu; geaendert.push(`wert:${z.id}`);

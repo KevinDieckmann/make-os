@@ -215,6 +215,19 @@ export function unterschriftAm(
 /** Marke „nicht mehr vorschlagen“ für ein Mandat (Ausblenden der Onboarding-Karte). */
 export const markeOnboardingAus = (mandatId: string) => `onboarding-aus:${mandatId}`;
 
+/**
+ * Wo eine Aufgabe zu einem Fall liegt und wie sie heißt (15.10., Abnahme C20: „Registerauszug … ablegen“ lag ohne Kunden unter „Sonstige“ der eigenen
+ * Gesellschaft und las sich wie eine Gründungsaufgabe): im Space des Mandanten (`m-<Firma>`, sonst die Gesellschaft des Mandats), mit Bezug zum Mandat
+ * und dem Kunden im Titel. EINE Regel für jede Aufgabe, die Fulfillment anlegt.
+ */
+export function fallAufgabeOrt(m: Pick<Mandat, 'id' | 'kunde' | 'gesellschaft' | 'firmaId'>): { space: 'business'; spaceId?: string; bezug: { mandatId: string; firmaId?: string }; titel: (t: string) => string } {
+  const spaceId = m.firmaId ? `m-${m.firmaId}` : ['kdc', 'kdv', 'ug'].includes(m.gesellschaft) ? m.gesellschaft : undefined;
+  return {
+    space: 'business', ...(spaceId ? { spaceId } : {}), bezug: { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}) },
+    titel: (t: string) => `${t} — ${m.kunde}`.slice(0, 280),
+  };
+}
+
 /** Marke (in `vorlagen.marken`): Tag, an dem Fulfillment eingerichtet wurde — setzt der erste Morgenlauf (der legt dabei nichts an). */
 export const MARKE_FULFILLMENT_SEIT = 'fulfillment-eingerichtet';
 /** So viele Tage nach der Unterschrift gilt ein Mandat noch als „neu“ (sonst Bestand, wenn es vor der Einrichtung unterschrieben wurde). */

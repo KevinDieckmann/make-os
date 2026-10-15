@@ -62,9 +62,9 @@ export function PhasenStrahl({ phasen, onPhase, aktiv }: { phasen: readonly Stra
           <>
             <span style={{ ...MIKRO, color: p.zustand === 'jetzt' ? JETZT : C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.zustand === 'jetzt' ? hier : p.zustand === 'fertig' ? `✓ Phase ${i + 1}` : `Phase ${i + 1}`}</span>
             <Schiene p={p} />
-            <span title={p.zusatz ? `${p.titel} — ${p.zusatz}` : undefined} style={{ fontSize: TYP.bedien, fontWeight: p.zustand === 'jetzt' ? 700 : 600, color: p.zustand === 'offen' ? C.inkDim : C.ink, lineHeight: 1.3, overflowWrap: 'break-word', hyphens: 'auto' }}>{p.titel}</span>
+            <span title={p.zusatz ? `${p.titel} — ${p.zusatz}` : undefined} style={{ fontSize: TYP.bedien, fontWeight: p.zustand === 'jetzt' ? 700 : 600, color: p.zustand === 'offen' ? C.inkDim : C.ink, lineHeight: 1.3, overflowWrap: 'break-word', hyphens: 'manual' }}>{p.titel}</span>
             {p.gesamt !== undefined && p.gesamt > 0 && <span style={{ ...klein, color: C.inkLeise }}>{p.zustand === 'fertig' ? 'erledigt' : `${p.erledigt ?? 0} von ${p.gesamt}`}{p.wartet ? ` · ${p.wartet} beim Kunden` : ''}</span>}
-            {p.freigabe && <span title={abstimmungKurz(p.freigabe)} style={{ ...klein, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, display: 'flex', gap: 6, alignItems: 'baseline' }}><span aria-hidden>◆</span><span style={{ overflowWrap: 'break-word', hyphens: 'auto', minWidth: 0 }}>{p.freigabe.nr ?? ''}{p.freigabe.titel ? `${p.freigabe.nr ? ' · ' : ''}${p.freigabe.titel}` : ''}</span></span>}
+            {p.freigabe && <span title={abstimmungKurz(p.freigabe)} style={{ ...klein, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, display: 'flex', gap: 6, alignItems: 'baseline' }}><span aria-hidden>◆</span><span style={{ overflowWrap: 'break-word', hyphens: 'manual', minWidth: 0 }}>{p.freigabe.nr ?? ''}{p.freigabe.titel ? `${p.freigabe.nr ? ' · ' : ''}${p.freigabe.titel}` : ''}</span></span>}
           </>
         );
         const stil: CSSProperties = { display: 'grid', gap: 6, alignContent: 'start', minWidth: 0, textAlign: 'left', padding: '6px 4px', borderRadius: ECKE.eingabe, minHeight: 44, color: C.ink, fontFamily: SCHRIFT.text,
@@ -168,7 +168,10 @@ export function WertBalken({ wert, ziele, kompakt }: { wert: number | null | und
 export const WELLEN_FARBE: Record<WellenStufe, string> = { uebernommen: LEUCHT.gut, entwurf: LEUCHT.achtung, laeuft: LEUCHT.planung, fehler: LEUCHT.kritisch, bereit: C.aktiv, gesperrt: C.inkLeise };
 export const WELLEN_TEXT: Record<WellenStufe, string> = { uebernommen: 'im Dossier', entwurf: 'Entwurf prüfen', laeuft: 'läuft', fehler: 'Fehler', bereit: 'bereit', gesperrt: 'noch gesperrt' };
 
-/** Ein Agent als Marke: Kürzel in seiner Stufenfarbe (gefüllt = Ergebnis da, Umriss = noch nicht). */
+/**
+ * Ein Agent als Marke in seiner Stufenfarbe (gefüllt = Ergebnis da, Umriss = noch nicht) — mit seinem Namen; das Kürzel (A1, AP, TB) steht nur im Titel
+ * (15.10., Abnahme B5: „A0–A13, AP, TB ohne Erklärung“).
+ */
 export function AgentMarke({ id, stufe, name }: { id: string; stufe: WellenStufe; name?: string }) {
   const f = WELLEN_FARBE[stufe];
   const voll = stufe === 'uebernommen' || stufe === 'entwurf' || stufe === 'laeuft' || stufe === 'fehler';
@@ -176,7 +179,7 @@ export function AgentMarke({ id, stufe, name }: { id: string; stufe: WellenStufe
     <span title={`${id.toUpperCase()}${name ? ` · ${name}` : ''} — ${WELLEN_TEXT[stufe]}`} aria-label={`${id.toUpperCase()}${name ? ` ${name}` : ''}: ${WELLEN_TEXT[stufe]}`}
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 36, height: 26, padding: '0 8px', borderRadius: 13, fontSize: TYP.bedien, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
         color: voll ? C.ink : f, background: voll ? TIEF.flaeche(f) : 'transparent', border: `1px ${stufe === 'gesperrt' ? 'dashed' : 'solid'} ${stufe === 'gesperrt' ? RAND.stark : TIEF.rand(f)}` }}>
-      {id.toUpperCase()}
+      {name ?? id.toUpperCase()}
     </span>
   );
 }

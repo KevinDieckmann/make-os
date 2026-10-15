@@ -43,6 +43,16 @@ export const MUSTER_WAHL: readonly { id: MusterWahl; titel: string }[] = [
   { id: 'landkarte', titel: MUSTER_LANDKARTE.titel }, { id: 'p1', titel: MUSTER_P1.titel }, { id: 'p2', titel: MUSTER_P2.titel }, { id: 'p3', titel: MUSTER_P3.titel },
 ];
 export const markeMuster = (musterId: string) => `muster:${musterId}`;
+/**
+ * Marke für ein bewusst entferntes Muster (15.10., Abnahme B4: „Noch nicht angelegt: 1 Muster-Vorlage“, obwohl sie absichtlich gelöscht war) — „Fehlendes aus
+ * Muster anlegen“ fragt dann nicht mehr danach; ausdrücklich gewählt (`welche`) kommt es wieder.
+ */
+export const MUSTER_ENTFERNT = 'entfernt';
+/** Ist ein Muster (noch) nicht angelegt — weder als Vorlage da noch bewusst entfernt? */
+export const musterFehlt = (d: Pick<VorlagenDatei, 'marken' | 'prozesse'>, musterId: string): boolean => {
+  const id = d.marken[markeMuster(musterId)];
+  return !id || (id !== MUSTER_ENTFERNT && !d.prozesse.some(p => p.id === id));
+};
 
 const KNOTEN_TEXTE: readonly [keyof ProzessKnoten, 'titel' | 'ziel' | 'ergebnis' | 'kurz' | 'beschreibung'][] = [
   ['ziel', 'ziel'], ['warum', 'ziel'], ['eingang', 'ergebnis'], ['ergebnis', 'ergebnis'], ['kennzahl', 'kurz'], ['rolle', 'kurz'], ['heute', 'kurz'],
@@ -208,10 +218,12 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           const welche = Array.isArray(o.welche) ? (o.welche as unknown[]).filter((x): x is MusterWahl => typeof x === 'string' && x in MUSTER) : (Object.keys(MUSTER) as MusterWahl[]);
           if (!welche.length) nein('Kein bekanntes Muster gewählt.');
           // Pakete zuerst — die Landkarte verweist auf sie.
+          const ausdruecklich = Array.isArray(o.welche);
           for (const w of (['p1', 'p2', 'p3', 'landkarte'] as MusterWahl[]).filter(x => welche.includes(x))) {
             const m = MUSTER[w];
             const da = d.marken[markeMuster(m.id)];
             if (da && d.prozesse.some(p => p.id === da)) continue;
+            if (da === MUSTER_ENTFERNT && !ausdruecklich) continue;
             if (w === 'landkarte' && d.prozesse.some(p => p.art === 'landkarte')) continue;
             const v = musterKopie(m, k, musterId => { const id = d.marken[markeMuster(musterId)]; return id && d.prozesse.some(p => p.id === id && p.art === 'paket') ? id : undefined; });
             d.prozesse.push(v); beruehrt.add(v.id); geaendert.push(v.id);
@@ -267,7 +279,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           // Verweise der Landkarte und Zuordnungen auf diese Vorlage fallen weg — laufende Fälle tragen ihre eigene Kopie.
           for (const p of d.prozesse) if (p.knoten.some(x => x.verweis === v.id)) setze({ ...p, knoten: p.knoten.map(x => { if (x.verweis !== v.id) return x; const { verweis: _v, ...r } = x; return r; }) });
           for (const [l, z] of Object.entries(d.zuordnung)) if (z.vorlageId === v.id) delete d.zuordnung[l];
-          for (const [m, id] of Object.entries(d.marken)) if (m.startsWith('muster:') && id === v.id) delete d.marken[m];
+          for (const [m, id] of Object.entries(d.marken)) if (m.startsWith('muster:') && id === v.id) d.marken[m] = MUSTER_ENTFERNT;
           geaendert.push(v.id);
           break;
         }

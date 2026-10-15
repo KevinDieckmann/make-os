@@ -123,9 +123,12 @@ export async function treppeLage(person: string, heute = localDay()) {
   const name = await treppeSpeicher();
   return merken(`produkt-treppe:${name}:${person}:${heute}`, 60_000, async () => {
     // Der nächste Termin je Fall (Fulfillment, EINE Regel `naechsterFallTermin`) — damit „Termine: nächster am …“ derselbe Tag ist wie Takt und Kunden-Seite.
-    const termine = await import('@/lib/fulfillment/prozesse/server').then(x => x.naechsteFallTermine(heute)).catch(() => ({} as Record<string, string>));
+    const ff = await import('@/lib/fulfillment/prozesse/server');
+    const termine = await ff.naechsteFallTermine(heute).catch(() => ({} as Record<string, string>));
+    // 15.10. (Abnahme B1): mit Fall übernimmt die Treppe Ampel und nächsten Schritt aus dem Fall (dieselbe Rechnung wie Fall-Kopf und Kunden-Seite).
+    const faelle = await ff.fallFuerTreppe(heute).catch(() => ({} as Awaited<ReturnType<typeof ff.fallFuerTreppe>>));
     const [datei, crm, frei, vorschlaege, ki] = await Promise.all([ladeTreppe(heute), ladeCrm(), freieTeamStunden(person, heute), offeneDokumentVorschlaege(person).catch(() => []), kiVerfuegbar()]);
-    const kunden = kundenZeilen({ datei, crm, heute, termine }).map(z => ({ ...z, stand: eintragStand(datei.kunden[z.mandatId] ?? {}) }));
+    const kunden = kundenZeilen({ datei, crm, heute, termine }).map(z => ({ ...z, stand: eintragStand(datei.kunden[z.mandatId] ?? {}), fall: faelle[z.mandatId] ?? null }));
     const zb = zielbild({ datei, crm, heute });
     const bedarf = kapaBedarf(datei, kunden);
     return {

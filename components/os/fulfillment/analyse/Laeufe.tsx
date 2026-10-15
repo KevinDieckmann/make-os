@@ -20,6 +20,8 @@ import { Karte, Ueberschrift, Zeile, Knopf, Chip, Hinweis, MehrfachPillen, Liste
 import { wellenBild, naechsterLauf, gemeinsameSaetze, ohneGemeinsame } from '@/lib/fulfillment/prozesse/darstellung';
 import { WellenBild, Legende, AgentMarke } from '../reise/bilder';
 import { senden, fehlerVon, anfrageId, type AgentLage, type AnalyseApi } from './daten';
+import { useOhneKuerzel } from '../prozesse/daten';
+import { agentText } from '@/lib/fulfillment/analyse/agenten';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
 const ZUSTAND_FARBE = { bereit: LEUCHT.gut, gesperrt: C.inkLeise, laeuft: LEUCHT.planung } as const;
@@ -37,6 +39,8 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
   const lage = api.lage;
   const [grund, setGrund] = useState<Record<string, string>>({});
   const [meldung, setMeldung] = useState<string | null>(null);
+  // 15.10. (Abnahme B5): Gründe nennen nie „F1“ — der Abstimmungspunkt heißt wie im Ablauf des Falls.
+  const kuerzel = useOhneKuerzel(mandatId);
   if (!lage) return <Hinweis art="info">Die Läufe werden geladen …</Hinweis>;
   const starten = async (a: AgentLage, funktion?: string, cent = a.schaetzung.cent, hoechstens = a.schaetzung.hoechstensText) => {
     const ok = await rueck.bestaetigen({
@@ -55,7 +59,7 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
     setMeldung(fehlerVon(r));
     await api.laden();
   };
-  const imMinimal = lage.minimalset.map(x => x.toUpperCase()).join(', ');
+  const imMinimal = lage.minimalset.map(x => agentText(x)).join(', ');
   const wellen = wellenBild(lage.agenten);
   const naechster = naechsterLauf(lage.agenten.filter(a => !a.funktionen), lage.minimalset);
   const gemeinsam = new Set(gemeinsameSaetze(lage.agenten));
@@ -65,14 +69,14 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
         <Ueberschrift erklaerung="fulfillment.wellen" rechts={<span>bisher {euroText(lage.kostenCent)}</span>}>Stand der Analyse</Ueberschrift>
         <WellenBild wellen={wellen} />
         <Legende eintraege={[
-          { zeichen: <AgentMarke id="A" stufe="uebernommen" />, text: 'im Dossier' },
-          { zeichen: <AgentMarke id="A" stufe="entwurf" />, text: 'Entwurf prüfen' },
-          { zeichen: <AgentMarke id="A" stufe="bereit" />, text: 'bereit' },
-          { zeichen: <AgentMarke id="A" stufe="gesperrt" />, text: 'noch gesperrt' },
+          { zeichen: <AgentMarke id="a" name="Agent" stufe="uebernommen" />, text: 'im Dossier' },
+          { zeichen: <AgentMarke id="a" name="Agent" stufe="entwurf" />, text: 'Entwurf prüfen' },
+          { zeichen: <AgentMarke id="a" name="Agent" stufe="bereit" />, text: 'bereit' },
+          { zeichen: <AgentMarke id="a" name="Agent" stufe="gesperrt" />, text: 'noch gesperrt' },
         ]} />
         {naechster ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <Knopf haupt onClick={() => starten(naechster)}>{naechster.art === 'regel' ? `${naechster.id.toUpperCase()} prüfen (ohne Kosten)` : `${naechster.id.toUpperCase()} · ${naechster.name} starten (${naechster.schaetzung.text})`}</Knopf>
+            <Knopf haupt onClick={() => starten(naechster)}>{naechster.art === 'regel' ? `${naechster.name} prüfen (ohne Kosten)` : `${naechster.id.toUpperCase()} · ${naechster.name} starten (${naechster.schaetzung.text})`}</Knopf>
             <span style={klein}>{naechster.imMinimalset ? 'Nächster Lauf aus dem Minimalset' : 'Nächster bereiter Lauf'}{naechster.art === 'regel' ? '' : ` · höchstens ${naechster.schaetzung.hoechstensText}`} — startet erst nach deiner Bestätigung.</span>
           </div>
         ) : <div style={klein}>Gerade ist kein Lauf bereit — die Gründe stehen unten je Agent.</div>}
@@ -81,7 +85,7 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
       <Hinweis art="info" titel="Jeder Lauf einzeln">
         Vorschlag Minimalset: {imMinimal}. Nichts startet von selbst — jeder Lauf nur mit deinem Klick auf genau diesen Lauf. Gleichzeitig: {lage.gleichzeitig.laufend} von {lage.gleichzeitig.max}. Bisher {euroText(lage.kostenCent)}.
       </Hinweis>
-      {gemeinsam.size > 0 && <Hinweis art="neutral" titel="Gilt für viele Läufe">{[...gemeinsam].join(' ')}</Hinweis>}
+      {gemeinsam.size > 0 && <Hinweis art="neutral" titel="Gilt für viele Läufe">{kuerzel([...gemeinsam].join(' '))}</Hinweis>}
       {meldung && <Hinweis art="achtung">{meldung}</Hinweis>}
       {WELLEN.map(({ w, t }) => (
         <Karte key={w}>
@@ -106,8 +110,8 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
                       </span>}
                     />
                     {a.id === 'tb' && <div style={klein}>Der Tiefenbericht startet unter „Tiefenbericht“ — nur für dich lesbar.</div>}
-                    {zustand === 'gesperrt' && a.gruende.length > 0 && ohneGemeinsame(a.gruende.join(' '), gemeinsam) && <div style={klein}>{ohneGemeinsame(a.gruende.join(' '), gemeinsam)}</div>}
-                    {a.hinweise.length > 0 && ohneGemeinsame(a.hinweise.join(' '), gemeinsam) && <div style={klein}>{ohneGemeinsame(a.hinweise.join(' '), gemeinsam)}</div>}
+                    {zustand === 'gesperrt' && a.gruende.length > 0 && ohneGemeinsame(a.gruende.join(' '), gemeinsam) && <div style={klein}>{kuerzel(ohneGemeinsame(a.gruende.join(' '), gemeinsam))}</div>}
+                    {a.hinweise.length > 0 && ohneGemeinsame(a.hinweise.join(' '), gemeinsam) && <div style={klein}>{kuerzel(ohneGemeinsame(a.hinweise.join(' '), gemeinsam))}</div>}
                     {grundNoetig && zustand === 'bereit' && (
                       <input style={eingabe} maxLength={300} placeholder="Grund für einen weiteren Lauf (Pflicht ab dem vierten)" value={grund[key] ?? ''} onChange={e => setGrund(g => ({ ...g, [key]: e.target.value }))} aria-label="Grund für einen weiteren Lauf" />
                     )}
@@ -147,7 +151,7 @@ function LaufListe({ mandatId, api, rueck }: { mandatId: string; api: AnalyseApi
           const a4 = l.agent === 'a4' ? (l.ergebnis as { karten?: number; funktion?: string } | undefined) : undefined;
           return (
             <div key={l.id} style={{ display: 'grid', gap: 6, paddingBottom: 8 }}>
-              <Zeile titel={`${l.agent.toUpperCase()}${a4?.funktion ? ` · ${a4.funktion}` : ''} · ${LAUF_LABEL[l.status]}`}
+              <Zeile titel={`${agentText(l.agent)}${a4?.funktion ? ` · ${a4.funktion}` : ''} · ${LAUF_LABEL[l.status]}`}
                 unter={`${l.gestartetAm ? new Date(l.gestartetAm).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : ''}${typeof l.kostenCent === 'number' ? ` · ${euroText(l.kostenCent)}` : ` · bestätigt ${euroText(l.bestaetigtCent)}`}${l.grund ? ` · Grund: ${l.grund}` : ''}`}
                 rechts={<Chip farbe={LAUF_FARBE[l.status] ?? C.inkLeise}>{LAUF_LABEL[l.status]}</Chip>} umbrechen />
               {l.fehler && <div style={klein}>{l.fehler}</div>}
