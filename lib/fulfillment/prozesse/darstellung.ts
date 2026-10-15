@@ -43,6 +43,19 @@ export function anzeigeTitel(titel: string, nummern?: ReadonlyMap<string, number
 }
 
 /**
+ * Freigabe-Kürzel in einem beliebigen Text (Gründe der Analyse, Hinweise …) in der Anzeige (15.10., Abnahme B5: „F0 noch nicht vermerkt“, „Nicht im Umfang
+ * von F1“, „Übergabe (F7)“): „Abstimmungspunkt n („Titel“)“ mit derselben Nummer wie Ablauf und Kunden-Seite; hängt der Punkt an keiner Phase (z. B. der
+ * Analyse-Umfang), „Abstimmungspunkt „Titel““. Die Daten behalten ihre Kennungen. Rein.
+ */
+export function ohneKuerzel(text: string, nummern: ReadonlyMap<string, number>, freigaben: readonly { id: string; titel: string }[] = []): string {
+  return String(text ?? '').replace(/\bF(\d{1,2})\b/g, (_x, d: string) => {
+    const id = `F${d}`, n = nummern.get(id), t = freigaben.find(x => x.id === id)?.titel;
+    const titel = t ? titelOhneZusatz(t) : undefined;
+    return n ? `Abstimmungspunkt ${n}${titel ? ` („${titel}“)` : ''}` : titel ? `Abstimmungspunkt „${titel}“` : 'Abstimmungspunkt';
+  });
+}
+
+/**
  * Wie verteilen sich die laufenden Fälle (Lage „Kunden in Lieferung“)? Aus derselben Rechnung wie Fall-Kopf und Landkarte (`fallStelle` → Cockpit-Zeile):
  * Fälle im Onboarding als „im Onboarding“, sonst nach ihrer Phase („in Diagnose“). Häufigste zuerst, höchstens drei Gruppen.
  */
@@ -65,6 +78,58 @@ export function kundenAmpel(z: Pick<CockpitZeile, 'health' | 'haengt'>): Ampel {
   if (z.health === 'rot' || z.haengt.some(h => h.schwere === 'rot')) return 'rot';
   if (z.health === 'gelb' || z.haengt.length) return 'gelb';
   return 'gruen';
+}
+
+// ── Lage: EINE Rechnung für intern UND Kunde (15.10., Abnahme B1) ─────────────────────────────────────────────────────────────────────
+// Vorher rechnete die Kunden-Seite mit eigenen Schwellen (wartet ≥ 7 Tage gelb, Verzug ≥ 14 Tage rot) — Fall „braucht einen Blick“, Kunde „im Plan“.
+// Jetzt gibt es nur die Hänger des Cockpits (`wasHaengt`) und die Health; der Kunde bekommt dieselbe Rechnung ÜBERSETZT, mit zwei festen Regeln (Entscheidung 15.10.):
+//   · Health zählt beim Kunden nicht (unsere Einschätzung der Beziehung).
+//   · Punkte ohne Kundenbezug (Willkommensmail, Report, überfälliger interner Schritt …) heißen beim Kunden „Wir sind dran“ (gelb) — nie rot.
+// Kundenbezug hat nur „wartet auf den Kunden“, und nur, wenn der Kunde den wartenden Punkt selbst sieht (`kundeSieht`, geteilte Entscheidung bzw.
+// Knoten an einem freigegebenen Baustein — dieselbe Regel wie seine Liste „Das brauchen wir von Ihnen“). Intern steht an der Ampel „Der Kunde sieht: …“.
+
+/** Was der Kunde als Lage liest — die Art; die Wörter (Du/Sie) stehen in `KUNDEN_LAGE_TEXT`. */
+export type KundenLageArt = 'plan' | 'fertig' | 'dran' | 'warten' | 'nurMitEuch';
+type LageHaenger = { art: string; schwere: 'rot' | 'gelb'; kundeSieht?: boolean };
+
+/** Hängt der Punkt beim Kunden (und sieht er ihn)? Nur dann hat er Kundenbezug. */
+export const haengtBeimKunden = (h: LageHaenger): boolean => h.art === 'wartet' && h.kundeSieht !== false;
+
+/** Die Kunden-Lage aus den Hängern (ohne Health): wartet beim Kunden rot → rot, gelb → gelb; nur interne Punkte → „Wir sind dran“ (gelb); sonst grün. */
+export function kundenLageAus(haengt: readonly LageHaenger[], fertig = false): { ampel: Ampel; art: KundenLageArt } {
+  const beimKunden = haengt.filter(haengtBeimKunden);
+  if (beimKunden.some(h => h.schwere === 'rot')) return { ampel: 'rot', art: 'nurMitEuch' };
+  if (beimKunden.length) return { ampel: 'gelb', art: 'warten' };
+  if (haengt.length) return { ampel: 'gelb', art: 'dran' };
+  return { ampel: 'gruen', art: fertig ? 'fertig' : 'plan' };
+}
+
+/** Die Wörter der Kunden-Lage je Anrede — EINE Tabelle für Kunden-Seite, Report, Präsentation und den Hinweis intern. */
+export const KUNDEN_LAGE_TEXT: Record<KundenLageArt, { du: string; sie: string }> = {
+  plan: { du: 'Wir liegen im Plan', sie: 'Wir liegen im Plan' },
+  fertig: { du: 'Alles abgeschlossen', sie: 'Alles abgeschlossen' },
+  dran: { du: 'Wir sind dran', sie: 'Wir sind dran' },
+  warten: { du: 'Wir warten auf euren Input', sie: 'Wir warten auf Ihren Input' },
+  nurMitEuch: { du: 'Wir kommen gerade nur mit euch weiter', sie: 'Wir kommen gerade nur mit Ihnen weiter' },
+};
+
+/**
+ * Intern an der Ampel: was der Kunde sieht und — wenn es abweicht — warum (Health zählt beim Kunden nicht; interne Punkte heißen „Wir sind dran“).
+ * Dieselbe Rechnung wie die Kunden-Seite (`kundenLageAus`), die Wörter in Sie-Form.
+ */
+export function kundeSiehtLage(z: Pick<CockpitZeile, 'health' | 'haengt'>, fertig = false): { ampel: Ampel; art: KundenLageArt; titel: string; grund?: string } {
+  const k = kundenLageAus(z.haengt, fertig);
+  const intern = kundenAmpel(z);
+  const titel = KUNDEN_LAGE_TEXT[k.art].sie;
+  if (intern === k.ampel) return { ...k, titel };
+  const rang: Record<Ampel, number> = { gruen: 0, gelb: 1, rot: 2 };
+  const ausHaengern: Ampel = z.haengt.some(h => h.schwere === 'rot') ? 'rot' : z.haengt.length ? 'gelb' : 'gruen';
+  const gruende = [
+    ...(z.health && rang[z.health] > rang[ausHaengern] ? ['Health zählt beim Kunden nicht'] : []),
+    ...(z.haengt.some(h => !haengtBeimKunden(h) && (h.schwere === 'rot' || k.art === 'dran')) ? ['interne Punkte zeigt die Kunden-Seite als „Wir sind dran“'] : []),
+  ];
+  const grund = gruende.join(' · ') || undefined;
+  return { ...k, titel, ...(grund ? { grund } : {}) };
 }
 
 /**

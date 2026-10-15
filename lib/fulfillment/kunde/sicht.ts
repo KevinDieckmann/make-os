@@ -93,8 +93,8 @@ export interface SichtEingabe {
   ansprechperson?: string;
   /** Abstimmungspunkte der Vorlage des Falls (Titel, wer) — für den Strahl. */
   freigaben?: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
-  /** Tage der Termine mit Bezug zum Mandat (`kalender-bezug`) — für „Nächster Termin“. */
-  terminTage?: readonly { uid: string; tag: string }[];
+  /** Die Termine mit Bezug zum Mandat (`fallTermine`, lib/fulfillment/prozesse/termine-server.ts) — für „Nächster Termin“ und den Takt. */
+  terminTage?: readonly { uid: string; tag: string; von?: string; titel?: string }[];
   /** Was intern hängt (Cockpit `wasHaengt`, nur Art/Schwere/Tage) — die Lage übersetzt es in Worte (14.10.). Geht selbst NIE an den Kunden. */
   haengt?: readonly KundenHaenger[];
 }

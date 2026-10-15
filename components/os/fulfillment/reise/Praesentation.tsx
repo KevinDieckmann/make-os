@@ -110,7 +110,8 @@ export function DemKundenZeigen({ mandatId, leise }: { mandatId: string; leise?:
  */
 export function PraesentationWahl({ faelle }: { faelle: readonly { mandatId: string; kunde: string; titel: string; status: string }[] }) {
   const [m, setM] = useState<string | null>(null);
-  const liste = faelle.filter(f => f.status !== 'abgeschlossen').map(f => ({ id: f.mandatId, label: f.kunde, hinweis: f.titel }));
+  // 15.10. (Abnahme C15): nur der Kunde — mit dem Mandat-Titel daneben lief das Menü rechts an den Fensterrand („Strategie-Begl…“).
+  const liste = faelle.filter(f => f.status !== 'abgeschlossen').map(f => ({ id: f.mandatId, label: f.kunde }));
   if (!liste.length) return null;
   return (
     <>

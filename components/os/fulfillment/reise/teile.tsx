@@ -74,6 +74,12 @@ export function Zeitachse({ punkte, strecken = [], heuteX, links, rechts, beschr
   const pz = (x: number) => `calc(${Math.round(Math.max(0, Math.min(1, x)) * 1000) / 10}% - 0px)`;
   return (
     <div style={{ display: 'grid', gap: 4 }}>
+      {/* 15.10. (Abnahme C3: „HEU22E.10.“ am Handy): „heute“ steht in einer eigenen Zeile ÜBER der Achse — Start und Ende darunter können es nie überdecken. */}
+      {heuteX !== undefined && (
+        <div aria-hidden style={{ position: 'relative', height: 14, margin: '0 10px', ...MIKRO }}>
+          <span style={{ position: 'absolute', top: 0, left: pz(heuteX), transform: `translateX(${heuteX < 0.08 ? '0' : heuteX > 0.92 ? '-100%' : '-50%'})`, color: JETZT, whiteSpace: 'nowrap', lineHeight: '14px' }}>heute</span>
+        </div>
+      )}
       <div role="img" aria-label={beschreibung} style={{ position: 'relative', height: 40, margin: '0 10px' }}>
         <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 19, height: 2, borderRadius: 1, background: 'rgba(255,255,255,.08)' }} />
         {strecken.map((s, i) => (
@@ -93,13 +99,9 @@ export function Zeitachse({ punkte, strecken = [], heuteX, links, rechts, beschr
           );
         })}
       </div>
-      {(links || rechts || heuteX !== undefined) && (
-        // Abnahme C3: „heute“ steht unter dem Heute-Strich (nicht in der Mitte); am Rand rückt es nach innen, damit es Start/Ende nicht überdeckt.
-        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', gap: 8, margin: '0 10px', minHeight: 16, ...MIKRO }}>
+      {(links || rechts) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, margin: '0 10px', minHeight: 16, ...MIKRO }}>
           <span>{links ?? ''}</span><span>{rechts ?? ''}</span>
-          {heuteX !== undefined && (
-            <span style={{ position: 'absolute', top: 0, left: pz(heuteX), transform: `translateX(${heuteX < 0.12 ? '0' : heuteX > 0.88 ? '-100%' : '-50%'})`, color: JETZT, padding: '0 4px', whiteSpace: 'nowrap' }}>heute</span>
-          )}
         </div>
       )}
     </div>
@@ -114,8 +116,10 @@ export interface RadStufe { id: KreislaufStufeId; label?: string; anzahl?: numbe
  * Kreis, die Stufe `hier` hervorgehoben („hier steht …“), durchlaufene Stufen grün, kommende leise. Jede Stufe mit `href` ist ein Sprung dorthin
  * (die vorhandene Ansicht der Markttraktion). In der Mitte steht `mitte` (eine Antwort). Am Handy wird das Rad zur Liste in derselben Reihenfolge.
  */
-export function KreislaufRad({ stufen, hier, durchlaufen = [], mitte, onStufe, beschreibung }: {
-  stufen: readonly RadStufe[]; hier?: KreislaufStufeId; durchlaufen?: readonly KreislaufStufeId[]; mitte?: ReactNode; onStufe?: (s: RadStufe) => void; beschreibung?: string;
+export function KreislaufRad({ stufen, hier, durchlaufen = [], mitte, onStufe, onMitte, beschreibung }: {
+  stufen: readonly RadStufe[]; hier?: KreislaufStufeId; durchlaufen?: readonly KreislaufStufeId[]; mitte?: ReactNode; onStufe?: (s: RadStufe) => void;
+  /** Die Mitte als Sprung (15.10., Abnahme B7: ein Klick in die Grafik tat nichts) — z. B. zur Stufe „hier“. */
+  onMitte?: () => void; beschreibung?: string;
 }) {
   const handy = useHandy();
   const nach = new Map(stufen.map(s => [s.id, s]));
@@ -143,7 +147,8 @@ export function KreislaufRad({ stufen, hier, durchlaufen = [], mitte, onStufe, b
     const aria = `${label}${s.anzahl !== undefined ? `: ${s.anzahl}` : ''} — ${z === 'hier' ? 'hier steht dieser Kunde' : z === 'durch' ? 'durchlaufen' : 'kommt noch'}${s.zusatz ? ` (${s.zusatz})` : ''}`;
     const basis: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center', minHeight: 44, padding: '4px 6px', borderRadius: ECKE.eingabe, textAlign: 'left', color: C.ink, fontFamily: SCHRIFT.text, ...stil };
     return onStufe
-      ? <button key={s.id} type="button" className="fassbar" onClick={() => onStufe(s)} aria-label={aria} title={s.zusatz} style={{ ...basis, background: z === 'hier' ? TIEF.flaeche(JETZT) : 'rgba(11,14,16,.82)', border: `1px solid ${z === 'hier' ? TIEF.rand(JETZT) : 'transparent'}`, cursor: 'pointer' }}>{inhalt}</button>
+      // Deckend (15.10., Abnahme C3: „HIER Fulfillment“ lag über der Pfeilspitze) — die Bögen enden ohnehin vor dem Kasten.
+      ? <button key={s.id} type="button" className="fassbar" onClick={() => onStufe(s)} aria-label={aria} title={s.zusatz} style={{ ...basis, background: z === 'hier' ? `linear-gradient(0deg, ${TIEF.flaeche(JETZT)}, ${TIEF.flaeche(JETZT)}), #0B0E10` : 'rgba(11,14,16,.92)', border: `1px solid ${z === 'hier' ? TIEF.rand(JETZT) : 'transparent'}`, cursor: 'pointer' }}>{inhalt}</button>
       : <div key={s.id} aria-label={aria} title={s.zusatz} style={{ ...basis, background: 'rgba(11,14,16,.82)' }}>{inhalt}</div>;
   };
   if (handy) return (
@@ -153,7 +158,11 @@ export function KreislaufRad({ stufen, hier, durchlaufen = [], mitte, onStufe, b
     </ol>
   );
   const n = reihe.length;
-  const lage = (i: number) => { const w = -Math.PI / 2 + (i / n) * 2 * Math.PI; return { x: 50 + 39 * Math.cos(w), y: 50 + 39 * Math.sin(w) }; };
+  const winkel = (i: number) => -Math.PI / 2 + (i / n) * 2 * Math.PI;
+  const punkt = (w: number) => ({ x: 50 + 39 * Math.cos(w), y: 50 + 39 * Math.sin(w) });
+  const lage = (i: number) => punkt(winkel(i));
+  // Jeder Bogen beginnt und endet ein Stück neben den Kästen — die Pfeilspitze liegt zwischen zwei Stufen, nie unter einer Beschriftung (C3).
+  const rand = (Math.PI / n) * 0.62;
   return (
     <div style={{ position: 'relative', width: '100%', maxWidth: 520, aspectRatio: '1 / 1', margin: '0 auto' }} aria-label={beschreibung ?? 'Kreislauf'} role="group">
       <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden style={{ position: 'absolute', inset: 0 }}>
@@ -161,14 +170,16 @@ export function KreislaufRad({ stufen, hier, durchlaufen = [], mitte, onStufe, b
           <marker id="ff-rad-pfeil" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="3" markerHeight="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill={C.inkLeise} /></marker>
         </defs>
         {reihe.map((s, i) => {
-          const a = lage(i), b = lage((i + 1) % n);
+          const a = punkt(winkel(i) + rand), b = punkt(winkel(i + 1) - rand);
           const durch = zustand(s.id) !== 'kommt' && zustand(reihe[(i + 1) % n].id) !== 'kommt';
           const zurueck = i === n - 1;
           return <path key={s.id} d={`M ${a.x} ${a.y} A 39 39 0 0 1 ${b.x} ${b.y}`} fill="none" stroke={zurueck ? LEUCHT.business : durch ? LEUCHT.gut : 'rgba(255,255,255,.14)'} strokeWidth={durch ? 0.9 : 0.6}
             strokeDasharray={zurueck ? '2 1.5' : undefined} strokeOpacity={durch || zurueck ? 0.7 : 1} markerEnd="url(#ff-rad-pfeil)" />;
         })}
       </svg>
-      {mitte && <div style={{ position: 'absolute', left: '24%', right: '24%', top: '30%', bottom: '30%', display: 'grid', placeItems: 'center', textAlign: 'center' }}>{mitte}</div>}
+      {mitte && (onMitte
+        ? <button type="button" className="fassbar" onClick={onMitte} style={{ position: 'absolute', left: '24%', right: '24%', top: '30%', bottom: '30%', display: 'grid', placeItems: 'center', textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text }}>{mitte}</button>
+        : <div style={{ position: 'absolute', left: '24%', right: '24%', top: '30%', bottom: '30%', display: 'grid', placeItems: 'center', textAlign: 'center' }}>{mitte}</div>)}
       {reihe.map((s, i) => {
         const p = lage(i);
         return knopf(s, { position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, transform: 'translate(-50%, -50%)', width: 'max-content', maxWidth: '34%' });

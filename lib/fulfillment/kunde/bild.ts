@@ -15,12 +15,13 @@
 // Fallbeispiel (erfunden): „Beispiel Werkzeugbau“ steht in Phase 2 von 4 („Analyse“), 3 von 10 Schritten sind erledigt, die Preisliste wartet seit
 // neun Tagen beim Kunden → Ampel gelb „Wir warten auf euren Input“, Satz 3 „Von euch brauchen wir eine Sache — sie wartet seit 9 Tagen.“
 
-import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, tageZwischen, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
+import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { zielErreichung } from '../prozesse/wert';
 import { RHYTHMUS_TEXT, naechsterFallTermin } from '../prozesse/rituale';
-import { titelOhneZusatz } from '../prozesse/darstellung';
-import { istSammelSchritt } from '../prozesse/reise';
+import { titelOhneZusatz, kundenLageAus, KUNDEN_LAGE_TEXT } from '../prozesse/darstellung';
+import { istSammelSchritt, naechsterPunkt, type NaechsterPunkt } from '../prozesse/reise';
+import { obSchluessel } from '../prozesse/onboarding';
 import type { Fall, FallKnoten, Freigabepunkt, RitualVorlage } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 
@@ -113,7 +114,7 @@ export interface KundenWartet { titel: string; seit?: string; frist?: string; ue
  * Ein Hänger des Falls, wie ihn das Cockpit rechnet (`wasHaengt`, lib/fulfillment/prozesse/cockpit.ts) — nur Art, Schwere und Alter in Tagen. Die
  * Kunden-Seite übersetzt ihn nur in Worte (`kundenLage`), nie den internen Text (14.10., Abnahme A3: „im Plan“ neben internem Rot).
  */
-export interface KundenHaenger { art: string; schwere: 'rot' | 'gelb'; tage?: number }
+export interface KundenHaenger { art: string; schwere: 'rot' | 'gelb'; tage?: number; /** nur „wartet“: sieht der Kunde den Punkt selbst? (Cockpit `kundeSiehtWartend`) */ kundeSieht?: boolean }
 export interface KundenWert { name: string; vorher: string; jetzt: string; ziel: string; bis?: string; anteil?: number }
 export interface KundenQuickWin { text: string; erledigt: boolean; am?: string; bis?: string }
 export interface KundenRitual { titel: string; rhythmus: string; naechster?: string }
@@ -147,19 +148,19 @@ export interface TeileEingabe {
   formulare?: ReadonlyMap<string, string>;
   /** Ritual-Vorlagen (Titel, Rhythmus). */
   rituale?: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus'>[];
-  /** Tage der Termine mit Bezug zum Mandat (aus `kalender-bezug`): Kennung des Termins + Tag. */
-  terminTage?: readonly { uid: string; tag: string }[];
+  /** Die Termine mit Bezug zum Mandat (lib/fulfillment/prozesse/termine-server.ts `fallTermine`): Kennung, Tag, ggf. Uhrzeit und Titel. */
+  terminTage?: readonly { uid: string; tag: string; von?: string; titel?: string }[];
   /**
    * Öffentliche Schlüssel der Formulare, die der Kunde noch ausfüllt (ein Abschnitt offen) — sie zählen in „Von Ihnen brauchen wir …“ mit, genau wie
    * in der Karte „Das brauchen wir von Ihnen“ (`brauchtAnzahl`; 14.10., Abnahme A3: „nichts nötig“ neben „1 offen“).
    */
   formulareOffen?: readonly string[];
-  /** Was intern hängt (dieselbe Rechnung wie das Cockpit) — ohne: die Lage nur aus „wartet“ und Verzug der sichtbaren Schritte (wie bis 13.10.). */
+  /**
+   * Was intern hängt (dieselbe Rechnung wie das Cockpit `wasHaengt`) — die Lage ist NUR seine Übersetzung (15.10., Abnahme B1: keine eigenen Schwellen
+   * mehr). Ohne Angabe hängt nichts.
+   */
   haengt?: readonly KundenHaenger[];
 }
-
-/** Ab so vielen Tagen „wartet“ wird die Lage gelb bzw. rot; ab so vielen Tagen Verzug rot. */
-export const LAGE_GRENZEN = { wartetGelb: 7, wartetRot: 21, verzugRot: 14 } as const;
 /** So viele Einträge je Liste zeigt die Zusammenfassung (Report Seite 1); die Kunden-Seite zeigt alle. */
 export const KURZ_MAX = 4;
 
@@ -210,9 +211,15 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   const jetztIdx = akt.phase ? phasenReihe.findIndex(p => p.id === akt.phase!.id) : -1;
   const naheIds = jetztIdx >= 0 ? new Set(phasenReihe.slice(jetztIdx, jetztIdx + 2).flatMap(p => teilbaum(p.id, l))) : null;
   // Ein Sammel-Schritt des Imports („Zugeordnete Bausteine“) steht nie als „Als Nächstes“ da — höchstens seine geteilten Bausteine.
-  const naechsteKnoten = reihe.filter(k => ebeneVon(k, l) >= 2 && (!naheIds || naheIds.has(k.id)) && offenSichtbar(k) && !istSammelSchritt(k) && !phaseFertig(k, l) && !teilbaum(k.id, l).some(x => x !== k.id && offenSichtbar(nach.get(x)))).slice(0, 5);
-  const naechstes = naechsteKnoten.map(k => (k.faelligAm ? `${kundenText(k.titel, abstimmungTitel(k))} — bis ${tagText(k.faelligAm)}` : kundenText(k.titel, abstimmungTitel(k))));
-  const verzug = naechsteKnoten.map(k => (k.faelligAm && k.faelligAm < e.heute ? tageZwischen(k.faelligAm, e.heute) ?? 0 : 0));
+  // 15.10. (Abnahme B1): der ERSTE Eintrag ist DERSELBE nächste Punkt wie intern (`naechsterPunkt` — Fall-Kopf, Cockpit, Leistungstreppe), nur in Kunden-
+  // Worten; danach weitere geteilte offene Schritte. Nie eine Phase selbst (Ebene 2 — „Als Nächstes: Diagnose“ neben „Phase 3: Diagnose“).
+  const np = f ? kundenNaechsterPunkt(f, e.freigaben ?? [], e.gesperrt, e.heute) : null;
+  const punkt = np?.punkt ?? null;
+  const anzeigeKnoten = np?.anzeigeId ? nach.get(np.anzeigeId) : undefined;
+  const punktText = np?.text ?? null;
+  const naechsteKnoten = reihe.filter(k => ebeneVon(k, l) >= 3 && k.id !== punkt?.id && k.id !== anzeigeKnoten?.id && (!naheIds || naheIds.has(k.id)) && offenSichtbar(k) && !istSammelSchritt(k) && !phaseFertig(k, l) && !teilbaum(k.id, l).some(x => x !== k.id && offenSichtbar(nach.get(x))));
+  const naechstes = [...(punktText ? [punktText] : []), ...naechsteKnoten.map(k => (k.faelligAm ? `${kundenText(k.titel, abstimmungTitel(k))} — bis ${tagText(k.faelligAm)}` : kundenText(k.titel, abstimmungTitel(k))))]
+    .filter((x, i, a) => a.indexOf(x) === i).slice(0, 5);
 
   // Wartet auf euch: nur geteilte Entscheidungen, keine gesperrten Knoten — mit Frist und (wenn es ein Formular ist) dem Formular zum Ausfüllen.
   const wartendRoh = f ? wartetAufEuch({ ...f, knoten: l.filter(k => !(k.bausteinId && e.gesperrt.has(k.bausteinId))), entscheidungen: (f.entscheidungen ?? []).filter(x => x.geteilt) }, e.heute) : [];
@@ -253,12 +260,12 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
     return { titel: kundenText(v.titel), rhythmus: RHYTHMUS_TEXT[v.rhythmus], ...(tag ? { naechster: tagMitWochentag(tag) } : {}) };
   }).filter((r): r is KundenRitual => !!r);
   const nt = f ? naechsterFallTermin({ fallRituale: (f.rituale ?? []).filter(r => ritNach.has(r.ritualId)), terminTage: e.terminTage ?? [], heute: e.heute, rituale: e.rituale ?? [] }) : null;
-  const naechsterTermin = nt?.titel ? { titel: kundenText(nt.titel), am: tagMitWochentag(nt.tag) } : undefined;
+  const naechsterTermin = nt ? { titel: kundenText(nt.titel ?? 'Gemeinsamer Termin'), am: tagMitWochentag(nt.tag) } : undefined;
 
   const fortschritt = f ? fallFortschritt(f) : null;
   const lage = kundenLage({
     phasen, fortschritt, erledigt: erledigt.length, quickWinsErledigt: quickWins.filter(q => q.erledigt).length, naechstes, wertKonto,
-    wartetTage: wartendRoh.map(w => w.tage ?? 0), verzugTage: verzug, anrede: e.anrede,
+    wartetTage: wartendRoh.map(w => w.tage ?? 0), anrede: e.anrede,
     ...(e.formulareOffen ? { braucht: brauchtAnzahl(wartet, e.formulareOffen) } : {}), ...(e.haengt ? { haengt: e.haengt } : {}),
   });
   return {
@@ -272,15 +279,60 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
 export const AMPEL_KURZ: Record<KundenAmpel, string> = { gruen: 'im Plan', gelb: 'braucht einen Blick', rot: 'braucht ein Gespräch' };
 
 /**
- * Die Lage in Worten (Kunden-Sicht): Ampel nach dem, was hakt — beim Kunden (wartet ≥ 7 Tage gelb, ≥ 21 rot) oder bei uns (Schritte über der Frist:
- * gelb, ≥ 14 Tage rot) — und drei Sätze: wo wir stehen · was passiert ist · was wir brauchen. Ehrlich, ohne Health und ohne interne Gründe.
- * Seit 14.10. (Abnahme A3) mit `haengt`: dieselbe Rechnung wie intern (Cockpit „Was hängt“), nur übersetzt — hängt etwas beim Kunden → „Wir warten auf …“
- * (rot ab 21 Tagen), hängt etwas bei uns (z. B. die Willkommensmail) → „Wir sind dran“ (rot ab 14 Tagen Verzug), sonst „im Plan“. Health zählt nicht
- * (unsere Einschätzung der Beziehung, nie auf der Kunden-Seite). `braucht` = dieselbe Zählung wie die Karte „Das brauchen wir von Ihnen“.
+ * „Als Nächstes“ in Kunden-Worten — derselbe Punkt wie intern (`naechsterPunkt`), nur übersetzt: ein Abstimmungspunkt mit dem Kunden heißt „Abstimmung: <Titel>“,
+ * einer ohne Kunden „Interne Prüfung: <Titel>“, sonst der Titel ohne interne Kürzel/Zusätze; mit Frist „— bis TT.MM.JJJJ“.
+ */
+export function kundenNaechsterText(p: Pick<NaechsterPunkt, 'art' | 'titel' | 'freigabe' | 'faelligAm'>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[]): string {
+  const fg = p.art === 'freigabe' && p.freigabe ? freigaben.find(x => x.id === p.freigabe) : undefined;
+  const titel = fg ? (fg.wer === 'intern' ? `Interne Prüfung: ${kundenText(fg.titel)}` : `Abstimmung: ${kundenText(fg.titel)}`) : kundenText(p.titel);
+  return p.faelligAm ? `${titel} — bis ${tagText(p.faelligAm)}` : titel;
+}
+
+/**
+ * DER nächste Punkt für den Kunden (15.10., Abnahme B1: Fall „Diagnosebericht“, Kunde „Diagnose · Aufbau“, Leistungstreppe „Quartals-Review“) —
+ * derselbe Punkt wie intern (`naechsterPunkt`: Fall-Kopf, Cockpit, Leistungstreppe), nur übersetzt. Ist er selbst nicht geteilt, steht der nächste geteilte
+ * Schritt darüber (unter der Phase) für ihn — derselbe Punkt in der Ebene, die der Kunde sieht. Wartet er auf den Kunden, steht er unter „Das brauchen wir
+ * von Ihnen“ (Text null, nicht doppelt); hängt er an einem gesperrten Baustein ohne geteilten Schritt darüber, nie. Nie eine Phase selbst. Rein.
+ */
+/** Onboarding-Schritte, die den Kunden betreffen — sie dürfen als „Als Nächstes“ auf seiner Seite stehen (neutrale Muster-Titel). */
+const OB_FUER_KUNDE: ReadonlySet<string> = new Set(['willkommen', 'kickoff', 'vereinbarung', 'playbook', 'wertkonto', 'f0']);
+export function kundenNaechsterPunkt(f: Fall, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], gesperrt: ReadonlySet<string>, heute: string): { punkt: NaechsterPunkt; text: string | null; anzeigeId?: string } | null {
+  const l = f.knoten;
+  const nach = new Map(l.map(k => [k.id, k]));
+  const sichtbar = sichtbarMit(gesperrt);
+  const punkt = naechsterPunkt(f, freigaben, heute);
+  if (!punkt) return null;
+  const freigabe = new Map(freigaben.map(x => [x.id, x]));
+  const abstimmungTitel = (k: Pick<FallKnoten, 'freigabe'>) => { const x = k.freigabe ? freigabe.get(k.freigabe) : undefined; return x && x.wer !== 'intern' ? kundenText(x.titel) : undefined; };
+  const punktKnoten = nach.get(punkt.id);
+  // Geteilt ist der Punkt, wenn der Kunde ihn sieht — oder er ist ein Onboarding-Schritt, der den Kunden betrifft (neutrale Muster-Titel: Willkommen,
+  // Kick-off, Vereinbarung, Playbook, Wert-Konto, erster Abstimmungspunkt; Stakeholder-Karte und Entscheidungs-Log bleiben intern). Ein Abstimmungspunkt
+  // ohne Kunden (intern) ist nie geteilt. Ein Baustein, den der Kunde nicht sieht, wird durch seinen geteilten Schritt darüber vertreten. Sonst: kein Text —
+  // der Kunde liest dann den nächsten geteilten Schritt, intern steht „Der Kunde sieht als Nächstes: …“ (Fall-Kopf).
+  const ob = punktKnoten ? obSchluessel(punktKnoten.id) : null;
+  const fg = punkt.art === 'freigabe' && punkt.freigabe ? freigabe.get(punkt.freigabe) : undefined;
+  const geteilt = punkt.art === 'freigabe' ? !!fg && fg.wer !== 'intern'
+    : !!punktKnoten && (sichtbar(punktKnoten) || (!!ob && OB_FUER_KUNDE.has(ob) && !(punktKnoten.bausteinId && gesperrt.has(punktKnoten.bausteinId))));
+  let anzeige: FallKnoten | undefined;
+  if (!geteilt && punkt.art !== 'freigabe' && punktKnoten?.bausteinId) {
+    for (let x = punktKnoten.elternId ? nach.get(punktKnoten.elternId) : undefined; x && ebeneVon(x, l) >= 3; x = x.elternId ? nach.get(x.elternId) : undefined) if (sichtbar(x)) { anzeige = x; break; }
+  }
+  const text = punkt.zustand === 'wartet_kunde' ? null
+    : geteilt ? kundenNaechsterText(punkt, freigaben)
+      : anzeige ? kundenNaechsterText({ art: 'schritt', titel: kundenText(anzeige.titel, abstimmungTitel(anzeige)), ...(anzeige.faelligAm ? { faelligAm: anzeige.faelligAm } : {}) }, freigaben)
+        : null;
+  return { punkt, text, ...(anzeige ? { anzeigeId: anzeige.id } : {}) };
+}
+
+/**
+ * Die Lage in Worten (Kunden-Sicht): Ampel und Titel sind die ÜBERSETZUNG der internen Rechnung (`kundenLageAus` aus den Hängern des Cockpits,
+ * lib/fulfillment/prozesse/darstellung.ts — 15.10., Abnahme B1: keine eigenen Schwellen mehr): wartet beim Kunden (gelb, rot ab 21 Tagen) → „Wir warten auf …“,
+ * nur interne Punkte → „Wir sind dran“, sonst „im Plan“. Health zählt nicht (unsere Einschätzung der Beziehung). Dazu drei Sätze: wo wir stehen · was passiert
+ * ist · was wir brauchen. `braucht` = dieselbe Zählung wie die Karte „Das brauchen wir von Ihnen“.
  */
 export function kundenLage(e: {
   phasen: readonly KundenPhase[]; fortschritt: number | null; erledigt: number; quickWinsErledigt: number; naechstes: readonly string[];
-  wertKonto: readonly KundenWert[]; wartetTage: readonly number[]; verzugTage: readonly number[]; anrede: KundenAnrede;
+  wertKonto: readonly KundenWert[]; wartetTage: readonly number[]; anrede: KundenAnrede;
   braucht?: number; haengt?: readonly KundenHaenger[];
 }): KundenLage {
   const du = e.anrede === 'du';
@@ -288,7 +340,6 @@ export function kundenLage(e: {
   const j = e.phasen.findIndex(p => p.stand === 'aktuell');
   const alle = n > 0 && e.phasen.every(p => p.stand === 'erledigt');
   const wartetMax = e.wartetTage.length ? Math.max(...e.wartetTage) : -1;
-  const verzugMax = e.verzugTage.length ? Math.max(...e.verzugTage) : 0;
   const prozent = e.fortschritt ? ` — insgesamt ${e.fortschritt === 100 ? 'ist der ganze Weg' : `sind ${e.fortschritt} % des Weges`} geschafft` : '';
   const s1 = alle ? `Alle ${n} ${n === 1 ? 'Phase ist' : 'Phasen sind'} abgeschlossen.`
     : j >= 0 ? `Wir sind in Phase ${j + 1} von ${n} („${e.phasen[j].titel}“)${prozent}.`
@@ -302,26 +353,10 @@ export function kundenLage(e: {
   const anzahl = e.braucht ?? e.wartetTage.length;
   const s3 = !anzahl ? (du ? 'Von euch brauchen wir gerade nichts — danke!' : 'Von Ihnen brauchen wir gerade nichts — vielen Dank!')
     : `Von ${wer} brauchen wir ${anzahl === 1 ? 'eine Sache' : `${anzahl} Dinge`}${wartetMax >= 1 ? ` — ${anzahl === 1 ? 'sie' : 'die älteste'} wartet seit ${wartetMax} ${wartetMax === 1 ? 'Tag' : 'Tagen'}` : ''}.`;
-  let ampel: KundenAmpel = 'gruen';
-  let titel = alle ? 'Alles abgeschlossen' : 'Wir liegen im Plan';
-  const nurMitEuch = du ? 'Wir kommen gerade nur mit euch weiter' : 'Wir kommen gerade nur mit Ihnen weiter';
-  const imVerzug = du ? 'Wir sind im Verzug — lasst uns kurz sprechen' : 'Wir sind im Verzug — lassen Sie uns kurz sprechen';
-  const warten = du ? 'Wir warten auf euren Input' : 'Wir warten auf Ihren Input';
-  if (e.haengt) {
-    const beimKunden = e.haengt.filter(h => h.art === 'wartet');
-    const beiUns = e.haengt.filter(h => h.art !== 'wartet');
-    const verzugUns = Math.max(0, ...beiUns.filter(h => h.art === 'faellig' || h.art === 'freigabe').map(h => h.tage ?? 0));
-    if (beimKunden.some(h => h.schwere === 'rot') || wartetMax >= LAGE_GRENZEN.wartetRot) { ampel = 'rot'; titel = nurMitEuch; }
-    else if (verzugUns >= LAGE_GRENZEN.verzugRot) { ampel = 'rot'; titel = imVerzug; }
-    else if (beimKunden.length) { ampel = 'gelb'; titel = warten; }
-    else if (beiUns.length) { ampel = 'gelb'; titel = 'Wir sind dran'; }
-    return { ampel, titel, saetze: [s1, s2, s3] };
-  }
-  if (wartetMax >= LAGE_GRENZEN.wartetRot) { ampel = 'rot'; titel = nurMitEuch; }
-  else if (verzugMax >= LAGE_GRENZEN.verzugRot) { ampel = 'rot'; titel = imVerzug; }
-  else if (wartetMax >= LAGE_GRENZEN.wartetGelb) { ampel = 'gelb'; titel = warten; }
-  else if (verzugMax > 0) { ampel = 'gelb'; titel = 'Leicht im Verzug'; }
-  return { ampel, titel, saetze: [s1, s2, s3] };
+  // Ein wartender Punkt, den der Kunde nicht in seiner Liste sieht, ist für ihn kein „Wir warten auf …“ (sonst stünde daneben „brauchen gerade nichts“).
+  const haengt = (e.haengt ?? []).map(h => (h.art === 'wartet' && !anzahl ? { ...h, kundeSieht: false } : h));
+  const k = kundenLageAus(haengt, alle);
+  return { ampel: k.ampel, titel: KUNDEN_LAGE_TEXT[k.art][du ? 'du' : 'sie'], saetze: [s1, s2, s3] };
 }
 
 // ── Zeichen-Modelle (dieselben für Oberfläche und PDF) ───────────────────────────────────────────────────────────────────────────────

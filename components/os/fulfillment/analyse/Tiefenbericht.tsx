@@ -12,6 +12,7 @@ import { WEG } from '@/lib/wege';
 import { euroText } from '@/lib/ki/kosten';
 import { Karte, Ueberschrift, Knopf, Hinweis, Leer, Feldzeile, eingabe, useRueckfrage } from '../../ui';
 import { senden, fehlerVon, anfrageId, type AnalyseApi } from './daten';
+import { useOhneKuerzel } from '../prozesse/daten';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
 interface Leseteil { status: 'laeuft' | 'fertig' | 'fehler' | 'abgelaufen'; frage: string; gestartet: string; text?: string; suchvorschlaegeHtml?: string; quellen?: { url: string; titel?: string }[]; suchbegriffe?: string[]; fehler?: string; restTage?: number }
@@ -22,6 +23,7 @@ export function Tiefenbericht({ mandatId, api, rueck }: { mandatId: string; api:
   const d = api.dossier!.dossier!;
   const tb = lage?.agenten.find(a => a.id === 'tb');
   const [frage, setFrage] = useState(lage?.tiefenbericht.frage ?? api.dossier?.tiefenberichtFrage ?? '');
+  const kuerzel = useOhneKuerzel(mandatId);
   const [meldung, setMeldung] = useState<string | null>(null);
   const [leseteil, setLeseteil] = useState<Leseteil | null>(null);
   const eigen = !!d.leseteil?.eigen;
@@ -50,7 +52,7 @@ export function Tiefenbericht({ mandatId, api, rueck }: { mandatId: string; api:
         {d.leseteil && !eigen && <Hinweis art="info">Es gibt einen Tiefenbericht (gestartet {d.leseteil.gestartetAm.slice(0, 10)}) — nur für die auslösende Person.</Hinweis>}
         <form onSubmit={e => { e.preventDefault(); if (tb) void starten(tb.schaetzung.cent); }} style={{ display: 'grid', gap: 8 }}>
           <Feldzeile label="Frage (höchstens 2.000 Zeichen)"><textarea style={{ ...eingabe, minHeight: 96 }} maxLength={2000} value={frage} onChange={e => setFrage(e.target.value)} required /></Feldzeile>
-          <div style={klein}>{tb ? `${tb.schaetzung.text} je Bericht.` : ''} {tb?.gruende.length ? tb.gruende.join(' ') : ''}</div>
+          <div style={klein}>{tb ? `${tb.schaetzung.text} je Bericht.` : ''} {tb?.gruende.length ? kuerzel(tb.gruende.join(' ')) : ''}</div>
           <div><Knopf typ="submit" aus={!tb || tb.zustand !== 'bereit'}>Tiefenbericht starten</Knopf></div>
         </form>
       </Karte>

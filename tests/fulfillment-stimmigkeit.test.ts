@@ -5,8 +5,12 @@
 // Routen, eigener Datenordner) und vergleicht für BEIDE Demo-Fälle: Lage, Landkarte, Cockpit, Fall-Kopf, Kunden-Ansicht und Report liefern dieselbe Phase,
 // denselben Fortschritt, dasselbe „Als Nächstes“ (nie ein Sammel-Schritt) und denselben nächsten Termin; die Kunden-Ansicht sagt nie zugleich „nichts
 // nötig“ und „offen“, und ihre Ampel folgt dem, was intern hängt.
+// 15.10. (zweite Abnahme B1/B3): die Kunden-Lage ist NUR die Übersetzung der internen Rechnung (Health zählt nicht, interne Punkte = „Wir sind dran“,
+// intern steht „Der Kunde sieht: …“ mit Grund); „Als Nächstes“ ist derselbe Punkt in Fall, Kunden-Seite, Report UND Leistungstreppe; „Was hängt“ zählt
+// in Lage und Fall gleich; Termine mit Bezug zum Mandat (auch ohne Ritual) stehen im Takt, machen „Kick-off terminiert“ wahr und sind der nächste Termin.
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { rmSync } from 'node:fs';
+import { rmSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 
 const { wurzel } = await vi.hoisted(async () => {
   const fs = await import('node:fs');
@@ -25,7 +29,9 @@ const { wurzel } = await vi.hoisted(async () => {
 
 import { localDay, tagePlus } from '@/lib/zeit';
 import { fallReise, naechsterPunkt, istSammelSchritt } from '@/lib/fulfillment/prozesse/reise';
-import { lageVerteilung, kundenAmpel } from '@/lib/fulfillment/prozesse/darstellung';
+import { lageVerteilung, kundenAmpel, kundenLageAus, KUNDEN_LAGE_TEXT } from '@/lib/fulfillment/prozesse/darstellung';
+import { allesWasHaengt } from '@/lib/fulfillment/prozesse/cockpit';
+import { taktLeiste, montagVon } from '@/lib/fulfillment/prozesse/ansichten';
 import { reportAchse } from '@/lib/fulfillment/prozesse/ansichten';
 import { fallStartTag } from '@/lib/fulfillment/prozesse/fall';
 import { brauchtAnzahl, formularOffen, kundenText } from '@/lib/fulfillment/kunde/bild';
@@ -48,19 +54,25 @@ const mitWochentag = (t: string) => `${['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'
 
 let cockpit: CockpitZeile[] = [];
 let uebersicht: { faelle: Record<string, FallKurz>; zaehler: Record<string, Record<string, string[]>>; prozesse: ProzessVorlage[]; kennzahlen: { id: string; wert: number | null; n: number }[] } | null = null;
-const faelle: Record<string, { fall: Fall; freigaben: Freigabepunkt[]; termine: Record<string, string | null>; reports: { am: string }[] }> = {};
+const faelle: Record<string, { fall: Fall; freigaben: Freigabepunkt[]; termine: Record<string, string | null>; reports: { am: string }[]; kalender: { uid: string; tag: string; titel?: string; ritualId?: string }[]; onboarding: { schritte: { schluessel: string; erfuellt: boolean; text: string }[] }; rituale: { id: string; titel: string; rhythmus: string; dauerMin: number }[] }> = {};
+let cockpitHaengt: { mandatId: string }[] = [];
+let treppe: { mandatId: string; fall: { ampel: string; schritt?: string } | null }[] = [];
 const sichten: Record<string, KundenSicht> = {};
 const reports: Record<string, Awaited<ReturnType<typeof import('@/lib/fulfillment/kunde/server')['reportZusatzFuer']>>> = {};
 
 beforeAll(async () => {
   const server = await import('@/lib/demo/server');
   await server.demoSaenInLeerenOrdner({ passwort: 'pruef-passwort-demo', heute: HEUTE });
-  cockpit = (await lese('fulfillment/cockpit')).zeilen as CockpitZeile[];
+  const c = await lese('fulfillment/cockpit');
+  cockpit = c.zeilen as CockpitZeile[];
+  cockpitHaengt = c.haengt as { mandatId: string }[];
+  treppe = (await lese('crm/treppe')).kunden as typeof treppe;
   uebersicht = await lese('fulfillment') as never;
   const { reportZusatzFuer } = await import('@/lib/fulfillment/kunde/server');
   for (const m of MANDATE) {
     const f = await lese('fulfillment/fall', `?m=${m}`);
-    faelle[m] = { fall: f.fall as Fall, freigaben: (f.vorlage as { freigaben: Freigabepunkt[] }).freigaben, termine: f.termine as Record<string, string | null>, reports: f.reports as { am: string }[] };
+    faelle[m] = { fall: f.fall as Fall, freigaben: (f.vorlage as { freigaben: Freigabepunkt[] }).freigaben, termine: f.termine as Record<string, string | null>, reports: f.reports as { am: string }[],
+      kalender: (f.kalender ?? []) as typeof faelle[string]['kalender'], onboarding: f.onboarding as typeof faelle[string]['onboarding'], rituale: f.rituale as typeof faelle[string]['rituale'] };
     sichten[m] = (await lese('fulfillment/kunde/vorschau', `?m=${m}`)).sicht as KundenSicht;
     reports[m] = await reportZusatzFuer(m, HEUTE);
   }
@@ -172,6 +184,108 @@ describe('Stimmigkeit der Demo-Fälle', () => {
     expect(nr).toEqual(Array.from({ length: nr.length }, (_, i) => i + 1));
     expect(JSON.stringify(fallReise(fall, freigaben, HEUTE).phasen.map(p => p.titel))).not.toMatch(/\(nur /);
     const pakete = uebersicht!.prozesse.filter(p => p.art === 'paket').map(p => p.titel).sort();
-    expect(pakete).toEqual(['Cockpit-Einführung', 'Strategie-Begleitung']);
+    // 15.10. (Abnahme B4): das Paket heißt, was es liefert — der Kunde sieht nur, was zu seinem Auftrag passt.
+    expect(pakete).toEqual(['Cockpit-Einführung', 'Vertriebsaufbau']);
+    expect(JSON.stringify(sichten['m-demo-nordwerk'])).not.toContain('Strategie-Begleitung');
+  });
+});
+
+describe('Zweite Abnahme 15.10.: EINE Lage-Rechnung, EIN nächster Schritt, EIN „Was hängt“, Termine des Kunden', () => {
+  it('Ampel: der Kunde sieht die Übersetzung der internen Rechnung — ohne Health, interne Punkte „Wir sind dran“; intern steht „Der Kunde sieht“ mit Grund', () => {
+    for (const m of MANDATE) {
+      const z = cockpit.find(x => x.mandatId === m)!;
+      const s = sichten[m];
+      const anrede = s.anrede === 'du' ? 'du' : 'sie';
+      // Dieselbe Regel (`kundenLageAus`) aus denselben Hängern — der Kunde liest nur die Übersetzung.
+      const erwartet = kundenLageAus(z.haengt);
+      expect(s.lage!.ampel, m).toBe(erwartet.ampel);
+      expect(s.lage!.titel, m).toBe(KUNDEN_LAGE_TEXT[erwartet.art][anrede]);
+      expect(reports[m]!.lage, m).toMatchObject({ ampel: s.lage!.ampel, titel: s.lage!.titel });
+      // Intern: „Der Kunde sieht“ = dieselbe Ampel; weicht sie von der internen ab, steht der Grund dabei.
+      expect(z.kundeSieht, m).toMatchObject({ ampel: erwartet.ampel, art: erwartet.art });
+      if (kundenAmpel(z) !== erwartet.ampel) expect(z.kundeSieht!.grund, m).toBeTruthy();
+      // Health zählt beim Kunden nie: ohne Hänger ist der Kunde grün, egal wie die Health steht.
+      if (!z.haengt.length) expect(s.lage!.ampel, m).toBe('gruen');
+      // Ein Punkt ohne Kundenbezug macht den Kunden nie rot.
+      if (z.haengt.every(h => h.art !== 'wartet')) expect(s.lage!.ampel, m).not.toBe('rot');
+      // Die Leistungstreppe übernimmt die Ampel des Falls.
+      expect(treppe.find(k => k.mandatId === m)!.fall?.ampel, m).toBe(kundenAmpel(z));
+    }
+    // Lumen: intern rot (Willkommensmail überfällig), der Kunde liest „Wir sind dran“ — mit Grund intern.
+    const lumen = cockpit.find(z => z.mandatId === 'm-demo-lumen')!;
+    expect(kundenAmpel(lumen)).toBe('rot');
+    expect(lumen.kundeSieht).toMatchObject({ ampel: 'gelb', titel: 'Wir sind dran' });
+    expect(lumen.kundeSieht!.grund).toMatch(/interne Punkte/);
+  });
+
+  it('„Als Nächstes“: derselbe Punkt in Fall-Kopf, Cockpit, Kunden-Seite, Report und Leistungstreppe — nie die aktuelle Phase selbst', () => {
+    for (const m of MANDATE) {
+      const { fall, freigaben } = faelle[m];
+      const p = naechsterPunkt(fall, freigaben, HEUTE)!;
+      const reise = fallReise(fall, freigaben, HEUTE);
+      expect(p.id, m).not.toBe(reise.phasen[reise.jetzt]?.id);
+      expect(cockpit.find(z => z.mandatId === m)!.schritt, m).toBe(p.titel);
+      expect(treppe.find(k => k.mandatId === m)!.fall?.schritt, m).toBe(p.titel);
+      const s = sichten[m];
+      const ohneFrist = (t: string | undefined) => (t ?? '').replace(/ — bis \d{2}\.\d{2}\.\d{4}$/, '');
+      if (p.zustand === 'wartet_kunde') expect(s.wartet.map(w => w.titel), m).toContain(kundenText(p.titel));
+      else expect(ohneFrist(s.naechstes[0]), m).toBe(kundenText(p.titel));
+      expect(reports[m]!.naechstes?.[0], m).toBe(s.naechstes[0]);
+      // Keine Phase steht unter „Als Nächstes“.
+      for (const ph of reise.phasen) expect(s.naechstes.map(ohneFrist), m).not.toContain(kundenText(ph.titel));
+    }
+    expect(sichten['m-demo-nordwerk'].naechstes[0]).toMatch(/^Diagnosebericht/);
+    expect(sichten['m-demo-lumen'].naechstes[0]).toMatch(/^Willkommen in 24 Stunden/);
+  });
+
+  it('„Was hängt“: die Lage (alle Fälle) und der Fall-Kopf (je Fall) zählen aus derselben Liste', () => {
+    expect(cockpitHaengt.length).toBe(allesWasHaengt(cockpit).length);
+    for (const m of MANDATE) expect(cockpitHaengt.filter(h => h.mandatId === m).length, m).toBe(cockpit.find(z => z.mandatId === m)!.haengt.length);
+    // Der Fall-Kopf liest die Hänger aus dem Cockpit (keine eigene Zählung mehr) — „wartet“ unter sieben Tagen ist „im Rahmen“, kein Hänger.
+    const kopf = readFileSync(path.join(process.cwd(), 'components/os/fulfillment/reise/FallKopf.tsx'), 'utf8');
+    expect(kopf).toContain('zeile?.haengt');
+    expect(kopf).not.toContain('wartet auf den Kunden`, unter');
+  });
+
+  it('Termine des Kunden: „Cockpit-Abstimmung Lumen“ und „Wochen-Check Nordwerk“ stehen im Takt (diese Woche), sind der nächste Termin und machen „Kick-off terminiert“ wahr', () => {
+    const montag = montagVon(HEUTE);
+    // Lumen: der Termin hängt an keinem Ritual — er steht unter „Weitere Termine“, ist der nächste Termin, und das Kick-off gilt als terminiert.
+    const lu = faelle['m-demo-lumen'];
+    expect(lu.kalender.some(t => t.titel === 'Cockpit-Abstimmung Lumen' && !t.ritualId)).toBe(true);
+    const lt = taktLeiste({ rituale: lu.rituale as never, fallRituale: lu.fall.rituale, termine: lu.termine, heute: HEUTE, kalender: lu.kalender });
+    expect(lt.weitere.some(t => t.titel === 'Cockpit-Abstimmung Lumen' && t.tag >= montag && t.tag <= tagePlus(montag, 6))).toBe(true);
+    expect(lt.naechster?.titel).toBe('Cockpit-Abstimmung Lumen');
+    expect(lu.onboarding.schritte.find(x => x.schluessel === 'kickoff')).toMatchObject({ erfuellt: true });
+    expect(sichten['m-demo-lumen'].naechsterTermin?.titel).toBe('Cockpit-Abstimmung Lumen');
+    expect(cockpit.find(z => z.mandatId === 'm-demo-lumen')!.naechsterRitual).toBe(lt.naechster!.tag);
+    // Nordwerk: der Wochen-Check dieser Woche (Dienstag) steht als echter Termin in der Zeile „Wochen-Check“ — auch wenn er schon gelaufen ist.
+    const nw = faelle['m-demo-nordwerk'];
+    const nt = taktLeiste({ rituale: nw.rituale as never, fallRituale: nw.fall.rituale, termine: nw.termine, heute: HEUTE, kalender: nw.kalender });
+    const wc = nt.zeilen.find(z => z.titel === 'Wochen-Check')!;
+    expect(wc.tage.some(t => t.tag === tagePlus(montag, 1) && !t.erwartet)).toBe(true);
+    // Die letzte Mitschrift des Wochen-Checks steht am Tag eines Wochen-Checks.
+    const tageCheck = nw.kalender.filter(t => t.ritualId === wc.ritualId).map(t => t.tag);
+    const mitschrift = [...nw.fall.mitschriften].filter(x => x.anlass === 'Wochen-Check').sort((a, b) => (a.am < b.am ? 1 : -1))[0];
+    if (tageCheck.some(t => t <= HEUTE)) expect(tageCheck).toContain(mitschrift.am);
+  });
+
+  it('Demo Nordwerk stimmig: Wert-Konto im Kick-off festgelegt, Quick Wins im 30-Tage-Fenster, neun verschiedene Playbook-Antworten, Report ohne spätere Daten', async () => {
+    const { fall } = faelle['m-demo-nordwerk'];
+    const start = fallStartTag(fall);
+    for (const e of Object.values(fall.wertKonto)) expect(e.festgelegtAm! <= e.messungen.map(x => x.am).sort()[0]).toBe(true);
+    const k = (id: string) => uebersicht!.kennzahlen.find(x => x.id === id)!;
+    expect(k('ff_wertkonto').wert).toBe(100);
+    for (const q of fall.quickWins) {
+      expect(q.bis <= tagePlus(start, 30), q.text).toBe(true);
+      if (q.erledigtAm) expect(q.erledigtAm.slice(0, 10) <= tagePlus(start, 30), q.text).toBe(true);
+    }
+    const formulare = (await lese('fulfillment/kunde', '?m=m-demo-nordwerk')).formulare as { antworten?: Record<string, string> }[] | undefined;
+    const antworten = Object.values(formulare?.[0]?.antworten ?? {});
+    expect(antworten.length).toBe(9);
+    expect(new Set(antworten).size).toBe(9);
+    // Ein Report „Stand vor 14 Tagen“ kennt den Puls von heute nicht.
+    const { reportZusatzFuer } = await import('@/lib/fulfillment/kunde/server');
+    const alt = await reportZusatzFuer('m-demo-nordwerk', tagePlus(HEUTE, -14));
+    if (alt?.puls) expect(alt.puls.am <= tagePlus(HEUTE, -14)).toBe(true);
   });
 });

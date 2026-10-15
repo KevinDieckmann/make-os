@@ -21,28 +21,29 @@ import { cockpitZeile, type CockpitZeile, type HaengerArt } from './cockpit';
 import { ffIndexZeile, type FfIndexDaten } from './kennzahlen';
 import { naechsterFallTermin } from './rituale';
 import { fallStelle } from './reise';
+import { kundenAmpel, type Ampel } from './darstellung';
 import { nachsorgeFaellig, markeNachsorge, NACHSORGE_TEXT, type NachsorgeArt } from './wirkung';
 import { vorlageFuerProdukt } from './vorlagen-anwenden';
 import { fnv } from './pruefen';
 
 /** Der Fall eines Mandats, wie er wirkt (Onboarding-Schritte abgeleitet) — null, wenn es keinen gibt. Nur lesend. */
 export async function fallLesen(mandatId: string): Promise<Fall | null> {
-  const { crm, vorlagen, faelle, kunde } = await fallUmfeld([mandatId]);
+  const { crm, vorlagen, faelle, kunde, termine } = await fallUmfeld([mandatId]);
   const f = faelle.faelle[mandatId];
   if (!f) return null;
   const m = crm.mandate.find(x => x.id === mandatId);
-  return fallWirksam(f, ableitungFuer(f, m, crm, vorlagen, kunde[mandatId], new Date().toISOString()));
+  return fallWirksam(f, ableitungFuer(f, m, crm, vorlagen, kunde[mandatId], new Date().toISOString(), termine[mandatId]));
 }
 
 /** Kurzform je Fall (Schlüssel = Mandat-Kennung). Ohne Angabe: alle Fälle. */
 export async function faelleKurz(mandatIds?: readonly string[]): Promise<Record<string, FallKurz>> {
-  const { crm, vorlagen, faelle, kunde } = await fallUmfeld(mandatIds);
+  const { crm, vorlagen, faelle, kunde, termine } = await fallUmfeld(mandatIds);
   const jetzt = new Date().toISOString(), heute = localDay();
   const raus: Record<string, FallKurz> = {};
   for (const f of Object.values(faelle.faelle)) {
     if (mandatIds && !mandatIds.includes(f.mandatId)) continue;
     const m = crm.mandate.find(x => x.id === f.mandatId);
-    const abl = ableitungFuer(f, m, crm, vorlagen, kunde[f.mandatId], jetzt);
+    const abl = ableitungFuer(f, m, crm, vorlagen, kunde[f.mandatId], jetzt, termine[f.mandatId]);
     const w = fallWirksam(f, abl);
     const st = onboardingStand(f, abl);
     // Phase und „Als Nächstes“ aus der EINEN Rechnung (`fallStelle`) — wie Fall-Kopf, Cockpit, Landkarte und Kunden-Seite (14.10.).
@@ -66,27 +67,27 @@ async function sicher<T>(f: () => Promise<T>, ersatz: T): Promise<T> { try { ret
  * Kunden-Seite und den Report: dieselbe Rechnung „was hängt“ wie intern, `haengerFuer`).
  */
 export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOString(), nur?: string): Promise<{ zeilen: (CockpitZeile & { gesellschaft: string })[]; vorlagen: VorlagenDatei }> {
-  const { crm, vorlagen, faelle, kunde } = await fallUmfeld(nur ? [nur] : undefined);
+  const { crm, vorlagen, faelle, kunde, termine: kalender } = await fallUmfeld(nur ? [nur] : undefined);
   const laufend = Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen' && (!nur || f.mandatId === nur));
   if (!laufend.length) return { zeilen: [], vorlagen };
   const ids = laufend.map(f => f.mandatId);
   const { istBusinessGesellschaft } = await import('@/lib/einheiten');
-  const [treppe, dossiers, bezuege] = await Promise.all([
+  const [treppe, dossiers] = await Promise.all([
     sicher(async () => (await import('@/lib/crm/treppe-server')).ladeTreppe(heute), null),
     sicher(async () => (await import('../analyse/server')).dossierKurzFuer(ids), {} as Record<string, DossierKurz>),
-    sicher(async () => (await import('@/lib/kalender/bezug-server')).ladeBezuege(), { bezuege: {} }),
   ]);
-  const { uidVonSchluessel } = await import('@/lib/kalender/bezug');
-  const terminTage = Object.entries(bezuege.bezuege).filter(([, b]) => b.mandatId && b.tag).map(([k, b]) => ({ uid: uidVonSchluessel(k), tag: b.tag!, mandatId: b.mandatId! }));
-  // Der nächste Termin je Fall — EINE Regel (`naechsterFallTermin`), auch für die Health „Termine“ der Leistungstreppe (14.10., Abnahme B8).
-  const termine = Object.fromEntries(laufend.map(f => [f.mandatId, naechsterFallTermin({ fallRituale: f.rituale, terminTage: terminTage.filter(t => t.mandatId === f.mandatId), heute })?.tag]).filter((x): x is [string, string] => !!x[1]));
+  // Der nächste Termin je Fall — EINE Regel (`naechsterFallTermin`) über die EINE Lesestelle der Termine (`fallTermine`, 15.10., Abnahme B3), auch für die
+  // Health „Termine“ der Leistungstreppe (14.10., Abnahme B8).
+  const termine = Object.fromEntries(laufend.map(f => [f.mandatId, naechsterFallTermin({ fallRituale: f.rituale, terminTage: kalender[f.mandatId] ?? [], heute })?.tag]).filter((x): x is [string, string] => !!x[1]));
   const { kundenZeilen } = await import('@/lib/crm/treppe');
   const kz = treppe ? kundenZeilen({ datei: treppe, crm, heute, termine }) : [];
+  const { kundenGesperrt } = await import('./bausteine');
+  const gesperrt = kundenGesperrt(vorlagen.bausteine, vorlagen);
   const zeilen: (CockpitZeile & { gesellschaft: string })[] = [];
   for (const f of laufend) {
     const m = crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
     if (!m || !istBusinessGesellschaft(m.gesellschaft)) continue;
-    const abl = ableitungFuer(f, m, crm, vorlagen, kunde[m.id], jetzt);
+    const abl = ableitungFuer(f, m, crm, vorlagen, kunde[m.id], jetzt, kalender[m.id]);
     const w = fallWirksam(f, abl);
     const z = kz.find(x => x.mandatId === m.id);
     const naechster = termine[m.id];
@@ -96,7 +97,7 @@ export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOS
         fall: w, kunde: m.kunde, titel: m.titel, paket: v?.titel, ...(v ? { freigaben: v.freigaben } : {}),
         onboarding: onboardingStand(f, abl), ...(kunde[m.id] ? { kunde2: kunde[m.id] } : {}), ...(dossiers[m.id] ? { dossier: dossiers[m.id] } : {}),
         health: z?.ampel.gesamt ?? null, report: { faellig: z?.report.faellig ?? false, ...(z?.report.gesendetAm || z?.report.letzter ? { letzter: z?.report.gesendetAm ?? z?.report.letzter } : {}) },
-        ...(naechster ? { naechsterRitual: naechster } : {}), pulsSchwelle: vorlagen.einstellungen.pulsSchwelle, heute,
+        ...(naechster ? { naechsterRitual: naechster } : {}), pulsSchwelle: vorlagen.einstellungen.pulsSchwelle, heute, gesperrt,
       }),
       gesellschaft: m.gesellschaft,
     });
@@ -108,25 +109,39 @@ export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOS
  * Was an EINEM Fall hängt — dieselbe Rechnung wie das Cockpit (`wasHaengt`), für die Kunden-Seite und den Report: dort nur in Worten übersetzt
  * (lib/fulfillment/kunde/bild.ts `kundenLage`), nie die Texte selbst. Je Hänger Art, Schwere und wie viele Tage er schon hängt. Fehler → null.
  */
-export async function haengerFuer(mandatId: string, heute = localDay()): Promise<{ art: HaengerArt; schwere: 'rot' | 'gelb'; tage?: number }[] | null> {
+export async function haengerFuer(mandatId: string, heute = localDay()): Promise<{ art: HaengerArt; schwere: 'rot' | 'gelb'; tage?: number; kundeSieht?: boolean }[] | null> {
   try {
     const { tageZwischen } = await import('../regeln');
     const { zeilen } = await cockpitDaten(heute, new Date().toISOString(), mandatId);
     const z = zeilen.find(x => x.mandatId === mandatId);
     if (!z) return null;
-    return z.haengt.map(h => { const t = h.seit ? tageZwischen(h.seit, heute) : undefined; return { art: h.art, schwere: h.schwere, ...(t !== undefined ? { tage: t } : {}) }; });
+    return z.haengt.map(h => { const t = h.seit ? tageZwischen(h.seit, heute) : undefined; return { art: h.art, schwere: h.schwere, ...(t !== undefined ? { tage: t } : {}), ...(h.kundeSieht !== undefined ? { kundeSieht: h.kundeSieht } : {}) }; });
   } catch { return null; }
+}
+
+/** Was die Leistungstreppe je Mandat aus dem Fall übernimmt (15.10., Abnahme B1) — Ampel, was der Kunde sieht, Phase, nächster Schritt. */
+export interface FallFuerTreppe { ampel: Ampel; kundeSieht?: CockpitZeile['kundeSieht']; phase?: string; schritt?: string }
+/**
+ * Für die Leistungstreppe: je laufendem Fall die Ampel (Hänger + Health — dieselbe wie Fall-Kopf und Landkarte), was der Kunde sieht, und der nächste
+ * Schritt (`naechsterPunkt` — derselbe wie Fall-Kopf, Kunden-Seite und Report). Ohne Fall fehlt das Mandat. Fehler → {}.
+ */
+export async function fallFuerTreppe(heute = localDay()): Promise<Record<string, FallFuerTreppe>> {
+  try {
+    const { zeilen } = await cockpitDaten(heute);
+    return Object.fromEntries(zeilen.map(z => [z.mandatId, { ampel: kundenAmpel(z), ...(z.kundeSieht ? { kundeSieht: z.kundeSieht } : {}), ...(z.phase ? { phase: z.phase } : {}), ...(z.schritt ? { schritt: z.schritt } : {}) }]));
+  } catch { return {}; }
 }
 
 /** Der nächste Termin je laufendem Fall (Mandat → Tag) — EINE Regel `naechsterFallTermin`; für die Health „Termine“ der Leistungstreppe. Fehler → {}. */
 export async function naechsteFallTermine(heute = localDay()): Promise<Record<string, string>> {
   try {
     const faelle = await fulfillmentLesen('faelle');
-    const [{ ladeBezuege }, { uidVonSchluessel }] = await Promise.all([import('@/lib/kalender/bezug-server'), import('@/lib/kalender/bezug')]);
-    const b = await ladeBezuege();
-    const tage = Object.entries(b.bezuege).filter(([, x]) => x.mandatId && x.tag).map(([k, x]) => ({ uid: uidVonSchluessel(k), tag: x.tag!, mandatId: x.mandatId! }));
-    return Object.fromEntries(Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen')
-      .map(f => [f.mandatId, naechsterFallTermin({ fallRituale: f.rituale, terminTage: tage.filter(t => t.mandatId === f.mandatId), heute })?.tag])
+    const laufend = Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen');
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const crm = await ladeCrm();
+    const mandate = laufend.map(f => crm.mandate.find(m => m.id === f.mandatId)).filter((m): m is Mandat => !!m).map(m => ({ id: m.id, firmaId: m.firmaId ?? null }));
+    const kalender = await (await import('./termine-server')).fallTermine(mandate, heute);
+    return Object.fromEntries(laufend.map(f => [f.mandatId, naechsterFallTermin({ fallRituale: f.rituale, terminTage: kalender[f.mandatId] ?? [], heute })?.tag])
       .filter((x): x is [string, string] => !!x[1]));
   } catch { return {}; }
 }

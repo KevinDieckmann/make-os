@@ -23,9 +23,12 @@ export interface ReiseFreigabe { id: string; titel: string; wer: Zustaendig; geg
 export interface ReisePhase {
   /** Titel ohne internen Klammer-Zusatz (`zusatz` = die Erklärung, z. B. „nur Prozess“). */
   id: string; titel: string; zusatz?: string; nr: number; zustand: PhasenZustand;
-  /** Erledigte und zählende Schritte (Blätter unter der Phase; ohne Blätter die Phase selbst). */
+  /**
+   * Erledigte und zählende Schritte — dieselben Zeilen, die der Ablauf zeigt (`phaseGruppen`: ein Schritt mit seinen Bausteinen ist EINE Zeile;
+   * ohne Kinder die Phase selbst). 15.10. (Abnahme C16): vorher zählten die Blätter („0 von 5“ über vier sichtbaren Einträgen).
+   */
   erledigt: number; gesamt: number;
-  /** 0 … 1 — ohne zählende Schritte 1 bei fertiger, sonst 0. */
+  /** 0 … 1 — Anteil erledigter Zeilen; ohne zählende Zeilen 1 bei fertiger, sonst 0. */
   anteil: number;
   faelligAm?: string; ueberfaellig: boolean; wartet: number; entfaellt: boolean;
   freigabe?: ReiseFreigabe;
@@ -35,11 +38,6 @@ export interface Reise { phasen: ReisePhase[]; /** Index der Phase „jetzt“ �
 /** Wer eine Freigabe gibt — in Worten. */
 export const FREIGABE_WER: Record<Zustaendig, string> = { kunde: 'der Kunde bestätigt', intern: 'ihr bestätigt intern', beide: 'Kunde und ihr bestätigen gemeinsam' };
 
-const blaetter = (id: string, l: readonly FallKnoten[]) => {
-  const nach = new Map(l.map(k => [k.id, k]));
-  return teilbaum(id, l).filter(x => x !== id && kinderVon(x, l).length === 0).map(x => nach.get(x)!).filter(Boolean);
-};
-
 /** Die Reise eines Falls: Phasen in Rang-Reihenfolge mit Zustand, Anteil, Freigabe-Punkt; `jetzt` = die Phase von `aktuellerKnoten`. */
 export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], heute: string): Reise {
   const l = fall.knoten;
@@ -48,9 +46,9 @@ export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'>, freigaben: r
   const aktuell = aktuellerKnoten(fall).phase?.id;
   const nummern = abstimmungsNummern(l);
   const raus: ReisePhase[] = phasen.map((p, i) => {
-    const b = blaetter(p.id, l);
-    const zaehlend = (b.length ? b : [p]).filter(k => k.status !== 'entfaellt');
-    const erledigt = zaehlend.filter(k => k.status === 'erledigt').length;
+    const zeilen = phaseGruppen(fall, p.id, heute).flatMap(g => g.zeilen);
+    const zaehlend = zeilen.filter(z => z.zustand !== 'entfaellt');
+    const erledigt = zaehlend.filter(z => z.zustand === 'erledigt').length;
     const istFertig = phaseFertig(p, l);
     const darin = teilbaum(p.id, l).map(id => l.find(k => k.id === id)!).filter(Boolean);
     const fg = p.freigabe ? freigaben.find(f => f.id === p.freigabe) : undefined;
@@ -208,7 +206,8 @@ export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status
   if (durch?.freigabe) return { art: 'freigabe', id: durch.id, titel: fgTitel(durch.freigabe), freigabe: durch.freigabe, ...ort(durch) };
   const p = aktuellerKnoten(fall).phase;
   if (!p) return null;
-  const zeilen = offeneSchritte(fall, p.id, heute);
+  // Nie die Phase selbst (15.10., Abnahme B1: „Als Nächstes: Diagnose“ neben „Phase 3: Diagnose“) — eine Phase ohne Schritte hat keinen eigenen nächsten Schritt.
+  const zeilen = offeneSchritte(fall, p.id, heute).filter(z => z.knoten.id !== p.id);
   const s = zeilen.find(z => !(z.knoten.freigabe && !fall.freigaben[z.knoten.freigabe]));
   if (s) return { art: 'schritt', id: s.knoten.id, titel: anzeigeTitel(s.knoten.titel, nummern), ...ort(s.knoten), zustand: s.zustand, ueberfaellig: s.ueberfaellig };
   const fgKnoten = p.freigabe && !fall.freigaben[p.freigabe] ? p : zeilen.map(z => z.knoten).find(k => k.freigabe && !fall.freigaben[k.freigabe]);

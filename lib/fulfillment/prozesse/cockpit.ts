@@ -8,12 +8,19 @@ import type { DossierKurz, Fall, Freigabepunkt, KundeKurz } from '../typen';
 import { tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
 import type { OnboardingStand } from './onboarding';
 import { fallReise, fallStelle, reiseKurz, type ReiseKurzPhase } from './reise';
-import { abstimmungName, abstimmungsNummern, anzeigeTitel } from './darstellung';
+import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type Ampel, type KundenLageArt } from './darstellung';
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
 
 export type HaengerArt = 'willkommen' | 'freigabe' | 'wartet' | 'puls' | 'report' | 'art14' | 'faellig';
-export interface Haenger { art: HaengerArt; mandatId: string; kunde: string; text: string; schwere: 'rot' | 'gelb'; href: string; seit?: string }
+export interface Haenger {
+  art: HaengerArt; mandatId: string; kunde: string; text: string; schwere: 'rot' | 'gelb'; href: string; seit?: string;
+  /**
+   * Nur bei „wartet“: sieht der Kunde den wartenden Punkt selbst (geteilte Entscheidung bzw. Knoten an einem freigegebenen Baustein — dieselbe Regel wie
+   * seine Liste „Das brauchen wir von Ihnen“)? Dann hat der Hänger Kundenbezug (`kundenLageAus`, 15.10., Abnahme B1).
+   */
+  kundeSieht?: boolean;
+}
 export interface CockpitZeile {
   mandatId: string; kunde: string; titel: string; paket?: string; status: Fall['status'];
   /** Phase und „Als Nächstes“ aus `fallStelle` (lib/fulfillment/prozesse/reise.ts) — dieselbe Rechnung wie Fall-Kopf, Landkarte, Kunden-Seite. */
@@ -30,6 +37,8 @@ export interface CockpitZeile {
   phasen?: ReiseKurzPhase[];
   /** Ø Zielerreichung des Wert-Kontos (vorher → jetzt → Ziel, 0–100) über die messbaren Ziele — null ohne Messung. */
   wert?: { wert: number; ziele: number } | null;
+  /** Was der Kunde als Lage sieht — dieselbe Rechnung übersetzt (`kundeSiehtLage`), mit Grund, wenn es von der internen Ampel abweicht (15.10.). */
+  kundeSieht?: { ampel: Ampel; art: KundenLageArt; titel: string; grund?: string };
 }
 export interface CockpitEingabe {
   fall: Fall; kunde: string; titel: string; paket?: string;
@@ -41,6 +50,8 @@ export interface CockpitEingabe {
   pulsSchwelle: number; heute: string;
   /** Abstimmungspunkte der Vorlage (Titel) — für „Als Nächstes“ in Klartext; ohne: nur die Nummer. */
   freigaben?: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
+  /** Bausteine, die (noch) nicht an Kunden gehen (`kundenGesperrt`) — ein wartender Knoten daran hat keinen Kundenbezug. */
+  gesperrt?: ReadonlySet<string>;
 }
 
 export const WARTET_ALT_TAGE = 7;
@@ -60,7 +71,11 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
     if (k.freigabe && !f.freigaben[k.freigabe]) h('freigabe', `${abstimmungName(k.freigabe, nummern)} „${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'rot', WEG.fall(f.mandatId, 'ablauf'), k.faelligAm);
     else if (!k.id.startsWith('fk-ob-willkommen')) h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'gelb', WEG.fall(f.mandatId, 'ablauf'), k.faelligAm);
   }
-  for (const w of wartetAufEuch(f, heute)) if ((w.tage ?? 0) > WARTET_ALT_TAGE) h('wartet', `Wartet seit ${w.tage} Tagen auf den Kunden: ${anzeigeTitel(w.titel, nummern)}`, (w.tage ?? 0) >= WARTET_ROT_TAGE ? 'rot' : 'gelb', WEG.fall(f.mandatId), w.seit);
+  for (const w of wartetAufEuch(f, heute)) {
+    if ((w.tage ?? 0) <= WARTET_ALT_TAGE) continue;
+    h('wartet', `Wartet seit ${w.tage} Tagen auf den Kunden: ${anzeigeTitel(w.titel, nummern)}`, (w.tage ?? 0) >= WARTET_ROT_TAGE ? 'rot' : 'gelb', WEG.fall(f.mandatId), w.seit);
+    raus[raus.length - 1].kundeSieht = kundeSiehtWartend(f, w, e.gesperrt);
+  }
   const p = e.kunde2?.letzterPuls;
   if (p && pulsStufe(p.wert, e.pulsSchwelle) === 'kritisch') h('puls', `Kunden-Puls ${p.wert} von 10 — Gespräch anbieten`, 'rot', WEG.fall(f.mandatId, 'kunde'), p.am);
   if (e.report.faellig && f.status !== 'abgeschlossen') {
@@ -71,10 +86,18 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
   return raus.sort((a, b) => (a.schwere === b.schwere ? (a.seit ?? '9') < (b.seit ?? '9') ? -1 : 1 : a.schwere === 'rot' ? -1 : 1));
 }
 
+/** Sieht der Kunde einen wartenden Punkt? Entscheidung nur, wenn geteilt; Knoten nur, wenn sein Baustein an Kunden geht (wie `kundenTeile` „wartet“). */
+export function kundeSiehtWartend(f: Pick<Fall, 'knoten' | 'entscheidungen'>, w: { art: string; id: string }, gesperrt: ReadonlySet<string> = new Set()): boolean {
+  if (w.art === 'entscheidung') return !!f.entscheidungen.find(x => x.id === w.id)?.geteilt;
+  const k = f.knoten.find(x => x.id === w.id);
+  return !!k && !(k.bausteinId && gesperrt.has(k.bausteinId));
+}
+
 export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
   const st = fallStelle(e.fall, e.freigaben ?? [], e.heute);
   const w = wartetAufEuch(e.fall, e.heute);
   const p = e.kunde2?.letzterPuls;
+  const haengt = wasHaengt(e);
   return {
     mandatId: e.fall.mandatId, kunde: e.kunde, titel: e.titel, ...(e.paket ? { paket: e.paket } : {}), status: e.fall.status,
     ...(st.phase ? { phase: st.phase.titel, phaseNr: st.phase.nr, phasenAnzahl: st.phase.von } : {}), ...(st.naechster ? { schritt: st.naechster.titel } : {}), fortschritt: st.fortschritt,
@@ -84,9 +107,10 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
     analyse: e.dossier ?? null,
     onboarding: { offen: e.onboarding.offen, fertig: e.onboarding.fertig, willkommenUeberfaellig: e.onboarding.willkommen.ueberfaellig },
     ...(e.naechsterRitual ? { naechsterRitual: e.naechsterRitual } : {}),
-    haengt: wasHaengt(e),
+    haengt,
     phasen: reiseKurz(fallReise(e.fall, e.freigaben ?? [], e.heute)),
     wert: wertDurchschnitt(e.fall.wertKonto ?? {}),
+    kundeSieht: kundeSiehtLage({ health: e.health, haengt }, st.fertig),
   };
 }
 

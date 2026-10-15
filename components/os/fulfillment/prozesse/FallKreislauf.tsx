@@ -20,7 +20,8 @@ import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { fallReise } from '@/lib/fulfillment/prozesse/reise';
-import { abschlussSchritt, kreislaufLage, kreislaufStand, KREISLAUF_REIHE, KREISLAUF_NAME, type KreislaufStufeId, type NachsorgePunkt } from '@/lib/fulfillment/prozesse/ansichten';
+import { abschlussSchritt, kreislaufLage, kreislaufStand, kreislaufWeg, KREISLAUF_REIHE, KREISLAUF_NAME, type NachsorgePunkt } from '@/lib/fulfillment/prozesse/ansichten';
+import { abstimmungsNummern, ohneKuerzel } from '@/lib/fulfillment/prozesse/darstellung';
 import type { WirkungsDokument } from '@/lib/fulfillment/prozesse/wirkung';
 import { useFall, fallOps, fehlerText, holeJson, geaendert, neueAnfrageId, tagKurz, type FallAntwort } from './daten';
 import { klein, feld, Leiste, Meldung } from './teile';
@@ -33,18 +34,6 @@ type Melde = (text: string | null, art?: 'gut' | 'kritisch' | 'achtung') => void
 type Ops = (o: Record<string, unknown>[], gut?: string) => Promise<boolean>;
 interface NachLeistungSchritt { id: string; label: string; erledigt: boolean; quelle: 'abgeleitet' | 'hand' | null; am?: string; grund?: string }
 
-/** Wohin eine Stufe des Kreislaufs führt — die vorhandene Ansicht (Markttraktion bzw. dieser Fall). */
-function stufenWeg(id: KreislaufStufeId, m: FallAntwort['mandat']): string | null {
-  switch (id) {
-    case 'kanaele': return WEG.vertriebsplanung('kanaele');
-    case 'leads': return WEG.qualifizierung();
-    case 'deals': return WEG.deals();
-    case 'followup': return WEG.followup();
-    case 'fulfillment': return WEG.fall(m.id, 'ablauf');
-    case 'nachher': return null;
-    case 'wiederkauf': return m.firmaId ? WEG.firma(m.firmaId) : WEG.deals();
-  }
-}
 
 export function FallKreislauf({ mandatId }: { mandatId: string }) {
   const { daten, fehler } = useFall(mandatId);
@@ -75,7 +64,8 @@ export function FallKreislauf({ mandatId }: { mandatId: string }) {
   const erfuellt = f.befaehigung.filter(b => b.erfuellt).length;
   const befProzent = f.befaehigung.length ? Math.round((erfuellt / f.befaehigung.length) * 100) : 0;
   const idx = KREISLAUF_REIHE.indexOf(stand);
-  const stufen: RadStufe[] = KREISLAUF_REIHE.map(id => ({ id, href: stufenWeg(id, daten.mandat) ?? undefined }));
+  // „Nach der Leistung“ steht in diesem Reiter (unten) — sonst EINE Tabelle `kreislaufWeg` (15.10., Abnahme B7).
+  const stufen: RadStufe[] = KREISLAUF_REIHE.map(id => ({ id, ...(id === 'nachher' ? {} : { href: kreislaufWeg(id, daten.mandat) }) }));
   const hauptaktion = () => {
     if (!abschluss) return insBild('kreislauf-befaehigung');
     if (abschluss.art === 'mandat-beenden') return router.push(WEG.mandat(mandatId));
@@ -97,7 +87,8 @@ export function FallKreislauf({ mandatId }: { mandatId: string }) {
         <KreislaufRad stufen={stufen} hier={stand} durchlaufen={KREISLAUF_REIHE.slice(0, Math.max(0, idx))}
           beschreibung={`Kreislauf: ${daten.mandat.kunde} steht bei „${KREISLAUF_NAME[stand]}“.`}
           mitte={<span style={{ display: 'grid', gap: 4 }}><span style={{ ...MIKRO }}>hier steht</span><b style={{ fontSize: TYP.body, color: C.ink }}>{daten.mandat.kunde}</b><span style={klein}>{KREISLAUF_NAME[stand]}</span></span>}
-          onStufe={s => { if (s.href) router.push(s.href); else insBild('kreislauf-nachher'); }} />
+          onStufe={s => { if (s.href) router.push(s.href); else insBild('kreislauf-nachher'); }}
+          onMitte={() => { if (stand === 'nachher') insBild('kreislauf-nachher'); else router.push(kreislaufWeg(stand, daten.mandat)); }} />
         <div style={klein}>Ein Kunde läuft einmal herum: aus einem Kanal wird ein Lead, ein Deal, ein Abschluss — dann liefern wir. Nach der Leistung (Empfehlung, nächste Stufe, Wiederkauf) beginnt der Kreis von vorn. Jede Stufe öffnet ihre Ansicht.</div>
       </Karte>
       <BefaehigungKarte daten={daten} ops={ops} />
@@ -109,6 +100,8 @@ export function FallKreislauf({ mandatId }: { mandatId: string }) {
 
 // ─── Befähigung ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 function BefaehigungKarte({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
+  // 15.10. (Abnahme B5): nie „F7“ — der Abstimmungspunkt heißt wie im Ablauf (Nummer + Titel).
+  const kuerzel = (t: string) => ohneKuerzel(t, abstimmungsNummern(daten.fall?.knoten ?? []), daten.vorlage?.freigaben ?? []);
   const f = daten.fall!;
   const [neu, setNeu] = useState('');
   const [schreiben, setSchreiben] = useState(false);
@@ -131,7 +124,7 @@ function BefaehigungKarte({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
           <Knopf typ="submit" aus={!neu.trim()}>Hinzufügen</Knopf>
         </form>
       )}
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Erfüllte Kriterien stehen im Wirkungsbericht — und sagen, wann die Übergabe (F7) dran ist.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Erfüllte Kriterien stehen im Wirkungsbericht — und sagen, wann die Übergabe dran ist ({kuerzel('F7')}).</div>
     </Karte>
   );
 }

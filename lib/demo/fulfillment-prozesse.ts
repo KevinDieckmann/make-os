@@ -10,7 +10,7 @@
 import type { FulfillmentSaatKontext, SaatSchritt } from './saat-fulfillment';
 import { MUSTER_P1, MUSTER_P2, MUSTER_P3 } from '@/lib/fulfillment/muster';
 import { WILLKOMMEN_GERUEST, OB_PRAEFIX } from '@/lib/fulfillment/prozesse/onboarding';
-import { WEITERE_BAUSTEINE } from '@/lib/fulfillment/prozesse/phasen';
+import { WEITERE_BAUSTEINE, SAMMEL_SCHRITT, SAMMEL_ALLGEMEIN } from '@/lib/fulfillment/prozesse/phasen';
 import { tagPlus } from '@/lib/kalender/zeit';
 
 type J = Record<string, unknown>;
@@ -147,14 +147,15 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
   const ablaeufe = await importieren(k, 'demo-ablaeufe.json', demoAblaeufe());
 
   // 2b) 14.10. (Abnahme B20: „Strategie-Begleitung läuft nach Vertriebsleitung auf Zeit“): die Pakete heißen wie das, was sie in der Demo liefern —
-  //     Vorlage UND ihr Kasten auf der Landkarte. Das dritte Muster (Netzwerk-Vertrieb) passt zu keinem Demo-Produkt und fällt weg (seine Bausteine
+  //     Vorlage UND ihr Kasten auf der Landkarte. 15.10. (Abnahme B4): Produkt, Mandat und Paket heißen „Vertriebsaufbau“ — der Inhalt (Recruiting,
+  //     Ansprache, Huddle) ist ein Vertriebsaufbau; so sieht der Kunde nur, was zu seinem Auftrag passt. Das dritte Muster (Netzwerk-Vertrieb) passt zu keinem Demo-Produkt und fällt weg (seine Bausteine
   //     bleiben in der Bibliothek). Nur über die Vorlagen-Route (Ops `vorlage`, `knoten`, `knoten-weg`, `vorlage-weg`).
   ue = await fulfillment('GET', '/api/fulfillment');
   type VorlageJ = { id: string; art: string; knoten: { id: string; elternId?: string; titel: string; verweis?: string; kundeSichtbar?: boolean }[] };
   const alle = (ue.prozesse ?? []) as VorlageJ[];
   const lk = alle.find(p => p.art === 'landkarte');
   const umbenennen: J[] = [];
-  for (const [schluessel, titel] of [['hos-cso', 'Strategie-Begleitung'], ['sales-systematik', 'Cockpit-Einführung']] as const) {
+  for (const [schluessel, titel] of [['hos-cso', 'Vertriebsaufbau'], ['sales-systematik', 'Cockpit-Einführung']] as const) {
     const id = pakete[schluessel];
     if (!id) continue;
     umbenennen.push({ op: 'vorlage', eintrag: { id, titel } });
@@ -165,13 +166,19 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
     const v = alle.find(p => p.id === id);
     const w = v?.knoten.find(x => !x.elternId);
     for (const ph of v && w ? v.knoten.filter(x => x.elternId === w.id && !x.kundeSichtbar && x.titel !== WEITERE_BAUSTEINE) : []) umbenennen.push({ op: 'knoten', vorlageId: id, eintrag: { id: ph.id, kundeSichtbar: true } });
+    // 15.10. (Abnahme B1): auch die Schritte direkt unter den Phasen (Diagnosebericht, Quick Wins …) sind Lieferungen an den Kunden — so nennt die
+    // Kunden-Seite denselben nächsten Schritt wie der Fall. Sammel-Knoten des Imports bleiben intern.
+    const sammel = new Set([WEITERE_BAUSTEINE, SAMMEL_SCHRITT, SAMMEL_ALLGEMEIN]);
+    const phasenIds = new Set(v && w ? v.knoten.filter(x => x.elternId === w.id && x.titel !== WEITERE_BAUSTEINE).map(x => x.id) : []);
+    for (const st of v ? v.knoten.filter(x => x.elternId && phasenIds.has(x.elternId) && !x.kundeSichtbar && !sammel.has(x.titel)) : []) umbenennen.push({ op: 'knoten', vorlageId: id, eintrag: { id: st.id, kundeSichtbar: true } });
   }
   if (pakete['netzwerk-vertrieb']) {
     const kasten = lk?.knoten.find(x => x.verweis === pakete['netzwerk-vertrieb']);
     if (lk && kasten) umbenennen.push({ op: 'knoten-weg', vorlageId: lk.id, id: kasten.id });
     umbenennen.push({ op: 'vorlage-weg', id: pakete['netzwerk-vertrieb'] });
   }
-  if (umbenennen.length) await fulfillment('PATCH', '/api/fulfillment', { ops: umbenennen });
+  // In Paketen zu höchstens 60 Änderungen (Grenze der Route) — die Vorlage-Löschung zuletzt, nach den Änderungen an der Landkarte.
+  for (let i = 0; i < umbenennen.length; i += 50) await fulfillment('PATCH', '/api/fulfillment', { ops: umbenennen.slice(i, i + 50) });
 
   // 3) Produkte ↔ Paket-Vorlage.
   const zuordnung: J[] = [];
@@ -200,8 +207,10 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
       f0 = await fallLesen(nordwerk.id);
     }
     const ziele = ((f0.mandat as J | undefined)?.ziele ?? []) as { id: string }[];
-    // Der Wochen-Check steht im Kalender (Termin-Stand der Saat, „Wochen-Check Nordwerk“): Bezug zum Mandat + am Fall vermerkt.
-    const wochenTermine = await wochenCheckTermine(nordwerk.id, k.heute, L);
+    // Der Wochen-Check steht im Kalender (Termin-Stand der Saat, „Wochen-Check Nordwerk“): Bezug zum Mandat + am Fall vermerkt — ALLE Termine, auch die
+    // schon gelaufenen dieser Woche (15.10., Abnahme B3: „Diese Woche“ war leer). Die Mitschrift steht am Tag des letzten gelaufenen Wochen-Checks.
+    const wochenTermine = await kundenTermineVerknuepfen('Wochen-Check Nordwerk', nordwerk.id, L);
+    const letzterCheck = wochenTermine.map(t => t.tag).filter(t => t <= k.heute).sort().at(-1) ?? tagPlus(k.heute, -3);
     const ops: J[] = [
       // Am Tag der Unterschrift gesendet (vor 46 Tagen) — sonst zählte das Erfolgsmaß „Willkommen in 24 Stunden“ den Musterfall als verspätet (Abnahme B6).
       { op: 'willkommen-gesendet', am: tagPlus(k.heute, -46) },
@@ -216,16 +225,17 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
       { op: 'entscheidung', eintrag: { titel: 'Erstgespräche nach fester Agenda', inhalt: 'Bedarf, Engpass, Ziel, nächster Schritt — für alle im Vertrieb.', status: 'entschieden', wer: 'beide', geteilt: true, am: tagPlus(k.heute, -21) } },
       { op: 'entscheidung', eintrag: { titel: 'Neues Angebot für Bestandskunden', status: 'offen', wer: 'kunde', geteilt: true, frist: tagPlus(k.heute, 5), am: tagPlus(k.heute, -4) } },
       ...(kickoff ? [{ op: 'ritual-merken', ritualId: kickoff, terminUid: 'makeos-demo-kickoff-nordwerk' }] : []),
-      ...(wochencheck ? wochenTermine.map(uid => ({ op: 'ritual-merken', ritualId: wochencheck, terminUid: uid })) : []),
+      ...(wochencheck ? wochenTermine.map(t => ({ op: 'ritual-merken', ritualId: wochencheck, terminUid: t.id })) : []),
       // Die Ziele stehen am Mandat (auch in der alten Text-Form — lib/crm/mandat-ziele.ts erhält sie); je Ziel Ausgang, Zielwert, Datum, festgelegt im Kick-off.
       ...ziele.slice(0, 2).map((z, i) => ({ op: 'wert-ziel', zielId: z.id, felder: i === 0
-        ? { ausgang: 'Kennzahlen nur einmal im Quartal angesehen', ausgangZahl: 4, zielZahl: 12, einheit: 'Reviews/Jahr', zielBis: tagPlus(k.heute, 60), richtung: 'hoch', festlegen: true }
-        : { ausgang: 'Drei Erstgespräche im Monat, ohne festen Ablauf', ausgangZahl: 3, zielZahl: 8, einheit: 'Gespräche/Monat', zielBis: tagPlus(k.heute, 90), richtung: 'hoch', festlegen: true } })),
+        // Festgelegt im Kick-off (vor 42 Tagen) — vor der ersten Messung (15.10., Abnahme B6: vorher „festgelegt heute“ über Messungen seit Wochen).
+        ? { ausgang: 'Kennzahlen nur einmal im Quartal angesehen', ausgangZahl: 4, zielZahl: 12, einheit: 'Reviews/Jahr', zielBis: tagPlus(k.heute, 60), richtung: 'hoch', festlegen: true, festgelegtAm: tagPlus(k.heute, -42) }
+        : { ausgang: 'Drei Erstgespräche im Monat, ohne festen Ablauf', ausgangZahl: 3, zielZahl: 8, einheit: 'Gespräche/Monat', zielBis: tagPlus(k.heute, 90), richtung: 'hoch', festlegen: true, festgelegtAm: tagPlus(k.heute, -42) } })),
       ...(ziele[0] ? [[-35, 5], [-21, 7], [-7, 9]].map(([t, wert]) => ({ op: 'wert-messung', zielId: ziele[0].id, wert, am: tagPlus(k.heute, t) })) : []),
       ...(ziele[1] ? [[-21, 4], [-7, 5]].map(([t, wert]) => ({ op: 'wert-messung', zielId: ziele[1].id, wert, am: tagPlus(k.heute, t) })) : []),
       { op: 'freigabe', id: 'F0', kunde: { wie: 'kickoff', am: tagPlus(k.heute, -42) }, am: tagPlus(k.heute, -42) },
       { op: 'mitschrift', eintrag: { anlass: 'Kick-off', ergebnis: 'Ziele, Rollen und Takt vereinbart; Analyse-Umfang bestätigt.', naechster: 'Analyse starten und Unterlagen anfordern', frist: tagPlus(k.heute, -35), am: tagPlus(k.heute, -42), ...(kickoff ? { ritualId: kickoff } : {}) } },
-      { op: 'mitschrift', eintrag: { anlass: 'Wochen-Check', ergebnis: 'Zwei neue Termine aus der Nachfass-Liste.', naechster: 'Angebot für den Bestandskunden vorbereiten', frist: tagPlus(k.heute, 4), am: tagPlus(k.heute, -3), ...(wochencheck ? { ritualId: wochencheck } : {}) } },
+      { op: 'mitschrift', eintrag: { anlass: 'Wochen-Check', ergebnis: 'Zwei neue Termine aus der Nachfass-Liste.', naechster: 'Angebot für den Bestandskunden vorbereiten', frist: tagPlus(letzterCheck, 7), am: letzterCheck, ...(wochencheck ? { ritualId: wochencheck } : {}) } },
       { op: 'befaehigung', id: 'bf-1', erfuellt: true, am: tagPlus(k.heute, -8) },
     ];
     await fallOps(nordwerk.id, ops);
@@ -257,6 +267,9 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
     await k.rufe(k.routen.fall(), 'POST', '/api/fulfillment/fall', L, { aktion: 'starten', mandatId: lumen.id, vorlageId: pakete['sales-systematik'], start: tagPlus(k.heute, -2), anfrageId: 'ff-demo-start-lumen' });
     faelle++;
     if (lumen.kontaktIds[0]) await fallOps(lumen.id, [{ op: 'stakeholder', eintrag: { kontaktId: lumen.kontaktIds[0], rolle: 'sponsor', einfluss: 2 } }]);
+    // Die „Cockpit-Abstimmung Lumen“ (donnerstags im Kalender) gehört zum Mandat — ab dem Start des Falls (15.10., Abnahme B3: der Fall kannte sie nicht).
+    // Kein Ritual: sie steht im Takt unter „Weitere Termine“, ist der nächste Termin und macht „Kick-off terminiert“ wahr.
+    await kundenTermineVerknuepfen('Cockpit-Abstimmung Lumen', lumen.id, L, tagPlus(k.heute, -2));
   }
   return [
     { name: 'Fulfillment: Vorlagen aus dem Muster', anzahl: Object.keys(pakete).length },
@@ -267,17 +280,18 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
 }
 
 /**
- * Die Termine „Wochen-Check Nordwerk“ aus dem Termin-Stand der Saat (`calendar-cache`, lib/demo/saat.ts) bekommen ihren Bezug zum Mandat
- * (`kalender-bezug`, wie ihn der Kalender-Dialog beim Anlegen schreibt) — Ausnahme (hier begründet, wie der Termin-Stand selbst): die Demo hat keinen
- * iCloud-Kalender, also auch keinen Anlege-Weg. Liefert die Kennungen ab heute (für `ritual-merken`).
+ * Termine aus dem Termin-Stand der Saat (`calendar-cache`, lib/demo/saat.ts) bekommen ihren Bezug zum Mandat (`kalender-bezug`, wie ihn der Kalender-Dialog
+ * beim Anlegen schreibt) — Ausnahme (hier begründet, wie der Termin-Stand selbst): die Demo hat keinen iCloud-Kalender, also auch keinen Anlege- oder
+ * Änderungsweg (die Termin-Route findet Mac-Termine nicht). Schlüssel = die Kennung des Termins (so finden ihn Kalender, Takt und Kunden-Seite).
+ * `ab` = erst ab diesem Tag (z. B. dem Start des Falls). Liefert Kennung und Tag (sortiert).
  */
-async function wochenCheckTermine(mandatId: string, heute: string, von: string): Promise<string[]> {
+async function kundenTermineVerknuepfen(titel: string, mandatId: string, von: string, ab?: string): Promise<{ id: string; tag: string }[]> {
   const { loadJson } = await import('@/lib/store/local-db');
   const { bezugSetzen } = await import('@/lib/kalender/bezug-server');
   const stand = await loadJson<{ events?: { id: string; title: string; startDate: string; calendarName: string }[] }>('calendar-cache');
-  const termine = (stand?.events ?? []).filter(e => e.title === 'Wochen-Check Nordwerk');
-  for (const e of termine) await bezugSetzen(`${e.calendarName.toLowerCase()}|${e.id}`, { mandatId, tag: e.startDate.slice(0, 10), art: 'termin', von });
-  return termine.filter(e => e.startDate.slice(0, 10) >= heute).map(e => e.id);
+  const termine = (stand?.events ?? []).filter(e => e.title === titel && (!ab || e.startDate.slice(0, 10) >= ab)).map(e => ({ id: e.id, tag: e.startDate.slice(0, 10) })).sort((a, b) => a.tag.localeCompare(b.tag));
+  for (const t of termine) await bezugSetzen(t.id, { mandatId, tag: t.tag, art: 'termin', von });
+  return termine;
 }
 
 /**
@@ -298,10 +312,15 @@ export async function geschichteSaeen(k: FulfillmentSaatKontext): Promise<SaatSc
       if (body?.ops?.length) { await k.rufe(k.routen.fall(), 'PATCH', '/api/fulfillment/fall', L, body); n += body.ops.length; }
     } catch { /* ohne Diagnose (z. B. Analyse ausgelassen) bleibt der Fall, wie er ist */ }
   }
-  const f = (await k.rufe(k.routen.fall(), 'GET', `/api/fulfillment/fall?m=${encodeURIComponent(m.id)}`, L)).fall as { quickWins: { id: string; text: string }[]; kickoffFragen: { id: string }[] } | null;
+  const f = (await k.rufe(k.routen.fall(), 'GET', `/api/fulfillment/fall?m=${encodeURIComponent(m.id)}`, L)).fall as { quickWins: { id: string; text: string }[]; kickoffFragen: { id: string }[]; knoten: { id: string; titel: string; status: string }[] } | null;
   const ops: J[] = [];
-  const erster = f?.quickWins.find(q => /agenda/i.test(q.text)) ?? f?.quickWins[0];
-  if (erster) ops.push({ op: 'quickwin', id: erster.id, erledigt: true, am: tagPlus(k.heute, -18) });
+  // Quick Wins (30 Tage) im Fenster des Falls (15.10., Abnahme B6: „bis 14.11. · erledigt 27.09.“ bei Start 31.08.): fällig bis Start + 30, alle drei
+  // erreicht — der erste (Agenda) zuerst, die anderen kurz danach. Der Schritt „Quick Wins“ der Diagnose ist damit erledigt.
+  const fensterEnde = tagPlus(k.heute, -15);
+  const qw = [...(f?.quickWins ?? [])].sort((a, b) => (/agenda/i.test(a.text) ? -1 : /agenda/i.test(b.text) ? 1 : 0));
+  qw.forEach((q, i) => ops.push({ op: 'quickwin', id: q.id, bis: fensterEnde, erledigt: true, am: tagPlus(k.heute, [-18, -16, -15][i] ?? -15) }));
+  const qwSchritt = f?.knoten.find(x => /^quick wins$/i.test(x.titel.trim()) && x.status !== 'erledigt');
+  if (qw.length && qwSchritt) ops.push({ op: 'knoten-status', id: qwSchritt.id, status: 'erledigt', am: fensterEnde });
   for (const q of f?.kickoffFragen ?? []) ops.push({ op: 'kickoff-frage', id: q.id, erledigt: true });
   if (ops.length) await k.rufe(k.routen.fall(), 'PATCH', '/api/fulfillment/fall', L, { mandatId: m.id, ops });
   // Reports (Leistungstreppe): erstellt und gesendet vor 28 und vor 14 Tagen — heute ist der dritte fällig.

@@ -179,13 +179,17 @@ function PulsKarte({ s, tun, onLink, voll, followups }: { s: KundeStand; tun: Tu
       <Ueberschrift erklaerung="fulfillment.pulsSchwelle" rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>{reihe.letzter && <Chip farbe={kritisch ? LEUCHT.kritisch : reihe.letzter.wert >= 9 ? LEUCHT.gut : C.aktiv}>{reihe.letzter.wert} / 10</Chip>}<MehrKnopf titel="Kunden-Puls" mehr={mehr} /></span>}>Kunden-Puls</Ueberschrift>
       {!reihe.punkte.length ? <Leer>Noch kein Puls. Die Frage geht mit dem 2-Wochen-Report raus — oder über „⋯ › Puls von Hand eintragen“.</Leer> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 14, alignItems: 'center' }}>
-          <svg viewBox={`0 0 ${B} ${H}`} width="100%" style={{ maxWidth: 420, display: 'block' }} role="img" aria-label={`Kunden-Puls: ${reihe.punkte.map(p => `${tagKurz(p.tag)} ${p.wert}`).join(', ')}; Schwelle ${s.puls.schwelle}.`}>
+          {/* 15.10. (Abnahme B7): der Verlauf führt weiter — ein Tipp zeigt alle Werte mit Datum, Satz und „in die Health übernehmen“. */}
+          <button type="button" className="fassbar" onClick={() => setAlle(true)} aria-label={`Kunden-Puls: ${reihe.punkte.map(p => `${tagKurz(p.tag)} ${p.wert}`).join(', ')}; Schwelle ${s.puls.schwelle}. Alle Werte zeigen.`} title="Alle Werte zeigen"
+            style={{ display: 'block', width: '100%', maxWidth: 420, padding: 0, background: 'none', border: 'none', cursor: 'pointer' }}>
+          <svg viewBox={`0 0 ${B} ${H}`} width="100%" style={{ display: 'block' }} aria-hidden>
             <rect x={0} y={y(s.puls.schwelle)} width={B} height={H - 8 - y(s.puls.schwelle)} fill={`${LEUCHT.kritisch}12`} />
             <line x1={0} x2={B} y1={y(s.puls.schwelle)} y2={y(s.puls.schwelle)} stroke={LEUCHT.kritisch} strokeOpacity={0.6} strokeDasharray="4 4" />
             <text x={B - 4} y={Math.min(H - 2, y(s.puls.schwelle) + 13)} textAnchor="end" fontSize={11} fill={C.inkLeise}>Schwelle {s.puls.schwelle}</text>
             {reihe.punkte.length > 1 && <polyline fill="none" stroke={LEUCHT.puls} strokeWidth={2} points={reihe.punkte.map(p => `${10 + p.x * (B - 20)},${y(p.wert)}`).join(' ')} />}
             {reihe.punkte.map((p, i) => <circle key={i} cx={10 + p.x * (B - 20)} cy={y(p.wert)} r={4} fill={pulsStufe(p.wert, s.puls.schwelle) === 'kritisch' ? LEUCHT.kritisch : LEUCHT.puls} />)}
           </svg>
+          </button>
           <div style={{ display: 'grid', gap: 6 }}>
             {reihe.letzter && <div style={{ fontSize: TYP.body, color: C.ink }}><b>{reihe.letzter.wert} / 10</b> am {tagKurz(reihe.letzter.tag)}{letzter?.satz ? <span style={klein}> — „{letzter.satz}“</span> : null}</div>}
             <div style={klein}>Zufriedenheit (Health) des Mandats: <b style={{ color: C.ink }}>{reihe.health ?? 'noch nicht bewertet'}</b>{reihe.healthPasst ? ' — passt zum letzten Puls.' : ` — der letzte Puls entspricht ${reihe.vorschlagHealth}.`}</div>
@@ -202,7 +206,7 @@ function PulsKarte({ s, tun, onLink, voll, followups }: { s: KundeStand; tun: Tu
           {gespraech.length ? `Follow-up „${gespraech[0].text}“ ${gespraech[0].status === 'offen' ? `fällig ${tagKurz(gespraech[0].faellig)}` : gespraech[0].status}.` : 'Der Vorschlag „Gespräch anbieten“ liegt im Freigabe-Stapel — die Freigabe legt ein Follow-up am Mandat an (in zwei Tagen fällig).'}
         </Hinweis>
       )}
-      {s.puls.liste.length > 1 && <div><Knopf leise onClick={() => setAlle(!alle)}>{alle ? 'Werte ausblenden' : `Alle ${s.puls.liste.length} Werte zeigen`}</Knopf></div>}
+      {s.puls.liste.length > 0 && <div><Knopf leise onClick={() => setAlle(!alle)}>{alle ? 'Werte ausblenden' : `Alle ${s.puls.liste.length} Werte zeigen`}</Knopf></div>}
       {alle && (
         <Liste>
           {s.puls.liste.map(p => (
@@ -288,7 +292,7 @@ function LinkKarte({ s, tun, frisch, setFrisch, setMeldung, bestaetigen, voll }:
 function FormulareKarte({ s, mandatId, laden }: { s: KundeStand; mandatId: string; laden: () => Promise<void> }) {
   const [bearbeiten, setBearbeiten] = useState<string | null>(null);
   return (
-    <Karte i={4}>
+    <Karte i={4} id="kunde-formulare">
       <Ueberschrift erklaerung="fulfillment.kundeFuellt" rechts={s.formulare.length ? <span style={{ display: 'flex', gap: 10 }}><a href={`/api/fulfillment/kunde?m=${encodeURIComponent(mandatId)}&export=csv`} download style={{ color: C.aktiv, fontSize: TYP.bedien }}>CSV</a><a href={`/api/fulfillment/kunde?m=${encodeURIComponent(mandatId)}&export=pdf`} download style={{ color: C.aktiv, fontSize: TYP.bedien }}>PDF</a></span> : undefined}>Playbook & Formulare</Ueberschrift>
       {!s.formulare.length ? <Leer>Dieser Fall hat (noch) kein Formular — Playbook und Workbooks hängen als Baustein an einem Schritt des Falls.</Leer> : (
         <div style={{ display: 'grid', gap: 10 }}>

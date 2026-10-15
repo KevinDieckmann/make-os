@@ -35,12 +35,12 @@ async function berichtLesen(name: string): Promise<Buffer | null> {
 
 async function grundlage(mandatId: string, zitat?: { text: string; einwilligungAm: string; wie: string }) {
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
-  const { h, crm, vorlagen, faelle, kunde } = await fallUmfeld([mandatId]);
+  const { h, crm, vorlagen, faelle, kunde, termine } = await fallUmfeld([mandatId]);
   const { istBusinessGesellschaft } = await import('@/lib/einheiten');
   const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm && istBusinessGesellschaft(x.gesellschaft));
   const f = faelle.faelle[mandatId];
   if (!m || !f) return null;
-  const w = fallWirksam(f, ableitungFuer(f, m, crm, vorlagen, kunde[mandatId], iso));
+  const w = fallWirksam(f, ableitungFuer(f, m, crm, vorlagen, kunde[mandatId], iso, termine[mandatId]));
   const absender = await (async () => {
     try { const { ladeRegister } = await import('@/lib/gesellschaften/server'); const reg = await ladeRegister(h); const x = (reg?.gesellschaften ?? []).find(e => e.id === m.gesellschaft) as { firmierung?: string; name?: string } | undefined; return x?.firmierung || x?.name; } catch { return undefined; }
   })();

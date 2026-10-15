@@ -55,7 +55,7 @@ export async function GET(req: Request) {
   const m = url.searchParams.get('m') ?? '';
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
-  const { crm, vorlagen, faelle, kunde } = await fallUmfeld([m]);
+  const { crm, vorlagen, faelle, kunde, termine: kalender } = await fallUmfeld([m]);
   const { istBusinessGesellschaft } = await import('@/lib/einheiten');
   // Prüf-Fund 11.10.: Mandate einer Privat-Einheit (z. B. die Selbstständigkeit) gibt es hier nicht — 404 VOR jedem Aufbau, derselbe Satz wie „fehlt“.
   const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm && istBusinessGesellschaft(x.gesellschaft));
@@ -93,7 +93,7 @@ export async function GET(req: Request) {
     });
   }
 
-  const abl = ableitungFuer(f, mandat, crm, vorlagen, kunde[m], iso);
+  const abl = ableitungFuer(f, mandat, crm, vorlagen, kunde[m], iso, kalender[m]);
   const w = fallWirksam(f, abl);
   const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
   const ids = new Set(w.knoten.map(x => x.bausteinId).filter((x): x is string => !!x));
@@ -106,9 +106,10 @@ export async function GET(req: Request) {
   const personenIds = new Set([...w.stakeholder.map(s => s.kontaktId), ...mandat.kontaktIds, ...(mandat.firmaId ? personenDerFirma(kontakte, mandat.firmaId, { nurAktiv: true }).map(k => k.id) : [])]);
   const personen = kontakte.filter(k => personenIds.has(k.id)).map(k => ({ id: k.id, name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() || k.email || 'Kontakt', position: k.position ?? null, email: k.email ?? null, firmaId: k.firmaId ?? null }));
   leseZugriff(req, 'fulfillment', { ids: [mandat.id], anzahl: personen.length });
-  const bezuege = await import('@/lib/kalender/bezug-server').then(x => x.ladeBezuege()).catch(() => ({ bezuege: {} }));
-  const { uidVonSchluessel } = await import('@/lib/kalender/bezug');
-  const terminTage = Object.entries(bezuege.bezuege).filter(([, b]) => b.mandatId === m && b.tag).map(([k, b]) => ({ uid: uidVonSchluessel(k), tag: b.tag! }));
+  // Die Termine des Kunden — EINE Lesestelle (`fallTermine`, 15.10., Abnahme B3): mit Bezug zum Mandat bzw. zur Firma, auch ohne Ritual.
+  const terminTage = kalender[m] ?? [];
+  const { zuordnen } = await import('@/lib/fulfillment/prozesse/termine');
+  const { montagVon } = await import('@/lib/zeit/kalender-kern');
   const treppe = await import('@/lib/crm/treppe-server').then(t => t.ladeTreppe(heute)).catch(() => null);
   // 12.10. (lose Enden): Report-Zeitachse (erstellte Reports aus der Dateiablage — nur Tag + Kennung), was aus der Diagnose noch nicht im Fall steht,
   // die Nachsorge als Plan (ab Mandatsende) und die Follow-ups am Mandat (Nachsorge, Puls-Gespräch, Empfehlung) — nur Text, Tag, Stand.
@@ -130,6 +131,16 @@ export async function GET(req: Request) {
     wartet: wartetAufEuch(w, heute), wertKonto: wertKontoZeilen(w, mandat), fortschritt: fallFortschritt(w), aktuell: aktuellerKnoten(w),
     bausteine, personen, rituale: vorlagen.rituale,
     termine: Object.fromEntries(w.rituale.map(r => [r.ritualId, naechsterTermin(terminTage, r.terminUids, heute) ?? null])),
+    // Takt (15.10., Abnahme B3): alle Termine mit dem Kunden ab dem Montag dieser Woche (auch die schon gelaufenen) — je mit Ritual, wenn er an einem hängt.
+    kalender: zuordnen(terminTage.filter(t => t.tag >= montagVon(heute)), w.rituale),
+    // Was der Kunde als Nächstes liest (15.10., Abnahme B1) — derselbe Punkt, wenn er geteilt ist (`gleich`); sonst der nächste geteilte (der Fall-Kopf erklärt es).
+    kundeNaechster: await (async () => {
+      const [{ kundenTeile, kundenNaechsterPunkt }, { kundenGesperrt }] = await Promise.all([import('@/lib/fulfillment/kunde/bild'), import('@/lib/fulfillment/prozesse/bausteine')]);
+      const gesperrt = kundenGesperrt(vorlagen.bausteine, vorlagen);
+      const np = kundenNaechsterPunkt(w, v?.freigaben ?? [], gesperrt, heute);
+      const text = kundenTeile({ fall: w, mandat, heute, anrede: 'sie', gesperrt, ...(v ? { freigaben: v.freigaben } : {}) }).naechstes[0] ?? null;
+      return { text, gleich: !!np?.text && !np.anzeigeId, wartet: np?.punkt.zustand === 'wartet_kunde' };
+    })(),
     kunde: kunde[m] ?? null, report: treppe?.reports[m] ?? null,
     reports, followups,
     analyse: dossier ? { f2: !!dossier.f2, diagnose: !!dossier.diagnose, quickWins: ue.quickWins, fragen: ue.fragen.length, massnahmen: ue.massnahmen.map(x => x.text), ziel: ue.ziel?.titel ?? null } : null,

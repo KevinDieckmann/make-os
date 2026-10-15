@@ -1,13 +1,14 @@
 // ─── Fulfillment · Prozesse — Onboarding-Strecke (C1, 10.10.; FULFILLMENT_KONZEPT.md 3.1–3.3) ──────────────────────────────────────
 // Acht Schritte (Muster lib/fulfillment/muster.ts `MUSTER_ONBOARDING`), deren Stand — wo möglich — ABGELEITET wird, nie gespeichert:
 //   1 Willkommen in 24 h   ← `Fall.onboarding.willkommenGesendetAm` (Uhr: Unterschrift + `willkommenStunden`, danach „überfällig“)
-//   2 Kick-off terminieren ← Ritual „einmal“ (Kick-off) mit mindestens einem Termin (`Fall.rituale[].terminUids`)
+//   2 Kick-off terminieren ← Ritual „einmal“ (Kick-off) mit mindestens einem Termin (`Fall.rituale[].terminUids`) ODER (seit 15.10., Abnahme B3) ein
+//                            Termin mit dem Kunden im Kalender ab dem Start des Falls (`kundenTermine`, lib/fulfillment/prozesse/termine-server.ts)
 //   3 Vereinbarung         ← `Fall.vereinbarung.bestaetigtAm`
 //   4 Kunden-Playbook      ← `KundeKurz.formularProzent` = 100 (C2) — zählt NICHT fürs „fertig“ (das Playbook darf noch laufen)
 //   5 Stakeholder-Karte    ← mindestens ein Entscheider
 //   6 Wert-Konto           ← alle Ziele des Mandats mit Ausgang, Ziel, Datum und „festgelegt“
 //   7 Entscheidungs-Log    ← mindestens ein Eintrag
-//   8 F0 bestätigt         ← `Fall.freigaben.F0`
+//   8 F0 bestätigt         ← `Fall.freigaben.F0` (angezeigt als „Abstimmungspunkt n“ — nie das Kürzel, 15.10., Abnahme B5)
 // „entfällt“ (von Hand, mit Grund) gilt als erledigt. Fertig = alle zählenden Schritte erledigt → Fall von „onboarding“ auf „läuft“.
 // Dazu die Willkommensmail aus einer Vorlage der Bibliothek (Baustein Art „mail“ mit Schlagwort `willkommen`, Instanz-Text) mit den
 // Platzhaltern {{anrede}}, {{vorname}}, {{kickoff_vorschlaege}}, {{playbook_link}} — ohne Link fällt der Absatz mit dem Link weg.
@@ -17,6 +18,8 @@ import type { Baustein, Fall, KnotenStatus, RitualVorlage, VorlagenDatei } from 
 import type { Mandat } from '@/lib/crm/typen';
 import { MUSTER_ONBOARDING, MUSTER_PLAYBOOK, type OnboardingSchluessel } from '../muster';
 import { ausWandzeit } from '@/lib/kalender/zeit';
+import { abstimmungsNummern } from './darstellung';
+import { ersterTermin } from './termine';
 
 export const OB_PRAEFIX = 'fk-ob-';
 /** Kennung des Playbook-Formulars unter dem Schritt „Playbook“ (dieselbe wie OB_PLAYBOOK_FORMULAR_ID in fall.ts — hier ohne Import-Kreis). */
@@ -39,6 +42,8 @@ export interface OnboardingAbleitung {
   unterschrift?: string;
   willkommenStunden: number;
   jetzt: string;
+  /** Tage der Termine mit dem Kunden im Kalender (Bezug zum Mandat bzw. zur Firma) — der erste ab dem Start gilt als Kick-off-Termin. */
+  kundenTermine?: readonly string[];
 }
 
 export interface OnboardingSchrittStand {
@@ -82,16 +87,20 @@ export function onboardingStand(fall: Fall, a: OnboardingAbleitung): OnboardingS
   const kn = new Map(fall.knoten.map(k => [k.id, k]));
   const uhr = willkommenUhr(a.unterschrift, a.willkommenStunden, fall.onboarding.willkommenGesendetAm, a.jetzt);
   const entscheider = fall.stakeholder.some(s => s.rolle === 'entscheider');
-  const kickoff = fall.rituale.some(r => a.kickoffRitualIds.includes(r.ritualId) && r.terminUids.length > 0);
+  const kickoffRitual = fall.rituale.some(r => a.kickoffRitualIds.includes(r.ritualId) && r.terminUids.length > 0);
+  const erster = ersterTermin((a.kundenTermine ?? []).map(tag => ({ tag })), fall.startAm ?? fall.gestartetAm.slice(0, 10));
+  const kickoff = kickoffRitual || !!erster;
+  const f0 = abstimmungsNummern(fall.knoten).get('F0');
+  const f0Name = `Abstimmungspunkt${f0 ? ` ${f0}` : ''}`;
   const bed: Record<OnboardingSchluessel, [boolean, string]> = {
     willkommen: [!!fall.onboarding.willkommenGesendetAm, fall.onboarding.willkommenGesendetAm ? 'Willkommensmail gesendet.' : uhr.ueberfaellig ? 'Willkommensmail überfällig — bitte heute senden.' : 'Willkommensmail noch nicht gesendet.'],
-    kickoff: [kickoff, kickoff ? 'Kick-off steht im Kalender.' : 'Kick-off noch nicht terminiert (Takt › Kick-off › Termin anlegen).'],
+    kickoff: [kickoff, kickoffRitual ? 'Kick-off steht im Kalender.' : erster ? `Erster Termin mit dem Kunden steht im Kalender (${erster.slice(8, 10)}.${erster.slice(5, 7)}.) — er gilt als Kick-off.` : 'Kick-off noch nicht terminiert (Takt › Kick-off › Termin anlegen).'],
     vereinbarung: [!!fall.vereinbarung?.bestaetigtAm, fall.vereinbarung?.bestaetigtAm ? 'Vereinbarung bestätigt.' : 'Vereinbarung noch nicht bestätigt.'],
     playbook: [a.formularProzent === 100, a.formularProzent == null ? 'Playbook-Link noch nicht aktiv.' : `Playbook zu ${a.formularProzent} % ausgefüllt.`],
     stakeholder: [entscheider, entscheider ? 'Entscheider eingetragen.' : 'Noch kein Entscheider in der Stakeholder-Karte.'],
     wertkonto: [wertKontoFestgelegt(fall, a.ziele), a.ziele.length ? (wertKontoFestgelegt(fall, a.ziele) ? 'Wert-Konto festgelegt.' : 'Wert-Konto noch nicht vollständig festgelegt (Ausgang, Ziel, Datum).') : 'Am Mandat stehen noch keine Ziele.'],
     entscheidungslog: [fall.entscheidungen.length > 0, fall.entscheidungen.length ? 'Entscheidungs-Log eröffnet.' : 'Noch keine Entscheidung im Log.'],
-    f0: [!!fall.freigaben.F0, fall.freigaben.F0 ? 'F0 vermerkt.' : 'F0 noch nicht vermerkt.'],
+    f0: [!!fall.freigaben.F0, fall.freigaben.F0 ? `${f0Name} vermerkt.` : `${f0Name} noch nicht vermerkt.`],
   };
   const schritte = MUSTER_ONBOARDING.map(s => {
     const k = kn.get(obKnotenId(s.schluessel));
@@ -180,6 +189,14 @@ export function playbookBaustein(d: Pick<VorlagenDatei, 'bausteine' | 'marken'>)
   const ausMuster = d.marken[`muster:${MUSTER_PLAYBOOK.id}`];
   const passt = (b: Baustein) => (b.art === 'formular' || b.art === 'workbook') && b.kundeFuellt === true && !!b.fragen?.length;
   return d.bausteine.find(b => b.id === ausMuster && passt(b)) ?? d.bausteine.find(b => passt(b) && b.tags.includes('playbook')) ?? null;
+}
+
+/**
+ * Läuft der Baustein im Onboarding JEDES Falls (das Kunden-Playbook, eine Willkommensmail-Vorlage)? Dann steckt er in keiner Paket-Vorlage und ist trotzdem
+ * im Einsatz — die Bibliothek sagt „im Onboarding jedes Falls“ statt „noch in keiner Vorlage“ (15.10., Abnahme C8).
+ */
+export function imOnboarding(b: Pick<Baustein, 'id' | 'art' | 'tags'>, d: Pick<VorlagenDatei, 'bausteine' | 'marken'>): boolean {
+  return playbookBaustein(d)?.id === b.id || (b.art === 'mail' && b.tags.includes(TAG_WILLKOMMEN));
 }
 
 export function willkommenVorlage(bausteine: readonly Baustein[], anrede: 'Du' | 'Sie'): Baustein | null {

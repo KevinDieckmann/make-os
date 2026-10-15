@@ -12,6 +12,8 @@ import type { Entscheidung, Fall, FallKnoten, Puls, Rhythmus, RitualVorlage, Sta
 import type { KreislaufId } from '@/lib/crm/planung';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { markeNachsorge, NACHSORGE_TEXT, type NachsorgeArt } from './wirkung';
+import { naechsterFallTermin } from './rituale';
+import { WEG } from '@/lib/wege';
 
 /** Eine Stufe des Kreislaufs (Kennungen aus Markttraktion › Planung). */
 export type KreislaufStufeId = KreislaufId;
@@ -110,41 +112,52 @@ export interface TaktZeile {
   angelegt: boolean; termine: number;
   /** Der nächste echte Termin (aus dem Kalender) — fehlt, wenn keiner ab heute im Kalender steht. */
   naechster?: string;
-  /** Die Tage im Fenster: der echte nächste Termin und daraus nach dem Rhythmus erwartete (`erwartet`), nie erfundene ohne Termin. */
+  /** Die Tage im Fenster: echte Termine (Kalender, auch schon gelaufene dieser Woche) und daraus nach dem Rhythmus erwartete (`erwartet`), nie erfundene ohne Termin. */
   tage: { tag: string; erwartet: boolean }[];
 }
-export interface TaktLeiste { wochen: string[]; bis: string; zeilen: TaktZeile[]; naechster: { titel: string; tag: string } | null; ohneTermin: number }
+/** Ein Termin mit dem Kunden, der an keinem Ritual hängt (z. B. „Cockpit-Abstimmung“) — steht im Takt als eigene Zeile (15.10., Abnahme B3). */
+export interface TaktTermin { tag: string; von?: string; titel?: string }
+export interface TaktLeiste { wochen: string[]; bis: string; zeilen: TaktZeile[]; weitere: TaktTermin[]; naechster: { titel: string; tag: string } | null; ohneTermin: number }
 
 /**
  * Die Rituale des Falls als Leiste über `wochen` Wochen ab dem Montag dieser Woche. Gezeigt werden alle Rituale der Bibliothek; ein Tag steht nur da,
  * wo es einen echten Termin gibt (Kalender) bzw. ab ihm im Rhythmus weitergedacht — „erwartet“, gestrichelt. Ohne Termin: leer + „Termin anlegen“.
+ * Seit 15.10. (Abnahme B3) mit `kalender` = alle Termine mit Bezug zum Mandat (`fallTermine` + Ritual-Zuordnung): Termine eines Rituals stehen in seiner
+ * Zeile (auch die schon gelaufenen dieser Woche), alle übrigen als „weitere Termine“; der nächste Termin ist DIE Regel `naechsterFallTermin`.
  */
-export function taktLeiste(e: { rituale: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus' | 'dauerMin'>[]; fallRituale: readonly Pick<Fall['rituale'][number], 'ritualId' | 'terminUids'>[]; termine: Readonly<Record<string, string | null | undefined>>; heute: string; wochen?: number }): TaktLeiste {
+export function taktLeiste(e: {
+  rituale: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus' | 'dauerMin'>[]; fallRituale: readonly Pick<Fall['rituale'][number], 'ritualId' | 'terminUids'>[];
+  termine: Readonly<Record<string, string | null | undefined>>; heute: string; wochen?: number;
+  kalender?: readonly { uid: string; tag: string; von?: string; titel?: string; ritualId?: string }[];
+}): TaktLeiste {
   const n = e.wochen ?? 6;
   const start = montagVon(e.heute);
   const bis = tagPlus(start, n * 7 - 1);
   const genutzt = new Map(e.fallRituale.map(r => [r.ritualId, r]));
+  const imFenster = (t: string) => t >= start && t <= bis;
   const zeilen = e.rituale.map(r => {
     const g = genutzt.get(r.id);
-    const naechster = e.termine[r.id] ?? undefined;
-    const tage: { tag: string; erwartet: boolean }[] = [];
-    if (naechster && naechster <= bis) {
-      tage.push({ tag: naechster, erwartet: false });
-      let t = naechster;
-      for (let i = 0; i < 80; i++) {
-        const schritt = RHYTHMUS_TAGE[r.rhythmus];
-        t = schritt ? tagPlus(t, schritt) : r.rhythmus === 'monat' ? plusMonate(t, 1) : r.rhythmus === 'quartal' ? plusMonate(t, 3) : '9999-12-31';
-        if (r.rhythmus === 'werktags') while ([0, 6].includes(wochentag(t))) t = tagPlus(t, 1);
-        if (t > bis) break;
-        tage.push({ tag: t, erwartet: true });
-      }
+    const ausKalender = (e.kalender ?? []).filter(t => t.ritualId === r.id);
+    const naechster = ausKalender.map(t => t.tag).filter(t => t >= e.heute).sort()[0] ?? e.termine[r.id] ?? undefined;
+    const echt = Array.from(new Set([...ausKalender.map(t => t.tag), ...(naechster ? [naechster] : [])])).filter(imFenster).sort();
+    const tage: { tag: string; erwartet: boolean }[] = echt.map(tag => ({ tag, erwartet: false }));
+    let t = echt.at(-1);
+    for (let i = 0; t && r.rhythmus !== 'einmal' && i < 80; i++) {
+      const schritt = RHYTHMUS_TAGE[r.rhythmus];
+      t = schritt ? tagPlus(t, schritt) : r.rhythmus === 'monat' ? plusMonate(t, 1) : r.rhythmus === 'quartal' ? plusMonate(t, 3) : '9999-12-31';
+      if (r.rhythmus === 'werktags') while ([0, 6].includes(wochentag(t))) t = tagPlus(t, 1);
+      if (t > bis) break;
+      tage.push({ tag: t, erwartet: true });
     }
-    return { ritualId: r.id, titel: r.titel, rhythmus: r.rhythmus, dauerMin: r.dauerMin, angelegt: !!g?.terminUids.length, termine: g?.terminUids.length ?? 0, ...(naechster ? { naechster } : {}), tage };
+    return { ritualId: r.id, titel: r.titel, rhythmus: r.rhythmus, dauerMin: r.dauerMin, angelegt: !!g?.terminUids.length || ausKalender.length > 0, termine: Math.max(g?.terminUids.length ?? 0, ausKalender.length), ...(naechster ? { naechster } : {}), tage };
   });
+  const weitere = (e.kalender ?? []).filter(t => !t.ritualId && imFenster(t.tag)).map(t => ({ tag: t.tag, ...(t.von ? { von: t.von } : {}), ...(t.titel ? { titel: t.titel } : {}) }));
+  // Der nächste Termin — DIE Regel (`naechsterFallTermin`) über alle Termine mit dem Kunden; ohne Kalender-Liste wie bis 14.10. aus den Ritualen.
+  const nt = e.kalender ? naechsterFallTermin({ fallRituale: e.fallRituale, terminTage: e.kalender, heute: e.heute, rituale: e.rituale }) : null;
   const echte = zeilen.filter(z => z.naechster).sort((a, b) => (a.naechster! < b.naechster! ? -1 : 1));
   return {
-    wochen: Array.from({ length: n }, (_, i) => tagPlus(start, i * 7)), bis, zeilen,
-    naechster: echte[0] ? { titel: echte[0].titel, tag: echte[0].naechster! } : null,
+    wochen: Array.from({ length: n }, (_, i) => tagPlus(start, i * 7)), bis, zeilen, weitere,
+    naechster: nt ? { titel: nt.titel ?? 'Termin mit dem Kunden', tag: nt.tag } : !e.kalender && echte[0] ? { titel: echte[0].titel, tag: echte[0].naechster! } : null,
     ohneTermin: zeilen.filter(z => z.rhythmus !== 'einmal' && !z.naechster).length,
   };
 }
@@ -226,6 +239,22 @@ export function pulsReihe(l: readonly Pick<Puls, 'am' | 'wert' | 'satz'>[], heal
 
 /** Die Stufen des Kreislaufs (Markttraktion › Planung) in Reihenfolge — die EINE Liste der Kennungen steht dort (`KreislaufId`). */
 export const KREISLAUF_REIHE: readonly KreislaufStufeId[] = ['kanaele', 'leads', 'deals', 'followup', 'fulfillment', 'nachher', 'wiederkauf'];
+/**
+ * Wohin eine Stufe des Kreislaufs führt — EINE Tabelle über `WEG` (15.10., Abnahme B7: „Jede Stufe öffnet ihre Ansicht“ stimmte nicht überall): Kanäle,
+ * Leads (Qualifizierung), Deals, Abschluss (Follow-up), Fulfillment (der Fall bzw. die Kunden in Lieferung), Nach der Leistung (Kreislauf der
+ * Markttraktion), Wiederkauf (die Firma bzw. die Deals).
+ */
+export function kreislaufWeg(id: KreislaufStufeId, m?: { id: string; firmaId?: string | null }): string {
+  switch (id) {
+    case 'kanaele': return WEG.vertriebsplanung('kanaele');
+    case 'leads': return WEG.qualifizierung();
+    case 'deals': return WEG.deals();
+    case 'followup': return WEG.followup();
+    case 'fulfillment': return m ? WEG.fall(m.id, 'ablauf') : WEG.fulfillment('visualisierung');
+    case 'nachher': return m ? WEG.fall(m.id, 'kreislauf') : WEG.vertriebsplanung('kreislauf');
+    case 'wiederkauf': return m?.firmaId ? WEG.firma(m.firmaId) : WEG.deals();
+  }
+}
 export const KREISLAUF_NAME: Record<KreislaufStufeId, string> = { kanaele: 'Kanäle', leads: 'Leads', deals: 'Deals', followup: 'Abschluss', fulfillment: 'Fulfillment', nachher: 'Nach der Leistung', wiederkauf: 'Wiederkauf' };
 
 export interface NachsorgePunkt { tag: number; art: NachsorgeArt; text: string; am: string | null; zustand: 'vorgeschlagen' | 'faellig' | 'kommt' | 'wartet' }

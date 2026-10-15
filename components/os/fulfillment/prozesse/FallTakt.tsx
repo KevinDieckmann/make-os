@@ -43,7 +43,7 @@ export function FallTakt({ mandatId }: { mandatId: string }) {
   const melde: Melde = (text, art = 'gut', aufgabe) => setMeldung(text ? { text, art, ...(aufgabe ? { aufgabe } : {}) } : null);
   const ops: Ops = async (o, gut) => { const a = await fallOps(mandatId, o); melde(a.ok ? gut ?? null : fehlerText(a), a.ok ? 'gut' : 'kritisch'); return a.ok; };
   const rituale = daten.rituale ?? [];
-  const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute });
+  const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute, ...(daten.kalender ? { kalender: daten.kalender } : {}) });
   const letzte = [...f.mitschriften].sort((a, b) => (a.am < b.am ? 1 : -1))[0];
   const offeneSchritte = f.mitschriften.filter(m => m.frist && m.frist >= heute);
   const namen = new Map((daten.personen ?? []).map(p => [p.id, p]));
@@ -124,6 +124,19 @@ function KalenderLeiste({ leiste, rituale, heute, onTermin }: { leiste: ReturnTy
             </span>
           );
         })}
+        {leiste.weitere.length > 0 && (
+          // 15.10. (Abnahme B3): Termine mit dem Kunden, die an keinem Ritual hängen (z. B. „Cockpit-Abstimmung“) — der Fall kennt sie trotzdem.
+          <span role="row" style={{ display: 'contents' }}>
+            <span role="rowheader" style={{ display: 'grid', gap: 1, minWidth: 0, minHeight: 44, alignContent: 'center', ...(handy ? { gridColumn: '1 / -1', marginTop: 4 } : {}) }}>
+              <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink }}>Weitere Termine</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>mit dem Kunden im Kalender</span>
+            </span>
+            {wochen.map(w => {
+              const tage = leiste.weitere.filter(t => lageImTag(t.tag, w) >= 0);
+              return <TerminZelle key={w} tage={tage.map(t => ({ tag: t.tag, erwartet: false, titel: `${t.titel ?? 'Termin'}${t.von ? ` · ${t.von}` : ''}` }))} woche={w} lage={lageImTag} name="Weitere Termine" />;
+            })}
+          </span>
+        )}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: TYP.bedien, color: C.inkDim }}>
         <span><span aria-hidden style={{ color: LEUCHT.gut, marginRight: 6 }}>●</span>Termin im Kalender</span>
@@ -136,17 +149,30 @@ function KalenderLeiste({ leiste, rituale, heute, onTermin }: { leiste: ReturnTy
 
 function WochenZelle({ z, woche, lage, onTermin }: { z: TaktZeile; woche: string; lage: (t: string, w: string) => number; onTermin: () => void }) {
   const tage = z.tage.filter(t => lage(t.tag, woche) >= 0);
-  const stil = { minHeight: 44, borderRadius: ECKE.eingabe, border: `1px solid ${RAND.haar}`, position: 'relative' as const, background: 'rgba(255,255,255,.02)' };
   if (!tage.length && !z.naechster && (z.rhythmus !== 'einmal' || !z.angelegt)) {
-    return <button type="button" role="cell" className="fassbar" onClick={onTermin} aria-label={`${z.titel}: noch kein Termin — anlegen`} style={{ ...stil, cursor: 'pointer', color: C.inkLeise, fontSize: TYP.body, background: 'transparent', borderStyle: 'dashed' }}>+</button>;
+    return <button type="button" role="cell" className="fassbar" onClick={onTermin} aria-label={`${z.titel}: noch kein Termin — anlegen`} style={{ ...ZELLE, cursor: 'pointer', color: C.inkLeise, fontSize: TYP.body, background: 'transparent', borderStyle: 'dashed' }}>+</button>;
   }
+  return <TerminZelle tage={tage} woche={woche} lage={lage} name={z.titel} />;
+}
+
+const ZELLE = { minHeight: 44, borderRadius: ECKE.eingabe, border: `1px solid ${RAND.haar}`, position: 'relative' as const, background: 'rgba(255,255,255,.02)' };
+
+/**
+ * Eine Woche als Zelle: je Termin ein Punkt am Wochentag (oben), darunter EIN Datum — so liegen Punkt und Datum nie übereinander (15.10., Abnahme C3:
+ * „Takt-Punkt über 20.10.“). Gefüllt = Termin im Kalender, Umriss = im Rhythmus erwartet.
+ */
+function TerminZelle({ tage, woche, lage, name }: { tage: { tag: string; erwartet: boolean; titel?: string }[]; woche: string; lage: (t: string, w: string) => number; name: string }) {
+  const echte = tage.filter(t => !t.erwartet);
   return (
-    <span role="cell" aria-label={tage.length ? `${z.titel}: ${tage.map(t => `${tagKurz(t.tag)}${t.erwartet ? ' (erwartet)' : ''}`).join(', ')}` : `${z.titel}: kein Termin in dieser Woche`} style={stil}>
+    <span role="cell" aria-label={tage.length ? `${name}: ${tage.map(t => `${tagKurz(t.tag)}${t.titel ? ` ${t.titel}` : ''}${t.erwartet ? ' (erwartet)' : ''}`).join(', ')}` : `${name}: kein Termin in dieser Woche`} style={ZELLE}>
       {tage.slice(0, 7).map(t => {
         const d = lage(t.tag, woche);
-        return <span key={t.tag} aria-hidden title={`${tagKurz(t.tag)}${t.erwartet ? ' · im Rhythmus erwartet' : ' · im Kalender'}`} style={{ position: 'absolute', left: `calc(${((d + 0.5) / 7) * 100}% - 5px)`, top: 'calc(50% - 5px)', width: 10, height: 10, borderRadius: 5, background: t.erwartet ? 'transparent' : LEUCHT.gut, border: `2px solid ${t.erwartet ? C.inkDim : LEUCHT.gut}`, boxShadow: t.erwartet ? undefined : TIEF.schein(LEUCHT.gut, 8) }} />;
+        return <span key={`${t.tag}-${t.titel ?? ''}`} aria-hidden title={`${tagKurz(t.tag)}${t.titel ? ` · ${t.titel}` : ''}${t.erwartet ? ' · im Rhythmus erwartet' : ' · im Kalender'}`} style={{ position: 'absolute', left: `calc(${((d + 0.5) / 7) * 100}% - 5px)`, top: 7, width: 10, height: 10, borderRadius: 5, background: t.erwartet ? 'transparent' : LEUCHT.gut, border: `2px solid ${t.erwartet ? C.inkDim : LEUCHT.gut}`, boxShadow: t.erwartet ? undefined : TIEF.schein(LEUCHT.gut, 8) }} />;
       })}
-      {tage.length === 1 && !tage[0].erwartet && <span style={{ position: 'absolute', left: 4, bottom: 2, fontSize: TYP.bedien, color: C.inkDim }}>{tagKurz(tage[0].tag)}</span>}
+      {echte.length === 1 && <span style={{ position: 'absolute', left: 6, right: 4, bottom: 3, fontSize: TYP.bedien, lineHeight: 1.2, color: C.inkDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tagKurz(echte[0].tag)}</span>}
+      {echte.length > 1 && <span style={{ position: 'absolute', left: 6, right: 4, bottom: 3, fontSize: TYP.bedien, lineHeight: 1.2, color: C.inkDim }}>{echte.length} Termine</span>}
+      {/* 15.10. (Abnahme B7): ein Termin im Kalender führt in den Kalender an diesen Tag. */}
+      {echte[0] && <Link href={WEG.kalender(echte[0].tag)} aria-label={`${name} am ${tagKurz(echte[0].tag)} im Kalender öffnen`} className="fassbar" style={{ position: 'absolute', inset: 0, borderRadius: ECKE.eingabe }} />}
     </span>
   );
 }

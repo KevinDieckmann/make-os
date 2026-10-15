@@ -25,7 +25,7 @@ export interface ReportUmfeld {
   anrede?: KundenAnrede;
   freigaben?: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
   rituale?: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus'>[];
-  terminTage?: readonly { uid: string; tag: string }[];
+  terminTage?: readonly { uid: string; tag: string; von?: string; titel?: string }[];
   /** 14.10.: dieselben offenen Formulare wie die Kunden-Seite (Baustein → öffentlicher Schlüssel; offene mit Zählung) — zählen unter „wartet auf euch“. */
   formulare?: ReadonlyMap<string, string>;
   formulareOffen?: readonly { schluessel: string; titel: string; beantwortet: number; gesamt: number }[];
@@ -38,7 +38,8 @@ export function reportZusatz(fall: Fall | null, mandat: Pick<Mandat, 'id' | 'zie
   // Der Report geht an den Kunden: nur geteilte Entscheidungen (Prüf-Fund 11.10.), keine gesperrten Knoten, keine internen Kürzel.
   const wartet = wartetAufEuch({ ...fall, knoten: fall.knoten.filter(k => !knotenGesperrt(k, gesperrt)), entscheidungen: (fall.entscheidungen ?? []).filter(x => x.geteilt) }, heute)
     .map(w => { const t = kundenText(w.titel); return w.tage !== undefined && w.tage > 0 ? `${t} (seit ${w.tage} ${w.tage === 1 ? 'Tag' : 'Tagen'})` : t; });
-  const p = letzterPuls(kunde, mandat.id);
+  // Nur ein Puls bis zum Stand des Reports (15.10., Abnahme B6: ein Report vom 01.10. zeigte den Puls vom 15.10.).
+  const p = letzterPuls({ puls: kunde.puls.filter(x => tagVon(x.am) <= heute) }, mandat.id);
   const puls = p && tagVon(p.am) >= tagePlus(heute, -PULS_IM_REPORT_TAGE) ? { wert: p.wert, am: tagVon(p.am) } : undefined;
   const anrede = umfeld.anrede ?? 'sie';
   const t = kundenTeile({

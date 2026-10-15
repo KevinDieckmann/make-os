@@ -1,0 +1,215 @@
+// ─── Fulfillment — zweite unabhängige Abnahme (15.10.): die Wächter der reinen Regeln und der Oberfläche ────────────────────────────────────────────
+// Was die Demo-Saat im Zusammenspiel prüft, steht in tests/fulfillment-stimmigkeit.test.ts. Hier, ohne Netz und ohne Platte (bis auf das Lesen von Quellen):
+//   B1  EINE Lage-Rechnung: der Kunde liest die Übersetzung der Hänger (ohne Health; interne Punkte „Wir sind dran“), intern „Der Kunde sieht …“ mit Grund
+//   B2  Ablauf am Handy: Kopfzeile, Chips und Aktionsspalte brechen um (Klassen + Regeln in globals.css)
+//   B3  Termine des Kunden: jeder Termin mit Bezug zählt (nächster Termin, Takt „weitere Termine“, Kick-off terminiert)
+//   B4  ein bewusst entferntes Muster gilt nicht als „fehlt“
+//   B5  keine Freigabe-Kürzel (F0/F1/F7) und keine Agenten-Kürzel ohne Klartext
+//   B7  Grafiken führen weiter (Kreislauf über EINE Tabelle `kreislaufWeg`, Wert-Konto, Puls, Takt)
+//   C3/C8/C16/C19/C20  Beschriftungen ohne Überlappung, Bausteine im Onboarding, Zählungen gleich, keine Silbentrennung, Aufgaben beim Kunden
+// Erfundene Daten.
+import { describe, it, expect } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { kundenLageAus, kundeSiehtLage, ohneKuerzel, KUNDEN_LAGE_TEXT } from '@/lib/fulfillment/prozesse/darstellung';
+import { naechsterFallTermin } from '@/lib/fulfillment/prozesse/rituale';
+import { zuordnen, ersterTermin, bezugGehoertZu, terminTitelKurz } from '@/lib/fulfillment/prozesse/termine';
+import { taktLeiste, kreislaufWeg, KREISLAUF_REIHE } from '@/lib/fulfillment/prozesse/ansichten';
+import { onboardingStand, imOnboarding, obKnotenId } from '@/lib/fulfillment/prozesse/onboarding';
+import { fallStarten } from '@/lib/fulfillment/prozesse/fall';
+import { fallReise } from '@/lib/fulfillment/prozesse/reise';
+import { vorlagenAnwenden, musterFehlt, MUSTER_ENTFERNT, markeMuster } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
+import { leerVorlagen } from '@/lib/fulfillment/lesen';
+import { MUSTER_P1, MUSTER_P3, MUSTER_PLAYBOOK } from '@/lib/fulfillment/muster';
+import { fallAufgabeOrt } from '@/lib/fulfillment/regeln';
+import { agentText } from '@/lib/fulfillment/analyse/agenten';
+import { kuerzelAus } from '@/lib/crm/angebote';
+import { Zeitachse } from '@/components/os/fulfillment/reise/teile';
+import type { Fall, FallKnoten, ProzessVorlage } from '@/lib/fulfillment/typen';
+
+const WURZEL = process.cwd();
+const lies = (p: string) => readFileSync(path.join(WURZEL, p), 'utf8');
+const HEUTE = '2026-10-15';
+const JETZT = '2026-10-15T09:00:00.000Z';
+const k = (id: string, elternId: string | undefined, titel: string, rang: number, x: Partial<FallKnoten> = {}): FallKnoten => ({ id, ...(elternId ? { elternId } : {}), titel, rang, status: 'offen', ...x });
+const fall = (knoten: FallKnoten[], x: Partial<Fall> = {}): Fall => ({
+  mandatId: 'm-1', vorlageId: 'v-1', vorlageFassung: 1, gestartetAm: '2026-10-13T09:00:00.000Z', gestartetVon: 'pia', status: 'onboarding', knoten,
+  freigaben: {}, onboarding: {}, stakeholder: [], entscheidungen: [], rituale: [], mitschriften: [], quickWins: [], kickoffFragen: [], wertKonto: {}, befaehigung: [],
+  marken: {}, geaendert: JETZT, geaendertVon: 'pia', ...x,
+});
+
+describe('B1 · EINE Lage-Rechnung — der Kunde liest nur die Übersetzung', () => {
+  const h1 = (art: string, schwere: 'rot' | 'gelb', kundeSieht?: boolean) => ({ art, schwere, ...(kundeSieht !== undefined ? { kundeSieht } : {}) });
+  it('wartet beim Kunden → gelb/rot; interne Punkte → „Wir sind dran“ (nie rot); ohne Hänger grün', () => {
+    expect(kundenLageAus([])).toEqual({ ampel: 'gruen', art: 'plan' });
+    expect(kundenLageAus([], true)).toEqual({ ampel: 'gruen', art: 'fertig' });
+    expect(kundenLageAus([h1('wartet', 'gelb', true)])).toEqual({ ampel: 'gelb', art: 'warten' });
+    expect(kundenLageAus([h1('wartet', 'rot', true)])).toEqual({ ampel: 'rot', art: 'nurMitEuch' });
+    expect(kundenLageAus([h1('willkommen', 'rot')])).toEqual({ ampel: 'gelb', art: 'dran' });
+    expect(kundenLageAus([h1('freigabe', 'rot'), h1('report', 'gelb')])).toEqual({ ampel: 'gelb', art: 'dran' });
+    // Ein wartender Punkt, den der Kunde nicht sieht, ist für ihn kein „Wir warten …“.
+    expect(kundenLageAus([h1('wartet', 'rot', false)])).toEqual({ ampel: 'gelb', art: 'dran' });
+    expect(KUNDEN_LAGE_TEXT.warten).toEqual({ du: 'Wir warten auf euren Input', sie: 'Wir warten auf Ihren Input' });
+  });
+  it('intern: „Der Kunde sieht …“ mit Grund, wenn es abweicht — Health zählt beim Kunden nicht; interne Punkte heißen „Wir sind dran“', () => {
+    expect(kundeSiehtLage({ health: 'gelb', haengt: [] })).toMatchObject({ ampel: 'gruen', titel: 'Wir liegen im Plan', grund: 'Health zählt beim Kunden nicht' });
+    const lumen = kundeSiehtLage({ health: null, haengt: [{ art: 'willkommen', mandatId: 'm', kunde: 'K', text: 't', schwere: 'rot', href: '/' }] });
+    expect(lumen).toMatchObject({ ampel: 'gelb', titel: 'Wir sind dran' });
+    expect(lumen.grund).toMatch(/interne Punkte/);
+    expect(kundeSiehtLage({ health: 'gruen', haengt: [] })).toEqual({ ampel: 'gruen', art: 'plan', titel: 'Wir liegen im Plan' });
+  });
+  it('die Kunden-Seite rechnet keine eigenen Schwellen mehr (LAGE_GRENZEN ist weg)', () => {
+    const bild = lies('lib/fulfillment/kunde/bild.ts');
+    expect(bild).not.toContain('LAGE_GRENZEN');
+    expect(bild).toContain('kundenLageAus(');
+  });
+});
+
+describe('B2 · Ablauf am Handy bricht um statt quer zu laufen', () => {
+  it('Klassen am Ablauf und die Regeln dazu in globals.css', () => {
+    const a = lies('components/os/fulfillment/prozesse/FallAblauf.tsx');
+    for (const x of ['className="ff-ablauf"', 'ff-ablauf-kopf', 'className="ff-ablauf-raute"', 'className="ff-ablauf-schritte"', 'className="ff-ablauf-aktion"']) expect(a, x).toContain(x);
+    const css = lies('app/globals.css');
+    const block = css.slice(css.indexOf('.ff-ablauf { min-width: 0; }'));
+    expect(block).toContain('@media (max-width: 720px)');
+    for (const x of ['.ff-ablauf .ff-ablauf-kopf { flex-wrap: wrap;', '.ff-ablauf .ff-ablauf-raute { order: 5; flex: 1 0 100%;', '.ff-ablauf .ui-zeile-rechts { flex: 1 0 100%; margin-left: 0;', '.ff-ablauf .ui-chip { white-space: normal !important;']) expect(block, x).toContain(x);
+  });
+});
+
+describe('B3 · Termine des Kunden zählen — auch ohne Ritual', () => {
+  const termine = [{ uid: 'u-ab', tag: '2026-10-15', von: '11:00', titel: 'Cockpit-Abstimmung' }, { uid: 'u-wc', tag: '2026-10-20', titel: 'Wochen-Check · Kunde' }, { uid: 'u-alt', tag: '2026-10-13' }];
+  it('der nächste Termin ist der früheste ab heute — mit Ritual dessen Titel, sonst der Titel des Termins', () => {
+    expect(naechsterFallTermin({ fallRituale: [], terminTage: termine, heute: HEUTE })).toEqual({ tag: '2026-10-15', titel: 'Cockpit-Abstimmung', von: '11:00' });
+    expect(naechsterFallTermin({ fallRituale: [{ ritualId: 'r-w', terminUids: ['u-ab'] }], terminTage: termine, heute: HEUTE, rituale: [{ id: 'r-w', titel: 'Wochen-Check' }] }))
+      .toEqual({ tag: '2026-10-15', ritualId: 'r-w', titel: 'Wochen-Check', von: '11:00' });
+    expect(naechsterFallTermin({ fallRituale: [], terminTage: [], heute: HEUTE })).toBeNull();
+  });
+  it('Bezug: Mandat direkt, ohne Mandat die Firma des Mandats; Zuordnung zu Ritualen; erster Termin ab Start; Titel ohne Kunden', () => {
+    expect(bezugGehoertZu({ mandatId: 'm-1' }, { id: 'm-1' })).toBe(true);
+    expect(bezugGehoertZu({ mandatId: 'm-2', firmaId: 'f-1' }, { id: 'm-1', firmaId: 'f-1' })).toBe(false);
+    expect(bezugGehoertZu({ firmaId: 'f-1' }, { id: 'm-1', firmaId: 'f-1' })).toBe(true);
+    expect(zuordnen(termine, [{ ritualId: 'r-w', terminUids: ['u-wc'] }]).map(t => [t.uid, t.ritualId ?? null])).toEqual([['u-alt', null], ['u-ab', null], ['u-wc', 'r-w']]);
+    expect(ersterTermin(termine, '2026-10-14')).toBe('2026-10-15');
+    expect(terminTitelKurz('Wochen-Check · Kunde', 'Kunde')).toBe('Wochen-Check');
+  });
+  it('Onboarding: der erste Termin mit dem Kunden ab dem Start macht „Kick-off terminiert“ wahr', () => {
+    const f = fall([k('w', undefined, 'Paket', 1)]);
+    const abl = { ziele: [], formularProzent: null, kickoffRitualIds: ['r-k'], willkommenStunden: 24, jetzt: JETZT };
+    expect(onboardingStand(f, abl).schritte.find(s => s.schluessel === 'kickoff')!.erfuellt).toBe(false);
+    const mit = onboardingStand(f, { ...abl, kundenTermine: ['2026-10-12', '2026-10-15'] }).schritte.find(s => s.schluessel === 'kickoff')!;
+    expect(mit.erfuellt).toBe(true);
+    expect(mit.text).toContain('15.10.');
+    // Ein Termin VOR dem Start zählt nicht.
+    expect(onboardingStand(f, { ...abl, kundenTermine: ['2026-10-12'] }).schritte.find(s => s.schluessel === 'kickoff')!.erfuellt).toBe(false);
+  });
+  it('Takt: Termine eines Rituals stehen in seiner Zeile (auch die schon gelaufenen dieser Woche), die übrigen als „weitere Termine“', () => {
+    const rituale = [{ id: 'r-w', titel: 'Wochen-Check', rhythmus: 'woche' as const, dauerMin: 15 }];
+    const t = taktLeiste({ rituale, fallRituale: [{ ritualId: 'r-w', terminUids: ['u-alt'] }], termine: {}, heute: HEUTE, kalender: zuordnen(termine, [{ ritualId: 'r-w', terminUids: ['u-alt'] }]) });
+    expect(t.zeilen[0].tage[0]).toEqual({ tag: '2026-10-13', erwartet: false });
+    expect(t.weitere.map(x => x.titel)).toEqual(['Cockpit-Abstimmung', 'Wochen-Check · Kunde']);
+    expect(t.naechster).toEqual({ titel: 'Cockpit-Abstimmung', tag: '2026-10-15' });
+  });
+});
+
+describe('B4 · ein bewusst entferntes Muster fehlt nicht', () => {
+  it('„vorlage-weg“ merkt das Muster als entfernt; „Fehlendes aus Muster anlegen“ legt es nicht neu an — ausdrücklich gewählt schon', () => {
+    const ctx = { person: 'pia', jetzt: JETZT, heute: HEUTE, standVon: () => 's', neueId: (() => { let n = 0; return (p: string) => `${p}-t${++n}`; })() };
+    const a = vorlagenAnwenden(leerVorlagen(), [{ op: 'aus-muster' }], ctx);
+    if (!a.ok) throw new Error('aus-muster');
+    const p3 = a.datei.marken[markeMuster(MUSTER_P3.id)];
+    const b = vorlagenAnwenden(a.datei, [{ op: 'vorlage-weg', id: p3 }], ctx);
+    if (!b.ok) throw new Error('vorlage-weg');
+    expect(b.datei.marken[markeMuster(MUSTER_P3.id)]).toBe(MUSTER_ENTFERNT);
+    expect(musterFehlt(b.datei, MUSTER_P3.id)).toBe(false);
+    const c = vorlagenAnwenden(b.datei, [{ op: 'aus-muster' }], ctx);
+    if (!c.ok) throw new Error('aus-muster 2');
+    expect(c.datei.prozesse.filter(p => p.art === 'paket')).toHaveLength(b.datei.prozesse.filter(p => p.art === 'paket').length);
+    const d = vorlagenAnwenden(b.datei, [{ op: 'aus-muster', welche: ['p3'] }], ctx);
+    if (!d.ok) throw new Error('aus-muster p3');
+    expect(musterFehlt(d.datei, MUSTER_P3.id)).toBe(false);
+    expect(d.datei.prozesse.some(p => p.id === d.datei.marken[markeMuster(MUSTER_P3.id)])).toBe(true);
+  });
+});
+
+describe('B5 · keine Kürzel ohne Klartext', () => {
+  it('Freigabe-Kürzel → „Abstimmungspunkt n („Titel“)“; ohne Nummer mit Titel; Onboarding sagt nie „F0“', () => {
+    const nr = new Map([['F0', 1], ['F7', 7]]);
+    const fg = [{ id: 'F1', titel: 'Analyse-Umfang & Personenliste' }, { id: 'F7', titel: 'Übergabe-Freigabe' }];
+    expect(ohneKuerzel('Nicht im Umfang von F1.', nr, fg)).toBe('Nicht im Umfang von Abstimmungspunkt „Analyse-Umfang & Personenliste“.');
+    expect(ohneKuerzel('Übergabe (F7)', nr, fg)).toBe('Übergabe (Abstimmungspunkt 7 („Übergabe-Freigabe“))');
+    expect(ohneKuerzel('Fahrplan 2026', nr, fg)).toBe('Fahrplan 2026');
+    const f = fall([k('w', undefined, 'Paket', 1), k('p', 'w', 'Vorlauf', 1, { freigabe: 'F0' }), k(obKnotenId('f0'), 'p', 'F0 bestätigt', 1, { freigabe: 'F0' })]);
+    const t = onboardingStand(f, { ziele: [], formularProzent: null, kickoffRitualIds: [], willkommenStunden: 24, jetzt: JETZT }).schritte.find(s => s.schluessel === 'f0')!.text;
+    expect(t).toBe('Abstimmungspunkt 1 noch nicht vermerkt.');
+  });
+  it('Agenten nie als Kürzel allein; Erklärungen und Kreislauf ohne F-Kürzel', () => {
+    expect(agentText('a1')).toBe('A1 · Unternehmens-Steckbrief');
+    expect(agentText('tb')).toBe('TB · Tiefenbericht');
+    expect(agentText('ap')).toBe('AP · Playbook-Auswertung');
+    for (const d of ['lib/erklaerungen/fulfillment-analyse.ts', 'lib/erklaerungen/fulfillment-prozesse.ts']) expect(lies(d), d).not.toMatch(/\bF\d\b/);
+    expect(lies('components/os/fulfillment/prozesse/FallKreislauf.tsx')).not.toContain('(F7)');
+    const marke = lies('components/os/fulfillment/reise/bilder.tsx');
+    expect(marke).toContain('{name ?? id.toUpperCase()}');
+    for (const d of ['components/os/fulfillment/analyse/Laeufe.tsx', 'components/os/fulfillment/analyse/DossierAnsicht.tsx']) expect(lies(d), d).not.toMatch(/\.agent\.toUpperCase\(\)/);
+  });
+});
+
+describe('B7 · Grafiken führen weiter', () => {
+  it('Kreislauf: EINE Tabelle über WEG — jede Stufe hat ihre Ansicht (mit Fall: Fulfillment in den Fall, Wiederkauf zur Firma)', () => {
+    for (const id of KREISLAUF_REIHE) expect(kreislaufWeg(id), id).toMatch(/^\/os\//);
+    expect(kreislaufWeg('deals')).toContain('markttraktion');
+    expect(kreislaufWeg('leads')).toContain('qualifizierung');
+    expect(kreislaufWeg('fulfillment', { id: 'm-1' })).toContain('m-1');
+    expect(kreislaufWeg('wiederkauf', { id: 'm-1', firmaId: 'f-1' })).toContain('f-1');
+    expect(lies('components/os/fulfillment/prozesse/Kreislauf.tsx')).toContain('kreislaufWeg(s.id)');
+    expect(lies('components/os/fulfillment/prozesse/FallKreislauf.tsx')).toContain('onMitte=');
+  });
+  it('Wert-Konto-Linie, Kunden-Puls und Takt-Termine sind Tippziele', () => {
+    expect(lies('components/os/fulfillment/prozesse/FallWert.tsx')).toContain("onClick={() => insBild(`wert-messen-${zielId}`)}");
+    expect(lies('components/os/fulfillment/kunde/FallKunde.tsx')).toContain('onClick={() => setAlle(true)}');
+    expect(lies('components/os/fulfillment/prozesse/FallTakt.tsx')).toContain('href={WEG.kalender(echte[0].tag)}');
+  });
+});
+
+describe('C · Beschriftungen, Bausteine, Zählungen, Silben, Aufgaben', () => {
+  it('C3: „heute“ steht über der Achse — Start und Ende darunter überdecken es nie; ⓘ überdeckt keine Zahl', () => {
+    const html = renderToStaticMarkup(h(Zeitachse, { punkte: [], heuteX: 0.86, links: 'Start 31.08.', rechts: '22.10.', beschreibung: 'x' }));
+    expect(html.indexOf('heute')).toBeLessThan(html.indexOf('role="img"'));
+    expect(html.indexOf('22.10.')).toBeGreaterThan(html.indexOf('role="img"'));
+    expect(lies('app/globals.css')).toContain('.ui-kennzahl-erkl .ui-kennzahl-wert { padding-right: 24px; }');
+  });
+  it('C8: Playbook und Willkommensmail laufen im Onboarding jedes Falls; die Import-Liste nennt keine Dateinamen', () => {
+    const d = { ...leerVorlagen(), bausteine: [{ ...MUSTER_PLAYBOOK, id: 'fb-1', tags: ['playbook'] }, { ...MUSTER_PLAYBOOK, id: 'fb-2', art: 'mail' as const, tags: ['willkommen'] }, { ...MUSTER_PLAYBOOK, id: 'fb-3', art: 'dokument' as const, tags: [] }] };
+    expect(d.bausteine.map(b => imOnboarding(b, d))).toEqual([true, true, false]);
+    expect(lies('components/os/fulfillment/prozesse/Bausteine.tsx')).toContain('im Onboarding jedes Falls');
+    expect(lies('components/os/fulfillment/prozesse/Import.tsx')).not.toContain('{l.datei}');
+  });
+  it('C16: der Zähler einer Phase zählt die Zeilen des Ablaufs (ein Schritt mit drei Bausteinen = 1); das Onboarding zählt nur, was für „fertig“ zählt', () => {
+    const f = fall([
+      k('w', undefined, 'Paket', 1), k('p', 'w', 'Diagnose', 1),
+      k('s1', 'p', 'Bericht', 1), k('t', 'p', 'Weitere Bausteine', 2), k('s2', 't', 'Zugeordnete Bausteine', 1),
+      k('b1', 's2', 'A', 1, { bausteinId: 'x1' }), k('b2', 's2', 'B', 2, { bausteinId: 'x2' }), k('b3', 's2', 'C', 3, { bausteinId: 'x3' }),
+    ]);
+    expect(fallReise(f, [], HEUTE).phasen[0]).toMatchObject({ erledigt: 0, gesamt: 2 });
+    expect(lies('components/os/fulfillment/prozesse/FallUeberblick.tsx')).toContain('erledigt.filter(s => s.zaehlt).length} von {schritte.filter(s => s.zaehlt).length}');
+  });
+  it('C19: keine Silbentrennung in Phasen-Titeln; das Angebots-Kürzel schneidet nie mitten im Wort', () => {
+    const dateien = (o: string): string[] => readdirSync(path.join(WURZEL, o), { withFileTypes: true }).flatMap(e => (e.isDirectory() ? dateien(`${o}/${e.name}`) : e.name.endsWith('.tsx') ? [`${o}/${e.name}`] : []));
+    for (const d of dateien('components/os/fulfillment')) expect(lies(d), d).not.toContain("hyphens: 'auto'");
+    expect(kuerzelAus('Nordlicht Labs', 'X')).toBe('NORDLICHT');
+  });
+  it('C20: Aufgaben aus Fulfillment tragen den Kunden im Titel und liegen im Space des Mandanten', () => {
+    const o = fallAufgabeOrt({ id: 'm-1', kunde: 'Beispiel GmbH', gesellschaft: 'ug', firmaId: 'f-1' });
+    expect(o).toMatchObject({ space: 'business', spaceId: 'm-f-1', bezug: { mandatId: 'm-1', firmaId: 'f-1' } });
+    expect(o.titel('Registerauszug ablegen')).toBe('Registerauszug ablegen — Beispiel GmbH');
+    expect(fallAufgabeOrt({ id: 'm-2', kunde: 'K', gesellschaft: 'ug' }).spaceId).toBe('ug');
+  });
+  it('C16 (Onboarding-Zählung): sieben zählende Schritte — das Playbook darf noch laufen', () => {
+    const v = { ...(MUSTER_P1 as ProzessVorlage), id: 'fp-1', fassung: 1, geaendert: JETZT, geaendertVon: 'pia' };
+    const f = fallStarten({ mandatId: 'm-1', vorlage: v, person: 'pia', jetzt: JETZT, start: HEUTE, neueId: (() => { let n = 0; return (p: string) => `${p}-${++n}`; })() });
+    const st = onboardingStand(f, { ziele: [], formularProzent: null, kickoffRitualIds: [], willkommenStunden: 24, jetzt: JETZT });
+    expect(st.schritte.filter(s => s.zaehlt)).toHaveLength(st.offen);
+  });
+});

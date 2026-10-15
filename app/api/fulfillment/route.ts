@@ -10,10 +10,10 @@ import { NextResponse } from 'next/server';
 import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
 import { kundenJeKnoten } from '@/lib/fulfillment/regeln';
-import { vorlagenAnwenden, mitStaenden, vorlagenMitBaustein, MUSTER_WAHL, markeMuster } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
+import { vorlagenAnwenden, mitStaenden, vorlagenMitBaustein, MUSTER_WAHL, musterFehlt } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import { fallUmfeld, ableitungFuer } from '@/lib/fulfillment/prozesse/fall-server';
 import { faelleKurz, kandidatenAnsicht } from '@/lib/fulfillment/prozesse/server';
-import { fallWirksam } from '@/lib/fulfillment/prozesse/onboarding';
+import { fallWirksam, imOnboarding } from '@/lib/fulfillment/prozesse/onboarding';
 import { ffKennzahlenRechnen, kickoffTag } from '@/lib/fulfillment/prozesse/kennzahlen';
 import { istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
 import { nurIntern, urheberGeprueft, rechtOffen, vorVerkaufOffen } from '@/lib/fulfillment/prozesse/bausteine';
@@ -44,9 +44,9 @@ export async function GET(req: Request) {
     const d = await fulfillmentLesen('vorlagen', z.haushalt);
     const b = d.bausteine.find(x => x.id === bid);
     if (!b) return NextResponse.json({ ok: false, fehler: 'Diesen Baustein gibt es nicht (mehr).' }, { status: 404 });
-    return NextResponse.json({ ok: true, baustein: { ...b, stand: eintragStand(b) }, steckt: vorlagenMitBaustein(d, b.id), urheberGeprueft: urheberGeprueft(d, b.id) });
+    return NextResponse.json({ ok: true, baustein: { ...b, stand: eintragStand(b) }, steckt: vorlagenMitBaustein(d, b.id), imOnboarding: imOnboarding(b, d), urheberGeprueft: urheberGeprueft(d, b.id) });
   }
-  const { crm, vorlagen, faelle: faelleRoh, kunde } = await fallUmfeld();
+  const { crm, vorlagen, faelle: faelleRoh, kunde, termine } = await fallUmfeld();
   // Prüf-Fund 11.10.: nur Mandate von Business-Gesellschaften (die Selbstständigkeit gehört zu Privat) — auch Fälle, deren Mandat inzwischen privat
   // ist, fallen heraus. Ein Fall ohne Mandat im CRM bleibt als „Mandat (gelöscht)“ (ohne Namen).
   const mandatVon = new Map(crm.mandate.map(m => [m.id, m] as const));
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
     });
   }
   // Welcher Kunde steht wo (je Vorlage, wirksame Fälle).
-  const wirksam = Object.values(faelle.faelle).map(f => fallWirksam(f, ableitungFuer(f, crm.mandate.find(m => m.id === f.mandatId), crm, vorlagen, kunde[f.mandatId], iso)));
+  const wirksam = Object.values(faelle.faelle).map(f => fallWirksam(f, ableitungFuer(f, crm.mandate.find(m => m.id === f.mandatId), crm, vorlagen, kunde[f.mandatId], iso, termine[f.mandatId])));
   const zaehler = Object.fromEntries(vorlagen.prozesse.map(p => [p.id, kundenJeKnoten(p, wirksam)]));
   const kickoffIds = vorlagen.rituale.filter(istKickoff).map(r => r.id);
   const treppe = await import('@/lib/crm/treppe-server').then(t => t.ladeTreppe(heute)).catch(() => null);
@@ -91,11 +91,11 @@ export async function GET(req: Request) {
     // Bibliothek in Kurzform: ohne Langtext und Fragen (die holt `?baustein=`), mit Marken und „steckt in …“.
     bausteine: st.bausteine.map(({ text: _t, fragen, gliederung, ...b }) => ({
       ...b, gliederungAnzahl: gliederung.length, fragenAnzahl: fragen?.length ?? 0, nurIntern: nurIntern(b), rechtOffen: rechtOffen(b), vorVerkaufOffen: vorVerkaufOffen(b, vorlagen),
-      steckt: vorlagenMitBaustein(vorlagen, b.id).length,
+      steckt: vorlagenMitBaustein(vorlagen, b.id).length, imOnboarding: imOnboarding(b, vorlagen),
     })),
     rituale: st.rituale, zuordnung: vorlagen.zuordnung, einstellungen: vorlagen.einstellungen, agentZusatz: vorlagen.agentZusatz,
     importLaeufe: vorlagen.importLaeufe.map(l => ({ id: l.id, am: l.am, von: l.von, datei: l.datei, neu: l.neu.length, geaendert: l.geaendert.length })),
-    musterOffen: MUSTER_WAHL.filter(w => { const id = vorlagen.marken[markeMuster(MUSTER_IDS[w.id])]; return !id || !vorlagen.prozesse.some(p => p.id === id); }).map(w => w.id),
+    musterOffen: MUSTER_WAHL.filter(w => musterFehlt(vorlagen, MUSTER_IDS[w.id])).map(w => w.id),
     kandidaten, faelle: faelleAnsicht, zaehler, mandate, kennzahlen,
     leistungen: crm.leistungen.filter(l => !l.geloeschtAm).map(l => ({ id: l.id, name: l.name, status: l.status })),
   });

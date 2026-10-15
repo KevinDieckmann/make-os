@@ -284,7 +284,7 @@ export type TreppeOp =
   | { op: 'positionierung'; felder: Record<string, unknown>; stand?: string }
   | { op: 'zieljahr'; jahr: number }
   | { op: 'kunde'; mandatId: string; felder: { stufeId?: string | null; naechster?: { text: string; datum: string } | null }; stand?: string }
-  | { op: 'lieferobjekt'; mandatId: string; was: string; erledigt: boolean }
+  | { op: 'lieferobjekt'; mandatId: string; was: string; erledigt: boolean; /** Tag der Erledigung (nur Vergangenheit; ohne Angabe heute) — z. B. aus dem Fall nachgezogen. */ am?: string }
   | { op: 'report-gesendet'; mandatId: string }
   | { op: 'vorlage' };
 
@@ -497,7 +497,9 @@ export function treppeAnwenden(datei: TreppeDatei, opsRoh: unknown, k: AnwendenK
         const schon = basis.erledigt.some(x => x.was === was);
         if (op.erledigt && !schon) {
           if (basis.erledigt.length >= TREPPE_GRENZEN.erledigt) nein(`Höchstens ${TREPPE_GRENZEN.erledigt} erledigte Lieferobjekte je Kunde.`, 413);
-          d.kunden[mid] = { ...basis, erledigt: [...basis.erledigt, { was, am: k.heute, von: k.person }], ...vermerk };
+          // 15.10. (Abnahme B6): der Tag, an dem es wirklich erledigt wurde (Fall-Nachzug), nie in der Zukunft — sonst heute.
+          const am = typeof op.am === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(op.am) && op.am <= k.heute ? op.am : k.heute;
+          d.kunden[mid] = { ...basis, erledigt: [...basis.erledigt, { was, am, von: k.person }], ...vermerk };
         } else if (!op.erledigt && schon) d.kunden[mid] = { ...basis, erledigt: basis.erledigt.filter(x => x.was !== was), ...vermerk };
         geaendert.push(`${mid}:lieferobjekt`);
         return;

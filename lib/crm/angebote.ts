@@ -131,9 +131,17 @@ export const mengeText = (m: number) => m.toLocaleString('de-DE', { maximumFract
 
 // ── Nummern ──────────────────────────────────────────────────────────────────
 
-/** Ein Kurzname als Nummern-Kürzel: nur Großbuchstaben und Ziffern, höchstens 8 Zeichen (Umlaute ausgeschrieben). */
+/** Höchstlänge eines Nummern-Kürzels. */
+export const KUERZEL_MAX = 10;
+/**
+ * Ein Kurzname als Nummern-Kürzel: nur Großbuchstaben und Ziffern (Umlaute ausgeschrieben), ganze Wörter, höchstens `KUERZEL_MAX` Zeichen — nie mitten im
+ * Wort abgeschnitten (15.10., Abnahme C19: „Nordlicht Labs“ ergab „NORDLICH“). Passt schon das erste Wort nicht, die Anfangsbuchstaben der Wörter.
+ */
 export function kuerzelAus(name: string, rueckfall: string): string {
-  const k = String(name ?? '').toUpperCase().replace(/Ä/g, 'AE').replace(/Ö/g, 'OE').replace(/Ü/g, 'UE').replace(/ß/g, 'SS').replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  const woerter = String(name ?? '').toUpperCase().replace(/Ä/g, 'AE').replace(/Ö/g, 'OE').replace(/Ü/g, 'UE').replace(/ß/g, 'SS').split(/[^A-Z0-9]+/).filter(Boolean);
+  let k = '';
+  for (const w of woerter) { if ((k + w).length > KUERZEL_MAX) break; k += w; }
+  if (!k && woerter.length) k = woerter.length > 1 ? woerter.map(w => w[0]).join('').slice(0, KUERZEL_MAX) : woerter[0].slice(0, KUERZEL_MAX);
   return k || rueckfall;
 }
 /**

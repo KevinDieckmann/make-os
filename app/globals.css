@@ -769,6 +769,8 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .ui-kennzahl { display: grid; gap: 2px; padding: 14px 16px; min-width: 0; text-align: left; font-family: inherit; color: inherit; box-sizing: border-box; }
 .ui-kennzahl-klick { cursor: pointer; }
 .ui-kennzahl-wert { font-weight: 700; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+/* Mit Erklärung steht ⓘ oben rechts — die Zahl hält Abstand, damit „8 von 10“ nie darunter liegt (15.10., Abnahme C3). */
+.ui-kennzahl-erkl .ui-kennzahl-wert { padding-right: 24px; }
 .ui-kennzahl-label { font-size: 13px; color: #A2ADB0; margin-top: 4px; line-height: 1.35; }
 .ui-kennzahl-unter { font-size: 12px; color: #86918F; line-height: 1.35; }
 
@@ -1033,6 +1035,22 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .kalender-kopf-rechts { justify-content: space-between; flex-wrap: nowrap; }
   .kalender-zeitraum { font-size: 16px; flex: 1 1 auto; margin: 0 2px; }
   .kalender-suche { width: auto; flex: 1 1 120px; min-width: 0; }
+}
+
+/* ── Fulfillment › Fall › Ablauf am Handy (15.10., Abnahme B2 — components/os/fulfillment/prozesse/FallAblauf.tsx) ─────────────────────────────────
+   Am Handy liefen Status-Chips, Abstimmungspunkt-Texte und „Abstimmung vermerken“ rechts aus dem Bild (die Seite scrollte quer). Jetzt: die Kopfzeile einer
+   Phase bricht um (Abstimmungspunkt als eigene Zeile unter dem Titel, ohne Abschneiden), die Aktionsspalte eines Schritts steht DARUNTER statt daneben,
+   Chips umbrechen. Nur unter `.ff-ablauf`. */
+.ff-ablauf { min-width: 0; }
+.ff-ablauf .ui-zeile-text { min-width: 0; }
+@media (max-width: 720px) {
+  .ff-ablauf .ff-ablauf-kopf { flex-wrap: wrap; row-gap: 4px; }
+  .ff-ablauf .ff-ablauf-raute { order: 5; flex: 1 0 100%; max-width: 100% !important; white-space: normal !important; padding-left: 40px; box-sizing: border-box; }
+  .ff-ablauf .ff-ablauf-raute > span:last-child { overflow: visible !important; text-overflow: clip !important; overflow-wrap: anywhere; }
+  .ff-ablauf .ff-ablauf-schritte { padding-left: 0 !important; }
+  .ff-ablauf .ui-zeile-rechts { flex: 1 0 100%; margin-left: 0; justify-content: flex-start; }
+  .ff-ablauf .ff-ablauf-aktion { justify-content: flex-start !important; width: 100%; }
+  .ff-ablauf .ui-chip { white-space: normal !important; max-width: 100%; }
 }
 
 /* ── Kunden-Seite, Vorschau und Präsentation (12.10., Fulfillment extern — components/os/fulfillment/kunde/KundenAnsicht.tsx, bilder.tsx) ─────────────

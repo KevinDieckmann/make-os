@@ -100,7 +100,7 @@ async function hochladen(person: string, schluessel: string, png: Buffer, meta: 
 /** Je Business-Head ein Gespräch (Frage der Person, Antwort des Heads) — erfunden, ohne echte Namen oder Beträge. */
 const GESPRAECHE: Record<string, { wer: 'lena' | 'jonas'; frage: string; antwort: string }[]> = {
   sales: [
-    { wer: 'lena', frage: 'Welche drei Deals sollten wir diese Woche zuerst anfassen?', antwort: 'Zuerst „Diagnose Grünfeld Bau“ (Angebot liegt, Entscheidung in zwei Wochen), dann „Begleitung Atlas Software“ (Workshop steht an) und „Cockpit für Seeblick Hotels“ (Demo-Termin vorbereiten). Für alle drei liegt der nächste Schritt als Vorschlag im Stapel. (Beispiel)' },
+    { wer: 'lena', frage: 'Welche drei Deals sollten wir diese Woche zuerst anfassen?', antwort: 'Zuerst „Diagnose Grünfeld Bau“ (Angebot liegt, Entscheidung in zwei Wochen), dann „Vertriebsaufbau Atlas Software“ (Workshop steht an) und „Cockpit für Seeblick Hotels“ (Demo-Termin vorbereiten). Für alle drei liegt der nächste Schritt als Vorschlag im Stapel. (Beispiel)' },
     { wer: 'lena', frage: 'Bitte recherchiere passende Zielfirmen wie unsere besten Kunden.', antwort: 'Ich habe „Recherche & Prospecting“ beauftragt — der Bericht steht unten. Fünf Firmen passen zum Profil; Ansprache nur über die Kanäle mit grüner Ampel. (Beispiel)' },
   ],
   marketing: [

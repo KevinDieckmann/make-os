@@ -18,6 +18,28 @@ Stand hier und einen Stand, der online ist.“
   **C18:** „Fokus & Zeit ist persönlich“ in der Erklärung der Abdeckung; eine Säule unter 40 % steht auf Heute als „messen ›“ statt „0“.
 - **Wächter:** tests/nur-business-sicht.test.ts (ALLE lesenden Routen mit der Sitzung „nur Business“ ohne Marke aus Privat, Selbstständigkeit, Fahrplan, Register; Space-Wahl;
   Privat-Seiten), tests/sicher-zugang-sitzung.test.ts (Umleitung). **Rückweg:** nur optionale Felder (`nurBusiness`, `haushaltZugang`, `privatFinanzen`), keine Daten umgeschrieben.
+## 15.10.2026 — Fulfillment: Funde der zweiten unabhängigen Abnahme (nur lokal — Branch `abnahme2-fulfillment`, Basis 2df8ea9e = `update-0910b`)
+Kevin: „Der Fulfillment-Bereich sollte wirklich sehr gut sein, bevor wir weiter ausbauen und hochladen.“
+- **B1 EINE Lage-Rechnung:** die Kunden-Lage ist nur noch die Übersetzung der Cockpit-Hänger (`kundenLageAus`, lib/fulfillment/prozesse/darstellung.ts) — keine eigenen
+  Schwellen mehr (`LAGE_GRENZEN` weg). Health zählt beim Kunden nicht; Punkte ohne Kundenbezug heißen „Wir sind dran“ (nie rot); „wartet“ hat nur Bezug, wenn der Kunde den
+  Punkt sieht (`kundeSieht`). Intern steht an der Ampel „Der Kunde sieht: …“ mit Grund (Fall-Kopf `LageZeile`, Kunden-Karten, Leistungstreppe). „Als Nächstes“: derselbe
+  Punkt (`naechsterPunkt`) in Fall, Cockpit, Kunden-Seite, Report und Leistungstreppe (`kundenNaechsterPunkt`; nie die Phase selbst; ein interner Schritt wird intern als
+  „der Kunde sieht als Nächstes …“ erklärt). Die Leistungstreppe übernimmt mit Fall Ampel und nächsten Schritt (`fallFuerTreppe`), der Report nennt mit Fall nur dessen
+  Schritte. „Hängt etwas?“ im Fall-Kopf = dieselbe Liste wie die Lage. Phasen-Zähler zählen die Zeilen des Ablaufs (C16), Onboarding „x von 7“ (zählende Schritte).
+- **B3 Termine des Kunden:** EINE Lesestelle `fallTermine` (lib/fulfillment/prozesse/termine-server.ts: Kalender-Stand + `kalender-bezug`, Mandat oder Firma, Serien je
+  Vorkommen, privat ohne Titel, 60 s gemerkt). `naechsterFallTermin` zählt jeden Termin mit Bezug; Takt zeigt Termine eines Rituals auch rückwirkend in dieser Woche und
+  die übrigen als „Weitere Termine“; der erste Termin ab Start macht „Kick-off terminiert“ wahr. Demo: „Cockpit-Abstimmung Lumen“ und alle „Wochen-Check Nordwerk“ mit Bezug.
+- **B2/B5/B7/C:** Ablauf am Handy bricht um (`ff-ablauf`, globals.css); keine F-Kürzel (`ohneKuerzel`, `useOhneKuerzel`), Agenten mit Namen (`agentText`); Kreislauf über
+  EINE Tabelle `kreislaufWeg` (+ Mitte klickbar), Wert-Konto-Linie, Puls-Verlauf und Takt-Termine führen weiter; „heute“ über der Zeitachse, Kreislauf-Bögen enden vor den
+  Kästen, ⓘ überdeckt keine Kennzahl; Bausteine „im Onboarding jedes Falls“, keine Dateinamen bei Importen; Kunden-Link aus → Weg zum Schalter (Inhaberin) bzw.
+  „Playbook gemeinsam ausfüllen“; „Dem Kunden zeigen“ ohne Mandat-Titel im Menü; keine Silbentrennung; Angebots-Kürzel aus ganzen Wörtern (`kuerzelAus`, ≤ 10);
+  Fulfillment-Aufgaben mit Kunden im Titel im Space des Mandanten (`fallAufgabeOrt`).
+- **B4/B6 Demo:** Produkt, Mandat, Paket und Treppen-Stufe heißen „Vertriebsaufbau“ (der Inhalt ist einer); ein bewusst gelöschtes Muster fehlt nicht mehr
+  (`MUSTER_ENTFERNT`); Wert-Konto im Kick-off festgelegt (`wert-ziel` nimmt `festgelegtAm` als Nachtrag), Quick Wins im 30-Tage-Fenster, neun eigene Playbook-Antworten,
+  Lieferobjekt mit seinem Tag (`lieferobjekt` nimmt `am`), Reports nur mit Daten bis zu ihrem Stand (Puls, Lieferobjekte).
+- **Wächter:** tests/fulfillment-abnahme2.test.ts (rein + Quellen), tests/fulfillment-stimmigkeit.test.ts (Demo: Ampel übersetzt, „Als Nächstes“ gleich in Fall/Kunde/
+  Report/Treppe, „Was hängt“ gleich, Termine im Takt, Demo-Daten stimmig). **Rückweg:** nur optionale Felder (`Haenger.kundeSieht`, `CockpitZeile.kundeSieht`, Treppe
+  `fall`, Op-Felder `am`/`festgelegtAm`, Marke `entfernt`); keine Formänderung gespeicherter Bestände.
 
 ## 14.10.2026 — Abnahme-Reste 2 (nur lokal — Branch `abnahme-reste-2`, Basis 40808275 = `update-0910b`)
 - **Zeile neutral (Kevin 14.10.):** Zahlungskalender „Partnerdarlehen-Rate“ statt eines Vornamens (`lib/finanzen/rechenkern.ts`) — nur der Anzeigename; Kennungen `ug.bjoern`/

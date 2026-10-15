@@ -168,7 +168,10 @@ describe('3.15 · Kleinkram: Kürzel aus UG_KURZ, Schnellknopf behält den Konta
     const { KURZ_VORGABE, kuerzelAus } = await import('@/lib/crm/angebote');
     const { UG_KURZ } = await import('@/lib/einheiten');
     expect(KURZ_VORGABE.ug).toBe(kuerzelAus(UG_KURZ, 'UG'));
-    expect(kuerzelAus('Mähren & Söhne 2', 'X')).toBe('MAEHRENS');
+    // 15.10. (Abnahme C19): ganze Wörter, nie mitten im Wort abgeschnitten.
+    expect(kuerzelAus('Mähren & Söhne 2', 'X')).toBe('MAEHREN');
+    expect(kuerzelAus('Nordlicht Labs', 'X')).toBe('NORDLICHT');
+    expect(kuerzelAus('Unternehmensberatung Muster', 'X')).toBe('UM');
     expect(kuerzelAus('···', 'UG')).toBe('UG');
   });
   it('angebotVonHier: offener Kontakt, Firma oder Deal geht mit; sonst ein leeres Angebot', async () => {

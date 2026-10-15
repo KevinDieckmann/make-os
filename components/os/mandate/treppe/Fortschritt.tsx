@@ -22,6 +22,8 @@ import { WEG } from '@/lib/wege';
 import type { Ampel } from '@/lib/crm/treppe';
 import { PULS_PLATZHALTER, hatZusatz, type ReportDokument } from '@/lib/crm/treppe-report';
 import { useTreppe, datum } from './daten';
+// Die Wörter der Fall-Ampel — dieselben wie im Fulfillment (EINE Tabelle).
+import { AMPEL_TEXT as FALL_AMPEL_TEXT } from '../../fulfillment/reise/bilder';
 
 const AMPEL: Record<Ampel, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
@@ -59,7 +61,10 @@ export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFa
           {!imFall && <Link href={WEG.fall(mandatId, 'kunde')} style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Fulfillment öffnen ›</Link>}
         </span>
         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {z.ampel.gesamt && <Chip farbe={AMPEL[z.ampel.gesamt]}>{z.ampel.gesamt === 'gruen' ? 'läuft' : z.ampel.gesamt === 'gelb' ? 'im Blick behalten' : 'braucht Aufmerksamkeit'}</Chip>}
+          {/* 15.10. (Abnahme B1): mit Fall die Ampel des Falls (Hänger + Health — dieselbe wie Fall-Kopf und Landkarte), sonst die Health der Treppe. */}
+          {z.fall
+            ? <span title={z.fall.kundeSieht ? `Der Kunde sieht: „${z.fall.kundeSieht.titel}“${z.fall.kundeSieht.grund ? ` (${z.fall.kundeSieht.grund})` : ''}` : undefined}><Chip farbe={AMPEL[z.fall.ampel]}>{FALL_AMPEL_TEXT[z.fall.ampel]}</Chip></span>
+            : z.ampel.gesamt && <Chip farbe={AMPEL[z.ampel.gesamt]}>{z.ampel.gesamt === 'gruen' ? 'läuft' : z.ampel.gesamt === 'gelb' ? 'im Blick behalten' : 'braucht Aufmerksamkeit'}</Chip>}
           {z.naechsteStufe && <Chip farbe={LEUCHT.gut}>reif für: {z.naechsteStufe.stufen.map(s => s.name).join(' oder ')}</Chip>}
         </span>
       </div>
@@ -81,7 +86,17 @@ export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFa
           ))}
         </div>
       )}
-      <NaechsterSchritt wert={z.naechster} onSpeichern={n => api.schreibe([{ op: 'kunde', mandatId, felder: { naechster: n }, stand: z.stand }])} />
+      {z.fall
+        // Mit Fall: DERSELBE nächste Schritt wie Fall-Kopf, Kunden-Seite und Report (`naechsterPunkt`) — gepflegt wird er im Fall.
+        ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <span style={beschriftung}>Nächster Schritt</span>
+            <span style={{ fontSize: TYP.body, color: C.ink, flex: '1 1 220px', minWidth: 0, overflowWrap: 'anywhere' }}>{z.fall.schritt ?? z.fall.phase ?? 'Alle Schritte erledigt'}</span>
+            <span style={klein}>aus dem Fall{z.fall.phase && z.fall.schritt ? ` · in „${z.fall.phase}“` : ''}</span>
+            {!imFall && <Link href={WEG.fall(mandatId, 'ablauf')} style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>im Ablauf ›</Link>}
+          </div>
+        )
+        : <NaechsterSchritt wert={z.naechster} onSpeichern={n => api.schreibe([{ op: 'kunde', mandatId, felder: { naechster: n }, stand: z.stand }])} />}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {z.ampel.teile.map(t => <Chip key={t.id} farbe={t.farbe ? AMPEL[t.farbe] : C.inkLeise}>{t.label}: {t.text}</Chip>)}
       </div>

@@ -5,12 +5,27 @@
 
 import type { FulfillmentSaatKontext, SaatSchritt } from './saat-fulfillment';
 
-/** Erfundene Antworten je Frage-Art — keine Namen, keine Beträge. */
+/** Erfundene Antworten je Frage-Art — keine Namen, keine Beträge (Rückfall für Fragen ohne eigene Antwort). */
 const ANTWORT: Record<string, string> = {
   text: 'Wir verkaufen Wartungsverträge für Maschinen an mittelständische Betriebe.',
   langtext: 'Heute kommen die meisten Aufträge über Empfehlungen. Wir wollen planbar neue Termine gewinnen und den Weg vom Erstgespräch zum Auftrag verkürzen.',
   zahl: '12',
   'ja-nein': 'ja',
+};
+/**
+ * Je Frage des Kunden-Playbooks (Muster `pb-1` … `pb-9`) eine eigene, erfundene Antwort — 15.10. (Abnahme B6: alle neun Antworten waren wortgleich).
+ * Passend zum Auftrag (Vertriebsaufbau eines Maschinenbauers). Keine Namen, keine Beträge.
+ */
+const ANTWORT_JE_FRAGE: Record<string, string> = {
+  'pb-1': 'Wir bauen und warten Sondermaschinen für mittelständische Fertiger. In zwölf Monaten wollen wir planbar neue Wartungsverträge gewinnen, statt auf Empfehlungen zu warten.',
+  'pb-2': 'Maschinen als Einzelprojekt, dazu Wartungsverträge als Jahrespauschale je Maschine. Preise nach Liste, der Vertrieb hat einen kleinen Spielraum.',
+  'pb-3': 'Am besten passen Betriebe mit fünf bis zwanzig Maschinen im Umkreis von zwei Stunden. Wir treten meist gegen die Wartung der Hersteller an.',
+  'pb-4': 'Anfrage per Telefon oder Mail, dann ein Besuch, danach ein Angebot. Nachgefasst wird unregelmäßig — viele Angebote versanden.',
+  'pb-5': 'Die Geschäftsführung verkauft selbst, dazu eine Person im Innendienst für Angebote. Für aktive Ansprache bleibt kaum Zeit.',
+  'pb-6': 'Kontakte stehen in einer Tabelle und im Mailpostfach. Ein CRM gibt es nicht, Auswertungen entstehen einmal im Quartal von Hand.',
+  'pb-7': 'Die Geschäftsführung entscheidet über Vertrieb und Budget, die kaufmännische Leitung gibt größere Ausgaben frei.',
+  'pb-8': 'Eine Messe im Jahr bringt Kontakte, die danach selten nachgefasst werden. Ein Mailing an Bestandskunden hat gut funktioniert.',
+  'pb-9': 'Kaltakquise nur mit konkretem Anlass, Preise bestätigt die Geschäftsführung. Neben dem Tagesgeschäft sind etwa vier Stunden je Woche frei.',
 };
 
 export async function kundeSaeen(k: FulfillmentSaatKontext): Promise<SaatSchritt[]> {
@@ -24,7 +39,7 @@ export async function kundeSaeen(k: FulfillmentSaatKontext): Promise<SaatSchritt
     if (f) {
       let aktuell = f.stand;
       for (const a of f.abschnitte) {
-        const werte = Object.fromEntries(a.fragen.map(q => [q.id, q.art === 'auswahl' ? q.optionen?.[0] ?? '' : ANTWORT[q.art] ?? ANTWORT.text]));
+        const werte = Object.fromEntries(a.fragen.map(q => [q.id, q.art === 'auswahl' ? q.optionen?.[0] ?? '' : ANTWORT_JE_FRAGE[q.id] ?? ANTWORT[q.art] ?? ANTWORT.text]));
         const r = await k.rufe(k.routen.kunde(), 'POST', pfad, k.inhaber, { aktion: 'formular-intern', mandatId: erstes.id, bausteinId: f.bausteinId, antworten: werte, stand: aktuell, abschnitt: a.schluessel, fertig: true });
         aktuell = String(r.stand ?? aktuell);
         antworten += a.fragen.length;

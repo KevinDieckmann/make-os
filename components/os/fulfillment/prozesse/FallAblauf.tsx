@@ -75,7 +75,8 @@ export function FallAblauf({ mandatId }: { mandatId: string }) {
     <div style={{ display: 'grid', gap: 14 }}>
       <Meldung text={meldung?.text ?? null} art={meldung?.art} />
       {meldung?.art === 'achtung' && <div><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'nachziehen', mandatId }); setMeldung(a.ok ? { text: 'Nachgezogen.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Erneut nachziehen</Knopf></div>}
-      <Karte i={1}>
+      {/* 15.10. (Abnahme B2): `ff-ablauf` — am Handy brechen Kopfzeile, Chips und die Aktionsspalte um (darunter statt daneben), nichts läuft quer aus dem Bild. */}
+      <Karte i={1} className="ff-ablauf">
         <Ueberschrift erklaerung="fulfillment.ablaufPhasen" rechts={<Erklaert erklaerung="fulfillment.fortschritt" name="Fortschritt"><span>{reise.phasen.filter(p => p.zustand === 'fertig').length} von {reise.phasen.length} Phasen · {reise.fortschritt} %</span></Erklaert>}>{daten.vorlage?.titel ?? 'Ablauf'}</Ueberschrift>
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid' }}>
           {reise.phasen.map((p, i) => {
@@ -113,7 +114,7 @@ function PhaseBlock({ p, letzte, offen, umschalten, daten, heute, bausteine, sta
   const zaehler = p.zustand === 'fertig' ? `erledigt${p.gesamt ? ` · ${p.gesamt} Schritt${p.gesamt === 1 ? '' : 'e'}` : ''}` : `${p.erledigt} von ${p.gesamt} erledigt`;
   return (
     <li id={`phase-${p.id}`} style={{ borderBottom: letzte ? 'none' : `1px solid ${RAND.haar}`, scrollMarginTop: 80 }}>
-      <button type="button" className="fassbar" aria-expanded={offen} onClick={umschalten}
+      <button type="button" className="fassbar ff-ablauf-kopf" aria-expanded={offen} onClick={umschalten}
         style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 56, padding: '10px 2px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text }}>
         <PhasenNummer nr={p.nr} zustand={p.zustand} ueberfaellig={p.ueberfaellig} />
         <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
@@ -131,16 +132,16 @@ function PhaseBlock({ p, letzte, offen, umschalten, daten, heute, bausteine, sta
           )}
         </span>
         {p.freigabe && (
-          <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, whiteSpace: 'nowrap', maxWidth: 'min(240px, 42%)', minWidth: 0 }} title={`Abstimmungspunkt${p.freigabe.nr ? ` ${p.freigabe.nr}` : ''}${p.freigabe.titel ? ` · ${p.freigabe.titel}` : ''}`}>
+          <span className="ff-ablauf-raute" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, whiteSpace: 'nowrap', maxWidth: 'min(240px, 42%)', minWidth: 0 }} title={`Abstimmungspunkt${p.freigabe.nr ? ` ${p.freigabe.nr}` : ''}${p.freigabe.titel ? ` · ${p.freigabe.titel}` : ''}`}>
             <FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} />
             {/* 14.10. (Abnahme B19): „Abstimmungspunkt n“ statt „Freigabe F…“ — Nummer lückenlos in der Reihenfolge des Ablaufs, die Kennung bleibt in den Daten */}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.freigabe.nr ?? ''}{p.freigabe.titel ? `${p.freigabe.nr ? ' · ' : ''}${p.freigabe.titel}` : ''}</span>
           </span>
         )}
-        <span aria-hidden style={{ color: C.inkLeise, display: 'inline-flex' }}>{offen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
+        <span aria-hidden className="ff-ablauf-pfeil" style={{ color: C.inkLeise, display: 'inline-flex' }}>{offen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
       </button>
       {offen && (
-        <div style={{ display: 'grid', gap: 8, padding: '0 0 14px clamp(0px, 3vw, 40px)' }}>
+        <div className="ff-ablauf-schritte" style={{ display: 'grid', gap: 8, padding: '0 0 14px clamp(0px, 3vw, 40px)', minWidth: 0 }}>
           {freigabeOffenVor?.freigabe && <Hinweis art="achtung">Diese Phase läuft, obwohl der Abstimmungspunkt{freigabeOffenVor.freigabe.nr ? ` ${freigabeOffenVor.freigabe.nr}` : ''}{freigabeOffenVor.freigabe.titel ? ` („${freigabeOffenVor.freigabe.titel}“)` : ''} der Phase „{freigabeOffenVor.titel}“ noch nicht vermerkt ist.</Hinweis>}
           {gruppen.map((g, gi) => {
             const z = g.zeilen.filter(x => sichtbar.has(x.knoten.id));
@@ -247,7 +248,7 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
           </span>
         ) : undefined}
         rechts={
-          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <span className="ff-ablauf-aktion" style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0, maxWidth: '100%' }}>
             {eigeneFreigabe && !f.freigaben[eigeneFreigabe.id] && <Erklaert erklaerung="fulfillment.freigabe" name={fgName}><Knopf leise onClick={() => onFreigabe(eigeneFreigabe.id)}>{fgName} vermerken</Knopf></Erklaert>}
             {eigeneFreigabe && f.freigaben[eigeneFreigabe.id] && <Chip farbe={LEUCHT.gut}>{fgName} vermerkt {tagKurz(f.freigaben[eigeneFreigabe.id].am)}</Chip>}
             {setzbar

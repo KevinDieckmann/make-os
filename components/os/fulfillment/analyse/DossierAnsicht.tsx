@@ -16,6 +16,7 @@ import { alsErgebnis, STECKBRIEF_LABEL, type SteckbriefFeld } from '@/lib/fulfil
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Liste, Kennzahl, Raster, Feldzeile, Pillen, eingabe, auswahl, LEUCHT, useRueckfrage } from '../../ui';
 import { senden, fehlerVon, inDenFall, NACH_FALL_TEXT, type AnalyseApi, type NachFallWas } from './daten';
 import { insBild } from '../reise/sprung';
+import { agentText } from '@/lib/fulfillment/analyse/agenten';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
@@ -74,7 +75,7 @@ export function DossierAnsicht({ mandatId, api, rueck }: { mandatId: string; api
                     <Chip farbe={ART_FARBE[x.art]}>{ART_LABEL[x.art]}</Chip>
                     {x.veraltet && <Chip farbe={LEUCHT.achtung}>veraltet?</Chip>}
                     {x.gekuerzt && <Chip farbe={C.inkLeise}>gekürzt</Chip>}
-                    <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{x.agent === 'hand' ? 'von Hand' : x.agent.toUpperCase()} · Stand {x.stand}</span>
+                    <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{x.agent === 'hand' ? 'von Hand' : agentText(x.agent)} · Stand {x.stand}</span>
                   </div>
                   <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5 }}>{x.text}</div>
                   {x.quellen.length > 0 && (

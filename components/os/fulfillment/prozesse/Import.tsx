@@ -121,7 +121,8 @@ export function Import({ daten }: { daten: Uebersicht }) {
           <span style={MIKRO}>Letzte Importe (30 Tage rückgängig)</span>
           {[...daten.importLaeufe].reverse().map(l => (
             <div key={l.id} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', minHeight: 44 }}>
-              <span style={klein}>{tagLang(l.am)} · {l.datei} · {l.neu} neu · {l.geaendert} geändert</span>
+              {/* 15.10. (Abnahme C8): ohne Dateinamen — der Tag und was sich geändert hat. */}
+              <span style={klein}>Import vom {tagLang(l.am)} · {l.neu} neu · {l.geaendert} geändert</span>
               <Knopf leise onClick={() => rueckgaengig(l.id)}>Rückgängig</Knopf>
             </div>
           ))}

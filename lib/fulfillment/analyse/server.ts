@@ -152,18 +152,20 @@ export const ANALYSE_STAPEL: StapelArtFreigabe = {
       let text = 'Der Art.-14-Hinweis ist schon vermerkt — nichts zu tun.';
       if (st.stufe !== 'gegeben') {
         const id = `ff-art14-${karte.id.slice(3, 40)}`;
-        const [{ systemAufgabenAendern }, { WEG }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege')]);
+        const [{ systemAufgabenAendern }, { WEG }, { ladeCrm }, { fallAufgabeOrt }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege'), import('@/lib/crm/speicher'), import('../regeln')]);
         const jetzt = new Date().toISOString();
+        const mandat = (await ladeCrm()).mandate.find(x => x.id === karte.mandatId);
+        const ort = mandat ? fallAufgabeOrt(mandat) : null;
         let da = false;
         await systemAufgabenAendern(stand => {
           da = stand.tasks.some(t => t.id === id);
           if (da) return { neu: [], teile: [] };
           return {
             neu: [{
-              id, title: `Art.-14-Hinweis geben: ${karte.funktion}`.slice(0, 280), status: 'todo', priority: 'high', assignee: person, dueDate: st.faelligAm,
+              id, title: ort ? ort.titel(`Art.-14-Hinweis geben: ${karte.funktion}`) : `Art.-14-Hinweis geben: ${karte.funktion}`.slice(0, 280), status: 'todo', priority: 'high', assignee: person, dueDate: st.faelligAm,
               description: 'Die berufliche Personenkarte im Dossier braucht den Hinweis nach Art. 14 DSGVO (spätestens beim ersten Kontakt bzw. binnen eines Monats). Text und Vermerk „gegeben am · wie“ unter Fall › Analyse › Personen.',
               notiz: `[Analyse öffnen](${WEG.dossier(karte.mandatId)})`, tags: ['fulfillment', 'datenschutz'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt,
-              space: 'business', bezug: { mandatId: karte.mandatId },
+              space: 'business', ...(ort?.spaceId ? { spaceId: ort.spaceId } : {}), bezug: ort?.bezug ?? { mandatId: karte.mandatId },
             }],
             teile: [],
           };

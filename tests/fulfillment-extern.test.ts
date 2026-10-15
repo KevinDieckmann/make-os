@@ -94,20 +94,27 @@ describe('Teile und Lage', () => {
     expect(t.naechsterTermin).toEqual({ titel: 'Wochen-Check', am: 'Mi, 14.10.2026' });
     expect(JSON.stringify(t)).not.toMatch(/INTERN|Dossier|\bF\d\b|nur Prozess/);
   });
-  it('Lage: gelb beim Warten ≥ 7 Tage, rot ab 21 Tagen oder 14 Tagen Verzug, sonst grün — drei Sätze, Du/Sie', () => {
+  it('Lage: NUR die Übersetzung der internen Hänger (15.10., Abnahme B1) — wartet beim Kunden gelb/rot, interne Punkte „Wir sind dran“, sonst grün; drei Sätze, Du/Sie', () => {
+    // Ohne Hänger: grün — auch wenn etwas wartet (die Wartezeit steht im dritten Satz, die Schwelle rechnet nur das Cockpit).
     const t = teile('du');
-    expect(t.lage.ampel).toBe('gelb');
-    expect(t.lage.titel).toBe('Wir warten auf euren Input');
+    expect(t.lage.ampel).toBe('gruen');
+    expect(t.lage.titel).toBe('Wir liegen im Plan');
     expect(t.lage.saetze).toEqual([
       'Wir sind in Phase 2 von 3 („Analyse“) — insgesamt sind 33 % des Weges geschafft.',
       'In den letzten zwei Wochen haben wir 2 Schritte abgeschlossen.',
       'Von euch brauchen wir 2 Dinge — die älteste wartet seit 9 Tagen.',
     ]);
-    const basis = { phasen: [] as KundenPhase[], fortschritt: null, erledigt: 0, quickWinsErledigt: 0, naechstes: [], wertKonto: [], verzugTage: [] };
+    // Mit dem Hänger des Cockpits („wartet“ > 7 Tage, der Kunde sieht den Punkt): gelb „Wir warten …“.
+    const mitHaenger = kundenTeile({ fall: FALL, mandat: MANDAT, heute: HEUTE, anrede: 'du', gesperrt: new Set(), freigaben: FREIGABEN, haengt: [{ art: 'wartet', schwere: 'gelb', tage: 9, kundeSieht: true }] });
+    expect(mitHaenger.lage).toMatchObject({ ampel: 'gelb', titel: 'Wir warten auf euren Input' });
+    const basis = { phasen: [] as KundenPhase[], fortschritt: null, erledigt: 0, quickWinsErledigt: 0, naechstes: [], wertKonto: [] };
     expect(kundenLage({ ...basis, wartetTage: [], anrede: 'sie' })).toMatchObject({ ampel: 'gruen', titel: 'Wir liegen im Plan' });
-    expect(kundenLage({ ...basis, wartetTage: [21], anrede: 'sie' })).toMatchObject({ ampel: 'rot', titel: 'Wir kommen gerade nur mit Ihnen weiter' });
-    expect(kundenLage({ ...basis, wartetTage: [], verzugTage: [14], anrede: 'du' })).toMatchObject({ ampel: 'rot', titel: 'Wir sind im Verzug — lasst uns kurz sprechen' });
-    expect(kundenLage({ ...basis, wartetTage: [], verzugTage: [2], anrede: 'du' })).toMatchObject({ ampel: 'gelb', titel: 'Leicht im Verzug' });
+    expect(kundenLage({ ...basis, wartetTage: [21], anrede: 'sie', haengt: [{ art: 'wartet', schwere: 'rot', tage: 21 }] })).toMatchObject({ ampel: 'rot', titel: 'Wir kommen gerade nur mit Ihnen weiter' });
+    // Interne Punkte (Willkommensmail, überfälliger Schritt, Report …) — auch rote — heißen beim Kunden „Wir sind dran“ (gelb), nie rot.
+    expect(kundenLage({ ...basis, wartetTage: [], anrede: 'du', haengt: [{ art: 'willkommen', schwere: 'rot' }] })).toMatchObject({ ampel: 'gelb', titel: 'Wir sind dran' });
+    expect(kundenLage({ ...basis, wartetTage: [], anrede: 'du', haengt: [{ art: 'faellig', schwere: 'gelb', tage: 20 }] })).toMatchObject({ ampel: 'gelb', titel: 'Wir sind dran' });
+    // Ein wartender Punkt, den der Kunde nicht sieht (ungeteilte Entscheidung), ist für ihn kein „Wir warten …“.
+    expect(kundenLage({ ...basis, wartetTage: [], anrede: 'sie', haengt: [{ art: 'wartet', schwere: 'gelb', tage: 9, kundeSieht: false }] })).toMatchObject({ ampel: 'gelb', titel: 'Wir sind dran' });
     expect(kundenLage({ ...basis, wartetTage: [1], anrede: 'sie' }).saetze[2]).toBe('Von Ihnen brauchen wir eine Sache — sie wartet seit 1 Tag.');
     expect(kundenLage({ ...basis, wartetTage: [], anrede: 'sie' }).saetze).toEqual(['Wir haben gemeinsam gestartet.', 'Die nächsten Schritte stimmen wir im nächsten Termin ab.', 'Von Ihnen brauchen wir gerade nichts — vielen Dank!']);
   });
@@ -125,9 +132,11 @@ describe('Teile und Lage', () => {
   });
 });
 
+/** Was das Cockpit für diesen Fall hängen sieht (`wasHaengt`): die Preisliste wartet seit 9 Tagen beim Kunden (> 7 → gelb), der Kunde sieht sie. */
+const HAENGT = [{ art: 'wartet', schwere: 'gelb' as const, tage: 9, kundeSieht: true }];
 describe('2-Wochen-Report mit Fall: Seite 1 Zusammenfassung, dann Details', () => {
   const basis: ReportDokument = { titel: 'Fortschrittsbericht', kunde: MANDAT.kunde, mandat: MANDAT.titel, paket: 'Stufe Zwei', stand: '10.10.2026', absender: 'Erfundene Gesellschaft', schritt: 'Analyse (Schritt 2 von 5)', erreicht: ['Kick-off (02.10.2026)'], naechste: ['Diagnose vorstellen — bis 20.10.2026'], kennzahlen: [{ name: 'Woran wir es messen', wert: 'Abschlussquote' }], hinweis: 'Dieser Bericht fasst den Stand aus unserer Projektarbeit zusammen.' };
-  const zusatz = (pulsFrage = true) => reportZusatz(FALL, MANDAT, { puls: [{ id: 'pu-1', mandatId: 'm-1', am: '2026-10-09T10:00:00.000Z', wert: 8, quelle: 'link' }] }, HEUTE, pulsFrage, new Set(), { anrede: 'du', freigaben: FREIGABEN, rituale: [{ id: 'fr-w', titel: 'Wochen-Check', rhythmus: 'woche' }], terminTage: [{ uid: 'uid-1', tag: '2026-10-14' }] })!;
+  const zusatz = (pulsFrage = true) => reportZusatz(FALL, MANDAT, { puls: [{ id: 'pu-1', mandatId: 'm-1', am: '2026-10-09T10:00:00.000Z', wert: 8, quelle: 'link' }] }, HEUTE, pulsFrage, new Set(), { anrede: 'du', freigaben: FREIGABEN, rituale: [{ id: 'fr-w', titel: 'Wochen-Check', rhythmus: 'woche' }], terminTage: [{ uid: 'uid-1', tag: '2026-10-14' }], haengt: HAENGT })!;
   it('Zusatz trägt dieselben Teile wie die Kunden-Seite; Erledigt/als Nächstes zuerst aus dem Fall, ohne Doppelte', () => {
     const z = zusatz();
     expect(z).toMatchObject({ anrede: 'du', fortschritt: 33, lage: { ampel: 'gelb' }, naechsterTermin: { titel: 'Wochen-Check', am: 'Mi, 14.10.2026' } });
@@ -136,7 +145,8 @@ describe('2-Wochen-Report mit Fall: Seite 1 Zusammenfassung, dann Details', () =
     const d = mitZusatz(basis, z);
     expect(hatZusatz(d)).toBe(true);
     expect(d.erreicht).toEqual(['Kick-off (02.10.2026)', 'Interviews (06.10.2026)']);
-    expect(d.naechste).toEqual(['Wettbewerb sichten — bis 20.10.2026', 'Abstimmung: Diagnose-Abnahme', 'Diagnose vorstellen — bis 20.10.2026']);
+    // Mit Fall nur die Schritte des Falls (15.10., Abnahme B1) — derselbe nächste Schritt wie Fall-Kopf und Kunden-Seite.
+    expect(d.naechste).toEqual(['Wettbewerb sichten — bis 20.10.2026', 'Abstimmung: Diagnose-Abnahme']);
     expect(JSON.stringify(d)).not.toMatch(/\bF\d\b|Dossier|nur Prozess/);
   });
   it('PDF: Seite 1 = Zusammenfassung (Ampel-Titel, drei Sätze, „hier stehen wir“, Ziel, Spalten, erste Erfolge, Puls), ab Seite 2 Details; gleiche Eingabe → gleiche Bytes', async () => {

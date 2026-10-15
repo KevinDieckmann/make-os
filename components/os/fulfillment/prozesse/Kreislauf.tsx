@@ -17,7 +17,7 @@ import { kinderVon } from '@/lib/fulfillment/regeln';
 import type { KreislaufId } from '@/lib/crm/planung';
 import { useUebersicht, vorlagenOps, fehlerText, holeJson } from './daten';
 import { KreislaufRad, type RadStufe } from '../reise/teile';
-import { KREISLAUF_REIHE } from '@/lib/fulfillment/prozesse/ansichten';
+import { KREISLAUF_REIHE, kreislaufWeg } from '@/lib/fulfillment/prozesse/ansichten';
 import { AblaufBild, AblaufLegende } from './Zeichnung';
 import { klein, Leiste, Meldung } from './teile';
 
@@ -34,8 +34,8 @@ function useKreislaufStufen(): { stufen: RadStufe[] | null; fehler: string | nul
       if (aus) return;
       if (!a.ok) { setFehler(fehlerText(a)); return; }
       setStufen((a.j.kreislauf?.stufen ?? []).map(s => ({ id: s.id, label: s.label, anzahl: s.anzahl, zusatz: s.zusatz,
-        // Fulfillment zeigt auf sich selbst → hier die Kunden in Lieferung; „Nach der Leistung“ hat keine eigene Seite → der Kreislauf der Markttraktion.
-        href: s.id === 'fulfillment' ? WEG.fulfillment('visualisierung') : s.href || WEG.vertriebsplanung(s.id === 'kanaele' ? 'kanaele' : 'kreislauf') })));
+        // EINE Tabelle (`kreislaufWeg`, 15.10., Abnahme B7): Leads → Qualifizierung, Deals → Deals, Fulfillment → die Kunden in Lieferung …
+        href: kreislaufWeg(s.id) })));
     });
     return () => { aus = true; };
   }, []);

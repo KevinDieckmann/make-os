@@ -156,20 +156,19 @@ export async function ansprechpersonFuer(h: string, m: Pick<Mandat, 'zustaendig'
   } catch { return undefined; }
 }
 
-/** Tage der Termine mit Bezug zum Mandat (`kalender-bezug`, nur Kennung + Tag — keine Titel, kein Kalender). */
-export async function terminTageFuer(mandatId: string): Promise<{ uid: string; tag: string }[]> {
-  try {
-    const [{ ladeBezuege }, { uidVonSchluessel }] = await Promise.all([import('@/lib/kalender/bezug-server'), import('@/lib/kalender/bezug')]);
-    const b = await ladeBezuege();
-    return Object.entries(b.bezuege).filter(([, x]) => x.mandatId === mandatId && x.tag).map(([k, x]) => ({ uid: uidVonSchluessel(k), tag: x.tag! }));
-  } catch { return []; }
+/**
+ * Die Termine mit Bezug zum Mandat (bzw. zur Firma des Mandats) — die EINE Lesestelle `fallTermine` (15.10., Abnahme B3: vorher nur `kalender-bezug` mit
+ * `mandatId`, ohne Firma, ohne Serien-Vorkommen). Titel nur von nicht privaten Terminen.
+ */
+export async function terminTageFuer(m: Pick<Mandat, 'id' | 'firmaId'>): Promise<{ uid: string; tag: string; von?: string; titel?: string }[]> {
+  try { return (await (await import('../prozesse/termine-server')).fallTermine([{ id: m.id, firmaId: m.firmaId ?? null }]))[m.id] ?? []; } catch { return []; }
 }
 
-export interface KundenUmfeld { anrede: KundenAnrede; anbieter?: KundenAnbieter; ansprechperson?: string; freigaben: Freigabepunkt[]; terminTage: { uid: string; tag: string }[] }
+export interface KundenUmfeld { anrede: KundenAnrede; anbieter?: KundenAnbieter; ansprechperson?: string; freigaben: Freigabepunkt[]; terminTage: { uid: string; tag: string; von?: string; titel?: string }[] }
 /** Alles, was Seite, Report und Präsentation über den Fall hinaus brauchen — jeder Teil fällt bei einem Lesefehler still weg. */
 export async function kundenUmfeld(m: Mandat, fall: Pick<Fall, 'vorlageId'> | null, v: Pick<VorlagenDatei, 'prozesse'>, h?: string): Promise<KundenUmfeld> {
   const haus = h ?? await fulfillmentHaushalt();
-  const [anrede, anbieter, ansprechperson, terminTage] = await Promise.all([anredeFuer(m), anbieterFuer(haus, m.gesellschaft), ansprechpersonFuer(haus, m), terminTageFuer(m.id)]);
+  const [anrede, anbieter, ansprechperson, terminTage] = await Promise.all([anredeFuer(m), anbieterFuer(haus, m.gesellschaft), ansprechpersonFuer(haus, m), terminTageFuer(m)]);
   const freigaben = fall ? [...(v.prozesse.find(p => p.id === fall.vorlageId)?.freigaben ?? [])] : [];
   return { anrede, ...(anbieter ? { anbieter } : {}), ...(ansprechperson ? { ansprechperson } : {}), freigaben, terminTage };
 }

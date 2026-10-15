@@ -58,6 +58,8 @@ const EINGABE = (extra: Partial<SichtEingabe> = {}): SichtEingabe => ({
   datenschutz: kundeHinweis({ verantwortlich: 'Erfundene Firma, Musterweg 1, 12345 Musterstadt', seite: null, mandatsdatenMonate: 12, unterlagenTage: 90 }), uploadFrei: 19,
   anbieter: { name: 'Erfundene Gesellschaft', email: 'kontakt@example.invalid' }, ansprechperson: 'Pia Probe',
   freigaben: [{ id: 'F3', titel: 'Diagnose-Abnahme', wer: 'beide' }], terminTage: [{ uid: 'TERMIN-UID-INTERN', tag: '2026-10-14' }],
+  // Was das Cockpit hängen sieht (`wasHaengt`): „Wartet“ seit 9 Tagen beim Kunden (> 7 → gelb), der Kunde sieht den Punkt — die Lage ist nur seine Übersetzung.
+  haengt: [{ art: 'wartet', schwere: 'gelb', tage: 9, kundeSieht: true }],
   ...extra,
 });
 

@@ -61,7 +61,8 @@ export function KundenStrahl({ phasen, gross }: { phasen: readonly KundenPhase[]
           <li key={i} aria-current={p.stand === 'aktuell' ? 'step' : undefined} style={{ display: 'flex', gap: 8, alignItems: 'baseline', minWidth: 0 }}>
             <span aria-hidden style={{ flex: '0 0 auto', width: 9, height: 9, borderRadius: 5, transform: 'translateY(1px)', background: p.stand === 'kommt' ? 'transparent' : p.stand === 'erledigt' ? LEUCHT.gut : WEG_FARBE, border: `2px solid ${p.stand === 'kommt' ? C.inkLeise : p.stand === 'erledigt' ? LEUCHT.gut : WEG_FARBE}` }} />
             <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
-              <span style={{ fontSize: gross ? 17 : TYP.bedien, fontWeight: p.stand === 'aktuell' ? 700 : 600, color: p.stand === 'kommt' ? C.inkDim : C.ink, lineHeight: 1.3, overflowWrap: 'break-word', hyphens: 'auto' }}>{p.titel}</span>
+              {/* 15.10. (Abnahme C19): keine Silbentrennung („Onboar-ding“) — bei vielen Phasen kleiner, Wörter bleiben ganz. */}
+              <span className="kunde-strahl-phase" style={{ fontSize: gross && phasen.length <= 8 ? 17 : TYP.bedien, fontWeight: p.stand === 'aktuell' ? 700 : 600, color: p.stand === 'kommt' ? C.inkDim : C.ink, lineHeight: 1.3, overflowWrap: 'break-word', hyphens: 'manual' }}>{p.titel}</span>
               <span style={{ ...klein, fontSize: gross ? 14 : TYP.bedien, color: p.stand === 'aktuell' ? WEG_FARBE : C.inkLeise }}>
                 {p.stand === 'aktuell' && p.anteil != null ? `hier stehen wir · ${Math.round(p.anteil * 100)}\u00A0%` : STAND_TEXT[p.stand]}
                 {p.abstimmung ? ` · ◆ ${p.abstimmung.titel}${p.abstimmung.erledigt ? ' ✓' : ''}` : ''}
