@@ -14,7 +14,7 @@ import { sauberEinheit, passtEinheit, einheitenListe, sauberEinheitenDatei } fro
 import { sauberFile, UG_FIRMA } from '../lib/finanzen/finanzplan-bestand';
 import { sauberEinstellungen } from '../lib/flaeche/modell';
 import { firmierungNochUG, firmierungVorschlag, mitVorgaben } from '../lib/crm/gesellschaften';
-import { UG_NICHT_HINTERLEGT, EINHEIT_LABEL as STEUER_LABEL } from '../lib/steuern/rechnen';
+import { EINHEIT_LABEL as STEUER_LABEL, JAHRES_PUNKTE } from '../lib/steuern/rechnen';
 import { ABSCHNITTE } from '../lib/finanzen/plan/hilfen';
 
 describe('eine Quelle: lib/einheiten.ts', () => {
@@ -29,8 +29,9 @@ describe('eine Quelle: lib/einheiten.ts', () => {
   });
   it('abgeleitete Namen folgen: Steuern, Finanzplan-Menü, UG-Konto', () => {
     expect(STEUER_LABEL.ug).toBe(UG_NAME);
-    expect(UG_NICHT_HINTERLEGT).toContain(UG_NAME);
-    expect(UG_NICHT_HINTERLEGT).not.toContain('MAKE OS UG');
+    // 15.10.: die Hauptgesellschaft rechnet Steuern wie KD Ventures — ihr Jahres-Punkt trägt den Namen aus lib/einheiten.ts.
+    expect(JAHRES_PUNKTE.find(p => p.einheit === 'ug')?.titel).toContain(UG_NAME);
+    expect(JAHRES_PUNKTE.map(p => p.titel).join(' ')).not.toContain('MAKE OS UG');
     // 08.10. abends: MAKE und die Töpfe sind Abschnitte des Blatts „Gesellschaften“ — Titel aus lib/einheiten.ts.
     expect(ABSCHNITTE.gesellschaften.find(a => a.id === 'ug')?.label).toBe(UG_NAME);
     expect(ABSCHNITTE.gesellschaften.find(a => a.id === 'toepfe')?.label).toBe('Töpfe MAKE');

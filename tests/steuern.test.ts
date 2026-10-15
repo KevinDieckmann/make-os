@@ -87,7 +87,7 @@ describe('Rücklage & Prognose', () => {
   it('ESt gemeinsam und GewSt der Selbstständigkeit aus der Finanzplanung, KSt+Soli+GewSt für KD Ventures, Vorauszahlungen aus EINER Quelle', () => {
     const e: SteuerEinstellungen = { ...STANDARD_STEUERN, steuerquote: 30, vorauszahlung: { est: 1000, gewstKdc: 200 }, ruecklageIst: { privat: 10000 } };
     const g = { kdc: jahresgewinn(ist(10000, 5000), 2026), kdv: jahresgewinn(ist(5000, 5000 - 20000 / 12), 2026) };
-    const p = prognose(e, HEUTE, g, { kdc: 171 }, { rechnungen: 0 }, est);
+    const p = prognose(e, HEUTE, g, { kdc: 171 }, est);
     const z = Object.fromEntries(p.zeilen.map(x => [x.id, x.betrag]));
     // 05.10. abends (Kevin: „Vorauszahlungen eine Quelle — führend ist die Finanzplanung“): Mehrsteuer 11.000 − Anrechnung 1.400 + Soli 0 = 9.600,
     // minus die Vorauszahlungen der FINANZPLANUNG (hier 0). Vorher (selbst-privat) zogen die Steuer-Einstellungen 3 × 1.000 ab → 6.600; die zählen
@@ -104,7 +104,7 @@ describe('Rücklage & Prognose', () => {
     expect(p.je.privat).toMatchObject({ soll: 9600, ist: 10000 });
     expect(p.je.kdc.soll).toBeCloseTo(1500 + 171, 5);
     // Gewerbesteuer abgeschaltet (Freiberuf) → keine Gewerbesteuer-Zeile
-    expect(prognose(e, HEUTE, g, {}, { rechnungen: 0 }, { ...est, gewerbe: false }).zeilen.some(x => x.id === 'gewst-kdc')).toBe(false);
+    expect(prognose(e, HEUTE, g, {}, { ...est, gewerbe: false }).zeilen.some(x => x.id === 'gewst-kdc')).toBe(false);
   });
   it('Wächter Vorauszahlungen (05.10. abends): mit Finanzplanung zählt NUR deren `vorausgezahlt` — ESt zuerst, Rest GewSt, nie doppelt', () => {
     const g = { kdc: null, kdv: null };
@@ -112,7 +112,7 @@ describe('Rücklage & Prognose', () => {
     const mitEinst: SteuerEinstellungen = { ...STANDARD_STEUERN, vorauszahlung: { est: 2500, gewstKdc: 400 } };
     for (const vz of [0, 3000, 9600, 10000, 11100, 20000]) {
       const plan = { ...est, vorausgezahlt: vz, zahlung: est.summe - vz };
-      const a = prognose(ohneEinst, HEUTE, g, {}, { rechnungen: 0 }, plan), b = prognose(mitEinst, HEUTE, g, {}, { rechnungen: 0 }, plan);
+      const a = prognose(ohneEinst, HEUTE, g, {}, plan), b = prognose(mitEinst, HEUTE, g, {}, plan);
       const summe = (p: typeof a) => p.zeilen.filter(x => x.id === 'est' || x.id === 'gewst-kdc').reduce((s, x) => s + (x.betrag ?? 0), 0);
       // Kein Doppelabzug: ESt + GewSt = Abschlusszahlung der Finanzplanung (nie darunter), egal was in den Steuer-Einstellungen steht.
       expect(summe(a)).toBeCloseTo(Math.max(0, est.summe - vz), 5);
@@ -121,17 +121,17 @@ describe('Rücklage & Prognose', () => {
       expect(b.vorauszahlung.quelle).toBe('finanzplanung');
     }
     // Aufteilung: 10.000 vorausgezahlt → ESt 9.600 voll gedeckt, 400 auf die Gewerbesteuer (1.500 → 1.100).
-    const p = prognose(mitEinst, HEUTE, g, {}, { rechnungen: 0 }, { ...est, vorausgezahlt: 10000 });
+    const p = prognose(mitEinst, HEUTE, g, {}, { ...est, vorausgezahlt: 10000 });
     expect(Object.fromEntries(p.zeilen.map(x => [x.id, x.betrag]))).toMatchObject({ est: 0, 'gewst-kdc': 1100 });
     // Ohne Finanzplanung bleibt die Steuer-Einstellung die Quelle (benannt; einen Betrag gibt es ohne Plan nicht).
-    expect(prognose(mitEinst, HEUTE, g, {}, { rechnungen: 0 }, null).vorauszahlung).toEqual({ quelle: 'einstellungen', est: 7500, gewst: 1200 });
+    expect(prognose(mitEinst, HEUTE, g, {}, null).vorauszahlung).toEqual({ quelle: 'einstellungen', est: 7500, gewst: 1200 });
     // Business-Sicht: die Einkommensteuer-Vorauszahlung ist privat — sie geht nie hinaus.
     const st = steuernNurBusiness({ einstellungen: mitEinst, fristen: [], ust: [], prognose: p, gewinn: { kdc: null, kdv: null }, uebergabe: { monat: '2026-08', punkte: [], jahr: 2025, jahresPunkte: [] } });
     expect(st.prognose.vorauszahlung).toEqual({ quelle: 'keine', est: 0, gewst: 0 });
   });
   it('ohne Finanzplanung für das Jahr: ehrlich „fehlt“, kein Schätzwert — auch nicht aus der alten Steuerquote', () => {
     const e: SteuerEinstellungen = { ...STANDARD_STEUERN, steuerquote: 30 };
-    const p = prognose(e, HEUTE, { kdc: jahresgewinn(ist(10000, 5000), 2026), kdv: null }, {}, { rechnungen: 0 }, null);
+    const p = prognose(e, HEUTE, { kdc: jahresgewinn(ist(10000, 5000), 2026), kdv: null }, {}, null);
     expect(p.zeilen.find(x => x.id === 'est')).toMatchObject({ betrag: null, luecke: expect.stringContaining('Finanzplanung') });
     expect(p.zeilen.find(x => x.id === 'gewst-kdc')).toMatchObject({ betrag: null });
     expect(p.je.privat.soll).toBe(0);

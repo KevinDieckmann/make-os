@@ -13,27 +13,29 @@ import type { Rechnung } from '@/lib/make-one/liquiditaet';
 import { UST_REGEL, aufCent, ustAusBrutto } from '@/lib/finanzen/ust';
 import type { Beleg } from '@/lib/finanzen/haushalt/typen';
 import { WEG } from '@/lib/wege';
-import { FINANZ_ORT_IDS, UG_KURZ, UG_NAME, bereichVon, finanzOrtName, type Bereich, type FinanzOrt, type Gesellschaftskennung } from '@/lib/einheiten';
+import { FINANZ_ORT_IDS, bereichVon, finanzOrtName, type Bereich, type FinanzOrt, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { EstGemeinsam } from '@/lib/finanzen/est-gemeinsam';
 
 // Die eine Einheitenliste (28.09., lib/einheiten.ts): Privat · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH.
-// Die MAKE Innovation GmbH (Kennung ug; bis 30.09. „UG“ — steuerlich dasselbe, keine neue Regel) ist eine Körperschaft — sie wird NICHT wie die Selbstständigkeit gerechnet. Solange ihre
-// Steuerlogik (Rechtsform, USt-Rhythmus, Vorauszahlungen) nicht hinterlegt ist, steht sie überall mit dabei,
-// aber ohne Fristen und mit „noch nicht hinterlegt“ statt einer geschätzten Zahl.
+// 15.10. (Kevin: „Ja, wie bei KD Ventures“): die Hauptgesellschaft (Kennung `ug`) rechnet wie KD Ventures — Kapitalgesellschaft mit
+// Umsatzsteuer-Voranmeldung, Körperschaft- und Gewerbesteuer-Vorauszahlungen, Jahreserklärungen und Offenlegung (§ 108 AO, Werktag) und einer
+// Schätzung aus den Ist-Monaten mit offengelegten Annahmen. Rechtsform und Sätze (KSt, Soli, Messzahl, Hebesatz) kommen, wo vorhanden, aus dem
+// Steuerprofil der Finanzplanung („Welche Steuern gelten?“, `mitFinanzplanung`) — nie erfundene Beträge. Der frühere Sonderfall
+// „noch nicht hinterlegt“ entfällt.
 export type Einheit = FinanzOrt;
 export const EINHEIT_LABEL: Record<Einheit, string> = { kdc: finanzOrtName('kdc'), kdv: finanzOrtName('kdv'), ug: finanzOrtName('ug'), privat: finanzOrtName('privat') };
-/** Für die MAKE Innovation GmbH ist noch keine Steuerlogik hinterlegt (28.09.) — anzeigen, nicht rechnen. */
-/** Firmen MIT hinterlegter Steuerlogik — die MAKE Innovation GmbH fehlt hier bewusst (UG_NICHT_HINTERLEGT). */
-export type SteuerFirma = Exclude<Gesellschaftskennung, 'ug'>;
-export const STEUER_FIRMEN: readonly SteuerFirma[] = ['kdc', 'kdv'];
-// 14.10. (Abnahme B14): ein klarer Satz statt „Steuerlogik … noch nicht hinterlegt“ allein — und ein Weg. Keine erfundenen Werte.
-export const UG_NICHT_HINTERLEGT = `Für die ${UG_NAME} rechnen wir noch keine Steuern — Fristen und Schätzung fehlen (Steuerlogik noch nicht hinterlegt).`;
+/** Firmen mit Steuerlogik: die Selbstständigkeit und beide Gesellschaften (seit 15.10. auch die Hauptgesellschaft `ug`). */
+export type SteuerFirma = Gesellschaftskennung;
+export const STEUER_FIRMEN: readonly SteuerFirma[] = ['kdc', 'kdv', 'ug'];
+/** Die Kapitalgesellschaften mit eigener Schätzung (KSt + Soli + GewSt aus den Ist-Monaten). */
+export const KAPITAL_FIRMEN = ['kdv', 'ug'] as const;
+export type KapitalFirma = typeof KAPITAL_FIRMEN[number];
 /**
- * Der Weg dazu (B14): eine Näherung der Ertragsteuern der Gesellschaft rechnet die Finanzplanung (Blatt Gesellschaften, Steuerkarte genau dieser
- * Gesellschaft, `steuern=ug`); verbindliche Fristen und Beträge kommen vom Steuerberater.
+ * Der Weg zur Näherung der Ertragsteuern der Hauptgesellschaft in der Finanzplanung (Blatt Gesellschaften, Steuerkarte genau dieser
+ * Gesellschaft, `steuern=ug`) — dort stehen die Sätze, mit denen auch das Steuer-Modul rechnet; verbindlich ist der Steuerberater.
  */
 export const UG_STEUER_WEG = {
-  text: 'Näherung in der Finanzplanung ansehen',
+  text: 'Sätze in der Finanzplanung ansehen',
   href: `${WEG.finanzplanung(bereichVon('ug') === 'privat' ? 'privat' : 'business', 'gesellschaften')}&steuern=ug`,
 } as const;
 
@@ -45,14 +47,23 @@ export interface FirmaSteuer {
   istVersteuerung: boolean;
   /** Gewerbesteuerpflichtig (Kapitalgesellschaft immer; Freiberufler nie). */
   gewerbe: boolean;
+  /**
+   * Sätze aus dem Steuerprofil der Finanzplanung (15.10., `mitFinanzplanung`, nur die Hauptgesellschaft) — NIE gespeichert, beim Lesen gesetzt.
+   * Anteile (0,15 · 0,055 · 0,035), Hebesatz in Prozent; ausgeschaltete Steuern stehen mit 0. Fehlt: die Vorgabe (15,825 % + 3,5 % × Hebesatz).
+   */
+  saetze?: { kst: number; soli: number; messzahl: number; hebesatz: number; plan: string | null };
+  /** Gründungstag aus dem Gesellschafts-Register (15.10., `mitGruendung`) — NIE gespeichert: Fristen davor gibt es nicht. */
+  seit?: string;
 }
 export interface SteuerEinstellungen {
   mitBerater: boolean;
   kdc: FirmaSteuer;
   kdv: FirmaSteuer;
+  /** Die Hauptgesellschaft (15.10., wie KD Ventures). */
+  ug: FirmaSteuer;
   privat: { estVorauszahlung: boolean };
-  /** Vorauszahlungen je Quartal laut Bescheid (Euro). */
-  vorauszahlung: { est?: number; kst?: number; gewstKdc?: number; gewstKdv?: number };
+  /** Vorauszahlungen je Quartal laut Bescheid (Euro). `kst` = KD Ventures (Altname), `kstUg`/`gewstUg` = Hauptgesellschaft (15.10.). */
+  vorauszahlung: { est?: number; kst?: number; gewstKdc?: number; gewstKdv?: number; kstUg?: number; gewstUg?: number };
   /**
    * Durchschnittlicher ESt-Satz auf den Gewinn aus Consulting (Prozent) — bis 05.10. die Annahme für die Einkommensteuer. Seit 05.10.
    * rechnet die Einkommensteuer gemeinsam aus der Finanzplanung (lib/finanzen/est-gemeinsam.ts); das Feld bleibt nur gespeichert
@@ -73,6 +84,8 @@ export const STANDARD_STEUERN: SteuerEinstellungen = {
   // kommen Rechtsform/Gewerbesteuer ohnehin aus deren Steuerprofil (`mitFinanzplanung`) — das hier ist nur die Vorgabe ohne Plan.
   kdc: { rechtsform: 'einzel', ust: 'quartal', dauerfrist: false, istVersteuerung: true, gewerbe: true },
   kdv: { rechtsform: 'ug', ust: 'quartal', dauerfrist: false, istVersteuerung: false, gewerbe: true },
+  // 15.10.: die Hauptgesellschaft wie KD Ventures — Kapitalgesellschaft (GmbH), USt vierteljährlich, Soll-Versteuerung, Gewerbesteuer.
+  ug: { rechtsform: 'gmbh', ust: 'quartal', dauerfrist: false, istVersteuerung: false, gewerbe: true },
   privat: { estVorauszahlung: true },
   vorauszahlung: {},
   steuerquote: null,
@@ -83,14 +96,36 @@ export const STANDARD_STEUERN: SteuerEinstellungen = {
 
 export const HINWEIS = 'Hinweis, keine Steuerberatung — Termine gerechnet, Beträge geschätzt. Verbindlich sind Bescheid und Steuerberater.';
 
+/** Steuerprofil einer Kapitalgesellschaft aus der Finanzplanung (lib/finanzen/est-gemeinsam.ts `kapitalProfilFuer`) — nur was hier gebraucht wird. */
+export interface KapitalProfilEin {
+  kapital: boolean; kstAn: boolean; kst: number; soliAn: boolean; soli: number; gewstAn: boolean; messzahl: number; hebesatz: number; plan: string | null;
+}
+
 /**
  * EINE Quelle für die Selbstständigkeit (05.10.): Gibt es eine Finanzplanung, kommen Rechtsform und Gewerbesteuer der Selbstständigkeit aus
  * deren Steuerprofil („Welche Steuern gelten?“) — gewerblich = Einzelunternehmen mit Gewerbesteuer, ausgeschaltete Gewerbesteuer =
  * Freiberuf. Ohne Plan bleiben die gespeicherten Einstellungen. USt-Rhythmus, Dauerfrist und Ist-Versteuerung bleiben Steuer-Einstellungen.
+ * 15.10.: ebenso die Hauptgesellschaft (`ug`) — Rechtsform (Kapitalgesellschaft bleibt GmbH/UG wie gespeichert), Gewerbesteuer an/aus und die
+ * Sätze (KSt, Soli, Messzahl, Hebesatz) aus ihrem Steuerprofil. Ohne Profil (kein Plan) bleibt sie bei der gespeicherten Einstellung.
  */
-export function mitFinanzplanung(e: SteuerEinstellungen, est: Pick<EstGemeinsam, 'gewerbe'> | null): SteuerEinstellungen {
-  if (!est) return e;
-  return { ...e, kdc: { ...e.kdc, rechtsform: est.gewerbe ? 'einzel' : 'freiberuf', gewerbe: est.gewerbe } };
+export function mitFinanzplanung(e: SteuerEinstellungen, est: Pick<EstGemeinsam, 'gewerbe'> | null, ug: KapitalProfilEin | null = null): SteuerEinstellungen {
+  if (!est && !ug) return e;
+  const x: SteuerEinstellungen = { ...e };
+  if (est) x.kdc = { ...e.kdc, rechtsform: est.gewerbe ? 'einzel' : 'freiberuf', gewerbe: est.gewerbe };
+  if (ug) {
+    const rechtsform: FirmaSteuer['rechtsform'] = !ug.kapital ? 'einzel' : e.ug.rechtsform === 'ug' ? 'ug' : 'gmbh';
+    x.ug = { ...e.ug, rechtsform, gewerbe: ug.gewstAn, saetze: { kst: ug.kstAn ? ug.kst : 0, soli: ug.soliAn ? ug.soli : 0, messzahl: ug.messzahl, hebesatz: ug.hebesatz, plan: ug.plan } };
+  }
+  return x;
+}
+
+/** Gründungstage aus dem Gesellschafts-Register (15.10.): Fristen einer Gesellschaft beginnen erst mit ihr — nie für Jahre davor. */
+export function mitGruendung(e: SteuerEinstellungen, seit: Partial<Record<SteuerFirma, string | undefined>>): SteuerEinstellungen {
+  const tag = (t: string | undefined) => (t && /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : undefined);
+  if (!STEUER_FIRMEN.some(f => tag(seit[f]))) return e;
+  const x: SteuerEinstellungen = { ...e };
+  for (const f of STEUER_FIRMEN) { const t = tag(seit[f]); if (t) x[f] = { ...e[f], seit: t }; }
+  return x;
 }
 
 /** Bereich einer Steuer-Einheit (05.10.): Privat und die Selbstständigkeit → privat, KD Ventures und MAKE → business (`bereichVon`). */
@@ -107,6 +142,8 @@ export const tageBis = (von: string, bis: string) => Math.round((Date.parse(`${b
 const letzterTag = (j: number, m: number) => new Date(Date.UTC(j, m, 0, 12)).toISOString().slice(0, 10);
 const deutsch = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}`;
 const istKapital = (f: FirmaSteuer) => f.rechtsform === 'ug' || f.rechtsform === 'gmbh';
+/** Anteil als Prozent mit Komma, höchstens drei Nachkommastellen (0,15825 → „15,825“). */
+const prozent = (anteil: number) => (anteil * 100).toLocaleString('de-DE', { maximumFractionDigits: 3 });
 
 /**
  * Abgabefrist der Jahreserklärungen (§ 149 AO; Corona-Übergang bis 2024).
@@ -147,10 +184,14 @@ export function fristen(e: SteuerEinstellungen, heute: string, erledigt: Record<
     const f = e[firma];
     const kap = istKapital(f);
     for (const t of steuertermine(von, bis, { ust: f.ust, dauerfrist: f.dauerfrist, estVorauszahlung: false, gewstVorauszahlung: f.gewerbe, kstVorauszahlung: kap })) {
-      const betrag = t.art === 'kst' ? e.vorauszahlung.kst : t.art === 'gewst' ? (firma === 'kdc' ? e.vorauszahlung.gewstKdc : e.vorauszahlung.gewstKdv) : undefined;
+      // Vor der Gründung gibt es keine Vorauszahlung und keine Voranmeldung (15.10., `seit` aus dem Register).
+      if (f.seit && t.datum <= f.seit) continue;
+      const betrag = t.art === 'kst' ? (firma === 'ug' ? e.vorauszahlung.kstUg : e.vorauszahlung.kst) : t.art === 'gewst' ? (firma === 'kdc' ? e.vorauszahlung.gewstKdc : firma === 'ug' ? e.vorauszahlung.gewstUg : e.vorauszahlung.gewstKdv) : undefined;
       dazu(firma, { datum: t.datum, art: t.art, titel: t.titel, hinweis: t.hinweis, ...(betrag ? { betrag } : {}), href: t.art === 'ust' || t.art === 'ust-sv' ? WEG.steuern('ust') : WEG.steuern('ruecklage') });
     }
     for (let j = Number(heute.slice(0, 4)) - 2; j <= Number(heute.slice(0, 4)); j++) {
+      // Jahreserklärung und Offenlegung erst ab dem Gründungsjahr (15.10.).
+      if (f.seit && j < Number(f.seit.slice(0, 4))) continue;
       const frist = erklaerungsFrist(j, e.mitBerater);
       const was = kap
         ? ['Körperschaftsteuer', 'Gewerbesteuer', 'Umsatzsteuer', 'Jahresabschluss (E-Bilanz)']
@@ -200,8 +241,10 @@ export function ustZeitraum(firma: SteuerFirma, f: FirmaSteuer, zr: { label: str
   }
   const ust = liste.reduce((s, x) => s + x.ust, 0);
   let vorsteuer: number | null = null, vorsteuerQuelle = 'keine Eingangsbelege mit Vorsteuer in MAKE OS';
-  if (grund) {
-    const posten = firma === 'kdc' ? grund.kosten : grund.ugRechnungen;
+  // Die Grundlage (V1-Export) kennt nur die Selbstständigkeit (`kosten`) und KD Ventures (`ugRechnungen` — im alten Vokabular hieß KD Ventures
+  // „UG“); für die Hauptgesellschaft (`ug`, 15.10.) gibt es dort keine Eingangsbelege — Vorsteuer bleibt dann „unbekannt“, nie geraten.
+  const posten = !grund ? null : firma === 'kdc' ? grund.kosten : firma === 'kdv' ? grund.ugRechnungen : null;
+  if (grund && posten) {
     const im = posten.filter(p => p.datum >= zr.von && p.datum <= zr.bis);
     if (grund.stand >= zr.von) {
       vorsteuer = im.reduce((s, p) => s + Math.max(0, p.brutto - p.netto), 0);
@@ -244,7 +287,7 @@ const vzBisHeute = (heute: string, monate: number[]) => monate.filter(m => `${he
  * aus der Finanzplanung (`est`, lib/finanzen/est-gemeinsam.ts — EINE Rechenquelle); `gewinn.kdc` wird nicht mehr gerechnet (bleibt für
  * die Anzeige). Ohne Finanzplanung für das Jahr: ehrlich „fehlt“, kein Schätzwert.
  */
-export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<SteuerFirma, Jahresgewinn | null>, ustOffen: Partial<Record<SteuerFirma, number>>, ug: { rechnungen: number } = { rechnungen: 0 }, est: EstGemeinsam | null = null): Prognose {
+export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Partial<Record<SteuerFirma, Jahresgewinn | null>>, ustOffen: Partial<Record<SteuerFirma, number>>, est: EstGemeinsam | null = null): Prognose {
   const jahr = Number(heute.slice(0, 4));
   const z: PrognoseZeile[] = [];
   const gezahlt = (n: number | undefined, monate: number[]) => (n ?? 0) * vzBisHeute(heute, monate);
@@ -282,17 +325,32 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Record<S
         formel: `(${zahl(est.gewinn)} € Gewinn − ${zahl(est.freibetrag)} € Freibetrag) × Messzahl × ${zahl(est.hebesatz)} % Hebesatz = ${zahl(est.gewst)} € − ${zahl(vzGew)} € ${vzGew ? 'Rest der ' : ''}${quelleText} (bis zum ${est.anrechnungFaktor}-fachen Messbetrag auf die Einkommensteuer angerechnet)`, href: PLAN });
     }
   }
-  // KD Ventures: Körperschaftsteuer + Soli, Gewerbesteuer.
-  const gv = gewinn.kdv;
-  if (!gv) z.push({ id: 'kst', einheit: 'kdv', titel: `Körperschaft- und Gewerbesteuer ${jahr}`, betrag: null, formel: 'Gewinn × (15,825 % + 3,5 % × Hebesatz)', luecke: `Ist-Monate ${EINHEIT_LABEL.kdv} fehlen`, href: WEG.abschluss('kdv') });
-  else {
-    const kst = Math.max(0, gv.hochgerechnet) * 0.15825;
-    const gew = e.kdv.gewerbe ? Math.max(0, gv.hochgerechnet) * 0.035 * e.hebesatz / 100 : 0;
-    const vz = gezahlt(e.vorauszahlung.kst, [3, 6, 9, 12]) + gezahlt(e.vorauszahlung.gewstKdv, [2, 5, 8, 11]);
-    z.push({ id: 'kst', einheit: 'kdv', titel: `Körperschaft- und Gewerbesteuer ${jahr}`, betrag: Math.max(0, kst + gew - vz), formel: `${Math.round(gv.hochgerechnet).toLocaleString('de-DE')} € Gewinn × (15,825 % KSt+Soli${e.kdv.gewerbe ? ` + ${(3.5 * e.hebesatz / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} % GewSt` : ''}) − ${Math.round(vz).toLocaleString('de-DE')} € Vorauszahlungen`, href: R });
+  // Kapitalgesellschaften (KD Ventures, seit 15.10. auch die Hauptgesellschaft): Körperschaftsteuer + Soli, Gewerbesteuer — EINE Rechnung je Firma.
+  for (const firma of KAPITAL_FIRMEN) {
+    const f = e[firma];
+    // KD Ventures behält ihre Kennung `kst` (älterer Stand, Tests, Links) — die Hauptgesellschaft heißt `kst-ug`.
+    const id = firma === 'kdv' ? 'kst' : `kst-${firma}`;
+    const titel = `Körperschaft- und Gewerbesteuer ${jahr}`;
+    // Die Hauptgesellschaft nur als Kapitalgesellschaft (Rechtsform aus der Finanzplanung) — KD Ventures rechnet wie bisher immer so.
+    if (firma === 'ug' && !istKapital(f)) {
+      z.push({ id, einheit: firma, titel, betrag: null, formel: 'Körperschaftsteuer nur für Kapitalgesellschaften', luecke: `Rechtsform ${EINHEIT_LABEL[firma]} laut Finanzplanung: keine Kapitalgesellschaft — dort unter „Welche Steuern gelten?“ prüfen`, href: UG_STEUER_WEG.href });
+      continue;
+    }
+    const gv = gewinn[firma] ?? null;
+    const s = f.saetze;
+    const kstSatz = s ? s.kst * (1 + s.soli) : 0.15825;
+    const gewSatz = !f.gewerbe ? 0 : s ? s.messzahl * s.hebesatz / 100 : 0.035 * e.hebesatz / 100;
+    const formel = s
+      ? `Gewinn × (${prozent(kstSatz)} % KSt+Soli${f.gewerbe ? ` + ${prozent(gewSatz)} % GewSt (Messzahl ${prozent(s.messzahl)} % × Hebesatz ${zahl(s.hebesatz)} %)` : ''}) — Sätze aus der Finanzplanung${s.plan ? ` „${s.plan}“` : ''}`
+      : `Gewinn × (15,825 % KSt+Soli${f.gewerbe ? ` + ${prozent(gewSatz)} % GewSt` : ''})`;
+    if (!gv) { z.push({ id, einheit: firma, titel, betrag: null, formel, luecke: `Ist-Monate ${EINHEIT_LABEL[firma]} fehlen`, href: WEG.abschluss(firma) }); continue; }
+    const kst = Math.max(0, gv.hochgerechnet) * kstSatz;
+    const gew = Math.max(0, gv.hochgerechnet) * gewSatz;
+    const vz = firma === 'ug'
+      ? gezahlt(e.vorauszahlung.kstUg, [3, 6, 9, 12]) + gezahlt(e.vorauszahlung.gewstUg, [2, 5, 8, 11])
+      : gezahlt(e.vorauszahlung.kst, [3, 6, 9, 12]) + gezahlt(e.vorauszahlung.gewstKdv, [2, 5, 8, 11]);
+    z.push({ id, einheit: firma, titel, betrag: Math.max(0, kst + gew - vz), formel: `${zahl(gv.hochgerechnet)} € ${formel} − ${zahl(vz)} € Vorauszahlungen`, href: R });
   }
-  // MAKE Innovation GmbH: sichtbar, aber nicht gerechnet (Körperschaft ≠ Selbstständigkeit) — Betrag bleibt leer.
-  z.push({ id: 'ug', einheit: 'ug', titel: `Steuern ${UG_NAME} ${jahr}`, betrag: null, formel: `Körperschaft-, Gewerbe- und Umsatzsteuer der ${UG_NAME}`, luecke: `${UG_NICHT_HINTERLEGT}${ug.rechnungen ? ` ${ug.rechnungen} ${UG_KURZ}-Rechnung${ug.rechnungen === 1 ? '' : 'en'} zählen noch in keiner Umsatzsteuer.` : ''}`, href: UG_STEUER_WEG.href });
   for (const zl of z) zl.href = hrefImBereich(zl.href, zl.einheit);
   const je = Object.fromEntries(FINANZ_ORT_IDS.map(x => {
     const soll = z.filter(y => y.einheit === x).reduce((s, y) => s + (y.betrag ?? 0), 0);
@@ -362,13 +420,16 @@ export const JAHRES_PUNKTE: { id: string; titel: string; unter: string; einheit:
   { id: 'entnahmen', titel: 'Privatentnahmen und -einlagen', unter: 'Summe je Monat, Abgleich mit dem Privatkonto', einheit: 'kdc' },
   { id: 'kfz', titel: 'Fahrzeug: Fahrtenbuch oder 1-%-Regel', unter: 'Kosten, Kilometer, Nutzung', einheit: 'kdc' },
   { id: 'jahresabschluss', titel: `${EINHEIT_LABEL.kdv}: Unterlagen Jahresabschluss`, unter: 'Saldenlisten, Verträge, Gesellschafterbeschlüsse', einheit: 'kdv' },
+  // 15.10.: die Hauptgesellschaft wie KD Ventures.
+  { id: 'jahresabschluss-ug', titel: `${EINHEIT_LABEL.ug}: Unterlagen Jahresabschluss`, unter: 'Saldenlisten, Verträge, Gesellschafterbeschlüsse', einheit: 'ug' },
   { id: 'versicherungen', titel: 'Versicherungen und Vorsorge', unter: 'Kranken-, Pflege-, Renten-, Haftpflichtbeiträge', einheit: 'privat' },
   { id: 'sonderausgaben', titel: 'Spenden, Handwerker, Haushaltsnahes', unter: 'Belege und Rechnungen mit Arbeitslohn-Anteil', einheit: 'privat' },
   { id: 'bescheide', titel: 'Steuerbescheide und Vorauszahlungen', unter: 'letzte Bescheide, geänderte Vorauszahlungen', einheit: 'privat' },
 ];
 
-export function uebergabeJahr(jahr: number, abgehakt: Record<string, { am: string; von: string }>): UebergabePunkt[] {
-  return JAHRES_PUNKTE.map(p => {
+/** Jahres-Punkte; `seit` (Gründungstage, 15.10.) lässt Punkte einer Gesellschaft weg, die es im Jahr noch nicht gab. */
+export function uebergabeJahr(jahr: number, abgehakt: Record<string, { am: string; von: string }>, seit: Partial<Record<Einheit, string | undefined>> = {}): UebergabePunkt[] {
+  return JAHRES_PUNKTE.filter(p => !(seit[p.einheit] && Number(seit[p.einheit]!.slice(0, 4)) > jahr)).map(p => {
     const key = `j:${jahr}:${p.id}`;
     const h = abgehakt[key] ?? null;
     return { key, titel: p.titel, unter: `${EINHEIT_LABEL[p.einheit]} · ${p.unter}`, status: h ? 'ok' : 'hand', abgehakt: h, einheit: p.einheit };
@@ -396,7 +457,7 @@ export function steuernNurBusiness<T extends SteuerSichtTeile>(st: T): T {
   const biz = (x: string) => bereichVon(x) === 'business';
   const je = Object.fromEntries(Object.entries(st.prognose.je).map(([k, v]) => [k, biz(k) ? v : { soll: 0, ist: null, deckung: null }])) as Prognose['je'];
   const e = st.einstellungen;
-  const vz = Object.fromEntries(Object.entries(e.vorauszahlung).filter(([k]) => k === 'kst' || k === 'gewstKdv')) as SteuerEinstellungen['vorauszahlung'];
+  const vz = Object.fromEntries(Object.entries(e.vorauszahlung).filter(([k]) => (k === 'kst' || k === 'gewstKdv' ? biz('kdv') : k === 'kstUg' || k === 'gewstUg' ? biz('ug') : false))) as SteuerEinstellungen['vorauszahlung'];
   const ruecklageIst = Object.fromEntries(Object.entries(e.ruecklageIst).filter(([k]) => biz(k))) as SteuerEinstellungen['ruecklageIst'];
   return {
     ...st,
@@ -425,7 +486,7 @@ export function businessSchreibenErlaubt(roh: Record<string, unknown>): string |
       if (k === 'privat' || k === 'steuerquote' || ((k === 'kdc' || k === 'kdv' || k === 'ug') && privatE(k))) return 'Diese Einstellung gehört zu Privat.';
     }
     const vz = (e.vorauszahlung ?? {}) as Record<string, unknown>;
-    if ('est' in vz || ('gewstKdc' in vz && privatE('kdc')) || ('gewstKdv' in vz && privatE('kdv'))) return 'Diese Vorauszahlung gehört zu Privat.';
+    if ('est' in vz || ('gewstKdc' in vz && privatE('kdc')) || (('gewstKdv' in vz || 'kst' in vz) && privatE('kdv')) || (('gewstUg' in vz || 'kstUg' in vz) && privatE('ug'))) return 'Diese Vorauszahlung gehört zu Privat.';
     const rl = (e.ruecklageIst ?? {}) as Record<string, unknown>;
     if (Object.keys(rl).some(privatE)) return 'Diese Rücklage gehört zu Privat.';
   }

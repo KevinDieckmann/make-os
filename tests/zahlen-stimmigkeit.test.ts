@@ -32,7 +32,7 @@ import { fuerDich } from '@/lib/crm/team';
 import { istKunde, beanVon } from '@/lib/crm/bean';
 import { neueOhneSchritt } from '@/lib/crm/person-anlegen';
 import { abgeleiteterTitel, zahlenzielArt, istRatenziel, zielwertText } from '@/lib/planung/kaskade';
-import { UG_NICHT_HINTERLEGT, UG_STEUER_WEG } from '@/lib/steuern/rechnen';
+import { UG_STEUER_WEG } from '@/lib/steuern/rechnen';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
 import type { Ziel } from '@/lib/planung/typen';
@@ -57,7 +57,7 @@ let leadRoute: { leads: LeadZeile[]; trichter: Trichter };
 let kreislauf: { id: string; anzahl: number }[] = [];
 let kontakte: Kontakt[] = [];
 let crm: CrmBestand;
-let steuern: { prognose: { zeilen: { einheit: string; luecke?: string; href: string; betrag: number | null }[]; je: Record<string, { soll: number; ist: number | null }> } };
+let steuern: { prognose: { zeilen: { id: string; einheit: string; luecke?: string; href: string; betrag: number | null; formel: string }[]; je: Record<string, { soll: number; ist: number | null }> } };
 
 beforeAll(async () => {
   const server = await import('@/lib/demo/server');
@@ -199,14 +199,14 @@ describe('B12/B14 · keine grüne Ampel bei „0 von 0“', () => {
     expect(fp).not.toMatch(/wert=\{`\$\{imPlan\} \/ \$\{zs\.length\}`\}|wert=\{`\$\{aw\.ziele\.imPlan\} \/ \$\{aw\.ziele\.gesamt\}`\}/);
     expect(quelle('components/os/finanzplan/Baukasten.tsx')).not.toMatch(/wert=\{`\$\{g\.aw\.ziele\.imPlan\} \/ /);
   });
-  it('B14: die Hauptgesellschaft nennt klar, dass keine Steuern gerechnet werden — mit Weg, ohne erfundenen Betrag', () => {
-    const ug = steuern.prognose.zeilen.find(z => z.einheit === 'ug');
+  it('B14 → 15.10. (Kevin: „wie bei KD Ventures“): die Hauptgesellschaft rechnet Steuern — Schätzung aus den Ist-Monaten, Sätze aus der Finanzplanung, nie erfunden', () => {
+    const ug = steuern.prognose.zeilen.find(z => z.einheit === 'ug' && z.id === 'kst-ug');
     expect(ug).toBeTruthy();
-    expect(ug!.betrag).toBeNull();
-    expect(ug!.luecke).toContain('rechnen wir noch keine Steuern');
-    expect(ug!.href).toBe(UG_STEUER_WEG.href);
+    // Die Demo trägt Monatsabschlüsse der Hauptgesellschaft → Schätzung mit offengelegter Formel; ohne Ist-Monate stünde „fehlt“ mit Weg dorthin.
+    expect(ug!.betrag).not.toBeNull();
+    expect(ug!.formel).toMatch(/Gewinn × \(.+KSt\+Soli/);
+    expect(ug!.formel).toContain('Sätze aus der Finanzplanung');
     expect(UG_STEUER_WEG.href).toContain('steuern=ug');
-    expect(UG_NICHT_HINTERLEGT).toMatch(/Fristen und Schätzung fehlen/);
   });
 });
 
