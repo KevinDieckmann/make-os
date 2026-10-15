@@ -6,11 +6,12 @@
 //   BusinessFreiStatus          kleiner Hinweis „Business-frei bis 23:59“ (Heute) — nur, wenn es gerade gilt
 //   EigeneBusinessFrei          die eigene Ergänzung (Familie › Rahmen) — nur einschränken, nie die gemeinsamen Zeiten aufheben
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Moon } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { WEG } from '@/lib/wege';
+import { useNurBusiness } from '../useInhaber';
 import { Knopf, Hinweis, feld, LEUCHT, Wahl as UiWahl } from '../ui';
 import type { BusinessFreiFenster, Spanne } from '@/lib/arbeitsrahmen/regel';
 import { EIGENE_MAX } from '@/lib/arbeitsrahmen/regel';
@@ -123,7 +124,12 @@ export function EigeneBusinessFrei() {
   );
 }
 
-/** Ein ruhiger Link zu den Business-freien Zeiten (Kapazität, Kalender-Einstellungen). */
-export function BusinessFreiLink({ text = 'Business-freie Zeiten' }: { text?: string }) {
-  return <Link href={WEG.familie('rahmen')} style={{ color: LEUCHT.beziehung }}>{text} ›</Link>;
+/**
+ * Ein ruhiger Link zu den Business-freien Zeiten (Kapazität, Kalender-Einstellungen) — samt Satz davor (`vor`). Die Zeiten pflegt man unter
+ * Familie › Rahmen (Privat): ein Konto „nur Business“ bekommt weder Satz noch Link (15.10., Abnahme 2 B8 — Business verlinkt nie ins Private).
+ */
+export function BusinessFreiLink({ text = 'Business-freie Zeiten', vor, stil }: { text?: string; vor?: ReactNode; stil?: CSSProperties }) {
+  const nurBusiness = useNurBusiness();
+  if (nurBusiness !== false) return null;
+  return <span style={stil}>{vor}<Link href={WEG.familie('rahmen')} style={{ color: LEUCHT.beziehung }}>{text} ›</Link></span>;
 }

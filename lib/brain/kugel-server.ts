@@ -9,7 +9,7 @@
 //   Termine    `termineFuerZoe(person)` — maskierte (fremde private) und Gesundheitstermine fallen weg, M365-Spiegel ohne Link
 //              ebenso (kein Punkt ins Leere)
 //   Notizen    Vault `bestand()` + `darfSehen` (private nur für die Eigentümerin) — nur Titel, nie Text
-//   Gesellschaften  Register des Haushalts (`ladeRegister`)
+//   Gesellschaften  Register des Haushalts (`ladeRegister`) — nur mit Zugang zur Firmen-Akte, nie eine Privat-Einheit (`einheitenSichtFuer`)
 // Gesundheit wird NIE ein Punkt (Art. 9): keine Gesundheitstermine, keine Gesundheits-Meilensteine/-Ziele, keine Notizen
 // mit Gesundheitsbezug im Pfad/Titel/Stichwort. Keine Personendaten in Logs.
 
@@ -137,13 +137,18 @@ async function notizen(person: string): Promise<RohPunkt[]> {
   }));
 }
 
-async function gesellschaften(): Promise<RohPunkt[]> {
+async function gesellschaften(person: string): Promise<RohPunkt[]> {
   const h = await haushaltDesInhabers();
   if (!h) return [];
-  const [{ ladeRegister }, { alleGesellschaften, anzeigeName, aktiveEintraege }] = await Promise.all([import('@/lib/gesellschaften/server'), import('@/lib/gesellschaften/modell')]);
+  // Nur, was die Firmen-Akte der Person zeigt (15.10., Abnahme 2 A1): ohne Zugang (Konto „nur Business“: „nicht freigegeben“) keine einzige
+  // Gesellschaft aus dem Register — und nie eine Privat-Einheit (die Selbstständigkeit gehört zu Privat, nicht zum Unternehmens-Register).
+  const [{ ladeRegister }, { alleGesellschaften, anzeigeName, aktiveEintraege }, { einheitenSichtFuer }, { gehoertZuPrivat }] = await Promise.all([
+    import('@/lib/gesellschaften/server'), import('@/lib/gesellschaften/modell'), import('@/lib/gesellschaften/sicht-server'), import('@/lib/einheiten'),
+  ]);
+  if (!(await einheitenSichtFuer(person)).register) return [];
   const d = await ladeRegister(h);
   if (!d) return [];
-  return alleGesellschaften(d).map(g => ({
+  return alleGesellschaften(d).filter(g => !gehoertZuPrivat(g.id)).map(g => ({
     art: 'gesellschaft' as const, kennung: g.id, titel: anzeigeName(g), datum: g.angelegt ?? null,
     links: mit(
       g.vorgaengerId && punktId('gesellschaft', g.vorgaengerId),
@@ -161,7 +166,7 @@ export async function rohPunkteSammeln(person: string, heute: string): Promise<R
     sicher(() => planung(person, ms), []),
     sicher(() => termine(person, heute), []),
     sicher(() => notizen(person), []),
-    sicher(gesellschaften, []),
+    sicher(() => gesellschaften(person), []),
   ]);
   return teile.flat();
 }

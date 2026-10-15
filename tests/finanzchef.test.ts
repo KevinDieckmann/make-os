@@ -185,7 +185,16 @@ describe('Ist-Stand-Checkliste', () => {
     offeneRechnungen: [{ kunde: 'Beispielkunde' }], leereControllingMonate: ['Aug'], grundlageStand: '2026-09-21',
     planposten: 46, zuKlaeren: 8, rechtsform: { kdv: 'UG', kdc: 'Einzelunternehmen' },
     haushalt: { umzug: false, buchungen: 0, letzteBuchung: null, ohneKategorie: 0, pruefposten: 12, steuerquote: null, mitglieder: ['kevin'] },
+    betreiber: true,
   };
+  it('Altbestand und Umzug nur in der Betreiber-Instanz (15.10., Abnahme 2 B14) — sonst ohne Umzug, ohne V1-Export, ohne „nach dem Umzug“', () => {
+    const fremd = istStand({ ...basis, betreiber: false });
+    expect(fremd.map(x => x.id)).not.toContain('umzug');
+    expect(fremd.map(x => x.id)).not.toContain('grundlage');
+    expect(JSON.stringify(fremd)).not.toMatch(/Umzug|Altsystem|früheren Cockpit|V1-Export/);
+    // V1-Export liegt unter Privat › Selbstständigkeit — ohne Haushaltszugang auch beim Betreiber nicht (Business verlinkt nie ins Private).
+    expect(istStand({ ...basis, haushalt: null }).map(x => x.id)).not.toContain('grundlage');
+  });
   it('leitet jeden Punkt aus den Daten ab und sagt, was fehlt', () => {
     const s = Object.fromEntries(istStand(basis).map(x => [x.id, x]));
     expect(s.umzug.erledigt).toBe(false);

@@ -196,8 +196,16 @@ async function ladeRohFrisch(heute: string) {
   // Anfangsbestand, Posten/Abschlüsse davor sind archiviert (gespeichert, nicht gezählt), offene Posten der Eröffnung kommen dazu.
   const eroeffnung: Geltende = geltendeEroeffnungen(eroeffnungen);
   // Fail-closed: kann die Regel nicht gelesen werden, tragen alle Meilensteine mit Ziel-Bezug keinen Titel.
-  const msOhneTitel = await verborgeneMeilensteineFuer(null, (ms?.meilensteine ?? []).filter((m): m is typeof m & { id: string } => !!m.id))
+  const msOhneTitel0 = await verborgeneMeilensteineFuer(null, (ms?.meilensteine ?? []).filter((m): m is typeof m & { id: string } => !!m.id))
     .catch(() => new Set((ms?.meilensteine ?? []).filter(m => m.id && (m.zielId || m.abgeleitetVon)).map(m => m.id!)));
+  // Gründungsfahrplan und Register-Gesellschaften (15.10., Abnahme 2 A1): gehören zur Firmen-Akte — der Index geht auch an Konten „nur Business“
+  // (Firmen-Akte „nicht freigegeben“). Sie zählen im Kurs mit, aber ohne Titel und Kennung (wie Meilensteine an eigenen Zielen).
+  const [{ istFahrplanMeilenstein }, { einheitNameSichtbar, EINHEITEN_ALLES }, einheitNamen] = await Promise.all([
+    import('@/lib/aufgaben/firmenakte-sicht'), import('@/lib/gesellschaften/sicht'),
+    import('@/lib/gesellschaften/sicht-server').then(m => m.einheitenNamen()).catch(() => new Map<string, string>()),
+  ]);
+  const msOhneTitel = new Set([...msOhneTitel0, ...(ms?.meilensteine ?? [])
+    .filter(m => m.id && (istFahrplanMeilenstein(m) || !einheitNameSichtbar(m.einheit, { ...EINHEITEN_ALLES, register: false }, einheitNamen))).map(m => m.id!)]);
   const abschluesse = abschluesseAlle.filter(a => !abschlussVor(a, eroeffnung));
   // Kapazität (04.10.): nur die Team-Summen — eigener Lesefehler darf den Index nie kippen (null = Säule zählt nicht).
   const kapa = await kapaKennzahlenFuerIndex(heute);

@@ -86,7 +86,7 @@ export function DatenbasisView() {
         </Karte>
       ))}
 
-      <DatenkarteKarte i={6} altbestand={!!z?.ich?.altbestand} />
+      <DatenkarteKarte i={6} altbestand={!!z?.ich?.altbestand} nurBusiness={!!z?.ich?.nurBusiness} />
     </Seite>
   );
 }

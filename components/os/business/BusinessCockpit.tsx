@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { WEG } from '@/lib/wege';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT, Hinweis, FlussKarte } from '../ui';
+import { Seite, Karte, Ueberschrift, Ring, Fortschritt, Segmente, Chip, LEUCHT, Hinweis, FlussKarte, Erklaert } from '../ui';
 import { IndexFadenLinie } from '../kennzahlen/IndexAnsicht';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useLinkAuswahl } from '../Verlauf';
@@ -115,7 +115,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
               {d?.holding && d.scope === scope && scope !== 'gesamt' && <Link href={WEG.unternehmen(scope)} style={{ fontSize: TYP.bedien, color: C.inkLeise }} title="Rolle im Steckbrief — operative Vertriebs- und Produktivitätskennzahlen zählen hier nicht">Holding laut Register ›</Link>}
               {trend != null && trend !== 0 && <Chip farbe={trend > 0 ? LEUCHT.gut : LEUCHT.kritisch}>{trend > 0 ? '▲' : '▼'} {Math.abs(trend)} in 30 Tagen</Chip>}
               {/* Ein Status für alle Orte (14.10., B1): derselbe Satz wie auf Heute und den Fachseiten (lib/kennzahlen/kern.ts indexStatus). */}
-              {bi && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{indexStatus(bi).satz}</span>}
+              {bi && <Erklaert erklaerung="index.abdeckung" name="Abdeckung"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{indexStatus(bi).satz}</span></Erklaert>}
             </div>
             {bi?.saeulen.map(s => (
               <div key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(70px, 2fr) 40px', gap: 12, alignItems: 'center' }}>

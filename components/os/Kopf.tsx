@@ -28,6 +28,7 @@ import { Glocke } from './Glocke';
 import { UpdateHinweis } from './UpdateHinweis';
 import { useNurBusiness } from './useInhaber';
 import { WEG } from '@/lib/wege';
+import { privatSeite, NUR_BUSINESS_START } from '@/lib/zugang/privat-seite';
 import { fokusBeenden, uhr, ZEIT_EREIGNIS } from './zeit/fokus-beenden';
 
 /** Zeit-Ereignis: der Fokus-Zähler meldet einen gespeicherten Block (Zeit je Einheit/Mandat laden dann neu) — Quelle: zeit/fokus-beenden.ts. */
@@ -44,8 +45,9 @@ function SpaceSchalter({ wahl, setzen }: { wahl: SpaceWahl; setzen: (s: SpaceWah
   const router = useRouter();
   const pfad = usePathname() ?? '/os';
   const { suche, ausAdresse, bereit, wahl: wirksam } = useSpace();
-  // Konto „nur Business“ (09.10., E4-Rest): kein Knopf „Privat“ — der Server liefert dort nichts aus dem Haushalt. Ein nur GEMERKTES
-  // „Privat“ (keine Seite, kein `?space=`) springt einmal auf Business; eine Adresse mit Privat bleibt, wie sie ist (Seiten zeigen dann leer).
+  // Konto „nur Business“ (09.10., E4-Rest): kein Knopf „Privat“ — der Server liefert dort nichts aus dem Haushalt. Seit 15.10. (Abnahme 2 B8)
+  // ist die Wahl dieses Kontos immer Business (`wahlVon`), und eine Seite des Privat-Bereichs (`?space=privat`, Gesundheit, Familie …) führt
+  // nach Business-Heute — die Middleware leitet schon serverseitig um, hier nur der Rückfall (z. B. Stand der Middleware noch nicht frisch).
   const nurBusiness = useNurBusiness();
   // Alte Adresse `?space=alles` → der wirksame Space (für „nur Business“ immer Business) — erst, wenn Merker und Konto gelesen sind.
   useEffect(() => {
@@ -54,7 +56,11 @@ function SpaceSchalter({ wahl, setzen }: { wahl: SpaceWahl; setzen: (s: SpaceWah
     if (ziel) router.replace(ziel, { scroll: false });
   }, [bereit, nurBusiness, pfad, suche, wirksam, router]);
   const wahlen = nurBusiness ? SPACE_WAHLEN.filter(id => id !== 'privat') : SPACE_WAHLEN;
-  useEffect(() => { if (nurBusiness && wahl === 'privat' && !ausAdresse) setzen('business'); }, [nurBusiness, wahl, ausAdresse, setzen]);
+  useEffect(() => {
+    if (!nurBusiness) return;
+    if (privatSeite(pfad, suche)) router.replace(NUR_BUSINESS_START, { scroll: false });
+    else if (wahl === 'privat' && !ausAdresse) setzen('business');
+  }, [nurBusiness, wahl, ausAdresse, setzen, pfad, suche, router]);
   const waehlen = (s: SpaceWahl) => {
     if (s === wahl) return;
     setzen(s);

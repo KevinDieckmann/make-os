@@ -26,9 +26,10 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import { hauptInhaber } from '@/lib/zugang/inhaber';
 import { haushaltsSpeicher } from '@/lib/aufgaben/sicht';
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 
 /** Die Checkliste „Ist-Stand“ — jeder Punkt aus den Daten abgeleitet. */
-async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<typeof ladeFinanzbild>>['bild'], einstellung: ChefEinstellung) {
+async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<typeof ladeFinanzbild>>['bild'], einstellung: ChefEinstellung, betreiber: boolean) {
   const [fp, bu, lp] = await Promise.all([
     loadJson<Omit<NonNullable<Businessbestand['finanzplan']>, 'firmen'> & { firmen?: { id: string; name: string; kontostand: number | null; stand?: string | null }[] }>('finanzplan'),
     loadJson<Businessbestand['buchungen']>('buchungen'),
@@ -67,6 +68,7 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
     planposten: business.length, zuKlaeren: business.filter(p => !p.sicher && (p.notiz ?? '').startsWith('Zu klären')).length,
     rechtsform: einstellung.rechtsform, haushalt: hh,
     inhaber: haupt ? { kennung: haupt.speicher, name: haupt.name.split(/\s+/)[0] || haupt.speicher } : null,
+    betreiber,
   });
 }
 
@@ -88,19 +90,22 @@ export async function GET(req: Request) {
     ladeFinanzbild(u.haushalt),
   ]);
   const s = { ...leererStand(), ...(stand ?? {}) };
-  const istStandListe = await checkliste(u.haushalt, bild, u.haushalt ? einstellung : einstellungFuerBusiness(einstellung));
+  // Sicht Business (15.10., Abnahme 2 C13 — „Business zeigt nur Business“): die Checkliste und die Lage ohne Privat und ohne die Selbstständigkeit,
+  // auch für Personen mit Haushaltszugang (der Head of Finance selbst und seine Vorschläge bleiben derselbe Stand).
+  const nurBusinessSicht = !u.haushalt || new URL(req.url).searchParams.get('space') === 'business';
+  const istStandListe = await checkliste(nurBusinessSicht ? null : u.haushalt, bild, nurBusinessSicht ? einstellungFuerBusiness(einstellung) : einstellung, await istBetreiberInstanz());
   return NextResponse.json({
     istStand: istStandListe,
     ok: true, umfang: u.haushalt ? 'business+haushalt' : 'business', haushaltZugang: u.zugang,
     berichte: s.berichte.slice(-10).reverse(), vorschlaege: s.vorschlaege.slice().reverse(), letzte: s.letzte, ruhig: s.ruhig ?? null,
     // Business-Umfang (09.10., Funde #2): ohne ESt-Vorauszahlung und ohne Rechtsform einer Privat-Einheit — serverseitig, nie nur ausgeblendet.
-    einstellung: u.haushalt ? einstellung : einstellungFuerBusiness(einstellung),
+    einstellung: nurBusinessSicht ? einstellungFuerBusiness(einstellung) : einstellung,
     lage: {
       hinweise: bild.hinweise, termine: bild.steuern.termine_60_tage,
       kasse: bild.business.kasse, runway: bild.business.controlling?.runway_monate ?? null,
       liquiditaet: bild.business.liquiditaet_12_wochen,
-      haushalt: bild.haushalt ? { luft: bild.haushalt.luft_pro_monat, sparquote: bild.haushalt.sparquote_prozent, tage_seit_letzter_buchung: bild.haushalt.tage_seit_letzter_buchung } : null,
-      deckung: bild.gesamt?.deckung_prozent ?? null,
+      haushalt: bild.haushalt && !nurBusinessSicht ? { luft: bild.haushalt.luft_pro_monat, sparquote: bild.haushalt.sparquote_prozent, tage_seit_letzter_buchung: bild.haushalt.tage_seit_letzter_buchung } : null,
+      deckung: nurBusinessSicht ? null : bild.gesamt?.deckung_prozent ?? null,
     },
   });
 }

@@ -355,7 +355,7 @@ export async function POST(req: Request) {
       const brain = kiS.bereiche.brain ? await brainAnweisung(person).catch(() => '') : '';
       // Name aus dem Konto der auslösenden Person, Gesellschaften aus Einheiten + Register (08.10. spät, lib/zoe/grundauftrag.ts).
       const bf = await businessFreiJetzt(person).catch(() => ({ frei: false, bisWand: undefined }));
-      const grund = { name: await vornameVon(person), firmen: await gesellschaftenSatz(), gesundheit: gesundheitKi, ...(bf.frei && bf.bisWand ? { businessFrei: bisText(bf.bisWand, localDay()) } : {}), werkzeuge: angebotenSet as ReadonlySet<string>, heads: headsImPrompt(heads) };
+      const grund = { name: await vornameVon(person), firmen: await gesellschaftenSatz(person), gesundheit: gesundheitKi, ...(bf.frei && bf.bisWand ? { businessFrei: bisText(bf.bisWand, localDay()) } : {}), werkzeuge: angebotenSet as ReadonlySet<string>, heads: headsImPrompt(heads) };
       if (brain) kategorien.add('brain');
       if (crmBezug) kategorien.add('crm');
       const sp = systemPrompt(payload.context, live, fortsetzung, gedaechtnis, brain, werkzeugSicht, grund);

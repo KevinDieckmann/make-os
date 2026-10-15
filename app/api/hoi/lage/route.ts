@@ -4,7 +4,7 @@
 // setzt x-make-hoi) — keine Personen, keine Inhalte, nur Zähler und Zustände.
 
 import { NextResponse } from 'next/server';
-import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { hoiSehen } from '@/lib/hoi/zugang';
 import { lage } from '@/lib/hoi/innen';
 import { betreiberNeutral } from '@/lib/betrieb/betreiber';
 import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
@@ -13,7 +13,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  if (req.headers.get('x-make-hoi') !== '1' && !(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  // Volle Mitglieder im Haushalt des Inhabers (15.10., Abnahme 2 B8 — nie „nur Business“, fremder Haushalt, Testkunde). Der HOI-Schlüssel bleibt.
+  if (!(await hoiSehen(req))) return NextResponse.json({ ok: false, fehler: 'Nur für volle Mitglieder des Haushalts.' }, { status: 403 });
   try {
     const l = await lage();
     // Der Weg am Server (Befehle, Repo-Dateien, Pfade) nur in der Betreiber-Instanz bzw. für den HOI-Schlüssel (14.10., Abnahme A2) —

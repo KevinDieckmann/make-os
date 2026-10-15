@@ -24,6 +24,8 @@ import { listePatchen, opsLesen, opsFehler } from '@/lib/store/patch-liste';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { alleGesellschaften, gesellschaftenName, mitVorgaben, type GesellschaftenDatei } from '@/lib/crm/gesellschaften';
+import { einheitenSichtFuer } from '@/lib/gesellschaften/sicht-server';
+import { nurSichtbareKennungen } from '@/lib/gesellschaften/sicht';
 import { MAX_KARTEN, LOGO_MAX, pruefeKarte, KARTEN_TEXTFELDER, type Visitenkarte } from '@/lib/netzwerken/karte';
 import { zuGross } from '@/lib/zugang/umfang';
 import { fuerBrowser, ladeKarten, visitenkartenName, type KartenDatei } from '@/lib/netzwerken/karte-speicher';
@@ -45,10 +47,13 @@ async function eigene(req: Request): Promise<HaushaltZugang | null> {
   return (await haushaltVon(req)) ?? businessHaushaltFuer(personStreng(req));
 }
 
-/** Firmen-Vorschläge aus den Gesellschaften des Haushalts: nur Name und öffentliche Kontaktangaben. */
-async function gesellschaften(haushalt: string) {
-  const d = await loadJson<GesellschaftenDatei>(gesellschaftenName(haushalt)).catch(() => null);
-  return alleGesellschaften(d).map(mitVorgaben).map(g => ({
+/**
+ * Firmen-Vorschläge aus den Gesellschaften des Haushalts: nur Name und öffentliche Kontaktangaben — nur, was die Person sieht (15.10., Abnahme 2
+ * A1: ein Konto „nur Business“ bekommt die Selbstständigkeit nicht als Absender; EINE Regel lib/gesellschaften/sicht.ts).
+ */
+async function gesellschaften(haushalt: string, person: string) {
+  const [d, es] = await Promise.all([loadJson<GesellschaftenDatei>(gesellschaftenName(haushalt)).catch(() => null), einheitenSichtFuer(person)]);
+  return nurSichtbareKennungen(alleGesellschaften(d), es).map(mitVorgaben).map(g => ({
     id: g.id, firma: g.name, strasse: g.strasse ?? '', plz: g.plz ?? '', ort: g.ort ?? '', land: g.land ?? '', web: g.web ?? '', telefon: g.telefon ?? '', email: g.email ?? '',
   }));
 }
@@ -74,7 +79,7 @@ async function antwort(ziel: { person: string; fuerAndere: boolean }, z: { perso
   // Die Inhaberin/der Inhaber sieht, für wen sich Profile anlegen lassen (nur Haushalt, nur Namen).
   // Andere Inhaber stehen nicht zur Wahl (09.10.) — sie pflegen ihre Karten selbst.
   const personen = (await istInhaber(z.person)) ? konten.filter(k => k.haushalt === z.haushalt && (k.speicher === z.person || k.rolle !== 'inhaber')).map(k => ({ person: k.speicher, name: k.name, ich: k.speicher === z.person })) : [];
-  return { ok: true, person: ziel.person, fuerAndere: ziel.fuerAndere, personen, karten: fuerBrowser(karten), gesellschaften: await gesellschaften(z.haushalt), konto: ich ? { name: ich.name, email: ich.email } : null };
+  return { ok: true, person: ziel.person, fuerAndere: ziel.fuerAndere, personen, karten: fuerBrowser(karten), gesellschaften: await gesellschaften(z.haushalt, z.person), konto: ich ? { name: ich.name, email: ich.email } : null };
 }
 
 export async function GET(req: Request) {

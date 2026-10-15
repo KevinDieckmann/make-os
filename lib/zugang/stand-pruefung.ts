@@ -27,7 +27,7 @@ const NACHFRAGE_MS = 5_000;
 export const KULANZ_MS = 5 * 60_000;
 /** Leerlauf ohne Angabe des Servers (alter Server-Stand): 12 Stunden. */
 const LEERLAUF_STANDARD_MS = 12 * 3_600_000;
-interface Stand { stand: string; ab: number; widerrufen: string[]; bis: number; geholt: number; abgelehnt: Map<string, number>; /** 2FA-Pflicht offen (05.10.) und ab wann. */ zfOffen: boolean; zfAb: number; /** Leerlauf-Ende (ms). */ leerlaufMs: number }
+interface Stand { stand: string; ab: number; widerrufen: string[]; bis: number; geholt: number; abgelehnt: Map<string, number>; /** 2FA-Pflicht offen (05.10.) und ab wann. */ zfOffen: boolean; zfAb: number; /** Leerlauf-Ende (ms). */ leerlaufMs: number; /** Konto „nur Business“ (15.10.) — Seiten des Privat-Bereichs leiten um. */ nurBusiness: boolean }
 export type StandUrteil = 'gueltig' | 'ungueltig' | 'unklar';
 /** sid → letzte Anfrage (ms); TOT = wegen Leerlauf beendet. */
 const aktiv = new Map<string, number>();
@@ -44,7 +44,7 @@ async function nachfragen(req: Request, speicher: string, schluessel: string, al
   const p = (async () => {
     const r = await fetch(`${innenAdresse(req)}/api/konto/stand?speicher=${encodeURIComponent(speicher)}`, { headers: { 'x-make-key': schluessel }, cache: 'no-store' });
     if (!r.ok && r.status !== 404) throw new Error(`Stand: ${r.status}`);
-    const d = r.status === 404 ? { stand: '', ab: 0, widerrufen: [] } : ((await r.json()) as { stand?: unknown; ab?: unknown; widerrufen?: unknown; zfOffen?: unknown; zfAb?: unknown; leerlaufMin?: unknown });
+    const d = r.status === 404 ? { stand: '', ab: 0, widerrufen: [] } : ((await r.json()) as { stand?: unknown; ab?: unknown; widerrufen?: unknown; zfOffen?: unknown; zfAb?: unknown; leerlaufMin?: unknown; nurBusiness?: unknown });
     if (typeof d.stand !== 'string') throw new Error('Stand: keine Antwort');
     const neu: Stand = {
       stand: d.stand, ab: typeof d.ab === 'number' ? d.ab : 0,
@@ -52,6 +52,7 @@ async function nachfragen(req: Request, speicher: string, schluessel: string, al
       bis: jetzt + TTL_MS, geholt: jetzt, abgelehnt: alt?.abgelehnt ?? new Map<string, number>(),
       zfOffen: 'zfOffen' in d && d.zfOffen === true, zfAb: 'zfAb' in d && typeof d.zfAb === 'number' ? d.zfAb : 0,
       leerlaufMs: 'leerlaufMin' in d && typeof d.leerlaufMin === 'number' && d.leerlaufMin >= 60 ? d.leerlaufMin * 60_000 : LEERLAUF_STANDARD_MS,
+      nurBusiness: 'nurBusiness' in d && d.nurBusiness === true,
     };
     gemerkt.set(speicher, neu);
     return neu;
@@ -126,6 +127,14 @@ function leerlaufGueltig(req: Request, s: Sitzung, schluessel: string, jetzt: nu
 export function zweiterFaktorOffen(s: Sitzung): boolean {
   const m = gemerkt.get(s.speicher);
   return !!m && m.zfOffen && s.ausgestellt >= m.zfAb;
+}
+
+/**
+ * Konto „nur Business“ (15.10., Abnahme 2 B8): sieht diese Sitzung nur den Business-Bereich? Nur nach `standGueltig` (der Stand ist dann
+ * höchstens 15 s alt) — die Middleware leitet Seiten des Privat-Bereichs dann nach Business-Heute um (lib/zugang/privat-seite.ts).
+ */
+export function nurBusinessSitzung(s: Sitzung): boolean {
+  return gemerkt.get(s.speicher)?.nurBusiness === true;
 }
 
 /** Für Tests: den gemerkten Stand (und die Leerlauf-Uhr) vergessen. */

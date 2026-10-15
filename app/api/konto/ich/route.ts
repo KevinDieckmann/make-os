@@ -12,6 +12,7 @@ import { istHauptInhaber, istWirksamerInhaber } from '@/lib/zugang/inhaber';
 import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { hauptInhaber } from '@/lib/zugang/inhaber';
+import { haushaltFuer, privatFinanzZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,10 @@ export async function GET(req: Request) {
     // EINE Konto-Sicht (09.10., E4-Rest): sieht dieses Konto nur den Business-Bereich? Der Kopf blendet dann „Privat“ aus — die Trennung selbst
     // geschieht auf dem Server (jede Route filtert), das hier spart nur einen Schalter, hinter dem nichts kommt.
     nurBusiness: kontoSichtAus(s, wer).nurBusiness,
+    // Zugang zu den privaten Haushaltsfinanzen (15.10., Abnahme 2 B8 — dieselbe Regel wie `/api/haushalt?nur=zugang`, `haushaltFuer`): die
+    // Finanzen-Seite fragt hier, statt eine Anfrage zu stellen, die für ein Konto „nur Business“ mit 403 endet.
+    haushaltZugang: !!(await haushaltFuer(wer)),
+    privatFinanzen: !!(await privatFinanzZugangFuer(wer)),
     // Betreiber-Instanz (14.10., lib/betrieb/betreiber.ts): nur dann zeigen Verbindungen, Konto und Nachweise den Weg am Server — sonst neutral.
     betreiber: await istBetreiberInstanz({ hauptInhaberAngelegt: hauptInhaber(s)?.angelegt ?? null }),
     // 2FA-Pflicht der Instanz (05.10.): /anmelden führt dann zur Einrichtung statt weiter.

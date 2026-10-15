@@ -55,6 +55,8 @@ export { ALTBESTAND_BIS };
 
 /** Persönliche Prüfungen — IMMER nur für `person` (die Person der Sitzung), nie für eine andere. */
 export const PERSOENLICHE_PRUEFUNGEN = [
+  // 15.10. (Abnahme 2 B9): „Einladung annehmen“ — wer angemeldet ist und ein Konto hat, hat sie angenommen (ja/nein, sonst nichts).
+  'angemeldet',
   'zwei-faktor', 'gesundheit-einwilligung', 'icloud', 'google', 'gmail', 'postfach', 'whoop', 'aufgaben-ich', 'zoe', 'konten-register', 'arbeitsrahmen', 'routinen', 'gesundheit-agent',
   // Neustart (09.10.): eigene Ziele und „Gesundheit komplett“ — nur ja/nein für die Person selbst, nie Inhalte (Art. 9).
   'ziele-ich', 'koerper', 'ernaehrung', 'sport', 'routinen-gesundheit',
@@ -173,6 +175,7 @@ async function persoenlich(person: string, u: Umfang): Promise<Record<string, Be
   const routinen = einmal(() => lesen<{ routinen?: { aktiv?: boolean; owner?: string; kategorie?: string }[]; bloecke?: { owner?: string; art?: string; einheit?: string }[] }>('routinen'));
   const einwilligung = einmal(async () => (await (await import('@/lib/datenschutz/gesundheit-einwilligung')).gesundheitStandFuer(person)).verarbeiten.an);
   const pruefungen: Record<(typeof PERSOENLICHE_PRUEFUNGEN)[number], () => Promise<Befund | null>> = {
+    angemeldet: async () => ((await (await import('@/lib/zugang/konten')).kontoFuerSpeicher(person)) ? ja('du bist angemeldet') : nein('noch kein Konto')),
     'zwei-faktor': async () => ((await (await import('@/lib/zugang/konten')).kontoFuerSpeicher(person))?.zweiterFaktor ? ja('bei dir an') : nein('bei dir noch aus')),
     // Nur „erklärt ja/nein“ zu (a) — der STAND (ein Widerruf zählt), nie was erklärt wurde, nie ein Gesundheitswert.
     'gesundheit-einwilligung': async () => ((await (await import('@/lib/datenschutz/gesundheit-einwilligung')).gesundheitStandFuer(person)).verarbeiten.an ? ja('von dir erklärt') : nein('von dir nicht erklärt (oder widerrufen)')),

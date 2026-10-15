@@ -13,7 +13,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SITZUNG_COOKIE, WER_COOKIE, sitzungPruefen, sitzungsGeheimnis, gleich } from '@/lib/zugang/sitzung';
-import { standPruefen, zweiterFaktorOffen } from '@/lib/zugang/stand-pruefung';
+import { standPruefen, zweiterFaktorOffen, nurBusinessSitzung } from '@/lib/zugang/stand-pruefung';
+import { privatSeite, NUR_BUSINESS_START } from '@/lib/zugang/privat-seite';
 import { crossSiteVerboten } from '@/lib/zugang/cross-site';
 import { sitzungsGeheimnisFehlt } from '@/lib/zugang/start-riegel';
 import { anfrageIntern, zuliefererSchluessel, zuliefererUmgebung, ZULIEFERUNG, ZULIEFERER_AUS_ANTWORT, EINGESCHRAENKT_MIN } from '@/lib/zugang/intern';
@@ -190,6 +191,15 @@ export async function middleware(req: NextRequest) {
       const ziel = req.nextUrl.clone();
       ziel.pathname = '/anmelden';
       ziel.search = `?einrichten=2fa${pfad && pfad !== '/' ? `&zu=${encodeURIComponent(pfad)}` : ''}`;
+      return NextResponse.redirect(ziel);
+    }
+    // Konto „nur Business“ (15.10., Abnahme 2 B8): eine Seite des Privat-Bereichs (`?space=privat`, Gesundheit, Familie …) führt nach
+    // Business-Heute — serverseitig, auch bei Navigation im Browser. Die Schnittstellen bleiben, wie sie sind (filtern bzw. 403).
+    if (!pfad.startsWith('/api/') && nurBusinessSitzung(sitzung) && privatSeite(pfad, req.nextUrl.search)) {
+      const ziel = req.nextUrl.clone();
+      const [p, q] = NUR_BUSINESS_START.split('?');
+      ziel.pathname = p;
+      ziel.search = q ? `?${q}` : '';
       return NextResponse.redirect(ziel);
     }
     kopf.set('x-make-user', sitzung.speicher);

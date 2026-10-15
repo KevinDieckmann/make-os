@@ -51,7 +51,7 @@ function markiert(text: string, unbelegt: string[]): ReactNode {
     : <span key={i}>{t}</span>);
 }
 
-export function FinanzchefView() {
+export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } = {}) {
   const router = useRouter();
   const [s, setS] = useState<Stand | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -61,9 +61,10 @@ export function FinanzchefView() {
   const [gewaehlt, setGewaehlt] = useState<string | null>(null);
   const [berichtAuf, setBerichtAuf] = useState(false);
 
+  // Sicht Business (15.10., Abnahme 2 C13): Ist-Stand und Lage nur Business — der Server filtert (`?space=business`).
   const laden = useCallback(() => {
-    fetch('/api/finanzchef').then(r => r.json()).then((d: Stand) => { if (d.ok) setS(d); else setFehler('Nicht ladbar.'); }).catch(() => setFehler('Nicht ladbar — läuft MAKE OS?'));
-  }, []);
+    fetch(`/api/finanzchef${bereich === 'business' ? '?space=business' : ''}`).then(r => r.json()).then((d: Stand) => { if (d.ok) setS(d); else setFehler('Nicht ladbar.'); }).catch(() => setFehler('Nicht ladbar — läuft MAKE OS?'));
+  }, [bereich]);
   useEffect(() => { laden(); }, [laden]);
   // Zu zweit: Entscheidungen des anderen über Vorschläge erscheinen von selbst.
   useAbgleich(laden, { alle: 30_000, pausiert: () => !!laeuft });

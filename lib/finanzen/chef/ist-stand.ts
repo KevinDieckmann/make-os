@@ -35,6 +35,11 @@ export interface IstStandEingaben {
   } | null;
   /** Wer die Inhaber-Schritte macht — aus den Konten (Speichername + Vorname); fehlt = „beide“. */
   inhaber?: { kennung: string; name: string } | null;
+  /**
+   * Betreiber-Instanz (15.10., Abnahme 2 B14 — `istBetreiberInstanz`): nur dort gibt es Altbestand und Umzug (früheres Cockpit, V1-Export). In
+   * jeder anderen Instanz fehlen diese Schritte, und Texte nennen keinen Umzug. Fehlt die Angabe: wie eine fremde Instanz.
+   */
+  betreiber?: boolean;
 }
 
 const tage = (von: string, bis: string) => Math.round((Date.parse(`${bis}T12:00:00Z`) - Date.parse(`${von.slice(0, 10)}T12:00:00Z`)) / 864e5);
@@ -46,14 +51,14 @@ export function istStand(e: IstStandEingaben): Schritt[] {
   const inhaber = e.inhaber ? { wer: e.inhaber.kennung, werName: e.inhaber.name } : { wer: 'beide', werName: 'beide' };
   const alle = { wer: 'beide', werName: 'beide' };
   if (h) {
-    s.push({ id: 'umzug', bereich: 'privat', titel: 'Haushaltsdaten aus dem früheren Cockpit übernommen', erledigt: h.umzug && h.buchungen > 0, ...alle, link: '/os/finanzen?s=privat',
+    if (e.betreiber) s.push({ id: 'umzug', bereich: 'privat', titel: 'Haushaltsdaten aus dem früheren Cockpit übernommen', erledigt: h.umzug && h.buchungen > 0, ...alle, link: '/os/finanzen?s=privat',
       detail: h.umzug ? `${h.buchungen} Buchungen übernommen` : 'Finanzen › Privat › „Übernahme aus dem Altsystem“ — Probelauf, dann Übernehmen' });
     const alt = h.letzteBuchung ? tage(h.letzteBuchung, e.heute) : null;
     s.push({ id: 'auszuege', bereich: 'privat', titel: 'Kontoauszüge bis heute eingelesen', erledigt: alt !== null && alt <= 7, ...alle, link: '/os/finanzen?s=privat&t=buchungen',
       detail: alt === null ? 'noch keine Buchungen' : alt <= 7 ? `letzte Buchung vor ${alt} Tagen` : `letzte Buchung vor ${alt} Tagen — Kontoauszüge seitdem einlesen` });
     const anteil = h.buchungen ? h.ohneKategorie / h.buchungen : 1;
     s.push({ id: 'zuordnung', bereich: 'privat', titel: 'Buchungen zugeordnet', erledigt: h.buchungen > 0 && anteil <= 0.05, ...alle, link: '/os/finanzen?s=privat&t=buchungen',
-      detail: h.buchungen ? `${h.ohneKategorie} ohne Kategorie (${Math.round(anteil * 100)} %) — Ziel höchstens 5 %` : 'kommt nach dem Umzug' });
+      detail: h.buchungen ? `${h.ohneKategorie} ohne Kategorie (${Math.round(anteil * 100)} %) — Ziel höchstens 5 %` : e.betreiber ? 'kommt nach dem Umzug' : 'noch keine Buchungen' });
     s.push({ id: 'entflechtung', bereich: 'gemeinsam', titel: 'Private Einträge aus den Business-Listen geräumt', erledigt: h.pruefposten === 0, ...inhaber, link: '/os/finanzen?s=privat',
       detail: h.pruefposten ? `${h.pruefposten} Einträge zu entscheiden — „Aufräumen“ in der Leiste unter Privat` : 'nichts mehr offen' });
     s.push({ id: 'steuerquote', bereich: 'gemeinsam', titel: 'Steuerrücklage als Annahme gesetzt', erledigt: h.steuerquote !== null, ...inhaber, link: '/os/finanzen?s=gesamt',
@@ -72,8 +77,10 @@ export function istStand(e: IstStandEingaben): Schritt[] {
     detail: ohneFrist.length ? `ohne Fälligkeit: ${ohneFrist.map(r => r.kunde).join(', ')}` : `${e.offeneRechnungen.length} offen, alle mit Datum` });
   s.push({ id: 'controlling', bereich: 'business', titel: 'Controlling-Monate gepflegt', erledigt: e.leereControllingMonate !== null && !e.leereControllingMonate.length, ...inhaber, link: WEG.controlling(),
     detail: e.leereControllingMonate === null ? 'noch kein Controlling' : e.leereControllingMonate.length ? `es fehlen: ${e.leereControllingMonate.join(', ')}` : 'alle Monate seit Start da' });
+  // V1-Export (Altbestand der Betreiber-Instanz): nur dort — und nur mit Haushaltszugang, denn er liegt unter Privat › Selbstständigkeit
+  // (15.10., Abnahme 2 B8/B14: Business verlinkt nie ins Private, eine fremde Instanz kennt keinen V1-Export).
   const gAlt = e.grundlageStand ? tage(e.grundlageStand, e.heute) : null;
-  s.push({ id: 'grundlage', bereich: 'business', titel: 'Business-Grundlage (V1-Export) aktuell', erledigt: gAlt !== null && gAlt <= 14, ...alle, link: WEG.grundlage(),
+  if (e.betreiber && h) s.push({ id: 'grundlage', bereich: 'business', titel: 'Business-Grundlage (V1-Export) aktuell', erledigt: gAlt !== null && gAlt <= 14, ...alle, link: WEG.grundlage(),
     detail: gAlt === null ? 'kein Export geladen' : gAlt <= 14 ? `Stand vor ${gAlt} Tagen` : `Stand vor ${gAlt} Tagen — neuen Export laden` });
   s.push({ id: 'planung', bereich: 'business', titel: 'Liquiditätsplanung geklärt', erledigt: e.planposten > 0 && e.zuKlaeren === 0, ...alle, link: WEG.liquiditaet(),
     detail: !e.planposten ? 'keine Planposten' : e.zuKlaeren ? `${e.zuKlaeren} Posten „zu klären“ — bestätigen (sicher) oder streichen` : `${e.planposten} Posten, alle geklärt` });

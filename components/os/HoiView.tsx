@@ -12,6 +12,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, Hinweis, LEUCHT } from './ui';
 import type { Befund, Ampel } from '@/lib/hoi/lage';
 import type { Lage } from '@/lib/hoi/innen';
+import { useNurBusiness } from './useInhaber';
 
 const FARBE: Record<Ampel, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, grau: 'rgba(255,255,255,.25)' };
 const BEREICH: { id: Befund['bereich']; label: string; was: string }[] = [
@@ -24,6 +25,8 @@ const BEREICH: { id: Befund['bereich']; label: string; was: string }[] = [
 const WORT: Record<Ampel, string> = { gruen: 'alles grün', gelb: 'Hinweise', rot: 'Handeln', grau: 'noch keine Daten' };
 
 export function HoiView() {
+  // Nur für volle Mitglieder (15.10., Abnahme 2 B8 — die Route lehnt ein Konto „nur Business“ ab): dann keine Anfrage, ein ruhiger Leerzustand.
+  const nurBusiness = useNurBusiness();
   const [lage, setLage] = useState<(Lage & { ok: true }) | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [laedt, setLaedt] = useState(false);
@@ -35,7 +38,8 @@ export function HoiView() {
     } catch { setFehler('Keine Verbindung.'); }
     finally { setLaedt(false); }
   }, []);
-  useEffect(() => { void laden(); const t = setInterval(() => void laden(), 5 * 60_000); return () => clearInterval(t); }, [laden]);
+  useEffect(() => { if (nurBusiness !== false) return; void laden(); const t = setInterval(() => void laden(), 5 * 60_000); return () => clearInterval(t); }, [laden, nurBusiness]);
+  if (nurBusiness === true) return <Seite titel="Head of IT"><Leer>Die Lage von Server und Sicherheit sehen die vollen Mitglieder des Haushalts.</Leer></Seite>;
 
   const g = lage?.gesamt;
   return (

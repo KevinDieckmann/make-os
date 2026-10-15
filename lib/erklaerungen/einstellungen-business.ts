@@ -11,7 +11,7 @@ export const EINSTELLUNGEN_BUSINESS = {
     beispiel: 'Zwei Säulen zählen: Finanzen 70 (Gewicht 50 %) und Personal 50 (Gewicht 30 %), die dritte hat noch keine Messung. Gerechnet wird nur mit den beiden: (70 × 0,5 + 50 × 0,3) ÷ 0,8 ≈ 63 — „Solide“.',
   },
   'index.abdeckung': {
-    was: 'Wie viel vom Gewicht des Index auf echt gemessenen Daten beruht, und wie viele Kennzahlen noch eine Messlücke haben. Der Index zählt erst, wenn die Säulen mit Messung mindestens 40 % des Gewichts tragen.',
+    was: 'Wie viel vom Gewicht des Index auf echt gemessenen Daten beruht, und wie viele Kennzahlen noch eine Messlücke haben. Der Index zählt erst, wenn die Säulen mit Messung mindestens 40 % des Gewichts tragen. Die Säule „Fokus & Zeit“ misst die Zeit der Person, die gerade schaut — darum weicht der Anteil „gemessen“ je Person ab.',
     beispiel: '„60 % auf echten Daten · 4 Messlücken“ heißt: Die Zahl ist ein guter Hinweis, aber vier Kennzahlen warten noch auf eine Messung — jede Kachel mit „—“ sagt, was fehlt.',
   },
 

@@ -132,7 +132,15 @@ describe('Route: Sicht serverseitig', () => {
     const s = ids(d);
     for (const id of ['aufgabe:t-priv', 'aufgabe:t-geheim', 'ziel:z-priv', 'ziel:z-malin', 'meilenstein:m-malin', 'termin:u-kino', 'termin:u-malin']) expect(s.has(id), id).toBe(false);
     expect((d.punkte ?? []).some(p => p.titel === 'Urlaub' || p.titel === 'Tagebuch')).toBe(false);
-    for (const id of ['aufgabe:t-biz', 'deal:d-1', 'ziel:z-biz', 'termin:u-kunde', 'gesellschaft:g-1234']) expect(s.has(id), id).toBe(true);
+    for (const id of ['aufgabe:t-biz', 'deal:d-1', 'ziel:z-biz', 'termin:u-kunde']) expect(s.has(id), id).toBe(true);
+    // Abnahme 2 A1 (15.10.): Gesellschaften nur, was die Firmen-Akte der Person zeigt — für „nur Business“ „nicht freigegeben“: keine einzige,
+    // und nie eine Privat-Einheit (Selbstständigkeit).
+    expect([...s].filter(id => id.startsWith('gesellschaft:'))).toEqual([]);
+  });
+  it('Gesellschaften: volle Mitglieder sehen das Register, nie eine Privat-Einheit', async () => {
+    const s = ids((await hole({ 'x-make-user': 'kevin' })).d);
+    expect(s.has('gesellschaft:g-1234')).toBe(true);
+    expect(s.has('gesellschaft:kdc')).toBe(false);
   });
   it('Gesundheit wird nie ein Punkt (Art. 9): kein Gesundheitstermin, kein Gesundheits-Meilenstein/-Ziel, keine Gesundheitsnotiz', async () => {
     for (const wer of ['kevin', 'malin']) {

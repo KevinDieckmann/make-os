@@ -117,7 +117,8 @@ describe('Aufräumen Etappe 1 — Einstellungen', () => {
   it('die Seite heißt „Einstellungen“ und liest die eine Liste', () => {
     const v = lies('components/os/SystemView.tsx');
     expect(v).toContain('titel="Einstellungen"');
-    expect(v).toContain('EINSTELLUNGEN_GRUPPEN');
+    // Seit 15.10. über `einstellungenFuer` (dieselbe Liste, je Konto gefiltert: Head of IT nur Inhaber, nichts Privates für „nur Business“).
+    expect(v).toContain('einstellungenFuer');
     expect(v).not.toContain("label: 'Zahlen'");
   });
 });

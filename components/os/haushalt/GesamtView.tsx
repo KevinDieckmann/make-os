@@ -13,6 +13,7 @@ import { bruecke, type BusinessZahlen } from '@/lib/finanzen/haushalt/gesamt';
 import { datumDe } from '@/lib/finanzen/haushalt/monat';
 import { Karte, Ueberschrift, Leer, Knopf, feld, LEUCHT } from '../ui';
 import { useHaushalt, Meldungen, Hinweis } from './gemeinsam';
+import { useBetreiber } from '../useInhaber';
 
 function Stufe({ n, titel, wert, quelle, farbe, stark, href }: { n: string; titel: string; wert: string; quelle: string; farbe?: string; stark?: boolean; href?: string }) {
   return (
@@ -27,6 +28,8 @@ function Stufe({ n, titel, wert, quelle, farbe, stark, href }: { n: string; tite
 export function GesamtView() {
   const { daten: h, kein, aktion, laden, melde, meldungen, weg } = useHaushalt();
   const [business, setBusiness] = useState<(BusinessZahlen & { stand?: string }) | null | undefined>(undefined);
+  // Altbestand (früheres Finanz-Cockpit) gibt es nur in der Betreiber-Instanz (15.10., Abnahme 2 B14) — sonst nennen die Texte ihn nicht.
+  const betreiber = useBetreiber() === true;
   const [quote, setQuote] = useState('');
   useEffect(() => {
     fetch('/api/state/grundlage').then(r => r.json()).then(d => setBusiness(d?.vorhanden && d.kennzahlen ? { ...d.kennzahlen, stand: d.stand } : null)).catch(() => setBusiness(null));
@@ -45,7 +48,7 @@ export function GesamtView() {
         <Stufe n="−" href={WEG.privat('einnahmen')} titel="Planbares Einkommen ohne Entnahme aus dem Geschäft" wert={`${eur(b.planbarOhneEntnahme, false)} / Monat`} quelle="Gehalt & andere planbare Eingänge, Schnitt der letzten 3 vollen Monate" />
         <Stufe n="=" href={WEG.grundlage()} titel="Nötige Entnahme aus der Selbstständigkeit" wert={`${eur(b.noetigeEntnahme, false)} / Monat`} quelle={`tatsächlich entnommen: ${eur(b.entnahmeIst, false)} / Monat (3 volle Monate)`} farbe={b.entnahmeIst >= b.noetigeEntnahme ? LEUCHT.gut : LEUCHT.achtung} stark />
         <Stufe n="÷" titel={`Steuerrücklage ${q === null ? '— bitte als Annahme setzen' : `${q} % (Annahme)`}`} wert={b.noetigerGewinn === null ? '–' : `${eur(b.noetigerGewinn, false)} / Monat`} quelle="nötiger Gewinn vor Steuern — pauschal, keine Steuerberechnung" />
-        <Stufe n="+" href={WEG.planposten()} titel="Betriebs-Fixkosten" wert={b.betriebsFix === null ? '–' : `${eur(b.betriebsFix, false)} / Monat`} quelle={business ? `brutto, aus der Grundlage (Altsystem, Stand ${datumDe(business.stand)})` : 'keine Grundlage geladen'} />
+        <Stufe n="+" href={WEG.planposten()} titel="Betriebs-Fixkosten" wert={b.betriebsFix === null ? '–' : `${eur(b.betriebsFix, false)} / Monat`} quelle={business ? `brutto, aus der Grundlage (${betreiber ? 'Altsystem, ' : ''}Stand ${datumDe(business.stand)})` : 'keine Grundlage geladen'} />
         <Stufe n="=" href={WEG.business({ k: 'run_rate' })} titel="Mindestumsatz" wert={b.mindestUmsatz === null ? '–' : `${eur(b.mindestUmsatz, false)} / Monat`} quelle={b.fehlt.length ? `fehlt: ${b.fehlt.join(', ')}` : 'so viel muss im Schnitt jeden Monat reinkommen'} farbe={LEUCHT.geld} stark />
         {b.umsatzIst !== null && (
           <Stufe n="↔" href={WEG.abschluss()} titel="Tatsächlicher Umsatz" wert={`${eur(b.umsatzIst, false)} / Monat`} quelle={`netto, Schnitt über ${business!.monate} Monate der Grundlage${b.deckung !== null ? ` · deckt ${b.deckung.toFixed(0)} % des Mindestumsatzes` : ''}`} farbe={b.deckung === null ? undefined : b.deckung >= 100 ? LEUCHT.gut : LEUCHT.kritisch} />
@@ -56,7 +59,7 @@ export function GesamtView() {
           </label>
           <Knopf leise onClick={async () => { const n = quote.trim() === '' ? null : Number(quote.replace(',', '.')); const d = await aktion({ aktion: 'steuerquote', steuerquote: n }); if (d?.ok) { melde('ok', 'Annahme gespeichert'); await laden(); } }}>Übernehmen</Knopf>
         </div>
-        <Hinweis>Vereinfachung mit Absicht: Die Steuerrücklage ist ein pauschaler Anteil, kein Steuerbescheid. Die Betriebs-Fixkosten stammen aus dem früheren Finanz-Cockpit (Altsystem, brutto) und sind nur so aktuell wie dessen letzter Export. Kein Sparziel eingerechnet — der Mindestumsatz deckt das Leben, nicht mehr.</Hinweis>
+        <Hinweis>Vereinfachung mit Absicht: Die Steuerrücklage ist ein pauschaler Anteil, kein Steuerbescheid. {betreiber ? 'Die Betriebs-Fixkosten stammen aus dem früheren Finanz-Cockpit (Altsystem, brutto) und sind nur so aktuell wie dessen letzter Export. ' : 'Die Betriebs-Fixkosten sind brutto und nur so aktuell wie die Grundlage. '}Kein Sparziel eingerechnet — der Mindestumsatz deckt das Leben, nicht mehr.</Hinweis>
       </Karte>
       <Karte i={2}>
         <Ueberschrift>Wo die Zahlen herkommen</Ueberschrift>

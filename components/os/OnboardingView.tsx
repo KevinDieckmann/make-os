@@ -214,8 +214,9 @@ function NachEtappen({ schritte, z, haken, laden, start, mitWann = false, hinwei
 }
 
 /** Die Datenkarte (ONBOARDING_PLAN.md A3): je Fakt EIN Eingabeort. `altbestand`: mit den Daten der gewachsenen Instanz (sonst neutral). */
-export function DatenkarteKarte({ i, altbestand = false }: { i: number; altbestand?: boolean }) {
-  const DATENKARTE = datenkarteFuer(altbestand);
+export function DatenkarteKarte({ i, altbestand = false, nurBusiness = false }: { i: number; altbestand?: boolean; nurBusiness?: boolean }) {
+  // Konto „nur Business“ (15.10., Abnahme 2 B8): ohne die Zeilen, die ins Private oder in die Firmen-Akte führen.
+  const DATENKARTE = datenkarteFuer(altbestand, nurBusiness);
   return (
     <Karte i={i} id="datenkarte">
       <Ueberschrift rechts={`${DATENKARTE.length} Fakten`}>Datenkarte — welche Zahl wohin</Ueberschrift>
@@ -276,7 +277,7 @@ export function EbeneView({ ebene }: { ebene: Ebene }) {
             </p>
           </Karte>
           <NachEtappen schritte={schritte} z={z} haken={haken} laden={laden} start={1} mitWann />
-          {ebene === 'gemeinsam' && <DatenkarteKarte i={MAX_I} altbestand={!!ich?.altbestand} />}
+          {ebene === 'gemeinsam' && <DatenkarteKarte i={MAX_I} altbestand={!!ich?.altbestand} nurBusiness={!!ich?.nurBusiness} />}
         </>
       )}
       <Karte i={MAX_I}>
@@ -426,7 +427,7 @@ export function OnboardingUebersicht() {
           ))}
         </div>
       </Karte>
-      <DatenkarteKarte i={MAX_I} altbestand={alt} />
+      <DatenkarteKarte i={MAX_I} altbestand={alt} nurBusiness={!!z?.ich?.nurBusiness} />
     </Seite>
   );
 }

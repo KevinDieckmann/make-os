@@ -4,6 +4,21 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 15.10.2026 — Abnahme 2: Rolle „nur Business“ dicht, Business zeigt nur Business (nur lokal — Branch `abnahme2-rollen`, Basis 2df8ea9e = `update-0910b`)
+- **A1 (serverseitig):** Fahrplan-Ziel/-Meilensteine raus aus „Für dich“ (`lib/fluss/server.ts`, `ohneFahrplanFuer`), Kapazität (Fahrplan-, Register- und — für „nur Business“ —
+  Selbstständigkeits-Posten gar nicht, Stunden bleiben in der Last), Business-Index (Meilenstein-Kurs ohne Titel), Markttraktion › Planung. EINE Regel für Gesellschaften/
+  Bereiche: `lib/gesellschaften/sicht.ts` (+ `sicht-server.ts` `einheitenSichtFuer`): Privat-Einheiten nur mit Privat-Zugang, Register `g-…` nur mit Firmen-Akte — genutzt von
+  Brain-Kugel, Postfach-Verwaltung (auch POST → 403), Visitenkarten, ZOE-Grundauftrag. Demo-Notiz „Gründung …“ jetzt `scope: intern`.
+- **B8:** Konto „nur Business“ kommt über keine Adresse in den Privat-Bereich — Middleware leitet Privat-Seiten (`lib/zugang/privat-seite.ts`, `?space=privat`, Gesundheit, Sport,
+  Journal, Familie, Kontakte …) nach `/os?space=business` (Stand-Prüfung trägt `nurBusiness`), `wahlVon` nie „privat“. Keine 403 mehr aus Business-Seiten (`/api/konto/ich`
+  liefert `haushaltZugang`/`privatFinanzen`; Controlling lädt Liquiplan/Finanzplan nur mit Zugang). Keine Links ins Private (Business-freie Zeiten, WHOOP, V1-Export,
+  Datenkarte), kein iCloud-Schritt. Head of IT für alle vollen Mitglieder, nie „nur Business“ (`hoiSehen`, lib/hoi/zugang.ts; Register-Klasse `haushalt` + `tor`, Einstellungen, Suche; Unternehmen in der Suche ebenso).
+- **B9:** „Einladung annehmen“ ist erfüllt, wer angemeldet ist (Prüfung `angemeldet`). **B14:** Umzug/Altbestand nur in der Betreiber-Instanz (Ist-Stand, Gesamt-Hinweis, Körper-Profil).
+- **C13:** Sicht Business der Inhaberin — Zeit-Karte nur Business, Aufgaben ohne Reiter Privat/Selbstständigkeit, Head of Finance › Ist-Stand ohne Privat (`?space=business`).
+  **C18:** „Fokus & Zeit ist persönlich“ in der Erklärung der Abdeckung; eine Säule unter 40 % steht auf Heute als „messen ›“ statt „0“.
+- **Wächter:** tests/nur-business-sicht.test.ts (ALLE lesenden Routen mit der Sitzung „nur Business“ ohne Marke aus Privat, Selbstständigkeit, Fahrplan, Register; Space-Wahl;
+  Privat-Seiten), tests/sicher-zugang-sitzung.test.ts (Umleitung). **Rückweg:** nur optionale Felder (`nurBusiness`, `haushaltZugang`, `privatFinanzen`), keine Daten umgeschrieben.
+
 ## 14.10.2026 — Abnahme-Reste 2 (nur lokal — Branch `abnahme-reste-2`, Basis 40808275 = `update-0910b`)
 - **Zeile neutral (Kevin 14.10.):** Zahlungskalender „Partnerdarlehen-Rate“ statt eines Vornamens (`lib/finanzen/rechenkern.ts`) — nur der Anzeigename; Kennungen `ug.bjoern`/
   `bjoern…` (Handwerte, Annahmen, Ziel-Quelle) bleiben, Zahlen bit-gleich (Regressions-/Kern-Tests grün).

@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { istDienst } from '@/lib/zugang/dienst';
 import { ladeKonten, aendereKonten, zweiFaktorOffen, leerlaufStunden } from '@/lib/zugang/konten';
 import { kontoStand } from '@/lib/zugang/sitzung';
+import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,8 @@ export async function GET(req: Request) {
     zfAb: st.einstellungen?.zweiFaktorPflichtSeit ? Date.parse(st.einstellungen.zweiFaktorPflichtSeit) || 0 : 0,
     // Leerlauf-Ende der Sitzungen (05.10., Konto › Zugang der Instanz) in Minuten.
     leerlaufMin: leerlaufStunden(st.einstellungen) * 60,
+    // Konto „nur Business“ (15.10., Abnahme 2 B8): die Middleware leitet Seiten des Privat-Bereichs nach Business-Heute um (EINE Konto-Sicht).
+    nurBusiness: kontoSichtAus(st, k.speicher).nurBusiness,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

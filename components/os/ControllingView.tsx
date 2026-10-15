@@ -27,6 +27,7 @@ import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung } from '@/lib/business/eroeffnung';
 import { firmenMitRegister, mitRegister } from '@/lib/finanzen/konten/register';
 import { useKontenKasse } from './konten/KontenKarte';
+import { usePrivatFinanzen } from './useInhaber';
 
 /** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
 interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -98,15 +99,23 @@ export function ControllingView() {
   const registerKasse = useKontenKasse('business');
   // Konten-Register (08.10.): die Firmen-Konten mit der Kasse je Gesellschaft, die das Register führt (ohne Register: dieselben Konten).
   const firmen = useMemo(() => firmenMitRegister(fplan?.firmen, registerKasse), [fplan, registerKasse]);
+  // Liquiplan und Finanzplan (Kontostände, Rechnungen, Zahlungen) sind gemeinsame Bestände mit privaten Zeilen — nur mit privatem Finanzzugang
+  // (15.10., Abnahme 2 B8: ein Konto „nur Business“ bekam hier 403 und einen Konsolen-Fehler). Ohne Zugang fehlt die Liquiditäts-Karte; die
+  // Liquidität der Business-Gesellschaften zeigt ihm Finanzen › Business (serverseitig gefiltert).
+  const privatFinanzen = usePrivatFinanzen();
   useEffect(() => {
+    if (!privatFinanzen) return;
     fetch('/api/state/liquiplan').then(r => r.json()).then(d => setPosten(d.posten ?? [])).catch(() => {});
-  }, []);
+  }, [privatFinanzen]);
   // Zu zweit: Kontostände als Einzeländerung, Malins Änderungen per Abgleich.
   const planSpeichern = useSpeichern('/api/state/finanzplan', { listen: FINANZPLAN_LISTEN, standFeld: 'fassung', uebernehmen: st => setFplan(st as unknown as FinanzplanStand) });
-  const ladePlan = useCallback(() => fetch('/api/state/finanzplan')
-    .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
-    .then((d: FinanzplanStand) => { if (planSpeichern.hatOffenes()) return; setFplan(d); planSpeichern.kenne(d); })
-    .catch(err => console.error('[MAKE OS] Finanzplan für die Liquiditäts-Vorschau nicht ladbar.', err)), [planSpeichern]);
+  const ladePlan = useCallback(async () => {
+    if (!privatFinanzen) return;
+    await fetch('/api/state/finanzplan')
+      .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
+      .then((d: FinanzplanStand) => { if (planSpeichern.hatOffenes()) return; setFplan(d); planSpeichern.kenne(d); })
+      .catch(err => console.error('[MAKE OS] Finanzplan für die Liquiditäts-Vorschau nicht ladbar.', err));
+  }, [planSpeichern, privatFinanzen]);
   useEffect(() => { void ladePlan(); }, [ladePlan]);
   // Speichert auch dann, wenn du sofort die Seite wechselst oder den Tab
   // schließt — beim nächsten Öffnen steht derselbe Stand da. Zu zweit: Monate

@@ -30,6 +30,8 @@ import { stromRoh, postfaecherSicht } from '@/lib/inbox/strom-server';
 import { absenderEntscheiden, absenderListe } from '@/lib/inbox/aktionen';
 import { ZustandFehler } from '@/lib/inbox/zustand';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
+import { einheitenSichtFuer } from '@/lib/gesellschaften/sicht-server';
+import { kennungSichtbar, nurSichtbareKennungen } from '@/lib/gesellschaften/sicht';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,9 +39,13 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const z = await eigenePerson(req, false, NUR_EIGENE_POST);
   if (z instanceof NextResponse) return z;
-  const space = new URL(req.url).searchParams.get('space');
-  if (space && space !== 'privat' && space !== 'business') return NextResponse.json({ ok: false, fehler: 'space ist ungültig.' }, { status: 400 });
-  const [roh, alleBereiche, absenderAlle] = await Promise.all([stromRoh(z.person), bereichWahlLaden(), absenderListe(z.person)]);
+  const angefragt = new URL(req.url).searchParams.get('space');
+  if (angefragt && angefragt !== 'privat' && angefragt !== 'business') return NextResponse.json({ ok: false, fehler: 'space ist ungültig.' }, { status: 400 });
+  const [roh, bereicheRoh, absenderAlle, es] = await Promise.all([stromRoh(z.person), bereichWahlLaden(), absenderListe(z.person), einheitenSichtFuer(z.person)]);
+  // Konto „nur Business“ (15.10., Abnahme 2 A1): immer die Business-Sicht — nie „Privat“, nie die Selbstständigkeit, ohne Zugang zur Firmen-Akte
+  // keine Register-Gesellschaft zur Wahl (EINE Regel: lib/gesellschaften/sicht.ts).
+  const space = es.privat ? angefragt : 'business';
+  const alleBereiche = nurSichtbareKennungen(bereicheRoh, es);
   const demo = demoErlaubt();
   const eigene = roh.postfaecher.filter(p => !p.oeffentlich.fremd);
   // Sicht Privat · Business: beide gefiltert (10.10. auch Privat — ohne die Business-Postfächer; lib/inbox/strom-server.ts `postfaecherSicht`).
@@ -65,6 +71,8 @@ export async function POST(req: Request) {
   try { b = await jsonBegrenzt(req, 32 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const wer = werAus(req);
   const id = typeof b.id === 'string' && POSTFACH_ID.test(b.id) ? b.id : null;
+  // Ein Bereich, den die Person nicht sieht (Konto „nur Business“: Privat, Selbstständigkeit, Register ohne Firmen-Akte) → 403, nichts gespeichert.
+  if (b.bereich && !kennungSichtbar(b.bereich, await einheitenSichtFuer(z.person))) return NextResponse.json({ ok: false, fehler: 'Diesen Bereich gibt es für dein Konto nicht.' }, { status: 403 });
   try {
     switch (b.aktion) {
       case 'hinzufuegen': {

@@ -97,7 +97,9 @@ describe('Routen-Register (statisch)', () => {
   it('öffentliche Wege der Middleware sind im Register „offen“ (und nur die)', () => {
     const mw = readFileSync(path.join(WURZEL, 'middleware.ts'), 'utf8');
     for (const p of ['konto\\/(status|anmelden|einrichten|beitreten)', 'hoi\\/csp', '(kalender\\/google|google\\/gmail)\\/meldung', 'whatsapp\\/webhook', 'zoe\\/whatsapp\\/webhook']) expect(mw).toContain(p);
+    // Ansehen nur volle Mitglieder im Haushalt (15.10., Abnahme 2 B8 — `hoiSehen`: nie ein Konto „nur Business“).
     expect(ROUTEN_REGISTER['hoi/csp'].methoden.GET).toBe('haushalt');
+    expect(ROUTEN_REGISTER['hoi/csp'].tor).toBe('hoiSehen');
   });
 
   it('lesende GETs schreiben nicht — sonst begründet (getSchreibt); keine Begründung ohne Schreiben', () => {

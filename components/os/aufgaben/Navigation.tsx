@@ -29,11 +29,13 @@ const reiterStil = (an: boolean): CSSProperties => ({
  * 05.10. (Kevin: „Ja, überall unter Privat“): Firmen-Spaces im Privat-Bereich (`bereich: 'privat'`, lib/einheiten.ts `bereichVon`)
  * stehen als eigene Reiter neben Privat; „Firmen ▾“ zeigt nur die Business-Firmen.
  */
-export function AufgabenLeiste({ adresse, spaces, offenJe, gehe }: { adresse: AufgabenAdresse; spaces: readonly AufgabenSpace[]; offenJe: ReadonlyMap<string, number>; gehe: Gehe }) {
+export function AufgabenLeiste({ adresse, spaces, offenJe, gehe, bereich }: { adresse: AufgabenAdresse; spaces: readonly AufgabenSpace[]; offenJe: ReadonlyMap<string, number>; gehe: Gehe; bereich?: 'privat' | 'business' }) {
   const raum = adresse.ansicht === 'space' ? spaces.find(s => s.id === adresse.s) : undefined;
   const firmen = spaces.filter(s => s.art === 'firma' && s.bereich === 'business');
-  const privatFirmen = spaces.filter(s => s.art === 'firma' && s.bereich === 'privat');
-  const privatDa = spaces.some(s => s.id === 'privat');
+  // Sicht Business (15.10., Abnahme 2 C13 — „Business zeigt nur Business“): keine Reiter Privat und keine Privat-Einheit (Selbstständigkeit).
+  const imBusiness = bereich === 'business';
+  const privatFirmen = imBusiness ? [] : spaces.filter(s => s.art === 'firma' && s.bereich === 'privat');
+  const privatDa = !imBusiness && spaces.some(s => s.id === 'privat');
   const mandanten = spaces.filter(s => s.art === 'mandant' && !s.archiv);
   const archivZahl = spaces.filter(s => s.art === 'mandant' && s.archiv).length;
   const eintrag = (s: AufgabenSpace): WahlEintrag<string> => ({ id: s.id, label: s.label, punkt: s.farbe, ...(offenJe.get(s.id) ? { hinweis: `${offenJe.get(s.id)} offen` } : {}) });
