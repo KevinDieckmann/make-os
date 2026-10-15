@@ -483,7 +483,7 @@ export function Kalender() {
               ); })}
             </div>
             <EinstellungenBelegt kalender={daten?.kalender ?? []} einst={einst} setzen={einstSetzen} />
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Business-freie Zeiten sperren Business-Termine (mit Rückfrage), freie Zeiten und Buchungsseiten: <BusinessFreiLink text="Familie › Rahmen" /></div>
+            <BusinessFreiLink text="Familie › Rahmen" vor="Business-freie Zeiten sperren Business-Termine (mit Rückfrage), freie Zeiten und Buchungsseiten: " stil={{ display: 'block', fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }} />
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Namen müssen genau so heißen wie in der Kalender-App. iCloud verbinden: oben unter „iCloud Kalender“.</div>
           </div>
         )}

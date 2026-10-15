@@ -107,5 +107,23 @@ describe('Middleware und Route', () => {
     expect((await standRoute.POST(new Request('http://t/api/konto/stand', { method: 'POST', headers: dienst, body }))).status).toBe(200);
     const st = await (await standRoute.GET(new Request('http://t/api/konto/stand?speicher=person-a', { headers: dienst }))).json();
     expect(st.widerrufen).toEqual(['abcdefabcdef']);
+    expect(st.nurBusiness).toBe(false);
+  });
+
+  // Abnahme 2 B8 (15.10.): ein Konto „nur Business“ kommt über keine Adresse in den Privat-Bereich — die Middleware leitet nach Business-Heute.
+  it('Konto „nur Business“: Seiten des Privat-Bereichs → Business-Heute; Schnittstellen und Business-Seiten unverändert', async () => {
+    const z = await S.sitzungAusstellen(process.env.SESSION_SECRET!, 'person-a', STAND);
+    const rufe = (p: string) => middleware(new NextRequest(`http://localhost:3001${p}`, { headers: { cookie: `${S.SITZUNG_COOKIE}=${z}` } } as never));
+    vi.stubGlobal('fetch', vi.fn(async () => antwort({ nurBusiness: true })));
+    for (const p of ['/os?space=privat', '/os/gesundheit', '/os/sport?s=lauf', '/os/journal', '/os/familie?b=rahmen', '/os/menschen', '/os/aufgaben?space=privat', '/os/finanzen?s=privat']) {
+      const r = await rufe(p);
+      expect(r.status, p).toBe(307);
+      expect(new URL(r.headers.get('location')!).pathname + new URL(r.headers.get('location')!).search, p).toBe('/os?space=business');
+    }
+    for (const p of ['/os', '/os?space=business', '/os/aufgaben', '/os/ritual?modus=morgen', '/api/familie']) expect((await rufe(p)).headers.get('location'), p).toBeNull();
+    // Volles Mitglied: nichts wird umgeleitet.
+    SP.standVergessen();
+    vi.stubGlobal('fetch', vi.fn(async () => antwort()));
+    for (const p of ['/os?space=privat', '/os/gesundheit', '/os/familie']) expect((await rufe(p)).headers.get('location'), p).toBeNull();
   });
 });

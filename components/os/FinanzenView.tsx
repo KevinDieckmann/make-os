@@ -33,6 +33,7 @@ import { ControllingView } from './ControllingView';
 import { GrundlageView } from './GrundlageView';
 import { useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
+import { useHaushaltZugang } from './useInhaber';
 import { PRIVAT_REITER, BUSINESS_REITER, UEBERBLICK_UNTER, finanzOrt, finanzAdresse, kontenUnter, type FinanzReiter, type FinanzOrt, type KontenUnter } from '@/lib/finanzen/navigation';
 
 /** Ein Satz je Ort (eine Zeile, Design-Standard). */
@@ -52,13 +53,13 @@ const UNTER: Record<FinanzReiter | 'chef' | 'controlling', string> = {
 export function FinanzenView() {
   const router = useRouter(); const p = useSearchParams();
   const { space } = useSpace();
-  const [zugang, setZugang] = useState<boolean | null>(null);
+  // Zugang zu den privaten Haushaltsfinanzen aus dem Konto (15.10., Abnahme 2 B8) — vorher eine Anfrage, die für „nur Business“ mit 403 endete.
+  const zugang = useHaushaltZugang();
   // Business-Index und Steuern gehören dem Haushalt des Inhabers (eigene Prüfung in der API).
   const [inhaber, setInhaber] = useState<boolean | null>(null);
   // Planung (04.10. spät): auch Konten ohne Privatzugang (Finanzrecht „nur Business“) haben sie — der Server filtert.
   const [planZugang, setPlanZugang] = useState(false);
   useEffect(() => {
-    fetch('/api/haushalt?nur=zugang').then(r => setZugang(r.ok)).catch(() => setZugang(false));
     fetch('/api/finanzplan?nur=kennzahlen').then(r => setPlanZugang(r.ok)).catch(() => setPlanZugang(false));
     fetch('/api/business?scope=gesamt&kompakt=1').then(r => setInhaber(r.ok)).catch(() => setInhaber(false));
   }, []);
@@ -110,7 +111,7 @@ export function FinanzenView() {
 
 function Inhalt({ ort, zugang, inhaber, planZugang, altbestand, u, t }: { ort: FinanzOrt; zugang: boolean; inhaber: boolean | null; planZugang: boolean; altbestand: string | null; u: string | null; t: string | null }) {
   const { bereich, reiter } = ort;
-  if (reiter === 'chef') return <FinanzchefView />;
+  if (reiter === 'chef') return <FinanzchefView bereich={bereich} />;
   if (reiter === 'steuern') return <SteuernView key={bereich} bereich={bereich} />;
   if (reiter === 'finanzplanung') {
     if (!zugang && !planZugang) return null;

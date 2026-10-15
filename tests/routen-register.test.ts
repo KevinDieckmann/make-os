@@ -97,7 +97,8 @@ describe('Routen-Register (statisch)', () => {
   it('öffentliche Wege der Middleware sind im Register „offen“ (und nur die)', () => {
     const mw = readFileSync(path.join(WURZEL, 'middleware.ts'), 'utf8');
     for (const p of ['konto\\/(status|anmelden|einrichten|beitreten)', 'hoi\\/csp', '(kalender\\/google|google\\/gmail)\\/meldung', 'whatsapp\\/webhook', 'zoe\\/whatsapp\\/webhook']) expect(mw).toContain(p);
-    expect(ROUTEN_REGISTER['hoi/csp'].methoden.GET).toBe('haushalt');
+    // Ansehen nur Inhaber (15.10., Abnahme 2 B8 — die Sicherheitslage ist nichts für ein Konto „nur Business“).
+    expect(ROUTEN_REGISTER['hoi/csp'].methoden.GET).toBe('inhaber');
   });
 
   it('lesende GETs schreiben nicht — sonst begründet (getSchreibt); keine Begründung ohne Schreiben', () => {

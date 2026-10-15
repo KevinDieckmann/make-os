@@ -38,7 +38,7 @@ import type { LeadZeile } from '@/lib/crm/leads';
 import type { Event as CrmEvent } from '@/lib/crm/typen';
 import type { EventZahlen } from '@/lib/crm/events';
 import { MARKE_EVENTS, markeVon, istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, Hinweis, feld, zoneFarbe, prioFarbe } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Haken, Punkt, Ring, Fortschritt, Chip, Hinweis, Erklaert, feld, zoneFarbe, prioFarbe } from '../ui';
 import { heuteFaellig, istGemeinsam, spaceVonRoutine, erledigtTage, type ZaehlerLog } from '@/lib/planung/routinen';
 import { routineRhythmusKurz, routineStatistik } from '@/lib/planung/rhythmus';
 import { RoutineSteuer, routineHakenSenden, streakText } from '../routinen/haken';
@@ -484,7 +484,7 @@ function EssenWidget({ titel, i }: WidgetProps) {
 
 // ── Index je Säule ──────────────────────────────────────────────────────────
 // 14.10. (Abnahme B1): der Status steht nur noch aus `indexStatus` (lib/kennzahlen/kern.ts) da — derselbe Satz wie im Cockpit und auf den Fachseiten.
-type IndexKurz = Pick<IndexErgebnis, 'index' | 'label' | 'abdeckung' | 'luecken'> & Partial<Pick<IndexErgebnis, 'teil' | 'vorlaeufig'>> & { saeulen: { id: string; label: string; score: number | null }[] };
+type IndexKurz = Pick<IndexErgebnis, 'index' | 'label' | 'abdeckung' | 'luecken'> & Partial<Pick<IndexErgebnis, 'teil' | 'vorlaeufig'>> & { saeulen: { id: string; label: string; score: number | null; zuDuenn?: boolean }[] };
 const indexKurz = (r: Partial<IndexKurz> | null | undefined): IndexKurz | null => (r && Array.isArray(r.saeulen) ? {
   index: r.index ?? null, label: r.label ?? '', abdeckung: typeof r.abdeckung === 'number' ? r.abdeckung : 0, luecken: typeof r.luecken === 'number' ? r.luecken : 0,
   ...(r.teil ? { teil: r.teil } : {}), ...(r.vorlaeufig ? { vorlaeufig: r.vorlaeufig } : {}), saeulen: r.saeulen,
@@ -510,14 +510,22 @@ function IndexWidget({ e, titel, i }: WidgetProps) {
         <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 6 }}>
           {/* Ein Status für alle Orte (indexStatus): Label bzw. „Vorläufig“/„Noch keine Daten“ — und ein Satz, wie viel gemessen ist. */}
           <div style={{ fontSize: TYP.body, fontWeight: 600 }}>{status ? status.titel : 'lade …'}</div>
-          {status && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{status.satz}</div>}
-          {(d?.saeulen ?? []).slice(0, 4).map(s => (
-            <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', color: s.score == null ? C.inkLeise : zoneFarbe(s.score) }}>{s.score == null ? '—' : Math.round(s.score)}</span>
-              <div style={{ gridColumn: '1 / -1' }}><Fortschritt anteil={(s.score ?? 0) / 100} farbe={s.score == null ? C.inkLeise : zoneFarbe(s.score)} /></div>
-            </div>
-          ))}
+          {/* C18 (15.10.): „Fokus & Zeit“ ist persönlich — darum weicht „gemessen“ je Person ab; die Erklärung sagt es (index.abdeckung). */}
+          {status && <Erklaert erklaerung="index.abdeckung" name="Abdeckung"><div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 }}>{status.satz}</div></Erklaert>}
+          {(d?.saeulen ?? []).slice(0, 4).map(s => {
+            // Nie eine Null (C18, 15.10.): eine Säule ohne Wert oder mit zu wenig Messung (unter 40 %) steht als Leerzustand mit Weg — „messen ›“
+            // führt zum Index, wo jede Kachel sagt, was fehlt. Vorher stand „Personal 0“ (eine einzige gemessene Kennzahl bei 0).
+            const offen = s.score == null || !!s.zuDuenn;
+            return (
+              <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+                {offen
+                  ? <Link href={q.ziel} style={{ ...link, fontSize: TYP.bedien }} title="Noch zu wenig gemessen — im Index steht je Kennzahl, was fehlt">messen ›</Link>
+                  : <span style={{ fontVariantNumeric: 'tabular-nums', color: zoneFarbe(s.score!) }}>{Math.round(s.score!)}</span>}
+                {!offen && <div style={{ gridColumn: '1 / -1' }}><Fortschritt anteil={s.score! / 100} farbe={zoneFarbe(s.score!)} /></div>}
+              </div>
+            );
+          })}
           {(d?.saeulen.length ?? 0) > 4 && <Link href={q.ziel} style={{ ...link, fontSize: TYP.bedien }}>+ {(d?.saeulen.length ?? 0) - 4} weitere Säulen ›</Link>}
           {q.hinweis && d && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.4 }}>{q.hinweis}</div>}
         </div>
@@ -658,10 +666,12 @@ function ZeitBeideWidget({ titel, i, seite }: WidgetProps) {
   // Sicht Privat · Business (10.10.): auf einer Fläche mit Bereich nur Summen beider Bereiche — Bereiche und Blöcke des anderen liefert der
   // Server nicht mit (`?space=`, lib/zeitmessung/modell.ts `bildFuerSicht`). Die Karte zeigt ohnehin nur die Summen (Kevin 09.10.).
   const fs = spaceAusFlaeche(seite);
-  const d = useDaten<ZeitBild>(`/api/state/zeit${fs === 'alle' ? '' : `?sicht=${fs}&summen=beide`}`, x => ((x as { bild?: ZeitBild }).bild ?? null));
+  // Sicht Business (15.10., Abnahme 2 C13 — „Business zeigt nur Business“): nur die Business-Zeit, ohne die Privat-Summe (der Server liefert sie
+  // ohne `summen=beide` gar nicht). Die Sicht Privat und die gemeinsame Fläche zeigen weiter beide Summen (Entscheidung 09.10.).
+  const d = useDaten<ZeitBild>(`/api/state/zeit${fs === 'alle' ? '' : fs === 'business' ? '?sicht=business' : `?sicht=${fs}&summen=beide`}`, x => ((x as { bild?: ZeitBild }).bild ?? null));
   // Konto „nur Business“ (B17, 14.10.): der Server liefert keine Privat-Zeit — die Karte heißt dann nur „Zeit“, ohne Privat-Spalte und
   // ohne den Hinweis auf einen Privat-Schalter, den es für dieses Konto nicht gibt.
-  const nurBusiness = useNurBusiness() === true;
+  const nurBusiness = useNurBusiness() === true || fs === 'business';
   if (d === null) return null;
   const heute = d ? privatGegenBusiness(d.tagHeute) : null;
   const sieben = d ? privatGegenBusiness(d.sieben) : null;

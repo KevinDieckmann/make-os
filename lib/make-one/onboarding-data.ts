@@ -395,7 +395,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
   // ── Etappe 1 — Zugang, Sicherheit, Datenschutz ───────────────────────────────────────────────────────────────────────────────
   {
     id: 'zweite-einladung', samstag: true, nurEingeladen: true, etappe: 1, nr: '1.0', ebene: 'ich', minuten: 5,
-    modul: 'grundlage',
+    // Wer angemeldet ist, hat die Einladung angenommen (15.10., Abnahme 2 B9 — vorher stand „Als Nächstes: Einladung annehmen“ bei allen).
+    modul: 'grundlage', pruefung: 'angemeldet',
     titel: 'Einladung annehmen',
     warum: 'Erster Schritt: reinkommen. Es gibt keine offene Registrierung — eine Einladung des Inhabers ist der einzige Weg.',
     wie: [
@@ -566,7 +567,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
   // ── Etappe 2 — Verbindungen ─────────────────────────────────────────────────────────────────────────────────────────────────
   {
     id: 'ich-icloud', samstag: true, etappe: 2, nr: '2.1', ebene: 'ich', minuten: 10, pruefung: 'icloud',
-    modul: 'kalender',
+    // Privat-Bereich (15.10., Abnahme 2 B8): die iCloud-Verbindung speist Kalender › Privat — ein Konto „nur Business“ hat den Schritt nicht.
+    modul: 'kalender', privat: true,
     titel: 'iCloud-Kalender verbinden (Privat)',
     warum: 'Damit deine Termine in MAKE OS stehen, Planen um sie herum plant und Blöcke aus Planen und ZOE auf deinem eigenen iPhone landen. Die andere Person sieht deine Termine nur als „Belegt“.',
     wie: [
@@ -1120,6 +1122,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
       'Sport: Einstieg und Ziele.',
       'Körper-Profil — beim Inhaber erst nach der Übernahme des Altbestands (0.5).',
     ],
+    // Ohne Altbestand (jede fremde Instanz, 15.10., Abnahme 2 B14): kein Hinweis auf die Übernahme.
+    allgemein: { wie: ['Gesundheit: Ernährungsprofil (Bedarf, Ziel, Unverträgliches).', 'Sport: Einstieg und Ziele.', 'Körper-Profil: was dir wichtig ist, deine Hebel und Kennzahlen.'] },
     danach: 'Vorschläge und Indizes rechnen mit deinen Angaben.',
     wo: { href: '/os/gesundheit', label: 'Gesundheit' },
   },
@@ -1960,37 +1964,43 @@ export interface DatenkartenZeile {
   /** Kennung (für `Schritt.datenOrt`) — nie ändern. */ id: string; fakt: string; hier: string; nicht: string; href?: string; etappe: number;
   /** Fassung für eine Instanz ohne Altbestand (ohne Stichtag/Planbeginn der gewachsenen Instanz) — gelesen nur über `datenkarteFuer`. */
   allgemein?: { fakt?: string; hier?: string };
+  /**
+   * Nur für volle Mitglieder (15.10., Abnahme 2 B8): der Ort liegt im Privat-Bereich bzw. in der Firmen-Akte — ein Konto „nur Business“ bekommt
+   * die Zeile nicht (Business verlinkt nie ins Private, die Firmen-Akte sagt ihm „nicht freigegeben“).
+   */
+  voll?: true;
 }
 export const DATENKARTE: DatenkartenZeile[] = [
   { id: 'konto-stichtag', fakt: 'Kontostand einer Gesellschaft am Stichtag (01.10.2026)', hier: '0-Punkt', nicht: 'Finanzplanung (Posten „Konto“), Startwerte der Planung', href: WEG.eroeffnung(), etappe: 3, allgemein: { fakt: 'Kontostand einer Gesellschaft am Stichtag' } },
   { id: 'konto-danach', fakt: 'Kontostand einer Gesellschaft danach', hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum ab 02.10.)', nicht: 'Einstellungen › Stammdaten › Konten', href: WEG.kontostaende(), etappe: 3, allgemein: { hier: 'Konten-Register: Liquidität › Kontostände (Konto, Stand mit Datum nach dem Stichtag)' } },
-  { id: 'konto-privat', fakt: 'Kontostand privat', hier: 'Konten-Register: Privat › Konten & Buchungen › Konten (die Finanzplanung liest daraus)', nicht: 'Finanzplanung (Posten „Konto“) — vorhandene Stände einmal übernehmen', href: WEG.kontenRegister('privat'), etappe: 5 },
+  { id: 'konto-privat', voll: true, fakt: 'Kontostand privat', hier: 'Konten-Register: Privat › Konten & Buchungen › Konten (die Finanzplanung liest daraus)', nicht: 'Finanzplanung (Posten „Konto“) — vorhandene Stände einmal übernehmen', href: WEG.kontenRegister('privat'), etappe: 5 },
   { id: 'posten-stichtag', fakt: 'Offene Posten am Stichtag', hier: '0-Punkt (auch Rechnungen mit Datum vor dem Stichtag)', nicht: 'Finanzplanung › Fällig & Schulden', href: WEG.eroeffnung(), etappe: 3 },
   { id: 'posten-danach', fakt: 'Offene Posten danach', hier: 'Rechnungen & Zahlungen', nicht: 'Finanzplanung › Fällig & Schulden', href: WEG.rechnungen(), etappe: 3 },
   { id: 'monatszahlen', fakt: 'Monatszahlen Business', hier: 'Monatsabschluss ab Oktober 2026 (Januar bis September nicht nachtragen)', nicht: 'alte Monatswerte im Controlling', href: WEG.abschluss(), etappe: 3, allgemein: { hier: 'Monatsabschluss ab dem Stichtag (frühere Monate nicht nachtragen)' } },
   { id: 'koepfe', fakt: 'Köpfe und Beratertage je Gesellschaft', hier: 'Finanzen › Business › Überblick › Einstellungen', nicht: 'Kapazität (rechnet je Person, nicht je Firma)', href: WEG.einstellungen(), etappe: 3 },
-  { id: 'firmendaten', fakt: 'Firmendaten, Bank', hier: 'Unternehmen › Gesellschaften (Steckbrief und Absender)', nicht: 'Einstellungen › Stammdaten › Firmen und Konten', href: WEG.unternehmen(), etappe: 3 },
-  { id: 'beteiligungen', fakt: 'Beteiligungen an fremden Firmen', hier: 'Unternehmen › Gesellschaften › Beteiligungen', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
-  { id: 'selbst-jan-sep', fakt: 'Selbstständigkeit Januar bis September', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Privat-Monatsabschluss derselben Monate', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5, allgemein: { fakt: 'Selbstständigkeit: Monate vor dem Planbeginn' } },
-  { id: 'est-voraus', fakt: 'Vorauszahlungen Einkommensteuer der Selbstständigkeit', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Steuer-Einstellungen (zählen mit Finanzplanung nicht)', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
-  { id: 'steuerparameter', fakt: 'Steuerparameter der Selbstständigkeit', hier: 'Finanzplanung › Zahnrad', nicht: 'Steuer-Modul (liest bei vorhandener Finanzplanung daraus)', href: WEG.finanzplanung('privat'), etappe: 5 },
+  { id: 'firmendaten', voll: true, fakt: 'Firmendaten, Bank', hier: 'Unternehmen › Gesellschaften (Steckbrief und Absender)', nicht: 'Einstellungen › Stammdaten › Firmen und Konten', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'beteiligungen', voll: true, fakt: 'Beteiligungen an fremden Firmen', hier: 'Unternehmen › Gesellschaften › Beteiligungen', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'selbst-jan-sep', voll: true, fakt: 'Selbstständigkeit Januar bis September', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Privat-Monatsabschluss derselben Monate', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5, allgemein: { fakt: 'Selbstständigkeit: Monate vor dem Planbeginn' } },
+  { id: 'est-voraus', voll: true, fakt: 'Vorauszahlungen Einkommensteuer der Selbstständigkeit', hier: 'Finanzplanung › Selbstständigkeit', nicht: 'Steuer-Einstellungen (zählen mit Finanzplanung nicht)', href: WEG.finanzplanung('privat', 'selbst'), etappe: 5 },
+  { id: 'steuerparameter', voll: true, fakt: 'Steuerparameter der Selbstständigkeit', hier: 'Finanzplanung › Zahnrad', nicht: 'Steuer-Modul (liest bei vorhandener Finanzplanung daraus)', href: WEG.finanzplanung('privat'), etappe: 5 },
   { id: 'produkte', fakt: 'Produkte und Preise', hier: 'Produkte & Mandate › Produkte', nicht: 'Rechnungen › Karte „Produkte“', href: WEG.produkt(), etappe: 4 },
   { id: 'jahresziel', fakt: 'Jahresziel Umsatz', hier: 'Planung › Jahr — dieselbe Zahl in Controlling und Business-Einstellungen', nicht: '–', href: WEG.jahr(), etappe: 5 },
   { id: 'arbeitszeit', fakt: 'Arbeitszeit', hier: 'Wochenvorlage (Planung › Routinen)', nicht: 'Kalender-Arbeitsfenster, Beratertage', href: WEG.routinen(), etappe: 5 },
   { id: 'arbeitszeit-aussen', fakt: 'Arbeitszeit außerhalb (fremder Kalender)', hier: 'Blöcke bzw. Abwesenheit (Schritt 2.6)', nicht: '–', href: WEG.routinen(), etappe: 2 },
   { id: 'urlaub', fakt: 'Urlaub', hier: 'Kalender „Abwesend“', nicht: 'Ausnahme in der Kapazität', href: WEG.kalender(), etappe: 5 },
   { id: 'kosten-business', fakt: 'Laufende Kosten der Gesellschaften (Software, Miete, Personal …)', hier: 'Finanzplanung › Business (Kosten-Bausteine)', nicht: 'Rechnungen & Zahlungen (nur echte Rechnungen), Monatsabschluss (nur das Ist)', href: WEG.finanzplanung('business'), etappe: 5 },
-  { id: 'privat-ist', fakt: 'Budget, Schulden, Fixkosten und Ist privat', hier: 'Haushalt (Privat › Konten & Buchungen) — er führt das Ist', nicht: 'Finanzplanung (liest ab Phase 1 aus dem Haushalt)', href: WEG.privat('fixkosten'), etappe: 3 },
-  { id: 'ruecklage', fakt: 'Rücklage privat', hier: 'Privat-Index', nicht: '–', href: WEG.privatIndex('ruecklage'), etappe: 3 },
-  { id: 'geburtstage', fakt: 'Geburtstage', hier: 'Familie (privat) bzw. CRM (geschäftlich)', nicht: '–', href: WEG.familie(), etappe: 6 },
+  { id: 'privat-ist', voll: true, fakt: 'Budget, Schulden, Fixkosten und Ist privat', hier: 'Haushalt (Privat › Konten & Buchungen) — er führt das Ist', nicht: 'Finanzplanung (liest ab Phase 1 aus dem Haushalt)', href: WEG.privat('fixkosten'), etappe: 3 },
+  { id: 'ruecklage', voll: true, fakt: 'Rücklage privat', hier: 'Privat-Index', nicht: '–', href: WEG.privatIndex('ruecklage'), etappe: 3 },
+  { id: 'geburtstage', voll: true, fakt: 'Geburtstage', hier: 'Familie (privat) bzw. CRM (geschäftlich)', nicht: '–', href: WEG.familie(), etappe: 6 },
   { id: 'kennungen', fakt: 'Persönliche Kennungen (Steuer-ID, SV-Nummer)', hier: 'vorerst nirgends', nicht: 'Einstellungen › Stammdaten', etappe: 3 },
-  { id: 'vertraege', fakt: 'Verträge', hier: 'Gesellschaften: Unternehmen › Verträge & Organe · privat: noch kein Ort', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
+  { id: 'vertraege', voll: true, fakt: 'Verträge', hier: 'Gesellschaften: Unternehmen › Verträge & Organe · privat: noch kein Ort', nicht: '–', href: WEG.unternehmen(), etappe: 3 },
 ];
 
 /** Eine Zeile der Datenkarte per Kennung (null = unbekannt). */
 export const datenkarteMitId = (id: string): DatenkartenZeile | null => DATENKARTE.find(d => d.id === id) ?? null;
 /** Die Datenkarte für diese Instanz — ohne Altbestand die neutrale Fassung jeder Zeile (`allgemein`). Rein. */
-export const datenkarteFuer = (altbestand: boolean): DatenkartenZeile[] => (altbestand ? DATENKARTE : DATENKARTE.map(({ allgemein, ...d }) => ({ ...d, ...(allgemein ?? {}) })));
+export const datenkarteFuer = (altbestand: boolean, nurBusiness = false): DatenkartenZeile[] =>
+  (altbestand ? DATENKARTE : DATENKARTE.map(({ allgemein, ...d }) => ({ ...d, ...(allgemein ?? {}) }))).filter(d => !nurBusiness || !d.voll);
 
 /** Die drei Zonen — die Abmachung, damit Weiterbauen und Arbeiten sich nicht in die Quere kommen. */
 export const ZONEN = [

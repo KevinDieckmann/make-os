@@ -135,12 +135,15 @@ const PRODUKTE = [
   { id: 'l-demo-software', name: 'Cockpit-Lizenz', typ: 'software', stufe: 'premium', preis: { betrag: 490, einheit: 'Monat netto', basis: 'monat' }, lieferumfang: ['Zugang für fünf Personen', 'Einrichtung', 'Support'], text: 'Software-Cockpit für Kennzahlen und Planung.' },
 ] as const;
 
-/** Notizen des Demo-Wissens (Vault der Demo, `scope: oeffentlich` — sichtbar für beide Demo-Personen). */
-const WISSEN: { datei: string; titel: string; text: string; tags: string[] }[] = [
+/**
+ * Notizen des Demo-Wissens (Vault der Demo). Vorgabe `scope: oeffentlich` (alle Demo-Konten); die Gründungs-Notiz nennt Gesellschafter und Fahrplan
+ * der Firmen-Akte — `scope: intern`, also nur für volle Mitglieder des Haushalts, nie für das Konto „nur Business“ (Abnahme 2 A1, 15.10.).
+ */
+const WISSEN: { datei: string; titel: string; text: string; tags: string[]; scope?: 'intern' }[] = [
   { datei: 'Positionierung.md', titel: 'Positionierung Nordlicht Labs', tags: ['strategie'], text: 'Wir helfen inhabergeführten Mittelständlern, mit klaren Kennzahlen schneller zu entscheiden.\n\n- Zielgruppe: Geschäftsführung, 50–500 Mitarbeitende\n- Einstieg: Klarheits-Diagnose\n- Kern: Strategie-Begleitung + Cockpit-Lizenz' },
   { datei: 'Wochenrhythmus.md', titel: 'Unser Wochenrhythmus', tags: ['arbeitsweise'], text: 'Montag: Planung und Kapazität prüfen.\nDienstag/Donnerstag: Fokus-Blöcke für Kundenarbeit.\nMittwoch: Vertrieb (Power Hour).\nFreitag: Rückblick, Finanzen, Ablage.' },
   { datei: 'Angebots-Leitfaden.md', titel: 'Leitfaden für Angebote', tags: ['vertrieb'], text: 'Jedes Angebot nennt Ergebnis, Umfang, Grenzen und nächsten Schritt.\nPreise immer netto, Zahlungsziel 14 Tage.\nNach 10 Tagen nachfassen.' },
-  { datei: 'Gruendung-Nordlicht-Ventures.md', titel: 'Gründung Nordlicht Ventures', tags: ['gesellschaften'], text: 'Neue Beteiligungsgesellschaft für Software-Beteiligungen.\nStammkapital 25.000 € (Beispiel), Gesellschafter: Hartmann Holding und Jonas.\nFahrplan steht unter Unternehmen.' },
+  { datei: 'Gruendung-Nordlicht-Ventures.md', titel: 'Gründung Nordlicht Ventures', tags: ['gesellschaften'], scope: 'intern', text: 'Neue Beteiligungsgesellschaft für Software-Beteiligungen.\nStammkapital 25.000 € (Beispiel), Gesellschafter: Hartmann Holding und Jonas.\nFahrplan steht unter Unternehmen.' },
 ];
 
 // ── Die Saat ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -642,7 +645,7 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   if (o.vaultDir) {
     await fs.mkdir(o.vaultDir, { recursive: true });
     for (const n of WISSEN) {
-      const kopf = ['---', `title: ${n.titel}`, 'type: notiz', 'scope: oeffentlich', `owner: ${LENA}`, `stand: ${heute}`, `tags: [${n.tags.join(', ')}]`, '---', ''].join('\n');
+      const kopf = ['---', `title: ${n.titel}`, 'type: notiz', `scope: ${n.scope ?? 'oeffentlich'}`, `owner: ${LENA}`, `stand: ${heute}`, `tags: [${n.tags.join(', ')}]`, '---', ''].join('\n');
       await fs.writeFile(path.join(o.vaultDir, n.datei), `${kopf}# ${n.titel}\n\n${n.text}\n`, 'utf8');
       notizen++;
     }

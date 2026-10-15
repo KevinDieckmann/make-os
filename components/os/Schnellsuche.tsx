@@ -17,16 +17,16 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { LEUCHT } from './ui';
 import { useTasks } from '@/context/TasksContext';
 import { spaceVonAufgabe, SPACE_LABEL, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
-import { useNurBusiness } from './useInhaber';
+import { useInhaber, useNurBusiness } from './useInhaber';
 import { einheitName } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
-import { SEITEN_SUCHE } from '@/lib/make-one/seiten';
+import { SEITEN_SUCHE, seitenFuer, type SeitenTreffer } from '@/lib/make-one/seiten';
 import type { Task } from '@/types/tasks';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 interface Treffer { art: string; id: string; titel: string; unter?: string; href: string; space?: 'privat' | 'business'; /** Treffer aus dem anderen Bereich (Knopf „Auch in … suchen“). */ anders?: SpaceId }
 // Alle Seiten (08.10., Aufräumen Etappe 1): EINE Liste in lib/make-one/seiten.ts — auch Seiten, die nicht mehr im Menü stehen.
-const SEITEN: Treffer[] = SEITEN_SUCHE;
+const SEITEN: (Treffer & Pick<SeitenTreffer, 'nur'>)[] = SEITEN_SUCHE;
 const ART: Record<string, { label: string; farbe: string }> = {
   kontakt: { label: 'Person', farbe: LEUCHT.business }, firma: { label: 'Firma', farbe: LEUCHT.puls }, chance: { label: 'Deal', farbe: LEUCHT.achtung },
   mandat: { label: 'Mandat', farbe: LEUCHT.geld }, kampagne: { label: 'Kampagne', farbe: LEUCHT.beziehung }, seite: { label: 'Bereich', farbe: C.inkDim }, mensch: { label: 'Mensch', farbe: LEUCHT.beziehung },
@@ -69,6 +69,8 @@ export function Schnellsuche() {
   const anderer: SpaceId = space === 'privat' ? 'business' : 'privat';
   // Konto „nur Business“: unter Privat liefert der Server ihm nichts — kein Knopf.
   const nurBusiness = useNurBusiness();
+  // Head of IT nur für Inhaber, Unternehmen nur für volle Mitglieder (15.10., Abnahme 2 B8 — die Routen lehnen die anderen ohnehin ab).
+  const inhaber = useInhaber();
   const [auchAnders, setAuchAnders] = useState(false);
   const beide = auchAnders && !nurBusiness;
   const router = useRouter();
@@ -95,7 +97,7 @@ export function Schnellsuche() {
     const t = q.trim();
     // Im aktiven Space (Malin 26.09.): Seiten des anderen Space nur, wenn „auch dort“ an ist — seit 10.10. auch nicht mehr über einen
     // Suchbegriff (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“; „Familie“ in Business fand die Familien-Seite).
-    const seiten = SEITEN.filter(s => (!t || suchPasst([s.titel], t)) && (!s.space || s.space === space || beide));
+    const seiten = seitenFuer(SEITEN, { inhaber, nurBusiness }).filter(s => (!t || suchPasst([s.titel], t)) && (!s.space || s.space === space || beide));
     if (t.length < 2) { setTreffer(seiten.slice(0, 8)); setI(0); return; }
     const ab = new AbortController();
     const timer = setTimeout(() => {
@@ -106,7 +108,7 @@ export function Schnellsuche() {
         }).catch(() => {});
     }, 140);
     return () => { clearTimeout(timer); ab.abort(); };
-  }, [q, offen, space, anderer, beide]);
+  }, [q, offen, space, anderer, beide, inhaber, nurBusiness]);
 
   const oeffne = (t: Treffer) => { schliessen(); router.push(t.href); };
   if (!offen) return null;

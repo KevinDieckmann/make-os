@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { spaceVonAdresse, wahlVon, gemerkteWahlAus, SPACE_VORGABE, SPACE_MERKER, SPACE_ZULETZT_MERKER, SPACE_EREIGNIS, type SpaceId, type SpaceWahl } from '@/lib/make-one/spaces';
+import { useNurBusiness } from '@/components/os/useInhaber';
 
 function gemerkteWahl(): SpaceWahl {
   try { return gemerkteWahlAus(localStorage.getItem(SPACE_MERKER), localStorage.getItem(SPACE_ZULETZT_MERKER)); } catch { return SPACE_VORGABE; }
@@ -48,8 +49,10 @@ export function useSpace(): SpaceStand {
     window.addEventListener(SPACE_EREIGNIS, lesen);
     return () => window.removeEventListener(SPACE_EREIGNIS, lesen);
   }, [lesen]);
+  // Konto „nur Business“ (15.10., Abnahme 2 B8): immer Business — die Adresse öffnet nie den Privat-Bereich (die Seite leitet um).
+  const nurBusiness = useNurBusiness() === true;
   const ausAdresse = spaceVonAdresse(pfad, suche);
-  const wahl = wahlVon(pfad, suche, gemerkt);
+  const wahl = wahlVon(pfad, suche, gemerkt, nurBusiness);
   const setzen = useCallback((s: SpaceWahl) => { merke(s); setGemerkt(s); window.dispatchEvent(new Event(SPACE_EREIGNIS)); }, []);
   // Die Adresse gewinnt: `?space=` bzw. eine Seite eines Space wird gemerkt; ein alter Merker „alles“ wird dabei konkret.
   useEffect(() => {

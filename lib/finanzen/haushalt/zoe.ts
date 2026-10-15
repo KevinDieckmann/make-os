@@ -18,7 +18,8 @@ import { normal } from './regeln';
 /** Der Lageblock für ZOE' Anweisung. */
 export function blockHaushalt(h: Haushalt, heute: string = heuteBerlin()): string {
   const b = h.buchungen.filter(x => x.einheit === 'privat');
-  if (!b.length) return 'HAUSHALT (privat): noch keine Daten — der Umzug aus dem früheren Finanz-Cockpit steht aus.';
+  // Neutral (15.10., Abnahme 2 B14): einen Umzug aus einem früheren Cockpit gibt es nur in der Betreiber-Instanz — ZOE nennt ihn nirgends.
+  if (!b.length) return 'HAUSHALT (privat): noch keine Daten — Kontoauszüge unter Finanzen › Privat einlesen.';
   const katName = katNamen(h.stamm);
   const m = letzterMonatMitDaten(b, heute);
   const k1 = kennzahlen(b, [m], katName);

@@ -231,7 +231,7 @@ export function AufgabenRaum() {
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>{nebenWege}</div>
         </div>
       </div>
-      <AufgabenLeiste adresse={adresse} spaces={spaces} offenJe={offenJe} gehe={gehe} />
+      <AufgabenLeiste adresse={adresse} spaces={spaces} offenJe={offenJe} gehe={gehe} bereich={adresse.bereich ?? bereichGemerkt} />
       <SchnellAnlegen state={state} dispatch={dispatch} spaces={spaces} vorbelegt={vorbelegt} />
 
       {!ready && <Karte i={1}><Leer>lade …</Leer></Karte>}

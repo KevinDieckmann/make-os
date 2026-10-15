@@ -170,8 +170,11 @@ export function wahlAusParameter(suche = ''): SpaceWahl | null {
 /**
  * Die wirksame Wahl (seit 09.10. immer ein Space): `?space=privat|business` gewinnt, sonst legt die Seite den Space fest
  * (Gesundheit → Privat, Markttraktion → Business …), sonst gilt der gemerkte. `?space=alles` (alte Links, Lesezeichen) zählt nicht.
+ * Ein Konto „nur Business“ (15.10., Abnahme 2 B8) ist IMMER in Business — auch mit `?space=privat` oder auf einer Privat-Seite (die leitet
+ * ohnehin um, lib/zugang/privat-seite.ts); vorher gewann die Adresse und öffnete die Leiste PRIVAT.
  */
-export function wahlVon(pfad: string, suche: string, gemerkt: SpaceWahl): SpaceWahl {
+export function wahlVon(pfad: string, suche: string, gemerkt: SpaceWahl, nurBusiness = false): SpaceWahl {
+  if (nurBusiness) return 'business';
   return wahlAusParameter(suche) ?? aktiverSpaceEintrag(pfad, suche).space ?? gemerkt;
 }
 

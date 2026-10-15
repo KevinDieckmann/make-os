@@ -11,9 +11,12 @@ import { Seite, Karte, Ueberschrift, Liste, Zeile } from './ui';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { MeldenKnopf } from './Leiste';
 import { DemoKarte } from './DemoKarte';
-import { EINSTELLUNGEN_GRUPPEN } from '@/lib/make-one/einstellungen';
+import { einstellungenFuer } from '@/lib/make-one/einstellungen';
+import { useInhaber, useNurBusiness } from './useInhaber';
 
 export function SystemView() {
+  // Head of IT nur für Inhaber, Wege ins Private nicht für ein Konto „nur Business“ (15.10., Abnahme 2 B8 — die Routen lehnen ohnehin ab).
+  const gruppen = einstellungenFuer({ inhaber: useInhaber(), nurBusiness: useNurBusiness() });
   return (
     <Seite titel="Einstellungen"
       // Am Handy steht in der Leiste unten Netzwerken — „Problem oder Idee melden“ bleibt hier und im Blatt von Privat/Business erreichbar.
@@ -22,7 +25,7 @@ export function SystemView() {
       <DemoKarte />
       {/* Fläche „system“ wie bisher: die alten Kacheln (andere Kennungen) fallen beim Lesen weg, eigene Widgets bleiben. */}
       <Flaeche seite="system">
-      {EINSTELLUNGEN_GRUPPEN.map((g, i) => (
+      {gruppen.map((g, i) => (
         <Kachel key={g.id} id={g.id} titel={g.titel} breite={3}>
         <Karte i={i}>
           <Ueberschrift>{g.titel}</Ueberschrift>

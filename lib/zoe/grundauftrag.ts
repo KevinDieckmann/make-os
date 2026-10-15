@@ -39,8 +39,9 @@ export function firmenKennungen(): string {
 }
 
 /** Die eigenen Gesellschaften als Satz — feste aus lib/einheiten.ts, weitere (Register) als Daten gerahmt. Rein. */
-export function gesellschaftenZeilen(register: readonly string[] = []): string {
-  const fest = KERN_EINHEITEN.map(e => `${e.label} (Kennung ${e.id}, Bereich ${BEREICH_JE_EINHEIT[e.id] === 'privat' ? 'Privat' : 'Business'})`).join(' · ');
+export function gesellschaftenZeilen(register: readonly string[] = [], ohnePrivat = false): string {
+  // Konto „nur Business“ (15.10., Abnahme 2 A1): ohne die Privat-Einheiten (Selbstständigkeit) — dieselbe Regel wie lib/gesellschaften/sicht.ts.
+  const fest = KERN_EINHEITEN.filter(e => !ohnePrivat || BEREICH_JE_EINHEIT[e.id] !== 'privat').map(e => `${e.label} (Kennung ${e.id}, Bereich ${BEREICH_JE_EINHEIT[e.id] === 'privat' ? 'Privat' : 'Business'})`).join(' · ');
   const weitere = register.map(nameSauber).filter(Boolean);
   return [
     `EIGENE GESELLSCHAFTEN dieser Instanz: ${fest}.`,
@@ -49,16 +50,21 @@ export function gesellschaftenZeilen(register: readonly string[] = []): string {
   ].filter(Boolean).join('\n');
 }
 
-/** Wie `gesellschaftenZeilen`, mit den Register-Gesellschaften des Inhaber-Haushalts (Fehler → nur die festen). */
-export async function gesellschaftenSatz(): Promise<string> {
+/**
+ * Wie `gesellschaftenZeilen`, mit den Register-Gesellschaften des Inhaber-Haushalts (Fehler → nur die festen). Mit `person` (15.10., Abnahme 2
+ * A1) nur, was sie sieht (`einheitenSichtFuer`): ein Konto „nur Business“ bekommt weder die Selbstständigkeit noch das Register in den Prompt.
+ */
+export async function gesellschaftenSatz(person?: string | null): Promise<string> {
+  // `einheitenSichtFuer` wirft nie (unlesbar → nur Business ohne Register, fail-closed); ohne Person (Systemlauf) alles wie bisher.
+  const sicht = await (await import('@/lib/gesellschaften/sicht-server')).einheitenSichtFuer(person);
   try {
     const { haushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
     const h = await haushaltDesInhabers();
-    if (!h) return gesellschaftenZeilen();
+    if (!h || !sicht.register) return gesellschaftenZeilen([], !sicht.privat);
     const [{ ladeRegister }, { registerEinheitenNamen }] = await Promise.all([import('@/lib/gesellschaften/server'), import('@/lib/gesellschaften/modell')]);
-    return gesellschaftenZeilen(registerEinheitenNamen(await ladeRegister(h)));
+    return gesellschaftenZeilen(registerEinheitenNamen(await ladeRegister(h)), !sicht.privat);
   } catch {
-    return gesellschaftenZeilen();
+    return gesellschaftenZeilen([], !sicht.privat);
   }
 }
 

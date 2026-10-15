@@ -164,7 +164,7 @@ export async function POST(req: Request) {
   // ── 5. Lage draußen ──
   await schritt('news', async () => {
     if (!hasAnthropicKey()) return { stand: 'uebersprungen' as const, kurz: 'Kein Anthropic-Key' };
-    const firmen = await gesellschaftenSatz();
+    const firmen = await gesellschaftenSatz(personStreng(req));
     const r = await askWithSearch({ zweck: 'tageslauf',
       system: [
         'Du bist der Research-Agent in MAKE OS. Liefere die Lage von heute in drei Blöcken — je GENAU DREI Meldungen, nicht mehr.',

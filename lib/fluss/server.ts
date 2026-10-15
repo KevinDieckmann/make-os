@@ -146,7 +146,12 @@ async function planung(person: string, heute: string, space: SpaceId | null): Pr
   const [{ haushaltsZiele }, { meilensteinSpace }, { zielVonMeilenstein }, { spaceVonZiel, zielWurzeln }] = await Promise.all([
     import('@/lib/planung/ziel-farben-server'), import('@/lib/planung/meilensteine'), import('@/lib/planung/meilenstein-aufgaben'), import('@/lib/lichtfaeden/modell'),
   ]);
-  const [ziele, ms] = await Promise.all([haushaltsZiele(), loadJson<{ meilensteine?: import('@/lib/planung/typen').Meilenstein[] }>('meilensteine').catch(() => null)]);
+  // Gründungsfahrplan (15.10., Abnahme 2 A1): ohne Zugang zur Firmen-Akte weder sein Ziel noch seine Meilensteine — dieselbe Regel wie Ziele-/
+  // Meilenstein-Route, Seil, Lichtfäden, Brain-Kugel (`ohneFahrplanFuer`, lib/planung/bereich-sicht-server.ts).
+  const { ohneFahrplanFuer } = await import('@/lib/planung/bereich-sicht-server');
+  const [ziele0, ms0] = await Promise.all([haushaltsZiele(), loadJson<{ meilensteine?: import('@/lib/planung/typen').Meilenstein[] }>('meilensteine').catch(() => null)]);
+  const [ziele, msListe] = await Promise.all([ohneFahrplanFuer(ziele0, person, 'ziel'), ohneFahrplanFuer(ms0?.meilensteine ?? [], person, 'meilenstein')]);
+  const ms = { meilensteine: msListe };
   // Eigene Ziele der ANDEREN Person gibt es für diese Person nicht (wie Lichtfäden `knotenFuerBetrachter`) — samt ihrer Meilensteine.
   const sichtbar = ziele.filter(z => z.person === BEIDE || z.person === person);
   const fremd = new Set(ziele.filter(z => !sichtbar.includes(z)).map(z => z.id));

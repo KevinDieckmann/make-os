@@ -7,9 +7,16 @@
 import { WEG } from '@/lib/wege';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
 
-export interface SeitenTreffer { art: 'seite'; id: string; titel: string; href: string; space?: 'privat' | 'business' }
+export interface SeitenTreffer {
+  art: 'seite'; id: string; titel: string; href: string; space?: 'privat' | 'business';
+  /**
+   * Wer die Seite überhaupt öffnen darf (15.10., Abnahme 2 B8 — die Routen lehnen die anderen ohnehin ab): `inhaber` (Head of IT),
+   * `volle` = volle Mitglieder (Unternehmen: die Firmen-Akte sagt einem Konto „nur Business“ „nicht freigegeben“).
+   */
+  nur?: 'inhaber' | 'volle';
+}
 
-const s = (id: string, titel: string, href: string, space?: 'privat' | 'business'): SeitenTreffer => ({ art: 'seite', id, titel, href, ...(space ? { space } : {}) });
+const s = (id: string, titel: string, href: string, space?: 'privat' | 'business', nur?: SeitenTreffer['nur']): SeitenTreffer => ({ art: 'seite', id, titel, href, ...(space ? { space } : {}), ...(nur ? { nur } : {}) });
 
 export const SEITEN_SUCHE: SeitenTreffer[] = [
   // Start und Tag
@@ -86,17 +93,17 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('fulfillment-analysen', 'Produkte & Mandate · Fulfillment · Analysen', WEG.fulfillment('analysen'), 'business'),
   s('fulfillment-kreislauf', 'Produkte & Mandate · Fulfillment · Kreislauf', WEG.fulfillment('kreislauf'), 'business'),
   s('fulfillment-visualisierung', 'Produkte & Mandate · Fulfillment · Visualisierung', WEG.fulfillment('visualisierung'), 'business'),
-  s('unternehmen', 'Unternehmen · Überblick (Schild in einem Blick, Compliance-Ampel)', WEG.unternehmen(), 'business'),
-  s('unternehmen-ereignis', 'Unternehmen · Was ist passiert? (Ereignis-Assistent: Geschäftsführung, Gesellschafterwechsel, Sitz …)', WEG.ereignisAssistent(), 'business'),
+  s('unternehmen', 'Unternehmen · Überblick (Schild in einem Blick, Compliance-Ampel)', WEG.unternehmen(), 'business', 'volle'),
+  s('unternehmen-ereignis', 'Unternehmen · Was ist passiert? (Ereignis-Assistent: Geschäftsführung, Gesellschafterwechsel, Sitz …)', WEG.ereignisAssistent(), 'business', 'volle'),
   // Unternehmen › Schild (10.10.): die Reiter einzeln auffindbar.
-  s('unternehmen-gesellschaften', 'Unternehmen · Gesellschaften, Anteile, Verträge', WEG.schild('gesellschaften'), 'business'),
-  s('unternehmen-pflichten', 'Unternehmen · Pflichten-Kalender (Jahresabschluss, Register, Fristen)', WEG.schild('pflichten'), 'business'),
-  s('unternehmen-dokumente', 'Unternehmen · Pflichtdokumente und Vorlagen', WEG.schild('dokumente'), 'business'),
-  s('unternehmen-risiken', 'Unternehmen · Risiko-Register', WEG.schild('risiken'), 'business'),
-  s('unternehmen-struktur', 'Unternehmen · Struktur und Cap-Table', WEG.schild('struktur'), 'business'),
-  s('unternehmen-vertraege', 'Unternehmen · Verträge und Organe', WEG.schild('vertraege'), 'business'),
-  s('unternehmen-schutz', 'Unternehmen · Marken, Domains, Versicherungen', WEG.schild('schutz'), 'business'),
-  s('unternehmen-beschluesse', 'Unternehmen · Beschlüsse & Satzung (Beschluss-Buch, Gegenstand, Fassungen)', WEG.beschluss(), 'business'),
+  s('unternehmen-gesellschaften', 'Unternehmen · Gesellschaften, Anteile, Verträge', WEG.schild('gesellschaften'), 'business', 'volle'),
+  s('unternehmen-pflichten', 'Unternehmen · Pflichten-Kalender (Jahresabschluss, Register, Fristen)', WEG.schild('pflichten'), 'business', 'volle'),
+  s('unternehmen-dokumente', 'Unternehmen · Pflichtdokumente und Vorlagen', WEG.schild('dokumente'), 'business', 'volle'),
+  s('unternehmen-risiken', 'Unternehmen · Risiko-Register', WEG.schild('risiken'), 'business', 'volle'),
+  s('unternehmen-struktur', 'Unternehmen · Struktur und Cap-Table', WEG.schild('struktur'), 'business', 'volle'),
+  s('unternehmen-vertraege', 'Unternehmen · Verträge und Organe', WEG.schild('vertraege'), 'business', 'volle'),
+  s('unternehmen-schutz', 'Unternehmen · Marken, Domains, Versicherungen', WEG.schild('schutz'), 'business', 'volle'),
+  s('unternehmen-beschluesse', 'Unternehmen · Beschlüsse & Satzung (Beschluss-Buch, Gegenstand, Fassungen)', WEG.beschluss(), 'business', 'volle'),
   // Netzwerken (03.10.): unterwegs erfassen und die eigenen Visitenkarten (QR) — in jedem Space auffindbar.
   s('netzwerken', 'Netzwerken · Person erfassen, Abendbericht', WEG.netzwerken()),
   s('netzwerken-karte', 'Netzwerken · Meine Visitenkarten', WEG.netzwerkenKarte()),
@@ -121,7 +128,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('datenschutz', 'Einstellungen · Datenschutz', WEG.datenschutz()),
   s('stammdaten', 'Einstellungen · Stammdaten', '/os/stammdaten'),
   s('datenbasis', 'Einstellungen · Datenbasis', '/os/datenbasis'),
-  s('hoi', 'Einstellungen · Head of IT', '/os/hoi'),
+  s('hoi', 'Einstellungen · Head of IT', '/os/hoi', undefined, 'inhaber'),
   s('bauplan', 'Einstellungen · Bauplan', '/os/bauplan'),
   s('roadmap', 'Bauplan · Phasen (Roadmap)', '/os/bauplan?s=phasen'),
   s('onboarding', 'Einstellungen · Onboarding (Einrichtung)', '/os/onboarding'),
@@ -130,3 +137,11 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('onboarding-instanz', 'Einstellungen · Onboarding, Instanz (Inhaber)', '/os/onboarding/instanz'),
   s('zusammenarbeit', 'Einstellungen · Zusammenarbeit', '/os/onboarding/zusammenarbeit'),
 ];
+
+/**
+ * Die Seiten für ein Konto (rein): ohne Inhaber-Rechte kein Head of IT, für ein Konto „nur Business“ keine Seiten nur für volle Mitglieder
+ * (Unternehmen). `null` = noch unbekannt → wie ohne Recht.
+ */
+export function seitenFuer<T extends Pick<SeitenTreffer, 'nur'>>(liste: readonly T[], k: { inhaber: boolean | null; nurBusiness: boolean | null }): T[] {
+  return liste.filter(x => (x.nur !== 'inhaber' || k.inhaber === true) && (x.nur !== 'volle' || k.nurBusiness === false));
+}

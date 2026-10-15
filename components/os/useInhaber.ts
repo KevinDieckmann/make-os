@@ -7,14 +7,15 @@
 // Kopf-Schalter und den Fokus-Satz in „Alles“. Die Trennung selbst geschieht auf dem Server; der Browser blendet nur aus, was leer bliebe.
 import { useEffect, useState } from 'react';
 
-interface Ich { inhaber: boolean; nurBusiness: boolean; betreiber: boolean }
+interface Ich { inhaber: boolean; nurBusiness: boolean; betreiber: boolean; haushaltZugang: boolean; privatFinanzen: boolean }
 let anfrage: Promise<Ich> | null = null;
+const FELDER: (keyof Ich)[] = ['inhaber', 'nurBusiness', 'betreiber', 'haushaltZugang', 'privatFinanzen'];
 const ich = (): Promise<Ich> => {
   if (!anfrage) {
     anfrage = fetch('/api/konto/ich', { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => ({ inhaber: !!(d as { inhaber?: boolean } | null)?.inhaber, nurBusiness: !!(d as { nurBusiness?: boolean } | null)?.nurBusiness, betreiber: !!(d as { betreiber?: boolean } | null)?.betreiber }))
-      .catch(() => ({ inhaber: false, nurBusiness: false, betreiber: false }));
+      .then(d => Object.fromEntries(FELDER.map(f => [f, !!(d as Partial<Record<keyof Ich, unknown>> | null)?.[f]])) as unknown as Ich)
+      .catch(() => Object.fromEntries(FELDER.map(f => [f, false])) as unknown as Ich);
   }
   return anfrage;
 };
@@ -44,4 +45,17 @@ export function useBetreiber(): boolean | null {
 /** Sieht das angemeldete Konto nur den Business-Bereich (`finanzRecht: 'business'`)? `null` = noch unbekannt. */
 export function useNurBusiness(): boolean | null {
   return useIchFeld('nurBusiness');
+}
+
+/**
+ * Zugang zu den privaten Haushaltsfinanzen (15.10., Abnahme 2 B8 — Regel `haushaltFuer`, wie `/api/haushalt?nur=zugang`): Seiten fragen hier,
+ * statt eine Anfrage zu stellen, die für ein Konto „nur Business“ mit 403 endet. `null` = noch unbekannt.
+ */
+export function useHaushaltZugang(): boolean | null {
+  return useIchFeld('haushaltZugang');
+}
+
+/** Privater Finanzzugang (`privatFinanzZugang`: volles Mitglied im Haushalt des Inhabers) — Liquiplan, Buchungen, Finanzplan voll. */
+export function usePrivatFinanzen(): boolean | null {
+  return useIchFeld('privatFinanzen');
 }

@@ -95,7 +95,7 @@ function erholungAus(v: VitalsLog | null, heute: string): number | null {
 const sicher = async <T>(f: () => Promise<T>, rueck: T): Promise<T> => { try { return await f(); } catch { return rueck; } };
 
 /** Alles laden und rechnen — ungefiltert (nur Server). Wer ausliefert, nimmt `kapaStandFuer`. */
-async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; ohneKopf: KapaStand; bezuege: { art: 'mandat' | 'kunde'; id: string; label: string }[]; privat: Set<string> }> {
+async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; ohneKopf: KapaStand; bezuege: { art: 'mandat' | 'kunde'; id: string; label: string }[]; privat: Set<string>; fahrplan: Set<string>; register: Set<string> }> {
   const ende = tagPlus(montagVon(heute), 7 * WOCHEN_STANDARD);
   const istAb = tagPlus(montagVon(heute), -28);
   const [personen, konten, datei, msDatei, zieleDatei, aufgaben, crm, planDatei] = await Promise.all([
@@ -174,11 +174,23 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; ohneKopf
   // Posten aus dem Privat-Bereich (Selbstständigkeit): sie zählen als Arbeit, ihre Titel gehen aber nie an Konten ohne Privatzugang
   // oder in den Business-Index (`ohnePrivatePosten`, 05.10. abends).
   const privat = new Set(posten.filter(p => (p.art === 'meilenstein' ? ms.some(m => m.id === p.id && meilensteinSpace(m) === 'privat') : (zieleDatei?.jahr ?? []).some(z => z.id === p.id && wirksamerSpace(z) === 'privat'))).map(postenSchluessel));
+  // Gründungsfahrplan und Register-Gesellschaften (15.10., Abnahme 2 A1): gehören zur Firmen-Akte — wer sie nicht sieht, bekommt diese Posten gar
+  // nicht (`kapaStandFuer` → `ohneVerborgenePosten`; die Stunden bleiben in der Last). WAS dazugehört: lib/aufgaben/firmenakte-sicht.ts und die
+  // Einheit eines Postens, die eine Register-Gesellschaft nennt (lib/gesellschaften/sicht.ts).
+  const [{ istFahrplanMeilenstein, istFahrplanZiel }, { einheitNameSichtbar, EINHEITEN_ALLES }, namen] = await Promise.all([
+    import('@/lib/aufgaben/firmenakte-sicht'), import('@/lib/gesellschaften/sicht'), sicher(async () => (await import('@/lib/gesellschaften/sicht-server')).einheitenNamen(), new Map<string, string>()),
+  ]);
+  const ohneRegister = { ...EINHEITEN_ALLES, register: false };
+  const msNach = new Map(ms.map(m => [m.id, m]));
+  const zielNach = new Map((zieleDatei?.jahr ?? []).map(z => [z.id, z]));
+  const quelle = (p: PostenEingabe) => (p.art === 'meilenstein' ? msNach.get(p.id) : zielNach.get(p.id));
+  const fahrplan = new Set(posten.filter(p => { const q = quelle(p); return !!q && (p.art === 'meilenstein' ? istFahrplanMeilenstein(q) : istFahrplanZiel(q)); }).map(postenSchluessel));
+  const register = new Set(posten.filter(p => !einheitNameSichtbar(quelle(p)?.einheit, ohneRegister, namen)).map(postenSchluessel));
   const rechnung = { heute, personen: eingaben, datei, posten, ist, bezugNamen, plaene: planDatei.wochen };
   // Datenschutz-Prüfung M1 (11.10.): dieselbe Rechnung OHNE Kopf & Energie (keine Erholung → Faktor 1, belastbar = netto) für die Sicht
   // Business und Konten „nur Business“ — dort darf keine Art.-9-Ableitung ankommen (auch nicht als Team-Faktor oder in „belastbar“).
   const ohneKopf = kapazitaetRechnen({ ...rechnung, personen: eingaben.map(({ erholung: _e, ...p }) => p) });
-  return { stand: kapazitaetRechnen(rechnung), ohneKopf, bezuege, privat };
+  return { stand: kapazitaetRechnen(rechnung), ohneKopf, bezuege, privat, fahrplan, register };
 }
 
 /** Gemerkt (60 s) — jede Schreibung über local-db setzt den Speicher zurück. Schlüssel: Haushalt + Tag (ungefiltert, gefiltert wird danach). */
@@ -186,7 +198,14 @@ const gemerkt = async (heute: string) => merken(`kapazitaet:${await kapaSpeicher
 
 /** Der Stand für eine Person (Plattform-Regel: serverseitig gefiltert — Erholung/Titel nur die eigenen). */
 export async function kapaStandFuer(person: string, heute = localDay(), sicht?: 'privat' | 'business' | null) {
-  const [{ stand: mitKopf, ohneKopf, bezuege, privat }, zugang, verborgen] = await Promise.all([gemerkt(heute), planZugangFuer(person), verborgeneMeilensteinPosten(person)]);
+  const [{ stand: mitKopf, ohneKopf, bezuege, privat, fahrplan, register }, zugang, verborgen0, es, ohneAkte] = await Promise.all([
+    gemerkt(heute), planZugangFuer(person), verborgeneMeilensteinPosten(person),
+    (await import('@/lib/gesellschaften/sicht-server')).einheitenSichtFuer(person),
+    (await import('@/lib/planung/bereich-sicht-server')).fahrplanAusgeblendetFuer(person),
+  ]);
+  // Konto „nur Business“ (15.10., Abnahme 2 A1): Posten des Gründungsfahrplans und der Register-Gesellschaften (ohne Firmen-Akte) und der
+  // Selbstständigkeit (ohne Privat) kommen gar nicht an — nicht einmal als „Privat (belegt)“. Die Stunden bleiben in der Last.
+  const verborgen = new Set([...verborgen0, ...(ohneAkte ? fahrplan : []), ...(es.register ? [] : register), ...(es.privat ? [] : privat)]);
   // Sicht Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): ohne Erholung (Gesundheit) und ohne Titel der
   // Abwesenheiten — auch die eigenen (wie für andere Personen, `fuerBetrachter(…, null)`).
   // Datenschutz-Prüfung M1 (11.10.): Sicht Business UND Konten „nur Business“ bekommen die Rechnung ohne Kopf & Energie (`ohneKopfSicht`):
@@ -244,7 +263,8 @@ export async function kapaKennzahlenFuerIndex(heute = localDay()): Promise<KapaK
   // Seit 08.10. ebenso keine Meilensteine an eigenen Zielen (Systemsicht — der Index geht an alle im Haushalt).
   try {
     const [g, verborgen] = await Promise.all([gemerkt(heute), verborgeneMeilensteinPosten(null)]);
-    return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.stand, null).kennzahlen, new Set([...g.privat, ...verborgen])));
+    // Seit 15.10. (Abnahme 2 A1) auch ohne Titel des Gründungsfahrplans und der Register-Gesellschaften — der Index geht auch an Konten „nur Business“.
+    return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.stand, null).kennzahlen, new Set([...g.privat, ...verborgen, ...g.fahrplan, ...g.register])));
   } catch { return null; }
 }
 

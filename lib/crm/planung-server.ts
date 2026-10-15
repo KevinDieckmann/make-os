@@ -73,12 +73,15 @@ export async function planungSchreiben(ops: unknown, person: string, wer?: Wer, 
   return ergebnis;
 }
 
-/** Business-Gesellschaften zur Wahl: die festen mit Bereich Business und die Register-Gesellschaften (`g-…`) — nie die Selbstständigkeit. */
-async function gesellschaftenZurWahl(): Promise<{ id: string; name: string }[]> {
+/**
+ * Business-Gesellschaften zur Wahl: die festen mit Bereich Business und die Register-Gesellschaften (`g-…`) — nie die Selbstständigkeit;
+ * Register-Gesellschaften nur für Personen mit Zugang zur Firmen-Akte (15.10., Abnahme 2 A1 — `einheitenSichtFuer`).
+ */
+async function gesellschaftenZurWahl(person: string): Promise<{ id: string; name: string }[]> {
   const feste = BUSINESS_GESELLSCHAFTEN.map(g => ({ id: g as string, name: finanzOrtName(g) }));
   try {
     const h = await haushaltDesInhabers();
-    if (!h) return feste;
+    if (!h || !(await (await import('@/lib/gesellschaften/sicht-server')).einheitenSichtFuer(person)).register) return feste;
     const { ladeRegister } = await import('@/lib/gesellschaften/server');
     const reg = await ladeRegister(h);
     const weitere = (reg?.gesellschaften ?? []).filter(g => istRegisterKennung(g.id) && !(g as { geloeschtAm?: string }).geloeschtAm && g.status !== 'aufgeloest').map(g => ({ id: g.id as string, name: g.name ?? g.id }));
@@ -118,7 +121,9 @@ export async function planungLage(person: string, filter: string | null, heute =
   const name = await planungSpeicher();
   return merken(`mt-planung:${name}:${person}:${heute}:${filter ?? '-'}`, 60_000, async () => {
     const [datei, kontakte, crm, ausgeblendet, gesellschaften, zz, frei] = await Promise.all([
-      ladePlanung(), kontakteFuerVerarbeitung(), ladeCrm(), eingeschraenkteKennungen(), gesellschaftenZurWahl(), zahlenziele(heute), freieStunden(person, heute),
+      ladePlanung(), kontakteFuerVerarbeitung(), ladeCrm(), eingeschraenkteKennungen(), gesellschaftenZurWahl(person),
+      // Gründungsfahrplan nur mit Zugang zur Firmen-Akte (15.10., Abnahme 2 A1) — dieselbe Regel wie die Ziele-Route.
+      zahlenziele(heute).then(async l => (await import('@/lib/planung/bereich-sicht-server')).ohneFahrplanFuer(l, person, 'ziel')), freieStunden(person, heute),
     ]);
     // Fortschritt im Paket (10.10., Leistungstreppe unter Produkte & Mandate) — Fulfillment und „Nach der Leistung“ zeigen ihn; Fehler → wie bisher.
     const fortschritt = await (await import('./treppe-server')).fortschrittFuerKreislauf(crm, heute).catch(() => ({}));
