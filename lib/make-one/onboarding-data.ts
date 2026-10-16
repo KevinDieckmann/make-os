@@ -132,6 +132,11 @@ export interface Schritt {
    * Instanz tragen (Stichtag, Planbeginn, „eure Entscheidung vom …“), steht hier der neutrale Text. Gelesen NUR über `texteFuer`.
    */
   allgemein?: Partial<Pick<Schritt, 'titel' | 'warum' | 'wie' | 'danach'>>;
+  /**
+   * Texte außerhalb der Betreiber-Instanz (15.10., Abnahme 2 A2 — `Kontext.betreiber === false`): liegen über jeder anderen Fassung (Grund,
+   * `allgemein`, Neustart), wenn der Schritt dem Betreiber Wissen am Server nennt, die Inhaberin ihn aber trotzdem hat. Gelesen nur über `texteFuer`.
+   */
+  ohneBetreiber?: Partial<Pick<Schritt, 'titel' | 'warum' | 'wie' | 'danach'>>;
 }
 
 /** Die drei Ebenen als Seiten (Filter auf die Einrichtung). `nurInhaber`: die Seite zeigt ihre Schritte nur Inhabern. */
@@ -225,9 +230,11 @@ export function ablaufFuer(altbestand: boolean, neustart = false, betreiber = tr
 
 /**
  * Die Etappen für diese Instanz: im Neustart die des Neustarts (`NEUSTART_ETAPPEN`); ohne Altbestand mit neutralem Titel/Satz und ohne Hinweise,
- * die nur die gewachsene Instanz betreffen. Rein.
+ * die nur die gewachsene Instanz betreffen. Außerhalb der Betreiber-Instanz (`betreiber === false`, 15.10., Abnahme 2 A2) ganz ohne Hinweise —
+ * sie sind „entschieden, aber nicht gebaut“, also Wissen des Herstellers — und immer in der neutralen Fassung. Rein.
  */
-export function etappenFuer(altbestand: boolean, neustart = false): Etappe[] {
+export function etappenFuer(altbestand: boolean, neustart = false, betreiber?: boolean): Etappe[] {
+  if (betreiber === false) return (neustart ? NEUSTART_ETAPPEN : ETAPPEN).map(({ allgemein, hinweise: _h, ...e }) => ({ ...e, ...(neustart ? {} : allgemein ?? {}) }));
   if (neustart) return NEUSTART_ETAPPEN;
   if (altbestand) return ETAPPEN;
   return ETAPPEN.map(({ allgemein, hinweise, ...e }) => {
@@ -236,9 +243,13 @@ export function etappenFuer(altbestand: boolean, neustart = false): Etappe[] {
   });
 }
 
-/** Titel, Anleitung und Ergebnis eines Schritts für diese Person — ohne Altbestand die neutrale Fassung (`allgemein`). Rein. */
-export function texteFuer(s: Schritt, k: Pick<Kontext, 'altbestand'> | null | undefined): Schritt {
-  return k?.altbestand || !s.allgemein ? s : { ...s, ...s.allgemein };
+/**
+ * Titel, Anleitung und Ergebnis eines Schritts für diese Person — ohne Altbestand die neutrale Fassung (`allgemein`), außerhalb der
+ * Betreiber-Instanz darüber `ohneBetreiber` (15.10., Abnahme 2 A2). Rein.
+ */
+export function texteFuer(s: Schritt, k: Pick<Kontext, 'altbestand' | 'betreiber'> | null | undefined): Schritt {
+  const t = k?.altbestand || !s.allgemein ? s : { ...s, ...s.allgemein };
+  return k?.betreiber === false && s.ohneBetreiber ? { ...t, ...s.ohneBetreiber } : t;
 }
 
 const KONTO = { href: WEG.konto(), label: 'Konto' };
@@ -1267,6 +1278,12 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
       'Alle roten Befunde abarbeiten.',
     ],
     danach: 'Geprüft wird: kein roter Befund, Lage-Sammler und Außenblick melden. Der Head of IT bleibt eure dauerhafte Ampel.',
+    // Außerhalb der Betreiber-Instanz (15.10., Abnahme 2 A2): Lage-Sammler und Außenblick richtet der Betreiber ein — die Inhaberin sieht nur ihren Teil.
+    ohneBetreiber: {
+      warum: 'Das Lagebild zeigt, ob Sicherung, Verbindungen und Schlüssel in Ordnung sind. Erst ohne Rot ist die Einrichtung abgeschlossen.',
+      wie: ['Head of IT öffnen und die roten Befunde ansehen.', 'Was in der App geht, steht beim Befund (z. B. eine Verbindung erneuern); alles am Server richtet der Betreiber eurer Instanz ein.'],
+      danach: 'Geprüft wird: kein roter Befund. Der Head of IT bleibt eure dauerhafte Ampel.',
+    },
     wo: HOI,
   },
   {
@@ -1281,6 +1298,15 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
       'Wer was geändert hat, steht unter Zusammenarbeit — nur wer, was, wann; nie Inhalte.',
     ],
     danach: 'Weiterbauen und Arbeiten kommen sich nicht in die Quere.',
+    ohneBetreiber: {
+      warum: 'MAKE OS wird laufend verbessert — ein Update spielt der Betreiber eurer Instanz ein. Die Zonen sagen, was jederzeit geht und wann man kurz wartet.',
+      wie: [
+        'Grün: Daten in der Oberfläche eintragen — übersteht jedes Update.',
+        'Gelb: große Mengen auf einmal (Import, Finanzplan ersetzen, „Neu anfangen“) nicht während „Update läuft“.',
+        'Rot: Code, Server und Updates — das übernimmt der Betreiber eurer Instanz.',
+        'Wer was geändert hat, steht unter Zusammenarbeit — nur wer, was, wann; nie Inhalte.',
+      ],
+    },
     wo: { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit' },
   },
 
@@ -2020,3 +2046,16 @@ export const ZONEN = [
     beispiele: ['Code ändern (lokal, Stand „entwicklung“)', 'Update ausrollen (Stand „main“)', 'Schlüssel und Einstellungen am Server', 'Sicherung zurückspielen'],
   },
 ] as const;
+
+/**
+ * Die Zonen für diese Instanz (15.10., Abnahme 2 A2): außerhalb der Betreiber-Instanz ohne die Stände des Codes — Code, Server und Updates
+ * übernimmt dort der Betreiber eurer Instanz. `betreiber` unbekannt (null) → neutral. Rein.
+ */
+export function zonenFuer(betreiber: boolean | null | undefined): readonly { farbe: string; titel: string; satz: string; beispiele: readonly string[] }[] {
+  if (betreiber === true) return ZONEN;
+  return ZONEN.map(z => (z.farbe !== 'rot' ? z : {
+    farbe: 'rot', titel: 'Rot — nur der Betreiber',
+    satz: 'Code, Server und Updates. Ein Update spielt der Betreiber eurer Instanz ein; das Ausrollen dauert etwa fünf Minuten, die alte Version läuft solange weiter.',
+    beispiele: ['Update einspielen', 'Schlüssel und Einstellungen am Server', 'Sicherung zurückspielen'],
+  }));
+}

@@ -67,10 +67,14 @@ describe('Karte „<Firma> verbinden“', () => {
     expect(m).toContain('Zugriff bei Google widerrufen');
     expect(m).toMatch(/<button[^>]*>Neu verbinden<\/button>/);
   });
-  it('nicht eingerichtet: Hinweis statt Knopf (wie in den Einstellungen)', () => {
-    const m = html(createElement(GoogleVerbindenKarte, { stand: { konfiguriert: false, verbunden: false }, firma: 'MAKE Innovation', onVerbinden: noop }));
+  it('nicht eingerichtet: Hinweis statt Knopf (wie in den Einstellungen) — Umgebungswerte nur in der Betreiber-Instanz (15.10., Abnahme 2 A2)', () => {
+    const m = html(createElement(GoogleVerbindenKarte, { stand: { konfiguriert: false, verbunden: false }, firma: 'MAKE Innovation', onVerbinden: noop, betreiber: true }));
     expect(m).toContain('GOOGLE_CLIENT_ID');
     expect(m).not.toContain('<button');
+    const f = html(createElement(GoogleVerbindenKarte, { stand: { konfiguriert: false, verbunden: false }, firma: 'MAKE Innovation', onVerbinden: noop }));
+    expect(f).not.toMatch(/GOOGLE_|\.md\b|Server eingerichtet/);
+    expect(f).toContain('Betreiber eurer Instanz');
+    expect(f).not.toContain('<button');
   });
   it('Google verbunden, Kalender-Freigabe fehlt: „Kalender bei Google freigeben“ statt „verbinden“, Gmail bleibt', () => {
     const m = html(createElement(GoogleVerbindenKarte, { stand: { konfiguriert: true, verbunden: true, konto: 'k***@example.invalid', bereit: ['basis', 'gmail'] }, firma: 'MAKE Innovation', onVerbinden: noop }));

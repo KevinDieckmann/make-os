@@ -191,7 +191,7 @@ function schrittZeile(roh: Schritt, z: Zustand | null, haken: (id: string, an: b
 /** Schritte nach Etappen gruppiert — mit Satz und den Hinweisen der Etappe (entschieden, aber noch nicht gebaut). */
 /** `hinweise`: ja/nein — oder die Etappen, deren Hinweise schon weiter oben standen (dort nicht noch einmal). */
 function NachEtappen({ schritte, z, haken, laden, start, mitWann = false, hinweise = true }: { schritte: readonly Schritt[]; z: Zustand | null; haken: (id: string, an: boolean) => void; laden?: () => void; start: number; mitWann?: boolean; hinweise?: boolean | ReadonlySet<number> }) {
-  const etappen = etappenFuer(!!z?.ich?.altbestand, !!z?.ich?.neustart).filter(e => schritte.some(s => s.etappe === e.nr));
+  const etappen = etappenFuer(!!z?.ich?.altbestand, !!z?.ich?.neustart, z?.ich?.betreiber).filter(e => schritte.some(s => s.etappe === e.nr));
   return (
     <>
       {etappen.map((e, i) => {

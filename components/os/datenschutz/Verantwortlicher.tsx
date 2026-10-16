@@ -6,6 +6,7 @@
 // alle anderen im Haushalt sehen die Angaben nur.
 
 import { useEffect, useState } from 'react';
+import { useBetreiber } from '../useInhaber';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Feldzeile, feld, LEUCHT, Hinweis } from '../ui';
 import { verantwortlicherPruefen, verantwortlicherText, type Verantwortlicher as V, type VerantwortlicherWirksam, type Empfaenger } from '@/lib/datenschutz/einrichtung';
@@ -21,6 +22,8 @@ const LEER = { name: '', anschrift: '', mail: '', telefon: '', vertretung: '', d
 export function VerantwortlicherKarte({ d, onGeaendert, i = 0 }: { d: EinrichtungAntwort; onGeaendert: () => void; i?: number }) {
   const [f, setF] = useState(LEER);
   const [meldung, setMeldung] = useState<{ text: string; gut: boolean } | null>(null);
+  // Namen von Umgebungswerten nur in der Betreiber-Instanz (15.10., Abnahme 2 A2).
+  const betreiber = useBetreiber() === true;
   useEffect(() => {
     const v = d.verantwortlicher;
     setF(v ? { name: v.name, anschrift: v.anschrift, mail: v.mail, telefon: v.telefon ?? '', vertretung: v.vertretung ?? '', dsbName: v.dsb?.name ?? '', dsbMail: v.dsb?.mail ?? '', seite: v.seite ?? '', aufsicht: v.aufsicht ?? '' } : LEER);
@@ -58,7 +61,7 @@ export function VerantwortlicherKarte({ d, onGeaendert, i = 0 }: { d: Einrichtun
         {d.darf ? <Knopf onClick={speichern}>Speichern</Knopf> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ändern kann nur der Inhaber.</span>}
         {meldung && <span role="status" style={{ fontSize: TYP.bedien, color: meldung.gut ? LEUCHT.gut : LEUCHT.achtung }}>{meldung.text}</span>}
       </div>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Ohne Eintrag gilt, was die Umgebung der Instanz vorgibt (MAKE_OS_VERANTWORTLICHER_*). Hinweis, keine Rechtsberatung.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>{betreiber ? 'Ohne Eintrag gilt, was die Umgebung der Instanz vorgibt (MAKE_OS_VERANTWORTLICHER_*).' : 'Ohne Eintrag gilt, was der Betreiber für eure Instanz hinterlegt hat.'} Hinweis, keine Rechtsberatung.</div>
     </Karte>
   );
 }

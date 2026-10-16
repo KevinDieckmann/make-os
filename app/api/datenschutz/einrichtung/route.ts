@@ -24,6 +24,7 @@ import { EINRICHTUNG_SPEICHER, verantwortlicherPruefen, verantwortlicherWirksam,
 import { einrichtungAendern, ladeEinrichtung } from '@/lib/datenschutz/einrichtung-server';
 import { datenschutzAngabenAus } from '@/lib/crm/netzwerken-recht';
 import { art14VorlagePruefen, ART14_STANDARD, ART14_PLATZHALTER } from '@/lib/datenschutz/art14';
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,9 +35,11 @@ export async function GET(req: Request) {
   const w = await imHaushaltDesInhabers(req);
   if (!w) return nein('Nur im Haushalt des Inhabers.', 403);
   const e = await ladeEinrichtung();
+  // Startwerte des Empfänger-Registers je Instanz (15.10., Abnahme 2 C22): die Infrastruktur des Betreibers nur in seiner Instanz.
+  const betreiber = await istBetreiberInstanz();
   const wirksam = verantwortlicherWirksam(e);
   if (new URL(req.url).searchParams.get('nur') === 'angaben') return NextResponse.json({ ok: true, ...datenschutzAngabenAus(wirksam.v) }, { headers: { 'Cache-Control': 'no-store' } });
-  return NextResponse.json({ ok: true, verantwortlicher: e.verantwortlicher ?? null, wirksam, empfaenger: empfaengerWirksam(e), art14: e.art14 ?? null, art14Wirksam: e.art14 ?? ART14_STANDARD, platzhalter: ART14_PLATZHALTER, darf: !w.dienst && (await istInhaber(w.person)) }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ ok: true, verantwortlicher: e.verantwortlicher ?? null, wirksam, empfaenger: empfaengerWirksam(e, betreiber), art14: e.art14 ?? null, art14Wirksam: e.art14 ?? ART14_STANDARD, platzhalter: ART14_PLATZHALTER, darf: !w.dienst && (await istInhaber(w.person)) }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
@@ -50,6 +53,7 @@ export async function POST(req: Request) {
   let b: { aktion?: string; verantwortlicher?: unknown; empfaenger?: unknown; id?: unknown; archiviert?: unknown; vorlage?: unknown };
   try { b = await jsonBegrenzt(req, 64_000); } catch (e) { return jsonZuGross(e) ?? nein('Kein JSON.', 400); }
   const jetzt = new Date().toISOString();
+  const betreiber = await istBetreiberInstanz();
 
   if (b.aktion === 'verantwortlicher') {
     const r = verantwortlicherPruefen(b.verantwortlicher);
@@ -68,27 +72,27 @@ export async function POST(req: Request) {
     if (!r.ok) return nein(r.fehler, 400);
     let neuAngelegt = false;
     const neu = await einrichtungAendern(e => {
-      const liste = empfaengerWirksam(e);
+      const liste = empfaengerWirksam(e, betreiber);
       neuAngelegt = !liste.some(x => x.id === r.e.id);
       if (neuAngelegt && liste.length >= 60) return e;
       return { ...e, empfaenger: empfaengerSetzen(liste, r.e, jetzt) };
     });
     if (!neu.empfaenger?.some(x => x.id === r.e.id)) return nein('Höchstens 60 Empfänger.', 413);
     await protokolliere(EINRICHTUNG_SPEICHER, [{ liste: 'empfaenger', op: neuAngelegt ? 'neu' : 'geaendert', id: r.e.id, felder: Object.keys(r.e) }], werAus(req));
-    return NextResponse.json({ ok: true, empfaenger: empfaengerWirksam(neu) });
+    return NextResponse.json({ ok: true, empfaenger: empfaengerWirksam(neu, betreiber) });
   }
   if (b.aktion === 'empfaenger-archiv' || b.aktion === 'empfaenger-weg') {
     const id = String(b.id ?? '');
     let gefunden = false;
     const neu = await einrichtungAendern(e => {
-      const liste = empfaengerWirksam(e);
+      const liste = empfaengerWirksam(e, betreiber);
       gefunden = liste.some(x => x.id === id);
       if (!gefunden) return e;
       return { ...e, empfaenger: b.aktion === 'empfaenger-weg' ? liste.filter(x => x.id !== id) : empfaengerArchivieren(liste, id, b.archiviert === true, jetzt) };
     });
     if (!gefunden) return nein('Empfänger nicht gefunden.', 404);
     await protokolliere(EINRICHTUNG_SPEICHER, [{ liste: 'empfaenger', op: b.aktion === 'empfaenger-weg' ? 'geloescht' : 'geaendert', id, ...(b.aktion === 'empfaenger-weg' ? {} : { felder: ['archiviert'] }) }], werAus(req));
-    return NextResponse.json({ ok: true, empfaenger: empfaengerWirksam(neu) });
+    return NextResponse.json({ ok: true, empfaenger: empfaengerWirksam(neu, betreiber) });
   }
   // Art. 14 (05.10., Betroffenenrechte v2): Vorlage der Information für Kontakte aus Dritt-Quellen — Platzhalter, nie versendet.
   if (b.aktion === 'art14-vorlage') {

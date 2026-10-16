@@ -273,7 +273,7 @@ function UebernehmenDialog({ api, art, daten, aktuell, onZu, onJa, laeuft }: { a
       {art === 'bisherig' ? (
         <div style={klein}>Die Rechnung von vor dem 03.10.: Fit 30 · Wärme 30 · Qualifizierung 30 · Erreichbarkeit 10, MQL ab 35 Marketing-Punkten, SQL bei Schmerz + Entscheider + Budget oder Zeitpunkt. Wer MQL werden kann, bestimmt weiterhin die Herkunft (Marketing), nicht diese Rechnung.</div>
       ) : (
-        <div style={klein}>Der Standard schärft die Kriterien nach MEDDICC (Schmerz, Entscheider, Fürsprecher, Prozess, Kennzahl, Wettbewerb) und BANT (Budget, Entscheider, Bedarf, Zeit): je Kriterium vier Stufen mit 1 · 3 · 5 Punkten, Schmerz und Entscheider doppelt gewichtet und als Muss, dazu Fit, Potenzial und im Marketing die Signale Event, {MARKE_EVENTS}, Newsletter, Termin, Empfehlung, Anfrage. Er gilt für alle, die nichts Eigenes gespeichert haben. Der Grund steht in SCORING.md.</div>
+        <div style={klein}>Der Standard schärft die Kriterien nach MEDDICC (Schmerz, Entscheider, Fürsprecher, Prozess, Kennzahl, Wettbewerb) und BANT (Budget, Entscheider, Bedarf, Zeit): je Kriterium vier Stufen mit 1 · 3 · 5 Punkten, Schmerz und Entscheider doppelt gewichtet und als Muss, dazu Fit, Potenzial und im Marketing die Signale Event, {MARKE_EVENTS}, Newsletter, Termin, Empfehlung, Anfrage. Er gilt für alle, die nichts Eigenes gespeichert haben. Der Grund: Schmerz und Entscheider entscheiden am häufigsten, ob aus einem Gespräch ein Auftrag wird — darum zählen sie doppelt und müssen erfüllt sein.</div>
       )}
       <Unterschiede a={aktuell} b={ziel} />
       <VorschauKarte api={api} alt={api.crm?.stand.scoring} neu={ziel} titel="So würden deine aktuellen Leads dann eingestuft" />

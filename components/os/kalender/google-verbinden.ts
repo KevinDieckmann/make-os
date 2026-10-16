@@ -4,6 +4,8 @@
 // starten (POST /api/google/verbinden mit der Funktion `kalender` → Google → /api/google/rueckruf → /os/kalender?google=…),
 // Texte der Rückkehr. Nie Tokens im Browser.
 
+import { BETREIBER_RICHTET_EIN } from '@/lib/betrieb/betreiber';
+
 /** Stand der eigenen Google-Kalender-Verbindung (GET /api/kalender/google) — `liste`: zusätzlich die wählbaren Kalender. */
 export async function googleKalenderStandLaden<T>(liste = false): Promise<T | null> {
   return fetch(`/api/kalender/google${liste ? '?liste=1' : ''}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() as Promise<T> : null)).catch(() => null);
@@ -33,5 +35,11 @@ export const GOOGLE_HINWEISE: Record<string, { text: string; achtung?: boolean }
   fehler: { text: 'Die Verbindung zu Google ließ sich nicht abschließen.', achtung: true },
 };
 
-/** Text, wenn auf dem Server die Google-Anwendung fehlt. */
+/** Text, wenn auf dem Server die Google-Anwendung fehlt — so nur in der Betreiber-Instanz (`googleNichtEingerichtet`). */
 export const GOOGLE_NICHT_EINGERICHTET = 'Noch nicht eingerichtet: Auf dem Server fehlen die Zugangsdaten der Google-Anwendung (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET). Schritt für Schritt: GOOGLE_KALENDER_EINRICHTEN.md.';
+/**
+ * Der Text für diese Instanz (15.10., Abnahme 2 A2): Namen der Umgebungswerte und die Anleitung nur in der Betreiber-Instanz
+ * (`useBetreiber`), sonst der neutrale Satz. `null` (noch unbekannt) = neutral.
+ */
+export const googleNichtEingerichtet = (betreiber: boolean | null | undefined): string =>
+  (betreiber === true ? GOOGLE_NICHT_EINGERICHTET : `Google ist auf dieser Instanz noch nicht eingerichtet. ${BETREIBER_RICHTET_EIN}`);

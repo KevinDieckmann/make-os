@@ -19,6 +19,8 @@ import {
 import { AgentenHirn } from './AgentenHirn';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Ring, Zahl, Hinweis, LEUCHT, Spalten, Spalte, aufZwei } from './ui';
 import { ZoeReiter } from './ZoeReiter';
+import { useBetreiber } from './useInhaber';
+import { BETREIBER_WISSEN } from '@/lib/betrieb/betreiber';
 
 interface Cfg { autonomy?: Autonomy; enabled?: boolean; model?: ModelTier; buildNext?: boolean }
 type CfgMap = Record<string, Cfg>;
@@ -38,6 +40,9 @@ function Wahl({ an, farbe, onClick, children }: { an: boolean; farbe: string; on
 export function AgentenView() {
   const [cfg, setCfg] = useState<CfgMap>({});
   const [offen, setOffen] = useState<string | null>(null);
+  // Bau-Notizen des Herstellers („So würde ich ihn bauen“, „Als Nächstes bauen“) und Funktionen mit Betreiber-Wissen nur in der
+  // Betreiber-Instanz (15.10., Abnahme 2 A2).
+  const betreiber = useBetreiber() === true;
   const [laeufe, setLaeufe] = useState<Lauf[]>([]);
   const [score, setScore] = useState<number | null | undefined>(undefined);
 
@@ -89,19 +94,21 @@ export function AgentenView() {
                             <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 7 }}>Status</div>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               <Wahl an={e.enabled} farbe={LEUCHT.gut} onClick={() => patch(a.id, { enabled: !e.enabled })}>{e.enabled ? 'Aktiv ✓' : 'Aus'}</Wahl>
-                              <Wahl an={e.buildNext} farbe={LEUCHT.achtung} onClick={() => patch(a.id, { buildNext: !e.buildNext })}>★ Als Nächstes bauen</Wahl>
+                              {betreiber && <Wahl an={e.buildNext} farbe={LEUCHT.achtung} onClick={() => patch(a.id, { buildNext: !e.buildNext })}>★ Als Nächstes bauen</Wahl>}
                             </div>
                           </div>
                         </div>
                         {a.gate && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Freigabe-Gate: {a.gate}</div>}
                         <div>
                           <div style={{ fontSize: 11.5, color: C.inkLeise, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 6 }}>Funktionen</div>
-                          {a.funktionen.map(f => <div key={f} style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}><span style={{ color: d.color }}>›</span>{f}</div>)}
+                          {a.funktionen.filter(f => betreiber || !BETREIBER_WISSEN.test(f)).map(f => <div key={f} style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}><span style={{ color: d.color }}>›</span>{f}</div>)}
                         </div>
-                        <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 12, padding: '10px 14px' }}>
-                          <div style={{ fontSize: 11.5, color: LEUCHT.agenten, letterSpacing: '.06em', textTransform: 'uppercase' }}>So würde ich ihn bauen</div>
-                          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginTop: 5 }}>{a.bauplan}</div>
-                        </div>
+                        {betreiber && (
+                          <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 12, padding: '10px 14px' }}>
+                            <div style={{ fontSize: 11.5, color: LEUCHT.agenten, letterSpacing: '.06em', textTransform: 'uppercase' }}>So würde ich ihn bauen</div>
+                            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginTop: 5 }}>{a.bauplan}</div>
+                          </div>
+                        )}
                         {a.href && <div><Knopf href={a.href}>Agent öffnen ›</Knopf></div>}
                       </div>
                     )}

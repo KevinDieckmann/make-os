@@ -12,6 +12,8 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Knopf, LEUCHT, useRueckfrage } from '../ui';
 import { vorText } from './daten';
+import { BETREIBER_RICHTET_EIN } from '@/lib/betrieb/betreiber';
+import { useBetreiber } from '../useInhaber';
 
 export interface GmailMeta {
   konfiguriert: boolean; verbunden: boolean; bereit: boolean; konto?: string; getrennt?: { grund: string };
@@ -36,6 +38,7 @@ const post = (url: string, body?: unknown) => fetch(url, { method: 'POST', heade
 export function GmailVerbinden({ meta, onGeaendert, meldung }: { meta: GmailMeta | null; onGeaendert: () => void; meldung: (t: string) => void }) {
   const [arbeit, setArbeit] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<{ text: string; achtung?: boolean } | null>(null);
+  const betreiber = useBetreiber() === true;
   const { bestaetigen, dialog } = useRueckfrage();
 
   // Rückkehr von Google: ?google=verbunden|… → Hinweis zeigen, Adresse säubern.
@@ -75,7 +78,8 @@ export function GmailVerbinden({ meta, onGeaendert, meldung }: { meta: GmailMeta
   if (!meta) return kasten || null;
 
   if (!meta.konfiguriert) {
-    return <div style={{ ...klein, marginTop: 14 }}>{kasten}Gmail ist noch nicht eingerichtet (auf dem Server fehlt die Google-Anwendung) — Schritt für Schritt: GOOGLE_GMAIL_EINRICHTEN.md.</div>;
+    // Die Anleitung (Repo-Dokument) nur in der Betreiber-Instanz (15.10., Abnahme 2 A2).
+    return <div style={{ ...klein, marginTop: 14 }}>{kasten}{betreiber ? 'Gmail ist noch nicht eingerichtet (auf dem Server fehlt die Google-Anwendung) — Schritt für Schritt: GOOGLE_GMAIL_EINRICHTEN.md.' : `Gmail ist auf dieser Instanz noch nicht eingerichtet. ${BETREIBER_RICHTET_EIN}`}</div>;
   }
   if (!meta.bereit) {
     return (

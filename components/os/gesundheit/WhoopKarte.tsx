@@ -12,6 +12,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Chip, LEUCHT, useRueckfrage } from '../ui';
+import { BETREIBER_RICHTET_EIN } from '@/lib/betrieb/betreiber';
+import { useBetreiber } from '../useInhaber';
 
 interface Stand {
   ok: boolean; konfiguriert: boolean; fehlt: string[]; verbunden: boolean; konto?: string; seit?: string;
@@ -35,6 +37,7 @@ const vor = (min: number | null) => (min === null ? 'noch nie' : min < 2 ? 'gera
 export function WhoopKarte({ i = 0, eingebettet = false }: { i?: number; eingebettet?: boolean }) {
   const [s, setS] = useState<Stand | null>(null);
   const [ladeFehler, setLadeFehler] = useState(false);
+  const betreiber = useBetreiber() === true;
   const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'achtung' | 'kritisch' } | null>(null);
   const { bestaetigen, dialog } = useRueckfrage();
   const rueckruf = useSearchParams().get('whoop');
@@ -85,10 +88,13 @@ export function WhoopKarte({ i = 0, eingebettet = false }: { i?: number; eingebe
         {s && !s.konfiguriert && (
           <div style={{ display: 'grid', gap: 2 }}>
             <div style={klein}>WHOOP ist auf diesem Server noch nicht eingerichtet — danach verbindest du hier dein Konto.</div>
-            <details style={klein}>
-              <summary style={{ cursor: 'pointer', padding: '12px 0', color: C.inkDim }}>Was fehlt (für den Inhaber)</summary>
-              <div>Es fehlt: {s.fehlt.join(' · ')} (einmalig über das Einrichtungs-Skript).</div>
-            </details>
+            {/* Namen der Umgebungswerte nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — sonst der neutrale Satz. */}
+            {betreiber ? (
+              <details style={klein}>
+                <summary style={{ cursor: 'pointer', padding: '12px 0', color: C.inkDim }}>Was fehlt (für den Inhaber)</summary>
+                <div>Es fehlt: {s.fehlt.join(' · ')} (einmalig über das Einrichtungs-Skript).</div>
+              </details>
+            ) : <div style={klein}>{BETREIBER_RICHTET_EIN}</div>}
           </div>
         )}
 

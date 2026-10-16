@@ -4,6 +4,7 @@
 // Die eigene Nummer geht nur maskiert an den Browser, der Code nur einmal in der Antwort auf „Verbinden“ (gespeichert nur sein
 // Fingerabdruck, 15 Minuten).
 
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { createHash, randomInt } from 'node:crypto';
 import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { pruefe, fehlschlag } from '@/lib/zugang/drossel';
@@ -46,7 +47,8 @@ export async function zoeWhatsappStatus(person: string, o: { pruefen?: boolean }
   const inhaber = await istInhaber(person);
   const kanal = kanalSicht(await ladeKanal(person));
   const basis = { ok: true as const, inhaber, kanal, fassung: { einwilligung: ZOE_KANAL_FASSUNG, inhalte: ZOE_INHALTE_FASSUNG }, webhookAdresse: zoeWebhookAdresse() };
-  if (!k) return { ...basis, eingerichtet: false, konflikt: zoeWhatsappKonflikt(), fehlend: inhaber ? zoeWhatsappFehlend() : [], verbindung: 'ungeprueft' };
+  // Namen der Umgebungswerte nur für den Inhaber der Betreiber-Instanz (15.10., Abnahme 2 A2).
+  if (!k) return { ...basis, eingerichtet: false, konflikt: zoeWhatsappKonflikt(), fehlend: inhaber && (await istBetreiberInstanz()) ? zoeWhatsappFehlend() : [], verbindung: 'ungeprueft' };
   // Nur auf ausdrücklichen Wunsch (POST „pruefen“) bei Meta nachsehen — GET liest nur den Cache.
   if (o.pruefen) {
     await zoeTelefonAngaben(k, true);

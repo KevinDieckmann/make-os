@@ -8,7 +8,8 @@ import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze'
 import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson, updateGeschuetzt } from '@/lib/store/local-db';
-import { SEED, blockAus, mitBlock, type BacklogItem } from '@/lib/make-one/backlog-data';
+import { startKarten, blockAus, mitBlock, type BacklogItem } from '@/lib/make-one/backlog-data';
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
@@ -17,17 +18,15 @@ export const dynamic = 'force-dynamic';
 // Seit 25.09. trägt die Datei auch die Etappen der Planung (lib/bauplan) — jeder Schreibweg behält sie.
 interface BacklogFile { items: BacklogItem[]; etappen?: unknown[] }
 
-const seeded = (): BacklogItem[] => {
-  const now = new Date().toISOString();
-  return SEED.map(s => ({ ...s, angelegt: now }));
-};
+// Der Startbestand (Entwickler-Backlog des Herstellers) nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — sonst leer.
+const seeded = async (): Promise<BacklogItem[]> => startKarten(await istBetreiberInstanz(), new Date().toISOString());
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const file = await loadJson<BacklogFile>('backlog');
   // Erststart: mit dem, was aus Audit/Review/Gesprächen bekannt ist — nur ANGEZEIGT. Ein lesender GET schreibt nicht
   // (05.10., Routen-Register): gespeichert wird der Startbestand mit dem ersten PUT/POST (POST legt ihn selbst an).
-  if (!file || !Array.isArray(file.items) || !file.items.length) return NextResponse.json({ items: seeded(), startbestand: true });
+  if (!file || !Array.isArray(file.items) || !file.items.length) return NextResponse.json({ items: await seeded(), startbestand: true });
   return NextResponse.json({ items: file.items.map(mitBlock) });
 }
 
@@ -65,8 +64,9 @@ export async function POST(req: Request) {
     angelegt: new Date().toISOString(),
   };
 
+  const start = await seeded();
   const next = await updateJson<BacklogFile>('backlog', current => {
-    const items = Array.isArray(current?.items) && current.items.length ? current.items : seeded();
+    const items = Array.isArray(current?.items) && current.items.length ? current.items : start;
     // Gleiche id → aktualisieren statt doppelt anlegen.
     const i = items.findIndex(x => x.id === item.id);
     if (i >= 0) { const copy = [...items]; copy[i] = { ...copy[i], ...item, angelegt: copy[i].angelegt }; return { ...(current ?? {}), items: copy }; }

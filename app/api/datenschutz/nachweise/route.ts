@@ -19,7 +19,8 @@ import { bilderZaehlen } from '@/lib/store/bild-ablage';
 import { brainIndexLage } from '@/lib/hoi/innen';
 import { pepperGesetzt } from '@/lib/datenschutz/pepper';
 import { DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
-import { v2Bereitschaft } from '@/lib/datenschutz/nachweise';
+import { v2Bereitschaft, v2FuerInstanz } from '@/lib/datenschutz/nachweise';
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,7 +72,8 @@ export async function GET(req: Request) {
     verschluesselung,
     brainIndex,
     bilder,
-    v2: v2Bereitschaft({ ...verschluesselung, brainIndexKlartext: !!brainIndex?.klartextAufPlatte || !!brainIndex?.altDateiDa, bilderKlartext: bilder.klartext, alteHuellen: durchsicht?.alteHuellen ?? null, klartextBestaende: durchsicht?.klartext ?? null }),
+    // Außerhalb der Betreiber-Instanz ohne Umgebungswerte und Skripte (15.10., Abnahme 2 A2).
+    v2: v2FuerInstanz(v2Bereitschaft({ ...verschluesselung, brainIndexKlartext: !!brainIndex?.klartextAufPlatte || !!brainIndex?.altDateiDa, bilderKlartext: bilder.klartext, alteHuellen: durchsicht?.alteHuellen ?? null, klartextBestaende: durchsicht?.klartext ?? null }), await istBetreiberInstanz()),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

@@ -238,7 +238,7 @@ export function dateiPruefen(name: string, d: KettenDatei | null, vorgaenger: { 
   }
   if (k.alg === 'hmac-sha256' && !pepperGesetzt()) {
     p.stand = 'warnung'; p.verbindung = 'nicht-pruefbar'; p.siegel = siegel ? 'ok' : 'fehlt';
-    p.hinweis = 'mit Pepper versiegelt, MAKE_OS_PEPPER fehlt jetzt — nicht prüfbar';
+    p.hinweis = 'mit Pepper versiegelt, der Pepper fehlt jetzt — nicht prüfbar';
     return p;
   }
   // Anfang

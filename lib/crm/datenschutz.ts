@@ -18,7 +18,7 @@ import { hatTyp, kategorienVon } from './mehrfach';
 import { informationOffen, INFO_FRIST_TAGE } from './netzwerken-recht';
 import { UG_NAME } from '@/lib/einheiten';
 import { createHash } from 'node:crypto';
-import { VERANTWORTLICH_EINRICHTUNG, avvOffen, avvText, drittlandOhneGarantie, type Empfaenger } from '@/lib/datenschutz/einrichtung';
+import { VERANTWORTLICH_EINRICHTUNG, NUR_BETREIBER_EMPFAENGER, avvOffen, avvText, drittlandOhneGarantie, type Empfaenger } from '@/lib/datenschutz/einrichtung';
 import { WEG } from '@/lib/wege';
 export interface PflichtVorschlag { id: string; herkunft?: Herkunft; rechtsgrundlage?: Rechtsgrundlage; fremddaten?: boolean; grund: string }
 
@@ -70,6 +70,11 @@ export interface DatenschutzUmfeld {
   pannen?: { offen: number; dringend: number };
   /** Medien (09.10., Nachzug): Zähler über Freigaben und Einwilligungen — fehlt/null, wenn es keine Business-Medien gibt (dann kein Prüfpunkt). */
   medien?: import('@/lib/medien/datenschutz').MedienPruefZahlen | null;
+  /**
+   * Betreiber-Instanz (15.10., Abnahme 2 A2): nur dort nennen Prüfpunkte den Weg am Server (Skripte, Repo-Dokumente). `false` → neutral
+   * („richtet der Betreiber ein“); fehlt die Angabe, gilt das Verhalten von vorher.
+   */
+  betreiber?: boolean;
 }
 
 const W = {
@@ -81,6 +86,7 @@ const W = {
   konto: { text: 'Konto › Zweiter Faktor', href: WEG.konto() },
   agenten: { text: 'Agenten einzeln abschalten', href: WEG.agenten() },
   hoi: { text: 'Head of IT › Sicherung (age einrichten, DEPLOY.md)', href: '/os/hoi' },
+  hoiNeutral: { text: 'Head of IT › Sicherung', href: '/os/hoi' },
   medienFrei: { text: 'Fotos & Videos › Freigegeben', href: WEG.medien({ filter: 'freigegeben' }) },
   medienGesperrt: { text: 'Fotos & Videos › Gesperrt', href: WEG.medien({ filter: 'gesperrt' }) },
   medienRoh: { text: 'Fotos & Videos › Rohmaterial', href: WEG.medien({ filter: 'roh' }) },
@@ -168,7 +174,11 @@ export function selbstpruefung(kontakte: Kontakt[], crm: CrmBestand, heute: stri
     norm: 'Art. 28 Abs. 3, Art. 44–46 DSGVO', ...(offen.length || ohneGarantie.length ? { weg: W.empfaenger } : {}) });
   // ── Sicherungen verschlüsselt (age = öffentlicher Schlüssel, privater nicht auf dem Server) ──
   const s = umfeld.sicherung;
-  raus.push({ id: 'sicherung', titel: 'Sicherungen verschlüsselt (age)', status: s?.verfahren === 'age' ? 'erfuellt' : 'teilweise',
+  // Außerhalb der Betreiber-Instanz ohne Skript und Verfahren am Server (15.10., Abnahme 2 A2) — der Sinn des Prüfpunkts bleibt.
+  if (umfeld.betreiber === false) raus.push({ id: 'sicherung', titel: 'Sicherungen verschlüsselt (age)', status: s?.verfahren === 'age' ? 'erfuellt' : 'teilweise',
+    befund: !s ? 'unbekannt — der Server meldet noch keine Nachtsicherung; sie richtet der Betreiber eurer Instanz ein' : s.verfahren === 'age' ? `verschlüsselt, privater Schlüssel nicht auf dem Server${s.zeit ? ` · letzte ${tagVon(s.zeit)}` : ''}` : s.verfahren === 'openssl' ? 'Übergangsverfahren (Passwort auf demselben Server) — die Umstellung übernimmt der Betreiber eurer Instanz' : 'Verfahren nicht gemeldet',
+    norm: 'Art. 32 Abs. 1 lit. a, c DSGVO', ...(s?.verfahren === 'age' ? {} : { weg: W.hoiNeutral }) });
+  else raus.push({ id: 'sicherung', titel: 'Sicherungen verschlüsselt (age)', status: s?.verfahren === 'age' ? 'erfuellt' : 'teilweise',
     befund: !s ? 'unbekannt — keine Statusdatei vom Server (lokal normal; auf dem Server schreibt deploy/sicherung.sh system/sicherung.json)' : s.verfahren === 'age' ? `age (privater Schlüssel nicht auf dem Server)${s.zeit ? ` · letzte ${tagVon(s.zeit)}` : ''}` : s.verfahren === 'openssl' ? 'Übergangsverfahren (openssl mit Passwort auf demselben Server) — age einrichten' : 'Verfahren nicht gemeldet',
     norm: 'Art. 32 Abs. 1 lit. a, c DSGVO', ...(s?.verfahren === 'age' ? {} : { weg: W.hoi }) });
   // ── Medien (09.10., Nachzug): nur, wenn es Business-Medien bzw. Einwilligungen gibt ──
@@ -658,7 +668,27 @@ export function verantwortlichHeben(vorhanden: readonly Verarbeitung[]): Verarbe
  * Startbestand (wenn leer), Netzwerken, Organisation (Register/Kapazität), Google-Kalender/-Mail (wenn Google eingerichtet), WhatsApp (wenn eingerichtet),
  * und alte feste Verantwortliche heben. Idempotent: `geaendert` = false, wenn nichts zu tun war.
  */
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+// ── Verzeichnis einer fremden Instanz (15.10., Abnahme 2 C22) ────────────────────────────────────────────────────────────────────
+// Die Startwerte nennen die Infrastruktur des Betreibers (Rechenzentrum, Code und Vault auf GitHub, Wächter der Sicherung) und Repo-
+// Dokumente. Außerhalb der Betreiber-Instanz bekommt ein NEU angelegter Eintrag diese neutrale Fassung (Hosting = „Betreiber der Instanz“,
+// passend zum Platzhalter im Empfänger-Register); gespeicherte Einträge fasst das nie an. Rein.
+const VV_NEUTRAL: [string | RegExp, string][] = [
+  ['Brain (Wissensbasis, Vault auf GitHub)', 'Brain (Wissensbasis, Vault)'],
+  ['GitHub (privates Repository des Vaults, Abgleich alle 10 Minuten); ', ''],
+  ['; Healthchecks (nur Ping); GitHub (Außenprüfung: nur Erreichbarkeit)', ''],
+  ['; GitHub: USA — prüfen', ''],
+  ['Git-Historie nur über das dokumentierte Verfahren (DATENARCHITEKTUR.md); ', ''],
+  [/,\s*(?:[\w-]+\/)?[A-Z][A-Z0-9_]+\.md\b/g, ''],
+  [/\s*\((?:[\w-]+\/)?[A-Z][A-Z0-9_]+\.md\b[^()]*\)/g, ''],
+  [/Hetzner/g, 'Betreiber der Instanz'],
+];
+export function verarbeitungNeutral(v: Verarbeitung): Verarbeitung {
+  const text = (t: string) => VV_NEUTRAL.reduce((s, [a, b]) => (typeof a === 'string' ? s.split(a).join(b) : s.replace(a, b)), t);
+  const aus = Object.fromEntries(Object.entries(v).map(([k, w]) => [k, typeof w === 'string' && k !== 'id' ? text(w) : w])) as unknown as Verarbeitung;
+  return v.empfaengerIds ? { ...aus, empfaengerIds: v.empfaengerIds.filter(id => !NUR_BETREIBER_EMPFAENGER.includes(id)) } : aus;
+}
+
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -679,6 +709,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   l = verantwortlichHeben(l);
   // Mac-Zulieferer aus (08.10., Lücke 10): die Verarbeitung „Zulieferung vom Rechner …“ findet nicht mehr statt → archiviert (nie gelöscht).
   if (opt.zuliefererAus !== undefined) l = zuliefererVerarbeitungArchivieren(l, opt.zuliefererAus, jetzt);
+  // Außerhalb der Betreiber-Instanz (15.10., Abnahme 2 C22): NEU angelegte Einträge ohne die Infrastruktur des Betreibers — gespeicherte bleiben.
+  if (opt.betreiber === false) { const da = new Set(vorhanden.map(v => v.id)); l = l.map(v => (da.has(v.id) ? v : verarbeitungNeutral(v))); }
   const geaendert = l.length !== vorhanden.length || l.some((v, i) => v !== vorhanden[i] && JSON.stringify(v) !== JSON.stringify(vorhanden[i]));
   return { liste: geaendert ? l : [...vorhanden], geaendert };
 }

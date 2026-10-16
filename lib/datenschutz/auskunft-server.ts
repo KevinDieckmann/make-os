@@ -4,6 +4,7 @@
 // Empfänger), wirksame Löschfristen. Die Regeln selbst sind rein (./art15.ts). Wirft nie wegen fehlender Einrichtung — dann steht
 // „Verantwortlicher fehlt“ in der Auskunft.
 
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { loadJson } from '@/lib/store/local-db';
 import { ladeCrm } from '@/lib/crm/speicher';
 import { verzeichnisVervollstaendigen } from '@/lib/crm/datenschutz';
@@ -23,7 +24,8 @@ export async function auskunftAngaben(art: AuskunftArt, o: { bereiche?: readonly
   let einrichtung = {};
   try { einrichtung = await ladeEinrichtung(); } catch { /* „fehlt“ steht dann in der Auskunft */ }
   const crm = await ladeCrm();
-  const verarbeitungen = verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()) }).liste;
+  const betreiber = await istBetreiberInstanz();
+  const verarbeitungen = verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, { betreiber, google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()) }).liste;
   const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER).catch(() => null)) ?? {}).fristen);
   const lf = (id: Parameters<typeof fristText>[0], bereich: string, satz: (t: string) => string) => ({ bereich, frist: satz(fristText(id, fristen[id])) });
   const kontaktFristen = art === 'kontakt' ? [
@@ -34,7 +36,7 @@ export async function auskunftAngaben(art: AuskunftArt, o: { bereiche?: readonly
   ] : [];
   const e = einrichtung as Parameters<typeof verantwortlicherWirksam>[0];
   return art15Angaben({
-    art, verantwortlicher: verantwortlicherWirksam(e).v, empfaenger: empfaengerWirksam(e), verarbeitungen,
+    art, verantwortlicher: verantwortlicherWirksam(e).v, empfaenger: empfaengerWirksam(e, betreiber), verarbeitungen,
     ...(o.bereiche ? { bereiche: o.bereiche } : {}), fristen: [...kontaktFristen, ...(o.fristen ?? [])], sicherungen: SICHERUNG_SATZ, herkunft: o.herkunft,
   });
 }

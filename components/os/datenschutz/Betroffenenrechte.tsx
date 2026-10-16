@@ -11,6 +11,8 @@ import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Feldzeile, feld, Chip, LEUCHT } from '../ui';
 import type { EinrichtungAntwort } from './Verantwortlicher';
+import { BETREIBER_SCHRITT } from '@/lib/betrieb/betreiber';
+import { useBetreiber } from '../useInhaber';
 
 export function Art14VorlageKarte({ d, onGeaendert, i = 0 }: { d: EinrichtungAntwort; onGeaendert: () => void; i?: number }) {
   const [v, setV] = useState(d.art14Wirksam ?? { betreff: '', text: '' });
@@ -55,6 +57,7 @@ export function VertragsendeKarte({ i = 0 }: { i?: number }) {
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState<{ text: string; gut: boolean } | null>(null);
   const [zweiterFaktor, setZweiterFaktor] = useState(false);
+  const betreiber = useBetreiber() === true;
   useEffect(() => { fetch('/api/datenschutz/instanz-export', { cache: 'no-store' }).then(x => x.json()).then(r => { if (r.ok) setUmfang(r.umfang); }).catch(() => {}); }, []);
   async function exportieren() {
     setLaeuft(true); setMeldung(null);
@@ -92,8 +95,13 @@ export function VertragsendeKarte({ i = 0 }: { i?: number }) {
         <Knopf aus={!f.passwort || laeuft} onClick={() => void exportieren()}>{laeuft ? 'Wird exportiert …' : 'Alles exportieren'}</Knopf>
       </div>
       {meldung && <div style={{ marginTop: 10 }}><Hinweis art={meldung.gut ? 'gut' : 'achtung'}>{meldung.text}</Hinweis></div>}
+      {/* Der Befehl am Server nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — sonst: das macht der Betreiber. */}
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55, marginTop: 12 }}>
-        Löschen der Instanz geht bewusst NICHT aus der App: auf dem Server <code style={{ fontFamily: SCHRIFT.mono }}>node scripts/instanz-loeschen.mjs --ordner &lt;Datenordner&gt;</code> zeigt im Trockenlauf, was gelöscht würde, nennt die Sicherungen (werden nach spätestens 12 Monaten überschrieben) und gibt einen Bestätigungs-Code aus; erst mit <code style={{ fontFamily: SCHRIFT.mono }}>--ausfuehren --code …</code> wird gelöscht. Anleitung: datenschutz/LOESCHKONZEPT.md › 6 und KUNDEN_ONBOARDING_DATENSCHUTZ.md › E.
+        {betreiber ? <>
+          Löschen der Instanz geht bewusst NICHT aus der App: auf dem Server <code style={{ fontFamily: SCHRIFT.mono }}>node scripts/instanz-loeschen.mjs --ordner &lt;Datenordner&gt;</code> zeigt im Trockenlauf, was gelöscht würde, nennt die Sicherungen (werden nach spätestens 12 Monaten überschrieben) und gibt einen Bestätigungs-Code aus; erst mit <code style={{ fontFamily: SCHRIFT.mono }}>--ausfuehren --code …</code> wird gelöscht. Anleitung: datenschutz/LOESCHKONZEPT.md › 6 und KUNDEN_ONBOARDING_DATENSCHUTZ.md › E.
+        </> : <>
+          Löschen der Instanz geht bewusst nicht aus der App. {BETREIBER_SCHRITT} Er zeigt vorher, was gelöscht wird, und nennt die Sicherungen — sie werden nach spätestens 12 Monaten überschrieben.
+        </>}
       </div>
     </Karte>
   );

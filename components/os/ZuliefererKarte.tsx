@@ -142,7 +142,8 @@ export function ZuliefererKarte({ i = 0 }: { i?: number }) {
         {!lage.aktiv && s.spiegel.erinnerungen.da && <Knopf leise onClick={() => spiegelLoeschen('erinnerungen')}>Erinnerungs-Spiegel löschen</Knopf>}
         {!lage.aktiv && s.spiegel.kontakte.da && <Knopf leise onClick={() => spiegelLoeschen('kontakte')}>Adressbuch-Spiegel löschen ({s.spiegel.kontakte.anzahl})</Knopf>}
       </div>
-      {!lage.aktiv && lage.altbestand && (
+      {/* Das Skript am Mac nur in der Betreiber-Instanz (15.10., Abnahme 2 A2). */}
+      {!lage.aktiv && lage.altbestand && betreiber === true && (
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
           Am Mac den Dienst entfernen: <code style={{ fontFamily: SCHRIFT.mono }}>bash scripts/mac-zulieferer-entfernen.sh</code> (zeigt erst nur an), dann mit <code style={{ fontFamily: SCHRIFT.mono }}>--ausfuehren</code>.
         </div>

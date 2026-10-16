@@ -15,6 +15,7 @@
 // den Inhaber und wird beim ersten Lesen einmal in SEINEN Bestand übernommen (dann aus `oauth-tokens` gelöscht). Nie für eine andere
 // Person. Fehlen ihm Scopes (der alte Rohbau bat nicht um `read:workout`), zeigt der Status „neu verbinden“.
 
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { randomInt } from 'node:crypto';
 import { loadJson, saveJson, updateJson, bestandEntfernen } from '@/lib/store/local-db';
 import { adresseMaskiert } from '@/lib/zugang/konten';
@@ -349,7 +350,8 @@ export interface WhoopStatus {
 
 export async function whoopStatus(person: string): Promise<WhoopStatus> {
   const fehlt = whoopFehlt();
-  const basis = { konfiguriert: fehlt.length === 0, fehlt };
+  // Namen der Umgebungswerte nur in der Betreiber-Instanz (15.10., Abnahme 2 A2); „eingerichtet?“ bleibt dieselbe Antwort.
+  const basis = { konfiguriert: fehlt.length === 0, fehlt: fehlt.length && (await istBetreiberInstanz()) ? fehlt : [] };
   const v = await ladeVerbindung(person);
   if (!v) return { ...basis, verbunden: false, scopesFehlen: [] };
   const konto = v.email ? adresseMaskiert(v.email) : undefined;

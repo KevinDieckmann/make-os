@@ -2,6 +2,7 @@
 // GET → je Anbieter: konfiguriert? verbunden? (nur Metadaten, NIE Tokens).
 // POST { provider, aktion: 'trennen' } → Tokens lokal löschen.
 
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { PROVIDER, REDIRECT_URI, konfiguriert, tokenStatus, trennen } from '@/lib/oauth';
@@ -12,6 +13,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
+  // Anleitung und Namen der Umgebungswerte nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — die Karte sagt sonst „richtet der Betreiber ein“.
+  const betreiber = await istBetreiberInstanz();
   const liste = await Promise.all(Object.values(PROVIDER).map(async p => {
     const s = await tokenStatus(p.id);
     return {
@@ -22,9 +25,7 @@ export async function GET(req: Request) {
       seit: s.seit ?? null,
       laeuftAb: s.laeuftAb ?? null,
       scope: s.scope ?? null,
-      anleitung: p.anleitung.replace('{rueckruf}', REDIRECT_URI),
-      envId: p.envId,
-      envSecret: p.envSecret,
+      ...(betreiber ? { anleitung: p.anleitung.replace('{rueckruf}', REDIRECT_URI), envId: p.envId, envSecret: p.envSecret } : {}),
     };
   }));
   return NextResponse.json({ verbindungen: liste });

@@ -99,7 +99,8 @@ export class GoogleVerbindungsFehler extends Error {
   constructor(public code: VerbindungsFehlerCode, message: string, public status = 409) { super(message); }
 }
 const TEXT: Record<VerbindungsFehlerCode, string> = {
-  'nicht-konfiguriert': 'Google ist noch nicht eingerichtet (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET fehlen in der Server-Umgebung).',
+  // Ohne Namen der Umgebungswerte (15.10., Abnahme 2 A2) — die Fehlermeldung erreicht jede Instanz; die Betreiber-Anleitung steht im Head of IT.
+  'nicht-konfiguriert': 'Google ist auf dieser Instanz noch nicht eingerichtet — das richtet die Inhaberin bzw. der Betreiber eurer Instanz ein.',
   'nicht-verbunden': 'Google ist für diese Person nicht verbunden.',
   getrennt: 'Die Google-Verbindung ist getrennt — bitte neu verbinden.',
   'scope-fehlt': 'Für diese Funktion fehlt eine Freigabe bei Google — bitte neu verbinden und alle Häkchen setzen.',

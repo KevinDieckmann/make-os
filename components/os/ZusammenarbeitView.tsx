@@ -12,7 +12,8 @@
 import Link from 'next/link';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { ZONEN } from '@/lib/make-one/onboarding-data';
+import { zonenFuer } from '@/lib/make-one/onboarding-data';
+import { useBetreiber } from './useInhaber';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, feld, LEUCHT } from './ui';
 
 const ZONENFARBE: Record<string, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
@@ -43,9 +44,11 @@ export function ZusammenarbeitView() {
   };
 
   const aktiv = !!b?.aktiv;
+  // Die Stände des Codes (lokal bauen, online ausrollen) nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — sonst spielt der Betreiber Updates ein.
+  const betreiber = useBetreiber() === true;
 
   return (
-    <Seite titel="Zusammenarbeit" unter="Gebaut wird lokal, online geht ein Update nur auf das Wort des Inhabers — drei Zonen und ein Schalter."
+    <Seite titel="Zusammenarbeit" unter={betreiber ? 'Gebaut wird lokal, online geht ein Update nur auf das Wort des Inhabers — drei Zonen und ein Schalter.' : 'Ein Update spielt der Betreiber eurer Instanz ein — drei Zonen und ein Schalter.'}
       rechts={<Link href="/os/onboarding" className="fassbar" style={linkKnopf}>Onboarding ›</Link>}>
 
       {/* Der Schalter */}
@@ -62,7 +65,8 @@ export function ZusammenarbeitView() {
         <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.55, margin: '4px 0 0' }}>
           {aktiv
             ? <>Seit {b?.seit ? `${b.seit.slice(11, 16)} Uhr` : 'gerade eben'}{b?.woran ? ` · ${b.woran}` : ''}. Bitte bis „fertig“ nichts in großen Mengen schreiben.</>
-            : 'Einschalten, bevor ein Update ausgerollt wird (dauert etwa fünf Minuten). Lokales Bauen braucht den Schalter nicht — davon merkt die Instanz nichts.'}
+            : betreiber ? 'Einschalten, bevor ein Update ausgerollt wird (dauert etwa fünf Minuten). Lokales Bauen braucht den Schalter nicht — davon merkt die Instanz nichts.'
+              : 'Einschalten, solange ein Update eingespielt wird (dauert etwa fünf Minuten).'}
         </p>
         <input
           value={woran}
@@ -75,7 +79,7 @@ export function ZusammenarbeitView() {
 
       {/* Die drei Zonen */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-        {ZONEN.map((z, i) => (
+        {zonenFuer(betreiber).map((z, i) => (
           <Karte key={z.farbe} i={1 + i}>
             <Ueberschrift farbe={ZONENFARBE[z.farbe]}>{z.titel}</Ueberschrift>
             <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, margin: '0 0 10px' }}>{z.satz}</p>
@@ -95,7 +99,9 @@ export function ZusammenarbeitView() {
         </p>
         <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
           <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Die Daten</strong> liegen nur auf dem Server, verschlüsselt — keine Kopie in einem Cloud-Ordner, keine auf einem Rechner.</li>
-          <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Der Code</strong> wird lokal auf dem Stand „entwicklung“ gebaut. Online ist der Stand „main“ — ein Update geht nur auf ausdrückliches Wort des Inhabers raus.</li>
+          {betreiber
+            ? <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Der Code</strong> wird lokal auf dem Stand „entwicklung“ gebaut. Online ist der Stand „main“ — ein Update geht nur auf ausdrückliches Wort des Inhabers raus.</li>
+            : <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Updates</strong> spielt der Betreiber eurer Instanz ein — eure Daten bleiben dabei, wo sie sind.</li>}
           <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Gleichzeitig arbeiten</strong> ist sicher: Änderungen gehen einzeln mit Stand an den Server. Hat jemand anderes dieselbe Zeile inzwischen geändert, bleibt deine Fassung sichtbar stehen statt still überschrieben zu werden.</li>
           <li style={punkt}><strong style={{ color: C.ink, fontWeight: 600 }}>Privates</strong> trennt der Server: was nur dir gehört (private Notizen, „nur ich“-Aufgaben, private Termine, Gesundheit ohne Teilen), kommt bei den anderen gar nicht erst an.</li>
         </ul>

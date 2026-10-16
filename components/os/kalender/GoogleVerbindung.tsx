@@ -18,7 +18,8 @@ import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Erklaert, LEUCHT, useRueckfrage } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
-import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_HINWEISE, GOOGLE_NICHT_EINGERICHTET } from './google-verbinden';
+import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_HINWEISE, googleNichtEingerichtet } from './google-verbinden';
+import { useBetreiber } from '../useInhaber';
 import { googleKalenderBereit } from '@/lib/kalender/verbinden-anzeige';
 
 interface Stand {
@@ -64,6 +65,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
   const [s, setS] = useState<Stand | null>(null);
   const [hinweis, setHinweis] = useState<{ text: string; achtung?: boolean } | null>(null);
   const [arbeit, setArbeit] = useState<string | null>(null);
+  const betreiber = useBetreiber();
   const [waehlen, setWaehlen] = useState(false);
   const [umzug, setUmzug] = useState(false);
   const [quellen, setQuellen] = useState<string[]>([]);
@@ -155,7 +157,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
 
       {!s && <div style={klein}>lädt …</div>}
       {s && !s.konfiguriert && (
-        <div style={{ ...klein, color: LEUCHT.achtung }}>{GOOGLE_NICHT_EINGERICHTET}</div>
+        <div style={{ ...klein, color: LEUCHT.achtung }}>{googleNichtEingerichtet(betreiber)}</div>
       )}
       {s?.konfiguriert && !s.verbunden && (
         <>

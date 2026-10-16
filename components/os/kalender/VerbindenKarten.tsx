@@ -13,6 +13,8 @@ import { UG_NAME } from '@/lib/einheiten';
 import { Karte, Knopf, Hinweis, LEUCHT } from '../ui';
 import { verbindenAnzeige, firmaOhneRechtsform, googleKalenderFreigabeFehlt, type GoogleKurz, type IcloudKurz, type KalenderBereich } from '@/lib/kalender/verbinden-anzeige';
 import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_NICHT_EINGERICHTET } from './google-verbinden';
+import { BETREIBER_RICHTET_EIN } from '@/lib/betrieb/betreiber';
+import { useBetreiber } from '../useInhaber';
 import { IcloudVerbindung } from './IcloudVerbindung';
 
 /** Die Firma, deren Google Workspace den Business-Kalender trägt — aus der Instanz (lib/einheiten.ts), ohne Rechtsform. */
@@ -25,7 +27,7 @@ export const KALENDER_FREIGEBEN = 'Kalender bei Google freigeben';
  * Karte „<Firma> verbinden“ (nur Darstellung — testbar ohne Netz). Ist Google schon verbunden (z. B. zuerst nur für Gmail), fehlt
  * aber die Kalender-Freigabe, heißt sie „Kalender bei Google freigeben“ — derselbe Weg ergänzt die Freigabe, Gmail bleibt verbunden.
  */
-export function GoogleVerbindenKarte({ stand, firma = FIRMA, arbeit, fehler, onVerbinden }: { stand: GoogleKurz; firma?: string; arbeit?: boolean; fehler?: string | null; onVerbinden: () => void }) {
+export function GoogleVerbindenKarte({ stand, firma = FIRMA, arbeit, fehler, onVerbinden, betreiber = false }: { stand: GoogleKurz; firma?: string; arbeit?: boolean; fehler?: string | null; onVerbinden: () => void; betreiber?: boolean }) {
   const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.55 } as const;
   const freigabe = googleKalenderFreigabeFehlt(stand);
   // 11.10. (Ruhe): ist der Server noch nicht eingerichtet, kann hier niemand etwas tun — dann eine flache, kurze Karte; was fehlt (Namen der
@@ -34,11 +36,14 @@ export function GoogleVerbindenKarte({ stand, firma = FIRMA, arbeit, fehler, onV
     <Karte i={0} flach>
       <div data-verbinden="google" style={{ display: 'grid', gap: 6 }}>
         <div style={{ fontWeight: 700, fontSize: TYP.body }}>{firma} verbinden <span style={{ fontWeight: 400, color: C.inkDim }}>· noch nicht eingerichtet</span></div>
-        <div style={klein}>Sobald der Server eingerichtet ist, erscheinen die Business-Termine von {firma} hier im Kalender.</div>
-        <details style={klein}>
-          <summary style={{ cursor: 'pointer', padding: '12px 0', color: C.inkDim }}>Was fehlt (für den Inhaber)</summary>
-          <div style={{ marginTop: 6 }}>{GOOGLE_NICHT_EINGERICHTET}</div>
-        </details>
+        {/* Namen der Umgebungswerte und die Anleitung nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — sonst der neutrale Satz. */}
+        {betreiber ? <>
+          <div style={klein}>Sobald der Server eingerichtet ist, erscheinen die Business-Termine von {firma} hier im Kalender.</div>
+          <details style={klein}>
+            <summary style={{ cursor: 'pointer', padding: '12px 0', color: C.inkDim }}>Was fehlt (für den Inhaber)</summary>
+            <div style={{ marginTop: 6 }}>{GOOGLE_NICHT_EINGERICHTET}</div>
+          </details>
+        </> : <div style={klein}>Die Business-Termine von {firma} erscheinen hier, sobald die Verbindung eingerichtet ist. {BETREIBER_RICHTET_EIN}</div>}
       </div>
     </Karte>
   );
@@ -79,6 +84,7 @@ export function BereichVerbindungen({ bereich, onGeaendert, ohneHinweis }: { ber
   const [icloud, setIcloud] = useState<IcloudKurz | null>(null);
   const [arbeit, setArbeit] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+  const betreiber = useBetreiber() === true;
 
   const laden = useCallback(async () => {
     if (bereich === 'business') setGoogle(await googleKalenderStandLaden<GoogleKurz>());
@@ -92,7 +98,7 @@ export function BereichVerbindungen({ bereich, onGeaendert, ohneHinweis }: { ber
   const verbinden = async () => { setArbeit(true); setFehler(null); const f = await googleKalenderVerbinden(); setArbeit(false); if (f) setFehler(f.fehler); };
   return (
     <div data-bereich-verbindungen={bereich} style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
-      {a.google === 'karte' && google && <GoogleVerbindenKarte stand={google} arbeit={arbeit} fehler={fehler} onVerbinden={() => verbinden()} />}
+      {a.google === 'karte' && google && <GoogleVerbindenKarte stand={google} arbeit={arbeit} fehler={fehler} onVerbinden={() => verbinden()} betreiber={betreiber} />}
       {a.google === 'hinweis' && !ohneHinweis && <VerbundenHinweis text={`${FIRMA} · Google verbunden${google?.konto ? ` (${google.konto})` : ''}`} />}
       {a.icloud === 'karte' && <Karte i={0} akzent={LEUCHT.puls}><IcloudVerbindung onGeaendert={() => { void laden(); onGeaendert?.(); }} /></Karte>}
       {a.icloud === 'hinweis' && !ohneHinweis && <VerbundenHinweis text={`iCloud verbunden${icloud?.konto ? ` (${icloud.konto})` : ''}${icloud?.haupt ? ' · Kalender des Haushalts' : ''}`} />}
