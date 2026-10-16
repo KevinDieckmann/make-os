@@ -29,6 +29,7 @@ import {
 } from './regeln';
 import { WEG } from '@/lib/wege';
 import { vorschlagAnzeige } from '@/lib/zoe/vorschlag-anzeige';
+import { BeispielMarke } from '../BeispielMarke';
 import Link from 'next/link';
 
 const RISIKO_FARBE: Readonly<Record<Risiko, string>> = { risikoarm: LEUCHT.gut, intern: LEUCHT.achtung, aussen: LEUCHT.kritisch };
@@ -136,6 +137,7 @@ function FreigabeZeile({ v }: { v: VorschlagKurz }) {
     <div style={{ ...zeile, background: FLAECHE_STIL.gehoben.background, borderColor: TIEF.rand(RISIKO_FARBE[risiko]) }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, flexWrap: 'wrap' }}>
         <Chip farbe={RISIKO_FARBE[risiko]}>{RISIKO_NAME[risiko]}</Chip>
+        {a.beispiel && <BeispielMarke />}
         {v.zeit && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{zeitKurz(v.zeit, jetzt)}</span>}
       </div>
       <div style={{ fontSize: TYP.body, color: a.leer ? C.inkDim : C.ink, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{a.titel}</div>

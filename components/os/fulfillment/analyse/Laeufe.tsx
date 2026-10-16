@@ -22,6 +22,7 @@ import { WellenBild, Legende, AgentMarke } from '../reise/bilder';
 import { senden, fehlerVon, anfrageId, type AgentLage, type AnalyseApi } from './daten';
 import { useOhneKuerzel } from '../prozesse/daten';
 import { agentText } from '@/lib/fulfillment/analyse/agenten';
+import { BeispielMarke } from '../../BeispielMarke';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
 const ZUSTAND_FARBE = { bereit: LEUCHT.gut, gesperrt: C.inkLeise, laeuft: LEUCHT.planung } as const;
@@ -151,7 +152,7 @@ function LaufListe({ mandatId, api, rueck }: { mandatId: string; api: AnalyseApi
           const a4 = l.agent === 'a4' ? (l.ergebnis as { karten?: number; funktion?: string } | undefined) : undefined;
           return (
             <div key={l.id} style={{ display: 'grid', gap: 6, paddingBottom: 8 }}>
-              <Zeile titel={`${agentText(l.agent)}${a4?.funktion ? ` · ${a4.funktion}` : ''} · ${LAUF_LABEL[l.status]}`}
+              <Zeile titel={<>{`${agentText(l.agent)}${a4?.funktion ? ` · ${a4.funktion}` : ''} · ${LAUF_LABEL[l.status]}`}{l.beispiel && <> <BeispielMarke /></>}</>}
                 unter={`${l.gestartetAm ? new Date(l.gestartetAm).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : ''}${typeof l.kostenCent === 'number' ? ` · ${euroText(l.kostenCent)}` : ` · bestätigt ${euroText(l.bestaetigtCent)}`}${l.grund ? ` · Grund: ${l.grund}` : ''}`}
                 rechts={<Chip farbe={LAUF_FARBE[l.status] ?? C.inkLeise}>{LAUF_LABEL[l.status]}</Chip>} umbrechen />
               {l.fehler && <div style={klein}>{l.fehler}</div>}

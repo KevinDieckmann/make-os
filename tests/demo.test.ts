@@ -168,7 +168,46 @@ describe('Saat', () => {
     expect(kz?.treueWochen?.length).toBe(3);
     expect(kz?.planTreue).toBeGreaterThan(0);
     expect(await db.loadJson(DEMO_MARKE)).toMatchObject({ saat: 1, haushalt: 'demo' });
+    // KI-Beispiele (15.10., B13) nur mit MAKE_OS_DEMO=1 — diese Saat lief ohne: keine Berichte der Heads.
+    expect(await db.loadJson('head-sales')).toBeNull();
   }, 240_000);
+
+  // 15.10. (Abnahme 2 B10/B12): stimmige Finanzen und ein Unternehmen ohne Schieflage — dieselbe Saat, über die Routen.
+  it('B10: Retainer im Liquiditätsplan, Jahresziel und Ist-Zahlen, Gehälter in der Finanzplanung, Steuern der Hauptgesellschaft', async () => {
+    const heute = localDay();
+    const lp = await db.loadJson<{ posten: { kategorie?: string; betrag: number; sicher: boolean }[] }>('liquiplan');
+    expect(lp!.posten.filter(p => p.kategorie === 'mandat' && p.betrag > 0 && p.sicher)).toHaveLength(2);
+    expect(lp!.posten.some(p => p.betrag < 0)).toBe(true);
+    const crm = await db.loadJson<{ mandate: { planpostenId?: string }[] }>('crm');
+    expect(crm!.mandate.every(m => !!m.planpostenId)).toBe(true);
+    const fin = await db.loadJson<{ zielUmsatz: number; zielGewinn: number; jahr: number }>('finance');
+    expect(fin).toMatchObject({ jahr: Number(heute.slice(0, 4)) });
+    expect(fin!.zielUmsatz).toBeGreaterThan(0);
+    const ab = await db.loadJson<{ eintraege: { firma: string; monat: string }[] }>('business-abschluesse');
+    expect(ab?.eintraege.filter(e => e.firma === 'ug').length ?? 0).toBe(Number(heute.slice(5, 7)) - 1);
+    const plan = await db.loadJson<{ annahmen: Record<string, unknown> }>('finanzen-plan--demo');
+    expect(Object.entries(plan!.annahmen).filter(([k, v]) => k.endsWith('Brutto') && typeof v === 'number' && v > 0)).toHaveLength(2);
+    const { steuernStand } = await import('@/lib/steuern/speicher');
+    const st = await steuernStand(heute, 'business');
+    expect(st.alleFristen.some(f => f.einheit === 'ug')).toBe(true);
+    expect(st.alleFristen.filter(f => f.datum < heute && !f.erledigt)).toEqual([]);
+    if (Number(heute.slice(5, 7)) > 1) expect(st.prognose.zeilen.find(z => z.id === 'kst-ug')?.betrag).toBeGreaterThan(0);
+  });
+
+  it('B12: keine verstrichene Pflicht, höchstens EINE offene Frist, Risiken unter der Tragfähigkeit, keine überfällige Aufgabe', async () => {
+    const heute = localDay();
+    const { unternehmenLage } = await import('@/lib/gesellschaften/schild-server');
+    const lage = await unternehmenLage('demo', heute);
+    const pflichten = lage.gesellschaften.flatMap(g => g.pflichten);
+    expect(pflichten.filter(p => p.status === 'ueberfaellig')).toEqual([]);
+    expect(pflichten.filter(p => p.status === 'faellig').length).toBeLessThanOrEqual(1);
+    for (const g of lage.gesellschaften) expect(g.aggregation.warnung, g.name).toBe(false);
+    const { lageBlick } = await import('@/lib/gesellschaften/schild/blick');
+    const { ladeSchild } = await import('@/lib/gesellschaften/schild-server');
+    expect(lageBlick(lage, (await ladeSchild('demo'))?.gesellschaften ?? []).zaehler.rot).toBe(0);
+    const tasks = (await db.loadJson<{ tasks: { title: string; status: string; dueDate?: string; geloeschtAm?: string }[] }>('tasks'))!.tasks;
+    expect(tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled' && !t.geloeschtAm && t.dueDate && t.dueDate < heute).map(t => t.title)).toEqual([]);
+  });
 
   it('drittes Konto „nur Business“ (E4-Rest, 09.10.): der Partner sieht Business, aus dem Privat-Bereich nichts — Lena alles', async () => {
     const { DEMO_PARTNER } = await import('@/lib/demo/saat');
@@ -231,7 +270,8 @@ describe('Saat', () => {
     for (const f of alleDateien(ordner)) {
       if (/\.sqlite/.test(f)) continue;
       // Feldnamen des Rechenkerns (`kevinBrutto`, `malinAb` …) sind Schema, keine Daten — Plattform-Schuld, PLATTFORM_PLAN Paket 1.
-      const t = readFileSync(f, 'utf8').replace(/"[a-z]*(?:kevin|malin|Kevin|Malin)[A-Za-z]*":/g, '"_":');
+      // 15.10.: dieselben Feldnamen stehen auch als Pfad im Protokoll der Finanzplanung (`/annahmen/kevinBrutto`) — die Demo setzt Gehälter (B10).
+      const t = readFileSync(f, 'utf8').replace(/"[a-z]*(?:kevin|malin|Kevin|Malin)[A-Za-z]*":/g, '"_":').replace(/\/annahmen\/(?:kevin|malin)(?:Brutto|Ab)\b/g, '/annahmen/_');
       const m = t.match(VERBOTEN);
       if (m) funde.push(`${path.relative(ordner, f)}: „${m[0]}“ … ${t.slice(Math.max(0, (m.index ?? 0) - 60), (m.index ?? 0) + 60).replace(/\s+/g, ' ')}`);
       for (const a of t.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g) ?? []) if (!/\.(invalid|example)$/i.test(a)) funde.push(`${path.relative(ordner, f)}: Adresse ${a}`);
@@ -280,6 +320,19 @@ describe('Zurücksetzen (MAKE_OS_DEMO=1)', () => {
     expect((await treffer('Rechnung-2026', 'jonas')).map(t => t.art)).toEqual(['uebergabe']);
     expect(await treffer('Kooperationsanfrage', 'jonas')).toEqual([]);
     expect((await treffer('Kooperationsanfrage', 'lena')).length).toBe(1);
+    // KI-Beispiele (15.10., B13): mit MAKE_OS_DEMO=1 zeigt die Demo Ergebnisse der Heads, des Head of Finance, von ZOE und der Analyse —
+    // jedes als Beispiel markiert (Riegel und Einzelheiten: tests/demo-ki-beispiele.test.ts).
+    const { istBeispiel } = await import('@/lib/demo/beispiel');
+    for (const h of ['head-sales', 'head-marketing', 'head-event', 'haushalt-chef--demo']) {
+      const sth = await db.loadJson<{ berichte: unknown[]; vorschlaege: unknown[] }>(h);
+      expect(sth?.berichte.some(istBeispiel), h).toBe(true);
+      expect(sth!.vorschlaege.filter(istBeispiel).length, h).toBeGreaterThanOrEqual(2);
+    }
+    expect((await lies('offen')).filter(v => v.person === 'lena' && istBeispiel(v)).length).toBeGreaterThanOrEqual(3);
+    const ds = await db.loadJson<{ dossiers: Record<string, { beispiel?: true; laeufe: { beispiel?: true }[] }> }>('fulfillment-dossiers--demo');
+    const dossier = Object.values(ds?.dossiers ?? {})[0];
+    expect(dossier?.beispiel).toBe(true);
+    expect(dossier!.laeufe.filter(istBeispiel).length).toBeGreaterThan(0);
   }, 240_000);
 
   it('gesperrt, sobald ein echtes Konto im Ordner steht (nichts wird gelöscht)', async () => {

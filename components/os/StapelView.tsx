@@ -37,6 +37,7 @@ import { FreigabeFelder, alleFelder } from './aufgaben/ZoeAufgabe';
 import { ZoeReiter } from './ZoeReiter';
 import { useSpace } from '@/hooks/useSpace';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
+import { BeispielMarke } from './BeispielMarke';
 import { BEREICH_NAME, bereichGrund, bereichVonVorschlag, type Bereich, type BereichNennt, type BereichOrt, type BereichQuelle } from '@/lib/zoe/bereich';
 
 interface Vorschlag { id: string; zeit: string; werkzeug: string; gruppe: string; titel: string; vorher?: string; nachher: string; eingabe: Record<string, unknown>; anlass?: string; /** Aus dem Gespräch oder aus einem Lauf — fürs Etikett des Anlasses. */ quelle?: 'gespraech' | 'lauf'; status: 'offen' | 'in_arbeit' | 'freigegeben' | 'abgelehnt' | 'fehlgeschlagen'; ergebnis?: string; grund?: string; /** Wer entschieden hat (29.09.). */ entschiedenVon?: string; /** Art mit Bezug (lib/zoe/stapel-arten.ts), z. B. „aufgabe“. */ bezug?: { art: string; id: string };
@@ -186,7 +187,7 @@ export function StapelView() {
     const a = vorschlagAnzeige(v);
     return (
     <div key={v.id}>
-      <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={a.titel} unter={`${a.was} · ${a.wofuer}`}
+      <Zeile onClick={() => setOffenId(o => (o === v.id ? null : v.id))} aktiv={offenId === v.id} titel={a.beispiel ? <>{a.titel} <BeispielMarke /></> : a.titel} unter={`${a.was} · ${a.wofuer}`}
         rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{bereichVonVorschlag(v) === 'unklar' ? <>
           {/* Ohne Bereich keine Freigabe (Kevin 09.10. spät): erst Privat oder Business wählen, danach steht hier „Freigeben“. */}
           {(['privat', 'business'] as const).map(x => <Knopf key={x} farbe={BEREICH_FARBE[x]} aus={busy === v.id} onClick={() => bereichWaehlen(v, x)}>{BEREICH_NAME[x]}</Knopf>)}

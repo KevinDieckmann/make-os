@@ -69,6 +69,7 @@ import { indexStatus, type IndexErgebnis } from '@/lib/kennzahlen/kern';
 import { TRAKTION_IM_BUSINESS_INDEX } from '@/lib/business/register';
 import { vorschlagAnzeige, type VorschlagAnzeige, type VorschlagFuerAnzeige } from '@/lib/zoe/vorschlag-anzeige';
 import { useNurBusiness } from '../useInhaber';
+import { BeispielMarke } from '../BeispielMarke';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -586,7 +587,7 @@ function ZoeWidget({ e, titel, i, seite }: WidgetProps) {
       </div>
       {stapel && stapel.erste.length > 0 && (
         <Liste>
-          {stapel.erste.map(({ id, anzeige: a }) => <Zeile key={id} onClick={() => { router.push(freigaben); }} links={<Punkt farbe={LEUCHT.achtung} />} titel={a.titel} unter={`${a.was} · ${a.wofuer}`}
+          {stapel.erste.map(({ id, anzeige: a }) => <Zeile key={id} onClick={() => { router.push(freigaben); }} links={<Punkt farbe={LEUCHT.achtung} />} titel={a.beispiel ? <>{a.titel} <BeispielMarke /></> : a.titel} unter={`${a.was} · ${a.wofuer}`}
             rechts={a.link ? <Link href={a.link.href} onClick={ev => ev.stopPropagation()} style={{ ...link, whiteSpace: 'nowrap' }}>{a.link.text} ›</Link> : undefined} />)}
           {stapel.n > stapel.erste.length && <Zeile onClick={() => { router.push(freigaben); }} titel={<span style={{ color: C.inkDim }}>+ {stapel.n - stapel.erste.length} weitere</span>} />}
         </Liste>

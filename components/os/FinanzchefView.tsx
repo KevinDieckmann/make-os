@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WEG } from '@/lib/wege';
 import { finanzOrtName } from '@/lib/einheiten';
+import { BeispielMarke } from './BeispielMarke';
 
 interface Stand {
   ok: boolean; umfang: 'business' | 'business+haushalt'; haushaltZugang: boolean;
@@ -107,6 +108,7 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
           <div style={{ display: 'grid', gap: 12 }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
               {st && <Chip farbe={st.farbe}>{st.text}</Chip>}
+              {bericht!.beispiel && <BeispielMarke />}
               <span>{MODI.find(x => x.id === bericht!.modus)?.label ?? 'Frage'} · {zeit(bericht!.zeit)}</span>
               <span title="Jede €- und %-Angabe wurde gegen die Daten geprüft.">· {bericht!.pruefung.geprueft} Zahlen geprüft{unbelegt.length ? <b style={{ color: LEUCHT.achtung }}> · {unbelegt.length} nicht belegt</b> : ', alle belegt'}{bericht!.pruefung.korrigiert ? ' (nach Korrektur)' : ''}</span>
             </div>
@@ -213,6 +215,7 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Punkt farbe={SCHWERE[v.prioritaet]} />
                   <span style={{ fontWeight: 700, fontSize: TYP.body }}>{v.titel}</span>
+                  {v.beispiel && <BeispielMarke />}
                 </div>
                 <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: '4px 0 8px' }}>
                   {v.begruendung}

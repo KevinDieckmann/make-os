@@ -40,6 +40,17 @@ auch Umgebungswerte (`MAKE_OS_*`, `WHATSAPP_*`, `GOOGLE_*`, `WHOOP_*` …), GitH
   tests/betreiber-demo-probe.test.ts (Demo-Saat → HoI, Selbstprüfung, Register, Verzeichnis, Nachweise, Einrichtung, Verbindungen, Bauplan).
 - **Offen (anderes Paket):** Fulfillment › Kunden-Link nennt `MAKE_OS_KUNDENLINK` (components/os/fulfillment/kunde/FallKunde.tsx, `OFFEN_ANDERER_BEREICH` im Wächter).
 - Kein Datenumzug, kein Schritt am Server.
+## 15.10.2026 — Abnahme 2: Demo stimmig und vorführbar, Steuern der Hauptgesellschaft (nur lokal — Branch `abnahme2-demo`, Basis c260971a = `update-0910b`)
+- **Steuern `ug` (Kevin 15.10.: „Ja, wie bei KD Ventures“):** `STEUER_FIRMEN` = kdc · kdv · ug; die Hauptgesellschaft hat USt-Voranmeldung, KSt-/GewSt-Vorauszahlungen,
+  Erklärung, Offenlegung (§ 108 AO) und Steuer-Aufgaben `steuer-ug-…` (ohne Betrag); Schätzung `kst-ug` aus den Ist-Monaten (Monatsabschluss), Rechtsform und Sätze aus
+  dem Steuerprofil der Finanzplanung (`steuerAusPlan`, `mitFinanzplanung`). `UG_NICHT_HINTERLEGT` entfällt. Keine Fristen vor dem Gründungstag aus dem Register (`mitGruendung`).
+  KD Ventures bit-gleich (Wächter). Steuer-Aufgaben gehen an den Inhaber der Instanz (`inhaberSpeicher`) statt an einen festen Namen. **Live:** beim ersten Öffnen der Steuern
+  entstehen Aufgaben für Fristen der Hauptgesellschaft im Vorlauf (z. B. USt-Voranmeldung) — gewollt; Monats-Übergabe „Monatsabschluss“ verlangt jetzt beide Gesellschaften.
+- **B10 Demo-Finanzen:** Retainer über „Mandat → Liquiplan“, Ausgaben und erwartetes Projektgeschäft im Liquiplan, 0-Punkt zum Jahresbeginn, Monatsabschlüsse, Jahresziel
+  (Index + Controlling), Gehälter + Netto-Tabelle in der Finanzplanung (Tiefpunkt in den nächsten Monaten), offene Rechnung als echte Rechnung, Steuerrücklage deckt die Schätzung.
+- **B12:** Pflichten der Vorjahre vermerkt, genau EINE offene Frist, Risiken unter der Tragfähigkeit, vergangene Steuerfristen abgehakt, keine überfällige Aufgabe in Top 3.
+- **B13 KI-Beispiele** (`lib/demo/saat-ki.ts`, nur `MAKE_OS_DEMO=1` + Demo-Marke): Heads, Head of Finance, ZOE-Stapel, ZOE-Gespräch, Analyse — `beispiel: true` an den Daten,
+  Chip „Beispiel“ (`components/os/BeispielMarke.tsx`). Wächter: tests/demo-ki-beispiele.test.ts, tests/demo.test.ts, tests/steuern-hauptgesellschaft.test.ts.
 
 ## 15.10.2026 — Abnahme 2: Rolle „nur Business“ dicht, Business zeigt nur Business (nur lokal — Branch `abnahme2-rollen`, Basis 2df8ea9e = `update-0910b`)
 - **A1 (serverseitig):** Fahrplan-Ziel/-Meilensteine raus aus „Für dich“ (`lib/fluss/server.ts`, `ohneFahrplanFuer`), Kapazität (Fahrplan-, Register- und — für „nur Business“ —

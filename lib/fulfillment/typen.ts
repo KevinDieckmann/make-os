@@ -114,7 +114,7 @@ export interface Quelle { id: string; url?: string; unterlageId?: string; titel?
 export interface Aussage { id: string; text: string; art: 'fakt' | 'schaetzung' | 'hypothese'; quellen: string[]; stand: string; agent: AnalyseAgentId | 'hand'; personRef?: string; veraltet?: true; gekuerzt?: true }
 export interface Abschnitt { id: AbschnittId; aussagen: Aussage[]; tabelle?: { spalten: string[]; zeilen: { werte: string[]; quellen: string[] }[] }; status: 'leer' | 'entwurf' | 'geprueft'; stand?: string }
 export type LaufStatus = 'bereit' | 'laeuft' | 'fertig' | 'fehler' | 'abgebrochen' | 'uebernommen' | 'verworfen';
-export interface AnalyseLauf { id: string; agent: AnalyseAgentId; status: LaufStatus; schaetzungCent: number; bestaetigtCent: number; grenzeCent: number; kostenCent?: number; gestartetAm?: string; gestartetVon?: string; laeuftSeit?: string; fertigAm?: string; fehler?: string; grund?: string; ergebnis?: unknown; versuch: number }
+export interface AnalyseLauf { id: string; agent: AnalyseAgentId; status: LaufStatus; schaetzungCent: number; bestaetigtCent: number; grenzeCent: number; kostenCent?: number; gestartetAm?: string; gestartetVon?: string; laeuftSeit?: string; fertigAm?: string; fehler?: string; grund?: string; ergebnis?: unknown; versuch: number; /** Erfundenes Beispiel der Demo-Instanz (15.10., lib/demo/beispiel.ts). */ beispiel?: true }
 export interface Massnahme { id: string; text: string; hebel: 'zufluss' | 'umwandlung' | 'zyklus' | 'dealwert' | 'bindung'; wirkung: string; aufwand: 'klein' | 'mittel' | 'gross'; evidenz: 'A' | 'B' | 'C'; abhaengig?: string }
 export interface Dossier {
   mandatId: string; firmaId?: string; version: number;
@@ -128,6 +128,8 @@ export interface Dossier {
   diagnose?: { top5: Massnahme[]; quickWins: string[]; fragen: { frage: string; an: 'gruender' | 'entscheider' | 'vertrieb'; warum: string }[] };
   personenGeloescht?: { am: string; anzahl: number }[];
   geaendert: string; geaendertVon: string;
+  /** Erfundenes Beispiel der Demo-Instanz (15.10., lib/demo/beispiel.ts) — die Oberfläche zeigt „Beispiel“. */
+  beispiel?: true;
 }
 export interface DossierDatei { version: number; dossiers: Record<string, Dossier> }
 export interface PersonenKarte {

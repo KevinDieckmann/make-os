@@ -33,12 +33,14 @@ export interface VorschlagAnzeige {
   link?: { href: string; text: string };
   /** Alt-Eintrag ohne Inhalt — lesbar beschriftet. */
   leer?: true;
+  /** Erfundenes Beispiel der Demo-Instanz (15.10., lib/demo/beispiel.ts) — die Oberfläche zeigt den Chip „Beispiel“. */
+  beispiel?: true;
 }
 
 /** Was die Anzeige von einem Vorschlag braucht (Server-Form `Vorschlag` und Browser-Form passen beide). */
 export interface VorschlagFuerAnzeige {
   titel?: unknown; nachher?: unknown; vorher?: unknown; anlass?: unknown; quelle?: 'gespraech' | 'lauf';
-  eingabe?: Record<string, unknown> | null; bezug?: { art: string; id: string } | null; werkzeug?: unknown; gruppe?: unknown;
+  eingabe?: Record<string, unknown> | null; bezug?: { art: string; id: string } | null; werkzeug?: unknown; gruppe?: unknown; beispiel?: unknown;
 }
 
 const text = (x: unknown): string => (typeof x === 'string' ? x.replace(/\s+/g, ' ').trim() : '');
@@ -70,6 +72,11 @@ function linkVon(v: VorschlagFuerAnzeige): VorschlagAnzeige['link'] {
 
 /** Die vier Angaben eines Vorschlags für jede Freigaben-Liste (Heute, Agenten › Hintergrund, Freigaben-Seite). Rein. */
 export function vorschlagAnzeige(v: VorschlagFuerAnzeige): VorschlagAnzeige {
+  const a = vorschlagAnzeigeOhneMarke(v);
+  return v.beispiel === true ? { ...a, beispiel: true } : a;
+}
+
+function vorschlagAnzeigeOhneMarke(v: VorschlagFuerAnzeige): VorschlagAnzeige {
   const titel0 = text(v.titel), nachher = text(v.nachher), vorher = text(v.vorher);
   const link = linkVon(v);
   const grund = anlassText({ anlass: typeof v.anlass === 'string' ? v.anlass : null, ...(v.quelle ? { quelle: v.quelle } : {}), bezug: v.bezug ?? undefined });

@@ -205,11 +205,12 @@ describe('Steuern: gewerblich, gemeinsame Einkommensteuer aus der Finanzplanung 
     const f = r.fristen(e, HEUTE);
     const p = r.prognose(e, HEUTE, { kdc: null, kdv: null }, { kdc: 50, kdv: 60 });
     const st = r.steuernNurBusiness({ einstellungen: e, fristen: f, ust: [], prognose: p, gewinn: { kdc: null, kdv: null }, uebergabe: { monat: '2026-08', punkte: [], jahr: 2025, jahresPunkte: r.uebergabeJahr(2025, {}) } });
-    expect(new Set(st.fristen.map(x => x.einheit))).toEqual(new Set(['kdv']));
+    // 15.10. (Kevin: „wie bei KD Ventures“): die Hauptgesellschaft hat jetzt eigene Fristen — Business wie KD Ventures.
+    expect(new Set(st.fristen.map(x => x.einheit))).toEqual(new Set(['kdv', 'ug']));
     expect(st.prognose.zeilen.every(z => z.einheit === 'kdv' || z.einheit === 'ug')).toBe(true);
     expect(st.einstellungen).toMatchObject({ steuerquote: null, vorauszahlung: { kst: 200 }, ruecklageIst: { kdv: 3 } });
     expect(JSON.stringify(st.einstellungen.vorauszahlung)).not.toMatch(/est|gewstKdc/);
-    expect(st.uebergabe.jahresPunkte.every(x => x.einheit === 'kdv')).toBe(true);
+    expect(st.uebergabe.jahresPunkte.every(x => x.einheit === 'kdv' || x.einheit === 'ug')).toBe(true);
     expect(r.businessSchreibenErlaubt({ einstellungen: { kdc: { ust: 'monatlich' } } })).toMatch(/Privat/);
     expect(r.businessSchreibenErlaubt({ einstellungen: { vorauszahlung: { est: 1 } } })).toMatch(/Privat/);
     expect(r.businessSchreibenErlaubt({ abhaken: { key: 'f:kdc-ust-2026-10-12' } })).toMatch(/Privat/);

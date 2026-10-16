@@ -187,6 +187,8 @@ export interface Nachricht {
    * Wert, Zeit, optional ein Grund aus `ABLEHNGRUENDE` der Heads (nie Freitext). Fließt in die Leistung des Heads (lib/agenten/leistung.ts).
    */
   daumen?: Daumen;
+  /** Erfundenes Beispiel der Demo-Instanz (15.10., lib/demo/beispiel.ts) — die Oberfläche zeigt „Beispiel“. */
+  beispiel?: true;
 }
 
 /** Daumen je Antwort (Fragerunde 17). */

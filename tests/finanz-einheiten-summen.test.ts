@@ -265,11 +265,12 @@ describe('Steuern — Fristen, USt, Prognose, Belege, Übergabe bleiben', () => 
     for (const x of f) je[x.einheit] = (je[x.einheit] ?? 0) + 1;
     expect({ gesamt: f.length, je }).toMatchInlineSnapshot(`
       {
-        "gesamt": 30,
+        "gesamt": 45,
         "je": {
           "kdc": 9,
           "kdv": 15,
           "privat": 6,
+          "ug": 15,
         },
       }
     `);
@@ -343,7 +344,7 @@ describe('Steuern — Fristen, USt, Prognose, Belege, Übergabe bleiben', () => 
           "m:2026-08:konto:ok",
           "m:2026-08:rechnungen:offen",
           "m:2026-08:belege:ok",
-          "m:2026-08:abschluss:ok",
+          "m:2026-08:abschluss:offen",
           "m:2026-08:abgleich:hand",
           "m:2026-08:uebergeben:hand",
         ],
@@ -659,13 +660,15 @@ describe('Finanzplanung: Selbstständigkeit eigene Achse im Kern (seit 02.10.)',
   });
 });
 
-describe('Steuern: UG sichtbar, aber nicht wie die Selbstständigkeit gerechnet', () => {
-  it('keine UG-Fristen, Prognose-Zeile ohne Betrag mit „noch nicht hinterlegt“, Soll 0', () => {
-    expect(fristen(STANDARD_STEUERN, HEUTE).some(f => f.einheit === 'ug')).toBe(false);
-    const p = prognose(STANDARD_STEUERN, HEUTE, { kdc: null, kdv: null }, {}, { rechnungen: 2 });
+describe('Steuern: die Hauptgesellschaft wie KD Ventures (15.10., Kevin), nicht wie die Selbstständigkeit', () => {
+  it('Fristen wie eine Kapitalgesellschaft (KSt-Vorauszahlungen, keine EÜR); ohne Ist-Monate keine Schätzung, Soll 0', () => {
+    const ug = fristen(STANDARD_STEUERN, HEUTE).filter(f => f.einheit === 'ug');
+    expect(ug.some(f => f.art === 'kst')).toBe(true);
+    expect(ug.some(f => f.hinweis.includes('EÜR'))).toBe(false);
+    const p = prognose(STANDARD_STEUERN, HEUTE, { kdc: null, kdv: null, ug: null }, {});
     const z = p.zeilen.find(x => x.einheit === 'ug')!;
     expect(z.betrag).toBeNull();
-    expect(z.luecke).toMatch(/noch nicht hinterlegt.*2 MAKE-Rechnungen/);
+    expect(z.luecke).toMatch(/Ist-Monate MAKE Innovation GmbH fehlen/);
     expect(p.je.ug).toEqual({ soll: 0, ist: null, deckung: null });
   });
   it('Beleg-Punkte nennen die Einheit aus der einen Liste', () => {

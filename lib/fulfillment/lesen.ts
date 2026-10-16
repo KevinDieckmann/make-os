@@ -339,6 +339,8 @@ const lauf = (o: O): AnalyseLauf | null => {
     id: i, agent, status, schaetzungCent: n(o.schaetzungCent) ?? 0, bestaetigtCent: n(o.bestaetigtCent) ?? 0, grenzeCent: n(o.grenzeCent) ?? 0, kostenCent: n(o.kostenCent),
     gestartetAm: s(o.gestartetAm), gestartetVon: s(o.gestartetVon), laeuftSeit: s(o.laeuftSeit), fertigAm: s(o.fertigAm), fehler: s(o.fehler), grund: s(o.grund),
     ergebnis: o.ergebnis === undefined ? undefined : o.ergebnis, versuch: n(o.versuch) ?? 0,
+    // Erfundenes Beispiel der Demo-Instanz (15.10., lib/demo/beispiel.ts) — nur die Marke, sonst nichts.
+    beispiel: o.beispiel === true ? true : undefined,
   });
 };
 const massnahme = (o: O): Massnahme | null => {
@@ -384,6 +386,7 @@ export function dossierAus(o: O): Dossier | null {
     eingaben: sauber({ firma, domains: texte(e.domains), registerNr: s(e.registerNr), sitz: s(e.sitz), branche: s(e.branche), urls: texte(e.urls).filter(u => /^https?:\/\//i.test(u)) }),
     f1, interessenabwaegung: ia, abschnitte, quellen: liste(o.quellen, quelle), laeufe: liste(o.laeufe, lauf), pruefung, f2, leseteil, diagnose,
     personenGeloescht: pg.length ? pg : undefined, geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '',
+    beispiel: o.beispiel === true ? true : undefined,
   });
 }
 export const leerDossiers = (): DossierDatei => ({ version: FULFILLMENT_VERSION, dossiers: {} });

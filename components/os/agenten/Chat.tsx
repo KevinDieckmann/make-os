@@ -17,6 +17,7 @@ import { FARBE as C, ECKE, FLAECHE_STIL, LEUCHT, RAND, SCHRIFT, TIEF, TYP, ABSTA
 import type { FadenKurz, HeadKarte, Nachricht } from '@/lib/agenten/typen';
 import { useStimme } from '@/hooks/useStimme';
 import { KiMarke } from '../KiMarke';
+import { BeispielMarke } from '../BeispielMarke';
 import { Chip, Knopf, Leer, SymbolKnopf, Wahl, eingabe, Eigenschaft, Schalter } from '../ui';
 import { KuerzelKugel, ZoeStandbild, headFarbe } from './Avatar';
 import { bewerten, ladeFaden, stapelBereich, stapelEntscheiden, type StapelAntwort } from './daten';
@@ -225,6 +226,7 @@ export function ChatVerlauf({ nachrichten, kinder = [], stapel, leer, ichName = 
               {gestapelt.map((w, i) => <VorschlagKarte key={w.vorschlagId ?? `${w.name}-${i}`} vorschlagId={w.vorschlagId} werkzeug={w.name} stapel={stapel} />)}
               <div style={{ display: 'flex', alignItems: 'center', gap: ABSTAND.s, flexWrap: 'wrap' }}>
                 {n.ki && <KiMarke text="KI-Antwort — bitte prüfen" />}
+                {n.beispiel && <BeispielMarke />}
                 <Daumen id={n.id} fadenId={fadenId} start={n.daumen?.wert} />
                 {stimme.kannSprechen && (
                   <SymbolKnopf ariaLabel="Vorlesen" onClick={() => (stimme.spricht ? stimme.schweig() : stimme.lies(n.text))}><Volume2 size={16} /></SymbolKnopf>

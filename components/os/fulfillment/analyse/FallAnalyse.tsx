@@ -17,6 +17,7 @@ import { DossierAnsicht } from './DossierAnsicht';
 import { Recht } from './Recht';
 import { Personen } from './Personen';
 import { Tiefenbericht } from './Tiefenbericht';
+import { BeispielMarke } from '../../BeispielMarke';
 
 type Teil = 'laeufe' | 'dossier' | 'personen' | 'recht' | 'tiefenbericht';
 
@@ -43,6 +44,8 @@ export function FallAnalyse({ mandatId }: { mandatId: string }) {
           {kiLuecken.map(k => lage!.kiSaetze[k]).join(' ')}
         </Hinweis>
       )}
+      {/* Demo (15.10., Abnahme 2 B13): ein gesätes Dossier sagt, dass es ein Beispiel ist — kein echter Lauf einer KI. */}
+      {d.dossier.beispiel && <Hinweis art="info" titel={<>Analyse-Ergebnis <BeispielMarke /></>}>Dieses Dossier und seine Läufe sind erfundene Beispiele der Demo — so sieht ein Ergebnis der Analyse aus. Ohne KI-Zugang entsteht hier kein neuer Lauf.</Hinweis>}
       <Segmente liste={teile} aktiv={teile.some(t => t.id === teil) ? teil : 'laeufe'} onWahl={setTeil} umbrechen />
       {teil === 'laeufe' && <Laeufe mandatId={mandatId} api={api} rueck={rueck} />}
       {teil === 'dossier' && <DossierAnsicht mandatId={mandatId} api={api} rueck={rueck} />}

@@ -15,6 +15,8 @@ export type VorschlagStatus = 'offen' | 'angenommen' | 'abgelehnt' | 'erledigt';
 export interface ChefVorschlag extends VorschlagRoh {
   id: string; status: VorschlagStatus; erstellt: string; aktualisiert: string; berichtId: string;
   entschieden?: string; von?: string; grund?: string; aufgabeId?: string;
+  /** Erfundenes Beispiel der Demo-Instanz (15.10., lib/demo/beispiel.ts) — die Oberfläche zeigt „Beispiel“. */
+  beispiel?: true;
 }
 export interface Bericht {
   id: string; zeit: string; modus: Modus; umfang: 'business' | 'business+haushalt';
@@ -23,6 +25,8 @@ export interface Bericht {
   /** Ohne Modellaufruf entschieden (Tagescheck ohne Neues). */
   ohneKi?: boolean;
   werkzeuge?: string[];
+  /** Erfundenes Beispiel der Demo-Instanz (15.10., lib/demo/beispiel.ts) — die Oberfläche zeigt „Beispiel“. */
+  beispiel?: true;
 }
 export interface ChefStand {
   berichte: Bericht[]; vorschlaege: ChefVorschlag[];

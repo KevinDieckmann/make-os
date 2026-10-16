@@ -11,6 +11,11 @@
 // lib/demo/server.ts (Knopf „Demo zurücksetzen“). Doku: DEMO.md.
 // Agenten-Bereich und „Fotos & Videos“ (Paket 4c): lib/demo/saat-agenten.ts — ohne KI-Schlüssel vollständig (gespeicherte Antworten, kein Modell).
 // Inbox (10.10.): lib/demo/saat-inbox.ts — Demo-Postfach, Übergaben, Aufgaben-Vorschläge (nur mit MAKE_OS_DEMO=1).
+// 15.10. (Abnahme 2 B10/B12/B13): stimmige Finanzen (Retainer im Liquiditätsplan über den Vorschlagsweg „Mandat → Liquiplan“, Ausgaben, 0-Punkt zum
+// Jahresbeginn, Monatsabschlüsse, Jahresziel, Gehälter in der Finanzplanung, Steuern der Hauptgesellschaft), ein Unternehmen ohne Schieflage (Pflichten
+// der Vorjahre erledigt, höchstens EINE offene Frist, Risiken unter der Tragfähigkeit, vergangene Steuerfristen abgehakt) — alles über die Routen.
+// KI-Beispiele (nur mit MAKE_OS_DEMO=1): lib/demo/saat-ki.ts — Heads, Head of Finance, ZOE-Stapel und -Gespräch als „Beispiel“ markiert; dort steht
+// begründet, warum Berichte und Vorschläge direkt in die Bestände der Läufe gehen (im Browser entstehen sie nur über einen Modellaufruf).
 
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
@@ -100,6 +105,12 @@ const R = {
   absender: () => import('@/app/api/crm/gesellschaften/route') as Promise<Modul>,
   stammdaten: () => import('@/app/api/crm/stammdaten/route') as Promise<Modul>,
   angebot: () => import('@/app/api/crm/angebot/route') as Promise<Modul>,
+  mandatLiquiplan: () => import('@/app/api/crm/liquiplan/route') as Promise<Modul>,
+  liquiplan: () => import('@/app/api/state/liquiplan/route') as Promise<Modul>,
+  finanzplanBestand: () => import('@/app/api/state/finanzplan/route') as Promise<Modul>,
+  business: () => import('@/app/api/business/route') as Promise<Modul>,
+  controlling: () => import('@/app/api/state/finance/route') as Promise<Modul>,
+  steuern: () => import('@/app/api/steuern/route') as Promise<Modul>,
 };
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -220,6 +231,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { titel: 'Partnerschaft Beispiel Steuerberatung', firmaId: 'f-demo-kanzlei', kontaktIds: [kontaktId('david')], art: 'vermittlung', wert: { betrag: 6000, basis: 'jahr' }, stufe: 'qualifiziert', schritt: { text: 'Kooperationsmodell skizzieren', datum: tagPlus(heute, 10) }, erwartetAm: tagPlus(heute, 75) },
   ];
   for (const d of deals) await rufe(R.deal(), 'POST', '/api/crm/deal', d.kontaktIds.length > 1 ? JONAS : LENA, { aktion: 'anlegen', ...d, gesellschaft: 'ug', quelle: 'netzwerk', besitzer: LENA });
+  // B10 (Abnahme 2, 15.10.): die zwei laufenden Retainer stehen im Liquiditätsplan — über den Vorschlagsweg „Mandat → Liquiplan“ (GET zeigt den
+  // Vorschlag, POST `anlegen` übernimmt ihn, wie der Knopf in der Mandatsakte); nie automatisch, hier in der Saat angenommen.
+  const lpVorschlag = await rufe(R.mandatLiquiplan(), 'GET', '/api/crm/liquiplan', LENA);
+  for (const m of (lpVorschlag.mandate as { id: string; lage: string }[]).filter(x => x.lage === 'fehlt')) await rufe(R.mandatLiquiplan(), 'POST', '/api/crm/liquiplan', LENA, { mandatId: m.id, aktion: 'anlegen' });
   schritt('CRM: Firmen', FIRMEN.length); schritt('CRM: Kontakte', KONTAKTE.length); schritt('CRM: Produkte', PRODUKTE.length); schritt('CRM: Mandate', 2); schritt('CRM: Deals', deals.length);
 
   // 3b) Markttraktion › Planung (10.10.): zwei erfundene Leadkanäle (Netzwerk, eigene Eventreihe), ein Umsatzziel bis Jahresende, eine
@@ -301,19 +316,21 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   //     Versicherung — erfunden, über dieselbe Route wie die Oberfläche (Stand aus der letzten Antwort).
   let sch = ((await rufe(R.schild(), 'GET', '/api/gesellschaften/schild', LENA)).eintraege as { id: string; stand: string }[]).find(e => e.id === 'ug')!;
   const schild = async (body: Record<string, unknown>) => { const r = await rufe(R.schild(), 'PATCH', '/api/gesellschaften/schild', LENA, { id: 'ug', stand: sch.stand, ...body }); sch = r.eintrag as typeof sch; return r; };
-  await schild({ profil: { beschaeftigte: 4, umsatzVorjahrCent: '420.000', bilanzsummeCent: '180.000', groessenklasse: 'klein', beraten: true, tragfaehigkeitCent: '60.000' } });
+  // B12 (15.10.): Profil passend zu den Monatsabschlüssen (unten) — und eine Tragfähigkeit, unter der die bewerteten Risiken zusammen bleiben.
+  await schild({ profil: { beschaeftigte: 4, umsatzVorjahrCent: '186.000', bilanzsummeCent: '95.000', groessenklasse: 'klein', beraten: true, tragfaehigkeitCent: '80.000' } });
   for (const d of [
     { art: 'satzung', fassungVom: '2023-01-10', quelle: 'notar' }, { art: 'gesellschafterliste', fassungVom: '2023-01-10', quelle: 'notar' },
     { art: 'transparenzregister', fassungVom: tagPlus(heute, -400), quelle: 'register-abruf' }, { art: 'steuer-stammdaten', fassungVom: '2023-02-01', quelle: 'eigen' },
-    { art: 'elster-zertifikat', fassungVom: tagPlus(heute, -1035), gueltigBis: tagPlus(heute, 60), quelle: 'behoerde' }, { art: 'vvt', fassungVom: tagPlus(heute, -200), quelle: 'eigen' },
+    { art: 'elster-zertifikat', fassungVom: tagPlus(heute, -700), gueltigBis: tagPlus(heute, 395), quelle: 'behoerde' }, { art: 'vvt', fassungVom: tagPlus(heute, -200), quelle: 'eigen' },
   ]) await schild({ liste: 'dokumente', eintrag: d });
   const kat = await schild({ katalog: ['R1', 'R3', 'R8'] });
   const risiken = ((kat.eintrag as { risiken: { id: string; katalogId: string }[] }).risiken);
-  for (const [k, e, w, euro] of [['R1', 2, 4, '30.000'], ['R3', 4, 4, '45.000'], ['R8', 2, 3, '15.000']] as const) {
+  for (const [k, e, w, euro] of [['R1', 2, 4, '20.000'], ['R3', 4, 4, '25.000'], ['R8', 2, 3, '10.000']] as const) {
     await schild({ bewertung: { risikoId: risiken.find(x => x.katalogId === k)!.id, eintritt: e, wirkung: w, art: 'netto', wirkungCent: euro, grund: 'Erste Runde (Beispiel)' } });
   }
-  await schild({ liste: 'marken', eintrag: { bezeichnung: 'Nordlicht Cockpit', amt: 'dpma', form: 'wort', registerNr: '30 2016 000 000 (Beispiel)', anmeldetag: tagPlus(heute, -3600), klassen: '9, 42', inhaberIstGesellschaft: true } });
-  await schild({ liste: 'versicherungen', eintrag: { art: 'vermoegensschaden', versicherer: 'Beispiel Versicherung AG', deckungFallCent: '1.000.000', beginn: '2023-01-10', ablauf: tagPlus(heute, 75), kuendigungsfristMonate: 3 } });
+  // B12 (15.10.): Marke, Zertifikat und Police ohne Verlängerungs-Druck — die Demo zeigt EINE offene Frist (unten), keine Häufung.
+  await schild({ liste: 'marken', eintrag: { bezeichnung: 'Nordlicht Cockpit', amt: 'dpma', form: 'wort', registerNr: '30 2016 000 000 (Beispiel)', anmeldetag: tagPlus(heute, -2900), klassen: '9, 42', inhaberIstGesellschaft: true } });
+  await schild({ liste: 'versicherungen', eintrag: { art: 'vermoegensschaden', versicherer: 'Beispiel Versicherung AG', deckungFallCent: '1.000.000', beginn: '2023-01-10', ablauf: tagPlus(heute, 260), kuendigungsfristMonate: 3 } });
   await schild({ liste: 'ereignisse', eintrag: { art: 'neuer-vertrag', datum: tagPlus(heute, -5), notiz: 'Rahmenvertrag mit einem Pilotkunden (Beispiel)' } });
   // 4c) Unternehmen „in einem Blick“ (11.10.): ein Vermerk „erledigt“ (der Zeitstrahl zeigt auch Erledigtes) und der Ereignis-Assistent wie in der
   //     Oberfläche — „Neue Geschäftsführung“ in drei Wochen: Beschluss als Entwurf über das Register, Ereignis mit Zusatz-Schritt und Verweis auf den
@@ -330,6 +347,36 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     await schild({ liste: 'ereignisse', eintrag: ev, ...(entwurfId ? { ausBeschluss: entwurfId } : {}) });
   }
   schritt('Unternehmen › Schild', 1);
+
+  // 4c') B12 (Abnahme 2, 15.10.): das Demo-Unternehmen steht nicht in Schieflage — die Pflichten der Vorjahre und alles, was bis heute fällig war,
+  //      gelten als erledigt (Vermerk „erledigt am“ zum Fristtag, über die Schild-Route wie der Haken in der Oberfläche); von dem, was gerade fällig
+  //      wird, bleibt genau EINE Frist offen (die nächste) — ein echter Punkt, keine Mahnung. Schon angelegte Erinnerungen schließt der Server selbst.
+  const { unternehmenLage } = await import('@/lib/gesellschaften/schild-server');
+  // Die Holding bekommt ihr Profil (sonst „Profil unvollständig“) — erfunden, über dieselbe Route; ohne Größenklasse, damit ihre Fristen bleiben.
+  const standHolding = ((await rufe(R.schild(), 'GET', '/api/gesellschaften/schild', LENA)).eintraege as { id: string; stand: string }[]).find(e => e.id === 'kdv')?.stand;
+  await rufe(R.schild(), 'PATCH', '/api/gesellschaften/schild', LENA, { id: 'kdv', stand: standHolding, profil: { beschaeftigte: 0, umsatzVorjahrCent: '0', bilanzsummeCent: '60.000', beraten: true } });
+  const lageU = await unternehmenLage(DEMO_HAUSHALT, heute);
+  const offenBleibt = lageU.gesellschaften.flatMap(g => g.pflichten.filter(x => x.status === 'faellig').map(x => ({ g: g.id, schluessel: x.schluessel, frist: x.frist })))
+    .sort((a, b) => a.frist.localeCompare(b.frist))[0];
+  const schildStaende = (await rufe(R.schild(), 'GET', '/api/gesellschaften/schild', LENA)).eintraege as { id: string; stand: string }[];
+  let vermerkt = 0;
+  for (const g of lageU.gesellschaften) {
+    let standG = schildStaende.find(e => e.id === g.id)?.stand;
+    for (const x of g.pflichten) {
+      if (x.status !== 'ueberfaellig' && x.status !== 'faellig') continue;
+      if (offenBleibt && offenBleibt.g === g.id && offenBleibt.schluessel === x.schluessel) continue;
+      const r = await rufe(R.schild(), 'PATCH', '/api/gesellschaften/schild', LENA, { id: g.id, stand: standG, vermerk: { regelId: x.regelId, periode: x.periode, status: 'erledigt', am: x.frist < heute ? x.frist : heute } });
+      standG = (r.eintrag as { stand: string }).stand;
+      vermerkt++;
+    }
+    // Erreichte Schwellen (z. B. erste Beschäftigte) sind längst umgesetzt — Vermerk „laufend“ wie der Haken in der Oberfläche.
+    for (const z of g.schwellen.filter(x => x.stand === 'erreicht' && !x.umgesetzt)) {
+      const r = await rufe(R.schild(), 'PATCH', '/api/gesellschaften/schild', LENA, { id: g.id, stand: standG, vermerk: { regelId: `schwelle:${z.def.id}`, periode: 'laufend', status: 'erledigt', am: heute } });
+      standG = (r.eintrag as { stand: string }).stand;
+      vermerkt++;
+    }
+  }
+  schritt('Unternehmen › Pflichten erledigt', vermerkt);
 
   // 4d) Angebot (Abnahme 14.10., B15): der Deal „Diagnose Grünfeld Bau“ steht in Stufe „Angebot“ — also gibt es auch ein GESTELLTES Angebot. Erst
   //     der Absender der operativen Gesellschaft (Pflichtangaben § 35a GmbHG, erfunden), dann Entwurf und Stellen über die Angebots-Route
@@ -460,7 +507,8 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { titel: 'Monatsabschluss vorbereiten', anlass: 'Der Monat endet in einer Woche, die Belege sind noch nicht vollständig (Beispiel).', eingabe: { title: 'Belege für den Monatsabschluss sammeln', priority: 'medium', faellig: tagPlus(heute, 5) } },
   ];
   for (const v of vorschlaege) {
-    await lege({ werkzeug: 'create_task', gruppe: 'aufgaben', titel: 'Aufgabe anlegen', nachher: `Aufgabe „${v.titel}“ anlegen`, eingabe: v.eingabe, anlass: v.anlass, person: LENA, quelle: 'lauf' } as Parameters<typeof lege>[0]);
+    // Erfundene Vorschläge von ZOE — als „Beispiel“ markiert (15.10., Abnahme 2 B13; lib/demo/beispiel.ts).
+    await lege({ werkzeug: 'create_task', gruppe: 'aufgaben', titel: 'Aufgabe anlegen', nachher: `Aufgabe „${v.titel}“ anlegen`, eingabe: v.eingabe, anlass: v.anlass, person: LENA, quelle: 'lauf', beispiel: true } as Parameters<typeof lege>[0]);
   }
   const t3 = await rufe(R.top3(), 'GET', '/api/heute/top3?space=business', LENA);
   const vorschlagIds = ((t3.bereiche as { business?: { vorschlag: { id: string }[] } }).business?.vorschlag ?? []).map(z => z.id);
@@ -542,27 +590,82 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
       zeile('pb-demo-miete', 'Miete', 'privat', 'Wohnen', 1650, 'fix'), zeile('pb-demo-leben', 'Lebensmittel', 'privat', 'Alltag', 700, 'flex'),
       zeile('pb-demo-mobil', 'Mobilität', 'privat', 'Alltag', 250, 'flex'), zeile('pb-demo-ruecklage', 'Rücklage', 'privat', 'Sparen', 500, 'sparen'),
     ] },
-    { pfad: '/privatEinnahmen', neu: [zeile('pe-demo-gehalt', 'Geschäftsführer-Gehalt (netto)', 'privat', 'Einnahmen', 4200, 'fix')] },
+    // B10 (15.10.): Gehälter statt einer privaten Einnahme — Geschäftsführung (Gehalt 1) und Produkt & Finanzen (Gehalt 2) laufen über die operative
+    // Gesellschaft, mit Arbeitgeberanteil und einer erfundenen Netto-Tabelle; das Netto kommt so im Haushalt an (keine doppelte Einnahme mehr).
+    { pfad: '/annahmen/kevinBrutto', neu: 5200 }, { pfad: '/annahmen/kevinAb', neu: 1 },
+    { pfad: '/annahmen/malinBrutto', neu: 4300 }, { pfad: '/annahmen/malinAb', neu: 1 },
+    { pfad: '/annahmen/agAnteil', neu: 0.21 },
+    { pfad: '/annahmen/nettoTabelle', neu: [[0, 0], [2500, 1820], [4300, 2860], [5200, 3320], [8000, 4650]] },
     { pfad: '/szenarien/0/retainer', neu: [{ name: 'Nordwerk', betrag: 3500, start: 1, laufzeit: 12 }, { name: 'Lumen', betrag: 2450, start: 1, laufzeit: 24 }] },
     { pfad: '/posten', neu: [{ id: 'po-demo-konto', art: 'konto', einheit: 'ug', name: 'Geschäftskonto (Beispiel)', betrag: 48000, status: 'ok' }, { id: 'po-demo-privat', art: 'konto', einheit: 'privat', name: 'Girokonto (Beispiel)', betrag: 9500, status: 'ok' }] },
     { pfad: '/planszenarien', neu: [{ id: 'ps-demo-wachstum', name: 'Wachstum mit Cockpit', basis: 'basis', angelegt: jetzt.toISOString(), annahmen: {}, bausteine: [
       { id: 'bs-demo-1', art: 'umsatz', einheit: 'ug', name: 'Vertriebsaufbau (neu)', preis: 3500, menge: 2, rhythmus: 'monatlich', start: 3, an: true, produktId: 'l-demo-retainer' },
       { id: 'bs-demo-2', art: 'umsatz', einheit: 'ug', name: 'Cockpit-Lizenzen', preis: 490, menge: 8, rhythmus: 'monatlich', start: 4, an: true, produktId: 'l-demo-software' },
       { id: 'bs-demo-3', art: 'kosten', einheit: 'ug', name: 'Beraterin (Teilzeit)', preis: 3200, menge: 1, rhythmus: 'monatlich', start: 5, an: true },
+      // B10 (15.10.): das Projektgeschäft, das die Monatsabschlüsse zeigen, die freie Mitarbeit und einmalig Recruiting & Messe — so liegt der
+      // Tiefpunkt der Kasse in den nächsten Monaten statt „heute“, und die Runway rechnet mit echten Kosten.
+      { id: 'bs-demo-4', art: 'umsatz', einheit: 'ug', name: 'Klarheits-Diagnosen (Projektgeschäft)', preis: 4800, menge: 2, rhythmus: 'monatlich', start: 1, an: true, produktId: 'l-demo-diagnose' },
+      { id: 'bs-demo-5', art: 'kosten', einheit: 'ug', name: 'Freie Mitarbeit Design', kostenArt: 'sonstiges', preis: 1400, menge: 1, rhythmus: 'monatlich', start: 1, an: true },
+      { id: 'bs-demo-6', art: 'kosten', einheit: 'ug', name: 'Recruiting & Messeauftritt', kostenArt: 'sonstiges', preis: 9000, menge: 1, rhythmus: 'einmalig', start: 2, an: true },
     ] }] },
     { pfad: '/arbeitsplan', neu: 'ps-demo-wachstum' },
   ] });
   schritt('Finanzplanung', 1);
-  // 0-Punkt (05.10.): Beispiel-Eröffnung der MAKE-Gesellschaft zum Monatsersten — Anfangsbestand und je ein offener Posten (erfunden).
-  await rufe(R.eroeffnung(), 'POST', '/api/business/eroeffnung', LENA, { aktion: 'setzen', firma: 'ug', stichtag: `${heute.slice(0, 7)}-01`, kontostand: 48000,
-    forderungen: [{ name: 'Nordwerk (Beispiel)', betrag: 4165, faellig: tagPlus(heute, 10) }], verbindlichkeiten: [{ name: 'Kanzlei (Beispiel)', betrag: 535.5, faellig: tagPlus(heute, 20) }], notiz: 'Beispiel-Eröffnung (Demo)' });
+  // 0-Punkt (05.10.): Beispiel-Eröffnung der operativen Gesellschaft. Seit 15.10. (B10) zum JAHRESBEGINN — sonst wären die Monatsabschlüsse des Jahres
+  // „vor dem 0-Punkt“ archiviert und weder Business-Index noch Steuern hätten Ist-Zahlen. Die offene Rechnung steht als echte Rechnung im Bestand.
+  const jahrStart = `${heute.slice(0, 4)}-01-01`;
+  await rufe(R.eroeffnung(), 'POST', '/api/business/eroeffnung', LENA, { aktion: 'setzen', firma: 'ug', stichtag: jahrStart, kontostand: 36500, notiz: 'Beispiel-Eröffnung zum Jahresbeginn (Demo)' });
   schritt('0-Punkt (Eröffnung)', 1);
   // Konten-Register (08.10.): die bisherigen Stände einmal übernehmen (wie der Knopf „Übernahme ansehen“ → „Übernehmen“) und ein Tagesgeld des
   // Haushalts dazu (die Rücklage im Privat-Index) — erfundene Beträge, über die Route wie in der Oberfläche.
   const kontenVorschau = await rufe(R.konten(), 'GET', '/api/finanzen/konten?uebernahme=1', LENA);
   await rufe(R.konten(), 'POST', '/api/finanzen/konten', LENA, { aktion: 'uebernahme', basis: kontenVorschau.basis });
   await rufe(R.konten(), 'POST', '/api/finanzen/konten', LENA, { ops: [{ op: 'konto-neu', konto: { name: 'Tagesgeld (Beispiel)', art: 'tagesgeld', ort: 'gemeinsam', bank: 'Beispielbank' }, stand0: { betrag: 15000, datum: heute } }] });
+  // Der aktuelle Stand des Geschäftskontos (gestern) — wie „Stand eintragen“ am Konto.
+  const kontenBiz = (await rufe(R.konten(), 'GET', '/api/finanzen/konten?sicht=business', LENA)).konten as { id: string; ort: string }[];
+  const geschaeftskonto = kontenBiz.find(x => x.ort === 'ug');
+  if (geschaeftskonto) await rufe(R.konten(), 'POST', '/api/finanzen/konten?sicht=business', LENA, { ops: [{ op: 'stand-neu', id: geschaeftskonto.id, betrag: 48000, datum: tagPlus(heute, -1) }] });
   schritt('Konten-Register', 2);
+
+  // 13b) B10 (Abnahme 2, 15.10.): Finanzen, die sich nicht widersprechen — alles über die Routen wie in der Oberfläche, erfundene Zahlen.
+  const monatVon = (m: number) => `${heute.slice(0, 4)}-${String(m).padStart(2, '0')}`;
+  const naechsterTag = (tag: number) => { const t = `${heute.slice(0, 7)}-${String(tag).padStart(2, '0')}`; return t >= heute ? t : `${tagPlus(`${heute.slice(0, 7)}-01`, 32).slice(0, 7)}-${String(tag).padStart(2, '0')}`; };
+  // Die offene Rechnung des Vormonats (Vertriebsaufbau Nordwerk) — Rechnungen & Zahlungen, Liquidität und Umsatzsteuer lesen sie.
+  const vormonat = tagPlus(`${heute.slice(0, 7)}-01`, -1);
+  await rufe(R.finanzplanBestand(), 'PATCH', '/api/state/finanzplan', LENA, { ops: [{ liste: 'rechnungen', op: 'upsert', eintrag: {
+    id: 're-demo-nordwerk-vormonat', kunde: 'Nordwerk Maschinenbau GmbH', titel: 'Vertriebsaufbau (Beispiel)', betrag: 4165, netto: 3500, ustSatz: 19, status: 'gestellt',
+    nummer: `NL-${heute.slice(0, 4)}-${heute.slice(5, 7)}-01`, datum: tagPlus(heute, -4), faellig: tagPlus(heute, 10), leistungVon: `${vormonat.slice(0, 7)}-01`, leistungBis: vormonat,
+    mandatId: 'm-demo-nordwerk', firmaId: 'ug',
+  } }] });
+  // Was regelmäßig rausgeht (und das erwartete Projektgeschäft, unsicher) — neben den zwei Retainern aus „Mandat → Liquiplan“.
+  await rufe(R.liquiplan(), 'PATCH', '/api/state/liquiplan', LENA, { ops: [
+    { titel: 'Gehälter mit Sozialabgaben (Beispiel)', betrag: -11500, tag: 28, kategorie: 'personal' },
+    { titel: 'Büromiete (Beispiel)', betrag: -1428, tag: 3, kategorie: 'raum' },
+    { titel: 'Software & Werkzeuge (Beispiel)', betrag: -452, tag: 5, kategorie: 'betrieb' },
+    { titel: 'Steuerberatung (Beispiel)', betrag: -536, tag: 20, kategorie: 'betrieb' },
+    { titel: 'Klarheits-Diagnosen, erwartet (Beispiel)', betrag: 11424, tag: 15, kategorie: 'produkt', wahrscheinlich: 70 },
+  ].map((x, i) => ({ liste: 'posten', op: 'upsert', eintrag: { id: `lp-demo-${i + 1}`, titel: x.titel, betrag: x.betrag, rhythmus: 'monatlich', ab: naechsterTag(x.tag), sicher: x.wahrscheinlich === undefined, ...(x.wahrscheinlich !== undefined ? { wahrscheinlich: x.wahrscheinlich } : {}), firmaId: 'ug', kategorie: x.kategorie } })) });
+  // Monatsabschlüsse des laufenden Jahres (bis zum Vormonat) — die operative Gesellschaft mit Projekt- und Retainer-Umsatz, die Holding nur mit Kosten.
+  const IST = [[15100, 14200], [15800, 14400], [17200, 14900], [16400, 14700], [17900, 15100], [16800, 15000], [18400, 15300], [17100, 15200], [19600, 15600], [18800, 15500], [19200, 15700]] as const;
+  let abschluesse = 0;
+  for (let m = 1; m < Number(heute.slice(5, 7)); m++) {
+    const [umsatz, kosten] = IST[(m - 1) % IST.length];
+    await rufe(R.business(), 'POST', '/api/business', JONAS, { aktion: 'abschluss', firma: 'ug', monat: monatVon(m), umsatz, kosten, personal: 11400, marketingVertrieb: 450, notiz: 'Beispiel-Abschluss (Demo)' });
+    await rufe(R.business(), 'POST', '/api/business', JONAS, { aktion: 'abschluss', firma: 'kdv', monat: monatVon(m), umsatz: 0, kosten: 140, notiz: 'Beispiel-Abschluss (Demo)' });
+    abschluesse += 2;
+  }
+  schritt('Monatsabschlüsse', abschluesse);
+  // Jahresziel: Business-Index (je Gesellschaft) und Controlling (Umsatz, Gewinn) — dieselbe Zahl, nicht „0 €“.
+  await rufe(R.business(), 'POST', '/api/business', LENA, { aktion: 'einstellungen', ziele: { ug: 205000 } });
+  await rufe(R.controlling(), 'PATCH', '/api/state/finance', LENA, { felder: { jahr: Number(heute.slice(0, 4)), zielUmsatz: 205000, zielGewinn: 26000 } });
+  // Steuern (Kevin 15.10.: die Hauptgesellschaft „wie bei KD Ventures“): vergangene Fristen sind erledigt (abgehakt wie in der Oberfläche) — sonst
+  // stünden sie als überfällig in Heute —, und die Rücklage der operativen Gesellschaft deckt ihre Schätzung (Hinweis, keine Steuerberatung).
+  const [{ ladeSteuerEinstellungenMitPlan, steuernStand }, { fristen: steuerFristen }] = await Promise.all([import('@/lib/steuern/speicher'), import('@/lib/steuern/rechnen')]);
+  const vorbei = steuerFristen(await ladeSteuerEinstellungenMitPlan(heute), heute).filter(f => !f.erledigt && f.datum < heute);
+  for (const f of vorbei) await rufe(R.steuern(), 'POST', '/api/steuern', LENA, { abhaken: { key: `f:${f.id}`, an: true } });
+  const sollUg = (await steuernStand(heute, 'business')).prognose.je.ug?.soll ?? 0;
+  if (sollUg > 0) await rufe(R.steuern(), 'POST', '/api/steuern?space=business', LENA, { einstellungen: { ruecklageIst: { ug: Math.ceil(sollUg / 500) * 500 } } });
+  schritt('Steuern (Fristen abgehakt)', vorbei.length);
 
   // 14) Familie & Gesundheit — harmlos und minimal.
   await rufe(R.familie(), 'PATCH', '/api/familie', LENA, { ops: [
@@ -641,6 +744,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   //      MAKE_OS_DEMO=1 (sonst gibt es den Anbieter „demo“ nicht). lib/demo/saat-inbox.ts.
   const { inboxSaen } = await import('./saat-inbox');
   for (const s of await inboxSaen({ lena: LENA, jonas: JONAS })) schritt(s.name, s.anzahl);
+  // 14e) KI-Beispiele (15.10., Abnahme 2 B13): Heads, Head of Finance, ZOE-Stapel und -Gespräch als „Beispiel“ markiert — nur mit MAKE_OS_DEMO=1
+  //      und Demo-Marke (Riegel in lib/demo/saat-ki.ts). Die Analyse-Läufe (14c) tragen die Marke schon.
+  const { kiBeispieleSaen } = await import('./saat-ki');
+  for (const s of await kiBeispieleSaen({ lena: LENA, jonas: JONAS, haushalt: DEMO_HAUSHALT, heute, jetzt, kontaktId })) schritt(s.name, s.anzahl);
 
   // 15) Wissen: Notizen im Vault der Demo (nur, wenn er im Datenordner liegt — Riegel in lib/demo/schutz.ts).
   let notizen = 0;
