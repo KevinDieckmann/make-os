@@ -61,12 +61,20 @@ export async function seilDatenLaden(person: string, bereich: SeilBereich, von: 
     const crm = await ladeCrm();
     return crm.chancen.map(c => ({ id: c.id, titel: c.titel, erwartetAm: c.erwartetAm, offen: OFFENE_STUFEN.includes(c.stufe) }));
   }, []) : [];
+  // C17 (16.10.): MRR aus den aktiven Mandaten — nur, wenn ein Ziel diese Messgröße trägt (Markttraktion bleibt ein eigenes Modul, nur gelesen).
+  const istWerte: import('@/lib/planung/ziel-ist').IstWerte = ziele.some(z => z.messgroesse === 'mrr') ? await sicher(async (): Promise<import('@/lib/planung/ziel-ist').IstWerte> => {
+    const [{ ladeCrm }, { portfolio }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/produkte')]);
+    const crm = await ladeCrm();
+    return { mrr: portfolio(crm).mrr };
+  }, {}) : {};
   return {
     heute, von, bis, bereich,
     ziele: ziele.filter(z => z.person === BEIDE).map(z => ({
       id: z.id, titel: z.titel, farbe: z.farbe, horizont: z.horizont, space: z.space, einheit: z.einheit, rang: z.rang, termin: z.termin, jahr: z.jahr,
       erledigt: z.erledigt, erledigtAm: z.erledigtAm, fortschritt: z.fortschritt, oberzielId: z.oberzielId, abgeleitetVon: z.abgeleitetVon, archiviertAm: z.archiviertAm,
+      zielwert: z.zielwert, messgroesse: z.messgroesse,
     })),
+    istWerte,
     meilensteine: (ms?.meilensteine ?? []).map(m => ({
       id: m.id, titel: m.titel, faellig: m.faellig, erledigt: !!m.erledigt, erledigtAm: m.erledigtAm, fortschritt: m.fortschritt, space: m.space, bereich: m.bereich,
       einheit: m.einheit, zielId: m.zielId, abgeleitetVon: m.abgeleitetVon, wartetAuf: m.wartetAuf, rang: m.rang, archiviertAm: m.archiviertAm,

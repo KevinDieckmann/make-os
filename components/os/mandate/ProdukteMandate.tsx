@@ -37,7 +37,7 @@ export function ProdukteMandate() {
   const zuKontakt = (id: string) => router.push(markttraktion('kontakte', 'akte', id));
   const zu = (s: Segment) => router.push(s === 'fulfillment' ? WEG.fulfillment() : mandateLink(s), { scroll: false });
   return (
-    <Seite titel="Produkte & Mandate" unter={reiter === 'produkte' ? 'Was wir anbieten — mit Preis, Ablauf und Unterlagen.' : 'Für wen wir gerade arbeiten — Laufzeit, Health, Umsatz.'}
+    <Seite titel="Produkte & Mandate" unter={reiter === 'produkte' ? 'Was wir anbieten — mit Preis, Ablauf und Unterlagen.' : 'Für wen wir gerade arbeiten — Laufzeit, Gesundheit, Umsatz.'}
       // Produkte & Mandate (10.10.): das Gesellschafts-Register ist ein eigener Punkt in der Leiste (/os/unternehmen), kein Reiter mehr hier.
       rechts={<Segmente<Segment> liste={[{ id: 'mandate', label: 'Mandate' }, { id: 'produkte', label: 'Produkte' }, { id: 'fulfillment', label: 'Fulfillment' }]} aktiv={reiter} onWahl={zu} />}>
       {api.fehler && <Hinweis art="kritisch">{api.fehler}</Hinweis>}

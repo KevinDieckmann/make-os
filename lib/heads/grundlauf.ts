@@ -14,6 +14,7 @@ import type { Antwort, Vorschlag } from './pruefer';
 import type { HeadId } from './prompt';
 
 import { localDay } from '@/lib/zeit';
+import { anzahl } from '@/lib/text/zahlwort';
 type P = { id: string; name: string; firma?: string; kanal_erlaubt: string[]; anrede?: string; letzter_kontakt?: string; naechster_schritt?: { text: string; datum: string } | null; verlauf?: { am: string; art: string; bedarf?: string; zusage?: string }[] };
 type Karte = P & { kategorie: string; gruende: string[] };
 type ChanceD = { id: string; titel: string; firma?: string; stufe?: string; wert_gesamt: number; ampel: { ampel: string; gruende: string[] }; naechster_schritt: { text: string; datum: string } | null; qualifizierung: Record<string, string>; entscheidung_bis: string | null; personen: P[]; signale?: { luecken: string[]; positiv: string[]; negativ: string[] } };
@@ -101,10 +102,10 @@ export function grundlauf(head: HeadId, modus: string, daten: Record<string, unk
       const p = m.ansprechpartner[0];
       if (m.lage.kuendigungIn !== null && m.lage.kuendigungIn <= 90) vs.push(v({ art: 'verlaengerung_ansprechen', titel: `Verlängerung ansprechen: ${kurz(m.kunde, 60)}`, mandat_id: m.id, kontakt_id: p?.id ?? null, frist: m.lage.fristBis && m.lage.fristBis > heute ? m.lage.fristBis : tagPlus(heute, 3), prioritaet: m.lage.kuendigungIn < 30 ? 'hoch' : 'mittel', signal: { typ: 'frist', datum: m.lage.endeAm, text: 'Laufzeitende' },
         begruendung: m.lage.kuendigungIn < 0 ? `Laufzeit seit ${-m.lage.kuendigungIn} Tagen vorbei — verlängern oder sauber abschließen.` : `Laufzeit endet in ${m.lage.kuendigungIn} Tagen — Wirkung zeigen, dann Verlängerung besprechen.`, dedup_schluessel: `verlaengerung:${m.id}`, quelle: [`mandate[${i}].lage`] }));
-      else if (m.lage.ampel === 'rot' || m.lage.ampel === 'gelb') vs.push(v({ art: 'review_ansetzen', titel: `Review ansetzen: ${kurz(m.kunde, 60)}`, mandat_id: m.id, kontakt_id: p?.id ?? null, frist: tagPlus(heute, 7), prioritaet: m.lage.ampel === 'rot' ? 'hoch' : 'mittel', signal: { typ: 'kunde', datum: null, text: `Health ${m.lage.ampel}` },
-        begruendung: `Health ${m.lage.ampel}: ${m.lage.gruende.slice(0, 2).join('; ') || 'Bewertung fehlt'}.`, dedup_schluessel: `review:${m.id}`, quelle: [`mandate[${i}].lage`] }));
+      else if (m.lage.ampel === 'rot' || m.lage.ampel === 'gelb') vs.push(v({ art: 'review_ansetzen', titel: `Review ansetzen: ${kurz(m.kunde, 60)}`, mandat_id: m.id, kontakt_id: p?.id ?? null, frist: tagPlus(heute, 7), prioritaet: m.lage.ampel === 'rot' ? 'hoch' : 'mittel', signal: { typ: 'kunde', datum: null, text: `Gesundheit ${m.lage.ampel}` },
+        begruendung: `Gesundheit ${m.lage.ampel}: ${m.lage.gruende.slice(0, 2).join('; ') || 'Bewertung fehlt'}.`, dedup_schluessel: `review:${m.id}`, quelle: [`mandate[${i}].lage`] }));
       const offen = m.offene_punkte.filter(Boolean);
-      if (offen.length) befunde.push({ titel: `${m.kunde}: ${offen.length} offene Punkte`, text: kurz(offen[0], 160), quelle: [`mandate[${i}].offene_punkte`] });
+      if (offen.length) befunde.push({ titel: `${m.kunde}: ${anzahl(offen.length, 'offener Punkt', 'offene Punkte')}`, text: kurz(offen[0], 160), quelle: [`mandate[${i}].offene_punkte`] });
     });
     const kz = daten.konzentration as { kunde: string; anteil: number } | null | undefined;
     if (kz && kz.anteil > 50) befunde.push({ titel: 'Kundenkonzentration', text: `${kz.kunde} trägt ${kz.anteil} % des wiederkehrenden Umsatzes — Neugeschäft hat Vorrang.`, quelle: ['konzentration'] });

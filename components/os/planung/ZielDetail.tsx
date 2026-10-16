@@ -87,7 +87,8 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
 
   const kinder = useMemo(() => meilensteineVonZiel(id, p.ms), [id, p.ms]);
   const kette = useMemo(() => ketteOrdnen(kinder), [kinder]);
-  const live = zielFortschrittLive(id, p.ms, tasksState);
+  // Unterziele aus allen Horizonten (16.10., C17) — dieselbe Regel wie der Server.
+  const live = zielFortschrittLive(id, p.ms, tasksState, p.alleZiele.length ? p.alleZiele : p.ziele);
   const offen = kinder.filter(m => !m.erledigt).length;
 
   // Notiz und Messlatte werden beim Verlassen des Feldes gespeichert (ein Schreiben je Änderung, Stand/409 wie überall).

@@ -9,6 +9,7 @@ import type { Mandat } from './typen';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { TEAM, BEIDE, zustaendig } from './team';
 import { bruttoAusNetto } from '@/lib/finanzen/ust';
+import { anzahl } from '@/lib/text/zahlwort';
 import { KERN_EINHEITEN, gesellschaftAusEinheit, gehoertZuPrivat, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
@@ -91,8 +92,8 @@ export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]
   const gruende: string[] = [];
   let ampel: MandatLage['ampel'] = health === null ? null : health > 75 ? 'gruen' : health >= 60 ? 'gelb' : 'rot';
   if (m.status === 'aktiv' && endeIn !== null && endeIn >= 0 && endeIn <= 60 && m.verlaengerung !== 'auto') { ampel = 'rot'; gruende.push(`Laufzeit endet in ${endeIn} Tagen — Verlängerung offen`); }
-  if (health !== null && health < 60) gruende.push(`Health ${health}`);
-  if (m.offen.length) gruende.push(`${m.offen.length} offene Punkte`);
+  if (health !== null && health < 60) gruende.push(`Gesundheit ${health}`);
+  if (m.offen.length) gruende.push(anzahl(m.offen.length, 'offener Punkt', 'offene Punkte'));
   if (!m.vertragUnterschrieben && m.status === 'aktiv') gruende.push('Vertrag nicht unterschrieben');
   const monatswert = m.honorar.basis === 'monat' ? m.honorar.betrag : 0;
   return { endeAm, endeIn, fristBis, kuendigungIn: endeIn, health, ampel, gruende, monatswert };

@@ -472,7 +472,7 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
       {c.grund && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Grund: {c.grund}{c.wiedervorlage ? ` · Wiedervorlage ${datum(c.wiedervorlage)}` : ''}</div>}
       {c.stufe === 'gewonnen' && !crm.stand.mandate.some(m => m.chanceId === c.id) && (
         <div style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.gut}12`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: TYP.bedien }}>Gewonnen — jetzt Kunde: aus dem Deal wird ein Mandat (Vertrag, Kickoff, Health).</span>
+          <span style={{ fontSize: TYP.bedien }}>Gewonnen — jetzt Kunde: aus dem Deal wird ein Mandat (Vertrag, Kick-off, Gesundheit des Mandats).</span>
           <Knopf farbe={LEUCHT.gut} onClick={async () => { const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: c.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' })); await api.laden(true); if (!r.ok) api.setFehler(r.fehler ?? 'Mandat nicht angelegt.'); }}>Mandat anlegen</Knopf>
         </div>
       )}

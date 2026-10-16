@@ -92,7 +92,7 @@ export function BereichVerbindungen({ bereich, onGeaendert, ohneHinweis }: { ber
   }, [bereich]);
   useEffect(() => { void laden(); }, [laden]);
 
-  const a = verbindenAnzeige(bereich, google, icloud);
+  const a = verbindenAnzeige(bereich, google, icloud, { betreiber });
   if (!a.google && !a.icloud) return null;
   if (ohneHinweis && a.google !== 'karte' && a.icloud !== 'karte') return null;
   const verbinden = async () => { setArbeit(true); setFehler(null); const f = await googleKalenderVerbinden(); setArbeit(false); if (f) setFehler(f.fehler); };

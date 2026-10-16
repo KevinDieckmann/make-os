@@ -8,6 +8,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { MessageCircle } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT, feld } from '../ui';
 import { ZOE_FRAGEN_EREIGNIS, passtZuBezug, type CrmBezug } from '@/lib/zoe/crm-bezug';
@@ -37,7 +38,10 @@ export function ZoeFragenKnopf({ bezug, titel, headId }: { bezug: CrmBezug; tite
     <button type="button" onClick={() => zoeFragen(bezug, head ? 'seite' : undefined)} className="fassbar zoe-fragen" aria-label={text}
       title={head ? `${head.name} im Chat unten öffnen — liest hier selbst nach und schlägt nur vor; „↔ ZOE“ wechselt zu ZOE` : 'ZOE öffnen — sie liest hier selbst nach und schlägt nur vor'}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${farbe}1F`, color: farbe, border: 'none', borderRadius: 999, padding: '8px 14px', minHeight: 40, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${farbe}` }} /><span className="zoe-fragen-text">{text}</span>
+      {/* Am Handy steht nur das Zeichen (16.10., Abnahme 2 · C11: vorher ein leerer Kreis) — eine Sprechblase, der Name im aria-label/title. */}
+      <span aria-hidden className="zoe-fragen-punkt" style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${farbe}` }} />
+      <MessageCircle aria-hidden className="zoe-fragen-symbol" size={18} strokeWidth={2} />
+      <span className="zoe-fragen-text">{text}</span>
     </button>
   );
 }

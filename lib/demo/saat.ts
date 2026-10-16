@@ -74,6 +74,7 @@ const R = {
   kontakte: () => import('@/app/api/state/kontakte/route') as Promise<Modul>,
   crm: () => import('@/app/api/crm/bestand/route') as Promise<Modul>,
   deal: () => import('@/app/api/crm/deal/route') as Promise<Modul>,
+  lead: () => import('@/app/api/crm/lead/route') as Promise<Modul>,
   gesellschaften: () => import('@/app/api/gesellschaften/route') as Promise<Modul>,
   schild: () => import('@/app/api/gesellschaften/schild/route') as Promise<Modul>,
   eroeffnung: () => import('@/app/api/business/eroeffnung/route') as Promise<Modul>,
@@ -129,11 +130,15 @@ const KONTAKTE = [
   { k: 'felix', vorname: 'Felix', nachname: 'Braun', firma: undefined, position: 'Business Angel', stufe: 'ansprechen', prio: 'C' },
 ] as const;
 
+// 16.10. (Abnahme 2 · C7): eine Zählung mit der Leistungstreppe — der kostenlose Kennzahlen-Check ist ihre erste Stufe und steht als Produkt
+// im Katalog; die Stufen steigen mit dem Wert (Jahr): Einstieg (Check 0 €, Diagnose 4.800 €) · Kern (Cockpit 490 €/Monat) · Premium (Vertriebsaufbau).
 const PRODUKTE = [
   { id: 'l-demo-diagnose', name: 'Klarheits-Diagnose', typ: 'diagnose', stufe: 'einstieg', preis: { betrag: 4800, einheit: 'pauschal netto', basis: 'einmalig' }, lieferumfang: ['Zwei Workshops mit der Geschäftsführung', 'Kennzahlen-Bild auf einer Seite', 'Fahrplan für 90 Tage'], text: 'Diagnose von Steuerung, Kennzahlen und Prioritäten in zwei Wochen.' },
   // 15.10. (Abnahme B4): das Produkt heißt, was es liefert — die Paket-Vorlage dahinter baut einen Vertrieb auf (Zielkunden, Ansprache, Team, Takt).
-  { id: 'l-demo-retainer', name: 'Vertriebsaufbau', typ: 'retainer', stufe: 'kern', preis: { betrag: 3500, einheit: 'Monat netto', basis: 'monat' }, lieferumfang: ['Monatlicher Steuerungstermin', 'Kennzahlen-Review', 'Sparring auf Abruf'], text: 'Vertrieb planbar machen: Zielkunden, Ansprache, Team und Kennzahlen — bis das Team allein verkauft.' },
-  { id: 'l-demo-software', name: 'Cockpit-Lizenz', typ: 'software', stufe: 'premium', preis: { betrag: 490, einheit: 'Monat netto', basis: 'monat' }, lieferumfang: ['Zugang für fünf Personen', 'Einrichtung', 'Support'], text: 'Software-Cockpit für Kennzahlen und Planung.' },
+  { id: 'l-demo-retainer', name: 'Vertriebsaufbau', typ: 'retainer', stufe: 'premium', preis: { betrag: 3500, einheit: 'Monat netto', basis: 'monat' }, lieferumfang: ['Monatlicher Steuerungstermin', 'Kennzahlen-Review', 'Sparring auf Abruf'], text: 'Vertrieb planbar machen: Zielkunden, Ansprache, Team und Kennzahlen — bis das Team allein verkauft.' },
+  { id: 'l-demo-software', name: 'Cockpit-Lizenz', typ: 'software', stufe: 'kern', preis: { betrag: 490, einheit: 'Monat netto', basis: 'monat' }, lieferumfang: ['Zugang für fünf Personen', 'Einrichtung', 'Support'], text: 'Software-Cockpit für Kennzahlen und Planung.' },
+  // Am Ende (PRODUKTE[0] bleibt die Diagnose — das Demo-Angebot nimmt sie).
+  { id: 'l-demo-check', name: 'Kennzahlen-Check', typ: 'diagnose', stufe: 'einstieg', preis: { betrag: 0, einheit: 'kostenlos', basis: 'einmalig' }, lieferumfang: ['Kurzbefund auf einer Seite'], text: 'Zeigt in einer Woche, wo die Steuerung hakt — ohne Risiko für den Kunden.' },
 ] as const;
 
 /**
@@ -203,12 +208,29 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   // 14.10., C8: „angelegt heute, letzte Aktivität vor 17 Tagen“). Damit zählen die Personen nach EINER Regel (`neuerLeadAm`) als neue Leads.
   const jetztIso = new Date().toISOString();
   const anlageAm = tagVon(jetztIso) === heute ? jetztIso : `${heute}T10:00:00.000Z`;
-  await rufe(R.kontakte(), 'PATCH', '/api/state/kontakte', LENA, { ops: KONTAKTE.map((k, i) => upsert({
-    id: kontaktId(k.k), vorname: k.vorname, nachname: k.nachname, email: `${k.k}@${DEMO_DOMAIN}`, position: k.position,
-    ...(k.firma ? { firma: firmenName(k.firma), firmaId: k.firma } : {}), stufe: k.stufe, prio: k.prio, eignung: 'ja', herkunft: 'Demo (erfunden)',
-    besitzer: i % 3 === 2 ? JONAS : LENA,
-    aktivitaeten: [{ am: anlageAm, art: 'notiz', text: 'Erstgespräch (erfunden) — Interesse an Kennzahlen und Planung.', von: LENA }],
-  })) });
+  // C21 + B11 (16.10., Abnahme 2): verteilte, plausible Zeitpunkte (früher am Tag, nie vor dem Anlagetag — C8) statt achtmal der Säzeit, von der
+  // Person, die die Beziehung hält; und Signale je Stufe (Gespräch, Termin, Antwort, Mail) — sonst stand jeder Lead auf „5 · Lau“.
+  const frueher = (min: number) => { const t = new Date(Date.parse(anlageAm) - min * 60_000).toISOString(); return tagVon(t) === heute ? t : anlageAm; };
+  const SIGNAL: Partial<Record<(typeof KONTAKTE)[number]['stufe'], { art: string; text: string }>> = {
+    gewonnen: { art: 'gespraech', text: 'Steuerungstermin (erfunden) — nächste Schritte vereinbart.' },
+    angebot: { art: 'gespraech', text: 'Gespräch zum Angebot (erfunden) — Fragen zum Umfang geklärt.' },
+    gespraech: { art: 'gespraech', text: 'Gespräch (erfunden) — Bedarf und Engpass besprochen.' },
+    termin: { art: 'termin', text: 'Termin vereinbart (erfunden) — Demo vor Ort.' },
+    angesprochen: { art: 'mail', text: 'Mail (erfunden) — Unterlagen zur Diagnose geschickt.' },
+  };
+  await rufe(R.kontakte(), 'PATCH', '/api/state/kontakte', LENA, { ops: KONTAKTE.map((k, i) => {
+    const besitzer = i % 3 === 2 ? JONAS : LENA;
+    const signal = SIGNAL[k.stufe];
+    return upsert({
+      id: kontaktId(k.k), vorname: k.vorname, nachname: k.nachname, email: `${k.k}@${DEMO_DOMAIN}`, position: k.position,
+      ...(k.firma ? { firma: firmenName(k.firma), firmaId: k.firma } : {}), stufe: k.stufe, prio: k.prio, eignung: 'ja', herkunft: 'Demo (erfunden)',
+      besitzer,
+      aktivitaeten: [
+        { am: frueher(40 + i * 23), art: 'notiz', text: 'Erstgespräch (erfunden) — Interesse an Kennzahlen und Planung.', von: besitzer },
+        ...(signal ? [{ am: frueher(10 + i * 7), art: signal.art, text: signal.text, von: besitzer }] : []),
+      ],
+    });
+  }) });
   await rufe(R.crm(), 'PATCH', '/api/crm/bestand', LENA, { ops: [
     { liste: 'mandate', ...upsert({ id: 'm-demo-nordwerk', kunde: 'Nordwerk Maschinenbau GmbH', firmaId: 'f-demo-nordwerk', kontaktIds: [kontaktId('sophie')], titel: 'Vertriebsaufbau Nordwerk', art: 'retainer', leistungId: 'l-demo-retainer', gesellschaft: 'ug', status: 'aktiv', vertragUnterschrieben: true, start: tagPlus(heute, -46), verlaengerung: 'auto', honorar: { betrag: 3500, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: ['Monatliches Kennzahlen-Review etabliert', 'Qualifizierte Erstgespräche je Monat'], health: { beteiligung: 80, umsetzung: 75, wirkung: 70, zahlung: 90, stimmung: 70 }, leistungen: ['Steuerungstermin', 'Review'], offen: [], zustaendig: LENA }) },
     { liste: 'mandate', ...upsert({ id: 'm-demo-lumen', kunde: 'Lumen Logistik AG', firmaId: 'f-demo-lumen', kontaktIds: [kontaktId('paul')], titel: 'Cockpit-Einführung Lumen', art: 'software', leistungId: 'l-demo-software', gesellschaft: 'ug', status: 'aktiv', vertragUnterschrieben: true, start: tagPlus(heute, -3), verlaengerung: 'manuell', honorar: { betrag: 2450, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 30, ziele: ['Fünf Standorte im Cockpit'], health: { beteiligung: 75, umsetzung: null, wirkung: null, zahlung: 85, stimmung: null }, leistungen: ['Einrichtung', 'Schulung'], offen: ['Datenanbindung Lager'], zustaendig: JONAS }) },
@@ -220,6 +242,13 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { titel: 'Partnerschaft Beispiel Steuerberatung', firmaId: 'f-demo-kanzlei', kontaktIds: [kontaktId('david')], art: 'vermittlung', wert: { betrag: 6000, basis: 'jahr' }, stufe: 'qualifiziert', schritt: { text: 'Kooperationsmodell skizzieren', datum: tagPlus(heute, 10) }, erwartetAm: tagPlus(heute, 75) },
   ];
   for (const d of deals) await rufe(R.deal(), 'POST', '/api/crm/deal', d.kontaktIds.length > 1 ? JONAS : LENA, { aktion: 'anlegen', ...d, gesellschaft: 'ug', quelle: 'netzwerk', besitzer: LENA });
+  // B11 (16.10.): unterschiedlich weit qualifiziert (Stufen der Sales-Fragen, Standard-Scoring) — über die Lead-Route, wie die Runde im Browser.
+  const QUALI: [string, Record<string, string>][] = [
+    ['f-demo-gruenfeld', { schmerz: 's5', entscheider: 's5', budget: 's5', zeitpunkt: 's3', wirkung: 's3' }],
+    ['f-demo-atlas', { schmerz: 's3', entscheider: 's5', zeitpunkt: 's3' }],
+    ['f-demo-seeblick', { schmerz: 's3', budget: 's1' }],
+  ];
+  for (const [id, stufen] of QUALI) await rufe(R.lead(), 'POST', '/api/crm/lead', LENA, { aktion: 'setze', id, felder: { stufen } });
   schritt('CRM: Firmen', FIRMEN.length); schritt('CRM: Kontakte', KONTAKTE.length); schritt('CRM: Produkte', PRODUKTE.length); schritt('CRM: Mandate', 2); schritt('CRM: Deals', deals.length);
 
   // 3b) Markttraktion › Planung (10.10.): zwei erfundene Leadkanäle (Netzwerk, eigene Eventreihe), ein Umsatzziel bis Jahresende, eine
@@ -231,7 +260,9 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   await rufe(R.planung(), 'PATCH', '/api/crm/planung', LENA, { ops: [
     { op: 'kanal', eintrag: { id: 'lk-demo-netzwerk', name: 'Netzwerk & Empfehlung (Beispiel)', herkunft: 'netzwerk', kanaele: ['netzwerk', 'empfehlung', 'outreach'], leadsMonat: 6, zyklusWochen: 8, quoten: { leadZuGespraech: 45, gespraechZuSql: 50 }, kostenJeLead: 20, verantwortlich: verantwortlich('sales'), rang: 1 } },
     { op: 'kanal', eintrag: { id: 'lk-demo-reihe', name: 'Eigene Abendreihe (Beispiel)', herkunft: 'eventreihe', ...(reihe ? { bezug: reihe } : {}), leadsMonat: 8, zyklusWochen: 10, quoten: { leadZuGespraech: 30 }, kostenJeLead: 35, minutenJeLead: 25, beitraegeWoche: 2, verantwortlich: verantwortlich('event'), rang: 2 } },
-    { op: 'ziel', eintrag: { id: 'uz-demo-jahr', gesellschaft: 'ug', titel: 'Neugeschäft bis Jahresende (Beispiel)', von: heute, bis: `${heute.slice(0, 4)}-12-31`, umsatz: 60_000, dealWert: 7_500 } },
+    // 16.10. (Abnahme 2 · B11): zwölf Monate statt „bis Jahresende“ — bei 8–10 Wochen Sales Cycle blieben bis Jahresende nur ein bis drei Wochen
+    // Lead-Fenster, und das Scoreboard verlangte „≥ 116 Leads je Woche“. Mit einem Jahr verteilt sich dasselbe Ziel auf plausible Wochenziele.
+    { op: 'ziel', eintrag: { id: 'uz-demo-jahr', gesellschaft: 'ug', titel: 'Neugeschäft in zwölf Monaten (Beispiel)', von: heute, bis: tagPlus(heute, 364), umsatz: 60_000, dealWert: 7_500 } },
     { op: 'challenge', eintrag: { id: 'chl-demo-gespraeche', woche: montag, art: 'gespraeche', titel: '6 echte Gespräche', ziel: 6, person: 'beide' } },
     { op: 'schritt', mandatId: 'm-demo-nordwerk', schritt: 'bewertung', erledigt: true },
   ] });
@@ -241,7 +272,7 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   //     Kreislauf, ein Paket in der Roadmap, Positionierung & Story und der Fortschritt eines Mandats — über die Route (Einzel-Schritte), wie im Browser.
   const tr = await rufe(R.treppe(), 'GET', '/api/crm/treppe', LENA);
   await rufe(R.treppe(), 'PATCH', '/api/crm/treppe', LENA, { ops: [
-    { op: 'stufe', eintrag: { id: 'ts-demo-check', name: 'Kennzahlen-Check', ebene: 1, preis: { art: 'kostenlos' }, dauerTage: 7, aufwandStunden: 2, lieferobjekte: ['Kurzbefund auf einer Seite'], kennzahl: 'Anzahl offener Steuerungsfragen', aufgabe: 'Zeigt in einer Woche, wo die Steuerung hakt — ohne Risiko für den Kunden. Schafft den Anlass für die Diagnose.', ergebnis: 'Ein Kurzbefund und die Entscheidung, ob eine Diagnose lohnt.' } },
+    { op: 'stufe', eintrag: { id: 'ts-demo-check', name: 'Kennzahlen-Check', ebene: 1, preis: { art: 'kostenlos' }, leistungIds: ['l-demo-check'], dauerTage: 7, aufwandStunden: 2, lieferobjekte: ['Kurzbefund auf einer Seite'], kennzahl: 'Anzahl offener Steuerungsfragen', aufgabe: 'Zeigt in einer Woche, wo die Steuerung hakt — ohne Risiko für den Kunden. Schafft den Anlass für die Diagnose.', ergebnis: 'Ein Kurzbefund und die Entscheidung, ob eine Diagnose lohnt.' } },
     { op: 'stufe', eintrag: { id: 'ts-demo-diagnose', name: 'Klarheits-Diagnose', ebene: 2, preis: { art: 'fest', betrag: 4800 }, dauerTage: 14, aufwandStunden: 16, leistungIds: ['l-demo-diagnose'], lieferobjekte: ['Zwei Workshops', 'Kennzahlen-Bild', 'Fahrplan 90 Tage'], kennzahl: 'Tage bis zur Monatszahl', regeln: { anrechnung: 'wird bei Buchung des Vertriebsaufbaus angerechnet' }, ziel: { umsatz: 48_000, kunden: 10 }, aufgabe: 'Macht sichtbar, was wirklich bremst — erst mit diesem Bild lohnt ein Vertriebsaufbau.', ergebnis: 'Ein gemeinsames Kennzahlen-Bild und ein Fahrplan für 90 Tage.' } },
     { op: 'stufe', eintrag: { id: 'ts-demo-begleitung', name: 'Vertriebsaufbau', ebene: 3, preis: { art: 'monat', betrag: 3500 }, aufwandStunden: 18, leistungIds: ['l-demo-retainer'], lieferobjekte: ['Monatlicher Steuerungstermin', 'Kennzahlen-Review'], kennzahl: 'Ziele im Quartal erreicht', regeln: { mindestlaufzeitMonate: 6, bonus: 'bei erreichten Quartalszielen', maxGleichzeitig: 4 }, ziel: { umsatz: 84_000, kunden: 4 }, aufgabe: 'Baut den Vertrieb Schritt für Schritt auf — Zielkunden, Ansprache, Team und Takt — bis er ohne uns läuft.' } },
     { op: 'stufe', eintrag: { id: 'ts-demo-cockpit', name: 'Cockpit-Lizenz', ebene: 3, preis: { art: 'monat', betrag: 490 }, aufwandStunden: 2, leistungIds: ['l-demo-software'], lieferobjekte: ['Einrichtung', 'Schulung'], kennzahl: 'aktive Nutzer je Woche', aufgabe: 'Für Kunden, die selbst steuern wollen — die Zahlen jeden Tag im Blick.' } },
@@ -262,7 +293,9 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   const reg = await rufe(R.gesellschaften(), 'GET', '/api/gesellschaften', LENA);
   const stand = (id: string) => ((reg.gesellschaften as { id: string; stand: string }[]) ?? []).find(g => g.id === id)?.stand;
   const steck = async (id: string, felder: Record<string, unknown>) => (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id, stand: stand(id), felder })).gesellschaft as { stand: string };
-  await steck('kdc', { rechtsform: 'einzel', status: 'eingetragen', sitz: 'Bielefeld', gegruendetAm: '2019-03-01' });
+  const kdc = await steck('kdc', { rechtsform: 'einzel', status: 'eingetragen', sitz: 'Bielefeld', gegruendetAm: '2019-03-01' });
+  // C10 (16.10.): das Einzelunternehmen führt seine Inhaberin — so hängt es in „Wer hält wen“ mit einer Inhaber-Linie an der Person.
+  await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: 'kdc', stand: kdc.stand, liste: 'organe', eintrag: { funktion: 'geschaeftsfuehrung', wer: { art: 'person', id: LENA }, seit: '2019-03-01' } });
   let kdv = await steck('kdv', { rechtsform: 'ug', status: 'eingetragen', rolle: 'holding', sitz: 'Bielefeld', gegruendetAm: '2021-06-15', stammkapitalCent: '5.000', eingezahltCent: '5.000' });
   let ug = await steck('ug', { rechtsform: 'gmbh', status: 'eingetragen', sitz: 'Bielefeld', gegruendetAm: '2023-01-10', stammkapitalCent: '25.000', eingezahltCent: '25.000' });
   kdv = (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: 'kdv', stand: kdv.stand, liste: 'gesellschafter', eintrag: { wer: { art: 'person', id: LENA }, nennbetragCent: '5.000', einlage: 'ja' } })).gesellschaft as { stand: string };
@@ -352,7 +385,8 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   // 5) Ziele (Jahr, Business + Privat) und Meilensteine mit Aufwand, Personen, Kette.
   const opsLabel = einheitAusGesellschaft('ug') ?? 'Operativ';
   const ziele = [
-    { id: 'z-demo-umsatz', titel: 'Wiederkehrender Umsatz 25.000 € je Monat', fortschritt: 40, space: 'business', einheit: opsLabel, zielwert: 25000, rang: 1, aufwand: 60, personen: [KONTO_LENA] },
+    // C17 (16.10.): Messgröße MRR — neben dem Fortschritt steht der gemessene Ist-Wert aus den Mandaten („Ist 5.950 € = 24 %“).
+    { id: 'z-demo-umsatz', titel: 'Wiederkehrender Umsatz 25.000 € je Monat', fortschritt: 40, space: 'business', einheit: opsLabel, zielwert: 25000, messgroesse: 'mrr', rang: 1, aufwand: 60, personen: [KONTO_LENA] },
     { id: 'z-demo-produkt', titel: 'Cockpit 2.0 bei fünf Kunden im Einsatz', fortschritt: 25, space: 'business', einheit: opsLabel, rang: 2 },
     { id: 'z-demo-team', titel: 'Team auf drei feste Köpfe ausbauen', fortschritt: 10, space: 'business', rang: 3 },
     { id: 'z-demo-ruhe', titel: 'Vier Wochen Urlaub ohne Laptop', fortschritt: 50, space: 'privat', rang: 1 },

@@ -8,6 +8,8 @@
 // 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Reiter „Liquidität“ unter Finanzen › Business (/os/finanzen/liquiditaet leitet weiter).
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { eur } from '@/lib/make-one/finance-data';
@@ -52,16 +54,44 @@ const standFarbe = (stand: number) => (stand < 0 ? LEUCHT.kritisch : stand < 200
  * links (heute) nach rechts wachsen und in die Zukunft ausfransen; unter null liegt die gestrichelte Nulllinie, die Farbe sagt den
  * Zustand (Engpass rot, knapp gelb, sonst Geld). Zeigen auf eine Woche nennt Stand und Bewegungen (wie vorher an den Balken).
  */
-function Wochenbalken({ wochen, hoehe, jede, farbe }: { wochen: Woche[]; hoehe: number; jede: number; farbe: string }) {
+function Wochenbalken({ wochen, hoehe, jede, farbe, onWoche }: { wochen: Woche[]; hoehe: number; jede: number; farbe: string; onWoche?: (von: string) => void }) {
   return (
     <>
       <FadenLinie reihe={wochen.map(w => w.stand)} heute={0} farbe={farbe} hoehe={hoehe} label="Kontostand am Ende jeder Woche" format={eur}
+        onSpalte={onWoche ? i => onWoche(wochen[i].von) : undefined}
         beschriftung={i => `${wochen[i].label} (${datum(wochen[i].von)})`}
         spalten={wochen.map(w => `${w.label} (${datum(w.von)}): ${eur(w.stand)}${w.bewegungen.length ? '\n' + w.bewegungen.map(b => `${datum(b.datum)} ${b.betrag > 0 ? '+' : ''}${b.betrag} € ${b.text}`).join('\n') : '\nkeine Bewegung'}`)} />
       <div aria-hidden="true" style={{ display: 'flex', gap: 3, marginTop: 4, fontSize: TYP.mikro, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>
         {wochen.map((w, i) => <div key={w.von} style={{ flex: 1, textAlign: 'center', minWidth: 0, overflow: 'hidden' }}>{i % jede === 0 ? datum(w.von) : ''}</div>)}
       </div>
     </>
+  );
+}
+
+/** Wohin ein Posten der Vorschau führt (16.10., B7) — Rechnung, Zahlung oder Planposten; Fixkosten haben keinen eigenen Ort. */
+const bewegungLink = (b: Woche['bewegungen'][number]): string | null =>
+  !b.quelle ? null : b.quelle.art === 'rechnung' ? WEG.rechnung(b.quelle.id) : b.quelle.art === 'zahlung' ? WEG.zahlung(b.quelle.id) : WEG.planposten(b.quelle.id);
+
+/**
+ * Die gewählte Woche (Klick in den Verlauf oder `?w=<Montag>` aus einem Link, 16.10., Abnahme 2 · B7): Stand und jede Bewegung — jede führt
+ * zu ihrem Posten. „Bild statt Liste, Details auf Klick.“
+ */
+function WocheDetail({ w, onZu }: { w: Woche; onZu: () => void }) {
+  return (
+    <div role="region" aria-label={`Woche ab ${datum(w.von)}`} style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,.04)', display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <b style={{ fontSize: TYP.bedien, color: C.ink }}>{w.label} · ab {datum(w.von)}</b>
+        <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Stand am Ende {eur(w.stand)}</span>
+        <Knopf leise onClick={onZu}>Schließen</Knopf>
+      </div>
+      {!w.bewegungen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine Bewegung in dieser Woche.</span>}
+      {w.bewegungen.map((b, k) => {
+        const href = bewegungLink(b);
+        const inhalt = <><span style={{ color: C.inkLeise, width: 52, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{datum(b.datum)}</span><span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.text}>{b.text}</span><span style={{ fontVariantNumeric: 'tabular-nums', color: b.betrag > 0 ? LEUCHT.gut : C.ink }}>{b.betrag > 0 ? '+' : ''}{eur(b.betrag)}</span>{href && <span aria-hidden="true" style={{ color: C.inkLeise }}>›</span>}</>;
+        const stil: CSSProperties = { display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', minHeight: 32 };
+        return href ? <Link key={k} href={href} style={stil}>{inhalt}</Link> : <div key={k} style={stil}>{inhalt}</div>;
+      })}
+    </div>
   );
 }
 
@@ -98,6 +128,10 @@ export function LiquiditaetView() {
   // Aus einem Link (?p=<Posten>, z. B. hinter der Fixkostenquote): Posten öffnen und hinspringen; #kontostaende springt zu den Kontoständen.
   const zielPosten = useZiel('p');
   useEffect(() => { if (zielPosten) setOffen(zielPosten); }, [zielPosten]);
+  // Gewählte Woche des Verlaufs (16.10., B7): Klick in die Linie oder `?w=<Montag>` (z. B. aus dem Controlling).
+  const zielWoche = useZiel('w');
+  const [wocheWahl, setWocheWahl] = useState<string | null>(null);
+  useEffect(() => { if (zielWoche) setWocheWahl(zielWoche); }, [zielWoche]);
   useZuZiel(zielPosten, geladen && !!plan);
   const heute = localDay();
 
@@ -314,7 +348,8 @@ export function LiquiditaetView() {
               {!!v.unsicher && <> {eur(v.unsicher)} sind in diesem Fall nicht mitgerechnet.</>}
             </div>
 
-            <Wochenbalken wochen={v.wochen} hoehe={110} jede={Math.ceil(wochen / 8)} farbe={v.engpass ? LEUCHT.kritisch : v.tiefpunkt.stand < 2000 ? LEUCHT.achtung : LEUCHT.geld} />
+            <Wochenbalken wochen={v.wochen} hoehe={110} jede={Math.ceil(wochen / 8)} farbe={v.engpass ? LEUCHT.kritisch : v.tiefpunkt.stand < 2000 ? LEUCHT.achtung : LEUCHT.geld} onWoche={von => setWocheWahl(w => (w === von ? null : von))} />
+            {(() => { const w = wocheWahl ? v.wochen.find(x => x.von === wocheWahl || (x.von <= wocheWahl && wocheWahl <= x.bis)) : null; return w ? <WocheDetail w={w} onZu={() => setWocheWahl(null)} /> : null; })()}
           </Karte>
 
           {/* Ebene 3: wohin das Geld geht */}

@@ -80,6 +80,23 @@ async function gesundheitStandFrisch(person: string, heute: string): Promise<Ges
   return { pi, person, ...v };
 }
 
+/**
+ * Ohne Einwilligung (a) keine Werte (16.10., Abnahme 2 · C12: „Noch keine Einwilligung“ und darunter trotzdem „Bewegung & Aufbau 20“): es wird
+ * nichts gelesen, gerechnet oder festgehalten — die Säulen stehen da, jede Kennzahl „ohne Einwilligung“, Index und Säulen ohne Zahl (rein).
+ */
+export const OHNE_EINWILLIGUNG = 'ohne Einwilligung — erst nach „In MAKE OS verarbeiten“';
+export function gesundheitOhneEinwilligung(person: string, heute = localDay()): GesundheitStand {
+  const leer: GesundheitBestand = { heute, person, vitals: {}, routinen: [], log: {} as RoutinenLog, journal: {}, haut: {} as HautLog, streak: {} as StreakLog, bloecke: [], termine: [], kalenderFrisch: false, meilensteine: [], ernaehrung: null };
+  const pi = berechneGesundheit(leer);
+  return {
+    pi: {
+      ...pi, index: null, label: 'Ohne Einwilligung', abdeckung: 0, teil: null, hebel: null, luecken: 0,
+      saeulen: pi.saeulen.map(x => ({ ...x, score: null, abdeckung: 0, zuDuenn: false, kennzahlen: x.kennzahlen.map(k => ({ ...k, gemessen: false, wert: null, anzeige: null, quelle: OHNE_EINWILLIGUNG, punkte: null, ampel: 'grau' as const, details: [] })) })),
+    },
+    person, verlauf: [], vor30: null, wechsel: [],
+  };
+}
+
 /** Nur rechnen — für den Wachstums-Score. */
 export async function gesundheitsIndexFuer(person: string, heute = localDay()): Promise<GesundheitsIndex> {
   return berechneGesundheit(await ladeGesundheitBestand(person, heute));

@@ -222,10 +222,27 @@ async function gesundheit(person: string, heute: string): Promise<FlussReihe> {
 }
 
 // ── Familie ──────────────────────────────────────────────────────────────────
+/**
+ * Der feste Termin fürs Paar-Gespräch (Einstellung Wochentag) ist Geplantes (16.10., Abnahme 2 · C9: „Für dich — Noch nichts eingetragen“
+ * stand über „Nächstes Paar-Gespräch in 3 Tagen“): das nächste Gespräch nach Einstellung (`naechstesGespraech`, dieselbe Regel wie die
+ * Karte darunter) und die Wochen danach — außer ein Gespräch ist für diese Woche schon geplant (dann zählt es selbst) oder es ist Ausnahmezeit.
+ */
+function gespraechsRhythmus(f: import('@/lib/familie/typen').Familie, heute: string, naechstesGespraech: typeof import('@/lib/familie/logik').naechstesGespraech): MomentPunkt[] {
+  if (!f.einstellungen?.gespraech) return [];
+  const n = naechstesGespraech(f.einstellungen, heute, f.gespraeche ?? []);
+  const aus: MomentPunkt[] = [];
+  for (let w = 0, d = n.datum; d <= tagPlus(heute, VORAUS); w++, d = tagPlus(n.datum, 7 * w)) {
+    if (w === 0 && n.laufend) continue;
+    if (f.einstellungen.ausnahmeBis && d <= f.einstellungen.ausnahmeBis) continue;
+    aus.push({ id: `gespraech-rhythmus:${d}`, titel: 'Paar-Gespräch', tag: d, art: 'gespraech' });
+  }
+  return aus;
+}
+
 async function familie(person: string, heute: string): Promise<FlussReihe | null> {
   const h = await haushaltDesInhabers();
   if (!h) return null;
-  const [{ familieName }, { sichtFuer, naechstes }] = await Promise.all([import('@/lib/familie/speicher'), import('@/lib/familie/logik')]);
+  const [{ familieName }, { sichtFuer, naechstes, naechstesGespraech }] = await Promise.all([import('@/lib/familie/speicher'), import('@/lib/familie/logik')]);
   // Nur lesen (ladeFamilie legte bei fehlender Datei einen Start-Bestand an); „nur ich“ der anderen Person fällt über `sichtFuer` heraus.
   const f = await loadJson<import('@/lib/familie/typen').Familie>(familieName(h)).catch(() => null);
   if (!f) return flussFamilie({ heute, gewesen: [], geplant: [] });
@@ -239,6 +256,7 @@ async function familie(person: string, heute: string): Promise<FlussReihe | null
     ...sichtFuer(f.gespraeche ?? [], person).filter(g => g.status === 'geplant').map(g => ({ id: `gespraech:${g.id}`, titel: 'Paar-Gespräch', tag: g.datum, art: 'gespraech' as const })),
     ...sichtFuer(f.vereinbarungen ?? [], person).filter(v => v.status === 'offen' && v.faellig).map(v => ({ id: `v:${v.id}`, titel: v.text, tag: v.faellig!, art: 'vereinbarung' as const })),
     ...sichtFuer(f.tage ?? [], person).map(t => ({ id: `tag:${t.id}`, titel: t.titel, tag: naechstes(t.datum, heute) ?? '', art: 'tag' as const })),
+    ...gespraechsRhythmus(f, heute, naechstesGespraech),
   ].filter(m => tag(m.tag) && m.tag <= tagPlus(heute, VORAUS));
   return flussFamilie({ heute, gewesen, geplant, link: WEG.familie() });
 }

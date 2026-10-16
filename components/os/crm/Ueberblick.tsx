@@ -54,7 +54,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   const router = useRouter();
   // 6.7 (08.10.): Ziele außerhalb der Markttraktion (Mandate) tragen `href` — sonst der Bereich der Markttraktion.
   // `filter` (14.10., B5): der Sprung in die Leads-Liste öffnet den Filter, nach dem die Zahl gezählt hat (dieselbe Regel `passtLeadFilter`).
-  const geh = (z: { s: string; a?: string; k?: string; href?: string; filter?: LeadFilter }) => { if (z.filter) leadsFilterSetzen(z.filter); return z.href ? router.push(z.href) : zuBereich(z.s, z.a, z.k); };
+  // `wer` (16.10., B11): „Für dich“ zählt die eigenen — die Liste öffnet dann auf „Meins“ und zeigt dieselbe Zahl.
+  const geh = (z: { s: string; a?: string; k?: string; href?: string; filter?: LeadFilter; wer?: 'ich' }) => { if (z.filter) leadsFilterSetzen(z.filter, z.wer); return z.href ? router.push(z.href) : zuBereich(z.s, z.a, z.k); };
   const [d, setD] = useState<Daten | null>(null);
   const [alle, setAlle] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);

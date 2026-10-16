@@ -8,7 +8,9 @@
 // Die Leinwand ist `aria-hidden` — Bedienung steckt in Knöpfen (Markierungen, Legende, Brotkrumen), Text im Textäquivalent.
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, LEUCHT, LICHT_GLAS, SCHRIFT } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { anteilIm, monatsTicks, quartale, stapeln, tagBeiAnteil, tageZwischen } from '@/lib/planung/zeitstrahl';
@@ -53,6 +55,7 @@ const zuBand = (l: readonly Buendel[], deckel: number): BandBuendel[] => faedenD
 
 export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, onUebergangAngewandt, engstellen, uebergang, hervor, onHervor, onTiefer, onEngstelle, onTag, onBlaettern, onBreite, label }: FaedenbandProps) {
   const boxRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zeichner = useRef<Zeichner | null>(null);
   const [breite, setBreite] = useState(640);
@@ -156,7 +159,7 @@ export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, 
   const eintrag = (t: EventTarget | null) => t instanceof Element && !!t.closest('[data-strahl-eintrag]');
 
   return (
-    <div ref={boxRef} role="group" aria-label={label} tabIndex={onBlaettern ? 0 : undefined} data-faedenband=""
+    <div ref={boxRef} role="group" aria-label={label} tabIndex={onBlaettern ? 0 : undefined} data-faedenband="" data-grafik-weiter=""
       onKeyDown={b.griffe.onKeyDown}
       onPointerDown={b.griffe.onPointerDown}
       onPointerMove={e => {
@@ -177,9 +180,14 @@ export function Faedenband({ ansicht, schluessel = null, heute: heuteVomServer, 
         const id = zeichner.current?.treffer(p.x, p.y);
         const ziel = id ? nachId.get(id) : undefined;
         if (ziel?.tiefer) { onTiefer(ziel); return; }
-        if (onTag && !ziel) onTag(tagBeiAnteil(von, bis, p.x / Math.max(1, breite)));
+        // Jede Grafik führt weiter (16.10., Abnahme 2 · B7): ein Strang ohne tiefere Ebene öffnet sein Ziel, eine freie Stelle ohne eigene
+        // Aktion die Woche dieses Tages im Kalender — nie ein Klick ins Leere.
+        if (ziel?.link) { router.push(ziel.link); return; }
+        if (ziel) return;
+        const tag = tagBeiAnteil(von, bis, p.x / Math.max(1, breite));
+        if (onTag) onTag(tag); else router.push(WEG.kalender(tag));
       }}
-      style={{ position: 'relative', height: hoehe, flex: '1 1 auto', minWidth: 0, overflow: 'hidden', touchAction: onBlaettern ? 'pan-y' : undefined, cursor: zeiger?.tiefer ? 'zoom-in' : onTag ? 'copy' : 'default', outline: 'none', userSelect: b.zug ? 'none' : undefined }}>
+      style={{ position: 'relative', height: hoehe, flex: '1 1 auto', minWidth: 0, overflow: 'hidden', touchAction: onBlaettern ? 'pan-y' : undefined, cursor: zeiger?.tiefer ? 'zoom-in' : onTag ? 'copy' : 'pointer', outline: 'none', userSelect: b.zug ? 'none' : undefined }}>
       <div style={{ position: 'absolute', inset: 0, transform: b.zug ? `translateX(${b.zug}px)` : undefined, transition: b.zug ? 'none' : 'transform .18s ease' }}>
         <canvas ref={canvasRef} aria-hidden="true" data-lichtfaeden=""
           style={{ position: 'absolute', left: 0, top: 0, width: breite, height: hoehe, pointerEvents: 'none', zIndex: 0 }} />

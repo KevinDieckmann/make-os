@@ -382,7 +382,8 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) {
   .leiste-desktop { display: none; }
   .leiste-mobil { display: flex; }
-  .os-shell main { padding-bottom: 72px; }
+  /* 16.10. (Abnahme 2 · C11): Leiste (72 px) + ZOE-Kugel darüber (86 + 52 px) — die letzte Zeile bleibt frei, die Kugel deckt nichts ab. */
+  .os-shell main { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
 }
 /* Auf dem Handy sitzt der ZOE-Knopf über der Leiste, nicht darauf. */
 @media (max-width: 720px) {
@@ -708,7 +709,8 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ui-kopf-aktion { order: 2; flex: 0 1 auto; max-width: 100%; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
   .ui-kopf-unter { order: 3; flex: 1 0 100%; font-size: 13px; margin-top: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .ui-kopf-aktion .zoe-fragen { padding: 0 !important; width: 44px; height: 44px; min-height: 44px !important; justify-content: center; }
-  .ui-kopf-aktion .zoe-fragen-text { display: none; }
+  .ui-kopf-aktion .zoe-fragen-text, .ui-kopf-aktion .zoe-fragen-punkt { display: none; }
+  .ui-kopf-aktion .zoe-fragen-symbol { display: block; }
   .ui-karten { gap: 14px; }
 }
 
@@ -741,6 +743,11 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 @media (max-width: 720px) { .ui-netz { display: none; } .ui-fokus-kante { left: 16px; right: 16px; } }
 .ui-fadenlinie { display: grid; gap: 4px; }
 .ui-fadenlinie-achse { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #86918F; font-variant-numeric: tabular-nums; }
+/* Grafiken führen weiter (16.10., Abnahme 2 · B7): Spalten/Perioden einer Grafik sind anklickbar — beim Zeigen leise hinterlegt. */
+/* C11 (16.10.): das Sprechblasen-Zeichen des Knopfs „Mit … sprechen“ nur am Handy (im Kopf), sonst Punkt + Text. */
+.zoe-fragen-symbol { display: none; }
+.ui-fluss-periode, .ui-grafik-spalte { cursor: pointer; background: transparent; transition: background .15s ease; }
+.ui-fluss-periode:hover, .ui-grafik-spalte:hover, .ui-grafik-spalte:focus-visible { background: rgba(255,255,255,.05); }
 .ui-segmentbalken-zeile { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
 .ui-segmentbalken { display: inline-flex; align-items: stretch; gap: 3px; flex: 1 1 auto; min-width: 48px; }
 .ui-segbalken-teil { flex: 1 1 0; min-width: 2px; max-width: 7px; border-radius: 1.5px; transform: skewX(-18deg); }

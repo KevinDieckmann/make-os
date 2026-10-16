@@ -457,10 +457,13 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
       <Ganztags tage={tage} kopfBreite={kopfBreite} termine={ganztagsTermine} fristen={fristen} erinnerungen={erinnerungen} aufgaben={ganztagsAufgaben} farbe={farbe} onTermin={onOeffnen}
         onAufgabeHaken={onAufgabeHaken ?? onAufgabe} onAufgabeOeffnen={onAufgabeHaken ? onAufgabe : undefined} onAufgabeAblegen={onAufgabeEinplanen ? (id, tag) => onAufgabeEinplanen(id, tag, null) : undefined} />
       {/* Stundenraster — rollt in sich; Strg/⌘ + Rad bzw. zwei Finger zoomen. */}
-      <div ref={rollen} data-kalender-raster="" style={{ overflowY: 'auto', minHeight: 0, position: 'relative', scrollbarGutter: 'stable', overscrollBehaviorY: 'contain' }}>
+      {/* Höchstens so hoch wie der Bildschirm (16.10., Abnahme 2 · C1): am Handy rollte sonst die ganze Seite, das Raster selbst nie — der Tag
+          stand bei 00:00 statt bei der Arbeitszeit bzw. eine Stunde vor jetzt (`startMinute`). Am Rechner begrenzt ohnehin die Spalte. */}
+      <div ref={rollen} data-kalender-raster="" style={{ overflowY: 'auto', minHeight: 0, maxHeight: 'max(420px, calc(100dvh - 150px))', position: 'relative', scrollbarGutter: 'stable', overscrollBehaviorY: 'contain' }}>
         <div style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px 1fr`, height: 24 * 60 * px }}>
           <div style={{ position: 'relative' }}>
-            {stunden.map(h => <div key={h} style={{ position: 'absolute', top: h * 60 * px - 7, right: 8, fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{h > 0 ? `${String(h).padStart(2, '0')}:00` : ''}</div>)}
+            {/* Die Stunde dicht an der Jetzt-Zeit weicht ihr (16.10., Abnahme 2 · C1: „08:00“ und „08:12“ übereinander) — die Jetzt-Zeit gewinnt. */}
+            {stunden.map(h => <div key={h} style={{ position: 'absolute', top: h * 60 * px - 7, right: 8, fontSize: 12, color: C.inkLeise, fontVariantNumeric: 'tabular-nums', visibility: heuteSichtbar && Math.abs((h * 60 - jetztMin!) * px) < 16 ? 'hidden' : undefined }}>{h > 0 ? `${String(h).padStart(2, '0')}:00` : ''}</div>)}
             {/* Jetzt (10.10., wie Google): die Uhrzeit links in Rot. */}
             {heuteSichtbar && <div aria-hidden style={{ position: 'absolute', top: jetztMin! * px - 8, right: 4, zIndex: 2, fontSize: 12, fontWeight: 700, color: LEUCHT.kritisch, background: C.grund, borderRadius: 4, padding: '0 3px', fontVariantNumeric: 'tabular-nums' }}>{uhr(jetztMin!)}</div>}
           </div>
@@ -519,8 +522,10 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                     const zeit = mehr ? `${kurz(ev.start)} – ${kurz(ev.ende)}` : `${uhr(von)}–${uhr(bis)}`;
                     // Hoher Block: der Titel darf umbrechen (so viele Zeilen, wie neben der Zeitzeile Platz haben).
                     const titelZeilen = Math.max(1, Math.floor((hoehe - 8 - 16) / 16));
+                    // Das Schloss steht hinter der Zeit, nicht vor dem Titel (16.10., Abnahme 2 · C1: schmale Blöcke zeigten nur „🔒 …“).
+                    const schloss = !ev.bearbeitbar && !ev.maskiert
+                      ? <span aria-label={`nur in ${istGoogleTermin(ev) ? 'Google' : 'Apple'} änderbar`} title={`nur in ${istGoogleTermin(ev) ? 'Google' : 'Apple'} änderbar`} style={{ marginLeft: 4, fontSize: 12, opacity: 0.75 }}>🔒</span> : null;
                     const zeichen = (<>
-                      {!ev.bearbeitbar && !ev.maskiert && <span aria-label="nur in Apple" style={{ marginRight: 4 }}>🔒</span>}
                       {ev.mitTeilnehmern && !ev.maskiert && <span aria-label="mit Gästen" title={ev.ichOrganisator ? 'Du hast eingeladen' : 'Du bist Gast'} style={{ marginRight: 4 }}>👥</span>}
                       {fokus && <span aria-hidden style={{ marginRight: 4, color: f }}>{laeuftJetzt ? '▶' : '◎'}</span>}
                       {abwesend && <span aria-hidden style={{ marginRight: 4, color: f }}>⊘</span>}
@@ -541,15 +546,15 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
                           zIndex: z ? 5 : 2, opacity: versetzt ? .45 : 1, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: z ? 'none' : 'pan-y', fontFamily: SCHRIFT.text }}>
                         {einzeilig ? (
                           <div style={{ fontSize: 12.5, lineHeight: `${hoehe - 2}px`, color: ev.maskiert ? C.inkDim : C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {zeichen}<b style={{ fontWeight: 650 }}>{ev.titel}</b>{!(z && mehr) && <span style={{ color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>, {mehr ? kurz(ev.start) : uhr(von)}</span>}
+                            {zeichen}<b style={{ fontWeight: 650 }}>{ev.titel}</b>{!(z && mehr) && <span style={{ color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>, {mehr ? kurz(ev.start) : uhr(von)}</span>}{schloss}
                           </div>
                         ) : (
-                          <div style={{ fontSize: 12.5, fontWeight: 650, color: ev.maskiert ? C.inkDim : C.ink, lineHeight: '16px', overflow: 'hidden', overflowWrap: 'anywhere', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: titelZeilen }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 650, color: ev.maskiert ? C.inkDim : C.ink, lineHeight: '16px', overflow: 'hidden', overflowWrap: 'break-word', hyphens: 'auto', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: titelZeilen }}>
                             {zeichen}{ev.titel}
                           </div>
                         )}
                         {z && mehr && z.bewegt && <div aria-live="polite" style={{ fontSize: 12, color: C.ink, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{mehrtaegigVorschau(ev, z)}</div>}
-                        {!einzeilig && !(z && mehr) && <div style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums', lineHeight: '16px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{zeit}{ev.ort ? ` · ${ev.ort}` : ''}{frei ? ' · frei' : ''}</div>}
+                        {!einzeilig && !(z && mehr) && <div style={{ fontSize: 12, color: C.inkDim, fontVariantNumeric: 'tabular-nums', lineHeight: '16px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{zeit}{schloss}{ev.ort ? ` · ${ev.ort}` : ''}{frei ? ' · frei' : ''}</div>}
                         {darfDauer && <div onPointerDown={e => anfassen(e, ev, ti, 'resize')} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 8, cursor: 'ns-resize' }} />}
                       </div>
                     );

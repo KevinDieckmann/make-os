@@ -37,7 +37,7 @@ export const EXPORT_INFO: Record<ExportArt, { label: string; datei: string; text
   firmen: { label: 'Firmen', datei: 'Firmen', text: 'Unternehmen mit Branche, Rolle, Lead-Status und Zahl der Personen, offenen Deals und aktiven Mandate.' },
   deals: { label: 'Deals', datei: 'Deals', text: 'Pipeline mit Firma (per Kennung), Personen, Stufe, Wert, Gesamtwert, Wahrscheinlichkeit und nächstem Schritt.' },
   followups: { label: 'Follow-ups', datei: 'Follow-ups', text: 'Alle Follow-ups mit Person, Bezug (Deal, Mandat, Event, Firma), Fälligkeit, Status und Ergebnis.' },
-  mandate: { label: 'Mandate', datei: 'Mandate', text: 'Kunden und Mandate mit Honorar, Laufzeit, Rechnungsrhythmus, Phase und Health-Werten.' },
+  mandate: { label: 'Mandate', datei: 'Mandate', text: 'Kunden und Mandate mit Honorar, Laufzeit, Rechnungsrhythmus, Phase und Gesundheits-Werten.' },
 };
 
 export interface ExportQuelle {

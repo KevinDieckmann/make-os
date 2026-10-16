@@ -18,6 +18,7 @@ import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { labelsVon } from './mehrfach';
 import { LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN } from './netzwerken';
 import { WEG } from '@/lib/wege';
+import { anzahl } from '@/lib/text/zahlwort';
 
 export interface Befund { prio: 1 | 2 | 3 | 4 | 5; titel: string; grund: string; bereich: 'heute' | 'followup' | 'kontakte' | 'firmen' | 'pipeline' | 'kunden' | 'marketing' | 'events' | 'stammdaten'; ansicht?: string;
   /** Ziel außerhalb der Markttraktion (6.7, 08.10.: Mandate liegen unter /os/mandate) — gewinnt vor `bereich`. */
@@ -44,13 +45,13 @@ export function befunde(kontakte: Kontakt[], crm: CrmBestand, heute: string, opt
   if (ohneChance.length) b.push({ prio: 2, titel: `${ohneChance.length} Kontakte im Gespräch ohne Deal`, grund: 'Qualifizierungs-Runde: sechs Kernfragen je Lead — SQL-bereite werden Deals', bereich: 'kontakte', ansicht: 'runde-chancen' });
   // Ohne Kreis kein Pflege-Takt in der Power Hour — die Kreis-Runde sortiert Karte für Karte.
   const ohneKreis = kontakte.filter(k => !k.kreis && !ausgenommen(k) && (k.lebensphase === 'kunde' || k.prio === 'A' || k.prio === 'B' || ['gespraech', 'termin', 'angebot', 'gewonnen'].includes(k.stufe)));
-  if (ohneKreis.length) b.push({ prio: 3, titel: `${ohneKreis.length} wichtige Kontakte ohne Kreis`, grund: 'Kreis-Runde: A/B/C/D und wer die Beziehung hält — dann greift der Pflege-Takt', bereich: 'kontakte', ansicht: 'runde-kreis' });
+  if (ohneKreis.length) b.push({ prio: 3, titel: `${anzahl(ohneKreis.length, 'wichtiger Kontakt', 'wichtige Kontakte')} ohne Kreis`, grund: 'Kreis-Runde: A/B/C/D und wer die Beziehung hält — dann greift der Pflege-Takt', bereich: 'kontakte', ansicht: 'runde-kreis' });
   const ohneSchritt = offen.filter(c => !c.naechsterSchritt);
-  if (ohneSchritt.length) b.push({ prio: 2, titel: `${ohneSchritt.length} Deals ohne nächsten Schritt`, grund: 'Ohne Datum verliert sich jeder Deal', bereich: 'pipeline' });
+  if (ohneSchritt.length) b.push({ prio: 2, titel: `${anzahl(ohneSchritt.length, 'Deal', 'Deals')} ohne nächsten Schritt`, grund: 'Ohne Datum verliert sich jeder Deal', bereich: 'pipeline' });
   const widersprueche = crm.mandate.filter(m => m.status !== 'beendet' && m.offen.length);
-  if (widersprueche.length) b.push({ prio: 3, titel: `${widersprueche.length} Mandate mit offenen Punkten`, grund: `${widersprueche.reduce((a, m) => a + m.offen.length, 0)} Widersprüche und Klärungen`, bereich: 'kunden' });
+  if (widersprueche.length) b.push({ prio: 3, titel: `${anzahl(widersprueche.length, 'Mandat', 'Mandate')} mit offenen Punkten`, grund: (n => `${anzahl(n, 'Widerspruch oder Klärung', 'Widersprüche und Klärungen')}`)(widersprueche.reduce((a, m) => a + m.offen.length, 0)), bereich: 'kunden' });
   const ohneAngaben = kontakte.filter(k => !k.herkunft || !k.rechtsgrundlage).length;
-  if (ohneAngaben) b.push({ prio: 3, titel: `${ohneAngaben} Kontakte ohne Herkunft oder Rechtsgrundlage`, grund: 'Vorschlag per Regel, Übernahme per Klick', bereich: 'stammdaten', ansicht: 'datenschutz' });
+  if (ohneAngaben) b.push({ prio: 3, titel: `${anzahl(ohneAngaben, 'Kontakt', 'Kontakte')} ohne Herkunft oder Rechtsgrundlage`, grund: 'Vorschlag per Regel, Übernahme per Klick', bereich: 'stammdaten', ansicht: 'datenschutz' });
   // Datenschutz (U2, 28.09.): Löschfrist (nie automatisch löschen) und „zuletzt geprüft“ (Richtigkeit).
   const ueberFrist = kontakteUeberFrist(kontakte, crm, heute, opts.loeschMonate ?? 24).length;
   if (ueberFrist) b.push({ prio: 3, titel: `${ueberFrist} Kontakte über der Löschfrist`, grund: 'prüfen: löschen oder Frist mit Grund verlängern — gelöscht wird nie automatisch', bereich: 'stammdaten', ansicht: 'datenschutz' });

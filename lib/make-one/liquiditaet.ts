@@ -73,6 +73,8 @@ export interface Bewegung {
   sicher: boolean;
   kategorie?: string;
   firmaId?: string;
+  /** Woher der Posten kommt (16.10., Abnahme 2 · B7): Klick auf die Woche öffnet ihn (WEG.rechnung/zahlung/planposten). Fixkosten ohne. */
+  quelle?: { art: 'rechnung' | 'zahlung' | 'planposten'; id: string };
 }
 
 export interface Woche {
@@ -256,7 +258,7 @@ export function vorschau(
       const faellig = r.faellig ?? iso(tage(heuteD, geplant ? 28 : 7));
       if (faellig < vonISO || faellig > bisISO) continue;
       // Überfälliges landet in der laufenden Woche, nicht in der Vergangenheit.
-      bewegungen.push({ datum: faellig, text: `${r.kunde}: ${r.titel}`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: !geplant });
+      bewegungen.push({ datum: faellig, text: `${r.kunde}: ${r.titel}`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: !geplant, ...(r.id ? { quelle: { art: 'rechnung' as const, id: r.id } } : {}) });
       if (geplant) unsicher += r.betrag;
     }
     // Überfällige Rechnungen in Woche 1 mitnehmen.
@@ -264,7 +266,7 @@ export function vorschau(
       for (const r of rechnungen) {
         if (r.status === 'bezahlt' || r.status === 'storniert' || !r.betrag || !r.faellig || r.faellig >= vonISO) continue;
         if (r.status === 'geplant' && !optimistisch) continue;
-        bewegungen.push({ datum: r.faellig, text: `${r.kunde}: ${r.titel} (überfällig)`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: false });
+        bewegungen.push({ datum: r.faellig, text: `${r.kunde}: ${r.titel} (überfällig)`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: false, ...(r.id ? { quelle: { art: 'rechnung' as const, id: r.id } } : {}) });
         unsicher += r.betrag;
       }
     }
@@ -277,7 +279,7 @@ export function vorschau(
       const inWoche = faellig >= vonISO && faellig <= bisISO;
       const ueberfaellig = i === 0 && faellig < vonISO;
       if (!inWoche && !ueberfaellig) continue;
-      bewegungen.push({ datum: faellig, text: `${z.an}${ueberfaellig ? ' (überfällig)' : ''}`.slice(0, 60), betrag: -z.betrag, art: 'ausgang', sicher: true });
+      bewegungen.push({ datum: faellig, text: `${z.an}${ueberfaellig ? ' (überfällig)' : ''}`.slice(0, 60), betrag: -z.betrag, art: 'ausgang', sicher: true, ...(z.id ? { quelle: { art: 'zahlung' as const, id: z.id } } : {}) });
     }
 
     // Geplante Posten — wiederkehrend oder einmalig.
@@ -297,7 +299,7 @@ export function vorschau(
       bewegungen.push({
         datum, text: p.titel.slice(0, 60), betrag: p.betrag,
         art: p.betrag > 0 ? 'eingang' : 'fix', sicher: p.sicher,
-        kategorie: p.kategorie, firmaId: p.firmaId,
+        kategorie: p.kategorie, firmaId: p.firmaId, ...(p.id ? { quelle: { art: 'planposten' as const, id: p.id } } : {}),
       });
       if (!p.sicher && p.betrag > 0) unsicher += p.betrag;
     }

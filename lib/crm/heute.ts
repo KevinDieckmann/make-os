@@ -220,7 +220,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     if (l.kuendigungIn !== null && l.kuendigungIn < 0) nimm(k, 'kunden', 40, `${m.kunde}: Laufzeit seit ${-l.kuendigungIn} Tagen vorbei — verlängern oder abschließen`, { bezug: m.id });
     else if (l.kuendigungIn !== null && l.kuendigungIn <= 90) nimm(k, 'kunden', 45, `${m.kunde}: Laufzeit endet in ${l.kuendigungIn} Tagen — Verlängerung ansprechen`, { bezug: m.id });
     else if (m.naechstesReview && m.naechstesReview <= heute) nimm(k, 'kunden', 35, `${m.kunde}: Review fällig`, { bezug: m.id });
-    else if (l.ampel === 'rot' || l.ampel === 'gelb') nimm(k, 'kunden', l.ampel === 'rot' ? 35 : 20, `${m.kunde}: Health ${l.ampel}`, { bezug: m.id });
+    else if (l.ampel === 'rot' || l.ampel === 'gelb') nimm(k, 'kunden', l.ampel === 'rot' ? 35 : 20, `${m.kunde}: Gesundheit ${l.ampel}`, { bezug: m.id });
   }
   // 5 Pflege
   for (const k of kontakte) {

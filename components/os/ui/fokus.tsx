@@ -35,7 +35,8 @@ const NETZ_LINIEN: readonly [number, number][] = [[0, 1], [1, 2], [2, 3], [0, 4]
 export function NetzMotiv({ farbe = FOKUS_LICHT, breite = 132, hoehe = 72 }: { farbe?: string; breite?: number; hoehe?: number }) {
   const p = NETZ_KNOTEN.map(([x, y, r]) => ({ x: x * breite, y: y * hoehe, r }));
   return (
-    <svg aria-hidden="true" className="ui-netz" width={breite} height={hoehe} viewBox={`0 0 ${breite} ${hoehe}`} style={{ color: farbe }}>
+    // Schmuck, keine Grafik (16.10., Abnahme 2 · B7): `data-deko` — Klick-Prüfungen und Zeiger gehen hindurch auf die Karte.
+    <svg aria-hidden="true" data-deko="" className="ui-netz" width={breite} height={hoehe} viewBox={`0 0 ${breite} ${hoehe}`} style={{ color: farbe, pointerEvents: 'none' }}>
       <g className="ui-netz-treiben">
         {NETZ_LINIEN.map(([a, b], i) => <line key={i} x1={p[a].x} y1={p[a].y} x2={p[b].x} y2={p[b].y} stroke="currentColor" strokeOpacity={0.22} strokeWidth={0.7} />)}
         {p.map((k, i) => <circle key={i} cx={k.x} cy={k.y} r={k.r} fill="currentColor" fillOpacity={0.18} stroke="currentColor" strokeOpacity={0.6} strokeWidth={0.8} />)}
@@ -62,6 +63,8 @@ export interface FadenLinieProps {
   achse?: readonly ReactNode[];
   /** Hinweis je Feld beim Zeigen (title), z. B. die Buchungen einer Woche. */
   spalten?: readonly string[];
+  /** Klick auf ein Feld (16.10., Abnahme 2 · B7 „jede Grafik führt weiter“) — z. B. die Woche mit ihren Posten öffnen. Braucht `spalten`. */
+  onSpalte?: (i: number) => void;
   style?: CSSProperties;
 }
 
@@ -69,7 +72,7 @@ export interface FadenLinieProps {
  * Der Mini-Strahl: eine Zeitreihe als Bündel feiner Fäden (derselbe Zeichner wie das Lichtfäden-Band). Die Leinwand ist
  * `aria-hidden`, die Reihe steht vollständig im `aria-label`. Ohne gültige Reihe (≥ 2 Werte) wird nichts gezeigt.
  */
-export function FadenLinie({ reihe, label, beschriftung, format, farbe = FOKUS_LICHT, hoehe = 44, heute = null, achse, spalten, style }: FadenLinieProps) {
+export function FadenLinie({ reihe, label, beschriftung, format, farbe = FOKUS_LICHT, hoehe = 44, heute = null, achse, spalten, onSpalte, style }: FadenLinieProps) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zeichner = useRef<FadenLinieZeichner | null>(null);
@@ -113,8 +116,11 @@ export function FadenLinie({ reihe, label, beschriftung, format, farbe = FOKUS_L
       <div ref={boxRef} style={{ position: 'relative', height: hoehe, minWidth: 0 }}>
         <canvas ref={canvasRef} aria-hidden="true" data-fadenlinie="" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: hoehe, pointerEvents: 'none' }} />
         {spalten && spalten.length === reihe.length && (
-          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'flex' }}>
-            {spalten.map((t, i) => <span key={i} title={t} style={{ flex: 1, minWidth: 0 }} />)}
+          <div aria-hidden={onSpalte ? undefined : 'true'} data-grafik-weiter={onSpalte ? '' : undefined} style={{ position: 'absolute', inset: 0, display: 'flex' }}>
+            {spalten.map((t, i) => onSpalte
+              ? <button key={i} type="button" className="ui-grafik-spalte" title={`${t}\n— öffnen`} aria-label={`${t.split('\n')[0]} öffnen`} onClick={() => onSpalte(i)}
+                  style={{ flex: 1, minWidth: 0, border: 'none', padding: 0, borderRadius: 4 }} />
+              : <span key={i} title={t} style={{ flex: 1, minWidth: 0 }} />)}
           </div>
         )}
       </div>

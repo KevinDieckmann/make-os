@@ -138,7 +138,7 @@ export function kundenAmpel(e: {
     } else l = { id: 'lieferungen', label: 'Lieferungen', farbe: erledigt === n ? 'gruen' : null, text: `${erledigt} von ${n} geliefert` };
   }
   const zw = m.health.zahlung ?? e.zahlung ?? null;
-  const z: AmpelTeil = { id: 'zahlungen', label: 'Zahlungen', farbe: ausWert(zw), text: zw == null ? 'noch nicht bewertet' : `Health ${zw}` };
+  const z: AmpelTeil = { id: 'zahlungen', label: 'Zahlungen', farbe: ausWert(zw), text: zw == null ? 'noch nicht bewertet' : `Gesundheit ${zw}` };
   const s: AmpelTeil = { id: 'zufriedenheit', label: 'Zufriedenheit', farbe: ausWert(m.health.stimmung), text: m.health.stimmung == null ? 'noch nicht bewertet' : `Stimmung ${m.health.stimmung}` };
   const teile = [t, l, z, s];
   const lage = mandatLage(m, heute);

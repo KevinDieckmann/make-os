@@ -32,9 +32,11 @@ export const googleKalenderFreigabeFehlt = (g: GoogleKurz): boolean => g.verbund
  * Kalender bereit → kleiner Hinweis. Privat: nicht verbunden oder App-Passwort ungültig → Karte; verbunden → kleiner Hinweis.
  * Ohne Status (lädt, Fehler) → nichts. Andere Bereiche → nichts.
  */
-export function verbindenAnzeige(bereich: KalenderBereich, google: GoogleKurz | null, icloud: IcloudKurz | null): { google: Anzeige; icloud: Anzeige } {
+export function verbindenAnzeige(bereich: KalenderBereich, google: GoogleKurz | null, icloud: IcloudKurz | null, o: { betreiber?: boolean } = {}): { google: Anzeige; icloud: Anzeige } {
   return {
-    google: bereich !== 'business' || !google ? null : googleKalenderBereit(google) ? 'hinweis' : 'karte',
+    // Nur wenn es etwas zu tun gibt (16.10., Abnahme 2 · C1): ist Google auf dem Server noch nicht eingerichtet, kann im Kalender niemand etwas
+    // tun — die Karte „<Firma> verbinden · noch nicht eingerichtet“ steht dann nur in der Betreiber-Instanz (dort richtet der Inhaber ein).
+    google: bereich !== 'business' || !google ? null : googleKalenderBereit(google) ? 'hinweis' : !google.konfiguriert && !o.betreiber ? null : 'karte',
     icloud: bereich !== 'privat' || !icloud ? null : !icloud.verbunden || icloud.anmeldung ? 'karte' : 'hinweis',
   };
 }

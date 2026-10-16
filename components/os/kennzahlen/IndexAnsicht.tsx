@@ -76,7 +76,9 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
       <Karte i={i0} ton={farbe} id={kopfId} style={kopfId ? { scrollMarginTop: 90 } : undefined}>
         {kopfRechts && <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>{kopfRechts}</div>}
         <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 44px)', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Ring groesse="gross" wert={pi?.index != null ? String(pi.index) : undefined} anteil={pi?.index != null ? pi.index / 100 : undefined} farbe={farbe} label={pi ? `${name} · ${indexStatus(pi).titel}` : 'lädt …'} />
+          {/* Der Ring führt weiter (16.10., B7): zum Verlauf darunter, sobald es ihn gibt. */}
+          <Ring groesse="gross" wert={pi?.index != null ? String(pi.index) : undefined} anteil={pi?.index != null ? pi.index / 100 : undefined} farbe={farbe} label={pi ? `${name} · ${indexStatus(pi).titel}` : 'lädt …'}
+            href={d && !ohneVerlauf && d.verlauf.length >= verlaufAb ? '#index-verlauf' : undefined} hinweis={`Verlauf des ${name}-Index öffnen`} />
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Erklaert erklaerung="index.gesamt" name={`${name}-Index`}><Chip farbe={farbe}>{chip}</Chip></Erklaert>

@@ -25,8 +25,23 @@ const BAENDER = [{ ab: 80, label: 'Souverän' }, { ab: 60, label: 'Solide' }, { 
 const W = 1000, H = 230, L = 34, R = 18, O = 12, U = 28;
 const tagKurz = (t: string) => `${t.slice(8)}.${t.slice(5, 7)}.`;
 
-export function VerlaufKarte({ punkte, serien = SERIEN, i = 4, name = 'Business-Index' }: { punkte: VerlaufPunkt[]; serien?: Serie[]; i?: number; name?: string }) {
+/**
+ * `onSerie` (16.10., Abnahme 2 · B7 „jede Grafik führt weiter“): Klick in den Verlauf öffnet die Linie, die dem Klick am nächsten liegt
+ * (Index bzw. eine Säule) — die Legende ebenso. Ohne `onSerie` springt der Klick zur Kachel der Säule (`[data-kachel-id="saeule-<id>"]`).
+ */
+export function VerlaufKarte({ punkte, serien = SERIEN, i = 4, name = 'Business-Index', onSerie }: { punkte: VerlaufPunkt[]; serien?: Serie[]; i?: number; name?: string; onSerie?: (id: string) => void }) {
   const [zeige, setZeige] = useState<number | null>(null);
+  const oeffne = (id: string) => {
+    if (onSerie) { onSerie(id); return; }
+    const el = typeof document !== 'undefined' ? document.querySelector(id === 'index' ? '[data-kachel-id="index"]' : `[data-kachel-id="saeule-${id}"]`) : null;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  /** Die Linie, die dem Klick (x-Spalte, y in viewBox-Einheiten) am nächsten liegt. */
+  const naechste = (k: number, yKlick: number): string => {
+    let best = 'index', abstand = Infinity;
+    for (const s of serien) { const v = wert(punkte[k], s.id); if (v == null) continue; const a = Math.abs(y(v) - yKlick); if (a < abstand) { abstand = a; best = s.id; } }
+    return best;
+  };
   const n = punkte.length;
   const x = (i: number) => (n <= 1 ? L + (W - L - R) / 2 : L + (i / (n - 1)) * (W - L - R));
   const y = (v: number) => O + (1 - v / 100) * (H - O - U);
@@ -45,17 +60,18 @@ export function VerlaufKarte({ punkte, serien = SERIEN, i = 4, name = 'Business-
   const aktiv = zeige != null ? punkte[zeige] : null;
 
   return (
-    <Karte i={i}>
+    <Karte i={i} id="index-verlauf" style={{ scrollMarginTop: 90 }}>
       <Ueberschrift rechts={n ? <span>seit {tagKurz(punkte[0].tag)} · {n} Tag{n === 1 ? '' : 'e'}</span> : undefined}>Verlauf</Ueberschrift>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
         {serien.map(s => (
-          <span key={s.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: TYP.bedien, color: C.inkDim }}>
+          <button key={s.id} type="button" className="fassbar" onClick={() => oeffne(s.id)} title={`${s.label} öffnen`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: TYP.bedien, color: C.inkDim, background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', fontFamily: 'inherit' }}>
             <span aria-hidden style={{ width: 16, height: s.id === 'index' ? 3 : 2, borderRadius: 2, background: s.farbe }} />{s.label}
-          </span>
+          </button>
         ))}
       </div>
       <div style={{ position: 'relative' }}>
-        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`Verlauf des ${name} und seiner drei Säulen`}>
+        <svg viewBox={`0 0 ${W} ${H}`} data-grafik-weiter="" style={{ width: '100%', height: 'auto', display: 'block', cursor: 'pointer' }} role="img" aria-label={`Verlauf des ${name} und seiner drei Säulen — Klick öffnet die nächste Linie`}>
           {BAENDER.map(b => (
             <g key={b.ab}>
               <line x1={L} x2={W - R} y1={y(b.ab)} y2={y(b.ab)} stroke="rgba(255,255,255,.06)" strokeDasharray="4 6" />
@@ -77,7 +93,8 @@ export function VerlaufKarte({ punkte, serien = SERIEN, i = 4, name = 'Business-
           {aktiv && zeige != null && <line x1={x(zeige)} x2={x(zeige)} y1={O} y2={H - U} stroke="rgba(255,255,255,.18)" />}
           {punkte.map((_, i) => {
             const breite = n <= 1 ? W - L - R : (W - L - R) / (n - 1);
-            return <rect key={i} x={x(i) - breite / 2} y={O} width={breite} height={H - O - U} fill="transparent" onMouseEnter={() => setZeige(i)} onMouseLeave={() => setZeige(null)} />;
+            return <rect key={i} x={x(i) - breite / 2} y={O} width={breite} height={H - O - U} fill="transparent" onMouseEnter={() => setZeige(i)} onMouseLeave={() => setZeige(null)}
+              onClick={e => { const r = (e.currentTarget.ownerSVGElement ?? e.currentTarget).getBoundingClientRect(); oeffne(naechste(i, ((e.clientY - r.top) / Math.max(1, r.height)) * H)); }} />;
           })}
         </svg>
         {aktiv && zeige != null && (

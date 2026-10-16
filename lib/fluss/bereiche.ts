@@ -152,7 +152,9 @@ export function flussGesundheit(i: { heute: string; einheiten: readonly string[]
 export interface MomentPunkt { id: string; titel: string; tag: string; art: 'date' | 'gespraech' | 'vereinbarung' | 'tag' | 'wertschaetzung' }
 const MOMENT: Record<MomentPunkt['art'], string> = { date: 'Date', gespraech: 'Paar-Gespräch', vereinbarung: 'Vereinbarung', tag: 'Wichtiger Tag', wertschaetzung: 'Wertschätzung' };
 export function flussFamilie(i: { heute: string; gewesen: readonly MomentPunkt[]; geplant: readonly MomentPunkt[]; link?: string }): FlussReihe {
-  const kommend = i.geplant.filter(m => m.tag >= i.heute).sort((a, b) => a.tag.localeCompare(b.tag));
+  const kommend = i.geplant.filter(m => m.tag >= i.heute).sort((a, b) => a.tag.localeCompare(b.tag))
+    // Der wöchentliche Gesprächs-Rhythmus (16.10., C9) zählt in der Prognose jede Woche, als Zeile steht nur das nächste Gespräch.
+    .filter((m, k, l) => !m.id.startsWith('gespraech-rhythmus:') || l.findIndex(x => x.id.startsWith('gespraech-rhythmus:')) === k);
   return {
     bereich: 'familie', titel: 'Gemeinsame Momente je Woche', einheit: 'anzahl', raster: 'woche', heute: i.heute,
     ist: istReihe(i.gewesen.map(m => ({ tag: m.tag })), i.heute, 'woche'), istLabel: 'erlebt',

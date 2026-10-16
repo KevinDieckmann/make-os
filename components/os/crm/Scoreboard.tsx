@@ -24,7 +24,7 @@ import { FARBE as C, TYP, leuchtFarbe } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Punkt, LEUCHT } from '../ui';
 import { kennzahlTextVon } from '@/lib/erklaerungen/kennzahlen';
 import { useAbgleich } from '@/hooks/useAbgleich';
-import type { Scoreboard as ScoreboardDaten, ScoreAmpel, ScoreZeile, VerlaufTag } from '@/lib/crm/scoreboard';
+import { ehrgeizigeZiele, type Scoreboard as ScoreboardDaten, type ScoreAmpel, type ScoreZeile, type VerlaufTag } from '@/lib/crm/scoreboard';
 import type { Welt } from '@/lib/crm/traktion';
 import { nameVon, verantwortlich } from '@/lib/crm/team';
 import { Person } from './team';
@@ -224,6 +224,12 @@ export function Scoreboard(_: { api: CrmApi }) {
       <Ueberschrift erklaerung={kennzahlTextVon('scoreboard.wochen')} rechts={<span>{d.scoreboard.wochen.length} Wochen · {d.planWoche ? <Link href={planungLink('ziele')} title={d.planWoche.quelle} style={{ color: LEUCHT.planung, textDecoration: 'none' }}>Ziele aus der Planung ›</Link> : <>Ziel je Woche · <Link href={planungLink('ziele')} style={{ color: C.inkDim }}>planen ›</Link></>}</span>}>Wochen-Scoreboard</Ueberschrift>
       <Verlauf tage={d.verlauf ?? []} heute={d.heute} />
       <Tabelle sb={d.scoreboard} />
+      {/* Ehrgeizig (16.10., B11): ein Soll aus der Planung weit über dem bisher Erreichten bekommt einen Satz — mit dem Weg zur Planung. */}
+      {(() => { const e = ehrgeizigeZiele(d.scoreboard); return e.length ? (
+        <p role="note" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, margin: '12px 0 0', lineHeight: 1.5 }}>
+          Ehrgeizig: {e.map(x => `${x.label} ${x.ziel} je Woche (bisher höchstens ${x.bisher})`).join(' · ')}. Das Soll kommt aus der Planung — Umsatzziel ÷ Quoten, verteilt auf die Wochen bis zum letzten Start (Ende − Sales Cycle); ein kurzes Fenster presst alles in wenige Wochen. <Link href={planungLink('ziele')} style={{ color: LEUCHT.planung, textDecoration: 'none' }}>Ziel oder Zeitraum prüfen ›</Link>
+        </p>
+      ) : null; })()}
       <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '12px 0 0', lineHeight: 1.5 }}>
         Rückwirkend aus Power Hours, Verlauf, Chancen, Redaktionsplan und Events. Grün = Ziel erreicht, gelb = mindestens die Hälfte, rot = darunter; die laufende Woche wird erst am Sonntag bewertet. Je Person gilt der Anteil am Teamziel. Grau = noch nicht gemessen.
       </p>

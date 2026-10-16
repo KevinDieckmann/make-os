@@ -13,10 +13,9 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { protokolliere, type Wer } from '@/lib/store/aenderungsprotokoll';
 import type { Meilenstein, ZieleDatei } from './typen';
-import { ZIEL_HORIZONTE } from './typen';
 import type { Task, TasksState } from '@/types/tasks';
 import {
-  strukturFuer, listeArchivieren, fortschrittAnwenden, zieleFortschrittAnwenden, istMeilensteinListe,
+  strukturFuer, listeArchivieren, fortschrittAnwenden, zieleDateiFortschritt, istMeilensteinListe,
 } from './meilenstein-aufgaben';
 
 const MS = 'meilensteine';
@@ -101,19 +100,14 @@ export async function zieleNachziehen(ms?: readonly Meilenstein[]): Promise<numb
   const liste = ms ?? await meilensteineLaden();
   const f = await loadJson<ZieleDatei>(ZIELE);
   if (!f) return 0;
-  const aendert = ZIEL_HORIZONTE.some(h => Array.isArray(f[h]) && zieleFortschrittAnwenden(f[h], liste).geaendert > 0);
-  if (!aendert) return 0;
+  // Alle Horizonte zusammen (16.10., C17): Unterziele zählen mit, abgeleitete Ziele folgen ihrem Elternziel (`zieleDateiFortschritt`).
+  if (!zieleDateiFortschritt(f, liste).geaendert) return 0;
   let n = 0;
   await updateJson<ZieleDatei>(ZIELE, cur => {
     if (!cur) return cur as unknown as ZieleDatei;
-    const aus = { ...cur };
-    for (const h of ZIEL_HORIZONTE) {
-      if (!Array.isArray(cur[h])) continue;
-      const r = zieleFortschrittAnwenden(cur[h], liste);
-      n += r.geaendert;
-      aus[h] = r.liste;
-    }
-    return aus;
+    const r = zieleDateiFortschritt(cur, liste);
+    n = r.geaendert;
+    return r.datei;
   });
   return n;
 }

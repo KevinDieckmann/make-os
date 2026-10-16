@@ -10,6 +10,7 @@
 // (der Server, lib/lichtfaeden/seil-server.ts) — hier nur die Regel `imBereich`.
 
 import type { SpaceId } from '@/lib/make-one/space-regeln';
+import { zielIst, type IstWerte } from '@/lib/planung/ziel-ist';
 import { WEG } from '@/lib/wege';
 import { MS_PROJEKT_PRAEFIX, meilensteinListeId, zielVonMeilenstein, istMeilensteinListe } from '@/lib/planung/meilenstein-aufgaben';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
@@ -25,6 +26,7 @@ export const imBereich = (b: SeilBereich, s: SpaceId): boolean => b === 'alle' |
 export interface QZiel {
   id: string; titel: string; farbe: string; horizont: string; space?: SpaceId; einheit?: string; rang?: number; termin?: string; jahr?: number;
   erledigt?: boolean; erledigtAm?: string; fortschritt: number; oberzielId?: string; abgeleitetVon?: string; archiviertAm?: string;
+  zielwert?: number; messgroesse?: string;
 }
 export interface QMeilenstein {
   id: string; titel: string; faellig?: string; erledigt: boolean; erledigtAm?: string; fortschritt: number; space?: SpaceId; bereich?: string;
@@ -42,6 +44,8 @@ export interface SeilDaten {
   heute: string; von: string; bis: string; bereich: SeilBereich;
   ziele: readonly QZiel[]; meilensteine: readonly QMeilenstein[]; aufgaben: readonly QAufgabe[]; projekte: readonly QProjekt[];
   termine?: readonly QTermin[]; deals?: readonly QDeal[];
+  /** Gemessene Werte für Zahlenziele mit Messgröße (16.10., C17), z. B. `mrr` aus den aktiven Mandaten. */
+  istWerte?: IstWerte;
 }
 
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
@@ -60,7 +64,7 @@ function karte(t: QAufgabe, strang: string): SeilKarteRoh {
 }
 
 /** Ziel → Eingang des Modells (Anker: Frist; Jahresziele ohne Frist am Jahresende; sonst ohne). */
-function zielRoh(z: QZiel, nachId: ReadonlyMap<string, QZiel>, laufend: number): SeilZielRoh {
+function zielRoh(z: QZiel, nachId: ReadonlyMap<string, QZiel>, laufend: number, istWerte: IstWerte = {}): SeilZielRoh {
   const frist = tag(z.termin);
   const anker = frist ?? (z.horizont === 'jahr' ? `${zielJahr(z, laufend)}-12-31` : undefined);
   const eltern = zielEltern(z, nachId);
@@ -69,6 +73,7 @@ function zielRoh(z: QZiel, nachId: ReadonlyMap<string, QZiel>, laufend: number):
     ...(anker ? { anker, ankerArt: frist ? 'frist' as const : 'jahresende' as const } : {}),
     ...(z.erledigt ? { erledigt: true } : {}), ...(tag(z.erledigtAm) ? { erledigtAm: tag(z.erledigtAm) } : {}),
     fortschritt: z.erledigt ? 100 : z.fortschritt, ...(eltern ? { elternId: eltern } : {}), link: WEG.ziel(z.id),
+    ...(() => { const i = zielIst(z, istWerte); return i ? { ist: i.text } : {}; })(),
   };
 }
 
@@ -122,7 +127,7 @@ export function seilJahr(d: SeilDaten): SeilEingang {
     for (const z of aktiv) { const e = zielEltern(z, nachId); if (e && drin.has(e) && !drin.has(z.id) && imBereich(d.bereich, spaceVonZiel(z))) { drin.add(z.id); neu = true; } }
     if (!neu) break;
   }
-  const ziele = aktiv.filter(z => drin.has(z.id)).map(z => zielRoh(z, nachId, laufend));
+  const ziele = aktiv.filter(z => drin.has(z.id)).map(z => zielRoh(z, nachId, laufend, d.istWerte));
   const straenge: SeilStrangRoh[] = [];
   const karten: SeilKarteRoh[] = [];
   const strangVonAufgabe = new Map<string, string>();
@@ -243,6 +248,6 @@ export function seilAufgaben(d: SeilDaten): SeilEingang {
     for (const t of l) { karten.push(karte(t, s)); strangVonAufgabe.set(t.id, s); }
   }
   const drin = mitEltern(zieleNoetig, zielNach);
-  const ziele = aktiv.filter(z => drin.has(z.id)).map(z => zielRoh(z, zielNach, laufend));
+  const ziele = aktiv.filter(z => drin.has(z.id)).map(z => zielRoh(z, zielNach, laufend, d.istWerte));
   return { heute: d.heute, von: d.von, bis: d.bis, ziele, straenge, karten, marken: marken(d, strangVonAufgabe, aufgabeNach) };
 }

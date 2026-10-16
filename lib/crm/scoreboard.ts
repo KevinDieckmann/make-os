@@ -444,3 +444,19 @@ export function markiereRhythmus(stand: RhythmusStand, person: string, slot: Rhy
   if (Object.keys(versuche).length) neu.versuche = versuche; else delete neu.versuche;
   return { ...stand, [person]: neu };
 }
+
+// ── Ehrgeizig (16.10., Abnahme 2 · B11) ─────────────────────────────────────────────────────────────────────────────────────
+// „Neue Leads ≥ 116 je Woche“ für ein Team aus zwei, drei Personen: die Rechnung der Planung (Umsatzziel → Deals → Quoten → Leads, verteilt
+// auf die Wochen bis zum letzten Start = Ende − Sales Cycle) ist richtig, aber ein kurzes Fenster presst alles in wenige Wochen. Das Scoreboard
+// sagt das in einem Satz, statt die Zahl kommentarlos stehen zu lassen: ein Soll aus der Planung gilt als ehrgeizig, wenn es mindestens
+// EHRGEIZIG_FAKTOR-mal über dem bisher besten Wochenwert liegt (ohne Messung zählt 1).
+
+export const EHRGEIZIG_FAKTOR = 3;
+export interface Ehrgeizig { id: string; label: string; ziel: number; bisher: number }
+/** Zeilen (nur Teamzeilen mit Soll aus der Planung), deren Soll weit über dem bisher Erreichten liegt. */
+export function ehrgeizigeZiele(sb: Pick<Scoreboard, 'zeilen'>): Ehrgeizig[] {
+  return sb.zeilen
+    .filter(z => z.plan && !z.person && z.ziel !== null && z.ziel > 0)
+    .map(z => ({ id: z.id, label: z.label, ziel: z.ziel as number, bisher: Math.max(0, ...z.werte.filter((v): v is number => v !== null)) }))
+    .filter(e => e.ziel >= EHRGEIZIG_FAKTOR * Math.max(1, e.bisher));
+}

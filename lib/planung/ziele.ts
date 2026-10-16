@@ -3,6 +3,7 @@
 // GET/PUT exportiert. Additiv: alte Einträge ohne die neuen Felder bleiben gültig.
 
 import { istSpace } from '@/lib/make-one/space-regeln';
+import { istMessgroesse } from './ziel-ist';
 import { sauberEinheit } from './einheiten';
 import { bezugSaeubern } from './mandat';
 import type { Ziel } from './typen';
@@ -32,6 +33,8 @@ export function sauberZiel(roh: unknown): Ziel | null {
   if (z.notiz) aus.notiz = String(z.notiz).slice(0, ZIEL_NOTIZ_MAX);
   // Messlatte (01.10., Ziel-Detail): woran „erreicht“ gemessen wird — optional, wie am Meilenstein.
   if (typeof z.messlatte === 'string' && z.messlatte.trim()) aus.messlatte = z.messlatte.trim().slice(0, 300);
+  // Messgröße (16.10., C17): nur bekannte Kennungen (lib/planung/ziel-ist.ts) — sonst fällt sie weg.
+  if (istMessgroesse(z.messgroesse)) aus.messgroesse = z.messgroesse;
   if (typeof z.erledigtAm === 'string' && ISO_TAG.test(z.erledigtAm)) aus.erledigtAm = z.erledigtAm;
   // Speicherform (05.10. abends, lib/planung/bereich.ts): Privat + eine Privat-Einheit (Selbstständigkeit) wird als Business + Einheit
   // abgelegt — so liest der alte Stand das Ziel unverändert; der Bereich (Privat) wird beim Lesen abgeleitet (`wirksamerSpace`).
