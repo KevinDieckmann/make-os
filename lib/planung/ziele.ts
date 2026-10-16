@@ -30,6 +30,8 @@ export function sauberZiel(roh: unknown): Ziel | null {
     fortschritt: Math.max(0, Math.min(100, Math.round(Number(z.fortschritt) || 0))),
     erledigt: z.erledigt === true,
   };
+  // Nachgezogener Fortschritt (16.10., lib/planung/meilenstein-aufgaben.ts `zieleFortschrittAnwenden`): nur eine Zahl 0–100.
+  if (typeof z.fortschrittAuto === 'number' && z.fortschrittAuto >= 0 && z.fortschrittAuto <= 100) aus.fortschrittAuto = Math.round(z.fortschrittAuto);
   if (z.notiz) aus.notiz = String(z.notiz).slice(0, ZIEL_NOTIZ_MAX);
   // Messlatte (01.10., Ziel-Detail): woran „erreicht“ gemessen wird — optional, wie am Meilenstein.
   if (typeof z.messlatte === 'string' && z.messlatte.trim()) aus.messlatte = z.messlatte.trim().slice(0, 300);

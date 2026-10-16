@@ -107,8 +107,8 @@ export interface FfIndexDaten { heute: string; zeilen: FfIndexZeile[] }
 
 const PFLEGEN = { text: 'Fulfillment öffnen', href: WEG.fulfillment('visualisierung') };
 export const FF_KENNZAHLEN: KennzahlDefBasis[] = [
-  { id: 'ff_health', label: 'Gesundheit der Fälle', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
-    formel: 'Ø Gesundheits-Ampel der laufenden Fälle (grün zählt 100, gelb 50, rot 0) — die vorhandene Ampel aus Terminen, Lieferungen, Zahlungen, Zufriedenheit',
+  { id: 'ff_health', label: 'Lage der Fälle', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
+    formel: 'Ø Ampel der laufenden Fälle (grün zählt 100, gelb 50, rot 0) — die vorhandene Ampel aus Terminen, Lieferungen, Zahlungen, Zufriedenheit',
     quelle: 'Fälle (Fulfillment) + Fortschritt im Paket (Leistungstreppe)', luecke: 'Noch kein laufender Fall', pflegen: PFLEGEN },
   { id: 'ff_takt', label: 'Fälle im Takt', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
     formel: 'Anteil der laufenden Fälle, an denen nichts hängt (keine überfällige Willkommensmail, Freigabe oder Schritt, nichts wartet länger als 7 Tage, Report höchstens 14 Tage alt)',

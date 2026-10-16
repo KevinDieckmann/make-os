@@ -631,6 +631,13 @@ export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
   ];
 }
 
+/** Ist `wert` eine bekannte alte Fassung dieses Feldes (`ALTE_FASSUNGEN`) — für die Update-Probe: Heben ist kein Verlust (16.10.). */
+export function istAlteFassung(id: string, feld: string, wert: string): boolean {
+  const f = (ALTE_FASSUNGEN[id] as Record<string, { alt: string | string[]; neu: string }> | undefined)?.[feld];
+  if (!f) return false;
+  return (Array.isArray(f.alt) ? f.alt : [f.alt]).includes(wert);
+}
+
 /**
  * Fehlende Verarbeitungen „Gesellschafts-Register“/„Kapazität“ ergänzen (idempotent; vorhandene — auch geänderte — bleiben).
  * DSGVO-Nachtrag 04.10.: eine unveränderte alte Fassung (`ALTE_FASSUNGEN`) wird auf die neue gehoben — von Hand Geändertes bleibt.

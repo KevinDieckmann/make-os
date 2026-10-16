@@ -16,6 +16,7 @@
 // und eine Art; Zeitstempel dürfen sich nur ändern, wenn vorher UND nachher ein Zeitpunkt ist (dann ist es ein Auffrischen, kein Verlust).
 
 import { createHash } from 'node:crypto';
+import { istAlteFassung } from '@/lib/crm/datenschutz';
 
 // ── Bilder (Schnappschuss) ────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -217,6 +218,26 @@ export const ERLAUBT: readonly ErlaubtRegel[] = [
       return !!kopf(a.vorher) && kopf(a.vorher) === kopf(a.nachher);
     },
     grund: 'Kaskade nach Regel neu gerechnet (Abnahme B13): abgeleitete Ziele eines Raten-Ziels tragen den Zielwert ungeteilt, Teilbeträge mit Einheit — nur abgeleitete Ziele, nichts von Hand Eingegebenes.',
+  },
+  {
+    // 16.10. (C17, lib/planung/meilenstein-aufgaben.ts `zieleFortschrittAnwenden`): Fortschritt aus Unterzielen bzw. dem Elternziel — nachgezogen
+    // wird nur ein nie gesetzter Wert (0); ein Wert von Hand bleibt (Test tests/ziel-fortschritt-hand.test.ts).
+    bestand: /^ziele(-eigen--[a-z0-9-]+)?$/, pfad: /^(jahr|quartal|monat|woche|tag)\[id=[^\]]+\]\.fortschritt$/, arten: ['wert-geaendert'],
+    wenn: a => Number(String(a.vorher ?? '').replace(/^"|"$/g, '')) === 0 && Number(String(a.nachher ?? '').replace(/^"|"$/g, '')) > 0,
+    grund: 'Ziel-Fortschritt aus Unterzielen/Elternziel nachgezogen — nur von 0 (nie gesetzt); ein Wert von Hand wird nie überschrieben.',
+  },
+  {
+    // DSGVO-Nachtrag 04.10. (lib/crm/datenschutz.ts `ALTE_FASSUNGEN`): eine UNVERÄNDERTE alte Fassung eines Verzeichnis-Textes wird gehoben —
+    // von Hand Geändertes bleibt. Erlaubt nur, wenn `vorher` genau eine bekannte alte Fassung ist.
+    bestand: /^crm$/, pfad: /^verarbeitungen\[id=vv-[a-z0-9-]+\]\.[a-z]+$/i, arten: ['wert-geaendert'],
+    wenn: a => {
+      const m = a.pfad.match(/^verarbeitungen\[id=(vv-[a-z0-9-]+)\]\.([a-z]+)$/i);
+      if (!m) return false;
+      let vorher = a.vorher ?? '';
+      try { const j = JSON.parse(vorher); if (typeof j === 'string') vorher = j; } catch { /* schon Text */ }
+      return istAlteFassung(m[1], m[2], vorher);
+    },
+    grund: 'Verzeichnis (Art. 30): unveränderte alte Fassung eines Textes auf die neue gehoben — von Hand Geändertes bleibt.',
   },
 ];
 

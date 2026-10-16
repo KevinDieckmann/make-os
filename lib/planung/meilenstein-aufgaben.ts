@@ -186,6 +186,14 @@ export function zieleFortschrittAnwenden<Z extends Ziel>(ziele: readonly Z[], ms
     if (z.erledigt) return z;
     const r = zielFortschrittAusTeilen(z.id, teile, ms) ?? (z.abgeleitetVon ? eltern?.get(z.abgeleitetVon) ?? null : null);
     if (r === null || r === z.fortschritt) return z;
+    // Mit Meilensteinen: wie bisher immer der Mittelwert. Nur über Unterziele bzw. das Elternziel (16.10., C17) nie einen Wert von Hand
+    // überschreiben (Live-Daten, Update-Probe 16.10.): nachgezogen wird nur ein nie gesetzter (0) oder der zuletzt vom Server gesetzte Wert
+    // (`fortschrittAuto`) — wer den Fortschritt selbst ändert, behält ihn.
+    if (!meilensteineVonZiel(z.id, ms).length) {
+      if ((z.fortschritt || 0) !== 0 && z.fortschritt !== z.fortschrittAuto) return z;
+      geaendert++;
+      return { ...z, fortschritt: r, fortschrittAuto: r };
+    }
     geaendert++;
     return { ...z, fortschritt: r };
   });

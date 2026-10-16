@@ -21,6 +21,8 @@ export interface Ziel {
   titel: string;
   /** 0–100, ehrlich gepflegt. */
   fortschritt: number;
+  /** Zuletzt vom Server über Unterziele bzw. Elternziel gesetzter Fortschritt (16.10.) — weicht `fortschritt` davon ab, gilt er als Wert von Hand. */
+  fortschrittAuto?: number;
   notiz?: string;
   erledigt?: boolean;
   erledigtAm?: string;
