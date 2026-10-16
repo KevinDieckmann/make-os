@@ -19,6 +19,7 @@ import { scrypt, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson, beschaedigt } from '@/lib/store/local-db';
 import { teamAusKonten, teamSetzen } from '@/lib/crm/team-liste';
 import type { Wiederherstellung } from './totp';
+import { geraeteOeffentlich, type GemerktesGeraet, type GeraetOeffentlich } from './geraete';
 import type { Aenderung } from '@/lib/store/aenderungsprotokoll';
 
 export type Rolle = 'inhaber' | 'mitglied';
@@ -64,8 +65,12 @@ export interface Konto {
   sitzungenAb?: string;
   /** Beim Abmelden widerrufene Zettel (Kennung + Ablauf, danach entfällt der Eintrag). */
   widerrufen?: { sid: string; bis: number }[];
-  /** Zweiter Faktor (TOTP, 26.09.): Geheimnis (Base32), seit wann, zuletzt genutzte Zeitstufe, Wiederherstellungscodes (nur Hashes). */
-  zweiterFaktor?: { geheimnis: string; seit: string; letzteStufe?: number; wiederherstellung: Wiederherstellung[] };
+  /**
+   * Zweiter Faktor (TOTP, 26.09.): Geheimnis (Base32), seit wann, zuletzt genutzte Zeitstufe, Wiederherstellungscodes (nur Hashes).
+   * `geraete` (16.10., optional — lib/zugang/geraete.ts): gemerkte Geräte, auf denen das Passwort ohne Code genügt (nur Hashes,
+   * höchstens 10, je 90 Tage). Bewusst IM Faktor: neu einrichten/ausschalten nimmt sie mit, und kein Antwortweg gibt sie heraus.
+   */
+  zweiterFaktor?: { geheimnis: string; seit: string; letzteStufe?: number; wiederherstellung: Wiederherstellung[]; geraete?: GemerktesGeraet[] };
   /** Einrichtung begonnen, noch nicht mit einem Code bestätigt. */
   zweiterFaktorEntwurf?: { geheimnis: string; seit: string };
 }
@@ -178,10 +183,11 @@ export function neuerEinladungscode(ziehe: (n: number) => number = n => randomIn
 
 export function leererStand(): KontenStand { return { konten: [], einladungen: [] }; }
 
-/** Was der Browser über ein Konto wissen darf — nie Hash oder Salz. */
-export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'kdf' | 'widerrufen' | 'zweiterFaktor' | 'zweiterFaktorEntwurf'> & { zweiterFaktorAn: boolean } {
+/** Was der Browser über ein Konto wissen darf — nie Hash oder Salz. Gemerkte Geräte (16.10.) nur als Liste ohne Hash. */
+export function oeffentlich(k: Konto): Omit<Konto, 'hash' | 'salz' | 'kdf' | 'widerrufen' | 'zweiterFaktor' | 'zweiterFaktorEntwurf'> & { zweiterFaktorAn: boolean; geraete?: GeraetOeffentlich[] } {
   const { hash: _h, salz: _s, kdf: _k, widerrufen: _w, zweiterFaktor: _z, zweiterFaktorEntwurf: _e, ...rest } = k;
-  return { ...rest, zweiterFaktorAn: !!k.zweiterFaktor };
+  const geraete = geraeteOeffentlich(k.zweiterFaktor?.geraete);
+  return { ...rest, zweiterFaktorAn: !!k.zweiterFaktor, ...(geraete.length ? { geraete } : {}) };
 }
 
 // ── Passwort ─────────────────────────────────────────────────────────────────
@@ -292,6 +298,8 @@ export function kontoAenderungen(alt: KontenStand | null, neu: KontenStand): Aen
     if (!a) { raus.push({ op: 'neu', id }); continue; }
     const felder: string[] = KONTO_FELDER.filter(f => (a[f] ?? null) !== (n[f] ?? null));
     if (!!a.zweiterFaktor !== !!n.zweiterFaktor) felder.push('zweiterFaktor');
+    // Gemerkte Geräte (16.10.): nur dass sich die Liste geändert hat (gemerkt/vergessen) — „zuletzt benutzt“ zählt nicht.
+    else if (geraeteKennungen(a) !== geraeteKennungen(n)) felder.push('geraete');
     if (felder.length) raus.push({ op: 'geaendert', id, felder });
   }
   for (const id of Array.from(vorher.keys())) if (!nachher.has(id)) raus.push({ op: 'geloescht', id });
@@ -300,6 +308,8 @@ export function kontoAenderungen(alt: KontenStand | null, neu: KontenStand): Aen
   if (efelder.length) raus.push({ op: 'geaendert', id: 'instanz', felder: [...efelder] });
   return raus;
 }
+
+const geraeteKennungen = (k: Konto): string => (Array.isArray(k.zweiterFaktor?.geraete) ? k.zweiterFaktor!.geraete : []).map(g => String(g?.id)).sort().join(',');
 
 export async function aendereKonten(mut: (s: KontenStand) => KontenStand): Promise<KontenStand> {
   let vorher: KontenStand | null = null;

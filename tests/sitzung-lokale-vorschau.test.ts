@@ -29,3 +29,18 @@ describe('lokale Vorschau', () => {
     expect(r.lokal).toBe(false);
   });
 });
+
+describe('Geräte-Cookie (16.10., Gerät merken): dieselbe Namensregel wie die Sitzung', () => {
+  async function geraet(env: Record<string, string | undefined>) {
+    vi.resetModules();
+    for (const [k, v] of Object.entries(env)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    const m = await import('@/lib/zugang/sitzung');
+    return { cookie: m.GERAET_COOKIE, sicher: m.cookieNurHttps() };
+  }
+  it('Server: __Host- und secure', async () => {
+    expect(await geraet({ NODE_ENV: 'production', MAKE_OS_ADRESSE: 'https://beispiel.example', MAKE_OS_LOKALE_VORSCHAU: '1' })).toEqual({ cookie: '__Host-make-os-geraet', sicher: true });
+  });
+  it('lokale Vorschau: ohne __Host-, ohne secure', async () => {
+    expect(await geraet({ NODE_ENV: 'production', MAKE_OS_ADRESSE: 'http://localhost:3204', MAKE_OS_LOKALE_VORSCHAU: '1' })).toEqual({ cookie: 'make-os-geraet', sicher: false });
+  });
+});

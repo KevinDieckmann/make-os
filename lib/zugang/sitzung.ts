@@ -30,6 +30,16 @@
 export const lokaleVorschau = (): boolean =>
   process.env.MAKE_OS_LOKALE_VORSCHAU === '1' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test((process.env.MAKE_OS_ADRESSE ?? '').trim());
 export const SITZUNG_COOKIE = process.env.NODE_ENV === 'production' && !lokaleVorschau() ? '__Host-make-os-sitzung' : 'make-os-sitzung';
+/**
+ * Gemerktes Gerät für den zweiten Faktor (16.10., lib/zugang/geraete.ts): eigenes Cookie, gleiche Namensregel wie die Sitzung. Es ist
+ * KEINE Sitzung — die Middleware liest nur SITZUNG_COOKIE; dieses Cookie wertet allein die Anmelde-Route aus (Passwort bleibt Pflicht).
+ */
+export const GERAET_COOKIE = process.env.NODE_ENV === 'production' && !lokaleVorschau() ? '__Host-make-os-geraet' : 'make-os-geraet';
+/**
+ * Dürfen die Cookies nur über HTTPS reisen? Auf dem Server (production) immer — auch wenn MAKE_OS_ADRESSE einmal fehlt (26.09.);
+ * lokal über http://localhost bzw. Tailscale-http ginge ein „secure“-Cookie verloren, und die lokale Vorschau verzichtet bewusst darauf.
+ */
+export const cookieNurHttps = (): boolean => !lokaleVorschau() && ((process.env.MAKE_OS_ADRESSE ?? '').trim().startsWith('https://') || process.env.NODE_ENV === 'production');
 /** Nicht signiert, nicht geheim: nur damit der Browser weiß, wer da ist. */
 export const WER_COOKIE = 'make-os-wer';
 export const SITZUNG_TAGE = 14;

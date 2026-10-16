@@ -15,8 +15,16 @@ export type AnmeldeArt = 'anmelden' | 'passwort' | 'alle-abgemeldet' | 'abmelden
   /** Betroffenenrechte (05.10.): eigene Daten heruntergeladen, Konto gelöscht (danach steht `speicher` als „[gelöscht]“), Instanz exportiert. */
   | 'daten-export' | 'konto-loeschen' | 'instanz-export'
   /** Inhaber-Rolle (09.10., R9): ein Inhaber hat ein Konto zum Inhaber gemacht bzw. die eigene Rolle abgegeben — `speicher` = wer es tat. */
-  | 'inhaber-ernennen' | 'inhaber-abgeben';
-export interface Anmeldung { zeit: string; speicher: string | null; art: AnmeldeArt; ok: boolean; adresse: string; /** Nur bei Adress-Änderungen: die betroffene Adresse maskiert (k***@example.invalid). */ detail?: string }
+  | 'inhaber-ernennen' | 'inhaber-abgeben'
+  /** Gemerkte Geräte (16.10., lib/zugang/geraete.ts): Gerät gemerkt, eines vergessen, alle vergessen — `geraet` = Geräte-Kennung, nie das Token. */
+  | 'geraet-gemerkt' | 'geraet-vergessen' | 'geraete-vergessen';
+export interface Anmeldung {
+  zeit: string; speicher: string | null; art: AnmeldeArt; ok: boolean; adresse: string;
+  /** Nur bei Adress-Änderungen: die betroffene Adresse maskiert (k***@example.invalid). */
+  detail?: string;
+  /** Gemerktes Gerät (16.10.): Kennung `g-…` — bei `anmelden` heißt das „angemeldet (gemerktes Gerät)“ (ohne Code). Nie das Token, nie der Hash. */
+  geraet?: string;
+}
 const STORE = 'anmeldungen';
 /** Aufbewahrungsfrist des Anmeldeprotokolls in Monaten (Sicherheitszweck, Art. 6 Abs. 1 lit. f — danach gelöscht). */
 export const FRIST_MONATE = 12;

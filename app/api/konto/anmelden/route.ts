@@ -1,6 +1,8 @@
 // ─── MAKE OS — Anmelden ─────────────────────────────────────────────────────
 // E-Mail + Passwort → Sitzung. Bei falschen Angaben immer dieselbe Antwort,
 // egal ob die E-Mail existiert: sonst könnte man Konten erraten.
+// Gemerktes Gerät (16.10., lib/zugang/geraete.ts): trägt der Browser ein gültiges Geräte-Cookie DIESES Kontos, genügt nach dem
+// Passwort die Sitzung ohne Code; `merken: true` nach Passwort + Code merkt das Gerät für 90 Tage. Alle Bremsen bleiben.
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { aendereKonten, emailSauber, passwortStimmt, passwortNachziehen, kdfFuerNeu, kontoZuEmail, ladeKonten, zweiFaktorOffen } from '@/lib/zugang/konten';
@@ -10,12 +12,15 @@ import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, alle as anmeldungenAlle } from '@/lib/zugang/anmeldungen';
 import { neueAdresse, zuVieleFehlschlaege, darfMelden, textNeueAdresse, textFehlschlaege } from '@/lib/zugang/anmelde-alarm';
 import { anPersonMelden, botenEingerichtet } from '@/lib/zoe/an-person';
+import { geraetBeiAnmeldung, geraetBenutzt, geraetMerken } from '@/lib/zugang/geraete-server';
+import { geraetCookieSetzen, type CookieEintrag } from '@/lib/zugang/geraete';
+import { melde } from '@/lib/meldungen/melden';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  let b: { email?: string; passwort?: string; code?: string };
+  let b: { email?: string; passwort?: string; code?: string; merken?: boolean };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const email = emailSauber(b.email);
   // Bremse gegen Raten (lib/zugang/drossel.ts): je Adresse (IP) und je Paar IP + KONTO — nicht je E-Mail
@@ -42,8 +47,18 @@ export async function POST(req: Request) {
   schluessel.forEach(erfolg);
 
   // Zweiter Faktor (26.09.): Passwort stimmt — jetzt der Code aus der App (oder ein Wiederherstellungscode).
-  if (konto.zweiterFaktor) {
-    if (b.code === undefined || b.code === '') return NextResponse.json({ ok: false, zweiterFaktor: true });
+  let ueberGeraet: string | null = null;
+  let geraetCookie: CookieEintrag[] | null = null;
+  let neuGemerkt: string | null = null;
+  if (konto.zweiterFaktor && (b.code === undefined || b.code === '')) {
+    // Gemerktes Gerät (16.10.): gültiges Token dieses Kontos → keine Codeabfrage. Falsch, fremd, abgelaufen → still die Codeabfrage.
+    const geraet = await geraetBeiAnmeldung(konto, req);
+    if (!geraet) return NextResponse.json({ ok: false, zweiterFaktor: true });
+    // Die 2FA-Bremse gilt auch hier: solange sie greift, hilft auch ein gemerktes Gerät nicht (und es setzt sie nicht zurück).
+    const warteG = pruefe(`2fa:${konto.speicher}`).warteSek;
+    if (warteG > 0) return NextResponse.json({ error: `Zu viele Versuche — bitte in ${warteG} Sekunden erneut.` }, { status: 429, headers: { 'Retry-After': String(warteG) } });
+    ueberGeraet = geraet.id;
+  } else if (konto.zweiterFaktor) {
     const bremse = `2fa:${konto.speicher}`;
     const warte2 = pruefe(bremse).warteSek;
     if (warte2 > 0) return NextResponse.json({ error: `Zu viele Versuche — bitte in ${warte2} Sekunden erneut.` }, { status: 429, headers: { 'Retry-After': String(warte2) } });
@@ -62,16 +77,28 @@ export async function POST(req: Request) {
       await aendereKonten(s => ({ ...s, konten: s.konten.map(k => k.speicher === konto.speicher && k.zweiterFaktor ? { ...k, zweiterFaktor: { ...k.zweiterFaktor, wiederherstellung: k.zweiterFaktor.wiederherstellung.map((w, j) => j === i ? { ...w, benutzt: jetzt } : w) } } : k) }));
     }
     erfolg(bremse);
+    // „Dieses Gerät 90 Tage merken“ (16.10.): erst nach Passwort + Code — Token ins Cookie, am Konto nur der Hash.
+    if (b.merken === true) {
+      const m = await geraetMerken(konto, req).catch(e => { console.error('[anmelden] Gerät nicht gemerkt:', e instanceof Error ? e.message : e); return null; });
+      if (m) { geraetCookie = m.cookie; neuGemerkt = m.geraet.id; }
+    }
   }
 
   // Sicherheit (27.09.): eine Anmeldung aus einem neuen Netz meldet MAKE OS der Person aufs Handy (seit 08.10. ZOE auf WhatsApp, sonst Telegram) — geprüft VOR dem Eintrag, sonst kennt es die Adresse schon.
   void alarmNeueAdresse(konto.speicher, adresseGekuerzt(adr));
-  await notiere({ speicher: konto.speicher, art: 'anmelden', ok: true, adresse: adresseGekuerzt(adr) });
+  await notiere({ speicher: konto.speicher, art: 'anmelden', ok: true, adresse: adresseGekuerzt(adr), ...(ueberGeraet ? { geraet: ueberGeraet } : {}) });
+  if (ueberGeraet) await geraetBenutzt(konto, ueberGeraet);
+  if (neuGemerkt) {
+    await notiere({ speicher: konto.speicher, art: 'geraet-gemerkt', ok: true, adresse: adresseGekuerzt(adr), geraet: neuGemerkt });
+    // Glocke (16.10.): ein neu gemerktes Gerät fällt dem Konto auf — Titel neutral, ohne Gerät, Adresse oder Zeit.
+    await melde({ an: konto.speicher, art: 'sicherheit', titel: 'Neues Gerät für die Anmeldung gemerkt', link: '/os/konto' });
+  }
   // scrypt (05.10.): alter Hash → mit demselben Salz und den aktuellen Parametern neu (Sitzungs-Stand bleibt gleich).
   await passwortNachziehen(String(b.passwort ?? ''), konto);
   // 2FA-Pflicht der Instanz (05.10.): ohne zweiten Faktor gibt es eine Sitzung, die NUR die Einrichtung erlaubt (middleware.ts).
-  if (zweiFaktorOffen((await ladeKonten()).einstellungen, konto)) return mitSitzung(konto, { zweiterFaktorEinrichten: true });
-  return mitSitzung(konto);
+  const res = zweiFaktorOffen((await ladeKonten()).einstellungen, konto) ? await mitSitzung(konto, { zweiterFaktorEinrichten: true }) : await mitSitzung(konto);
+  if (geraetCookie) geraetCookieSetzen(res, geraetCookie);
+  return res;
 }
 
 /** Neue Adresse? Dann ein Hinweis an die Person (ZOE auf WhatsApp, sonst Telegram — lib/zoe/an-person.ts) — nie blockierend, nie mit Fehler für die Anmeldung. */
