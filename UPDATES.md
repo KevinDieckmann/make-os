@@ -21,6 +21,18 @@ Stand hier und einen Stand, der online ist.“
 - **Rückweg:** nur ein neues optionales Feld IM zweiten Faktor — der alte Stand trägt es mit, gibt es nie heraus (er lässt `zweiterFaktor` aus jeder Antwort weg) und
   fragt immer nach dem Code. Update-Probe: neues Feld, kein Verlust (Test). Kein Schritt am Server, keine neue Umgebungsvariable.
 - Tests: `tests/sicher-zugang-geraet.test.ts`, `tests/sitzung-lokale-vorschau.test.ts` (Cookie-Name).
+## 16.10.2026 — Brain-Kugel zoomen, drehen, verschieben (nur lokal — Branch `brain-zoom`, Basis ebe3394d = `update-0910b`)
+Kevin: „Das Brain muss zoombar sein … am besten wie beim MacBook auf dem Touchpad.“ und „das muss beweglicher sein“.
+- **Zoom:** Pinch (Chrome/Firefox als Rad mit ctrlKey, Safari als `gesture*`), ⌘/Strg + Mausrad, Doppelklick, Knöpfe + / −, Tasten + − 0 — immer zum Punkt unter dem
+  Zeiger, sanft gedämpft, 1 (ganze Kugel) … 8 (einzelne Sterne lesbar). Am Handy zwei Finger (Pinch + Verschieben).
+- **Drehen:** Maus/ein Finger ziehen (ab 5 px; darunter bleibt es ein Klick, der Stern öffnet wie bisher), Zwei-Finger-Wischen auf dem Trackpad, Pfeiltasten; Schwung beim
+  Loslassen, Eigendrehung pausiert und läuft sanft wieder an. **Verschieben** hineingezoomt mit ⇧ (ziehen, wischen, Pfeil), begrenzt — die Bildmitte bleibt über der Kugel.
+  „Zurücksetzen“ stellt Drehung, Zoom und Ausschnitt wieder her. Ein Mausrad ohne Taste lässt die Seite weiterlaufen (Hinweis am Rand). Bewusst: senkrechtes Zwei-Finger-
+  Wischen über der Kugel dreht (Kevins Wunsch) — die Seite rollt dann nur außerhalb; am Handy bleibt senkrecht die Seite, solange nicht hineingezoomt ist.
+- **Technik:** Lupe als Objektiv nach der Projektion (`mitLupe`) — Shader, Hit-Test, Beschriftungen und Bögen nehmen dieselbe Kamera; Rechnung rein in
+  `components/os/kugel/steuerung.ts`, Eingabe nur an der Fläche (`eingabe.ts`, nie Fenster/Dokument), Werte im Motor (`bedienbar`, Vorgabe aus — die ZOE-Kugel bleibt
+  unverändert). Tests: tests/kugel-steuerung.test.ts; tests/kugeln.test.ts (Wächter „kein scroll“ erlaubt nur den Hinweistext).
+- Kein Datenumzug, kein Schritt am Server.
 
 ## 15./16.10.2026 — Abnahme 2 A2/C22/C5: Betreiber- und Entwickler-Texte nur in der Betreiber-Instanz (nur lokal — Branch `abnahme2-betreiber`, Basis 0cf86204 = `update-0910b`)
 Kevin: „Betreiber-Inhalte nur in der eigenen Instanz.“ Regel bleibt `istBetreiberInstanz` (lib/betrieb/betreiber-server.ts); `BETREIBER_WISSEN` kennt jetzt

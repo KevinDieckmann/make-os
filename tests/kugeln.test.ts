@@ -181,7 +181,9 @@ describe('Einbau und Rückfall', () => {
     const s = lies('components/os/ZoeStart.tsx');
     expect(s).toMatch(/<ZoeKugel\s+groesse="gross"/); expect(s).toMatch(/rueckfall=\{\s*<ZoeHirn/);
     expect(s).toContain("aspectRatio: '1 / 1'");
-    for (const f of readdirSync(path.join(wurzel, 'components/os/kugel'))) expect(readFileSync(path.join(wurzel, 'components/os/kugel', f), 'utf8')).not.toMatch(/pfad\(|formation|scroll/i);
+    // Einzige Ausnahme (16.10., Zoom der Brain-Kugel): der Hinweistext „⌘/Strg + Scrollen“ — verboten bleibt jede an die Seite
+    // gekoppelte Bewegung (tests/kugel-steuerung.test.ts prüft zusätzlich: Lauscher nur an der Fläche, nie an Fenster/Dokument).
+    for (const f of readdirSync(path.join(wurzel, 'components/os/kugel'))) expect(readFileSync(path.join(wurzel, 'components/os/kugel', f), 'utf8').replace(/(⌘|Strg) \+ Scrollen/g, ''), f).not.toMatch(/pfad\(|formation|scroll/i);
   });
   it('ZoePanel: unten das Symbol (auch im Kopf), ohne WebGL das bisherige Orb', () => {
     const s = lies('components/os/ZoePanel.tsx');
