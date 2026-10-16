@@ -115,9 +115,18 @@ describe('Kapazität rechnet die Selbstständigkeit weiter als Arbeit (Meilenste
     const r = await kapa.GET!(anfrage('/api/kapazitaet', 'pt'));
     expect(r.status).toBe(200);
     const j = await r.json();
-    const ms = j.stand.posten.find((p: { id: string }) => p.id === 'ms-selbst');
-    expect(ms).toMatchObject({ titel: PRIVAT_BELEGT, aufwand: 30 });
+    // Seit 15.10. (Abnahme 2 A1, Rolle „nur Business“ dicht): der Posten der Selbstständigkeit kommt gar nicht an — nicht einmal als
+    // „Privat (belegt)“ (weder Titel noch Kennung, Termin, Aufwand). Die Stunden bleiben in der Last: dieselbe Team-Last wie im Haushalt.
+    expect(j.stand.posten.some((p: { id: string }) => p.id === 'ms-selbst')).toBe(false);
     expect(JSON.stringify(j)).not.toContain('Erfundene Website');
+    const last = (s: { team: { wochen: { bedarf: number }[] } }) => s.team.wochen.reduce((n, w) => n + w.bedarf, 0);
+    const voll = await (await kapa.GET!(anfrage('/api/kapazitaet', 'pa'))).json();
+    expect(last(j.stand)).toBeGreaterThan(0);
+    expect(last(j.stand)).toBeCloseTo(last(voll.stand), 5);
+    // Die Sicht Business eines vollen Mitglieds behält den Posten — nur ohne Titel, als „Privat (belegt)“ (05.10. abends).
+    const sichtBusiness = await (await kapa.GET!(anfrage('/api/kapazitaet?space=business', 'pa'))).json();
+    expect(sichtBusiness.stand.posten.find((p: { id: string }) => p.id === 'ms-selbst')).toMatchObject({ titel: PRIVAT_BELEGT, aufwand: 30 });
+    expect(JSON.stringify(sichtBusiness)).not.toContain('Erfundene Website');
     // Der Business-Index bekommt keine privaten Posten in „kritisch“.
     const { kapaKennzahlenFuerIndex } = await import('@/lib/kapazitaet/server');
     expect(JSON.stringify(await kapaKennzahlenFuerIndex())).not.toContain('Erfundene Website');

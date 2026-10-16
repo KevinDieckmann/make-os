@@ -121,8 +121,12 @@ describe('Pflichten-Kalender: gerechnet, nie gespeichert — nur Vermerke', () =
     const l = pf(gmbh());
     expect(finde(l, 'ja-aufstellen', '2025-12-31')).toMatchObject({ frist: '2026-03-31', status: 'ueberfaellig' });
     expect(finde(l, 'ja-feststellen', '2025-12-31')).toMatchObject({ frist: '2026-08-31', status: 'ueberfaellig' });
-    expect(finde(l, 'ja-offenlegen', '2024-12-31')).toMatchObject({ frist: '2025-12-31', status: 'ueberfaellig' });
-    expect(finde(l, 'ja-offenlegen', '2025-12-31')).toMatchObject({ frist: '2026-12-31', status: 'offen' });
+    // Offenlegen: die Hauptgesellschaft führt seit 15.10. das Steuer-Modul (`steuerImModul`, „nur einmal“) — die 12-Monats-Regel des Schilds gilt für
+    // eine Gesellschaft aus dem Register, die nicht im Steuer-Modul steht.
+    expect(finde(l, 'ja-offenlegen', '2025-12-31')).toBeUndefined();
+    const reg = pf(gmbh({ id: G1 }));
+    expect(finde(reg, 'ja-offenlegen', '2024-12-31')).toMatchObject({ frist: '2025-12-31', status: 'ueberfaellig' });
+    expect(finde(reg, 'ja-offenlegen', '2025-12-31')).toMatchObject({ frist: '2026-12-31', status: 'offen' });
     expect(finde(l, 'ug-ruecklage', '2025-12-31')).toBeUndefined();
     expect(finde(l, 'gv-einladung', '2025-12-31')).toBeUndefined(); // ein Gesellschafter → keine Einladung, Niederschrift
     const klein: SchildGesellschaft = { id: 'ug', profil: { groessenklasse: 'klein' } };
@@ -164,6 +168,7 @@ describe('Pflichten-Kalender: gerechnet, nie gespeichert — nur Vermerke', () =
     for (const r of PFLICHT_REGELN) expect(r.norm.length).toBeGreaterThan(2);
     for (const e of EREIGNIS_ARTEN) { expect(e.pflichten.length, e.id).toBeGreaterThan(0); for (const p of e.pflichten) expect(p.quelle.length).toBeGreaterThan(0); }
     expect(steuerImModul('kdv')).toBe(true);
+    expect(steuerImModul('ug')).toBe(true); // seit 15.10. wie KD Ventures
     expect(steuerImModul(G1)).toBe(false);
   });
   it('Schwellen-Wächter: unbekannt ohne Profil, erreicht ab 10/20/50 Personen bzw. 800.000 € Umsatz; „umgesetzt“ per Vermerk', () => {
@@ -364,7 +369,9 @@ describe('Ampel und Lage: nur Business-Gesellschaften, „was fehlt“ mit Weg',
   it('Kalender: Pflichten (art pflicht) und Schutzrechte (art vertrag) mit Weg in den Reiter', () => {
     const l = lageAus(register, { gesellschaften: [{ id: 'ug', versicherungen: [{ id: 'vs-2', art: 'do', ablauf: '2027-01-31' }] }] }, HEUTE);
     const f = schildFristen(l);
-    expect(f.find(x => x.id.startsWith('pf-ug-') && x.id.includes('ja-offenlegen|2025-12-31'))).toMatchObject({ art: 'pflicht', tag: '2026-12-31', href: '/os/unternehmen?s=pflichten&w=ug' });
+    expect(f.find(x => x.id.startsWith('pf-ug-') && x.id.includes('ja-feststellen|2025-12-31'))).toMatchObject({ art: 'pflicht', tag: '2026-08-31', href: '/os/unternehmen?s=pflichten&w=ug' });
+    // Die Offenlegung der Hauptgesellschaft steht im Kalender aus dem Steuer-Modul (seit 15.10.) — nicht noch einmal aus dem Schild.
+    expect(f.some(x => x.id.startsWith('pf-ug-') && x.id.includes('ja-offenlegen'))).toBe(false);
     expect(f.find(x => x.id.includes('vs-kuend-vs-2'))).toMatchObject({ art: 'vertrag', kuendigung: true, href: '/os/unternehmen?s=schutz&w=ug' });
   });
   it('Erinnerungen: feste Kennungen (idempotent), Titel ohne Beträge', () => {

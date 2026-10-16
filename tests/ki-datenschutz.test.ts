@@ -233,12 +233,16 @@ describe('KI-Protokoll ohne Inhalte', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(MODELL_ANTWORT('ANTWORT-GEHEIM'));
     await anthropic.askText({ system: 'SYSTEM-GEHEIM', user: 'FRAGE-GEHEIM Anna Beispiel', zweck: 'test-protokoll', ki: { lauf: 'gespraech', person: 'lena', kategorien: ['crm'], anzahl: 1 } });
     const { kiProtokollLesen } = await import('@/lib/datenschutz/ki-protokoll');
-    await new Promise(r => setTimeout(r, 50));
-    const zeilen = await kiProtokollLesen({ person: 'lena', monate: 1 });
-    const z = zeilen.find(x => x.zweck === 'test-protokoll');
-    expect(z).toMatchObject({ lauf: 'gespraech', person: 'lena', kategorien: ['crm'], anzahl: 1, ergebnis: 'ok' });
-    // Auch die gesperrten Aufrufe von oben stehen drin — mit Grund, ohne Inhalt.
-    expect(zeilen.some(x => x.ergebnis === 'gesperrt' && x.grund === 'einwilligung-gesundheit')).toBe(true);
+    // askText schreibt die Zeile im Hintergrund (`void kiProtokollieren`, nie die Antwort aufhalten) — unter Last (volle Suite) dauert das länger
+    // als eine feste Wartezeit: warten, bis sie da ist. Die Aussage bleibt: je Aufruf eine Zeile, mit genau diesen Metadaten.
+    let zeilen: Awaited<ReturnType<typeof kiProtokollLesen>> = [];
+    await vi.waitFor(async () => {
+      zeilen = await kiProtokollLesen({ person: 'lena', monate: 1 });
+      expect(zeilen.find(x => x.zweck === 'test-protokoll')).toMatchObject({ lauf: 'gespraech', person: 'lena', kategorien: ['crm'], anzahl: 1, ergebnis: 'ok' });
+      // Auch die gesperrten Aufrufe von oben stehen drin — mit Grund, ohne Inhalt.
+      expect(zeilen.some(x => x.ergebnis === 'gesperrt' && x.grund === 'einwilligung-gesundheit')).toBe(true);
+    }, { timeout: 5_000, interval: 25 });
+    expect(zeilen.filter(x => x.zweck === 'test-protokoll')).toHaveLength(1);
     const roh = readdirSync(ordner).filter(f => f.startsWith('ki-protokoll--') && f.endsWith('.json')).map(f => db.rohOeffnen(readFileSync(path.join(ordner, f), 'utf8'), f.replace(/\.json$/, '')).text).join('\n');
     for (const geheim of ['GEHEIM', 'Anna', 'Beispiel', 'MARKER', 'Recovery 37']) expect(roh).not.toContain(geheim);
   });
