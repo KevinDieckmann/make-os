@@ -980,6 +980,20 @@ function berlinWand(iso: string): string | undefined {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 function mitZone(t: string): boolean { return /(Z|[+-]\d{2}:\d{2})$/.test(t); }
+/**
+ * „Zuletzt“ einer Person (16.10., Abnahme 2 · B11): der jüngste Tag aus letztem Kontakt UND menschlichen Aktivitäten (auch Notizen,
+ * Ereigniszeit `wann` vor `am`, Berliner Tag) — die Spalte der Kartei zeigte nur `letzterKontakt` und blieb bei Notizen von heute leer.
+ * Zukünftige Meetings zählen nicht (`heute`). System-, Stufen- und Übergabezeilen zählen nicht.
+ */
+export function zuletztTag(k: Pick<Kontakt, 'letzterKontakt' | 'aktivitaeten'>, heute: string): string | undefined {
+  let best = k.letzterKontakt && /^\d{4}-\d{2}-\d{2}/.test(k.letzterKontakt) ? k.letzterKontakt.slice(0, 10) : undefined;
+  for (const a of k.aktivitaeten ?? []) {
+    if (a.von === 'system' || a.art === 'system' || a.art === 'stufe' || a.art === 'uebergabe') continue;
+    const t = a.wann ? wannTag(a.wann) : mitZone(a.am) ? (berlinWand(a.am) ?? a.am).slice(0, 10) : a.am.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t) && t <= heute && (!best || t > best)) best = t;
+  }
+  return best;
+}
 /** Der Berliner Tag eines Meeting-Zeitpunkts (`wann`; Altbestand mit Zone wird umgerechnet). */
 export function wannTag(wann: string): string {
   return wannNorm(wann).slice(0, 10);

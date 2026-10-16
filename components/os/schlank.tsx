@@ -8,6 +8,7 @@
 // alles erscheint gestaffelt. Wer eine Seite baut, nimmt das hier.
 
 import { useEffect, useId, useRef, useState, type ReactNode, type CSSProperties } from 'react';
+import Link from 'next/link';
 import { klickSperren, type KlickSperre } from '@/lib/make-one/klick-sperre';
 import { FARBE as C, LEUCHT, SCHRIFT, TYP, TIEF, leuchtFarbe } from '@/lib/make-one/design';
 
@@ -193,8 +194,19 @@ export function useHochzaehlen(text?: string, dauer = 900): string | undefined {
 }
 
 /** Der Ring — Zahl innen, Glow in der Kennzahlfarbe, füllt sich beim Öffnen. */
-export function Ring({ wert, einheit, label, farbe, anteil, groesse = 'normal', unter }: {
+/** Der Rahmen des Rings: mit `href` ein Link (Grafik führt weiter, `data-grafik-weiter`), sonst ein schlichter Kasten. */
+function RingRahmen({ href, hinweis, px, children }: { href?: string; hinweis: string; px: string; children: ReactNode }) {
+  const stil: CSSProperties = { position: 'relative', width: px, aspectRatio: '1', display: 'block' };
+  if (!href) return <div style={stil}>{children}</div>;
+  return <Link href={href} data-grafik-weiter="" className="fassbar" title={hinweis} aria-label={hinweis} style={{ ...stil, color: 'inherit', textDecoration: 'none', borderRadius: '50%' }}>{children}</Link>;
+}
+
+export function Ring({ wert, einheit, label, farbe, anteil, groesse = 'normal', unter, href, hinweis }: {
   wert?: string; einheit?: string; label: string; farbe: string; anteil?: number; groesse?: 'klein' | 'normal' | 'gross'; unter?: ReactNode;
+  /** Wohin der Ring führt (16.10., Abnahme 2 · B7: „jede Grafik führt weiter“) — z. B. der Verlauf oder die Ist-Monate dahinter. */
+  href?: string;
+  /** Was der Klick öffnet (title + Vorleser), z. B. „Verlauf des Index öffnen“. */
+  hinweis?: string;
 }) {
   const [an, setAn] = useState(false);
   useEffect(() => { const t = requestAnimationFrame(() => setAn(true)); return () => cancelAnimationFrame(t); }, []);
@@ -207,7 +219,7 @@ export function Ring({ wert, einheit, label, farbe, anteil, groesse = 'normal', 
   const verlaufId = `ring-${useId().replace(/[^a-zA-Z0-9-]/g, '')}`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: groesse === 'klein' ? 6 : 10 }}>
-      <div style={{ position: 'relative', width: px, aspectRatio: '1' }}>
+      <RingRahmen href={href} hinweis={hinweis ?? label} px={px}>
         <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', display: 'block', filter: hat ? TIEF.svgSchein(farbe, groesse === 'klein' ? 6 : 12) : undefined }} aria-hidden>
           {/* Tiefe Akzente (25.09.): kräftige Farbe mit Tiefe — Verlauf von der vollen Farbe in den tieferen
               Ton, getönte Scheibe mit feiner Kontur (wie das Kürzel in der Akte), weicher Schein statt Neon. */}
@@ -228,7 +240,7 @@ export function Ring({ wert, einheit, label, farbe, anteil, groesse = 'normal', 
             {zahl ?? '—'}{wert != null && einheit && <span style={{ fontSize: '.42em', fontWeight: 600, color: C.inkDim, marginLeft: 1 }}>{einheit}</span>}
           </div>
         </div>
-      </div>
+      </RingRahmen>
       <div style={{ fontSize: groesse === 'klein' ? 11.5 : TYP.bedien, fontWeight: 600, color: groesse === 'klein' ? C.inkDim : C.ink, letterSpacing: groesse === 'klein' ? '.02em' : undefined, textAlign: 'center' }}>{label}</div>
       {unter}
     </div>

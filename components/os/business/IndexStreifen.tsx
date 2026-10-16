@@ -48,7 +48,8 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
               style={{ display: 'grid', gap: 3, padding: '9px 11px', borderRadius: 12, textDecoration: 'none', minWidth: 0,
                 background: k?.gemessen ? `color-mix(in srgb, ${f} 7%, ${C.flaecheHoch})` : 'rgba(255,255,255,.025)', border: `1px solid ${k?.gemessen ? `${f}33` : 'rgba(255,255,255,.06)'}` }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: f, flex: '0 0 auto' }} />{k ? k.label : '…'}
+                {/* Eigene Spanne für die Ellipse (16.10., Abnahme 2 · C2): Text direkt im Flex-Kasten wurde ohne „…“ abgeschnitten („Kundenkonzentra“). */}
+                <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: f, flex: '0 0 auto' }} /><span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k ? k.label : '…'}</span>
               </span>
               <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, fontWeight: 700, color: k?.gemessen ? (k.ampel === 'gruen' ? C.ink : f) : C.inkLeise, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {k ? (k.gemessen ? k.anzeige : 'fehlt') : '—'}

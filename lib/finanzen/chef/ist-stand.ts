@@ -7,6 +7,7 @@
 // feste Namen und ein Schritt „<Person> hat Zugang zum Haushalt“.
 import { WEG } from '@/lib/wege';
 import { finanzOrtName } from '@/lib/einheiten';
+import { anzahl } from '@/lib/text/zahlwort';
 
 export interface Schritt {
   id: string; bereich: 'privat' | 'business' | 'gemeinsam';
@@ -66,7 +67,7 @@ export function istStand(e: IstStandEingaben): Schritt[] {
     // Vorher „<feste Person> hat Zugang zum Haushalt“ — jetzt: jedes Konto der Instanz ist eingeordnet (Haushalt oder „nur Business“).
     const offen = h.ohneHaushalt ?? 0;
     s.push({ id: 'zugang', bereich: 'gemeinsam', titel: 'Alle Konten dem Haushalt zugeordnet', erledigt: offen === 0 && h.mitglieder.length > 0, ...inhaber, link: '/os/konto',
-      detail: offen ? `${offen} Konto${offen > 1 ? 'en' : ''} ohne Haushalt — unter Konto einem Haushalt zuweisen oder auf „nur Business“ stellen` : `${h.mitglieder.length} Konto${h.mitglieder.length === 1 ? '' : 'en'} im Haushalt` });
+      detail: offen ? `${anzahl(offen, 'Konto', 'Konten')} ohne Haushalt — unter Konto einem Haushalt zuweisen oder auf „nur Business“ stellen` : `${anzahl(h.mitglieder.length, 'Konto', 'Konten')} im Haushalt` });
   }
   const konten = e.firmen.filter(f => f.id !== 'privat');
   const unklar = konten.filter(f => f.kontostand === null || !f.stand || tage(f.stand, e.heute) > 7);

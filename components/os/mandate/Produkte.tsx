@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, LEUCHT, Segmente, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import type { Leistung, ProduktPhase, Unterlage, UnterlageArt } from '@/lib/crm/typen';
-import { LINIEN, linienGruppen, linieVon, produktZahlen, portfolio, neuePhasenId, produktZustand, produktVerweise, verweisSatz, produktePapierkorb, produktArchivieren, produktZurueck } from '@/lib/crm/produkte';
+import { LINIEN, linienGruppen, linieVon, produktZahlen, portfolio, neuePhasenId, produktZustand, produktVerweise, verweisSatz, produktePapierkorb, produktArchivieren, produktZurueck, istKostenlos } from '@/lib/crm/produkte';
 import { PAPIERKORB_TAGE } from '@/lib/eintraege/sicher';
 import { mandateLink } from '@/lib/crm/adresse';
 import { type CrmApi, neueId, euro, kurzEuro, datum } from '../crm/daten';
@@ -41,7 +41,7 @@ const STUFE: Record<Leistung['stufe'], string> = { einstieg: 'Einstieg', kern: '
 const TYP_LABEL: Record<Leistung['typ'], string> = { diagnose: 'Diagnose', workshop: 'Workshop', retainer: 'Retainer', sprint: 'Sprint', vermittlung: 'Vermittlung', software: 'Software' };
 const ART: { id: UnterlageArt; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'vertrag', label: 'Vertrag' }, { id: 'deck', label: 'Deck' }, { id: 'onepager', label: 'Onepager' }, { id: 'sonstiges', label: 'Sonstiges' }];
 const statusFarbe = (s: Leistung['status']) => (s === 'aktiv' ? LEUCHT.gut : s === 'entwurf' ? LEUCHT.achtung : C.inkLeise);
-const preisText = (l: Leistung) => (l.preis.betrag ? `${euro(l.preis.betrag)}${l.preis.bis ? `–${euro(l.preis.bis)}` : ''} ${produktEinheit(l)}` : 'Preis offen');
+const preisText = (l: Leistung) => (istKostenlos(l) ? 'kostenlos' : l.preis.betrag ? `${euro(l.preis.betrag)}${l.preis.bis ? `–${euro(l.preis.bis)}` : ''} ${produktEinheit(l)}` : 'Preis offen');
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
 const BASIS: { id: PreisBasis; label: string }[] = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }];
 
@@ -72,7 +72,7 @@ export function Produkte({ api }: { api: CrmApi }) {
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const p = portfolio(crm.stand);
   const korb = produktePapierkorb(crm.stand);
-  const ohnePreis = aktiv.filter(l => !l.preis.betrag).length;
+  const ohnePreis = aktiv.filter(l => !l.preis.betrag && !istKostenlos(l)).length;
   const unvollstaendig = aktiv.filter(l => planungFehlt(l).length).length;
   const neu = () => { const id = neueId('l'); void api.setze('leistungen', { id, name: 'Neues Produkt', typ: 'retainer', stufe: 'kern', preis: { betrag: 0, einheit: 'Monat netto' }, lieferumfang: [], gesellschaft: 'offen', status: 'entwurf' }); setSicht('produkte'); setAuswahl(id); };
 

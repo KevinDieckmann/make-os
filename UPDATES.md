@@ -34,6 +34,24 @@ Kevin: „Das Brain muss zoombar sein … am besten wie beim MacBook auf dem Tou
   `components/os/kugel/steuerung.ts`, Eingabe nur an der Fläche (`eingabe.ts`, nie Fenster/Dokument), Werte im Motor (`bedienbar`, Vorgabe aus — die ZOE-Kugel bleibt
   unverändert). Tests: tests/kugel-steuerung.test.ts; tests/kugeln.test.ts (Wächter „kein scroll“ erlaubt nur den Hinweistext).
 - Kein Datenumzug, kein Schritt am Server.
+## 16.10.2026 — Abnahme 2: restliche Funde B7, B11, C1–C21 (nur lokal — Branch `abnahme2-rest`, Basis ebe3394d = `update-0910b`)
+Kevin: „Einfach zu verstehen über die Visualisierungen … keine losen Enden — jede Grafik führt weiter, jede Zahl stimmt.“
+- **B7 Grafiken führen weiter:** „Für dich“ je Woche/Monat → die Ansicht dieser Zeit (`lib/fluss/wege.ts`, HEUTE als Tastatur-Weg), Lichtfäden (Strang → Ziel, freie Stelle →
+  Woche im Kalender), Ringe mit `href` (Index → Verlauf, Kurs aufs Jahresziel → Monatsabschluss), Index-Verlauf (nächste Linie → Säule), Finanzplan-Linie/-Stapel (Monat → Blatt
+  „Monat“), Liquidität (Woche → Posten der Woche, `?w=`, `Bewegung.quelle`), Controlling-Balken → Liquidität der Woche. Liste + Wächter: `lib/make-one/grafiken.ts`,
+  tests/grafik-weiter.test.ts. Netz-Motiv = Schmuck (`data-deko`).
+- **B11:** „Leads in Qualifizierung“ — „Für dich“ öffnet die Liste auf „Meins“, Pillen zählen in der gewählten Sicht, Wer-Wahl mit Zahl, Satz „deine n von m im Team“. Scoreboard
+  „ehrgeizig“ (`ehrgeizigeZiele`, Soll ≥ 3 × bisher Bestes); die Rechnung war richtig — die Demo presste 60 T€ bis Jahresende in 1–3 Wochen Lead-Fenster, jetzt zwölf Monate.
+  Demo-Leads unterschiedlich qualifiziert + Signale je Stufe. Kartei „Zuletzt“ = jüngster Tag aus Kontakt UND Aktivitäten (`zuletztTag`).
+- **C1** Schloss hinter der Zeit, Stunde weicht der Jetzt-Zeit, Raster rollt am Handy in sich, „<Firma> verbinden · nicht eingerichtet“ nur beim Betreiber. **C2** Ellipse an den
+  Index-Kacheln. **C4** Überlast-Wochen am selben Posten = EINE Engstelle („überlastet 12.10.–01.11.“); gleiche Regler machen kein Thema „hoch“. **C6** `lib/text/zahlwort.ts`
+  (`anzahl`, `satz`), „Gesundheit“ statt „Health“ (CRM/Mandate), „Wichtig heute“ bei 1–2 Einträgen. **C7** `istKostenlos`, Demo: Kennzahlen-Check im Katalog, Stufen nach Wert.
+  **C9** fester Gesprächs-Termin zählt als Geplantes. **C10** Organigramm mit freien Plätzen für lange Linien, Schwerpunkt-Reihenfolge, Anteil am Ziel-Ende, Inhaber-Linie fürs
+  Einzelunternehmen (Geschäftsführung). **C11** Sprechblase statt leerer Kreis, Platz unten für die Kugel. **C12** ohne Einwilligung keine Index-Werte
+  (`gesundheitOhneEinwilligung`). **C17** EINE Ziel-Regel: Meilensteine + Unterziele (auch anderer Horizont), abgeleitete Ziele folgen dem Elternziel; `Ziel.messgroesse`
+  (`mrr`) → „Ist 5.950 € = 24 %“ im Seil. **C21** Demo-Aktivitäten zeitlich verteilt, von der Person, die die Beziehung hält.
+- **Nicht angefasst (Fulfillment):** „letzte Mitschrift 12.10..“ (lib/fulfillment/prozesse/ansichten.ts), „Gemeinsam entschieden“ mit offenem Punkt (lib/fulfillment/kunde),
+  Steering/Coverage/Huddle (Fulfillment-Texte), „Health der Fälle“. **Rückweg:** nur optionale Felder (`Ziel.messgroesse`, `Bewegung.quelle`), kein Datenumzug.
 
 ## 15./16.10.2026 — Abnahme 2 A2/C22/C5: Betreiber- und Entwickler-Texte nur in der Betreiber-Instanz (nur lokal — Branch `abnahme2-betreiber`, Basis 0cf86204 = `update-0910b`)
 Kevin: „Betreiber-Inhalte nur in der eigenen Instanz.“ Regel bleibt `istBetreiberInstanz` (lib/betrieb/betreiber-server.ts); `BETREIBER_WISSEN` kennt jetzt

@@ -11,9 +11,11 @@
 // nie eine Schätzung. 80/20: die Linie ist der Akzent, alles andere ruhig. Wächter: tests/fluss.test.ts.
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, FOKUS_LICHT, LEUCHT, BEDEUTUNG_FARBE, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { flussAchse, flussHatLinie, flussText, flussZahl, type FlussBereich, type FlussReihe, type FlussTon } from '@/lib/fluss/modell';
+import { flussPerioden, flussPeriodeLink, periodeName, periodeStart } from '@/lib/fluss/wege';
 import { Karte, Ueberschrift, Liste, Zeile } from './flaechen';
 import { Chip, Knopf } from './knoepfe';
 import { Hinweis, Leer } from './rueckmeldung';
@@ -63,7 +65,7 @@ function FlussKarteLadend(p: FlussKarteProps & { bereich: FlussBereich }) {
   return <FlussKarteInhalt {...p} fluss={fluss} laedt={laedt} fehler={fehler} neu={neu} />;
 }
 
-function FlussKarteInhalt({ fluss, laedt, fehler, neu, titel = 'Für dich', rechts, farbe = FOKUS_LICHT, children, i = 0 }: FlussKarteProps & { fluss: FlussReihe | null; laedt: boolean; fehler: string | null; neu: (() => void) | null }) {
+function FlussKarteInhalt({ fluss, laedt, fehler, neu, titel = 'Für dich', rechts, farbe = FOKUS_LICHT, children, i = 0, space }: FlussKarteProps & { fluss: FlussReihe | null; laedt: boolean; fehler: string | null; neu: (() => void) | null }) {
   const router = useRouter();
   return (
     <Karte i={i} ton="fokus" licht={farbe}>
@@ -71,7 +73,7 @@ function FlussKarteInhalt({ fluss, laedt, fehler, neu, titel = 'Für dich', rech
       <Ueberschrift rechts={rechts}>{titel}</Ueberschrift>
       {fehler && <Hinweis art="kritisch" rolle="alert" aktion={neu ? <Knopf leise onClick={neu}>Noch einmal versuchen</Knopf> : undefined}>{fehler}</Hinweis>}
       {!fluss && !fehler && (laedt ? <div aria-busy="true" aria-label="Überblick lädt" style={{ height: 96 }} /> : <Leer>Für diesen Bereich gibt es noch keinen Verlauf.</Leer>)}
-      {fluss && (flussHatLinie(fluss) ? <FlussLinie f={fluss} farbe={farbe} /> : <Leer>{fluss.leer ?? 'Noch kein Verlauf.'}</Leer>)}
+      {fluss && (flussHatLinie(fluss) ? <FlussLinie f={fluss} farbe={farbe} space={space} /> : <Leer>{fluss.leer ?? 'Noch kein Verlauf.'}</Leer>)}
       {children ?? (fluss && fluss.zeilen.length > 0 && (
         <Liste>
           {fluss.zeilen.map(z => (
@@ -100,20 +102,38 @@ export function flussPunkte(f: Pick<FlussReihe, 'ist' | 'prognose'>): { ist: [nu
   return { ist, prognose, heuteX, nullY: y(0) };
 }
 
-function FlussLinie({ f, farbe }: { f: FlussReihe; farbe: string }) {
+/**
+ * Jede Periode der Linie führt weiter (16.10., Abnahme 2 · B7: „jede Grafik führt weiter“): eine unsichtbare Spalte je Woche bzw. Monat
+ * öffnet die Ansicht genau dieser Zeit (lib/fluss/wege.ts). Die Spalten reichen jeweils bis zur Mitte zwischen zwei Punkten.
+ */
+function FlussSpalten({ f, space }: { f: FlussReihe; space?: 'privat' | 'business' | null }) {
+  const p = flussPerioden(f).sort((a, b) => a.x - b.x);
+  return (
+    <div data-grafik-weiter="" style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+      {p.map((x, k) => {
+        const l = k ? (p[k - 1].x + x.x) / 2 : 0, r = k < p.length - 1 ? (x.x + p[k + 1].x) / 2 : 1;
+        return <Link key={`${x.art}-${x.start}`} href={flussPeriodeLink(f.bereich, { art: x.art, start: x.start, raster: f.raster, space })} tabIndex={-1} aria-hidden="true"
+          className="ui-fluss-periode" title={`${x.text} — öffnen`} style={{ position: 'absolute', top: 0, bottom: 0, left: `${l * 100}%`, width: `${(r - l) * 100}%`, borderRadius: 6 }} />;
+      })}
+    </div>
+  );
+}
+
+function FlussLinie({ f, farbe, space }: { f: FlussReihe; farbe: string; space?: 'privat' | 'business' | null }) {
   const { ist, prognose, heuteX, nullY } = flussPunkte(f);
+  const jetzt = periodeStart(f.heute, f.raster, 0);
   const d = (pt: [number, number][]) => pt.map(([x, y], k) => `${k ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
   const flaeche = ist.length > 1 ? `${d(ist)} L${ist.at(-1)![0].toFixed(1)},${nullY.toFixed(1)} L${ist[0][0].toFixed(1)},${nullY.toFixed(1)} Z` : '';
   const [links, mitte, rechtsA] = flussAchse(f.raster);
   const leise = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: C.inkLeise };
   return (
-    <figure className="ui-fluss" role="img" aria-label={flussText(f)} style={{ margin: '0 0 12px', minWidth: 0 }}>
+    <figure className="ui-fluss" style={{ margin: '0 0 12px', minWidth: 0 }}>
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'baseline', marginBottom: 6, fontSize: TYP.bedien, color: C.inkDim }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span aria-hidden="true" style={{ width: 16, height: 2, background: farbe, borderRadius: 1 }} />Ist · {f.istLabel}</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span aria-hidden="true" style={{ width: 16, height: 0, borderTop: `2px dashed ${farbe}`, opacity: 0.6 }} />Prognose · {f.prognoseLabel}</span>
         <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{f.titel} · {f.raster === 'woche' ? 'diese Woche' : 'dieser Monat'} {flussZahl(f.ist.at(-1) ?? 0, f.einheit)}</span>
       </div>
-      <div style={{ position: 'relative', height: H }}>
+      <div role="img" aria-label={flussText(f)} style={{ position: 'relative', height: H }}>
         <svg aria-hidden="true" width="100%" height={H} viewBox={`0 0 ${B} ${H}`} preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}>
           <defs>
             <linearGradient id={`fluss-${f.bereich}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={farbe} stopOpacity={0.16} /><stop offset="1" stopColor={farbe} stopOpacity={0} /></linearGradient>
@@ -129,11 +149,14 @@ function FlussLinie({ f, farbe }: { f: FlussReihe; farbe: string }) {
             Keine Prognose — es liegt nichts Terminiertes vor.
           </div>
         )}
+        <FlussSpalten f={f} space={space} />
       </div>
-      <figcaption aria-hidden="true" style={{ position: 'relative', height: 16, marginTop: 4 }}>
-        <span style={{ ...leise, position: 'absolute', left: 0 }}>{links}</span>
-        <span style={{ ...leise, position: 'absolute', left: '50%', transform: 'translateX(-50%)', color: LEUCHT.puls }}>{mitte}</span>
-        <span style={{ ...leise, position: 'absolute', right: 0 }}>{f.prognoseGrundlage ? `Prognose ${rechtsA}` : rechtsA}</span>
+      <figcaption style={{ position: 'relative', height: 16, marginTop: 4 }}>
+        <span aria-hidden="true" style={{ ...leise, position: 'absolute', left: 0 }}>{links}</span>
+        {/* HEUTE ist zugleich der Tastatur-Weg in die Zeit (die Spalten darüber sind nur für Zeiger) — dieselbe Ansicht wie ein Klick auf die laufende Periode. */}
+        <Link href={flussPeriodeLink(f.bereich, { art: 'ist', start: jetzt, raster: f.raster, space })} aria-label={`${periodeName(jetzt, f.raster)} öffnen`} title={`${periodeName(jetzt, f.raster)} öffnen`}
+          style={{ ...leise, position: 'absolute', left: '50%', transform: 'translateX(-50%)', color: LEUCHT.puls, textDecoration: 'none' }}>{mitte}</Link>
+        <span aria-hidden="true" style={{ ...leise, position: 'absolute', right: 0 }}>{f.prognoseGrundlage ? `Prognose ${rechtsA}` : rechtsA}</span>
       </figcaption>
       {f.prognoseGrundlage && <p style={{ margin: '2px 0 0', fontSize: TYP.bedien, color: C.inkDim }}>Prognose {f.prognoseGrundlage}.</p>}
     </figure>

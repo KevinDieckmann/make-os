@@ -20,11 +20,11 @@
 //     `verweiseZurueck`); gelöschtes Ziel → Meilensteine verlieren `zielId` (`zielVerweiseLoesen`), bleiben aber stehen.
 // Client- und server-sicher, keine Server-Importe.
 
-import type { Meilenstein } from './typen';
+import type { Meilenstein, Ziel } from './typen';
 import { kreisBei } from '@/lib/aufgaben/abhaengig';
 import { sortiertNachRang } from './rang';
 import { KETTE_MAX } from './meilensteine';
-import { wirksamerFortschritt, zielVonMeilenstein } from './meilenstein-aufgaben';
+import { wirksamerFortschritt, zielVonMeilenstein, zielFortschrittAusTeilen } from './meilenstein-aufgaben';
 import type { TasksState } from '@/types/tasks';
 
 // Höchstzahl und Säuberung liegen beim Säuberer der Meilensteine (sonst kreisten die Importe) — hier nur weitergereicht.
@@ -265,9 +265,11 @@ export function zieheInKette<M extends MitKette & { rang?: number }>(alle: reado
   return ordneTeilmenge(alle, neu.map(x => x.id));
 }
 
-/** Ziel-Fortschritt LIVE aus seinen Meilensteinen (Mittelwert des wirksamen Fortschritts) — null ohne Meilensteine. */
-export function zielFortschrittLive(zielId: string, ms: readonly Meilenstein[], state: Pick<TasksState, 'tasks'> | null): number | null {
-  const l = ms.filter(m => zielVonMeilenstein(m) === zielId);
-  if (!l.length) return null;
-  return Math.round(l.reduce((s, m) => s + wirksamerFortschritt(m, state), 0) / l.length);
+/**
+ * Ziel-Fortschritt LIVE — dieselbe Regel wie der Server (`zielFortschrittAusTeilen`, 16.10. C17): Meilensteine mit ihrem wirksamen Fortschritt
+ * UND, wenn `ziele` mitkommt, die Unterziele (`oberzielId`). Null ohne beides.
+ */
+export function zielFortschrittLive(zielId: string, ms: readonly Meilenstein[], state: Pick<TasksState, 'tasks'> | null, ziele: readonly Pick<Ziel, 'id' | 'oberzielId' | 'erledigt' | 'fortschritt'>[] = []): number | null {
+  const live = ms.map(m => (zielVonMeilenstein(m) ? { ...m, fortschritt: wirksamerFortschritt(m, state) } : m));
+  return zielFortschrittAusTeilen(zielId, ziele, live);
 }

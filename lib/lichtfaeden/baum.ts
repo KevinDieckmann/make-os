@@ -14,6 +14,7 @@
 // Tests: tests/lichtfaeden-baum.test.ts.
 
 import { gauss, saettigen } from './band';
+import { satz } from '@/lib/text/zahlwort';
 import { STRAHL } from './strahl';
 import { abweichungenAusStraengen, abweichungText, ausschlagJeWoche, type Abweichung } from './abweichung';
 import {
@@ -409,7 +410,8 @@ export function ansichtText(a: Ansicht): string {
     b.dichte.forEach((v, i) => { if (v > b.dichte[best]) best = i; });
     return `${b.name}: ${b.anzahl} ${b.anzahl === 1 ? 'Strang' : 'Stränge'}, am dichtesten in der Woche ab ${kurz(a.wochen[best])}`;
   });
-  const abw = a.abweichungen.length ? ` Abweichungen vom Plan: ${a.abweichungen.map(x => x.text).join('; ')}.` : ' Alles im Plan — keine Abweichung.';
+  // Satzende über `satz` (16.10., C6): der letzte Eintrag endet oft auf ein Datum („… 26.10.“) — nie „26.10..“.
+  const abw = a.abweichungen.length ? ` ${satz(`Abweichungen vom Plan: ${a.abweichungen.map(x => x.text).join('; ')}`)}` : ' Alles im Plan — keine Abweichung.';
   return `Lichtfäden ${ebene}, ${a.anzahl} ${a.anzahl === 1 ? 'Strang' : 'Stränge'} im Zeitraum. ${teile.join('. ')}.${abw}`;
 }
 

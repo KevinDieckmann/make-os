@@ -22,7 +22,9 @@ describe('welche Anzeige wo (rein)', () => {
   it('Business: nicht verbunden → Karte, verbunden → Hinweis; iCloud nie unter Business', () => {
     expect(verbindenAnzeige('business', offen, { verbunden: false })).toEqual({ google: 'karte', icloud: null });
     expect(verbindenAnzeige('business', da, null)).toEqual({ google: 'hinweis', icloud: null });
-    expect(verbindenAnzeige('business', { konfiguriert: false, verbunden: false }, null).google).toBe('karte');
+    // 16.10. (Abnahme 2 · C1): nicht eingerichtet → nur der Betreiber hat etwas zu tun; sonst keine Karte über dem Kalender.
+    expect(verbindenAnzeige('business', { konfiguriert: false, verbunden: false }, null).google).toBe(null);
+    expect(verbindenAnzeige('business', { konfiguriert: false, verbunden: false }, null, { betreiber: true }).google).toBe('karte');
     expect(verbindenAnzeige('business', { ...offen, getrennt: { grund: 'Zugriff widerrufen' } }, null).google).toBe('karte');
   });
   it('Business: Google nur für Gmail verbunden (Kalender-Freigabe fehlt) → Karte, nicht der Hinweis „Google verbunden“ (09.10.)', () => {

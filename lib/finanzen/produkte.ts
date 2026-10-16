@@ -11,6 +11,7 @@ import type { Chance, CrmBestand, Leistung, Mandat } from '@/lib/crm/typen';
 import type { Baustein, BausteinEinheit, Rhythmus } from './szenarien';
 import { neuerBaustein } from './szenarien';
 import { planMonat } from './rechenkern';
+import { istKostenlos } from '@/lib/crm/produkte';
 
 export type PreisBasis = NonNullable<Leistung['preis']['basis']>;
 
@@ -54,7 +55,7 @@ export function einheitAusGesellschaft(g: Leistung['gesellschaft'] | 'offen'): B
 /** Was dem Produkt für die Planung fehlt — leer heißt: planbar. */
 export function planungFehlt(l: Leistung): string[] {
   const f: string[] = [];
-  if (!l.preis.betrag) f.push('Preis');
+  if (!l.preis.betrag && !istKostenlos(l)) f.push('Preis');
   if (!preisBasisVon(l)) f.push('Basis (Monat · Jahr · einmalig)');
   if (preisBasisVon(l) !== 'einmalig' && !l.laufzeitMonate) f.push('Laufzeit');
   if (l.gesellschaft === 'offen') f.push('Gesellschaft');

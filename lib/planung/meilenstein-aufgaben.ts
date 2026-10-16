@@ -22,7 +22,8 @@
 // Ziel-Fortschritt: hat ein Ziel Meilensteine (`zielId`, bzw. `abgeleitetVon` aus der Kaskade), ist er der Mittelwert
 // ihrer Fortschritte — sonst der von Hand gepflegte.
 
-import type { Meilenstein, Ziel } from './typen';
+import type { Meilenstein, Ziel, ZielHorizont } from './typen';
+import { ZIEL_HORIZONTE } from './typen';
 import type { AufgabenListe, Project, Task, TasksState } from '@/types/tasks';
 import { meilensteinSpeicherSpace } from './meilensteine';
 import { finanzOrtAus, istGesellschaft } from '@/lib/einheiten';
@@ -157,17 +158,55 @@ export function zielFortschrittAusMeilensteinen(zielId: string, ms: readonly Mei
   return Math.round(l.reduce((s, m) => s + (m.erledigt ? 100 : m.fortschritt), 0) / l.length);
 }
 
-/** Ziele nachziehen (rein): offene Ziele mit Meilensteinen tragen den Mittelwert. */
-export function zieleFortschrittAnwenden<Z extends Ziel>(ziele: readonly Z[], ms: readonly Meilenstein[]): { liste: Z[]; geaendert: number } {
+/**
+ * EINE Regel für den Ziel-Fortschritt (16.10., Abnahme 2 · C17 — vorher zählten nur Meilensteine: „Cockpit 2.0 … 0 %“ über dem Unterziel
+ * „Zwei Pilotkunden live 50 %“): Mittel über die Meilensteine des Ziels UND seine Unterziele (`oberzielId` in derselben Liste; erledigt = 100,
+ * sonst deren eigener Fortschritt nach derselben Regel, rekursiv, Kreise brechen ab). Ohne beides null (dann gilt der Wert von Hand).
+ */
+export function zielFortschrittAusTeilen<Z extends Pick<Ziel, 'id' | 'oberzielId' | 'erledigt' | 'fortschritt'>>(zielId: string, ziele: readonly Z[], ms: readonly Meilenstein[], pfad: ReadonlySet<string> = new Set()): number | null {
+  const werte = meilensteineVonZiel(zielId, ms).map(m => (m.erledigt ? 100 : m.fortschritt));
+  const weiter = new Set([...pfad, zielId]);
+  for (const u of ziele) {
+    if (u.oberzielId !== zielId || weiter.has(u.id)) continue;
+    werte.push(u.erledigt ? 100 : zielFortschrittAusTeilen(u.id, ziele, ms, weiter) ?? (u.fortschritt || 0));
+  }
+  return werte.length ? Math.round(werte.reduce((a, b) => a + b, 0) / werte.length) : null;
+}
+
+/**
+ * Ziele nachziehen (rein): offene Ziele mit Meilensteinen oder Unterzielen tragen den Mittelwert (`zielFortschrittAusTeilen`). `eltern`
+ * (16.10., C17): Fortschritt der Ziele anderer Horizonte — ein aus der Kaskade abgeleitetes Ziel (`abgeleitetVon`) ohne eigene Teile zeigt den
+ * Fortschritt seines Elternziels, statt mit gleichem Titel auf 0 % zu stehen.
+ */
+export function zieleFortschrittAnwenden<Z extends Ziel>(ziele: readonly Z[], ms: readonly Meilenstein[], eltern?: ReadonlyMap<string, number>, alleZiele?: readonly Ziel[]): { liste: Z[]; geaendert: number } {
   let geaendert = 0;
+  // Unterziele dürfen in einem anderen Horizont liegen (z. B. ein Quartalsziel unter einem Jahresziel) — `alleZiele` = alle Horizonte.
+  const teile: readonly Ziel[] = alleZiele ?? ziele;
   const liste = ziele.map(z => {
     if (z.erledigt) return z;
-    const r = zielFortschrittAusMeilensteinen(z.id, ms);
+    const r = zielFortschrittAusTeilen(z.id, teile, ms) ?? (z.abgeleitetVon ? eltern?.get(z.abgeleitetVon) ?? null : null);
     if (r === null || r === z.fortschritt) return z;
     geaendert++;
     return { ...z, fortschritt: r };
   });
   return { liste, geaendert };
+}
+
+/** Alle Horizonte nacheinander, von oben (Jahr) nach unten — abgeleitete Ziele sehen den schon nachgezogenen Fortschritt ihrer Eltern. */
+export function zieleDateiFortschritt<D extends Partial<Record<ZielHorizont, Ziel[]>>>(datei: D, ms: readonly Meilenstein[]): { datei: D; geaendert: number } {
+  const eltern = new Map<string, number>();
+  const aus = { ...datei };
+  let geaendert = 0;
+  const alle = ZIEL_HORIZONTE.flatMap(h => (Array.isArray(datei[h]) ? datei[h]! : []));
+  for (const h of [...ZIEL_HORIZONTE].reverse()) {
+    const l = datei[h];
+    if (!Array.isArray(l)) continue;
+    const r = zieleFortschrittAnwenden(l, ms, eltern, alle);
+    geaendert += r.geaendert;
+    (aus as Record<string, Ziel[]>)[h] = r.liste;
+    for (const z of r.liste) eltern.set(z.id, z.erledigt ? 100 : z.fortschritt || 0);
+  }
+  return { datei: aus, geaendert };
 }
 
 // ── Struktur im Aufgaben-Bestand ────────────────────────────────────────────

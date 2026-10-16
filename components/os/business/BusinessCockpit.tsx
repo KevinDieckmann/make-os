@@ -108,7 +108,9 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
       <Kachel id="index" titel="Business-Index" breite={6}>
       <Karte i={0} ton={farbe}>
         <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 44px)', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Ring groesse="gross" wert={bi?.index != null ? String(bi.index) : undefined} anteil={bi?.index != null ? bi.index / 100 : undefined} farbe={farbe} label={bi ? indexStatus(bi).titel : 'lädt …'} />
+          {/* Der Ring führt weiter (16.10., B7): zum Verlauf darunter — ohne Verlauf zum größten Hebel. */}
+          <Ring groesse="gross" wert={bi?.index != null ? String(bi.index) : undefined} anteil={bi?.index != null ? bi.index / 100 : undefined} farbe={farbe} label={bi ? indexStatus(bi).titel : 'lädt …'}
+            href={d?.verlauf.length ? '#index-verlauf' : bi?.hebel ? WEG.business({ k: bi.hebel.id }) : undefined} hinweis={d?.verlauf.length ? 'Verlauf des Business-Index öffnen' : 'Größten Hebel öffnen'} />
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Chip farbe={farbe}>{SCOPE_LABEL[scope]}</Chip>

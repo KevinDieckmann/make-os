@@ -103,7 +103,8 @@ export const WEG = {
   kontenRegister: (bereich: 'privat' | 'business' = 'privat') => (bereich === 'business'
     ? q('/os/finanzen', { s: 'liquiditaet', space: 'business' }, 'kontostaende')
     : q('/os/finanzen', { s: 'privat', t: 'buchungen', space: 'privat' }, 'konten')),
-  liquiditaet: () => q('/os/finanzen', { s: 'liquiditaet', space: 'business' }),
+  /** `woche` (16.10., B7): Montag einer Woche — die Liquidität öffnet diese Woche mit ihren Posten (`?w=`). */
+  liquiditaet: (woche?: string) => q('/os/finanzen', { s: 'liquiditaet', space: 'business', w: woche }),
   controlling: () => q('/os/finanzen', { s: 'controlling', space: 'business' }),
   /** Buchungen der Gesellschaften (Business) bzw. — mit `ort` einer Privat-Einheit, z. B. der Selbstständigkeit — unter Privat. */
   buchungen: (f: { monat?: string; kat?: string; q?: string; ort?: string; privat?: boolean } = {}) =>

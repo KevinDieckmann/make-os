@@ -9,6 +9,12 @@
 import type { CrmBestand, Leistung, Mandat, ChancenStufe } from './typen';
 import { imPapierkorb, papierkorbAbgelaufen, papierkorbBis } from '@/lib/eintraege/sicher';
 
+/**
+ * Ein kostenloses Produkt (16.10., Abnahme 2 · C7: der Kennzahlen-Check der Treppe steht als Produkt im Katalog): Betrag 0 und Einheit
+ * „kostenlos“ — das IST ein Preis (nicht „Preis offen“, nicht „für die Planung unvollständig“). EINE Regel für Katalog und Planung.
+ */
+export const istKostenlos = (l: Pick<Leistung, 'preis'>): boolean => !l.preis.betrag && /^kostenlos$/i.test((l.preis.einheit ?? '').trim());
+
 /** Die Linien in ihrer Reihenfolge — weitere (frei eingetragene) folgen alphabetisch. */
 export const LINIEN = ['Beratung & Begleitung', 'Workshops & Formate', 'Vermittlung & Provision', 'Software'] as const;
 const LINIE_AUS_TYP: Record<Leistung['typ'], string> = {

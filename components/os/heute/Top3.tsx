@@ -74,7 +74,9 @@ export function Top3Karte({ i, sicht, titel, vorgabe }: { i: number; sicht: TopB
   const festgelegt = block?.festgelegt ?? null;
   const vorschlag = (block?.vorschlag ?? []).filter(z => !liveErledigt(z));
   const rechtsLink = <Link href={sicht === 'privat' ? '/os/aufgaben?space=privat' : '/os/aufgaben?space=business'} style={link}>Aufgaben ›</Link>;
-  const kopf = titel ?? `Top 3 heute · ${SPACE_LABEL[sicht]}`;
+  // „Top 3“ nur mit drei Einträgen (16.10., Abnahme 2 · C6: „Top 3 heute“ über zwei Zeilen) — mit einem oder zwei Einträgen heißt sie „Wichtig heute“ (leer bleibt „Top 3“: bis zu drei wählen).
+  const anzahlZeilen = festgelegt ? festgelegt.zeilen.length : vorschlag.length;
+  const kopf = titel ?? `${anzahlZeilen === 1 || anzahlZeilen === 2 ? 'Wichtig heute' : 'Top 3 heute'} · ${SPACE_LABEL[sicht]}`;
 
   const anpassen = (ids: string[]) => { setEntwurf(ids); setBearbeiten(true); setWaehlen(null); setSuche(''); setMeldung(''); };
   const waehle = (id: string) => {
@@ -148,7 +150,7 @@ export function Top3Karte({ i, sicht, titel, vorgabe }: { i: number; sicht: TopB
           {vorschlag.map((z, k) => <Zeile key={z.id} onClick={oeffnen(z)} links={nummer(k + 1)} titel={z.titel} unter={unterText(z)} rechts={mark(z)} />)}
         </Liste>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-          <Knopf haupt onClick={() => senden({ aktion: 'festlegen', ids: vorschlag.map(z => z.id) })}>Top {vorschlag.length} übernehmen</Knopf>
+          <Knopf haupt onClick={() => senden({ aktion: 'festlegen', ids: vorschlag.map(z => z.id) })}>{vorschlag.length === 3 ? 'Top 3' : 'Vorschlag'} übernehmen</Knopf>
           <Knopf leise onClick={() => anpassen(vorschlag.map(z => z.id))}>Anpassen</Knopf>
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Vorschlag von ZOE</span>
         </div>

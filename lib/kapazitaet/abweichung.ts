@@ -21,6 +21,8 @@ import { lastJeWoche } from './last';
 import type { KapaStand, Machbarkeit } from './typen';
 
 const KONTO = 'konto-';
+/** Montag der Woche danach (Wochen sind Montage `YYYY-MM-DD`). */
+const wocheDanach = (montag: string): string => { const d = new Date(`${montag}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 7); return d.toISOString().slice(0, 10); };
 const SPACE_PFAD = [GESAMT, knotenId.space('business')] as const;
 
 /** Speichername einer Kapa-Kennung (`konto-<speicher>`) — Team-Personen ohne Konto gehören dem Haushalt (BEIDE). */
@@ -54,8 +56,9 @@ function pfadZumPosten(p: Machbarkeit, straenge: readonly Strang[], betrachter: 
 }
 
 /**
- * Die Quelle „überlastet“ aus einem (schon für den Betrachter gefilterten) Kapazitäts-Stand. Je Person und überlasteter Woche
- * im Fenster eine Abweichung.
+ * Die Quelle „überlastet“ aus einem (schon für den Betrachter gefilterten) Kapazitäts-Stand. Je Person und zusammenhängender
+ * Überlast-Strecke am selben Posten EINE Abweichung (16.10., Abnahme 2 · C4: vorher je Woche eine — „Kapazität Mira … überlastet ab
+ * 12.10. / 19.10. / 26.10.“ stand dreimal da). Die Strecke reicht von der ersten bis zur letzten Woche, die Stärke ist die größte.
  */
 export function kapazitaetUeberlastet(stand: Pick<KapaStand, 'team' | 'personen' | 'posten'> | null | undefined, betrachter: string): AbweichungsQuelle {
   return k => {
@@ -63,18 +66,27 @@ export function kapazitaetUeberlastet(stand: Pick<KapaStand, 'team' | 'personen'
     const aus: Abweichung[] = [];
     for (const p of stand.personen) {
       if (p.ohneKapa) continue;
+      let lauf: (Abweichung & { postenId: string | null; letzte: string }) | null = null;
+      const abschliessen = () => { if (lauf) { const { postenId: _p, letzte: _l, ...a } = lauf; aus.push(a); lauf = null; } };
       for (const w of lastJeWoche(stand, { von: k.von, bis: k.bis }, p.id)) {
-        if (w.stufe !== 'ueber') continue;
-        const staerke = ueberlast(w.kapa, w.bedarf);
-        if (!(staerke > 0)) continue;
+        const staerke = w.stufe === 'ueber' ? ueberlast(w.kapa, w.bedarf) : 0;
+        if (!(staerke > 0)) { abschliessen(); continue; }
         const posten = postenDerWoche(stand.posten, p.id, w.woche);
         const ort = posten ? pfadZumPosten(posten, k.straenge, betrachter) : null;
-        aus.push({
+        const postenId = posten && ort ? posten.id : null;
+        // Dieselbe Strecke: direkt anschließende Woche und derselbe Posten — dann nur verlängern.
+        if (lauf && lauf.postenId === postenId && wocheDanach(lauf.letzte) === w.woche) {
+          lauf.bis = w.bis; lauf.letzte = w.woche; lauf.staerke = Math.max(lauf.staerke, staerke);
+          continue;
+        }
+        abschliessen();
+        lauf = {
           id: `ueberlastet:${p.id}:${w.woche}`, art: 'ueberlastet', pfad: ort ? ort.pfad : [...SPACE_PFAD], person: personVonKapaId(p.id),
           von: w.woche, bis: w.bis, staerke, verlauf: 'gleich', titel: `Kapazität ${p.name}${posten && ort ? ` · ${posten.titel}` : ''}`,
-          ...(ort?.strang ? { strang: ort.strang } : {}), link: WEG.kapazitaet(p.id),
-        });
+          ...(ort?.strang ? { strang: ort.strang } : {}), link: WEG.kapazitaet(p.id), postenId, letzte: w.woche,
+        };
       }
+      abschliessen();
     }
     return aus;
   };

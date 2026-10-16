@@ -32,9 +32,24 @@ const kurz = (v: number) => (Math.abs(v) >= 1000 ? `${eur(v / 1000, Math.abs(v) 
 
 export interface Serie { name: string; farbe: string; werte: (number | null)[]; breite?: number; gestrichelt?: boolean }
 
-export function Linie({ serien, labels, heute, tick = 3, hoehe = 230, einheit = ' €' }: { serien: Serie[]; labels: string[]; heute?: number; tick?: number; hoehe?: number; einheit?: string }) {
+/**
+ * Klick auf einen Monat (16.10., Abnahme 2 · B7 „jede Grafik führt weiter“): ohne eigenes `onPunkt` öffnet er das Blatt „Monat“ genau an
+ * diesem Monat (`?monat=<Index der Achse>`). Die Achse der Planung = Historie + Planmonate (`achse(d)`); Reihen über `d.monate` beginnen
+ * nach der Historie — `monatAb` sagt, welcher Achsen-Index das erste Label ist (Standard: erkannt an `labels === d.monate`).
+ */
+function useMonatKlick(labels: string[], onPunkt?: (i: number) => void, monatAb?: number): (i: number) => void {
+  const { d, geh } = usePlan();
+  return (i: number) => {
+    if (onPunkt) { onPunkt(i); return; }
+    const ab = monatAb ?? (labels === d.monate ? d.historie.length : 0);
+    geh('monat', { monat: i + ab });
+  };
+}
+
+export function Linie({ serien, labels, heute, tick = 3, hoehe = 230, einheit = ' €', onPunkt, monatAb }: { serien: Serie[]; labels: string[]; heute?: number; tick?: number; hoehe?: number; einheit?: string; onPunkt?: (i: number) => void; monatAb?: number }) {
   const [ref, W] = useBreite<HTMLDivElement>();
   const { verbergen } = usePlan();
+  const klick = useMonatKlick(labels, onPunkt, monatAb);
   const [hov, setHov] = useState<number | null>(null);
   const L = 50, R = 12, T = 12, B = 24, H = hoehe;
   const alle = serien.flatMap(s => s.werte).filter((v): v is number => v != null && Number.isFinite(v));
@@ -49,11 +64,12 @@ export function Linie({ serien, labels, heute, tick = 3, hoehe = 230, einheit = 
   const linien: number[] = []; for (let v = Math.ceil(mn / st) * st; v <= mx; v += st) linien.push(v);
   const blur = verbergen ? { filter: 'blur(5px)' } : {};
   const pfad = (s: Serie) => { let d = '', an = false; s.werte.forEach((v, i) => { if (v == null) { an = false; return; } d += `${an ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`; an = true; }); return d; };
-  const bewege = (e: React.MouseEvent<SVGSVGElement>) => { const r = e.currentTarget.getBoundingClientRect(); const i = Math.round(((e.clientX - r.left - L) / Math.max(1, W - L - R)) * (n - 1)); setHov(Math.max(0, Math.min(n - 1, i))); };
+  const index = (e: React.MouseEvent<SVGSVGElement>) => { const r = e.currentTarget.getBoundingClientRect(); const i = Math.round(((e.clientX - r.left - L) / Math.max(1, W - L - R)) * (n - 1)); return Math.max(0, Math.min(n - 1, i)); };
+  const bewege = (e: React.MouseEvent<SVGSVGElement>) => setHov(index(e));
   return (
     <div ref={ref} style={{ position: 'relative', width: '100%' }}>
       {W > 0 && (
-        <svg width={W} height={H} style={{ display: 'block', overflow: 'visible' }} onMouseMove={bewege} onMouseLeave={() => setHov(null)} aria-hidden>
+        <svg width={W} height={H} data-grafik-weiter="" style={{ display: 'block', overflow: 'visible', cursor: 'pointer' }} onMouseMove={bewege} onMouseLeave={() => setHov(null)} onClick={e => klick(index(e))} aria-hidden>
           {linien.map(v => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke={Math.abs(v) < 1e-6 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.06)'} /><text x={L - 6} y={y(v) + 4} fill={C.inkLeise} fontSize="12" textAnchor="end" fontFamily={SCHRIFT.text} style={blur}>{kurz(v)}</text></g>)}
           {labels.map((l, i) => (i % schritt === 0 ? <text key={i} x={x(i)} y={H - 6} fill={C.inkLeise} fontSize="12" textAnchor="middle" fontFamily={SCHRIFT.text}>{l}</text> : null))}
           {heute != null && heute >= 0 && heute < n && <g><line x1={x(heute)} x2={x(heute)} y1={T} y2={H - B} stroke={C.aktiv} strokeDasharray="2 3" /><text x={x(heute) + 4} y={T + 10} fill={C.aktiv} fontSize="12" fontFamily={SCHRIFT.text}>heute</text></g>}
@@ -64,7 +80,7 @@ export function Linie({ serien, labels, heute, tick = 3, hoehe = 230, einheit = 
       )}
       {hov != null && (
         <div style={{ position: 'absolute', top: 6, left: Math.min(x(hov) + 12, Math.max(0, W - 190)), pointerEvents: 'none', background: C.flaecheHoch, borderRadius: 10, padding: '8px 10px', fontSize: TYP.bedien, color: C.inkDim, boxShadow: '0 12px 30px -10px rgba(0,0,0,.7)', whiteSpace: 'nowrap', zIndex: 3 }}>
-          <div style={{ color: C.ink, fontWeight: 700, marginBottom: 3 }}>{labels[hov]}</div>
+          <div style={{ color: C.ink, fontWeight: 700, marginBottom: 3 }}>{labels[hov]} <span style={{ color: C.inkLeise, fontWeight: 400 }}>· Klick öffnet den Monat</span></div>
           {serien.map(s => (s.werte[hov] == null ? null : <div key={s.name} style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}><span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: s.farbe, marginRight: 6 }} />{s.name}</span><span style={{ fontVariantNumeric: 'tabular-nums', color: C.ink, ...blur }}>{eur(s.werte[hov])}{einheit}</span></div>))}
         </div>
       )}
@@ -72,9 +88,10 @@ export function Linie({ serien, labels, heute, tick = 3, hoehe = 230, einheit = 
   );
 }
 
-export function Stapel({ stapel, labels, farben, namen, hoehe = 240, tick = 3 }: { stapel: number[][]; labels: string[]; farben: string[]; namen: string[]; hoehe?: number; tick?: number }) {
+export function Stapel({ stapel, labels, farben, namen, hoehe = 240, tick = 3, onPunkt, monatAb }: { stapel: number[][]; labels: string[]; farben: string[]; namen: string[]; hoehe?: number; tick?: number; onPunkt?: (i: number) => void; monatAb?: number }) {
   const [ref, W] = useBreite<HTMLDivElement>();
   const { verbergen } = usePlan();
+  const klick = useMonatKlick(labels, onPunkt, monatAb);
   const [hov, setHov] = useState<number | null>(null);
   const L = 50, R = 12, T = 12, B = 24, H = hoehe;
   const tot = stapel.map(s => s.reduce((a, b) => a + Math.max(0, b), 0)), neg = stapel.map(s => s.reduce((a, b) => a + Math.min(0, b), 0));
@@ -88,12 +105,12 @@ export function Stapel({ stapel, labels, farben, namen, hoehe = 240, tick = 3 }:
   return (
     <div ref={ref} style={{ position: 'relative', width: '100%' }}>
       {W > 0 && (
-        <svg width={W} height={H} style={{ display: 'block' }} onMouseLeave={() => setHov(null)} aria-hidden>
+        <svg width={W} height={H} data-grafik-weiter="" style={{ display: 'block', cursor: 'pointer' }} onMouseLeave={() => setHov(null)} aria-hidden>
           {linien.map(v => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,.06)" /><text x={L - 6} y={y(v) + 4} fill={C.inkLeise} fontSize="12" textAnchor="end" fontFamily={SCHRIFT.text} style={blur}>{kurz(v)}</text></g>)}
           {stapel.map((s, i) => {
             let auf = 0, ab = 0;
             return (
-              <g key={i} onMouseEnter={() => setHov(i)}>
+              <g key={i} onMouseEnter={() => setHov(i)} onClick={() => klick(i)}>
                 <rect x={L + i * bw} y={T} width={bw} height={H - T - B} fill={hov === i ? 'rgba(255,255,255,.04)' : 'transparent'} />
                 {s.map((v, k) => {
                   if (v >= 0) { const r = <rect key={k} x={L + i * bw + 1.5} width={Math.max(1, bw - 3)} y={y(auf + v)} height={Math.max(0, y(auf) - y(auf + v))} fill={farben[k]} rx={1.5} />; auf += v; return r; }

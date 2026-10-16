@@ -54,6 +54,8 @@ export interface SeilZielRoh {
   /** Eltern-Ziel (von Hand bzw. Kaskade, schon aufgelöst — lib/planung/bezuege.ts `zielEltern`). */
   elternId?: string;
   link?: string;
+  /** Gemessener Ist-Wert eines Zahlenziels als Satz („Ist 5.950 € = 24 %“, lib/planung/ziel-ist.ts) — steht neben dem Fortschritt. */
+  ist?: string;
 }
 export interface SeilStrangRoh {
   id: string; art: StrangArt; titel: string;
@@ -122,6 +124,8 @@ export interface SeilStrang {
 export interface SeilKante { id: string; art: 'karte' | 'strang'; von: string; nach: string; offen: boolean; kritisch: boolean; seil: string | null }
 export interface Seil {
   zielId: string; titel: string; farbe: string; link?: string; rang: number; space: SpaceId;
+  /** Ist-Wert neben dem Fortschritt (16.10., C17) — nur bei Zahlenzielen mit Messgröße. */
+  ist?: string;
   anker: string; ankerArt: AnkerArt;
   erledigt: boolean; ueberfaellig: boolean;
   /** Mittel des Strang-Fortschritts 0 … 1 (ohne Stränge: der Fortschritt des Ziels) — nur fürs Zeichnen (Drall, Glühen), nie als Zahl gezeigt. */
@@ -410,7 +414,7 @@ export function seilRechnen(e: SeilEingang): SeilAnsicht {
     ].filter(Boolean);
     const text = satz.map(x => (x.endsWith('.') ? x : `${x}.`)).join(' ');
     return {
-      zielId: id, titel: z.titel, farbe: z.farbe, ...(z.link ? { link: z.link } : {}), rang: z.rang ?? 1e9, space: z.space,
+      zielId: id, titel: z.titel, farbe: z.farbe, ...(z.link ? { link: z.link } : {}), ...(z.ist ? { ist: z.ist } : {}), rang: z.rang ?? 1e9, space: z.space,
       anker: a.tag, ankerArt: a.art, erledigt: !!z.erledigt, ueberfaellig,
       momentum: Math.round(momentum * 1000) / 1000, fortschritt: Math.round(zielFortschritt * 1000) / 1000, schwung: Math.round(schwungAus(juengst) * 1000) / 1000,
       straenge: ids, fertig, pfad, ...(pfadText ? { pfadText } : {}), ...(engpass ? { engpass } : {}), text,

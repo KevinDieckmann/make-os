@@ -158,11 +158,14 @@ export function ausschlagJeWoche(abw: readonly Abweichung[], wochen: readonly st
 }
 
 /** Ein Satz für Vorleser: „Abweichung: Stammtisch Herbst überfällig seit 17.09.“ (nur eigene/gemeinsame — Belegt hat keine). */
-export function abweichungText(a: Pick<Abweichung, 'art' | 'titel' | 'von'>): string {
-  const d = `${a.von.slice(8, 10)}.${a.von.slice(5, 7)}.`;
+export function abweichungText(a: Pick<Abweichung, 'art' | 'titel' | 'von'> & Partial<Pick<Abweichung, 'bis'>>): string {
+  const kurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
+  const d = kurz(a.von);
+  // Eine Überlast über mehrere Wochen (16.10., C4) nennt ihre Strecke: „überlastet 12.10.–01.11.“.
+  const strecke = a.art === 'ueberlastet' && a.bis && a.bis > a.von && Date.parse(`${a.bis}T12:00:00Z`) - Date.parse(`${a.von}T12:00:00Z`) > 7 * 864e5 ? `${d}–${kurz(a.bis)}` : null;
   const wort: Record<AbweichungArt, string> = {
     ueberfaellig: `überfällig seit ${d}`, verschoben: `verschoben (ursprünglich ${d})`, 'frist-gerissen': `Frist gerissen am ${d}`,
-    'ziel-gekippt': `Ziel-Frist überschritten seit ${d}`, ueberlastet: `überlastet ab ${d}`, ungeplant: `ungeplant am ${d}`,
+    'ziel-gekippt': `Ziel-Frist überschritten seit ${d}`, ueberlastet: strecke ? `überlastet ${strecke}` : `überlastet ab ${d}`, ungeplant: `ungeplant am ${d}`,
   };
   return `${a.titel} ${wort[a.art]}`;
 }

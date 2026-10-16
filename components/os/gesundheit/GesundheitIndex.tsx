@@ -38,7 +38,7 @@ export function GesundheitIndex({ fuer, ich, stand, i0 = 0 }: { fuer?: string | 
 
 /** Die Kurzform oben auf „Heute“: Ring, drei Säulen, ein Klick öffnet den Index. */
 export function GesundheitIndexKurz({ fuer, onOeffnen, stand }: { fuer?: string | null; onOeffnen: () => void; stand?: unknown }) {
-  const [d, setD] = useState<{ index: number | null; label: string; saeulen: { id: string; label: string; score: number | null }[] } | null>(null);
+  const [d, setD] = useState<{ index: number | null; label: string; ohneEinwilligung?: boolean; saeulen: { id: string; label: string; score: number | null }[] } | null>(null);
   const q = fuer ? `?fuer=${encodeURIComponent(fuer)}&kompakt=1` : '?kompakt=1';
   useEffect(() => { fetch(`/api/gesundheit/index${q}`, { cache: 'no-store' }).then(r => r.json()).then(x => x.ok && setD(x)).catch(() => {}); }, [q, stand]);
   const farbe = scoreFarbe(d?.index ?? null);
@@ -48,7 +48,9 @@ export function GesundheitIndexKurz({ fuer, onOeffnen, stand }: { fuer?: string 
         <Ring groesse="klein" wert={d?.index != null ? String(d.index) : undefined} anteil={d?.index != null ? d.index / 100 : undefined} farbe={farbe} label="" />
         <span style={{ display: 'grid', gap: 6, flex: '1 1 240px', minWidth: 0 }}>
           <span style={{ fontSize: TYP.body, fontWeight: 700, color: C.ink }}>Gesundheits-Index <span style={{ color: C.inkLeise, fontWeight: 500 }}>{d ? d.label : '…'}</span></span>
-          {d?.saeulen.map(s => (
+          {/* Ohne Einwilligung keine Zeilen mit Zahlen (16.10., C12) — ein Satz, der die Lage erklärt. */}
+          {d?.ohneEinwilligung && <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Ohne Einwilligung werden keine Gesundheitswerte erfasst — der Index rechnet erst danach.</span>}
+          {!d?.ohneEinwilligung && d?.saeulen.map(s => (
             <span key={s.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(60px, 1.4fr) 30px', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
               <Fortschritt anteil={(s.score ?? 0) / 100} farbe={GESUNDHEIT_FARBE[s.id]} />

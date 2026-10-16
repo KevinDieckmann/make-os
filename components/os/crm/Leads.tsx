@@ -38,7 +38,7 @@ import { type CrmApi, datum, euro, plusTage, holeMitStand } from './daten';
 import { Pillen, Feldzeile } from './teile';
 import { Wahl, WahlMehrfach } from './Wahl';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
-import { verantwortlich } from '@/lib/crm/team';
+import { verantwortlich, anderer } from '@/lib/crm/team';
 import { HeadPanel } from './HeadPanel';
 import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, beanFuerLead, type BeanId } from '@/lib/crm/bean';
 import { BeanBadge, BEAN_FARBE, useOffeneAngebote } from './bean-teile';
@@ -72,7 +72,7 @@ export function SalesTrichter({ api, zuBereich, karte, i = 0 }: { api: CrmApi; z
           return (
             <div key={s.id} style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
               {i > 0 && <span aria-hidden style={{ alignSelf: 'center', color: C.inkLeise, fontSize: TYP.bedien }}>{neueEbene ? '⟩⟩' : '›'}</span>}
-              <button onClick={() => { zuBereich(s.ziel.s, s.ziel.a); if (s.ziel.filter) leadsFilterSetzen(s.ziel.filter); }} className="fassbar" style={{ display: 'grid', gap: 2, textAlign: 'left', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', border: '1px solid rgba(255,255,255,.07)', background: 'rgba(255,255,255,.03)', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 104 }}>
+              <button onClick={() => { zuBereich(s.ziel.s, s.ziel.a); if (s.ziel.filter) leadsFilterSetzen(s.ziel.filter, 'alle'); }} className="fassbar" style={{ display: 'grid', gap: 2, textAlign: 'left', padding: '8px 12px', borderRadius: 12, cursor: 'pointer', border: '1px solid rgba(255,255,255,.07)', background: 'rgba(255,255,255,.03)', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 104 }}>
                 <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: neueEbene ? C.inkDim : 'transparent', fontWeight: 600, whiteSpace: 'nowrap' }}>{EBENE[s.ebene]}</span>
                 <span style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.anzahl}</span>
                 <span style={{ fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'nowrap' }}>{s.label}{s.wert ? ` · ${euro(s.wert)}` : ''}</span>
@@ -103,25 +103,32 @@ const passtFilter = passtLeadFilter;
 /** Der Trichter gibt beim Sprung den Filter mit (1.4) — die Liste darunter hört zu (gleiche Seite, auch nach dem Laden). */
 const LEADS_FILTER_EREIGNIS = 'make-leads-filter';
 let gemerkterFilter: Filter | null = null;
-/** Auch für Sprünge von außen (Überblick „Für dich“, 14.10.): die Liste öffnet mit genau dem Filter, nach dem die Zahl dort gezählt hat. */
-export function leadsFilterSetzen(f: Filter) {
-  gemerkterFilter = f;
-  try { window.dispatchEvent(new CustomEvent(LEADS_FILTER_EREIGNIS, { detail: f })); } catch { /* ohne Fenster: nur gemerkt */ }
+let gemerktesWer: 'ich' | 'alle' | null = null;
+/**
+ * Auch für Sprünge von außen (Überblick „Für dich“, 14.10.): die Liste öffnet mit genau dem Filter, nach dem die Zahl dort gezählt hat —
+ * und mit `wer: 'ich'` auf „Meins“ (16.10., B11: „Für dich“ zählt nur die eigenen; vorher stand die Liste auf „Alle“ und zeigte das Team).
+ */
+export function leadsFilterSetzen(f: Filter, wer?: 'ich' | 'alle') {
+  gemerkterFilter = f; gemerktesWer = wer ?? null;
+  try { window.dispatchEvent(new CustomEvent(LEADS_FILTER_EREIGNIS, { detail: { f, wer: wer ?? null } })); } catch { /* ohne Fenster: nur gemerkt */ }
 }
 export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id: string) => void; zuDeal: (id?: string) => void }) {
   const breit = useBreit();
   const { d, laden, fehler } = useLeads(api);
   const [filter, setFilter] = useState<Filter>(() => { const f = gemerkterFilter; gemerkterFilter = null; return f ?? 'aktiv'; });
+  const [wer, setWer] = useWerFilter('leads');
   useEffect(() => {
-    const h = (e: Event) => { const f = (e as CustomEvent<Filter>).detail; if (f) { gemerkterFilter = null; setFilter(f); } };
+    // Ein Sprung von außen, der vor dem Laden kam (gemerkt), gilt auch für „wer“.
+    if (gemerktesWer) { setWer(gemerktesWer); gemerktesWer = null; }
+    const h = (e: Event) => { const x = (e as CustomEvent<{ f: Filter; wer: 'ich' | 'alle' | null }>).detail; if (x?.f) { gemerkterFilter = null; setFilter(x.f); } if (x?.wer) { gemerktesWer = null; setWer(x.wer); } };
     window.addEventListener(LEADS_FILTER_EREIGNIS, h);
     return () => window.removeEventListener(LEADS_FILTER_EREIGNIS, h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const einstellungen = useScoringEinstellungen(api);
   const [suche, setSuche] = useState('');
   // Offener Lead im Link (k) — aus Kartei und Firmen „Qualifizieren“, und Zurück schließt ihn wieder.
   const [wahl, setWahl] = useLinkAuswahl();
-  const [wer, setWer] = useWerFilter('leads');
   const ich = api.ich;
   // BEAN (28.09., H4): je Lead (Firma bzw. Person) — hier mit den offenen Angeboten der Dateiablage nachgerechnet; Filter als Wahl-Chip.
   const angebote = useOffeneAngebote();
@@ -140,7 +147,12 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   const zeilen = useMemo(() => auswahl.filter(z => passtFilter(z, filter)), [auswahl, filter]);
   const kalteDaneben = filter === 'kalt' ? 0 : auswahl.filter(z => passtFilter(z, 'kalt')).length;
   if (!d) return <Karte i={0}>{fehler ? <div style={{ color: LEUCHT.kritisch, fontSize: TYP.bedien }}>{fehler} <Knopf leise onClick={() => void laden()}>Noch einmal</Knopf></div> : <Leer>Lädt die Leads …</Leer>}</Karte>;
-  const zahl = (f: Filter) => alleLeads.filter(z => (!bn || z.bean === bn) && passtFilter(z, f)).length;
+  // Die Pillen zählen in der gewählten Sicht (16.10., B11): „Meins“ zeigt dieselbe Zahl wie „Für dich“ im Überblick — vorher zählten sie
+  // immer das ganze Team, die Liste darunter aber nur die gewählte Person. Die Wer-Wahl nennt dazu ihre Zahl im aktiven Filter.
+  const zahl = (f: Filter) => alleLeads.filter(z => passtWer(wer, z.besitzer, 'sales', ich) && (!bn || z.bean === bn) && passtFilter(z, f)).length;
+  const werZahl = (w: string) => alleLeads.filter(z => passtWer(w, z.besitzer, 'sales', ich) && (!bn || z.bean === bn) && passtFilter(z, filter)).length;
+  const andere = ich ? anderer(ich) : null;
+  const werZahlen: Record<string, number> = { alle: werZahl('alle'), ...(ich ? { ich: werZahl('ich') } : {}), ...(andere && andere !== ich ? { [andere]: werZahl(andere) } : {}) };
   const FILTER: { id: Filter; label: string }[] = [
     { id: 'aktiv', label: `In Arbeit ${zahl('aktiv')}` }, { id: 'im_gespraech', label: `Im Gespräch ${zahl('im_gespraech')}` }, { id: 'qualifizierung', label: `Qualifizierung ${zahl('qualifizierung')}` },
     { id: 'kontaktiert', label: `Kontaktiert ${zahl('kontaktiert')}` }, { id: 'sql', label: `SQL ${zahl('sql')}` }, { id: 'neu', label: `Neu ${zahl('neu')}` }, { id: 'kunde', label: `Kunde ${zahl('kunde')}` }, { id: 'kalt', label: `Kalt ${zahl('kalt')}` }, { id: 'ruht', label: `Ruht · kein Fit ${zahl('ruht')}` },
@@ -152,7 +164,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
 
   const liste = (
     <Karte i={1}>
-      <Ueberschrift rechts={<WerFilter wahl={wer} onWahl={setWer} ich={ich} />}>Leads · qualifizieren bis SQL</Ueberschrift>
+      <Ueberschrift rechts={<WerFilter wahl={wer} onWahl={setWer} ich={ich} zahlen={werZahlen} />}>Leads · qualifizieren bis SQL</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 10, lineHeight: 1.5 }}>Qualifizieren, bis es ein SQL ist ({sqlRegelText(einstellungen)}). Dann wird es ein Deal in der Pipeline.</div>
       <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firma, Person, Branche, Ort …" aria-label="Leads suchen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 13px', marginBottom: 10 }} />
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 8 }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={f => { setFilter(f); setWahl(null); }} farbe={LEUCHT.business} /></div>

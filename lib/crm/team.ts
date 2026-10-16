@@ -102,7 +102,8 @@ export function teamFeed(kontakte: Kontakt[], crm: CrmBestand, seit: string, max
 
 // ── Für dich ────────────────────────────────────────────────────────────────
 /** `ziel.filter`: der Filter der Leads-Liste, den der Sprung mitgibt (14.10., B5) — dieselbe Regel wie die Zahl (`passtLeadFilter`). */
-export interface FuerDich { id: string; welt: Welt; titel: string; anzahl: number; text: string; ziel: { s: string; a?: string; href?: string; filter?: LeadFilter } }
+/** `ziel.wer` (16.10., Abnahme 2 · B11): „ich“ — die Liste öffnet auf „Meins“, denn „Für dich“ zählt nur die eigenen (sonst zeigt sie das Team). */
+export interface FuerDich { id: string; welt: Welt; titel: string; anzahl: number; text: string; ziel: { s: string; a?: string; href?: string; filter?: LeadFilter; wer?: 'ich' } }
 
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
@@ -122,7 +123,7 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   const reviewListe = crm.mandate.filter(m => m.status === 'aktiv' && m.naechstesReview && m.naechstesReview <= bald && istMeins(m.zustaendig, 'sales', person));
   const reviews = reviewListe.length;
   // 6.7 (08.10.): zu den Mandaten (eins → dieses Mandat) — vorher Deals › Auswertung.
-  if (reviews) l.push({ id: 'reviews', welt: 'sales', titel: 'Kundenreviews in 7 Tagen', anzahl: reviews, text: 'Health bewerten, offene Punkte klären', ziel: { s: 'deals', a: 'kunden', href: reviews === 1 ? WEG.mandat(reviewListe[0].id) : WEG.mandat() } });
+  if (reviews) l.push({ id: 'reviews', welt: 'sales', titel: 'Kundenreviews in 7 Tagen', anzahl: reviews, text: 'Gesundheit bewerten, offene Punkte klären', ziel: { s: 'deals', a: 'kunden', href: reviews === 1 ? WEG.mandat(reviewListe[0].id) : WEG.mandat() } });
   // Eine Beitrags-Freigabe zählt nur, solange sie nötig ist: an die jetzige Stimme, und die schreibt nicht selbst (lib/crm/marketing.ts freigabeStand).
   const beitragFreigabe = (b: NonNullable<CrmBestand['beitraege']>[number]) => b.status !== 'veroeffentlicht' && b.freigabe?.status === 'offen' && b.freigabe.an === person && b.stimme === person && zustaendig(b.zustaendig, 'marketing') !== person && zustaendig(b.zustaendig, 'marketing') !== BEIDE;
   const freigaben = (crm.beitraege ?? []).filter(beitragFreigabe).length + (crm.newsletter ?? []).filter(n => n.status !== 'versendet' && n.freigabe?.status === 'offen' && n.freigabe.an === person).length;
@@ -161,7 +162,11 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   // SQL-bereiten und mit den kalten, die Liste beim Sprung zeigte eine andere Zahl. Der Sprung öffnet genau diesen Filter.
   const inQualiListe = meineLeads.filter(z => passtLeadFilter(z, 'qualifizierung'));
   const davonBereit = inQualiListe.filter(z => salesBereit(z)).length;
-  if (inQualiListe.length) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQualiListe.length, text: davonBereit ? `davon ${davonBereit} SQL-bereit — was bis zum SQL fehlt, steht am Lead` : 'was bis zum SQL fehlt, steht am Lead (Scoring-Einstellungen)', ziel: { s: 'qualifizierung', a: 'leads', filter: 'qualifizierung' } });
+  // Abnahme 2 (16.10., B11): „Für dich“ zählt die eigenen, die Liste kennt auch das Team — weicht es ab, sagt der Satz beide Zahlen, und der Sprung
+  // öffnet die Liste auf „Meins“ (`wer: 'ich'`), damit dort dieselbe Zahl steht. Eine Zählregel: `passtLeadFilter` über `leads()`.
+  const imTeam = alleLeads.filter(z => passtLeadFilter(z, 'qualifizierung')).length;
+  const teamSatz = imTeam > inQualiListe.length ? `deine ${inQualiListe.length} von ${imTeam} im Team · ` : '';
+  if (inQualiListe.length) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQualiListe.length, text: `${teamSatz}${davonBereit ? `davon ${davonBereit} SQL-bereit — was bis zum SQL fehlt, steht am Lead` : 'was bis zum SQL fehlt, steht am Lead (Scoring-Einstellungen)'}`, ziel: { s: 'qualifizierung', a: 'leads', filter: 'qualifizierung', wer: 'ich' } });
   const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, weltDerKampagne(k), person));
   const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);
   if (kpOffen) l.push({ id: 'kampagnen', welt: 'marketing', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'marketing', a: 'kampagnen' } });

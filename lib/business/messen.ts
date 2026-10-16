@@ -25,6 +25,7 @@ import type { Mandat, Chance } from '@/lib/crm/typen';
 import { winRate, prognose, gesamtwert, wahrscheinlichkeit, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { markttraktion } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
+import { anzahl } from '@/lib/text/zahlwort';
 import { BUSINESS_GESELLSCHAFTEN, bereichVonFirma, bereichVonGesellschaft, firmaFuerGesellschaft, finanzOrtName, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export interface Monatsabschluss {
@@ -428,7 +429,7 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
     const ueber = offen.filter(r => r.faellig && r.faellig < b.heute).sort((x, y) => y.betrag - x.betrag);
     const bald = offen.filter(r => !r.faellig || r.faellig >= b.heute).sort((x, y) => (x.faellig ?? '9').localeCompare(y.faellig ?? '9'));
     const w = (ueber.reduce((s, r) => s + r.betrag, 0) / summe) * 100;
-    return { wert: w, anzeige: pz(w), quelle: `${ueber.length} von ${offen.length} offenen Rechnungen überfällig (${euro(ueber.reduce((s, r) => s + r.betrag, 0))} von ${euro(summe)})`,
+    return { wert: w, anzeige: pz(w), quelle: `${ueber.length} von ${anzahl(offen.length, 'offenen Rechnung', 'offenen Rechnungen')} überfällig (${euro(ueber.reduce((s, r) => s + r.betrag, 0))} von ${euro(summe)})`,
       details: [
         ...ueber.map(r => rechnungDetail(r, `seit ${tageZwischen(r.faellig!, b.heute)} Tagen überfällig · fällig ${tagKurz(r.faellig!)}`, 'rot')),
         ...bald.slice(0, Math.max(0, 3 - ueber.length)).map(r => rechnungDetail(r, r.faellig ? `fällig in ${tageZwischen(b.heute, r.faellig)} Tagen` : 'ohne Fälligkeit — Zahlungsziel eintragen', r.faellig ? 'gruen' : 'gelb')),

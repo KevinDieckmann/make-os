@@ -278,9 +278,12 @@ const stunden = (sek: number) => { const h = sek / 3600; return h >= 10 ? `${Mat
  */
 export function passung(themen: readonly SteuerThema[], soll: Readonly<Record<string, number>>, ist: Readonly<Record<string, ThemaIst>>, gesamtSek: number): Passung {
   const summeGewicht = themen.reduce((s, t) => s + t.gewicht, 0);
+  // Grundeinstellung ist keine Priorität (16.10., Abnahme 2 · C4): stehen alle Regler gleich (z. B. überall die Vorgabe 50), hat niemand
+  // priorisiert — dann macht der Rang allein kein Thema „hoch“, und die rote Warnung entsteht nur aus dem, was wirklich eingestellt ist.
+  const gleich = themen.length > 0 && themen.every(t => t.gewicht === themen[0].gewicht);
   const zeilen: PassZeile[] = themen.map((t, rang) => {
     const i = ist[t.id] ?? { sek: 0, bewusstSek: 0, eingeplantSek: 0 };
-    const hoch = t.gewicht > 0 && (rang < 2 || t.gewicht >= HOCH_AB);
+    const hoch = t.gewicht > 0 && (t.gewicht >= HOCH_AB || (rang < 2 && !gleich));
     const niedrig = t.gewicht < NIEDRIG_UNTER && rang >= 2;
     const s = soll[t.id];
     if (s && s > 0) {

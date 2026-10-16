@@ -236,3 +236,31 @@ describe('B13 · Kaskade mit Einheit — ein Monatsziel wird nie durch 12 geteil
     expect(abgeleiteterTitel({ id: 'z-o', titel: 'Neukunden gewinnen', fortschritt: 0, zielwert: 120 }, 'quartal', 2026)).toBe('Neukunden gewinnen · 30 im Quartal');
   });
 });
+
+// 16.10. (zweite Abnahme, restliche Funde): dieselbe gesäte Demo — die Zahlen sind plausibel und stimmen zueinander.
+describe('Abnahme 2 · Rest (B11, C7, C17, C21) an der gesäten Demo', () => {
+  it('B11: die Leads stehen nicht alle auf demselben Score', () => {
+    expect(new Set(leadRoute.leads.map(z => z.score.punkte)).size).toBeGreaterThan(1);
+  });
+  it('B11: das Wochen-Soll aus der Planung ist für ein kleines Team plausibel (kein „≥ 116 Leads“)', () => {
+    const sb = (traktion as unknown as { scoreboard: { zeilen: { id: string; person?: string; ziel: number | null; plan?: true }[] } }).scoreboard;
+    for (const z of sb.zeilen.filter(x => x.plan && !x.person)) expect(z.ziel ?? 0, z.id).toBeLessThanOrEqual(20);
+  });
+  it('C21: die Aktivitäten liegen nicht alle in derselben Minute', () => {
+    const minuten = new Set(kontakte.flatMap(k => k.aktivitaeten ?? []).map(a => a.am.slice(0, 16)));
+    expect(minuten.size).toBeGreaterThan(3);
+  });
+  it('C17: Cockpit 2.0 zählt sein Unterziel mit; das Umsatz-Ziel nennt seinen Ist-Wert aus den Mandaten', () => {
+    const cockpit = zieleJahr.find(z => z.id === 'z-demo-produkt')!;
+    expect(cockpit.fortschritt).toBeGreaterThan(0);
+    const umsatz = seile.find(s => s.zielId === 'z-demo-umsatz')!;
+    expect(umsatz.ist).toMatch(/^Ist \d{1,3}(\.\d{3})* € = \d+ %$/);
+  });
+  it('C7: jede Stufe der Leistungstreppe hat ihr Produkt im Katalog (eine Zählung)', async () => {
+    const t = await lese('crm/treppe') as { datei?: { stufen?: { leistungIds?: string[] }[] } };
+    const stufen = t.datei?.stufen ?? [];
+    expect(stufen.length).toBeGreaterThan(0);
+    const aktiv = new Set(crm.leistungen.filter(l => l.status === 'aktiv').map(l => l.id));
+    for (const s of stufen) expect((s.leistungIds ?? []).some(id => aktiv.has(id))).toBe(true);
+  });
+});

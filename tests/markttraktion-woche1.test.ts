@@ -91,7 +91,7 @@ describe('1.4 · Trichter und Leads-Pillen zählen mit EINER Regel, der Sprung g
   it('Leads-Liste nimmt dieselbe Regel und hört auf den Sprung', () => {
     const src = quelle('components/os/crm/Leads.tsx');
     expect(src).toContain('const passtFilter = passtLeadFilter;');
-    expect(src).toContain('leadsFilterSetzen(s.ziel.filter)');
+    expect(src).toContain("leadsFilterSetzen(s.ziel.filter, 'alle')"); // 16.10. (B11): der Trichter zählt das Team — die Liste öffnet auf „Alle“
     expect(src).toContain("window.addEventListener(LEADS_FILTER_EREIGNIS");
   });
 });

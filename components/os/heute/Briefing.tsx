@@ -24,7 +24,8 @@ export function briefingLage(z: BriefingZahlen, sicht: TopBereich): LageEintrag[
     { id: 'termine', wert: String(t.anzahl), label: t.anzahl === 1 ? 'Termin heute' : 'Termine heute', unter: t.erster ? (t.erster.uhr ? `zuerst ${t.erster.uhr}` : 'ganztägig') : 'freie Bahn', href: `/os/kalender?space=${sicht}` },
     {
       // Festgelegt: „1/3 erledigt“ mit Balken; ein Vorschlag von ZOE zählt als „0/n“ (noch nicht übernommen); ohne beides „—“.
-      id: 'top3', label: n > 0 && n < 3 ? `Top ${n}` : 'Top 3', wert: n ? `${z.top3.art === 'festgelegt' ? z.top3.erledigt : 0}/${n}` : '—',
+      // Wie die Karte (16.10., C6): mit einem oder zwei Einträgen „Wichtig heute“, sonst „Top 3“.
+      id: 'top3', label: n > 0 && n < 3 ? 'Wichtig heute' : 'Top 3', wert: n ? `${z.top3.art === 'festgelegt' ? z.top3.erledigt : 0}/${n}` : '—',
       unter: z.top3.art === 'festgelegt' ? (fertig ? 'alle erledigt' : 'erledigt') : z.top3.art === 'vorschlag' ? 'Vorschlag von ZOE' : 'noch keine',
       ...(n ? { anteil: z.top3.art === 'festgelegt' ? z.top3.erledigt / n : 0 } : {}), ...(fertig ? { bedeutung: 'gut' as const } : {}),
     },

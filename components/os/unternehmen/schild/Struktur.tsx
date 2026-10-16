@@ -12,7 +12,7 @@ import { FARBE as C, TYP, RAND, SCHRIFT, LEUCHT, TIEF } from '@/lib/make-one/des
 import { Karte, Ueberschrift, Liste, Zeile, Leerzustand, Hinweis, useHandy } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { strukturBaum, type StrukturKnoten } from '@/lib/gesellschaften/modell';
-import { capTable, durchgerechnet, strukturHistorie, organigramm, organeKurz, strichStaerke, ORG_MASS } from '@/lib/gesellschaften/schild/struktur';
+import { capTable, durchgerechnet, strukturHistorie, organigramm, orgLinie, organeKurz, strichStaerke, ORG_MASS } from '@/lib/gesellschaften/schild/struktur';
 import { localDay } from '@/lib/zeit';
 import { bezugName, centText, type GAnzeige, type RegisterDaten } from '../teile';
 import { StatusPille } from '../UnternehmenView';
@@ -51,16 +51,18 @@ function Bild({ bild, oeffne, organe }: { bild: ReturnType<typeof organigramm>; 
   const nach = new Map(bild.knoten.map(k => [k.schluessel, k]));
   return (
     <div style={{ overflowX: 'auto' }}>
-      <svg role="img" aria-label="Organigramm der Gesellschaften" viewBox={`0 0 ${bild.breite} ${bild.hoehe}`} width={bild.breite} height={bild.hoehe} style={{ display: 'block', maxWidth: '100%', height: 'auto', fontFamily: SCHRIFT.text }}>
+      <svg role="img" data-grafik-weiter="" aria-label="Organigramm der Gesellschaften" viewBox={`0 0 ${bild.breite} ${bild.hoehe}`} width={bild.breite} height={bild.hoehe} style={{ display: 'block', maxWidth: '100%', height: 'auto', fontFamily: SCHRIFT.text }}>
         {bild.kanten.map((k, i) => {
           const a = nach.get(k.von), b = nach.get(k.zu);
           if (!a || !b) return null;
-          const x1 = a.x + M.breite / 2, y1 = a.y + M.hoehe, x2 = b.x + M.breite / 2, y2 = b.y;
-          const my = (y1 + y2) / 2;
+          // 16.10. (C10): Linien über mehrere Reihen laufen durch freie Plätze (lib/gesellschaften/schild/struktur.ts); der Anteil steht nahe am Ziel
+          // auf SEINER Linie, mit einem Rand in der Kartenfarbe, damit er sich von anderen Linien abhebt. Einzelunternehmen: „Inhaber“.
+          const { d, marke } = orgLinie(a, b, k.punkte);
+          const text = k.inhaber ? 'Inhaber' : `${k.anteil ? prozent(k.anteil) : ''}${k.stimmen !== undefined ? ` (${prozent(k.stimmen)} Stimmen)` : ''}`;
           return (
             <g key={i}>
-              <path d={`M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`} fill="none" stroke={RAND.stark} strokeWidth={strichStaerke(k.anteil)} strokeDasharray={k.fremd ? '5 4' : undefined} />
-              <text x={(x1 + x2) / 2} y={my - 4} textAnchor="middle" fontSize={12} fill={C.inkDim}>{k.anteil ? prozent(k.anteil) : ''}{k.stimmen !== undefined ? ` (${prozent(k.stimmen)} Stimmen)` : ''}</text>
+              <path d={d} fill="none" stroke={RAND.stark} strokeWidth={strichStaerke(k.anteil)} strokeDasharray={k.fremd ? '5 4' : undefined} />
+              {text && <text x={marke.x + 6} y={marke.y + 4} textAnchor="start" fontSize={12} fill={C.inkDim} stroke={C.flaeche} strokeWidth={4} paintOrder="stroke" strokeLinejoin="round">{text}</text>}
             </g>
           );
         })}

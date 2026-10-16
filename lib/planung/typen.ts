@@ -32,6 +32,8 @@ export interface Ziel {
   einheit?: string;
   /** Zahlenziel (z. B. 120 Neukunden) — wird auf Quartal/Monat/Woche/Tag verteilt. */
   zielwert?: number;
+  /** Womit der Zielwert gemessen wird (16.10., C17, optional): z. B. `mrr` — dann steht der Ist-Wert neben dem Fortschritt (lib/planung/ziel-ist.ts). */
+  messgroesse?: string;
   /** Ziel mit Datum (YYYY-MM-DD) — wird als Meilenstein im passenden Quartal angelegt. */
   termin?: string;
   /**

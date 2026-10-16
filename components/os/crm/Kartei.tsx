@@ -33,7 +33,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SearchX } from 'lucide-react';
 import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE, useRueckgaengig, useRueckfrage } from '../ui';
 import { useArt17 } from './kontakt/art17';
-import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
+import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL, zuletztTag } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { dubletten, wanderungText, type Wanderung } from '@/lib/crm/dubletten';
@@ -380,7 +380,7 @@ function KarteiZeile({ k, firma, lifecycle, bean, breit, aktiv, markiert, chance
       <div title={kanal ? `${kanal.kanal}: ${kanal.grund}` : 'kein zulässiger Kanal'} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: TYP.bedien, color: C.inkDim }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: kanal ? AMPEL_FARBE[kanal.farbe] : C.inkLeise }} />{kanal ? ({ telefon: 'Tel', mail: 'Mail', linkedin: 'LI', vernetzen: 'Netz', newsletter: 'NL', einladung: 'Einl' } as Record<string, string>)[kanal.kanal] : '—'}
       </div>
-      <div style={{ textAlign: 'right', fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{k.letzterKontakt ? datum(k.letzterKontakt, heute) : '—'}</div>
+      <div style={{ textAlign: 'right', fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{(() => { const z = zuletztTag(k, heute); return z ? <span title={k.letzterKontakt && k.letzterKontakt.slice(0, 10) === z ? 'letzter Kontakt' : 'letzte Aktivität (auch Notiz)'}>{datum(z, heute)}</span> : '—'; })()}</div>
     </div>
   );
 }

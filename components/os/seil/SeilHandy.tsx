@@ -53,7 +53,7 @@ export function SeilHandy({ ansicht, fokus, onFokus }: { ansicht: SeilAnsicht; f
                     <Target size={15} color={s.farbe} aria-hidden style={{ flex: '0 0 auto' }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titel}</span>
                   </Link>
-                  <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{prozent(s.fortschritt)}</span>
+                  <span title={s.ist} style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{prozent(s.fortschritt)}{s.ist ? <span style={{ display: 'block', fontSize: 12, color: C.inkLeise }}>{s.ist}</span> : null}</span>
                   <button type="button" onClick={() => onFokus(fokus === s.zielId ? null : s.zielId)} aria-pressed={fokus === s.zielId} className="fassbar"
                     aria-label={fokus === s.zielId ? `Fokus auf „${s.titel}“ lösen` : `Fokus auf „${s.titel}“`}
                     style={{ minHeight: 44, minWidth: 64, padding: '0 12px', borderRadius: 999, border: `1px solid ${fokus === s.zielId ? s.farbe : 'rgba(255,255,255,.12)'}`, background: fokus === s.zielId ? `${s.farbe}22` : 'transparent', color: fokus === s.zielId ? s.farbe : C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer' }}>

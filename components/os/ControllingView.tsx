@@ -50,13 +50,15 @@ function Wochenbalken({ wochen, hoehe }: { wochen: Woche[]; hoehe: number }) {
   const maxAbs = Math.max(1, ...wochen.map(w => Math.abs(w.stand)));
   return (
     <>
-      <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: hoehe }}>
+      {/* Jeder Balken führt weiter (16.10., Abnahme 2 · B7): in die Liquidität, genau diese Woche mit ihren Posten. */}
+      <div data-grafik-weiter="" style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: hoehe }}>
         {wochen.map((w, i) => {
           const farbe = standFarbe(w.stand);
           const letzte = i === wochen.length - 1;
           return (
-            <div key={w.von} className="balken-auf" title={`${w.label}: ${eur(w.stand)}${w.bewegungen.length ? `\n${w.bewegungen.map(b => `${datum(b.datum)} ${b.betrag > 0 ? '+' : ''}${b.betrag} € ${b.text}`).join('\n')}` : ''}`}
-              style={{ ['--i' as string]: i, flex: 1, height: Math.max(3, Math.round((Math.abs(w.stand) / maxAbs) * hoehe)), borderRadius: 3, background: farbe, opacity: letzte ? 1 : w.bewegungen.length ? .8 : .35, boxShadow: letzte ? `0 0 10px ${farbe}33` : undefined }} />
+            <Link key={w.von} href={WEG.liquiditaet(w.von)} className="balken-auf" aria-label={`${w.label} ab ${datum(w.von)}: ${eur(w.stand)} — Woche öffnen`}
+              title={`${w.label}: ${eur(w.stand)}${w.bewegungen.length ? `\n${w.bewegungen.map(b => `${datum(b.datum)} ${b.betrag > 0 ? '+' : ''}${b.betrag} € ${b.text}`).join('\n')}` : ''}\n— Woche öffnen`}
+              style={{ ['--i' as string]: i, flex: 1, height: Math.max(3, Math.round((Math.abs(w.stand) / maxAbs) * hoehe)), borderRadius: 3, background: farbe, opacity: letzte ? 1 : w.bewegungen.length ? .8 : .35, boxShadow: letzte ? `0 0 10px ${farbe}33` : undefined, display: 'block' }} />
           );
         })}
       </div>
@@ -180,7 +182,9 @@ export function ControllingView() {
       <Karte i={0} ton={m.aktiveMonate > 0 ? (aufKurs ? LEUCHT.gut : LEUCHT.achtung) : undefined}>
         <Ueberschrift farbe={kursFarbe}>Kurs aufs Jahresziel</Ueberschrift>
         <div style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap', padding: '6px 0 4px' }}>
-          <Ring groesse="gross" wert={m.aktiveMonate > 0 ? String(pct) : undefined} einheit="%" label={`Ziel ${s.jahr}`} farbe={kursFarbe} anteil={pct / 100} />
+          {/* Der Ring führt weiter (16.10., B7): zu den Ist-Monaten — sie kommen aus dem Monatsabschluss je Firma. */}
+          <Ring groesse="gross" wert={m.aktiveMonate > 0 ? String(pct) : undefined} einheit="%" label={`Ziel ${s.jahr}`} farbe={kursFarbe} anteil={pct / 100}
+            href={WEG.abschluss()} hinweis="Ist-Monate im Monatsabschluss öffnen" />
           <div style={{ flex: '1 1 280px', minWidth: 0 }}>
             <p style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 600, letterSpacing: '-.01em', color: C.ink, margin: 0, lineHeight: 1.35 }}>
               {m.aktiveMonate === 0

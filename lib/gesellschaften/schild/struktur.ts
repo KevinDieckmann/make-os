@@ -7,6 +7,7 @@
 
 import { ORGAN_FUNKTIONEN, aktiveEintraege, anteile, anzeigeName, type Bezug, type RegisterGesellschaft } from '@/lib/gesellschaften/modell';
 import { imPapierkorb } from '@/lib/eintraege/sicher';
+import { localDay } from '@/lib/zeit';
 import { ereignisDef } from './pflichten';
 import type { SchildGesellschaft } from './typen';
 
@@ -68,7 +69,11 @@ export function strukturHistorie(g: RegisterGesellschaft, s: SchildGesellschaft 
 // ── Organigramm ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface OrgKnoten { schluessel: string; art: Bezug['art'] | 'fremd'; id: string; label: string; ebene: number; x: number; y: number; eigen: boolean; status?: string }
-export interface OrgKante { von: string; zu: string; anteil: number; stimmen?: number; fremd?: true }
+/**
+ * `punkte` (16.10., Abnahme 2 · C10): Zwischenpunkte einer Linie, die über mehr als eine Reihe läuft — sie führt durch einen freien Platz der
+ * Reihe dazwischen, nie hinter einem Kasten durch. `inhaber`: die Linie vom Inhaber zum Einzelunternehmen (Beschriftung „Inhaber“ statt %).
+ */
+export interface OrgKante { von: string; zu: string; anteil: number; stimmen?: number; fremd?: true; inhaber?: true; punkte?: { x: number; y: number }[] }
 export interface Organigramm { knoten: OrgKnoten[]; kanten: OrgKante[]; breite: number; hoehe: number }
 
 /** Maße des Bilds (Pixel im SVG-Koordinatensystem) — eine Stelle. */
@@ -76,8 +81,13 @@ export const ORG_MASS = { breite: 196, hoehe: 56, abstandX: 28, abstandY: 92, ra
 
 /**
  * Geschichtetes Organigramm (rein): Ebene 0 = wer keine eigene Gesellschaft ist und Anteile hält (Personen, Kontakte, Firmen); eigene
- * Gesellschaften eine Ebene unter ihrem tiefsten eigenen Gesellschafter; fremde Beteiligungen eine Ebene unter ihrer Halterin. Je Ebene nach
- * Name sortiert und mittig ausgerichtet. Kreise brechen nach wenigen Ebenen ab. `nur` = nur diese eigenen Gesellschaften (Business-Sicht).
+ * Gesellschaften eine Ebene unter ihrem tiefsten eigenen Gesellschafter; fremde Beteiligungen eine Ebene unter ihrer Halterin. Kreise brechen
+ * nach wenigen Ebenen ab. `nur` = nur diese eigenen Gesellschaften (Business-Sicht).
+ *
+ * Reihenfolge je Reihe (16.10., Abnahme 2 · C10 — vorher nach Name, Linien kreuzten hinter Kästen): Linien über mehrere Reihen bekommen in jeder
+ * Reihe dazwischen einen freien Platz (Sugiyama), dann ordnen Schwerpunkt-Durchläufe (abwärts, aufwärts, abwärts) jede Reihe nach der Lage ihrer
+ * Nachbarn — so laufen die Linien möglichst ohne Kreuzung. Ein Einzelunternehmen ohne Gesellschafter hängt mit einer Inhaber-Linie an der
+ * Person seiner Geschäftsführung (ohne die bleibt es frei).
  */
 export function organigramm(alle: readonly RegisterGesellschaft[], name: (b: Bezug) => string, nur?: readonly string[]): Organigramm {
   const eigene = alle.filter(g => !imPapierkorb(g) && (!nur || nur.includes(g.id)));
@@ -96,12 +106,23 @@ export function organigramm(alle: readonly RegisterGesellschaft[], name: (b: Bez
   const kanten: OrgKante[] = [];
   const neu = (schluessel: string, k: Omit<OrgKnoten, 'x' | 'y' | 'schluessel'>) => { if (!knoten.has(schluessel)) knoten.set(schluessel, { ...k, schluessel, x: 0, y: 0 }); };
   for (const g of eigene) neu(`gesellschaft:${g.id}`, { art: 'gesellschaft', id: g.id, label: anzeigeName(g), ebene: ebeneVon(g.id), eigen: true, ...(g.status ? { status: g.status } : {}) });
+  const heute = localDay();
   for (const g of eigene) {
     const ct = capTable(g);
+    const einzel = g.rechtsform === 'einzel';
     for (const z of ct.zeilen) {
       const s = `${z.wer.art}:${z.wer.id}`;
       if (!(z.wer.art === 'gesellschaft' && istEigen(z.wer.id))) neu(s, { art: z.wer.art, id: z.wer.id, label: name(z.wer), ebene: 0, eigen: false });
-      kanten.push({ von: s, zu: `gesellschaft:${g.id}`, anteil: z.anteil, ...(z.stimmen !== z.anteil ? { stimmen: z.stimmen } : {}) });
+      kanten.push({ von: s, zu: `gesellschaft:${g.id}`, anteil: einzel ? 100 : z.anteil, ...(z.stimmen !== z.anteil && !einzel ? { stimmen: z.stimmen } : {}), ...(einzel ? { inhaber: true as const } : {}) });
+    }
+    // Einzelunternehmen ohne Gesellschafter-Eintrag: die Person der laufenden Geschäftsführung ist die Inhaberin bzw. der Inhaber.
+    if (einzel && !ct.zeilen.length) {
+      const o = aktiveEintraege(g.organe).find(x => x.funktion === 'geschaeftsfuehrung' && (x.wer.art === 'person' || x.wer.art === 'kontakt') && !(x.bis && x.bis < heute));
+      if (o) {
+        const s = `${o.wer.art}:${o.wer.id}`;
+        neu(s, { art: o.wer.art, id: o.wer.id, label: name(o.wer), ebene: 0, eigen: false });
+        kanten.push({ von: s, zu: `gesellschaft:${g.id}`, anteil: 100, inhaber: true });
+      }
     }
     for (const b of aktiveEintraege(g.beteiligungen).filter(b => !b.beendetAm)) {
       const s = `fremd:${b.firmaId}`;
@@ -113,16 +134,65 @@ export function organigramm(alle: readonly RegisterGesellschaft[], name: (b: Bez
   }
   // Ohne Gesellschafter oben beginnt das Bild bei Ebene 1 — leere Ebenen schließen.
   const ebenen = Array.from(new Set(Array.from(knoten.values()).map(k => k.ebene))).sort((a, b) => a - b);
-  const reihe = new Map(ebenen.map((e, i) => [e, i]));
-  const proReihe = ebenen.map(e => Array.from(knoten.values()).filter(k => k.ebene === e).sort((a, b) => Number(b.eigen) - Number(a.eigen) || a.label.localeCompare(b.label, 'de')));
-  const M = ORG_MASS;
-  const breiteMax = Math.max(1, ...proReihe.map(r => r.length)) * (M.breite + M.abstandX) - M.abstandX + 2 * M.rand;
-  proReihe.forEach((r, i) => {
-    const b = r.length * (M.breite + M.abstandX) - M.abstandX;
-    const start = (breiteMax - b) / 2;
-    r.forEach((k, j) => { k.x = start + j * (M.breite + M.abstandX); k.y = M.rand + i * (M.hoehe + M.abstandY); k.ebene = reihe.get(k.ebene) ?? 0; });
+  const reiheVon = new Map(ebenen.map((e, i) => [e, i]));
+  for (const k of knoten.values()) k.ebene = reiheVon.get(k.ebene) ?? 0;
+
+  // Plätze je Reihe: echte Kästen und freie Plätze (je Linie über mehr als eine Reihe einer in jeder Reihe dazwischen).
+  type Platz = { schluessel: string; knoten?: OrgKnoten; oben: string[]; unten: string[]; x: number };
+  const reihen: Platz[][] = ebenen.map(() => []);
+  const platz = new Map<string, Platz>();
+  const leg = (r: number, p: Platz) => { reihen[r].push(p); platz.set(p.schluessel, p); };
+  for (const k of knoten.values()) leg(k.ebene, { schluessel: k.schluessel, knoten: k, oben: [], unten: [], x: 0 });
+  const wege: string[][] = kanten.map((k, i) => {
+    const a = knoten.get(k.von), b = knoten.get(k.zu);
+    if (!a || !b || b.ebene <= a.ebene) return [];
+    const kette = [k.von];
+    for (let r = a.ebene + 1; r < b.ebene; r++) { const s = `frei:${i}:${r}`; leg(r, { schluessel: s, oben: [], unten: [], x: 0 }); kette.push(s); }
+    kette.push(k.zu);
+    for (let j = 1; j < kette.length; j++) { platz.get(kette[j - 1])!.unten.push(kette[j]); platz.get(kette[j])!.oben.push(kette[j - 1]); }
+    return kette;
   });
-  return { knoten: Array.from(knoten.values()), kanten, breite: breiteMax, hoehe: M.rand * 2 + proReihe.length * (M.hoehe + M.abstandY) - M.abstandY };
+
+  const M = ORG_MASS;
+  const schritt = M.breite + M.abstandX;
+  const breiteMax = Math.max(1, ...reihen.map(r => r.length)) * schritt - M.abstandX + 2 * M.rand;
+  const setzeX = (r: number) => { const b = reihen[r].length * schritt - M.abstandX; const start = (breiteMax - b) / 2; reihen[r].forEach((p, j) => { p.x = start + j * schritt; }); };
+  const name0 = (p: Platz) => p.knoten?.label ?? '';
+  const ordne = (r: number, nachbarn: (p: Platz) => string[]) => {
+    const schwer = (p: Platz) => { const n = nachbarn(p).map(s => platz.get(s)!.x); return n.length ? n.reduce((a, b) => a + b, 0) / n.length : p.x; };
+    const w = new Map(reihen[r].map(p => [p.schluessel, schwer(p)]));
+    reihen[r].sort((a, b) => w.get(a.schluessel)! - w.get(b.schluessel)! || Number(!!b.knoten?.eigen) - Number(!!a.knoten?.eigen) || name0(a).localeCompare(name0(b), 'de'));
+    setzeX(r);
+  };
+  // Start: wie bisher (eigene zuerst, dann nach Name), dann die Durchläufe.
+  reihen.forEach((r, i) => { r.sort((a, b) => Number(!!b.knoten?.eigen) - Number(!!a.knoten?.eigen) || name0(a).localeCompare(name0(b), 'de')); setzeX(i); });
+  for (let r = 1; r < reihen.length; r++) ordne(r, p => p.oben);
+  for (let r = reihen.length - 2; r >= 0; r--) ordne(r, p => p.unten);
+  for (let r = 1; r < reihen.length; r++) ordne(r, p => p.oben);
+
+  reihen.forEach((r, i) => r.forEach(p => { if (p.knoten) { p.knoten.x = p.x; p.knoten.y = M.rand + i * (M.hoehe + M.abstandY); } }));
+  // Zwischenpunkte: die Mitte des freien Platzes, auf Höhe der Kastenmitte seiner Reihe.
+  kanten.forEach((k, i) => {
+    const z = wege[i].slice(1, -1).map(s => { const p = platz.get(s)!; const r = reihen.findIndex(x => x.includes(p)); return { x: p.x + M.breite / 2, y: M.rand + r * (M.hoehe + M.abstandY) + M.hoehe / 2 }; });
+    if (z.length) k.punkte = z;
+  });
+  return { knoten: Array.from(knoten.values()), kanten, breite: breiteMax, hoehe: M.rand * 2 + reihen.length * (M.hoehe + M.abstandY) - M.abstandY };
+}
+
+/**
+ * Der Weg einer Linie als SVG-Pfad (rein, 16.10.): von unten am Kasten oben über die Zwischenpunkte bis oben an den Kasten unten, je Abschnitt
+ * eine weiche Kurve — und der Ort der Beschriftung auf dem LETZTEN Abschnitt nahe am Ziel (so steht der Anteil an der richtigen Linie).
+ */
+export function orgLinie(a: Pick<OrgKnoten, 'x' | 'y'>, b: Pick<OrgKnoten, 'x' | 'y'>, punkte: readonly { x: number; y: number }[] = []): { d: string; marke: { x: number; y: number } } {
+  const M = ORG_MASS;
+  const p = [{ x: a.x + M.breite / 2, y: a.y + M.hoehe }, ...punkte, { x: b.x + M.breite / 2, y: b.y }];
+  let d = `M ${p[0].x} ${p[0].y}`;
+  for (let i = 1; i < p.length; i++) { const my = (p[i - 1].y + p[i].y) / 2; d += ` C ${p[i - 1].x} ${my}, ${p[i].x} ${my}, ${p[i].x} ${p[i].y}`; }
+  // Punkt bei t = 0,7 des letzten Abschnitts (kubische Bézier-Kurve).
+  const s = p[p.length - 2], e = p[p.length - 1], my = (s.y + e.y) / 2, t = 0.7, u = 1 - t;
+  const x = u ** 3 * s.x + 3 * u * u * t * s.x + 3 * u * t * t * e.x + t ** 3 * e.x;
+  const y = u ** 3 * s.y + 3 * u * u * t * my + 3 * u * t * t * my + t ** 3 * e.y;
+  return { d, marke: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 } };
 }
 
 // ── Organe im Bild und Anteile als Breite (11.10.) ───────────────────────────────────────────────────────────────

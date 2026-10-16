@@ -167,7 +167,7 @@ export function SeilBand({ ansicht, heute, fokus, onFokus, onBlaettern, onBreite
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titel}</span>
                     </Link>
                     <span style={{ fontFamily: SCHRIFT.display, fontSize: 12, color: C.inkDim, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>
-                      {prozent(s.fortschritt)} · {s.fertig}/{s.straenge.length} fertig{blockiert ? ` · ${blockiert} wartet` : ''}{s.ankerArt === 'frist' ? ` · Frist ${kurz(s.anker)}` : ''}{s.ueberfaellig ? ' (überschritten)' : ''}
+                      {prozent(s.fortschritt)}{s.ist ? ` · ${s.ist}` : ''} · {s.fertig}/{s.straenge.length} fertig{blockiert ? ` · ${blockiert} wartet` : ''}{s.ankerArt === 'frist' ? ` · Frist ${kurz(s.anker)}` : ''}{s.ueberfaellig ? ' (überschritten)' : ''}
                     </span>
                     <button type="button" onClick={() => onFokus(fokus === s.zielId ? null : s.zielId)} aria-pressed={fokus === s.zielId} className="fassbar"
                       aria-label={fokus === s.zielId ? `Fokus auf „${s.titel}“ lösen` : `Fokus auf „${s.titel}“ — nur seine Stränge, kritischer Pfad`}
