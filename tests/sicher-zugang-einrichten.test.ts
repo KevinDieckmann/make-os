@@ -57,7 +57,14 @@ describe('POST /api/konto/einrichten', () => {
     expect((await K.ladeKonten()).konten).toHaveLength(0);
   });
   it('ohne abgelegten Code: 403 mit Hinweis aufs Skript; falscher Code: 403', async () => {
-    expect((await (await post({ ...daten, code: 'AAAA-AAAA-AAAA-AAAA-AAAA' })).json()).error).toMatch(/einrichtung-token\.mjs/);
+    // Den Befehl nennt nur die Betreiber-Instanz (15.10., Abnahme 2 A2); eine neue Instanz liest „den Code erzeugt der Betreiber“.
+    const ohne = (await (await post({ ...daten, code: 'AAAA-AAAA-AAAA-AAAA-AAAA' })).json()).error as string;
+    expect(ohne).toMatch(/Betreiber/);
+    expect(ohne).not.toMatch(/scripts\/|docker/);
+    const vorher = process.env.MAKE_OS_BETREIBER;
+    process.env.MAKE_OS_BETREIBER = 'an';
+    try { expect((await (await post({ ...daten, code: 'AAAA-AAAA-AAAA-AAAA-AAAA' })).json()).error).toMatch(/einrichtung-token\.mjs/); }
+    finally { if (vorher === undefined) delete process.env.MAKE_OS_BETREIBER; else process.env.MAKE_OS_BETREIBER = vorher; }
     await E.codeAblegen(ordner);
     const r = await post({ ...daten, code: 'AAAA-AAAA-AAAA-AAAA-AAAA' });
     expect(r.status).toBe(403);

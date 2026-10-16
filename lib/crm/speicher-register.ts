@@ -318,7 +318,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'die Person sieht ihre laufenden Uploads in Fotos & Videos (Warteschlange)',
     loeschfrist: '7 Tage (Frist „medien-upload“) bzw. mit dem Abschluss; Konto löschen entfernt die Sitzungen der Person',
   }),
-  mit({ muster: 'medien', bezug: 'dritte', behandlung: 'ausgenommen', frist: 'medien-papierkorb', grund: 'Dateien der Medien (Ordner <daten>/medien bzw. Hetzner Object Storage): nur Chiffrat je Segment unter zufälligen Namen, Schlüssel je Medium im Katalog — kein Bestand, nicht durchsuchbar. Art. 17 wirkt über den Katalog (medien--*): Medium gesperrt + Prüfung; endgültig gelöscht werden Dateien nur zusammen mit dem Eintrag (Papierkorb, Konto löschen). Von der Nachtsicherung ausgenommen (deploy/sicherung.sh).' }, {
+  mit({ muster: 'medien', bezug: 'dritte', behandlung: 'ausgenommen', frist: 'medien-papierkorb', grund: 'Dateien der Medien (Ordner <daten>/medien bzw. Hetzner Object Storage): nur Chiffrat je Segment unter zufälligen Namen, Schlüssel je Medium im Katalog — kein Bestand, nicht durchsuchbar. Art. 17 wirkt über den Katalog (medien--*): Medium gesperrt + Prüfung; endgültig gelöscht werden Dateien nur zusammen mit dem Eintrag (Papierkorb, Konto löschen). Von der Nachtsicherung ausgenommen.' }, {
     rechtsgrundlage: 'wie medien--* bzw. medien-privat--*',
     art15: 'über den Katalog (Fotos & Videos; Auskunft nennt die Medien, auf denen eine Person markiert ist)',
     loeschfrist: 'mit dem Eintrag im Katalog (Papierkorb 30 Tage); Zuschnitte sind eigene Medien „abgeleitet von“; Ende der Instanz: das Löschen der Instanz nimmt die Objekte im Speicher bzw. den Ordner mit (der Probelauf zeigt Anzahl und Größe)',

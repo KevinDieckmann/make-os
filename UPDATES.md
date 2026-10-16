@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 15./16.10.2026 — Abnahme 2 A2/C22/C5: Betreiber- und Entwickler-Texte nur in der Betreiber-Instanz (nur lokal — Branch `abnahme2-betreiber`, Basis 0cf86204 = `update-0910b`)
+Kevin: „Betreiber-Inhalte nur in der eigenen Instanz.“ Regel bleibt `istBetreiberInstanz` (lib/betrieb/betreiber-server.ts); `BETREIBER_WISSEN` kennt jetzt
+auch Umgebungswerte (`MAKE_OS_*`, `WHATSAPP_*`, `GOOGLE_*`, `WHOOP_*` …), GitHub/Repo, Code-Wache und die Stände „entwicklung“/„main“. Bei Kevin bleibt alles wie heute.
+- **Head of IT:** `lage()` filtert außerhalb der Betreiber-Instanz (`befundeFuerInstanz`, auch Kurzbericht, Bote und Head-Kontext): Weg am Server raus, Weg in der App
+  bleibt, rote Betreiber-Befunde mit neutralem Satz, gelb/grau ohne Handlung fallen weg; Quellen-Karte neutral. HOI-Schlüssel sieht alles.
+- **Datenschutz:** Dokumente ohne Dateinamen („erhaltet ihr vom Betreiber“), Löschskript, Nachweise (`v2FuerInstanz`), Pannen, Verantwortlicher, Selbstprüfung „Sicherung“
+  neutral. **C22:** Empfänger-Startwerte je Instanz (`empfaengerStartFuer`: Hosting als Platzhalter, ohne GitHub/Healthchecks), neu angelegte Verzeichnis-Einträge neutral
+  (`verarbeitungNeutral`) — gespeicherte Listen/Einträge bleiben unangetastet.
+- **Einrichtung:** `Schritt.ohneBetreiber` (Head of IT ohne Rot, Zusammenarbeit), Etappen-Hinweise nur beim Betreiber (`etappenFuer(…, betreiber)`), `zonenFuer`;
+  Zusammenarbeit ohne „entwicklung/main“.
+- **Verbindungen:** WhatsApp, ZOE-WhatsApp, WHOOP, Google, Gmail, Kalender-Banner, OAuth: Anleitung/Umgebungswerte nur beim Betreiber — die Status-Routen liefern die Namen
+  serverseitig nur dort. Fehlermeldungen (Google, Medienspeicher voll, Einrichtungs-Code) ohne Skripte.
+- **Bauplan:** neue Instanz startet leer mit Leerzustand (`startKarten`), „Claude baut“/Phasen/Bau-Notizen der Agenten nur beim Betreiber.
+- **Scoring/Steuern/Kontaktakte:** Erklärung in der App statt Verweis auf Repo-Dokumente. **C5:** Heads „Noch kein Lauf — „…“ startet den ersten“ bzw. Link in den Bereich.
+- **Wächter:** tests/oberflaeche-neutral.test.ts (Texte gegen `BETREIBER_WISSEN`, Positivliste `HINTER_BETREIBER` mit geprüftem Tor) und Laufzeit-Probe
+  tests/betreiber-demo-probe.test.ts (Demo-Saat → HoI, Selbstprüfung, Register, Verzeichnis, Nachweise, Einrichtung, Verbindungen, Bauplan).
+- **Offen (anderes Paket):** Fulfillment › Kunden-Link nennt `MAKE_OS_KUNDENLINK` (components/os/fulfillment/kunde/FallKunde.tsx, `OFFEN_ANDERER_BEREICH` im Wächter).
+- Kein Datenumzug, kein Schritt am Server.
+
 ## 15.10.2026 — Abnahme 2: Rolle „nur Business“ dicht, Business zeigt nur Business (nur lokal — Branch `abnahme2-rollen`, Basis 2df8ea9e = `update-0910b`)
 - **A1 (serverseitig):** Fahrplan-Ziel/-Meilensteine raus aus „Für dich“ (`lib/fluss/server.ts`, `ohneFahrplanFuer`), Kapazität (Fahrplan-, Register- und — für „nur Business“ —
   Selbstständigkeits-Posten gar nicht, Stunden bleiben in der Last), Business-Index (Meilenstein-Kurs ohne Titel), Markttraktion › Planung. EINE Regel für Gesellschaften/

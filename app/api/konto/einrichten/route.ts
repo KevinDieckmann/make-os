@@ -7,6 +7,7 @@
 // Der Speichername entsteht aus dem Vornamen. Für Kevin heißt das „kevin" —
 // und damit hängen seine gewachsenen Bestände ohne Umzug am neuen Konto.
 
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, emailSauber, passwortTauglich, passwortHashen, speicherName, type Konto } from '@/lib/zugang/konten';
@@ -31,7 +32,9 @@ export async function POST(req: Request) {
   if (pruefung !== 'ok') {
     fehlschlag(bremse);
     const text = pruefung === 'falsch' ? 'Der Einrichtungs-Code stimmt nicht.'
-      : 'Es gibt keinen gültigen Einrichtungs-Code — den Code erzeugt der Betreiber eurer Instanz am Server.'; // ohne Befehl (15.10., Abnahme 2 A2): die Seite sieht jede Instanz
+      // Der Befehl am Server nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — sonst: den Code gibt der Betreiber.
+      : (await istBetreiberInstanz()) ? 'Es gibt keinen gültigen Einrichtungs-Code. Im Terminal erzeugen: node scripts/einrichtung-token.mjs (am Server: docker compose exec app node scripts/einrichtung-token.mjs).'
+        : 'Es gibt keinen gültigen Einrichtungs-Code — den Code erzeugt der Betreiber eurer Instanz am Server.';
     return NextResponse.json({ error: text }, { status: 403 });
   }
   erfolg(bremse);

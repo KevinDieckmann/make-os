@@ -42,6 +42,7 @@ const REGELN: { id: string; muster: RegExp; grund: string }[] = [
 const ERLAUBT: { datei: string; regel: string; text: string; grund: string }[] = [
   { datei: 'lib/oauth.ts', regel: 'datei', text: 'http://localhost:3001', grund: 'Rückfall der Rückruf-Adresse nur ohne MAKE_OS_ADRESSE (lokale Entwicklung) — eine Adresse, kein angezeigter Satz; die Anleitung sieht nur die Betreiber-Instanz' },
   { datei: 'app/api/oauth/callback/route.ts', regel: 'datei', text: 'http://localhost:3001', grund: 'Weiterleitung nach dem Anbieter nur ohne öffentliche Adresse (lokale Entwicklung) — kein angezeigter Text' },
+  { datei: 'lib/betrieb/betreiber.ts', regel: 'datei', text: 'localhost:', grund: 'Baustein der Betreiber-Regel selbst (BETREIBER_WISSEN) — kein angezeigter Text' },
   { datei: 'lib/crm/marke.ts', regel: 'marke', text: 'Make.One', grund: 'DIE eine Stelle der Veranstaltungsmarke (`MARKE_EVENTS`): Vorgabe unserer Instanz, je Instanz über NEXT_PUBLIC_MAKE_OS_EVENT_MARKE — alle Texte lesen nur die Konstante' },
 ];
 
@@ -89,13 +90,16 @@ const HINTER_BETREIBER: HinterBetreiber[] = [
   { datei: 'lib/crm/datenschutz.ts', text: 'DEPLOY.md', tor: 'hoiNeutral', grund: 'Weg der Selbstprüfung — außerhalb der Betreiber-Instanz „Head of IT › Sicherung“' },
   { datei: 'lib/crm/datenschutz.ts', text: 'GitHub', tor: 'verarbeitungNeutral', grund: 'Startwerte des Verzeichnisses — außerhalb der Betreiber-Instanz neutral angelegt' },
   { datei: 'lib/crm/datenschutz.ts', text: '.md', tor: 'verarbeitungNeutral', grund: 'Startwerte des Verzeichnisses (Repo-Dokumente in Klammern) — außerhalb der Betreiber-Instanz neutral' },
+  { datei: 'app/api/konto/einrichten/route.ts', text: 'scripts/einrichtung-token.mjs', tor: '(await istBetreiberInstanz()) ?', grund: 'Befehl für den Einrichtungs-Code nur in der Betreiber-Instanz' },
   { datei: 'lib/onboarding-status.ts', text: 'ICLOUD-Zeilen aus der .env', tor: 'u.betreiber ?', grund: 'Prüfung „iCloud“ — außerhalb der Betreiber-Instanz der neutrale Satz' },
   { datei: 'lib/make-one/agents-data.ts', text: 'gitleaks', tor: 'BETREIBER_WISSEN.test(f)', torIn: 'components/os/AgentenView.tsx', grund: 'Funktion mit Betreiber-Wissen — die Agenten-Seite filtert sie außerhalb der Betreiber-Instanz' },
   { datei: 'lib/make-one/agents-data.ts', text: 'deploy/lage-sammeln.sh', tor: '{betreiber && (', torIn: 'components/os/AgentenView.tsx', grund: 'Bau-Notiz („So würde ich ihn bauen“) — nur in der Betreiber-Instanz' },
+  { datei: 'lib/make-one/agents-data.ts', text: 'Braucht TELEGRAM_BOT_TOKEN', tor: '{betreiber && (', torIn: 'components/os/AgentenView.tsx', grund: 'Bau-Notiz — nur in der Betreiber-Instanz' },
   { datei: 'components/os/HoiView.tsx', text: '*', tor: 'lage.betreiber ?', grund: 'Quellen des Lagebilds (Skript, Aktion, Schlüssel, CI) — die Route entscheidet (`istBetreiberInstanz` bzw. HOI-Schlüssel)' },
   { datei: 'components/os/ZusammenarbeitView.tsx', text: 'entwicklung', tor: 'useBetreiber() === true', grund: 'Stände des Codes nur in der Betreiber-Instanz' },
   { datei: 'components/os/ZuliefererKarte.tsx', text: 'scripts/mac-zulieferer-entfernen.sh', tor: 'if (!darf || !betreiber) return null', grund: 'die ganze Karte nur in der Betreiber-Instanz (Mac-Zulieferer = Altbestand)' },
-  { datei: 'components/os/bauplan/BauplanBoard.tsx', text: 'Claude baut', tor: 'useBetreiber() === true', grund: 'Hersteller-Satz nur in der Betreiber-Instanz' },
+  { datei: 'components/os/bauplan/BauplanBoard.tsx', text: 'Claude', tor: 'useBetreiber() === true', grund: 'Hersteller-Sätze („Claude baut“) nur in der Betreiber-Instanz' },
+  { datei: 'components/os/KontoView.tsx', text: 'TELEGRAM_BOT_TOKEN', tor: 'tg.konfiguriert ? (betreiber', grund: 'Anleitung zum Bot nur in der Betreiber-Instanz — sonst „richtet der Betreiber ein“' },
   { datei: 'components/os/datenschutz/Betroffenenrechte.tsx', text: '*', tor: 'useBetreiber() === true', grund: 'Löschskript am Server nur in der Betreiber-Instanz' },
   { datei: 'components/os/datenschutz/Dokumente.tsx', text: '*', tor: 'useBetreiber() === true', grund: 'Repo-Dokumente nur in der Betreiber-Instanz — sonst die Liste ohne Dateinamen' },
   { datei: 'components/os/datenschutz/Nachweise.tsx', text: '*', tor: 'useBetreiber() === true', grund: 'Umgebungswerte und Repo-Dokumente nur in der Betreiber-Instanz' },
