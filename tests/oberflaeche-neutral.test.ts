@@ -118,9 +118,7 @@ const KEIN_BETREIBER_TEXT: { datei: string; text: string; grund: string }[] = [
   { datei: 'lib/betrieb/betreiber.ts', text: '*', grund: 'die Regel selbst (Bausteine des regulären Ausdrucks)' },
 ];
 /** Offen in einem anderen Arbeitsbereich (15.10.: Fulfillment gehört einem parallelen Paket) — dort neutral formulieren, dann hier streichen. */
-const OFFEN_ANDERER_BEREICH: { datei: string; text: string; grund: string }[] = [
-  { datei: 'components/os/fulfillment/kunde/FallKunde.tsx', text: 'MAKE_OS_KUNDENLINK', grund: 'Fulfillment-Bereich (anderes Paket): Hinweis nennt den Umgebungswert — „richtet der Betreiber ein“ formulieren' },
-];
+const OFFEN_ANDERER_BEREICH: { datei: string; text: string; grund: string }[] = [];
 
 function dateien(ordner: string): string[] {
   const aus: string[] = [];

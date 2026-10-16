@@ -2025,8 +2025,11 @@ export const DATENKARTE: DatenkartenZeile[] = [
 /** Eine Zeile der Datenkarte per Kennung (null = unbekannt). */
 export const datenkarteMitId = (id: string): DatenkartenZeile | null => DATENKARTE.find(d => d.id === id) ?? null;
 /** Die Datenkarte für diese Instanz — ohne Altbestand die neutrale Fassung jeder Zeile (`allgemein`). Rein. */
-export const datenkarteFuer = (altbestand: boolean, nurBusiness = false): DatenkartenZeile[] =>
-  (altbestand ? DATENKARTE : DATENKARTE.map(({ allgemein, ...d }) => ({ ...d, ...(allgemein ?? {}) }))).filter(d => !nurBusiness || !d.voll);
+export const datenkarteFuer = (altbestand: boolean, nurBusiness = false): DatenkartenZeile[] => {
+  const basis = altbestand ? DATENKARTE : DATENKARTE.map(({ allgemein, ...d }) => ({ ...d, ...(allgemein ?? {}) }));
+  // Mit Altbestand und vollem Zugang genau die Liste von vorher (dieselbe Referenz — tests/rundgang-funde.test.ts).
+  return nurBusiness ? basis.filter(d => !d.voll) : basis;
+};
 
 /** Die drei Zonen — die Abmachung, damit Weiterbauen und Arbeiten sich nicht in die Quere kommen. */
 export const ZONEN = [

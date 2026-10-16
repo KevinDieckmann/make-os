@@ -254,7 +254,7 @@ function LinkKarte({ s, tun, frisch, setFrisch, setMeldung, bestaetigen, voll }:
       <Schalter an={s.schalter.instanz} onChange={an => void tun({ aktion: 'schalter', an }, an ? 'Kunden-Link für diese Instanz eingeschaltet.' : 'Kunden-Link ausgeschaltet — alle Links antworten „nicht gültig“.')} erklaerung="fulfillment.kundenLink">
         Kunden-Link der Instanz (nur Inhaber)
       </Schalter>
-      {!s.schalter.umgebung && <Hinweis art="info">Im Betrieb ist der Kunden-Link noch aus (MAKE_OS_KUNDENLINK). Er kommt erst nach der Prüfung an — bis dahin antwortet jeder Link „nicht gültig“. „Dem Kunden zeigen“ und die Vorschau funktionieren trotzdem.</Hinweis>}
+      {!s.schalter.umgebung && <Hinweis art="info">Auf dieser Instanz ist der Kunden-Link noch aus. Einschalten kann ihn der Betreiber eurer Instanz nach der Prüfung; bis dahin antwortet jeder Link „nicht gültig“. „Dem Kunden zeigen“ und die Vorschau funktionieren trotzdem.</Hinweis>}
       {!s.fall && <Hinweis art="achtung">Für dieses Mandat läuft noch kein Fall. Der Kunden-Link zeigt den Stand des Falls — erst das Kundenonboarding starten (<Link href={WEG.fulfillment('onboarding')} style={{ color: C.aktiv }}>Fulfillment › Onboarding</Link>).</Hinweis>}
       {l ? (
         <Zeile titel={`Link ${l.id.slice(0, 9)}…`} unter={`angelegt am ${tag(l.erstelltAm)} · gilt bis ${tag(l.ablaufAm)}${l.zuletztAm ? ` · zuletzt genutzt ${tag(l.zuletztAm)}` : ' · noch nicht geöffnet'} · ${[l.rechte.formular && 'Formulare', l.rechte.upload && 'Unterlagen', l.rechte.puls && 'Puls'].filter(Boolean).join(' · ') || 'nur Stand'}`} rechts={<Chip farbe={STATUS_FARBE[l.status]}>{l.status}</Chip>} />
