@@ -23,8 +23,10 @@ export async function verantwortlicherLaden(): Promise<VerantwortlicherWirksam> 
 
 /** Die wirksame Empfänger-Liste (gespeichert oder Vorgabe). Wirft nie. */
 export async function empfaengerLaden(): Promise<Empfaenger[]> {
-  try { return empfaengerWirksam(await ladeEinrichtung()); }
-  catch { return empfaengerWirksam(null); }
+  // Startwerte je Instanz (15.10., Abnahme 2 C22).
+  const betreiber = await import('@/lib/betrieb/betreiber-server').then(m => m.istBetreiberInstanz()).catch(() => false);
+  try { return empfaengerWirksam(await ladeEinrichtung(), betreiber); }
+  catch { return empfaengerWirksam(null, betreiber); }
 }
 
 /**

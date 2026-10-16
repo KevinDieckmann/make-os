@@ -14,6 +14,7 @@ import { FARBE as C, SCHRIFT, TYP, KUGEL } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Chip, Knopf, Hinweis, Feldzeile, Schalter, Segmente, eingabe, LEUCHT, useRueckfrage } from '../ui';
 import { EINWILLIGUNG_TEXT, INHALTE_TEXT, type ZoeWhatsappStatus } from '@/lib/zoe-whatsapp/kanal';
 import { WA_AUDIO_TYPEN } from '@/lib/whatsapp/typen';
+import { useBetreiber } from '../useInhaber';
 
 type Antwort = ZoeWhatsappStatus & { fehler?: string; text?: string; verbinden?: { code: string; bis: string; nummer: string; zoeNummer?: string; link?: string } };
 
@@ -27,6 +28,8 @@ async function senden(body: Record<string, unknown>): Promise<Antwort | { ok: fa
 }
 
 export function ZoeWhatsappKarte({ i = 0 }: { i?: number }) {
+  // Namen der Umgebungswerte und Skripte nur in der Betreiber-Instanz (15.10., Abnahme 2 A2).
+  const betreiber = useBetreiber() === true;
   const [s, setS] = useState<ZoeWhatsappStatus | null>(null);
   const [code, setCode] = useState<Antwort['verbinden'] | null>(null);
   const [nummer, setNummer] = useState('');
@@ -88,14 +91,14 @@ export function ZoeWhatsappKarte({ i = 0 }: { i?: number }) {
       {s && !s.eingerichtet && !s.konflikt && (
         <div style={{ display: 'grid', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
           <div>Auf dieser Instanz ist noch keine ZOE-Nummer eingerichtet.{s.inhaber ? ' Die eigene ZOE-Nummer legt ihr bei Meta an; die Zugangsdaten trägt der Betreiber eurer Instanz am Server ein.' : ' Das richtet der Inhaber ein.'}</div>
-          {s.inhaber && s.fehlend.length > 0 && <div style={{ fontFamily: SCHRIFT.mono, color: C.inkLeise, wordBreak: 'break-word' }}>Auf dem Server fehlt noch: {s.fehlend.join(' · ')}</div>}
+          {betreiber && s.inhaber && s.fehlend.length > 0 && <div style={{ fontFamily: SCHRIFT.mono, color: C.inkLeise, wordBreak: 'break-word' }}>Auf dem Server fehlt noch: {s.fehlend.join(' · ')}</div>}
           {s.inhaber && <div style={{ color: C.inkLeise }}>Webhook bei Meta: {s.webhookAdresse ? <code style={{ fontFamily: SCHRIFT.mono, wordBreak: 'break-all' }}>{s.webhookAdresse}</code> : 'https://<eure Adresse>/api/zoe/whatsapp/webhook'}</div>}
         </div>
       )}
 
       {s?.eingerichtet && k && (
         <div style={{ display: 'grid', gap: 12 }}>
-          {s.verbindung === 'token' && <Hinweis art="kritisch" titel="Verbindung erneuern">Meta hat den Zugriffsschlüssel der ZOE-Nummer abgelehnt. {s.inhaber ? 'Neuen dauerhaften Schlüssel erzeugen und deploy/zoe-whatsapp-verbinden.sh erneut ausführen.' : 'Das erneuert der Inhaber.'} Bis dahin laufen Hinweise über Telegram bzw. gar nicht.</Hinweis>}
+          {s.verbindung === 'token' && <Hinweis art="kritisch" titel="Verbindung erneuern">Meta hat den Zugriffsschlüssel der ZOE-Nummer abgelehnt. {s.inhaber ? (betreiber ? 'Neuen dauerhaften Schlüssel erzeugen und deploy/zoe-whatsapp-verbinden.sh erneut ausführen.' : 'Den neuen Schlüssel trägt der Betreiber eurer Instanz am Server ein.') : 'Das erneuert der Inhaber.'} Bis dahin laufen Hinweise über Telegram bzw. gar nicht.</Hinweis>}
 
           {(k.status === 'aus' || k.status === 'getrennt') && (
             <form onSubmit={e => { e.preventDefault(); void verbinden(); }} style={{ display: 'grid', gap: 12 }}>

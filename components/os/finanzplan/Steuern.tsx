@@ -187,7 +187,7 @@ export function SteuerKarte({ ort, offen: offenStart = false, i = 0, szenario }:
           )}
           {ort === 'privat' && <div style={{ marginTop: 14 }}><NettoTabelle /></div>}
           {steuerArtenFuer(ort, rf).length === 0 && <div style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Hier rechnet der Plan keine Steuer.</div>}
-          <Hinweis>{STEUER_HINWEIS} Nicht aufgeführt ist, was der Plan nicht rechnet (zum Beispiel Kirchensteuer). Eine abgeschaltete Zeile verschwindet aus den Blättern, ihr Satz bleibt gespeichert. Verlustvortrag, Hinzurechnungen und Anrechnung sind vereinfacht (siehe FINANZPLANUNG_JETZT.md).</Hinweis>
+          <Hinweis>{STEUER_HINWEIS} Nicht aufgeführt ist, was der Plan nicht rechnet (zum Beispiel Kirchensteuer). Eine abgeschaltete Zeile verschwindet aus den Blättern, ihr Satz bleibt gespeichert. Verlustvortrag, Hinzurechnungen und Anrechnung sind vereinfacht — Näherungen, die ein Steuerberater einmal gegenlesen sollte.</Hinweis>
         </div>
       )}
     </Karte>

@@ -29,6 +29,7 @@
 //              Restore-Skript (deploy/wiederherstellen.sh) nach jedem Zurückspielen ZWINGEND auf (29.09., #70).
 // Alle Schreibwege nur mit ausdrücklicher Person (Regel 5) — sie steht im Vermerk.
 
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
@@ -200,7 +201,7 @@ export async function POST(req: Request) {
     const r = art14Fuellen(e.art14 ?? ART14_STANDARD, {
       anrede: anredeSatz(k), name: [k.vorname, k.nachname].filter(Boolean).join(' '), herkunft: herkunftSatz(k), verantwortlicher: verantwortlicherText(v),
       kontakt: v.dsb?.mail || v.mail, datenschutzseite: v.seite ?? '',
-      empfaenger: empfaengerAuskunft(empfaengerWirksam(e)).map(x => (x.drittland ? `${x.name} (${x.drittland}; ${x.garantie})` : x.name)).join('; ') || 'keine',
+      empfaenger: empfaengerAuskunft(empfaengerWirksam(e, await istBetreiberInstanz())).map(x => (x.drittland ? `${x.name} (${x.drittland}; ${x.garantie})` : x.name)).join('; ') || 'keine',
       frist: `${fristText('kontakte', fristen.kontakte)} nach unserem letzten Kontakt, sofern keine Geschäftsbeziehung entsteht; danach löschen wir`,
     });
     return NextResponse.json({ ok: true, an: k.email ?? null, ...r, mailto: k.email ? mailtoLink(k.email, r.betreff, r.text) : null, frist: art14Frist(k, heute) }, { headers: { 'Cache-Control': 'no-store' } });

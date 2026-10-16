@@ -40,7 +40,7 @@ export function ordnerSpeicher(k: OrdnerKonfig): MedienSpeicher {
     return n;
   };
   const platz = async (dazu: number) => {
-    if ((await belegt()) + dazu > k.grenze) throw new SpeicherFehler('Der Medienspeicher ist voll — Object Storage einrichten (deploy/medien-speicher-verbinden.sh) oder Medien löschen.', 507, 'voll');
+    if ((await belegt()) + dazu > k.grenze) throw new SpeicherFehler('Der Medienspeicher ist voll — mehr Speicher richtet die Inhaberin bzw. der Betreiber eurer Instanz ein; bis dahin Medien löschen.', 507, 'voll');
     belegtCache = belegtCache ? { ...belegtCache, n: belegtCache.n + dazu } : null;
   };
 

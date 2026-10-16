@@ -12,7 +12,8 @@ import path from 'node:path';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import { bildAblegen, bildEntfernen, bildOeffnen } from '@/lib/store/bild-ablage';
 import { bilderFaellig, VERWAIST_TAGE } from './bilder-frist';
-import { SEED, mitBlock, type BacklogItem } from '@/lib/make-one/backlog-data';
+import { startKarten, mitBlock, type BacklogItem } from '@/lib/make-one/backlog-data';
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { neueKarte, bildNameOk, type BauplanDatei } from './board';
 import { neueKennung } from '@/lib/kennung';
 
@@ -20,13 +21,14 @@ export async function ladeBauplan(): Promise<BauplanDatei> {
   const f = await loadJson<BauplanDatei>('backlog');
   // Block beim Lesen übersetzen (09.10.: die frühere Personen-Kennung gilt als „inhaber“ — gespeichert bleibt sie bis zur Änderung).
   if (f && Array.isArray(f.items) && f.items.length) return { items: f.items.map(mitBlock), etappen: f.etappen ?? [] };
-  const jetzt = new Date().toISOString();
-  return { items: SEED.map(s => ({ ...s, angelegt: jetzt })), etappen: [] };
+  // Der Startbestand (Entwickler-Backlog des Herstellers) nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — sonst ein leeres Board.
+  return { items: startKarten(await istBetreiberInstanz(), new Date().toISOString()), etappen: f?.etappen ?? [] };
 }
 
 export async function aendereBauplan(mut: (d: BauplanDatei) => BauplanDatei): Promise<BauplanDatei> {
+  const betreiber = await istBetreiberInstanz();
   const d = await updateJson<BauplanDatei>('backlog', cur => {
-    const basis: BauplanDatei = cur && Array.isArray(cur.items) && cur.items.length ? { ...cur, etappen: cur.etappen ?? [] } : { items: SEED.map(s => ({ ...s, angelegt: new Date().toISOString() })), etappen: [] };
+    const basis: BauplanDatei = cur && Array.isArray(cur.items) && cur.items.length ? { ...cur, etappen: cur.etappen ?? [] } : { items: startKarten(betreiber, new Date().toISOString()), etappen: cur?.etappen ?? [] };
     return mut(basis);
   });
   return { ...d, items: d.items.map(mitBlock) };

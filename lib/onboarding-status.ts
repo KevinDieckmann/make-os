@@ -121,7 +121,8 @@ let hoiMerk: { bis: number; lage: Promise<HoiLage> } | null = null;
 const hoiLage = (): Promise<HoiLage> => {
   const jetzt = Date.now();
   if (!hoiMerk || hoiMerk.bis < jetzt) {
-    const lage = import('@/lib/hoi/innen').then(m => m.lage());
+    // Roh (Betreiber-Sicht): hier zählen nur Ampel und Kennung — die Texte gehen nicht an die Oberfläche (nur ja/nein bzw. der Wert gelesener Befunde).
+    const lage = import('@/lib/hoi/innen').then(m => m.lage(undefined, { betreiber: true }));
     hoiMerk = { bis: jetzt + HOI_MERKEN_MS, lage };
     lage.catch(() => { if (hoiMerk?.lage === lage) hoiMerk = null; });
   }
@@ -149,6 +150,8 @@ interface Umfang {
   privat: string | null;
   /** Haushalt, wenn die Person die Familie sehen darf (`haushaltFuer`) — sonst null (B11). */
   familie: string | null;
+  /** Betreiber-Instanz (15.10., Abnahme 2 A2): nur dort zählen Lage-Sammler und Außenblick zum Head of IT ohne Rot. */
+  betreiber: boolean;
 }
 
 async function umfangFuer(person: string | null, k: (Kontext & { haushalt?: string }) | null): Promise<Umfang> {
@@ -158,7 +161,7 @@ async function umfangFuer(person: string | null, k: (Kontext & { haushalt?: stri
     person ? z.haushaltFuer(person).catch(() => null) : null,
     k?.haushalt ? null : (await import('@/lib/zugang/haushalt-inhaber')).haushaltDesInhabers().catch(() => null),
   ]);
-  return { person, haushalt: k?.haushalt ?? inh ?? null, privat: pz?.haushalt ?? null, familie: hz?.haushalt ?? null };
+  return { person, haushalt: k?.haushalt ?? inh ?? null, privat: pz?.haushalt ?? null, familie: hz?.haushalt ?? null, betreiber: k?.betreiber === true };
 }
 
 type Pruefungen = Record<string, () => Promise<Befund | null>>;
@@ -183,7 +186,8 @@ async function persoenlich(person: string, u: Umfang): Promise<Record<string, Be
       const s = await (await import('@/lib/kalender/icloud-person')).icloudStatus(person);
       if (!s.verbunden) return nein(s.quelle === 'getrennt' ? 'bei dir getrennt' : 'bei dir noch nicht verbunden');
       if (s.anmeldung) return nein('Apple nimmt das App-Passwort nicht an — Verbindung erneuern');
-      if (s.quelle === 'umgebung') return nein('über die Server-Umgebung verbunden — hier in der Oberfläche eintragen, dann die ICLOUD-Zeilen aus der .env nehmen');
+      // Die Zeilen der Umgebung nennt nur die Betreiber-Instanz (15.10., Abnahme 2 A2).
+      if (s.quelle === 'umgebung') return nein(u.betreiber ? 'über die Server-Umgebung verbunden — hier in der Oberfläche eintragen, dann die ICLOUD-Zeilen aus der .env nehmen' : 'über den Server verbunden — hier in der Oberfläche eintragen; den alten Zugang am Server nimmt der Betreiber eurer Instanz heraus');
       return ja('dein Kalender ist verbunden');
     },
     google: async () => {
@@ -440,8 +444,9 @@ async function gemeinsam(u: Umfang): Promise<Record<string, Befund>> {
       if (!u.person) return null;
       const l = await hoiLage();
       const grau = (id: string) => { const b = l.befunde.find(x => x.id === id); return !b || b.ampel === 'grau'; };
-      const fehlt = [l.gesamt.rot ? `${n(l.gesamt.rot, 'roter Befund', 'rote Befunde')}` : '', grau('host') ? 'Lage-Sammler meldet nicht' : '', grau('aussen') ? 'Außenblick meldet nicht' : ''].filter(Boolean);
-      return fehlt.length ? nein(fehlt.join(' · ')) : ja('kein roter Befund, Lage-Sammler und Außenblick melden');
+      // Lage-Sammler und Außenblick richtet der Betreiber ein — nur in seiner Instanz zählen sie hier (15.10., Abnahme 2 A2).
+      const fehlt = [l.gesamt.rot ? `${n(l.gesamt.rot, 'roter Befund', 'rote Befunde')}` : '', u.betreiber && grau('host') ? 'Lage-Sammler meldet nicht' : '', u.betreiber && grau('aussen') ? 'Außenblick meldet nicht' : ''].filter(Boolean);
+      return fehlt.length ? nein(fehlt.join(' · ')) : ja(u.betreiber ? 'kein roter Befund, Lage-Sammler und Außenblick melden' : 'kein roter Befund');
     },
     'zwei-faktor-pflicht': async () => ((await konten()).einstellungen?.zweiFaktorPflichtSeit ? ja('Pflicht ist an') : nein('Pflicht ist noch aus')),
     personen: async () => {

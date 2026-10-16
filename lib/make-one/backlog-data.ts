@@ -74,7 +74,11 @@ export interface BacklogItem {
   geaendert?: string;
 }
 
-/** Startbestand: alles, was aus Audit, Review und Gesprächen offen ist. */
+/**
+ * Startbestand: alles, was aus Audit, Review und Gesprächen offen ist — das Entwickler-Backlog des Herstellers. Seit 15.10. (Abnahme 2 A2,
+ * Kevin: „Betreiber-Inhalte nur in der eigenen Instanz“) NUR in der Betreiber-Instanz: jede andere Instanz startet mit einem leeren Board
+ * (`startKarten`). Nie direkt lesen.
+ */
 export const SEED: Omit<BacklogItem, 'angelegt'>[] = [
   {
     id: 'whoop-api', titel: 'Whoop-API anbinden', kategorie: 'anbindung', status: 'offen', prio: 1, block: 'inhaber',
@@ -137,3 +141,6 @@ export const SEED: Omit<BacklogItem, 'angelegt'>[] = [
     quelle: 'Audit',
   },
 ];
+
+/** Die Startkarten dieser Instanz (rein): der Startbestand nur für die Betreiber-Instanz (`istBetreiberInstanz`), sonst keine. */
+export const startKarten = (betreiber: boolean, jetzt: string): BacklogItem[] => (betreiber ? SEED.map(s => ({ ...s, angelegt: jetzt })) : []);

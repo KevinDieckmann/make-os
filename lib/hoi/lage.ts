@@ -10,6 +10,7 @@
 // ampel. Keine Inhalte, keine Adressen, keine Personen — nur Zähler und Zustände.
 
 import { medienBefunde } from '@/lib/medien/hoi';
+import { BETREIBER_WISSEN, betreiberNeutralKurz, ohneBetreiberTeile } from '@/lib/betrieb/betreiber';
 
 export type Ampel = 'gruen' | 'gelb' | 'rot' | 'grau';
 export interface Befund { id: string; bereich: 'server' | 'app' | 'sicherheit' | 'aussen' | 'sicherung'; label: string; ampel: Ampel; wert: string; satz: string; seit?: string }
@@ -836,6 +837,33 @@ export function gesamt(befunde: Befund[]): { ampel: Ampel; rot: number; gelb: nu
   return { ampel, ...z };
 }
 export const nachRang = (l: Befund[]) => [...l].sort((a, b) => RANG[b.ampel] - RANG[a.ampel]);
+
+// ── Lagebild für eine fremde Instanz (15.10., Abnahme 2 A2 — Kevin: „Betreiber-Inhalte nur in der eigenen Instanz“) ───────────────
+// Die Befunde nennen für den Betreiber den Weg am Server (Skripte, .env, Umgebungswerte, Repo-Dokumente, GitHub). Außerhalb der
+// Betreiber-Instanz (lib/betrieb/betreiber.ts `istBetreiberInstanz`) zeigt der Head of IT nur, was die Inhaberin selbst tun kann:
+//   · Teile eines Satzes mit Betreiber-Wissen (Klammern, Abschnitte an „ — “, „; “, Satzenden) fallen weg;
+//   · bleibt ein Weg in der App (ein Pfad mit „›“), steht der Befund mit diesem Rest da;
+//   · sonst ist es ein Befund für den Betreiber: rot bleibt mit einem neutralen Satz (die Inhaberin muss es wissen), grün bleibt als
+//     „in Ordnung“, gelb und grau fallen weg (sie kann dort nichts tun — der Betreiber sieht sie mit dem HOI-Schlüssel).
+// Gesamtampel und Kurzbericht rechnet der Aufrufer danach aus der gefilterten Liste. Rein.
+export const BETREIBER_HANDELT = 'Hier muss der Betreiber eurer Instanz am Server handeln.';
+export const BETREIBER_IN_ORDNUNG = 'In Ordnung — betreut vom Betreiber eurer Instanz.';
+
+/** Die Befunde für diese Instanz: unverändert für den Betreiber, sonst nach der Regel oben. Rein. */
+export function befundeFuerInstanz(befunde: Befund[], betreiber: boolean): Befund[] {
+  if (betreiber) return befunde;
+  const aus: Befund[] = [];
+  for (const b of befunde) {
+    if (![b.label, b.wert, b.satz].some(t => BETREIBER_WISSEN.test(t))) { aus.push(b); continue; }
+    const label = betreiberNeutralKurz(b.label);
+    const wert = betreiberNeutralKurz(b.wert);
+    const rest = ohneBetreiberTeile(b.satz);
+    if (rest.includes('›')) { aus.push({ ...b, label, wert, satz: rest }); continue; }
+    if (b.ampel === 'rot') aus.push({ ...b, label, wert, satz: BETREIBER_HANDELT });
+    else if (b.ampel === 'gruen') aus.push({ ...b, label, wert, satz: BETREIBER_IN_ORDNUNG });
+  }
+  return aus;
+}
 
 /** Kurztext für Telegram / Wochenbericht. */
 export function kurzbericht(befunde: Befund[], jetzt: string): string {

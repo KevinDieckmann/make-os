@@ -34,7 +34,7 @@ export function QualifizierungScoring({ api, ansicht, start, onAnsicht, zuLeads,
           {z.daten && z.fehler === '' ? null : z.fehler ? <Karte i={0}><div style={{ color: LEUCHT.kritisch, fontSize: 13 }}>{z.fehler}</div></Karte> : null}
           <ScoringSeite api={api} seite={ansicht === 'scoring-sales' ? 'sales' : 'marketing'} z={z} i={1} />
           <ScoringAktionen api={api} z={z} />
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Die Methode und der Grund für den Vorschlag stehen in SCORING.md im Projekt.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>So wird gerechnet: Das Marketing-Scoring zählt gemessene Signale (Event, Newsletter, Termin, Empfehlung, Anfrage) bis zur MQL-Schwelle — MQL wird nur, wer über das Marketing kam. Das Sales-Scoring bewertet die Kriterien nach MEDDICC und BANT in Stufen; erst wenn die Muss-Kriterien stehen und die Schwelle erreicht ist, wird ein Lead zum SQL. Schwellen, Gewichte und Muss-Kriterien stellt ihr hier selbst ein.</div>
         </>
       )}
       {teil === 'runde' && <Qualifizierung api={api} start={start} zuLeads={zuLeads} />}

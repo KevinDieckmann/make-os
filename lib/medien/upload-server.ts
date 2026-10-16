@@ -128,7 +128,7 @@ export async function uploadAnlegen(person: string, a: Record<string, unknown>):
   const s = await medienSpeicher();
   if (!s) return F(503, 'Medien sind auf dieser Instanz ausgeschaltet.');
   const konfig = medienKonfig();
-  if (s.belegt && konfig.modus === 'ordner' && (await s.belegt()) + objektGroesse(bytes) > konfig.grenze) return F(507, 'Der Medienspeicher ist voll — Object Storage einrichten (deploy/medien-speicher-verbinden.sh) oder Medien löschen.');
+  if (s.belegt && konfig.modus === 'ordner' && (await s.belegt()) + objektGroesse(bytes) > konfig.grenze) return F(507, 'Der Medienspeicher ist voll — mehr Speicher richtet die Inhaberin bzw. der Betreiber eurer Instanz ein; bis dahin Medien löschen.');
 
   const vorhanden = (await sitzungen()).sitzungen.find(x => x.id === id);
   if (vorhanden) return vorhanden.person === person ? { ok: true, sitzung: sicht(vorhanden) } : F(409, 'Diese Kennung gehört zu einem anderen Upload.');

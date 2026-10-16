@@ -86,12 +86,21 @@ export function HoiView() {
           </Karte>
           <Karte i={8}>
             <Ueberschrift>So sieht der HOI hin</Ueberschrift>
-            <Liste>
-              <Zeile titel="Innen — die App selbst" unter="Prozess, Bestände, Arbeiter-Takt, Fehlerquote der Läufe, Oberflächenfehler, Fehlanmeldungen und neue Netze, CSP-Meldungen des Browsers" />
-              <Zeile titel="Host — deploy/lage-sammeln.sh" unter="alle 5 Minuten per Cron: Platte, Speicher, Last, Container und Neustarts, fail2ban, Zertifikat, Alter der Sicherung, Vault, Sicherheitsupdates" />
-              <Zeile titel="Außen — GitHub-Aktion hoi-aussenblick.yml" unter="alle 6 Stunden wie ein Fremder: Status, Antwortzeit, Sicherheits-Kopfzeilen, Zertifikatsrest — meldet mit dem eingeschränkten Schlüssel MAKE_OS_KEY_HOI, der nur /api/hoi/* öffnet" />
-              <Zeile titel="Code — CI-Job „sicherheit“" unter="bei jedem Push: npm audit (hoch), gitleaks (Geheimnisse), knip (tote Abhängigkeiten); Dependabot wöchentlich auf entwicklung" />
-            </Liste>
+            {/* Die Quellen am Server (Skript, Aktion, Schlüssel, CI) nur in der Betreiber-Sicht (15.10., Abnahme 2 A2 — die Route entscheidet). */}
+            {lage.betreiber ? (
+              <Liste>
+                <Zeile titel="Innen — die App selbst" unter="Prozess, Bestände, Arbeiter-Takt, Fehlerquote der Läufe, Oberflächenfehler, Fehlanmeldungen und neue Netze, CSP-Meldungen des Browsers" />
+                <Zeile titel="Host — deploy/lage-sammeln.sh" unter="alle 5 Minuten per Cron: Platte, Speicher, Last, Container und Neustarts, fail2ban, Zertifikat, Alter der Sicherung, Vault, Sicherheitsupdates" />
+                <Zeile titel="Außen — GitHub-Aktion hoi-aussenblick.yml" unter="alle 6 Stunden wie ein Fremder: Status, Antwortzeit, Sicherheits-Kopfzeilen, Zertifikatsrest — meldet mit dem eingeschränkten Schlüssel MAKE_OS_KEY_HOI, der nur /api/hoi/* öffnet" />
+                <Zeile titel="Code — CI-Job „sicherheit“" unter="bei jedem Push: npm audit (hoch), gitleaks (Geheimnisse), knip (tote Abhängigkeiten); Dependabot wöchentlich auf entwicklung" />
+              </Liste>
+            ) : (
+              <Liste>
+                <Zeile titel="Innen — die App selbst" unter="Bestände, Arbeiter-Takt, Fehlerquote der Läufe, Oberflächenfehler, Fehlanmeldungen und neue Netze, Verbindungen" />
+                <Zeile titel="Server und Sicherung" unter="Platte, Speicher, Zertifikat und die nächtliche Sicherung — betreut vom Betreiber eurer Instanz; hier steht nur, was ihr wissen müsst" />
+                <Zeile titel="Von außen" unter="regelmäßig wie ein Fremder: Erreichbarkeit, Antwortzeit, Sicherheits-Kopfzeilen, Zertifikat" />
+              </Liste>
+            )}
           </Karte>
         </>
       )}

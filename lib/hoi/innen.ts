@@ -14,7 +14,7 @@ import { fremderSchreiber } from '@/lib/store/betrieb';
 import { tmpResteZaehlen, DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
 import { lies, stand } from '@/lib/zoe/auftraege';
 import { alle } from '@/lib/zugang/anmeldungen';
-import { befundeAus, gesamt, kurzbericht, nachRang, AGENTEN_BESTAND, AGENTEN_BESTAND_MB, type AgentenBestandLage, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage, type GoogleKalenderLage, type GmailLage, type IcloudPersonenLage } from './lage';
+import { befundeAus, befundeFuerInstanz, gesamt, kurzbericht, nachRang, AGENTEN_BESTAND, AGENTEN_BESTAND_MB, type AgentenBestandLage, type InnenLage, type HostLage, type AussenLage, type Befund, type DatenschichtLage, type SicherungLauf, type DurchsichtKurz, type KalenderLage, type GoogleKalenderLage, type GmailLage, type IcloudPersonenLage } from './lage';
 import { verbunden as kalenderVerbunden, ladeStand as kalenderStand, abgleichAlter, tzVersion } from '@/lib/kalender/icloud';
 import { ladeSicherungStand } from '@/lib/kalender/sicherung-server';
 import { googleLage } from '@/lib/kalender/google/lage';
@@ -254,11 +254,20 @@ export async function aussenLage(): Promise<AussenLage | null> {
   return s?.meldungen?.length ? s.meldungen[s.meldungen.length - 1] : null;
 }
 
-export interface Lage { zeit: string; innen: InnenLage; host: HostLage | null; aussen: AussenLage | null; befunde: Befund[]; gesamt: ReturnType<typeof gesamt>; kurz: string; produktion: boolean }
+export interface Lage {
+  zeit: string; innen: InnenLage; host: HostLage | null; aussen: AussenLage | null; befunde: Befund[]; gesamt: ReturnType<typeof gesamt>; kurz: string; produktion: boolean;
+  /** Betreiber-Sicht (15.10., Abnahme 2 A2): nur dann nennen Befunde und Seite den Weg am Server (`befundeFuerInstanz`). */
+  betreiber: boolean;
+}
 
-/** Alles zusammen — für /api/hoi/lage, die Seite und den Kurzbericht. */
-export async function lage(jetzt = new Date().toISOString()): Promise<Lage> {
-  const [innen, host, aussen] = await Promise.all([innenLage(jetzt), hostLage(), aussenLage()]);
-  const befunde = nachRang(befundeAus(innen, host, aussen, jetzt));
-  return { zeit: jetzt, innen, host, aussen, befunde, gesamt: gesamt(befunde), kurz: kurzbericht(befunde, jetzt), produktion: process.env.NODE_ENV === 'production' };
+/**
+ * Alles zusammen — für /api/hoi/lage, die Seite, den Kurzbericht und den Boten. `betreiber` fehlt → die Instanz entscheidet
+ * (`istBetreiberInstanz`); außerhalb der Betreiber-Instanz gehen Befunde, Gesamtampel und Kurzbericht nur in der neutralen Fassung raus.
+ * `{ betreiber: true }` nur für Leser, die keinen Text zeigen (Ja/Nein-Prüfungen der Einrichtung) bzw. für den HOI-Schlüssel.
+ */
+export async function lage(jetzt = new Date().toISOString(), o: { betreiber?: boolean } = {}): Promise<Lage> {
+  const [innen, host, aussen, betreiber] = await Promise.all([innenLage(jetzt), hostLage(), aussenLage(),
+    o.betreiber ?? import('@/lib/betrieb/betreiber-server').then(m => m.istBetreiberInstanz()).catch(() => false)]);
+  const befunde = befundeFuerInstanz(nachRang(befundeAus(innen, host, aussen, jetzt)), betreiber);
+  return { zeit: jetzt, innen, host, aussen, befunde, gesamt: gesamt(befunde), kurz: kurzbericht(befunde, jetzt), produktion: process.env.NODE_ENV === 'production', betreiber };
 }

@@ -5,7 +5,7 @@
 export type Spalte = 'idee' | 'bereit' | 'arbeit' | 'test' | 'fertig';
 export const SPALTEN: { id: Spalte; label: string; satz: string }[] = [
   { id: 'idee', label: 'Ideen', satz: 'Gesammelt — noch nicht entschieden' },
-  { id: 'bereit', label: 'Bereit', satz: 'Entschieden — Claude baut von oben nach unten' },
+  { id: 'bereit', label: 'Bereit', satz: 'Entschieden — gebaut wird von oben nach unten' },
   { id: 'arbeit', label: 'In Arbeit', satz: 'Wird gerade gebaut' },
   { id: 'test', label: 'Zum Testen', satz: 'Gebaut — ihr probiert es aus und nehmt ab' },
   { id: 'fertig', label: 'Fertig', satz: 'Abgenommen' },

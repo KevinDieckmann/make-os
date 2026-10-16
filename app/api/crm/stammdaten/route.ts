@@ -11,6 +11,7 @@
 // POST { aktion: 'wertelisten', wertelisten: Teil }          → Verlustgründe, Kadenz, Ergebnisse, Ziele
 //                                                              (Teil-Update, lib/crm/wertelisten.ts prüft und säubert)
 
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { PROTOKOLL_ID } from '@/lib/crm/loeschprotokoll';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -68,7 +69,8 @@ export async function GET(req: Request) {
   // Verzeichnis (Art. 30) an EINER Stelle vervollständigen (05.10.): Startbestand, Netzwerken, Register/Kapazität, Google (wenn
   // eingerichtet), alte feste Verantwortliche → Platzhalter der Einrichtung. Idempotent, gerechnet in der Sperre des CRM.
   const vvJetzt = new Date().toISOString();
-  const vvOpt = { google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()) };
+  // Startwerte je Instanz (15.10., Abnahme 2 C22): die Infrastruktur des Betreibers nur in seiner Instanz.
+  const vvOpt = { betreiber: await istBetreiberInstanz(), google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()) };
   if (verzeichnisVervollstaendigen(crm.verarbeitungen, vvJetzt, vvOpt).geaendert) crm = await aendereCrm(c => { const r = verzeichnisVervollstaendigen(c.verarbeitungen, vvJetzt, vvOpt); return r.geaendert ? { ...c, verarbeitungen: r.liste } : c; });
   // KI-Funktionen (05.10., DSGVO-Paket KI/Gesundheit/Telegram) — eigener Eintrag aus lib/datenschutz/vvt-ki.ts, idempotent.
   // Seit 09.10. (Paket 6a) auch: alte Fassung (Data Privacy Framework → Standardvertragsklauseln) heben, „KI über weitere Anbieter“, sobald

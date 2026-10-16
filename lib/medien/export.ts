@@ -212,7 +212,7 @@ export interface MedienInstanzExport {
 export const INSTANZ_EXPORT_MEDIEN_HINWEIS = 'Medien (Fotos, Videos, Lizenz-Nachweise, Unterschriften): Metadaten stehen in den Beständen medien--* und '
   + 'medien-privat--* (ohne Schlüssel je Medium). Die Dateien liegen verschlüsselt im Medienspeicher (Object Storage bzw. Ordner) und sind hier nur als '
   + 'Liste aufgeführt — zu groß für eine Datei. Herunterladen vor dem Löschen der Instanz einzeln in der App (Fotos & Videos › Original laden). '
-  + 'Das Löschskript (scripts/instanz-loeschen.mjs) löscht die Objekte im Speicher mit.';
+  + 'Wird die Instanz gelöscht, löscht der Betreiber die Objekte im Speicher mit.';
 
 /** Die Liste der Objekte im Medienspeicher, abgeglichen mit den Katalogen (Server). Wirft, wenn der Speicher nicht erreichbar ist. */
 export async function medienInstanzExport(kataloge: readonly MedienKatalog[]): Promise<MedienInstanzExport> {

@@ -48,9 +48,12 @@ export async function datenschutzUmfeld(): Promise<DatenschutzUmfeld> {
   const w = verantwortlicherWirksam(e);
   const haushalt = kontenImHaushaltDerInhaber(await ladeKonten());
   const cfg = (await loadJson<AgentConfigMap>('agents-config').catch(() => null)) ?? {};
+  // Betreiber-Instanz (15.10., Abnahme 2 A2/C22): Startwerte der Empfänger und der Weg am Server nur dort.
+  const betreiber = await import('@/lib/betrieb/betreiber-server').then(m => m.istBetreiberInstanz()).catch(() => false);
   return {
     verantwortlicher: { gesetzt: !!w.v, quelle: w.quelle, luecken: w.luecken },
-    empfaenger: empfaengerWirksam(e),
+    empfaenger: empfaengerWirksam(e, betreiber),
+    betreiber,
     zweiterFaktor: { konten: haushalt.length, mit: haushalt.filter(k => !!k.zweiterFaktor).length },
     sicherung: await sicherungsStatus(),
     agenten: { aktiv: ALL_AGENTS.filter(a => cfg[a.id]?.enabled !== false).length, gesamt: ALL_AGENTS.length },

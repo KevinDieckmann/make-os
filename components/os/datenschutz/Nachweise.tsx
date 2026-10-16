@@ -14,6 +14,7 @@ import type { LeseEintrag, LeseBereich } from '@/lib/store/leseprotokoll';
 import type { KettenPruefung } from '@/lib/store/protokoll-kette';
 import type { V2Bereitschaft } from '@/lib/datenschutz/nachweise';
 import type { BrainIndexLage } from '@/lib/hoi/lage';
+import { useBetreiber } from '../useInhaber';
 
 interface Antwort {
   ok: true;
@@ -37,6 +38,8 @@ export function NachweiseKarten({ i = 0 }: { i?: number }) {
   const [bereich, setBereich] = useState<string>('alle');
   const [fremde, setFremde] = useState(false);
   const [pruefe, setPruefe] = useState(false);
+  // Umgebungswerte und Repo-Dokumente nur in der Betreiber-Instanz (15.10., Abnahme 2 A2).
+  const betreiber = useBetreiber() === true;
 
   const laden = useCallback(async () => {
     setFehler(null);
@@ -65,7 +68,7 @@ export function NachweiseKarten({ i = 0 }: { i?: number }) {
         <Ueberschrift erklaerung="datenschutz.nachweise.kette" rechts={<Knopf leise onClick={() => void kettePruefen()} aus={pruefe}>{pruefe ? 'Prüft …' : 'Jetzt prüfen'}</Knopf>}>Protokolle — Hash-Kette</Ueberschrift>
         {!k ? <Hinweis art="info" titel="Noch nicht geprüft">Die nächtliche Durchsicht prüft Änderungs-, Lese- und Anmeldeprotokoll ab 4 Uhr.</Hinweis>
           : k.ok ? <Hinweis art={k.warnungen ? 'achtung' : 'gut'} titel="Protokoll unverändert ✓">{`${k.dateien} Dateien · ${k.eintraege} Einträge · geprüft ${zeit(k.zeit)}${k.getilgt ? ` · ${k.getilgt} nach Art. 17 getilgt` : ''}${k.warnungen ? ` · ${k.warnungen} noch ohne vollständiges Siegel` : ''}`}</Hinweis>
-          : <Hinweis art="kritisch" rolle="alert" titel={`${k.fehler} Datei${k.fehler === 1 ? '' : 'en'} mit Bruch`}>Ein Protokoll wurde verändert, gekürzt, vertauscht oder zurückgespielt. Mit den Sicherungen vom Vortag vergleichen und als mögliche Datenpanne prüfen (datenschutz/DATENPANNEN.md).</Hinweis>}
+          : <Hinweis art="kritisch" rolle="alert" titel={`${k.fehler} Datei${k.fehler === 1 ? '' : 'en'} mit Bruch`}>Ein Protokoll wurde verändert, gekürzt, vertauscht oder zurückgespielt. Mit den Sicherungen vom Vortag vergleichen und als mögliche Datenpanne prüfen ({betreiber ? 'datenschutz/DATENPANNEN.md' : 'Pannen-Register unter Einstellungen › Datenschutz'}).</Hinweis>}
         {k && k.befunde.length > 0 && (
           <Liste>
             {k.befunde.map(b => <Zeile key={b.name} titel={b.name} unter={b.hinweis ?? b.stand} umbrechen rechts={<Chip farbe={b.stand === 'fehler' ? STAND_FARBE.offen : C.inkLeise}>{b.stand}</Chip>} />)}
@@ -95,8 +98,8 @@ export function NachweiseKarten({ i = 0 }: { i?: number }) {
       <Karte i={i + 2}>
         <Ueberschrift erklaerung="datenschutz.nachweise.verschluesselung">Verschlüsselung im Ruhezustand</Ueberschrift>
         <Liste>
-          <Zeile titel="Bestände" unter={v.verschluesselt ? `AES-256-GCM je Datei · Schlüssel aus ${v.schluesselQuelle === 'datei' ? 'Datei (0400)' : v.schluesselQuelle === 'umgebung' ? 'der Umgebung (.env)' : '—'}` : 'kein Datenschlüssel — Klartext'} rechts={<Chip farbe={v.verschluesselt ? STAND_FARBE.ok : STAND_FARBE.offen}>{v.verschluesselt ? 'an' : 'aus'}</Chip>} />
-          <Zeile titel="Schreibformat" unter={v.modus === 'v2' ? 'v2 — Schlüssel-ID + AAD' : `Kompatibilitätsmodus (v1)${v.unbekannt ? ' — MAKE_OS_FORMAT unbekannt' : ''}`} rechts={<Chip farbe={v.modus === 'v2' ? STAND_FARBE.ok : C.inkLeise}>{v.modus}</Chip>} />
+          <Zeile titel="Bestände" unter={v.verschluesselt ? `AES-256-GCM je Datei · Schlüssel aus ${v.schluesselQuelle === 'datei' ? 'Datei (0400)' : v.schluesselQuelle === 'umgebung' ? (betreiber ? 'der Umgebung (.env)' : 'der Server-Umgebung') : '—'}` : 'kein Datenschlüssel — Klartext'} rechts={<Chip farbe={v.verschluesselt ? STAND_FARBE.ok : STAND_FARBE.offen}>{v.verschluesselt ? 'an' : 'aus'}</Chip>} />
+          <Zeile titel="Schreibformat" unter={v.modus === 'v2' ? 'v2 — Schlüssel-ID + AAD' : `Kompatibilitätsmodus (v1)${v.unbekannt ? (betreiber ? ' — MAKE_OS_FORMAT unbekannt' : ' — Einstellung am Server unbekannt') : ''}`} rechts={<Chip farbe={v.modus === 'v2' ? STAND_FARBE.ok : C.inkLeise}>{v.modus}</Chip>} />
           {d.brainIndex && <Zeile umbrechen titel="Brain-Index (Suche)" unter={`${ORT[d.brainIndex.ort]} · ${d.brainIndex.groesseMb.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MB${d.brainIndex.grenzeMb ? ` von ${d.brainIndex.grenzeMb} MB` : ''} · ${d.brainIndex.notizen} Notizen`} rechts={<Chip farbe={d.brainIndex.klartextAufPlatte || d.brainIndex.altDateiDa ? STAND_FARBE.offen : STAND_FARBE.ok}>{d.brainIndex.klartextAufPlatte || d.brainIndex.altDateiDa ? 'Klartext' : 'nie auf Platte'}</Chip>} />}
           <Zeile titel="Bilder (Gerichte, Bauplan)" unter={`${d.bilder.verschluesselt} verschlüsselt${d.bilder.klartext ? ` · ${d.bilder.klartext} alt im Klartext` : ''}`} rechts={<Chip farbe={d.bilder.klartext ? STAND_FARBE.offen : STAND_FARBE.ok}>{d.bilder.klartext ? 'offen' : 'ok'}</Chip>} />
         </Liste>

@@ -391,7 +391,7 @@ export function RechtTeil({ k, api, heute, setze }: { k: Kontakt; api: CrmApi; h
       </div>
       <div><Ueberschrift>Grundlage</Ueberschrift>
         <Feldzeile label="Rechtsgrundlage (Art. 6)"><Wahl label="Rechtsgrundlage" liste={RECHTSGRUNDLAGEN_WAHL} wert={k.rechtsgrundlage} onWahl={(r: Rechtsgrundlage) => void setze({ rechtsgrundlage: r })} /></Feldzeile>
-        {k.rechtsgrundlageNotiz && <Feldzeile label="Interessenabwägung"><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.rechtsgrundlageNotiz} — dokumentiert (DATENSCHUTZ_NETZWERKEN.md): Kontaktpflege nach persönlicher Übergabe, keine Werbung ohne Einwilligung, Widerspruch jederzeit.</span></Feldzeile>}
+        {k.rechtsgrundlageNotiz && <Feldzeile label="Interessenabwägung"><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{k.rechtsgrundlageNotiz} — dokumentiert: Kontaktpflege nach persönlicher Übergabe, keine Werbung ohne Einwilligung, Widerspruch jederzeit.</span></Feldzeile>}
         {!!kennengelernt.length && <Feldzeile label="Kennengelernt für"><div style={{ display: 'grid', gap: 2 }}>{kennengelernt.map(t => <span key={t} style={{ fontSize: TYP.bedien, color: C.inkDim }}>{t.replace(/^kennengelernt für /, '')}</span>)}<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Bei einer Übergabe an den Kunden steht sie mit Empfänger im Protokoll des Events (Auskunft Art. 15, Mitteilung bei Löschung Art. 19).</span></div></Feldzeile>}
         {(k.rechtsgrundlageNotiz || k.datenschutzInformiertAm) && <Feldzeile label="Datenschutzhinweis (Art. 13)">
           {k.datenschutzInformiertAm

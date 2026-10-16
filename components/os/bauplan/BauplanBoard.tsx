@@ -12,9 +12,10 @@
 
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ThumbsUp, MessageSquare, Image as BildIcon } from 'lucide-react';
+import { ThumbsUp, MessageSquare, Image as BildIcon, Lightbulb } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Knopf, Segmente, Zahl, Hinweis, feld, LEUCHT, ZeileAktionen, useRueckgaengig, type ZeilenMehr } from '../ui';
+import { Seite, Karte, Knopf, Segmente, Zahl, Hinweis, Leerzustand, feld, LEUCHT, ZeileAktionen, useRueckgaengig, type ZeilenMehr } from '../ui';
+import { useBetreiber } from '../useInhaber';
 import { WEG } from '@/lib/wege';
 import { Pillen } from '../crm/teile';
 import { useLinkAuswahl } from '../Verlauf';
@@ -35,6 +36,8 @@ type Ansicht = 'board' | 'plan' | 'phasen';
 export function BauplanBoard() {
   const { items, etappen, fehler, setFehler, laden, tu } = useBauplan();
   const { ich, namen } = useIch();
+  // Hersteller-Texte („Claude baut“, die Bau-Phasen des Herstellers) nur in der Betreiber-Instanz (15.10., Abnahme 2 A2).
+  const betreiber = useBetreiber() === true;
   const router = useRouter();
   const pfad = usePathname() ?? '/os/bauplan';
   const params = useSearchParams();
@@ -127,9 +130,9 @@ export function BauplanBoard() {
 
   return (
     <Seite titel="Bauplan" breit={1680}
-      unter="Hier verbessern wir MAKE OS: Ideen → Bereit → Claude baut → ihr testet und nehmt ab."
+      unter={betreiber ? 'Hier verbessern wir MAKE OS: Ideen → Bereit → Claude baut → ihr testet und nehmt ab.' : 'Hier sammelt ihr, was an MAKE OS besser werden soll: Ideen → Bereit → In Arbeit → ihr testet und nehmt ab.'}
       rechts={<div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Segmente liste={[{ id: 'board' as Ansicht, label: 'Board' }, { id: 'plan' as Ansicht, label: 'Planung' }, { id: 'phasen' as Ansicht, label: 'Phasen' }]} aktiv={ansicht} onWahl={wechsle} />
+        <Segmente liste={[{ id: 'board' as Ansicht, label: 'Board' }, { id: 'plan' as Ansicht, label: 'Planung' }, ...(betreiber ? [{ id: 'phasen' as Ansicht, label: 'Phasen' }] : [])]} aktiv={ansicht} onWahl={wechsle} />
         <Knopf haupt onClick={() => setNeu(true)}>+ Karte</Knopf>
       </div>}>
 
@@ -141,7 +144,7 @@ export function BauplanBoard() {
       <Karte i={0} akzent={LEUCHT.puls}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>
           <Zahl wert={zahl(spalten.idee.length)} label="Ideen" />
-          <Zahl wert={zahl(schlange.length)} label="baut Claude als Nächstes" farbe={LEUCHT.puls} />
+          <Zahl wert={zahl(schlange.length)} label={betreiber ? 'baut Claude als Nächstes' : 'als Nächstes dran'} farbe={LEUCHT.puls} />
           <Zahl wert={zahl(spalten.test.length)} label="warten auf eure Abnahme" farbe={LEUCHT.achtung} />
           <Zahl wert={zahl(brauchtInhaber.length)} label="warten auf den Inhaber" farbe={brauchtInhaber.length ? LEUCHT.kritisch : undefined} />
           <Zahl wert={zahl(spalten.fertig.length)} label="fertig" farbe={LEUCHT.gut} />
@@ -154,7 +157,13 @@ export function BauplanBoard() {
         )}
       </Karte>
 
-      {ansicht === 'phasen' ? <Phasen /> : ansicht === 'plan' ? (
+      {/* Leeres Board (neue Instanz, 15.10., Abnahme 2 A2): ein Satz und der Weg dahin. */}
+      {items && !items.length && ansicht === 'board' && (
+        <Leerzustand symbol={<Lightbulb size={22} />} titel="Noch keine Karten" aktion={<Knopf onClick={() => setNeu(true)}>Erste Karte anlegen</Knopf>}>
+          Was an MAKE OS fehlt oder hakt, kommt hierher — über „+ Karte“ oder unten links „Problem oder Idee melden“.
+        </Leerzustand>
+      )}
+      {ansicht === 'phasen' && betreiber ? <Phasen /> : ansicht === 'plan' ? (
         items ? <Planung items={alle} etappen={etappen} tu={tu} onOeffnen={setOffen} /> : null
       ) : (
         <>

@@ -251,6 +251,28 @@ export const ALTE_EMPFAENGER_FASSUNGEN: Record<string, Partial<Record<Empfaenger
 /** Neue Startwerte, die eine gespeicherte Liste beim Lesen bekommt (nach `id`, archiviert wie in der Vorgabe). */
 export const EMPFAENGER_NACHTRAG_IDS: readonly string[] = ['google-vertex', 'mistral'];
 
+// ── Startwerte je Instanz (15.10., Abnahme 2 C22 — Kevin: „Betreiber-Inhalte nur in der eigenen Instanz“) ──────────────────────────
+// Die Vorgabe oben ist die Infrastruktur des Betreibers (Hosting beim Rechenzentrum, Code und Brain-Vault auf GitHub, Wächter der
+// Sicherung). Eine andere Instanz startet neutral: Hosting als Platzhalter „Betreiber der Instanz“ (dieselbe Kennung `hetzner`, damit die
+// Verweise des Verzeichnisses tragen), ohne GitHub und Healthchecks (dort nicht in Gebrauch), Notizen ohne Repo-Dokumente. Gespeicherte
+// Listen bleiben, wie sie sind — das gilt nur, solange die Instanz keine eigene Liste gespeichert hat.
+/** Startwerte, die nur die Betreiber-Instanz hat (Code, Vault, Wächter der Sicherung). */
+export const NUR_BETREIBER_EMPFAENGER: readonly string[] = ['github', 'healthchecks'];
+export const HOSTING_NEUTRAL: Pick<Empfaenger, 'name' | 'zweck' | 'daten' | 'notiz'> = {
+  name: 'Betreiber der Instanz (Hosting)',
+  zweck: 'Betrieb des Servers, nächtliche Sicherungen, Speicher für Fotos und Videos (sobald eingerichtet)',
+  daten: 'alle Bestände der Instanz (auf der Platte verschlüsselt), Sicherungen (verschlüsselt), Server-Protokolle (IP-Adressen)',
+  notiz: 'Name, Sitz und Vertrag zur Auftragsverarbeitung des Betreibers eintragen; das Rechenzentrum nennt der Vertrag als Unterauftragsverarbeiter.',
+};
+/** Ein Startwert für eine Instanz ohne Betreiber-Wissen (Repo-Dokumente in Klammern fallen weg). Rein. */
+const ohneRepo = (t: string | undefined): string | undefined => (t ? t.replace(/\s*\([^()]*\b[A-Z][A-Z0-9_]+\.md\b[^()]*\)/g, '') : t);
+/** Die Startwerte dieser Instanz. Rein. */
+export function empfaengerStartFuer(betreiber: boolean): Empfaenger[] {
+  if (betreiber) return EMPFAENGER_START.map(x => ({ ...x }));
+  return EMPFAENGER_START.filter(x => !NUR_BETREIBER_EMPFAENGER.includes(x.id))
+    .map(x => (x.id === 'hetzner' ? { ...x, ...HOSTING_NEUTRAL } : { ...x, ...(x.notiz ? { notiz: ohneRepo(x.notiz) } : {}) }));
+}
+
 /** Unveränderte alte Fassungen heben (rein; gibt dieselbe Liste zurück, wenn nichts zu tun ist). */
 export function empfaengerHeben(liste: readonly Empfaenger[]): Empfaenger[] {
   let gehoben = false;
@@ -266,15 +288,19 @@ export function empfaengerHeben(liste: readonly Empfaenger[]): Empfaenger[] {
   return gehoben ? neu : (liste as Empfaenger[]);
 }
 /** Fehlende neue Startwerte ergänzen (rein, nach `id`) — nie in eine bewusst leere Liste. Wer einen nachgetragenen Eintrag löscht, bekommt ihn beim nächsten Lesen wieder (archiviert), wie beim Verzeichnis. */
-export function empfaengerNachtragen(liste: readonly Empfaenger[]): Empfaenger[] {
+export function empfaengerNachtragen(liste: readonly Empfaenger[], betreiber = true): Empfaenger[] {
   if (!liste.length) return liste as Empfaenger[]; // eine bewusst leere Liste bleibt leer
   const da = new Set(liste.map(x => x.id));
-  const dazu = EMPFAENGER_START.filter(x => EMPFAENGER_NACHTRAG_IDS.includes(x.id) && !da.has(x.id)).map(x => ({ ...x }));
+  const dazu = empfaengerStartFuer(betreiber).filter(x => EMPFAENGER_NACHTRAG_IDS.includes(x.id) && !da.has(x.id));
   return dazu.length ? [...liste, ...dazu] : (liste as Empfaenger[]);
 }
 
-/** Die wirksame Liste: gespeichert (alte Fassungen gehoben, neue Startwerte ergänzt) oder die Vorgabe. */
-export const empfaengerWirksam = (e: DatenschutzEinrichtung | null | undefined): Empfaenger[] => (Array.isArray(e?.empfaenger) ? empfaengerNachtragen(empfaengerHeben(e!.empfaenger!)) : EMPFAENGER_START.map(x => ({ ...x })));
+/**
+ * Die wirksame Liste: gespeichert (alte Fassungen gehoben, neue Startwerte ergänzt) oder die Vorgabe dieser Instanz (`empfaengerStartFuer`).
+ * `betreiber` liest der Server über `istBetreiberInstanz` (lib/betrieb/betreiber-server.ts) — fehlt er, gilt die Vorgabe wie bisher.
+ */
+export const empfaengerWirksam = (e: DatenschutzEinrichtung | null | undefined, betreiber = true): Empfaenger[] =>
+  (Array.isArray(e?.empfaenger) ? empfaengerNachtragen(empfaengerHeben(e!.empfaenger!), betreiber) : empfaengerStartFuer(betreiber));
 
 const ID = /^[a-z0-9][a-z0-9-]{1,40}$/;
 const TAG = /^\d{4}-\d{2}-\d{2}$/;

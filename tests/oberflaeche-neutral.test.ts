@@ -58,6 +58,66 @@ const WEITERE = ['lib/make-one/seiten.ts', 'lib/make-one/einstellungen.ts', 'lib
   // 14.10. (Abnahme-Reste 2): Zeilennamen des Rechenkerns (Zahlungskalender) und die Kalender-Dateien mit Namen (Altweg, Zuordnung, Schnelleingabe).
   'lib/finanzen/rechenkern.ts', 'lib/kalender/apple-altweg.ts', 'lib/kalender/belegt.ts', 'lib/kalender/schnell.ts', 'app/api/apple-calendar/route.ts'];
 
+// ── 15.10. (Abnahme 2 A2/C22, Kevin: „Betreiber-Inhalte nur in der eigenen Instanz“) ───────────────────────────────────────────────
+// Betreiber-Wissen = `BETREIBER_WISSEN` (Repo-Dokumente, .env, /srv/, Befehle, Skripte, Umgebungswerte MAKE_OS_*/WHATSAPP_*/GOOGLE_*/WHOOP_* …,
+// GitHub, Code-Wache, die Stände „entwicklung“/„main“) plus die Hersteller-Sätze des Bauplans. Geprüft werden components/, app/os und die
+// Texte aus lib/, die an die Oberfläche gehen (`WEITERE` + `WEITERE_BETREIBER`). Erlaubt nur, was nachweislich hinter der Betreiber-Regel
+// hängt: `HINTER_BETREIBER` nennt je Stelle das Tor — der Wächter prüft, dass die Datei (bzw. `torIn`) es wirklich enthält; `text: '*'`
+// gilt für alle Texte einer Datei, deren Ausgabe als Ganzes hinter dem Tor liegt (dazu je ein Test unten, der das Tor ausprobiert).
+const BETREIBER_TEXT = new RegExp(`${BETREIBER_WISSEN.source}|Claude baut|baut Claude`);
+/** Weitere Dateien, deren Texte die Oberfläche erreichen (Head of IT, Selbstprüfung, Verzeichnis, Verbindungen, Fehlermeldungen). */
+const WEITERE_BETREIBER = ['lib/hoi/lage.ts', 'lib/medien/hoi.ts', 'lib/crm/datenschutz.ts', 'lib/onboarding-status.ts', 'lib/google/verbindung.ts',
+  'lib/medien/speicher-ordner.ts', 'lib/medien/upload-server.ts', 'lib/medien/export.ts', 'lib/whatsapp/konfig.ts', 'lib/zoe-whatsapp/konfig.ts',
+  'lib/whoop/konfig.ts', 'lib/make-one/agents-data.ts', 'lib/store/protokoll-kette.ts', 'app/api/konto/einrichten/route.ts'];
+interface HinterBetreiber { datei: string; text: string; tor: string; torIn?: string; grund: string }
+const HINTER_BETREIBER: HinterBetreiber[] = [
+  // Ganze Dateien, deren Ausgabe ein Tor filtert (Test je Tor unten).
+  { datei: 'lib/hoi/lage.ts', text: '*', tor: 'befundeFuerInstanz', torIn: 'lib/hoi/innen.ts', grund: 'Befunde gehen nur über lage() raus — außerhalb der Betreiber-Instanz `befundeFuerInstanz` (Test „Head of IT“)' },
+  { datei: 'lib/medien/hoi.ts', text: '*', tor: 'medienBefunde', torIn: 'lib/hoi/lage.ts', grund: 'Medien-Befunde des Head of IT — fließen in befundeAus und damit durch `befundeFuerInstanz`' },
+  { datei: 'lib/whatsapp/konfig.ts', text: '*', tor: 'istBetreiberInstanz()) ? whatsappFehlend()', torIn: 'lib/whatsapp/server.ts', grund: 'Namen der Umgebungswerte — der Status nennt sie nur der Betreiber-Instanz' },
+  { datei: 'lib/zoe-whatsapp/konfig.ts', text: '*', tor: 'istBetreiberInstanz()) ? zoeWhatsappFehlend()', torIn: 'lib/zoe-whatsapp/verwalten.ts', grund: 'Namen der Umgebungswerte (und Log beim Start) — der Status nennt sie nur der Betreiber-Instanz' },
+  { datei: 'lib/whoop/konfig.ts', text: '*', tor: '(await istBetreiberInstanz()) ? fehlt : []', torIn: 'lib/whoop/verbindung.ts', grund: 'Namen der Umgebungswerte — der Status nennt sie nur der Betreiber-Instanz' },
+  // Einzelne Stellen.
+  { datei: 'lib/datenschutz/nachweise.ts', text: 'MAKE_OS_', tor: 'v2FuerInstanz', torIn: 'app/api/datenschutz/nachweise/route.ts', grund: 'Bereitschaft v2 — außerhalb der Betreiber-Instanz `v2FuerInstanz`' },
+  { datei: 'lib/datenschutz/nachweise.ts', text: 'scripts/daten-verschluesselung.mjs', tor: 'v2FuerInstanz', torIn: 'app/api/datenschutz/nachweise/route.ts', grund: 'Bereitschaft v2' },
+  { datei: 'lib/datenschutz/nachweise.ts', text: 'Git-Repo', tor: 'v2FuerInstanz', torIn: 'app/api/datenschutz/nachweise/route.ts', grund: 'Bereitschaft v2' },
+  { datei: 'lib/datenschutz/einrichtung.ts', text: 'GitHub', tor: 'NUR_BETREIBER_EMPFAENGER', grund: 'Startwert nur der Betreiber-Instanz (`empfaengerStartFuer`)' },
+  { datei: 'lib/datenschutz/einrichtung.ts', text: 'privates Repository des Brain-Vaults', tor: 'NUR_BETREIBER_EMPFAENGER', grund: 'Startwert nur der Betreiber-Instanz' },
+  { datei: 'lib/datenschutz/einrichtung.ts', text: '(MODELLE.md 4.7)', tor: 'ohneRepo', grund: 'Notiz — außerhalb der Betreiber-Instanz ohne die Klammer (`empfaengerStartFuer`)' },
+  { datei: 'lib/crm/datenschutz.ts', text: 'deploy/sicherung.sh', tor: "umfeld.betreiber === false", grund: 'Selbstprüfung „Sicherung“ — außerhalb der Betreiber-Instanz die neutrale Fassung' },
+  { datei: 'lib/crm/datenschutz.ts', text: 'openssl', tor: "umfeld.betreiber === false", grund: 'Selbstprüfung „Sicherung“' },
+  { datei: 'lib/crm/datenschutz.ts', text: 'DEPLOY.md', tor: 'hoiNeutral', grund: 'Weg der Selbstprüfung — außerhalb der Betreiber-Instanz „Head of IT › Sicherung“' },
+  { datei: 'lib/crm/datenschutz.ts', text: 'GitHub', tor: 'verarbeitungNeutral', grund: 'Startwerte des Verzeichnisses — außerhalb der Betreiber-Instanz neutral angelegt' },
+  { datei: 'lib/crm/datenschutz.ts', text: '.md', tor: 'verarbeitungNeutral', grund: 'Startwerte des Verzeichnisses (Repo-Dokumente in Klammern) — außerhalb der Betreiber-Instanz neutral' },
+  { datei: 'lib/onboarding-status.ts', text: 'ICLOUD-Zeilen aus der .env', tor: 'u.betreiber ?', grund: 'Prüfung „iCloud“ — außerhalb der Betreiber-Instanz der neutrale Satz' },
+  { datei: 'lib/make-one/agents-data.ts', text: 'gitleaks', tor: 'BETREIBER_WISSEN.test(f)', torIn: 'components/os/AgentenView.tsx', grund: 'Funktion mit Betreiber-Wissen — die Agenten-Seite filtert sie außerhalb der Betreiber-Instanz' },
+  { datei: 'lib/make-one/agents-data.ts', text: 'deploy/lage-sammeln.sh', tor: '{betreiber && (', torIn: 'components/os/AgentenView.tsx', grund: 'Bau-Notiz („So würde ich ihn bauen“) — nur in der Betreiber-Instanz' },
+  { datei: 'components/os/HoiView.tsx', text: '*', tor: 'lage.betreiber ?', grund: 'Quellen des Lagebilds (Skript, Aktion, Schlüssel, CI) — die Route entscheidet (`istBetreiberInstanz` bzw. HOI-Schlüssel)' },
+  { datei: 'components/os/ZusammenarbeitView.tsx', text: 'entwicklung', tor: 'useBetreiber() === true', grund: 'Stände des Codes nur in der Betreiber-Instanz' },
+  { datei: 'components/os/ZuliefererKarte.tsx', text: 'scripts/mac-zulieferer-entfernen.sh', tor: 'if (!darf || !betreiber) return null', grund: 'die ganze Karte nur in der Betreiber-Instanz (Mac-Zulieferer = Altbestand)' },
+  { datei: 'components/os/bauplan/BauplanBoard.tsx', text: 'Claude baut', tor: 'useBetreiber() === true', grund: 'Hersteller-Satz nur in der Betreiber-Instanz' },
+  { datei: 'components/os/datenschutz/Betroffenenrechte.tsx', text: '*', tor: 'useBetreiber() === true', grund: 'Löschskript am Server nur in der Betreiber-Instanz' },
+  { datei: 'components/os/datenschutz/Dokumente.tsx', text: '*', tor: 'useBetreiber() === true', grund: 'Repo-Dokumente nur in der Betreiber-Instanz — sonst die Liste ohne Dateinamen' },
+  { datei: 'components/os/datenschutz/Nachweise.tsx', text: '*', tor: 'useBetreiber() === true', grund: 'Umgebungswerte und Repo-Dokumente nur in der Betreiber-Instanz' },
+  { datei: 'components/os/datenschutz/Pannen.tsx', text: 'datenschutz/DATENPANNEN.md', tor: 'useBetreiber() === true', grund: 'Repo-Dokument nur in der Betreiber-Instanz' },
+  { datei: 'components/os/datenschutz/Verantwortlicher.tsx', text: 'MAKE_OS_VERANTWORTLICHER_', tor: 'useBetreiber() === true', grund: 'Umgebungswert nur in der Betreiber-Instanz' },
+  { datei: 'components/os/inbox/GmailVerbinden.tsx', text: 'GOOGLE_GMAIL_EINRICHTEN.md', tor: 'useBetreiber() === true', grund: 'Anleitung nur in der Betreiber-Instanz' },
+  { datei: 'components/os/kalender/google-verbinden.ts', text: 'GOOGLE_CLIENT_ID', tor: 'betreiber === true ? GOOGLE_NICHT_EINGERICHTET', grund: 'Umgebungswerte nur in der Betreiber-Instanz (`googleNichtEingerichtet`; die Karte zeigt sie nur mit `betreiber`)' },
+  { datei: 'components/os/whatsapp/WhatsappKarte.tsx', text: '*', tor: 'useBetreiber', grund: 'Skript und Umgebungswerte nur in der Betreiber-Instanz (Anleitung, Freigabe, Schlüssel erneuern)' },
+  { datei: 'components/os/zoe-whatsapp/ZoeWhatsappKarte.tsx', text: 'deploy/zoe-whatsapp-verbinden.sh', tor: 'useBetreiber() === true', grund: 'Skript nur in der Betreiber-Instanz' },
+];
+/** Treffer, die kein Betreiber-Wissen sind (Adresse ohne Anzeige, Dateiformat, die Regel selbst) — nur mit Grund. */
+const KEIN_BETREIBER_TEXT: { datei: string; text: string; grund: string }[] = [
+  { datei: 'lib/oauth.ts', text: 'http://localhost:3001', grund: 'Rückfall der Rückruf-Adresse nur ohne MAKE_OS_ADRESSE (lokale Entwicklung) — kein angezeigter Satz' },
+  { datei: 'lib/google/verbindung.ts', text: 'http://localhost:3001', grund: 'Rückfall der Rückruf-Adresse (lokale Entwicklung) — kein angezeigter Satz' },
+  { datei: 'components/os/agenten/Dialoge.tsx', text: 'SKILL.md', grund: 'Dateiformat der Skills, das die Person selbst importiert — kein Repo-Dokument' },
+  { datei: 'lib/betrieb/betreiber.ts', text: '*', grund: 'die Regel selbst (Bausteine des regulären Ausdrucks)' },
+];
+/** Offen in einem anderen Arbeitsbereich (15.10.: Fulfillment gehört einem parallelen Paket) — dort neutral formulieren, dann hier streichen. */
+const OFFEN_ANDERER_BEREICH: { datei: string; text: string; grund: string }[] = [
+  { datei: 'components/os/fulfillment/kunde/FallKunde.tsx', text: 'MAKE_OS_KUNDENLINK', grund: 'Fulfillment-Bereich (anderes Paket): Hinweis nennt den Umgebungswert — „richtet der Betreiber ein“ formulieren' },
+];
+
 function dateien(ordner: string): string[] {
   const aus: string[] = [];
   for (const e of readdirSync(path.join(wurzel, ordner))) {
@@ -142,6 +202,138 @@ describe('Oberfläche: keine festen Namen, Firmen, Marken und Betreiber-Texte', 
   });
 });
 
+// ── Betreiber-Wissen (15.10., Abnahme 2 A2/C22) ────────────────────────────────────────────────────────────────────────────────────
+const quelle = (d: string) => readFileSync(path.join(wurzel, d), 'utf8');
+/** Ein leerer CRM-Bestand (wie `leererBestand` in lib/crm/speicher.ts — ohne die Datenschicht zu laden). */
+const LEER_CRM = { firmen: [], chancen: [], mandate: [], leistungen: [], events: [], teilnahmen: [], sitzungen: [], antraege: [], verarbeitungen: [], segmente: [], beitraege: [], newsletter: [], kampagnen: [], followups: [], angebote: [] };
+const hinterBetreiber = (d: string, text: string) => HINTER_BETREIBER.some(e => e.datei === d && (e.text === '*' || text.includes(e.text)));
+const keinBetreiberText = (d: string, text: string) => [...KEIN_BETREIBER_TEXT, ...OFFEN_ANDERER_BEREICH].some(e => e.datei === d && (e.text === '*' || text.includes(e.text)));
+
+describe('Betreiber-Wissen nur in der Betreiber-Instanz (15.10., Abnahme 2 A2/C22)', () => {
+  it('components/, app/os und Texte aus lib: kein Server-Befehl, keine .env, kein Repo-Dokument, kein Umgebungswert, kein GitHub, kein „Claude baut“ — außer hinter dem Tor', () => {
+    const liste = [...new Set([...dateien('components'), ...dateien('app/os'), ...WEITERE, ...WEITERE_BETREIBER])];
+    const funde: string[] = [];
+    for (const d of liste) for (const t of texte(d)) {
+      if (!BETREIBER_TEXT.test(t.text) || hinterBetreiber(d, t.text) || keinBetreiberText(d, t.text)) continue;
+      funde.push(`${d}:${t.zeile} ${t.text.trim().replace(/\s+/g, ' ').slice(0, 140)}`);
+    }
+    expect(funde, `Betreiber-Wissen in einem sichtbaren Text (hinter das Tor legen oder neutral formulieren):\n${funde.join('\n')}`).toEqual([]);
+  });
+
+  it('jedes Tor der Positivliste gibt es wirklich (die Datei bzw. `torIn` enthält es) — und kein Eintrag ist tot', () => {
+    for (const e of HINTER_BETREIBER) {
+      expect(quelle(e.torIn ?? e.datei).includes(e.tor), `${e.datei}: Tor „${e.tor}“ fehlt in ${e.torIn ?? e.datei}`).toBe(true);
+      if (e.text !== '*') expect(texte(e.datei).some(t => BETREIBER_TEXT.test(t.text) && t.text.includes(e.text)), `${e.datei}: ${e.text}`).toBe(true);
+      else expect(texte(e.datei).some(t => BETREIBER_TEXT.test(t.text)), `${e.datei}: „*“ ohne Treffer`).toBe(true);
+    }
+    for (const e of [...KEIN_BETREIBER_TEXT, ...OFFEN_ANDERER_BEREICH].filter(x => x.text !== '*')) {
+      expect(texte(e.datei).some(t => BETREIBER_TEXT.test(t.text) && t.text.includes(e.text)), `${e.datei}: ${e.text}`).toBe(true);
+    }
+  });
+
+  it('Head of IT: außerhalb der Betreiber-Instanz kein Weg am Server — auch nicht im Kurzbericht; in der Betreiber-Instanz unverändert', async () => {
+    const { befundeFuerInstanz, kurzbericht, BETREIBER_HANDELT, BETREIBER_IN_ORDNUNG } = await import('@/lib/hoi/lage');
+    // JEDER Text des Lagebilds mit Betreiber-Wissen, in jeder Ampel und an jeder Stelle (Name, Wert, Satz).
+    const roh = [...texte('lib/hoi/lage.ts'), ...texte('lib/medien/hoi.ts')].map(t => t.text).filter(t => BETREIBER_TEXT.test(t));
+    expect(roh.length).toBeGreaterThan(20);
+    const befunde = roh.flatMap((t, i) => (['gruen', 'gelb', 'rot', 'grau'] as const).flatMap(ampel => [
+      { id: `s${i}${ampel}`, bereich: 'server' as const, label: 'Probe', wert: 'Wert', satz: t, ampel },
+      { id: `w${i}${ampel}`, bereich: 'sicherheit' as const, label: 'Probe', wert: t, satz: 'Satz', ampel },
+    ]));
+    const fremd = befundeFuerInstanz(befunde, false);
+    const text = JSON.stringify(fremd) + kurzbericht(fremd, '2026-10-15T08:00:00.000Z');
+    expect(text.match(BETREIBER_TEXT)?.[0] ?? null).toBeNull();
+    // Rot bleibt (die Inhaberin muss es wissen), grün als „in Ordnung“, gelb/grau ohne Weg in der App fallen weg.
+    expect(fremd.some(b => b.ampel === 'rot' && b.satz === BETREIBER_HANDELT)).toBe(true);
+    expect(fremd.some(b => b.ampel === 'gruen' && b.satz === BETREIBER_IN_ORDNUNG)).toBe(true);
+    // Ein Weg in der App bleibt — ohne den Teil am Server.
+    const icloud = befundeFuerInstanz([{ id: 'icloud', bereich: 'app', label: 'iCloud', ampel: 'rot', wert: 'Anmeldung abgelehnt', satz: 'iCloud lehnt die Anmeldung ab (App-Passwort ungültig) — Kalender › Einstellungen › iCloud: Verbindung erneuern (oder deploy/icloud-verbinden.sh)' }], false);
+    expect(icloud[0].satz).toBe('iCloud lehnt die Anmeldung ab (App-Passwort ungültig) — Kalender › Einstellungen › iCloud: Verbindung erneuern');
+    // Ohne Betreiber-Wissen bleibt alles; in der Betreiber-Instanz bleibt alles.
+    const neutral = { id: 'x', bereich: 'app' as const, label: 'Postfächer', ampel: 'gelb' as const, wert: '1 Postfach', satz: 'Ein Abgleich steht — der Takt versucht es weiter' };
+    expect(befundeFuerInstanz([neutral], false)).toEqual([neutral]);
+    expect(befundeFuerInstanz(befunde, true)).toBe(befunde);
+  });
+
+  it('Datenschutz: Empfänger-Startwerte, neu angelegtes Verzeichnis, Selbstprüfung und Bereitschaft v2 ohne Betreiber-Wissen — bei Kevin der Bestand', async () => {
+    const { empfaengerStartFuer, empfaengerWirksam, EMPFAENGER_START } = await import('@/lib/datenschutz/einrichtung');
+    const fremd = empfaengerStartFuer(false);
+    expect(JSON.stringify(fremd).match(BETREIBER_TEXT)?.[0] ?? null).toBeNull();
+    expect(JSON.stringify(fremd)).not.toMatch(/Hetzner|Healthchecks/);
+    expect(fremd.map(e => e.id)).not.toContain('github');
+    expect(fremd.find(e => e.id === 'hetzner')?.name).toBe('Betreiber der Instanz (Hosting)');
+    expect(empfaengerStartFuer(true)).toEqual(EMPFAENGER_START.map(x => ({ ...x })));
+    // Eine gespeicherte Liste bleibt, wie sie ist (nie löschen) — auch in einer fremden Instanz.
+    const gespeichert = { empfaenger: EMPFAENGER_START.map(x => ({ ...x })) };
+    expect(empfaengerWirksam(gespeichert, false).map(e => e.id)).toEqual(EMPFAENGER_START.map(e => e.id));
+
+    const { verzeichnisVervollstaendigen, selbstpruefung } = await import('@/lib/crm/datenschutz');
+    const alles = { google: true, icloud: true, whatsapp: true, whoop: true, zoeWhatsapp: true };
+    const vv = verzeichnisVervollstaendigen([], '2026-10-15T08:00:00.000Z', { ...alles, betreiber: false }).liste;
+    expect(vv.length).toBeGreaterThan(20);
+    expect(JSON.stringify(vv).match(BETREIBER_TEXT)?.[0] ?? null).toBeNull();
+    expect(JSON.stringify(vv)).not.toMatch(/Hetzner|"github"/);
+    // Bei Kevin (Betreiber) der Bestand wie bisher; gespeicherte Einträge fasst die neutrale Fassung nie an.
+    const kevin = verzeichnisVervollstaendigen([], '2026-10-15T08:00:00.000Z', { ...alles, betreiber: true }).liste;
+    expect(JSON.stringify(kevin)).toMatch(/GitHub/);
+    expect(verzeichnisVervollstaendigen(kevin, '2026-10-15T08:00:00.000Z', { ...alles, betreiber: false }).liste).toEqual(kevin);
+
+    const umfeld = (betreiber: boolean, sicherung: { verfahren: 'age' | 'openssl' | null } | null) => ({
+      verantwortlicher: { gesetzt: true, quelle: 'einrichtung' as const, luecken: [] }, empfaenger: empfaengerStartFuer(betreiber), zweiterFaktor: { konten: 1, mit: 1 },
+      sicherung, agenten: { aktiv: 1, gesamt: 2 }, betreiber,
+    });
+    for (const s of [null, { verfahren: 'openssl' as const }, { verfahren: null }]) {
+      const p = selbstpruefung([], LEER_CRM as never, '2026-10-15', { konten: 1, mitPasswort: 1 }, 24, umfeld(false, s));
+      expect(JSON.stringify(p).match(BETREIBER_TEXT)?.[0] ?? null, JSON.stringify(s)).toBeNull();
+      expect(p.find(x => x.id === 'sicherung')?.status).toBe('teilweise');
+    }
+    expect(JSON.stringify(selbstpruefung([], LEER_CRM as never, '2026-10-15', { konten: 1, mitPasswort: 1 }, 24, umfeld(true, null)))).toMatch(/deploy\/sicherung\.sh/);
+
+    const { v2Bereitschaft, v2FuerInstanz } = await import('@/lib/datenschutz/nachweise');
+    const v2 = v2Bereitschaft({ modus: 'kompatibel', unbekannt: true, verschluesselt: true, schluesselQuelle: 'umgebung', pepper: false, brainIndexKlartext: true, bilderKlartext: 1, alteHuellen: 2, klartextBestaende: 3 });
+    const v2f = v2FuerInstanz(v2, false);
+    expect(JSON.stringify(v2f).match(BETREIBER_TEXT)?.[0] ?? null).toBeNull();
+    expect(v2f.punkte.map(p => p.stand)).toEqual(v2.punkte.map(p => p.stand));
+    expect(v2FuerInstanz(v2, true)).toBe(v2);
+  });
+
+  it('Einrichtung: was eine fremde Instanz sieht (Schritte, Etappen samt Hinweisen, Zonen) ohne Betreiber-Wissen', async () => {
+    const D = await import('@/lib/make-one/onboarding-data');
+    const funde: string[] = [];
+    for (const neustart of [false, true]) for (const altbestand of [false, true]) {
+      const k = { inhaber: true, haupt: true, eingeladen: false, personen: 2, privatFinanzen: true, betreiber: false, neustart, altbestand };
+      for (const s of D.SCHRITTE) {
+        if (s.betreiber) continue;
+        const t = D.texteFuer(D.fassungFuer(s, k), k);
+        for (const x of [t.titel, t.warum, ...t.wie, t.danach ?? '', t.befehl ?? '', t.beispiel ?? '']) if (BETREIBER_TEXT.test(x)) funde.push(`${s.id} (neustart ${neustart}, altbestand ${altbestand}): ${x.slice(0, 120)}`);
+      }
+      for (const e of D.etappenFuer(altbestand, neustart, false)) {
+        expect(e.hinweise ?? [], `Etappe ${e.nr}`).toEqual([]);
+        if (BETREIBER_TEXT.test(`${e.titel} ${e.satz}`)) funde.push(`Etappe ${e.nr}: ${e.titel}`);
+      }
+    }
+    for (const z of D.zonenFuer(false)) if (BETREIBER_TEXT.test(`${z.titel} ${z.satz} ${z.beispiele.join(' ')}`)) funde.push(`Zone ${z.farbe}`);
+    for (const z of D.zonenFuer(null)) if (BETREIBER_TEXT.test(`${z.titel} ${z.satz} ${z.beispiele.join(' ')}`)) funde.push(`Zone ${z.farbe} (unbekannt)`);
+    expect(funde, funde.join('\n')).toEqual([]);
+    // In der Betreiber-Instanz bleibt alles: die Zonen wie bisher, die Hinweise der Etappen, die alten Texte.
+    expect(D.zonenFuer(true)).toBe(D.ZONEN);
+    expect(D.etappenFuer(true, false, true)).toBe(D.ETAPPEN);
+    const hoi = D.SCHRITTE.find(s => s.id === 'hoi-gruen')!;
+    expect(D.texteFuer(hoi, { altbestand: true, betreiber: true }).wie.join(' ')).toMatch(/GitHub/);
+    expect(D.texteFuer(hoi, { altbestand: true, betreiber: false }).wie.join(' ')).not.toMatch(/GitHub/);
+  });
+
+  it('Bauplan: das Entwickler-Backlog des Herstellers nur in der Betreiber-Instanz — eine neue Instanz startet leer', async () => {
+    const { startKarten, SEED } = await import('@/lib/make-one/backlog-data');
+    expect(startKarten(false, '2026-10-15T08:00:00.000Z')).toEqual([]);
+    expect(startKarten(true, '2026-10-15T08:00:00.000Z').map(k => k.id)).toEqual(SEED.map(k => k.id));
+    // SEED liest niemand an `startKarten` vorbei; beide Schreib-/Lesewege fragen die Betreiber-Regel.
+    const nutzer = [...dateien('lib'), ...dateien('app'), ...dateien('components')].filter(d => d !== 'lib/make-one/backlog-data.ts' && /\bSEED\b/.test(quelle(d)) && /backlog-data/.test(quelle(d)));
+    expect(nutzer).toEqual([]);
+    for (const d of ['lib/bauplan/speicher.ts', 'app/api/state/backlog/route.ts']) expect(quelle(d), d).toMatch(/startKarten\((?:await istBetreiberInstanz\(\)|betreiber)/);
+  });
+});
+
 /** Alle Texte eines Schritts (auch die neutrale Fassung). */
 const schrittTexte = (s: Schritt): string[] => [s.titel, s.warum, ...s.wie, s.danach ?? '', s.befehl ?? '', s.wartetAuf ?? '', s.beispiel ?? '',
   s.allgemein?.titel ?? '', s.allgemein?.warum ?? '', ...(s.allgemein?.wie ?? []), s.allgemein?.danach ?? ''].filter(Boolean);
@@ -159,12 +351,14 @@ describe('Einrichtung (lib/make-one/onboarding-data.ts): Texte', () => {
     expect(funde, funde.join('\n')).toEqual([]);
   });
 
-  it('Repo-Dateien, Server-Pfade, Befehle und Ports nur in Betreiber-Schritten (`betreiber: true`)', () => {
+  it('Repo-Dateien, Server-Pfade, Befehle und Ports nur in Betreiber-Schritten (`betreiber: true`) bzw. in Feldern, die `ohneBetreiber` ersetzt', () => {
     const funde: string[] = [];
-    for (const s of SCHRITTE.filter(x => !x.betreiber)) for (const t of schrittTexte(s)) if (BETREIBER_WISSEN.test(t)) funde.push(`${s.id}: ${t.slice(0, 140)}`);
-    for (const e of [...ETAPPEN, ...NEUSTART_ETAPPEN]) for (const h of (e.hinweise ?? []).filter(x => !x.nurAltbestand)) if (BETREIBER_WISSEN.test(`${h.titel} ${h.satz}`)) funde.push(`Etappe ${e.nr} · ${h.titel}`);
+    // `ohneBetreiber` (15.10., Abnahme 2 A2) liegt außerhalb der Betreiber-Instanz über jeder Fassung — was es ersetzt, sieht nur der Betreiber.
+    const fremd = (s: Schritt): Schritt => (s.ohneBetreiber ? { ...s, ...s.ohneBetreiber, ...(s.allgemein ? { allgemein: { ...s.allgemein, ...s.ohneBetreiber } } : {}) } : s);
+    for (const s of SCHRITTE.filter(x => !x.betreiber)) for (const t of schrittTexte(fremd(s))) if (BETREIBER_WISSEN.test(t)) funde.push(`${s.id}: ${t.slice(0, 140)}`);
+    // Hinweise der Etappen sieht seit 15.10. nur die Betreiber-Instanz (`etappenFuer(…, betreiber)`) — Test oben „Einrichtung: was eine fremde Instanz sieht“.
     for (const a of [...ABLAUF_ALLGEMEIN, ...ABLAUF_NEUSTART]) if (BETREIBER_WISSEN.test(a.ohneBetreiber ?? (a.betreiber ? '' : a.was))) funde.push(`Ablauf ${a.wann}`);
-    for (const n of NEUSTART) { const s = SCHRITTE.find(x => x.id === n.id); if (!s?.betreiber && BETREIBER_WISSEN.test(JSON.stringify(n.texte ?? {}))) funde.push(`Neustart ${n.id}`); }
+    for (const n of NEUSTART) { const s = SCHRITTE.find(x => x.id === n.id); if (!s?.betreiber && BETREIBER_WISSEN.test(JSON.stringify({ ...(n.texte ?? {}), ...(s?.ohneBetreiber ?? {}) }))) funde.push(`Neustart ${n.id}`); }
     expect(funde, funde.join('\n')).toEqual([]);
   });
 

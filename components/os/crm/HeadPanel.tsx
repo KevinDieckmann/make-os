@@ -75,6 +75,9 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
   const vorschlaege = (s?.vorschlaege ?? []).filter(v => v.status === 'offen').sort((a, b) => ['hoch', 'mittel', 'niedrig'].indexOf(a.prioritaet) - ['hoch', 'mittel', 'niedrig'].indexOf(b.prioritaet));
   const name = s?.name ?? (head === 'sales' ? 'Head of Sales' : head === 'marketing' ? 'Head of Marketing' : 'Head of Event');
   const q = s?.qualitaet;
+  // Leerzustand mit dem Weg dahin (15.10., Abnahme 2 C5): der Knopf daneben startet den ersten Lauf.
+  const startName = s?.modi.find(m => m.id === standardModus)?.label ?? 'Lauf';
+  const nochKeinLauf = `Noch kein Lauf — „${startName}“ startet den ersten.`;
 
   if (!auf) return (
     <Karte i={i} akzent={vorschlaege.length ? LEUCHT.agenten : undefined}>
@@ -82,7 +85,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.agenten, boxShadow: `0 0 8px ${LEUCHT.agenten}33` }} />
         <b style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase' }}>{name}</b>
         {bericht && <Chip farbe={STATUS_FARBE[bericht.antwort.status]}>{bericht.antwort.status}</Chip>}
-        <span style={{ flex: 1, minWidth: 120, fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bericht?.antwort.zusammenfassung ?? s?.ruhig?.text ?? 'Noch kein Lauf.'}</span>
+        <span style={{ flex: 1, minWidth: 120, fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bericht?.antwort.zusammenfassung ?? s?.ruhig?.text ?? nochKeinLauf}</span>
         <Knopf leise aus={!!laeuft} onClick={() => lauf(standardModus)}>{laeuft === standardModus ? 'denkt …' : s?.modi.find(m => m.id === standardModus)?.label ?? 'Lauf'}</Knopf>
         <Knopf leise onClick={() => setAuf(true)}>{vorschlaege.length ? `${vorschlaege.length} zur Freigabe ›` : 'öffnen ›'}</Knopf>
       </div>
@@ -99,7 +102,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
       </span>}>{name}{vorschlaege.length ? ` · ${vorschlaege.length} zur Freigabe` : ''}</Ueberschrift>
       {bericht ? <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5, margin: 0 }}>{bericht.antwort.zusammenfassung}</p>
         : s?.ruhig ? <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: 0 }}>{s.ruhig.text}</p>
-        : <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: 0 }}>Noch kein Lauf. Der Head liest Kartei und Bestand, ordnet ein und legt Vorschläge zur Freigabe vor — versendet wird nichts. Ohne KI liefert das Regelwerk.</p>}
+        : <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: 0 }}>{nochKeinLauf} Der Head liest Kartei und Bestand, ordnet ein und legt Vorschläge zur Freigabe vor — versendet wird nichts. Ohne KI liefert das Regelwerk.</p>}
       {bericht && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>
         {datum(bericht.zeit)} · {s?.modi.find(m => m.id === bericht.modus)?.label ?? bericht.modus} · {bericht.quelle === 'regelwerk' ? `Regelwerk (${bericht.ohneKiGrund ?? 'ohne KI'})` : 'KI + Prüfer'}
         {bericht.pruefung.gestrichen.length ? ` · ${bericht.pruefung.gestrichen.length} gestrichen` : ''}{bericht.pruefung.korrigiert ? ' · korrigiert' : ''}{bericht.pruefung.unbelegt.length ? ` · ${bericht.pruefung.unbelegt.length} Zahl(en) unbelegt` : ''}

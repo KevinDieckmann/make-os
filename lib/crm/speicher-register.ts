@@ -321,7 +321,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   mit({ muster: 'medien', bezug: 'dritte', behandlung: 'ausgenommen', frist: 'medien-papierkorb', grund: 'Dateien der Medien (Ordner <daten>/medien bzw. Hetzner Object Storage): nur Chiffrat je Segment unter zufälligen Namen, Schlüssel je Medium im Katalog — kein Bestand, nicht durchsuchbar. Art. 17 wirkt über den Katalog (medien--*): Medium gesperrt + Prüfung; endgültig gelöscht werden Dateien nur zusammen mit dem Eintrag (Papierkorb, Konto löschen). Von der Nachtsicherung ausgenommen (deploy/sicherung.sh).' }, {
     rechtsgrundlage: 'wie medien--* bzw. medien-privat--*',
     art15: 'über den Katalog (Fotos & Videos; Auskunft nennt die Medien, auf denen eine Person markiert ist)',
-    loeschfrist: 'mit dem Eintrag im Katalog (Papierkorb 30 Tage); Zuschnitte sind eigene Medien „abgeleitet von“; Ende der Instanz: scripts/instanz-loeschen.mjs löscht die Objekte im Bucket bzw. den Ordner mit (Trockenlauf zeigt Anzahl und Größe)',
+    loeschfrist: 'mit dem Eintrag im Katalog (Papierkorb 30 Tage); Zuschnitte sind eigene Medien „abgeleitet von“; Ende der Instanz: das Löschen der Instanz nimmt die Objekte im Speicher bzw. den Ordner mit (der Probelauf zeigt Anzahl und Größe)',
   }),
   // ── Paket D-C (29.09.) ──
   T('absichten--*', 'Absichtsprotokoll (lib/store/absichten.ts) — andere Absichten getilgt; die eigene Art.-17-Absicht behält Name/Adressen bis zum letzten Schritt, beim Abschluss werden die Daten geleert (fertige nach 30 Tagen weg).'),
@@ -602,7 +602,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   mit(H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter Einstellungen › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung der Anwendung) bzw. § 26 BDSG für Beschäftigte; lit. f (Sicherheit)',
     art15: 'Konto › Meine Daten: Auskunft (HTML), „Meine Daten herunterladen“ (JSON, alle Bestände laut Register — lib/datenschutz/konto-daten.ts); nie Hash, Salz, zweiter Faktor',
-    loeschfrist: 'bis die Person „Mein Konto löschen“ wählt (Konto › Meine Daten; Inhaber erst ohne andere Konten) bzw. die Instanz endet (scripts/instanz-loeschen.mjs); Grabstein (nur Fingerabdruck der Konto-Kennung) 13 Monate',
+    loeschfrist: 'bis die Person „Mein Konto löschen“ wählt (Konto › Meine Daten; Inhaber erst ohne andere Konten) bzw. die Instanz endet (Löschen der Instanz); Grabstein (nur Fingerabdruck der Konto-Kennung) 13 Monate',
   }),
   H('team--*', 'Team des Haushalts (Rollen/Namen der Mitglieder; `deaktiviertAm` = Beginn der 30-Tage-Frist für die Kapazitätsdaten, setzt nur der Server).'),
   mit(H('kapazitaet--*', 'Kapazität je Haushalt (04.10.): Grundwert und Ausnahmen (Urlaub, feste Blöcke) je Team-Person, Zuweisungen Person × Mandat/Kunde (nur CRM-Kennungen, keine Namen Dritter) — eigene Planung des Haushalts. Gespeichert wird KEIN Gesundheitswert (die Erholung wird beim Rechnen aus vitals--* gelesen, nur mit Einwilligung + Teilen, nur als Team-Faktor); `erholungAm` = Zeitpunkt der Einwilligung (Nachweis).'), {

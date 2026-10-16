@@ -15,6 +15,7 @@ import { FARBE as C, SCHRIFT, TYP, KUGEL } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Chip, Knopf, Hinweis, Feldzeile, Segmente, eingabe, LEUCHT, useRueckfrage } from '../ui';
 import type { WhatsappStatus } from '@/lib/whatsapp/typen';
 import { useBetreiber } from '../useInhaber';
+import { BETREIBER_RICHTET_EIN } from '@/lib/betrieb/betreiber';
 
 const META = {
   start: 'https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started',
@@ -41,8 +42,10 @@ function vor(iso?: string): string {
 const A = ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: C.aktiv }}>{children} ↗</a>;
 
 function Anleitung({ s }: { s: WhatsappStatus }) {
-  // Der Schritt am Server (Skript) nur in der Betreiber-Instanz (14.10., Abnahme A2) — sonst „trägt der Betreiber ein“.
+  // Der Schritt am Server (Skript) nur in der Betreiber-Instanz (14.10., Abnahme A2) — sonst „trägt der Betreiber ein“. Seit 15.10. (Abnahme 2
+  // A2): außerhalb der Betreiber-Instanz gar keine Einrichtungs-Anleitung und keine Namen der Umgebungswerte — nur der neutrale Satz.
   const betreiber = useBetreiber();
+  if (betreiber !== true) return <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>{BETREIBER_RICHTET_EIN}</div>;
   const schritte: React.ReactNode[] = [
     <>Im <A href={META.business}>Meta Business Manager</A> das Business-Portfolio der Gesellschaft öffnen (bzw. anlegen).</>,
     <>Im <A href={META.apps}>App-Dashboard</A> eine App vom Typ „Business“ anlegen und das Produkt „WhatsApp“ hinzufügen (<A href={META.start}>Anleitung von Meta</A>).</>,
@@ -110,6 +113,8 @@ export function WhatsappKarte({ i = 0 }: { i?: number }) {
   };
   useEffect(() => { void laden(); }, []);
   const pruefen = async () => { setLaeuft(true); setMeldung(''); await laden(true); setLaeuft(false); setMeldung('Geprüft.'); };
+  // Weg am Server (Skript, Umgebungswerte) nur in der Betreiber-Instanz (15.10., Abnahme 2 A2).
+  const betreiber = useBetreiber() === true;
 
   const zustand = !s ? { text: 'lädt …', farbe: C.inkLeise } : !s.eingerichtet ? { text: 'nicht eingerichtet', farbe: C.inkLeise } : !s.zugang ? { text: 'kein Zugang', farbe: C.inkLeise }
     : s.verbindung === 'token' ? { text: 'Verbindung erneuern', farbe: KUGEL.granat } : s.verbindung === 'fehler' ? { text: 'Meta nicht erreichbar', farbe: LEUCHT.achtung }
@@ -124,13 +129,14 @@ export function WhatsappKarte({ i = 0 }: { i?: number }) {
         Frei schreiben geht 24 Stunden nach der letzten Nachricht der Person, danach nur mit genehmigter Vorlage.
       </div>
       {s && !s.eingerichtet && <Anleitung s={s} />}
-      {s && s.eingerichtet && !s.zugang && <Hinweis art="info">Die Business-Nummer ist eingerichtet, aber für dieses Konto nicht freigegeben (WHATSAPP_PERSONEN auf dem Server).</Hinweis>}
+      {s && s.eingerichtet && !s.zugang && <Hinweis art="info">Die Business-Nummer ist eingerichtet, aber für dieses Konto nicht freigegeben{betreiber ? ' (WHATSAPP_PERSONEN auf dem Server)' : ' — das stellt die Inhaberin bzw. der Betreiber eurer Instanz ein'}.</Hinweis>}
       {s && s.eingerichtet && s.zugang && (
         <div style={{ display: 'grid', gap: 12 }}>
           {s.verbindung === 'token' && (
             <Hinweis art="kritisch" titel="Verbindung erneuern">
-              Meta hat den Zugriffsschlüssel abgelehnt (abgelaufen, widerrufen oder ohne Rechte). Neuen dauerhaften Schlüssel des System-Users erzeugen und auf dem
-              Server <code style={{ fontFamily: SCHRIFT.mono }}>deploy/whatsapp-verbinden.sh</code> erneut ausführen (Verify-Token behalten).
+              Meta hat den Zugriffsschlüssel abgelehnt (abgelaufen, widerrufen oder ohne Rechte).{' '}
+              {betreiber ? <>Neuen dauerhaften Schlüssel des System-Users erzeugen und auf dem
+              Server <code style={{ fontFamily: SCHRIFT.mono }}>deploy/whatsapp-verbinden.sh</code> erneut ausführen (Verify-Token behalten).</> : 'Den neuen Schlüssel trägt der Betreiber eurer Instanz am Server ein.'}
             </Hinweis>
           )}
           {s.verbindung === 'fehler' && s.fehler && <Hinweis art="achtung">{s.fehler}</Hinweis>}

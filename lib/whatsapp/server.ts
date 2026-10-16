@@ -4,6 +4,7 @@
 // (lib/inbox/strom-server.ts) filtert dazu nach Bereich: die Sicht „Privat“ bekommt die Business-Nummer nie. Der Dienstweg (ZOE, Takt,
 // Skripte) liest und sendet nie (die Routen nehmen `eigenePerson`).
 
+import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { istInhaber, personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { melde } from '@/lib/meldungen/melden';
@@ -70,7 +71,8 @@ export async function telefonAngaben(k: WaKonfig, erzwingen = false, jetzt = Dat
 export async function whatsappStatus(person: string, o: { pruefen?: boolean } = {}): Promise<WhatsappStatus> {
   const k = whatsappKonfig();
   const basis = { ok: true as const, webhookAdresse: webhookAdresse() };
-  if (!k) return { ...basis, eingerichtet: false, fehlend: whatsappFehlend(), zugang: false, verbindung: 'ungeprueft' };
+  // Namen der Umgebungswerte nur in der Betreiber-Instanz (15.10., Abnahme 2 A2) — sonst sagt die Karte „richtet der Betreiber ein“.
+  if (!k) return { ...basis, eingerichtet: false, fehlend: (await istBetreiberInstanz()) ? whatsappFehlend() : [], zugang: false, verbindung: 'ungeprueft' };
   const mein = await whatsappFuer(person);
   if (!mein) return { ...basis, eingerichtet: true, fehlend: [], zugang: false, verbindung: 'ungeprueft' };
   await telefonAngaben(mein, !!o.pruefen);

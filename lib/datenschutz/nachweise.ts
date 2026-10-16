@@ -2,6 +2,8 @@
 // MAKE_OS_FORMAT=v2 (Hüllen mit Schlüssel-ID + AAD, „MKOSDAT2“, `_v`) stellt Kevin selbst um (UPDATES.md 05.10.). Diese
 // Liste sagt, was dafür steht und was noch fehlt — angezeigt unter System › Nachweise. Nur Zustände, keine Inhalte.
 
+import { BETREIBER_AM_SERVER, BETREIBER_WISSEN, ohneBetreiberTeile } from '@/lib/betrieb/betreiber';
+
 export interface V2Eingabe {
   modus: 'kompatibel' | 'v2';
   unbekannt: boolean;
@@ -40,4 +42,17 @@ export function v2Bereitschaft(e: V2Eingabe): V2Bereitschaft {
     text: 'Obsidian-Vault (eigenes Git-Repo), Grabsteine (nur HMAC), Lagebericht system/*.json (nur Zähler) — beschrieben in den technischen und organisatorischen Maßnahmen (TOM)' });
   const bereit = e.verschluesselt && !e.klartextBestaende && !e.bilderKlartext && !e.brainIndexKlartext;
   return { modus: e.modus, bereit, punkte: p };
+}
+
+/**
+ * Die Liste für diese Instanz (15.10., Abnahme 2 A2): außerhalb der Betreiber-Instanz ohne Umgebungswerte, Skripte und Repo — was am Server
+ * zu tun ist, sagt der neutrale Satz. Stand und Bereitschaft bleiben gleich. Rein.
+ */
+export function v2FuerInstanz(b: V2Bereitschaft, betreiber: boolean): V2Bereitschaft {
+  if (betreiber) return b;
+  return { ...b, punkte: b.punkte.map(x => {
+    if (!BETREIBER_WISSEN.test(x.text)) return x;
+    const rest = ohneBetreiberTeile(x.text);
+    return { ...x, text: rest ? `${rest} — ${x.stand === 'ok' ? 'betreut vom Betreiber eurer Instanz' : 'das übernimmt der Betreiber eurer Instanz'}` : BETREIBER_AM_SERVER };
+  }) };
 }

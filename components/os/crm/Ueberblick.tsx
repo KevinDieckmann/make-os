@@ -99,7 +99,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
             {!!h?.offen && <Link href="/os/stapel" style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.agenten}>{h.offen} zur Freigabe</Chip></Link>}
           </div>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {h?.zusammenfassung ?? 'Noch kein Lauf — der Head liest Kartei und Bestand und legt Vorschläge zur Freigabe vor.'}
+            {/* Leerzustand mit dem Weg dahin (15.10., Abnahme 2 C5): der Head läuft im Bereich seiner Welt. */}
+            {h?.zusammenfassung ?? <>Noch kein Lauf — der Head liest Kartei und Bestand und legt Vorschläge zur Freigabe vor. <button onClick={() => zuBereich(w === 'sales' ? 'deals' : w)} style={leise}>Unter {WELT_LABEL[w]} starten ›</button></>}
           </div>
           {h?.zeit && <div style={{ fontSize: 12, color: C.inkLeise }}>{datum(h.zeit, d.heute)}</div>}
         </div>
