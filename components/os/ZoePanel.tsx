@@ -52,6 +52,7 @@ import { ZoeKugel, type ZoeZustand } from './kugel';
 import { KUGEL } from '@/lib/make-one/design';
 
 import { localDay } from '@/lib/zeit';
+import { datumDe } from '@/lib/finanzen/haushalt/monat';
 import { neueKennung, zufallsUuid } from '@/lib/kennung';
 import { ENTSTEHEND_LEER, entstehendNach, type Entstehend } from '@/lib/http/sse';
 import { postMitStrom } from '@/lib/http/strom-client';
@@ -796,7 +797,7 @@ export function ZoePanel() {
                 {beleg.betragBrutto != null ? `${beleg.betragBrutto.toLocaleString('de-DE', { minimumFractionDigits: 2 })} ${beleg.waehrung ?? 'EUR'}` : '—'}
                 {beleg.betragNetto != null && beleg.betragBrutto !== beleg.betragNetto && <span style={{ color: C.inkLeise }}> · netto {beleg.betragNetto.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span>}
               </span>
-              <span style={{ color: C.inkLeise }}>Datum</span><span style={zahl}>{beleg.datum ?? '—'}</span>
+              <span style={{ color: C.inkLeise }}>Datum</span><span style={zahl}>{beleg.datum ? datumDe(beleg.datum) : '—'}</span>
               {beleg.zweck && <><span style={{ color: C.inkLeise }}>Zweck</span><span style={{ color: C.inkDim }}>{beleg.zweck}</span></>}
               {beleg.kategorie && <><span style={{ color: C.inkLeise }}>Kategorie</span><span style={{ color: C.inkDim }}>{beleg.kategorie}</span></>}
               <span style={{ color: C.inkLeise }}>Richtung</span>

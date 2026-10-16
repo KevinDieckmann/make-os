@@ -4,6 +4,7 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 16.10.2026 — Abnahme 2, Kleinkram (nur lokal — Branch `abnahme2-klein`, Basis `update-0910b`): Seil-Achse „HEUTE“ versetzt unter den Monaten (`seilAchse` in seil-geometrie.ts, `tests/seil-achse.test.ts`) · Steckbrief „Eingetragen am“ ohne Datum mit „Datum eintragen ›“ · Fällig-Liste in Planung (Jahr/Quartal/Monat) mit `tagKurz` und Priorität auf Deutsch · Beleg-Datum TT.MM.JJJJ · Brain-Notizen mit Anzeigenamen (Kopf-Titel → erste Überschrift → lesbarer Dateiname, `lib/brain/notiz-titel.ts`; Wikilinks weiter über den Dateinamen) — kein Server-Schritt, keine Datenänderung.
 ## 16.10.2026 — Gerät merken für den zweiten Faktor (nur lokal — Branch `zwei-faktor-geraet`, Basis 253f9d41 = `update-0910b`)
 **Für Kevin: Code nur noch einmal je Gerät, 90 Tage.** Kevin: Code bei jeder Anmeldung „nervt mega“. Nach Passwort + Code (oder Wiederherstellungscode) steht
 „Dieses Gerät 90 Tage merken“ (angehakt); danach genügt dort das Passwort. Ein gestohlenes Passwort reicht auf einem fremden Gerät weiter nicht.

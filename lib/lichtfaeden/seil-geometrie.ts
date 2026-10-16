@@ -40,6 +40,16 @@ export const SEIL_FORM = {
    * Einzug der Spur-Zeilen unter dem Ziel-Kopf, `luft` = Abstand der Zeile zur Zeit-Fläche.
    */
   spalte: { breit: 208, mittel: 172, schmal: 136, ab: { breit: 980, mittel: 720 }, zeitMin: 200, einzug: 10, luft: 12 },
+  /**
+   * Zeit-Achse über der Bühne in zwei Zeilen (Abnahme 15.10. C3: „HEUTE“ lag über „Okt“): oben die Monatsnamen, darunter versetzt
+   * „HEUTE“ — die Zeilen überlappen nie. `zeichen` = geschätzte Breite je Zeichen (px), `luft` = Mindestabstand zweier Monatsnamen,
+   * `polster` = Innenabstand links/rechts der HEUTE-Marke.
+   */
+  achse: {
+    hoehe: 30,
+    monat: { y: 1, hoehe: 15, schrift: 12, zeichen: 7, luft: 6 },
+    heute: { y: 17, hoehe: 13, schrift: 11, zeichen: 9, polster: 4, text: 'HEUTE' },
+  },
 } as const;
 
 export interface SpurLage {
@@ -181,6 +191,39 @@ export function seilSpalte(gesamt: number): { spalte: number; zeit: number } {
   const F = SEIL_FORM.spalte;
   const spalte = gesamt >= F.ab.breit ? F.breit : gesamt >= F.ab.mittel ? F.mittel : F.schmal;
   return { spalte, zeit: Math.max(F.zeitMin, gesamt - spalte) };
+}
+
+export interface AchsenMonat { date: string; text: string; x: number; y: number; breite: number; hoehe: number; jahr: boolean; wechsel: boolean }
+export interface AchsenHeute { text: string; /** Linie (x der Tagesmitte) */ x: number; /** linke Kante der Marke */ links: number; y: number; breite: number; hoehe: number }
+export interface SeilAchse { hoehe: number; monate: AchsenMonat[]; heute: AchsenHeute | null }
+
+/**
+ * Die Beschriftung der Zeit-Achse (rein): Monatsnamen, die einander nicht überdecken (ein Name, der zu nah am vorigen oder über dem
+ * rechten Rand läge, entfällt), und die Marke „HEUTE“ in der zweiten Zeile — mittig über der Linie, an den Rändern so verschoben,
+ * dass sie ganz sichtbar bleibt. Der Zeichner/die Bühne setzen nur diese Werte.
+ */
+export function seilAchse(
+  ticks: readonly { date: string; label: string; jahr?: string; wechsel?: boolean }[],
+  x: (tag: string) => number, breite: number, heuteX: number | null,
+): SeilAchse {
+  const A = SEIL_FORM.achse;
+  const monate: AchsenMonat[] = [];
+  let rechts = -Infinity;
+  for (const tk of ticks) {
+    const xm = x(tk.date);
+    const text = `${tk.label}${tk.jahr ? ` ${tk.jahr}` : ''}`;
+    const b = text.length * A.monat.zeichen;
+    if (xm - 2 <= rechts || xm + b >= breite + 4) continue;
+    rechts = xm + b + A.monat.luft;
+    monate.push({ date: tk.date, text, x: xm, y: A.monat.y, breite: b, hoehe: A.monat.hoehe, jahr: !!tk.jahr, wechsel: !!tk.wechsel });
+  }
+  let heute: AchsenHeute | null = null;
+  if (heuteX != null) {
+    const b = A.heute.text.length * A.heute.zeichen + 2 * A.heute.polster;
+    const links = Math.max(0, Math.min(Math.max(0, breite - b), heuteX - b / 2));
+    heute = { text: A.heute.text, x: heuteX, links, y: A.heute.y, breite: b, hoehe: A.heute.hoehe };
+  }
+  return { hoehe: A.hoehe, monate, heute };
 }
 
 /**

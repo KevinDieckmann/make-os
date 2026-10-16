@@ -29,6 +29,7 @@ import { homedir } from 'node:os';
 import { existsSync, readdirSync } from 'node:fs';
 import { KERN_EINHEITEN, BEREICH_JE_EINHEIT } from '@/lib/einheiten';
 import { createHash } from 'node:crypto';
+import { notizAnzeigeTitel } from '@/lib/brain/notiz-titel';
 import { ladeKonten } from '@/lib/zugang/konten';
 import { hauptInhaber, kontenImHaushaltDerInhaber, type InhaberStand } from '@/lib/zugang/inhaber';
 import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
@@ -279,7 +280,10 @@ export interface Notiz {
   id: string;
   wurzel: string;
   pfad: string;
+  /** Dateiname ohne `.md` — Schlüssel für [[Wikilinks]] (wie Obsidian). */
   titel: string;
+  /** Anzeigename (Abnahme 15.10. C19): `title:` aus dem Kopf, sonst erste Überschrift, sonst der Dateiname lesbar — lib/brain/notiz-titel.ts. */
+  anzeige: string;
   groesse: number;
   geaendert: string;
   bereich: string;
@@ -300,6 +304,8 @@ export interface Bestand { notizen: Notiz[]; gelesen: number; dubletten: number;
  * die gerade in Obsidian entsteht, ist bis zu fünf Minuten unsichtbar.
  */
 let zwischenspeicher: { bestand: Bestand; zeit: number } | null = null;
+/** Anzeigenamen je Kennung aus dem letzten Einlesen — auch nach Ablauf des Zwischenspeichers (für die Index-Suche, die keine Dateien liest). */
+let anzeigeNachId = new Map<string, string>();
 /** Nach eigenen Schreibungen (Regeln, Inbox): Bestand beim nächsten Lesen neu einlesen. */
 export function bestandVergessen(): void { zwischenspeicher = null; }
 const FRISCH_MS = 5 * 60_000;
@@ -312,7 +318,7 @@ async function obsidianFilter(vault: string): Promise<string[]> {
   } catch { return []; }
 }
 
-async function sammle(w: Wurzel, treffer: Omit<Notiz, 'bereich' | 'stichworte' | 'ueberschriften' | 'verweise'>[], zaehler: { privat: number }, regel: OrdnerRegel): Promise<void> {
+async function sammle(w: Wurzel, treffer: Omit<Notiz, 'bereich' | 'stichworte' | 'ueberschriften' | 'verweise' | 'anzeige'>[], zaehler: { privat: number }, regel: OrdnerRegel): Promise<void> {
   const filter = await obsidianFilter(w.vault);
   const blendetAus = (rel: string) => filter.some(f => rel === f || rel.startsWith(f) || `${rel}/`.startsWith(f));
   async function lauf(ordner: string, tiefe: number): Promise<void> {
@@ -361,7 +367,7 @@ export async function bestand(frisch = false): Promise<Bestand> {
     gesehen.add(h);
     const { kopf, rumpf } = leseKopf(text);
     notizen.push({
-      ...n, bereich: bereichVon(n.id), typ: kopf.typ, scope: kopf.scope, owner: kopf.owner, stand: kopf.stand,
+      ...n, anzeige: notizAnzeigeTitel(n.titel, kopf.felder, rumpf), bereich: bereichVon(n.id), typ: kopf.typ, scope: kopf.scope, owner: kopf.owner, stand: kopf.stand,
       stichworte: kopf.tags,
       ueberschriften: Array.from(rumpf.matchAll(/^#{1,3}\s+(.+)$/gm)).map(m => m[1].trim()).slice(0, 40),
       verweise: Array.from(rumpf.matchAll(/\[\[([^\]|#]+)/g)).map(m => m[1].trim()).slice(0, 40),
@@ -369,6 +375,7 @@ export async function bestand(frisch = false): Promise<Bestand> {
   }
   const b: Bestand = { notizen, gelesen: roh.length, dubletten, privatUebersprungen: zaehler.privat, dauerMs: Date.now() - start };
   zwischenspeicher = { bestand: b, zeit: Date.now() };
+  anzeigeNachId = new Map(notizen.map(n => [n.id, n.anzeige]));
   return b;
 }
 
@@ -384,7 +391,7 @@ export function obsidianLink(n: Pick<Notiz, 'id' | 'wurzel'>): string | null {
 function finde(b: Bestand, id: string, sicht: VaultSicht, pfade?: readonly string[]): Notiz | undefined {
   const sauberId = id.replace(/^\[\[|\]\]$/g, '').split('|')[0].trim();
   const klein = sauberId.toLowerCase();
-  const passt = (n: Notiz) => n.id === sauberId || n.id.toLowerCase().endsWith(klein) || n.titel.toLowerCase() === klein.replace(/\.md$/, '');
+  const passt = (n: Notiz) => n.id === sauberId || n.id.toLowerCase().endsWith(klein) || n.titel.toLowerCase() === klein.replace(/\.md$/, '') || n.anzeige.toLowerCase() === klein;
   // Wikilink-Namen: wie Obsidian — die erste passende Notiz, das Brain vor der Doku.
   return b.notizen.find(n => passt(n) && darfSehen(n, sicht) && imPfad(n.id, pfade));
 }
@@ -475,11 +482,14 @@ export async function suche(frage: string, anzahl = 6, sicht: Sicht | VaultSicht
   if (process.env.MAKE_OS_BRAIN_INDEX !== 'aus') {
     try {
       const ix = await import('@/lib/brain/index');
-      if (ix.indexBereit()) { const r = await ix.hybridSuche(frage, anzahl, s, bereich, pfade); return { treffer: r.treffer, durchsucht: r.durchsucht }; }
+      if (ix.indexBereit()) { const r = await ix.hybridSuche(frage, anzahl, s, bereich, pfade); return { treffer: r.treffer.map(mitAnzeige), durchsucht: r.durchsucht }; }
     } catch { /* Rückfall unten */ }
   }
   return sucheOhneIndex(frage, anzahl, s, bereich, pfade);
 }
+
+/** Treffer des Index tragen den Dateinamen — angezeigt wird der Anzeigename aus dem letzten Einlesen (sonst bleibt der Dateiname). */
+const mitAnzeige = <T extends { id: string; titel: string }>(t: T): T => ({ ...t, titel: anzeigeNachId.get(t.id) ?? t.titel });
 
 /** Liegt die Notiz (Kennung) in einem der Präfixe? Ohne Präfixe: ja. Rein. */
 export const imPfad = (id: string, pfade?: readonly string[]): boolean => !pfade?.length || pfade.some(p => id.startsWith(p));
@@ -496,7 +506,7 @@ export async function sucheOhneIndex(frage: string, anzahl = 6, sichtRoh: Sicht 
 
   const roh: (Treffer & { text: string })[] = [];
   for (const n of sichtbar) {
-    const titel = n.titel.toLowerCase();
+    const titel = `${n.titel} ${n.anzeige}`.toLowerCase();
     const kopf = [...n.ueberschriften, ...n.stichworte].join(' ').toLowerCase();
     let punkte = 0;
     for (const w of begriffe) {
@@ -514,7 +524,7 @@ export async function sucheOhneIndex(frage: string, anzahl = 6, sichtRoh: Sicht 
     if (n.wurzel === 'make') punkte += 8;      // Obsidian ist Nummer eins (24.09.)
     const tage = (Date.now() - Date.parse(n.geaendert)) / 864e5;
     if (tage < 2) punkte += 6; else if (tage < 14) punkte += 3; else if (tage > 120) punkte -= 2;
-    roh.push({ id: n.id, titel: n.titel, wurzel: n.wurzel, bereich: n.bereich, scope: n.scope, stand: n.stand, punkte, ueberschriften: n.ueberschriften.slice(0, 5), geaendert: n.geaendert, ausschnitt: '', text });
+    roh.push({ id: n.id, titel: n.anzeige, wurzel: n.wurzel, bereich: n.bereich, scope: n.scope, stand: n.stand, punkte, ueberschriften: n.ueberschriften.slice(0, 5), geaendert: n.geaendert, ausschnitt: '', text });
   }
   roh.sort((a, c) => c.punkte - a.punkte);
   const treffer = roh.slice(0, anzahl).map(t => {
@@ -536,7 +546,7 @@ export async function neueste(sichtRoh: Sicht | VaultSicht, anzahl = 30, bereich
     .filter(n => darfSehen(n, sicht) && (!bereich || n.bereich === bereich))
     .sort((a, c) => c.geaendert.localeCompare(a.geaendert))
     .slice(0, anzahl)
-    .map(({ pfad: _p, ...rest }) => rest);
+    .map(({ pfad: _p, ...rest }) => ({ ...rest, titel: rest.anzeige }));
 }
 
 export interface NotizVoll {
@@ -569,7 +579,7 @@ export async function notiz(id: string, maxZeichen = 12_000, sichtRoh: Sicht | V
     const text = await readFile(n.pfad, 'utf8');
     const { rumpf } = leseKopf(text);
     return {
-      ok: true, id: n.id, titel: n.titel, pfad: n.id, text: gekuerzt(rumpf, maxZeichen, n.typ === 'protokoll'),
+      ok: true, id: n.id, titel: n.anzeige, pfad: n.id, text: gekuerzt(rumpf, maxZeichen, n.typ === 'protokoll'),
       // AGENTS.md §4.1: „Update-Block oben“ gilt für Wissensnotizen. Protokolle und
       // Logs wachsen nach unten — dort wäre der oberste Block der älteste.
       oben: n.typ === 'protokoll' ? '' : obersterBlock(rumpf),

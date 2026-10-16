@@ -70,12 +70,12 @@ export function useSchreiber(g: GAnzeige, onNeu: (g: GAnzeige) => void) {
 }
 
 /** Textfeld, das beim Verlassen (oder Enter) speichert — nur, wenn sich etwas geändert hat. */
-export function TextFeld({ wert, onFertig, platzhalter, label, typ = 'text', lang }: { wert: string; onFertig: (t: string) => void; platzhalter?: string; label: string; typ?: 'text' | 'date'; lang?: boolean }) {
+export function TextFeld({ wert, onFertig, platzhalter, label, typ = 'text', lang, id }: { wert: string; onFertig: (t: string) => void; platzhalter?: string; label: string; typ?: 'text' | 'date'; lang?: boolean; id?: string }) {
   const [t, setT] = useState(wert);
   useEffect(() => { setT(wert); }, [wert]);
   const fertig = () => { if (t.trim() !== wert) onFertig(t.trim()); };
   if (lang) return <textarea value={t} aria-label={label} placeholder={platzhalter} rows={3} onChange={e => setT(e.target.value)} onBlur={fertig} style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />;
-  return <input type={typ} value={t} aria-label={label} placeholder={platzhalter} onChange={e => setT(e.target.value)} onBlur={fertig} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} style={feld} />;
+  return <input id={id} type={typ} value={t} aria-label={label} placeholder={platzhalter} onChange={e => setT(e.target.value)} onBlur={fertig} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} style={feld} />;
 }
 
 /** Eine Auswahl über <select> (lange Listen: Gesellschaften, Personen, Monate). */
