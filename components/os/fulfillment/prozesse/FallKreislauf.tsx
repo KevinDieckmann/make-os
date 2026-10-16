@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, HakenZiel, Punkt, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
+import { wort } from '@/lib/text/zahlwort';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { fallReise } from '@/lib/fulfillment/prozesse/reise';
@@ -78,7 +79,7 @@ export function FallKreislauf({ mandatId }: { mandatId: string }) {
       <ReiterAntwort titel="Abschluss & Kreislauf" erklaerung="fulfillment.wirkung"
         antworten={[
           { frage: 'Wo steht der Kunde im Kreislauf?', ...lage },
-          { frage: 'Läuft es ohne uns?', ampel: !f.befaehigung.length ? 'gelb' : befProzent >= 75 ? 'gruen' : befProzent >= 25 ? 'gelb' : 'rot', antwort: f.befaehigung.length ? `${erfuellt} von ${f.befaehigung.length} Kriterien erfüllt` : 'Noch keine Kriterien', unter: 'Ziel: Der Kunde führt Prozess, Rituale und Kennzahlen selbst.', links: <FortschrittsRing prozent={befProzent} farbe={LEUCHT.gut} groesse={48} label="Befähigung" />, onClick: () => insBild('kreislauf-befaehigung') },
+          { frage: 'Läuft es ohne uns?', ampel: !f.befaehigung.length ? 'gelb' : befProzent >= 75 ? 'gruen' : befProzent >= 25 ? 'gelb' : 'rot', antwort: f.befaehigung.length ? `${erfuellt} von ${f.befaehigung.length} ${wort(f.befaehigung.length, 'Kriterium', 'Kriterien')} erfüllt` : 'Noch keine Kriterien', unter: 'Ziel: Der Kunde führt Prozess, Rituale und Kennzahlen selbst.', links: <FortschrittsRing prozent={befProzent} farbe={LEUCHT.gut} groesse={48} label="Befähigung" />, onClick: () => insBild('kreislauf-befaehigung') },
           { frage: 'Wirkungsbericht', ampel: f.wirkung ? 'gruen' : f.status === 'abgeschlossen' ? 'rot' : 'gelb', antwort: f.wirkung ? `Erstellt am ${tagKurz(f.wirkung.erstelltAm)}` : 'Noch nicht erstellt', unter: f.wirkung ? 'Vorher → jetzt, Quick Wins, Geliefertes, Befähigung.' : 'Am Ende: vorher → jetzt aus dem Wert-Konto — die Vorschau steht unten.', onClick: () => insBild('kreislauf-wirkung') },
         ]}
         aktion={<Knopf haupt onClick={hauptaktion}>{abschluss ? abschluss.text : 'Befähigung prüfen'}</Knopf>} />
@@ -184,7 +185,7 @@ function WirkungKarte({ daten, melde, ops }: { daten: FallAntwort; melde: Melde;
             <Chip farbe={dok.lieferobjekte.length ? LEUCHT.gut : C.inkLeise}>{dok.lieferobjekte.length} Ergebnis{dok.lieferobjekte.length === 1 ? '' : 'se'} geliefert</Chip>
             {dok.befaehigung.length > 0 && <Chip farbe={C.inkDim}>Befähigung {dok.befaehigung.filter(b => b.erfuellt).length} von {dok.befaehigung.length}</Chip>}
           </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Interne Bausteine, Onboarding-Schritte, Health und Honorar erscheinen nie im Bericht.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Interne Bausteine, Onboarding-Schritte, die Gesundheit des Mandats und das Honorar erscheinen nie im Bericht.</div>
         </div>
       )}
       <Feldzeile label="Kundenzitat (nur mit Einwilligung)"><textarea rows={2} maxLength={1000} value={zitat.text} onChange={e => setZitat({ ...zitat, text: e.target.value })} style={{ ...feld, fontSize: 16 }} /></Feldzeile>

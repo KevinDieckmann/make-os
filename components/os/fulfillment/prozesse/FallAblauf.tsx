@@ -18,6 +18,7 @@ import { Karte, Ueberschrift, Knopf, Hinweis, Chip, Feldzeile, Pillen, HakenZiel
 import { Fenster } from '../../Fenster';
 import { Wahl } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
+import { anzahl, wort } from '@/lib/text/zahlwort';
 import { localDay } from '@/lib/zeit';
 import { fallReise, phaseGruppen, phasenVon, statusOps, FREIGABE_WER, ONBOARDING_SPRUNG, type ReisePhase, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel } from '@/lib/fulfillment/prozesse/darstellung';
@@ -334,14 +335,14 @@ function verweisAnzeige(v: SchrittVerweis, d: FallAntwort): { text: string; reit
   switch (v) {
     case 'quickwins': {
       const n = f.quickWins.length, e = f.quickWins.filter(q => q.erledigtAm).length;
-      if (n) return { text: e === n ? `alle ${n} Quick Wins erledigt — Schritt abhaken` : `${e} von ${n} Quick Wins erledigt`, reiter: 'ueberblick', stelle: 'quickwins', farbe: e === n ? LEUCHT.gut : C.aktiv };
+      if (n) return { text: e === n ? `${n === 1 ? 'Quick Win' : `alle ${n} Quick Wins`} erledigt — Schritt abhaken` : `${e} von ${n} ${wort(n, 'Quick Win', 'Quick Wins')} erledigt`, reiter: 'ueberblick', stelle: 'quickwins', farbe: e === n ? LEUCHT.gut : C.aktiv };
       return d.analyse?.quickWins.length
-        ? { text: `${d.analyse.quickWins.length} Quick Wins aus der Analyse bereit`, reiter: 'ueberblick', stelle: 'ausanalyse', farbe: LEUCHT.achtung }
+        ? { text: `${anzahl(d.analyse.quickWins.length, 'Quick Win', 'Quick Wins')} aus der Analyse bereit`, reiter: 'ueberblick', stelle: 'ausanalyse', farbe: LEUCHT.achtung }
         : { text: 'Quick Wins festlegen', reiter: 'ueberblick', stelle: 'quickwins', farbe: C.aktiv };
     }
     case 'befaehigung': {
       const n = f.befaehigung.length, e = f.befaehigung.filter(b => b.erfuellt).length;
-      return { text: `Befähigung: ${e} von ${n} Kriterien erfüllt`, reiter: 'kreislauf', stelle: 'kreislauf-befaehigung', farbe: n && e === n ? LEUCHT.gut : C.aktiv };
+      return { text: `Befähigung: ${e} von ${n} ${wort(n, 'Kriterium', 'Kriterien')} erfüllt`, reiter: 'kreislauf', stelle: 'kreislauf-befaehigung', farbe: n && e === n ? LEUCHT.gut : C.aktiv };
     }
     case 'wirkung':
       return f.wirkung

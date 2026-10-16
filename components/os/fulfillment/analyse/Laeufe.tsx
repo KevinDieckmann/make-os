@@ -23,6 +23,7 @@ import { senden, fehlerVon, anfrageId, type AgentLage, type AnalyseApi } from '.
 import { useOhneKuerzel } from '../prozesse/daten';
 import { agentText } from '@/lib/fulfillment/analyse/agenten';
 import { BeispielMarke } from '../../BeispielMarke';
+import { anzahl } from '@/lib/text/zahlwort';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
 const ZUSTAND_FARBE = { bereit: LEUCHT.gut, gesperrt: C.inkLeise, laeuft: LEUCHT.planung } as const;
@@ -157,13 +158,13 @@ function LaufListe({ mandatId, api, rueck }: { mandatId: string; api: AnalyseApi
                 rechts={<Chip farbe={LAUF_FARBE[l.status] ?? C.inkLeise}>{LAUF_LABEL[l.status]}</Chip>} umbrechen />
               {l.fehler && <div style={klein}>{l.fehler}</div>}
               {l.status === 'laeuft' && <div><Knopf leise onClick={async () => { const r = await senden('/api/fulfillment/analyse', { aktion: 'abbrechen', mandatId, laufId: l.id }); setMeldung(fehlerVon(r)); await api.laden(); }}>Abbrechen</Knopf></div>}
-              {a4 && <div style={klein}>{a4.karten ? `${a4.karten} Karte(n) als Entwurf im Personenteil — dort prüfen.` : 'Keine sichere Karte — nichts im Personenteil.'}</div>}
+              {a4 && <div style={klein}>{a4.karten ? `${anzahl(a4.karten, 'Karte', 'Karten')} als Entwurf im Personenteil — dort prüfen.` : 'Keine sichere Karte — nichts im Personenteil.'}</div>}
               {e && l.status === 'fertig' && (
                 <>
-                  {abschnitte.map(([k, v]) => <div key={k} style={klein}>{ABSCHNITT_LABEL[k]}: {v.length} Aussage(n)</div>)}
+                  {abschnitte.map(([k, v]) => <div key={k} style={klein}>{ABSCHNITT_LABEL[k]}: {anzahl(v.length, 'Aussage', 'Aussagen')}</div>)}
                   {e.steckbrief && <div style={klein}>Steckbrief: {Object.entries(e.steckbrief).map(([f, x]) => `${STECKBRIEF_LABEL[f as SteckbriefFeld]} ${x!.wert}`).join(' · ')}</div>}
-                  {e.diagnose && <div style={klein}>Diagnose-Entwurf: {e.diagnose.top5.length} Maßnahmen, {e.diagnose.quickWins.length} Quick Wins, {e.diagnose.fragen.length} Fragen</div>}
-                  {e.befunde && <div style={klein}>Prüfer: {e.befunde.length} Befund(e) — nach dem Übernehmen unter „Recht & Prüfung“ neu prüfen.</div>}
+                  {e.diagnose && <div style={klein}>Diagnose-Entwurf: {anzahl(e.diagnose.top5.length, 'Maßnahme', 'Maßnahmen')}, {anzahl(e.diagnose.quickWins.length, 'Quick Win', 'Quick Wins')}, {anzahl(e.diagnose.fragen.length, 'Frage', 'Fragen')}</div>}
+                  {e.befunde && <div style={klein}>Prüfer: {anzahl(e.befunde.length, 'Befund', 'Befunde')} — nach dem Übernehmen unter „Recht & Prüfung“ neu prüfen.</div>}
                   {(e.zaehler.ohneQuelle + e.zaehler.verworfen + e.zaehler.negativ + e.zaehler.gesperrt) > 0 && (
                     <div style={klein}>Gesäubert: {e.zaehler.ohneQuelle} ohne Beleg → offene Fragen · {e.zaehler.verworfen} verworfen · {e.zaehler.gesperrt} gesperrte Quellen · {e.zaehler.negativ} laut Negativliste{e.ausgelassen.length ? ` (${e.ausgelassen.join(', ')})` : ''}{e.zaehler.gekuerzt ? ` · ${e.zaehler.gekuerzt} gekürzt` : ''}</div>
                   )}

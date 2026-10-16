@@ -125,7 +125,7 @@ export function kundeSiehtLage(z: Pick<CockpitZeile, 'health' | 'haengt'>, ferti
   const rang: Record<Ampel, number> = { gruen: 0, gelb: 1, rot: 2 };
   const ausHaengern: Ampel = z.haengt.some(h => h.schwere === 'rot') ? 'rot' : z.haengt.length ? 'gelb' : 'gruen';
   const gruende = [
-    ...(z.health && rang[z.health] > rang[ausHaengern] ? ['Health zählt beim Kunden nicht'] : []),
+    ...(z.health && rang[z.health] > rang[ausHaengern] ? ['Die Gesundheit des Mandats zählt beim Kunden nicht'] : []),
     ...(z.haengt.some(h => !haengtBeimKunden(h) && (h.schwere === 'rot' || k.art === 'dran')) ? ['interne Punkte zeigt die Kunden-Seite als „Wir sind dran“'] : []),
   ];
   const grund = gruende.join(' · ') || undefined;

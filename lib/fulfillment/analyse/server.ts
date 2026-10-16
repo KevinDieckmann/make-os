@@ -18,6 +18,7 @@ import { laufStatusAnzeige, laufVerwaist } from './agenten';
 import { art14Stand } from './dsgvo';
 import { entwurfOhne } from './dossier-anwenden';
 import { tagPlus } from '@/lib/zeit/kalender-kern';
+import { anzahl } from '@/lib/text/zahlwort';
 
 /** Lauf-Entwürfe bleiben so viele Tage nach dem Lauf (8.1). */
 export const ENTWURF_TAGE = 90;
@@ -74,7 +75,7 @@ export async function analyseMorgenlauf(h: string, heute: string): Promise<Morge
     vorschlaege++;
   }
   if (Object.keys(neueMarken).length) await fulfillmentAendern('vorlagen', d => ({ ok: true, datei: { ...d, marken: { ...d.marken, ...neueMarken } }, geaendert: Object.keys(neueMarken) }), { art: 'system' }, h);
-  return { vorschlaege, ...(verwaist ? { info: `${verwaist} verwaiste Analyse(n) abgeschlossen` } : {}) };
+  return { vorschlaege, ...(verwaist ? { info: `${anzahl(verwaist, 'verwaiste Analyse', 'verwaiste Analysen')} abgeschlossen` } : {}) };
 }
 
 /** Löschfristen (8.1) — Zähler je Name, keine Namen, keine Kennungen. */

@@ -12,7 +12,11 @@ import { WEG } from '@/lib/wege';
 import { euroText } from '@/lib/ki/kosten';
 import { Karte, Ueberschrift, Knopf, Hinweis, Leer, Feldzeile, eingabe, useRueckfrage } from '../../ui';
 import { senden, fehlerVon, anfrageId, type AnalyseApi } from './daten';
-import { useOhneKuerzel } from '../prozesse/daten';
+import { useOhneKuerzel, tagLang } from '../prozesse/daten';
+import { wandzeit } from '@/lib/kalender/zeit';
+
+/** „12.10.2026, 14:30 Uhr“ (Berliner Zeit) statt des rohen Zeitstempels (16.10., Abnahme 2 · C6). */
+const zeitpunktText = (iso: string) => { const d = new Date(iso); if (Number.isNaN(d.getTime())) return iso; const w = wandzeit(d); return `${tagLang(w)}, ${w.slice(11, 16)} Uhr`; };
 
 type Rueck = ReturnType<typeof useRueckfrage>;
 interface Leseteil { status: 'laeuft' | 'fertig' | 'fehler' | 'abgelaufen'; frage: string; gestartet: string; text?: string; suchvorschlaegeHtml?: string; quellen?: { url: string; titel?: string }[]; suchbegriffe?: string[]; fehler?: string; restTage?: number }
@@ -60,7 +64,7 @@ export function Tiefenbericht({ mandatId, api, rueck }: { mandatId: string; api:
         <Karte>
           <Ueberschrift>Dein Leseteil</Ueberschrift>
           {!leseteil && <Leer>Wird geladen …</Leer>}
-          {leseteil?.status === 'laeuft' && <div style={klein}>Läuft noch — gestartet {leseteil.gestartet.slice(0, 16).replace('T', ' ')}.</div>}
+          {leseteil?.status === 'laeuft' && <div style={klein}>Läuft noch — gestartet {zeitpunktText(leseteil.gestartet)}.</div>}
           {leseteil?.status === 'fehler' && <Hinweis art="kritisch">{leseteil.fehler}</Hinweis>}
           {leseteil?.status === 'abgelaufen' && <div style={klein}>Abgelaufen — Tiefenberichte bleiben 30 Tage.</div>}
           {leseteil?.status === 'fertig' && (

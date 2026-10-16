@@ -21,6 +21,7 @@ import { PHASEN, SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE, phaseEinfu
 import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
 import { ausfuehren, fnv, istObj, nein, slug, titelForm } from './pruefen';
+import { anzahl } from '@/lib/text/zahlwort';
 
 export const IMPORT_GRENZEN = { bytes: 4 * 1024 * 1024, bausteine: 400, ablaeufe: 20, laufTage: 30 } as const;
 const QUELL_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
@@ -347,9 +348,9 @@ export function importVorschau(roh: unknown, d: VorlagenDatei, datei: string): I
   });
   const hinweise: string[] = [];
   const preise = bausteine.filter(b => b.preis).length;
-  if (preise) hinweise.push(`${preise} Einträge tragen Instanzwerte (z. B. Preise) — die werden nicht übernommen und gehören in den Produktkatalog.`);
+  if (preise) hinweise.push(`${anzahl(preise, 'Eintrag trägt', 'Einträge tragen')} Instanzwerte (z. B. Preise) — die werden nicht übernommen und gehören in den Produktkatalog.`);
   const intern = bausteine.filter(b => b.nurIntern).length;
-  if (intern) hinweise.push(`${intern} Einträge sind „nur intern“ — sie erscheinen nie beim Kunden, im Report oder in einem Export.`);
+  if (intern) hinweise.push(`${anzahl(intern, 'Eintrag ist', 'Einträge sind')} „nur intern“ — sie erscheinen nie beim Kunden, im Report oder in einem Export.`);
   if (istObj(roh) && roh.quellenverzeichnis !== undefined) hinweise.push('Das Quellenverzeichnis der Datei (mit Ablage-Adressen) wird nicht übernommen — nur die Kennungen der Quellen.');
   return {
     format: g.format, datei, bausteine, ablaeufe,

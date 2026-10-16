@@ -8,6 +8,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, FLAECHE_STIL, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT, Punkt } from '../../ui';
+import { anzahl, wort } from '@/lib/text/zahlwort';
 import type { PhasenZustand, ReiseFreigabe } from '@/lib/fulfillment/prozesse/reise';
 import type { Ampel, Welle, WellenStufe } from '@/lib/fulfillment/prozesse/darstellung';
 
@@ -46,7 +47,7 @@ function Schiene({ p, hoehe = 8 }: { p: StrahlPhase; hoehe?: number }) {
   );
 }
 
-const phaseLabel = (p: StrahlPhase, i: number) => `Phase ${i + 1}: ${p.titel}${p.zusatz ? ` (${p.zusatz})` : ''} — ${p.zustand === 'fertig' ? 'erledigt' : p.zustand === 'jetzt' ? 'hier stehen wir' : 'kommt noch'}${p.gesamt ? `, ${p.erledigt ?? 0} von ${p.gesamt} Schritten erledigt` : ''}${p.freigabe ? `, ${abstimmungKurz(p.freigabe)} ${p.freigabe.gegeben ? 'vermerkt' : 'offen'}` : ''}`;
+const phaseLabel = (p: StrahlPhase, i: number) => `Phase ${i + 1}: ${p.titel}${p.zusatz ? ` (${p.zusatz})` : ''} — ${p.zustand === 'fertig' ? 'erledigt' : p.zustand === 'jetzt' ? 'hier stehen wir' : 'kommt noch'}${p.gesamt ? `, ${p.erledigt ?? 0} von ${p.gesamt} ${wort(p.gesamt, 'Schritt', 'Schritten')} erledigt` : ''}${p.freigabe ? `, ${abstimmungKurz(p.freigabe)} ${p.freigabe.gegeben ? 'vermerkt' : 'offen'}` : ''}`;
 
 /**
  * Der Phasen-Strahl (Rechner): eine Spalte je Phase — oben „Sie sind hier“ bzw. „Phase n“, darunter die Schiene mit dem erledigten Anteil und
@@ -89,7 +90,7 @@ export function MiniStrahl({ phasen, onPhase, unter = true, hoehe = 8 }: { phase
   const j = phasen.findIndex(p => p.zustand === 'jetzt');
   const jetzt = j >= 0 ? phasen[j] : null;
   const alle = phasen.length > 0 && phasen.every(p => p.zustand === 'fertig');
-  const text = jetzt ? `Phase ${j + 1} von ${phasen.length} · ${jetzt.titel}` : alle ? `Alle ${phasen.length} Phasen erledigt` : `${phasen.length} Phasen`;
+  const text = jetzt ? `Phase ${j + 1} von ${phasen.length} · ${jetzt.titel}` : alle ? (phasen.length === 1 ? 'Phase erledigt' : `Alle ${phasen.length} Phasen erledigt`) : anzahl(phasen.length, 'Phase', 'Phasen');
   return (
     <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
       <div role={onPhase ? undefined : 'img'} aria-label={onPhase ? undefined : `${text}. ${phasen.map((p, i) => phaseLabel(p, i)).join('. ')}`} style={{ display: 'flex', gap: hoehe >= 8 ? 8 : 6, alignItems: 'center' }}>

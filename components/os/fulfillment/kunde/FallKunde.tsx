@@ -33,6 +33,7 @@ import { KundenAnsichtVorschau } from './KundenAnsichtVorschau';
 import { MandatFortschritt } from '../../mandate/treppe/Fortschritt';
 import { TREPPE_EREIGNIS } from '../../mandate/treppe/daten';
 import { useFall, geaendert, tagKurz } from '../prozesse/daten';
+import { anzahl, satz as satzEnde } from '@/lib/text/zahlwort';
 import { ReiterAntwort, MehrKnopf, Zeitachse } from '../reise/teile';
 import { DemKundenZeigen } from '../reise/Praesentation';
 import { JETZT } from '../reise/bilder';
@@ -103,7 +104,7 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
   const stufe = reihe.letzter ? pulsStufe(reihe.letzter.wert, s.puls.schwelle) : null;
   const puls: Antwort = !reihe.letzter
     ? { ampel: 'gelb', antwort: 'Noch kein Kunden-Puls', unter: 'Die Puls-Frage geht mit dem 2-Wochen-Report raus — oder ihr tragt die Antwort aus dem Gespräch ein.' }
-    : { ampel: stufe === 'kritisch' ? 'rot' : stufe === 'gut' ? 'gruen' : 'gelb', antwort: `Puls ${reihe.letzter.wert} von 10`, unter: `${tagKurz(reihe.letzter.tag)} · ${reihe.healthPasst ? `Health ${reihe.health ?? '—'} passt dazu` : `Health steht auf ${reihe.health ?? '—'} — übernehmen?`}${stufe === 'kritisch' ? ' · Gespräch anbieten' : ''}` };
+    : { ampel: stufe === 'kritisch' ? 'rot' : stufe === 'gut' ? 'gruen' : 'gelb', antwort: `Puls ${reihe.letzter.wert} von 10`, unter: `${tagKurz(reihe.letzter.tag)} · ${reihe.healthPasst ? `Gesundheit des Mandats ${reihe.health ?? '—'} passt dazu` : `Gesundheit des Mandats steht auf ${reihe.health ?? '—'} — übernehmen?`}${stufe === 'kritisch' ? ' · Gespräch anbieten' : ''}` };
   const l = s.link;
   const sieht: Antwort = !s.fall
     ? { ampel: 'gelb', antwort: 'Noch kein Fall', unter: 'Der Kunden-Link zeigt den Stand des Falls — erst das Onboarding starten.' }
@@ -124,7 +125,7 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
       <Karte i={1} id="kunde-report">
         <Ueberschrift erklaerung="fulfillment.reportTakt" rechts={<span>alle zwei Wochen</span>}>Fortschritts-Report</Ueberschrift>
         <Zeitachse heuteX={achse.heuteX} links={`Start ${tagKurz(achse.von)}`} rechts={tagKurz(achse.bis)}
-          beschreibung={`Reports seit ${tagKurz(achse.von)}: ${achse.reports.map(r => tagKurz(r.tag)).join(', ') || 'keiner'}. Nächster fällig am ${tagKurz(achse.naechsterFaellig)}.`}
+          beschreibung={`${satzEnde(`Reports seit ${tagKurz(achse.von)}: ${achse.reports.map(r => tagKurz(r.tag)).join(', ') || 'keiner'}`)} ${satzEnde(`Nächster fällig am ${tagKurz(achse.naechsterFaellig)}`)}`}
           punkte={[
             ...achse.takt.map(t => ({ x: t.x, farbe: t.erfuellt ? LEUCHT.gut : t.tag <= heute ? LEUCHT.kritisch : C.inkLeise, voll: false, raute: true, titel: `Soll ${tagKurz(t.tag)}${t.erfuellt ? ' · erfüllt' : t.tag <= heute ? ' · ohne Report' : ''}` })),
             ...achse.reports.map(r => ({ x: r.x, farbe: LEUCHT.gut, voll: true, gross: true, titel: `Report ${tagKurz(r.tag)}${r.gesendet ? ' · gesendet' : ''}` })),
@@ -149,7 +150,7 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
 
       <Karte flach id="kunde-sicht">
         <Ueberschrift erklaerung="fulfillment.praesentation" rechts={<span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise onClick={() => setVorschau(v => !v)}>{vorschau ? 'Vorschau schließen' : 'Vorschau hier'}</Knopf><DemKundenZeigen mandatId={mandatId} leise /></span>}>So sieht der Kunde es</Ueberschrift>
-        <div style={klein}>Dieselbe Seite wie über den Link — mit genau den Daten, die der Server dem Kunden schickt. Nie dabei: Stakeholder, Haltungen, Notizen, interne Schritte und Marken, Health, Honorar, Dossier, Personenteil.</div>
+        <div style={klein}>Dieselbe Seite wie über den Link — mit genau den Daten, die der Server dem Kunden schickt. Nie dabei: Stakeholder, Haltungen, Notizen, interne Schritte und Marken, Gesundheit des Mandats, Honorar, Dossier, Personenteil.</div>
         {vorschau && <div style={{ marginTop: 12 }}><KundenAnsichtVorschau mandatId={mandatId} /></div>}
       </Karte>
       {dialog}
@@ -192,10 +193,10 @@ function PulsKarte({ s, tun, onLink, voll, followups }: { s: KundeStand; tun: Tu
           </button>
           <div style={{ display: 'grid', gap: 6 }}>
             {reihe.letzter && <div style={{ fontSize: TYP.body, color: C.ink }}><b>{reihe.letzter.wert} / 10</b> am {tagKurz(reihe.letzter.tag)}{letzter?.satz ? <span style={klein}> — „{letzter.satz}“</span> : null}</div>}
-            <div style={klein}>Zufriedenheit (Health) des Mandats: <b style={{ color: C.ink }}>{reihe.health ?? 'noch nicht bewertet'}</b>{reihe.healthPasst ? ' — passt zum letzten Puls.' : ` — der letzte Puls entspricht ${reihe.vorschlagHealth}.`}</div>
+            <div style={klein}>Gesundheit des Mandats (Zufriedenheit): <b style={{ color: C.ink }}>{reihe.health ?? 'noch nicht bewertet'}</b>{reihe.healthPasst ? ' — passt zum letzten Puls.' : ` — der letzte Puls entspricht ${reihe.vorschlagHealth}.`}</div>
             {!reihe.healthPasst && letzter && (
-              <Erklaert erklaerung="fulfillment.pulsInHealth" name="In die Health übernehmen">
-                <Knopf onClick={() => tun({ aktion: 'puls-uebernehmen', pulsId: letzter.id }, `Übernommen: Zufriedenheit des Mandats = ${letzter.wert * 10}.`)}>In die Health übernehmen ({reihe.vorschlagHealth})</Knopf>
+              <Erklaert erklaerung="fulfillment.pulsInHealth" name="In die Gesundheit des Mandats übernehmen">
+                <Knopf onClick={() => tun({ aktion: 'puls-uebernehmen', pulsId: letzter.id }, `Übernommen: Zufriedenheit des Mandats = ${letzter.wert * 10}.`)}>In die Gesundheit des Mandats übernehmen ({reihe.vorschlagHealth})</Knopf>
               </Erklaert>
             )}
           </div>
@@ -203,14 +204,14 @@ function PulsKarte({ s, tun, onLink, voll, followups }: { s: KundeStand; tun: Tu
       )}
       {kritisch && (
         <Hinweis art="kritisch" titel="Puls unter der Schwelle — Gespräch anbieten" aktion={<Link href={WEG.freigaben(undefined, 'business')} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Freigabe-Stapel ›</Link>}>
-          {gespraech.length ? `Follow-up „${gespraech[0].text}“ ${gespraech[0].status === 'offen' ? `fällig ${tagKurz(gespraech[0].faellig)}` : gespraech[0].status}.` : 'Der Vorschlag „Gespräch anbieten“ liegt im Freigabe-Stapel — die Freigabe legt ein Follow-up am Mandat an (in zwei Tagen fällig).'}
+          {gespraech.length ? satzEnde(`Follow-up „${gespraech[0].text}“ ${gespraech[0].status === 'offen' ? `fällig ${tagKurz(gespraech[0].faellig)}` : gespraech[0].status}`) : 'Der Vorschlag „Gespräch anbieten“ liegt im Freigabe-Stapel — die Freigabe legt ein Follow-up am Mandat an (in zwei Tagen fällig).'}
         </Hinweis>
       )}
-      {s.puls.liste.length > 0 && <div><Knopf leise onClick={() => setAlle(!alle)}>{alle ? 'Werte ausblenden' : `Alle ${s.puls.liste.length} Werte zeigen`}</Knopf></div>}
+      {s.puls.liste.length > 0 && <div><Knopf leise onClick={() => setAlle(!alle)}>{alle ? 'Werte ausblenden' : s.puls.liste.length === 1 ? '1 Wert zeigen' : `Alle ${anzahl(s.puls.liste.length, 'Wert', 'Werte')} zeigen`}</Knopf></div>}
       {alle && (
         <Liste>
           {s.puls.liste.map(p => (
-            <ZeileAktionen key={p.id} titel={`Puls ${p.wert}`} mehr={[{ id: 'health', label: 'In die Health übernehmen', hinweis: `Zufriedenheit = ${p.wert * 10}`, tun: () => tun({ aktion: 'puls-uebernehmen', pulsId: p.id }, `Übernommen: Zufriedenheit des Mandats = ${p.wert * 10}.`) }]}>
+            <ZeileAktionen key={p.id} titel={`Puls ${p.wert}`} mehr={[{ id: 'health', label: 'In die Gesundheit des Mandats übernehmen', hinweis: `Zufriedenheit = ${p.wert * 10}`, tun: () => tun({ aktion: 'puls-uebernehmen', pulsId: p.id }, `Übernommen: Zufriedenheit des Mandats = ${p.wert * 10}.`) }]}>
               <Zeile umbrechen titel={<span><b>{p.wert}</b> / 10 · {tag(p.am)}</span>} unter={`${p.quelle === 'link' ? 'über den Link' : 'von Hand'}${p.satz ? ` — „${p.satz}“` : ''}`} />
             </ZeileAktionen>
           ))}

@@ -12,6 +12,7 @@ import { personenDerFirma } from '@/lib/crm/stationen';
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Leer, Feldzeile, Pillen, eingabe, auswahl, LEUCHT, useRueckfrage } from '../../ui';
 import { useCrm } from '../../crm/daten';
 import { senden, fehlerVon } from './daten';
+import { tagLang } from '../prozesse/daten';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
 type KarteAntwort = PersonenKarte & { stand: string; art14Stand: { stufe: string; faelligAm: string }; maengel: string[]; art14Text: string; kontakt?: { vorhanden: boolean; art14?: { informiertAm?: string; stufe?: string } } };
@@ -84,7 +85,7 @@ function KarteAnsicht({ k, kandidaten, schritt, rueck }: { k: KarteAntwort; kand
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: TYP.body, color: C.ink }}>Art. 14</span>
           <Chip farbe={STUFE_FARBE[k.art14Stand.stufe] ?? C.inkLeise}>{k.art14Stand.stufe === 'gegeben' ? `gegeben ${k.art14.gegebenAm}` : `fällig ${k.art14Stand.faelligAm}`}</Chip>
-          {k.kontakt && <span style={klein}>{k.kontakt.vorhanden ? `Verknüpfter Kontakt: Hinweis über die Kontaktakte${k.kontakt.art14?.informiertAm ? ` (informiert ${k.kontakt.art14.informiertAm})` : ''}.` : 'Verknüpfter Kontakt existiert nicht mehr.'}</span>}
+          {k.kontakt && <span style={klein}>{k.kontakt.vorhanden ? `Verknüpfter Kontakt: Hinweis über die Kontaktakte${k.kontakt.art14?.informiertAm ? ` (informiert ${tagLang(k.kontakt.art14.informiertAm)})` : ''}.` : 'Verknüpfter Kontakt existiert nicht mehr.'}</span>}
         </div>
         <textarea readOnly style={{ ...eingabe, minHeight: 120, fontSize: TYP.bedien }} value={k.art14Text} aria-label="Text des Art.-14-Hinweises" />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

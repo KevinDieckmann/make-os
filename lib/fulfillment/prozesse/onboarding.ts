@@ -20,6 +20,7 @@ import { MUSTER_ONBOARDING, MUSTER_PLAYBOOK, type OnboardingSchluessel } from '.
 import { ausWandzeit } from '@/lib/kalender/zeit';
 import { abstimmungsNummern } from './darstellung';
 import { ersterTermin } from './termine';
+import { satz } from '@/lib/text/zahlwort';
 
 export const OB_PRAEFIX = 'fk-ob-';
 /** Kennung des Playbook-Formulars unter dem Schritt „Playbook“ (dieselbe wie OB_PLAYBOOK_FORMULAR_ID in fall.ts — hier ohne Import-Kreis). */
@@ -108,7 +109,7 @@ export function onboardingStand(fall: Fall, a: OnboardingAbleitung): OnboardingS
     const [erfuellt, text] = bed[s.schluessel];
     return {
       schluessel: s.schluessel, titel: k?.titel ?? s.titel, zaehlt: s.zaehltFuerFertig, erfuellt, entfaellt, status: k?.status ?? null,
-      text: entfaellt ? `Entfällt${k?.grund ? ` — ${k.grund}` : ''}.` : text, ueberfaellig: s.schluessel === 'willkommen' && uhr.ueberfaellig,
+      text: entfaellt ? satz(`Entfällt${k?.grund ? ` — ${k.grund}` : ''}`) : text, ueberfaellig: s.schluessel === 'willkommen' && uhr.ueberfaellig,
     };
   });
   const offen = schritte.filter(s => s.zaehlt && !s.erfuellt && !s.entfaellt).length;

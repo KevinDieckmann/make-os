@@ -7,6 +7,7 @@
 
 import { PdfBlatt, PDF_FARBE } from '../kunde/pdf-bild';
 import type { WirkungsDokument } from './wirkung';
+import { wort } from '@/lib/text/zahlwort';
 
 export async function wirkungPdf(d: WirkungsDokument, opt: { erstellt: Date }): Promise<Uint8Array> {
   const b = await PdfBlatt.neu({ titel: `${d.titel} – ${d.kunde}`, betreff: d.mandat, ...(d.absender ? { autor: d.absender } : {}), erstellt: opt.erstellt });
@@ -19,7 +20,7 @@ export async function wirkungPdf(d: WirkungsDokument, opt: { erstellt: Date }): 
   }
   if (d.phasen?.length) {
     const fertig = d.phasen.filter(p => p.stand === 'erledigt').length;
-    b.abschnitt('Meilensteine', `${fertig} von ${d.phasen.length} Phasen abgeschlossen`);
+    b.abschnitt('Meilensteine', `${fertig} von ${d.phasen.length} ${wort(d.phasen.length, 'Phase', 'Phasen')} abgeschlossen`);
     b.strahl(d.phasen, { hier: 'Hier stehen wir' });
     const abgestimmt = d.phasen.filter(p => p.abstimmung?.erledigt).map(p => `${p.abstimmung!.titel} — abgestimmt`);
     if (abgestimmt.length) b.punkte(abgestimmt, { groesse: 9.5 });

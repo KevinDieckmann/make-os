@@ -24,6 +24,7 @@ import { istSammelSchritt, naechsterPunkt, type NaechsterPunkt } from '../prozes
 import { obSchluessel } from '../prozesse/onboarding';
 import type { Fall, FallKnoten, Freigabepunkt, RitualVorlage } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
+import { satz, wort } from '@/lib/text/zahlwort';
 
 // ── Anrede und Wörter ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ export const anredeAus = (a: unknown): KundenAnrede => (a === 'Du' || a === 'du'
 export const WORTE = {
   du: {
     soWeit: 'So weit sind wir', ziel: 'Euer Ziel', erfolge: 'Erste Erfolge', braucht: 'Das braucht es von euch', naechstes: 'Als Nächstes',
-    termin: 'Nächster Termin', takt: 'Unser Takt', unterlagen: 'Unterlagen', puls: 'Wie zufrieden seid ihr?', entscheidungen: 'Gemeinsam entschieden',
+    termin: 'Nächster Termin', takt: 'Unser Takt', unterlagen: 'Unterlagen', puls: 'Wie zufrieden seid ihr?', entscheidungen: 'Gemeinsam entschieden', entscheidungenOffen: 'Noch offen',
     wartetAuf: 'Wartet auf euch', wartetLeer: 'Gerade wartet nichts auf euch — danke!', zielLeer: 'Die Ziele legen wir gemeinsam fest — sie erscheinen hier, sobald sie stehen.',
     erfolgeLeer: 'Die ersten Erfolge planen wir gemeinsam — sie erscheinen hier mit Datum.', naechstesLeer: 'Die nächsten Schritte stimmen wir im nächsten Termin ab.',
     zielSatz: 'Wert-Konto: vorher → jetzt → Ziel. Die Werte tragen wir gemeinsam ein — ein Zielbild, keine Garantie.',
@@ -52,7 +53,7 @@ export const WORTE = {
   },
   sie: {
     soWeit: 'So weit sind wir', ziel: 'Ihr Ziel', erfolge: 'Erste Erfolge', braucht: 'Das brauchen wir von Ihnen', naechstes: 'Als Nächstes',
-    termin: 'Nächster Termin', takt: 'Unser Takt', unterlagen: 'Unterlagen', puls: 'Wie zufrieden sind Sie?', entscheidungen: 'Gemeinsam entschieden',
+    termin: 'Nächster Termin', takt: 'Unser Takt', unterlagen: 'Unterlagen', puls: 'Wie zufrieden sind Sie?', entscheidungen: 'Gemeinsam entschieden', entscheidungenOffen: 'Noch offen',
     wartetAuf: 'Wartet auf Sie', wartetLeer: 'Gerade wartet nichts auf Sie — vielen Dank!', zielLeer: 'Die Ziele legen wir gemeinsam fest — sie erscheinen hier, sobald sie stehen.',
     erfolgeLeer: 'Die ersten Erfolge planen wir gemeinsam — sie erscheinen hier mit Datum.', naechstesLeer: 'Die nächsten Schritte stimmen wir im nächsten Termin ab.',
     zielSatz: 'Wert-Konto: vorher → jetzt → Ziel. Die Werte tragen wir gemeinsam ein — ein Zielbild, keine Garantie.',
@@ -85,6 +86,17 @@ export function kundenText(titel: string, abstimmung?: string): string {
   // Interne Zusätze („(nur Prozess)“) nur an EINER Stelle (lib/fulfillment/prozesse/darstellung.ts `titelOhneZusatz`) — intern und für Kunden dieselbe.
   const t = titelOhneZusatz(roh).replace(KUERZEL, 'Abstimmungspunkt').replace(/\s+/g, ' ').trim();
   return t || 'Abstimmungspunkt';
+}
+
+// ── Entscheidungen ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Geteilte Entscheidungen getrennt nach „Entschieden“ (entschieden oder verworfen — beides ist eine Entscheidung) und „Offen“ — EINE Regel für
+ * die Kunden-Seite, die Vorschau im Fall und „Dem Kunden zeigen“ (16.10., Abnahme 2 · C6: unter „Gemeinsam entschieden“ stand ein offener Punkt).
+ * Die Reihenfolge innerhalb einer Gruppe bleibt, wie sie kommt.
+ */
+export function entscheidungenTeilen<T extends { status: 'offen' | 'entschieden' | 'verworfen' }>(liste: readonly T[]): { entschieden: T[]; offen: T[] } {
+  return { entschieden: liste.filter(x => x.status !== 'offen'), offen: liste.filter(x => x.status === 'offen') };
 }
 
 // ── Datum ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -348,7 +360,7 @@ export function kundenLage(e: {
   const s2 = e.erledigt > 0 ? `In den letzten zwei Wochen haben wir ${e.erledigt === 1 ? 'einen Schritt' : `${e.erledigt} Schritte`} abgeschlossen.`
     : e.quickWinsErledigt > 0 ? (e.quickWinsErledigt === 1 ? 'Ein erster Erfolg ist schon erreicht.' : `${e.quickWinsErledigt} erste Erfolge sind schon erreicht.`)
       : bestesZiel ? `Beim Ziel „${bestesZiel.name}“ ${bestesZiel.anteil! >= 100 ? 'ist der Zielwert erreicht' : `sind ${bestesZiel.anteil} % des Weges geschafft`}.`
-        : e.naechstes.length ? `Als Nächstes steht an: ${e.naechstes[0]}.` : 'Die nächsten Schritte stimmen wir im nächsten Termin ab.';
+        : e.naechstes.length ? satz(`Als Nächstes steht an: ${e.naechstes[0]}`) : 'Die nächsten Schritte stimmen wir im nächsten Termin ab.';
   const wer = du ? 'euch' : 'Ihnen';
   const anzahl = e.braucht ?? e.wartetTage.length;
   const s3 = !anzahl ? (du ? 'Von euch brauchen wir gerade nichts — danke!' : 'Von Ihnen brauchen wir gerade nichts — vielen Dank!')
@@ -374,7 +386,7 @@ export function strahlModell(phasen: readonly KundenPhase[]): { segmente: Strahl
     ...(p.abstimmung ? { abstimmung: p.abstimmung } : {}),
   }));
   const jetzt = phasen.findIndex(p => p.stand === 'aktuell');
-  const text = jetzt >= 0 ? `Phase ${jetzt + 1} von ${n} · ${phasen[jetzt].titel}` : n && phasen.every(p => p.stand === 'erledigt') ? `Alle ${n} Phasen abgeschlossen` : n ? `${n} Phasen` : '';
+  const text = jetzt >= 0 ? `Phase ${jetzt + 1} von ${n} · ${phasen[jetzt].titel}` : n && phasen.every(p => p.stand === 'erledigt') ? (n === 1 ? 'Phase abgeschlossen' : `Alle ${n} Phasen abgeschlossen`) : n ? `${n} ${wort(n, 'Phase', 'Phasen')}` : '';
   return { segmente, jetzt, text };
 }
 

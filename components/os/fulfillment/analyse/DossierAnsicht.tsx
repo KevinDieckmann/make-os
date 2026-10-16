@@ -16,6 +16,8 @@ import { alsErgebnis, STECKBRIEF_LABEL, type SteckbriefFeld } from '@/lib/fulfil
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Liste, Kennzahl, Raster, Feldzeile, Pillen, eingabe, auswahl, LEUCHT, useRueckfrage } from '../../ui';
 import { senden, fehlerVon, inDenFall, NACH_FALL_TEXT, type AnalyseApi, type NachFallWas } from './daten';
 import { insBild } from '../reise/sprung';
+import { anzahl } from '@/lib/text/zahlwort';
+import { tagLang } from '../prozesse/daten';
 import { agentText } from '@/lib/fulfillment/analyse/agenten';
 
 type Rueck = ReturnType<typeof useRueckfrage>;
@@ -46,7 +48,7 @@ export function DossierAnsicht({ mandatId, api, rueck }: { mandatId: string; api
           <Kennzahl label="Belegt" wert={lage.belegQuote == null ? '—' : `${Math.round(lage.belegQuote * 100)} %`} />
           <Kennzahl label="Prüfschritte" wert={`${d.f1 ? 'Umfang bestätigt' : 'Umfang offen'} · ${d.f2 ? 'Dossier geprüft' : 'ungeprüft'}`} />
         </Raster>
-        <div style={klein}>Personenteil: {db?.kartenAnzahl ?? 0} Karte(n) · gelöscht {db?.loeschAm ? `am ${db.loeschAm}` : `${lage.loeschRegelTage} Tage nach Mandatsende`}{(db?.geloescht ?? []).map(g => ` · Personenteil gelöscht am ${g.am} (${g.anzahl} Karten)`).join('')}</div>
+        <div style={klein}>Personenteil: {anzahl(db?.kartenAnzahl ?? 0, 'Karte', 'Karten')} · gelöscht {db?.loeschAm ? `am ${tagLang(db.loeschAm)}` : `${anzahl(lage.loeschRegelTage, 'Tag', 'Tage')} nach Mandatsende`}{(db?.geloescht ?? []).map(g => ` · Personenteil gelöscht am ${tagLang(g.am)} (${anzahl(g.anzahl, 'Karte', 'Karten')})`).join('')}</div>
       </Karte>
       <nav aria-label="Abschnitte des Dossiers" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {ABSCHNITT_REIHE.map(id => {
@@ -54,7 +56,7 @@ export function DossierAnsicht({ mandatId, api, rueck }: { mandatId: string; api
           const n = a?.aussagen.length ?? 0;
           const f = a?.status === 'geprueft' ? LEUCHT.gut : a?.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise;
           return (
-            <button key={id} type="button" className="fassbar" onClick={() => insBild(`dossier-${id}`)} aria-label={`${ABSCHNITT_LABEL[id]}: ${n} Aussage(n), ${a?.status === 'geprueft' ? 'geprüft' : a?.status ?? 'leer'}`}
+            <button key={id} type="button" className="fassbar" onClick={() => insBild(`dossier-${id}`)} aria-label={`${ABSCHNITT_LABEL[id]}: ${anzahl(n, 'Aussage', 'Aussagen')}, ${a?.status === 'geprueft' ? 'geprüft' : a?.status ?? 'leer'}`}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: TYP.bedien, color: n ? C.ink : C.inkDim, background: 'rgba(255,255,255,.04)', border: `1px solid ${n ? `${f}66` : 'rgba(255,255,255,.08)'}` }}>
               <span aria-hidden style={{ width: 7, height: 7, borderRadius: 4, background: n ? f : 'transparent', border: `1px solid ${f}` }} />{ABSCHNITT_LABEL[id]}{n ? ` · ${n}` : ''}
             </button>

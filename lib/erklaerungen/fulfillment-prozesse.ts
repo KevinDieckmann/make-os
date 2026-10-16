@@ -66,7 +66,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   },
   'fulfillment.befaehigung': {
     was: 'Befähigung misst, ob der Vertrieb ohne uns läuft. Die Kriterien sind eine Vorgabe und je Fall änderbar; am Mandatsende zählt der Anteil der erfüllten.',
-    beispiel: 'Zwei Abschlüsse ohne Gründer und vier Wochen Rhythmus ohne uns sind erfüllt, Coverage und Pflichtfelder noch nicht — 2 von 4.',
+    beispiel: 'Zwei Abschlüsse ohne Gründer und vier Wochen Rhythmus ohne uns sind erfüllt, Pipeline-Abdeckung und Pflichtfelder noch nicht — 2 von 4.',
   },
   'fulfillment.willkommen24h': {
     was: 'Innerhalb von 24 Stunden nach der Unterschrift geht die Willkommensmail raus: Dank, drei Terminvorschläge fürs Kick-off und der Link zum Playbook. Gesendet wird erst mit eurem Klick, aus eurem Postfach.',
@@ -78,7 +78,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   },
   'fulfillment.freigabe': {
     was: 'Ein Abstimmungspunkt (◆) ist ein Halt, an dem der Kunde und ihr bestätigen — durchnummeriert in der Reihenfolge des Ablaufs. Vermerkt werden Tag, wer intern und wie der Kunde bestätigt hat; damit ist die Phase abgeschlossen. Die nächste Phase darf schon beginnen, dann erscheint ein Hinweis. („Freigabe“ meint in MAKE OS die Vorschläge von ZOE.)',
-    beispiel: 'Abstimmungspunkt 3 · Diagnose-Abnahme: im Steering bestätigt, Notiz „Top-5 Maßnahmen angenommen, Maßnahme 4 später“.',
+    beispiel: 'Abstimmungspunkt 3 · Diagnose-Abnahme: im Steuerungskreis bestätigt, Notiz „Top-5 Maßnahmen angenommen, Maßnahme 4 später“.',
   },
   'fulfillment.vorlageDiff': {
     was: 'Der Fall arbeitet mit einer Kopie der Vorlage. Ändert ihr die Vorlage für künftige Kunden, zeigt der Fall, was neu oder geändert ist. „Übernehmen“ fügt hinzu und ändert — erledigte Schritte werden nie entfernt.',
@@ -93,7 +93,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Die Geschäftsführerin entscheidet (Einfluss 3, positiv), der Vertriebsleiter ist skeptisch — im Kick-off bekommt er die Fragen zu Kennzahlen.',
   },
   'fulfillment.rituale': {
-    was: 'Rituale geben den Takt: Kick-off, Wochen-Check, Steering, Quartals-Review — und auf Wunsch ein tägliches Huddle mit Zahlenrunde. „Termin anlegen“ öffnet den Kalender-Dialog, vorbelegt mit Titel, Dauer und Bezug zum Mandat; Gäste werden erst nach eurer Rückfrage eingeladen.',
+    was: 'Rituale geben den Takt: Kick-off, Wochen-Check, Steuerungskreis, Quartals-Review — und auf Wunsch ein tägliches Huddle mit Zahlenrunde (Huddle = kurze Abstimmungsrunde). „Termin anlegen“ öffnet den Kalender-Dialog, vorbelegt mit Titel, Dauer und Bezug zum Mandat; Gäste werden erst nach eurer Rückfrage eingeladen.',
     beispiel: 'Der Wochen-Check dauert 15 Minuten; im Dialog wählt ihr „wöchentlich“, danach steht der nächste Termin im Cockpit.',
   },
   'fulfillment.mitschrift': {
@@ -115,7 +115,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     aus: 'Die Entscheidung bleibt im Team; der Kunde sieht sie nicht.',
   },
   'fulfillment.cockpit': {
-    was: 'Das Cockpit zeigt je laufendem Fall Phase, Fortschritt, Health, Puls und nächsten Termin — und zuerst, was hängt: überfällige Willkommensmails und Freigaben, lange Wartezeiten beim Kunden, schlechter Puls, alter Report.',
+    was: 'Das Cockpit zeigt je laufendem Fall Phase, Fortschritt, Kunden-Gesundheit, Puls und nächsten Termin — und zuerst, was hängt: überfällige Willkommensmails und Freigaben, lange Wartezeiten beim Kunden, schlechter Puls, alter Report.',
     beispiel: 'Oben steht rot „Willkommensmail überfällig“ beim neuen Kunden, darunter gelb „Letzter Report vor 17 Tagen“ bei einem laufenden Fall.',
   },
   'fulfillment.kennzahl.willkommen': {

@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO, TIEF, ECKE, FLAECHE_STIL, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Chip, Punkt, LEUCHT, useRueckfrage, Erklaert } from '../../ui';
 import { WEG } from '@/lib/wege';
+import { anzahl } from '@/lib/text/zahlwort';
 import { ortHref, ORTE, istOrt } from '@/lib/fulfillment/orte';
 import { ebeneVon, inReihenfolge, kinderVon, wurzelVon } from '@/lib/fulfillment/regeln';
 import { brotkrumen } from '@/lib/fulfillment/prozesse/landkarte';
@@ -130,7 +131,7 @@ function Steckbrief({ vorlage, id, daten, onKnoten }: { vorlage: VorlageMitStand
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         {e('Ziel', kn.ziel)}{e('Warum', kn.warum ?? (zusatz ? `${zusatz.charAt(0).toUpperCase()}${zusatz.slice(1)}.` : undefined))}{e('Eingang', kn.eingang)}{e('Ergebnis', kn.ergebnis)}{e('Kennzahl', kn.kennzahl)}{e('Rolle', kn.rolle)}
-        {e('Dauer', kn.dauerTage ? `${kn.dauerTage} Tage` : null)}{e('Aufwand', kn.aufwandStunden ? `${kn.aufwandStunden} Stunden` : null)}
+        {e('Dauer', kn.dauerTage ? anzahl(kn.dauerTage, 'Tag', 'Tage') : null)}{e('Aufwand', kn.aufwandStunden ? anzahl(kn.aufwandStunden, 'Stunde', 'Stunden') : null)}
       </div>
       <Leiste>
         {ort && <Link href={ort.href} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Wohnt heute in: {ort.titel} — öffnen ›</Link>}
