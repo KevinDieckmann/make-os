@@ -12,6 +12,10 @@
 // Barrierefrei: die Leinwand ist dekorativ, darunter dieselben Punkte als Liste mit Suche (Tastatur, Vorleser); der Fokus in
 // der Liste hebt den Stern hervor. Ohne WebGL bleibt nur die Liste. Beschriftungen, Bögen und Titel folgen dem Takt des
 // Motors (`nachBild`) — kein eigener Lauf, keine React-Zustände je Bild.
+// Bedienung (16.10., Kevin: „Das Brain muss zoombar sein … wie beim MacBook auf dem Touchpad“ und „das muss beweglicher sein“):
+// Ziehen dreht (mit Schwung), Pinch bzw. ⌘/Strg + Mausrad zoomt zum Zeiger, ⇧ verschiebt den Ausschnitt, Doppelklick zoomt,
+// Knöpfe + / − / Zurücksetzen, Tasten (Pfeile, + − 0) — Eingabe nur an dieser Fläche (eingabe.ts), Werte im Motor, Rechnung rein
+// (steuerung.ts). Ein Mausrad ohne Taste lässt die Seite weiterlaufen; dann erscheint kurz der Hinweis am Rand.
 
 import { useSpace } from '@/hooks/useSpace';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -19,9 +23,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP, KUGEL_BEREICH_FARBE, RAND, LICHT_GLAS, ZIEL } from '@/lib/make-one/design';
 import { ART_NAME, BEREICH_NAME, KUGEL_BEREICHE, nachbarn, wegFuer, type BrainPunkt, type KugelArt, type KugelBereich } from '@/lib/brain/kugel';
-import { Kugel } from './Kugel';
+import { Kugel, useRuhig } from './Kugel';
+import { kugelEingabe, type KugelEingabe } from './eingabe';
+import { kameraHinweis, LUPE_MAX, TASTE_ZOOM } from './steuerung';
 import { brainLayout, versetzt, HUELLE_PUNKTE, HUELLE_PUNKTE_HANDY, type BrainLayout } from './brain-layout';
-import type { Motor } from './motor';
+import type { KameraStand, Motor } from './motor';
 import { RUHE, norm, type Vec3 } from './geometrie';
 import { Leer, Punkt, feld, useHandy } from '../ui';
 
@@ -138,7 +144,15 @@ export function BrainKugel() {
   const [aus, setAus] = useState<ReadonlySet<KugelBereich>>(new Set());
   const [fokus, setFokus] = useState<KugelBereich | null>(null);
   const motor = useRef<Motor | null>(null);
-  const flaeche = useRef<HTMLDivElement>(null);
+  const flaeche = useRef<HTMLDivElement | null>(null);
+  const eingabe = useRef<KugelEingabe | null>(null);
+  const hinweisEl = useRef<HTMLDivElement>(null);
+  const hinweisUhr = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Nur Schalter für die Knöpfe — sie wechseln selten (die Kamera selbst lebt im Motor, nie im React-Zustand).
+  const [gezoomt, setGezoomt] = useState(false);
+  const [amMax, setAmMax] = useState(false);
+  const [veraendert, setVeraendert] = useState(false);
+  const ruhig = useRuhig();
   const linien = useRef<HTMLCanvasElement>(null);
   const titelKarte = useRef<HTMLDivElement>(null);
   const schilder = useRef(new Map<KugelBereich, HTMLButtonElement>());
@@ -185,23 +199,28 @@ export function BrainKugel() {
     if (s.takt === 0 || !s.schilderGelegt) {
     s.schilderGelegt = true;
     const mitteSchirm = m.ort([0, 0, 0]);
+    // Hineingezoomt (Lupe): nur Cluster, deren Mitte im Bild liegt, bekommen ein Schild — die anderen ruhen unsichtbar.
+    const vergroessert = m.lupe().s > 1.01;
+    const imBild = (x: number, y: number, rand: number) => x > -rand && x < breite + rand && y > -rand && y < hoehe + rand;
     const liste = s.layout.cluster.map(k => {
       const el = schilder.current.get(k.bereich);
       const p = m.ort(k.mitte);
       let r = 0;
       for (let q = 0; q < 6; q++) { const e = m.ort(versetzt(k.mitte, k.weite, (q * Math.PI) / 3)); r = Math.max(r, Math.hypot(e.x - p.x, e.y - p.y)); }
-      return { k, el, p, schild: { x: p.x, y: p.y, r, w: el?.offsetWidth ?? 80, h: Math.min(el?.offsetHeight ?? 22, 22), hinten: !p.vorne } };
+      return { k, el, p, drin: !vergroessert || imBild(p.x, p.y, 24), schild: { x: p.x, y: p.y, r, w: el?.offsetWidth ?? 80, h: Math.min(el?.offsetHeight ?? 22, 22), hinten: !p.vorne } };
     });
     // Alle Sterne (≤ 3000, je Bild projiziert — Bruchteile einer Millisekunde); die der Rückseite wiegen leichter.
     const sterne: { x: number; y: number; g: number }[] = [];
-    for (let i = 0; i < s.layout.ids.length; i++) { const q = m.bildschirm(i); if (q) sterne.push({ x: q.x, y: q.y, g: q.vorne ? 1 : 0.35 }); }
+    for (let i = 0; i < s.layout.ids.length; i++) { const q = m.bildschirm(i); if (q && (!vergroessert || imBild(q.x, q.y, 12))) sterne.push({ x: q.x, y: q.y, g: q.vorne ? 1 : 0.35 }); }
     // Die größten Cluster zuerst: sie bekommen den besten Platz.
-    const reihe = liste.map((x, i) => i).sort((a, b) => liste[b].k.anzahl - liste[a].k.anzahl);
+    const reihe = liste.map((x, i) => i).filter(i => liste[i].drin).sort((a, b) => liste[b].k.anzahl - liste[a].k.anzahl);
     const gelegt = schilderLegen(reihe.map(i => liste[i].schild), { mitte: mitteSchirm, radius: m.schirmRadius(), breite, hoehe, sterne });
     const lage: { x: number; y: number }[] = [];
     reihe.forEach((i, j) => { lage[i] = gelegt[j]; });
-    liste.forEach(({ k, el, p }, i) => {
+    liste.forEach(({ k, el, p, drin }, i) => {
       if (!el) return;
+      if (!drin) { el.style.visibility = 'hidden'; return; }
+      el.style.visibility = '';
       el.style.transform = `translate(${lage[i].x.toFixed(1)}px, ${lage[i].y.toFixed(1)}px) translate(-50%, -50%)`;
       el.style.opacity = p.vorne ? (s.fokus && s.fokus !== k.bereich ? '0.45' : '1') : '0.4';
     });
@@ -255,6 +274,33 @@ export function BrainKugel() {
     m?.halte(id !== null);
   }, []);
 
+  // ── Bedienung: Knöpfe, Hinweis, Eingabe an der Fläche ──
+  const beiKamera = useCallback((k: KameraStand) => { setGezoomt(k.s > 1.001); setAmMax(k.s >= LUPE_MAX - 0.001); setVeraendert(k.veraendert); }, []);
+  /** Zurück auf das Ausgangsbild: Bereichs-Fokus weg, Drehung, Zoom und Ausschnitt zurück. */
+  const zuruecksetzen = useCallback(() => { setFokus(null); motor.current?.fliegeZu(null); motor.current?.zuruecksetzen(); }, []);
+  const zeigeHinweis = useCallback((ms: number) => {
+    const el = hinweisEl.current;
+    if (!el) return;
+    el.style.opacity = '1';
+    if (hinweisUhr.current) clearTimeout(hinweisUhr.current);
+    hinweisUhr.current = setTimeout(() => { if (hinweisEl.current) hinweisEl.current.style.opacity = '0'; }, ms);
+  }, []);
+  useEffect(() => () => { if (hinweisUhr.current) clearTimeout(hinweisUhr.current); }, []);
+  /** Die Eingabe hängt an genau dieser Fläche — außerhalb läuft die Seite wie immer. */
+  const flaecheSetzen = useCallback((el: HTMLDivElement | null) => {
+    eingabe.current?.abbauen();
+    eingabe.current = null;
+    flaeche.current = el;
+    if (!el) return;
+    eingabe.current = kugelEingabe(el, { motor: () => motor.current, zuruecksetzen, hinweis: () => zeigeHinweis(2600) });
+    zeigeHinweis(6000);
+  }, [zuruecksetzen, zeigeHinweis]);
+  const hinweisText = useMemo(() => {
+    const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    const touch = handy || (typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches);
+    return kameraHinweis(mac, touch);
+  }, [handy]);
+
   const trifft = (e: React.PointerEvent<HTMLDivElement>) => {
     const m = motor.current;
     if (!m) return { id: null as string | null, x: 0, y: 0 };
@@ -264,6 +310,8 @@ export function BrainKugel() {
     return { id: i === null ? null : layout.ids[i] ?? null, x, y };
   };
   const zeigerBewegt = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Beim Ziehen und Pinch wird nichts gezeigt.
+    if (eingabe.current?.zieht()) { if (hover) zeige(null); return; }
     if ((e.target as HTMLElement).closest('button,a')) return;
     const { id } = trifft(e);
     if (id !== hover) zeige(id);
@@ -271,6 +319,8 @@ export function BrainKugel() {
   const zeigerWeg = () => { motor.current?.zeiger(null); zeige(null); };
   const tippen = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button,a')) return;
+    // Erst ab ZIEH_SCHWELLE px ist es Ziehen — dann öffnet das Loslassen nichts.
+    if (eingabe.current?.warZiehen()) return;
     const { id } = trifft(e);
     if (!id) { setAuswahl(null); zeige(null); return; }
     const p = nachId.get(id);
@@ -305,11 +355,16 @@ export function BrainKugel() {
     <div data-brain-kugel="" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
       {mitGl && (
         <div
-          ref={flaeche}
+          ref={flaecheSetzen}
+          tabIndex={0}
+          role="group"
+          aria-label="Brain-Kugel: Ziehen dreht, Pinch oder Taste plus Mausrad zoomt, Umschalttaste verschiebt. Tasten: Pfeile drehen, Plus und Minus zoomen, 0 setzt zurück."
+          aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0"
           onPointerMove={zeigerBewegt}
           onPointerLeave={zeigerWeg}
           onPointerUp={tippen}
-          style={{ position: 'relative', width: '100%', height: handy ? undefined : 'min(640px, 72vh)', aspectRatio: handy ? '1 / 1' : undefined, cursor: hover ? 'pointer' : 'default', touchAction: 'pan-y', overflow: 'hidden' }}
+          // Hineingezoomt gehört der Finger der Kugel (drehen in alle Richtungen); sonst bleibt senkrecht die Seite.
+          style={{ position: 'relative', width: '100%', height: handy ? undefined : 'min(640px, 72vh)', aspectRatio: handy ? '1 / 1' : undefined, cursor: hover ? 'pointer' : 'grab', touchAction: gezoomt ? 'none' : 'pan-y', overflow: 'hidden', userSelect: 'none', WebkitUserSelect: 'none' }}
         >
           <Kugel
             name="brain"
@@ -320,6 +375,8 @@ export function BrainKugel() {
             optionen={handy ? { fuellung: 0.64 } : undefined}
             nachBild={nachBild}
             onMotor={m => { motor.current = m; }}
+            bedienbar
+            beiKamera={beiKamera}
             rueckfall={<RueckfallMerker aus={() => setMitGl(false)} />}
           />
           <canvas ref={linien} aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
@@ -343,6 +400,17 @@ export function BrainKugel() {
               background: LICHT_GLAS.flaeche, border: `1px solid ${RAND.stark}`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien,
             }}>‹ Gesamt</button>
           )}
+          {/* Hinweis am Rand — kurz nach dem Öffnen und wenn ein Mausrad ohne Taste über der Kugel dreht, sonst unsichtbar. */}
+          <div ref={hinweisEl} aria-hidden="true" style={{
+            position: 'absolute', right: 14, top: 14, zIndex: 2, maxWidth: 'min(340px, 70%)', textAlign: 'right', pointerEvents: 'none', opacity: 0,
+            transition: ruhig ? undefined : 'opacity .6s ease', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise, textShadow: `0 0 6px ${C.grund}`,
+          }}>{hinweisText}</div>
+          {/* Zoom-Knöpfe — dezent, Ziel ≥ 44 px. „Zurücksetzen“ erst, wenn etwas vom Ausgangsbild abweicht. */}
+          <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 3, display: 'flex', gap: 8, alignItems: 'center' }}>
+            {veraendert && <KameraKnopf breit onClick={zuruecksetzen} label="Drehung, Zoom und Ausschnitt zurücksetzen">Zurücksetzen</KameraKnopf>}
+            <KameraKnopf onClick={() => motor.current?.zoome(1 / TASTE_ZOOM)} aus={!gezoomt} label="Herauszoomen">−</KameraKnopf>
+            <KameraKnopf onClick={() => motor.current?.zoome(TASTE_ZOOM)} aus={amMax} label="Hineinzoomen">+</KameraKnopf>
+          </div>
           <div ref={titelKarte} role="presentation" style={{
             position: 'absolute', left: 0, top: 0, zIndex: 2, visibility: 'hidden', width: 232,
             pointerEvents: auswahl ? 'auto' : 'none', background: LICHT_GLAS.flaeche,
@@ -408,6 +476,17 @@ export function BrainKugel() {
         {!gefiltert.length && <Leer>{`Nichts zu „${suche.trim()}“.`}</Leer>}
       </details>
     </div>
+  );
+}
+
+/** Knopf über der Kugel (Zoom, Zurücksetzen): Glas wie „‹ Gesamt“, Ziel ≥ 44 px. */
+function KameraKnopf({ children, onClick, aus, label, breit }: { children: React.ReactNode; onClick: () => void; aus?: boolean; label: string; breit?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={aus} aria-label={label} title={label} style={{
+      minWidth: ZIEL.handy, minHeight: ZIEL.handy, padding: breit ? '0 14px' : 0, borderRadius: 999, cursor: aus ? 'default' : 'pointer',
+      display: 'inline-grid', placeItems: 'center', background: LICHT_GLAS.flaeche, border: `1px solid ${RAND.stark}`, opacity: aus ? 0.45 : 1,
+      color: C.ink, fontFamily: SCHRIFT.text, fontSize: breit ? TYP.bedien : TYP.titel, lineHeight: 1,
+    }}>{children}</button>
   );
 }
 

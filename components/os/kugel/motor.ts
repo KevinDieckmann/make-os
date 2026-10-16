@@ -13,14 +13,21 @@
 //   · „Bewegung reduzieren“: keine Schleife, kein Einstieg — ein ruhiges Standbild, neu gezeichnet nur bei Änderung.
 //   · Kontextverlust wird abgefangen; beim Abbauen wird der Kontext erst freigegeben, wenn die Leinwand wirklich weg ist.
 // Kamera: Lauf um die Hochachse + Neigung + Abstand — `fliegeZu` fährt weich auf eine Richtung (Brain: Cluster), `zurueck`
-// wieder in die Gesamtsicht. Messpunkt (nur außerhalb der Produktion oder mit `data-messen`): data-bilder, data-mittel-ms
-// (CPU je Bild), data-fps, data-punkte, data-puffer, data-gluehen an der Leinwand.
+// wieder in die Gesamtsicht. Bedienung (16.10., nur mit `bedienbar` — die ZOE-Kugel bleibt, wie sie ist): Lupe (Zoom zum Punkt,
+// Verschieben) als Objektiv NACH der Projektion (`mitLupe`), Drehen mit Schwung, Eigendrehung pausiert beim Bedienen und läuft
+// sanft wieder an; die Rechnung steht rein in steuerung.ts, die Werte hier (keine React-Zustände je Bild).
+// Messpunkt (nur außerhalb der Produktion oder mit `data-messen`): data-bilder, data-mittel-ms (CPU je Bild), data-fps,
+// data-punkte, data-puffer, data-gluehen (und bedienbar data-lupe) an der Leinwand.
 
 import {
   drehung, perspektive, kameraAbstand, zeigerAufKugel, aufBildschirm, nachziehen, einstieg, klemme, norm, sub, laenge, blickAuf, winkelNah,
   type KugelZustand, type Mat4, type Vec3,
 } from './geometrie';
 import { ECKEN_SHADER, FLAECHEN_SHADER, FLAECHE_ECKEN, WEICH_SHADER, MISCH_SHADER, UNIFORMS, type UniformName } from './shader';
+import {
+  LUPE_RUHE, zoomeUm, verschiebeLupe, lupeNachziehen, mitLupe, ohneLupe, lupePunkt, ndcAus, drehAusPx, klemmeNeigung, schwungAbklingen, eigenAnlauf,
+  type Lupe, type KugelUmriss,
+} from './steuerung';
 
 /** Die Wolke: Positionen, optional Farben (rgb 0…1), Werte (Größe, Helligkeit, Saat, Verlauf bzw. Stern). */
 export interface KugelDaten {
@@ -63,7 +70,14 @@ export interface MotorOptionen {
   bloomNurSterne: boolean;
   /** Nach jedem Bild (z. B. Beschriftungen und Bögen neu setzen) — läuft im selben Takt, kein eigener Lauf. */
   nachBild?: () => void;
+  /** Bedienung (Zoom, Drehen, Verschieben, Schwung) — nur, wenn die Ansicht sie einschaltet (Brain). Vorgabe aus (ZOE). */
+  bedienbar?: boolean;
+  /** Nach jeder Änderung durch Bedienung (nie je Bild): die Ansicht schaltet damit ihre Knöpfe. */
+  beiKamera?: (k: KameraStand) => void;
 }
+
+/** Was die Ansicht von der Kamera wissen muss: Vergrößerung (Ziel) und ob irgendetwas vom Ausgangsbild abweicht. */
+export interface KameraStand { s: number; veraendert: boolean }
 
 export interface Messung { bilder: number; mittelMs: number; fps: number; punkte: number; puffer: string; gluehen: boolean }
 
@@ -85,6 +99,20 @@ export interface Motor {
   halte(an: boolean): void;
   /** Kamera fährt weich auf die Richtung `c` (näher: Anteil des Abstands, z. B. 0,6) — null = zurück in die Gesamtsicht. */
   fliegeZu(c: Vec3 | null, naeher?: number): void;
+  /** Zoom um `faktor` zum Punkt (x, y) in CSS-Pixeln (ohne Punkt: zur Mitte). Nur mit `bedienbar`. */
+  zoome(faktor: number, x?: number, y?: number): void;
+  /** Ausschnitt um (dx, dy) CSS-Pixel verschieben (nur hineingezoomt wirksam, begrenzt). */
+  verschiebe(dx: number, dy: number): void;
+  /** Drehen um (dx, dy) CSS-Pixel — die Oberfläche folgt dem Zeiger. */
+  drehe(dx: number, dy: number): void;
+  /** Ziehen beginnt (Schwung weg, Eigendrehung pausiert) bzw. endet mit Geschwindigkeit (px/s) → Schwung. */
+  greifen(): void;
+  loslassen(vx: number, vy: number): void;
+  /** Drehung, Zoom und Verschiebung zurück auf das Ausgangsbild. */
+  zuruecksetzen(): void;
+  /** Lupe, wie sie gerade gezeichnet ist (Beschriftungen), und der Stand für die Knöpfe. */
+  lupe(): Lupe;
+  kameraStand(): KameraStand;
   messung(): Messung;
   zerstoere(): void;
 }
@@ -225,6 +253,12 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
   let fahrt: { gier: number; neigung: number; naeher: number } | null = null;
   let zoom = 1;
   let halten = false;
+  // Bedienung: Lupe (Ziel und gezeichnet), Grundneigung (vom Ziehen verstellt), Drehung seit dem Ausgangsbild (für
+  // „Zurücksetzen“), Schwung (rad/s), Anteil der Eigendrehung, bis wann gerade bedient wurde.
+  const darf = !!opt.bedienbar;
+  let lupeZiel: Lupe = LUPE_RUHE, lupeIst: Lupe = LUPE_RUHE;
+  let grundNeigung = opt.neigung, gierVersatz = 0, rueckGier = 0;
+  let schwung = { g: 0, n: 0 }, zieht = false, eigen = 1, bedientBis = 0;
   let zeigerZiel: Vec3 | null = null, zeigerIst: Vec3 = [0, 0, 1], kraft = 0;
   let hervor: number | null = null;
   const startZeit = performance.now();
@@ -233,6 +267,7 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
   let breiteCss = 1, hoeheCss = 1;
   let dreh: Mat4 = drehung(gier, neigung);
   let proj: Mat4 = perspektive(FOV, 1, 0.1, 50);
+  const projLupe: Mat4 = mitLupe(proj, LUPE_RUHE);
   let grundAbstand = kameraAbstand(FOV, 1, opt.fuellung);
   let abstand = grundAbstand;
   const dauer: number[] = []; const abstaende: number[] = []; let bilder = 0, schlecht = 0;
@@ -244,6 +279,7 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
     if (leinwand.width !== w || leinwand.height !== h) { leinwand.width = w; leinwand.height = h; }
     const aspekt = breiteCss / hoeheCss;
     proj = perspektive(FOV, aspekt, 0.05, 50);
+    mitLupe(proj, lupeIst, projLupe);
     grundAbstand = kameraAbstand(FOV, aspekt, opt.fuellung);
     if (gl && gluehen) {
       const gw = Math.max(8, Math.round(w * GLUEH_ANTEIL)), gh = Math.max(8, Math.round(h * GLUEH_ANTEIL));
@@ -255,7 +291,7 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
   function punkteZeichnen(g: WebGLRenderingContext, pxFaktor: number, maske: boolean, ms: number, e: { sicht: number; hohl: number }) {
     punkteBinden(g);
     const u = ort;
-    g.uniformMatrix4fv(u.uProj!, false, proj);
+    g.uniformMatrix4fv(u.uProj!, false, projLupe);
     g.uniformMatrix4fv(u.uDreh!, false, dreh);
     g.uniform1f(u.uAbstand!, abstand);
     g.uniform1f(u.uBezug!, grundAbstand);
@@ -298,17 +334,27 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
       ist = nachziehen(ist, ziel, dt);
       phase += dt * ist.tempo;
     } else ist = ziel;
+    // Bedienung: Rückweg der Drehung („Zurücksetzen“), Schwung nach dem Loslassen, Lupe nachziehen, Eigendrehung pausiert
+    // beim Bedienen (Ziehen, Schwung, Lupe, eben gedreht/gezoomt) und läuft danach sanft wieder an. Ohne Bedienung bleibt alles
+    // auf dem Ausgangswert (ZOE: kein Unterschied).
+    if (rueckGier) { const d = Math.abs(rueckGier) < 1e-4 ? rueckGier : rueckGier * f(0.08); gier -= d; rueckGier -= d; }
+    if (!zieht && (schwung.g || schwung.n)) {
+      if (bewegt) { dreheUm(schwung.g * dt, schwung.n * dt); schwung = schwungAbklingen(schwung, dt); } else schwung = { g: 0, n: 0 };
+    }
+    lupeIst = bewegt ? lupeNachziehen(lupeIst, lupeZiel, dt) : lupeZiel;
+    eigen = bewegt ? eigenAnlauf(eigen, zieht || schwung.g || schwung.n || lupeIst.s > 1.02 || jetzt < bedientBis ? 0 : 1, dt) : 1;
     // Kamera: Fahrt zum Ziel (weich, ohne Überschwingen) bzw. der ruhige Lauf.
     if (fahrt) {
       gier += (winkelNah(gier, fahrt.gier) - gier) * f(0.06);
       neigung += (fahrt.neigung - neigung) * f(0.06);
       zoom += (fahrt.naeher - zoom) * f(0.06);
     } else {
-      if (bewegt && !halten) gier += dt * opt.drehTempo;
-      neigung += (opt.neigung - neigung) * f(0.05);
+      if (bewegt && !halten) gier += dt * opt.drehTempo * eigen;
+      neigung += (grundNeigung - neigung) * f(0.05);
       zoom += (1 - zoom) * f(0.06);
     }
     dreh = drehung(gier, neigung);
+    mitLupe(proj, lupeIst, projLupe);
 
     // Zeiger bzw. hervorgehobener Punkt: Ort und Stärke folgen weich (0,18 / 0,09 je Bild wie in der Vorlage).
     let zielOrt: Vec3 | null = zeigerZiel;
@@ -329,7 +375,7 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
     if (gluehen && misch && weich && ziele[0].fb && ziele[1].fb) {
       const [a, b] = ziele;
       g.bindFramebuffer(g.FRAMEBUFFER, a.fb); g.viewport(0, 0, a.w, a.h); g.clear(g.COLOR_BUFFER_BIT);
-      punkteZeichnen(g, GLUEH_ANTEIL * 1.6, opt.bloomNurSterne, ms, e);
+      punkteZeichnen(g, GLUEH_ANTEIL * 1.6 * lupePunkt(lupeIst.s), opt.bloomNurSterne, ms, e);
       flaecheBinden(g, weich, wOrt.ecke);
       g.disable(g.BLEND);
       g.uniform1i(wOrt.bild, 0); g.activeTexture(g.TEXTURE0);
@@ -346,7 +392,7 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
     // 2. Punkte scharf.
     g.viewport(0, 0, leinwand.width, leinwand.height);
     g.clear(g.COLOR_BUFFER_BIT);
-    punkteZeichnen(g, 1, false, ms, e);
+    punkteZeichnen(g, lupePunkt(lupeIst.s), false, ms, e);
     // 3. Glühen additiv darüber.
     if (gluehen && misch && ziele[0].tex) {
       flaecheBinden(g, misch, mOrt.ecke);
@@ -374,7 +420,18 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
       const m = messung();
       leinwand.dataset.bilder = String(m.bilder); leinwand.dataset.mittelMs = m.mittelMs.toFixed(3);
       leinwand.dataset.fps = m.fps.toFixed(1); leinwand.dataset.punkte = String(m.punkte); leinwand.dataset.gluehen = m.gluehen ? 'an' : 'aus';
+      if (darf) leinwand.dataset.lupe = lupeIst.s.toFixed(2);
     }
+  }
+
+  /** Drehen um (dg, dn) rad: Lauf, Neigung (begrenzt) — eine laufende Fahrt zu einem Cluster nimmt die Drehung mit. */
+  function dreheUm(dg: number, dn: number) {
+    gier += dg; gierVersatz += dg;
+    const vorher = neigung;
+    neigung = klemmeNeigung(neigung + dn);
+    const wirk = neigung - vorher;
+    grundNeigung = klemmeNeigung(grundNeigung + wirk);
+    if (fahrt) { fahrt.gier += dg; fahrt.neigung = klemmeNeigung(fahrt.neigung + wirk); }
   }
 
   function messung(): Messung {
@@ -425,7 +482,28 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
   groesse();
   anwerfen();
 
-  const amSchirm = (p: Vec3) => aufBildschirm(p, dreh, proj, abstand, breiteCss, hoeheCss);
+  const amSchirm = (p: Vec3) => aufBildschirm(p, dreh, projLupe, abstand, breiteCss, hoeheCss);
+  const OHNE_DREHUNG = drehung(0, 0);
+  /** Umriss der Kugel ohne Lupe (NDC-Halbachsen) beim jetzigen Abstand — Grenze fürs Verschieben, Maß fürs Drehen. */
+  const umriss = (): KugelUmriss => {
+    const a = aufBildschirm([0, 0, 0], OHNE_DREHUNG, proj, abstand, breiteCss, hoeheCss), b = aufBildschirm([1, 0, 0], OHNE_DREHUNG, proj, abstand, breiteCss, hoeheCss);
+    const r = Math.max(1, Math.abs(b.x - a.x));
+    return { rx: (2 * r) / breiteCss, ry: (2 * r) / hoeheCss };
+  };
+  /** Pixel je Bogenmaß an der Vorderseite (ohne Lupe) — damit beim Ziehen die Oberfläche unter dem Zeiger mitläuft. */
+  const radiusPx = () => {
+    const a = aufBildschirm([0, 0, 1], OHNE_DREHUNG, proj, abstand, breiteCss, hoeheCss), b = aufBildschirm([0.01, 0, 1], OHNE_DREHUNG, proj, abstand, breiteCss, hoeheCss);
+    return Math.max(1, Math.abs(b.x - a.x) / 0.01);
+  };
+  function kameraStand(): KameraStand {
+    const l = lupeZiel;
+    const veraendert = l.s > 1.001 || Math.abs(l.x) > 1e-4 || Math.abs(l.y) > 1e-4 || Math.abs(gierVersatz) > 1e-4 || Math.abs(grundNeigung - opt.neigung) > 1e-4;
+    return { s: l.s, veraendert };
+  }
+  /** Nach jeder Bedienung: Ansicht benachrichtigen, Eigendrehung kurz pausieren, im Standbild neu zeichnen. */
+  function bedient() { bedientBis = performance.now() + 1200; opt.beiKamera?.(kameraStand()); neuZeichnen(); }
+  // Ein neu gestarteter Motor (z. B. „Bewegung reduzieren“ umgestellt) beginnt im Ausgangsbild — die Knöpfe der Ansicht auch.
+  if (darf) opt.beiKamera?.(kameraStand());
 
   return {
     setzeZustand(z) { ziel = z; neuZeichnen(); },
@@ -433,14 +511,16 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
     zeiger(x, y) {
       if (x === null || y === undefined) { zeigerZiel = null; neuZeichnen(); return false; }
       const ndc: [number, number] = [(x / breiteCss) * 2 - 1, 1 - (y / hoeheCss) * 2];
-      zeigerZiel = zeigerAufKugel(ndc, FOV, breiteCss / hoeheCss, abstand, dreh, 1);
+      zeigerZiel = zeigerAufKugel(ohneLupe(lupeIst, ndc), FOV, breiteCss / hoeheCss, abstand, dreh, 1);
       neuZeichnen();
       return !!zeigerZiel;
     },
     hebeHervor(i) { hervor = i; neuZeichnen(); },
     treffer(x, y, radius = 14) {
       const n = klemme(daten.pickbar ?? anzahl, 0, anzahl);
-      let best: number | null = null, bestD = radius * radius;
+      // Mit der Lupe sind die Sterne größer — der Fangkreis wächst mit (ohne Lupe genau der alte).
+      const r = radius * lupePunkt(lupeIst.s);
+      let best: number | null = null, bestD = r * r;
       for (let i = 0; i < n; i++) {
         const s = amSchirm([daten.pos[i * 3], daten.pos[i * 3 + 1], daten.pos[i * 3 + 2]]);
         if (!s.vorne) continue;
@@ -454,15 +534,53 @@ export function starteMotor(leinwand: HTMLCanvasElement, startDaten: KugelDaten,
       return amSchirm([daten.pos[i * 3], daten.pos[i * 3 + 1], daten.pos[i * 3 + 2]]);
     },
     ort: amSchirm,
-    schirmRadius() { const a = aufBildschirm([0, 0, 0], drehung(0, 0), proj, abstand, breiteCss, hoeheCss), b = aufBildschirm([1, 0, 0], drehung(0, 0), proj, abstand, breiteCss, hoeheCss); return Math.abs(b.x - a.x); },
+    schirmRadius() { const a = aufBildschirm([0, 0, 0], OHNE_DREHUNG, projLupe, abstand, breiteCss, hoeheCss), b = aufBildschirm([1, 0, 0], OHNE_DREHUNG, projLupe, abstand, breiteCss, hoeheCss); return Math.abs(b.x - a.x); },
     halte(an) { halten = an; },
     fliegeZu(c, naeher = 0.62) {
-      if (!c) { fahrt = null; neuZeichnen(); return; }
+      // Gesamtsicht und Bereichs-Fokus sind eigene Stufen: die Lupe geht dabei zurück, der Schwung endet.
+      if (darf) { lupeZiel = LUPE_RUHE; schwung = { g: 0, n: 0 }; }
+      if (!c) { fahrt = null; if (darf) bedient(); else neuZeichnen(); return; }
       const b = blickAuf(c);
       // Die feste Neigung zeigt die Kugel leicht von oben — beim Ziel genau auf den Cluster schauen.
       fahrt = { gier: b.gier, neigung: b.neigung, naeher };
-      neuZeichnen();
+      // Die Fahrt setzt eine neue Ausgangsdrehung — „Zurücksetzen“ dreht nicht über sie hinweg zurück.
+      if (darf) { gierVersatz = 0; rueckGier = 0; bedient(); } else neuZeichnen();
     },
+    zoome(faktor, x, y) {
+      if (!darf) return;
+      const um: [number, number] = x === undefined || y === undefined ? [0, 0] : ndcAus(x, y, breiteCss, hoeheCss);
+      lupeZiel = zoomeUm(lupeZiel, faktor, um, umriss());
+      bedient();
+    },
+    verschiebe(dx, dy) {
+      if (!darf) return;
+      lupeZiel = verschiebeLupe(lupeZiel, dx, dy, breiteCss, hoeheCss, umriss());
+      bedient();
+    },
+    drehe(dx, dy) {
+      if (!darf) return;
+      const d = drehAusPx(dx, dy, radiusPx(), lupeZiel.s);
+      rueckGier = 0;
+      dreheUm(d.g, d.n);
+      bedient();
+    },
+    greifen() { if (!darf) return; zieht = true; schwung = { g: 0, n: 0 }; rueckGier = 0; },
+    loslassen(vx, vy) {
+      if (!darf) return;
+      zieht = false;
+      // Bewegung reduzieren: keine Trägheit.
+      const d = opt.ruhig ? { g: 0, n: 0 } : drehAusPx(vx, vy, radiusPx(), lupeZiel.s);
+      schwung = { g: d.g, n: d.n };
+      bedient();
+    },
+    zuruecksetzen() {
+      if (!darf) return;
+      lupeZiel = LUPE_RUHE; schwung = { g: 0, n: 0 }; zieht = false;
+      rueckGier += gierVersatz; gierVersatz = 0; grundNeigung = opt.neigung;
+      bedient();
+    },
+    lupe: () => lupeIst,
+    kameraStand,
     messung,
     zerstoere() {
       anhalten();
