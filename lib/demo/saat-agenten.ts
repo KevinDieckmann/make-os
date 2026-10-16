@@ -1,6 +1,7 @@
 // ─── MAKE OS — Demo-Instanz: Agenten-Bereich und „Fotos & Videos“ (09.10., Paket 4c) — Server ─────────────────────────────────────
 // Teil der Saat (lib/demo/saat.ts ruft `agentenUndMedienSaen`). Alles erfunden, nichts Echtes (Wächter tests/demo.test.ts liest jede Datei).
-// Ohne KI-Schlüssel sieht die Demo vollständig aus: es wird NIE ein Modell aufgerufen — Antworten und Berichte der Agenten sind gespeichert.
+// Ohne KI-Schlüssel sieht die Demo vollständig aus: es wird NIE ein Modell aufgerufen — Antworten und Berichte der Agenten sind gespeichert
+// und tragen seit 15.10. die Marke „Beispiel“ (`beispiel: true`, lib/demo/beispiel.ts; Abnahme 2 B13).
 //
 // Über die ROUTEN in-process (wie die übrige Saat): Skills (POST /api/agenten/skills: anlegen, aktivieren), geplante Hintergrundaufgaben
 // (POST /api/agenten/laeufe: planen), Medien (POST /api/medien: Album, Freigabe, an Head; Upload in Stücken über /api/medien/upload), eigene
@@ -145,7 +146,7 @@ async function faedenSaen(personen: { lena: string; jonas: string }, jetzt: Date
       let f: Kern = neuerFaden({ id, besitzer: person, agent, bereich: 'business', titel: g.frage, jetzt: t0, kette: [agentSchluessel(agent)] });
       const msgs: NKern[] = [
         nachricht(`${id}:frage`, { rolle: 'person', von: person, text: g.frage, zeit: t0, ...(head.id === 'marketing' && i === 1 && medium ? { anhaenge: [{ art: 'medium' as const, id: medium, name: 'Bühne (Beispiel)' }] } : {}) }),
-        nachricht(`${id}:antwort`, { rolle: 'agent', von: agentSchluessel(agent), text: g.antwort, zeit: zeit(598 - n * 20), ki: true, kosten: { cent: 0 } }),
+        nachricht(`${id}:antwort`, { rolle: 'agent', von: agentSchluessel(agent), text: g.antwort, zeit: zeit(598 - n * 20), ki: true, kosten: { cent: 0 }, beispiel: true }),
       ];
       const a = AUFTRAEGE.find(x => x.head === head.id && x.frageIndex === i);
       let kind: Kern | null = null;
@@ -155,7 +156,7 @@ async function faedenSaen(personen: { lena: string; jonas: string }, jetzt: Date
         kind = neuerFaden({ id: kindId, besitzer: person, agent: kindAgent, bereich: 'business', titel: a.auftrag.ziel, jetzt: zeit(597 - n * 20), elternId: id, kette: [agentSchluessel(agent), agentSchluessel(kindAgent)] });
         const k = anhaengen(kind, [
           nachricht(`${kindId}:auftrag`, { rolle: 'agent', von: agentSchluessel(agent), text: auftragText(a.auftrag), zeit: zeit(597 - n * 20), auftrag: a.auftrag }),
-          nachricht(`${kindId}:bericht`, { rolle: 'agent', von: agentSchluessel(kindAgent), text: a.bericht, zeit: zeit(590 - n * 20), ki: true, kosten: { cent: 0 }, fremd: 'agent' }),
+          nachricht(`${kindId}:bericht`, { rolle: 'agent', von: agentSchluessel(kindAgent), text: a.bericht, zeit: zeit(590 - n * 20), ki: true, kosten: { cent: 0 }, fremd: 'agent', beispiel: true }),
         ], zeit(590 - n * 20));
         if (!k.ok) throw new Error(k.fehler);
         kind = { ...k.faden, ...(head.id === 'marketing' ? { geteilt: { am: jetzt.toISOString(), von: person } } : {}), status: 'fertig', lauf: { status: 'fertig', schritte: [{ id: 's1', titel: 'Runde 1', status: 'fertig' }], start: zeit(597 - n * 20), ende: zeit(590 - n * 20), kostenCent: 0 }, gelesenAm: jetzt.toISOString() };

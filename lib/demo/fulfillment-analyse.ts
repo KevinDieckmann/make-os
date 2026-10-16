@@ -6,6 +6,8 @@
 // Alles erfunden: Firmen und Personen sind die der Demo-Saat, Adressen enden auf `.example`, Kosten sind Beispielwerte in Cent.
 // 12.10. (Geschichte ohne Widersprüche): die Analyse lief vor vier Wochen (nach dem Kick-off, der F1 bestätigte), der Art.-14-Hinweis ging zwei Tage
 // später per Mail raus, die Karte ist geprüft — danach F2 und die Diagnose (lib/demo/fulfillment-prozesse.ts `geschichteSaeen`).
+// 15.10. (Abnahme 2 B13): die gespeicherten Läufe und das Dossier tragen die Marke „Beispiel“ (`beispiel: true`, lib/demo/beispiel.ts) — die
+// Oberfläche zeigt sie als Chip; es ist kein echter Lauf einer KI.
 
 import { neueKennung } from '@/lib/kennung';
 import { tagPlus } from '@/lib/zeit/kalender-kern';
@@ -65,15 +67,15 @@ export async function analyseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchri
   const sp = await import('@/lib/fulfillment/speicher');
   const neu: AnalyseLauf[] = laeufe.map((l, i) => ({
     id: neueKennung('al'), agent: l.agent, status: 'fertig', schaetzungCent: l.kosten, bestaetigtCent: l.kosten, grenzeCent: Math.ceil(l.kosten * 1.5), kostenCent: l.kosten,
-    gestartetAm: `${tagPlus(heute, -28)}T09:${String(10 + i).padStart(2, '0')}:00.000Z`, gestartetVon: p, fertigAm: `${tagPlus(heute, -28)}T09:${String(14 + i).padStart(2, '0')}:00.000Z`, versuch: 1, ergebnis: l.e,
+    gestartetAm: `${tagPlus(heute, -28)}T09:${String(10 + i).padStart(2, '0')}:00.000Z`, gestartetVon: p, fertigAm: `${tagPlus(heute, -28)}T09:${String(14 + i).padStart(2, '0')}:00.000Z`, versuch: 1, ergebnis: l.e, beispiel: true,
   }));
   // Eine erfundene berufliche Personenkarte (Funktion aus F1) mit Art.-14-Uhr — und der A4-Lauf, der sie angelegt hat (nur Zähler).
   const kartenId = neueKennung('pp');
   const pq = q('https://nordwerk.example/team', 'Team');
-  neu.push({ id: neueKennung('al'), agent: 'a4', status: 'fertig', schaetzungCent: 38, bestaetigtCent: 38, grenzeCent: 57, kostenCent: 35, gestartetAm: `${tagPlus(heute, -28)}T10:00:00.000Z`, gestartetVon: p, fertigAm: `${tagPlus(heute, -28)}T10:03:00.000Z`, versuch: 1, ergebnis: { funktion: 'Geschäftsführung', karten: [kartenId], zaehler: z, ausgelassen: ['Familie'] } });
+  neu.push({ id: neueKennung('al'), agent: 'a4', status: 'fertig', schaetzungCent: 38, bestaetigtCent: 38, grenzeCent: 57, kostenCent: 35, gestartetAm: `${tagPlus(heute, -28)}T10:00:00.000Z`, gestartetVon: p, fertigAm: `${tagPlus(heute, -28)}T10:03:00.000Z`, versuch: 1, ergebnis: { funktion: 'Geschäftsführung', karten: [kartenId], zaehler: z, ausgelassen: ['Familie'] }, beispiel: true });
   await sp.fulfillmentAendern('dossiers', d => {
     const x = d.dossiers[m.id];
-    return x ? { ok: true, datei: { ...d, dossiers: { ...d.dossiers, [m.id]: { ...x, laeufe: [...x.laeufe, ...neu] } } }, geaendert: [m.id] } : { ok: false, status: 404, fehler: 'Dossier fehlt' };
+    return x ? { ok: true, datei: { ...d, dossiers: { ...d.dossiers, [m.id]: { ...x, laeufe: [...x.laeufe, ...neu], beispiel: true } } }, geaendert: [m.id] } : { ok: false, status: 404, fehler: 'Dossier fehlt' };
   }, { art: 'system' });
   const { art14FaelligAm } = await import('@/lib/fulfillment/analyse/dsgvo');
   const { personenAnwenden } = await import('@/lib/fulfillment/analyse/personen-anwenden');

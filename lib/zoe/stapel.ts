@@ -99,6 +99,8 @@ export interface Vorschlag {
   bereich?: Bereich;
   /** Woher der Bereich kommt: Bezug · Inhalt · Gespräch · von Hand. */
   bereichQuelle?: BereichQuelle;
+  /** Erfundenes Beispiel der Demo-Instanz (15.10., lib/demo/beispiel.ts) — die Oberfläche zeigt „Beispiel“. */
+  beispiel?: true;
   /** Gesellschaft bzw. Mandanten-Space, wenn eindeutig (nur Anzeige). */
   bereichOrt?: BereichOrt;
   /** CRM-Kennungen, die der Inhalt nennt (höchstens 3) — für den Weg „in der Markttraktion festhalten“. Nur Kennungen, nie Namen. */

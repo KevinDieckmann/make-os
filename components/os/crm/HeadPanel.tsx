@@ -21,6 +21,7 @@ import type { Merksatz } from '@/lib/heads/lernen';
 import { datum } from './daten';
 import { Person } from './team';
 import { nameVon } from '@/lib/crm/team';
+import { BeispielMarke } from '../BeispielMarke';
 
 interface Qualitaet { laeufe: number; mitKi: number; regelwerk: number; annahmequote: number | null; entschieden: number; wirkung: string | null; gestrichen: number; korrigiert: number; aenderungsgrad: number | null; cent: number; cacheQuote: number | null }
 interface Stand {
@@ -82,6 +83,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.agenten, boxShadow: `0 0 8px ${LEUCHT.agenten}33` }} />
         <b style={{ fontSize: 12, fontWeight: 700, color: C.inkDim, letterSpacing: '.08em', textTransform: 'uppercase' }}>{name}</b>
         {bericht && <Chip farbe={STATUS_FARBE[bericht.antwort.status]}>{bericht.antwort.status}</Chip>}
+        {bericht?.beispiel && <BeispielMarke />}
         <span style={{ flex: 1, minWidth: 120, fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bericht?.antwort.zusammenfassung ?? s?.ruhig?.text ?? 'Noch kein Lauf.'}</span>
         <Knopf leise aus={!!laeuft} onClick={() => lauf(standardModus)}>{laeuft === standardModus ? 'denkt …' : s?.modi.find(m => m.id === standardModus)?.label ?? 'Lauf'}</Knopf>
         <Knopf leise onClick={() => setAuf(true)}>{vorschlaege.length ? `${vorschlaege.length} zur Freigabe ›` : 'öffnen ›'}</Knopf>
@@ -101,7 +103,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
         : s?.ruhig ? <p style={{ fontSize: TYP.bedien, color: C.inkDim, margin: 0 }}>{s.ruhig.text}</p>
         : <p style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: 0 }}>Noch kein Lauf. Der Head liest Kartei und Bestand, ordnet ein und legt Vorschläge zur Freigabe vor — versendet wird nichts. Ohne KI liefert das Regelwerk.</p>}
       {bericht && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>
-        {datum(bericht.zeit)} · {s?.modi.find(m => m.id === bericht.modus)?.label ?? bericht.modus} · {bericht.quelle === 'regelwerk' ? `Regelwerk (${bericht.ohneKiGrund ?? 'ohne KI'})` : 'KI + Prüfer'}
+        {bericht.beispiel && <><BeispielMarke /> </>}{datum(bericht.zeit)} · {s?.modi.find(m => m.id === bericht.modus)?.label ?? bericht.modus} · {bericht.quelle === 'regelwerk' ? `Regelwerk (${bericht.ohneKiGrund ?? 'ohne KI'})` : 'KI + Prüfer'}
         {bericht.pruefung.gestrichen.length ? ` · ${bericht.pruefung.gestrichen.length} gestrichen` : ''}{bericht.pruefung.korrigiert ? ' · korrigiert' : ''}{bericht.pruefung.unbelegt.length ? ` · ${bericht.pruefung.unbelegt.length} Zahl(en) unbelegt` : ''}
       </div>}
       {q && q.laeufe > 0 && (
@@ -125,6 +127,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
                 <b style={{ fontSize: TYP.body, fontWeight: 600 }}>{v.titel}</b>
                 <Chip farbe={v.prioritaet === 'hoch' ? LEUCHT.kritisch : v.prioritaet === 'mittel' ? LEUCHT.achtung : C.inkDim}>{v.prioritaet}</Chip>
                 {v.herkunft === 'regelwerk' && <Chip farbe={C.inkDim}>Regelwerk</Chip>}
+                {v.beispiel && <BeispielMarke />}
                 {v.frist && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>bis {datum(v.frist)}</span>}
               </div>
               {v.signal && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Warum jetzt: <span style={{ color: C.inkDim }}>{v.signal.text}</span>{v.signal.datum ? ` · ${datum(v.signal.datum)}` : ''}</div>}

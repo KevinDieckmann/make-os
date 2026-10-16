@@ -79,11 +79,14 @@ afterAll(() => { rmSync(wurzel, { recursive: true, force: true }); });
 
 describe('B1 · EIN Index-Status für alle Orte', () => {
   it('ohne Indexwert, aber gemessen: „Vorläufig — n % gemessen“ — nie „Noch keine Daten“ über Säulen mit Werten', () => {
-    expect(bi.index).toBeNull();
+    // Seit 15.10. (Abnahme 2 B10) trägt die Demo Monatsabschlüsse — ihr Index ist gemessen und zeigt sein Label; „Vorläufig“ prüft der reine Fall.
     expect(bi.saeulen.some(s => s.score != null)).toBe(true);
     const st = indexStatus(bi);
-    expect(st.titel).toBe('Vorläufig');
-    expect(st.satz).toContain(`${Math.round(bi.abdeckung * 100)} % gemessen`);
+    expect(st.titel).toBe(bi.index != null ? bi.label : 'Vorläufig');
+    expect(st.titel).not.toBe('Noch keine Daten');
+    const vorlaeufig = indexStatus({ index: null, label: 'Noch keine Daten', abdeckung: 0.31, luecken: 26 });
+    expect(vorlaeufig.titel).toBe('Vorläufig');
+    expect(vorlaeufig.satz).toContain('31 % gemessen');
     // Rein: mit Wert das Label, ganz ohne Messung „Noch keine Daten“.
     expect(indexStatus({ index: 64, label: 'Solide', abdeckung: 0.5, luecken: 2 }).titel).toBe('Solide');
     expect(indexStatus({ index: null, label: 'Noch keine Daten', abdeckung: 0, luecken: 4 }).titel).toBe('Noch keine Daten');
