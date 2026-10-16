@@ -45,7 +45,7 @@ describe('Oberfläche der Analyse', () => {
     expect(html).toContain('ca. 0,25 €');
     expect(html).toContain('A4 · Personen (nur beruflich) · Vertriebsleitung');
     expect(html).not.toMatch(/alle starten/i);
-    expect(html).toContain('1 Karte(n) als Entwurf im Personenteil');
+    expect(html).toContain('1 Karte als Entwurf im Personenteil');
     expect((html.match(/>Starten</g) ?? []).length).toBeGreaterThan(5);
   });
   it('Dossier: Abschnitte mit Quelle und Datum; Weitergeben erst nach F2', () => {

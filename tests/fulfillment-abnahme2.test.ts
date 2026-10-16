@@ -7,6 +7,7 @@
 //   B5  keine Freigabe-Kürzel (F0/F1/F7) und keine Agenten-Kürzel ohne Klartext
 //   B7  Grafiken führen weiter (Kreislauf über EINE Tabelle `kreislaufWeg`, Wert-Konto, Puls, Takt)
 //   C3/C8/C16/C19/C20  Beschriftungen ohne Überlappung, Bausteine im Onboarding, Zählungen gleich, keine Silbentrennung, Aufgaben beim Kunden
+//   C6  Texte: kein „..“ nach einem Datum, keine englischen Fachwörter (Health/Steering/Coverage), Einzahl/Mehrzahl, Entscheidungen getrennt
 // Erfundene Daten.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -16,7 +17,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { kundenLageAus, kundeSiehtLage, ohneKuerzel, KUNDEN_LAGE_TEXT } from '@/lib/fulfillment/prozesse/darstellung';
 import { naechsterFallTermin } from '@/lib/fulfillment/prozesse/rituale';
 import { zuordnen, ersterTermin, bezugGehoertZu, terminTitelKurz } from '@/lib/fulfillment/prozesse/termine';
-import { taktLeiste, kreislaufWeg, KREISLAUF_REIHE } from '@/lib/fulfillment/prozesse/ansichten';
+import { taktLeiste, taktLage, kreislaufWeg, KREISLAUF_REIHE } from '@/lib/fulfillment/prozesse/ansichten';
 import { onboardingStand, imOnboarding, obKnotenId } from '@/lib/fulfillment/prozesse/onboarding';
 import { fallStarten } from '@/lib/fulfillment/prozesse/fall';
 import { fallReise } from '@/lib/fulfillment/prozesse/reise';
@@ -27,6 +28,9 @@ import { fallAufgabeOrt } from '@/lib/fulfillment/regeln';
 import { agentText } from '@/lib/fulfillment/analyse/agenten';
 import { kuerzelAus } from '@/lib/crm/angebote';
 import { Zeitachse } from '@/components/os/fulfillment/reise/teile';
+import { KundenAnsicht } from '@/components/os/fulfillment/kunde/KundenAnsicht';
+import { entscheidungenTeilen } from '@/lib/fulfillment/kunde/bild';
+import type { KundenSicht } from '@/lib/fulfillment/kunde/sicht';
 import type { Fall, FallKnoten, ProzessVorlage } from '@/lib/fulfillment/typen';
 
 const WURZEL = process.cwd();
@@ -53,8 +57,8 @@ describe('B1 · EINE Lage-Rechnung — der Kunde liest nur die Übersetzung', ()
     expect(kundenLageAus([h1('wartet', 'rot', false)])).toEqual({ ampel: 'gelb', art: 'dran' });
     expect(KUNDEN_LAGE_TEXT.warten).toEqual({ du: 'Wir warten auf euren Input', sie: 'Wir warten auf Ihren Input' });
   });
-  it('intern: „Der Kunde sieht …“ mit Grund, wenn es abweicht — Health zählt beim Kunden nicht; interne Punkte heißen „Wir sind dran“', () => {
-    expect(kundeSiehtLage({ health: 'gelb', haengt: [] })).toMatchObject({ ampel: 'gruen', titel: 'Wir liegen im Plan', grund: 'Health zählt beim Kunden nicht' });
+  it('intern: „Der Kunde sieht …“ mit Grund, wenn es abweicht — die Gesundheit des Mandats zählt beim Kunden nicht; interne Punkte heißen „Wir sind dran“', () => {
+    expect(kundeSiehtLage({ health: 'gelb', haengt: [] })).toMatchObject({ ampel: 'gruen', titel: 'Wir liegen im Plan', grund: 'Die Gesundheit des Mandats zählt beim Kunden nicht' });
     const lumen = kundeSiehtLage({ health: null, haengt: [{ art: 'willkommen', mandatId: 'm', kunde: 'K', text: 't', schwere: 'rot', href: '/' }] });
     expect(lumen).toMatchObject({ ampel: 'gelb', titel: 'Wir sind dran' });
     expect(lumen.grund).toMatch(/interne Punkte/);
@@ -211,5 +215,57 @@ describe('C · Beschriftungen, Bausteine, Zählungen, Silben, Aufgaben', () => {
     const f = fallStarten({ mandatId: 'm-1', vorlage: v, person: 'pia', jetzt: JETZT, start: HEUTE, neueId: (() => { let n = 0; return (p: string) => `${p}-${++n}`; })() });
     const st = onboardingStand(f, { ziele: [], formularProzent: null, kickoffRitualIds: [], willkommenStunden: 24, jetzt: JETZT });
     expect(st.schritte.filter(s => s.zaehlt)).toHaveLength(st.offen);
+  });
+});
+
+describe('C6 · Texte im Fulfillment: Satzende, deutsche Begriffe, Einzahl/Mehrzahl, Entscheidungen getrennt', () => {
+  // Sichtbarer Quelltext: ohne Kommentarzeilen und ohne Kommentare am Zeilenende (Kennungen wie `vorschlagHealth` treffen \b nicht).
+  const dateien = (dir: string): string[] => readdirSync(path.join(WURZEL, dir), { withFileTypes: true })
+    .flatMap(e => (e.isDirectory() ? dateien(`${dir}/${e.name}`) : /\.tsx?$/.test(e.name) ? [`${dir}/${e.name}`] : []));
+  const QUELLEN = [...dateien('components/os/fulfillment'), ...dateien('lib/fulfillment'),
+    ...readdirSync(path.join(WURZEL, 'lib/erklaerungen')).filter(n => n.startsWith('fulfillment-')).map(n => `lib/erklaerungen/${n}`)];
+  const sichtbar = (d: string) => lies(d).split('\n').filter(z => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(z))
+    .map(z => z.replace(/\{\/\*.*?\*\/\}/g, '').replace(/\s\/\/\s.*$/, '')).join('\n');
+
+  it('kein „..“ nach einer Ziffer, kein Datums-Helfer direkt vor einem Schlusspunkt — Satzende über `satz()`', () => {
+    expect(QUELLEN.length).toBeGreaterThan(50);
+    for (const d of QUELLEN) {
+      const t = sichtbar(d);
+      expect(t, d).not.toMatch(/\d\.\.(?!\.)/);
+      expect(t, d).not.toMatch(/\b(tagKurz|kurz)\([^()]*\)\}\.(?=[`<\s])/);
+    }
+    // Der Fund aus der Abnahme: „letzte Mitschrift 12.10..“ — jetzt mit genau einem Punkt, und „1 Ritual“ statt „1 Rituale“.
+    const rituale = [{ id: 'r-w', titel: 'Wochen-Check', rhythmus: 'woche' as const, dauerMin: 15 }, { id: 'r-m', titel: 'Steuerungskreis', rhythmus: 'monat' as const, dauerMin: 60 }];
+    const l = taktLeiste({ rituale, fallRituale: [{ ritualId: 'r-w', terminUids: ['u1'] }], termine: { 'r-w': '2026-10-16' }, heute: HEUTE });
+    expect(taktLage(l, HEUTE, '2026-10-12').unter).toBe('1 Ritual ohne Termin · letzte Mitschrift 12.10.');
+    expect(taktLage(l, HEUTE).unter).toBe('1 Ritual ohne Termin · noch keine Mitschrift.');
+  });
+
+  it('keine englischen Fachwörter in sichtbaren Texten: Gesundheit, Steuerungskreis, Abdeckung — „Huddle“ bleibt und ist erklärt', () => {
+    for (const d of QUELLEN) expect(sichtbar(d), d).not.toMatch(/\b(Health|Steering|Coverage)\b/);
+    expect(lies('lib/erklaerungen/fulfillment-prozesse.ts')).toContain('Huddle = kurze Abstimmungsrunde');
+  });
+
+  it('Einzahl/Mehrzahl über den Helfer — kein „Karte(n)“, „Aussage(n)“, „Befund(e)“ in der Oberfläche', () => {
+    for (const d of dateien('components/os/fulfillment')) expect(sichtbar(d), d).not.toMatch(/(?<![\w$])(?!Number|String|Boolean|Math|Date|Array|Object|Set|Map)[A-ZÄÖÜ][a-zäöü]+\((n|e)\)/);
+    expect(lies('components/os/fulfillment/reise/FallKopf.tsx')).toContain("anzahl(h.length, 'Punkt hängt', 'Punkte hängen')");
+  });
+
+  it('Entscheidungen: EINE Regel trennt „Entschieden“ und „Offen“ — unter „Gemeinsam entschieden“ steht nie ein offener Punkt', () => {
+    const l = [{ titel: 'A', status: 'offen' as const }, { titel: 'B', status: 'entschieden' as const }, { titel: 'C', status: 'verworfen' as const }];
+    expect(entscheidungenTeilen(l)).toEqual({ entschieden: [l[1], l[2]], offen: [l[0]] });
+    const sicht = {
+      modus: 'voll', anrede: 'sie', anbieter: { name: 'Beispiel GmbH' }, ansprechperson: 'Ansprechperson', firma: 'Beispiel Werkzeugbau', mandat: 'Vertrieb', stand: '15.10.2026', fortschritt: 20,
+      lage: { ampel: 'gruen', titel: 'Wir liegen im Plan', saetze: ['Satz.'] }, zeitstrahl: [], erledigt: [], naechstes: [], wartet: [], wertKonto: [], quickWins: [], rituale: [],
+      entscheidungen: [{ titel: 'Preisliste bis Freitag', am: '14.10.2026', status: 'offen' }, { titel: 'Zielgruppe zuerst Maschinenbau', am: '12.10.2026', status: 'entschieden' }],
+      formulare: [], upload: null, puls: { offen: false }, datenschutz: { verantwortlich: 'Beispiel', fassung: '1', absaetze: ['Hinweis.'] },
+    } as unknown as KundenSicht;
+    const html = renderToStaticMarkup(h(KundenAnsicht, { sicht, vorschau: true }));
+    const i = html.indexOf('Gemeinsam entschieden'); const j = html.indexOf('Noch offen');
+    expect(i).toBeGreaterThan(-1);
+    expect(j).toBeGreaterThan(i);
+    expect(html.slice(i, j)).toContain('Zielgruppe zuerst Maschinenbau');
+    expect(html.slice(i, j)).not.toContain('Preisliste bis Freitag');
+    expect(html.slice(j)).toContain('Preisliste bis Freitag');
   });
 });

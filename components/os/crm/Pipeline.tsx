@@ -107,7 +107,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
     // Offene Zielstufe braucht einen nächsten Schritt mit Datum vor sich (Server-Regel) — sonst die Karte öffnen und sagen, was fehlt.
     if (offen.some(s => s.id === ziel) && !(c.naechsterSchritt && c.naechsterSchritt.datum >= crm.heute)) {
       setAuswahl(id);
-      api.setFehler(c.naechsterSchritt ? `„${c.titel}“: der nächste Schritt vom ${c.naechsterSchritt.datum} ist überfällig — unten ein neues Datum setzen, dann die Stufe wechseln.` : `„${c.titel}“: erst einen nächsten Schritt mit Datum festhalten, dann die Stufe wechseln.`);
+      api.setFehler(c.naechsterSchritt ? `„${c.titel}“: der nächste Schritt vom ${datum(c.naechsterSchritt.datum)} ist überfällig — unten ein neues Datum setzen, dann die Stufe wechseln.` : `„${c.titel}“: erst einen nächsten Schritt mit Datum festhalten, dann die Stufe wechseln.`);
       return;
     }
     // 2.16 (09.10.): „Rückgängig“ wie beim Parken — die alte Stufe hat ihren Schritt noch (eben geprüft), der Server nimmt sie zurück.

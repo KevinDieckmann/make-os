@@ -14,6 +14,7 @@ import { wertDurchschnitt } from './wert';
 import { fallStartTag } from './fall';
 import { reportAchse } from './ansichten';
 import { WEG } from '@/lib/wege';
+import { anzahl, wort } from '@/lib/text/zahlwort';
 
 // ── 1. Erfolgsmaße (1.4) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ export function ffKennzahlenRechnen(faelle: readonly FfFallDaten[], e: { heute: 
   k('ff_willkommen_24h', 'Willkommen in 24 Stunden', 'fulfillment.kennzahl.willkommen', w.length ? (w.filter(Boolean).length / w.length) * 100 : null, pz, w.length, 'Noch kein Fall mit abgelaufener 24-Stunden-Frist');
   const ko = faelle.map(x => (x.unterschrift && x.kickoffTag ? tageZwischen(x.unterschrift, x.kickoffTag) : undefined)).filter((x): x is number => x !== undefined);
   const m = median(ko);
-  k('ff_kickoff_tage', 'Tage bis zum Kick-off', 'fulfillment.kennzahl.kickoff', m, x => `${x.toLocaleString('de-DE')} Tage`, ko.length, 'Noch kein Kick-off vermerkt (Mitschrift oder Bestätigung im Kick-off)');
+  k('ff_kickoff_tage', 'Tage bis zum Kick-off', 'fulfillment.kennzahl.kickoff', m, x => anzahl(x, 'Tag', 'Tage'), ko.length, 'Noch kein Kick-off vermerkt (Mitschrift oder Bestätigung im Kick-off)');
   const wk = faelle.filter(x => x.kickoffTag && tageZwischen(x.kickoffTag, e.heute)! >= 7).map(x => {
     const fest = Object.values(x.fall.wertKonto).map(v => v.festgelegtAm).filter((t): t is string => !!t);
     return fest.length > 0 && fest.every(t => tageZwischen(x.kickoffTag!, t) !== undefined && t <= addTage(x.kickoffTag!, 7));
@@ -74,7 +75,7 @@ export function ffKennzahlenRechnen(faelle: readonly FfFallDaten[], e: { heute: 
   const soll = aktiv.flatMap(x => reportAchse({ start: fallStartTag(x.fall), heute: e.heute, reports: x.reports ?? (x.reportLetzter ? [{ am: x.reportLetzter }] : []) }).takt.filter(t => t.tag <= e.heute));
   k('ff_report_takt', 'Report-Takt eingehalten', 'fulfillment.kennzahl.reporttakt', soll.length ? (soll.filter(t => t.erfuellt).length / soll.length) * 100 : null, pz, soll.length, 'Noch kein Report-Termin fällig (alle 14 Tage ab Start)');
   const alt = aktiv.flatMap(x => wartetAufEuch(x.fall, e.heute).map(p => p.tage ?? 0));
-  k('ff_wartet_alt', 'Ältester Punkt „wartet auf euch“', 'fulfillment.kennzahl.wartet', alt.length ? Math.max(...alt) : aktiv.length ? 0 : null, x => `${x} Tage`, alt.length, 'Kein laufender Fall');
+  k('ff_wartet_alt', 'Ältester Punkt „wartet auf euch“', 'fulfillment.kennzahl.wartet', alt.length ? Math.max(...alt) : aktiv.length ? 0 : null, x => anzahl(x, 'Tag', 'Tage'), alt.length, 'Kein laufender Fall');
   const p = faelle.map(x => x.puls).filter((x): x is { wert: number; am: string } => !!x && (tageZwischen(x.am, e.heute) ?? 999) <= 90);
   k('ff_puls', 'Kunden-Puls (Ø 90 Tage)', 'fulfillment.kennzahl.puls', p.length ? p.reduce((a, x) => a + x.wert, 0) / p.length : null, x => `${x.toLocaleString('de-DE', { maximumFractionDigits: 1 })} von 10`, p.length, 'Noch kein Puls in den letzten 90 Tagen');
   const bf = faelle.filter(x => x.fall.status === 'abgeschlossen' || !!x.mandatsEnde).flatMap(x => x.fall.befaehigung);
@@ -91,7 +92,7 @@ function addTage(t: string, n: number): string { const d = new Date(`${t.slice(0
 
 export const FF_ID = 'ff';
 export const FF_GEWICHT = 0.1;
-export const FF_SAEULE = { id: FF_ID, label: 'Fulfillment', gewicht: FF_GEWICHT, satz: 'Wie gut wir liefern — Health, Takt, Kunden-Puls und Wert-Konto der laufenden Fälle', nurMitMessung: true };
+export const FF_SAEULE = { id: FF_ID, label: 'Fulfillment', gewicht: FF_GEWICHT, satz: 'Wie gut wir liefern — Kunden-Gesundheit, Takt, Kunden-Puls und Wert-Konto der laufenden Fälle', nurMitMessung: true };
 
 /** Eine Zeile je laufendem Fall (nur Summen, keine Personen). */
 export interface FfIndexZeile {
@@ -106,8 +107,8 @@ export interface FfIndexDaten { heute: string; zeilen: FfIndexZeile[] }
 
 const PFLEGEN = { text: 'Fulfillment öffnen', href: WEG.fulfillment('visualisierung') };
 export const FF_KENNZAHLEN: KennzahlDefBasis[] = [
-  { id: 'ff_health', label: 'Health der Fälle', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
-    formel: 'Ø Health-Ampel der laufenden Fälle (grün zählt 100, gelb 50, rot 0) — die vorhandene Ampel aus Terminen, Lieferungen, Zahlungen, Zufriedenheit',
+  { id: 'ff_health', label: 'Gesundheit der Fälle', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
+    formel: 'Ø Gesundheits-Ampel der laufenden Fälle (grün zählt 100, gelb 50, rot 0) — die vorhandene Ampel aus Terminen, Lieferungen, Zahlungen, Zufriedenheit',
     quelle: 'Fälle (Fulfillment) + Fortschritt im Paket (Leistungstreppe)', luecke: 'Noch kein laufender Fall', pflegen: PFLEGEN },
   { id: 'ff_takt', label: 'Fälle im Takt', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
     formel: 'Anteil der laufenden Fälle, an denen nichts hängt (keine überfällige Willkommensmail, Freigabe oder Schritt, nichts wartet länger als 7 Tage, Report höchstens 14 Tage alt)',
@@ -136,7 +137,7 @@ export function ffMessung(id: string, d: FfIndexDaten | null | undefined, scope:
   switch (id) {
     case 'ff_health': {
       const m = zeilen.filter(z => z.health);
-      if (!m.length) return { luecke: 'Noch keine Health-Ampel (Fortschritt im Paket)', details: zuFulfillment };
+      if (!m.length) return { luecke: 'Noch keine Gesundheits-Ampel (Fortschritt im Paket)', details: zuFulfillment };
       const w = m.reduce((a, z) => a + AMPEL_PUNKTE[z.health!], 0) / m.length;
       return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `${m.filter(z => z.health === 'gruen').length} grün · ${m.filter(z => z.health === 'gelb').length} gelb · ${m.filter(z => z.health === 'rot').length} rot`,
         details: [...m].sort((a, b) => AMPEL_PUNKTE[a.health!] - AMPEL_PUNKTE[b.health!]).slice(0, 3).map(z => ({ titel: z.kunde, wert: z.health === 'gruen' ? 'grün' : z.health === 'gelb' ? 'gelb' : 'rot', href: fall(z), ampel: z.health as Ampel })) };
@@ -145,8 +146,8 @@ export function ffMessung(id: string, d: FfIndexDaten | null | undefined, scope:
       const ok = zeilen.filter(z => !z.haengt.length).length;
       const w = (ok / zeilen.length) * 100;
       const h = zeilen.filter(z => z.haengt.length);
-      return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `${ok} von ${zeilen.length} Fällen ohne Hänger`,
-        details: (h.length ? h : zeilen).slice(0, 3).map(z => ({ titel: z.kunde, wert: z.haengt.length ? `${z.haengt.length} hängt` : 'im Takt', ...(z.haengt[0] ? { unter: z.haengt[0] } : {}), href: fall(z), ampel: (z.haengt.length ? 'gelb' : 'gruen') as Ampel })) };
+      return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `${ok} von ${zeilen.length} ${wort(zeilen.length, 'Fall', 'Fällen')} ohne Hänger`,
+        details: (h.length ? h : zeilen).slice(0, 3).map(z => ({ titel: z.kunde, wert: z.haengt.length ? `${z.haengt.length} ${wort(z.haengt.length, 'hängt', 'hängen')}` : 'im Takt', ...(z.haengt[0] ? { unter: z.haengt[0] } : {}), href: fall(z), ampel: (z.haengt.length ? 'gelb' : 'gruen') as Ampel })) };
     }
     case 'ff_puls': {
       const m = zeilen.filter(z => z.puls && (tageZwischen(z.puls.am, d!.heute) ?? 999) <= 90);

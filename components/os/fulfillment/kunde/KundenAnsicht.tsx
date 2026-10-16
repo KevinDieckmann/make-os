@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO, TIEF, RAND } from '@/lib/make-one/design';
 import { Karte, Knopf, Hinweis, Ueberschrift, Chip, Leer, Erfolg, Fortschritt, eingabe, LEUCHT } from '../../ui';
 import type { KundenFormular, KundenFrage, KundenSicht } from '@/lib/fulfillment/kunde/sicht';
-import { WORTE, brauchtAnzahl, formularOffen, formularZaehlung, fragenText, uploadText, wertModell, type Worte } from '@/lib/fulfillment/kunde/bild';
+import { WORTE, brauchtAnzahl, entscheidungenTeilen, formularOffen, formularZaehlung, fragenText, uploadText, wertModell, type Worte } from '@/lib/fulfillment/kunde/bild';
 import { KUNDE_ANNEHMEN, KUNDE_TYPEN_TEXT } from '@/lib/fulfillment/kunde/upload';
 import { KundenStrahl, KundenWertBalken, LageBlock, FortschrittZahl, WEG_FARBE } from './bilder';
 
@@ -58,6 +58,8 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
   // EINE Zählung mit der Lage („Von Ihnen brauchen wir …“ — `brauchtAnzahl`, lib/fulfillment/kunde/bild.ts): nie zugleich „nichts nötig“ und „1 offen“.
   const offeneFormulare = sicht.formulare.filter(formularOffen);
   const braucht = brauchtAnzahl(sicht.wartet, offeneFormulare.map(f => f.schluessel));
+  // 16.10. (Abnahme 2 · C6): „Gemeinsam entschieden“ zeigt nur Entschiedenes, Offenes steht darunter unter „Noch offen“ — EINE Regel `entscheidungenTeilen`.
+  const ent = entscheidungenTeilen(sicht.entscheidungen);
   return (
     <div className={klasse}>
       {vorschau && <Hinweis art="info" titel="Vorschau">So sieht der Kunde seine Seite — mit denselben Daten, die der Server ihm schickt. Hier lässt sich nichts ausfüllen.</Hinweis>}
@@ -185,10 +187,22 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
 
         {sicht.entscheidungen.length > 0 && (
           <Karte flach className="kunde-breit">
-            <Ueberschrift>{w.entscheidungen}</Ueberschrift>
-            <ul className="kunde-liste">
-              {sicht.entscheidungen.map((e, i) => <li key={i}><span style={{ fontWeight: 600 }}>{e.titel}</span> <span style={klein}>· {e.am} · {STATUS_TEXT[e.status]}</span>{e.inhalt ? <div style={klein}>{e.inhalt}</div> : null}</li>)}
-            </ul>
+            {ent.entschieden.length > 0 && (
+              <>
+                <Ueberschrift>{w.entscheidungen}</Ueberschrift>
+                <ul className="kunde-liste">
+                  {ent.entschieden.map((e, i) => <li key={i}><span style={{ fontWeight: 600 }}>{e.titel}</span> <span style={klein}>· {e.am} · {STATUS_TEXT[e.status]}</span>{e.inhalt ? <div style={klein}>{e.inhalt}</div> : null}</li>)}
+                </ul>
+              </>
+            )}
+            {ent.offen.length > 0 && (
+              <div style={ent.entschieden.length ? { marginTop: 14 } : undefined}>
+                <Ueberschrift>{w.entscheidungenOffen}</Ueberschrift>
+                <ul className="kunde-liste">
+                  {ent.offen.map((e, i) => <li key={i}><span style={{ fontWeight: 600 }}>{e.titel}</span> <span style={klein}>· seit {e.am}</span>{e.inhalt ? <div style={klein}>{e.inhalt}</div> : null}</li>)}
+                </ul>
+              </div>
+            )}
           </Karte>
         )}
       </div>

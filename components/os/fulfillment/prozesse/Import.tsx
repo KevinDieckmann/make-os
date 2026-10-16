@@ -12,6 +12,7 @@ import { Karte, Ueberschrift, Knopf, Hinweis, Chip, LEUCHT, useRueckfrage, Erkla
 import { Wahl } from '../../crm/Wahl';
 import type { ImportVorschau, ImportWahl } from '@/lib/fulfillment/prozesse/import';
 import { holeJson, fehlerText, geaendert, tagLang, type Uebersicht } from './daten';
+import { anzahl } from '@/lib/text/zahlwort';
 import { klein, Leiste } from './teile';
 
 const STATUS_TEXT: Record<string, string> = { neu: 'neu', gleich: 'unverändert', ergaenzt: 'ergänzt leere Felder', abweichend: 'weicht ab', konflikt: 'von Hand geändert', aktualisiert: 'wird aktualisiert' };
@@ -69,7 +70,7 @@ export function Import({ daten }: { daten: Uebersicht }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {Object.entries(vs.zaehler).filter(([, n]) => n > 0).map(([s, n]) => <Chip key={s} farbe={STATUS_FARBE[s] ?? C.inkDim}>{n} {STATUS_TEXT[s] ?? s}</Chip>)}
           </div>
-          {vs.fehler.length > 0 && <Hinweis art="achtung" titel={`${vs.fehler.length} Einträge werden nicht übernommen`}>{vs.fehler.slice(0, 12).join(' · ')}{vs.fehler.length > 12 ? ` · und ${vs.fehler.length - 12} weitere` : ''}</Hinweis>}
+          {vs.fehler.length > 0 && <Hinweis art="achtung" titel={`${anzahl(vs.fehler.length, 'Eintrag wird', 'Einträge werden')} nicht übernommen`}>{vs.fehler.slice(0, 12).join(' · ')}{vs.fehler.length > 12 ? ` · und ${vs.fehler.length - 12} weitere` : ''}</Hinweis>}
           {vs.hinweise.map(h => <Hinweis key={h} art="info">{h}</Hinweis>)}
           {(vs.pakete.length > 0 || vs.giltFuer.length > 0) && pakete.length > 0 && (
             <div style={{ display: 'grid', gap: 6 }}>

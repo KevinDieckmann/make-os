@@ -18,6 +18,7 @@ import { Recht } from './Recht';
 import { Personen } from './Personen';
 import { Tiefenbericht } from './Tiefenbericht';
 import { BeispielMarke } from '../../BeispielMarke';
+import { anzahl } from '@/lib/text/zahlwort';
 
 type Teil = 'laeufe' | 'dossier' | 'personen' | 'recht' | 'tiefenbericht';
 
@@ -53,7 +54,7 @@ export function FallAnalyse({ mandatId }: { mandatId: string }) {
       {teil === 'recht' && <Recht mandatId={mandatId} api={api} rueck={rueck} />}
       {teil === 'tiefenbericht' && <Tiefenbericht mandatId={mandatId} api={api} rueck={rueck} />}
       {!d.personenteil && (
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Den Personenteil sehen nur der Inhaber und Mitglieder mit vollem Zugang. Hier: {d.deckblatt?.kartenAnzahl ?? 0} Karte(n).</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Den Personenteil sehen nur der Inhaber und Mitglieder mit vollem Zugang. Hier: {anzahl(d.deckblatt?.kartenAnzahl ?? 0, 'Karte', 'Karten')}.</div>
       )}
       {rueck.dialog}
     </div>

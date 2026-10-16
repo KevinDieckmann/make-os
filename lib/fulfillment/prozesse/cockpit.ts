@@ -11,6 +11,7 @@ import { fallReise, fallStelle, reiseKurz, type ReiseKurzPhase } from './reise';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type Ampel, type KundenLageArt } from './darstellung';
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
+import { anzahl } from '@/lib/text/zahlwort';
 
 export type HaengerArt = 'willkommen' | 'freigabe' | 'wartet' | 'puls' | 'report' | 'art14' | 'faellig';
 export interface Haenger {
@@ -73,7 +74,7 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
   }
   for (const w of wartetAufEuch(f, heute)) {
     if ((w.tage ?? 0) <= WARTET_ALT_TAGE) continue;
-    h('wartet', `Wartet seit ${w.tage} Tagen auf den Kunden: ${anzeigeTitel(w.titel, nummern)}`, (w.tage ?? 0) >= WARTET_ROT_TAGE ? 'rot' : 'gelb', WEG.fall(f.mandatId), w.seit);
+    h('wartet', `Wartet seit ${anzahl(w.tage ?? 0, 'Tag', 'Tagen')} auf den Kunden: ${anzeigeTitel(w.titel, nummern)}`, (w.tage ?? 0) >= WARTET_ROT_TAGE ? 'rot' : 'gelb', WEG.fall(f.mandatId), w.seit);
     raus[raus.length - 1].kundeSieht = kundeSiehtWartend(f, w, e.gesperrt);
   }
   const p = e.kunde2?.letzterPuls;

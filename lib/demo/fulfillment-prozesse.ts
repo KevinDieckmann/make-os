@@ -217,7 +217,7 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
       ...(nordwerk.kontaktIds[0] ? [{ op: 'stakeholder', eintrag: { kontaktId: nordwerk.kontaktIds[0], rolle: 'entscheider', einfluss: 3, haltung: 'positiv', notiz: 'Trägt das Projekt, will die Zahlen jede Woche sehen.' } }] : []),
       { op: 'vereinbarung', felder: {
         rollen: 'Geschäftsführung entscheidet, Vertriebsleitung führt den Alltag.', reaktionszeiten: 'Antwort binnen zwei Werktagen.',
-        wirBrauchen: 'Die Zahlen der Woche bis Montag 12 Uhr.', eskalation: 'Im Steering, sonst direkt an die Geschäftsführung.',
+        wirBrauchen: 'Die Zahlen der Woche bis Montag 12 Uhr.', eskalation: 'Im Steuerungskreis, sonst direkt an die Geschäftsführung.',
         scopeDrin: 'Vertrieb und Kennzahlen.', scopeDraussen: 'Marketing-Kampagnen und Website.', entscheidungsrechte: 'Preise entscheidet der Kunde.',
         bestaetigtAm: tagPlus(k.heute, -42), bestaetigtWie: 'kickoff',
       } },

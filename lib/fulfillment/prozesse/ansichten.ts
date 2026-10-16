@@ -14,6 +14,7 @@ import { tagPlus } from '@/lib/kalender/zeit';
 import { markeNachsorge, NACHSORGE_TEXT, type NachsorgeArt } from './wirkung';
 import { naechsterFallTermin } from './rituale';
 import { WEG } from '@/lib/wege';
+import { anzahl, satz } from '@/lib/text/zahlwort';
 
 /** Eine Stufe des Kreislaufs (Kennungen aus Markttraktion › Planung). */
 export type KreislaufStufeId = KreislaufId;
@@ -66,7 +67,7 @@ export function stakeholderLage(l: readonly Pick<Stakeholder, 'rolle' | 'einflus
   const entscheider = l.filter(s => s.rolle === 'entscheider' || s.rolle === 'sponsor');
   const kritischStark = l.filter(s => s.haltung === 'kritisch' && s.einfluss >= 2);
   if (!entscheider.length) return { ampel: 'rot', antwort: 'Kein Entscheider auf der Karte', unter: 'Wer am Ende Ja sagt, gehört auf die Karte — sonst entscheidet ihr ins Leere.' };
-  if (kritischStark.length) return { ampel: 'rot', antwort: `${kritischStark.length} kritische Stimme${kritischStark.length === 1 ? '' : 'n'} mit Einfluss`, unter: 'Vor der nächsten Freigabe ein Gespräch einplanen — Bedenken früh hören, nicht erst im Steering.' };
+  if (kritischStark.length) return { ampel: 'rot', antwort: `${kritischStark.length} kritische Stimme${kritischStark.length === 1 ? '' : 'n'} mit Einfluss`, unter: 'Vor der nächsten Freigabe ein Gespräch einplanen — Bedenken früh hören, nicht erst im Steuerungskreis.' };
   if (entscheider.every(s => s.haltung === 'positiv')) return { ampel: 'gruen', antwort: 'Der Entscheider trägt das Projekt', unter: `${l.length} Person${l.length === 1 ? '' : 'en'} auf der Karte · keine kritische Stimme mit Einfluss.` };
   const offen = l.filter(s => !s.haltung).length;
   return { ampel: 'gelb', antwort: offen ? `Haltung bei ${offen} noch offen` : 'Der Entscheider ist noch nicht überzeugt', unter: 'Im nächsten Wochen-Check nachfragen und die Haltung eintragen.' };
@@ -164,14 +165,15 @@ export function taktLeiste(e: {
 
 /** Die Antwort über dem Takt. */
 export function taktLage(t: TaktLeiste, heute: string, letzteMitschrift?: string): Antwort {
-  if (!t.zeilen.length) return { ampel: 'gelb', antwort: 'Noch keine Rituale in der Bibliothek', unter: 'Unter Fulfillment › Prozesse „Aus Muster anlegen“ — dann stehen Kick-off, Wochen-Check, Steering und Review bereit.' };
+  if (!t.zeilen.length) return { ampel: 'gelb', antwort: 'Noch keine Rituale in der Bibliothek', unter: 'Unter Fulfillment › Prozesse „Aus Muster anlegen“ — dann stehen Kick-off, Wochen-Check, Steuerungskreis und Review bereit.' };
   if (!t.naechster) return { ampel: 'rot', antwort: 'Kein Termin im Kalender', unter: 'Ohne festen Takt gibt es keine Transparenz — den Wochen-Check als ersten Termin anlegen.' };
   const in_ = zwischen(heute, t.naechster.tag);
   const mitschrift = letzteMitschrift ? ` · letzte Mitschrift ${kurz(letzteMitschrift)}` : ' · noch keine Mitschrift';
   return {
     ampel: t.ohneTermin ? 'gelb' : 'gruen',
     antwort: `Nächster Termin: ${t.naechster.titel} ${in_ <= 0 ? 'heute' : in_ === 1 ? 'morgen' : `am ${kurz(t.naechster.tag)}`}`,
-    unter: `${t.ohneTermin ? `${t.ohneTermin} Ritual${t.ohneTermin === 1 ? '' : 'e'} ohne Termin` : 'Alle wiederkehrenden Rituale stehen im Kalender'}${mitschrift}.`,
+    // 16.10. (Abnahme 2 · C6): endet der Satz auf ein Datum („… letzte Mitschrift 12.10.“), kommt kein zweiter Punkt dazu — `satz()`.
+    unter: satz(`${t.ohneTermin ? `${anzahl(t.ohneTermin, 'Ritual', 'Rituale')} ohne Termin` : 'Alle wiederkehrenden Rituale stehen im Kalender'}${mitschrift}`),
   };
 }
 

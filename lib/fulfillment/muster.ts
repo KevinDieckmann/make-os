@@ -177,7 +177,7 @@ export const MUSTER_RITUALE: readonly RitualVorlage[] = [
   // Entscheidung 10.10., 23:30: tägliches Vertriebs-Huddle, kurz, MIT Zahlenrunde (ersetzt das frühere Huddle ohne Zahlen) — Methode, keine Instanz-Inhalte.
   { ...rit('huddle', 'Vertriebs-Huddle mit Zahlenrunde', 'werktags', 15, ['tagesverantwortlich', 'team']), agenda: ['Zahlen von gestern', 'Ziel für heute', 'Wo hängt es?'] },
   rit('wochencheck', 'Wochen-Check', 'woche', 15, ['intern', 'tagesverantwortlich']),
-  rit('steering', 'Steering', 'monat', 60, ['intern', 'entscheider']),
+  rit('steering', 'Steuerungskreis', 'monat', 60, ['intern', 'entscheider']),
   rit('quartal', 'Quartals-Review', 'quartal', 120, ['intern', 'entscheider', 'team']),
 ];
 
@@ -205,7 +205,7 @@ export const MUSTER_PLAYBOOK: Baustein = {
 
 export const MUSTER_BEFAEHIGUNG: readonly string[] = [
   'Mindestens zwei Abschlüsse ohne Gründerteilnahme',
-  'Coverage über vier Wochen mindestens auf Zielwert',
+  'Pipeline-Abdeckung über vier Wochen mindestens auf Zielwert',
   'Rhythmen vier Wochen ohne uns gelaufen',
   'Pflichtfeldquote im CRM mindestens auf Zielwert',
 ];

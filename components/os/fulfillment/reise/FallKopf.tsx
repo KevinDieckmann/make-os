@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, LEUCHT, Punkt, useHandy } from '../../ui';
 import { WEG } from '@/lib/wege';
+import { anzahl, wort } from '@/lib/text/zahlwort';
 import { localDay } from '@/lib/zeit';
 import type { FallReiter } from '@/lib/fulfillment/adresse';
 import { fallReise, naechsterHandgriff, naechsterPunkt, seitTagen, type Handgriff } from '@/lib/fulfillment/prozesse/reise';
@@ -56,10 +57,10 @@ export function FallKopf({ mandatId, reiter }: { mandatId: string; reiter: FallR
 
   const h = zeile?.haengt ?? [];
   const rot = h.filter(x => x.schwere === 'rot');
-  const imRahmen = wartet.length ? `${wartet.length} wartet beim Kunden (${wartet[0].titel}${wartet[0].tage !== undefined ? `, ${seitTagen(wartet[0].tage)}` : ''}) — hängt erst nach ${WARTET_ALT_TAGE} Tagen.` : 'Kein Schritt überfällig, nichts liegt lange beim Kunden.';
+  const imRahmen = wartet.length ? `${wartet.length} ${wort(wartet.length, 'wartet', 'warten')} beim Kunden (${wartet[0].titel}${wartet[0].tage !== undefined ? `, ${seitTagen(wartet[0].tage)}` : ''}) — ${wort(wartet.length, 'hängt', 'hängen')} erst nach ${WARTET_ALT_TAGE} Tagen.` : 'Kein Schritt überfällig, nichts liegt lange beim Kunden.';
   const haengt = !zeile ? { ampel: C.inkLeise, antwort: cockpit.daten ? 'Nichts hängt' : '…', unter: cockpit.daten ? imRahmen : 'Lädt …' }
     : h.length === 1 ? { ampel: rot.length ? LEUCHT.kritisch : LEUCHT.achtung, antwort: h[0].text, unter: h[0].seit ? `seit ${tagKurz(h[0].seit)}` : 'Antippen öffnet die Stelle.' }
-      : h.length ? { ampel: rot.length ? LEUCHT.kritisch : LEUCHT.achtung, antwort: `${h.length} Punkte hängen${rot.length ? ` · ${rot.length} dringend` : ''}`, unter: h.slice(0, 2).map(x => x.text).join(' · ') }
+      : h.length ? { ampel: rot.length ? LEUCHT.kritisch : LEUCHT.achtung, antwort: `${anzahl(h.length, 'Punkt hängt', 'Punkte hängen')}${rot.length ? ` · ${rot.length} dringend` : ''}`, unter: h.slice(0, 2).map(x => x.text).join(' · ') }
         : { ampel: LEUCHT.gut, antwort: 'Nichts hängt', unter: imRahmen };
 
   return (
@@ -80,7 +81,7 @@ export function FallKopf({ mandatId, reiter }: { mandatId: string; reiter: FallR
       <Antworten>
         <AntwortKachel frage="Wo stehen wir?" links={<FortschrittsRing prozent={reise.fortschritt} label="Fortschritt des Falls" />}
           antwort={jetzt ? `Phase ${jetzt.nr} von ${reise.phasen.length}: ${jetzt.titel}` : reise.fertig ? 'Alle Phasen erledigt' : 'Noch keine Phase'}
-          unter={jetzt ? `${jetzt.erledigt} von ${jetzt.gesamt} Schritten dieser Phase erledigt${jetzt.faelligAm ? ` · Phase bis ${tagKurz(jetzt.faelligAm)}` : ''}` : f.status === 'pausiert' ? 'Der Fall ist pausiert.' : undefined} />
+          unter={jetzt ? `${jetzt.erledigt} von ${jetzt.gesamt} ${wort(jetzt.gesamt, 'Schritt', 'Schritten')} dieser Phase erledigt${jetzt.faelligAm ? ` · Phase bis ${tagKurz(jetzt.faelligAm)}` : ''}` : f.status === 'pausiert' ? 'Der Fall ist pausiert.' : undefined} />
         <AntwortKachel frage="Als Nächstes" ampel={naechste?.ueberfaellig ? LEUCHT.kritisch : JETZT}
           antwort={naechste ? naechste.titel : griff.art === 'fertig' ? '—' : griff.text}
           unter={naechste ? [naechste.zustand === 'wartet_kunde' ? 'liegt beim Kunden' : naechste.zustand === 'in_arbeit' ? 'in Arbeit' : null, naechste.ueberfaellig ? 'überfällig' : naechste.faelligAm ? `fällig ${tagKurz(naechste.faelligAm)}` : null, naechste.phase ? `in „${naechste.phase}“` : null,

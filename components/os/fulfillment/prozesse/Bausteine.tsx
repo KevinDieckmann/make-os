@@ -13,6 +13,7 @@ import { SquareCheck, FileText, ScrollText, ListChecks, Mail, BarChart3, Repeat,
 import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Pillen, Feldzeile, Schalter, useRueckfrage } from '../../ui';
 import { Wahl } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
+import { anzahl } from '@/lib/text/zahlwort';
 import { suchPasst } from '@/lib/text/such-norm';
 import { BAUSTEIN_ART_LABEL } from '@/lib/fulfillment/prozesse/bausteine';
 import { bausteinOrte } from '@/lib/fulfillment/prozesse/darstellung';
@@ -182,7 +183,7 @@ function BausteinDetail({ id, daten, onZurueck }: { id: string; daten: Uebersich
         <div style={klein}>{b.herkunft?.art === 'import' ? `Import vom ${tagLang(b.herkunft.am)}` : b.herkunft?.art === 'muster' ? 'Muster' : 'von Hand'}{b.herkunftText ? ` · ${b.herkunftText}` : ''}{b.herkunft?.quelleIds?.length ? ` · Quellen ${b.herkunft.quelleIds.join(', ')}` : ''}</div>
         <Leiste>
           <Knopf leise onClick={async () => {
-            if (!(await bestaetigen({ titel: `„${b.titel}“ löschen?`, text: d.steckt.length ? `Er steckt in ${d.steckt.length} Vorlage(n) — dort fällt der Baustein mit weg. Laufende Fälle zeigen „Baustein entfernt“.` : 'Er steckt in keiner Vorlage.', ja: 'Löschen', gefahr: true }))) return;
+            if (!(await bestaetigen({ titel: `„${b.titel}“ löschen?`, text: d.steckt.length ? `Er steckt in ${anzahl(d.steckt.length, 'Vorlage', 'Vorlagen')} — dort fällt der Baustein mit weg. Laufende Fälle zeigen „Baustein entfernt“.` : 'Er steckt in keiner Vorlage.', ja: 'Löschen', gefahr: true }))) return;
             const a = await vorlagenOps([{ op: 'baustein-weg', id: b.id, stand: b.stand }]);
             if (a.ok) onZurueck(); else setFehler(fehlerText(a));
           }}>Baustein löschen</Knopf>

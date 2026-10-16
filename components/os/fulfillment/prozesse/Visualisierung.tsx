@@ -11,6 +11,7 @@ import { FARBE as C, TYP, MIKRO, ECKE, FLAECHE_STIL, SCHRIFT, TIEF } from '@/lib
 import { Karte, Ueberschrift, Hinweis, Liste, Zeile, Chip, Punkt, Raster, Kennzahl, Leerzustand, Knopf, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { useCockpit, useUebersicht, tagKurz } from './daten';
+import { wort } from '@/lib/text/zahlwort';
 import type { FfKennzahl } from '@/lib/fulfillment/prozesse/kennzahlen';
 import type { CockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
 import { knotenAmpel, kundenAmpel, nachAufmerksamkeit } from '@/lib/fulfillment/prozesse/darstellung';
@@ -84,8 +85,8 @@ function KundenKarte({ z, onOeffnen }: { z: CockpitZeile; onOeffnen: () => void 
       )}
       <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {z.status === 'onboarding' && <Chip farbe={z.onboarding.willkommenUeberfaellig ? LEUCHT.kritisch : LEUCHT.planung}>Onboarding · {z.onboarding.offen} offen</Chip>}
-        {z.wartet > 0 && <Chip farbe={(z.wartetAeltesterTage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung}>{z.wartet} wartet auf Kunde{z.wartetAeltesterTage ? ` · ${z.wartetAeltesterTage} T.` : ''}</Chip>}
-        {z.health && <Chip farbe={AMPEL_FARBE[z.health]}>Health {z.health === 'gruen' ? 'grün' : z.health}</Chip>}
+        {z.wartet > 0 && <Chip farbe={(z.wartetAeltesterTage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung}>{z.wartet} {wort(z.wartet, 'wartet', 'warten')} auf Kunde{z.wartetAeltesterTage ? ` · ${z.wartetAeltesterTage} T.` : ''}</Chip>}
+        {z.health && <Chip farbe={AMPEL_FARBE[z.health]}>Kunden-Gesundheit {z.health === 'gruen' ? 'grün' : z.health}</Chip>}
         {z.puls && <Chip farbe={z.pulsKritisch ? LEUCHT.kritisch : LEUCHT.gut}>Puls {z.puls.wert}/10</Chip>}
         {z.report.faellig && <Chip farbe={LEUCHT.achtung}>Report fällig</Chip>}
         {z.naechsterRitual && <Chip farbe={C.inkDim}>Termin {tagKurz(z.naechsterRitual)}</Chip>}
@@ -125,7 +126,7 @@ export function Visualisierung() {
           <Kz x={k("ff_dossier_belegt")} erklaerung="fulfillment.kennzahl.dossier" />
           <Kz x={k("ff_analyse_kosten")} erklaerung="fulfillment.kennzahl.kosten" />
         </Raster>
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Health, Takt, Kunden-Puls und Wert-Konto zählen zusätzlich als Säule „Fulfillment“ im Business-Index — ohne laufenden Fall bleibt der Index genau wie bisher.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kunden-Gesundheit, Takt, Kunden-Puls und Wert-Konto zählen zusätzlich als Säule „Fulfillment“ im Business-Index — ohne laufenden Fall bleibt der Index genau wie bisher.</div>
       </Karte>
       {lk && (
         <Karte i={4} akzent={LEUCHT.business}>

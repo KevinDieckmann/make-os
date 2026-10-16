@@ -37,7 +37,7 @@ export const EINSTELLUNGEN_FULFILLMENT_KUNDE = {
     beispiel: 'Bei Schwelle 6 löst eine 5 die Glocke und den Vorschlag aus; eine 7 nicht. Die Freigabe legt ein Follow-up am Mandat an, in zwei Tagen fällig.',
   },
   'fulfillment.pulsInHealth': {
-    was: 'Übernimmt einen Puls in die Zufriedenheit des Mandats (Health): Wert mal zehn, also 7 von 10 als 70. Die vorhandene Zufriedenheits-Ampel rechnet damit unverändert weiter. Es passiert nur auf diesen Klick.',
-    beispiel: 'Der erfundene Kunde gibt eine 4. Ihr übernehmt sie — die Zufriedenheit des Mandats steht dann auf 40, und die Health-Ampel springt auf gelb.',
+    was: 'Übernimmt einen Puls in die Gesundheit des Mandats (Zufriedenheit): Wert mal zehn, also 7 von 10 als 70. Die vorhandene Zufriedenheits-Ampel rechnet damit unverändert weiter. Es passiert nur auf diesen Klick.',
+    beispiel: 'Der erfundene Kunde gibt eine 4. Ihr übernehmt sie — die Zufriedenheit des Mandats steht dann auf 40, und die Ampel der Mandats-Gesundheit springt auf gelb.',
   },
 } as const satisfies Record<string, EinstellungsText>;
