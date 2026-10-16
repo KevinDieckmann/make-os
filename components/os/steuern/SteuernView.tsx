@@ -23,6 +23,7 @@ import { deckungStand } from '@/lib/kennzahlen/anteil';
 import { EINHEIT_LABEL, STEUER_EINHEITEN, UG_STEUER_WEG, steuerBereich, type Einheit, type Frist, type SteuerEinstellungen, type UstZeitraum, type Prognose, type BelegPunkt, type UebergabePunkt, type Jahresgewinn } from '@/lib/steuern/rechnen';
 import type { EstGemeinsam } from '@/lib/finanzen/est-gemeinsam';
 import { WEG } from '@/lib/wege';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Antwort {
   ok: boolean; fehler?: string; hinweis: string; heute: string;
@@ -121,7 +122,7 @@ export function SteuernView({ bereich = 'business' }: { bereich?: 'privat' | 'bu
           <Link href="#uebergabe" style={{ textDecoration: 'none', color: C.ink, display: 'grid', gap: 4 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase' }}>Übergabe {monatName(d.uebergabe.monat)}</span>
             <span style={{ fontFamily: SCHRIFT.display, fontSize: 26, fontWeight: 700, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums' }}>{d.uebergabe.punkte.filter(p => p.status === 'ok').length} / {d.uebergabe.punkte.length}</span>
-            <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{d.belege.length} offene Punkte bei Belegen und Rechnungen</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{anzahl(d.belege.length, 'offener Punkt', 'offene Punkte')} bei Belegen und Rechnungen</span>
           </Link>
         </div>
       </Karte>
