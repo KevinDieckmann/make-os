@@ -13,6 +13,7 @@ import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
 import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { hauptInhaber } from '@/lib/zugang/inhaber';
 import { haushaltFuer, privatFinanzZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
+import { ohneGeraete } from '@/lib/zugang/geraete';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -67,7 +68,12 @@ export async function PUT(req: Request) {
     if (!passwortTauglich(b.passwortNeu)) return NextResponse.json({ error: 'Neues Passwort: mindestens 10 Zeichen.' }, { status: 400 });
     neu = await passwortHashen(b.passwortNeu);
   }
-  await aendereKonten(st => ({ ...st, konten: st.konten.map(k => k.speicher === wer ? { ...k, ...(name && name.length >= 2 ? { name } : {}), ...(neu ?? {}) } : k) }));
+  // Neues Passwort (16.10.): gemerkte Geräte fallen weg — der Stand ändert sich ohnehin, hier zusätzlich ausdrücklich.
+  await aendereKonten(st => ({ ...st, konten: st.konten.map(k => {
+    if (k.speicher !== wer) return k;
+    const x = { ...k, ...(name && name.length >= 2 ? { name } : {}), ...(neu ?? {}) };
+    return neu ? ohneGeraete(x) : x;
+  }) }));
   // Neues Passwort → neuer Stand: dieses Gerät bekommt sofort einen passenden Zettel, alle anderen
   // fallen binnen einer Minute raus (lib/zugang/stand-pruefung.ts).
   if (neu) {

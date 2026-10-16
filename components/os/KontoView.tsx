@@ -17,13 +17,16 @@ import { InhaberVerwaltung } from './InhaberVerwaltung';
 import { ZugangEinstellungen } from './ZugangEinstellungen';
 import { TeamKarte } from './TeamKarte';
 import { AnmeldeAdressen } from './AnmeldeAdressen';
+import { GemerkteGeraete } from './GemerkteGeraete';
 import { MeineDaten } from './MeineDaten';
 import { ZoeWhatsappKarte } from './zoe-whatsapp/ZoeWhatsappKarte';
 import { useBetreiber } from './useInhaber';
 
 interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[]; ziele?: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 /** Anzeige im „Zuletzt“-Protokoll; unbekannte Arten erscheinen unverändert. */
-const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt', 'daten-export': 'eigene Daten abgerufen', 'instanz-export': 'Instanz exportiert', 'konto-loeschen': 'Konto löschen versucht', 'inhaber-ernennen': 'Inhaber-Rolle vergeben', 'inhaber-abgeben': 'Inhaber-Rolle abgegeben' };
+const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt', 'daten-export': 'eigene Daten abgerufen', 'instanz-export': 'Instanz exportiert', 'konto-loeschen': 'Konto löschen versucht', 'inhaber-ernennen': 'Inhaber-Rolle vergeben', 'inhaber-abgeben': 'Inhaber-Rolle abgegeben', 'geraet-gemerkt': 'Gerät gemerkt', 'geraet-vergessen': 'Gerät vergessen', 'geraete-vergessen': 'alle Geräte vergessen' };
+/** Anzeige eines Protokoll-Eintrags: eine Anmeldung über ein gemerktes Gerät (16.10.) heißt so, sonst der Text der Art. */
+const artText = (e: { art: string; geraet?: string }): string => (e.art === 'anmelden' && e.geraet ? 'angemeldet (gemerktes Gerät)' : ART_TEXT[e.art] ?? e.art);
 interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean; teiltZieleMitMir?: boolean }
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
@@ -41,7 +44,7 @@ export function KontoView() {
   // Wie der Bot an den Server kommt, steht nur in der Betreiber-Instanz (14.10., Abnahme A2).
   const betreiber = useBetreiber();
 
-  const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string; detail?: string }[]>([]);
+  const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string; detail?: string; geraet?: string }[]>([]);
   const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setHaupt(!!d.hauptInhaber); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
   const ladeTg = () => fetch('/api/telegram/koppeln').then(r => r.json()).then(d => setTg(t => ({ ...d, code: t?.code, minuten: t?.minuten }))).catch(() => {});
   useEffect(() => { void laden(); void ladeTg(); }, []);
@@ -94,7 +97,7 @@ export function KontoView() {
     <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<Knopf leise onClick={abmelden}>Abmelden</Knopf>}>
       <Karte i={0}>
         <div style={{ fontSize: TYP.body, overflowWrap: 'anywhere' }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
-        {anmeldungen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${ART_TEXT[e.art] ?? e.art}${e.detail ? ` ${e.detail}` : ''}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
+        {anmeldungen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${artText(e)}${e.detail ? ` ${e.detail}` : ''}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
         <Liste>
           <Zeile titel="Andere Geräte abmelden" unter="Meldet alle anderen Geräte ab — dieses bleibt angemeldet." erklaerung="konto.abmeldenAlle" rechts={<Knopf leise onClick={alleAbmelden}>Alle anderen abmelden</Knopf>} />
         </Liste>
@@ -156,6 +159,7 @@ export function KontoView() {
               <Feldzeile label="Passwort zum Ausschalten"><input type="password" value={zf.passwort} onChange={e => setZf(z => ({ ...z, passwort: e.target.value }))} style={feld} autoComplete="current-password" /></Feldzeile>
               <Knopf leise typ="submit" aus={!zf.passwort}>Ausschalten</Knopf>
             </form>
+            <GemerkteGeraete />
           </>
         )}
       </Karte>

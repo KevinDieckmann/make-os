@@ -599,7 +599,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     kategorie: ['beschaeftigte'],
   }),
   H('arbeitsplatz', 'Arbeitsplatz-Einstellungen des Haushalts.'),
-  mit(H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor) — Art. 15: die Person sieht ihre Adressen unter Einstellungen › Konto › Anmelde-Adressen, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen).'), {
+  mit(H('konten', 'Konten der Nutzer (Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash, zweiter Faktor samt gemerkter Geräte — je Gerät nur Hash des Tokens, grobe Beschreibung aus dem Browser, angelegt/zuletzt/Ablauf, höchstens 10, je 90 Tage, nie die IP) — Art. 15: die Person sieht ihre Adressen unter Einstellungen › Konto › Anmelde-Adressen und ihre gemerkten Geräte unter Konto › Zweiter Faktor, Art. 16/17 über das Konto (Adressen selbst ändern bzw. entfernen, Geräte vergessen; Konto löschen nimmt beides mit).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung der Anwendung) bzw. § 26 BDSG für Beschäftigte; lit. f (Sicherheit)',
     art15: 'Konto › Meine Daten: Auskunft (HTML), „Meine Daten herunterladen“ (JSON, alle Bestände laut Register — lib/datenschutz/konto-daten.ts); nie Hash, Salz, zweiter Faktor',
     loeschfrist: 'bis die Person „Mein Konto löschen“ wählt (Konto › Meine Daten; Inhaber erst ohne andere Konten) bzw. die Instanz endet (Löschen der Instanz); Grabstein (nur Fingerabdruck der Konto-Kennung) 13 Monate',

@@ -26,7 +26,7 @@ export const NICHT_IM_EXPORT = [
   { was: 'Schlüssel je Medium (in medien--*, medien-privat--*, medien-uploads)', grund: 'nie in einer Datei — dort steht nur die Kennung des Datenschlüssels (`kid`)' },
   { was: 'Medien-Dateien (Fotos, Videos, Lizenz-Nachweise, Unterschriften)', grund: 'zu groß für eine Datei; verschlüsselt im Medienspeicher — Liste der Objekte unter „medien“, einzeln herunterladen in der App (Fotos & Videos) vor dem Löschen der Instanz' },
   { was: 'Zugangsdaten verbundener Dienste (Postfach-Passwörter, Google-/WHOOP-Token, iCloud-App-Passwort, OAuth-Zustände)', grund: 'nie in einer Datei — die neue Instanz verbindet die Dienste neu; im Export steht nur ein Vermerk „entfernt“' },
-  { was: 'Passwort-Hashes, Salz, zweiter Faktor (Geheimnis, Wiederherstellungs-Hashes) und offene Einladungscodes der Konten', grund: 'Zugangsgeheimnisse — die Konten stehen ohne sie im Export (`zweiterFaktorAn` zeigt nur, ob einer eingerichtet war)' },
+  { was: 'Passwort-Hashes, Salz, zweiter Faktor (Geheimnis, Wiederherstellungs-Hashes, gemerkte Geräte) und offene Einladungscodes der Konten', grund: 'Zugangsgeheimnisse — die Konten stehen ohne sie im Export (`zweiterFaktorAn` zeigt nur, ob einer eingerichtet war)' },
   { was: 'Offene Kopplungs- und Bestätigungscodes (Telegram, ZOE auf WhatsApp)', grund: 'Zugangsgeheimnisse für 15 Minuten — eine Kopplung entsteht in der neuen Instanz neu' },
 ];
 

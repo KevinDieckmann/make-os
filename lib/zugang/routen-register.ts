@@ -418,6 +418,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'konto/beitreten': r('POST', 'offen', 'Beitritt mit Einladungscode (48 h, einmalig).'),
   'konto/abmelden': r('POST', 'person', 'Abmelden: widerruft den Zettel der eigenen Sitzung (prüft das Cookie selbst).', 'sitzungPruefen'),
   'konto/adressen': r('POST', 'person', 'Eigene Anmelde-Adressen — nur die Person der Sitzung, nie der Dienstweg.'),
+  'konto/geraete': r('GET,POST', 'person', 'Gemerkte Geräte des zweiten Faktors (16.10.): eigene Liste ohne Hash, ein/alle vergessen — nur die Person der Sitzung, nie der Dienstweg.'),
   'konto/daten': r('GET,POST', 'person', 'Eigene Daten herunterladen (Art. 15/20) und eigenes Konto löschen (Art. 17) — nur die Person der Sitzung, nie Dienstweg; Löschen mit Passwort + zweitem Faktor.'),
   'konto/ich': r('GET,PUT', 'person', 'Eigenes Konto (Name, Passwort).'),
   'konto/teilen': r('PUT', 'person', 'Wem ich meine Gesundheitsdaten bzw. meine eigenen Ziele (08.10.) zeige — nur die eigene Einstellung.'),

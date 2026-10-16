@@ -1,13 +1,11 @@
 // ─── MAKE OS — Sitzung in die Antwort schreiben ─────────────────────────────
 import { NextResponse } from 'next/server';
-import { SITZUNG_COOKIE, WER_COOKIE, SITZUNG_TAGE, sitzungAusstellen, sitzungsGeheimnis, kontoStand, lokaleVorschau } from './sitzung';
+import { SITZUNG_COOKIE, WER_COOKIE, SITZUNG_TAGE, sitzungAusstellen, sitzungsGeheimnis, kontoStand, cookieNurHttps } from './sitzung';
 import type { Konto } from './konten';
 import { oeffentlich } from './konten';
 
-/** Hinter HTTPS (Server) dürfen die Cookies nur verschlüsselt reisen. Lokal über
- *  http://localhost bzw. Tailscale-http ginge ein „secure“-Cookie verloren. */
-// Auf dem Server (production) immer „secure“ — auch wenn MAKE_OS_ADRESSE einmal fehlt (26.09.).
-const nurHttps = () => !lokaleVorschau() && ((process.env.MAKE_OS_ADRESSE ?? '').trim().startsWith('https://') || process.env.NODE_ENV === 'production');
+/** Hinter HTTPS (Server) dürfen die Cookies nur verschlüsselt reisen — die Regel steht seit 16.10. EINMAL in sitzung.ts (auch fürs Geräte-Cookie). */
+const nurHttps = cookieNurHttps;
 
 export async function mitSitzung(konto: Konto, extra: Record<string, unknown> = {}): Promise<NextResponse> {
   const zettel = await sitzungAusstellen(sitzungsGeheimnis(), konto.speicher, await kontoStand(konto.salz));

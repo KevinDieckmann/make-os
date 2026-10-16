@@ -22,6 +22,10 @@ export const EINSTELLUNGEN_KONTO = {
     an: 'Anmelden braucht Passwort und Code. Acht Wiederherstellungscodes (je einmal gültig) kommen in deinen Passwort-Manager.',
     aus: 'Das Passwort allein genügt. Für ein Login im offenen Netz ist das der schwächere Schutz.',
   },
+  'konto.geraete': {
+    was: 'Auf einem gemerkten Gerät genügt beim Anmelden das Passwort — der Code aus der App kommt dort erst nach 90 Tagen wieder. Auf jedem anderen Gerät bleibt der Code Pflicht. Passwort ändern oder den zweiten Faktor neu einrichten vergisst alle Geräte.',
+    beispiel: 'Du meldest dich am Laptop mit Passwort und Code an und lässt „Dieses Gerät 90 Tage merken“ angehakt. Am nächsten Morgen reicht dort das Passwort; am Handy fragt MAKE OS weiter nach dem Code, bis du es auch dort merkst.',
+  },
   'konto.zweiFaktorPflicht': {
     was: 'Der Inhaber kann den zweiten Faktor für alle Konten der Instanz zur Pflicht machen. Wer noch keinen hat, richtet ihn beim nächsten Anmelden ein und kommt vorher nirgends hin.',
     beispiel: 'Ein neues Teammitglied tritt bei. Mit der Pflicht an kann es erst arbeiten, wenn es den Authenticator eingerichtet hat.',

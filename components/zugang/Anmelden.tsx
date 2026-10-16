@@ -31,6 +31,8 @@ export function Anmelden() {
   const [f, setF] = useState({ email: '', passwort: '', name: '', schluessel: '', code: codeAusLink, faktor: '' });
   // Zweiter Faktor (26.09.): Passwort stimmt, der Server will noch den Code aus der App.
   const [zweiter, setZweiter] = useState(false);
+  // Gerät merken (16.10., Kevin: Code bei jeder Anmeldung „nervt mega“): Standard an — danach genügt hier 90 Tage das Passwort.
+  const [merken, setMerken] = useState(true);
   const [fehler, setFehler] = useState('');
   const [laeuft, setLaeuft] = useState(false);
   // 2FA-Pflicht der Instanz (05.10.): Sitzung steht, aber bis zum zweiten Faktor geht nichts anderes (middleware.ts).
@@ -71,7 +73,7 @@ export function Anmelden() {
     setFehler(''); setLaeuft(true);
     const pfad = art === 'anmelden' ? '/api/konto/anmelden' : art === 'einrichten' ? '/api/konto/einrichten' : '/api/konto/beitreten';
     try {
-      const body = art === 'anmelden' ? { email: f.email, passwort: f.passwort, ...(zweiter ? { code: f.faktor } : {}) }
+      const body = art === 'anmelden' ? { email: f.email, passwort: f.passwort, ...(zweiter ? { code: f.faktor, merken } : {}) }
         : art === 'einrichten' ? { code: f.schluessel, email: f.email, name: f.name, passwort: f.passwort } : f;
       const r = await fetch(pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
@@ -162,6 +164,10 @@ export function Anmelden() {
           <>
             <p style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, margin: 0 }}>Zweiter Faktor: den Sechssteller aus deiner Authenticator-App — oder einen Wiederherstellungscode.</p>
             <input placeholder="Code" value={f.faktor} onChange={s('faktor')} style={{ ...feld, fontFamily: SCHRIFT.mono, letterSpacing: '.15em' }} autoComplete="one-time-code" inputMode="numeric" autoFocus />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>
+              <input type="checkbox" checked={merken} onChange={e => setMerken(e.target.checked)} style={{ width: 20, height: 20, accentColor: C.aktiv, margin: 0 }} />
+              Dieses Gerät 90 Tage merken
+            </label>
           </>
         )}
         {fehler && <div style={{ fontSize: TYP.bedien, color: C.kritisch, lineHeight: 1.4 }}>{fehler}</div>}

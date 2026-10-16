@@ -4,6 +4,8 @@
 //                                          Wiederherstellungscodes (genau einmal sichtbar),
 //                                          alle anderen Geräte abgemeldet
 // POST { aktion: 'aus', passwort }       → Faktor aus (Passwort nötig)
+// Gemerkte Geräte (16.10.) stehen IM Faktor (`zweiterFaktor.geraete`): neu einrichten und ausschalten nehmen sie mit — danach
+// fragt jedes Gerät wieder nach dem Code.
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
@@ -44,7 +46,7 @@ export async function POST(req: Request) {
     await aendereKonten(s => ({ ...s, konten: s.konten.map(k => k.speicher === wer ? {
       ...k, zweiterFaktorEntwurf: undefined,
       zweiterFaktor: { geheimnis: e.geheimnis, seit: jetzt, letzteStufe: p.stufe, wiederherstellung: codes.map(c => ({ hash: wiederherstellungHash(c, k.salz) })) },
-      // Alle anderen Geräte raus — ab jetzt gilt der zweite Faktor überall.
+      // Alle anderen Geräte raus — ab jetzt gilt der zweite Faktor überall. Neues Objekt = keine gemerkten Geräte mehr.
       sitzungenAb: jetzt, widerrufen: [],
     } : k) }));
     await notiere({ speicher: wer, art: 'zweiter-faktor-an', ok: true, adresse: adresseGekuerzt(adresse(req)) });

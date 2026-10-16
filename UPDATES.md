@@ -4,6 +4,24 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 16.10.2026 — Gerät merken für den zweiten Faktor (nur lokal — Branch `zwei-faktor-geraet`, Basis 253f9d41 = `update-0910b`)
+**Für Kevin: Code nur noch einmal je Gerät, 90 Tage.** Kevin: Code bei jeder Anmeldung „nervt mega“. Nach Passwort + Code (oder Wiederherstellungscode) steht
+„Dieses Gerät 90 Tage merken“ (angehakt); danach genügt dort das Passwort. Ein gestohlenes Passwort reicht auf einem fremden Gerät weiter nicht.
+- **Kern** `lib/zugang/geraete.ts` (rein) + `geraete-server.ts` (Schreiben nur über `aendereKonten`): eigenes Cookie `GERAET_COOKIE` (`__Host-make-os-geraet`, lokal/Vorschau
+  ohne Präfix wie die Sitzung; HttpOnly, Secure, SameSite=Strict, Pfad /, 90 Tage) mit Kennung + Token (32 Byte). Am Konto nur der HMAC-Hash in
+  `zweiterFaktor.geraete` (+ Stand, angelegt/zuletzt/Ablauf, „Safari · Mac“, nie IP), höchstens 10 (das älteste fällt), je Browser bis 5 Konten.
+- **Ungültig** bei Passwortwechsel (Stand + Liste geleert), 2FA neu/aus (das Objekt ersetzt/entfernt), Ablauf, fremdem Konto — immer still die Codeabfrage.
+  Paar-/IP-/2FA-Bremse unverändert (die 2FA-Bremse sperrt auch das Gerät); ein falsches Token zählt nicht als Fehlversuch.
+- **Protokoll/Glocke:** `anmelden` mit `geraet: g-…` („angemeldet (gemerktes Gerät)“), `geraet-gemerkt`, `geraet-vergessen`, `geraete-vergessen`; Glocke `sicherheit`
+  „Neues Gerät für die Anmeldung gemerkt“ (neutral). Token und Hash nie in Antworten/Logs/Protokollen (`oeffentlich()` nur die Liste ohne Hash).
+- **Verwalten:** Konto › Zweiter Faktor › „Gemerkte Geräte“ (`components/os/GemerkteGeraete.tsx`), Route `/api/konto/geraete` (GET Liste, POST `vergessen`/`alle`; Klasse
+  `person`, Dienstweg 403). Das Cookie ist keine Sitzung (Middleware unverändert).
+- **Datenschutz:** Speicher-Register `konten` und VVT `vv-konten` (alte Fassung wird gehoben) nennen die Geräte; Konto-Export mit Liste ohne Hash, Instanz-Export ohne
+  zweiten Faktor, Konto löschen nimmt sie mit.
+- **Rückweg:** nur ein neues optionales Feld IM zweiten Faktor — der alte Stand trägt es mit, gibt es nie heraus (er lässt `zweiterFaktor` aus jeder Antwort weg) und
+  fragt immer nach dem Code. Update-Probe: neues Feld, kein Verlust (Test). Kein Schritt am Server, keine neue Umgebungsvariable.
+- Tests: `tests/sicher-zugang-geraet.test.ts`, `tests/sitzung-lokale-vorschau.test.ts` (Cookie-Name).
+
 ## 15./16.10.2026 — Abnahme 2 A2/C22/C5: Betreiber- und Entwickler-Texte nur in der Betreiber-Instanz (nur lokal — Branch `abnahme2-betreiber`, Basis 0cf86204 = `update-0910b`)
 Kevin: „Betreiber-Inhalte nur in der eigenen Instanz.“ Regel bleibt `istBetreiberInstanz` (lib/betrieb/betreiber-server.ts); `BETREIBER_WISSEN` kennt jetzt
 auch Umgebungswerte (`MAKE_OS_*`, `WHATSAPP_*`, `GOOGLE_*`, `WHOOP_*` …), GitHub/Repo, Code-Wache und die Stände „entwicklung“/„main“. Bei Kevin bleibt alles wie heute.
