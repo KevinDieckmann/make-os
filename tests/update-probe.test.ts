@@ -203,3 +203,16 @@ describe('Kaskade nach Regel (14.10., Abnahme B13)', () => {
     expect(e.abweichungen.map(a => a.pfad).sort()).toEqual(['monat[id=z-hand].zielwert', 'monat[id=z-u~monat].titel']);
   });
 });
+
+describe('Verzeichnis: Heben alter Fassungen (16.10.)', () => {
+  it('vv-konten: alte Fassung → neue Fassung ist erlaubt, ein anderer Text nicht', async () => {
+    const { alteFassungGehoben } = await import('@/lib/crm/datenschutz');
+    const alt = 'Name, Hauptadresse und bis zu drei weitere Anmelde-Adressen, Passwort-Hash und Salz, zweiter Faktor (Geheimnis, Hashes der Wiederherstellungscodes), Rolle, Haushalt; Anmeldeprotokoll: Zeit, Ergebnis, Art, Netzadresse (höchstens 300 Einträge, rollierend)';
+    const v = schnapp({ crm: { verarbeitungen: [{ id: 'vv-konten', daten: alt }] } });
+    const n = schnapp({ crm: { verarbeitungen: [{ id: 'vv-konten', daten: alt.replace('Wiederherstellungscodes)', 'Wiederherstellungscodes, gemerkte Geräte: Hash des Geräte-Tokens, grobe Beschreibung aus dem Browser, angelegt/zuletzt/Ablauf, höchstens 10 je Konto, 90 Tage — keine Netzadresse)') }] } });
+    expect(vergleiche(v, n, { mitSchluessel: true }).abweichungen).toEqual([]);
+    const h = schnapp({ crm: { verarbeitungen: [{ id: 'vv-konten', daten: 'Von Hand geschrieben' }] } });
+    expect(vergleiche(h, n, { mitSchluessel: true }).abweichungen.length).toBe(1);
+    expect(alteFassungGehoben('vv-gibt-es-nicht', 'daten', alt, alt)).toBe(false);
+  });
+});

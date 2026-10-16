@@ -631,11 +631,14 @@ export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
   ];
 }
 
-/** Ist `wert` eine bekannte alte Fassung dieses Feldes (`ALTE_FASSUNGEN`) — für die Update-Probe: Heben ist kein Verlust (16.10.). */
-export function istAlteFassung(id: string, feld: string, wert: string): boolean {
+/**
+ * Ist `vorher` → `nachher` genau das Heben einer bekannten alten Fassung (`ALTE_FASSUNGEN`)? Für die Update-Probe (16.10.): Heben ist kein
+ * Verlust. `norm` = dieselbe Kürzung, mit der die Probe Werte festhält (sonst Identität).
+ */
+export function alteFassungGehoben(id: string, feld: string, vorher: string, nachher: string, norm: (t: string) => string = t => t): boolean {
   const f = (ALTE_FASSUNGEN[id] as Record<string, { alt: string | string[]; neu: string }> | undefined)?.[feld];
   if (!f) return false;
-  return (Array.isArray(f.alt) ? f.alt : [f.alt]).includes(wert);
+  return (Array.isArray(f.alt) ? f.alt : [f.alt]).some(t => norm(t) === vorher) && norm(f.neu) === nachher;
 }
 
 /**

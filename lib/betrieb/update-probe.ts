@@ -16,7 +16,7 @@
 // und eine Art; Zeitstempel dürfen sich nur ändern, wenn vorher UND nachher ein Zeitpunkt ist (dann ist es ein Auffrischen, kein Verlust).
 
 import { createHash } from 'node:crypto';
-import { istAlteFassung } from '@/lib/crm/datenschutz';
+import { alteFassungGehoben } from '@/lib/crm/datenschutz';
 
 // ── Bilder (Schnappschuss) ────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -233,9 +233,8 @@ export const ERLAUBT: readonly ErlaubtRegel[] = [
     wenn: a => {
       const m = a.pfad.match(/^verarbeitungen\[id=(vv-[a-z0-9-]+)\]\.([a-z]+)$/i);
       if (!m) return false;
-      let vorher = a.vorher ?? '';
-      try { const j = JSON.parse(vorher); if (typeof j === 'string') vorher = j; } catch { /* schon Text */ }
-      return istAlteFassung(m[1], m[2], vorher);
+      // Die Probe hält Werte gekürzt fest (`kurz`) — verglichen wird mit derselben Kürzung, alt UND neu müssen passen.
+      return alteFassungGehoben(m[1], m[2], a.vorher ?? '', a.nachher ?? '', t => kurz(t));
     },
     grund: 'Verzeichnis (Art. 30): unveränderte alte Fassung eines Textes auf die neue gehoben — von Hand Geändertes bleibt.',
   },
