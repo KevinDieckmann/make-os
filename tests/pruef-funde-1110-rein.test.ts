@@ -22,6 +22,7 @@ import { upsellAnsprechbar } from '@/lib/crm/treppe-server';
 import { istBeleg } from '@/lib/dateien/regeln';
 import { kontextVon } from '@/lib/gesellschaften/schild/kontext';
 import { pflichtenFuer } from '@/lib/gesellschaften/schild/pflichten';
+import { fristen, STANDARD_STEUERN } from '@/lib/steuern/rechnen';
 import { lageAus, faelligeSchildErinnerungen, NEUTRAL_BESCHREIBUNG } from '@/lib/gesellschaften/schild/ampel';
 import {
   beschlussSaeubern, eintragVerweise, registerAufraeumen, faelligeErinnerungen, registerOhnePerson, registerEintraegeVon, GETILGT,
@@ -133,11 +134,17 @@ describe('Fund 4 — Rückwärts-Trichter rechnet mit dem REST des Ziels', () =>
 
 describe('Fund 5 — Offenlegung (§ 325 HGB) nur einmal: im Steuer-Modul geführte Gesellschaft ohne Schild-Pflicht', () => {
   const gmbh = (id: string): RegisterGesellschaft => ({ id: id as RegisterGesellschaft['id'], rechtsform: 'gmbh', status: 'eingetragen', gegruendetAm: '2023-01-10', stammkapitalCent: 2_500_000, gesellschafter: [{ id: 'gs-aaaa-0001', wer: { art: 'gesellschaft', id: 'kdv' }, nennbetragCent: 2_500_000, einlage: 'ja' }] });
-  it('kdv (Steuer-Modul) bekommt keine Schild-Offenlegung, ug (nicht im Modul) schon', () => {
-    const im = pflichtenFuer(kontextVon(gmbh('kdv')), undefined, '2026-10-10');
-    expect(im.some(p => p.regelId === 'ja-offenlegen')).toBe(false);
-    expect(im.some(p => p.regelId === 'ja-aufstellen')).toBe(true);
-    const nicht = pflichtenFuer(kontextVon(gmbh('ug')), undefined, '2026-10-10');
+  // Seit 15.10. (Kevin: „Ja, wie bei KD Ventures“, `STEUER_FIRMEN` = kdc · kdv · ug) führt das Steuer-Modul auch die Hauptgesellschaft — ihre
+  // Offenlegung kommt von dort, das Schild nennt sie nicht noch einmal. Nicht im Modul ist eine weitere Gesellschaft aus dem Register (`g-…`).
+  it('kdv und ug (Steuer-Modul) bekommen keine Schild-Offenlegung — das Steuer-Modul führt sie genau einmal; eine Register-Gesellschaft (nicht im Modul) schon', () => {
+    const steuerFristen = fristen(STANDARD_STEUERN, '2026-10-10');
+    for (const id of ['kdv', 'ug'] as const) {
+      const im = pflichtenFuer(kontextVon(gmbh(id)), undefined, '2026-10-10');
+      expect(im.some(p => p.regelId === 'ja-offenlegen'), id).toBe(false);
+      expect(im.some(p => p.regelId === 'ja-aufstellen'), id).toBe(true);
+      expect(steuerFristen.filter(f => f.einheit === id && f.art === 'offenlegung' && f.titel.endsWith(' 2025')), id).toHaveLength(1);
+    }
+    const nicht = pflichtenFuer(kontextVon(gmbh('g-11111111-1111-4111-8111-111111111111')), undefined, '2026-10-10');
     expect(nicht.some(p => p.regelId === 'ja-offenlegen')).toBe(true);
   });
 });

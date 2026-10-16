@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { GmailText } from '@/components/os/inbox/GmailText';
 import { GmailVerbinden, type GmailMeta } from '@/components/os/inbox/GmailVerbinden';
+import { BETREIBER_RICHTET_EIN } from '@/lib/betrieb/betreiber';
 
 const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
 const quelle = (d: string) => readFileSync(path.resolve(__dirname, '..', d), 'utf8');
@@ -31,10 +32,15 @@ describe('GmailText — Fremdtext ist Text', () => {
 describe('GmailVerbinden — die Zustände', () => {
   const noop = () => undefined;
   const meta = (x: Partial<GmailMeta>): GmailMeta => ({ konfiguriert: true, verbunden: false, bereit: false, ...x });
-  it('nicht eingerichtet: ein Satz mit Verweis auf die Anleitung, kein Knopf', () => {
+  it('nicht eingerichtet: ein neutraler Satz, kein Knopf — die Anleitung (Repo-Dokument) nur in der Betreiber-Instanz', () => {
+    // Seit 15.10. (Abnahme 2 A2): Betreiber-Texte nur in der Betreiber-Instanz (`useBetreiber`, der Server entscheidet). Ohne Antwort — hier
+    // serverseitig gerendert, also „noch unbekannt“ — steht der neutrale Satz, nie ein Dateiname.
     const m = html(createElement(GmailVerbinden, { meta: meta({ konfiguriert: false }), onGeaendert: noop, meldung: noop }));
-    expect(m).toContain('GOOGLE_GMAIL_EINRICHTEN.md');
+    expect(m).toContain(BETREIBER_RICHTET_EIN);
+    expect(m).not.toContain('GOOGLE_GMAIL_EINRICHTEN.md');
     expect(m).not.toContain('<button');
+    // In der Betreiber-Instanz bleibt der Verweis auf die Anleitung — nur hinter dem Tor.
+    expect(quelle('components/os/inbox/GmailVerbinden.tsx')).toMatch(/betreiber \? '[^']*GOOGLE_GMAIL_EINRICHTEN\.md/);
   });
   it('nicht verbunden: Karte mit „Gmail verbinden“ und ehrlichem Text (was MAKE OS darf — und was nicht)', () => {
     const m = html(createElement(GmailVerbinden, { meta: meta({}), onGeaendert: noop, meldung: noop }));

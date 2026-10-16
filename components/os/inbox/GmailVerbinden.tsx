@@ -3,7 +3,7 @@
 // ─── Gmail verbinden und Stand (03.10.2026) ──────────────────────────────────
 // Inkrementell: kein zweites Token — die Person ergänzt ihre Google-Verbindung um „Gmail“ (`/api/google/verbinden` mit der Funktion
 // `gmail`, Google fragt nur die neue Freigabe `gmail.modify`). Nur die EIGENE Person verbindet, schaltet aus oder gleicht ab.
-//   · nicht eingerichtet (kein GOOGLE_CLIENT_ID auf dem Server): ein Satz mit Verweis auf GOOGLE_GMAIL_EINRICHTEN.md
+//   · nicht eingerichtet (kein GOOGLE_CLIENT_ID auf dem Server): ein neutraler Satz — der Verweis auf die Anleitung nur in der Betreiber-Instanz
 //   · nicht verbunden: Karte mit „Gmail verbinden“ (und was MAKE OS damit darf — und was nicht)
 //   · verbunden: Statuszeile (maskierte Adresse, letzter Abgleich, Push), „Jetzt abgleichen“, „Gmail ausschalten“
 // Nie Tokens im Browser. Am Handy bedienbar (Tasten ≥ 44 px).

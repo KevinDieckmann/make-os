@@ -30,6 +30,7 @@ import { pruefeEingabe, eintragAus, einfuegen, leererBestand } from '@/lib/meldu
 import type { AnalyseLauf, Fall, KundeDatei, KundenLink } from '@/lib/fulfillment/typen';
 
 const dauer = (f: () => unknown): number => { const t = performance.now(); f(); return performance.now() - t; };
+const beste = (f: () => unknown, n = 3): number => Math.min(...Array.from({ length: n }, () => dauer(f)));
 
 // ── 1 · robots.txt linear ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -111,8 +112,15 @@ describe('Fund 3: HTML zu Text linear (über `web_lesen` von jeder fremden Seite
     ['offene Anführungszeichen', fuell('<a "')], ['Kommentar-Anfänge', fuell('<!--x')], ['<title> ohne Ende', fuell('<title>x')],
     ['viele </td> (Leerzeichen-Lauf)', fuell('</td>')], ['verschachtelte Links', fuell('<a href="https://x.example/">')], ['<<<<', fuell('<')],
   ] as const) {
-    it(`2 MB ${name} → unter 200 ms`, () => {
-      expect(dauer(() => htmlZuText(boese))).toBeLessThan(200);
+    // Linear heißt: 8-fache Eingabe ≈ 8-fache Zeit (gemessen 16.10.: 6–8; eine quadratische Vergleichsschleife: 64). Geprüft wird das VERHÄLTNIS 2 MB : 256 KB statt einer festen
+    // Zeit — unter Last (volle Suite, andere Prozesse) wachsen beide Messungen gleich, eine feste Grenze von 200 ms flackerte. Je Größe das
+    // Beste aus drei Läufen (nach dem Aufwärmen), damit ein einzelner Ausreißer (GC, Planer) nicht zählt; unter 2 ms gilt 2 ms (Messrauschen).
+    it(`2 MB ${name} → linear (2 MB höchstens ~3× so teuer wie 8 × 256 KB)`, () => {
+      const klein = boese.slice(0, ZWEI_MB / 8);
+      htmlZuText(klein);
+      const tKlein = Math.max(beste(() => htmlZuText(klein)), 2);
+      const tGross = beste(() => htmlZuText(boese));
+      expect(tGross / tKlein).toBeLessThan(24);
     });
   }
   it('wohlgeformtes HTML wie bisher (Skripte samt Inhalt, Kommentare, Links mit Adresse, offenes Skript schneidet ab)', () => {
