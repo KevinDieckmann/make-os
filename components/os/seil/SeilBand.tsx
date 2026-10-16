@@ -16,12 +16,13 @@ import { FARBE as C, LEUCHT, LICHT_GLAS, RAND, SCHRIFT, TIEF, TYP } from '@/lib/
 import { localDay } from '@/lib/zeit';
 import { monatsTicks, tageZwischen } from '@/lib/planung/zeitstrahl';
 import type { SeilAnsicht, SeilStrang } from '@/lib/lichtfaeden/seil';
-import { SEIL_FORM, seilLage, seilSpalte } from '@/lib/lichtfaeden/seil-geometrie';
+import { SEIL_FORM, seilAchse, seilLage, seilSpalte } from '@/lib/lichtfaeden/seil-geometrie';
 import { seilband, type SeilFarben, type Seilband, type SeilTreffer } from '@/lib/lichtfaeden/seilband';
 import { bewegungReduziert } from '@/lib/lichtfaeden/zeichnen';
 import { useBlaettern } from '../lichtfaeden/useBlaettern';
 
-const ACHSE = 26;
+const AX = SEIL_FORM.achse;
+const ACHSE = AX.hoehe;
 const SP = SEIL_FORM.spalte;
 const FARBEN: SeilFarben = { heute: LEUCHT.puls, achtung: LEUCHT.achtung, leise: C.inkLeise, kritisch: LEUCHT.kritisch, grund: C.flaeche };
 const kurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4) !== localDay().slice(0, 4) ? t.slice(2, 4) : ''}`;
@@ -66,17 +67,8 @@ export function SeilBand({ ansicht, heute, fokus, onFokus, onBlaettern, onBreite
   const heuteX = heute >= von && heute <= bis ? lage.x(heute) : null;
   const ticks = useMemo(() => monatsTicks(von, bis), [von, bis]);
   const raster = useMemo(() => ticks.map(t => lage.x(t.date)), [ticks, lage]);
-  // Monatsnamen ohne Überlappung: geschätzte Breite je Beschriftung (7 px je Zeichen).
-  const tickSichtbar = useMemo(() => {
-    let rechts = -Infinity;
-    return ticks.map(tk => {
-      const x = lage.x(tk.date);
-      const text = `${tk.label}${tk.jahr ? ` ${tk.jahr}` : ''}`;
-      const ok = x - 2 > rechts && x + text.length * 7 < breite + 4;
-      if (ok) rechts = x + text.length * 7 + 6;
-      return { tk, x, text, ok };
-    }).filter(t => t.ok);
-  }, [ticks, lage, breite]);
+  // Beschriftung der Achse (Monate oben, „HEUTE“ versetzt darunter) — die Lage rechnet seil-geometrie.ts.
+  const achse = useMemo(() => seilAchse(ticks, lage.x, breite, heuteX), [ticks, lage, breite, heuteX]);
   const [hervor, setHervor] = useState<string | null>(null);
   const [zeig, setZeig] = useState<{ x: number; y: number; text: string; grund?: string } | null>(null);
 
@@ -146,10 +138,10 @@ export function SeilBand({ ansicht, heute, fokus, onFokus, onBlaettern, onBreite
       {/* Monate oben (die Achse liest sich vor den Strängen) — nur über der Zeit-Fläche */}
       <div aria-hidden="true" style={{ position: 'relative', height: ACHSE, marginLeft: rand, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, transform: b.zug ? `translateX(${b.zug}px)` : undefined, transition: b.zug ? 'none' : 'transform .18s ease' }}>
-          {tickSichtbar.map(({ tk, x, text }) => (
-            <span key={tk.date} style={{ position: 'absolute', left: x, top: 4, fontFamily: SCHRIFT.display, fontSize: 12, color: tk.wechsel || tk.jahr ? C.ink : C.inkLeise, fontWeight: tk.jahr ? 800 : 500, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{text}</span>
+          {achse.monate.map(m => (
+            <span key={m.date} data-achse-monat={m.date} style={{ position: 'absolute', left: m.x, top: m.y, height: m.hoehe, lineHeight: `${m.hoehe}px`, fontFamily: SCHRIFT.display, fontSize: AX.monat.schrift, color: m.wechsel || m.jahr ? C.ink : C.inkLeise, fontWeight: m.jahr ? 800 : 500, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{m.text}</span>
           ))}
-          {heuteX != null && <span style={{ position: 'absolute', left: heuteX, bottom: 0, transform: 'translateX(-50%)', fontFamily: SCHRIFT.text, fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: LEUCHT.puls, background: C.flaeche, padding: '0 4px' }}>HEUTE</span>}
+          {achse.heute && <span data-achse-heute="" style={{ position: 'absolute', left: achse.heute.links, top: achse.heute.y, width: achse.heute.breite, height: achse.heute.hoehe, lineHeight: `${achse.heute.hoehe}px`, textAlign: 'center', fontFamily: SCHRIFT.text, fontSize: AX.heute.schrift, fontWeight: 700, letterSpacing: '.12em', color: LEUCHT.puls, background: C.flaeche, borderRadius: 4, whiteSpace: 'nowrap' }}>{achse.heute.text}</span>}
         </div>
       </div>
       <div style={{ position: 'relative', height: lage.hoehe }}>
