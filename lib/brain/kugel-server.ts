@@ -127,10 +127,10 @@ async function notizen(person: string): Promise<RohPunkt[]> {
   const { bestand, darfSehen, sichtAufloesen } = await import('@/lib/zoe/vault');
   const b = await bestand();
   const sicht = await sichtAufloesen({ person }); // aus den Konten (09.10.)
-  const sichtbar = b.notizen.filter(n => darfSehen(n, sicht) && !GESUNDHEIT.test(`${n.id} ${n.titel} ${n.stichworte.join(' ')}`));
+  const sichtbar = b.notizen.filter(n => darfSehen(n, sicht) && !GESUNDHEIT.test(`${n.id} ${n.titel} ${n.anzeige} ${n.stichworte.join(' ')}`));
   const nachTitel = new Map(sichtbar.map(n => [n.titel.toLowerCase(), n.id]));
   return sichtbar.map(n => ({
-    art: 'notiz' as const, kennung: n.id, titel: n.titel, datum: n.geaendert,
+    art: 'notiz' as const, kennung: n.id, titel: n.anzeige, datum: n.geaendert,
     privat: n.scope === 'privat' || n.scope === 'familie' || n.bereich === 'Privat',
     ...(n.scope === 'privat' && n.owner ? { gehoert: n.owner } : {}),
     links: mit(...n.verweise.map(v => { const z = nachTitel.get(v.toLowerCase()); return z && punktId('notiz', z); })),

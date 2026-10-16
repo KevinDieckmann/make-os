@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { istGesellschaft } from '@/lib/einheiten';
+import { datumDe } from '@/lib/finanzen/haushalt/monat';
 import { Knopf, Hinweis } from '../ui';
 import { anhangLink, senden } from './daten';
 
@@ -67,7 +68,7 @@ export function BelegAusMail({ quelle, bereich, vorschlag, onZu, meldung }: {
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', fontSize: TYP.bedien }}>
             <span style={{ color: C.inkLeise }}>Partner</span><span>{beleg.partner || '—'}</span>
             <span style={{ color: C.inkLeise }}>Betrag</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{zahl(beleg.betragBrutto)}</span>
-            <span style={{ color: C.inkLeise }}>Datum</span><span>{beleg.datum ?? '—'}</span>
+            <span style={{ color: C.inkLeise }}>Datum</span><span>{beleg.datum ? datumDe(beleg.datum) : '—'}</span>
             {beleg.rechnungsnummer && <><span style={{ color: C.inkLeise }}>Nummer</span><span>{beleg.rechnungsnummer}</span></>}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

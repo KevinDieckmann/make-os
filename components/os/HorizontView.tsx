@@ -27,6 +27,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
+import { tagKurz } from '@/lib/zeit/kalender-kern';
 import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, prioFarbe, LEUCHT, Segmente, Knopf, useRueckgaengig, FlussKarte } from './ui';
 import { useZiel, useZuZiel } from './ziel';
@@ -64,6 +65,8 @@ const META: Record<Horizont, { titel: string; claim: string; hinweis: string }> 
 /** Eine Farbe je Horizont — dieselbe wie auf der Wachstums-Seite. */
 const HFARBE: Record<Horizont, string> = { jahr: LEUCHT.schlaf, quartal: LEUCHT.puls, monat: LEUCHT.gut };
 
+/** Priorität auf Deutsch (Abnahme 15.10. C19: nie „high“/„critical“ in der Liste). */
+const PRIO_WORT: Record<string, string> = { critical: 'kritisch', high: 'hoch', medium: 'normal', low: 'niedrig' };
 const col = (v: number) => (v >= 70 ? LEUCHT.gut : v >= 40 ? LEUCHT.achtung : LEUCHT.kritisch);
 
 export function HorizontView({ horizont }: { horizont: Horizont }) {
@@ -297,10 +300,10 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
           {faellig.slice(0, 15).map(t => (
             <Link key={t.id} href={`/os/aufgaben?offen=${encodeURIComponent(t.id)}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
               <Zeile
-                links={<span style={{ fontSize: TYP.bedien, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: t.dueDate && t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise, flex: '0 0 auto', width: 78 }}>{t.dueDate}</span>}
+                links={<span style={{ fontSize: TYP.bedien, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: t.dueDate && t.dueDate < heute ? LEUCHT.kritisch : C.inkLeise, flex: '0 0 auto', width: 78 }}>{t.dueDate ? tagKurz(t.dueDate, heute) : ''}</span>}
                 titel={t.title}
                 unter={t.einheit && spaceVonAufgabe(t) === 'business' ? <EinheitMarke name={t.einheit} /> : undefined}
-                rechts={<Chip farbe={prioFarbe(t.priority)}>{t.priority}</Chip>} />
+                rechts={<Chip farbe={prioFarbe(t.priority)}>{PRIO_WORT[t.priority] ?? t.priority}</Chip>} />
             </Link>
           ))}
         </Liste>

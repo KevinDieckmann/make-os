@@ -27,6 +27,14 @@ import { OrganeReiter } from './Organe';
 import { GueltigeFassungKarte } from './Satzung';
 
 type ReiterId = 'steckbrief' | 'gesellschafter' | 'organe' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender';
+/** Ein Datumsfeld anspringen und (wo der Browser es kann) den Kalender öffnen. */
+function datumOeffnen(id: string) {
+  const el = document.getElementById(id) as (HTMLInputElement & { showPicker?: () => void }) | null;
+  if (!el) return;
+  el.focus();
+  try { el.showPicker?.(); } catch { /* ohne Nutzergeste oder alter Browser: der Fokus reicht */ }
+}
+
 const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 
 export function Detail({ g, daten, reiter, onReiter, zurueck, onNeu, neuLaden, oeffne }: {
@@ -116,7 +124,16 @@ function Steckbrief({ g, daten, schreibe, neuLaden, oeffne }: { g: GAnzeige; dat
             <Feldzeile label="Registergericht · HRB"><TextFeld label="Registergericht und HRB" wert={g.register ?? ''} platzhalter="z. B. Amtsgericht … HRB …" onFertig={t => void setze({ register: t })} /></Feldzeile>
             <Feldzeile label="Geschäftsführung"><TextFeld label="Geschäftsführung" wert={g.geschaeftsfuehrung ?? ''} onFertig={t => void setze({ geschaeftsfuehrung: t })} /></Feldzeile>
             <Feldzeile label="Gegründet am"><TextFeld typ="date" label="Gegründet am" wert={g.gegruendetAm ?? ''} onFertig={t => void setze({ gegruendetAm: t })} /></Feldzeile>
-            <Feldzeile label="Eingetragen am"><TextFeld typ="date" label="Eingetragen am" wert={g.eingetragenAm ?? ''} onFertig={t => void setze({ eingetragenAm: t })} /></Feldzeile>
+            <Feldzeile label="Eingetragen am">
+              <TextFeld id={`eingetragen-${g.id}`} typ="date" label="Eingetragen am" wert={g.eingetragenAm ?? ''} onFertig={t => void setze({ eingetragenAm: t })} />
+              {/* Abnahme 15.10. C19: Status „eingetragen“ ohne Datum — nie ein stummes leeres Feld, sondern der Weg zum Nachtragen. */}
+              {g.status === 'eingetragen' && !g.eingetragenAm && (
+                <div style={{ ...klein, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
+                  <span>Datum der Eintragung fehlt.</span>
+                  <Knopf leise onClick={() => datumOeffnen(`eingetragen-${g.id}`)}>Datum eintragen ›</Knopf>
+                </div>
+              )}
+            </Feldzeile>
             {kap && <Feldzeile label="Stammkapital (gezeichnet, €)"><TextFeld label="Stammkapital in Euro" wert={centEingabe(g.stammkapitalCent)} platzhalter="z. B. 25.000" onFertig={t => void setze({ stammkapitalCent: t })} /></Feldzeile>}
             {kap && <Feldzeile label="Davon eingezahlt (€)"><TextFeld label="Eingezahltes Stammkapital in Euro" wert={centEingabe(g.eingezahltCent)} platzhalter={eingezahlt !== undefined ? centEingabe(eingezahlt) : 'z. B. 12.500'} onFertig={t => void setze({ eingezahltCent: t })} /></Feldzeile>}
             <Feldzeile label="Geschäftsjahr beginnt im"><Auswahl label="Beginn des Geschäftsjahres" wert={String(g.geschaeftsjahrBeginn ?? 1)} liste={MONATE.map((m, i) => ({ id: String(i + 1), label: i === 0 ? 'Januar (Kalenderjahr)' : m }))} onWahl={v => void setze({ geschaeftsjahrBeginn: Number(v) || null })} /></Feldzeile>
