@@ -4,16 +4,15 @@
 // Der heutige Kreislauf aus Markttraktion › Planung GILT (Entscheidung 22:30); die früheren Vertriebsabläufe sind Wissen — klickbar und gezeichnet
 // (Trichter, Fluss mit Weichen, Kreis mit Empfehlungsring, Zeitachse), Ergänzungen gestrichelt, Rückwege als Bögen. Ein Klick auf eine Stufe öffnet ihren Steckbrief,
 // „heute“ springt in den heutigen Kreislauf. „Als Paket-Vorlage übernehmen“ kopiert einen Ablauf in eine Paket-Vorlage.
-// 12.10. (kundenreif): der heutige Kreislauf als Rad mit den Zahlen der Markttraktion (GET /api/crm/planung) — jede Stufe springt in ihre Ansicht;
-// die Etagen der Landkarte darunter öffnen ihren Drill-down (vorher Zeilen ohne Ziel).
+// 12.10. (kundenreif): der heutige Kreislauf als Rad mit den Zahlen der Markttraktion (GET /api/crm/planung) — jede Stufe springt in ihre Ansicht.
+// 17.10. (Rückmeldung: „es dupliziert sich“): die Etagen der Landkarte stehen nur noch auf der Landkarte (vorher hier ein zweites Mal als Liste).
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Pillen, Chip, LEUCHT, Liste, Zeile } from '../../ui';
+import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Pillen, Chip, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
-import { kinderVon } from '@/lib/fulfillment/regeln';
 import type { KreislaufId } from '@/lib/crm/planung';
 import { useUebersicht, vorlagenOps, fehlerText, holeJson } from './daten';
 import { KreislaufRad, type RadStufe } from '../reise/teile';
@@ -22,7 +21,6 @@ import { AblaufBild, AblaufLegende } from './Zeichnung';
 import { klein, Leiste, Meldung } from './teile';
 
 const ART_TEXT: Record<string, string> = { einstieg: 'Einstieg', stufe: 'Stufe', ausstieg: 'Ausstieg', routine: 'Routine' };
-const KREIS_TEXT: Record<KreislaufId, string> = { kanaele: 'Kanäle', leads: 'Leads', deals: 'Deals', followup: 'Abschluss & Follow-up', fulfillment: 'Fulfillment', nachher: 'Nach der Leistung', wiederkauf: 'Wiederkauf' };
 
 /** Die Stufen des heutigen Kreislaufs (Markttraktion › Planung, `GET /api/crm/planung`) — Zahl, Satz, Weg. Ohne Zugang/Fehler: null. */
 function useKreislaufStufen(): { stufen: RadStufe[] | null; fehler: string | null } {
@@ -53,8 +51,6 @@ export function Kreislauf() {
   const ablaeufe = daten.prozesse.filter(p => p.art === 'ablauf');
   const aktiv = ablaeufe.find(a => a.id === wahl) ?? ablaeufe[0];
   const st = aktiv && stufe ? aktiv.knoten.find(k => k.id === stufe) : undefined;
-  const landkarte = daten.prozesse.find(p => p.art === 'landkarte');
-  const etagen = landkarte ? kinderVon(landkarte.knoten.find(k => !k.elternId)?.id, landkarte.knoten).filter(k => (k.zone ?? 'etage') === 'etage') : [];
   const alsPaket = async () => {
     if (!aktiv) return;
     const a = await vorlagenOps([{ op: 'kopie', id: aktiv.id }]);
@@ -69,11 +65,6 @@ export function Kreislauf() {
           mitte={<span style={{ display: 'grid', gap: 4 }}><span style={MIKRO}>hier liefern wir</span><b style={{ fontSize: TYP.body, color: C.ink }}>{Object.values(daten.faelle).filter(f => f.status !== 'abgeschlossen').length} Kunden</b><span style={klein}>in Lieferung</span></span>}
           onStufe={st => { if (st.href) router.push(st.href); }} />
         <div style={klein}>Es gilt der Kreislauf aus Markttraktion › Planung. Jede Stufe öffnet ihre Ansicht; die Zahl ist der heutige Stand (Kanäle, Leads in Arbeit, offene Deals, fällige Follow-ups, aktive Mandate, Kunden mit offenen Schritten nach der Leistung, Wiederkäufer). Die Abläufe unten sind Wissen aus früheren Prozessen — keine zweite Wahrheit.</div>
-        {etagen.length > 0 && (
-          <Liste>
-            {etagen.map(e => <Zeile key={e.id} titel={e.titel} onClick={() => router.push(WEG.fulfillment('prozesse', { k: e.id }))} unter={(e.kreislauf ?? []).map(k => KREIS_TEXT[k]).join(' · ') || 'keiner Kreislauf-Stufe zugeordnet'} />)}
-          </Liste>
-        )}
       </Karte>
       <Meldung text={meldung?.text ?? null} art={meldung?.art} />
       {!ablaeufe.length ? (

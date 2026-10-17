@@ -86,13 +86,12 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('mt-stammdaten', 'Markttraktion · Stammdaten', WEG.stammdaten(), 'business'),
   s('mandate', 'Produkte & Mandate · Mandate', WEG.mandat(), 'business'),
   s('produkte', 'Produkte & Mandate · Produkte (Leistungskatalog)', WEG.produkt(), 'business'),
-  // Fulfillment (10.10.): eigene Seite unter Produkte & Mandate — die sechs Unterpunkte einzeln auffindbar.
-  s('fulfillment', 'Produkte & Mandate · Fulfillment (Prozesse)', WEG.fulfillment(), 'business'),
+  // Fulfillment (10.10.): eigene Seite unter Produkte & Mandate — die Unterpunkte einzeln auffindbar (seit 17.10. fünf: Visualisierung steckt in der Landkarte).
+  s('fulfillment', 'Produkte & Mandate · Fulfillment (Landkarte, Kunden in Lieferung)', WEG.fulfillment(), 'business'),
   s('fulfillment-bausteine', 'Produkte & Mandate · Fulfillment · Bausteine', WEG.fulfillment('bausteine'), 'business'),
   s('fulfillment-onboarding', 'Produkte & Mandate · Fulfillment · Onboarding', WEG.fulfillment('onboarding'), 'business'),
   s('fulfillment-analysen', 'Produkte & Mandate · Fulfillment · Analysen', WEG.fulfillment('analysen'), 'business'),
   s('fulfillment-kreislauf', 'Produkte & Mandate · Fulfillment · Kreislauf', WEG.fulfillment('kreislauf'), 'business'),
-  s('fulfillment-visualisierung', 'Produkte & Mandate · Fulfillment · Visualisierung', WEG.fulfillment('visualisierung'), 'business'),
   s('unternehmen', 'Unternehmen · Überblick (Schild in einem Blick, Compliance-Ampel)', WEG.unternehmen(), 'business', 'volle'),
   s('unternehmen-ereignis', 'Unternehmen · Was ist passiert? (Ereignis-Assistent: Geschäftsführung, Gesellschafterwechsel, Sitz …)', WEG.ereignisAssistent(), 'business', 'volle'),
   // Unternehmen › Schild (10.10.): die Reiter einzeln auffindbar.
