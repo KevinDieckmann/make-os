@@ -169,6 +169,10 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
     expect(m.status).toBe(200);
     const mandat = (await crm()).mandate.find(x => x.chanceId === gestellt.dealId)!;
     expect(mandat).toMatchObject({ gesellschaft: 'kdv', honorar: { betrag: 2500, basis: 'monat' }, mindestlaufzeitMonate: 6, leistungId: 'l-strategie', zahlungszielTage: 14, rechnungsrhythmus: 'monatlich' });
+    // 17.10. (Gesamtprüfung L1 B3): das angenommene Angebot ist die Unterschrift — kein „ohne Vertrag“, kein doppelter Kick-off-Punkt.
+    expect(mandat.vertragUnterschrieben).toBe(true);
+    expect(mandat.offen).not.toContain('Vertrag unterschreiben lassen');
+    expect(mandat.offen).not.toContain('Kickoff-Termin festlegen');
   });
   it('ablehnen: Grund Pflicht (400), mit Grund → Deal verloren mit Grund', async () => {
     const e = await neuerEntwurf({ kontaktId: 'c-bert1', titel: 'Workshop' });

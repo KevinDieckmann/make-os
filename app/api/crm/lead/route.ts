@@ -37,6 +37,7 @@
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
+import { istBusinessGesellschaft } from '@/lib/einheiten';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus, type Wer } from '@/lib/store/aenderungsprotokoll';
@@ -168,6 +169,10 @@ export async function POST(req: Request) {
       const v = mandatVorbelegung(angebot);
       Object.assign(m, v, { quelle: `aus Angebot ${angebot.nummer ?? ''} (Deal „${c.titel}“)`.replace('  ', ' ') });
       if (!v.titel) m.titel = c.titel;
+      // Das angenommene Angebot IST die Unterschrift (17.10., Gesamtprüfung L1 B3 — der Fall sagte „Mandat unterschrieben“, das Mandat „ohne Vertrag“, der
+      // Liquiditäts-Posten „unsicher“). Den Kick-off führt bei Business-Mandaten der Fall — kein zweiter offener Punkt daneben.
+      m.vertragUnterschrieben = true;
+      m.offen = m.offen.filter(x => x !== 'Vertrag unterschreiben lassen' && !(istBusinessGesellschaft(m.gesellschaft) && x === 'Kickoff-Termin festlegen'));
     }
     const ids = new Set(c.kontaktIds);
     let schonDa = false;
