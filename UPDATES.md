@@ -4,6 +4,33 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 17.10.2026 — Prozess-Editor im Miro-Stil (nur lokal — Branch `prozess-editor`, Basis ef72b944 = `update-0910b`)
+Kevin: „Jeder baut seine Abläufe selbst in der App: Schritte, Nachrichten, Entscheidungen und Erinnerungen per Ziehen anlegen. Damit wird das Fulfillment zum
+Werkzeug, das Kunden für ihre eigenen Prozesse nutzen.“ Der Upload des bisherigen Stands bleibt davon unberührt (eigener Branch).
+- **Editor** (Fulfillment › Landkarte › Paket-Vorlage „Bearbeiten“ bzw. „+ Neuer Ablauf“, `?e=<Ablauf>`; auch aus Bausteine › „steckt in“): Reise-Zeile
+  (Phasen anlegen, umbenennen, ziehen, löschen mit Rückfrage; Abstimmungspunkt zwischen den Phasen an/aus), Palette, Fluss der Phase, Seitenfeld,
+  Papierkorb, Rückgängig/Wiederholen; Tastatur für alles, Ziele ≥ 44 px, am Handy Liste mit Pfeilen. Doku `DESIGN_STANDARD.md` › Prozess-Visualisierung › Editor.
+- **Modell (additiv, alles optional):** Knoten `form` (schritt · nachricht · entscheidung · erinnerung · termin · abstimmung — das Feld heißt `form`, weil `art`
+  an Ablauf-Stufen schon belegt ist), `frist` (Tage), `zweige { ja?, nein? }`; Paket-Vorlage `papierkorb[]`. Ohne Feld wie bisher (Form aus Baustein/Abstimmungs-
+  punkt abgeleitet). Regeln an EINER Stelle: lib/fulfillment/prozesse/{fluss-struktur,editor,editor-geschichte}.ts — Zweige nur in derselben Phase, Kreise nur über
+  eine Erinnerung zurück zur Entscheidung (sonst 409), Stand der GANZEN Vorlage (409 mit aktueller Fassung), Grenzen 413 (Papierkorb ≤ 200). Braucht ein Schritt
+  direkt in der Phase einen Baustein, legt der Editor einen Sammel-Teilprozess (heißt wie die Phase, ohne Überschrift) an; leer fällt er weg. Jede Änderung im
+  Editor hält die Reihenfolge der Phasen fest (`phasenVonHand`).
+- **Server:** Route `/api/fulfillment/editor` (GET Vorlage + Stand, PATCH Ops, POST „Neuer Ablauf“ mit anfrageId) — Tor `vorlagenZugang`: bearbeiten nur volle
+  Mitglieder; **neu auch auf dem alten Baum-Weg** (`PATCH /api/fulfillment` mit Vorlagen-/Knoten-/Übergangs-Ops): Rolle „nur Business“ → 403 (Bibliothek, Rituale,
+  Zuordnung wie bisher). Routen-Register-Eintrag, Bau-Kennung, Dienstweg 403.
+- **Fälle:** neue Fälle nehmen die neue Fassung (Form, Frist, Zweige kopiert); laufende zeigen „Vorlage geändert — übernehmen?“ mit Vorschau — auch, wenn sich nur
+  die Reihenfolge ändert; die Übernahme ordnet die Schritte wie die Vorlage (eigene Zusatz-Schritte bleiben hinter ihrem Vorgänger), entfernt nie etwas, Erledigtes
+  bleibt. Im Fall: Entscheidung „erledigt“ = ja → ihr offener Nein-Zweig entfällt; Frist setzt die Fälligkeit des nächsten Schritts (erster Schritt ab Start).
+- **Feinschliff Reise:** Titel mit Silbentrennung statt Bruch mitten im Wort (zwei Zeilen, „…“, Tooltip), Band „Kunde“ mit Satz („wartet: …“, „Abstimmungspunkt
+  n offen“, sonst „nichts offen beim Kunden“), Lage-Zeile der Startseite nur Zahlen.
+- **Update-Probe:** verlustfrei mit Altbestand (`tests/fulfillment-editor-update.test.ts`: Vorlagen und Fälle der Online-Fassung durch die neuen Säuberer und einen
+  Schreibweg, `vergleicheBestand` ohne Abweichung; Editor und Übernahme behalten jede Kennung). Kein Datenumzug, kein Server-Schritt.
+- **Rückweg:** der alte Stand kennt `form`, `frist`, `zweige` und `papierkorb` nicht und verwirft sie beim nächsten Schreiben der Vorlagen bzw. Fälle (Formen werden
+  wieder abgeleitet, Zweige/Fristen fallen weg, der Papierkorb ist dann leer); Sammel-Teilprozesse bleiben und zeigen ihre Schritte wie bisher ohne Überschrift.
+  Vorher eine Sicherung, wenn im Editor schon gelöscht wurde.
+- Tests: `tests/fulfillment-editor-{modell,route,update,oberflaeche}.test.ts`, `tests/fulfillment-feinschliff.test.ts`; alle `tests/fulfillment-*` grün.
+
 ## 17.10.2026 — Fulfillment im Miro-Standard + dritte Abnahme B3–B6/C6 (nur lokal — Branch `fulfillment-miro`, Basis 1179a1ea = `update-0910b`)
 Kevin: „Nicht überladen, sondern sehr klar. Lieber wenig und klar — es dupliziert sich.“ Entschieden: genau dieser Stil, 4 Reiter je Fall, erst Umbau, dann Upload.
 - **Fall = Kopf + 4 Reiter:** Reise (Überblick, Ablauf, Analyse und Abschluss & Kreislauf zusammen; Reise-Zeile mit ≤ 4 Kästchen je Phase, Rauten, Band
