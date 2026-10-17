@@ -19,7 +19,7 @@ import { localDay, tagVon } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { fallAnwenden, fallFreigaben, fallStarten, vorlageUebernehmen, zusatzAnhaengen, zusatzUebernehmen } from './fall';
 import { ablaufAktiv } from './ausfuehrung';
-import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, zeitpunkt, type OnboardingAbleitung } from './onboarding';
+import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, willkommenUhr, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 import { fallTermine } from './termine-server';
@@ -110,9 +110,9 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
   if (!v) throw new FallFehler('Bitte einen Ablauf wählen (Fulfillment › Übersicht › Abläufe; dem Produkt zuordnen geht unter Produkte).', 400);
   const start = typeof e.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.start) ? e.start : heute;
   const u = unterschriftAm(m, crm, iso);
-  // Frist der Willkommensmail = DIESELBE Uhr wie `willkommenUhr` (ein Tag gilt ab 0 Uhr Berliner Zeit), als Berliner Tag (17.10., dritte Abnahme B4).
-  const uMs = u ? zeitpunkt(u.am) : null;
-  const bis = uMs != null ? tagVon(new Date(uMs + vorlagen.einstellungen.willkommenStunden * 3_600_000).toISOString()) : undefined;
+  // Frist der Willkommensmail = DIESELBE Uhr (`willkommenUhr`, seit 17.10. ab dem Ende des Tages, wenn nur der Tag bekannt ist), als Berliner Tag.
+  const uhr = u ? willkommenUhr(u.am, vorlagen.einstellungen.willkommenStunden, undefined, iso) : null;
+  const bis = uhr?.faellig ? tagVon(uhr.faellig) : undefined;
   let neu: Fall | null = null;
   let art: 'neu' | 'angehaengt' = 'neu';
   const r = await fulfillmentAendern('faelle', d => {

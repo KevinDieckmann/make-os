@@ -507,7 +507,10 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           const notiz = optText(o.notiz, 'notiz', 'Notiz');
           const am = nachtrag(o.am, 'Vermerkt am') ?? k.heute;
           f.freigaben[id] = { am, von: k.person, ...(kunde ? { kunde } : {}), ...(notiz ? { notiz } : {}) };
-          for (const n of f.knoten.filter(x => x.freigabe === id && x.status !== 'erledigt' && x.status !== 'entfaellt')) setzeKnoten(erledigen(n, am));
+          // Erledigt wird nur der Bestätigungs-Schritt selbst — nie eine Phase mit Schritten darunter (17.10., Gesamtprüfung L1 B1: vorher stand „Phase 1
+          // erledigt“, obwohl 5 von 8 Onboarding-Schritten offen waren; Reise, Fluss, Heute und Report widersprachen sich). Die Phase ist fertig, wenn ihre
+          // Schritte fertig sind (`phaseFertig`).
+          for (const n of f.knoten.filter(x => x.freigabe === id && x.status !== 'erledigt' && x.status !== 'entfaellt' && !kinderVon(x.id, f.knoten).length)) setzeKnoten(erledigen(n, am));
           geaendert.push(`freigabe:${id}`);
           break;
         }
