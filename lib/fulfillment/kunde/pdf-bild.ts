@@ -1,13 +1,13 @@
 // ─── Fulfillment · Kunde — dieselben Bilder als PDF (nur Server; 12.10., Fulfillment extern, „ein Bild“) ──────────────────────────────────────────
 // Der 2-Wochen-Report (lib/crm/treppe-pdf.ts, mit Fall) und der Wirkungsbericht (lib/fulfillment/prozesse/wirkung-pdf.ts) zeichnen mit DIESEM Gerüst:
-// ruhiger Kopf (Anbieter, Titel, Kunde, Stand), Lage-Kasten mit Ampel und drei Sätzen, Phasen-Strahl mit „hier stehen wir“, Wert-Balken (vorher → jetzt
-// → Ziel), Spalten „erledigt · als Nächstes · wartet“, erste Erfolge, Hinweis-Kästen, Fuß mit „Seite n von m“. Gerechnet wird nichts hier — die Modelle
-// kommen aus lib/fulfillment/kunde/bild.ts (`strahlModell`, `wertModell`), dieselben wie auf der Kunden-Seite. pdf-lib mit Helvetica/WinAnsi
+// ruhiger Kopf (Anbieter, Titel, Kunde, Stand), Lage-Kasten mit Ampel und drei Sätzen, die Reise als EINE Zeile mit „hier stehen wir“ (seit 17.10. —
+// dieselbe Zeichnung wie die Kunden-Seite), Wert-Balken (vorher → jetzt → Ziel), Spalten, erste Erfolge, Hinweis-Kästen, Fuß mit „Seite n von m“. Gerechnet
+// wird nichts hier — die Modelle kommen aus lib/fulfillment/kunde/bild.ts (`kundenReise`, `wertModell`), dieselben wie auf der Kunden-Seite. pdf-lib mit Helvetica/WinAnsi
 // (`sicherFuer`/`umbrechen` aus dem Angebot); `erstellt` fest übergeben → gleiche Eingabe, gleiche Bytes. Keine Bilder von außen, keine Marken im Code.
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from 'pdf-lib';
 import { sicherFuer, umbrechen } from '@/lib/crm/angebot-pdf';
-import { strahlModell, wertModell, type KundenAmpel, type KundenLage, type KundenPhase, type KundenQuickWin, type KundenWert } from './bild';
+import { wertModell, type KundenAmpel, type KundenLage, type KundenQuickWin, type KundenReiseSpalte, type KundenWert } from './bild';
 
 export const A4: [number, number] = [595.28, 841.89];
 export const RAND = 50;
@@ -133,31 +133,50 @@ export class PdfBlatt {
     this.y = yo - h - 4;
   }
 
-  /** Der Phasen-Strahl: gleich breite Abschnitte, „hier stehen wir“ über dem laufenden, Abstimmungspunkte als Raute, Titel darunter. */
-  strahl(phasen: readonly KundenPhase[], o: { hier?: string } = {}) {
-    if (!phasen.length) return;
-    const m = strahlModell(phasen);
-    const titelZeilen = m.segmente.map(sg => { const w = (sg.bis - sg.von) * BREIT - 10; return this.zeilen(sg.titel, 8.5, Math.max(30, w), sg.stand === 'aktuell').slice(0, 2); });
-    const zeilenMax = Math.max(1, ...titelZeilen.map(z => z.length));
-    const h = 16 + 10 + 10 + zeilenMax * 11 + 6;
-    this.platz(h + 6);
-    const yo = this.y - 16;
-    const luecke = 5;
-    m.segmente.forEach((sg, i) => {
-      const x0 = RAND + sg.von * BREIT + (i ? luecke / 2 : 0);
-      const x1 = RAND + sg.bis * BREIT - (i < m.segmente.length - 1 ? luecke / 2 : 0);
-      const w = x1 - x0;
-      const yb = yo - 8;
-      this.kasten(x0, yo, w, 8, { farbe: PDF_FARBE.schiene, r: 4 });
-      if (sg.fuellung > 0) this.kasten(x0, yo, Math.max(8, w * sg.fuellung), 8, { farbe: sg.stand === 'erledigt' ? PDF_FARBE.akzent : PDF_FARBE.akzentTief, r: 4 });
-      if (sg.abstimmung) this.raute(x1 - 1, yb + 4, 4.2, sg.abstimmung.erledigt, sg.abstimmung.erledigt ? PDF_FARBE.gut : PDF_FARBE.leise);
-      if (i === m.jetzt) {
-        const hier = (o.hier ?? 'Hier stehen wir').toUpperCase();
-        this.text(hier, Math.min(x0, RAND + BREIT - this.breite(hier, 7.5, true)), yo + 6, 7.5, { fett: true, farbe: PDF_FARBE.akzentTief });
+  /**
+   * Die Reise als EINE Zeile (17.10., Miro-Standard — dieselbe Zeichnung wie Kunden-Seite und Fall, Modell `kundenReise`): je Phase eine Beschriftung
+   * (erledigt getönt, laufend mit Akzent-Rahmen und „hier stehen wir“ darüber, kommend leer), Abstimmungspunkte als Raute zwischen den Phasen, unter der
+   * laufenden Phase „als Nächstes“ als kurze Kästchen (Rest „+n“), unten das Band mit dem, was beim Kunden liegt.
+   */
+  reise(spalten: readonly KundenReiseSpalte[], o: { hier?: string; naechstes?: string; band?: string } = {}) {
+    if (!spalten.length) return;
+    const n = spalten.length;
+    const luecke = 12;
+    const w = (BREIT - luecke * (n - 1)) / n;
+    const titel = spalten.map(s => this.zeilen(s.titel, 8.5, Math.max(24, w - 10), s.zustand === 'jetzt').slice(0, 2));
+    const pille = 10 + Math.max(1, ...titel.map(t => t.length)) * 10.5;
+    const jetzt = spalten.find(s => s.zustand === 'jetzt');
+    const kaestchen = (jetzt?.kaestchen ?? []).map(k => this.zeilen(k.titel, 8.5, Math.max(24, w - 12)).slice(0, 2));
+    const kasten = kaestchen.reduce((a, z) => a + 8 + z.length * 10.5 + 4, 0) + (jetzt?.mehr ? 14 : 0) + (kaestchen.length ? 14 : 0);
+    const h = 14 + pille + 8 + kasten + 22;
+    this.platz(h + 8);
+    const yo = this.y - 14;
+    const yp = yo - 4;
+    spalten.forEach((s, i) => {
+      const x = RAND + i * (w + luecke);
+      if (s.zustand === 'jetzt') this.text((o.hier ?? 'Hier stehen wir').toUpperCase(), x, yo + 2, 7.5, { fett: true, farbe: PDF_FARBE.akzentTief });
+      this.kasten(x, yp, w, pille, s.zustand === 'fertig' ? { farbe: PDF_FARBE.akzentHell, r: 6 } : s.zustand === 'jetzt' ? { farbe: PDF_FARBE.flaeche, rand: PDF_FARBE.akzent, r: 6 } : { rand: PDF_FARBE.linie, r: 6 });
+      titel[i].forEach((z, j) => this.text(z, x + 5, yp - 12 - j * 10.5, 8.5, { fett: s.zustand === 'jetzt', farbe: s.zustand === 'offen' ? PDF_FARBE.leise : PDF_FARBE.tinte }));
+      if (s.raute) this.raute(x + w + luecke / 2, yp - pille / 2, 4.2, s.raute.gegeben, s.raute.gegeben ? PDF_FARBE.gut : PDF_FARBE.leise);
+      if (s === jetzt && kaestchen.length) {
+        let y = yp - pille - 8;
+        this.text((o.naechstes ?? 'Als Nächstes').toUpperCase(), x, y - 7, 7, { fett: true, farbe: PDF_FARBE.leise });
+        y -= 12;
+        kaestchen.forEach((z, j) => {
+          const kh = 6 + z.length * 10.5;
+          this.kasten(x, y, w, kh, { farbe: j === 0 ? PDF_FARBE.akzentHell : PDF_FARBE.flaeche, ...(j === 0 ? { rand: PDF_FARBE.akzent } : {}), r: 4 });
+          z.forEach((zeile, q) => this.text(zeile, x + 5, y - 10.5 - q * 10.5, 8.5, { fett: j === 0 }));
+          y -= kh + 4;
+        });
+        if (s.mehr) this.text(`+ ${s.mehr} weitere`, x + 5, y - 9, 8, { farbe: PDF_FARBE.leise });
       }
-      titelZeilen[i].forEach((z, j) => this.text(z, x0, yb - 13 - j * 10.5, 8.5, { fett: sg.stand === 'aktuell', farbe: sg.stand === 'kommt' ? PDF_FARBE.leise : PDF_FARBE.tinte }));
     });
-    this.y = yo - 8 - 13 - zeilenMax * 10.5 - 4;
+    // Das Band unten: durchgehend, an der laufenden Phase, was beim Kunden liegt.
+    const yb = yo - 4 - pille - 8 - kasten - 4;
+    this.kasten(RAND, yb, BREIT, 14, { farbe: PDF_FARBE.flaeche, rand: PDF_FARBE.linie, r: 7 });
+    if (o.band) this.text(o.band.toUpperCase().slice(0, 40), RAND + 6, yb - 10, 7, { fett: true, farbe: PDF_FARBE.leise });
+    spalten.forEach((s, i) => { if (s.band?.text) this.text(s.band.text, RAND + i * (w + luecke) + 5 + (i === 0 && o.band ? Math.min(w / 2, this.breite(o.band.toUpperCase().slice(0, 40), 7, true) + 8) : 0), yb - 10, 8, { fett: true, farbe: PDF_FARBE.achtung }); });
+    this.y = yb - 14 - 6;
   }
 
   /** Ein Wert-Balken: Name und „vorher → jetzt → Ziel“, darunter die Schiene (vorher links, Ziel rechts), gefüllt bis „jetzt“. */

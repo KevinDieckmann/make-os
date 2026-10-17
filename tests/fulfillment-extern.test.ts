@@ -87,7 +87,7 @@ describe('Teile und Lage', () => {
       { titel: 'Recruiting', stand: 'kommt', anteil: 0, abstimmung: { titel: 'Diagnose-Abnahme', erledigt: false } },
     ]);
     expect(t.erledigt).toEqual(['Kick-off (02.10.2026)', 'Interviews (06.10.2026)']);
-    expect(t.naechstes).toEqual(['Wettbewerb sichten — bis 20.10.2026', 'Abstimmung: Diagnose-Abnahme']);
+    expect(t.naechstes).toEqual(['Wettbewerb sichten — bis 20.10.2026', 'Danach in „Recruiting“: Abstimmung „Diagnose-Abnahme“']);
     expect(t.wartet).toEqual([{ titel: 'Preisliste freigeben', seit: '01.10.2026' }, { titel: 'Budget freigeben', seit: '05.10.2026', frist: '08.10.2026', ueberfaellig: true }]);
     expect(t.wertKonto).toEqual([{ name: 'Neue Termine je Monat', vorher: '4 Termine', jetzt: '7 Termine', ziel: '12 Termine', bis: '31.12.2026', anteil: 38 }]);
     expect(t.quickWins.map(q => [q.text, q.erledigt])).toEqual([['Angebotsvorlage vereinheitlicht', true], ['Nachfass-Rhythmus einführen', false]]);
@@ -146,7 +146,7 @@ describe('2-Wochen-Report mit Fall: Seite 1 Zusammenfassung, dann Details', () =
     expect(hatZusatz(d)).toBe(true);
     expect(d.erreicht).toEqual(['Kick-off (02.10.2026)', 'Interviews (06.10.2026)']);
     // Mit Fall nur die Schritte des Falls (15.10., Abnahme B1) — derselbe nächste Schritt wie Fall-Kopf und Kunden-Seite.
-    expect(d.naechste).toEqual(['Wettbewerb sichten — bis 20.10.2026', 'Abstimmung: Diagnose-Abnahme']);
+    expect(d.naechste).toEqual(['Wettbewerb sichten — bis 20.10.2026', 'Danach in „Recruiting“: Abstimmung „Diagnose-Abnahme“']);
     expect(JSON.stringify(d)).not.toMatch(/\bF\d\b|Dossier|nur Prozess/);
   });
   it('PDF: Seite 1 = Zusammenfassung (Ampel-Titel, drei Sätze, „hier stehen wir“, Ziel, Spalten, erste Erfolge, Puls), ab Seite 2 Details; gleiche Eingabe → gleiche Bytes', async () => {

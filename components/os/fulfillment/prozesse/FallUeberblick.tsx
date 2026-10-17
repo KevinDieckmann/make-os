@@ -1,180 +1,83 @@
 'use client';
 
-// ─── Fulfillment › Fall › Überblick (Paket C1, 10.10.; neu gezeichnet 11.10. — FULFILLMENT_KONZEPT.md 3.2, 7.2, 1.3) ───────────────────
-// Über dem Reiter steht der Kopf des Falls (components/os/fulfillment/reise/FallKopf.tsx: Phasen-Strahl, „Als Nächstes“, „Hängt etwas?“ und die
-// eine Hauptaktion). Hier darunter nur, was im Überblick zu tun ist: das Onboarding als Band (grün/gelb/rot) mit NUR den offenen Schritten
-// (jeder mit Sprung dorthin, wo er erfüllt wird; „entfällt“ hinter „⋯“, erledigte klappen weg), die Willkommensmail solange sie fehlt (Vorlage
-// der Bibliothek, drei freie Kick-off-Zeiten, Playbook-Link aus C2 — gesendet nur per Klick), „wartet auf euch“, Quick Wins, Kick-off-Fragen,
-// Status. „Vorlage geändert“ mit Übernehmen bleibt oben. Ohne Fall: „Onboarding starten“.
-// 12.10. (kundenreif): „Aus der Analyse“ — was die geprüfte Diagnose noch für den Fall hat (Quick Wins, Fragen, Maßnahmen), je ein Klick.
+// ─── Fulfillment › Fall — Bausteine des früheren „Überblicks“ (Paket C1, 10.10.; 11.10. neu gezeichnet; seit 17.10. verteilt auf die Reise) ───────────
+// Rückmeldung 17.10.: „Es dupliziert sich — lieber wenig und klar.“ Den Reiter „Überblick“ gibt es nicht mehr (Adresse leitet auf die Reise). Seine Teile
+// stehen dort, wo sie hingehören — sie bleiben HIER als Bausteine:
+//   · Onboarding: die acht Schritte sind die Kästchen der ersten Phase (Fluss) — hier nur der Zähler (`OnboardingZaehler`, dieselbe Zählung wie Cockpit und
+//     Kopf: nur, was für „fertig“ zählt) und das „⋯“ eines Onboarding-Schritts (`OnboardingMehr`: entfällt mit Grund, wieder offen, Vermerk „gesendet“ zurück).
+//   · `WillkommenKarte` — das Detail der Nachricht „Willkommen“ (Vorlage der Bibliothek, drei freie Kick-off-Zeiten, Playbook-Link — gesendet nur per Klick).
+//   · `KickoffFragen` — das Detail des Termins „Kick-off“.
+//   · `AusAnalyse` — an der Analyse-Phase: was die geprüfte Diagnose noch für den Fall hat (Quick Wins, Fragen, Maßnahmen), je ein Klick.
+//   · `QuickWins` — unter „Ziele & Wirkung“ (Quick Wins und erste Erfolge).
+//   · `VorlageGeaendert`, `FallStatus`, `KeinFall` — am Rand der Reise (Hinweis oben, Status unten, ohne Fall „Onboarding starten“).
 
-import { useEffect, useState, type ReactNode } from 'react';
-import { FARBE as C, TYP, MIKRO, TIEF, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Punkt, Pillen, HakenZiel, Erklaert, ZeileAktionen, LEUCHT, useHandy } from '../../ui';
-import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
-import { ONBOARDING_SPRUNG, seitTagen } from '@/lib/fulfillment/prozesse/reise';
-import { abstimmungsNummern, anzeigeTitel } from '@/lib/fulfillment/prozesse/darstellung';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
+import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Pillen, HakenZiel, Erklaert, LEUCHT } from '../../ui';
+import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, onboardingZaehlung, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
 import { fallStartTag } from '@/lib/fulfillment/prozesse/fall';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
-import { useFall, useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, type FallAntwort } from './daten';
+import { useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, type FallAntwort } from './daten';
 import { StartDialog } from './Onboarding';
 import { MailSenden, type MailEntwurf } from './MailSenden';
-import { klein, feld, Leiste, Meldung, useTextFrage } from './teile';
-import { useFallSprung } from '../reise/FallKopf';
-import { useSprung, insBild } from '../reise/sprung';
+import { klein, feld, Leiste } from './teile';
+import { MehrKnopf } from '../reise/teile';
 import { inDenFall, NACH_FALL_TEXT, type NachFallWas } from '../analyse/daten';
 import { WEG } from '@/lib/wege';
+import type { FallMeldung, Ops } from './FallAblauf';
 
 const STATUS = [{ id: 'laeuft' as const, label: 'läuft' }, { id: 'pausiert' as const, label: 'pausiert' }, { id: 'abgeschlossen' as const, label: 'abgeschlossen' }];
-const schrittFarbe = (s: OnboardingSchrittStand) => (s.erfuellt || s.entfaellt ? LEUCHT.gut : s.ueberfaellig ? LEUCHT.kritisch : s.zaehlt ? LEUCHT.achtung : C.inkLeise);
 
-export function FallUeberblick({ mandatId }: { mandatId: string }) {
-  const { daten, fehler } = useFall(mandatId);
-  const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' | 'achtung' } | null>(null);
-  const [mail, setMail] = useState(false);
-  const frage = useTextFrage();
-  const geh = useFallSprung(mandatId, 'ueberblick');
-  useSprung(s => { if (s.art === 'willkommen') { setMail(true); insBild('willkommen'); } if (s.art === 'stelle') insBild(s.wert); });
-  if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
-  if (!daten.fall) return <KeinFall daten={daten} />;
-  const f = daten.fall, ob = daten.onboarding!;
-  const linkAus = daten.kunde?.link === 'aus';
-  const ops = async (o: Record<string, unknown>[]) => {
-    const a = await fallOps(mandatId, o);
-    if (!a.ok) setMeldung({ text: fehlerText(a), art: 'kritisch' });
-    else if (a.j.nachzug?.fehler) setMeldung({ text: `Gespeichert, aber nicht nachgezogen: ${a.j.nachzug.fehler}`, art: 'achtung' });
-    else setMeldung(null);
-  };
-  const entfaellt = async (s: OnboardingSchluessel) => {
-    const k = f.knoten.find(x => x.id === obKnotenId(s));
-    if (!k) return;
-    if (k.status === 'entfaellt') { await ops([{ op: 'knoten-status', id: k.id, status: 'offen', stand: k.stand }]); return; }
-    const grund = await frage.fragen('Warum entfällt dieser Schritt?');
-    if (grund) await ops([{ op: 'knoten-status', id: k.id, status: 'entfaellt', grund, stand: k.stand }]);
-  };
-  const zuSchritt = (s: OnboardingSchluessel) => {
-    if (s === 'willkommen') { setMail(true); insBild('willkommen'); return; }
-    if (s === 'f0') { geh('ablauf', { art: 'freigabe', wert: 'F0' }); return; }
-    // Abnahme C15: das Playbook braucht den Kunden-Link — direkt an die Link-Karte (dort steht, wie er angeht), nicht nur in den Reiter. 15.10. (Abnahme C14):
-    // ist der Link der Instanz aus, führt der Weg für die Inhaberin zum Schalter, für alle anderen zum gemeinsamen Ausfüllen (das geht auch ohne Link).
-    if (s === 'playbook') { geh('kunde', { art: 'stelle', wert: linkAus && !daten.inhaber ? 'kunde-formulare' : 'kunde-link' }); return; }
-    geh(ONBOARDING_SPRUNG[s].reiter);
-  };
-  const gesendet = f.onboarding.willkommenGesendetAm;
-  const kickoffOffen = f.kickoffFragen.some(q => !q.erledigt);
+/** Der Zähler des Onboardings — nur die Schritte, die für „fertig“ zählen (das Playbook darf noch laufen; 15.10., Abnahme C16). */
+export function OnboardingZaehler({ schritte }: { schritte: readonly OnboardingSchrittStand[] }) {
+  const z = onboardingZaehlung(schritte);
+  return <span>Onboarding {z.erledigt} von {z.gesamt}</span>;
+}
+
+/** „⋯“ eines Onboarding-Schritts: entfällt (mit Grund) bzw. wieder offen, und bei der Willkommensmail „Vermerk ‚gesendet‘ zurücknehmen“. */
+export function OnboardingMehr({ daten, schluessel, fragen }: { daten: FallAntwort; schluessel: OnboardingSchluessel; fragen: (titel: string) => Promise<string | null> }) {
+  const f = daten.fall!;
+  const k = f.knoten.find(x => x.id === obKnotenId(schluessel));
+  const s = daten.onboarding?.schritte.find(x => x.schluessel === schluessel);
+  if (!k || !s) return null;
+  const gesendet = schluessel === 'willkommen' ? f.onboarding.willkommenGesendetAm : undefined;
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      <Meldung text={meldung?.text ?? null} art={meldung?.art} />
-      {meldung?.art === 'achtung' && <div><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'nachziehen', mandatId }); setMeldung(a.ok ? null : { text: fehlerText(a), art: 'kritisch' }); }}>Erneut nachziehen</Knopf></div>}
-      {daten.diff && (daten.diff.neu.length + daten.diff.geaendert.length) > 0 && (
-        <Hinweis art="info" titel={`Vorlage geändert (Fassung ${daten.diff.von} → ${daten.diff.nach})`}
-          aktion={<Erklaert erklaerung="fulfillment.vorlageDiff" name="Vorlage übernehmen"><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'vorlage-uebernehmen', mandatId }); setMeldung(a.ok ? { text: 'Neue Fassung übernommen — erledigte Schritte bleiben, wie sie sind.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Übernehmen</Knopf></Erklaert>}>
-          {daten.diff.neu.length} neu · {daten.diff.geaendert.length} geändert{daten.diff.entfernt.length ? ` · ${daten.diff.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''}
-        </Hinweis>
-      )}
-      <OnboardingKarte schritte={ob.schritte.map(s => ({ ...s, titel: anzeigeTitel(s.titel, abstimmungsNummern(f.knoten)), ...(s.schluessel === 'playbook' && linkAus ? { text: `${s.text} Der Kunden-Link ist aus — ${daten.inhaber ? 'du schaltest ihn unter Kunde & Reports › Kunden-Link ein' : 'einschalten kann ihn die Inhaberin bzw. der Inhaber'}; bis dahin füllt ihr das Playbook gemeinsam aus.` } : {}) }))}
-        knopf={{ ...(linkAus ? { playbook: daten.inhaber ? 'Kunden-Link einschalten' : 'Playbook gemeinsam ausfüllen' } : {}) }}
-        fertig={ob.fertig} gesendetAm={gesendet} onSchritt={zuSchritt} onEntfaellt={entfaellt}
-        onWillkommenZurueck={async () => { await fallOps(mandatId, [{ op: 'willkommen-gesendet', zuruecknehmen: true }]); }} />
-      {!gesendet && <WillkommenKarte daten={daten} oeffnen={mail} setOeffnen={setMail} onMeldung={setMeldung} />}
-      {(daten.wartet?.length ?? 0) > 0 && (
-        <Karte i={2} akzent={LEUCHT.achtung}>
-          {/* Intern heißt es „Wartet auf den Kunden“ — „wartet auf euch“ ist die Sicht des Kunden (Abnahme C6). */}
-          <Ueberschrift farbe={LEUCHT.achtung} erklaerung="fulfillment.wartetAufEuch" rechts={<span>{daten.wartet!.length}</span>}>Wartet auf den Kunden</Ueberschrift>
-          <Liste>{daten.wartet!.map(w => (
-            <Zeile key={w.id} umbrechen links={<Punkt farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={anzeigeTitel(w.titel, abstimmungsNummern(f.knoten))}
-              unter={w.art === 'entscheidung' ? 'Entscheidung des Kunden' : w.art === 'freigabe' ? 'Abstimmung mit dem Kunden' : 'Schritt beim Kunden'}
-              rechts={w.tage !== undefined ? <Chip farbe={(w.tage ?? 0) > 7 ? LEUCHT.kritisch : C.inkDim}>{seitTagen(w.tage)}</Chip> : undefined}
-              onClick={() => geh(w.art === 'entscheidung' ? 'menschen' : 'ablauf')} />
-          ))}</Liste>
-        </Karte>
-      )}
-      <AusAnalyse daten={daten} onMeldung={setMeldung} />
-      <QuickWins daten={daten} ops={ops} />
-      {(!ob.fertig || kickoffOffen || !f.kickoffFragen.length) ? <KickoffFragen daten={daten} ops={ops} /> : <KickoffZu anzahl={f.kickoffFragen.length}><KickoffFragen daten={daten} ops={ops} /></KickoffZu>}
-      <Karte i={5} flach>
-        <Ueberschrift>Status des Falls</Ueberschrift>
-        <Pillen liste={STATUS} aktiv={f.status === 'onboarding' ? null : f.status} onWahl={status => ops([{ op: 'fall-status', status }])} />
-        {/* Abnahme B8: der Starttag des Falls (`fallStartTag` — der gewählte, nicht der Tag des Anlegens), Unterschrift zuerst. */}
-        <div style={klein}>{daten.unterschrift ? `Unterschrift ${tagKurz(daten.unterschrift.am)} · ` : ''}Fall gestartet {tagKurz(fallStartTag(f))} — im Onboarding wechselt der Fall von selbst auf „läuft“, sobald die Schritte erfüllt sind.</div>
-      </Karte>
-      {frage.dialog}
+    <MehrKnopf titel={s.titel} mehr={[
+      ...(k.status === 'entfaellt'
+        ? [{ id: 'offen', label: 'Wieder offen', tun: async () => { await fallOps(daten.mandat.id, [{ op: 'knoten-status', id: k.id, status: 'offen', stand: k.stand }]); } }]
+        : !s.erfuellt ? [{ id: 'entfaellt', label: 'Entfällt für diesen Fall …', hinweis: 'Mit Grund — der Schritt zählt dann nicht mehr.', tun: async () => { const grund = await fragen('Warum entfällt dieser Schritt?'); if (grund) await fallOps(daten.mandat.id, [{ op: 'knoten-status', id: k.id, status: 'entfaellt', grund, stand: k.stand }]); } }] : []),
+      ...(gesendet ? [{ id: 'zurueck', label: 'Vermerk „gesendet“ zurücknehmen', tun: async () => { await fallOps(daten.mandat.id, [{ op: 'willkommen-gesendet', zuruecknehmen: true }]); } }] : []),
+    ]} />
+  );
+}
+
+/** Die Vorlage des Falls hat eine neue Fassung — übernehmen (erledigte Schritte bleiben). */
+export function VorlageGeaendert({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: FallMeldung) => void }) {
+  if (!daten.diff || !(daten.diff.neu.length + daten.diff.geaendert.length)) return null;
+  return (
+    <Hinweis art="info" titel={`Vorlage geändert (Fassung ${daten.diff.von} → ${daten.diff.nach})`}
+      aktion={<Erklaert erklaerung="fulfillment.vorlageDiff" name="Vorlage übernehmen"><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'vorlage-uebernehmen', mandatId: daten.mandat.id }); onMeldung(a.ok ? { text: 'Neue Fassung übernommen — erledigte Schritte bleiben, wie sie sind.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Übernehmen</Knopf></Erklaert>}>
+      {daten.diff.neu.length} neu · {daten.diff.geaendert.length} geändert{daten.diff.entfernt.length ? ` · ${daten.diff.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''}
+    </Hinweis>
+  );
+}
+
+/** Der Status des Falls (läuft · pausiert · abgeschlossen) — ruhig am Ende der Reise. */
+export function FallStatus({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
+  const f = daten.fall!;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center' }}>
+      <span style={{ ...MIKRO }}>Status des Falls</span>
+      <Pillen liste={STATUS} aktiv={f.status === 'onboarding' ? null : f.status} onWahl={status => ops([{ op: 'fall-status', status }])} />
+      {/* Abnahme B8: der Starttag des Falls (`fallStartTag` — der gewählte, nicht der Tag des Anlegens), Unterschrift zuerst. */}
+      <span style={klein}>{daten.unterschrift ? `Unterschrift ${tagKurz(daten.unterschrift.am)} · ` : ''}Fall gestartet {tagKurz(fallStartTag(f))}{f.status === 'onboarding' ? ' · wechselt nach dem Onboarding von selbst auf „läuft“' : ''}</span>
     </div>
   );
 }
 
-/** Nach dem Onboarding sind die Kick-off-Fragen erledigt — sie klappen weg, ein Tipp holt sie zurück. */
-function KickoffZu({ anzahl, children }: { anzahl: number; children: ReactNode }) {
-  const [auf, setAuf] = useState(false);
-  return auf ? <>{children}</> : <div><Knopf leise onClick={() => setAuf(true)}>Fragen fürs Kick-off zeigen ({anzahl}, alle erledigt)</Knopf></div>;
-}
-
-/**
- * Das Onboarding als Band: je Schritt ein Abschnitt (grün erfüllt, gelb offen, rot überfällig, grau gestrichelt „darf noch laufen“), darunter
- * NUR die offenen Schritte mit ihrem Weg; Erledigte klappen weg („n erledigt — zeigen“). „entfällt“, „wieder offen“, „Vermerk zurücknehmen“ hinter „⋯“.
- */
-function OnboardingKarte({ schritte, fertig, gesendetAm, onSchritt, onEntfaellt, onWillkommenZurueck, knopf = {} }: {
-  schritte: OnboardingSchrittStand[]; fertig: boolean; gesendetAm?: string; onSchritt: (s: OnboardingSchluessel) => void; onEntfaellt: (s: OnboardingSchluessel) => Promise<void>; onWillkommenZurueck: () => Promise<void>;
-  /** Abweichender Wortlaut des Knopfs je Schritt (z. B. Playbook bei ausgeschaltetem Kunden-Link). */
-  knopf?: Partial<Record<OnboardingSchluessel, string>>;
-}) {
-  const [zeigen, setZeigen] = useState(false);
-  const handy = useHandy();
-  const erledigt = schritte.filter(s => s.erfuellt || s.entfaellt);
-  const offen = schritte.filter(s => !s.erfuellt && !s.entfaellt);
-  const farbe = fertig ? LEUCHT.gut : offen.some(s => s.ueberfaellig) ? LEUCHT.kritisch : LEUCHT.planung;
-  return (
-    <Karte i={1} akzent={farbe}>
-      {/* 15.10. (Abnahme C16): dieselbe Zählung wie Cockpit und Fall-Kopf — nur die Schritte, die für „fertig“ zählen (das Playbook darf noch laufen). */}
-      <Ueberschrift farbe={farbe} erklaerung="fulfillment.onboardingBand" rechts={<span>{erledigt.filter(s => s.zaehlt).length} von {schritte.filter(s => s.zaehlt).length}</span>}>Onboarding</Ueberschrift>
-      <ol aria-label="Onboarding-Schritte" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, schritte.length)}, minmax(0, 1fr))`, gap: handy ? 4 : 8 }}>
-        {schritte.map(s => {
-          const f = schrittFarbe(s);
-          const voll = s.erfuellt || s.entfaellt;
-          return (
-            <li key={s.schluessel} style={{ minWidth: 0 }}>
-              <button type="button" className="fassbar" onClick={() => (voll ? setZeigen(true) : onSchritt(s.schluessel))} aria-label={`${s.titel}: ${voll ? (s.entfaellt ? 'entfällt' : 'erfüllt') : s.ueberfaellig ? 'überfällig' : 'offen'}`}
-                style={{ display: 'grid', gap: 6, alignContent: 'start', width: '100%', minHeight: 44, padding: '6px 2px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text }}>
-                <span style={{ display: 'block', height: 8, borderRadius: 4, background: voll || s.zaehlt ? TIEF.verlauf(f) : 'transparent', opacity: voll ? 1 : 0.6, border: s.zaehlt || voll ? 'none' : `1px dashed ${C.inkLeise}` }} />
-                {!handy && <span style={{ fontSize: TYP.bedien, lineHeight: 1.3, color: voll ? C.inkDim : C.ink, overflowWrap: 'anywhere' }}>{voll ? '✓ ' : ''}{s.titel}</span>}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-      {fertig && !offen.length && <div style={klein}>Onboarding fertig — alle Schritte sind erfüllt.</div>}
-      {offen.length > 0 && (
-        <Liste>
-          {offen.map(s => (
-            <ZeileAktionen key={s.schluessel} titel={s.titel} mehr={[{ id: 'entfaellt', label: 'Entfällt für diesen Fall …', hinweis: 'Mit Grund — der Schritt zählt dann nicht mehr.', tun: () => onEntfaellt(s.schluessel) }]}>
-              <Zeile umbrechen links={<Punkt farbe={schrittFarbe(s)} />}
-                titel={<span>{s.titel}{!s.zaehlt && <span style={{ color: C.inkLeise }}> · darf noch laufen</span>}</span>} unter={s.text}
-                rechts={<Knopf leise onClick={() => onSchritt(s.schluessel)}>{knopf[s.schluessel] ?? ONBOARDING_SPRUNG[s.schluessel].text}{s.schluessel === 'willkommen' ? '' : ' ›'}</Knopf>} />
-            </ZeileAktionen>
-          ))}
-        </Liste>
-      )}
-      {erledigt.length > 0 && <div><Knopf leise onClick={() => setZeigen(!zeigen)}>{zeigen ? 'Erledigte ausblenden' : `${erledigt.length} erledigt — zeigen`}</Knopf></div>}
-      {zeigen && erledigt.length > 0 && (
-        <Liste>
-          {erledigt.map(s => (
-            <ZeileAktionen key={s.schluessel} titel={s.titel} mehr={[
-              ...(s.entfaellt ? [{ id: 'offen', label: 'Wieder offen', tun: () => onEntfaellt(s.schluessel) }] : []),
-              ...(s.schluessel === 'willkommen' && gesendetAm ? [{ id: 'zurueck', label: 'Vermerk „gesendet“ zurücknehmen', tun: onWillkommenZurueck }] : []),
-            ]}>
-              <Zeile umbrechen links={<Punkt farbe={LEUCHT.gut} />} titel={<span style={{ color: C.inkDim, textDecoration: s.entfaellt ? 'line-through' : 'none' }}>{s.titel}</span>}
-                unter={s.schluessel === 'willkommen' && gesendetAm ? `Willkommensmail gesendet am ${tagKurz(gesendetAm)}` : s.text} />
-            </ZeileAktionen>
-          ))}
-        </Liste>
-      )}
-      <span style={{ ...MIKRO }}>Grün erfüllt · Gelb offen · Rot überfällig · Gestrichelt darf noch laufen</span>
-    </Karte>
-  );
-}
-
-function KeinFall({ daten }: { daten: FallAntwort }) {
+export function KeinFall({ daten }: { daten: FallAntwort }) {
   const kurz = useUebersichtKurz();
   const [start, setStart] = useState(false);
   const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket');
@@ -194,7 +97,7 @@ function KeinFall({ daten }: { daten: FallAntwort }) {
 interface WillkommenGrundlage { anrede: 'Du' | 'Sie'; vorlage: { id: string; titel: string; text: string } | null; an: { email: string; name?: string } | null; vorname?: string; nachname?: string; ohneEmpfaenger?: string; vorschlaege: string[]; gesellschaft: string; gesendetAm: string | null }
 
 /** Willkommensmail: Vorlage der Bibliothek (Schlagwort „willkommen“), Kick-off-Vorschläge, Playbook-Link (C2), dann Senden per Klick. */
-function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung }: { daten: FallAntwort; oeffnen: boolean; setOeffnen: (b: boolean) => void; onMeldung: (m: { text: string; art: 'gut' | 'kritisch' } | null) => void }) {
+export function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung, haupt }: { daten: FallAntwort; oeffnen: boolean; setOeffnen: (b: boolean) => void; onMeldung: (m: FallMeldung) => void; haupt?: boolean }) {
   const m = daten.mandat.id;
   const uhr = daten.onboarding!.willkommen;
   const [g, setG] = useState<WillkommenGrundlage | null>(null);
@@ -227,12 +130,13 @@ function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung }: { daten: Fal
   };
   const vermerken = async () => { const a = await fallOps(m, [{ op: 'willkommen-gesendet' }]); onMeldung(a.ok ? { text: 'Willkommensmail als gesendet vermerkt.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); };
   return (
-    <Karte i={1} id="willkommen" akzent={uhr.ueberfaellig ? LEUCHT.kritisch : LEUCHT.gut}>
-      <Ueberschrift erklaerung="fulfillment.willkommen24h" rechts={gesendet ? <Chip farbe={LEUCHT.gut}>gesendet {tagKurz(gesendet)}</Chip> : uhr.ueberfaellig ? <Chip farbe={LEUCHT.kritisch}>überfällig</Chip> : uhr.faellig ? <Chip farbe={LEUCHT.achtung}>bis {tagKurz(uhr.faellig)}</Chip> : undefined}>Willkommen</Ueberschrift>
+    <Karte i={1} id="willkommen" akzent={uhr.ueberfaellig ? LEUCHT.kritisch : LEUCHT.achtung}>
+      <Ueberschrift erklaerung="fulfillment.willkommen24h" rechts={gesendet ? <Chip farbe={LEUCHT.gut}>gesendet {tagKurz(gesendet)}</Chip> : uhr.ueberfaellig ? <Chip farbe={LEUCHT.kritisch}>überfällig</Chip> : uhr.faellig ? <Chip farbe={LEUCHT.achtung}>bis {tagKurz(uhr.faellig)}</Chip> : undefined}>Willkommensmail</Ueberschrift>
       {gesendet ? <div style={klein}>Die Willkommensmail ist raus. <Knopf leise onClick={async () => { await fallOps(m, [{ op: 'willkommen-gesendet', zuruecknehmen: true }]); }}>Vermerk zurücknehmen</Knopf></div> : !oeffnen ? (
         <Leiste>
-          <Knopf onClick={() => setOeffnen(true)}>Mail vorbereiten</Knopf>
+          <Knopf haupt={haupt} onClick={() => setOeffnen(true)}>Mail vorbereiten</Knopf>
           <Knopf leise onClick={vermerken}>Schon anders gesendet — vermerken</Knopf>
+          {uhr.ueberfaellig && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>überfällig — bitte heute senden</span>}
         </Leiste>
       ) : !g ? <div style={klein}>Lädt …</div> : (
         <div style={{ display: 'grid', gap: 10 }}>
@@ -263,9 +167,9 @@ function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung }: { daten: Fal
 
 /**
  * Aus der Analyse (12.10., „keine losen Enden“): was die geprüfte Diagnose (nach F2) für den Fall liefert und noch nicht drin ist — Quick Wins, Kick-off-
- * Fragen, Maßnahmen (Zusatz-Schritte der Phase nach der Diagnose). Ein Klick je Teil; vorher stand das nur im Dossier. Ohne Dossier/Diagnose: nichts.
+ * Fragen, Maßnahmen (Zusatz-Schritte der Phase nach der Diagnose). Ein Klick je Teil. Ohne Dossier/Diagnose: nichts. Seit 17.10. an der Analyse-Phase.
  */
-function AusAnalyse({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: { text: string; art: 'gut' | 'kritisch' | 'achtung' } | null) => void }) {
+export function AusAnalyse({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: FallMeldung) => void }) {
   const a = daten.analyse;
   const [laeuft, setLaeuft] = useState<NachFallWas | null>(null);
   if (!a || !a.diagnose) return null;
@@ -276,7 +180,7 @@ function AusAnalyse({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: {
     <Karte i={2} id="ausanalyse" akzent={LEUCHT.agenten}>
       <Ueberschrift farbe={LEUCHT.agenten} erklaerung="fulfillment.ausAnalyse" rechts={<span>{offen}</span>}>Aus der Analyse</Ueberschrift>
       {!a.f2 ? (
-        <Hinweis art="info" aktion={<Knopf leise href={WEG.dossier(daten.mandat.id)}>Zum Dossier ›</Knopf>}>Der Diagnose-Entwurf liegt vor — erst das Dossier prüfen („Dossier geprüft“), dann gehen Quick Wins, Fragen und Maßnahmen per Klick in den Fall.</Hinweis>
+        <Hinweis art="info">Der Diagnose-Entwurf liegt vor — erst das Dossier prüfen („Dossier geprüft“, unten unter Recht & Prüfung), dann gehen Quick Wins, Fragen und Maßnahmen per Klick in den Fall.</Hinweis>
       ) : (
         <Liste>
           {a.quickWins.length > 0 && <Zeile umbrechen titel={`${a.quickWins.length} Quick Win${a.quickWins.length === 1 ? '' : 's'}`} unter={a.quickWins.join(' · ')} rechts={<Knopf leise aus={!!laeuft} onClick={() => tun('quickwins')}>Übernehmen</Knopf>} />}
@@ -288,18 +192,20 @@ function AusAnalyse({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: {
   );
 }
 
-function QuickWins({ daten, ops }: { daten: FallAntwort; ops: (o: Record<string, unknown>[]) => Promise<void> }) {
+/** Quick Wins (30 Tage) und erste Erfolge — erledigte zuerst als Erfolg, darunter „Neuer Quick Win“. */
+export function QuickWins({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
   const [text, setText] = useState('');
   const [bis, setBis] = useState('');
   const f = daten.fall!;
+  const liste = [...f.quickWins].sort((a, b) => (a.erledigtAm ? 0 : 1) - (b.erledigtAm ? 0 : 1));
   return (
     <Karte i={3} id="quickwins">
-      <Ueberschrift erklaerung="fulfillment.quickWins" rechts={<span>{f.quickWins.filter(q => q.erledigtAm).length} von {f.quickWins.length}</span>}>Quick Wins (30 Tage)</Ueberschrift>
-      {f.quickWins.length > 0 && (
+      <Ueberschrift erklaerung="fulfillment.quickWins" rechts={<span>{f.quickWins.filter(q => q.erledigtAm).length} von {f.quickWins.length} erreicht</span>}>Quick Wins &amp; erste Erfolge</Ueberschrift>
+      {liste.length > 0 && (
         <Liste>
-          {f.quickWins.map(q => (
+          {liste.map(q => (
             <Zeile key={q.id} links={<HakenZiel an={!!q.erledigtAm} onChange={() => ops([{ op: 'quickwin', id: q.id, erledigt: !q.erledigtAm }])} label={q.text} />} titel={q.text} umbrechen
-              unter={`bis ${tagKurz(q.bis)}${q.erledigtAm ? ` · erledigt ${tagKurz(q.erledigtAm)}` : ''}${q.quelle === 'analyse' ? ' · aus der Analyse' : ''}`} rechts={<Knopf leise ariaLabel="entfernen" onClick={() => ops([{ op: 'quickwin', id: q.id, weg: true }])}>×</Knopf>} />
+              unter={`${q.erledigtAm ? `erreicht ${tagKurz(q.erledigtAm)}` : `bis ${tagKurz(q.bis)}`}${q.quelle === 'analyse' ? ' · aus der Analyse' : ''}`} rechts={<Knopf leise ariaLabel="entfernen" onClick={() => ops([{ op: 'quickwin', id: q.id, weg: true }])}>×</Knopf>} />
           ))}
         </Liste>
       )}
@@ -313,13 +219,14 @@ function QuickWins({ daten, ops }: { daten: FallAntwort; ops: (o: Record<string,
 }
 
 const AN = [{ id: 'entscheider' as const, label: 'an Entscheider' }, { id: 'gruender' as const, label: 'an Gründer' }, { id: 'vertrieb' as const, label: 'an Vertrieb' }];
-function KickoffFragen({ daten, ops }: { daten: FallAntwort; ops: (o: Record<string, unknown>[]) => Promise<void> }) {
+/** Fragen fürs Kick-off — das Detail des Termins „Kick-off“ in der Reise. */
+export function KickoffFragen({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
   const [frage, setFrage] = useState('');
   const [an, setAn] = useState<'entscheider' | 'gruender' | 'vertrieb'>('entscheider');
   const f = daten.fall!;
   return (
-    <Karte i={4}>
-      <Ueberschrift rechts={<span>{f.kickoffFragen.length}</span>}>Fragen fürs Kick-off</Ueberschrift>
+    <Karte i={2}>
+      <Ueberschrift rechts={<span>{f.kickoffFragen.filter(q => q.erledigt).length} von {f.kickoffFragen.length}</span>}>Fragen fürs Kick-off</Ueberschrift>
       {f.kickoffFragen.length > 0 && (
         <Liste>
           {f.kickoffFragen.map(q => (
@@ -332,6 +239,7 @@ function KickoffFragen({ daten, ops }: { daten: FallAntwort; ops: (o: Record<str
         <input value={frage} onChange={e => setFrage(e.target.value)} placeholder="Neue Frage" aria-label="Neue Frage" style={feld} />
         <Leiste><Pillen liste={AN} aktiv={an} onWahl={setAn} /><Knopf typ="submit" aus={!frage.trim()}>Hinzufügen</Knopf></Leiste>
       </form>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Den Termin legt ihr unter <Link href={WEG.fall(daten.mandat.id, 'menschen', 'stelle-takt-leiste')} style={{ color: C.aktiv }}>Menschen &amp; Termine</Link> an.</div>
     </Karte>
   );
 }

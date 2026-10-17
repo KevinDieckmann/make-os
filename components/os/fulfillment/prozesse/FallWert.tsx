@@ -1,11 +1,11 @@
 'use client';
 
-// ─── Fulfillment › Fall › Wert-Konto (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md 7.5) ──────────────────────────────────────────────────
-// Das gemeinsame Zielbild des Kunden: je Ziel des Mandats (`Mandat.ziele` bleibt die Wahrheit für „was ist das Ziel“) Ausgang, Zielwert,
-// Einheit und Datum — im Kick-off „festlegen“. Messwerte trägt nur MAKE ein (Entscheidung 10.10.); jede Messung schreibt im selben Klick den Ist-Wert am
-// Mandat, damit der heutige Report richtig bleibt. Ein neues Ziel legt zuerst die Zeile am Mandat an. Keine Garantie, kein Erfolgshonorar.
-// 11.10. (Design): je Ziel zuerst das Bild — „vorher → jetzt → Ziel“ als Balken mit Prozent des Wegs und Verlauf —, darunter die häufige Handlung
-// (Messung eintragen). Die Zielwerte selbst stehen offen, solange das Ziel nicht festgelegt ist; danach klappen sie hinter „Zielwerte ändern“.
+// ─── Fulfillment › Fall › Ziele & Wirkung (Paket C1, 10.10. als „Wert-Konto“; seit 17.10. ein Reiter mit Quick Wins und Wirkung — FULFILLMENT_KONZEPT.md 7.5) ─
+// Rückmeldung 17.10.: „Lieber wenig und klar.“ EIN Reiter für das, was der Kunde gewinnt: das Wert-Konto (vorher → jetzt → Ziel je Ziel des Mandats —
+// `Mandat.ziele` bleibt die Wahrheit für „was ist das Ziel“), die Quick Wins mit den ersten Erfolgen und die Wirkung am Ende (Wirkungsbericht, Befähigung —
+// ein Satz mit Sprung an das Ende der Reise). Kompakt: je Ziel zuerst das Bild (Balken mit Prozent des Wegs, Verlauf), darunter die häufige Handlung
+// (Messung eintragen). Messwerte trägt nur MAKE ein (Entscheidung 10.10.); jede Messung schreibt im selben Klick den Ist-Wert am Mandat. Ein neues Ziel legt
+// zuerst die Zeile am Mandat an. Keine Garantie, kein Erfolgshonorar.
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -16,34 +16,43 @@ import { zielErreichung, wertReihe } from '@/lib/fulfillment/prozesse/wert';
 import { localDay } from '@/lib/zeit';
 import type { WertKontoEintrag } from '@/lib/fulfillment/typen';
 import { useFall, fallOps, fehlerText, tagKurz, type FallAntwort } from './daten';
+import { QuickWins } from './FallUeberblick';
 import { klein, feld, Leiste, Meldung } from './teile';
 import { WertBalken } from '../reise/bilder';
-import { insBild } from '../reise/sprung';
+import { insBild, useStellenSprung } from '../reise/sprung';
 
-export function FallWert({ mandatId }: { mandatId: string }) {
+export function FallZiele({ mandatId }: { mandatId: string }) {
   const { daten, fehler } = useFall(mandatId);
   const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' | 'achtung' } | null>(null);
   const [neu, setNeu] = useState('');
+  useStellenSprung();
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
-  if (!daten.fall) return <Hinweis art="info">Für dieses Mandat läuft noch kein Fall — unter „Überblick“ das Onboarding starten.</Hinweis>;
+  if (!daten.fall) return <Hinweis art="info">Für dieses Mandat läuft noch kein Fall — unter „Reise“ das Onboarding starten.</Hinweis>;
+  const f = daten.fall;
   const ops = async (o: Record<string, unknown>[], gut?: string) => {
     const a = await fallOps(mandatId, o);
     if (!a.ok) setMeldung({ text: fehlerText(a), art: 'kritisch' });
     else if (a.j.nachzug?.fehler) setMeldung({ text: `Gespeichert, aber nicht am Mandat nachgezogen: ${a.j.nachzug.fehler}`, art: 'achtung' });
     else setMeldung(gut ? { text: gut, art: 'gut' } : null);
   };
+  const erfuellt = f.befaehigung.filter(b => b.erfuellt).length;
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <Meldung text={meldung?.text ?? null} art={meldung?.art} />
-      <Hinweis art="info" titel="Gemeinsames Zielbild">Im Kick-off mit dem Kunden festlegen: Ausgangslage, Zielwert, Datum. Jede Messung steht im nächsten <Link href={WEG.fall(mandatId, 'kunde')} style={{ color: C.aktiv }}>2-Wochen-Report</Link> (vorher → jetzt → Ziel) und am Ende im <Link href={WEG.fall(mandatId, 'kreislauf')} style={{ color: C.aktiv }}>Wirkungsbericht</Link>. Keine Garantie, kein Erfolgshonorar.</Hinweis>
-      {!daten.mandat.ziele.length && <div style={klein}>Am Mandat stehen noch keine Ziele — unten das erste anlegen.</div>}
+      <div style={klein}>Gemeinsames Zielbild — im Kick-off festlegen (Ausgang, Zielwert, Datum). Jede Messung steht im nächsten <Link href={WEG.fall(mandatId, 'kunde', 'stelle-kunde-report')} style={{ color: C.aktiv }}>2-Wochen-Report</Link> und am Ende im <Link href={WEG.fall(mandatId, 'reise', 'stelle-kreislauf-wirkung')} style={{ color: C.aktiv }}>Wirkungsbericht</Link>. Keine Garantie, kein Erfolgshonorar.</div>
       {daten.mandat.ziele.map((z, i) => <ZielKarte key={z.id} i={i + 1} daten={daten} zielId={z.id} ops={ops} />)}
-      <Karte i={9}>
-        <Ueberschrift erklaerung="fulfillment.wertKonto">Neues Ziel</Ueberschrift>
-        <form onSubmit={e => { e.preventDefault(); if (neu.trim()) void ops([{ op: 'ziel-neu', text: neu.trim() }], 'Ziel am Mandat angelegt.').then(() => setNeu('')); }} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <input value={neu} onChange={e => setNeu(e.target.value)} placeholder="z. B. Qualifizierte Termine je Monat" aria-label="Neues Ziel" style={{ ...feld, flex: '1 1 260px', minWidth: 0 }} />
-          <Knopf typ="submit" aus={!neu.trim()}>Ziel anlegen</Knopf>
-        </form>
+      <form onSubmit={e => { e.preventDefault(); if (neu.trim()) void ops([{ op: 'ziel-neu', text: neu.trim() }], 'Ziel am Mandat angelegt.').then(() => setNeu('')); }} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <input value={neu} onChange={e => setNeu(e.target.value)} placeholder={daten.mandat.ziele.length ? 'Weiteres Ziel, z. B. Qualifizierte Termine je Monat' : 'Erstes Ziel, z. B. Qualifizierte Termine je Monat'} aria-label="Neues Ziel" style={{ ...feld, flex: '1 1 260px', minWidth: 0 }} />
+        <Knopf typ="submit" aus={!neu.trim()}>Ziel anlegen</Knopf>
+      </form>
+      <QuickWins daten={daten} ops={async o => { await ops(o); }} />
+      <Karte i={8} flach>
+        <Ueberschrift erklaerung="fulfillment.wirkung">Wirkung am Ende</Ueberschrift>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px', fontSize: TYP.bedien, color: C.inkDim }}>
+          <span>Wirkungsbericht: <b style={{ color: f.wirkung ? LEUCHT.gut : C.ink }}>{f.wirkung ? `erstellt ${tagKurz(f.wirkung.erstelltAm)}` : 'kommt am Ende der Reise'}</b></span>
+          <span>Läuft ohne uns: <b style={{ color: C.ink }}>{f.befaehigung.length ? `${erfuellt} von ${f.befaehigung.length} Kriterien` : 'noch keine Kriterien'}</b></span>
+          <Link href={WEG.fall(mandatId, 'reise', 'stelle-abschluss')} style={{ color: C.aktiv }}>zum Abschluss ›</Link>
+        </div>
       </Karte>
     </div>
   );

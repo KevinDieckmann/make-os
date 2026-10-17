@@ -12,6 +12,7 @@ import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type 
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
+import { tagVon } from '@/lib/zeit';
 
 export type HaengerArt = 'willkommen' | 'freigabe' | 'wartet' | 'puls' | 'report' | 'art14' | 'faellig';
 export interface Haenger {
@@ -65,12 +66,14 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
   const { fall: f, heute } = e;
   const raus: Haenger[] = [];
   const h = (art: HaengerArt, text: string, schwere: 'rot' | 'gelb', href: string, seit?: string) => raus.push({ art, mandatId: f.mandatId, kunde: e.kunde, text, schwere, href, ...(seit ? { seit } : {}) });
-  if (f.status !== 'abgeschlossen' && e.onboarding.willkommen.ueberfaellig) h('willkommen', 'Willkommensmail überfällig (24 Stunden nach der Unterschrift)', 'rot', WEG.fall(f.mandatId), e.onboarding.willkommen.faellig?.slice(0, 10));
+  if (f.status !== 'abgeschlossen' && e.onboarding.willkommen.ueberfaellig) h('willkommen', 'Willkommensmail überfällig (24 Stunden nach der Unterschrift)', 'rot', WEG.fall(f.mandatId, 'reise', 'willkommen'),
+    // 17.10. (dritte Abnahme B4): der Berliner Tag der Frist — `.slice(0, 10)` nahm den UTC-Tag („seit 13.10.“ statt 14.10.).
+    e.onboarding.willkommen.faellig ? tagVon(e.onboarding.willkommen.faellig) : undefined);
   const nummern = abstimmungsNummern(f.knoten);
   for (const k of f.knoten) {
     if (k.status === 'erledigt' || k.status === 'entfaellt' || !k.faelligAm || k.faelligAm >= heute) continue;
-    if (k.freigabe && !f.freigaben[k.freigabe]) h('freigabe', `${abstimmungName(k.freigabe, nummern)} „${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'rot', WEG.fall(f.mandatId, 'ablauf'), k.faelligAm);
-    else if (!k.id.startsWith('fk-ob-willkommen')) h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'gelb', WEG.fall(f.mandatId, 'ablauf'), k.faelligAm);
+    if (k.freigabe && !f.freigaben[k.freigabe]) h('freigabe', `${abstimmungName(k.freigabe, nummern)} „${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'rot', WEG.fall(f.mandatId, 'reise', `freigabe-${k.freigabe}`), k.faelligAm);
+    else if (!k.id.startsWith('fk-ob-willkommen')) h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'gelb', WEG.fall(f.mandatId), k.faelligAm);
   }
   for (const w of wartetAufEuch(f, heute)) {
     if ((w.tage ?? 0) <= WARTET_ALT_TAGE) continue;
@@ -83,7 +86,7 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
     const t = e.report.letzter ? tageZwischen(e.report.letzter, heute) : undefined;
     if (t === undefined || t > REPORT_ALT_TAGE) h('report', t === undefined ? 'Noch kein Report gesendet' : `Letzter Report vor ${t} Tagen`, 'gelb', WEG.fall(f.mandatId, 'kunde'), e.report.letzter);
   }
-  if ((e.dossier?.art14Bald ?? 0) > 0) h('art14', `Art.-14-Hinweis bald fällig (${e.dossier!.art14Bald})`, 'rot', WEG.fall(f.mandatId, 'analyse'));
+  if ((e.dossier?.art14Bald ?? 0) > 0) h('art14', `Art.-14-Hinweis bald fällig (${e.dossier!.art14Bald})`, 'rot', WEG.dossier(f.mandatId));
   return raus.sort((a, b) => (a.schwere === b.schwere ? (a.seit ?? '9') < (b.seit ?? '9') ? -1 : 1 : a.schwere === 'rot' ? -1 : 1));
 }
 

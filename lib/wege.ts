@@ -22,7 +22,7 @@
 
 import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, type AngebotAdresse, type PlanungAnsicht } from '@/lib/crm/adresse';
 import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
-import { fulfillmentLink, fallLink, type FulfillmentBereich, type FallReiter } from '@/lib/fulfillment/adresse';
+import { fulfillmentLink, fallLink, type FulfillmentBereich, type AlterBereich, type FallReiter, type AlterFallReiter } from '@/lib/fulfillment/adresse';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
 
 const q = (basis: string, p: Record<string, string | undefined | null>, hash?: string) => {
@@ -141,12 +141,13 @@ export const WEG = {
   mandat: (id?: string) => mandateLink('mandate', id),
   produkt: (id?: string) => mandateLink('produkte', id),
   /**
-   * Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 10): die eigene Seite unter Produkte & Mandate (`/os/mandate/fulfillment`) mit
-   * Unternavigation `u` (Prozesse · Bausteine · Onboarding · Analysen · Kreislauf · Visualisierung), `k` = Knoten im Drill-down, `b` = Baustein.
-   * `fall` = ein Mandat als laufender Fall mit Reiter; `dossier` = dessen Reiter „Analyse“. Regeln: lib/fulfillment/adresse.ts.
+   * Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 10; seit 17.10. nach Kevins Miro-Standard): die eigene Seite unter Produkte & Mandate
+   * (`/os/mandate/fulfillment`) mit Unternavigation `u` (Landkarte · Onboarding · Bausteine · Analysen · Kreislauf), `k` = Knoten, `b` = Baustein.
+   * `fall` = ein Mandat als laufender Fall mit Reiter (Reise · Ziele & Wirkung · Menschen & Termine · Kunde) und optional einem Sprung; `dossier` =
+   * die Analyse an ihrer Phase in der Reise. Frühere Reiter/Bereiche leiten um. Regeln: lib/fulfillment/adresse.ts.
    */
-  fulfillment: (u?: FulfillmentBereich, p?: { k?: string; b?: string }) => fulfillmentLink(u, p),
-  fall: (mandatId: string, r?: FallReiter) => fallLink(mandatId, r),
+  fulfillment: (u?: FulfillmentBereich | AlterBereich, p?: { k?: string; b?: string }) => fulfillmentLink(u, p),
+  fall: (mandatId: string, r?: FallReiter | AlterFallReiter, anker?: string) => fallLink(mandatId, r, anker),
   dossier: (mandatId: string) => fallLink(mandatId, 'analyse'),
   // Deal-Ebene (27.09.): eigener Reiter; ein Deal öffnet seine Akte.
   deal: (id?: string) => (id ? dealAkte(id) : markttraktion('deals')),

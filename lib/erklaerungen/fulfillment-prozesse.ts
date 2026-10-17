@@ -52,10 +52,6 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     was: 'Der Fortschritt zählt die erledigten Einzelschritte und Bausteine eines Falls; „entfällt“ zählt nicht mit. Hat ein Fall noch keine Einzelschritte, zählen seine untersten Schritte.',
     beispiel: 'Von 20 Einzelschritten sind 8 erledigt und 2 entfallen — der Fall steht bei 44 % (8 von 18).',
   },
-  'fulfillment.wartetAufEuch': {
-    was: '„Wartet auf euch“ sammelt, was beim Kunden liegt: Schritte im Status „wartet auf Kunde“ und offene Entscheidungen, die der Kunde trifft. Der älteste Punkt steht oben und geht in den Report.',
-    beispiel: 'Der Zugang zum CRM wartet seit 9 Tagen — im Cockpit steht er unter „Was hängt“, im nächsten Report unter „Wartet auf euch“.',
-  },
   'fulfillment.wertKonto': {
     was: 'Das Wert-Konto ist das gemeinsame Zielbild des Kunden: Ausgangslage, Zielwert und Datum, im Kick-off festgelegt. Jeder Report zeigt vorher, jetzt und Ziel. Es ist keine Garantie und es gibt kein Erfolgshonorar; Messwerte tragt nur ihr ein.',
     beispiel: 'Qualifizierte Termine je Monat: vorher 4, Ziel 12 bis Ende März; die Messung im Wochen-Check ergibt 7 — das steht auch gleich am Mandat.',
@@ -114,10 +110,6 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     an: 'Der Kunde sieht die Entscheidung in seiner Ansicht und im nächsten Report.',
     aus: 'Die Entscheidung bleibt im Team; der Kunde sieht sie nicht.',
   },
-  'fulfillment.cockpit': {
-    was: 'Das Cockpit zeigt je laufendem Fall Phase, Fortschritt, Kunden-Gesundheit, Puls und nächsten Termin — und zuerst, was hängt: überfällige Willkommensmails und Freigaben, lange Wartezeiten beim Kunden, schlechter Puls, alter Report.',
-    beispiel: 'Oben steht rot „Willkommensmail überfällig“ beim neuen Kunden, darunter gelb „Letzter Report vor 17 Tagen“ bei einem laufenden Fall.',
-  },
   'fulfillment.kennzahl.willkommen': {
     was: 'Anteil der Fälle, deren Willkommensmail innerhalb der eingestellten Stunden nach der Unterschrift gesendet wurde. Gezählt werden Fälle, deren Frist schon abgelaufen ist oder deren Mail raus ist.',
     beispiel: 'Von fünf Fällen kam die Mail viermal rechtzeitig — 80 %.',
@@ -159,16 +151,16 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Zwei Dossiers mit 6,40 und 9,10 Euro ergeben 7,75 Euro je Dossier.',
   },
   'fulfillment.reise': {
-    was: 'Was ihr seht: die Reise des Kunden durch die Phasen des Pakets. Jeder Abschnitt ist eine Phase, gefüllt so weit, wie ihre Schritte erledigt sind; „Sie sind hier“ markiert die laufende Phase. Die Rauten sind Abstimmungspunkte — Haltepunkte, an denen der Kunde (oder ihr) bestätigt, bevor es weitergeht. Darunter steht, was als Nächstes kommt und ob etwas hängt.',
-    beispiel: 'Phase 3 von 8 „Diagnose“ ist zur Hälfte gefüllt, die Raute „Abstimmungspunkt 3 · Diagnose-Abnahme“ ist noch offen. Als Nächstes steht „Diagnosebericht“, und „1 wartet auf den Kunden“ zeigt die offene Entscheidung.',
+    was: 'Die Reise des Kunden als EINE Zeile: jede Phase mit ihren nächsten Schritten als Kästchen (höchstens vier, der Rest als „+n“), „Hier“ markiert die laufende Phase. Ein Haken heißt erledigt, ein Ausrufezeichen hängt. Die Rauten zwischen den Phasen sind Abstimmungspunkte. Das Band unten zeigt, was gerade beim Kunden liegt. Ein Tipp auf eine Phase zeigt darunter ihren Ablauf, ein Tipp auf ein Kästchen den Schritt.',
+    beispiel: 'Phase 2 „Analyse“ trägt „Hier“, das Kästchen „Dossier“ hat ein Ausrufezeichen, darunter steht im Band „1 offen“ — der Kunde schuldet noch eine Unterlage. Die Raute danach ist „Abstimmungspunkt 2 · Dossier geprüft“.',
   },
   'fulfillment.ablaufPhasen': {
-    was: 'Der Ablauf zeigt jede Phase als Zeile mit Stand und Freigabe. Die laufende Phase ist aufgeklappt — mit ihren nächsten Schritten; erledigte Phasen sind zu und öffnen sich mit einem Tipp. Bausteine hängen als Chip am Schritt. Mehr (Zusatz-Schritt, zurücknehmen) steht hinter „⋯“.',
-    beispiel: 'In „Aufbau“ stehen „Skripte“ und „Einwände“ offen, „Prozess“ ist abgehakt; der Chip „Leitfaden Erstgespräch“ öffnet den Baustein. Am Ende der Phase wartet ein Abstimmungspunkt mit dem Kunden.',
+    was: 'Der Ablauf einer Phase von oben nach unten: Start, Schritte (grün), Nachrichten an den Kunden (gelb, mit Brief), Termine als große Beschriftung, am Ende die Raute des Abstimmungspunkts mit „ja“ und „nein“. Auf dem Nein-Pfad steht die Erinnerung (orange, mit Glocke). Mehrere Teilprozesse stehen als Karten nebeneinander. Ein Tipp auf einen Schritt öffnet ihn rechts.',
+    beispiel: 'In „Aufbau“ stehen die Karten „Prozess“ und „Skripte“ nebeneinander; „Leitfaden schreiben“ trägt „Hier · als Nächstes“, die Raute „Abstimmungspunkt 4“ führt mit „ja“ in die nächste Phase.',
   },
   'fulfillment.lage': {
-    was: 'Die Lage aller Kunden in Lieferung in drei Antworten: wie viele laufen und in welcher Phase (dieselbe Phase wie im Fall und auf der Landkarte), was gerade hängt und welcher Schritt als Nächstes dran ist. Ein Tipp springt an die Stelle.',
-    beispiel: '„3 Kunden · 1 im Onboarding · 2 in Diagnose“ · „2 hängen — Willkommensmail überfällig“ · „Als Nächstes: Willkommen in 24 Stunden“.',
+    was: 'Die Lage aller Kunden in Lieferung in einer Zeile: wie viele laufen und in welcher Phase, was gerade hängt (dringend zuerst) und wer als Nächstes dran ist. Ein Tipp springt an die Stelle — die Kunden-Karten stehen auf der Landkarte.',
+    beispiel: '„3 Kunden · 1 im Onboarding · 2 in Diagnose“ · „2 Punkte · 1 dringend — Willkommensmail überfällig“ · „Als Nächstes: Beispiel GmbH — Dossier“.',
   },
   'fulfillment.kundenKarten': {
     was: 'Je Kunde eine Karte: Ampel, Phase als Mini-Strahl, Fortschritt, das Wert-Konto als Balken von „vorher“ bis „Ziel“, der nächste Schritt und was auf euch wartet. Oben steht, wer zuerst Aufmerksamkeit braucht.',
@@ -187,8 +179,8 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Filter „Paket: Netzwerk-Vertrieb“ und „Phase: Messen & Events“ zeigt vier Bausteine; einer trägt „vor Einsatz rechtlich prüfen“.',
   },
   'fulfillment.onboardingBand': {
-    was: 'Die acht Onboarding-Schritte als Band: grün erledigt, gelb offen, rot überfällig, grau „darf noch laufen“. Darunter stehen nur die offenen Schritte, jeder mit dem Weg dorthin, wo er erledigt wird. Erledigte klappen weg.',
-    beispiel: 'Fünf Abschnitte sind grün, „Kick-off terminieren“ ist gelb und führt in den Takt, die Willkommensmail ist rot, weil die 24 Stunden um sind.',
+    was: 'Das Onboarding ist die erste Phase der Reise. Der Zähler sagt, wie viele seiner Schritte erledigt sind; „entfällt“ zählt nicht mit. Jeder Schritt steht im Ablauf darunter und führt dorthin, wo er erledigt wird — die Willkommensmail zum Beispiel ist rot, sobald ihre 24 Stunden um sind.',
+    beispiel: '„Onboarding 5 von 7“: der Kick-off ist terminiert, die Stakeholder-Karte steht, die Zusammenarbeits-Vereinbarung ist noch offen und führt zu Menschen & Termine.',
   },
   'fulfillment.wellen': {
     was: 'Die Analyse läuft in vier Wellen: Start, Unternehmen, Vertiefung, Synthese und Prüfung. Jede Marke ist ein Agent — grün heißt im Dossier, gelb Entwurf zum Prüfen, blau läuft, gestrichelt noch gesperrt. Nichts startet von selbst; der Knopf schlägt den nächsten sinnvollen Lauf mit seinen Kosten vor.',

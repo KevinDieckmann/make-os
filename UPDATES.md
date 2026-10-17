@@ -4,6 +4,21 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 17.10.2026 — Fulfillment im Miro-Standard + dritte Abnahme B3–B6/C6 (nur lokal — Branch `fulfillment-miro`, Basis 1179a1ea = `update-0910b`)
+Kevin: „Nicht überladen, sondern sehr klar. Lieber wenig und klar — es dupliziert sich.“ Entschieden: genau dieser Stil, 4 Reiter je Fall, erst Umbau, dann Upload.
+- **Fall = Kopf + 4 Reiter:** Reise (Überblick, Ablauf, Analyse und Abschluss & Kreislauf zusammen; Reise-Zeile mit ≤ 4 Kästchen je Phase, Rauten, Band
+  „Kunde“; Klick auf eine Phase → ihr Fluss mit Schritt/Nachricht/Raute/Erinnerung/Termin, Klick auf ein Kästchen → Detail) · Ziele & Wirkung · Menschen &
+  Termine (mit Takt) · Kunde. Kopf: Ampel-Satz, „Der Kunde sieht“ nur bei Abweichung, EIN Knopf „Dem Kunden zeigen“. Alte `r=`-Adressen leiten auf Reiter +
+  Stelle (`ALTE_REITER`).
+- **Start:** Lage als eine Zeile; „Visualisierung“ in die Landkarte gelegt (Kunden in Lieferung, Erfolgsmaße zugeklappt), fünf Unter-Reiter.
+- **Kunde/PDF:** dieselbe Reise-Zeile statt Phasen-Strahl; darunter nur „Das brauchen wir von Ihnen“, Ziele, Termin. Handy: senkrechte Phasenliste.
+- **Dritte Abnahme:** B3 „Lage der Fälle“ = Ampel des Falls · B4 Berliner Tag der Willkommensfrist, beim Kunden nie verstrichene Fristen/„24 Stunden“ ·
+  B5 Phasen-Anteil wie intern, EINE Onboarding-Zählung · B6 Mandatsakte zeigt die Phase des Falls · C6 „Danach (in „Phase“): …“, Huddle nur im Vertriebsaufbau
+  (`RitualVorlage.pakete`, optional), Reports nur mit Daten bis zum Stand, Playbook ohne Anrede, „Fallstart“, Demo ohne vorzeitige Befähigung.
+- **Rückweg/Update-Probe:** keine Datenumzüge; neu nur das optionale Feld `pakete` an Ritualen (der alte Stand verwirft es beim nächsten Schreiben der
+  Vorlagen — dann steht das Huddle wieder in jedem Takt). Playbook-Fragen: neue Texte gelten für neu angelegte Playbooks; vorhandene behalten ihre Fassung.
+- Tests: `tests/fulfillment-miro.test.ts` (neu), `tests/fulfillment-stimmigkeit.test.ts` (dritte Abnahme), Doku `DESIGN_STANDARD.md` › Prozess-Visualisierung.
+
 ## 16.10.2026 — Abnahme 2 · C6 Texte im Fulfillment (nur lokal — Branch `ff-texte`, Basis 892a1c9b = `update-0910b`): Satzende nach Datum über `satz()` (kein „12.10..“), Einzahl/Mehrzahl über `anzahl`/`wort` (lib/text/zahlwort.ts), „Gemeinsam entschieden“ nur Entschiedenes + „Noch offen“ (EINE Regel `entscheidungenTeilen`, lib/fulfillment/kunde/bild.ts — Kunden-Seite, Vorschau, Präsentation), sichtbar „Gesundheit des Mandats“/„Kunden-Gesundheit“/„Gesundheit der Fälle“ statt Health, „Steuerungskreis“ statt Steering (Muster-Ritual: nur neue Fälle, Kennung `steering` bleibt), „Pipeline-Abdeckung“ statt Coverage, „Huddle = kurze Abstimmungsrunde“ erklärt; Pipeline-Fehlermeldung mit deutschem Datum; Wächter in tests/fulfillment-abnahme2.test.ts (C6) — kein Server-Schritt, keine Datenänderung.
 ## 16.10.2026 — Abnahme 2, Kleinkram (nur lokal — Branch `abnahme2-klein`, Basis `update-0910b`): Seil-Achse „HEUTE“ versetzt unter den Monaten (`seilAchse` in seil-geometrie.ts, `tests/seil-achse.test.ts`) · Steckbrief „Eingetragen am“ ohne Datum mit „Datum eintragen ›“ · Fällig-Liste in Planung (Jahr/Quartal/Monat) mit `tagKurz` und Priorität auf Deutsch · Beleg-Datum TT.MM.JJJJ · Brain-Notizen mit Anzeigenamen (Kopf-Titel → erste Überschrift → lesbarer Dateiname, `lib/brain/notiz-titel.ts`; Wikilinks weiter über den Dateinamen) — kein Server-Schritt, keine Datenänderung.
 ## 16.10.2026 — Gerät merken für den zweiten Faktor (nur lokal — Branch `zwei-faktor-geraet`, Basis 253f9d41 = `update-0910b`)

@@ -1,14 +1,13 @@
 'use client';
 
-// ─── Fulfillment › Fall › Abschluss & Kreislauf (12.10.; vorher Teil von „Takt“ — FULFILLMENT_KONZEPT.md 5.3) ─────────────────────────────────
-// Rückmeldung 12.10.: „Wirkungsbericht + Nachsorge — zurück in den Kreislauf/Markttraktion. Keine losen Enden.“ Das Ende der Reise an EINER Stelle:
-//   1. Antwort zuerst: wo steht dieser Kunde im Kreislauf, was ist der nächste Handgriff am Ende (`abschlussSchritt`: Fall abschließen →
-//      Wirkungsbericht → Mandat beenden → Nachsorge), Befähigung „läuft ohne uns“.
-//   2. Das Kreislauf-Rad (dieselben sieben Stufen wie Markttraktion › Planung) mit „hier steht dieser Kunde“ — jede Stufe springt in ihre Ansicht.
-//   3. Befähigung (Kriterien, Ziel: der Kunde kann es selbst) und Wirkungsbericht (PDF, Kundenzitat nur mit Einwilligung, senden nur per Klick).
-//   4. Nach der Leistung: die Schritte der Markttraktion je Mandat (Testimonial, Bewertung, Upselling, Cross-Selling, Newsletter, Leistung beendet —
-//      dieselbe Liste wie Markttraktion › Planung › Kreislauf, abgehakt über deren Schreibweg), die Folgen des Wirkungsberichts als Vorschläge
-//      (Kundenstimme, Fallstudie, Empfehlung, nächste Stufe), die Nachsorge als Plan (Tag 14 · 45 · 90 nach Mandatsende) und die Follow-ups am Mandat.
+// ─── Fulfillment › Fall — der Abschluss an der letzten Phase (12.10. als Reiter „Abschluss & Kreislauf“; seit 17.10. am Ende der Reise) ──────────────
+// Rückmeldung 17.10.: „Es dupliziert sich — lieber wenig und klar.“ Den Reiter gibt es nicht mehr (Adresse leitet auf die Reise, `#stelle-abschluss`). Das Ende
+// des Falls hängt an der letzten Phase im Fluss: Wirkungsbericht → Fall abschließen → Mandat beenden → Nachsorge → zurück in den Kreislauf. Ein Tipp auf
+// einen dieser Knoten zeigt HIER sein Detail (`AbschlussDetail`):
+//   · Befähigung (Kriterien, Ziel: der Kunde kann es selbst) und Wirkungsbericht (PDF, Kundenzitat nur mit Einwilligung, senden nur per Klick, „Fall abschließen“).
+//   · Nach der Leistung: die Schritte der Markttraktion je Mandat (dieselbe Liste wie Markttraktion › Planung › Kreislauf, abgehakt über deren Schreibweg),
+//     die Folgen des Wirkungsberichts als Vorschläge, die Nachsorge als Plan (Tag 14 · 45 · 90 nach Mandatsende), die Follow-ups am Mandat.
+//   · Das Kreislauf-Rad (dieselben sieben Stufen wie Markttraktion › Planung) mit „hier steht dieser Kunde“ — der Endpunkt des Flusses.
 // Nichts geht automatisch nach außen: der Bericht wird per Klick gesendet, die Nachsorge kommt als Vorschlag in den Freigabe-Stapel.
 
 import { useEffect, useState } from 'react';
@@ -17,90 +16,93 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, HakenZiel, Punkt, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
-import { wort } from '@/lib/text/zahlwort';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { fallReise } from '@/lib/fulfillment/prozesse/reise';
 import { abschlussSchritt, kreislaufLage, kreislaufStand, kreislaufWeg, KREISLAUF_REIHE, KREISLAUF_NAME, type NachsorgePunkt } from '@/lib/fulfillment/prozesse/ansichten';
 import { abstimmungsNummern, ohneKuerzel } from '@/lib/fulfillment/prozesse/darstellung';
 import type { WirkungsDokument } from '@/lib/fulfillment/prozesse/wirkung';
-import { useFall, fallOps, fehlerText, holeJson, geaendert, neueAnfrageId, tagKurz, type FallAntwort } from './daten';
-import { klein, feld, Leiste, Meldung } from './teile';
+import { fehlerText, holeJson, geaendert, neueAnfrageId, tagKurz, type FallAntwort } from './daten';
+import { klein, feld, Leiste } from './teile';
 import { MailSenden, type MailEntwurf } from './MailSenden';
-import { ReiterAntwort, KreislaufRad, MehrKnopf, type RadStufe } from '../reise/teile';
-import { FortschrittsRing } from '../reise/bilder';
-import { insBild, useStellenSprung } from '../reise/sprung';
+import { KreislaufRad, MehrKnopf, type RadStufe } from '../reise/teile';
+import { insBild } from '../reise/sprung';
 
-type Melde = (text: string | null, art?: 'gut' | 'kritisch' | 'achtung') => void;
-type Ops = (o: Record<string, unknown>[], gut?: string) => Promise<boolean>;
+export type Melde = (text: string | null, art?: 'gut' | 'kritisch' | 'achtung') => void;
+export type AbschlussOps = (o: Record<string, unknown>[], gut?: string) => Promise<boolean>;
+type Ops = AbschlussOps;
 interface NachLeistungSchritt { id: string; label: string; erledigt: boolean; quelle: 'abgeleitet' | 'hand' | null; am?: string; grund?: string }
 
 
-export function FallKreislauf({ mandatId }: { mandatId: string }) {
-  const { daten, fehler } = useFall(mandatId);
-  const router = useRouter();
-  const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' | 'achtung' } | null>(null);
-  const [nachLeistung, setNachLeistung] = useState<NachLeistungSchritt[] | null>(null);
-  const [nlFehler, setNlFehler] = useState<string | null>(null);
-  useStellenSprung();
-  const ladeNL = async () => {
+/** Die Schritte „nach der Leistung“ dieses Mandats aus Markttraktion › Planung (GET /api/crm/planung) — Fehler als Satz. */
+export function useNachLeistung(mandatId: string) {
+  const [schritte, setSchritte] = useState<NachLeistungSchritt[] | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const laden = async () => {
     const a = await holeJson<{ kreislauf?: { kunden?: { mandatId: string; schritte: NachLeistungSchritt[] }[] } }>('/api/crm/planung');
-    if (!a.ok) { setNlFehler(fehlerText(a)); return; }
-    setNlFehler(null);
-    setNachLeistung(a.j.kreislauf?.kunden?.find(k => k.mandatId === mandatId)?.schritte ?? []);
+    if (!a.ok) { setFehler(fehlerText(a)); return; }
+    setFehler(null);
+    setSchritte(a.j.kreislauf?.kunden?.find(k => k.mandatId === mandatId)?.schritte ?? []);
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- einmal je Mandat
-  useEffect(() => { void ladeNL(); }, [mandatId]);
-  if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
-  if (!daten.fall) return <Hinweis art="info">Für dieses Mandat läuft noch kein Fall — unter „Überblick“ das Onboarding starten.</Hinweis>;
-  const f = daten.fall;
+  useEffect(() => { void laden(); }, [mandatId]);
+  return { schritte, fehler, laden };
+}
+
+export type AbschlussStelle = 'befaehigung' | 'wirkung' | 'abschliessen' | 'mandat' | 'nachsorge' | 'kreislauf';
+
+/** Das Detail einer Abschluss-Stelle (Knoten am Ende des Flusses). `haupt` = die Stelle ist „hier“ — ihr Handgriff ist die Hauptaktion. */
+export function AbschlussDetail({ daten, stelle, melde, ops, haupt }: { daten: FallAntwort; stelle: AbschlussStelle; melde: Melde; ops: Ops; haupt?: boolean }) {
+  const router = useRouter();
+  const nl = useNachLeistung(daten.mandat.id);
+  const f = daten.fall!;
   const heute = localDay();
-  const melde: Melde = (text, art = 'gut') => setMeldung(text ? { text, art } : null);
-  const ops: Ops = async (o, gut) => { const a = await fallOps(mandatId, o); melde(a.ok ? gut ?? null : fehlerText(a), a.ok ? 'gut' : 'kritisch'); return a.ok; };
   const reise = fallReise(f, daten.vorlage?.freigaben ?? [], heute);
   const plan = daten.nachsorge?.plan ?? [];
+  const abschluss = abschlussSchritt({ fall: f, allePhasenFertig: reise.fertig, mandatEnde: daten.nachsorge?.ende ?? null, nachsorge: plan });
+  switch (stelle) {
+    case 'befaehigung': return <BefaehigungKarte daten={daten} ops={ops} />;
+    case 'wirkung': case 'abschliessen': return <WirkungKarte daten={daten} melde={melde} ops={ops} haupt={haupt} />;
+    case 'mandat': return (
+      <Karte i={0} id="kreislauf-mandat">
+        <Ueberschrift erklaerung="fulfillment.nachsorge">Mandat beenden</Ueberschrift>
+        <div style={klein}>{daten.nachsorge?.ende ? `Das Mandat ist seit ${tagKurz(daten.nachsorge.ende)} beendet — die Nachsorge zählt ab diesem Tag.` : 'Die Nachsorge zählt ab dem Mandatsende. Beendet wird das Mandat unter Produkte & Mandate › Mandat (Status „beendet“).'}</div>
+        {!daten.nachsorge?.ende && <div><Knopf haupt={haupt} onClick={() => router.push(WEG.mandat(daten.mandat.id))}>Mandat öffnen ›</Knopf></div>}
+        {abschluss && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{abschluss.unter}</div>}
+      </Karte>
+    );
+    case 'nachsorge': return <NachLeistungKarte daten={daten} schritte={nl.schritte} fehler={nl.fehler} neuLaden={nl.laden} melde={melde} plan={plan} />;
+    case 'kreislauf': return <KreislaufKarte daten={daten} />;
+  }
+}
+
+/** Das Kreislauf-Rad mit „hier steht dieser Kunde“ — der Endpunkt der Reise; jede Stufe springt in ihre Ansicht. */
+export function KreislaufKarte({ daten }: { daten: FallAntwort }) {
+  const router = useRouter();
+  const f = daten.fall!;
+  const plan = daten.nachsorge?.plan ?? [];
   const stand = kreislaufStand(f, plan);
+  const reise = fallReise(f, daten.vorlage?.freigaben ?? [], localDay());
   const abschluss = abschlussSchritt({ fall: f, allePhasenFertig: reise.fertig, mandatEnde: daten.nachsorge?.ende ?? null, nachsorge: plan });
   const lage = kreislaufLage(stand, abschluss);
-  const erfuellt = f.befaehigung.filter(b => b.erfuellt).length;
-  const befProzent = f.befaehigung.length ? Math.round((erfuellt / f.befaehigung.length) * 100) : 0;
   const idx = KREISLAUF_REIHE.indexOf(stand);
-  // „Nach der Leistung“ steht in diesem Reiter (unten) — sonst EINE Tabelle `kreislaufWeg` (15.10., Abnahme B7).
+  // „Nach der Leistung“ steht am Ende der Reise (Nachsorge) — sonst EINE Tabelle `kreislaufWeg` (15.10., Abnahme B7).
   const stufen: RadStufe[] = KREISLAUF_REIHE.map(id => ({ id, ...(id === 'nachher' ? {} : { href: kreislaufWeg(id, daten.mandat) }) }));
-  const hauptaktion = () => {
-    if (!abschluss) return insBild('kreislauf-befaehigung');
-    if (abschluss.art === 'mandat-beenden') return router.push(WEG.mandat(mandatId));
-    if (abschluss.art === 'nachsorge') return insBild('kreislauf-nachher');
-    return insBild('kreislauf-wirkung');
-  };
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      <Meldung text={meldung?.text ?? null} art={meldung?.art} />
-      <ReiterAntwort titel="Abschluss & Kreislauf" erklaerung="fulfillment.wirkung"
-        antworten={[
-          { frage: 'Wo steht der Kunde im Kreislauf?', ...lage },
-          { frage: 'Läuft es ohne uns?', ampel: !f.befaehigung.length ? 'gelb' : befProzent >= 75 ? 'gruen' : befProzent >= 25 ? 'gelb' : 'rot', antwort: f.befaehigung.length ? `${erfuellt} von ${f.befaehigung.length} ${wort(f.befaehigung.length, 'Kriterium', 'Kriterien')} erfüllt` : 'Noch keine Kriterien', unter: 'Ziel: Der Kunde führt Prozess, Rituale und Kennzahlen selbst.', links: <FortschrittsRing prozent={befProzent} farbe={LEUCHT.gut} groesse={48} label="Befähigung" />, onClick: () => insBild('kreislauf-befaehigung') },
-          { frage: 'Wirkungsbericht', ampel: f.wirkung ? 'gruen' : f.status === 'abgeschlossen' ? 'rot' : 'gelb', antwort: f.wirkung ? `Erstellt am ${tagKurz(f.wirkung.erstelltAm)}` : 'Noch nicht erstellt', unter: f.wirkung ? 'Vorher → jetzt, Quick Wins, Geliefertes, Befähigung.' : 'Am Ende: vorher → jetzt aus dem Wert-Konto — die Vorschau steht unten.', onClick: () => insBild('kreislauf-wirkung') },
-        ]}
-        aktion={<Knopf haupt onClick={hauptaktion}>{abschluss ? abschluss.text : 'Befähigung prüfen'}</Knopf>} />
-      <Karte i={1} ton="fokus" licht={LEUCHT.business}>
-        <Ueberschrift erklaerung="fulfillment.kreislauf" rechts={<Link href={WEG.vertriebsplanung('kreislauf')} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Kreislauf der Markttraktion ›</Link>}>Der Kreislauf — hier steht {daten.mandat.kunde}</Ueberschrift>
-        <KreislaufRad stufen={stufen} hier={stand} durchlaufen={KREISLAUF_REIHE.slice(0, Math.max(0, idx))}
-          beschreibung={`Kreislauf: ${daten.mandat.kunde} steht bei „${KREISLAUF_NAME[stand]}“.`}
-          mitte={<span style={{ display: 'grid', gap: 4 }}><span style={{ ...MIKRO }}>hier steht</span><b style={{ fontSize: TYP.body, color: C.ink }}>{daten.mandat.kunde}</b><span style={klein}>{KREISLAUF_NAME[stand]}</span></span>}
-          onStufe={s => { if (s.href) router.push(s.href); else insBild('kreislauf-nachher'); }}
-          onMitte={() => { if (stand === 'nachher') insBild('kreislauf-nachher'); else router.push(kreislaufWeg(stand, daten.mandat)); }} />
-        <div style={klein}>Ein Kunde läuft einmal herum: aus einem Kanal wird ein Lead, ein Deal, ein Abschluss — dann liefern wir. Nach der Leistung (Empfehlung, nächste Stufe, Wiederkauf) beginnt der Kreis von vorn. Jede Stufe öffnet ihre Ansicht.</div>
-      </Karte>
-      <BefaehigungKarte daten={daten} ops={ops} />
-      <WirkungKarte daten={daten} melde={melde} ops={ops} />
-      <NachLeistungKarte daten={daten} schritte={nachLeistung} fehler={nlFehler} neuLaden={ladeNL} melde={melde} plan={plan} />
-    </div>
+    <Karte i={0} id="kreislauf-rad">
+      <Ueberschrift erklaerung="fulfillment.kreislauf" rechts={<Link href={WEG.vertriebsplanung('kreislauf')} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Kreislauf der Markttraktion ›</Link>}>Wo steht der Kunde im Kreislauf?</Ueberschrift>
+      <div style={{ fontSize: TYP.bedien, color: C.ink }}><b>{lage.antwort}</b> <span style={{ color: C.inkDim }}>— {lage.unter}</span></div>
+      <KreislaufRad stufen={stufen} hier={stand} durchlaufen={KREISLAUF_REIHE.slice(0, Math.max(0, idx))}
+        beschreibung={`Kreislauf: ${daten.mandat.kunde} steht bei „${KREISLAUF_NAME[stand]}“.`}
+        mitte={<span style={{ display: 'grid', gap: 4 }}><span style={{ ...MIKRO }}>hier steht</span><b style={{ fontSize: TYP.body, color: C.ink }}>{daten.mandat.kunde}</b><span style={klein}>{KREISLAUF_NAME[stand]}</span></span>}
+        onStufe={s => { if (s.href) router.push(s.href); else insBild('kreislauf-nachher'); }}
+        onMitte={() => { if (stand === 'nachher') insBild('kreislauf-nachher'); else router.push(kreislaufWeg(stand, daten.mandat)); }} />
+    </Karte>
   );
 }
 
 // ─── Befähigung ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-function BefaehigungKarte({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
+export function BefaehigungKarte({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
   // 15.10. (Abnahme B5): nie „F7“ — der Abstimmungspunkt heißt wie im Ablauf (Nummer + Titel).
   const kuerzel = (t: string) => ohneKuerzel(t, abstimmungsNummern(daten.fall?.knoten ?? []), daten.vorlage?.freigaben ?? []);
   const f = daten.fall!;
@@ -131,7 +133,7 @@ function BefaehigungKarte({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
 }
 
 // ─── Wirkungsbericht ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-function WirkungKarte({ daten, melde, ops }: { daten: FallAntwort; melde: Melde; ops: Ops }) {
+export function WirkungKarte({ daten, melde, ops, haupt }: { daten: FallAntwort; melde: Melde; ops: Ops; haupt?: boolean }) {
   const m = daten.mandat;
   const f = daten.fall!;
   const [dok, setDok] = useState<WirkungsDokument | null>(null);
@@ -182,7 +184,9 @@ function WirkungKarte({ daten, melde, ops }: { daten: FallAntwort; melde: Melde;
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             <Chip farbe={dok.quickWins.length ? LEUCHT.gut : C.inkLeise}>{dok.quickWins.length} Quick Win{dok.quickWins.length === 1 ? '' : 's'} erledigt</Chip>
-            <Chip farbe={dok.lieferobjekte.length ? LEUCHT.gut : C.inkLeise}>{dok.lieferobjekte.length} Ergebnis{dok.lieferobjekte.length === 1 ? '' : 'se'} geliefert</Chip>
+            {/* 17.10. (dritte Abnahme C6): das sind die erledigten Schritte des Falls („Was wir gemeinsam umgesetzt haben“), nicht die Lieferobjekte der Leistungstreppe
+                („x von y geliefert“) — eigenes Wort, damit nichts doppelt gezählt aussieht. */}
+            <Chip farbe={dok.lieferobjekte.length ? LEUCHT.gut : C.inkLeise}>{dok.lieferobjekte.length} {dok.lieferobjekte.length === 1 ? 'Schritt' : 'Schritte'} umgesetzt</Chip>
             {dok.befaehigung.length > 0 && <Chip farbe={C.inkDim}>Befähigung {dok.befaehigung.filter(b => b.erfuellt).length} von {dok.befaehigung.length}</Chip>}
           </div>
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Interne Bausteine, Onboarding-Schritte, die Gesundheit des Mandats und das Honorar erscheinen nie im Bericht.</div>
@@ -196,10 +200,10 @@ function WirkungKarte({ daten, melde, ops }: { daten: FallAntwort; melde: Melde;
         </Leiste>
       )}
       <Leiste>
-        <Knopf onClick={erstellen} aus={laeuft || (!!zitat.text.trim() && (!zitat.am || !zitat.wie.trim()))}>{erstellt ? 'Neu erstellen' : 'Bericht erstellen'}</Knopf>
+        <Knopf haupt={haupt && !erstellt} onClick={erstellen} aus={laeuft || (!!zitat.text.trim() && (!zitat.am || !zitat.wie.trim()))}>{erstellt ? 'Neu erstellen' : 'Bericht erstellen'}</Knopf>
         {erstellt?.dateiName && <a href={`/api/fulfillment/wirkung?m=${encodeURIComponent(m.id)}`} download style={{ color: C.aktiv, fontSize: TYP.bedien, alignSelf: 'center', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>↓ PDF</a>}
         {erstellt?.dateiName && <Knopf onClick={perMail}>Per Mail senden …</Knopf>}
-        {erstellt && f.status !== 'abgeschlossen' && <Knopf leise onClick={() => ops([{ op: 'fall-status', status: 'abgeschlossen' }], 'Fall abgeschlossen — die Nachsorge zählt ab dem Mandatsende.')}>Fall abschließen</Knopf>}
+        {erstellt && f.status !== 'abgeschlossen' && <Knopf haupt={haupt} leise={!haupt} onClick={() => ops([{ op: 'fall-status', status: 'abgeschlossen' }], 'Fall abgeschlossen — die Nachsorge zählt ab dem Mandatsende.')}>Fall abschließen</Knopf>}
       </Leiste>
       {mail && <MailSenden titel="Wirkungsbericht senden" entwurf={mail} hinweis="Der Bericht hängt als PDF an." onZu={() => setMail(null)} onGesendet={() => { melde('Gesendet.'); }} />}
     </Karte>
@@ -212,7 +216,7 @@ const ZUSTAND: Record<NachsorgePunkt['zustand'], { text: string; farbe: string }
   kommt: { text: 'kommt', farbe: C.inkDim }, wartet: { text: 'startet mit dem Mandatsende', farbe: C.inkLeise },
 };
 
-function NachLeistungKarte({ daten, schritte, fehler, neuLaden, melde, plan }: { daten: FallAntwort; schritte: NachLeistungSchritt[] | null; fehler: string | null; neuLaden: () => Promise<void>; melde: Melde; plan: NachsorgePunkt[] }) {
+export function NachLeistungKarte({ daten, schritte, fehler, neuLaden, melde, plan }: { daten: FallAntwort; schritte: NachLeistungSchritt[] | null; fehler: string | null; neuLaden: () => Promise<void>; melde: Melde; plan: NachsorgePunkt[] }) {
   const m = daten.mandat;
   const f = daten.fall!;
   const ende = daten.nachsorge?.ende ?? null;

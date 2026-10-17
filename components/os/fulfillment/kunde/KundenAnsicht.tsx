@@ -5,20 +5,22 @@
 // es“ UND die Präsentation „Dem Kunden zeigen“ (`praesentation`: Vollbild am großen Bildschirm, nichts zum Ausfüllen) — alle bekommen dasselbe, serverseitig
 // gefilterte Objekt (`KundenSicht`, Positivliste in lib/fulfillment/kunde/sicht.ts). Die Komponente zeichnet nur, sie rechnet nichts und lädt nichts.
 //
-// Entscheidung 12.10. — das Kundenversprechen in dieser Reihenfolge: Kopf (Projekt, Anbieter) · „So weit sind wir“ (Lage + Phasen-Strahl, „hier stehen wir“) ·
-// „Euer Ziel“ (Wert-Konto vorher → jetzt → Ziel, je Ziel ein Balken) · „Erste Erfolge“ (Quick Wins) · „Das braucht es von euch“ (wartet, mit Frist, direkt
-// ausfüllbar/hochladbar) · „Als Nächstes“ und „Nächster Termin“ · „Unterlagen“ (sicher hochladen, Status) · „Wie zufrieden seid ihr?“ (nur, wenn gefragt).
+// Seit 17.10. (Miro-Standard: „lieber wenig und klar … es dupliziert sich“): Kopf (Projekt, Anbieter) · „So weit sind wir“ (Lage + die Reise als EINE
+// Zeile — dieselbe Zeichnung wie intern, `ReiseBild`, mit „als Nächstes“ als Kästchen unter der laufenden Phase und dem Band „was bei Ihnen liegt“) · darunter
+// höchstens: „Das braucht es von euch“ (wartet, mit Frist; Formulare, Unterlagen und die Puls-Frage direkt darunter) · „Euer Ziel“ (Wert-Konto und erste
+// Erfolge) · „Nächster Termin“ (Takt, gemeinsam Entschiedenes, Ansprechperson). Nichts doppelt.
 // Du/Sie aus der Sicht (`WORTE`), keine internen Begriffe (die säubert der Server), Handy zuerst (eine Spalte, Tippziele ≥ 44 px, Eingaben 16 px), ab
 // ~900 px zwei Spalten, druckbar (globals.css `.kunde-ansicht` @media print). Kein Tracking, keine Speicherung im Browser.
 // Wichtig: das Token steht im Fragment der Adresse — Sprünge innerhalb der Seite NIE über `#…` (das Fragment bliebe sonst ohne Token), nur `scrollIntoView`.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO, TIEF, RAND } from '@/lib/make-one/design';
 import { Karte, Knopf, Hinweis, Ueberschrift, Chip, Leer, Erfolg, Fortschritt, eingabe, LEUCHT } from '../../ui';
 import type { KundenFormular, KundenFrage, KundenSicht } from '@/lib/fulfillment/kunde/sicht';
-import { WORTE, brauchtAnzahl, entscheidungenTeilen, formularOffen, formularZaehlung, fragenText, uploadText, wertModell, type Worte } from '@/lib/fulfillment/kunde/bild';
+import { WORTE, brauchtAnzahl, entscheidungenTeilen, formularOffen, formularZaehlung, fragenText, kundenReise, uploadText, wertModell, type Worte } from '@/lib/fulfillment/kunde/bild';
 import { KUNDE_ANNEHMEN, KUNDE_TYPEN_TEXT } from '@/lib/fulfillment/kunde/upload';
-import { KundenStrahl, KundenWertBalken, LageBlock, FortschrittZahl, WEG_FARBE } from './bilder';
+import { KundenWertBalken, LageBlock, FortschrittZahl, WEG_FARBE } from './bilder';
+import { ReiseBild } from '../reise/ReiseBild';
 
 export interface SpeicherErgebnis { ok: boolean; fehler?: string; neuLaden?: boolean }
 export interface KundenAktionen {
@@ -35,11 +37,6 @@ const STATUS_TEXT = { offen: 'offen', entschieden: 'entschieden', verworfen: 've
 function springe(id: string) {
   if (typeof document === 'undefined') return;
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function Punkte({ liste, leer, symbol }: { liste: readonly ReactNode[]; leer: string; symbol?: ReactNode }) {
-  if (!liste.length) return <Leer symbol={symbol}>{leer}</Leer>;
-  return <ul className="kunde-liste">{liste.map((x, i) => <li key={i}>{x}</li>)}</ul>;
 }
 
 export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { sicht: KundenSicht; vorschau?: boolean; praesentation?: boolean; aktionen?: KundenAktionen }) {
@@ -60,51 +57,30 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
   const braucht = brauchtAnzahl(sicht.wartet, offeneFormulare.map(f => f.schluessel));
   // 16.10. (Abnahme 2 · C6): „Gemeinsam entschieden“ zeigt nur Entschiedenes, Offenes steht darunter unter „Noch offen“ — EINE Regel `entscheidungenTeilen`.
   const ent = entscheidungenTeilen(sicht.entscheidungen);
+  const reise = kundenReise(sicht.zeitstrahl, sicht.naechstes, braucht);
   return (
     <div className={klasse}>
       {vorschau && <Hinweis art="info" titel="Vorschau">So sieht der Kunde seine Seite — mit denselben Daten, die der Server ihm schickt. Hier lässt sich nichts ausfüllen.</Hinweis>}
       <Kopf sicht={sicht} w={w} gross={praesentation} />
 
-      {/* So weit sind wir — die Lage in drei Sätzen und der Weg durch die Phasen */}
+      {/* So weit sind wir — die Lage in drei Sätzen und die Reise als EINE Zeile (17.10., Miro-Standard; dieselbe Zeichnung wie intern) */}
       <Karte className="kunde-held">
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <div style={{ ...MIKRO, color: WEG_FARBE }}>{w.soWeit}</div>
           {sicht.fortschritt != null && <FortschrittZahl prozent={sicht.fortschritt} gross={praesentation} />}
         </div>
         {sicht.lage && <div style={{ marginTop: 4 }}><LageBlock lage={sicht.lage} gross={praesentation} /></div>}
-        {sicht.zeitstrahl.length > 0 && <div style={{ marginTop: 22 }}><KundenStrahl phasen={sicht.zeitstrahl} gross={praesentation} /></div>}
+        {sicht.zeitstrahl.length > 0 && (
+          <div style={{ marginTop: 22, display: 'grid', gap: 10 }}>
+            <ReiseBild spalten={reise} hierText="hier stehen wir" bandTitel={w.beiEuch} gross={praesentation} label="Unser gemeinsamer Weg durch die Phasen" />
+            {sicht.erledigt.length > 0 && <div style={klein}><span style={{ ...MIKRO, marginRight: 8 }}>Erledigt in den letzten 14 Tagen</span>{sicht.erledigt.join(' · ')}</div>}
+            {reise.some(p => p.raute) && <div style={{ ...klein, color: C.inkLeise }}>◇ Abstimmungspunkt — hier stimmen wir gemeinsam ab, bevor es weitergeht.</div>}
+          </div>
+        )}
         {!sicht.lage && !sicht.zeitstrahl.length && <div style={{ marginTop: 8 }}><Leer>Wir richten das Projekt gerade ein — hier erscheint bald der Weg mit allen Phasen.</Leer></div>}
       </Karte>
 
       <div className="kunde-raster">
-        {/* Euer Ziel — das Wert-Konto */}
-        <Karte>
-          <Ueberschrift>{w.ziel}</Ueberschrift>
-          {sicht.wertKonto.length ? (
-            <div style={{ display: 'grid', gap: 18 }}>
-              {sicht.wertKonto.map(z => <KundenWertBalken key={z.name} w={z} gross={praesentation} />)}
-              {/* Nur mit Werten: bei leeren Zielen steht schon der ruhige Satz („legen wir im Kick-off fest“) — kein Erklärsatz für Striche. */}
-              {sicht.wertKonto.some(z => !wertModell(z).leer) && <div style={{ ...klein, color: C.inkLeise }}>{w.zielSatz}</div>}
-            </div>
-          ) : <Leer symbol="◎">{w.zielLeer}</Leer>}
-        </Karte>
-
-        {/* Erste Erfolge — die Quick Wins */}
-        <Karte>
-          <Ueberschrift rechts={sicht.quickWins.length ? <Chip farbe={LEUCHT.gut}>{sicht.quickWins.filter(q => q.erledigt).length} von {sicht.quickWins.length} erreicht</Chip> : undefined}>{w.erfolge}</Ueberschrift>
-          {sicht.quickWins.length ? (
-            <ul className="kunde-erfolge">
-              {sicht.quickWins.map((q, i) => (
-                <li key={i}>
-                  <span aria-hidden className="kunde-erfolg-zeichen" style={{ background: q.erledigt ? LEUCHT.gut : 'transparent', borderColor: q.erledigt ? LEUCHT.gut : C.inkLeise, color: C.grund }}>{q.erledigt ? '✓' : ''}</span>
-                  <span style={{ minWidth: 0, flex: 1, ...text, color: q.erledigt ? C.ink : C.inkDim, overflowWrap: 'anywhere' }}>{q.text}</span>
-                  <span style={{ ...klein, flex: '0 0 auto', color: q.erledigt ? LEUCHT.gut : C.inkLeise }}>{q.erledigt ? `erreicht${q.am ? ` ${q.am.slice(0, 6)}` : ''}` : q.bis ? `bis ${q.bis.slice(0, 6)}` : 'geplant'}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <Leer symbol="✦">{w.erfolgeLeer}</Leer>}
-        </Karte>
-
         {/* Das braucht es von euch — was beim Kunden liegt, mit Frist, direkt erledigen */}
         <Karte id="kunde-braucht" className="kunde-breit" ton={braucht ? LEUCHT.achtung : undefined}>
           <Ueberschrift rechts={braucht ? <Chip farbe={LEUCHT.achtung}>{braucht} offen</Chip> : <Chip farbe={LEUCHT.gut}>alles da</Chip>}>{w.braucht}</Ueberschrift>
@@ -143,20 +119,40 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
           )}
         </Karte>
 
+        {/* Das Ausfüllen gehört zu „Das brauchen wir“ — die Formulare, die Ablage und die Puls-Frage (nur, wenn gefragt) stehen direkt darunter. */}
         {!praesentation && sicht.formulare.map(f => <div key={f.schluessel} className="kunde-breit" id={f.schluessel}><FormularKarte f={f} aus={aus} speichern={aktionen?.formular} w={w} /></div>)}
+        {sicht.upload && !praesentation && <UploadKarte upload={sicht.upload} aus={aus} aktionen={aktionen} w={w} />}
+        {sicht.puls?.offen && !praesentation && <PulsKarte offen aus={aus} aktionen={aktionen} w={w} />}
 
-        {/* Als Nächstes */}
+        {/* Euer Ziel — das Wert-Konto und die ersten Erfolge */}
         <Karte>
-          <Ueberschrift>{w.naechstes}</Ueberschrift>
-          <Punkte liste={sicht.naechstes} leer={w.naechstesLeer} symbol="→" />
-          {sicht.erledigt.length > 0 && (<>
-            <div style={{ height: 14 }} />
-            <div style={{ ...MIKRO, marginBottom: 6 }}>Erledigt in den letzten 14 Tagen</div>
-            <Punkte liste={sicht.erledigt} leer="" />
-          </>)}
+          <Ueberschrift>{w.ziel}</Ueberschrift>
+          {sicht.wertKonto.length ? (
+            <div style={{ display: 'grid', gap: 18 }}>
+              {sicht.wertKonto.map(z => <KundenWertBalken key={z.name} w={z} gross={praesentation} />)}
+              {/* Nur mit Werten: bei leeren Zielen steht schon der ruhige Satz („legen wir im Kick-off fest“) — kein Erklärsatz für Striche. */}
+              {sicht.wertKonto.some(z => !wertModell(z).leer) && <div style={{ ...klein, color: C.inkLeise }}>{w.zielSatz}</div>}
+            </div>
+          ) : <Leer symbol="◎">{w.zielLeer}</Leer>}
+          <div style={{ height: 16 }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', marginBottom: 8 }}>
+            <span style={{ ...MIKRO }}>{w.erfolge}</span>
+            {sicht.quickWins.length > 0 && <Chip farbe={LEUCHT.gut}>{sicht.quickWins.filter(q => q.erledigt).length} von {sicht.quickWins.length} erreicht</Chip>}
+          </div>
+          {sicht.quickWins.length ? (
+            <ul className="kunde-erfolge">
+              {sicht.quickWins.map((q, i) => (
+                <li key={i}>
+                  <span aria-hidden className="kunde-erfolg-zeichen" style={{ background: q.erledigt ? LEUCHT.gut : 'transparent', borderColor: q.erledigt ? LEUCHT.gut : C.inkLeise, color: C.grund }}>{q.erledigt ? '✓' : ''}</span>
+                  <span style={{ minWidth: 0, flex: 1, ...text, color: q.erledigt ? C.ink : C.inkDim, overflowWrap: 'anywhere' }}>{q.text}</span>
+                  <span style={{ ...klein, flex: '0 0 auto', color: q.erledigt ? LEUCHT.gut : C.inkLeise }}>{q.erledigt ? `erreicht${q.am ? ` ${q.am.slice(0, 6)}` : ''}` : q.bis ? `bis ${q.bis.slice(0, 6)}` : 'geplant'}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <Leer symbol="✦">{w.erfolgeLeer}</Leer>}
         </Karte>
 
-        {/* Nächster Termin und unser Takt */}
+        {/* Nächster Termin, unser Takt und was gemeinsam entschieden ist */}
         <Karte>
           <Ueberschrift>{sicht.naechsterTermin ? w.termin : w.takt}</Ueberschrift>
           {sicht.naechsterTermin && (
@@ -171,6 +167,23 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
               {sicht.rituale.map((r, i) => <li key={i}><span style={{ fontWeight: 600 }}>{r.titel}</span> <span style={klein}>· {r.rhythmus}{r.naechster ? ` · nächster ${r.naechster}` : ''}</span></li>)}
             </ul>
           </>) : !sicht.naechsterTermin && <Leer symbol="◷">Die festen Termine stimmen wir gemeinsam ab — sie erscheinen dann hier.</Leer>}
+          {/* 16.10. (Abnahme 2 · C6): „Gemeinsam entschieden“ zeigt nur Entschiedenes, Offenes steht darunter unter „Noch offen“ — EINE Regel `entscheidungenTeilen`. */}
+          {ent.entschieden.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ ...MIKRO, marginBottom: 6 }}>{w.entscheidungen}</div>
+              <ul className="kunde-liste">
+                {ent.entschieden.map((e, i) => <li key={i}><span style={{ fontWeight: 600 }}>{e.titel}</span> <span style={klein}>· {e.am} · {STATUS_TEXT[e.status]}</span>{e.inhalt ? <div style={klein}>{e.inhalt}</div> : null}</li>)}
+              </ul>
+            </div>
+          )}
+          {ent.offen.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ ...MIKRO, marginBottom: 6 }}>{w.entscheidungenOffen}</div>
+              <ul className="kunde-liste">
+                {ent.offen.map((e, i) => <li key={i}><span style={{ fontWeight: 600 }}>{e.titel}</span> <span style={klein}>· seit {e.am}</span>{e.inhalt ? <div style={klein}>{e.inhalt}</div> : null}</li>)}
+              </ul>
+            </div>
+          )}
           {(sicht.ansprechperson || sicht.anbieter?.email || sicht.anbieter?.telefon) && !praesentation && (
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${RAND.haar}`, display: 'grid', gap: 6 }}>
               {sicht.ansprechperson && <span style={klein}>{w.ansprechperson}: <b style={{ color: C.ink }}>{sicht.ansprechperson}</b></span>}
@@ -181,30 +194,6 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
             </div>
           )}
         </Karte>
-
-        {sicht.upload && !praesentation && <UploadKarte upload={sicht.upload} aus={aus} aktionen={aktionen} w={w} />}
-        {sicht.puls?.offen && !praesentation && <PulsKarte offen aus={aus} aktionen={aktionen} w={w} />}
-
-        {sicht.entscheidungen.length > 0 && (
-          <Karte flach className="kunde-breit">
-            {ent.entschieden.length > 0 && (
-              <>
-                <Ueberschrift>{w.entscheidungen}</Ueberschrift>
-                <ul className="kunde-liste">
-                  {ent.entschieden.map((e, i) => <li key={i}><span style={{ fontWeight: 600 }}>{e.titel}</span> <span style={klein}>· {e.am} · {STATUS_TEXT[e.status]}</span>{e.inhalt ? <div style={klein}>{e.inhalt}</div> : null}</li>)}
-                </ul>
-              </>
-            )}
-            {ent.offen.length > 0 && (
-              <div style={ent.entschieden.length ? { marginTop: 14 } : undefined}>
-                <Ueberschrift>{w.entscheidungenOffen}</Ueberschrift>
-                <ul className="kunde-liste">
-                  {ent.offen.map((e, i) => <li key={i}><span style={{ fontWeight: 600 }}>{e.titel}</span> <span style={klein}>· seit {e.am}</span>{e.inhalt ? <div style={klein}>{e.inhalt}</div> : null}</li>)}
-                </ul>
-              </div>
-            )}
-          </Karte>
-        )}
       </div>
       {!praesentation && <Datenschutz sicht={sicht} />}
     </div>

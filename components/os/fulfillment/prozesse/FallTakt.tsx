@@ -1,12 +1,13 @@
 'use client';
 
-// ─── Fulfillment › Fall › Takt (Paket C1, 10.10.; neu gezeichnet 12.10. — FULFILLMENT_KONZEPT.md 5.1) ───────────────────────────────────────
-// Rituale: „Termin anlegen“ öffnet den VORHANDENEN Anlege-Dialog des Kalenders (vorbelegt: Titel, Dauer, Bezug zum Mandat, Gäste aus der
-// Stakeholder-Karte — eingeladen wird erst nach der Rückfrage im Dialog); danach merkt sich der Fall die Termin-Kennung. Mitschriften im
-// 4-Zeilen-Standard (Anlass · Ergebnis · nächster Schritt · Frist) — per Klick ins Entscheidungs-Log oder als Aufgabe (mit Link dorthin).
-// 12.10. (Rückmeldung: „Antwort zuerst, Bild statt Liste“): oben „Wann ist der nächste Termin?“ und „Was kam zuletzt heraus?“, dann die Rituale als
-// Kalender-Leiste über sechs Wochen (echter Termin gefüllt, im Rhythmus erwartete gestrichelt — nie ein erfundener Termin ohne Kalender), darunter
-// die Mitschriften. Befähigung und Wirkungsbericht stehen seit 12.10. unter „Abschluss & Kreislauf“ (dort schließt sich der Kreis).
+// ─── Fulfillment › Fall › Takt (Paket C1, 10.10.; 12.10. neu gezeichnet; seit 17.10. Teil von „Menschen & Termine“ — FULFILLMENT_KONZEPT.md 5.1) ─────────
+// Rückmeldung 17.10.: „Lieber wenig und klar.“ Den Reiter „Takt“ gibt es nicht mehr (Adresse leitet auf Menschen & Termine, `#stelle-takt-leiste`). Hier die
+// Karten des Takts, die FallMenschen.tsx einhängt:
+//   · Rituale als Kalender-Leiste über sechs Wochen (echter Termin gefüllt, im Rhythmus erwartete gestrichelt — nie ein erfundener Termin ohne Kalender);
+//     „Termin anlegen“ öffnet den VORHANDENEN Anlege-Dialog des Kalenders (vorbelegt: Titel, Dauer, Bezug zum Mandat, Gäste aus der Stakeholder-Karte —
+//     eingeladen wird erst nach der Rückfrage im Dialog); danach merkt sich der Fall die Termin-Kennung.
+//   · Mitschriften im 4-Zeilen-Standard (Anlass · Ergebnis · nächster Schritt · Frist) — per Klick ins Entscheidungs-Log oder als Aufgabe.
+// Befähigung und Wirkungsbericht stehen am Ende der Reise (der Abschluss hängt an der letzten Phase).
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -18,67 +19,53 @@ import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { RHYTHMUS_TEXT, ritualVorgabe, mitschriftAlsAufgabe, mitschriftAlsEntscheidung } from '@/lib/fulfillment/prozesse/rituale';
-import { taktLeiste, taktLage, type TaktZeile } from '@/lib/fulfillment/prozesse/ansichten';
+import { taktLeiste, type TaktZeile } from '@/lib/fulfillment/prozesse/ansichten';
 import type { Mitschrift, RitualVorlage } from '@/lib/fulfillment/typen';
 import type { Vorgabe } from '@/lib/kalender/formular';
-import { useFall, fallOps, fehlerText, holeJson, tagKurz, tagLang, type FallAntwort } from './daten';
+import { fehlerText, holeJson, tagKurz, tagLang, type FallAntwort } from './daten';
 import { klein, feld, Leiste } from './teile';
-import { ReiterAntwort, MehrKnopf } from '../reise/teile';
+import { MehrKnopf } from '../reise/teile';
 import { JETZT } from '../reise/bilder';
-import { insBild, useStellenSprung } from '../reise/sprung';
 
-type Melde = (text: string | null, art?: 'gut' | 'kritisch' | 'achtung', aufgabe?: string) => void;
-type Ops = (o: Record<string, unknown>[], gut?: string) => Promise<boolean>;
+export type Melde = (text: string | null, art?: 'gut' | 'kritisch' | 'achtung', aufgabe?: string) => void;
+export type TaktOps = (o: Record<string, unknown>[], gut?: string) => Promise<boolean>;
+type Ops = TaktOps;
 
-export function FallTakt({ mandatId }: { mandatId: string }) {
-  const { daten, fehler } = useFall(mandatId);
-  const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' | 'achtung'; aufgabe?: string } | null>(null);
-  const [termin, setTermin] = useState<{ ritual: RitualVorlage; vorgabe: Vorgabe; wiederholung: string | null } | null>(null);
-  const [schreiben, setSchreiben] = useState(false);
-  useStellenSprung();
-  if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
-  if (!daten.fall) return <Hinweis art="info">Für dieses Mandat läuft noch kein Fall — unter „Überblick“ das Onboarding starten.</Hinweis>;
-  const f = daten.fall;
-  const heute = localDay();
-  const melde: Melde = (text, art = 'gut', aufgabe) => setMeldung(text ? { text, art, ...(aufgabe ? { aufgabe } : {}) } : null);
-  const ops: Ops = async (o, gut) => { const a = await fallOps(mandatId, o); melde(a.ok ? gut ?? null : fehlerText(a), a.ok ? 'gut' : 'kritisch'); return a.ok; };
-  const rituale = daten.rituale ?? [];
-  const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute, ...(daten.kalender ? { kalender: daten.kalender } : {}) });
-  const letzte = [...f.mitschriften].sort((a, b) => (a.am < b.am ? 1 : -1))[0];
-  const offeneSchritte = f.mitschriften.filter(m => m.frist && m.frist >= heute);
+/** Die Vorgabe für den Anlege-Dialog eines Rituals (Gäste: Stakeholder mit Adresse — eingeschränkte Personen fehlen schon in der Liste der Personen). */
+export function ritualTermin(daten: FallAntwort, r: RitualVorlage, heute: string): { ritual: RitualVorlage; vorgabe: Vorgabe; wiederholung: string | null } {
+  const f = daten.fall!;
   const namen = new Map((daten.personen ?? []).map(p => [p.id, p]));
-  // Gäste: Stakeholder mit Adresse (eingeschränkte Personen fehlen schon in der Liste der Personen).
   const gaeste = f.stakeholder.map(s => namen.get(s.kontaktId)).filter((p): p is NonNullable<typeof p> => !!p?.email).map(p => ({ email: p.email!, name: p.name, kontaktId: p.id }));
-  const terminAnlegen = (r: RitualVorlage) => setTermin({ ritual: r, ...ritualVorgabe(r, { mandatId: daten.mandat.id, ...(daten.mandat.firmaId ? { firmaId: daten.mandat.firmaId } : {}), kunde: daten.mandat.kunde, heute, gaeste }) });
-  // EINE Hauptaktion: fehlt der Wochen-Check im Kalender, zuerst ihn; sonst die Mitschrift des letzten Termins.
-  const wochencheck = rituale.find(r => r.rhythmus === 'woche');
-  const ohneWochencheck = wochencheck && !leiste.zeilen.find(z => z.ritualId === wochencheck.id)?.naechster;
+  return { ritual: r, ...ritualVorgabe(r, { mandatId: daten.mandat.id, ...(daten.mandat.firmaId ? { firmaId: daten.mandat.firmaId } : {}), kunde: daten.mandat.kunde, heute, gaeste }) };
+}
+
+/** Der Anlege-Dialog des Kalenders für ein Ritual — danach merkt sich der Fall die Termin-Kennung. */
+export function RitualTerminDialog({ termin, heute, ops, melde, onZu }: { termin: ReturnType<typeof ritualTermin>; heute: string; ops: Ops; melde: Melde; onZu: () => void }) {
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      {meldung && <Hinweis art={meldung.art} rolle={meldung.art === 'kritisch' ? 'alert' : 'status'} aktion={meldung.aufgabe ? <Link href={WEG.aufgabe(meldung.aufgabe)} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Aufgabe öffnen ›</Link> : undefined}>{meldung.text}</Hinweis>}
-      <ReiterAntwort titel="Takt & Transparenz" erklaerung="fulfillment.rituale"
-        antworten={[
-          { frage: 'Wann sehen wir uns?', ...taktLage(leiste, heute, letzte?.am), onClick: () => insBild('takt-leiste') },
-          letzte
-            ? { frage: 'Was kam zuletzt heraus?', ampel: offeneSchritte.length || letzte.am >= tagPlus(heute, -14) ? 'gruen' : 'gelb', antwort: letzte.ergebnis, unter: `${tagKurz(letzte.am)} · nächster Schritt: ${letzte.naechster}${letzte.frist ? ` (bis ${tagKurz(letzte.frist)})` : ''}`, onClick: () => insBild('takt-mitschriften') }
-            : { frage: 'Was kam zuletzt heraus?', ampel: 'gelb', antwort: 'Noch keine Mitschrift', unter: 'Nach jedem Termin vier Zeilen: Anlass · Ergebnis · nächster Schritt · Frist.', onClick: () => { setSchreiben(true); insBild('takt-mitschriften'); } },
-        ]}
-        aktion={ohneWochencheck
-          ? <Knopf haupt onClick={() => terminAnlegen(wochencheck!)}>Wochen-Check im Kalender anlegen</Knopf>
-          : <Knopf haupt onClick={() => { setSchreiben(true); insBild('takt-mitschriften'); }}>Mitschrift festhalten</Knopf>} />
-      <KalenderLeiste leiste={leiste} rituale={rituale} heute={heute} onTermin={terminAnlegen} />
-      {termin?.wiederholung && <Hinweis art="info">Rhythmus „{termin.wiederholung}“ — im Dialog unter „Wiederholt sich nicht ▾“ einstellen.</Hinweis>}
-      {termin && (
-        <NeuerTermin vorgabe={termin.vorgabe} heute={heute} standardDauer={termin.ritual.dauerMin} kalender={[]} bereich="business"
-          onZu={() => setTermin(null)}
-          onAngelegt={was => {
-            const r = termin.ritual;
-            if (was.uid) void ops([{ op: 'ritual-merken', ritualId: r.id, terminUid: was.uid }], `Termin „${r.titel}“ angelegt und am Fall vermerkt.`);
-            else melde(was.hinweis ?? 'Angelegt.', 'achtung');
-          }} />
-      )}
+    <>
+      {termin.wiederholung && <Hinweis art="info">Rhythmus „{termin.wiederholung}“ — im Dialog unter „Wiederholt sich nicht ▾“ einstellen.</Hinweis>}
+      <NeuerTermin vorgabe={termin.vorgabe} heute={heute} standardDauer={termin.ritual.dauerMin} kalender={[]} bereich="business"
+        onZu={onZu}
+        onAngelegt={was => {
+          const r = termin.ritual;
+          if (was.uid) void ops([{ op: 'ritual-merken', ritualId: r.id, terminUid: was.uid }], `Termin „${r.titel}“ angelegt und am Fall vermerkt.`);
+          else melde(was.hinweis ?? 'Angelegt.', 'achtung');
+        }} />
+    </>
+  );
+}
+
+/** Rituale (Kalender-Leiste) und Mitschriften — die Termine des Falls unter „Menschen & Termine“. */
+export function TaktKarten({ daten, ops, melde, schreiben, setSchreiben, onTermin }: { daten: FallAntwort; ops: Ops; melde: Melde; schreiben: boolean; setSchreiben: (b: boolean) => void; onTermin: (r: RitualVorlage) => void }) {
+  const f = daten.fall!;
+  const heute = localDay();
+  const rituale = daten.rituale ?? [];
+  const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute, vorlageId: f.vorlageId, ...(daten.kalender ? { kalender: daten.kalender } : {}) });
+  return (
+    <>
+      <KalenderLeiste leiste={leiste} rituale={rituale} heute={heute} onTermin={onTermin} />
       <MitschriftenKarte daten={daten} ops={ops} melde={melde} schreiben={schreiben} setSchreiben={setSchreiben} />
-    </div>
+    </>
   );
 }
 

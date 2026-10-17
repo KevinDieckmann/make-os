@@ -455,3 +455,26 @@ unübersichtlich.“ Fünf Grundsätze für jede Ansicht (Wächter `tests/design
 | Indizes (Business, Privat, Gesundheit, Traktion) | je Säule erst die gemessenen Kennzahlen, die Messlücken als EINE aufklappbare Zeile mit Namen (`components/os/kennzahlen/SaeuleKacheln.tsx`, eine Stelle für IndexAnsicht und Cockpit) |
 | Markttraktion › Planung | Ring und gewählte Stufe nebeneinander, Wort unter jeder Zahl (`KREISLAUF_EINHEIT`), Plan und Ist als zwei Kacheln, Kanal-Filter als Auswahl-Chip im Kopf |
 | Produkte & Mandate | Überblick mit „Als Nächstes“/„Worauf achten“ (Hinweis-Karten) und Liste zuerst, Index-Streifen darunter; Leistungstreppe sichtbar, Kundenreise · Zielbild · Roadmap · Positionierung aufklappbar |
+
+## Prozess-Visualisierung (Reise + Fluss, 17.10.)
+Rückmeldung 17.10. zum Fulfillment: „Nicht überladen, sondern sehr klar. Lieber wenig und klar — es dupliziert sich.“ Vorbild ist ein Miro-Board
+(nur der STIL, nie Inhalte). Gilt für jeden Ablauf, der als Prozess gezeigt wird (heute: Fulfillment-Fall, Kunden-Seite, Report-/Wirkungs-PDF).
+- **Reise** = EINE Zeile der Phasen (`components/os/fulfillment/reise/ReiseBild.tsx`): je Phase eine Pille, darunter höchstens vier kurze Kästchen
+  (`KAESTCHEN_MAX`, Rest „+n“), zwischen den Phasen die Raute des Abstimmungspunkts, unten ein durchgehendes Band (intern „Kunde“, beim Kunden „Bei
+  Ihnen/euch“) für das, was beim Kunden liegt; „Läuft immer mit“ (Rituale, Report) als EIN Satz darunter. Klick auf eine Phase zeigt ihren Fluss, Klick
+  auf ein Kästchen das Detail.
+- **Fluss** = eine Phase von oben nach unten (`Fluss.tsx`): Start als Kreis/Pille → Schritte → Raute „ja/nein“ → nächste Phase. Mehrere Teilprozesse
+  stehen als Karten nebeneinander (am Handy untereinander); lange Stränge zeigen ein Fenster um „Hier“ (höchstens sechs) und „+n weitere Schritte“.
+- **Formen tragen die Bedeutung (nie nur Farbe):** Schritt = Kasten (grün `LEUCHT.gut`), Nachricht = Kasten mit Brief (gelb `LEUCHT.achtung`),
+  Abstimmungspunkt/Entscheidung = Raute mit „ja“/„nein“, Erinnerung = abgerundeter Kasten mit Glocke (orange `LEUCHT.business`, nur auf dem Nein-Pfad bzw.
+  wenn ein Schritt wirklich beim Kunden wartet), Termin = große Beschriftung mit Linie. Zustände: ✓ erledigt · „Hier“ in Petrol (`C.aktiv`, dieselbe Farbe
+  wie „hier stehen wir“ beim Kunden) · ! hängt. Farben nur aus `FORM_FARBE`/Token (`reise/bilder.tsx`).
+- **Legende einmal, klein** (`FormenLegende`, `data-formen-legende`) unter dem Fluss — nie je Karte.
+- **Rechnen nur in den Modellen:** `lib/fulfillment/prozesse/reise-bild.ts` (`reiseZeile`, `phasenFluss`, Hänger = dieselben Regeln wie `wasHaengt`) und
+  beim Kunden `kundenReise` (lib/fulfillment/kunde/bild.ts, nur aus der Positivliste). Die Zeichnung rechnet nichts; die PDFs zeichnen dieselbe Zeile
+  (`pdf-bild.ts` `reise`).
+- **Wenig und klar:** keine Zahlenwände, keine zweite Darstellung derselben Größe (kein Strahl neben der Reise, keine Lage-Kacheln im Kopf), höchstens
+  vier Reiter je Fall, höchstens fünf Unter-Reiter auf der Startseite; alte Adressen leiten in EINER Tabelle um (`ALTE_REITER`, `ALTE_BEREICHE`).
+- **Handy (≤ 720 px):** die Reise wird eine senkrechte Liste der Phasen; nur die laufende zeigt ihre Kästchen, die Raute steht als Zeile darunter, ein Band
+  nur mit Text (mit eigener Beschriftung); der Fluss bleibt senkrecht, der Nein-Pfad rückt unter die Raute — nichts läuft quer aus dem Bild.
+- Wächter: `tests/fulfillment-miro.test.ts` (vier Reiter, Umleitungen, Kopf ohne Doppel, Legende, ≤ 4 Kästchen, Hänger = Cockpit, Kunden-Reise).

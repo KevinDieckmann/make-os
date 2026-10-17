@@ -1,13 +1,13 @@
 // ─── Fulfillment · Kunde — der 2-Wochen-Report MIT Fall als PDF (nur Server; 12.10., Fulfillment extern) ─────────────────────────────────────────
 // Entscheidung 12.10.: „eine Seite Zusammenfassung zuerst, dann Details.“ Seite 1 = dasselbe Bild wie die Kunden-Seite: Lage (Ampel + drei Sätze, nächster
-// Termin), „So weit sind wir“ (Phasen-Strahl, wie viel geschafft), „Euer Ziel“ (Wert-Balken vorher → jetzt → Ziel), drei Spalten „Erledigt · Als Nächstes ·
+// Termin), „So weit sind wir“ (die Reise als EINE Zeile mit „als Nächstes“ — seit 17.10.), „Euer Ziel“ (Wert-Balken vorher → jetzt → Ziel), Spalten „Erledigt ·
 // Wartet auf euch“, „Erste Erfolge“ und die Puls-Frage (der Link steht in der Mail — er entsteht erst beim Senden). Ab Seite 2 „Im Detail“: alle Punkte,
 // die Ziele mit Datum, der Schritt im Paket, die Kennzahlen der Leistungstreppe, der Hinweis. Ohne Fall zeichnet lib/crm/treppe-pdf.ts wie bisher
 // (Byte für Byte). Gezeichnet mit dem gemeinsamen Gerüst lib/fulfillment/kunde/pdf-bild.ts; `erstellt` fest → gleiche Eingabe, gleiche Bytes.
 
-import type { ReportDokument } from '@/lib/crm/treppe-report';
+import { NAECHSTE_LEER, type ReportDokument } from '@/lib/crm/treppe-report';
 import { PdfBlatt, PDF_FARBE, RAND } from './pdf-bild';
-import { KURZ_MAX, WORTE } from './bild';
+import { KURZ_MAX, WORTE, kundenReise } from './bild';
 
 export async function reportPdfMitFall(d: ReportDokument, opt: { erstellt: Date }): Promise<Uint8Array> {
   const w = WORTE[d.anrede ?? 'sie'];
@@ -17,19 +17,21 @@ export async function reportPdfMitFall(d: ReportDokument, opt: { erstellt: Date 
 
   // ── Seite 1: die Zusammenfassung ─────────────────────────────────────────────────────────────────────────────────────────────────
   if (d.lage) b.lage(d.lage, d.naechsterTermin ? `${w.termin}: ${d.naechsterTermin.titel}, ${d.naechsterTermin.am}` : undefined);
+  const wartet = d.wartetAufEuch ?? [];
   if (d.phasen?.length) {
     b.abschnitt(w.soWeit, d.fortschritt != null ? `${d.fortschritt} % geschafft` : undefined);
-    b.strahl(d.phasen);
+    // Dieselbe Reise-Zeile wie die Kunden-Seite (17.10.): „als Nächstes“ als Kästchen unter der laufenden Phase, im Band, was bei euch liegt.
+    b.reise(kundenReise(d.phasen, d.naechste.filter(x => x !== NAECHSTE_LEER), wartet.length), { naechstes: w.naechstes, band: w.beiEuch });
   }
   const ziele = d.wertKonto ?? [];
   if (ziele.length) {
     b.abschnitt(w.ziel, 'vorher · jetzt · Ziel');
     for (const z of ziele.slice(0, 3)) b.wertBalken(z);
   }
-  const wartet = d.wartetAufEuch ?? [];
+  // „Als Nächstes“ steht schon in der Reise (nichts doppelt) — hier, was erledigt ist und was bei euch liegt (ohne Reise: alle drei Spalten).
   b.spalten([
     { titel: 'Erledigt', punkte: d.erreicht, leer: 'Noch nichts abgeschlossen.' },
-    { titel: 'Als Nächstes', punkte: d.naechste, leer: 'Stimmen wir im nächsten Termin ab.' },
+    ...(d.phasen?.length ? [] : [{ titel: 'Als Nächstes', punkte: d.naechste, leer: 'Stimmen wir im nächsten Termin ab.' }]),
     { titel: w.wartetAuf, punkte: wartet, leer: w.wartetLeer, ...(wartet.length ? { farbe: PDF_FARBE.achtung } : {}) },
   ], KURZ_MAX);
   if (d.quickWins?.length) {

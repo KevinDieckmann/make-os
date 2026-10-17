@@ -36,8 +36,7 @@ import { PraesentationInhalt, PRAESENTATION_QUELLE } from '@/components/os/fulfi
 import { KundenAnsicht } from '@/components/os/fulfillment/kunde/KundenAnsicht';
 import { BausteinMarken } from '@/components/os/fulfillment/prozesse/teile';
 import { FallMenschen } from '@/components/os/fulfillment/prozesse/FallMenschen';
-import { FallTakt } from '@/components/os/fulfillment/prozesse/FallTakt';
-import { FallKreislauf } from '@/components/os/fulfillment/prozesse/FallKreislauf';
+import { AbschlussDetail } from '@/components/os/fulfillment/prozesse/FallKreislauf';
 
 const HEUTE = '2026-10-12'; // ein Montag
 const k = (id: string, elternId: string | undefined, titel: string, rang: number, x: Partial<FallKnoten> = {}): FallKnoten => ({ id, ...(elternId ? { elternId } : {}), titel, rang, status: 'offen', ...x });
@@ -305,7 +304,7 @@ describe('Interne Marken ruhig: ein Zeichen mit Tooltip statt eines Chips', () =
 
 // ── Die Reiter: Antwort zuerst, Bild statt Liste, EINE Hauptaktion ───────────────────────────────────────────────────────────────────
 
-describe('Reiter Menschen, Takt, Abschluss & Kreislauf', () => {
+describe('Reiter Menschen & Termine und der Abschluss am Ende der Reise (seit 17.10.)', () => {
   const s = (x: object) => ({ ...x, stand: 's' });
   const fall: Fall = {
     ...VOLL, mandatId: 'm-1', startAm: '2026-08-28', vereinbarung: { rollen: 'GF entscheidet', bestaetigtAm: '2026-09-02', bestaetigtWie: 'kickoff' },
@@ -326,37 +325,40 @@ describe('Reiter Menschen, Takt, Abschluss & Kreislauf', () => {
   };
   const haupt = (html: string) => (html.match(/ui-knopf-haupt/g) ?? []).length;
 
-  it('Menschen: drei Antworten, Raster Einfluss × Haltung, Entscheidungen als Zeitstrahl, Vereinbarung als Zusammenfassung — EINE Hauptaktion', () => {
+  it('Menschen & Termine: Antwort zuerst als EINE Zeile, Raster Einfluss × Haltung, Entscheidungen „Entschieden“/„Noch offen“, Vereinbarung als Zusammenfassung, Takt — EINE Hauptaktion', () => {
     const html = renderToStaticMarkup(h(FallMenschen, { mandatId: 'm-1' }));
     expect(html).toContain('Wer trägt das Projekt?');
     expect(html).toContain('Der Entscheider trägt das Projekt');
     expect(html).toContain('Stakeholder nach Einfluss und Haltung');
-    expect(html).toContain('role="img" aria-label="Entscheidungen von');
-    expect(html).toContain('Vereinbarung bestätigt am 02.09.');
+    // 17.10.: das Log getrennt — dieselbe Regel wie die Kunden-Seite (`entscheidungenTeilen`).
+    const i = html.indexOf('>Entschieden<'), j = html.indexOf('>Noch offen<');
+    expect(i).toBeGreaterThan(-1);
+    expect(j).toBeGreaterThan(i);
+    expect(html.slice(i, j)).toContain('Zielgruppe zuerst');
+    expect(html.slice(j)).toContain('Neues Angebot');
+    expect(html).toContain('bestätigt 02.09.');
     expect(html).not.toContain('<textarea'); // bestätigt → Zusammenfassung, Bearbeiten hinter „⋯“
-    expect(haupt(html)).toBe(1);
-  });
-
-  it('Takt: „Wann sehen wir uns?“, Rituale als Kalender-Leiste (Steering ohne Termin = „+“), Mitschriften — EINE Hauptaktion', () => {
-    const html = renderToStaticMarkup(h(FallTakt, { mandatId: 'm-1' }));
+    // Takt: „Wann sehen wir uns?“, Rituale als Kalender-Leiste (Steering ohne Termin = „+“), Mitschriften.
     expect(html).toContain('Wann sehen wir uns?');
-    expect(html).toContain('Nächster Termin: Wochen-Check');
     expect(html).toContain('Steering: noch kein Termin — anlegen');
-    expect(html).toContain('Was kam zuletzt heraus?');
-    expect(html).not.toContain('Befähigung'); // steht seit 12.10. unter „Abschluss & Kreislauf“
+    expect(html).toContain('Mitschriften');
+    expect(html).not.toContain('Befähigung'); // steht am Ende der Reise (Abschluss an der letzten Phase)
     expect(haupt(html)).toBe(1);
   });
 
-  it('Abschluss & Kreislauf: Kreislauf-Rad mit „hier steht …“, Befähigung, Wirkungsbericht, Nach der Leistung mit Nachsorge-Plan', () => {
-    const html = renderToStaticMarkup(h(FallKreislauf, { mandatId: 'm-1' }));
-    expect(html).toContain('Wo steht der Kunde im Kreislauf?');
-    expect(html).toContain('In Lieferung');
-    expect(html).toContain('hier steht dieser Kunde');
-    expect(html).toContain('1 von 2 Kriterien erfüllt');
-    expect(html).toContain('id="kreislauf-wirkung"');
-    expect(html).toContain('Tag 14 · Check-in nach dem Mandat');
-    expect(html).toContain('startet mit dem Mandatsende');
-    expect(html).toContain('Nach einer Empfehlung fragen');
-    expect(haupt(html)).toBe(1);
+  it('Abschluss an der letzten Phase: Kreislauf-Rad mit „hier steht …“, Befähigung, Wirkungsbericht, Nach der Leistung mit Nachsorge-Plan', () => {
+    const melde = () => {};
+    const ops = async () => true;
+    const rad = renderToStaticMarkup(h(AbschlussDetail, { daten: lese.fall as never, stelle: 'kreislauf', melde, ops }));
+    expect(rad).toContain('Wo steht der Kunde im Kreislauf?');
+    expect(rad).toContain('In Lieferung');
+    expect(rad).toContain('hier steht dieser Kunde');
+    expect(renderToStaticMarkup(h(AbschlussDetail, { daten: lese.fall as never, stelle: 'befaehigung', melde, ops }))).toContain('1/2');
+    expect(renderToStaticMarkup(h(AbschlussDetail, { daten: lese.fall as never, stelle: 'wirkung', melde, ops }))).toContain('id="kreislauf-wirkung"');
+    const nach = renderToStaticMarkup(h(AbschlussDetail, { daten: lese.fall as never, stelle: 'nachsorge', melde, ops }));
+    expect(nach).toContain('Tag 14 · Check-in nach dem Mandat');
+    expect(nach).toContain('startet mit dem Mandatsende');
+    expect(nach).toContain('Nach einer Empfehlung fragen');
+    expect(haupt(renderToStaticMarkup(h(AbschlussDetail, { daten: lese.fall as never, stelle: 'wirkung', melde, ops, haupt: true })))).toBe(1);
   });
 });

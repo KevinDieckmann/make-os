@@ -1,202 +1,107 @@
 'use client';
 
-// ─── Fulfillment › Fall › Ablauf (Paket C1, 10.10.; neu gezeichnet 11.10. — FULFILLMENT_KONZEPT.md 7.2–7.4) ───────────────────────────────
-// Rückmeldung 11.10.: „eine endlose Liste mit ‚+ Zusatz-Schritt‘ an jeder Zeile … man sieht nicht, wo der Kunde steht.“ Jetzt: jede Phase (Ebene 2) als
-// Zeile mit Zustand, Zähler und Freigabe-Raute; die laufende Phase ist aufgeklappt mit ihren nächsten Schritten, erledigte Phasen sind zu (ein
-// Tipp öffnet). Teilprozesse (Ebene 3) sind Zwischenüberschriften, Bausteine (Ebene 5) hängen als Chip am Schritt (keine doppelte Zeile mehr).
-// Der Freigabe-Punkt steht als Meilenstein am Ende der Phase („vermerken“ bzw. vermerkt + „⋯ › zurücknehmen“). „+ Zusatz-Schritt“ gibt es
-// EINMAL je Phase; alles Seltene (Zusatz entfernen, Baustein öffnen, Status eines Bausteins) steht hinter „⋯“ (ZeileAktionen).
-// Status (offen · in Arbeit · wartet auf Kunde · erledigt · entfällt mit Grund) setzt Schritt UND Bausteine darunter in EINER Anfrage
-// (`statusOps`, vorhandene Fall-Ops). Onboarding-Schritte werden abgeleitet (nie von Hand „erledigt“). Gerechnet in lib/fulfillment/prozesse/reise.ts.
+// ─── Fulfillment › Fall › Schritte im Detail (Paket C1, 10.10.; 11.10. neu gezeichnet; seit 17.10. das Detail zum Fluss — FULFILLMENT_KONZEPT.md 7.2–7.4) ──
+// Bis 17.10. war das der Reiter „Ablauf“ (jede Phase als aufklappbare Liste). Rückmeldung 17.10.: „Es dupliziert sich — lieber wenig und klar.“ Der Ablauf ist
+// jetzt der Fluss einer Phase in der Reise (components/os/fulfillment/reise/{FallReise,Fluss}.tsx); ein Tipp auf einen Knoten öffnet HIER sein Detail:
+//   · `SchrittDetail` — der Schritt mit Haken (Schritt UND Bausteine in EINER Anfrage, `statusOps`), Status (offen · in Arbeit · wartet auf Kunde ·
+//     erledigt · entfällt mit Grund), Bausteinen als Chip, Frist, „macht der Kunde“, dem Verweis auf die Stelle, die ihn führt (Quick Wins, Befähigung,
+//     Wirkungsbericht, Diagnose, Dossier); Seltenes hinter „⋯“. Onboarding-Schritte werden abgeleitet (nie von Hand „erledigt“).
+//   · `FreigabeMeilenstein` + `FreigabeDialog` — der Abstimmungspunkt (vermerken, wie bestätigt, zurücknehmen hinter „⋯“).
+//   · `ExtraDialog` — „+ Zusatz-Schritt“ EINMAL je Phase.
+// Am Handy brechen Kopfzeile, Chips und die Aktionsspalte um (Klassen `ff-ablauf…`, globals.css — 15.10., Abnahme B2). Gerechnet in
+// lib/fulfillment/prozesse/reise.ts; geschrieben nur über die vorhandenen Fall-Ops.
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import { FARBE as C, TYP, MIKRO, TIEF, RAND, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Chip, Feldzeile, Pillen, HakenZiel, Punkt, Zeile, ZeileAktionen, LEUCHT, Erklaert, type ZeilenMehr } from '../../ui';
+import { FARBE as C, TYP, MIKRO, SCHRIFT } from '@/lib/make-one/design';
+import { Karte, Knopf, Chip, Feldzeile, Pillen, HakenZiel, Punkt, Zeile, ZeileAktionen, LEUCHT, Erklaert, type ZeilenMehr } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { Wahl } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
 import { anzahl, wort } from '@/lib/text/zahlwort';
 import { localDay } from '@/lib/zeit';
-import { fallReise, phaseGruppen, phasenVon, statusOps, FREIGABE_WER, ONBOARDING_SPRUNG, type ReisePhase, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
+import { phasenVon, statusOps, FREIGABE_WER, ONBOARDING_SPRUNG, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel } from '@/lib/fulfillment/prozesse/darstellung';
 import { obSchluessel } from '@/lib/fulfillment/prozesse/onboarding';
 import { schrittVerweis, type SchrittVerweis } from '@/lib/fulfillment/prozesse/ansichten';
 import { kinderVon } from '@/lib/fulfillment/regeln';
 import { OB_TEIL_ID } from '@/lib/fulfillment/prozesse/fall';
 import type { FallKnoten, KnotenStatus } from '@/lib/fulfillment/typen';
-import { useFall, fallOps, fallAktion, fehlerText, tagKurz, STATUS_TEXT, type FallAntwort } from './daten';
-import { klein, feld, Leiste, Meldung, useTextFrage, BausteinMarken } from './teile';
-import { FreigabeRaute, JETZT, ZUSTAND_FARBE } from '../reise/bilder';
-import { useSprung, insBild } from '../reise/sprung';
+import { fallOps, fehlerText, tagKurz, STATUS_TEXT, type FallAntwort } from './daten';
+import { klein, feld, Leiste, BausteinMarken } from './teile';
+import { FreigabeRaute } from '../reise/bilder';
 import { useFallSprung } from '../reise/FallKopf';
 import type { FallReiter } from '@/lib/fulfillment/adresse';
 
 const STATUS_FARBE: Record<KnotenStatus, string> = { offen: C.inkLeise, in_arbeit: LEUCHT.planung, wartet_kunde: LEUCHT.achtung, erledigt: LEUCHT.gut, entfaellt: C.inkLeise };
 const WIE = [{ id: 'kickoff' as const, label: 'im Kick-off' }, { id: 'termin' as const, label: 'im Termin' }, { id: 'mail' as const, label: 'per Mail' }, { id: 'link' as const, label: 'über den Link' }];
-/** So viele offene Schritte zeigt die laufende Phase, bevor „alle zeigen“ kommt. */
-const NAECHSTE = 5;
 
-type Ops = (o: Record<string, unknown>[]) => Promise<void>;
+export type Ops = (o: Record<string, unknown>[]) => Promise<void>;
 type Bausteine = Map<string, NonNullable<FallAntwort['bausteine']>[number]>;
+export type FallMeldung = { text: string; art: 'gut' | 'kritisch' | 'achtung' } | null;
 
-export function FallAblauf({ mandatId }: { mandatId: string }) {
-  const { daten, fehler } = useFall(mandatId);
-  const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' | 'achtung' } | null>(null);
-  const [freigabe, setFreigabe] = useState<string | null>(null);
-  const [extra, setExtra] = useState<string | null>(null);
-  const [auf, setAuf] = useState<Record<string, boolean>>({});
-  const frage = useTextFrage();
-  useSprung(s => {
-    if (s.art === 'phase') { setAuf(a => ({ ...a, [s.wert]: true })); insBild(`phase-${s.wert}`); }
-    if (s.art === 'freigabe') setFreigabe(s.wert);
-  });
-  if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
-  if (!daten.fall) return <Hinweis art="info">Für dieses Mandat läuft noch kein Fall — unter „Überblick“ das Onboarding starten.</Hinweis>;
-  const f = daten.fall;
-  const heute = localDay();
-  const ops: Ops = async o => {
+/** Fall-Ops mit Meldung (Fehler, „nicht nachgezogen“, Phase am Mandat mitgezogen) — EIN Weg für das Detail der Reise. */
+export function fallOpsMitMeldung(mandatId: string, setMeldung: (m: FallMeldung) => void): Ops {
+  return async o => {
     if (!o.length) return;
     const a = await fallOps(mandatId, o);
     if (!a.ok) setMeldung({ text: fehlerText(a), art: 'kritisch' });
     else if (a.j.nachzug?.fehler) setMeldung({ text: `Gespeichert, aber nicht nachgezogen: ${a.j.nachzug.fehler}`, art: 'achtung' });
     else setMeldung(a.j.nachzug?.phase === 'gesetzt' ? { text: 'Die Phase am Mandat ist mitgezogen.', art: 'gut' } : null);
   };
-  const stand = (k: FallKnoten) => f.knoten.find(x => x.id === k.id)?.stand;
-  const status = async (z: SchrittZeile, s: KnotenStatus) => {
-    if (s === 'entfaellt') { const grund = await frage.fragen(`Warum entfällt „${z.knoten.titel}“?`); if (grund) await ops(statusOps(z, s, grund, stand)); return; }
-    await ops(statusOps(z, s, undefined, stand));
-  };
-  const reise = fallReise(f, daten.vorlage?.freigaben ?? [], heute);
-  const bausteine: Bausteine = new Map((daten.bausteine ?? []).map(b => [b.id, b]));
-  const istAuf = (p: ReisePhase) => auf[p.id] ?? p.zustand === 'jetzt';
-  return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      <Meldung text={meldung?.text ?? null} art={meldung?.art} />
-      {meldung?.art === 'achtung' && <div><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'nachziehen', mandatId }); setMeldung(a.ok ? { text: 'Nachgezogen.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Erneut nachziehen</Knopf></div>}
-      {/* 15.10. (Abnahme B2): `ff-ablauf` — am Handy brechen Kopfzeile, Chips und die Aktionsspalte um (darunter statt daneben), nichts läuft quer aus dem Bild. */}
-      <Karte i={1} className="ff-ablauf">
-        <Ueberschrift erklaerung="fulfillment.ablaufPhasen" rechts={<Erklaert erklaerung="fulfillment.fortschritt" name="Fortschritt"><span>{reise.phasen.filter(p => p.zustand === 'fertig').length} von {reise.phasen.length} Phasen · {reise.fortschritt} %</span></Erklaert>}>{daten.vorlage?.titel ?? 'Ablauf'}</Ueberschrift>
-        <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid' }}>
-          {reise.phasen.map((p, i) => {
-            const vorher = reise.phasen.slice(0, i).find(x => x.freigabe && !x.freigabe.gegeben && x.zustand !== 'offen');
-            return (
-              <PhaseBlock key={p.id} p={p} letzte={i === reise.phasen.length - 1} offen={istAuf(p)} umschalten={() => setAuf(a => ({ ...a, [p.id]: !istAuf(p) }))}
-                daten={daten} heute={heute} bausteine={bausteine} status={status} ops={ops} onFreigabe={setFreigabe} onExtra={setExtra}
-                freigabeOffenVor={p.zustand === 'jetzt' && vorher ? vorher : undefined} />
-            );
-          })}
-        </ol>
-        {!reise.phasen.length && <div style={klein}>Diese Vorlage hat keine Phasen — Schritte kommen über den Editor der Paket-Vorlage dazu.</div>}
-      </Karte>
-      {freigabe && <FreigabeDialog id={freigabe} daten={daten} onZu={() => setFreigabe(null)} ops={ops} />}
-      {extra && <ExtraDialog phaseId={extra} fall={f} onZu={() => setExtra(null)} ops={ops} />}
-      {frage.dialog}
-    </div>
-  );
 }
 
-/** Eine Phase: Kopf (Zustand, Zähler, Freigabe-Raute) und — aufgeklappt — ihre Schritte, die Freigabe am Ende und EIN „+ Zusatz-Schritt“. */
-function PhaseBlock({ p, letzte, offen, umschalten, daten, heute, bausteine, status, ops, onFreigabe, onExtra, freigabeOffenVor }: {
-  p: ReisePhase; letzte: boolean; offen: boolean; umschalten: () => void; daten: FallAntwort; heute: string; bausteine: Bausteine;
-  status: (z: SchrittZeile, s: KnotenStatus) => Promise<void>; ops: Ops; onFreigabe: (id: string) => void; onExtra: (phaseId: string) => void; freigabeOffenVor?: ReisePhase;
+/**
+ * Das Detail eines Schritts (ein Knoten des Flusses): Kopf (Phase, Titel, Abstimmungspunkt) und die Schritt-Zeile mit Haken, Status, Bausteinen und
+ * dem Weg dorthin, wo er erfüllt wird. `haupt` = der Schritt ist „hier“ — dann trägt sein Handgriff die Hauptaktion der Ansicht.
+ */
+export function SchrittDetail({ z, phase, daten, status, ops, onFreigabe, haupt, mehr, zusatz }: {
+  z: SchrittZeile; phase?: string; daten: FallAntwort; status: (z: SchrittZeile, s: KnotenStatus) => Promise<void>; ops: Ops; onFreigabe: (id: string) => void; haupt?: boolean;
+  /** Seltenes für diesen Schritt (z. B. „⋯“ eines Onboarding-Schritts) — rechts im Kopf. */
+  mehr?: ReactNode;
+  /** Ein Satz unter dem Schritt (z. B. die Erinnerung „beim Kunden nachfassen“). */
+  zusatz?: ReactNode;
 }) {
-  const [alle, setAlle] = useState(p.zustand !== 'jetzt');
   const f = daten.fall!;
-  const farbe = ZUSTAND_FARBE[p.zustand];
-  const gruppen = offen ? phaseGruppen(f, p.id, heute) : [];
-  const zeilen = gruppen.flatMap(g => g.zeilen);
-  const offeneZeilen = zeilen.filter(z => !z.fertig);
-  const sichtbar = new Set((alle ? zeilen : offeneZeilen.slice(0, NAECHSTE)).map(z => z.knoten.id));
-  const verborgen = zeilen.length - sichtbar.size;
-  const gegeben = p.freigabe ? f.freigaben[p.freigabe.id] : undefined;
-  const zaehler = p.zustand === 'fertig' ? `erledigt${p.gesamt ? ` · ${p.gesamt} Schritt${p.gesamt === 1 ? '' : 'e'}` : ''}` : `${p.erledigt} von ${p.gesamt} erledigt`;
+  const nummern = abstimmungsNummern(f.knoten);
+  const fg = z.knoten.freigabe ? daten.vorlage?.freigaben.find(x => x.id === z.knoten.freigabe) : undefined;
+  const bausteine: Bausteine = new Map((daten.bausteine ?? []).map(b => [b.id, b]));
   return (
-    <li id={`phase-${p.id}`} style={{ borderBottom: letzte ? 'none' : `1px solid ${RAND.haar}`, scrollMarginTop: 80 }}>
-      <button type="button" className="fassbar ff-ablauf-kopf" aria-expanded={offen} onClick={umschalten}
-        style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', minHeight: 56, padding: '10px 2px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text }}>
-        <PhasenNummer nr={p.nr} zustand={p.zustand} ueberfaellig={p.ueberfaellig} />
-        <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
-          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
-            <b title={p.zusatz ? `${p.titel} — ${p.zusatz}` : undefined} style={{ fontSize: TYP.body, color: p.zustand === 'offen' ? C.inkDim : C.ink, textDecoration: p.entfaellt ? 'line-through' : 'none' }}>{p.titel}</b>
-            {p.zustand === 'jetzt' && <span style={{ ...MIKRO, color: JETZT }}>Sie sind hier</span>}
-          </span>
-          <span style={{ ...klein, color: C.inkLeise }}>
-            {zaehler}{p.faelligAm && p.zustand !== 'fertig' ? ` · bis ${tagKurz(p.faelligAm)}` : ''}{p.wartet ? ` · ${p.wartet} beim Kunden` : ''}{p.ueberfaellig ? ' · überfällig' : ''}
-          </span>
-          {p.gesamt > 0 && p.zustand !== 'fertig' && (
-            <span aria-hidden style={{ display: 'block', height: 4, borderRadius: 2, background: 'rgba(255,255,255,.07)', maxWidth: 320, marginTop: 4 }}>
-              <span style={{ display: 'block', height: 4, borderRadius: 2, width: `${Math.round(p.anteil * 100)}%`, background: TIEF.verlauf(p.ueberfaellig ? LEUCHT.kritisch : farbe) }} />
-            </span>
-          )}
+    <Karte i={0} className="ff-ablauf" id="ff-detail">
+      <div className="ff-ablauf-kopf" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
+        <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: 1 }}>
+          {phase && <span style={{ ...MIKRO }}>{phase}</span>}
+          <b style={{ fontSize: TYP.body, color: C.ink, overflowWrap: 'break-word' }}>{anzeigeTitel(z.knoten.titel, nummern)}</b>
         </span>
-        {p.freigabe && (
-          <span className="ff-ablauf-raute" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: p.freigabe.gegeben ? LEUCHT.gut : C.inkDim, whiteSpace: 'nowrap', maxWidth: 'min(240px, 42%)', minWidth: 0 }} title={`Abstimmungspunkt${p.freigabe.nr ? ` ${p.freigabe.nr}` : ''}${p.freigabe.titel ? ` · ${p.freigabe.titel}` : ''}`}>
-            <FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} />
-            {/* 14.10. (Abnahme B19): „Abstimmungspunkt n“ statt „Freigabe F…“ — Nummer lückenlos in der Reihenfolge des Ablaufs, die Kennung bleibt in den Daten */}
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.freigabe.nr ?? ''}{p.freigabe.titel ? `${p.freigabe.nr ? ' · ' : ''}${p.freigabe.titel}` : ''}</span>
+        {z.knoten.freigabe && (
+          <span className="ff-ablauf-raute" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: f.freigaben[z.knoten.freigabe] ? LEUCHT.gut : C.inkDim, maxWidth: 'min(260px, 46%)', minWidth: 0 }}>
+            <FreigabeRaute gegeben={!!f.freigaben[z.knoten.freigabe]} aktiv />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{abstimmungName(z.knoten.freigabe, nummern, fg?.titel)}</span>
           </span>
         )}
-        <span aria-hidden className="ff-ablauf-pfeil" style={{ color: C.inkLeise, display: 'inline-flex' }}>{offen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
-      </button>
-      {offen && (
-        <div className="ff-ablauf-schritte" style={{ display: 'grid', gap: 8, padding: '0 0 14px clamp(0px, 3vw, 40px)', minWidth: 0 }}>
-          {freigabeOffenVor?.freigabe && <Hinweis art="achtung">Diese Phase läuft, obwohl der Abstimmungspunkt{freigabeOffenVor.freigabe.nr ? ` ${freigabeOffenVor.freigabe.nr}` : ''}{freigabeOffenVor.freigabe.titel ? ` („${freigabeOffenVor.freigabe.titel}“)` : ''} der Phase „{freigabeOffenVor.titel}“ noch nicht vermerkt ist.</Hinweis>}
-          {gruppen.map((g, gi) => {
-            const z = g.zeilen.filter(x => sichtbar.has(x.knoten.id));
-            if (!z.length) return null;
-            return (
-              <div key={g.teil?.id ?? `einzeln-${gi}`} style={{ display: 'grid', gap: 2 }}>
-                {g.teil && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', paddingTop: gi ? 6 : 0 }}>
-                    <span style={{ ...MIKRO, color: C.inkDim }}>{g.teil.titel}</span>
-                    <span style={{ ...klein, color: C.inkLeise }}>{g.erledigt} von {g.gesamt}</span>
-                  </div>
-                )}
-                {z.map(x => <SchrittZeileAnsicht key={x.knoten.id} z={x} phaseFreigabe={p.freigabe?.id} daten={daten} bausteine={bausteine} status={status} ops={ops} onFreigabe={onFreigabe} />)}
-              </div>
-            );
-          })}
-          {!zeilen.length && <div style={klein}>Diese Phase hat keine Schritte.</div>}
-          {verborgen > 0 && (
-            <div><Knopf leise onClick={() => setAlle(!alle)}>{alle ? 'Nur die nächsten offenen zeigen' : `Alle ${zeilen.length} Schritte zeigen (${zeilen.length - offeneZeilen.length} erledigt${offeneZeilen.length > NAECHSTE ? `, ${offeneZeilen.length - NAECHSTE} weitere offen` : ''})`}</Knopf></div>
-          )}
-          {p.freigabe && (
-            <FreigabeMeilenstein p={p} gegeben={gegeben} onVermerken={() => onFreigabe(p.freigabe!.id)} onZurueck={() => ops([{ op: 'freigabe', id: p.freigabe!.id, zuruecknehmen: true }])} />
-          )}
-          <div><Knopf leise onClick={() => onExtra(p.id)}>+ Zusatz-Schritt in „{p.titel}“</Knopf></div>
-        </div>
-      )}
-    </li>
-  );
-}
-
-/** Der Kreis vor der Phase: ✓ erledigt, Nummer gefüllt = hier stehen wir, Nummer im Umriss = kommt noch. */
-function PhasenNummer({ nr, zustand, ueberfaellig }: { nr: number; zustand: ReisePhase['zustand']; ueberfaellig: boolean }) {
-  const f = zustand === 'jetzt' && ueberfaellig ? LEUCHT.kritisch : ZUSTAND_FARBE[zustand];
-  const voll = zustand !== 'offen';
-  return (
-    <span aria-hidden style={{ width: 28, height: 28, borderRadius: 14, flex: '0 0 auto', display: 'grid', placeItems: 'center', fontSize: TYP.bedien, fontWeight: 700, fontFamily: SCHRIFT.display,
-      color: voll ? C.ink : C.inkDim, background: voll ? TIEF.flaeche(f) : 'transparent', border: `1.5px solid ${voll ? TIEF.rand(f) : RAND.stark}`, boxShadow: zustand === 'jetzt' ? TIEF.schein(f, 14) : undefined }}>
-      {zustand === 'fertig' ? '✓' : nr}
-    </span>
+        {mehr}
+      </div>
+      <div className="ff-ablauf-schritte" style={{ display: 'grid', gap: 8, minWidth: 0 }}>
+        <SchrittZeileAnsicht z={z} daten={daten} bausteine={bausteine} status={status} ops={ops} onFreigabe={onFreigabe} haupt={haupt} />
+        {zusatz}
+      </div>
+    </Karte>
   );
 }
 
 /** Ein Schritt: Haken (setzt Schritt + Bausteine), Titel, Bausteine als Chips, Fälligkeit, Status-Wahl; Seltenes hinter „⋯“. */
-function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, onFreigabe }: {
-  z: SchrittZeile; phaseFreigabe?: string; daten: FallAntwort; bausteine: Bausteine; status: (z: SchrittZeile, s: KnotenStatus) => Promise<void>; ops: Ops; onFreigabe: (id: string) => void;
+function SchrittZeileAnsicht({ z, daten, bausteine, status, ops, onFreigabe, haupt }: {
+  z: SchrittZeile; daten: FallAntwort; bausteine: Bausteine; status: (z: SchrittZeile, s: KnotenStatus) => Promise<void>; ops: Ops; onFreigabe: (id: string) => void; haupt?: boolean;
 }) {
   const router = useRouter();
-  const geh = useFallSprung(daten.mandat.id, 'ablauf');
+  const geh = useFallSprung(daten.mandat.id, 'reise');
   const k = z.knoten;
   const f = daten.fall!;
   const sprung = obSchluessel(k.id);
   const nummern = abstimmungsNummern(f.knoten);
   const titel = anzeigeTitel(k.titel, nummern);
-  const eigeneFreigabe = k.freigabe && k.freigabe !== phaseFreigabe ? daten.vorlage?.freigaben.find(x => x.id === k.freigabe) ?? { id: k.freigabe, titel: '', wer: 'beide' as const } : undefined;
+  const eigeneFreigabe = k.freigabe ? daten.vorlage?.freigaben.find(x => x.id === k.freigabe) ?? { id: k.freigabe, titel: '', wer: 'beide' as const } : undefined;
   const fgName = eigeneFreigabe ? abstimmungName(eigeneFreigabe.id, nummern) : '';
   const sperreErledigt = !!k.freigabe;
   const setzbar = !z.abgeleitet;
@@ -216,6 +121,12 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
   const kunde = k.zustaendig === 'kunde';
   const verweis = schrittVerweis(k);
   const v = verweis ? verweisAnzeige(verweis, daten) : null;
+  const zuOnboarding = (s: NonNullable<typeof sprung>) => {
+    if (s === 'f0') return onFreigabe('F0');
+    if (s === 'willkommen') return geh('reise', { art: 'willkommen' });
+    const ziel = ONBOARDING_SPRUNG[s];
+    return geh(ziel.reiter, ziel.stelle ? { art: 'stelle', wert: ziel.stelle } : undefined);
+  };
   return (
     <ZeileAktionen titel={titel} mehr={mehr}>
       <Zeile umbrechen
@@ -250,12 +161,12 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
         ) : undefined}
         rechts={
           <span className="ff-ablauf-aktion" style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0, maxWidth: '100%' }}>
-            {eigeneFreigabe && !f.freigaben[eigeneFreigabe.id] && <Erklaert erklaerung="fulfillment.freigabe" name={fgName}><Knopf leise onClick={() => onFreigabe(eigeneFreigabe.id)}>{fgName} vermerken</Knopf></Erklaert>}
+            {eigeneFreigabe && !f.freigaben[eigeneFreigabe.id] && !sprung && <Erklaert erklaerung="fulfillment.freigabe" name={fgName}><Knopf haupt={haupt} leise={!haupt} onClick={() => onFreigabe(eigeneFreigabe.id)}>{fgName} vermerken</Knopf></Erklaert>}
             {eigeneFreigabe && f.freigaben[eigeneFreigabe.id] && <Chip farbe={LEUCHT.gut}>{fgName} vermerkt {tagKurz(f.freigaben[eigeneFreigabe.id].am)}</Chip>}
             {setzbar
               ? <Wahl<KnotenStatus> label="Status" klein liste={wahl.map(s => ({ id: s, label: STATUS_TEXT[s] }))} wert={z.zustand} farbe={STATUS_FARBE[z.zustand]} onWahl={s => status(z, s)} />
               : sprung && !z.fertig
-                ? <Knopf leise onClick={() => (sprung === 'f0' ? onFreigabe('F0') : sprung === 'willkommen' ? geh('ueberblick', { art: 'willkommen' }) : sprung === 'playbook' ? geh('kunde', { art: 'stelle', wert: 'kunde-link' }) : geh(ONBOARDING_SPRUNG[sprung].reiter))}>{ONBOARDING_SPRUNG[sprung].text}{sprung === 'f0' ? '' : ' ›'}</Knopf>
+                ? <Knopf haupt={haupt} leise={!haupt} onClick={() => zuOnboarding(sprung)}>{ONBOARDING_SPRUNG[sprung].text}{sprung === 'f0' || sprung === 'willkommen' ? '' : ' ›'}</Knopf>
                 : <Chip farbe={STATUS_FARBE[z.zustand]}>{STATUS_TEXT[z.zustand]} · automatisch</Chip>}
           </span>
         } />
@@ -263,22 +174,25 @@ function SchrittZeileAnsicht({ z, phaseFreigabe, daten, bausteine, status, ops, 
   );
 }
 
-/** Die Freigabe am Ende der Phase — der Meilenstein: wer bestätigt, Knopf „vermerken“ bzw. vermerkt (zurücknehmen hinter „⋯“). */
-function FreigabeMeilenstein({ p, gegeben, onVermerken, onZurueck }: { p: ReisePhase; gegeben?: NonNullable<FallAntwort['fall']>['freigaben'][string]; onVermerken: () => void; onZurueck: () => void }) {
-  const fg = p.freigabe!;
+/** Der Abstimmungspunkt am Ende der Phase: wer bestätigt, Knopf „vermerken“ bzw. vermerkt (zurücknehmen hinter „⋯“). */
+export function FreigabeMeilenstein({ fg, gegeben, onVermerken, onZurueck, haupt }: {
+  fg: { id: string; nr?: number; titel: string; wer: keyof typeof FREIGABE_WER }; gegeben?: NonNullable<FallAntwort['fall']>['freigaben'][string]; onVermerken: () => void; onZurueck: () => void; haupt?: boolean;
+}) {
   const wie = gegeben?.kunde ? WIE.find(w => w.id === gegeben.kunde!.wie)?.label : undefined;
   return (
-    <ZeileAktionen titel={`Abstimmungspunkt${fg.nr ? ` ${fg.nr}` : ''}`} mehr={gegeben ? [{ id: 'zurueck', label: 'Vermerk zurücknehmen', hinweis: 'Der Abstimmungspunkt gilt dann wieder als offen.', tun: onZurueck }] : []}>
-      <Zeile umbrechen
-        links={<span style={{ width: 44, display: 'inline-grid', placeItems: 'center', flex: '0 0 auto' }}><FreigabeRaute gegeben={!!gegeben} aktiv groesse={14} /></span>}
-        titel={<span>Abstimmungspunkt{fg.nr ? ` ${fg.nr}` : ''}{fg.titel ? ` · ${fg.titel}` : ''}</span>}
-        unter={gegeben ? `${gegeben.kunde ? `bestätigt am ${tagKurz(gegeben.kunde.am)}${wie ? ` ${wie}` : ''} · ` : ''}vermerkt am ${tagKurz(gegeben.am)}${gegeben.notiz ? ` · ${gegeben.notiz}` : ''}` : `Haltepunkt am Ende der Phase — ${FREIGABE_WER[fg.wer]}, dann geht es weiter.`}
-        rechts={gegeben ? <Chip farbe={LEUCHT.gut}>vermerkt</Chip> : <Erklaert erklaerung="fulfillment.freigabe" name="Abstimmungspunkt"><Knopf onClick={onVermerken}>Abstimmung vermerken</Knopf></Erklaert>} />
-    </ZeileAktionen>
+    <Karte i={0} className="ff-ablauf" id="ff-detail">
+      <ZeileAktionen titel={`Abstimmungspunkt${fg.nr ? ` ${fg.nr}` : ''}`} mehr={gegeben ? [{ id: 'zurueck', label: 'Vermerk zurücknehmen', hinweis: 'Der Abstimmungspunkt gilt dann wieder als offen.', tun: onZurueck }] : []}>
+        <Zeile umbrechen
+          links={<span style={{ width: 44, display: 'inline-grid', placeItems: 'center', flex: '0 0 auto' }}><FreigabeRaute gegeben={!!gegeben} aktiv groesse={16} /></span>}
+          titel={<span>Abstimmungspunkt{fg.nr ? ` ${fg.nr}` : ''}{fg.titel ? ` · ${fg.titel}` : ''}</span>}
+          unter={gegeben ? `${gegeben.kunde ? `bestätigt am ${tagKurz(gegeben.kunde.am)}${wie ? ` ${wie}` : ''} · ` : ''}vermerkt am ${tagKurz(gegeben.am)}${gegeben.notiz ? ` · ${gegeben.notiz}` : ''}` : `Haltepunkt am Ende der Phase — ${FREIGABE_WER[fg.wer]}, dann geht es weiter.`}
+          rechts={gegeben ? <Chip farbe={LEUCHT.gut}>vermerkt</Chip> : <Erklaert erklaerung="fulfillment.freigabe" name="Abstimmungspunkt"><Knopf haupt={haupt} onClick={onVermerken}>Abstimmung vermerken</Knopf></Erklaert>} />
+      </ZeileAktionen>
+    </Karte>
   );
 }
 
-function FreigabeDialog({ id, daten, onZu, ops }: { id: string; daten: FallAntwort; onZu: () => void; ops: Ops }) {
+export function FreigabeDialog({ id, daten, onZu, ops }: { id: string; daten: FallAntwort; onZu: () => void; ops: Ops }) {
   const fg = daten.vorlage?.freigaben.find(x => x.id === id);
   const name = abstimmungName(id, abstimmungsNummern(daten.fall?.knoten ?? []), fg?.titel);
   const [wie, setWie] = useState<typeof WIE[number]['id'] | null>(null);
@@ -303,7 +217,7 @@ function FreigabeDialog({ id, daten, onZu, ops }: { id: string; daten: FallAntwo
 }
 
 /** Zusatz-Schritt für diesen Fall: Wo (die Phase selbst oder einer ihrer Teilprozesse), Titel, Fälligkeit. Die Vorlage bleibt, wie sie ist. */
-function ExtraDialog({ phaseId, fall, onZu, ops }: { phaseId: string; fall: NonNullable<FallAntwort['fall']>; onZu: () => void; ops: Ops }) {
+export function ExtraDialog({ phaseId, fall, onZu, ops }: { phaseId: string; fall: NonNullable<FallAntwort['fall']>; onZu: () => void; ops: Ops }) {
   const phase = phasenVon(fall).find(p => p.id === phaseId);
   const orte = [...(phase ? [{ id: phase.id, label: `direkt in „${phase.titel}“` }] : []), ...kinderVon(phaseId, fall.knoten).filter(t => kinderVon(t.id, fall.knoten).length > 0).map(t => ({ id: t.id, label: `unter „${t.titel}“` }))];
   const [eltern, setEltern] = useState(orte[orte.length > 1 ? 1 : 0]?.id ?? phaseId);
@@ -326,35 +240,44 @@ function ExtraDialog({ phaseId, fall, onZu, ops }: { phaseId: string; fall: NonN
   );
 }
 
+/** Status eines Schritts setzen (bei „entfällt“ mit Grund) — Schritt UND Bausteine in EINER Anfrage. */
+export function statusSetzer(f: NonNullable<FallAntwort['fall']>, ops: Ops, fragen: (titel: string) => Promise<string | null>) {
+  const stand = (k: FallKnoten) => f.knoten.find(x => x.id === k.id)?.stand;
+  return async (z: SchrittZeile, s: KnotenStatus) => {
+    if (s === 'entfaellt') { const grund = await fragen(`Warum entfällt „${z.knoten.titel}“?`); if (grund) await ops(statusOps(z, s, grund, stand)); return; }
+    await ops(statusOps(z, s, undefined, stand));
+  };
+}
+
 /**
  * Ein Schritt, den der Fall selbst führt (Quick Wins, Befähigung, Wirkungsbericht, Diagnose, Dossier), zeigt seinen Stand und führt dorthin (12.10.,
- * „keine losen Enden“: der Schritt „Quick Wins“ im Ablauf kannte die Quick Wins des Überblicks nicht).
+ * „keine losen Enden“). Seit 17.10.: Quick Wins unter „Ziele & Wirkung“, Analyse und Abschluss an ihrer Phase in der Reise.
  */
 function verweisAnzeige(v: SchrittVerweis, d: FallAntwort): { text: string; reiter: FallReiter; stelle?: string; farbe: string } {
   const f = d.fall!;
   switch (v) {
     case 'quickwins': {
       const n = f.quickWins.length, e = f.quickWins.filter(q => q.erledigtAm).length;
-      if (n) return { text: e === n ? `${n === 1 ? 'Quick Win' : `alle ${n} Quick Wins`} erledigt — Schritt abhaken` : `${e} von ${n} ${wort(n, 'Quick Win', 'Quick Wins')} erledigt`, reiter: 'ueberblick', stelle: 'quickwins', farbe: e === n ? LEUCHT.gut : C.aktiv };
+      if (n) return { text: e === n ? `${n === 1 ? 'Quick Win' : `alle ${n} Quick Wins`} erledigt — Schritt abhaken` : `${e} von ${n} ${wort(n, 'Quick Win', 'Quick Wins')} erledigt`, reiter: 'ziele', stelle: 'quickwins', farbe: e === n ? LEUCHT.gut : C.aktiv };
       return d.analyse?.quickWins.length
-        ? { text: `${anzahl(d.analyse.quickWins.length, 'Quick Win', 'Quick Wins')} aus der Analyse bereit`, reiter: 'ueberblick', stelle: 'ausanalyse', farbe: LEUCHT.achtung }
-        : { text: 'Quick Wins festlegen', reiter: 'ueberblick', stelle: 'quickwins', farbe: C.aktiv };
+        ? { text: `${anzahl(d.analyse.quickWins.length, 'Quick Win', 'Quick Wins')} aus der Analyse bereit`, reiter: 'reise', stelle: 'analyse', farbe: LEUCHT.achtung }
+        : { text: 'Quick Wins festlegen', reiter: 'ziele', stelle: 'quickwins', farbe: C.aktiv };
     }
     case 'befaehigung': {
       const n = f.befaehigung.length, e = f.befaehigung.filter(b => b.erfuellt).length;
-      return { text: `Befähigung: ${e} von ${n} ${wort(n, 'Kriterium', 'Kriterien')} erfüllt`, reiter: 'kreislauf', stelle: 'kreislauf-befaehigung', farbe: n && e === n ? LEUCHT.gut : C.aktiv };
+      return { text: `Befähigung: ${e} von ${n} ${wort(n, 'Kriterium', 'Kriterien')} erfüllt`, reiter: 'reise', stelle: 'kreislauf-befaehigung', farbe: n && e === n ? LEUCHT.gut : C.aktiv };
     }
     case 'wirkung':
       return f.wirkung
-        ? { text: `Wirkungsbericht vom ${tagKurz(f.wirkung.erstelltAm)}`, reiter: 'kreislauf', stelle: 'kreislauf-wirkung', farbe: LEUCHT.gut }
-        : { text: 'Wirkungsbericht erstellen', reiter: 'kreislauf', stelle: 'kreislauf-wirkung', farbe: C.aktiv };
+        ? { text: `Wirkungsbericht vom ${tagKurz(f.wirkung.erstelltAm)}`, reiter: 'reise', stelle: 'kreislauf-wirkung', farbe: LEUCHT.gut }
+        : { text: 'Wirkungsbericht erstellen', reiter: 'reise', stelle: 'kreislauf-wirkung', farbe: C.aktiv };
     case 'diagnose':
       return !d.analyse?.diagnose
-        ? { text: 'Der Diagnose-Entwurf kommt aus der Analyse (A12)', reiter: 'analyse', farbe: C.aktiv }
+        ? { text: 'Der Diagnose-Entwurf kommt aus der Analyse (A12)', reiter: 'reise', stelle: 'analyse', farbe: C.aktiv }
         : d.analyse.massnahmen.length
-          ? { text: `${d.analyse.massnahmen.length} Maßnahme${d.analyse.massnahmen.length === 1 ? '' : 'n'} der Diagnose noch nicht im Fall`, reiter: 'ueberblick', stelle: 'ausanalyse', farbe: LEUCHT.achtung }
-          : { text: 'Diagnose-Entwurf im Fall — Maßnahmen stehen im Ablauf', reiter: 'analyse', farbe: LEUCHT.gut };
+          ? { text: `${d.analyse.massnahmen.length} Maßnahme${d.analyse.massnahmen.length === 1 ? '' : 'n'} der Diagnose noch nicht im Fall`, reiter: 'reise', stelle: 'analyse', farbe: LEUCHT.achtung }
+          : { text: 'Diagnose-Entwurf im Fall — Maßnahmen stehen im Ablauf', reiter: 'reise', stelle: 'analyse', farbe: LEUCHT.gut };
     case 'dossier':
-      return !d.analyse ? { text: 'Dossier anlegen', reiter: 'analyse', farbe: C.aktiv } : d.analyse.f2 ? { text: 'Dossier geprüft', reiter: 'analyse', farbe: LEUCHT.gut } : { text: 'Dossier in Arbeit', reiter: 'analyse', farbe: C.aktiv };
+      return !d.analyse ? { text: 'Dossier anlegen', reiter: 'reise', stelle: 'analyse', farbe: C.aktiv } : d.analyse.f2 ? { text: 'Dossier geprüft', reiter: 'reise', stelle: 'analyse', farbe: LEUCHT.gut } : { text: 'Dossier in Arbeit', reiter: 'reise', stelle: 'analyse', farbe: C.aktiv };
   }
 }

@@ -1,12 +1,12 @@
 'use client';
 
-// ─── Fulfillment › Prozesse — Landkarte, Paket-Vorlagen, Drill-down (Paket C1, 10.10.; Design-Überarbeitung 11.10.; FULFILLMENT_KONZEPT.md 2.2–2.5, 6.2) ─
-// Oben das Hochhaus (Landkarte) mit Legende (Dach = Steuerung · Etagen = Weg eines Kunden durch uns · Fundament = was alles trägt), je Etage die
-// Kunden dort mit Ampel (`knotenAmpel` aus dem Cockpit). Ein Klick öffnet `?k=<knoten>`: Ebenen-Leiter (Gesamt › Prozess › Teilprozess › Schritt ›
-// Baustein) mit Brotkrumen, Steckbrief (Zuständig, Eingang/Ergebnis, Kennzahl, Freigabe, „wohnt heute in …“), welche Kunden gerade dort stehen
-// (Sprung in den Fall), die Kinder als nächste Ebene. Darunter die Paket-Vorlagen als Karten (Phasen-Kette mit Freigaben, Zahl der Schritte und
-// Bausteine, Produkt, Kunden darin) mit Editor (Knoten anlegen, ändern, verschieben, löschen — Regeln der fünf Ebenen prüft der Server).
-// „Aus Muster anlegen“ legt das neutrale Gerüst an. Rechnen nur in lib/fulfillment/prozesse/*.
+// ─── Fulfillment › Landkarte — Kunden in Lieferung, Hochhaus, Paket-Vorlagen, Drill-down (Paket C1, 10.10.; 11.10.; seit 17.10. mit der früheren „Visualisierung“) ─
+// Rückmeldung 17.10.: „Es dupliziert sich — lieber wenig und klar.“ Der Start von Fulfillment (Unter-Reiter „Landkarte“, Kennung `prozesse`): oben die Kunden in
+// Lieferung (je Kunde EINE Karte, wer Aufmerksamkeit braucht zuerst — `Cockpit`, Visualisierung.tsx), dann das Hochhaus (Landkarte) mit Legende (Dach =
+// Steuerung · Etagen = Weg eines Kunden durch uns · Fundament = was alles trägt), je Etage die Kunden dort mit Ampel (`knotenAmpel`). Ein Klick öffnet
+// `?k=<knoten>`: Ebenen-Leiter mit Brotkrumen, Steckbrief, welche Kunden gerade dort stehen (Sprung in den Fall), die Kinder als nächste Ebene. Darunter die
+// Paket-Vorlagen als Karten (Phasen-Kette mit Abstimmungspunkten, Zahl der Schritte und Bausteine, Produkt, Kunden darin) mit Editor, ganz unten die
+// Erfolgsmaße (zugeklappt). „Aus Muster anlegen“ legt das neutrale Gerüst an. Rechnen nur in lib/fulfillment/prozesse/*.
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -26,6 +26,7 @@ import { KnotenFormular, Meldung, klein, Leiste, useTextFrage } from './teile';
 import { Legende, FreigabeRaute, AMPEL_FARBE } from '../reise/bilder';
 import { insBild } from '../reise/sprung';
 import { PraesentationWahl } from '../reise/Praesentation';
+import { Cockpit, Erfolgsmasse } from './Visualisierung';
 
 const ZUST: Record<string, string> = { intern: 'wir', kunde: 'Kunde', beide: 'beide' };
 const ZonenZeichen = ({ zone }: { zone: Zone }) => <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: 4, background: `${ZONE_FARBE[zone]}30`, border: `1px solid ${ZONE_FARBE[zone]}` }} />;
@@ -58,6 +59,7 @@ export function Prozesse({ k }: { k?: string }) {
           Noch nicht angelegt: {daten.musterOffen.length} Muster-Vorlage{daten.musterOffen.length === 1 ? '' : 'n'}.
         </Hinweis>
       )}
+      {!k && (landkarte || pakete.length > 0) && <Cockpit />}
       {landkarte && (
         <Karte i={1} akzent={LEUCHT.business}>
           <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.landkarte" rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>{(n => `${n} Kunde${n === 1 ? '' : 'n'}`)(Object.values(daten.faelle).filter(f => f.status !== 'abgeschlossen').length)}</span><PraesentationWahl faelle={Object.values(daten.faelle)} /></span>}>{landkarte.titel}</Ueberschrift>
@@ -74,6 +76,7 @@ export function Prozesse({ k }: { k?: string }) {
       {k && inVorlage && <Steckbrief vorlage={inVorlage} id={k} daten={daten} onKnoten={offen} />}
       {k && !inVorlage && <Hinweis art="achtung">Diesen Schritt gibt es nicht (mehr).</Hinweis>}
       <PaketKarten pakete={pakete} daten={daten} onKnoten={offen} />
+      {!k && daten.kennzahlen.length > 0 && <Erfolgsmasse kennzahlen={daten.kennzahlen} />}
     </div>
   );
 }
@@ -142,7 +145,7 @@ function Steckbrief({ vorlage, id, daten, onKnoten }: { vorlage: VorlageMitStand
         <div style={{ display: 'grid', gap: 6 }}>
           <span style={MIKRO}>Kunden, die gerade hier stehen</span>
           <Liste>
-            {kunden.map(m => <Zeile key={m} titel={daten.mandate[m]?.kunde ?? 'Mandat'} unter={daten.faelle[m]?.phase ?? daten.mandate[m]?.titel} onClick={() => router.push(WEG.fall(m, 'ablauf'))} />)}
+            {kunden.map(m => <Zeile key={m} titel={daten.mandate[m]?.kunde ?? 'Mandat'} unter={daten.faelle[m]?.phase ?? daten.mandate[m]?.titel} onClick={() => router.push(WEG.fall(m))} />)}
           </Liste>
         </div>
       )}

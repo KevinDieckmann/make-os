@@ -133,7 +133,8 @@ const TEILNEHMENDE = ['intern', 'entscheider', 'tagesverantwortlich', 'team'] as
 const ritual = (o: O): RitualVorlage | null => {
   const i = id(o.id), titel = s(o.titel), rhythmus = wahl(o.rhythmus, RITUAL_RHYTHMEN);
   if (!i || !titel || !rhythmus) return null;
-  return { id: i, titel, rhythmus, dauerMin: n(o.dauerMin) ?? 0, agenda: texte(o.agenda), teilnehmende: texte(o.teilnehmende).filter((x): x is (typeof TEILNEHMENDE)[number] => (TEILNEHMENDE as readonly string[]).includes(x)), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '' };
+  const pakete = texte(o.pakete);
+  return { id: i, titel, rhythmus, dauerMin: n(o.dauerMin) ?? 0, agenda: texte(o.agenda), teilnehmende: texte(o.teilnehmende).filter((x): x is (typeof TEILNEHMENDE)[number] => (TEILNEHMENDE as readonly string[]).includes(x)), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '', ...(pakete.length ? { pakete } : {}) };
 };
 export function einstellungenAus(v: unknown): FulfillmentEinstellungen {
   const o = obj(v) ?? {};

@@ -197,7 +197,8 @@ describe('C · Beschriftungen, Bausteine, Zählungen, Silben, Aufgaben', () => {
       k('b1', 's2', 'A', 1, { bausteinId: 'x1' }), k('b2', 's2', 'B', 2, { bausteinId: 'x2' }), k('b3', 's2', 'C', 3, { bausteinId: 'x3' }),
     ]);
     expect(fallReise(f, [], HEUTE).phasen[0]).toMatchObject({ erledigt: 0, gesamt: 2 });
-    expect(lies('components/os/fulfillment/prozesse/FallUeberblick.tsx')).toContain('erledigt.filter(s => s.zaehlt).length} von {schritte.filter(s => s.zaehlt).length}');
+    // 17.10. (dritte Abnahme B5): der ZÄHLER zählt alle Onboarding-Schritte (EINE Zählung `onboardingZaehlung` — Fall, Onboarding-Liste, Haken), „fertig“ weiter nur die zählenden.
+    expect(lies('components/os/fulfillment/prozesse/FallUeberblick.tsx')).toContain('onboardingZaehlung(schritte)');
   });
   it('C19: keine Silbentrennung in Phasen-Titeln; das Angebots-Kürzel schneidet nie mitten im Wort', () => {
     const dateien = (o: string): string[] => readdirSync(path.join(WURZEL, o), { withFileTypes: true }).flatMap(e => (e.isDirectory() ? dateien(`${o}/${e.name}`) : e.name.endsWith('.tsx') ? [`${o}/${e.name}`] : []));

@@ -63,7 +63,11 @@ export interface Baustein {
 }
 /** Rhythmus eines Rituals — `taeglich`/`werktags` seit 11.10. (Entscheidung: tägliches Vertriebs-Huddle, kurz, MIT Zahlenrunde). */
 export type Rhythmus = 'einmal' | 'taeglich' | 'werktags' | 'woche' | 'zwei-wochen' | 'monat' | 'quartal';
-export interface RitualVorlage { id: string; titel: string; rhythmus: Rhythmus; dauerMin: number; agenda: string[]; teilnehmende: ('intern' | 'entscheider' | 'tagesverantwortlich' | 'team')[]; geaendert: string; geaendertVon: string }
+export interface RitualVorlage {
+  id: string; titel: string; rhythmus: Rhythmus; dauerMin: number; agenda: string[]; teilnehmende: ('intern' | 'entscheider' | 'tagesverantwortlich' | 'team')[]; geaendert: string; geaendertVon: string;
+  /** 17.10. (dritte Abnahme C6): nur in diesen Paket-Vorlagen im Takt vorgeschlagen (fehlt/leer = in jedem Fall) — z. B. das tägliche Huddle nur im Vertriebsaufbau. */
+  pakete?: string[];
+}
 export interface FulfillmentEinstellungen { kundenLink: { an: boolean; am?: string; von?: string }; pulsSchwelle: number; willkommenStunden: number; nachsorgeTage: number[] }
 export interface ImportLauf { id: string; am: string; von: string; datei: string; neu: string[]; geaendert: { id: string; vorher: Baustein | ProzessVorlage }[] }
 export interface VorlagenDatei {

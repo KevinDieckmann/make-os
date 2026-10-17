@@ -33,8 +33,24 @@ export interface ReportUmfeld {
   haengt?: readonly KundenHaenger[];
 }
 
-export function reportZusatz(fall: Fall | null, mandat: Pick<Mandat, 'id' | 'ziele'>, kunde: Pick<KundeDatei, 'puls'>, heute: string, pulsFrage: boolean, gesperrt: ReadonlySet<string> = new Set(), umfeld: ReportUmfeld = {}): ReportZusatz | null {
-  if (!fall) return null;
+/**
+ * Der Fall, wie er am Stand eines Reports aussah: Messungen im Wert-Konto und erste Erfolge erst ab ihrem Tag (17.10., dritte Abnahme C6: der Report
+ * „Stand 02.10.“ zeigte den Messwert vom 09.10.). Rein — heute = Stand des Reports.
+ */
+export function fallBisStand(fall: Fall, heute: string): Fall {
+  const wertKonto = Object.fromEntries(Object.entries(fall.wertKonto ?? {}).map(([id, w]) => [id, { ...w, messungen: (w.messungen ?? []).filter(m => tagVon(m.am) <= heute) }]));
+  const quickWins = (fall.quickWins ?? []).map(q => {
+    if (!q.erledigtAm || tagVon(q.erledigtAm) <= heute) return q;
+    const r = { ...q };
+    delete r.erledigtAm;
+    return r;
+  });
+  return { ...fall, wertKonto, quickWins };
+}
+
+export function reportZusatz(fallJetzt: Fall | null, mandat: Pick<Mandat, 'id' | 'ziele'>, kunde: Pick<KundeDatei, 'puls'>, heute: string, pulsFrage: boolean, gesperrt: ReadonlySet<string> = new Set(), umfeld: ReportUmfeld = {}): ReportZusatz | null {
+  if (!fallJetzt) return null;
+  const fall = fallBisStand(fallJetzt, heute);
   // Der Report geht an den Kunden: nur geteilte Entscheidungen (Prüf-Fund 11.10.), keine gesperrten Knoten, keine internen Kürzel.
   const wartet = wartetAufEuch({ ...fall, knoten: fall.knoten.filter(k => !knotenGesperrt(k, gesperrt)), entscheidungen: (fall.entscheidungen ?? []).filter(x => x.geteilt) }, heute)
     .map(w => { const t = kundenText(w.titel); return w.tage !== undefined && w.tage > 0 ? `${t} (seit ${w.tage} ${w.tage === 1 ? 'Tag' : 'Tagen'})` : t; });

@@ -182,20 +182,22 @@ export const MUSTER_RITUALE: readonly RitualVorlage[] = [
 ];
 
 // ── Playbook-Formular-Gerüst (2.7: neun Abschnitte, je eine offene Frage) ────────────────────────────────────────────────────────────
+// 17.10. (dritte Abnahme C6): die Fragen ohne Anrede („das Unternehmen“ statt „euer/Ihr Unternehmen“) — das Formular steht beim Kunden in der Anrede des
+// Mandats, und eine feste Du-Form duzte auch Kunden mit „Sie“. Neue Fragen ebenso ohne Pronomen der Anrede schreiben.
 
 const frage = (n: number, abschnitt: string, f: string): Frage => ({ id: `pb-${n}`, abschnitt, frage: f, art: 'langtext' });
 export const MUSTER_PLAYBOOK: Baustein = {
   id: 'fb-muster-playbook', art: 'formular', titel: 'Kunden-Playbook',
   gliederung: [], platzhalter: [], tags: ['muster'], wer: 'kunde', kundeSichtbar: true, kundeFuellt: true,
   fragen: [
-    frage(1, 'Unternehmen & Ziele', 'Was macht euer Unternehmen, und was soll sich in den nächsten zwölf Monaten im Vertrieb ändern?'),
-    frage(2, 'Angebot & Preise', 'Was verkauft ihr, und wie ist es heute bepreist?'),
-    frage(3, 'Zielkunden & Wettbewerb', 'Wer sind eure besten Kunden, und gegen wen tretet ihr meistens an?'),
+    frage(1, 'Unternehmen & Ziele', 'Was macht das Unternehmen, und was soll sich in den nächsten zwölf Monaten im Vertrieb ändern?'),
+    frage(2, 'Angebot & Preise', 'Was wird verkauft, und wie ist es heute bepreist?'),
+    frage(3, 'Zielkunden & Wettbewerb', 'Wer sind die besten Kunden, und gegen wen tritt das Unternehmen meistens an?'),
     frage(4, 'Vertriebsprozess heute', 'Wie wird aus einer ersten Anfrage heute ein Auftrag — Schritt für Schritt?'),
     frage(5, 'Team & Rollen', 'Wer verkauft heute, mit welchen Aufgaben und wie viel Zeit dafür?'),
     frage(6, 'Tools & Daten', 'Mit welchen Werkzeugen und Daten arbeitet der Vertrieb (CRM, Listen, Auswertungen)?'),
     frage(7, 'Entscheider & Gesellschafter', 'Welche Funktionen entscheiden über Vertrieb und Budget (nur Funktionen, keine Namen)?'),
-    frage(8, 'Bisherige Versuche', 'Was habt ihr im Vertrieb schon ausprobiert — und was hat funktioniert, was nicht?'),
+    frage(8, 'Bisherige Versuche', 'Was wurde im Vertrieb schon ausprobiert — und was hat funktioniert, was nicht?'),
     frage(9, 'Randbedingungen', 'Welche Grenzen gelten (Recht, Marke, Kapazität), die wir kennen müssen?'),
   ],
   fassung: 1, herkunft: { art: 'muster', am: '' }, geaendert: '', geaendertVon: '',

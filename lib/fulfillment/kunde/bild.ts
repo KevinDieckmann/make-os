@@ -20,7 +20,7 @@ import { tagePlus, tagVon } from '@/lib/zeit';
 import { zielErreichung } from '../prozesse/wert';
 import { RHYTHMUS_TEXT, naechsterFallTermin } from '../prozesse/rituale';
 import { titelOhneZusatz, kundenLageAus, KUNDEN_LAGE_TEXT } from '../prozesse/darstellung';
-import { istSammelSchritt, naechsterPunkt, type NaechsterPunkt } from '../prozesse/reise';
+import { fallReise, istSammelSchritt, naechsterPunkt, type NaechsterPunkt } from '../prozesse/reise';
 import { obSchluessel } from '../prozesse/onboarding';
 import type { Fall, FallKnoten, Freigabepunkt, RitualVorlage } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
@@ -47,7 +47,7 @@ export const WORTE = {
     uploadVoll: 'Über diesen Link sind schon so viele Dateien eingegangen, wie er annimmt — bitte schickt weitere über eure Ansprechperson.',
     formularHinweis: 'Ihr könnt jederzeit zwischenspeichern und später weitermachen — der Link bleibt gleich.',
     formularFertig: 'Danke — alles ist bei uns angekommen. Ihr könnt Antworten jederzeit noch ändern.',
-    ansprechperson: 'Eure Ansprechperson', fuerEuch: 'für', gruss: 'Schön, dass ihr da seid.',
+    ansprechperson: 'Eure Ansprechperson', fuerEuch: 'für', gruss: 'Schön, dass ihr da seid.', beiEuch: 'Bei euch',
     ungueltig: 'Bitte wendet euch an eure Ansprechperson — sie schickt euch bei Bedarf einen neuen Link.',
     euch: 'euch', eure: 'eure', euer: 'euer', ihr: 'ihr',
   },
@@ -64,7 +64,7 @@ export const WORTE = {
     uploadVoll: 'Über diesen Link sind schon so viele Dateien eingegangen, wie er annimmt — bitte senden Sie weitere über Ihre Ansprechperson.',
     formularHinweis: 'Sie können jederzeit zwischenspeichern und später weitermachen — der Link bleibt gleich.',
     formularFertig: 'Vielen Dank — alles ist bei uns angekommen. Sie können Antworten jederzeit noch ändern.',
-    ansprechperson: 'Ihre Ansprechperson', fuerEuch: 'für', gruss: 'Schön, dass Sie da sind.',
+    ansprechperson: 'Ihre Ansprechperson', fuerEuch: 'für', gruss: 'Schön, dass Sie da sind.', beiEuch: 'Bei Ihnen',
     ungueltig: 'Bitte wenden Sie sich an Ihre Ansprechperson — sie sendet Ihnen bei Bedarf einen neuen Link.',
     euch: 'Sie', eure: 'Ihre', euer: 'Ihr', ihr: 'Sie',
   },
@@ -116,7 +116,11 @@ export function tagMitWochentag(t: string): string {
 export interface KundenPhase {
   titel: string;
   stand: 'erledigt' | 'aktuell' | 'kommt';
-  /** Erledigter Anteil der Phase (0–1, zwei Stellen) — nur bei Phasen mit Schritten. */
+  /**
+   * Erledigter Anteil der Phase (0–1, zwei Stellen) — nur bei Phasen mit Schritten. DIESELBE Zählung wie intern (`fallReise`: ein Schritt mit seinen
+   * Bausteinen ist EINE Zeile): intern „1 von 3“, beim Kunden „33 % der Schritte“ (17.10., dritte Abnahme B5: vorher 20 % aus den Blättern). Die Zahl der
+   * Schritte selbst geht nicht an den Kunden (Positivliste unverändert).
+   */
   anteil?: number;
   /** Abstimmungspunkt am Ende der Phase (nur, wenn der Kunde beteiligt ist). */
   abstimmung?: { titel: string; erledigt: boolean };
@@ -202,13 +206,15 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
 
   // Phasen (Ebene 2), nur geteilte — mit Anteil der erledigten Schritte (Blätter darunter) und Abstimmungspunkt am Ende. Die LAUFENDE Phase steht immer
   // da (14.10., Abnahme A3: sonst fehlte „hier stehen wir“, wenn sie nicht geteilt war) — mit neutralem Titel (`kundenText`).
+  // Schritte je Phase aus DERSELBEN Rechnung wie intern (`fallReise` — Reise-Zeile, Ablauf), nicht aus den Blättern (17.10., dritte Abnahme B5).
+  const schritteJe = new Map((f ? fallReise(f, e.freigaben ?? [], e.heute).phasen : []).map(p => [p.id, { erledigt: p.erledigt, gesamt: p.gesamt }]));
   const phasen: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && (sichtbar(k) || (k.id === akt.phase?.id && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))).map(p => {
     const fertig = phaseFertig(p, l);
-    const blaetter = teilbaum(p.id, l).filter(x => x !== p.id && kinderVon(x, l).length === 0).map(x => nach.get(x)!).filter(k => k && k.status !== 'entfaellt');
+    const s = schritteJe.get(p.id);
     const a = abstimmungTitel(p);
     return {
       titel: kundenText(p.titel, a), stand: fertig ? 'erledigt' as const : akt.phase?.id === p.id ? 'aktuell' as const : 'kommt' as const,
-      ...(blaetter.length ? { anteil: fertig ? 1 : Math.round((blaetter.filter(k => k.status === 'erledigt').length / blaetter.length) * 100) / 100 } : {}),
+      ...(s && s.gesamt ? { anteil: fertig ? 1 : Math.round((s.erledigt / s.gesamt) * 100) / 100 } : {}),
       ...(a && p.freigabe ? { abstimmung: { titel: a, erledigt: !!f?.freigaben?.[p.freigabe] } } : {}),
     };
   });
@@ -230,8 +236,27 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   const anzeigeKnoten = np?.anzeigeId ? nach.get(np.anzeigeId) : undefined;
   const punktText = np?.text ?? null;
   const naechsteKnoten = reihe.filter(k => ebeneVon(k, l) >= 3 && k.id !== punkt?.id && k.id !== anzeigeKnoten?.id && (!naheIds || naheIds.has(k.id)) && offenSichtbar(k) && !istSammelSchritt(k) && !phaseFertig(k, l) && !teilbaum(k.id, l).some(x => x !== k.id && offenSichtbar(nach.get(x))));
-  const naechstes = [...(punktText ? [punktText] : []), ...naechsteKnoten.map(k => (k.faelligAm ? `${kundenText(k.titel, abstimmungTitel(k))} — bis ${tagText(k.faelligAm)}` : kundenText(k.titel, abstimmungTitel(k))))]
-    .filter((x, i, a) => a.indexOf(x) === i).slice(0, 5);
+  // 17.10. (dritte Abnahme C6): EIN klarer nächster Schritt; was danach kommt, steht mit Kontext da — „Danach: …“ (dieselbe Phase) bzw. „Danach in
+  // „<Phase>“: …“ (die nächste) — statt nackter Wörter („Prozess · CRM · Skripte · Einwände“). Eine Frist nur, wenn sie noch nicht verstrichen ist (B4).
+  const phaseVon = (k: FallKnoten): FallKnoten | undefined => { let x: FallKnoten | undefined = k; while (x && ebeneVon(x, l) > 2) x = x.elternId ? nach.get(x.elternId) : undefined; return x; };
+  const knotenText = (k: FallKnoten) => kundenText(k.titel, abstimmungTitel(k));
+  const ersterKnoten = punktText ? undefined : naechsteKnoten[0];
+  const erster = punktText ?? (ersterKnoten ? kundenNaechsterText({ art: 'schritt', titel: knotenText(ersterKnoten), ...(ersterKnoten.faelligAm ? { faelligAm: ersterKnoten.faelligAm } : {}) }, e.freigaben ?? [], e.heute) : null);
+  const danach = new Map<string, { phase: FallKnoten | undefined; titel: string[] }>();
+  for (const k of naechsteKnoten) {
+    if (k === ersterKnoten) continue;
+    const ph = phaseVon(k);
+    const schluessel = ph?.id ?? '';
+    if (!danach.has(schluessel)) danach.set(schluessel, { phase: ph, titel: [] });
+    // In der Liste „Danach …“ steht ein Abstimmungspunkt als „Abstimmung „Titel““ (kein zweiter Doppelpunkt nach „Danach in „Phase“:“).
+    const t = knotenText(k).replace(/^Abstimmung: (.+)$/, 'Abstimmung „$1“');
+    const g = danach.get(schluessel)!;
+    if (!g.titel.includes(t) && t !== erster) g.titel.push(t);
+  }
+  const naechstes = [
+    ...(erster ? [erster] : []),
+    ...[...danach.values()].filter(g => g.titel.length).map(g => danachText(g.phase && g.phase.id !== akt.phase?.id ? kundenText(g.phase.titel, abstimmungTitel(g.phase)) : null, g.titel)),
+  ];
 
   // Wartet auf euch: nur geteilte Entscheidungen, keine gesperrten Knoten — mit Frist und (wenn es ein Formular ist) dem Formular zum Ausfüllen.
   const wartendRoh = f ? wartetAufEuch({ ...f, knoten: l.filter(k => !(k.bausteinId && e.gesperrt.has(k.bausteinId))), entscheidungen: (f.entscheidungen ?? []).filter(x => x.geteilt) }, e.heute) : [];
@@ -294,10 +319,44 @@ export const AMPEL_KURZ: Record<KundenAmpel, string> = { gruen: 'im Plan', gelb:
  * „Als Nächstes“ in Kunden-Worten — derselbe Punkt wie intern (`naechsterPunkt`), nur übersetzt: ein Abstimmungspunkt mit dem Kunden heißt „Abstimmung: <Titel>“,
  * einer ohne Kunden „Interne Prüfung: <Titel>“, sonst der Titel ohne interne Kürzel/Zusätze; mit Frist „— bis TT.MM.JJJJ“.
  */
-export function kundenNaechsterText(p: Pick<NaechsterPunkt, 'art' | 'titel' | 'freigabe' | 'faelligAm'>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[]): string {
+export function kundenNaechsterText(p: Pick<NaechsterPunkt, 'art' | 'titel' | 'freigabe' | 'faelligAm'> & { id?: string }, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], heute?: string): string {
   const fg = p.art === 'freigabe' && p.freigabe ? freigaben.find(x => x.id === p.freigabe) : undefined;
-  const titel = fg ? (fg.wer === 'intern' ? `Interne Prüfung: ${kundenText(fg.titel)}` : `Abstimmung: ${kundenText(fg.titel)}`) : kundenText(p.titel);
-  return p.faelligAm ? `${titel} — bis ${tagText(p.faelligAm)}` : titel;
+  const ob = p.id ? obSchluessel(p.id) : null;
+  const intern = !!ob && !!OB_KUNDEN_TITEL[ob];
+  const titel = fg ? (fg.wer === 'intern' ? `Interne Prüfung: ${kundenText(fg.titel)}` : `Abstimmung: ${kundenText(fg.titel)}`) : p.id ? kundenPunktTitel({ id: p.id, titel: p.titel }) : kundenText(p.titel);
+  // 17.10. (dritte Abnahme B4): eine verstrichene Frist ist nie ein Datum für den Kunden; eine interne Reaktionszeit (Willkommensmail) auch nicht.
+  return p.faelligAm && !intern && (!heute || p.faelligAm >= heute) ? `${titel} — bis ${tagText(p.faelligAm)}` : titel;
+}
+
+/**
+ * Onboarding-Schritte in Kunden-Worten — nie der Name einer internen Reaktionszeit (17.10., dritte Abnahme B4: der Kunde las „Willkommen in 24 Stunden —
+ * bis 14.10.“ am 17.10.). Ihre Frist ist unsere Uhr, nicht seine — sie steht beim Kunden nie.
+ */
+const OB_KUNDEN_TITEL: Partial<Record<string, string>> = { willkommen: 'Willkommensmail mit den ersten Schritten' };
+/** Der Titel eines Punkts beim Kunden — EINE Übersetzung (Kunden-Seite, Report, Präsentation; Wächter fulfillment-stimmigkeit). */
+export function kundenPunktTitel(p: { id: string; titel: string }): string {
+  const ob = obSchluessel(p.id);
+  return (ob && OB_KUNDEN_TITEL[ob]) || kundenText(p.titel);
+}
+
+/** „Danach: a, b, c“ bzw. „Danach in „Phase“: a, b, c und n weitere“ — EIN Format für Kunden-Seite, Report und Reise-Zeile (`naechstesGliedern` liest es). */
+export const DANACH_MAX = 4;
+export function danachText(phase: string | null, titel: readonly string[]): string {
+  const liste = titel.slice(0, DANACH_MAX).join(', ') + (titel.length > DANACH_MAX ? ` und ${titel.length - DANACH_MAX} weitere` : '');
+  return phase ? `Danach in „${phase}“: ${liste}` : `Danach: ${liste}`;
+}
+/** Liest „Als Nächstes“ zurück in Kästchen: was in der laufenden Phase ansteht (`jetzt`) und je spätere Phase ihre Schritte — das Gegenstück zu `danachText`. */
+export function naechstesGliedern(naechstes: readonly string[]): { jetzt: string[]; jetztMehr: number; spaeter: { phase: string; titel: string[]; mehr: number }[] } {
+  const liste = (s: string) => { const m = / und (\d+) weitere$/.exec(s); return { titel: (m ? s.slice(0, m.index) : s).split(', ').filter(Boolean), mehr: m ? Number(m[1]) : 0 }; };
+  const jetzt: string[] = []; let jetztMehr = 0;
+  const spaeter: { phase: string; titel: string[]; mehr: number }[] = [];
+  for (const t of naechstes) {
+    const ph = /^Danach in „(.+?)“: (.+)$/.exec(t);
+    if (ph) { spaeter.push({ phase: ph[1], ...liste(ph[2]) }); continue; }
+    if (t.startsWith('Danach: ')) { const l = liste(t.slice(8)); jetzt.push(...l.titel); jetztMehr += l.mehr; continue; }
+    jetzt.push(t);
+  }
+  return { jetzt, jetztMehr, spaeter };
 }
 
 /**
@@ -330,8 +389,8 @@ export function kundenNaechsterPunkt(f: Fall, freigaben: readonly Pick<Freigabep
     for (let x = punktKnoten.elternId ? nach.get(punktKnoten.elternId) : undefined; x && ebeneVon(x, l) >= 3; x = x.elternId ? nach.get(x.elternId) : undefined) if (sichtbar(x)) { anzeige = x; break; }
   }
   const text = punkt.zustand === 'wartet_kunde' ? null
-    : geteilt ? kundenNaechsterText(punkt, freigaben)
-      : anzeige ? kundenNaechsterText({ art: 'schritt', titel: kundenText(anzeige.titel, abstimmungTitel(anzeige)), ...(anzeige.faelligAm ? { faelligAm: anzeige.faelligAm } : {}) }, freigaben)
+    : geteilt ? kundenNaechsterText(punkt, freigaben, heute)
+      : anzeige ? kundenNaechsterText({ art: 'schritt', titel: kundenText(anzeige.titel, abstimmungTitel(anzeige)), ...(anzeige.faelligAm ? { faelligAm: anzeige.faelligAm } : {}) }, freigaben, heute)
         : null;
   return { punkt, text, ...(anzeige ? { anzeigeId: anzeige.id } : {}) };
 }
@@ -372,6 +431,42 @@ export function kundenLage(e: {
 }
 
 // ── Zeichen-Modelle (dieselben für Oberfläche und PDF) ───────────────────────────────────────────────────────────────────────────────
+
+/** Eine Phase der Kunden-Reise in der Form der Reise-Zeile (components/os/fulfillment/reise/ReiseBild.tsx `BildSpalte`). */
+export interface KundenReiseSpalte {
+  id: string; nr: number; titel: string; zustand: 'fertig' | 'jetzt' | 'offen'; unter?: string;
+  kaestchen: { id: string; titel: string; zustand: 'hier' | 'offen' }[]; mehr: number;
+  raute?: { titel: string; gegeben: boolean };
+  band?: { text?: string; achtung?: boolean };
+}
+/** So viele „als Nächstes“ stehen als Kästchen unter der laufenden Phase (Rest „+n“) — dieselbe Zahl wie intern (`KAESTCHEN_MAX`). */
+export const KUNDEN_KAESTCHEN = 4;
+
+/**
+ * Die Reise des Kunden als EINE Zeile (17.10., Miro-Standard) — NUR aus den Teilen der Positivliste (`zeitstrahl`, `naechstes`, Zahl „brauchen
+ * wir“): Phasen nebeneinander (erledigt · hier stehen wir · kommt), unter der laufenden Phase höchstens vier „als Nächstes“ (das erste hervorgehoben),
+ * der Abstimmungspunkt als Raute, im Band („Bei Ihnen“ bzw. „Bei euch“) unter der laufenden Phase, wie viel gerade beim Kunden liegt. Dieselbe Rechnung für Seite, Präsentation und PDF.
+ */
+export function kundenReise(phasen: readonly KundenPhase[], naechstes: readonly string[], braucht: number): KundenReiseSpalte[] {
+  const jetzt = phasen.findIndex(p => p.stand === 'aktuell');
+  const g = naechstesGliedern(naechstes);
+  return phasen.map((p, i) => {
+    const hier = i === jetzt;
+    // Unter der laufenden Phase ihre nächsten Schritte; unter einer späteren Phase, was „danach in …“ dort ansteht (17.10., dritte Abnahme C6).
+    const spaeter = !hier && p.stand !== 'erledigt' ? g.spaeter.find(x => x.phase === p.titel) : undefined;
+    const titel = hier ? g.jetzt : spaeter?.titel ?? [];
+    const mehr = Math.max(0, titel.length - KUNDEN_KAESTCHEN) + (hier ? g.jetztMehr : spaeter?.mehr ?? 0);
+    return {
+      id: `phase-${i + 1}`, nr: i + 1, titel: p.titel, zustand: p.stand === 'erledigt' ? 'fertig' as const : hier ? 'jetzt' as const : 'offen' as const,
+      // „33 % der Schritte“ — dieselbe Grundlage wie intern „1 von 3“ (B5), als Anteil übersetzt.
+      ...(p.stand === 'erledigt' ? { unter: 'erledigt' } : hier && p.anteil != null ? { unter: `${Math.round(p.anteil * 100)}\u00A0% der Schritte` } : {}),
+      kaestchen: titel.slice(0, KUNDEN_KAESTCHEN).map((t, j) => ({ id: `n-${i + 1}-${j + 1}`, titel: t, zustand: hier && j === 0 ? 'hier' as const : 'offen' as const })),
+      mehr,
+      ...(p.abstimmung ? { raute: { titel: p.abstimmung.titel, gegeben: p.abstimmung.erledigt } } : {}),
+      ...(hier && braucht ? { band: { text: `${braucht} ${wort(braucht, 'Punkt', 'Punkte')} offen`, achtung: true } } : {}),
+    };
+  });
+}
 
 export interface StrahlSegment { titel: string; stand: KundenPhase['stand']; von: number; bis: number; fuellung: number; abstimmung?: KundenPhase['abstimmung'] }
 /**
