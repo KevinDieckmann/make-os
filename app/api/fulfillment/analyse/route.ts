@@ -16,6 +16,7 @@ import { ANALYSE_AGENTEN } from '@/lib/fulfillment/lesen';
 import type { AnalyseAgentId } from '@/lib/fulfillment/typen';
 import { analyseLage } from '@/lib/fulfillment/analyse/lage';
 import { laufStarten, laufAbbrechen, tiefenberichtStarten } from '@/lib/fulfillment/analyse/lauf';
+import { modellSchranke } from '@/lib/zugang/umfang';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,8 @@ export async function POST(req: Request) {
   if (aktion === 'starten') {
     const agent = typeof b.agent === 'string' && (ANALYSE_AGENTEN as readonly string[]).includes(b.agent) ? (b.agent as AnalyseAgentId) : null;
     if (!agent) return NextResponse.json({ ok: false, fehler: 'Unbekannter Agent.' }, { status: 400 });
+    // Regel 7 (18.10., Gesamtprüfung L3 B7): ein Lauf löst Modellaufrufe (mit Web-Suche) aus — das Stundenbudget je Person gilt auch hier.
+    const schranke = modellSchranke(req); if (schranke) return schranke;
     const r = await einmalig('fulfillment-analyse', b.anfrageId, async () => laufStarten({
       mandatId, agent, bestaetigtCent: typeof b.bestaetigtCent === 'number' ? b.bestaetigtCent : Number.NaN,
       ...(typeof b.grund === 'string' ? { grund: b.grund } : {}), ...(typeof b.funktion === 'string' ? { funktion: b.funktion } : {}),
@@ -52,6 +55,7 @@ export async function POST(req: Request) {
     return NextResponse.json(r.body, { status: r.status });
   }
   if (aktion === 'tiefenbericht') {
+    const schranke = modellSchranke(req); if (schranke) return schranke;
     const r = await einmalig('fulfillment-tiefenbericht', b.anfrageId, async () => tiefenberichtStarten({
       mandatId, ...(typeof b.frage === 'string' ? { frage: b.frage } : {}), ...(typeof b.bestaetigtCent === 'number' ? { bestaetigtCent: b.bestaetigtCent } : {}),
     }, z.person), undefined, { wer: z.person, merken: a => a.status === 202 });
