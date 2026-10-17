@@ -41,3 +41,13 @@ describe('Mandat beenden', () => {
     expect(planpostenAus(mandat({ status: 'beendet', ende: '2026-10-17' }), '2026-10-20')).toBeNull();
   });
 });
+
+describe('Liquiditäts-Posten beim Start (17.10., Gesamtprüfung L1 B8)', () => {
+  it('erste Zahlung ab dem Beginn im laufenden Monat; ohne Verlängerung endet der Posten mit der Mindestlaufzeit', () => {
+    const p = planpostenAus(mandat({ start: '2026-10-17', verlaengerung: 'manuell', mindestlaufzeitMonate: 6 }), '2026-10-17')!;
+    expect(p.ab).toBe('2026-10-31');
+    expect(p.bis).toBe('2027-04-30');
+    expect(planpostenAus(mandat({ start: '2026-10-17' }), '2026-10-17')!.bis).toBeUndefined(); // auto: läuft weiter
+    expect(planpostenAus(mandat({ start: '2026-05-01' }), '2026-10-17')!.ab).toBe('2026-10-15'); // laufendes Mandat: ab Monatsanfang
+  });
+});

@@ -21,6 +21,14 @@ function plusMonate(datum: string, n: number): string {
   d.setUTCDate(Math.min(tag, letzter));
   return d.toISOString().slice(0, 10);
 }
+/** Tag + n Monate (am Monatsende gekappt) + t Tage. */
+const plusMonateTag = (datum: string, n: number, t = 0) => {
+  const [j, mo, ta] = datum.slice(0, 10).split('-').map(Number);
+  const ziel = new Date(Date.UTC(j, mo - 1 + n, 1, 12));
+  const letzter = new Date(Date.UTC(ziel.getUTCFullYear(), ziel.getUTCMonth() + 1, 0, 12)).getUTCDate();
+  ziel.setUTCDate(Math.min(ta, letzter) + t);
+  return ziel.toISOString().slice(0, 10);
+};
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 export const HEALTH_GEWICHTE = { beteiligung: 25, umsetzung: 25, wirkung: 30, zahlung: 10, stimmung: 10 } as const;
@@ -130,14 +138,20 @@ export function planpostenAus(m: Mandat, heute: string): Planposten | null {
   // Eine USt-Funktion (#79/#80): auf den Cent, nicht auf ganze Euro.
   const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
   const basis = m.start && m.start > heute ? m.start : heute;
-  const ab = plusTage(m.rechnungsrhythmus === 'einmalig' || m.honorar.basis === 'einmalig' ? basis : `${basis.slice(0, 8)}01`, m.zahlungszielTage || 14);
+  // Beginnt das Mandat in diesem Monat nach dem 1., zählt die erste Rechnung ab dem Beginn (17.10., Gesamtprüfung L1 B8 — vorher „ab 15.10.“ bei Start am
+  // 17.10.). Ohne Verlängerung endet der Posten mit der Mindestlaufzeit (letzte Zahlung mit dem Zahlungsziel).
+  const monatsAnfang = `${basis.slice(0, 8)}01`;
+  const rechnungsTag = m.start && m.start.slice(0, 7) === basis.slice(0, 7) && m.start > monatsAnfang ? m.start : monatsAnfang;
+  const ab = plusTage(m.rechnungsrhythmus === 'einmalig' || m.honorar.basis === 'einmalig' ? basis : rechnungsTag, m.zahlungszielTage || 14);
+  const mindestEnde = !m.ende && m.verlaengerung !== 'auto' && m.mindestlaufzeitMonate && m.start ? plusMonateTag(m.start, m.mindestlaufzeitMonate, -1) : null;
+  const bis = m.ende ?? (mindestEnde ? plusTage(mindestEnde, m.zahlungszielTage || 14) : undefined);
   const sicher = m.status === 'aktiv' && m.vertragUnterschrieben;
   // Register-Gesellschaften (`g-…`, 04.10.) führt der Liquiplan noch nicht — dann ohne Firma (wie „offen“), nie still bei kdc.
   const firma = m.gesellschaft === 'offen' || istRegisterKennung(m.gesellschaft) ? undefined : m.gesellschaft;
   return {
     id: m.planpostenId ?? `lp-mandat-${m.id}`, titel: `${m.kunde} · ${m.titel}`.slice(0, 120), betrag: brutto,
     rhythmus: m.honorar.basis === 'einmalig' || m.rechnungsrhythmus === 'einmalig' ? 'einmalig' : m.rechnungsrhythmus === 'quartal' ? 'quartal' : 'monatlich',
-    ab, ...(m.ende ? { bis: m.ende } : {}), sicher, ...(sicher ? {} : { wahrscheinlich: m.status === 'aktiv' ? 80 : 50 }),
+    ab, ...(bis ? { bis } : {}), sicher, ...(sicher ? {} : { wahrscheinlich: m.status === 'aktiv' ? 80 : 50 }),
     ...(firma ? { firmaId: firma } : {}), kategorie: 'mandat',
     notiz: `Aus dem Mandat (CRM). ${m.honorar.netto ? `${m.honorar.betrag} € netto${m.ustSatz ? ` + ${m.ustSatz} % USt` : ', Reverse Charge'}` : `${m.honorar.betrag} €`}.`,
   };
