@@ -20,7 +20,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Haken, Knopf, Segmente, Fortschritt, feld, auswahl, Spalten, Spalte, LEUCHT, Hinweis } from '../ui';
 import { useZuZiel } from '../ziel';
 import { deckungStand } from '@/lib/kennzahlen/anteil';
-import { EINHEIT_LABEL, STEUER_EINHEITEN, UG_STEUER_WEG, steuerBereich, type Einheit, type Frist, type SteuerEinstellungen, type UstZeitraum, type Prognose, type BelegPunkt, type UebergabePunkt, type Jahresgewinn } from '@/lib/steuern/rechnen';
+import { EINHEIT_LABEL, KAPITAL_FIRMEN as KAPITAL, STEUER_EINHEITEN, steuerWegFuer, steuerBereich, type Einheit, type Frist, type SteuerEinstellungen, type UstZeitraum, type Prognose, type BelegPunkt, type UebergabePunkt, type Jahresgewinn } from '@/lib/steuern/rechnen';
 import type { EstGemeinsam } from '@/lib/finanzen/est-gemeinsam';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
@@ -334,17 +334,20 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
   const vzSenden = Object.fromEntries(vzFelder.map(([k]) => [k, vz[k]]));
   const eingabe = { ...feld, width: 110 };
   const wahl = auswahl;
+  // Welche Kapitalgesellschaft rechnet mit den Sätzen der Finanzplanung (`saetze`), welche noch mit Vorgabe + eigenem Hebesatz (ohne Plan)?
+  const kapitalMitPlan = KAPITAL.filter(f => !!e[f].saetze);
+  const kapitalOhnePlan = KAPITAL.filter(f => !e[f].saetze);
   const firma = (f: 'kdc' | 'kdv' | 'ug') => {
     const x = e[f];
     const setze = (p: Record<string, unknown>) => void tun({ einstellungen: { [f]: p } });
     // Selbstständigkeit mit Finanzplanung: Rechtsform und Gewerbesteuer kommen von dort (EINE Quelle, „Welche Steuern gelten?“).
-    // Die Hauptgesellschaft (15.10.) ebenso, sobald es eine Finanzplanung gibt (`saetze`).
-    const ausPlan = (f === 'kdc' && !!est) || (f === 'ug' && !!x.saetze);
+    // Die Kapitalgesellschaften ebenso, sobald es eine Finanzplanung gibt (`saetze`; Hauptgesellschaft seit 15.10., KD Ventures seit 17.10., L2 E2).
+    const ausPlan = (f === 'kdc' && !!est) || (f !== 'kdc' && !!x.saetze);
     return (
       <div key={f} style={{ display: 'grid', gap: 8 }}>
         <span style={{ fontWeight: 700, color: EINHEIT_FARBE[f] }}>{EINHEIT_LABEL[f]}</span>
-        {ausPlan && f === 'ug' && x.saetze ? (
-          <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Rechtsform: {x.rechtsform === 'einzel' ? 'keine Kapitalgesellschaft' : `${x.rechtsform === 'ug' ? 'UG' : 'GmbH'} (Kapitalgesellschaft)`} · KSt {(x.saetze.kst * 100).toLocaleString('de-DE')} %{x.saetze.soli ? ` + Soli ${(x.saetze.soli * 100).toLocaleString('de-DE')} %` : ''}{x.gewerbe ? ` · Hebesatz ${x.saetze.hebesatz} %` : ' · ohne Gewerbesteuer'} · aus der <Link href={UG_STEUER_WEG.href} style={{ color: C.inkDim }}>Finanzplanung › Welche Steuern gelten?</Link></span>
+        {ausPlan && f !== 'kdc' && x.saetze ? (
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Rechtsform: {x.rechtsform === 'einzel' ? 'keine Kapitalgesellschaft' : `${x.rechtsform === 'ug' ? 'UG' : 'GmbH'} (Kapitalgesellschaft)`} · KSt {(x.saetze.kst * 100).toLocaleString('de-DE')} %{x.saetze.soli ? ` + Soli ${(x.saetze.soli * 100).toLocaleString('de-DE')} %` : ''}{x.gewerbe ? ` · Hebesatz ${x.saetze.hebesatz} %` : ' · ohne Gewerbesteuer'} · aus der <Link href={steuerWegFuer(f).href} style={{ color: C.inkDim }}>Finanzplanung › Welche Steuern gelten?</Link></span>
         ) : ausPlan ? (
           <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Rechtsform: {x.gewerbe ? 'Einzelunternehmen (Gewerbe) — mit Gewerbesteuer' : 'Freiberuf — ohne Gewerbesteuer'} · aus der <Link href={WEG.finanzplanung('privat', 'selbst')} style={{ color: C.inkDim }}>Finanzplanung › Selbstständigkeit › Welche Steuern gelten?</Link></span>
         ) : (
@@ -370,7 +373,7 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
     <Karte i={5} id="einstellungen">
       <Ueberschrift rechts={<Knopf leise onClick={() => setOffen(!offen)}>{offen ? 'schließen' : 'öffnen'}</Knopf>}>Steuer-Einstellungen</Ueberschrift>
       {!offen ? (
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{bereich === 'privat' && e.kdc && <>{EINHEIT_LABEL.kdc}: {e.kdc.rechtsform === 'freiberuf' ? 'Freiberufler' : e.kdc.rechtsform === 'einzel' ? 'Gewerbe' : e.kdc.rechtsform}, USt {e.kdc.ust} · Einkommensteuer gemeinsam aus der Finanzplanung · </>}{EINHEIT_LABEL.kdv}: {e.kdv.rechtsform.toUpperCase()}, USt {e.kdv.ust} · {EINHEIT_LABEL.ug}: {e.ug.rechtsform === 'einzel' ? 'Einzelunternehmen' : e.ug.rechtsform.toUpperCase()}, USt {e.ug.ust} · {e.mitBerater ? 'mit Steuerberater' : 'ohne Steuerberater'} · Hebesatz {e.ug.saetze ? `${EINHEIT_LABEL.kdv} ${e.hebesatz} %, ${EINHEIT_LABEL.ug} ${e.ug.saetze.hebesatz} %` : `${e.hebesatz} %`}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{bereich === 'privat' && e.kdc && <>{EINHEIT_LABEL.kdc}: {e.kdc.rechtsform === 'freiberuf' ? 'Freiberufler' : e.kdc.rechtsform === 'einzel' ? 'Gewerbe' : e.kdc.rechtsform}, USt {e.kdc.ust} · Einkommensteuer gemeinsam aus der Finanzplanung · </>}{EINHEIT_LABEL.kdv}: {e.kdv.rechtsform.toUpperCase()}, USt {e.kdv.ust} · {EINHEIT_LABEL.ug}: {e.ug.rechtsform === 'einzel' ? 'Einzelunternehmen' : e.ug.rechtsform.toUpperCase()}, USt {e.ug.ust} · {e.mitBerater ? 'mit Steuerberater' : 'ohne Steuerberater'} · Hebesatz {kapitalMitPlan.length ? KAPITAL.map(f => `${EINHEIT_LABEL[f]} ${e[f].saetze?.hebesatz ?? e.hebesatz} %`).join(', ') : `${e.hebesatz} %`}</div>
       ) : (
         <div style={{ display: 'grid', gap: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 18 }}>
@@ -385,11 +388,11 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
             {vzFelder.map(([k, l]) => (
               <label key={k} style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{l} (€)</span><input inputMode="decimal" value={vz[k]} onChange={ev => setVz({ ...vz, [k]: ev.target.value })} placeholder="laut Bescheid" style={eingabe} /></label>
             ))}
-            <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Hebesatz{e.ug.saetze ? ` ${EINHEIT_LABEL.kdv}` : ''} (%)</span><input inputMode="numeric" value={hebe} onChange={ev => setHebe(ev.target.value)} style={eingabe} /></label>
+            {kapitalOhnePlan.length > 0 && <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Hebesatz{kapitalMitPlan.length ? ` ${kapitalOhnePlan.map(f => EINHEIT_LABEL[f]).join(', ')}` : ''} (%)</span><input inputMode="numeric" value={hebe} onChange={ev => setHebe(ev.target.value)} style={eingabe} /></label>}
             <label style={{ display: 'grid', gap: 3 }}><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Aufgabe Tage vorher</span><input inputMode="numeric" value={vorlauf} onChange={ev => setVorlauf(ev.target.value)} style={eingabe} /></label>
             <Knopf onClick={() => void tun({ einstellungen: { vorauszahlung: vzSenden, hebesatz: hebe, vorlaufTage: vorlauf } })}>Speichern</Knopf>
           </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{bereich === 'privat' && est && <>Vorauszahlungen auf Einkommen- und Gewerbesteuer der Selbstständigkeit: für die Rücklage zählen die der Finanzplanung (eine Quelle) — „ESt je Quartal“ und „GewSt Selbstständigkeit“ hier gelten nur ohne Finanzplanung und als Betrag an den Fristen. </>}{bereich === 'privat' && <>Einkommensteuer und Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (gemeinsam mit dem Gehalt, Gewerbesteuer mit Freibetrag 24.500 € und dem Hebesatz aus „Welche Steuern gelten?“, Anrechnung § 35, Soli) — die frühere Steuerquote gilt nicht mehr. </>}{e.ug.saetze ? EINHEIT_LABEL.kdv : `${EINHEIT_LABEL.kdv} und ${EINHEIT_LABEL.ug}`} rechne{e.ug.saetze ? 't' : 'n'} mit 15,825 % (KSt + Soli) und 3,5 % × Hebesatz Gewerbesteuer{e.ug.saetze ? <>; {EINHEIT_LABEL.ug} mit den Sätzen aus der <Link href={UG_STEUER_WEG.href} style={{ color: C.inkDim }}>Finanzplanung</Link></> : ''}.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{bereich === 'privat' && est && <>Vorauszahlungen auf Einkommen- und Gewerbesteuer der Selbstständigkeit: für die Rücklage zählen die der Finanzplanung (eine Quelle) — „ESt je Quartal“ und „GewSt Selbstständigkeit“ hier gelten nur ohne Finanzplanung und als Betrag an den Fristen. </>}{bereich === 'privat' && <>Einkommensteuer und Gewerbesteuer der Selbstständigkeit rechnet die Finanzplanung (gemeinsam mit dem Gehalt, Gewerbesteuer mit Freibetrag 24.500 € und dem Hebesatz aus „Welche Steuern gelten?“, Anrechnung § 35, Soli) — die frühere Steuerquote gilt nicht mehr. </>}{kapitalOhnePlan.length > 0 && <>{kapitalOhnePlan.map(f => EINHEIT_LABEL[f]).join(' und ')} rechne{kapitalOhnePlan.length === 1 ? 't' : 'n'} mit 15,825 % (KSt + Soli) und 3,5 % × Hebesatz Gewerbesteuer{kapitalMitPlan.length ? '; ' : '.'}</>}{kapitalMitPlan.length > 0 && <>{kapitalMitPlan.map(f => EINHEIT_LABEL[f]).join(' und ')} mit den Sätzen aus der <Link href={steuerWegFuer(kapitalMitPlan[0]).href} style={{ color: C.inkDim }}>Finanzplanung</Link> (dieselben wie dort).</>}</div>
         </div>
       )}
     </Karte>

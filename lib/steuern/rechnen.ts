@@ -38,6 +38,11 @@ export const UG_STEUER_WEG = {
   text: 'Sätze in der Finanzplanung ansehen',
   href: `${WEG.finanzplanung(bereichVon('ug') === 'privat' ? 'privat' : 'business', 'gesellschaften')}&steuern=ug`,
 } as const;
+/** Derselbe Weg je Kapitalgesellschaft (17.10., L2 E2: auch KD Ventures rechnet mit den Sätzen der Finanzplanung). */
+export const steuerWegFuer = (firma: 'ug' | 'kdv'): { text: string; href: string } => (firma === 'ug' ? UG_STEUER_WEG : {
+  text: UG_STEUER_WEG.text,
+  href: `${WEG.finanzplanung(bereichVon(firma) === 'privat' ? 'privat' : 'business', 'gesellschaften')}&steuern=${firma}`,
+});
 
 export interface FirmaSteuer {
   rechtsform: 'freiberuf' | 'einzel' | 'ug' | 'gmbh';
@@ -108,14 +113,18 @@ export interface KapitalProfilEin {
  * 15.10.: ebenso die Hauptgesellschaft (`ug`) — Rechtsform (Kapitalgesellschaft bleibt GmbH/UG wie gespeichert), Gewerbesteuer an/aus und die
  * Sätze (KSt, Soli, Messzahl, Hebesatz) aus ihrem Steuerprofil. Ohne Profil (kein Plan) bleibt sie bei der gespeicherten Einstellung.
  */
-export function mitFinanzplanung(e: SteuerEinstellungen, est: Pick<EstGemeinsam, 'gewerbe'> | null, ug: KapitalProfilEin | null = null): SteuerEinstellungen {
-  if (!est && !ug) return e;
+export function mitFinanzplanung(e: SteuerEinstellungen, est: Pick<EstGemeinsam, 'gewerbe'> | null, ug: KapitalProfilEin | null = null, kdv: KapitalProfilEin | null = null): SteuerEinstellungen {
+  if (!est && !ug && !kdv) return e;
   const x: SteuerEinstellungen = { ...e };
   if (est) x.kdc = { ...e.kdc, rechtsform: est.gewerbe ? 'einzel' : 'freiberuf', gewerbe: est.gewerbe };
-  if (ug) {
-    const rechtsform: FirmaSteuer['rechtsform'] = !ug.kapital ? 'einzel' : e.ug.rechtsform === 'ug' ? 'ug' : 'gmbh';
-    x.ug = { ...e.ug, rechtsform, gewerbe: ug.gewstAn, saetze: { kst: ug.kstAn ? ug.kst : 0, soli: ug.soliAn ? ug.soli : 0, messzahl: ug.messzahl, hebesatz: ug.hebesatz, plan: ug.plan } };
-  }
+  // Kapitalgesellschaft bleibt UG/GmbH wie gespeichert (sonst die Vorgabe der Gesellschaft); laut Plan keine → Einzelunternehmen.
+  const kapital = (firma: KapitalFirma, k: KapitalProfilEin): FirmaSteuer => ({
+    ...e[firma], rechtsform: !k.kapital ? 'einzel' : istKapital(e[firma]) ? e[firma].rechtsform : STANDARD_STEUERN[firma].rechtsform, gewerbe: k.gewstAn,
+    saetze: { kst: k.kstAn ? k.kst : 0, soli: k.soliAn ? k.soli : 0, messzahl: k.messzahl, hebesatz: k.hebesatz, plan: k.plan },
+  });
+  if (ug) x.ug = kapital('ug', ug);
+  // 17.10. (L2 E2): KD Ventures ebenso — dieselben Sätze wie in der Finanzplanung, keine zweite Rechnung mit festen 15,825 %.
+  if (kdv) x.kdv = kapital('kdv', kdv);
   return x;
 }
 
@@ -331,9 +340,9 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Partial<
     // KD Ventures behält ihre Kennung `kst` (älterer Stand, Tests, Links) — die Hauptgesellschaft heißt `kst-ug`.
     const id = firma === 'kdv' ? 'kst' : `kst-${firma}`;
     const titel = `Körperschaft- und Gewerbesteuer ${jahr}`;
-    // Die Hauptgesellschaft nur als Kapitalgesellschaft (Rechtsform aus der Finanzplanung) — KD Ventures rechnet wie bisher immer so.
-    if (firma === 'ug' && !istKapital(f)) {
-      z.push({ id, einheit: firma, titel, betrag: null, formel: 'Körperschaftsteuer nur für Kapitalgesellschaften', luecke: `Rechtsform ${EINHEIT_LABEL[firma]} laut Finanzplanung: keine Kapitalgesellschaft — dort unter „Welche Steuern gelten?“ prüfen`, href: UG_STEUER_WEG.href });
+    // Nur als Kapitalgesellschaft (Rechtsform aus der Finanzplanung; seit 17.10., L2 E2, für beide Gesellschaften).
+    if (!istKapital(f)) {
+      z.push({ id, einheit: firma, titel, betrag: null, formel: 'Körperschaftsteuer nur für Kapitalgesellschaften', luecke: `Rechtsform ${EINHEIT_LABEL[firma]} laut Finanzplanung: keine Kapitalgesellschaft — dort unter „Welche Steuern gelten?“ prüfen`, href: steuerWegFuer(firma).href });
       continue;
     }
     const gv = gewinn[firma] ?? null;
