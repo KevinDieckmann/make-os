@@ -522,7 +522,7 @@ const ANSPRACHE = new Set(['anruf', 'mail', 'linkedin', 'gespraech', 'termin', '
  * zählen nie). Gespräche `echtesGespraech`, neue Leads = von Hand angelegte Personen, Angebote = Deals, die die Stufe „Angebot“ erreichten,
  * Deals = neu angelegt, Power Hours = Sitzungen, Reaktivieren = Ansprache nach ≥ 90 Tagen Stille, Events = Gäste „da“ auf Events der Woche.
  */
-export function wochenIst(kontakte: readonly (Pick<Kontakt, 'id' | 'importiertAm' | 'aktivitaeten' | 'besitzer'> & { quelle?: string })[], crm: Pick<CrmBestand, 'chancen' | 'sitzungen' | 'teilnahmen' | 'events'>, von: string, bis: string, zeilen: readonly Pick<LeadZeile, 'personen'>[]): { team: WochenZahlen; je: Record<string, WochenZahlen> } {
+export function wochenIst(kontakte: readonly (Pick<Kontakt, 'id' | 'importiertAm' | 'aktivitaeten' | 'besitzer'> & { quelle?: string })[], crm: Pick<CrmBestand, 'chancen' | 'sitzungen' | 'teilnahmen' | 'events'>, von: string, bis: string, zeilen: readonly { personen: readonly { id: string }[] }[]): { team: WochenZahlen; je: Record<string, WochenZahlen> } {
   const team = leer();
   const je: Record<string, WochenZahlen> = {};
   const plus = (art: ChallengeArt, wer: string | undefined) => { team[art]++; if (wer && wer !== 'system') (je[wer] ??= leer())[art]++; };

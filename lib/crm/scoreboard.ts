@@ -27,7 +27,7 @@ import { nurBusinessGezaehlt } from './zaehlung-business';
 import type { KpiAmpel } from './kennzahlen';
 import { echtesGespraech } from './pipeline';
 import { neuerLead } from './neue-leads';
-import { leads, type LeadZeile } from './leads';
+import { leads } from './leads';
 import type { Traktion, Welt } from './traktion';
 import { followUpBis } from './events';
 import { istNetzwerkenEvent } from './marke';
@@ -186,7 +186,7 @@ export function salesAnteilAb(sitzungen: readonly { person: string; datum: strin
  * Teamziel geteilt durch die Zahl der Personen MIT Sales-Anteil, aufgerundet — `salesAnteilAb`).
  * Gespräche und neue SQL messen an DERSELBEN Messlatte wie Kennzahlen und Traktions-Index (`messlatte`, Ziele der Wertelisten, 7.2).
  */
-export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: string, wochen = 8, plan?: PlanWoche | null, leadZeilen?: readonly Pick<LeadZeile, 'personen'>[]): Scoreboard {
+export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: string, wochen = 8, plan?: PlanWoche | null, leadZeilen?: readonly { personen: readonly { id: string }[] }[]): Scoreboard {
   // Nur Business (17.10., L2 B2): Deals, Mandate und Angebote einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
   const crm = nurBusinessGezaehlt(crm0);
   const W = wochenBis(heute, Math.max(1, Math.min(52, Math.round(wochen) || 8)));
