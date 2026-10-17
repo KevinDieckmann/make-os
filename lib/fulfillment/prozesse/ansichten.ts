@@ -11,6 +11,7 @@
 import type { Entscheidung, Fall, FallKnoten, Puls, Rhythmus, RitualVorlage, Stakeholder } from '../typen';
 import type { KreislaufId } from '@/lib/crm/planung';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { reportNaechsterFaellig } from '@/lib/crm/treppe';
 import { markeNachsorge, NACHSORGE_TEXT, type NachsorgeArt } from './wirkung';
 import { naechsterFallTermin } from './rituale';
 import { WEG } from '@/lib/wege';
@@ -191,14 +192,16 @@ export interface ReportAchse { von: string; bis: string; heuteX: number; reports
 
 /**
  * Die Report-Zeitachse ab dem Start des Falls: jeder erstellte Report als Punkt (gesendet = gefüllt), dazu die Soll-Termine im Zwei-Wochen-Takt
- * (erfüllt, wenn in den 14 Tagen davor ein Report entstand) und der nächste fällige Termin (letzter Report + 14 Tage, ohne Report Start + 14).
+ * (erfüllt, wenn in den 14 Tagen davor ein Report entstand) und der nächste fällige Termin (`reportNaechsterFaellig`, lib/crm/treppe.ts — dieselbe Regel wie
+ * die Treppe und der Hänger im Fall-Kopf).
  */
 export function reportAchse(e: { start: string; heute: string; reports: readonly { am: string }[]; gesendetAm?: string | null; takt?: number }): ReportAchse {
   const takt = e.takt ?? REPORT_TAKT_TAGE;
   const start = e.start.slice(0, 10);
   const tage = e.reports.map(r => r.am.slice(0, 10)).sort();
   const letzter = tage.at(-1);
-  const naechsterFaellig = tagPlus(letzter ?? start, takt);
+  // EINE Regel mit der Treppe und dem Hänger im Fall-Kopf (17.10., L2 A1): letzter + 14, ohne Report der Start + REPORT_ERSTER_NACH.
+  const naechsterFaellig = (e.takt === undefined ? reportNaechsterFaellig(start, letzter) : null) ?? tagPlus(letzter ?? start, takt);
   const bis = [tagPlus(e.heute, 7), naechsterFaellig].sort().at(-1)!;
   const von = [start, ...tage].sort()[0];
   const spanne = Math.max(1, zwischen(von, bis));

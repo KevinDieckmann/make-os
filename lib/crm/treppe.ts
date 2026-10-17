@@ -14,6 +14,7 @@ import type { CrmBestand, Mandat, Leistung } from './typen';
 import { mandatLage } from './kunden';
 import { mandatPhase } from './produkte';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { tagVon } from '@/lib/zeit';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
 
 /**
@@ -86,13 +87,26 @@ export function stufeReif(e: { stufe: TreppenStufe; stufen: readonly TreppenStuf
   return grund ? { stufen: naechste.map(s => ({ id: s.id, name: s.name })), grund } : null;
 }
 
-/** Ist ein Fortschritts-Report fällig? Alle `REPORT_TAGE` Tage seit dem letzten Vorschlag/Report — ein neues Mandat erst nach `REPORT_ERSTER_NACH`. */
-export function reportFaellig(m: Pick<Mandat, 'status' | 'start'>, r: ReportStand | undefined, markeTag: string | undefined, heute: string): { faellig: boolean; letzter?: string } {
+const tagDes = (x: string) => (x.length > 10 ? tagVon(x) : x);
+/**
+ * EINE Regel „wann ist der nächste Report fällig“ (17.10., Gesamtprüfung L2 A1 — vorher rechneten Treppe/Hänger und die Report-Zeitachse im Fall
+ * verschieden): letzter erstellter bzw. gesendeter Report + `REPORT_TAGE`, ohne Report der Start + `REPORT_ERSTER_NACH`. Treppe, Hänger im Fall-Kopf,
+ * Report-Zeitachse (lib/fulfillment/prozesse/ansichten.ts `reportAchse`) und Kennzahl lesen nur sie. Ohne Start und ohne Report: null.
+ */
+export function reportNaechsterFaellig(start: string | undefined, letzter: string | undefined): string | null {
+  if (letzter) return tagPlus(tagDes(letzter), REPORT_TAGE);
+  return start ? tagPlus(tagDes(start), REPORT_ERSTER_NACH) : null;
+}
+
+/**
+ * Ist ein Fortschritts-Report fällig? Nach `reportNaechsterFaellig`. Ein VORSCHLAG zählt nicht als Report (17.10., L2 A1: vorher setzte der Vorschlag
+ * die Marke `report:<m>` und der Hänger verschwand für 14 Tage, obwohl kein Report entstand) — die Marke bremst nur das erneute Vorschlagen (treppe-server).
+ */
+export function reportFaellig(m: Pick<Mandat, 'status' | 'start'>, r: ReportStand | undefined, heute: string): { faellig: boolean; letzter?: string } {
   if (m.status !== 'aktiv') return { faellig: false };
-  const letzter = [markeTag, r?.erstelltAm, r?.gesendetAm].filter((x): x is string => !!x).sort().pop();
-  if (letzter) return { faellig: letzter <= tagPlus(heute, -REPORT_TAGE), letzter };
-  const start = m.start?.slice(0, 10);
-  return { faellig: !start || start <= tagPlus(heute, -REPORT_ERSTER_NACH) };
+  const letzter = [r?.erstelltAm, r?.gesendetAm].filter((x): x is string => !!x).map(tagDes).sort().pop();
+  const n = reportNaechsterFaellig(m.start, letzter);
+  return { faellig: !n || n <= heute, ...(letzter ? { letzter } : {}) };
 }
 
 export interface KundenZeile {
@@ -158,7 +172,7 @@ export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'man
     const schritt = mandatPhase(m, l);
     const erledigt = (f?.erledigt ?? []).map(x => x.was);
     const r = datei.reports[m.id];
-    const rep = reportFaellig(m, r, datei.marken[`report:${m.id}`], heute);
+    const rep = reportFaellig(m, r, heute);
     return {
       mandatId: m.id, kunde: m.kunde, titel: m.titel, status: m.status, ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}),
       stufe: stufe ? { id: stufe.id, name: stufe.name, ebene: stufe.ebene } : null, stufeQuelle: st?.quelle ?? null, ...(seit ? { stufeSeit: seit } : {}),

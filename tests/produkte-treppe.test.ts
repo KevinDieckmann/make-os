@@ -123,12 +123,12 @@ describe('Rechnungen', () => {
     expect(stufeReif({ ...basis, stufe: d.stufen.find(s => s.id === 'ts-drei')!, erledigt: ['x'], phase: { nr: 3, von: 3 } })).toBeNull();
   });
   it('Report alle zwei Wochen; ein neues Mandat erst nach einer Woche; nur aktive', () => {
-    expect(reportFaellig({ status: 'aktiv', start: '2026-10-08' }, undefined, undefined, '2026-10-10').faellig).toBe(false);
-    expect(reportFaellig({ status: 'aktiv', start: '2026-09-01' }, undefined, undefined, '2026-10-10').faellig).toBe(true);
-    expect(reportFaellig({ status: 'aktiv', start: '2026-09-01' }, { gesendetAm: '2026-10-01' }, undefined, '2026-10-10')).toEqual({ faellig: false, letzter: '2026-10-01' });
-    expect(reportFaellig({ status: 'aktiv', start: '2026-09-01' }, { gesendetAm: '2026-09-20' }, '2026-09-27', '2026-10-10').faellig).toBe(false);
-    expect(reportFaellig({ status: 'aktiv', start: '2026-09-01' }, { gesendetAm: '2026-09-20' }, '2026-09-26', '2026-10-10').faellig).toBe(true);
-    expect(reportFaellig({ status: 'pausiert', start: '2026-01-01' }, undefined, undefined, '2026-10-10').faellig).toBe(false);
+    expect(reportFaellig({ status: 'aktiv', start: '2026-10-08' }, undefined, '2026-10-10').faellig).toBe(false);
+    expect(reportFaellig({ status: 'aktiv', start: '2026-09-01' }, undefined, '2026-10-10').faellig).toBe(true);
+    expect(reportFaellig({ status: 'aktiv', start: '2026-09-01' }, { gesendetAm: '2026-10-01' }, '2026-10-10')).toEqual({ faellig: false, letzter: '2026-10-01' });
+    // 17.10. (L2 A1): ein Vorschlag (Marke) ist kein Report — fällig bleibt fällig, bis ein Report entsteht.
+    expect(reportFaellig({ status: 'aktiv', start: '2026-09-01' }, { gesendetAm: '2026-09-20' }, '2026-10-10').faellig).toBe(true);
+    expect(reportFaellig({ status: 'pausiert', start: '2026-01-01' }, undefined, '2026-10-10').faellig).toBe(false);
   });
   it('Health-Ampel: Termine, Lieferungen, Zahlungen, Zufriedenheit — schlechteste gilt', () => {
     const d = treppe();

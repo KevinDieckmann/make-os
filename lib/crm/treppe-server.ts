@@ -27,7 +27,7 @@ import {
   treppeAus, treppeAnwenden, vorschlagAnwenden, vorschlagSauber, vorschlagTeile, TREPPE_GRENZEN, PREIS_ARTEN, PAKET_STATUS, POSITIONIERUNG_FELDER, POSITIONIERUNG_LABEL,
   type TreppeDatei, type AnwendenErgebnis, type TreppeVorschlag,
 } from './treppe-daten';
-import { kundenZeilen, zielbild, kundenreise, kapaBedarf, stufeVonMandat, preisText, imBusiness, type KundenZeile } from './treppe';
+import { kundenZeilen, zielbild, kundenreise, kapaBedarf, stufeVonMandat, preisText, imBusiness, REPORT_TAGE, type KundenZeile } from './treppe';
 import { reportDokument, reportDateiname, mailVorlage, mitZusatz, type ReportDokument } from './treppe-report';
 import type { CrmBestand, FollowUp, Mandat } from './typen';
 import type { Kontakt } from '@/lib/make-one/crm';
@@ -307,7 +307,10 @@ export async function treppeMorgenlauf(heute = localDay()): Promise<{ reports: n
     const m = mandate.get(z.mandatId)!;
     const person = fuerPerson(m);
     const link = WEG.mandat(m.id);
-    if (z.report.faellig && Object.keys(datei.marken).length + Object.keys(neueMarken).length < TREPPE_GRENZEN.marken) {
+    // Die Marke bremst nur das erneute Vorschlagen (höchstens alle `REPORT_TAGE` Tage) — sie ist kein Report (17.10., L2 A1).
+    const vorgeschlagen = datei.marken[`report:${m.id}`];
+    const gebremst = !!vorgeschlagen && vorgeschlagen > tagPlus(heute, -REPORT_TAGE);
+    if (z.report.faellig && !gebremst && Object.keys(datei.marken).length + Object.keys(neueMarken).length < TREPPE_GRENZEN.marken) {
       await lege({
         werkzeug: WERKZEUG.report, gruppe: 'kunden', titel: `Fortschritts-Report für ${m.kunde}`, nachher: 'Report-PDF erstellen und Mail vorbereiten — gesendet wird erst per Klick',
         eingabe: { mandatId: m.id, tag: heute }, anlass: 'Head of Sales: zwei Wochen seit dem letzten Stand', quelle: 'lauf', bezug: { art: 'produkte', id: `report-${fnv(`${m.id}|${heute}`)}` },
