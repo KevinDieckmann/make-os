@@ -23,6 +23,7 @@ import { Analysen } from './analyse';
 import { FallKopf } from './reise/FallKopf';
 import { FallReise } from './reise/FallReise';
 import { LageStreifen } from './reise/LageStreifen';
+import { ProzessEditor } from './editor/ProzessEditor';
 
 type Segment = 'mandate' | 'produkte' | 'fulfillment';
 const SEGMENTE: { id: Segment; label: string }[] = [{ id: 'mandate', label: 'Mandate' }, { id: 'produkte', label: 'Produkte' }, { id: 'fulfillment', label: 'Fulfillment' }];
@@ -50,6 +51,16 @@ export function FulfillmentSeite() {
           <Reiter<FallReiter> liste={FALL_REITER.map(r => ({ id: r.id, label: r.label }))} aktiv={adresse.r} onWahl={r => router.push(WEG.fall(m, r), { scroll: false })} ariaLabel="Reiter des Falls" />
         </div>
         <FallInhalt reiter={adresse.r} mandatId={m} anker={adresse.anker} />
+      </Seite>
+    );
+  }
+
+  // Prozess-Editor (17.10.): ein Ablauf zum Bearbeiten — eigene Ansicht (zurück führt zur Landkarte), ohne Lage-Zeile und Unter-Reiter.
+  if (adresse.e) {
+    return (
+      <Seite titel="Ablauf bearbeiten" unter="Phasen, Schritte, Nachrichten, Entscheidungen und Erinnerungen — per Ziehen oder Tastatur." rechts={handy ? undefined : kopf}>
+        {handy && kopf}
+        <ProzessEditor vorlageId={adresse.e} />
       </Seite>
     );
   }

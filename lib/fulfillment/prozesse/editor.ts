@@ -78,7 +78,7 @@ export function wirksameForm(k: ProzessKnoten, kn: readonly ProzessKnoten[], art
   return f === 'entscheidung' ? 'abstimmung' : f;
 }
 
-export function editorModell(v: ProzessVorlage, bausteine: readonly Pick<Baustein, 'id' | 'titel' | 'art'>[] = []): EditorModell {
+export function editorModell(v: ProzessVorlage, bausteine: readonly (Pick<Baustein, 'id' | 'titel'> & { art: string })[] = []): EditorModell {
   const kn = v.knoten;
   const art = (id: string) => bausteine.find(b => b.id === id)?.art;
   const nummern = abstimmungsNummern(kn);

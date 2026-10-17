@@ -20,7 +20,7 @@ import { ebeneVon, inReihenfolge, kinderVon, wurzelVon } from '@/lib/fulfillment
 import { brotkrumen } from '@/lib/fulfillment/prozesse/landkarte';
 import { knotenAmpel, paketSteckbrief, EBENEN_NAME, abstimmungsNummern, abstimmungName, titelOhneZusatz, titelZusatz } from '@/lib/fulfillment/prozesse/darstellung';
 import type { ProzessKnoten, Zone } from '@/lib/fulfillment/typen';
-import { useUebersicht, useCockpit, vorlagenOps, fehlerText, type Uebersicht, type VorlageMitStand, type MitStand } from './daten';
+import { useUebersicht, useCockpit, vorlagenOps, fehlerText, holeJson, geaendert, neueAnfrageId, type Uebersicht, type VorlageMitStand, type MitStand } from './daten';
 import { Landkarte, ZONE_TEXT, ZONE_FARBE } from './Zeichnung';
 import { KnotenFormular, Meldung, klein, Leiste, useTextFrage } from './teile';
 import { Legende, FreigabeRaute, AMPEL_FARBE } from '../reise/bilder';
@@ -161,26 +161,32 @@ function Steckbrief({ vorlage, id, daten, onKnoten }: { vorlage: VorlageMitStand
   );
 }
 
-/** Die Paket-Vorlagen als Karten: Phasen-Kette mit Freigaben, Zahlen, Produkt, Kunden darin — „Ansehen“ öffnet den Drill-down, „Bearbeiten“ den Editor. */
+/**
+ * Die Paket-Vorlagen (Abläufe) als Karten: Phasen-Kette mit Abstimmungspunkten, Zahlen, Produkt, Kunden darin — „Ansehen“ öffnet den Drill-down, „Bearbeiten“
+ * den Prozess-Editor im Miro-Stil (17.10., `?e=<Ablauf>`); „Neuer Ablauf“ legt eine leere Vorlage mit einer Phase an und öffnet sie dort.
+ */
 function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; daten: Uebersicht; onKnoten: (id: string) => void }) {
-  const [offen, setOffen] = useState<string | null>(null);
+  const router = useRouter();
   const [meldung, setMeldung] = useState<string | null>(null);
   const frage = useTextFrage();
+  const darf = daten.darfBearbeiten !== false;
+  const editor = (id: string) => router.push(WEG.fulfillment('prozesse', { e: id }));
   const neu = async () => {
-    const titel = await frage.fragen('Titel der neuen Paket-Vorlage');
+    const titel = await frage.fragen('Name des neuen Ablaufs');
     if (!titel?.trim()) return;
-    const a = await vorlagenOps([{ op: 'vorlage', eintrag: { art: 'paket', titel: titel.trim() } }]);
-    setMeldung(a.ok ? null : fehlerText(a));
+    const a = await holeJson<{ vorlageId?: string }>('/api/fulfillment/editor', { method: 'POST', body: JSON.stringify({ aktion: 'neu', titel: titel.trim(), anfrageId: neueAnfrageId() }) });
+    if (a.ok && a.j.vorlageId) { geaendert(); editor(a.j.vorlageId); } else setMeldung(fehlerText(a));
   };
   const produkte = (vid: string) => Object.entries(daten.zuordnung).filter(([, z]) => z.vorlageId === vid).map(([l]) => daten.leistungen.find(x => x.id === l)?.name).filter((x): x is string => !!x);
   const kundenIn = (vid: string) => Object.values(daten.faelle).filter(f => f.vorlageId === vid && f.status !== 'abgeschlossen');
-  const bearbeitet = pakete.find(p => p.id === offen);
   return (
     <Karte i={3}>
-      <Ueberschrift erklaerung="fulfillment.paketKarten" rechts={<Knopf leise onClick={neu}>+ Paket-Vorlage</Knopf>}>Paket-Vorlagen</Ueberschrift>
+      <Ueberschrift erklaerung="fulfillment.paketKarten" rechts={darf ? <Knopf leise onClick={neu}>+ Neuer Ablauf</Knopf> : undefined}>Paket-Vorlagen</Ueberschrift>
       <Meldung text={meldung} art="kritisch" />
       {!pakete.length ? (
-        <Leerzustand symbol="▦" ton={LEUCHT.business} titel="Noch keine Paket-Vorlage">„Aus Muster anlegen“ (oben) oder „+ Paket-Vorlage“ — jede Vorlage beschreibt, wie ein Produkt geliefert wird.</Leerzustand>
+        <Leerzustand symbol="▦" ton={LEUCHT.business} titel="Noch kein Ablauf" aktion={darf ? <Knopf onClick={neu}>Neuer Ablauf</Knopf> : undefined}>
+          Ein Ablauf beschreibt, wie ein Produkt geliefert wird — Phasen und Schritte legst du per Ziehen an.
+        </Leerzustand>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 12 }}>
           {pakete.map(p => {
@@ -189,8 +195,7 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
             const kunden = kundenIn(p.id);
             const wurzel = wurzelVon(p.knoten);
             return (
-              <div key={p.id} style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: 14, display: 'grid', gap: 10, alignContent: 'start', minWidth: 0,
-                ...(offen === p.id ? { border: `1px solid ${TIEF.rand(LEUCHT.business)}` } : {}) }}>
+              <div key={p.id} style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: 14, display: 'grid', gap: 10, alignContent: 'start', minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
                   <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, color: C.ink, overflowWrap: 'anywhere' }}>{p.titel}</b>
                   <span style={{ ...MIKRO, whiteSpace: 'nowrap' }}>Fassung {p.fassung}</span>
@@ -214,17 +219,11 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
                 <span style={{ ...klein, color: C.inkLeise }}>{sb.phasen.length} Phasen · {sb.schritte} Schritte · {sb.bausteine} Bausteine{sb.freigaben ? ` · ${sb.freigaben} Abstimmungspunkt${sb.freigaben === 1 ? '' : 'e'} (◆)` : ''}</span>
                 <Leiste>
                   {wurzel && <Knopf leise onClick={() => onKnoten(wurzel.id)}>Ansehen ›</Knopf>}
-                  <Knopf leise onClick={() => setOffen(offen === p.id ? null : p.id)}>{offen === p.id ? 'Editor schließen' : 'Bearbeiten'}</Knopf>
+                  <Knopf leise onClick={() => editor(p.id)}>{darf ? 'Bearbeiten' : 'Ablauf ansehen'}</Knopf>
                 </Leiste>
               </div>
             );
           })}
-        </div>
-      )}
-      {bearbeitet && (
-        <div style={{ display: 'grid', gap: 6 }}>
-          <span style={MIKRO}>Bearbeiten: {bearbeitet.titel}</span>
-          <VorlageEditor vorlage={bearbeitet} daten={daten} />
         </div>
       )}
       {(() => { const lk = daten.prozesse.find(p => p.art === 'landkarte'); return lk ? <VorlageAufklapp titel="Landkarte bearbeiten" vorlage={lk} daten={daten} /> : null; })()}

@@ -38,6 +38,12 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     an: 'Der Kunde sieht Titel und Ergebnis dieses Bausteins.',
     aus: 'Der Baustein bleibt intern.',
   },
+  'fulfillment.abstimmungAmEnde': {
+    was: 'Ein Abstimmungspunkt (◆) am Ende der Phase: erst wenn er vermerkt ist (wer bestätigt, wie), ist die Phase abgeschlossen. Im Ablauf steht er als Raute zwischen den Phasen.',
+    beispiel: 'Die Phase „Analyse“ endet mit „Dossier abgestimmt“ — Kunde und ihr bestätigen gemeinsam, dann beginnt „Diagnose“.',
+    an: 'Die Phase endet mit dieser Raute; neue Fälle zeigen sie als Abstimmungspunkt.',
+    aus: 'Die Phase endet ohne Abstimmung — sie ist fertig, sobald ihre Schritte erledigt sind.',
+  },
   'fulfillment.kundeFuellt': {
     was: 'Formulare und Workbooks mit dieser Einstellung füllt der Kunde selbst über seinen Link aus — die Antworten erscheinen intern am Fall.',
     beispiel: 'Das Messe-Workbook „vor der Messe“ füllt der Kunde aus; ihr seht im Fall, dass Abschnitt 2 von 4 fertig ist.',

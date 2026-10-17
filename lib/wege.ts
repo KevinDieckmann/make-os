@@ -146,7 +146,7 @@ export const WEG = {
    * `fall` = ein Mandat als laufender Fall mit Reiter (Reise · Ziele & Wirkung · Menschen & Termine · Kunde) und optional einem Sprung; `dossier` =
    * die Analyse an ihrer Phase in der Reise. Frühere Reiter/Bereiche leiten um. Regeln: lib/fulfillment/adresse.ts.
    */
-  fulfillment: (u?: FulfillmentBereich | AlterBereich, p?: { k?: string; b?: string }) => fulfillmentLink(u, p),
+  fulfillment: (u?: FulfillmentBereich | AlterBereich, p?: { k?: string; b?: string; e?: string }) => fulfillmentLink(u, p),
   fall: (mandatId: string, r?: FallReiter | AlterFallReiter, anker?: string) => fallLink(mandatId, r, anker),
   dossier: (mandatId: string) => fallLink(mandatId, 'analyse'),
   // Deal-Ebene (27.09.): eigener Reiter; ein Deal öffnet seine Akte.

@@ -9,7 +9,7 @@
 // die Modelle rechnen lib/fulfillment/prozesse/reise-bild.ts (intern) bzw. lib/fulfillment/kunde/bild.ts `kundenReise` (Kunde). Keine Daten-Importe
 // (die öffentliche Kunden-Seite bündelt diese Datei mit). Am Handy (≤ 720 px) wird die Zeile zur senkrechten Liste (globals.css `.ff-reise`).
 
-import { Fragment, type CSSProperties } from 'react';
+import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import { Check, Mail, CalendarClock, BellRing, AlertCircle } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT } from '../../ui';
@@ -74,13 +74,17 @@ function Kaestchen({ k, phaseId, gewaehlt, onKaestchen }: { k: BildKaestchen; ph
 /**
  * Die Reise als Zeile. `hierText` = Marke über der laufenden Phase („Hier“ intern, „hier stehen wir“ beim Kunden), `bandTitel` = Beschriftung des Bandes
  * („Kunde“ intern, „Sie“/„Ihr“ beim Kunden). Mit `onPhase`/`onKaestchen`/`onRaute` sind Beschriftung, Kästchen und Raute Tippziele.
+ * Prozess-Editor (17.10.) — dieselbe Zeichnung: `griff` legt Ziehen/Tastatur auf die Phasen-Pille, `rauteSchalter` steht zwischen JEDER Phase und hinter der
+ * letzten (Abstimmungspunkt an/aus, 44 px breit), `ende` ist eine eigene Spalte am Schluss („+ Phase“).
  */
-export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', aktiv, gewaehlt, onPhase, onKaestchen, onRaute, gross, label = 'Reise des Kunden durch die Phasen' }: {
+export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', aktiv, gewaehlt, onPhase, onKaestchen, onRaute, gross, label = 'Reise des Kunden durch die Phasen', griff, rauteSchalter, ende }: {
   spalten: readonly BildSpalte[]; hierText?: string; bandTitel?: string; aktiv?: string | null; gewaehlt?: string | null;
   onPhase?: (id: string) => void; onKaestchen?: (phaseId: string, id: string) => void; onRaute?: (phaseId: string) => void; gross?: boolean; label?: string;
+  griff?: (phaseId: string) => Record<string, unknown>; rauteSchalter?: (phaseId: string) => ReactNode; ende?: ReactNode;
 }) {
-  if (!spalten.length) return null;
-  const spuren = spalten.flatMap((s, i) => ['minmax(0, 1fr)', ...(i < spalten.length - 1 || s.raute ? ['22px'] : [])]).join(' ');
+  if (!spalten.length && !ende) return null;
+  const zwischen = (i: number, s: BildSpalte) => i < spalten.length - 1 || !!s.raute || !!rauteSchalter;
+  const spuren = [...spalten.flatMap((s, i) => ['minmax(0, 1fr)', ...(zwischen(i, s) ? [rauteSchalter ? '44px' : '22px'] : [])]), ...(ende ? ['minmax(min-content, auto)'] : [])].join(' ');
   return (
     <div className={`ff-reise${gross ? ' ff-reise-gross' : ''}`} role="list" aria-label={label} style={{ gridTemplateColumns: spuren }}>
       {spalten.map((s, i) => {
@@ -96,7 +100,7 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
         };
         const titel = (
           <>
-            <span style={{ minWidth: 0, flex: 1, overflowWrap: 'break-word', hyphens: 'manual' }}>{s.titel}</span>
+            <span className="ff-titel" title={s.titel} style={{ minWidth: 0, flex: 1 }}>{s.titel}</span>
             {s.haengt && <AlertCircle size={14} color={HAENGT_FARBE[s.haengt]} aria-hidden style={{ flex: '0 0 auto' }} />}
           </>
         );
@@ -109,7 +113,7 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
               </span>
               <span style={{ display: 'grid', gap: 3, minWidth: 0 }}>
                 {onPhase
-                  ? <button type="button" className="fassbar ff-reise-stufe" aria-label={phaseLabel} aria-expanded={aktiv === s.id} onClick={() => onPhase(s.id)} style={pille}>{titel}</button>
+                  ? <button type="button" className="fassbar ff-reise-stufe" aria-label={phaseLabel} aria-expanded={aktiv === s.id} onClick={() => onPhase(s.id)} {...griff?.(s.id)} style={pille}>{titel}</button>
                   : <span className="ff-reise-stufe" aria-label={phaseLabel} style={pille}>{titel}</span>}
                 {s.unter && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingLeft: 2 }}>{s.unter}</span>}
               </span>
@@ -131,11 +135,11 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{band?.text ?? ''}</span>
               </span>
             </div>
-            {(i < spalten.length - 1 || s.raute) && (
-              <div className="ff-reise-zwischen" aria-hidden={!s.raute || !onRaute}>
+            {zwischen(i, s) && (
+              <div className="ff-reise-zwischen" aria-hidden={rauteSchalter ? undefined : !s.raute || !onRaute}>
                 <span />
                 <span style={{ display: 'grid', placeItems: 'center', minHeight: 44 }}>
-                  {s.raute
+                  {rauteSchalter ? rauteSchalter(s.id) : s.raute
                     ? (onRaute
                       ? <button type="button" className="fassbar" onClick={() => onRaute(s.id)} title={`${s.raute.titel} — ${s.raute.gegeben ? 'vermerkt' : 'offen'}`} aria-label={`${s.raute.titel} — ${s.raute.gegeben ? 'vermerkt' : 'offen'}${s.raute.haengt ? ', überfällig' : ''}`}
                         style={{ width: 22, minHeight: 44, display: 'grid', placeItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -151,6 +155,7 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
           </Fragment>
         );
       })}
+      {ende && <div className="ff-reise-ende" style={{ display: 'grid', alignContent: 'start', paddingTop: 24, paddingLeft: 6, minWidth: 0 }}>{ende}</div>}
     </div>
   );
 }
