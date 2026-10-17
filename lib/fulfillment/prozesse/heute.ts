@@ -46,8 +46,10 @@ export interface HeuteEintrag {
   dringend: boolean;
   /** Der Punkt hängt (ein Hänger aus `wasHaengt` — eigener oder in „als Nächstes“ aufgegangen). */
   haengt?: string;
-  /** Jetzt dran (dringend, hängt, überfällig, heute fällig, ohne Datum, Entscheidung/Entwurf bereit, Start) — sonst „demnächst“. */
+  /** Jetzt dran (dringend, hängt, überfällig, heute fällig, ohne Datum, Entscheidung/Entwurf bereit, Start, Willkommensmail) — sonst „demnächst“. */
   jetzt: boolean;
+  /** Der Punkt ist die Willkommensmail eines neuen Kunden (24-Stunden-Uhr) — immer „jetzt“, auch wenn die Frist erst morgen endet. */
+  willkommen?: true;
   quelle: 'naechster' | 'haengt' | 'start' | 'deal';
   /** Die Kennung des Knotens, wenn die Zeile an einem hängt. */
   knotenId?: string;
@@ -128,6 +130,7 @@ export function heuteImFulfillment(zeilen: readonly CockpitZeile[], kandidaten: 
         unter: [z.phase, lage ? WARTET_UNTER[lage.wartetAuf] : undefined].filter(Boolean).join(' · ') || undefined,
         ...(lage?.faelligAm ? { faelligAm: lage.faelligAm } : {}),
         ueberfaellig: !!lage?.ueberfaellig, dringend: false, jetzt: false, quelle: 'naechster', knotenId: n.id, aktion: n.aktion, href: n.href,
+        ...(n.willkommen ? { willkommen: true as const } : {}),
       };
       raus.push(haupt);
     }
@@ -166,7 +169,7 @@ export function heuteImFulfillment(zeilen: readonly CockpitZeile[], kandidaten: 
   for (const e of raus) {
     if (e.quelle !== 'naechster') continue;
     const bereit = e.aktion.art === 'ja-nein' || e.aktion.art === 'entwurf';
-    e.jetzt = e.dringend || !!e.haengt || e.ueberfaellig || !e.faelligAm || e.faelligAm <= heute || bereit;
+    e.jetzt = e.dringend || !!e.haengt || e.ueberfaellig || !e.faelligAm || e.faelligAm <= heute || bereit || !!e.willkommen;
   }
   const datum = (e: HeuteEintrag) => e.seit ?? e.faelligAm ?? '9999-99-99';
   return raus.sort((a, b) => Number(b.dringend) - Number(a.dringend) || Number(b.jetzt) - Number(a.jetzt) || datum(a).localeCompare(datum(b)) || a.kunde.localeCompare(b.kunde, 'de') || a.id.localeCompare(b.id));

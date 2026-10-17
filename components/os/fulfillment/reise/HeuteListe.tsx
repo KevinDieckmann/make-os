@@ -15,7 +15,6 @@ import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Punkt, Leerzustand, HakenZiel, Klappbar, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
-import { anzahl } from '@/lib/text/zahlwort';
 import { heuteImFulfillment, heuteZahlen, type HeuteEintrag } from '@/lib/fulfillment/prozesse/heute';
 import { useCockpit, useUebersichtKurz, fallOps, holeJson, fehlerText, tagKurz, geaendert } from '../prozesse/daten';
 import { MailSenden, type MailEntwurf } from '../prozesse/MailSenden';
@@ -118,7 +117,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
 
   const kopf = (
     <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-      {z.jetzt ? <span style={{ color: z.dringend ? LEUCHT.kritisch : C.inkDim }}>{anzahl(z.jetzt, 'Punkt', 'Punkte')}{z.dringend ? ` · ${z.dringend} dringend` : ''}</span> : null}
+      {z.jetzt ? <span style={{ color: z.dringend ? LEUCHT.kritisch : C.inkDim }}>{z.jetzt} zu tun{z.dringend ? ` · ${z.dringend} dringend` : ''}</span> : null}
       {kompakt && <Link href={WEG.fulfillment()} style={{ color: C.aktiv, fontSize: TYP.bedien, textDecoration: 'none' }}>Fulfillment ›</Link>}
     </span>
   );
