@@ -101,7 +101,7 @@ export async function GET(req: Request) {
     leseZugriff(req, 'fulfillment', { anzahl: k ? 1 : 0 });
     return NextResponse.json({
       ok: true, anrede, vorlage: vorlage ? { id: vorlage.id, titel: vorlage.titel, text: vorlage.text ?? '' } : null,
-      an: k?.email ? { email: k.email, ...(k.vorname || k.nachname ? { name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() } : {}) } : null,
+      an: k?.email ? { email: k.email, kontaktId: k.id, ...(k.vorname || k.nachname ? { name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() } : {}) } : null,
       ...(k?.vorname ? { vorname: k.vorname } : {}), ...(k?.nachname ? { nachname: k.nachname } : {}),
       ...(k ? {} : { ohneEmpfaenger: mandat.kontaktIds.length ? 'Keine Ansprechperson mit Mail-Adresse, die wir anschreiben dürfen (Adresse fehlt oder Verarbeitung eingeschränkt).' : 'Am Mandat ist keine Ansprechperson eingetragen.' }),
       vorschlaege, gesellschaft: mandat.gesellschaft, gesendetAm: f.onboarding.willkommenGesendetAm ?? null,

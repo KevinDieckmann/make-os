@@ -73,3 +73,13 @@ describe('B6 · Kick-off ohne eigenen Kalender vermerken', () => {
     expect(onboardingStand(z.datei, abl).schritte.find(x => x.schluessel === 'kickoff')?.erfuellt).toBe(false);
   });
 });
+
+describe('B7 · Mails aus dem Fall im Verlauf der Akte', () => {
+  it('MailSenden trägt die Mail nach dem Senden als Aktivität ein — nur an die bekannte Person (Kontakt-Kennung aus dem Entwurf)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const q = readFileSync('components/os/fulfillment/prozesse/MailSenden.tsx', 'utf8');
+    expect(q).toMatch(/\/api\/crm\/aktivitaet/);
+    expect(q).toMatch(/entwurf\.an\?\.kontaktId && entwurf\.an\.email === an\.trim\(\)/);
+    for (const d of ['app/api/fulfillment/fall/route.ts', 'app/api/fulfillment/wirkung/route.ts', 'lib/fulfillment/prozesse/ausfuehrung-server.ts']) expect(readFileSync(d, 'utf8'), d).toMatch(/kontaktId: k{1,2}\.id/);
+  });
+});

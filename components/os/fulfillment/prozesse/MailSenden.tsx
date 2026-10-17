@@ -16,7 +16,7 @@ import { neueAnfrageId } from './daten';
 import { beschriftung, klein } from './teile';
 
 interface Postfach { id: string; anzeigename?: string; adresse?: string; bereich?: string | null; bereichName?: string }
-export interface MailEntwurf { betreff: string; text: string; an: { email: string; name?: string } | null; gesellschaft: string; anhang?: { id: string; name: string } }
+export interface MailEntwurf { betreff: string; text: string; an: { email: string; name?: string; kontaktId?: string } | null; gesellschaft: string; anhang?: { id: string; name: string } }
 
 export function MailSenden({ titel, entwurf, hinweis, onZu, onGesendet }: { titel: string; entwurf: MailEntwurf; hinweis?: string; onZu: () => void; onGesendet: () => Promise<void> | void }) {
   const { bestaetigen, dialog } = useRueckfrage();
@@ -51,6 +51,11 @@ export function MailSenden({ titel, entwurf, hinweis, onZu, onGesendet }: { tite
     }
     if (!r || !r.ok || j.ok === false) { setFehler(String(j.fehler ?? j.error ?? 'Nicht gesendet.')); anfrageId.current = neueAnfrageId(); return; }
     setFertig(true);
+    // In den Verlauf der Akte (17.10., Gesamtprüfung L1 B7): eine Mail aus dem Fall an die bekannte Person zählt als Kontakt — sonst alterten Wärme, Score und
+    // „letzter Kontakt“, obwohl laufend geschrieben wurde. Nur, wenn an DIESE Person ging; Werbesperre/Art. 18 lehnt die Route ab (dann kein Eintrag).
+    if (entwurf.an?.kontaktId && entwurf.an.email === an.trim()) {
+      await fetch('/api/crm/aktivitaet', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: entwurf.an.kontaktId, art: 'mail', text: `Mail gesendet: ${betreff}`.slice(0, 300) }) }).catch(() => null);
+    }
     await onGesendet();
   };
   return (

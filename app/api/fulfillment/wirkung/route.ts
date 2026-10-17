@@ -136,7 +136,7 @@ export async function POST(req: Request) {
     const k = g.m.kontaktIds.map(id => kontakte.find(x => x.id === id)).find(x => !!x?.email);
     return NextResponse.json({
       ok: true, datei: { id: e.id, name: wirkungAnzeigename(g.heute) }, anrede: k?.anrede === 'Du' ? 'Du' : 'Sie', gesellschaft: g.m.gesellschaft,
-      an: k?.email ? { email: k.email, ...(k.vorname || k.nachname ? { name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() } : {}) } : null,
+      an: k?.email ? { email: k.email, kontaktId: k.id, ...(k.vorname || k.nachname ? { name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() } : {}) } : null,
       ...(k?.vorname ? { vorname: k.vorname } : {}),
     });
   }

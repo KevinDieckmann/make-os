@@ -324,7 +324,7 @@ export async function ablaufAnsicht(w: Fall, heute: string, person: string): Pro
 
 /** Grundlage des Entwurfs einer Nachricht (Fall › Knoten „Nachricht“ bzw. Erinnerung mit Mail-Baustein) — gefüllt ohne KI; gesendet wird nur per Klick. */
 export async function nachrichtGrundlage(u: Umfeld, w: Fall, m: Mandat, knotenId: string, person: string, heute: string): Promise<
-  { ok: true; entwurf: { betreff: string; text: string; an: { email: string; name?: string } | null; gesellschaft: string } | null; gesperrt?: string; hinweis?: string; baustein?: { id: string; titel: string } }
+  { ok: true; entwurf: { betreff: string; text: string; an: { email: string; name?: string; kontaktId?: string } | null; gesellschaft: string } | null; gesperrt?: string; hinweis?: string; baustein?: { id: string; titel: string } }
   | { ok: false; status: 400 | 404; fehler: string }
 > {
   const k = w.knoten.find(x => x.id === knotenId);
@@ -343,7 +343,7 @@ export async function nachrichtGrundlage(u: Umfeld, w: Fall, m: Mandat, knotenId
     kunde: m.kunde, ...(t ? { termin: terminText(t) } : {}), absender: await vornameVon(person),
   }, titelOhneZusatz(k.titel));
   return {
-    ok: true, entwurf: { ...mail, an: kk?.email ? { email: kk.email, ...(kk.vorname || kk.nachname ? { name: `${kk.vorname ?? ''} ${kk.nachname ?? ''}`.trim() } : {}) } : null, gesellschaft: m.gesellschaft },
+    ok: true, entwurf: { ...mail, an: kk?.email ? { email: kk.email, kontaktId: kk.id, ...(kk.vorname || kk.nachname ? { name: `${kk.vorname ?? ''} ${kk.nachname ?? ''}`.trim() } : {}) } : null, gesellschaft: m.gesellschaft },
     ...(kk ? {} : { hinweis: m.kontaktIds.length ? 'Keine Ansprechperson mit Mail-Adresse — bitte die Adresse eintragen.' : 'Am Mandat ist keine Ansprechperson eingetragen.' }),
     ...(b ? { baustein: { id: b.id, titel: b.titel } } : { hinweis: 'Ohne Mail-Baustein am Schritt — der Entwurf hat nur Gruß und Unterschrift. Einen Baustein hängt ihr im Ablauf an.' }),
   };
