@@ -266,7 +266,8 @@ describe('Zweite Abnahme 15.10.: EINE Lage-Rechnung, EIN nächster Schritt, EIN 
     const lu = faelle['m-demo-lumen'];
     expect(lu.kalender.some(t => t.titel === 'Cockpit-Abstimmung Lumen' && !t.ritualId)).toBe(true);
     const lt = taktLeiste({ rituale: lu.rituale as never, fallRituale: lu.fall.rituale, termine: lu.termine, heute: HEUTE, kalender: lu.kalender });
-    expect(lt.weitere.some(t => t.titel === 'Cockpit-Abstimmung Lumen' && t.tag >= montag && t.tag <= tagePlus(montag, 6))).toBe(true);
+    // Diese oder (ab Freitag, wenn der Donnerstag vorbei ist) die nächste Woche — der Test darf nicht am Wochentag hängen (18.10., Lauf am Sonntag).
+    expect(lt.weitere.some(t => t.titel === 'Cockpit-Abstimmung Lumen' && t.tag >= montag && t.tag <= tagePlus(montag, 13))).toBe(true);
     expect(lt.naechster?.titel).toBe('Cockpit-Abstimmung Lumen');
     expect(lu.onboarding.schritte.find(x => x.schluessel === 'kickoff')).toMatchObject({ erfuellt: true });
     // Der Kunde sieht denselben Tag — aber nie den Kalender-Titel, nur den des Rituals bzw. neutral (18.10., Gesamtprüfung L3 B1).

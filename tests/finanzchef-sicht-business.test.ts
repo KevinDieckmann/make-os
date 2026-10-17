@@ -140,11 +140,12 @@ describe('A1: Head of Finance — Sicht Business bekommt nichts aus dem Haushalt
     expect(e!.steuer).toMatchObject({ ust: 'monatlich', estVorauszahlung: true });
     expect(e!.rechtsform).toEqual({ kdv: 'GmbH', kdc: 'Einzelunternehmen' });
   });
-  it('Oberfläche: die Business-Ansicht schickt `umfang: business` bei Lauf, Vorschlag und Einstellung', () => {
+  it('Oberfläche: die Business-Ansicht schickt `umfang: business` bei Lauf und Vorschlag; Steuer-Annahmen sind nur ein Verweis (EINE Quelle, L2 S1)', () => {
     const q = readFileSync(path.join(process.cwd(), 'components/os/FinanzchefView.tsx'), 'utf8');
     expect(q).toContain("const umfang = bereich === 'business' ? { umfang: 'business' as const } : {};");
     expect(q).toContain("aktion: 'lauf', modus: m, ...umfang");
     expect(q).toContain("aktion: 'vorschlag', id: v.id, status, ...umfang");
-    expect(q).toContain("...(business ? { umfang: 'business' } : {})");
+    // Seit 18.10. (L2 S1) gibt es hier keine Eingabe der Steuer-Annahmen mehr — sie stehen unter Finanzen › Steuern (die Route bleibt für alte Fenster).
+    expect(q).not.toContain("aktion: 'einstellung'");
   });
 });

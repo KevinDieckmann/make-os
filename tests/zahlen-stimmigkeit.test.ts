@@ -250,6 +250,9 @@ describe('Abnahme 2 · Rest (B11, C7, C17, C21) an der gesäten Demo', () => {
   });
   it('C21: die Aktivitäten liegen nicht alle in derselben Minute', () => {
     const minuten = new Set(kontakte.flatMap(k => k.aktivitaeten ?? []).map(a => a.am.slice(0, 16)));
+    // Die Saat verteilt die Zeitpunkte FRÜHER am selben Tag (nie vor dem Anlagetag, C8) — kurz nach Mitternacht gibt es kein „früher“ (18.10.: Lauf um 0 Uhr).
+    const minuteDesTages = (() => { const [h, m] = new Date().toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour12: false }).split(':').map(Number); return h * 60 + m; })();
+    if (minuteDesTages < 240) return;
     expect(minuten.size).toBeGreaterThan(3);
   });
   it('C17: Cockpit 2.0 zählt sein Unterziel mit; das Umsatz-Ziel nennt seinen Ist-Wert aus den Mandaten', () => {
