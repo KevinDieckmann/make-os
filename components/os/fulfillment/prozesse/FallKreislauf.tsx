@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, HakenZiel, Punkt, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, HakenZiel, Punkt, LEUCHT, useRueckfrage } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -140,7 +140,15 @@ export function WirkungKarte({ daten, melde, ops, haupt }: { daten: FallAntwort;
   const [zitat, setZitat] = useState({ text: '', am: '', wie: '' });
   const [mail, setMail] = useState<MailEntwurf | null>(null);
   const [laeuft, setLaeuft] = useState(false);
+  const { bestaetigen, dialog } = useRueckfrage();
   const erstellt = f.wirkung;
+  // Abschließen nur mit Rückfrage (17.10., Gesamtprüfung L1 B14 — vorher schloss ein Klick den Fall bei 7 % Fortschritt). Das Mandat läuft weiter; beenden geht
+  // am Mandat (dort entsteht das Ende-Datum, ab dem die Nachsorge zählt).
+  const abschliessen = async () => {
+    const r = fallReise(f, daten.vorlage?.freigaben ?? [], localDay());
+    if (!(await bestaetigen({ titel: 'Fall abschließen?', text: `Der Fall steht bei ${r.fortschritt} %. Offene Aufgaben des Ablaufs werden abgebrochen, offene Nachrichten-Vorschläge abgelehnt.\n\nDas Mandat läuft weiter — die Nachsorge zählt ab dem Mandatsende („Mandat beenden“ am Mandat).`, ja: 'Abschließen' }))) return;
+    await ops([{ op: 'fall-status', status: 'abgeschlossen' }], 'Fall abgeschlossen — die Nachsorge zählt ab dem Mandatsende.');
+  };
   useEffect(() => {
     let weg = false;
     void holeJson<{ dokument: WirkungsDokument }>(`/api/fulfillment/wirkung?m=${encodeURIComponent(m.id)}&vorschau=1`).then(a => { if (!weg && a.ok) setDok(a.j.dokument); });
@@ -203,8 +211,10 @@ export function WirkungKarte({ daten, melde, ops, haupt }: { daten: FallAntwort;
         <Knopf haupt={haupt && !erstellt} onClick={erstellen} aus={laeuft || (!!zitat.text.trim() && (!zitat.am || !zitat.wie.trim()))}>{erstellt ? 'Neu erstellen' : 'Bericht erstellen'}</Knopf>
         {erstellt?.dateiName && <a href={`/api/fulfillment/wirkung?m=${encodeURIComponent(m.id)}`} download style={{ color: C.aktiv, fontSize: TYP.bedien, alignSelf: 'center', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>↓ PDF</a>}
         {erstellt?.dateiName && <Knopf onClick={perMail}>Per Mail senden …</Knopf>}
-        {erstellt && f.status !== 'abgeschlossen' && <Knopf haupt={haupt} leise={!haupt} onClick={() => ops([{ op: 'fall-status', status: 'abgeschlossen' }], 'Fall abgeschlossen — die Nachsorge zählt ab dem Mandatsende.')}>Fall abschließen</Knopf>}
+        {erstellt && f.status !== 'abgeschlossen' && <Knopf haupt={haupt} leise={!haupt} onClick={abschliessen}>Fall abschließen</Knopf>}
+        {f.status === 'abgeschlossen' && m.status !== 'beendet' && <Knopf haupt={haupt} leise={!haupt} href={WEG.mandat(m.id)}>Mandat beenden ›</Knopf>}
       </Leiste>
+      {dialog}
       {mail && <MailSenden titel="Wirkungsbericht senden" entwurf={mail} hinweis="Der Bericht hängt als PDF an." onZu={() => setMail(null)} onGesendet={() => { melde('Gesendet.'); }} />}
     </Karte>
   );

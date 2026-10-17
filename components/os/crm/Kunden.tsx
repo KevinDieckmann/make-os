@@ -280,7 +280,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       <FallPhase mandatId={m.id} rahmen={inhalt => <Feldzeile label="Phase">{inhalt}</Feldzeile>}
         ohne={produkt ? (produkt.phasen?.length
           ? <Wahl label="Phase" liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} wert={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} />
-          : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Produkt hat noch keinen Ablauf — unter Produkte anlegen.</span>) : null} />
+          : <Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Kein laufender Fall — im Fulfillment ansehen ›</Link>) : null} />
       {/* Leistungstreppe (10.10.): Fortschritt im Paket, Health-Ampel, nächste Stufe und der Fortschritts-Report an den Kunden. */}
       <MandatFortschritt mandatId={m.id} />
       <Feldzeile label="Honorar">
