@@ -80,6 +80,8 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'fokus', art: 'fokus', breite: 2, einstellungen: { space: 'business' } },
     { id: 'top3', art: 'top3', breite: 4 },
     { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
+    // Heute im Fulfillment (17.10. spät, Kevin: „maximal einfach für uns“): was in den Fällen jetzt dran ist, mit dem Handgriff in der Zeile — ohne Punkt keine Karte.
+    { id: 'fulfillment', art: 'fulfillment', breite: 4 },
     { id: 'anstehend', art: 'anstehend', breite: 4 },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'business', business: true }, titel: 'Nächste 3 Tage · Business' },
     { id: 'index', art: 'index', breite: 2, einstellungen: { saeule: 'business' } },

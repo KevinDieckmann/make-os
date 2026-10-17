@@ -4,10 +4,11 @@
 // nächster Ritual-Termin (nur `kalender-bezug`). „Was hängt“ zuerst: überfällige Willkommensmails, überfällige Freigaben, „wartet auf euch“
 // über 7 Tage, Puls an oder unter der Schwelle, Report über 14 Tage, Art.-14-Frist bald, überfällige Schritte. Rein und client-sicher.
 
-import type { DossierKurz, Fall, Freigabepunkt, KundeKurz } from '../typen';
+import type { DossierKurz, Fall, FallKnoten, Freigabepunkt, KundeKurz } from '../typen';
 import { tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
 import type { OnboardingStand } from './onboarding';
-import { fallReise, fallStelle, reiseKurz, type ReiseKurzPhase, type WartetAuf } from './reise';
+import { fallReise, fallStelle, reiseKurz, ONBOARDING_SPRUNG, type NaechsterPunkt, type ReiseKurzPhase, type WartetAuf } from './reise';
+import { knotenAktion, type HeuteAktion } from './heute';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type Ampel, type KundenLageArt } from './darstellung';
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
@@ -22,7 +23,13 @@ export interface Haenger {
    * seine Liste „Das brauchen wir von Ihnen“)? Dann hat der Hänger Kundenbezug (`kundenLageAus`, 15.10., Abnahme B1).
    */
   kundeSieht?: boolean;
+  /** Der Knoten, an dem der Hänger hängt (überfällig, eskaliert, Bestätigung, wartet) — für „Heute im Fulfillment“ (17.10. spät). */
+  knotenId?: string;
+  /** Was man direkt tun kann (`knotenAktion`) — fehlt: die Stelle öffnen. */
+  aktion?: HeuteAktion;
 }
+/** Der nächste Punkt als Handgriff (17.10. spät, „Heute im Fulfillment“) — Kennung, Sprung an die Stelle und was man direkt tun kann. */
+export interface NaechsterHandgriffZeile { id: string; aktion: HeuteAktion; href: string; willkommen?: true }
 export interface CockpitZeile {
   mandatId: string; kunde: string; titel: string; paket?: string; status: Fall['status'];
   /** Phase und „Als Nächstes“ aus `fallStelle` (lib/fulfillment/prozesse/reise.ts) — dieselbe Rechnung wie Fall-Kopf, Landkarte, Kunden-Seite. */
@@ -46,6 +53,8 @@ export interface CockpitZeile {
   wert?: { wert: number; ziele: number } | null;
   /** Was der Kunde als Lage sieht — dieselbe Rechnung übersetzt (`kundeSiehtLage`), mit Grund, wenn es von der internen Ampel abweicht (15.10.). */
   kundeSieht?: { ampel: Ampel; art: KundenLageArt; titel: string; grund?: string };
+  /** Der nächste Punkt als Handgriff — aus DEMSELBEN `naechsterPunkt` wie `schritt`/`schrittLage` (17.10. spät). */
+  naechster?: NaechsterHandgriffZeile;
 }
 export interface CockpitEingabe {
   fall: Fall; kunde: string; titel: string; paket?: string;
@@ -59,6 +68,8 @@ export interface CockpitEingabe {
   freigaben?: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
   /** Bausteine, die (noch) nicht an Kunden gehen (`kundenGesperrt`) — ein wartender Knoten daran hat keinen Kundenbezug. */
   gesperrt?: ReadonlySet<string>;
+  /** Trägt ein Knoten einen Mail-Baustein? (Server: `mailBausteinVon`) — dann ist der Handgriff „Entwurf öffnen“. Ohne: nie. */
+  mitMail?: (k: FallKnoten) => boolean;
 }
 
 export const WARTET_ALT_TAGE = 7;
@@ -70,7 +81,11 @@ export const REPORT_ALT_TAGE = 14;
 export function wasHaengt(e: CockpitEingabe): Haenger[] {
   const { fall: f, heute } = e;
   const raus: Haenger[] = [];
-  const h = (art: HaengerArt, text: string, schwere: 'rot' | 'gelb', href: string, seit?: string) => raus.push({ art, mandatId: f.mandatId, kunde: e.kunde, text, schwere, href, ...(seit ? { seit } : {}) });
+  const h = (art: HaengerArt, text: string, schwere: 'rot' | 'gelb', href: string, seit?: string, knotenId?: string) => {
+    // 17.10. spät („Heute im Fulfillment“): der Knoten und was man an ihm direkt tun kann — dieselben Regeln wie die Karte im Fall.
+    const aktion = knotenId ? knotenAktion(f, knotenId, e.mitMail) : null;
+    raus.push({ art, mandatId: f.mandatId, kunde: e.kunde, text, schwere, href, ...(seit ? { seit } : {}), ...(knotenId ? { knotenId } : {}), ...(aktion ? { aktion } : {}) });
+  };
   if (f.status !== 'abgeschlossen' && e.onboarding.willkommen.ueberfaellig) h('willkommen', 'Willkommensmail überfällig (24 Stunden nach der Unterschrift)', 'rot', WEG.fall(f.mandatId, 'reise', 'willkommen'),
     // 17.10. (dritte Abnahme B4): der Berliner Tag der Frist — `.slice(0, 10)` nahm den UTC-Tag („seit 13.10.“ statt 14.10.).
     e.onboarding.willkommen.faellig ? tagVon(e.onboarding.willkommen.faellig) : undefined);
@@ -78,16 +93,18 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
   for (const k of f.knoten) {
     // Ausführung (17.10. abends): eine Entscheidung, deren Runden ausgeschöpft sind, hängt rot — bis jemand entscheidet (ja, entfällt oder pausieren).
     if (k.eskaliertAm && k.status !== 'erledigt' && k.status !== 'entfaellt') {
-      h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ eskaliert — alle Erinnerungen ohne Antwort`, 'rot', WEG.fall(f.mandatId, 'reise', `schritt-${k.id}`), k.eskaliertAm);
+      h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ eskaliert — alle Erinnerungen ohne Antwort`, 'rot', WEG.fall(f.mandatId, 'reise', `schritt-${k.id}`), k.eskaliertAm, k.id);
       continue;
     }
     if (k.status === 'erledigt' || k.status === 'entfaellt' || !k.faelligAm || k.faelligAm >= heute) continue;
-    if (k.freigabe && !f.freigaben[k.freigabe]) h('freigabe', `${abstimmungName(k.freigabe, nummern)} „${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'rot', WEG.fall(f.mandatId, 'reise', `freigabe-${k.freigabe}`), k.faelligAm);
-    else if (!k.id.startsWith('fk-ob-willkommen')) h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'gelb', WEG.fall(f.mandatId), k.faelligAm);
+    if (k.freigabe && !f.freigaben[k.freigabe]) h('freigabe', `${abstimmungName(k.freigabe, nummern)} „${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'rot', WEG.fall(f.mandatId, 'reise', `freigabe-${k.freigabe}`), k.faelligAm, k.id);
+    // 17.10. spät: mit Sprung an den Schritt (vorher nur in den Fall).
+    else if (!k.id.startsWith('fk-ob-willkommen')) h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'gelb', WEG.fall(f.mandatId, 'reise', `schritt-${k.id}`), k.faelligAm, k.id);
   }
   for (const w of wartetAufEuch(f, heute)) {
     if ((w.tage ?? 0) <= WARTET_ALT_TAGE) continue;
-    h('wartet', `Wartet seit ${anzahl(w.tage ?? 0, 'Tag', 'Tagen')} auf den Kunden: ${anzeigeTitel(w.titel, nummern)}`, (w.tage ?? 0) >= WARTET_ROT_TAGE ? 'rot' : 'gelb', WEG.fall(f.mandatId), w.seit);
+    h('wartet', `Wartet seit ${anzahl(w.tage ?? 0, 'Tag', 'Tagen')} auf den Kunden: ${anzeigeTitel(w.titel, nummern)}`, (w.tage ?? 0) >= WARTET_ROT_TAGE ? 'rot' : 'gelb',
+      w.art === 'entscheidung' ? WEG.fall(f.mandatId, 'menschen', 'stelle-menschen-entscheidung') : WEG.fall(f.mandatId, 'reise', `schritt-${w.id}`), w.seit, w.art === 'entscheidung' ? undefined : w.id);
     raus[raus.length - 1].kundeSieht = kundeSiehtWartend(f, w, e.gesperrt);
   }
   const p = e.kunde2?.letzterPuls;
@@ -126,7 +143,22 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
     phasen: reiseKurz(fallReise(e.fall, e.freigaben ?? [], e.heute)),
     wert: wertDurchschnitt(e.fall.wertKonto ?? {}),
     kundeSieht: kundeSiehtLage({ health: e.health, haengt }, st.fertig),
+    ...(st.naechster ? { naechster: naechsterHandgriffZeile(e.fall, st.naechster, e.mitMail) } : {}),
   };
+}
+
+/**
+ * Der nächste Punkt als Handgriff (17.10. spät): ein offener Onboarding-Schritt öffnet seine Stelle (er wird abgeleitet, nie abgehakt), eine Bestätigung
+ * öffnet „vermerken“, ein Schritt bekommt seinen direkten Handgriff (`knotenAktion`: ja/nein, Entwurf, abhaken). Dieselbe Rechnung wie Fall-Kopf und Reise.
+ */
+export function naechsterHandgriffZeile(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben'>, n: NaechsterPunkt, mitMail?: (k: FallKnoten) => boolean): NaechsterHandgriffZeile {
+  if (n.art === 'onboarding' && n.schluessel) {
+    const s = ONBOARDING_SPRUNG[n.schluessel];
+    const anker = s.stelle ? `stelle-${s.stelle}` : n.schluessel === 'willkommen' ? 'willkommen' : `schritt-${n.id}`;
+    return { id: n.id, aktion: { art: 'oeffnen', text: s.text }, href: WEG.fall(f.mandatId, s.reiter, anker), ...(n.schluessel === 'willkommen' ? { willkommen: true as const } : {}) };
+  }
+  if (n.art === 'freigabe' && n.freigabe) return { id: n.id, aktion: { art: 'oeffnen', text: 'Bestätigung vermerken' }, href: WEG.fall(f.mandatId, 'reise', `freigabe-${n.freigabe}`) };
+  return { id: n.id, aktion: knotenAktion(f, n.id, mitMail) ?? { art: 'oeffnen', text: 'Ansehen' }, href: WEG.fall(f.mandatId, 'reise', `schritt-${n.id}`) };
 }
 
 /** Alle Hänger über alle Fälle — rot zuerst, älteste zuerst. */

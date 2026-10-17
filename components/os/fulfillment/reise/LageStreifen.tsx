@@ -38,6 +38,8 @@ export function LageStreifen() {
   const n = daten.haengt.length;
   const ampel = zeilen.length ? AMPEL_FARBE[zeilen.some(z => kundenAmpel(z) === 'rot') ? 'rot' : zeilen.some(z => kundenAmpel(z) === 'gelb') ? 'gelb' : 'gruen'] : undefined;
   const zuDenKarten = () => router.push(`${WEG.fulfillment()}#ff-kunden`);
+  // 17.10. spät: „Was hängt?“ führt in „Heute im Fulfillment“ (dort steht jeder Punkt mit seinem Handgriff).
+  const zuHeute = () => router.push(`${WEG.fulfillment()}#ff-heute`);
   return (
     <div className="ff-lage" role="group" aria-label="Lage" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 22px', alignItems: 'center', padding: '4px 2px', borderBottom: `1px solid ${C.linie}` }}>
       <Erklaert erklaerung="fulfillment.lage" name="Lage"><span style={{ ...MIKRO, color: C.inkDim }}>Lage</span></Erklaert>
@@ -45,7 +47,7 @@ export function LageStreifen() {
         onClick={zeilen.length ? zuDenKarten : () => router.push(WEG.fulfillment('onboarding'))} />
       <Teil titel="Was hängt?" farbe={rot.length ? LEUCHT.kritisch : n ? LEUCHT.achtung : LEUCHT.gut}
         text={n ? `${anzahl(n, 'Punkt hängt', 'Punkte hängen')}${rot.length ? ` · ${rot.length} dringend` : ''}` : 'Nichts — alle Fälle sind im Takt'}
-        {...(n ? { onClick: zuDenKarten } : {})} />
+        {...(n ? { onClick: zuHeute } : {})} />
     </div>
   );
 }

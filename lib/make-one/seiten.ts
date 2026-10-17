@@ -87,7 +87,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('mandate', 'Produkte & Mandate · Mandate', WEG.mandat(), 'business'),
   s('produkte', 'Produkte & Mandate · Produkte (Leistungskatalog)', WEG.produkt(), 'business'),
   // Fulfillment (10.10.): eigene Seite unter Produkte & Mandate — die Unterpunkte einzeln auffindbar (seit 17.10. fünf: Visualisierung steckt in der Landkarte).
-  s('fulfillment', 'Produkte & Mandate · Fulfillment (Landkarte, Kunden in Lieferung)', WEG.fulfillment(), 'business'),
+  s('fulfillment', 'Produkte & Mandate · Fulfillment (heute zu tun, Kunden in Lieferung, Abläufe)', WEG.fulfillment(), 'business'),
   s('fulfillment-bausteine', 'Produkte & Mandate · Fulfillment · Bausteine', WEG.fulfillment('bausteine'), 'business'),
   s('fulfillment-onboarding', 'Produkte & Mandate · Fulfillment · Onboarding', WEG.fulfillment('onboarding'), 'business'),
   s('fulfillment-analysen', 'Produkte & Mandate · Fulfillment · Analysen', WEG.fulfillment('analysen'), 'business'),

@@ -15,7 +15,7 @@ export const FULFILLMENT_PFAD = '/os/mandate/fulfillment';
 
 export type FulfillmentBereich = 'prozesse' | 'onboarding' | 'bausteine' | 'analysen' | 'kreislauf';
 export const FULFILLMENT_BEREICHE: readonly { id: FulfillmentBereich; label: string }[] = [
-  { id: 'prozesse', label: 'Landkarte' },
+  { id: 'prozesse', label: 'Übersicht' },
   { id: 'onboarding', label: 'Onboarding' },
   { id: 'bausteine', label: 'Bausteine' },
   { id: 'analysen', label: 'Analysen' },
