@@ -6,8 +6,16 @@
 
 import type { TerminMitBezug } from './bezug';
 import type { Teilnehmer } from './gaeste';
+import { bezugGehoertZu } from '@/lib/fulfillment/prozesse/termine';
 
-export interface TermineZuFrage { kontakte?: readonly string[]; firmen?: readonly string[]; deals?: readonly string[]; mandate?: readonly string[] }
+export interface TermineZuFrage {
+  kontakte?: readonly string[]; firmen?: readonly string[]; deals?: readonly string[]; mandate?: readonly string[];
+  /**
+   * Firma je gefragtem Mandat (Mandat-Kennung → Firma) — setzt NUR der Server (app/api/kalender/bezug) aus dem CRM. Damit gilt für „Termine eines
+   * Mandats“ EINE Regel mit dem Fulfillment (17.10., L2 B9: `bezugGehoertZu`): das Mandat direkt, oder — ohne Mandat am Termin — seine Firma.
+   */
+  mandatFirmen?: Readonly<Record<string, string | null | undefined>>;
+}
 
 /** Ein Termin in der Akte — Zeit, Ort, Titel aus dem Termin; Klick öffnet ihn im Kalender (`WEG.termin`). */
 export interface AkteTermin {
@@ -28,7 +36,7 @@ export function passtZu(t: Pick<TerminMitBezug, 'bezug' | 'gastKontakte'>, f: Te
   if (k.size && ((b.kontaktId && k.has(b.kontaktId)) || (t.gastKontakte ?? []).some(x => k.has(x)))) return true;
   if (b.firmaId && (f.firmen ?? []).includes(b.firmaId)) return true;
   if (b.dealId && (f.deals ?? []).includes(b.dealId)) return true;
-  if (b.mandatId && (f.mandate ?? []).includes(b.mandatId)) return true;
+  if ((f.mandate ?? []).some(id => bezugGehoertZu(b, { id, firmaId: f.mandatFirmen?.[id] }))) return true;
   return false;
 }
 

@@ -14,6 +14,8 @@ import { readFileSync } from 'node:fs';
 import { prognose, jahresgewinn, STANDARD_STEUERN } from '../lib/steuern/rechnen';
 import { ersterOffener } from '../lib/planung/kette-bild';
 import { fuerDich } from '../lib/crm/team';
+import { passtZu } from '../lib/kalender/termine-zu';
+import { bezugGehoertZu } from '../lib/fulfillment/prozesse/termine';
 import path from 'node:path';
 import { kennzahlen } from '../lib/crm/kennzahlen';
 import { wochenScoreboard } from '../lib/crm/scoreboard';
@@ -216,5 +218,22 @@ describe('C · kleine Funde', () => {
     expect(l.find(x => x.id === 'sql_bereit')).toBeUndefined();
     const quelle = readFileSync(path.resolve(__dirname, '..', 'lib/crm/team.ts'), 'utf8');
     expect(quelle).toContain('meineLeads.filter(sqlEntscheidungOffen).length');
+  });
+});
+
+describe('B9 · Termine eines Mandats: dieselbe Regel in Mandatsakte und Fulfillment', () => {
+  const termine = [
+    { bezug: { firmaId: 'f-1' } },                    // an der Firma, ohne Mandat
+    { bezug: { mandatId: 'm-2', firmaId: 'f-1' } },   // ein anderes Mandat derselben Firma
+    { bezug: { mandatId: 'm-1' } },                   // genau dieses Mandat
+    { bezug: { kontaktId: 'c-1' } },                  // nur ein Kontakt
+  ];
+  it('vorher zeigte die Akte 1 Termin, das Fulfillment 2 — jetzt beide dieselben 2', () => {
+    const akte = termine.filter(t => passtZu(t, { mandate: ['m-1'], mandatFirmen: { 'm-1': 'f-1' } }));
+    const fulfillment = termine.filter(t => bezugGehoertZu(t.bezug, { id: 'm-1', firmaId: 'f-1' }));
+    expect(akte).toEqual(fulfillment);
+    expect(akte).toHaveLength(2);
+    // Ohne Firma am Mandat (oder ohne Angabe vom Server) wie bisher: nur das Mandat selbst.
+    expect(termine.filter(t => passtZu(t, { mandate: ['m-1'] }))).toHaveLength(1);
   });
 });
