@@ -9,7 +9,7 @@
 import type { Fall, FallKnoten, Freigabepunkt, KnotenForm, KnotenStatus, Zustaendig } from '../typen';
 import { MUSTER_ONBOARDING, type OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
-import { abschnittVon, abschnitteDes, aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
+import { abschnittVon, aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
 import { obKnotenId, obSchluessel, type OnboardingStand } from './onboarding';
 import { SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE } from './phasen';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz, BESTAETIGUNG } from './darstellung';
