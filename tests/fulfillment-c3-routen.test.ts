@@ -360,6 +360,10 @@ describe('Personenteil, F1, Art. 14, Löschfrist', () => {
     expect((await rufe('fulfillment/dossier/leseteil', 'GET', dienst('pia'), undefined, '?m=m-1')).status).toBe(401);
     const fremd = await rufe('fulfillment/dossier', 'GET', sitzung('olaf'), undefined, '?m=m-1');
     expect((fremd.j.dossier as { leseteil: unknown }).leseteil).toEqual({ gestartetAm: T0, eigen: false });
+    // 18.10. (Gesamtprüfung L3 C9): wer nicht (mehr) im Haushalt des Inhabers ist, liest auch den eigenen Leseteil nicht — 403 vor jedem Lesen.
+    await sp.fulfillmentAendern('dossiers', d => ({ ok: true, datei: { ...d, dossiers: { ...d.dossiers, 'm-1': { ...d.dossiers['m-1'], leseteil: { id: 'tb-geheim-1', person: 'gast', gestartetAm: T0 } } } }, geaendert: ['m-1'] }));
+    expect((await rufe('fulfillment/dossier/leseteil', 'GET', sitzung('gast'), undefined, '?m=m-1')).status).toBe(403);
+    await sp.fulfillmentAendern('dossiers', d => ({ ok: true, datei: { ...d, dossiers: { ...d.dossiers, 'm-1': { ...d.dossiers['m-1'], leseteil: { id: 'tb-geheim-1', person: 'pia', gestartetAm: T0 } } } }, geaendert: ['m-1'] }));
   });
   it('Morgenlauf: Art.-14-Hinweis nur als Vorschlag im Stapel; Freigabe legt eine Aufgabe an', async () => {
     // eine zweite Karte, deren Uhr bald abläuft
