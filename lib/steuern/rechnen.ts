@@ -288,8 +288,14 @@ export function jahresgewinn(ist: { monat: string; umsatz: number; kosten: numbe
   return { gewinn: g, monate: l.length, hochgerechnet: (g / l.length) * 12, quelle: `${l.length} Ist-Monate ${jahr} (${Array.from(new Set(l.flatMap(m => m.quelle.split(' + ')))).join(', ')})` };
 }
 
-/** Vorauszahlungen dieses Jahres, die bis heute fällig waren. */
-const vzBisHeute = (heute: string, monate: number[]) => monate.filter(m => `${heute.slice(0, 4)}-${String(m).padStart(2, '0')}-10` <= heute).length;
+/**
+ * Wie viele Vorauszahlungen des Jahres bis heute fällig waren. Einkommen- und Körperschaftsteuer am 10. (März, Juni, Sept., Dez.),
+ * Gewerbesteuer am 15. (Feb., Mai, Aug., Nov.) — vorher zählte auch die Gewerbesteuer ab dem 10. als bezahlt (17.10., L2 C).
+ */
+const VZ_EST_KST = { monate: [3, 6, 9, 12], tag: 10 } as const;
+const VZ_GEWST = { monate: [2, 5, 8, 11], tag: 15 } as const;
+const vzBisHeute = (heute: string, t: { monate: readonly number[]; tag: number }) =>
+  t.monate.filter(m => `${heute.slice(0, 4)}-${String(m).padStart(2, '0')}-${t.tag}` <= heute).length;
 
 /**
  * Rücklage & Prognose. Seit 05.10. kommen Einkommensteuer (gemeinsam: Gehalt + Selbstständigkeit) und Gewerbesteuer der Selbstständigkeit
@@ -299,7 +305,7 @@ const vzBisHeute = (heute: string, monate: number[]) => monate.filter(m => `${he
 export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Partial<Record<SteuerFirma, Jahresgewinn | null>>, ustOffen: Partial<Record<SteuerFirma, number>>, est: EstGemeinsam | null = null): Prognose {
   const jahr = Number(heute.slice(0, 4));
   const z: PrognoseZeile[] = [];
-  const gezahlt = (n: number | undefined, monate: number[]) => (n ?? 0) * vzBisHeute(heute, monate);
+  const gezahlt = (n: number | undefined, t: { monate: readonly number[]; tag: number }) => (n ?? 0) * vzBisHeute(heute, t);
   const R = WEG.steuern('ruecklage');
   // Umsatzsteuer: laufender Zeitraum, noch nicht angemeldet.
   for (const f of STEUER_FIRMEN) if (ustOffen[f] != null) z.push({ id: `ust-${f}`, einheit: f, titel: 'Umsatzsteuer laufender Zeitraum', betrag: Math.max(0, ustOffen[f]!), formel: 'USt aus Rechnungen − bekannte Vorsteuer', href: WEG.steuern('ust') });
@@ -312,7 +318,7 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Partial<
     z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: null, formel: 'Finanzplanung › Selbstständigkeit › Einkommensteuer gemeinsam', luecke: `Die Finanzplanung rechnet ${jahr} nicht (kein Plan oder Jahr außerhalb des Plans) — keine Schätzung`, href: PLAN });
     if (e.kdc.gewerbe) z.push({ id: 'gewst-kdc', einheit: 'kdc', titel: `Gewerbesteuer ${jahr}`, betrag: null, formel: '(Gewinn − Freibetrag) × Messzahl × Hebesatz, aus der Finanzplanung', luecke: `Die Finanzplanung rechnet ${jahr} nicht — keine Schätzung`, href: PLAN });
     // Ohne Finanzplanung bleibt die Steuer-Einstellung die Quelle der Vorauszahlungen (hier nur benannt — ohne Plan gibt es keinen Betrag).
-    const vEst = gezahlt(e.vorauszahlung.est, [3, 6, 9, 12]), vGew = gezahlt(e.vorauszahlung.gewstKdc, [2, 5, 8, 11]);
+    const vEst = gezahlt(e.vorauszahlung.est, VZ_EST_KST), vGew = gezahlt(e.vorauszahlung.gewstKdc, VZ_GEWST);
     vorauszahlung = { quelle: vEst || vGew ? 'einstellungen' : 'keine', est: vEst, gewst: vGew };
   } else {
     // Mehrsteuer über der Lohnsteuer (die steckt in der Netto-Tabelle) nach Anrechnung § 35, mit Soli und Handwert-Korrekturen der Finanzplanung
@@ -324,7 +330,7 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Partial<
     const vzPlan = Math.max(0, Number.isFinite(est.vorausgezahlt) ? est.vorausgezahlt : 0);
     const vzEst = Math.min(Math.max(0, estSoll), vzPlan);
     const vzGew = est.gewerbe ? Math.min(Math.max(0, est.gewst), vzPlan - vzEst) : 0;
-    const ungenutztEst = gezahlt(e.vorauszahlung.est, [3, 6, 9, 12]), ungenutztGew = gezahlt(e.vorauszahlung.gewstKdc, [2, 5, 8, 11]);
+    const ungenutztEst = gezahlt(e.vorauszahlung.est, VZ_EST_KST), ungenutztGew = gezahlt(e.vorauszahlung.gewstKdc, VZ_GEWST);
     vorauszahlung = { quelle: 'finanzplanung', est: vzEst, gewst: vzGew, ...(ungenutztEst || ungenutztGew ? { ungenutzt: { ...(ungenutztEst ? { est: ungenutztEst } : {}), ...(ungenutztGew ? { gewstKdc: ungenutztGew } : {}) } } : {}) };
     const quelleText = 'Vorauszahlungen laut Finanzplanung (Selbstständigkeit › „Vorauszahlungen schon bezahlt“ + Quartalszahlungen im Plan)';
     z.push({ id: 'est', einheit: 'privat', titel: titelEst, betrag: Math.max(0, estSoll - vzEst),
@@ -356,8 +362,8 @@ export function prognose(e: SteuerEinstellungen, heute: string, gewinn: Partial<
     const kst = Math.max(0, gv.hochgerechnet) * kstSatz;
     const gew = Math.max(0, gv.hochgerechnet) * gewSatz;
     const vz = firma === 'ug'
-      ? gezahlt(e.vorauszahlung.kstUg, [3, 6, 9, 12]) + gezahlt(e.vorauszahlung.gewstUg, [2, 5, 8, 11])
-      : gezahlt(e.vorauszahlung.kst, [3, 6, 9, 12]) + gezahlt(e.vorauszahlung.gewstKdv, [2, 5, 8, 11]);
+      ? gezahlt(e.vorauszahlung.kstUg, VZ_EST_KST) + gezahlt(e.vorauszahlung.gewstUg, VZ_GEWST)
+      : gezahlt(e.vorauszahlung.kst, VZ_EST_KST) + gezahlt(e.vorauszahlung.gewstKdv, VZ_GEWST);
     z.push({ id, einheit: firma, titel, betrag: Math.max(0, kst + gew - vz), formel: `${zahl(gv.hochgerechnet)} € ${formel} − ${zahl(vz)} € Vorauszahlungen`, href: R });
   }
   for (const zl of z) zl.href = hrefImBereich(zl.href, zl.einheit);
