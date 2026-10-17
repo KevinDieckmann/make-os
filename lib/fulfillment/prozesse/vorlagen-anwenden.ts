@@ -20,6 +20,7 @@ import { MUSTER_LANDKARTE, MUSTER_P1, MUSTER_P2, MUSTER_P3, MUSTER_RITUALE, MUST
 import { istOrt } from '../orte';
 import { bausteinAusEingabe, markeUrheberGeprueft, MESSE_NACHFASS_TAGE } from './bausteine';
 import { ausfuehren, istObj, mischen, nein, optBool, optText, optWahl, optZahl, pflichtText, standPruefen, textListe } from './pruefen';
+import { zweigeOhne, zweigePruefen } from './fluss-struktur';
 
 export interface VorlagenKontext {
   person: string;
@@ -340,7 +341,8 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           if (!x.elternId) nein('Der oberste Knoten bleibt — die ganze Vorlage löscht man über „Vorlage löschen“.');
           standPruefen(o.stand, k.standVon(x), x.id);
           const weg = new Set(teilbaum(x.id, v.knoten));
-          setze({ ...v, knoten: rangNeu(v.knoten.filter(y => !weg.has(y.id)), x.elternId), uebergaenge: v.uebergaenge.filter(u => !weg.has(u.von) && !weg.has(u.nach)) });
+          // Zweige (Prozess-Editor), die in den entfernten Teil zeigten, fallen mit weg.
+          setze({ ...v, knoten: rangNeu(zweigeOhne(v.knoten, weg).knoten.filter(y => !weg.has(y.id)), x.elternId), uebergaenge: v.uebergaenge.filter(u => !weg.has(u.von) && !weg.has(u.nach)) });
           geaendert.push(v.id);
           break;
         }
@@ -487,6 +489,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
     d.prozesse = d.prozesse.map(p => {
       if (!beruehrt.has(p.id)) return p;
       vorlageStrukturPruefen(p, d);
+      zweigePruefen(p.knoten);
       const alt = vorher.get(p.id);
       if (alt === JSON.stringify(p)) return p;
       if (!alt) return { ...p, fassung: Math.max(1, p.fassung), geaendert: k.jetzt, geaendertVon: k.person };
@@ -511,7 +514,8 @@ export function vorlagenMitBaustein(d: Pick<VorlagenDatei, 'prozesse'>, baustein
 /** Für den Browser: Stände je Vorlagen-Kopf, Knoten, Baustein und Ritual (nie gespeichert). */
 export function mitStaenden(d: VorlagenDatei, standVon: (x: object) => string) {
   return {
-    prozesse: d.prozesse.map(p => ({ ...p, stand: standVon(vorlageKopf(p)), knoten: p.knoten.map(x => ({ ...x, stand: standVon(x) })) })),
+    // `standVoll` = Stand der GANZEN Vorlage (Prozess-Editor, 17.10. — lib/fulfillment/prozesse/editor.ts prüft gegen ihn).
+    prozesse: d.prozesse.map(p => ({ ...p, stand: standVon(vorlageKopf(p)), standVoll: standVon(p), knoten: p.knoten.map(x => ({ ...x, stand: standVon(x) })) })),
     bausteine: d.bausteine.map(b => ({ ...b, stand: standVon(b) })),
     rituale: d.rituale.map(r => ({ ...r, stand: standVon(r) })),
   };

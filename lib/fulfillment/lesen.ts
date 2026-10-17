@@ -13,7 +13,7 @@ import {
   type FaelleDatei, type Fall, type FallKnoten, type Vereinbarung, type Stakeholder, type Entscheidung, type Mitschrift, type WertKontoEintrag,
   type KundeDatei, type KundenLink, type FormularStand, type PulsAnfrage, type Puls, type Unterlage,
   type DossierDatei, type Dossier, type Abschnitt, type AbschnittId, type Aussage, type Quelle, type AnalyseLauf, type Massnahme, type LaufStatus,
-  type PersonenDatei, type PersonenKarte, type FulfillmentArt, type FulfillmentDateien,
+  type PersonenDatei, type PersonenKarte, type FulfillmentArt, type FulfillmentDateien, type KnotenForm, type Zweige, type VorlagenPapierkorb,
 } from './typen';
 import { hohlerFallKnoten, hohlerVorlagenKnoten, phasenOrdnen } from './prozesse/phasen';
 
@@ -44,6 +44,17 @@ export const RITUAL_RHYTHMEN = ['einmal', 'taeglich', 'werktags', 'woche', 'zwei
 export const ABLAUF_FORMEN = ['baum', 'trichter', 'fluss', 'zeitachse', 'kreis'] as const satisfies readonly AblaufForm[];
 export const BAUSTEIN_ARTEN = ['aufgabe', 'dokument', 'skript', 'checkliste', 'mail', 'kennzahl', 'ritual', 'formular', 'workbook', 'analyse', 'freigabe'] as const satisfies readonly BausteinArt[];
 export const ABSCHNITT_IDS = ['fazit', 'unternehmen', 'gesellschafter', 'markt', 'aussen', 'vertrieb', 'reputation', 'finanzen', 'chancen_risiken', 'good_bad', 'hypothesen', 'fragen', 'recht'] as const satisfies readonly AbschnittId[];
+/** Die Formen eines Knotens im Fluss (Prozess-Editor, 17.10.) — EINE Liste für Säuberer, Editor-Ops und Oberfläche (Typ `KnotenForm`). */
+export const KNOTEN_FORMEN = ['schritt', 'nachricht', 'entscheidung', 'erinnerung', 'termin', 'abstimmung'] as const satisfies readonly KnotenForm[];
+/** Frist eines Knotens in Tagen (Prozess-Editor): ganze Tage 0 … 3650. */
+const frist = (v: unknown): number | undefined => { const x = n(v); return x !== undefined && Number.isInteger(x) && x >= 0 && x <= 3650 ? x : undefined; };
+/** Zweige ja/nein (Prozess-Editor) — nur gültige Kennungen; ohne beide fehlt das Feld. */
+const zweige = (v: unknown): Zweige | undefined => {
+  const o = obj(v);
+  if (!o) return undefined;
+  const ja = id(o.ja), nein = id(o.nein);
+  return ja || nein ? sauber<Zweige>({ ja, nein }) : undefined;
+};
 const LAUF_STATUS = ['bereit', 'laeuft', 'fertig', 'fehler', 'abgebrochen', 'uebernommen', 'verworfen'] as const satisfies readonly LaufStatus[];
 
 // ── Vorlagen-Bestand `fulfillment--<h>` ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -71,6 +82,25 @@ const knoten = (o: O): ProzessKnoten | null => {
     heute: s(o.heute), werkzeuge: werkzeuge.length ? werkzeuge : undefined, dokumentation: s(o.dokumentation),
     art: wahl(o.art, ['einstieg', 'stufe', 'ausstieg', 'routine'] as const), optional: b(o.optional), ausgang: s(o.ausgang), original: s(o.original),
     beleg: wahl(o.beleg, ['quelle', 'ergaenzung'] as const),
+    form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige),
+  });
+};
+/** Der gemerkte Platz eines gelöschten Schritts (genau eine Angabe, sonst keiner). */
+const platzAus = (v: unknown): VorlagenPapierkorb['platz'] => {
+  const o = obj(v);
+  if (!o) return undefined;
+  for (const f of ['nach', 'vor', 'inGruppe', 'nachGruppe'] as const) { const x = id(o[f]); if (x) return { [f]: x }; }
+  return o.anfang === true ? { anfang: true } : undefined;
+};
+/** Ein Eintrag im Papierkorb einer Paket-Vorlage (Prozess-Editor) — ohne Knoten fällt er weg (es gäbe nichts zurückzuholen). */
+const papierkorbEintrag = (o: O): VorlagenPapierkorb | null => {
+  const i = id(o.id), am = s(o.am), art = wahl(o.art, ['phase', 'gruppe', 'schritt', 'baustein'] as const);
+  const kn = liste(o.knoten, knoten);
+  if (!i || !am || !art || !kn.length) return null;
+  const verweise = liste(o.verweise, x => { const k = id(x.knotenId), z = wahl(x.zweig, ['ja', 'nein'] as const), ziel = id(x.ziel); return k && z && ziel ? { knotenId: k, zweig: z, ziel } : null; });
+  return sauber<VorlagenPapierkorb>({
+    id: i, am, von: s(o.von) ?? '', art, phaseId: id(o.phaseId), elternId: id(o.elternId), nachId: id(o.nachId), vorId: id(o.vorId), platz: platzAus(o.platz), knoten: kn,
+    verweise: verweise.length ? verweise : undefined, still: o.still === true ? true : undefined,
   });
 };
 const uebergang = (o: O): Uebergang | null => {
@@ -91,6 +121,7 @@ export function vorlageAus(o: O): ProzessVorlage | null {
   const zh = texte(o.zeichenhinweise);
   const phasenVonHand = art === 'paket' && o.phasenVonHand === true ? true as const : undefined;
   const kn = liste(o.knoten, knoten);
+  const pk = art === 'paket' ? liste(o.papierkorb, papierkorbEintrag) : [];
   return sauber<ProzessVorlage>({
     id: i, art, titel, beschreibung: s(o.beschreibung), form: wahl(o.form, ABLAUF_FORMEN),
     quelleHinweis: s(o.quelleHinweis), vorbehalt: s(o.vorbehalt), zeichenhinweise: zh.length ? zh : undefined,
@@ -99,6 +130,7 @@ export function vorlageAus(o: O): ProzessVorlage | null {
     knoten: art === 'paket' && !phasenVonHand ? phasenOrdnen(kn, { hohl: hohlerVorlagenKnoten }) : kn,
     uebergaenge: liste(o.uebergaenge, uebergang), freigaben: liste(o.freigaben, freigabepunkt), rollen: liste(o.rollen, rolle),
     fassung: n(o.fassung) ?? 1, herkunft: herkunft(o.herkunft), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '', phasenVonHand,
+    papierkorb: pk.length ? pk : undefined,
   });
 }
 const frage = (o: O): Frage | null => {
@@ -188,6 +220,7 @@ const fallKnoten = (o: O): FallKnoten | null => {
     id: i, elternId: id(o.elternId), titel, rang: n(o.rang) ?? 0, ziel: s(o.ziel), ergebnis: s(o.ergebnis), kennzahl: s(o.kennzahl),
     zustaendig: wahl(o.zustaendig, ZUSTAENDIG), freigabe: id(o.freigabe), kundeSichtbar: b(o.kundeSichtbar), phaseId: s(o.phaseId), bausteinId: id(o.bausteinId), dauerTage: n(o.dauerTage),
     status, seit: s(o.seit), faelligAm: s(o.faelligAm), erledigtAm: s(o.erledigtAm), erledigtVon: s(o.erledigtVon), grund: s(o.grund), extra: o.extra === true ? true : undefined,
+    form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige),
   });
 };
 const vereinbarung = (v: unknown): Vereinbarung | undefined => {

@@ -19,9 +19,10 @@ import { OB_PRAEFIX, obKnotenId, obSchluessel } from './onboarding';
 import { ausfuehren, istObj, mischen, nein, optBool, optTag, optText, optWahl, optZahl, pflichtText, standPruefen, titelForm } from './pruefen';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { tagVon } from '@/lib/zeit';
+import { phasenDer, phasenSchritte } from './fluss-struktur';
 
 /** Felder, die beim Start aus der Vorlage kopiert werden (7.2). */
-export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis', 'kennzahl', 'zustaendig', 'freigabe', 'kundeSichtbar', 'phaseId', 'bausteinId', 'dauerTage'] as const;
+export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis', 'kennzahl', 'zustaendig', 'freigabe', 'kundeSichtbar', 'phaseId', 'bausteinId', 'dauerTage', 'form', 'frist', 'zweige'] as const;
 /** Felder, die ein Diff vergleicht (ohne Rang — die Reihenfolge darf der Fall behalten). */
 const DIFF_FELDER = STRUKTUR_FELDER.filter(f => f !== 'rang');
 
@@ -60,6 +61,10 @@ export function fallStarten(e: StartEingabe): Fall {
     tag = tagPlus(tag, p.dauerTage);
     knoten = knoten.map(k => (k.id === p.id ? { ...k, faelligAm: tag } : k));
   }
+  // Frist (Prozess-Editor, 17.10.): der erste Schritt des Ablaufs (vor den Onboarding-Schritten) ist ab dem Start fällig; die übrigen ab dem Schritt davor
+  // (`fallAnwenden`, knoten-status).
+  const ersterSchritt = phasenDer(knoten).flatMap(p => phasenSchritte(knoten, p.id))[0];
+  if (ersterSchritt?.frist !== undefined && !ersterSchritt.faelligAm) knoten = knoten.map(k => (k.id === ersterSchritt.id ? { ...k, faelligAm: tagPlus(e.start, ersterSchritt.frist!) } : k));
   // Onboarding: ein Knoten (Ebene 2 oder 3), der „Onboarding“ heißt — bevorzugt einer ohne eigene Schritte (bei „Vorlauf / Onboarding“ mit dem
   // Unterschritt „Onboarding“ also der Unterschritt) —, sonst eine neue Phase ganz vorn. Die acht Schritte kommen hinter vorhandene.
   const wurzel = knoten.find(k => !k.elternId);
@@ -105,7 +110,19 @@ export function fallStarten(e: StartEingabe): Fall {
 
 // ── Vorlagen-Diff (7.2) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export interface VorlagenDiff { von: number; nach: number; neu: { id: string; titel: string }[]; geaendert: { id: string; titel: string; felder: string[] }[]; entfernt: { id: string; titel: string }[] }
+export interface VorlagenDiff {
+  von: number; nach: number; neu: { id: string; titel: string }[]; geaendert: { id: string; titel: string; felder: string[] }[]; entfernt: { id: string; titel: string }[];
+  /** Eltern-Knoten (Phasen, Teilprozesse, Wurzel), deren Schritte in der Vorlage anders geordnet sind (Prozess-Editor, 17.10.). */
+  reihenfolge: { id: string; titel: string }[];
+}
+
+/** Die Kinder eines Knotens, die in Vorlage UND Fall darunter stehen — in der Reihenfolge der Vorlage bzw. des Falls. */
+function gemeinsameKinder(id: string, fallKn: readonly FallKnoten[], v: ProzessVorlage): { soll: string[]; ist: string[] } {
+  const imFall = new Set(kinderVon(id, fallKn).map(k => k.id));
+  const soll = kinderVon(id, v.knoten).map(k => k.id).filter(x => imFall.has(x));
+  const inSoll = new Set(soll);
+  return { soll, ist: kinderVon(id, fallKn).map(k => k.id).filter(x => inSoll.has(x)) };
+}
 
 /** Was sich an der Vorlage seit dem Start (bzw. der letzten Übernahme) geändert hat — null, wenn nichts. */
 export function vorlagenDiff(fall: Pick<Fall, 'knoten' | 'vorlageFassung'>, v: ProzessVorlage): VorlagenDiff | null {
@@ -119,7 +136,35 @@ export function vorlagenDiff(fall: Pick<Fall, 'knoten' | 'vorlageFassung'>, v: P
     return { id: k.id, titel: k.titel, felder };
   }).filter(x => x.felder.length);
   const entfernt = fall.knoten.filter(k => !k.extra && !inVorlage.has(k.id)).map(k => ({ id: k.id, titel: k.titel }));
-  return { von: fall.vorlageFassung, nach: v.fassung, neu, geaendert, entfernt };
+  const reihenfolge = inReihenfolge(v.knoten).filter(k => imFall.has(k.id)).filter(k => {
+    const { soll, ist } = gemeinsameKinder(k.id, fall.knoten, v);
+    return soll.length > 1 && soll.join('|') !== ist.join('|');
+  }).map(k => ({ id: k.id, titel: k.titel }));
+  return { von: fall.vorlageFassung, nach: v.fassung, neu, geaendert, entfernt, reihenfolge };
+}
+
+/**
+ * Die Reihenfolge der Vorlage in den Fall übernehmen: je Eltern-Knoten stehen die Kinder aus der Vorlage in ihrer Reihenfolge; eigene Zusatz-Schritte des
+ * Falls (und Kinder, die der Fall woanders behält) bleiben hinter dem Knoten, hinter dem sie standen. Ränge danach lückenlos. Nichts fällt weg.
+ */
+function reihenfolgeUebernehmen(kn: FallKnoten[], v: ProzessVorlage): FallKnoten[] {
+  let liste = kn;
+  for (const p of inReihenfolge(kn)) {
+    const kinder = kinderVon(p.id, liste);
+    if (kinder.length < 2) continue;
+    const ids = new Set(kinder.map(c => c.id));
+    const reihe = kinderVon(p.id, v.knoten).map(c => c.id).filter(x => ids.has(x));
+    if (!reihe.length) continue;
+    for (const [i, c] of kinder.entries()) {
+      if (reihe.includes(c.id)) continue;
+      const davor = kinder.slice(0, i).reverse().find(x => reihe.includes(x.id));
+      reihe.splice(davor ? reihe.indexOf(davor.id) + 1 : 0, 0, c.id);
+    }
+    const rang = new Map(reihe.map((x, i) => [x, i + 1]));
+    if (kinder.every(c => c.rang === rang.get(c.id))) continue;
+    liste = liste.map(x => (rang.has(x.id) ? { ...x, rang: rang.get(x.id)! } : x));
+  }
+  return liste;
 }
 
 /** Die neue Fassung übernehmen: neue Knoten dazu (nur unter vorhandenen Eltern), Felder geänderter Knoten übernehmen, nichts entfernen. */
@@ -140,7 +185,9 @@ export function vorlageUebernehmen(fall: Fall, v: ProzessVorlage, jetzt: string,
     knoten = knoten.map(x => (x.id === da.id ? neu as unknown as FallKnoten : x));
   }
   if (knoten.some(k => ebeneVon(k, knoten) > EBENEN_MAX)) knoten = fall.knoten; // nie eine kaputte Struktur übernehmen
-  return { ...fall, knoten, vorlageFassung: v.fassung, geaendert: jetzt, geaendertVon: person };
+  else knoten = reihenfolgeUebernehmen(knoten, v);
+  // Hat die Vorlage ihre Phasen von Hand geordnet (Editor), behält der Fall diese Reihenfolge (sonst ordnete der Säuberer nach der Regel).
+  return { ...fall, knoten, vorlageFassung: v.fassung, geaendert: jetzt, geaendertVon: person, ...(v.phasenVonHand ? { phasenVonHand: true as const } : {}) };
 }
 
 // ── Änderungen am Fall ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -220,6 +267,17 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
             if (naechstes) for (const s of kinderVon(naechstes.id, f.knoten)) {
               if (s.dauerTage && !s.faelligAm && s.status === 'offen') setzeKnoten({ ...s, faelligAm: tagPlus(neu.erledigtAm ?? k.heute, s.dauerTage) });
             }
+            // Prozess-Editor (17.10.): eine Entscheidung erledigt = „ja“ — ihr Nein-Zweig (die Erinnerung) entfällt, wenn er noch offen ist.
+            const neinZiel = n.form === 'entscheidung' ? n.zweige?.nein : undefined;
+            const neinKn = neinZiel ? f.knoten.find(x => x.id === neinZiel) : undefined;
+            if (neinKn && neinKn.status !== 'erledigt' && neinKn.status !== 'entfaellt') {
+              const { erledigtAm: _a, erledigtVon: _b, ...r } = neinKn;
+              setzeKnoten({ ...r, status: 'entfaellt', seit: neu.erledigtAm ?? k.heute, grund: 'Entscheidung: ja' });
+            }
+            // Frist in Tagen: der nächste Schritt im selben Strang (ohne den Nein-Zweig) ist ab heute bzw. dem Tag der Erledigung fällig.
+            const folge = geschwister.slice(geschwister.findIndex(x => x.id === n.id) + 1).find(x => x.id !== neinZiel);
+            const aktuell = folge ? f.knoten.find(x => x.id === folge.id) : undefined;
+            if (aktuell && aktuell.frist !== undefined && !aktuell.faelligAm && aktuell.status === 'offen') setzeKnoten({ ...aktuell, faelligAm: tagPlus(neu.erledigtAm ?? k.heute, aktuell.frist) });
           }
           break;
         }
