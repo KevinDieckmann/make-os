@@ -48,6 +48,8 @@ export const FLAECHE_PALETTE: readonly FlaechePaletteEintrag[] = ['phase', 'schr
 export const paletteTitel = (f: FlaechePaletteEintrag) => (f === 'phase' ? 'Start · Phase' : f === 'baustein' ? 'Baustein' : FORM_TITEL[f]);
 /** Ab so vielen Pixeln Bewegung ist es Ziehen (wie überall im Editor). */
 const ZIEH_PX = 5;
+/** Kleinster Zoom beim Öffnen — darunter ist die Schrift nicht mehr lesbar (Knoten-Schrift 13 px → ≥ 8 px). */
+const START_MIN = 0.6;
 const MERKER_RASTER = 'make-ff-flaeche-raster';
 
 type Baustein = { id: string; titel: string; art: string };
@@ -162,10 +164,13 @@ export function EditorFlaeche(p: FlaecheProps) {
   const zuruecksetzen = useCallback(() => { const b = stand.current.bild.box; fliege({ s: 1, x: 40 - b.x, y: 40 - b.y }); }, [fliege]);
   const zoomen = (f: number) => { const g = groesse(); fliege(zoomUm(kamera.current, f, g.b / 2, g.h / 2)); };
 
-  // Beim Öffnen: alles zeigen (höchstens 100 %). Raster-Merker lesen. Gerät (⌘ oder Strg, Touch).
+  // Beim Öffnen: alles zeigen (höchstens 100 %) — aber nie unlesbar klein (17.10., Gesamtprüfung L4 B1: ein großer Ablauf öffnete bei 15 %, Schrift 2–6 px).
+  // Passt er nicht lesbar hinein, beginnt die Fläche oben links mit `START_MIN`; „Alles zeigen“ holt den ganzen Ablauf. Raster-Merker lesen. Gerät (⌘ oder Strg, Touch).
   useEffect(() => {
     const g = groesse();
-    setzeKamera(allesZeigen(stand.current.bild.box, g.b, g.h, 40, 1));
+    const b = stand.current.bild.box;
+    const alles = allesZeigen(b, g.b, g.h, 40, 1);
+    setzeKamera(alles.s >= START_MIN ? alles : { s: START_MIN, x: 40 - b.x * START_MIN, y: 40 - b.y * START_MIN });
     if (merkerLesen(MERKER_RASTER) === 'aus') setRaster(false);
     setGeraet({ mac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), touch: !!window.matchMedia?.('(pointer: coarse)').matches });
     return () => { if (bildEntwurf.current) cancelAnimationFrame(bildEntwurf.current); };

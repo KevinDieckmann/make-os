@@ -327,7 +327,7 @@ export function pruefeBild(bild: unknown, medientyp: unknown): BildPruefung {
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(daten)) return { ok: false, status: 400, fehler: 'Das Foto kam beschädigt an — bitte noch einmal aufnehmen.' };
   const bytes = Math.floor((daten.length * 3) / 4) - (daten.endsWith('==') ? 2 : daten.endsWith('=') ? 1 : 0);
   if (bytes > MAX_BILD_MB * 1024 * 1024) {
-    return { ok: false, status: 413, fehler: `Das Foto ist ${(bytes / 1024 / 1024).toFixed(1)} MB groß — bis ${MAX_BILD_MB} MB geht es.` };
+    return { ok: false, status: 413, fehler: `Das Foto ist ${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB groß — bis ${MAX_BILD_MB} MB geht es.` };
   }
   const echt = bildTypAusDaten(daten);
   if (!echt) {

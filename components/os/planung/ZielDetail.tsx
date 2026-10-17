@@ -247,7 +247,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
                 onBlur={() => { if (titel.trim() && titel.trim() !== z.titel) zPatch({ titel: titel.trim() }); setTitel(null); }}
                 onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setTitel(null); }}
                 style={{ ...feld, flex: 1, minWidth: 0, fontFamily: SCHRIFT.display, fontSize: TYP.titel + 2, fontWeight: 700 }} />
-            : <h2 style={{ flex: 1, minWidth: 0, margin: 0, padding: '2px 0', fontFamily: SCHRIFT.display, fontSize: TYP.titel + 2, fontWeight: 700, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none', overflowWrap: 'anywhere' }}>{z.titel}</h2>}
+            : <h2 style={{ flex: 1, minWidth: 0, margin: 0, padding: '2px 0', fontFamily: SCHRIFT.display, fontSize: TYP.titel + 2, fontWeight: 700, color: z.erledigt ? C.inkLeise : C.ink, textDecoration: z.erledigt ? 'line-through' : 'none', overflowWrap: 'break-word', hyphens: 'auto' }} lang="de">{z.titel}</h2>}
           {titel === null && <Knopf leise onClick={() => setTitel(z.titel)}>umbenennen</Knopf>}
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10, fontSize: TYP.bedien, color: C.inkLeise }}>

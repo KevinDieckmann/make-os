@@ -93,8 +93,8 @@ export async function computeShields(today = localDay(), person?: string | null)
     const m = computeMetrics(mitKasse(fin, fplan?.firmen));
     const s = await schwellen();
     if (m.runwayMonate != null && m.aktiveMonate > 0) {
-      if (m.runwayMonate < s.runwayRot) shields.push({ id: 'runway', stufe: 'rot', text: `Runway ${m.runwayMonate.toFixed(1)} Monate — Liquidität ist DAS Thema.`, href: WEG.controlling(), label: 'Controlling' });
-      else if (m.runwayMonate < s.runwayAmber) shields.push({ id: 'runway', stufe: 'amber', text: `Runway ${m.runwayMonate.toFixed(1)} Monate — Puffer schrumpft.`, href: WEG.controlling(), label: 'Controlling' });
+      if (m.runwayMonate < s.runwayRot) shields.push({ id: 'runway', stufe: 'rot', text: `Runway ${m.runwayMonate.toFixed(1).replace('.', ',')} Monate — Liquidität ist DAS Thema.`, href: WEG.controlling(), label: 'Controlling' });
+      else if (m.runwayMonate < s.runwayAmber) shields.push({ id: 'runway', stufe: 'amber', text: `Runway ${m.runwayMonate.toFixed(1).replace('.', ',')} Monate — Puffer schrumpft.`, href: WEG.controlling(), label: 'Controlling' });
     }
   }
 

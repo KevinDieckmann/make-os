@@ -237,7 +237,7 @@ function Detail({ daten, phase, knoten, gewaehlt, ops, status, abschlussOps, mel
       {stelle === 'willkommen' && !gesendet && <WillkommenKarte daten={daten} oeffnen={willkommenAuf} setOeffnen={setWillkommenAuf} onMeldung={setMeldung} haupt={hier} />}
       {stelle === 'kickoff' && <KickoffFragen daten={daten} ops={ops} />}
       {stelle && ABSCHLUSS.has(stelle) && <AbschlussDetail daten={daten} stelle={stelle as AbschlussStelle} melde={melde} ops={abschlussOps} />}
-      {stelle === 'analyse' && <Hinweis art="info" titel="Analyse">Läufe, Dossier und Recht stehen an der Phase der Analyse — unten unter „Analyse dieser Phase“ bzw. über den Verweis am Schritt.</Hinweis>}
+      {stelle === 'analyse' && <Hinweis art="info" titel="Analyse">Läufe, Dossier und Recht stehen an der Phase der Analyse — dort unter „Analyse dieser Phase“ bzw. über den Verweis am Schritt.</Hinweis>}
     </>
   );
 }

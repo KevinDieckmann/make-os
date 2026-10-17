@@ -266,7 +266,7 @@ export async function computeIndex(today: string = localDay(), person: Person): 
     const moods = journalTage.map(d => journal![d].mood).filter((n): n is number => typeof n === 'number');
   if (moods.length) {
     sozial[0] = { label: 'Stimmung (Journal)', wert: clamp((moods.reduce((a, b) => a + b, 0) / moods.length / 5) * 100), echt: true,
-      quelle: `Ø ${(moods.reduce((a, b) => a + b, 0) / moods.length).toFixed(1)}/5 aus ${moods.length} Einträgen` };
+      quelle: `Ø ${(moods.reduce((a, b) => a + b, 0) / moods.length).toFixed(1).replace('.', ',')}/5 aus ${moods.length} Einträgen` };
   }
 
   // ── Agenten ──

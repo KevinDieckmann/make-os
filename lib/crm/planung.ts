@@ -38,6 +38,8 @@ import {
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
 const rund1 = (n: number) => Math.round(n * 10) / 10;
+/** Dieselbe Zahl als deutscher Text („2,3“, 17.10., Gesamtprüfung L4 B8 — vorher stand „2.3 neue Leads/Monat“). */
+const de1 = (n: number) => rund1(n).toLocaleString('de-DE');
 /** Wochen je Monat (365,25 ÷ 12 ÷ 7). */
 export const WOCHEN_JE_MONAT = 365.25 / 12 / 7;
 /** Ab so vielen Tagen ohne Kontakt gilt jemand als „ruhend“ (Challenge „reaktivieren“). */
@@ -336,8 +338,8 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
   }
   const kundenZahl = kaeufe.size;
   const stufen: KreislaufStufe[] = [
-    { id: 'kanaele', label: 'Leadkanäle', anzahl: aktiv.length, zusatz: aktiv.length ? `${rund1(planLeads)} Leads/Monat geplant` : 'noch kein Leadkanal angelegt',
-      plan: `${rund1(planLeads)} neue Leads/Monat`, ist: `${rund1(neueLeads / 3)} neue Leads/Monat (Ø 3 Monate)`, href: '', hrefLabel: 'Leadkanäle pflegen' },
+    { id: 'kanaele', label: 'Leadkanäle', anzahl: aktiv.length, zusatz: aktiv.length ? `${de1(planLeads)} Leads/Monat geplant` : 'noch kein Leadkanal angelegt',
+      plan: `${de1(planLeads)} neue Leads/Monat`, ist: `${de1(neueLeads / 3)} neue Leads/Monat (Ø 3 Monate)`, href: '', hrefLabel: 'Leadkanäle pflegen' },
     { id: 'leads', label: 'Leads & Qualifizierung', anzahl: leadsInArbeit.length, zusatz: `${z.length} Leads gesamt`,
       plan: `Lead → SQL ${pz(leadZuSqlPlan)}`, ist: `Lead → SQL ${pz(leadZuSqlIst)}`, annahme: annahme('leadZuGespraech', 'gespraechZuSql'), href: WEG.qualifizierung(), hrefLabel: 'Qualifizierung öffnen' },
     { id: 'deals', label: 'Deals (SQL … Abschluss)', anzahl: offen.length, zusatz: `${Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)).toLocaleString('de-DE')} € offen`,
@@ -498,7 +500,7 @@ export function kapaVergleich(bedarf: readonly PersonBedarf[], frei: Readonly<Re
     if (f === null) return { person: b.person, stunden: b.stunden, frei: null, status: 'unbekannt' as const, text: `Braucht ${b.stunden} h/Woche — Kapazität unbekannt (Planung › Kapazität).` };
     const anteil = f > 0 ? b.stunden / f : Infinity;
     const status: PlanMachbar = anteil <= MACHBAR_BIS ? 'machbar' : anteil <= ENG_BIS ? 'eng' : 'nicht-machbar';
-    const text = status === 'nicht-machbar' ? `Nicht machbar — bräuchte ${b.stunden} h/Woche, frei sind ${rund1(Math.max(0, f))} h.` : `${status === 'eng' ? 'Eng' : 'Machbar'}: ${b.stunden} von ${rund1(f)} freien h/Woche.`;
+    const text = status === 'nicht-machbar' ? `Nicht machbar — bräuchte ${b.stunden} h/Woche, frei sind ${de1(Math.max(0, f))} h.` : `${status === 'eng' ? 'Eng' : 'Machbar'}: ${b.stunden} von ${de1(f)} freien h/Woche.`;
     return { person: b.person, stunden: b.stunden, frei: rund1(f), status, text };
   });
 }
