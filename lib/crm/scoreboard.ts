@@ -23,6 +23,7 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Event } from './typen';
+import { nurBusinessGezaehlt } from './zaehlung-business';
 import type { KpiAmpel } from './kennzahlen';
 import { echtesGespraech } from './pipeline';
 import { neuerLeadAm } from './neue-leads';
@@ -184,7 +185,9 @@ export function salesAnteilAb(sitzungen: readonly { person: string; datum: strin
  * Teamziel geteilt durch die Zahl der Personen MIT Sales-Anteil, aufgerundet — `salesAnteilAb`).
  * Gespräche und neue SQL messen an DERSELBEN Messlatte wie Kennzahlen und Traktions-Index (`messlatte`, Ziele der Wertelisten, 7.2).
  */
-export function wochenScoreboard(kontakte: Kontakt[], crm: CrmBestand, heute: string, wochen = 8, plan?: PlanWoche | null): Scoreboard {
+export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: string, wochen = 8, plan?: PlanWoche | null): Scoreboard {
+  // Nur Business (17.10., L2 B2): Deals, Mandate und Angebote einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
+  const crm = nurBusinessGezaehlt(crm0);
   const W = wochenBis(heute, Math.max(1, Math.min(52, Math.round(wochen) || 8)));
   const drin = (d: string, w: ScoreWoche) => d >= w.von && d <= w.bis && d <= heute;
 

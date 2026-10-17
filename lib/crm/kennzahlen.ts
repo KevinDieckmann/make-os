@@ -7,6 +7,7 @@
 import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Wertelisten } from './typen';
+import { nurBusinessGezaehlt } from './zaehlung-business';
 import { OFFENE_STUFEN, prognose, gesundheit, gesamtwert, winRate, WIN_RATE, WIN_RATE_TEXT, echtesGespraech } from './pipeline';
 import { zyklus as dealZyklus, haengtNachWert } from './deal-auswertung';
 import { faellige, puenktlichkeit } from './followup';
@@ -40,7 +41,9 @@ export function messlatte(w?: Pick<Wertelisten, 'ziele'> | null): Messlatte {
 /** SQL je Monat → Ziel je Kalenderwoche (Scoreboard): anteilig auf die Wochen eines Jahres, mindestens 1. */
 export const sqlJeWoche = (m: Messlatte): number => Math.max(1, Math.ceil((m.sql30.gruen * 12) / 52));
 
-export function kennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string): Kpi[] {
+export function kennzahlen(kontakte: Kontakt[], crm0: CrmBestand, heute: string): Kpi[] {
+  // Nur Business (17.10., L2 B2): Deals, Mandate und Angebote einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
+  const crm = nurBusinessGezaehlt(crm0);
   const vor7 = tagMinus(heute, 6), vor30 = tagMinus(heute, 29);
   const ph7 = crm.sitzungen.filter(s => s.datum >= vor7 && s.datum <= heute).length;
   const phJe = crm.sitzungen.length > 0;

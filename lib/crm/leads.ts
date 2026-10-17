@@ -27,6 +27,8 @@ import { leadScore, kanalVon, warmPlus, scoringKontext, type LeadScore, type Kan
 import { beanVon, beanFirma, type BeanId } from './bean';
 import { personenJeFirma, firmenDerPerson, personenDerFirma } from './stationen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
+import { nurBusinessGezaehlt } from './zaehlung-business';
+import { istQuoten, sqlZuGewonnen } from './quoten';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
@@ -241,16 +243,17 @@ export const passtLeadFilter = (z: LeadZeile, f: LeadFilter): boolean =>
     : f === 'sql' && imDeal(z) ? z.status !== 'kunde'
       : f === 'kalt' ? !nichtKalt(z) : f === 'aktiv' ? inArbeit(z) : nichtKalt(z) && (f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f);
 
-/** Der Trichter über alle drei Ebenen — für die Leiste über den Leads. Ebene 1 zählt wie die Liste dahinter (`passtLeadFilter`). */
-export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
+/**
+ * Der Trichter über alle drei Ebenen — für die Leiste über den Leads. Ebene 1 zählt wie die Liste dahinter (`passtLeadFilter`).
+ * Die beiden Quoten (17.10., L2 B3) aus EINER Stelle (lib/crm/quoten.ts): Gespräch → SQL über `istQuoten` (wie Kanal-Stand und Kreislauf),
+ * SQL → Gewonnen = die Win-Rate (`sqlZuGewonnen`, wie die Kennzahl) — vorher rechnete der Trichter beide mit eigenen Nennern und ab 3.
+ */
+export function trichter(zeilen: LeadZeile[], crm0: CrmBestand, heute: string): Trichter {
+  // Nur Business (17.10., L2 B2): Deals und Mandate einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
+  const crm = nurBusinessGezaehlt(crm0);
   const n = (s: LeadStatus) => zeilen.filter(z => passtLeadFilter(z, s)).length;
   const offen = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe));
   const gewonnen = crm.chancen.filter(c => c.stufe === 'gewonnen');
-  const verloren = crm.chancen.filter(c => c.stufe === 'verloren');
-  const sqlJe = zeilen.filter(z => z.status === 'sql' || z.status === 'kunde' || z.sqlAm).length;
-  // Direkt angelegte Deals (kein SQL entschieden) zählen im Nenner wie vorher in „Qualifizierung“ — die Quote bleibt dieselbe (B7).
-  const direktImDeal = zeilen.filter(z => imDeal(z) && !(z.status === 'sql' || z.status === 'kunde' || z.sqlAm) && ['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status)).length;
-  const warenImGespraech = sqlJe + n('im_gespraech') + n('qualifizierung') + direktImDeal;
   return {
     stufen: [
       { id: 'kontaktiert', label: 'Kontaktiert', anzahl: n('kontaktiert'), ebene: 1, ziel: { s: 'qualifizierung', a: 'leads', filter: 'kontaktiert' } },
@@ -258,10 +261,10 @@ export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
       { id: 'qualifizierung', label: 'Qualifizierung', anzahl: n('qualifizierung'), ebene: 1, ziel: { s: 'qualifizierung', a: 'leads', filter: 'qualifizierung' } },
       { id: 'deals', label: 'Deals offen', anzahl: offen.length, wert: Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)), ebene: 2, ziel: { s: 'deals' } },
       { id: 'gewonnen', label: 'Gewonnen', anzahl: gewonnen.length, ebene: 2, ziel: { s: 'deals', a: 'auswertung' } },
-      { id: 'kunden', label: 'Kunden', anzahl: crm.mandate.filter(m => m.status === 'aktiv').length, ebene: 3, ziel: { s: 'deals', a: 'kunden' } },
+      { id: 'kunden', label: 'Kunden', anzahl: crm.mandate.filter(m => m.status === 'aktiv' && !m.geloeschtAm).length, ebene: 3, ziel: { s: 'deals', a: 'kunden' } },
     ],
-    gespraechZuSql: warenImGespraech >= 3 ? Math.round((sqlJe / warenImGespraech) * 100) : null,
-    sqlZuGewonnen: gewonnen.length + verloren.length >= 3 ? Math.round((gewonnen.length / (gewonnen.length + verloren.length)) * 100) : null,
+    gespraechZuSql: istQuoten(zeilen, crm.chancen).werte.gespraechZuSql,
+    sqlZuGewonnen: sqlZuGewonnen(crm.chancen, heute).quote,
   };
 }
 

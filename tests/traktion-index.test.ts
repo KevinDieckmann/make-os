@@ -18,9 +18,9 @@ const gespraech = (i: number) => ({ am: `${tag(i)}T09:00:00.000Z`, art: 'gesprae
 const chance = (id: string, x: Partial<Chance> = {}): Chance => ({
   id: `ch-${id}`, titel: id, kontaktIds: [], art: 'retainer', wert: { betrag: 1000, basis: 'monat' }, stufe: 'qualifiziert', historie: [],
   qualifizierung: { schmerz: 'unklar', entscheider: 'unklar', budget: 'unklar', zeitpunkt: 'unklar', wirkung: 'unklar', alternative: 'unklar' },
-  gesellschaft: 'kdc', besitzer: 'kevin', angelegt: J, geaendert: HEUTE, ...x,
+  gesellschaft: 'ug', besitzer: 'kevin', angelegt: J, geaendert: HEUTE, ...x,
 } as Chance);
-const mandat = (id: string, kunde: string, betrag: number): Mandat => ({ id, kunde, kontaktIds: [], titel: 't', art: 'retainer', gesellschaft: 'kdc', status: 'aktiv', vertragUnterschrieben: true, verlaengerung: 'offen', honorar: { betrag, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: J });
+const mandat = (id: string, kunde: string, betrag: number): Mandat => ({ id, kunde, kontaktIds: [], titel: 't', art: 'retainer', gesellschaft: 'ug', status: 'aktiv', vertragUnterschrieben: true, verlaengerung: 'offen', honorar: { betrag, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: J });
 const sitzung = (i: number): PowerHourSitzung => ({ id: `ph-${i}`, person: 'kevin', datum: tag(i), start: `${tag(i)}T08:00:00.000Z`, ziel: { gespraeche: 5, termine: 1 }, karten: [] });
 const beitrag = (id: string, x: Partial<Beitrag> = {}): Beitrag => ({ id: `bt-${id}`, titel: id, kanal: 'linkedin', status: 'veroeffentlicht', datum: tag(1), wirkung: [], quellen: [], geaendert: HEUTE, ...x });
 const crm = (x: Partial<CrmBestand> = {}): CrmBestand => ({ ...leererBestand(), ...x });

@@ -16,13 +16,15 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Chance, CrmBestand, Mandat } from './typen';
+import { nurBusinessGezaehlt } from './zaehlung-business';
 import { inArbeit, type LeadZeile } from './leads';
 import type { KanalId } from './kanal';
 import type { Welt } from './traktion';
 import type { Mitglied } from './team-liste';
 import { TEAM, BEIDE } from './team-liste';
 import { gesamtwert, wahrscheinlichkeit, echtesGespraech, OFFENE_STUFEN } from './pipeline';
-import { gemesseneQuoten, zyklus, MINDESTMENGE } from './deal-auswertung';
+import { zyklus, MINDESTMENGE } from './deal-auswertung';
+import { istQuoten, sqlZuGewonnen } from './quoten';
 import { MARKE_EVENTS, alsMarketingAnmeldung, reiheVon } from './marke';
 import { MACHBAR_BIS, ENG_BIS } from '@/lib/kapazitaet/typen';
 import { tagPlus, montagVon } from '@/lib/zeit/kalender-kern';
@@ -132,28 +134,8 @@ export function wirksameQuoten(k: Pick<LeadKanal, 'quoten'>, std: Record<PlanQuo
   return Object.fromEntries(PLAN_QUOTE_IDS.map(q => [q, k.quoten[q] ? { wert: k.quoten[q] as number, quelle: 'plan' as const } : { wert: std[q], quelle: 'annahme' as const }])) as Record<PlanQuote, QuoteWert>;
 }
 
-const imGespraech = (z: Pick<LeadZeile, 'status' | 'deal' | 'sqlAm'>) => ['im_gespraech', 'qualifizierung', 'sql', 'kunde'].includes(z.status) || !!z.deal || !!z.sqlAm;
-const istSql = (z: Pick<LeadZeile, 'status' | 'deal' | 'sqlAm'>) => z.status === 'sql' || z.status === 'kunde' || !!z.deal || !!z.sqlAm;
-
-/**
- * Gemessene Quoten (ab `MINDESTMENGE`, sonst null): Lead → Gespräch und Gespräch → SQL aus den Leads; Angebot → Gewonnen und SQL → Gewonnen
- * aus `gemesseneQuoten` (entschiedene Deals) — SQL → Angebot ist deren Verhältnis.
- */
-export function istQuoten(zeilen: readonly Pick<LeadZeile, 'status' | 'deal' | 'sqlAm'>[], deals: Chance[]): { werte: Record<PlanQuote, number | null>; n: Record<PlanQuote, number> } {
-  const gespraech = zeilen.filter(imGespraech), sql = gespraech.filter(istSql);
-  const gq = gemesseneQuoten(deals);
-  const qSql = gq.find(x => x.stufe === 'qualifiziert'), qAng = gq.find(x => x.stufe === 'angebot');
-  const sqlZuAng = qSql?.quote != null && qAng?.quote ? Math.min(100, Math.round((100 * qSql.quote) / qAng.quote)) : null;
-  return {
-    werte: {
-      leadZuGespraech: zeilen.length >= MINDESTMENGE ? Math.round((100 * gespraech.length) / zeilen.length) : null,
-      gespraechZuSql: gespraech.length >= MINDESTMENGE ? Math.round((100 * sql.length) / gespraech.length) : null,
-      sqlZuAngebot: sqlZuAng,
-      angebotZuGewonnen: qAng?.quote ?? null,
-    },
-    n: { leadZuGespraech: zeilen.length, gespraechZuSql: gespraech.length, sqlZuAngebot: qSql?.n ?? 0, angebotZuGewonnen: qAng?.n ?? 0 },
-  };
-}
+// Gemessene Quoten (17.10., L2 B3): EINE Stelle in lib/crm/quoten.ts — dieselbe für Trichter, Kanal-Stand und Kreislauf.
+export { istQuoten } from './quoten';
 
 // ── Kanal-Stand (Liste der Leadkanäle) ───────────────────────────────────────────────────────────────────────────
 
@@ -182,7 +164,8 @@ export function kanalStaende(e: { kanaele: readonly LeadKanal[]; zeilen: readonl
   const ab = tagPlus(e.heute, -91);
   return [...e.kanaele].sort((a, b) => Number(b.aktiv) - Number(a.aktiv) || (a.rang ?? 1e9) - (b.rang ?? 1e9) || a.name.localeCompare(b.name)).map(k => {
     const z = e.zeilen.filter(x => zo.lead.get(x.id) === k.id);
-    const deals = e.crm.chancen.filter(c => zo.deal.get(c.id) === k.id);
+    // Nur Business (17.10., L2 B2): Deals einer Privat-Einheit zählen im Kanal-Stand nicht — wie im Kreislauf darunter.
+    const deals = nurBusinessGezaehlt(e.crm).chancen.filter(c => zo.deal.get(c.id) === k.id);
     const offen = deals.filter(c => OFFENE_STUFEN.includes(c.stufe));
     const ist = istQuoten(z, deals);
     const plan = wirksameQuoten(k, std);
@@ -299,7 +282,8 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
   const leadZuSqlPlan = planQ('leadZuGespraech') * planQ('gespraechZuSql') / 100;
   const leadZuSqlIst = ist.werte.leadZuGespraech != null && ist.werte.gespraechZuSql != null ? (ist.werte.leadZuGespraech * ist.werte.gespraechZuSql) / 100 : null;
   const sqlZuGewPlan = planQ('sqlZuAngebot') * planQ('angebotZuGewonnen') / 100;
-  const gq = gemesseneQuoten(deals).find(x => x.stufe === 'qualifiziert');
+  // SQL → Gewonnen = die Win-Rate (17.10., L2 B3, `sqlZuGewonnen`) — dieselbe Zahl wie im Trichter und in den Kennzahlen.
+  const sqlGew = sqlZuGewonnen(deals, e.heute);
   const aktiveM = mandate.filter(m => m.status === 'aktiv');
   // Fulfillment: aktive Mandate je Produkt und Phase (Produkte & Mandate).
   const leistung = new Map(e.crm.leistungen.map(l => [l.id, l]));
@@ -341,7 +325,7 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
     { id: 'leads', label: 'Leads & Qualifizierung', anzahl: leadsInArbeit.length, zusatz: `${z.length} Leads gesamt`,
       plan: `Lead → SQL ${pz(leadZuSqlPlan)}`, ist: `Lead → SQL ${pz(leadZuSqlIst)}`, annahme: annahme('leadZuGespraech', 'gespraechZuSql'), href: WEG.qualifizierung(), hrefLabel: 'Qualifizierung öffnen' },
     { id: 'deals', label: 'Deals (SQL … Abschluss)', anzahl: offen.length, zusatz: `${Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)).toLocaleString('de-DE')} € offen`,
-      plan: `SQL → Gewonnen ${pz(sqlZuGewPlan)}`, ist: `SQL → Gewonnen ${pz(gq?.quote)}`, annahme: annahme('sqlZuAngebot', 'angebotZuGewonnen'), href: WEG.deals(), hrefLabel: 'Deals öffnen' },
+      plan: `SQL → Gewonnen ${pz(sqlZuGewPlan)}`, ist: `SQL → Gewonnen ${pz(sqlGew.quote)}`, annahme: annahme('sqlZuAngebot', 'angebotZuGewonnen'), href: WEG.deals(), hrefLabel: 'Deals öffnen' },
     { id: 'followup', label: 'Abschluss & Follow-up', anzahl: e.followup.faellig, zusatz: e.followup.ueberfaellig ? `${e.followup.ueberfaellig} überfällig` : 'nichts überfällig', href: WEG.followup(), hrefLabel: 'Follow-up öffnen', ...(e.followup.ueberfaellig ? { haengt: 'rot' as const } : {}) },
     { id: 'fulfillment', label: 'Fulfillment', anzahl: aktiveM.length, zusatz: [`${ff.size} Produkt-Phasen`, ...(fortschrittZusatz(aktiveM, e.fortschritt))].join(' · '), href: WEG.fulfillment('kreislauf'), hrefLabel: 'Fulfillment öffnen' },
     { id: 'nachher', label: 'Nach der Leistung', anzahl: kunden.filter(k => k.offen > 0).length, zusatz: 'Upselling · Cross-Selling · Bewertung · Testimonial · Newsletter', href: '', hrefLabel: 'Schritte je Kunde' },
@@ -555,7 +539,8 @@ export function wochenIst(kontakte: readonly (Pick<Kontakt, 'id' | 'importiertAm
       if (vorher && tage(vorher, erste.tag) >= RUHEND_TAGE) plus('reaktivieren', erste.von);
     }
   }
-  for (const c of crm.chancen) {
+  // Nur Business (17.10., L2 B2): Deals einer Privat-Einheit zählen in den Challenges nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
+  for (const c of nurBusinessGezaehlt(crm).chancen) {
     if (drin(tagVon(c.angelegt))) plus('deals', c.besitzer || c.historie[0]?.von);
     const ang = c.historie.find(h => h.stufe === 'angebot' && drin(tagVon(h.am)));
     if (ang) plus('angebote', ang.von);

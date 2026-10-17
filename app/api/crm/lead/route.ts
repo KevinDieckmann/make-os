@@ -79,8 +79,9 @@ export async function GET(req: Request) {
   if (gleich) return gleich;
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
-  const z = leads(kontakte, crm, localDay());
-  return jsonAntwort(req, { ok: true, leads: z, trichter: trichter(z, crm) }, etag);
+  const heute = localDay();
+  const z = leads(kontakte, crm, heute);
+  return jsonAntwort(req, { ok: true, leads: z, trichter: trichter(z, crm, heute) }, etag);
 }
 
 /** Lead an Firma oder Person schreiben — der Rest des Eintrags bleibt, wie er ist. */

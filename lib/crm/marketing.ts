@@ -13,6 +13,7 @@
 
 import { anzeigename, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
 import type { Beitrag, Chance, CrmBestand, Freigabe, MarketingEinstellung, NewsletterAusgabe, Quelle, Segment, SegmentKriterien } from './typen';
+import { nurBusinessGezaehlt } from './zaehlung-business';
 import type { Kpi, KpiAmpel } from './kennzahlen';
 import { art14, kanalStatus, type Kanal, type Kontext } from './recht';
 import { segmentAuswerten, type SegmentKontext } from './segmente';
@@ -185,7 +186,9 @@ export function abmeldequote(a: Pick<NewsletterAusgabe, 'status' | 'empfaenger' 
 export const quotenAmpel = (q: number): KpiAmpel => (q < 0.005 ? 'gruen' : q <= 0.01 ? 'gelb' : 'rot');
 
 // ── Kennzahlen ─────────────────────────────────────────────────────────────
-export function marketingKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string): Kpi[] {
+export function marketingKennzahlen(kontakte: Kontakt[], crm0: CrmBestand, heute: string): Kpi[] {
+  // Nur Business (17.10., L2 B2): Deals, Mandate und Angebote einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
+  const crm = nurBusinessGezaehlt(crm0);
   const trichter = marketingTrichter(kontakte, crm, heute);
   const beitraege = crm.beitraege ?? [];
   const ausgaben = crm.newsletter ?? [];
@@ -658,7 +661,9 @@ export interface MarketingTrichter {
 
 const LEAD_VOR_SQL = new Set(['kontaktiert', 'im_gespraech', 'qualifizierung']);
 
-export function marketingTrichter(kontakte: Kontakt[], crm: CrmBestand, heute: string, tage = 90): MarketingTrichter {
+export function marketingTrichter(kontakte: Kontakt[], crm0: CrmBestand, heute: string, tage = 90): MarketingTrichter {
+  // Nur Business (17.10., L2 B2): Deals, Mandate und Angebote einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
+  const crm = nurBusinessGezaehlt(crm0);
   const bis = heute, von = tagPlus(heute, -(tage - 1));
   const im = (t: string | undefined) => !!t && t >= von && t <= bis;
   const beitraege = crm.beitraege ?? [];

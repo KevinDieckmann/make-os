@@ -18,6 +18,7 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Event } from './typen';
+import { nurBusinessGezaehlt } from './zaehlung-business';
 import type { Kpi, KpiAmpel } from './kennzahlen';
 import { OFFENE_STUFEN } from './pipeline';
 import { eventZahlen, followUpBis } from './events';
@@ -77,7 +78,9 @@ const stufe = (v: number, gruen: number, gelb: number): KpiAmpel => (v >= gruen 
 const prozent = (q: number) => `${Math.round(q * 100)} %`;
 const stattgefunden = (e: Event, heute: string) => e.status !== 'abgesagt' && (e.status === 'durchgefuehrt' || e.datum < heute);
 
-export function eventKennzahlen(kontakte: Kontakt[], crm: CrmBestand, heute: string): Kpi[] {
+export function eventKennzahlen(kontakte: Kontakt[], crm0: CrmBestand, heute: string): Kpi[] {
+  // Nur Business (17.10., L2 B2): Deals, Mandate und Angebote einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
+  const crm = nurBusinessGezaehlt(crm0);
   // Nur EIGENE Events zählen in die Kennzahlen (03.10.) — fremde Veranstaltungen aus „Netzwerken“ stehen getrennt (`netzwerken`).
   const events = (crm.events ?? []).filter(e => !istNetzwerkenEvent(e));
   const vor90 = tagPlus(heute, -89), vor180 = tagPlus(heute, -179);

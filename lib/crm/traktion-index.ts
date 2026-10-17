@@ -11,6 +11,7 @@ import { tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, Chance, Mandat } from './typen';
+import { nurBusinessGezaehlt } from './zaehlung-business';
 import { kennzahlen, messlatte, type Kpi } from './kennzahlen';
 import { marketingKennzahlen, ausMarketing, abmeldequote, marketingTrichter } from './marketing';
 import { eventKennzahlen, WELTEN, IM_SCORE, GRUNDLAGE, type Welt, type Traktion } from './traktion';
@@ -270,7 +271,11 @@ function messung(b: TraktionBestand, def: KennzahlDefBasis, k: Kpi | undefined):
 const TRAKTION_KENNZAHLEN_SKALA: Record<string, number> = { marketing_anteil: 100, abmeldequote: 100, nachfassen_48h: 100, erscheinen: 100, ansprechbar: 100 };
 
 /** Der Traktions-Index — dieselbe Zahl im Überblick, im Business-Index und bei ZOE. */
-export function traktionsIndex(b: TraktionBestand): TraktionsIndex {
+export function traktionsIndex(b0: TraktionBestand): TraktionsIndex {
+  // Nur Business (17.10., L2 B2): EINMAL am Eingang — Kennzahlen, Details und der Marketing-Trichter sehen dann denselben Bestand. Der
+  // Business-Index (`ladeRoh`) übergibt das volle CRM; ohne diese Zeile zählte seine Säule Markttraktion die Selbstständigkeit mit.
+  const crm = nurBusinessGezaehlt(b0.crm);
+  const b: TraktionBestand = crm === b0.crm ? b0 : { ...b0, crm };
   const kpis: Record<string, Kpi> = {};
   for (const k of b.kpis ?? [...kennzahlen(b.kontakte, b.crm, b.heute), ...marketingKennzahlen(b.kontakte, b.crm, b.heute), ...eventKennzahlen(b.kontakte, b.crm, b.heute)]) kpis[k.id] = k;
   // „Größter Kunde“: die Kpi mrr trägt die Konzentration nur in der Quelle — hier als Prozentwert.
