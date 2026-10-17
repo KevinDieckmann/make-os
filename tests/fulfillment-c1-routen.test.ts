@@ -126,6 +126,14 @@ describe('Update-Probe und Ablauf', () => {
     const crm = await db.loadJson('crm') as { mandate: { id: string; ziele: { text: string }[] }[] };
     expect(crm.mandate.find(m => m.id === 'm-biz')!.ziele.map(z => z.text)).toContain('Kürzere Angebotszeit');
     expect(crm.mandate.find(m => m.id === 'm-ohne')).toEqual(expect.objectContaining({ ziele: [{ id: 'z-probe', text: 'Mehr Termine' }] }));
+    // 17.10. (Gesamtprüfung L2b B1): scheitert eine andere Änderung derselben Anfrage, kommt kein Ziel ans Mandat; dasselbe Ziel nie zweimal.
+    const schief = await rufe('fulfillment/fall', 'PATCH', sitzung('olaf'), { mandatId: 'm-biz', ops: [{ op: 'ziel-neu', text: 'Mehr Empfehlungen' }, { op: 'stakeholder', eintrag: { kontaktId: 'c-unbekannt', rolle: 'nutzer', einfluss: 1 } }] });
+    expect(schief.status).toBeGreaterThanOrEqual(400);
+    expect((await rufe('fulfillment/fall', 'PATCH', sitzung('olaf'), { mandatId: 'm-biz', ops: [{ op: 'ziel-neu', text: 'kürzere angebotszeit ' }] })).status).toBe(200);
+    const crm2 = await db.loadJson('crm') as { mandate: { id: string; ziele: { text: string }[] }[] };
+    const texte = crm2.mandate.find(m => m.id === 'm-biz')!.ziele.map(z => z.text);
+    expect(texte).not.toContain('Mehr Empfehlungen');
+    expect(texte.filter(t => t.toLowerCase().includes('angebotszeit'))).toHaveLength(1);
     // Cockpit und Index sehen den Fall jetzt
     const c = await rufe('fulfillment/cockpit', 'GET', sitzung('pia'));
     expect((c.j.zeilen as { mandatId: string }[]).map(z => z.mandatId)).toEqual(['m-biz']);

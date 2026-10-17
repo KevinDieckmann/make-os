@@ -186,6 +186,12 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
   // Neue Ziele: erst am Mandat (eine Wahrheit für „was ist das Ziel“), dann im Wert-Konto.
   let ziele: Mandat['ziele'] = mandatZieleLesen(m.ziele);
   const ops: unknown[] = [];
+  // Neue Ziele erst sammeln und die übrigen Änderungen probeweise prüfen, DANN ans Mandat schreiben (17.10., Gesamtprüfung L2b B1): vorher stand das Ziel
+  // schon im CRM, wenn eine spätere Änderung abgelehnt wurde (409/400/413) — und ein wiederholtes Senden legte es doppelt an. Dasselbe Ziel (gleicher Text)
+  // wird nie zweimal angelegt.
+  const kontakte = new Set((await (await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung()).map(k => k.id));
+  const neueZiele: Mandat['ziele'] = [];
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
   for (const o of opsRoh) {
     if (o && typeof o === 'object' && (o as { op?: unknown }).op === 'ziel-neu') {
       const x = o as { text?: unknown; ziel?: unknown; felder?: unknown };
@@ -193,16 +199,28 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
       if (!text) throw new FallFehler('Das neue Ziel braucht einen Text.', 400);
       if (text.length > 300) throw new FallFehler('Ziel: höchstens 300 Zeichen.', 413);
       const zielWert = typeof x.ziel === 'string' && x.ziel.trim() ? x.ziel.trim().slice(0, 80) : undefined;
-      const id = neueKennung('z');
-      if (!(await zieleAendern(m.id, z => [...z, { id, text, ...(zielWert ? { ziel: zielWert } : {}) }], person, iso))) throw new FallFehler('Das Ziel ließ sich am Mandat nicht anlegen — bitte neu laden.', 409);
-      ziele = [...ziele, { id, text, ...(zielWert ? { ziel: zielWert } : {}) }];
-      nachzug.ziele = (nachzug.ziele ?? 0) + 1;
+      const da = [...ziele, ...neueZiele].find(z => gleich(z.text, text));
+      const id = da?.id ?? neueKennung('z');
+      if (!da) neueZiele.push({ id, text, ...(zielWert ? { ziel: zielWert } : {}) });
       if (x.felder && typeof x.felder === 'object') ops.push({ op: 'wert-ziel', zielId: id, felder: x.felder });
     } else ops.push(o);
   }
+  if (neueZiele.length) {
+    if (ops.length) {
+      const probe = fallAnwenden(alt, ops, {
+        person, jetzt: iso, heute, standVon: eintragStand, neueId: p => neueKennung(p),
+        ziele: [...ziele, ...neueZiele].map(z => ({ id: z.id, ...(z.ziel ? { ziel: z.ziel } : {}) })),
+        kontaktErlaubt: id => kontakte.has(id), ritualIds: vorlagen.rituale.map(x => x.id), freigaben: vorlagen.prozesse.some(p => p.id === alt.vorlageId) ? fallFreigaben(alt, vorlagen.prozesse).map(x => x.id) : [],
+      });
+      if (!probe.ok) throw Object.assign(new FallFehler(probe.fehler, probe.status === 403 ? 403 : probe.status), { konflikte: probe.konflikte });
+    }
+    const ids = new Set(neueZiele.map(z => z.id));
+    if (!(await zieleAendern(m.id, z => [...z.filter(x => !ids.has(x.id)), ...neueZiele], person, iso))) throw new FallFehler('Das Ziel ließ sich am Mandat nicht anlegen — bitte neu laden.', 409);
+    ziele = [...ziele, ...neueZiele];
+    nachzug.ziele = neueZiele.length;
+  }
   if (!ops.length) return { fall: fallWirksam(alt, ableitungFuer(alt, { ...m, ziele }, crm, vorlagen, kunde[m.id], iso, termine[m.id])), geaendert: [], nachzug };
   const vorlage = vorlagen.prozesse.find(p => p.id === alt.vorlageId);
-  const kontakte = new Set((await (await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung()).map(k => k.id));
   let ergebnis: AnwendenErgebnis<Fall> = { ok: false, status: 400, fehler: 'Nichts geändert.' };
   const r = await fulfillmentAendern('faelle', d => {
     const f = d.faelle[m.id];
