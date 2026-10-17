@@ -8,6 +8,7 @@
 // Gerechnet wird im Rechenkern; die Blatt-Kennzahlen kommen aus lib/finanzen/geschaeft.ts. Steuern: Hinweis, keine Steuerberatung.
 
 import { RUNWAY_PLAN_NAME } from '@/lib/finanzen/runway';
+import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, LEUCHT } from '../ui';
@@ -114,6 +115,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
   const N = d.monate.length, m0 = aw.m0;
   const U = (m: number) => ug[m - 1], K = (m: number) => kdc[m - 1];
   const gb = useMemo(() => geschaeftsblatt(dd, ort, { ug, kdc }, ps, m0), [dd, ort, ug, kdc, ps, m0]);
+  const sw = schwellenVon(d);
   const [dialog, setDialog] = useState<string | null>(null);
   const rf = rechtsformVon(dd, ort);
   const sp = steuerParameter(dd, ort);
@@ -290,7 +292,8 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
         <Kachel label="Ergebnis vor Steuern" punkt={v12 >= 0 ? LEUCHT.gut : LEUCHT.kritisch} wert={<><Geld v={v12} /> €</>} unter="12 Monate" />
         <Kachel label="Ergebnis nach Steuern" punkt={n12 >= 0 ? LEUCHT.gut : LEUCHT.kritisch} wert={<><Geld v={n12} /> €</>} unter={rf === 'kapital' && ertragAn ? `Ertragsteuern ${prozent(gesamtquote(sp), 1)} vom Gewinn (Näherung)` : 'Näherung, keine Steuerberatung'} />
         <Kachel label="Break-even" punkt={be.monatlich == null ? LEUCHT.kritisch : be.monatlich <= m0 ? LEUCHT.gut : LEUCHT.achtung} wert={beText} unter={be.kumuliert == null ? 'insgesamt nicht im Plan gedeckt' : `insgesamt gedeckt ab ${monatLabel(d, be.kumuliert)}`} />
-        <Kachel label={RUNWAY_PLAN_NAME} punkt={gb.runway == null ? LEUCHT.gut : gb.runway >= 6 ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(gb.runway, N, m0)} unter={<>{gb.liquiditaetName.split(' (')[0]} jetzt <Geld v={liqJetzt} farbe={C.inkDim} /> €</>} />
+        {/* Ampel wie Überblick und Baukasten (17.10., L2 R5): die Schwellen der Finanzplanung (`schwellenVon`) — vorher fest „≥ 6 gelb“, nie grün. */}
+        <Kachel label={RUNWAY_PLAN_NAME} punkt={gb.runway == null || gb.runway >= sw.runwayGutMonate ? LEUCHT.gut : gb.runway >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(gb.runway, N, m0)} unter={<>{gb.liquiditaetName.split(' (')[0]} jetzt <Geld v={liqJetzt} farbe={C.inkDim} /> €</>} />
       </Kacheln>
       <BausteinKarten ort={ort} />
       <Karte i={3}>
