@@ -132,8 +132,8 @@ describe('Kunden-Sicht: nur die Positivliste', () => {
     expect(text).not.toContain('nur Prozess');
     expect(text).not.toContain('Dossier');
     expect(s.zeitstrahl).toEqual([{ titel: 'Recruiting', stand: 'aktuell', anteil: 0 }]);
-    expect(s.naechstes).toEqual(['Abstimmung: Diagnose-Abnahme']);
-    expect(s.wartet).toEqual([{ titel: 'Abnahme Abstimmungspunkt vorbereiten', seit: '08.10.2026', frist: '09.10.2026', ueberfaellig: true }]);
+    expect(s.naechstes).toEqual(['Bestätigung: Diagnose-Abnahme']);
+    expect(s.wartet).toEqual([{ titel: 'Abnahme Bestätigung vorbereiten', seit: '08.10.2026', frist: '09.10.2026', ueberfaellig: true }]);
   });
   it('„wartet“ auf ein Formular trägt dessen öffentlichen Schlüssel (direkt ausfüllbar) — nie die Baustein-Kennung', () => {
     const knoten = [...FALL.knoten.filter(k => k.id !== 's3'), { id: 's3', elternId: 'p1', titel: 'Playbook ausfüllen', rang: 3, status: 'wartet_kunde' as const, seit: '2026-10-01', bausteinId: 'fb-ok' }];

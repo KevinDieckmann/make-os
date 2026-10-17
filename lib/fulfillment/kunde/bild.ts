@@ -77,15 +77,17 @@ export type Worte = (typeof WORTE)[KundenAnrede];
 const KUERZEL = /\bF\d{1,2}\b/g;
 
 /**
- * Ein Titel, wie der Kunde ihn liest: Freigabe-Kürzel → „Abstimmungspunkt“ (ist der Titel nur „F0 bestätigt“ und der Abstimmungspunkt bekannt, sein
+ * Ein Titel, wie der Kunde ihn liest: Freigabe-Kürzel → „Bestätigung“ (ist der Titel nur „F0 bestätigt“ und der Abstimmungspunkt bekannt, sein
  * Titel), interne Klammer-Zusätze weg, Leerraum geglättet. Rein.
  */
 export function kundenText(titel: string, abstimmung?: string): string {
   const roh = String(titel ?? '');
-  if (abstimmung && /^\s*F\d{1,2}\b\s*(bestätigt|erteilt|vermerkt|freigegeben)?\s*$/i.test(roh)) return `Abstimmung: ${abstimmung}`;
+  // Für den Kunden dasselbe Wort wie intern: „Bestätigung“ (17.10., Gesamtprüfung — „maximal einfach“, ein Begriff überall).
+  if (abstimmung && /^\s*F\d{1,2}\b\s*(bestätigt|erteilt|vermerkt|freigegeben)?\s*$/i.test(roh)) return `Bestätigung: ${abstimmung}`;
   // Interne Zusätze („(nur Prozess)“) nur an EINER Stelle (lib/fulfillment/prozesse/darstellung.ts `titelOhneZusatz`) — intern und für Kunden dieselbe.
-  const t = titelOhneZusatz(roh).replace(KUERZEL, 'Abstimmungspunkt').replace(/\s+/g, ' ').trim();
-  return t || 'Abstimmungspunkt';
+  if (/^\s*F\d{1,2}\b\s*(bestätigt|erteilt|vermerkt|freigegeben)?\s*$/i.test(roh)) return 'Bestätigung';
+  const t = titelOhneZusatz(roh).replace(KUERZEL, 'Bestätigung').replace(/\s+/g, ' ').trim();
+  return t || 'Bestätigung';
 }
 
 // ── Entscheidungen ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -252,7 +254,7 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
     const schluessel = ph?.id ?? '';
     if (!danach.has(schluessel)) danach.set(schluessel, { phase: ph, titel: [] });
     // In der Liste „Danach …“ steht ein Abstimmungspunkt als „Abstimmung „Titel““ (kein zweiter Doppelpunkt nach „Danach in „Phase“:“).
-    const t = knotenText(k).replace(/^Abstimmung: (.+)$/, 'Abstimmung „$1“');
+    const t = knotenText(k).replace(/^Bestätigung: (.+)$/, 'Bestätigung „$1“');
     const g = danach.get(schluessel)!;
     if (!g.titel.includes(t) && t !== erster) g.titel.push(t);
   }
@@ -326,7 +328,7 @@ export function kundenNaechsterText(p: Pick<NaechsterPunkt, 'art' | 'titel' | 'f
   const fg = p.art === 'freigabe' && p.freigabe ? freigaben.find(x => x.id === p.freigabe) : undefined;
   const ob = p.id ? obSchluessel(p.id) : null;
   const intern = !!ob && !!OB_KUNDEN_TITEL[ob];
-  const titel = fg ? (fg.wer === 'intern' ? `Interne Prüfung: ${kundenText(fg.titel)}` : `Abstimmung: ${kundenText(fg.titel)}`) : p.id ? kundenPunktTitel({ id: p.id, titel: p.titel }) : kundenText(p.titel);
+  const titel = fg ? (fg.wer === 'intern' ? `Interne Prüfung: ${kundenText(fg.titel)}` : `Bestätigung: ${kundenText(fg.titel)}`) : p.id ? kundenPunktTitel({ id: p.id, titel: p.titel }) : kundenText(p.titel);
   // 17.10. (dritte Abnahme B4): eine verstrichene Frist ist nie ein Datum für den Kunden; eine interne Reaktionszeit (Willkommensmail) auch nicht.
   return p.faelligAm && !intern && (!heute || p.faelligAm >= heute) ? `${titel} — bis ${tagText(p.faelligAm)}` : titel;
 }
