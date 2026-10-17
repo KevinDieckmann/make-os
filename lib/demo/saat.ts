@@ -76,6 +76,7 @@ async function rufe(modul: Promise<Modul>, methode: 'GET' | 'POST' | 'PUT' | 'PA
 }
 const R = {
   team: () => import('@/app/api/team/route') as Promise<Modul>,
+  kalenderEinstellungen: () => import('@/app/api/state/kalender-einstellungen/route') as Promise<Modul>,
   kontakte: () => import('@/app/api/state/kontakte/route') as Promise<Modul>,
   crm: () => import('@/app/api/crm/bestand/route') as Promise<Modul>,
   deal: () => import('@/app/api/crm/deal/route') as Promise<Modul>,
@@ -570,6 +571,9 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   events.push(termin(tagPlus(heute, 8), '13:00', '14:30', 'Demo-Termin Seeblick Hotels', 'Arbeit', 'Konstanz'));
   events.push(termin(tagPlus(heute, 3), '19:00', '21:00', 'Abendessen mit Freunden', 'Privat'));
   await saveJson('calendar-cache', { events, at: jetzt.toISOString() });
+  // „Arbeit“ zählt als belegt (17.10., Gesamtprüfung L1 B5): sonst schlug die Willkommensmail einen Kick-off mitten in den „Wochenstart Team“ vor — nicht
+  // zugeordnete Kalender blockieren niemanden (R-K2). Über die Route der Einstellungen.
+  await rufe(R.kalenderEinstellungen(), 'PUT', '/api/state/kalender-einstellungen', LENA, { teil: { belegt: { Arbeit: true } } });
   schritt('Termine', events.length);
 
   // 10) Kapazität: Grundwerte, Urlaub, Zuweisungen (Mandate).
