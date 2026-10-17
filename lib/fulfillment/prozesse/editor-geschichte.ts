@@ -5,6 +5,8 @@
 //     wiederholen = aus dem Papierkorb zurückholen (dieselbe Kennung, dieselben Zweige).
 //   · Löschen → zurück = zurückholen; wiederholen = wieder löschen.
 //   · Ändern, Verschieben, Zweige, Abstimmungspunkt → zurück = die alten Werte bzw. der alte Platz (`positionVon`).
+//   · Fläche (17.10.): Lage → zurück = die alten Lagen (ohne Lage = wieder automatisch); Pfeil-Beschriftung → der alte Text; „verbinden“ → der alte Zweig bzw.
+//     der alte Platz des umgehängten Schritts (samt Lage). Verschiebt eine Änderung Schritte bzw. Phasen, kommen ihre Lagen mit zurück.
 //   · „Papierkorb leeren“ ist endgültig — kein Rückgängig (null; die Oberfläche fragt vorher).
 // Rückgängig/Wiederholen gehen über denselben Schreibweg wie jede Änderung (Stand, 409, Grenzen) — nichts wird lokal geraten.
 // Tests: tests/fulfillment-editor-modell.test.ts.
@@ -17,6 +19,12 @@ export interface GeschichteEintrag { rueck: EditorOp[]; wieder: EditorOp[] }
 
 const ANLEGEN = new Set(['phase-neu', 'schritt-neu', 'nein-erinnerung', 'baustein-dazu']);
 const alt = (w: unknown) => (w === undefined ? null : w);
+/** Die Lagen (Fläche) der genannten Knoten, wie sie vorher waren — als Op `lage` (ohne Lage = null). Leer, wenn keiner eine hatte und `immer` fehlt. */
+function lagenVorher(kn: ProzessVorlage['knoten'], ids: readonly string[], immer = false): EditorOp[] {
+  const da = ids.map(id => kn.find(x => x.id === id)).filter((x): x is ProzessVorlage['knoten'][number] => !!x);
+  if (!immer && !da.some(x => x.pos)) return [];
+  return da.length ? [{ op: 'lage', eintraege: da.map(x => ({ id: x.id, pos: x.pos ?? null })) }] : [];
+}
 
 /** Rückweg und Wiederholung eines Op-Stapels gegen die Vorlage davor — null, wenn er sich nicht zurücknehmen lässt. */
 export function geschichteFuer(v: ProzessVorlage, ops: readonly EditorOp[]): GeschichteEintrag | null {
@@ -49,7 +57,8 @@ export function geschichteFuer(v: ProzessVorlage, ops: readonly EditorOp[]): Ges
         const phasen = w ? kinderVon(w.id, kn) : [];
         const i = phasen.findIndex(p => p.id === o.id);
         if (i < 0) return null;
-        rueckJe.push([{ op: 'phase-schieben', id: o.id, nach: i > 0 ? phasen[i - 1].id : null }]);
+        // Die Rahmen rücken dabei in die Reihe (Fläche) — zurück kommen auch ihre Lagen.
+        rueckJe.push([{ op: 'phase-schieben', id: o.id, nach: i > 0 ? phasen[i - 1].id : null }, ...lagenVorher(kn, phasen.map(p => p.id))]);
         break;
       }
       case 'abstimmung': {
@@ -75,7 +84,36 @@ export function geschichteFuer(v: ProzessVorlage, ops: readonly EditorOp[]): Ges
       case 'schritt-schieben': {
         const ziel = positionVon(kn, String(o.id));
         if (!ziel) return null;
-        rueckJe.push([{ op: 'schritt-schieben', id: o.id, ziel }]);
+        rueckJe.push([{ op: 'schritt-schieben', id: o.id, ziel }, ...lagenVorher(kn, [String(o.id)])]);
+        break;
+      }
+      case 'lage': {
+        const ids = Array.isArray(o.eintraege) ? (o.eintraege as { id?: unknown }[]).map(e => String(e?.id)) : [];
+        if (!ids.length || ids.some(id => !knoten(id))) return null;
+        // Rahmen, die danach in die Reihe rücken, kommen mit ihrer alten Lage zurück.
+        const w = wurzelVon(kn);
+        const phasen = w ? kinderVon(w.id, kn).map(p => p.id) : [];
+        rueckJe.push(lagenVorher(kn, [...new Set([...ids, ...phasen.filter(p => kn.find(x => x.id === p)?.pos)])], true));
+        break;
+      }
+      case 'pfeil-text': {
+        const x = knoten(o.id);
+        const art = o.art as 'weiter' | 'ja' | 'nein';
+        if (!x || !['weiter', 'ja', 'nein'].includes(art)) return null;
+        rueckJe.push([{ op: 'pfeil-text', id: x.id, art, text: alt(x.pfeilText?.[art]) }]);
+        break;
+      }
+      case 'verbinden': {
+        const a = knoten(o.von), b = knoten(o.nach);
+        if (!a || !b) return null;
+        if (a.form === 'entscheidung' || a.form === 'erinnerung') {
+          const art = a.form === 'entscheidung' && o.zweig === 'nein' ? 'nein' : 'ja';
+          rueckJe.push([{ op: 'zweig', id: a.id, [art]: alt(a.zweige?.[art]) }]);
+          break;
+        }
+        const ziel = positionVon(kn, b.id);
+        if (!ziel) return null;
+        rueckJe.push([{ op: 'schritt-schieben', id: b.id, ziel }, ...lagenVorher(kn, [b.id])]);
         break;
       }
       case 'zweig': {

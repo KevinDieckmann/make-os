@@ -34,6 +34,12 @@ export const GRENZEN = {
   opsJeAnfrage: 60,
 } as const;
 
+/**
+ * Lage auf der Fläche des Prozess-Editors (17.10.): Koordinaten höchstens ±`max`, Rahmen mindestens `rahmenMin` und höchstens `rahmenMax` breit/hoch —
+ * darüber 400 (Unsinn); je Änderung höchstens `knotenJeVorlage` Einträge (sonst 413).
+ */
+export const LAGE = { max: 200_000, rahmenMin: 160, rahmenMax: 40_000 } as const;
+
 /** Textgrenzen je Feld (Zeichen) — darüber 413 im Schreibweg. `text` = Langtext eines Bausteins (Skript, Mail, Dokument). */
 export const TEXT_MAX = {
   titel: 120,
@@ -51,6 +57,8 @@ export const TEXT_MAX = {
   text: GRENZEN.text,
   agentZusatz: 4000,
   aussage: 2000,
+  /** Beschriftung eines Pfeils auf der Fläche (Prozess-Editor). */
+  pfeil: 60,
 } as const;
 export type TextFeld = keyof typeof TEXT_MAX;
 

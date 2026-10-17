@@ -13,8 +13,9 @@ import {
   type FaelleDatei, type Fall, type FallKnoten, type Vereinbarung, type Stakeholder, type Entscheidung, type Mitschrift, type WertKontoEintrag,
   type KundeDatei, type KundenLink, type FormularStand, type PulsAnfrage, type Puls, type Unterlage,
   type DossierDatei, type Dossier, type Abschnitt, type AbschnittId, type Aussage, type Quelle, type AnalyseLauf, type Massnahme, type LaufStatus,
-  type PersonenDatei, type PersonenKarte, type FulfillmentArt, type FulfillmentDateien, type KnotenForm, type Zweige, type VorlagenPapierkorb,
+  type PersonenDatei, type PersonenKarte, type FulfillmentArt, type FulfillmentDateien, type KnotenForm, type Zweige, type VorlagenPapierkorb, type KnotenLage, type PfeilText,
 } from './typen';
+import { LAGE } from './grenzen';
 import { hohlerFallKnoten, hohlerVorlagenKnoten, phasenOrdnen } from './prozesse/phasen';
 
 type O = Record<string, unknown>;
@@ -55,6 +56,21 @@ const zweige = (v: unknown): Zweige | undefined => {
   const ja = id(o.ja), nein = id(o.nein);
   return ja || nein ? sauber<Zweige>({ ja, nein }) : undefined;
 };
+/** Lage auf der Fläche (Prozess-Editor) — nur endliche Zahlen in den Grenzen (`LAGE`); Breite/Höhe nur gültig, sonst fehlen sie. */
+const lage = (v: unknown): KnotenLage | undefined => {
+  const o = obj(v);
+  const x = n(o?.x), y = n(o?.y);
+  if (!o || x === undefined || y === undefined || Math.abs(x) > LAGE.max || Math.abs(y) > LAGE.max) return undefined;
+  const mass = (w: unknown) => { const z = n(w); return z !== undefined && z >= LAGE.rahmenMin && z <= LAGE.rahmenMax ? z : undefined; };
+  return sauber<KnotenLage>({ x, y, b: mass(o.b), h: mass(o.h) });
+};
+/** Beschriftung der Pfeile (Fläche) — ohne Text fehlt das Feld. */
+const pfeilText = (v: unknown): PfeilText | undefined => {
+  const o = obj(v);
+  if (!o) return undefined;
+  const t = sauber<PfeilText>({ weiter: s(o.weiter), ja: s(o.ja), nein: s(o.nein) });
+  return Object.keys(t).length ? t : undefined;
+};
 const LAUF_STATUS = ['bereit', 'laeuft', 'fertig', 'fehler', 'abgebrochen', 'uebernommen', 'verworfen'] as const satisfies readonly LaufStatus[];
 
 // ── Vorlagen-Bestand `fulfillment--<h>` ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -82,7 +98,7 @@ const knoten = (o: O): ProzessKnoten | null => {
     heute: s(o.heute), werkzeuge: werkzeuge.length ? werkzeuge : undefined, dokumentation: s(o.dokumentation),
     art: wahl(o.art, ['einstieg', 'stufe', 'ausstieg', 'routine'] as const), optional: b(o.optional), ausgang: s(o.ausgang), original: s(o.original),
     beleg: wahl(o.beleg, ['quelle', 'ergaenzung'] as const),
-    form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige),
+    form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige), pos: lage(o.pos), pfeilText: pfeilText(o.pfeilText),
   });
 };
 /** Der gemerkte Platz eines gelöschten Schritts (genau eine Angabe, sonst keiner). */
