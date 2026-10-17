@@ -29,7 +29,7 @@ function uhrText(k: Kandidat): { text: string; farbe: string } | null {
 }
 
 /** Kandidaten-Liste mit Start-Dialog — geteilt von Fulfillment › Onboarding und dem Einhänger in Produkte & Mandate. */
-function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten: Kandidat[]; pakete: { id: string; titel: string }[]; i: number; ruhig?: boolean }) {
+function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten: Kandidat[]; pakete: { id: string; titel: string; zusatz?: true }[]; i: number; ruhig?: boolean }) {
   const [start, setStart] = useState<Kandidat | null>(null);
   const [meldung, setMeldung] = useState<string | null>(null);
   const aus = async (k: Kandidat) => {
@@ -59,7 +59,7 @@ function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten:
 }
 
 /** Start-Dialog: Paket-Vorlage (vorgewählt aus der Zuordnung des Produkts) und Starttag — legt den Fall an (idempotent über die Anfrage). */
-export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage'>; pakete: { id: string; titel: string }[]; onZu: () => void }) {
+export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage'>; pakete: { id: string; titel: string; zusatz?: true }[]; onZu: () => void }) {
   const router = useRouter();
   const [vorlage, setVorlage] = useState<string | null>(k.vorlage?.id ?? pakete[0]?.id ?? null);
   const [tag, setTag] = useState(localDay());
@@ -79,7 +79,9 @@ export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' 
           <Wahl label="Paket-Vorlage" liste={pakete.map(p => ({ id: p.id, label: p.titel }))} wert={vorlage} onWahl={setVorlage} />
         </Feldzeile>
         <Feldzeile label="Start"><input type="date" value={tag} onChange={e => setTag(e.target.value)} style={feld} /></Feldzeile>
-        <div style={klein}>Der Fall kopiert die Struktur der Vorlage und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.</div>
+        <div style={klein}>{pakete.find(p => p.id === vorlage)?.zusatz
+          ? 'Zusatzmodul: der Fall kopiert die Struktur der Vorlage und startet ohne Onboarding-Schritte — die erste Phase läuft sofort.'
+          : 'Der Fall kopiert die Struktur der Vorlage und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.'}</div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
           <Knopf haupt typ="submit" aus={!vorlage}>Fall anlegen</Knopf>
@@ -103,7 +105,7 @@ export function Onboarding() {
   const { daten, fehler } = useUebersicht();
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
   const laufend = Object.values(daten.faelle).filter(f => f.status === 'onboarding').sort((a, b) => Number(b.willkommenUeberfaellig) - Number(a.willkommenUeberfaellig));
-  const pakete = daten.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel }));
+  const pakete = daten.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       {/* Abnahme B7: der Satz passt zur Liste darunter — „kein neues Mandat wartet auf den Start“, wenn schon Onboardings laufen. */}

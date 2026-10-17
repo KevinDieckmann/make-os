@@ -57,14 +57,14 @@ export async function GET(req: Request) {
   const faelle = { ...faelleRoh, faelle: Object.fromEntries(Object.entries(faelleRoh.faelle).filter(([id]) => imBusiness(id))) };
   const kurz = await faelleKurz(Object.keys(faelle.faelle));
   const mandate = Object.fromEntries(crm.mandate.filter(m => istBusinessGesellschaft(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
-  const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '' }]));
+  const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, ...(f.zusaetze?.length ? { zusaetze: f.zusaetze.map(z => z.vorlageId) } : {}), kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '' }]));
   const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso);
   // Firmen-/Kundennamen gehen raus → Lese-Protokoll (Prüf-Fund 11.10.), nur die Anzahl.
   leseZugriff(req, 'fulfillment', { anzahl: Object.keys(mandate).length + kandidaten.length });
   if (url.searchParams.get('nur') === 'kurz') {
     return NextResponse.json({
       ok: true, kandidaten, zuordnung: vorlagen.zuordnung, faelle: faelleAnsicht,
-      prozesse: vorlagen.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, art: p.art })),
+      prozesse: vorlagen.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, art: p.art, ...(p.zusatz ? { zusatz: true } : {}) })),
     });
   }
   // Welcher Kunde steht wo (je Vorlage, wirksame Fälle).

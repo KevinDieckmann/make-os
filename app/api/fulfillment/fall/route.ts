@@ -7,8 +7,9 @@
 //      ?m=&nachricht=<Knoten> → Entwurf einer Nachricht des Ablaufs (17.10. abends, Ausführung): Mail-Baustein des Knotens mit gefüllten Platzhaltern,
 //        Empfänger = erste Ansprechperson mit Adresse; Art. 18 bzw. Werbesperre → kein Entwurf, nur `gesperrt`. Gesendet wird nur per Klick (Inbox).
 //      Seit 17.10. abends trägt die Antwort `ablauf` (Stand der Ausführung je Knoten: dran, Runde, Frist, Aufgabe und ihr Stand).
-// POST { aktion: 'starten', mandatId, vorlageId, start?, anfrageId }  → Fall anlegen (Kopie der Paket-Vorlage), idempotent über anfrageId
-//      { aktion: 'vorlage-uebernehmen', mandatId }                    → neue Fassung der Vorlage übernehmen (nie entfernen)
+// POST { aktion: 'starten', mandatId, vorlageId, start?, anfrageId }  → Fall anlegen (Kopie der Paket-Vorlage), idempotent über anfrageId; ein Zusatzmodul
+//        (17.10. spät, `zusatz`) hängt an einen laufenden Fall an (Antwort `angehaengt: true`) bzw. startet ohne Onboarding
+//      { aktion: 'vorlage-uebernehmen', mandatId, vorlageId? }        → neue Fassung der Vorlage (bzw. eines angehängten Zusatzmoduls) übernehmen (nie entfernen)
 //      { aktion: 'nachziehen', mandatId }                             → Phase/Lieferobjekte noch einmal nachziehen (idempotent)
 // PATCH { mandatId, ops }  → Ops (lib/fulfillment/prozesse/fall.ts `fallAnwenden` + `ziel-neu` in fall-server.ts), Stand je Eintrag (409).
 //        Ops: knoten-status { id, status?, grund?, faelligAm?, am?, stand? } · knoten-extra { eintrag | id+weg } · freigabe { id, kunde?: { wie, am },
@@ -26,9 +27,9 @@
 import { NextResponse } from 'next/server';
 import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
-import { fallUmfeld, ableitungFuer, fallSchreiben, fallStartenServer, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
+import { fallUmfeld, ableitungFuer, fallSchreiben, fallStartenOderAnhaengen, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
 import { fallWirksam, onboardingStand, willkommenVorlage, vorschlagText, istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
-import { vorlagenDiff } from '@/lib/fulfillment/prozesse/fall';
+import { vorlagenDiff, zusatzDiff, fallFreigaben } from '@/lib/fulfillment/prozesse/fall';
 import { vorlagenAnwenden } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import { nurIntern, rechtOffen, vorVerkaufOffen } from '@/lib/fulfillment/prozesse/bausteine';
 import { naechsterTermin } from '@/lib/fulfillment/prozesse/rituale';
@@ -110,6 +111,8 @@ export async function GET(req: Request) {
   const abl = ableitungFuer(f, mandat, crm, vorlagen, kunde[m], iso, kalender[m]);
   const w = fallWirksam(f, abl);
   const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
+  // Abstimmungspunkte des Pakets UND der angehängten Zusatzmodule (17.10. spät) — EINE Stelle (`fallFreigaben`).
+  const fg = v ? fallFreigaben(f, vorlagen.prozesse) : MUSTER_FREIGABEN;
   const ids = new Set(w.knoten.map(x => x.bausteinId).filter((x): x is string => !!x));
   const bausteine = vorlagen.bausteine.filter(b => ids.has(b.id)).map(b => ({ id: b.id, titel: b.titel, art: b.art, kundeFuellt: !!b.kundeFuellt, nurIntern: nurIntern(b), rechtOffen: rechtOffen(b), vorVerkaufOffen: vorVerkaufOffen(b, vorlagen), lieferobjekt: b.lieferobjekt ?? null }));
   // Stakeholder: Namen nur aus der Kartei (Art. 18: eingeschränkte erscheinen nur als Kennung, ohne Namen).
@@ -140,8 +143,11 @@ export async function GET(req: Request) {
     ok: true, inhaber: await istInhaber(z.person), mandat: mandatKurz, unterschrift: u,
     fall: { ...w, knoten: w.knoten.map(x => ({ ...x, stand: eintragStand(f.knoten.find(y => y.id === x.id) ?? x) })), stakeholder: w.stakeholder.map(s => ({ ...s, stand: eintragStand(s) })), entscheidungen: w.entscheidungen.map(e => ({ ...e, stand: eintragStand(e) })) },
     staende: { vereinbarung: eintragStand(f.vereinbarung ?? {}), wertKonto: Object.fromEntries(mandatZieleLesen(mandat.ziele).map(zl => [zl.id, eintragStand(f.wertKonto[zl.id] ?? { messungen: [] })])) },
-    onboarding: onboardingStand(f, abl), diff: v ? vorlagenDiff(f, v) : null,
-    vorlage: v ? { id: v.id, titel: v.titel, fassung: v.fassung, freigaben: v.freigaben, rollen: v.rollen } : { id: f.vorlageId, titel: 'Vorlage entfernt', fassung: f.vorlageFassung, freigaben: MUSTER_FREIGABEN, rollen: [] },
+    // Ohne Onboarding (aus einem Zusatzmodul gestartet, 17.10. spät): kein Onboarding-Stand — die Reise zeigt dann kein Band.
+    ...(f.ohneOnboarding ? {} : { onboarding: onboardingStand(f, abl) }), diff: v ? vorlagenDiff(f, v) : null,
+    vorlage: v ? { id: v.id, titel: v.titel, fassung: v.fassung, freigaben: fg, rollen: v.rollen, ...(v.zusatz ? { zusatz: true } : {}) } : { id: f.vorlageId, titel: 'Vorlage entfernt', fassung: f.vorlageFassung, freigaben: MUSTER_FREIGABEN, rollen: [] },
+    // Angehängte Zusatzmodule (17.10. spät): je Modul Titel, Starttag und — bei neuer Fassung — der Diff („Vorlage geändert — übernehmen?“).
+    zusaetze: (f.zusaetze ?? []).map(z => { const zv = vorlagen.prozesse.find(p => p.id === z.vorlageId); return { vorlageId: z.vorlageId, titel: zv?.titel ?? z.titel, startAm: z.startAm, fassung: z.vorlageFassung, diff: zv ? zusatzDiff(f, zv) : null }; }),
     wartet: wartetAufEuch(w, heute), wertKonto: wertKontoZeilen(w, mandat), fortschritt: fallFortschritt(w), aktuell: aktuellerKnoten(w),
     bausteine, personen, rituale: vorlagen.rituale,
     termine: Object.fromEntries(w.rituale.map(r => [r.ritualId, naechsterTermin(terminTage, r.terminUids, heute) ?? null])),
@@ -151,8 +157,8 @@ export async function GET(req: Request) {
     kundeNaechster: await (async () => {
       const [{ kundenTeile, kundenNaechsterPunkt }, { kundenGesperrt }] = await Promise.all([import('@/lib/fulfillment/kunde/bild'), import('@/lib/fulfillment/prozesse/bausteine')]);
       const gesperrt = kundenGesperrt(vorlagen.bausteine, vorlagen);
-      const np = kundenNaechsterPunkt(w, v?.freigaben ?? [], gesperrt, heute);
-      const text = kundenTeile({ fall: w, mandat, heute, anrede: 'sie', gesperrt, ...(v ? { freigaben: v.freigaben } : {}) }).naechstes[0] ?? null;
+      const np = kundenNaechsterPunkt(w, v ? fg : [], gesperrt, heute);
+      const text = kundenTeile({ fall: w, mandat, heute, anrede: 'sie', gesperrt, ...(v ? { freigaben: fg } : {}) }).naechstes[0] ?? null;
       return { text, gleich: !!np?.text && !np.anzeigeId, wartet: np?.punkt.zustand === 'wartet_kunde' };
     })(),
     kunde: kunde[m] ?? null, report: treppe?.reports[m] ?? null,
@@ -174,13 +180,14 @@ export async function POST(req: Request) {
     if (b.aktion === 'starten') {
       const r = await einmalig<Record<string, unknown>>('fulfillment-starten', b.anfrageId, async () => {
         try {
-          const fall = await fallStartenServer({ mandatId: b.mandatId, vorlageId: b.vorlageId, start: b.start, person: z.person, wer });
-          return { status: 200, body: { ok: true, fall, text: 'Fall angelegt — Onboarding beginnt.' } };
+          const { fall, art } = await fallStartenOderAnhaengen({ mandatId: b.mandatId, vorlageId: b.vorlageId, start: b.start, person: z.person, wer });
+          const text = art === 'angehaengt' ? 'Zusatzmodul an den laufenden Fall angehängt — ohne zweites Onboarding.' : fall.ohneOnboarding ? 'Fall angelegt — das Zusatzmodul läuft ohne Onboarding.' : 'Fall angelegt — Onboarding beginnt.';
+          return { status: 200, body: { ok: true, fall, text, ...(art === 'angehaengt' ? { angehaengt: true } : {}) } };
         } catch (e) { if (e instanceof FallFehler) return { status: e.status, body: { ok: false, fehler: e.message } }; throw e; }
       }, undefined, { wer: z.person });
       return NextResponse.json(r.body, { status: r.status });
     }
-    if (b.aktion === 'vorlage-uebernehmen') return NextResponse.json({ ok: true, fall: await fallVorlageUebernehmen(b.mandatId, z.person, wer) });
+    if (b.aktion === 'vorlage-uebernehmen') return NextResponse.json({ ok: true, fall: await fallVorlageUebernehmen(b.mandatId, z.person, wer, new Date(), b.vorlageId) });
     if (b.aktion === 'nachziehen') return NextResponse.json({ ok: true, nachzug: await fallNachziehen(b.mandatId, z.person, wer) });
     return NextResponse.json({ ok: false, fehler: 'aktion: starten, vorlage-uebernehmen oder nachziehen.' }, { status: 400 });
   } catch (e) { return fehlerAntwort(e); }

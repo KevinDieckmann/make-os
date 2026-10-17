@@ -46,6 +46,7 @@ export function geschichteFuer(v: ProzessVorlage, ops: readonly EditorOp[]): Ges
     wieder.push(o);
     switch (o.op) {
       case 'titel': rueckJe.push([{ op: 'titel', titel: v.titel }]); break;
+      case 'zusatz': rueckJe.push([{ op: 'zusatz', an: !!v.zusatz }]); break;
       case 'phase': {
         const p = knoten(o.id);
         if (!p) return null;

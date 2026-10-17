@@ -65,11 +65,13 @@ export interface ReiseSpalte {
   band: { beimKunden: number; sieht: boolean; wartet?: string[]; macht?: string[] };
   /** Hier hängen die Analyse (Läufe, Dossier, Recht) bzw. der Abschluss (Wirkungsbericht, Nachsorge, Kreislauf). */
   analyse?: true; abschluss?: true;
+  /** Phase eines angehängten Zusatzmoduls (17.10. spät, `ReisePhase.modul`) — die Darstellung markiert den Abschnitt (offen: wie, Flow-Ansicht). */
+  modul?: { id: string; titel: string };
 }
 export interface ReiseZeile { spalten: ReiseSpalte[]; hier: { phaseId: string; id: string } | null; fertig: boolean; fortschritt: number }
 
 export interface ReiseBildEingabe {
-  fall: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'wirkung'> & Partial<Pick<Fall, 'befaehigung'>>;
+  fall: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'wirkung'> & Partial<Pick<Fall, 'befaehigung' | 'zusaetze'>>;
   freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[];
   heute: string;
   /** Baustein-Kennung → Art (Mail, Ritual, Freigabe …) — ohne Angabe ist jedes Kästchen ein Schritt. */
@@ -154,7 +156,8 @@ const unter = (fall: Pick<Fall, 'knoten'>, phaseId: string): FallKnoten[] => {
  * phasen.ts), sonst die Phase mit dem Schritt „Dossier“/„Diagnosebericht“, sonst die erste Phase. Ohne Phasen null.
  */
 export function analysePhaseId(fall: Pick<Fall, 'knoten'>): string | null {
-  const phasen = phasenVon(fall);
+  // Nur Phasen des Pakets — ein angehängtes Zusatzmodul (17.10. spät) trägt nie die Analyse.
+  const phasen = phasenVon(fall).filter(p => !p.zusatz);
   if (!phasen.length) return null;
   const nachWort = (id: 'analyse' | 'diagnose') => phasen.find(p => { const x = phaseVon(p.titel); return x?.id === id && !x.dach; });
   const mitSchritt = phasen.find(p => unter(fall, p.id).some(k => { const v = schrittVerweis(k); return v === 'dossier' || v === 'diagnose'; }));
@@ -162,7 +165,8 @@ export function analysePhaseId(fall: Pick<Fall, 'knoten'>): string | null {
 }
 /** Die Phase, an der der Abschluss hängt (Wirkungsbericht, Fall abschließen, Nachsorge, zurück in den Kreislauf): die letzte echte Phase. */
 export function abschlussPhaseId(fall: Pick<Fall, 'knoten'>): string | null {
-  const phasen = phasenVon(fall);
+  // Nur Phasen des Pakets — der Abschluss des Mandats hängt nie an einem angehängten Zusatzmodul (17.10. spät).
+  const phasen = phasenVon(fall).filter(p => !p.zusatz);
   const echt = phasen.filter(p => titelOhneZusatz(p.titel).toLowerCase() !== 'weitere bausteine');
   return (echt.at(-1) ?? phasen.at(-1))?.id ?? null;
 }
@@ -282,6 +286,7 @@ export function reiseZeile(e: ReiseBildEingabe): ReiseZeile {
         return { beimKunden: offen.length, sieht: phk?.kundeSichtbar === true || p.zustand === 'jetzt', ...(wartet.length ? { wartet } : {}), ...(macht.length ? { macht } : {}) };
       })(),
       ...(p.id === analyse ? { analyse: true as const } : {}), ...(p.id === abschluss ? { abschluss: true as const } : {}),
+      ...(p.modul ? { modul: p.modul } : {}),
     };
   });
   return { spalten, hier, fertig: reise.fertig, fortschritt: reise.fortschritt };

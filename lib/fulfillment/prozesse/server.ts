@@ -16,6 +16,7 @@ import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { fallUmfeld, ableitungFuer, fallStartenServer, FallFehler } from './fall-server';
+import { fallFreigaben } from './fall';
 import { fallWirksam, onboardingStand, onboardingZaehlung, willkommenUhr } from './onboarding';
 import { cockpitZeile, type CockpitZeile, type HaengerArt } from './cockpit';
 import { ffIndexZeile, type FfIndexDaten } from './kennzahlen';
@@ -48,7 +49,7 @@ export async function faelleKurz(mandatIds?: readonly string[]): Promise<Record<
     const w = fallWirksam(f, abl);
     const st = onboardingStand(f, abl);
     // Phase und „Als Nächstes“ aus der EINEN Rechnung (`fallStelle`) — wie Fall-Kopf, Cockpit, Landkarte und Kunden-Seite (14.10.).
-    const stelle = fallStelle(w, vorlagen.prozesse.find(p => p.id === f.vorlageId)?.freigaben ?? [], heute);
+    const stelle = fallStelle(w, fallFreigaben(f, vorlagen.prozesse), heute);
     const wa = wartetAufEuch(w, heute);
     raus[f.mandatId] = {
       mandatId: f.mandatId, status: w.status, ...(stelle.phase ? { phase: stelle.phase.titel } : {}), fortschritt: stelle.fortschritt,
@@ -96,7 +97,7 @@ export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOS
     const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
     zeilen.push({
       ...cockpitZeile({
-        fall: w, kunde: m.kunde, titel: m.titel, paket: v?.titel, ...(v ? { freigaben: v.freigaben } : {}),
+        fall: w, kunde: m.kunde, titel: m.titel, paket: v?.titel, ...(v ? { freigaben: fallFreigaben(f, vorlagen.prozesse) } : {}),
         onboarding: onboardingStand(f, abl), ...(kunde[m.id] ? { kunde2: kunde[m.id] } : {}), ...(dossiers[m.id] ? { dossier: dossiers[m.id] } : {}),
         health: z?.ampel.gesamt ?? null, report: { faellig: z?.report.faellig ?? false, ...(z?.report.gesendetAm || z?.report.letzter ? { letzter: z?.report.gesendetAm ?? z?.report.letzter } : {}) },
         ...(naechster ? { naechsterRitual: naechster } : {}), pulsSchwelle: vorlagen.einstellungen.pulsSchwelle, heute, gesperrt,

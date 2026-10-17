@@ -17,7 +17,7 @@ import { istBusinessGesellschaft, istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/l
 import { neueKennung } from '@/lib/kennung';
 import { localDay, tagVon } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
-import { fallAnwenden, fallStarten, vorlageUebernehmen } from './fall';
+import { fallAnwenden, fallFreigaben, fallStarten, vorlageUebernehmen, zusatzAnhaengen, zusatzUebernehmen } from './fall';
 import { ablaufAktiv } from './ausfuehrung';
 import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, zeitpunkt, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
@@ -90,8 +90,17 @@ function mandatPruefen(crm: Pick<CrmBestand, 'mandate'>, mandatId: unknown): Man
   return m;
 }
 
-/** Den Fall eines Mandats anlegen (Kopie der Paket-Vorlage). 409, wenn es schon einen gibt. */
+/** Den Fall eines Mandats anlegen (Kopie der Paket-Vorlage). 409, wenn es schon einen gibt — außer bei einem Zusatzmodul, das dann anhängt. */
 export async function fallStartenServer(e: { mandatId: unknown; vorlageId: unknown; start?: unknown; person: string; wer?: Wer; jetzt?: Date }): Promise<Fall> {
+  return (await fallStartenOderAnhaengen(e)).fall;
+}
+
+/**
+ * Starten — die EINE Stelle für „Kundenonboarding starten“ (Fall-Seite, Onboarding, Freigabe-Stapel). Ein Zusatzmodul (17.10. spät, `ProzessVorlage.zusatz`)
+ * legt an einem Mandat mit laufendem Fall KEINEN zweiten Fall an: es hängt dort als eigener Abschnitt an (`zusatzAnhaengen`, `art: 'angehaengt'`); ohne Fall
+ * startet es als normaler Fall ohne Onboarding (`art: 'neu'`).
+ */
+export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId: unknown; start?: unknown; person: string; wer?: Wer; jetzt?: Date }): Promise<{ fall: Fall; art: 'neu' | 'angehaengt' }> {
   const jetzt = e.jetzt ?? new Date();
   const iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { h, crm, vorlagen } = await fallUmfeld([]);
@@ -104,8 +113,16 @@ export async function fallStartenServer(e: { mandatId: unknown; vorlageId: unkno
   const uMs = u ? zeitpunkt(u.am) : null;
   const bis = uMs != null ? tagVon(new Date(uMs + vorlagen.einstellungen.willkommenStunden * 3_600_000).toISOString()) : undefined;
   let neu: Fall | null = null;
+  let art: 'neu' | 'angehaengt' = 'neu';
   const r = await fulfillmentAendern('faelle', d => {
-    if (d.faelle[m.id]) return { ok: false, status: 409, fehler: 'Für dieses Mandat läuft schon ein Fall.' };
+    const da = d.faelle[m.id];
+    if (da && v.zusatz) {
+      const x = zusatzAnhaengen(da, { vorlage: v, person: e.person, jetzt: iso, start });
+      if (!x.ok) return x as AnwendenErgebnis<typeof d>;
+      neu = x.datei; art = 'angehaengt';
+      return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: x.datei } }, geaendert: [m.id] };
+    }
+    if (da) return { ok: false, status: 409, fehler: 'Für dieses Mandat läuft schon ein Fall.' };
     const pb = playbookBaustein(vorlagen);
     neu = fallStarten({ mandatId: m.id, vorlage: v, person: e.person, jetzt: iso, start, ...(bis ? { willkommenBis: bis } : {}), ...(pb ? { playbookId: pb.id } : {}), neueId: p => neueKennung(p) });
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: [m.id] };
@@ -113,7 +130,7 @@ export async function fallStartenServer(e: { mandatId: unknown; vorlageId: unkno
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
   // Ausführung (17.10. abends): ist der Fall gleich an einem Schritt mit Form, entsteht seine Aufgabe sofort.
   await ablaufNachzug(neu!, m.id, e.person, e.wer, jetzt);
-  return neu!;
+  return { fall: neu!, art };
 }
 
 /** Die Phase des Mandats nachziehen — nur vorwärts im Ablauf des Produkts. Liefert, ob gesetzt wurde. */
@@ -192,7 +209,7 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
     ergebnis = fallAnwenden(f, ops, {
       person, jetzt: iso, heute, standVon: eintragStand, neueId: p => neueKennung(p),
       ziele: ziele.map(z => ({ id: z.id, ...(z.ziel ? { ziel: z.ziel } : {}) })),
-      kontaktErlaubt: id => kontakte.has(id), ritualIds: vorlagen.rituale.map(x => x.id), freigaben: vorlage?.freigaben.map(x => x.id) ?? [],
+      kontaktErlaubt: id => kontakte.has(id), ritualIds: vorlagen.rituale.map(x => x.id), freigaben: vorlage ? fallFreigaben(f, vorlagen.prozesse).map(x => x.id) : [],
     });
     if (!ergebnis.ok) return ergebnis as AnwendenErgebnis<typeof d>;
     // Onboarding fertig → „läuft“ (gespeichert, damit der Status nicht nur abgeleitet ist).
@@ -264,8 +281,11 @@ export async function fallNachziehen(mandatId: unknown, person: string, wer?: We
   return nz;
 }
 
-/** Die neue Fassung der Vorlage übernehmen (nur hinzufügen/ändern, nie entfernen). */
-export async function fallVorlageUebernehmen(mandatId: unknown, person: string, wer?: Wer, jetzt = new Date()): Promise<Fall> {
+/**
+ * Die neue Fassung der Vorlage übernehmen (nur hinzufügen/ändern, nie entfernen). Mit `vorlageId` eines angehängten Zusatzmoduls (17.10. spät) dessen neue
+ * Fassung — dieselbe Mechanik.
+ */
+export async function fallVorlageUebernehmen(mandatId: unknown, person: string, wer?: Wer, jetzt = new Date(), vorlageId?: unknown): Promise<Fall> {
   const iso = jetzt.toISOString();
   const { h, crm, vorlagen } = await fallUmfeld([]);
   const m = mandatPruefen(crm, mandatId);
@@ -273,6 +293,15 @@ export async function fallVorlageUebernehmen(mandatId: unknown, person: string, 
   const r = await fulfillmentAendern('faelle', d => {
     const f = d.faelle[m.id];
     if (!f) return { ok: false, status: 404, fehler: 'Diesen Fall gibt es nicht (mehr).' };
+    if (typeof vorlageId === 'string' && vorlageId && vorlageId !== f.vorlageId) {
+      const z = f.zusaetze?.find(x => x.vorlageId === vorlageId);
+      if (!z) return { ok: false, status: 404, fehler: 'Dieses Zusatzmodul hängt nicht an diesem Fall.' };
+      const zv = vorlagen.prozesse.find(p => p.id === vorlageId);
+      if (!zv) return { ok: false, status: 404, fehler: 'Die Vorlage dieses Zusatzmoduls gibt es nicht mehr — der Fall läuft mit seiner Kopie weiter.' };
+      if (zv.fassung <= z.vorlageFassung) return { ok: false, status: 409, fehler: 'Das Zusatzmodul hat schon die aktuelle Fassung.' };
+      neu = zusatzUebernehmen(f, zv, iso, person);
+      return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: [m.id] };
+    }
     const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
     if (!v) return { ok: false, status: 404, fehler: 'Die Vorlage dieses Falls gibt es nicht mehr — der Fall läuft mit seiner Kopie weiter.' };
     if (v.fassung <= f.vorlageFassung) return { ok: false, status: 409, fehler: 'Der Fall hat schon die aktuelle Fassung.' };

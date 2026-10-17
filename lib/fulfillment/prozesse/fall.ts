@@ -11,9 +11,9 @@
 // (Paket C2 liest Formulare NUR aus Knoten mit `bausteinId`; zusammengeführt 11.10.).
 // Alle Änderungen über `fallAnwenden(fall, ops, kontext)` (rein, alles oder nichts); geschrieben wird in lib/fulfillment/prozesse/fall-server.ts.
 
-import type { AnwendenErgebnis, Fall, FallKnoten, KnotenStatus, ProzessKnoten, ProzessVorlage, Stakeholder, Entscheidung, Mitschrift, WertKontoEintrag, Vereinbarung } from '../typen';
+import type { AnwendenErgebnis, Fall, FallKnoten, FallZusatz, Freigabepunkt, KnotenStatus, ProzessKnoten, ProzessVorlage, Stakeholder, Entscheidung, Mitschrift, WertKontoEintrag, Vereinbarung } from '../typen';
 import { GRENZEN } from '../grenzen';
-import { ebeneVon, inReihenfolge, kinderVon, teilbaum, EBENEN_MAX } from '../regeln';
+import { ebeneVon, inReihenfolge, kinderVon, teilbaum, wurzelVon, zusatzJeKnoten, EBENEN_MAX } from '../regeln';
 import { MUSTER_BEFAEHIGUNG, MUSTER_ONBOARDING } from '../muster';
 import { OB_PRAEFIX, obKnotenId, obSchluessel } from './onboarding';
 import { ausfuehren, istObj, mischen, nein, optBool, optTag, optText, optWahl, optZahl, pflichtText, standPruefen, titelForm } from './pruefen';
@@ -66,6 +66,17 @@ export function fallStarten(e: StartEingabe): Fall {
   // (`fallAnwenden`, knoten-status).
   const ersterSchritt = phasenDer(knoten).flatMap(p => phasenSchritte(knoten, p.id))[0];
   if (ersterSchritt?.frist !== undefined && !ersterSchritt.faelligAm) knoten = knoten.map(k => (k.id === ersterSchritt.id ? { ...k, faelligAm: tagPlus(e.start, ersterSchritt.frist!) } : k));
+  // Ein Zusatzmodul (17.10. spät) startet ohne Onboarding: keine vorangestellte Phase, keine acht Schritte — der Fall läuft sofort.
+  if (v.zusatz) {
+    return {
+      mandatId: e.mandatId, vorlageId: v.id, vorlageFassung: v.fassung, gestartetAm: e.jetzt, gestartetVon: e.person, status: 'laeuft',
+      ...(e.start && e.start !== tagVon(e.jetzt) ? { startAm: e.start } : {}),
+      knoten, freigaben: {}, onboarding: {}, stakeholder: [], entscheidungen: [], rituale: [], mitschriften: [], quickWins: [], kickoffFragen: [], wertKonto: {},
+      befaehigung: MUSTER_BEFAEHIGUNG.map((text, i) => ({ id: `bf-${i + 1}`, text, erfuellt: false })),
+      marken: {}, geaendert: e.jetzt, geaendertVon: e.person, ohneOnboarding: true,
+      ...(v.phasenVonHand ? { phasenVonHand: true as const } : {}),
+    };
+  }
   // Onboarding: ein Knoten (Ebene 2 oder 3), der „Onboarding“ heißt — bevorzugt einer ohne eigene Schritte (bei „Vorlauf / Onboarding“ mit dem
   // Unterschritt „Onboarding“ also der Unterschritt) —, sonst eine neue Phase ganz vorn. Die acht Schritte kommen hinter vorhandene.
   const wurzel = knoten.find(k => !k.elternId);
@@ -152,7 +163,9 @@ export function vorlagenDiff(fall: Pick<Fall, 'knoten' | 'vorlageFassung'>, v: P
     const felder = DIFF_FELDER.filter(x => JSON.stringify(k[x] ?? null) !== JSON.stringify((f as unknown as Record<string, unknown>)[x] ?? null));
     return { id: k.id, titel: k.titel, felder };
   }).filter(x => x.felder.length);
-  const entfernt = fall.knoten.filter(k => !k.extra && !inVorlage.has(k.id)).map(k => ({ id: k.id, titel: k.titel }));
+  // Knoten eines angehängten Zusatzmoduls gehören nicht zu dieser Vorlage (17.10. spät) — sie sind nie „in der Vorlage entfernt“.
+  const zusatz = zusatzJeKnoten(fall.knoten);
+  const entfernt = fall.knoten.filter(k => !k.extra && !inVorlage.has(k.id) && (!zusatz.has(k.id) || zusatz.get(k.id) === v.id)).map(k => ({ id: k.id, titel: k.titel }));
   const reihenfolge = inReihenfolge(v.knoten).filter(k => imFall.has(k.id)).filter(k => {
     const { soll, ist } = gemeinsameKinder(k.id, fall.knoten, v);
     return soll.length > 1 && soll.join('|') !== ist.join('|');
@@ -184,10 +197,14 @@ function reihenfolgeUebernehmen(kn: FallKnoten[], v: ProzessVorlage): FallKnoten
   return liste;
 }
 
-/** Die neue Fassung übernehmen: neue Knoten dazu (nur unter vorhandenen Eltern), Felder geänderter Knoten übernehmen, nichts entfernen. */
-export function vorlageUebernehmen(fall: Fall, v: ProzessVorlage, jetzt: string, person: string): Fall {
-  let knoten = [...fall.knoten];
-  for (const k of inReihenfolge(v.knoten)) {
+/**
+ * Knoten einer (Vorlagen-)Struktur in den Fall übernehmen — die EINE Übernahme-Mechanik für „neue Fassung übernehmen“ und das Anhängen eines Zusatzmoduls:
+ * neue Knoten dazu (nur unter vorhandenen Eltern), Felder geänderter Knoten übernehmen, nichts entfernen. Eigene Felder des Falls (Status, Fälligkeit, Antwort,
+ * `zusatz` …) bleiben. Rein.
+ */
+function knotenUebernehmen(fallKn: readonly FallKnoten[], quelle: readonly ProzessKnoten[]): FallKnoten[] {
+  let knoten = [...fallKn];
+  for (const k of inReihenfolge(quelle)) {
     const da = knoten.find(x => x.id === k.id);
     if (!da) {
       if (k.elternId && !knoten.some(x => x.id === k.elternId)) continue;
@@ -201,11 +218,139 @@ export function vorlageUebernehmen(fall: Fall, v: ProzessVorlage, jetzt: string,
     }
     knoten = knoten.map(x => (x.id === da.id ? neu as unknown as FallKnoten : x));
   }
+  return knoten;
+}
+
+/** Die neue Fassung übernehmen: neue Knoten dazu (nur unter vorhandenen Eltern), Felder geänderter Knoten übernehmen, nichts entfernen. */
+export function vorlageUebernehmen(fall: Fall, v: ProzessVorlage, jetzt: string, person: string): Fall {
+  let knoten = knotenUebernehmen(fall.knoten, v.knoten);
   if (knoten.some(k => ebeneVon(k, knoten) > EBENEN_MAX)) knoten = fall.knoten; // nie eine kaputte Struktur übernehmen
-  else knoten = reihenfolgeUebernehmen(knoten, v);
+  else knoten = abschnitteOrdnen(reihenfolgeUebernehmen(knoten, v), fall.zusaetze);
   // Hat die Vorlage ihre Phasen von Hand geordnet (Editor), behält der Fall diese Reihenfolge (sonst ordnete der Säuberer nach der Regel).
   return { ...fall, knoten, vorlageFassung: v.fassung, geaendert: jetzt, geaendertVon: person, ...(v.phasenVonHand ? { phasenVonHand: true as const } : {}) };
 }
+
+// ── Zusatzmodule (17.10. spät; Rückmeldung: „Das Fulfillment soll maximal einfach für uns sein.“) ────────────────────────────────────────
+// Ein Paket mit `zusatz: true` (z. B. Telefonie) bekommt an einem Mandat mit laufendem Fall KEINEN zweiten Fall und keine zweite Onboarding-Phase: seine Phasen
+// hängen als eigener Abschnitt hinter denen des Pakets (`FallKnoten.zusatz` an den Phasen, `Fall.zusaetze`), über dieselbe Übernahme-Mechanik wie eine neue
+// Fassung (`knotenUebernehmen` — nichts wird entfernt). Die Ausführung läuft dort parallel ab dem Starttag des Abschnitts (./ausfuehrung.ts), die Reise markiert
+// ihn (`ReisePhase.modul`). Neue Fassungen des Zusatzmoduls übernimmt der Fall wie beim Paket erst per Klick (`zusatzDiff`, `zusatzUebernehmen`).
+
+/**
+ * Die Phasen eines Falls nach Abschnitten: erst das Paket, dann die Zusatzmodule in der Reihenfolge von `zusaetze` (bzw. ihrer ersten Phase) — innerhalb eines
+ * Abschnitts bleibt die Reihenfolge. Ränge lückenlos. Ohne Zusatzmodul kommt dieselbe Liste zurück (Byte für Byte).
+ */
+export function abschnitteOrdnen(kn: FallKnoten[], zusaetze?: readonly Pick<FallZusatz, 'vorlageId'>[]): FallKnoten[] {
+  const w = wurzelVon(kn);
+  if (!w) return kn;
+  const phasen = kinderVon(w.id, kn);
+  if (!phasen.some(p => p.zusatz)) return kn;
+  const reihe = [...(zusaetze ?? []).map(z => z.vorlageId)];
+  for (const p of phasen) if (p.zusatz && !reihe.includes(p.zusatz)) reihe.push(p.zusatz);
+  const platz = (p: FallKnoten) => (p.zusatz ? 1 + reihe.indexOf(p.zusatz) : 0);
+  const sortiert = phasen.map((p, i) => ({ p, a: platz(p), i })).sort((x, y) => x.a - y.a || x.i - y.i).map(x => x.p);
+  const rang = new Map(sortiert.map((p, i) => [p.id, i + 1]));
+  if (sortiert.every(p => p.rang === rang.get(p.id))) return kn;
+  return kn.map(k => (rang.has(k.id) && k.rang !== rang.get(k.id) ? { ...k, rang: rang.get(k.id)! } : k));
+}
+
+/**
+ * Die Struktur eines Zusatzmoduls, wie sie im Fall steht (rein): ohne seinen obersten Knoten — an dessen Stelle der oberste Knoten des Falls (mit den Werten des
+ * Falls, damit er nie als „geändert“ zählt); seine Phasen hängen darunter, hinter den Phasen, die nicht zu diesem Abschnitt gehören.
+ */
+function zusatzAbbild(fall: Pick<Fall, 'knoten'>, v: Pick<ProzessVorlage, 'id' | 'knoten'>): ProzessKnoten[] {
+  const fw = wurzelVon(fall.knoten) ?? nein('Der Fall hat keinen obersten Knoten.');
+  const vw = wurzelVon(v.knoten) ?? nein('Das Zusatzmodul hat keinen obersten Knoten.');
+  const basis = kinderVon(fw.id, fall.knoten).filter(p => p.zusatz !== v.id).reduce((m, p) => Math.max(m, p.rang), 0);
+  const wurzel: Record<string, unknown> = { id: fw.id, titel: fw.titel, rang: fw.rang };
+  for (const f of STRUKTUR_FELDER) if (fw[f] !== undefined) wurzel[f] = fw[f];
+  return [
+    wurzel as unknown as ProzessKnoten,
+    ...v.knoten.filter(k => k.id !== vw.id).map(k => (k.elternId === vw.id ? { ...k, elternId: fw.id, rang: basis + k.rang } : k)),
+  ];
+}
+
+/** Die Phasen eines Zusatzmoduls im Fall markieren (`zusatz` = Kennung der Vorlage) — nur Phasen, die aus seiner Struktur stammen. */
+function zusatzMarkieren(kn: FallKnoten[], fallWurzel: string, abbild: readonly ProzessKnoten[], vorlageId: string): FallKnoten[] {
+  const phasen = new Set(abbild.filter(k => k.elternId === fallWurzel).map(k => k.id));
+  return kn.map(k => (phasen.has(k.id) && k.elternId === fallWurzel && k.zusatz !== vorlageId ? { ...k, zusatz: vorlageId } : k));
+}
+
+export interface ZusatzEingabe { vorlage: ProzessVorlage; person: string; jetzt: string; start: string }
+
+/**
+ * Ein Zusatzmodul an einen laufenden Fall hängen (rein, alles oder nichts): seine Phasen als eigener Abschnitt hinter denen des Pakets, Fälligkeiten der Phasen
+ * (`dauerTage` hintereinander) und des ersten Schritts (`frist`) ab dem Starttag. Abgelehnt: kein Zusatzmodul (400), dasselbe Paket bzw. schon angehängt, Fall
+ * abgeschlossen, Kennung oder Abstimmungspunkt doppelt (409), Grenze (413).
+ */
+export function zusatzAnhaengen(fall0: Fall, e: ZusatzEingabe): AnwendenErgebnis<Fall> {
+  return ausfuehren(() => {
+    const v = e.vorlage;
+    if (v.art !== 'paket' || !v.zusatz) nein('Nur ein Zusatzmodul (Paket-Vorlage mit „Zusatzmodul“) hängt an einen laufenden Fall.');
+    if (fall0.status === 'abgeschlossen') nein('Der Fall dieses Mandats ist abgeschlossen — bitte erst wieder öffnen (Status des Falls), dann das Zusatzmodul anhängen.', 409);
+    if (fall0.vorlageId === v.id) nein(`Der Fall läuft schon mit „${v.titel}“.`, 409);
+    if (fall0.zusaetze?.some(z => z.vorlageId === v.id)) nein(`„${v.titel}“ hängt schon an diesem Fall.`, 409);
+    if ((fall0.zusaetze?.length ?? 0) >= GRENZEN.zusaetzeJeFall) nein(`Höchstens ${GRENZEN.zusaetzeJeFall} Zusatzmodule je Fall. Nichts gespeichert.`, 413);
+    const fw = wurzelVon(fall0.knoten) ?? nein('Der Fall hat keinen obersten Knoten.');
+    const vw = wurzelVon(v.knoten) ?? nein('Das Zusatzmodul hat keinen obersten Knoten.');
+    const da = new Set(fall0.knoten.map(k => k.id));
+    const doppelt = v.knoten.find(k => k.id !== vw.id && da.has(k.id));
+    if (doppelt) nein(`„${doppelt.titel}“ steht schon im Fall — das Zusatzmodul passt so nicht dazu.`, 409);
+    const belegt = new Set([...fall0.knoten.map(k => k.freigabe).filter((x): x is string => !!x), ...Object.keys(fall0.freigaben)]);
+    const fg = v.knoten.map(k => k.freigabe).find(x => !!x && belegt.has(x));
+    if (fg) nein(`Den Abstimmungspunkt „${fg}“ gibt es im Fall schon — im Zusatzmodul bitte eine andere Kennung wählen.`, 409);
+    const abbild = zusatzAbbild(fall0, v);
+    let knoten = zusatzMarkieren(knotenUebernehmen(fall0.knoten, abbild), fw.id, abbild, v.id);
+    if (knoten.some(k => ebeneVon(k, knoten) > EBENEN_MAX)) nein('Das Zusatzmodul hat zu viele Ebenen für den Fall.');
+    if (knoten.length > GRENZEN.knotenJeFall) nein(`Knoten im Fall: höchstens ${GRENZEN.knotenJeFall} (mit dem Zusatzmodul wären es ${knoten.length}). Nichts gespeichert.`, 413);
+    // Fälligkeiten wie beim Start eines Falls — ab dem Starttag des Abschnitts.
+    let tag = e.start;
+    for (const p of kinderVon(fw.id, knoten).filter(x => x.zusatz === v.id)) {
+      if (!p.dauerTage) continue;
+      tag = tagPlus(tag, p.dauerTage);
+      const t = tag;
+      knoten = knoten.map(k => (k.id === p.id ? { ...k, faelligAm: t } : k));
+    }
+    const erster = phasenDer(knoten).filter(p => p.zusatz === v.id).flatMap(p => phasenSchritte(knoten, p.id))[0];
+    if (erster?.frist !== undefined && !erster.faelligAm) knoten = knoten.map(k => (k.id === erster.id ? { ...k, faelligAm: tagPlus(e.start, erster.frist!) } : k));
+    const zusaetze: FallZusatz[] = [...(fall0.zusaetze ?? []), { vorlageId: v.id, vorlageFassung: v.fassung, wurzelId: vw.id, titel: v.titel, startAm: e.start, angehaengtAm: e.jetzt, angehaengtVon: e.person }];
+    knoten = abschnitteOrdnen(knoten, zusaetze);
+    return { datei: { ...fall0, knoten, zusaetze, geaendert: e.jetzt, geaendertVon: e.person }, geaendert: [fall0.mandatId] };
+  });
+}
+
+/** Was sich an einem angehängten Zusatzmodul seit dem Anhängen (bzw. der letzten Übernahme) geändert hat — null, wenn nichts (oder es nicht anhängt). */
+export function zusatzDiff(fall: Pick<Fall, 'knoten' | 'zusaetze'>, v: ProzessVorlage): VorlagenDiff | null {
+  const z = fall.zusaetze?.find(x => x.vorlageId === v.id);
+  const fw = wurzelVon(fall.knoten);
+  if (!z || !fw || !wurzelVon(v.knoten)) return null;
+  const imAbschnitt = zusatzJeKnoten(fall.knoten);
+  const sicht = fall.knoten.filter(k => k.id === fw.id || imAbschnitt.get(k.id) === v.id);
+  return vorlagenDiff({ knoten: sicht, vorlageFassung: z.vorlageFassung }, { ...v, knoten: zusatzAbbild(fall, v) });
+}
+
+/** Die neue Fassung eines angehängten Zusatzmoduls übernehmen — dieselbe Mechanik wie beim Paket (nur hinzufügen/ändern, nie entfernen). */
+export function zusatzUebernehmen(fall: Fall, v: ProzessVorlage, jetzt: string, person: string): Fall {
+  const z = fall.zusaetze?.find(x => x.vorlageId === v.id);
+  const fw = wurzelVon(fall.knoten);
+  if (!z || !fw) return fall;
+  const abbild = zusatzAbbild(fall, v);
+  let knoten = zusatzMarkieren(knotenUebernehmen(fall.knoten, abbild), fw.id, abbild, v.id);
+  if (knoten.some(k => ebeneVon(k, knoten) > EBENEN_MAX)) knoten = fall.knoten; // nie eine kaputte Struktur übernehmen
+  else knoten = abschnitteOrdnen(reihenfolgeUebernehmen(knoten, { ...v, knoten: abbild }), fall.zusaetze);
+  return { ...fall, knoten, zusaetze: fall.zusaetze!.map(x => (x.vorlageId === v.id ? { ...x, vorlageFassung: v.fassung } : x)), geaendert: jetzt, geaendertVon: person };
+}
+
+/**
+ * Die Abstimmungspunkte eines Falls: die seines Pakets und die seiner angehängten Zusatzmodule (Kennungen sind im Fall eindeutig — `zusatzAnhaengen` lehnt
+ * doppelte ab; bei Gleichstand gewinnt das Paket). EINE Stelle für Fall, Reise, Cockpit, Kunden-Seite und Report.
+ */
+export function fallFreigaben(f: Pick<Fall, 'vorlageId' | 'zusaetze'>, prozesse: readonly Pick<ProzessVorlage, 'id' | 'freigaben'>[]): Freigabepunkt[] {
+  const raus = [...(prozesse.find(p => p.id === f.vorlageId)?.freigaben ?? [])];
+  for (const z of f.zusaetze ?? []) for (const fg of prozesse.find(p => p.id === z.vorlageId)?.freigaben ?? []) if (!raus.some(x => x.id === fg.id)) raus.push(fg);
+  return raus;
+}
+
 
 // ── Änderungen am Fall ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -297,7 +442,8 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
             // („Während der Messe“ erledigt → „Nach der Messe“: Nachfassen am Tag 1, 3, 7, 14, 30). Gesetzte Fälligkeiten bleiben.
             // (Nicht, wenn die Erledigung eine Runde der Schleife war — dann ist der Knoten wieder offen.)
             if (f.knoten.find(x => x.id === n.id)?.status === 'erledigt') {
-              const geschwister = kinderVon(n.elternId, f.knoten);
+              // Nur im selben Abschnitt (17.10. spät): die erste Phase eines angehängten Zusatzmoduls ist nie „das Nächste“ nach einer Phase des Pakets.
+              const geschwister = kinderVon(n.elternId, f.knoten).filter(x => (x.zusatz ?? null) === (n.zusatz ?? null));
               const naechstes = geschwister[geschwister.findIndex(x => x.id === n.id) + 1];
               if (naechstes) for (const s of kinderVon(naechstes.id, f.knoten)) {
                 if (s.dauerTage && !s.faelligAm && s.status === 'offen') setzeKnoten({ ...s, faelligAm: tagPlus(neu.erledigtAm ?? k.heute, s.dauerTage) });

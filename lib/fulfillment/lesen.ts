@@ -13,7 +13,7 @@ import {
   type FaelleDatei, type Fall, type FallKnoten, type Vereinbarung, type Stakeholder, type Entscheidung, type Mitschrift, type WertKontoEintrag,
   type KundeDatei, type KundenLink, type FormularStand, type PulsAnfrage, type Puls, type Unterlage,
   type DossierDatei, type Dossier, type Abschnitt, type AbschnittId, type Aussage, type Quelle, type AnalyseLauf, type Massnahme, type LaufStatus,
-  type PersonenDatei, type PersonenKarte, type FulfillmentArt, type FulfillmentDateien, type KnotenForm, type Zweige, type VorlagenPapierkorb, type KnotenLage, type PfeilText,
+  type PersonenDatei, type PersonenKarte, type FulfillmentArt, type FulfillmentDateien, type KnotenForm, type Zweige, type VorlagenPapierkorb, type KnotenLage, type PfeilText, type FallZusatz,
 } from './typen';
 import { LAGE } from './grenzen';
 import { hohlerFallKnoten, hohlerVorlagenKnoten, phasenOrdnen } from './prozesse/phasen';
@@ -151,6 +151,8 @@ export function vorlageAus(o: O): ProzessVorlage | null {
     uebergaenge: liste(o.uebergaenge, uebergang), freigaben: liste(o.freigaben, freigabepunkt), rollen: liste(o.rollen, rolle),
     fassung: n(o.fassung) ?? 1, herkunft: herkunft(o.herkunft), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '', phasenVonHand,
     papierkorb: pk.length ? pk : undefined,
+    // Zusatzmodul (17.10. spät) — nur Pakete.
+    zusatz: art === 'paket' && o.zusatz === true ? true : undefined,
   });
 }
 const frage = (o: O): Frage | null => {
@@ -179,6 +181,7 @@ export function bausteinAus(o: O): Baustein | null {
     urheberPruefen: vermerk(o.urheberPruefen, ['seit', 'grund'] as const), herkunftText: s(o.herkunftText),
     tags: texte(o.tags), vonHand: o.vonHand === true ? true : undefined, herkunft: herkunft(o.herkunft),
     fassung: n(o.fassung) ?? 1, geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '',
+    sieheAuch: (() => { const l = Array.from(new Set(ids(o.sieheAuch))).filter(x => x !== i); return l.length ? l : undefined; })(),
   });
 }
 const TEILNEHMENDE = ['intern', 'entscheider', 'tagesverantwortlich', 'team'] as const;
@@ -223,9 +226,19 @@ export function vorlagenAus(roh: unknown): VorlagenDatei {
   for (const [k, w] of Object.entries(obj(o.zuordnung) ?? {})) { const v = id(obj(w)?.vorlageId); if (ID.test(k) && v) zuordnung[k] = { vorlageId: v }; }
   const agentZusatz: VorlagenDatei['agentZusatz'] = {};
   for (const [k, w] of Object.entries(obj(o.agentZusatz) ?? {})) { const a = wahl(k, ANALYSE_AGENTEN); if (a && typeof w === 'string') agentZusatz[a] = w; }
+  // „Siehe auch“ (17.10. spät): nur Verweise auf Bausteine, die es (noch) gibt — gelöschte fallen beim Lesen weg (nichts wird gespeichert).
+  const bausteine = liste(o.bausteine, bausteinAus);
+  const da = new Set(bausteine.map(b => b.id));
+  const mitVerweisen = bausteine.map(b => {
+    if (!b.sieheAuch || b.sieheAuch.every(x => da.has(x))) return b;
+    const l = b.sieheAuch.filter(x => da.has(x));
+    if (l.length) return { ...b, sieheAuch: l };
+    const { sieheAuch: _s, ...rest } = b;
+    return rest;
+  });
   return {
     version: n(o.version) ?? FULFILLMENT_VERSION,
-    prozesse: liste(o.prozesse, vorlageAus), bausteine: liste(o.bausteine, bausteinAus), rituale: liste(o.rituale, ritual),
+    prozesse: liste(o.prozesse, vorlageAus), bausteine: mitVerweisen, rituale: liste(o.rituale, ritual),
     zuordnung, agentZusatz, einstellungen: einstellungenAus(o.einstellungen), importLaeufe: liste(o.importLaeufe, importLauf), marken: textMap(o.marken),
   };
 }
@@ -243,7 +256,16 @@ const fallKnoten = (o: O): FallKnoten | null => {
     form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige), versuche: versuche(o.versuche),
     // Ausführung (17.10. abends) — Antwort, Runden, Eskalation (ohne Feld wie bisher).
     antwort: wahl(o.antwort, ['ja', 'nein'] as const), antwortAm: s(o.antwortAm), runden: runden(o.runden), eskaliertAm: s(o.eskaliertAm),
+    // Zusatzmodul (17.10. spät) — an Phasen: die Vorlage des Abschnitts.
+    zusatz: id(o.zusatz),
   });
+};
+const TAG = /^\d{4}-\d{2}-\d{2}$/;
+/** Ein angehängtes Zusatzmodul (17.10. spät) — ohne Vorlage, Wurzel oder Starttag fällt es weg. */
+const fallZusatz = (o: O): FallZusatz | null => {
+  const vorlageId = id(o.vorlageId), wurzelId = id(o.wurzelId), startAm = s(o.startAm), angehaengtAm = s(o.angehaengtAm);
+  if (!vorlageId || !wurzelId || !startAm || !TAG.test(startAm) || !angehaengtAm) return null;
+  return { vorlageId, vorlageFassung: n(o.vorlageFassung) ?? 1, wurzelId, titel: s(o.titel) ?? 'Zusatzmodul', startAm, angehaengtAm, angehaengtVon: s(o.angehaengtVon) ?? '' };
 };
 const vereinbarung = (v: unknown): Vereinbarung | undefined => {
   const o = obj(v);
@@ -316,6 +338,8 @@ export function fallAus(o: O): Fall | null {
     befaehigung: liste(o.befaehigung, x => { const xi = id(x.id), text = s(x.text); return xi && text ? sauber({ id: xi, text, erfuellt: x.erfuellt === true, am: s(x.am) }) : null; }),
     wirkung, marken: textMap(o.marken), geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '',
     phasenVonHand: o.phasenVonHand === true ? true : undefined,
+    zusaetze: (() => { const z = liste(o.zusaetze, fallZusatz).filter((x, i, l) => l.findIndex(y => y.vorlageId === x.vorlageId) === i); return z.length ? z : undefined; })(),
+    ohneOnboarding: o.ohneOnboarding === true ? true : undefined,
   });
 }
 export const leerFaelle = (): FaelleDatei => ({ version: FULFILLMENT_VERSION, faelle: {} });

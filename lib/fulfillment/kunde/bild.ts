@@ -15,7 +15,7 @@
 // Fallbeispiel (erfunden): „Beispiel Werkzeugbau“ steht in Phase 2 von 4 („Analyse“), 3 von 10 Schritten sind erledigt, die Preisliste wartet seit
 // neun Tagen beim Kunden → Ampel gelb „Wir warten auf euren Input“, Satz 3 „Von euch brauchen wir eine Sache — sie wartet seit 9 Tagen.“
 
-import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
+import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { zielErreichung } from '../prozesse/wert';
 import { RHYTHMUS_TEXT, naechsterFallTermin } from '../prozesse/rituale';
@@ -200,6 +200,8 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   const sichtbar = sichtbarMit(e.gesperrt);
   const reihe = inReihenfolge(l);
   const akt = f ? aktuellerKnoten(f) : { phase: null, schritt: null };
+  // Laufende Phasen: die des Pakets und je angehängtem Zusatzmodul seine (17.10. spät — dieselbe Regel wie die Reise intern, `jetztPhasen`).
+  const jetzt = f ? jetztPhasen(f) : new Set<string>();
   const nach = new Map(l.map(k => [k.id, k]));
   const freigabe = new Map((e.freigaben ?? []).map(x => [x.id, x]));
   const abstimmungTitel = (k: Pick<FallKnoten, 'freigabe'>) => { const x = k.freigabe ? freigabe.get(k.freigabe) : undefined; return x && x.wer !== 'intern' ? kundenText(x.titel) : undefined; };
@@ -208,12 +210,12 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   // da (14.10., Abnahme A3: sonst fehlte „hier stehen wir“, wenn sie nicht geteilt war) — mit neutralem Titel (`kundenText`).
   // Schritte je Phase aus DERSELBEN Rechnung wie intern (`fallReise` — Reise-Zeile, Ablauf), nicht aus den Blättern (17.10., dritte Abnahme B5).
   const schritteJe = new Map((f ? fallReise(f, e.freigaben ?? [], e.heute).phasen : []).map(p => [p.id, { erledigt: p.erledigt, gesamt: p.gesamt }]));
-  const phasen: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && (sichtbar(k) || (k.id === akt.phase?.id && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))).map(p => {
+  const phasen: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && (sichtbar(k) || (jetzt.has(k.id) && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))).map(p => {
     const fertig = phaseFertig(p, l);
     const s = schritteJe.get(p.id);
     const a = abstimmungTitel(p);
     return {
-      titel: kundenText(p.titel, a), stand: fertig ? 'erledigt' as const : akt.phase?.id === p.id ? 'aktuell' as const : 'kommt' as const,
+      titel: kundenText(p.titel, a), stand: fertig ? 'erledigt' as const : jetzt.has(p.id) ? 'aktuell' as const : 'kommt' as const,
       ...(s && s.gesamt ? { anteil: fertig ? 1 : Math.round((s.erledigt / s.gesamt) * 100) / 100 } : {}),
       ...(a && p.freigabe ? { abstimmung: { titel: a, erledigt: !!f?.freigaben?.[p.freigabe] } } : {}),
     };
@@ -227,7 +229,8 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   // Nur die laufende Phase und die danach (Sichtprüfung 12.10.: Schritte aus späten Phasen standen sonst schon heute unter „Als Nächstes“).
   const phasenReihe = reihe.filter(k => ebeneVon(k, l) === 2);
   const jetztIdx = akt.phase ? phasenReihe.findIndex(p => p.id === akt.phase!.id) : -1;
-  const naheIds = jetztIdx >= 0 ? new Set(phasenReihe.slice(jetztIdx, jetztIdx + 2).flatMap(p => teilbaum(p.id, l))) : null;
+  // Ein angehängtes Zusatzmodul (17.10. spät) läuft daneben — seine laufende Phase zählt mit (ihre Schritte stehen dann unter „Danach in …“).
+  const naheIds = jetztIdx >= 0 ? new Set([...phasenReihe.slice(jetztIdx, jetztIdx + 2), ...phasenReihe.filter(p => p.zusatz && jetzt.has(p.id))].flatMap(p => teilbaum(p.id, l))) : null;
   // Ein Sammel-Schritt des Imports („Zugeordnete Bausteine“) steht nie als „Als Nächstes“ da — höchstens seine geteilten Bausteine.
   // 15.10. (Abnahme B1): der ERSTE Eintrag ist DERSELBE nächste Punkt wie intern (`naechsterPunkt` — Fall-Kopf, Cockpit, Leistungstreppe), nur in Kunden-
   // Worten; danach weitere geteilte offene Schritte. Nie eine Phase selbst (Ebene 2 — „Als Nächstes: Diagnose“ neben „Phase 3: Diagnose“).

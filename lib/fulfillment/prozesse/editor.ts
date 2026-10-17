@@ -21,7 +21,7 @@
 // hält die Reihenfolge der Phasen fest (`phasenVonHand`), damit sie beim Lesen nicht nach der Regel neu sortiert werden.
 // Tests: tests/fulfillment-editor-modell.test.ts.
 
-import type { AnwendenErgebnis, Baustein, Freigabepunkt, KnotenForm, KnotenLage, ProzessKnoten, ProzessVorlage, VorlagenDatei, VorlagenPapierkorb, Zustaendig, Zweige } from '../typen';
+import type { AnwendenErgebnis, Baustein, Freigabepunkt, KnotenForm, KnotenLage, PfeilText, ProzessKnoten, ProzessVorlage, VorlagenDatei, VorlagenPapierkorb, Zustaendig, Zweige } from '../typen';
 import { GRENZEN, LAGE } from '../grenzen';
 import { KNOTEN_FORMEN } from '../lesen';
 import { kinderVon, teilbaum, wurzelVon } from '../regeln';
@@ -186,7 +186,7 @@ const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnote
 
 /**
  * Die Änderungen des Editors an EINER Paket-Vorlage — alles oder nichts. Ops (je `{ op, … }`):
- *   titel { titel } · phase-neu { id, titel, nach?: Phase|null } · phase { id, titel?, kundeSichtbar? } · phase-schieben { id, nach: Phase|null }
+ *   titel { titel } · zusatz { an } (Zusatzmodul, 17.10. spät) · phase-neu { id, titel, nach?: Phase|null } · phase { id, titel?, kundeSichtbar? } · phase-schieben { id, nach: Phase|null }
  *   abstimmung { phaseId, an, titel?, wer? } · schritt-neu { id, ziel, form, titel, frist?, zustaendig?, kundeSichtbar?, versuche? }
  *   schritt { id, titel?, form?, frist?, zustaendig?, kundeSichtbar?, versuche? } · schritt-schieben { id, ziel } · zweig { id, ja?: id|null, nein?: id|null }
  *   nein-erinnerung { id, entscheidungId, titel? } · baustein-dazu { id, schrittId, bausteinId, titel? } · gruppe { id, titel }
@@ -308,6 +308,13 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
           const t = pflichtText(o.titel, 'titel', 'Titel des Ablaufs');
           v = { ...v, titel: t };
           kn = kn.map(x => (x.id === wurzel.id ? { ...x, titel: t } : x));
+          break;
+        }
+        case 'zusatz': {
+          // Schalter „Zusatzmodul“ (17.10. spät): ändert nur, wie ein Fall startet — keine neue Fassung (siehe `ohneLage`).
+          const an = optBool(o.an, 'Zusatzmodul');
+          if (an === undefined || an === null) nein('an: true oder false.');
+          if (an) v = { ...v, zusatz: true }; else { const { zusatz: _z, ...r } = v; v = r; }
           break;
         }
         case 'phase-neu': {
@@ -593,12 +600,16 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
  * Vergleich „ist das eine neue Fassung?“.
  */
 function ohneLage(v: ProzessVorlage): string {
-  const { phasenVonHand: _h, ...rest } = v;
+  // Auch der Schalter „Zusatzmodul“ ist keine neue Fassung — er ändert nur, wie ein Fall startet (laufende Fälle sehen keine Änderung).
+  const { phasenVonHand: _h, zusatz: _z, ...rest } = v;
   return JSON.stringify({ ...rest, knoten: v.knoten.map(({ pos: _p, pfeilText: _t, ...r }) => r) });
 }
 
-/** Eine Lage aus der Eingabe: null = wieder automatisch; ganze Zahlen in den Grenzen; Breite/Höhe nur an einem Rahmen (Phase). */
-function lageAus(v: unknown, phase: boolean): KnotenLage | null {
+/**
+ * Eine Lage aus der Eingabe: null = wieder automatisch; ganze Zahlen in den Grenzen; Breite/Höhe nur an einem Rahmen (Phase). Dieselbe Prüfung für den Import
+ * (Format „pakete“, ./import.ts).
+ */
+export function lageAus(v: unknown, phase: boolean): KnotenLage | null {
   if (v === null) return null;
   if (!istObj(v)) return nein('pos: { x, y } oder null.');
   const zahl = (w: unknown, name: string, min: number, max: number) => {
@@ -629,4 +640,16 @@ export function neuerAblauf(datei: VorlagenDatei, eingabe: unknown, k: EditorKon
     };
     return { datei: { ...datei, prozesse: [...datei.prozesse, v] }, geaendert: [id] };
   });
+}
+
+/**
+ * Die Beschriftung der Pfeile eines Schritts aus einer Eingabe (Import, Format „pakete“) — dieselben Felder und Grenzen wie die Op `pfeil-text`: `weiter`, `ja`,
+ * `nein`, je ein kurzer Text (`TEXT_MAX.pfeil`). Ohne Text: undefined.
+ */
+export function pfeilTextAus(v: unknown, name: string): PfeilText | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (!istObj(v)) return nein(`${name}: { weiter?, ja?, nein? } erwartet.`);
+  const t: PfeilText = {};
+  for (const art of ['weiter', 'ja', 'nein'] as const) { const x = optText(v[art], 'pfeil', `${name} (${art})`); if (x) t[art] = x; }
+  return Object.keys(t).length ? t : undefined;
 }

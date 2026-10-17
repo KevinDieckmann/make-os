@@ -132,13 +132,15 @@ export function taktLeiste(e: {
   kalender?: readonly { uid: string; tag: string; von?: string; titel?: string; ritualId?: string }[];
   /** Die Paket-Vorlage des Falls — ein Ritual mit `pakete` steht nur in diesen Paketen (oder wenn der Fall es schon nutzt; 17.10., dritte Abnahme C6). */
   vorlageId?: string;
+  /** Angehängte Zusatzmodule (17.10. spät) — ein Ritual ihrer Pakete steht ebenso im Takt. */
+  zusatzIds?: readonly string[];
 }): TaktLeiste {
   const n = e.wochen ?? 6;
   const start = montagVon(e.heute);
   const bis = tagPlus(start, n * 7 - 1);
   const genutzt = new Map(e.fallRituale.map(r => [r.ritualId, r]));
   const imFenster = (t: string) => t >= start && t <= bis;
-  const passt = (r: Pick<RitualVorlage, 'id' | 'pakete'>) => !r.pakete?.length || !e.vorlageId || r.pakete.includes(e.vorlageId) || genutzt.has(r.id) || (e.kalender ?? []).some(t => t.ritualId === r.id);
+  const passt = (r: Pick<RitualVorlage, 'id' | 'pakete'>) => !r.pakete?.length || !e.vorlageId || r.pakete.includes(e.vorlageId) || (e.zusatzIds ?? []).some(z => r.pakete!.includes(z)) || genutzt.has(r.id) || (e.kalender ?? []).some(t => t.ritualId === r.id);
   const zeilen = e.rituale.filter(passt).map(r => {
     const g = genutzt.get(r.id);
     const ausKalender = (e.kalender ?? []).filter(t => t.ritualId === r.id);

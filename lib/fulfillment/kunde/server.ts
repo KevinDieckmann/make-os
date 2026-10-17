@@ -39,7 +39,7 @@ import { anredeAus, type KundenAnrede } from './bild';
 import { reportZusatz } from './report-zusatz';
 import { kundenGesperrt } from '../prozesse/bausteine';
 import { playbookBaustein } from '../prozesse/onboarding';
-import { OB_PLAYBOOK_FORMULAR_ID } from '../prozesse/fall';
+import { OB_PLAYBOOK_FORMULAR_ID, fallFreigaben } from '../prozesse/fall';
 import { kundeFristenAnwenden, unterlageDatei, verwaisteDateien, alleTexte } from './fristen';
 import { kundeTypErkennen, ohneMetadaten, uploadFrei, UPLOAD_GRENZEN, type KundeDateiTyp } from './upload';
 import { aktiveInhalte, AKTIV_TEXT } from '@/lib/dateien/aktive-inhalte';
@@ -166,10 +166,11 @@ export async function terminTageFuer(m: Pick<Mandat, 'id' | 'firmaId'>): Promise
 
 export interface KundenUmfeld { anrede: KundenAnrede; anbieter?: KundenAnbieter; ansprechperson?: string; freigaben: Freigabepunkt[]; terminTage: { uid: string; tag: string; von?: string; titel?: string }[] }
 /** Alles, was Seite, Report und Präsentation über den Fall hinaus brauchen — jeder Teil fällt bei einem Lesefehler still weg. */
-export async function kundenUmfeld(m: Mandat, fall: Pick<Fall, 'vorlageId'> | null, v: Pick<VorlagenDatei, 'prozesse'>, h?: string): Promise<KundenUmfeld> {
+export async function kundenUmfeld(m: Mandat, fall: (Pick<Fall, 'vorlageId'> & Partial<Pick<Fall, 'zusaetze'>>) | null, v: Pick<VorlagenDatei, 'prozesse'>, h?: string): Promise<KundenUmfeld> {
   const haus = h ?? await fulfillmentHaushalt();
   const [anrede, anbieter, ansprechperson, terminTage] = await Promise.all([anredeFuer(m), anbieterFuer(haus, m.gesellschaft), ansprechpersonFuer(haus, m), terminTageFuer(m)]);
-  const freigaben = fall ? [...(v.prozesse.find(p => p.id === fall.vorlageId)?.freigaben ?? [])] : [];
+  // Abstimmungspunkte des Pakets und der angehängten Zusatzmodule (17.10. spät) — EINE Stelle (`fallFreigaben`).
+  const freigaben = fall ? fallFreigaben(fall, v.prozesse) : [];
   return { anrede, ...(anbieter ? { anbieter } : {}), ...(ansprechperson ? { ansprechperson } : {}), freigaben, terminTage };
 }
 

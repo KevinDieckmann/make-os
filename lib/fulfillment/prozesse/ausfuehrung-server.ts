@@ -16,7 +16,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import type { TasksState } from '@/types/tasks';
 import { fulfillmentAendern, fulfillmentHaushalt, eintragStand } from '../speicher';
-import { fallAufgabeOrt } from '../regeln';
+import { fallAufgabeOrt, zusatzJeKnoten } from '../regeln';
 import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
 import {
@@ -135,7 +135,8 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
         for (const { a, x } of sollAufgaben) {
           if (ids.has(x.id) || !a.an) continue;
           const ort = fallAufgabeOrt(a.m);
-          const v = u.vorlagen.prozesse.find(p => p.id === a.f.vorlageId);
+          // Ein Schritt eines angehängten Zusatzmoduls (17.10. spät) nennt dessen Ablauf, nicht den des Pakets.
+          const v = u.vorlagen.prozesse.find(p => p.id === (zusatzJeKnoten(a.w.knoten).get(x.knotenId) ?? a.f.vorlageId));
           const e = x.art === 'erinnerung' ? a.w.knoten.find(k => k.zweige?.nein === x.knotenId) : undefined;
           const kn = a.w.knoten.find(k => k.id === x.knotenId);
           neu.push({
