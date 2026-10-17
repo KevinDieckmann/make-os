@@ -325,7 +325,7 @@ export function fallAus(o: O): Fall | null {
     // Phasen nach der EINEN Regel (12.10., ./prozesse/phasen.ts): hohle Dach-Phasen („Strategie“, „Steuerung“) mit der passenden Phase
     // zusammengelegt — nur beim Lesen; der nächste Schreibvorgang speichert es. Hatte die Vorlage ihre Phasen von Hand geordnet, bleibt die Reihenfolge.
     knoten: o.phasenVonHand === true ? liste(o.knoten, fallKnoten) : phasenOrdnen(liste(o.knoten, fallKnoten), { hohl: hohlerFallKnoten }), freigaben,
-    onboarding: sauber({ willkommenGesendetAm: s(ob.willkommenGesendetAm), willkommenVon: s(ob.willkommenVon) }),
+    onboarding: sauber({ willkommenGesendetAm: s(ob.willkommenGesendetAm), willkommenVon: s(ob.willkommenVon), kickoffAm: s(ob.kickoffAm), kickoffVon: s(ob.kickoffVon) }),
     vereinbarung: vereinbarung(o.vereinbarung), stakeholder: liste(o.stakeholder, stakeholder), entscheidungen: liste(o.entscheidungen, entscheidung),
     rituale: liste(o.rituale, r => { const ri = id(r.ritualId), am = s(r.angelegtAm); return ri && am ? { ritualId: ri, terminUids: texte(r.terminUids), angelegtAm: am } : null; }),
     mitschriften: liste(o.mitschriften, mitschrift),

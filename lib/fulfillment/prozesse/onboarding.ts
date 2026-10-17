@@ -95,12 +95,13 @@ export function onboardingStand(fall: Fall, a: OnboardingAbleitung): OnboardingS
   const entscheider = fall.stakeholder.some(s => s.rolle === 'entscheider');
   const kickoffRitual = fall.rituale.some(r => a.kickoffRitualIds.includes(r.ritualId) && r.terminUids.length > 0);
   const erster = ersterTermin((a.kundenTermine ?? []).map(tag => ({ tag })), fall.startAm ?? fall.gestartetAm.slice(0, 10));
-  const kickoff = kickoffRitual || !!erster;
+  const vermerkt = fall.onboarding.kickoffAm;
+  const kickoff = kickoffRitual || !!erster || !!vermerkt;
   const f0 = abstimmungsNummern(fall.knoten).get('F0');
   const f0Name = `Bestätigung${f0 ? ` ${f0}` : ''}`;
   const bed: Record<OnboardingSchluessel, [boolean, string]> = {
     willkommen: [!!fall.onboarding.willkommenGesendetAm, fall.onboarding.willkommenGesendetAm ? 'Willkommensmail gesendet.' : uhr.ueberfaellig ? 'Willkommensmail überfällig — bitte heute senden.' : 'Willkommensmail noch nicht gesendet.'],
-    kickoff: [kickoff, kickoffRitual ? 'Kick-off steht im Kalender.' : erster ? `Erster Termin mit dem Kunden steht im Kalender (${erster.slice(8, 10)}.${erster.slice(5, 7)}.) — er gilt als Kick-off.` : 'Kick-off noch nicht terminiert (Takt › Kick-off › Termin anlegen).'],
+    kickoff: [kickoff, kickoffRitual ? 'Kick-off steht im Kalender.' : vermerkt ? `Kick-off vermerkt (${vermerkt.slice(8, 10)}.${vermerkt.slice(5, 7)}.) — der Termin steht anderswo.` : erster ? `Erster Termin mit dem Kunden steht im Kalender (${erster.slice(8, 10)}.${erster.slice(5, 7)}.) — er gilt als Kick-off.` : 'Kick-off noch nicht terminiert (Takt › Kick-off › Termin anlegen).'],
     vereinbarung: [!!fall.vereinbarung?.bestaetigtAm, fall.vereinbarung?.bestaetigtAm ? 'Vereinbarung bestätigt.' : 'Vereinbarung noch nicht bestätigt.'],
     playbook: [a.formularProzent === 100, a.formularProzent == null ? 'Playbook-Link noch nicht aktiv.' : `Playbook zu ${a.formularProzent} % ausgefüllt.`],
     stakeholder: [entscheider, entscheider ? 'Entscheider eingetragen.' : 'Noch kein Entscheider in der Stakeholder-Karte.'],

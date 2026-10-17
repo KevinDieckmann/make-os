@@ -175,7 +175,8 @@ export interface Fall {
   startAm?: string;
   knoten: FallKnoten[];
   freigaben: Record<string, { am: string; von: string; kunde?: { wie: 'kickoff' | 'mail' | 'link' | 'termin'; am: string }; notiz?: string }>;
-  onboarding: { willkommenGesendetAm?: string; willkommenVon?: string };
+  /** `kickoffAm`/`kickoffVon` (17.10., Gesamtprüfung L1 B6): Kick-off vermerkt ohne Termin im eigenen Kalender (der Kunde lädt ein, Teams/Outlook). */
+  onboarding: { willkommenGesendetAm?: string; willkommenVon?: string; kickoffAm?: string; kickoffVon?: string };
   vereinbarung?: Vereinbarung; stakeholder: Stakeholder[]; entscheidungen: Entscheidung[];
   rituale: { ritualId: string; terminUids: string[]; angelegtAm: string }[]; mitschriften: Mitschrift[];
   quickWins: { id: string; text: string; bis: string; erledigtAm?: string; quelle: 'analyse' | 'hand' }[];

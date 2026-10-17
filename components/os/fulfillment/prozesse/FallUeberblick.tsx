@@ -51,6 +51,9 @@ export function OnboardingMehr({ daten, schluessel, fragen }: { daten: FallAntwo
         ? [{ id: 'offen', label: 'Wieder offen', tun: async () => { await fallOps(daten.mandat.id, [{ op: 'knoten-status', id: k.id, status: 'offen', stand: k.stand }]); } }]
         : !s.erfuellt ? [{ id: 'entfaellt', label: 'Entfällt für diesen Fall …', hinweis: 'Mit Grund — der Schritt zählt dann nicht mehr.', tun: async () => { const grund = await fragen('Warum entfällt dieser Schritt?'); if (grund) await fallOps(daten.mandat.id, [{ op: 'knoten-status', id: k.id, status: 'entfaellt', grund, stand: k.stand }]); } }] : []),
       ...(gesendet ? [{ id: 'zurueck', label: 'Vermerk „gesendet“ zurücknehmen', tun: async () => { await fallOps(daten.mandat.id, [{ op: 'willkommen-gesendet', zuruecknehmen: true }]); } }] : []),
+      // Kick-off ohne eigenen Kalender (17.10., Gesamtprüfung L1 B6): der Kunde lädt ein (Teams/Outlook) — vermerken statt ewig offen.
+      ...(schluessel === 'kickoff' && !s.erfuellt ? [{ id: 'kickoff-vermerken', label: 'Termin steht anderswo — Kick-off vermerken', hinweis: 'z. B. der Kunde hat eingeladen', tun: async () => { await fallOps(daten.mandat.id, [{ op: 'kickoff-vermerkt' }]); } }] : []),
+      ...(schluessel === 'kickoff' && f.onboarding.kickoffAm ? [{ id: 'kickoff-zurueck', label: 'Vermerk „Kick-off“ zurücknehmen', tun: async () => { await fallOps(daten.mandat.id, [{ op: 'kickoff-vermerkt', zuruecknehmen: true }]); } }] : []),
     ]} />
   );
 }

@@ -379,7 +379,7 @@ export type FallOp = { op: string } & Record<string, unknown>;
 /**
  * Änderungen an EINEM Fall — alles oder nichts. Ops: knoten-status · knoten-extra · freigabe · vereinbarung · stakeholder · entscheidung ·
  * ritual-merken · mitschrift · quickwins-setzen · quickwin · kickoff-fragen · kickoff-frage · wert-ziel · wert-messung · befaehigung ·
- * willkommen-gesendet · fall-status · antwort (17.10. abends: Entscheidung ja/nein) (Formen im Kopf von app/api/fulfillment/fall/route.ts und in CLAUDE.md › Fulfillment).
+ * willkommen-gesendet · kickoff-vermerkt { am?, zuruecknehmen? } · fall-status · antwort (17.10. abends: Entscheidung ja/nein) (Formen im Kopf von app/api/fulfillment/fall/route.ts und in CLAUDE.md › Fulfillment).
  */
 export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): AnwendenErgebnis<Fall> {
   return ausfuehren(() => {
@@ -705,6 +705,15 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           const am = nachtrag(o.am, 'Gesendet am');
           f.onboarding = { willkommenGesendetAm: am && am < k.heute ? am : k.jetzt, willkommenVon: k.person };
           geaendert.push('willkommen');
+          break;
+        }
+        case 'kickoff-vermerkt': {
+          // Kick-off ohne eigenen Kalender (17.10., Gesamtprüfung L1 B6): der Kunde lädt ein bzw. der Termin steht anderswo — vermerken wie die Willkommensmail.
+          if (o.zuruecknehmen === true) { const { kickoffAm: _a, kickoffVon: _b, ...r } = f.onboarding; f.onboarding = r; geaendert.push('kickoff'); break; }
+          if (f.onboarding.kickoffAm) break;
+          const am = optTag(o.am, 'Kick-off am') ?? k.heute;
+          f.onboarding = { ...f.onboarding, kickoffAm: am, kickoffVon: k.person };
+          geaendert.push('kickoff');
           break;
         }
         case 'fall-status': {

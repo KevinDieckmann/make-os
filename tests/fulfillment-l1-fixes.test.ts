@@ -51,3 +51,25 @@ describe('B4 · Angebot aus dem Deal: der Wert des Deals gilt', () => {
     expect(dealWertUebernehmen(p, { betrag: 0, basis: 'monat' })).toBe(p);
   });
 });
+
+describe('B6 · Kick-off ohne eigenen Kalender vermerken', () => {
+  it('der Vermerk erfüllt den Kick-off-Schritt, zurücknehmen macht ihn wieder offen; der Säuberer behält ihn', async () => {
+    const { fallAnwenden } = await import('@/lib/fulfillment/prozesse/fall');
+    const { onboardingStand } = await import('@/lib/fulfillment/prozesse/onboarding');
+    const { faelleAus } = await import('@/lib/fulfillment/lesen');
+    const J = '2026-10-17T10:00:00.000Z';
+    const fall = {
+      mandatId: 'm-b6', vorlageId: 'v', vorlageFassung: 1, gestartetAm: J, gestartetVon: 'pia', status: 'onboarding', freigaben: {}, onboarding: {},
+      knoten: [{ id: 'w', titel: 'A', rang: 1, status: 'offen' }], stakeholder: [], entscheidungen: [], rituale: [], mitschriften: [], quickWins: [], kickoffFragen: [], wertKonto: {}, befaehigung: [], marken: {}, geaendert: J, geaendertVon: 'pia',
+    } as never;
+    const ctx = { person: 'pia', jetzt: J, heute: '2026-10-17', standVon: () => 's', neueId: (p: string) => `${p}-x`, ziele: [], kontaktErlaubt: () => true, ritualIds: [], freigaben: [] };
+    const abl = { ziele: [], formularProzent: null, kickoffRitualIds: [], willkommenStunden: 24, jetzt: J } as never;
+    const r = fallAnwenden(fall, [{ op: 'kickoff-vermerkt' }], ctx as never);
+    if (!r.ok) throw new Error(r.fehler);
+    expect(onboardingStand(r.datei, abl).schritte.find(x => x.schluessel === 'kickoff')?.erfuellt).toBe(true);
+    expect(faelleAus(JSON.parse(JSON.stringify({ version: 1, faelle: { 'm-b6': r.datei } }))).faelle['m-b6'].onboarding.kickoffAm).toBe('2026-10-17');
+    const z = fallAnwenden(r.datei, [{ op: 'kickoff-vermerkt', zuruecknehmen: true }], ctx as never);
+    if (!z.ok) throw new Error(z.fehler);
+    expect(onboardingStand(z.datei, abl).schritte.find(x => x.schluessel === 'kickoff')?.erfuellt).toBe(false);
+  });
+});
