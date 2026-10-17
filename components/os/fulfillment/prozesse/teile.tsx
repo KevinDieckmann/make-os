@@ -116,8 +116,8 @@ export function KnotenFormular({ vorlage, knoten, elternId, bausteine, onZu }: {
               <Feldzeile label="Aufwand (Stunden)"><input inputMode="decimal" value={zahl('aufwandStunden')} onChange={e => setze('aufwandStunden', e.target.value ? Number(e.target.value.replace(',', '.')) : null)} style={feld} /></Feldzeile>
             </div>
             {vorlage.freigaben.length > 0 && (
-              <Feldzeile label="Abstimmungspunkt" erklaerung="fulfillment.freigabe">
-                <Wahl label="Abstimmungspunkt" liste={vorlage.freigaben.map(f => { const n = abstimmungsNummern(vorlage.knoten).get(f.id); return { id: f.id, label: n ? `${n} · ${f.titel}` : `${f.titel} (noch an keinem Schritt)` }; })} wert={(w.freigabe as string | undefined) ?? null} onWahl={x => setze('freigabe', x)} onLeeren={() => setze('freigabe', null)} />
+              <Feldzeile label="Bestätigung" erklaerung="fulfillment.freigabe">
+                <Wahl label="Bestätigung" liste={vorlage.freigaben.map(f => { const n = abstimmungsNummern(vorlage.knoten).get(f.id); return { id: f.id, label: n ? `${n} · ${f.titel}` : `${f.titel} (noch an keinem Schritt)` }; })} wert={(w.freigabe as string | undefined) ?? null} onWahl={x => setze('freigabe', x)} onLeeren={() => setze('freigabe', null)} />
               </Feldzeile>
             )}
             <Feldzeile label="Wo wohnt der Prozess heute (Ort)">

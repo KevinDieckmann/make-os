@@ -80,7 +80,7 @@ export function EditorListe({ modell, phase, gewaehlt, api, onPhase, onKnoten, f
               }),
             ])}
           </ol>
-          {phase.abstimmung && <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, minHeight: ZIEL_PX }}><FreigabeRaute gegeben={false} />Abstimmungspunkt{phase.abstimmung.nr ? ` ${phase.abstimmung.nr}` : ''} · {phase.abstimmung.titel}</span>}
+          {phase.abstimmung && <span style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, minHeight: ZIEL_PX }}><FreigabeRaute gegeben={false} />Bestätigung{phase.abstimmung.nr ? ` ${phase.abstimmung.nr}` : ''} · {phase.abstimmung.titel}</span>}
           {api.darf && (
             <div style={{ display: 'grid', gap: 6 }}>
               <span style={MIKRO}>Hinzufügen</span>

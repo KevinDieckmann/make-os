@@ -9,7 +9,7 @@
 
 /** Die festen Formen (die Bedeutung hängt an der Form, die Farbe kommt dazu). */
 export type FlussForm = 'schritt' | 'nachricht' | 'entscheidung' | 'erinnerung' | 'termin';
-export const FORM_NAME: Record<FlussForm, string> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Abstimmung', erinnerung: 'Erinnerung', termin: 'Termin' };
+export const FORM_NAME: Record<FlussForm, string> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin' };
 /** Zustand eines Kästchens bzw. Knotens: erledigt (✓) · hier (als Nächstes, Petrol) · offen · entfällt (durchgestrichen). */
 export type KaestchenZustand = 'erledigt' | 'hier' | 'offen' | 'entfaellt';
 /**

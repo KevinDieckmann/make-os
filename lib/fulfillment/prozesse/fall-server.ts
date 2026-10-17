@@ -106,7 +106,7 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
   const { h, crm, vorlagen } = await fallUmfeld([]);
   const m = mandatPruefen(crm, e.mandatId);
   const v: ProzessVorlage | undefined = vorlagen.prozesse.find(p => p.id === e.vorlageId && p.art === 'paket');
-  if (!v) throw new FallFehler('Bitte eine Paket-Vorlage wählen (Fulfillment › Prozesse; dem Produkt zuordnen geht unter Produkte).', 400);
+  if (!v) throw new FallFehler('Bitte einen Ablauf wählen (Fulfillment › Übersicht › Abläufe; dem Produkt zuordnen geht unter Produkte).', 400);
   const start = typeof e.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.start) ? e.start : heute;
   const u = unterschriftAm(m, crm, iso);
   // Frist der Willkommensmail = DIESELBE Uhr wie `willkommenUhr` (ein Tag gilt ab 0 Uhr Berliner Zeit), als Berliner Tag (17.10., dritte Abnahme B4).
@@ -179,7 +179,7 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
   const { h, crm, vorlagen, faelle, kunde, termine } = await fallUmfeld(typeof mandatId === 'string' ? [mandatId] : []);
   const m = mandatPruefen(crm, mandatId);
   const alt = faelle.faelle[m.id];
-  if (!alt) throw new FallFehler('Für dieses Mandat gibt es noch keinen Fall — erst „Kundenonboarding starten“.', 404);
+  if (!alt) throw new FallFehler('Für dieses Mandat gibt es noch keinen Fall — erst „Fall starten“.', 404);
   if (!Array.isArray(opsRoh)) throw new FallFehler('ops: Liste erwartet.', 400);
   const nachzug: Nachzug = {};
   // Neue Ziele: erst am Mandat (eine Wahrheit für „was ist das Ziel“), dann im Wert-Konto.

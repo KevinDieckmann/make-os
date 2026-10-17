@@ -110,7 +110,7 @@ export function AusfuehrungWartet({ daten }: { daten: FallAntwort }) {
   );
 }
 
-/** Der Status des Falls (läuft · pausiert · abgeschlossen) — ruhig am Ende der Reise; darunter die angehängten Zusatzmodule und „Zusatzmodul anhängen“. */
+/** Der Status des Falls (läuft · pausiert · abgeschlossen) — ruhig am Ende der Reise; darunter die angehängten Zusatzmodule („anhängen“ steht seit 17.10. spät an der Reise). */
 export function FallStatus({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
   const f = daten.fall!;
   return (
@@ -122,16 +122,17 @@ export function FallStatus({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
         <span style={klein}>{daten.unterschrift ? `Unterschrift ${tagKurz(daten.unterschrift.am)} · ` : ''}Fall gestartet {tagKurz(fallStartTag(f))}{f.status === 'onboarding' ? ' · wechselt nach dem Onboarding von selbst auf „läuft“' : ''}{f.ohneOnboarding ? ' · Zusatzmodul ohne Onboarding' : ''}</span>
       </div>
       {!!daten.zusaetze?.length && <span style={klein}>Zusatzmodule: {daten.zusaetze.map(z => `${z.titel} (ab ${tagKurz(z.startAm)})`).join(' · ')}</span>}
-      <ZusatzAnhaengen daten={daten} />
     </div>
   );
 }
 
 /**
  * „Zusatzmodul anhängen“ (17.10. spät): ein Paket mit „Zusatzmodul“ an diesen laufenden Fall hängen — kein zweiter Fall, kein zweites Onboarding. Derselbe
- * Weg wie „Onboarding starten“ (POST starten, idempotent über die Anfrage-Kennung); der Server entscheidet, dass es anhängt.
+ * Weg wie „Fall starten“ (POST starten, idempotent über die Anfrage-Kennung); der Server entscheidet, dass es anhängt.
+ * Seit 17.10. spät (`ff-einfach`) direkt an der Reise (vorher ganz unten unter dem Status, und nur sichtbar, wenn es schon ein Zusatzmodul gab): der Knopf steht
+ * immer da; gibt es noch keins, sagt er, wo man einen Ablauf zum Zusatzmodul macht.
  */
-function ZusatzAnhaengen({ daten }: { daten: FallAntwort }) {
+export function ZusatzAnhaengen({ daten }: { daten: FallAntwort }) {
   const kurz = useUebersichtKurz();
   const f = daten.fall!;
   const [auf, setAuf] = useState(false);
@@ -141,8 +142,15 @@ function ZusatzAnhaengen({ daten }: { daten: FallAntwort }) {
   const [anfrage, setAnfrage] = useState(neueAnfrageId);
   const dran = new Set([f.vorlageId, ...(daten.zusaetze ?? []).map(z => z.vorlageId)]);
   const zusatzModule = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket' && p.zusatz && !dran.has(p.id));
-  if (!zusatzModule.length || f.status === 'abgeschlossen') return null;
-  if (!auf) return <div><Erklaert erklaerung="fulfillment.zusatzAnhaengen" name="Zusatzmodul anhängen"><Knopf leise onClick={() => { setAuf(true); setWahl(zusatzModule[0].id); }}>Zusatzmodul anhängen</Knopf></Erklaert></div>;
+  if (f.status === 'abgeschlossen' || !kurz.daten) return null;
+  if (!auf) return <div><Erklaert erklaerung="fulfillment.zusatzAnhaengen" name="Zusatzmodul anhängen"><Knopf leise onClick={() => { setAuf(true); setWahl(zusatzModule[0]?.id ?? null); }}>+ Zusatzmodul anhängen</Knopf></Erklaert></div>;
+  if (!zusatzModule.length) {
+    return (
+      <Hinweis art="info" aktion={<span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise href={`${WEG.fulfillment()}#ff-ablaeufe`}>Zu den Abläufen ›</Knopf><Knopf leise onClick={() => setAuf(false)}>Schließen</Knopf></span>}>
+        Noch kein Zusatzmodul. Einen Ablauf zum Zusatzmodul machen: unter „Abläufe“ auf „Bearbeiten“ und oben den Schalter „Zusatzmodul“ einschalten — dann steht er hier zur Wahl.
+      </Hinweis>
+    );
+  }
   const los = async () => {
     if (!wahl) { setFehler('Bitte ein Zusatzmodul wählen.'); return; }
     const a = await fallAktion({ aktion: 'starten', mandatId: daten.mandat.id, vorlageId: wahl, start: tag, anfrageId: anfrage });
@@ -170,8 +178,8 @@ export function KeinFall({ daten }: { daten: FallAntwort }) {
   return (
     <Karte i={1}>
       <Ueberschrift>Noch kein Fall</Ueberschrift>
-      <div style={klein}>Für „{daten.mandat.titel}“ läuft noch kein Fulfillment. Der Fall kopiert die Struktur der Paket-Vorlage und legt die Onboarding-Schritte an — Mandate ohne Fall bleiben genau wie bisher.</div>
-      <div><Knopf haupt onClick={() => setStart(true)}>Onboarding starten</Knopf></div>
+      <div style={klein}>Für „{daten.mandat.titel}“ läuft noch kein Fulfillment. Der Fall kopiert den Ablauf des Produkts und legt die Onboarding-Schritte an — Mandate ohne Fall bleiben genau wie bisher.</div>
+      <div><Knopf haupt onClick={() => setStart(true)}>Fall starten</Knopf></div>
       {start && <StartDialog k={{ mandatId: daten.mandat.id, kunde: daten.mandat.kunde, ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}) }} pakete={pakete} onZu={() => setStart(false)} />}
     </Karte>
   );

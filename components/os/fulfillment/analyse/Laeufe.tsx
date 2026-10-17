@@ -78,7 +78,7 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
         ]} />
         {naechster ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <Knopf haupt onClick={() => starten(naechster)}>{naechster.art === 'regel' ? `${naechster.name} prüfen (ohne Kosten)` : `${naechster.id.toUpperCase()} · ${naechster.name} starten (${naechster.schaetzung.text})`}</Knopf>
+            <Knopf haupt onClick={() => starten(naechster)}>{naechster.art === 'regel' ? `${naechster.name} prüfen (ohne Kosten)` : `${naechster.name} starten (${naechster.schaetzung.text})`}</Knopf>
             <span style={klein}>{naechster.imMinimalset ? 'Nächster Lauf aus dem Minimalset' : 'Nächster bereiter Lauf'}{naechster.art === 'regel' ? '' : ` · höchstens ${naechster.schaetzung.hoechstensText}`} — startet erst nach deiner Bestätigung.</span>
           </div>
         ) : <div style={klein}>Gerade ist kein Lauf bereit — die Gründe stehen unten je Agent.</div>}
@@ -103,7 +103,7 @@ export function Laeufe({ mandatId, api, rueck }: { mandatId: string; api: Analys
                 return (
                   <div key={key} style={{ display: 'grid', gap: 6 }}>
                     <Zeile
-                      titel={<>{a.id.toUpperCase()} · {a.name}{f ? ` · ${f.funktion}` : ''}</>}
+                      titel={<>{a.name}{f ? ` · ${f.funktion}` : ''}</>}
                       unter={`${a.art === 'regel' ? 'ohne Kosten' : `${a.schaetzung.text} · höchstens ${a.schaetzung.hoechstensText}${a.schaetzung.quelle === 'gemessen' ? ' (aus gemessenen Läufen)' : ''}`}${(f?.laeufe ?? a.laeufe) ? ` · ${f?.laeufe ?? a.laeufe}× gelaufen` : ''}${(f?.letzter ?? a.letzter) ? ` · zuletzt ${LAUF_LABEL[(f?.letzter ?? a.letzter) as AnalyseLauf['status']] ?? ''}` : ''}`}
                       erklaerung={text ? agentAbschnitte(text) : undefined}
                       rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

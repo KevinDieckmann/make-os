@@ -13,6 +13,7 @@ import { KnotenKnopf, Pfeil, SeitenPfeil } from '../../ui/reise/Fluss';
 import { FORM_FARBE } from '../../ui/reise/formen';
 import { FlussFaden } from '../../ui/reise/faden';
 import { alsFlussKnoten } from './bild';
+import { bestaetigungTitel } from '@/lib/fulfillment/prozesse/darstellung';
 import type { ZiehQuelle } from './ziehen';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 } as const;
@@ -67,7 +68,7 @@ export function EditorFluss(p: FlussEditorProps) {
     </div>
   ));
   const leer = !phase.abschnitte.some(a => a.knoten.length);
-  const start = p.vorige ? (p.vorige.abstimmung ? `Nach Abstimmungspunkt${p.vorige.abstimmung.nr ? ` ${p.vorige.abstimmung.nr}` : ''}` : `Nach Phase ${p.vorige.nr} · ${p.vorige.titel}`) : 'Start';
+  const start = p.vorige ? (p.vorige.abstimmung ? `Nach Bestätigung${p.vorige.abstimmung.nr ? ` ${p.vorige.abstimmung.nr}` : ''}` : `Nach Phase ${p.vorige.nr} · ${p.vorige.titel}`) : 'Start';
   return (
     <div className="ff-fluss" role="group" aria-label={`Ablauf der Phase ${phase.nr}: ${phase.titel} — bearbeiten`}>
       <span className="ff-fluss-start" role="note" aria-label={`Start: ${start}`} {...ziel('anfang', phase.id)}
@@ -103,7 +104,7 @@ export function EditorFluss(p: FlussEditorProps) {
           <Pfeil />
           <div className="ff-fluss-zelle">
             <KnotenKnopf editor gewaehlt={p.gewaehlt === `fg-${phase.id}`} onWahl={p.onAbstimmung}
-              k={{ id: `fg-${phase.id}`, titel: `Abstimmungspunkt${phase.abstimmung.nr ? ` ${phase.abstimmung.nr}` : ''}${phase.abstimmung.titel ? ` · ${phase.abstimmung.titel}` : ''}`, form: 'entscheidung', zustand: 'offen', unter: 'am Ende der Phase — ja: weiter' }} />
+              k={{ id: `fg-${phase.id}`, titel: bestaetigungTitel(phase.abstimmung.nr, phase.abstimmung.titel || undefined), form: 'entscheidung', zustand: 'offen', unter: 'am Ende der Phase — ja: weiter' }} />
           </div>
         </>
       )}

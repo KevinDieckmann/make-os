@@ -70,7 +70,7 @@ describe('Fall (seit 17.10. Kopf + vier Reiter — Kevins Miro-Standard)', () =>
     expect(html).toContain('Leitfaden Erstgespräch');
     expect(html).toContain('rechtlich prüfen');
     expect((html.match(/\+ Zusatz-Schritt/g) ?? []).length).toBe(1);
-    expect(html).toContain('Abstimmungspunkt 2 · Diagnose-Abnahme'); // 14.10. (Abnahme B19): Nummer lückenlos statt „Freigabe F3“
+    expect(html).toContain('Bestätigung 2 · Diagnose-Abnahme'); // 14.10. (Abnahme B19): Nummer lückenlos statt „Freigabe F3“; 17.10. spät „Bestätigung“
     expect(html).not.toMatch(/Freigabe F\d/);
     // Die Willkommensmail ist gesendet → keine eigene Karte; höchstens EINE Hauptaktion (der Handgriff des nächsten Schritts).
     expect(html).not.toContain('id="willkommen"');
@@ -90,9 +90,14 @@ describe('Startseite, Prozesse, Cockpit', () => {
   lese.cockpit = { heute: HEUTE, zeilen, haengt: allesWasHaengt(zeilen), kapa: null };
 
   it('Prozesse: Legende des Hochhauses und Paket-Vorlagen als Karten mit Phasen-Kette', () => {
+    // 17.10. spät (`ff-einfach`): oben „Heute im Fulfillment“, das Hochhaus zugeklappt — offen, sobald ein Kasten gewählt ist (`?k=`).
     const html = renderToStaticMarkup(h(Prozesse, {}));
-    expect(html).toContain('Etagen — der Weg eines Kunden durch uns');
-    expect(html).toContain('Fundament — was alles trägt');
+    expect(html).toContain('Unser Unternehmen als Hochhaus');
+    expect(html).toContain('Heute im Fulfillment');
+    const lk = (lese.uebersicht as { prozesse: { art: string; knoten: { id: string; elternId?: string }[] }[] }).prozesse.find(p => p.art === 'landkarte')!;
+    const mitK = renderToStaticMarkup(h(Prozesse, { k: lk.knoten.find(x => !x.elternId)!.id }));
+    expect(mitK).toContain('Etagen — der Weg eines Kunden durch uns');
+    expect(mitK).toContain('Fundament — was alles trägt');
     expect(html).toContain('Vertriebsleitung auf Zeit');
     expect(html).toContain('Phasen von Vertriebsleitung auf Zeit');
     expect(html).toContain('noch keinem Produkt zugeordnet');

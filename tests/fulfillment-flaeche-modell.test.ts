@@ -64,7 +64,7 @@ describe('Auto-Layout: jede Vorlage öffnet sich ohne Lage sofort sauber', () =>
     const k = (id: string) => b.knoten.find(x => x.id === id)!;
     const s1 = b.starts.find(s => s.phaseId === 'fk-p1')!;
     expect(s1.titel).toBe('Start');
-    expect(b.starts.find(s => s.phaseId === 'fk-p2')!.titel).toBe('Nach Abstimmung 1');
+    expect(b.starts.find(s => s.phaseId === 'fk-p2')!.titel).toBe('Nach Bestätigung 1'); // 17.10. spät: „Bestätigung“ statt „Abstimmung(spunkt)“
     expect(k('fk-a').y).toBeGreaterThan(s1.y + s1.h);
     expect(k('fk-e').y).toBeGreaterThan(k('fk-a').y);
     expect(k('fk-b').y).toBeGreaterThan(k('fk-e').y);
@@ -73,7 +73,7 @@ describe('Auto-Layout: jede Vorlage öffnet sich ohne Lage sofort sauber', () =>
     expect(k('fk-e').umriss).toBe('raute');
     expect(k('fk-a').umriss).toBe('termin');
     const ab = b.abstimmungen.find(a => a.phaseId === 'fk-p1')!;
-    expect(ab.titel).toBe('Abstimmungspunkt 1 · Rahmen bestätigt');
+    expect(ab.titel).toBe('Bestätigung 1 · Rahmen bestätigt');
     expect(ab.y).toBeGreaterThan(k('fk-c').y);
     expect(b.gruppen).toEqual([expect.objectContaining({ id: 'fk-g', titel: 'Skripte', phaseId: 'fk-p2' })]);
     expect(k('fk-b').unter).toBe('Frist 2 Tage');

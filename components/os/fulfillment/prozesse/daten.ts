@@ -11,6 +11,7 @@ import type { OnboardingStand, WillkommenUhr } from '@/lib/fulfillment/prozesse/
 import type { VorlagenDiff } from '@/lib/fulfillment/prozesse/fall';
 import type { FfKennzahl } from '@/lib/fulfillment/prozesse/kennzahlen';
 import type { CockpitZeile, Haenger } from '@/lib/fulfillment/prozesse/cockpit';
+import type { HeuteDeal } from '@/lib/fulfillment/prozesse/heute';
 import type { MusterWahl } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import type { Mandat } from '@/lib/crm/typen';
 import type { NachsorgePunkt } from '@/lib/fulfillment/prozesse/ansichten';
@@ -44,7 +45,11 @@ export interface Uebersicht {
   kennzahlen: FfKennzahl[];
   leistungen: { id: string; name: string; status: string }[];
 }
-export interface UebersichtKurz { kandidaten: Kandidat[]; zuordnung: Record<string, { vorlageId: string }>; faelle: Record<string, FallZeile>; prozesse: { id: string; titel: string; art: string; zusatz?: true }[] }
+export interface UebersichtKurz {
+  kandidaten: Kandidat[]; zuordnung: Record<string, { vorlageId: string }>; faelle: Record<string, FallZeile>; prozesse: { id: string; titel: string; art: string; zusatz?: true }[];
+  /** Gewonnene Deals (Business) ohne Mandat — für „Heute im Fulfillment“ (17.10. spät). */
+  deals?: HeuteDeal[];
+}
 
 export interface MandatKurz { id: string; titel: string; kunde: string; firmaId: string | null; kontaktIds: string[]; leistungId: string | null; ziele: Mandat['ziele']; gesellschaft: string; status: string; start: string | null; zustaendig: string | null; business: boolean }
 export interface FallAntwort {

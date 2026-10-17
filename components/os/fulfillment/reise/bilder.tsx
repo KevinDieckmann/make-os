@@ -11,6 +11,7 @@ import { LEUCHT, Punkt } from '../../ui';
 import { anzahl, wort } from '@/lib/text/zahlwort';
 import type { PhasenZustand, ReiseFreigabe } from '@/lib/fulfillment/prozesse/reise';
 import type { Ampel, Welle, WellenStufe } from '@/lib/fulfillment/prozesse/darstellung';
+import { agentText } from '@/lib/fulfillment/analyse/agenten';
 import { JETZT, FORM_FARBE, FreigabeRaute } from '../../ui/reise/formen';
 
 export const AMPEL_FARBE: Record<Ampel, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
@@ -26,7 +27,7 @@ const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight
 export interface StrahlPhase { id?: string; titel: string; zusatz?: string; zustand: PhasenZustand; anteil: number; erledigt?: number; gesamt?: number; ueberfaellig?: boolean; wartet?: number; freigabe?: Pick<ReiseFreigabe, 'id' | 'gegeben'> & { titel?: string; nr?: number } }
 
 /** „Abstimmungspunkt 3“ (14.10., Abnahme B19: „Freigabe“ meint in MAKE OS die Vorschläge von ZOE) — Nummer lückenlos aus dem Ablauf. */
-export const abstimmungKurz = (f: { nr?: number }) => `Abstimmungspunkt${f.nr ? ` ${f.nr}` : ''}`;
+export const abstimmungKurz = (f: { nr?: number }) => `Bestätigung${f.nr ? ` ${f.nr}` : ''}`;
 
 const balkenFarbe = (p: StrahlPhase) => (p.zustand === 'fertig' ? LEUCHT.gut : p.ueberfaellig ? LEUCHT.kritisch : p.zustand === 'jetzt' ? JETZT : C.inkLeise);
 
@@ -166,17 +167,17 @@ export const WELLEN_FARBE: Record<WellenStufe, string> = { uebernommen: LEUCHT.g
 export const WELLEN_TEXT: Record<WellenStufe, string> = { uebernommen: 'im Dossier', entwurf: 'Entwurf prüfen', laeuft: 'läuft', fehler: 'Fehler', bereit: 'bereit', gesperrt: 'noch gesperrt' };
 
 /**
- * Ein Agent als Marke in seiner Stufenfarbe (gefüllt = Ergebnis da, Umriss = noch nicht) — mit seinem Namen; das Kürzel (A1, AP, TB) steht nur im Titel
- * (15.10., Abnahme B5: „A0–A13, AP, TB ohne Erklärung“).
+ * Ein Agent als Marke in seiner Stufenfarbe (gefüllt = Ergebnis da, Umriss = noch nicht) — mit seinem Namen; seit 17.10. spät nie mehr das Kürzel
+ * (15.10., Abnahme B5: „A0–A13, AP, TB ohne Erklärung“; 17.10.: „Fachbegriffe raus“).
  */
 export function AgentMarke({ id, stufe, name }: { id: string; stufe: WellenStufe; name?: string }) {
   const f = WELLEN_FARBE[stufe];
   const voll = stufe === 'uebernommen' || stufe === 'entwurf' || stufe === 'laeuft' || stufe === 'fehler';
   return (
-    <span title={`${id.toUpperCase()}${name ? ` · ${name}` : ''} — ${WELLEN_TEXT[stufe]}`} aria-label={`${id.toUpperCase()}${name ? ` ${name}` : ''}: ${WELLEN_TEXT[stufe]}`}
+    <span title={`${name ?? agentText(id)} — ${WELLEN_TEXT[stufe]}`} aria-label={`${name ?? agentText(id)}: ${WELLEN_TEXT[stufe]}`}
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 36, height: 26, padding: '0 8px', borderRadius: 13, fontSize: TYP.bedien, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
         color: voll ? C.ink : f, background: voll ? TIEF.flaeche(f) : 'transparent', border: `1px ${stufe === 'gesperrt' ? 'dashed' : 'solid'} ${stufe === 'gesperrt' ? RAND.stark : TIEF.rand(f)}` }}>
-      {name ?? id.toUpperCase()}
+      {name ?? agentText(id)}
     </span>
   );
 }
@@ -185,7 +186,7 @@ export function AgentMarke({ id, stufe, name }: { id: string; stufe: WellenStufe
 export function WellenBild({ wellen, kompakt }: { wellen: readonly Welle[]; kompakt?: boolean }) {
   if (kompakt) {
     return (
-      <span role="img" aria-label={wellen.map(w => `Welle ${w.nr}: ${w.agenten.map(a => `${a.id.toUpperCase()} ${WELLEN_TEXT[a.stufe]}`).join(', ')}`).join('. ')} style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <span role="img" aria-label={wellen.map(w => `Welle ${w.nr}: ${w.agenten.map(a => `${a.name ?? agentText(a.id)} ${WELLEN_TEXT[a.stufe]}`).join(', ')}`).join('. ')} style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         {wellen.map(w => (
           <span key={w.nr} style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>
             {w.agenten.map(a => <span key={a.id} style={{ width: 8, height: 8, borderRadius: 4, background: a.stufe === 'gesperrt' || a.stufe === 'bereit' ? 'transparent' : WELLEN_FARBE[a.stufe], border: `1px solid ${WELLEN_FARBE[a.stufe]}` }} />)}

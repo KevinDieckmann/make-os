@@ -14,7 +14,7 @@
 // wieder auf seiner letzten offenen Stufe (Server-Regel: nächster Schritt mit Datum). Löschen nur eine Fehlanlage (ohne
 // Geschichte, Wert, Notiz) nach Rückfrage — ein Deal mit Geschichte wird nie gelöscht (Server-Regel `dealRegeln`).
 import { useLinkAuswahl } from '../Verlauf';
-import { mandateLink, qualifizierungLink } from '@/lib/crm/adresse';
+import { qualifizierungLink } from '@/lib/crm/adresse';
 import { WEG, eventLink } from '@/lib/wege';
 import { zoeFragen } from './ZoeFragen';
 import Link from 'next/link';
@@ -35,6 +35,7 @@ import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer }
 import { HeadPanel } from './HeadPanel';
 import { DealAnlegen } from './DealAnlegen';
 import { DealAkte, DealAuswertung } from './DealAkte';
+import { FallAmDeal } from '../fulfillment/prozesse/FallAmDeal';
 import { firmenName } from '@/lib/crm/firmen-bezug';
 import { winLoss } from '@/lib/crm/deal-auswertung';
 import type { DealsAnsicht } from '@/lib/crm/adresse';
@@ -384,6 +385,8 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
           </div>
         )}
         {c.historie.length > 1 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{c.historie.map(h => `${crm.stufen.find(s => s.id === h.stufe)?.label} ${datum(h.am)}${mitglied(h.von) ? ` (${nameVon(h.von)})` : ''}`).join(' → ')}</div>}
+        {/* 17.10. spät (Fulfillment „maximal einfach“): gewonnen → direkt unter der Stufe „Mandat anlegen & Fall starten“ (vorher ganz unten nur „Mandat anlegen“). */}
+        <FallAmDeal api={api} chanceId={c.id} />
       </div>
       <Feldzeile label="Titel"><Feld wert={c.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
       <Feldzeile label="Firma">
@@ -470,13 +473,6 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
       </Feldzeile>
       <Feldzeile label="Notiz"><Feld wert={c.notiz} onFertig={notiz => setze({ notiz: notiz || undefined })} /></Feldzeile>
       {c.grund && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Grund: {c.grund}{c.wiedervorlage ? ` · Wiedervorlage ${datum(c.wiedervorlage)}` : ''}</div>}
-      {c.stufe === 'gewonnen' && !crm.stand.mandate.some(m => m.chanceId === c.id) && (
-        <div style={{ padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.gut}12`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: TYP.bedien }}>Gewonnen — jetzt Kunde: aus dem Deal wird ein Mandat (Vertrag, Kick-off, Gesundheit des Mandats).</span>
-          <Knopf farbe={LEUCHT.gut} onClick={async () => { const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: c.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' })); await api.laden(true); if (!r.ok) api.setFehler(r.fehler ?? 'Mandat nicht angelegt.'); }}>Mandat anlegen</Knopf>
-        </div>
-      )}
-      {c.stufe === 'gewonnen' && crm.stand.mandate.some(m => m.chanceId === c.id) && <div style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Mandat angelegt — <Link href={mandateLink('mandate', crm.stand.mandate.find(m => m.chanceId === c.id)!.id)} style={{ color: LEUCHT.gut }}>unter Produkte & Mandate öffnen ›</Link></div>}
       {/* Sperre statt Löschen (Konzept): ein Deal mit Geschichte wird verloren oder geparkt — löschen geht nur bei einer Fehlanlage. */}
       {c.historie.length <= 1 && !c.wert.betrag && !(c.notiz ?? '').trim()
         ? <div><button onClick={async () => { if (await bestaetigen({ titel: `Fehlanlage „${c.titel}“ löschen?`, text: 'Der Deal hat keine Geschichte, keinen Wert und keine Notiz — er geht ganz weg. Ein Deal mit Geschichte wird stattdessen als verloren oder geparkt markiert.', ja: 'Löschen', gefahr: true })) void api.weg('chancen', c.id); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>Fehlanlage löschen</button></div>

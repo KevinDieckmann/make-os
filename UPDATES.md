@@ -4,6 +4,25 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 17.10.2026 spät — Fulfillment maximal einfach für uns (nur lokal — Branch `ff-einfach`, Basis f9ef11b1 = `update-0910b`)
+Kevin: „Ich will, dass das Fulfillment wirklich maximal einfach für uns ist, sodass wir das gut verkloppen können.“ Alltagswege in der Demo gemessen
+(Bericht `~/make-os-demo/einfach-1710/BERICHT.md`), dann vereinfacht:
+- **„Heute im Fulfillment“** = EINE Liste über alle Fälle, der Handgriff in der Zeile (abhaken mit Rückgängig, Ja/Nein, Entwurf öffnen — gesendet nur per Klick —,
+  Fall starten, „Mandat anlegen & Fall starten“ für gewonnene Deals ohne Mandat, sonst die Stelle im Fall öffnen). Oben auf dem Fulfillment-Start (Reiter heißt
+  „Übersicht“, vorher „Landkarte“) und als Karte auf Heute › Business (Widget `fulfillment`, rutscht über `anwenden` auch in gespeicherte Layouts). Rechnet
+  nichts neu: `lib/fulfillment/prozesse/heute.ts` liest die Cockpit-Zeile (neu optional `naechster` = Handgriff aus `naechsterPunkt`; Hänger tragen optional
+  `knotenId`/`aktion`) und `?nur=kurz` (neu `deals`: gewonnen, Business, ohne Mandat, ≤ 30 Tage). Wächter `tests/fulfillment-heute.test.ts`.
+- **Fall starten am gewonnenen Deal** (Board-Detail und Deal-Akte, direkt unter der Stufe): „Mandat anlegen & Fall starten“ → Start-Dialog → Fall (vorher sechs Klicks
+  über drei Seiten). Start-Dialog „Fall starten“: ohne Zuordnung der erste Ablauf, der kein Zusatzmodul ist.
+- **Nichts doppelt:** Kunden-Karten zeigen nur, wo jeder steht (kein „Als Nächstes“/„Hängt“, kein „Der Kunde sieht“, kein leeres Wert-Konto); das Hochhaus ist
+  zugeklappt (offen mit `?k=`); „+ Zusatzmodul anhängen“ steht an der Reise (vorher ganz unten, ohne Modul unsichtbar).
+- **Fachbegriffe raus** (Liste `lib/fulfillment/fachbegriffe.ts`): „Bestätigung“ statt „Abstimmungspunkt“ (EINE Schreibweise `bestaetigungTitel`), Analysen nur mit
+  Namen (kein A0–A13), „Schritt“ statt „Knoten“, „Ablauf“ statt „Paket-Vorlage“. Kennungen bleiben; die Kunden-Seite bleibt, wie sie war.
+- **Kleinkram:** „((Termin folgt))“ → „(Termin folgt)“, Titel im Editor nicht abgeschnitten, neuer Schritt auf der Fläche mit markiertem Vorgabe-Titel.
+- **Flow-Linie im Browser** (headless Chrome, ohne reduzierte Bewegung): Reise, Fluss, Editor-Fläche, Kreislauf je 30 Bilder/s, keine langen Aufgaben, keine Konsolen-Fehler.
+- **Rückweg/Update-Probe:** keine Bestände, keine Datenänderung, kein Server-Schritt — neu sind nur optionale Antwortfelder (`naechster`, `knotenId`, `aktion`,
+  `deals`) und ein Widget im Heute-Standard (der alte Stand kennt `fulfillment` nicht und zeigt den Platz nicht). Alte Adressen gelten weiter.
+
 ## 17.10.2026 spät — Import vollständig + Zusatzmodule (nur lokal — Branch `import-zusatz`, Basis 107fe639 = `update-0910b`)
 Kevin: „Das Fulfillment soll maximal einfach für uns sein.“ Damit die Bibliothek v2 ganz ankommt und Zusatzmodule (Telefonie) einfach laufen.
 - **Import (Format „pakete“):** `versuche` (1–20), `pos` (Schritt; Phase als Rahmen mit `b`/`h`) und `pfeilText` (`weiter`/`ja`/`nein`) an Knoten — geprüft wie im

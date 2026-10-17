@@ -273,7 +273,7 @@ export function Fluss<K extends K0<K>>({ fluss, gewaehlt, onWahl, onEnde, fuss, 
  * Die Legende der Formen — EINMAL je Ansicht, klein. Form + Zeichen + Wort (nie nur Farbe). `formen` = nur die Formen, die die Ansicht wirklich zeigt
  * (Vorgabe: alle — Fulfillment, Editor); Start und die Zustände stehen immer da.
  */
-export function FormenLegende({ zustaende = true, formen, entscheidung = 'Entscheidung · Abstimmung (ja / nein)' }: { zustaende?: boolean; formen?: readonly FlussForm[]; entscheidung?: string }) {
+export function FormenLegende({ zustaende = true, formen, entscheidung = 'Entscheidung · Bestätigung (ja / nein)' }: { zustaende?: boolean; formen?: readonly FlussForm[]; entscheidung?: string }) {
   const kasten = (form: FlussForm, rund = false) => <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: rund ? 6 : 3, background: TIEF.flaeche(FORM_FARBE[form]), border: `1px solid ${TIEF.rand(FORM_FARBE[form])}` }} />;
   const zeigt = (f: FlussForm) => !formen || formen.includes(f);
   const e: { z: ReactNode; t: string }[] = [

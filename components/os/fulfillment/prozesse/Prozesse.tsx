@@ -7,12 +7,15 @@
 // `?k=<knoten>`: Ebenen-Leiter mit Brotkrumen, Steckbrief, welche Kunden gerade dort stehen (Sprung in den Fall), die Kinder als nächste Ebene. Darunter die
 // Paket-Vorlagen als Karten (Phasen-Kette mit Abstimmungspunkten, Zahl der Schritte und Bausteine, Produkt, Kunden darin) mit Editor, ganz unten die
 // Erfolgsmaße (zugeklappt). „Aus Muster anlegen“ legt das neutrale Gerüst an. Rechnen nur in lib/fulfillment/prozesse/*.
+// 17.10. spät („maximal einfach für uns“, Branch `ff-einfach`): ganz oben „Heute im Fulfillment“ — EINE Liste mit dem Handgriff in der Zeile (die Hauptaktion
+// der Seite); die Kunden-Karten zeigen nur noch, wo jeder steht (kein „Als Nächstes“/„Hängt“ doppelt); die Abläufe heißen „Abläufe“ (vorher „Paket-Vorlagen“);
+// das Hochhaus ist zugeklappt (im Alltag selten gebraucht) und öffnet sich von selbst, sobald ein Kasten gewählt ist (`?k=`).
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO, TIEF, ECKE, FLAECHE_STIL, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Chip, Punkt, LEUCHT, useRueckfrage, Erklaert } from '../../ui';
+import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Chip, Punkt, Klappbar, LEUCHT, useRueckfrage, Erklaert } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
 import { ortHref, ORTE, istOrt } from '@/lib/fulfillment/orte';
@@ -27,6 +30,7 @@ import { Legende, FreigabeRaute, AMPEL_FARBE } from '../reise/bilder';
 import { insBild } from '../reise/sprung';
 import { PraesentationWahl } from '../reise/Praesentation';
 import { Cockpit, Erfolgsmasse } from './Visualisierung';
+import { HeuteImFulfillment } from '../reise/HeuteListe';
 
 const ZUST: Record<string, string> = { intern: 'wir', kunde: 'Kunde', beide: 'beide' };
 const ZonenZeichen = ({ zone }: { zone: Zone }) => <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: 4, background: `${ZONE_FARBE[zone]}30`, border: `1px solid ${ZONE_FARBE[zone]}` }} />;
@@ -36,12 +40,13 @@ export function Prozesse({ k }: { k?: string }) {
   const { daten, fehler } = useUebersicht();
   const cockpit = useCockpit();
   const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' } | null>(null);
+  const [hochhausAuf, setHochhausAuf] = useState(false);
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
   const landkarte = daten.prozesse.find(p => p.art === 'landkarte');
   const pakete = daten.prozesse.filter(p => p.art === 'paket');
   const ausMuster = async () => {
     const a = await vorlagenOps([{ op: 'aus-muster' }]);
-    setMeldung(a.ok ? { text: 'Gerüst angelegt — Landkarte, Paket-Vorlagen, Rituale und Playbook-Formular stehen bereit.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' });
+    setMeldung(a.ok ? { text: 'Gerüst angelegt — Landkarte, Abläufe, Rituale und Playbook-Formular stehen bereit.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' });
   };
   const offen = (id: string) => router.push(WEG.fulfillment('prozesse', { k: id }), { scroll: false });
   const inVorlage = k ? daten.prozesse.find(p => p.knoten.some(x => x.id === k)) : undefined;
@@ -52,15 +57,17 @@ export function Prozesse({ k }: { k?: string }) {
       {!landkarte && !pakete.length ? (
         <Leerzustand symbol="▦" ton={LEUCHT.business} titel="Noch keine Prozesse"
           aktion={<Erklaert erklaerung="fulfillment.vorlageAusMuster" name="Aus Muster anlegen"><Knopf haupt onClick={ausMuster}>Aus Muster anlegen</Knopf></Erklaert>}>
-          Das Gerüst legt die Landkarte als Hochhaus und drei Paket-Vorlagen an — Inhalte kommen per Import oder Editor dazu.
+          Das Gerüst legt die Landkarte als Hochhaus und drei Abläufe an — Inhalte kommen per Import oder Editor dazu.
         </Leerzustand>
       ) : daten.musterOffen.length > 0 && (
         <Hinweis art="info" aktion={<Erklaert erklaerung="fulfillment.vorlageAusMuster" name="Aus Muster ergänzen"><Knopf leise onClick={ausMuster}>Fehlendes aus Muster anlegen</Knopf></Erklaert>}>
           Noch nicht angelegt: {daten.musterOffen.length} Muster-Vorlage{daten.musterOffen.length === 1 ? '' : 'n'}.
         </Hinweis>
       )}
+      {!k && (landkarte || pakete.length > 0) && <HeuteImFulfillment i={0} />}
       {!k && (landkarte || pakete.length > 0) && <Cockpit />}
       {landkarte && (
+        <Klappbar id="ff-hochhaus" titel="Unser Unternehmen als Hochhaus — wo die Kunden stehen" offen={hochhausAuf || !!k} umschalten={() => setHochhausAuf(!hochhausAuf)}>
         <Karte i={1} akzent={LEUCHT.business}>
           <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.landkarte" rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>{(n => `${n} Kunde${n === 1 ? '' : 'n'}`)(Object.values(daten.faelle).filter(f => f.status !== 'abgeschlossen').length)}</span><PraesentationWahl faelle={Object.values(daten.faelle)} /></span>}>{landkarte.titel}</Ueberschrift>
           <Legende eintraege={[
@@ -72,6 +79,7 @@ export function Prozesse({ k }: { k?: string }) {
           <Landkarte vorlage={landkarte} zaehler={daten.zaehler[landkarte.id] ?? {}} aktiv={k} onKnoten={offen} ampel={ampel} />
           {!k && <div style={klein}>Tippe auf einen Kasten — darunter öffnet sich, was dort passiert und welche Kunden gerade dort stehen.</div>}
         </Karte>
+        </Klappbar>
       )}
       {k && inVorlage && <Steckbrief vorlage={inVorlage} id={k} daten={daten} onKnoten={offen} />}
       {k && !inVorlage && <Hinweis art="achtung">Diesen Schritt gibt es nicht (mehr).</Hinweis>}
@@ -181,8 +189,8 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
   // Auch Fälle, an denen das Paket als Zusatzmodul hängt (17.10. spät).
   const kundenIn = (vid: string) => Object.values(daten.faelle).filter(f => (f.vorlageId === vid || !!f.zusaetze?.includes(vid)) && f.status !== 'abgeschlossen');
   return (
-    <Karte i={3}>
-      <Ueberschrift erklaerung="fulfillment.paketKarten" rechts={darf ? <Knopf leise onClick={neu}>+ Neuer Ablauf</Knopf> : undefined}>Paket-Vorlagen</Ueberschrift>
+    <Karte i={3} id="ff-ablaeufe">
+      <Ueberschrift erklaerung="fulfillment.paketKarten" rechts={darf ? <Knopf leise onClick={neu}>+ Neuer Ablauf</Knopf> : undefined}>Abläufe</Ueberschrift>
       <Meldung text={meldung} art="kritisch" />
       {!pakete.length ? (
         <Leerzustand symbol="▦" ton={LEUCHT.business} titel="Noch kein Ablauf" aktion={darf ? <Knopf onClick={neu}>Neuer Ablauf</Knopf> : undefined}>
@@ -197,10 +205,7 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
             const wurzel = wurzelVon(p.knoten);
             return (
               <div key={p.id} style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: 14, display: 'grid', gap: 10, alignContent: 'start', minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                  <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, color: C.ink, overflowWrap: 'anywhere' }}>{p.titel}</b>
-                  <span style={{ ...MIKRO, whiteSpace: 'nowrap' }}>Fassung {p.fassung}</span>
-                </div>
+                <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, color: C.ink, overflowWrap: 'anywhere' }}>{p.titel}</b>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {p.zusatz && <Chip farbe={LEUCHT.planung}>Zusatzmodul</Chip>}
                   {pr.length ? pr.map(n => <Chip key={n} farbe={LEUCHT.gut}>liefert {n}</Chip>) : p.zusatz ? null : <Chip farbe={LEUCHT.achtung}>noch keinem Produkt zugeordnet</Chip>}
@@ -218,10 +223,10 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
                     ))}
                   </ol>
                 )}
-                <span style={{ ...klein, color: C.inkLeise }}>{sb.phasen.length} Phasen · {sb.schritte} Schritte · {sb.bausteine} Bausteine{sb.freigaben ? ` · ${sb.freigaben} Abstimmungspunkt${sb.freigaben === 1 ? '' : 'e'} (◆)` : ''}</span>
+                <span style={{ ...klein, color: C.inkLeise }}>{sb.phasen.length} Phasen · {sb.schritte} Schritte · {sb.bausteine} Bausteine{sb.freigaben ? ` · ${sb.freigaben} ${sb.freigaben === 1 ? 'Bestätigung' : 'Bestätigungen'} (◆)` : ''}</span>
                 <Leiste>
-                  {wurzel && <Knopf leise onClick={() => onKnoten(wurzel.id)}>Ansehen ›</Knopf>}
                   <Knopf leise onClick={() => editor(p.id)}>{darf ? 'Bearbeiten' : 'Ablauf ansehen'}</Knopf>
+                  {wurzel && <Knopf leise onClick={() => onKnoten(wurzel.id)}>Steckbrief ›</Knopf>}
                 </Leiste>
               </div>
             );

@@ -17,6 +17,7 @@
 import type { Baustein, KnotenForm, ProzessVorlage } from '../typen';
 import { editorModell, type EditorKnoten, type EditorModell } from './editor';
 import { flussFormVon } from './reise-bild';
+import { bestaetigungTitel } from './darstellung';
 import type { FlussForm } from '@/lib/reise/bild';
 import { flaecheLage, umrissVon, FL, type Box, type FlUmriss, type FlaecheLage } from './flaeche-lage';
 
@@ -88,12 +89,12 @@ export function flaecheBild(v: ProzessVorlage, bausteine: readonly (Pick<Baustei
     const st = lage.start.get(p.id)!;
     const vorige = m.phasen[i - 1];
     const startId = `start:${p.id}`;
-    starts.push({ id: startId, phaseId: p.id, titel: i === 0 ? 'Start' : vorige?.abstimmung ? `Nach Abstimmung ${vorige.abstimmung.nr ?? ''}`.trim() : `Nach „${vorige?.titel ?? ''}“`, ...st });
+    starts.push({ id: startId, phaseId: p.id, titel: i === 0 ? 'Start' : vorige?.abstimmung ? `Nach Bestätigung ${vorige.abstimmung.nr ?? ''}`.trim() : `Nach „${vorige?.titel ?? ''}“`, ...st });
     box.set(startId, st);
     const ab = lage.abstimmung.get(p.id);
     const abId = `ab:${p.id}`;
     if (ab && p.abstimmung) {
-      abstimmungen.push({ id: abId, phaseId: p.id, titel: `Abstimmungspunkt${p.abstimmung.nr ? ` ${p.abstimmung.nr}` : ''}${p.abstimmung.titel ? ` · ${p.abstimmung.titel}` : ''}`, ...ab });
+      abstimmungen.push({ id: abId, phaseId: p.id, titel: bestaetigungTitel(p.abstimmung.nr, p.abstimmung.titel || undefined), ...ab });
       box.set(abId, ab);
     }
     const schritte = p.abschnitte.flatMap(a => a.knoten.map(k => ({ k, gruppeId: a.gruppeId })));

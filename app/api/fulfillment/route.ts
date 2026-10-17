@@ -1,7 +1,8 @@
 // ─── Fulfillment — Vorlagen, Bibliothek, Rituale, Zuordnung, Einstellungen (Paket C1, 10.10.; FULFILLMENT_KONZEPT.md Abschnitt 9) ─────
 // GET  → Übersicht: Vorlagen (mit Stand je Kopf/Knoten), Bibliothek in Kurzform (lange Texte nur mit `?baustein=<id>`), Rituale, Zuordnung
 //        Produkt → Vorlage, Einstellungen, Onboarding-Kandidaten, Fälle (Kurzform), „welcher Kunde steht wo“, Kennzahlen (1.4), Import-Läufe.
-//        `?nur=kurz` → nur Kandidaten, Zuordnung, Vorlagen-Titel und Fälle (für die Einhänger in Produkte & Mandate). Lesen schreibt nie.
+//        `?nur=kurz` → nur Kandidaten, Zuordnung, Vorlagen-Titel und Fälle (für die Einhänger in Produkte & Mandate), seit 17.10. spät dazu gewonnene
+//        Deals ohne Mandat (`deals`, für „Heute im Fulfillment“). Lesen schreibt nie.
 // PATCH { ops } → Einzel-Ops mit Stand (lib/fulfillment/prozesse/vorlagen-anwenden.ts), alles oder nichts: 400/403/404/409/413. Ops an Abläufen
 //        (Vorlage, Knoten, Übergänge, Muster) nur volle Mitglieder (Rolle „nur Business“ 403, 17.10.) — den Editor im Miro-Stil bedient /api/fulfillment/editor.
 //        Kunden-Link-Schalter und Puls-Schwelle NICHT hier (400) — EIN Weg: POST /api/fulfillment/kunde (C2). Nur per Sitzung (Dienstweg 403), Bau-Kennung. `?space=privat` → 403 (Business only).
@@ -18,7 +19,8 @@ import { fallWirksam, imOnboarding } from '@/lib/fulfillment/prozesse/onboarding
 import { ffKennzahlenRechnen, kickoffTag } from '@/lib/fulfillment/prozesse/kennzahlen';
 import { istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
 import { nurIntern, urheberGeprueft, rechtOffen, vorVerkaufOffen } from '@/lib/fulfillment/prozesse/bausteine';
-import { mandatsEnde, unterschriftAm } from '@/lib/fulfillment/regeln';
+import { mandatsEnde, unterschriftAm, tageZwischen } from '@/lib/fulfillment/regeln';
+import { gewonneneOhneMandat } from '@/lib/fulfillment/prozesse/heute';
 import { MUSTER_LANDKARTE, MUSTER_P1, MUSTER_P2, MUSTER_P3 } from '@/lib/fulfillment/muster';
 import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -59,11 +61,13 @@ export async function GET(req: Request) {
   const mandate = Object.fromEntries(crm.mandate.filter(m => istBusinessGesellschaft(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
   const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, ...(f.zusaetze?.length ? { zusaetze: f.zusaetze.map(z => z.vorlageId) } : {}), kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '' }]));
   const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso);
+  // „Heute im Fulfillment“ (17.10. spät): gewonnene Deals (Business) ohne Mandat — „Mandat anlegen & Fall starten“ direkt in der Liste.
+  const deals = gewonneneOhneMandat(crm, heute, istBusinessGesellschaft, tageZwischen);
   // Firmen-/Kundennamen gehen raus → Lese-Protokoll (Prüf-Fund 11.10.), nur die Anzahl.
-  leseZugriff(req, 'fulfillment', { anzahl: Object.keys(mandate).length + kandidaten.length });
+  leseZugriff(req, 'fulfillment', { anzahl: Object.keys(mandate).length + kandidaten.length + deals.length });
   if (url.searchParams.get('nur') === 'kurz') {
     return NextResponse.json({
-      ok: true, kandidaten, zuordnung: vorlagen.zuordnung, faelle: faelleAnsicht,
+      ok: true, kandidaten, deals, zuordnung: vorlagen.zuordnung, faelle: faelleAnsicht,
       prozesse: vorlagen.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, art: p.art, ...(p.zusatz ? { zusatz: true } : {}) })),
     });
   }

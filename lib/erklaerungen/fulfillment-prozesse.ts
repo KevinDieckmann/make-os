@@ -8,14 +8,14 @@ import type { EinstellungsText } from './typen';
 export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   'fulfillment.landkarte': {
     was: 'Was ihr seht: das ganze Unternehmen als Hochhaus. Das Dach steuert (Ziele, Kennzahlen), die Etagen sind der Weg eines Kunden durch euch — von unten (Marketing) nach oben (Follow-up) —, das Fundament trägt alles (CRM, Recht, Finanzen). Je Etage stehen die Kunden, die gerade dort sind, mit Ampel. Ein Tipp auf einen Kasten öffnet darunter, was dort passiert.',
-    beispiel: 'Die Etage „Fulfillment“ zeigt „2 Kunden“ mit gelber Ampel — ein Tipp öffnet die Paket-Vorlagen dieser Etage und die zwei Kunden; einer wartet seit neun Tagen auf eine Freigabe.',
+    beispiel: 'Die Etage „Fulfillment“ zeigt „2 Kunden“ mit gelber Ampel — ein Tipp öffnet die Abläufe dieser Etage und die zwei Kunden; einer wartet seit neun Tagen auf eine Freigabe.',
   },
   'fulfillment.vorlageAusMuster': {
-    was: 'Legt das neutrale Gerüst an: die Landkarte und drei Paket-Vorlagen mit Phasen und Freigabepunkten, dazu die Rituale und das Playbook-Formular. Inhalte (Texte, Skripte, Preise) kommen später per Import oder Editor dazu.',
+    was: 'Legt das neutrale Gerüst an: die Landkarte und drei Abläufe mit Phasen und Bestätigungen, dazu die Rituale und das Playbook-Formular. Inhalte (Texte, Skripte, Preise) kommen später per Import oder Editor dazu.',
     beispiel: 'Nach dem Klick steht „Vertriebsleitung auf Zeit“ mit acht Phasen von Vorlauf bis Übergabe bereit; ein zweiter Klick legt nichts doppelt an.',
   },
   'fulfillment.zuordnung': {
-    was: 'Jedes Produkt bekommt genau eine Paket-Vorlage. Startet ein Mandat auf diesem Produkt sein Onboarding, kopiert der Fall die Struktur dieser Vorlage.',
+    was: 'Jedes Produkt bekommt genau einen Ablauf. Startet ein Mandat auf diesem Produkt seinen Fall, kopiert der Fall die Struktur dieses Ablaufs.',
     beispiel: 'Das Produkt „Diagnose“ liefert nach der Vorlage „Vertriebsleitung auf Zeit“ — ein neues Mandat startet damit direkt in Phase „Vorlauf / Onboarding“.',
   },
   'fulfillment.importRechtPruefen': {
@@ -39,10 +39,10 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     aus: 'Der Baustein bleibt intern.',
   },
   'fulfillment.abstimmungAmEnde': {
-    was: 'Ein Abstimmungspunkt (◆) am Ende der Phase: erst wenn er vermerkt ist (wer bestätigt, wie), ist die Phase abgeschlossen. Im Ablauf steht er als Raute zwischen den Phasen.',
+    was: 'Eine Bestätigung (◆) am Ende der Phase: erst wenn sie vermerkt ist (wer bestätigt, wie), ist die Phase abgeschlossen. Im Ablauf steht er als Raute zwischen den Phasen.',
     beispiel: 'Die Phase „Analyse“ endet mit „Dossier abgestimmt“ — Kunde und ihr bestätigen gemeinsam, dann beginnt „Diagnose“.',
-    an: 'Die Phase endet mit dieser Raute; neue Fälle zeigen sie als Abstimmungspunkt.',
-    aus: 'Die Phase endet ohne Abstimmung — sie ist fertig, sobald ihre Schritte erledigt sind.',
+    an: 'Die Phase endet mit dieser Raute; neue Fälle zeigen sie als Bestätigung.',
+    aus: 'Die Phase endet ohne Bestätigung — sie ist fertig, sobald ihre Schritte erledigt sind.',
   },
   'fulfillment.kundeFuellt': {
     was: 'Formulare und Workbooks mit dieser Einstellung füllt der Kunde selbst über seinen Link aus — die Antworten erscheinen intern am Fall.',
@@ -79,8 +79,8 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Mit 24 Stunden wird eine Unterschrift vom Freitagabend am Samstagabend rot; mit 72 Stunden erst am Montagabend.',
   },
   'fulfillment.freigabe': {
-    was: 'Ein Abstimmungspunkt (◆) ist ein Halt, an dem der Kunde und ihr bestätigen — durchnummeriert in der Reihenfolge des Ablaufs. Vermerkt werden Tag, wer intern und wie der Kunde bestätigt hat; damit ist die Phase abgeschlossen. Die nächste Phase darf schon beginnen, dann erscheint ein Hinweis. („Freigabe“ meint in MAKE OS die Vorschläge von ZOE.)',
-    beispiel: 'Abstimmungspunkt 3 · Diagnose-Abnahme: im Steuerungskreis bestätigt, Notiz „Top-5 Maßnahmen angenommen, Maßnahme 4 später“.',
+    was: 'Eine Bestätigung (◆) ist ein Halt, an dem der Kunde und ihr bestätigen — durchnummeriert in der Reihenfolge des Ablaufs. Vermerkt werden Tag, wer intern und wie der Kunde bestätigt hat; damit ist die Phase abgeschlossen. Die nächste Phase darf schon beginnen, dann erscheint ein Hinweis. („Freigabe“ meint in MAKE OS die Vorschläge von ZOE.)',
+    beispiel: 'Bestätigung 3 · Diagnose-Abnahme: im Steuerungskreis bestätigt, Notiz „Top-5 Maßnahmen angenommen, Maßnahme 4 später“.',
   },
   'fulfillment.zusatzmodul': {
     was: 'Ein Zusatzmodul ist ein Paket, das man zu einem laufenden Mandat dazubucht. Läuft dort schon ein Fall, kommt kein zweiter Fall und kein zweites Onboarding: die Phasen des Moduls hängen als eigener Abschnitt hinten an den Fall und laufen neben dem Paket. Ohne laufenden Fall startet das Modul als eigener Fall ohne Onboarding.',
@@ -167,23 +167,27 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Zwei Dossiers mit 6,40 und 9,10 Euro ergeben 7,75 Euro je Dossier.',
   },
   'fulfillment.reise': {
-    was: 'Die Reise des Kunden als EINE Zeile: jede Phase mit ihren nächsten Schritten als Kästchen (höchstens vier, der Rest als „+n“), „Hier“ markiert die laufende Phase. Ein Haken heißt erledigt, ein Ausrufezeichen hängt. Die Rauten zwischen den Phasen sind Abstimmungspunkte. Das Band unten zeigt, was gerade beim Kunden liegt. Ein Tipp auf eine Phase zeigt darunter ihren Ablauf, ein Tipp auf ein Kästchen den Schritt.',
-    beispiel: 'Phase 2 „Analyse“ trägt „Hier“, das Kästchen „Dossier“ hat ein Ausrufezeichen, darunter steht im Band „1 offen“ — der Kunde schuldet noch eine Unterlage. Die Raute danach ist „Abstimmungspunkt 2 · Dossier geprüft“.',
+    was: 'Die Reise des Kunden als EINE Zeile: jede Phase mit ihren nächsten Schritten als Kästchen (höchstens vier, der Rest als „+n“), „Hier“ markiert die laufende Phase. Ein Haken heißt erledigt, ein Ausrufezeichen hängt. Die Rauten zwischen den Phasen sind Bestätigungen. Das Band unten zeigt, was gerade beim Kunden liegt. Ein Tipp auf eine Phase zeigt darunter ihren Ablauf, ein Tipp auf ein Kästchen den Schritt.',
+    beispiel: 'Phase 2 „Analyse“ trägt „Hier“, das Kästchen „Dossier“ hat ein Ausrufezeichen, darunter steht im Band „1 offen“ — der Kunde schuldet noch eine Unterlage. Die Raute danach ist „Bestätigung 2 · Dossier geprüft“.',
   },
   'fulfillment.ablaufPhasen': {
-    was: 'Der Ablauf einer Phase von oben nach unten: Start, Schritte (grün), Nachrichten an den Kunden (gelb, mit Brief), Termine als große Beschriftung, am Ende die Raute des Abstimmungspunkts mit „ja“ und „nein“. Auf dem Nein-Pfad steht die Erinnerung (orange, mit Glocke). Mehrere Teilprozesse stehen als Karten nebeneinander. Ein Tipp auf einen Schritt öffnet ihn rechts.',
-    beispiel: 'In „Aufbau“ stehen die Karten „Prozess“ und „Skripte“ nebeneinander; „Leitfaden schreiben“ trägt „Hier · als Nächstes“, die Raute „Abstimmungspunkt 4“ führt mit „ja“ in die nächste Phase.',
+    was: 'Der Ablauf einer Phase von oben nach unten: Start, Schritte (grün), Nachrichten an den Kunden (gelb, mit Brief), Termine als große Beschriftung, am Ende die Raute der Bestätigung mit „ja“ und „nein“. Auf dem Nein-Pfad steht die Erinnerung (orange, mit Glocke). Mehrere Teilprozesse stehen als Karten nebeneinander. Ein Tipp auf einen Schritt öffnet ihn rechts.',
+    beispiel: 'In „Aufbau“ stehen die Karten „Prozess“ und „Skripte“ nebeneinander; „Leitfaden schreiben“ trägt „Hier · als Nächstes“, die Raute „Bestätigung 4“ führt mit „ja“ in die nächste Phase.',
   },
   'fulfillment.lage': {
     was: 'Die Lage aller Kunden in Lieferung in einer Zeile — nur Zahlen: wie viele Kunden laufen und wie viele Punkte gerade hängen (dringende eigens). Was hängt und was als Nächstes kommt, steht im Einzelnen auf der Karte jedes Kunden; ein Tipp springt dorthin.',
     beispiel: '„3 Kunden“ · „2 Punkte hängen · 1 dringend“ — die rote Karte steht auf der Landkarte ganz oben und sagt, was es ist.',
   },
+  'fulfillment.heute': {
+    was: 'Alles, was in den Fällen jetzt dran ist, in EINER Liste: je Kunde der nächste Schritt und was hängt, dazu Mandate, die auf ihren Start warten. Den Handgriff erledigt ihr direkt in der Zeile — abhaken, „Ja“/„Nein“ bei einer Entscheidung, den Mail-Entwurf öffnen (gesendet wird nur mit eurem Klick) oder den Fall starten. Ein Tipp auf den Text springt an die Stelle im Fall. Was erst später fällig ist, steht zugeklappt unter „Demnächst“.',
+    beispiel: 'Oben rot „Willkommen in 24 Stunden · Kunde A — überfällig seit 15.10.“ mit „Willkommensmail vorbereiten ›“, darunter „Angebot angenommen? · Kunde B“ mit „Ja“ und „Nein“ und „Diagnosebericht · Kunde C“ zum Abhaken.',
+  },
   'fulfillment.kundenKarten': {
-    was: 'Je Kunde eine Karte: Ampel, Phase als Mini-Strahl, Fortschritt, das Wert-Konto als Balken von „vorher“ bis „Ziel“, der nächste Schritt und was auf euch wartet. Oben steht, wer zuerst Aufmerksamkeit braucht.',
-    beispiel: 'Ganz oben die rote Karte des neuen Kunden (Willkommensmail überfällig), darunter der laufende Kunde in Phase 3 mit 63 % des Wegs im Wert-Konto.',
+    was: 'Je Kunde eine Karte: wo er steht — Ampel, Phase als Mini-Strahl, Fortschritt, das Wert-Konto als Balken von „vorher“ bis „Ziel“ (sobald gemessen) und worauf gerade gewartet wird. Was zu tun ist, steht darüber in „Heute im Fulfillment“. Oben steht, wer zuerst Aufmerksamkeit braucht.',
+    beispiel: 'Ganz oben die rote Karte des neuen Kunden (Onboarding, Willkommensmail überfällig), darunter der laufende Kunde in Phase 3 mit 63 % des Wegs im Wert-Konto.',
   },
   'fulfillment.paketKarten': {
-    was: 'Jede Paket-Vorlage als Karte: ihre Phasen als Mini-Strahl mit den Freigabe-Punkten, wie viele Schritte und Bausteine darin stecken, welches Produkt sie liefert und wie viele Kunden gerade darin laufen.',
+    was: 'Jeder Ablauf als Karte: seine Phasen als Kette mit den Bestätigungen (◆), wie viele Schritte und Bausteine darin stecken, welches Produkt er liefert und wie viele Kunden gerade darin laufen.',
     beispiel: 'Die Karte „Sales-Systematik“ zeigt sechs Phasen, 54 Schritte, 18 Bausteine, liefert das Produkt „Cockpit-Lizenz“ — ein Kunde läuft gerade darin.',
   },
   'fulfillment.ebenen': {
@@ -200,7 +204,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   },
   'fulfillment.wellen': {
     was: 'Die Analyse läuft in vier Wellen: Start, Unternehmen, Vertiefung, Synthese und Prüfung. Jede Marke ist ein Agent — grün heißt im Dossier, gelb Entwurf zum Prüfen, blau läuft, gestrichelt noch gesperrt. Nichts startet von selbst; der Knopf schlägt den nächsten sinnvollen Lauf mit seinen Kosten vor.',
-    beispiel: 'Welle 0 ist grün, in Welle 1 sind A1 und A7 grün, A2 ist bereit — der Knopf heißt „A2 starten“ mit der geschätzten Summe dahinter.',
+    beispiel: 'Welle 0 ist grün, in Welle 1 sind „Unternehmens-Steckbrief“ und „Außendarstellung“ grün, „Register & Finanzsignale“ ist bereit — der Knopf heißt „Register & Finanzsignale starten“ mit der geschätzten Summe dahinter.',
   },
   // 12.10. (kundenreif): Kreislauf-Rad, „Dem Kunden zeigen“, Report-Takt, Übergabe aus der Analyse.
   'fulfillment.kreislauf': {

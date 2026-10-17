@@ -34,7 +34,7 @@ export function ProduktFulfillmentZeile({ leistungId }: { leistungId: string }) 
             <Wahl label="Paket" klein liste={pakete.map(p => ({ id: p.id, label: p.titel }))} wert={vorlageId} onWahl={id => void setze(id)} onLeeren={() => void setze(null)} leerenLabel="ohne Paket" />
           </Erklaert>
         )}
-        {!pakete.length && <Link href={WEG.fulfillment('prozesse')} style={{ color: C.aktiv }}>Paket-Vorlagen anlegen ›</Link>}
+        {!pakete.length && <Link href={WEG.fulfillment('prozesse')} style={{ color: C.aktiv }}>Abläufe anlegen ›</Link>}
       </div>
       {fehler && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</div>}
     </div>

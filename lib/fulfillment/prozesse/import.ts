@@ -339,11 +339,11 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
   // Abstimmungspunkte und Rollen
   if (p.abstimmungen !== undefined && !Array.isArray(p.abstimmungen)) nein(`${wo}: „abstimmungen“ ist keine Liste.`);
   const freigaben: Freigabepunkt[] = ((p.abstimmungen as unknown[] | undefined) ?? []).map((a, i) => {
-    if (!istObj(a) || typeof a.id !== 'string' || !ID_FREI.test(a.id)) return nein(`${wo}: Abstimmungspunkt ${i + 1} braucht eine Kennung (z. B. F0 oder A1).`);
-    return { id: a.id, titel: pflichtText(a.titel, 'titel', `${wo}, Abstimmungspunkt ${a.id}: Titel`), wer: optWahl(a.wer, ZUST, `${wo}, Abstimmungspunkt ${a.id}: wer`) ?? 'beide' };
+    if (!istObj(a) || typeof a.id !== 'string' || !ID_FREI.test(a.id)) return nein(`${wo}: Bestätigung ${i + 1} braucht eine Kennung (z. B. F0 oder A1).`);
+    return { id: a.id, titel: pflichtText(a.titel, 'titel', `${wo}, Bestätigung ${a.id}: Titel`), wer: optWahl(a.wer, ZUST, `${wo}, Bestätigung ${a.id}: wer`) ?? 'beide' };
   });
-  if (new Set(freigaben.map(f => f.id)).size !== freigaben.length) nein(`${wo}: ein Abstimmungspunkt steht doppelt.`);
-  if (freigaben.length > ABSTIMMUNGEN_MAX) nein(`${wo}: höchstens ${ABSTIMMUNGEN_MAX} Abstimmungspunkte (jetzt ${freigaben.length}).`, 413);
+  if (new Set(freigaben.map(f => f.id)).size !== freigaben.length) nein(`${wo}: eine Bestätigung steht doppelt.`);
+  if (freigaben.length > ABSTIMMUNGEN_MAX) nein(`${wo}: höchstens ${ABSTIMMUNGEN_MAX} Bestätigungen (jetzt ${freigaben.length}).`, 413);
   if (p.rollen !== undefined && !Array.isArray(p.rollen)) nein(`${wo}: „rollen“ ist keine Liste.`);
   const rollen: Rolle[] = ((p.rollen as unknown[] | undefined) ?? []).map((r, i) => {
     if (!istObj(r) || typeof r.id !== 'string' || !ID_FREI.test(r.id)) return nein(`${wo}: Rolle ${i + 1} braucht eine Kennung.`);
@@ -353,7 +353,7 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
   if (new Set(rollen.map(r => r.id)).size !== rollen.length) nein(`${wo}: eine Rolle steht doppelt.`);
   const abstimmung = (v: unknown, was: string): string | undefined => {
     if (v === undefined || v === null || v === '') return undefined;
-    if (typeof v !== 'string' || !freigaben.some(f => f.id === v)) return nein(`${was}: den Abstimmungspunkt „${String(v)}“ kennt das Paket nicht (Liste „abstimmungen“).`);
+    if (typeof v !== 'string' || !freigaben.some(f => f.id === v)) return nein(`${was}: die Bestätigung „${String(v)}“ kennt das Paket nicht (Liste „abstimmungen“).`);
     return v;
   };
 
@@ -827,7 +827,7 @@ export function importAnwenden(d0: VorlagenDatei, roh: unknown, wahl: ImportWahl
       if (!b) continue;
       for (const vid of ziele) {
         const v = d.prozesse.find(p => p.id === vid);
-        if (!v || v.art !== 'paket') nein('Einsortieren: die gewählte Paket-Vorlage gibt es nicht (mehr).', 404);
+        if (!v || v.art !== 'paket') nein('Einsortieren: den gewählten Ablauf gibt es nicht (mehr).', 404);
         const neu = einsortieren(v!, b, x.phase, x.unterphase, neueKnotenId);
         if (neu === v) continue;
         merkeVorlage(v!);

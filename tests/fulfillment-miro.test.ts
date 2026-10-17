@@ -155,7 +155,7 @@ describe('Reise-Zeile (Kundenjourney)', () => {
 describe('Fluss einer Phase (F&F-Stil)', () => {
   const fl = phasenFluss(eingabe(), 'p2')!;
   it('Start als Kreis (nach dem Abstimmungspunkt davor), zwei Teilprozesse als Gruppen nebeneinander', () => {
-    expect(fl.start.titel).toBe('Nach Abstimmungspunkt 1 · Mandatsrahmen');
+    expect(fl.start.titel).toBe('Nach Bestätigung 1 · Mandatsrahmen'); // 17.10. spät: „Bestätigung“ statt „Abstimmungspunkt“
     expect(fl.teile).toHaveLength(1);
     expect(fl.teile[0].art).toBe('gruppen');
     if (fl.teile[0].art === 'gruppen') expect(fl.teile[0].gruppen.map(g => g.titel)).toEqual(['Bestandsaufnahme', 'Dossier']);
@@ -213,7 +213,7 @@ describe('Kopf und Reise rendern (ohne Browser)', () => {
     expect(html).toContain('▾ Hier');
     expect(html).toContain('Ablauf der Phase 2: Analyse');
     expect((html.match(/data-formen-legende/g) ?? []).length).toBe(1);
-    for (const t of ['Schritt', 'Nachricht', 'Abstimmung (ja / nein)', 'Erinnerung', 'Termin']) expect(html, t).toContain(t);
+    for (const t of ['Schritt', 'Nachricht', 'Bestätigung (ja / nein)', 'Erinnerung', 'Termin']) expect(html, t).toContain(t);
     expect(html).toContain('id="ff-detail"');
     expect(html).toContain('Beim Kunden nachfassen');
     expect(html).toContain('+3');

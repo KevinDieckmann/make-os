@@ -208,7 +208,7 @@ async function startPruefer(mandatId: string, d: Dossier, daten: LaufDaten, pers
     { punkt: 'Domain', ok: d.eingaben.domains.length > 0, hinweis: 'Ohne Domain laufen die Web-Agenten nicht.' },
     { punkt: 'Registernummer oder Sitz', ok: !!(d.eingaben.registerNr || d.eingaben.sitz), hinweis: 'Hilft bei der Zuordnung.' },
     { punkt: 'Interessenabwägung', ok: !!d.interessenabwaegung, hinweis: 'Pflicht vor der Personenrecherche.' },
-    { punkt: 'Analyse-Umfang und Personenfunktionen (Abstimmungspunkt)', ok: !!d.f1, hinweis: 'Ohne diesen Abstimmungspunkt bleiben Gesellschafter- und Personen-Analyse gesperrt.' },
+    { punkt: 'Analyse-Umfang und Personenfunktionen (Bestätigung)', ok: !!d.f1, hinweis: 'Ohne diese Bestätigung bleiben Gesellschafter- und Personen-Analyse gesperrt.' },
     { punkt: 'Playbook-Antworten', ok: daten.playbook, hinweis: 'Ohne Antworten fehlt die Playbook-Auswertung.' },
     { punkt: 'Registerauszug (Unterlage)', ok: daten.register, hinweis: 'Ein Mensch legt Handelsregisterauszug und Gesellschafterliste als PDF ab — kein Agent liest Register-Portale.' },
   ];

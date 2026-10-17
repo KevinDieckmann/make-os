@@ -193,11 +193,11 @@ export function PhasenFeld({ modell, phase, api, titelRef, nurAbstimmung }: { mo
   const ab = phase.abstimmung;
   const abstimmung = (
     <div style={{ display: 'grid', gap: 8 }}>
-      <Schalter an={!!ab} aus={aus} onChange={an => void api.tun([{ op: 'abstimmung', phaseId: phase.id, an }])} erklaerung="fulfillment.abstimmungAmEnde">Abstimmungspunkt am Ende der Phase</Schalter>
+      <Schalter an={!!ab} aus={aus} onChange={an => void api.tun([{ op: 'abstimmung', phaseId: phase.id, an }])} erklaerung="fulfillment.abstimmungAmEnde">Bestätigung am Ende der Phase</Schalter>
       {ab && (
         <>
-          <Feld label={`Abstimmungspunkt${ab.nr ? ` ${ab.nr}` : ''} — Titel`}>
-            <TextFeld key={`${ab.id}:${ab.titel}`} wert={ab.titel} aus={aus} label="Titel des Abstimmungspunkts" onFertig={t => { if (t.trim()) void api.tun([{ op: 'abstimmung', phaseId: phase.id, an: true, titel: t.trim() }]); }} />
+          <Feld label={`Bestätigung${ab.nr ? ` ${ab.nr}` : ''} — Titel`}>
+            <TextFeld key={`${ab.id}:${ab.titel}`} wert={ab.titel} aus={aus} label="Titel der Bestätigung" onFertig={t => { if (t.trim()) void api.tun([{ op: 'abstimmung', phaseId: phase.id, an: true, titel: t.trim() }]); }} />
           </Feld>
           <Feld label="Wer stimmt ab">
             <WahlKnoepfe label="Wer stimmt ab" aus={aus} aktiv={ab.wer} onWahl={w => void api.tun([{ op: 'abstimmung', phaseId: phase.id, an: true, wer: w }])} liste={ZUST} />
@@ -206,7 +206,7 @@ export function PhasenFeld({ modell, phase, api, titelRef, nurAbstimmung }: { mo
       )}
     </div>
   );
-  if (nurAbstimmung) return <Karte i={0} flach id="ff-editor-feld"><Ueberschrift>Abstimmungspunkt</Ueberschrift>{abstimmung}</Karte>;
+  if (nurAbstimmung) return <Karte i={0} flach id="ff-editor-feld"><Ueberschrift>Bestätigung</Ueberschrift>{abstimmung}</Karte>;
   return (
     <Karte i={0} flach id="ff-editor-feld">
       <Ueberschrift>Phase {phase.nr}</Ueberschrift>
@@ -251,7 +251,7 @@ export function LeerFeld({ darf }: { darf: boolean }) {
     <Karte i={0} flach id="ff-editor-feld">
       <Ueberschrift>Bearbeiten</Ueberschrift>
       {darf
-        ? <div style={klein}>Einen Knoten oder eine Phase antippen — hier stehen dann Titel, Art, Frist, Verantwortung und Sichtbarkeit.</div>
+        ? <div style={klein}>Einen Schritt oder eine Phase antippen — hier stehen dann Titel, Art, Frist, Verantwortung und Sichtbarkeit.</div>
         : <Hinweis art="info">Nur ansehen — Abläufe bearbeiten volle Mitglieder.</Hinweis>}
     </Karte>
   );

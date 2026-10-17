@@ -28,7 +28,7 @@ export type { BildKaestchen, BildSpalte };
 const HAENGT_FARBE = { rot: LEUCHT.kritisch, gelb: LEUCHT.achtung } as const;
 const ZUSTAND_TEXT: Record<KaestchenZustand, string> = { erledigt: 'erledigt', hier: 'als Nächstes', offen: 'offen', entfaellt: 'entfällt' };
 const PHASE_TEXT: Record<ReiseZustand, string> = { fertig: 'erledigt', jetzt: 'hier stehen wir', offen: 'kommt noch', laeuft: 'läuft' };
-const FORM_TEXT: Record<FlussForm, string> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Abstimmung', erinnerung: 'Erinnerung', termin: 'Termin' };
+const FORM_TEXT: Record<FlussForm, string> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin' };
 
 /** Das kleine Zeichen der Form vor einem Kästchen (nur Nachricht, Termin, Erinnerung — ein Schritt braucht keins, die Abstimmung ist eine Raute). */
 export function FormZeichen({ form, groesse = 13 }: { form?: FlussForm; groesse?: number }) {

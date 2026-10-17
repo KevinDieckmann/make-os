@@ -12,7 +12,7 @@ import type { FallReiter } from '../adresse';
 import { aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
 import { obKnotenId, obSchluessel, type OnboardingStand } from './onboarding';
 import { SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE } from './phasen';
-import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz } from './darstellung';
+import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz, BESTAETIGUNG } from './darstellung';
 
 const FERTIG: ReadonlySet<KnotenStatus> = new Set(['erledigt', 'entfaellt']);
 const fertig = (k: Pick<FallKnoten, 'status'>) => FERTIG.has(k.status);
@@ -180,7 +180,7 @@ export function naechsteSchritte(fall: Pick<Fall, 'knoten'>, heute: string, n = 
  * (er macht den Schritt bzw. er wartet bei ihm), auf eine Antwort (Entscheidung offen) oder auf einen Abstimmungspunkt.
  */
 export type WartetAuf = 'intern' | 'kunde' | 'entscheidung' | 'abstimmung';
-export const WARTET_AUF_TEXT: Record<WartetAuf, string> = { intern: 'bei uns', kunde: 'wartet auf den Kunden', entscheidung: 'Entscheidung offen', abstimmung: 'Abstimmungspunkt offen' };
+export const WARTET_AUF_TEXT: Record<WartetAuf, string> = { intern: 'bei uns', kunde: 'wartet auf den Kunden', entscheidung: 'Entscheidung offen', abstimmung: `${BESTAETIGUNG} offen` };
 
 /** Was als Nächstes dran ist — ein Onboarding-Schritt, ein Abstimmungspunkt oder ein Schritt der laufenden Phase. */
 export interface NaechsterPunkt {
@@ -296,7 +296,7 @@ export const ONBOARDING_SPRUNG: Record<OnboardingSchluessel, { reiter: FallReite
   stakeholder: { reiter: 'menschen', text: 'Stakeholder eintragen', stelle: 'menschen-stakeholder' },
   wertkonto: { reiter: 'ziele', text: 'Wert-Konto festlegen' },
   entscheidungslog: { reiter: 'menschen', text: 'Erste Entscheidung festhalten', stelle: 'menschen-entscheidung' },
-  f0: { reiter: 'reise', text: 'Ersten Abstimmungspunkt vermerken' },
+  f0: { reiter: 'reise', text: `Erste ${BESTAETIGUNG} vermerken` },
 };
 
 export type Handgriff =
@@ -346,7 +346,7 @@ export function naechsterHandgriff(fall: Pick<Fall, 'knoten' | 'freigaben' | 'st
 const freigabeText = (id: string, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel'>[], knoten: readonly FallKnoten[] = []) => {
   const f = freigaben.find(x => x.id === id);
   const n = abstimmungsNummern(knoten).get(id);
-  return `Abstimmungspunkt${n ? ` ${n}` : ''} vermerken${f ? ` (${titelOhneZusatz(f.titel)})` : ''}`;
+  return `${BESTAETIGUNG}${n ? ` ${n}` : ''} vermerken${f ? ` (${titelOhneZusatz(f.titel)})` : ''}`;
 };
 
 /** „seit heute“ · „seit 1 Tag“ · „seit 9 Tagen“ — Wartezeit in Worten. */

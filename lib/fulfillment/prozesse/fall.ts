@@ -130,7 +130,7 @@ export interface VorlagenDiff {
 
 /** Die Felder eines Diffs in Worten (Vorschau „was sich ändert“ im Fall). */
 export const DIFF_FELD_NAME: Readonly<Record<string, string>> = {
-  elternId: 'Platz', titel: 'Titel', ziel: 'Ziel', ergebnis: 'Ergebnis', kennzahl: 'Kennzahl', zustaendig: 'Verantwortung', freigabe: 'Abstimmungspunkt',
+  elternId: 'Platz', titel: 'Titel', ziel: 'Ziel', ergebnis: 'Ergebnis', kennzahl: 'Kennzahl', zustaendig: 'Verantwortung', freigabe: 'Bestätigung',
   kundeSichtbar: 'Sichtbarkeit', phaseId: 'Phase', bausteinId: 'Baustein', dauerTage: 'Dauer', form: 'Form', frist: 'Frist', zweige: 'Zweige', versuche: 'Versuche',
 };
 
@@ -286,7 +286,7 @@ export interface ZusatzEingabe { vorlage: ProzessVorlage; person: string; jetzt:
 export function zusatzAnhaengen(fall0: Fall, e: ZusatzEingabe): AnwendenErgebnis<Fall> {
   return ausfuehren(() => {
     const v = e.vorlage;
-    if (v.art !== 'paket' || !v.zusatz) nein('Nur ein Zusatzmodul (Paket-Vorlage mit „Zusatzmodul“) hängt an einen laufenden Fall.');
+    if (v.art !== 'paket' || !v.zusatz) nein('Nur ein Zusatzmodul (ein Ablauf mit dem Schalter „Zusatzmodul“) hängt an einen laufenden Fall.');
     if (fall0.status === 'abgeschlossen') nein('Der Fall dieses Mandats ist abgeschlossen — bitte erst wieder öffnen (Status des Falls), dann das Zusatzmodul anhängen.', 409);
     if (fall0.vorlageId === v.id) nein(`Der Fall läuft schon mit „${v.titel}“.`, 409);
     if (fall0.zusaetze?.some(z => z.vorlageId === v.id)) nein(`„${v.titel}“ hängt schon an diesem Fall.`, 409);
@@ -298,7 +298,7 @@ export function zusatzAnhaengen(fall0: Fall, e: ZusatzEingabe): AnwendenErgebnis
     if (doppelt) nein(`„${doppelt.titel}“ steht schon im Fall — das Zusatzmodul passt so nicht dazu.`, 409);
     const belegt = new Set([...fall0.knoten.map(k => k.freigabe).filter((x): x is string => !!x), ...Object.keys(fall0.freigaben)]);
     const fg = v.knoten.map(k => k.freigabe).find(x => !!x && belegt.has(x));
-    if (fg) nein(`Den Abstimmungspunkt „${fg}“ gibt es im Fall schon — im Zusatzmodul bitte eine andere Kennung wählen.`, 409);
+    if (fg) nein(`Die Bestätigung „${fg}“ gibt es im Fall schon — im Zusatzmodul bitte eine andere Kennung wählen.`, 409);
     const abbild = zusatzAbbild(fall0, v);
     let knoten = zusatzMarkieren(knotenUebernehmen(fall0.knoten, abbild), fw.id, abbild, v.id);
     if (knoten.some(k => ebeneVon(k, knoten) > EBENEN_MAX)) nein('Das Zusatzmodul hat zu viele Ebenen für den Fall.');

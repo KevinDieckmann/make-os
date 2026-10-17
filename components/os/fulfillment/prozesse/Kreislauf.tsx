@@ -54,7 +54,7 @@ export function Kreislauf() {
   const alsPaket = async () => {
     if (!aktiv) return;
     const a = await vorlagenOps([{ op: 'kopie', id: aktiv.id }]);
-    setMeldung(a.ok ? { text: `„${aktiv.titel}“ als Paket-Vorlage angelegt — unter Prozesse bearbeiten und einem Produkt zuordnen.`, art: 'gut' } : { text: fehlerText(a), art: 'kritisch' });
+    setMeldung(a.ok ? { text: `„${aktiv.titel}“ als Ablauf angelegt — unter Übersicht › Abläufe bearbeiten und einem Produkt zuordnen.`, art: 'gut' } : { text: fehlerText(a), art: 'kritisch' });
   };
   return (
     <div style={{ display: 'grid', gap: 14 }}>
@@ -71,7 +71,7 @@ export function Kreislauf() {
         <Leerzustand symbol="⟲" titel="Noch keine Abläufe">Abläufe kommen per Import unter Bausteine (Datei mit „stufen“ und „uebergaenge“) — sie werden als Trichter, Fluss oder Zeitachse gezeichnet.</Leerzustand>
       ) : (
         <Karte i={2}>
-          <Ueberschrift erklaerung="fulfillment.ablaufErgaenzung" rechts={<Knopf leise onClick={alsPaket}>Als Paket-Vorlage übernehmen</Knopf>}>Abläufe</Ueberschrift>
+          <Ueberschrift erklaerung="fulfillment.ablaufErgaenzung" rechts={<Knopf leise onClick={alsPaket}>Als Ablauf übernehmen</Knopf>}>Abläufe</Ueberschrift>
           {ablaeufe.length > 1 && <Pillen<string> liste={ablaeufe.map(a => ({ id: a.id, label: a.titel }))} aktiv={aktiv?.id} onWahl={id => { setWahl(id); setStufe(null); }} />}
           {aktiv && (
             <>

@@ -276,7 +276,7 @@ export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }:
     <div className="ff-editor" data-ff-editor>
       {/* Kopf: zurück, Titel des Ablaufs, Rückgängig/Wiederholen — und EIN Satz, was die Änderung bewirkt. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
-        <Knopf leise style={K44} onClick={() => router.push(WEG.fulfillment())}><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><ArrowLeft size={14} aria-hidden />Landkarte</span></Knopf>
+        <Knopf leise style={K44} onClick={() => router.push(WEG.fulfillment())}><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><ArrowLeft size={14} aria-hidden />Fulfillment</span></Knopf>
         <div style={{ display: 'flex', gap: 6 }}>
           <Knopf leise style={K44} aus={!darf || laeuft || !verlauf.zurueck.length} onClick={rueckgaengig} ariaLabel="Rückgängig (⌘Z)" titel="Rückgängig (⌘Z / Strg+Z)"><Undo2 size={16} aria-hidden /></Knopf>
           <Knopf leise style={K44} aus={!darf || laeuft || !verlauf.vor.length} onClick={wiederholen} ariaLabel="Wiederholen (⇧⌘Z)" titel="Wiederholen (⇧⌘Z / Strg+Y)"><Redo2 size={16} aria-hidden /></Knopf>
@@ -285,10 +285,10 @@ export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }:
       <Karte i={0} flach>
         <Ueberschrift rechts={<span>Fassung {d.vorlage.fassung}</span>}>
           {darf
-            ? <input key={`${d.vorlage.id}:${d.vorlage.titel}`} defaultValue={d.vorlage.titel} aria-label="Titel des Ablaufs" disabled={laeuft}
+            ? <input key={`${d.vorlage.id}:${d.vorlage.titel}`} defaultValue={d.vorlage.titel} aria-label="Titel des Ablaufs" disabled={laeuft} size={Math.max(16, d.vorlage.titel.length + 2)}
               onBlur={e => { const t = e.target.value.trim(); if (t && t !== d.vorlage.titel) void senden([{ op: 'titel', titel: t }]); else e.target.value = d.vorlage.titel; }}
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-              style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: C.ink, background: 'none', border: `1px solid transparent`, borderRadius: ECKE.eingabe, padding: '4px 6px', minHeight: ZIEL_PX, width: '100%', boxSizing: 'border-box' }} />
+              style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: C.ink, background: 'none', border: `1px solid transparent`, borderRadius: ECKE.eingabe, padding: '4px 6px', minHeight: ZIEL_PX, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }} />
             : d.vorlage.titel}
         </Ueberschrift>
         <div style={klein}>
@@ -311,7 +311,7 @@ export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }:
             rauteSchalter={id => {
               const p = modell.phasen.find(x => x.id === id)!;
               const an = !!p.abstimmung;
-              const label = an ? `Abstimmungspunkt am Ende von „${p.titel}“ — bearbeiten` : `Abstimmungspunkt am Ende von „${p.titel}“ einfügen`;
+              const label = an ? `Bestätigung am Ende von „${p.titel}“ — bearbeiten` : `Bestätigung am Ende von „${p.titel}“ einfügen`;
               if (!an && !darf) return <span aria-hidden style={{ color: C.inkLeise, fontSize: TYP.bedien }}>›</span>;
               return (
                 <button type="button" className="fassbar" aria-label={label} title={label} disabled={laeuft}

@@ -502,6 +502,8 @@ export function nachrichtEntwurf(vorlage: string | undefined, w: NachrichtWerte,
   const ersetze = (t: string) => t
     .replace(/\{\{\s*anrede\s*\}\}/g, gruss).replace(/\{\{\s*vorname\s*\}\}/g, w.vorname ?? '').replace(/\{\{\s*nachname\s*\}\}/g, w.nachname ?? '')
     .replace(/\{\{\s*ansprechpartner\s*\}\}/g, ap).replace(/\{\{\s*(kunde|firma)\s*\}\}/g, w.kunde ?? '')
+    // 17.10. spät: steht der Platzhalter schon in Klammern („… ab ({{termin}})“), kommt „(Termin folgt)“ ohne zweite Klammer — vorher „((Termin folgt))“.
+    .replace(/\(\s*\{\{\s*termin\s*\}\}\s*\)/g, w.termin ? `(${w.termin})` : '(Termin folgt)')
     .replace(/\{\{\s*termin\s*\}\}/g, w.termin ?? '(Termin folgt)').replace(/\{\{\s*absender\s*\}\}/g, w.absender ?? '');
   return { betreff: ersetze(betreff).slice(0, 200), text: ersetze(zeilen.join('\n')).replace(/\n{3,}/g, '\n\n').trim() };
 }

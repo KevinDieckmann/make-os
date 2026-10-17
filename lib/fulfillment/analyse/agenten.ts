@@ -139,7 +139,8 @@ export const AGENTEN: Readonly<Record<AnalyseAgentId, AgentDef>> = {
 
 export const AGENT_IDS = Object.keys(AGENTEN) as AnalyseAgentId[];
 /** Ein Agent in der Anzeige: nie das Kürzel allein (15.10., Abnahme B5: „A0–A13, AP, TB ohne Erklärung“) — „A1 · Unternehmens-Steckbrief“. */
-export const agentText = (id: string): string => { const a = AGENTEN[id as AnalyseAgentId]; return a ? `${id.toUpperCase()} · ${a.name}` : id.toUpperCase(); };
+// 17.10. spät (Rückmeldung: „Fachbegriffe raus“): in der Anzeige nur der Name („Unternehmens-Steckbrief“) — das Kürzel (A1 …) bleibt die Kennung, nie sichtbar.
+export const agentText = (id: string): string => { const a = AGENTEN[id as AnalyseAgentId]; return a ? a.name : 'Analyse'; };
 /** Agenten einer Welle (Reihenfolge wie in der Tabelle). */
 export const agentenDerWelle = (w: 0 | 1 | 2 | 3): AgentDef[] => AGENT_IDS.map(i => AGENTEN[i]).filter(a => a.welle === w);
 const WELLE12 = AGENT_IDS.filter(i => (AGENTEN[i].welle === 1 || AGENTEN[i].welle === 2) && AGENTEN[i].art === 'modell');

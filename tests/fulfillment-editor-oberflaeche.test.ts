@@ -46,8 +46,8 @@ describe('Rechner: Reise, Palette, Fluss, Seitenfeld', () => {
     expect(s).toContain('class="ff-reise"');
     expect(s).toContain('Auftakt');
     expect(s).toContain('Umsetzung');
-    expect(s).toContain('Abstimmungspunkt am Ende von „Auftakt“ — bearbeiten');
-    expect(s).toContain('Abstimmungspunkt am Ende von „Umsetzung“ einfügen');
+    expect(s).toContain('Bestätigung am Ende von „Auftakt“ — bearbeiten'); // 17.10. spät: „Bestätigung“ statt „Abstimmungspunkt“
+    expect(s).toContain('Bestätigung am Ende von „Umsetzung“ einfügen');
     expect(s).toMatch(/data-ff-ziel="phase"/);
     expect(s).toContain('>Phase</span>');
   });
@@ -61,7 +61,7 @@ describe('Rechner: Reise, Palette, Fluss, Seitenfeld', () => {
     for (const z of ['anfang', 'schritt', 'ende']) expect(s, z).toContain(`data-ff-ziel="${z}"`);
     expect((s.match(/data-ff-knoten="fk-r"/g) ?? []).length).toBe(1);
     expect(s).toContain('Entscheidung: Unterlagen da?');
-    expect(s).toContain('Abstimmungspunkt 1 · Rahmen bestätigt');
+    expect(s).toContain('Bestätigung 1 · Rahmen bestätigt');
     expect(s).toContain('Phase 2 · Umsetzung ›');
     expect(s).toContain('Frist 2 Tage');
     expect(s).toContain('data-formen-legende');
@@ -73,7 +73,7 @@ describe('Rechner: Reise, Palette, Fluss, Seitenfeld', () => {
     expect(s).toContain('aria-label="Wiederholen (⇧⌘Z)"');
     // Ohne gewählten Knoten steht das Feld der Phase da (Titel, Sichtbarkeit, Abstimmungspunkt am Ende).
     expect(s).toContain('Der Kunde sieht diese Phase');
-    expect(s).toContain('Abstimmungspunkt am Ende der Phase');
+    expect(s).toContain('Bestätigung am Ende der Phase');
     expect(s).toContain('Änderungen gelten für neue Fälle — die 2 laufenden Fälle zeigen „Vorlage geändert“');
   });
   it('jedes Bedienziel ist mindestens 44 px hoch', () => {
@@ -157,7 +157,7 @@ describe('Ein Darstellungs-Bauteil für Ansicht und Editor', () => {
     expect(quelle('components/os/ui/reise/Fluss.tsx')).toContain('export function KnotenKnopf');
     const sp = editorSpalten(editorModell(V(), []));
     expect(sp[0].kaestchen.map(k => k.titel)).toEqual(['Kick-off planen', 'Unterlagen da?', 'Begrüßung senden']);
-    expect(sp[0].raute).toMatchObject({ titel: 'Abstimmungspunkt 1 · Rahmen bestätigt' });
+    expect(sp[0].raute).toMatchObject({ titel: 'Bestätigung 1 · Rahmen bestätigt' });
   });
 });
 

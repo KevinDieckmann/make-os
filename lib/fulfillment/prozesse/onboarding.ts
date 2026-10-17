@@ -94,7 +94,7 @@ export function onboardingStand(fall: Fall, a: OnboardingAbleitung): OnboardingS
   const erster = ersterTermin((a.kundenTermine ?? []).map(tag => ({ tag })), fall.startAm ?? fall.gestartetAm.slice(0, 10));
   const kickoff = kickoffRitual || !!erster;
   const f0 = abstimmungsNummern(fall.knoten).get('F0');
-  const f0Name = `Abstimmungspunkt${f0 ? ` ${f0}` : ''}`;
+  const f0Name = `Bestätigung${f0 ? ` ${f0}` : ''}`;
   const bed: Record<OnboardingSchluessel, [boolean, string]> = {
     willkommen: [!!fall.onboarding.willkommenGesendetAm, fall.onboarding.willkommenGesendetAm ? 'Willkommensmail gesendet.' : uhr.ueberfaellig ? 'Willkommensmail überfällig — bitte heute senden.' : 'Willkommensmail noch nicht gesendet.'],
     kickoff: [kickoff, kickoffRitual ? 'Kick-off steht im Kalender.' : erster ? `Erster Termin mit dem Kunden steht im Kalender (${erster.slice(8, 10)}.${erster.slice(5, 7)}.) — er gilt als Kick-off.` : 'Kick-off noch nicht terminiert (Takt › Kick-off › Termin anlegen).'],
