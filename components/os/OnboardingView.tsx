@@ -207,10 +207,12 @@ function NachEtappen({ schritte, z, haken, laden, start, mitWann = false, hinwei
     <>
       {etappen.map((e, i) => {
         const liste = schritte.filter(s => s.etappe === e.nr);
-        const fertig = liste.filter(s => istFertig(s, z)).length;
+        // EINE Zählung (17.10., L2 B8): `fortschrittVon` wie die Gesamtzahl darüber — Optionales zählt erst, wenn es getan ist (vorher
+        // „fertig von liste.length“: die Etappen summierten sich nicht zur Gesamtzahl).
+        const stand = fortschrittVon(liste, z, { alle: true });
         return (
           <Karte key={e.nr} i={Math.min(start + i, MAX_I)}>
-            <Ueberschrift rechts={`${fertig} von ${liste.length}`}>{`Etappe ${e.nr} · ${e.titel}`}</Ueberschrift>
+            <Ueberschrift rechts={`${stand.fertig} von ${stand.gesamt}`}>{`Etappe ${e.nr} · ${e.titel}`}</Ueberschrift>
             <p style={{ ...absatz, marginBottom: 10 }}>{e.satz}</p>
             {(typeof hinweise === 'boolean' ? hinweise : !hinweise.has(e.nr)) && (e.hinweise ?? []).map(h => (
               <div key={h.titel} style={{ marginBottom: 10 }}><Hinweis art="info" titel={`${h.titel} — ${h.wann}`}>{h.satz}</Hinweis></div>
@@ -474,13 +476,14 @@ export function OnboardingUebersicht() {
       <EinrichtungWeg z={z} meine={meine} haken={haken} laden={laden} liste={<>
       {gruppen.map((g, gi) => {
         const liste = meine.filter(s => gruppeVon(s) === g);
-        const fertig = liste.filter(s => istFertig(s, z)).length;
+        // Wie die Gesamtzahl (`einrichtungStand` = `fortschrittVon` mit `alle`) — die Gruppen summieren sich zu ihr (17.10., L2 B8).
+        const stand = fortschrittVon(liste, z, { alle: true });
         // Hinweise einer Etappe nur einmal: im Neustart in der ersten Gruppe, in der die Etappe vorkommt; sonst nie unter „später“.
         const frueher = new Set(meine.filter(s => gruppen.indexOf(gruppeVon(s)) < gi).map(s => s.etappe));
         return (
           <div key={g} style={{ display: 'contents' }}>
             <Karte i={Math.min(2 + gi, MAX_I)} flach>
-              <Ueberschrift rechts={`${fertig} von ${liste.length}`}>{namen[g].titel}</Ueberschrift>
+              <Ueberschrift rechts={`${stand.fertig} von ${stand.gesamt}`}>{namen[g].titel}</Ueberschrift>
               <p style={absatz}>{namen[g].satz}</p>
             </Karte>
             <NachEtappen schritte={liste} z={z} haken={haken} laden={laden} start={3 + gi} hinweise={neustart ? frueher : g !== 'spaeter'} />

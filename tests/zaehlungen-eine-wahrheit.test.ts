@@ -9,6 +9,9 @@ import { leads, trichter, inArbeit, sqlEntscheidungOffen, passtLeadFilter, type 
 import { datenpaket } from '../lib/heads/daten';
 import { marketingTrichter } from '../lib/crm/marketing';
 import { marketingHerkunft } from '../lib/crm/scoring';
+import { schritteFuer, einrichtungStand, fortschrittVon, gruppeVon, istFertig } from '../lib/make-one/onboarding-data';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { kennzahlen } from '../lib/crm/kennzahlen';
 import { wochenScoreboard } from '../lib/crm/scoreboard';
 import { traktionsIndex } from '../lib/crm/traktion-index';
@@ -163,5 +166,29 @@ describe('B6 · Marketing-Trichter mit den Regeln des Scorings und der Leads-Lis
     // Leads im Prozess: die Lead-Zeile wie in der Liste („In Arbeit“) — die anfragende Person aus dem Marketing.
     const zeilen = leads(kontakte, crm, HEUTE);
     expect(t.uebergabe.leads).toBe(zeilen.filter(z => z.id === 'c-web' && inArbeit(z)).length);
+  });
+});
+
+describe('B8 · Einrichtung: Gruppen und Etappen zählen wie die Gesamtzahl', () => {
+  const kontext = { inhaber: true, haupt: true, personen: 2, privatFinanzen: true, betreiber: false };
+  const schritte = schritteFuer(kontext);
+  // Die Hälfte der Schritte abgehakt — darunter auch optionale.
+  const erledigt = Object.fromEntries(schritte.filter((_, i) => i % 2 === 0).map(x => [x.id, { at: J, von: A }]));
+  const z = { erledigt, befunde: {} };
+  it('vorher „fertig von liste.length“ (mit Optionalem) — die Gruppen summierten sich nicht zur Gesamtzahl; jetzt schon', () => {
+    const gesamt = einrichtungStand(kontext, z);
+    const gruppen = Array.from(new Set(schritte.map(gruppeVon)));
+    const summe = gruppen.map(g => fortschrittVon(schritte.filter(x => gruppeVon(x) === g), z, { alle: true })).reduce((a, f) => ({ fertig: a.fertig + f.fertig, gesamt: a.gesamt + f.gesamt }), { fertig: 0, gesamt: 0 });
+    expect(summe).toEqual({ fertig: gesamt.fertig, gesamt: gesamt.gesamt });
+    const etappen = Array.from(new Set(schritte.map(x => x.etappe)));
+    const jeEtappe = etappen.map(e => fortschrittVon(schritte.filter(x => x.etappe === e), z, { alle: true })).reduce((a, f) => a + f.gesamt, 0);
+    expect(jeEtappe).toBe(gesamt.gesamt);
+    // Mit Optionalem im Nenner wäre die Summe größer gewesen (vorher).
+    expect(schritte.length).toBeGreaterThanOrEqual(gesamt.gesamt);
+    expect(schritte.filter(x => istFertig(x, z)).length).toBeGreaterThanOrEqual(gesamt.fertig);
+  });
+  it('die Einrichtungsseite zählt nur noch über fortschrittVon', () => {
+    const quelle = readFileSync(path.resolve(__dirname, '..', 'components/os/OnboardingView.tsx'), 'utf8');
+    expect(quelle).not.toMatch(/\$\{fertig\} von \$\{liste\.length\}/);
   });
 });
