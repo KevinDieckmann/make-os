@@ -14,6 +14,8 @@
 import { anzeigename, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
 import type { Beitrag, Chance, CrmBestand, Freigabe, MarketingEinstellung, NewsletterAusgabe, Quelle, Segment, SegmentKriterien } from './typen';
 import { nurBusinessGezaehlt } from './zaehlung-business';
+import { leadZeileFuer, inArbeit } from './leads';
+import { anfrageIstMarketing } from './scoring';
 import type { Kpi, KpiAmpel } from './kennzahlen';
 import { art14, kanalStatus, type Kanal, type Kontext } from './recht';
 import { segmentAuswerten, type SegmentKontext } from './segmente';
@@ -659,8 +661,6 @@ export interface MarketingTrichter {
   stufen: TrichterStufe[];
 }
 
-const LEAD_VOR_SQL = new Set(['kontaktiert', 'im_gespraech', 'qualifizierung']);
-
 export function marketingTrichter(kontakte: Kontakt[], crm0: CrmBestand, heute: string, tage = 90): MarketingTrichter {
   // Nur Business (17.10., L2 B2): Deals, Mandate und Angebote einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
   const crm = nurBusinessGezaehlt(crm0);
@@ -692,7 +692,9 @@ export function marketingTrichter(kontakte: Kontakt[], crm0: CrmBestand, heute: 
   const merke = (id: string, t: string) => anfrageTage.set(id, [...(anfrageTage.get(id) ?? []), t]);
   for (const b of beitraege) for (const w of b.wirkung ?? []) if (w.art === 'anfrage') { merke(w.kontaktId, w.am); if (im(w.am)) anBeitraegen.add(`${w.kontaktId}|${w.am}`); }
   let eingangJe = false;
-  for (const k of kontakte) for (const a of k.aktivitaeten ?? []) if (istAnfrage(a)) { eingangJe = true; const t = tag(a.am); merke(k.id, t); if (im(t)) ausEingang.add(`${k.id}|${t}`); }
+  // Nur Anfragen, die ein Marketing-Signal sind (17.10., L2 B6: `anfrageIstMarketing`, dieselbe Regel wie die Marketing-Herkunft des
+  // Scorings) — eine Anfrage nach Empfehlung oder auf einem besuchten Event ist eine Begegnung, kein Marketing-Erfolg.
+  for (const k of kontakte) for (const a of k.aktivitaeten ?? []) if (istAnfrage(a) && anfrageIstMarketing(a, crm.events)) { eingangJe = true; const t = tag(a.am); merke(k.id, t); if (im(t)) ausEingang.add(`${k.id}|${t}`); }
   const alle = new Set([...anBeitraegen, ...ausEingang]);
   const personen = Array.from(new Set(Array.from(alle).map(x => x.split('|')[0])));
   const offen = (crm.followups ?? []).filter(f => f.status === 'offen' && istAnfrageFollowUp(f)).length;
@@ -702,15 +704,15 @@ export function marketingTrichter(kontakte: Kontakt[], crm0: CrmBestand, heute: 
   const ausAnfrage = (c: Pick<Chance, 'kontaktIds' | 'angelegt'>) => { const b2 = tag(c.angelegt), v2 = tagPlus(b2, -90); return c.kontaktIds.some(id => (anfrageTage.get(id) ?? []).some(t => t >= v2 && t <= b2)); };
   const deals = chancen.filter(c => im(tag(c.angelegt)) && ((c.quelle && TRICHTER_QUELLEN.includes(c.quelle)) || ausMarketing(c, beitraege) || ausAnfrage(c)));
   const imDeal = new Set(deals.flatMap(c => c.kontaktIds));
-  const firmen = new Map(crm.firmen.map(f => [f.id, f]));
+  // Leads im Prozess (17.10., L2 B6): die Lead-Zeile der Person (`leadZeileFuer` — dieselbe Rechnung wie die Leads-Liste, Status auch
+  // abgeleitet) und „In Arbeit“ wie Liste, Trichter und Head (`inArbeit`) — vorher eine eigene Statuslese am Firmen-/Personen-Lead.
   const leadEinheiten = new Set<string>();
   for (const id of personen) {
     if (imDeal.has(id)) continue;
     const k = kontakte.find(x => x.id === id);
     if (!k || ausgenommen(k)) continue;
-    const status = (k.firmaId ? firmen.get(k.firmaId)?.lead?.status : undefined) ?? k.lead?.status;
-    // Ohne gesetzten Status gilt: die Anfrage selbst ist der Kontakt — im Prozess, vor dem SQL.
-    if (status === undefined || LEAD_VOR_SQL.has(status)) leadEinheiten.add(k.firmaId ?? k.id);
+    const z = leadZeileFuer(k, kontakte, crm, heute);
+    if (z && inArbeit(z)) leadEinheiten.add(z.id);
   }
   const uebergabe = { leads: leadEinheiten.size, deals: deals.length, sql: deals.length, quote: quote(deals.length, alle.size), dealIds: deals.map(c => c.id), messbar: chancen.length > 0 || anfragen.messbar };
 

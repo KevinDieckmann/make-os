@@ -7,6 +7,8 @@ import type { Chance, Mandat, CrmBestand } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
 import { leads, trichter, inArbeit, sqlEntscheidungOffen, passtLeadFilter, type LeadZeile } from '../lib/crm/leads';
 import { datenpaket } from '../lib/heads/daten';
+import { marketingTrichter } from '../lib/crm/marketing';
+import { marketingHerkunft } from '../lib/crm/scoring';
 import { kennzahlen } from '../lib/crm/kennzahlen';
 import { wochenScoreboard } from '../lib/crm/scoreboard';
 import { traktionsIndex } from '../lib/crm/traktion-index';
@@ -144,5 +146,22 @@ describe('B5 · Head of Sales: „Leads in Arbeit“ wie Liste und Runde', () =>
     expect(daten.leads_in_arbeit.map(l => l.lead_id)).toEqual(erwartet);
     expect(erwartet).toEqual(zeilen.filter(z => passtLeadFilter(z, 'aktiv') || sqlEntscheidungOffen(z)).map(z => z.id));
     expect(erwartet).toEqual(['c-warm']);
+  });
+});
+
+describe('B6 · Marketing-Trichter mit den Regeln des Scorings und der Leads-Liste', () => {
+  const anfrage = (kanal: string, tag: string) => ({ am: `${tag}T09:00:00.000Z`, art: 'antwort' as const, text: `Anfrage über ${kanal}: Interesse`, von: A });
+  const kontakte = [
+    k('web', { importiertAm: '2026-10-01', aktivitaeten: [anfrage('Website', '2026-10-01')] }),
+    k('empf', { importiertAm: '2026-10-01', aktivitaeten: [anfrage('Empfehlung', '2026-10-02')] }),
+  ];
+  const crm = crmMit({});
+  it('eine Anfrage nach Empfehlung ist kein Marketing — vorher 2 Anfragen im Trichter, die Herkunft sagte 1; jetzt beide 1', () => {
+    const t = marketingTrichter(kontakte, crm, HEUTE);
+    expect(t.anfragen.gesamt).toBe(1);
+    expect(kontakte.filter(x => marketingHerkunft([x]).length).length).toBe(1);
+    // Leads im Prozess: die Lead-Zeile wie in der Liste („In Arbeit“) — die anfragende Person aus dem Marketing.
+    const zeilen = leads(kontakte, crm, HEUTE);
+    expect(t.uebergabe.leads).toBe(zeilen.filter(z => z.id === 'c-web' && inArbeit(z)).length);
   });
 });
