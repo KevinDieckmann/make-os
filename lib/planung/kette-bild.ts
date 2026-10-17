@@ -12,7 +12,7 @@ import type { Meilenstein } from './typen';
 import type { Task, TasksState } from '@/types/tasks';
 import { aufgabenStand, aufgabenVonMeilenstein } from './meilenstein-aufgaben';
 import { istAbgeschlossen, nachReihe } from '@/lib/aufgaben/struktur';
-import { zieheInKette } from './meilenstein-kette';
+import { zieheInKette, wartet } from './meilenstein-kette';
 
 /** Kennung der Raute „erreicht?“ am Ende des Flusses eines Meilensteins (das Detail ist dann der Meilenstein selbst). */
 export const ERREICHT_PRAEFIX = 'ms-';
@@ -29,8 +29,12 @@ export function hauptaufgaben(state: Pick<TasksState, 'tasks'> | null, msId: str
   return state ? aufgabenVonMeilenstein(state, msId).filter(t => !t.parentId).sort(nachReihe) : [];
 }
 
-/** Der erste offene Meilenstein der Kette — „Hier“. */
-export const ersterOffener = (reihe: readonly Pick<Meilenstein, 'id' | 'erledigt'>[]): string | null => reihe.find(m => !m.erledigt)?.id ?? null;
+/**
+ * Der erste offene Meilenstein der Kette, der auf nichts Offenes mehr wartet — „Hier“ (17.10., L2 C: vorher der erste offene, auch wenn er
+ * laut `wartetAuf` noch auf einen anderen offenen wartete; dieselbe Regel `wartet` wie Glocke und Kalender). Wartet jeder, der erste offene.
+ */
+export const ersterOffener = (reihe: readonly Pick<Meilenstein, 'id' | 'erledigt' | 'wartetAuf'>[]): string | null =>
+  (reihe.find(m => !m.erledigt && !wartet(m, reihe)) ?? reihe.find(m => !m.erledigt))?.id ?? null;
 
 function aufgabeZustand(t: Task, hier: boolean): KaestchenZustand {
   if (t.status === 'cancelled') return 'entfaellt';

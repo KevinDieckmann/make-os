@@ -18,7 +18,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, CrmListe } from './typen';
 import type { Welt } from './traktion';
-import { leads, salesBereit, passtLeadFilter, type LeadFilter } from './leads';
+import { leads, salesBereit, passtLeadFilter, sqlEntscheidungOffen, type LeadFilter } from './leads';
 import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
 import { istNetzwerkenEvent } from './marke';
@@ -155,7 +155,9 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   // steht bei JEDER Person im Team, mit dem Weg zum Zuweisen (Runde „Nicht zugeordnet“ → Übernehmen).
   const ohne = alleLeads.filter(z => z.ohneBesitzer && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
   if (ohne) l.push({ id: 'ohne-zustaendigkeit', welt: 'sales', titel: 'Leads ohne Zuständigkeit', anzahl: ohne, text: `gehören niemandem — sie liegen bei ${nameVon(verantwortlich('sales'))} (Sales-Verantwortung); in der Runde „Nicht zugeordnet“ übernehmen`, ziel: { s: 'qualifizierung', href: WEG.nichtZugeordnet() } });
-  const sqlOffen = meineLeads.filter(z => salesBereit(z) && !z.deal?.offen && z.status !== 'kunde' && z.status !== 'kein_fit' && z.status !== 'ruht').length;
+  // EINE Regel (17.10., L2 C): „SQL bereit — Entscheidung offen“ wie die Runde, auf die der Sprung führt (`sqlEntscheidungOffen`) — vorher eine
+  // eigene Statusliste, die auch Leads mit SQL-Status oder entschiedenem Deal zählte, die oben in der Runde gar nicht stehen.
+  const sqlOffen = meineLeads.filter(sqlEntscheidungOffen).length;
   // Woche 1 · 2.6 (08.10.): der Text nennt die Regel der Scoring-Einstellungen, nicht die alte feste; der Sprung führt in die Runde (SQL-bereite oben).
   if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Muss-Kriterien und Sales-Schwelle erreicht — die Entscheidung steht oben in der Runde', ziel: { s: 'qualifizierung' } });
   // „Leads in Qualifizierung“ zählt wie die Leads-Liste dahinter (Filter „Qualifizierung“, `passtLeadFilter`; Abnahme 14.10., B5) — vorher ohne die

@@ -82,7 +82,7 @@ describe('1.4 · Trichter und Leads-Pillen zählen mit EINER Regel, der Sprung g
     const kontakte = [k('kalt', { stufe: 'angesprochen', importiertAm: T }), k('warm', { stufe: 'angesprochen', importiertAm: T, aktivitaeten: [{ am: J, art: 'system', text: 'Von Hand angelegt', von: 'system' }] })];
     const z = leads(kontakte, crmLeer(), T);
     expect(z.map(x => x.status)).toEqual(['kontaktiert', 'kontaktiert']);
-    const t = trichter(z, crmLeer());
+    const t = trichter(z, crmLeer(), T);
     const stufe = t.stufen.find(s => s.id === 'kontaktiert')!;
     expect(stufe.anzahl).toBe(z.filter(x => passtLeadFilter(x, 'kontaktiert')).length);
     expect(stufe.anzahl).toBe(1);
@@ -180,7 +180,7 @@ describe('2.3/2.5 · Deal anlegen: SQL nur bei erfüllten Kriterien, sonst „di
     const offen = leads([k('a', { firmaId: 'f-a', firma: 'Firma f-a' })], crmLeer({ firmen: [firma('f-a', lead)], chancen: [deal('bedarf')] }), T)[0];
     expect(offen.status).toBe('qualifizierung');
     expect(offen.direkt).toEqual({ am: J, offen: ['Schmerz'] });
-    expect(trichter([offen], crmLeer()).gespraechZuSql).toBeNull();
+    expect(trichter([offen], crmLeer(), T).gespraechZuSql).toBeNull();
     const gewonnen = leads([k('a', { firmaId: 'f-a', firma: 'Firma f-a' })], crmLeer({ firmen: [firma('f-a', lead)], chancen: [deal('gewonnen')] }), T)[0];
     expect(gewonnen.status).toBe('kunde');
   });

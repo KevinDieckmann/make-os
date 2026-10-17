@@ -78,8 +78,10 @@ const DEALS = { text: 'Deals pflegen', href: WEG.deals() };
 
 export const KENNZAHLEN: KennzahlDef[] = [
   // ── Finanzielle Gesundheit · Liquidität ──
-  { id: 'liquiditaet', label: 'Liquidität', saeule: 'fh', gruppe: 'Liquidität', gewicht: 1.5, einheit: 'monate', richtung: 'hoch', gruen: 3, rot: 1,
-    formel: 'Kontostände der Geschäftskonten ÷ monatliche Kosten', quelle: 'Kontostände (Finanzplanung) + Kosten der letzten 3 Monate',
+  // Benannt nach dem, was sie misst (17.10., L2 R4): wie lange die Kasse die Kosten trüge, wenn KEIN Umsatz mehr käme — daneben steht die
+  // Runway (mit Umsatz, Netto-Verbrauch). Vorher hieß sie „Liquidität“ und sah aus wie eine zweite Runway. Kennung und Schwellen bleiben.
+  { id: 'liquiditaet', label: 'Reichweite ohne Umsatz', saeule: 'fh', gruppe: 'Liquidität', gewicht: 1.5, einheit: 'monate', richtung: 'hoch', gruen: 3, rot: 1,
+    formel: 'Kontostände der Geschäftskonten ÷ monatliche Kosten (brutto, ohne Umsatz) — anders als die Runway, die den Umsatz abzieht', quelle: 'Kontostände (Finanzplanung) + Kosten der letzten 3 Monate',
     luecke: 'Kontostände und Monatskosten fehlen', pflegen: KONTEN },
   { id: 'runway', label: 'Runway', saeule: 'fh', gruppe: 'Liquidität', gewicht: 1.5, einheit: 'monate', richtung: 'hoch', gruen: 6, rot: 3,
     formel: 'Liquidität ÷ Ø Netto-Verbrauch (Kosten − Umsatz) der letzten 3 Monate', quelle: 'Kontostände + Ist-Monate',

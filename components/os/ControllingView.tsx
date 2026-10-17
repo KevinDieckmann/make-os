@@ -19,8 +19,8 @@ import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Woche, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
 import {
-  DEFAULT_FINANCE, MONTHS_DE, computeMetrics, mitKasse, geschaeftsKasse, eur,
-  type FinanceState,
+  DEFAULT_FINANCE, MONTHS_DE, computeMetrics, geschaeftsKasse, eur,
+  type FinanceState, type Kasse,
 } from '@/lib/make-one/finance-data';
 import { Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, auswahl, zoneFarbe, LEUCHT } from './ui';
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
@@ -92,6 +92,12 @@ export function ControllingView() {
   const [a, setA] = useState<Analysis | null>(null);
   // EINE Runway (17.10., Abnahme 3 · B1): die Zahl des Cockpits (Business-Index), vom Server mitgeliefert — nie eine zweite Rechnung hier.
   const [runwayIst, setRunwayIst] = useState<RunwayDesIndex | null>(null);
+  // 0-Punkt (17.10., L2 R2): Monate davor zählen nicht (der Server liefert sie mit 0) und sind hier gesperrt — eine Eingabe dort überschriebe
+  // sonst den archivierten Wert im Speicher.
+  const [nullpunkt, setNullpunkt] = useState<string | null>(null);
+  // Die Kasse vom Server (17.10., L2 R3): Firmenkonten MIT Konten-Register und 0-Punkt (`mitEroeffnung`) — auch für ein Konto „nur Business“,
+  // das den Finanzplan nicht lesen darf (dort blieb die Kasse im Browser leer und das Feld „Cash aktuell“ wirkte nirgends).
+  const [serverKasse, setServerKasse] = useState<Kasse | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Konnte der Stand nicht geladen werden, wird NICHT gespeichert — sonst
@@ -133,8 +139,10 @@ export function ControllingView() {
   const finanzSpeichern = useSpeichern('/api/state/finance', { listen: { months: 'm' }, uebernehmen: st => setS(st as unknown as FinanceState) });
   const ladeFinanz = useCallback(() => fetch('/api/state/finance')
     .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
-    .then((d: { state: FinanceState | null; runwayIst?: RunwayDesIndex | null }) => {
+    .then((d: { state: FinanceState | null; runwayIst?: RunwayDesIndex | null; nullpunkt?: string | null; kasse?: Kasse }) => {
       setRunwayIst(d.runwayIst ?? null);
+      setServerKasse(d.kasse ?? null);
+      setNullpunkt(typeof d.nullpunkt === 'string' ? d.nullpunkt : null);
       if (finanzSpeichern.hatOffenes()) return;
       if (d.state && Array.isArray(d.state.months) && d.state.months.length === 12) { setS(d.state); finanzSpeichern.kenne(d.state); }
       setLoaded(true);
@@ -155,9 +163,11 @@ export function ControllingView() {
     persist({ ...s, months: s.months.map((r, j) => j === i ? { ...r, [field]: num(v) } : r) });
   const setField = (field: 'zielUmsatz' | 'zielGewinn' | 'cash', v: string) => persist({ ...s, [field]: num(v) });
 
-  // Kasse aus den Firmenkonten — das Feld „Cash“ gilt nur, solange keins einen Stand hat.
-  const kasse = useMemo(() => geschaeftsKasse(firmen, s.cash), [firmen, s.cash]);
-  const m = useMemo(() => computeMetrics(fplan ? mitKasse(s, firmen) : s), [s, fplan, firmen]);
+  // Kasse aus den Firmenkonten (vom Server, s. o.) — das Feld „Cash“ gilt nur, solange keins einen Stand hat. Bis die Antwort da ist: dieselbe
+  // Regel im Browser (ohne 0-Punkt).
+  const kasse = useMemo(() => serverKasse ?? geschaeftsKasse(firmen, s.cash), [serverKasse, firmen, s.cash]);
+  // Die Kennzahlen rechnen ohne Kasse (die Runway kommt vom Server, `runwayIst`).
+  const m = useMemo(() => computeMetrics(s), [s]);
   // Ohne gesetzten Startmonat gilt der erste Monat mit Zahlen als Start.
   const startMonat = useMemo(() => {
     if (typeof s.startMonat === 'number') return Math.max(0, Math.min(11, s.startMonat));
@@ -170,7 +180,8 @@ export function ControllingView() {
   async function analyse() {
     setBusy(true);
     try {
-      const r = await fetch('/api/controlling/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: s }) });
+      // Der Server liest die Monate selbst (17.10., L2 C2: dieselben wie Cockpit und ZOE) — die Seite schickt keinen Stand mehr mit.
+      const r = await fetch('/api/controlling/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
       const d = await r.json();
       setA({ briefing: d.briefing ?? '', fokus: d.fokus ?? [], risiken: d.risiken ?? [] });
     } catch { setA({ briefing: 'Analyse gerade nicht möglich.' }); }
@@ -380,15 +391,18 @@ export function ControllingView() {
           <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase', listStyle: 'none', marginTop: 10 }}>Monate ohne Abschluss pflegen ▸</summary>
           <div style={{ ...mikro, margin: '12px 0 8px' }}>Ist je Monat — Umsatz / Kosten</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-            {s.months.map((r, i) => (
-              <div key={i} style={{ background: 'rgba(255,255,255,.04)', borderRadius: 12, padding: '8px 10px' }}>
-                <div style={{ ...mikro, color: i === m.aktMonatIdx ? LEUCHT.gut : C.inkLeise, marginBottom: 4 }}>{MONTHS_DE[i]}</div>
-                <input value={r.umsatz || ''} placeholder="Umsatz" aria-label={`Umsatz ${MONTHS_DE[i]}`} onChange={e => setMonth(i, 'umsatz', e.target.value)} inputMode="numeric"
+            {s.months.map((r, i) => {
+              const vorNull = !!nullpunkt && `${s.jahr}-${String(i + 1).padStart(2, '0')}` < nullpunkt;
+              return (
+              <div key={i} style={{ background: 'rgba(255,255,255,.04)', borderRadius: 12, padding: '8px 10px', opacity: vorNull ? 0.55 : 1 }} title={vorNull ? 'Vor dem 0-Punkt — gespeichert, zählt aber nicht mehr (Finanzen › Business › 0-Punkt).' : undefined}>
+                <div style={{ ...mikro, color: i === m.aktMonatIdx ? LEUCHT.gut : C.inkLeise, marginBottom: 4 }}>{MONTHS_DE[i]}{vorNull ? ' · vor dem 0-Punkt' : ''}</div>
+                <input value={r.umsatz || ''} placeholder="Umsatz" aria-label={`Umsatz ${MONTHS_DE[i]}`} onChange={e => setMonth(i, 'umsatz', e.target.value)} inputMode="numeric" disabled={vorNull}
                   style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,.06)', color: C.ink, fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, padding: '4px 0', outline: 'none' }} />
-                <input value={r.kosten || ''} placeholder="Kosten" aria-label={`Kosten ${MONTHS_DE[i]}`} onChange={e => setMonth(i, 'kosten', e.target.value)} inputMode="numeric"
+                <input value={r.kosten || ''} placeholder="Kosten" aria-label={`Kosten ${MONTHS_DE[i]}`} onChange={e => setMonth(i, 'kosten', e.target.value)} inputMode="numeric" disabled={vorNull}
                   style={{ width: '100%', background: 'transparent', border: 'none', color: C.inkDim, fontFamily: SCHRIFT.display, fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, padding: '4px 0', outline: 'none', marginTop: 2 }} />
               </div>
-            ))}
+              );
+            })}
           </div>
           <Leer>Nur Zahlen eintragen. Wird automatisch gespeichert, alles rechnet live.</Leer>
         </details>

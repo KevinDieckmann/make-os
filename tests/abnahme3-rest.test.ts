@@ -26,15 +26,15 @@ describe('B1 · EINE Runway (lib/finanzen/runway.ts)', () => {
     expect(runwayRechnen(5000, [])).toMatchObject({ monate: null, luecke: 'monate' });
     expect(runwayAnzeige({ monate: 3.2, keinVerbrauch: false })).toBe('3,2 Monate');
   });
-  it('Controlling (computeMetrics) rechnet dieselbe Regel — profitabel ist nie „3,2 Monate bei Ø Burn“', () => {
+  it('Controlling (computeMetrics) rechnet keine eigene Runway mehr (17.10., L2 R1) — EINE Quelle: der Business-Index', () => {
     const f: FinanceState = { ...DEFAULT_FINANCE, jahr: 2026, months: DEFAULT_FINANCE.months.map((m, i) => (i < 9 ? { ...m, umsatz: 17144, kosten: 15073 } : { ...m })) };
     const m = computeMetrics(mitKasse(f, [{ id: 'ug', kontostand: 48000 }]), new Date('2026-10-17T10:00:00Z'));
-    expect(m.runwayMonate).toBeNull();
-    expect(m.runway.keinVerbrauch).toBe(true);
+    expect('runwayMonate' in m).toBe(false);
+    expect('runway' in m).toBe(false);
   });
   it('alle Orte lesen sie: Business-Index, Controlling (vom Server), Head of Finance; die Finanzplanung nennt ihre Variante „Runway laut Plan“', () => {
     expect(lies('lib/business/messen.ts')).toContain('const r = runwayRechnen(k.betrag, ist);');
-    expect(lies('lib/make-one/finance-data.ts')).toContain('const runway = runwayRechnen(kasseBetrag, abgeschlossen);');
+    expect(sichtbar('lib/make-one/finance-data.ts')).not.toMatch(/runwayRechnen/);
     expect(lies('app/api/state/finance/route.ts')).toContain('const runwayIst = await runwayDesIndex()');
     expect(sichtbar('components/os/ControllingView.tsx')).not.toMatch(/m\.runwayMonate/);
     expect(lies('components/os/ControllingView.tsx')).toContain('runwayIst.anzeige');
@@ -52,14 +52,20 @@ describe('B2 · Head of Finance liest dieselben Quellen wie Controlling und Steu
       { firma: 'ug', monat: '2026-03', umsatz: 1000, kosten: 400 },
       { firma: 'kdv', monat: '2026-03', umsatz: 500, kosten: 100 },
       { firma: 'kdc', monat: '2026-03', umsatz: 99999, kosten: 1 },
-    ]);
+    ], null);
     expect(r.months[2]).toMatchObject({ umsatz: 1500, kosten: 500 });
-    expect(mitAbschluessen(f, [])).toBe(f);
-    expect(lies('lib/finanzen/chef/lauf.ts')).toContain('mitAbschluessen(finance, abschluesse?.eintraege)');
-    expect(lies('app/api/state/finance/route.ts')).toContain('mitAbschluessen(roh, ab?.eintraege)');
+    expect(mitAbschluessen(f, [], null)).toBe(f);
+    // EINE Lesestelle (17.10., L2 R1/R2): Monatsabschlüsse + 0-Punkt.
+    expect(lies('lib/finanzen/chef/lauf.ts')).toContain('ladeControlling()');
+    expect(lies('app/api/state/finance/route.ts')).toContain('ladeControlling(geltende)');
   });
   it('Fristen aus lib/steuern (Gewerbe-/Körperschaftsteuer je Gesellschaft); die Business-Sicht ohne Einkommensteuer', () => {
-    expect(lies('lib/finanzen/chef/finanzbild.ts')).toContain('e.steuerFristen ?? steuertermine(');
+    // Seit L2 S1 ohne Rückfall auf die eigenen Steuer-Annahmen; Takt und Vorschau lesen dieselben Fristen.
+    expect(lies('lib/finanzen/chef/finanzbild.ts')).toContain('const termine: Termin[] = e.steuerFristen ?? [];');
+    expect(sichtbar('lib/finanzen/chef/finanzbild.ts')).not.toMatch(/steuertermine\(/);
+    expect(lies('lib/finanzen/chef/takt.ts')).toContain('fristenAusSteuern(heute, nurBusiness)');
+    expect(lies('lib/agenten/naechstes.ts')).toContain('fristenAusSteuern(heute, !haushalt)');
+    expect(sichtbar('components/os/FinanzchefView.tsx')).not.toMatch(/estVorauszahlung|kstVorauszahlung|gewstVorauszahlung/);
     const lauf = lies('lib/finanzen/chef/lauf.ts');
     expect(lauf).toContain("import('@/lib/steuern/rechnen')");
     expect(lauf).toContain("(!nurBusiness || bereichVon(f.einheit) === 'business')");

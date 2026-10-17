@@ -18,8 +18,8 @@ import type { KapaKennzahlen } from '@/lib/kapazitaet/typen';
 import { ffMessen, type FfIndexDaten } from '@/lib/fulfillment/prozesse/kennzahlen';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
-import { computeMetrics } from '@/lib/make-one/finance-data';
-import { runwayRechnen } from '@/lib/finanzen/runway';
+import { computeMetrics, gesamtFirmen, istWahlGesamt, mitAbschluessen } from '@/lib/make-one/finance-data';
+import { runwayRechnen, runwayAnzeige } from '@/lib/finanzen/runway';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { vorschau, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
 import type { Mandat, Chance } from '@/lib/crm/typen';
@@ -115,7 +115,7 @@ const firmenLabel = (id: string) => (istGesellschaft(id) ? finanzOrtName(id) : u
  */
 function firmenDer(b: Bestand): Gesellschaftskennung[] {
   if (b.scope !== 'gesamt') return [b.scope];
-  return BUSINESS_GESELLSCHAFTEN.filter(f => f !== 'ug' || b.abschluesse.some(a => a.firma === 'ug'));
+  return gesamtFirmen(b.abschluesse);
 }
 
 /**
@@ -169,11 +169,13 @@ export function istMonate(b: Bestand): IstMonat[] {
     const ausFirmen = (): IstMonat => ({ monat: m, umsatz: da.reduce((s, x) => s + x.umsatz, 0), kosten: da.reduce((s, x) => s + x.kosten, 0), personal: summe('personal'), marketingVertrieb: summe('marketingVertrieb'), afa: summe('afa'), fakturierteTage: summe('fakturierteTage'), quelle: Array.from(new Set(da.map(x => x.quelle))).join(' + ') });
     // Eine Firma, oder alle Firmen vollständig: deren Zahlen.
     if (da.length && da.length === firmen.length) { raus.push(ausFirmen()); continue; }
-    // Gesamtsicht mit Lücken: erst das Controlling (euer Gesamt-Ist), sonst die Firmen, die es gibt.
+    // Gesamtsicht mit Lücken: erst das Controlling (euer Gesamt-Ist), sonst die Firmen, die es gibt — EINE Regel mit `mitAbschluessen`
+    // (Controlling, ZOE, Head of Finance: `istWahlGesamt`, 17.10., L2 R1).
     if (b.scope === 'gesamt') {
       const r = b.finance && Number(m.slice(0, 4)) === b.finance.jahr ? b.finance.months?.[Number(m.slice(5, 7)) - 1] : undefined;
-      if (r && ((r.umsatz || 0) > 0 || (r.kosten || 0) > 0)) { raus.push({ monat: m, umsatz: r.umsatz || 0, kosten: r.kosten || 0, quelle: 'Controlling' }); continue; }
-      if (da.length) raus.push({ ...ausFirmen(), quelle: `${ausFirmen().quelle} (nur ${da.length} von ${firmen.length} Firmen)` });
+      const wahl = istWahlGesamt(da.length, firmen.length, r);
+      if (wahl === 'controlling' && r) { raus.push({ monat: m, umsatz: r.umsatz || 0, kosten: r.kosten || 0, quelle: 'Controlling' }); continue; }
+      if (wahl === 'teil') raus.push({ ...ausFirmen(), quelle: `${ausFirmen().quelle} (nur ${da.length} von ${firmen.length} Firmen)` });
     }
   }
   return raus;
@@ -391,7 +393,8 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
     const details = [...kontenDetails(b), ...ist.slice().reverse().map(m => monatDetail(b, m, undefined, m.umsatz - m.kosten < 0 ? 'rot' : 'gruen'))];
     if (r.keinVerbrauch) return { wert: 99, anzeige: 'kein Verbrauch', quelle: `Umsatz deckt die Kosten (Ø ${euro(-netto)} Überschuss/Monat, ${quellenText(ist)})`, details };
     const w = r.monate ?? 0;
-    return { wert: w, anzeige: `${zahl(w)} Monate`, quelle: `${euro(k.betrag)} ÷ ${euro(netto)} Netto-Verbrauch/Monat (${quellenText(ist)})`, details };
+    // EIN Anzeigeformat (17.10., L2 C): `runwayAnzeige` — dasselbe in Cockpit, Controlling, ZOE, Board und Head of Finance („3,0 Monate“).
+    return { wert: w, anzeige: runwayAnzeige(r), quelle: `${euro(k.betrag)} ÷ ${euro(netto)} Netto-Verbrauch/Monat (${quellenText(ist)})`, details };
   },
   deckung13(b) {
     const k = kasse(b), mk = monatsKosten(b);
@@ -742,7 +745,9 @@ function jahresKurs(b: Bestand): { ziel: number; ist: number; aktuell: number; n
   const ziel = zielDer(b);
   if (!ziel) return { luecke: b.scope === 'gesamt' ? 'Jahresziel im Controlling fehlt' : 'Jahresumsatzziel für diese Firma fehlt' };
   if (b.scope === 'gesamt' && b.finance) {
-    const m = computeMetrics(b.finance, new Date(`${b.heute}T12:00:00`));
+    // Dieselben Monate wie das Controlling (17.10., L2 R6): MIT den Monatsabschlüssen (`mitAbschluessen`) — der 0-Punkt ist in `ladeRoh`
+    // schon angewandt (Abschlüsse davor archiviert, Controlling-Monate davor auf null), daher `null`.
+    const m = computeMetrics(mitAbschluessen(b.finance, b.abschluesse, null), new Date(`${b.heute}T12:00:00`));
     if (!m.aktiveMonate) return { luecke: 'Keine Ist-Monate im Controlling' };
     return { ziel, ist: m.istUmsatz, aktuell: m.runRateAktuell, noetig: m.runRateNoetig, verbleibend: m.verbleibend, quelle: 'Controlling' };
   }

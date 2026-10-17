@@ -6,7 +6,6 @@
 // wird gegen dieses Paket geprüft (pruefung.ts).
 
 import { computeMetrics, mitKasse, MONTHS_DE, type FinanceState, type Kasse } from '@/lib/make-one/finance-data';
-import { runwayAnzeige } from '@/lib/finanzen/runway';
 import { vorschau, nurBusiness, businessFirmen, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { kennzahlen as grundKennzahlen, monatsBild, type Grundlage } from '@/lib/make-one/grundlage';
 import type { Haushalt } from '../haushalt/typen';
@@ -17,7 +16,7 @@ import { luft } from '../haushalt/fixkosten';
 import { faelligeZeilen } from '../haushalt/zoe';
 import { bruecke, istEntnahmeKategorie } from '../haushalt/gesamt';
 import { vollMonate, monatVon, tageZwischen, tagPlus, monatPlus } from '../haushalt/monat';
-import { steuertermine, type SteuerEinstellung, type Termin } from './steuertermine';
+import type { SteuerEinstellung, Termin } from './steuertermine';
 import { auffaelligkeiten, type Auffaelligkeit } from './auffaellig';
 import { kontoName, grundlageImBusiness, istBusinessGesellschaft } from '@/lib/einheiten';
 
@@ -32,12 +31,13 @@ export interface Eingaben {
   plan: FinanzplanStand | null;
   planposten: Planposten[];
   grundlage: { g: Grundlage; stand: string } | null;
+  /** Die eigenen Einstellungen des Head of Finance — seit 17.10. (L2 S1) gehen sie nicht mehr in Fristen und Bild ein (Steuer-Modul gilt). */
   steuer: SteuerEinstellung & { ruecklageQuote: number | null };
   /** Nur übergeben, wenn der Aufruf einer Person mit Haushaltszugang gehört. */
   haushalt?: (Haushalt & { meta: Meta }) | null;
   /** EINE Runway (17.10., Abnahme 3 · B1): die Zahl des Business-Index (Cockpit) — gesetzt, gilt sie statt der eigenen Rechnung. */
   runway?: { monate: number | null; keinVerbrauch: boolean; gemessen: boolean; anzeige: string } | null;
-  /** Steuer-Fristen aus dem Steuer-Modul (lib/steuern, 17.10., B2) — gesetzt, gelten sie statt des eigenen Kalenders. */
+  /** Steuer-Fristen aus dem Steuer-Modul (lib/steuern, 17.10., B2) — die EINE Quelle; fehlt sie, keine Termine und ein Hinweis (L2 S1). */
   steuerFristen?: Termin[] | null;
 }
 
@@ -64,7 +64,6 @@ export function baueFinanzbild(e: Eingaben) {
   // Index, lib/business/speicher.ts `ladeRoh`); keine Einkommensteuer-Termine (persönlich). Mit Haushaltszugang wie bisher alles.
   const businessSicht = !e.haushalt;
   const grundlage0 = e.grundlage && (!businessSicht || grundlageImBusiness()) ? e.grundlage : null;
-  const steuerSicht: SteuerEinstellung & { ruecklageQuote: number | null } = businessSicht ? { ...e.steuer, estVorauszahlung: false } : e.steuer;
   const h = (schwere: Schwere, bereich: Hinweis['bereich'], text: string, quelle: string) => hinweise.push({ schwere, bereich, text, quelle });
   const jetzt = new Date(`${e.heute}T12:00:00`);
 
@@ -163,8 +162,10 @@ export function baueFinanzbild(e: Eingaben) {
 
   // ── Steuern: Fristen nie aus dem Gedächtnis ─────────────────────────────
   // Seit 17.10. (Abnahme 3 · B2) aus dem Steuer-Modul (lib/steuern: Gewerbe- und Körperschaftsteuer der Gesellschaften, ESt nur mit
-  // Haushaltszugang) — derselbe Kalender wie Finanzen › Steuern. Der eigene Kalender bleibt Rückfall, wenn das Modul nichts liefert.
-  const termine: Termin[] = e.steuerFristen ?? steuertermine(e.heute, tagPlus(e.heute, 60), steuerSicht);
+  // Haushaltszugang) — derselbe Kalender wie Finanzen › Steuern. Seit L2 S1 ohne Rückfall auf eigene Steuer-Annahmen: liefert das Modul
+  // nichts, gibt es keine Termine und einen Hinweis (nie eine zweite Rechnung, die andere Fristen nennt).
+  const termine: Termin[] = e.steuerFristen ?? [];
+  if (!e.steuerFristen) h('mittel', 'daten', 'Steuer-Fristen gerade nicht lesbar — unter Finanzen › Steuern prüfen, statt aus dem Gedächtnis zu planen.', 'steuern');
   for (const t of termine.filter(t => tageZwischen(e.heute, t.datum) <= 14)) h(tageZwischen(e.heute, t.datum) <= 5 ? 'hoch' : 'mittel', 'steuern', `${t.titel} am ${tagDe(t.datum)}.`, 'Steuerkalender');
 
   // ── Haushalt (nur mit Zugang) ───────────────────────────────────────────
@@ -246,10 +247,10 @@ export function baueFinanzbild(e: Eingaben) {
         ist_umsatz: r2(m.istUmsatz), ist_kosten: r2(m.istKosten), ist_gewinn: r2(m.istGewinn),
         fortschritt_prozent: r2(m.fortschritt * 100), run_rate_aktuell: r2(m.runRateAktuell), run_rate_noetig: r2(m.runRateNoetig),
         rest_monate: m.restMonate, aktive_monate: m.aktiveMonate, avg_burn: r2(m.avgBurn),
-        // EINE Runway (17.10., B1): die des Cockpits, sonst dieselbe Rechnung (lib/finanzen/runway.ts) über die Controlling-Monate.
-        runway_monate: e.runway ? (e.runway.monate != null ? r2(e.runway.monate) : null) : m.runwayMonate != null ? r2(m.runwayMonate) : null,
-        runway_kein_verbrauch: e.runway ? e.runway.keinVerbrauch : m.runway.keinVerbrauch,
-        runway_anzeige: e.runway ? e.runway.anzeige : runwayAnzeige(m.runway), leere_monate: luecken,
+        // EINE Runway (17.10., B1; seit L2 R1 ohne Rückfall auf eine zweite Rechnung): die des Cockpits (`runwayDesIndex`) — fehlt sie, „—“.
+        runway_monate: e.runway?.monate != null ? r2(e.runway.monate) : null,
+        runway_kein_verbrauch: e.runway?.keinVerbrauch ?? false,
+        runway_anzeige: e.runway?.anzeige ?? '—', leere_monate: luecken,
       } : null,
       kasse: { ...kasse, betrag: r2(kasse.betrag) },
       liquiditaet_12_wochen: v ? {
@@ -261,7 +262,8 @@ export function baueFinanzbild(e: Eingaben) {
       grundlage,
       abgleich_controlling_grundlage: abgleich,
     },
-    steuern: { einstellung: steuerSicht, termine_60_tage: termine },
+    // Die Steuer-Einstellungen stehen im Datenpaket (`einstellungen.steuer`, aus Finanzen › Steuern) — hier nur die Termine (17.10., L2 S1).
+    steuern: { termine_60_tage: termine },
     haushalt,
     gesamt,
     entnahmen_abgleich: entnahmen,

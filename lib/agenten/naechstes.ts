@@ -370,16 +370,15 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date(), s
         const { faelligerModus } = await import('@/lib/finanzen/chef/plan');
         const { leererStand, standName } = await import('@/lib/finanzen/chef/stand');
         const { haushalteAus } = await import('@/lib/finanzen/chef/takt');
-        const { steuertermine } = await import('@/lib/finanzen/chef/steuertermine');
-        const { ladeEinstellung } = await import('@/lib/finanzen/chef/lauf');
+        const { fristenAusSteuern } = await import('@/lib/finanzen/chef/lauf');
         const { heuteBerlin } = await import('@/lib/finanzen/haushalt/monat');
         const hh = haushalteAus(konten.konten);
         const haushalt = umfang.haushalt && hh.has(umfang.haushalt) ? umfang.haushalt : null;
         const lauf = haushalt ? hh.get(haushalt)! : null;
         const sim = { ...leererStand(), ...((await sicher(loadJson<Record<string, unknown>>(standName(haushalt)), null)) ?? {}) } as ReturnType<typeof leererStand>;
         sim.letzte = { ...sim.letzte }; sim.versuche = { ...sim.versuche }; sim.berichte = [...sim.berichte];
-        const e = await sicher(ladeEinstellung(), null);
-        const termine = e ? steuertermine(heute, tagPlus(heute, 60), e.steuer) : [];
+        // Steuer-Fristen aus EINER Quelle (17.10., L2 S1): das Steuer-Modul — wie der Takt (`finanzchefFaellig`) und das Finanzbild.
+        const termine = await sicher(fristenAusSteuern(heute, !haushalt), []);
         const lpFrei = lauf ? await personFrei(lauf) : [];
         const treffer = modusZeiten(jetzt, bis,
           t => { if (hhFrei(t) || istBusinessFrei(lpFrei, wandzeit(t))) return []; const m = faelligerModus(sim, heuteBerlin(t), t.getDay(), t.getHours(), termine, t); return m ? [{ modus: m.modus }] : []; },

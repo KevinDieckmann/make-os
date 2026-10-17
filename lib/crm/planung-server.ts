@@ -143,8 +143,8 @@ export async function planungLage(person: string, filter: string | null, heute =
     const plan = wochenziele(lagen);
     const bedarf = bedarfJePerson(lagen, datei.kanaele, datei.zeiten);
     const woche = wocheVon(heute), vorwoche = vorwocheVon(heute);
-    const istJetzt = wochenIst(kontakte, crm, woche, heute);
-    const istVor = wochenIst(kontakte, crm, vorwoche, tagPlus(woche, -1));
+    const istJetzt = wochenIst(kontakte, crm, woche, heute, zeilen);
+    const istVor = wochenIst(kontakte, crm, vorwoche, tagPlus(woche, -1), zeilen);
     const z = zyklus(crm.chancen);
     return {
       heute, woche, vorwoche,

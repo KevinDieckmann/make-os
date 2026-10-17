@@ -398,7 +398,7 @@ async function pipeline(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
   const naechste = offen.filter(c => c.naechsterSchritt).sort((a, b) => a.naechsterSchritt!.datum.localeCompare(b.naechsterSchritt!.datum));
   const koerper = [
     `Offen ${eur(pr.offen)} · gewichtet ${eur(pr.gewichtet)} (ohne hängende ${eur(pr.gewichtetOhneHaengende)}) · Commit ${eur(pr.commit)} · Best Case ${eur(pr.bestCase)} · ohne nächsten Schritt ${pr.ohneSchritt}`,
-    `Win Rate (${wr.fenster} Tage): ${wr.quote === null ? 'noch zu wenige Abschlüsse' : `${Math.round(wr.quote * 100)} %`} (${wr.gewonnen} gewonnen / ${wr.verloren} verloren)`,
+    `Win Rate (${wr.fenster} Tage): ${wr.quote === null ? 'noch zu wenige Abschlüsse' : `${wr.quote} %`} (${wr.gewonnen} gewonnen / ${wr.verloren} verloren)`,
     block('Je Stufe', pr.jeStufe.map(x => `- ${x.label}: ${x.anzahl} Deals · ${eur(x.wert)} · gewichtet ${eur(x.gewichtet)}${x.haengt ? ` · ${x.haengt} hängen` : ''}`)),
     block('Je Person', p.prognoseJePerson(offen, heute, crm.wahrscheinlichkeiten).map(x => `- ${x.person}: ${x.anzahl} Deals · gewichtet ${eur(x.gewichtet)} · Commit ${eur(x.commit)} · ${x.haengt} hängen · ${x.ohneSchritt} ohne Schritt`)),
     block('Hängende Deals (Ampel rot)', rot.map(c => dealZeile(s, c, heute, p.gesundheit))),
@@ -591,7 +591,7 @@ async function salesLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
     block(`Für ${nameVon(person)}`, fuerDich(person, kontakte, crm, heute).map(f => `- ${f.titel} ${f.anzahl}: ${f.text}`)),
     block('Team heute/Woche', teamZahlen(kontakte, crm.sitzungen, heute).map(t => `- ${t.person}: Power Hours ${t.powerHours.heute}/${t.powerHours.woche} · Gespräche ${t.gespraeche.heute}/${t.gespraeche.woche}`)),
     block('Zuletzt im Team', teamFeed(kontakte, crm, new Date(Date.now() - 7 * 864e5).toISOString(), 12).map(e => `- ${nameVon(e.person)}: ${e.text}`)),
-    `Auswertung: Win/Loss 180 Tage ${wl.gewonnen}/${wl.verloren}${wl.quote !== null ? ` (${Math.round(wl.quote * 100)} %)` : ''} · Zyklus Median ${zy.median ?? '—'} Tage · Ø Deal ${zy.dealGroesse !== null ? eur(zy.dealGroesse) : '—'}`,
+    `Auswertung: Win/Loss 180 Tage ${wl.gewonnen}/${wl.verloren}${wl.quote !== null ? ` (${wl.quote} %)` : ''} · Zyklus Median ${zy.median ?? '—'} Tage · Ø Deal ${zy.dealGroesse !== null ? eur(zy.dealGroesse) : '—'}`,
     block('Verweildauer je Stufe', verweildauerJeStufe(crm.chancen, heute).map(v => `- ${v.label}: Ø ${v.schnitt ?? '—'} Tage (n ${v.n}, längste ${v.laengste})`)),
     block('Aktive Kampagnen', crm.kampagnen.filter(k => k.status === 'aktiv').map(k => { const z = kampagnenZahlen(k, heute); return `- ${k.id} · ${k.name} · offen ${z.offen} · Gespräche ${z.gespraeche} · fällige Schritte ${z.schritteFaellig}`; })),
   ].join('\n\n');
@@ -608,7 +608,7 @@ async function qualifizierungLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRuec
   const { kontakte, crm, heute, person } = s;
   const zeilen = leads(kontakte, crm, heute);
   const runde = zuQualifizieren(zeilen, { wer: text(i.wer, 40) || person, auchKalt: i.auch_kalt === true, heute });
-  const tr = trichter(zeilen, crm);
+  const tr = trichter(zeilen, crm, heute);
   const tv = temperaturVerteilung(zeilen);
   const lv = lifecycleVerteilung(kontakte, crm, heute);
   const kreis = kreisKandidaten(kontakte, crm, heute);

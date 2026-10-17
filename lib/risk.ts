@@ -7,7 +7,8 @@
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
-import { computeMetrics, mitKasse, mitAbschluessen, type FinanceState } from '@/lib/make-one/finance-data';
+import { runwayDesIndex } from '@/lib/business/fuer-chef';
+import { runwaySatz } from '@/lib/finanzen/runway';
 import { schwellen } from '@/lib/schwellen';
 import { ladeAufgabenSicht, firmenAkteAusgeblendetFuer } from '@/lib/aufgaben/sicht';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
@@ -44,11 +45,11 @@ export async function computeShields(today = localDay(), person?: string | null)
   // EINE Konto-Sicht (09.10., E4): für ein Konto „nur Business“ nennen die Schilde nichts aus dem Privat-Bereich (Aufgaben-, Meilenstein-
   // Titel) — sie gehen über `gatherBrain` an ZOE. Unlesbare Konten → wie „nur Business“ (nie auf Verdacht zeigen).
   const ohnePrivat = await privatAusgeblendetFuer(person).catch(() => true);
-  const [fplanRoh, fin, tasksRoh, msRoh, wplanF] = await Promise.all([
+  const [fplanRoh, runway, tasksRoh, msRoh, wplanF] = await Promise.all([
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
-    // Ist-Monate MIT den Monatsabschlüssen (17.10., B1) — dieselbe Runway wie Cockpit und Controlling.
-    Promise.all([loadJson<FinanceState>('finance'), loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse')])
-      .then(([f, a]) => (f ? mitAbschluessen(f, a?.eintraege) : f)),
+    // EINE Runway (17.10., L2 R1): die des Business-Index (Cockpit, Controlling, Head of Finance, ZOE) — nie eine zweite Rechnung über die
+    // Controlling-Monate. Unlesbar → kein Schild (nie ein falscher Alarm).
+    runwayDesIndex(today).catch(() => null),
     ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
     // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person; ohne Person keiner an einem eigenen Ziel).
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine')
@@ -89,13 +90,11 @@ export async function computeShields(today = localDay(), person?: string | null)
   }
 
   // ── Runway: die Grenzen kommen aus dem Kompass, nicht aus dem Code ──
-  if (fin) {
-    const m = computeMetrics(mitKasse(fin, fplan?.firmen));
+  // Dieselbe Zahl und derselbe Text wie im Cockpit (`runwaySatz`); „kein Verbrauch“ (monate null) löst nie ein Schild aus.
+  if (runway?.gemessen && runway.monate != null) {
     const s = await schwellen();
-    if (m.runwayMonate != null && m.aktiveMonate > 0) {
-      if (m.runwayMonate < s.runwayRot) shields.push({ id: 'runway', stufe: 'rot', text: `Runway ${m.runwayMonate.toFixed(1).replace('.', ',')} Monate — Liquidität ist DAS Thema.`, href: WEG.controlling(), label: 'Controlling' });
-      else if (m.runwayMonate < s.runwayAmber) shields.push({ id: 'runway', stufe: 'amber', text: `Runway ${m.runwayMonate.toFixed(1).replace('.', ',')} Monate — Puffer schrumpft.`, href: WEG.controlling(), label: 'Controlling' });
-    }
+    if (runway.monate < s.runwayRot) shields.push({ id: 'runway', stufe: 'rot', text: `Runway ${runwaySatz(runway)} — Liquidität ist DAS Thema.`, href: WEG.controlling(), label: 'Controlling' });
+    else if (runway.monate < s.runwayAmber) shields.push({ id: 'runway', stufe: 'amber', text: `Runway ${runwaySatz(runway)} — Puffer schrumpft.`, href: WEG.controlling(), label: 'Controlling' });
   }
 
   // ── Ausführung: kritische Aufgaben überfällig ──

@@ -6,7 +6,7 @@
 import type { ZeitBild } from '@/lib/zeitmessung/modell';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { merken } from '@/lib/store/memo';
-import type { FinanceState } from '@/lib/make-one/finance-data';
+import { nullpunktMonate, type FinanceState } from '@/lib/make-one/finance-data';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { lesen, monatsBild, type MalinExport } from '@/lib/make-one/grundlage';
 import { ladeCrm } from '@/lib/crm/speicher';
@@ -239,7 +239,8 @@ async function ladeRohFrisch(heute: string) {
   }, eroeffnung);
   // Controlling (Gesamt-Ist ohne Firma): Monate vor dem 0-Punkt zählen nur dann nicht mehr, wenn JEDE Business-Gesellschaft eröffnet ist.
   const gesamtAb = gesamtAbMonat(eroeffnung);
-  const finance = fin && gesamtAb && Array.isArray(fin.months) ? { ...fin, months: fin.months.map((m, i) => (`${fin.jahr}-${String(i + 1).padStart(2, '0')}` < gesamtAb ? { ...m, umsatz: 0, kosten: 0 } : m)) } : fin;
+  // EINE Stelle (17.10., L2 R2): `nullpunktMonate` — dieselbe, die `mitAbschluessen` für Controlling, ZOE und Head of Finance nimmt.
+  const finance = fin ? nullpunktMonate(fin, gesamtAb) : fin;
   return {
     heute,
     firmen: ab0.firmen, rechnungen: ab0.rechnungen, zahlungen: ab0.zahlungen, merkposten: imBusiness(fp?.merkposten ?? []),

@@ -94,6 +94,8 @@ const werteVon = (bi: ReturnType<typeof berechne>) => Object.fromEntries(bi.saeu
 
 describe('Cockpit (Business-Index) — Summen je Sicht bleiben', () => {
   it('Gesamt · Selbstständigkeit · KD Ventures: Index und jede Kennzahl wie vor dem Umbau', () => {
+    // 17.10. (L2 R6): Run-Rate und Pipeline der GESAMT-Sicht lesen die Ist-Monate jetzt MIT den Monatsabschlüssen (`mitAbschluessen`,
+    // wie das Controlling) — Juli (nur KD Ventures) und August (beide) zählen mit: run_rate 30,77 → 17,15, pipeline 0,06 → 0,07. Je Firma unverändert.
     const ergebnis = Object.fromEntries((['gesamt', 'kdc', 'kdv'] as const).map(s => { const bi = berechne(bestand(s)); return [s, { index: bi.index, werte: werteVon(bi) }]; }));
     expect(ergebnis).toMatchInlineSnapshot(`
       {
@@ -131,11 +133,11 @@ describe('Cockpit (Business-Index) — Summen je Sicht bleiben', () => {
             "meilensteine": null,
             "nrr": null,
             "personalquote": 18.99,
-            "pipeline": 0.06,
+            "pipeline": 0.07,
             "plan_ist": 674.51,
             "quick_ratio": 4.12,
             "recurring": 58.5,
-            "run_rate": 30.77,
+            "run_rate": 17.15,
             "runway": 99,
             "sales_cycle": 0,
             "tagessatz": 1041.67,

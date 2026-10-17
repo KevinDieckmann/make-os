@@ -4,6 +4,7 @@
 //   (`kalender-bezug`), ohne iCloud-Abgleich (`termineLesen`, nie ein Netzaufruf). Private Termine der anderen Person
 //   sind maskiert und fallen heraus. `zeiten` = Start/Ende/Ort je Termin-Schlüssel für die Meeting-Aktivitäten
 //   (`terminUid` → Zeit, lib/crm/aktivitaeten.ts `meetingVon`). Zugang: Haushalt des Inhabers (wie der Kalender).
+//   `mandate=` zählt auch Termine an der Firma des Mandats ohne eigenes Mandat (EINE Regel mit dem Fulfillment, `bezugGehoertZu`).
 
 import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
@@ -14,6 +15,7 @@ import { termineZu, type TermineZuFrage } from '@/lib/kalender/termine-zu';
 import { wandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { localDay } from '@/lib/zeit';
 import { zeitenAus, type TerminZeit } from '@/lib/crm/aktivitaeten';
+import { ladeCrm } from '@/lib/crm/speicher';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +29,11 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const frage: TermineZuFrage = { kontakte: liste(q.get('kontakte')), firmen: liste(q.get('firmen')), deals: liste(q.get('deals')), mandate: liste(q.get('mandate')) };
   if (!frage.kontakte!.length && !frage.firmen!.length && !frage.deals!.length && !frage.mandate!.length) return NextResponse.json({ ok: false, fehler: 'kontakte, firmen, deals oder mandate fehlen.' }, { status: 400 });
+  // Termine eines Mandats (17.10., L2 B9): dieselbe Regel wie das Fulfillment — auch Termine an der Firma des Mandats (ohne Mandat am Termin).
+  if (frage.mandate!.length) {
+    const mandate = (await ladeCrm().catch(() => null))?.mandate ?? [];
+    frage.mandatFirmen = Object.fromEntries(mandate.filter(m => frage.mandate!.includes(m.id)).map(m => [m.id, m.firmaId ?? null]));
+  }
   const heute = localDay();
   const gelesen = await termineLesen(await ladeEinstellungen(), tagPlus(heute, -180), tagPlus(heute, 181)).catch(() => ({ quelle: 'leer' as const, termine: [], kalender: [] }));
   const sicht = gelesen.termine.map(t => maskieren(t, z.person));

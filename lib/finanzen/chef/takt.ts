@@ -12,10 +12,9 @@ import { ladeKonten } from '@/lib/zugang/konten';
 import type { Faellig } from '@/lib/zoe/takt';
 import { HAUSHALT_OK } from '../haushalt/zugriff';
 import { istEchterHaushalt } from '../haushalt/aufgaben';
-import { heuteBerlin, tagPlus } from '../haushalt/monat';
+import { heuteBerlin } from '../haushalt/monat';
 import { faelligerModus } from './plan';
-import { steuertermine } from './steuertermine';
-import { ladeEinstellung } from './lauf';
+import { fristenAusSteuern } from './lauf';
 import { leererStand, standName, type ChefStand } from './stand';
 import { wandzeit, wochentag as isoWochentag } from '@/lib/zeit/kalender-kern';
 
@@ -41,8 +40,13 @@ export async function finanzchefFaellig(jetzt: Date): Promise<Faellig[]> {
   if (!hasAnthropicKey()) return [];
   if (!(await resolveAgent('finanzchef')).enabled) return [];
   const heute = heuteBerlin(jetzt);
-  const einstellung = await ladeEinstellung();
-  const termine = steuertermine(heute, tagPlus(heute, 60), einstellung.steuer);
+  // Steuer-Fristen aus EINER Quelle (17.10., L2 S1): das Steuer-Modul (Finanzen › Steuern, je Gesellschaft) — wie Finanzbild und Vorschau.
+  // Vorher die eigenen Steuer-Annahmen des Head of Finance (ein Profil für alle Gesellschaften). Business ohne Haushalt: ohne Privat.
+  const fristenFuer = new Map<boolean, Promise<{ datum: string }[]>>();
+  const termineFuer = (nurBusiness: boolean) => {
+    if (!fristenFuer.has(nurBusiness)) fristenFuer.set(nurBusiness, fristenAusSteuern(heute, nurBusiness).catch(() => []));
+    return fristenFuer.get(nurBusiness)!;
+  };
   const haushalte = haushalteAus((await ladeKonten()).konten);
   const ziele: [string | null, string | null][] = haushalte.size ? Array.from(haushalte.entries()) : [[null, null]];
   const raus: Faellig[] = [];
@@ -55,7 +59,7 @@ export async function finanzchefFaellig(jetzt: Date): Promise<Faellig[]> {
     const stand = { ...leererStand(), ...((await loadJson<ChefStand>(standName(haushalt))) ?? {}) };
     // Berliner Wandzeit (09.10., Takt robust) — vorher getDay()/getHours() der Maschine.
     const { wochentag, stunde } = berlinerUhr(jetzt);
-    const m = faelligerModus(stand, heute, wochentag, stunde, termine, jetzt);
+    const m = faelligerModus(stand, heute, wochentag, stunde, await termineFuer(!haushalt), jetzt);
     if (!m) continue;
     raus.push({
       id: `finanzchef-${haushalt ?? 'business'}`,

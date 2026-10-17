@@ -1,10 +1,12 @@
 // ─── MAKE OS — Controlling-Zustand persistieren (lokal) ─────────────────────
-import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
+import { mitEroeffnung, geltendeLaden } from '@/lib/business/eroeffnung-server';
+import { controllingNullpunkt } from '@/lib/business/eroeffnung';
+import { ladeControlling } from '@/lib/finanzen/controlling-server';
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { schwellen } from '@/lib/schwellen';
-import { geschaeftsKasse, mitAbschluessen, DEFAULT_FINANCE, type FinanceState, type MonthRow } from '@/lib/make-one/finance-data';
+import { geschaeftsKasse, DEFAULT_FINANCE, type FinanceState, type MonthRow } from '@/lib/make-one/finance-data';
 import { runwayDesIndex } from '@/lib/business/fuer-chef';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -18,22 +20,24 @@ const KEIN_HAUSHALT = { ok: false, error: 'Kein Zugang zu den Business-Zahlen �
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json(KEIN_HAUSHALT, { status: 403 });
-  const [roh, plan, grenzen, ab] = await Promise.all([
-    loadJson<FinanceState>('finance'),
-    // 0-Punkt (05.10.): die Kasse aus den Konten ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts).
-    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan').then(f => (f ? mitEroeffnung(f) : f)),
+  // 0-Punkt (05.10.) EINMAL geladen: Kasse aus den Konten ab der Eröffnung, und (17.10., L2 R2) dieselben Controlling-Monate wie der
+  // Business-Index — Abschlüsse vor dem Stichtag zählen nicht, Monate vor dem 0-Punkt auch nicht (`ladeControlling`).
+  const geltende = await geltendeLaden();
+  const [state, plan, grenzen] = await Promise.all([
+    // Eine Wahrheit (26.09.): liegt ein Monatsabschluss (je Firma, Business-Index) vor, gilt er — die hier gepflegten Monate sind nur noch
+    // Rückfall. So zählt derselbe Umsatz nicht doppelt. Seit 17.10. an EINER Stelle (`ladeControlling` → `mitAbschluessen`, auch für Head of
+    // Finance, ZOE und Schilde) und nur Abschlüsse der Business-Gesellschaften (die Selbstständigkeit gehört zu Privat).
+    ladeControlling(geltende),
+    loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[] }>('finanzplan').then(f => (f ? mitEroeffnung(f, geltende) : f)),
     schwellen(),
-    loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse'),
   ]);
-  // Eine Wahrheit (26.09.): liegt ein Monatsabschluss (je Firma, Business-Index) vor, gilt er — die hier gepflegten Monate sind nur noch
-  // Rückfall. So zählt derselbe Umsatz nicht doppelt. Seit 17.10. an EINER Stelle (`mitAbschluessen`, auch für den Head of Finance) und nur
-  // Abschlüsse der Business-Gesellschaften (die Selbstständigkeit gehört zu Privat).
-  const state = roh ? mitAbschluessen(roh, ab?.eintraege) : roh;
+  // Monate vor dem 0-Punkt (JJJJ-MM) — die Seite zeigt sie gesperrt („vor dem 0-Punkt“), damit keine Eingabe dort einen archivierten Wert überschreibt.
+  const nullpunkt = controllingNullpunkt(geltende).abMonat;
   // EINE Runway (17.10., Abnahme 3 · B1): die Zahl des Business-Index (Gesamt) — Kasse der Business-Konten ÷ Ø Netto-Verbrauch der
   // letzten drei abgeschlossenen Monate (lib/finanzen/runway.ts). Dieselbe für jede Person im Haushalt, auch ein Konto „nur Business“.
   const runwayIst = await runwayDesIndex().catch(() => null);
   // Die Kasse kommt aus den Firmenkonten; `state.cash` bleibt nur Rückfall.
-  return NextResponse.json({ state, kasse: geschaeftsKasse(plan?.firmen, state?.cash), runway: { rot: grenzen.runwayRot, amber: grenzen.runwayAmber }, runwayIst });
+  return NextResponse.json({ state, kasse: geschaeftsKasse(plan?.firmen, state?.cash), runway: { rot: grenzen.runwayRot, amber: grenzen.runwayAmber }, runwayIst, nullpunkt });
 }
 
 export async function PUT(req: Request) {

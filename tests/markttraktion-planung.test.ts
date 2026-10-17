@@ -235,7 +235,7 @@ describe('Challenges — Fortschritt aus echten Aktivitäten, Vorschläge aus de
     k('sys', { aktivitaeten: [akt('system', '2026-10-12', { art: 'gespraech' })] }),
   ];
   const crm = crmMit({ sitzungen: [{ id: 's1', person: A, datum: '2026-10-12', karten: [] } as unknown as CrmBestand['sitzungen'][number]] });
-  const ist = wochenIst(kontakte, crm, HEUTE, '2026-10-18');
+  const ist = wochenIst(kontakte, crm, HEUTE, '2026-10-18', leads(kontakte, crm, HEUTE));
   it('zählt echte Gespräche je Person (System nie), Power Hours, Reaktivieren nach ≥ 90 Tagen Stille', () => {
     expect(ist.team.gespraeche).toBe(2);
     expect(ist.je[A].gespraeche).toBe(2);

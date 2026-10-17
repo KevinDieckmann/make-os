@@ -9,7 +9,7 @@
 // Nichts hier bewegt Geld. Der Agent schlägt vor; Menschen entscheiden.
 
 import { randomBytes } from 'node:crypto';
-import { businessFuerChef } from '@/lib/business/fuer-chef';
+import { businessFuerChef, runwayDesIndex } from '@/lib/business/fuer-chef';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askText, extractJson, hasAnthropicKey, kiGesperrt, kiSperrText } from '@/lib/anthropic';
@@ -18,15 +18,15 @@ import { resolveAgent, MODEL_BY_TIER } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { schwellen } from '@/lib/schwellen';
 import { lesen, type MalinExport } from '@/lib/make-one/grundlage';
-import { mitAbschluessen, type FinanceState } from '@/lib/make-one/finance-data';
-import { runwayDesIndex } from '@/lib/business/fuer-chef';
-import { bereichVon } from '@/lib/einheiten';
+import { ladeControlling } from '@/lib/finanzen/controlling-server';
+import { bereichVon, finanzOrtName } from '@/lib/einheiten';
+import { merken } from '@/lib/store/memo';
 import type { Termin } from './steuertermine';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeHaushalt } from '../haushalt/speicher';
 import { buchungenSuchen } from '../haushalt/zoe';
 import { heuteBerlin, tagPlus, tageZwischen } from '../haushalt/monat';
-import { baueFinanzbild, einstellungFuerBusiness, type Finanzbild, type FinanzplanStand } from './finanzbild';
+import { baueFinanzbild, type Finanzbild, type FinanzplanStand } from './finanzbild';
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { SYSTEM, aufgabe, schemaFuer, DEFINITIONEN, MODUS_NAME, type Modus } from './prompt';
 import { haushaltsPersonen } from '@/lib/aufgaben/sicht';
@@ -56,7 +56,9 @@ export async function ladeEinstellung(): Promise<ChefEinstellung> {
  */
 export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerlin(), opt: { businessIndex?: boolean } = {}): Promise<{ bild: Finanzbild; einstellung: ChefEinstellung; business: Record<string, unknown> | null }> {
   const [finance, plan, liqui, grund, einstellung] = await Promise.all([
-    loadJson<FinanceState>('finance'),
+    // Dieselben Controlling-Monate wie Controlling, ZOE, Schilde und der Business-Index (17.10., L2 R1/R2): MIT den Monatsabschlüssen
+    // und dem 0-Punkt — EINE Lesestelle (lib/finanzen/controlling-server.ts).
+    ladeControlling(),
     loadJson<FinanzplanStand>('finanzplan'),
     loadJson<{ posten?: Planposten[] }>('liquiplan'),
     loadJson<{ roh: MalinExport; stand: string }>('grundlage'),
@@ -65,15 +67,14 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
   const hh = haushalt ? await ladeHaushalt(haushalt) : null;
   // 0-Punkt (05.10.): Konten und Business-Posten ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
   const ab = await mitEroeffnung({ ...(plan ?? {}), planposten: liqui?.posten ?? [] });
-  // Dieselben Quellen wie Controlling und Steuern (17.10., Abnahme 3 · B2): die Ist-Monate MIT den Monatsabschlüssen (`mitAbschluessen`,
-  // wie /api/state/finance), die Runway des Business-Index (B1) und die Fristen des Steuer-Moduls (lib/steuern).
-  const [abschluesse, runway, steuerFristen] = await Promise.all([
-    loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse').catch(() => null),
+  // Dieselben Quellen wie Controlling und Steuern (17.10., Abnahme 3 · B2): die Ist-Monate kommen oben aus `ladeControlling` (wie
+  // /api/state/finance), dazu die Runway des Business-Index (B1) und die Fristen des Steuer-Moduls (lib/steuern).
+  const [runway, steuerFristen] = await Promise.all([
     runwayDesIndex(heute).catch(() => null),
     fristenAusSteuern(heute, !haushalt).catch(() => null),
   ]);
   const bild = baueFinanzbild({
-    heute, finance: finance ? mitAbschluessen(finance, abschluesse?.eintraege) : finance, plan: plan ? ab : null, planposten: ab.planposten,
+    heute, finance, plan: plan ? ab : null, planposten: ab.planposten,
     grundlage: grund?.roh ? { g: lesen(grund.roh, grund.stand), stand: grund.stand } : null,
     steuer: { ...einstellung.steuer, ruecklageQuote: einstellung.ruecklageQuote },
     haushalt: hh, runway, steuerFristen,
@@ -90,29 +91,58 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
   return { bild, einstellung, business: bi?.block ?? null };
 }
 
+/** Das Steuer-Profil je Gesellschaft (Finanzen › Steuern) — EIN Lesen je Tag und Stand (der Rechenkern läuft darin; der Takt fragt oft). */
+const steuerProfil = (heute: string) => merken(`hof-steuer-profil:${heute}`, 10 * 60_000, async () => {
+  const { ladeSteuerEinstellungenMitPlan } = await import('@/lib/steuern/speicher');
+  return ladeSteuerEinstellungenMitPlan(heute);
+});
+
 /**
  * Die Steuer-Fristen der nächsten 60 Tage aus dem Steuer-Modul (17.10., Abnahme 3 · B2) — dieselbe Rechnung wie Finanzen › Steuern
  * (Gewerbe- und Körperschaftsteuer je Gesellschaft, Gründungstage, Finanzplanung). Nur offene; `nurBusiness` = ohne Privat und ohne
- * die Selbstständigkeit (Business-Sicht, keine Einkommensteuer).
+ * die Selbstständigkeit (Business-Sicht, keine Einkommensteuer). Seit 17.10. (L2 S1) die EINE Quelle auch für Takt und Vorschau —
+ * die früheren eigenen Steuer-Annahmen des Head of Finance wirken nirgends mehr.
  */
 export async function fristenAusSteuern(heute: string, nurBusiness: boolean): Promise<Termin[]> {
-  const [{ ladeSteuerEinstellungenMitPlan, STEUERN }, { fristen, EINHEIT_LABEL }] = await Promise.all([import('@/lib/steuern/speicher'), import('@/lib/steuern/rechnen')]);
-  const [e, d] = await Promise.all([ladeSteuerEinstellungenMitPlan(heute), loadJson<{ abgehakt?: Record<string, unknown> }>(STEUERN)]);
+  const [{ STEUERN }, { fristen, EINHEIT_LABEL }] = await Promise.all([import('@/lib/steuern/speicher'), import('@/lib/steuern/rechnen')]);
+  const [e, d] = await Promise.all([steuerProfil(heute), loadJson<{ abgehakt?: Record<string, unknown> }>(STEUERN)]);
   return fristen(e, heute, d?.abgehakt ?? {}, 0, 60)
     .filter(f => !f.erledigt && f.datum >= heute && (!nurBusiness || bereichVon(f.einheit) === 'business'))
     .map(f => ({ datum: f.datum, art: f.art, titel: f.einheit === 'privat' ? f.titel : `${f.titel} · ${EINHEIT_LABEL[f.einheit]}`, hinweis: f.hinweis, einheit: f.einheit }));
+}
+
+const RECHTSFORM_TEXT: Record<string, string> = { freiberuf: 'freiberuflich', einzel: 'Einzelunternehmen (gewerblich)', ug: 'UG (haftungsbeschränkt)', gmbh: 'GmbH' };
+
+/**
+ * Rechtsform und steuerliche Einstellungen fürs Datenpaket (17.10., L2 S1) — aus dem Steuer-Profil je Gesellschaft (Finanzen › Steuern), nie aus
+ * eigenen Annahmen. `nurBusiness`: nur die Gesellschaften des Business-Bereichs, keine Einkommensteuer.
+ */
+export async function steuerAngabenFuer(heute: string, nurBusiness: boolean): Promise<Record<string, unknown>> {
+  const [e, { STEUER_FIRMEN }] = await Promise.all([steuerProfil(heute), import('@/lib/steuern/rechnen')]);
+  const firmen = STEUER_FIRMEN.filter(f => !nurBusiness || bereichVon(f) === 'business');
+  return {
+    quelle: 'Finanzen › Steuern (Steuer-Profil je Gesellschaft)',
+    mit_steuerberater: e.mitBerater,
+    gesellschaften: Object.fromEntries(firmen.map(f => [finanzOrtName(f), {
+      rechtsform: RECHTSFORM_TEXT[e[f].rechtsform] ?? e[f].rechtsform, ust_voranmeldung: e[f].ust, dauerfrist: e[f].dauerfrist,
+      ist_versteuerung: e[f].istVersteuerung, gewerbesteuer: e[f].gewerbe, ...(e[f].seit ? { seit: e[f].seit } : {}),
+    }])),
+    ...(nurBusiness ? {} : { einkommensteuer_vorauszahlung: e.privat.estVorauszahlung }),
+  };
 }
 
 /** Das Paket, das das Modell sieht — Meta, Einstellungen, Bedeutungen, Bild, frühere Vorschläge. */
 export async function datenpaket(bild: Finanzbild, einstellung: ChefEinstellung, stand: ChefStand, modus: Modus, business: Record<string, unknown> | null = null) {
   const s = await schwellen();
   // Business-Publikum (09.10., Funde Abdeckung #2): keine ESt-Vorauszahlung, keine Rechtsform einer Privat-Einheit — wie das Finanzbild.
-  const sichtbar = bild.umfang === 'business' ? einstellungFuerBusiness(einstellung) : einstellung;
+  // Rechtsform und Steuer-Einstellungen (17.10., L2 S1) aus dem Steuer-Profil je Gesellschaft — EINE Quelle mit Finanzen › Steuern.
+  const nurBusiness = bild.umfang === 'business';
+  const steuer = await steuerAngabenFuer(bild.stichtag, nurBusiness).catch(() => ({ quelle: 'Finanzen › Steuern', fehlt: 'Steuer-Profil gerade nicht lesbar — nachfragen statt raten.' }));
   return {
-    meta: { heute: bild.stichtag, publikum: bild.umfang === 'business' ? 'business' : 'haushalt', modus, letzter_lauf: stand.letzte[modus] ?? null },
+    meta: { heute: bild.stichtag, publikum: nurBusiness ? 'business' : 'haushalt', modus, letzter_lauf: stand.letzte[modus] ?? null },
     einstellungen: {
-      steuer: sichtbar.steuer, steuerquote_haushalt_prozent: bild.haushalt ? (bild.haushalt.steuerquote_annahme_prozent ?? null) : undefined,
-      rechtsform: sichtbar.rechtsform,
+      steuer, steuerquote_haushalt_prozent: bild.haushalt ? (bild.haushalt.steuerquote_annahme_prozent ?? null) : undefined,
+      ruecklage_quote_prozent: einstellung.ruecklageQuote,
       schwellen: {
         sparquote_rot_unter_prozent: 0, sparquote_gelb_unter_prozent: 10, fixkostenquote_gelb_ab_prozent: 50, fixkostenquote_rot_ab_prozent: 60,
         schuldendienst_gelb_ab_prozent: 20, schuldendienst_rot_ab_prozent: 35, runway_rot_monate: s.runwayRot, runway_gelb_monate: s.runwayAmber,

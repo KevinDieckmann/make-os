@@ -2,8 +2,7 @@
 // Du pflegst Ist-Umsatz/Kosten je Monat, Ziel & Cash. Alle Kennzahlen werden
 // deterministisch gerechnet (kein KI-Raten). Die KI liefert nur den Lagebericht.
 
-import { bereichVonFirma, istBusinessGesellschaft } from '@/lib/einheiten';
-import { runwayRechnen, type RunwayIst } from '@/lib/finanzen/runway';
+import { BUSINESS_GESELLSCHAFTEN, bereichVonFirma, istBusinessGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 
 export interface MonthRow { m: string; umsatz: number; kosten: number; }
 export interface FinanceState {
@@ -43,10 +42,9 @@ export interface FinanceMetrics {
   runRateNoetig: number;      // €/Monat, um Ziel bis Dez zu treffen
   runRateAktuell: number;     // Ø Umsatz der aktiven Monate
   avgBurn: number;            // Ø Kosten der aktiven Monate
-  /** EINE Runway (17.10., Abnahme 3 · B1, lib/finanzen/runway.ts): Kasse ÷ Ø Netto-Verbrauch der letzten drei abgeschlossenen
-   *  Monate — null bei „kein Verbrauch“ (siehe `runway.keinVerbrauch`) oder ohne Kasse/Ist-Monate. Vorher Kasse ÷ Ø Kosten OHNE Umsatz. */
-  runwayMonate: number | null;
-  runway: RunwayIst;
+  // Keine Runway mehr hier (17.10., L2 R1): sie hatte einen zweiten Eingangsweg (nur Controlling-Jahr, Kasse mit Rückfall auf `cash`)
+  // und wich so vom Cockpit ab. EINE Runway = die des Business-Index — Server: `runwayDesIndex()` (lib/business/fuer-chef.ts),
+  // Browser: `runwayIst` aus GET /api/state/finance. Gerechnet in lib/finanzen/runway.ts.
   aktiveMonate: number;
 }
 
@@ -86,14 +84,6 @@ export function computeMetrics(s: FinanceState, jetzt: Date = new Date()): Finan
   const runRateNoetig = restMonate > 0 ? verbleibend / restMonate : verbleibend;
   const runRateAktuell = aktiveMonate > 0 ? istUmsatz / aktiveMonate : 0;
   const avgBurn = aktiveMonate > 0 ? istKosten / aktiveMonate : 0;
-  // Runway (17.10., B1): die abgeschlossenen Monate ab dem Start (vor dem laufenden Monat), wie der Business-Index. Die Kasse ist
-  // unbekannt (null), wenn kein Konto einen Stand hat und kein Wert gepflegt ist — nie „0,0 Monate“ aus fehlenden Daten.
-  const bisIdx = s.jahr < h.jahr ? 11 : s.jahr > h.jahr ? -1 : h.monat - 1;
-  const abgeschlossen = months.slice(start, bisIdx + 1).filter(r => (r.umsatz || 0) > 0 || (r.kosten || 0) > 0);
-  const kasseQuelle = (s as Partial<{ kasse: Kasse }>).kasse?.quelle;
-  const kasseBetrag = kasseQuelle === 'keine' || (!kasseQuelle && !s.cash) ? null : s.cash;
-  const runway = runwayRechnen(kasseBetrag, abgeschlossen);
-  const runwayMonate = runway.monate;
 
   return {
     istUmsatz, istKosten, istGewinn,
@@ -105,8 +95,6 @@ export function computeMetrics(s: FinanceState, jetzt: Date = new Date()): Finan
     runRateNoetig,
     runRateAktuell,
     avgBurn,
-    runwayMonate,
-    runway,
     aktiveMonate,
   };
 }
@@ -135,20 +123,65 @@ export function mitKasse(s: FinanceState, firmen: Parameters<typeof geschaeftsKa
   return { ...s, cash: kasse.betrag, kasse };
 }
 
+/** Der 0-Punkt für die Controlling-Monate — gebaut NUR von `controllingNullpunkt` (lib/business/eroeffnung.ts), hier nur die Form. */
+export interface ControllingNullpunkt {
+  /** Liegt dieser Monatsabschluss vor dem Stichtag seiner Gesellschaft (archiviert, zählt nicht)? */
+  abschlussVor(a: { firma: string; monat: string }): boolean;
+  /** Monat (JJJJ-MM), vor dem die Gesamt-Zahlen ohne Firma nicht mehr zählen — nur, wenn JEDE Business-Gesellschaft eröffnet ist. */
+  abMonat: string | null;
+}
+
+/** Monatsschlüssel JJJJ-MM einer Controlling-Zeile. */
+const monatSchluessel = (jahr: number, i: number) => `${jahr}-${String(i + 1).padStart(2, '0')}`;
+
+/** Controlling-Monate vor dem 0-Punkt zählen nicht (gespeichert bleiben sie) — EINE Stelle für Index (`ladeRoh`) und `mitAbschluessen`. */
+export function nullpunktMonate(s: FinanceState, abMonat: string | null | undefined): FinanceState {
+  if (!abMonat || !Array.isArray(s.months)) return s;
+  return { ...s, months: s.months.map((m, i) => (monatSchluessel(s.jahr, i) < abMonat ? { ...m, umsatz: 0, kosten: 0 } : m)) };
+}
+
+/**
+ * Welche Business-Gesellschaften ein vollständiger Gesamt-Monat braucht (28.09., Business-Index): alle — die MAKE Innovation GmbH erst,
+ * wenn sie überhaupt Monatsabschlüsse führt. EINE Stelle für den Business-Index (`istMonate`) und `mitAbschluessen` (17.10., L2 R1).
+ */
+export function gesamtFirmen(abschluesse: readonly { firma: string }[]): Gesellschaftskennung[] {
+  return BUSINESS_GESELLSCHAFTEN.filter(f => f !== 'ug' || abschluesse.some(a => a.firma === 'ug'));
+}
+
+/** Woher ein Ist-Monat der Gesamtsicht kommt: alle Firmen mit Abschluss · sonst das gepflegte Controlling · sonst die Firmen, die es gibt. */
+export type IstWahl = 'firmen' | 'controlling' | 'teil' | 'keine';
+/** EINE Regel „Ist-Monat Gesamt“ (17.10., L2 R1) — Business-Index und Controlling/ZOE/Head of Finance lesen dieselben Monate. */
+export function istWahlGesamt(firmenMitZahl: number, pflicht: number, controlling: { umsatz?: number; kosten?: number } | null | undefined): IstWahl {
+  if (firmenMitZahl > 0 && firmenMitZahl === pflicht) return 'firmen';
+  if (controlling && ((controlling.umsatz || 0) > 0 || (controlling.kosten || 0) > 0)) return 'controlling';
+  return firmenMitZahl > 0 ? 'teil' : 'keine';
+}
+
 /**
  * Eine Wahrheit (26.09.; seit 17.10. an EINER Stelle, Abnahme 3 · B2): liegt für einen Monat ein Monatsabschluss vor, gilt er — die im
- * Controlling gepflegten Monate sind nur Rückfall. Controlling (`/api/state/finance`) und Head of Finance lesen darüber dieselben Monate.
- * Nur Abschlüsse der Business-Gesellschaften (die Selbstständigkeit gehört zu Privat, C3) — wie die Gesamtsicht des Business-Index. Rein.
+ * Controlling gepflegten Monate sind nur Rückfall. Controlling (`/api/state/finance`), Head of Finance, ZOE, Schilde lesen darüber dieselben
+ * Monate. Nur Abschlüsse der Business-Gesellschaften (die Selbstständigkeit gehört zu Privat, C3) — wie die Gesamtsicht des Business-Index.
+ * Seit 17.10. (L2 R1/R2) mit derselben Regel wie der Index (`istWahlGesamt`: fehlt einer Gesellschaft der Abschluss, gilt das gepflegte
+ * Controlling, sonst die Firmen, die es gibt) und mit dem 0-Punkt (`nullpunkt`: Abschlüsse vor dem Stichtag zählen nicht, Controlling-Monate
+ * vor `abMonat` auch nicht). `nullpunkt` ist Pflicht — `null` nur, wenn der Aufrufer ihn schon angewandt hat (der Business-Index). Rein.
  */
-export function mitAbschluessen(s: FinanceState, eintraege: readonly { firma: string; monat: string; umsatz?: number; kosten?: number }[] | undefined): FinanceState {
-  const biz = (eintraege ?? []).filter(e => istBusinessGesellschaft(e.firma) && (e.umsatz != null || e.kosten != null));
-  if (!biz.length) return s;
+export function mitAbschluessen(
+  s: FinanceState,
+  eintraege: readonly { firma: string; monat: string; umsatz?: number; kosten?: number }[] | undefined,
+  nullpunkt: ControllingNullpunkt | null,
+): FinanceState {
+  const gueltig = (eintraege ?? []).filter(e => istBusinessGesellschaft(e.firma) && !nullpunkt?.abschlussVor(e));
+  const mitZahl = gueltig.filter(e => e.umsatz != null || e.kosten != null);
+  const basis = nullpunktMonate(s, nullpunkt?.abMonat);
+  if (!mitZahl.length) return basis;
+  const pflicht = gesamtFirmen(gueltig);
   return {
-    ...s,
-    months: s.months.map((m, i) => {
-      const key = `${s.jahr}-${String(i + 1).padStart(2, '0')}`;
-      const je = biz.filter(e => e.monat === key);
-      return je.length ? { ...m, umsatz: je.reduce((a, e) => a + (e.umsatz ?? 0), 0), kosten: je.reduce((a, e) => a + (e.kosten ?? 0), 0) } : m;
+    ...basis,
+    months: basis.months.map((m, i) => {
+      const key = monatSchluessel(s.jahr, i);
+      const je = pflicht.map(f => mitZahl.find(e => e.firma === f && e.monat === key)).filter((e): e is NonNullable<typeof e> => !!e);
+      const wahl = istWahlGesamt(je.length, pflicht.length, m);
+      return wahl === 'firmen' || wahl === 'teil' ? { ...m, umsatz: je.reduce((a, e) => a + (e.umsatz ?? 0), 0), kosten: je.reduce((a, e) => a + (e.kosten ?? 0), 0) } : m;
     }),
   };
 }

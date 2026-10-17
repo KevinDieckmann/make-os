@@ -18,7 +18,7 @@ import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { spaceBereich } from '@/lib/make-one/space-regeln';
 import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
-import { runwayAnzeige } from '@/lib/finanzen/runway';
+import { runwaySatz } from '@/lib/finanzen/runway';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -74,7 +74,8 @@ export async function POST(req: Request) {
   const stats = {
     finance: m ? {
       fortschritt: Math.round(m.fortschritt * 100), istUmsatz: m.istUmsatz, gewinn: m.istGewinn,
-      runRateNoetig: m.runRateNoetig, runway: m.runwayMonate, aktiv: m.aktiveMonate > 0,
+      // EINE Runway (17.10., L2 R1): die des Business-Index aus dem Brain — nie eine zweite Rechnung über die Controlling-Monate.
+      runRateNoetig: m.runRateNoetig, runway: brain.runway?.monate ?? null, runwayAnzeige: runwaySatz(brain.runway), aktiv: m.aktiveMonate > 0,
       zielUmsatz: fin!.zielUmsatz, zielGewinn: fin!.zielGewinn,
     } : null,
     pipeline, tasks: taskStats,
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
     '',
     'CONTROLLING:',
     m && stats.finance?.aktiv
-      ? `Ist-Umsatz ${eur(m.istUmsatz)} (${stats.finance.fortschritt}%), Gewinn ${eur(m.istGewinn)}, nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, Runway ${runwayAnzeige(m.runway)}.`
+      ? `Ist-Umsatz ${eur(m.istUmsatz)} (${stats.finance.fortschritt}%), Gewinn ${eur(m.istGewinn)}, nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, Runway ${runwaySatz(brain.runway)}.`
       : 'Noch keine Ist-Zahlen gepflegt (Controlling leer).',
     '',
     `PIPELINE (Prospecting): ${pipeline.total} Firmen, ${pipeline.hot} starker Fit (80+), ${pipeline.qualifiziert} qualifiziert, ${pipeline.kontaktiert} kontaktiert, Ø-Score ${pipeline.avgScore}.`,

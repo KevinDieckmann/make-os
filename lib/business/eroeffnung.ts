@@ -119,6 +119,15 @@ export function gesamtAbMonat(g: Geltende): string | null {
   return BUSINESS_GESELLSCHAFTEN.map(f => g[f]!.stichtag.slice(0, 7)).sort()[0];
 }
 
+/**
+ * Der 0-Punkt für die Controlling-Monate (17.10., L2 R2) — `mitAbschluessen` (lib/make-one/finance-data.ts) bekommt ihn so, damit Controlling,
+ * Head of Finance, ZOE und Schilde dieselben Monate zählen wie der Business-Index (`ladeRoh`: `abschlussVor` + `gesamtAbMonat`).
+ */
+export function controllingNullpunkt(g: Geltende | null | undefined): { abschlussVor(a: AbschlussArt): boolean; abMonat: string | null } {
+  const geltend = g ?? {};
+  return { abschlussVor: a => abschlussVor(a, geltend), abMonat: gesamtAbMonat(geltend) };
+}
+
 // ── Konten ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 type KontoArt = { id: string; name?: string; kontostand?: number | null; stand?: string | null };
 

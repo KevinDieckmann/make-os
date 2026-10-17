@@ -42,7 +42,9 @@ export function umwandlung(chancen: Chance[]): { von: ChancenStufe; nach: Chance
 
 /** Win/Loss der letzten `tage` Tage: Gründe, Werte, Quote (ab MINDESTMENGE Entscheidungen). */
 export function winLoss(chancen: Chance[], heute: string, tageZurueck = 180): { gewonnen: number; verloren: number; wertGewonnen: number; wertVerloren: number; quote: number | null; gruende: { grund: string; anzahl: number; wert: number }[] } {
-  const entschieden = (c: Chance) => { const am = c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am; return am ? tagVon(am) : undefined; };
+  // Derselbe Entscheidungstag wie die Win-Rate (17.10., L2 B3, `winRate`): der letzte Eintrag gewonnen/verloren, sonst die letzte Änderung —
+  // vorher fielen Deals ohne diesen Historien-Eintrag hier heraus, in der Kennzahl nicht (zwei Quoten für dasselbe Fenster).
+  const entschieden = (c: Chance) => { const am = c.historie.filter(h => h.stufe === 'gewonnen' || h.stufe === 'verloren').pop()?.am ?? c.geaendert; return am ? tagVon(am) : undefined; };
   const inFenster = chancen.filter(c => { const d = entschieden(c); return d && tage(d, heute) <= tageZurueck; });
   const g = inFenster.filter(c => c.stufe === 'gewonnen'), v = inFenster.filter(c => c.stufe === 'verloren');
   const je = new Map<string, { anzahl: number; wert: number }>();

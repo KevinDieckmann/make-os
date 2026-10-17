@@ -17,7 +17,7 @@ import { ZoeReiter } from './ZoeReiter';
 
 interface Sektion { titel: string; punkte?: string[]; }
 interface Stats {
-  finance: { fortschritt: number; istUmsatz: number; gewinn: number; runRateNoetig: number; runway: number | null; aktiv: boolean; zielUmsatz: number; zielGewinn: number } | null;
+  finance: { fortschritt: number; istUmsatz: number; gewinn: number; runRateNoetig: number; runway: number | null; runwayAnzeige?: string; aktiv: boolean; zielUmsatz: number; zielGewinn: number } | null;
   pipeline: { total: number; hot: number; qualifiziert: number; kontaktiert: number; avgScore: number };
   tasks: { open: number; critical: number; inProgress: number; blocked: number; overdue: number };
 }
@@ -125,7 +125,8 @@ export function BoardView() {
               {s.finance?.aktiv && <div style={{ marginTop: 8 }}><Fortschritt anteil={s.finance.fortschritt / 100} farbe={LEUCHT.geld} /></div>}
             </div>
             <Zahl wert={s.finance ? eur(s.finance.runRateNoetig) : undefined} label="Run-Rate nötig /Monat" />
-            <Zahl wert={s.finance?.runway != null ? `${s.finance.runway.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mon.` : undefined} label="Runway" farbe={runwayKritisch ? LEUCHT.kritisch : C.ink} />
+            {/* EINE Runway (17.10., L2 R1): die des Cockpits — „kein Verbrauch“ steht auch hier, statt leer zu bleiben. */}
+            <Zahl wert={s.finance?.runway != null ? `${s.finance.runway.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mon.` : s.finance?.runwayAnzeige === 'kein Verbrauch' ? 'kein Verbrauch' : undefined} label="Runway" farbe={runwayKritisch ? LEUCHT.kritisch : s.finance?.runwayAnzeige === 'kein Verbrauch' ? LEUCHT.gut : C.ink} />
             <Zahl wert={z(s.pipeline.total)} label={`Pipeline · ${s.pipeline.hot} starker Fit · Ø ${s.pipeline.avgScore}`} farbe={LEUCHT.business} />
             <Zahl wert={z(s.tasks.open)} label={`Aufgaben offen · ${s.tasks.critical} kritisch · ${s.tasks.inProgress} in Arbeit`} />
             <Zahl wert={z(achtung)} label={`Achtung · ${s.tasks.overdue} überfällig · ${s.tasks.blocked} blockiert`} farbe={achtung > 0 ? LEUCHT.achtung : C.ink} />

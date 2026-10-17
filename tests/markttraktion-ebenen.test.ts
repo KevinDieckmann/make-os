@@ -71,11 +71,11 @@ describe('Trichter über alle Ebenen', () => {
     const frisch = { importiertAm: HEUTE, aktivitaeten: [{ am: J, art: 'system' as const, text: 'Von Hand angelegt', von: 'system' }] };
     const kontakte = [k('a', { stufe: 'gespraech', ...frisch }), k('b', { stufe: 'angesprochen', ...frisch }), k('c', { stufe: 'gespraech', ...frisch })];
     const crm = { ...leererBestand(), chancen: [deal({ kontaktIds: ['c-z'] })], mandate: [{ id: 'm-1', status: 'aktiv' } as never] };
-    const t = trichter(leads(kontakte, crm, HEUTE), crm);
+    const t = trichter(leads(kontakte, crm, HEUTE), crm, HEUTE);
     expect(Object.fromEntries(t.stufen.map(s => [s.id, s.anzahl]))).toEqual({ kontaktiert: 1, im_gespraech: 2, qualifizierung: 0, deals: 1, gewonnen: 0, kunden: 1 });
     expect(t.stufen.find(s => s.id === 'deals')?.wert).toBe(36000);
     // Kalte Leads (Import ohne Kontakt) zählen nicht mehr mit — wie die Liste dahinter.
-    const kalt = trichter(leads([k('a', { stufe: 'gespraech' }), k('b', { stufe: 'angesprochen' })], crm, HEUTE), crm);
+    const kalt = trichter(leads([k('a', { stufe: 'gespraech' }), k('b', { stufe: 'angesprochen' })], crm, HEUTE), crm, HEUTE);
     expect(kalt.stufen.find(s => s.id === 'im_gespraech')?.anzahl).toBe(0);
   });
 });

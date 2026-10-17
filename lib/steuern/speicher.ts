@@ -77,7 +77,7 @@ export async function ladeSteuerEinstellungenMitPlan(heute = localDay()): Promis
   try {
     const plan = hh ? await ladeFinanzplan(hh) : null;
     const p = steuerAusPlan(plan, Number(heute.slice(0, 4)));
-    return mitFinanzplanung(mitSeit, p.est, p.ug);
+    return mitFinanzplanung(mitSeit, p.est, p.ug, p.kdv);
   } catch { return mitSeit; }
 }
 
@@ -154,7 +154,7 @@ export async function speichereSteuern(roh: Record<string, unknown>, von: string
  * Business), „business“ = nur die Business-Gesellschaften (Rechnungen, Belege und Übergabe schon an der Quelle gefiltert, der Rest über
  * `steuernNurBusiness`). `alleFristen` sind immer ALLE Fristen — nur für den Aufgaben-Abgleich, nie für die Antwort.
  * Einkommensteuer und Gewerbesteuer der Selbstständigkeit kommen aus der Finanzplanung (`steuerAusPlan`, EINE Rechenquelle), ebenso Rechtsform
- * und Sätze der Hauptgesellschaft (15.10.).
+ * und Sätze der Hauptgesellschaft (15.10.) und von KD Ventures (17.10., L2 E2).
  */
 export async function steuernStand(heute = localDay(), bereich: 'privat' | 'business' = 'privat') {
   const [e0, d, fp, grund, roh, hhId, buch] = await Promise.all([
@@ -169,11 +169,11 @@ export async function steuernStand(heute = localDay(), bereich: 'privat' | 'busi
   const jahr = Number(heute.slice(0, 4));
   // Die Finanzplanung des Haushalts (dieselbe Rechnung wie Finanzen › Privat › Finanzplanung) — Fehler dort kippen die Steuer-Seite nie.
   const plan = hhId ? await ladeFinanzplan(hhId).catch(() => null) : null;
-  let ausPlan: ReturnType<typeof steuerAusPlan> = { est: null, ug: null };
+  let ausPlan: ReturnType<typeof steuerAusPlan> = { est: null, ug: null, kdv: null };
   try { ausPlan = steuerAusPlan(plan, jahr); } catch (err) { console.error('[steuern] Finanzplanung nicht rechenbar:', err); }
   const est = ausPlan.est;
   const seit = await gruendungen(hhId);
-  const e = mitFinanzplanung(mitGruendung(e0, seit), est, ausPlan.ug);
+  const e = mitFinanzplanung(mitGruendung(e0, seit), est, ausPlan.ug, ausPlan.kdv);
   const abgehakt = d?.abgehakt ?? {};
   const nurBiz = bereich === 'business';
   // Steuern rechnen alle Firmen-Rechnungen (auch die der Selbstständigkeit, die seit 05.10. zu Privat gehört) — nur ausdrücklich Privates

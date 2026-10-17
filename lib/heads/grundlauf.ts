@@ -65,12 +65,14 @@ export function grundlauf(head: HeadId, modus: string, daten: Record<string, unk
   }
 
   if (head === 'sales' && modus === 'lead_review') {
-    type LeadD = { lead_id: string; name: string; status: string; sql_bereit: boolean; fehlt: string[]; geklaert: number; deal: { offen: boolean } | null; letzter_kontakt: string | null; hauptkontakt: P | null };
+    type LeadD = { lead_id: string; name: string; status: string; sql_bereit: boolean; sql_entscheidung_offen?: boolean; fehlt: string[]; geklaert: number; deal: { offen: boolean } | null; letzter_kontakt: string | null; hauptkontakt: P | null };
     const ls = (daten.leads_in_arbeit as LeadD[] | undefined) ?? [];
     const FRAGE: Record<string, string> = { Schmerz: 'Welches Problem kostet sie heute Geld oder Zeit?', Entscheider: 'Wer entscheidet und zahlt — sprechen wir mit ihr oder ihm?', 'Budget oder Zeitpunkt': 'Bis wann muss es gelöst sein, und gibt es einen Rahmen?' };
     ls.forEach((l, i) => {
       if (vs.length >= 5 || !l.hauptkontakt) return;
-      if (l.sql_bereit && !l.deal?.offen) vs.push(v({ art: 'sql_anlegen', titel: `Zum SQL machen: ${kurz(l.name, 60)} — Deal anlegen`, kontakt_id: l.hauptkontakt.id, frist: heute, prioritaet: 'mittel',
+      // „Zum SQL machen“ nur, wenn die SQL-Entscheidung wirklich offen ist (17.10., L2 B5: `sqlEntscheidungOffen`, wie die Runde — ein Lead
+      // mit entschiedenem Deal bekommt keinen zweiten). Ältere Datenpakete (Evals) ohne das Feld: wie bisher.
+      if (l.sql_entscheidung_offen ?? (l.sql_bereit && !l.deal?.offen)) vs.push(v({ art: 'sql_anlegen', titel: `Zum SQL machen: ${kurz(l.name, 60)} — Deal anlegen`, kontakt_id: l.hauptkontakt.id, frist: heute, prioritaet: 'mittel',
         // 2.6 (08.10.): die SQL-Regel steht in den Scoring-Einstellungen (Muss-Kriterien + Sales-Schwelle), nicht fest im Text.
         signal: { typ: 'chance', datum: l.letzter_kontakt, text: 'Muss-Kriterien und Sales-Schwelle erreicht' }, begruendung: `Alle SQL-Kriterien sind geklärt, aber es gibt noch keinen Deal — ohne Deal fehlt er in Pipeline und Prognose.`, dedup_schluessel: `sql:${l.lead_id}`, quelle: [`leads_in_arbeit[${i}]`] }));
       else if (l.fehlt.length) vs.push(v({ art: 'qualifizierung_klaeren', titel: `${l.fehlt[0]} klären: ${kurz(l.name, 60)}`, kontakt_id: l.hauptkontakt.id, frist: tagPlus(heute, 3), prioritaet: l.status === 'qualifizierung' ? 'mittel' : 'niedrig',
