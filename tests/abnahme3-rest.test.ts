@@ -60,7 +60,12 @@ describe('B2 · Head of Finance liest dieselben Quellen wie Controlling und Steu
     expect(lies('app/api/state/finance/route.ts')).toContain('ladeControlling(geltende)');
   });
   it('Fristen aus lib/steuern (Gewerbe-/Körperschaftsteuer je Gesellschaft); die Business-Sicht ohne Einkommensteuer', () => {
-    expect(lies('lib/finanzen/chef/finanzbild.ts')).toContain('e.steuerFristen ?? steuertermine(');
+    // Seit L2 S1 ohne Rückfall auf die eigenen Steuer-Annahmen; Takt und Vorschau lesen dieselben Fristen.
+    expect(lies('lib/finanzen/chef/finanzbild.ts')).toContain('const termine: Termin[] = e.steuerFristen ?? [];');
+    expect(sichtbar('lib/finanzen/chef/finanzbild.ts')).not.toMatch(/steuertermine\(/);
+    expect(lies('lib/finanzen/chef/takt.ts')).toContain('fristenAusSteuern(heute, nurBusiness)');
+    expect(lies('lib/agenten/naechstes.ts')).toContain('fristenAusSteuern(heute, !haushalt)');
+    expect(sichtbar('components/os/FinanzchefView.tsx')).not.toMatch(/estVorauszahlung|kstVorauszahlung|gewstVorauszahlung/);
     const lauf = lies('lib/finanzen/chef/lauf.ts');
     expect(lauf).toContain("import('@/lib/steuern/rechnen')");
     expect(lauf).toContain("(!nurBusiness || bereichVon(f.einheit) === 'business')");

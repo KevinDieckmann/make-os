@@ -258,9 +258,13 @@ describe('Head of Finance Business: Sicht Business bekommt nichts aus Privat (Fu
     const text = JSON.stringify(business);
     expect(text).not.toContain('Kanarien-Grosskunde');
     expect(business.business.grundlage).toBeNull();
+    // Steuer-Fristen und -Einstellungen kommen seit 17.10. (L2 S1) nur aus dem Steuer-Modul: ohne Haushalt ohne Einkommensteuer.
     expect(business.steuern.termine_60_tage.some(t => t.art === 'est')).toBe(false);
-    expect(business.steuern.einstellung.estVorauszahlung).toBe(false);
-    const voll = baueFinanzbild({ ...e, haushalt: { ...testHaushalt('2026-11-01'), meta: { ...leereMeta(), steuerquote: 30 } } });
+    expect('einstellung' in business.steuern).toBe(false);
+    const { fristenAusSteuern, steuerAngabenFuer } = await import('@/lib/finanzen/chef/lauf');
+    expect((await fristenAusSteuern('2026-11-01', true)).some(t => t.art === 'est')).toBe(false);
+    expect(await steuerAngabenFuer('2026-11-01', true)).not.toHaveProperty('einkommensteuer_vorauszahlung');
+    const voll = baueFinanzbild({ ...e, haushalt: { ...testHaushalt('2026-11-01'), meta: { ...leereMeta(), steuerquote: 30 } }, steuerFristen: await fristenAusSteuern('2026-11-01', false) });
     expect(JSON.stringify(voll)).toContain('Kanarien-Grosskunde');
     expect(voll.steuern.termine_60_tage.some(t => t.art === 'est')).toBe(true);
   });

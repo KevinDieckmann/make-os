@@ -88,7 +88,8 @@ export function istStand(e: IstStandEingaben): Schritt[] {
   // Namen der Gesellschaften aus lib/einheiten.ts (je Instanz) — nie fest im Code. Business-Sicht (09.10., ZOE-Schreibwege): ohne die Rechtsform einer
   // Privat-Einheit (`einstellungFuerBusiness`) — fehlt ein Schlüssel, wird er nicht verlangt.
   const rf = ['kdv' in e.rechtsform && !e.rechtsform.kdv ? finanzOrtName('kdv') : null, 'kdc' in e.rechtsform && !e.rechtsform.kdc ? finanzOrtName('kdc') : null].filter(Boolean);
-  s.push({ id: 'rechtsform', bereich: 'business', titel: 'Rechtsform und Steuer-Annahmen', erledigt: !rf.length, ...inhaber, link: '/os/finanzen?s=chef',
+  // Gepflegt wird beides im Steuer-Profil je Gesellschaft (17.10., L2 S1) — der Link führt dorthin, nicht mehr zum Head of Finance.
+  s.push({ id: 'rechtsform', bereich: 'business', titel: 'Rechtsform und Steuer-Annahmen', erledigt: !rf.length, ...inhaber, link: WEG.steuern('fristen'),
     detail: rf.length ? `Rechtsform fehlt: ${rf.join(', ')}` : 'eingetragen — USt-Rhythmus und Vorauszahlungen mit dem Steuerberater prüfen' });
   return s;
 }

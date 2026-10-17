@@ -22,7 +22,6 @@ import type { Schritt } from '@/lib/finanzen/chef/ist-stand';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WEG } from '@/lib/wege';
-import { finanzOrtName } from '@/lib/einheiten';
 import { BeispielMarke } from './BeispielMarke';
 import { anzahl } from '@/lib/text/zahlwort';
 
@@ -263,7 +262,7 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
           </Karte>
           </Kachel>
 
-          <Kachel id="einstellung" titel="Steuer-Annahmen" breite={2}><Einstellung e={s.einstellung} onGespeichert={laden} /></Kachel>
+          <Kachel id="einstellung" titel="Steuer-Annahmen" breite={2}><Einstellung /></Kachel>
       </Flaeche>
     </>
   );
@@ -304,49 +303,21 @@ function IstStand({ liste }: { liste: Schritt[] }) {
   );
 }
 
-function Einstellung({ e, onGespeichert }: { e: ChefEinstellung; onGespeichert: () => void }) {
-  const [x, setX] = useState(e);
-  const [auf, setAuf] = useState(false);
-  const [gespeichert, setGespeichert] = useState(false);
-  useEffect(() => { setX(e); }, [e]);
-  async function speichern() {
-    await fetch('/api/finanzchef', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'einstellung', einstellung: x }) });
-    setGespeichert(true); setTimeout(() => setGespeichert(false), 2000); onGespeichert();
-  }
-  const schalter = (k: 'dauerfrist' | 'estVorauszahlung' | 'gewstVorauszahlung' | 'kstVorauszahlung', label: string) => (
-    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>
-      <input type="checkbox" checked={!!x.steuer[k]} onChange={ev => setX({ ...x, steuer: { ...x.steuer, [k]: ev.target.checked } })} /> {label}
-    </label>
-  );
+/**
+ * Steuer-Annahmen (17.10., L2 S1): EINE Quelle — das Steuer-Profil je Gesellschaft unter Finanzen › Steuern (Rechtsform, Umsatzsteuer-Rhythmus,
+ * Dauerfrist, Vorauszahlungen). Fristen, Takt, Vorschau und Datenpaket des Head of Finance lesen nur noch daraus; die früheren eigenen Annahmen
+ * hier wirkten auf einen zweiten Fristenkalender und sind deshalb keine Eingabe mehr.
+ */
+function Einstellung() {
   return (
     <Karte i={4}>
-      <Ueberschrift rechts={<Knopf leise onClick={() => setAuf(!auf)}>{auf ? 'zu' : 'ändern'}</Knopf>}>Steuer-Annahmen</Ueberschrift>
+      <Ueberschrift>Steuer-Annahmen</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
-        USt {x.steuer.ust === 'keine' ? 'keine Voranmeldung' : x.steuer.ust === 'monatlich' ? 'monatlich' : 'quartalsweise'}{x.steuer.dauerfrist ? ' mit Dauerfrist' : ''} · {[x.steuer.estVorauszahlung && 'ESt', x.steuer.kstVorauszahlung && 'KSt', x.steuer.gewstVorauszahlung && 'GewSt'].filter(Boolean).join(', ') || 'keine'} Vorauszahlungen
-        {(!x.rechtsform.kdv || !x.rechtsform.kdc) && <div style={{ color: LEUCHT.achtung, marginTop: 4 }}>Rechtsform noch offen — trag sie ein, dann fragt der Head of Finance nicht mehr.</div>}
+        Rechtsform, Umsatzsteuer-Rhythmus und Vorauszahlungen pflegst du je Gesellschaft unter Finanzen › Steuern — der Head of Finance liest Fristen und Annahmen nur von dort.
       </div>
-      {auf && (
-        <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-          <label style={{ fontSize: TYP.bedien, color: C.inkDim }}>Umsatzsteuer-Voranmeldung
-            <select value={x.steuer.ust} onChange={ev => setX({ ...x, steuer: { ...x.steuer, ust: ev.target.value as ChefEinstellung['steuer']['ust'] } })} style={{ ...feld, marginTop: 4 }}>
-              <option value="quartal">quartalsweise</option><option value="monatlich">monatlich</option><option value="keine">keine (z. B. Kleinunternehmer)</option>
-            </select>
-          </label>
-          {schalter('dauerfrist', 'Dauerfristverlängerung')}
-          {schalter('estVorauszahlung', 'Einkommensteuer-Vorauszahlungen')}
-          {schalter('kstVorauszahlung', 'Körperschaftsteuer-Vorauszahlungen (UG/GmbH)')}
-          {schalter('gewstVorauszahlung', 'Gewerbesteuer-Vorauszahlungen')}
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform {finanzOrtName('kdv')}<input value={x.rechtsform.kdv ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdv: ev.target.value || null } })} placeholder="z. B. UG (haftungsbeschränkt)" style={{ ...feld, marginTop: 4 }} /></label>
-            <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform {finanzOrtName('kdc')}<input value={x.rechtsform.kdc ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdc: ev.target.value || null } })} placeholder="z. B. Einzelunternehmen, freiberuflich" style={{ ...feld, marginTop: 4 }} /></label>
-          </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <Knopf onClick={speichern} farbe={LEUCHT.geld}>Speichern</Knopf>
-            {gespeichert && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut }}>Gespeichert</span>}
-          </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Die Annahmen steuern den Fristenkalender. Was im Bescheid steht, gilt — im Zweifel mit dem Steuerberater klären.</div>
-        </div>
-      )}
+      <div style={{ marginTop: 10 }}>
+        <Link href={WEG.steuern('fristen')} style={{ color: C.aktiv, textDecoration: 'none', fontSize: TYP.bedien, fontWeight: 600 }}>Zu Finanzen › Steuern ›</Link>
+      </div>
     </Karte>
   );
 }
