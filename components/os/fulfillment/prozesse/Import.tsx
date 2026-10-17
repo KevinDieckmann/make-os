@@ -86,11 +86,11 @@ export function Import({ daten }: { daten: Uebersicht }) {
           {vs.hinweise.map(h => <Hinweis key={h} art="info">{h}</Hinweis>)}
           {(vs.pakete.length > 0 || vs.giltFuer.length > 0) && pakete.length > 0 && (
             <div style={{ display: 'grid', gap: 6 }}>
-              <span style={MIKRO}>Einsortieren (optional) — je Schlüssel eine Paket-Vorlage</span>
+              <span style={MIKRO}>Einsortieren (optional) — je Schlüssel ein Ablauf</span>
               {(vs.pakete.length ? vs.pakete.map(k => ['pakete', k] as const) : vs.giltFuer.map(k => ['giltFuer', k] as const)).map(([art, k]) => (
                 <div key={`${art}:${k}`} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                   <Chip farbe={LEUCHT.planung}>{k}</Chip>
-                  <Wahl label="Paket-Vorlage" liste={pakete.map(p => ({ id: p.id, label: p.titel }))} wert={wahl[art]?.[k] ?? null} onWahl={id => setze(art, k, id)} onLeeren={() => setWahl(w => { const x = { ...(w[art] ?? {}) }; delete x[k]; return { ...w, [art]: x }; })} leerenLabel="nur Bibliothek" />
+                  <Wahl label="Ablauf" liste={pakete.map(p => ({ id: p.id, label: p.titel }))} wert={wahl[art]?.[k] ?? null} onWahl={id => setze(art, k, id)} onLeeren={() => setWahl(w => { const x = { ...(w[art] ?? {}) }; delete x[k]; return { ...w, [art]: x }; })} leerenLabel="nur Bibliothek" />
                 </div>
               ))}
             </div>

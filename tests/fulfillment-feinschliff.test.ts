@@ -50,7 +50,7 @@ describe('Feinschliff: Titel, Band „Kunde“, Lage-Zeile', () => {
     expect(bandTexte(z1)[0]).toBe('wartet: Zahlen liefern');
     const f2 = fall([k('w', undefined, 'P', 1), k('p1', 'w', 'Start', 1, { freigabe: 'F1', kundeSichtbar: true }), k('a', 'p1', 'A', 1, { status: 'erledigt' }), k('p2', 'w', 'Weiter', 2), k('b', 'p2', 'B', 1)]);
     const z2 = reiseZeile({ fall: f2, freigaben: FG, heute: HEUTE });
-    expect(bandTexte(z2)[0]).toBe('Abstimmungspunkt 1 offen');
+    expect(bandTexte(z2)[0]).toBe('Bestätigung 1 offen');
     const f3 = fall([k('w', undefined, 'P', 1), k('p1', 'w', 'Start', 1), k('a', 'p1', 'A', 1)]);
     const z3 = reiseZeile({ fall: f3, freigaben: [], heute: HEUTE });
     expect(bandTexte(z3)[0]).toBe('nichts offen beim Kunden');

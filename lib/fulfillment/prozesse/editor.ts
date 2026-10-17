@@ -44,9 +44,9 @@ export const FRIST_MAX = 365;
 export const VERSUCHE_MIN = 1;
 export const VERSUCHE_MAX = 20;
 /** Name der Formen (Palette, Seitenfeld, Vorleser). */
-export const FORM_TITEL: Readonly<Record<KnotenForm, string>> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin', abstimmung: 'Abstimmung' };
+export const FORM_TITEL: Readonly<Record<KnotenForm, string>> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin', abstimmung: 'Bestätigung' };
 /** Vorgabe-Titel eines neuen Knotens je Form (kurz, ohne Inhalte — der Mensch benennt ihn um). */
-export const FORM_VORGABE: Readonly<Record<KnotenForm, string>> = { schritt: 'Neuer Schritt', nachricht: 'Nachricht senden', entscheidung: 'Passt es?', erinnerung: 'Erinnern', termin: 'Termin', abstimmung: 'Abstimmen' };
+export const FORM_VORGABE: Readonly<Record<KnotenForm, string>> = { schritt: 'Neuer Schritt', nachricht: 'Nachricht senden', entscheidung: 'Passt es?', erinnerung: 'Erinnern', termin: 'Termin', abstimmung: 'Bestätigen' };
 const ZUST = ['intern', 'kunde', 'beide'] as const;
 
 // ── Modell: was der Editor zeigt ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -359,7 +359,7 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
           let fid = P.freigabe;
           let liste: Freigabepunkt[] = [...v.freigaben];
           // Ausdrücklich ein vorhandener Punkt (Rückgängig: derselbe wie vorher, auch ein Muster-Punkt).
-          if (!fid && o.id !== undefined) fid = liste.find(f => f.id === o.id)?.id ?? nein('Diesen Abstimmungspunkt kennt die Vorlage nicht.', 404);
+          if (!fid && o.id !== undefined) fid = liste.find(f => f.id === o.id)?.id ?? nein('Diese Bestätigung kennt der Ablauf nicht.', 404);
           if (!fid) {
             // Einen freien eigenen Punkt wiederverwenden (aus- und wieder einschalten gibt denselben zurück), sonst einen neuen anlegen.
             fid = liste.find(f => EDITOR_ABSTIMMUNG.test(f.id) && !genutzt.has(f.id))?.id;
@@ -369,10 +369,10 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
               liste.push({ id: fid, titel: `${P.titel} abgestimmt`.slice(0, 120), wer: 'beide' });
             }
           }
-          const titel = o.titel !== undefined ? pflichtText(o.titel, 'titel', 'Titel des Abstimmungspunkts') : undefined;
+          const titel = o.titel !== undefined ? pflichtText(o.titel, 'titel', 'Titel der Bestätigung') : undefined;
           const wer = optWahl(o.wer, ZUST, 'Wer stimmt ab') ?? undefined;
           liste = liste.map(f => (f.id === fid ? { ...f, ...(titel ? { titel } : {}), ...(wer ? { wer } : {}) } : f));
-          if (liste.length > 30) nein('Abstimmungspunkte: höchstens 30 je Vorlage. Nichts gespeichert.', 413);
+          if (liste.length > 30) nein('Bestätigungen: höchstens 30 je Ablauf. Nichts gespeichert.', 413);
           v = { ...v, freigaben: liste };
           kn = kn.map(x => (x.id === P.id ? { ...x, freigabe: fid } : x));
           break;

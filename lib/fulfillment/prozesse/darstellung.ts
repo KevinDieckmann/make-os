@@ -32,14 +32,20 @@ export function abstimmungsNummern(knoten: readonly MitFreigabe[]): Map<string, 
   for (const k of inReihenfolge(knoten)) if (k.freigabe && !raus.has(k.freigabe)) raus.set(k.freigabe, raus.size + 1);
   return raus;
 }
-/** „Abstimmungspunkt 3 · Diagnose-Abnahme“ (ohne Titel: „Abstimmungspunkt 3“; unbekannt: „Abstimmungspunkt“). */
+/**
+ * Das Wort für einen Abstimmungspunkt in der Anzeige (17.10. spät, Rückmeldung: „maximal einfach — Fachbegriffe raus“): schlicht „Bestätigung“ — an ihr bestätigen
+ * Kunde und bzw. oder ihr, bevor es weitergeht. Die Kennungen (F0 …, `freigabe`, `abstimmung`) bleiben; nur die Anzeige spricht so.
+ */
+export const BESTAETIGUNG = 'Bestätigung';
+/** „Bestätigung 3 · Diagnose-Abnahme“ — EINE Schreibweise für Reise, Fluss, Editor und Fläche. */
+export const bestaetigungTitel = (nr?: number, titel?: string): string => `${BESTAETIGUNG}${nr ? ` ${nr}` : ''}${titel ? ` · ${titel}` : ''}`;
+/** „Bestätigung 3 · Diagnose-Abnahme“ (ohne Titel: „Bestätigung 3“; unbekannt: „Bestätigung“). */
 export function abstimmungName(id: string, nummern: ReadonlyMap<string, number>, titel?: string): string {
-  const n = nummern.get(id);
-  return `Abstimmungspunkt${n ? ` ${n}` : ''}${titel ? ` · ${titelOhneZusatz(titel)}` : ''}`;
+  return bestaetigungTitel(nummern.get(id), titel ? titelOhneZusatz(titel) : undefined);
 }
-/** Ein Titel mit Freigabe-Kürzel („F0 bestätigt“) in der Anzeige: „Abstimmungspunkt 1 bestätigt“, Zusätze weg. */
+/** Ein Titel mit Freigabe-Kürzel („F0 bestätigt“) in der Anzeige: „Bestätigung 1 bestätigt“, Zusätze weg. */
 export function anzeigeTitel(titel: string, nummern?: ReadonlyMap<string, number>): string {
-  return titelOhneZusatz(titel).replace(/\bF(\d{1,2})\b/g, (_x, d: string) => { const n = nummern?.get(`F${d}`); return `Abstimmungspunkt${n ? ` ${n}` : ''}`; });
+  return titelOhneZusatz(titel).replace(/\bF(\d{1,2})\b/g, (_x, d: string) => { const n = nummern?.get(`F${d}`); return `${BESTAETIGUNG}${n ? ` ${n}` : ''}`; });
 }
 
 /**
@@ -51,7 +57,7 @@ export function ohneKuerzel(text: string, nummern: ReadonlyMap<string, number>, 
   return String(text ?? '').replace(/\bF(\d{1,2})\b/g, (_x, d: string) => {
     const id = `F${d}`, n = nummern.get(id), t = freigaben.find(x => x.id === id)?.titel;
     const titel = t ? titelOhneZusatz(t) : undefined;
-    return n ? `Abstimmungspunkt ${n}${titel ? ` („${titel}“)` : ''}` : titel ? `Abstimmungspunkt „${titel}“` : 'Abstimmungspunkt';
+    return n ? `${BESTAETIGUNG} ${n}${titel ? ` („${titel}“)` : ''}` : titel ? `${BESTAETIGUNG} „${titel}“` : BESTAETIGUNG;
   });
 }
 

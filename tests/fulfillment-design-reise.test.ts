@@ -116,7 +116,7 @@ describe('Der nächste Handgriff (eine Hauptaktion)', () => {
     expect(naechsterHandgriff(fall(), undefined, FREIGABEN, HEUTE)).toMatchObject({ art: 'schritt', id: 'p2-s2', text: 'Als Nächstes: Leitfaden schreiben' });
     const f = fall();
     f.knoten = f.knoten.map(x => (x.id.startsWith('p2-') ? { ...x, status: 'erledigt' } : x));
-    expect(naechsterHandgriff(f, undefined, FREIGABEN, HEUTE)).toEqual({ art: 'freigabe', id: 'F3', text: 'Abstimmungspunkt 2 vermerken (Diagnose-Abnahme)' });
+    expect(naechsterHandgriff(f, undefined, FREIGABEN, HEUTE)).toEqual({ art: 'freigabe', id: 'F3', text: 'Bestätigung 2 vermerken (Diagnose-Abnahme)' }); // 17.10. spät: „Bestätigung“
     expect(naechsterHandgriff({ ...fall(), status: 'abgeschlossen' }, undefined, FREIGABEN, HEUTE).art).toBe('fertig');
   });
 });
@@ -202,7 +202,7 @@ describe('Zeichen-Bausteine rendern (ohne Browser)', () => {
     const html = renderToStaticMarkup(h(PhasenStrahl, { phasen: r.phasen, onPhase: () => {} }));
     expect(html).toContain('Sie sind hier');
     expect(html).toContain('2 · Diagnose-Abnahme');
-    expect(html).toContain('Abstimmungspunkt 2 offen');
+    expect(html).toContain('Bestätigung 2 offen');
     expect(html).toContain('aria-current="step"');
   });
   it('Mini-Strahl: „Phase n von m“; Wert-Balken ohne Messung ein leiser Satz; Wellen kompakt mit Text für Vorleser', () => {
@@ -210,6 +210,6 @@ describe('Zeichen-Bausteine rendern (ohne Browser)', () => {
     expect(renderToStaticMarkup(h(WertBalken, { wert: null }))).toContain('noch keine Messung');
     expect(renderToStaticMarkup(h(WertBalken, { wert: 63, ziele: 2, kompakt: true }))).toContain('63 % des Wegs');
     const w = renderToStaticMarkup(h(WellenBild, { kompakt: true, wellen: wellenBild([{ id: 'a0', welle: 0, zustand: 'bereit', letzter: 'uebernommen' }]) }));
-    expect(w).toContain('A0 im Dossier');
+    expect(w).toContain('Start-Prüfer im Dossier'); // 17.10. spät: der Name statt des Kürzels „A0“
   });
 });

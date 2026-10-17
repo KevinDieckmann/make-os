@@ -54,7 +54,7 @@ export function Recht({ mandatId, api, rueck }: { mandatId: string; api: Analyse
         <Ueberschrift erklaerung="fulfillment.f1" rechts={d.f1 ? <Chip farbe={LEUCHT.gut}>bestätigt {d.f1.am.slice(0, 10)}</Chip> : <Chip farbe={LEUCHT.achtung}>offen</Chip>}>Umfang und Personenfunktionen</Ueberschrift>
         <form onSubmit={e => { e.preventDefault(); void schritt({ aktion: 'f1', umfang, funktionen: funktionen.split('\n').map(x => x.trim()).filter(Boolean), ...(bestaetigtAm ? { kundeBestaetigtAm: bestaetigtAm, wie } : {}) }); }} style={{ display: 'grid', gap: 8 }}>
           <div style={klein}>Welche Analysen laufen dürfen:</div>
-          <MehrfachPillen liste={AGENT_IDS.filter(a => a !== 'a0').map(a => ({ id: a, label: `${a.toUpperCase()} ${AGENTEN[a].name}` }))} aktiv={umfang} onWahl={x => setUmfang(x as AnalyseAgentId[])} />
+          <MehrfachPillen liste={AGENT_IDS.filter(a => a !== 'a0').map(a => ({ id: a, label: AGENTEN[a].name }))} aktiv={umfang} onWahl={x => setUmfang(x as AnalyseAgentId[])} />
           <Feldzeile label="Funktionen für die berufliche Personenrecherche — je Zeile eine, keine Namen"><textarea style={{ ...eingabe, minHeight: 72 }} value={funktionen} onChange={e => setFunktionen(e.target.value)} placeholder={'Geschäftsführung\nVertriebsleitung'} /></Feldzeile>
           <Feldzeile label="Vom Kunden bestätigt am"><input type="date" style={eingabe} value={bestaetigtAm} onChange={e => setBestaetigtAm(e.target.value)} /></Feldzeile>
           <Pillen liste={[{ id: 'kickoff', label: 'im Kick-off' }, { id: 'mail', label: 'per Mail' }]} aktiv={wie} onWahl={x => setWie(x as 'kickoff' | 'mail')} />

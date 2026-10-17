@@ -160,7 +160,7 @@ export function FlaecheLegende({ x, y }: { x: number; y: number }) {
   const formen: { form: FlussForm; umriss: FlaecheUmriss; wort: string }[] = [
     { form: 'schritt', umriss: 'kasten', wort: FORM_NAME.schritt },
     { form: 'nachricht', umriss: 'kasten', wort: FORM_NAME.nachricht },
-    { form: 'entscheidung', umriss: 'raute', wort: 'Entscheidung · Abstimmung' },
+    { form: 'entscheidung', umriss: 'raute', wort: 'Entscheidung · Bestätigung' },
     { form: 'erinnerung', umriss: 'kasten', wort: FORM_NAME.erinnerung },
     { form: 'termin', umriss: 'termin', wort: FORM_NAME.termin },
   ];

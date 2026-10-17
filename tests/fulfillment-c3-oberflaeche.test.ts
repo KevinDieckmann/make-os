@@ -41,9 +41,10 @@ const zeige = (k: (r: ReturnType<typeof useRueckfrage>) => ReactNode) => renderT
 describe('Oberfläche der Analyse', () => {
   it('Läufe: je Agent eine Zeile mit Schätzung, Starten nur je Lauf, kein „alle starten“; A4 je Funktion; Entwurf des A4-Laufs nur als Zahl', () => {
     const html = zeige(r => createElement(Laeufe, { mandatId: 'm-1', api, rueck: r }));
-    expect(html).toContain('A1 · Unternehmens-Steckbrief');
+    expect(html).toContain('Unternehmens-Steckbrief'); // 17.10. spät: ohne Kürzel
+    expect(html).not.toContain('A1 · ');
     expect(html).toContain('ca. 0,25 €');
-    expect(html).toContain('A4 · Personen (nur beruflich) · Vertriebsleitung');
+    expect(html).toContain('Personen (nur beruflich) · Vertriebsleitung');
     expect(html).not.toMatch(/alle starten/i);
     expect(html).toContain('1 Karte als Entwurf im Personenteil');
     expect((html.match(/>Starten</g) ?? []).length).toBeGreaterThan(5);

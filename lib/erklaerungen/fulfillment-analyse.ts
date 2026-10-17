@@ -14,11 +14,11 @@ export const EINSTELLUNGEN_FULFILLMENT_ANALYSE = {
     daten: 'Firma, Domain und die gelesenen Seiten gehen über das KI-Tor an das Modell (Kategorien Markttraktion und Web). Die Kosten zählen ins KI-Budget; über dem 1,5-fachen der Bestätigung bricht der Lauf ab.',
   },
   'fulfillment.f1': {
-    was: 'Der Abstimmungspunkt „Analyse-Umfang & Personenliste“ legt fest, welche Analysen laufen dürfen und welche Funktionen beruflich recherchiert werden — Funktionen, keine Namen. Ohne ihn und ohne Interessenabwägung bleiben Gesellschafter- und Personen-Analyse gesperrt.',
+    was: 'Die Bestätigung „Analyse-Umfang & Personenliste“ legt fest, welche Analysen laufen dürfen und welche Funktionen beruflich recherchiert werden — Funktionen, keine Namen. Ohne ihn und ohne Interessenabwägung bleiben Gesellschafter- und Personen-Analyse gesperrt.',
     beispiel: 'Im Kick-off bestätigt der Kunde: Umfang Steckbrief, Register, Markt, Personen; Funktionen „Geschäftsführung“ und „Vertriebsleitung“. Du trägst das mit Datum und „im Kick-off“ ein.',
   },
   'fulfillment.f2': {
-    was: 'Der Abstimmungspunkt „Dossier geprüft“ geht nur mit bestandener Prüfung: Datenschutz- und Quellen-Befunde müssen behoben sein, Qualitäts-Hinweise des Prüfers dürfen mit Grund überstimmt werden. Erst danach gehen Quick Wins, Kick-off-Fragen und Steckbrief-Felder weiter.',
+    was: 'Die Bestätigung „Dossier geprüft“ geht nur mit bestandener Prüfung: Datenschutz- und Quellen-Befunde müssen behoben sein, Qualitäts-Hinweise des Prüfers dürfen mit Grund überstimmt werden. Erst danach gehen Quick Wins, Kick-off-Fragen und Steckbrief-Felder weiter.',
     beispiel: 'Die Prüfung meldet eine Aussage ohne Quelle. Du entfernst sie, prüfst neu, überstimmst einen Qualitäts-Hinweis mit „Zahl stammt aus dem Kick-off“ und vermerkst „Dossier geprüft“.',
   },
   'fulfillment.tiefenbericht': {

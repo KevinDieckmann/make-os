@@ -6,6 +6,7 @@
 import type { EditorKnoten, EditorModell, EditorPhase } from '@/lib/fulfillment/prozesse/editor';
 import { flussFormVon, KAESTCHEN_MAX, type FlussKnoten } from '@/lib/fulfillment/prozesse/reise-bild';
 import type { BildSpalte } from '@/lib/reise/bild';
+import { bestaetigungTitel } from '@/lib/fulfillment/prozesse/darstellung';
 import type { KnotenForm } from '@/lib/fulfillment/typen';
 
 /** Die Form, mit der ein Baustein in den Fluss bzw. auf die Fläche kommt (Mail → Nachricht, Ritual → Termin, Freigabe → Abstimmung). */
@@ -45,7 +46,7 @@ export function editorSpalten(m: EditorModell): BildSpalte[] {
       unter: alle.length ? `${alle.length} Schritt${alle.length === 1 ? '' : 'e'}` : 'noch leer',
       kaestchen: zeigen.map(k => ({ id: k.id, titel: k.titel, form: flussFormVon(k.form), zustand: 'offen' as const })),
       mehr: alle.length - zeigen.length,
-      ...(p.abstimmung ? { raute: { titel: `Abstimmungspunkt${p.abstimmung.nr ? ` ${p.abstimmung.nr}` : ''}${p.abstimmung.titel ? ` · ${p.abstimmung.titel}` : ''}`, gegeben: false } } : {}),
+      ...(p.abstimmung ? { raute: { titel: bestaetigungTitel(p.abstimmung.nr, p.abstimmung.titel || undefined), gegeben: false } } : {}),
       band: { ...(beimKunden ? { text: `${beimKunden} beim Kunden` } : { text: p.kundeSichtbar ? 'sieht die Phase' : '' }), intern: !p.kundeSichtbar },
     };
   });

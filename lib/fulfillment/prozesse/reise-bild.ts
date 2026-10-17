@@ -15,7 +15,7 @@ import { kinderVon, tageZwischen } from '../regeln';
 import { alleSchritte, fallReise, naechsterPunkt, phaseGruppen, phasenVon, type NaechsterPunkt, type PhasenZustand, type Reise, type ReisePhase, type SchrittZeile } from './reise';
 import { obSchluessel } from './onboarding';
 import { abschlussSchritt, schrittVerweis, type NachsorgePunkt } from './ansichten';
-import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz } from './darstellung';
+import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, BESTAETIGUNG } from './darstellung';
 import { phaseVon } from './phasen';
 import { WARTET_ALT_TAGE, WARTET_ROT_TAGE } from './cockpit';
 
@@ -306,7 +306,7 @@ export function bandTexte(z: Pick<ReiseZeile, 'spalten'>): (string | undefined)[
     if (s.band.wartet?.length) return `wartet: ${mehr(s.band.wartet)}`;
     if (s.band.macht?.length && s.zustand !== 'fertig') return `beim Kunden: ${mehr(s.band.macht)}`;
     const a = s.abstimmung;
-    if (a && !a.gegeben && a.wer !== 'intern' && (a.hier || s.zustand === 'jetzt')) return `Abstimmungspunkt${a.nr ? ` ${a.nr}` : ''} offen`;
+    if (a && !a.gegeben && a.wer !== 'intern' && (a.hier || s.zustand === 'jetzt')) return `${BESTAETIGUNG}${a.nr ? ` ${a.nr}` : ''} offen`;
     return undefined;
   });
   if (z.spalten.length && texte.every(t => !t)) {

@@ -181,12 +181,12 @@ export function FreigabeMeilenstein({ fg, gegeben, onVermerken, onZurueck, haupt
   const wie = gegeben?.kunde ? WIE.find(w => w.id === gegeben.kunde!.wie)?.label : undefined;
   return (
     <Karte i={0} className="ff-ablauf" id="ff-detail">
-      <ZeileAktionen titel={`Abstimmungspunkt${fg.nr ? ` ${fg.nr}` : ''}`} mehr={gegeben ? [{ id: 'zurueck', label: 'Vermerk zurücknehmen', hinweis: 'Der Abstimmungspunkt gilt dann wieder als offen.', tun: onZurueck }] : []}>
+      <ZeileAktionen titel={`Bestätigung${fg.nr ? ` ${fg.nr}` : ''}`} mehr={gegeben ? [{ id: 'zurueck', label: 'Vermerk zurücknehmen', hinweis: 'Die Bestätigung gilt dann wieder als offen.', tun: onZurueck }] : []}>
         <Zeile umbrechen
           links={<span style={{ width: 44, display: 'inline-grid', placeItems: 'center', flex: '0 0 auto' }}><FreigabeRaute gegeben={!!gegeben} aktiv groesse={16} /></span>}
-          titel={<span>Abstimmungspunkt{fg.nr ? ` ${fg.nr}` : ''}{fg.titel ? ` · ${fg.titel}` : ''}</span>}
+          titel={<span>Bestätigung{fg.nr ? ` ${fg.nr}` : ''}{fg.titel ? ` · ${fg.titel}` : ''}</span>}
           unter={gegeben ? `${gegeben.kunde ? `bestätigt am ${tagKurz(gegeben.kunde.am)}${wie ? ` ${wie}` : ''} · ` : ''}vermerkt am ${tagKurz(gegeben.am)}${gegeben.notiz ? ` · ${gegeben.notiz}` : ''}` : `Haltepunkt am Ende der Phase — ${FREIGABE_WER[fg.wer]}, dann geht es weiter.`}
-          rechts={gegeben ? <Chip farbe={LEUCHT.gut}>vermerkt</Chip> : <Erklaert erklaerung="fulfillment.freigabe" name="Abstimmungspunkt"><Knopf haupt={haupt} onClick={onVermerken}>Abstimmung vermerken</Knopf></Erklaert>} />
+          rechts={gegeben ? <Chip farbe={LEUCHT.gut}>vermerkt</Chip> : <Erklaert erklaerung="fulfillment.freigabe" name="Bestätigung"><Knopf haupt={haupt} onClick={onVermerken}>Bestätigung vermerken</Knopf></Erklaert>} />
       </ZeileAktionen>
     </Karte>
   );
@@ -273,7 +273,7 @@ function verweisAnzeige(v: SchrittVerweis, d: FallAntwort): { text: string; reit
         : { text: 'Wirkungsbericht erstellen', reiter: 'reise', stelle: 'kreislauf-wirkung', farbe: C.aktiv };
     case 'diagnose':
       return !d.analyse?.diagnose
-        ? { text: 'Der Diagnose-Entwurf kommt aus der Analyse (A12)', reiter: 'reise', stelle: 'analyse', farbe: C.aktiv }
+        ? { text: 'Der Diagnose-Entwurf kommt aus der Analyse', reiter: 'reise', stelle: 'analyse', farbe: C.aktiv }
         : d.analyse.massnahmen.length
           ? { text: `${d.analyse.massnahmen.length} Maßnahme${d.analyse.massnahmen.length === 1 ? '' : 'n'} der Diagnose noch nicht im Fall`, reiter: 'reise', stelle: 'analyse', farbe: LEUCHT.achtung }
           : { text: 'Diagnose-Entwurf im Fall — Maßnahmen stehen im Ablauf', reiter: 'reise', stelle: 'analyse', farbe: LEUCHT.gut };

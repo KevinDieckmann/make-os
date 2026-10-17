@@ -141,21 +141,22 @@ describe('B5 · keine Kürzel ohne Klartext', () => {
   it('Freigabe-Kürzel → „Abstimmungspunkt n („Titel“)“; ohne Nummer mit Titel; Onboarding sagt nie „F0“', () => {
     const nr = new Map([['F0', 1], ['F7', 7]]);
     const fg = [{ id: 'F1', titel: 'Analyse-Umfang & Personenliste' }, { id: 'F7', titel: 'Übergabe-Freigabe' }];
-    expect(ohneKuerzel('Nicht im Umfang von F1.', nr, fg)).toBe('Nicht im Umfang von Abstimmungspunkt „Analyse-Umfang & Personenliste“.');
-    expect(ohneKuerzel('Übergabe (F7)', nr, fg)).toBe('Übergabe (Abstimmungspunkt 7 („Übergabe-Freigabe“))');
+    expect(ohneKuerzel('Nicht im Umfang von F1.', nr, fg)).toBe('Nicht im Umfang von Bestätigung „Analyse-Umfang & Personenliste“.'); // 17.10. spät: „Bestätigung“ statt „Abstimmungspunkt“
+    expect(ohneKuerzel('Übergabe (F7)', nr, fg)).toBe('Übergabe (Bestätigung 7 („Übergabe-Freigabe“))');
     expect(ohneKuerzel('Fahrplan 2026', nr, fg)).toBe('Fahrplan 2026');
     const f = fall([k('w', undefined, 'Paket', 1), k('p', 'w', 'Vorlauf', 1, { freigabe: 'F0' }), k(obKnotenId('f0'), 'p', 'F0 bestätigt', 1, { freigabe: 'F0' })]);
     const t = onboardingStand(f, { ziele: [], formularProzent: null, kickoffRitualIds: [], willkommenStunden: 24, jetzt: JETZT }).schritte.find(s => s.schluessel === 'f0')!.text;
-    expect(t).toBe('Abstimmungspunkt 1 noch nicht vermerkt.');
+    expect(t).toBe('Bestätigung 1 noch nicht vermerkt.');
   });
   it('Agenten nie als Kürzel allein; Erklärungen und Kreislauf ohne F-Kürzel', () => {
-    expect(agentText('a1')).toBe('A1 · Unternehmens-Steckbrief');
-    expect(agentText('tb')).toBe('TB · Tiefenbericht');
-    expect(agentText('ap')).toBe('AP · Playbook-Auswertung');
+    // 17.10. spät („Fachbegriffe raus“): nur noch der Name — das Kürzel bleibt Kennung, nie sichtbar.
+    expect(agentText('a1')).toBe('Unternehmens-Steckbrief');
+    expect(agentText('tb')).toBe('Tiefenbericht');
+    expect(agentText('ap')).toBe('Playbook-Auswertung');
     for (const d of ['lib/erklaerungen/fulfillment-analyse.ts', 'lib/erklaerungen/fulfillment-prozesse.ts']) expect(lies(d), d).not.toMatch(/\bF\d\b/);
     expect(lies('components/os/fulfillment/prozesse/FallKreislauf.tsx')).not.toContain('(F7)');
     const marke = lies('components/os/fulfillment/reise/bilder.tsx');
-    expect(marke).toContain('{name ?? id.toUpperCase()}');
+    expect(marke).toContain('{name ?? agentText(id)}');
     for (const d of ['components/os/fulfillment/analyse/Laeufe.tsx', 'components/os/fulfillment/analyse/DossierAnsicht.tsx']) expect(lies(d), d).not.toMatch(/\.agent\.toUpperCase\(\)/);
   });
 });

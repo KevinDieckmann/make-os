@@ -468,7 +468,7 @@ export function EditorFlaeche(p: FlaecheProps) {
     else if (zg.art === 'rahmen') void rahmenAblegen(zg.id!, zg.versatz[0], zg.versatz[1]);
     else if (zg.art === 'groesse' && zg.neu) void groesseAblegen(zg.id!, zg.neu.b, zg.neu.h);
     else if (zg.art === 'pfeil') {
-      if (!zg.ziel) { meldung('Pfeile verbinden zwei Schritte — lass ihn auf einem Knoten los.', 'achtung'); return; }
+      if (!zg.ziel) { meldung('Pfeile verbinden zwei Schritte — lass ihn auf einem Kasten los.', 'achtung'); return; }
       const von = stand.current.bild.knoten.find(k => k.id === zg.id)!;
       if (von.entscheid) { const r = buehne.current!.getBoundingClientRect(); setZweigFrage({ von: von.id, nach: zg.ziel, x: e.clientX - r.left, y: e.clientY - r.top }); return; }
       void verbinden(von.id, zg.ziel);
@@ -803,7 +803,7 @@ export function EditorFlaeche(p: FlaecheProps) {
         <div className="ff-flaeche-buehne" ref={buehne}>
           <canvas ref={fadenLeinwand} aria-hidden="true" data-flow-ebene="" className="ff-flow-ebene" style={{ pointerEvents: 'none' }} />
           <svg ref={svg} tabIndex={0} role="application" aria-roledescription="Zeichenfläche"
-            aria-label={`Fläche des Ablaufs „${vorlage.titel}“: ${bild.rahmen.length} Phasen als Rahmen, ${bild.knoten.length} Schritte${darfZiehen ? ' — Tab wählt den nächsten Knoten, Pfeiltasten verschieben, Entf löscht, Enter bearbeitet' : ''}`}
+            aria-label={`Fläche des Ablaufs „${vorlage.titel}“: ${bild.rahmen.length} Phasen als Rahmen, ${bild.knoten.length} Schritte${darfZiehen ? ' — Tab wählt den nächsten Schritt, Pfeiltasten verschieben, Entf löscht, Enter bearbeitet' : ''}`}
             aria-describedby={hinweisId}
             onPointerDown={runter} onPointerMove={bewegt} onPointerUp={hoch} onPointerCancel={() => abbrechen()} onDoubleClick={doppelt} onKeyDown={taste}
             style={{ fontFamily: SCHRIFT.text }}>
@@ -844,6 +844,8 @@ export function EditorFlaeche(p: FlaecheProps) {
                 maxLength={bearbeiten.art === 'pfeil' ? 60 : 120} placeholder={bearbeiten.art === 'pfeil' ? 'z. B. ja, nein, nach 5 Tagen' : undefined}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void bearbeitenFertig((e.target as HTMLInputElement).value); } else if (e.key === 'Escape') { e.preventDefault(); void bearbeitenFertig(null); } }}
                 onBlur={e => void bearbeitenFertig(e.target.value)}
+                // 17.10. spät: der Vorgabe-Titel ist markiert — wer gleich tippt, ersetzt ihn (vorher hing „Neuer Schritt“ vor dem eigenen Text).
+                onFocus={e => e.currentTarget.select()}
                 style={{ position: 'absolute', left: sx, top: sy + Math.max(0, (bearbeiten.box.h * s - ZIEL_PX) / 2), width: b, minHeight: ZIEL_PX, fontSize: 16, boxSizing: 'border-box', padding: '8px 10px', borderRadius: ECKE.eingabe, color: C.ink, background: C.flaecheHoch, border: `2px solid ${FLAECHE_ZIEL}`, fontFamily: SCHRIFT.text, zIndex: 3 }} />
             );
           })()}
