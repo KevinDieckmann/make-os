@@ -9,12 +9,17 @@
 // EIN Baustein für alle Bereiche (seit 17.10. aus dem Fulfillment hierher gezogen): Fulfillment-Fall, Kunden-Seite, Prozess-Editor, Markttraktion ›
 // Kreislauf, Einrichtung, Planung › Ziel. Er zeichnet nur — die Modelle rechnen (lib/reise/bild.ts nennt sie). Keine Daten-Importe (die öffentliche
 // Kunden-Seite bündelt diese Datei mit). Am Handy (≤ 720 px) wird die Zeile zur senkrechten Liste (globals.css `.ff-reise`).
+// Markenzeichen: der Flow (17.10.): unter der Zeile läuft der Weg als Lichtfaden (`FlowLinie`, lib/lichtfaeden/flow.ts) — hell bis „Hier“, dahinter ruhig und
+// ausgefranst, Stau an offenen Rauten; das Band sitzt darauf (seine untere Kante IST der Faden). Stand nur aus denselben Spalten (lib/reise/flow.ts
+// `reiseFlow`), gemessen wird nur die Lage. Am Handy läuft der Faden links an der Liste hinunter. `flow="still"` (Kunden-Seite) = Standbild, `aus` = ohne.
 
-import { Fragment, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { Check, Mail, CalendarClock, BellRing, AlertCircle } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT, LEUCHT } from '@/lib/make-one/design';
 import type { BildKaestchen, BildSpalte, FlussForm, KaestchenZustand, ReiseZustand } from '@/lib/reise/bild';
-import { JETZT, FORM_FARBE, FreigabeRaute } from './formen';
+import { reiseFlow, reiseFaden, type ReiseLagen } from '@/lib/reise/flow';
+import { JETZT, FORM_FARBE, FLOW_TON, FreigabeRaute } from './formen';
+import { FlowLinie } from '../flow';
 
 export type { BildKaestchen, BildSpalte };
 
@@ -65,15 +70,43 @@ function Kaestchen({ k, phaseId, gewaehlt, onKaestchen }: { k: BildKaestchen; ph
  * Prozess-Editor (17.10.) — dieselbe Zeichnung: `griff` legt Ziehen/Tastatur auf die Phasen-Pille, `rauteSchalter` steht zwischen JEDER Phase und hinter der
  * letzten (Abstimmungspunkt an/aus, 44 px breit), `ende` ist eine eigene Spalte am Schluss („+ Phase“, im Kreislauf „↺ zurück“).
  */
-export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', band: mitBand = true, wort = 'Phase', mehrWort = 'Schritte', aktiv, gewaehlt, onPhase, onKaestchen, onRaute, gross, label = 'Reise des Kunden durch die Phasen', griff, rauteSchalter, ende }: {
+/**
+ * Die Lagen der Zeile für den Faden — gemessen an den Stufen (`data-flow-stufe`) und Rauten-Spalten (`data-flow-grenze`), relativ zur Leinwand. Quer am
+ * Rechner (der Faden an der Unterkante), senkrecht am Handy (die Leinwand ist dort höher als breit).
+ */
+function reiseLagen(eltern: HTMLElement, box: DOMRect, n: number): ReiseLagen | null {
+  const achse: ReiseLagen['achse'] = box.height > box.width ? 'hoch' : 'quer';
+  const stufen: { von: number; bis: number }[] = [];
+  const grenzen: (number | null)[] = [];
+  for (let i = 0; i < n; i++) {
+    const s = eltern.querySelector<HTMLElement>(`[data-flow-stufe="${i}"]`);
+    if (!s) return null;
+    const r = s.getBoundingClientRect();
+    stufen.push(achse === 'quer' ? { von: r.left - box.left, bis: r.right - box.left } : { von: r.top - box.top, bis: r.bottom - box.top });
+    const g = eltern.querySelector<HTMLElement>(`[data-flow-grenze="${i}"]`)?.getBoundingClientRect();
+    grenzen.push(g && g.width > 0 && g.height > 0 ? (achse === 'quer' ? (g.left + g.right) / 2 - box.left : null) : null);
+  }
+  return { stufen, grenzen, quer: achse === 'quer' ? box.height / 2 : box.width / 2, achse };
+}
+
+export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', band: mitBand = true, wort = 'Phase', mehrWort = 'Schritte', aktiv, gewaehlt, onPhase, onKaestchen, onRaute, gross, label = 'Reise des Kunden durch die Phasen', griff, rauteSchalter, ende, flow = 'an' }: {
   spalten: readonly BildSpalte[]; hierText?: string; bandTitel?: string; band?: boolean; wort?: string; mehrWort?: string; aktiv?: string | null; gewaehlt?: string | null;
   onPhase?: (id: string) => void; onKaestchen?: (phaseId: string, id: string) => void; onRaute?: (phaseId: string) => void; gross?: boolean; label?: string;
   griff?: (phaseId: string) => Record<string, unknown>; rauteSchalter?: (phaseId: string) => ReactNode; ende?: ReactNode;
+  /** Der Faden (Markenzeichen): `an` (Vorgabe) · `still` = Standbild ohne Bewegung (Kunden-Seite, Präsentation) · `aus`. */
+  flow?: 'an' | 'still' | 'aus';
 }) {
+  // Der Stand des Fadens aus denselben Spalten wie die Zeile („Hier“ = die Stufe `jetzt`) — gemessen wird in der Zeichnung nur die Lage.
+  const stand = useMemo(() => reiseFlow(spalten), [spalten]);
   if (!spalten.length && !ende) return null;
   const zwischen = (i: number, s: BildSpalte) => i < spalten.length - 1 || !!s.raute || !!rauteSchalter;
   const spuren = [...spalten.flatMap((s, i) => ['minmax(0, 1fr)', ...(zwischen(i, s) ? [rauteSchalter ? '44px' : '22px'] : [])]), ...(ende ? ['minmax(min-content, auto)'] : [])].join(' ');
-  return (
+  const messen = (eltern: HTMLElement, box: DOMRect) => {
+    const l = reiseLagen(eltern, box, spalten.length);
+    const f = l ? reiseFaden(stand, l, FLOW_TON, stand.laeuft ? { farben: spalten.map(s => s.farbe) } : {}) : null;
+    return f ? [f] : [];
+  };
+  const zeile = (
     <div className={`ff-reise${gross ? ' ff-reise-gross' : ''}${mitBand ? '' : ' ff-reise-ohne-band'}`} role="list" aria-label={label} style={{ gridTemplateColumns: spuren }}>
       {spalten.map((s, i) => {
         const pf = s.zustand === 'fertig' ? LEUCHT.gut : s.zustand === 'jetzt' ? JETZT : s.zustand === 'laeuft' ? (s.farbe ?? C.ink) : C.inkDim;
@@ -96,7 +129,7 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', ban
         const band = s.band;
         return (
           <Fragment key={s.id}>
-            <div role="listitem" aria-current={s.zustand === 'jetzt' ? 'step' : undefined} className={`ff-reise-spalte ff-reise-${s.zustand}${aktiv === s.id ? ' ff-reise-aktiv' : ''}`}>
+            <div role="listitem" data-flow-stufe={i} aria-current={s.zustand === 'jetzt' ? 'step' : undefined} className={`ff-reise-spalte ff-reise-${s.zustand}${aktiv === s.id ? ' ff-reise-aktiv' : ''}`}>
               <span className="ff-reise-marke" style={{ ...MIKRO, color: s.zustand === 'jetzt' ? JETZT : s.zustand === 'fertig' ? LEUCHT.gut : C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {marke}<span className="ff-reise-nr">{marke ? ' · ' : ''}{wort} {s.nr}</span>
               </span>
@@ -127,7 +160,7 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', ban
               )}
             </div>
             {zwischen(i, s) && (
-              <div className="ff-reise-zwischen" aria-hidden={rauteSchalter ? undefined : !s.raute || !onRaute}>
+              <div className="ff-reise-zwischen" data-flow-grenze={i} aria-hidden={rauteSchalter ? undefined : !s.raute || !onRaute}>
                 <span />
                 <span style={{ display: 'grid', placeItems: 'center', minHeight: 44 }}>
                   {rauteSchalter ? rauteSchalter(s.id) : s.raute
@@ -147,6 +180,14 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', ban
         );
       })}
       {ende && <div className="ff-reise-ende" style={{ display: 'grid', alignContent: 'start', paddingTop: 24, paddingLeft: 6, minWidth: 0 }}>{ende}</div>}
+    </div>
+  );
+  if (flow === 'aus' || !spalten.length) return zeile;
+  // Der Weg: die Zeile und darunter (am Handy daneben) der Faden — `.ff-reise-weg` (globals.css) gibt ihm seinen Platz.
+  return (
+    <div className="ff-reise-weg">
+      {zeile}
+      <FlowLinie messen={messen} still={flow === 'still'} />
     </div>
   );
 }

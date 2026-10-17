@@ -1086,6 +1086,17 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .ff-fluss-zweig { display: grid; grid-template-columns: minmax(0, 340px) auto minmax(0, 220px); align-items: center; width: 100%; justify-content: center; min-width: 0; }
 .ff-fluss-zweig > .ff-fluss-zelle { width: 100%; }
 .ff-fluss-gruppen { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; width: 100%; min-width: 0; }
+/* Markenzeichen: der Flow (17.10. — components/os/ui/flow.tsx, lib/lichtfaeden/flow.ts; DESIGN_STANDARD.md › Markenzeichen: der Flow). Der Lichtfaden ist EINE
+   Leinwand je Weg (`.ff-flow-ebene`, aria-hidden, keine Zeiger): unter der Reise an der Unterkante des Bandes (das Band sitzt auf dem Faden — seine untere Linie
+   entfällt, solange der Faden läuft), im Fluss hinter den Knoten (die ruhige Pfeil-Linie entfällt). `data-flow="an"` setzt die Ebene selbst; im Druck ist sie
+   aus und die ruhigen Linien stehen wieder da. Am Handy läuft der Faden links an der senkrechten Reise hinunter. */
+.ff-reise-weg { position: relative; padding-bottom: 14px; min-width: 0; }
+.ff-reise-weg > .ff-flow-ebene { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 28px; }
+.ff-fluss { position: relative; isolation: isolate; }
+.ff-fluss > .ff-flow-ebene { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
+@media screen and (min-width: 721px) { .ff-reise-weg[data-flow="an"] .ff-reise-band { border-bottom-color: transparent !important; } }
+@media screen { .ff-fluss[data-flow="an"] .ff-fluss-pfeil-linie { opacity: 0; } }
+@media print { .ff-flow-ebene { display: none !important; } }
 .ff-fall-raster { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; min-width: 0; }
 @media (min-width: 1180px) { .ff-fall-raster { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } .ff-fall-raster > .ff-fall-detail { position: sticky; top: 12px; } }
 @media (max-width: 720px) {
@@ -1102,6 +1113,8 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ff-fluss-zweig > .ff-fluss-zelle { width: min(100%, 340px); }
   .ff-fluss-seitenpfeil { transform: rotate(90deg); }
   .ff-fluss-zweig > .ff-fluss-erinnerung { width: min(100%, 300px); box-sizing: border-box; }
+  .ff-reise-weg { padding-bottom: 0; padding-left: 16px; }
+  .ff-reise-weg > .ff-flow-ebene { top: 0; right: auto; width: 16px; height: auto; }
 }
 
 /* ── Prozess-Editor im Miro-Stil (17.10. — components/os/fulfillment/editor/*) ─────────────────────────────────────────────────────────────────────────
@@ -1128,7 +1141,15 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .ff-flaeche-leiste { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
 .ff-flaeche-raster { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; min-width: 0; }
 .ff-flaeche-buehne { position: relative; height: min(76vh, 820px); min-height: 420px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); background: #0B0E10; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
-.ff-flaeche-buehne > svg { display: block; width: 100%; height: 100%; outline: none; }
+.ff-flaeche-buehne > svg { position: relative; display: block; width: 100%; height: 100%; outline: none; }
+/* Der Flow auf der Fläche: die Leinwand liegt UNTER dem SVG (das SVG ist durchsichtig, die Bühne trägt den Grund) — die Pfeile sind Fäden, das SVG zeigt nur
+   Spitze, Beschriftung und den gewählten Pfeil; „zurück“ bleibt leise gestrichelt (Schleife). Beim Ziehen eines neuen Pfeils zieht der Faden mit. */
+.ff-flaeche-buehne > .ff-flow-ebene { position: absolute; inset: 0; width: 100%; height: 100%; }
+@media screen {
+  .ff-flaeche-buehne[data-flow="an"] [data-teil="pfad"]:not([data-gewaehlt]) { stroke-opacity: 0; }
+  .ff-flaeche-buehne[data-flow="an"] [data-teil="pfad"][data-zurueck]:not([data-gewaehlt]) { stroke-opacity: .35; }
+  .ff-flaeche-buehne[data-flow="an"] .ff-fl-zug { stroke-opacity: 0; }
+}
 .ff-flaeche-buehne > svg:focus-visible { box-shadow: inset 0 0 0 2px #58D9CD; }
 .ff-fl-knoten { outline: none; }
 .ff-fl-fokus { display: none; }

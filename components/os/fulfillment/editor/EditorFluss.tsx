@@ -11,6 +11,7 @@ import { FARBE as C, TYP, MIKRO, RAND, ECKE, SCHRIFT, FLAECHE_STIL, TIEF } from 
 import type { EditorKnoten, EditorPhase } from '@/lib/fulfillment/prozesse/editor';
 import { KnotenKnopf, Pfeil, SeitenPfeil } from '../../ui/reise/Fluss';
 import { FORM_FARBE } from '../../ui/reise/formen';
+import { FlussFaden } from '../../ui/reise/faden';
 import { alsFlussKnoten } from './bild';
 import type { ZiehQuelle } from './ziehen';
 
@@ -113,6 +114,8 @@ export function EditorFluss(p: FlussEditorProps) {
         {p.naechste ? `Phase ${p.naechste.nr} · ${p.naechste.titel} ›` : 'Ende des Ablaufs'}
       </button>
       {p.darf && !leer && <span style={{ ...klein, color: C.inkLeise, marginTop: 6, display: 'inline-flex', gap: 6, alignItems: 'center' }}><Plus size={13} aria-hidden />Ziehen ordnet um — Tastatur: Alt + ↑/↓ verschiebt, Entf löscht, Enter bearbeitet.</span>}
+      {/* Markenzeichen: der Flow — dieselben Fäden wie im Fall (in der Vorlage noch alles offen, also gedämpft; der Nein-Pfad im Ton der Erinnerung). */}
+      <FlussFaden />
     </div>
   );
 }
