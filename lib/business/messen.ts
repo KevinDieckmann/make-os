@@ -18,7 +18,7 @@ import type { KapaKennzahlen } from '@/lib/kapazitaet/typen';
 import { ffMessen, type FfIndexDaten } from '@/lib/fulfillment/prozesse/kennzahlen';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
-import { computeMetrics, gesamtFirmen, istWahlGesamt } from '@/lib/make-one/finance-data';
+import { computeMetrics, gesamtFirmen, istWahlGesamt, mitAbschluessen } from '@/lib/make-one/finance-data';
 import { runwayRechnen } from '@/lib/finanzen/runway';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { vorschau, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
@@ -744,7 +744,9 @@ function jahresKurs(b: Bestand): { ziel: number; ist: number; aktuell: number; n
   const ziel = zielDer(b);
   if (!ziel) return { luecke: b.scope === 'gesamt' ? 'Jahresziel im Controlling fehlt' : 'Jahresumsatzziel für diese Firma fehlt' };
   if (b.scope === 'gesamt' && b.finance) {
-    const m = computeMetrics(b.finance, new Date(`${b.heute}T12:00:00`));
+    // Dieselben Monate wie das Controlling (17.10., L2 R6): MIT den Monatsabschlüssen (`mitAbschluessen`) — der 0-Punkt ist in `ladeRoh`
+    // schon angewandt (Abschlüsse davor archiviert, Controlling-Monate davor auf null), daher `null`.
+    const m = computeMetrics(mitAbschluessen(b.finance, b.abschluesse, null), new Date(`${b.heute}T12:00:00`));
     if (!m.aktiveMonate) return { luecke: 'Keine Ist-Monate im Controlling' };
     return { ziel, ist: m.istUmsatz, aktuell: m.runRateAktuell, noetig: m.runRateNoetig, verbleibend: m.verbleibend, quelle: 'Controlling' };
   }

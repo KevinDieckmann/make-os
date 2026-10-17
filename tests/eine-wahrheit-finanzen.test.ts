@@ -138,7 +138,7 @@ describe('jetzt: EINE Lesestelle der Ist-Monate (mit Monatsabschlüssen und 0-Pu
     }
   });
 
-  it('Ist-Umsatz: Controlling und Head of Finance zeigen dieselbe Summe — vorher 126.099', async () => {
+  it('Ist-Umsatz: Controlling, Head of Finance und Cockpit (Run-Rate) zeigen dieselbe Summe — vorher 126.099 / 35.000', async () => {
     const { ladeControlling } = await import('@/lib/finanzen/controlling-server');
     const ist = computeMetrics((await ladeControlling())!, new Date(`${HEUTE}T12:00:00`)).istUmsatz;
     expect(ist).toBe(26000); // Mär–Mai 15.000 + Jun 5.000 + Jul–Sep 6.000
@@ -154,6 +154,9 @@ describe('jetzt: EINE Lesestelle der Ist-Monate (mit Monatsabschlüssen und 0-Pu
     const { ladeFinanzbild } = await import('@/lib/finanzen/chef/lauf');
     expect((await ladeFinanzbild('h-pruef', HEUTE)).bild.business.controlling!.ist_umsatz).toBe(ist);
 
+    const { sichtenFuerChef } = await import('@/lib/business/fuer-chef');
+    const rr = (await sichtenFuerChef(HEUTE)).alle.gesamt.saeulen.flatMap(s => s.kennzahlen).find(k => k.id === 'run_rate')!;
+    expect(rr.details?.find(d => d.titel === 'Ist seit Januar')?.wert).toMatch(/26\.000/);
   });
 
   it('`mitAbschluessen` folgt derselben Regel wie der Index (rein)', () => {
