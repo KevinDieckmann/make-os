@@ -252,8 +252,8 @@ export function kreislaufWeg(id: KreislaufStufeId, m?: { id: string; firmaId?: s
     case 'leads': return WEG.qualifizierung();
     case 'deals': return WEG.deals();
     case 'followup': return WEG.followup();
-    case 'fulfillment': return m ? WEG.fall(m.id, 'ablauf') : WEG.fulfillment('visualisierung');
-    case 'nachher': return m ? WEG.fall(m.id, 'kreislauf') : WEG.vertriebsplanung('kreislauf');
+    case 'fulfillment': return m ? WEG.fall(m.id) : WEG.fulfillment();
+    case 'nachher': return m ? WEG.fall(m.id, 'reise', 'stelle-abschluss') : WEG.vertriebsplanung('kreislauf');
     case 'wiederkauf': return m?.firmaId ? WEG.firma(m.firmaId) : WEG.deals();
   }
 }

@@ -1,7 +1,7 @@
 // ─── Fulfillment · Design-Überarbeitung (11.10.) — die Ansichten rendern (Rauchtest ohne Browser) ─────────────────────────────────────────────
-// Kopf des Falls („Wo steht der Kunde?“ mit Phasen-Strahl und EINER Hauptaktion), Ablauf (nur die laufende Phase offen, Bausteine als Chip am Schritt,
-// „+ Zusatz-Schritt“ EINMAL je Phase, Freigabe als Meilenstein), Überblick (Onboarding-Band, nur offene Schritte), Prozesse (Legende, Paket-Karten)
-// und Cockpit (Kunden-Karten nach „braucht Aufmerksamkeit“). Daten erfunden; die Lese-Haken sind ersetzt — keine Route, kein Netz.
+// Seit 17.10. (Kevins Miro-Standard): Kopf des Falls (knapp — Ampel mit einem Satz, „Dem Kunden zeigen“), Reise (laufende Phase gewählt: Fluss + Detail des
+// nächsten Schritts, Bausteine als Chip, „+ Zusatz-Schritt“ EINMAL je Phase, Abstimmungspunkt als Raute), Prozesse (Legende, Paket-Karten), Cockpit (Kunden-
+// Karten nach „braucht Aufmerksamkeit“) und die Lage als EINE Zeile. Daten erfunden; die Lese-Haken sind ersetzt — keine Route, kein Netz.
 import { describe, it, expect, vi } from 'vitest';
 import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -18,8 +18,7 @@ vi.mock('@/components/os/fulfillment/prozesse/daten', async orig => ({
 }));
 
 import { FallKopf } from '@/components/os/fulfillment/reise/FallKopf';
-import { FallAblauf } from '@/components/os/fulfillment/prozesse/FallAblauf';
-import { FallUeberblick } from '@/components/os/fulfillment/prozesse/FallUeberblick';
+import { FallReise } from '@/components/os/fulfillment/reise/FallReise';
 import { Prozesse } from '@/components/os/fulfillment/prozesse/Prozesse';
 import { Cockpit } from '@/components/os/fulfillment/prozesse/Visualisierung';
 import { LageStreifen } from '@/components/os/fulfillment/reise/LageStreifen';
@@ -55,36 +54,27 @@ lese.fall = {
   wartet: [], wertKonto: [], fortschritt: 25, bausteine: [{ id: 'fb-leitfaden', titel: 'Leitfaden Erstgespräch', art: 'skript', kundeFuellt: false, nurIntern: false, rechtOffen: true, vorVerkaufOffen: false, lieferobjekt: null }],
 };
 
-describe('Fall', () => {
-  it('Kopf: „Wo steht der Kunde?“ mit Strahl, drei Antworten und EINER Hauptaktion (nur unter Überblick/Ablauf)', () => {
-    const html = renderToStaticMarkup(h(FallKopf, { mandatId: 'm-1', reiter: 'ueberblick' }));
-    expect(html).toContain('Wo steht der Kunde?');
-    expect(html).toContain('Sie sind hier');
-    expect(html).toContain('Phase 2 von 3: Diagnose');
-    expect(html).toContain('Leitfaden schreiben');
-    expect((html.match(/ui-knopf-haupt/g) ?? []).length).toBe(1);
-    expect(html).toContain('Als Nächstes: Leitfaden schreiben');
-    expect(renderToStaticMarkup(h(FallKopf, { mandatId: 'm-1', reiter: 'wert' }))).not.toMatch(/ui-knopf-haupt/);
+describe('Fall (seit 17.10. Kopf + vier Reiter — Kevins Miro-Standard)', () => {
+  it('Kopf: knapp — zurück, Ampel mit einem Satz, „Dem Kunden zeigen“; kein Strahl und keine Antwort-Kacheln mehr (das zeigt die Reise)', () => {
+    const html = renderToStaticMarkup(h(FallKopf, { mandatId: 'm-1' }));
+    expect(html).toContain('‹ Fulfillment');
+    expect(html).not.toContain('Wo steht der Kunde?');
+    expect(html).not.toContain('Sie sind hier');
+    expect(html).toContain('>Dem Kunden zeigen<');
+    expect(html).not.toMatch(/ui-knopf-haupt/);
   });
 
-  it('Ablauf: nur die laufende Phase offen, Baustein als Chip am Schritt (keine doppelte Zeile), „+ Zusatz-Schritt“ einmal, Freigabe als Meilenstein', () => {
-    const html = renderToStaticMarkup(h(FallAblauf, { mandatId: 'm-1' }));
-    expect((html.match(/aria-expanded="true"/g) ?? []).length).toBe(1);
+  it('Reise: die laufende Phase ist gewählt (Fluss + Detail des nächsten Schritts), Baustein als Chip im Detail, „+ Zusatz-Schritt“ einmal, Abstimmungspunkt als Raute', () => {
+    const html = renderToStaticMarkup(h(FallReise, { mandatId: 'm-1' }));
+    expect(html).toContain('Phase 2 · Diagnose');
     expect(html).toContain('Leitfaden Erstgespräch');
     expect(html).toContain('rechtlich prüfen');
-    expect((html.match(/>Leitfaden schreiben</g) ?? []).length).toBe(1);
     expect((html.match(/\+ Zusatz-Schritt/g) ?? []).length).toBe(1);
     expect(html).toContain('Abstimmungspunkt 2 · Diagnose-Abnahme'); // 14.10. (Abnahme B19): Nummer lückenlos statt „Freigabe F3“
     expect(html).not.toMatch(/Freigabe F\d/);
-    expect(html).not.toContain('Interviews führen'); // erledigt — in der laufenden Phase zuerst nur die offenen
-    expect(html).toContain('Alle 3 Schritte zeigen');
-  });
-
-  it('Überblick: Onboarding-Band, Willkommensmail gesendet → keine eigene Karte, keine zweite Hauptaktion', () => {
-    const html = renderToStaticMarkup(h(FallUeberblick, { mandatId: 'm-1' }));
-    expect(html).toContain('Onboarding-Schritte');
+    // Die Willkommensmail ist gesendet → keine eigene Karte; höchstens EINE Hauptaktion (der Handgriff des nächsten Schritts).
     expect(html).not.toContain('id="willkommen"');
-    expect(html).not.toMatch(/ui-knopf-haupt/);
+    expect((html.match(/ui-knopf-haupt/g) ?? []).length).toBeLessThanOrEqual(1);
   });
 });
 
@@ -108,7 +98,7 @@ describe('Startseite, Prozesse, Cockpit', () => {
     expect(html).toContain('noch keinem Produkt zugeordnet');
   });
 
-  it('Cockpit: je Kunde eine Karte, wer Aufmerksamkeit braucht zuerst; Lage oben in drei Antworten', () => {
+  it('Cockpit: je Kunde eine Karte, wer Aufmerksamkeit braucht zuerst; die Lage oben als EINE Zeile', () => {
     const html = renderToStaticMarkup(h(Cockpit));
     expect(html.indexOf('Dringend GmbH')).toBeLessThan(html.indexOf('Ruhig AG'));
     expect(html).toContain('braucht Aufmerksamkeit');
@@ -116,5 +106,6 @@ describe('Startseite, Prozesse, Cockpit', () => {
     expect(lage).toContain('Kunden in Lieferung');
     expect(lage).toContain('2 Kunden');
     expect(lage).toContain('Was hängt?');
+    expect(lage).toContain('class="ff-lage"');
   });
 });

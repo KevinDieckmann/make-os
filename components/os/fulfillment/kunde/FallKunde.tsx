@@ -1,17 +1,14 @@
 'use client';
 
-// ─── Fulfillment · Fall › Kunde & Reports (C2, 10.10.; neu gezeichnet 12.10. — FULFILLMENT_KONZEPT.md 5.2, 5.4, 5.5) ──────────────────────────────
-// Die INTERNE Steuerung dessen, was beim Kunden ankommt und was zurückkommt. 12.10. (Rückmeldung: „Antwort zuerst, Bild statt Liste, keine losen Enden“):
-//   1. Drei Antworten: Report im Takt? · Wie zufrieden ist der Kunde (Puls ↔ Health)? · Was sieht der Kunde (Link, Playbook, Unterlagen)? — und EINE
-//      Hauptaktion (Report fällig → Report; sonst „Dem Kunden zeigen“).
-//   2. Fortschritts-Report: die Zeitachse im Zwei-Wochen-Takt (erstellte Reports aus der Dateiablage, Soll-Termine, nächster fälliger Tag), darunter
-//      der vorhandene Report-Weg der Leistungstreppe (`MandatFortschritt`: erstellen, Mail vorbereiten, Health) — der Report stand bisher nur unter
-//      Produkte & Mandate (loses Ende).
-//   3. Kunden-Puls als Verlauf neben der Health des Mandats: weicht die Health ab, schlägt die Karte „In die Health übernehmen“ vor; unter der Schwelle
-//      steht der Weg zum Gespräch (Vorschlag im Freigabe-Stapel, Follow-up am Mandat). Seltenes (von Hand eintragen, Schwelle, Puls-Link) hinter „⋯“.
-//   4. Kunden-Link (Schalter der Instanz — nur Inhaber —, anlegen; verlängern/neu/widerrufen/Rechte hinter „⋯“), Playbook & Formulare (gemeinsam
-//      ausfüllen, exportieren — das Playbook gehört dem Kunden), Unterlagen (ungeprüft → freigegeben/gesperrt, Beleg, nur als Download).
-//   5. „So sieht der Kunde es“: Vorschau und „Dem Kunden zeigen“ (Vollbild) — dieselbe Positivliste wie der Link.
+// ─── Fulfillment · Fall › Kunde (C2, 10.10.; 12.10. neu gezeichnet; seit 17.10. „eine Karte je Sache“ — FULFILLMENT_KONZEPT.md 5.2, 5.4, 5.5) ──────────────
+// Die INTERNE Steuerung dessen, was beim Kunden ankommt und was zurückkommt. Rückmeldung 17.10.: „Es dupliziert sich — lieber wenig und klar.“ Seitdem ohne
+// eigene Lage-Kacheln oben (die Ampel steht im Kopf des Falls, „Dem Kunden zeigen“ dort als EIN Knopf) — nur noch je Sache eine Karte:
+//   1. Kunden-Link (Schalter der Instanz — nur Inhaber —, anlegen; verlängern/neu/widerrufen/Rechte hinter „⋯“).
+//   2. Playbook & Formulare (gemeinsam ausfüllen, exportieren — das Playbook gehört dem Kunden).
+//   3. Unterlagen (ungeprüft → freigegeben/gesperrt, Beleg, nur als Download).
+//   4. Fortschritts-Report: die Zeitachse im Zwei-Wochen-Takt (erstellte Reports, Soll-Termine, nächster fälliger Tag) und der Report-Weg der
+//      Leistungstreppe (`MandatFortschritt`: erstellen, Mail vorbereiten, Gesundheit).
+//   5. Kunden-Puls als Verlauf neben der Gesundheit des Mandats („In die Gesundheit übernehmen“), unter der Schwelle der Weg zum Gespräch; Seltenes hinter „⋯“.
 // Daten nur über /api/fulfillment/kunde{,/datei,/vorschau} und /api/fulfillment/fall (Reports, Follow-ups); der Server filtert (Business only). Das
 // Token eines Links steht nur einmal hier — direkt nach „Link anlegen“ — und wird nirgends gespeichert.
 
@@ -22,22 +19,20 @@ import { Karte, Knopf, Hinweis, Ueberschrift, Chip, Leer, Schalter, Feldzeile, E
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { pulsStufe } from '@/lib/fulfillment/regeln';
-import { pulsReihe, reportAchse, reportLage, type Antwort } from '@/lib/fulfillment/prozesse/ansichten';
+import { pulsReihe, reportAchse, reportLage } from '@/lib/fulfillment/prozesse/ansichten';
 import { fallStartTag } from '@/lib/fulfillment/prozesse/fall';
 import type { KundeStand, InternFormular } from '@/lib/fulfillment/kunde/server';
 import type { KundenFormular } from '@/lib/fulfillment/kunde/sicht';
 import { KUNDE_ANNEHMEN, ZWECK_TEXT } from '@/lib/fulfillment/kunde/upload';
 import { pulsMail } from '@/lib/fulfillment/kunde/puls';
 import { FormularKarte, type SpeicherErgebnis } from './KundenAnsicht';
-import { KundenAnsichtVorschau } from './KundenAnsichtVorschau';
 import { MandatFortschritt } from '../../mandate/treppe/Fortschritt';
 import { TREPPE_EREIGNIS } from '../../mandate/treppe/daten';
 import { useFall, geaendert, tagKurz } from '../prozesse/daten';
 import { anzahl, satz as satzEnde } from '@/lib/text/zahlwort';
-import { ReiterAntwort, MehrKnopf, Zeitachse } from '../reise/teile';
-import { DemKundenZeigen } from '../reise/Praesentation';
-import { JETZT } from '../reise/bilder';
-import { insBild, useStellenSprung } from '../reise/sprung';
+import { MehrKnopf, Zeitachse } from '../reise/teile';
+import { JETZT, AMPEL_FARBE as AMPEL } from '../reise/bilder';
+import { useStellenSprung } from '../reise/sprung';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
 const tag = (t?: string) => (t && /^\d{4}-\d{2}-\d{2}/.test(t) ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : t ?? '');
@@ -64,7 +59,6 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
   const [fehler, setFehler] = useState<string | null>(null);
   const [meldung, setMeldung] = useState<{ art: 'gut' | 'kritisch' | 'achtung'; text: string } | null>(null);
   const [frisch, setFrisch] = useState<{ art: 'link' | 'puls'; url: string } | null>(null);
-  const [vorschau, setVorschau] = useState(false);
   const { bestaetigen, dialog } = useRueckfrage();
   const fall = useFall(mandatId);
   useStellenSprung();
@@ -100,30 +94,17 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
   const start = fd?.fall ? fallStartTag(fd.fall) : (fd?.mandat.start ?? heute).slice(0, 10);
   const achse = reportAchse({ start, heute, reports: fd?.reports ?? [], gesendetAm: fd?.report?.gesendetAm ?? null });
   const rl = reportLage(achse, heute);
-  const reihe = pulsReihe(s.puls.liste, s.puls.health);
-  const stufe = reihe.letzter ? pulsStufe(reihe.letzter.wert, s.puls.schwelle) : null;
-  const puls: Antwort = !reihe.letzter
-    ? { ampel: 'gelb', antwort: 'Noch kein Kunden-Puls', unter: 'Die Puls-Frage geht mit dem 2-Wochen-Report raus — oder ihr tragt die Antwort aus dem Gespräch ein.' }
-    : { ampel: stufe === 'kritisch' ? 'rot' : stufe === 'gut' ? 'gruen' : 'gelb', antwort: `Puls ${reihe.letzter.wert} von 10`, unter: `${tagKurz(reihe.letzter.tag)} · ${reihe.healthPasst ? `Gesundheit des Mandats ${reihe.health ?? '—'} passt dazu` : `Gesundheit des Mandats steht auf ${reihe.health ?? '—'} — übernehmen?`}${stufe === 'kritisch' ? ' · Gespräch anbieten' : ''}` };
-  const l = s.link;
-  const sieht: Antwort = !s.fall
-    ? { ampel: 'gelb', antwort: 'Noch kein Fall', unter: 'Der Kunden-Link zeigt den Stand des Falls — erst das Onboarding starten.' }
-    : { ampel: s.kurz.ungepruefteUnterlagen ? 'gelb' : 'gruen', antwort: l?.status === 'aktiv' ? 'Link aktiv' : s.schalter.an ? 'Noch kein Link' : 'Link aus — Vorschau geht', unter: `${s.kurz.playbookProzent != null ? `Playbook ${s.kurz.playbookProzent} %` : 'kein Playbook'}${s.kurz.ungepruefteUnterlagen ? ` · ${s.kurz.ungepruefteUnterlagen} Unterlage${s.kurz.ungepruefteUnterlagen === 1 ? '' : 'n'} ungeprüft` : ''} · was er sieht: Reise, Wert-Konto, nächste Schritte.` };
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       {meldung && <Hinweis art={meldung.art} rolle="status">{meldung.text}</Hinweis>}
-      <ReiterAntwort titel="Kunde & Reports" erklaerung="fulfillment.reportTakt"
-        antworten={[
-          { frage: 'Report im Takt?', ...rl, onClick: () => insBild('kunde-report') },
-          { frage: 'Wie zufrieden ist der Kunde?', ...puls, onClick: () => insBild('kunde-puls') },
-          { frage: 'Was sieht der Kunde?', ...sieht, onClick: () => insBild('kunde-sicht') },
-        ]}
-        aktion={achse.naechsterFaellig <= heute
-          ? <Knopf haupt onClick={() => insBild('kunde-report')}>Fortschritts-Report erstellen ›</Knopf>
-          : <DemKundenZeigen mandatId={mandatId} />} />
+      <LinkKarte s={s} tun={tun} frisch={frisch} setFrisch={setFrisch} setMeldung={setMeldung} bestaetigen={bestaetigen} voll={voll} />
 
-      <Karte i={1} id="kunde-report">
-        <Ueberschrift erklaerung="fulfillment.reportTakt" rechts={<span>alle zwei Wochen</span>}>Fortschritts-Report</Ueberschrift>
+      <FormulareKarte s={s} mandatId={mandatId} laden={laden} />
+
+      <Unterlagen mandatId={mandatId} s={s} laden={laden} setMeldung={setMeldung} bestaetigen={bestaetigen} />
+
+      <Karte i={4} id="kunde-report">
+        <Ueberschrift erklaerung="fulfillment.reportTakt" rechts={<Chip farbe={AMPEL[rl.ampel]}>{rl.antwort}</Chip>}>Fortschritts-Report</Ueberschrift>
         <Zeitachse heuteX={achse.heuteX} links={`Start ${tagKurz(achse.von)}`} rechts={tagKurz(achse.bis)}
           beschreibung={`${satzEnde(`Reports seit ${tagKurz(achse.von)}: ${achse.reports.map(r => tagKurz(r.tag)).join(', ') || 'keiner'}`)} ${satzEnde(`Nächster fällig am ${tagKurz(achse.naechsterFaellig)}`)}`}
           punkte={[
@@ -136,23 +117,11 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
           <span><span aria-hidden style={{ color: C.inkLeise, marginRight: 6 }}>◇</span>Soll-Termin (alle 14 Tage)</span>
           <span><span aria-hidden style={{ color: JETZT, marginRight: 6 }}>|</span>heute</span>
         </div>
-        <div style={klein}>Im Report — dasselbe Bild wie die Kunden-Seite: Seite 1 „So weit sind wir“ (Lage, Phasen, Ziele, erledigt · als Nächstes · wartet auf euch, erste Erfolge, Puls), danach „Im Detail“. Gesendet wird nur per Klick — mit der Puls-Frage, wenn der Kunden-Link aktiv ist.</div>
+        <div style={klein}>{rl.unter} Im Report steht dasselbe Bild wie auf der Kunden-Seite (die Reise, Ziele, was wir brauchen); gesendet wird nur per Klick — mit der Puls-Frage, wenn der Kunden-Link aktiv ist.</div>
         <MandatFortschritt mandatId={mandatId} imFall />
       </Karte>
 
       <PulsKarte s={s} tun={tun} onLink={url => setFrisch({ art: 'puls', url })} voll={voll} followups={fd?.followups ?? []} />
-
-      <LinkKarte s={s} tun={tun} frisch={frisch} setFrisch={setFrisch} setMeldung={setMeldung} bestaetigen={bestaetigen} voll={voll} />
-
-      <FormulareKarte s={s} mandatId={mandatId} laden={laden} />
-
-      <Unterlagen mandatId={mandatId} s={s} laden={laden} setMeldung={setMeldung} bestaetigen={bestaetigen} />
-
-      <Karte flach id="kunde-sicht">
-        <Ueberschrift erklaerung="fulfillment.praesentation" rechts={<span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise onClick={() => setVorschau(v => !v)}>{vorschau ? 'Vorschau schließen' : 'Vorschau hier'}</Knopf><DemKundenZeigen mandatId={mandatId} leise /></span>}>So sieht der Kunde es</Ueberschrift>
-        <div style={klein}>Dieselbe Seite wie über den Link — mit genau den Daten, die der Server dem Kunden schickt. Nie dabei: Stakeholder, Haltungen, Notizen, interne Schritte und Marken, Gesundheit des Mandats, Honorar, Dossier, Personenteil.</div>
-        {vorschau && <div style={{ marginTop: 12 }}><KundenAnsichtVorschau mandatId={mandatId} /></div>}
-      </Karte>
       {dialog}
     </div>
   );

@@ -105,14 +105,14 @@ export interface FfIndexZeile {
 }
 export interface FfIndexDaten { heute: string; zeilen: FfIndexZeile[] }
 
-const PFLEGEN = { text: 'Fulfillment öffnen', href: WEG.fulfillment('visualisierung') };
+const PFLEGEN = { text: 'Fulfillment öffnen', href: WEG.fulfillment() };
 export const FF_KENNZAHLEN: KennzahlDefBasis[] = [
   { id: 'ff_health', label: 'Lage der Fälle', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
     formel: 'Ø Ampel der laufenden Fälle (grün zählt 100, gelb 50, rot 0) — die vorhandene Ampel aus Terminen, Lieferungen, Zahlungen, Zufriedenheit',
     quelle: 'Fälle (Fulfillment) + Fortschritt im Paket (Leistungstreppe)', luecke: 'Noch kein laufender Fall', pflegen: PFLEGEN },
   { id: 'ff_takt', label: 'Fälle im Takt', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
     formel: 'Anteil der laufenden Fälle, an denen nichts hängt (keine überfällige Willkommensmail, Freigabe oder Schritt, nichts wartet länger als 7 Tage, Report höchstens 14 Tage alt)',
-    quelle: 'Fälle (Fulfillment) — „Was hängt“ im Cockpit', luecke: 'Noch kein laufender Fall', pflegen: { text: 'Cockpit öffnen', href: WEG.fulfillment('visualisierung') } },
+    quelle: 'Fälle (Fulfillment) — „Was hängt“ im Cockpit', luecke: 'Noch kein laufender Fall', pflegen: { text: 'Cockpit öffnen', href: WEG.fulfillment() } },
   { id: 'ff_puls', label: 'Kunden-Puls', saeule: FF_ID, gruppe: 'Kunde', einheit: 'anzahl', richtung: 'hoch', gruen: 8, rot: 6,
     formel: 'Ø letzter Kunden-Puls (0–10) je Fall in den letzten 90 Tagen',
     quelle: 'Puls-Antworten über den Kunden-Link bzw. von Hand (Fulfillment › Fall › Kunde & Reports)', luecke: 'Noch kein Puls in den letzten 90 Tagen', pflegen: PFLEGEN },
@@ -131,7 +131,7 @@ export const ffZeilenFuer = (d: FfIndexDaten | null | undefined, scope: string):
 /** Eine Messung der Säule — jede gemessene Kennzahl hat zwei bis drei Punkte dahinter (Sprung in den Fall). */
 export function ffMessung(id: string, d: FfIndexDaten | null | undefined, scope: string): Messung {
   const zeilen = ffZeilenFuer(d, scope);
-  const zuFulfillment: Detail[] = [{ titel: 'Fulfillment öffnen', href: WEG.fulfillment('visualisierung') }];
+  const zuFulfillment: Detail[] = [{ titel: 'Fulfillment öffnen', href: WEG.fulfillment() }];
   if (!zeilen.length) return { luecke: 'Noch kein laufender Fall', details: zuFulfillment };
   const fall = (z: FfIndexZeile, r?: Parameters<typeof WEG.fall>[1]) => WEG.fall(z.mandatId, r);
   switch (id) {
@@ -158,10 +158,10 @@ export function ffMessung(id: string, d: FfIndexDaten | null | undefined, scope:
     }
     case 'ff_wert': {
       const m = zeilen.filter(z => z.wert != null);
-      if (!m.length) return { luecke: 'Noch kein Ziel mit Ausgang, Zielwert und Messung', details: zeilen.slice(0, 2).map(z => ({ titel: `${z.kunde}: Wert-Konto festlegen`, href: fall(z, 'wert') })) };
+      if (!m.length) return { luecke: 'Noch kein Ziel mit Ausgang, Zielwert und Messung', details: zeilen.slice(0, 2).map(z => ({ titel: `${z.kunde}: Wert-Konto festlegen`, href: fall(z, 'ziele') })) };
       const w = m.reduce((a, z) => a + (z.wert as number), 0) / m.length;
       return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `Ø Zielerreichung aus ${m.length} Fäll${m.length === 1 ? '' : 'en'}`,
-        details: [...m].sort((a, b) => (a.wert as number) - (b.wert as number)).slice(0, 3).map(z => ({ titel: z.kunde, wert: `${z.wert} %`, href: fall(z, 'wert') })) };
+        details: [...m].sort((a, b) => (a.wert as number) - (b.wert as number)).slice(0, 3).map(z => ({ titel: z.kunde, wert: `${z.wert} %`, href: fall(z, 'ziele') })) };
     }
     default: return { luecke: 'Keine Messung hinterlegt' };
   }

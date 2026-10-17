@@ -109,7 +109,7 @@ describe('Der nächste Handgriff (eine Hauptaktion)', () => {
     expect(naechsterHandgriff(f, ob, MUSTER_P1.freigaben, HEUTE)).toMatchObject({ art: 'willkommen', dringend: true });
     const f2: Fall = { ...f, onboarding: { willkommenGesendetAm: JETZT } };
     const g = naechsterHandgriff(f2, onboardingStand(f2, abl), MUSTER_P1.freigaben, HEUTE);
-    expect(g).toMatchObject({ art: 'onboarding', schluessel: 'kickoff', reiter: 'takt' });
+    expect(g).toMatchObject({ art: 'onboarding', schluessel: 'kickoff', reiter: 'menschen' }); // 17.10.: der Takt steht unter „Menschen & Termine“
   });
 
   it('laufender Fall: nächster offener Schritt; sind alle Schritte einer Phase erledigt, die Freigabe in Klartext; abgeschlossen = fertig', () => {

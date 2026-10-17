@@ -93,7 +93,7 @@ export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFa
             <span style={beschriftung}>Nächster Schritt</span>
             <span style={{ fontSize: TYP.body, color: C.ink, flex: '1 1 220px', minWidth: 0, overflowWrap: 'anywhere' }}>{z.fall.schritt ?? z.fall.phase ?? 'Alle Schritte erledigt'}</span>
             <span style={klein}>aus dem Fall{z.fall.phase && z.fall.schritt ? ` · in „${z.fall.phase}“` : ''}</span>
-            {!imFall && <Link href={WEG.fall(mandatId, 'ablauf')} style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>im Ablauf ›</Link>}
+            {!imFall && <Link href={WEG.fall(mandatId)} style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>in der Reise ›</Link>}
           </div>
         )
         : <NaechsterSchritt wert={z.naechster} onSpeichern={n => api.schreibe([{ op: 'kunde', mandatId, felder: { naechster: n }, stand: z.stand }])} />}

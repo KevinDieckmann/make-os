@@ -325,9 +325,9 @@ describe('Muster und Code neutral (keine Namen, keine Preise)', () => {
     expect(fallLink('../boese')).toBe(FULFILLMENT_PFAD);
     expect(fulfillmentLink('onboarding')).toBe(`${FULFILLMENT_PFAD}?u=onboarding`);
     const q = (s: string) => new URLSearchParams(s);
-    expect(fulfillmentAusAdresse(q('u=bausteine&b=fb-1'))).toEqual({ u: 'bausteine', r: 'ueberblick', b: 'fb-1' });
-    expect(fulfillmentAusAdresse(q('u=quatsch&k=fk-1&r=analyse&m=m-1'))).toEqual({ u: 'prozesse', r: 'analyse', k: 'fk-1', m: 'm-1' });
-    expect(fulfillmentAusAdresse(q('k=<script>&b=fb-1'))).toEqual({ u: 'prozesse', r: 'ueberblick' });
+    expect(fulfillmentAusAdresse(q('u=bausteine&b=fb-1'))).toEqual({ u: 'bausteine', r: 'reise', b: 'fb-1' });
+    expect(fulfillmentAusAdresse(q('u=quatsch&k=fk-1&r=analyse&m=m-1'))).toEqual({ u: 'prozesse', r: 'reise', k: 'fk-1', m: 'm-1', anker: 'stelle-analyse', alt: true }); // 17.10.: früherer Reiter → Reise an der Analyse-Phase
+    expect(fulfillmentAusAdresse(q('k=<script>&b=fb-1'))).toEqual({ u: 'prozesse', r: 'reise' });
     expect(KENNUNG.kundenLink.test('kl-0123456789abcdef01234567')).toBe(true);
     expect(KENNUNG.kundenLink.test('kl-0123456789abcdef0123456')).toBe(false);
   });
