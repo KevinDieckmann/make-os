@@ -21,11 +21,12 @@ import { localDay } from '@/lib/zeit';
 import { alleSchritte, phasenVon, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
 import { reiseZeile, phasenFluss, flussKnoten, analysePhaseId, abschlussPhaseId, bandTexte, BAND_NICHTS, type FallStelleId, type FlussKnoten, type ReiseBildEingabe, type ReiseZeile } from '@/lib/fulfillment/prozesse/reise-bild';
 import { obSchluessel } from '@/lib/fulfillment/prozesse/onboarding';
+import { bestaetigungTitel, BESTAETIGUNG } from '@/lib/fulfillment/prozesse/darstellung';
 import { RHYTHMUS_TEXT } from '@/lib/fulfillment/prozesse/rituale';
 import { useFall, fallOps, fehlerText, type FallAntwort } from '../prozesse/daten';
 import { klein, Meldung, useTextFrage } from '../prozesse/teile';
 import { SchrittDetail, FreigabeMeilenstein, FreigabeDialog, ExtraDialog, fallOpsMitMeldung, statusSetzer, type FallMeldung } from '../prozesse/FallAblauf';
-import { WillkommenKarte, KickoffFragen, AusAnalyse, KeinFall, VorlageGeaendert, AusfuehrungWartet, FallStatus, OnboardingZaehler, OnboardingMehr } from '../prozesse/FallUeberblick';
+import { WillkommenKarte, KickoffFragen, AusAnalyse, KeinFall, VorlageGeaendert, AusfuehrungWartet, FallStatus, OnboardingZaehler, OnboardingMehr, ZusatzAnhaengen } from '../prozesse/FallUeberblick';
 import { AbschlussDetail, type AbschlussOps, type AbschlussStelle } from '../prozesse/FallKreislauf';
 import { FallAnalyse } from '../analyse/FallAnalyse';
 import { ReiseBild, type BildSpalte } from '../../ui/reise/ReiseBild';
@@ -43,7 +44,7 @@ export function bildSpalten(z: ReiseZeile): BildSpalte[] {
   return z.spalten.map((s, i) => ({
     id: s.id, nr: s.nr, titel: s.titel, zustand: s.zustand, kaestchen: s.kaestchen, mehr: s.mehr, ...(s.haengt ? { haengt: s.haengt } : {}),
     unter: s.zustand === 'fertig' ? 'erledigt' : s.gesamt ? `${s.erledigt} von ${s.gesamt}` : undefined,
-    ...(s.abstimmung ? { raute: { titel: `Abstimmungspunkt${s.abstimmung.nr ? ` ${s.abstimmung.nr}` : ''}${s.abstimmung.titel ? ` · ${s.abstimmung.titel}` : ''}`, gegeben: s.abstimmung.gegeben, hier: s.abstimmung.hier, ...(s.abstimmung.haengt ? { haengt: s.abstimmung.haengt } : {}) } } : {}),
+    ...(s.abstimmung ? { raute: { titel: bestaetigungTitel(s.abstimmung.nr, s.abstimmung.titel || undefined), gegeben: s.abstimmung.gegeben, hier: s.abstimmung.hier, ...(s.abstimmung.haengt ? { haengt: s.abstimmung.haengt } : {}) } } : {}),
     band: { ...(band[i] ? { text: band[i] } : {}), ...(band[i] && band[i] !== BAND_NICHTS ? { achtung: true } : {}), intern: !s.band.sieht },
     // Phasen eines angehängten Zusatzmoduls (17.10. spät): eigener Abschnitt der Reise mit dem Titel des Moduls.
     ...(s.modul ? { abschnitt: { id: s.modul.id, titel: s.modul.titel } } : {}),
@@ -151,6 +152,8 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
           <span style={{ ...MIKRO }}>Läuft immer mit</span>
           <span>{fallRituale.length ? fallRituale.map(r => `${r.titel} (${RHYTHMUS_TEXT[r.rhythmus]})`).join(' · ') : 'noch kein Ritual im Kalender'} · Report alle 14 Tage ›</span>
         </Link>
+        {/* 17.10. spät (`ff-einfach`): ein Zusatzmodul hängt sich an DIESE Reise — der Knopf steht hier statt ganz unten unter dem Status. */}
+        <ZusatzAnhaengen daten={daten} />
       </Karte>
 
       {fluss && sp && (
@@ -173,7 +176,7 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
       )}
 
       {istAnalyse && (
-        <Klappbar id="ff-analyse" titel="Analyse dieser Phase — Läufe A0–A13, Dossier, Recht" offen={analyseOffen} umschalten={() => setAnalyseAuf(!analyseOffen)} erklaerung="fulfillment.wellen">
+        <Klappbar id="ff-analyse" titel="Analyse dieser Phase — Läufe, Dossier, Recht" offen={analyseOffen} umschalten={() => setAnalyseAuf(!analyseOffen)} erklaerung="fulfillment.wellen">
           <div style={{ display: 'grid', gap: 14 }}>
             <AusAnalyse daten={daten} onMeldung={setMeldung} />
             <FallAnalyse mandatId={mandatId} />
@@ -201,7 +204,7 @@ function Detail({ daten, phase, knoten, gewaehlt, ops, status, abschlussOps, mel
     return (
       <Karte i={0} flach id="ff-detail">
         <Ueberschrift>Details</Ueberschrift>
-        <div style={klein}>Ein Kästchen in der Reise oder einen Knoten im Fluss antippen — hier stehen dann der Schritt, sein Stand und der Handgriff (abhaken, Abstimmung vermerken, Mail vorbereiten …).</div>
+        <div style={klein}>Ein Kästchen in der Reise oder einen Schritt im Fluss antippen — hier stehen dann der Schritt, sein Stand und der Handgriff (abhaken, Bestätigung vermerken, Mail vorbereiten …).</div>
       </Karte>
     );
   }
@@ -209,7 +212,7 @@ function Detail({ daten, phase, knoten, gewaehlt, ops, status, abschlussOps, mel
   if (knoten.startsWith('fg-')) {
     const id = knoten.slice(3);
     const fg = daten.vorlage?.freigaben.find(x => x.id === id) ?? { id, titel: '', wer: 'beide' as const };
-    const nr = /^Abstimmungspunkt (\d+)/.exec(gewaehlt.titel)?.[1];
+    const nr = new RegExp(`^${BESTAETIGUNG} (\\d+)`).exec(gewaehlt.titel)?.[1];
     return <FreigabeMeilenstein fg={{ id, titel: fg.titel, wer: fg.wer, ...(nr ? { nr: Number(nr) } : {}) }} gegeben={f.freigaben[id]} haupt={hier} onVermerken={() => onFreigabe(id)} onZurueck={() => ops([{ op: 'freigabe', id, zuruecknehmen: true }])} />;
   }
   if (knoten.startsWith('ff-') && gewaehlt.stelle && ABSCHLUSS.has(gewaehlt.stelle)) {

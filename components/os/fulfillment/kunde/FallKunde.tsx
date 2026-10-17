@@ -225,7 +225,7 @@ function LinkKarte({ s, tun, frisch, setFrisch, setMeldung, bestaetigen, voll }:
         Kunden-Link der Instanz (nur Inhaber)
       </Schalter>
       {!s.schalter.umgebung && <Hinweis art="info">Auf dieser Instanz ist der Kunden-Link noch aus. Einschalten kann ihn der Betreiber eurer Instanz nach der Prüfung; bis dahin antwortet jeder Link „nicht gültig“. „Dem Kunden zeigen“ und die Vorschau funktionieren trotzdem.</Hinweis>}
-      {!s.fall && <Hinweis art="achtung">Für dieses Mandat läuft noch kein Fall. Der Kunden-Link zeigt den Stand des Falls — erst das Kundenonboarding starten (<Link href={WEG.fulfillment('onboarding')} style={{ color: C.aktiv }}>Fulfillment › Onboarding</Link>).</Hinweis>}
+      {!s.fall && <Hinweis art="achtung">Für dieses Mandat läuft noch kein Fall. Der Kunden-Link zeigt den Stand des Falls — erst den Fall starten (Reiter „Reise“ dieses Mandats bzw. <Link href={WEG.fulfillment()} style={{ color: C.aktiv }}>Heute im Fulfillment</Link>).</Hinweis>}
       {l ? (
         <Zeile titel={`Link ${l.id.slice(0, 9)}…`} unter={`angelegt am ${tag(l.erstelltAm)} · gilt bis ${tag(l.ablaufAm)}${l.zuletztAm ? ` · zuletzt genutzt ${tag(l.zuletztAm)}` : ' · noch nicht geöffnet'} · ${[l.rechte.formular && 'Formulare', l.rechte.upload && 'Unterlagen', l.rechte.puls && 'Puls'].filter(Boolean).join(' · ') || 'nur Stand'}`} rechts={<Chip farbe={STATUS_FARBE[l.status]}>{l.status}</Chip>} />
       ) : (

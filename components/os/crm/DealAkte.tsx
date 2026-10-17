@@ -29,6 +29,7 @@ import type { DealRolle } from '@/lib/crm/typen';
 import { angebotLink } from '@/lib/crm/adresse';
 import { angeboteZu, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
 import { anzahl } from '@/lib/text/zahlwort';
+import { FallAmDeal } from '../fulfillment/prozesse/FallAmDeal';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 /** Rollen am Deal — „Bremst“ steht im Menü, wird aber nie vorgeschlagen (lib/crm/vorschlaege.ts). */
@@ -136,6 +137,8 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
         {/* Was für den nächsten Schritt auf Kundenseite passieren muss — als Hinweis unter der Treppe, nicht gequetscht in der Stufe. */}
         {stufen.find(s => s.id === c.stufe && s.offen) && <div style={{ marginTop: 10 }}><Hinweis art="info">Weiter, wenn: {stufen.find(s => s.id === c.stufe)?.weiterWenn}</Hinweis></div>}
         {(c.stufe === 'gewonnen' || c.stufe === 'verloren' || c.stufe === 'geparkt') && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: c.stufe === 'gewonnen' ? LEUCHT.gut : c.stufe === 'verloren' ? LEUCHT.kritisch : C.inkDim }}>{stufen.find(s => s.id === c.stufe)?.label}{c.grund ? ` · ${c.grund}` : ''}{c.wiedervorlage ? ` · Wiedervorlage ${datum(c.wiedervorlage, crm.heute)}` : ''}</div>}
+        {/* 17.10. spät (Fulfillment „maximal einfach“): gewonnen → „Mandat anlegen & Fall starten“ auch in der Deal-Akte. */}
+        <FallAmDeal api={api} chanceId={c.id} />
       </Karte>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: 14, alignItems: 'start' }} className="deal-akte-spalten">

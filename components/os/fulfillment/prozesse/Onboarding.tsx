@@ -40,7 +40,7 @@ function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten:
     <Karte i={i} {...(ruhig ? {} : { akzent: LEUCHT.gut })}>
       {ruhig
         ? <Ueberschrift rechts={<span>{kandidaten.length}</span>}>Bestandsmandate — Fall starten?</Ueberschrift>
-        : <Ueberschrift farbe={LEUCHT.gut} erklaerung="fulfillment.willkommen24h" rechts={<span>{kandidaten.length}</span>}>Kundenonboarding starten</Ueberschrift>}
+        : <Ueberschrift farbe={LEUCHT.gut} erklaerung="fulfillment.willkommen24h" rechts={<span>{kandidaten.length}</span>}>Neue Kunden — Fall starten</Ueberschrift>}
       {ruhig && <div style={klein}>Vor der Einrichtung von Fulfillment unterschrieben — ohne Uhr und ohne Glocke. Ein Fall startet nur, wenn du ihn anlegst.</div>}
       <Meldung text={meldung} art="kritisch" />
       <Liste>
@@ -49,7 +49,7 @@ function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten:
           return (
             <Zeile key={k.mandatId} links={<Punkt farbe={u?.farbe ?? LEUCHT.gut} />} titel={k.kunde} umbrechen
               unter={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>{k.titel} · {GRUND[k.grund]}{u && <Chip farbe={u.farbe}>{u.text}</Chip>}{k.vorgeschlagen && <Chip farbe={C.inkDim}>im Stapel vorgeschlagen</Chip>}</span>}
-              rechts={<Leiste><Knopf leise onClick={() => aus(k)}>Ausblenden</Knopf><Knopf onClick={() => setStart(k)}>Starten</Knopf></Leiste>} />
+              rechts={<Leiste><Knopf leise onClick={() => aus(k)}>Ausblenden</Knopf><Knopf haupt onClick={() => setStart(k)}>Fall starten</Knopf></Leiste>} />
           );
         })}
       </Liste>
@@ -58,25 +58,28 @@ function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten:
   );
 }
 
-/** Start-Dialog: Paket-Vorlage (vorgewählt aus der Zuordnung des Produkts) und Starttag — legt den Fall an (idempotent über die Anfrage). */
+/**
+ * Start-Dialog: Ablauf (vorgewählt aus der Zuordnung des Produkts; ohne Zuordnung der erste Ablauf, der kein Zusatzmodul ist — 17.10. spät, vorher konnte das
+ * ein Zusatzmodul sein) und Starttag (heute) — legt den Fall an (idempotent über die Anfrage) und öffnet ihn.
+ */
 export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage'>; pakete: { id: string; titel: string; zusatz?: true }[]; onZu: () => void }) {
   const router = useRouter();
-  const [vorlage, setVorlage] = useState<string | null>(k.vorlage?.id ?? pakete[0]?.id ?? null);
+  const [vorlage, setVorlage] = useState<string | null>(k.vorlage?.id ?? pakete.find(p => !p.zusatz)?.id ?? pakete[0]?.id ?? null);
   const [tag, setTag] = useState(localDay());
   const [fehler, setFehler] = useState<string | null>(null);
   const [anfrage] = useState(neueAnfrageId);
   const los = async () => {
-    if (!vorlage) { setFehler('Bitte eine Paket-Vorlage wählen.'); return; }
+    if (!vorlage) { setFehler('Bitte einen Ablauf wählen.'); return; }
     const a = await fallAktion({ aktion: 'starten', mandatId: k.mandatId, vorlageId: vorlage, start: tag, anfrageId: anfrage });
     if (a.ok) { onZu(); router.push(WEG.fall(k.mandatId)); } else setFehler(fehlerText(a));
   };
   return (
-    <Fenster titel={`Onboarding starten: ${k.kunde}`} onZu={onZu} breit={560}>
+    <Fenster titel={`Fall starten: ${k.kunde}`} onZu={onZu} breit={560}>
       <form onSubmit={e => { e.preventDefault(); void los(); }} style={{ display: 'grid', gap: 12 }}>
         {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
-        {!pakete.length && <Hinweis art="achtung">Noch keine Paket-Vorlage — unter Fulfillment › Prozesse „Aus Muster anlegen“.</Hinweis>}
-        <Feldzeile label="Paket-Vorlage" erklaerung="fulfillment.zuordnung">
-          <Wahl label="Paket-Vorlage" liste={pakete.map(p => ({ id: p.id, label: p.titel }))} wert={vorlage} onWahl={setVorlage} />
+        {!pakete.length && <Hinweis art="achtung">Noch kein Ablauf — unter Fulfillment › Übersicht „Aus Muster anlegen“.</Hinweis>}
+        <Feldzeile label="Ablauf" erklaerung="fulfillment.zuordnung">
+          <Wahl label="Ablauf" liste={pakete.map(p => ({ id: p.id, label: p.zusatz ? `${p.titel} (Zusatzmodul)` : p.titel }))} wert={vorlage} onWahl={setVorlage} />
         </Feldzeile>
         <Feldzeile label="Start"><input type="date" value={tag} onChange={e => setTag(e.target.value)} style={feld} /></Feldzeile>
         <div style={klein}>{pakete.find(p => p.id === vorlage)?.zusatz
