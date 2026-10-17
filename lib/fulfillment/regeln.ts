@@ -364,7 +364,9 @@ export function kundenJeKnoten(vorlage: Pick<ProzessVorlage, 'id' | 'knoten'>, f
 // ── Konto löschen: Speichername tilgen (lib/datenschutz/konto-daten.ts) ──────────────────────────────────────────────────────────────
 
 /** Felder, die in Fulfillment-Beständen einen Speichernamen (Person des Haushalts) tragen. */
-export const PERSONEN_FELDER: ReadonlySet<string> = new Set(['geaendertVon', 'gestartetVon', 'erledigtVon', 'willkommenVon', 'erstelltVon', 'von', 'person']);
+// `angehaengtVon` (Zusatzmodule am Fall, 18.10. — Gesamtprüfung L3 C2): sonst bliebe der Speichername stehen, und ein neu vergebenes Konto gleichen
+// Namens erschiene als „hat angehängt“.
+export const PERSONEN_FELDER: ReadonlySet<string> = new Set(['geaendertVon', 'gestartetVon', 'erledigtVon', 'willkommenVon', 'erstelltVon', 'angehaengtVon', 'von', 'person']);
 /**
  * Den Speichernamen einer gelöschten Kontoperson in allen Personen-Feldern durch „[gelöscht]“ ersetzen — die Einträge bleiben (Geschäftsunterlagen).
  * Liefert den neuen Wert und die Zahl der Ersetzungen (0 = nichts geändert, dann derselbe Wert).

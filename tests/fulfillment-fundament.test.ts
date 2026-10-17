@@ -253,6 +253,8 @@ describe('Regeln: welcher Kunde steht wo, Speichername tilgen', () => {
     const ohne = speichernameTilgen(d, 'niemand');
     expect(ohne.n).toBe(0);
     expect(ohne.wert).toBe(d);
+    // 18.10. (Gesamtprüfung L3 C2): auch `angehaengtVon` der Zusatzmodule.
+    expect(speichernameTilgen({ zusaetze: [{ angehaengtVon: 'pia', titel: 'Zusatz' }] }, 'pia')).toEqual({ n: 1, wert: { zusaetze: [{ angehaengtVon: '[gelöscht]', titel: 'Zusatz' }] } });
   });
 });
 
