@@ -194,7 +194,7 @@ describe('Papierkorb: löschen, zurückholen, leeren — nichts geht still verlo
     expect(vorlage(d).knoten.find(x => x.id === 'fk-a')!.zweige).toEqual({ nein: u(1) });
     d = tun(d, { op: 'weg', id: u(1) });
     expect(vorlage(d).knoten.find(x => x.id === 'fk-a')).not.toHaveProperty('zweige');
-    expect(editorModell(vorlage(d)).papierkorb).toMatchObject([{ id: u(1), art: 'schritt', titel: 'Erinnern', wo: 'Start' }]);
+    expect(editorModell(vorlage(d)).papierkorb).toMatchObject([{ id: u(1), art: 'schritt', titel: 'Erinnerung', wo: 'Start' }]);
     d = tun(d, { op: 'zurueck', id: u(1) });
     expect(vorlage(d).knoten.find(x => x.id === 'fk-a')!.zweige).toEqual({ nein: u(1) });
     expect(bild(d)).toBe('Start◆[Kick-off,Erinnern,Fragebogen] Umsetzung[Skripte(Leitfaden,Einwände) | Training]');
@@ -404,7 +404,7 @@ describe('Wirkung auf Fälle: neue Fälle sofort, laufende nur per Übernahme �
     const fl = phasenFluss({ fall, freigaben, heute: '2026-10-17' }, 'fk-p1')!;
     const alle = flussKnoten(fl);
     const e = alle.find(x => x.id === 'fk-a')!;
-    expect(e).toMatchObject({ form: 'entscheidung', entscheid: true, ja: 'weiter', nein: { titel: 'Erinnern', unter: 'danach zurück zur Entscheidung' } });
+    expect(e).toMatchObject({ form: 'entscheidung', entscheid: true, ja: 'weiter', nein: { titel: 'Erinnerung', unter: 'danach zurück zur Entscheidung' } });
     expect(e.neinKnoten?.id).toBe(u(1));
     // Nicht doppelt: die Erinnerung steht nur neben der Entscheidung.
     const strang = fl.teile.flatMap(t => (t.art === 'linie' ? t.knoten : t.gruppen.flatMap(g => g.knoten))).map(x => x.id);
