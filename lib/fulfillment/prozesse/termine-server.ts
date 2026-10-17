@@ -2,7 +2,7 @@
 // Fall (Takt, Onboarding „Kick-off terminiert“), Cockpit, Kunden-Seite, Report und die Health „Termine“ der Leistungstreppe lesen die Termine eines
 // Mandats NUR hier: die Termine des gespeicherten Kalender-Stands (iCloud/Google bzw. der Mac-Stand — `termineLesen`, ohne Abgleich, nie Netz) mit
 // Bezug zum Mandat bzw. zur Firma des Mandats (`kalender-bezug`, lib/kalender/bezug.ts `mitBezug` — Serien mit jedem Vorkommen), dazu Bezüge mit Tag,
-// die im Stand (noch) fehlen. Private Termine tragen keinen Titel. Fehler → leer (der Fall zeigt dann „kein Termin“, nie einen erfundenen).
+// die im Stand fehlen — nur, wenn es keinen lesbaren Stand gibt (18.10.). Private Termine tragen keinen Titel. Fehler → leer (der Fall zeigt dann „kein Termin“, nie einen erfundenen).
 
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -46,8 +46,11 @@ async function fallTermineLesen(mandate: readonly MandatKurz[], heute: string): 
         gesehen.add(`${m.id}|${uid}|${tag}`);
       }
     }
-    // Bezüge mit Tag, die der Stand (noch) nicht kennt — z. B. ohne Kalender-Abgleich. Nur Tag, kein Titel; Art und „privat“ aus der Sicherung des Bezugs.
-    for (const [k, b] of Object.entries(bezuege.bezuege)) {
+    // Bezüge mit Tag NUR, wenn es gar keinen lesbaren Kalender-Stand gibt (18.10., L2 Zählungen A1): vorher kamen so abgesagte, verschobene und in
+    // Apple/Google gelöschte Termine zurück (der Bezug bleibt liegen, `bezug.tag` zieht nur der iCloud-Abgleich des Haushalts nach — Google und
+    // iCloud je Person nicht). Mit lesbarem Stand gilt allein der Stand. Nur Tag, kein Titel; Art und „privat“ aus der Sicherung des Bezugs.
+    const standLesbar = !!stand && stand.quelle !== 'leer';
+    if (!standLesbar) for (const [k, b] of Object.entries(bezuege.bezuege)) {
       if (!b.tag || b.tag < von || b.tag >= bis) continue;
       const uid = uidVonSchluessel(k);
       for (const m of mandate) if (bezugGehoertZu(b, m) && !gesehen.has(`${m.id}|${uid}|${b.tag}`) && !raus[m.id].some(x => x.uid === uid && x.tag === b.tag)) raus[m.id].push({ uid, tag: b.tag, ...(b.art && b.art !== 'termin' ? { art: b.art } : {}), ...(b.privat ? { privat: true as const } : {}) });
