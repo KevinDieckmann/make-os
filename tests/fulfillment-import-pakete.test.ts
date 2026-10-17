@@ -185,6 +185,16 @@ describe('Vorschau, Wiederholung, Konflikt, Rückgängig', () => {
     expect(r.bericht?.entfernt).toBe(1);
   });
 
+  it('Rückgängig lässt ein Paket stehen, an dem ein Fall läuft oder ein Produkt hängt (17.10., Gesamtprüfung Schreibwege B5)', () => {
+    const d1 = ok(importAnwenden(mitBausteinen(), PAKET, {}, ik('fi-r'), kid));
+    const id = d1.prozesse[0].id;
+    const imFall = importRueckgaengig(d1, 'fi-r', JETZT, new Set([id]));
+    expect(imFall.ok && imFall.datei.prozesse.map(p => p.id)).toEqual([id]);
+    expect(imFall.bericht).toMatchObject({ entfernt: 0, geblieben: 1 });
+    const zugeordnet = importRueckgaengig({ ...d1, zuordnung: { 'l-probe': { vorlageId: id } } as typeof d1.zuordnung }, 'fi-r', JETZT);
+    expect(zugeordnet.ok && zugeordnet.datei.prozesse.map(p => p.id)).toEqual([id]);
+  });
+
   it('Bausteine: Array auf oberster Ebene gilt als Liste; pruefgrund wird der Grund, zusatz ein Schlagwort', () => {
     const g = importLesen(BAUSTEINE.vorlagen);
     expect(g.format).toBe('bausteine');

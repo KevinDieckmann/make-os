@@ -36,7 +36,8 @@ export async function POST(req: Request) {
     let bericht: { entfernt: number; zurueck: number; geblieben: number } | undefined;
     // Bausteine, die ein Fall nutzt, bleiben (Prüf-Fund 11.10.).
     const faelle = await fulfillmentLesen('faelle', z.haushalt);
-    const inFaellen = new Set(Object.values(faelle.faelle).flatMap(f => f.knoten.map(k => k.bausteinId).filter((x): x is string => !!x)));
+    // … und Pakete, an denen ein Fall läuft — auch als Zusatzmodul (17.10., Schreibwege B5).
+    const inFaellen = new Set(Object.values(faelle.faelle).flatMap(f => [...f.knoten.map(k => k.bausteinId).filter((x): x is string => !!x), f.vorlageId, ...(f.zusaetze ?? []).map(z => z.vorlageId)]));
     const r = await fulfillmentAendern('vorlagen', d => { const x = importRueckgaengig(d, b.laufId, jetzt, inFaellen); if (x.ok) bericht = x.bericht; return x; }, wer, z.haushalt);
     return r.ok ? NextResponse.json({ ok: true, bericht }) : NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
   }

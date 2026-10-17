@@ -885,7 +885,8 @@ export interface RueckgaengigBericht { entfernt: number; zurueck: number; geblie
 /**
  * Rückgängig (30 Tage): nur, was seit dem Import unverändert ist; der Rest bleibt und wird gezählt. Zurückgeholte Fassungen bekommen eine NEUE,
  * höhere Fassung (Prüf-Fund 11.10.: vorher sank die Fassung — Formular-Stände und Fälle erkannten die Änderung nicht). Neue Bausteine bleiben, wenn
- * eine Vorlage ODER ein Fall sie nutzt (`inFaellen` = Baustein-Kennungen aus den Knoten aller Fälle).
+ * eine Vorlage ODER ein Fall sie nutzt (`inFaellen` = Baustein-Kennungen aus den Knoten aller Fälle und die Vorlagen der Fälle); neue Pakete bleiben, wenn ein Fall,
+ * eine Zuordnung oder die Landkarte sie nutzt.
  */
 export function importRueckgaengig(d0: VorlagenDatei, laufId: unknown, jetzt: string, inFaellen: ReadonlySet<string> = new Set()): AnwendenErgebnis<VorlagenDatei> & { bericht?: RueckgaengigBericht } {
   let bericht: RueckgaengigBericht = { entfernt: 0, zurueck: 0, geblieben: 0 };
@@ -906,7 +907,10 @@ export function importRueckgaengig(d0: VorlagenDatei, laufId: unknown, jetzt: st
     for (const id of lauf.neu) {
       if (id.startsWith('fp-')) {
         const p = d.prozesse.find(x => x.id === id);
-        if (p && p.geaendert === lauf.am) { d.prozesse = d.prozesse.filter(x => x.id !== id); b.entfernt++; } else if (p) b.geblieben++;
+        // Ein Paket, an dem ein Fall läuft (Paket oder Zusatzmodul), das ein Produkt nutzt oder auf das die Landkarte zeigt, bleibt (17.10., Gesamtprüfung
+        // Schreibwege B5 — vorher fiel es weg, und Fall, Zuordnung und Kasten zeigten ins Leere).
+        const genutzt = inFaellen.has(id) || Object.values(d.zuordnung).some(z => z?.vorlageId === id) || d.prozesse.some(q => q.knoten.some(kn => kn.verweis === id));
+        if (p && p.geaendert === lauf.am && !genutzt) { d.prozesse = d.prozesse.filter(x => x.id !== id); b.entfernt++; } else if (p) b.geblieben++;
       } else {
         const x = d.bausteine.find(y => y.id === id);
         const genutzt = inFaellen.has(id) || d.prozesse.some(p => p.knoten.some(kn => kn.bausteinId === id));
