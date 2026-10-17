@@ -6,7 +6,8 @@
 //   Runway = Business-Kasse ÷ Ø Netto-Verbrauch (Kosten minus Umsatz) der letzten drei abgeschlossenen Ist-Monate.
 //   Deckt der Umsatz die Kosten, gibt es keinen Verbrauch — dann „kein Verbrauch“ statt einer Zahl.
 //
-// Rechnen tut das NUR diese Datei (Business-Index `runway`, `computeMetrics` für Controlling/ZOE/Schilde/Board, Head of Finance).
+// Rechnen tut das NUR diese Datei, gelesen NUR über den Business-Index (`runway`; Server `runwayDesIndex()` für Controlling, ZOE, Schilde,
+// Board, Loop, OKR, Controlling-Analyse und Head of Finance — seit 17.10., L2 R1, hat `computeMetrics` keine eigene Runway mehr).
 // Die Finanzplanung zeigt daneben eine ANDERE, benannte Größe: „Runway laut Plan“ (Monate ab jetzt, bis frei verfügbar im Plan unter
 // null fällt) — sie kommt aus dem Rechenkern und bleibt dort (Regel „Formeln unverändert bis Kevins Wort“). Rein, Server und Browser.
 
@@ -52,4 +53,14 @@ export function runwayAnzeige(r: Pick<RunwayIst, 'monate' | 'keinVerbrauch'>, ku
   if (r.monate == null) return '—';
   const z = r.monate.toLocaleString('de-DE', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
   return kurz ? `${z} Mon.` : `${z} Monate`;
+}
+
+/**
+ * Die Runway des Business-Index als Satzteil für Prompts und Lageberichte (17.10., L2 R1): ZOE, Board, Loop, OKR, Schilde und die
+ * Controlling-Analyse schreiben damit denselben Text wie das Cockpit — nie eine zweite Zahl. Ohne Messung sagt er, was fehlt.
+ */
+export function runwaySatz(r: { anzeige: string; monate: number | null; keinVerbrauch: boolean; gemessen: boolean } | null | undefined): string {
+  if (!r || !r.gemessen) return '— (Kontostand oder Ist-Monate fehlen)';
+  if (r.keinVerbrauch) return 'kein Verbrauch';
+  return r.anzeige && r.anzeige !== '—' ? r.anzeige : runwayAnzeige({ monate: r.monate, keinVerbrauch: false });
 }

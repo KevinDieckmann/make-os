@@ -18,7 +18,7 @@ import type { KapaKennzahlen } from '@/lib/kapazitaet/typen';
 import { ffMessen, type FfIndexDaten } from '@/lib/fulfillment/prozesse/kennzahlen';
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
-import { computeMetrics } from '@/lib/make-one/finance-data';
+import { computeMetrics, gesamtFirmen, istWahlGesamt } from '@/lib/make-one/finance-data';
 import { runwayRechnen } from '@/lib/finanzen/runway';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { vorschau, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
@@ -115,7 +115,7 @@ const firmenLabel = (id: string) => (istGesellschaft(id) ? finanzOrtName(id) : u
  */
 function firmenDer(b: Bestand): Gesellschaftskennung[] {
   if (b.scope !== 'gesamt') return [b.scope];
-  return BUSINESS_GESELLSCHAFTEN.filter(f => f !== 'ug' || b.abschluesse.some(a => a.firma === 'ug'));
+  return gesamtFirmen(b.abschluesse);
 }
 
 /**
@@ -169,11 +169,13 @@ export function istMonate(b: Bestand): IstMonat[] {
     const ausFirmen = (): IstMonat => ({ monat: m, umsatz: da.reduce((s, x) => s + x.umsatz, 0), kosten: da.reduce((s, x) => s + x.kosten, 0), personal: summe('personal'), marketingVertrieb: summe('marketingVertrieb'), afa: summe('afa'), fakturierteTage: summe('fakturierteTage'), quelle: Array.from(new Set(da.map(x => x.quelle))).join(' + ') });
     // Eine Firma, oder alle Firmen vollständig: deren Zahlen.
     if (da.length && da.length === firmen.length) { raus.push(ausFirmen()); continue; }
-    // Gesamtsicht mit Lücken: erst das Controlling (euer Gesamt-Ist), sonst die Firmen, die es gibt.
+    // Gesamtsicht mit Lücken: erst das Controlling (euer Gesamt-Ist), sonst die Firmen, die es gibt — EINE Regel mit `mitAbschluessen`
+    // (Controlling, ZOE, Head of Finance: `istWahlGesamt`, 17.10., L2 R1).
     if (b.scope === 'gesamt') {
       const r = b.finance && Number(m.slice(0, 4)) === b.finance.jahr ? b.finance.months?.[Number(m.slice(5, 7)) - 1] : undefined;
-      if (r && ((r.umsatz || 0) > 0 || (r.kosten || 0) > 0)) { raus.push({ monat: m, umsatz: r.umsatz || 0, kosten: r.kosten || 0, quelle: 'Controlling' }); continue; }
-      if (da.length) raus.push({ ...ausFirmen(), quelle: `${ausFirmen().quelle} (nur ${da.length} von ${firmen.length} Firmen)` });
+      const wahl = istWahlGesamt(da.length, firmen.length, r);
+      if (wahl === 'controlling' && r) { raus.push({ monat: m, umsatz: r.umsatz || 0, kosten: r.kosten || 0, quelle: 'Controlling' }); continue; }
+      if (wahl === 'teil') raus.push({ ...ausFirmen(), quelle: `${ausFirmen().quelle} (nur ${da.length} von ${firmen.length} Firmen)` });
     }
   }
   return raus;

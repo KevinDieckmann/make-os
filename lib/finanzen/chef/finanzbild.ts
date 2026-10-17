@@ -6,7 +6,6 @@
 // wird gegen dieses Paket geprüft (pruefung.ts).
 
 import { computeMetrics, mitKasse, MONTHS_DE, type FinanceState, type Kasse } from '@/lib/make-one/finance-data';
-import { runwayAnzeige } from '@/lib/finanzen/runway';
 import { vorschau, nurBusiness, businessFirmen, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten } from '@/lib/make-one/liquiditaet';
 import { kennzahlen as grundKennzahlen, monatsBild, type Grundlage } from '@/lib/make-one/grundlage';
 import type { Haushalt } from '../haushalt/typen';
@@ -246,10 +245,10 @@ export function baueFinanzbild(e: Eingaben) {
         ist_umsatz: r2(m.istUmsatz), ist_kosten: r2(m.istKosten), ist_gewinn: r2(m.istGewinn),
         fortschritt_prozent: r2(m.fortschritt * 100), run_rate_aktuell: r2(m.runRateAktuell), run_rate_noetig: r2(m.runRateNoetig),
         rest_monate: m.restMonate, aktive_monate: m.aktiveMonate, avg_burn: r2(m.avgBurn),
-        // EINE Runway (17.10., B1): die des Cockpits, sonst dieselbe Rechnung (lib/finanzen/runway.ts) über die Controlling-Monate.
-        runway_monate: e.runway ? (e.runway.monate != null ? r2(e.runway.monate) : null) : m.runwayMonate != null ? r2(m.runwayMonate) : null,
-        runway_kein_verbrauch: e.runway ? e.runway.keinVerbrauch : m.runway.keinVerbrauch,
-        runway_anzeige: e.runway ? e.runway.anzeige : runwayAnzeige(m.runway), leere_monate: luecken,
+        // EINE Runway (17.10., B1; seit L2 R1 ohne Rückfall auf eine zweite Rechnung): die des Cockpits (`runwayDesIndex`) — fehlt sie, „—“.
+        runway_monate: e.runway?.monate != null ? r2(e.runway.monate) : null,
+        runway_kein_verbrauch: e.runway?.keinVerbrauch ?? false,
+        runway_anzeige: e.runway?.anzeige ?? '—', leere_monate: luecken,
       } : null,
       kasse: { ...kasse, betrag: r2(kasse.betrag) },
       liquiditaet_12_wochen: v ? {

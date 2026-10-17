@@ -18,7 +18,7 @@ import { resolveAgent, MODEL_BY_TIER } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { schwellen } from '@/lib/schwellen';
 import { lesen, type MalinExport } from '@/lib/make-one/grundlage';
-import { mitAbschluessen, type FinanceState } from '@/lib/make-one/finance-data';
+import { ladeControlling } from '@/lib/finanzen/controlling-server';
 import { runwayDesIndex } from '@/lib/business/fuer-chef';
 import { bereichVon } from '@/lib/einheiten';
 import type { Termin } from './steuertermine';
@@ -48,7 +48,9 @@ export async function ladeEinstellung(): Promise<ChefEinstellung> {
 /** Alle Quellen laden und das Finanzbild bauen. Haushalt nur, wenn übergeben. */
 export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerlin()): Promise<{ bild: Finanzbild; einstellung: ChefEinstellung; business: Record<string, unknown> | null }> {
   const [finance, plan, liqui, grund, einstellung] = await Promise.all([
-    loadJson<FinanceState>('finance'),
+    // Dieselben Controlling-Monate wie Controlling, ZOE, Schilde und der Business-Index (17.10., L2 R1/R2): MIT den Monatsabschlüssen
+    // und dem 0-Punkt — EINE Lesestelle (lib/finanzen/controlling-server.ts).
+    ladeControlling(),
     loadJson<FinanzplanStand>('finanzplan'),
     loadJson<{ posten?: Planposten[] }>('liquiplan'),
     loadJson<{ roh: MalinExport; stand: string }>('grundlage'),
@@ -57,15 +59,14 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
   const hh = haushalt ? await ladeHaushalt(haushalt) : null;
   // 0-Punkt (05.10.): Konten und Business-Posten ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
   const ab = await mitEroeffnung({ ...(plan ?? {}), planposten: liqui?.posten ?? [] });
-  // Dieselben Quellen wie Controlling und Steuern (17.10., Abnahme 3 · B2): die Ist-Monate MIT den Monatsabschlüssen (`mitAbschluessen`,
-  // wie /api/state/finance), die Runway des Business-Index (B1) und die Fristen des Steuer-Moduls (lib/steuern).
-  const [abschluesse, runway, steuerFristen] = await Promise.all([
-    loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse').catch(() => null),
+  // Dieselben Quellen wie Controlling und Steuern (17.10., Abnahme 3 · B2): die Ist-Monate kommen oben aus `ladeControlling` (wie
+  // /api/state/finance), dazu die Runway des Business-Index (B1) und die Fristen des Steuer-Moduls (lib/steuern).
+  const [runway, steuerFristen] = await Promise.all([
     runwayDesIndex(heute).catch(() => null),
     fristenAusSteuern(heute, !haushalt).catch(() => null),
   ]);
   const bild = baueFinanzbild({
-    heute, finance: finance ? mitAbschluessen(finance, abschluesse?.eintraege) : finance, plan: plan ? ab : null, planposten: ab.planposten,
+    heute, finance, plan: plan ? ab : null, planposten: ab.planposten,
     grundlage: grund?.roh ? { g: lesen(grund.roh, grund.stand), stand: grund.stand } : null,
     steuer: { ...einstellung.steuer, ruecklageQuote: einstellung.ruecklageQuote },
     haushalt: hh, runway, steuerFristen,
