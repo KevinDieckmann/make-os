@@ -478,3 +478,35 @@ Rückmeldung 17.10. zum Fulfillment: „Nicht überladen, sondern sehr klar. Lie
 - **Handy (≤ 720 px):** die Reise wird eine senkrechte Liste der Phasen; nur die laufende zeigt ihre Kästchen, die Raute steht als Zeile darunter, ein Band
   nur mit Text (mit eigener Beschriftung); der Fluss bleibt senkrecht, der Nein-Pfad rückt unter die Raute — nichts läuft quer aus dem Bild.
 - Wächter: `tests/fulfillment-miro.test.ts` (vier Reiter, Umleitungen, Kopf ohne Doppel, Legende, ≤ 4 Kästchen, Hänger = Cockpit, Kunden-Reise).
+- **Titel in Kästchen, Pillen und Knoten** (17.10. Feinschliff): höchstens zwei Zeilen mit „…“ und dem ganzen Titel im Tooltip (`.ff-titel`/`.ff-reise-text`);
+  lange Wörter trennt die Silbentrennung (`hyphens: auto`, die Seite hat `lang="de"`) — nie `overflow-wrap: anywhere` (das brach „Diagnoseberic ht“).
+- **Band „Kunde“ mit Satz** (`bandTexte`, lib/fulfillment/prozesse/reise-bild.ts): „wartet: …“ · „beim Kunden: …“ · „Abstimmungspunkt n offen“ — sonst „nichts
+  offen beim Kunden“ unter der laufenden Phase. **Lage-Zeile** der Startseite nur mit Zahlen (Kunden in Lieferung, „n Punkte hängen“) — Einzelheiten in der Karte.
+
+### Editor (Prozess-Editor im Miro-Stil, 17.10.)
+Rückmeldung 17.10.: „Jeder baut seine Abläufe selbst in der App: Schritte, Nachrichten, Entscheidungen und Erinnerungen per Ziehen anlegen.“ Fulfillment ›
+Landkarte › Paket-Vorlage „Bearbeiten“ bzw. „+ Neuer Ablauf“ öffnet `?e=<Ablauf>` (`components/os/fulfillment/editor/*`).
+- **Dieselbe Zeichnung wie die Ansicht — kein zweites Darstellungs-Bauteil:** die Reise-Zeile ist `ReiseBild` (mit `griff` auf den Phasen-Pillen, `rauteSchalter`
+  zwischen jeder Phase und hinter der letzten, `ende` = „+ Phase“), die Knoten sind `KnotenKnopf` aus `Fluss.tsx` (mit `editor` und `griff`), dazu `Pfeil` und
+  `SeitenPfeil`. Neue Formen/Zustände immer dort, nie im Editor nachbauen.
+- **Aufbau (Rechner ≥ 1180 px):** oben die Reise (Phasen ziehen = umsortieren, Raute = Abstimmungspunkt an/aus bzw. bearbeiten), darunter links die Palette
+  (Schritt · Nachricht · Entscheidung · Erinnerung · Termin · Baustein — ziehen ODER antippen = nach dem gewählten Knoten bzw. ans Ende der Phase), in der Mitte
+  der Fluss der gewählten Phase, rechts das kleine Seitenfeld. 721–1179 px: Palette als wischbare Zeile, Seitenfeld darunter. **Handy (≤ 720 px):** eine
+  Liste mit ▲ ▼ statt Ziehen (`EditorListe`), „Hinzufügen“ mit denselben Formen.
+- **Entscheidung = Raute mit ja/nein:** „ja“ geht weiter (bzw. zu ihrem Ja-Zweig), der Nein-Zweig steht als Knoten DANEBEN (nicht noch einmal im Strang) —
+  typisch eine Erinnerung, die „danach zurück“ zur Entscheidung läuft (oder weitergeht). Freier Nein-Platz: „+ Erinnerung“ (antippen oder Erinnerung
+  darauf ziehen). Im Fall gilt „erledigt“ an der Entscheidung als „ja“ — ihr offener Nein-Zweig entfällt dann.
+- **Seitenfeld:** Titel (2–6 Wörter, Hinweis außerhalb), Art (die Form), Frist in Tagen (nach dem Schritt davor; im Fall die Fälligkeit), Verantwortung
+  (intern · Kunde · beide), für den Kunden sichtbar, Bausteine aus der Bibliothek, Zweige, „Mehr Angaben …“ (das vorhandene Knoten-Formular) — und die
+  Tastatur-Alternativen.
+- **Bedienung:** Maus/Trackpad ziehen ab 5 px (darunter ein Klick), Finger lange drücken 0,45 s (vorher scrollt die Seite), Escape bricht ab; Ziel = Linie
+  (davor/dahinter) bzw. Rahmen, Ungültiges rot mit Satz. Tastatur für alles: ↑/↓ wandert, Alt+↑/↓ verschiebt, Entf löscht, Enter bearbeitet (Titel im
+  Seitenfeld), Einfg/+ fügt ein; Phasen ←/→ und Alt+←/→; im Seitenfeld „Nach oben/unten“, „Einfügen nach …“, „Verschieben nach Phase …“. ⌘Z/⇧⌘Z
+  (Strg+Z/Strg+Y) = Rückgängig/Wiederholen in der Sitzung. Jedes Ziel ≥ 44 px.
+- **Sicher statt endgültig:** Löschen legt in den Papierkorb des Ablaufs (30 Tage, „Zurückholen“ an derselben Stelle, Zweige kommen mit); Phasen und Teilprozesse
+  fragen vorher. Endgültig nur „Endgültig löschen“ mit Rückfrage.
+- **Rechte:** bearbeiten nur volle Mitglieder; „nur Business“ sieht den Editor ohne Palette und Ziehen (der Server lehnt mit 403 ab).
+- **Wirkung:** Änderungen gelten für neue Fälle; laufende zeigen „Vorlage geändert — übernehmen?“ mit Vorschau (neu, geändert, neue Reihenfolge, entfernt) —
+  erst der Klick schreibt, erledigte Schritte bleiben erledigt.
+- Wächter: `tests/fulfillment-editor-oberflaeche.test.ts` (Palette, Ablage-Stellen, Tastatur, Ziele ≥ 44 px, Handy-Liste, nur ansehen, EIN Bauteil),
+  `tests/fulfillment-editor-modell.test.ts`, `tests/fulfillment-editor-route.test.ts`, `tests/fulfillment-editor-update.test.ts`, `tests/fulfillment-feinschliff.test.ts`.

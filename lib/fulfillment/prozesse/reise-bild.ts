@@ -10,7 +10,7 @@
 // `naechsterPunkt` (bzw. am Ende `abschlussSchritt`), Hänger mit DENSELBEN Regeln wie das Cockpit (`wasHaengt`: überfällig, wartet > 7 Tage).
 // Was die Daten nicht hergeben, wird nicht erfunden: ohne Kundenbeteiligung keine Nein-Erinnerung, ohne Teilprozesse keine Verzweigung.
 
-import type { BausteinArt, Fall, FallKnoten, Freigabepunkt, KnotenStatus, Zustaendig } from '../typen';
+import type { BausteinArt, Fall, FallKnoten, Freigabepunkt, KnotenForm, KnotenStatus, Zustaendig } from '../typen';
 import { kinderVon, tageZwischen } from '../regeln';
 import { alleSchritte, fallReise, naechsterPunkt, phaseGruppen, phasenVon, type NaechsterPunkt, type PhasenZustand, type Reise, type ReisePhase, type SchrittZeile } from './reise';
 import { obSchluessel } from './onboarding';
@@ -43,6 +43,10 @@ export interface Kaestchen {
   unter?: string;
   /** Ein echter Knoten des Falls (Status, Haken, Bausteine im Detail). */
   knoten?: true;
+  /** Eine Entscheidung aus dem Prozess-Editor (Raute mit ja/nein) — kein Abstimmungspunkt mit dem Kunden. */
+  entscheid?: true;
+  /** Wartet gerade auf den Kunden (Status „wartet auf Kunde“). */
+  wartetKunde?: true;
 }
 
 export interface ReiseAbstimmung { id: string; nr?: number; titel: string; wer: Zustaendig; gegeben: boolean; hier: boolean; faelligAm?: string; haengt?: 'rot' | 'gelb' }
@@ -54,8 +58,11 @@ export interface ReiseSpalte {
   mehr: number;
   /** Der Abstimmungspunkt am Ende der Phase — die Raute rechts von der Spalte. */
   abstimmung?: ReiseAbstimmung;
-  /** Band „Kunde“: wie viel gerade bei ihm liegt, und ob er diese Phase sieht (geteilt bzw. die laufende). */
-  band: { beimKunden: number; sieht: boolean };
+  /**
+   * Band „Kunde“: wie viel gerade bei ihm liegt, und ob er diese Phase sieht (geteilt bzw. die laufende). `wartet` = Titel der Schritte, die auf ihn warten,
+   * `macht` = offene Schritte, die er macht (17.10. Feinschliff — der Satz im Band, `bandTexte`).
+   */
+  band: { beimKunden: number; sieht: boolean; wartet?: string[]; macht?: string[] };
   /** Hier hängen die Analyse (Läufe, Dossier, Recht) bzw. der Abschluss (Wirkungsbericht, Nachsorge, Kreislauf). */
   analyse?: true; abschluss?: true;
 }
@@ -102,8 +109,15 @@ const schlimmer = (a: Haenger | undefined, b: Haenger | undefined): Haenger => (
 
 // ── Form und Stelle eines Schritts ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Die Form eines Schritts aus seinen Daten: Abstimmungspunkt → Raute, Willkommensmail/Mail-Baustein → Nachricht, Kick-off/Ritual → Termin. */
-export function knotenForm(k: Pick<FallKnoten, 'id' | 'titel' | 'freigabe' | 'bausteinId'>, bausteine: readonly Pick<FallKnoten, 'bausteinId'>[], art?: ReiseBildEingabe['bausteinArt']): FlussForm {
+/** Die Zeichenform einer gespeicherten Form (Prozess-Editor): Abstimmung und Entscheidung sind beide eine Raute. */
+export const flussFormVon = (f: KnotenForm): FlussForm => (f === 'abstimmung' ? 'entscheidung' : f);
+
+/**
+ * Die Form eines Schritts: die im Editor gesetzte (`form`, 17.10.) — sonst aus seinen Daten: Abstimmungspunkt → Raute, Willkommensmail/Mail-Baustein →
+ * Nachricht, Kick-off/Ritual → Termin.
+ */
+export function knotenForm(k: Pick<FallKnoten, 'id' | 'titel' | 'freigabe' | 'bausteinId'> & { form?: KnotenForm }, bausteine: readonly Pick<FallKnoten, 'bausteinId'>[], art?: ReiseBildEingabe['bausteinArt']): FlussForm {
+  if (k.form) return flussFormVon(k.form);
   if (k.freigabe) return 'entscheidung';
   const ob = obSchluessel(k.id);
   if (ob === 'willkommen') return 'nachricht';
@@ -171,9 +185,9 @@ function kaestchenAus(z: SchrittZeile, e: ReiseBildEingabe, hierId: string | nul
         : kunde ? 'macht der Kunde' : undefined;
   const stelle = knotenStelle(k);
   return {
-    id: k.id, titel: anzeigeTitel(k.titel, nummern), form: knotenForm(k, z.bausteine, e.bausteinArt),
+    id: k.id, titel: anzeigeTitel(k.titel, nummern), form: knotenForm(k, z.bausteine, e.bausteinArt), ...(k.form === 'entscheidung' && !k.freigabe ? { entscheid: true as const } : {}),
     zustand: z.zustand === 'entfaellt' ? 'entfaellt' : k.id === hierId ? 'hier' : fertig ? 'erledigt' : 'offen',
-    ...(haengt ? { haengt } : {}), ...((w && !z.fertig) || kunde ? { beimKunden: true } : {}), ...(stelle ? { stelle } : {}), ...(unterText ? { unter: unterText } : {}), knoten: true,
+    ...(haengt ? { haengt } : {}), ...((w && !z.fertig) || kunde ? { beimKunden: true } : {}), ...(w && !z.fertig ? { wartetKunde: true as const } : {}), ...(stelle ? { stelle } : {}), ...(unterText ? { unter: unterText } : {}), knoten: true,
   };
 }
 
@@ -270,11 +284,40 @@ export function reiseZeile(e: ReiseBildEingabe): ReiseZeile {
       ...(haengt ? { haengt } : {}),
       kaestchen: zeigen, mehr: pk.kaestchen.length - zeigen.length,
       ...(fg ? { abstimmung: { id: fg.id, ...(fg.nr ? { nr: fg.nr } : {}), titel: fg.titel, wer: fg.wer, gegeben: fg.gegeben, hier: abHier, ...(phk?.faelligAm ? { faelligAm: phk.faelligAm } : {}), ...(abHaengt ? { haengt: abHaengt } : {}) } } : {}),
-      band: { beimKunden: pk.kaestchen.filter(k => k.beimKunden && k.zustand !== 'erledigt' && k.zustand !== 'entfaellt').length, sieht: phk?.kundeSichtbar === true || p.zustand === 'jetzt' },
+      band: (() => {
+        const offen = pk.kaestchen.filter(k => k.beimKunden && k.zustand !== 'erledigt' && k.zustand !== 'entfaellt');
+        const wartet = offen.filter(k => k.wartetKunde).map(k => k.titel);
+        const macht = offen.filter(k => !k.wartetKunde).map(k => k.titel);
+        return { beimKunden: offen.length, sieht: phk?.kundeSichtbar === true || p.zustand === 'jetzt', ...(wartet.length ? { wartet } : {}), ...(macht.length ? { macht } : {}) };
+      })(),
       ...(p.id === analyse ? { analyse: true as const } : {}), ...(p.id === abschluss ? { abschluss: true as const } : {}),
     };
   });
   return { spalten, hier, fertig: reise.fertig, fortschritt: reise.fortschritt };
+}
+
+/** Was im Band „Kunde“ steht, wenn nichts beim Kunden liegt (in der laufenden Phase). */
+export const BAND_NICHTS = 'nichts offen beim Kunden';
+
+/**
+ * Der Satz im Band „Kunde“ je Phase (17.10. Feinschliff — vorher war das Band leer): was gerade beim Kunden liegt — „wartet: …“ (Status wartet auf Kunde),
+ * sonst „beim Kunden: …“ (er macht den Schritt), sonst ein offener Abstimmungspunkt mit ihm in der laufenden Phase („Abstimmungspunkt 2 offen“). Liegt
+ * nirgends etwas, steht unter der laufenden Phase (bzw. der ersten) „nichts offen beim Kunden“ — sonst bleibt das Band leer. Mehrere: „+n“.
+ */
+export function bandTexte(z: Pick<ReiseZeile, 'spalten'>): (string | undefined)[] {
+  const mehr = (l: readonly string[]) => `${l[0]}${l.length > 1 ? ` +${l.length - 1}` : ''}`;
+  const texte = z.spalten.map(s => {
+    if (s.band.wartet?.length) return `wartet: ${mehr(s.band.wartet)}`;
+    if (s.band.macht?.length && s.zustand !== 'fertig') return `beim Kunden: ${mehr(s.band.macht)}`;
+    const a = s.abstimmung;
+    if (a && !a.gegeben && a.wer !== 'intern' && (a.hier || s.zustand === 'jetzt')) return `Abstimmungspunkt${a.nr ? ` ${a.nr}` : ''} offen`;
+    return undefined;
+  });
+  if (z.spalten.length && texte.every(t => !t)) {
+    const i = Math.max(0, z.spalten.findIndex(s => s.zustand === 'jetzt'));
+    texte[i] = BAND_NICHTS;
+  }
+  return texte;
 }
 
 // ── Fluss einer Phase ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -287,6 +330,8 @@ export interface FlussKnoten extends Kaestchen {
   nein?: { titel: string; unter?: string };
   /** Wartender Schritt beim Kunden: die Erinnerung der Regel „wartet länger als 7 Tage = hängt“. */
   erinnerung?: { titel: string; unter?: string };
+  /** Entscheidung aus dem Prozess-Editor: ihr Nein-Zweig als echter Knoten (steht neben ihr, nicht noch einmal im Strang). */
+  neinKnoten?: FlussKnoten;
   /** Abstimmungspunkt (Freigabe-Kennung) — „vermerken“ im Detail. */
   freigabe?: string;
 }
@@ -341,7 +386,7 @@ export function phasenFluss(e: ReiseBildEingabe, phaseId: string, unterschrift?:
   const zeilen = new Map(pk.zeilen.map(z => [z.knoten.id, z]));
   const naechste = zeile.spalten[i + 1];
   const vorher = zeile.spalten[i - 1];
-  const zuKnoten = (id: string): FlussKnoten | null => {
+  const zuKnoten = (id: string, tiefe = 0): FlussKnoten | null => {
     const k = kaestchen.get(id), z = zeilen.get(id);
     if (!k || !z) return null;
     if (z.knoten.freigabe) {
@@ -349,8 +394,21 @@ export function phasenFluss(e: ReiseBildEingabe, phaseId: string, unterschrift?:
       return rauteAus(k, fg, nummern, 'weiter', z.knoten.faelligAm);
     }
     const er = erinnerungFuer(k, z, e.heute);
+    // Entscheidung aus dem Editor: „ja“ führt weiter (bzw. zu ihrem Ja-Zweig), „nein“ zu ihrem Nein-Zweig — der steht als Knoten daneben.
+    if (k.entscheid && tiefe < 3) {
+      const ja = z.knoten.zweige?.ja ? kaestchen.get(z.knoten.zweige.ja)?.titel : undefined;
+      const nz = z.knoten.zweige?.nein && kaestchen.has(z.knoten.zweige.nein) ? z.knoten.zweige.nein : undefined;
+      const nk = nz ? zuKnoten(nz, tiefe + 1) : null;
+      const zurueck = nz ? e.fall.knoten.find(x => x.id === nz)?.zweige?.ja === z.knoten.id : false;
+      return {
+        ...k, ...(er ? { erinnerung: er } : {}), ja: ja ? `weiter zu „${ja}“` : 'weiter',
+        ...(nk ? { neinKnoten: nk, nein: { titel: nk.titel, unter: zurueck ? 'danach zurück zur Entscheidung' : 'danach weiter' } } : {}),
+      };
+    }
     return { ...k, ...(er ? { erinnerung: er } : {}) };
   };
+  // Nein-Zweige von Entscheidungen dieser Phase stehen neben ihrer Entscheidung — nicht noch einmal im Strang (nichts doppelt).
+  const neben = new Set(pk.zeilen.filter(z => z.knoten.form === 'entscheidung' && !z.knoten.freigabe && z.knoten.zweige?.nein && zeilen.has(z.knoten.zweige.nein)).map(z => z.knoten.zweige!.nein!));
   // Dieselben Schritte wie die Reise (`alleSchritte`, Sammel-Schritte aufgelöst), gruppiert nach Teilprozess (`phaseGruppen`): zwei oder mehr
   // Teilprozesse stehen als Karten nebeneinander (Verzweigung in Gruppen), sonst ein Strang.
   const gruppen = phaseGruppen(e.fall, phaseId, e.heute);
@@ -358,7 +416,7 @@ export function phasenFluss(e: ReiseBildEingabe, phaseId: string, unterschrift?:
   const ids = (g: (typeof gruppen)[number]) => g.zeilen.flatMap(z => (zeilen.has(z.knoten.id) ? [z.knoten.id] : z.bausteine.map(b => b.id).filter(b => zeilen.has(b))));
   const teile: FlussTeil[] = [];
   for (const g of gruppen) {
-    const knoten = ids(g).map(zuKnoten).filter((x): x is FlussKnoten => !!x);
+    const knoten = ids(g).filter(id => !neben.has(id)).map(id => zuKnoten(id)).filter((x): x is FlussKnoten => !!x);
     if (!knoten.length) continue;
     if (g.teil && benannt >= 2) {
       const gr = { id: g.teil.id, titel: titelOhneZusatz(g.teil.titel), erledigt: g.erledigt, gesamt: g.gesamt, knoten };
@@ -385,7 +443,7 @@ export function phasenFluss(e: ReiseBildEingabe, phaseId: string, unterschrift?:
 /** Alle Knoten eines Flusses der Reihe nach (für Auswahl und Sprünge). */
 export function flussKnoten(f: PhasenFluss): FlussKnoten[] {
   return [
-    ...f.teile.flatMap(t => (t.art === 'linie' ? t.knoten : t.gruppen.flatMap(g => g.knoten))),
+    ...f.teile.flatMap(t => (t.art === 'linie' ? t.knoten : t.gruppen.flatMap(g => g.knoten))).flatMap(k => (k.neinKnoten ? [k, k.neinKnoten] : [k])),
     ...(f.abstimmung ? [f.abstimmung] : []),
     ...f.abschluss,
   ];

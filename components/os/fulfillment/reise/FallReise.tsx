@@ -19,7 +19,7 @@ import { Karte, Ueberschrift, Knopf, Hinweis, Klappbar, Erklaert, LEUCHT, useHan
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { alleSchritte, phasenVon, type SchrittZeile } from '@/lib/fulfillment/prozesse/reise';
-import { reiseZeile, phasenFluss, flussKnoten, analysePhaseId, abschlussPhaseId, type FallStelleId, type FlussKnoten, type ReiseBildEingabe, type ReiseZeile } from '@/lib/fulfillment/prozesse/reise-bild';
+import { reiseZeile, phasenFluss, flussKnoten, analysePhaseId, abschlussPhaseId, bandTexte, BAND_NICHTS, type FallStelleId, type FlussKnoten, type ReiseBildEingabe, type ReiseZeile } from '@/lib/fulfillment/prozesse/reise-bild';
 import { obSchluessel } from '@/lib/fulfillment/prozesse/onboarding';
 import { RHYTHMUS_TEXT } from '@/lib/fulfillment/prozesse/rituale';
 import { useFall, fallOps, fehlerText, type FallAntwort } from '../prozesse/daten';
@@ -36,13 +36,14 @@ const ABSCHLUSS: ReadonlySet<FallStelleId> = new Set(['befaehigung', 'wirkung', 
 /** Frühere Stellen (bis 17.10. eigene Reiter) → Stelle im Fluss. */
 const ALTE_STELLE: Record<string, FallStelleId> = { 'kreislauf-wirkung': 'wirkung', 'kreislauf-befaehigung': 'befaehigung', 'kreislauf-nachher': 'nachsorge', ausanalyse: 'analyse' };
 
-/** Die Kästchen des Modells als Spalten der Zeichnung (Zähler, Raute, Band „Kunde“). */
+/** Die Kästchen des Modells als Spalten der Zeichnung (Zähler, Raute, Band „Kunde“ mit Satz — `bandTexte`). */
 export function bildSpalten(z: ReiseZeile): BildSpalte[] {
-  return z.spalten.map(s => ({
+  const band = bandTexte(z);
+  return z.spalten.map((s, i) => ({
     id: s.id, nr: s.nr, titel: s.titel, zustand: s.zustand, kaestchen: s.kaestchen, mehr: s.mehr, ...(s.haengt ? { haengt: s.haengt } : {}),
     unter: s.zustand === 'fertig' ? 'erledigt' : s.gesamt ? `${s.erledigt} von ${s.gesamt}` : undefined,
     ...(s.abstimmung ? { raute: { titel: `Abstimmungspunkt${s.abstimmung.nr ? ` ${s.abstimmung.nr}` : ''}${s.abstimmung.titel ? ` · ${s.abstimmung.titel}` : ''}`, gegeben: s.abstimmung.gegeben, hier: s.abstimmung.hier, ...(s.abstimmung.haengt ? { haengt: s.abstimmung.haengt } : {}) } } : {}),
-    band: { ...(s.band.beimKunden ? { text: `${s.band.beimKunden} offen`, achtung: true } : {}), intern: !s.band.sieht },
+    band: { ...(band[i] ? { text: band[i] } : {}), ...(band[i] && band[i] !== BAND_NICHTS ? { achtung: true } : {}), intern: !s.band.sieht },
   }));
 }
 

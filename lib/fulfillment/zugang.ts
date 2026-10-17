@@ -8,6 +8,8 @@
 //   · `schreiben`: nur eine angemeldete Person (Dienstweg → 403), Bau-Kennung (`bauPruefen`, fremde → 409 „neu laden“)
 //   · `inhaber`: nur ein Inhaber (z. B. Kunden-Link-Schalter) → sonst 403
 // `personenteilZugang` (Personenteil der Dossiers, C3): zusätzlich nur der Inhaber oder ein Mitglied OHNE `finanzRecht: 'business'` → sonst 403.
+// `vorlagenZugang` (Prozess-Editor, 17.10.): Abläufe SEHEN alle mit dem Fulfillment-Tor; BEARBEITEN nur volle Mitglieder (Inhaber bzw. ohne
+// `finanzRecht: 'business'`) — die Rolle „nur Business“ sieht nur, Schreiben → 403. Dieselbe Regel (`darfVorlagenBearbeiten`) prüft der alte Baum-Weg.
 
 import { NextResponse } from 'next/server';
 import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
@@ -45,5 +47,23 @@ export async function personenteilZugang(req: Request, opt: { schreiben?: boolea
   const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
   const k = await kontoSicht(z.person);
   if (!k || k.nurBusiness || !k.imHaushalt) return NextResponse.json({ ok: false, fehler: PERSONENTEIL_GESPERRT }, { status: 403 });
+  return z;
+}
+
+/** Satz der Sperre fürs Bearbeiten von Abläufen (Rolle „nur Business“) — ein Satz, überall gleich. */
+export const VORLAGEN_NUR_LESEN = 'Abläufe bearbeiten nur volle Mitglieder — mit der Rolle „nur Business“ kannst du sie ansehen.';
+
+/** Darf diese Person Abläufe (Prozess-Vorlagen) bearbeiten? Inhaber oder volles Mitglied im Haushalt (nicht „nur Business“). */
+export async function darfVorlagenBearbeiten(person: string): Promise<boolean> {
+  if (await istInhaber(person)) return true;
+  const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
+  return !!(await kontoSicht(person))?.vollesMitglied;
+}
+
+/** Prozess-Editor (17.10.): das Fulfillment-Tor; mit `schreiben` zusätzlich nur volle Mitglieder (sonst 403). */
+export async function vorlagenZugang(req: Request, opt: { schreiben?: boolean } = {}): Promise<FulfillmentTor | NextResponse> {
+  const z = await fulfillmentZugang(req, opt);
+  if (z instanceof NextResponse) return z;
+  if (opt.schreiben && !(await darfVorlagenBearbeiten(z.person))) return NextResponse.json({ ok: false, fehler: VORLAGEN_NUR_LESEN }, { status: 403 });
   return z;
 }

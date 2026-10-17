@@ -27,8 +27,8 @@ const ZUSTAND_TEXT = { erledigt: 'erledigt', hier: 'als Nächstes', offen: 'offe
 const STRANG_MAX = 6;
 const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 };
 
-/** Ein Pfeil nach unten (optional beschriftet, z. B. „ja“). */
-function Pfeil({ text, kurz }: { text?: string; kurz?: boolean }) {
+/** Ein Pfeil nach unten (optional beschriftet, z. B. „ja“) — auch im Prozess-Editor. */
+export function Pfeil({ text, kurz }: { text?: string; kurz?: boolean }) {
   return (
     <span aria-hidden className="ff-fluss-pfeil" style={{ display: 'grid', justifyItems: 'center', color: C.inkLeise, minHeight: kurz ? 18 : 26, alignContent: 'center', position: 'relative' }}>
       <span style={{ width: 2, height: kurz ? 8 : 12, background: RAND.stark, borderRadius: 1 }} />
@@ -38,12 +38,18 @@ function Pfeil({ text, kurz }: { text?: string; kurz?: boolean }) {
   );
 }
 
-function knotenLabel(k: FlussKnoten): string {
-  return `${FORM_NAME[k.form]}: ${k.titel} — ${ZUSTAND_TEXT[k.zustand]}${k.haengt ? `, hängt${k.haengt === 'rot' ? ' (dringend)' : ''}` : ''}${k.unter ? `, ${k.unter}` : ''}`;
+/** Name der Form für Vorleser — eine Entscheidung aus dem Editor heißt so, die Raute eines Abstimmungspunkts „Abstimmung“. */
+export const formName = (k: Pick<FlussKnoten, 'form' | 'entscheid'>): string => (k.entscheid ? 'Entscheidung' : FORM_NAME[k.form]);
+
+export function knotenLabel(k: FlussKnoten, zustand = true): string {
+  return `${formName(k)}: ${k.titel}${zustand ? ` — ${ZUSTAND_TEXT[k.zustand]}` : ''}${k.haengt ? `, hängt${k.haengt === 'rot' ? ' (dringend)' : ''}` : ''}${k.unter ? `, ${k.unter}` : ''}`;
 }
 
-/** Der Inhalt eines Knotens (Zeichen, Titel, Satz darunter) — in der Form seiner Art. */
-function KnotenKnopf({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: boolean; onWahl: (k: FlussKnoten) => void }) {
+/**
+ * Ein Knoten des Flusses in der Form seiner Art (Zeichen, Titel, Satz darunter) — EIN Bauteil für die Ansicht (Fall › Reise) UND den Prozess-Editor
+ * (`editor`: ohne Zustand im Vorleser-Text; `griff` = Ziehen, Tastatur und Markierung des Editors, auf den Knopf gelegt).
+ */
+export function KnotenKnopf({ k, gewaehlt, onWahl, griff, editor }: { k: FlussKnoten; gewaehlt: boolean; onWahl: (k: FlussKnoten) => void; griff?: Record<string, unknown>; editor?: boolean }) {
   const f = FORM_FARBE[k.form];
   const hier = k.zustand === 'hier';
   const fertig = k.zustand === 'erledigt';
@@ -56,7 +62,7 @@ function KnotenKnopf({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: boolea
   );
   const titel = (
     <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: 1 }}>
-      <span style={{ fontWeight: hier ? 700 : 600, color: fertig || k.zustand === 'entfaellt' ? C.inkDim : C.ink, textDecoration: k.zustand === 'entfaellt' ? 'line-through' : 'none', overflowWrap: 'break-word', hyphens: 'manual' }}>{k.titel}</span>
+      <span className="ff-titel" title={k.titel} style={{ fontWeight: hier ? 700 : 600, color: fertig || k.zustand === 'entfaellt' ? C.inkDim : C.ink, textDecoration: k.zustand === 'entfaellt' ? 'line-through' : 'none' }}>{k.titel}</span>
       {k.unter && <span style={{ ...klein, color: kante ?? C.inkLeise }}>{k.unter}</span>}
     </span>
   );
@@ -69,13 +75,13 @@ function KnotenKnopf({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: boolea
   if (k.form === 'termin') {
     // Termin: große Beschriftung statt Kasten (wie „Kickoff-Termin“ im Vorbild).
     return (
-      <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k)} aria-pressed={gewaehlt} onClick={() => onWahl(k)}
+      <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k, !editor)} aria-pressed={gewaehlt} onClick={() => onWahl(k)} {...griff}
         style={{ ...basis, padding: '6px 4px', background: 'none', border: 'none', borderBottom: `2px solid ${gewaehlt ? C.ink : hier ? JETZT : kante ?? RAND.stark}` }}>
         {marke}
         <span style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
           {zeichen}
           <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
-            <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: fertig ? C.inkDim : C.ink, lineHeight: 1.2, overflowWrap: 'break-word' }}>{k.titel}</span>
+            <span className="ff-titel" title={k.titel} style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: fertig ? C.inkDim : C.ink, lineHeight: 1.2 }}>{k.titel}</span>
             {k.unter && <span style={{ ...klein, color: kante ?? C.inkLeise }}>{k.unter}</span>}
           </span>
         </span>
@@ -85,7 +91,7 @@ function KnotenKnopf({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: boolea
   if (k.form === 'entscheidung') {
     // Abstimmungspunkt: die Raute, daneben die Frage — „vermerkt?“.
     return (
-      <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k)} aria-pressed={gewaehlt} onClick={() => onWahl(k)}
+      <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k, !editor)} aria-pressed={gewaehlt} onClick={() => onWahl(k)} {...griff}
         style={{ ...basis, padding: '6px 10px', background: gewaehlt ? 'rgba(255,255,255,.04)' : 'none', border: `1px solid ${gewaehlt ? C.ink : hier ? TIEF.rand(JETZT) : 'transparent'}`, borderRadius: ECKE.eingabe }}>
         {marke}
         <span style={{ display: 'flex', gap: 14, alignItems: 'center', minWidth: 0 }}>
@@ -95,8 +101,8 @@ function KnotenKnopf({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: boolea
             </span>
           </span>
           <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: 1 }}>
-            <span style={{ fontWeight: hier ? 700 : 600, color: fertig ? C.inkDim : C.ink, overflowWrap: 'break-word' }}>{k.titel}</span>
-            <span style={{ ...klein, color: kante ?? C.inkLeise }}>{fertig ? 'vermerkt' : k.unter ?? 'bestätigt? — erst dann geht es weiter'}</span>
+            <span className="ff-titel" title={k.titel} style={{ fontWeight: hier ? 700 : 600, color: fertig ? C.inkDim : C.ink }}>{k.titel}</span>
+            <span style={{ ...klein, color: kante ?? C.inkLeise }}>{fertig ? (k.entscheid ? 'ja' : 'vermerkt') : k.unter ?? (k.entscheid ? 'ja oder nein?' : 'bestätigt? — erst dann geht es weiter')}</span>
           </span>
           {kante && !fertig && <AlertCircle size={15} color={kante} aria-hidden style={{ flex: '0 0 auto' }} />}
         </span>
@@ -104,7 +110,7 @@ function KnotenKnopf({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: boolea
     );
   }
   return (
-    <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k)} aria-pressed={gewaehlt} onClick={() => onWahl(k)}
+    <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k, !editor)} aria-pressed={gewaehlt} onClick={() => onWahl(k)} {...griff}
       style={{ ...basis, padding: '8px 12px', borderRadius: k.form === 'erinnerung' ? 18 : 8, background: hier ? TIEF.flaeche(JETZT) : fertig ? 'transparent' : TIEF.flaeche(f),
         border: `${gewaehlt || hier ? 2 : 1}px solid ${rahmen}`, borderLeft: kante && !gewaehlt ? `4px solid ${kante}` : undefined, boxShadow: hier ? TIEF.schein(JETZT, 16) : undefined }}>
       {marke}
@@ -118,7 +124,7 @@ function KnotenKnopf({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: boolea
 }
 
 /** Eine Erinnerung am Rand (Nein-Pfad bzw. neben einem wartenden Schritt) — orange, mit Glocke; zählt nicht als eigener Schritt. */
-function Erinnerung({ e, art }: { e: { titel: string; unter?: string }; art: 'nein' | 'wartet' }) {
+export function Erinnerung({ e, art }: { e: { titel: string; unter?: string }; art: 'nein' | 'wartet' }) {
   const f = FORM_FARBE.erinnerung;
   return (
     <span className="ff-fluss-erinnerung" role="note" aria-label={`Erinnerung${art === 'nein' ? ' auf dem Nein-Pfad' : ''}: ${e.titel}${e.unter ? `, ${e.unter}` : ''}`}
@@ -133,17 +139,34 @@ function Erinnerung({ e, art }: { e: { titel: string; unter?: string }; art: 'ne
   );
 }
 
+/** Der Pfeil zur Seite (Nein-Zweig bzw. Erinnerung) — auch im Prozess-Editor. */
+export function SeitenPfeil({ nein }: { nein?: boolean }) {
+  return (
+    <span aria-hidden className="ff-fluss-seitenpfeil" style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.inkLeise, fontSize: TYP.bedien, padding: '0 6px' }}>
+      {nein ? 'nein' : ''}<ArrowRight size={14} />
+    </span>
+  );
+}
+
 /** Ein Knoten im Strang — mit Nein-Zweig (Raute) bzw. Erinnerung daneben (wartet beim Kunden). */
 function Knoten({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void }) {
-  const seite = k.nein && k.zustand !== 'erledigt' ? { e: k.nein, art: 'nein' as const } : k.erinnerung ? { e: k.erinnerung, art: 'wartet' as const } : null;
   const knopf = <KnotenKnopf k={k} gewaehlt={gewaehlt === k.id} onWahl={onWahl} />;
+  // Entscheidung aus dem Editor: ihr Nein-Zweig ist ein echter Knoten des Falls — daneben, antippbar (Status, Detail).
+  if (k.neinKnoten) {
+    return (
+      <div className="ff-fluss-zweig">
+        <div className="ff-fluss-zelle">{knopf}</div>
+        <SeitenPfeil nein />
+        <div className="ff-fluss-erinnerung" style={{ minWidth: 0 }}><KnotenKnopf k={k.neinKnoten} gewaehlt={gewaehlt === k.neinKnoten.id} onWahl={onWahl} /></div>
+      </div>
+    );
+  }
+  const seite = k.nein && k.zustand !== 'erledigt' ? { e: k.nein, art: 'nein' as const } : k.erinnerung ? { e: k.erinnerung, art: 'wartet' as const } : null;
   if (!seite) return <div className="ff-fluss-zelle">{knopf}</div>;
   return (
     <div className="ff-fluss-zweig">
       <div className="ff-fluss-zelle">{knopf}</div>
-      <span aria-hidden className="ff-fluss-seitenpfeil" style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.inkLeise, fontSize: TYP.bedien, padding: '0 6px' }}>
-        {seite.art === 'nein' ? 'nein' : ''}<ArrowRight size={14} />
-      </span>
+      <SeitenPfeil nein={seite.art === 'nein'} />
       <Erinnerung e={seite.e} art={seite.art} />
     </div>
   );
@@ -220,7 +243,7 @@ export function FormenLegende({ zustaende = true }: { zustaende?: boolean }) {
     { z: <span aria-hidden style={{ display: 'inline-block', width: 16, height: 12, borderRadius: 6, border: `2px solid ${C.inkDim}` }} />, t: 'Start' },
     { z: kasten('schritt'), t: 'Schritt' },
     { z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('nachricht')}<Mail size={12} color={FORM_FARBE.nachricht} aria-hidden /></span>, t: 'Nachricht' },
-    { z: <FreigabeRaute gegeben={false} groesse={11} />, t: 'Abstimmung (ja / nein)' },
+    { z: <FreigabeRaute gegeben={false} groesse={11} />, t: 'Entscheidung · Abstimmung (ja / nein)' },
     { z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('erinnerung', true)}<BellRing size={12} color={FORM_FARBE.erinnerung} aria-hidden /></span>, t: 'Erinnerung' },
     { z: <CalendarClock size={14} color={C.ink} aria-hidden />, t: 'Termin' },
     ...(zustaende ? [

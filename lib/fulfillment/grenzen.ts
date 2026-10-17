@@ -9,6 +9,8 @@ export const GRENZEN = {
   vorlagen: 60,
   knotenJeVorlage: 400,
   uebergaengeJeAblauf: 200,
+  /** Einträge im Papierkorb einer Paket-Vorlage (Prozess-Editor, 17.10.) — darüber 413 „erst leeren“ (Einträge fallen nach 30 Tagen weg). */
+  papierkorbJeVorlage: 200,
   bausteine: 1500,
   gliederung: 80,
   text: 30_000,
@@ -106,6 +108,7 @@ export function grenzenPruefen<A extends FulfillmentArt>(art: A, d: FulfillmentD
       ueber('Rituale', v.rituale.length, GRENZEN.rituale),
       ...v.prozesse.map(p => ueber(`Knoten in „${p.titel}“`, p.knoten.length, GRENZEN.knotenJeVorlage)),
       ...v.prozesse.map(p => ueber(`Übergänge in „${p.titel}“`, p.uebergaenge.length, GRENZEN.uebergaengeJeAblauf)),
+      ...v.prozesse.map(p => ueber(`Papierkorb von „${p.titel}“`, p.papierkorb?.length ?? 0, GRENZEN.papierkorbJeVorlage)),
       ...v.bausteine.map(b => ueber(`Gliederung von „${b.titel}“`, b.gliederung.length, GRENZEN.gliederung)),
       ...v.bausteine.map(b => ueber(`Fragen in „${b.titel}“`, b.fragen?.length ?? 0, GRENZEN.fragenJeFormular)),
       ...v.bausteine.map(b => ueber(`Text von „${b.titel}“`, b.text?.length ?? 0, GRENZEN.text)),

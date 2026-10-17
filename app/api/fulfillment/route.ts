@@ -2,12 +2,13 @@
 // GET  → Übersicht: Vorlagen (mit Stand je Kopf/Knoten), Bibliothek in Kurzform (lange Texte nur mit `?baustein=<id>`), Rituale, Zuordnung
 //        Produkt → Vorlage, Einstellungen, Onboarding-Kandidaten, Fälle (Kurzform), „welcher Kunde steht wo“, Kennzahlen (1.4), Import-Läufe.
 //        `?nur=kurz` → nur Kandidaten, Zuordnung, Vorlagen-Titel und Fälle (für die Einhänger in Produkte & Mandate). Lesen schreibt nie.
-// PATCH { ops } → Einzel-Ops mit Stand (lib/fulfillment/prozesse/vorlagen-anwenden.ts), alles oder nichts: 400/403/404/409/413.
+// PATCH { ops } → Einzel-Ops mit Stand (lib/fulfillment/prozesse/vorlagen-anwenden.ts), alles oder nichts: 400/403/404/409/413. Ops an Abläufen
+//        (Vorlage, Knoten, Übergänge, Muster) nur volle Mitglieder (Rolle „nur Business“ 403, 17.10.) — den Editor im Miro-Stil bedient /api/fulfillment/editor.
 //        Kunden-Link-Schalter und Puls-Schwelle NICHT hier (400) — EIN Weg: POST /api/fulfillment/kunde (C2). Nur per Sitzung (Dienstweg 403), Bau-Kennung. `?space=privat` → 403 (Business only).
 // Tor: `fulfillmentZugang` (Routen-Register, Modul fulfillment).
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, darfVorlagenBearbeiten, VORLAGEN_NUR_LESEN } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
 import { kundenJeKnoten } from '@/lib/fulfillment/regeln';
 import { vorlagenAnwenden, mitStaenden, vorlagenMitBaustein, MUSTER_WAHL, musterFehlt } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
@@ -31,6 +32,8 @@ import { leseZugriff } from '@/lib/store/leseprotokoll';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/** Ops, die einen Ablauf (Prozess-Vorlage) oder seine Struktur ändern — nur volle Mitglieder (`darfVorlagenBearbeiten`). */
+const VORLAGEN_OPS: ReadonlySet<string> = new Set(['aus-muster', 'vorlage', 'vorlage-weg', 'kopie', 'knoten', 'knoten-weg', 'knoten-rang', 'uebergang', 'uebergang-weg']);
 const MUSTER_IDS: Record<string, string> = { landkarte: MUSTER_LANDKARTE.id, p1: MUSTER_P1.id, p2: MUSTER_P2.id, p3: MUSTER_P3.id };
 
 export async function GET(req: Request) {
@@ -86,7 +89,7 @@ export async function GET(req: Request) {
   }), { heute, jetzt: iso, willkommenStunden: vorlagen.einstellungen.willkommenStunden });
   const st = mitStaenden(vorlagen, eintragStand);
   return NextResponse.json({
-    ok: true, inhaber: await istInhaber(z.person),
+    ok: true, inhaber: await istInhaber(z.person), darfBearbeiten: await darfVorlagenBearbeiten(z.person),
     prozesse: st.prozesse,
     // Bibliothek in Kurzform: ohne Langtext und Fragen (die holt `?baustein=`), mit Marken und „steckt in …“.
     bausteine: st.bausteine.map(({ text: _t, fragen, gliederung, ...b }) => ({
@@ -107,8 +110,12 @@ export async function PATCH(req: Request) {
   let b: { ops?: unknown };
   try { b = await jsonBegrenzt(req, 2 * 1024 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const jetzt = new Date();
-  const crm = await import('@/lib/crm/speicher').then(c => c.ladeCrm());
   const ops = Array.isArray(b.ops) ? b.ops : [];
+  // Abläufe (Vorlagen und ihre Struktur) bearbeiten nur volle Mitglieder — dieselbe Regel wie der Prozess-Editor (17.10.); Bibliothek, Rituale, Zuordnung wie bisher.
+  if (ops.some(o => !!o && typeof o === 'object' && VORLAGEN_OPS.has(String((o as { op?: unknown }).op))) && !(await darfVorlagenBearbeiten(z.person))) {
+    return NextResponse.json({ ok: false, fehler: VORLAGEN_NUR_LESEN }, { status: 403 });
+  }
+  const crm = await import('@/lib/crm/speicher').then(c => c.ladeCrm());
   // Zuordnung nur auf Produkte des Katalogs; „onboarding-aus“ nur für Mandate, die es gibt.
   for (const o of ops) if (o && typeof o === 'object' && (o as { op?: unknown }).op === 'onboarding-aus' && !(typeof (o as { mandatId?: unknown }).mandatId === 'string' && MANDAT_ID.test((o as { mandatId: string }).mandatId) && crm.mandate.some(m => m.id === (o as { mandatId: string }).mandatId))) {
     return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });

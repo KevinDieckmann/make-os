@@ -117,6 +117,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
 interface Detail { baustein: Baustein & { stand: string }; steckt: { id: string; titel: string }[]; imOnboarding?: boolean; urheberGeprueft: { am: string; von: string } | null }
 
 function BausteinDetail({ id, daten, onZurueck }: { id: string; daten: Uebersicht; onZurueck: () => void }) {
+  const router = useRouter();
   const { bestaetigen, dialog } = useRueckfrage();
   const frage = useTextFrage();
   const [d, setD] = useState<Detail | null>(null);
@@ -178,7 +179,7 @@ function BausteinDetail({ id, daten, onZurueck }: { id: string; daten: Uebersich
       <Karte i={3}>
         <Ueberschrift>Steckt in</Ueberschrift>
         {d.imOnboarding && <div style={klein}>Läuft im Onboarding jedes Falls{b.art === 'mail' ? ' (Willkommensmail)' : ' (Kunden-Playbook)'}.</div>}
-        {d.steckt.length ? <Liste>{d.steckt.map(v => <Zeile key={v.id} titel={v.titel} />)}</Liste> : !d.imOnboarding && <div style={klein}>Noch in keiner Vorlage — im Editor einer Paket-Vorlage als Baustein (Ebene 5) unter einen Einzelschritt hängen.</div>}
+        {d.steckt.length ? <Liste>{d.steckt.map(v => <Zeile key={v.id} titel={v.titel} onClick={() => router.push(WEG.fulfillment('prozesse', { e: v.id }))} />)}</Liste> : !d.imOnboarding && <div style={klein}>Noch in keiner Vorlage — im Editor eines Ablaufs einen Schritt antippen und „Baustein verknüpfen“ wählen (oder „Baustein“ aus der Palette ziehen).</div>}
         <span style={MIKRO}>Herkunft</span>
         <div style={klein}>{b.herkunft?.art === 'import' ? `Import vom ${tagLang(b.herkunft.am)}` : b.herkunft?.art === 'muster' ? 'Muster' : 'von Hand'}{b.herkunftText ? ` · ${b.herkunftText}` : ''}{b.herkunft?.quelleIds?.length ? ` · Quellen ${b.herkunft.quelleIds.join(', ')}` : ''}</div>
         <Leiste>

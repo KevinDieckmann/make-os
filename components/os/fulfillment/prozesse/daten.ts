@@ -27,6 +27,8 @@ export interface Kandidat extends OnboardingKandidat { uhr: WillkommenUhr; vorla
 export interface FallZeile extends FallKurz { vorlageId: string; kunde: string; titel: string }
 export interface Uebersicht {
   inhaber: boolean;
+  /** Darf Abläufe bearbeiten (volle Mitglieder; Rolle „nur Business“ sieht nur — Prozess-Editor, 17.10.). */
+  darfBearbeiten?: boolean;
   prozesse: VorlageMitStand[];
   bausteine: BausteinKurz[];
   rituale: MitStand<RitualVorlage>[];

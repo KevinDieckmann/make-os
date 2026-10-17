@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Pillen, HakenZiel, Erklaert, LEUCHT } from '../../ui';
 import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, onboardingZaehlung, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
-import { fallStartTag } from '@/lib/fulfillment/prozesse/fall';
+import { fallStartTag, diffVorschau } from '@/lib/fulfillment/prozesse/fall';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
 import { useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, type FallAntwort } from './daten';
@@ -53,13 +53,32 @@ export function OnboardingMehr({ daten, schluessel, fragen }: { daten: FallAntwo
   );
 }
 
-/** Die Vorlage des Falls hat eine neue Fassung — übernehmen (erledigte Schritte bleiben). */
+/**
+ * Die Vorlage des Falls hat eine neue Fassung — „Vorlage geändert — übernehmen?“ mit Vorschau dessen, was sich ändert (neu, geändert mit Feldern, neue
+ * Reihenfolge, in der Vorlage entfernt). Nichts geschieht automatisch: erst „Übernehmen“ schreibt — erledigte Schritte bleiben erledigt, nichts geht verloren
+ * (Prozess-Editor, 17.10.; Regel lib/fulfillment/prozesse/fall.ts `vorlageUebernehmen`).
+ */
 export function VorlageGeaendert({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: FallMeldung) => void }) {
-  if (!daten.diff || !(daten.diff.neu.length + daten.diff.geaendert.length)) return null;
+  const [auf, setAuf] = useState(false);
+  const d = daten.diff;
+  if (!d || !(d.neu.length + d.geaendert.length + (d.reihenfolge?.length ?? 0))) return null;
+  const reihe = d.reihenfolge ?? [];
+  const teile = [d.neu.length ? `${d.neu.length} neu` : '', d.geaendert.length ? `${d.geaendert.length} geändert` : '', reihe.length ? `neue Reihenfolge in ${reihe.length}` : '', d.entfernt.length ? `${d.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''].filter(Boolean);
   return (
-    <Hinweis art="info" titel={`Vorlage geändert (Fassung ${daten.diff.von} → ${daten.diff.nach})`}
+    <Hinweis art="info" titel={`Vorlage geändert — übernehmen? (Fassung ${d.von} → ${d.nach})`}
       aktion={<Erklaert erklaerung="fulfillment.vorlageDiff" name="Vorlage übernehmen"><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'vorlage-uebernehmen', mandatId: daten.mandat.id }); onMeldung(a.ok ? { text: 'Neue Fassung übernommen — erledigte Schritte bleiben, wie sie sind.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Übernehmen</Knopf></Erklaert>}>
-      {daten.diff.neu.length} neu · {daten.diff.geaendert.length} geändert{daten.diff.entfernt.length ? ` · ${daten.diff.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''}
+      <span>{teile.join(' · ')} — erledigte Schritte bleiben erledigt, nichts geht verloren. </span>
+      <button type="button" className="fassbar" aria-expanded={auf} onClick={() => setAuf(!auf)} style={{ minHeight: 44, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', padding: 0, fontSize: TYP.bedien }}>{auf ? 'Vorschau schließen' : 'Was sich ändert ›'}</button>
+      {auf && (
+        <div data-ff-vorschau style={{ display: 'grid', gap: 8, marginTop: 6 }}>
+          {diffVorschau(d).map(a => (
+            <div key={a.titel} style={{ display: 'grid', gap: 2 }}>
+              <span style={MIKRO}>{a.titel}</span>
+              <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 2 }}>{a.zeilen.map((e, i) => <li key={i} style={{ fontSize: TYP.bedien, color: C.ink, overflowWrap: 'break-word' }}>{e}</li>)}</ul>
+            </div>
+          ))}
+        </div>
+      )}
     </Hinweis>
   );
 }

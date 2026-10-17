@@ -1,7 +1,7 @@
 // ─── Fulfillment — Adressen (C0, 10.10.; FULFILLMENT_KONZEPT.md Abschnitt 10; umgebaut 17.10. nach dem Miro-Standard) ──────────────────────────
 // Die Fulfillment-Seite liegt unter Produkte & Mandate: `/os/mandate/fulfillment` (Segment „Fulfillment“, kein eigener Leistenpunkt).
 //   u   Unternavigation: prozesse (= Landkarte, Standard, weggelassen) · onboarding · bausteine · analysen · kreislauf
-//   k   ein Knoten im Drill-down (nur unter Landkarte) · b ein Baustein (nur unter Bausteine)
+//   k   ein Knoten im Drill-down (nur unter Landkarte) · b ein Baustein (nur unter Bausteine) · e ein Ablauf im Prozess-Editor (nur unter Landkarte, 17.10.)
 //   m   ein Fall (Mandat-Kennung) — dann `r` = Reiter des Falls: reise (Standard, weggelassen) · ziele · menschen · kunde
 //   #   ein Sprung im Fall (`phase-<id>`, `freigabe-<id>`, `willkommen`, `stelle-<id>` — components/os/fulfillment/reise/sprung.ts)
 // Rückmeldung 17.10. („es dupliziert sich — lieber wenig und klar“): der Fall hat vier Reiter statt acht, der Start fünf Unter-Reiter statt sechs. ALTE
@@ -48,6 +48,7 @@ const BEREICH_IDS = FULFILLMENT_BEREICHE.map(b => b.id) as readonly string[];
 const REITER_IDS = FALL_REITER.map(r => r.id) as readonly string[];
 const KNOTEN = /^fk-[a-z0-9][a-z0-9-]{0,99}$/;
 const BAUSTEIN = /^fb-[a-z0-9][a-z0-9-]{0,99}$/;
+const VORLAGE = /^fp-[a-z0-9][a-z0-9-]{0,99}$/;
 const MANDAT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
 /** Ein Sprung im Fall (ohne „#“) — dieselbe Form wie `sprungAnker` (components/os/fulfillment/reise/sprung.ts). */
 const ANKER = /^(willkommen|(phase|freigabe)-[A-Za-z0-9][A-Za-z0-9_-]{0,99}|stelle-[a-z][a-z0-9-]{0,60})$/;
@@ -62,14 +63,19 @@ const mitQuery = (p: Record<string, string | undefined>, anker?: string) => {
   return `${t ? `${FULFILLMENT_PFAD}?${t}` : FULFILLMENT_PFAD}${anker && ANKER.test(anker) ? `#${anker}` : ''}`;
 };
 
-/** Ein Bereich der Unternavigation, optional mit Knoten (`k`, nur Landkarte) bzw. Baustein (`b`, nur Bausteine). Frühere Namen zeigen den neuen Ort. */
-export function fulfillmentLink(u?: FulfillmentBereich | AlterBereich, p: { k?: string; b?: string } = {}): string {
+/**
+ * Ein Bereich der Unternavigation, optional mit Knoten (`k`, nur Landkarte), Baustein (`b`, nur Bausteine) bzw. einem Ablauf im Prozess-Editor (`e`, nur
+ * Landkarte). Frühere Namen zeigen den neuen Ort.
+ */
+export function fulfillmentLink(u?: FulfillmentBereich | AlterBereich, p: { k?: string; b?: string; e?: string } = {}): string {
   const wirksam: FulfillmentBereich | undefined = u && istAlterBereich(u) ? ALTE_BEREICHE[u] : u as FulfillmentBereich | undefined;
   const bereich = wirksam && wirksam !== 'prozesse' ? wirksam : undefined;
+  const landkarte = !wirksam || wirksam === 'prozesse';
   return mitQuery({
     u: bereich,
-    k: (!wirksam || wirksam === 'prozesse') && p.k && KNOTEN.test(p.k) ? p.k : undefined,
+    k: landkarte && p.k && KNOTEN.test(p.k) ? p.k : undefined,
     b: wirksam === 'bausteine' && p.b && BAUSTEIN.test(p.b) ? p.b : undefined,
+    e: landkarte && p.e && VORLAGE.test(p.e) ? p.e : undefined,
   });
 }
 
@@ -85,6 +91,8 @@ export function fallLink(mandatId: string, r?: FallReiter | AlterFallReiter, ank
 
 export interface FulfillmentAdresse {
   u: FulfillmentBereich; k?: string; b?: string; m?: string; r: FallReiter;
+  /** Ein Ablauf (Paket-Vorlage) im Prozess-Editor (17.10.) — nur unter Landkarte. */
+  e?: string;
   /** Ein Sprung, den ein früherer Reiter mitbringt (z. B. `stelle-analyse`) — die Reise springt beim Öffnen dorthin. */
   anker?: string;
   /** Die Adresse nannte einen früheren Reiter/Bereich — die Seite ersetzt sie durch die neue (Verlauf ohne neuen Schritt). */
@@ -99,12 +107,13 @@ export function fulfillmentAusAdresse(q: { get(name: string): string | null }): 
   const r = q.get('r');
   const altR = !!r && istAlterReiter(r);
   const ziel = r && altR ? ALTE_REITER[r as AlterFallReiter] : null;
-  const k = q.get('k'), b = q.get('b'), m = q.get('m');
+  const k = q.get('k'), b = q.get('b'), m = q.get('m'), e = q.get('e');
   return {
     u: bereich,
     r: ziel ? ziel.r : r && REITER_IDS.includes(r) ? (r as FallReiter) : 'reise',
     ...(bereich === 'prozesse' && k && KNOTEN.test(k) ? { k } : {}),
     ...(bereich === 'bausteine' && b && BAUSTEIN.test(b) ? { b } : {}),
+    ...(bereich === 'prozesse' && e && VORLAGE.test(e) ? { e } : {}),
     ...(m && MANDAT.test(m) ? { m } : {}),
     ...(ziel?.anker ? { anker: ziel.anker } : {}),
     ...((altR && m && MANDAT.test(m)) || (altU && !(m && MANDAT.test(m))) ? { alt: true as const } : {}),
@@ -116,5 +125,5 @@ export function neueAdresse(a: FulfillmentAdresse, hash = ''): string | null {
   if (!a.alt) return null;
   const h = hash.replace(/^#/, '');
   if (a.m) return fallLink(a.m, a.r, h && ANKER.test(h) ? h : a.anker);
-  return fulfillmentLink(a.u, { ...(a.k ? { k: a.k } : {}), ...(a.b ? { b: a.b } : {}) });
+  return fulfillmentLink(a.u, { ...(a.k ? { k: a.k } : {}), ...(a.b ? { b: a.b } : {}), ...(a.e ? { e: a.e } : {}) });
 }
