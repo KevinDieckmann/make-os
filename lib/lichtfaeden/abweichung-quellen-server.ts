@@ -25,7 +25,8 @@ const LADER: readonly Lader[] = [
   // serverseitig für den Betrachter gefiltert (Erholungswerte anderer nie roh), gemerkt 60 s.
   async (betrachter, heute) => {
     const [{ kapaStandFuer }, { kapazitaetUeberlastet }] = await Promise.all([import('@/lib/kapazitaet/server'), import('@/lib/kapazitaet/abweichung')]);
-    const { stand } = await kapaStandFuer(betrachter, heute);
+    // Ohne Kopf & Energie (17.10., Gesamtprüfung L3 B2 — Art. 9): Überlast aus der Arbeitszeit, nie aus Erholungswerten.
+    const { stand } = await kapaStandFuer(betrachter, heute, 'business');
     return kapazitaetUeberlastet(stand, betrachter);
   },
 ];
