@@ -189,7 +189,10 @@ export async function ernaehrungTeil(person: string, kats: ReadonlySet<KiKategor
   const f = M.sauberDatei(await loadJson<import('@/lib/ernaehrung/modell').ErnaehrungFile>('ernaehrung'));
   const fremde = Array.from(new Set(f.profile.filter(p => p.konto && p.person !== person).map(p => p.person)));
   const teilt = new Set<string>();
-  for (const p of fremde) if ((await kontoFuerSpeicher(p).catch(() => null))?.teilt?.gesundheit?.includes(person)) teilt.add(p);
+  // Dieselbe Regel wie `darfGesundheitSehen` (18.10., L4 B5/B6): nur im selben Haushalt, nie für ein Konto „nur Business“.
+  const { teilenErlaubt } = await import('@/lib/zugang/konto-sicht');
+  const konten = (await (await import('@/lib/zugang/konten')).ladeKonten()).konten;
+  for (const p of fremde) if ((await kontoFuerSpeicher(p).catch(() => null))?.teilt?.gesundheit?.includes(person) && teilenErlaubt(konten, p, person, 'gesundheit')) teilt.add(p);
   const sichtbar = M.profileFuerBetrachter(f.profile, person, teilt);
   let gesundheit = false;
   const profile: string[] = [];

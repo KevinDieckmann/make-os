@@ -140,12 +140,18 @@ export interface Schritt {
 }
 
 /** Die drei Ebenen als Seiten (Filter auf die Einrichtung). `nurInhaber`: die Seite zeigt ihre Schritte nur Inhabern. */
-export interface EbeneSeite { id: Ebene; titel: string; satz: string; href: string; nurInhaber?: true }
+export interface EbeneSeite {
+  id: Ebene; titel: string; satz: string; href: string; nurInhaber?: true;
+  /** Satz für ein Konto „nur Business“ (18.10., Gesamtprüfung L4 B5): ohne Privat-Themen (Gesundheit, Familie, Haushalt) — gelesen über `ebeneSatz`. */
+  satzBusiness?: string;
+}
 export const EBENEN: readonly EbeneSeite[] = [
-  { id: 'ich', titel: 'Meine Einrichtung', satz: 'Jede Person für sich: Zugang, Verbindungen, Arbeitsrahmen, Gesundheit, ZOE — Prüfung und Häkchen gelten nur dir.', href: '/os/onboarding/ich' },
-  { id: 'gemeinsam', titel: 'Gemeinsam', satz: 'Haushalt und Firmen: Stichtag, Zahlen, Kartei, Planung, Familie — eine Person trägt ein, alle sehen den Stand.', href: '/os/onboarding/gemeinsam' },
+  { id: 'ich', titel: 'Meine Einrichtung', satz: 'Jede Person für sich: Zugang, Verbindungen, Arbeitsrahmen, Gesundheit, ZOE — Prüfung und Häkchen gelten nur dir.', satzBusiness: 'Jede Person für sich: Zugang, Verbindungen, Arbeitsrahmen, ZOE — Prüfung und Häkchen gelten nur dir.', href: '/os/onboarding/ich' },
+  { id: 'gemeinsam', titel: 'Gemeinsam', satz: 'Haushalt und Firmen: Stichtag, Zahlen, Kartei, Planung, Familie — eine Person trägt ein, alle sehen den Stand.', satzBusiness: 'Firmen: Stichtag, Zahlen, Kartei, Planung — eine Person trägt ein, alle sehen den Stand.', href: '/os/onboarding/gemeinsam' },
   { id: 'instanz', titel: 'Instanz', satz: 'Server, Sicherheit und Einstellungen der Instanz — das richten die Inhaber ein.', href: '/os/onboarding/instanz', nurInhaber: true },
 ];
+/** Der Satz einer Ebene für dieses Konto — „nur Business“ ohne Privat-Themen (18.10., L4 B5). */
+export const ebeneSatz = (e: EbeneSeite, nurBusiness: boolean): string => (nurBusiness && e.satzBusiness ? e.satzBusiness : e.satz);
 /** Die Ebene per Kennung (null = unbekannt). */
 export const ebeneMitId = (id: string): EbeneSeite | null => EBENEN.find(e => e.id === id) ?? null;
 

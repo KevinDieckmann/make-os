@@ -28,7 +28,8 @@ interface Ich { speicher: string; email: string; weitereEmails?: string[]; name:
 const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt', 'daten-export': 'eigene Daten abgerufen', 'instanz-export': 'Instanz exportiert', 'konto-loeschen': 'Konto löschen versucht', 'inhaber-ernennen': 'Inhaber-Rolle vergeben', 'inhaber-abgeben': 'Inhaber-Rolle abgegeben', 'geraet-gemerkt': 'Gerät gemerkt', 'geraet-vergessen': 'Gerät vergessen', 'geraete-vergessen': 'alle Geräte vergessen' };
 /** Anzeige eines Protokoll-Eintrags: eine Anmeldung über ein gemerktes Gerät (16.10.) heißt so, sonst der Text der Art. */
 const artText = (e: { art: string; geraet?: string }): string => (e.art === 'anmelden' && e.geraet ? 'angemeldet (gemerktes Gerät)' : ART_TEXT[e.art] ?? e.art);
-interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean; teiltZieleMitMir?: boolean }
+// `andere` = Konten DESSELBEN Haushalts (Server, 18.10. L4 B6); `gesundheitTeilbar` false = Konto „nur Business“ (Gesundheit nie dorthin).
+interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean; teiltZieleMitMir?: boolean; gesundheitTeilbar?: boolean; nurBusiness?: boolean }
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
 export function KontoView() {
@@ -36,6 +37,9 @@ export function KontoView() {
   const [ich, setIch] = useState<Ich | null>(null);
   /** Haupt-Inhaber (09.10., mehrere Inhaber): gibt die Rolle nie ab, löscht sein Konto nur allein. */
   const [haupt, setHaupt] = useState(false);
+  // Konto „nur Business“ (18.10., L4 B5): keine Karte „Gesundheit teilen“ — die Business-Sicht zeigt nie Gesundheit. `null` = noch unbekannt.
+  const [nurBusiness, setNurBusiness] = useState<boolean | null>(null);
+  const [andereKonten, setAndereKonten] = useState<number | null>(null);
   const [andere, setAndere] = useState<Andere[]>([]);
   const [name, setName] = useState('');
   const [pw, setPw] = useState({ alt: '', neu: '' });
@@ -46,7 +50,7 @@ export function KontoView() {
   const betreiber = useBetreiber();
 
   const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string; detail?: string; geraet?: string }[]>([]);
-  const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setHaupt(!!d.hauptInhaber); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
+  const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setHaupt(!!d.hauptInhaber); setNurBusiness(d.nurBusiness === true); setAndereKonten(typeof d.andereKonten === 'number' ? d.andereKonten : null); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
   const ladeTg = () => fetch('/api/telegram/koppeln').then(r => r.json()).then(d => setTg(t => ({ ...d, code: t?.code, minuten: t?.minuten }))).catch(() => {});
   useEffect(() => { void laden(); void ladeTg(); }, []);
 
@@ -198,12 +202,13 @@ export function KontoView() {
       {ich.rolle === 'inhaber' && <Kachel id="zugang-instanz" titel="Zugang der Instanz" breite={3}><ZugangEinstellungen /></Kachel>}
       {/* Team (28.09.): lebt in den Daten (team--<haushalt>); hier gepflegt, weil die alte Säulen-Seite auf /os/familie umleitet. */}
       <Kachel id="team" titel="Team" breite={6}><TeamKarte i={3} /></Kachel>
+      {nurBusiness === false && (
       <Kachel id="teilen" titel="Gesundheit teilen" breite={3}>
       <Karte i={2}>
       <Ueberschrift farbe={LEUCHT.gut} erklaerung="konto.gesundheitTeilen">Gesundheit teilen</Ueberschrift>
       <Liste>
-        {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, dein Journal und deine Tagebücher sehen darf, entscheidest du je Person.</Leer>}
-        {andere.map(a => {
+        {andere.filter(a => a.gesundheitTeilbar !== false).length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, dein Journal und deine Tagebücher sehen darf, entscheidest du je Person.</Leer>}
+        {andere.filter(a => a.gesundheitTeilbar !== false).map(a => {
           const an = ich.teilt.gesundheit.includes(a.speicher);
           return <Zeile key={a.speicher} links={<Haken an={an} onChange={() => teilen(a.speicher, !an)} />} titel={a.name}
             unter={`${an ? 'sieht deine Gesundheit' : 'sieht deine Gesundheit nicht'} · ${a.teiltGesundheitMitMir ? 'teilt mit dir' : 'teilt nicht mit dir'}`} />;
@@ -211,6 +216,7 @@ export function KontoView() {
       </Liste>
       </Karte>
       </Kachel>
+      )}
       {/* Eigene Ziele (08.10., Kevin): Vorgabe „nicht geteilt“ — wer meine eigenen Ziele lesen darf, entscheide nur ich (Server: lib/planung/eigene-ziele-sicht.ts). */}
       <Kachel id="ziele-teilen" titel="Eigene Ziele teilen" breite={3}>
       <Karte i={2}>
@@ -226,7 +232,7 @@ export function KontoView() {
       </Karte>
       </Kachel>
       {/* Betroffenenrechte (05.10.): Auskunft, Herunterladen, Konto löschen — jede Person selbst. */}
-      <Kachel id="meine-daten" titel="Meine Daten" breite={3}><MeineDaten i={2} zweiterFaktorAn={!!ich.zweiterFaktorAn} inhaber={ich.rolle === 'inhaber'} haupt={haupt} andere={andere.length} /></Kachel>
+      <Kachel id="meine-daten" titel="Meine Daten" breite={3}><MeineDaten i={2} zweiterFaktorAn={!!ich.zweiterFaktorAn} inhaber={ich.rolle === 'inhaber'} haupt={haupt} andere={andereKonten ?? andere.length} /></Kachel>
       {/* ZOE auf WhatsApp (08.10.): die eigene Nummer mit der ZOE-Nummer verbinden — nur die Person selbst (components/os/zoe-whatsapp). */}
       <Kachel id="zoe-whatsapp" titel="ZOE auf WhatsApp" breite={3}><ZoeWhatsappKarte i={3} /></Kachel>
       <Kachel id="bote" titel="Der Bote · Telegram" breite={3}>

@@ -39,11 +39,12 @@ function ZweiLichter() {
 
 export function Willkommen() {
   const [vorname, setVorname] = useState<string | null>(null);
+  const [nurBusiness, setNurBusiness] = useState(false);
 
   useEffect(() => {
     let weg = false;
     fetch('/api/state/willkommen', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null))
-      .then(w => { if (!weg && w?.zeigen) setVorname(typeof w.vorname === 'string' ? w.vorname : ''); })
+      .then(w => { if (!weg && w?.zeigen) { setNurBusiness(w.nurBusiness === true); setVorname(typeof w.vorname === 'string' ? w.vorname : ''); } })
       .catch(() => {});
     return () => { weg = true; };
   }, []);
@@ -70,7 +71,8 @@ export function Willkommen() {
           gehört, bleibt bei dir; was ihr teilt, seht ihr gemeinsam.
         </p>
         <p style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.6, margin: '10px 0 0' }}>
-          Die Einrichtung führt dich Schritt für Schritt — zuerst der zweite Faktor, dann deine eigenen Dinge (Ziele, Gesundheit), die Verbindungen kommen danach.
+          {/* Konto „nur Business“ (18.10., L4 B5): ohne Privat-Themen — die Business-Sicht zeigt nie Gesundheit. */}
+          Die Einrichtung führt dich Schritt für Schritt — zuerst der zweite Faktor, dann deine eigenen Dinge{nurBusiness ? '' : ' (Ziele, Gesundheit)'}, die Verbindungen kommen danach.
         </p>
         <div style={{ display: 'grid', gap: 8, marginTop: 20 }}>
           <Knopf haupt href="/os/onboarding/ich" onClick={schliessen}>Zur Einrichtung</Knopf>

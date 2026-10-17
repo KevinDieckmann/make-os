@@ -197,9 +197,11 @@ export async function gesundheitFuerZoe(eigentuemer: string, betrachter: string)
   if (eigentuemer === betrachter) return gesundheitAnKi(betrachter);
   const s = await gesundheitStandFuer(eigentuemer);
   if (!s.ki.an || !s.partner.an) return false;
-  const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
-  const k = await kontoFuerSpeicher(eigentuemer);
-  return !!k?.teilt?.gesundheit?.includes(betrachter) && (await gesundheitsWegOffen());
+  const [{ ladeKonten }, { teilenErlaubt }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/zugang/konto-sicht')]);
+  const konten = (await ladeKonten()).konten;
+  const k = konten.find(x => x.speicher === eigentuemer);
+  // Nur im selben Haushalt, nie an ein Konto „nur Business“ (18.10., L4 B5/B6 — dieselbe Regel wie `darfGesundheitSehen`).
+  return !!k?.teilt?.gesundheit?.includes(betrachter) && teilenErlaubt(konten, eigentuemer, betrachter, 'gesundheit') && (await gesundheitsWegOffen());
 }
 
 /** Antwort der Schreibwege ohne Einwilligung (a) — ein Satz überall. */

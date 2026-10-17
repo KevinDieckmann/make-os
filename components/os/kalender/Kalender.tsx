@@ -76,6 +76,7 @@ import { AufgabenModus, type AufgabenModusFilter } from './AufgabenModus';
 import { KalenderAufgabenSchalter } from '../KalenderAufgabenSchalter';
 import { mehrereTage, mehrereTageLabel, modusAusAdresse, startAnsicht, type Modus, type KalenderAnsicht } from '@/lib/kalender/modus';
 import { useSpace } from '@/hooks/useSpace';
+import { useNurBusiness } from '../useInhaber';
 import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
 import { LINKS_ID, LINKS_TASTE, linksOffenLesen, linksOffenMerken, linksSichtbar, linksTaste, oeffnenFuerPlanen } from './klappen';
 import { useKalenderWischen, wischenAktiv } from './wischen';
@@ -179,6 +180,8 @@ export function Kalender() {
   // Der Schalter im Kopf wählt den Bereich (seit 09.10. nur Privat · Business); im Kalender bleibt er umschaltbar — auch auf „Alles“.
   const { filter: kopfBereich } = useSpace();
   useEffect(() => { setBereich(kopfBereich); }, [kopfBereich]);
+  // Konto „nur Business“ (18.10., Gesamtprüfung L4 B5): kein Schalter „Alles · Privat · Business“ — der Server liefert ohnehin nur Business.
+  const nurBusiness = useNurBusiness();
   const { state: aufgabenStand } = useTasks();
   const [aus, setAus] = useState<Set<string>>(new Set());
   const [ebenen, setEbenen] = useState<{ fristen: boolean; erinnerungen: boolean; aufgaben: boolean }>({ fristen: true, erinnerungen: true, aufgaben: true });
@@ -404,7 +407,7 @@ export function Kalender() {
         <Ueberschrift>Sicht</Ueberschrift>
         {/* F3 (29.09.): in der 280-px-Leiste wurde „Gemeinsam“ abgeschnitten — die Knöpfe brechen jetzt um. */}
         <Segmente liste={sichten} aktiv={sicht} onWahl={setSicht} umbrechen />
-        <div style={{ marginTop: 8 }}><Segmente liste={[{ id: 'alle', label: 'Alles' }, { id: 'privat', label: 'Privat' }, { id: 'business', label: 'Business' }] as { id: Bereich; label: string }[]} aktiv={bereich} onWahl={setBereich} umbrechen /></div>
+        {nurBusiness !== true && <div style={{ marginTop: 8 }}><Segmente liste={[{ id: 'alle', label: 'Alles' }, { id: 'privat', label: 'Privat' }, { id: 'business', label: 'Business' }] as { id: Bereich; label: string }[]} aktiv={bereich} onWahl={setBereich} umbrechen /></div>}
         <div style={{ display: 'grid', gap: 4, marginTop: 10 }}>
           {(daten?.kalender ?? []).map(k => (
             <label key={k.name} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, fontSize: TYP.bedien, color: aus.has(k.name) ? C.inkLeise : C.ink, cursor: 'pointer' }}>

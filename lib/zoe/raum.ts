@@ -83,9 +83,12 @@ export function ansichtPerson(req: Request): Person {
 export async function darfGesundheitSehen(req: Request, ziel: Person): Promise<boolean> {
   const ich = personAus(req);
   if (ziel === ich) return true;
-  const { kontoFuerSpeicher } = await import('@/lib/zugang/konten');
-  const k = await kontoFuerSpeicher(ziel);
-  return !!k && k.teilt.gesundheit.includes(ich);
+  const [{ ladeKonten }, { teilenErlaubt }] = await Promise.all([import('@/lib/zugang/konten'), import('@/lib/zugang/konto-sicht')]);
+  const konten = (await ladeKonten()).konten;
+  const k = konten.find(x => x.speicher === ziel);
+  // Seit 18.10. (Gesamtprüfung L4 B5/B6) zusätzlich: nur im selben Haushalt und nie für ein Konto „nur Business“ (`teilenErlaubt`) — auch ein
+  // älterer Eintrag in `teilt.gesundheit` (vorher ließ sich mit jedem Konto der Instanz teilen) öffnet sonst nichts mehr.
+  return !!k && k.teilt.gesundheit.includes(ich) && teilenErlaubt(konten, ziel, ich, 'gesundheit');
 }
 
 /** In welchen Raum gehört, was diese Person gerade anlegt. */
