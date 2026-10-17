@@ -116,6 +116,22 @@ export interface VorlagenDiff {
   reihenfolge: { id: string; titel: string }[];
 }
 
+/** Die Felder eines Diffs in Worten (Vorschau „was sich ändert“ im Fall). */
+export const DIFF_FELD_NAME: Readonly<Record<string, string>> = {
+  elternId: 'Platz', titel: 'Titel', ziel: 'Ziel', ergebnis: 'Ergebnis', kennzahl: 'Kennzahl', zustaendig: 'Verantwortung', freigabe: 'Abstimmungspunkt',
+  kundeSichtbar: 'Sichtbarkeit', phaseId: 'Phase', bausteinId: 'Baustein', dauerTage: 'Dauer', form: 'Form', frist: 'Frist', zweige: 'Zweige',
+};
+
+/** Die Vorschau „was sich ändert“ eines Diffs in Worten — Abschnitte mit Zeilen (leere fallen weg). Eine Stelle für Fall-Hinweis und Tests. */
+export function diffVorschau(d: VorlagenDiff): { titel: string; zeilen: string[] }[] {
+  return [
+    { titel: 'Neu', zeilen: d.neu.map(x => x.titel) },
+    { titel: 'Geändert', zeilen: d.geaendert.map(x => `${x.titel} (${x.felder.map(f => DIFF_FELD_NAME[f] ?? f).join(', ')})`) },
+    { titel: 'Neue Reihenfolge', zeilen: (d.reihenfolge ?? []).map(x => x.titel) },
+    { titel: 'In der Vorlage entfernt — bleiben im Fall', zeilen: d.entfernt.map(x => x.titel) },
+  ].filter(a => a.zeilen.length);
+}
+
 /** Die Kinder eines Knotens, die in Vorlage UND Fall darunter stehen — in der Reihenfolge der Vorlage bzw. des Falls. */
 function gemeinsameKinder(id: string, fallKn: readonly FallKnoten[], v: ProzessVorlage): { soll: string[]; ist: string[] } {
   const imFall = new Set(kinderVon(id, fallKn).map(k => k.id));

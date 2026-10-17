@@ -167,3 +167,20 @@ describe('Adresse: ?e=<Ablauf> öffnet den Editor (nur unter Landkarte)', () => 
     expect(fulfillmentAusAdresse(new URLSearchParams('e=<script>')).e).toBeUndefined();
   });
 });
+
+describe('Laufender Fall: „Vorlage geändert — übernehmen?“ mit Vorschau — nichts automatisch', () => {
+  it('Hinweis mit Zählern, Satz „nichts geht verloren“, Knopf „Übernehmen“ und „Was sich ändert ›“; auch, wenn sich nur die Reihenfolge ändert', async () => {
+    const { VorlageGeaendert } = await import('@/components/os/fulfillment/prozesse/FallUeberblick');
+    const daten = { mandat: { id: 'm-1' }, diff: { von: 2, nach: 3, neu: [{ id: 'a', titel: 'Willkommen' }], geaendert: [], entfernt: [], reihenfolge: [{ id: 'p', titel: 'Umsetzung' }] } } as never;
+    const s = renderToStaticMarkup(h(VorlageGeaendert, { daten, onMeldung: () => {} }));
+    expect(s).toContain('Vorlage geändert — übernehmen? (Fassung 2 → 3)');
+    expect(s).toContain('1 neu · neue Reihenfolge in 1');
+    expect(s).toContain('nichts geht verloren');
+    expect(s).toContain('Was sich ändert ›');
+    expect(s).toContain('>Übernehmen<');
+    const nurReihe = renderToStaticMarkup(h(VorlageGeaendert, { daten: { mandat: { id: 'm-1' }, diff: { von: 2, nach: 3, neu: [], geaendert: [], entfernt: [], reihenfolge: [{ id: 'p', titel: 'X' }] } } as never, onMeldung: () => {} }));
+    expect(nurReihe).toContain('neue Reihenfolge in 1');
+    const nichts = renderToStaticMarkup(h(VorlageGeaendert, { daten: { mandat: { id: 'm-1' }, diff: { von: 2, nach: 3, neu: [], geaendert: [], entfernt: [{ id: 'x', titel: 'X' }], reihenfolge: [] } } as never, onMeldung: () => {} }));
+    expect(nichts).toBe('');
+  });
+});

@@ -10,7 +10,7 @@ import { editorAnwenden, editorModell, neuerAblauf, positionVon, type EditorKont
 import { geschichteFuer } from '@/lib/fulfillment/prozesse/editor-geschichte';
 import { phasenSchritte, zweigePruefen } from '@/lib/fulfillment/prozesse/fluss-struktur';
 import { vorlagenAnwenden } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
-import { fallStarten, fallAnwenden, vorlagenDiff, vorlageUebernehmen, type FallKontext } from '@/lib/fulfillment/prozesse/fall';
+import { fallStarten, fallAnwenden, vorlagenDiff, vorlageUebernehmen, diffVorschau, type FallKontext } from '@/lib/fulfillment/prozesse/fall';
 import { phasenFluss, flussKnoten } from '@/lib/fulfillment/prozesse/reise-bild';
 import { GRENZEN } from '@/lib/fulfillment/grenzen';
 import type { ProzessVorlage, VorlagenDatei, Fall, Baustein } from '@/lib/fulfillment/typen';
@@ -372,6 +372,12 @@ describe('Wirkung auf Fälle: neue Fälle sofort, laufende nur per Übernahme �
     expect(diff.geaendert.find(x => x.id === 'fk-b')!.felder).toEqual(['titel']);
     expect(diff.entfernt.map(x => x.titel)).toContain('Einwände');
     expect(diff.reihenfolge.map(x => x.titel)).toEqual(['Umsetzung']);
+    expect(diffVorschau(diff)).toEqual([
+      { titel: 'Neu', zeilen: ['Willkommen'] },
+      { titel: 'Geändert', zeilen: ['Fragebogen senden (Titel)'] },
+      { titel: 'Neue Reihenfolge', zeilen: ['Umsetzung'] },
+      { titel: 'In der Vorlage entfernt — bleiben im Fall', zeilen: ['Einwände'] },
+    ]);
     const neu = vorlageUebernehmen(fall, v1, J, 'pia');
     // Nichts fällt weg: jeder Knoten von vorher ist noch da — mit seinem Stand.
     for (const x of fall.knoten) expect(neu.knoten.some(y => y.id === x.id), x.titel).toBe(true);
