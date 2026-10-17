@@ -432,7 +432,7 @@ export function kundenLage(e: {
 
 // ── Zeichen-Modelle (dieselben für Oberfläche und PDF) ───────────────────────────────────────────────────────────────────────────────
 
-/** Eine Phase der Kunden-Reise in der Form der Reise-Zeile (components/os/fulfillment/reise/ReiseBild.tsx `BildSpalte`). */
+/** Eine Phase der Kunden-Reise in der Form der Reise-Zeile (components/os/ui/reise/ReiseBild.tsx `BildSpalte`, Typ lib/reise/bild.ts). */
 export interface KundenReiseSpalte {
   id: string; nr: number; titel: string; zustand: 'fertig' | 'jetzt' | 'offen'; unter?: string;
   kaestchen: { id: string; titel: string; zustand: 'hier' | 'offen' }[]; mehr: number;

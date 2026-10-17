@@ -8,58 +8,26 @@
 // Gerechnet wird nichts hier — alles kommt aus lib/crm/planung.ts `kreislauf`.
 // 11.10. (Kevin: „über die Visualisierungen verstehen“): jede Zahl im Ring trägt ihr Wort („offen“, „fällig“ …), der Kanal-Filter ist ein
 // Auswahl-Chip im Kopf der Karte statt einer dritten Pillenreihe, und die gewählte Stufe zeigt Plan und Ist als zwei Kacheln nebeneinander.
+// 17.10. (Kevin: „Markttraktion-Kreislauf, Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung“): statt des Rings die Reise als EINE
+// Zeile (components/os/ui/reise `ReiseBild` — derselbe Baustein wie im Fulfillment): je Stufe ihre Zahl mit Wort und die kurzen Sätze als Kästchen, das Band
+// „Kunde“ gestrichelt bis zur Stufe Fulfillment, ab da durchgezogen (lib/crm/kreislauf-bild.ts). Ein Tipp auf eine Stufe zeigt darunter ihre Liste
+// (Plan/Ist, Produkte, Kunden) und den Weg in ihre Ansicht — jede Zahl steht nur einmal (die Zahl in der Reise, Plan/Ist in der Stufe). Am Handy senkrecht.
 
 import { useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, TIEF, FLAECHE_STIL, ECKE } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Beschriftung, Knopf, Zeile, Liste, Chip, Hinweis, Leer, LEUCHT, useHandy } from '../../ui';
+import { Karte, Ueberschrift, Beschriftung, Knopf, Zeile, Liste, Chip, Hinweis, Leer, LEUCHT } from '../../ui';
+import { ReiseBild } from '../../ui/reise/ReiseBild';
 import { WELT_FARBE } from '../Ueberblick';
-import type { KreislaufId, KreislaufStufe, NachLeistungZeile } from '@/lib/crm/planung';
+import { kreislaufSpalten } from '@/lib/crm/kreislauf-bild';
+import type { KreislaufId, NachLeistungZeile } from '@/lib/crm/planung';
 import type { PlanungApi, PlanungLage } from './daten';
-
-const KURZ: Record<KreislaufId, [string, string?]> = {
-  kanaele: ['Leadkanäle'], leads: ['Leads &', 'Qualifizierung'], deals: ['Deals'], followup: ['Abschluss &', 'Follow-up'],
-  fulfillment: ['Fulfillment'], nachher: ['Nach der', 'Leistung'], wiederkauf: ['Wiederkauf'],
-};
-/** Was die Zahl einer Stufe zählt — ein Wort unter der Zahl im Ring (lib/crm/planung.ts `KreislaufStufe.anzahl`). */
+/** Was die Zahl einer Stufe zählt — das Wort hinter der Zahl im ersten Kästchen der Reise (lib/crm/planung.ts `KreislaufStufe.anzahl`). */
 export const KREISLAUF_EINHEIT: Record<KreislaufId, string> = {
   kanaele: 'aktiv', leads: 'in Arbeit', deals: 'offen', followup: 'fällig', fulfillment: 'aktiv', nachher: 'Kunden offen', wiederkauf: 'Kunden',
 };
 /** Farbe je Stufe: Marketing (Kanäle, Leads), Sales (Deals, Follow-up), Kunde (Fulfillment, danach), Wiederkauf = zurück in den Kreis. */
 const farbeVon = (id: KreislaufId): string =>
   id === 'kanaele' || id === 'leads' ? WELT_FARBE.marketing : id === 'deals' || id === 'followup' ? WELT_FARBE.sales : id === 'wiederkauf' ? C.aktiv : LEUCHT.gut;
-
-function Ring({ stufen, aktiv, onWahl }: { stufen: KreislaufStufe[]; aktiv: KreislaufId; onWahl: (id: KreislaufId) => void }) {
-  const G = 560, M = G / 2, R = 200, r = 62;
-  const pos = (i: number) => { const w = -Math.PI / 2 + (2 * Math.PI * i) / stufen.length; return { x: M + R * Math.cos(w), y: M + R * Math.sin(w), w }; };
-  return (
-    <svg viewBox={`0 0 ${G} ${G}`} role="group" aria-label="Der Kreislauf der Markttraktion" style={{ width: '100%', maxWidth: 560, display: 'block', margin: '0 auto' }}>
-      <circle cx={M} cy={M} r={R} fill="none" stroke="rgba(255,255,255,.10)" strokeWidth={2} strokeDasharray="4 7" />
-      {/* Pfeile auf dem Ring zwischen den Stufen — im Uhrzeigersinn. */}
-      {stufen.map((_, i) => {
-        const w = -Math.PI / 2 + (2 * Math.PI * (i + 0.5)) / stufen.length;
-        const x = M + R * Math.cos(w), y = M + R * Math.sin(w), grad = (w * 180) / Math.PI + 90;
-        return <path key={`p${i}`} d="M -6 -5 L 3 0 L -6 5" transform={`translate(${x} ${y}) rotate(${grad - 90})`} fill="none" stroke={C.inkLeise} strokeWidth={2} strokeLinecap="round" />;
-      })}
-      <text x={M} y={M - 8} textAnchor="middle" fill={C.inkDim} fontSize={TYP.bedien} fontFamily={SCHRIFT.text}>Der Kunde bleibt</text>
-      <text x={M} y={M + 12} textAnchor="middle" fill={C.inkDim} fontSize={TYP.bedien} fontFamily={SCHRIFT.text}>im Kreis</text>
-      {stufen.map((s, i) => {
-        const p = pos(i), f = farbeVon(s.id), an = s.id === aktiv, [z1, z2] = KURZ[s.id];
-        // Zeilen von oben: Name (eine oder zwei Zeilen) · Zahl · Wort zur Zahl — alles innerhalb des Kreises (r = 62).
-        const y0 = z2 ? -24 : -14;
-        return (
-          <g key={s.id} role="button" tabIndex={0} aria-pressed={an} aria-label={`${s.label}: ${s.anzahl} ${KREISLAUF_EINHEIT[s.id]}`} style={{ cursor: 'pointer', outline: 'none' }}
-            onClick={() => onWahl(s.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onWahl(s.id); } }}>
-            <circle cx={p.x} cy={p.y} r={r} fill={an ? `${f}33` : C.flaeche} stroke={an ? f : TIEF.rand(f)} strokeWidth={an ? 2.5 : 1.5} />
-            <text x={p.x} y={p.y + y0} textAnchor="middle" fill={C.ink} fontSize={TYP.bedien} fontWeight={600} fontFamily={SCHRIFT.text}>{z1}</text>
-            {z2 && <text x={p.x} y={p.y + y0 + 16} textAnchor="middle" fill={C.ink} fontSize={TYP.bedien} fontWeight={600} fontFamily={SCHRIFT.text}>{z2}</text>}
-            <text x={p.x} y={p.y + (z2 ? 20 : 12)} textAnchor="middle" fill={f} fontSize={TYP.titel} fontWeight={700} fontFamily={SCHRIFT.display}>{s.anzahl.toLocaleString('de-DE')}</text>
-            <text x={p.x} y={p.y + (z2 ? 38 : 30)} textAnchor="middle" fill={C.inkDim} fontSize={TYP.bedien} fontFamily={SCHRIFT.text}>{KREISLAUF_EINHEIT[s.id]}</text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
 function Schritte({ k, schreibe }: { k: NachLeistungZeile; schreibe: PlanungApi['schreibe'] }) {
   const nachher = k.status === 'beendet';
@@ -94,37 +62,27 @@ function PlanIst({ titel, children }: { titel: string; children: ReactNode }) {
 
 /** `kanalWahl` (11.10.): der Filter auf einen Leadkanal als Auswahl-Chip im Kopf der Karte (kommt von der Seite, components/os/crm/planung/Planung.tsx). */
 export function Kreislauf({ api, lage, zuKanaele, kanalWahl }: { api: PlanungApi; lage: PlanungLage; zuKanaele: () => void; kanalWahl?: ReactNode }) {
-  const handy = useHandy();
   const [aktiv, setAktiv] = useState<KreislaufId>('kanaele');
   const k = lage.kreislauf;
   const s = k.stufen.find(x => x.id === aktiv) ?? k.stufen[0];
   const f = farbeVon(s.id);
   const oeffnen = s.id === 'kanaele' ? <Knopf onClick={zuKanaele}>{s.hrefLabel}</Knopf> : s.href ? <Knopf href={s.href}>{s.hrefLabel}</Knopf> : null;
+  const spalten = kreislaufSpalten(k, KREISLAUF_EINHEIT, farbeVon);
   return (
     <>
-      {/* Rechner (11.10.): Ring links, die gewählte Stufe rechts daneben — antippen und sofort sehen, ohne zu scrollen; schmal untereinander. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap: 16, alignItems: 'start' }}>
       <Karte i={0}>
         <Ueberschrift rechts={kanalWahl}>Der Kreislauf</Ueberschrift>
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '-4px 0 8px' }}>Eine Stufe antippen, um Plan, Ist und den Weg in die Liste zu sehen.</div>
-        {handy ? (
-          <Liste>
-            {k.stufen.map(x => <Zeile key={x.id} aktiv={x.id === aktiv} onClick={() => setAktiv(x.id)} titel={x.label} unter={x.zusatz}
-              links={<span aria-hidden style={{ width: 12, height: 12, borderRadius: 99, background: farbeVon(x.id), display: 'inline-block' }} />}
-              rechts={<span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap' }}><b style={{ color: farbeVon(x.id), fontSize: TYP.body }}>{x.anzahl.toLocaleString('de-DE')}</b><span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{KREISLAUF_EINHEIT[x.id]}</span></span>} />)}
-          </Liste>
-        ) : <Ring stufen={k.stufen} aktiv={aktiv} onWahl={setAktiv} />}
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, margin: '-4px 0 10px' }}>Eine Stufe antippen, um Plan, Ist und den Weg in die Liste zu sehen.</div>
+        {/* Die Reise (17.10.): dieselbe Zeile wie im Fulfillment — der Kunde bleibt im Kreis, der Wiederkauf führt zurück in die Deals. */}
+        <ReiseBild spalten={spalten} wort="Stufe" mehrWort="Angaben" label="Der Kreislauf der Markttraktion" aktiv={s.id} onPhase={id => setAktiv(id as KreislaufId)} onKaestchen={id => setAktiv(id as KreislaufId)}
+          ende={<button type="button" className="fassbar" onClick={() => setAktiv('deals')} aria-label="Zurück in den Kreis: der Wiederkauf führt in die Deals"
+            style={{ minHeight: 44, padding: '0 10px', background: 'none', border: `1px dashed ${TIEF.rand(C.aktiv)}`, borderRadius: 999, color: C.inkDim, fontSize: TYP.bedien, cursor: 'pointer', whiteSpace: 'nowrap' }}>↺ in die Deals</button>} />
       </Karte>
       <Karte i={1} ton={f}>
         <Ueberschrift rechts={oeffnen}>{s.label}</Ueberschrift>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', alignItems: 'baseline', fontSize: TYP.body }}>
-          <b style={{ fontSize: TYP.zahl, fontFamily: SCHRIFT.display, color: f }}>{s.anzahl.toLocaleString('de-DE')}</b>
-          <span style={{ color: C.ink, fontWeight: 600 }}>{KREISLAUF_EINHEIT[s.id]}</span>
-          {/* Bei den Leadkanälen sagt der Zusatz dasselbe wie „Plan“ — dann nur einmal. */}
-          {!(s.id === 'kanaele' && s.plan) && <span style={{ color: C.inkDim }}>· {s.zusatz}</span>}
-        </div>
+        {/* Die Zahl und die Sätze der Stufe stehen oben in der Reise — hier nur, was dort nicht steht: Plan und Ist, die Liste, der Weg in die Ansicht. */}
         {(s.plan || s.ist) && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10, marginTop: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10 }}>
             {s.plan && <PlanIst titel={s.annahme ? 'Plan (Annahme)' : 'Plan'}>{s.plan}</PlanIst>}
             {s.ist && <PlanIst titel="Ist">{s.ist}</PlanIst>}
           </div>
@@ -138,12 +96,10 @@ export function Kreislauf({ api, lage, zuKanaele, kanalWahl }: { api: PlanungApi
         )}
         {s.id === 'wiederkauf' && (
           <div style={{ marginTop: 12, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
-            {k.wiederkauf.kunden} Kunden · {k.wiederkauf.wiederkaeufer} haben wieder gekauft · {k.wiederkauf.offen} offene Deals mit Bestandskunden.
-            {' '}Nach der Leistung zählen Upselling und Cross-Selling — sie führen zurück in die Deals.
+            {k.wiederkauf.kunden} Kunden insgesamt. Nach der Leistung zählen Upselling und Cross-Selling — sie führen zurück in die Deals.
           </div>
         )}
       </Karte>
-      </div>
       {(s.id === 'nachher' || s.id === 'fulfillment') && (
         <Karte i={2}>
           <Ueberschrift rechts={<Chip farbe={LEUCHT.gut}>{k.kunden.filter(x => x.offen > 0).length} mit offenen Schritten</Chip>}>Nach der Leistung — je Kunde</Ueberschrift>

@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Fulfillment · der Fluss einer Phase (17.10. — Miro-Standard „Beispiel Prozess“) ──────────────────────────────────────────────────────
+// ─── Standard · der Fluss einer Stufe (17.10. — Kevins Miro-Standard „Beispiel Prozess“, DESIGN_STANDARD.md › Prozess-Visualisierung) ─────────────
 // EIN Fluss von oben nach unten mit Pfeilen und festen Formen (nur der Stil seines Miro-Boards, nie dessen Inhalt):
 //   Start            — Kreis (womit die Phase beginnt: Unterschrift bzw. der Abstimmungspunkt davor)
 //   Schritt          — Kasten, ruhig grün getönt
@@ -10,16 +10,19 @@
 //   Termin           — große Beschriftung mit Kalender (Kick-off, Ritual)
 //   Gruppen          — zwei oder mehr Teilprozesse als Karten nebeneinander
 // Die Bedeutung hängt an der Form (Zeichen + Text für Vorleser), die Farbe kommt dazu. Erledigt ✓ (leise), „Hier“ (Petrol-Rahmen), hängt („!“ rot/gelb).
-// Er zeichnet nur — das Modell rechnet lib/fulfillment/prozesse/reise-bild.ts (`phasenFluss`). Ein Tipp auf einen Knoten wählt ihn (Detail daneben).
-// Die Legende steht EINMAL je Ansicht (`FormenLegende`).
+// Er zeichnet nur — die Modelle rechnen (Fulfillment `phasenFluss`, Einrichtung `etappenFluss`, Planung `meilensteinFluss`; Typen lib/reise/bild.ts).
+// Ein Tipp auf einen Knoten wählt ihn (Detail daneben). Die Legende steht EINMAL je Ansicht (`FormenLegende`). Seit 17.10. EIN Baustein für alle Bereiche
+// (aus dem Fulfillment hierher gezogen) — generisch im Knoten-Typ, damit jeder Bereich seine eigenen Felder am Knoten behält.
 
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Check, Mail, CalendarClock, BellRing, AlertCircle, ArrowDown, ArrowRight, RotateCcw } from 'lucide-react';
-import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT, FLAECHE_STIL } from '@/lib/make-one/design';
-import { LEUCHT } from '../../ui';
+import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT, FLAECHE_STIL, LEUCHT } from '@/lib/make-one/design';
 import { anzahl } from '@/lib/text/zahlwort';
-import { FORM_NAME, type FlussForm, type FlussKnoten, type FlussTeil, type PhasenFluss } from '@/lib/fulfillment/prozesse/reise-bild';
-import { JETZT, FORM_FARBE, FreigabeRaute } from './bilder';
+import { FORM_NAME, type FlussBild, type FlussForm, type FlussKnotenBild, type FlussTeilBild } from '@/lib/reise/bild';
+import { JETZT, FORM_FARBE, FreigabeRaute } from './formen';
+
+/** Ein Knoten, dessen Nein-Zweig dieselbe Form hat — jeder Bereich setzt hier seinen eigenen Typ ein (Fulfillment: `FlussKnoten`). */
+type K0<K> = FlussKnotenBild<K>;
 
 const HAENGT_FARBE = { rot: LEUCHT.kritisch, gelb: LEUCHT.achtung } as const;
 const ZUSTAND_TEXT = { erledigt: 'erledigt', hier: 'als Nächstes', offen: 'offen', entfaellt: 'entfällt' } as const;
@@ -39,9 +42,9 @@ export function Pfeil({ text, kurz }: { text?: string; kurz?: boolean }) {
 }
 
 /** Name der Form für Vorleser — eine Entscheidung aus dem Editor heißt so, die Raute eines Abstimmungspunkts „Abstimmung“. */
-export const formName = (k: Pick<FlussKnoten, 'form' | 'entscheid'>): string => (k.entscheid ? 'Entscheidung' : FORM_NAME[k.form]);
+export const formName = (k: Pick<FlussKnotenBild, 'form' | 'entscheid'>): string => (k.entscheid ? 'Entscheidung' : FORM_NAME[k.form]);
 
-export function knotenLabel(k: FlussKnoten, zustand = true): string {
+export function knotenLabel(k: FlussKnotenBild, zustand = true): string {
   return `${formName(k)}: ${k.titel}${zustand ? ` — ${ZUSTAND_TEXT[k.zustand]}` : ''}${k.haengt ? `, hängt${k.haengt === 'rot' ? ' (dringend)' : ''}` : ''}${k.unter ? `, ${k.unter}` : ''}`;
 }
 
@@ -49,7 +52,7 @@ export function knotenLabel(k: FlussKnoten, zustand = true): string {
  * Ein Knoten des Flusses in der Form seiner Art (Zeichen, Titel, Satz darunter) — EIN Bauteil für die Ansicht (Fall › Reise) UND den Prozess-Editor
  * (`editor`: ohne Zustand im Vorleser-Text; `griff` = Ziehen, Tastatur und Markierung des Editors, auf den Knopf gelegt).
  */
-export function KnotenKnopf({ k, gewaehlt, onWahl, griff, editor }: { k: FlussKnoten; gewaehlt: boolean; onWahl: (k: FlussKnoten) => void; griff?: Record<string, unknown>; editor?: boolean }) {
+export function KnotenKnopf<K extends K0<K>>({ k, gewaehlt, onWahl, griff, editor }: { k: K; gewaehlt: boolean; onWahl: (k: K) => void; griff?: Record<string, unknown>; editor?: boolean }) {
   const f = FORM_FARBE[k.form];
   const hier = k.zustand === 'hier';
   const fertig = k.zustand === 'erledigt';
@@ -149,7 +152,7 @@ export function SeitenPfeil({ nein }: { nein?: boolean }) {
 }
 
 /** Ein Knoten im Strang — mit Nein-Zweig (Raute) bzw. Erinnerung daneben (wartet beim Kunden). */
-function Knoten({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void }) {
+function Knoten<K extends K0<K>>({ k, gewaehlt, onWahl }: { k: K; gewaehlt: string | null; onWahl: (k: K) => void }) {
   const knopf = <KnotenKnopf k={k} gewaehlt={gewaehlt === k.id} onWahl={onWahl} />;
   // Entscheidung aus dem Editor: ihr Nein-Zweig ist ein echter Knoten des Falls — daneben, antippbar (Status, Detail).
   if (k.neinKnoten) {
@@ -173,7 +176,7 @@ function Knoten({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: string | nu
 }
 
 /** Ein Strang (oben → unten) — ab `STRANG_MAX` Knoten mit „+n weitere“. */
-function Strang({ knoten, gewaehlt, onWahl, titel }: { knoten: readonly FlussKnoten[]; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void; titel?: string }) {
+function Strang<K extends K0<K>>({ knoten, gewaehlt, onWahl, titel }: { knoten: readonly K[]; gewaehlt: string | null; onWahl: (k: K) => void; titel?: string }) {
   const [alle, setAlle] = useState(false);
   // Ein langer Strang zeigt den Ausschnitt um „hier“ (bzw. den gewählten Knoten) — davor und danach je „+n“.
   const kurzStrang = !alle && knoten.length > STRANG_MAX;
@@ -192,7 +195,7 @@ function Strang({ knoten, gewaehlt, onWahl, titel }: { knoten: readonly FlussKno
   );
 }
 
-function Teil({ t, gewaehlt, onWahl }: { t: FlussTeil; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void }) {
+function Teil<K extends K0<K>>({ t, gewaehlt, onWahl }: { t: FlussTeilBild<K>; gewaehlt: string | null; onWahl: (k: K) => void }) {
   if (t.art === 'linie') return <Strang knoten={t.knoten} gewaehlt={gewaehlt} onWahl={onWahl} {...(t.titel ? { titel: t.titel } : {})} />;
   // Verzweigung in Gruppen: die Teilprozesse als Karten nebeneinander (am Handy untereinander).
   return (
@@ -210,18 +213,21 @@ function Teil({ t, gewaehlt, onWahl }: { t: FlussTeil; gewaehlt: string | null; 
   );
 }
 
-/** Der Fluss einer Phase: Start-Kreis, Schritte (Strang bzw. Gruppen), Abstimmungspunkt mit ja/nein, Abschluss, Ende. */
-export function Fluss({ fluss, gewaehlt, onWahl, onEnde, fuss }: { fluss: PhasenFluss; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void; onEnde?: () => void; fuss?: ReactNode }) {
+/**
+ * Der Fluss einer Stufe: Start-Kreis, Schritte (Strang bzw. Gruppen), Raute mit ja/nein, Abschluss, Ende. `label` = der Satz für Vorleser (Vorgabe „Ablauf der
+ * Phase 2: …“; z. B. „Aufgaben des Meilensteins …“), `leer` = der Satz ohne Schritte.
+ */
+export function Fluss<K extends K0<K>>({ fluss, gewaehlt, onWahl, onEnde, fuss, label, leer = 'Diese Phase hat noch keine Schritte.' }: { fluss: FlussBild<K>; gewaehlt: string | null; onWahl: (k: K) => void; onEnde?: () => void; fuss?: ReactNode; label?: string; leer?: string }) {
   const nichts = !fluss.teile.length && !fluss.abstimmung && !fluss.abschluss.length;
   return (
-    <div className="ff-fluss" role="group" aria-label={`Ablauf der Phase ${fluss.nr}: ${fluss.titel}`}>
+    <div className="ff-fluss" role="group" aria-label={label ?? `Ablauf der Phase ${fluss.nr}: ${fluss.titel}`}>
       <span className="ff-fluss-start" aria-label={`Start: ${fluss.start.titel}${fluss.start.unter ? `, ${fluss.start.unter}` : ''}`} role="note"
         style={{ display: 'grid', placeItems: 'center', textAlign: 'center', minWidth: 120, maxWidth: 260, minHeight: 64, padding: '8px 18px', borderRadius: 999, border: `2px solid ${C.inkDim}`, background: C.grund, fontSize: TYP.bedien, color: C.ink, lineHeight: 1.3, boxSizing: 'border-box' }}>
         <span style={{ fontWeight: 600 }}>{fluss.start.titel}</span>
         {fluss.start.unter && <span style={{ color: C.inkLeise }}>{fluss.start.unter}</span>}
       </span>
       {fluss.teile.map((t, i) => <div key={i} style={{ display: 'grid', justifyItems: 'center', width: '100%' }}><Pfeil /><Teil t={t} gewaehlt={gewaehlt} onWahl={onWahl} /></div>)}
-      {nichts && <><Pfeil /><span style={{ ...klein, color: C.inkLeise }}>Diese Phase hat noch keine Schritte.</span></>}
+      {nichts && <><Pfeil /><span style={{ ...klein, color: C.inkLeise }}>{leer}</span></>}
       {fluss.abstimmung && <><Pfeil /><Knoten k={fluss.abstimmung} gewaehlt={gewaehlt} onWahl={onWahl} /></>}
       {fluss.abschluss.length > 0 && <><Pfeil text={fluss.abstimmung ? 'ja' : undefined} /><Strang knoten={fluss.abschluss} gewaehlt={gewaehlt} onWahl={onWahl} titel="Abschluss" /></>}
       <Pfeil text={fluss.abstimmung && !fluss.abschluss.length ? 'ja' : undefined} />
@@ -236,16 +242,20 @@ export function Fluss({ fluss, gewaehlt, onWahl, onEnde, fuss }: { fluss: Phasen
   );
 }
 
-/** Die Legende der Formen — EINMAL je Ansicht, klein. Form + Zeichen + Wort (nie nur Farbe). */
-export function FormenLegende({ zustaende = true }: { zustaende?: boolean }) {
+/**
+ * Die Legende der Formen — EINMAL je Ansicht, klein. Form + Zeichen + Wort (nie nur Farbe). `formen` = nur die Formen, die die Ansicht wirklich zeigt
+ * (Vorgabe: alle — Fulfillment, Editor); Start und die Zustände stehen immer da.
+ */
+export function FormenLegende({ zustaende = true, formen, entscheidung = 'Entscheidung · Abstimmung (ja / nein)' }: { zustaende?: boolean; formen?: readonly FlussForm[]; entscheidung?: string }) {
   const kasten = (form: FlussForm, rund = false) => <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: rund ? 6 : 3, background: TIEF.flaeche(FORM_FARBE[form]), border: `1px solid ${TIEF.rand(FORM_FARBE[form])}` }} />;
+  const zeigt = (f: FlussForm) => !formen || formen.includes(f);
   const e: { z: ReactNode; t: string }[] = [
     { z: <span aria-hidden style={{ display: 'inline-block', width: 16, height: 12, borderRadius: 6, border: `2px solid ${C.inkDim}` }} />, t: 'Start' },
-    { z: kasten('schritt'), t: 'Schritt' },
-    { z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('nachricht')}<Mail size={12} color={FORM_FARBE.nachricht} aria-hidden /></span>, t: 'Nachricht' },
-    { z: <FreigabeRaute gegeben={false} groesse={11} />, t: 'Entscheidung · Abstimmung (ja / nein)' },
-    { z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('erinnerung', true)}<BellRing size={12} color={FORM_FARBE.erinnerung} aria-hidden /></span>, t: 'Erinnerung' },
-    { z: <CalendarClock size={14} color={C.ink} aria-hidden />, t: 'Termin' },
+    ...(zeigt('schritt') ? [{ z: kasten('schritt'), t: 'Schritt' }] : []),
+    ...(zeigt('nachricht') ? [{ z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('nachricht')}<Mail size={12} color={FORM_FARBE.nachricht} aria-hidden /></span>, t: 'Nachricht' }] : []),
+    ...(zeigt('entscheidung') ? [{ z: <FreigabeRaute gegeben={false} groesse={11} />, t: entscheidung }] : []),
+    ...(zeigt('erinnerung') ? [{ z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('erinnerung', true)}<BellRing size={12} color={FORM_FARBE.erinnerung} aria-hidden /></span>, t: 'Erinnerung' }] : []),
+    ...(zeigt('termin') ? [{ z: <CalendarClock size={14} color={C.ink} aria-hidden />, t: 'Termin' }] : []),
     ...(zustaende ? [
       { z: <Check size={13} color={LEUCHT.gut} aria-hidden />, t: 'erledigt' },
       { z: <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: 3, border: `2px solid ${JETZT}` }} />, t: 'hier' },

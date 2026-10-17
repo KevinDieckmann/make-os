@@ -31,7 +31,7 @@ import { onboardingStand } from '@/lib/fulfillment/prozesse/onboarding';
 import { kundenReise } from '@/lib/fulfillment/kunde/bild';
 import { FallKopf } from '@/components/os/fulfillment/reise/FallKopf';
 import { FallReise } from '@/components/os/fulfillment/reise/FallReise';
-import { ReiseBild } from '@/components/os/fulfillment/reise/ReiseBild';
+import { ReiseBild } from '@/components/os/ui/reise/ReiseBild';
 import { LageStreifen } from '@/components/os/fulfillment/reise/LageStreifen';
 import { KundenAnsicht } from '@/components/os/fulfillment/kunde/KundenAnsicht';
 import type { KundenSicht } from '@/lib/fulfillment/kunde/sicht';

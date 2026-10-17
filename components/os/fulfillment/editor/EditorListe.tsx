@@ -11,8 +11,8 @@ import { FARBE as C, TYP, MIKRO, TIEF, RAND, SCHRIFT } from '@/lib/make-one/desi
 import { Karte, Ueberschrift, Knopf } from '../../ui';
 import type { EditorModell, EditorPhase } from '@/lib/fulfillment/prozesse/editor';
 import { flussFormVon } from '@/lib/fulfillment/prozesse/reise-bild';
-import { FormZeichen } from '../reise/ReiseBild';
-import { FreigabeRaute } from '../reise/bilder';
+import { FormZeichen } from '../../ui/reise/ReiseBild';
+import { FreigabeRaute } from '../../ui/reise/formen';
 import { klein } from '../prozesse/teile';
 import { knotenUnter } from './bild';
 import { EinfuegenMenue, K44, ZIEL_PX, type EditorApi } from './SeitenFeld';

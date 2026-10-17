@@ -120,7 +120,9 @@ describe('Bedienung: Maus ab 5 px, Finger 0,45 s, Tastatur für alles', () => {
     expect(LANG_MS).toBe(450);
     const e = quelle('components/os/fulfillment/editor/ProzessEditor.tsx');
     for (const t of ["e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')", "e.key === 'Delete' || e.key === 'Backspace'", "e.key === 'Enter'", "e.key === 'Insert'", "e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')", "e.key === 'Escape'"].slice(0, 5)) expect(e, t).toContain(t);
-    expect(quelle('components/os/fulfillment/editor/ziehen.tsx')).toContain("e.key === 'Escape'");
+    // 17.10.: die Zieh-Bedienung liegt EINMAL in components/os/ui/reise/ziehen.tsx (Planung › Ziel nutzt dieselbe); der Editor reicht nur seine Ziele durch.
+    expect(quelle('components/os/ui/reise/ziehen.tsx')).toContain("e.key === 'Escape'");
+    expect(quelle('components/os/fulfillment/editor/ziehen.tsx')).toContain('useReiseZiehen<ZiehQuelle, ZiehZiel>');
   });
 });
 
@@ -150,9 +152,9 @@ describe('Rechte in der Oberfläche', () => {
 describe('Ein Darstellungs-Bauteil für Ansicht und Editor', () => {
   it('der Editor zeichnet Knoten mit `KnotenKnopf` aus Fluss.tsx und die Phasen mit `ReiseBild` — kein eigenes Knoten-Bauteil', () => {
     const f = quelle('components/os/fulfillment/editor/EditorFluss.tsx');
-    expect(f).toContain("import { KnotenKnopf, Pfeil, SeitenPfeil } from '../reise/Fluss'");
-    expect(quelle('components/os/fulfillment/editor/ProzessEditor.tsx')).toContain("import { ReiseBild, FormZeichen } from '../reise/ReiseBild'");
-    expect(quelle('components/os/fulfillment/reise/Fluss.tsx')).toContain('export function KnotenKnopf');
+    expect(f).toContain("import { KnotenKnopf, Pfeil, SeitenPfeil } from '../../ui/reise/Fluss'");
+    expect(quelle('components/os/fulfillment/editor/ProzessEditor.tsx')).toContain("import { ReiseBild, FormZeichen } from '../../ui/reise/ReiseBild'");
+    expect(quelle('components/os/ui/reise/Fluss.tsx')).toContain('export function KnotenKnopf');
     const sp = editorSpalten(editorModell(V(), []));
     expect(sp[0].kaestchen.map(k => k.titel)).toEqual(['Kick-off planen', 'Unterlagen da?', 'Begrüßung senden']);
     expect(sp[0].raute).toMatchObject({ titel: 'Abstimmungspunkt 1 · Rahmen bestätigt' });

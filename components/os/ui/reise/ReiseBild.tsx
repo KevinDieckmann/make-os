@@ -1,39 +1,26 @@
 'use client';
 
-// ─── Fulfillment · die Reise als EINE Zeile (Kundenjourney, 17.10. — Miro-Standard) ───────────────────────────────────────────────────────
+// ─── Standard · die Reise als EINE Zeile (17.10. — Kevins Miro-Standard, DESIGN_STANDARD.md › Prozess-Visualisierung) ─────────────────────────────
 // Rückmeldung 17.10.: „Es soll nicht überladen sein, sondern sehr klar. Lieber wenig und klar.“ Vorbild ist der Stil seiner Kundenjourney (nie deren Inhalt):
-// die Phasen als EINE Zeile nebeneinander (Beschriftung als Pille), darunter je Phase höchstens vier kurze Kästchen (Rest „+n“), zwischen den Phasen
-// der Abstimmungspunkt als Raute, unten ein durchgehendes Band „Kunde“ (was bei ihm liegt, was er sieht). Erledigt (✓) · Hier (Petrol, „▾ Hier“) ·
-// offen; was hängt, trägt eine rote bzw. gelbe Kante mit „!“ — die Bedeutung hängt nie nur an der Farbe (Zeichen + Text für Vorleser).
-// EIN Baustein für die interne Reise (Fall › Reise), die Kunden-Seite, „Dem Kunden zeigen“ und (nachgebaut in pdf-bild.ts) den Report. Er zeichnet nur —
-// die Modelle rechnen lib/fulfillment/prozesse/reise-bild.ts (intern) bzw. lib/fulfillment/kunde/bild.ts `kundenReise` (Kunde). Keine Daten-Importe
-// (die öffentliche Kunden-Seite bündelt diese Datei mit). Am Handy (≤ 720 px) wird die Zeile zur senkrechten Liste (globals.css `.ff-reise`).
+// die Stufen als EINE Zeile nebeneinander (Beschriftung als Pille), darunter je Stufe höchstens vier kurze Kästchen (Rest „+n“), zwischen den Stufen eine
+// Raute (Abstimmungspunkt bzw. Abhängigkeit) oder ein Pfeil, unten optional ein durchgehendes Band (intern „Kunde“, beim Kunden „Sie“). Erledigt (✓) · Hier
+// (Petrol, „▾ Hier“) · offen · läuft (Kreislauf: alle Stufen zugleich, in ihrer Farbe); was hängt, trägt eine rote bzw. gelbe Kante mit „!“ — die Bedeutung
+// hängt nie nur an der Farbe (Zeichen + Text für Vorleser).
+// EIN Baustein für alle Bereiche (seit 17.10. aus dem Fulfillment hierher gezogen): Fulfillment-Fall, Kunden-Seite, Prozess-Editor, Markttraktion ›
+// Kreislauf, Einrichtung, Planung › Ziel. Er zeichnet nur — die Modelle rechnen (lib/reise/bild.ts nennt sie). Keine Daten-Importe (die öffentliche
+// Kunden-Seite bündelt diese Datei mit). Am Handy (≤ 720 px) wird die Zeile zur senkrechten Liste (globals.css `.ff-reise`).
 
 import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import { Check, Mail, CalendarClock, BellRing, AlertCircle } from 'lucide-react';
-import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT } from '@/lib/make-one/design';
-import { LEUCHT } from '../../ui';
-import type { FlussForm, KaestchenZustand } from '@/lib/fulfillment/prozesse/reise-bild';
-import type { PhasenZustand } from '@/lib/fulfillment/prozesse/reise';
-import { JETZT, FORM_FARBE, FreigabeRaute } from './bilder';
+import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT, LEUCHT } from '@/lib/make-one/design';
+import type { BildKaestchen, BildSpalte, FlussForm, KaestchenZustand, ReiseZustand } from '@/lib/reise/bild';
+import { JETZT, FORM_FARBE, FreigabeRaute } from './formen';
 
-export interface BildKaestchen { id: string; titel: string; form?: FlussForm; zustand: KaestchenZustand; haengt?: 'rot' | 'gelb'; unter?: string }
-export interface BildSpalte {
-  id: string; nr: number; titel: string; zustand: PhasenZustand;
-  /** Ein kurzer Zähler unter der Beschriftung („2 von 5“, „erledigt“). */
-  unter?: string;
-  haengt?: 'rot' | 'gelb';
-  kaestchen: readonly BildKaestchen[];
-  mehr: number;
-  /** Der Abstimmungspunkt am Ende der Phase — die Raute zwischen dieser und der nächsten Phase. */
-  raute?: { titel: string; gegeben: boolean; hier?: boolean; haengt?: 'rot' | 'gelb' };
-  /** Das Band „Kunde“ unter der Phase: ein kurzer Satz (was bei ihm liegt), `achtung` = es liegt etwas bei ihm, `intern` = diese Phase sieht er nicht. */
-  band?: { text?: string; achtung?: boolean; intern?: boolean };
-}
+export type { BildKaestchen, BildSpalte };
 
 const HAENGT_FARBE = { rot: LEUCHT.kritisch, gelb: LEUCHT.achtung } as const;
 const ZUSTAND_TEXT: Record<KaestchenZustand, string> = { erledigt: 'erledigt', hier: 'als Nächstes', offen: 'offen', entfaellt: 'entfällt' };
-const PHASE_TEXT: Record<PhasenZustand, string> = { fertig: 'erledigt', jetzt: 'hier stehen wir', offen: 'kommt noch' };
+const PHASE_TEXT: Record<ReiseZustand, string> = { fertig: 'erledigt', jetzt: 'hier stehen wir', offen: 'kommt noch', laeuft: 'läuft' };
 const FORM_TEXT: Record<FlussForm, string> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Abstimmung', erinnerung: 'Erinnerung', termin: 'Termin' };
 
 /** Das kleine Zeichen der Form vor einem Kästchen (nur Nachricht, Termin, Erinnerung — ein Schritt braucht keins, die Abstimmung ist eine Raute). */
@@ -72,13 +59,14 @@ function Kaestchen({ k, phaseId, gewaehlt, onKaestchen }: { k: BildKaestchen; ph
 }
 
 /**
- * Die Reise als Zeile. `hierText` = Marke über der laufenden Phase („Hier“ intern, „hier stehen wir“ beim Kunden), `bandTitel` = Beschriftung des Bandes
- * („Kunde“ intern, „Sie“/„Ihr“ beim Kunden). Mit `onPhase`/`onKaestchen`/`onRaute` sind Beschriftung, Kästchen und Raute Tippziele.
+ * Die Reise als Zeile. `hierText` = Marke über der laufenden Stufe („Hier“ intern, „hier stehen wir“ beim Kunden), `bandTitel` = Beschriftung des Bandes
+ * („Kunde“ intern, „Sie“/„Ihr“ beim Kunden; `band={false}` = ohne Band — Einrichtung, Planung), `wort` = wie eine Stufe heißt („Phase“, „Stufe“, „Etappe“,
+ * „Meilenstein“), `mehrWort` = was hinter „+n“ steht („Schritte“, „Aufgaben“). Mit `onPhase`/`onKaestchen`/`onRaute` sind Beschriftung, Kästchen und Raute Tippziele.
  * Prozess-Editor (17.10.) — dieselbe Zeichnung: `griff` legt Ziehen/Tastatur auf die Phasen-Pille, `rauteSchalter` steht zwischen JEDER Phase und hinter der
- * letzten (Abstimmungspunkt an/aus, 44 px breit), `ende` ist eine eigene Spalte am Schluss („+ Phase“).
+ * letzten (Abstimmungspunkt an/aus, 44 px breit), `ende` ist eine eigene Spalte am Schluss („+ Phase“, im Kreislauf „↺ zurück“).
  */
-export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', aktiv, gewaehlt, onPhase, onKaestchen, onRaute, gross, label = 'Reise des Kunden durch die Phasen', griff, rauteSchalter, ende }: {
-  spalten: readonly BildSpalte[]; hierText?: string; bandTitel?: string; aktiv?: string | null; gewaehlt?: string | null;
+export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', band: mitBand = true, wort = 'Phase', mehrWort = 'Schritte', aktiv, gewaehlt, onPhase, onKaestchen, onRaute, gross, label = 'Reise des Kunden durch die Phasen', griff, rauteSchalter, ende }: {
+  spalten: readonly BildSpalte[]; hierText?: string; bandTitel?: string; band?: boolean; wort?: string; mehrWort?: string; aktiv?: string | null; gewaehlt?: string | null;
   onPhase?: (id: string) => void; onKaestchen?: (phaseId: string, id: string) => void; onRaute?: (phaseId: string) => void; gross?: boolean; label?: string;
   griff?: (phaseId: string) => Record<string, unknown>; rauteSchalter?: (phaseId: string) => ReactNode; ende?: ReactNode;
 }) {
@@ -86,11 +74,12 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
   const zwischen = (i: number, s: BildSpalte) => i < spalten.length - 1 || !!s.raute || !!rauteSchalter;
   const spuren = [...spalten.flatMap((s, i) => ['minmax(0, 1fr)', ...(zwischen(i, s) ? [rauteSchalter ? '44px' : '22px'] : [])]), ...(ende ? ['minmax(min-content, auto)'] : [])].join(' ');
   return (
-    <div className={`ff-reise${gross ? ' ff-reise-gross' : ''}`} role="list" aria-label={label} style={{ gridTemplateColumns: spuren }}>
+    <div className={`ff-reise${gross ? ' ff-reise-gross' : ''}${mitBand ? '' : ' ff-reise-ohne-band'}`} role="list" aria-label={label} style={{ gridTemplateColumns: spuren }}>
       {spalten.map((s, i) => {
-        const pf = s.zustand === 'fertig' ? LEUCHT.gut : s.zustand === 'jetzt' ? JETZT : C.inkDim;
+        const pf = s.zustand === 'fertig' ? LEUCHT.gut : s.zustand === 'jetzt' ? JETZT : s.zustand === 'laeuft' ? (s.farbe ?? C.ink) : C.inkDim;
         const marke = s.zustand === 'jetzt' ? `▾ ${hierText}` : s.zustand === 'fertig' ? '✓' : '';
-        const phaseLabel = `Phase ${s.nr}: ${s.titel} — ${PHASE_TEXT[s.zustand]}${s.unter ? `, ${s.unter}` : ''}${s.haengt ? ', etwas hängt' : ''}${s.raute ? `, ${s.raute.titel} ${s.raute.gegeben ? 'vermerkt' : 'offen'}` : ''}`;
+        const gegebenText = s.raute?.gegebenText ?? 'vermerkt';
+        const phaseLabel = `${wort} ${s.nr}: ${s.titel} — ${PHASE_TEXT[s.zustand]}${s.unter ? `, ${s.unter}` : ''}${s.haengt ? ', etwas hängt' : ''}${s.raute ? `, ${s.raute.titel} ${s.raute.gegeben ? gegebenText : 'offen'}` : ''}`;
         const pille: CSSProperties = {
           display: 'flex', gap: 6, alignItems: 'center', width: '100%', minWidth: 0, minHeight: 44, padding: '6px 10px', boxSizing: 'border-box', borderRadius: ECKE.eingabe,
           fontFamily: SCHRIFT.text, fontSize: gross ? TYP.body : TYP.bedien, fontWeight: 700, textAlign: 'left', lineHeight: 1.25,
@@ -107,9 +96,9 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
         const band = s.band;
         return (
           <Fragment key={s.id}>
-            <div role="listitem" aria-current={s.zustand === 'jetzt' ? 'step' : undefined} className={`ff-reise-spalte ff-reise-${s.zustand}`}>
+            <div role="listitem" aria-current={s.zustand === 'jetzt' ? 'step' : undefined} className={`ff-reise-spalte ff-reise-${s.zustand}${aktiv === s.id ? ' ff-reise-aktiv' : ''}`}>
               <span className="ff-reise-marke" style={{ ...MIKRO, color: s.zustand === 'jetzt' ? JETZT : s.zustand === 'fertig' ? LEUCHT.gut : C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {marke}<span className="ff-reise-nr">{marke ? ' · ' : ''}Phase {s.nr}</span>
+                {marke}<span className="ff-reise-nr">{marke ? ' · ' : ''}{wort} {s.nr}</span>
               </span>
               <span style={{ display: 'grid', gap: 3, minWidth: 0 }}>
                 {onPhase
@@ -120,20 +109,22 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
               <div className="ff-reise-kaestchen">
                 {s.kaestchen.map(k => <Kaestchen key={k.id} k={k} phaseId={s.id} gewaehlt={gewaehlt === k.id} onKaestchen={onKaestchen} />)}
                 {s.mehr > 0 && (onPhase
-                  ? <button type="button" className="fassbar" onClick={() => onPhase(s.id)} aria-label={`${s.mehr} weitere Schritte in „${s.titel}“ zeigen`} style={{ minHeight: 44, padding: '0 9px', textAlign: 'left', background: 'none', border: `1px dashed ${RAND.stark}`, borderRadius: 8, color: C.inkDim, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+{s.mehr}</button>
+                  ? <button type="button" className="fassbar" onClick={() => onPhase(s.id)} aria-label={`${s.mehr} weitere ${mehrWort} in „${s.titel}“ zeigen`} style={{ minHeight: 44, padding: '0 9px', textAlign: 'left', background: 'none', border: `1px dashed ${RAND.stark}`, borderRadius: 8, color: C.inkDim, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+{s.mehr}</button>
                   : <span style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '2px 9px' }}>+{s.mehr}</span>)}
               </div>
-              {/* Am Handy steht der Abstimmungspunkt als Zeile unter der Phase (die Rauten-Spalte entfällt). */}
+              {/* Am Handy steht die Raute als Zeile unter der Stufe (die Rauten-Spalte entfällt). */}
               {s.raute && (
                 <span className="ff-reise-raute-zeile" style={{ gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: s.raute.gegeben ? LEUCHT.gut : C.inkDim }}>
-                  <FreigabeRaute gegeben={s.raute.gegeben} aktiv={!!s.raute.hier} />{s.raute.titel}{s.raute.gegeben ? ' · vermerkt' : ''}
+                  <FreigabeRaute gegeben={s.raute.gegeben} aktiv={!!s.raute.hier} />{s.raute.titel}{s.raute.gegeben ? ` · ${gegebenText}` : ''}
                 </span>
               )}
-              <span className={`ff-reise-band${band?.achtung ? ' ff-reise-band-achtung' : ''}${band?.intern ? ' ff-reise-band-intern' : ''}${!band?.text ? ' ff-reise-band-leer' : ''}`} style={{ ...bandStil(band), borderRadius: i === 0 ? '10px 0 0 10px' : i === spalten.length - 1 && !s.raute ? '0 10px 10px 0' : 0 }}>
-                {/* Am Rechner steht die Beschriftung einmal ganz links; am Handy trägt jedes Band mit Text sie selbst (die übrigen Bänder entfallen dort). */}
-                <b className={`ff-reise-band-titel${i > 0 ? ' ff-reise-band-titel-folge' : ''}`} style={{ ...MIKRO, color: C.inkDim, marginRight: 6 }}>{bandTitel}</b>
-                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{band?.text ?? ''}</span>
-              </span>
+              {mitBand && (
+                <span className={`ff-reise-band${band?.achtung ? ' ff-reise-band-achtung' : ''}${band?.intern ? ' ff-reise-band-intern' : ''}${!band?.text ? ' ff-reise-band-leer' : ''}`} style={{ ...bandStil(band), borderRadius: i === 0 ? '10px 0 0 10px' : i === spalten.length - 1 && !s.raute ? '0 10px 10px 0' : 0 }}>
+                  {/* Am Rechner steht die Beschriftung einmal ganz links; am Handy trägt jedes Band mit Text sie selbst (die übrigen Bänder entfallen dort). */}
+                  <b className={`ff-reise-band-titel${i > 0 ? ' ff-reise-band-titel-folge' : ''}`} style={{ ...MIKRO, color: C.inkDim, marginRight: 6 }}>{bandTitel}</b>
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{band?.text ?? ''}</span>
+                </span>
+              )}
             </div>
             {zwischen(i, s) && (
               <div className="ff-reise-zwischen" aria-hidden={rauteSchalter ? undefined : !s.raute || !onRaute}>
@@ -141,7 +132,7 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
                 <span style={{ display: 'grid', placeItems: 'center', minHeight: 44 }}>
                   {rauteSchalter ? rauteSchalter(s.id) : s.raute
                     ? (onRaute
-                      ? <button type="button" className="fassbar" onClick={() => onRaute(s.id)} title={`${s.raute.titel} — ${s.raute.gegeben ? 'vermerkt' : 'offen'}`} aria-label={`${s.raute.titel} — ${s.raute.gegeben ? 'vermerkt' : 'offen'}${s.raute.haengt ? ', überfällig' : ''}`}
+                      ? <button type="button" className="fassbar" onClick={() => onRaute(s.id)} title={`${s.raute.titel} — ${s.raute.gegeben ? gegebenText : 'offen'}`} aria-label={`${s.raute.titel} — ${s.raute.gegeben ? gegebenText : 'offen'}${s.raute.haengt ? ', überfällig' : ''}`}
                         style={{ width: 22, minHeight: 44, display: 'grid', placeItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         <FreigabeRaute gegeben={s.raute.gegeben} aktiv={!!s.raute.hier || !!s.raute.haengt} groesse={s.raute.hier ? 16 : 13} />
                       </button>
@@ -149,7 +140,7 @@ export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', akt
                     : <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>›</span>}
                 </span>
                 <span />
-                <span className="ff-reise-band" style={{ ...bandStil({ intern: !!band?.intern && (i === spalten.length - 1 || !!spalten[i + 1]?.band?.intern) }), borderRadius: i === spalten.length - 1 ? '0 10px 10px 0' : 0 }} />
+                {mitBand && <span className="ff-reise-band" style={{ ...bandStil({ intern: !!band?.intern && (i === spalten.length - 1 || !!spalten[i + 1]?.band?.intern) }), borderRadius: i === spalten.length - 1 ? '0 10px 10px 0' : 0 }} />}
               </div>
             )}
           </Fragment>

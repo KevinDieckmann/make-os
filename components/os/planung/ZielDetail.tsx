@@ -10,11 +10,23 @@
 // „+ Meilenstein zu diesem Ziel“ und „+ danach“ öffnen DAS Meilenstein-Fenster, vorbelegt (Ziel, Bereich, Einheit, Datum, Vorgänger).
 // Geschrieben wird nur über die vorhandenen Schreibwege (usePlanung: Ziele und Meilensteine als Einzeländerungen mit Stand);
 // Meilenstein bearbeiten/löschen im Fenster, Ziel löschen mit „Rückgängig“ (die Meilensteine bleiben, nur ohne Ziel).
+// Reise + Fluss (17.10., Kevin: „Markttraktion-Kreislauf, Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung“): die Kette steht als EINE
+// Zeile (components/os/ui/reise `ReiseBild`, derselbe Baustein wie im Fulfillment) — Meilensteine in der Reihenfolge der Kette, je höchstens vier Aufgaben,
+// „Hier“ = der erste offene, Raute = der nächste wartet darauf. Ein Tipp auf einen Meilenstein zeigt darunter seine Aufgaben als Fluss bis „erreicht?“ und
+// daneben seine Karte (abhaken, ▲▼, „+ danach“, bearbeiten). Nachbesserung 17.10. („keine Funktion darf verloren gehen“): die Meilensteine in der Reise
+// lassen sich ziehen (dieselbe Bedienung wie im Prozess-Editor — components/os/ui/reise/ziehen.tsx: Maus ab 5 px, Finger 0,45 s, Escape; Tastatur
+// Alt+←/→; am Handy ▲▼ in der Karte) über DIESELBE Regel (`ziehInReise` → `zieheInKette`, eine Abhängigkeit geht vor), und der Schalter „Liste“ zeigt
+// wieder alle Karten (Stufen von oben nach unten, ziehen und ▲▼). Nur Darstellung (lib/planung/kette-bild.ts).
 
 import Link from 'next/link';
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Haken, Knopf, Leer, Chip, Hinweis, feld, LEUCHT, Segmentbalken, useRueckgaengig } from '../ui';
+import { Seite, Karte, Ueberschrift, Haken, Knopf, Leer, Chip, Hinweis, feld, LEUCHT, Segmentbalken, Segmente, useRueckgaengig, useHandy } from '../ui';
+import { ReiseBild } from '../ui/reise/ReiseBild';
+import { Fluss, FormenLegende } from '../ui/reise/Fluss';
+import { ketteSpalten, meilensteinFluss, ersterOffener, kettenZiel, ziehInReise, ERREICHT_PRAEFIX } from '@/lib/planung/kette-bild';
+import { useReiseZiehen, stufenZielBei } from '../ui/reise/ziehen';
 import { Lichtfaeden } from '../lichtfaeden/Lichtfaeden';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
@@ -97,7 +109,21 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
   // Kapazität (04.10.): Aufwand des Ziels zusätzlich zu seinen Meilensteinen (nur Jahresziele, nicht Privat).
   const [aufwand, setAufwand] = useState<string | null>(null);
   const [titel, setTitel] = useState<string | null>(null);
+  // Reise (17.10.): welcher Meilenstein und welche Aufgabe gewählt sind (ohne Wahl: der erste offene, „Hier“).
+  const [wahl, setWahl] = useState<{ ms: string | null; knoten: string | null }>({ ms: null, knoten: null });
+  const router = useRouter();
+  const handy = useHandy();
+  // Reise oder Liste aller Karten (wie in der Einrichtung — eine Ansicht zur Zeit).
+  const [ansicht, setAnsicht] = useState<'reise' | 'liste'>('reise');
+  // Liste: Karten ziehen wie bisher (HTML5); Reise: Meilensteine ziehen mit der Bedienung des Prozess-Editors — über dieselbe Regel `zieheInKette`.
   const [zugId, setZugId] = useState<string | null>(null);
+  const kettenZug = useReiseZiehen<{ id: string; titel: string }, { nach: string | null; text: string }>({
+    zielBei: (x, y, q) => stufenZielBei(x, y, q.id),
+    pruefen: (q, ziel) => (kettenZiel(kette.reihe, q.id, ziel.nach) === null ? 'Steht schon an dieser Stelle.'
+      : ziehInReise(p.ms, kette.reihe, q.id, ziel.nach) ? null : 'Geht nicht — eine Abhängigkeit geht vor.'),
+    ablegen: (q, ziel) => { const neu = ziehInReise(p.ms, kette.reihe, q.id, ziel.nach); if (neu) { setHinweis(null); p.persistMs(neu); } },
+    gleich: (a, b) => a.id === b.id,
+  });
 
   if (!p.geladen && !z) return <Seite titel="Ziel"><Leer>lade …</Leer>{rueck.hinweis}</Seite>;
   if (!z) {
@@ -135,14 +161,30 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
     const neu = verschiebeInKette(p.ms, kette.reihe, m.id, r);
     if (neu) { setHinweis(null); p.persistMs(neu); } else setHinweis('Diese Reihenfolge geht nicht — der Nachbar ist ein Vorgänger oder Nachfolger (die Abhängigkeit geht vor).');
   };
-  const ziehen = (id1: string, auf: string) => {
+  const ziehenKarte = (id1: string, auf: string) => {
     const neu = zieheInKette(p.ms, kette.reihe, id1, auf);
     if (neu) { setHinweis(null); p.persistMs(neu); } else if (id1 !== auf) setHinweis('Diese Reihenfolge geht nicht — ein Meilenstein kann nicht vor einen stehen, auf den er wartet.');
   };
+  // Tastatur an den Meilensteinen der Reise: ←/→ wählt den Nachbarn, Alt+←/→ verschiebt (dieselbe Regel wie ▲▼).
+  const msTasten = (m: Meilenstein) => (e: { key: string; altKey: boolean; preventDefault: () => void }) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    if (e.altKey) { bewegen(m, e.key === 'ArrowLeft' ? 'auf' : 'ab'); return; }
+    const i = kette.reihe.findIndex(x => x.id === m.id);
+    const n = kette.reihe[i + (e.key === 'ArrowLeft' ? -1 : 1)];
+    if (n) { document.querySelector<HTMLElement>(`[data-ff-phase-pille="${n.id}"]`)?.focus(); setWahl({ ms: n.id, knoten: null }); }
+  };
   const messlatteText = messlatte ?? z.messlatte ?? '';
   const notizText = notiz ?? z.notiz ?? '';
+  // Die Reise der Kette (17.10.): gewählter Meilenstein (sonst „Hier“), sein Fluss, die gewählte Aufgabe.
+  const msAktiv = (wahl.ms && kette.reihe.some(m => m.id === wahl.ms) ? wahl.ms : null) ?? ersterOffener(kette.reihe) ?? kette.reihe.at(-1)?.id ?? null;
+  const msGewaehlt = msAktiv ? kette.reihe.find(m => m.id === msAktiv) ?? null : null;
+  const fluss = msAktiv ? meilensteinFluss(kette.reihe, p.ms, tasksState, heute, msAktiv) : null;
+  const aufgabeGewaehlt = wahl.knoten && !wahl.knoten.startsWith(ERREICHT_PRAEFIX) ? tasksState.tasks.find(t => t.id === wahl.knoten) ?? null : null;
+  const msWaehlen = (id: string) => { setWahl({ ms: id, knoten: null }); setTimeout(() => document.getElementById('ziel-fluss')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); };
+  const knotenWaehlen = (ms: string, id: string) => { setWahl({ ms, knoten: id }); if (handy) setTimeout(() => document.getElementById('ziel-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); };
 
-  const karte = (m: Meilenstein) => {
+  const karte = (m: Meilenstein, liste = false) => {
     const sp = meilensteinSpace(m);
     const bf = sp === 'privat' ? LEUCHT.gut : LEUCHT.business;
     const wartetNoch = wartetText(m, p.ms);
@@ -155,10 +197,13 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
     const obenAus = !verschiebeInKette(p.ms, kette.reihe, m.id, 'auf');
     const untenAus = !verschiebeInKette(p.ms, kette.reihe, m.id, 'ab');
     return (
-      <div key={m.id} id={`ziel-${m.id}`} draggable onDragStart={e => { setZugId(m.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', m.id); }}
-        onDragEnd={() => setZugId(null)} onDragOver={e => { if (zugId && zugId !== m.id) e.preventDefault(); }}
-        onDrop={e => { e.preventDefault(); if (zugId) ziehen(zugId, m.id); setZugId(null); }}
-        style={{ flex: '1 1 280px', minWidth: 0, maxWidth: '100%', padding: '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,.04)', border: `1px solid ${m.erledigt ? 'rgba(255,255,255,.06)' : `${status.f}44`}`, opacity: zugId === m.id ? 0.5 : 1 }}>
+      <div key={m.id} id={`ziel-${m.id}`}
+        {...(liste ? {
+          draggable: true, onDragStart: (e: DragEvent) => { setZugId(m.id); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', m.id); },
+          onDragEnd: () => setZugId(null), onDragOver: (e: DragEvent) => { if (zugId && zugId !== m.id) e.preventDefault(); },
+          onDrop: (e: DragEvent) => { e.preventDefault(); if (zugId) ziehenKarte(zugId, m.id); setZugId(null); },
+        } : {})}
+        style={{ ...(liste ? { flex: '1 1 280px' } : {}), minWidth: 0, maxWidth: '100%', padding: '12px 14px', borderRadius: 14, background: 'rgba(255,255,255,.04)', border: `1px solid ${m.erledigt ? 'rgba(255,255,255,.06)' : `${status.f}44`}`, opacity: zugId === m.id ? 0.5 : 1 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <div style={{ paddingTop: 3 }}><Haken an={m.erledigt} farbe={bf} label={m.titel} onChange={() => abhaken(m)} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -171,7 +216,9 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
             </div>
             {wartetNoch && <div style={{ marginTop: 6, fontSize: TYP.bedien, color: LEUCHT.achtung }}>{wartetNoch}</div>}
             {frueher.length > 0 && <div role="status" style={{ marginTop: 4, fontSize: TYP.bedien, color: LEUCHT.achtung }}>Hinweis: liegt vor dem Datum von „{frueher[0].titel}“ ({dtKurz(frueher[0].faellig!)}).</div>}
-            {danach.length > 0 && <div style={{ marginTop: 4, fontSize: TYP.bedien, color: C.inkLeise }}>danach: {danach.map((x, k) => <Fragment key={x.id}>{k > 0 ? ', ' : ''}<a href={`#ziel-${x.id}`} style={{ color: 'inherit' }}>{x.titel}</a></Fragment>)}</div>}
+            {danach.length > 0 && <div style={{ marginTop: 4, fontSize: TYP.bedien, color: C.inkLeise }}>danach: {danach.map((x, k) => <Fragment key={x.id}>{k > 0 ? ', ' : ''}{liste
+              ? <a href={`#ziel-${x.id}`} style={{ color: 'inherit' }}>{x.titel}</a>
+              : <button type="button" onClick={() => msWaehlen(x.id)} style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>{x.titel}</button>}</Fragment>)}</div>}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
               <span style={{ flex: 1, height: 5, borderRadius: 4, background: 'rgba(255,255,255,.08)', overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: `${mv}%`, background: col(mv), transition: 'width .3s ease' }} /></span>
               <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.bedien, color: col(mv), fontVariantNumeric: 'tabular-nums', minWidth: 38, textAlign: 'right' }}>{mv} %</b>
@@ -261,26 +308,61 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
            angepasste) zeigen ihr Jahresziel — das rechnet NUR die Route um (`wurzelAufloesen`), hier steht immer die eigene Kennung. ── */}
       <Lichtfaeden wurzel={`ziel:${z.id}`} titel="Lichtfäden dieses Ziels" i={2} />
 
-      {/* ── Die Kette ── */}
+      {/* ── Die Kette (17.10.: als Reise — Meilensteine nebeneinander, Raute = wartet darauf; darunter der Fluss des gewählten, daneben seine Karte) ── */}
       <Karte i={3} akzent={LEUCHT.achtung}>
         <Ueberschrift farbe={LEUCHT.achtung} rechts={kinder.length ? `${offen} offen · ${kinder.length - offen} erledigt` : undefined}>Meilensteine — die Kette zu diesem Ziel</Ueberschrift>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 260px' }}>Von oben nach unten: erst die Vorgänger, dann die, die auf sie warten; was nebeneinander steht, geht gleichzeitig. Reihenfolge per ▲▼ oder Ziehen.</span>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 260px' }}>{ansicht === 'reise'
+            ? 'Von links nach rechts: erst die Vorgänger, dann die, die auf sie warten (Raute = wartet darauf). Einen Meilenstein antippen — darunter seine Aufgaben, daneben abhaken und bearbeiten. Umsortieren: ziehen (Alt+←/→, am Handy ▲▼ in der Karte).'
+            : 'Von oben nach unten: erst die Vorgänger, dann die, die auf sie warten; was nebeneinander steht, geht gleichzeitig. Reihenfolge per ▲▼ oder Ziehen.'}</span>
+          {kinder.length > 0 && <Segmente<'reise' | 'liste'> liste={[{ id: 'reise', label: 'Reise' }, { id: 'liste', label: 'Liste' }]} aktiv={ansicht} onWahl={setAnsicht} />}
           <Knopf onClick={() => msFenster.oeffneNeu(vorgabe())}>+ Meilenstein zu diesem Ziel</Knopf>
         </div>
         {hinweis && <div style={{ marginBottom: 8 }}><Hinweis art="achtung" rolle="status">{hinweis}</Hinweis></div>}
         {!kinder.length
           ? <Leer>Noch kein Meilenstein. Teile das Ziel in Schritte — mit „+ Meilenstein zu diesem Ziel“ (Datum, erste Aufgaben) und lege fest, was auf was wartet.</Leer>
-          : kette.stufen.map((stufe, si) => (
-            <Fragment key={si}>
-              {si > 0 && <div aria-hidden style={{ textAlign: 'center', color: C.inkLeise, fontSize: 18, lineHeight: '24px' }}>↓</div>}
-              <div role="group" aria-label={stufe.length > 1 ? `Stufe ${si + 1}, gleichzeitig möglich` : `Stufe ${si + 1}`}>
-                {stufe.length > 1 && <div style={{ ...mikro, margin: '2px 0 6px' }}>gleichzeitig möglich</div>}
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{stufe.map(m => karte(m))}</div>
-              </div>
-            </Fragment>
-          ))}
+          : ansicht === 'liste'
+            ? kette.stufen.map((stufe, si) => (
+              <Fragment key={si}>
+                {si > 0 && <div aria-hidden style={{ textAlign: 'center', color: C.inkLeise, fontSize: 18, lineHeight: '24px' }}>↓</div>}
+                <div role="group" aria-label={stufe.length > 1 ? `Stufe ${si + 1}, gleichzeitig möglich` : `Stufe ${si + 1}`}>
+                  {stufe.length > 1 && <div style={{ ...mikro, margin: '2px 0 6px' }}>gleichzeitig möglich</div>}
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{stufe.map(m => karte(m, true))}</div>
+                </div>
+              </Fragment>
+            ))
+            : <ReiseBild spalten={ketteSpalten(kette.reihe, tasksState, heute)} band={false} wort="Meilenstein" mehrWort="Aufgaben" label={`Die Meilensteine von „${z.titel}“`}
+                aktiv={msAktiv} gewaehlt={wahl.knoten} onPhase={msWaehlen} onKaestchen={knotenWaehlen} onRaute={msWaehlen}
+                griff={id => {
+                  const i = kette.reihe.findIndex(m => m.id === id);
+                  const m = kette.reihe[i];
+                  return { 'data-ff-ziel': 'phase', 'data-ff-id': id, 'data-ff-titel': m.titel, 'data-ff-vorher': kette.reihe[i - 1]?.id ?? '', 'data-ff-phase-pille': id,
+                    onKeyDown: msTasten(m), 'aria-keyshortcuts': 'ArrowLeft ArrowRight Alt+ArrowLeft Alt+ArrowRight', ...kettenZug.griff({ id, titel: m.titel }) };
+                }} />}
       </Karte>
+      {kettenZug.anzeige}
+      {ansicht === 'reise' && fluss && msGewaehlt && (
+        <div className="ff-fall-raster">
+          <Karte i={4} id="ziel-fluss">
+            <Ueberschrift rechts={<Link href={WEG.meilenstein(msGewaehlt.id, 'aufgaben')} style={{ color: C.inkDim, fontSize: TYP.bedien, textDecoration: 'none' }}>Aufgaben ›</Link>}>{`Meilenstein ${fluss.nr} · ${fluss.titel}`}</Ueberschrift>
+            <Fluss fluss={fluss} gewaehlt={wahl.knoten} label={`Aufgaben des Meilensteins „${fluss.titel}“`} leer="Noch keine Aufgabe — im Meilenstein anlegen."
+              onWahl={k => knotenWaehlen(msGewaehlt.id, k.id)} onEnde={fluss.naechster ? () => msWaehlen(fluss.naechster!) : undefined} />
+            <div style={{ marginTop: 12 }}><FormenLegende formen={['schritt', 'entscheidung']} entscheidung="Erreicht? (ja / nein) · Abhängigkeit" /></div>
+          </Karte>
+          <div className="ff-fall-detail" id="ziel-detail" style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+            {aufgabeGewaehlt && (
+              <Karte i={5} flach>
+                <Ueberschrift rechts={<Knopf leise onClick={() => router.push(WEG.aufgabe(aufgabeGewaehlt.id))}>Aufgabe öffnen ›</Knopf>}>Aufgabe</Ueberschrift>
+                <div style={{ fontSize: TYP.body, fontWeight: 600, color: C.ink, overflowWrap: 'anywhere' }}>{aufgabeGewaehlt.title}</div>
+                <div style={{ marginTop: 4, fontSize: TYP.bedien, color: C.inkLeise }}>
+                  {fluss.teile.flatMap(t => (t.art === 'linie' ? t.knoten : [])).find(k => k.id === aufgabeGewaehlt.id)?.unter ?? (aufgabeGewaehlt.status === 'done' ? 'erledigt' : 'offen')}
+                </div>
+              </Karte>
+            )}
+            {karte(msGewaehlt)}
+          </div>
+        </div>
+      )}
       {msFenster.fenster}
       {rueck.hinweis}
     </Seite>

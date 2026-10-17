@@ -39,7 +39,7 @@ describe('Feinschliff: Titel, Band „Kunde“, Lage-Zeile', () => {
   it('Titel trennen mit Silbentrennung statt mitten im Wort, höchstens zwei Zeilen mit „…“ und Tooltip', () => {
     const css = quelle('app/globals.css');
     expect(css).toMatch(/\.ff-reise-text, \.ff-titel \{[^}]*-webkit-line-clamp: 2;[^}]*hyphens: auto;/);
-    const rb = quelle('components/os/fulfillment/reise/ReiseBild.tsx');
+    const rb = quelle('components/os/ui/reise/ReiseBild.tsx');
     expect(rb).toContain('className="ff-titel" title={s.titel}');
     expect(rb).not.toMatch(/overflowWrap: 'anywhere'/);
     expect(quelle('app/layout.tsx')).toContain('lang="de"');

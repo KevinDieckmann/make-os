@@ -19,16 +19,27 @@
 // Neustart (09.10.): trägt die Instanz die Marke (`ich.neustart`, der Server entscheidet), kommen Etappen, Gruppen, Ablauf und die Fassung jedes
 // Schritts aus dem Neustart (`schritteFuer`/`schritteDerEbene` mit Kontext); gezählt wird dann alles außer Optionalem (`alle`), der Kern steht
 // eigens darunter. Der Schritt „Plan Business online“ trägt seinen Knopf (`BusinessOnlineVorlage`).
+// Reise + Fluss (17.10., Kevin: „Markttraktion-Kreislauf, Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung“): die Übersicht zeigt
+// die Etappen als EINE Zeile mit „Hier“ (components/os/ui/reise `ReiseBild` — derselbe Baustein wie im Fulfillment), ein Tipp auf eine Etappe ihre Schritte
+// als Fluss, ein Tipp auf einen Schritt daneben sein Detail (Haken, Anleitung, Ort). Der nächste Schritt steht dort vorgewählt — im Stand nur EINE Zeile
+// „Als Nächstes: … ›“, die dorthin springt (Ereignis `EINRICHTUNG_NAECHSTER`, keine zweite Karte).
+// Die ganze Liste nach „Der Kern“/„Nach und nach“ bleibt über den Schalter „Liste“ (eine Ansicht zur Zeit, nichts doppelt). Gerechnet wird nichts neu
+// (lib/make-one/onboarding-bild.ts über `schritteFuer`, `istFertig`, `fortschrittVon`, `einrichtungStand`).
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+/** „Als Nächstes: … ›“ im Stand → der Weg wählt den nächsten Schritt (Weg-Ansicht, ohne eigene Wahl) und holt sein Detail ins Bild. */
+const EINRICHTUNG_NAECHSTER = 'make-einrichtung-naechster';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
   EBENEN, ablaufFuer, datenkarteFuer, einrichtungStand, ebeneMitId, etappenFuer, fortschrittVon, gruppeVon, gruppenFuer, istFertig, offeneVoraussetzungen, schrittFuer, schritteDerEbene,
   restzeitText, schritteFuer, sichtbarFuer, texteFuer, werText, zurueckgefallen, type Ebene, type Gruppe, type Kontext, type PruefBefund, type Schritt,
 } from '@/lib/make-one/onboarding-data';
 import { BusinessOnlineVorlage } from './BusinessOnlineVorlage';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Hinweis, HakenZiel, Knopf, Leerzustand, Fortschritt as FortschrittBalken, LEUCHT } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Hinweis, HakenZiel, Knopf, Leerzustand, Segmente, Fortschritt as FortschrittBalken, LEUCHT, useHandy } from './ui';
+import { ReiseBild } from './ui/reise/ReiseBild';
+import { Fluss, FormenLegende } from './ui/reise/Fluss';
+import { einrichtungReise, etappenFluss, etappeAusId, etappeId } from '@/lib/make-one/onboarding-bild';
 
 const link: CSSProperties = { color: C.inkDim, textDecoration: 'none' };
 const absatz: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6, margin: 0 };
@@ -359,6 +370,64 @@ function EbenenStand({ z }: { z: Zustand | null }) {
   );
 }
 
+/** Ein Element ins Bild holen (nach einem Tipp — am Handy steht der Fluss bzw. das Detail darunter). */
+function insBild(id: string) {
+  if (typeof document === 'undefined') return;
+  setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+
+/**
+ * Der Weg der Einrichtung (17.10.): die Etappen als Reise-Zeile mit „Hier“, darunter der Fluss der gewählten Etappe und daneben (am Handy darunter) das
+ * Detail des gewählten Schritts — vorgewählt der nächste. `liste` = die ganze Liste nach Abschnitten (Schalter „Liste“, eine Ansicht zur Zeit).
+ */
+function EinrichtungWeg({ z, meine, haken, laden, liste }: { z: Zustand | null; meine: readonly Schritt[]; haken: (id: string, an: boolean) => void; laden: () => void; liste: ReactNode }) {
+  const [ansicht, setAnsicht] = useState<'weg' | 'liste'>('weg');
+  const [wahl, setWahl] = useState<{ etappe: number | null; schritt: string | null }>({ etappe: null, schritt: null });
+  const handy = useHandy();
+  useEffect(() => {
+    const zumNaechsten = () => { setAnsicht('weg'); setWahl({ etappe: null, schritt: null }); insBild('einrichtung-detail'); };
+    window.addEventListener(EINRICHTUNG_NAECHSTER, zumNaechsten);
+    return () => window.removeEventListener(EINRICHTUNG_NAECHSTER, zumNaechsten);
+  }, []);
+  const ich = z?.ich ?? null;
+  const reise = einrichtungReise(ich, z);
+  const aktivId = wahl.etappe !== null ? etappeId(wahl.etappe) : reise.hier ?? reise.spalten.at(-1)?.id ?? null;
+  const nr = aktivId ? etappeAusId(aktivId) : null;
+  const fluss = nr !== null ? etappenFluss(ich, z, nr) : null;
+  const hierSchritt = reise.spalten.find(sp => sp.id === aktivId)?.kaestchen.find(k => k.zustand === 'hier')?.id ?? null;
+  const schrittId = wahl.schritt ?? (wahl.etappe === null ? hierSchritt : null);
+  const schritt = schrittId ? meine.find(x => x.id === schrittId) ?? null : null;
+  const etappeWaehlen = (id: string) => { const n = etappeAusId(id); if (n === null) return; setWahl({ etappe: n, schritt: null }); insBild('einrichtung-fluss'); };
+  const schrittWaehlen = (etappe: string, id: string) => { const n = etappeAusId(etappe); if (n === null) return; setWahl({ etappe: n, schritt: id }); if (handy) insBild('einrichtung-detail'); };
+  return (
+    <>
+      <Karte i={1} flach>
+        <Ueberschrift rechts={<Segmente<'weg' | 'liste'> liste={[{ id: 'weg', label: 'Weg' }, { id: 'liste', label: 'Liste' }]} aktiv={ansicht} onWahl={setAnsicht} />}>Der Weg — Etappe für Etappe</Ueberschrift>
+        <ReiseBild spalten={reise.spalten} band={false} wort="Etappe" label="Die Etappen der Einrichtung" aktiv={ansicht === 'weg' ? aktivId : null} gewaehlt={ansicht === 'weg' ? schrittId : null}
+          onPhase={id => { setAnsicht('weg'); etappeWaehlen(id); }} onKaestchen={(e, id) => { setAnsicht('weg'); schrittWaehlen(e, id); }} />
+      </Karte>
+      {ansicht === 'liste' ? liste : fluss && (
+        <div className="ff-fall-raster">
+          <Karte i={2} id="einrichtung-fluss">
+            <Ueberschrift rechts={reise.spalten.find(sp => sp.id === aktivId)?.unter}>{`Etappe ${fluss.nr} · ${fluss.titel}`}</Ueberschrift>
+            <Fluss fluss={fluss} gewaehlt={schrittId} label={`Schritte der Etappe ${fluss.nr}: ${fluss.titel}`} leer="Diese Etappe hat für dich keine Schritte."
+              onWahl={k => schrittWaehlen(etappeId(fluss.etappe), k.id)} onEnde={fluss.naechste !== undefined ? () => etappeWaehlen(etappeId(fluss.naechste!)) : undefined} />
+            <div style={{ marginTop: 12 }}><FormenLegende formen={['schritt']} /></div>
+          </Karte>
+          <div className="ff-fall-detail" id="einrichtung-detail" style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+            <Karte i={3}>
+              <Ueberschrift>{schritt && schritt.id === hierSchritt ? 'Nächster Schritt' : 'Schritt'}</Ueberschrift>
+              {schritt
+                ? <Liste>{schrittZeile(schritt, z, haken, true, laden)}</Liste>
+                : <p style={absatz}>Einen Schritt in der Reise oder im Fluss antippen — hier stehen dann Anleitung, Prüfung und der Haken.</p>}
+            </Karte>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function OnboardingUebersicht() {
   const { z, haken, laden, meldung } = useOnboarding();
   const meine = schritteFuer(z?.ich ?? null);
@@ -385,7 +454,15 @@ export function OnboardingUebersicht() {
           </div>
         )}
         <EbenenStand z={z} />
-        {f.naechster && <NaechsterSchritt s={f.naechster} z={z} laden={laden} />}
+        {/* Der nächste Schritt steht im Weg darunter vorgewählt (Reise: „Hier“, Detail daneben) — hier nur EINE Zeile, die dorthin springt. */}
+        {f.naechster && (
+          <button type="button" className="fassbar" onClick={() => window.dispatchEvent(new Event(EINRICHTUNG_NAECHSTER))}
+            style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%', minHeight: 44, marginTop: 10, padding: 0, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink }}>
+            <span style={{ color: C.inkLeise, flex: '0 0 auto' }}>Als Nächstes:</span>
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{texteFuer(f.naechster, z?.ich).nr} · {texteFuer(f.naechster, z?.ich).titel}</span>
+            <span aria-hidden style={{ color: C.inkLeise, flex: '0 0 auto' }}>›</span>
+          </button>
+        )}
         <p style={{ ...absatz, marginTop: 12 }}>
           Gezählt werden deine Schritte („Meine Einrichtung“), die gemeinsamen{z?.ich?.inhaber ? ' und — als Inhaber — die der Instanz' : ''}: alles außer
           Optionalem, auch „{namen.spaeter.titel}“ — dieselbe Zahl wie die Karte auf Heute, die bleibt, bis alles steht.{neustart ? ` „${namen.samstag.titel}“ steht eigens darüber.` : ''}
@@ -394,16 +471,7 @@ export function OnboardingUebersicht() {
         </p>
       </Karte>
 
-      <Karte i={1}>
-        <Ueberschrift>So läuft die Einrichtung</Ueberschrift>
-        <Liste>{ablaufFuer(alt, neustart, betreiber).map(a => <Zeile key={a.wann} umbrechen titel={a.wann} unter={a.was} />)}</Liste>
-        <p style={{ ...absatz, marginTop: 10 }}>
-          Drei Ebenen: <strong style={stark}>Instanz</strong> (Server und Einstellungen — nur die Inhaber), <strong style={stark}>Gemeinsam</strong> (Haushalt und
-          Firmen — alle sehen den Stand) und <strong style={stark}>Meine Einrichtung</strong> (jede Person für sich). Prüfungen zeigen nur ja/nein oder Zähler — nie
-          Werte. Nichts geht ohne euren Klick nach außen{betreiber ? '; Schritte am Server zeigen nur den Befehl, nie einen Wert' : ''}.
-        </p>
-      </Karte>
-
+      <EinrichtungWeg z={z} meine={meine} haken={haken} laden={laden} liste={<>
       {gruppen.map((g, gi) => {
         const liste = meine.filter(s => gruppeVon(s) === g);
         const fertig = liste.filter(s => istFertig(s, z)).length;
@@ -419,6 +487,17 @@ export function OnboardingUebersicht() {
           </div>
         );
       })}
+      </>} />
+
+      <Karte i={4}>
+        <Ueberschrift>So läuft die Einrichtung</Ueberschrift>
+        <Liste>{ablaufFuer(alt, neustart, betreiber).map(a => <Zeile key={a.wann} umbrechen titel={a.wann} unter={a.was} />)}</Liste>
+        <p style={{ ...absatz, marginTop: 10 }}>
+          Drei Ebenen: <strong style={stark}>Instanz</strong> (Server und Einstellungen — nur die Inhaber), <strong style={stark}>Gemeinsam</strong> (Haushalt und
+          Firmen — alle sehen den Stand) und <strong style={stark}>Meine Einrichtung</strong> (jede Person für sich). Prüfungen zeigen nur ja/nein oder Zähler — nie
+          Werte. Nichts geht ohne euren Klick nach außen{betreiber ? '; Schritte am Server zeigen nur den Befehl, nie einen Wert' : ''}.
+        </p>
+      </Karte>
 
       <Karte i={MAX_I} flach>
         <Ueberschrift>Nach Ebenen</Ueberschrift>

@@ -20,7 +20,7 @@ import type { KundenFormular, KundenFrage, KundenSicht } from '@/lib/fulfillment
 import { WORTE, brauchtAnzahl, entscheidungenTeilen, formularOffen, formularZaehlung, fragenText, kundenReise, uploadText, wertModell, type Worte } from '@/lib/fulfillment/kunde/bild';
 import { KUNDE_ANNEHMEN, KUNDE_TYPEN_TEXT } from '@/lib/fulfillment/kunde/upload';
 import { KundenWertBalken, LageBlock, FortschrittZahl, WEG_FARBE } from './bilder';
-import { ReiseBild } from '../reise/ReiseBild';
+import { ReiseBild } from '../../ui/reise/ReiseBild';
 
 export interface SpeicherErgebnis { ok: boolean; fehler?: string; neuLaden?: boolean }
 export interface KundenAktionen {

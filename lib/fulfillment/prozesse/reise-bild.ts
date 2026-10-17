@@ -5,7 +5,7 @@
 //     der Abstimmungspunkt als Raute, unten ein Band „Kunde“ (was bei ihm liegt, was er sieht).
 //   · Fluss einer Phase: von oben nach unten mit festen Formen — Start (Kreis), Schritt, Nachricht, Entscheidung (Raute mit ja/nein), Erinnerung (auf dem
 //     Nein-Pfad), Termin (große Beschriftung); zwei oder mehr Teilprozesse als Karten nebeneinander.
-// Gerechnet wird NUR hier (rein, client-sicher, deterministisch) — die Komponenten (components/os/fulfillment/reise/{ReiseBild,Fluss}.tsx) zeichnen nur.
+// Gerechnet wird NUR hier (rein, client-sicher, deterministisch) — die Komponenten (components/os/ui/reise/{ReiseBild,Fluss}.tsx — seit 17.10. gemeinsam für alle Bereiche) zeichnen nur.
 // Grundlage sind die vorhandenen Regeln — keine zweite Rechnung: Phasen und Zustand aus `fallReise`, Schritte aus `alleSchritte`, „hier“ aus
 // `naechsterPunkt` (bzw. am Ende `abschlussSchritt`), Hänger mit DENSELBEN Regeln wie das Cockpit (`wasHaengt`: überfällig, wartet > 7 Tage).
 // Was die Daten nicht hergeben, wird nicht erfunden: ohne Kundenbeteiligung keine Nein-Erinnerung, ohne Teilprozesse keine Verzweigung.
@@ -19,10 +19,10 @@ import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz } fro
 import { phaseVon } from './phasen';
 import { WARTET_ALT_TAGE, WARTET_ROT_TAGE } from './cockpit';
 
-/** Die festen Formen (die Bedeutung hängt an der Form, die Farbe kommt dazu). */
-export type FlussForm = 'schritt' | 'nachricht' | 'entscheidung' | 'erinnerung' | 'termin';
-export const FORM_NAME: Record<FlussForm, string> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Abstimmung', erinnerung: 'Erinnerung', termin: 'Termin' };
-export type KaestchenZustand = 'erledigt' | 'hier' | 'offen' | 'entfaellt';
+// Die festen Formen, die Zustände, `KAESTCHEN_MAX` und die Fenster-Regel `sichtbareKaestchen` sind seit 17.10. gemeinsam für alle Bereiche (lib/reise/bild.ts —
+// Kreislauf, Einrichtung, Planung zeichnen dieselbe Reise); hier nur weitergereicht, damit jede bisherige Stelle unverändert bleibt.
+import { FORM_NAME, KAESTCHEN_MAX, sichtbareKaestchen, type FlussForm, type KaestchenZustand } from '@/lib/reise/bild';
+export { FORM_NAME, KAESTCHEN_MAX, sichtbareKaestchen, type FlussForm, type KaestchenZustand };
 /** Die Stelle des Falls, die ein Kästchen meint — das Detail daneben zeigt dann die passende Karte. */
 export type FallStelleId =
   | 'willkommen' | 'kickoff' | 'vereinbarung' | 'playbook' | 'stakeholder' | 'wertkonto' | 'entscheidungslog' | 'abstimmung'
@@ -80,8 +80,6 @@ export interface ReiseBildEingabe {
   nachsorge?: { ende: string | null; plan: readonly NachsorgePunkt[] };
 }
 
-/** So viele Kästchen zeigt eine Phase in der Reise (Rest „+n“). */
-export const KAESTCHEN_MAX = 4;
 const FERTIG: ReadonlySet<KnotenStatus> = new Set(['erledigt', 'entfaellt']);
 const kurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
 type Haenger = 'rot' | 'gelb' | null;
@@ -219,19 +217,6 @@ export function abschlussKaestchen(e: ReiseBildEingabe, reise: Pick<Reise, 'fert
     },
   ];
   return { kaestchen, hier };
-}
-
-/**
- * Die Kästchen einer Phase für die Reise: höchstens `KAESTCHEN_MAX`, als zusammenhängendes Stück des Flusses — mit „hier“ (ein erledigter davor als
- * Anschluss), in der laufenden Phase ab dem ersten offenen, sonst die ersten. Der Rest steht als „+n“.
- */
-export function sichtbareKaestchen(alle: readonly Kaestchen[], zustand: PhasenZustand): Kaestchen[] {
-  if (alle.length <= KAESTCHEN_MAX) return [...alle];
-  const hier = alle.findIndex(k => k.zustand === 'hier');
-  const offen = alle.findIndex(k => k.zustand === 'offen');
-  const anker = hier >= 0 ? hier : zustand === 'jetzt' && offen >= 0 ? offen : 0;
-  const start = Math.max(0, Math.min(anker - 1, alle.length - KAESTCHEN_MAX));
-  return alle.slice(start, start + KAESTCHEN_MAX);
 }
 
 const istPhasenAbstimmung = (hp: NaechsterPunkt | null): boolean => !!hp && hp.art === 'freigabe' && hp.id === hp.phaseId;

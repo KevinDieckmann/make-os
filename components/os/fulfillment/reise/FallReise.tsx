@@ -28,8 +28,8 @@ import { SchrittDetail, FreigabeMeilenstein, FreigabeDialog, ExtraDialog, fallOp
 import { WillkommenKarte, KickoffFragen, AusAnalyse, KeinFall, VorlageGeaendert, FallStatus, OnboardingZaehler, OnboardingMehr } from '../prozesse/FallUeberblick';
 import { AbschlussDetail, type AbschlussOps, type AbschlussStelle } from '../prozesse/FallKreislauf';
 import { FallAnalyse } from '../analyse/FallAnalyse';
-import { ReiseBild, type BildSpalte } from './ReiseBild';
-import { Fluss, FormenLegende } from './Fluss';
+import { ReiseBild, type BildSpalte } from '../../ui/reise/ReiseBild';
+import { Fluss, FormenLegende } from '../../ui/reise/Fluss';
 import { useSprung, sprungAus, insBild, type Sprung } from './sprung';
 
 const ABSCHLUSS: ReadonlySet<FallStelleId> = new Set(['befaehigung', 'wirkung', 'abschliessen', 'mandat', 'nachsorge', 'kreislauf']);

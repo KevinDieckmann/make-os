@@ -110,4 +110,24 @@ describe('Demo: Fulfillment', () => {
     const k = await lese('fulfillment/kunde', '?m=m-demo-lumen');
     expect((k.puls as { liste: unknown[] }).liste).toEqual([]);
   });
+
+  it('Editor (17.10.): ein Beispiel-Ablauf mit Entscheidung ja/nein und Erinnerung — über die Editor-Route gesät, kein Fall nutzt ihn', async () => {
+    const { EDITOR_BEISPIEL_TITEL } = await import('@/lib/demo/fulfillment-editor');
+    expect(schritte['Fulfillment: Beispiel-Ablauf im Editor']).toBe(9);
+    const ue = await lese('fulfillment');
+    const beispiel = (ue.prozesse as { id: string; art: string; titel: string }[]).filter(p => p.art === 'paket' && p.titel === EDITOR_BEISPIEL_TITEL);
+    expect(beispiel).toHaveLength(1);
+    const e = await lese('fulfillment/editor', `?v=${beispiel[0].id}`);
+    expect(e.laufend).toBe(0);
+    const { editorModell } = await import('@/lib/fulfillment/prozesse/editor');
+    const m = editorModell(e.vorlage as never);
+    expect(m.phasen.map(p => p.titel)).toEqual(['Angebot', 'Start']);
+    const schritte1 = m.phasen[0].abschnitte.flatMap(a => a.knoten);
+    const entscheidung = schritte1.find(x => x.form === 'entscheidung')!;
+    expect(entscheidung.titel).toBe('Angebot angenommen?');
+    const nein = schritte1.find(x => x.id === entscheidung.zweige?.nein)!;
+    expect(nein).toMatchObject({ form: 'erinnerung', neinVon: entscheidung.id, zweige: { ja: entscheidung.id } });
+    expect(schritte1.filter(x => !x.neinVon).map(x => x.form)).toEqual(['schritt', 'nachricht', 'entscheidung', 'termin']);
+    expect(m.phasen[0].abstimmung?.titel).toBe('Auftrag bestätigt');
+  });
 });
