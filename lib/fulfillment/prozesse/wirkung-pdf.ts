@@ -1,11 +1,12 @@
 // ─── Fulfillment · Prozesse — Wirkungsbericht als PDF (nur Server, C1, 10.10.; neu gezeichnet 12.10.; FULFILLMENT_KONZEPT.md 5.3) ────────────────────
 // Seit 12.10. (Fulfillment extern, „ein Bild“) mit dem gemeinsamen Gerüst der Kunden-Dokumente (lib/fulfillment/kunde/pdf-bild.ts): Kopf mit Anbieter,
-// Kunde/Mandat/Zeitraum; „Vorher und nachher“ je Ziel als Grafik (Wert-Balken vorher → jetzt → Ziel, groß); „Meilensteine“ als Phasen-Strahl mit den
-// Abstimmungspunkten; „Erste Erfolge“ mit Datum; „Geliefert“; „Läuft ohne uns“ als Checkliste; „Stimme des Kunden“ NUR mit vermerkter Einwilligung (der
+// Kunde/Mandat/Zeitraum; „Vorher und nachher“ je Ziel als Grafik (Wert-Balken vorher → jetzt → Ziel, groß); „Meilensteine“ als Reise-Zeile mit den
+// Abstimmungspunkten (seit 17.10.); „Erste Erfolge“ mit Datum; „Geliefert“; „Läuft ohne uns“ als Checkliste; „Stimme des Kunden“ NUR mit vermerkter Einwilligung (der
 // Aufrufer prüft — das Dokument trägt das Zitat sonst gar nicht); „Wie es weitergehen kann“ (nächste Stufe, nie ein Preis); der Hinweis „keine Garantie“.
 // Inhalt aus `wirkungsDokument` (lib/fulfillment/prozesse/wirkung.ts); die Ablage bleibt, wie sie ist. `erstellt` fest übergeben → gleiche Bytes.
 
 import { PdfBlatt, PDF_FARBE } from '../kunde/pdf-bild';
+import { kundenReise } from '../kunde/bild';
 import type { WirkungsDokument } from './wirkung';
 import { wort } from '@/lib/text/zahlwort';
 
@@ -21,7 +22,7 @@ export async function wirkungPdf(d: WirkungsDokument, opt: { erstellt: Date }): 
   if (d.phasen?.length) {
     const fertig = d.phasen.filter(p => p.stand === 'erledigt').length;
     b.abschnitt('Meilensteine', `${fertig} von ${d.phasen.length} ${wort(d.phasen.length, 'Phase', 'Phasen')} abgeschlossen`);
-    b.strahl(d.phasen, { hier: 'Hier stehen wir' });
+    b.reise(kundenReise(d.phasen, [], 0), { hier: 'Hier stehen wir' });
     const abgestimmt = d.phasen.filter(p => p.abstimmung?.erledigt).map(p => `${p.abstimmung!.titel} — abgestimmt`);
     if (abgestimmt.length) b.punkte(abgestimmt, { groesse: 9.5 });
   }

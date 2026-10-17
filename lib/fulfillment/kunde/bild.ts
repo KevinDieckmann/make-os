@@ -47,7 +47,7 @@ export const WORTE = {
     uploadVoll: 'Über diesen Link sind schon so viele Dateien eingegangen, wie er annimmt — bitte schickt weitere über eure Ansprechperson.',
     formularHinweis: 'Ihr könnt jederzeit zwischenspeichern und später weitermachen — der Link bleibt gleich.',
     formularFertig: 'Danke — alles ist bei uns angekommen. Ihr könnt Antworten jederzeit noch ändern.',
-    ansprechperson: 'Eure Ansprechperson', fuerEuch: 'für', gruss: 'Schön, dass ihr da seid.',
+    ansprechperson: 'Eure Ansprechperson', fuerEuch: 'für', gruss: 'Schön, dass ihr da seid.', beiEuch: 'Bei euch',
     ungueltig: 'Bitte wendet euch an eure Ansprechperson — sie schickt euch bei Bedarf einen neuen Link.',
     euch: 'euch', eure: 'eure', euer: 'euer', ihr: 'ihr',
   },
@@ -64,7 +64,7 @@ export const WORTE = {
     uploadVoll: 'Über diesen Link sind schon so viele Dateien eingegangen, wie er annimmt — bitte senden Sie weitere über Ihre Ansprechperson.',
     formularHinweis: 'Sie können jederzeit zwischenspeichern und später weitermachen — der Link bleibt gleich.',
     formularFertig: 'Vielen Dank — alles ist bei uns angekommen. Sie können Antworten jederzeit noch ändern.',
-    ansprechperson: 'Ihre Ansprechperson', fuerEuch: 'für', gruss: 'Schön, dass Sie da sind.',
+    ansprechperson: 'Ihre Ansprechperson', fuerEuch: 'für', gruss: 'Schön, dass Sie da sind.', beiEuch: 'Bei Ihnen',
     ungueltig: 'Bitte wenden Sie sich an Ihre Ansprechperson — sie sendet Ihnen bei Bedarf einen neuen Link.',
     euch: 'Sie', eure: 'Ihre', euer: 'Ihr', ihr: 'Sie',
   },
@@ -372,6 +372,36 @@ export function kundenLage(e: {
 }
 
 // ── Zeichen-Modelle (dieselben für Oberfläche und PDF) ───────────────────────────────────────────────────────────────────────────────
+
+/** Eine Phase der Kunden-Reise in der Form der Reise-Zeile (components/os/fulfillment/reise/ReiseBild.tsx `BildSpalte`). */
+export interface KundenReiseSpalte {
+  id: string; nr: number; titel: string; zustand: 'fertig' | 'jetzt' | 'offen'; unter?: string;
+  kaestchen: { id: string; titel: string; zustand: 'hier' | 'offen' }[]; mehr: number;
+  raute?: { titel: string; gegeben: boolean };
+  band?: { text?: string; achtung?: boolean };
+}
+/** So viele „als Nächstes“ stehen als Kästchen unter der laufenden Phase (Rest „+n“) — dieselbe Zahl wie intern (`KAESTCHEN_MAX`). */
+export const KUNDEN_KAESTCHEN = 4;
+
+/**
+ * Die Reise des Kunden als EINE Zeile (17.10., Miro-Standard) — NUR aus den Teilen der Positivliste (`zeitstrahl`, `naechstes`, Zahl „brauchen
+ * wir“): Phasen nebeneinander (erledigt · hier stehen wir · kommt), unter der laufenden Phase höchstens vier „als Nächstes“ (das erste hervorgehoben),
+ * der Abstimmungspunkt als Raute, im Band („Bei Ihnen“ bzw. „Bei euch“) unter der laufenden Phase, wie viel gerade beim Kunden liegt. Dieselbe Rechnung für Seite, Präsentation und PDF.
+ */
+export function kundenReise(phasen: readonly KundenPhase[], naechstes: readonly string[], braucht: number): KundenReiseSpalte[] {
+  const jetzt = phasen.findIndex(p => p.stand === 'aktuell');
+  return phasen.map((p, i) => {
+    const hier = i === jetzt;
+    return {
+      id: `phase-${i + 1}`, nr: i + 1, titel: p.titel, zustand: p.stand === 'erledigt' ? 'fertig' as const : hier ? 'jetzt' as const : 'offen' as const,
+      ...(p.stand === 'erledigt' ? { unter: 'erledigt' } : hier && p.anteil != null ? { unter: `${Math.round(p.anteil * 100)}\u00A0% geschafft` } : {}),
+      kaestchen: hier ? naechstes.slice(0, KUNDEN_KAESTCHEN).map((t, j) => ({ id: `n-${j + 1}`, titel: t, zustand: j === 0 ? 'hier' as const : 'offen' as const })) : [],
+      mehr: hier ? Math.max(0, naechstes.length - KUNDEN_KAESTCHEN) : 0,
+      ...(p.abstimmung ? { raute: { titel: p.abstimmung.titel, gegeben: p.abstimmung.erledigt } } : {}),
+      ...(hier && braucht ? { band: { text: `${braucht} ${wort(braucht, 'Punkt', 'Punkte')} offen`, achtung: true } } : {}),
+    };
+  });
+}
 
 export interface StrahlSegment { titel: string; stand: KundenPhase['stand']; von: number; bis: number; fuellung: number; abstimmung?: KundenPhase['abstimmung'] }
 /**
