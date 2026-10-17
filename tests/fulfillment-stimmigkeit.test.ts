@@ -43,6 +43,7 @@ import type { CockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
 import type { KundenSicht } from '@/lib/fulfillment/kunde/sicht';
 import type { Fall, FallKurz, Freigabepunkt, ProzessVorlage } from '@/lib/fulfillment/typen';
 import { EDITOR_BEISPIEL_TITEL } from '@/lib/demo/fulfillment-editor';
+import { ABLAUF_DEMO_MANDAT } from '@/lib/demo/fulfillment-ablauf';
 
 type H = (r: Request) => Promise<Response>;
 const lese = async (pfad: string, suche = '') => {
@@ -80,6 +81,10 @@ beforeAll(async () => {
     sichten[m] = (await lese('fulfillment/kunde/vorschau', `?m=${m}`)).sicht as KundenSicht;
     reports[m] = await reportZusatzFuer(m, HEUTE);
   }
+  // 17.10. abends (Ausführung): der dritte Demo-Fall (Beispiel-Ablauf in Ausführung) zählt in den Erfolgsmaßen mit.
+  const f3 = await lese('fulfillment/fall', `?m=${ABLAUF_DEMO_MANDAT}`);
+  faelle[ABLAUF_DEMO_MANDAT] = { fall: f3.fall as Fall, freigaben: (f3.vorlage as { freigaben: Freigabepunkt[] }).freigaben, termine: f3.termine as Record<string, string | null>, reports: f3.reports as { am: string }[],
+    kalender: (f3.kalender ?? []) as typeof faelle[string]['kalender'], onboarding: f3.onboarding as typeof faelle[string]['onboarding'], rituale: f3.rituale as typeof faelle[string]['rituale'] };
 }, 180_000);
 afterAll(() => { rmSync(wurzel, { recursive: true, force: true }); });
 
@@ -169,10 +174,11 @@ describe('Stimmigkeit der Demo-Fälle', () => {
     expect(sichten['m-demo-lumen'].wertKonto.every(w => w.vorher === '—' && w.jetzt === '—' && w.ziel === '—')).toBe(true);
   });
 
-  it('Erfolgsmaße aus denselben Daten wie der Fall: Willkommen 1 von 2 rechtzeitig, Report-Takt = Rauten der Report-Zeitachse', () => {
+  it('Erfolgsmaße aus denselben Daten wie der Fall: Willkommen 2 von 3 rechtzeitig, Report-Takt = Rauten der Report-Zeitachse', () => {
     const k = (id: string) => uebersicht!.kennzahlen.find(x => x.id === id)!;
-    expect([k('ff_willkommen_24h').wert, k('ff_willkommen_24h').n]).toEqual([50, 2]);
-    const soll = MANDATE.flatMap(m => reportAchse({ start: fallStartTag(faelle[m].fall), heute: HEUTE, reports: faelle[m].reports }).takt.filter(t => t.tag <= HEUTE));
+    // Nordwerk und der Beispiel-Fall in Ausführung rechtzeitig, Lumen überfällig (17.10. abends: der dritte Demo-Fall zählt mit).
+    expect([k('ff_willkommen_24h').wert, k('ff_willkommen_24h').n]).toEqual([(2 / 3) * 100, 3]);
+    const soll = [...MANDATE, ABLAUF_DEMO_MANDAT].flatMap(m => reportAchse({ start: fallStartTag(faelle[m].fall), heute: HEUTE, reports: faelle[m].reports }).takt.filter(t => t.tag <= HEUTE));
     expect(k('ff_report_takt').n).toBe(soll.length);
     expect(k('ff_report_takt').wert).toBe(soll.length ? (soll.filter(t => t.erfuellt).length / soll.length) * 100 : null);
     expect(soll.some(t => !t.erfuellt)).toBe(true); // die Demo-Geschichte: der erste Report kam zu spät → nie 100 %

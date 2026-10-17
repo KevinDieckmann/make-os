@@ -167,7 +167,7 @@ describe('Ein Ablauf läuft durch', () => {
 
   it('„nein“ → Erinnerung: Aufgabe erst nach ihrer Frist (mit Mail-Entwurf im Stapel); erledigt → die Entscheidung fragt wieder', async () => {
     const e = await knoten('m-ab', T.frage);
-    const r = await rufe('fulfillment/fall', 'PATCH', sitzung('olaf'), { mandatId: 'm-ab', ops: [{ op: 'antwort', id: e.id, antwort: 'nein', am: plus(-8), stand: e.stand }] });
+    const r = await rufe('fulfillment/fall', 'PATCH', sitzung('olaf'), { mandatId: 'm-ab', ops: [{ op: 'antwort', id: e.id, antwort: 'nein', am: plus(-8) }] });
     expect(r.status, JSON.stringify(r.j)).toBe(200);
     const rk = await knoten('m-ab', T.erinnern);
     expect(rk.faelligAm).toBe(plus(-1));

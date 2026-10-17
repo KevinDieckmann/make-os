@@ -4,7 +4,8 @@
 // (Wächter tests/demo.test.ts liest jede Datei). Der Kontext bringt alles mit, was die Pakete brauchen, damit KEIN Paket lib/demo/saat.ts ändern muss.
 // Reihenfolge: Prozesse (Vorlagen, Bausteine, Fälle) → Kunde (Link-Schalter aus, Antworten, Puls) → Analyse (Dossier, Läufe ohne Modell) →
 // Geschichte (12.10.: Diagnose → Fall, zwei Reports, früherer Puls — eine glaubwürdige Reise ohne Widersprüche) → Editor (17.10.: ein Beispiel-Ablauf mit
-// Entscheidung ja/nein und Erinnerung, über die Editor-Route — lib/demo/fulfillment-editor.ts).
+// Entscheidung ja/nein und Erinnerung, über die Editor-Route — lib/demo/fulfillment-editor.ts) → Ausführung (17.10. abends: ein dritter, erfundener Kunde
+// mit einem Fall nach diesem Ablauf, der sichtbar läuft — lib/demo/fulfillment-ablauf.ts).
 
 export type DemoModul = Record<string, unknown>;
 /** `rufe` aus lib/demo/saat.ts: eine Route in-process mit der Person im Kopf `x-make-user` (+ Bau-Kennung); wirft bei Fehler. */
@@ -24,6 +25,10 @@ export const FULFILLMENT_ROUTEN = {
   analyse: () => import('@/app/api/fulfillment/analyse/route') as Promise<DemoModul>,
   personen: () => import('@/app/api/fulfillment/personen/route') as Promise<DemoModul>,
   editor: () => import('@/app/api/fulfillment/editor/route') as Promise<DemoModul>,
+  // 17.10. abends (Ausführung): der dritte, erfundene Kunde des Beispiel-Falls — Firma, Ansprechperson, Mandat und Liquiditätsplan über die Routen.
+  crm: () => import('@/app/api/crm/bestand/route') as Promise<DemoModul>,
+  kontakte: () => import('@/app/api/state/kontakte/route') as Promise<DemoModul>,
+  mandatLiquiplan: () => import('@/app/api/crm/liquiplan/route') as Promise<DemoModul>,
 };
 
 export interface FulfillmentSaatKontext {
@@ -46,7 +51,9 @@ export async function fulfillmentSaeen(k: FulfillmentSaatKontext): Promise<SaatS
   const { analyseSaeen } = await import('./fulfillment-analyse');
   const { geschichteSaeen } = await import('./fulfillment-prozesse');
   const { editorBeispielSaeen } = await import('./fulfillment-editor');
+  const { ablaufBeispielSaeen } = await import('./fulfillment-ablauf');
   // 12.10.: zuletzt der zweite Teil der Geschichte (Diagnose → Fall, Reports, früherer Puls) — er braucht das geprüfte Dossier der Analyse-Saat.
   // 17.10.: danach der Beispiel-Ablauf für den Editor (eine eigene Paket-Vorlage — kein Fall nutzt sie, die Geschichte bleibt unberührt).
-  return [...await prozesseSaeen(k), ...await kundeSaeen(k), ...await analyseSaeen(k), ...await geschichteSaeen(k), ...await editorBeispielSaeen(k)];
+  // 17.10. abends: zuletzt ein Fall nach dem Beispiel-Ablauf, der sichtbar ausgeführt wird (offene Entscheidung, fällige Erinnerung, Mail-Entwurf im Stapel).
+  return [...await prozesseSaeen(k), ...await kundeSaeen(k), ...await analyseSaeen(k), ...await geschichteSaeen(k), ...await editorBeispielSaeen(k), ...await ablaufBeispielSaeen(k)];
 }

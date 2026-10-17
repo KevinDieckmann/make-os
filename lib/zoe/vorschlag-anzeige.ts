@@ -64,6 +64,8 @@ function linkVon(v: VorschlagFuerAnzeige): VorschlagAnzeige['link'] {
   const b = v.bezug;
   if (b?.art === 'inbox' && typeof e.gespraech === 'string' && e.gespraech) return { href: `/os/inbox?offen=${encodeURIComponent(e.gespraech)}`, text: 'Zum Gespräch' };
   if (b?.art === 'aufgabe' && b.id) return { href: WEG.aufgabe(b.id), text: 'Zur Aufgabe' };
+  // Fulfillment-Ausführung (17.10. abends): eine Nachricht des Ablaufs — der Entwurf öffnet sich im Fall, am Schritt.
+  if (b?.art === 'fulfillment' && typeof e.mandatId === 'string' && typeof e.knotenId === 'string' && e.mandatId && e.knotenId) return { href: WEG.fall(e.mandatId, 'reise', `schritt-${e.knotenId}`), text: 'Zum Entwurf im Fall' };
   if (typeof e.kontaktId === 'string' && e.kontaktId) return { href: WEG.kontakt(e.kontaktId), text: 'Zum Kontakt' };
   if (typeof e.dealId === 'string' && e.dealId) return { href: WEG.deal(e.dealId), text: 'Zum Deal' };
   const g = GRUPPE_WEG[text(v.gruppe)];
