@@ -710,8 +710,14 @@ export async function kundeFristen(k: FristenKontext): Promise<Record<string, nu
     const { ladeCrmMitPapierkorb } = await import('@/lib/crm/speicher');
     const crm = await ladeCrmMitPapierkorb();
     const mandate = new Map((crm.mandate ?? []).map(m => [m.id, m]));
-    // Ohne ein einziges Mandat im CRM (Bestand fehlt/leer) gilt nichts als verwaist — nie alles löschen, weil das CRM nicht lesbar war.
-    const endeVon = (id: string) => { const m = mandate.get(id); return m ? { bekannt: true, ende: mandatsEnde(m) } : { bekannt: mandate.size === 0, ende: null }; };
+    // Leer-Schutz (18.10., Gesamtprüfung L3 B5): ein Mandat, das im CRM fehlt, gilt erst nach 30 Tagen mit Marke als weg (`mandat-fehlt:<m>`); ohne
+    // ein einziges Mandat und bei zu vielen auf einmal bremst der Lauf (lib/fulfillment/mandat-fehlt.ts). Vorher: bei sonst gefülltem CRM SOFORT
+    // Antworten, Puls und Unterlagen samt Dateien weg. Bis dahin zählt es wie ein laufendes Mandat (`bekannt`, ohne Ende) — nichts fällt weg.
+    const d0 = await fulfillmentLesen('kunde', h);
+    const betroffen = new Set([...d0.formulare, ...d0.puls, ...d0.pulsAnfragen, ...d0.links, ...d0.unterlagen].map(x => x.mandatId));
+    const { fehlendeMandatePruefen } = await import('../mandat-fehlt-server');
+    const fehlt = await fehlendeMandatePruefen(betroffen, new Set(mandate.keys()), k.heute, h, 'kunde');
+    const endeVon = (id: string) => { const m = mandate.get(id); return m ? { bekannt: true, ende: mandatsEnde(m) } : { bekannt: !fehlt.weg.has(id), ende: null }; };
     let weg: string[] = [];
     const r = await fulfillmentAendern('kunde', d => {
       const x = kundeFristenAnwenden(d, endeVon, { heute: k.heute, mandatsdatenMonate: k.fristen.mandatsdatenMonate, unterlagenTage: k.fristen.unterlagenTage });
