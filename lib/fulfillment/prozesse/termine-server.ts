@@ -41,15 +41,16 @@ async function fallTermineLesen(mandate: readonly MandatKurz[], heute: string): 
       for (const m of mandate) {
         if (!bezugGehoertZu(t.bezug, m)) continue;
         const tag = t.start.slice(0, 10);
-        raus[m.id].push({ uid, tag, ...(t.ganztags ? {} : { von: t.start.slice(11, 16) }), ...(!privat && t.titel ? { titel: t.titel } : {}) });
+        // Art und „privat“ (18.10., L3 B1): Kunden-Wege nehmen nur `kundenTermine` (Art „termin“, nie privat).
+        raus[m.id].push({ uid, tag, ...(t.ganztags ? {} : { von: t.start.slice(11, 16) }), ...(!privat && t.titel ? { titel: t.titel } : {}), ...(t.art && t.art !== 'termin' ? { art: t.art } : {}), ...(privat ? { privat: true as const } : {}) });
         gesehen.add(`${m.id}|${uid}|${tag}`);
       }
     }
-    // Bezüge mit Tag, die der Stand (noch) nicht kennt — z. B. ohne Kalender-Abgleich. Nur Tag, kein Titel.
+    // Bezüge mit Tag, die der Stand (noch) nicht kennt — z. B. ohne Kalender-Abgleich. Nur Tag, kein Titel; Art und „privat“ aus der Sicherung des Bezugs.
     for (const [k, b] of Object.entries(bezuege.bezuege)) {
       if (!b.tag || b.tag < von || b.tag >= bis) continue;
       const uid = uidVonSchluessel(k);
-      for (const m of mandate) if (bezugGehoertZu(b, m) && !gesehen.has(`${m.id}|${uid}|${b.tag}`) && !raus[m.id].some(x => x.uid === uid && x.tag === b.tag)) raus[m.id].push({ uid, tag: b.tag });
+      for (const m of mandate) if (bezugGehoertZu(b, m) && !gesehen.has(`${m.id}|${uid}|${b.tag}`) && !raus[m.id].some(x => x.uid === uid && x.tag === b.tag)) raus[m.id].push({ uid, tag: b.tag, ...(b.art && b.art !== 'termin' ? { art: b.art } : {}), ...(b.privat ? { privat: true as const } : {}) });
     }
   } catch { /* ohne Kalender keine Termine */ }
   for (const id of Object.keys(raus)) raus[id].sort((a, b) => (a.tag + (a.von ?? '')).localeCompare(b.tag + (b.von ?? '')));

@@ -158,13 +158,17 @@ export async function ansprechpersonFuer(h: string, m: Pick<Mandat, 'zustaendig'
 
 /**
  * Die Termine mit Bezug zum Mandat (bzw. zur Firma des Mandats) — die EINE Lesestelle `fallTermine` (15.10., Abnahme B3: vorher nur `kalender-bezug` mit
- * `mandatId`, ohne Firma, ohne Serien-Vorkommen). Titel nur von nicht privaten Terminen.
+ * `mandatId`, ohne Firma, ohne Serien-Vorkommen). Für den Kunden (18.10., L3 B1) nur gemeinsame Termine (`kundenTermine`: Art „termin“, nie privat) und
+ * OHNE Titel aus dem Kalender — den Titel gibt auf Kunden-Wegen nur das Ritual (`kundenTeile`).
  */
-export async function terminTageFuer(m: Pick<Mandat, 'id' | 'firmaId'>): Promise<{ uid: string; tag: string; von?: string; titel?: string }[]> {
-  try { return (await (await import('../prozesse/termine-server')).fallTermine([{ id: m.id, firmaId: m.firmaId ?? null }]))[m.id] ?? []; } catch { return []; }
+export async function terminTageFuer(m: Pick<Mandat, 'id' | 'firmaId'>): Promise<{ uid: string; tag: string; von?: string }[]> {
+  try {
+    const [{ fallTermine }, { kundenTermine }] = await Promise.all([import('../prozesse/termine-server'), import('../prozesse/termine')]);
+    return kundenTermine((await fallTermine([{ id: m.id, firmaId: m.firmaId ?? null }]))[m.id] ?? []).map(t => ({ uid: t.uid, tag: t.tag, ...(t.von ? { von: t.von } : {}) }));
+  } catch { return []; }
 }
 
-export interface KundenUmfeld { anrede: KundenAnrede; anbieter?: KundenAnbieter; ansprechperson?: string; freigaben: Freigabepunkt[]; terminTage: { uid: string; tag: string; von?: string; titel?: string }[] }
+export interface KundenUmfeld { anrede: KundenAnrede; anbieter?: KundenAnbieter; ansprechperson?: string; freigaben: Freigabepunkt[]; terminTage: { uid: string; tag: string; von?: string }[] }
 /** Alles, was Seite, Report und Präsentation über den Fall hinaus brauchen — jeder Teil fällt bei einem Lesefehler still weg. */
 export async function kundenUmfeld(m: Mandat, fall: (Pick<Fall, 'vorlageId'> & Partial<Pick<Fall, 'zusaetze'>>) | null, v: Pick<VorlagenDatei, 'prozesse'>, h?: string): Promise<KundenUmfeld> {
   const haus = h ?? await fulfillmentHaushalt();

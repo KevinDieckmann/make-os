@@ -7,8 +7,22 @@
 //   · `ersterTermin`    der erste Termin ab dem Start des Falls — er macht „Kick-off terminiert“ (Onboarding) wahr, auch ohne Ritual
 // „Der nächste Termin“ bleibt EINE Regel: lib/fulfillment/prozesse/rituale.ts `naechsterFallTermin` (liest diese Termine). Nie ein erfundener Termin.
 
-/** Ein Termin des Kunden: Kennung (UID), Berliner Tag, Uhrzeit (HH:MM) und Titel (privat → ohne Titel). */
-export interface FallTermin { uid: string; tag: string; von?: string; titel?: string }
+import type { IcsArt } from '@/lib/kalender/arten';
+
+/**
+ * Ein Termin des Kunden: Kennung (UID), Berliner Tag, Uhrzeit (HH:MM) und Titel (privat → ohne Titel). Seit 18.10. (Gesamtprüfung L3 B1) auch die Art
+ * (nur wenn nicht „termin“ — Fokus, Block, Arbeitsort, Abwesenheit) und die Marke `privat` — Kunden-Wege nehmen nur `kundenTermine`.
+ */
+export interface FallTermin { uid: string; tag: string; von?: string; titel?: string; art?: IcsArt; privat?: true }
+
+/**
+ * Was ein Kunde von unseren Terminen sehen darf (Kunden-Seite, Report-PDF, Mail-Entwurf; 18.10., Gesamtprüfung L3 B1): nur gemeinsame Termine — Art
+ * „termin“ (ohne Angabe = termin), nie privat; nie ein Fokus, Block, Arbeitsort oder eine Abwesenheit, auch wenn er mit der Firma verknüpft ist.
+ * Den Titel bestimmt auf Kunden-Wegen nur das Ritual (`kundenTeile`), nie der Kalender. Rein.
+ */
+export function kundenTermine<T extends Pick<FallTermin, 'art' | 'privat'>>(termine: readonly T[]): T[] {
+  return termine.filter(t => !t.privat && (t.art ?? 'termin') === 'termin');
+}
 /** Ein Termin mit seinem Ritual (falls er an einem hängt). */
 export interface FallTerminMitRitual extends FallTermin { ritualId?: string }
 
