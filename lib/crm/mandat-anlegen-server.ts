@@ -112,7 +112,7 @@ export async function mandatMitLeadAnlegen(e: MandatEingabe, person: string, wer
   if (e.stufeId) {
     const { treppeKundeStufe } = await import('./treppe-server');
     const ok = await treppeKundeStufe(m.id, e.stufeId, person).catch(() => false);
-    if (!ok) hinweise.push('Die Stufe der Leistungstreppe ließ sich nicht setzen — im Mandat unter „Fortschritt im Paket“ wählen.');
+    if (!ok) hinweise.push('Die Stufe der Leistungstreppe ließ sich nicht setzen — im Mandat unter „Fortschritt der Leistung“ wählen.');
   }
   return { ok: true, mandatId: m.id, firmaId: f.firma.id, kontaktId: p.id, firmaNeu: f.neu, personNeu: p.neu, hinweise };
 }

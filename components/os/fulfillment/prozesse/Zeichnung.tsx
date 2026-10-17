@@ -191,7 +191,7 @@ export function AblaufLegende({ rechts }: { rechts?: ReactNode }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
       {p(C.inkDim, 'aus der Quelle')}{p(C.inkDim, 'ergänzt', true)}{p(LEUCHT.business, 'Rückweg / Kreislauf')}{p(LEUCHT.kritisch, 'Ausstieg', true)}
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim }}><svg width={12} height={12} aria-hidden><rect x={2} y={2} width={8} height={8} transform="rotate(45 6 6)" fill="none" stroke={LEUCHT.achtung} /></svg>Weiche</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim }}><svg width={12} height={12} aria-hidden><rect x={2} y={2} width={8} height={8} transform="rotate(45 6 6)" fill="none" stroke={LEUCHT.achtung} /></svg>Entscheidung</span>
       {rechts}
     </div>
   );

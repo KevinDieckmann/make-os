@@ -56,7 +56,7 @@ export function RitualTerminDialog({ termin, heute, ops, melde, onZu }: { termin
 }
 
 /** Rituale (Kalender-Leiste) und Mitschriften — die Termine des Falls unter „Menschen & Termine“. */
-export function TaktKarten({ daten, ops, melde, schreiben, setSchreiben, onTermin }: { daten: FallAntwort; ops: Ops; melde: Melde; schreiben: boolean; setSchreiben: (b: boolean) => void; onTermin: (r: RitualVorlage) => void }) {
+export function TaktKarten({ daten, ops, melde, schreiben, setSchreiben, onTermin, mitschriftHaupt = false }: { daten: FallAntwort; ops: Ops; melde: Melde; schreiben: boolean; setSchreiben: (b: boolean) => void; onTermin: (r: RitualVorlage) => void; /** Ist „+ Mitschrift“ die Hauptaktion der Ansicht (kein anderer Kopf-Knopf)? */ mitschriftHaupt?: boolean }) {
   const f = daten.fall!;
   const heute = localDay();
   const rituale = daten.rituale ?? [];
@@ -64,7 +64,7 @@ export function TaktKarten({ daten, ops, melde, schreiben, setSchreiben, onTermi
   return (
     <>
       <KalenderLeiste leiste={leiste} rituale={rituale} heute={heute} onTermin={onTermin} />
-      <MitschriftenKarte daten={daten} ops={ops} melde={melde} schreiben={schreiben} setSchreiben={setSchreiben} />
+      <MitschriftenKarte daten={daten} ops={ops} melde={melde} schreiben={schreiben} setSchreiben={setSchreiben} haupt={mitschriftHaupt} />
     </>
   );
 }
@@ -165,7 +165,7 @@ function TerminZelle({ tage, woche, lage, name }: { tage: { tag: string; erwarte
 }
 
 // ─── Mitschriften ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-function MitschriftenKarte({ daten, ops, melde, schreiben, setSchreiben }: { daten: FallAntwort; ops: Ops; melde: Melde; schreiben: boolean; setSchreiben: (b: boolean) => void }) {
+function MitschriftenKarte({ daten, ops, melde, schreiben, setSchreiben, haupt = false }: { daten: FallAntwort; ops: Ops; melde: Melde; schreiben: boolean; setSchreiben: (b: boolean) => void; haupt?: boolean }) {
   const f = daten.fall!;
   const leer = { anlass: '', ergebnis: '', naechster: '', frist: '', ritualId: null as string | null };
   const [w, setW] = useState(leer);
@@ -182,7 +182,7 @@ function MitschriftenKarte({ daten, ops, melde, schreiben, setSchreiben }: { dat
   const offen = schreiben || !liste.length;
   return (
     <Karte i={2} id="takt-mitschriften">
-      <Ueberschrift erklaerung="fulfillment.mitschrift" rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span>{f.mitschriften.length}</span>{!offen && <Knopf leise onClick={() => setSchreiben(true)}>+ Mitschrift</Knopf>}</span>}>Mitschriften</Ueberschrift>
+      <Ueberschrift erklaerung="fulfillment.mitschrift" rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><span>{f.mitschriften.length}</span>{!offen && <Knopf haupt={haupt} leise={!haupt} onClick={() => setSchreiben(true)}>+ Mitschrift</Knopf>}</span>}>Mitschriften</Ueberschrift>
       {offen && (
         <form onSubmit={e => { e.preventDefault(); void ops([{ op: 'mitschrift', eintrag: { anlass: w.anlass, ergebnis: w.ergebnis, naechster: w.naechster, ...(w.frist ? { frist: w.frist } : {}), ...(w.ritualId ? { ritualId: w.ritualId } : {}) } }], 'Mitschrift gespeichert.').then(ok => { if (ok) { setW(leer); setSchreiben(false); } }); }} style={{ display: 'grid', gap: 8 }}>
           <Feldzeile label="Anlass"><input value={w.anlass} maxLength={300} onChange={e => setW({ ...w, anlass: e.target.value })} style={feld} /></Feldzeile>
@@ -193,7 +193,7 @@ function MitschriftenKarte({ daten, ops, melde, schreiben, setSchreiben }: { dat
             {rituale.length > 0 && <Wahl label="Ritual" liste={rituale.map(r => ({ id: r.id, label: r.titel }))} wert={w.ritualId} onWahl={ritualId => setW({ ...w, ritualId })} onLeeren={() => setW({ ...w, ritualId: null })} leerenLabel="ohne Ritual" />}
           </Leiste>
           <div style={klein}>Kein Freitext über Personen — nur, was besprochen und vereinbart ist.</div>
-          <Leiste><Knopf typ="submit" aus={!w.anlass.trim() || !w.ergebnis.trim() || !w.naechster.trim()}>Mitschrift speichern</Knopf>{liste.length > 0 && <Knopf leise onClick={() => setSchreiben(false)}>Abbrechen</Knopf>}</Leiste>
+          <Leiste><Knopf typ="submit" haupt={haupt} aus={!w.anlass.trim() || !w.ergebnis.trim() || !w.naechster.trim()}>Mitschrift speichern</Knopf>{liste.length > 0 && <Knopf leise onClick={() => setSchreiben(false)}>Abbrechen</Knopf>}</Leiste>
         </form>
       )}
       {liste.length > 0 && (

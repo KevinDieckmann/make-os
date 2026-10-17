@@ -247,7 +247,7 @@ describe('Anschlüsse', () => {
     expect(r.status).toBe(200);
     const k = r.d.kreislauf.kunden.find((x: { mandatId: string }) => x.mandatId === 'm-pruef');
     expect(k).toMatchObject({ paket: 'Analyse', lieferungen: '2/2', naechsteStufe: 'Begleitung' });
-    expect(r.d.kreislauf.stufen.find((s: { id: string }) => s.id === 'fulfillment').zusatz).toContain('1 im Paket');
+    expect(r.d.kreislauf.stufen.find((s: { id: string }) => s.id === 'fulfillment').zusatz).toContain('1 in Lieferung');
   });
   it('Head of Sales: Treppe und Positionierung im Datenpaket — ohne Kunden, als Daten', async () => {
     const { treppeFuerHead } = await import('@/lib/crm/treppe-server');

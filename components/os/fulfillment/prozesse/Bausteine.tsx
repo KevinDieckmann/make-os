@@ -77,7 +77,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Suchen (Titel, Zweck, Schlagwort)" aria-label="Bausteine suchen" style={feld} />
       <Pillen<BausteinArt | 'alle'> einzeilig liste={[{ id: 'alle', label: 'Alle Arten' }, ...ARTEN.filter(a => daten.bausteine.some(x => x.art === a)).map(a => ({ id: a, label: BAUSTEIN_ART_LABEL[a] }))]} aktiv={art} onWahl={setArt} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        {pakete.length > 0 && <Wahl<string> label="Paket" leer="Alle Pakete" liste={pakete.map(p => ({ id: p, label: p }))} wert={paket} onWahl={p => { setPaket(p); setPhase(null); }} onLeeren={() => { setPaket(null); setPhase(null); }} leerenLabel="alle Pakete" />}
+        {pakete.length > 0 && <Wahl<string> label="Ablauf" leer="Alle Abläufe" liste={pakete.map(p => ({ id: p, label: p }))} wert={paket} onWahl={p => { setPaket(p); setPhase(null); }} onLeeren={() => { setPaket(null); setPhase(null); }} leerenLabel="alle Abläufe" />}
         {phasen.length > 0 && <Wahl<string> label="Phase" leer="Alle Phasen" liste={phasen.map(p => ({ id: p, label: p }))} wert={phase} onWahl={setPhase} onLeeren={() => setPhase(null)} leerenLabel="alle Phasen" />}
         <Pillen<Filter> liste={[{ id: 'alle', label: 'Alle Marken' }, { id: 'recht', label: `rechtlich prüfen (${zaehl('recht')})` }, { id: 'verkauf', label: `vor Verkauf prüfen (${zaehl('verkauf')})` }, { id: 'intern', label: `nur intern (${zaehl('intern')})` }]} aktiv={filter} onWahl={setFilter} />
       </div>
@@ -90,7 +90,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
             {liste.slice(0, 300).map(x => {
               const Zeichen = ART_ZEICHEN[x.art] ?? FileText;
               const o = orte[x.id];
-              const wo = o?.pakete.length ? `${o.pakete[0]}${o.phasen[0] ? ` › ${o.phasen[0]}` : ''}${o.pakete.length + o.phasen.length > 2 ? ' …' : ''}` : x.steckt ? null : x.imOnboarding ? 'im Onboarding jedes Falls' : 'noch in keiner Vorlage';
+              const wo = o?.pakete.length ? `${o.pakete[0]}${o.phasen[0] ? ` › ${o.phasen[0]}` : ''}${o.pakete.length + o.phasen.length > 2 ? ' …' : ''}` : x.steckt ? null : x.imOnboarding ? 'im Onboarding jedes Falls' : 'noch in keinem Ablauf';
               return (
                 <button key={x.id} type="button" onClick={() => onOeffnen(x.id)} className="fassbar" aria-label={`${x.titel} — ${BAUSTEIN_ART_LABEL[x.art]} öffnen`}
                   style={{ ...FLAECHE_STIL.flach, borderRadius: ECKE.flach, padding: 12, display: 'grid', gap: 8, alignContent: 'start', textAlign: 'left', cursor: 'pointer', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0, minHeight: 44 }}>
@@ -98,7 +98,7 @@ function Bibliothek({ daten, onOeffnen }: { daten: Uebersicht; onOeffnen: (id: s
                     <span aria-hidden style={{ width: 34, height: 34, borderRadius: 10, flex: '0 0 auto', display: 'grid', placeItems: 'center', color: C.aktiv, background: TIEF.flaeche(C.aktiv), border: `1px solid ${TIEF.rand(C.aktiv)}` }}><Zeichen size={17} /></span>
                     <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
                       <b style={{ fontSize: TYP.body, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{x.titel}</b>
-                      <span style={{ ...klein, color: C.inkLeise }}>{BAUSTEIN_ART_LABEL[x.art]}{x.steckt ? ` · in ${x.steckt} Vorlage${x.steckt === 1 ? '' : 'n'}` : ''}</span>
+                      <span style={{ ...klein, color: C.inkLeise }}>{BAUSTEIN_ART_LABEL[x.art]}{x.steckt ? ` · in ${x.steckt} ${x.steckt === 1 ? 'Ablauf' : 'Abläufen'}` : ''}</span>
                     </span>
                   </span>
                   {wo && <span style={{ ...klein, overflowWrap: 'anywhere' }}>{wo}</span>}
@@ -181,12 +181,12 @@ function BausteinDetail({ id, daten, onZurueck }: { id: string; daten: Uebersich
       <Karte i={3}>
         <Ueberschrift>Steckt in</Ueberschrift>
         {d.imOnboarding && <div style={klein}>Läuft im Onboarding jedes Falls{b.art === 'mail' ? ' (Willkommensmail)' : ' (Kunden-Playbook)'}.</div>}
-        {d.steckt.length ? <Liste>{d.steckt.map(v => <Zeile key={v.id} titel={v.titel} onClick={() => router.push(WEG.fulfillment('prozesse', { e: v.id }))} />)}</Liste> : !d.imOnboarding && <div style={klein}>Noch in keiner Vorlage — im Editor eines Ablaufs einen Schritt antippen und „Baustein verknüpfen“ wählen (oder „Baustein“ aus der Palette ziehen).</div>}
+        {d.steckt.length ? <Liste>{d.steckt.map(v => <Zeile key={v.id} titel={v.titel} onClick={() => router.push(WEG.fulfillment('prozesse', { e: v.id }))} />)}</Liste> : !d.imOnboarding && <div style={klein}>Noch in keinem Ablauf — im Editor eines Ablaufs einen Schritt antippen und „Baustein verknüpfen“ wählen (oder „Baustein“ aus der Palette ziehen).</div>}
         <span style={MIKRO}>Herkunft</span>
         <div style={klein}>{b.herkunft?.art === 'import' ? `Import vom ${tagLang(b.herkunft.am)}` : b.herkunft?.art === 'muster' ? 'Muster' : 'von Hand'}{b.herkunftText ? ` · ${b.herkunftText}` : ''}{b.herkunft?.quelleIds?.length ? ` · Quellen ${b.herkunft.quelleIds.join(', ')}` : ''}</div>
         <Leiste>
           <Knopf leise onClick={async () => {
-            if (!(await bestaetigen({ titel: `„${b.titel}“ löschen?`, text: d.steckt.length ? `Er steckt in ${anzahl(d.steckt.length, 'Vorlage', 'Vorlagen')} — dort fällt der Baustein mit weg. Laufende Fälle zeigen „Baustein entfernt“.` : 'Er steckt in keiner Vorlage.', ja: 'Löschen', gefahr: true }))) return;
+            if (!(await bestaetigen({ titel: `„${b.titel}“ löschen?`, text: d.steckt.length ? `Er steckt in ${anzahl(d.steckt.length, 'Ablauf', 'Abläufen')} — dort fällt der Baustein mit weg. Laufende Fälle zeigen „Baustein entfernt“.` : 'Er steckt in keinem Ablauf.', ja: 'Löschen', gefahr: true }))) return;
             const a = await vorlagenOps([{ op: 'baustein-weg', id: b.id, stand: b.stand }]);
             if (a.ok) onZurueck(); else setFehler(fehlerText(a));
           }}>Baustein löschen</Knopf>

@@ -273,7 +273,7 @@ function fortschrittZusatz(aktive: readonly Pick<Mandat, 'id'>[], f: KreislaufEi
   if (!f || !Object.keys(f).length) return [];
   const imPaket = aktive.filter(m => f[m.id]?.paket).length;
   const reif = aktive.filter(m => f[m.id]?.naechsteStufe).length;
-  return [`${imPaket} im Paket`, ...(reif ? [`${reif} reif für die nächste Stufe`] : [])];
+  return [`${imPaket} in Lieferung`, ...(reif ? [`${reif} reif für die nächste Stufe`] : [])];
 }
 
 /** Der ganze Kreislauf — optional nur für einen Kanal (`filter` = Kennung, `'ohne'` = ohne Kanal). */

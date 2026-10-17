@@ -70,7 +70,7 @@ export function FallMenschen({ mandatId }: { mandatId: string }) {
   const haupt = sh.ampel === 'rot' && !f.stakeholder.length ? { text: 'Stakeholder eintragen', tun: () => zu('stakeholder') }
     : ohneWochencheck ? { text: 'Wochen-Check im Kalender anlegen', tun: () => terminAnlegen(wochencheck!) }
       : !v.bestaetigtAm ? { text: 'Vereinbarung festhalten', tun: () => zu('vereinbarung') }
-        : { text: 'Mitschrift festhalten', tun: () => { setSchreiben(true); insBild('takt-mitschriften'); } };
+        : null; // sonst kein Kopf-Knopf — „+ Mitschrift“ steht in der Karte (17.10., Gesamtprüfung L4 B3: derselbe Knopf zweimal)
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       {meldung && <Hinweis art={meldung.art} rolle={meldung.art === 'kritisch' ? 'alert' : 'status'} aktion={meldung.aufgabe ? <Link href={WEG.aufgabe(meldung.aufgabe)} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Aufgabe öffnen ›</Link> : undefined}>{meldung.text}</Hinweis>}
@@ -78,11 +78,11 @@ export function FallMenschen({ mandatId }: { mandatId: string }) {
         { frage: 'Wer trägt das Projekt?', ...sh, onClick: () => insBild('menschen-stakeholder') },
         { frage: 'Was ist entschieden?', ...el, onClick: () => insBild('menschen-entscheidung') },
         { frage: 'Wann sehen wir uns?', ...tl, onClick: () => insBild('takt-leiste') },
-      ]} aktion={<Knopf haupt onClick={haupt.tun}>{haupt.text}</Knopf>} />
+      ]} {...(haupt ? { aktion: <Knopf haupt onClick={haupt.tun}>{haupt.text}</Knopf> } : {})} />
       <StakeholderKarte daten={daten} ops={ops} hinzufuegen={offen === 'stakeholder'} setHinzufuegen={b => setOffen(b ? 'stakeholder' : null)} />
       <EntscheidungenKarte daten={daten} ops={ops} neu={offen === 'entscheidung'} setNeu={b => setOffen(b ? 'entscheidung' : null)} />
       <VereinbarungKarte daten={daten} ops={ops} bearbeiten={offen === 'vereinbarung' || !v.bestaetigtAm} setBearbeiten={b => setOffen(b ? 'vereinbarung' : null)} />
-      <TaktKarten daten={daten} ops={taktOps} melde={melde} schreiben={schreiben} setSchreiben={setSchreiben} onTermin={terminAnlegen} />
+      <TaktKarten daten={daten} ops={taktOps} melde={melde} schreiben={schreiben} setSchreiben={setSchreiben} onTermin={terminAnlegen} mitschriftHaupt={!haupt} />
       {termin && <RitualTerminDialog termin={termin} heute={heute} ops={taktOps} melde={melde} onZu={() => setTermin(null)} />}
     </div>
   );

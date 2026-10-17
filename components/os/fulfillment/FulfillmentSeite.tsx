@@ -68,7 +68,9 @@ export function FulfillmentSeite() {
   return (
     <Seite titel="Fulfillment" unter="Wie wir liefern — jeder Kunde als Reise durch unsere Phasen." rechts={handy ? undefined : kopf}>
       {handy && kopf}
-      {!adresse.k && !adresse.b && <LageStreifen />}
+      {/* Auf der Übersicht sagen die Karten dasselbe („Kunden in Lieferung“, „Heute im Fulfillment · n zu tun“) — die Lage-Zeile nur auf den anderen
+          Reitern (17.10., Gesamtprüfung L4 B2: „nur einfach dupliziert sich“). */}
+      {!adresse.k && !adresse.b && adresse.u !== 'prozesse' && <LageStreifen />}
       <div className="ui-reiter-zeile">
         <Reiter<FulfillmentBereich> liste={FULFILLMENT_BEREICHE.map(b => ({ id: b.id, label: b.label }))} aktiv={adresse.u} onWahl={u => router.push(WEG.fulfillment(u), { scroll: false })} ariaLabel="Bereiche von Fulfillment" />
       </div>

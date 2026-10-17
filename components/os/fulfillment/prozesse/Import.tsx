@@ -60,7 +60,7 @@ export function Import({ daten }: { daten: Uebersicht }) {
   return (
     <Karte i={2}>
       <Ueberschrift erklaerung="fulfillment.importRechtPruefen">Import</Ueberschrift>
-      <div style={klein}>Bausteine (Format „vorlagen“), gezeichnete Abläufe (je Ablauf „stufen“ und „uebergaenge“) oder Pakete mit Phasen und Fluss (Format „pakete“) — erst kommt eine Vorschau, geschrieben wird erst mit „Übernehmen“. Pakete brauchen ihre Bausteine in der Bibliothek: erst die Bausteine importieren.</div>
+      <div style={klein}>Eine Datei mit Bausteinen, mit gezeichneten Abläufen oder mit ganzen Abläufen samt Phasen und Schritten — erst kommt eine Vorschau, geschrieben wird erst mit „Übernehmen“. Abläufe brauchen ihre Bausteine in der Bibliothek: erst die Bausteine importieren.</div>
       <Leiste>
         <input ref={datei} type="file" accept="application/json,.json" aria-label="Datei wählen" onChange={e => { const f = e.target.files?.[0]; if (f) void lesen(f); }} style={{ fontSize: TYP.bedien, color: C.inkDim, minHeight: 44 }} />
       </Leiste>

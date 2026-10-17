@@ -57,7 +57,7 @@ export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFa
   const [meldung, setMeldung] = useState<string | null>(null);
   const lage = api.lage;
   if (!lage) return api.fehler ? <Hinweis art="kritisch">{api.fehler}</Hinweis> : null;
-  if (!lage.datei.stufen.length) return <div style={klein}>Noch keine Leistungstreppe — unter <Link href={WEG.produkt()} style={{ color: C.aktiv }}>Produkte</Link> anlegen, dann zeigt jedes Mandat hier seinen Fortschritt im Paket.</div>;
+  if (!lage.datei.stufen.length) return <div style={klein}>Noch keine Leistungstreppe — unter <Link href={WEG.produkt()} style={{ color: C.aktiv }}>Produkte</Link> anlegen, dann zeigt jedes Mandat hier den Fortschritt seiner Leistung.</div>;
   const z = lage.kunden.find(k => k.mandatId === mandatId);
   if (!z) return <div style={klein}>Fortschritt gibt es für aktive und pausierte Mandate.</div>;
   const stufen = lage.datei.stufen.map(s => ({ id: s.id, label: `${s.ebene}. ${s.name}` }));
@@ -75,12 +75,12 @@ export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFa
     <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={beschriftung}>Fortschritt im Paket</span>
+          <span style={beschriftung}>Fortschritt der Leistung</span>
           {!imFall && <Link href={WEG.fall(mandatId, 'kunde')} style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Fulfillment öffnen ›</Link>}
         </span>
         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {/* 15.10. (Abnahme B1): mit Fall die Ampel des Falls (Hänger + Health — dieselbe wie Fall-Kopf und Landkarte), sonst die Health der Treppe. */}
-          {z.fall
+          {imFall ? null : z.fall
             ? <span title={z.fall.kundeSieht ? `Der Kunde sieht: „${z.fall.kundeSieht.titel}“${z.fall.kundeSieht.grund ? ` (${z.fall.kundeSieht.grund})` : ''}` : undefined}><Chip farbe={AMPEL[z.fall.ampel]}>{FALL_AMPEL_TEXT[z.fall.ampel]}</Chip></span>
             : z.ampel.gesamt && <Chip farbe={AMPEL[z.ampel.gesamt]}>{z.ampel.gesamt === 'gruen' ? 'läuft' : z.ampel.gesamt === 'gelb' ? 'im Blick behalten' : 'braucht Aufmerksamkeit'}</Chip>}
           {z.naechsteStufe && <Chip farbe={LEUCHT.gut}>reif für: {z.naechsteStufe.stufen.map(s => s.name).join(' oder ')}</Chip>}
@@ -104,7 +104,8 @@ export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFa
           ))}
         </div>
       )}
-      {z.fall
+      {/* Im Fall selbst stehen Ampel und nächster Schritt schon im Kopf und in der Reise — hier nicht noch einmal (17.10., Gesamtprüfung L4 B3). */}
+      {imFall && z.fall ? null : z.fall
         // Mit Fall: DERSELBE nächste Schritt wie Fall-Kopf, Kunden-Seite und Report (`naechsterPunkt`) — gepflegt wird er im Fall.
         ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
