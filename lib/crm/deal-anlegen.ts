@@ -33,7 +33,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { dealZuFirma } from './firmen-bezug';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 import { phaseHeben } from './lifecycle';
-import type { Chance, ChancenArt, Gesellschaft, Lead, LeadStatus, Quelle, WertBasis } from './typen';
+import type { Chance, ChancenArt, Event, Gesellschaft, Lead, LeadStatus, Quelle, Teilnahme, WertBasis } from './typen';
 import { istRegisterKennung } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 
@@ -84,7 +84,7 @@ export const neueDealId = () => neueKennung('ch');
 export type DealErgebnis = { ok: true; chance: Chance; leadId?: string; text: string; sql: boolean; fehlt: string[]; vorStatus?: LeadStatus } | { ok: false; fehler: string; status: number; offen?: { id: string; titel: string } };
 
 /** Reine Prüfung und Bau des Deals — ohne Schreiben (getestet). */
-export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { id: string; name: string; lead?: Lead }[]; chancen: Chance[]; leadZeilen: LeadZeile[]; person: string; jetzt: string; id?: string }): DealErgebnis {
+export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { id: string; name: string; lead?: Lead }[]; chancen: Chance[]; leadZeilen: LeadZeile[]; person: string; jetzt: string; id?: string; teilnahmen?: readonly Pick<Teilnahme, 'eventId' | 'kontaktId' | 'status'>[]; events?: readonly Pick<Event, 'id' | 'datum'>[] }): DealErgebnis {
   const schritt = e.schritt && String(e.schritt.text ?? '').trim() && tagOk(e.schritt.datum) ? { text: String(e.schritt.text).trim().slice(0, 300), datum: tagOk(e.schritt.datum)! } : null;
   if (!schritt) return { ok: false, fehler: 'Nächster Schritt mit Datum ist Pflicht — ohne ihn verliert sich der Deal.', status: 400 };
   if (schritt.datum < tagVon(ctx.jetzt)) return { ok: false, fehler: 'Der nächste Schritt liegt in der Vergangenheit — ein Deal startet mit einem Termin vor sich.', status: 400 };
@@ -109,6 +109,12 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
   const basis: WertBasis = e.wert?.basis === 'jahr' || e.wert?.basis === 'einmalig' ? e.wert.basis : 'monat';
   const laufzeit = Number(e.wert?.laufzeitMonate) > 0 ? Math.min(120, Math.round(Number(e.wert!.laufzeitMonate))) : undefined;
   const stufe: Chance['stufe'] = e.stufe && OFFENE_STUFEN.includes(e.stufe) ? e.stufe : 'qualifiziert';
+  // Quelle (2.5): ausdrücklich, sonst aus der Herkunft des Leads — nie fest vorbelegt. Kommt der Deal von einem Event und nennt keins, ist es das jüngste
+  // Event, bei dem eine Person des Deals da war (17.10., Gesamtprüfung L1 B13 — sonst zeigte die Event-Akte „0 Deals“, obwohl ein Mandat daraus entstand).
+  const quelle: Quelle | undefined = QUELLEN.includes(e.quelle as Quelle) ? (e.quelle as Quelle) : zeile ? quelleAusLead(zeile) : undefined;
+  const datumVon = new Map((ctx.events ?? []).map(x => [x.id, x.datum ?? ''] as const));
+  const besucht = quelle === 'event' ? (ctx.teilnahmen ?? []).filter(t => t.status === 'da' && kontaktIds.includes(t.kontaktId) && datumVon.has(t.eventId)).sort((a, b) => (datumVon.get(b.eventId) ?? '').localeCompare(datumVon.get(a.eventId) ?? ''))[0] : undefined;
+  const quelleBezug = e.quelleBezug && idOk(e.quelleBezug) ? e.quelleBezug : besucht?.eventId;
   const chance: Chance = {
     id: ctx.id ?? neueDealId(), titel, kontaktIds: kontaktIds.length ? kontaktIds : [],
     ...(firma ? { firma: firma.name, firmaId: firma.id } : personen[0]?.firma ? { firma: personen[0].firma } : {}),
@@ -116,8 +122,7 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
     wert: { betrag, basis, ...(laufzeit && basis !== 'einmalig' ? { laufzeitMonate: laufzeit } : {}) },
     stufe, historie: [{ stufe, am: ctx.jetzt, von: ctx.person }],
     naechsterSchritt: schritt, qualifizierung: kriterien,
-    // Quelle (2.5): ausdrücklich, sonst aus der Herkunft des Leads — nie fest vorbelegt.
-    ...(QUELLEN.includes(e.quelle as Quelle) ? { quelle: e.quelle as Quelle } : zeile && quelleAusLead(zeile) ? { quelle: quelleAusLead(zeile)! } : {}), ...(e.quelleBezug && idOk(e.quelleBezug) ? { quelleBezug: e.quelleBezug } : {}),
+    ...(quelle ? { quelle } : {}), ...(quelleBezug ? { quelleBezug } : {}),
     ...(tagOk(e.erwartetAm) ? { erwartetAm: tagOk(e.erwartetAm) } : {}),
     gesellschaft: GES.includes(e.gesellschaft as Gesellschaft) || istRegisterKennung(e.gesellschaft) ? (e.gesellschaft as Gesellschaft) : 'offen', besitzer,
     angelegt: ctx.jetzt, geaendert: ctx.jetzt, geaendertVon: ctx.person, letzteAktivitaet: tagVon(ctx.jetzt),
@@ -175,7 +180,7 @@ export async function dealAnlegen(e: DealEingabe, person: string, jetzt = new Da
   // Prüfen (Dublette!) und Schreiben in EINER Schreibsperre — zwei gleichzeitige Anlagen (ZOE + Browser) ergeben sonst zwei offene Deals (Prüfbericht 27.09., Punkt 18).
   let r: DealErgebnis | null = null;
   await aendereCrm(x => {
-    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, { ...x, scoring }, tagVon(jetzt)), person, jetzt, ...(e.id && idOk(e.id) ? { id: e.id } : {}) });
+    r = dealBauen(e, { kontakte, firmen: x.firmen, chancen: x.chancen, leadZeilen: leads(kontakte, { ...x, scoring }, tagVon(jetzt)), person, jetzt, teilnahmen: x.teilnahmen, events: x.events, ...(e.id && idOk(e.id) ? { id: e.id } : {}) });
     if (!r.ok) return x;
     const ok = r;
     const c = r.chance;

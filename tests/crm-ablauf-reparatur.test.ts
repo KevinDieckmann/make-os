@@ -72,6 +72,18 @@ describe('W6/W8/(d)/(e) · Deal anlegen', () => {
   const firmen: Pick<Firma, 'id' | 'name'>[] = [{ id: 'f-acme', name: 'Acme GmbH' }];
   const ctx = (kontakte: Kontakt[]) => ({ kontakte, firmen, chancen: [] as Chance[], leadZeilen: [], person: 'kevin', jetzt: JETZT });
   const schritt = { text: 'Bedarfsgespräch', datum: '2026-10-01' };
+  it('Quelle Event ohne Bezug: das jüngste Event, bei dem eine Person des Deals da war (17.10., Gesamtprüfung L1 B13)', () => {
+    const c = { ...ctx([k('a')]), events: [{ id: 'ev-alt', datum: '2026-08-01' }, { id: 'ev-neu', datum: '2026-09-20' }], teilnahmen: [
+      { eventId: 'ev-alt', kontaktId: 'c-a', status: 'da' as const }, { eventId: 'ev-neu', kontaktId: 'c-a', status: 'da' as const }, { eventId: 'ev-neu', kontaktId: 'c-x', status: 'da' as const },
+    ] };
+    const r = dealBauen({ kontaktIds: ['c-a'], schritt, quelle: 'event' }, c);
+    expect(r.ok && r.chance.quelleBezug).toBe('ev-neu');
+    const ausdruecklich = dealBauen({ kontaktIds: ['c-a'], schritt, quelle: 'event', quelleBezug: 'ev-alt' }, c);
+    expect(ausdruecklich.ok && ausdruecklich.chance.quelleBezug).toBe('ev-alt');
+    const andere = dealBauen({ kontaktIds: ['c-a'], schritt, quelle: 'empfehlung' }, c);
+    expect(andere.ok && andere.chance.quelleBezug).toBeUndefined();
+  });
+
   it('W8: eingeschränkte Person → 409 mit EINGESCHRAENKT_FEHLER', () => {
     const r = dealBauen({ kontaktIds: ['c-a'], schritt }, ctx([k('a', { eingeschraenkt: { seit: HEUTE, grund: 'Richtigkeit bestritten', von: 'kevin' } })]));
     expect(r).toMatchObject({ ok: false, status: 409, fehler: EINGESCHRAENKT_FEHLER });
