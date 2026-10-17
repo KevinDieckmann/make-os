@@ -61,7 +61,7 @@ beforeAll(async () => {
     konto('k3', 'partnerin', 'mitglied', { haushalt: 'haus-ab', finanzRecht: 'business' }),
   ], einladungen: [] });
   const { leererBestand } = await import('@/lib/crm/speicher');
-  await d.saveJson('crm', { ...leererBestand(), mandate: [mandat('m-ab'), mandat('m-alt'), mandat('m-gesperrt', { kontaktIds: ['c-gesperrt'] })] });
+  await d.saveJson('crm', { ...leererBestand(), mandate: [mandat('m-ab'), mandat('m-alt'), mandat('m-gesperrt', { kontaktIds: ['c-gesperrt'] }), mandat('m-pause')] });
   await d.saveJson('kontakte', { kontakte: [
     { id: 'c-probe', vorname: 'Testa', nachname: 'Probe', email: 'testa@example.invalid', stufe: 'kontakt', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01' },
     { id: 'c-gesperrt', vorname: 'Gesa', nachname: 'Sperre', email: 'gesa@example.invalid', stufe: 'kontakt', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', eingeschraenkt: { seit: '2026-09-15', grund: 'Antrag', von: 'pia' } },
@@ -214,6 +214,24 @@ describe('Recht und Altbestand', () => {
     expect(g.j.entwurf).toBeNull();
     expect(String(g.j.gesperrt)).toMatch(/Art\. 18/);
     expect((await stapel()).filter(x => x.bezug?.id.startsWith('p:nachricht:m-gesperrt:'))).toHaveLength(0);
+  });
+
+  it('pausiert: die Vorschläge bleiben; abgeschlossen: offene Aufgaben abgebrochen, Vorschläge abgelehnt mit Grund (17.10., Schreibwege B2)', async () => {
+    await starte('m-pause', plus(-1));
+    const bedarf = await knoten('m-pause', T.bedarf);
+    expect((await rufe('fulfillment/fall', 'PATCH', sitzung('pia'), { mandatId: 'm-pause', ops: [{ op: 'knoten-status', id: bedarf.id, status: 'erledigt', am: heute() }] })).status).toBe(200);
+    const offen = async () => (await stapel()).filter(x => x.bezug?.id.startsWith('p:nachricht:m-pause:'));
+    expect((await offen()).filter(x => x.status === 'offen')).toHaveLength(1);
+    expect((await rufe('fulfillment/fall', 'PATCH', sitzung('pia'), { mandatId: 'm-pause', ops: [{ op: 'fall-status', status: 'pausiert' }] })).status).toBe(200);
+    const { ablaufNachziehen } = await import('@/lib/fulfillment/prozesse/ausfuehrung-server');
+    await ablaufNachziehen({ mandatId: 'm-pause' });
+    expect((await offen()).filter(x => x.status === 'offen')).toHaveLength(1);
+    // Wieder laufend, dann abgeschlossen: nichts bleibt liegen, nichts heißt „freigegeben“.
+    expect((await rufe('fulfillment/fall', 'PATCH', sitzung('pia'), { mandatId: 'm-pause', ops: [{ op: 'fall-status', status: 'laeuft' }] })).status).toBe(200);
+    expect((await rufe('fulfillment/fall', 'PATCH', sitzung('pia'), { mandatId: 'm-pause', ops: [{ op: 'fall-status', status: 'abgeschlossen' }] })).status).toBe(200);
+    await ablaufNachziehen({ mandatId: 'm-pause' });
+    expect((await offen()).map(x => x.status)).toEqual(['abgelehnt']);
+    expect((await ablaufTasks()).filter(t => t.bezug?.mandatId === 'm-pause' && t.status !== 'done' && t.status !== 'cancelled')).toHaveLength(0);
   });
 
   it('ein Fall ohne Formen (Altbestand): Nachziehen und Morgenlauf ändern nichts, keine Aufgabe', async () => {

@@ -13,6 +13,7 @@
 import type { Fall, FallKnoten } from '../typen';
 import type { CockpitZeile, Haenger, HaengerArt } from './cockpit';
 import { kinderVon } from '../regeln';
+import { tagVon } from '@/lib/zeit';
 import { obSchluessel } from './onboarding';
 import { ausfuehrungsArt } from './ausfuehrung';
 import type { WartetAuf } from './reise';
@@ -104,7 +105,9 @@ export function gewonneneOhneMandat(
   return crm.chancen
     .filter(c => c.stufe === 'gewonnen' && business(c.gesellschaft) && !mitMandat.has(c.id))
     .map(c => {
-      const am = [...(c.historie ?? [])].reverse().find(h => h.stufe === 'gewonnen')?.am?.slice(0, 10);
+      const gew = [...(c.historie ?? [])].reverse().find(h => h.stufe === 'gewonnen')?.am;
+      // Berliner Tag (17.10., Gesamtprüfung L2 B7) — nie der UTC-Tag eines Zeitstempels.
+      const am = gew ? (gew.length > 10 ? tagVon(gew) : gew) : undefined;
       return { c, am };
     })
     .filter(({ am }) => { const t = am ? tageSeit(am, heute) : undefined; return t !== undefined && t <= DEAL_OHNE_MANDAT_TAGE; })
@@ -168,7 +171,7 @@ export function heuteImFulfillment(zeilen: readonly CockpitZeile[], kandidaten: 
     if (k.bestand) continue;
     raus.push({
       id: `${k.mandatId}|start`, mandatId: k.mandatId, kunde: k.kunde, titel: k.titel, unter: 'Mandat da — der Fall wartet auf den Start',
-      ...(k.uhr?.faellig ? { faelligAm: k.uhr.faellig.slice(0, 10) } : {}), ueberfaellig: !!k.uhr?.ueberfaellig, dringend: !!k.uhr?.ueberfaellig, jetzt: true,
+      ...(k.uhr?.faellig ? { faelligAm: tagVon(k.uhr.faellig) } : {}), ueberfaellig: !!k.uhr?.ueberfaellig, dringend: !!k.uhr?.ueberfaellig, jetzt: true,
       quelle: 'start', aktion: { art: 'starten' }, href: '',
     });
   }

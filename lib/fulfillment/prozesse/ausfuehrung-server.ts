@@ -79,6 +79,29 @@ function aufgabeText(a: AusfuehrungSoll['aufgaben'][number], vorlage: string | u
     a.art === 'termin' ? 'Den Termin legt ihr im Fall unter „Menschen & Termine“ an.' : ''].filter(Boolean).join(' ');
 }
 
+/**
+ * Ein abgeschlossener Fall (17.10., Gesamtprüfung Schreibwege B2): offene Aufgaben der Ausführung → „abgebrochen“, offene Nachricht-Vorschläge → abgelehnt mit
+ * Grund. Vorher blieben sie ewig liegen. Idempotent; liefert die Zahl der geschlossenen Aufgaben.
+ */
+async function abgeschlosseneAufraeumen(mandate: readonly string[], person: string | null, wer: Wer | undefined, iso: string): Promise<number> {
+  const zu = new Set(mandate);
+  const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
+  let n = 0;
+  await systemAufgabenAendern(stand => {
+    const teile = stand.tasks
+      .filter(t => t.id.startsWith(ABLAUF_AUFGABE_PRAEFIX) && !!t.bezug?.mandatId && zu.has(t.bezug.mandatId) && !t.geloeschtAm && t.status !== 'done' && t.status !== 'cancelled')
+      .map(t => ({ id: t.id, felder: { status: 'cancelled' } as Record<string, unknown> }));
+    n = teile.length;
+    return { neu: [], teile };
+  }, { person, ...(wer ? { wer } : {}), jetzt: iso });
+  const { lies, entscheide } = await import('@/lib/zoe/stapel');
+  for (const v of await lies('offen')) {
+    const m = /^p:nachricht:([^:]+):/.exec(v.bezug?.art === 'fulfillment' ? v.bezug.id : '');
+    if (m && zu.has(m[1])) await entscheide(v.id, 'abgelehnt', { grund: 'Der Fall ist abgeschlossen — die Nachricht ist nicht mehr nötig.', von: null });
+  }
+  return n;
+}
+
 /** Vorschläge für Nachrichten, die nicht mehr dran sind, aus dem Stapel nehmen (gesendet bzw. Schritt entfällt) — idempotent. */
 async function stapelAufraeumen(laufend: ReadonlyMap<string, { aktiv: Set<string>; fall: Fall }>): Promise<void> {
   if (!laufend.size) return;
@@ -89,8 +112,8 @@ async function stapelAufraeumen(laufend: ReadonlyMap<string, { aktiv: Set<string
     const l = laufend.get(m[1]);
     if (!l || l.aktiv.has(`${m[2]}:${m[3]}`)) continue;
     const k = l.fall.knoten.find(x => x.id === m[2]);
-    if (k?.status === 'entfaellt') await entscheide(v.id, 'abgelehnt', { grund: 'Der Schritt entfällt im Fall — die Nachricht ist nicht mehr nötig.', von: null });
-    else await entscheide(v.id, 'freigegeben', { ergebnis: 'Im Fall erledigt (gesendet bzw. abgehakt) — nichts mehr zu tun.', von: null });
+    // Nie „freigegeben“ für „nicht mehr nötig“ (17.10., Schreibwege B2) — freigegeben heißt: jemand hat den Entwurf geprüft.
+    await entscheide(v.id, 'abgelehnt', { grund: k?.status === 'entfaellt' ? 'Der Schritt entfällt im Fall — die Nachricht ist nicht mehr nötig.' : 'Im Fall erledigt (gesendet bzw. abgehakt) — nichts mehr zu tun.', von: null });
   }
 }
 
@@ -107,9 +130,10 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
     const u = o.umfeld ?? await fallUmfeld(o.mandatId ? [o.mandatId] : undefined);
     const { istBusinessGesellschaft } = await import('@/lib/einheiten');
     const arbeit: { f: Fall; w: Fall; m: Mandat; soll: AusfuehrungSoll; an: { an: string; beteiligte: string[] } | null }[] = [];
+    const abgeschlossen: string[] = [];
     for (const f of Object.values(u.faelle.faelle)) {
       if (o.mandatId && f.mandatId !== o.mandatId) continue;
-      if (f.status === 'abgeschlossen') continue;
+      if (f.status === 'abgeschlossen') { if (Object.keys(f.marken).some(x => x.startsWith('ablauf-'))) abgeschlossen.push(f.mandatId); continue; }
       const m = u.crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
       if (!m || !istBusinessGesellschaft(m.gesellschaft)) continue;
       const w = fallWirksam(f, ableitungFuer(f, m, u.crm, u.vorlagen, u.kunde[m.id], iso, u.termine[m.id]));
@@ -118,6 +142,7 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
       arbeit.push({ f, w, m, soll, an: await verantwortung(m) });
     }
     lauf.faelle = arbeit.length;
+    if (abgeschlossen.length) lauf.geschlossen += await abgeschlosseneAufraeumen(abgeschlossen, o.person ?? null, o.wer, iso);
     if (!arbeit.length) return lauf;
     const neueMarken = new Map<string, Record<string, string>>();
     const marke = (mid: string, k: string) => { const x = neueMarken.get(mid) ?? {}; x[k] = heute; neueMarken.set(mid, x); };
@@ -205,8 +230,14 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
         for (const a of mitOps) {
           let f = faelle[a.f.mandatId];
           if (!f) continue;
-          if (a.soll.ops.length) {
-            const r = fallAnwenden(f, a.soll.ops, {
+          // Nur Knoten, die seit dem Schnappschuss unverändert sind (17.10., Gesamtprüfung Schreibwege B1): sonst setzte die Ausführung z. B. einen
+          // inzwischen abgehakten Kunden-Schritt zurück auf „wartet auf Kunde“. Der nächste Lauf rechnet ihn neu.
+          const ops = a.soll.ops.filter(op => {
+            const id = String(op.id ?? ''), vorher = a.f.knoten.find(x => x.id === id), jetzt = f!.knoten.find(x => x.id === id);
+            return !!jetzt && (!vorher || eintragStand(vorher) === eintragStand(jetzt));
+          });
+          if (ops.length) {
+            const r = fallAnwenden(f, ops, {
               person: o.person ?? 'system', jetzt: iso, heute, standVon: eintragStand, neueId: () => 'fk-x',
               ziele: [], kontaktErlaubt: () => false, ritualIds: [], freigaben: [],
             });
@@ -221,7 +252,8 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
     }
 
     // 5) Vorschläge für Nachrichten, die nicht mehr dran sind, aus dem Stapel nehmen.
-    await stapelAufraeumen(new Map(arbeit.map(a => [a.m.id, {
+    // Ein pausierter Fall behält seine Vorschläge (17.10., Schreibwege B2) — dort tut man gerade nichts, nach der Pause gilt der Entwurf wieder.
+    await stapelAufraeumen(new Map(arbeit.filter(a => a.f.status !== 'pausiert').map(a => [a.m.id, {
       fall: a.w, aktiv: new Set(aktiveKnoten(a.w).filter(x => x.art === 'nachricht' || x.art === 'erinnerung').map(x => `${x.knoten.id}:${x.art === 'nachricht' ? 0 : x.runde}`)),
     }])));
   } catch (e) {
