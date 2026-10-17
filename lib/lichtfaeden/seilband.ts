@@ -1,6 +1,6 @@
 // ─── Lichtfäden · Seil — der Zeichner (Canvas 2D, ohne Framework, 07.10.2026) ──────────────────────────────────────────
 // Zeichnet, was Modell (seil.ts) und Geometrie (seil-geometrie.ts) fertig liefern — rechnet selbst keine Lage, keine Dichte, keinen
-// Pfad (DESIGN_STANDARD.md › Lichtfäden, Regel 8). Technik wie das Fädenband: `leinwand` (dpr ≤ 2), `starteLauf` (pausiert außer
+// Pfad (DESIGN_STANDARD.md › Lichtfäden, Regel 8). Technik wie das Fädenband: `leinwand` (dpr ≤ 2), `taktLauf` (der gemeinsame Takt, pausiert außer
 // Sicht und im verborgenen Tab, „Bewegung reduzieren“ = Standbild), gleiche Farbe + gleiche Deckkraft-Stufe = EIN Path2D („Eimer“).
 //
 // Bewegung NUR mit Bedeutung (Kevin 07.10.: „Es braucht einfach Effekte“ — 80/20: keine Spielereien):
@@ -10,7 +10,8 @@
 //   · Fasern fließen sehr ruhig zum Anker (Phase je ms, `SEIL_FORM.tempo`).
 // Blockiert = gestrichelt + gedämpft bis zum Ende des Vorgängers; Fokus = andere Seile 22 %; kritischer Pfad kräftig.
 
-import { leinwand, rgb, starteLauf, type Lauf } from './zeichnen';
+import { leinwand, rgb, type Lauf } from './zeichnen';
+import { taktLauf } from './flow';
 import { SEIL_FORM, faserBei, glatt, kantenKurve, seilRadius, fasernWeich, strangY, type GruppenLage, type SeilLage, type SpurLage } from './seil-geometrie';
 import type { SeilAnsicht, SeilStrang } from './seil';
 
@@ -133,7 +134,8 @@ export function seilband(canvas: HTMLCanvasElement, beobachte: Element, ruhig: b
     }
   }
 
-  const lauf = starteLauf({ beobachte, zeichne, ruhig, intervall: SEIL_ZEIT.intervall });
+  // Gemeinsamer Takt (17.10., Gesamtprüfung Tempo B1): kein eigener rAF mehr neben dem Fädenband derselben Seite.
+  const lauf = taktLauf({ beobachte, zeichne, ruhig, intervall: SEIL_ZEIT.intervall });
   return {
     setze(neu) {
       bild = neu;

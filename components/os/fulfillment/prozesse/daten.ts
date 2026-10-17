@@ -126,7 +126,8 @@ function useLaden<T>(url: string | null) {
 }
 
 export const useUebersicht = () => useLaden<Uebersicht>('/api/fulfillment');
-export const useUebersichtKurz = () => useLaden<UebersichtKurz>('/api/fulfillment?nur=kurz');
+/** `an: false` lädt nichts (17.10., Tempo B2: der Deal-Einhänger fragt nur bei gewonnenen Deals). */
+export const useUebersichtKurz = (an = true) => useLaden<UebersichtKurz>(an ? '/api/fulfillment?nur=kurz' : null);
 export const useFall = (mandatId: string) => useLaden<FallAntwort>(`/api/fulfillment/fall?m=${encodeURIComponent(mandatId)}`);
 export const useCockpit = () => useLaden<CockpitAntwort>('/api/fulfillment/cockpit');
 

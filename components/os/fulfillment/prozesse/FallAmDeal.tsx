@@ -19,10 +19,11 @@ import { useUebersichtKurz } from './daten';
 import { StartDialog } from './Onboarding';
 
 export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string }) {
-  const kurz = useUebersichtKurz();
-  const [start, setStart] = useState<{ mandatId: string; kunde: string; leistungId?: string } | null>(null);
   const crm = api.crm;
   const c = crm?.stand.chancen.find(x => x.id === chanceId);
+  // Nur am gewonnenen Deal fragen (17.10., Gesamtprüfung Tempo B2) — vorher holte jeder geöffnete Deal das Fulfillment.
+  const kurz = useUebersichtKurz(c?.stufe === 'gewonnen');
+  const [start, setStart] = useState<{ mandatId: string; kunde: string; leistungId?: string } | null>(null);
   if (!crm || !c || c.stufe !== 'gewonnen') return null;
   const mandat = crm.stand.mandate.find(m => m.chanceId === c.id && !m.geloeschtAm);
   const business = istBusinessGesellschaft(mandat?.gesellschaft ?? c.gesellschaft) && !!kurz.daten;

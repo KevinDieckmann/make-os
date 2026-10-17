@@ -46,7 +46,7 @@ async function ablaufNachzug(fall: Fall, mandatId: string, person: string, wer: 
 }
 
 /** Alles, was ein Fall zum Rechnen braucht (CRM, Vorlagen, Kunden-Kurzform aus C2). */
-export async function fallUmfeld(mandatIds?: readonly string[]) {
+export async function fallUmfeld(mandatIds?: readonly string[], o: { termine?: boolean } = {}) {
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const h = await fulfillmentHaushalt();
   const [crm, vorlagen, faelle] = await Promise.all([ladeCrm(), fulfillmentLesen('vorlagen', h), fulfillmentLesen('faelle', h)]);
@@ -56,7 +56,8 @@ export async function fallUmfeld(mandatIds?: readonly string[]) {
   })();
   // Die Termine des Kunden (15.10., Abnahme B3) — nur für Mandate mit Fall (sonst leer, z. B. beim Starten).
   const mitFall = ids.filter(id => faelle.faelle[id]).map(id => crm.mandate.find(m => m.id === id)).filter((m): m is Mandat => !!m);
-  const termine: Record<string, FallTermin[]> = mitFall.length ? await fallTermine(mitFall.map(m => ({ id: m.id, firmaId: m.firmaId ?? null }))).catch(() => ({})) : {};
+  // `termine: false` (17.10., Tempo B2): die Kurzform der Übersicht braucht keine Termine.
+  const termine: Record<string, FallTermin[]> = mitFall.length && o.termine !== false ? await fallTermine(mitFall.map(m => ({ id: m.id, firmaId: m.firmaId ?? null }))).catch(() => ({})) : {};
   return { h, crm, vorlagen, faelle, kunde, termine };
 }
 

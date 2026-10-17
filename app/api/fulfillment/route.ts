@@ -51,7 +51,8 @@ export async function GET(req: Request) {
     if (!b) return NextResponse.json({ ok: false, fehler: 'Diesen Baustein gibt es nicht (mehr).' }, { status: 404 });
     return NextResponse.json({ ok: true, baustein: { ...b, stand: eintragStand(b) }, steckt: vorlagenMitBaustein(d, b.id), imOnboarding: imOnboarding(b, d), urheberGeprueft: urheberGeprueft(d, b.id) });
   }
-  const { crm, vorlagen, faelle: faelleRoh, kunde, termine } = await fallUmfeld();
+  const nurKurz = url.searchParams.get('nur') === 'kurz';
+  const { crm, vorlagen, faelle: faelleRoh, kunde, termine } = await fallUmfeld(undefined, { termine: !nurKurz });
   // Prüf-Fund 11.10.: nur Mandate von Business-Gesellschaften (die Selbstständigkeit gehört zu Privat) — auch Fälle, deren Mandat inzwischen privat
   // ist, fallen heraus. Ein Fall ohne Mandat im CRM bleibt als „Mandat (gelöscht)“ (ohne Namen).
   const mandatVon = new Map(crm.mandate.map(m => [m.id, m] as const));
@@ -65,7 +66,7 @@ export async function GET(req: Request) {
   const deals = gewonneneOhneMandat(crm, heute, istBusinessGesellschaft, tageZwischen);
   // Firmen-/Kundennamen gehen raus → Lese-Protokoll (Prüf-Fund 11.10.), nur die Anzahl.
   leseZugriff(req, 'fulfillment', { anzahl: Object.keys(mandate).length + kandidaten.length + deals.length });
-  if (url.searchParams.get('nur') === 'kurz') {
+  if (nurKurz) {
     return NextResponse.json({
       ok: true, kandidaten, deals, zuordnung: vorlagen.zuordnung, faelle: faelleAnsicht,
       prozesse: vorlagen.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, art: p.art, ...(p.zusatz ? { zusatz: true } : {}) })),

@@ -16,7 +16,8 @@
 //     zurück fließen sie zusammen. „Bewegung reduzieren“ = Standbild ohne Übergang und ohne Aufbau.
 
 import { LICHTFAEDEN, MITTE, fadenSaaten, glatt, textSaat, type FadenSaat } from './band';
-import { leinwand, rgb, starteLauf, zeichneBuendel, type Lauf, type Probe } from './zeichnen';
+import { leinwand, rgb, zeichneBuendel, type Lauf, type Probe } from './zeichnen';
+import { taktLauf, FLOW } from './flow';
 import { STRAHL, strahlHell, strangBreite, strangMitte, wocheWeich } from './strahl';
 
 export interface BandBuendel {
@@ -238,7 +239,8 @@ export function faedenband(canvas: HTMLCanvasElement, beobachte: Element, ruhig:
     }
   }
 
-  const lauf = starteLauf({ beobachte, zeichne, ruhig });
+  // Gemeinsamer Takt (17.10., Gesamtprüfung Tempo B1): vorher ein eigener rAF ohne Bildgrenze (60/120 Hz) — jetzt der EINE Takt aller Faden-Ebenen, ≤ 30 Bilder/s.
+  const lauf = taktLauf({ beobachte, zeichne, ruhig, intervall: FLOW.intervall });
   return {
     setze(neu, u) {
       bild = neu;
