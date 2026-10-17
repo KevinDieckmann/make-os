@@ -85,3 +85,36 @@ describe('N4: Sicht Privat ohne Mandats-/Firmennamen an Zuweisungen', () => {
     expect(biz.zuweisungen[0].label).toContain('GEHEIMKUNDE'); // Kontrolle: im Business steht der Name
   });
 });
+
+// Gesamtprüfung 18.10. (L3 B2 / L2 Zählungen B7): die Markttraktion-Planung („frei“ je Team-Person) ist Business — sie rechnete mit `belastbar`
+// (Kopf & Energie aus der geteilten Erholung). Jetzt: netto − Bedarf aus der Sicht Business, dieselbe Zahl wie die Leistungstreppe.
+describe('Markttraktion-Planung: „frei“ ohne Kopf & Energie', () => {
+  it('frei = Ø (netto − bedarf) der nächsten vier Wochen — nicht belastbar (die geteilte rote Erholung wirkt nicht)', async () => {
+    const { ladeKonten } = await import('@/lib/zugang/konten');
+    await ladeKonten(); // setzt das CRM-Team aus den Konten (lib/crm/team-liste.ts)
+    const { freieStunden } = await import('@/lib/crm/planung-server');
+    const heute = tag(0);
+    const frei = await freieStunden('pa', heute);
+    const s = (await (await route.GET(get('pa', '?space=privat'))).json()).stand as Stand & { personen: { id: string; wochen: { netto: number; belastbar: number; bedarf: number }[] }[] };
+    const w = s.personen.find(p => p.id === 'konto-pa')!.wochen.slice(0, 4);
+    const schnitt = (f: (x: { netto: number; belastbar: number; bedarf: number }) => number) => Math.round((w.reduce((a, x) => a + f(x), 0) / w.length) * 10) / 10;
+    // Kontrolle: in Privat wirkt der Faktor (sonst prüfte der Wächter nichts).
+    expect(schnitt(x => x.belastbar - x.bedarf)).toBeLessThan(schnitt(x => x.netto - x.bedarf));
+    expect(frei?.pa).toBe(schnitt(x => x.netto - x.bedarf));
+    const q = readFileSync(path.join(process.cwd(), 'lib/crm/planung-server.ts'), 'utf8');
+    expect(q).toContain("kapaStandFuer(person, heute, 'business')");
+    expect(q).not.toContain('x.belastbar - x.bedarf');
+  });
+});
+
+describe('Business-Index, Säule Kapazität: ohne Kopf & Energie', () => {
+  it('Last/Puffer der Säule rechnen mit netto — dieselben Zahlen wie die Sicht Business, nicht wie Privat', async () => {
+    const { kapaKennzahlenFuerIndex } = await import('@/lib/kapazitaet/server');
+    const k = await kapaKennzahlenFuerIndex(tag(0));
+    const biz = (await (await route.GET(get('pa', '?space=business'))).json()).stand as { kennzahlen: { belastbar4: number; last4: number | null } };
+    const priv = (await (await route.GET(get('pa', '?space=privat'))).json()).stand as { kennzahlen: { belastbar4: number } };
+    expect(priv.kennzahlen.belastbar4).toBeLessThan(biz.kennzahlen.belastbar4); // Kontrolle: in Privat wirkt der Faktor
+    expect(k?.belastbar4).toBe(biz.kennzahlen.belastbar4);
+    expect(k?.erholung).toBeNull();
+  });
+});

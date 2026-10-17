@@ -264,7 +264,9 @@ export async function kapaKennzahlenFuerIndex(heute = localDay()): Promise<KapaK
   try {
     const [g, verborgen] = await Promise.all([gemerkt(heute), verborgeneMeilensteinPosten(null)]);
     // Seit 15.10. (Abnahme 2 A1) auch ohne Titel des Gründungsfahrplans und der Register-Gesellschaften — der Index geht auch an Konten „nur Business“.
-    return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.stand, null).kennzahlen, new Set([...g.privat, ...verborgen, ...g.fahrplan, ...g.register])));
+    // Seit 18.10. (Gesamtprüfung L3 B2, Entscheidung M1 vom 11.10.): aus der Rechnung OHNE Kopf & Energie — Last, Puffer und Machbarkeit rechneten
+    // vorher mit `belastbar` (Erholungs-Faktor), eine Art.-9-Ableitung im Business-Index.
+    return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.ohneKopf, null).kennzahlen, new Set([...g.privat, ...verborgen, ...g.fahrplan, ...g.register])));
   } catch { return null; }
 }
 

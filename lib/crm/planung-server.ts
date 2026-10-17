@@ -98,16 +98,20 @@ async function zahlenziele(heute: string): Promise<{ id: string; titel: string; 
     .map(z => ({ id: z.id, titel: z.titel, zielwert: z.zielwert as number, jahr: zielJahr(z, jahr) }));
 }
 
-/** Freie Stunden je Team-Person (Ø nächste vier Wochen: belastbar − verplant) aus der Kapazität — null, wenn sie nicht zu lesen ist. */
-async function freieStunden(person: string, heute: string): Promise<Record<string, number | null> | null> {
+/**
+ * Freie Stunden je Team-Person (Ø nächste vier Wochen: netto − verplant) aus der Kapazität — null, wenn sie nicht zu lesen ist. Markttraktion ist
+ * Business: die Rechnung OHNE Kopf & Energie (18.10., Gesamtprüfung L3 B2 / L2 Zählungen B7 — vorher `belastbar` mit dem Erholungs-Faktor, eine
+ * Art.-9-Ableitung in einer Business-Sicht; Entscheidung M1 vom 11.10.). Dieselbe Zahl wie die Leistungstreppe (`netto − bedarf`).
+ */
+export async function freieStunden(person: string, heute: string): Promise<Record<string, number | null> | null> {
   try {
     const { kapaStandFuer } = await import('@/lib/kapazitaet/server');
-    const { stand } = await kapaStandFuer(person, heute);
+    const { stand } = await kapaStandFuer(person, heute, 'business');
     const raus: Record<string, number | null> = {};
     for (const t of TEAM) {
       const p = stand.personen.find(x => x.id === `konto-${t.id}`);
       const w = (p?.wochen ?? []).slice(0, 4);
-      raus[t.id] = p && !p.ohneKapa && w.length ? Math.round((w.reduce((a, x) => a + (x.belastbar - x.bedarf), 0) / w.length) * 10) / 10 : null;
+      raus[t.id] = p && !p.ohneKapa && w.length ? Math.round((w.reduce((a, x) => a + (x.netto - x.bedarf), 0) / w.length) * 10) / 10 : null;
     }
     return raus;
   } catch { return null; }
