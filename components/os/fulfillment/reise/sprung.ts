@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 
-export type Sprung = { art: 'phase'; wert: string } | { art: 'freigabe'; wert: string } | { art: 'willkommen' } | { art: 'stelle'; wert: string };
+export type Sprung = { art: 'phase'; wert: string } | { art: 'freigabe'; wert: string } | { art: 'willkommen' } | { art: 'stelle'; wert: string } | { art: 'schritt'; wert: string };
 const EREIGNIS = 'make-fulfillment-sprung';
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
 
@@ -21,8 +21,9 @@ export function sprungAus(anker: string): Sprung | null {
   if (a === 'willkommen') return { art: 'willkommen' };
   const st = /^stelle-(.+)$/.exec(a);
   if (st) return STELLE.test(st[1]) ? { art: 'stelle', wert: st[1] } : null;
-  const m = /^(phase|freigabe)-(.+)$/.exec(a);
-  return m && ID.test(m[2]) ? { art: m[1] as 'phase' | 'freigabe', wert: m[2] } : null;
+  // 17.10. abends (Ausführung): `#schritt-<Knoten>` wählt einen Knoten im Fluss (Links aus Aufgaben und Glocke).
+  const m = /^(phase|freigabe|schritt)-(.+)$/.exec(a);
+  return m && ID.test(m[2]) ? { art: m[1] as 'phase' | 'freigabe' | 'schritt', wert: m[2] } : null;
 }
 
 /** In der offenen Ansicht springen (sie hört mit `useSprung`). */

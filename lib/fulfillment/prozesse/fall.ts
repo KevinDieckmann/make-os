@@ -20,9 +20,10 @@ import { ausfuehren, istObj, mischen, nein, optBool, optTag, optText, optWahl, o
 import { tagPlus } from '@/lib/kalender/zeit';
 import { tagVon } from '@/lib/zeit';
 import { phasenDer, phasenSchritte } from './fluss-struktur';
+import { antwortAnwenden, nachErledigung } from './ausfuehrung';
 
 /** Felder, die beim Start aus der Vorlage kopiert werden (7.2). */
-export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis', 'kennzahl', 'zustaendig', 'freigabe', 'kundeSichtbar', 'phaseId', 'bausteinId', 'dauerTage', 'form', 'frist', 'zweige'] as const;
+export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis', 'kennzahl', 'zustaendig', 'freigabe', 'kundeSichtbar', 'phaseId', 'bausteinId', 'dauerTage', 'form', 'frist', 'zweige', 'versuche'] as const;
 /** Felder, die ein Diff vergleicht (ohne Rang — die Reihenfolge darf der Fall behalten). */
 const DIFF_FELDER = STRUKTUR_FELDER.filter(f => f !== 'rang');
 
@@ -119,7 +120,7 @@ export interface VorlagenDiff {
 /** Die Felder eines Diffs in Worten (Vorschau „was sich ändert“ im Fall). */
 export const DIFF_FELD_NAME: Readonly<Record<string, string>> = {
   elternId: 'Platz', titel: 'Titel', ziel: 'Ziel', ergebnis: 'Ergebnis', kennzahl: 'Kennzahl', zustaendig: 'Verantwortung', freigabe: 'Abstimmungspunkt',
-  kundeSichtbar: 'Sichtbarkeit', phaseId: 'Phase', bausteinId: 'Baustein', dauerTage: 'Dauer', form: 'Form', frist: 'Frist', zweige: 'Zweige',
+  kundeSichtbar: 'Sichtbarkeit', phaseId: 'Phase', bausteinId: 'Baustein', dauerTage: 'Dauer', form: 'Form', frist: 'Frist', zweige: 'Zweige', versuche: 'Versuche',
 };
 
 /** Die Vorschau „was sich ändert“ eines Diffs in Worten — Abschnitte mit Zeilen (leere fallen weg). Eine Stelle für Fall-Hinweis und Tests. */
@@ -233,7 +234,7 @@ export type FallOp = { op: string } & Record<string, unknown>;
 /**
  * Änderungen an EINEM Fall — alles oder nichts. Ops: knoten-status · knoten-extra · freigabe · vereinbarung · stakeholder · entscheidung ·
  * ritual-merken · mitschrift · quickwins-setzen · quickwin · kickoff-fragen · kickoff-frage · wert-ziel · wert-messung · befaehigung ·
- * willkommen-gesendet · fall-status (Formen im Kopf von app/api/fulfillment/fall/route.ts und in CLAUDE.md › Fulfillment).
+ * willkommen-gesendet · fall-status · antwort (17.10. abends: Entscheidung ja/nein) (Formen im Kopf von app/api/fulfillment/fall/route.ts und in CLAUDE.md › Fulfillment).
  */
 export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): AnwendenErgebnis<Fall> {
   return ausfuehren(() => {
@@ -243,6 +244,12 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
     const geaendert: string[] = [];
     const knoten = (id: unknown): FallKnoten => f.knoten.find(x => x.id === id) ?? nein('Diesen Schritt gibt es im Fall nicht (mehr).', 404);
     const setzeKnoten = (n: FallKnoten) => { f.knoten = f.knoten.map(x => (x.id === n.id ? n : x)); geaendert.push(n.id); };
+    /** Eine ganze neue Knoten-Liste übernehmen (aus den reinen Regeln der Ausführung) — geändert ist, was anders ist. */
+    const listeUebernehmen = (neu: readonly FallKnoten[]) => {
+      const alt = new Map(f.knoten.map(x => [x.id, JSON.stringify(x)]));
+      for (const x of neu) if (alt.get(x.id) !== JSON.stringify(x)) geaendert.push(x.id);
+      f.knoten = [...neu];
+    };
     const freigabenErlaubt = new Set([...k.freigaben, ...f.knoten.map(x => x.freigabe).filter((x): x is string => !!x)]);
     const erledigen = (n: FallKnoten, am = k.heute): FallKnoten => ({ ...n, status: 'erledigt', seit: am, erledigtAm: am, erledigtVon: k.person });
     // Nachtragen (12.10.): optional `am` — was schon passiert ist (Kick-off vor zwei Wochen), steht mit seinem Tag da; nie in der Zukunft.
@@ -270,31 +277,44 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
             const { erledigtAm: _a, erledigtVon: _b, grund: _g, ...rest } = n;
             neu = status === 'erledigt' ? erledigen(n, am) : { ...rest, status, seit: am };
             if (status === 'entfaellt') neu.grund = pflichtText(o.grund, 'notiz', 'Grund');
+            // Eine Entscheidung wieder öffnen: ihre Antwort gilt nicht mehr (17.10. abends, Ausführung).
+            if (n.status === 'erledigt' && status !== 'erledigt') { delete neu.antwort; delete neu.antwortAm; }
           }
           const fa = optTag(o.faelligAm, 'Fällig am');
           if (fa !== undefined) { if (fa === null) delete neu.faelligAm; else neu.faelligAm = fa; }
           if (JSON.stringify(neu) !== JSON.stringify(n)) setzeKnoten(neu);
-          // Takt ab einem Ereignis (Prüf-Fund 11.10., Messe-Nachfasstakt Tag 1/3/7/14/30): wird ein Knoten erledigt, bekommen die offenen
-          // Einzelschritte des NÄCHSTEN Geschwisters mit `dauerTage` und ohne Fälligkeit `faelligAm` = Tag der Erledigung + dauerTage
-          // („Während der Messe“ erledigt → „Nach der Messe“: Nachfassen am Tag 1, 3, 7, 14, 30). Gesetzte Fälligkeiten bleiben.
-          if (neu.status === 'erledigt' && n.status !== 'erledigt') {
-            const geschwister = kinderVon(n.elternId, f.knoten);
-            const naechstes = geschwister[geschwister.findIndex(x => x.id === n.id) + 1];
-            if (naechstes) for (const s of kinderVon(naechstes.id, f.knoten)) {
-              if (s.dauerTage && !s.faelligAm && s.status === 'offen') setzeKnoten({ ...s, faelligAm: tagPlus(neu.erledigtAm ?? k.heute, s.dauerTage) });
-            }
-            // Prozess-Editor (17.10.): eine Entscheidung erledigt = „ja“ — ihr Nein-Zweig (die Erinnerung) entfällt, wenn er noch offen ist.
-            const neinZiel = n.form === 'entscheidung' ? n.zweige?.nein : undefined;
-            const neinKn = neinZiel ? f.knoten.find(x => x.id === neinZiel) : undefined;
-            if (neinKn && neinKn.status !== 'erledigt' && neinKn.status !== 'entfaellt') {
-              const { erledigtAm: _a, erledigtVon: _b, ...r } = neinKn;
-              setzeKnoten({ ...r, status: 'entfaellt', seit: neu.erledigtAm ?? k.heute, grund: 'Entscheidung: ja' });
-            }
-            // Frist in Tagen: der nächste Schritt im selben Strang (ohne den Nein-Zweig) ist ab heute bzw. dem Tag der Erledigung fällig.
-            const folge = geschwister.slice(geschwister.findIndex(x => x.id === n.id) + 1).find(x => x.id !== neinZiel);
-            const aktuell = folge ? f.knoten.find(x => x.id === folge.id) : undefined;
-            if (aktuell && aktuell.frist !== undefined && !aktuell.faelligAm && aktuell.status === 'offen') setzeKnoten({ ...aktuell, faelligAm: tagPlus(neu.erledigtAm ?? k.heute, aktuell.frist) });
+          // Entfällt eine Entscheidung, entfällt ihr offener Nein-Zweig mit (sonst wartete er für immer).
+          if (neu.status === 'entfaellt' && n.status !== 'entfaellt' && n.form === 'entscheidung' && n.zweige?.nein) {
+            const r = f.knoten.find(x => x.id === n.zweige!.nein);
+            if (r && r.status !== 'erledigt' && r.status !== 'entfaellt') { const { erledigtAm: _a, erledigtVon: _b, ...rr } = r; setzeKnoten({ ...rr, status: 'entfaellt', seit: am, grund: 'Entscheidung entfällt' }); }
           }
+          if (neu.status === 'erledigt' && n.status !== 'erledigt') {
+            // Ausführung (17.10. abends; vorher hier: Entscheidung erledigt = „ja“ → Nein-Zweig entfällt, Frist des nächsten Schritts): EINE Stelle
+            // (lib/fulfillment/prozesse/ausfuehrung.ts `nachErledigung`) — Ja-/Nein-Zweig, Übersprungenes, die Schleife Erinnerung → wieder fragen, Fälligkeit.
+            listeUebernehmen(nachErledigung(f.knoten, n.id, neu.erledigtAm ?? k.heute, k.person));
+            // Takt ab einem Ereignis (Prüf-Fund 11.10., Messe-Nachfasstakt Tag 1/3/7/14/30): wird ein Knoten erledigt, bekommen die offenen
+            // Einzelschritte des NÄCHSTEN Geschwisters mit `dauerTage` und ohne Fälligkeit `faelligAm` = Tag der Erledigung + dauerTage
+            // („Während der Messe“ erledigt → „Nach der Messe“: Nachfassen am Tag 1, 3, 7, 14, 30). Gesetzte Fälligkeiten bleiben.
+            // (Nicht, wenn die Erledigung eine Runde der Schleife war — dann ist der Knoten wieder offen.)
+            if (f.knoten.find(x => x.id === n.id)?.status === 'erledigt') {
+              const geschwister = kinderVon(n.elternId, f.knoten);
+              const naechstes = geschwister[geschwister.findIndex(x => x.id === n.id) + 1];
+              if (naechstes) for (const s of kinderVon(naechstes.id, f.knoten)) {
+                if (s.dauerTage && !s.faelligAm && s.status === 'offen') setzeKnoten({ ...s, faelligAm: tagPlus(neu.erledigtAm ?? k.heute, s.dauerTage) });
+              }
+            }
+          }
+          break;
+        }
+        case 'antwort': {
+          // Ausführung (17.10. abends): Entscheidung „ja“ / „nein“ — EIN Klick. „nein“ startet ihren Nein-Zweig (die Erinnerung, fällig nach ihrer Frist).
+          const n = knoten(o.id);
+          standPruefen(o.stand, k.standVon(n), n.id);
+          const antwort = optWahl(o.antwort, ['ja', 'nein'] as const, 'Antwort') ?? nein('Antwort: ja oder nein.');
+          const am = nachtrag(o.am, 'Am') ?? k.heute;
+          const r = antwortAnwenden(f.knoten, n.id, antwort, am, k.person);
+          if ('fehler' in r) nein(r.fehler, r.status);
+          else listeUebernehmen(r.knoten);
           break;
         }
         case 'knoten-extra': {

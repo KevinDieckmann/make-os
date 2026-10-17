@@ -7,7 +7,7 @@
 import type { DossierKurz, Fall, Freigabepunkt, KundeKurz } from '../typen';
 import { tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
 import type { OnboardingStand } from './onboarding';
-import { fallReise, fallStelle, reiseKurz, type ReiseKurzPhase } from './reise';
+import { fallReise, fallStelle, reiseKurz, type ReiseKurzPhase, type WartetAuf } from './reise';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type Ampel, type KundenLageArt } from './darstellung';
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
@@ -27,6 +27,11 @@ export interface CockpitZeile {
   mandatId: string; kunde: string; titel: string; paket?: string; status: Fall['status'];
   /** Phase und „Als Nächstes“ aus `fallStelle` (lib/fulfillment/prozesse/reise.ts) — dieselbe Rechnung wie Fall-Kopf, Landkarte, Kunden-Seite. */
   phase?: string; phaseNr?: number; phasenAnzahl?: number; schritt?: string; fortschritt: number;
+  /**
+   * Live-Lage des nächsten Punkts (17.10. abends, Ausführung): worauf gewartet wird, bis wann, ob er überfällig ist — aus DEMSELBEN `naechsterPunkt`
+   * (Fall-Kopf, Reise „hier“, Landkarte). Fehlt ohne nächsten Punkt.
+   */
+  schrittLage?: { wartetAuf: WartetAuf; faelligAm?: string; ueberfaellig: boolean };
   wartet: number; wartetAeltesterTage?: number;
   health: 'gruen' | 'gelb' | 'rot' | null;
   report: { faellig: boolean; letzter?: string };
@@ -71,6 +76,11 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
     e.onboarding.willkommen.faellig ? tagVon(e.onboarding.willkommen.faellig) : undefined);
   const nummern = abstimmungsNummern(f.knoten);
   for (const k of f.knoten) {
+    // Ausführung (17.10. abends): eine Entscheidung, deren Runden ausgeschöpft sind, hängt rot — bis jemand entscheidet (ja, entfällt oder pausieren).
+    if (k.eskaliertAm && k.status !== 'erledigt' && k.status !== 'entfaellt') {
+      h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ eskaliert — alle Erinnerungen ohne Antwort`, 'rot', WEG.fall(f.mandatId, 'reise', `schritt-${k.id}`), k.eskaliertAm);
+      continue;
+    }
     if (k.status === 'erledigt' || k.status === 'entfaellt' || !k.faelligAm || k.faelligAm >= heute) continue;
     if (k.freigabe && !f.freigaben[k.freigabe]) h('freigabe', `${abstimmungName(k.freigabe, nummern)} „${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'rot', WEG.fall(f.mandatId, 'reise', `freigabe-${k.freigabe}`), k.faelligAm);
     else if (!k.id.startsWith('fk-ob-willkommen')) h('faellig', `„${anzeigeTitel(k.titel, nummern)}“ überfällig`, 'gelb', WEG.fall(f.mandatId), k.faelligAm);
@@ -105,6 +115,7 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
   return {
     mandatId: e.fall.mandatId, kunde: e.kunde, titel: e.titel, ...(e.paket ? { paket: e.paket } : {}), status: e.fall.status,
     ...(st.phase ? { phase: st.phase.titel, phaseNr: st.phase.nr, phasenAnzahl: st.phase.von } : {}), ...(st.naechster ? { schritt: st.naechster.titel } : {}), fortschritt: st.fortschritt,
+    ...(st.naechster ? { schrittLage: { wartetAuf: st.naechster.wartetAuf, ...(st.naechster.faelligAm ? { faelligAm: st.naechster.faelligAm } : {}), ueberfaellig: st.naechster.ueberfaellig } } : {}),
     wartet: w.length, ...(w[0]?.tage !== undefined ? { wartetAeltesterTage: w[0].tage } : {}),
     health: e.health, report: e.report,
     ...(p ? { puls: p } : {}), pulsKritisch: !!p && pulsStufe(p.wert, e.pulsSchwelle) === 'kritisch', pulsOffen: !!e.kunde2?.pulsOffen, link: e.kunde2?.link ?? 'aus',

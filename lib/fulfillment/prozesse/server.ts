@@ -25,6 +25,7 @@ import { kundenAmpel, type Ampel } from './darstellung';
 import { nachsorgeFaellig, markeNachsorge, NACHSORGE_TEXT, type NachsorgeArt } from './wirkung';
 import { vorlageFuerProdukt } from './vorlagen-anwenden';
 import { fnv } from './pruefen';
+import { ABLAUF_WERKZEUG_NACHRICHT, aktiveKnoten } from './ausfuehrung';
 
 /** Der Fall eines Mandats, wie er wirkt (Onboarding-Schritte abgeleitet) — null, wenn es keinen gibt. Nur lesend. */
 export async function fallLesen(mandatId: string): Promise<Fall | null> {
@@ -51,7 +52,8 @@ export async function faelleKurz(mandatIds?: readonly string[]): Promise<Record<
     const wa = wartetAufEuch(w, heute);
     raus[f.mandatId] = {
       mandatId: f.mandatId, status: w.status, ...(stelle.phase ? { phase: stelle.phase.titel } : {}), fortschritt: stelle.fortschritt,
-      ...(stelle.naechster ? { naechster: stelle.naechster.titel } : {}), wartet: wa.length, ...(wa[0]?.tage !== undefined ? { wartetAeltesterTage: wa[0].tage } : {}),
+      ...(stelle.naechster ? { naechster: stelle.naechster.titel, naechsterLage: { wartetAuf: stelle.naechster.wartetAuf, ...(stelle.naechster.faelligAm ? { faelligAm: stelle.naechster.faelligAm } : {}), ueberfaellig: stelle.naechster.ueberfaellig } } : {}),
+      wartet: wa.length, ...(wa[0]?.tage !== undefined ? { wartetAeltesterTage: wa[0].tage } : {}),
       onboardingOffen: st.offen, onboardingErfuellt: onboardingZaehlung(st.schritte).erledigt, willkommenUeberfaellig: st.willkommen.ueberfaellig,
     };
   }
@@ -170,7 +172,7 @@ export async function ffKennzahlenFuerIndex(heute = localDay()): Promise<FfIndex
 // ── Morgenlauf: Onboarding-Vorschläge und Nachsorge (3.1, 5.3) ─────────────────────────────────────────────────────────────────────
 
 export const markeOnboardingVorschlag = (mandatId: string) => `onboarding-vorschlag:${mandatId}`;
-export const WERKZEUG = { onboarding: 'fulfillment_onboarding', nachsorge: 'fulfillment_nachsorge' } as const;
+export const WERKZEUG = { onboarding: 'fulfillment_onboarding', nachsorge: 'fulfillment_nachsorge', nachricht: ABLAUF_WERKZEUG_NACHRICHT } as const;
 
 /** Für wen ein Vorschlag ist: die zuständige Person des Mandats, wenn sie im Haushalt ist — sonst ohne Person (der Haushalt sieht ihn). */
 async function zustaendigePerson(m: Pick<Mandat, 'zustaendig'>): Promise<string | undefined> {
@@ -186,6 +188,14 @@ async function empfaenger(m: Pick<Mandat, 'zustaendig'>): Promise<string[]> {
 }
 
 export async function prozesseMorgenlauf(h: string, heute: string): Promise<MorgenlaufTeil> {
+  // Ausführung der Abläufe (17.10. abends) zuerst — Erinnerungen nach ihrer Frist, Glocken bei offenen Entscheidungen, Aufgaben der Schritte. Idempotent
+  // (Marken im Fall), wirft nie; ohne Fall mit Ablauf passiert nichts. Danach Onboarding-Vorschläge und Nachsorge wie bisher.
+  const ablauf = await (await import('./ausfuehrung-server')).ablaufMorgenlauf(heute);
+  const plus = (t: MorgenlaufTeil): MorgenlaufTeil => ({ vorschlaege: t.vorschlaege + ablauf.nachrichten, ...(ablauf.aufgaben || ablauf.glocken ? { info: `Ablauf: ${ablauf.aufgaben} Aufgaben, ${ablauf.glocken} Glocken` } : {}) });
+  return plus(await prozesseMorgenlaufRest(h, heute));
+}
+
+async function prozesseMorgenlaufRest(h: string, heute: string): Promise<MorgenlaufTeil> {
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const [crm, vorlagen, faelle] = await Promise.all([ladeCrm(), fulfillmentLesen('vorlagen', h), fulfillmentLesen('faelle', h)]);
   // Prüf-Fund 11.10.: der ERSTE Lauf nach der Einrichtung merkt sich nur den Tag (Stichtag für „Bestand“) und legt nichts an — sonst bekäme jedes
@@ -318,6 +328,19 @@ export const PROZESSE_STAPEL: StapelArtFreigabe = {
     try {
       const mandatId = String(v.eingabe.mandatId ?? '');
       let text = '';
+      if (v.werkzeug === WERKZEUG.nachricht) {
+        // Ausführung (17.10. abends): „freigeben“ heißt „Entwurf geprüft“ — gesendet wird NIE hier, nur im Fall per Klick (Senden über /api/inbox/senden).
+        const f = await fallLesen(mandatId); // wie er wirkt (Onboarding abgeleitet) — sonst stünde die Ausführung noch im Onboarding
+        const knotenId = String(v.eingabe.knotenId ?? '');
+        const runde = Number(v.eingabe.runde) || 0;
+        const laeuft = !!f && aktiveKnoten(f).some(x => x.knoten.id === knotenId && (x.art === 'nachricht' ? runde === 0 : x.runde === runde));
+        const { WEG } = await import('@/lib/wege');
+        text = laeuft
+          ? `Entwurf geprüft — im Fall öffnen und mit „Senden“ verschicken (${WEG.fall(mandatId, 'reise', `schritt-${knotenId}`)}). Gesendet wird nur dort per Klick.`
+          : 'Der Schritt ist im Fall schon erledigt bzw. entfällt — nichts mehr zu tun.';
+        await entscheide(v.id, 'freigegeben', { ergebnis: text, von: person, ausArbeit: true });
+        return { ok: true, text };
+      }
       if (v.werkzeug === WERKZEUG.onboarding) {
         const faelle = await fulfillmentLesen('faelle');
         if (faelle.faelle[mandatId]) text = 'Für dieses Mandat läuft schon ein Fall — nichts doppelt angelegt.';

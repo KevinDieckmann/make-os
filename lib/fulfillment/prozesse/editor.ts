@@ -172,6 +172,9 @@ function schrittFelder(o: Record<string, unknown>): Record<string, unknown> {
   if (f !== undefined) { if (f !== null && !Number.isInteger(f)) nein(`Frist: ganze Tage von 0 bis ${FRIST_MAX}.`); t.frist = f; }
   const z = optWahl(o.zustaendig, ZUST, 'Verantwortung'); if (z !== undefined) t.zustaendig = z;
   const ks = optBool(o.kundeSichtbar, 'Für den Kunden sichtbar'); if (ks !== undefined) t.kundeSichtbar = ks;
+  // Ausführung (17.10. abends): an einer Erinnerung auf dem Nein-Pfad höchstens so viele Runden (fehlt = 5).
+  const v = optZahl(o.versuche, 1, 20, 'Versuche');
+  if (v !== undefined) { if (v !== null && !Number.isInteger(v)) nein('Versuche: ganze Zahl von 1 bis 20.'); t.versuche = v; }
   return t;
 }
 const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnoten => {
@@ -183,8 +186,8 @@ const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnote
 /**
  * Die Änderungen des Editors an EINER Paket-Vorlage — alles oder nichts. Ops (je `{ op, … }`):
  *   titel { titel } · phase-neu { id, titel, nach?: Phase|null } · phase { id, titel?, kundeSichtbar? } · phase-schieben { id, nach: Phase|null }
- *   abstimmung { phaseId, an, titel?, wer? } · schritt-neu { id, ziel, form, titel, frist?, zustaendig?, kundeSichtbar? }
- *   schritt { id, titel?, form?, frist?, zustaendig?, kundeSichtbar? } · schritt-schieben { id, ziel } · zweig { id, ja?: id|null, nein?: id|null }
+ *   abstimmung { phaseId, an, titel?, wer? } · schritt-neu { id, ziel, form, titel, frist?, zustaendig?, kundeSichtbar?, versuche? }
+ *   schritt { id, titel?, form?, frist?, zustaendig?, kundeSichtbar?, versuche? } · schritt-schieben { id, ziel } · zweig { id, ja?: id|null, nein?: id|null }
  *   nein-erinnerung { id, entscheidungId, titel? } · baustein-dazu { id, schrittId, bausteinId, titel? } · gruppe { id, titel }
  *   weg { id, still? } · zurueck { id } · papierkorb-leeren { id? }
  */

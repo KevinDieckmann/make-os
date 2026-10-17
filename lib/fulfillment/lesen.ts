@@ -55,6 +55,10 @@ const zweige = (v: unknown): Zweige | undefined => {
   const ja = id(o.ja), nein = id(o.nein);
   return ja || nein ? sauber<Zweige>({ ja, nein }) : undefined;
 };
+/** Höchstzahl der Runden an einer Erinnerung (Ausführung, 17.10. abends): ganze Zahl 1 … 20. */
+const versuche = (v: unknown): number | undefined => { const x = n(v); return x !== undefined && Number.isInteger(x) && x >= 1 && x <= 20 ? x : undefined; };
+/** Gezählte Runden einer Entscheidung bzw. Erinnerung: ganze Zahl 1 … 1000 (0 fehlt). */
+const runden = (v: unknown): number | undefined => { const x = n(v); return x !== undefined && Number.isInteger(x) && x >= 1 && x <= 1000 ? x : undefined; };
 const LAUF_STATUS = ['bereit', 'laeuft', 'fertig', 'fehler', 'abgebrochen', 'uebernommen', 'verworfen'] as const satisfies readonly LaufStatus[];
 
 // ── Vorlagen-Bestand `fulfillment--<h>` ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -82,7 +86,7 @@ const knoten = (o: O): ProzessKnoten | null => {
     heute: s(o.heute), werkzeuge: werkzeuge.length ? werkzeuge : undefined, dokumentation: s(o.dokumentation),
     art: wahl(o.art, ['einstieg', 'stufe', 'ausstieg', 'routine'] as const), optional: b(o.optional), ausgang: s(o.ausgang), original: s(o.original),
     beleg: wahl(o.beleg, ['quelle', 'ergaenzung'] as const),
-    form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige),
+    form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige), versuche: versuche(o.versuche),
   });
 };
 /** Der gemerkte Platz eines gelöschten Schritts (genau eine Angabe, sonst keiner). */
@@ -220,7 +224,9 @@ const fallKnoten = (o: O): FallKnoten | null => {
     id: i, elternId: id(o.elternId), titel, rang: n(o.rang) ?? 0, ziel: s(o.ziel), ergebnis: s(o.ergebnis), kennzahl: s(o.kennzahl),
     zustaendig: wahl(o.zustaendig, ZUSTAENDIG), freigabe: id(o.freigabe), kundeSichtbar: b(o.kundeSichtbar), phaseId: s(o.phaseId), bausteinId: id(o.bausteinId), dauerTage: n(o.dauerTage),
     status, seit: s(o.seit), faelligAm: s(o.faelligAm), erledigtAm: s(o.erledigtAm), erledigtVon: s(o.erledigtVon), grund: s(o.grund), extra: o.extra === true ? true : undefined,
-    form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige),
+    form: wahl(o.form, KNOTEN_FORMEN), frist: frist(o.frist), zweige: zweige(o.zweige), versuche: versuche(o.versuche),
+    // Ausführung (17.10. abends) — Antwort, Runden, Eskalation (ohne Feld wie bisher).
+    antwort: wahl(o.antwort, ['ja', 'nein'] as const), antwortAm: s(o.antwortAm), runden: runden(o.runden), eskaliertAm: s(o.eskaliertAm),
   });
 };
 const vereinbarung = (v: unknown): Vereinbarung | undefined => {

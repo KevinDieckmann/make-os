@@ -123,6 +123,25 @@ export function aktuellerKnoten(fall: Pick<Fall, 'knoten'>): { phase: FallKnoten
   return { phase, schritt: offen(4) ?? offen(3) };
 }
 
+// ── Ausführung: der Nein-Zweig einer Entscheidung (17.10. abends; lib/fulfillment/prozesse/ausfuehrung.ts) ─────────────────────────────
+
+type ZweigKnoten = Pick<FallKnoten, 'id' | 'status' | 'form' | 'zweige' | 'antwort' | 'runden'>;
+/**
+ * Der Nein-Zweig einer Entscheidung, wenn er GERADE läuft — die Antwort war „nein“ und seine Runde ist noch offen (er hat weniger Runden erledigt, als
+ * „nein“ kam). Sonst null. EINE Regel für „hier“ (`naechsterPunkt`), die Ausführung und die Reise.
+ */
+export function aktiverNeinZweig<T extends ZweigKnoten>(liste: readonly T[], e: ZweigKnoten): T | null {
+  if (e.form !== 'entscheidung' || e.antwort !== 'nein' || !e.zweige?.nein || FERTIG.has(e.status)) return null;
+  const r = liste.find(x => x.id === e.zweige!.nein);
+  if (!r || FERTIG.has(r.status) || (r.runden ?? 0) >= (e.runden ?? 0)) return null;
+  return r;
+}
+/** Ist dieser Knoten der Nein-Zweig einer Entscheidung, der gerade NICHT läuft (er wartet auf ein „nein“)? Dann ist er nie „als Nächstes“. */
+export function wartenderNeinZweig(liste: readonly ZweigKnoten[], id: string): boolean {
+  const e = liste.find(x => x.form === 'entscheidung' && x.zweige?.nein === id);
+  return !!e && aktiverNeinZweig(liste, e)?.id !== id;
+}
+
 /** Tage zwischen zwei Tagen (YYYY-MM-DD bzw. ISO) — `bis` minus `von`, nie negativ; unlesbar → undefined. */
 export function tageZwischen(von: string | undefined, bis: string): number | undefined {
   if (!von) return undefined;
