@@ -10,7 +10,7 @@ import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { CrmBestand, FollowUp, Mandat } from '@/lib/crm/typen';
 import type { DossierKurz, Fall, FallKurz, FristenKontext, KundeKurz, MorgenlaufTeil, StakeholderAuskunft, VorlagenDatei } from '../typen';
-import { fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen } from '../speicher';
+import { eintragStand, fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen } from '../speicher';
 import { mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
@@ -18,7 +18,7 @@ import { tagPlus } from '@/lib/kalender/zeit';
 import { fallUmfeld, ableitungFuer, fallStartenServer, FallFehler } from './fall-server';
 import { fallFreigaben } from './fall';
 import { fallWirksam, onboardingStand, onboardingZaehlung, willkommenUhr } from './onboarding';
-import { cockpitZeile, type CockpitZeile, type HaengerArt } from './cockpit';
+import { cockpitZeile, handgriffKnoten, type CockpitZeile, type HaengerArt } from './cockpit';
 import { ffIndexZeile, type FfIndexDaten } from './kennzahlen';
 import { naechsterFallTermin } from './rituale';
 import { fallStelle } from './reise';
@@ -105,16 +105,17 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
     const z = kz.find(x => x.mandatId === m.id);
     const naechster = termine[m.id];
     const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
-    zeilen.push({
-      ...cockpitZeile({
+    const zeile = cockpitZeile({
         fall: w, kunde: m.kunde, titel: m.titel, paket: v?.titel, ...(v ? { freigaben: fallFreigaben(f, vorlagen.prozesse) } : {}),
         onboarding: onboardingStand(f, abl), ...(kunde[m.id] ? { kunde2: kunde[m.id] } : {}), ...(dossiers[m.id] ? { dossier: dossiers[m.id] } : {}),
         health: z?.ampel.gesamt ?? null, report: { faellig: z?.report.faellig ?? false, ...(z?.report.gesendetAm || z?.report.letzter ? { letzter: z?.report.gesendetAm ?? z?.report.letzter } : {}) },
         ...(naechster ? { naechsterRitual: naechster } : {}), pulsSchwelle: vorlagen.einstellungen.pulsSchwelle, heute, gesperrt,
         mitMail: k => !!mailBausteinVon(k, w.knoten, vorlagen),
-      }),
-      gesellschaft: m.gesellschaft,
-    });
+      });
+    // Stand der gespeicherten Knoten, die die Handgriffe ändern (Schreibwege B3) — derselbe Stand, den der Schreibweg des Falls prüft.
+    const ids = new Set(handgriffKnoten(zeile));
+    const knotenStand = Object.fromEntries(f.knoten.filter(k => ids.has(k.id)).map(k => [k.id, { stand: eintragStand(k), status: k.status }]));
+    zeilen.push({ ...zeile, ...(Object.keys(knotenStand).length ? { knotenStand } : {}), gesellschaft: m.gesellschaft });
   }
   return { zeilen, vorlagen };
 }

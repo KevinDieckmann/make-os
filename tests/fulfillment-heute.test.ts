@@ -307,3 +307,14 @@ describe('Fall-Kopf ohne Cockpit-Zeile (17.10., Gesamtprüfung L2 A2)', () => {
     expect(ampelSatz(null, 'laeuft').text).toBe('Lädt …');
   });
 });
+
+describe('Heute-Liste schreibt mit Stand (17.10., Gesamtprüfung Schreibwege B3)', () => {
+  it('die Knoten der Handgriffe sind bekannt — der Server legt ihren Stand an die Zeile, die Liste schickt ihn mit', async () => {
+    const { handgriffKnoten } = await import('@/lib/fulfillment/prozesse/cockpit');
+    expect(handgriffKnoten(zeilen[2]).sort()).toEqual(['s1', 's1-b']);
+    expect(handgriffKnoten(zeilen[0])).toEqual(['e']);
+    const quelle = readFileSync(path.join(process.cwd(), 'components/os/fulfillment/reise/HeuteListe.tsx'), 'utf8');
+    expect(quelle).toMatch(/mitStand\(e, liste0\)/);
+    expect(quelle).not.toMatch(/status: 'offen' \}\)\)\)\} \/>/);
+  });
+});

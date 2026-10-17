@@ -60,6 +60,23 @@ export interface CockpitZeile {
    * Ausführung das Modul parallel abarbeitet). Fehlt ohne Zusatzmodul bzw. wenn das Modul fertig ist.
    */
   zusaetze?: { vorlageId: string; titel: string; phase?: string; schritt: string; schrittLage: { wartetAuf: WartetAuf; faelligAm?: string; ueberfaellig: boolean }; naechster: NaechsterHandgriffZeile }[];
+  /**
+   * Stand und Status der Knoten, die die Handgriffe der Zeile ändern (17.10., Gesamtprüfung Schreibwege B3) — NUR der Server setzt ihn (`cockpitDaten`); die
+   * Heute-Liste schickt den Stand mit (veraltet → 409 statt still überschreiben) und nimmt für „Rückgängig“ den alten Status.
+   */
+  knotenStand?: Record<string, { stand: string; status: FallKnoten['status'] }>;
+}
+
+/** Die Knoten, die die Handgriffe einer Zeile ändern (abhaken: Schritt + Bausteine, ja/nein: die Entscheidung). */
+export function handgriffKnoten(z: Pick<CockpitZeile, 'naechster' | 'zusaetze'>): string[] {
+  const ids = new Set<string>();
+  for (const n of [z.naechster, ...(z.zusaetze ?? []).map(x => x.naechster)]) {
+    const a = n?.aktion;
+    if (!a) continue;
+    if (a.art === 'abhaken') for (const id of a.ids) ids.add(id);
+    else if (a.art === 'ja-nein' || a.art === 'entwurf') ids.add(a.knotenId);
+  }
+  return [...ids];
 }
 export interface CockpitEingabe {
   fall: Fall; kunde: string; titel: string; paket?: string;

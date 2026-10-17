@@ -62,7 +62,13 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
     setStart({ mandatId: a.j.mandatId, kunde: e.kunde, ...(leistungId ? { leistungId } : {}) });
   };
 
-  const ops = async (e: HeuteEintrag, liste: Record<string, unknown>[], erfolg: string, zurueck?: Record<string, unknown>[]) => {
+  // Stand und Status der Knoten aus der Cockpit-Zeile (17.10., Schreibwege B3): jeder Haken bzw. jedes Ja/Nein schickt den Stand mit — aus einer veralteten Liste
+  // kommt 409 statt still überschrieben; „Rückgängig“ stellt den alten Status wieder her (nicht pauschal „offen“).
+  const knotenStand = (mandatId: string) => d.zeilen.find(x => x.mandatId === mandatId)?.knotenStand ?? {};
+  const mitStand = (e: HeuteEintrag, liste: Record<string, unknown>[]) => liste.map(o => { const st = knotenStand(e.mandatId)[String(o.id)]?.stand; return st ? { ...o, stand: st } : o; });
+  const alterStatus = (e: HeuteEintrag, id: string) => knotenStand(e.mandatId)[id]?.status ?? 'offen';
+  const ops = async (e: HeuteEintrag, liste0: Record<string, unknown>[], erfolg: string, zurueck?: Record<string, unknown>[]) => {
+    const liste = mitStand(e, liste0);
     const a = await fallOps(e.mandatId, liste);
     if (!a.ok) { setMeldung({ text: fehlerText(a), art: 'kritisch' }); return; }
     setMeldung({ text: erfolg, art: 'gut', ...(zurueck ? { zurueck: async () => { const b = await fallOps(e.mandatId, zurueck); setMeldung(b.ok ? { text: 'Zurückgenommen.', art: 'info' } : { text: fehlerText(b), art: 'kritisch' }); } } : {}) });
@@ -88,7 +94,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
       case 'entwurf': return <Knopf haupt={haupt} leise={!haupt} onClick={() => entwurfOeffnen(e, a.knotenId)}>Entwurf öffnen</Knopf>;
       case 'abhaken': return (
         <HakenZiel an={false} farbe={e.dringend ? LEUCHT.kritisch : e.ueberfaellig ? LEUCHT.achtung : undefined} label={e.titel}
-          onChange={() => void ops(e, a.ids.map(id => ({ op: 'knoten-status', id, status: 'erledigt' })), a.kunde ? `„${e.titel}“ ist da.` : `„${e.titel}“ erledigt.`, a.ids.map(id => ({ op: 'knoten-status', id, status: 'offen' })))} />
+          onChange={() => void ops(e, a.ids.map(id => ({ op: 'knoten-status', id, status: 'erledigt' })), a.kunde ? `„${e.titel}“ ist da.` : `„${e.titel}“ erledigt.`, a.ids.map(id => ({ op: 'knoten-status', id, status: alterStatus(e, id) })))} />
       );
       case 'starten': return <Knopf haupt={haupt} leise={!haupt} onClick={() => setStart({ mandatId: e.mandatId })}>Fall starten</Knopf>;
       case 'mandat-starten': return <Knopf haupt={haupt} leise={!haupt} onClick={() => mandatUndStart(e, a.chanceId, a.leistungId)}>Mandat anlegen & Fall starten</Knopf>;
