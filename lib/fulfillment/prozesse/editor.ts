@@ -52,7 +52,7 @@ export const VERSUCHE_MAX = 20;
 /** Name der Formen (Palette, Seitenfeld, Vorleser). */
 export const FORM_TITEL: Readonly<Record<KnotenForm, string>> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin', abstimmung: 'Bestätigung' };
 /** Vorgabe-Titel eines neuen Knotens je Form (kurz, ohne Inhalte — der Mensch benennt ihn um). */
-export const FORM_VORGABE: Readonly<Record<KnotenForm, string>> = { schritt: 'Neuer Schritt', nachricht: 'Nachricht senden', entscheidung: 'Passt es?', erinnerung: 'Erinnern', termin: 'Termin', abstimmung: 'Bestätigen' };
+export const FORM_VORGABE: Readonly<Record<KnotenForm, string>> = { schritt: 'Neuer Schritt', nachricht: 'Nachricht senden', entscheidung: 'Passt es?', erinnerung: 'Erinnerung', termin: 'Termin', abstimmung: 'Bestätigen' };
 const ZUST = ['intern', 'kunde', 'beide'] as const;
 
 // ── Modell: was der Editor zeigt ─────────────────────────────────────────────────────────────────────────────────────────────────────────
