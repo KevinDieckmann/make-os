@@ -37,7 +37,11 @@ import { leererStand, standName, vorschlaegeMischen, vorschlaegeFuerDaten, EINST
 import { neueKennung } from '@/lib/kennung';
 import { zieleFuerHead } from '@/lib/planung/jahresziele-sicht';
 
-export interface LaufAuftrag { modus: Modus; haushalt: string | null; person?: string; frage?: string; monat?: string; ausgeloest: Bericht['ausgeloest'] }
+export interface LaufAuftrag {
+  modus: Modus; haushalt: string | null; person?: string; frage?: string; monat?: string; ausgeloest: Bericht['ausgeloest'];
+  /** Business-Lauf (ohne Haushalt) aus dem Haushalt des Inhabers — mit den Hinweisen des Business-Index (18.10., A1), siehe `ladeFinanzbild`. */
+  businessIndex?: boolean;
+}
 export interface LaufErgebnis { ok: boolean; fehler?: string; bericht?: Bericht; ohneKi?: boolean; ruhigText?: string; neu?: number; aktualisiert?: number }
 
 export async function ladeEinstellung(): Promise<ChefEinstellung> {
@@ -45,8 +49,12 @@ export async function ladeEinstellung(): Promise<ChefEinstellung> {
   return { ...STANDARD_CHEF_EINSTELLUNG, ...(e ?? {}), steuer: { ...STANDARD_CHEF_EINSTELLUNG.steuer, ...(e?.steuer ?? {}) }, rechtsform: { ...STANDARD_CHEF_EINSTELLUNG.rechtsform, ...(e?.rechtsform ?? {}) } };
 }
 
-/** Alle Quellen laden und das Finanzbild bauen. Haushalt nur, wenn übergeben. */
-export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerlin()): Promise<{ bild: Finanzbild; einstellung: ChefEinstellung; business: Record<string, unknown> | null }> {
+/**
+ * Alle Quellen laden und das Finanzbild bauen. Haushalt nur, wenn übergeben. `opt.businessIndex`: die Business-Sicht (ohne Haushalt) bekommt
+ * die Hinweise des Business-Index (18.10., A1 — vorher kamen sie nur mit dem Haushalt). Nur setzen, wenn die Anfrage schon im Haushalt des
+ * Inhabers geprüft ist (wie `/api/business`); der Index selbst kennt kein Privat (`ladeRoh`).
+ */
+export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerlin(), opt: { businessIndex?: boolean } = {}): Promise<{ bild: Finanzbild; einstellung: ChefEinstellung; business: Record<string, unknown> | null }> {
   const [finance, plan, liqui, grund, einstellung] = await Promise.all([
     loadJson<FinanceState>('finance'),
     loadJson<FinanzplanStand>('finanzplan'),
@@ -72,7 +80,8 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
   });
   // Business-Index (25.09.): rote Kennzahlen und ein fehlender Monatsabschluss werden Hinweise.
   // Nur für den Haushalt des Inhabers (wie das Cockpit) — ein anderes Konto sieht den Index nicht.
-  const bi = haushalt && haushalt === await haushaltDesInhabers() ? await businessFuerChef(heute).catch(() => null) : null;
+  const mitIndex = haushalt ? haushalt === await haushaltDesInhabers() : !!opt.businessIndex;
+  const bi = mitIndex ? await businessFuerChef(heute).catch(() => null) : null;
   if (bi?.hinweise.length) {
     const rang = { hoch: 0, mittel: 1, niedrig: 2 } as const;
     bild.hinweise.push(...bi.hinweise);
@@ -211,7 +220,7 @@ export async function chefLauf(a: LaufAuftrag): Promise<LaufErgebnis> {
   }
   await updateJson<ChefStand>(name, s => ({ ...leererStand(), ...(s ?? {}), versuche: { ...(s?.versuche ?? {}), [a.modus]: jetzt } }));
   const stand = { ...leererStand(), ...((await loadJson<ChefStand>(name)) ?? {}) };
-  const { bild, einstellung, business } = await ladeFinanzbild(a.haushalt);
+  const { bild, einstellung, business } = await ladeFinanzbild(a.haushalt, heuteBerlin(), { businessIndex: !a.haushalt && !!a.businessIndex });
 
   // Tagescheck: ohne dringende Punkte oder ohne Neues kein Modellaufruf.
   if (a.modus === 'tagescheck' && a.ausgeloest === 'takt') {

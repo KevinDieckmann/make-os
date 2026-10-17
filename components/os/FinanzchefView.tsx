@@ -64,6 +64,8 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
   const [berichtAuf, setBerichtAuf] = useState(false);
 
   // Sicht Business (15.10., Abnahme 2 C13): Ist-Stand und Lage nur Business — der Server filtert (`?space=business`).
+  // Seit 18.10. (A1) schicken auch Lauf, Vorschlag und Einstellung `umfang: 'business'`: der Server rechnet dann ohne Haushalt.
+  const umfang = bereich === 'business' ? { umfang: 'business' as const } : {};
   const laden = useCallback(() => {
     fetch(`/api/finanzchef${bereich === 'business' ? '?space=business' : ''}`).then(r => r.json()).then((d: Stand) => { if (d.ok) setS(d); else setFehler('Nicht ladbar.'); }).catch(() => setFehler('Nicht ladbar — läuft MAKE OS?'));
   }, [bereich]);
@@ -75,7 +77,7 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
     setLaeuft(m === 'frage' ? 'Der Head of Finance denkt über deine Frage nach …' : `${MODI.find(x => x.id === m)?.label} läuft — der Head of Finance rechnet und lässt sich prüfen (bis zu zwei Minuten) …`);
     setFehler(null);
     try {
-      const r = await fetch('/api/finanzchef', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'lauf', modus: m, ...(f ? { frage: f } : {}) }) });
+      const r = await fetch('/api/finanzchef', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'lauf', modus: m, ...umfang, ...(f ? { frage: f } : {}) }) });
       const d = await r.json();
       if (!d.ok) setFehler(d.fehler ?? 'Lauf fehlgeschlagen.');
       else { setGewaehlt(d.bericht?.id ?? null); if (m === 'frage') setFrage(''); }
@@ -86,7 +88,7 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
 
   async function entscheide(v: ChefVorschlag, status: ChefVorschlag['status']) {
     const grund = status === 'abgelehnt' ? window.prompt('Warum nicht? (hilft dem Head of Finance beim nächsten Mal)') ?? undefined : undefined;
-    await fetch('/api/finanzchef', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'vorschlag', id: v.id, status, ...(grund ? { grund } : {}) }) });
+    await fetch('/api/finanzchef', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'vorschlag', id: v.id, status, ...umfang, ...(grund ? { grund } : {}) }) });
     laden();
   }
 
@@ -263,7 +265,7 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
           </Karte>
           </Kachel>
 
-          <Kachel id="einstellung" titel="Steuer-Annahmen" breite={2}><Einstellung e={s.einstellung} onGespeichert={laden} /></Kachel>
+          <Kachel id="einstellung" titel="Steuer-Annahmen" breite={2}><Einstellung e={s.einstellung} onGespeichert={laden} business={s.umfang === 'business'} /></Kachel>
       </Flaeche>
     </>
   );
@@ -304,13 +306,15 @@ function IstStand({ liste }: { liste: Schritt[] }) {
   );
 }
 
-function Einstellung({ e, onGespeichert }: { e: ChefEinstellung; onGespeichert: () => void }) {
+const RECHTSFORM_ORTE = ['kdv', 'kdc'] as const;
+
+function Einstellung({ e, onGespeichert, business }: { e: ChefEinstellung; onGespeichert: () => void; business: boolean }) {
   const [x, setX] = useState(e);
   const [auf, setAuf] = useState(false);
   const [gespeichert, setGespeichert] = useState(false);
   useEffect(() => { setX(e); }, [e]);
   async function speichern() {
-    await fetch('/api/finanzchef', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'einstellung', einstellung: x }) });
+    await fetch('/api/finanzchef', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'einstellung', einstellung: x, ...(business ? { umfang: 'business' } : {}) }) });
     setGespeichert(true); setTimeout(() => setGespeichert(false), 2000); onGespeichert();
   }
   const schalter = (k: 'dauerfrist' | 'estVorauszahlung' | 'gewstVorauszahlung' | 'kstVorauszahlung', label: string) => (
@@ -323,7 +327,7 @@ function Einstellung({ e, onGespeichert }: { e: ChefEinstellung; onGespeichert: 
       <Ueberschrift rechts={<Knopf leise onClick={() => setAuf(!auf)}>{auf ? 'zu' : 'ändern'}</Knopf>}>Steuer-Annahmen</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
         USt {x.steuer.ust === 'keine' ? 'keine Voranmeldung' : x.steuer.ust === 'monatlich' ? 'monatlich' : 'quartalsweise'}{x.steuer.dauerfrist ? ' mit Dauerfrist' : ''} · {[x.steuer.estVorauszahlung && 'ESt', x.steuer.kstVorauszahlung && 'KSt', x.steuer.gewstVorauszahlung && 'GewSt'].filter(Boolean).join(', ') || 'keine'} Vorauszahlungen
-        {(!x.rechtsform.kdv || !x.rechtsform.kdc) && <div style={{ color: LEUCHT.achtung, marginTop: 4 }}>Rechtsform noch offen — trag sie ein, dann fragt der Head of Finance nicht mehr.</div>}
+        {RECHTSFORM_ORTE.some(g => g in x.rechtsform && !x.rechtsform[g]) && <div style={{ color: LEUCHT.achtung, marginTop: 4 }}>Rechtsform noch offen — trag sie ein, dann fragt der Head of Finance nicht mehr.</div>}
       </div>
       {auf && (
         <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
@@ -333,12 +337,14 @@ function Einstellung({ e, onGespeichert }: { e: ChefEinstellung; onGespeichert: 
             </select>
           </label>
           {schalter('dauerfrist', 'Dauerfristverlängerung')}
-          {schalter('estVorauszahlung', 'Einkommensteuer-Vorauszahlungen')}
+          {/* Sicht Business (18.10., A1): die Einkommensteuer gehört zu Privat — der Server lässt sie aus Business ohnehin unverändert. */}
+          {!business && schalter('estVorauszahlung', 'Einkommensteuer-Vorauszahlungen')}
           {schalter('kstVorauszahlung', 'Körperschaftsteuer-Vorauszahlungen (UG/GmbH)')}
           {schalter('gewstVorauszahlung', 'Gewerbesteuer-Vorauszahlungen')}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform {finanzOrtName('kdv')}<input value={x.rechtsform.kdv ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdv: ev.target.value || null } })} placeholder="z. B. UG (haftungsbeschränkt)" style={{ ...feld, marginTop: 4 }} /></label>
-            <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform {finanzOrtName('kdc')}<input value={x.rechtsform.kdc ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdc: ev.target.value || null } })} placeholder="z. B. Einzelunternehmen, freiberuflich" style={{ ...feld, marginTop: 4 }} /></label>
+            {/* Nur die Rechtsformen, die der Server für diese Sicht liefert (Business: ohne Privat-Einheit, `einstellungFuerBusiness`). */}
+            {'kdv' in x.rechtsform && <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform {finanzOrtName('kdv')}<input value={x.rechtsform.kdv ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdv: ev.target.value || null } })} placeholder="z. B. UG (haftungsbeschränkt)" style={{ ...feld, marginTop: 4 }} /></label>}
+            {'kdc' in x.rechtsform && <label style={{ flex: '1 1 140px', fontSize: TYP.bedien, color: C.inkDim }}>Rechtsform {finanzOrtName('kdc')}<input value={x.rechtsform.kdc ?? ''} onChange={ev => setX({ ...x, rechtsform: { ...x.rechtsform, kdc: ev.target.value || null } })} placeholder="z. B. Einzelunternehmen, freiberuflich" style={{ ...feld, marginTop: 4 }} /></label>}
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <Knopf onClick={speichern} farbe={LEUCHT.geld}>Speichern</Knopf>
