@@ -197,14 +197,14 @@ describe('Papierkorb: löschen, zurückholen, leeren — nichts geht still verlo
     expect(editorModell(vorlage(d)).papierkorb).toMatchObject([{ id: u(1), art: 'schritt', titel: 'Erinnerung', wo: 'Start' }]);
     d = tun(d, { op: 'zurueck', id: u(1) });
     expect(vorlage(d).knoten.find(x => x.id === 'fk-a')!.zweige).toEqual({ nein: u(1) });
-    expect(bild(d)).toBe('Start◆[Kick-off,Erinnern,Fragebogen] Umsetzung[Skripte(Leitfaden,Einwände) | Training]');
+    expect(bild(d)).toBe('Start◆[Kick-off,Erinnerung,Fragebogen] Umsetzung[Skripte(Leitfaden,Einwände) | Training]');
     expect(vorlage(d)).not.toHaveProperty('papierkorb');
     // Ganze Phase samt Abstimmungspunkt.
     d = tun(d, { op: 'weg', id: 'fk-p1' });
     expect(bild(d)).toBe('Umsetzung[Skripte(Leitfaden,Einwände) | Training]');
     expect(vorlage(d).freigaben.map(f => f.id)).toEqual(['F0']);
     d = tun(d, { op: 'zurueck', id: 'fk-p1' });
-    expect(bild(d)).toBe('Start◆[Kick-off,Erinnern,Fragebogen] Umsetzung[Skripte(Leitfaden,Einwände) | Training]');
+    expect(bild(d)).toBe('Start◆[Kick-off,Erinnerung,Fragebogen] Umsetzung[Skripte(Leitfaden,Einwände) | Training]');
   });
   it('ein leer gewordener Sammel fällt weg; Zurückholen setzt den Schritt nach seinem Vorgänger in der Anzeige', () => {
     let d = tun(datei(), { op: 'baustein-dazu', id: u(1), schrittId: 'fk-b', bausteinId: 'fb-mail' });
