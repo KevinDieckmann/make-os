@@ -1,5 +1,5 @@
 // ─── MAKE OS · Reise + Fluss — der Flow (Markenzeichen, 17.10.) — wo der Faden hell ist, wo er sich staut ──────────────────────────────────────
-// Kevin 17.10.: „Denke dir auch immer den Flow, diese Linie, mit — das ist unser Markenzeichen.“ Unter der Reise läuft der Weg des Kunden als Lichtfaden:
+// Rückmeldung 17.10.: „Denke dir auch immer den Flow, diese Linie, mit — das ist unser Markenzeichen.“ Unter der Reise läuft der Weg des Kunden als Lichtfaden:
 // hell und fließend von links bis „Hier“, danach ruhiger und ausgefranst; an einem offenen Abstimmungspunkt (Raute) staut er sich, an einem gegebenen fließt
 // er hindurch; rot bzw. gelb nur dort, wo wirklich etwas hängt. Im Fluss werden die Pfeile zu feinen Fäden: erledigte Abschnitte leuchten, offene sind
 // gedämpft, der Pfeil in den aktuellen Knoten glüht; der Nein-Pfad (zur Erinnerung) im Ton der Erinnerung.

@@ -76,7 +76,7 @@ export function indexStatus(e: Pick<IndexErgebnis, 'index' | 'label' | 'abdeckun
   if (e.index != null) {
     return { titel: e.label, satz: `${pct} % auf echten Daten${luecken}${e.vorlaeufig ? ` · vorläufig bis ${tagKurzDe(e.vorlaeufig.bis)}` : ''}`, vorlaeufig: false };
   }
-  // 17.10. (Kevins Bild aus der Markttraktion): „Noch keine Daten“ stand neben einer gemessenen Kachel (Traktions-Score 37, rot) — die Säule war gemessen,
+  // 17.10. (Bild aus der Markttraktion): „Noch keine Daten“ stand neben einer gemessenen Kachel (Traktions-Score 37, rot) — die Säule war gemessen,
   // aber noch zu dünn, also zählte ihre Abdeckung 0 %. Gemessen ist gemessen: dann „Vorläufig“ mit der Zahl der gemessenen Kennzahlen.
   const kz = e.saeulen?.flatMap(s => s.kennzahlen ?? []) ?? [];
   const gemessen = kz.filter(k => k.gemessen).length;

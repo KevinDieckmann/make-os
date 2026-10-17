@@ -13,7 +13,7 @@
 //   · Rechte: bearbeiten nur volle Mitglieder (die Route prüft; „nur Business“ sieht nur — hier ohne Palette und Ziehen).
 //   · Zwei Ansichten derselben Vorlage (17.10.): „Fluss“ (oben → unten, wie bisher; am Handy die Liste) und „Fläche“ (frei zeichnen wie in Miro, ./Flaeche.tsx;
 //     am Handy nur ansehen). Der Wechsel verliert nichts — beide schreiben über denselben Weg; die Wahl merkt sich der Browser. Seit 17.10. abends
-//     (Kevin) ist am Rechner die Fläche die Vorgabe, am Handy die Liste — eine gemerkte Wahl des Browsers gewinnt (`editorAnsichtVorgabe`).
+//     ist am Rechner die Fläche die Vorgabe, am Handy die Liste — eine gemerkte Wahl des Browsers gewinnt (`editorAnsichtVorgabe`).
 // Rechnet nichts (lib/fulfillment/prozesse/{editor,editor-geschichte}.ts); Änderungen gelten für NEUE Fälle — laufende zeigen „Vorlage geändert — übernehmen?“.
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent } from 'react';

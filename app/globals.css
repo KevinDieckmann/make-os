@@ -1090,6 +1090,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
    Leinwand je Weg (`.ff-flow-ebene`, aria-hidden, keine Zeiger): unter der Reise an der Unterkante des Bandes (das Band sitzt auf dem Faden — seine untere Linie
    entfällt, solange der Faden läuft), im Fluss hinter den Knoten (die ruhige Pfeil-Linie entfällt). `data-flow="an"` setzt die Ebene selbst; im Druck ist sie
    aus und die ruhigen Linien stehen wieder da. Am Handy läuft der Faden links an der senkrechten Reise hinunter. */
+.ff-flow-ebene { position: absolute; inset: 0; display: block; width: 100%; height: 100%; pointer-events: none; }
 .ff-reise-weg { position: relative; padding-bottom: 14px; min-width: 0; }
 .ff-reise-weg > .ff-flow-ebene { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 28px; }
 .ff-fluss { position: relative; isolation: isolate; }
@@ -1114,7 +1115,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ff-fluss-seitenpfeil { transform: rotate(90deg); }
   .ff-fluss-zweig > .ff-fluss-erinnerung { width: min(100%, 300px); box-sizing: border-box; }
   .ff-reise-weg { padding-bottom: 0; padding-left: 16px; }
-  .ff-reise-weg > .ff-flow-ebene { top: 0; right: auto; width: 16px; height: auto; }
+  .ff-reise-weg > .ff-flow-ebene { top: 0; right: auto; width: 16px; height: 100%; }
 }
 
 /* ── Prozess-Editor im Miro-Stil (17.10. — components/os/fulfillment/editor/*) ─────────────────────────────────────────────────────────────────────────

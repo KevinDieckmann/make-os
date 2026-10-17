@@ -1,5 +1,5 @@
 // ─── Markenzeichen: der Flow — EIN Faden-Zeichner für jeden Weg (17.10.2026) ──────────────────────────────────────────────────────────────
-// Kevin 17.10. (Bild aus der Markttraktion, „Verlauf · 20 Tage“ unter dem Traktions-Index): „Denke dir auch immer den Flow, diese Linie, mit — das ist
+// Rückmeldung 17.10. (Bild aus der Markttraktion, „Verlauf · 20 Tage“ unter dem Traktions-Index): „Denke dir auch immer den Flow, diese Linie, mit — das ist
 // unser Markenzeichen nachher bzw. soll es werden.“ — „Das war damit gemeint — dass alles immer nach und nach in den Flow kommt.“
 // Der Flow ist der Lichtfaden aus Strahl v3 im Pfad-Modus: ein dünnes Bündel feiner Fäden entlang EINES beliebigen Weges (Polylinie), hell und fließend
 // bis „Hier“ (erreicht), danach ruhiger, gedämpft und — wo der Weg in die Zukunft geht — ausgefranst. Er fließt immer in Laufrichtung (wachsendes `s`).

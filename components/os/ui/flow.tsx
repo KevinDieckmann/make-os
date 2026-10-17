@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Standard · Markenzeichen: der Flow — `FlowLinie` (17.10.; DESIGN_STANDARD.md › Markenzeichen: der Flow) ──────────────────────────────────
-// Kevin 17.10.: „Denke dir auch immer den Flow, diese Linie, mit — das ist unser Markenzeichen.“ — „Nach und nach kommt alles in den Flow.“
+// Rückmeldung 17.10.: „Denke dir auch immer den Flow, diese Linie, mit — das ist unser Markenzeichen.“ — „Nach und nach kommt alles in den Flow.“
 // Die kleine Schnittstelle, mit der JEDE Ansicht mit Weg, Verlauf, Reihenfolge oder Fortschritt den Lichtfaden einhängt — ein paar Zeilen:
 //   <FlowLinie punkte={[[0, 12], [480, 12]]} bisHier={0.4} ton={JETZT} />          ← ein Weg in Pixeln der Leinwand
 //   <FlowLinie faeden={[…]} />                                                       ← mehrere Fäden
