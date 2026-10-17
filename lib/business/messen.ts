@@ -19,7 +19,7 @@ import { ffMessen, type FfIndexDaten } from '@/lib/fulfillment/prozesse/kennzahl
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
 import { computeMetrics, gesamtFirmen, istWahlGesamt, mitAbschluessen } from '@/lib/make-one/finance-data';
-import { runwayRechnen } from '@/lib/finanzen/runway';
+import { runwayRechnen, runwayAnzeige } from '@/lib/finanzen/runway';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { vorschau, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
 import type { Mandat, Chance } from '@/lib/crm/typen';
@@ -393,7 +393,8 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
     const details = [...kontenDetails(b), ...ist.slice().reverse().map(m => monatDetail(b, m, undefined, m.umsatz - m.kosten < 0 ? 'rot' : 'gruen'))];
     if (r.keinVerbrauch) return { wert: 99, anzeige: 'kein Verbrauch', quelle: `Umsatz deckt die Kosten (Ø ${euro(-netto)} Überschuss/Monat, ${quellenText(ist)})`, details };
     const w = r.monate ?? 0;
-    return { wert: w, anzeige: `${zahl(w)} Monate`, quelle: `${euro(k.betrag)} ÷ ${euro(netto)} Netto-Verbrauch/Monat (${quellenText(ist)})`, details };
+    // EIN Anzeigeformat (17.10., L2 C): `runwayAnzeige` — dasselbe in Cockpit, Controlling, ZOE, Board und Head of Finance („3,0 Monate“).
+    return { wert: w, anzeige: runwayAnzeige(r), quelle: `${euro(k.betrag)} ÷ ${euro(netto)} Netto-Verbrauch/Monat (${quellenText(ist)})`, details };
   },
   deckung13(b) {
     const k = kasse(b), mk = monatsKosten(b);

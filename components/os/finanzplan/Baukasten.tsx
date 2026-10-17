@@ -32,6 +32,7 @@ import { Linie } from './diagramme';
 import { SteuerKarte } from './Steuern';
 import { ZieleKachel } from './Ueberblick';
 import { anteilStand } from '@/lib/kennzahlen/anteil';
+import { RUNWAY_PLAN_NAME } from '@/lib/finanzen/runway';
 /** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
 const KDV = finanzOrtName('kdv');
 
@@ -289,7 +290,7 @@ export function Baukasten() {
             <Kacheln min={150}>
               <Kachel label={business ? 'Frei verfügbar Business jetzt' : 'Frei verfügbar jetzt'} wert={<><Geld v={freiVon(g.aw)} /> €</>} unter={delta(freiVon(g.aw), freiVon(basis.aw))} />
               <Kachel label={`Tiefpunkt ${UG_KURZ} frei`} punkt={g.kz.minFrei >= sw.tiefpunktGut ? LEUCHT.gut : g.kz.minFrei >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.minFrei} /> €</>} unter={<>{monatLabel(d, g.kz.minMonat)} · {delta(g.kz.minFrei, basis.kz.minFrei)}</>} />
-              <Kachel label={`Runway ${UG_KURZ}`} punkt={g.aw.runway.ug == null || g.aw.runway.ug >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.ug >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.ug, g.aw.runway.horizont)} unter={`Basis: ${runwayText(basis.aw.runway.ug, basis.aw.runway.horizont)}`} />
+              <Kachel label={`${RUNWAY_PLAN_NAME} · ${UG_KURZ}`} punkt={g.aw.runway.ug == null || g.aw.runway.ug >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.ug >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.ug, g.aw.runway.horizont)} unter={`Basis: ${runwayText(basis.aw.runway.ug, basis.aw.runway.horizont)}`} />
               {!business && <Kachel label="Privat Luft, schlechtester Monat" punkt={g.kz.privatLuftMin >= sw.privatLuftGut ? LEUCHT.gut : g.kz.privatLuftMin >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={g.kz.privatLuftMin} /> €</>} unter={delta(g.kz.privatLuftMin, basis.kz.privatLuftMin)} />}
               {!business && <Kachel label="Runway Privat" punkt={g.aw.runway.privat == null || g.aw.runway.privat >= sw.runwayGutMonate ? LEUCHT.gut : g.aw.runway.privat >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(g.aw.runway.privat, g.aw.runway.horizont)} unter={g.aw.frei.kontenFehlen ? `${g.aw.frei.kontenFehlen} Kontostände fehlen` : `Basis: ${runwayText(basis.aw.runway.privat, basis.aw.runway.horizont)}`} />}
               {/* B12 (14.10.): ohne Finanz-Ziel ein Leerzustand mit Weg statt „0 / 0“ in Grün (ZieleKachel, lib/kennzahlen/anteil.ts). */}
@@ -437,7 +438,7 @@ function VergleichTabelle({ spalten, d, alsArbeitsplan, business = false }: { sp
     { l: business ? 'Frei verfügbar Business jetzt' : 'Frei verfügbar jetzt', w: s => <><Geld v={business ? s.aw.frei.business : s.aw.frei.gesamt} /> €</> },
     { l: `Tiefpunkt ${UG_KURZ} frei`, w: s => <><Geld v={s.g.kz.minFrei} /> € <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>{monatLabel(d, s.g.kz.minMonat)}</span></> },
     { l: `Monate ${UG_KURZ} im Minus`, w: s => <span style={{ color: s.g.kz.monateMinus ? LEUCHT.kritisch : C.ink }}>{s.g.kz.monateMinus}</span> },
-    { l: `Runway ${UG_KURZ}`, w: s => runway(s.aw.runway.ug, s.aw.runway.horizont) },
+    { l: `${RUNWAY_PLAN_NAME} · ${UG_KURZ}`, w: s => runway(s.aw.runway.ug, s.aw.runway.horizont) },
     { l: `${UG_KURZ} frei Dez 27`, w: s => <><Geld v={s.g.kz.freiDez27} /> €</> },
     { l: 'Umsatz 2027', w: s => <><Geld v={s.g.kz.umsatz2027} /> €</> },
     { l: 'Mindestumsatz Ø 12 M', w: s => <><Geld v={s.aw.mindestumsatz.schnitt12} farbe={C.inkDim} /> €</> },
