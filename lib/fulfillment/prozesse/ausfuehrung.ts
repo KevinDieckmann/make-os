@@ -2,7 +2,8 @@
 // Rückmeldung 17.10.: „Abläufe wirklich ausführen: jeder Schritt wird zur Aufgabe mit Verantwortlichem und Frist, Nachrichten als Entwurf auf Klick, Erinnerungen
 // von selbst, Entscheidungen fragen nach — man sieht live, wo jeder Kunde hängt.“ EINE reine Stelle (client-sicher, deterministisch) für:
 //   · Welche Knoten ausgeführt werden: Schritte des Flusses MIT gesetzter Form (Prozess-Editor/Import „pakete“) — nie abgeleitete Onboarding-Schritte, nie
-//     Abstimmungspunkte. Ein Fall ohne solche Knoten (Altbestand, Muster) läuft genau wie bisher (`ablaufAktiv` = false → nichts entsteht).
+//     Abstimmungspunkte. Die Muster-Schritte tragen seit 17.10. die Form „Schritt“ (lib/fulfillment/muster.ts); ein Fall ohne solche Knoten (älterer
+//     Stand, eigene Vorlage ohne Formen) läuft genau wie bisher (`ablaufAktiv` = false → nichts entsteht).
 //   · Wo der Fall gerade steht (`aktiveKnoten`): die erste Phase, die nicht fertig ist — eine fertige Phase mit offenem Abstimmungspunkt hält an (erst
 //     bestätigt geht es weiter). In der Phase laufen die Schritte nacheinander; zwei oder mehr benannte Teilprozesse nebeneinander laufen parallel (wie der Fluss
 //     sie zeichnet). An einer Entscheidung mit „nein“ läuft ihr Nein-Zweig (`aktiverNeinZweig`, lib/fulfillment/regeln.ts).
@@ -349,7 +350,11 @@ export function ausfuehrungSoll(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben
   };
   if (!ablaufAktiv(f)) return soll;
   const neu = (m: string) => !f.marken[m];
-  for (const a of aktiveKnoten(f)) {
+  // Erster Lauf eines Falls, der schon länger läuft (17.10., Gesamtprüfung L1 A1 — Bestandsmandat mit frühem Start, „Vorlage übernehmen“ an einem laufenden
+  // Fall): eine Frist, die schon vorbei wäre, beginnt heute — sonst stünde alles sofort überfällig da. Danach gilt die gesetzte Fälligkeit des Knotens.
+  const ersterLauf = !Object.keys(f.marken).some(m => m.startsWith('ablauf-'));
+  for (const a0 of aktiveKnoten(f)) {
+    const a = ersterLauf && !a0.knoten.faelligAm && a0.faellig && a0.faellig < heute && a0.art !== 'erinnerung' ? { ...a0, faellig: tagPlus(heute, Math.max(0, a0.knoten.frist ?? 0)) } : a0;
     const k = a.knoten;
     const titel = titelOhneZusatz(k.titel);
     const op: Record<string, unknown> = {};

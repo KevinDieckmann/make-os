@@ -24,6 +24,8 @@ const roh = <T>(x: T): unknown => JSON.parse(JSON.stringify(x));
 /** Der Altbestand: Muster + ein Baustein am Schritt „Dossier“ (Ebene 4/5) — so, wie die Online-Fassung speichert. */
 function altbestand(): VorlagenDatei {
   let d = ok(vorlagenAnwenden(leerVorlagen(), [{ op: 'aus-muster' }], vk));
+  // Die Online-Fassung kannte keine Formen/Fristen — seit 17.10. tragen die Muster-Schritte sie; für den Altbestand fallen sie weg.
+  d = { ...d, prozesse: d.prozesse.map(p => ({ ...p, knoten: p.knoten.map(({ form: _f, frist: _r, ...k }) => k) })) };
   d = ok(vorlagenAnwenden(d, [{ op: 'baustein', eintrag: { art: 'mail', titel: 'Begrüßung' } }], vk));
   const p1 = d.prozesse.find(p => p.titel === MUSTER_P1.titel)!;
   const dossier = p1.knoten.find(x => x.titel === 'Dossier')!;

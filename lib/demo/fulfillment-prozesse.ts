@@ -180,6 +180,14 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
   // In Paketen zu höchstens 60 Änderungen (Grenze der Route) — die Vorlage-Löschung zuletzt, nach den Änderungen an der Landkarte.
   for (let i = 0; i < umbenennen.length; i += 50) await fulfillment('PATCH', '/api/fulfillment', { ops: umbenennen.slice(i, i + 50) });
 
+  // 2c) 17.10. (Gesamtprüfung L1 A1): die Muster-Schritte führen aus (Aufgabe je Schritt, Frist 7 Tage). Die Geschichte des Musterfalls steht seit 26 Tagen in
+  //     der Diagnose — ein Diagnosebericht braucht in der Demo vier Wochen, sonst stünde er überfällig da. Nur über die Editor-Route (Stand der Vorlage).
+  if (pakete['hos-cso']) {
+    const ed = await k.rufe(k.routen.editor(), 'GET', `/api/fulfillment/editor?v=${encodeURIComponent(pakete['hos-cso'])}`, L);
+    const bericht = ((ed.vorlage as VorlageJ | undefined)?.knoten ?? []).find(x => x.titel === 'Diagnosebericht');
+    if (bericht && ed.stand) await k.rufe(k.routen.editor(), 'PATCH', '/api/fulfillment/editor', L, { vorlageId: pakete['hos-cso'], stand: ed.stand, ops: [{ op: 'schritt', id: bericht.id, frist: 28 }] });
+  }
+
   // 3) Produkte ↔ Paket-Vorlage.
   const zuordnung: J[] = [];
   if (pakete['hos-cso'] && k.leistungen.includes('l-demo-retainer')) zuordnung.push({ op: 'zuordnung', leistungId: 'l-demo-retainer', vorlageId: pakete['hos-cso'] });

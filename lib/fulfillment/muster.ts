@@ -6,7 +6,8 @@
 // (keine Eurobeträge, keine Namen). Rein und client-sicher.
 //
 // Ebenen: je Vorlage genau EIN Wurzelknoten (Ebene 1 = Gesamtprozess), darunter Ebene 2 (Zone/Phase), Ebene 3 (Teilprozess).
-// Die Paket-Muster gehen nur bis Ebene 3 — Einzelschritte (4) und Bausteine (5) kommen aus Bibliothek/Import.
+// Die Paket-Muster gehen nur bis Ebene 3 — Einzelschritte (4) und Bausteine (5) kommen aus Bibliothek/Import. Die Teilprozesse (Ebene 3) tragen
+// seit 17.10. die Form „Schritt“ mit Frist — so führt ein Fall aus dem Muster aus (Aufgabe je Schritt).
 
 import type { ProzessVorlage, ProzessKnoten, Freigabepunkt, Rolle, RitualVorlage, Baustein, Frage, Zone, Zustaendig } from './typen';
 import type { KreislaufId } from '@/lib/crm/planung';
@@ -76,7 +77,12 @@ export const MUSTER_FREIGABEN: Freigabepunkt[] = [
 ];
 const P1 = 'fk-muster-p1';
 const phase = (id: string, titel: string, freigabe?: string, kreislauf: KreislaufId[] = ['fulfillment'], warum?: string): K => ({ id: `${P1}-${id}`, elternId: `${P1}-wurzel`, titel, kreislauf, kundeSichtbar: true, ...(freigabe ? { freigabe } : {}), ...(warum ? { warum } : {}) });
-const teil = (eltern: string, id: string, titel: string): K => ({ id: `${P1}-${eltern}-${id}`, elternId: `${P1}-${eltern}`, titel });
+// Schritte führen aus (17.10., Gesamtprüfung L1 A1): ein Muster-Schritt wird im Fall zur Aufgabe mit Frist — vorher trugen Muster keine Form, und ein Fall
+// aus dem Muster legte NICHTS an. Frist = `SCHRITT_FRIST_VORGABE` Tage ab dem Schritt davor (im Prozess-Editor änderbar). Der Onboarding-Teil trägt keine
+// Form: seine acht Schritte leitet das Onboarding selbst ab (eine Aufgabe „Onboarding“ daneben wäre doppelt).
+export const SCHRITT_FRIST_VORGABE = 7;
+const schritt = { form: 'schritt' as const, frist: SCHRITT_FRIST_VORGABE };
+const teil = (eltern: string, id: string, titel: string): K => ({ id: `${P1}-${eltern}-${id}`, elternId: `${P1}-${eltern}`, titel, ...(id === 'onboarding' ? {} : schritt) });
 export const MUSTER_P1: ProzessVorlage = vorlage({
   id: 'fp-muster-p1', art: 'paket', titel: 'Vertriebsleitung auf Zeit',
   freigaben: MUSTER_FREIGABEN,
@@ -122,9 +128,9 @@ export const MUSTER_P2: ProzessVorlage = vorlage({
     { id: `${P2}-crm`, elternId: `${P2}-wurzel`, titel: 'CRM-Workflow', kundeSichtbar: true },
     { id: `${P2}-training`, elternId: `${P2}-wurzel`, titel: 'Training & Abnahme', kundeSichtbar: true },
     { id: `${P2}-uebergabe`, elternId: `${P2}-wurzel`, titel: 'Übergabe', kundeSichtbar: true },
-    { id: `${P2}-einfuehrung-status`, elternId: `${P2}-einfuehrung`, titel: 'Statusmodell' },
-    { id: `${P2}-einfuehrung-rollen`, elternId: `${P2}-einfuehrung`, titel: 'Rollen' },
-    { id: `${P2}-einfuehrung-pipeline`, elternId: `${P2}-einfuehrung`, titel: 'Pipeline' },
+    { id: `${P2}-einfuehrung-status`, elternId: `${P2}-einfuehrung`, titel: 'Statusmodell', ...schritt },
+    { id: `${P2}-einfuehrung-rollen`, elternId: `${P2}-einfuehrung`, titel: 'Rollen', ...schritt },
+    { id: `${P2}-einfuehrung-pipeline`, elternId: `${P2}-einfuehrung`, titel: 'Pipeline', ...schritt },
   ]),
 });
 
@@ -139,9 +145,9 @@ export const MUSTER_P3: ProzessVorlage = vorlage({
     { id: `${P3}-messen`, elternId: `${P3}-wurzel`, titel: 'Messen & Events', kundeSichtbar: true, ort: 'markttraktion.events' },
     { id: `${P3}-rhythmus`, elternId: `${P3}-wurzel`, titel: 'Netzwerk-Rhythmus', kundeSichtbar: true, ort: 'netzwerken' },
     { id: `${P3}-messung`, elternId: `${P3}-wurzel`, titel: 'Messung', kundeSichtbar: true },
-    { id: `${P3}-messen-vor`, elternId: `${P3}-messen`, titel: 'Vor der Messe' },
-    { id: `${P3}-messen-waehrend`, elternId: `${P3}-messen`, titel: 'Während der Messe', ort: 'netzwerken' },
-    { id: `${P3}-messen-nach`, elternId: `${P3}-messen`, titel: 'Nach der Messe' },
+    { id: `${P3}-messen-vor`, elternId: `${P3}-messen`, titel: 'Vor der Messe', ...schritt },
+    { id: `${P3}-messen-waehrend`, elternId: `${P3}-messen`, titel: 'Während der Messe', ort: 'netzwerken', ...schritt },
+    { id: `${P3}-messen-nach`, elternId: `${P3}-messen`, titel: 'Nach der Messe', ...schritt },
   ]),
 });
 

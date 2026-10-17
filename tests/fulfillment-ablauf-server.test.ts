@@ -220,6 +220,9 @@ describe('Recht und Altbestand', () => {
     const ue = await rufe('fulfillment', 'PATCH', sitzung('pia'), { ops: [{ op: 'aus-muster' }] });
     expect(ue.status).toBe(200);
     const p = ((await rufe('fulfillment', 'GET', sitzung('pia'))).j.prozesse as { id: string; art: string }[]).find(x => x.art === 'paket' && x.id !== vorlageId)!;
+    // Altbestand: eine Vorlage ohne Formen (seit 17.10. tragen die Muster-Schritte „Schritt“ + Frist — hier fallen sie weg, wie in einer älteren Fassung).
+    const { fulfillmentAendern } = await import('@/lib/fulfillment/speicher');
+    await fulfillmentAendern('vorlagen', d => ({ ok: true, datei: { ...d, prozesse: d.prozesse.map(v => v.id !== p.id ? v : { ...v, knoten: v.knoten.map(({ form: _f, frist: _r, ...k }) => k) }) }, geaendert: [p.id] }), { art: 'system' });
     expect((await rufe('fulfillment/fall', 'POST', sitzung('pia'), { aktion: 'starten', mandatId: 'm-alt', vorlageId: p.id, anfrageId: 'ab-alt' })).status).toBe(200);
     const vorher = JSON.stringify(await fallRoh('m-alt'));
     const anzahl = (await ablaufTasks()).length;
