@@ -64,7 +64,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
           <Link href={mandateLink('mandate', mandat.id)} style={{ ...klein, textDecoration: 'none' }}>Mandat öffnen ›</Link>
         </>
       )}
-      {start && <StartDialog k={{ mandatId: start.mandatId, kunde: start.kunde, ...vorlageFuer(start.leistungId) }} pakete={pakete} onZu={() => setStart(null)} />}
+      {start && <StartDialog k={{ mandatId: start.mandatId, kunde: start.kunde, ...(start.leistungId ? { leistungId: start.leistungId } : {}), ...vorlageFuer(start.leistungId) }} pakete={pakete} onZu={() => setStart(null)} />}
     </div>
   );
 }

@@ -87,8 +87,9 @@ describe('B7 · Mails aus dem Fall im Verlauf der Akte', () => {
 describe('Ein neuer Fall startet grün', () => {
   it('in den ersten 14 Tagen ist „kein Termin“ kein Warnzeichen (der Kick-off legt ihn fest)', async () => {
     const { kundenAmpel } = await import('@/lib/crm/treppe');
-    const m = { start: '2026-10-15', health: {}, naechstesReview: undefined } as never;
-    expect(kundenAmpel({ m, stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBeNull();
-    expect(kundenAmpel({ m: { start: '2026-09-01', health: {} } as never, stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBe('gelb');
+    const mandat = (start: string) => ({ id: 'm-1', kunde: 'Beispiel GmbH', kontaktIds: [], titel: 'Retainer', art: 'retainer', gesellschaft: 'ug', status: 'aktiv', vertragUnterschrieben: true,
+      start, verlaengerung: 'auto', honorar: { betrag: 1000, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], geaendert: '2026-10-15T00:00:00.000Z' }) as never;
+    expect(kundenAmpel({ m: mandat('2026-10-15'), stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBeNull();
+    expect(kundenAmpel({ m: mandat('2026-09-01'), stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBe('gelb');
   });
 });

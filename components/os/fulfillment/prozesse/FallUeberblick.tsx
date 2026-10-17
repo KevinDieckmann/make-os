@@ -183,7 +183,7 @@ export function KeinFall({ daten }: { daten: FallAntwort }) {
       <Ueberschrift>Noch kein Fall</Ueberschrift>
       <div style={klein}>Für „{daten.mandat.titel}“ läuft noch kein Fulfillment. Der Fall kopiert den Ablauf des Produkts und legt die Onboarding-Schritte an — Mandate ohne Fall bleiben genau wie bisher.</div>
       <div><Knopf haupt onClick={() => setStart(true)}>Fall starten</Knopf></div>
-      {start && <StartDialog k={{ mandatId: daten.mandat.id, kunde: daten.mandat.kunde, ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}) }} pakete={pakete} onZu={() => setStart(false)} />}
+      {start && <StartDialog k={{ mandatId: daten.mandat.id, kunde: daten.mandat.kunde, ...(daten.mandat.leistungId ? { leistungId: daten.mandat.leistungId } : {}), ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}) }} pakete={pakete} onZu={() => setStart(false)} />}
     </Karte>
   );
 }

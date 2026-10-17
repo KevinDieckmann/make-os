@@ -62,7 +62,7 @@ function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten:
  * Start-Dialog: Ablauf (vorgewählt aus der Zuordnung des Produkts; ohne Zuordnung der erste Ablauf, der kein Zusatzmodul ist — 17.10. spät, vorher konnte das
  * ein Zusatzmodul sein) und Starttag (heute) — legt den Fall an (idempotent über die Anfrage) und öffnet ihn.
  */
-export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage'>; pakete: { id: string; titel: string; zusatz?: true }[]; onZu: () => void }) {
+export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage'> & { leistungId?: string }; pakete: { id: string; titel: string; zusatz?: true }[]; onZu: () => void }) {
   const router = useRouter();
   const [vorlage, setVorlage] = useState<string | null>(k.vorlage?.id ?? pakete.find(p => !p.zusatz)?.id ?? pakete[0]?.id ?? null);
   const [tag, setTag] = useState(localDay());
@@ -71,6 +71,9 @@ export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' 
   const los = async () => {
     if (!vorlage) { setFehler('Bitte einen Ablauf wählen.'); return; }
     const a = await fallAktion({ aktion: 'starten', mandatId: k.mandatId, vorlageId: vorlage, start: tag, anfrageId: anfrage });
+    // Das Produkt merkt sich den Ablauf (17.10., Gesamtprüfung — maximal einfach): hatte es noch keinen, ist der gewählte beim nächsten Mal vorgewählt. Nur ein
+    // Ablauf des Pakets (kein Zusatzmodul); wer keine Abläufe bearbeiten darf, bekommt 403 — der Fall läuft trotzdem.
+    if (a.ok && k.leistungId && !k.vorlage && vorlage && !pakete.find(p => p.id === vorlage)?.zusatz) await vorlagenOps([{ op: 'zuordnung', leistungId: k.leistungId, vorlageId: vorlage }]).catch(() => null);
     if (a.ok) { onZu(); router.push(WEG.fall(k.mandatId)); } else setFehler(fehlerText(a));
   };
   return (

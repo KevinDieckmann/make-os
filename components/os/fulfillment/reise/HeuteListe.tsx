@@ -63,7 +63,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
   const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
   // Der Start-Dialog: für einen wartenden Kandidaten mit dessen Vorwahl, für ein eben angelegtes Mandat mit der Zuordnung seines Produkts.
   const vorlageZu = (leistungId?: string) => { const id = leistungId ? kurz.daten?.zuordnung[leistungId]?.vorlageId : undefined; const p = pakete.find(x => x.id === id); return p ? { vorlage: { id: p.id, titel: p.titel } } : {}; };
-  const kandidat = start ? (kurz.daten?.kandidaten.find(k => k.mandatId === start.mandatId) ?? { mandatId: start.mandatId, kunde: start.kunde ?? 'Kunde', ...vorlageZu(start.leistungId) }) : undefined;
+  const kandidat = start ? (kurz.daten?.kandidaten.find(k => k.mandatId === start.mandatId) ?? { mandatId: start.mandatId, kunde: start.kunde ?? 'Kunde', ...(start.leistungId ? { leistungId: start.leistungId } : {}), ...vorlageZu(start.leistungId) }) : undefined;
   const mandatUndStart = async (e: HeuteEintrag, chanceId: string, leistungId?: string) => {
     const a = await holeJson<{ mandatId?: string }>('/api/crm/lead', { method: 'POST', body: JSON.stringify({ aktion: 'mandat', chanceId }) });
     if (!a.ok || !a.j.mandatId) { setMeldung({ text: fehlerText(a), art: 'kritisch' }); return; }
