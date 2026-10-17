@@ -330,6 +330,11 @@ describe('Personenteil, F1, Art. 14, Löschfrist', () => {
     expect(ohne).not.toContain('tb-geheim');
     const mit = String(((await WERKZEUGE.fulfillment_lage.lauf({ mandat: 'm-1', mitPersonen: true }, 'http://test', 'pia')) as { meldung: string }).meldung);
     expect(mit).toContain('Erika Beispiel');
+    // 18.10. (Gesamtprüfung L3 C6): im Hintergrund-Lauf nur die Funktion — kein Name (der Pseudonymisierer kennt die Karten nicht).
+    const { imHintergrund } = await import('@/lib/datenschutz/ki-lauf');
+    const hinten = String(((await imHintergrund(() => WERKZEUGE.fulfillment_lage.lauf({ mandat: 'm-1', mitPersonen: true }, 'http://test', 'pia'))) as { meldung: string }).meldung);
+    expect(hinten).toContain('Vertriebsleitung');
+    expect(hinten).not.toContain('Erika');
     // Wächter (zusammengeführt 11.10.): ZOE liest den Personenteil nur MIT Lese-Protokoll — ohne Anfrage über den Lauf im Namen der Person.
     {
       const { leseprotokollWarten, leseprotokollMonat } = await import('@/lib/store/leseprotokoll');

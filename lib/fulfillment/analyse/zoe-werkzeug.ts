@@ -79,7 +79,13 @@ export async function fulfillmentLage(input: Record<string, unknown>, _origin: s
         leseZugriffLauf({ art: 'zoe', person }, 'zoe:fulfillment_lage', 'personenrecherche', { ids: [m.id], anzahl: karten.length });
       }
       if (ausgeblendet) z.push(ausgeblendetText(ausgeblendet));
-      z.push('## Personenteil (nur beruflich)', ...karten.map(k => `- ${k.funktion}: ${k.name} · Identität ${k.identitaet} · ${k.status}\n  ${[...k.werdegang, ...k.themen, ...k.auftritte, ...k.aufhaenger].map(a => a.text).join(' · ')}`));
+      // Hintergrund-Läufe (18.10., Gesamtprüfung L3 C6): der Pseudonymisierer kennt nur CRM-Kontakte, nicht die Namen der Karten — dort geht nur die
+      // Funktion ans Modell (kein Name, keine Angaben, die ihn nennen könnten). Im Gespräch bzw. auf Klick wie bisher.
+      const { laufImKontext } = await import('@/lib/datenschutz/ki-lauf');
+      const hintergrund = laufImKontext() === 'hintergrund';
+      z.push('## Personenteil (nur beruflich)', ...karten.map(k => (hintergrund
+        ? `- ${k.funktion} · Identität ${k.identitaet} · ${k.status} · ${k.werdegang.length + k.themen.length + k.auftritte.length + k.aufhaenger.length} Angabe(n) (im Hintergrund ohne Namen)`
+        : `- ${k.funktion}: ${k.name} · Identität ${k.identitaet} · ${k.status}\n  ${[...k.werdegang, ...k.themen, ...k.auftritte, ...k.aufhaenger].map(a => a.text).join(' · ')}`)));
     }
   }
   const t = teilVon(z.join('\n'), typeof input.teil === 'number' ? input.teil : 1);
