@@ -2,12 +2,13 @@
 // POST { aktion: 'vorschau', datei, inhalt }                          → Vorschau (schreibt NICHTS) + `vorschauId` (Datei + Stand des Bestands)
 //      { aktion: 'uebernehmen', datei, inhalt, vorschauId, wahl }     → übernehmen; hat sich der Bestand seit der Vorschau geändert → 409
 //      { aktion: 'rueckgaengig', laufId }                             → nur, was seit dem Import unverändert ist (30 Tage)
-// `inhalt` = der Text der JSON-Datei (≤ 4 MB, sonst 413 — nie gekürzt). Formate: Bausteine (`vorlagen: […]`) oder Abläufe (je Ablauf `stufen`,
-// `uebergaenge`); Regeln und Abbildung in lib/fulfillment/prozesse/import.ts. Nie übernommen: Quellenverzeichnis, Links, Instanzwerte (Preise).
-// Nur per Sitzung (Dienstweg 403), Bau-Kennung.
+// `inhalt` = der Text der JSON-Datei (≤ 4 MB, sonst 413 — nie gekürzt). Formate: Bausteine (`vorlagen: […]`), Abläufe (je Ablauf `stufen`,
+// `uebergaenge`) oder Pakete (`pakete: […]`, Paket-Vorlagen im Format des Prozess-Editors, 17.10.); Regeln und Abbildung in
+// lib/fulfillment/prozesse/import.ts. Nie übernommen: Quellenverzeichnis, Links, Instanzwerte (Preise).
+// Tor `vorlagenZugang` (17.10.): nur volle Mitglieder (Rolle „nur Business“ 403 — wie im Editor), nur per Sitzung (Dienstweg 403), Bau-Kennung.
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { vorlagenZugang } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
 import { importVorschau, importAnwenden, importRueckgaengig, dateiFingerabdruck, IMPORT_GRENZEN, type ImportWahl } from '@/lib/fulfillment/prozesse/import';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -24,7 +25,7 @@ const ZU_GROSS = () => NextResponse.json({ ok: false, fehler: `Die Datei ist gr�
 const vorschauIdVon = (text: string, bestandStand: string) => `fv-${dateiFingerabdruck(text)}-${bestandStand.replace(/[^A-Za-z0-9]/g, '').slice(0, 16)}`;
 
 export async function POST(req: Request) {
-  const z = await fulfillmentZugang(req, { schreiben: true });
+  const z = await vorlagenZugang(req, { schreiben: true });
   if (z instanceof Response) return z;
   if (zuGross(req, GRENZE)) return ZU_GROSS();
   let b: Record<string, unknown>;
