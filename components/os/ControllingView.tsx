@@ -19,8 +19,8 @@ import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Woche, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
 import {
-  DEFAULT_FINANCE, MONTHS_DE, computeMetrics, mitKasse, geschaeftsKasse, eur,
-  type FinanceState,
+  DEFAULT_FINANCE, MONTHS_DE, computeMetrics, geschaeftsKasse, eur,
+  type FinanceState, type Kasse,
 } from '@/lib/make-one/finance-data';
 import { Karte, Ueberschrift, Leer, Knopf, Zahl, Ring, feld, auswahl, zoneFarbe, LEUCHT } from './ui';
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
@@ -95,6 +95,9 @@ export function ControllingView() {
   // 0-Punkt (17.10., L2 R2): Monate davor zählen nicht (der Server liefert sie mit 0) und sind hier gesperrt — eine Eingabe dort überschriebe
   // sonst den archivierten Wert im Speicher.
   const [nullpunkt, setNullpunkt] = useState<string | null>(null);
+  // Die Kasse vom Server (17.10., L2 R3): Firmenkonten MIT Konten-Register und 0-Punkt (`mitEroeffnung`) — auch für ein Konto „nur Business“,
+  // das den Finanzplan nicht lesen darf (dort blieb die Kasse im Browser leer und das Feld „Cash aktuell“ wirkte nirgends).
+  const [serverKasse, setServerKasse] = useState<Kasse | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Konnte der Stand nicht geladen werden, wird NICHT gespeichert — sonst
@@ -136,8 +139,9 @@ export function ControllingView() {
   const finanzSpeichern = useSpeichern('/api/state/finance', { listen: { months: 'm' }, uebernehmen: st => setS(st as unknown as FinanceState) });
   const ladeFinanz = useCallback(() => fetch('/api/state/finance')
     .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
-    .then((d: { state: FinanceState | null; runwayIst?: RunwayDesIndex | null; nullpunkt?: string | null }) => {
+    .then((d: { state: FinanceState | null; runwayIst?: RunwayDesIndex | null; nullpunkt?: string | null; kasse?: Kasse }) => {
       setRunwayIst(d.runwayIst ?? null);
+      setServerKasse(d.kasse ?? null);
       setNullpunkt(typeof d.nullpunkt === 'string' ? d.nullpunkt : null);
       if (finanzSpeichern.hatOffenes()) return;
       if (d.state && Array.isArray(d.state.months) && d.state.months.length === 12) { setS(d.state); finanzSpeichern.kenne(d.state); }
@@ -159,9 +163,11 @@ export function ControllingView() {
     persist({ ...s, months: s.months.map((r, j) => j === i ? { ...r, [field]: num(v) } : r) });
   const setField = (field: 'zielUmsatz' | 'zielGewinn' | 'cash', v: string) => persist({ ...s, [field]: num(v) });
 
-  // Kasse aus den Firmenkonten — das Feld „Cash“ gilt nur, solange keins einen Stand hat.
-  const kasse = useMemo(() => geschaeftsKasse(firmen, s.cash), [firmen, s.cash]);
-  const m = useMemo(() => computeMetrics(fplan ? mitKasse(s, firmen) : s), [s, fplan, firmen]);
+  // Kasse aus den Firmenkonten (vom Server, s. o.) — das Feld „Cash“ gilt nur, solange keins einen Stand hat. Bis die Antwort da ist: dieselbe
+  // Regel im Browser (ohne 0-Punkt).
+  const kasse = useMemo(() => serverKasse ?? geschaeftsKasse(firmen, s.cash), [serverKasse, firmen, s.cash]);
+  // Die Kennzahlen rechnen ohne Kasse (die Runway kommt vom Server, `runwayIst`).
+  const m = useMemo(() => computeMetrics(s), [s]);
   // Ohne gesetzten Startmonat gilt der erste Monat mit Zahlen als Start.
   const startMonat = useMemo(() => {
     if (typeof s.startMonat === 'number') return Math.max(0, Math.min(11, s.startMonat));

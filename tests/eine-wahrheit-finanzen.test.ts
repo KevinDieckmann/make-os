@@ -81,6 +81,10 @@ describe('jetzt: EINE Runway — Cockpit, Controlling, Head of Finance, Schilde,
     const route = await import('@/app/api/state/finance/route');
     const g = await (await route.GET(anfrage('/api/state/finance', 'pa'))).json();
     expect(g.runwayIst.anzeige).toBe(index!.anzeige);
+    // R3: die Kasse kommt vom Server (Konten + Register + 0-Punkt) — die Controlling-Seite zeigt sie, auch einem Konto „nur Business“.
+    expect(g.kasse).toMatchObject({ betrag: 9000, quelle: 'konten' });
+    const { readFileSync } = await import('node:fs');
+    expect(readFileSync(path.resolve(__dirname, '..', 'components/os/ControllingView.tsx'), 'utf8')).toContain('serverKasse ?? geschaeftsKasse(firmen, s.cash)');
 
     // Head of Finance
     const { ladeFinanzbild } = await import('@/lib/finanzen/chef/lauf');
