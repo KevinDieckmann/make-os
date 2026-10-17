@@ -42,6 +42,13 @@ export function ausfuehrungsArt(k: Pick<FallKnoten, 'id' | 'form' | 'freigabe' |
 }
 /** Läuft in diesem Fall eine Ausführung? Nur, wenn mindestens ein Knoten eine ausführbare Form trägt — sonst bleibt alles wie bisher. */
 export const ablaufAktiv = (f: Pick<Fall, 'knoten'>): boolean => f.knoten.some(k => ausfuehrungsArt(k) !== null);
+/**
+ * Ein alter Fall ohne Formen, dessen Vorlage inzwischen welche trägt (17.10. abends): die Ausführung startet erst mit „Vorlage übernehmen“ (die vorhandene
+ * Übernahme — sie bringt Formen und Zweige mit). Nur, wenn es eine neue Fassung zum Übernehmen gibt (`diff`).
+ */
+export function ausfuehrungNachUebernahme(f: Pick<Fall, 'knoten'>, vorlage: { knoten: readonly Pick<FallKnoten, 'id' | 'form' | 'freigabe' | 'bausteinId'>[] } | null | undefined, diff: unknown): boolean {
+  return !!vorlage && !!diff && !ablaufAktiv(f) && vorlage.knoten.some(k => ausfuehrungsArt(k) !== null);
+}
 
 /** Die Grenze der Runden an einer Entscheidung: `versuche` ihres Nein-Zweigs (bzw. ihr eigener), sonst die Vorgabe. */
 export function versucheFuer(kn: readonly FallKnoten[], e: Pick<FallKnoten, 'zweige' | 'versuche'>): number {

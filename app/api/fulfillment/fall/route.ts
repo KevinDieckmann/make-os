@@ -141,6 +141,8 @@ export async function GET(req: Request) {
     fall: { ...w, knoten: w.knoten.map(x => ({ ...x, stand: eintragStand(f.knoten.find(y => y.id === x.id) ?? x) })), stakeholder: w.stakeholder.map(s => ({ ...s, stand: eintragStand(s) })), entscheidungen: w.entscheidungen.map(e => ({ ...e, stand: eintragStand(e) })) },
     staende: { vereinbarung: eintragStand(f.vereinbarung ?? {}), wertKonto: Object.fromEntries(mandatZieleLesen(mandat.ziele).map(zl => [zl.id, eintragStand(f.wertKonto[zl.id] ?? { messungen: [] })])) },
     onboarding: onboardingStand(f, abl), diff: v ? vorlagenDiff(f, v) : null,
+    // Alte Fälle ohne Formen (17.10. abends): die Ausführung startet erst mit „Vorlage übernehmen“ — der Fall zeigt dann einen Hinweis mit dem Weg dorthin.
+    ausfuehrungWartet: v ? await import('@/lib/fulfillment/prozesse/ausfuehrung').then(a => a.ausfuehrungNachUebernahme(w, v, vorlagenDiff(f, v))) : false,
     vorlage: v ? { id: v.id, titel: v.titel, fassung: v.fassung, freigaben: v.freigaben, rollen: v.rollen } : { id: f.vorlageId, titel: 'Vorlage entfernt', fassung: f.vorlageFassung, freigaben: MUSTER_FREIGABEN, rollen: [] },
     wartet: wartetAufEuch(w, heute), wertKonto: wertKontoZeilen(w, mandat), fortschritt: fallFortschritt(w), aktuell: aktuellerKnoten(w),
     bausteine, personen, rituale: vorlagen.rituale,

@@ -70,14 +70,22 @@ const tagKurzDe = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
  * Fachseiten) neben „31 % auf echten Daten“ für dieselbe Lage. Ohne Wert, aber mit Messung: „Vorläufig — 31 % gemessen“; ganz ohne Messung
  * „Noch keine Daten“; mit Wert das Label und die Abdeckung (Anlaufphase mit „vorläufig bis …“).
  */
-export function indexStatus(e: Pick<IndexErgebnis, 'index' | 'label' | 'abdeckung' | 'luecken'> & Partial<Pick<IndexErgebnis, 'teil' | 'vorlaeufig'>>): IndexStatus {
+export function indexStatus(e: Pick<IndexErgebnis, 'index' | 'label' | 'abdeckung' | 'luecken'> & Partial<Pick<IndexErgebnis, 'teil' | 'vorlaeufig'>> & { saeulen?: readonly { score?: number | null; kennzahlen?: readonly Pick<KennzahlStand, 'gemessen'>[] }[] }): IndexStatus {
   const pct = Math.round((e.abdeckung ?? 0) * 100);
   const luecken = e.luecken ? ` · ${e.luecken} Messlücke${e.luecken === 1 ? '' : 'n'}` : '';
   if (e.index != null) {
     return { titel: e.label, satz: `${pct} % auf echten Daten${luecken}${e.vorlaeufig ? ` · vorläufig bis ${tagKurzDe(e.vorlaeufig.bis)}` : ''}`, vorlaeufig: false };
   }
-  if (pct > 0 || e.teil) {
-    return { titel: 'Vorläufig', satz: `Vorläufig — ${pct} % gemessen; der Index zählt ab ${Math.round(MIN_ABDECKUNG * 100)} %${luecken}.`, vorlaeufig: true };
+  // 17.10. (Kevins Bild aus der Markttraktion): „Noch keine Daten“ stand neben einer gemessenen Kachel (Traktions-Score 37, rot) — die Säule war gemessen,
+  // aber noch zu dünn, also zählte ihre Abdeckung 0 %. Gemessen ist gemessen: dann „Vorläufig“ mit der Zahl der gemessenen Kennzahlen.
+  const kz = e.saeulen?.flatMap(s => s.kennzahlen ?? []) ?? [];
+  const gemessen = kz.filter(k => k.gemessen).length;
+  const saeulenGemessen = e.saeulen?.filter(s => s.score != null).length ?? 0;
+  if (pct > 0 || e.teil || gemessen > 0 || saeulenGemessen > 0) {
+    const wieviel = pct > 0 ? `${pct} % gemessen`
+      : kz.length ? `erst ${gemessen} von ${kz.length} Kennzahlen gemessen`
+      : `erst ${saeulenGemessen} von ${e.saeulen?.length ?? 0} Säulen mit Messung`;
+    return { titel: 'Vorläufig', satz: `Vorläufig — ${wieviel}; der Index zählt ab ${Math.round(MIN_ABDECKUNG * 100)} %${luecken}.`, vorlaeufig: true };
   }
   return { titel: 'Noch keine Daten', satz: `Noch nichts gemessen${luecken} — jede Kachel sagt, was fehlt.`, vorlaeufig: false };
 }
