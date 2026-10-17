@@ -152,7 +152,8 @@ describe('Saat', () => {
     expect(n['Angebot (gestellt)']).toBe(1);
     // Reihen sind Instanz-Daten (14.10.): die Demo hat eine erfundene Reihe in den Wertelisten.
     expect(crm?.wertelisten?.reihen?.map(r => r.name)).toEqual(['Abendreihe Nord (Beispiel)']);
-    expect(crm?.mandate).toHaveLength(2);
+    // Drei Mandate: Nordwerk, Lumen und (17.10. abends) der Kunde des Beispiel-Falls in Ausführung (lib/demo/fulfillment-ablauf.ts).
+    expect(crm?.mandate).toHaveLength(3);
     expect(crm?.leistungen.every(l => l.status === 'aktiv')).toBe(true);
     const konten = await db.loadJson<{ konten: { email: string; haushalt: string }[] }>('konten');
     expect(konten?.konten.every(k => k.email.endsWith('@example.invalid') && k.haushalt === 'demo')).toBe(true);
@@ -176,7 +177,8 @@ describe('Saat', () => {
   it('B10: Retainer im Liquiditätsplan, Jahresziel und Ist-Zahlen, Gehälter in der Finanzplanung, Steuern der Hauptgesellschaft', async () => {
     const heute = localDay();
     const lp = await db.loadJson<{ posten: { kategorie?: string; betrag: number; sicher: boolean }[] }>('liquiplan');
-    expect(lp!.posten.filter(p => p.kategorie === 'mandat' && p.betrag > 0 && p.sicher)).toHaveLength(2);
+    // Die drei laufenden Retainer (17.10. abends: dazu der Kunde des Beispiel-Falls in Ausführung) — über den Vorschlagsweg „Mandat → Liquiplan“.
+    expect(lp!.posten.filter(p => p.kategorie === 'mandat' && p.betrag > 0 && p.sicher)).toHaveLength(3);
     expect(lp!.posten.some(p => p.betrag < 0)).toBe(true);
     const crm = await db.loadJson<{ mandate: { planpostenId?: string }[] }>('crm');
     expect(crm!.mandate.every(m => !!m.planpostenId)).toBe(true);

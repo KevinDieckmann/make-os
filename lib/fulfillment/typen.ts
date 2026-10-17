@@ -10,6 +10,7 @@
 
 import type { KreislaufId } from '@/lib/crm/planung';
 import type { KundenAnrede, KundenLage, KundenPhase, KundenQuickWin } from './kunde/bild';
+import type { WartetAuf } from './prozesse/reise';
 
 export const FULFILLMENT_VERSION = 1;
 export type Zone = 'dach' | 'etage' | 'fundament';
@@ -32,6 +33,11 @@ export interface ProzessKnoten {
   // Prozess-Editor › Fläche (17.10.) — beide optional; ohne sie legt die Fläche alles automatisch aus der Reihenfolge aus. Reine Lage: zählt nicht als neue
   // Fassung (laufende Fälle sehen keine Änderung) und geht nie in einen Fall.
   pos?: KnotenLage; pfeilText?: PfeilText;
+  /**
+   * Ausführung (17.10. abends): an einer Erinnerung auf dem Nein-Pfad — höchstens so viele Runden (Erinnerung → wieder fragen), danach „eskaliert“.
+   * Fehlt = `VERSUCHE_VORGABE` (5 — „5 Kontaktversuche“; lib/fulfillment/prozesse/ausfuehrung.ts). Ganze Zahl 1 … 20.
+   */
+  versuche?: number;
 }
 /**
  * Lage auf der Fläche (Prozess-Editor, 17.10.): an einer Phase der Rahmen (absolut, mit Breite `b` und Höhe `h` — fehlen sie, passt sich der Rahmen dem Inhalt an),
@@ -117,8 +123,15 @@ export interface VorlagenDatei {
 }
 
 export type KnotenStatus = 'offen' | 'in_arbeit' | 'wartet_kunde' | 'erledigt' | 'entfaellt';
-export interface FallKnoten extends Pick<ProzessKnoten, 'id' | 'elternId' | 'titel' | 'rang' | 'ziel' | 'ergebnis' | 'kennzahl' | 'zustaendig' | 'freigabe' | 'kundeSichtbar' | 'phaseId' | 'bausteinId' | 'dauerTage' | 'form' | 'frist' | 'zweige'> {
+export interface FallKnoten extends Pick<ProzessKnoten, 'id' | 'elternId' | 'titel' | 'rang' | 'ziel' | 'ergebnis' | 'kennzahl' | 'zustaendig' | 'freigabe' | 'kundeSichtbar' | 'phaseId' | 'bausteinId' | 'dauerTage' | 'form' | 'frist' | 'zweige' | 'versuche'> {
   status: KnotenStatus; seit?: string; faelligAm?: string; erledigtAm?: string; erledigtVon?: string; grund?: string; extra?: true;
+  // ── Ausführung der Abläufe (17.10. abends; lib/fulfillment/prozesse/ausfuehrung.ts) — alle optional, setzt nur der Schreibweg des Falls ──
+  /** Entscheidung: die letzte Antwort („nein“ = ihr Nein-Zweig läuft gerade) und ihr Tag. */
+  antwort?: 'ja' | 'nein'; antwortAm?: string;
+  /** Entscheidung: so oft kam „nein“ (= Erinnerungs-Runden gestartet). Nein-Zweig (Erinnerung): so viele Runden sind erledigt. */
+  runden?: number;
+  /** Entscheidung: Tag, an dem die Runden ausgeschöpft waren — dann hängt sie rot, bis jemand entscheidet. */
+  eskaliertAm?: string;
 }
 export interface Vereinbarung { rollen?: string; reaktionszeiten?: string; wirBrauchen?: string; eskalation?: string; scopeDrin?: string; scopeDraussen?: string; entscheidungsrechte?: string; bestaetigtAm?: string; bestaetigtWie?: 'kickoff' | 'mail' | 'termin' }
 export interface Stakeholder { id: string; kontaktId: string; rolle: 'entscheider' | 'unterstuetzer' | 'skeptiker' | 'nutzer' | 'einkauf' | 'sponsor'; einfluss: 1 | 2 | 3; haltung?: 'positiv' | 'neutral' | 'kritisch'; notiz?: string }
@@ -190,6 +203,8 @@ export interface FallKurz {
   mandatId: string; status: Fall['status']; phase?: string; fortschritt: number; naechster?: string; wartet: number; wartetAeltesterTage?: number; onboardingOffen: number; willkommenUeberfaellig: boolean;
   /** Onboarding-Schritte, die erfüllt sind oder entfallen (alle acht, auch „darf noch laufen“) — dieselbe Zahl wie das Band im Fall (14.10.). */
   onboardingErfuellt?: number;
+  /** Live-Lage des nächsten Punkts (17.10. abends, Ausführung) — aus `naechsterPunkt`: worauf gewartet wird, bis wann, überfällig. */
+  naechsterLage?: { wartetAuf: WartetAuf; faelligAm?: string; ueberfaellig: boolean };
 }
 export interface KundeKurz {
   link: 'keiner' | 'aktiv' | 'abgelaufen' | 'widerrufen' | 'aus'; formularProzent: number | null; ungepruefteUnterlagen: number; letzterPuls?: { wert: number; am: string }; pulsOffen: boolean;

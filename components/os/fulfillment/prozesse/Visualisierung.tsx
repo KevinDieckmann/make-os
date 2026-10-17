@@ -17,6 +17,7 @@ import { useCockpit, tagKurz } from './daten';
 import { wort } from '@/lib/text/zahlwort';
 import type { FfKennzahl } from '@/lib/fulfillment/prozesse/kennzahlen';
 import type { CockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
+import { WARTET_AUF_TEXT } from '@/lib/fulfillment/prozesse/reise';
 import { kundenAmpel, nachAufmerksamkeit } from '@/lib/fulfillment/prozesse/darstellung';
 import { klein } from './teile';
 import { AMPEL_FARBE, AMPEL_TEXT, FortschrittsRing, MiniStrahl, WertBalken } from '../reise/bilder';
@@ -68,6 +69,12 @@ function KundenKarte({ z, onOeffnen }: { z: CockpitZeile; onOeffnen: () => void 
       <span style={{ display: 'grid', gap: 4 }}>
         <span style={{ ...MIKRO }}>Als Nächstes</span>
         <span style={{ fontSize: TYP.bedien, color: C.ink, overflowWrap: 'anywhere' }}>{z.schritt ?? z.phase ?? '—'}</span>
+        {/* 17.10. abends (Ausführung): worauf gewartet wird und bis wann — aus demselben nächsten Punkt (Fall-Kopf, Reise „hier“). */}
+        {z.schrittLage && (
+          <span style={{ ...klein, color: z.schrittLage.ueberfaellig ? LEUCHT.achtung : C.inkDim }}>
+            {WARTET_AUF_TEXT[z.schrittLage.wartetAuf]}{z.schrittLage.faelligAm ? ` · ${z.schrittLage.ueberfaellig ? 'überfällig seit' : 'bis'} ${tagKurz(z.schrittLage.faelligAm)}` : ''}
+          </span>
+        )}
       </span>
       {z.haengt[0] && (
         <span style={{ display: 'flex', gap: 6, alignItems: 'baseline', fontSize: TYP.bedien, color: rot.length ? LEUCHT.kritisch : LEUCHT.achtung, overflowWrap: 'anywhere' }}>

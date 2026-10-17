@@ -15,6 +15,7 @@ import type { MusterWahl } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import type { Mandat } from '@/lib/crm/typen';
 import type { NachsorgePunkt } from '@/lib/fulfillment/prozesse/ansichten';
 import { abstimmungsNummern, ohneKuerzel } from '@/lib/fulfillment/prozesse/darstellung';
+import type { AblaufKnotenStand } from '@/lib/fulfillment/prozesse/ausfuehrung';
 
 export const EREIGNIS = 'make-fulfillment-geaendert';
 export const geaendert = () => { if (typeof window !== 'undefined') window.dispatchEvent(new Event(EREIGNIS)); };
@@ -77,6 +78,8 @@ export interface FallAntwort {
   analyse?: { f2: boolean; diagnose: boolean; quickWins: string[]; fragen: number; massnahmen: string[]; ziel: string | null } | null;
   /** Die Nachsorge als Plan ab Mandatsende. */
   nachsorge?: { ende: string | null; plan: NachsorgePunkt[] };
+  /** Ausführung der Abläufe (17.10. abends): Stand je Knoten mit Form — dran, Runde, Frist, Aufgabe und ihr Stand. */
+  ablauf?: { aktiv: boolean; knoten: Record<string, AblaufKnotenStand & { aufgabeStatus?: string }> };
 }
 export interface CockpitAntwort { heute: string; zeilen: CockpitZeile[]; haengt: Haenger[]; kapa: { stundenWoche: number; frei: number | null; ueber: boolean } | null }
 export type { KnotenStatus };

@@ -524,6 +524,11 @@ Landkarte › Paket-Vorlage „Bearbeiten“ bzw. „+ Neuer Ablauf“ öffnet `
 - **Rechte:** bearbeiten nur volle Mitglieder; „nur Business“ sieht den Editor ohne Palette und Ziehen (der Server lehnt mit 403 ab).
 - **Wirkung:** Änderungen gelten für neue Fälle; laufende zeigen „Vorlage geändert — übernehmen?“ mit Vorschau (neu, geändert, neue Reihenfolge, entfernt) —
   erst der Klick schreibt, erledigte Schritte bleiben erledigt.
+- **Ausführung im Fall (17.10. abends):** am gewählten Knoten EINE Karte (`components/os/fulfillment/reise/AblaufKarte.tsx`) — Entscheidung: die Frage mit „Ja“
+  (Hauptaktion) und „Nein“, darunter was danach passiert und die Runde („Versuch 2 von 5“), „eskaliert“ als Hinweis-Karte; Nachricht: „Entwurf öffnen“ (Hauptaktion,
+  gesendet nur im Fenster per Klick) und „In der Inbox öffnen“; Schritt/Erinnerung: die Aufgabe mit Stand als Link. Ist die Karte die Hauptaktion, verzichtet das
+  Schritt-Detail darauf (eine Hauptaktion je Ansicht). Die Reise markiert „hier“ (auch auf dem Nein-Pfad) und „hängt“ (eskaliert = rot); die Kunden-Karten der
+  Landkarte sagen „wartet auf …“ mit Frist. Gerechnet nur in `lib/fulfillment/prozesse/ausfuehrung.ts` bzw. `naechsterPunkt`.
 - Wächter: `tests/fulfillment-editor-oberflaeche.test.ts` (Palette, Ablage-Stellen, Tastatur, Ziele ≥ 44 px, Handy-Liste, nur ansehen, EIN Bauteil),
   `tests/fulfillment-editor-modell.test.ts`, `tests/fulfillment-editor-route.test.ts`, `tests/fulfillment-editor-update.test.ts`, `tests/fulfillment-feinschliff.test.ts`.
 

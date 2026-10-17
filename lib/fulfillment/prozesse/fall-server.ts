@@ -18,6 +18,7 @@ import { neueKennung } from '@/lib/kennung';
 import { localDay, tagVon } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { fallAnwenden, fallStarten, vorlageUebernehmen } from './fall';
+import { ablaufAktiv } from './ausfuehrung';
 import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, zeitpunkt, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
@@ -26,7 +27,23 @@ import type { FallTermin } from './termine';
 
 export class FallFehler extends Error { constructor(msg: string, readonly status: 400 | 403 | 404 | 409 | 413) { super(msg); } }
 
-export interface Nachzug { phase?: 'gesetzt' | 'fehler'; lieferobjekte?: number; ziele?: number; fehler?: string }
+export interface Nachzug {
+  phase?: 'gesetzt' | 'fehler'; lieferobjekte?: number; ziele?: number; fehler?: string;
+  /** Ausführung der Abläufe (17.10. abends): neu angelegte bzw. geschlossene Aufgaben, Nachrichten im Stapel, Glocken. */
+  ablauf?: { aufgaben: number; geschlossen: number; nachrichten: number; glocken: number };
+}
+
+/** Die Ausführung des Falls nachziehen (Aufgaben, Nachrichten, Glocken — ./ausfuehrung-server.ts) — wirft nie. */
+async function ablaufNachzug(fall: Fall, mandatId: string, person: string, wer: Wer | undefined, jetzt: Date, nachzug?: Nachzug): Promise<void> {
+  // Nur Fälle mit Ausführung (ein Knoten trägt eine Form) — sonst bleibt alles wie bisher, ohne einen zusätzlichen Lesevorgang.
+  if (!ablaufAktiv(fall)) return;
+  try {
+    const { ablaufNachziehen } = await import('./ausfuehrung-server');
+    const a = await ablaufNachziehen({ mandatId, person, ...(wer ? { wer } : {}), jetzt });
+    if (nachzug && (a.aufgaben || a.geschlossen || a.nachrichten || a.glocken)) nachzug.ablauf = { aufgaben: a.aufgaben, geschlossen: a.geschlossen, nachrichten: a.nachrichten, glocken: a.glocken };
+    if (nachzug && a.fehler) nachzug.fehler = a.fehler;
+  } catch (e) { if (nachzug) nachzug.fehler = e instanceof Error ? e.message.slice(0, 200) : 'Ablauf nicht nachgezogen'; }
+}
 
 /** Alles, was ein Fall zum Rechnen braucht (CRM, Vorlagen, Kunden-Kurzform aus C2). */
 export async function fallUmfeld(mandatIds?: readonly string[]) {
@@ -94,6 +111,8 @@ export async function fallStartenServer(e: { mandatId: unknown; vorlageId: unkno
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: [m.id] };
   }, e.wer ?? { art: 'person', person: e.person }, h);
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
+  // Ausführung (17.10. abends): ist der Fall gleich an einem Schritt mit Form, entsteht seine Aufgabe sofort.
+  await ablaufNachzug(neu!, m.id, e.person, e.wer, jetzt);
   return neu!;
 }
 
@@ -220,6 +239,8 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
       if (ok) nachzug.ziele = (nachzug.ziele ?? 0) + gemessen.size; else nachzug.fehler = 'Ist-Wert am Mandat nicht nachgezogen';
     }
   } catch (e) { nachzug.fehler = e instanceof Error ? e.message.slice(0, 200) : 'Ziele nicht nachgezogen'; }
+  // Ausführung (17.10. abends): nächster Schritt → Aufgabe, Nachricht → Vorschlag, erledigte Schritte schließen ihre Aufgabe — idempotent.
+  await ablaufNachzug(fall, m.id, person, wer, jetzt, nachzug);
   return { fall: fallWirksam(fall, abl), geaendert: r.geaendert, nachzug };
 }
 
@@ -259,6 +280,8 @@ export async function fallVorlageUebernehmen(mandatId: unknown, person: string, 
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: [m.id] };
   }, wer ?? { art: 'person', person }, h);
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
+  // Erst nach der Übernahme per Klick arbeitet die Ausführung mit der neuen Fassung (17.10. abends).
+  await ablaufNachzug(neu!, m.id, person, wer, jetzt);
   return neu!;
 }
 

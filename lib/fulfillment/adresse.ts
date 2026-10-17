@@ -51,7 +51,8 @@ const BAUSTEIN = /^fb-[a-z0-9][a-z0-9-]{0,99}$/;
 const VORLAGE = /^fp-[a-z0-9][a-z0-9-]{0,99}$/;
 const MANDAT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
 /** Ein Sprung im Fall (ohne „#“) — dieselbe Form wie `sprungAnker` (components/os/fulfillment/reise/sprung.ts). */
-const ANKER = /^(willkommen|(phase|freigabe)-[A-Za-z0-9][A-Za-z0-9_-]{0,99}|stelle-[a-z][a-z0-9-]{0,60})$/;
+// 17.10. abends (Ausführung): `schritt-<Knoten>` wählt einen Knoten im Fluss (Links aus Aufgaben und Glocke).
+const ANKER = /^(willkommen|(phase|freigabe|schritt)-[A-Za-z0-9][A-Za-z0-9_-]{0,99}|stelle-[a-z][a-z0-9-]{0,60})$/;
 
 const istAlterReiter = (r: string): r is AlterFallReiter => Object.prototype.hasOwnProperty.call(ALTE_REITER, r);
 const istAlterBereich = (u: string): u is AlterBereich => Object.prototype.hasOwnProperty.call(ALTE_BEREICHE, u);

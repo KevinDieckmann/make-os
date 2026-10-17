@@ -90,8 +90,10 @@ type Haenger = 'rot' | 'gelb' | null;
  * Hängt dieser Knoten? Überfällig (Frist vor heute, nicht erledigt) — ein offener Abstimmungspunkt rot, sonst gelb (die Willkommensmail zählt über ihre
  * eigene Uhr); wartet beim Kunden länger als `WARTET_ALT_TAGE` — ab `WARTET_ROT_TAGE` rot. Das Schlimmere gewinnt. Wächter: tests/fulfillment-miro.test.ts.
  */
-export function knotenHaengt(k: Pick<FallKnoten, 'id' | 'status' | 'faelligAm' | 'freigabe' | 'seit'>, f: Pick<Fall, 'freigaben'>, heute: string): Haenger {
+export function knotenHaengt(k: Pick<FallKnoten, 'id' | 'status' | 'faelligAm' | 'freigabe' | 'seit' | 'eskaliertAm'>, f: Pick<Fall, 'freigaben'>, heute: string): Haenger {
   if (FERTIG.has(k.status)) return null;
+  // Ausführung (17.10. abends): ausgeschöpfte Runden an einer Entscheidung — rot, wie im Cockpit.
+  if (k.eskaliertAm) return 'rot';
   let h: Haenger = null;
   if (k.faelligAm && k.faelligAm < heute) {
     if (k.freigabe && !f.freigaben[k.freigabe]) h = 'rot';
@@ -177,7 +179,11 @@ function kaestchenAus(z: SchrittZeile, e: ReiseBildEingabe, hierId: string | nul
   const tage = w ? tageZwischen(w.seit, e.heute) : undefined;
   const kunde = !z.fertig && k.zustaendig === 'kunde';
   const frist = alle.filter(x => !FERTIG.has(x.status) && x.faelligAm).map(x => x.faelligAm!).sort()[0];
+  // Ausführung (17.10. abends): an einer Entscheidung, was gerade läuft („nein · Erinnerung läuft“, „eskaliert“); ein wartender Nein-Zweig „nur bei nein“.
+  const zweigLaeuft = k.form === 'entscheidung' && !z.fertig && k.antwort === 'nein' && !!k.zweige?.nein && e.fall.knoten.some(x => x.id === k.zweige!.nein && !FERTIG.has(x.status) && (x.runden ?? 0) < (k.runden ?? 0));
   const unterText = z.zustand === 'entfaellt' ? 'entfällt'
+    : k.eskaliertAm && !z.fertig ? 'eskaliert — bitte entscheiden'
+    : zweigLaeuft ? `nein · Erinnerung läuft${k.runden ? ` (Runde ${k.runden})` : ''}`
     : w && !z.fertig ? (tage !== undefined ? `beim Kunden ${tage <= 0 ? 'seit heute' : `seit ${tage} Tag${tage === 1 ? '' : 'en'}`}` : 'beim Kunden')
       : !z.fertig && frist ? `${frist < e.heute ? 'überfällig seit' : 'bis'} ${kurz(frist)}`
         : kunde ? 'macht der Kunde' : undefined;

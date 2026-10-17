@@ -25,6 +25,35 @@ oben nach unten.“ Im Editor (`?e=<Ablauf>`) der Umschalter **Fluss · Fläche*
 - Wächter: `tests/fulfillment-flaeche-modell.test.ts`, `tests/fulfillment-flaeche-oberflaeche.test.ts`, Route-Fall in `tests/fulfillment-editor-route.test.ts`.
   Update-Probe: Altbestand ohne Lage liest und schreibt verlustfrei (nur neue optionale Felder). Kein Server-Schritt, keine Umleitung.
 - **Offen:** in einem echten Browser durchklicken (diese Sitzung hatte keinen Server — geprüft per Tests und statischem Bild).
+## 17.10.2026 abends — Ausführung der Abläufe (nur lokal — Branch `ablauf-ausfuehren`, Basis 7d76ace5 = `update-0910b`)
+Kevin: „Abläufe wirklich ausführen: jeder Schritt wird zur Aufgabe mit Verantwortlichem und Frist, Nachrichten als Entwurf auf Klick, Erinnerungen von selbst,
+Entscheidungen fragen nach — man sieht live, wo jeder Kunde hängt.“ Gilt nur für Knoten MIT Form (Prozess-Editor, Import „pakete“) — Fälle ohne Formen
+(Altbestand, Muster) laufen genau wie bisher; laufende Fälle bekommen die Formen erst mit „Vorlage übernehmen“ (Klick).
+- **EINE Stelle:** `lib/fulfillment/prozesse/ausfuehrung.ts` (rein: wo der Fall steht — erste unfertige Phase, eine fertige Phase mit offenem Abstimmungspunkt hält
+  an; Schritte nacheinander, zwei+ benannte Teilprozesse parallel; was nach Erledigung/Antwort passiert; was jetzt entstehen muss) + `ausfuehrung-server.ts`
+  (setzt um, nur über `systemAufgabenAendern`, `lege`, `melde`, `fulfillmentAendern`). Aufgerufen nach jedem Schreiben am Fall, beim Start, nach „Vorlage
+  übernehmen“ und im Morgenlauf (`prozesseMorgenlauf`, zuerst) — idempotent über Marken im Fall (`ablauf-aufgabe|nachricht|frage|eskaliert|zu:…`).
+- **Schritt/Termin → EINE Aufgabe** im Space des Mandanten (`fallAufgabeOrt`), Kennung `ff-ab-<fnv(Mandat|Knoten|Runde)>`, Titel „Schritt — Kunde“ (macht der Kunde:
+  „Beim Kunden: …“ + Status „wartet auf Kunde“), verantwortlich die Zuständige des Mandats (sonst die erste Person des Haushalts), Frist = Ankunft + `frist`, Link
+  `#schritt-<Knoten>` zurück in den Fall. Aufgabe erledigt → Knoten erledigt (Haken in `lib/aufgaben/speicher.ts`, als die Person, die abgehakt hat); Knoten im Fall
+  abgehakt → Aufgabe geschlossen (erledigt bzw. abgebrochen). Kein Ping-Pong: nur, wenn der Knoten gerade dran ist.
+- **Nachricht → Vorschlag** im Stapel („Nachricht bereit“, für die Zuständige; Sprung „Zum Entwurf im Fall“). Im Fall „Entwurf öffnen“: Mail-Baustein des Knotens,
+  Platzhalter `{{anrede}} {{vorname}} {{nachname}} {{ansprechpartner}} {{kunde}} {{termin}} {{absender}}` gefüllt (ohne KI); gesendet nur per Klick (MailSenden →
+  /api/inbox/senden, § 7 UWG wie jede Mail) bzw. „In der Inbox öffnen“; danach ist der Schritt erledigt. „Freigeben“ im Stapel sendet nie. Art. 18 bzw. Werbesperre
+  der Ansprechperson → kein Entwurf, kein Vorschlag, nur Hinweis.
+- **Entscheidung** = Karte mit „Ja“/„Nein“ (Op `antwort`): ja → weiter (Ja-Zweig nach vorn: Übersprungenes entfällt), nein → Nein-Zweig läuft. Nach der Frist offen →
+  EINE Glocke je Runde (nur im Systemlauf). **Erinnerung** nach ihrer Frist → Aufgabe je Runde (+ Mail-Entwurf, wenn ein Mail-Baustein dranhängt); erledigt → die
+  Entscheidung fragt wieder (Frist ab heute). Höchstens `versuche` Runden (neues optionales Feld an der Erinnerung, 1–20; fehlt = 5), danach „eskaliert“: Glocke
+  einmal, Hänger rot, bis jemand entscheidet.
+- **Live-Lage:** `naechsterPunkt` kennt den laufenden Nein-Zweig und `wartetAuf` (intern · Kunde · Entscheidung offen · Abstimmungspunkt) — dieselbe Rechnung für
+  Fall-Kopf, Reise „hier“, Cockpit (`schrittLage`), Kurzform (`naechsterLage`) und die Kunden-Karten der Landkarte („wartet auf … · bis/überfällig seit …“).
+- **Modell (additiv, alles optional):** Fall-Knoten `antwort`, `antwortAm`, `runden`, `eskaliertAm`; Vorlagen- und Fall-Knoten `versuche` (Säuberer, Struktur-Kopie,
+  Diff „Versuche“, Editor-Op `schritt { versuche }` — im Editor noch ohne Feld). Route GET `/api/fulfillment/fall` trägt `ablauf` und `?nachricht=<Knoten>`.
+- **Demo:** ein dritter, erfundener Kunde („Hafenkontor Beispiel GmbH“, über die Routen samt Liquiditätsplan) mit einem Fall nach „Beispiel · Vom Angebot zum
+  Start“: Entscheidung offen („nein“ vor sieben Tagen), Erinnerung heute fällig mit Aufgabe, Mail-Entwurf zur Freigabe im Stapel.
+- **Update-Probe:** Fälle/Vorlagen der Online-Fassung verlustfrei durch die Säuberer; ein Fall ohne Formen bleibt bei Nachziehen und Morgenlauf Byte für Byte.
+  **Rückweg:** der alte Stand verwirft die neuen Felder beim nächsten Schreiben (Antworten/Runden gehen verloren, angelegte Aufgaben bleiben als normale Aufgaben).
+- Tests: `tests/fulfillment-ablauf-{rein,server}.test.ts`; Demo-Wächter angepasst (`demo`, `fulfillment-c1-demo`, `fulfillment-stimmigkeit`); alle `tests/fulfillment-*` grün.
 
 ## 17.10.2026 — Reise + Fluss überall: Kreislauf, Einrichtung, Planung (nur lokal — Branch `reise-ueberall`, Basis ed3cd57f = `update-0910b`)
 Kevin: „Markttraktion-Kreislauf, Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung. Dann sieht das ganze System gleich klar aus.“

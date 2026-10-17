@@ -590,6 +590,13 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
   await meldungenNachSchreiben(aufgabenSicht(vorher), aufgabenSicht(nachher), neueKommentare, echtePerson ? opt.person : SYSTEM, personenListe);
   // Follow-up = Aufgabe (29.09., #99): erledigte Aufgaben erledigen ihre verknüpften CRM-Follow-ups (idempotent, wirft nie).
   await followupsNachAufgaben(vorher, nachher, echtePerson ? opt.person : SYSTEM);
+  // Fulfillment-Ausführung (17.10. abends): eine erledigte Aufgabe eines Ablauf-Schritts (Kennung `ff-ab-…`) rückt ihren Fall weiter
+  // (lib/fulfillment/prozesse/ausfuehrung-server.ts; nur, wenn der Schritt gerade dran ist — idempotent, wirft nie). Erst prüfen, dann laden.
+  const ablaufVorherFertig = new Set(vorher.tasks.filter(t => t.id.startsWith('ff-ab-') && t.status === 'done').map(t => t.id));
+  if (nachher.tasks.some(t => t.id.startsWith('ff-ab-') && t.status === 'done' && !ablaufVorherFertig.has(t.id))) {
+    try { await (await import('@/lib/fulfillment/prozesse/ausfuehrung-server')).fulfillmentNachAufgaben(vorher, nachher, echtePerson ? opt.person : SYSTEM); }
+    catch (e) { console.error('[aufgaben] Fulfillment nicht weitergerückt —', e instanceof Error ? e.message : e); }
+  }
   // Umzug Privat ↔ Business (29.09., #4): der Bereich der Dateien an umgezogenen Aufgaben zieht mit.
   await dateienBereichNachziehen(vorher, nachher, opt.haushalt, echtePerson ? opt.person : SYSTEM);
   if (erg.entfernt && opt.haushalt) await papierkorbDateienEntfernen(opt.haushalt, opt.person, erg.entfernt);

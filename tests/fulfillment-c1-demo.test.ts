@@ -111,14 +111,14 @@ describe('Demo: Fulfillment', () => {
     expect((k.puls as { liste: unknown[] }).liste).toEqual([]);
   });
 
-  it('Editor (17.10.): ein Beispiel-Ablauf mit Entscheidung ja/nein und Erinnerung — über die Editor-Route gesät, kein Fall nutzt ihn', async () => {
+  it('Editor (17.10.): ein Beispiel-Ablauf mit Entscheidung ja/nein und Erinnerung — über die Editor-Route gesät; ein Fall (17.10. abends, Ausführung) nutzt ihn', async () => {
     const { EDITOR_BEISPIEL_TITEL } = await import('@/lib/demo/fulfillment-editor');
     expect(schritte['Fulfillment: Beispiel-Ablauf im Editor']).toBe(9);
     const ue = await lese('fulfillment');
     const beispiel = (ue.prozesse as { id: string; art: string; titel: string }[]).filter(p => p.art === 'paket' && p.titel === EDITOR_BEISPIEL_TITEL);
     expect(beispiel).toHaveLength(1);
     const e = await lese('fulfillment/editor', `?v=${beispiel[0].id}`);
-    expect(e.laufend).toBe(0);
+    expect(e.laufend).toBe(1); // der Beispiel-Fall in Ausführung (lib/demo/fulfillment-ablauf.ts)
     const { editorModell } = await import('@/lib/fulfillment/prozesse/editor');
     const m = editorModell(e.vorlage as never);
     expect(m.phasen.map(p => p.titel)).toEqual(['Angebot', 'Start']);
@@ -129,5 +129,32 @@ describe('Demo: Fulfillment', () => {
     expect(nein).toMatchObject({ form: 'erinnerung', neinVon: entscheidung.id, zweige: { ja: entscheidung.id } });
     expect(schritte1.filter(x => !x.neinVon).map(x => x.form)).toEqual(['schritt', 'nachricht', 'entscheidung', 'termin']);
     expect(m.phasen[0].abstimmung?.titel).toBe('Auftrag bestätigt');
+  });
+
+  it('Ausführung (17.10. abends): der Beispiel-Fall läuft sichtbar — offene Entscheidung, fällige Erinnerung mit Aufgabe, Mail-Entwurf im Stapel (nie gesendet)', async () => {
+    const { ABLAUF_DEMO_MANDAT } = await import('@/lib/demo/fulfillment-ablauf');
+    expect(schritte['Fulfillment: Beispiel-Fall in Ausführung']).toBe(1);
+    const f = await lese('fulfillment/fall', `?m=${ABLAUF_DEMO_MANDAT}`);
+    const fall = f.fall as { status: string; knoten: { id: string; titel: string; status: string; antwort?: string; runden?: number; faelligAm?: string }[] };
+    expect(fall.status).toBe('laeuft');
+    const kn = (t: string) => fall.knoten.find(x => x.titel === t)!;
+    expect(kn('Bedarf aufnehmen').status).toBe('erledigt');
+    expect(kn('Angebot senden').status).toBe('erledigt');
+    expect(kn('Angebot angenommen?')).toMatchObject({ status: 'wartet_kunde', antwort: 'nein', runden: 1 });
+    const heute = localDay();
+    expect(kn('Nach einer Woche nachfassen').faelligAm).toBe(heute); // heute fällig — die Demo hat keine überfällige Aufgabe (demo.test B12)
+    const ab = f.ablauf as { aktiv: boolean; knoten: Record<string, { aktiv: boolean; art: string; ueberfaellig: boolean; aufgabe?: string; aufgabeStatus?: string; neinLaeuft?: boolean }> };
+    expect(ab.knoten[kn('Nach einer Woche nachfassen').id]).toMatchObject({ aktiv: true, art: 'erinnerung', ueberfaellig: false, aufgabeStatus: 'todo' });
+    expect(ab.knoten[kn('Angebot angenommen?').id]).toMatchObject({ art: 'entscheidung', neinLaeuft: true });
+    // Der Mail-Entwurf: als Vorschlag im Stapel (für die Zuständige), gefüllt aus dem Baustein — gesendet wurde nichts.
+    const db = await import('@/lib/store/local-db');
+    const st = await db.loadJson<{ vorschlaege: { status: string; werkzeug: string; person?: string; bezug?: { id: string } }[] }>('zoe-stapel');
+    expect((st?.vorschlaege ?? []).filter(v => v.status === 'offen' && v.werkzeug === 'fulfillment_nachricht' && v.bezug?.id.startsWith(`p:nachricht:${ABLAUF_DEMO_MANDAT}:`))).toHaveLength(1);
+    const n = await lese('fulfillment/fall', `?m=${ABLAUF_DEMO_MANDAT}&nachricht=${kn('Nach einer Woche nachfassen').id}`);
+    expect(n.entwurf).toMatchObject({ betreff: 'Kurze Rückfrage zum Angebot — Hafenkontor Beispiel GmbH', an: { email: 'mara@example.invalid' } });
+    expect((n.entwurf as { text: string }).text).toMatch(/^Guten Tag Mara Beispiel,/);
+    // Die Live-Lage: hier = die Erinnerung (heute fällig), die Entscheidung ist offen.
+    const c = await lese('fulfillment/cockpit');
+    expect((c.zeilen as { mandatId: string; schritt?: string; schrittLage?: { wartetAuf: string; ueberfaellig: boolean; faelligAm?: string } }[]).find(z => z.mandatId === ABLAUF_DEMO_MANDAT)).toMatchObject({ schritt: 'Nach einer Woche nachfassen', schrittLage: { wartetAuf: 'entscheidung', ueberfaellig: false, faelligAm: heute } });
   });
 });

@@ -6,10 +6,10 @@
 // Grundlage sind die vorhandenen Regeln (lib/fulfillment/regeln.ts: `aktuellerKnoten`, `phaseFertig`, `fallFortschritt`) — keine zweite
 // Fortschritts-Rechnung: der Anteil je Phase zählt dieselben Blätter (Knoten ohne Kinder, „entfällt“ zählt nicht).
 
-import type { Fall, FallKnoten, Freigabepunkt, KnotenStatus, Zustaendig } from '../typen';
+import type { Fall, FallKnoten, Freigabepunkt, KnotenForm, KnotenStatus, Zustaendig } from '../typen';
 import { MUSTER_ONBOARDING, type OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
-import { aktuellerKnoten, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, teilbaum, wurzelVon } from '../regeln';
+import { aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
 import { obKnotenId, obSchluessel, type OnboardingStand } from './onboarding';
 import { SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE } from './phasen';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz } from './darstellung';
@@ -166,6 +166,13 @@ export function naechsteSchritte(fall: Pick<Fall, 'knoten'>, heute: string, n = 
 
 // ── Die EINE Stelle: wo steht der Fall, was ist als Nächstes (14.10., Abnahme „eine Rechnung je Größe“) ────────────────────────────────
 
+/**
+ * Worauf der Fall an seinem nächsten Punkt wartet (17.10. abends, Ausführung — „man sieht live, wo jeder Kunde hängt“): auf uns (intern), auf den Kunden
+ * (er macht den Schritt bzw. er wartet bei ihm), auf eine Antwort (Entscheidung offen) oder auf einen Abstimmungspunkt.
+ */
+export type WartetAuf = 'intern' | 'kunde' | 'entscheidung' | 'abstimmung';
+export const WARTET_AUF_TEXT: Record<WartetAuf, string> = { intern: 'bei uns', kunde: 'wartet auf den Kunden', entscheidung: 'Entscheidung offen', abstimmung: 'Abstimmungspunkt offen' };
+
 /** Was als Nächstes dran ist — ein Onboarding-Schritt, ein Abstimmungspunkt oder ein Schritt der laufenden Phase. */
 export interface NaechsterPunkt {
   art: 'onboarding' | 'freigabe' | 'schritt';
@@ -178,6 +185,10 @@ export interface NaechsterPunkt {
   schluessel?: OnboardingSchluessel;
   /** Freigabe-Kennung (nur `art: 'freigabe'`). */
   freigabe?: string;
+  /** Worauf gewartet wird (17.10. abends) — dieselbe Rechnung für Fall-Kopf, Cockpit und Landkarte. */
+  wartetAuf: WartetAuf;
+  /** Die Form des Knotens aus dem Ablauf (Prozess-Editor), wenn er eine trägt. */
+  form?: KnotenForm;
 }
 
 /** Onboarding-Schritte in der Reihenfolge des Musters: erst die zählenden (ohne den Abstimmungspunkt am Ende), dann dieser — wie der Handgriff. */
@@ -191,7 +202,7 @@ const OB_REIHE: readonly OnboardingSchluessel[] = [
  * Abstimmungspunkt einer Phase, die sonst durch ist, dann der erste offene Schritt der laufenden Phase (Sammel-Schritte aufgelöst; Schritte ohne
  * Abstimmungspunkt zuerst), zuletzt ihr Abstimmungspunkt. Abgeschlossen oder alles erledigt → null.
  */
-export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status'>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel'>[], heute: string): NaechsterPunkt | null {
+export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status'>, freigaben: readonly (Pick<Freigabepunkt, 'id' | 'titel'> & { wer?: Zustaendig })[], heute: string): NaechsterPunkt | null {
   if (fall.status === 'abgeschlossen') return null;
   const l = fall.knoten;
   const nach = new Map(l.map(k => [k.id, k]));
@@ -200,26 +211,34 @@ export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status
   const ueber = (k: FallKnoten) => !fertig(k) && !!k.faelligAm && k.faelligAm < heute;
   const ort = (k: FallKnoten) => {
     const ph = phasen.find(x => x.id === k.id || teilbaum(x.id, l).includes(k.id));
-    return { zustand: k.status, ueberfaellig: ueber(k), ...(k.faelligAm ? { faelligAm: k.faelligAm } : {}), ...(ph ? { phase: titelOhneZusatz(ph.titel), phaseId: ph.id } : {}) };
+    return { zustand: k.status, ueberfaellig: ueber(k), ...(k.faelligAm ? { faelligAm: k.faelligAm } : {}), ...(ph ? { phase: titelOhneZusatz(ph.titel), phaseId: ph.id } : {}), ...(k.form ? { form: k.form } : {}) };
   };
   const fgTitel = (id: string) => abstimmungName(id, nummern, freigaben.find(x => x.id === id)?.titel);
+  // Worauf gewartet wird (17.10. abends): ein Abstimmungspunkt ohne Kunden ist intern; ein Schritt beim bzw. vom Kunden wartet auf ihn; eine Entscheidung
+  // (Prozess-Editor) auf eine Antwort.
+  const fgWartet = (id: string): WartetAuf => (freigaben.find(x => x.id === id)?.wer === 'intern' ? 'intern' : 'abstimmung');
+  const schrittWartet = (k: FallKnoten): WartetAuf => (k.status === 'wartet_kunde' || k.zustaendig === 'kunde' ? 'kunde' : k.form === 'entscheidung' && !k.freigabe ? 'entscheidung' : 'intern');
   for (const s of OB_REIHE) {
     const k = nach.get(obKnotenId(s));
     if (!k || fertig(k)) continue;
-    if (k.freigabe && !fall.freigaben[k.freigabe]) return { art: 'freigabe', id: k.id, titel: fgTitel(k.freigabe), freigabe: k.freigabe, schluessel: s, ...ort(k) };
+    if (k.freigabe && !fall.freigaben[k.freigabe]) return { art: 'freigabe', id: k.id, titel: fgTitel(k.freigabe), freigabe: k.freigabe, schluessel: s, ...ort(k), wartetAuf: fgWartet(k.freigabe) };
     if (k.freigabe) continue;
-    return { art: 'onboarding', id: k.id, titel: anzeigeTitel(k.titel, nummern), schluessel: s, ...ort(k) };
+    return { art: 'onboarding', id: k.id, titel: anzeigeTitel(k.titel, nummern), schluessel: s, ...ort(k), wartetAuf: schrittWartet(k) };
   }
   const durch = phasen.find(ph => ph.freigabe && !fall.freigaben[ph.freigabe] && ph.status !== 'entfaellt' && phaseFertig(ph, l));
-  if (durch?.freigabe) return { art: 'freigabe', id: durch.id, titel: fgTitel(durch.freigabe), freigabe: durch.freigabe, ...ort(durch) };
+  if (durch?.freigabe) return { art: 'freigabe', id: durch.id, titel: fgTitel(durch.freigabe), freigabe: durch.freigabe, ...ort(durch), wartetAuf: fgWartet(durch.freigabe) };
   const p = aktuellerKnoten(fall).phase;
   if (!p) return null;
   // Nie die Phase selbst (15.10., Abnahme B1: „Als Nächstes: Diagnose“ neben „Phase 3: Diagnose“) — eine Phase ohne Schritte hat keinen eigenen nächsten Schritt.
-  const zeilen = offeneSchritte(fall, p.id, heute).filter(z => z.knoten.id !== p.id);
-  const s = zeilen.find(z => !(z.knoten.freigabe && !fall.freigaben[z.knoten.freigabe]));
-  if (s) return { art: 'schritt', id: s.knoten.id, titel: anzeigeTitel(s.knoten.titel, nummern), ...ort(s.knoten), zustand: s.zustand, ueberfaellig: s.ueberfaellig };
+  // Ein Nein-Zweig, der gerade nicht läuft, ist nie „als Nächstes“ (17.10. abends, Ausführung) — er kommt erst mit einem „nein“.
+  const zeilen = offeneSchritte(fall, p.id, heute).filter(z => z.knoten.id !== p.id && !wartenderNeinZweig(l, z.knoten.id));
+  let s = zeilen.find(z => !(z.knoten.freigabe && !fall.freigaben[z.knoten.freigabe]));
+  // An einer Entscheidung mit „nein“ läuft ihr Nein-Zweig (die Erinnerung) — DER ist dann hier.
+  const zweig = s && s.knoten.form === 'entscheidung' ? aktiverNeinZweig(l, s.knoten) : null;
+  if (zweig) s = alleSchritte(fall, p.id, heute).find(z => z.knoten.id === zweig.id) ?? s;
+  if (s) return { art: 'schritt', id: s.knoten.id, titel: anzeigeTitel(s.knoten.titel, nummern), ...ort(s.knoten), zustand: s.zustand, ueberfaellig: s.ueberfaellig, wartetAuf: zweig ? 'entscheidung' : schrittWartet(s.knoten) };
   const fgKnoten = p.freigabe && !fall.freigaben[p.freigabe] ? p : zeilen.map(z => z.knoten).find(k => k.freigabe && !fall.freigaben[k.freigabe]);
-  if (fgKnoten?.freigabe) return { art: 'freigabe', id: fgKnoten.id, titel: fgTitel(fgKnoten.freigabe), freigabe: fgKnoten.freigabe, ...ort(fgKnoten) };
+  if (fgKnoten?.freigabe) return { art: 'freigabe', id: fgKnoten.id, titel: fgTitel(fgKnoten.freigabe), freigabe: fgKnoten.freigabe, ...ort(fgKnoten), wartetAuf: fgWartet(fgKnoten.freigabe) };
   return null;
 }
 
@@ -298,16 +317,20 @@ export function naechsterHandgriff(fall: Pick<Fall, 'knoten' | 'freigaben' | 'st
   const p = aktuellerKnoten(fall).phase;
   if (!p) return { art: 'fertig', text: 'Alle Phasen sind erledigt.' };
   // Dieselbe Liste wie „Als Nächstes“ (`offeneSchritte`): ein Sammel-Schritt ist nie selbst der Handgriff, sondern sein erster offener Baustein.
-  const offen = offeneSchritte(fall, p.id, heute);
+  const offen = offeneSchritte(fall, p.id, heute).filter(z => !wartenderNeinZweig(fall.knoten, z.knoten.id));
   const ohneFreigabe = offen.filter(z => !z.knoten.freigabe);
   // Freigabe als nächster Handgriff: die Phase trägt einen offenen Freigabe-Punkt und sonst ist alles erledigt (bzw. nur noch der Freigabe-Schritt offen).
   const fg = p.freigabe && !fall.freigaben[p.freigabe] ? p.freigabe : offen.find(z => z.knoten.freigabe && !fall.freigaben[z.knoten.freigabe])?.knoten.freigabe;
   if (fg && !ohneFreigabe.length) return { art: 'freigabe', id: fg, text: freigabeText(fg, freigaben, fall.knoten) };
-  const s = ohneFreigabe[0] ?? offen[0];
+  let s = ohneFreigabe[0] ?? offen[0];
   if (!s) return fg ? { art: 'freigabe', id: fg, text: freigabeText(fg, freigaben, fall.knoten) } : { art: 'fertig', text: 'Alle Phasen sind erledigt.' };
+  // Ausführung (17.10. abends): an einer Entscheidung mit „nein“ ist die Erinnerung der Handgriff; eine offene Entscheidung fragt.
+  const zweig = s.knoten.form === 'entscheidung' ? aktiverNeinZweig(fall.knoten, s.knoten) : null;
+  if (zweig) s = alleSchritte(fall, p.id, heute).find(z => z.knoten.id === zweig.id) ?? s;
   const wartetKunde = s.zustand === 'wartet_kunde';
   const titel = anzeigeTitel(s.knoten.titel, abstimmungsNummern(fall.knoten));
-  return { art: 'schritt', id: s.knoten.id, text: wartetKunde ? `Beim Kunden nachfassen: ${titel}` : `Als Nächstes: ${titel}`, wartetKunde };
+  const frage = !zweig && s.knoten.form === 'entscheidung' && !s.knoten.freigabe;
+  return { art: 'schritt', id: s.knoten.id, text: wartetKunde ? `Beim Kunden nachfassen: ${titel}` : frage ? `Entscheiden: ${titel}` : zweig ? `Erinnerung: ${titel}` : `Als Nächstes: ${titel}`, wartetKunde };
 }
 
 /** „Abstimmungspunkt 3 vermerken (Diagnose-Abnahme)“ — „Freigabe“ meint in MAKE OS die Vorschläge von ZOE (14.10., Abnahme B19). */
