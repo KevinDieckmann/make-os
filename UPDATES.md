@@ -4,6 +4,20 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 17.10.2026 abends — Markenzeichen: der Flow (nur lokal — Branch `flow-linie`, Basis 107fe639 = `update-0910b`)
+Kevin: „Denke dir auch immer den Flow, diese Linie, mit — das ist unser Markenzeichen.“ — „Nach und nach kommt alles in den Flow.“
+- **EIN Faden-Zeichner** `lib/lichtfaeden/flow.ts` (Pfad-Modus des Lichtfadens: `flowProben`, `zeichneFaden`, gemeinsamer Takt `taktLauf`, Ebene `flowEbene`) und der
+  Baustein `FlowLinie` (`components/os/ui/flow.tsx`). Die FadenLinie der Index-Verläufe zeichnet jetzt mit demselben `zeichneFaden` im selben Takt (Aussehen gleich).
+- **Reise:** der Weg als Lichtfaden an der Unterkante (das Band „Kunde“ sitzt darauf): hell bis „Hier“, dahinter ruhig und ausgefranst, Stau an offenen Rauten, rot/gelb
+  nur, wo etwas hängt; Kreislauf je Stufe in ihrer Farbe; am Handy links an der Liste. **Fluss/Editor-Fluss:** Pfeile als feine Fäden (erledigt hell, offen gedämpft,
+  der Pfeil in den aktuellen Knoten glüht, Nein-Pfad orange). **Fläche:** Ebene unter dem SVG, der neue Pfeil zieht einen Faden mit, Export als ruhiges Standbild.
+  Stand nur aus den vorhandenen Spalten bzw. Knoten (`lib/reise/flow.ts`). Reduzierte Bewegung = Standbild, Kunden-Seite `flow="still"`, Druck ohne Ebene.
+- **Klein:** im Editor ist am Rechner die Fläche Vorgabe (gemerkte Wahl gewinnt) · Feld „Versuche (1–20)“ an Erinnerungen (leer = 5) · alte Fälle ohne Formen zeigen
+  „Vorlage übernehmen, damit die Ausführung startet ›“ (führt zur vorhandenen Übernahme; Antwort der Fall-Route trägt `ausfuehrungWartet`) · Index-Status: eine
+  gemessene, aber zu dünne Säule heißt „Vorläufig — erst n von m Kennzahlen gemessen“ statt „Noch keine Daten“ (Kevins Bild: Markttraktion neben Score 37).
+- Doku DESIGN_STANDARD.md › „Markenzeichen: der Flow“ (Leitsatz, Regeln, Liste „Hat den Flow“ / „Als Nächstes“). Wächter `tests/flow-linie.test.ts`.
+- **Rückweg:** nur Oberfläche und ein optionales Antwortfeld — kein Bestand, keine Datenänderung, kein Server-Schritt. Sichtprüfung nur statisch (headless Chrome).
+
 ## 17.10.2026 — Prozess-Editor › Fläche: frei zeichnen wie in Miro (nur lokal — Branch `prozess-flaeche`, Basis f466641b = `update-0910b`)
 Kevin: „Zeichnen wie in Miro: freie Fläche, Kästen frei platzieren, Pfeile ziehen, zoomen und schieben, Rahmen für Phasen — nicht nur die geordnete Liste von
 oben nach unten.“ Im Editor (`?e=<Ablauf>`) der Umschalter **Fluss · Fläche** (am Handy **Liste · Fläche (ansehen)**); die Wahl merkt sich der Browser.
