@@ -5,9 +5,9 @@
 // über 7 Tage, Puls an oder unter der Schwelle, Report über 14 Tage, Art.-14-Frist bald, überfällige Schritte. Rein und client-sicher.
 
 import type { DossierKurz, Fall, FallKnoten, Freigabepunkt, KundeKurz } from '../typen';
-import { tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
+import { abschnitteDes, tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
 import type { OnboardingStand } from './onboarding';
-import { fallReise, fallStelle, reiseKurz, ONBOARDING_SPRUNG, type NaechsterPunkt, type ReiseKurzPhase, type WartetAuf } from './reise';
+import { fallReise, fallStelle, naechsterPunkt, reiseKurz, ONBOARDING_SPRUNG, type NaechsterPunkt, type ReiseKurzPhase, type WartetAuf } from './reise';
 import { knotenAktion, type HeuteAktion } from './heute';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type Ampel, type KundenLageArt } from './darstellung';
 import { wertDurchschnitt } from './wert';
@@ -55,6 +55,11 @@ export interface CockpitZeile {
   kundeSieht?: { ampel: Ampel; art: KundenLageArt; titel: string; grund?: string };
   /** Der nächste Punkt als Handgriff — aus DEMSELBEN `naechsterPunkt` wie `schritt`/`schrittLage` (17.10. spät). */
   naechster?: NaechsterHandgriffZeile;
+  /**
+   * Je angehängtem Zusatzmodul sein nächster Punkt (17.10., Gesamtprüfung L2 B1 — vorher stand nur der des Pakets in „Heute“ und im Cockpit, obwohl die
+   * Ausführung das Modul parallel abarbeitet). Fehlt ohne Zusatzmodul bzw. wenn das Modul fertig ist.
+   */
+  zusaetze?: { vorlageId: string; titel: string; phase?: string; schritt: string; schrittLage: { wartetAuf: WartetAuf; faelligAm?: string; ueberfaellig: boolean }; naechster: NaechsterHandgriffZeile }[];
 }
 export interface CockpitEingabe {
   fall: Fall; kunde: string; titel: string; paket?: string;
@@ -129,6 +134,7 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
   const w = wartetAufEuch(e.fall, e.heute);
   const p = e.kunde2?.letzterPuls;
   const haengt = wasHaengt(e);
+  const zusaetze = zusatzPunkte(e, st.naechster);
   return {
     mandatId: e.fall.mandatId, kunde: e.kunde, titel: e.titel, ...(e.paket ? { paket: e.paket } : {}), status: e.fall.status,
     ...(st.phase ? { phase: st.phase.titel, phaseNr: st.phase.nr, phasenAnzahl: st.phase.von } : {}), ...(st.naechster ? { schritt: st.naechster.titel } : {}), fortschritt: st.fortschritt,
@@ -144,7 +150,25 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
     wert: wertDurchschnitt(e.fall.wertKonto ?? {}),
     kundeSieht: kundeSiehtLage({ health: e.health, haengt }, st.fertig),
     ...(st.naechster ? { naechster: naechsterHandgriffZeile(e.fall, st.naechster, e.mitMail) } : {}),
+    ...(zusaetze.length ? { zusaetze } : {}),
   };
+}
+
+/** Die nächsten Punkte der Zusatzmodule eines Falls (ohne den, der schon „als Nächstes“ des Falls steht). */
+function zusatzPunkte(e: CockpitEingabe, haupt: NaechsterPunkt | null): NonNullable<CockpitZeile['zusaetze']> {
+  const raus: NonNullable<CockpitZeile['zusaetze']> = [];
+  for (const a of abschnitteDes(e.fall)) {
+    if (!a) continue;
+    const n = naechsterPunkt(e.fall, e.freigaben ?? [], e.heute, a);
+    if (!n || n.id === haupt?.id) continue;
+    const titel = e.fall.zusaetze?.find(z => z.vorlageId === a)?.titel ?? 'Zusatzmodul';
+    raus.push({
+      vorlageId: a, titel, ...(n.phase ? { phase: n.phase } : {}), schritt: n.titel,
+      schrittLage: { wartetAuf: n.wartetAuf, ...(n.faelligAm ? { faelligAm: n.faelligAm } : {}), ueberfaellig: n.ueberfaellig },
+      naechster: naechsterHandgriffZeile(e.fall, n, e.mitMail),
+    });
+  }
+  return raus;
 }
 
 /**

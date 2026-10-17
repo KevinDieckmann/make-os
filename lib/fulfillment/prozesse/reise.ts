@@ -9,7 +9,7 @@
 import type { Fall, FallKnoten, Freigabepunkt, KnotenForm, KnotenStatus, Zustaendig } from '../typen';
 import { MUSTER_ONBOARDING, type OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
-import { aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
+import { abschnittVon, abschnitteDes, aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
 import { obKnotenId, obSchluessel, type OnboardingStand } from './onboarding';
 import { SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE } from './phasen';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz, BESTAETIGUNG } from './darstellung';
@@ -211,12 +211,14 @@ const OB_REIHE: readonly OnboardingSchluessel[] = [
  * Abstimmungspunkt einer Phase, die sonst durch ist, dann der erste offene Schritt der laufenden Phase (Sammel-Schritte aufgelöst; Schritte ohne
  * Abstimmungspunkt zuerst), zuletzt ihr Abstimmungspunkt. Abgeschlossen oder alles erledigt → null.
  */
-export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status'>, freigaben: readonly (Pick<Freigabepunkt, 'id' | 'titel'> & { wer?: Zustaendig })[], heute: string): NaechsterPunkt | null {
+export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status'>, freigaben: readonly (Pick<Freigabepunkt, 'id' | 'titel'> & { wer?: Zustaendig })[], heute: string, abschnitt?: string): NaechsterPunkt | null {
   if (fall.status === 'abgeschlossen') return null;
   const l = fall.knoten;
   const nach = new Map(l.map(k => [k.id, k]));
   const nummern = abstimmungsNummern(l);
-  const phasen = phasenVon(fall);
+  const phasenAlle = phasenVon(fall);
+  // Ein Zusatzmodul (17.10., Gesamtprüfung L2 B1): nur seine Phasen, kein Onboarding — so steht sein nächster Punkt neben dem des Pakets (Heute, Cockpit).
+  const phasen = abschnitt === undefined ? phasenAlle : phasenAlle.filter(ph => abschnittVon(ph) === abschnitt);
   const ueber = (k: FallKnoten) => !fertig(k) && !!k.faelligAm && k.faelligAm < heute;
   const ort = (k: FallKnoten) => {
     const ph = phasen.find(x => x.id === k.id || teilbaum(x.id, l).includes(k.id));
@@ -227,7 +229,7 @@ export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status
   // (Prozess-Editor) auf eine Antwort.
   const fgWartet = (id: string): WartetAuf => (freigaben.find(x => x.id === id)?.wer === 'intern' ? 'intern' : 'abstimmung');
   const schrittWartet = (k: FallKnoten): WartetAuf => (k.status === 'wartet_kunde' || k.zustaendig === 'kunde' ? 'kunde' : k.form === 'entscheidung' && !k.freigabe ? 'entscheidung' : 'intern');
-  for (const s of OB_REIHE) {
+  for (const s of abschnitt === undefined ? OB_REIHE : []) {
     const k = nach.get(obKnotenId(s));
     if (!k || fertig(k)) continue;
     if (k.freigabe && !fall.freigaben[k.freigabe]) return { art: 'freigabe', id: k.id, titel: fgTitel(k.freigabe), freigabe: k.freigabe, schluessel: s, ...ort(k), wartetAuf: fgWartet(k.freigabe) };
@@ -236,7 +238,7 @@ export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status
   }
   const durch = phasen.find(ph => ph.freigabe && !fall.freigaben[ph.freigabe] && ph.status !== 'entfaellt' && phaseFertig(ph, l));
   if (durch?.freigabe) return { art: 'freigabe', id: durch.id, titel: fgTitel(durch.freigabe), freigabe: durch.freigabe, ...ort(durch), wartetAuf: fgWartet(durch.freigabe) };
-  const p = aktuellerKnoten(fall).phase;
+  const p = aktuellerKnoten(fall, abschnitt).phase;
   if (!p) return null;
   // Nie die Phase selbst (15.10., Abnahme B1: „Als Nächstes: Diagnose“ neben „Phase 3: Diagnose“) — eine Phase ohne Schritte hat keinen eigenen nächsten Schritt.
   // Ein Nein-Zweig, der gerade nicht läuft, ist nie „als Nächstes“ (17.10. abends, Ausführung) — er kommt erst mit einem „nein“.

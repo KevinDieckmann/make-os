@@ -266,3 +266,44 @@ describe('Fachbegriffe raus (Abstimmungspunkt, Knoten, A0–A13, Paket-Vorlage)'
     expect(FACHBEGRIFFE.map(f => f.wort)).toEqual(['Abstimmungspunkt', 'Knoten', 'A0–A13', 'Paket-Vorlage']);
   });
 });
+
+describe('Zusatzmodule in „Heute“ und im Cockpit (17.10., Gesamtprüfung L2 B1)', () => {
+  // Ein Fall mit Paket (Angebot → Start) und angehängtem Zusatzmodul „Telefonie“ (eigene Phase, Abschnitt `fp-zu`).
+  const mitZusatz = fall('m-z', [
+    ...erledigt(ablauf(), 's1', 's1-b', 's2'),
+    k('pz', 'w', 'Telefonie', 3, { zusatz: 'fp-zu' }),
+    k('tz', 'pz', 'Telefonie', 1),
+    k('sz', 'tz', 'Rufnummern einrichten', 1, { form: 'schritt', frist: 3 }),
+  ], { zusaetze: [{ vorlageId: 'fp-zu', vorlageFassung: 1, wurzelId: 'wz', titel: 'Telefonie', startAm: HEUTE, angehaengtAm: J, angehaengtVon: 'pia' }] });
+  const z = zeile(mitZusatz, 'Kunde Z');
+
+  it('das Zusatzmodul hat seinen eigenen nächsten Punkt — neben dem des Pakets', () => {
+    expect(z.naechster?.id).toBe('e');
+    expect(z.zusaetze).toHaveLength(1);
+    expect(z.zusaetze![0]).toMatchObject({ vorlageId: 'fp-zu', titel: 'Telefonie', schritt: 'Rufnummern einrichten' });
+    const l = heuteImFulfillment([z], [], HEUTE).filter(e => e.mandatId === 'm-z' && e.quelle === 'naechster');
+    expect(l.map(e => e.knotenId).sort()).toEqual(['e', 'sz']);
+    expect(l.find(e => e.knotenId === 'sz')!.unter).toMatch(/^Telefonie/);
+  });
+
+  it('ohne Zusatzmodul kein Feld; ist das Paket fertig, steht das Modul nur einmal da', () => {
+    expect(zeile(fA, 'Kunde A').zusaetze).toBeUndefined();
+    const paketFertig = fall('m-z2', [
+      ...erledigt(ablauf(), 's1', 's1-b', 's2', 'e', 'r', 'r-m', 's3', 's5'),
+      k('pz', 'w', 'Telefonie', 3, { zusatz: 'fp-zu' }), k('tz', 'pz', 'Telefonie', 1), k('sz', 'tz', 'Rufnummern einrichten', 1, { form: 'schritt', frist: 3 }),
+    ], { freigaben: { FA: { am: HEUTE, von: 'pia' } } as unknown as Fall['freigaben'] });
+    const z2 = zeile(paketFertig, 'Kunde Z2');
+    expect(z2.naechster?.id).toBe('sz');
+    expect(z2.zusaetze).toBeUndefined();
+  });
+});
+
+describe('Fall-Kopf ohne Cockpit-Zeile (17.10., Gesamtprüfung L2 A2)', () => {
+  it('abgeschlossen, pausiert und Fehler stehen als Satz da — nie dauerhaft „Lädt …“', async () => {
+    const { ampelSatz } = await import('@/components/os/fulfillment/reise/FallKopf');
+    expect(ampelSatz(null, 'abgeschlossen').text).toBe('Der Fall ist abgeschlossen');
+    expect(ampelSatz(null, 'pausiert').text).toBe('Der Fall ist pausiert');
+    expect(ampelSatz(null, 'laeuft', 'Keine Verbindung').text).toMatch(/nicht abrufbar/);
+    expect(ampelSatz(null, 'laeuft').text).toBe('Lädt …');
+  });
+});

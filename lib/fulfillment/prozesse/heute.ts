@@ -134,7 +134,21 @@ export function heuteImFulfillment(zeilen: readonly CockpitZeile[], kandidaten: 
       };
       raus.push(haupt);
     }
+    // Je Zusatzmodul sein nächster Punkt (17.10., Gesamtprüfung L2 B1) — eine eigene Zeile, „Zusatzmodul · Phase“ darunter.
+    const neben: HeuteEintrag[] = [];
+    for (const zu of z.zusaetze ?? []) {
+      const e: HeuteEintrag = {
+        id: `${z.mandatId}|n|${zu.naechster.id}`, mandatId: z.mandatId, kunde: z.kunde, titel: zu.schritt,
+        unter: [zu.titel, zu.phase, WARTET_UNTER[zu.schrittLage.wartetAuf]].filter(Boolean).join(' · ') || undefined,
+        ...(zu.schrittLage.faelligAm ? { faelligAm: zu.schrittLage.faelligAm } : {}),
+        ueberfaellig: zu.schrittLage.ueberfaellig, dringend: false, jetzt: false, quelle: 'naechster', knotenId: zu.naechster.id, aktion: zu.naechster.aktion, href: zu.naechster.href,
+      };
+      neben.push(e); raus.push(e);
+    }
     for (const h of z.haengt) {
+      // Derselbe Punkt wie der eines Zusatzmoduls steht nicht doppelt da — er macht dessen Zeile dringend.
+      const zuGleich = h.knotenId !== undefined ? neben.find(e => e.knotenId === h.knotenId) : undefined;
+      if (zuGleich) { zuGleich.dringend = zuGleich.dringend || h.schwere === 'rot'; zuGleich.haengt = h.text; if (h.seit) zuGleich.seit = h.seit; continue; }
       // Derselbe Punkt wie „als Nächstes“ steht nicht doppelt da — er macht die Zeile dringend (Willkommensmail = der Onboarding-Schritt „willkommen“).
       const gleich = !!haupt && !!n && ((h.knotenId !== undefined && h.knotenId === n.id) || (h.art === 'willkommen' && n.willkommen === true));
       if (gleich && haupt) {

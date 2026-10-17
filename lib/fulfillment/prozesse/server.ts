@@ -71,6 +71,13 @@ async function sicher<T>(f: () => Promise<T>, ersatz: T): Promise<T> { try { ret
  * Kunden-Seite und den Report: dieselbe Rechnung „was hängt“ wie intern, `haengerFuer`).
  */
 export async function cockpitDaten(heute = localDay(), jetzt = new Date().toISOString(), nur?: string): Promise<{ zeilen: (CockpitZeile & { gesellschaft: string })[]; vorlagen: VorlagenDatei }> {
+  // Zwischengespeichert (17.10., Gesamtprüfung L2 B3): das Cockpit rechnete je Anfrage mehrfach (Route + Treppe + jede Fall-Seite) — jede Schreibung über
+  // local-db leert den Speicher, `jetzt` rückt höchstens 30 s nach.
+  const { merken } = await import('@/lib/store/memo');
+  return merken(`ff-cockpit:${await fulfillmentHaushalt()}:${heute}:${nur ?? '*'}`, 30_000, () => cockpitRechnen(heute, jetzt, nur));
+}
+
+async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promise<{ zeilen: (CockpitZeile & { gesellschaft: string })[]; vorlagen: VorlagenDatei }> {
   const { crm, vorlagen, faelle, kunde, termine: kalender } = await fallUmfeld(nur ? [nur] : undefined);
   const laufend = Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen' && (!nur || f.mandatId === nur));
   if (!laufend.length) return { zeilen: [], vorlagen };

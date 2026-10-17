@@ -29,9 +29,13 @@ export function useFallSprung(mandatId: string, reiter: FallReiter) {
   };
 }
 
-/** Die Ampel mit einem Satz: was intern hängt (`zeile?.haengt`), sonst „läuft rund“. */
-export function ampelSatz(zeile: Pick<CockpitZeile, 'health' | 'haengt'> | null, pausiert: boolean): { farbe: string; text: string } {
-  if (!zeile) return { farbe: C.inkLeise, text: pausiert ? 'Der Fall ist pausiert' : 'Lädt …' };
+/**
+ * Die Ampel mit einem Satz: was intern hängt (`zeile?.haengt`), sonst „läuft rund“. Ohne Zeile (17.10., Gesamtprüfung L2 A2): abgeschlossene Fälle stehen
+ * nicht im Cockpit — vorher blieb ihr Kopf auf „Lädt …“; ein Fehler beim Laden steht als Satz da.
+ */
+export function ampelSatz(zeile: Pick<CockpitZeile, 'health' | 'haengt'> | null, status: 'onboarding' | 'laeuft' | 'pausiert' | 'abgeschlossen', fehler?: string | null): { farbe: string; text: string } {
+  const pausiert = status === 'pausiert';
+  if (!zeile) return { farbe: C.inkLeise, text: status === 'abgeschlossen' ? 'Der Fall ist abgeschlossen' : pausiert ? 'Der Fall ist pausiert' : fehler ? 'Die Lage ist gerade nicht abrufbar — bitte neu laden' : 'Lädt …' };
   const a = kundenAmpel(zeile);
   const h = zeile.haengt;
   const rot = h.filter(x => x.schwere === 'rot').length;
@@ -48,7 +52,7 @@ export function FallKopf({ mandatId, mitKunde = true }: { mandatId: string; mitK
   // „Hängt etwas?“ aus DERSELBEN Rechnung wie Lage und Cockpit (`wasHaengt`, 15.10., Abnahme B1) — keine eigene Zählung.
   const zeile = cockpit.daten?.zeilen.find(z => z.mandatId === mandatId) ?? null;
   const h = zeile?.haengt ?? [];
-  const ampel = f ? ampelSatz(zeile, f.status === 'pausiert') : null;
+  const ampel = f ? ampelSatz(zeile, f.status, cockpit.fehler) : null;
   const k = zeile?.kundeSieht;
   // Was der Kunde liest, nur wenn es abweicht (andere Ampel oder ein Grund) — sonst wäre es doppelt.
   const weicht = !!k && !!zeile && (!!k.grund || k.ampel !== kundenAmpel(zeile));
