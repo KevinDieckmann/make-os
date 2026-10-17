@@ -24,7 +24,7 @@ async function rufe(pfad: string, methode: string, kopf: Record<string, string>,
   return { status: r.status, j };
 }
 const u = (n: number) => `fk-00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-interface Vorlage { id: string; titel: string; fassung: number; knoten: { id: string; titel: string; elternId?: string; form?: string }[]; papierkorb?: unknown[] }
+interface Vorlage { id: string; titel: string; fassung: number; knoten: { id: string; titel: string; elternId?: string; form?: string; rang?: number; pos?: unknown }[]; papierkorb?: unknown[] }
 
 const J = '2026-10-01T08:00:00.000Z';
 let paketId = '';
@@ -134,6 +134,30 @@ describe('Schreiben mit Stand, Regeln, Grenzen', () => {
     expect(nachher).toBe(vorher + 1);
     expect((a.j.vorlage as Vorlage).knoten).toHaveLength(2);
     expect((await rufe('fulfillment/editor', 'POST', sitzung('olaf'), { aktion: 'neu', titel: '' })).status).toBe(400);
+  });
+});
+
+describe('Fläche (17.10.): dieselbe Route, dieselben Rechte', () => {
+  it('Lage, Pfeil und Beschriftung: „nur Business“ und Dienstweg 403; volle Mitglieder schreiben — reine Lage ist keine neue Fassung; Kreis 409, Grenze 413', async () => {
+    const a = await lesen();
+    const analyse = knoten(a.vorlage, 'Analyse');
+    const lage = { vorlageId: paketId, stand: a.stand, ops: [{ op: 'lage', eintraege: [{ id: analyse, pos: { x: 40, y: 0 } }] }] };
+    expect((await rufe('fulfillment/editor', 'PATCH', sitzung('partnerin'), lage)).status).toBe(403);
+    expect((await rufe('fulfillment/editor', 'PATCH', dienst('pia'), lage)).status).toBe(403);
+    expect((await lesen()).stand).toBe(a.stand);
+    const r = await rufe('fulfillment/editor', 'PATCH', sitzung('pia'), lage);
+    expect(r.status).toBe(200);
+    expect((r.j.vorlage as Vorlage).fassung).toBe(a.vorlage.fassung);
+    expect(r.j.stand).not.toBe(a.stand);
+    expect((r.j.vorlage as Vorlage).knoten.find(x => x.id === analyse)!.pos).toEqual({ x: 40, y: 0 });
+    const v = r.j.vorlage as Vorlage;
+    const schritte = v.knoten.filter(x => x.elternId === analyse && !v.knoten.some(c => c.elternId === x.id)).sort((x, y) => (x.rang ?? 0) - (y.rang ?? 0));
+    expect(schritte.length).toBeGreaterThanOrEqual(2);
+    const zurueck = await rufe('fulfillment/editor', 'PATCH', sitzung('pia'), { vorlageId: paketId, stand: r.j.stand, ops: [{ op: 'verbinden', von: schritte.at(-1)!.id, nach: schritte[0].id }] });
+    expect(zurueck.status).toBe(409);
+    const lang = await rufe('fulfillment/editor', 'PATCH', sitzung('pia'), { vorlageId: paketId, stand: r.j.stand, ops: [{ op: 'pfeil-text', id: schritte[0].id, art: 'weiter', text: 'x'.repeat(61) }] });
+    expect(lang.status).toBe(413);
+    expect((await lesen()).stand).toBe(r.j.stand);
   });
 });
 

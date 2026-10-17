@@ -4,6 +4,28 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 17.10.2026 — Prozess-Editor › Fläche: frei zeichnen wie in Miro (nur lokal — Branch `prozess-flaeche`, Basis f466641b = `update-0910b`)
+Kevin: „Zeichnen wie in Miro: freie Fläche, Kästen frei platzieren, Pfeile ziehen, zoomen und schieben, Rahmen für Phasen — nicht nur die geordnete Liste von
+oben nach unten.“ Im Editor (`?e=<Ablauf>`) der Umschalter **Fluss · Fläche** (am Handy **Liste · Fläche (ansehen)**); die Wahl merkt sich der Browser.
+- **EINE Wahrheit:** die Fläche ist eine andere Ansicht derselben Paket-Vorlage. Neu und optional am Knoten: `pos { x, y, b?, h? }` (Phase = Rahmen absolut mit Größe,
+  Schritt relativ zu seinem Rahmen) und `pfeilText { weiter?, ja?, nein? }`. **Keine** zweite Liste von Verbindungen: Pfeile = Reihenfolge + die vorhandenen `zweige`.
+  Ein neuer Pfeil A → B hängt B direkt hinter A ein (vorwärts; zurück = Kreis 409 — Schleifen nur über eine Erinnerung zur Entscheidung), an einer Entscheidung
+  setzt er ihren Ja-/Nein-Zweig. Gespeichert wird weiter die Reihenfolge (Rang) — Reise, Fall, Kunden-Seite und Report lesen unverändert.
+- **Ohne Lage** legt die Regel automatisch aus (lib/fulfillment/prozesse/flaeche-lage.ts): Rahmen von links nach rechts in der Reihenfolge der Phasen, Schritte
+  untereinander, Nein-Zweig rechts daneben, Abstimmungspunkt am Ende — jede bestehende Vorlage öffnet sich sofort sauber. Beim ersten Verschieben hält die Fläche
+  alle Lagen fest (eine Op), damit nichts springt.
+- **Reihenfolge der Phasen = Reise-Zeile (Rang).** Ein Rahmen, der an einem anderen vorbeigezogen wird, stellt sie um; stehen Rahmen nach dem Umsortieren in der Reise
+  nicht mehr in Reihe, rücken sie nach (`rahmenOrdnen`, die Höhe bleibt).
+- **Schreibweg:** neue Editor-Ops `lage`, `verbinden`, `pfeil-text` (lib/fulfillment/prozesse/editor.ts) mit Stand (409), Grenzen (≤ 400 Lagen, Text ≤ 60 → 413),
+  Unsinn 400; Rückgängig/Wiederholen wie bisher. **Reine Lage ist keine neue Fassung** — laufende Fälle sehen kein „Vorlage geändert“. Wechselt ein Schritt im Fluss
+  die Phase, fällt seine Lage weg (er steht dann automatisch im neuen Rahmen). Rechte wie der Editor (nur volle Mitglieder; „nur Business“/Dienstweg 403).
+- **Bedienung:** Pinch bzw. ⌘ + Scrollen zoomt zum Zeiger, zwei Finger bzw. Leertaste + Ziehen schiebt (nur am SVG, die Seite rollt außerhalb — Rechnung der
+  Brain-Kugel), − / + / „Alles zeigen“ / „Zurücksetzen“, Raster an/aus; Palette (Start · Phase, Schritt, Nachricht, Entscheidung, Erinnerung, Termin, Baustein) ziehen
+  oder antippen; Aufziehen/⇧-Klick/⌘A, ⌘C/⌘V, Entf, Doppelklick/Enter, Pfeiltasten, Tab, „Verbinden mit …“; „Als Bild speichern“ (PNG/SVG mit Legende).
+- Wächter: `tests/fulfillment-flaeche-modell.test.ts`, `tests/fulfillment-flaeche-oberflaeche.test.ts`, Route-Fall in `tests/fulfillment-editor-route.test.ts`.
+  Update-Probe: Altbestand ohne Lage liest und schreibt verlustfrei (nur neue optionale Felder). Kein Server-Schritt, keine Umleitung.
+- **Offen:** in einem echten Browser durchklicken (diese Sitzung hatte keinen Server — geprüft per Tests und statischem Bild).
+
 ## 17.10.2026 — Reise + Fluss überall: Kreislauf, Einrichtung, Planung (nur lokal — Branch `reise-ueberall`, Basis ed3cd57f = `update-0910b`)
 Kevin: „Markttraktion-Kreislauf, Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung. Dann sieht das ganze System gleich klar aus.“
 - **EIN Baustein:** `ReiseBild`, `Fluss`/`KnotenKnopf`, `FormenLegende`, `FreigabeRaute` liegen jetzt unter `components/os/ui/reise/` (Typen + Fenster-Regel

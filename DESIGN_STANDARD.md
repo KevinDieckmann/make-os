@@ -526,3 +526,30 @@ Landkarte › Paket-Vorlage „Bearbeiten“ bzw. „+ Neuer Ablauf“ öffnet `
   erst der Klick schreibt, erledigte Schritte bleiben erledigt.
 - Wächter: `tests/fulfillment-editor-oberflaeche.test.ts` (Palette, Ablage-Stellen, Tastatur, Ziele ≥ 44 px, Handy-Liste, nur ansehen, EIN Bauteil),
   `tests/fulfillment-editor-modell.test.ts`, `tests/fulfillment-editor-route.test.ts`, `tests/fulfillment-editor-update.test.ts`, `tests/fulfillment-feinschliff.test.ts`.
+
+### Fläche (Prozess-Editor › frei zeichnen wie in Miro, 17.10.)
+Rückmeldung 17.10.: „Zeichnen wie in Miro: freie Fläche, Kästen frei platzieren, Pfeile ziehen, zoomen und schieben, Rahmen für Phasen.“ Im Editor der Umschalter
+„Fluss · Fläche“ (`components/os/fulfillment/editor/Flaeche.tsx`); beide Ansichten schreiben über denselben Weg — der Wechsel verliert nichts.
+- **EINE Wahrheit:** die Fläche zeigt dieselbe Vorlage. Lage (`pos`) und Pfeil-Texte (`pfeilText`) sind optional; **Pfeile = Reihenfolge + Zweige** (keine zweite
+  Verbindungsliste). Regel „Reihenfolge aus Pfeilen“: topologisch (`reiheAusPfeilen`, lib/fulfillment/prozesse/flaeche.ts) — ein neuer Pfeil A → B hängt B direkt
+  hinter A ein (nur vorwärts; zurück = Kreis, nur Erinnerung → Entscheidung), an einer Entscheidung ist er „ja“ oder „nein“. **Reihenfolge der Phasen = Reise-Zeile**;
+  auf der Fläche stehen die Rahmen von links nach rechts in dieser Reihe (vorbeigezogen = umgestellt, sonst rücken sie nach — `rahmenOrdnen`).
+- **Ohne Lage automatisch** (lib/fulfillment/prozesse/flaeche-lage.ts): Rahmen nebeneinander (wie die Kundenjourney), darin Start, Schritte untereinander, Nein-Zweig
+  rechts neben seiner Entscheidung, Abstimmungspunkt am Ende; ein Rahmen ist nie kleiner als sein Inhalt. Rechnen nur dort und in `flaeche.ts` (gewinkelte Wege mit
+  Ausweichen, `pfeilWeg`) — die Zeichnung rechnet nichts.
+- **Formen** als SVG an EINER Stelle: `components/os/ui/reise/flaeche-formen.tsx` (`FlaecheForm`, `FlaecheStart`, `FlaecheRahmen`, `FlaecheGruppe`, `FlaechePfeil`,
+  `FlaecheSpitze`, `FlaecheLegende`) — dieselben Formen und Farben wie der Fluss (`FORM_FARBE`), Schrift ≥ 13 (wächst beim Zoomen), Rahmen = Phase („PHASE n“ + Titel,
+  „INTERN“, wenn der Kunde sie nicht sieht), gestrichelt = Gruppe bzw. Schleife zurück. Neue Formen dort, nie im Bereich.
+- **Zoom und Schieben** (`components/os/ui/flaeche/{kamera,eingabe}.ts`, Rad-/Pinch-Erkennung der Brain-Kugel): Pinch bzw. ⌘/Strg + Scrollen zum Zeiger (15–250 %),
+  zwei Finger bzw. Leertaste + Ziehen (auch mittlere Maustaste) schiebt; Lauscher NUR am SVG (Rad, Geste, Touch `passive: false`), ein Mausrad ohne ⌘ lässt die Seite
+  rollen (+ kurzer Hinweis). Knöpfe − / + / „Alles zeigen“ / „Zurücksetzen“, Raster mit Einrasten (20 px, abschaltbar, je Browser gemerkt).
+- **Bearbeiten:** Palette ziehen oder antippen (Start · Phase = neuer Rahmen), Knoten verschieben (in einen anderen Rahmen = andere Phase), Aufziehen/⇧-Klick/⌘A,
+  ⌘C/⌘V, Entf (Papierkorb), Doppelklick bzw. Enter = Text direkt am Knoten/Rahmen/Pfeil; Anfasser an vier Seiten → Pfeil ziehen; Rahmen am Titel verschieben, an der
+  Ecke unten rechts größer/kleiner. Tastatur: Tab wandert durch die Knoten, Pfeiltasten verschieben (⇧ = weiter), + − 0 1 zoomen, „Verbinden mit …“ als Menü. Ziele
+  ≥ 44 px (Anfasser-Trefferkreis r = 22, Größen-Ecke 44 × 44). Bei reduzierter Bewegung springt die Kamera ohne Animation.
+- **Leistung:** keine React-Zustände je Mausbewegung — Kamera und Ziehen in Refs, gezeichnet per `requestAnimationFrame` direkt am SVG; beim Ziehen werden nur die
+  betroffenen Pfeile neu gelegt. Bis ~300 Knoten flüssig (Wächter misst das Bild).
+- **Handy:** Fläche nur ansehen (ein Finger rollt die Seite, zwei Finger zoomen/schieben, Tipp zeigt den Knoten + „In der Liste bearbeiten ›“); bearbeitet wird in der Liste.
+- **Als Bild speichern:** PNG oder SVG — nur die Fläche mit Titel und Legende, ohne Auswahl/Anfasser (`flaeche-export.ts`; entsteht im Browser).
+- Wächter: `tests/fulfillment-flaeche-modell.test.ts` (Ableitung, Auto-Layout, Kreise/Zweige, Grenzen/Stand, Fluss ↔ Fläche, Rückgängig, Update-Probe),
+  `tests/fulfillment-flaeche-oberflaeche.test.ts` (Eingabe nur am SVG, Kamera, Ziele ≥ 44 px, Handy, nur ansehen, keine Zustände je Bewegung).
