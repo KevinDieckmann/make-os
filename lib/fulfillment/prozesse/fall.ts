@@ -22,6 +22,9 @@ import { tagVon } from '@/lib/zeit';
 import { phasenDer, phasenSchritte } from './fluss-struktur';
 import { antwortAnwenden, nachErledigung } from './ausfuehrung';
 
+/** Kennung eines Stakeholders nach Art. 17 (lib/crm/person-weitere.ts `GELOESCHT`) — Rolle, Einfluss und Haltung bleiben am Fall. */
+const STAKEHOLDER_GETILGT = '[gelöscht]';
+
 /** Felder, die beim Start aus der Vorlage kopiert werden (7.2). */
 export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis', 'kennzahl', 'zustaendig', 'freigabe', 'kundeSichtbar', 'phaseId', 'bausteinId', 'dauerTage', 'form', 'frist', 'zweige', 'versuche'] as const;
 /** Felder, die ein Diff vergleicht (ohne Rang — die Reihenfolge darf der Fall behalten). */
@@ -535,8 +538,11 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           const alt = typeof e.id === 'string' ? f.stakeholder.find(x => x.id === e.id) : undefined;
           if (typeof e.id === 'string' && !alt) nein('Diesen Eintrag gibt es nicht (mehr).', 404);
           if (alt) standPruefen(o.stand, k.standVon(alt), alt.id);
-          const kontaktId = e.kontaktId === undefined && alt ? alt.kontaktId : typeof e.kontaktId === 'string' && k.kontaktErlaubt(e.kontaktId) ? e.kontaktId : nein('Stakeholder sind Kontakte der Kartei — diese Person gibt es nicht oder sie ist eingeschränkt (Art. 18).');
-          if (f.stakeholder.some(x => x.kontaktId === kontaktId && x.id !== alt?.id)) nein('Diese Person steht schon auf der Stakeholder-Karte.', 409);
+          // Ein nach Art. 17 getilgter Eintrag (Kennung „[gelöscht]“) bleibt bearbeitbar — auch wenn es zwei davon im Fall gibt (18.10., Gesamtprüfung
+          // L3 C4: vorher sperrte die Doppel-Prüfung jede Änderung mit 409). Eine neue Person bekommt er nie (dann gilt die Kartei-Prüfung).
+          const getilgt = !!alt && alt.kontaktId === STAKEHOLDER_GETILGT && (e.kontaktId === undefined || e.kontaktId === STAKEHOLDER_GETILGT);
+          const kontaktId = getilgt ? STAKEHOLDER_GETILGT : e.kontaktId === undefined && alt ? alt.kontaktId : typeof e.kontaktId === 'string' && k.kontaktErlaubt(e.kontaktId) ? e.kontaktId : nein('Stakeholder sind Kontakte der Kartei — diese Person gibt es nicht oder sie ist eingeschränkt (Art. 18).');
+          if (!getilgt && f.stakeholder.some(x => x.kontaktId === kontaktId && x.id !== alt?.id)) nein('Diese Person steht schon auf der Stakeholder-Karte.', 409);
           const rolle = optWahl(e.rolle, ROLLEN, 'Rolle') ?? alt?.rolle ?? nein('Rolle fehlt.');
           const einfluss = e.einfluss === undefined ? alt?.einfluss ?? 2 : e.einfluss === 1 || e.einfluss === 2 || e.einfluss === 3 ? e.einfluss : nein('Einfluss: 1, 2 oder 3.');
           const teil: Record<string, unknown> = { kontaktId, rolle, einfluss };
