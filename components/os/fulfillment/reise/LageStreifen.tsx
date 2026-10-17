@@ -13,7 +13,8 @@ import { Punkt, Erklaert, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
 import { kundenAmpel } from '@/lib/fulfillment/prozesse/darstellung';
-import { useCockpit } from '../prozesse/daten';
+import { useCockpit, useUebersichtKurz } from '../prozesse/daten';
+import { heuteImFulfillment, heuteZahlen } from '@/lib/fulfillment/prozesse/heute';
 import { AMPEL_FARBE } from './bilder';
 
 function Teil({ titel, farbe, text, onClick }: { titel: string; farbe?: string; text: ReactNode; onClick?: () => void }) {
@@ -32,21 +33,25 @@ function Teil({ titel, farbe, text, onClick }: { titel: string; farbe?: string; 
 export function LageStreifen() {
   const router = useRouter();
   const { daten } = useCockpit();
+  const kurz = useUebersichtKurz();
   if (!daten) return null;
   const zeilen = daten.zeilen;
-  const rot = daten.haengt.filter(h => h.schwere === 'rot');
-  const n = daten.haengt.length;
+  // EINE Zählung mit „Heute im Fulfillment“ direkt darunter (17.10., Gesamtprüfung L2 B8): ohne pausierte Fälle, mit wartenden Starts, Hänger und „als
+  // Nächstes“ zusammengeführt — vorher sagte die Lage „Nichts“ und die Liste darunter „1 dringend“.
+  const z = heuteZahlen(heuteImFulfillment(zeilen, kurz.daten?.kandidaten ?? [], daten.heute, kurz.daten?.deals ?? []));
+  const n = z.jetzt;
+  const rot = { length: z.dringend };
   const ampel = zeilen.length ? AMPEL_FARBE[zeilen.some(z => kundenAmpel(z) === 'rot') ? 'rot' : zeilen.some(z => kundenAmpel(z) === 'gelb') ? 'gelb' : 'gruen'] : undefined;
   const zuDenKarten = () => router.push(`${WEG.fulfillment()}#ff-kunden`);
-  // 17.10. spät: „Was hängt?“ führt in „Heute im Fulfillment“ (dort steht jeder Punkt mit seinem Handgriff).
+  // 17.10. spät: „Heute“ führt in „Heute im Fulfillment“ (dort steht jeder Punkt mit seinem Handgriff).
   const zuHeute = () => router.push(`${WEG.fulfillment()}#ff-heute`);
   return (
     <div className="ff-lage" role="group" aria-label="Lage" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 22px', alignItems: 'center', padding: '4px 2px', borderBottom: `1px solid ${C.linie}` }}>
       <Erklaert erklaerung="fulfillment.lage" name="Lage"><span style={{ ...MIKRO, color: C.inkDim }}>Lage</span></Erklaert>
       <Teil titel="Kunden in Lieferung" farbe={ampel} text={zeilen.length ? anzahl(zeilen.length, 'Kunde', 'Kunden') : 'Noch keiner — ein Fall startet mit dem Onboarding'}
         onClick={zeilen.length ? zuDenKarten : () => router.push(WEG.fulfillment('onboarding'))} />
-      <Teil titel="Was hängt?" farbe={rot.length ? LEUCHT.kritisch : n ? LEUCHT.achtung : LEUCHT.gut}
-        text={n ? `${anzahl(n, 'Punkt hängt', 'Punkte hängen')}${rot.length ? ` · ${rot.length} dringend` : ''}` : 'Nichts — alle Fälle sind im Takt'}
+      <Teil titel="Heute" farbe={rot.length ? LEUCHT.kritisch : n ? LEUCHT.achtung : LEUCHT.gut}
+        text={n ? `${n} zu tun${rot.length ? ` · ${rot.length} dringend` : ''}` : 'Nichts — alle Fälle sind im Takt'}
         {...(n ? { onClick: zuHeute } : {})} />
     </div>
   );

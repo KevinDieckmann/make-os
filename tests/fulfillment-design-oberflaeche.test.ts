@@ -110,7 +110,9 @@ describe('Startseite, Prozesse, Cockpit', () => {
     const lage = renderToStaticMarkup(h(LageStreifen));
     expect(lage).toContain('Kunden in Lieferung');
     expect(lage).toContain('2 Kunden');
-    expect(lage).toContain('Was hängt?');
+    // 17.10. (Gesamtprüfung L2 B8): EINE Zählung mit „Heute im Fulfillment“ — „Heute: n zu tun“.
+    expect(lage).toContain('Heute');
+    expect(lage).toMatch(/zu tun|Nichts/);
     expect(lage).toContain('class="ff-lage"');
   });
 });

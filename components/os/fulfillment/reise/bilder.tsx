@@ -39,7 +39,7 @@ function Schiene({ p, hoehe = 8 }: { p: StrahlPhase; hoehe?: number }) {
   return (
     <span style={{ position: 'relative', display: 'block', height: hoehe, borderRadius: hoehe / 2, background: 'rgba(255,255,255,.07)', boxShadow: p.zustand === 'jetzt' ? TIEF.schein(f, 14) : undefined }}>
       <span style={{ position: 'absolute', inset: 0, width: `${Math.round(anteil * 100)}%`, borderRadius: hoehe / 2, background: anteil > 0 ? TIEF.verlauf(f) : 'transparent' }} />
-      {p.freigabe && <span style={{ position: 'absolute', right: -raute / 2 + 1, top: '50%', marginTop: -raute / 2 }}><FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} groesse={raute} /></span>}
+      {p.freigabe && <span style={{ position: 'absolute', right: -raute / 2 + 1, top: '50%', marginTop: -raute / 2, display: 'flex', lineHeight: 0 }}><FreigabeRaute gegeben={p.freigabe.gegeben} aktiv={p.zustand !== 'offen'} groesse={raute} /></span>}
     </span>
   );
 }

@@ -110,7 +110,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
       <div key={e.id} className="ui-zeile zeile ff-heute-zeile" style={{ alignItems: 'center' }}>
         <Punkt farbe={farbe} groesse={8} />
         <button type="button" className="ui-zeile-text fassbar" onClick={oeffnen} aria-label={`${e.titel} — ${e.kunde}${f ? `, ${f}` : ''} — öffnen`}
-          style={{ background: 'none', border: 'none', padding: '4px 0', minHeight: 44, cursor: 'pointer', textAlign: 'left', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0, flex: 1 }}>
+          style={{ background: 'none', border: 'none', padding: '4px 0', minHeight: 44, cursor: 'pointer', textAlign: 'left', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0 }}>
           <span className="ui-zeile-titel" style={{ display: 'block', overflowWrap: 'anywhere' }}>{e.titel} <span style={{ color: C.inkLeise, fontWeight: 400 }}>· {e.kunde}</span></span>
           <span className="ui-zeile-unter" style={{ display: 'block', overflowWrap: 'anywhere', color: e.dringend ? LEUCHT.kritisch : e.ueberfaellig ? LEUCHT.achtung : undefined }}>
             {[e.haengt && e.haengt !== e.titel ? e.haengt : e.unter, f].filter(Boolean).join(' · ')}
