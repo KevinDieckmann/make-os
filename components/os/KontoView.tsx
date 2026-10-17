@@ -28,7 +28,8 @@ interface Ich { speicher: string; email: string; weitereEmails?: string[]; name:
 const ART_TEXT: Record<string, string> = { 'adresse-hinzu': 'Anmelde-Adresse hinzugefügt', 'adresse-haupt': 'Hauptadresse gewechselt', 'adresse-weg': 'Anmelde-Adresse entfernt', 'daten-export': 'eigene Daten abgerufen', 'instanz-export': 'Instanz exportiert', 'konto-loeschen': 'Konto löschen versucht', 'inhaber-ernennen': 'Inhaber-Rolle vergeben', 'inhaber-abgeben': 'Inhaber-Rolle abgegeben', 'geraet-gemerkt': 'Gerät gemerkt', 'geraet-vergessen': 'Gerät vergessen', 'geraete-vergessen': 'alle Geräte vergessen', anmelden: 'angemeldet', abmelden: 'abgemeldet', passwort: 'Passwort geändert', 'alle-abgemeldet': 'alle Geräte abgemeldet', 'zweiter-faktor-an': 'zweiter Faktor eingeschaltet', 'zweiter-faktor-aus': 'zweiter Faktor ausgeschaltet', sicherheit: 'Sicherheits-Hinweis' };
 /** Anzeige eines Protokoll-Eintrags: eine Anmeldung über ein gemerktes Gerät (16.10.) heißt so, sonst der Text der Art. */
 const artText = (e: { art: string; geraet?: string }): string => (e.art === 'anmelden' && e.geraet ? 'angemeldet (gemerktes Gerät)' : ART_TEXT[e.art] ?? e.art);
-interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean; teiltZieleMitMir?: boolean }
+// `andere` = Konten DESSELBEN Haushalts (Server, 18.10. L4 B6); `gesundheitTeilbar` false = Konto „nur Business“ (Gesundheit nie dorthin).
+interface Andere { speicher: string; name: string; rolle: string; teiltGesundheitMitMir: boolean; teiltZieleMitMir?: boolean; gesundheitTeilbar?: boolean; nurBusiness?: boolean }
 interface Telegram { konfiguriert: boolean; bot?: string; chats: number; code?: string; minuten?: number; fehler?: string }
 
 export function KontoView() {
@@ -36,6 +37,9 @@ export function KontoView() {
   const [ich, setIch] = useState<Ich | null>(null);
   /** Haupt-Inhaber (09.10., mehrere Inhaber): gibt die Rolle nie ab, löscht sein Konto nur allein. */
   const [haupt, setHaupt] = useState(false);
+  // Konto „nur Business“ (18.10., L4 B5): keine Karte „Gesundheit teilen“ — die Business-Sicht zeigt nie Gesundheit. `null` = noch unbekannt.
+  const [nurBusiness, setNurBusiness] = useState<boolean | null>(null);
+  const [andereKonten, setAndereKonten] = useState<number | null>(null);
   const [andere, setAndere] = useState<Andere[]>([]);
   const [name, setName] = useState('');
   const [pw, setPw] = useState({ alt: '', neu: '' });
@@ -46,7 +50,7 @@ export function KontoView() {
   const betreiber = useBetreiber();
 
   const [anmeldungen, setAnmeldungen] = useState<{ zeit: string; art: string; ok: boolean; adresse: string; detail?: string; geraet?: string }[]>([]);
-  const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setHaupt(!!d.hauptInhaber); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
+  const laden = () => fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich) { setIch(d.ich); setHaupt(!!d.hauptInhaber); setNurBusiness(d.nurBusiness === true); setAndereKonten(typeof d.andereKonten === 'number' ? d.andereKonten : null); setName(d.ich.name); setAndere(d.andere ?? []); setAnmeldungen(Array.isArray(d.anmeldungen) ? d.anmeldungen : []); } }).catch(() => {});
   const ladeTg = () => fetch('/api/telegram/koppeln').then(r => r.json()).then(d => setTg(t => ({ ...d, code: t?.code, minuten: t?.minuten }))).catch(() => {});
   useEffect(() => { void laden(); void ladeTg(); }, []);
 
@@ -79,14 +83,15 @@ export function KontoView() {
   const zfPost = (body: Record<string, unknown>) => fetch('/api/konto/zwei-faktor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
   async function zfBeginnen() { const r = await zfPost({ aktion: 'beginnen' }); if (r.error) setMeldung(r.error); else setZf({ phase: 'einrichten', geheimnis: r.geheimnis, link: r.link, code: '', passwort: '' }); }
   async function zfBestaetigen() { const r = await zfPost({ aktion: 'bestaetigen', code: zf.code }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'codes', codes: r.codes ?? [], code: '', passwort: '' }); setMeldung('Zweiter Faktor ist an — alle anderen Geräte sind abgemeldet.'); void laden(); } }
-  async function zfAus() { const r = await zfPost({ aktion: 'aus', passwort: zf.passwort }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'aus', code: '', passwort: '' }); setMeldung('Zweiter Faktor ist aus.'); void laden(); } }
+  // Ausschalten nur mit Passwort UND Code (18.10., L3 B4 — der Server prüft beides über `erneutPruefen`); danach sind alle anderen Geräte abgemeldet.
+  async function zfAus() { const r = await zfPost({ aktion: 'aus', passwort: zf.passwort, code: zf.code }); if (r.error) setMeldung(r.error); else { setZf({ phase: 'aus', code: '', passwort: '' }); setMeldung('Zweiter Faktor ist aus — alle anderen Geräte sind abgemeldet.'); void laden(); } }
   // Das Offline-Abbild der eigenen Visitenkarten (Netzwerken) bleibt nicht auf einem abgemeldeten Gerät liegen.
   // Netzwerken (03.10.): wartet noch eine Erfassung, wird davor gewarnt („erst senden?“); danach räumt Abmelden Warteschlange und Merker weg.
   async function abmelden() { if (!(await vorAbmelden(ich?.speicher ?? null, { bestaetigen: (t, k) => bestaetigen({ titel: k?.titel ?? 'Wirklich?', text: t, ja: k?.ja ?? 'Weiter', gefahr: k?.gefahr }) }))) return; if (!(await medienVorAbmelden(ich?.speicher ?? null, t => bestaetigen({ titel: 'Fotos & Videos noch nicht gesendet', text: t, ja: 'Löschen und abmelden', gefahr: true })))) return; karteCacheLeeren(); await fetch('/api/konto/abmelden', { method: 'POST' }).catch(() => {}); window.location.assign('/anmelden'); }
   // Alle anderen Geräte raus — dieses bleibt drin (der Server stellt einen neuen Zettel aus).
   async function alleAbmelden() {
     const r = await fetch('/api/konto/abmelden', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ alle: true }) }).then(x => x.json()).catch(() => ({ ok: false }));
-    setMeldung(r.ok ? 'Alle anderen Geräte sind abgemeldet.' : 'Das hat nicht geklappt.'); void laden();
+    setMeldung(r.ok ? `Alle anderen Geräte sind abgemeldet.${r.geraeteVergessen ? ' Gemerkte Geräte fragen wieder nach dem Code.' : ''}` : 'Das hat nicht geklappt.'); void laden();
   }
   const kopieren = (t: string) => { try { void navigator.clipboard.writeText(t); setMeldung('Link kopiert — persönlich weitergeben.'); } catch { setMeldung(t); } };
 
@@ -122,7 +127,7 @@ export function KontoView() {
       </Karte>
       </Kachel>
       <Kachel id="adressen" titel="Anmelde-Adressen" breite={3}>
-        <AnmeldeAdressen email={ich.email} weitere={ich.weitereEmails ?? []} i={2} geaendert={() => void laden()} />
+        <AnmeldeAdressen email={ich.email} weitere={ich.weitereEmails ?? []} zweiterFaktor={!!ich.zweiterFaktorAn} i={2} geaendert={() => void laden()} />
       </Kachel>
       <Kachel id="zwei-faktor" titel="Zweiter Faktor" breite={3}>
       <Karte i={2} ton={ich.zweiterFaktorAn ? LEUCHT.gut : LEUCHT.achtung}>
@@ -155,10 +160,11 @@ export function KontoView() {
         )}
         {zf.phase === 'aus' && ich.zweiterFaktorAn && (
           <>
-            <Zeile titel="Zweiter Faktor ist an" unter="Ausschalten nur mit Passwort — danach genügt beim Anmelden wieder das Passwort allein." />
-            <form className="konto-feldreihe" onSubmit={e => { e.preventDefault(); if (zf.passwort) void zfAus(); }}>
+            <Zeile titel="Zweiter Faktor ist an" unter="Ausschalten nur mit Passwort und Code — danach genügt beim Anmelden wieder das Passwort allein." />
+            <form className="konto-feldreihe" onSubmit={e => { e.preventDefault(); if (zf.passwort && zf.code.trim()) void zfAus(); }}>
               <Feldzeile label="Passwort zum Ausschalten"><input type="password" value={zf.passwort} onChange={e => setZf(z => ({ ...z, passwort: e.target.value }))} style={feld} autoComplete="current-password" /></Feldzeile>
-              <Knopf leise typ="submit" aus={!zf.passwort}>Ausschalten</Knopf>
+              <Feldzeile label="Code aus der App (oder Wiederherstellungscode)"><input value={zf.code} onChange={e => setZf(z => ({ ...z, code: e.target.value }))} style={{ ...feld, fontFamily: SCHRIFT.mono, letterSpacing: '.15em' }} autoComplete="one-time-code" /></Feldzeile>
+              <Knopf leise typ="submit" aus={!zf.passwort || !zf.code.trim()}>Ausschalten</Knopf>
             </form>
             <GemerkteGeraete />
           </>
@@ -196,12 +202,13 @@ export function KontoView() {
       {ich.rolle === 'inhaber' && <Kachel id="zugang-instanz" titel="Zugang der Instanz" breite={3}><ZugangEinstellungen /></Kachel>}
       {/* Team (28.09.): lebt in den Daten (team--<haushalt>); hier gepflegt, weil die alte Säulen-Seite auf /os/familie umleitet. */}
       <Kachel id="team" titel="Team" breite={6}><TeamKarte i={3} /></Kachel>
+      {nurBusiness === false && (
       <Kachel id="teilen" titel="Gesundheit teilen" breite={3}>
       <Karte i={2}>
       <Ueberschrift farbe={LEUCHT.gut} erklaerung="konto.gesundheitTeilen">Gesundheit teilen</Ueberschrift>
       <Liste>
-        {andere.length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, dein Journal und deine Tagebücher sehen darf, entscheidest du je Person.</Leer>}
-        {andere.map(a => {
+        {andere.filter(a => a.gesundheitTeilbar !== false).length === 0 && <Leer>Noch niemand sonst hier. Wer deine Recovery, dein Journal und deine Tagebücher sehen darf, entscheidest du je Person.</Leer>}
+        {andere.filter(a => a.gesundheitTeilbar !== false).map(a => {
           const an = ich.teilt.gesundheit.includes(a.speicher);
           return <Zeile key={a.speicher} links={<Haken an={an} onChange={() => teilen(a.speicher, !an)} />} titel={a.name}
             unter={`${an ? 'sieht deine Gesundheit' : 'sieht deine Gesundheit nicht'} · ${a.teiltGesundheitMitMir ? 'teilt mit dir' : 'teilt nicht mit dir'}`} />;
@@ -209,6 +216,7 @@ export function KontoView() {
       </Liste>
       </Karte>
       </Kachel>
+      )}
       {/* Eigene Ziele (08.10., Kevin): Vorgabe „nicht geteilt“ — wer meine eigenen Ziele lesen darf, entscheide nur ich (Server: lib/planung/eigene-ziele-sicht.ts). */}
       <Kachel id="ziele-teilen" titel="Eigene Ziele teilen" breite={3}>
       <Karte i={2}>
@@ -224,7 +232,7 @@ export function KontoView() {
       </Karte>
       </Kachel>
       {/* Betroffenenrechte (05.10.): Auskunft, Herunterladen, Konto löschen — jede Person selbst. */}
-      <Kachel id="meine-daten" titel="Meine Daten" breite={3}><MeineDaten i={2} zweiterFaktorAn={!!ich.zweiterFaktorAn} inhaber={ich.rolle === 'inhaber'} haupt={haupt} andere={andere.length} /></Kachel>
+      <Kachel id="meine-daten" titel="Meine Daten" breite={3}><MeineDaten i={2} zweiterFaktorAn={!!ich.zweiterFaktorAn} inhaber={ich.rolle === 'inhaber'} haupt={haupt} andere={andereKonten ?? andere.length} /></Kachel>
       {/* ZOE auf WhatsApp (08.10.): die eigene Nummer mit der ZOE-Nummer verbinden — nur die Person selbst (components/os/zoe-whatsapp). */}
       <Kachel id="zoe-whatsapp" titel="ZOE auf WhatsApp" breite={3}><ZoeWhatsappKarte i={3} /></Kachel>
       <Kachel id="bote" titel="Der Bote · Telegram" breite={3}>

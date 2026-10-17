@@ -19,6 +19,8 @@ import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, jetztPhasen,
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { zielErreichung } from '../prozesse/wert';
 import { RHYTHMUS_TEXT, naechsterFallTermin } from '../prozesse/rituale';
+import { kundenTermine } from '../prozesse/termine';
+import type { IcsArt } from '@/lib/kalender/arten';
 import { titelOhneZusatz, kundenLageAus, KUNDEN_LAGE_TEXT } from '../prozesse/darstellung';
 import { fallReise, istSammelSchritt, naechsterPunkt, type NaechsterPunkt } from '../prozesse/reise';
 import { obSchluessel } from '../prozesse/onboarding';
@@ -166,8 +168,11 @@ export interface TeileEingabe {
   formulare?: ReadonlyMap<string, string>;
   /** Ritual-Vorlagen (Titel, Rhythmus). */
   rituale?: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus'>[];
-  /** Die Termine mit Bezug zum Mandat (lib/fulfillment/prozesse/termine-server.ts `fallTermine`): Kennung, Tag, ggf. Uhrzeit und Titel. */
-  terminTage?: readonly { uid: string; tag: string; von?: string; titel?: string }[];
+  /**
+   * Die Termine mit Bezug zum Mandat (lib/fulfillment/prozesse/termine-server.ts `fallTermine`): Kennung, Tag, ggf. Uhrzeit, Art, „privat“. Gezählt werden
+   * nur gemeinsame Termine (`kundenTermine`), ein Titel aus dem Kalender wird nie gezeigt (18.10., L3 B1).
+   */
+  terminTage?: readonly { uid: string; tag: string; von?: string; titel?: string; art?: IcsArt; privat?: true }[];
   /**
    * Öffentliche Schlüssel der Formulare, die der Kunde noch ausfüllt (ein Abschnitt offen) — sie zählen in „Von Ihnen brauchen wir …“ mit, genau wie
    * in der Karte „Das brauchen wir von Ihnen“ (`brauchtAnzahl`; 14.10., Abnahme A3: „nichts nötig“ neben „1 offen“).
@@ -294,15 +299,19 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   // Takt: Rituale des Falls mit dem nächsten Termin (Tag aus `kalender-bezug`); „Nächster Termin“ = DIE Regel `naechsterFallTermin` (wie Takt, Cockpit,
   // Health „Termine“ — 14.10., Abnahme B8), nur mit bekanntem Ritual (Titel).
   const ritNach = new Map((e.rituale ?? []).map(r => [r.id, r]));
+  // Nur gemeinsame Termine (18.10., L3 B1): nie Fokus, Block, Arbeitsort, Abwesenheit, nie ein privater — auch wenn er mit der Firma verknüpft ist.
+  const termine = kundenTermine(e.terminTage ?? []);
   const rituale: KundenRitual[] = (f?.rituale ?? []).map(r => {
     const v = ritNach.get(r.ritualId);
     if (!v) return null;
     const uids = new Set(r.terminUids);
-    const tag = (e.terminTage ?? []).filter(t => uids.has(t.uid) && t.tag >= e.heute).map(t => t.tag).sort()[0];
+    const tag = termine.filter(t => uids.has(t.uid) && t.tag >= e.heute).map(t => t.tag).sort()[0];
     return { titel: kundenText(v.titel), rhythmus: RHYTHMUS_TEXT[v.rhythmus], ...(tag ? { naechster: tagMitWochentag(tag) } : {}) };
   }).filter((r): r is KundenRitual => !!r);
-  const nt = f ? naechsterFallTermin({ fallRituale: (f.rituale ?? []).filter(r => ritNach.has(r.ritualId)), terminTage: e.terminTage ?? [], heute: e.heute, rituale: e.rituale ?? [] }) : null;
-  const naechsterTermin = nt ? { titel: kundenText(nt.titel ?? 'Gemeinsamer Termin'), am: tagMitWochentag(nt.tag) } : undefined;
+  const nt = f ? naechsterFallTermin({ fallRituale: (f.rituale ?? []).filter(r => ritNach.has(r.ritualId)), terminTage: termine, heute: e.heute, rituale: e.rituale ?? [] }) : null;
+  // Titel nur aus dem Ritual (18.10., L3 B1 — vorher der Rohtitel des Kalenders, z. B. ein internes Meeting), sonst neutral.
+  const ritualTitel = nt?.ritualId ? ritNach.get(nt.ritualId)?.titel : undefined;
+  const naechsterTermin = nt ? { titel: kundenText(ritualTitel ?? 'Gemeinsamer Termin'), am: tagMitWochentag(nt.tag) } : undefined;
 
   const fortschritt = f ? fallFortschritt(f) : null;
   const lage = kundenLage({

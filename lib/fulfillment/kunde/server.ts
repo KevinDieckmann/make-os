@@ -158,13 +158,17 @@ export async function ansprechpersonFuer(h: string, m: Pick<Mandat, 'zustaendig'
 
 /**
  * Die Termine mit Bezug zum Mandat (bzw. zur Firma des Mandats) — die EINE Lesestelle `fallTermine` (15.10., Abnahme B3: vorher nur `kalender-bezug` mit
- * `mandatId`, ohne Firma, ohne Serien-Vorkommen). Titel nur von nicht privaten Terminen.
+ * `mandatId`, ohne Firma, ohne Serien-Vorkommen). Für den Kunden (18.10., L3 B1) nur gemeinsame Termine (`kundenTermine`: Art „termin“, nie privat) und
+ * OHNE Titel aus dem Kalender — den Titel gibt auf Kunden-Wegen nur das Ritual (`kundenTeile`).
  */
-export async function terminTageFuer(m: Pick<Mandat, 'id' | 'firmaId'>): Promise<{ uid: string; tag: string; von?: string; titel?: string }[]> {
-  try { return (await (await import('../prozesse/termine-server')).fallTermine([{ id: m.id, firmaId: m.firmaId ?? null }]))[m.id] ?? []; } catch { return []; }
+export async function terminTageFuer(m: Pick<Mandat, 'id' | 'firmaId'>): Promise<{ uid: string; tag: string; von?: string }[]> {
+  try {
+    const [{ fallTermine }, { kundenTermine }] = await Promise.all([import('../prozesse/termine-server'), import('../prozesse/termine')]);
+    return kundenTermine((await fallTermine([{ id: m.id, firmaId: m.firmaId ?? null }]))[m.id] ?? []).map(t => ({ uid: t.uid, tag: t.tag, ...(t.von ? { von: t.von } : {}) }));
+  } catch { return []; }
 }
 
-export interface KundenUmfeld { anrede: KundenAnrede; anbieter?: KundenAnbieter; ansprechperson?: string; freigaben: Freigabepunkt[]; terminTage: { uid: string; tag: string; von?: string; titel?: string }[] }
+export interface KundenUmfeld { anrede: KundenAnrede; anbieter?: KundenAnbieter; ansprechperson?: string; freigaben: Freigabepunkt[]; terminTage: { uid: string; tag: string; von?: string }[] }
 /** Alles, was Seite, Report und Präsentation über den Fall hinaus brauchen — jeder Teil fällt bei einem Lesefehler still weg. */
 export async function kundenUmfeld(m: Mandat, fall: (Pick<Fall, 'vorlageId'> & Partial<Pick<Fall, 'zusaetze'>>) | null, v: Pick<VorlagenDatei, 'prozesse'>, h?: string): Promise<KundenUmfeld> {
   const haus = h ?? await fulfillmentHaushalt();
@@ -706,8 +710,14 @@ export async function kundeFristen(k: FristenKontext): Promise<Record<string, nu
     const { ladeCrmMitPapierkorb } = await import('@/lib/crm/speicher');
     const crm = await ladeCrmMitPapierkorb();
     const mandate = new Map((crm.mandate ?? []).map(m => [m.id, m]));
-    // Ohne ein einziges Mandat im CRM (Bestand fehlt/leer) gilt nichts als verwaist — nie alles löschen, weil das CRM nicht lesbar war.
-    const endeVon = (id: string) => { const m = mandate.get(id); return m ? { bekannt: true, ende: mandatsEnde(m) } : { bekannt: mandate.size === 0, ende: null }; };
+    // Leer-Schutz (18.10., Gesamtprüfung L3 B5): ein Mandat, das im CRM fehlt, gilt erst nach 30 Tagen mit Marke als weg (`mandat-fehlt:<m>`); ohne
+    // ein einziges Mandat und bei zu vielen auf einmal bremst der Lauf (lib/fulfillment/mandat-fehlt.ts). Vorher: bei sonst gefülltem CRM SOFORT
+    // Antworten, Puls und Unterlagen samt Dateien weg. Bis dahin zählt es wie ein laufendes Mandat (`bekannt`, ohne Ende) — nichts fällt weg.
+    const d0 = await fulfillmentLesen('kunde', h);
+    const betroffen = new Set([...d0.formulare, ...d0.puls, ...d0.pulsAnfragen, ...d0.links, ...d0.unterlagen].map(x => x.mandatId));
+    const { fehlendeMandatePruefen } = await import('../mandat-fehlt-server');
+    const fehlt = await fehlendeMandatePruefen(betroffen, new Set(mandate.keys()), k.heute, h, 'kunde');
+    const endeVon = (id: string) => { const m = mandate.get(id); return m ? { bekannt: true, ende: mandatsEnde(m) } : { bekannt: !fehlt.weg.has(id), ende: null }; };
     let weg: string[] = [];
     const r = await fulfillmentAendern('kunde', d => {
       const x = kundeFristenAnwenden(d, endeVon, { heute: k.heute, mandatsdatenMonate: k.fristen.mandatsdatenMonate, unterlagenTage: k.fristen.unterlagenTage });

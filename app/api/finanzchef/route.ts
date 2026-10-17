@@ -78,23 +78,35 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 400;
 
-async function umfangVon(req: Request, wunsch: string | null): Promise<{ haushalt: string | null; person: string | null; zugang: boolean }> {
+/**
+ * Umfang der Anfrage. Die Sicht Business (`umfang=business` ODER `space=business`, 18.10., A1 — vorher kannte die Route nur `umfang`, die
+ * Business-Ansicht schickt aber `?space=business`) rechnet IMMER ohne Haushalt: Bestand `finanzchef` statt `haushalt-chef--<h>`, Finanzbild
+ * ohne Haushalt (keine Haushalts-/Gesamt-Hinweise, keine Einkommensteuer, keine Grundlage einer Privat-Einheit) — serverseitig, nie nur
+ * ausgeblendet. `zugang` sagt nur, ob die Person einen Haushalt HAT (Anzeige), nicht, dass er hier gelesen wird.
+ */
+function nurBusinessGewuenscht(umfang: unknown, space: unknown): boolean {
+  return umfang === 'business' || space === 'business';
+}
+
+async function umfangVon(req: Request, businessSicht: boolean): Promise<{ haushalt: string | null; person: string | null; zugang: boolean }> {
   const z = await haushaltVon(req);
-  if (!z || wunsch === 'business') return { haushalt: null, person: z?.person ?? null, zugang: !!z };
+  if (!z || businessSicht) return { haushalt: null, person: z?.person ?? null, zugang: !!z };
   return { haushalt: z.haushalt, person: z.person, zugang: true };
 }
 
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
-  const u = await umfangVon(req, new URL(req.url).searchParams.get('umfang'));
+  const q = new URL(req.url).searchParams;
+  const u = await umfangVon(req, nurBusinessGewuenscht(q.get('umfang'), q.get('space')));
   const [stand, { bild, einstellung }] = await Promise.all([
     loadJson<ChefStand>(standName(u.haushalt)),
-    ladeFinanzbild(u.haushalt),
+    // Business-Sicht im Haushalt des Inhabers (die Tor-Zeile oben): mit den Hinweisen des Business-Index, wie /api/business.
+    ladeFinanzbild(u.haushalt, undefined, { businessIndex: !u.haushalt }),
   ]);
   const s = { ...leererStand(), ...(stand ?? {}) };
-  // Sicht Business (15.10., Abnahme 2 C13 — „Business zeigt nur Business“): die Checkliste und die Lage ohne Privat und ohne die Selbstständigkeit,
-  // auch für Personen mit Haushaltszugang (der Head of Finance selbst und seine Vorschläge bleiben derselbe Stand).
-  const nurBusinessSicht = !u.haushalt || new URL(req.url).searchParams.get('space') === 'business';
+  // Sicht Business (15.10., Abnahme 2 C13 — „Business zeigt nur Business“): die Checkliste und die Lage ohne Privat und ohne die Selbstständigkeit.
+  // Seit 18.10. (A1) heißt Business-Sicht immer „ohne Haushalt“ (umfangVon) — Berichte, Vorschläge und Hinweise kommen dann aus dem Business-Stand.
+  const nurBusinessSicht = !u.haushalt;
   const istStandListe = await checkliste(nurBusinessSicht ? null : u.haushalt, bild, nurBusinessSicht ? einstellungFuerBusiness(einstellung) : einstellung, await istBetreiberInstanz());
   return NextResponse.json({
     istStand: istStandListe,
@@ -115,7 +127,7 @@ export async function GET(req: Request) {
 }
 
 import { istDienst as dienst } from '@/lib/zugang/dienst';
-import { kontoName, bereichVonFirma, bereichVon } from '@/lib/einheiten';
+import { kontoName, bereichVonFirma, bereichVon, istBusinessGesellschaft } from '@/lib/einheiten';
 const ohneBetraege = (t: string) => t.replace(/[+−-]?\d{1,3}(?:\.\d{3})*(?:,\d+)?\s?(?:€|EUR)/g, '…').replace(/\s{2,}/g, ' ').trim();
 
 export async function POST(req: Request) {
@@ -123,7 +135,7 @@ export async function POST(req: Request) {
   const agentCfg = await resolveAgent('finanzchef'); if (!agentCfg.enabled) return NextResponse.json(disabledResponse(agentCfg), { status: 409 });
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
-  const u = await umfangVon(req, typeof b.umfang === 'string' ? b.umfang : null);
+  const u = await umfangVon(req, nurBusinessGewuenscht(b.umfang, b.space));
   if (u.haushalt && !istEchterHaushalt(u.haushalt) && b.aktion === 'lauf' && b.ausgeloest === 'takt') return NextResponse.json({ ok: false, fehler: 'Kein Takt für Test-Haushalte.' }, { status: 400 });
 
   if (b.aktion === 'lauf') {
@@ -136,7 +148,8 @@ export async function POST(req: Request) {
     // prüfte die Route nur den alten Schalter (`agents-config`). Dieselbe Sperre wie Threads, Arbeiter und Takt (lib/agenten/einstellung.ts).
     const sperre = await (await import('@/lib/agenten/einstellung')).laufSperre(u.person ?? null, 'finanzen');
     if (sperre) return NextResponse.json({ ok: false, fehler: sperre.text, gesperrt: sperre.grund }, { status: 409 });
-    const r = await chefLauf({ modus, haushalt: u.haushalt, person: u.person ?? undefined, frage, monat, ausgeloest });
+    // Business-Lauf (ohne Haushalt) mit den Hinweisen des Business-Index — die Tor-Zeile oben hat den Haushalt des Inhabers bzw. den Systemlauf geprüft.
+    const r = await chefLauf({ modus, haushalt: u.haushalt, person: u.person ?? undefined, frage, monat, ausgeloest, businessIndex: !u.haushalt });
     return NextResponse.json(r, { status: r.ok ? 200 : 502 });
   }
 
@@ -202,8 +215,14 @@ export async function POST(req: Request) {
       },
       geaendert: new Date().toISOString(),
     };
+    // Sicht Business schreibt nichts Privates (18.10., A1): die Einkommensteuer-Vorauszahlung und die Rechtsform einer Privat-Einheit bleiben,
+    // wie sie waren — die Business-Ansicht bekommt sie gar nicht (`einstellungFuerBusiness`) und schickte sonst „aus“ bzw. nichts zurück.
+    if (!u.haushalt) {
+      neu.steuer.estVorauszahlung = alt.steuer.estVorauszahlung;
+      for (const g of ['kdv', 'kdc'] as const) if (!istBusinessGesellschaft(g)) neu.rechtsform[g] = alt.rechtsform[g];
+    }
     await saveJson(EINSTELLUNG_NAME, neu);
-    return NextResponse.json({ ok: true, einstellung: neu });
+    return NextResponse.json({ ok: true, einstellung: u.haushalt ? neu : einstellungFuerBusiness(neu) });
   }
   return NextResponse.json({ ok: false, fehler: 'Unbekannte Aktion.' }, { status: 400 });
 }

@@ -100,15 +100,19 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   // Ziele je Space (26.09., Kevin): Privat, Business, gemeinsam (ohne Space) — der Filter folgt der Adresse oder dem Merker.
   // Startwert = Bereich im Kopf (seit 09.10. immer Privat oder Business); „alle“ bleibt ein Filter dieser Seite.
   const { filter: spaceVorgabe } = useSpace();
-  const [spaceFilter, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
+  const [spaceFilterRoh, setSpaceFilter] = useState<SpaceId | 'alle'>('alle');
   useEffect(() => { setSpaceFilter(spaceVorgabe); }, [spaceVorgabe]);
+  // Konto „nur Business“ (18.10., Gesamtprüfung L4 B5): ein gemerkter Filter „Privat“ gilt als Business — vorher zeigte die Seite „Fokus · Privat“
+  // mit „Mit Business-Zugang gibt es keinen Privat-Fokus“ (403). Die Trennung selbst macht der Server.
+  const nurBusinessKonto = useNurBusiness();
+  const spaceFilter: SpaceId | 'alle' = nurBusinessKonto === true && spaceFilterRoh === 'privat' ? 'business' : spaceFilterRoh;
   // Einheit (nur Business) — hier gehalten, damit das Anlegen am Zeitstrahl sie vorbelegt.
   const [einheitFilter, setEinheitFilter] = useState('alle');
   const imBusiness = spaceFilter === 'business';
   // Bereich abgeleitet (05.10. abends): Ziele der Selbstständigkeit stehen unter Privat (`wirksamerSpace`).
   const zieleImSpace = ziele.filter(z => { const zs = wirksamerSpace(z); return (spaceFilter === 'alle' || !zs || zs === spaceFilter) && (!istJahr || zielJahr(z, laufend) === planJahr); });
   // Fokus (09.10.): FokusTafel liest und schreibt selbst (getrennte Bestände) — hier nur, welcher Bereich in „Alles“ vorgewählt ist.
-  const nurBusiness = useNurBusiness();
+  const nurBusiness = nurBusinessKonto;
   useZuZiel(zielM, geladen);
 
   // Aufgaben, die in diesem Zeitraum fällig sind.

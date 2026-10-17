@@ -32,7 +32,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } 
 const EINRICHTUNG_NAECHSTER = 'make-einrichtung-naechster';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
-  EBENEN, ablaufFuer, datenkarteFuer, einrichtungStand, ebeneMitId, etappenFuer, fortschrittVon, gruppeVon, gruppenFuer, istFertig, offeneVoraussetzungen, schrittFuer, schritteDerEbene,
+  EBENEN, ablaufFuer, datenkarteFuer, einrichtungStand, ebeneMitId, ebeneSatz, etappenFuer, fortschrittVon, gruppeVon, gruppenFuer, istFertig, offeneVoraussetzungen, schrittFuer, schritteDerEbene,
   restzeitText, schritteFuer, sichtbarFuer, texteFuer, werText, zurueckgefallen, type Ebene, type Gruppe, type Kontext, type PruefBefund, type Schritt,
 } from '@/lib/make-one/onboarding-data';
 import { BusinessOnlineVorlage } from './BusinessOnlineVorlage';
@@ -276,9 +276,9 @@ export function EbeneView({ ebene }: { ebene: Ebene }) {
   const f = fortschrittVon(gesperrt ? [] : schritteZaehlenAufEbene(ebene, ich), z, { alle });
   const namen = gruppenFuer(!!ich?.altbestand, !!ich?.neustart);
   const weiter = [{ id: 'alles', titel: 'Einrichtung — alle deine Schritte', satz: `${ich?.betreiber ? `${namen.freitag.titel.split(' · ')[0]}, ` : ''}${namen.samstag.titel} und „${namen.spaeter.titel}“ in der richtigen Reihenfolge.`, href: '/os/onboarding' },
-    ...EBENEN.filter(e => e.id !== ebene && (!e.nurInhaber || !!ich?.inhaber))];
+    ...EBENEN.filter(e => e.id !== ebene && (!e.nurInhaber || !!ich?.inhaber)).map(e => ({ ...e, satz: ebeneSatz(e, !!ich?.nurBusiness) }))];
   return (
-    <Seite titel={meta.titel} unter={meta.satz} rechts={<Knopf leise href="/os/onboarding">Einrichtung ›</Knopf>}>
+    <Seite titel={meta.titel} unter={ebeneSatz(meta, !!ich?.nurBusiness)} rechts={<Knopf leise href="/os/onboarding">Einrichtung ›</Knopf>}>
       <Meldung text={meldung} />
       {gesperrt ? (
         <Karte i={0}>
@@ -507,7 +507,7 @@ export function OnboardingUebersicht() {
             <Link key={e.id} href={e.href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
               <Karte i={MAX_I} style={{ height: '100%' }}>
                 <Ueberschrift rechts={<span>›</span>}>{e.titel}</Ueberschrift>
-                <p style={{ ...absatz, margin: '0 0 12px' }}>{e.satz}</p>
+                <p style={{ ...absatz, margin: '0 0 12px' }}>{ebeneSatz(e, !!z?.ich?.nurBusiness)}</p>
                 <Fortschritt schritte={schritteZaehlenAufEbene(e.id, z?.ich ?? null)} z={z} alle />
               </Karte>
             </Link>

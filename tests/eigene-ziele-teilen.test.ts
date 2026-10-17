@@ -257,7 +257,8 @@ describe('geteilt — lesen ja, schreiben nie; Zurücknehmen wirkt sofort', () =
     await zieleTeilen('person-b', ['person-a', 'person-c', 'person-b', 'unbekannt']);
     const konten = await db.loadJson<{ konten: { speicher: string; teilt: { gesundheit: string[]; ziele?: string[] } }[] }>('konten');
     const b = konten!.konten.find(k => k.speicher === 'person-b')!;
-    expect(b.teilt).toEqual({ gesundheit: ['person-a'], ziele: ['person-a', 'person-c'] });
+    // Seit 18.10. (Gesamtprüfung L4 B6): geteilt wird nur im eigenen Haushalt — person-c (anderer Haushalt) fällt still weg.
+    expect(b.teilt).toEqual({ gesundheit: ['person-a'], ziele: ['person-a'] });
     const r = await ziele.GET(anfrage('/api/state/ziele?fuer=person-b', 'person-a'));
     expect(r.status).toBe(200);
     const d = await r.json() as { darfSchreiben: boolean; jahr: { titel: string }[]; fokus: Record<string, string> };
@@ -281,7 +282,7 @@ describe('geteilt — lesen ja, schreiben nie; Zurücknehmen wirkt sofort', () =
   it('nur die Eigentümerin schaltet: person-a kann die Freigabe von person-b nicht setzen; Zurücknehmen → wieder 403', async () => {
     await zieleTeilen('person-a', ['person-b']); // ändert nur person-a's eigene Freigabe
     const konten = await db.loadJson<{ konten: { speicher: string; teilt: { ziele?: string[] } }[] }>('konten');
-    expect(konten!.konten.find(k => k.speicher === 'person-b')!.teilt.ziele).toEqual(['person-a', 'person-c']);
+    expect(konten!.konten.find(k => k.speicher === 'person-b')!.teilt.ziele).toEqual(['person-a']);
     await zieleTeilen('person-b', []);
     const r = await ziele.GET(anfrage('/api/state/ziele?fuer=person-b', 'person-a'));
     expect(r.status).toBe(403);

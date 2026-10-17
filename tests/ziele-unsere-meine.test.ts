@@ -176,7 +176,8 @@ describe('Ziele-Route: Sicht A bekommt nichts aus B', () => {
   it('/api/konto/ich nennt die Partner (volle Mitglieder desselben Haushalts) — nie „nur Business“ oder fremde', async () => {
     const d = await (await ich.GET(anfrage('/api/konto/ich', 'person-a'))).json() as { andere: { speicher: string; partner: boolean }[] };
     const p = Object.fromEntries(d.andere.map(a => [a.speicher, a.partner]));
-    expect(p).toEqual({ 'person-b': true, 'person-c': false, 'person-d': false });
+    // Seit 18.10. (Gesamtprüfung L4 B6) nennt die Liste nur Konten des eigenen Haushalts — der fremde (person-c) fehlt ganz.
+    expect(p).toEqual({ 'person-b': true, 'person-d': false });
   });
 });
 

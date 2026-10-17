@@ -269,7 +269,9 @@ describe('Zweite Abnahme 15.10.: EINE Lage-Rechnung, EIN nächster Schritt, EIN 
     expect(lt.weitere.some(t => t.titel === 'Cockpit-Abstimmung Lumen' && t.tag >= montag && t.tag <= tagePlus(montag, 6))).toBe(true);
     expect(lt.naechster?.titel).toBe('Cockpit-Abstimmung Lumen');
     expect(lu.onboarding.schritte.find(x => x.schluessel === 'kickoff')).toMatchObject({ erfuellt: true });
-    expect(sichten['m-demo-lumen'].naechsterTermin?.titel).toBe('Cockpit-Abstimmung Lumen');
+    // Der Kunde sieht denselben Tag — aber nie den Kalender-Titel, nur den des Rituals bzw. neutral (18.10., Gesamtprüfung L3 B1).
+    expect(sichten['m-demo-lumen'].naechsterTermin?.titel).toBe('Gemeinsamer Termin');
+    expect(JSON.stringify(sichten['m-demo-lumen'])).not.toContain('Cockpit-Abstimmung');
     expect(cockpit.find(z => z.mandatId === 'm-demo-lumen')!.naechsterRitual).toBe(lt.naechster!.tag);
     // Nordwerk: der Wochen-Check dieser Woche (Dienstag) steht als echter Termin in der Zeile „Wochen-Check“ — auch wenn er schon gelaufen ist.
     const nw = faelle['m-demo-nordwerk'];

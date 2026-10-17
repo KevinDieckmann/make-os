@@ -69,14 +69,23 @@ export async function fulfillmentLage(input: Record<string, unknown>, _origin: s
   if (input.mitPersonen === true) {
     if (!(await personenteilErlaubt(person))) z.push('Personenteil: für dieses Konto nicht freigegeben.');
     else {
-      const karten = personen.karten.filter(k => k.mandatId === m.id);
+      // Art. 18 (18.10., L3 B6): Karten eingeschränkter Kontakte gehen nie an das Modell — nur ihre Zahl.
+      const [{ eingeschraenkteKennungen }, { kartenOhneEingeschraenkte, ausgeblendetText }] = await Promise.all([import('@/lib/crm/verarbeitung'), import('./dsgvo')]);
+      const { karten, ausgeblendet } = kartenOhneEingeschraenkte(personen.karten.filter(k => k.mandatId === m.id), await eingeschraenkteKennungen());
       personenZahl = karten.length;
       // Lese-Protokoll wie die Route /api/fulfillment/personen (Bereich „personenrecherche“) — ohne Anfrage über den Lauf im Namen der Person.
       if (karten.length) {
         const { leseZugriffLauf } = await import('@/lib/store/leseprotokoll');
         leseZugriffLauf({ art: 'zoe', person }, 'zoe:fulfillment_lage', 'personenrecherche', { ids: [m.id], anzahl: karten.length });
       }
-      z.push('## Personenteil (nur beruflich)', ...karten.map(k => `- ${k.funktion}: ${k.name} · Identität ${k.identitaet} · ${k.status}\n  ${[...k.werdegang, ...k.themen, ...k.auftritte, ...k.aufhaenger].map(a => a.text).join(' · ')}`));
+      if (ausgeblendet) z.push(ausgeblendetText(ausgeblendet));
+      // Hintergrund-Läufe (18.10., Gesamtprüfung L3 C6): der Pseudonymisierer kennt nur CRM-Kontakte, nicht die Namen der Karten — dort geht nur die
+      // Funktion ans Modell (kein Name, keine Angaben, die ihn nennen könnten). Im Gespräch bzw. auf Klick wie bisher.
+      const { laufImKontext } = await import('@/lib/datenschutz/ki-lauf');
+      const hintergrund = laufImKontext() === 'hintergrund';
+      z.push('## Personenteil (nur beruflich)', ...karten.map(k => (hintergrund
+        ? `- ${k.funktion} · Identität ${k.identitaet} · ${k.status} · ${k.werdegang.length + k.themen.length + k.auftritte.length + k.aufhaenger.length} Angabe(n) (im Hintergrund ohne Namen)`
+        : `- ${k.funktion}: ${k.name} · Identität ${k.identitaet} · ${k.status}\n  ${[...k.werdegang, ...k.themen, ...k.auftritte, ...k.aufhaenger].map(a => a.text).join(' · ')}`)));
     }
   }
   const t = teilVon(z.join('\n'), typeof input.teil === 'number' ? input.teil : 1);

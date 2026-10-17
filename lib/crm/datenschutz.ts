@@ -434,10 +434,14 @@ export function verarbeitungEmailKundenNachtragen(vorhanden: readonly Verarbeitu
 
 // ── Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1/C0) — drei Verarbeitungen, idempotent nachgetragen wie `vv-email-imap` ─────────────────
 // Lieferung im Mandat (Fall, Stakeholder, Wert-Konto), die Analyse-Strecke mit beruflicher Personenrecherche (Art. 6 Abs. 1 lit. f, Art. 14 durch
-// MAKE als Verantwortlicher) und der Kunden-Link (Art. 6 Abs. 1 lit. b, Art. 13 auf der Seite; kommt ausgeschaltet). Hinweis, keine Rechtsberatung —
+// eigener Verantwortlicher — wer das ist, steht in der Einrichtung) und der Kunden-Link (Art. 6 Abs. 1 lit. b, Art. 13 auf der Seite; kommt ausgeschaltet). Hinweis, keine Rechtsberatung —
 // die Texte liest der Anwalt einmal gegen (FULFILLMENT_KONZEPT.md Abschnitt 13).
 export const VV_FULFILLMENT_ID = 'vv-fulfillment';
 export const VV_FULFILLMENT_ANALYSE_ID = 'vv-fulfillment-analyse';
+/** Regel S3 (18.10., Gesamtprüfung L3 B8): der Verantwortliche nie fest im Text — er steht in der Einrichtung (`verantwortlichAufloesen`). */
+export const VV_FULFILLMENT_ANALYSE_RECHT = 'Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Vorbereitung des Mandats; Interessenabwägung je Dossier dokumentiert); Information der Personen nach Art. 14 durch den Verantwortlichen (Datenschutz › Verantwortlicher)';
+/** Die Fassung bis 18.10. (nannte die Betreiber-Firma) — gespeicherte Bestände werden über `ALTE_FASSUNGEN` gehoben. */
+const VV_FULFILLMENT_ANALYSE_RECHT_ALT = 'Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Vorbereitung des Mandats; Interessenabwägung je Dossier dokumentiert); Information der Personen nach Art. 14 durch MAKE als Verantwortlicher';
 export const VV_KUNDENLINK_ID = 'vv-kundenlink';
 export function verarbeitungenFulfillment(jetzt: string): Verarbeitung[] {
   const stand = tagVon(jetzt);
@@ -460,7 +464,7 @@ export function verarbeitungenFulfillment(jetzt: string): Verarbeitung[] {
       zweck: 'Vor und zu Beginn eines Mandats öffentlich zugängliche Angaben über die Firma des Kunden (Markt, Wettbewerb, Außendarstellung, Vertrieb, Register) und beruflich über Personen in Leitungsfunktion zusammentragen — als Dossier mit Quelle und Datum je Aussage, Grundlage für Diagnose und Kick-off.',
       personen: 'Gesellschafter, Geschäftsführung und Leitungsfunktionen des Kunden (nur beruflich)',
       daten: 'Name, Funktion, beruflicher Werdegang, öffentliche Auftritte und Themen — je Angabe Quelle und Abrufdatum; nie private Angaben, nie besondere Kategorien',
-      rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Vorbereitung des Mandats; Interessenabwägung je Dossier dokumentiert); Information der Personen nach Art. 14 durch MAKE als Verantwortlicher',
+      rechtsgrundlage: VV_FULFILLMENT_ANALYSE_RECHT,
       empfaenger: 'Hetzner (Hosting); Anthropic für die Auswertung erst nach Bestätigung je Lauf; Google Vertex AI nur für einen ausdrücklich bestätigten Tiefenbericht (nur für die auslösende Person)',
       empfaengerIds: ['hetzner', 'anthropic', 'google-vertex'],
       drittland: 'Anthropic: Standardvertragsklauseln/Data Privacy Framework — prüfen; Google Vertex AI: Verarbeitung in der EU nach Vertrag — prüfen',
@@ -600,6 +604,7 @@ const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: s
   'vv-medien': { empfaenger: { alt: VV_MEDIEN_EMPFAENGER_ALT, neu: VV_MEDIEN_EMPFAENGER }, drittland: { alt: VV_MEDIEN_DRITTLAND_ALT, neu: VV_MEDIEN_DRITTLAND } },
   'vv-gesundheit': { zweck: { alt: VV_GESUNDHEIT_ZWECK_ALT, neu: VV_GESUNDHEIT_ZWECK }, daten: { alt: VV_GESUNDHEIT_DATEN_ALT, neu: VV_GESUNDHEIT_DATEN } },
   'vv-konten': { daten: { alt: VV_KONTEN_DATEN_ALT, neu: VV_KONTEN_DATEN } },
+  [VV_FULFILLMENT_ANALYSE_ID]: { rechtsgrundlage: { alt: VV_FULFILLMENT_ANALYSE_RECHT_ALT, neu: VV_FULFILLMENT_ANALYSE_RECHT } },
 };
 
 export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {

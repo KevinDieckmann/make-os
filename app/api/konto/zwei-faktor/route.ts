@@ -3,13 +3,17 @@
 // POST { aktion: 'bestaetigen', code }   → Code aus der App stimmt → Faktor an, acht
 //                                          Wiederherstellungscodes (genau einmal sichtbar),
 //                                          alle anderen Geräte abgemeldet
-// POST { aktion: 'aus', passwort }       → Faktor aus (Passwort nötig)
+// POST { aktion: 'aus', passwort, code } → Faktor aus — Passwort UND Code (bzw. Wiederherstellungscode) über `erneutPruefen` (18.10.,
+//                                          Gesamtprüfung L3 B4: vorher nur das Passwort, ohne Bremse; mit „Gerät merken“ reichte so
+//                                          das Passwort für die ganze Übernahme). Danach alle anderen Geräte abgemeldet.
 // Gemerkte Geräte (16.10.) stehen IM Faktor (`zweiterFaktor.geraete`): neu einrichten und ausschalten nehmen sie mit — danach
 // fragt jedes Gerät wieder nach dem Code.
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { personStreng, ohnePerson } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { ladeKonten, aendereKonten, passwortStimmt } from '@/lib/zugang/konten';
+import { ladeKonten, aendereKonten } from '@/lib/zugang/konten';
+import { erneutPruefen } from '@/lib/zugang/erneut';
+import { istDienst } from '@/lib/zugang/dienst';
 import { neuesGeheimnis, codePruefen, otpauthLink, neueWiederherstellungscodes, wiederherstellungHash } from '@/lib/zugang/totp';
 import { mitSitzung } from '@/lib/zugang/antwort';
 import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
@@ -56,10 +60,16 @@ export async function POST(req: Request) {
   }
 
   if (b.aktion === 'aus') {
-    if (!(await passwortStimmt(String(b.passwort ?? ''), ich))) return NextResponse.json({ error: 'Das Passwort stimmt nicht.' }, { status: 403 });
-    await aendereKonten(s => ({ ...s, konten: s.konten.map(k => k.speicher === wer ? { ...k, zweiterFaktor: undefined, zweiterFaktorEntwurf: undefined } : k) }));
+    // Nur die Person der Sitzung — nie der Dienstweg (auch nicht „im Auftrag“).
+    if (istDienst(req)) return NextResponse.json({ error: 'Nur für die angemeldete Person selbst.' }, { status: 403 });
+    const e = await erneutPruefen(req, ich, { passwort: b.passwort, code: b.code }, 'zweiter-faktor-aus');
+    if (!e.ok) return NextResponse.json({ error: e.fehler, ...(e.zweiterFaktor ? { zweiterFaktor: true } : {}) }, { status: e.status, ...(e.warteSek ? { headers: { 'Retry-After': String(e.warteSek) } } : {}) });
+    const jetzt = new Date().toISOString();
+    // Alle anderen Geräte raus (wie beim Einschalten) — wer ohne Faktor weiter angemeldet sein will, meldet sich neu an; dieses Gerät bleibt drin.
+    await aendereKonten(s => ({ ...s, konten: s.konten.map(k => k.speicher === wer ? { ...k, zweiterFaktor: undefined, zweiterFaktorEntwurf: undefined, sitzungenAb: jetzt, widerrufen: [] } : k) }));
     await notiere({ speicher: wer, art: 'zweiter-faktor-aus', ok: true, adresse: adresseGekuerzt(adresse(req)) });
-    return NextResponse.json({ ok: true });
+    const frisch = (await ladeKonten()).konten.find(k => k.speicher === wer);
+    return frisch ? mitSitzung(frisch) : NextResponse.json({ ok: true });
   }
 
   return NextResponse.json({ error: 'aktion = beginnen | bestaetigen | aus' }, { status: 400 });

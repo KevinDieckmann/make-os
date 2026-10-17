@@ -214,6 +214,19 @@ describe('Fall: Kopie der Vorlage, Onboarding abgeleitet, Freigaben, Wert-Konto'
     expect(r.ok).toBe(false);
   });
 
+  it('18.10. (L3 C4): zwei nach Art. 17 getilgte Stakeholder („[gelöscht]“) bleiben bearbeitbar; eine neue Person bekommt so ein Eintrag nie', () => {
+    const f = { ...neuerFall(), stakeholder: [
+      { id: 'fs-a', kontaktId: '[gelöscht]', rolle: 'entscheider' as const, einfluss: 3 as const },
+      { id: 'fs-b', kontaktId: '[gelöscht]', rolle: 'nutzer' as const, einfluss: 1 as const },
+    ] };
+    const r = ok(fallAnwenden(f, [{ op: 'stakeholder', stand: 'x', eintrag: { id: 'fs-b', kontaktId: '[gelöscht]', rolle: 'skeptiker', einfluss: 2, haltung: 'kritisch' } }], fk({ standVon: () => 'x' })));
+    expect(r.stakeholder.find(s => s.id === 'fs-b')).toMatchObject({ kontaktId: '[gelöscht]', rolle: 'skeptiker', haltung: 'kritisch' });
+    // Ohne Kontakt-Angabe ebenso.
+    expect(fallAnwenden(f, [{ op: 'stakeholder', stand: 'x', eintrag: { id: 'fs-a', einfluss: 1 } }], fk({ standVon: () => 'x' })).ok).toBe(true);
+    // Ein neuer Eintrag (ohne id) mit „[gelöscht]“ ist keine Person der Kartei.
+    expect(fallAnwenden(f, [{ op: 'stakeholder', eintrag: { kontaktId: '[gelöscht]', rolle: 'nutzer', einfluss: 1 } }], fk({ kontaktErlaubt: () => false })).ok).toBe(false);
+  });
+
   it('das Onboarding ist fertig, wenn alle Bedingungen erfüllt sind — danach „läuft“ der Fall (abgeleitet, nicht gespeichert)', () => {
     const f = ok(fallAnwenden(neuerFall(), [
       { op: 'willkommen-gesendet' },

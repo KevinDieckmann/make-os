@@ -53,7 +53,8 @@ export function brainKontext(treffer: Treffer[], durchsucht: number): string {
 
 export interface EntwurfErgebnis { draft: string; quellen: string[]; /** Zugang, der geantwortet hat (09.10., KI-Kennzeichen). */ anbieter?: AnbieterId }
 
-export async function inboxEntwurf(person: string, gespraech: string, hinweis?: string, ki: KiKontext = { lauf: 'aufruf', person, kategorien: ['postfach'], anzahl: 1 }): Promise<EntwurfErgebnis> {
+// Vorgabe-Kategorien wie beim einzigen Aufrufer (app/api/inbox/entwurf): der Prompt trägt auch Brain und CRM (18.10., Gesamtprüfung L3 C8).
+export async function inboxEntwurf(person: string, gespraech: string, hinweis?: string, ki: KiKontext = { lauf: 'aufruf', person, kategorien: ['postfach', 'brain', 'crm'], anzahl: 1 }): Promise<EntwurfErgebnis> {
   const a = await gespraechLesen(person, gespraech);
   if (!a) throw new EntwurfFehler('Dieses Gespräch gibt es nicht (mehr).', 404);
   const auf = a.nachrichten.find(n => n.id === a.antwort.antwortAuf) ?? a.nachrichten[a.nachrichten.length - 1];
@@ -64,7 +65,7 @@ export async function inboxEntwurf(person: string, gespraech: string, hinweis?: 
  * ZOE-Entwurf zur Kopie einer Übergabe (10.10.): nur, wer die Übergabe sieht; Antwort auf die jüngste echte Nachricht von außen; bei Art. 18
  * (mitgeführtes Kennzeichen) kein Entwurf (409). Nur ein Vorschlag — gesendet wird über ein eigenes Postfach per Einzelklick.
  */
-export async function inboxEntwurfUebergabe(person: string, id: string, hinweis?: string, ki: KiKontext = { lauf: 'aufruf', person, kategorien: ['postfach'], anzahl: 1 }): Promise<EntwurfErgebnis> {
+export async function inboxEntwurfUebergabe(person: string, id: string, hinweis?: string, ki: KiKontext = { lauf: 'aufruf', person, kategorien: ['postfach', 'brain'], anzahl: 1 }): Promise<EntwurfErgebnis> {
   const { uebergabeFinden } = await import('./uebergaben-server');
   const u = await uebergabeFinden(person, id);
   if (!u) throw new EntwurfFehler('Diese Übergabe gibt es nicht (mehr).', 404);

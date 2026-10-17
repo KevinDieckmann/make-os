@@ -130,9 +130,10 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; ohneKopf
     ]);
     const t = v ? tageAusVerfuegbarkeit(v) : { tage: [], hatVorlage: false };
     // Erholung zählt nur, wenn die Person SELBST eingewilligt hat (Kapazität › „Erholung berücksichtigen“, Art. 9 Abs. 2 lit. a —
-    // Vorgabe aus, DSGVO-Prüfung 04.10.) UND ihre Gesundheit mit allen anderen Konten des Haushalts teilt.
+    // Vorgabe aus, DSGVO-Prüfung 04.10.) UND ihre Gesundheit mit allen anderen Konten des Haushalts teilt — seit 18.10. (Gesamtprüfung L4 B5/B6) mit
+    // allen VOLLEN Mitgliedern: mit einem Konto „nur Business“ lässt sich Gesundheit nicht mehr teilen (`teilenErlaubt`), und es sieht den Team-Faktor nie.
     const k = konten.find(x => x.speicher === sp);
-    const andere = [...kontoSpeicher].filter(x => x !== sp);
+    const andere = [...kontoSpeicher].filter(x => x !== sp && konten.find(y => y.speicher === x)?.finanzRecht !== 'business');
     const teilt = !!k && andere.every(a => k.teilt?.gesundheit?.includes(a)) && !!datei.personen[p.id]?.erholungAm;
     if (zeit) {
       for (const b of bloeckeImZeitraum(zeit, tagPlus(heute, -400), heute, istArbeit)) {
@@ -264,7 +265,9 @@ export async function kapaKennzahlenFuerIndex(heute = localDay()): Promise<KapaK
   try {
     const [g, verborgen] = await Promise.all([gemerkt(heute), verborgeneMeilensteinPosten(null)]);
     // Seit 15.10. (Abnahme 2 A1) auch ohne Titel des Gründungsfahrplans und der Register-Gesellschaften — der Index geht auch an Konten „nur Business“.
-    return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.stand, null).kennzahlen, new Set([...g.privat, ...verborgen, ...g.fahrplan, ...g.register])));
+    // Seit 18.10. (Gesamtprüfung L3 B2, Entscheidung M1 vom 11.10.): aus der Rechnung OHNE Kopf & Energie — Last, Puffer und Machbarkeit rechneten
+    // vorher mit `belastbar` (Erholungs-Faktor), eine Art.-9-Ableitung im Business-Index.
+    return ohneGesundheit(ohnePrivateKennzahlen(fuerBetrachter(g.ohneKopf, null).kennzahlen, new Set([...g.privat, ...verborgen, ...g.fahrplan, ...g.register])));
   } catch { return null; }
 }
 

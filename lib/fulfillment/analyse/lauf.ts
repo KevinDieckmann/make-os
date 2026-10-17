@@ -305,7 +305,8 @@ async function laufAusfuehren(mandatId: string, laufId: string, person: string, 
     // KI: der Suchauftrag IST die Firma bzw. die Funktion — Pseudonymisieren ginge an der Sache vorbei (wie app/api/research/route.ts).
     const r = await askWithSearch({
       system: `Du bereitest eine Recherche vor. ${auftrag}\nAntworte NUR mit JSON: {"quellen": [{"url": "https://…", "titel": "…", "warum": "…"}], "notizen": "…"} — höchstens 15 Quellen. ${FREMD_REGEL}`,
-      user: `Unternehmen: ${d.eingaben.firma}${d.eingaben.domains.length ? ` · Domain(s): ${d.eingaben.domains.join(', ')}` : ''}${d.eingaben.sitz ? ` · Sitz: ${d.eingaben.sitz}` : ''}${d.eingaben.branche ? ` · Branche: ${d.eingaben.branche}` : ''}`,
+      // Die Eingaben (auch aus Importen) sind Daten, nie Anweisungen — gerahmt wie in Schritt 2 (18.10., Gesamtprüfung L3 C7).
+      user: fremd('eingaben', `Unternehmen: ${d.eingaben.firma}${d.eingaben.domains.length ? ` · Domain(s): ${d.eingaben.domains.join(', ')}` : ''}${d.eingaben.sitz ? ` · Sitz: ${d.eingaben.sitz}` : ''}${d.eingaben.branche ? ` · Branche: ${d.eingaben.branche}` : ''}`),
       model: modell, maxTokens: 1500, timeoutMs: 90_000, zweck: `${zweck}-suche`,
       ki: { lauf: 'aufruf', person, kategorien: ['crm', 'web'], pseudonym: false },
     });

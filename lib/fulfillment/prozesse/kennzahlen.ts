@@ -118,7 +118,7 @@ export const FF_KENNZAHLEN: KennzahlDefBasis[] = [
     quelle: 'Puls-Antworten über den Kunden-Link bzw. von Hand (Fulfillment › Fall › Kunde & Reports)', luecke: 'Noch kein Puls in den letzten 90 Tagen', pflegen: PFLEGEN },
   { id: 'ff_wert', label: 'Wert-Konto erreicht', saeule: FF_ID, gruppe: 'Kunde', einheit: 'prozent', richtung: 'hoch', gruen: 70, rot: 30,
     formel: 'Ø Zielerreichung im Wert-Konto (letzte Messung zwischen Ausgang und Ziel) über die messbaren Ziele der laufenden Fälle',
-    quelle: 'Wert-Konto der Fälle (Ausgang, Ziel, Messungen — trägt nur MAKE ein)', luecke: 'Noch kein Ziel mit Ausgang, Zielwert und Messung', pflegen: PFLEGEN },
+    quelle: 'Wert-Konto der Fälle (Ausgang, Ziel, Messungen — trägt nur euer Team ein)', luecke: 'Noch kein Ziel mit Ausgang, Zielwert und Messung', pflegen: PFLEGEN },
 ];
 
 const AMPEL_PUNKTE = { gruen: 100, gelb: 50, rot: 0 } as const;

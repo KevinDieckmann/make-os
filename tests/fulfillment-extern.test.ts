@@ -173,6 +173,42 @@ describe('2-Wochen-Report mit Fall: Seite 1 Zusammenfassung, dann Details', () =
   });
 });
 
+// Gesamtprüfung 18.10. (L3 B1): ein internes Meeting mit Bezug zur Firma stand mit seinem Rohtitel auf der Kunden-Seite, im Report-PDF und im
+// Mail-Entwurf; Fokus/Block/privat zählten als „Gemeinsamer Termin“. Jetzt: Titel nur aus dem Ritual, sonst neutral; nur Art „termin“, nie privat.
+describe('Kunden-Wege: Termine nur gemeinsam, Titel nur aus dem Ritual', () => {
+  const INTERN = 'Intern: Preis-Untergrenze Folgeauftrag';
+  const basis2: ReportDokument = { titel: 'Fortschrittsbericht', kunde: MANDAT.kunde, mandat: MANDAT.titel, paket: 'Stufe Zwei', stand: '10.10.2026', absender: 'Erfundene Gesellschaft', schritt: 'Analyse', erreicht: [], naechste: [], kennzahlen: [], hinweis: 'Erfundener Hinweis.' };
+  const ohneRitual = { ...FALL, rituale: [] };
+  const zu = (terminTage: { uid: string; tag: string; von?: string; titel?: string; art?: 'termin' | 'fokus' | 'block' | 'arbeitsort' | 'abwesend'; privat?: true }[]) =>
+    reportZusatz(ohneRitual, MANDAT, { puls: [] }, HEUTE, false, new Set(), { anrede: 'sie', freigaben: FREIGABEN, rituale: [{ id: 'fr-w', titel: 'Wochen-Check', rhythmus: 'woche' }], terminTage })!;
+  it('interner Titel ohne Ritual → „Gemeinsamer Termin“ — weder in den Teilen noch im PDF noch in der Mail', async () => {
+    const t = kundenTeile({ fall: ohneRitual, mandat: MANDAT, heute: HEUTE, anrede: 'sie', gesperrt: new Set(), terminTage: [{ uid: 'u-int', tag: '2026-10-12', von: '09:00', titel: INTERN }] });
+    expect(t.naechsterTermin).toEqual({ titel: 'Gemeinsamer Termin', am: 'Mo, 12.10.2026' });
+    expect(JSON.stringify(t)).not.toContain('Preis-Untergrenze');
+    const d = mitZusatz(basis2, zu([{ uid: 'u-int', tag: '2026-10-12', titel: INTERN }]));
+    expect(d.naechsterTermin).toEqual({ titel: 'Gemeinsamer Termin', am: 'Mo, 12.10.2026' });
+    expect(mailVorlage({ anrede: 'Sie', nachname: 'Beispiel', doc: d }).text).not.toContain('Preis-Untergrenze');
+    const seiten = await pdfTexte(await reportPdf(d, { erstellt: new Date('2026-10-10T08:00:00Z') }));
+    expect(seiten.join(' ')).not.toContain('Preis-Untergrenze');
+    expect(seiten[0]).toContain('Gemeinsamer Termin');
+  });
+  it('ein Ritual-Termin behält den Ritual-Titel, auch wenn der Kalender anders heißt', () => {
+    const t = kundenTeile({ fall: FALL, mandat: MANDAT, heute: HEUTE, anrede: 'sie', gesperrt: new Set(), rituale: [{ id: 'fr-w', titel: 'Wochen-Check', rhythmus: 'woche' }], terminTage: [{ uid: 'uid-1', tag: '2026-10-14', titel: INTERN }] });
+    expect(t.naechsterTermin).toEqual({ titel: 'Wochen-Check', am: 'Mi, 14.10.2026' });
+    expect(JSON.stringify(t)).not.toContain('Preis-Untergrenze');
+  });
+  it('Fokus, Block, Arbeitsort, Abwesenheit und private Termine zählen nie — auch nicht als Ritual-Termin', () => {
+    for (const x of [{ art: 'fokus' as const }, { art: 'block' as const }, { art: 'arbeitsort' as const }, { art: 'abwesend' as const }, { privat: true as const }]) {
+      const t = kundenTeile({ fall: FALL, mandat: MANDAT, heute: HEUTE, anrede: 'sie', gesperrt: new Set(), rituale: [{ id: 'fr-w', titel: 'Wochen-Check', rhythmus: 'woche' }], terminTage: [{ uid: 'uid-1', tag: '2026-10-14', ...x }] });
+      expect(t.naechsterTermin, JSON.stringify(x)).toBeUndefined();
+      expect(t.rituale[0].naechster, JSON.stringify(x)).toBeUndefined();
+      expect(zu([{ uid: 'u-x', tag: '2026-10-12', ...x }]).naechsterTermin, JSON.stringify(x)).toBeUndefined();
+    }
+    // Ein normaler Termin (Art „termin“ oder ohne Angabe) zählt weiter.
+    expect(zu([{ uid: 'u-y', tag: '2026-10-12', art: 'termin' }]).naechsterTermin).toEqual({ titel: 'Gemeinsamer Termin', am: 'Mo, 12.10.2026' });
+  });
+});
+
 describe('Wirkungsbericht', () => {
   it('Vorher/Nachher je Ziel mit Anteil, Meilensteine, Erfolge, Befähigung; Zitat nur mit Einwilligung; nächste Stufe ohne Preis; gleiche Bytes', async () => {
     const mit = wirkungsDokument({ fall: FALL, mandat: MANDAT, heute: HEUTE, bausteine: [], freigaben: FREIGABEN, zitat: { text: 'Endlich Ruhe im Vertrieb.', einwilligungAm: '2026-10-09', wie: 'per Mail' }, naechsteStufe: { name: 'Stufe Drei', text: 'Das Team führt selbst.' }, absender: 'Erfundene Gesellschaft' });

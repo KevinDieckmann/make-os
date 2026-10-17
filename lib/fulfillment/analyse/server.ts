@@ -11,7 +11,7 @@
 import type { PersonMerkmale } from '@/lib/crm/person-weitere';
 import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
 import type { DossierKurz, FristenKontext, MorgenlaufTeil, PersonenAuskunft, PersonenKarte, AnalyseAgentId, LaufStatus } from '../typen';
-import { fulfillmentAendern, fulfillmentLesen } from '../speicher';
+import { fulfillmentAendern, fulfillmentLesen, fulfillmentHaushalt } from '../speicher';
 import { STAPEL_GRUPPE } from '../grenzen';
 import { mandatsEnde } from '../regeln';
 import { laufStatusAnzeige, laufVerwaist } from './agenten';
@@ -85,9 +85,16 @@ export async function personenFristen(k: FristenKontext): Promise<Record<string,
   if ((await loadJson<unknown>('crm')) === null) return {};
   const { ladeCrmMitPapierkorb } = await import('@/lib/crm/speicher');
   const mandate = new Map((await ladeCrmMitPapierkorb()).mandate.map(m => [m.id, m]));
+  // Leer-Schutz (18.10., Gesamtprüfung L3 B5): ein Mandat, das im CRM fehlt, gilt erst nach 30 Tagen mit Marke als weg — ohne ein einziges Mandat
+  // und bei zu vielen auf einmal bremst der Lauf (lib/fulfillment/mandat-fehlt.ts). Vorher: Karte und Dossier SOFORT weg.
+  const h = await fulfillmentHaushalt();
+  const [personen0, dossiers0] = await Promise.all([fulfillmentLesen('personen', h), fulfillmentLesen('dossiers', h)]);
+  const betroffen = new Set([...personen0.karten.map(x => x.mandatId), ...Object.keys(dossiers0.dossiers)]);
+  const { fehlendeMandatePruefen } = await import('../mandat-fehlt-server');
+  const fehlt = await fehlendeMandatePruefen(betroffen, new Set(mandate.keys()), k.heute, h, 'personen');
   const loeschAm = (karte: PersonenKarte): string | null => {
     const m = mandate.get(karte.mandatId);
-    if (!m) return k.heute; // Mandat endgültig gelöscht → sofort
+    if (!m) return fehlt.weg.has(karte.mandatId) ? k.heute : null; // Mandat endgültig weg (Marke älter als 30 Tage) → jetzt
     const ende = mandatsEnde(m);
     return ende ? tagPlus(ende, k.fristen.personenTage) : null;
   };
@@ -105,7 +112,7 @@ export async function personenFristen(k: FristenKontext): Promise<Record<string,
     let geaendert = false;
     const neu: typeof cur.dossiers = {};
     for (const [m, d] of Object.entries(cur.dossiers)) {
-      if (!mandate.has(m)) { dossiers++; geaendert = true; continue; }
+      if (!mandate.has(m) && fehlt.weg.has(m)) { dossiers++; geaendert = true; continue; }
       const laeufe = d.laeufe.map(l => {
         if (l.ergebnis === undefined || l.status === 'laeuft' || !l.fertigAm || l.fertigAm.slice(0, 10) > grenze) return l;
         entwuerfe++; geaendert = true;

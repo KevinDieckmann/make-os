@@ -20,7 +20,8 @@ import { Erklaert, LEUCHT, useRueckfrage } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
 import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_HINWEISE, googleNichtEingerichtet } from './google-verbinden';
 import { useBetreiber } from '../useInhaber';
-import { googleKalenderBereit } from '@/lib/kalender/verbinden-anzeige';
+import { googleKalenderBereit, firmaOhneRechtsform } from '@/lib/kalender/verbinden-anzeige';
+import { UG_NAME } from '@/lib/einheiten';
 import { anzahl } from '@/lib/text/zahlwort';
 
 interface Stand {
@@ -148,7 +149,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
   return (
     <div style={box} data-google="verbindung">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <Erklaert erklaerung="kalender.google" name="Google Kalender"><span style={{ fontWeight: 700, fontSize: 14 }}>Google Kalender (MAKE)</span></Erklaert>
+        <Erklaert erklaerung="kalender.google" name="Google Kalender"><span style={{ fontWeight: 700, fontSize: 14 }}>Google Kalender ({firmaOhneRechtsform(UG_NAME)})</span></Erklaert>
         {s?.verbunden && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.schlaf, border: `1px solid ${LEUCHT.schlaf}55`, borderRadius: 999, padding: '1px 8px' }}>verbunden</span>}
         {s?.getrennt && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.kritisch, border: `1px solid ${LEUCHT.kritisch}55`, borderRadius: 999, padding: '1px 8px' }}>getrennt</span>}
         {s?.verbunden && !kalenderDa && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.achtung, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 999, padding: '1px 8px' }}>Kalender-Freigabe fehlt</span>}

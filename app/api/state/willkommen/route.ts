@@ -27,7 +27,8 @@ export async function GET(req: Request) {
   const st = ich ? await ladeKonten() : null;
   const konto = st?.konten.find(k => k.speicher === ich);
   const zeigen = !!konto && !gesehen[konto.speicher] && hauptInhaber(st!)?.speicher !== konto.speicher;
-  return NextResponse.json({ gesehen, zeigen, ...(zeigen ? { vorname: (konto!.name ?? '').split(/\s+/)[0] ?? '' } : {}) });
+  // `nurBusiness` (18.10., L4 B5): der Gruß nennt für ein Konto „nur Business“ keine Privat-Themen (Gesundheit).
+  return NextResponse.json({ gesehen, zeigen, ...(zeigen ? { vorname: (konto!.name ?? '').split(/\s+/)[0] ?? '', ...(konto!.finanzRecht === 'business' ? { nurBusiness: true } : {}) } : {}) });
 }
 
 /** Als gesehen stempeln — danach kommt der Gruß nie wieder. */

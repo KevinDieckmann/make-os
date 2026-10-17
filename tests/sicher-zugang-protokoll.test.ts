@@ -87,7 +87,10 @@ describe('Konto-Änderungen im Änderungsprotokoll', () => {
   it('2FA aus: Eintrag „zweiterFaktor“; Anmelde-Kleinkram (letzteStufe, Widerruf) erzeugt keinen', async () => {
     await K.aendereKonten(s => ({ ...s, konten: s.konten.map(k => k.zweiterFaktor ? { ...k, zweiterFaktor: { ...k.zweiterFaktor, letzteStufe: 5 }, widerrufen: [{ sid: 'abcdefabcdef', bis: 1 }] } : k) }));
     await K.aendereKonten(s => ({ ...s, konten: s.konten.map(k => k.speicher === 'person-b' ? { ...k, haushalt: 'haus-test' } : k) }));
-    const r = await zweiFaktor.POST(new Request('http://test/api/konto/zwei-faktor', { method: 'POST', headers: { 'content-type': 'application/json', 'x-make-user': 'person-b' }, body: JSON.stringify({ aktion: 'aus', passwort: PW }) }));
+    // Ausschalten braucht seit 18.10. (L3 B4) Passwort UND Code (`erneutPruefen`).
+    const totp = await import('@/lib/zugang/totp');
+    const code = totp.codeFuer('JBSWY3DPEHPK3PXP', totp.stufeVon(Date.now()));
+    const r = await zweiFaktor.POST(new Request('http://test/api/konto/zwei-faktor', { method: 'POST', headers: { 'content-type': 'application/json', 'x-make-user': 'person-b' }, body: JSON.stringify({ aktion: 'aus', passwort: PW, code }) }));
     expect(r.status).toBe(200);
     const e = await eintraege();
     expect(e.map(x => x.felder)).toEqual([['haushalt'], ['zweiterFaktor']]);

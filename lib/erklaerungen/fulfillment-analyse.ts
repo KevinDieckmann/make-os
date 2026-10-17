@@ -31,7 +31,7 @@ export const EINSTELLUNGEN_FULFILLMENT_ANALYSE = {
     beispiel: 'Die Karte „Vertriebsleitung“ zeigt Werdegang und zwei Vorträge mit Quellen. Ein Konto mit „nur Business“ sieht im Dossier nur, dass es eine Karte gibt.',
   },
   'fulfillment.loeschfristPersonen': {
-    was: 'Personenkarten werden 90 Tage nach Mandatsende gelöscht (einstellbar in der Löschfristen-Tabelle). Am Dossier bleibt nur der Vermerk mit der Anzahl, ohne Namen. Den Art.-14-Hinweis gibt MAKE als Verantwortlicher spätestens einen Monat nach der Erfassung.',
+    was: 'Personenkarten werden 90 Tage nach Mandatsende gelöscht (einstellbar in der Löschfristen-Tabelle). Am Dossier bleibt nur der Vermerk mit der Anzahl, ohne Namen. Den Art.-14-Hinweis gebt ihr als Verantwortliche (Einstellungen › Datenschutz) spätestens einen Monat nach der Erfassung.',
     beispiel: 'Das Mandat endet am 31. März. Am 29. Juni entfernt der tägliche Lauf beide Karten; das Dossier zeigt „Personenteil gelöscht (2 Karten)“.',
   },
 } as const satisfies Record<string, EinstellungsText>;

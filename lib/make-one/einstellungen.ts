@@ -12,12 +12,14 @@ export interface EinstellungsEintrag {
    * Route lehnt ein Konto „nur Business“ ab, `hoiSehen`). Ein Konto „nur Business“ bekommt den Eintrag nicht.
    */
   voll?: true;
+  /** Text für ein Konto „nur Business“ (18.10., Gesamtprüfung L4 B5): ohne Privat-Themen (Gesundheit) — fehlt er, gilt `was`. */
+  wasBusiness?: string;
 }
 export interface EinstellungsGruppe { id: string; titel: string; eintraege: EinstellungsEintrag[] }
 
 export const EINSTELLUNGEN_GRUPPEN: EinstellungsGruppe[] = [
   { id: 'konto', titel: 'Konto & Sicherheit', eintraege: [
-    { href: '/os/konto', label: 'Konto', was: 'Name, Passwort, Anmelde-Adressen, zweiter Faktor, Team, Einladen, Gesundheit teilen' },
+    { href: '/os/konto', label: 'Konto', was: 'Name, Passwort, Anmelde-Adressen, zweiter Faktor, Team, Einladen, Gesundheit teilen', wasBusiness: 'Name, Passwort, Anmelde-Adressen, zweiter Faktor, Team, Einladen' },
   ] },
   // 10.10. (Kevin: „… rechts mit drei Punkten und Einstellungen“): Wischen, „⋯“, Rückfrage vor dem Löschen, Dichte — je Gerät.
   { id: 'bedienung', titel: 'Bedienung', eintraege: [
@@ -51,7 +53,7 @@ export const EINSTELLUNGEN_GRUPPEN: EinstellungsGruppe[] = [
  */
 export function einstellungenFuer(k: { nurBusiness: boolean | null }): EinstellungsGruppe[] {
   return EINSTELLUNGEN_GRUPPEN
-    .map(g => ({ ...g, eintraege: g.eintraege.filter(e => !e.voll || k.nurBusiness === false) }))
+    .map(g => ({ ...g, eintraege: g.eintraege.filter(e => !e.voll || k.nurBusiness === false).map(e => (e.wasBusiness && k.nurBusiness !== false ? { ...e, was: e.wasBusiness } : e)) }))
     .filter(g => g.eintraege.length);
 }
 

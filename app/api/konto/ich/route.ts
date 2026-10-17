@@ -9,7 +9,7 @@ import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
 import { notiere, adresseGekuerzt, letzte } from '@/lib/zugang/anmeldungen';
 import { eigeneZieleLesbar, partnerVon } from '@/lib/planung/eigene-ziele-sicht';
 import { istHauptInhaber, istWirksamerInhaber } from '@/lib/zugang/inhaber';
-import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
+import { kontoSichtAus, haushaltsNachbarn, teilenErlaubt } from '@/lib/zugang/konto-sicht';
 import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 import { hauptInhaber } from '@/lib/zugang/inhaber';
 import { haushaltFuer, privatFinanzZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
@@ -44,7 +44,16 @@ export async function GET(req: Request) {
     // `teiltZieleMitMir` (08.10.): ob ich die EIGENEN Ziele dieser Person lesen darf (lib/planung/eigene-ziele-sicht.ts — dieselbe Regel wie die Ziele-Route).
     // `partner` (09.10.): anderes volles Mitglied meines Haushalts — bekommt in Planung und auf Heute eine eigene Spalte mit dem, was es
     // einzeln teilt (die Ziele selbst filtert der Server, hier steht nur, wessen Spalte es gibt).
-    andere: s.konten.filter(k => k.speicher !== wer).map(k => ({ speicher: k.speicher, name: k.name, rolle: k.rolle, teiltGesundheitMitMir: k.teilt.gesundheit.includes(wer), teiltZieleMitMir: eigeneZieleLesbar(s.konten, k.speicher, wer), partner: partnerVon(s.konten, wer).includes(k.speicher) })),
+    // Seit 18.10. (Gesamtprüfung L4 B6) nur Konten DESSELBEN Haushalts (`haushaltsNachbarn`) — ein Konto ohne Haushalt sieht niemanden und steht bei
+    // niemandem. `nurBusiness` (Rolle des anderen Kontos) und `gesundheitTeilbar`: mit einem Konto „nur Business“ wird Gesundheit nie geteilt.
+    andere: haushaltsNachbarn(s.konten, wer).map(k => ({
+      speicher: k.speicher, name: k.name, rolle: k.rolle, ...(k.finanzRecht === 'business' ? { nurBusiness: true } : {}),
+      gesundheitTeilbar: teilenErlaubt(s.konten, wer, k.speicher, 'gesundheit'),
+      teiltGesundheitMitMir: k.teilt.gesundheit.includes(wer) && teilenErlaubt(s.konten, k.speicher, wer, 'gesundheit'),
+      teiltZieleMitMir: eigeneZieleLesbar(s.konten, k.speicher, wer), partner: partnerVon(s.konten, wer).includes(k.speicher),
+    })),
+    // Nur für Inhaber: wie viele andere Konten die Instanz hat (eine Zahl, keine Namen) — „Konto löschen“ erst, wenn es keine mehr gibt.
+    ...(ich.rolle === 'inhaber' ? { andereKonten: s.konten.length - 1 } : {}),
   });
 }
 

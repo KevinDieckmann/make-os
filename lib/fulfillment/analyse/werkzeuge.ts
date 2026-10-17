@@ -65,7 +65,9 @@ async function dossierTeile(eingabe: { abschnitt?: unknown }, l: WerkzeugLauf): 
   if (!d) return fehlschlag('nicht_gefunden', 'Nicht gelesen: kein Dossier.');
   if (eingabe.abschnitt === 'personen') {
     if (!LIEST_PERSONEN.has(l.agent)) return fehlschlag('rechte', 'Nicht gelesen: den Personenteil lesen nur der Risiko-, Redaktions- und Prüfer-Agent.');
-    const karten = (await l.karten()).filter(k => k.mandatId === l.mandatId);
+    // Art. 18 (18.10., L3 B6): Karten eingeschränkter Kontakte gehen nie an das Modell — nur ihre Zahl.
+    const [{ eingeschraenkteKennungen }, { kartenOhneEingeschraenkte, ausgeblendetText }] = await Promise.all([import('@/lib/crm/verarbeitung'), import('./dsgvo')]);
+    const { karten, ausgeblendet } = kartenOhneEingeschraenkte((await l.karten()).filter(k => k.mandatId === l.mandatId), await eingeschraenkteKennungen());
     // Prüf-Fund 11.10.: der Personenteil geht an ein Modell — Lese-Protokoll „personenrecherche“ im Namen der auslösenden Person (nur Zähler/Kennungen).
     if (karten.length) {
       const { leseZugriffLauf } = await import('@/lib/store/leseprotokoll');
@@ -75,7 +77,7 @@ async function dossierTeile(eingabe: { abschnitt?: unknown }, l: WerkzeugLauf): 
       `Karte ${k.id} · Funktion: ${k.funktion} · Identität ${k.identitaet} · Status ${k.status}${k.rolleSeit ? ` · Rolle seit ${k.rolleSeit}` : ''}`,
       ...(['werdegang', 'themen', 'auftritte', 'aufhaenger'] as const).flatMap(t => k[t].map(a => `  [${t}] (${a.id}; Quellen ${a.quellen.join(', ') || '—'}) ${a.text}`)),
     ].join('\n'));
-    return erfolg(`Personenteil: ${karten.length} Karte(n) — nur Funktion und berufliche Angaben\n${fremd('dossier', z.join('\n\n') || '(keine Karten)')}`);
+    return erfolg(`Personenteil: ${karten.length} Karte(n) — nur Funktion und berufliche Angaben${ausgeblendet ? ` · ${ausgeblendetText(ausgeblendet)}` : ''}\n${fremd('dossier', z.join('\n\n') || '(keine Karten)')}`);
   }
   const teile = Object.values(d.abschnitte).filter(a => a && a.aussagen.length && (eingabe.abschnitt === undefined || a.id === eingabe.abschnitt));
   const quellen = new Map(d.quellen.map(q => [q.id, q]));

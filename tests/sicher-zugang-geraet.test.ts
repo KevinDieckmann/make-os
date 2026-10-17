@@ -206,7 +206,7 @@ describe('Wann wieder der Code kommt', () => {
     // Auch zurückgespielt: an den neuen Faktor gebunden (Beginn) — passt nicht.
     await K.aendereKonten(s => ({ ...s, konten: s.konten.map(k => k.speicher === 'person-a' ? { ...k, zweiterFaktor: { ...k.zweiterFaktor!, geraete: vorher } } : k) }));
     expect((await login({ cookie: keks(wert) })).body).toEqual({ ok: false, zweiterFaktor: true });
-    expect((await post({ aktion: 'aus', passwort: PW })).status).toBe(200);
+    expect((await post({ aktion: 'aus', passwort: PW, code: await code('person-a') })).status).toBe(200);
     expect((await K.ladeKonten()).konten.find(k => k.speicher === 'person-a')!.zweiterFaktor).toBeUndefined();
   });
 
@@ -228,6 +228,54 @@ describe('Wann wieder der Code kommt', () => {
     const prot = ((await db.loadJson<{ eintraege: { art: string; geraet?: string }[] }>('anmeldungen'))?.eintraege ?? []).map(e => e.art);
     expect(prot).toContain('geraet-vergessen');
     expect(prot).toContain('geraete-vergessen');
+  });
+});
+
+// Gesamtprüfung 18.10. (L3 B3/B4): „Alle anderen Geräte abmelden“ vergisst auch die gemerkten Geräte (verlorener Laptop), und den zweiten
+// Faktor ausschalten geht nur mit Passwort UND Code (`erneutPruefen`, Bremse) — danach sind alle anderen Geräte abgemeldet.
+describe('Alle abmelden und Faktor aus: gemerkte Geräte zählen nicht mehr', () => {
+  const abmeldenAlle = async (speicher: string, geraet?: string) => {
+    const k = (await K.ladeKonten()).konten.find(x => x.speicher === speicher)!;
+    const zettel = await S.sitzungAusstellen(S.sitzungsGeheimnis(), speicher, await S.kontoStand(k.salz));
+    const abmelden = await import('@/app/api/konto/abmelden/route');
+    const cookie = [`${S.SITZUNG_COOKIE}=${encodeURIComponent(zettel)}`, ...(geraet ? [keks(geraet)] : [])].join('; ');
+    return abmelden.POST(new Request('http://test/api/konto/abmelden', { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ alle: true }) }));
+  };
+  it('„alle abmelden“: Geräte vergessen, Protokoll, dieses Browser-Cookie ohne den Eintrag; danach fragt jedes Gerät wieder nach dem Code', async () => {
+    const w1 = await merken(), w2 = await merken();
+    const b = await merken('person-b');
+    expect(await geraeteVon('person-a')).toHaveLength(2);
+    const r = await abmeldenAlle('person-a', w2);
+    expect(r.status).toBe(200);
+    expect((await r.json()).geraeteVergessen).toBe(2);
+    expect(r.headers.getSetCookie().find(c => c.startsWith(`${S.GERAET_COOKIE}=`))).toMatch(/Max-Age=0/);
+    expect(await geraeteVon('person-a')).toHaveLength(0);
+    for (const w of [w1, w2]) expect((await login({ cookie: keks(w) })).body).toEqual({ ok: false, zweiterFaktor: true });
+    // Das andere Konto behält sein Gerät.
+    expect(await geraeteVon('person-b')).toHaveLength(1);
+    expect((await login({ email: 'b@example.invalid', cookie: keks(b) })).status).toBe(200);
+    const prot = ((await db.loadJson<{ eintraege: { art: string; speicher: string }[] }>('anmeldungen'))?.eintraege ?? []);
+    expect(prot.filter(e => e.speicher === 'person-a').map(e => e.art)).toEqual(expect.arrayContaining(['alle-abgemeldet', 'geraete-vergessen']));
+  });
+  it('zweiten Faktor ausschalten: ohne Code 403, falscher Code 403 + gebremst, Dienstweg 403; mit Code 200 und andere Geräte abgemeldet', async () => {
+    await merken();
+    const post = (b: unknown, kopf: Record<string, string> = { 'x-make-user': 'person-a' }) => zfRoute.POST(new Request('http://test/api/konto/zwei-faktor', { method: 'POST', headers: { 'content-type': 'application/json', ...kopf }, body: JSON.stringify(b) }));
+    const ohneCode = await post({ aktion: 'aus', passwort: PW });
+    expect(ohneCode.status).toBe(403);
+    expect(await ohneCode.json()).toMatchObject({ zweiterFaktor: true });
+    expect((await post({ aktion: 'aus', passwort: PW, code: await code('person-a') }, { 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'person-a' })).status).toBe(403);
+    expect((await K.ladeKonten()).konten.find(k => k.speicher === 'person-a')!.zweiterFaktor).toBeTruthy();
+    for (let i = 0; i < 6; i++) await post({ aktion: 'aus', passwort: PW, code: '000000' });
+    expect((await post({ aktion: 'aus', passwort: PW, code: await code('person-a') })).status).toBe(429);
+    drossel._zuruecksetzen();
+    const vorher = Date.now();
+    const r = await post({ aktion: 'aus', passwort: PW, code: await code('person-a') });
+    expect(r.status).toBe(200);
+    const k = (await K.ladeKonten()).konten.find(x => x.speicher === 'person-a')!;
+    expect(k.zweiterFaktor).toBeUndefined();
+    expect(Date.parse(k.sitzungenAb!)).toBeGreaterThanOrEqual(vorher - 1000);
+    // Dieses Gerät bleibt drin: neuer Zettel in der Antwort.
+    expect(r.headers.getSetCookie().some(c => c.startsWith(`${S.SITZUNG_COOKIE}=`) && !c.startsWith(`${S.SITZUNG_COOKIE}=;`))).toBe(true);
   });
 });
 

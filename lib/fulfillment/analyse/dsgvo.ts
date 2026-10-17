@@ -1,6 +1,6 @@
 // ─── Fulfillment · Analyse — Datenschutz der Personenrecherche (C3, 10.10.; FULFILLMENT_KONZEPT.md 4.4/4.5, FAKTEN_TRANSFORMATION §8) — rein ──────
-// Entscheidung 10.10. (22:30): MAKE ist für die berufliche Personenrecherche EIGENER Verantwortlicher (berechtigtes Interesse, Art. 6 Abs. 1 lit. f),
-// Interessenabwägung je Dossier dokumentiert, Art.-14-Hinweis durch MAKE, Löschfrist Mandatsende + 90 Tage (einstellbar). Hier stehen:
+// Entscheidung 10.10. (22:30): die Instanz (Verantwortlicher aus der Einrichtung) ist für die berufliche Personenrecherche EIGENER Verantwortlicher
+// (berechtigtes Interesse, Art. 6 Abs. 1 lit. f), Interessenabwägung je Dossier dokumentiert, Art.-14-Hinweis durch den Verantwortlichen, Löschfrist Mandatsende + 90 Tage (einstellbar). Hier stehen:
 //   · die Negativliste als Muster (je Treffer die KATEGORIE — nie der Wortlaut) für Ausgabe-Säuberung und deterministische Prüfung,
 //   · die Muster-Texte für Interessenabwägung (LIA) und Art.-14-Hinweis (mit Platzhaltern; je Dossier bearbeitbar),
 //   · die Art.-14-Uhr je Personenkarte und der Löschtag.
@@ -91,3 +91,14 @@ export const art14FaelligAm = (erfasstAm: string): string => einMonatNach(erfass
 
 /** Löschtag des Personenteils: Mandatsende + Frist (Tage); ohne Mandatsende null (läuft noch). */
 export const loeschAmFuer = (mandatsEnde: string | null, tage: number): string | null => (mandatsEnde ? tagPlus(mandatsEnde.slice(0, 10), tage) : null);
+
+/**
+ * Art. 18 (18.10., Gesamtprüfung L3 B6): eine Karte, deren verknüpfter Kontakt eingeschränkt ist, geht nie an ein Modell (ZOE `fulfillment_lage`,
+ * Agenten-Werkzeug `dossier_teile`) — sie fällt heraus, nur ihre Zahl bleibt („n Karten ausgeblendet (Art. 18)“). `gesperrt` = Kennungen der
+ * eingeschränkten Kontakte (lib/crm/verarbeitung.ts `eingeschraenkteKennungen`). Rein.
+ */
+export function kartenOhneEingeschraenkte<K extends Pick<PersonenKarte, 'kontaktId'>>(karten: readonly K[], gesperrt: ReadonlySet<string>): { karten: K[]; ausgeblendet: number } {
+  const frei = karten.filter(k => !k.kontaktId || !gesperrt.has(k.kontaktId));
+  return { karten: frei, ausgeblendet: karten.length - frei.length };
+}
+export const ausgeblendetText = (n: number): string => `${n} ${n === 1 ? 'Karte' : 'Karten'} ausgeblendet (Art. 18 — Einschränkung der Verarbeitung)`;

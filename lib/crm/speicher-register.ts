@@ -760,7 +760,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     kategorie: ['vertraulich'],
   }),
   mit(E('fulfillment-personen--*', 'Berufliche Personenkarten je Mandat (Funktion, Name, optional Kontakt-Kennung, Werdegang/Themen/Auftritte — je Angabe Quelle und Datum, nur beruflich), Stand der Information nach Art. 14, Löschtag, Vermerke gelöschter Karten nur als Anzahl. Art. 17: Karten der Person fallen weg (person-weitere.ts).', 'fulfillment-personen'), {
-    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — berufliche Recherche im Mandat, Interessenabwägung je Dossier dokumentiert; Information nach Art. 14 durch MAKE als Verantwortlicher (Hinweis, keine Rechtsberatung)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — berufliche Recherche im Mandat, Interessenabwägung je Dossier dokumentiert; Information nach Art. 14 durch den Verantwortlichen (Einrichtung › Datenschutz; Hinweis, keine Rechtsberatung)',
     art15: 'Kontakt: die Auskunft nennt die Karten, die die Person nennen (Name oder Kontakt-Kennung — lib/fulfillment/auskunft.ts); sehen dürfen sie nur der Inhaber und Mitglieder mit vollem Zugang',
     loeschfrist: '90 Tage nach Mandatsende (Frist „fulfillment-personen“, einstellbar 30–365 Tage) — dann fällt die Karte weg, nur der Vermerk (Anzahl) bleibt',
   }),

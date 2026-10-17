@@ -106,3 +106,26 @@ export const NUR_BUSINESS_PRIVAT = 'Dieses Konto sieht nur den Business-Bereich 
 
 /** Die leere Sicht (unbekannte Person) — nichts im Haushalt. */
 export const keineKontoSicht = (person: string): KontoSicht => kontoSichtAus({ konten: [] }, person);
+
+// ── Personenlisten und Teilen (18.10., Gesamtprüfung L4 B6/B5) ──────────────────────────────────────────────────────────────────
+// Vorher lieferte `/api/konto/ich` in `andere` ALLE Konten der Instanz: ein frisch eingeladenes Konto ohne Haushalt sah die Namen aller
+// Konten unter „Gesundheit teilen“ und „Eigene Ziele teilen“ — und erschien selbst in den Personenlisten der anderen. Jetzt EINE Regel:
+
+/** Wer für eine Person in Personenlisten steht: nur andere Konten DESSELBEN (eingetragenen) Haushalts. Ohne Haushalt: niemand. Rein. */
+export function haushaltsNachbarn<K extends { speicher: string; haushalt?: string | null }>(konten: readonly K[], person: string): K[] {
+  const ich = konten.find(k => k.speicher === person);
+  const h = ich?.haushalt && HAUSHALT.test(ich.haushalt) ? ich.haushalt : null;
+  return h ? konten.filter(k => k.speicher !== person && k.haushalt === h) : [];
+}
+
+/**
+ * Darf `von` etwas Persönliches mit `an` teilen bzw. darf `an` es sehen? Nur ein anderes Konto desselben Haushalts; Gesundheit (Art. 9) nur
+ * zwischen vollen Mitgliedern — nie mit einem Konto „nur Business“ (Kevins Regel: die Business-Sicht zeigt nie Gesundheit). Rein.
+ */
+export function teilenErlaubt<K extends { speicher: string; haushalt?: string | null; finanzRecht?: string | null }>(konten: readonly K[], von: string, an: string, was: 'gesundheit' | 'ziele'): boolean {
+  if (von === an) return false;
+  const ziel = haushaltsNachbarn(konten, von).find(k => k.speicher === an);
+  if (!ziel) return false;
+  if (was === 'gesundheit') return ziel.finanzRecht !== 'business' && konten.find(k => k.speicher === von)?.finanzRecht !== 'business';
+  return true;
+}

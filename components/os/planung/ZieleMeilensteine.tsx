@@ -52,6 +52,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Hinweis, f
 import { zielRahmen } from '../ziel';
 import { PfeilRang } from './PfeilRang';
 import { usePlanung, type PlanungStand } from './usePlanung';
+import { useNurBusiness } from '../useInhaber';
 import { MandatWahl, useMandate } from '../zeit/MandatWahl';
 import type { MandatKurz } from '@/lib/planung/mandat';
 import { neueKennung } from '@/lib/kennung';
@@ -121,7 +122,9 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
   const { filter: spaceVorgabe, setzen: spaceSetzen } = useSpace();
   const [spaceEigen, setSpaceEigen] = useState<SpaceFilter>('alle');
   useEffect(() => { if (!spaceProp) setSpaceEigen(spaceVorgabe); }, [spaceProp, spaceVorgabe]);
-  const spaceFilter = spaceProp ?? spaceEigen;
+  const nurBusiness = useNurBusiness();
+  // Konto „nur Business“ (18.10., L4 B5): ein gemerkter Filter „Privat“ gilt hier als Business (der Server liefert dort ohnehin nichts).
+  const spaceFilter = nurBusiness === true && (spaceProp ?? spaceEigen) === 'privat' ? 'business' : spaceProp ?? spaceEigen;
   const setSpace = (s: SpaceFilter) => { if (onSpace) onSpace(s); else setSpaceEigen(s); if (s !== 'alle') spaceSetzen(s); };
   const [einheitEigen, setEinheitEigen] = useState<string>('alle');
   const einheitFilter = einheitProp ?? einheitEigen;
@@ -405,7 +408,8 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
       {dialog}
       {/* Filter: Space · Einheiten (Business) */}
       <div className="os-auf" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ['--i' as string]: i }}>
-        {(['privat', 'business', 'alle'] as const).map(k => (
+        {/* Konto „nur Business“ (18.10., L4 B5): kein Filter „Privat“ (der Server antwortet dort 403). */}
+        {(['privat', 'business', 'alle'] as const).filter(k => !(k === 'privat' && nurBusiness === true)).map(k => (
           <button key={k} onClick={() => setSpace(k)} className="fassbar" title={k === 'alle' ? 'Privat, Business und Gemeinsames' : `Nur ${SPACE_LABEL[k]} (und Gemeinsames)`} style={pille(spaceFilter === k, k === 'alle' ? C.aktiv : SPACE_FARBE[k])}>{k === 'alle' ? 'Alle' : SPACE_LABEL[k]}</button>
         ))}
         {imBusiness && (
