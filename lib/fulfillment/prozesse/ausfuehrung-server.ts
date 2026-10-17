@@ -152,8 +152,10 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
         lauf.aufgaben = neu.length; lauf.geschlossen = teile.length;
         return { neu, teile };
       }, { person: o.person ?? null, ...(o.wer ? { wer: o.wer } : {}), jetzt: iso });
-      if (r.ok) for (const { a, x } of sollAufgaben) if (vorhanden.has(x.id)) marke(a.f.mandatId, x.marke);
-      else { lauf.aufgaben = 0; lauf.geschlossen = 0; lauf.fehler = r.fehler ?? 'Aufgaben nicht geschrieben'; }
+      if (r.ok) {
+        for (const { a, x } of sollAufgaben) if (vorhanden.has(x.id)) marke(a.f.mandatId, x.marke);
+        for (const a of arbeit) for (const z of a.soll.abschluss) marke(a.f.mandatId, z.marke);
+      } else { lauf.aufgaben = 0; lauf.geschlossen = 0; lauf.fehler = r.fehler ?? 'Aufgaben nicht geschrieben'; }
     }
 
     // 2) Nachrichten als Vorschlag in den Stapel (nie gesendet) — nicht für eingeschränkte Personen bzw. mit Werbesperre.

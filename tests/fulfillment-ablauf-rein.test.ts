@@ -67,15 +67,19 @@ describe('Schritt → Aufgabe → weiter', () => {
     expect(ausfuehrungSoll(gemacht(f, soll), START).aufgaben).toEqual([]);
   });
 
-  it('Schritt erledigt → die Nachricht ist dran (Vorschlag), Frist ab Erledigung; die Aufgabe des Schritts schließt sich', () => {
-    let f = erledige(fall(ablauf()), 's1', '2026-10-02');
+  it('Schritt erledigt → die Nachricht ist dran (Vorschlag), Frist ab Erledigung; die Aufgabe des Schritts schließt sich (einmal)', () => {
+    const f0 = fall(ablauf());
+    let f = erledige(gemacht(f0, ausfuehrungSoll(f0, START)), 's1', '2026-10-02');
     expect(aktiveKnoten(f).map(x => [x.knoten.id, x.art])).toEqual([['s2', 'nachricht']]);
     expect(kn(f, 's2').faelligAm).toBe('2026-10-05');
     const soll = ausfuehrungSoll(f, '2026-10-02');
     expect(soll.aufgaben).toEqual([]);
     expect(soll.nachrichten).toEqual([expect.objectContaining({ knotenId: 's2', runde: 0, bezugId: 'p:nachricht:m-1:s2:0' })]);
-    expect(soll.abschluss).toContainEqual({ id: ablaufAufgabeId('m-1', 's1'), status: 'done' });
+    expect(soll.abschluss).toEqual([expect.objectContaining({ id: ablaufAufgabeId('m-1', 's1'), status: 'done', marke: ABLAUF_MARKE.zu('s1', 0) })]);
     f = gemacht(f, soll);
+    // Geschlossen vermerkt → nie wieder gefragt; eine Aufgabe, die die Ausführung nie angelegt hat, schließt sie auch nicht.
+    expect(ausfuehrungSoll({ ...f, marken: { ...f.marken, [ABLAUF_MARKE.zu('s1', 0)]: 'x' } }, '2026-10-03').abschluss).toEqual([]);
+    expect(ausfuehrungSoll(erledige(fall(ablauf()), 's1', '2026-10-02'), '2026-10-02').abschluss).toEqual([]);
     expect(ausfuehrungSoll(f, '2026-10-03').nachrichten).toEqual([]);
   });
 
@@ -150,7 +154,7 @@ describe('Entscheidung fragt nach — ja / nein', () => {
     expect(kn(f, 'e').antwort).toBeUndefined();
     expect(aktiveKnoten(f).map(x => [x.knoten.id, x.runde])).toEqual([['e', 1]]);
     expect(naechsterPunkt(f, [], '2026-10-12')).toMatchObject({ id: 'e' });
-    expect(ablaufAbschluesse(f)).toContainEqual({ id: ablaufAufgabeId('m-1', 'r', 1), status: 'done' });
+    expect(ablaufAbschluesse(f)).toContainEqual(expect.objectContaining({ id: ablaufAufgabeId('m-1', 'r', 1), status: 'done' }));
     // Die Aufgabe der Runde 1 rückt nichts mehr (Runde vorbei).
     expect(opNachAufgabe(f, 'r', 1)).toBeNull();
   });
@@ -191,7 +195,7 @@ describe('Entscheidung fragt nach — ja / nein', () => {
     let f = antworte(bisEntscheidung(), 'e', 'nein', '2026-10-04');
     f = antworte(f, 'e', 'ja', '2026-10-06');
     expect(kn(f, 'r').status).toBe('entfaellt');
-    expect(ablaufAbschluesse(f)).toContainEqual({ id: ablaufAufgabeId('m-1', 'r', 1), status: 'cancelled' });
+    expect(ablaufAbschluesse(f)).toContainEqual(expect.objectContaining({ id: ablaufAufgabeId('m-1', 'r', 1), status: 'cancelled' }));
   });
 
   it('Nein-Zweig ohne Rückweg: Erinnerung erledigt → Entscheidung „nein“ entschieden, weiter nach der Entscheidung', () => {
@@ -208,7 +212,7 @@ describe('Entscheidung fragt nach — ja / nein', () => {
     f = antworte(f, 'e', 'ja', '2026-10-04');
     expect(kn(f, 's3')).toMatchObject({ status: 'entfaellt' });
     expect(aktiveKnoten(f).map(x => x.knoten.id)).toEqual(['s4']);
-    expect(ablaufAbschluesse(f)).toContainEqual({ id: ablaufAufgabeId('m-1', 's3'), status: 'cancelled' });
+    expect(ablaufAbschluesse(f)).toContainEqual(expect.objectContaining({ id: ablaufAufgabeId('m-1', 's3'), status: 'cancelled' }));
   });
 
   it('auf einen Schritt ohne Entscheidung gibt es keine Antwort (400)', () => {

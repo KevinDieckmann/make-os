@@ -289,6 +289,8 @@ export const ABLAUF_MARKE = {
   nachricht: (k: string, r: number) => `ablauf-nachricht:${k}:${r}`,
   frage: (k: string, r: number) => `ablauf-frage:${k}:${r}`,
   eskaliert: (k: string) => `ablauf-eskaliert:${k}`,
+  /** Die Aufgabe ist geschlossen (bzw. war es schon) — danach fragt die Ausführung nicht mehr nach ihr. */
+  zu: (k: string, r: number) => `ablauf-zu:${k}:${r}`,
 } as const;
 /** Kennung des Vorschlags im Stapel für eine Nachricht (Präfix `p:` = Prozesse). */
 export const nachrichtBezugId = (mandatId: string, knotenId: string, runde: number) => `p:nachricht:${mandatId}:${knotenId}:${runde}`;
@@ -300,9 +302,13 @@ export interface AusfuehrungSoll {
   /** Fall-Änderungen (Ops des Fall-Schreibwegs): Fälligkeit ab Ankunft, „wartet auf Kunde“ an Schritten, die der Kunde macht. */
   ops: Record<string, unknown>[];
   aufgaben: SollAufgabe[]; nachrichten: SollNachricht[]; glocken: SollGlocke[];
-  /** Aufgaben, die zu schließen sind, weil ihr Schritt bzw. ihre Runde fertig ist (nur, wenn sie noch offen sind). */
-  abschluss: { id: string; status: 'done' | 'cancelled' }[];
+  /**
+   * Aufgaben, die zu schließen sind, weil ihr Schritt bzw. ihre Runde fertig ist — nur solche, die die Ausführung angelegt und noch nicht geschlossen hat
+   * (Marken `aufgabe` und `zu`); der Server schließt sie nur, wenn sie noch offen sind.
+   */
+  abschluss: AblaufAbschluss[];
 }
+export interface AblaufAbschluss { id: string; status: 'done' | 'cancelled'; knotenId: string; runde: number; marke: string }
 
 /**
  * Was die Ausführung für einen (wirksamen) Fall jetzt braucht. Nur für Fälle mit Ausführung (`ablaufAktiv`); was schon eine Marke hat, fehlt.
@@ -312,7 +318,10 @@ export interface AusfuehrungSoll {
  *   · Erinnerung, deren Frist erreicht ist → eine Aufgabe je Runde (mit Nachricht, wenn ein Mail-Baustein dranhängt — `mitMail`).
  */
 export function ausfuehrungSoll(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm' | 'marken'>, heute: string, mitMail: (k: FallKnoten) => boolean = () => false): AusfuehrungSoll {
-  const soll: AusfuehrungSoll = { ops: [], aufgaben: [], nachrichten: [], glocken: [], abschluss: ablaufAbschluesse(f) };
+  const soll: AusfuehrungSoll = {
+    ops: [], aufgaben: [], nachrichten: [], glocken: [],
+    abschluss: ablaufAbschluesse(f).filter(x => !!f.marken[ABLAUF_MARKE.aufgabe(x.knotenId, x.runde)] && !f.marken[x.marke]),
+  };
   if (!ablaufAktiv(f)) return soll;
   const neu = (m: string) => !f.marken[m];
   for (const a of aktiveKnoten(f)) {
@@ -349,8 +358,9 @@ export function ausfuehrungSoll(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben
  * auf dem Nein-Pfad: jede erledigte Runde → „erledigt“, die laufende Runde einer schon entschiedenen Entscheidung → „abgebrochen“. Der Server schließt nur
  * offene Aufgaben (idempotent).
  */
-export function ablaufAbschluesse(f: Pick<Fall, 'mandatId' | 'knoten'>): { id: string; status: 'done' | 'cancelled' }[] {
-  const raus: { id: string; status: 'done' | 'cancelled' }[] = [];
+export function ablaufAbschluesse(f: Pick<Fall, 'mandatId' | 'knoten'>): AblaufAbschluss[] {
+  const raus: AblaufAbschluss[] = [];
+  const zu = (k: string, r: number, status: 'done' | 'cancelled'): AblaufAbschluss => ({ id: ablaufAufgabeId(f.mandatId, k, r), status, knotenId: k, runde: r, marke: ABLAUF_MARKE.zu(k, r) });
   const kn = f.knoten;
   const nz = neinZiele(kn);
   for (const k of kn) {
@@ -361,13 +371,13 @@ export function ablaufAbschluesse(f: Pick<Fall, 'mandatId' | 'knoten'>): { id: s
     const e = eId ? kn.find(x => x.id === eId) : undefined;
     if (art === 'erinnerung' && e) {
       const erledigt = k.runden ?? 0;
-      for (let r = 1; r <= erledigt; r++) raus.push({ id: ablaufAufgabeId(f.mandatId, k.id, r), status: 'done' });
+      for (let r = 1; r <= erledigt; r++) raus.push(zu(k.id, r, 'done'));
       const laufend = e.runden ?? 0;
-      if (laufend > erledigt && (fertig(k) || fertig(e) || e.antwort !== 'nein')) raus.push({ id: ablaufAufgabeId(f.mandatId, k.id, laufend), status: k.status === 'erledigt' ? 'done' : 'cancelled' });
+      if (laufend > erledigt && (fertig(k) || fertig(e) || e.antwort !== 'nein')) raus.push(zu(k.id, laufend, k.status === 'erledigt' ? 'done' : 'cancelled'));
       continue;
     }
     const runde = art === 'erinnerung' ? 1 : 0;
-    if (schrittFertig(k, kn)) raus.push({ id: ablaufAufgabeId(f.mandatId, k.id, runde), status: k.status === 'entfaellt' ? 'cancelled' : 'done' });
+    if (schrittFertig(k, kn)) raus.push(zu(k.id, runde, k.status === 'entfaellt' ? 'cancelled' : 'done'));
   }
   return raus;
 }

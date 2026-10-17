@@ -18,6 +18,7 @@ import { neueKennung } from '@/lib/kennung';
 import { localDay, tagVon } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { fallAnwenden, fallStarten, vorlageUebernehmen } from './fall';
+import { ablaufAktiv } from './ausfuehrung';
 import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, zeitpunkt, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
@@ -33,7 +34,9 @@ export interface Nachzug {
 }
 
 /** Die Ausführung des Falls nachziehen (Aufgaben, Nachrichten, Glocken — ./ausfuehrung-server.ts) — wirft nie. */
-async function ablaufNachzug(mandatId: string, person: string, wer: Wer | undefined, jetzt: Date, nachzug?: Nachzug): Promise<void> {
+async function ablaufNachzug(fall: Fall, mandatId: string, person: string, wer: Wer | undefined, jetzt: Date, nachzug?: Nachzug): Promise<void> {
+  // Nur Fälle mit Ausführung (ein Knoten trägt eine Form) — sonst bleibt alles wie bisher, ohne einen zusätzlichen Lesevorgang.
+  if (!ablaufAktiv(fall)) return;
   try {
     const { ablaufNachziehen } = await import('./ausfuehrung-server');
     const a = await ablaufNachziehen({ mandatId, person, ...(wer ? { wer } : {}), jetzt });
@@ -109,7 +112,7 @@ export async function fallStartenServer(e: { mandatId: unknown; vorlageId: unkno
   }, e.wer ?? { art: 'person', person: e.person }, h);
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
   // Ausführung (17.10. abends): ist der Fall gleich an einem Schritt mit Form, entsteht seine Aufgabe sofort.
-  await ablaufNachzug(m.id, e.person, e.wer, jetzt);
+  await ablaufNachzug(neu!, m.id, e.person, e.wer, jetzt);
   return neu!;
 }
 
@@ -237,7 +240,7 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
     }
   } catch (e) { nachzug.fehler = e instanceof Error ? e.message.slice(0, 200) : 'Ziele nicht nachgezogen'; }
   // Ausführung (17.10. abends): nächster Schritt → Aufgabe, Nachricht → Vorschlag, erledigte Schritte schließen ihre Aufgabe — idempotent.
-  await ablaufNachzug(m.id, person, wer, jetzt, nachzug);
+  await ablaufNachzug(fall, m.id, person, wer, jetzt, nachzug);
   return { fall: fallWirksam(fall, abl), geaendert: r.geaendert, nachzug };
 }
 
@@ -278,7 +281,7 @@ export async function fallVorlageUebernehmen(mandatId: unknown, person: string, 
   }, wer ?? { art: 'person', person }, h);
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
   // Erst nach der Übernahme per Klick arbeitet die Ausführung mit der neuen Fassung (17.10. abends).
-  await ablaufNachzug(m.id, person, wer, jetzt);
+  await ablaufNachzug(neu!, m.id, person, wer, jetzt);
   return neu!;
 }
 
