@@ -213,6 +213,27 @@ describe('Adressen ändern: nur mit Passwort, nur selbst', () => {
   });
 });
 
+// Gesamtprüfung 18.10. (L3 B4): mit „Gerät merken“ reichte auf einem gemerkten Gerät das Passwort für Anmelden UND Hauptadresse wechseln.
+// Jetzt `erneutPruefen`: ist der zweite Faktor an, braucht jede Änderung zusätzlich den Code (oder einen Wiederherstellungscode).
+describe('Adressen ändern mit zweitem Faktor: Passwort UND Code', () => {
+  it('ohne Code 403 „zweiterFaktor“, falscher Code 403 (protokolliert), mit Code 200; die Bremse zählt Code-Fehler mit', async () => {
+    const geheimnis = totp.neuesGeheimnis();
+    await K.aendereKonten(s => ({ ...s, konten: s.konten.map(k => k.speicher === 'kevin' ? { ...k, zweiterFaktor: { geheimnis, seit: '2026-01-01', wiederherstellung: [] } } : k) }));
+    const mit = (aktion: string, email: string, code?: string) => adressen.POST(post('/api/konto/adressen', sitzung('kevin'), { aktion, email, passwort: PW, ...(code ? { code } : {}) }));
+    const ohneCode = await mit('hinzu', 'kevin@alt.example.invalid');
+    expect(ohneCode.status).toBe(403);
+    expect(await ohneCode.json()).toMatchObject({ zweiterFaktor: true });
+    expect((await mit('hinzu', 'kevin@alt.example.invalid', '000000')).status).toBe(403);
+    expect((await kevin()).weitereEmails).toBeUndefined();
+    const prot = ((await db.loadJson<{ eintraege: { art: string; ok: boolean }[] }>('anmeldungen'))?.eintraege ?? []);
+    expect(prot.some(e => e.art === 'adresse-hinzu' && !e.ok)).toBe(true);
+    expect((await mit('hinzu', 'kevin@alt.example.invalid', totp.codeFuer(geheimnis, totp.stufeVon()))).status).toBe(200);
+    expect((await kevin()).weitereEmails).toEqual(['kevin@alt.example.invalid']);
+    for (let i = 0; i < 6; i++) await mit('weg', 'kevin@alt.example.invalid', '000000');
+    expect((await mit('weg', 'kevin@alt.example.invalid', totp.codeFuer(geheimnis, totp.stufeVon()))).status).toBe(429);
+  });
+});
+
 describe('Eindeutigkeit in der ganzen Instanz', () => {
   it('eine Adresse eines anderen Kontos (Haupt oder weitere) lässt sich nicht hinzufügen; die eigene auch nicht doppelt', async () => {
     await adr('hinzu', 'm2@example.invalid', PW, 'malin');

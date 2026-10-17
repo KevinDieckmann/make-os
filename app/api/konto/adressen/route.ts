@@ -5,14 +5,17 @@
 //   POST { aktion: 'hinzu',  email, passwort }  → weitere Adresse anlegen
 //   POST { aktion: 'haupt',  email, passwort }  → eine weitere Adresse zur Hauptadresse machen (die alte wird weitere)
 //   POST { aktion: 'weg',    email, passwort }  → weitere Adresse entfernen (die Hauptadresse nie — also nie die letzte)
-// Jede Änderung braucht das aktuelle Passwort (wie Passwort ändern / zweiten Faktor ausschalten; dieselbe Bremse `pw:<person>`),
+// Jede Änderung braucht das aktuelle Passwort und — ist der zweite Faktor an — den Code (seit 18.10., Gesamtprüfung L3 B4: `erneutPruefen`,
+// dieselbe Bremse `pw:<person>`; auf einem gemerkten Gerät reichte sonst das Passwort für Anmelden UND Hauptadresse wechseln),
 // gilt nur für das EIGENE Konto (Person aus der Sitzung — der Dienstweg hat keine → 403), steht im Sicherheitsprotokoll
 // (Adresse maskiert) und meldet sich in der Glocke des Kontos. Eine Adresse darf in der Instanz nur einmal vorkommen.
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { personDerSitzung } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { ladeKonten, aendereKonten, emailSauber, passwortStimmt, adresseVergeben, adresseMaskiert, alleAdressen, oeffentlich, MAX_WEITERE_EMAILS } from '@/lib/zugang/konten';
-import { pruefe, fehlschlag, erfolg, adresse } from '@/lib/zugang/drossel';
+import { ladeKonten, aendereKonten, emailSauber, adresseVergeben, adresseMaskiert, alleAdressen, oeffentlich, MAX_WEITERE_EMAILS } from '@/lib/zugang/konten';
+import { adresse } from '@/lib/zugang/drossel';
+import { erneutPruefen } from '@/lib/zugang/erneut';
+import { istDienst } from '@/lib/zugang/dienst';
 import { notiere, adresseGekuerzt, type AnmeldeArt } from '@/lib/zugang/anmeldungen';
 import { melde } from '@/lib/meldungen/melden';
 
@@ -28,25 +31,19 @@ const fehler = (error: string, status: number, extra: Record<string, unknown> = 
 
 export async function POST(req: Request) {
   // Nur die Person der Sitzung (von der Middleware gesetzt) — Dienstweg und Systemläufe haben keine → 403.
-  const wer = personDerSitzung(req);
+  const wer = istDienst(req) ? null : personDerSitzung(req);
   if (!wer) return fehler('Nur für die angemeldete Person selbst.', 403);
-  let b: { aktion?: string; email?: string; passwort?: string };
+  let b: { aktion?: string; email?: string; passwort?: string; code?: string };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? fehler('Kein gültiges JSON.', 400); }
   if (!b || typeof b.aktion !== 'string' || !AKTIONEN.includes(b.aktion)) return fehler('aktion = hinzu | haupt | weg', 400);
   const aktion = b.aktion as Aktion;
   const ich = (await ladeKonten()).konten.find(k => k.speicher === wer);
   if (!ich) return fehler('Konto nicht gefunden.', 401);
 
-  // Passwort zuerst — auch bei ungültiger Adresse, damit nichts ohne Passwort verraten wird. Gleiche Bremse wie „Passwort ändern“.
-  const bremse = `pw:${wer}`;
-  const warte = pruefe(bremse).warteSek;
-  if (warte > 0) return NextResponse.json({ error: `Zu viele Versuche — bitte in ${warte} Sekunden erneut.` }, { status: 429, headers: { 'Retry-After': String(warte) } });
-  if (!(await passwortStimmt(String(b.passwort ?? ''), ich))) {
-    fehlschlag(bremse);
-    await notiere({ speicher: wer, art: ART[aktion], ok: false, adresse: adresseGekuerzt(adresse(req)) });
-    return fehler('Das Passwort stimmt nicht.', 403);
-  }
-  erfolg(bremse);
+  // Passwort (+ Code, wenn der zweite Faktor an ist) zuerst — auch bei ungültiger Adresse, damit nichts ohne Bestätigung verraten wird.
+  // EINE Prüfung wie Konto löschen und Instanz-Export (`erneutPruefen`: Bremse `pw:<person>`, Fehlversuche ins Anmeldeprotokoll).
+  const e = await erneutPruefen(req, ich, { passwort: b.passwort, code: b.code }, ART[aktion]);
+  if (!e.ok) return NextResponse.json({ error: e.fehler, ...(e.zweiterFaktor ? { zweiterFaktor: true } : {}) }, { status: e.status, ...(e.warteSek ? { headers: { 'Retry-After': String(e.warteSek) } } : {}) });
 
   const email = emailSauber(b.email);
   if (!email) return fehler('E-Mail ungültig.', 400);
