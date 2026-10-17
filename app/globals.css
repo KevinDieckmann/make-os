@@ -1120,6 +1120,32 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 [data-ff-zieht="ja"] { opacity: .45; }
 .ff-editor-ziel-leer { display: grid; place-items: center; width: min(100%, 340px); min-height: 64px; box-sizing: border-box; border: 1px dashed rgba(255,255,255,.22); border-radius: 10px; padding: 10px 14px; text-align: center; }
 
+/* ── Prozess-Editor › Fläche (17.10. — components/os/fulfillment/editor/Flaeche.tsx, components/os/ui/flaeche/*) ─────────────────────────────────────────
+   Frei zeichnen wie in Miro: SVG-Bühne mit fester Höhe (die Seite rollt außerhalb weiter — Rad/Pinch/Touch hängen nur am SVG), links die Palette, rechts das
+   Seitenfeld (≥ 1180 px). Am Handy nur ansehen: ein Finger rollt die Seite (touch-action: pan-y), zwei Finger zoomen und schieben. Markierungen „hier landet
+   es“ setzt die Ansicht direkt am SVG (data-fl-ziel) — kein React-Zustand je Mausbewegung. */
+.ff-flaeche { display: grid; gap: 10px; min-width: 0; }
+.ff-flaeche-leiste { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.ff-flaeche-raster { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; min-width: 0; }
+.ff-flaeche-buehne { position: relative; height: min(76vh, 820px); min-height: 420px; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); background: #0B0E10; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.ff-flaeche-buehne > svg { display: block; width: 100%; height: 100%; outline: none; }
+.ff-flaeche-buehne > svg:focus-visible { box-shadow: inset 0 0 0 2px #58D9CD; }
+.ff-fl-knoten { outline: none; }
+.ff-fl-fokus { display: none; }
+.ff-fl-knoten:focus-visible .ff-fl-fokus, .ff-fl-knoten[data-fl-ziel] .ff-fl-fokus { display: inline; }
+[data-fl-flaeche][data-fl-ziel] { stroke: #58D9CD; stroke-width: 3; }
+@media (min-width: 1180px) {
+  .ff-flaeche-raster { grid-template-columns: 170px minmax(0, 1fr) minmax(280px, 340px); }
+  .ff-flaeche-raster.ff-flaeche-ohne-palette { grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); }
+  .ff-flaeche-raster.ff-flaeche-ohne-feld { grid-template-columns: 170px minmax(0, 1fr); }
+  .ff-flaeche-raster.ff-flaeche-ohne-palette.ff-flaeche-ohne-feld { grid-template-columns: minmax(0, 1fr); }
+  .ff-flaeche-raster > .ff-editor-palette { display: grid; align-content: start; overflow: visible; position: sticky; top: 12px; }
+  .ff-flaeche-raster > .ff-editor-feld { position: sticky; top: 12px; }
+}
+@media (max-width: 720px) {
+  .ff-flaeche-buehne { height: 62vh; min-height: 320px; }
+}
+
 /* ── Kunden-Seite, Vorschau und Präsentation (12.10., Fulfillment extern — components/os/fulfillment/kunde/KundenAnsicht.tsx, bilder.tsx) ─────────────
    Nur Klassen `kunde-…` — sie wirken nur in der Kunden-Ansicht. Handy zuerst (eine Spalte), ab ~900 px zwei Spalten (`.kunde-raster`), die Präsentation
    „Dem Kunden zeigen“ größer. Druck: weiß, dunkle Schrift, nichts zum Ausfüllen, keine Karte zerrissen. */
