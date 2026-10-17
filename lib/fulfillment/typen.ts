@@ -29,7 +29,17 @@ export interface ProzessKnoten {
   beleg?: 'quelle' | 'ergaenzung';                                                 // ergaenzung = gestrichelt
   // Prozess-Editor (17.10.) — alle optional; ohne Feld gilt das bisherige Verhalten (Form aus Baustein/Abstimmungspunkt abgeleitet).
   form?: KnotenForm; frist?: number; zweige?: Zweige;
+  // Prozess-Editor › Fläche (17.10.) — beide optional; ohne sie legt die Fläche alles automatisch aus der Reihenfolge aus. Reine Lage: zählt nicht als neue
+  // Fassung (laufende Fälle sehen keine Änderung) und geht nie in einen Fall.
+  pos?: KnotenLage; pfeilText?: PfeilText;
 }
+/**
+ * Lage auf der Fläche (Prozess-Editor, 17.10.): an einer Phase der Rahmen (absolut, mit Breite `b` und Höhe `h` — fehlen sie, passt sich der Rahmen dem Inhalt an),
+ * an einem Schritt die linke obere Ecke RELATIV zu seinem Rahmen (der Rahmen nimmt seine Schritte beim Verschieben mit). Ganze Zahlen in Bildpunkten der Fläche.
+ */
+export interface KnotenLage { x: number; y: number; b?: number; h?: number }
+/** Beschriftung der Pfeile, die von einem Schritt ausgehen (Fläche): `weiter` = zum nächsten, `ja`/`nein` an einer Entscheidung (fehlt = „ja“/„nein“). */
+export interface PfeilText { weiter?: string; ja?: string; nein?: string }
 /**
  * Form eines Knotens im Fluss (Prozess-Editor, 17.10.). Fehlt sie, leitet die Ansicht sie ab (Abstimmungspunkt → Raute, Mail-Baustein → Nachricht,
  * Ritual → Termin, sonst Schritt — lib/fulfillment/prozesse/reise-bild.ts `knotenForm`). Das Feld heißt `form`, weil `art` an Ablauf-Stufen schon belegt ist.

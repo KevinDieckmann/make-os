@@ -21,8 +21,8 @@
 // hält die Reihenfolge der Phasen fest (`phasenVonHand`), damit sie beim Lesen nicht nach der Regel neu sortiert werden.
 // Tests: tests/fulfillment-editor-modell.test.ts.
 
-import type { AnwendenErgebnis, Baustein, Freigabepunkt, KnotenForm, ProzessKnoten, ProzessVorlage, VorlagenDatei, VorlagenPapierkorb, Zustaendig, Zweige } from '../typen';
-import { GRENZEN } from '../grenzen';
+import type { AnwendenErgebnis, Baustein, Freigabepunkt, KnotenForm, KnotenLage, ProzessKnoten, ProzessVorlage, VorlagenDatei, VorlagenPapierkorb, Zustaendig, Zweige } from '../typen';
+import { GRENZEN, LAGE } from '../grenzen';
 import { KNOTEN_FORMEN } from '../lesen';
 import { kinderVon, teilbaum, wurzelVon } from '../regeln';
 import { istSammelTeil } from './reise';
@@ -31,6 +31,7 @@ import { abstimmungsNummern } from './darstellung';
 import { phasenAbschnitte, phasenDer, phasenSchritte, phaseVonKnoten, neinZiele, zweigeOhne, zweigePruefen } from './fluss-struktur';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
 import { ausfuehren, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, standPruefen } from './pruefen';
+import { rahmenOrdnen, umrissVon } from './flaeche-lage';
 import { PAPIERKORB_TAGE, papierkorbBis } from '@/lib/eintraege/sicher';
 
 /** Kennung eines neuen Knotens aus dem Editor: `fk-<uuid>` (wie `neueKennung('fk')`). */
@@ -187,6 +188,12 @@ const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnote
  *   schritt { id, titel?, form?, frist?, zustaendig?, kundeSichtbar? } · schritt-schieben { id, ziel } · zweig { id, ja?: id|null, nein?: id|null }
  *   nein-erinnerung { id, entscheidungId, titel? } · baustein-dazu { id, schrittId, bausteinId, titel? } · gruppe { id, titel }
  *   weg { id, still? } · zurueck { id } · papierkorb-leeren { id? }
+ * Fläche (17.10., ./flaeche.ts): lage { eintraege: [{ id, pos: { x, y, b?, h? } | null }] } (Phase = Rahmen absolut mit Größe, Schritt relativ zu seinem Rahmen;
+ *   null = wieder automatisch) · verbinden { von, nach, zweig?: 'ja' | 'nein' } (ein Pfeil: an einer Entscheidung ihr Ja-/Nein-Zweig, an einer Erinnerung „danach
+ *   zu …“, sonst hängt `nach` direkt hinter `von` — nur vorwärts, ein Pfeil zurück wäre ein Kreis: 409) · pfeil-text { id, art: 'weiter' | 'ja' | 'nein', text | null }.
+ * Reine Lage (`pos`, `pfeilText`) zählt nicht als neue Fassung — laufende Fälle sehen dadurch keine Änderung. Wechselt ein Schritt die Phase ohne neue Lage in
+ * derselben Änderung, fällt seine Lage weg (er steht dann automatisch in seinem neuen Rahmen). Die Rahmen bleiben in der Reihenfolge der Phasen
+ * (`rahmenOrdnen`).
  */
 export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: EditorKontext): AnwendenErgebnis<VorlagenDatei> {
   return ausfuehren(() => {
@@ -281,6 +288,14 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
       setzeReihe(eltern, id, index);
     };
     const brauchtEbene4 = (id: string) => kinderVon(id, kn).some(c => c.bausteinId);
+    /** Die Phase jedes Schritts vor der Änderung (wechselt er sie ohne neue Lage, fällt seine Lage weg) und welche Lagen diese Änderung setzt. */
+    const phaseVorher = new Map(kn.map(x => [x.id, phaseVonKnoten(kn, x.id)]));
+    const lageGesetzt = new Set<string>();
+    const zweigSetzen = (x: ProzessKnoten, art: 'ja' | 'nein', ziel: string | null) => {
+      const z: Zweige = { ...(x.zweige ?? {}) };
+      if (ziel) z[art] = ziel; else delete z[art];
+      kn = kn.map(y => { if (y.id !== x.id) return y; const { zweige: _z, ...r } = y; return z.ja || z.nein ? { ...r, zweige: z } : r; });
+    };
 
     for (const roh of ops) {
       if (!istObj(roh) || typeof roh.op !== 'string') nein('Jede Änderung braucht „op“.');
@@ -488,6 +503,60 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
           pk = pk.filter(x => x.id !== e.id);
           break;
         }
+        case 'lage': {
+          const liste = o.eintraege;
+          if (!Array.isArray(liste) || !liste.length) nein('eintraege: mindestens eine Lage.');
+          if ((liste as unknown[]).length > GRENZEN.knotenJeVorlage) nein(`Höchstens ${GRENZEN.knotenJeVorlage} Lagen je Änderung. Nichts gespeichert.`, 413);
+          const neu = new Map<string, KnotenLage | null>();
+          for (const e of liste as unknown[]) {
+            if (!istObj(e) || typeof e.id !== 'string') nein('Jede Lage braucht „id“.');
+            const x = knoten((e as Record<string, unknown>).id);
+            const istPhase = x.elternId === wurzel.id;
+            if (!istPhase && !istSchritt(x)) nein(`„${x.titel}“ steht nicht auf der Fläche — nur Phasen (Rahmen) und Schritte haben eine Lage.`);
+            neu.set(x.id, lageAus((e as Record<string, unknown>).pos, istPhase));
+          }
+          kn = kn.map(y => {
+            if (!neu.has(y.id)) return y;
+            lageGesetzt.add(y.id);
+            const p = neu.get(y.id);
+            if (p) return { ...y, pos: p };
+            const { pos: _p, ...r } = y;
+            return r;
+          });
+          break;
+        }
+        case 'pfeil-text': {
+          const x = schritt(o.id);
+          const art = optWahl(o.art, ['weiter', 'ja', 'nein'] as const, 'Pfeil') ?? nein('art: weiter, ja oder nein.');
+          const t = optText(o.text, 'pfeil', 'Beschriftung des Pfeils');
+          if (t === undefined) nein('text fehlt (null = Beschriftung entfernen).');
+          const pt = { ...(x.pfeilText ?? {}) };
+          if (t) pt[art] = t; else delete pt[art];
+          kn = kn.map(y => { if (y.id !== x.id) return y; const { pfeilText: _t, ...r } = y; return Object.keys(pt).length ? { ...r, pfeilText: pt } : r; });
+          break;
+        }
+        case 'verbinden': {
+          const a = schritt(o.von), b = schritt(o.nach);
+          if (a.id === b.id) nein('Ein Pfeil zeigt nie auf denselben Schritt.');
+          const zw = o.zweig === undefined || o.zweig === null ? undefined : optWahl(o.zweig, ['ja', 'nein'] as const, 'Zweig') ?? undefined;
+          if (a.form === 'entscheidung') { zweigSetzen(a, zw ?? 'ja', b.id); break; }
+          if (zw === 'nein') nein(`„${a.titel}“ ist keine Entscheidung — einen Nein-Zweig gibt es nur dort.`);
+          if (a.form === 'erinnerung') { zweigSetzen(a, 'ja', b.id); break; }
+          const nz = neinZiele(kn);
+          const titel = (id: string) => kn.find(y => y.id === id)?.titel ?? '';
+          if (nz.has(a.id)) nein(`„${a.titel}“ ist der Nein-Zweig von „${titel(nz.get(a.id)!)}“ — danach geht es nach der Entscheidung weiter. Für einen anderen Weg mach ihn zur Erinnerung.`, 409);
+          if (nz.has(b.id)) nein(`„${b.titel}“ ist der Nein-Zweig von „${titel(nz.get(b.id)!)}“ — erst den Zweig lösen.`, 409);
+          // Die Reihenfolge über alle Phasen (Phase für Phase, darin der Fluss): ein Pfeil gegen sie wäre ein Kreis.
+          const reihe = phasenDer(kn).flatMap(p => phasenSchritte(kn, p.id)).filter(y => !nz.has(y.id)).map(y => y.id);
+          const ia = reihe.indexOf(a.id), ib = reihe.indexOf(b.id);
+          if (ib <= ia) nein(`Kreis: „${b.titel}“ kommt vor „${a.titel}“ — eine Schleife zurück geht nur über eine Erinnerung zur Entscheidung. Zum Umordnen „${b.titel}“ verschieben. Nichts gespeichert.`, 409);
+          if (ib === ia + 1) break; // steht schon direkt dahinter
+          if (kinderVon(b.id, kn).some(c => !c.bausteinId)) nein('Ganze Teilprozesse verschiebt man im Baum, nicht hier.');
+          const vorher = b.elternId;
+          einsetzen(b.id, platz({ phaseId: phaseVonKnoten(kn, a.id)!, nach: a.id }, b.id), brauchtEbene4(b.id));
+          aufraeumen(vorher);
+          break;
+        }
         case 'papierkorb-leeren': {
           if (o.id === undefined || o.id === null) { pk = []; break; }
           if (!pk.some(x => x.id === o.id)) nein('Das liegt nicht (mehr) im Papierkorb.', 404);
@@ -497,16 +566,49 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
         default: nein(`Unbekannte Änderung „${o.op}“.`);
       }
     }
+    // Wechselt ein Schritt die Phase ohne neue Lage, steht er automatisch in seinem neuen Rahmen (seine Lage galt dem alten).
+    kn = kn.map(x => (x.pos && x.elternId !== wurzel.id && !lageGesetzt.has(x.id) && phaseVorher.has(x.id) && phaseVorher.get(x.id) !== phaseVonKnoten(kn, x.id) ? (({ pos: _p, ...r }) => r)(x) : x));
+    // Die Rahmen bleiben in der Reihenfolge der Phasen (./flaeche-lage.ts).
+    const artVon = (id: string) => d.bausteine.find(b => b.id === id)?.art;
+    const nachId = new Map(kn.map(x => [x.id, x]));
+    kn = rahmenOrdnen(kn, x => umrissVon(wirksameForm(nachId.get(x.id) ?? (x as ProzessKnoten), kn, artVon)));
     v = { ...v, knoten: kn, phasenVonHand: true };
     if (pk.length) v.papierkorb = pk; else delete v.papierkorb;
     if (pk.length > GRENZEN.papierkorbJeVorlage) nein(`Papierkorb von „${v.titel}“: höchstens ${GRENZEN.papierkorbJeVorlage} Einträge — bitte erst leeren. Nichts gespeichert.`, 413);
     vorlageStrukturPruefen(v, d);
     zweigePruefen(v.knoten);
     if (JSON.stringify(v) === JSON.stringify(alt)) return { datei: datei, geaendert: [] };
-    v = { ...v, fassung: alt.fassung + 1, geaendert: k.jetzt, geaendertVon: k.person };
+    // Reine Lage (Fläche) ist keine neue Fassung — laufende Fälle zeigen dadurch kein „Vorlage geändert“.
+    v = { ...v, fassung: ohneLage(v) === ohneLage(alt) ? alt.fassung : alt.fassung + 1, geaendert: k.jetzt, geaendertVon: k.person };
     d.prozesse = d.prozesse.map(p => (p.id === v.id ? v : p));
     return { datei: d, geaendert: [v.id] };
   });
+}
+
+/**
+ * Die Vorlage ohne die reine Lage der Fläche (`pos`, `pfeilText`) und ohne die Marke `phasenVonHand` (sie hält nur die Reihenfolge fest, die gerade gilt) —
+ * Vergleich „ist das eine neue Fassung?“.
+ */
+function ohneLage(v: ProzessVorlage): string {
+  const { phasenVonHand: _h, ...rest } = v;
+  return JSON.stringify({ ...rest, knoten: v.knoten.map(({ pos: _p, pfeilText: _t, ...r }) => r) });
+}
+
+/** Eine Lage aus der Eingabe: null = wieder automatisch; ganze Zahlen in den Grenzen; Breite/Höhe nur an einem Rahmen (Phase). */
+function lageAus(v: unknown, phase: boolean): KnotenLage | null {
+  if (v === null) return null;
+  if (!istObj(v)) return nein('pos: { x, y } oder null.');
+  const zahl = (w: unknown, name: string, min: number, max: number) => {
+    if (typeof w !== 'number' || !Number.isFinite(w) || w < min || w > max) return nein(`pos.${name}: Zahl von ${min.toLocaleString('de-DE')} bis ${max.toLocaleString('de-DE')}.`);
+    return Math.round(w);
+  };
+  const l: KnotenLage = { x: zahl(v.x, 'x', -LAGE.max, LAGE.max), y: zahl(v.y, 'y', -LAGE.max, LAGE.max) };
+  for (const f of ['b', 'h'] as const) {
+    if (v[f] === undefined || v[f] === null) continue;
+    if (!phase) nein('Nur ein Rahmen (Phase) hat eine eigene Größe.');
+    l[f] = zahl(v[f], f, LAGE.rahmenMin, LAGE.rahmenMax);
+  }
+  return l;
 }
 
 /** „Neuer Ablauf“: eine leere Paket-Vorlage mit dem Start (Gesamtprozess, Ebene 1) und EINER Phase — die Reihenfolge gehört von Anfang an der Hand. */
