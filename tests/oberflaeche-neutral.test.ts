@@ -174,6 +174,19 @@ describe('Oberfläche: keine festen Namen, Firmen, Marken und Betreiber-Texte', 
     expect(funde, `Feste Texte in der Oberfläche:\n${funde.join('\n')}`).toEqual([]);
   });
 
+  // Gesamtprüfung 18.10. (L3 B9): Fulfillment, Recht, Gesellschafts-Schild, Agenten, KI und das Treppen-Dokument lagen außerhalb des Wächters — dort
+  // stand „MAKE als Verantwortlicher“ (B8). Geprüft werden dieselben Regeln wie oben und zusätzlich „MAKE“ allein (nicht „MAKE OS“): der
+  // Verantwortliche und die eigene Firma kommen aus der Einrichtung bzw. lib/einheiten.ts, nie als fester Text.
+  it('Texte in lib/fulfillment, lib/recht, lib/gesellschaften/schild, lib/agenten, lib/ki, app/api/crm/treppe/dokument (L3 B9)', () => {
+    const MAKE_ALLEIN = { id: 'make', muster: /\bMAKE\b(?![ _-]OS)/, grund: 'feste Firma bzw. fester Verantwortlicher — aus der Einrichtung (Verantwortlicher) oder lib/einheiten.ts' };
+    const ordner = ['lib/fulfillment', 'lib/recht', 'lib/gesellschaften/schild', 'lib/agenten', 'lib/ki', 'app/api/crm/treppe/dokument'];
+    const liste = ordner.flatMap(dateien);
+    expect(liste.length).toBeGreaterThan(40);
+    const funde: string[] = [];
+    for (const d of liste) for (const t of texte(d)) for (const r of [...REGELN, MAKE_ALLEIN]) if (r.muster.test(t.text) && !erlaubt(d, r.id, t.text)) funde.push(`${d}:${t.zeile} [${r.id}] ${t.text.trim().slice(0, 140)}`);
+    expect(funde, `Feste Texte:\n${funde.join('\n')}`).toEqual([]);
+  });
+
   it('Antworten der Schnittstellen (app/api): keine Repo-Dateien, lokalen Umgebungen oder Ports in Texten', () => {
     const funde: string[] = [];
     const r = REGELN.find(x => x.id === 'datei')!;

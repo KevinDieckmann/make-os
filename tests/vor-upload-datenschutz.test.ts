@@ -7,7 +7,7 @@
 //   4. Stammdaten: Steuer-ID, SV-Nummer, IBAN nur für die Person selbst — auf dem Server; Schreiben nur mit Stand, 403/413.
 // Eigener Datenordner, erfundene Konten und Werte, Netz gesperrt, kein Modell.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -80,6 +80,13 @@ describe('2. ZOE-Grundauftrag ohne Persönliches', () => {
       const fund = t.split('\n').filter(z => VERBOTEN_IM_PROMPT.test(z));
       expect(fund, d).toEqual([]);
     }
+  });
+  // Gesamtprüfung 18.10. (L3 B9): Fulfillment (Analyse-Prompts), Recht, Gesellschafts-Schild, Agenten und KI lagen außerhalb dieses Wächters.
+  it('feste Texte in lib/fulfillment, lib/recht, lib/gesellschaften/schild, lib/agenten, lib/ki: keine Namen, keine Gesundheit, keine festen Firmen', () => {
+    const alle = (o: string): string[] => readdirSync(path.join(WURZEL, o)).flatMap(e => { const p = path.join(o, e); return statSync(path.join(WURZEL, p)).isDirectory() ? alle(p) : /\.tsx?$/.test(e) ? [p] : []; });
+    const liste = ['lib/fulfillment', 'lib/recht', 'lib/gesellschaften/schild', 'lib/agenten', 'lib/ki'].flatMap(alle);
+    expect(liste.length).toBeGreaterThan(40);
+    for (const d of liste) expect(ohneKommentare(lies(d)).split('\n').filter(z => VERBOTEN_IM_PROMPT.test(z)), d).toEqual([]);
   });
   it('die Agenten-Liste im ZOE-Prompt (agentRoster) nennt keine Person und keine Beschwerde', async () => {
     const { agentRoster } = await import('@/lib/make-one/agents-data');
