@@ -27,6 +27,7 @@ import { nachsorgeFaellig, markeNachsorge, NACHSORGE_TEXT, type NachsorgeArt } f
 import { vorlageFuerProdukt } from './vorlagen-anwenden';
 import { fnv } from './pruefen';
 import { ABLAUF_WERKZEUG_NACHRICHT, aktiveKnoten } from './ausfuehrung';
+import { verwaisteFaelleOrdnen } from './verwaist';
 
 /** Der Fall eines Mandats, wie er wirkt (Onboarding-Schritte abgeleitet) — null, wenn es keinen gibt. Nur lesend. */
 export async function fallLesen(mandatId: string): Promise<Fall | null> {
@@ -266,7 +267,8 @@ async function prozesseMorgenlaufRest(h: string, heute: string): Promise<Morgenl
 const plusMonate = (t: string, n: number) => { const d = new Date(`${t.slice(0, 10)}T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
 
 /**
- * Stakeholder-Haltung und -Notiz 12 Monate (einstellbar) nach Mandatsende entfernen; Fälle endgültig gelöschter Mandate entfernen.
+ * Stakeholder-Haltung und -Notiz 12 Monate (einstellbar) nach Mandatsende entfernen; Fälle endgültig gelöschter Mandate entfernen —
+ * erst 30 Tage nach der ersten Sichtung, nie ohne ein einziges Mandat, nie mehr als die Hälfte auf einmal (`./verwaist.ts`).
  * Nur Zähler, keine Namen. Liest das CRM mit Papierkorb — ist der CRM-Bestand nicht lesbar oder fehlt er, wird nichts entfernt.
  */
 export async function prozesseFristen(k: FristenKontext): Promise<Record<string, number>> {
@@ -277,11 +279,14 @@ export async function prozesseFristen(k: FristenKontext): Promise<Record<string,
   const h = await fulfillmentHaushalt();
   let haltung = 0, weg = 0;
   await fulfillmentAendern('faelle', d => {
+    // Verwaiste Fälle (17.10., L2 B5): erst markieren, nach `VERWAIST_TAGE` entfernen, Bremse ohne Mandate bzw. bei zu vielen auf einmal.
+    const v = verwaisteFaelleOrdnen(d.faelle, new Set(crm.mandate.map(x => x.id)), k.heute);
+    if (v.gebremst) console.error(`[loeschfristen] fulfillment-faelle: gebremst (${v.gebremst}) — kein Fall entfernt`);
+    weg = v.weg;
     const neu: typeof d.faelle = {};
-    for (const [mid, f] of Object.entries(d.faelle)) {
+    for (const [mid, f] of Object.entries(v.faelle)) {
       const m = crm.mandate.find(x => x.id === mid);
-      if (!m) { weg++; continue; }
-      const ende = mandatsEnde(m);
+      const ende = m ? mandatsEnde(m) : null;
       if (ende && plusMonate(ende, k.fristen.mandatsdatenMonate) <= k.heute && f.stakeholder.some(s => s.haltung || s.notiz)) {
         neu[mid] = { ...f, stakeholder: f.stakeholder.map(s => { if (!s.haltung && !s.notiz) return s; haltung++; const { haltung: _h, notiz: _n, ...r } = s; return r; }) };
       } else neu[mid] = f;
