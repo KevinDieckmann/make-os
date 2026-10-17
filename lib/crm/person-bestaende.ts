@@ -380,6 +380,13 @@ async function journalNamen(): Promise<string[]> {
   const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
   return namen.map(n => JOURNAL_DATEI.exec(n)?.[1]).filter((h): h is string => !!h).sort();
 }
+const FULFILLMENT_DATEI = /^(fulfillment-(faelle|personen)--([a-z0-9][a-z0-9-]{0,39}))\.json$/;
+/** Fulfillment-Fälle und -Personenkarten (je Haushalt) — aus den Dateinamen (nur vorhandene). */
+async function fulfillmentNamen(): Promise<{ name: string; art: 'faelle' | 'personen'; h: string }[]> {
+  const namen = await fs.readdir(datenOrdner()).catch(() => [] as string[]);
+  return namen.map(n => FULFILLMENT_DATEI.exec(n)).filter((m): m is RegExpExecArray => !!m)
+    .map(m => ({ name: m[1], art: m[2] as 'faelle' | 'personen', h: m[3] })).sort((a, b) => a.name.localeCompare(b.name));
+}
 const replayName = (h: HeadId) => `heads-replay-${h}`;
 /** Nur Speicher anfassen, die es gibt — nie einen leeren anlegen. */
 const da = async (name: string) => (await loadJson<unknown>(name)) !== null;
@@ -761,6 +768,21 @@ export async function personenUmbiegen(paare: ReadonlyMap<string, string>, opt: 
         zaehle(b, name, n);
         return n ? { ...(cur ?? {}), eintraege: l.map(e => (e.kontaktId && p.has(e.kontaktId) ? { ...e, kontaktId: p.get(e.kontaktId) } : e)) } : (cur ?? { eintraege: [] });
       });
+    }
+    // Fulfillment (18.10., Gesamtprüfung L3 A2): Stakeholder der Fälle und Personenkarten der Dossiers zeigen danach auf die behaltene Person —
+    // sonst fänden Art. 15/17 für sie Rolle, Haltung, Notiz und Karte nicht. Nur vorhandene Bestände, über die EINE Schreibstelle
+    // (`fulfillmentAendern`: Sperre, Grenzen, Änderungsprotokoll); im Kennungs-Umzug findet „weitere“ danach nichts mehr (idempotent).
+    const fulfillment = await fulfillmentNamen();
+    if (fulfillment.length) {
+      const [{ fulfillmentAendern }, { faelleUmbiegen, personenUmbiegen: kartenUmbiegen }] = await Promise.all([import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/umbiegen')]);
+      for (const { name, art, h } of fulfillment) {
+        let n = 0;
+        const r = art === 'faelle'
+          ? await fulfillmentAendern('faelle', d => { const x = faelleUmbiegen(d, p); n = x.n; return { ok: true, datei: x.datei, geaendert: [] }; }, { art: 'system' }, h)
+          : await fulfillmentAendern('personen', d => { const x = kartenUmbiegen(d, p); n = x.n; return { ok: true, datei: x.datei, geaendert: [] }; }, { art: 'system' }, h);
+        if (!r.ok) throw new Error(`${name}: ${r.fehler}`);
+        zaehle(b, name, n);
+      }
     }
   });
   await teil('ablage', async () => {
