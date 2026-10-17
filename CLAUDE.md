@@ -1531,6 +1531,12 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
   `KundenAnsicht praesentation` — keine zweite Filterlogik (Wächter tests/fulfillment-kundenreif.test.ts). Fall-Ops nehmen optional `am` (nachtragen, nie Zukunft);
   `Fall.startAm` (gewählter Starttag) nur über `fallStartTag`. Interne Marken nur als Zeichen mit Tooltip (`BausteinMarken`). Ein Sammel-Teilprozess
   („Weitere Bausteine“ bzw. gleichnamig mit der Phase) ist im Ablauf keine eigene Gruppe (`istSammelTeil`).
+- **Maximal einfach (17.10. spät, Branch `ff-einfach`; UPDATES.md):** „Heute im Fulfillment“ = EINE Liste über alle Fälle mit dem Handgriff in der Zeile — NUR aus
+  `heuteImFulfillment` (lib/fulfillment/prozesse/heute.ts: Cockpit-Zeile `naechster` + `haengt`, Kandidaten, `gewonneneOhneMandat`; Handgriff `knotenAktion` = die Regeln
+  der AblaufKarte/`statusOps`), gezeichnet NUR von `HeuteImFulfillment` (Fulfillment-Start oben, Heute › Business Widget `fulfillment`). Neue „zu tun“-Punkte dort
+  einhängen, nie eine zweite Liste. Fall starten am gewonnenen Deal NUR über `FallAmDeal` (vorhandener Mandats-Weg + `StartDialog`). Sichtbare Texte ohne Fachbegriffe
+  (`FACHBEGRIFFE` in lib/fulfillment/fachbegriffe.ts; „Bestätigung“ über `BESTAETIGUNG`/`bestaetigungTitel`, Analysen über `agentText` = Name) — Kennungen bleiben.
+  Wächter `tests/fulfillment-heute.test.ts`.
 
 ### C2 — Kunden-Link (10.10., Paket C2, Branch `fulfillment-c2`, nur lokal; FULFILLMENT_KONZEPT.md 5.2/5.4/5.5/6.4, UPDATES.md)
 - **Kommt AUSGESCHALTET — zwei Schlüssel:** Umgebung `MAKE_OS_KUNDENLINK=an` (Betrieb, erst nach Prüfung 12.4 + Kevins Freigabe) UND Instanz-Schalter
