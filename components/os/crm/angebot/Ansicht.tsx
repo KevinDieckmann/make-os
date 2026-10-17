@@ -25,6 +25,7 @@ import { angebotDokument } from '@/lib/crm/angebot-dokument';
 import { ANGEBOT_STATUS_LABEL, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, mailtoLink } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { Blatt } from './Blatt';
+import { FallAmDeal } from '../../fulfillment/prozesse/FallAmDeal';
 import { angebotPost, mandatAusDeal, pdfDateiHolen, pdfLaden, pdfTeilen, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 
 export const STATUS_FARBE: Record<Angebot['status'], string> = { entwurf: C.inkDim, gestellt: LEUCHT.business, angenommen: LEUCHT.gut, abgelehnt: LEUCHT.kritisch, abgelaufen: C.inkLeise, ersetzt: C.inkLeise };
@@ -155,7 +156,9 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           {!nur && a.status !== 'angenommen' && a.status !== 'ersetzt' && !(nachfolger && nachfolger.status === 'entwurf') && (
             <Knopf leise onClick={async () => { const r = await angebotPost({ aktion: 'version', id: a.id }); if (r.ok && r.angebot) { daten.uebernehmen(r.angebot); onOeffnen(r.angebot.id); } else setMeldung(r.fehler ?? 'Keine neue Version.'); }}>Neue Version</Knopf>
           )}
-          {!nur && a.status === 'angenommen' && deal && !hatMandat && !mandat && <Knopf farbe={LEUCHT.gut} onClick={mandatAnlegen}>Mandat anlegen</Knopf>}
+          {/* Ein Handgriff wie am Deal (17.10., Gesamtprüfung L1 B11): „Mandat anlegen & Fall starten“ steht darunter (FallAmDeal); nur ein gemischtes Angebot legt das
+              Mandat hier an (danach plant es den Einmalbetrag). */}
+          {!nur && a.status === 'angenommen' && deal && !hatMandat && !mandat && gemischt && <Knopf farbe={LEUCHT.gut} onClick={mandatAnlegen}>Mandat anlegen</Knopf>}
           {mandat && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, alignSelf: 'center' }}>{mandat}</span>}
           {a.status === 'angenommen' && hatMandat && !mandat && <Chip farbe={LEUCHT.gut}>Mandat angelegt</Chip>}
           {a.status === 'angenommen' && mandatZiel && <Link href={WEG.mandat(mandatZiel)} style={{ ...link, alignSelf: 'center' }}>Zum Mandat ›</Link>}
@@ -165,8 +168,10 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           {einmal?.fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, alignSelf: 'center' }}>{einmal.fehler}</span>}
           {/* Angebot → Rechnung (08.10.): Entwurf mit den Positionen, Kunde, Mandat und Gesellschaft — gestellt wird im Editor. */}
           {/* Gemischt mit Mandat (3.6): Einmalbetrag und Monatsrechnung laufen getrennt — keine Rechnung über alle Positionen daneben. */}
-          {!nur && a.status === 'angenommen' && !(gemischt && mandatZiel) && <RechnungAusAngebot angebotId={a.id} onFehler={setMeldung} />}
+          {/* Mit Mandat schreibt das Mandat die Rechnungen („Erste Rechnung“) — kein zweiter Knopf daneben (17.10., L1 B9: legte einen weiteren Entwurf an). */}
+          {!nur && a.status === 'angenommen' && !mandatZiel && <RechnungAusAngebot angebotId={a.id} onFehler={setMeldung} />}
         </div>
+        {!nur && a.status === 'angenommen' && deal && !(gemischt && !hatMandat && !mandat) && <FallAmDeal api={api} chanceId={deal.id} />}
         {ablehnen && (
           <div style={{ display: 'grid', gap: 8, marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
             <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Warum abgelehnt? (Pflicht — der Grund geht als Verlustgrund an den Deal)</div>
