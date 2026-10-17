@@ -45,6 +45,8 @@ export function bildSpalten(z: ReiseZeile): BildSpalte[] {
     unter: s.zustand === 'fertig' ? 'erledigt' : s.gesamt ? `${s.erledigt} von ${s.gesamt}` : undefined,
     ...(s.abstimmung ? { raute: { titel: `Abstimmungspunkt${s.abstimmung.nr ? ` ${s.abstimmung.nr}` : ''}${s.abstimmung.titel ? ` · ${s.abstimmung.titel}` : ''}`, gegeben: s.abstimmung.gegeben, hier: s.abstimmung.hier, ...(s.abstimmung.haengt ? { haengt: s.abstimmung.haengt } : {}) } } : {}),
     band: { ...(band[i] ? { text: band[i] } : {}), ...(band[i] && band[i] !== BAND_NICHTS ? { achtung: true } : {}), intern: !s.band.sieht },
+    // Phasen eines angehängten Zusatzmoduls (17.10. spät): eigener Abschnitt der Reise mit dem Titel des Moduls.
+    ...(s.modul ? { abschnitt: { id: s.modul.id, titel: s.modul.titel } } : {}),
   }));
 }
 

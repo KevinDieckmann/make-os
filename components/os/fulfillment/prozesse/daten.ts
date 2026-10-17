@@ -25,7 +25,7 @@ export type MitStand<T> = T & { stand: string };
 export type BausteinKurz = MitStand<Omit<Baustein, 'text' | 'fragen' | 'gliederung'>> & { gliederungAnzahl: number; fragenAnzahl: number; nurIntern: boolean; rechtOffen: boolean; vorVerkaufOffen: boolean; steckt: number; /** läuft im Onboarding jedes Falls (Playbook, Willkommensmail) */ imOnboarding?: boolean };
 export type VorlageMitStand = MitStand<Omit<ProzessVorlage, 'knoten'>> & { knoten: MitStand<ProzessKnoten>[] };
 export interface Kandidat extends OnboardingKandidat { uhr: WillkommenUhr; vorlage?: { id: string; titel: string }; vorgeschlagen: boolean }
-export interface FallZeile extends FallKurz { vorlageId: string; kunde: string; titel: string }
+export interface FallZeile extends FallKurz { vorlageId: string; kunde: string; titel: string; /** Angehängte Zusatzmodule (Kennungen ihrer Vorlagen, 17.10. spät). */ zusaetze?: string[] }
 export interface Uebersicht {
   inhaber: boolean;
   /** Darf Abläufe bearbeiten (volle Mitglieder; Rolle „nur Business“ sieht nur — Prozess-Editor, 17.10.). */
@@ -44,7 +44,7 @@ export interface Uebersicht {
   kennzahlen: FfKennzahl[];
   leistungen: { id: string; name: string; status: string }[];
 }
-export interface UebersichtKurz { kandidaten: Kandidat[]; zuordnung: Record<string, { vorlageId: string }>; faelle: Record<string, FallZeile>; prozesse: { id: string; titel: string; art: string }[] }
+export interface UebersichtKurz { kandidaten: Kandidat[]; zuordnung: Record<string, { vorlageId: string }>; faelle: Record<string, FallZeile>; prozesse: { id: string; titel: string; art: string; zusatz?: true }[] }
 
 export interface MandatKurz { id: string; titel: string; kunde: string; firmaId: string | null; kontaktIds: string[]; leistungId: string | null; ziele: Mandat['ziele']; gesellschaft: string; status: string; start: string | null; zustaendig: string | null; business: boolean }
 export interface FallAntwort {
@@ -57,7 +57,7 @@ export interface FallAntwort {
   diff?: VorlagenDiff | null;
   /** Alter Fall ohne Formen, die Vorlage hat welche: die Ausführung startet erst mit „Vorlage übernehmen“ (17.10. abends, `ausfuehrungNachUebernahme`). */
   ausfuehrungWartet?: boolean;
-  vorlage?: { id: string; titel: string; fassung: number; freigaben: Freigabepunkt[]; rollen: Rolle[] };
+  vorlage?: { id: string; titel: string; fassung: number; freigaben: Freigabepunkt[]; rollen: Rolle[]; zusatz?: true };
   wartet?: WartetPunkt[];
   wertKonto?: WertKontoZeile[];
   fortschritt?: number;
@@ -82,6 +82,8 @@ export interface FallAntwort {
   nachsorge?: { ende: string | null; plan: NachsorgePunkt[] };
   /** Ausführung der Abläufe (17.10. abends): Stand je Knoten mit Form — dran, Runde, Frist, Aufgabe und ihr Stand. */
   ablauf?: { aktiv: boolean; knoten: Record<string, AblaufKnotenStand & { aufgabeStatus?: string }> };
+  /** Angehängte Zusatzmodule (17.10. spät): Titel, Starttag, Fassung im Fall und — bei neuer Fassung — der Diff. */
+  zusaetze?: { vorlageId: string; titel: string; startAm: string; fassung: number; diff: VorlagenDiff | null }[];
 }
 export interface CockpitAntwort { heute: string; zeilen: CockpitZeile[]; haengt: Haenger[]; kapa: { stundenWoche: number; frei: number | null; ueber: boolean } | null }
 export type { KnotenStatus };

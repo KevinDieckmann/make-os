@@ -12,11 +12,13 @@
 // Markenzeichen: der Flow (17.10.): unter der Zeile läuft der Weg als Lichtfaden (`FlowLinie`, lib/lichtfaeden/flow.ts) — hell bis „Hier“, dahinter ruhig und
 // ausgefranst, Stau an offenen Rauten; das Band sitzt darauf (seine untere Kante IST der Faden). Stand nur aus denselben Spalten (lib/reise/flow.ts
 // `reiseFlow`), gemessen wird nur die Lage. Am Handy läuft der Faden links an der Liste hinunter. `flow="still"` (Kunden-Seite) = Standbild, `aus` = ohne.
+// Abschnitte (17.10. spät — Zusatzmodul): tragen Stufen `abschnitt`, steht jeder Abschnitt als eigene Zeile mit einem leisen Titel darunter — eigenes „Hier“,
+// eigener Faden (`reiseAbschnitte`, lib/reise/bild.ts). Ohne Abschnitte bleibt alles genau EINE Zeile.
 
 import { Fragment, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { Check, Mail, CalendarClock, BellRing, AlertCircle } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT, LEUCHT } from '@/lib/make-one/design';
-import type { BildKaestchen, BildSpalte, FlussForm, KaestchenZustand, ReiseZustand } from '@/lib/reise/bild';
+import { reiseAbschnitte, type BildKaestchen, type BildSpalte, type FlussForm, type KaestchenZustand, type ReiseZustand } from '@/lib/reise/bild';
 import { reiseFlow, reiseFaden, type ReiseLagen } from '@/lib/reise/flow';
 import { JETZT, FORM_FARBE, FLOW_TON, FreigabeRaute } from './formen';
 import { FlowLinie } from '../flow';
@@ -89,13 +91,35 @@ function reiseLagen(eltern: HTMLElement, box: DOMRect, n: number): ReiseLagen | 
   return { stufen, grenzen, quer: achse === 'quer' ? box.height / 2 : box.width / 2, achse };
 }
 
-export function ReiseBild({ spalten, hierText = 'Hier', bandTitel = 'Kunde', band: mitBand = true, wort = 'Phase', mehrWort = 'Schritte', aktiv, gewaehlt, onPhase, onKaestchen, onRaute, gross, label = 'Reise des Kunden durch die Phasen', griff, rauteSchalter, ende, flow = 'an' }: {
+interface ReiseBildProps {
   spalten: readonly BildSpalte[]; hierText?: string; bandTitel?: string; band?: boolean; wort?: string; mehrWort?: string; aktiv?: string | null; gewaehlt?: string | null;
   onPhase?: (id: string) => void; onKaestchen?: (phaseId: string, id: string) => void; onRaute?: (phaseId: string) => void; gross?: boolean; label?: string;
   griff?: (phaseId: string) => Record<string, unknown>; rauteSchalter?: (phaseId: string) => ReactNode; ende?: ReactNode;
   /** Der Faden (Markenzeichen): `an` (Vorgabe) · `still` = Standbild ohne Bewegung (Kunden-Seite, Präsentation) · `aus`. */
   flow?: 'an' | 'still' | 'aus';
-}) {
+}
+const LABEL = 'Reise des Kunden durch die Phasen';
+
+/**
+ * Die Reise. Ohne Abschnitte EINE Zeile (wie bisher); mit Abschnitten (Zusatzmodul) je Abschnitt eine Zeile — der eigene Abschnitt dezent abgesetzt mit seinem
+ * Titel, jede Zeile mit eigenem „Hier“ und eigenem Faden. Das Ende (Abschluss) gehört zur ersten Zeile.
+ */
+export function ReiseBild(p: ReiseBildProps) {
+  if (!p.spalten.some(s => s.abschnitt)) return <ReiseZeile {...p} />;
+  const teile = reiseAbschnitte(p.spalten);
+  return (
+    <div className="ff-reise-abschnitte" style={{ display: 'grid', gap: 12, minWidth: 0 }}>
+      {teile.map((t, i) => (
+        <div key={t.abschnitt?.id ?? 'grund'} data-reise-abschnitt={t.abschnitt?.id} style={{ display: 'grid', gap: 4, minWidth: 0, ...(t.abschnitt ? { borderTop: `1px dashed ${RAND.flaeche}`, paddingTop: 8 } : {}) }}>
+          {t.abschnitt && <span style={{ ...MIKRO, color: C.inkLeise }}>Zusatzmodul · {t.abschnitt.titel}</span>}
+          <ReiseZeile {...p} spalten={t.spalten} ende={i === 0 ? p.ende : undefined} label={t.abschnitt ? `${p.label ?? LABEL} — Zusatzmodul „${t.abschnitt.titel}“` : p.label} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ReiseZeile({ spalten, hierText = 'Hier', bandTitel = 'Kunde', band: mitBand = true, wort = 'Phase', mehrWort = 'Schritte', aktiv, gewaehlt, onPhase, onKaestchen, onRaute, gross, label = LABEL, griff, rauteSchalter, ende, flow = 'an' }: ReiseBildProps) {
   // Der Stand des Fadens aus denselben Spalten wie die Zeile („Hier“ = die Stufe `jetzt`) — gemessen wird in der Zeichnung nur die Lage.
   const stand = useMemo(() => reiseFlow(spalten), [spalten]);
   if (!spalten.length && !ende) return null;

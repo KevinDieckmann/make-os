@@ -9,7 +9,7 @@
 import type { Fall, FallKnoten, Freigabepunkt, KnotenForm, KnotenStatus, Zustaendig } from '../typen';
 import { MUSTER_ONBOARDING, type OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
-import { aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
+import { aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
 import { obKnotenId, obSchluessel, type OnboardingStand } from './onboarding';
 import { SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE } from './phasen';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz } from './darstellung';
@@ -32,18 +32,26 @@ export interface ReisePhase {
   anteil: number;
   faelligAm?: string; ueberfaellig: boolean; wartet: number; entfaellt: boolean;
   freigabe?: ReiseFreigabe;
+  /**
+   * Phase eines angehängten Zusatzmoduls (17.10. spät): Kennung der Vorlage und ihr Titel (ohne „(Zusatzmodul)“) — die Reise zeichnet den Abschnitt markiert.
+   * Fehlt: die Phase gehört zum Paket des Falls. Ein Abschnitt läuft neben dem Paket (seine laufende Phase ist ebenfalls „jetzt“).
+   */
+  modul?: { id: string; titel: string };
 }
+/** Der Titel eines Zusatzmoduls in der Anzeige — ohne angehängtes „(Zusatzmodul)“ (die Markierung sagt es schon). */
+export const modulTitel = (t: string): string => titelOhneZusatz(t).replace(/\s*\(\s*zusatzmodul\s*\)\s*$/i, '').trim() || titelOhneZusatz(t);
 export interface Reise { phasen: ReisePhase[]; /** Index der Phase „jetzt“ — -1, wenn alles fertig ist. */ jetzt: number; fortschritt: number; fertig: boolean }
 
 /** Wer eine Freigabe gibt — in Worten. */
 export const FREIGABE_WER: Record<Zustaendig, string> = { kunde: 'der Kunde bestätigt', intern: 'ihr bestätigt intern', beide: 'Kunde und ihr bestätigen gemeinsam' };
 
 /** Die Reise eines Falls: Phasen in Rang-Reihenfolge mit Zustand, Anteil, Freigabe-Punkt; `jetzt` = die Phase von `aktuellerKnoten`. */
-export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], heute: string): Reise {
+export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'> & Partial<Pick<Fall, 'zusaetze'>>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], heute: string): Reise {
   const l = fall.knoten;
   const wurzel = wurzelVon(l);
   const phasen = wurzel ? kinderVon(wurzel.id, l) : [];
-  const aktuell = aktuellerKnoten(fall).phase?.id;
+  // „jetzt“: die Phase von `aktuellerKnoten` und je angehängtem Zusatzmodul seine laufende Phase (17.10. spät — die Abschnitte laufen nebeneinander).
+  const aktuell = jetztPhasen(fall);
   const nummern = abstimmungsNummern(l);
   const raus: ReisePhase[] = phasen.map((p, i) => {
     const zeilen = phaseGruppen(fall, p.id, heute).flatMap(g => g.zeilen);
@@ -56,7 +64,7 @@ export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'>, freigaben: r
     const zusatz = titelZusatz(p.titel);
     return {
       id: p.id, titel: titelOhneZusatz(p.titel), ...(zusatz ? { zusatz } : {}), nr: i + 1,
-      zustand: istFertig ? 'fertig' : p.id === aktuell ? 'jetzt' : 'offen',
+      zustand: istFertig ? 'fertig' : aktuell.has(p.id) ? 'jetzt' : 'offen',
       erledigt, gesamt: zaehlend.length,
       anteil: zaehlend.length ? erledigt / zaehlend.length : istFertig ? 1 : 0,
       ...(p.faelligAm ? { faelligAm: p.faelligAm } : {}),
@@ -64,6 +72,7 @@ export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'>, freigaben: r
       wartet: darin.filter(k => k.status === 'wartet_kunde').length,
       entfaellt: p.status === 'entfaellt',
       ...(p.freigabe ? { freigabe: { id: p.freigabe, titel: fg?.titel ?? '', wer: fg?.wer ?? 'beide', gegeben: !!gegeben, ...(gegeben ? { am: gegeben.am } : {}), ...(nummern.get(p.freigabe) ? { nr: nummern.get(p.freigabe)! } : {}) } } : {}),
+      ...(p.zusatz ? { modul: { id: p.zusatz, titel: modulTitel(fall.zusaetze?.find(z => z.vorlageId === p.zusatz)?.titel ?? 'Zusatzmodul') } } : {}),
     } satisfies ReisePhase;
   });
   const jetzt = raus.findIndex(p => p.zustand === 'jetzt');

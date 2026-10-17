@@ -54,6 +54,25 @@ export interface BildSpalte {
   raute?: { titel: string; gegeben: boolean; hier?: boolean; haengt?: Haengt; gegebenText?: string };
   /** Das Band unter der Stufe: ein kurzer Satz (was beim Kunden liegt), `achtung` = es liegt etwas bei ihm, `intern` = diese Stufe sieht er nicht. */
   band?: { text?: string; achtung?: boolean; intern?: boolean };
+  /**
+   * Eigener Abschnitt der Reise (17.10. spät — Zusatzmodul im Fulfillment): Stufen mit demselben Abschnitt stehen als eigene Zeile mit Titel darunter — mit
+   * eigenem „Hier“ und eigenem Faden (sie laufen neben den übrigen Stufen). Fehlt überall: die Reise ist wie bisher EINE Zeile.
+   */
+  abschnitt?: { id: string; titel: string };
+}
+
+/**
+ * Die Abschnitte einer Reise (rein): zuerst die Stufen ohne Abschnitt, dann je Abschnitt seine Stufen (Reihenfolge des ersten Auftretens). Ohne Abschnitte
+ * genau EIN Teil mit allen Stufen.
+ */
+export function reiseAbschnitte<S extends Pick<BildSpalte, 'abschnitt'>>(spalten: readonly S[]): { abschnitt: { id: string; titel: string } | null; spalten: S[] }[] {
+  const raus: { abschnitt: { id: string; titel: string } | null; spalten: S[] }[] = [{ abschnitt: null, spalten: spalten.filter(s => !s.abschnitt) }];
+  for (const s of spalten) {
+    if (!s.abschnitt) continue;
+    const da = raus.find(t => t.abschnitt?.id === s.abschnitt!.id);
+    if (da) da.spalten.push(s); else raus.push({ abschnitt: s.abschnitt, spalten: [s] });
+  }
+  return raus[0].spalten.length || raus.length === 1 ? raus : raus.slice(1);
 }
 
 // ── Der Fluss einer Stufe (was components/os/ui/reise/Fluss.tsx zeichnet) ─────────────────────────────────────────────────────────────────

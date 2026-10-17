@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { FARBE as C, TYP, MIKRO, TIEF, ECKE, FLAECHE_STIL, SCHRIFT } from '@/lib/make-one/design';
 import { SquareCheck, FileText, ScrollText, ListChecks, Mail, BarChart3, Repeat, ClipboardList, BookOpen, Search, Stamp, type LucideIcon } from 'lucide-react';
 import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Pillen, Feldzeile, Schalter, useRueckfrage } from '../../ui';
@@ -144,6 +145,7 @@ function BausteinDetail({ id, daten, onZurueck }: { id: string; daten: Uebersich
       <Karte i={1}>
         <Ueberschrift rechts={<span>Fassung {b.fassung}{b.vonHand ? ' · von Hand geändert' : ''}</span>}>{b.titel}</Ueberschrift>
         {kurz && <BausteinMarken b={kurz} />}
+        <SieheAuch ids={b.sieheAuch ?? []} daten={daten} />
         {b.rechtPruefen && (
           <Hinweis art={b.rechtGeprueft ? 'gut' : 'achtung'} titel={b.rechtGeprueft ? `Rechtlich geprüft am ${tagLang(b.rechtGeprueft.am)}` : 'Vor Einsatz rechtlich prüfen'}
             aktion={!b.rechtGeprueft ? <Knopf leise onClick={async () => { const n = await frage.fragen('Notiz zur Prüfung (wer, was angepasst)'); if (n) { const a = await vorlagenOps([{ op: 'recht-geprueft', id: b.id, notiz: n }]); setFehler(a.ok ? null : fehlerText(a)); } }}>Als geprüft vermerken</Knopf> : undefined}>
@@ -191,6 +193,23 @@ function BausteinDetail({ id, daten, onZurueck }: { id: string; daten: Uebersich
         </Leiste>
       </Karte>
       {dialog}{frage.dialog}
+    </div>
+  );
+}
+
+/**
+ * „Siehe auch: …“ (17.10. spät) — kleine Links auf verwandte Bausteine der Bibliothek; ein Tipp öffnet den Baustein. Verweise auf gelöschte Bausteine
+ * liefert der Server schon nicht mehr (lib/fulfillment/lesen.ts); was die Kurzliste nicht kennt, steht nicht da.
+ */
+function SieheAuch({ ids, daten }: { ids: readonly string[]; daten: Uebersicht }) {
+  const liste = ids.map(id => daten.bausteine.find(x => x.id === id)).filter((x): x is Uebersicht['bausteine'][number] => !!x);
+  if (!liste.length) return null;
+  return (
+    <div data-ff-siehe-auch style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0 10px', fontSize: TYP.bedien, color: C.inkLeise }}>
+      <span>Siehe auch:</span>
+      {liste.map(x => (
+        <Link key={x.id} href={WEG.fulfillment('bausteine', { b: x.id })} scroll={false} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.aktiv, textDecoration: 'none', overflowWrap: 'anywhere' }}>{x.titel}</Link>
+      ))}
     </div>
   );
 }

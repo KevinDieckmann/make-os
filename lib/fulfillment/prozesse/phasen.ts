@@ -74,6 +74,8 @@ export function phasenRang(titel: string): number {
 }
 
 type Knotenartig = { id: string; elternId?: string; titel: string; rang: number };
+/** Phase eines angehängten Zusatzmoduls (Fall, 17.10. spät)? Trägt die Kennung seiner Vorlage in `zusatz`. */
+const istZusatzPhase = (p: object): boolean => typeof (p as { zusatz?: unknown }).zusatz === 'string';
 
 /** Die Phasen (Ebene 2) in der Reihenfolge der Regel — stabil: gleicher Rang behält die bisherige Reihenfolge. */
 export function phasenSortiert<T extends Knotenartig>(phasen: readonly T[]): T[] {
@@ -134,14 +136,16 @@ export function phasenOrdnen<T extends Knotenartig>(knoten: T[], o: { hohl?: (k:
   if (o.hohl) {
     for (const p of kinderVon(w.id, liste)) {
       const x = phaseVon(p.titel);
-      if (!x?.dach || !o.hohl(p)) continue;
-      const ziel = kinderVon(w.id, liste).find(q => q.id !== p.id && phaseVon(q.titel)?.id === x.id && !phaseVon(q.titel)?.dach);
+      if (!x?.dach || !o.hohl(p) || istZusatzPhase(p)) continue;
+      const ziel = kinderVon(w.id, liste).find(q => q.id !== p.id && !istZusatzPhase(q) && phaseVon(q.titel)?.id === x.id && !phaseVon(q.titel)?.dach);
       if (!ziel) continue;
       liste = hineinlegen(liste, p.id, ziel.id, o.hohl).filter(k => k.id !== p.id);
     }
   }
   const phasen = kinderVon(w.id, liste);
-  const sortiert = phasenSortiert(phasen);
+  // Phasen eines angehängten Zusatzmoduls (17.10. spät, `FallKnoten.zusatz`) stehen als eigener Abschnitt hinter denen des Pakets — in ihrer Reihenfolge,
+  // nie nach der Regel einsortiert und nie mit einer Phase des Pakets zusammengelegt.
+  const sortiert = [...phasenSortiert(phasen.filter(p => !istZusatzPhase(p))), ...phasen.filter(istZusatzPhase)];
   if (sortiert.every((p, i) => p === phasen[i])) return liste;
   const rang = new Map(sortiert.map((p, i) => [p.id, i + 1]));
   return liste.map(k => (rang.has(k.id) ? { ...k, rang: rang.get(k.id)! } : k));

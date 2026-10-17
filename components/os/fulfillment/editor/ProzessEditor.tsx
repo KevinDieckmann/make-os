@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent as RKeyboa
 import { useRouter } from 'next/navigation';
 import { Undo2, Redo2, ArrowLeft, Plus } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, RAND, ECKE, SCHRIFT, FLAECHE_STIL } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Hinweis, Klappbar, useHandy, useRueckfrage, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Knopf, Hinweis, Klappbar, Schalter, useHandy, useRueckfrage, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { neueKennung } from '@/lib/kennung';
 import { editorModell, FORM_TITEL, FORM_VORGABE, type EditorKnoten, type EditorOp, type EditorPhase, type EditorZiel } from '@/lib/fulfillment/prozesse/editor';
@@ -294,6 +294,8 @@ export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }:
         <div style={klein}>
           Änderungen gelten für neue Fälle{d.laufend ? ` — ${d.laufend === 1 ? 'der laufende Fall zeigt' : `die ${d.laufend} laufenden Fälle zeigen`} „Vorlage geändert“ und übernimmt sie erst per Klick` : ''}.
         </div>
+        {/* Vorlagen-Einstellung (17.10. spät): Zusatzmodul — hängt an einen laufenden Fall an statt einen zweiten anzulegen; keine neue Fassung. */}
+        <Schalter an={!!d.vorlage.zusatz} aus={!darf || laeuft} onChange={an => { if (darf) void senden([{ op: 'zusatz', an }]); }} erklaerung="fulfillment.zusatzmodul">Zusatzmodul</Schalter>
         {!darf && <Hinweis art="info">Nur ansehen — Abläufe bearbeiten volle Mitglieder.</Hinweis>}
         <Meldung text={meldung?.text ?? null} art={meldung?.art} />
         <WahlKnoepfe label="Ansicht des Ablaufs" liste={[{ id: 'fluss' as const, label: handy ? 'Liste' : 'Fluss' }, { id: 'flaeche' as const, label: handy ? 'Fläche (ansehen)' : 'Fläche' }]} aktiv={ansicht} onWahl={setAnsicht} />

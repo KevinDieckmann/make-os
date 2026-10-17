@@ -85,6 +85,8 @@ export function wertKontoFestgelegt(fall: Pick<Fall, 'wertKonto'>, ziele: Onboar
 }
 
 export function onboardingStand(fall: Fall, a: OnboardingAbleitung): OnboardingStand {
+  // Aus einem Zusatzmodul ohne laufenden Fall gestartet (17.10. spät): kein Onboarding — nichts offen, keine 24-h-Uhr.
+  if (fall.ohneOnboarding) return { schritte: [], fertig: true, offen: 0, willkommen: { ueberfaellig: false } };
   const kn = new Map(fall.knoten.map(k => [k.id, k]));
   const uhr = willkommenUhr(a.unterschrift, a.willkommenStunden, fall.onboarding.willkommenGesendetAm, a.jetzt);
   const entscheider = fall.stakeholder.some(s => s.rolle === 'entscheider');

@@ -19,7 +19,9 @@ import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, onboard
 import { fallStartTag, diffVorschau } from '@/lib/fulfillment/prozesse/fall';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
-import { useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, type FallAntwort } from './daten';
+import { useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, neueAnfrageId, type FallAntwort } from './daten';
+import { Wahl } from '../../crm/Wahl';
+import { localDay } from '@/lib/zeit';
 import { StartDialog } from './Onboarding';
 import { MailSenden, type MailEntwurf } from './MailSenden';
 import { klein, feld, Leiste } from './teile';
@@ -59,15 +61,23 @@ export function OnboardingMehr({ daten, schluessel, fragen }: { daten: FallAntwo
  * (Prozess-Editor, 17.10.; Regel lib/fulfillment/prozesse/fall.ts `vorlageUebernehmen`).
  */
 export function VorlageGeaendert({ daten, onMeldung }: { daten: FallAntwort; onMeldung: (m: FallMeldung) => void }) {
+  // Das Paket des Falls und jedes angehängte Zusatzmodul (17.10. spät) — je eine Neuigkeit mit derselben Vorschau und demselben „Übernehmen“.
+  return (
+    <>
+      {daten.diff && <DiffHinweis d={daten.diff} titel="Vorlage geändert" mandatId={daten.mandat.id} onMeldung={onMeldung} />}
+      {(daten.zusaetze ?? []).map(z => z.diff && <DiffHinweis key={z.vorlageId} d={z.diff} titel={`Zusatzmodul „${z.titel}“ geändert`} mandatId={daten.mandat.id} vorlageId={z.vorlageId} onMeldung={onMeldung} />)}
+    </>
+  );
+}
+
+function DiffHinweis({ d, titel, mandatId, vorlageId, onMeldung }: { d: NonNullable<FallAntwort['diff']>; titel: string; mandatId: string; vorlageId?: string; onMeldung: (m: FallMeldung) => void }) {
   const [auf, setAuf] = useState(false);
-  const d = daten.diff;
-  if (!d || !(d.neu.length + d.geaendert.length + (d.reihenfolge?.length ?? 0))) return null;
+  if (!(d.neu.length + d.geaendert.length + (d.reihenfolge?.length ?? 0))) return null;
   const reihe = d.reihenfolge ?? [];
   const teile = [d.neu.length ? `${d.neu.length} neu` : '', d.geaendert.length ? `${d.geaendert.length} geändert` : '', reihe.length ? `neue Reihenfolge in ${reihe.length}` : '', d.entfernt.length ? `${d.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''].filter(Boolean);
-  return (
-    <div id="ff-vorlage-geaendert" style={{ scrollMarginTop: 80 }}>
-    <Hinweis art="info" titel={`Vorlage geändert — übernehmen? (Fassung ${d.von} → ${d.nach})`}
-      aktion={<Erklaert erklaerung="fulfillment.vorlageDiff" name="Vorlage übernehmen"><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'vorlage-uebernehmen', mandatId: daten.mandat.id }); onMeldung(a.ok ? { text: 'Neue Fassung übernommen — erledigte Schritte bleiben, wie sie sind.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Übernehmen</Knopf></Erklaert>}>
+  const inhalt = (
+    <Hinweis art="info" titel={`${titel} — übernehmen? (Fassung ${d.von} → ${d.nach})`}
+      aktion={<Erklaert erklaerung="fulfillment.vorlageDiff" name="Vorlage übernehmen"><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'vorlage-uebernehmen', mandatId, ...(vorlageId ? { vorlageId } : {}) }); onMeldung(a.ok ? { text: 'Neue Fassung übernommen — erledigte Schritte bleiben, wie sie sind.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Übernehmen</Knopf></Erklaert>}>
       <span>{teile.join(' · ')} — erledigte Schritte bleiben erledigt, nichts geht verloren. </span>
       <button type="button" className="fassbar" aria-expanded={auf} onClick={() => setAuf(!auf)} style={{ minHeight: 44, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', padding: 0, fontSize: TYP.bedien }}>{auf ? 'Vorschau schließen' : 'Was sich ändert ›'}</button>
       {auf && (
@@ -81,8 +91,9 @@ export function VorlageGeaendert({ daten, onMeldung }: { daten: FallAntwort; onM
         </div>
       )}
     </Hinweis>
-    </div>
   );
+  // Der Sprung „Vorlage übernehmen, damit die Ausführung startet“ zielt auf die Übernahme des PAKETS — ein Zusatzmodul hat keine Marke.
+  return vorlageId ? inhalt : <div id="ff-vorlage-geaendert" style={{ scrollMarginTop: 80 }}>{inhalt}</div>;
 }
 
 /**
@@ -99,23 +110,60 @@ export function AusfuehrungWartet({ daten }: { daten: FallAntwort }) {
   );
 }
 
-/** Der Status des Falls (läuft · pausiert · abgeschlossen) — ruhig am Ende der Reise. */
+/** Der Status des Falls (läuft · pausiert · abgeschlossen) — ruhig am Ende der Reise; darunter die angehängten Zusatzmodule und „Zusatzmodul anhängen“. */
 export function FallStatus({ daten, ops }: { daten: FallAntwort; ops: Ops }) {
   const f = daten.fall!;
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center' }}>
-      <span style={{ ...MIKRO }}>Status des Falls</span>
-      <Pillen liste={STATUS} aktiv={f.status === 'onboarding' ? null : f.status} onWahl={status => ops([{ op: 'fall-status', status }])} />
-      {/* Abnahme B8: der Starttag des Falls (`fallStartTag` — der gewählte, nicht der Tag des Anlegens), Unterschrift zuerst. */}
-      <span style={klein}>{daten.unterschrift ? `Unterschrift ${tagKurz(daten.unterschrift.am)} · ` : ''}Fall gestartet {tagKurz(fallStartTag(f))}{f.status === 'onboarding' ? ' · wechselt nach dem Onboarding von selbst auf „läuft“' : ''}</span>
+    <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center' }}>
+        <span style={{ ...MIKRO }}>Status des Falls</span>
+        <Pillen liste={STATUS} aktiv={f.status === 'onboarding' ? null : f.status} onWahl={status => ops([{ op: 'fall-status', status }])} />
+        {/* Abnahme B8: der Starttag des Falls (`fallStartTag` — der gewählte, nicht der Tag des Anlegens), Unterschrift zuerst. */}
+        <span style={klein}>{daten.unterschrift ? `Unterschrift ${tagKurz(daten.unterschrift.am)} · ` : ''}Fall gestartet {tagKurz(fallStartTag(f))}{f.status === 'onboarding' ? ' · wechselt nach dem Onboarding von selbst auf „läuft“' : ''}{f.ohneOnboarding ? ' · Zusatzmodul ohne Onboarding' : ''}</span>
+      </div>
+      {!!daten.zusaetze?.length && <span style={klein}>Zusatzmodule: {daten.zusaetze.map(z => `${z.titel} (ab ${tagKurz(z.startAm)})`).join(' · ')}</span>}
+      <ZusatzAnhaengen daten={daten} />
     </div>
+  );
+}
+
+/**
+ * „Zusatzmodul anhängen“ (17.10. spät): ein Paket mit „Zusatzmodul“ an diesen laufenden Fall hängen — kein zweiter Fall, kein zweites Onboarding. Derselbe
+ * Weg wie „Onboarding starten“ (POST starten, idempotent über die Anfrage-Kennung); der Server entscheidet, dass es anhängt.
+ */
+function ZusatzAnhaengen({ daten }: { daten: FallAntwort }) {
+  const kurz = useUebersichtKurz();
+  const f = daten.fall!;
+  const [auf, setAuf] = useState(false);
+  const [wahl, setWahl] = useState<string | null>(null);
+  const [tag, setTag] = useState(localDay());
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [anfrage, setAnfrage] = useState(neueAnfrageId);
+  const dran = new Set([f.vorlageId, ...(daten.zusaetze ?? []).map(z => z.vorlageId)]);
+  const zusatzModule = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket' && p.zusatz && !dran.has(p.id));
+  if (!zusatzModule.length || f.status === 'abgeschlossen') return null;
+  if (!auf) return <div><Erklaert erklaerung="fulfillment.zusatzAnhaengen" name="Zusatzmodul anhängen"><Knopf leise onClick={() => { setAuf(true); setWahl(zusatzModule[0].id); }}>Zusatzmodul anhängen</Knopf></Erklaert></div>;
+  const los = async () => {
+    if (!wahl) { setFehler('Bitte ein Zusatzmodul wählen.'); return; }
+    const a = await fallAktion({ aktion: 'starten', mandatId: daten.mandat.id, vorlageId: wahl, start: tag, anfrageId: anfrage });
+    if (a.ok) { setAuf(false); setFehler(null); setAnfrage(neueAnfrageId()); } else setFehler(fehlerText(a));
+  };
+  return (
+    <form onSubmit={e => { e.preventDefault(); void los(); }} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+      <Wahl label="Zusatzmodul" liste={zusatzModule.map(p => ({ id: p.id, label: p.titel }))} wert={wahl} onWahl={setWahl} />
+      <input type="date" value={tag} onChange={e => setTag(e.target.value)} aria-label="Start des Zusatzmoduls" style={feld} />
+      <Knopf haupt typ="submit" aus={!wahl}>Anhängen</Knopf>
+      <Knopf leise onClick={() => setAuf(false)}>Abbrechen</Knopf>
+      {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
+      <span style={klein}>Die Phasen kommen als eigener Abschnitt hinten an diesen Fall und laufen neben dem Paket — ohne zweites Onboarding.</span>
+    </form>
   );
 }
 
 export function KeinFall({ daten }: { daten: FallAntwort }) {
   const kurz = useUebersichtKurz();
   const [start, setStart] = useState(false);
-  const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket');
+  const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
   const zu = daten.mandat.leistungId ? kurz.daten?.zuordnung[daten.mandat.leistungId]?.vorlageId : undefined;
   const v = pakete.find(p => p.id === zu);
   if (!daten.mandat.business) return <Hinweis art="info">Fulfillment gibt es nur für Mandate einer Business-Gesellschaft — dieses Mandat gehört zu Privat.</Hinweis>;

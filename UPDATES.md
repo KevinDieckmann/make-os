@@ -4,6 +4,28 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 17.10.2026 spät — Import vollständig + Zusatzmodule (nur lokal — Branch `import-zusatz`, Basis 107fe639 = `update-0910b`)
+Kevin: „Das Fulfillment soll maximal einfach für uns sein.“ Damit die Bibliothek v2 ganz ankommt und Zusatzmodule (Telefonie) einfach laufen.
+- **Import (Format „pakete“):** `versuche` (1–20), `pos` (Schritt; Phase als Rahmen mit `b`/`h`) und `pfeilText` (`weiter`/`ja`/`nein`) an Knoten — geprüft wie im
+  Editor (`lageAus`, `pfeilTextAus` aus lib/fulfillment/prozesse/editor.ts, `rahmenOrdnen`); vorher fielen sie weg. `zusatz: true` am Paket wird übernommen.
+- **„Siehe auch“ an Bausteinen:** neues optionales `Baustein.sieheAuch` (≤ 20, nur vorhandene Kennungen, nie sich selbst). Import liest `siehe_auch`/`sieheAuch`
+  (Kennungen der Quelle → `fb-imp-…`; Unbekanntes fällt mit Hinweis weg; zählt bei „ergänzt“). Verweise auf gelöschte Bausteine fallen beim Lesen weg
+  (`vorlagenAus`). Baustein-Detail: kleine Links „Siehe auch: …“.
+- **Zusatzmodul:** `ProzessVorlage.zusatz` (Editor: Schalter „Zusatzmodul“ — keine neue Fassung). „Starten“ an einem Mandat mit laufendem Fall legt KEINEN zweiten
+  Fall an: die Phasen hängen als eigener Abschnitt hinten an (`FallKnoten.zusatz` an den Phasen, `Fall.zusaetze`), über dieselbe Übernahme-Mechanik
+  (`knotenUebernehmen` — nichts wird entfernt), Fälligkeiten ab dem gewählten Tag; doppelte Kennung/Abstimmungspunkt, abgeschlossener Fall → 409. Ohne laufenden Fall:
+  ein Fall OHNE Onboarding (`Fall.ohneOnboarding`, läuft sofort). Ausführung arbeitet je Abschnitt parallel; Reise/Kunden-Sicht: laufende Phase je Abschnitt
+  „jetzt“/„aktuell“ (`jetztPhasen`), Abschluss hängt nie am Modul; Abstimmungspunkte beider über `fallFreigaben`; neue Fassung des Moduls per „Übernehmen“
+  (`zusatzDiff`/`zusatzUebernehmen`, POST `vorlage-uebernehmen { vorlageId }`). Fall-Rand: „Zusatzmodul anhängen“.
+- **Reise:** `ReisePhase.modul` → `BildSpalte.abschnitt` (`reiseAbschnitte`, lib/reise/bild.ts); `ReiseBild` zeichnet den Abschnitt dezent als eigene Zeile mit
+  „Zusatzmodul · <Titel>“ — eigenes „Hier“ (zwei Spalten „jetzt“ erlaubt), eigener Flow-Faden je Abschnitt. Ohne Abschnitt bleibt die Reise genau EINE Zeile.
+  Zusammengeführt mit `flow-linie` (855aeecf): Hinweis „Vorlage übernehmen, damit die Ausführung startet“ zielt auf die Übernahme des Pakets.
+- **Probelauf v2** (Wegwerf-Instanz, echte Import-Route): 223 Bausteine neu, 514 „siehe auch“-Verweise alle angekommen; 6 Pakete neu; `versuche` 2 von 2 angekommen
+  (`pos`/`pfeilText`/`zusatz` stehen in v2 noch nicht drin). Telefonie per Schalter zum Zusatzmodul, an einen laufenden HoS/CSO-Fall gehängt: EIN Fall, 8
+  Onboarding-Schritte (keine zweiten), 196 → 290 Knoten, alle alten da, 6 Telefonie-Phasen markiert, erste Aufgabe „Form der Telefonie festlegen“.
+- **Update-Probe:** Altbestand ohne die neuen Felder liest und schreibt verlustfrei; ohne Zusatzmodul alles Byte für Byte wie bisher. **Rückweg:** der alte Stand
+  verwirft `zusatz`/`sieheAuch`/`zusaetze`/`ohneOnboarding` beim nächsten Schreiben — angehängte Phasen bleiben als normale Phasen im Fall.
+- Tests: `tests/fulfillment-import-zusatz.test.ts`, `tests/fulfillment-zusatz-route.test.ts`; alle `tests/fulfillment-*` grün.
 ## 17.10.2026 abends — Markenzeichen: der Flow (nur lokal — Branch `flow-linie`, Basis 107fe639 = `update-0910b`)
 Kevin: „Denke dir auch immer den Flow, diese Linie, mit — das ist unser Markenzeichen.“ — „Nach und nach kommt alles in den Flow.“
 - **EIN Faden-Zeichner** `lib/lichtfaeden/flow.ts` (Pfad-Modus des Lichtfadens: `flowProben`, `zeichneFaden`, gemeinsamer Takt `taktLauf`, Ebene `flowEbene`) und der

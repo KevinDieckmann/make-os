@@ -71,7 +71,7 @@ const PAKET = {
 const mitBausteinen = () => ok(importAnwenden(leerVorlagen(), BAUSTEINE, {}, ik('fi-b'), kid));
 
 describe('Format „pakete“: lesen und prüfen wie der Editor', () => {
-  it('liest Phasen, Fluss, Gruppen, Formen, Fristen und Zweige; unbekannte Felder (pos) werden ignoriert', () => {
+  it('liest Phasen, Fluss, Gruppen, Formen, Fristen und Zweige; `pos` kommt seit 17.10. spät mit (wie im Editor)', () => {
     const g = importLesen(PAKET);
     expect(g.format).toBe('pakete');
     expect(g.fehler).toEqual([]);
@@ -83,7 +83,7 @@ describe('Format „pakete“: lesen und prüfen wie der Editor', () => {
     expect(t('Zugänge nach 5 Tagen da?')).toMatchObject({ form: 'entscheidung', frist: 4, zweige: { nein: t('Follow-up-Mail').id } });
     expect(t('Follow-up-Mail').zweige).toEqual({ ja: t('Zugänge nach 5 Tagen da?').id });
     expect(t('Kick-off')).toMatchObject({ form: 'termin', frist: 2, zustaendig: 'beide', kundeSichtbar: true });
-    expect(JSON.stringify(v)).not.toMatch(/"pos"/);
+    expect(t('Kick-off').pos).toEqual({ x: 10, y: 20 });
     expect(t('Onboarding')).toMatchObject({ freigabe: 'F0', dauerTage: 14, kundeSichtbar: true });
   });
 

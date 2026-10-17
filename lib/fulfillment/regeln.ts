@@ -112,15 +112,46 @@ export function phaseFertig(p: FallKnoten, liste: readonly FallKnoten[]): boolea
 /**
  * Der aktuelle Knoten eines Falls (7.4): die erste nicht abgeschlossene Phase (Ebene 2) in Rang-Reihenfolge, darin der erste offene
  * Einzelschritt (Ebene 4; gibt es keine, der erste offene Teilprozess auf Ebene 3). Alles fertig → beides null.
+ * Mit `abschnitt` (17.10. spät, Zusatzmodule): nur in diesem Abschnitt — `null` = das Paket des Falls, sonst die Kennung des Zusatzmoduls (`abschnittVon`).
  */
-export function aktuellerKnoten(fall: Pick<Fall, 'knoten'>): { phase: FallKnoten | null; schritt: FallKnoten | null } {
+export function aktuellerKnoten(fall: Pick<Fall, 'knoten'>, abschnitt?: string | null): { phase: FallKnoten | null; schritt: FallKnoten | null } {
   const l = fall.knoten;
   const reihenfolge = inReihenfolge(l);
-  const phase = reihenfolge.find(k => ebeneVon(k, l) === 2 && !phaseFertig(k, l)) ?? null;
+  const phase = reihenfolge.find(k => ebeneVon(k, l) === 2 && (abschnitt === undefined || abschnittVon(k) === abschnitt) && !phaseFertig(k, l)) ?? null;
   if (!phase) return { phase: null, schritt: null };
   const darin = new Set(teilbaum(phase.id, l));
   const offen = (ebene: number) => reihenfolge.find(k => darin.has(k.id) && ebeneVon(k, l) === ebene && !fertig(k) && !(kinderVon(k.id, l).length && blaetterUnter(k.id, l).every(fertig))) ?? null;
   return { phase, schritt: offen(4) ?? offen(3) };
+}
+
+// ── Zusatzmodule: Abschnitte eines Falls (17.10. spät; lib/fulfillment/prozesse/fall.ts `zusatzAnhaengen`) ─────────────────────────────
+
+/** Der Abschnitt einer Phase (Ebene 2): null = das Paket des Falls, sonst die Kennung der Vorlage des angehängten Zusatzmoduls. */
+export const abschnittVon = (p: Pick<FallKnoten, 'zusatz'>): string | null => p.zusatz ?? null;
+/** Die Abschnitte eines Falls: zuerst das Paket (null), dann die Zusatzmodule in der Reihenfolge ihrer Phasen. Ohne Zusatzmodul: nur `[null]`. */
+export function abschnitteDes(fall: Pick<Fall, 'knoten'>): (string | null)[] {
+  const w = wurzelVon(fall.knoten);
+  const raus: (string | null)[] = [null];
+  for (const p of w ? kinderVon(w.id, fall.knoten) : []) { const a = abschnittVon(p); if (a && !raus.includes(a)) raus.push(a); }
+  return raus;
+}
+/** Je Knoten das Zusatzmodul, in dessen Abschnitt er steht (Teilbaum einer Phase mit `zusatz`) — Knoten des Pakets fehlen in der Liste. */
+export function zusatzJeKnoten(liste: readonly FallKnoten[]): Map<string, string> {
+  const raus = new Map<string, string>();
+  const w = wurzelVon(liste);
+  for (const p of w ? kinderVon(w.id, liste) : []) if (p.zusatz) for (const id of teilbaum(p.id, liste)) raus.set(id, p.zusatz);
+  return raus;
+}
+/**
+ * Die Phasen „jetzt“ eines Falls: die des Pakets (bzw. die erste offene überhaupt — `aktuellerKnoten`) und je angehängtem Zusatzmodul seine erste offene Phase —
+ * die Abschnitte laufen nebeneinander (die Ausführung arbeitet dort parallel). EINE Regel für Reise, Kunden-Sicht und Ausführung.
+ */
+export function jetztPhasen(fall: Pick<Fall, 'knoten'>): Set<string> {
+  const raus = new Set<string>();
+  const a = aktuellerKnoten(fall).phase;
+  if (a) raus.add(a.id);
+  for (const z of abschnitteDes(fall)) { if (!z) continue; const p = aktuellerKnoten(fall, z).phase; if (p) raus.add(p.id); }
+  return raus;
 }
 
 // ── Ausführung: der Nein-Zweig einer Entscheidung (17.10. abends; lib/fulfillment/prozesse/ausfuehrung.ts) ─────────────────────────────
@@ -313,7 +344,13 @@ export function kundenJeKnoten(vorlage: Pick<ProzessVorlage, 'id' | 'knoten'>, f
   for (const f of faelle) {
     if (f.status === 'abgeschlossen') continue;
     if (f.vorlageId === vorlage.id) {
-      const a = aktuellerKnoten(f);
+      const a = aktuellerKnoten(f, f.zusaetze?.length ? null : undefined);
+      const hier = [a.schritt?.id, a.phase?.id].find(x => x && ids.has(x));
+      if (hier) dazu(hier, f.mandatId);
+    }
+    // Ein angehängtes Zusatzmodul (17.10. spät): der Fall steht auch in dessen Vorlage — an seinem Punkt im Abschnitt (dieselben Kennungen wie die Vorlage).
+    if (f.zusaetze?.some(z => z.vorlageId === vorlage.id)) {
+      const a = aktuellerKnoten(f, vorlage.id);
       const hier = [a.schritt?.id, a.phase?.id].find(x => x && ids.has(x));
       if (hier) dazu(hier, f.mandatId);
     }

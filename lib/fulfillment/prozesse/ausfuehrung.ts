@@ -13,7 +13,7 @@
 // Tests: tests/fulfillment-ablauf-rein.test.ts.
 
 import type { Fall, FallKnoten, KnotenStatus } from '../typen';
-import { aktiverNeinZweig, kinderVon, phaseFertig, teilbaum } from '../regeln';
+import { abschnitteDes, abschnittVon, aktiverNeinZweig, kinderVon, phaseFertig, teilbaum } from '../regeln';
 import { neinZiele, phasenAbschnitte, phasenDer, phaseVonKnoten } from './fluss-struktur';
 import { obSchluessel } from './onboarding';
 import { fnv } from './pruefen';
@@ -90,28 +90,44 @@ export function phasenBloecke(kn: readonly FallKnoten[], phaseId: string, nz: Re
 }
 
 const fallStart = (f: Pick<Fall, 'startAm' | 'gestartetAm'>): string => f.startAm ?? f.gestartetAm.slice(0, 10);
+type MitZusaetzen = Partial<Pick<Fall, 'zusaetze'>>;
+/** Der Start eines Abschnitts: der des Falls (Paket) bzw. der Starttag des angehängten Zusatzmoduls (17.10. spät). */
+const abschnittStart = (f: Pick<Fall, 'startAm' | 'gestartetAm'> & MitZusaetzen, abschnitt: string | null): string =>
+  (abschnitt ? f.zusaetze?.find(z => z.vorlageId === abschnitt)?.startAm : undefined) ?? fallStart(f);
 
-/** Die Phase, in der die Ausführung gerade arbeitet — null, wenn alles fertig ist oder ein Abstimmungspunkt am Ende einer fertigen Phase fehlt. */
-export function ausfuehrungsPhase(f: Pick<Fall, 'knoten' | 'freigaben'>): FallKnoten | null {
-  for (const p of phasenDer(f.knoten)) {
+/** Die Phase, in der die Ausführung in einem Abschnitt arbeitet — null, wenn dort alles fertig ist oder ein Abstimmungspunkt am Ende einer fertigen Phase fehlt. */
+function abschnittPhase(f: Pick<Fall, 'knoten' | 'freigaben'>, abschnitt: string | null): FallKnoten | null {
+  for (const p of phasenDer(f.knoten).filter(x => abschnittVon(x) === abschnitt)) {
     if (p.status === 'entfaellt') continue;
     if (!phaseFertig(p, f.knoten)) return p;
     if (p.freigabe && !f.freigaben[p.freigabe]) return null;
   }
   return null;
 }
+/** Die Phase, in der die Ausführung im Paket des Falls gerade arbeitet — null, wenn alles fertig ist oder ein Abstimmungspunkt am Ende einer fertigen Phase fehlt. */
+export function ausfuehrungsPhase(f: Pick<Fall, 'knoten' | 'freigaben'>): FallKnoten | null {
+  return abschnittPhase(f, null);
+}
+/**
+ * Die Phasen, in denen die Ausführung gerade arbeitet — je Abschnitt eine (17.10. spät): das Paket und jedes angehängte Zusatzmodul laufen nebeneinander. Ohne
+ * Zusatzmodul genau `ausfuehrungsPhase`.
+ */
+export function ausfuehrungsPhasen(f: Pick<Fall, 'knoten' | 'freigaben'>): FallKnoten[] {
+  return abschnitteDes(f).map(a => abschnittPhase(f, a)).filter((p): p is FallKnoten => !!p);
+}
 
-/** Womit eine Phase begann: der Abstimmungspunkt der Phase davor, sonst der letzte erledigte Schritt darin, sonst der Start des Falls. */
-function phasenStart(f: Pick<Fall, 'knoten' | 'freigaben' | 'startAm' | 'gestartetAm'>, phaseId: string): string {
-  const phasen = phasenDer(f.knoten).filter(p => p.status !== 'entfaellt');
+/** Womit eine Phase begann: der Abstimmungspunkt der Phase davor (im selben Abschnitt), sonst der letzte erledigte Schritt darin, sonst der Start des Abschnitts. */
+function phasenStart(f: Pick<Fall, 'knoten' | 'freigaben' | 'startAm' | 'gestartetAm'> & MitZusaetzen, phaseId: string): string {
+  const abschnitt = abschnittVon(f.knoten.find(p => p.id === phaseId) ?? {});
+  const phasen = phasenDer(f.knoten).filter(p => p.status !== 'entfaellt' && abschnittVon(p) === abschnitt);
   const i = phasen.findIndex(p => p.id === phaseId);
-  if (i <= 0) return fallStart(f);
+  if (i <= 0) return abschnittStart(f, abschnitt);
   const v = phasen[i - 1];
   const fg = v.freigabe ? f.freigaben[v.freigabe] : undefined;
   if (fg) return fg.am.slice(0, 10);
   const nach = new Map(f.knoten.map(k => [k.id, k]));
   const tage = teilbaum(v.id, f.knoten).map(id => nach.get(id)!).filter(k => k && fertig(k)).map(k => (k.erledigtAm ?? k.seit)?.slice(0, 10)).filter((x): x is string => !!x).sort();
-  return tage.at(-1) ?? fallStart(f);
+  return tage.at(-1) ?? abschnittStart(f, abschnitt);
 }
 
 export interface AktiverKnoten {
@@ -128,12 +144,14 @@ export interface AktiverKnoten {
 
 /**
  * Wo die Ausführung gerade steht — je laufender Bahn der Phase ein Knoten (meist genau einer). Ein Knoten ohne ausführbare Form (Altbestand, Abstimmung)
- * steht auch hier (`art: null`): er hält die Bahn an, bis ihn jemand von Hand abhakt. Abgeschlossene oder pausierte Fälle: keiner.
+ * steht auch hier (`art: null`): er hält die Bahn an, bis ihn jemand von Hand abhakt. Abgeschlossene oder pausierte Fälle: keiner. Hängt ein Zusatzmodul am
+ * Fall (17.10. spät), läuft sein Abschnitt daneben — die Knoten beider Abschnitte stehen hier (erst das Paket).
  */
-export function aktiveKnoten(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'>): AktiverKnoten[] {
+export function aktiveKnoten(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'> & MitZusaetzen): AktiverKnoten[] {
   if (f.status === 'abgeschlossen' || f.status === 'pausiert') return [];
-  const p = ausfuehrungsPhase(f);
-  if (!p) return [];
+  return ausfuehrungsPhasen(f).flatMap(p => aktiveInPhase(f, p));
+}
+function aktiveInPhase(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'> & MitZusaetzen, p: FallKnoten): AktiverKnoten[] {
   const kn = f.knoten;
   const nz = neinZiele(kn);
   const raus: AktiverKnoten[] = [];
@@ -324,7 +342,7 @@ export interface AblaufAbschluss { id: string; status: 'done' | 'cancelled'; kno
  *   · Entscheidung, deren Frist vorbei ist → eine Glocke je Runde; ausgeschöpft → eine Glocke „eskaliert“.
  *   · Erinnerung, deren Frist erreicht ist → eine Aufgabe je Runde (mit Nachricht, wenn ein Mail-Baustein dranhängt — `mitMail`).
  */
-export function ausfuehrungSoll(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm' | 'marken'>, heute: string, mitMail: (k: FallKnoten) => boolean = () => false): AusfuehrungSoll {
+export function ausfuehrungSoll(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm' | 'marken'> & MitZusaetzen, heute: string, mitMail: (k: FallKnoten) => boolean = () => false): AusfuehrungSoll {
   const soll: AusfuehrungSoll = {
     ops: [], aufgaben: [], nachrichten: [], glocken: [],
     abschluss: ablaufAbschluesse(f).filter(x => !!f.marken[ABLAUF_MARKE.aufgabe(x.knotenId, x.runde)] && !f.marken[x.marke]),
@@ -410,7 +428,7 @@ export function aufgabeZuKnoten(f: Pick<Fall, 'mandatId' | 'knoten'>, aufgabeId:
  * Eine Aufgabe der Ausführung wurde erledigt — was im Fall daraus folgt (rein): die Op „erledigt“ für ihren Knoten, wenn er gerade dran ist (eine Erinnerung
  * nur in ihrer laufenden Runde). Sonst null (schon erledigt, Runde vorbei — nichts doppelt).
  */
-export function opNachAufgabe(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'>, knotenId: string, runde: number): Record<string, unknown> | null {
+export function opNachAufgabe(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'> & MitZusaetzen, knotenId: string, runde: number): Record<string, unknown> | null {
   const k = f.knoten.find(x => x.id === knotenId);
   if (!k || fertig(k)) return null;
   if (ausfuehrungsArt(k) === 'erinnerung' && runde > 0) {
@@ -431,7 +449,7 @@ export interface AblaufKnotenStand {
   aufgabe?: string;
 }
 /** Der Stand der Ausführung je Knoten (für Fall-Detail und Route). Ohne Ausführung: `aktiv: false`, keine Knoten. */
-export function ablaufStand(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'>, heute: string): { aktiv: boolean; knoten: Record<string, AblaufKnotenStand> } {
+export function ablaufStand(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'> & MitZusaetzen, heute: string): { aktiv: boolean; knoten: Record<string, AblaufKnotenStand> } {
   if (!ablaufAktiv(f)) return { aktiv: false, knoten: {} };
   const kn = f.knoten;
   const nz = neinZiele(kn);

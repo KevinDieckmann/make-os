@@ -82,6 +82,16 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     was: 'Ein Abstimmungspunkt (◆) ist ein Halt, an dem der Kunde und ihr bestätigen — durchnummeriert in der Reihenfolge des Ablaufs. Vermerkt werden Tag, wer intern und wie der Kunde bestätigt hat; damit ist die Phase abgeschlossen. Die nächste Phase darf schon beginnen, dann erscheint ein Hinweis. („Freigabe“ meint in MAKE OS die Vorschläge von ZOE.)',
     beispiel: 'Abstimmungspunkt 3 · Diagnose-Abnahme: im Steuerungskreis bestätigt, Notiz „Top-5 Maßnahmen angenommen, Maßnahme 4 später“.',
   },
+  'fulfillment.zusatzmodul': {
+    was: 'Ein Zusatzmodul ist ein Paket, das man zu einem laufenden Mandat dazubucht. Läuft dort schon ein Fall, kommt kein zweiter Fall und kein zweites Onboarding: die Phasen des Moduls hängen als eigener Abschnitt hinten an den Fall und laufen neben dem Paket. Ohne laufenden Fall startet das Modul als eigener Fall ohne Onboarding.',
+    beispiel: 'Ein Kunde ist in Phase 3 der Vertriebsleitung auf Zeit und bucht die Telefonie dazu — der Fall bekommt den Abschnitt „Telefonie“ mit „Liste vorbereiten“ bis „Auswertung“, die erste Aufgabe ist ab heute fällig.',
+    an: 'Startet man das Paket an einem Mandat mit laufendem Fall, hängt es dort an; sonst beginnt ein Fall ohne die acht Onboarding-Schritte.',
+    aus: 'Das Paket startet wie jedes andere einen eigenen Fall mit Onboarding — an einem Mandat mit laufendem Fall geht das nicht.',
+  },
+  'fulfillment.zusatzAnhaengen': {
+    was: 'Hängt ein Zusatzmodul an diesen Fall: seine Phasen stehen danach als eigener Abschnitt hinter denen des Pakets, die Ausführung arbeitet dort parallel ab dem gewählten Tag. Nichts am bisherigen Fall ändert sich.',
+    beispiel: '„Telefonie“ ab Montag anhängen — die Reise zeigt danach sechs weitere Phasen, „Form der Telefonie festlegen“ ist die erste Aufgabe.',
+  },
   'fulfillment.vorlageDiff': {
     was: 'Der Fall arbeitet mit einer Kopie der Vorlage. Ändert ihr die Vorlage für künftige Kunden, zeigt der Fall, was neu oder geändert ist. „Übernehmen“ fügt hinzu und ändert — erledigte Schritte werden nie entfernt.',
     beispiel: 'Die Vorlage bekam den Schritt „Einwandmatrix testen“ — der laufende Fall zeigt „Fassung 3 → 4: 1 neu“ und nimmt ihn per Klick auf.',

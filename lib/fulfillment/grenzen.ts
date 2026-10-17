@@ -12,6 +12,10 @@ export const GRENZEN = {
   /** Einträge im Papierkorb einer Paket-Vorlage (Prozess-Editor, 17.10.) — darüber 413 „erst leeren“ (Einträge fallen nach 30 Tagen weg). */
   papierkorbJeVorlage: 200,
   bausteine: 1500,
+  /** „Siehe auch“ je Baustein (17.10. spät). */
+  sieheAuch: 20,
+  /** Zusatzmodule, die an EINEM Fall hängen (17.10. spät). */
+  zusaetzeJeFall: 10,
   gliederung: 80,
   text: 30_000,
   fragenJeFormular: 150,
@@ -120,6 +124,7 @@ export function grenzenPruefen<A extends FulfillmentArt>(art: A, d: FulfillmentD
       ...v.bausteine.map(b => ueber(`Gliederung von „${b.titel}“`, b.gliederung.length, GRENZEN.gliederung)),
       ...v.bausteine.map(b => ueber(`Fragen in „${b.titel}“`, b.fragen?.length ?? 0, GRENZEN.fragenJeFormular)),
       ...v.bausteine.map(b => ueber(`Text von „${b.titel}“`, b.text?.length ?? 0, GRENZEN.text)),
+      ...v.bausteine.map(b => ueber(`„Siehe auch“ von „${b.titel}“`, b.sieheAuch?.length ?? 0, GRENZEN.sieheAuch)),
     );
   }
   if (art === 'faelle') {
@@ -128,6 +133,7 @@ export function grenzenPruefen<A extends FulfillmentArt>(art: A, d: FulfillmentD
       ueber('Fälle', f.length, GRENZEN.faelle),
       ...f.flatMap(x => [
         ueber('Knoten im Fall', x.knoten.length, GRENZEN.knotenJeFall),
+        ueber('Zusatzmodule im Fall', x.zusaetze?.length ?? 0, GRENZEN.zusaetzeJeFall),
         ueber('Stakeholder', x.stakeholder.length, GRENZEN.stakeholder),
         ueber('Entscheidungen', x.entscheidungen.length, GRENZEN.entscheidungen),
         ueber('Mitschriften', x.mitschriften.length, GRENZEN.mitschriften),

@@ -178,7 +178,8 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
     if (a.ok && a.j.vorlageId) { geaendert(); editor(a.j.vorlageId); } else setMeldung(fehlerText(a));
   };
   const produkte = (vid: string) => Object.entries(daten.zuordnung).filter(([, z]) => z.vorlageId === vid).map(([l]) => daten.leistungen.find(x => x.id === l)?.name).filter((x): x is string => !!x);
-  const kundenIn = (vid: string) => Object.values(daten.faelle).filter(f => f.vorlageId === vid && f.status !== 'abgeschlossen');
+  // Auch Fälle, an denen das Paket als Zusatzmodul hängt (17.10. spät).
+  const kundenIn = (vid: string) => Object.values(daten.faelle).filter(f => (f.vorlageId === vid || !!f.zusaetze?.includes(vid)) && f.status !== 'abgeschlossen');
   return (
     <Karte i={3}>
       <Ueberschrift erklaerung="fulfillment.paketKarten" rechts={darf ? <Knopf leise onClick={neu}>+ Neuer Ablauf</Knopf> : undefined}>Paket-Vorlagen</Ueberschrift>
@@ -201,7 +202,8 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
                   <span style={{ ...MIKRO, whiteSpace: 'nowrap' }}>Fassung {p.fassung}</span>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {pr.length ? pr.map(n => <Chip key={n} farbe={LEUCHT.gut}>liefert {n}</Chip>) : <Chip farbe={LEUCHT.achtung}>noch keinem Produkt zugeordnet</Chip>}
+                  {p.zusatz && <Chip farbe={LEUCHT.planung}>Zusatzmodul</Chip>}
+                  {pr.length ? pr.map(n => <Chip key={n} farbe={LEUCHT.gut}>liefert {n}</Chip>) : p.zusatz ? null : <Chip farbe={LEUCHT.achtung}>noch keinem Produkt zugeordnet</Chip>}
                   {kunden.length > 0 && <Chip farbe={LEUCHT.business}>{kunden.length} Kund{kunden.length === 1 ? 'e läuft' : 'en laufen'} darin</Chip>}
                 </div>
                 {sb.phasen.length > 0 && (

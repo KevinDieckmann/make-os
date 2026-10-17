@@ -87,6 +87,12 @@ export interface ProzessVorlage {
   phasenVonHand?: true;
   /** Papierkorb des Prozess-Editors (17.10.) — nur Pakete; die Knoten darin zählen nirgends mit. */
   papierkorb?: VorlagenPapierkorb[];
+  /**
+   * Zusatzmodul (17.10. spät, z. B. Telefonie) — nur Pakete. Läuft am Mandat schon ein Fall, wird KEIN zweiter Fall angelegt: die Phasen des Pakets hängen als
+   * eigener Abschnitt am laufenden Fall (`Fall.zusaetze`, `FallKnoten.zusatz`, lib/fulfillment/prozesse/fall.ts `zusatzAnhaengen`); ohne Fall startet es als
+   * normaler Fall OHNE vorangestellte Onboarding-Phase (`Fall.ohneOnboarding`). Ändert nur, wie ein Fall startet — keine neue Fassung.
+   */
+  zusatz?: true;
 }
 
 export type BausteinArt = 'aufgabe' | 'dokument' | 'skript' | 'checkliste' | 'mail' | 'kennzahl' | 'ritual' | 'formular' | 'workbook' | 'analyse' | 'freigabe';
@@ -106,6 +112,11 @@ export interface Baustein {
   herkunftText?: string;
   tags: string[]; vonHand?: true; herkunft?: Herkunft;
   fassung: number; geaendert: string; geaendertVon: string;
+  /**
+   * „Siehe auch“ (17.10. spät): verwandte Bausteine der Bibliothek (Kennungen `fb-…`, höchstens `GRENZEN.sieheAuch`), nie der Baustein selbst. Verweise auf
+   * gelöschte Bausteine fallen beim Lesen weg (lib/fulfillment/lesen.ts `vorlagenAus`). Der Import liest `siehe_auch` bzw. `sieheAuch`.
+   */
+  sieheAuch?: string[];
 }
 /** Rhythmus eines Rituals — `taeglich`/`werktags` seit 11.10. (Entscheidung: tägliches Vertriebs-Huddle, kurz, MIT Zahlenrunde). */
 export type Rhythmus = 'einmal' | 'taeglich' | 'werktags' | 'woche' | 'zwei-wochen' | 'monat' | 'quartal';
@@ -132,6 +143,25 @@ export interface FallKnoten extends Pick<ProzessKnoten, 'id' | 'elternId' | 'tit
   runden?: number;
   /** Entscheidung: Tag, an dem die Runden ausgeschöpft waren — dann hängt sie rot, bis jemand entscheidet. */
   eskaliertAm?: string;
+  /**
+   * Zusatzmodul (17.10. spät): NUR an Phasen (Ebene 2) — Kennung der Paket-Vorlage des Zusatzmoduls, dessen Abschnitt diese Phase ist (`Fall.zusaetze`). Fehlt:
+   * die Phase gehört zum Paket des Falls. Setzt nur `zusatzAnhaengen`/`zusatzUebernehmen` (lib/fulfillment/prozesse/fall.ts).
+   */
+  zusatz?: string;
+}
+/**
+ * Ein Zusatzmodul, das an einem laufenden Fall hängt (17.10. spät): seine Phasen stehen als eigener Abschnitt hinter denen des Pakets (Phasen mit `zusatz`), die
+ * Ausführung läuft dort parallel ab `startAm`. Neue Fassungen der Vorlage übernimmt der Fall wie beim Paket erst per Klick (`vorlageFassung`).
+ */
+export interface FallZusatz {
+  vorlageId: string; vorlageFassung: number;
+  /** Kennung des obersten Knotens (Ebene 1) der Vorlage — im Fall steht an seiner Stelle der oberste Knoten des Falls. */
+  wurzelId: string;
+  /** Titel der Vorlage beim Anhängen (bleibt lesbar, wenn die Vorlage später fehlt). */
+  titel: string;
+  /** Starttag des Abschnitts (YYYY-MM-DD) — Fälligkeiten zählen ab hier. */
+  startAm: string;
+  angehaengtAm: string; angehaengtVon: string;
 }
 export interface Vereinbarung { rollen?: string; reaktionszeiten?: string; wirBrauchen?: string; eskalation?: string; scopeDrin?: string; scopeDraussen?: string; entscheidungsrechte?: string; bestaetigtAm?: string; bestaetigtWie?: 'kickoff' | 'mail' | 'termin' }
 export interface Stakeholder { id: string; kontaktId: string; rolle: 'entscheider' | 'unterstuetzer' | 'skeptiker' | 'nutzer' | 'einkauf' | 'sponsor'; einfluss: 1 | 2 | 3; haltung?: 'positiv' | 'neutral' | 'kritisch'; notiz?: string }
@@ -156,6 +186,10 @@ export interface Fall {
   marken: Record<string, string>; geaendert: string; geaendertVon: string;
   /** Aus der Vorlage beim Start (12.10.): ihre Phasen waren von Hand geordnet — der Fall behält dann seine Reihenfolge. */
   phasenVonHand?: true;
+  /** Angehängte Zusatzmodule (17.10. spät) — in der Reihenfolge des Anhängens. Fehlt: keins. */
+  zusaetze?: FallZusatz[];
+  /** Gestartet aus einem Zusatzmodul ohne laufenden Fall (17.10. spät): ohne die acht Onboarding-Schritte — der Fall läuft sofort (`onboardingStand` leer). */
+  ohneOnboarding?: true;
 }
 export interface FaelleDatei { version: number; faelle: Record<string, Fall> }
 

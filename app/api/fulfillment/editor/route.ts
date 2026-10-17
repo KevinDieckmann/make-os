@@ -38,7 +38,8 @@ export async function GET(req: Request) {
     ok: true, ...ansicht(v),
     bausteine: d.bausteine.map(b => ({ id: b.id, titel: b.titel, art: b.art })),
     darfBearbeiten: await darfVorlagenBearbeiten(z.person),
-    laufend: Object.values(faelle.faelle).filter(f => f.vorlageId === v.id && f.status !== 'abgeschlossen').length,
+    // Auch Fälle, an denen der Ablauf als Zusatzmodul hängt (17.10. spät) — sie zeigen „geändert“ ebenso.
+    laufend: Object.values(faelle.faelle).filter(f => (f.vorlageId === v.id || !!f.zusaetze?.some(z => z.vorlageId === v.id)) && f.status !== 'abgeschlossen').length,
   });
 }
 

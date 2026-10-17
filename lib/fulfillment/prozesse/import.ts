@@ -18,14 +18,18 @@
 //                  { id, titel, abstimmung?, dauerTage?, ziel?, warum?, kundeSichtbar?, kreislauf?, fluss: [ Schritt | { gruppe, id, fluss: [Schritt] } ] } ] } ],
 //                  vorlagen?: [...] }`
 //     Schritt = `{ id, titel, form?, frist?, zweige?: { ja?, nein? }, zustaendig?, kundeSichtbar?, ziel?, ergebnis?, kennzahl?, rolle?, dauerTage?, abstimmung?,
-//     bausteine?: [Kennung] }` — Formen, Fristen und Zweige wie im Editor (dieselben Werkzeuge, `zweigePruefen`, `vorlageStrukturPruefen`), Bausteine per
+//     versuche?, pos?: { x, y }, pfeilText?: { weiter?, ja?, nein? }, bausteine?: [Kennung] }` — Formen, Fristen, Zweige, Versuche (1–20), Lage und Pfeil-
+//     Beschriftung wie im Editor (dieselben Werkzeuge, `zweigePruefen`, `vorlageStrukturPruefen`, `lageAus`, `pfeilTextAus`; seit 17.10. spät), Bausteine per
 //     Kennung der Quelle (→ `fb-imp-<id>`) oder als vorhandene Kennung `fb-…`; sie müssen in der Bibliothek ODER im `vorlagen`-Teil derselben Datei stehen,
 //     sonst blockiert die Datei (nichts still ohne Baustein). Eine Paket-Vorlage bekommt `fp-imp-pk-<slug>`, ihre Knoten feste Kennungen aus den Quell-Kennungen
 //     (wiederholbar, ändert nichts doppelt) und `phasenVonHand` (die Reihenfolge der Datei gilt). Folgende Schritte ohne Gruppe bilden EINEN Strang; trägt einer
-//     davon Bausteine, stehen sie in einem Sammel-Teilprozess (heißt wie die Phase — dieselbe Form, die der Editor anlegt). `pos`/`verbindungen` (freie Fläche)
-//     kennt das Format noch nicht — solche Felder werden wie jedes unbekannte Feld ignoriert, bis `ProzessKnoten` sie trägt.
+//     davon Bausteine, stehen sie in einem Sammel-Teilprozess (heißt wie die Phase — dieselbe Form, die der Editor anlegt). Eine Phase darf `pos` tragen (Rahmen
+//     auf der Fläche, mit `b`/`h`), ein Paket `zusatz: true` (Zusatzmodul — hängt an einen laufenden Fall an, startet ohne Onboarding). `verbindungen` (freie
+//     Pfeile) kennt das Format nicht — wie jedes unbekannte Feld ignoriert.
 // Ein JSON-Array auf oberster Ebene gilt als Bausteine-Liste (`vorlagen`). `pruefgrund` einer Quelle wird der Grund von „vor Verkauf prüfen“, `zusatz` ein
-// Schlagwort `zusatz:<wert>`. Die Vorschau zählt zusätzlich (`zahlen`) und nennt mögliche Duplikate (gleicher Titel, andere Kennung) — beide bleiben.
+// Schlagwort `zusatz:<wert>`, `siehe_auch` (bzw. `sieheAuch`, 17.10. spät) die Verweise „Siehe auch“ (Kennungen der Quelle → `fb-imp-<id>`; nur, was in der
+// Bibliothek bzw. der Datei steht — die übrigen nennt die Vorschau und lässt sie weg). Die Vorschau zählt zusätzlich (`zahlen`) und nennt mögliche Duplikate
+// (gleicher Titel, andere Kennung) — beide bleiben.
 
 import type { AnwendenErgebnis, Baustein, BausteinArt, Freigabepunkt, ImportLauf, KnotenForm, ProzessKnoten, ProzessVorlage, Rolle, Uebergang, VorlagenDatei, Zweige } from '../typen';
 import { BAUSTEIN_ARTEN, KNOTEN_FORMEN, KREISLAUF_IDS, vorlageAus } from '../lesen';
@@ -35,7 +39,8 @@ import { PHASEN, SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE, phaseEinfu
 import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
 import { zweigePruefen } from './fluss-struktur';
-import { FRIST_MAX } from './editor';
+import { FRIST_MAX, lageAus, pfeilTextAus } from './editor';
+import { rahmenOrdnen, umrissVon } from './flaeche-lage';
 import { ausfuehren, fnv, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, slug, titelForm } from './pruefen';
 import { anzahl } from '@/lib/text/zahlwort';
 
@@ -159,12 +164,21 @@ function bausteinLesen(x: Record<string, unknown>): Gelesen {
     ...(zusatz ? [`zusatz:${zusatz}`] : []),
     ...(nurInt ? [TAG_NUR_INTERN] : []), ...(x.pruefen_vor_verkauf === true ? [TAG_VOR_VERKAUF] : []),
   ];
+  // „Siehe auch“ (17.10. spät): Kennungen der Quelle bzw. `fb-…`, nie der Baustein selbst — ob es sie gibt, prüft `sieheAuchAufloesen` gegen Bibliothek + Datei.
+  const saRoh = x.siehe_auch ?? x.sieheAuch;
+  if (saRoh !== undefined && saRoh !== null && !Array.isArray(saRoh)) throw new Error(`„${q}“: „siehe auch“ ist keine Liste.`);
+  const sieheAuch = Array.from(new Set(((saRoh as unknown[] | undefined) ?? []).map(y => {
+    if (typeof y !== 'string' || !(QUELL_ID.test(y) || KENNUNG.baustein.test(y))) throw new Error(`„${q}“: „${String(y).slice(0, 40)}“ in „siehe auch“ ist keine Baustein-Kennung.`);
+    return bausteinKennung(y);
+  }))).filter(y => y !== `fb-imp-${q}`);
+  if (sieheAuch.length > GRENZEN.sieheAuch) throw new Error(`„${q}“: „siehe auch“ hat ${sieheAuch.length} Verweise (höchstens ${GRENZEN.sieheAuch}).`);
   // Quellen: nur kurze Kennungen wie „D4“ — nie Adressen.
   const quelleIds = (Array.isArray(x.quelle) ? x.quelle : typeof x.quelle === 'string' ? x.quelle.split(/[,;]\s*/) : [])
     .filter((y): y is string => typeof y === 'string').map(y => y.trim()).filter(y => /^[A-Za-z0-9._-]{1,20}$/.test(y));
   const b: Gelesen['b'] = {
     id: `fb-imp-${q}`, art, titel, gliederung, platzhalter, wer: 'intern', kundeSichtbar: false, tags: Array.from(new Set(tags)),
     ...(zweck ? { zweck } : {}), ...(hinweis ? { hinweis } : {}), ...(kennzahl ? { kennzahl } : {}), ...(herkunftText ? { herkunftText } : {}), ...(text ? { text } : {}),
+    ...(sieheAuch.length ? { sieheAuch } : {}),
   };
   const recht = rechtVorschlag({ art, titel, ...(unterphase ? { unterphase } : {}), ...(hinweis ? { hinweis } : {}), ...(zweck ? { zweck } : {}) });
   const urheber = urheberVorschlag({ ...(herkunftText ? { herkunft: herkunftText } : {}), pruefenVorVerkauf: x.pruefen_vor_verkauf === true, ...(pruefgrund ? { grund: pruefgrund } : {}) });
@@ -360,15 +374,19 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
     // Bausteine hängen auf Ebene 5 unter einem Einzelschritt (Ebene 4) — der Strang steht dann im Sammel-Teilprozess (`mitBausteinen`).
     if (refs.length && !mitBausteinen) nein(`${w}: Bausteine nur an Schritten im Strang oder in einer Gruppe.`);
     const kid = `fk-i${h}-s${fnv(sq).slice(0, 8)}`;
+    // Versuche (Runden auf dem Nein-Pfad), Lage auf der Fläche und Beschriftung der Pfeile — geprüft wie im Editor (17.10. spät; vorher fielen sie weg).
+    const versuche = optZahl(x.versuche, 1, 20, `${w}: Versuche`);
+    if (versuche !== undefined && versuche !== null && !Number.isInteger(versuche)) nein(`${w}: Versuche — ganze Zahl von 1 bis 20.`);
     knoten.push(ohneLeer<ProzessKnoten>({
       id: kid, elternId: eltern, titel: pflichtText(x.titel, 'titel', `${w}: Titel`), rang, form,
       frist: ganzeTage(x.frist, FRIST_MAX, `${w}: Frist (Tage)`), dauerTage: ganzeTage(x.dauerTage, 3650, `${w}: Dauer (Tage)`),
       zustaendig: optWahl(x.zustaendig, ZUST, `${w}: Verantwortung`), kundeSichtbar: optBool(x.kundeSichtbar, `${w}: für den Kunden sichtbar`), freigabe, ...texte,
+      versuche, pos: x.pos === undefined ? undefined : lageAus(x.pos, false), pfeilText: pfeilTextAus(x.pfeilText ?? x.pfeil_text, `${w}: Beschriftung der Pfeile`),
     }));
     schrittKnoten.set(sq, kid);
     if (x.zweige !== undefined) zweigeRoh.push({ knotenId: kid, wo: w, z: x.zweige });
     if (refs.length) verweise.push({ knotenId: kid, schritt: sq, refs });
-    // `pos`/`verbindungen` (freie Fläche) und jedes andere unbekannte Feld: ignoriert, bis `ProzessKnoten` sie trägt.
+    // `verbindungen` (freie Pfeile) und jedes andere unbekannte Feld: ignoriert.
   };
 
   if (!Array.isArray(p.phasen) || !p.phasen.length) nein(`${wo}: keine Phasen („phasen“: […]).`);
@@ -385,6 +403,7 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
       id: pid, elternId: wurzel, titel: ptitel, rang: i + 1, kundeSichtbar: optBool(P.kundeSichtbar, `${w}: für den Kunden sichtbar`) ?? true,
       freigabe: abstimmung(P.abstimmung, w), dauerTage: ganzeTage(P.dauerTage, 3650, `${w}: Dauer (Tage)`), kreislauf,
       ziel: optText(P.ziel, 'ziel', `${w}: Ziel`), warum: optText(P.warum, 'ziel', `${w}: Warum`), zustaendig: optWahl(P.zustaendig, ZUST, `${w}: Verantwortung`),
+      pos: P.pos === undefined ? undefined : lageAus(P.pos, true),
     }));
     if (P.fluss !== undefined && !Array.isArray(P.fluss)) nein(`${w}: „fluss“ ist keine Liste.`);
     let rang = 0;
@@ -432,9 +451,12 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
   const beschreibung = optText(p.beschreibung, 'beschreibung', `${wo}: Beschreibung`);
   const vorbehalt = optText(p.vorbehalt, 'hinweis', `${wo}: Vorbehalt`);
   const q = optText(p.quelle, 'kurz', `${wo}: Quelle`);
+  const zusatz = optBool(p.zusatz, `${wo}: Zusatzmodul`);
+  // Die Rahmen auf der Fläche bleiben in der Reihenfolge der Phasen — dieselbe Regel wie im Editor (./flaeche-lage.ts).
+  const geordnet = rahmenOrdnen(knoten, x => umrissVon(x.form ?? 'schritt'));
   return {
     v: {
-      id, art: 'paket', titel, knoten, uebergaenge: [], freigaben, rollen, phasenVonHand: true,
+      id, art: 'paket', titel, knoten: geordnet, uebergaenge: [], freigaben, rollen, phasenVonHand: true, ...(zusatz ? { zusatz: true as const } : {}),
       ...(beschreibung ? { beschreibung } : {}), ...(vorbehalt ? { vorbehalt } : {}), ...(q ? { quelleHinweis: `Quelle: ${q}`.slice(0, TEXT_MAX.kurz) } : {}),
     },
     verweise,
@@ -468,7 +490,7 @@ function bausteinTitel(d: Pick<VorlagenDatei, 'bausteine'>, g: Pick<ImportGelese
 /** Struktur einer Paket-Vorlage zum Vergleichen (gleich/aktualisiert) — beide Seiten durch DENSELBEN Säuberer, Schlüssel sortiert. */
 const paketStruktur = (v: Pick<ProzessVorlage, 'id' | 'art' | 'titel' | 'knoten' | 'uebergaenge' | 'freigaben' | 'rollen'> & Partial<ProzessVorlage>) => {
   const x = vorlageAus(v as unknown as Record<string, unknown>) ?? (v as ProzessVorlage);
-  return stabil({ t: x.titel, b: x.beschreibung ?? null, k: x.knoten, f: x.freigaben, r: x.rollen, v: x.vorbehalt ?? null, q: x.quelleHinweis ?? null, h: x.phasenVonHand ?? null });
+  return stabil({ t: x.titel, b: x.beschreibung ?? null, k: x.knoten, f: x.freigaben, r: x.rollen, v: x.vorbehalt ?? null, q: x.quelleHinweis ?? null, h: x.phasenVonHand ?? null, z: x.zusatz ?? null });
 };
 function paketStatus(alt: ProzessVorlage | undefined, v: PaketGelesen['v']): ImportPaketVorschau['status'] {
   if (!alt) return 'neu';
@@ -553,7 +575,24 @@ export function importLesen(roh0: unknown): ImportGelesen {
 
 // ── Vergleich mit dem Bestand ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
-const IMPORT_FELDER = ['art', 'titel', 'zweck', 'hinweis', 'kennzahl', 'herkunftText', 'text', 'gliederung', 'platzhalter'] as const;
+const IMPORT_FELDER = ['art', 'titel', 'zweck', 'hinweis', 'kennzahl', 'herkunftText', 'text', 'gliederung', 'platzhalter', 'sieheAuch'] as const;
+
+/**
+ * „Siehe auch“ gegen Bibliothek + Datei auflösen (17.10. spät): Verweise auf Bausteine, die es danach nicht gibt, fallen weg — die Vorschau nennt sie. Ändert die
+ * gelesenen Bausteine in `g` (rein bis auf dieses Objekt, das nur innerhalb von Vorschau bzw. Übernehmen lebt).
+ */
+function sieheAuchAufloesen(g: ImportGelesen, d: Pick<VorlagenDatei, 'bausteine'>): number {
+  const da = new Set([...d.bausteine.map(b => b.id), ...g.bausteine.map(x => x.b.id)]);
+  let weg = 0;
+  for (const x of g.bausteine) {
+    if (!x.b.sieheAuch) continue;
+    const l = x.b.sieheAuch.filter(y => da.has(y));
+    weg += x.b.sieheAuch.length - l.length;
+    if (l.length) x.b = { ...x.b, sieheAuch: l };
+    else { const { sieheAuch: _s, ...rest } = x.b; x.b = rest; }
+  }
+  return weg;
+}
 const leer = (v: unknown) => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
 const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -598,6 +637,7 @@ function ablaufStatus(alt: ProzessVorlage | undefined, a: AblaufGelesen): Import
 /** Die Vorschau — schreibt nichts. */
 export function importVorschau(roh: unknown, d: VorlagenDatei, datei: string): ImportVorschau {
   const g = importLesen(roh);
+  const sieheAuchWeg = sieheAuchAufloesen(g, d);
   const zaehler: ImportVorschau['zaehler'] = { neu: 0, gleich: 0, ergaenzt: 0, abweichend: 0, konflikt: 0, aktualisiert: 0 };
   const bausteine = g.bausteine.map(x => {
     const v = bausteinVergleich(d.bausteine.find(b => b.id === x.b.id), x);
@@ -635,6 +675,9 @@ export function importVorschau(roh: unknown, d: VorlagenDatei, datei: string): I
   const intern = bausteine.filter(b => b.nurIntern).length;
   if (intern) hinweise.push(`${anzahl(intern, 'Eintrag ist', 'Einträge sind')} „nur intern“ — sie erscheinen nie beim Kunden, im Report oder in einem Export.`);
   if (istObj(roh) && roh.quellenverzeichnis !== undefined) hinweise.push('Das Quellenverzeichnis der Datei (mit Ablage-Adressen) wird nicht übernommen — nur die Kennungen der Quellen.');
+  if (sieheAuchWeg) hinweise.push(`${anzahl(sieheAuchWeg, 'Verweis „siehe auch“ zeigt', 'Verweise „siehe auch“ zeigen')} auf Bausteine, die weder in der Bibliothek noch in der Datei stehen — sie fallen weg.`);
+  const zusatzPakete = g.pakete.filter(p => p.v.zusatz).length;
+  if (zusatzPakete) hinweise.push(`${anzahl(zusatzPakete, 'Paket ist ein Zusatzmodul', 'Pakete sind Zusatzmodule')}: an einem Mandat mit laufendem Fall hängt es dort an (kein zweites Onboarding), sonst startet es ohne Onboarding.`);
   if (paketVorlagen.length) hinweise.push('Pakete gelten für neue Fälle; laufende Fälle zeigen „Vorlage geändert — übernehmen?“ erst, wenn sie diese Vorlage nutzen.');
   // Mögliche Duplikate: gleicher Titel, andere Kennung — in der Datei und gegen die Bibliothek. Es wird nichts zusammengelegt; beide bleiben.
   const duplikate: string[] = [];
@@ -735,6 +778,7 @@ export function importAnwenden(d0: VorlagenDatei, roh: unknown, wahl: ImportWahl
   return ausfuehren(() => {
     const g = importLesen(roh);
     if (g.blockiert) return nein(g.fehler[0] ?? 'Nichts zu übernehmen.');
+    sieheAuchAufloesen(g, d0);
     const d: VorlagenDatei = JSON.parse(JSON.stringify(d0));
     const lauf: ImportLauf = { id: k.laufId, am: k.jetzt, von: k.person, datei: k.datei.slice(0, 120), neu: [], geaendert: [] };
     const herkunft = (quelleIds?: string[]) => ({ art: 'import' as const, datei: k.datei.slice(0, 120), ...(quelleIds?.length ? { quelleIds } : {}), importLauf: k.laufId, am: k.jetzt });
