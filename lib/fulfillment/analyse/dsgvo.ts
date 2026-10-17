@@ -1,6 +1,6 @@
 // ─── Fulfillment · Analyse — Datenschutz der Personenrecherche (C3, 10.10.; FULFILLMENT_KONZEPT.md 4.4/4.5, FAKTEN_TRANSFORMATION §8) — rein ──────
-// Entscheidung 10.10. (22:30): MAKE ist für die berufliche Personenrecherche EIGENER Verantwortlicher (berechtigtes Interesse, Art. 6 Abs. 1 lit. f),
-// Interessenabwägung je Dossier dokumentiert, Art.-14-Hinweis durch MAKE, Löschfrist Mandatsende + 90 Tage (einstellbar). Hier stehen:
+// Entscheidung 10.10. (22:30): die Instanz (Verantwortlicher aus der Einrichtung) ist für die berufliche Personenrecherche EIGENER Verantwortlicher
+// (berechtigtes Interesse, Art. 6 Abs. 1 lit. f), Interessenabwägung je Dossier dokumentiert, Art.-14-Hinweis durch den Verantwortlichen, Löschfrist Mandatsende + 90 Tage (einstellbar). Hier stehen:
 //   · die Negativliste als Muster (je Treffer die KATEGORIE — nie der Wortlaut) für Ausgabe-Säuberung und deterministische Prüfung,
 //   · die Muster-Texte für Interessenabwägung (LIA) und Art.-14-Hinweis (mit Platzhaltern; je Dossier bearbeitbar),
 //   · die Art.-14-Uhr je Personenkarte und der Löschtag.
