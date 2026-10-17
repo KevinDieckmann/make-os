@@ -95,7 +95,7 @@ describe('Markttraktion-Planung: „frei“ ohne Kopf & Energie', () => {
     const { freieStunden } = await import('@/lib/crm/planung-server');
     const heute = tag(0);
     const frei = await freieStunden('pa', heute);
-    const s = (await (await route.GET(get('pa', '?space=privat'))).json()).stand as Stand & { personen: { id: string; wochen: { netto: number; belastbar: number; bedarf: number }[] }[] };
+    const s = (await (await route.GET(get('pa', '?space=privat'))).json()).stand as { personen: { id: string; wochen: { netto: number; belastbar: number; bedarf: number }[] }[] };
     const w = s.personen.find(p => p.id === 'konto-pa')!.wochen.slice(0, 4);
     const schnitt = (f: (x: { netto: number; belastbar: number; bedarf: number }) => number) => Math.round((w.reduce((a, x) => a + f(x), 0) / w.length) * 10) / 10;
     // Kontrolle: in Privat wirkt der Faktor (sonst prüfte der Wächter nichts).
@@ -116,5 +116,19 @@ describe('Business-Index, Säule Kapazität: ohne Kopf & Energie', () => {
     expect(priv.kennzahlen.belastbar4).toBeLessThan(biz.kennzahlen.belastbar4); // Kontrolle: in Privat wirkt der Faktor
     expect(k?.belastbar4).toBe(biz.kennzahlen.belastbar4);
     expect(k?.erholung).toBeNull();
+  });
+});
+
+// Gesamtprüfung 18.10. (L4 B5/B6): mit einem Konto „nur Business“ lässt sich Gesundheit nicht mehr teilen — „teilt mit allen“ heißt deshalb: mit allen
+// VOLLEN Mitgliedern des Haushalts (sonst zählte die Erholung in keinem Haushalt mit einem Business-Partner).
+describe('Erholung im Team-Faktor: „teilt mit allen vollen Mitgliedern“', () => {
+  it('pa teilt nur mit pb (nicht mit dem Konto „nur Business“) — der Faktor wirkt in Privat trotzdem', async () => {
+    const db = await import('@/lib/store/local-db');
+    const vorher = await db.loadJson<{ konten: { speicher: string; teilt: { gesundheit: string[] } }[] }>('konten');
+    await db.saveJson('konten', { ...vorher!, konten: vorher!.konten.map(k => (k.speicher === 'pa' ? { ...k, teilt: { gesundheit: ['pb'] } } : k)) });
+    try {
+      const s = (await (await route.GET(get('pa', '?space=privat'))).json()).stand as Stand;
+      expect(s.team.kopf).toMatchObject({ faktor: 0.75, personen: 1 });
+    } finally { await db.saveJson('konten', vorher); }
   });
 });

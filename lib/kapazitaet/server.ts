@@ -130,9 +130,10 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; ohneKopf
     ]);
     const t = v ? tageAusVerfuegbarkeit(v) : { tage: [], hatVorlage: false };
     // Erholung zählt nur, wenn die Person SELBST eingewilligt hat (Kapazität › „Erholung berücksichtigen“, Art. 9 Abs. 2 lit. a —
-    // Vorgabe aus, DSGVO-Prüfung 04.10.) UND ihre Gesundheit mit allen anderen Konten des Haushalts teilt.
+    // Vorgabe aus, DSGVO-Prüfung 04.10.) UND ihre Gesundheit mit allen anderen Konten des Haushalts teilt — seit 18.10. (Gesamtprüfung L4 B5/B6) mit
+    // allen VOLLEN Mitgliedern: mit einem Konto „nur Business“ lässt sich Gesundheit nicht mehr teilen (`teilenErlaubt`), und es sieht den Team-Faktor nie.
     const k = konten.find(x => x.speicher === sp);
-    const andere = [...kontoSpeicher].filter(x => x !== sp);
+    const andere = [...kontoSpeicher].filter(x => x !== sp && konten.find(y => y.speicher === x)?.finanzRecht !== 'business');
     const teilt = !!k && andere.every(a => k.teilt?.gesundheit?.includes(a)) && !!datei.personen[p.id]?.erholungAm;
     if (zeit) {
       for (const b of bloeckeImZeitraum(zeit, tagPlus(heute, -400), heute, istArbeit)) {
