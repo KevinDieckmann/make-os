@@ -301,6 +301,34 @@ describe('Zusatzmodul an einen laufenden Fall', () => {
     const d2 = ok(editorAnwenden(d1, { vorlageId: p.id, stand: stand(paket(d1, 'Probe-Paket')), ops: [{ op: 'zusatz', an: false }] }, { person: 'pia', jetzt: J, standVon: stand, neueId: x => `${x}-z${++N}` }));
     expect('zusatz' in paket(d2, 'Probe-Paket')).toBe(false);
   });
+
+  it('Editor-Paket und Editor-Zusatzmodul mit je einer Bestätigung passen zusammen (17.10., Gesamtprüfung Schreibwege B4)', () => {
+    const d = bibliothek();
+    const ctx = { person: 'pia', jetzt: J, standVon: stand, neueId: (x: string) => `${x}-z${++N}` };
+    const bestaetigung = (d0: VorlagenDatei, t: string) => {
+      const v = paket(d0, t);
+      const ph = kinderVon(wurzelVon(v.knoten)!.id, v.knoten).find(x => !x.freigabe)!;
+      return ok(editorAnwenden(d0, { vorlageId: v.id, stand: stand(v), ops: [{ op: 'abstimmung', phaseId: ph.id, an: true }] }, ctx));
+    };
+    let d1 = bestaetigung(d, 'Probe-Paket');
+    const t = paket(d1, 'Probe-Telefonie (Zusatzmodul)');
+    d1 = bestaetigung(d1, t.titel);
+    const fgPaket = paket(d1, 'Probe-Paket').freigaben.find(f => /^A\d+$/.test(f.id))!.id;
+    const fgZusatz = paket(d1, t.titel).freigaben.map(f => f.id).find(id => /^A[0-9a-f]{4}-\d+$/.test(id));
+    expect(fgPaket).toBe('A1');
+    expect(fgZusatz).toBeDefined();
+    const f = zusatzAnhaengen(start(paket(d1, 'Probe-Paket')), { vorlage: paket(d1, t.titel), person: 'pia', jetzt: J, start: HEUTE });
+    expect(f.ok).toBe(true);
+    // Später zum Zusatzmodul erklärt: vorhandene „A1“ bekommen das Kürzel — Vorlage und Knoten zusammen.
+    const d2 = bestaetigung(bibliothek(), 'Probe-Paket');
+    const p2 = paket(d2, 'Probe-Paket');
+    const d3 = ok(editorAnwenden(d2, { vorlageId: p2.id, stand: stand(p2), ops: [{ op: 'zusatz', an: true }] }, ctx));
+    const p3 = paket(d3, 'Probe-Paket');
+    const id = p3.freigaben.map(x => x.id).find(x => x.startsWith('A'))!;
+    expect(id).toMatch(/^A[0-9a-f]{4}-1$/);
+    expect(p3.knoten.some(k => k.freigabe === id)).toBe(true);
+    expect(p3.knoten.some(k => k.freigabe === 'A1')).toBe(false);
+  });
 });
 
 describe('Update-Probe: Altbestand ohne die neuen Felder', () => {

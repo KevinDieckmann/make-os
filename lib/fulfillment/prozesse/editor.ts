@@ -30,14 +30,20 @@ import { knotenForm } from './reise-bild';
 import { abstimmungsNummern } from './darstellung';
 import { phasenAbschnitte, phasenDer, phasenSchritte, phaseVonKnoten, neinZiele, zweigeOhne, zweigePruefen } from './fluss-struktur';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
-import { ausfuehren, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, standPruefen } from './pruefen';
+import { ausfuehren, fnv, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, standPruefen } from './pruefen';
 import { rahmenOrdnen, umrissVon } from './flaeche-lage';
 import { PAPIERKORB_TAGE, papierkorbBis } from '@/lib/eintraege/sicher';
 
 /** Kennung eines neuen Knotens aus dem Editor: `fk-<uuid>` (wie `neueKennung('fk')`). */
 export const EDITOR_KENNUNG = /^fk-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 /** Kennungen der Abstimmungspunkte, die der Editor anlegt (A1, A2 …) — die Muster-Punkte F0–F7 tragen Bedeutung (Onboarding, Analyse) und werden nie neu vergeben. */
-export const EDITOR_ABSTIMMUNG = /^A\d{1,3}$/;
+export const EDITOR_ABSTIMMUNG = /^A(?:[0-9a-f]{4}-)?\d{1,3}$/;
+/**
+ * Kennung einer eigenen Bestätigung (Editor). Ein Zusatzmodul trägt ein Kürzel seiner Vorlage davor (17.10., Gesamtprüfung Schreibwege B4): sonst hießen die
+ * Bestätigungen von Paket und Modul beide „A1“ — und das Modul ließ sich nicht an einen Fall hängen (409 ohne Ausweg, Kennungen wählt man nicht von Hand).
+ */
+const abstimmungKennung = (v: Pick<ProzessVorlage, 'id' | 'zusatz'>, n: number) => (v.zusatz ? `A${fnv(v.id).slice(0, 4)}-${n}` : `A${n}`);
+const abstimmungNr = (id: string) => Number(id.slice(id.lastIndexOf('-') + 1 || 1));
 /** Höchstens so viele Tage Frist an einem Schritt. */
 export const FRIST_MAX = 365;
 /** Runden einer Erinnerung auf dem Nein-Pfad (Feld „Versuche“ im Seitenfeld; fehlt = 5, `VERSUCHE_VORGABE`). Dieselbe Grenze liest lib/fulfillment/lesen.ts. */
@@ -320,7 +326,13 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
           // Schalter „Zusatzmodul“ (17.10. spät): ändert nur, wie ein Fall startet — keine neue Fassung (siehe `ohneLage`).
           const an = optBool(o.an, 'Zusatzmodul');
           if (an === undefined || an === null) nein('an: true oder false.');
-          if (an) v = { ...v, zusatz: true }; else { const { zusatz: _z, ...r } = v; v = r; }
+          if (an) {
+            // Eigene Bestätigungen bekommen das Kürzel des Moduls (Schreibwege B4) — Vorlage und Knoten zusammen, Titel bleiben.
+            const z = { ...v, zusatz: true as const };
+            const um = new Map(v.freigaben.filter(f => /^A\d{1,3}$/.test(f.id)).map(f => [f.id, abstimmungKennung(z, abstimmungNr(f.id))] as const));
+            v = { ...z, freigaben: v.freigaben.map(f => (um.has(f.id) ? { ...f, id: um.get(f.id)! } : f)) };
+            if (um.size) kn = kn.map(x => (x.freigabe && um.has(x.freigabe) ? { ...x, freigabe: um.get(x.freigabe)! } : x));
+          } else { const { zusatz: _z, ...r } = v; v = r; }
           break;
         }
         case 'phase-neu': {
@@ -364,8 +376,8 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
             // Einen freien eigenen Punkt wiederverwenden (aus- und wieder einschalten gibt denselben zurück), sonst einen neuen anlegen.
             fid = liste.find(f => EDITOR_ABSTIMMUNG.test(f.id) && !genutzt.has(f.id))?.id;
             if (!fid) {
-              const n = liste.reduce((m, f) => (EDITOR_ABSTIMMUNG.test(f.id) ? Math.max(m, Number(f.id.slice(1))) : m), 0) + 1;
-              fid = `A${n}`;
+              const n = liste.reduce((m, f) => (EDITOR_ABSTIMMUNG.test(f.id) ? Math.max(m, abstimmungNr(f.id)) : m), 0) + 1;
+              fid = abstimmungKennung(v, n);
               liste.push({ id: fid, titel: `${P.titel} abgestimmt`.slice(0, 120), wer: 'beide' });
             }
           }
