@@ -11,8 +11,8 @@ import { KAESTCHEN_MAX, sichtbareKaestchen } from '@/lib/reise/bild';
 import { kreislaufSpalten, KUNDE_AB } from '@/lib/crm/kreislauf-bild';
 import { einrichtungReise, etappenFluss, etappeId } from '@/lib/make-one/onboarding-bild';
 import { einrichtungStand, schritteFuer, istFertig } from '@/lib/make-one/onboarding-data';
-import { ketteSpalten, meilensteinFluss, erreichtId } from '@/lib/planung/kette-bild';
-import { ketteOrdnen } from '@/lib/planung/meilenstein-kette';
+import { ketteSpalten, meilensteinFluss, erreichtId, kettenZiel, ziehInReise } from '@/lib/planung/kette-bild';
+import { ketteOrdnen, zieheInKette, verschiebeInKette } from '@/lib/planung/meilenstein-kette';
 import { meilensteinListeId } from '@/lib/planung/meilenstein-aufgaben';
 import { ReiseBild } from '@/components/os/ui/reise/ReiseBild';
 import type { Kreislauf } from '@/lib/crm/planung';
@@ -204,5 +204,50 @@ describe('Planung › Ziel — die Meilenstein-Kette als Reise', () => {
     expect(fl.ende.titel).toBe('M c');
     expect(fl.naechster).toBe('c');
     expect(meilensteinFluss(reihe, alle, state, HEUTE, 'c')!.ende.titel).toBe('Ziel erreicht');
+  });
+});
+
+describe('Nachbesserung 17.10.: in der Planung geht keine Funktion verloren, die Einrichtung nennt „Als Nächstes“ einmal', () => {
+  const ms = (id: string, rang: number, x: Partial<Meilenstein> = {}): Meilenstein => ({ id, titel: `M ${id}`, rang, fortschritt: 0, space: 'business', zielId: 'z1', ...x } as Meilenstein);
+  it('Ziehen in der Reise ändert die Reihenfolge über DIESELBE Regel (`zieheInKette`) — eine Abhängigkeit geht vor', () => {
+    const alle = [ms('x', 1), ms('y', 2), ms('z', 3), ms('w', 4, { wartetAuf: ['y'] })];
+    const reihe = ketteOrdnen(alle).reihe;
+    expect(reihe.map(m => m.id)).toEqual(['x', 'y', 'z', 'w']);
+    const ids = (l: Meilenstein[] | null) => l && ketteOrdnen(l).reihe.map(m => m.id);
+    // z an den Anfang (links neben x) — dasselbe Ergebnis wie die Regel der Kette mit ihrem Ziel.
+    expect(kettenZiel(reihe, 'z', null)).toBe('x');
+    expect(ziehInReise(alle, reihe, 'z', null)).toEqual(zieheInKette(alle, reihe, 'z', 'x'));
+    expect(ids(ziehInReise(alle, reihe, 'z', null))).toEqual(['z', 'x', 'y', 'w']);
+    // x hinter z (rechte Hälfte von z).
+    expect(ids(ziehInReise(alle, reihe, 'x', 'z'))).toEqual(['y', 'z', 'x', 'w']);
+    // Dieselbe Stelle → nichts; vor seinen Vorgänger → abgelehnt (die Abhängigkeit geht vor), wie bei ▲▼.
+    expect(kettenZiel(reihe, 'y', 'x')).toBeNull();
+    expect(ziehInReise(alle, reihe, 'w', 'x')).toBeNull();
+    expect(verschiebeInKette(alle, reihe, 'w', 'auf')).not.toBeNull(); // w vor z ist erlaubt — ▲▼ und Ziehen fragen dieselbe Kette
+    expect(ids(ziehInReise(alle, reihe, 'w', 'y'))).toEqual(['x', 'y', 'w', 'z']);
+  });
+
+  it('Planung › Ziel: Ziehen in der Reise mit der Bedienung des Editors (EINE Implementierung), Tastatur Alt+←/→, Schalter „Liste“ mit allen Karten', () => {
+    const ziel = lies('components/os/planung/ZielDetail.tsx');
+    expect(ziel).toContain("import { useReiseZiehen, stufenZielBei } from '../ui/reise/ziehen'");
+    expect(ziel).toContain('ziehInReise(p.ms, kette.reihe, q.id, ziel.nach)');
+    expect(ziel).toContain("'data-ff-ziel': 'phase'");
+    expect(ziel).toContain('Alt+ArrowLeft Alt+ArrowRight');
+    expect(ziel).toContain("{ id: 'liste', label: 'Liste' }");
+    expect(ziel).toContain('stufe.map(m => karte(m, true))');
+    expect(ziel).toContain('<PfeilRang'); // ▲▼ in der Karte (am Handy)
+    // Die Zieh-Bedienung liegt einmal — der Prozess-Editor nutzt dieselbe.
+    expect(ALLE.filter(p => /export function useReiseZiehen\b/.test(lies(p)))).toEqual(['components/os/ui/reise/ziehen.tsx']);
+    expect(ALLE.filter(p => /export const MAUS_AB_PX\b/.test(lies(p)))).toEqual(['components/os/ui/reise/ziehen.tsx']);
+    expect(lies('components/os/fulfillment/editor/ziehen.tsx')).toContain('useReiseZiehen<ZiehQuelle, ZiehZiel>');
+  });
+
+  it('Einrichtung: im Stand EINE Zeile „Als Nächstes: … ›“, die zum vorgewählten Schritt springt — keine zweite Karte', () => {
+    const ob = lies('components/os/OnboardingView.tsx');
+    const uebersicht = ob.slice(ob.indexOf('export function OnboardingUebersicht'));
+    expect(uebersicht).toContain('Als Nächstes:');
+    expect(uebersicht).toContain('new Event(EINRICHTUNG_NAECHSTER)');
+    expect(uebersicht).not.toContain('<NaechsterSchritt');
+    expect(ob).toContain("insBild('einrichtung-detail')");
   });
 });

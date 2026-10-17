@@ -12,6 +12,7 @@ import type { Meilenstein } from './typen';
 import type { Task, TasksState } from '@/types/tasks';
 import { aufgabenStand, aufgabenVonMeilenstein } from './meilenstein-aufgaben';
 import { istAbgeschlossen, nachReihe } from '@/lib/aufgaben/struktur';
+import { zieheInKette } from './meilenstein-kette';
 
 /** Kennung der Raute „erreicht?“ am Ende des Flusses eines Meilensteins (das Detail ist dann der Meilenstein selbst). */
 export const ERREICHT_PRAEFIX = 'ms-';
@@ -98,4 +99,28 @@ export function meilensteinFluss(reihe: readonly Meilenstein[], alle: readonly P
     ende: nach ? { titel: nach.titel } : { titel: 'Ziel erreicht' },
     ...(nach ? { naechster: nach.id } : {}),
   };
+}
+
+// ── Ziehen in der Reise (17.10. Nachbesserung: „keine Funktion darf verloren gehen“) ─────────────────────────────────────────────────────────
+
+/**
+ * Wohin ein Meilenstein in der Reise gezogen wird — „hinter `nach`“ (null = an den Anfang) — als Ziel der Kette: die Kennung, an deren Platz er rückt
+ * (`zieheInKette(…, aufId)`). Null, wenn er dort schon steht. Rein.
+ */
+export function kettenZiel(reihe: readonly Pick<Meilenstein, 'id'>[], id: string, nach: string | null): string | null {
+  const von = reihe.findIndex(m => m.id === id);
+  if (von < 0) return null;
+  const ohne = reihe.filter(m => m.id !== id);
+  const t = nach === null ? 0 : ohne.findIndex(m => m.id === nach) + 1;
+  if ((nach !== null && t === 0) || t === von) return null;
+  return reihe[t]?.id ?? null;
+}
+
+/**
+ * Ziehen in der Reise: den Meilenstein `id` hinter `nach` setzen — über DIESELBE Regel wie bisher (`zieheInKette`, lib/planung/meilenstein-kette.ts: eine
+ * Abhängigkeit geht vor, sonst null). Zurück kommt die ganze Liste mit neuen Rängen (für den vorhandenen Schreibweg `persistMs`).
+ */
+export function ziehInReise<M extends Pick<Meilenstein, 'id' | 'wartetAuf'> & { rang?: number }>(alle: readonly M[], reihe: readonly M[], id: string, nach: string | null): M[] | null {
+  const auf = kettenZiel(reihe, id, nach);
+  return auf ? zieheInKette(alle, reihe, id, auf) : null;
 }

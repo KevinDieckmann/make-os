@@ -11,8 +11,10 @@ Kevin: „Markttraktion-Kreislauf, Onboarding und Planung bekommen dieselbe Reis
 - **Markttraktion › Planung › Kreislauf:** Reise statt Ring — sieben Stufen nebeneinander, Zahl mit Wort und Sätze als Kästchen, Band „Kunde“ ab Fulfillment;
   ein Tipp zeigt die Liste der Stufe (Plan/Ist, Produkte, Kunden). Zahlen unverändert aus `kreislauf` (neu nur `haengt` an der Follow-up-Stufe = dieselbe Zahl).
 - **Einrichtung:** Etappen als Reise mit „Hier“, Schritte der Etappe als Fluss, Detail daneben; die ganze Liste über den Schalter „Liste“. Der nächste Schritt
-  steht im Weg vorgewählt (nicht mehr zusätzlich im Stand).
+  steht im Weg vorgewählt.
 - **Planung › Ziel:** die Meilenstein-Kette als Reise (Raute = wartet darauf), Aufgaben des gewählten Meilensteins als Fluss bis „erreicht?“, daneben seine Karte.
+  Meilensteine in der Reise ziehen (dieselbe Bedienung wie im Prozess-Editor, jetzt EINMAL in components/os/ui/reise/ziehen.tsx; Regel `zieheInKette`), ▲▼ bleibt;
+  Schalter „Liste“ zeigt alle Karten wie bisher. Einrichtung: im Stand die Zeile „Als Nächstes: … ›“ (springt zum vorgewählten Schritt).
 - **Demo:** ein Beispiel-Ablauf „Beispiel · Vom Angebot zum Start“ mit Entscheidung (ja/nein) und Erinnerung, über die Editor-Route gesät (lib/demo/fulfillment-editor.ts).
 - Nur Darstellung — keine Datenänderung, kein Server-Schritt, keine Umleitung nötig. Wächter `tests/reise-ueberall.test.ts`.
 

@@ -21,12 +21,15 @@
 // eigens darunter. Der Schritt „Plan Business online“ trägt seinen Knopf (`BusinessOnlineVorlage`).
 // Reise + Fluss (17.10., Kevin: „Markttraktion-Kreislauf, Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung“): die Übersicht zeigt
 // die Etappen als EINE Zeile mit „Hier“ (components/os/ui/reise `ReiseBild` — derselbe Baustein wie im Fulfillment), ein Tipp auf eine Etappe ihre Schritte
-// als Fluss, ein Tipp auf einen Schritt daneben sein Detail (Haken, Anleitung, Ort). Der nächste Schritt steht dort vorgewählt — nicht noch einmal im Stand.
+// als Fluss, ein Tipp auf einen Schritt daneben sein Detail (Haken, Anleitung, Ort). Der nächste Schritt steht dort vorgewählt — im Stand nur EINE Zeile
+// „Als Nächstes: … ›“, die dorthin springt (Ereignis `EINRICHTUNG_NAECHSTER`, keine zweite Karte).
 // Die ganze Liste nach „Der Kern“/„Nach und nach“ bleibt über den Schalter „Liste“ (eine Ansicht zur Zeit, nichts doppelt). Gerechnet wird nichts neu
 // (lib/make-one/onboarding-bild.ts über `schritteFuer`, `istFertig`, `fortschrittVon`, `einrichtungStand`).
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+/** „Als Nächstes: … ›“ im Stand → der Weg wählt den nächsten Schritt (Weg-Ansicht, ohne eigene Wahl) und holt sein Detail ins Bild. */
+const EINRICHTUNG_NAECHSTER = 'make-einrichtung-naechster';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import {
   EBENEN, ablaufFuer, datenkarteFuer, einrichtungStand, ebeneMitId, etappenFuer, fortschrittVon, gruppeVon, gruppenFuer, istFertig, offeneVoraussetzungen, schrittFuer, schritteDerEbene,
@@ -381,6 +384,11 @@ function EinrichtungWeg({ z, meine, haken, laden, liste }: { z: Zustand | null; 
   const [ansicht, setAnsicht] = useState<'weg' | 'liste'>('weg');
   const [wahl, setWahl] = useState<{ etappe: number | null; schritt: string | null }>({ etappe: null, schritt: null });
   const handy = useHandy();
+  useEffect(() => {
+    const zumNaechsten = () => { setAnsicht('weg'); setWahl({ etappe: null, schritt: null }); insBild('einrichtung-detail'); };
+    window.addEventListener(EINRICHTUNG_NAECHSTER, zumNaechsten);
+    return () => window.removeEventListener(EINRICHTUNG_NAECHSTER, zumNaechsten);
+  }, []);
   const ich = z?.ich ?? null;
   const reise = einrichtungReise(ich, z);
   const aktivId = wahl.etappe !== null ? etappeId(wahl.etappe) : reise.hier ?? reise.spalten.at(-1)?.id ?? null;
@@ -446,7 +454,15 @@ export function OnboardingUebersicht() {
           </div>
         )}
         <EbenenStand z={z} />
-        {/* Der nächste Schritt steht im Weg darunter vorgewählt (Reise: „Hier“, Detail daneben) — nicht noch einmal hier. */}
+        {/* Der nächste Schritt steht im Weg darunter vorgewählt (Reise: „Hier“, Detail daneben) — hier nur EINE Zeile, die dorthin springt. */}
+        {f.naechster && (
+          <button type="button" className="fassbar" onClick={() => window.dispatchEvent(new Event(EINRICHTUNG_NAECHSTER))}
+            style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%', minHeight: 44, marginTop: 10, padding: 0, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink }}>
+            <span style={{ color: C.inkLeise, flex: '0 0 auto' }}>Als Nächstes:</span>
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{texteFuer(f.naechster, z?.ich).nr} · {texteFuer(f.naechster, z?.ich).titel}</span>
+            <span aria-hidden style={{ color: C.inkLeise, flex: '0 0 auto' }}>›</span>
+          </button>
+        )}
         <p style={{ ...absatz, marginTop: 12 }}>
           Gezählt werden deine Schritte („Meine Einrichtung“), die gemeinsamen{z?.ich?.inhaber ? ' und — als Inhaber — die der Instanz' : ''}: alles außer
           Optionalem, auch „{namen.spaeter.titel}“ — dieselbe Zahl wie die Karte auf Heute, die bleibt, bis alles steht.{neustart ? ` „${namen.samstag.titel}“ steht eigens darüber.` : ''}
