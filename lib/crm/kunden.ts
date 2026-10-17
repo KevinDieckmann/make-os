@@ -114,6 +114,15 @@ export function konzentration(mandate: Mandat[]): { kunde: string; anteil: numbe
   return { kunde, anteil: Math.round((wert / gesamt) * 100) };
 }
 
+/**
+ * Bis wann der Liquiplan-Posten eines beendeten Mandats laufen darf (17.10., Gesamtprüfung L1 A2): das Ende des Mandats (fehlt es: heute) — die letzte
+ * Zahlung kommt noch mit dem Zahlungsziel. Nicht beendet → null.
+ */
+export function postenEnde(m: Pick<Mandat, 'status' | 'ende' | 'zahlungszielTage'>, heute: string): string | null {
+  if (m.status !== 'beendet') return null;
+  return plusTage(m.ende ?? heute, m.zahlungszielTage || 14);
+}
+
 /** Der Liquiplan-Posten, den ein Mandat erzeugen würde (brutto, Eingang nach Zahlungsziel). */
 export function planpostenAus(m: Mandat, heute: string): Planposten | null {
   if (m.status !== 'aktiv' && m.status !== 'verhandlung') return null;

@@ -3,7 +3,7 @@
 // automatisch geschrieben: Einige Eingänge (einzelne Kunden) stehen schon von Hand
 // im Plan, und doppelt gezählt ist schlimmer als gar nicht. Deshalb:
 // GET  → je Mandat der Posten, den es erzeugen würde, und ob er schon da ist
-// POST { mandatId, aktion: 'anlegen' | 'verknuepfen', postenId? }
+// POST { mandatId, aktion: 'anlegen' | 'verknuepfen' | 'beenden', postenId? } — „beenden“ setzt nur das Ende des Postens (beendetes Mandat).
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -12,7 +12,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { planpostenAus } from '@/lib/crm/kunden';
+import { planpostenAus, postenEnde } from '@/lib/crm/kunden';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,10 +27,14 @@ export async function GET(req: Request) {
     mandate: crm.mandate.map(m => {
       const vorschlag = planpostenAus(m, heute);
       const da = posten.find(p => p.id === (m.planpostenId ?? `lp-mandat-${m.id}`));
+      // Beendet (17.10., Gesamtprüfung L1 A2): steht der Posten noch ohne Ende (bzw. mit späterem), ist das „endet“ — sonst lief das Honorar still weiter.
+      const bis = postenEnde(m, heute);
       return {
         id: m.id, kunde: m.kunde, titel: m.titel, status: m.status, vorschlag,
         vorhanden: da ?? null,
-        lage: !vorschlag ? 'kein-posten' : !da ? 'fehlt' : Math.abs(da.betrag - vorschlag.betrag) > 1 || da.rhythmus !== vorschlag.rhythmus ? 'abweichend' : 'ok',
+        lage: bis && da && da.betrag > 0 && (!da.bis || da.bis > bis) ? 'endet'
+          : !vorschlag ? 'kein-posten' : !da ? 'fehlt' : Math.abs(da.betrag - vorschlag.betrag) > 1 || da.rhythmus !== vorschlag.rhythmus ? 'abweichend' : 'ok',
+        ...(bis ? { bis } : {}),
       };
     }),
     // Kandidaten zum Verknüpfen: Einnahmen der Kategorie Mandat ohne Mandat.
@@ -61,5 +65,19 @@ export async function POST(req: Request) {
     if (!m.planpostenId) await aendereCrm(cur => ({ ...cur, mandate: cur.mandate.map(x => (x.id === m.id ? { ...x, planpostenId: p.id } : x)) }));
     return NextResponse.json({ ok: true, posten: p });
   }
-  return NextResponse.json({ ok: false, fehler: 'aktion: anlegen oder verknuepfen.' }, { status: 400 });
+  if (b.aktion === 'beenden') {
+    // Nur das Ende des vorhandenen Postens (17.10., L1 A2) — Betrag, Beginn und Rhythmus bleiben, wie sie im Plan stehen.
+    const bis = postenEnde(m, localDay());
+    if (!bis) return NextResponse.json({ ok: false, fehler: 'Das Mandat ist nicht beendet.' }, { status: 400 });
+    const id = m.planpostenId ?? `lp-mandat-${m.id}`;
+    let gefunden = false;
+    await updateJson<{ posten: Planposten[] }>('liquiplan', cur => {
+      const l = cur?.posten ?? [];
+      gefunden = l.some(x => x.id === id);
+      return { posten: l.map(x => (x.id === id && (!x.bis || x.bis > bis) ? { ...x, bis } : x)) };
+    });
+    if (!gefunden) return NextResponse.json({ ok: false, fehler: 'Posten nicht im Liquiditätsplan.' }, { status: 404 });
+    return NextResponse.json({ ok: true, bis });
+  }
+  return NextResponse.json({ ok: false, fehler: 'aktion: anlegen, verknuepfen oder beenden.' }, { status: 400 });
 }

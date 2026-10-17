@@ -566,6 +566,18 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
   const grenze: string[] = [];
   const raus: ListenOp[] = [];
   for (const o of ops) {
+    // Mandat beendet (17.10., Gesamtprüfung L1 A2): ohne Ende-Datum stempelt der Server den Tag des Wechsels — sonst lief das Honorar im Liquiditätsplan
+    // still weiter und die Nachsorge zählte ab der letzten Änderung. Ein mitgeschicktes bzw. schon gesetztes Ende gewinnt.
+    if (o.liste === 'mandate' && o.op !== 'delete') {
+      const roh = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;
+      const alt = b.mandate.find(m => m.id === String(o.op === 'teil' ? o.id : roh.id ?? ''));
+      if (roh.status === 'beendet' && alt && alt.status !== 'beendet' && !roh.ende && !alt.ende) {
+        const f = { ...roh, ende: tagVon(jetzt) };
+        raus.push(o.op === 'teil' ? { ...o, felder: f } : { ...o, eintrag: f });
+        continue;
+      }
+      raus.push(o); continue;
+    }
     if (o.liste !== 'chancen') { raus.push(o); continue; }
     if (o.op === 'delete') {
       // Sperre statt Löschen (Konzept): ein Deal mit Geschichte wird verloren oder geparkt — löschen nur eine Fehlanlage.

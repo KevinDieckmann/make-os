@@ -66,7 +66,7 @@ const NETTO = [{ id: 'netto', label: 'netto' }, { id: 'brutto', label: 'brutto' 
 const UST = [{ id: '19', label: '19 % USt' }, { id: '0', label: 'Reverse Charge' }] as const;
 const VERLAENGERUNG = [{ id: 'auto', label: 'verlängert sich' }, { id: 'manuell', label: 'endet' }, { id: 'offen', label: 'offen' }] as const;
 const statusFarbe = (s: string) => (s === 'aktiv' ? LEUCHT.gut : s === 'verhandlung' || s === 'angebot' ? LEUCHT.business : C.inkLeise);
-interface LiquiLage { id: string; lage: 'fehlt' | 'ok' | 'abweichend' | 'kein-posten'; vorschlag: { betrag: number; ab: string; rhythmus: string } | null; vorhanden: { id: string; betrag: number } | null }
+interface LiquiLage { id: string; lage: 'fehlt' | 'ok' | 'abweichend' | 'kein-posten' | 'endet'; bis?: string; vorschlag: { betrag: number; ab: string; rhythmus: string } | null; vorhanden: { id: string; betrag: number } | null }
 
 /** Alle Mandate mit Kennzahlen, Filter und Detail — der Hauptteil von Produkte & Mandate. */
 export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
@@ -202,10 +202,11 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
                 <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
                   links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
                   titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel}</span></>}
-                  unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? 'Liquiplan weicht ab' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
+                  unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? 'Liquiplan weicht ab' : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {breit && lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
                     {breit && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>Liquiplan weicht ab</Chip>}
+                    {breit && lq?.lage === 'endet' && <Chip farbe={LEUCHT.achtung}>Liquiplan läuft weiter</Chip>}
                     {breit && !m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
                     {breit && !m.firmaId && <Chip farbe={LEUCHT.achtung}>ohne Firma</Chip>}
                     <Chip farbe={statusFarbe(m.status)}>{STATUS.find(s => s.id === m.status)?.label}</Chip>
@@ -236,7 +237,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
   const produkt = m.leistungId ? crm.stand.leistungen.find(x => x.id === m.leistungId) : undefined;
   const firma = firmaVonMandat(m, crm.stand.firmen);
   const personen = m.kontaktIds.map(id => (api.kontakte ?? []).find(k => k.id === id)).filter((k): k is NonNullable<typeof k> => !!k);
-  const liquiplan = async (aktion: 'anlegen' | 'verknuepfen', postenId?: string) => {
+  const liquiplan = async (aktion: 'anlegen' | 'verknuepfen' | 'beenden', postenId?: string) => {
     await fetch('/api/crm/liquiplan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mandatId: m.id, aktion, postenId }) });
     neuLaden(); void api.laden();
   };
@@ -323,6 +324,12 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       <Feldzeile label="Liquiditätsplan">
         {lq?.lage === 'ok' && <Link href={WEG.planposten(lq.vorhanden?.id)} style={{ fontSize: TYP.bedien, color: LEUCHT.gut, textDecoration: 'none' }}>steht drin — Posten öffnen ›</Link>}
         {lq?.lage === 'kein-posten' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>kein Posten (Status oder Honorar fehlt)</span>}
+        {lq?.lage === 'endet' && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Mandat beendet — der Posten im Liquiditätsplan läuft noch weiter.</span>
+            <Knopf leise onClick={() => liquiplan('beenden')}>{`Posten zum ${datum(lq.bis!)} beenden`}</Knopf>
+          </div>
+        )}
         {(lq?.lage === 'fehlt' || lq?.lage === 'abweichend') && (
           <div style={{ display: 'grid', gap: 6 }}>
             <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{lq.lage === 'fehlt' ? `Fehlt: würde ${euro(lq.vorschlag!.betrag)} brutto ${lq.vorschlag!.rhythmus} ab ${datum(lq.vorschlag!.ab)} eintragen.` : `Weicht ab: Plan ${euro(lq.vorhanden!.betrag)}, Mandat ${euro(lq.vorschlag!.betrag)}.`}</span>
