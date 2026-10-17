@@ -63,7 +63,7 @@ describe('Feinschliff: Titel, Band „Kunde“, Lage-Zeile', () => {
     const s = renderToStaticMarkup(h(LageStreifen));
     expect(s).toContain('Kunden in Lieferung');
     expect(s).toContain('1 Kunde');
-    expect(s).toMatch(/1 Punkt hängt/);
+    expect(s).toMatch(/1 zu tun/); // 17.10. (Gesamtprüfung L2 B8): EINE Zählung mit „Heute im Fulfillment“
     expect(s).not.toContain('Beispiel GmbH');
     expect(s).not.toContain('Leitfaden schreiben');
     expect(s).not.toContain('Als Nächstes');

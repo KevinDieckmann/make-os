@@ -5,6 +5,7 @@
 // (PATCH), Antworten werden nie geraten — nach jedem Schreiben lädt die Ansicht neu (Ereignis `make-fulfillment-geaendert`). Fehler bleiben als
 // Satz sichtbar (Hinweis-Karte), nichts wird still verworfen.
 
+import { tagVon } from '@/lib/zeit';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Baustein, Fall, FallKnoten, FallKurz, Freigabepunkt, KundeKurz, ProzessKnoten, ProzessVorlage, RitualVorlage, Rolle, Stakeholder, Entscheidung, Unterschrift, WartetPunkt, WertKontoZeile, FulfillmentEinstellungen, OnboardingKandidat, KnotenStatus } from '@/lib/fulfillment/typen';
 import type { OnboardingStand, WillkommenUhr } from '@/lib/fulfillment/prozesse/onboarding';
@@ -162,5 +163,7 @@ export async function fallAktion(body: Record<string, unknown>): Promise<Antwort
 }
 
 export const STATUS_TEXT: Record<KnotenStatus, string> = { offen: 'offen', in_arbeit: 'in Arbeit', wartet_kunde: 'wartet auf Kunde', erledigt: 'erledigt', entfaellt: 'entfällt' };
-export const tagKurz = (t?: string | null) => (t && /^\d{4}-\d{2}-\d{2}/.test(t) ? `${t.slice(8, 10)}.${t.slice(5, 7)}.` : '—');
-export const tagLang = (t?: string | null) => (t && /^\d{4}-\d{2}-\d{2}/.test(t) ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : '—');
+// Ein Zeitstempel (ISO mit Uhrzeit) zählt als Berliner Tag (17.10., Gesamtprüfung L1 B2 — vorher der UTC-Tag: „bis 17.10.“ neben „bis 18.10.“).
+const berlinTag = (t: string) => (t.length > 10 && t.includes('T') ? tagVon(t) : t);
+export const tagKurz = (t?: string | null) => { const x = t ? berlinTag(t) : t; return x && /^\d{4}-\d{2}-\d{2}/.test(x) ? `${x.slice(8, 10)}.${x.slice(5, 7)}.` : '—'; };
+export const tagLang = (t?: string | null) => { const x = t ? berlinTag(t) : t; return x && /^\d{4}-\d{2}-\d{2}/.test(x) ? `${x.slice(8, 10)}.${x.slice(5, 7)}.${x.slice(0, 4)}` : '—'; };

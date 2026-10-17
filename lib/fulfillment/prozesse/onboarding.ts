@@ -17,7 +17,7 @@
 import type { Baustein, Fall, KnotenStatus, RitualVorlage, VorlagenDatei } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 import { MUSTER_ONBOARDING, MUSTER_PLAYBOOK, type OnboardingSchluessel } from '../muster';
-import { ausWandzeit } from '@/lib/kalender/zeit';
+import { ausWandzeit, tagPlus } from '@/lib/kalender/zeit';
 import { abstimmungsNummern } from './darstellung';
 import { ersterTermin } from './termine';
 import { satz } from '@/lib/text/zahlwort';
@@ -67,7 +67,10 @@ export function zeitpunkt(x: string | undefined): number | null {
 
 /** Die 24-Stunden-Uhr der Willkommensmail (3.1/3.2). */
 export function willkommenUhr(unterschrift: string | undefined, stunden: number, gesendetAm: string | undefined, jetzt: string): WillkommenUhr {
-  const u = zeitpunkt(unterschrift);
+  // Kennt die Unterschrift nur den Tag (Angebot angenommen speichert den Tag), läuft die Uhr ab dem ENDE dieses Tages (17.10., Gesamtprüfung L1 B2): vorher
+  // galt 0 Uhr — wer abends annahm, hatte nur noch wenige Stunden, die Mail stand sofort rot. Mit Uhrzeit gilt die Uhrzeit.
+  const nurTag = !!unterschrift && /^\d{4}-\d{2}-\d{2}$/.test(unterschrift);
+  const u = nurTag ? zeitpunkt(tagPlus(unterschrift!, 1)) : zeitpunkt(unterschrift);
   const faellig = u != null ? new Date(u + stunden * 3_600_000).toISOString() : undefined;
   if (gesendetAm) return { ...(faellig ? { faellig } : {}), gesendetAm, ueberfaellig: false };
   if (!faellig) return { ueberfaellig: false };
