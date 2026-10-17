@@ -40,3 +40,14 @@ describe('B1 · Eine Bestätigung schließt keine Phase mit offenen Schritten', 
     expect(r.datei.freigaben.F0).toBeDefined();
   });
 });
+
+describe('B4 · Angebot aus dem Deal: der Wert des Deals gilt', () => {
+  it('Betrag, Basis und Laufzeit kommen vom Deal; ohne Betrag bleibt das Produkt', async () => {
+    const { dealWertUebernehmen } = await import('@/lib/crm/angebote');
+    const p = { id: 'p-1', titel: 'Begleitung', text: '', menge: 1, einheit: 'Monat', einzelpreisCent: 350000, ustSatz: 19, basis: 'monat' as const, laufzeitMonate: 12 };
+    expect(dealWertUebernehmen(p, { betrag: 4500, basis: 'monat', laufzeitMonate: 6 })).toMatchObject({ einzelpreisCent: 450000, basis: 'monat', laufzeitMonate: 6 });
+    expect(dealWertUebernehmen(p, { betrag: 9000, basis: 'einmalig' })).toMatchObject({ einzelpreisCent: 900000, basis: 'einmalig', einheit: 'pauschal' });
+    expect('laufzeitMonate' in dealWertUebernehmen(p, { betrag: 9000, basis: 'einmalig' })).toBe(false);
+    expect(dealWertUebernehmen(p, { betrag: 0, basis: 'monat' })).toBe(p);
+  });
+});

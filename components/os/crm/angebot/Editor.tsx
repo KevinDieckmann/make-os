@@ -30,7 +30,7 @@ import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { kanalStatus } from '@/lib/crm/recht';
 import {
-  angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionAusProdukt, istGesellschaft,
+  angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionAusProdukt, dealWertUebernehmen, istGesellschaft,
   NACHFASSEN_WERKTAGE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE,
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
@@ -93,7 +93,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     const texte = angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel, gueltigBis });
     return {
       ...(g ? { gesellschaft: g } : {}), ...(k ? { kontaktId: k.id } : {}), ...(firmaId ? { firmaId } : {}), ...(d ? { dealId: d.id } : {}), titel,
-      positionen: produkt ? [positionAusProdukt(produkt, 'p-1', { kleinunternehmer: !!v?.kleinunternehmer })] : [],
+      positionen: produkt ? [dealWertUebernehmen(positionAusProdukt(produkt, 'p-1', { kleinunternehmer: !!v?.kleinunternehmer }), d?.wert)] : [],
       ...texte, gueltigBis, zahlungszielTage: ziel,
     };
   });

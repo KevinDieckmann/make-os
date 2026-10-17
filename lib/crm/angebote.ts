@@ -370,6 +370,17 @@ export function positionAusProdukt(l: Leistung, id: string, opt: { kleinunterneh
   };
 }
 
+/**
+ * Der Wert des Deals in die Position (17.10., Gesamtprüfung L1 B4): vereinbart ist, was am Deal steht (Betrag, Basis, Laufzeit) — vorher belegte „Angebot
+ * erstellen“ den Katalogpreis vor (3.500 €/Monat × 12 statt 4.500 € × 6). Ohne Betrag am Deal bleibt die Position, wie das Produkt sie vorgibt.
+ */
+export function dealWertUebernehmen(p: AngebotPosition, w: { betrag: number; basis: AngebotBasis; laufzeitMonate?: number } | undefined): AngebotPosition {
+  if (!w || !(w.betrag > 0)) return p;
+  const { laufzeitMonate: alt, ...ohne } = p;
+  const laufzeit = w.basis === 'einmalig' ? undefined : w.laufzeitMonate ? Math.round(w.laufzeitMonate) : alt;
+  return { ...ohne, basis: w.basis, einheit: EINHEIT_JE_BASIS[w.basis], einzelpreisCent: inCent(w.betrag), ...(laufzeit ? { laufzeitMonate: laufzeit } : {}) };
+}
+
 /** Produkte für den Katalog im Tool: aktive der Gesellschaft (dazu die ohne Gesellschaft), „Text fehlt“ markiert. */
 export function katalog(leistungen: readonly Leistung[], gesellschaft: Gesellschaftskennung | null): { l: Leistung; textFehlt: boolean; andere: boolean }[] {
   return leistungen.filter(l => l.status === 'aktiv' && !l.geloeschtAm)
