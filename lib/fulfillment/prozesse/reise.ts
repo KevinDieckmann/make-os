@@ -144,9 +144,17 @@ export const istSammelSchritt = (k: Pick<FallKnoten, 'titel'>): boolean => titel
  * (jeder als eigener Schritt). EINE Liste für „Als Nächstes“ (Fall-Kopf, Lage, Cockpit, Landkarte) und den nächsten Handgriff.
  */
 export function offeneSchritte(fall: Pick<Fall, 'knoten'>, phaseId: string, heute: string): SchrittZeile[] {
+  return alleSchritte(fall, phaseId, heute).filter(z => !z.fertig);
+}
+
+/**
+ * ALLE Schritte einer Phase in der Reihenfolge des Ablaufs, Sammel-Schritte aufgelöst (jeder ihrer Bausteine ein eigener Schritt) — die Kästchen der
+ * Reise und die Knoten des Flusses (17.10., lib/fulfillment/prozesse/reise-bild.ts). `offeneSchritte` ist genau diese Liste ohne die fertigen.
+ */
+export function alleSchritte(fall: Pick<Fall, 'knoten'>, phaseId: string, heute: string): SchrittZeile[] {
   const l = fall.knoten;
-  return phaseGruppen(fall, phaseId, heute).flatMap(g => g.zeilen).filter(z => !z.fertig)
-    .flatMap(z => (istSammelSchritt(z.knoten) && z.bausteine.length ? z.bausteine.map(b => zeile(b, l, heute)).filter(x => !x.fertig) : [z]));
+  return phaseGruppen(fall, phaseId, heute).flatMap(g => g.zeilen)
+    .flatMap(z => (istSammelSchritt(z.knoten) && z.bausteine.length ? z.bausteine.map(b => zeile(b, l, heute)) : [z]));
 }
 
 /** Die nächsten offenen Schritte der Phase „jetzt“ (höchstens `n`) — in der Reihenfolge des Ablaufs, Sammel-Schritte aufgelöst. */
@@ -251,15 +259,16 @@ export function statusOps(z: Pick<SchrittZeile, 'knoten' | 'bausteine'>, status:
 // ── Der nächste Handgriff (eine Hauptaktion je Ansicht) ─────────────────────────────────────────────────────────────────────────────
 
 /** Wohin ein Onboarding-Schritt führt, wenn er noch fehlt (Reiter des Falls + Wortlaut des Knopfs). */
-export const ONBOARDING_SPRUNG: Record<OnboardingSchluessel, { reiter: FallReiter; text: string }> = {
-  willkommen: { reiter: 'ueberblick', text: 'Willkommensmail vorbereiten' },
-  kickoff: { reiter: 'takt', text: 'Kick-off terminieren' },
-  vereinbarung: { reiter: 'menschen', text: 'Vereinbarung festhalten' },
-  playbook: { reiter: 'kunde', text: 'Kunden-Link fürs Playbook anlegen' },
-  stakeholder: { reiter: 'menschen', text: 'Stakeholder eintragen' },
-  wertkonto: { reiter: 'wert', text: 'Wert-Konto festlegen' },
-  entscheidungslog: { reiter: 'menschen', text: 'Erste Entscheidung festhalten' },
-  f0: { reiter: 'ablauf', text: 'Ersten Abstimmungspunkt vermerken' },
+/** 17.10.: die vier Reiter des Falls (Reise · Ziele & Wirkung · Menschen & Termine · Kunde) — `stelle` = Karte im Reiter (Sprung `#stelle-…`). */
+export const ONBOARDING_SPRUNG: Record<OnboardingSchluessel, { reiter: FallReiter; text: string; stelle?: string }> = {
+  willkommen: { reiter: 'reise', text: 'Willkommensmail vorbereiten' },
+  kickoff: { reiter: 'menschen', text: 'Kick-off terminieren', stelle: 'takt-leiste' },
+  vereinbarung: { reiter: 'menschen', text: 'Vereinbarung festhalten', stelle: 'menschen-vereinbarung' },
+  playbook: { reiter: 'kunde', text: 'Kunden-Link fürs Playbook anlegen', stelle: 'kunde-link' },
+  stakeholder: { reiter: 'menschen', text: 'Stakeholder eintragen', stelle: 'menschen-stakeholder' },
+  wertkonto: { reiter: 'ziele', text: 'Wert-Konto festlegen' },
+  entscheidungslog: { reiter: 'menschen', text: 'Erste Entscheidung festhalten', stelle: 'menschen-entscheidung' },
+  f0: { reiter: 'reise', text: 'Ersten Abstimmungspunkt vermerken' },
 };
 
 export type Handgriff =

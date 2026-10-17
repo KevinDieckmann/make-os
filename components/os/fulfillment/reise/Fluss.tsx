@@ -1,0 +1,237 @@
+'use client';
+
+// ─── Fulfillment · der Fluss einer Phase (17.10. — Miro-Standard „Beispiel Prozess“) ──────────────────────────────────────────────────────
+// EIN Fluss von oben nach unten mit Pfeilen und festen Formen (nur der Stil seines Miro-Boards, nie dessen Inhalt):
+//   Start            — Kreis (womit die Phase beginnt: Unterschrift bzw. der Abstimmungspunkt davor)
+//   Schritt          — Kasten, ruhig grün getönt
+//   Nachricht        — Kasten mit Brief, gelb getönt (Willkommensmail, Mail-Baustein, Wirkungsbericht)
+//   Entscheidung     — Raute (Abstimmungspunkt) mit „ja“ nach unten und „nein“ zur Seite
+//   Erinnerung       — Kasten mit Glocke, orange getönt, auf dem Nein-Pfad bzw. neben einem Schritt, der beim Kunden wartet
+//   Termin           — große Beschriftung mit Kalender (Kick-off, Ritual)
+//   Gruppen          — zwei oder mehr Teilprozesse als Karten nebeneinander
+// Die Bedeutung hängt an der Form (Zeichen + Text für Vorleser), die Farbe kommt dazu. Erledigt ✓ (leise), „Hier“ (Petrol-Rahmen), hängt („!“ rot/gelb).
+// Er zeichnet nur — das Modell rechnet lib/fulfillment/prozesse/reise-bild.ts (`phasenFluss`). Ein Tipp auf einen Knoten wählt ihn (Detail daneben).
+// Die Legende steht EINMAL je Ansicht (`FormenLegende`).
+
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { Check, Mail, CalendarClock, BellRing, AlertCircle, ArrowDown, ArrowRight, RotateCcw } from 'lucide-react';
+import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT, FLAECHE_STIL } from '@/lib/make-one/design';
+import { LEUCHT } from '../../ui';
+import { anzahl } from '@/lib/text/zahlwort';
+import { FORM_NAME, type FlussForm, type FlussKnoten, type FlussTeil, type PhasenFluss } from '@/lib/fulfillment/prozesse/reise-bild';
+import { JETZT, FORM_FARBE, FreigabeRaute } from './bilder';
+
+const HAENGT_FARBE = { rot: LEUCHT.kritisch, gelb: LEUCHT.achtung } as const;
+const ZUSTAND_TEXT = { erledigt: 'erledigt', hier: 'als Nächstes', offen: 'offen', entfaellt: 'entfällt' } as const;
+/** So viele Knoten zeigt eine Gruppe bzw. ein Strang, bevor „+n weitere“ kommt. */
+const STRANG_MAX = 6;
+const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.4 };
+
+/** Ein Pfeil nach unten (optional beschriftet, z. B. „ja“). */
+function Pfeil({ text, kurz }: { text?: string; kurz?: boolean }) {
+  return (
+    <span aria-hidden className="ff-fluss-pfeil" style={{ display: 'grid', justifyItems: 'center', color: C.inkLeise, minHeight: kurz ? 18 : 26, alignContent: 'center', position: 'relative' }}>
+      <span style={{ width: 2, height: kurz ? 8 : 12, background: RAND.stark, borderRadius: 1 }} />
+      <ArrowDown size={14} style={{ marginTop: -3 }} />
+      {text && <span style={{ position: 'absolute', left: 'calc(50% + 10px)', top: '50%', transform: 'translateY(-50%)', fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'nowrap' }}>{text}</span>}
+    </span>
+  );
+}
+
+function knotenLabel(k: FlussKnoten): string {
+  return `${FORM_NAME[k.form]}: ${k.titel} — ${ZUSTAND_TEXT[k.zustand]}${k.haengt ? `, hängt${k.haengt === 'rot' ? ' (dringend)' : ''}` : ''}${k.unter ? `, ${k.unter}` : ''}`;
+}
+
+/** Der Inhalt eines Knotens (Zeichen, Titel, Satz darunter) — in der Form seiner Art. */
+function KnotenKnopf({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: boolean; onWahl: (k: FlussKnoten) => void }) {
+  const f = FORM_FARBE[k.form];
+  const hier = k.zustand === 'hier';
+  const fertig = k.zustand === 'erledigt';
+  const kante = k.haengt ? HAENGT_FARBE[k.haengt] : undefined;
+  const rahmen = gewaehlt ? C.ink : hier ? JETZT : kante ?? (fertig ? RAND.flaeche : TIEF.rand(f));
+  const marke = (
+    <span style={{ display: 'flex', gap: 6, alignItems: 'center', ...MIKRO, color: hier ? JETZT : kante ?? C.inkLeise, minHeight: 14 }}>
+      {hier ? 'Hier · als Nächstes' : fertig ? '' : k.haengt ? (k.haengt === 'rot' ? 'Hängt · dringend' : 'Hängt') : ''}
+    </span>
+  );
+  const titel = (
+    <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: 1 }}>
+      <span style={{ fontWeight: hier ? 700 : 600, color: fertig || k.zustand === 'entfaellt' ? C.inkDim : C.ink, textDecoration: k.zustand === 'entfaellt' ? 'line-through' : 'none', overflowWrap: 'break-word', hyphens: 'manual' }}>{k.titel}</span>
+      {k.unter && <span style={{ ...klein, color: kante ?? C.inkLeise }}>{k.unter}</span>}
+    </span>
+  );
+  const zeichen = fertig ? <Check size={16} color={LEUCHT.gut} aria-hidden style={{ flex: '0 0 auto' }} />
+    : k.form === 'nachricht' ? <Mail size={16} color={f} aria-hidden style={{ flex: '0 0 auto' }} />
+      : k.form === 'erinnerung' ? <BellRing size={16} color={f} aria-hidden style={{ flex: '0 0 auto' }} />
+        : k.form === 'termin' ? <CalendarClock size={20} color={f} aria-hidden style={{ flex: '0 0 auto' }} />
+          : null;
+  const basis: CSSProperties = { display: 'grid', gap: 4, width: '100%', minWidth: 0, minHeight: 44, textAlign: 'left', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink, lineHeight: 1.35, boxSizing: 'border-box' };
+  if (k.form === 'termin') {
+    // Termin: große Beschriftung statt Kasten (wie „Kickoff-Termin“ im Vorbild).
+    return (
+      <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k)} aria-pressed={gewaehlt} onClick={() => onWahl(k)}
+        style={{ ...basis, padding: '6px 4px', background: 'none', border: 'none', borderBottom: `2px solid ${gewaehlt ? C.ink : hier ? JETZT : kante ?? RAND.stark}` }}>
+        {marke}
+        <span style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
+          {zeichen}
+          <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+            <span style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: fertig ? C.inkDim : C.ink, lineHeight: 1.2, overflowWrap: 'break-word' }}>{k.titel}</span>
+            {k.unter && <span style={{ ...klein, color: kante ?? C.inkLeise }}>{k.unter}</span>}
+          </span>
+        </span>
+      </button>
+    );
+  }
+  if (k.form === 'entscheidung') {
+    // Abstimmungspunkt: die Raute, daneben die Frage — „vermerkt?“.
+    return (
+      <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k)} aria-pressed={gewaehlt} onClick={() => onWahl(k)}
+        style={{ ...basis, padding: '6px 10px', background: gewaehlt ? 'rgba(255,255,255,.04)' : 'none', border: `1px solid ${gewaehlt ? C.ink : hier ? TIEF.rand(JETZT) : 'transparent'}`, borderRadius: ECKE.eingabe }}>
+        {marke}
+        <span style={{ display: 'flex', gap: 14, alignItems: 'center', minWidth: 0 }}>
+          <span aria-hidden style={{ width: 34, height: 34, display: 'grid', placeItems: 'center', flex: '0 0 auto' }}>
+            <span style={{ width: 24, height: 24, transform: 'rotate(45deg)', borderRadius: 3, display: 'grid', placeItems: 'center', border: `2px solid ${fertig ? LEUCHT.gut : hier ? JETZT : kante ?? C.inkDim}`, background: fertig ? LEUCHT.gut : hier ? TIEF.flaeche(JETZT) : C.grund, boxShadow: hier ? TIEF.schein(JETZT, 14) : undefined }}>
+              {fertig && <Check size={13} color={C.grund} style={{ transform: 'rotate(-45deg)' }} />}
+            </span>
+          </span>
+          <span style={{ display: 'grid', gap: 2, minWidth: 0, flex: 1 }}>
+            <span style={{ fontWeight: hier ? 700 : 600, color: fertig ? C.inkDim : C.ink, overflowWrap: 'break-word' }}>{k.titel}</span>
+            <span style={{ ...klein, color: kante ?? C.inkLeise }}>{fertig ? 'vermerkt' : k.unter ?? 'bestätigt? — erst dann geht es weiter'}</span>
+          </span>
+          {kante && !fertig && <AlertCircle size={15} color={kante} aria-hidden style={{ flex: '0 0 auto' }} />}
+        </span>
+      </button>
+    );
+  }
+  return (
+    <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k)} aria-pressed={gewaehlt} onClick={() => onWahl(k)}
+      style={{ ...basis, padding: '8px 12px', borderRadius: k.form === 'erinnerung' ? 18 : 8, background: hier ? TIEF.flaeche(JETZT) : fertig ? 'transparent' : TIEF.flaeche(f),
+        border: `${gewaehlt || hier ? 2 : 1}px solid ${rahmen}`, borderLeft: kante && !gewaehlt ? `4px solid ${kante}` : undefined, boxShadow: hier ? TIEF.schein(JETZT, 16) : undefined }}>
+      {marke}
+      <span style={{ display: 'flex', gap: 8, alignItems: 'flex-start', minWidth: 0 }}>
+        {zeichen && <span style={{ marginTop: 1, display: 'inline-flex' }}>{zeichen}</span>}
+        {titel}
+        {kante && !fertig && <AlertCircle size={15} color={kante} aria-hidden style={{ flex: '0 0 auto', marginTop: 1 }} />}
+      </span>
+    </button>
+  );
+}
+
+/** Eine Erinnerung am Rand (Nein-Pfad bzw. neben einem wartenden Schritt) — orange, mit Glocke; zählt nicht als eigener Schritt. */
+function Erinnerung({ e, art }: { e: { titel: string; unter?: string }; art: 'nein' | 'wartet' }) {
+  const f = FORM_FARBE.erinnerung;
+  return (
+    <span className="ff-fluss-erinnerung" role="note" aria-label={`Erinnerung${art === 'nein' ? ' auf dem Nein-Pfad' : ''}: ${e.titel}${e.unter ? `, ${e.unter}` : ''}`}
+      style={{ display: 'flex', gap: 8, alignItems: 'flex-start', minWidth: 0, padding: '7px 11px', borderRadius: 18, background: TIEF.flaeche(f), border: `1px solid ${TIEF.rand(f)}`, fontSize: TYP.bedien, color: C.ink, lineHeight: 1.35 }}>
+      <BellRing size={15} color={f} aria-hidden style={{ flex: '0 0 auto', marginTop: 1 }} />
+      <span style={{ display: 'grid', gap: 1, minWidth: 0 }}>
+        <span style={{ fontWeight: 600 }}>{e.titel}</span>
+        {e.unter && <span style={{ color: C.inkLeise }}>{e.unter}</span>}
+      </span>
+      {art === 'nein' && <RotateCcw size={13} color={C.inkLeise} aria-hidden style={{ flex: '0 0 auto', marginTop: 2 }} />}
+    </span>
+  );
+}
+
+/** Ein Knoten im Strang — mit Nein-Zweig (Raute) bzw. Erinnerung daneben (wartet beim Kunden). */
+function Knoten({ k, gewaehlt, onWahl }: { k: FlussKnoten; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void }) {
+  const seite = k.nein && k.zustand !== 'erledigt' ? { e: k.nein, art: 'nein' as const } : k.erinnerung ? { e: k.erinnerung, art: 'wartet' as const } : null;
+  const knopf = <KnotenKnopf k={k} gewaehlt={gewaehlt === k.id} onWahl={onWahl} />;
+  if (!seite) return <div className="ff-fluss-zelle">{knopf}</div>;
+  return (
+    <div className="ff-fluss-zweig">
+      <div className="ff-fluss-zelle">{knopf}</div>
+      <span aria-hidden className="ff-fluss-seitenpfeil" style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.inkLeise, fontSize: TYP.bedien, padding: '0 6px' }}>
+        {seite.art === 'nein' ? 'nein' : ''}<ArrowRight size={14} />
+      </span>
+      <Erinnerung e={seite.e} art={seite.art} />
+    </div>
+  );
+}
+
+/** Ein Strang (oben → unten) — ab `STRANG_MAX` Knoten mit „+n weitere“. */
+function Strang({ knoten, gewaehlt, onWahl, titel }: { knoten: readonly FlussKnoten[]; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void; titel?: string }) {
+  const [alle, setAlle] = useState(false);
+  // Ein langer Strang zeigt den Ausschnitt um „hier“ (bzw. den gewählten Knoten) — davor und danach je „+n“.
+  const kurzStrang = !alle && knoten.length > STRANG_MAX;
+  const hierIdx = knoten.findIndex(k => k.id === gewaehlt || k.zustand === 'hier');
+  const davor = kurzStrang ? Math.max(0, Math.min(hierIdx >= 0 ? hierIdx - 1 : 0, knoten.length - STRANG_MAX)) : 0;
+  const sichtbar = kurzStrang ? knoten.slice(davor, davor + STRANG_MAX) : knoten;
+  const danach = knoten.length - davor - sichtbar.length;
+  const mehr = (n: number) => <button type="button" className="fassbar" onClick={() => setAlle(true)} style={{ minHeight: 44, padding: '0 12px', background: 'none', border: `1px dashed ${RAND.stark}`, borderRadius: 8, color: C.inkDim, fontSize: TYP.bedien, cursor: 'pointer', fontFamily: SCHRIFT.text }}>+{anzahl(n, 'weiterer Schritt', 'weitere Schritte')}</button>;
+  return (
+    <div style={{ display: 'grid', justifyItems: 'center', width: '100%', minWidth: 0 }}>
+      {titel && <span style={{ ...MIKRO, color: C.inkDim, justifySelf: 'center', padding: '2px 0 4px' }}>{titel}</span>}
+      {!alle && davor > 0 && <>{mehr(davor)}<Pfeil kurz /></>}
+      {sichtbar.map((k, i) => <div key={k.id} style={{ display: 'grid', justifyItems: 'center', width: '100%' }}>{i > 0 && <Pfeil text={knoten[davor + i - 1]?.form === 'entscheidung' && knoten[davor + i - 1]?.zustand !== 'erledigt' ? 'ja' : undefined} />}<Knoten k={k} gewaehlt={gewaehlt} onWahl={onWahl} /></div>)}
+      {!alle && danach > 0 && <><Pfeil kurz />{mehr(danach)}</>}
+    </div>
+  );
+}
+
+function Teil({ t, gewaehlt, onWahl }: { t: FlussTeil; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void }) {
+  if (t.art === 'linie') return <Strang knoten={t.knoten} gewaehlt={gewaehlt} onWahl={onWahl} {...(t.titel ? { titel: t.titel } : {})} />;
+  // Verzweigung in Gruppen: die Teilprozesse als Karten nebeneinander (am Handy untereinander).
+  return (
+    <div className="ff-fluss-gruppen" role="group" aria-label={`${t.gruppen.length} Teilprozesse`}>
+      {t.gruppen.map(g => (
+        <div key={g.id} style={{ ...FLAECHE_STIL.leise, borderRadius: ECKE.flach, padding: '10px 10px 12px', display: 'grid', gap: 6, alignContent: 'start', minWidth: 0 }}>
+          <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', minWidth: 0 }}>
+            <span style={{ ...MIKRO, color: C.ink, overflowWrap: 'break-word', minWidth: 0 }}>{g.titel}</span>
+            <span style={{ ...klein, color: C.inkLeise, flex: '0 0 auto' }}>{g.erledigt}/{g.gesamt}</span>
+          </span>
+          <Strang knoten={g.knoten} gewaehlt={gewaehlt} onWahl={onWahl} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Der Fluss einer Phase: Start-Kreis, Schritte (Strang bzw. Gruppen), Abstimmungspunkt mit ja/nein, Abschluss, Ende. */
+export function Fluss({ fluss, gewaehlt, onWahl, onEnde, fuss }: { fluss: PhasenFluss; gewaehlt: string | null; onWahl: (k: FlussKnoten) => void; onEnde?: () => void; fuss?: ReactNode }) {
+  const nichts = !fluss.teile.length && !fluss.abstimmung && !fluss.abschluss.length;
+  return (
+    <div className="ff-fluss" role="group" aria-label={`Ablauf der Phase ${fluss.nr}: ${fluss.titel}`}>
+      <span className="ff-fluss-start" aria-label={`Start: ${fluss.start.titel}${fluss.start.unter ? `, ${fluss.start.unter}` : ''}`} role="note"
+        style={{ display: 'grid', placeItems: 'center', textAlign: 'center', minWidth: 120, maxWidth: 260, minHeight: 64, padding: '8px 18px', borderRadius: 999, border: `2px solid ${C.inkDim}`, background: C.grund, fontSize: TYP.bedien, color: C.ink, lineHeight: 1.3, boxSizing: 'border-box' }}>
+        <span style={{ fontWeight: 600 }}>{fluss.start.titel}</span>
+        {fluss.start.unter && <span style={{ color: C.inkLeise }}>{fluss.start.unter}</span>}
+      </span>
+      {fluss.teile.map((t, i) => <div key={i} style={{ display: 'grid', justifyItems: 'center', width: '100%' }}><Pfeil /><Teil t={t} gewaehlt={gewaehlt} onWahl={onWahl} /></div>)}
+      {nichts && <><Pfeil /><span style={{ ...klein, color: C.inkLeise }}>Diese Phase hat noch keine Schritte.</span></>}
+      {fluss.abstimmung && <><Pfeil /><Knoten k={fluss.abstimmung} gewaehlt={gewaehlt} onWahl={onWahl} /></>}
+      {fluss.abschluss.length > 0 && <><Pfeil text={fluss.abstimmung ? 'ja' : undefined} /><Strang knoten={fluss.abschluss} gewaehlt={gewaehlt} onWahl={onWahl} titel="Abschluss" /></>}
+      <Pfeil text={fluss.abstimmung && !fluss.abschluss.length ? 'ja' : undefined} />
+      {onEnde
+        ? <button type="button" className="fassbar ff-fluss-ende" onClick={onEnde} aria-label={`Weiter: ${fluss.ende.titel}`}
+          style={{ minHeight: 48, minWidth: 120, maxWidth: 300, padding: '8px 18px', borderRadius: 999, border: `2px solid ${RAND.stark}`, background: 'none', color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer', textAlign: 'center' }}>
+          {fluss.ende.titel} ›
+        </button>
+        : <span style={{ minHeight: 48, padding: '8px 18px', borderRadius: 999, border: `2px solid ${RAND.haar}`, color: C.inkLeise, fontSize: TYP.bedien, display: 'grid', placeItems: 'center' }}>{fluss.ende.titel}</span>}
+      {fuss && <div style={{ marginTop: 14, width: '100%', display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>{fuss}</div>}
+    </div>
+  );
+}
+
+/** Die Legende der Formen — EINMAL je Ansicht, klein. Form + Zeichen + Wort (nie nur Farbe). */
+export function FormenLegende({ zustaende = true }: { zustaende?: boolean }) {
+  const kasten = (form: FlussForm, rund = false) => <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: rund ? 6 : 3, background: TIEF.flaeche(FORM_FARBE[form]), border: `1px solid ${TIEF.rand(FORM_FARBE[form])}` }} />;
+  const e: { z: ReactNode; t: string }[] = [
+    { z: <span aria-hidden style={{ display: 'inline-block', width: 16, height: 12, borderRadius: 6, border: `2px solid ${C.inkDim}` }} />, t: 'Start' },
+    { z: kasten('schritt'), t: 'Schritt' },
+    { z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('nachricht')}<Mail size={12} color={FORM_FARBE.nachricht} aria-hidden /></span>, t: 'Nachricht' },
+    { z: <FreigabeRaute gegeben={false} groesse={11} />, t: 'Abstimmung (ja / nein)' },
+    { z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('erinnerung', true)}<BellRing size={12} color={FORM_FARBE.erinnerung} aria-hidden /></span>, t: 'Erinnerung' },
+    { z: <CalendarClock size={14} color={C.ink} aria-hidden />, t: 'Termin' },
+    ...(zustaende ? [
+      { z: <Check size={13} color={LEUCHT.gut} aria-hidden />, t: 'erledigt' },
+      { z: <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: 3, border: `2px solid ${JETZT}` }} />, t: 'hier' },
+      { z: <AlertCircle size={13} color={LEUCHT.kritisch} aria-hidden />, t: 'hängt' },
+    ] : []),
+  ];
+  return (
+    <div data-formen-legende className="ff-formen-legende" role="list" aria-label="Legende der Formen" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
+      {e.map(x => <span key={x.t} role="listitem" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{x.z}{x.t}</span>)}
+    </div>
+  );
+}
