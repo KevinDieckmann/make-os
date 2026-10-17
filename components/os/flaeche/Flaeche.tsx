@@ -206,7 +206,7 @@ function Platzhalter({ platz, titel, einstellungen, festeKarte, children }: { pl
     ? { position: 'absolute', visibility: 'hidden', pointerEvents: 'none', width: 320, left: 0, top: 0 }
     : schmal ? {} : { gridColumn: `span ${platz.breite}`, gridRowEnd: `span ${rows}` };
   return (
-    <div ref={aussen} data-kachel-id={platz.id} className={`kachel${bearbeiten ? ' kachel-bearbeiten' : ''}${dragId === platz.id ? ' kachel-zieht' : ''}`} style={style} onPointerDown={ctx.langerDruck}>
+    <div ref={aussen} id={`kachel-${platz.id}`} data-kachel-id={platz.id} className={`kachel${bearbeiten ? ' kachel-bearbeiten' : ''}${dragId === platz.id ? ' kachel-zieht' : ''}`} style={style} onPointerDown={ctx.langerDruck}>
       {bearbeiten && (
         <div className="kachel-leiste">
           <button type="button" className="kachel-griff" onPointerDown={e => ctx.starteZug(platz.id, e)} title="Ziehen" aria-label={`${titel} verschieben`} style={{ ...nackt, fontSize: 15, letterSpacing: '-.1em', color: C.inkDim }}>⋮⋮</button>

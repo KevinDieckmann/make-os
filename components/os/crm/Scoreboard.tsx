@@ -32,6 +32,7 @@ import { Person } from './team';
 // Zeichnen lesen, nie auf Modulebene.
 import { WELT_FARBE } from './Ueberblick';
 import type { CrmApi } from './daten';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Daten {
   heute: string;
@@ -85,9 +86,10 @@ function Verlauf({ tage, heute }: { tage: VerlaufTag[]; heute: string }) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 0 16px' }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Die Linie führt weiter (17.10., Abnahme 3 · C1): zum Verlauf des Traktions-Index mit seinen Säulen (Überblick, `#index-verlauf`). */}
+      <Link href={`${markttraktion()}#index-verlauf`} data-grafik-weiter="" title="Verlauf des Traktions-Index öffnen" style={{ flex: 1, minWidth: 0, display: 'block', color: 'inherit', textDecoration: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>
-          <span>Traction-Score · {punkte.length} Tage</span>
+          <span>Traction-Score · {anzahl(punkte.length, 'Tag', 'Tage')}</span>
           <span>{tagKurz(punkte[0].tag)} – {letzter.tag === heute ? 'heute' : tagKurz(letzter.tag)}</span>
         </div>
         <div style={{ position: 'relative', height: 52 }}>
@@ -103,7 +105,7 @@ function Verlauf({ tage, heute }: { tage: VerlaufTag[]; heute: string }) {
           </svg>
           <span title={`${tagKurz(letzter.tag)}: ${letzter.score}`} style={{ position: 'absolute', left: `${ex}%`, top: `${ey}%`, width: 9, height: 9, borderRadius: '50%', background: farbe, boxShadow: `0 0 10px ${farbe}33`, transform: 'translate(-50%,-50%)' }} />
         </div>
-      </div>
+      </Link>
       <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
         <div style={{ fontSize: TYP.zahl, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: farbe, lineHeight: 1 }}>{letzter.score}</div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4, whiteSpace: 'nowrap' }}>

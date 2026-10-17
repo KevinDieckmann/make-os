@@ -19,6 +19,7 @@ import { ffMessen, type FfIndexDaten } from '@/lib/fulfillment/prozesse/kennzahl
 import type { FinanceState } from '@/lib/make-one/finance-data';
 import { zaehltImKurs } from '@/lib/planung/zeitstrahl';
 import { computeMetrics } from '@/lib/make-one/finance-data';
+import { runwayRechnen } from '@/lib/finanzen/runway';
 import type { Firma, Rechnung, Zahlung, Merkposten, Planposten } from '@/lib/make-one/liquiditaet';
 import { vorschau, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
 import type { Mandat, Chance } from '@/lib/crm/typen';
@@ -384,10 +385,12 @@ export const MESSEN: Record<string, (b: Bestand) => Messung> = {
     if (!k) return { luecke: 'Kontostände der Geschäftskonten fehlen', details: kontenDetails(b) };
     const ist = istMonate(b).slice(-3);
     if (!ist.length) return { luecke: 'Ist-Monate fehlen', details: [{ titel: 'Monatsabschluss eintragen', href: WEG.abschluss(b.scope) }] };
-    const netto = ist.reduce((s, m) => s + (m.kosten - m.umsatz), 0) / ist.length;
+    // EINE Runway-Rechnung (17.10., Abnahme 3 · B1): lib/finanzen/runway.ts — dieselbe für Controlling, Head of Finance und ZOE.
+    const r = runwayRechnen(k.betrag, ist);
+    const netto = r.nettoVerbrauch ?? 0;
     const details = [...kontenDetails(b), ...ist.slice().reverse().map(m => monatDetail(b, m, undefined, m.umsatz - m.kosten < 0 ? 'rot' : 'gruen'))];
-    if (netto <= 0) return { wert: 99, anzeige: 'kein Verbrauch', quelle: `Umsatz deckt die Kosten (Ø ${euro(-netto)} Überschuss/Monat, ${quellenText(ist)})`, details };
-    const w = k.betrag / netto;
+    if (r.keinVerbrauch) return { wert: 99, anzeige: 'kein Verbrauch', quelle: `Umsatz deckt die Kosten (Ø ${euro(-netto)} Überschuss/Monat, ${quellenText(ist)})`, details };
+    const w = r.monate ?? 0;
     return { wert: w, anzeige: `${zahl(w)} Monate`, quelle: `${euro(k.betrag)} ÷ ${euro(netto)} Netto-Verbrauch/Monat (${quellenText(ist)})`, details };
   },
   deckung13(b) {

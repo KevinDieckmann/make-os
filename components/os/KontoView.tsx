@@ -21,6 +21,7 @@ import { GemerkteGeraete } from './GemerkteGeraete';
 import { MeineDaten } from './MeineDaten';
 import { ZoeWhatsappKarte } from './zoe-whatsapp/ZoeWhatsappKarte';
 import { useBetreiber } from './useInhaber';
+import { adresseLesbar } from '@/lib/zugang/adresse-anzeige';
 
 interface Ich { speicher: string; email: string; weitereEmails?: string[]; name: string; rolle: 'inhaber' | 'mitglied'; teilt: { gesundheit: string[]; ziele?: string[] }; angelegt: string; zweiterFaktorAn?: boolean }
 /** Anzeige im „Zuletzt“-Protokoll; unbekannte Arten erscheinen unverändert. */
@@ -96,8 +97,8 @@ export function KontoView() {
   return (
     <Seite titel={<>Konto <span style={{ color: C.inkLeise, fontWeight: 500, fontSize: 15 }}>{ich.rolle === 'inhaber' ? 'Inhaber' : 'Mitglied'}</span></>} rechts={<Knopf leise onClick={abmelden}>Abmelden</Knopf>}>
       <Karte i={0}>
-        <div style={{ fontSize: TYP.body, overflowWrap: 'anywhere' }}>{ich.email}<span style={{ color: C.inkLeise }}> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{ich.speicher}</code> · seit {ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
-        {anmeldungen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${artText(e)}${e.detail ? ` ${e.detail}` : ''}${e.ok ? '' : ' (fehlgeschlagen)'} · ${e.adresse}`).join(' · ')}</div>}
+        <div style={{ fontSize: TYP.body, overflowWrap: 'anywhere' }}>{ich.email}<span style={{ color: C.inkLeise }}>{/* Speichername nur in der Betreiber-Instanz (17.10., Abnahme 3 · C4) — für Kunden Technik. */}{betreiber && <> · Daten unter <code style={{ fontFamily: SCHRIFT.mono, fontSize: TYP.bedien }}>{ich.speicher}</code></>} · seit{ich.angelegt.slice(8, 10)}.{ich.angelegt.slice(5, 7)}.{ich.angelegt.slice(0, 4)}</span></div>
+        {anmeldungen.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.5 }}>Zuletzt: {anmeldungen.map(e => `${e.zeit.slice(8, 10)}.${e.zeit.slice(5, 7)}. ${e.zeit.slice(11, 16)} ${artText(e)}${e.detail ? ` ${e.detail}` : ''}${e.ok ? '' : ' (fehlgeschlagen)'} · ${adresseLesbar(e.adresse)}`).join(' · ')}</div>}
         <Liste>
           <Zeile titel="Andere Geräte abmelden" unter="Meldet alle anderen Geräte ab — dieses bleibt angemeldet." erklaerung="konto.abmeldenAlle" rechts={<Knopf leise onClick={alleAbmelden}>Alle anderen abmelden</Knopf>} />
         </Liste>

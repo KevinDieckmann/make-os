@@ -17,6 +17,7 @@ import { BEAN_IDS, BEAN_LABEL, BEAN_HINWEIS, BEAN_WAHL, offeneAngebote, type Ang
 import { karteiBean } from '@/lib/crm/adresse';
 import { Wahl } from './Wahl';
 import { useNurBusiness } from '../useInhaber';
+import { anzahl } from '@/lib/text/zahlwort';
 
 /** Farbe je Gruppe: Bestand grün, Angebot Geld, Ehemalige violett, Neue orange (Vertrieb). */
 export const BEAN_FARBE: Record<BeanId, string> = { B: LEUCHT.gut, E: LEUCHT.agenten, A: LEUCHT.geld, N: LEUCHT.business };
@@ -88,7 +89,7 @@ export function BeanVerteilungKarte({ je, vonHand, i = 0 }: { je: Record<BeanId,
   const gesamt = BEAN_IDS.reduce((s, b) => s + je[b], 0);
   return (
     <Karte i={i}>
-      <Ueberschrift rechts={<span>{gesamt} Kontakte{vonHand ? ` · ${vonHand} von Hand` : ''}</span>}>Kundengruppen · BEAN</Ueberschrift>
+      <Ueberschrift rechts={<span>{anzahl(gesamt, 'Kontakt', 'Kontakte')}{vonHand ? ` · ${vonHand} von Hand` : ''}</span>}>Kundengruppen · BEAN</Ueberschrift>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
         {BEAN_IDS.map(b => {
           const f = BEAN_FARBE[b];

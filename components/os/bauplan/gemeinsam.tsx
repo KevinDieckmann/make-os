@@ -11,7 +11,7 @@ import { Knopf, Hinweis, feld, LEUCHT } from '../ui';
 import { Pillen } from '../crm/teile';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
-import { ARTEN, BEREICHE, bereichAusSeite, type Art, type Etappe } from '@/lib/bauplan/board';
+import { ARTEN, BEREICHE, bereichName, bereichAusSeite, type Art, type Etappe } from '@/lib/bauplan/board';
 
 /** Eine neue Karte ist da (z. B. aus „Problem oder Idee melden“) — ein offener Bauplan lädt nach. */
 export const BAUPLAN_NEU = 'make-bauplan-neu';
@@ -209,7 +209,7 @@ export function ErfassenFormular({ seite, melden, onFertig, onAbbruch }: { seite
         <span style={klein}>{f.titel.length > 140 ? 'Lang — der erste Satz bleibt Titel, der Rest wandert von selbst nach „Problem“.' : 'Enter springt zur Beschreibung, Cmd+Enter speichert. Keine Längenbegrenzung — je genauer, desto besser.'}</span>
       </div>
       {!melden && <div><h3 style={titelKlein}>Art</h3><Pillen liste={ARTEN} aktiv={f.art} onWahl={art => setF({ ...f, art })} farbe={ART_FARBE[f.art]} /></div>}
-      <div><h3 style={titelKlein}>Bereich</h3><Pillen liste={BEREICHE.map(b => ({ id: b, label: b }))} aktiv={f.bereich} onWahl={bereich => setF({ ...f, bereich })} /></div>
+      <div><h3 style={titelKlein}>Bereich</h3><Pillen liste={BEREICHE.map(b => ({ id: b, label: bereichName(b) }))} aktiv={f.bereich} onWahl={bereich => setF({ ...f, bereich })} /></div>
       <div><h3 style={titelKlein}>Wie dringend?</h3><Pillen liste={PRIO} aktiv={f.prio} onWahl={prio => setF({ ...f, prio })} /></div>
       {!mehr ? (
         <button onClick={() => setMehr(true)} style={{ justifySelf: 'start', background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, fontFamily: SCHRIFT.text }}>+ Genauer beschreiben (Problem, Wunsch, woran wir merken, dass es fertig ist)</button>

@@ -98,7 +98,8 @@ export function istKalt(z: Pick<LeadZeile, 'score' | 'status' | 'deal' | 'gesetz
  * eigener Reiter, in dem er verschwindet). Kalte „Neu“ (Liste/Import) bleiben im Filter „Kalt“ bzw. im Segment „Vernetzen“.
  */
 export const inArbeit = (z: Pick<LeadZeile, 'score' | 'status' | 'deal' | 'gesetzt' | 'frisch'>): boolean =>
-  !istKalt(z) && (z.status === 'neu' || !!LEAD_STATUS.find(s => s.id === z.status)?.aktiv);
+  // Mit offenem Deal steht er auf Ebene 2 (17.10., Abnahme 3 · B7) — „In Arbeit“ zählt ihn nicht neben „Deals offen“ ein zweites Mal.
+  !imDeal(z) && !istKalt(z) && (z.status === 'neu' || !!LEAD_STATUS.find(s => s.id === z.status)?.aktiv);
 
 /**
  * Abgeleiteter Status aus den Personen, solange niemand ihn gesetzt hat. `kundeAktiv` (1.11, 09.10.): ein aktives Mandat (Firma oder Person)
@@ -228,8 +229,17 @@ export type LeadFilter = 'aktiv' | 'kalt' | LeadStatus;
  * Passt die Zeile zum Filter? EINE Zählregel (08.10., Woche 1 · 1.4) für die Pillen der Leads-Liste UND den Trichter darüber — vorher
  * zählte der Trichter die kalten mit, die Liste dahinter nicht. „Ruht“ umfasst „Kein Fit“.
  */
+/**
+ * Ein Lead mit offenem Deal steht auf Ebene 2 (17.10., Abnahme 3 · B7): er zählt nie mehr als „Neu“, „Kontaktiert“, „Im Gespräch“,
+ * „Qualifizierung“ oder „In Arbeit“ — sonst stand dieselbe Firma als „Lead in Qualifizierung“ UND als „Deal offen“. Er erscheint unter
+ * „SQL · Deal“ (mit dem Vermerk „direkt angelegt“, wenn das SQL nie entschieden wurde). EINE Regel für Liste, Trichter, Überblick und Runde.
+ */
+export const imDeal = (z: Pick<LeadZeile, 'deal'>): boolean => !!z.deal?.offen;
+const EBENE_EINS: readonly LeadFilter[] = ['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung', 'aktiv'];
 export const passtLeadFilter = (z: LeadZeile, f: LeadFilter): boolean =>
-  f === 'kalt' ? !nichtKalt(z) : f === 'aktiv' ? inArbeit(z) : nichtKalt(z) && (f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f);
+  imDeal(z) && EBENE_EINS.includes(f) ? false
+    : f === 'sql' && imDeal(z) ? z.status !== 'kunde'
+      : f === 'kalt' ? !nichtKalt(z) : f === 'aktiv' ? inArbeit(z) : nichtKalt(z) && (f === 'ruht' ? z.status === 'ruht' || z.status === 'kein_fit' : z.status === f);
 
 /** Der Trichter über alle drei Ebenen — für die Leiste über den Leads. Ebene 1 zählt wie die Liste dahinter (`passtLeadFilter`). */
 export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
@@ -238,7 +248,9 @@ export function trichter(zeilen: LeadZeile[], crm: CrmBestand): Trichter {
   const gewonnen = crm.chancen.filter(c => c.stufe === 'gewonnen');
   const verloren = crm.chancen.filter(c => c.stufe === 'verloren');
   const sqlJe = zeilen.filter(z => z.status === 'sql' || z.status === 'kunde' || z.sqlAm).length;
-  const warenImGespraech = sqlJe + n('im_gespraech') + n('qualifizierung');
+  // Direkt angelegte Deals (kein SQL entschieden) zählen im Nenner wie vorher in „Qualifizierung“ — die Quote bleibt dieselbe (B7).
+  const direktImDeal = zeilen.filter(z => imDeal(z) && !(z.status === 'sql' || z.status === 'kunde' || z.sqlAm) && ['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status)).length;
+  const warenImGespraech = sqlJe + n('im_gespraech') + n('qualifizierung') + direktImDeal;
   return {
     stufen: [
       { id: 'kontaktiert', label: 'Kontaktiert', anzahl: n('kontaktiert'), ebene: 1, ziel: { s: 'qualifizierung', a: 'leads', filter: 'kontaktiert' } },
@@ -388,8 +400,10 @@ export function sqlFortschritt(score: Pick<LeadScore, 'scoring'>): { prozent: nu
 export const mqlErreicht = (z: Pick<LeadZeile, 'score'>): boolean => z.score.scoring?.marketing.erreicht ?? false;
 /** Die Stufe, in der der Lead steht: Lead → MQL → SQL-bereit (nur Anzeige, nichts davon wird gespeichert). */
 export type QualiStand = 'lead' | 'mql' | 'sql_bereit' | 'sql';
-export function qualiStand(z: Pick<LeadZeile, 'kriterien' | 'score' | 'status'>): QualiStand {
+export function qualiStand(z: Pick<LeadZeile, 'kriterien' | 'score' | 'status'> & Partial<Pick<LeadZeile, 'deal'>>): QualiStand {
   if (z.status === 'sql' || z.status === 'kunde') return 'sql';
+  // Mit offenem Deal und erfüllten Kriterien ist er kein „SQL-bereit — Deal anlegen“ mehr: der Deal läuft schon (B7).
+  if (z.deal && imDeal(z) && salesBereit(z)) return 'sql';
   if (salesBereit(z)) return 'sql_bereit';
   return mqlErreicht(z) ? 'mql' : 'lead';
 }

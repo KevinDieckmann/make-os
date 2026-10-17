@@ -14,9 +14,9 @@
 // Der Status bleibt immer mitgeführt — Roadmap, Selbstbild und Loop lesen ihn.
 
 import type { BacklogItem, BacklogStatus } from '@/lib/make-one/backlog-data';
-import { SPALTEN, ARTEN, BEREICHE, type Spalte, type Art } from './form';
+import { SPALTEN, ARTEN, BEREICHE, bereichName, type Spalte, type Art } from './form';
 
-export { SPALTEN, ARTEN, BEREICHE, type Spalte, type Art };
+export { SPALTEN, ARTEN, BEREICHE, bereichName, type Spalte, type Art };
 
 export interface Etappe { id: string; name: string; ziel?: string; beschreibung?: string }
 export interface BauplanDatei { items: BacklogItem[]; etappen?: Etappe[] }

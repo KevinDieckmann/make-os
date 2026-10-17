@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } 
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Erklaert, Knopf, Hinweis, Feldzeile, eingabe, Schalter, useRueckfrage } from '../ui';
 import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Stand {
   ok: boolean; haupt: boolean; quelle: 'oberflaeche' | 'umgebung' | 'getrennt' | 'keine'; verbunden: boolean;
@@ -149,7 +150,7 @@ export function IcloudVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
           {s.kalender.map(k => (
             <div key={k.kennung} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44 }}>
               <span style={{ flex: 1, fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.name}{k.schreibbar ? '' : ' · nur lesbar'}</span>
-              <span style={klein}>{k.gezeigt ? `${k.termine} Termine` : 'aus'}</span>
+              <span style={klein}>{k.gezeigt ? anzahl(k.termine, 'Termin', 'Termine') : 'aus'}</span>
               <Schalter erklaerungOhne="Zeile in der Kalenderliste — die Überschrift „Welche Kalender zeigen?“ erklärt es" an={k.gezeigt} aus={!!arbeit} onChange={an => void zeigen(k.kennung, an)} ariaLabel={`${k.name} zeigen`} />
             </div>
           ))}

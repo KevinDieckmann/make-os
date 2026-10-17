@@ -11,6 +11,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift } from '../ui';
 import { SAEULE_FARBE } from './teile';
 import { SAEULEN } from '@/lib/business/register';
+import { nachOben } from '../Verlauf';
 
 export interface VerlaufPunkt { tag: string; index: number | null; saeulen: Record<string, number | null> }
 
@@ -33,8 +34,13 @@ export function VerlaufKarte({ punkte, serien = SERIEN, i = 4, name = 'Business-
   const [zeige, setZeige] = useState<number | null>(null);
   const oeffne = (id: string) => {
     if (onSerie) { onSerie(id); return; }
-    const el = typeof document !== 'undefined' ? document.querySelector(id === 'index' ? '[data-kachel-id="index"]' : `[data-kachel-id="saeule-${id}"]`) : null;
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Kachel des Cockpits, sonst der Anker der Index-Ansicht (17.10., Abnahme 3 · C1: im Traktions-Index fand der Klick vorher nichts —
+    // Zeiger-Hand ohne Wirkung); für den Index ohne eigene Kachel der Seitenanfang.
+    const el = typeof document !== 'undefined'
+      ? document.querySelector(id === 'index' ? '[data-kachel-id="index"]' : `[data-kachel-id="saeule-${id}"], #saeule-${id}`)
+      : null;
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else nachOben();
   };
   /** Die Linie, die dem Klick (x-Spalte, y in viewBox-Einheiten) am nächsten liegt. */
   const naechste = (k: number, yKlick: number): string => {

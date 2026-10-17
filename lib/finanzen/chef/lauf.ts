@@ -18,7 +18,10 @@ import { resolveAgent, MODEL_BY_TIER } from '@/lib/agent-config';
 import { logRun } from '@/lib/agent-log';
 import { schwellen } from '@/lib/schwellen';
 import { lesen, type MalinExport } from '@/lib/make-one/grundlage';
-import type { FinanceState } from '@/lib/make-one/finance-data';
+import { mitAbschluessen, type FinanceState } from '@/lib/make-one/finance-data';
+import { runwayDesIndex } from '@/lib/business/fuer-chef';
+import { bereichVon } from '@/lib/einheiten';
+import type { Termin } from './steuertermine';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeHaushalt } from '../haushalt/speicher';
 import { buchungenSuchen } from '../haushalt/zoe';
@@ -54,11 +57,18 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
   const hh = haushalt ? await ladeHaushalt(haushalt) : null;
   // 0-Punkt (05.10.): Konten und Business-Posten ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
   const ab = await mitEroeffnung({ ...(plan ?? {}), planposten: liqui?.posten ?? [] });
+  // Dieselben Quellen wie Controlling und Steuern (17.10., Abnahme 3 · B2): die Ist-Monate MIT den Monatsabschlüssen (`mitAbschluessen`,
+  // wie /api/state/finance), die Runway des Business-Index (B1) und die Fristen des Steuer-Moduls (lib/steuern).
+  const [abschluesse, runway, steuerFristen] = await Promise.all([
+    loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse').catch(() => null),
+    runwayDesIndex(heute).catch(() => null),
+    fristenAusSteuern(heute, !haushalt).catch(() => null),
+  ]);
   const bild = baueFinanzbild({
-    heute, finance, plan: plan ? ab : null, planposten: ab.planposten,
+    heute, finance: finance ? mitAbschluessen(finance, abschluesse?.eintraege) : finance, plan: plan ? ab : null, planposten: ab.planposten,
     grundlage: grund?.roh ? { g: lesen(grund.roh, grund.stand), stand: grund.stand } : null,
     steuer: { ...einstellung.steuer, ruecklageQuote: einstellung.ruecklageQuote },
-    haushalt: hh,
+    haushalt: hh, runway, steuerFristen,
   });
   // Business-Index (25.09.): rote Kennzahlen und ein fehlender Monatsabschluss werden Hinweise.
   // Nur für den Haushalt des Inhabers (wie das Cockpit) — ein anderes Konto sieht den Index nicht.
@@ -69,6 +79,19 @@ export async function ladeFinanzbild(haushalt: string | null, heute = heuteBerli
     bild.hinweise.sort((a, b) => rang[a.schwere] - rang[b.schwere]);
   }
   return { bild, einstellung, business: bi?.block ?? null };
+}
+
+/**
+ * Die Steuer-Fristen der nächsten 60 Tage aus dem Steuer-Modul (17.10., Abnahme 3 · B2) — dieselbe Rechnung wie Finanzen › Steuern
+ * (Gewerbe- und Körperschaftsteuer je Gesellschaft, Gründungstage, Finanzplanung). Nur offene; `nurBusiness` = ohne Privat und ohne
+ * die Selbstständigkeit (Business-Sicht, keine Einkommensteuer).
+ */
+export async function fristenAusSteuern(heute: string, nurBusiness: boolean): Promise<Termin[]> {
+  const [{ ladeSteuerEinstellungenMitPlan, STEUERN }, { fristen, EINHEIT_LABEL }] = await Promise.all([import('@/lib/steuern/speicher'), import('@/lib/steuern/rechnen')]);
+  const [e, d] = await Promise.all([ladeSteuerEinstellungenMitPlan(heute), loadJson<{ abgehakt?: Record<string, unknown> }>(STEUERN)]);
+  return fristen(e, heute, d?.abgehakt ?? {}, 0, 60)
+    .filter(f => !f.erledigt && f.datum >= heute && (!nurBusiness || bereichVon(f.einheit) === 'business'))
+    .map(f => ({ datum: f.datum, art: f.art, titel: f.einheit === 'privat' ? f.titel : `${f.titel} · ${EINHEIT_LABEL[f.einheit]}`, hinweis: f.hinweis, einheit: f.einheit }));
 }
 
 /** Das Paket, das das Modell sieht — Meta, Einstellungen, Bedeutungen, Bild, frühere Vorschläge. */

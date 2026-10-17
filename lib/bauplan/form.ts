@@ -19,3 +19,6 @@ export const ARTEN: { id: Art; label: string }[] = [
 
 /** Die Bereiche der Software — für Filter und Zuordnung. */
 export const BEREICHE = ['Heute', 'ZOE', 'Brain', 'Markttraktion', 'Mandate', 'Fokus', 'Aufgaben', 'Planung', 'Zahlen', 'Gesundheit', 'Familie', 'Inbox', 'Agenten', 'System', 'Allgemein'] as const;
+/** Anzeigenamen (17.10., Abnahme 3 · C14): gespeichert bleiben die Kennungen, gezeigt die heutigen Namen der Leiste. */
+const BEREICH_ANZEIGE: Readonly<Record<string, string>> = { Zahlen: 'Finanzen', Agenten: 'ZOE-Agenten', System: 'Einstellungen' };
+export const bereichName = (b: string): string => BEREICH_ANZEIGE[b] ?? b;

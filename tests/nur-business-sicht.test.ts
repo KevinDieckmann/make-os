@@ -272,3 +272,50 @@ describe('Space-Wahl und Seiten für das Konto „nur Business“', () => {
     }
   });
 });
+
+// ─── Abnahme 3 (17.10.) · B9/B10: die Reste beim Konto „nur Business“ ───────────────────────────────────────────────────────────
+describe('Abnahme 3 · B9/B10: Tagesstart, Steuern, Mandatsakte, Einrichtung, Haushaltsfinanzen', () => {
+  const lies = (d: string) => fs.readFile(path.resolve(__dirname, '..', d), 'utf8');
+
+  it('Tagesstart: ohne Whoop-Werte und Journal für „nur Business“ — auch keine Anfrage danach', async () => {
+    const q = await lies('components/os/RitualView.tsx');
+    expect(q).toContain('const mitTagesform = nurBusiness === false;');
+    expect(q).toMatch(/if \(!mitTagesform\) return;\s*\n\s*fetch\('\/api\/state\/vitals'\)/);
+    expect(q).toContain("{mitTagesform && <>\n          <Schritt nr={nr(mSchritte, 'vitals')}");
+    expect(q).toContain("{mitTagesform && <>\n          <Schritt nr={nr(aSchritte, 'bewertung')}");
+  });
+
+  it('/api/steuern in der Business-Sicht: keine Einstellungen der Selbstständigkeit und keine privaten (auch keine Vorgaben)', async () => {
+    const r = await import('@/lib/steuern/rechnen');
+    const e = { ...r.STANDARD_STEUERN, vorauszahlung: { est: 100, kstUg: 10 } };
+    const p = r.prognose(e, '2026-10-17', { kdc: null, kdv: null }, {}, null);
+    const st = r.steuernNurBusiness({ einstellungen: e, fristen: [], ust: [], prognose: p, gewinn: {}, uebergabe: { monat: '2026-09', punkte: [], jahr: 2025, jahresPunkte: [] } });
+    expect('kdc' in st.einstellungen).toBe(false);
+    expect('privat' in st.einstellungen).toBe(false);
+    expect(st.einstellungen.kdv).toBeTruthy();
+    expect(JSON.stringify(st.einstellungen)).not.toMatch(/estVorauszahlung/);
+  });
+
+  it('Mandatsakte: Rechnungen über die Rechnungs-Route (Sicht des Kontos) — nie der gemeinsame Finanzplan (403)', async () => {
+    const q = await lies('components/os/crm/Kunden.tsx');
+    expect(q).toContain("fetch('/api/rechnung')");
+    expect(q).not.toMatch(/fetch\('\/api\/state\/finanzplan'\)/);
+  });
+
+  it('Einrichtung: der Schritt „Selbstständigkeit“ gehört zu Privat — ein Konto „nur Business“ sieht ihn nicht', async () => {
+    const { SCHRITTE, sichtbarFuer } = await import('@/lib/make-one/onboarding-data');
+    const s = SCHRITTE.find(x => x.id === 'selbststaendigkeit')!;
+    expect(s.privatFinanzen).toBe(true);
+    const nb = { inhaber: false, personen: 3, privatFinanzen: false, nurBusiness: true } as Parameters<typeof sichtbarFuer>[1];
+    expect(sichtbarFuer(s, nb)).toBe(false);
+  });
+
+  it('Haushaltsfinanzen: die Zeile folgt der echten Regel (`privatFinanzen`), nicht dem Haushalt allein — ohne interne Kennung', async () => {
+    const { haushaltZeile } = await import('@/components/os/HaushaltZuordnung');
+    expect(haushaltZeile({ speicher: 'b', name: 'B', rolle: 'mitglied', haushalt: HAUS, finanzRecht: 'business', privatFinanzen: false })).toEqual({ unter: 'nur Business — sieht die privaten Finanzen nicht', aktion: null });
+    expect(haushaltZeile({ speicher: 'a', name: 'A', rolle: 'inhaber', haushalt: HAUS, finanzRecht: null, privatFinanzen: true })).toEqual({ unter: 'sieht und pflegt die privaten Finanzen', aktion: 'entziehen' });
+    expect(haushaltZeile({ speicher: 'c', name: 'C', rolle: 'mitglied', haushalt: null }).aktion).toBe('freischalten');
+    const route = await lies('app/api/konto/haushalt/route.ts');
+    expect(route).toContain('privatFinanzen: !!(await privatFinanzZugangFuer(x.speicher))');
+  });
+});

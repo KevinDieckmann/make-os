@@ -4,7 +4,8 @@ import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze'
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { schwellen } from '@/lib/schwellen';
-import { geschaeftsKasse, DEFAULT_FINANCE, type FinanceState, type MonthRow } from '@/lib/make-one/finance-data';
+import { geschaeftsKasse, mitAbschluessen, DEFAULT_FINANCE, type FinanceState, type MonthRow } from '@/lib/make-one/finance-data';
+import { runwayDesIndex } from '@/lib/business/fuer-chef';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { werAus, protokolliereBestand } from '@/lib/store/aenderungsprotokoll';
@@ -24,18 +25,15 @@ export async function GET(req: Request) {
     schwellen(),
     loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse'),
   ]);
-  // Eine Wahrheit (26.09.): liegt ein Monatsabschluss (je Firma, Business-Index) vor, gilt er — die
-  // hier gepflegten Monate sind nur noch Rückfall. So zählt derselbe Umsatz nicht doppelt.
-  const state = roh && ab?.eintraege?.length ? {
-    ...roh,
-    months: roh.months.map((m, i) => {
-      const key = `${roh.jahr}-${String(i + 1).padStart(2, '0')}`;
-      const je = ab.eintraege!.filter(e => e.monat === key && (e.umsatz != null || e.kosten != null));
-      return je.length ? { ...m, umsatz: je.reduce((s, e) => s + (e.umsatz ?? 0), 0), kosten: je.reduce((s, e) => s + (e.kosten ?? 0), 0) } : m;
-    }),
-  } : roh;
+  // Eine Wahrheit (26.09.): liegt ein Monatsabschluss (je Firma, Business-Index) vor, gilt er — die hier gepflegten Monate sind nur noch
+  // Rückfall. So zählt derselbe Umsatz nicht doppelt. Seit 17.10. an EINER Stelle (`mitAbschluessen`, auch für den Head of Finance) und nur
+  // Abschlüsse der Business-Gesellschaften (die Selbstständigkeit gehört zu Privat).
+  const state = roh ? mitAbschluessen(roh, ab?.eintraege) : roh;
+  // EINE Runway (17.10., Abnahme 3 · B1): die Zahl des Business-Index (Gesamt) — Kasse der Business-Konten ÷ Ø Netto-Verbrauch der
+  // letzten drei abgeschlossenen Monate (lib/finanzen/runway.ts). Dieselbe für jede Person im Haushalt, auch ein Konto „nur Business“.
+  const runwayIst = await runwayDesIndex().catch(() => null);
   // Die Kasse kommt aus den Firmenkonten; `state.cash` bleibt nur Rückfall.
-  return NextResponse.json({ state, kasse: geschaeftsKasse(plan?.firmen, state?.cash), runway: { rot: grenzen.runwayRot, amber: grenzen.runwayAmber } });
+  return NextResponse.json({ state, kasse: geschaeftsKasse(plan?.firmen, state?.cash), runway: { rot: grenzen.runwayRot, amber: grenzen.runwayAmber }, runwayIst });
 }
 
 export async function PUT(req: Request) {

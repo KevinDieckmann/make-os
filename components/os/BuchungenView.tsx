@@ -14,6 +14,7 @@ import { eur } from '@/lib/make-one/finance-data';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, feld, LEUCHT, Raster, Wahl } from './ui';
 import { KERN_EINHEITEN, istBusinessGesellschaft, gehoertZuPrivat } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
+import { useBetreiber } from './useInhaber';
 
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; konto?: string; ort?: string; rechnungId?: string }
 
@@ -42,6 +43,8 @@ const ORTE: Record<'business' | 'privat', Ort[]> = {
 /** `bereich`: Business = nur die Gesellschaften, Privat = die Privat-Einheiten (und alte private Buchungen ohne Ort). */
 export function BuchungenView({ bereich = 'business' }: { bereich?: 'business' | 'privat' } = {}) {
   const orte = ORTE[bereich];
+  // „Altbestand des Finanz-Dashboards“ nur in der Betreiber-Instanz (17.10., Abnahme 3 · C4) — eine Kunden-Instanz hat keinen.
+  const betreiber = useBetreiber() === true;
   const [roh, setAlle] = useState<Buchung[]>([]);
   const [geladen, setGeladen] = useState(false);
   const [monat, setMonat] = useState<string>('alle');
@@ -155,7 +158,7 @@ export function BuchungenView({ bereich = 'business' }: { bereich?: 'business' |
           {sichtbar.length > 300 && <Leer>+{sichtbar.length - 300} weitere — Monat oder Kategorie wählen</Leer>}
         </Liste>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 14, lineHeight: 1.6 }}>
-          Buchungen kommen aus dem Beleg-Werkzeug (ZOE), aus bezahlten <Link href={WEG.rechnungen()} style={{ color: C.inkDim }}>Rechnungen</Link> und aus dem Altbestand des Finanz-Dashboards.
+          Buchungen kommen aus dem Beleg-Werkzeug (ZOE), aus bezahlten <Link href={WEG.rechnungen()} style={{ color: C.inkDim }}>Rechnungen</Link>{betreiber ? ' und aus dem Altbestand des Finanz-Dashboards.' : ' und aus euren Importen.'}
         </div>
       </Karte>
     </>

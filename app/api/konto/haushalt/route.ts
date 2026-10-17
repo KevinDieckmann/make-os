@@ -13,7 +13,7 @@
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { ladeKonten, aendereKonten, type KontenStand } from '@/lib/zugang/konten';
-import { personStreng, HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
+import { personStreng, HAUSHALT_OK, privatFinanzZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { personDerSitzung, istDienst } from '@/lib/zugang/tor';
 import { erneutPruefen } from '@/lib/zugang/erneut';
 import { haushaltVorschlaegeLesen } from '@/lib/zugang/haushalt-vorschlag';
@@ -37,10 +37,13 @@ async function istInhaber(req: Request): Promise<boolean> {
 export async function GET(req: Request) {
   if (!(await istInhaber(req))) return NextResponse.json({ ok: false, fehler: 'Nur ein Inhaber.' }, { status: 403 });
   const st = await ladeKonten();
-  const k = st.konten.map(x => ({
+  // Wer die privaten Finanzen WIRKLICH sieht (17.10., Abnahme 3 · B10): dieselbe Regel wie die Routen (`privatFinanzZugangFuer`) — ein Konto
+  // „nur Business“ hat einen Haushalt, aber keinen Privatzugang; die Karte zeigte es vorher wie ein volles Mitglied.
+  const k = await Promise.all(st.konten.map(async x => ({
     speicher: x.speicher, name: x.name, rolle: x.rolle, haushalt: x.haushalt ?? null, finanzRecht: x.finanzRecht ?? null,
+    privatFinanzen: !!(await privatFinanzZugangFuer(x.speicher)),
     zweiterFaktorAn: !!x.zweiterFaktor, ...(istHauptInhaber(st, x.speicher) ? { hauptInhaber: true } : {}),
-  }));
+  })));
   const haushalt = haushaltDerInhaber(st);
   // Noch kein Haushalt der Inhaber (erstes Konto, z. B. nach dem Neustart-Umzug): Namen, unter denen schon Bestände liegen — die Karte bietet
   // sie zum Eintragen an (Generalprobe 09.10.: sonst setzte „Freischalten“ fest „haushalt“, und CRM-/Aufgaben-Dateien fehlten).

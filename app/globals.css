@@ -476,7 +476,9 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
    Kevin: „das Ganze ist jetzt nur in der Mitte". Seiten nutzen die Breite:
    Spalten nebeneinander ab 1180 px Fenster, darunter gestapelt. */
 .spalten { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-.spalte { display: grid; gap: 14px; min-width: 0; align-content: start; }
+/* minmax(0, 1fr) (17.10., Abnahme 3 · B8): eine implizite Spalte „auto“ wuchs auf die Mindestbreite ihres breitesten Inhalts — am Handy lief die
+   Firmenakte so 200 px quer aus dem Bild. Die Spalte ist jetzt so breit wie ihr Platz; Inhalte brechen um. */
+.spalte { display: grid; gap: 14px; min-width: 0; align-content: start; grid-template-columns: minmax(0, 1fr); }
 .raster { display: grid; gap: 14px; align-items: start; }
 @media (min-width: 1180px) {
   .spalten-1-1 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

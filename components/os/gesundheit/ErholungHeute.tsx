@@ -14,6 +14,7 @@ import { WEG } from '@/lib/wege';
 import { erholungHatInhalt } from '@/lib/gesundheit/erholung';
 import { naechstePause, VORSCHLAG_TITEL } from '@/lib/gesundheit/erholung-lage';
 import { useErholung, ERHOLUNG_FARBE } from './erholung-daten';
+import { anzahl } from '@/lib/text/zahlwort';
 
 export function ErholungHeuteWidget({ titel, i }: { titel?: string; i: number }) {
   const { d, aendern } = useErholung();
@@ -50,7 +51,7 @@ export function ErholungHeuteWidget({ titel, i }: { titel?: string; i: number })
         </div>
       ))}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 8, fontSize: TYP.bedien, color: C.inkLeise }}>
-        <span>{offen ? `${offen} heute offen` : sicht.faellig.length ? 'heute alles erledigt' : 'heute nichts fällig'}{sicht.streak.tage ? ` · ${sicht.streak.tage} Tage in Folge` : ''}</span>
+        <span>{offen ? `${offen} heute offen` : sicht.faellig.length ? 'heute alles erledigt' : 'heute nichts fällig'}{sicht.streak.tage ? ` · ${anzahl(sicht.streak.tage, 'Tag', 'Tage')} in Folge` : ''}</span>
         {pause && <span style={{ color: pause.faellig ? ERHOLUNG_FARBE : C.inkLeise }}>Pause {pause.faellig ? 'jetzt' : `um ${pause.um}`}</span>}
         {pause?.faellig && <Knopf leise onClick={() => aendern([{ op: 'einheit', einheit: { tag: heute, art: 'bildschirmpause' } }])}>Pause gemacht</Knopf>}
       </div>

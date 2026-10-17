@@ -59,6 +59,8 @@ export interface Umgebung {
   breite: number; hoehe: number;
   /** Sterne auf dem Bildschirm — kein Schild soll auf ihnen liegen; `g` = Gewicht (vorne schwer, hinten leichter, Vorgabe 1). */
   sterne?: readonly { x: number; y: number; g?: number }[];
+  /** Flächen, auf denen nie ein Schild liegt (17.10., Abnahme 3 · C8): Zoom-Knöpfe, „‹ Gesamt“, die Hover-Karte — in px der Fläche. */
+  sperren?: readonly { l: number; o: number; r: number; u: number }[];
 }
 /**
  * Beschriftungen außerhalb ihrer Cluster legen (rein). Je Schild werden Richtungen probiert — radial vom Kugelmittelpunkt
@@ -66,7 +68,7 @@ export interface Umgebung {
  * Clusterkreis nicht berührt, (b) keinen Stern der Vorderseite überdeckt, (c) kein anderes Schild überlappt und (d) ganz im Bild
  * liegt. Schilder von Clustern auf der Rückseite stehen außerhalb des Kugelumrisses. Liefert die Mitten.
  */
-export function schilderLegen(schilder: readonly Schild[], u: Umgebung, luft = 10): { x: number; y: number }[] {
+export function schilderLegen(schilder: readonly Schild[], u: Umgebung, luft = 10): { x: number; y: number; frei: boolean }[] {
   const gelegt: { x: number; y: number; w: number; h: number }[] = [];
   // Sterne in ein Raster (16 px) — die Prüfung „liegt ein Stern unter der Box?“ fragt nur die berührten Zellen.
   const Z = 16, raster = new Map<number, { x: number; y: number; g?: number }[]>();
@@ -86,6 +88,8 @@ export function schilderLegen(schilder: readonly Schild[], u: Umgebung, luft = 1
     if (u.breite && (l < 4 || r > u.breite - 4)) return Infinity;
     if (u.hoehe && (o < 2 || unten > u.hoehe - 2)) return Infinity;
     for (const g of gelegt) if (Math.abs(g.x - x) < (g.w + s.w) / 2 + 6 && Math.abs(g.y - y) < (g.h + s.h) / 2 + 3) return Infinity;
+    // Nie unter einem Knopf oder der Hover-Karte (C8: am Handy lag „WISSEN“ unter „Zurücksetzen“).
+    for (const q of u.sperren ?? []) if (l < q.r + 4 && r > q.l - 4 && o < q.u + 4 && unten > q.o - 4) return Infinity;
     // Weich gewichtet: Sterne unter dem Schild wiegen am schwersten, dann der eigene Clusterkreis, dann (Rückseite) der Kugelumriss.
     // So findet sich auch auf engen Flächen ein Platz, der höchstens Hülle überdeckt — nie zuerst Sterne.
     let k = sterneIn(l, r, o, unten) * 10;
@@ -99,15 +103,16 @@ export function schilderLegen(schilder: readonly Schild[], u: Umgebung, luft = 1
     const radial = l < 8 ? { x: 0, y: -1 } : { x: dx / l, y: dy / l };
     const senk = radial.y <= 0 ? -1 : 1;
     const richtungen = [radial, { x: 0, y: senk }, { x: 0, y: -senk }, { x: radial.x >= 0 ? 1 : -1, y: 0 }, { x: radial.x >= 0 ? -1 : 1, y: 0 }];
-    let best: { x: number; y: number; k: number } | null = null;
+    // `roh` = Störungen ohne den Abstandsaufschlag — 0 heißt: frei (kein Stern, nicht im eigenen Clusterkreis).
+    let best: { x: number; y: number; k: number; roh: number } | null = null;
     suche: for (const d of richtungen) {
       const start = s.r + luft + Math.abs(d.x) * s.w / 2 + Math.abs(d.y) * s.h / 2;
       for (let weg = start; weg < start + Math.max(320, u.breite, u.hoehe); weg += 6) {
         const x = s.x + d.x * weg, y = s.y + d.y * weg, k = kosten(x, y, s);
         if (k === Infinity) continue;
-        if (k === 0) { best = { x, y, k: 0 }; break suche; }
+        if (k === 0) { best = { x, y, k: 0, roh: 0 }; break suche; }
         const kk = k + (weg - start) / 400;
-        if (!best || kk < best.k) best = { x, y, k: kk };
+        if (!best || kk < best.k) best = { x, y, k: kk, roh: k };
       }
     }
     // Auf den Strahlen kein ganz freier Platz (enge Fläche, Handy): die ganze Fläche im Raster absuchen — der Platz mit den
@@ -117,7 +122,7 @@ export function schilderLegen(schilder: readonly Schild[], u: Umgebung, luft = 1
         const k = kosten(x, y, s);
         if (k === Infinity) continue;
         const kk = k + Math.hypot(x - s.x, y - s.y) / 400;
-        if (!best || kk < best.k) best = { x, y, k: kk };
+        if (!best || kk < best.k) best = { x, y, k: kk, roh: k };
       }
     }
     // Gar kein Platz: radial außen, im Bild gehalten.
@@ -125,11 +130,11 @@ export function schilderLegen(schilder: readonly Schild[], u: Umgebung, luft = 1
       const weg = s.r + luft + Math.abs(radial.x) * s.w / 2 + Math.abs(radial.y) * s.h / 2;
       best = {
         x: u.breite ? Math.min(Math.max(s.x + radial.x * weg, s.w / 2 + 4), u.breite - s.w / 2 - 4) : s.x + radial.x * weg,
-        y: u.hoehe ? Math.min(Math.max(s.y + radial.y * weg, s.h / 2 + 2), u.hoehe - s.h / 2 - 2) : s.y + radial.y * weg, k: 0,
+        y: u.hoehe ? Math.min(Math.max(s.y + radial.y * weg, s.h / 2 + 2), u.hoehe - s.h / 2 - 2) : s.y + radial.y * weg, k: 0, roh: 1,
       };
     }
     gelegt.push({ x: best.x, y: best.y, w: s.w, h: s.h });
-    return { x: best.x, y: best.y };
+    return { x: best.x, y: best.y, frei: best.roh === 0 };
   });
 }
 
@@ -156,6 +161,9 @@ export function BrainKugel() {
   const linien = useRef<HTMLCanvasElement>(null);
   const titelKarte = useRef<HTMLDivElement>(null);
   const schilder = useRef(new Map<KugelBereich, HTMLButtonElement>());
+  // Sperrflächen für die Schilder (C8): die Zoom-Knöpfe und „‹ Gesamt“.
+  const knoepfe = useRef<HTMLDivElement>(null);
+  const gesamtKnopf = useRef<HTMLButtonElement>(null);
 
   // Sicht Privat · Business (10.10.): nur die Punkte des Bereichs im Kopf — der Server filtert (`?space=`).
   const { space, bereit } = useSpace();
@@ -214,12 +222,19 @@ export function BrainKugel() {
     for (let i = 0; i < s.layout.ids.length; i++) { const q = m.bildschirm(i); if (q && (!vergroessert || imBild(q.x, q.y, 12))) sterne.push({ x: q.x, y: q.y, g: q.vorne ? 1 : 0.35 }); }
     // Die größten Cluster zuerst: sie bekommen den besten Platz.
     const reihe = liste.map((x, i) => i).filter(i => liste[i].drin).sort((a, b) => liste[b].k.anzahl - liste[a].k.anzahl);
-    const gelegt = schilderLegen(reihe.map(i => liste[i].schild), { mitte: mitteSchirm, radius: m.schirmRadius(), breite, hoehe, sterne });
-    const lage: { x: number; y: number }[] = [];
+    // Sperrflächen (17.10., Abnahme 3 · C8): Knöpfe und — solange sichtbar — die Hover-Karte; in px der Fläche.
+    const fr = flaeche.current?.getBoundingClientRect();
+    const sperren = fr ? ([knoepfe.current, gesamtKnopf.current, titelKarte.current] as (HTMLElement | null)[])
+      .filter((e): e is HTMLElement => !!e && e.style.visibility !== 'hidden')
+      .map(e => { const b = e.getBoundingClientRect(); return { l: b.left - fr.left, o: b.top - fr.top, r: b.right - fr.left, u: b.bottom - fr.top }; })
+      .filter(q => q.r > q.l && q.u > q.o) : [];
+    const gelegt = schilderLegen(reihe.map(i => liste[i].schild), { mitte: mitteSchirm, radius: m.schirmRadius(), breite, hoehe, sterne, sperren });
+    const lage: { x: number; y: number; frei: boolean }[] = [];
     reihe.forEach((i, j) => { lage[i] = gelegt[j]; });
     liste.forEach(({ k, el, p, drin }, i) => {
       if (!el) return;
-      if (!drin) { el.style.visibility = 'hidden'; return; }
+      // Hineingezoomt (C8): ein Schild ohne freien Platz (es läge auf Sternen bzw. im Haufen) ruht unsichtbar — lieber keins als eins mittendrin.
+      if (!drin || (vergroessert && !lage[i]?.frei)) { el.style.visibility = 'hidden'; return; }
       el.style.visibility = '';
       el.style.transform = `translate(${lage[i].x.toFixed(1)}px, ${lage[i].y.toFixed(1)}px) translate(-50%, -50%)`;
       el.style.opacity = p.vorne ? (s.fokus && s.fokus !== k.bereich ? '0.45' : '1') : '0.4';
@@ -395,7 +410,7 @@ export function BrainKugel() {
             </button>
           ))}
           {fokus && (
-            <button type="button" onClick={() => fliege(null)} style={{
+            <button ref={gesamtKnopf} type="button" onClick={() => fliege(null)} style={{
               position: 'absolute', left: 12, top: 12, zIndex: 3, minHeight: ZIEL.handy, padding: '0 14px', borderRadius: 999, cursor: 'pointer',
               background: LICHT_GLAS.flaeche, border: `1px solid ${RAND.stark}`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien,
             }}>‹ Gesamt</button>
@@ -406,7 +421,7 @@ export function BrainKugel() {
             transition: ruhig ? undefined : 'opacity .6s ease', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.inkLeise, textShadow: `0 0 6px ${C.grund}`,
           }}>{hinweisText}</div>
           {/* Zoom-Knöpfe — dezent, Ziel ≥ 44 px. „Zurücksetzen“ erst, wenn etwas vom Ausgangsbild abweicht. */}
-          <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 3, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div ref={knoepfe} style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 3, display: 'flex', gap: 8, alignItems: 'center' }}>
             {veraendert && <KameraKnopf breit onClick={zuruecksetzen} label="Drehung, Zoom und Ausschnitt zurücksetzen">Zurücksetzen</KameraKnopf>}
             <KameraKnopf onClick={() => motor.current?.zoome(1 / TASTE_ZOOM)} aus={!gezoomt} label="Herauszoomen">−</KameraKnopf>
             <KameraKnopf onClick={() => motor.current?.zoome(TASTE_ZOOM)} aus={amMax} label="Hineinzoomen">+</KameraKnopf>

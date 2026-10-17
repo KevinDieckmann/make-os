@@ -7,6 +7,7 @@
 // (Zelle anklicken → ändern) · „Welche Steuern gelten?“ · die Annahmen dieser Gesellschaft.
 // Gerechnet wird im Rechenkern; die Blatt-Kennzahlen kommen aus lib/finanzen/geschaeft.ts. Steuern: Hinweis, keine Steuerberatung.
 
+import { RUNWAY_PLAN_NAME } from '@/lib/finanzen/runway';
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, LEUCHT } from '../ui';
@@ -289,7 +290,7 @@ export function Geschaeft({ ort }: { ort: Gesellschaftskennung }) {
         <Kachel label="Ergebnis vor Steuern" punkt={v12 >= 0 ? LEUCHT.gut : LEUCHT.kritisch} wert={<><Geld v={v12} /> €</>} unter="12 Monate" />
         <Kachel label="Ergebnis nach Steuern" punkt={n12 >= 0 ? LEUCHT.gut : LEUCHT.kritisch} wert={<><Geld v={n12} /> €</>} unter={rf === 'kapital' && ertragAn ? `Ertragsteuern ${prozent(gesamtquote(sp), 1)} vom Gewinn (Näherung)` : 'Näherung, keine Steuerberatung'} />
         <Kachel label="Break-even" punkt={be.monatlich == null ? LEUCHT.kritisch : be.monatlich <= m0 ? LEUCHT.gut : LEUCHT.achtung} wert={beText} unter={be.kumuliert == null ? 'insgesamt nicht im Plan gedeckt' : `insgesamt gedeckt ab ${monatLabel(d, be.kumuliert)}`} />
-        <Kachel label="Runway" punkt={gb.runway == null ? LEUCHT.gut : gb.runway >= 6 ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(gb.runway, N, m0)} unter={<>{gb.liquiditaetName.split(' (')[0]} jetzt <Geld v={liqJetzt} farbe={C.inkDim} /> €</>} />
+        <Kachel label={RUNWAY_PLAN_NAME} punkt={gb.runway == null ? LEUCHT.gut : gb.runway >= 6 ? LEUCHT.achtung : LEUCHT.kritisch} wert={runwayText(gb.runway, N, m0)} unter={<>{gb.liquiditaetName.split(' (')[0]} jetzt <Geld v={liqJetzt} farbe={C.inkDim} /> €</>} />
       </Kacheln>
       <BausteinKarten ort={ort} />
       <Karte i={3}>

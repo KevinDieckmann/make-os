@@ -11,6 +11,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { KETTE, schritteFuer, type LaufArt, type Lauf, type SchrittErgebnis } from '@/lib/tageslauf';
 import { useTasks } from '@/context/TasksContext';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Punkt, LEUCHT } from './ui';
+import { anzahl } from '@/lib/text/zahlwort';
 
 const standFarbe = (s: SchrittErgebnis['stand']) =>
   s === 'ok' ? LEUCHT.gut : s === 'leer' ? C.inkLeise : s === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung;
@@ -115,7 +116,7 @@ export function TageslaufView() {
 
       {/* Die Kette */}
       <Karte i={1} akzent={laeuft ? LEUCHT.agenten : undefined}>
-        <Ueberschrift farbe={LEUCHT.agenten} rechts={laeuft ? 'läuft' : `${geplant.length} Schritte`}>Die Kette</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.agenten} rechts={laeuft ? 'läuft' : anzahl(geplant.length, 'Schritt', 'Schritte')}>Die Kette</Ueberschrift>
         <Liste>
           {geplant.map(s => {
             const erg = aktuell?.schritte.find(x => x.id === s.id);

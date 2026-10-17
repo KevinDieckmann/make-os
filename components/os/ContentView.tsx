@@ -19,7 +19,7 @@ const FORMATS = [
   { id: 'linkedin', label: 'LinkedIn-Post', hint: 'Hook + Haltung, Einladung zum Gespräch' },
   { id: 'artikel', label: 'Fachartikel', hint: '600–900 Wörter, Substanz statt Werbung' },
   { id: 'landing', label: 'Landingpage', hint: 'Hero, Nutzen-Blöcke, ruhiger CTA' },
-  { id: 'email', label: 'Kalt-E-Mail', hint: 'Erstansprache an kaufm. Leitung/CFO' },
+  { id: 'email', label: 'Erstansprache per E-Mail', hint: 'Erste Nachricht an eine Wunsch-Zielperson' },
 ];
 
 const mikro = { fontFamily: SCHRIFT.text, fontSize: TYP.mikro, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase' as const, color: C.inkLeise };

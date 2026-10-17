@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Knopf, Schalter, Hinweis, Feldzeile, feld, LEUCHT } from './ui';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Bild { ok: boolean; zweiFaktorPflicht: boolean; leerlaufStunden: number; ohneZweitenFaktor: number; fehler?: string }
 
@@ -32,7 +33,7 @@ export function ZugangEinstellungen({ i = 6 }: { i?: number }) {
         <Zeile titel="Zweiter Faktor für alle Pflicht"
           unter={b.zweiFaktorPflicht
             ? 'An — wer keinen zweiten Faktor hat, richtet ihn beim nächsten Anmelden ein und kommt vorher nirgends hin.'
-            : `Aus — ${b.ohneZweitenFaktor === 0 ? 'alle Konten haben ihn trotzdem schon.' : `${b.ohneZweitenFaktor} Konto${b.ohneZweitenFaktor === 1 ? '' : 'en'} ohne zweiten Faktor.`} Für Kundendaten empfohlen: an.`}
+            : `Aus — ${b.ohneZweitenFaktor === 0 ? 'alle Konten haben ihn trotzdem schon.' : `${anzahl(b.ohneZweitenFaktor, 'Konto', 'Konten')} ohne zweiten Faktor.`} Für Kundendaten empfohlen: an.`}
           rechts={<Schalter erklaerung="konto.zweiFaktorPflicht" an={b.zweiFaktorPflicht} onChange={an => void setze({ zweiFaktorPflicht: an }, an ? 'Pflicht ist an.' : 'Pflicht ist aus.')} ariaLabel="Zweiter Faktor für alle Pflicht" />} />
       </Liste>
       <form className="konto-feldreihe" style={{ marginTop: 12 }} onSubmit={e => { e.preventDefault(); if (stundenOk) void setze({ leerlaufStunden: h }, 'Leerlauf gespeichert.'); }}>

@@ -13,6 +13,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, prioFarbe, LEUCHT } from './ui';
 import { neueKennung } from '@/lib/kennung';
 import { ZoeReiter } from './ZoeReiter';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface ActionItem { titel: string; owner: string; prio: string; projectId: string; due?: string; }
 interface Protokoll { titel: string; zusammenfassung: string; entscheidungen: string[]; actionItems: ActionItem[]; projekte?: { id: string; label: string }[]; personen?: { id: string; label: string }[] }
@@ -194,7 +195,7 @@ export function MeetingView() {
                   links={<span style={{ fontSize: TYP.bedien, color: C.inkLeise, width: 46, flex: '0 0 auto', fontVariantNumeric: 'tabular-nums' }}>{m.datum.slice(8)}.{m.datum.slice(5, 7)}.</span>}
                   titel={m.titel}
                   unter={m.terminTitel ? `⌛ ${m.terminTitel}` : undefined}
-                  rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{(m.aufgaben ?? []).length} Aufgaben<span>{auf ? '▾' : '▸'}</span></span>}
+                  rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{anzahl((m.aufgaben ?? []).length, 'Aufgabe', 'Aufgaben')}<span>{auf ? '▾' : '▸'}</span></span>}
                 />
                 {auf && (
                   <div style={{ padding: '10px 2px 16px 60px' }}>

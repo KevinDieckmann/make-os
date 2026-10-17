@@ -92,7 +92,7 @@ export function ZoeWhatsappKarte({ i = 0 }: { i?: number }) {
         <div style={{ display: 'grid', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
           <div>Auf dieser Instanz ist noch keine ZOE-Nummer eingerichtet.{s.inhaber ? ' Die eigene ZOE-Nummer legt ihr bei Meta an; die Zugangsdaten trägt der Betreiber eurer Instanz am Server ein.' : ' Das richtet der Inhaber ein.'}</div>
           {betreiber && s.inhaber && s.fehlend.length > 0 && <div style={{ fontFamily: SCHRIFT.mono, color: C.inkLeise, wordBreak: 'break-word' }}>Auf dem Server fehlt noch: {s.fehlend.join(' · ')}</div>}
-          {s.inhaber && <div style={{ color: C.inkLeise }}>Webhook bei Meta: {s.webhookAdresse ? <code style={{ fontFamily: SCHRIFT.mono, wordBreak: 'break-all' }}>{s.webhookAdresse}</code> : 'https://<eure Adresse>/api/zoe/whatsapp/webhook'}</div>}
+          {betreiber && s.inhaber && <div style={{ color: C.inkLeise }}>Webhook bei Meta: {s.webhookAdresse ? <code style={{ fontFamily: SCHRIFT.mono, wordBreak: 'break-all' }}>{s.webhookAdresse}</code> : 'https://<eure Adresse>/api/zoe/whatsapp/webhook'}</div>}
         </div>
       )}
 

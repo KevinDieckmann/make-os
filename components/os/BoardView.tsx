@@ -87,7 +87,8 @@ export function BoardView() {
 
   const s = pack?.stats;
   const achtung = s ? s.tasks.overdue + s.tasks.blocked : 0;
-  const status = ready ? `Geschäftssicht${privat > 0 ? ` · ${privat} private Aufgaben ausgeblendet` : ''}` : 'lade …';
+  // Ohne Zahl (17.10., Abnahme 3 · C10): wie viele private Aufgaben es gibt, ist selbst schon eine Angabe aus dem Privat-Bereich.
+  const status = ready ? `Geschäftssicht${privat > 0 ? ' · nur Aufgaben aus Business-Projekten' : ''}` : 'lade …';
   const runwayKritisch = s?.finance?.runway != null && s.finance.runway < runwayRot;
 
   return (

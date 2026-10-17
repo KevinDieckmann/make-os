@@ -30,10 +30,12 @@ import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
 
 /** Die Checkliste „Ist-Stand“ — jeder Punkt aus den Daten abgeleitet. */
 async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<typeof ladeFinanzbild>>['bild'], einstellung: ChefEinstellung, betreiber: boolean) {
-  const [fp, bu, lp] = await Promise.all([
+  const [fp, bu, lp, st] = await Promise.all([
     loadJson<Omit<NonNullable<Businessbestand['finanzplan']>, 'firmen'> & { firmen?: { id: string; name: string; kontostand: number | null; stand?: string | null }[] }>('finanzplan'),
     loadJson<Businessbestand['buchungen']>('buchungen'),
     loadJson<{ posten?: { betrag: number; sicher?: boolean; notiz?: string; firmaId?: string }[] }>('liquiplan'),
+    // Dieselbe Quelle wie die Steuern (17.10., Abnahme 3 · B2): eine dort gepflegte Rechtsform gilt auch hier als eingetragen.
+    loadJson<{ einstellungen?: Partial<Record<'kdv' | 'kdc', { rechtsform?: string }>> }>('steuern'),
   ]);
   // 0-Punkt (05.10.): Konten, offene Rechnungen und Planposten ab der Eröffnung (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
   const ab = await mitEroeffnung({ firmen: fp?.firmen ?? [], rechnungen: fp?.rechnungen ?? [], planposten: (lp?.posten ?? []) as { betrag: number; sicher?: boolean; notiz?: string; firmaId?: string; ab: string; rhythmus: string; bis?: string }[] });
@@ -66,7 +68,7 @@ async function checkliste(haushalt: string | null, bild: Awaited<ReturnType<type
     leereControllingMonate: bild.business.controlling ? bild.business.controlling.leere_monate : null,
     grundlageStand: bild.business.grundlage?.stand ?? null,
     planposten: business.length, zuKlaeren: business.filter(p => !p.sicher && (p.notiz ?? '').startsWith('Zu klären')).length,
-    rechtsform: einstellung.rechtsform, haushalt: hh,
+    rechtsform: Object.fromEntries(Object.entries(einstellung.rechtsform).map(([g, v]) => [g, v || st?.einstellungen?.[g as 'kdv' | 'kdc']?.rechtsform || null])), haushalt: hh,
     inhaber: haupt ? { kennung: haupt.speicher, name: haupt.name.split(/\s+/)[0] || haupt.speicher } : null,
     betreiber,
   });
@@ -101,8 +103,10 @@ export async function GET(req: Request) {
     // Business-Umfang (09.10., Funde #2): ohne ESt-Vorauszahlung und ohne Rechtsform einer Privat-Einheit — serverseitig, nie nur ausgeblendet.
     einstellung: nurBusinessSicht ? einstellungFuerBusiness(einstellung) : einstellung,
     lage: {
-      hinweise: bild.hinweise, termine: bild.steuern.termine_60_tage,
-      kasse: bild.business.kasse, runway: bild.business.controlling?.runway_monate ?? null,
+      // Business-Sicht (17.10., Abnahme 3 · B2): nur Fristen der Business-Gesellschaften — nie die private Einkommensteuer.
+      hinweise: bild.hinweise, termine: nurBusinessSicht ? bild.steuern.termine_60_tage.filter(t => !t.einheit || bereichVon(t.einheit) === 'business').filter(t => t.art !== 'est') : bild.steuern.termine_60_tage,
+      // EINE Runway (B1): die Zahl des Cockpits — Anzeige „kein Verbrauch“ / „3,2 Monate“ / „—“.
+      kasse: bild.business.kasse, runway: bild.business.controlling?.runway_monate ?? null, runwayAnzeige: bild.business.controlling?.runway_anzeige ?? null,
       liquiditaet: bild.business.liquiditaet_12_wochen,
       haushalt: bild.haushalt && !nurBusinessSicht ? { luft: bild.haushalt.luft_pro_monat, sparquote: bild.haushalt.sparquote_prozent, tage_seit_letzter_buchung: bild.haushalt.tage_seit_letzter_buchung } : null,
       deckung: nurBusinessSicht ? null : bild.gesamt?.deckung_prozent ?? null,
@@ -111,7 +115,7 @@ export async function GET(req: Request) {
 }
 
 import { istDienst as dienst } from '@/lib/zugang/dienst';
-import { kontoName, bereichVonFirma } from '@/lib/einheiten';
+import { kontoName, bereichVonFirma, bereichVon } from '@/lib/einheiten';
 const ohneBetraege = (t: string) => t.replace(/[+−-]?\d{1,3}(?:\.\d{3})*(?:,\d+)?\s?(?:€|EUR)/g, '…').replace(/\s{2,}/g, ' ').trim();
 
 export async function POST(req: Request) {

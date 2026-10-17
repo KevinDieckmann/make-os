@@ -6,6 +6,7 @@
 // Wochen-Check ist der Montagabend-Rhythmus: fünf Punkte abhaken, Notiz,
 // beide bestätigen.
 
+import { RUNWAY_PLAN_NAME, RUNWAY_PLAN_ERKLAERUNG } from '@/lib/finanzen/runway';
 import { useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Raster, Spalten, Spalte, Haken, Knopf, LEUCHT, feld, Leer } from '../ui';
@@ -264,7 +265,8 @@ export function LageBusiness() {
       <Kacheln min={220}>
         <Kachel label="Frei verfügbar Business" punkt={freiBusiness >= sw.freiGut ? LEUCHT.gut : freiBusiness >= 0 ? LEUCHT.achtung : LEUCHT.kritisch} wert={<><Geld v={freiBusiness} /> €</>}
           unter={<>{UG_KURZ} <Geld v={aw.frei.ug} farbe={C.inkDim} /> · {KDV_KURZ} <Geld v={aw.frei.kdv} farbe={C.inkDim} /></>} />
-        <Kachel label={`Runway ${UG_KURZ}`} punkt={rw == null || rw >= sw.runwayGutMonate ? LEUCHT.gut : rw >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={rw == null ? `> ${aw.runway.horizont} M` : rw === 0 ? 'jetzt' : `${rw} M`} unter="Monate ab jetzt, bis frei verfügbar unter null fällt" />
+        {/* Benannte Variante (17.10., Abnahme 3 · B1): die vorausgerechnete Runway des Plans — nicht die Ist-Runway des Cockpits (lib/finanzen/runway.ts). */}
+        <Kachel label={`${RUNWAY_PLAN_NAME} · ${UG_KURZ}`} punkt={rw == null || rw >= sw.runwayGutMonate ? LEUCHT.gut : rw >= sw.runwayWarnMonate ? LEUCHT.achtung : LEUCHT.kritisch} wert={rw == null ? `> ${aw.runway.horizont} M` : rw === 0 ? 'jetzt' : `${rw} M`} unter={RUNWAY_PLAN_ERKLAERUNG} />
         {/* B12 (14.10.): ohne Finanz-Ziel nie „0 / 0“ in Grün — Leerzustand mit Weg (lib/kennzahlen/anteil.ts). Die Jahresziele der Planung sind ein
             eigenes Zielsystem und zählen hier nicht — der Satz sagt es. */}
         <ZieleKachel label="Business-Ziele im Plan" imPlan={imPlan} gesamt={zs.length} unter={`${UG_KURZ} frei · Darlehen`} anlegen={() => geh('ziele')} />

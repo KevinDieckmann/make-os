@@ -17,6 +17,7 @@ import { SaeuleKacheln } from './SaeuleKacheln';
 import { VerlaufKarte, type Serie } from '../business/Verlauf';
 import { MIN_ABDECKUNG, indexStatus, type IndexErgebnis, type SaeulenStand } from '@/lib/kennzahlen/kern';
 import type { Wechsel, VerlaufPunkt } from '@/lib/kennzahlen/speicher';
+import { anzahl } from '@/lib/text/zahlwort';
 
 export interface IndexDaten { pi: IndexErgebnis; vor30: number | null; wechsel: Wechsel[]; verlauf: VerlaufPunkt[] }
 
@@ -34,8 +35,8 @@ export function IndexFadenLinie({ verlauf, name, farbe }: { verlauf: readonly Ve
   const r = indexReihe(verlauf);
   if (r.length < 3) return null;
   const kurz = (t: string) => `${Number(t.slice(8, 10))}.${Number(t.slice(5, 7))}.`;
-  return <FadenLinie reihe={r.map(x => x.wert)} heute={r.length - 1} label={`${name}-Index, Verlauf der letzten ${r.length} Tage`} beschriftung={i => kurz(r[i].tag)}
-    farbe={farbe} hoehe={40} achse={[kurz(r[0].tag), `Verlauf · ${r.length} Tage`, kurz(r[r.length - 1].tag)]} />;
+  return <FadenLinie reihe={r.map(x => x.wert)} heute={r.length - 1} label={`${name}-Index, Verlauf der letzten ${anzahl(r.length, 'Tag', 'Tage')}`} beschriftung={i => kurz(r[i].tag)}
+    farbe={farbe} hoehe={40} achse={[kurz(r[0].tag), `Verlauf · ${anzahl(r.length, 'Tag', 'Tage')}`, kurz(r[r.length - 1].tag)]} />;
 }
 
 export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onGespeichert, chips, kopfRechts, kopfId, saeuleKopf, zwischen, hinweis, i0 = 0, verlaufAb = 2, ohneVerlauf, fadenLinie }: {
@@ -112,7 +113,8 @@ export function IndexAnsicht({ d, name, chip, farben, scope, schwelleSenden, onG
 
       {pi?.saeulen.map((s, i) => {
         return (
-          <Karte key={s.id} i={i0 + i + 1} akzent={farben[s.id]}>
+          // Anker je Säule (17.10., Abnahme 3 · C1): der Verlauf darunter springt beim Klick auf eine Linie hierher (VerlaufKarte `oeffne`).
+          <Karte key={s.id} i={i0 + i + 1} akzent={farben[s.id]} id={`saeule-${s.id}`} style={{ scrollMarginTop: 90 }}>
             <Ueberschrift farbe={farben[s.id]} rechts={<span>{s.kennzahlen.filter(k => k.gemessen).length} von {s.kennzahlen.length} gemessen{s.zuDuenn ? ' · zählt noch nicht' : s.gewicht === 0 ? ' · zählt nicht in den Index' : ''}</span>}>
               {s.label}{s.gewicht > 0 && <> · {Math.round(s.gewicht * 100)} %</>} {s.score != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{s.score}</span>}
             </Ueberschrift>

@@ -153,14 +153,14 @@ export function ffMessung(id: string, d: FfIndexDaten | null | undefined, scope:
       const m = zeilen.filter(z => z.puls && (tageZwischen(z.puls.am, d!.heute) ?? 999) <= 90);
       if (!m.length) return { luecke: 'Noch kein Puls in den letzten 90 Tagen', details: zuFulfillment };
       const w = m.reduce((a, z) => a + z.puls!.wert, 0) / m.length;
-      return { wert: w, anzeige: `${z1(w)} von 10`, quelle: `Ø aus ${m.length} Fäll${m.length === 1 ? '' : 'en'} (letzter Puls je Fall)`,
+      return { wert: w, anzeige: `${z1(w)} von 10`, quelle: `Ø aus ${m.length} ${m.length === 1 ? 'Fall' : 'Fällen'} (letzter Puls je Fall)`,
         details: [...m].sort((a, b) => a.puls!.wert - b.puls!.wert).slice(0, 3).map(z => ({ titel: z.kunde, wert: `${z.puls!.wert} / 10`, unter: `am ${z.puls!.am.slice(8, 10)}.${z.puls!.am.slice(5, 7)}.`, href: fall(z, 'kunde') })) };
     }
     case 'ff_wert': {
       const m = zeilen.filter(z => z.wert != null);
       if (!m.length) return { luecke: 'Noch kein Ziel mit Ausgang, Zielwert und Messung', details: zeilen.slice(0, 2).map(z => ({ titel: `${z.kunde}: Wert-Konto festlegen`, href: fall(z, 'wert') })) };
       const w = m.reduce((a, z) => a + (z.wert as number), 0) / m.length;
-      return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `Ø Zielerreichung aus ${m.length} Fäll${m.length === 1 ? '' : 'en'}`,
+      return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `Ø Zielerreichung aus ${m.length} ${m.length === 1 ? 'Fall' : 'Fällen'}`,
         details: [...m].sort((a, b) => (a.wert as number) - (b.wert as number)).slice(0, 3).map(z => ({ titel: z.kunde, wert: `${z.wert} %`, href: fall(z, 'wert') })) };
     }
     default: return { luecke: 'Keine Messung hinterlegt' };

@@ -63,11 +63,13 @@ export function passtWer(wahl: WerWahl, z: string | undefined, welt: Welt, ich: 
   return e === wer || e === BEIDE;
 }
 export function WerFilter({ wahl, onWahl, ich, zahlen }: { wahl: WerWahl; onWahl: (w: WerWahl) => void; ich: string | null; zahlen?: Partial<Record<string, number>> }) {
-  const andere = ich ? anderer(ich) : null;
+  // Alle anderen im Team (17.10., Abnahme 3 · C10: „Meins · Lena“ — die dritte Person fehlte, der Filter nahm genau zwei an). Die Zahlen
+  // rechnet `werZahlen` (lib/crm/pipeline.ts) ohnehin für jedes Mitglied.
+  const andere = ich ? TEAM.map(t => t.id).filter(id => id !== ich) : [];
   const liste: { id: WerWahl; label: ReactNode }[] = [
     { id: 'alle', label: 'Alle' },
     ...(ich ? [{ id: 'ich', label: <><Person id={ich} groesse={16} /> Meins</> }] : []),
-    ...(andere && andere !== ich ? [{ id: andere, label: <><Person id={andere} groesse={16} /> {nameVon(andere)}</> }] : []),
+    ...andere.map(a => ({ id: a, label: <><Person id={a} groesse={16} /> {nameVon(a)}</> })),
   ];
   // Standard-Baustein `Segmente` (eine Fläche, die aktive Wahl getönt) — Zahl je Eintrag in leiser Schrift.
   return (

@@ -25,7 +25,7 @@ import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, Hinweis } from '../ui';
 import type { LeadStatus, ChancenArt } from '@/lib/crm/typen';
-import { leads, LEAD_STATUS, salesBereit, fehltBisSqlZeile, statusLabel, nichtKalt, passtLeadFilter, type LeadFilter, type LeadZeile, type Trichter } from '@/lib/crm/leads';
+import { leads, LEAD_STATUS, salesBereit, imDeal, fehltBisSqlZeile, statusLabel, nichtKalt, passtLeadFilter, type LeadFilter, type LeadZeile, type Trichter } from '@/lib/crm/leads';
 import { sqlRegelText } from '@/lib/crm/scoring';
 import { ParkenDialog, RausDialog } from './quali/KleineDialoge';
 import { Fragen } from './quali/Fragen';
@@ -155,7 +155,7 @@ export function Leads({ api, zuKontakt, zuDeal }: { api: CrmApi; zuKontakt: (id:
   const werZahlen: Record<string, number> = { alle: werZahl('alle'), ...(ich ? { ich: werZahl('ich') } : {}), ...(andere && andere !== ich ? { [andere]: werZahl(andere) } : {}) };
   const FILTER: { id: Filter; label: string }[] = [
     { id: 'aktiv', label: `In Arbeit ${zahl('aktiv')}` }, { id: 'im_gespraech', label: `Im Gespräch ${zahl('im_gespraech')}` }, { id: 'qualifizierung', label: `Qualifizierung ${zahl('qualifizierung')}` },
-    { id: 'kontaktiert', label: `Kontaktiert ${zahl('kontaktiert')}` }, { id: 'sql', label: `SQL ${zahl('sql')}` }, { id: 'neu', label: `Neu ${zahl('neu')}` }, { id: 'kunde', label: `Kunde ${zahl('kunde')}` }, { id: 'kalt', label: `Kalt ${zahl('kalt')}` }, { id: 'ruht', label: `Ruht · kein Fit ${zahl('ruht')}` },
+    { id: 'kontaktiert', label: `Kontaktiert ${zahl('kontaktiert')}` }, { id: 'sql', label: `SQL · Deal ${zahl('sql')}` }, { id: 'neu', label: `Neu ${zahl('neu')}` }, { id: 'kunde', label: `Kunde ${zahl('kunde')}` }, { id: 'kalt', label: `Kalt ${zahl('kalt')}` }, { id: 'ruht', label: `Ruht · kein Fit ${zahl('ruht')}` },
   ];
   const aktiv = wahl ? alleLeads.find(z => z.id === wahl) ?? null : breit ? zeilen[0] ?? null : null;
   const bnZahl = (b: BeanId) => alleLeads.filter(z => z.bean === b && (filter === 'kalt' ? !nichtKalt(z) : nichtKalt(z))).length;
@@ -226,7 +226,9 @@ function KriterienPunkte({ z }: { z: LeadZeile }) {
   return (
     <span title={fragen.map(x => `${x.name}: ${x.stufeText ?? 'offen'}`).join(' · ')} style={{ display: 'inline-flex', gap: 3, alignItems: 'center', flex: '0 0 auto' }}>
       {fragen.map(x => <span key={x.id} style={{ width: 7, height: 7, borderRadius: '50%', background: x.offen || !x.beantwortet ? C.inkLeise : x.punkte >= x.max * 0.6 ? LEUCHT.gut : x.punkte > 0 ? LEUCHT.achtung : LEUCHT.kritisch }} />)}
-      {salesBereit(z) && <span style={{ fontSize: 12, color: LEUCHT.gut, fontWeight: 700, marginLeft: 4 }}>SQL-bereit</span>}
+      {/* Mit offenem Deal steht der Lead auf Ebene 2 (17.10., B7) — dann „im Deal“, nie „SQL-bereit“ (das hieße: Deal anlegen). */}
+      {imDeal(z) ? <span style={{ fontSize: 12, color: LEUCHT.business, fontWeight: 700, marginLeft: 4 }}>im Deal</span>
+        : salesBereit(z) && <span style={{ fontSize: 12, color: LEUCHT.gut, fontWeight: 700, marginLeft: 4 }}>SQL-bereit</span>}
     </span>
   );
 }

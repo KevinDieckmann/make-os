@@ -46,7 +46,10 @@ export function Wirkung({ bereich, i = 0 }: { bereich: SteuerBereich; i?: number
       <Karte i={i} ton={perf.index != null ? zone : undefined}>
         <Ueberschrift farbe={zone} erklaerung="fokus.wirkung" rechts={perf.stand ? `Stand ${datum(perf.stand)}` : undefined}>Wirkung {bereich === 'privat' ? 'Privat' : 'Business'}</Ueberschrift>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,44px)', alignItems: 'center' }}>
-          <Ring groesse="gross" label={`Wirkung ${bereich === 'privat' ? 'Privat' : 'Business'}`} wert={perf.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf.index != null ? perf.index / 100 : undefined}
+          {/* Der Ring führt weiter (17.10., Abnahme 3 · C1): Business → Verlauf des Business-Index, Privat → Wachstums-Score auf Heute. */}
+          <Ring groesse="gross" label={`Wirkung ${bereich === 'privat' ? 'Privat' : 'Business'}`}
+            href={bereich === 'business' ? `${WEG.business()}#index-verlauf` : WEG.heute('privat')}
+            hinweis={bereich === 'business' ? 'Verlauf des Business-Index öffnen' : 'Wachstums-Score auf Heute öffnen'} wert={perf.index != null ? String(perf.index) : undefined} farbe={zone} anteil={perf.index != null ? perf.index / 100 : undefined}
             unter={perf.index != null ? <Chip farbe={zone}>{perf.label}</Chip> : undefined} />
           <div style={{ minWidth: 0, width: '100%' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16 }}>

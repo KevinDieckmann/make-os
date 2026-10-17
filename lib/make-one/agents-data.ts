@@ -109,7 +109,7 @@ export const DEPARTMENTS: Department[] = [
     id: 'strategie', name: 'Strategie / Ventures', mission: 'Richtung, Markt-Edge, KD-Ventures-Pipeline.', color: '#005F73', lead: 'Strategy Lead',
     agents: [
       { id: 'research', name: 'Markt-/Research-Agent', role: 'Belegte Recherche, Wettbewerb (parallel)', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/research',
-        funktionen: ['Markt-/Wettbewerbs-Recherche mit Web-Suche', 'Belegte Reports mit Quellen', 'Förder-/BSFZ-Fragen recherchieren'],
+        funktionen: ['Markt-/Wettbewerbs-Recherche mit Web-Suche', 'Belegte Reports mit Quellen', 'Förderfragen recherchieren'],
         bauplan: 'LIVE: Anthropic Messages + server-seitiges web_search-Tool, read-only → keine Freigabe. Fällt ohne Suchtool sauber auf reine Antwort zurück. → /os/research' },
       { id: 'brain', name: 'Kontext-/Gedächtnis-Agent', role: 'Was dauerhaft gilt, behalten und einbringen', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/stapel',
         funktionen: ['Fakten aus Gesprächen sofort merken', 'In jeden Zug einbringen', 'Nach Raum trennen (je Person/gemeinsam)', 'Auf Klick vergessen'],

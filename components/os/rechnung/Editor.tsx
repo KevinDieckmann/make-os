@@ -27,6 +27,7 @@ import { Karte, Knopf, Chip, Hinweis, Pillen, Segmente, Feldzeile, Ueberschrift,
 import { neueAnfrage, pdfLaden, rechnungPost, type RechnungDaten, type RechnungMitFassung, type AbsenderAnzeige } from './daten';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
+import { anzahl } from '@/lib/text/zahlwort';
 
 type Form = Pick<Rechnung, 'firmaId' | 'titel' | 'leistungVon' | 'leistungBis' | 'notiz'> & {
   empfaenger: RechnungEmpfaenger; positionen: RechnungPosition[]; zahlungszielTage: number;
@@ -349,7 +350,7 @@ function RechnungAnsicht({ r, daten, onZu }: { r: RechnungMitFassung; daten: Rec
         {r.art !== 'storno' && r.status === 'gestellt' && <Knopf leise href={mailtoLink(r.empfaenger?.email, mail.betreff, mail.text)}>Mail-Entwurf</Knopf>}
       </div>
       {vorschlag && vorschlagText && (
-        <Hinweis art="achtung" titel={`${vorschlag.label} ist dran — ${vorschlag.tageUeberfaellig} Tage überfällig`}
+        <Hinweis art="achtung" titel={`${vorschlag.label} ist dran — ${anzahl(vorschlag.tageUeberfaellig, 'Tag', 'Tage')} überfällig`}
           aktion={<Knopf onClick={() => mahnen(vorschlag.stufe)}>Im Mail-Programm öffnen</Knopf>}>
           <div style={{ whiteSpace: 'pre-wrap', fontSize: TYP.bedien }}>{vorschlagText.betreff}{'\n\n'}{vorschlagText.text}</div>
         </Hinweis>

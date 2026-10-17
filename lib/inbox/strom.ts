@@ -212,13 +212,15 @@ const name = (g: Gespraech) => g.zuordnung?.name ?? g.gegenueber.name ?? g.gegen
 const tageWort = (n: number) => (n === 0 ? 'heute' : n === 1 ? 'seit gestern' : `seit ${n} Tagen`);
 
 /** Der eine Satz oben — ohne Modell aus dem Strom, nur Vorschlag (ein Klick öffnet das Gespräch). Rein. */
-export function zoeSatz(g: readonly Gespraech[]): ZoeSatz {
+export function zoeSatz(g: readonly Gespraech[], heute?: string): ZoeSatz {
   const arbeit = g.filter(x => x.inArbeit);
   const wv = arbeit.find(x => x.wiedervorlage === 'faellig');
   if (wv) return { text: `Heute wieder dran: „${wv.betreff}“ mit ${name(wv)}.`, gespraech: wv.id };
   const alt = (l: Gespraech[]) => [...l].sort((a, b) => (b.wartetAufUns ?? b.wartetTage ?? 0) - (a.wartetAufUns ?? a.wartetTage ?? 0) || a.am.localeCompare(b.am));
   const frist = alt(arbeit.filter(x => x.frist && x.fach !== 'info' && x.fach !== 'warten')).sort((a, b) => a.frist!.datum.localeCompare(b.frist!.datum))[0];
   // Der Satz nennt, was im Fach zu tun ist (B9, 14.10.): „antworten“ nur, wenn das Gespräch auch unter „Antworten“ steht.
+  // Eine verstrichene Frist heißt so (17.10., Abnahme 3 · C13) — nicht „bis 15.10. — am besten heute ansehen“ am 17.10.
+  if (frist && heute && frist.frist!.datum < heute) return { text: `Frist verstrichen: ${name(frist)} brauchte „${frist.betreff}“ bis ${frist.frist!.datum.slice(8, 10)}.${frist.frist!.datum.slice(5, 7)}. — heute nachfassen oder klären.`, gespraech: frist.id };
   if (frist) return { text: `${name(frist)} braucht „${frist.betreff}“ ${frist.frist!.text.replace(/^spätestens\s+/i, 'bis ')} — am besten heute ${frist.fach === 'antworten' ? 'antworten' : 'ansehen'}.`, gespraech: frist.id };
   const bekannt = alt(arbeit.filter(x => x.fach === 'antworten' && x.zuordnung))[0];
   if (bekannt) return { text: `Wichtigste Antwort heute: ${name(bekannt)} wartet ${tageWort(bekannt.wartetAufUns ?? 0)} auf eine Antwort zu „${bekannt.betreff}“.`, gespraech: bekannt.id };

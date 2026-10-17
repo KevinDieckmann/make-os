@@ -7,7 +7,7 @@
 import { mitEroeffnung } from '@/lib/business/eroeffnung-server';
 import { loadJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
-import { computeMetrics, mitKasse, type FinanceState } from '@/lib/make-one/finance-data';
+import { computeMetrics, mitKasse, mitAbschluessen, type FinanceState } from '@/lib/make-one/finance-data';
 import { schwellen } from '@/lib/schwellen';
 import { ladeAufgabenSicht, firmenAkteAusgeblendetFuer } from '@/lib/aufgaben/sicht';
 import { planBloeckeLesen } from '@/lib/planung/bloecke-server';
@@ -46,7 +46,9 @@ export async function computeShields(today = localDay(), person?: string | null)
   const ohnePrivat = await privatAusgeblendetFuer(person).catch(() => true);
   const [fplanRoh, fin, tasksRoh, msRoh, wplanF] = await Promise.all([
     loadJson<{ firmen?: { id: string; kontostand?: number | null; stand?: string | null }[]; rechnungen: { status: string; betrag: number; faellig?: string; firmaId?: string }[]; zahlungen: { status: string; betrag: number; faellig?: string; an: string }[]; uhrwerk?: { letztesMeeting: string | null } }>('finanzplan'),
-    loadJson<FinanceState>('finance'),
+    // Ist-Monate MIT den Monatsabschlüssen (17.10., B1) — dieselbe Runway wie Cockpit und Controlling.
+    Promise.all([loadJson<FinanceState>('finance'), loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse')])
+      .then(([f, a]) => (f ? mitAbschluessen(f, a?.eintraege) : f)),
     ladeAufgabenSicht(null), // Systemsicht: ohne „nur ich“ (29.09.)
     // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person; ohne Person keiner an einem eigenen Ziel).
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; erledigt: boolean; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine')

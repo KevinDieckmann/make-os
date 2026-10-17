@@ -7,6 +7,7 @@
 // → wohin wir wollen.
 
 import { useState } from 'react';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Ring, Chip, Knopf, Leer, Liste, Zeile, Haken, Fortschritt, feld, LEUCHT } from '../ui';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
@@ -38,7 +39,9 @@ export function WirZwei({ api, onGespraech }: { api: FamilieApi; onGespraech: ()
       <Kachel id="rhythmus" titel="Pflege-Rhythmus" breite={6}>
       <Karte i={0} ton={ROSA}>
         <div className="heute-kopf" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'clamp(18px,4vw,40px)', alignItems: 'center' }}>
-          <Ring label="Pflege-Rhythmus" wert={d.rhythmus.score != null ? String(d.rhythmus.score) : undefined} farbe={st.farbe}
+          {/* Der Ring führt weiter (17.10., Abnahme 3 · C1): zu „Zeit zu zweit“ — Gespräche und Dates tragen den Rhythmus am meisten
+              (Anker der Kachel `kachel-<id>`, components/os/flaeche/Flaeche.tsx). */}
+          <Ring label="Pflege-Rhythmus" href={`${WEG.familie('wir')}#kachel-dates`} hinweis="Zeit zu zweit öffnen — Dates und Gespräche tragen den Rhythmus" wert={d.rhythmus.score != null ? String(d.rhythmus.score) : undefined} farbe={st.farbe}
             anteil={d.rhythmus.score != null ? d.rhythmus.score / 100 : undefined} unter={<Chip farbe={st.farbe}>{st.text}</Chip>} />
           <div style={{ minWidth: 0, display: 'grid', gap: 12 }}>
             <p style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5, margin: 0 }}>{d.rhythmus.hinweis}</p>

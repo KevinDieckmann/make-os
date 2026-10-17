@@ -24,6 +24,7 @@ import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung, buchungVor } from '@/lib/business/eroeffnung';
 import { mitRegister } from '@/lib/finanzen/konten/register';
 import { useKontenKasse } from './konten/KontenKarte';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 interface Buchung { id: string; datum: string; wer: string; betrag: number; kategorie: string; zweck?: string; ort?: string }
@@ -136,7 +137,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
             <Zahl wert={eur(k.ergebnisNetto)} label="Ergebnis" farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} />
             <Zahl wert={eur(k.umsatzProMonat)} label="Ø je Monat" />
           </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {k.monate} Monate seit dem ersten Beleg</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{MONAT_KURZ(k.vonMonat)} bis {MONAT_KURZ(k.bisMonat)} {k.bisMonat.slice(0, 4)} · {anzahl(k.monate, 'Monat', 'Monate')} seit dem ersten Beleg</div>
         </Karte>
         </Kachel>
       )}

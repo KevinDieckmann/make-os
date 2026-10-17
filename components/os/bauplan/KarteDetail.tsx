@@ -13,7 +13,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, Hinweis, feld, LEUCHT } from '../ui';
 import { Pillen } from '../crm/teile';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
-import { SPALTEN, ARTEN, BEREICHE, spalteVon, artVon, board, verschieben, type Spalte, type Etappe } from '@/lib/bauplan/board';
+import { SPALTEN, ARTEN, BEREICHE, bereichName, spalteVon, artVon, board, verschieben, type Spalte, type Etappe } from '@/lib/bauplan/board';
 import { Fenster, Bilder, ART_FARBE, PRIO, klein, titelKlein, zeitpunkt, Kopf, personFarbe } from './gemeinsam';
 
 export type Tu = (body: Record<string, unknown>, vorher?: (l: BacklogItem[]) => BacklogItem[]) => Promise<{ ok: boolean; fehler?: string }>;
@@ -64,7 +64,7 @@ export function KarteDetail({ karte, items, etappen, ich, namen, tu, onZu }: {
 
   const d = karte.daumen ?? [];
   const meinDaumen = d.includes(ich);
-  const bereiche = BEREICHE.map(b => ({ id: b as string, label: b as string }));
+  const bereiche = BEREICHE.map(b => ({ id: b as string, label: bereichName(b) }));
 
   return (
     <Fenster onZu={onZu} titel={<TextFeld wert={karte.titel} zeilen={1} gross onFertig={t => { if (t.trim()) void setze({ titel: t }); }} />}>

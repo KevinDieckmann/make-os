@@ -143,9 +143,11 @@ describe('B5 · Leads: EINE Zählung über leads(), Kunden nie „neue Leads“'
     const person = zeilen[0].besitzer;
     const liste = leadRoute.leads.filter(z => passtLeadFilter(z, 'qualifizierung') && (z.besitzer === person || z.besitzer === 'beide')).length;
     const zeile = fuerDich(person, kontakte, crm, HEUTE).find(f => f.id === 'qualifizierung');
-    expect(liste).toBeGreaterThan(0);
-    expect(zeile?.anzahl).toBe(liste);
-    expect(zeile?.ziel.filter).toBe('qualifizierung');
+    // Abnahme 3 (17.10., B7): die vier Demo-Firmen mit offenem Deal stehen auf Ebene 2 — „Leads in Qualifizierung“ zählt sie nicht mehr.
+    expect(leadRoute.leads.filter(z => z.deal?.offen).length).toBeGreaterThan(0);
+    for (const z of leadRoute.leads.filter(x => x.deal?.offen)) expect(passtLeadFilter(z, 'qualifizierung'), z.name).toBe(false);
+    expect(zeile?.anzahl ?? 0).toBe(liste);
+    if (zeile) expect(zeile.ziel.filter).toBe('qualifizierung');
     expect(leadRoute.trichter.stufen.find(s => s.id === 'qualifizierung')!.anzahl).toBe(leadRoute.leads.filter(z => passtLeadFilter(z, 'qualifizierung')).length);
   });
   it('Kreislauf „Leads & Qualifizierung · in Arbeit“ = Leads-Liste „In Arbeit“', () => {

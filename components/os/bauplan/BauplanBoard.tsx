@@ -20,7 +20,7 @@ import { WEG } from '@/lib/wege';
 import { Pillen } from '../crm/teile';
 import { useLinkAuswahl } from '../Verlauf';
 import type { BacklogItem } from '@/lib/make-one/backlog-data';
-import { SPALTEN, ARTEN, BEREICHE, board, verschieben, artVon, spalteVon, warteschlange, type Spalte, type Art } from '@/lib/bauplan/board';
+import { SPALTEN, ARTEN, BEREICHE, bereichName, board, verschieben, artVon, spalteVon, warteschlange, type Spalte, type Art } from '@/lib/bauplan/board';
 import { localDay } from '@/lib/zeit';
 import { BAUPLAN_NEU, useBauplan, useIch, Fenster, ErfassenFormular, ART_FARBE, klein, datumKurz, Kopf, personFarbe } from './gemeinsam';
 import { KarteDetail } from './KarteDetail';
@@ -172,7 +172,7 @@ export function BauplanBoard() {
             <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen …" aria-label="Karten durchsuchen" style={{ ...feld, width: 220, fontSize: TYP.bedien, padding: '8px 12px' }} />
             <select value={bereich} onChange={e => setBereich(e.target.value)} aria-label="Bereich" style={{ ...feld, width: 'auto', fontSize: TYP.bedien, padding: '8px 12px' }}>
               <option value="">Alle Bereiche</option>
-              {BEREICHE.map(b => <option key={b} value={b}>{b}</option>)}
+              {BEREICHE.map(b => <option key={b} value={b}>{bereichName(b)}</option>)}
             </select>
             <Pillen liste={[{ id: '' as Art | '', label: 'Alle Arten' }, ...ARTEN]} aktiv={art} onWahl={a => setArt(a)} />
             <button onClick={() => setNurDaumen(!nurDaumen)} aria-pressed={nurDaumen} className="fassbar"
@@ -212,7 +212,7 @@ export function BauplanBoard() {
                     </div>
                   ))}
                   {hier && ziel?.vor === null && linie}
-                  {!liste.length && <div style={{ ...klein, padding: '14px 6px', textAlign: 'center', border: '1px dashed rgba(255,255,255,.08)', borderRadius: 12 }}>{items ? (filterAn ? 'Nichts passt zum Filter' : s.id === 'idee' ? 'Leer — „+ Karte“ oder „Idee“ oben auf jeder Seite' : 'Hierher ziehen') : 'lädt …'}</div>}
+                  {!liste.length && <div style={{ ...klein, padding: '14px 6px', textAlign: 'center', border: '1px dashed rgba(255,255,255,.08)', borderRadius: 12 }}>{items ? (filterAn ? 'Nichts passt zum Filter' : s.id === 'idee' ? 'Leer — „+ Karte“ oder „Problem oder Idee melden“ unten links' : 'Hierher ziehen') : 'lädt …'}</div>}
                   {s.id === 'fertig' && liste.length > FERTIG_ZEIGEN && (
                     <button onClick={() => setAlleFertig(!alleFertig)} style={{ background: 'none', border: 'none', color: LEUCHT.business, cursor: 'pointer', fontSize: TYP.bedien, padding: 6 }}>{alleFertig ? 'Weniger zeigen' : `Alle ${liste.length} zeigen`}</button>
                   )}
@@ -265,7 +265,7 @@ function KarteMini({ k, namen, ich, heute, frisch, zieht, onOeffnen, onZiehStart
         border: `1px solid ${frisch ? LEUCHT.gut : 'rgba(255,255,255,.06)'}`, boxShadow: frisch ? `0 0 24px -6px ${LEUCHT.gut}40` : '0 4px 14px -8px rgba(0,0,0,.6)', transition: 'border-color .3s ease, box-shadow .3s ease' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, fontWeight: 700 }}>
         <span style={{ color: ART_FARBE[a] }}>● {ARTEN.find(x => x.id === a)?.label}</span>
-        {k.bereich && <span style={{ color: C.inkLeise }}>{k.bereich}</span>}
+        {k.bereich && <span style={{ color: C.inkLeise }}>{bereichName(k.bereich)}</span>}
         {k.prio === 1 && spalteVon(k) !== 'fertig' && <span style={{ color: LEUCHT.achtung, marginLeft: 'auto' }}>Jetzt</span>}
       </div>
       <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.35, color: C.ink, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' }}>{k.titel}</div>

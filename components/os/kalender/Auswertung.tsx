@@ -119,7 +119,7 @@ export function AuswertungInhalt({ a }: { a: AuswertungAntwort }) {
   return (
     <div style={{ fontFamily: SCHRIFT.text, fontSize: TYP.bedien }}>
       <KennzahlZeilen a={a} />
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{w.anzahlMeetings} Meetings · Arbeitszeit {stundenAus(w.minuten.arbeitszeit)} (ohne Feiertage) · Abweichung gegenüber dem Schnitt der letzten {a.vorher.length} Wochen</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{w.anzahlMeetings} Meetings · Arbeitszeit {stundenAus(w.minuten.arbeitszeit)} (ohne Feiertage) · Abweichung gegenüber dem Schnitt der letzten {a.vorher.length === 1 ? 'Woche' : `${a.vorher.length} Wochen`}</div>
       {abschnitt('Je Tag')}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8, alignItems: 'end', height: 110 }}>
         {w.tage.map((t, i) => (

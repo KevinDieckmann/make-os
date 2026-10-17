@@ -25,6 +25,7 @@ import { netzRunde, netzStufe, suchLink, profilAdresse, textFuer, vernetzenStand
 import { nameVon } from '@/lib/crm/team';
 import { type CrmApi, datum } from './daten';
 import { Pillen, Feldzeile, Feld } from './teile';
+import { anzahl } from '@/lib/text/zahlwort';
 
 const STUFE_TEXT: Record<NetzStufe, string> = { anreichern: 'Profil finden', anfragen: 'Vernetzen', warten: 'Anfrage läuft', zurueckziehen: 'Anfrage zurückziehen', schreiben: 'Angenommen — schreiben', nachfassen: 'Nachfassen', fertig: 'Erledigt', raus: 'Raus' };
 const STUFE_FARBE: Record<NetzStufe, string> = { anreichern: LEUCHT.achtung, anfragen: LEUCHT.business, warten: C.inkDim, zurueckziehen: C.inkLeise, schreiben: LEUCHT.gut, nachfassen: LEUCHT.puls, fertig: LEUCHT.gut, raus: C.inkLeise };
@@ -98,7 +99,7 @@ export function VernetzenRunde({ api, kampagneId, zuKontakt, zurueck, zuKampagne
           <Karte i={1} akzent={LEUCHT.gut}>
             <Ueberschrift farbe={LEUCHT.gut}>{liste.length ? 'Runde geschafft' : 'Heute nichts zu tun'}</Ueberschrift>
             <div style={{ fontSize: TYP.body, color: C.ink, lineHeight: 1.5 }}>
-              {liste.length ? `${erledigt} Schritte erledigt.` : 'Keine Annahme wartet, die Tagesportion ist verbraucht und alle Profile sind gefunden.'}
+              {liste.length ? `${anzahl(erledigt, 'Schritt', 'Schritte')} erledigt.` : 'Keine Annahme wartet, die Tagesportion ist verbraucht und alle Profile sind gefunden.'}
               {zahlen.warten > 0 && ` ${zahlen.warten} Anfragen warten auf Annahme — der nächste Export-Import erkennt Annahmen von selbst.`}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
