@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Pillen, HakenZiel, Erklaert, LEUCHT } from '../../ui';
-import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
+import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, onboardingZaehlung, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
 import { fallStartTag } from '@/lib/fulfillment/prozesse/fall';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
@@ -32,8 +32,8 @@ const STATUS = [{ id: 'laeuft' as const, label: 'läuft' }, { id: 'pausiert' as 
 
 /** Der Zähler des Onboardings — nur die Schritte, die für „fertig“ zählen (das Playbook darf noch laufen; 15.10., Abnahme C16). */
 export function OnboardingZaehler({ schritte }: { schritte: readonly OnboardingSchrittStand[] }) {
-  const erledigt = schritte.filter(s => s.erfuellt || s.entfaellt);
-  return <span>Onboarding {erledigt.filter(s => s.zaehlt).length} von {schritte.filter(s => s.zaehlt).length}</span>;
+  const z = onboardingZaehlung(schritte);
+  return <span>Onboarding {z.erledigt} von {z.gesamt}</span>;
 }
 
 /** „⋯“ eines Onboarding-Schritts: entfällt (mit Grund) bzw. wieder offen, und bei der Willkommensmail „Vermerk ‚gesendet‘ zurücknehmen“. */

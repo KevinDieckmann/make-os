@@ -200,7 +200,7 @@ describe('Öffentlicher Weg: dieselbe 404, Positivliste, Link A ↛ Mandat B', (
     const s = r.d.sicht;
     expect(s.firma).toBe('Beispiel m-a GmbH');
     expect(s.paket).toBe('Vertriebsleitung auf Zeit');
-    expect(s.zeitstrahl).toEqual([{ titel: 'Onboarding', stand: 'erledigt', anteil: 1 }, { titel: 'Analyse', stand: 'aktuell', anteil: 0 }, { titel: 'Diagnose', stand: 'kommt' }]);
+    expect(s.zeitstrahl).toEqual([{ titel: 'Onboarding', stand: 'erledigt', anteil: 1 }, { titel: 'Analyse', stand: 'aktuell', anteil: 0 }, { titel: 'Diagnose', stand: 'kommt', anteil: 0 }]); // 17.10. (dritte Abnahme B5): Anteil wie intern (`fallReise` — eine Phase ohne Schritte zählt sich selbst)
     expect(s.wartet.map((w: J) => w.titel)).toEqual(['Preisliste freigeben']);
     expect(s.entscheidungen.map((e: J) => e.titel)).toEqual(['Zielgruppe Maschinenbau']);
     expect(s.rituale).toEqual([{ titel: 'Wochen-Check', rhythmus: 'wöchentlich' }]);

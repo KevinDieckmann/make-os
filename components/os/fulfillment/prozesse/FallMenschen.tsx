@@ -58,7 +58,7 @@ export function FallMenschen({ mandatId }: { mandatId: string }) {
   const strahl = entscheidungsStrahl(f.entscheidungen, heute);
   const el = entscheidungsLage(strahl);
   const rituale = daten.rituale ?? [];
-  const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute, ...(daten.kalender ? { kalender: daten.kalender } : {}) });
+  const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute, vorlageId: f.vorlageId, ...(daten.kalender ? { kalender: daten.kalender } : {}) });
   const letzte = [...f.mitschriften].sort((a, b) => (a.am < b.am ? 1 : -1))[0];
   const tl = taktLage(leiste, heute, letzte?.am);
   const v = f.vereinbarung ?? {};

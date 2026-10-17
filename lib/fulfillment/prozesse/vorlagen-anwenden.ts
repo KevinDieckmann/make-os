@@ -423,9 +423,13 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           const dauer = optZahl(e.dauerMin, 5, 600, 'Dauer (Minuten)');
           const agenda = textListe(e.agenda, 'agenda', 'Agenda', 40);
           const teiln = e.teilnehmende === undefined ? undefined : Array.isArray(e.teilnehmende) && e.teilnehmende.every(x => (TEILNEHMENDE as readonly unknown[]).includes(x)) ? Array.from(new Set(e.teilnehmende as RitualVorlage['teilnehmende'])) : nein('Teilnehmende: unbekannter Wert.');
+          // Pakete (17.10.): nur Paket-Vorlagen, die es gibt; [] löscht die Bindung (dann in jedem Fall), fehlt = unverändert.
+          const pakete = e.pakete === undefined ? alt?.pakete
+            : Array.isArray(e.pakete) && e.pakete.every(x => typeof x === 'string' && d.prozesse.some(v => v.id === x && v.art === 'paket')) ? Array.from(new Set(e.pakete as string[]))
+              : nein('Pakete: unbekannte Paket-Vorlage.');
           const neu: RitualVorlage = {
             id: alt?.id ?? k.neueId('fr'), titel, rhythmus, dauerMin: Math.round(dauer ?? alt?.dauerMin ?? 30), agenda: agenda ?? alt?.agenda ?? [],
-            teilnehmende: teiln ?? alt?.teilnehmende ?? ['intern'], geaendert: k.jetzt, geaendertVon: k.person,
+            teilnehmende: teiln ?? alt?.teilnehmende ?? ['intern'], geaendert: k.jetzt, geaendertVon: k.person, ...(pakete?.length ? { pakete } : {}),
           };
           d.rituale = alt ? d.rituale.map(r => (r.id === neu.id ? neu : r)) : [...d.rituale, neu];
           geaendert.push(neu.id);

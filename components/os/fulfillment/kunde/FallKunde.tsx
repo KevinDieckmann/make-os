@@ -105,7 +105,7 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
 
       <Karte i={4} id="kunde-report">
         <Ueberschrift erklaerung="fulfillment.reportTakt" rechts={<Chip farbe={AMPEL[rl.ampel]}>{rl.antwort}</Chip>}>Fortschritts-Report</Ueberschrift>
-        <Zeitachse heuteX={achse.heuteX} links={`Start ${tagKurz(achse.von)}`} rechts={tagKurz(achse.bis)}
+        <Zeitachse heuteX={achse.heuteX} links={`Fallstart ${tagKurz(achse.von)}`} rechts={tagKurz(achse.bis)}
           beschreibung={`${satzEnde(`Reports seit ${tagKurz(achse.von)}: ${achse.reports.map(r => tagKurz(r.tag)).join(', ') || 'keiner'}`)} ${satzEnde(`Nächster fällig am ${tagKurz(achse.naechsterFaellig)}`)}`}
           punkte={[
             ...achse.takt.map(t => ({ x: t.x, farbe: t.erfuellt ? LEUCHT.gut : t.tag <= heute ? LEUCHT.kritisch : C.inkLeise, voll: false, raute: true, titel: `Soll ${tagKurz(t.tag)}${t.erfuellt ? ' · erfüllt' : t.tag <= heute ? ' · ohne Report' : ''}` })),

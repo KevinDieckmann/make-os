@@ -117,6 +117,15 @@ export function onboardingStand(fall: Fall, a: OnboardingAbleitung): OnboardingS
 }
 
 /**
+ * „Onboarding x von y“ — EINE Zählung für Fall (Ablauf der ersten Phase), Fulfillment › Onboarding und Cockpit: alle Schritte des Onboardings, erledigt =
+ * erfüllt oder entfallen (17.10., dritte Abnahme B5: der Fall zählte „7 von 7“ ohne das Playbook, darunter standen 8 Haken, die Liste sagte „von 8“).
+ * Ob das Onboarding FERTIG ist, sagt weiter `fertig` (das Playbook darf noch laufen).
+ */
+export function onboardingZaehlung(schritte: readonly Pick<OnboardingSchrittStand, 'erfuellt' | 'entfaellt'>[]): { erledigt: number; gesamt: number } {
+  return { erledigt: schritte.filter(s => s.erfuellt || s.entfaellt).length, gesamt: schritte.length };
+}
+
+/**
  * Der Fall, wie er wirkt: Onboarding-Schritte (Knoten `fk-ob-*`) tragen den abgeleiteten Stand (erledigt, wenn erfüllt — „entfällt“,
  * „wartet“, „in Arbeit“ von Hand bleiben), und ein fertiges Onboarding steht als „läuft“. Gespeichert wird davon nichts.
  */

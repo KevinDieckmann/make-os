@@ -52,7 +52,7 @@ import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
 import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
 import { monatsName } from '@/lib/finanzen/rechnung/regeln';
-import { MandatFortschritt } from '../mandate/treppe/Fortschritt';
+import { MandatFortschritt, FallPhase } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
 import { useNurBusiness } from '../useInhaber';
 import { anzahl } from '@/lib/text/zahlwort';
@@ -271,9 +271,11 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
           {produkt && <Link href={mandateLink('produkte', produkt.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Produkt öffnen ›</Link>}
         </div>
       </Feldzeile>
-      {produkt && (produkt.phasen?.length
-        ? <Feldzeile label="Phase"><Wahl label="Phase" liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} wert={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} /></Feldzeile>
-        : <Feldzeile label="Phase"><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Produkt hat noch keinen Ablauf — unter Produkte anlegen.</span></Feldzeile>)}
+      {/* 17.10. (dritte Abnahme B6): läuft ein Fulfillment-Fall, steht hier SEINE Phase mit dem Sprung in die Reise — der Ablauf des Produkts nur ohne Fall. */}
+      <FallPhase mandatId={m.id} rahmen={inhalt => <Feldzeile label="Phase">{inhalt}</Feldzeile>}
+        ohne={produkt ? (produkt.phasen?.length
+          ? <Wahl label="Phase" liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} wert={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} />
+          : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Das Produkt hat noch keinen Ablauf — unter Produkte anlegen.</span>) : null} />
       {/* Leistungstreppe (10.10.): Fortschritt im Paket, Health-Ampel, nächste Stufe und der Fortschritts-Report an den Kunden. */}
       <MandatFortschritt mandatId={m.id} />
       <Feldzeile label="Honorar">

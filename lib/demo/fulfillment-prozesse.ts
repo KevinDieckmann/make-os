@@ -35,7 +35,7 @@ function demoBausteine(): J {
       b('demo-partner-gespraech', 'aufgabe', 'Partner-Gespräch führen', 'Mit einem Partner klären, wie beide Seiten voneinander profitieren.', { phase: 'umsetzung', pakete: ['netzwerk-vertrieb'] }),
       b('demo-crm-pflege', 'checkliste', 'Kartei-Pflege je Woche', 'Jeder Kontakt hat einen nächsten Schritt mit Datum.', { phase: 'umsetzung', pakete: ['sales-systematik', 'hos-cso'] }),
       b('demo-pipeline-review', 'ritual', 'Pipeline-Review', 'Jeden Deal einmal im Monat ehrlich bewerten.', { phase: 'steuerung', pakete: ['hos-cso'] }),
-      b('demo-huddle', 'ritual', 'Huddle mit Zahlenrunde', 'Täglich 15 Minuten: Zahlen von gestern, Plan für heute, wer hilft wem.', { phase: 'steuerung', pakete: ['hos-cso', 'sales-systematik', 'netzwerk-vertrieb'], gliederung: ['Zahlenrunde: gestern · heute · Abweichung', 'Hindernisse', 'Wer hilft wem'] }),
+      b('demo-huddle', 'ritual', 'Huddle mit Zahlenrunde', 'Täglich 15 Minuten: Zahlen von gestern, Plan für heute, wer hilft wem.', { phase: 'steuerung', pakete: ['hos-cso', 'netzwerk-vertrieb'], gliederung: ['Zahlenrunde: gestern · heute · Abweichung', 'Hindernisse', 'Wer hilft wem'] }),
       b('demo-kennzahlen-board', 'kennzahl', 'Kennzahlen-Board', 'Fünf Zahlen, die jede Woche gleich aussehen.', { phase: 'steuerung', pakete: ['hos-cso', 'sales-systematik'], kennzahl: 'Gespräche je Woche' }),
       b('demo-uebergabe', 'checkliste', 'Übergabe an das Team', 'Was das Team ab jetzt selbst führt.', { phase: 'uebergabe', pakete: ['hos-cso', 'sales-systematik'], gliederung: ['Rituale', 'Kennzahlen', 'Ansprechpartner', 'Offene Punkte'] }),
       b('demo-befaehigung', 'workbook', 'Workbook Selbstständigkeit', 'Das Team prüft selbst, was es schon allein kann.', { phase: 'uebergabe', pakete: ['sales-systematik'] }),
@@ -191,6 +191,9 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
   const rituale = (ue.rituale ?? []) as { id: string; titel: string; rhythmus: string }[];
   const kickoff = rituale.find(r => r.rhythmus === 'einmal')?.id;
   const wochencheck = rituale.find(r => r.rhythmus === 'woche')?.id;
+  // 17.10. (dritte Abnahme C6): das tägliche Vertriebs-Huddle gehört zum Vertriebsaufbau — in der Cockpit-Einführung steht es nicht im Takt.
+  const huddle = rituale.find(r => r.rhythmus === 'werktags' || r.rhythmus === 'taeglich');
+  if (huddle && pakete['hos-cso']) await fulfillment('PATCH', '/api/fulfillment', { ops: [{ op: 'ritual', eintrag: { id: huddle.id, pakete: [pakete['hos-cso']] } }] });
   const nordwerk = k.mandate.find(m => m.id === 'm-demo-nordwerk');
   const lumen = k.mandate.find(m => m.id === 'm-demo-lumen');
   let faelle = 0;
@@ -236,7 +239,7 @@ export async function prozesseSaeen(k: FulfillmentSaatKontext): Promise<SaatSchr
       { op: 'freigabe', id: 'F0', kunde: { wie: 'kickoff', am: tagPlus(k.heute, -42) }, am: tagPlus(k.heute, -42) },
       { op: 'mitschrift', eintrag: { anlass: 'Kick-off', ergebnis: 'Ziele, Rollen und Takt vereinbart; Analyse-Umfang bestätigt.', naechster: 'Analyse starten und Unterlagen anfordern', frist: tagPlus(k.heute, -35), am: tagPlus(k.heute, -42), ...(kickoff ? { ritualId: kickoff } : {}) } },
       { op: 'mitschrift', eintrag: { anlass: 'Wochen-Check', ergebnis: 'Zwei neue Termine aus der Nachfass-Liste.', naechster: 'Angebot für den Bestandskunden vorbereiten', frist: tagPlus(letzterCheck, 7), am: letzterCheck, ...(wochencheck ? { ritualId: wochencheck } : {}) } },
-      { op: 'befaehigung', id: 'bf-1', erfuellt: true, am: tagPlus(k.heute, -8) },
+      // 17.10. (dritte Abnahme C6): keine erfüllte Befähigung „läuft ohne uns“ — der Fall steht in Phase 3 von 8; das kommt erst zum Abschluss.
     ];
     await fallOps(nordwerk.id, ops);
     // Fortschritt bis in die Diagnose: Vorlauf erledigt (Kick-off vor 42 Tagen), Analyse erledigt (F2 vor 26 Tagen), die Diagnose läuft.

@@ -108,8 +108,8 @@ export interface FfIndexDaten { heute: string; zeilen: FfIndexZeile[] }
 const PFLEGEN = { text: 'Fulfillment öffnen', href: WEG.fulfillment() };
 export const FF_KENNZAHLEN: KennzahlDefBasis[] = [
   { id: 'ff_health', label: 'Lage der Fälle', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
-    formel: 'Ø Ampel der laufenden Fälle (grün zählt 100, gelb 50, rot 0) — die vorhandene Ampel aus Terminen, Lieferungen, Zahlungen, Zufriedenheit',
-    quelle: 'Fälle (Fulfillment) + Fortschritt im Paket (Leistungstreppe)', luecke: 'Noch kein laufender Fall', pflegen: PFLEGEN },
+    formel: 'Ø Ampel der laufenden Fälle (grün zählt 100, gelb 50, rot 0) — dieselbe Ampel wie Landkarte, Lage und Fall-Kopf: was hängt, dazu die Kunden-Gesundheit aus Terminen, Lieferungen, Zahlungen, Zufriedenheit',
+    quelle: 'Fälle (Fulfillment) — Ampel des Falls', luecke: 'Noch kein laufender Fall', pflegen: PFLEGEN },
   { id: 'ff_takt', label: 'Fälle im Takt', saeule: FF_ID, gruppe: 'Lieferung', gewicht: 1.5, einheit: 'prozent', richtung: 'hoch', gruen: 80, rot: 50,
     formel: 'Anteil der laufenden Fälle, an denen nichts hängt (keine überfällige Willkommensmail, Freigabe oder Schritt, nichts wartet länger als 7 Tage, Report höchstens 14 Tage alt)',
     quelle: 'Fälle (Fulfillment) — „Was hängt“ im Cockpit', luecke: 'Noch kein laufender Fall', pflegen: { text: 'Cockpit öffnen', href: WEG.fulfillment() } },
@@ -137,7 +137,7 @@ export function ffMessung(id: string, d: FfIndexDaten | null | undefined, scope:
   switch (id) {
     case 'ff_health': {
       const m = zeilen.filter(z => z.health);
-      if (!m.length) return { luecke: 'Noch keine Gesundheits-Ampel (Fortschritt im Paket)', details: zuFulfillment };
+      if (!m.length) return { luecke: 'Noch keine Ampel', details: zuFulfillment };
       const w = m.reduce((a, z) => a + AMPEL_PUNKTE[z.health!], 0) / m.length;
       return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `${m.filter(z => z.health === 'gruen').length} grün · ${m.filter(z => z.health === 'gelb').length} gelb · ${m.filter(z => z.health === 'rot').length} rot`,
         details: [...m].sort((a, b) => AMPEL_PUNKTE[a.health!] - AMPEL_PUNKTE[b.health!]).slice(0, 3).map(z => ({ titel: z.kunde, wert: z.health === 'gruen' ? 'grün' : z.health === 'gelb' ? 'gelb' : 'rot', href: fall(z), ampel: z.health as Ampel })) };
@@ -153,14 +153,14 @@ export function ffMessung(id: string, d: FfIndexDaten | null | undefined, scope:
       const m = zeilen.filter(z => z.puls && (tageZwischen(z.puls.am, d!.heute) ?? 999) <= 90);
       if (!m.length) return { luecke: 'Noch kein Puls in den letzten 90 Tagen', details: zuFulfillment };
       const w = m.reduce((a, z) => a + z.puls!.wert, 0) / m.length;
-      return { wert: w, anzeige: `${z1(w)} von 10`, quelle: `Ø aus ${m.length} Fäll${m.length === 1 ? '' : 'en'} (letzter Puls je Fall)`,
+      return { wert: w, anzeige: `${z1(w)} von 10`, quelle: `Ø aus ${m.length} ${wort(m.length, 'Fall', 'Fällen')} (letzter Puls je Fall)`,
         details: [...m].sort((a, b) => a.puls!.wert - b.puls!.wert).slice(0, 3).map(z => ({ titel: z.kunde, wert: `${z.puls!.wert} / 10`, unter: `am ${z.puls!.am.slice(8, 10)}.${z.puls!.am.slice(5, 7)}.`, href: fall(z, 'kunde') })) };
     }
     case 'ff_wert': {
       const m = zeilen.filter(z => z.wert != null);
       if (!m.length) return { luecke: 'Noch kein Ziel mit Ausgang, Zielwert und Messung', details: zeilen.slice(0, 2).map(z => ({ titel: `${z.kunde}: Wert-Konto festlegen`, href: fall(z, 'ziele') })) };
       const w = m.reduce((a, z) => a + (z.wert as number), 0) / m.length;
-      return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `Ø Zielerreichung aus ${m.length} Fäll${m.length === 1 ? '' : 'en'}`,
+      return { wert: w, anzeige: `${Math.round(w)} %`, quelle: `Ø Zielerreichung aus ${m.length} ${wort(m.length, 'Fall', 'Fällen')}`,
         details: [...m].sort((a, b) => (a.wert as number) - (b.wert as number)).slice(0, 3).map(z => ({ titel: z.kunde, wert: `${z.wert} %`, href: fall(z, 'ziele') })) };
     }
     default: return { luecke: 'Keine Messung hinterlegt' };

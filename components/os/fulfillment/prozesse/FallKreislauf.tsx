@@ -184,7 +184,9 @@ export function WirkungKarte({ daten, melde, ops, haupt }: { daten: FallAntwort;
           )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             <Chip farbe={dok.quickWins.length ? LEUCHT.gut : C.inkLeise}>{dok.quickWins.length} Quick Win{dok.quickWins.length === 1 ? '' : 's'} erledigt</Chip>
-            <Chip farbe={dok.lieferobjekte.length ? LEUCHT.gut : C.inkLeise}>{dok.lieferobjekte.length} Ergebnis{dok.lieferobjekte.length === 1 ? '' : 'se'} geliefert</Chip>
+            {/* 17.10. (dritte Abnahme C6): das sind die erledigten Schritte des Falls („Was wir gemeinsam umgesetzt haben“), nicht die Lieferobjekte der Leistungstreppe
+                („x von y geliefert“) — eigenes Wort, damit nichts doppelt gezählt aussieht. */}
+            <Chip farbe={dok.lieferobjekte.length ? LEUCHT.gut : C.inkLeise}>{dok.lieferobjekte.length} {dok.lieferobjekte.length === 1 ? 'Schritt' : 'Schritte'} umgesetzt</Chip>
             {dok.befaehigung.length > 0 && <Chip farbe={C.inkDim}>Befähigung {dok.befaehigung.filter(b => b.erfuellt).length} von {dok.befaehigung.length}</Chip>}
           </div>
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Interne Bausteine, Onboarding-Schritte, die Gesundheit des Mandats und das Honorar erscheinen nie im Bericht.</div>

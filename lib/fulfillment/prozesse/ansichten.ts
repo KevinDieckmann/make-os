@@ -127,16 +127,19 @@ export interface TaktLeiste { wochen: string[]; bis: string; zeilen: TaktZeile[]
  * Zeile (auch die schon gelaufenen dieser Woche), alle übrigen als „weitere Termine“; der nächste Termin ist DIE Regel `naechsterFallTermin`.
  */
 export function taktLeiste(e: {
-  rituale: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus' | 'dauerMin'>[]; fallRituale: readonly Pick<Fall['rituale'][number], 'ritualId' | 'terminUids'>[];
+  rituale: readonly Pick<RitualVorlage, 'id' | 'titel' | 'rhythmus' | 'dauerMin' | 'pakete'>[]; fallRituale: readonly Pick<Fall['rituale'][number], 'ritualId' | 'terminUids'>[];
   termine: Readonly<Record<string, string | null | undefined>>; heute: string; wochen?: number;
   kalender?: readonly { uid: string; tag: string; von?: string; titel?: string; ritualId?: string }[];
+  /** Die Paket-Vorlage des Falls — ein Ritual mit `pakete` steht nur in diesen Paketen (oder wenn der Fall es schon nutzt; 17.10., dritte Abnahme C6). */
+  vorlageId?: string;
 }): TaktLeiste {
   const n = e.wochen ?? 6;
   const start = montagVon(e.heute);
   const bis = tagPlus(start, n * 7 - 1);
   const genutzt = new Map(e.fallRituale.map(r => [r.ritualId, r]));
   const imFenster = (t: string) => t >= start && t <= bis;
-  const zeilen = e.rituale.map(r => {
+  const passt = (r: Pick<RitualVorlage, 'id' | 'pakete'>) => !r.pakete?.length || !e.vorlageId || r.pakete.includes(e.vorlageId) || genutzt.has(r.id) || (e.kalender ?? []).some(t => t.ritualId === r.id);
+  const zeilen = e.rituale.filter(passt).map(r => {
     const g = genutzt.get(r.id);
     const ausKalender = (e.kalender ?? []).filter(t => t.ritualId === r.id);
     const naechster = ausKalender.map(t => t.tag).filter(t => t >= e.heute).sort()[0] ?? e.termine[r.id] ?? undefined;

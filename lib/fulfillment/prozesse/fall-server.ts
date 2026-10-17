@@ -15,10 +15,10 @@ import { fulfillmentAendern, fulfillmentLesen, fulfillmentHaushalt, eintragStand
 import { aktuellerKnoten, unterschriftAm, istBestand, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { istBusinessGesellschaft, istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { fallAnwenden, fallStarten, vorlageUebernehmen } from './fall';
-import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, type OnboardingAbleitung } from './onboarding';
+import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, zeitpunkt, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 import { fallTermine } from './termine-server';
@@ -83,7 +83,9 @@ export async function fallStartenServer(e: { mandatId: unknown; vorlageId: unkno
   if (!v) throw new FallFehler('Bitte eine Paket-Vorlage wählen (Fulfillment › Prozesse; dem Produkt zuordnen geht unter Produkte).', 400);
   const start = typeof e.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.start) ? e.start : heute;
   const u = unterschriftAm(m, crm, iso);
-  const bis = u ? new Date((Date.parse(u.am.length === 10 ? `${u.am}T00:00:00Z` : u.am)) + vorlagen.einstellungen.willkommenStunden * 3_600_000).toISOString().slice(0, 10) : undefined;
+  // Frist der Willkommensmail = DIESELBE Uhr wie `willkommenUhr` (ein Tag gilt ab 0 Uhr Berliner Zeit), als Berliner Tag (17.10., dritte Abnahme B4).
+  const uMs = u ? zeitpunkt(u.am) : null;
+  const bis = uMs != null ? tagVon(new Date(uMs + vorlagen.einstellungen.willkommenStunden * 3_600_000).toISOString()) : undefined;
   let neu: Fall | null = null;
   const r = await fulfillmentAendern('faelle', d => {
     if (d.faelle[m.id]) return { ok: false, status: 409, fehler: 'Für dieses Mandat läuft schon ein Fall.' };

@@ -16,7 +16,7 @@ import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { fallUmfeld, ableitungFuer, fallStartenServer, FallFehler } from './fall-server';
-import { fallWirksam, onboardingStand, willkommenUhr } from './onboarding';
+import { fallWirksam, onboardingStand, onboardingZaehlung, willkommenUhr } from './onboarding';
 import { cockpitZeile, type CockpitZeile, type HaengerArt } from './cockpit';
 import { ffIndexZeile, type FfIndexDaten } from './kennzahlen';
 import { naechsterFallTermin } from './rituale';
@@ -52,7 +52,7 @@ export async function faelleKurz(mandatIds?: readonly string[]): Promise<Record<
     raus[f.mandatId] = {
       mandatId: f.mandatId, status: w.status, ...(stelle.phase ? { phase: stelle.phase.titel } : {}), fortschritt: stelle.fortschritt,
       ...(stelle.naechster ? { naechster: stelle.naechster.titel } : {}), wartet: wa.length, ...(wa[0]?.tage !== undefined ? { wartetAeltesterTage: wa[0].tage } : {}),
-      onboardingOffen: st.offen, onboardingErfuellt: st.schritte.filter(x => x.erfuellt || x.entfaellt).length, willkommenUeberfaellig: st.willkommen.ueberfaellig,
+      onboardingOffen: st.offen, onboardingErfuellt: onboardingZaehlung(st.schritte).erledigt, willkommenUeberfaellig: st.willkommen.ueberfaellig,
     };
   }
   return raus;
@@ -120,7 +120,7 @@ export async function haengerFuer(mandatId: string, heute = localDay()): Promise
 }
 
 /** Was die Leistungstreppe je Mandat aus dem Fall übernimmt (15.10., Abnahme B1) — Ampel, was der Kunde sieht, Phase, nächster Schritt. */
-export interface FallFuerTreppe { ampel: Ampel; kundeSieht?: CockpitZeile['kundeSieht']; phase?: string; schritt?: string }
+export interface FallFuerTreppe { ampel: Ampel; kundeSieht?: CockpitZeile['kundeSieht']; phase?: string; phaseNr?: number; phasenAnzahl?: number; schritt?: string }
 /**
  * Für die Leistungstreppe: je laufendem Fall die Ampel (Hänger + Health — dieselbe wie Fall-Kopf und Landkarte), was der Kunde sieht, und der nächste
  * Schritt (`naechsterPunkt` — derselbe wie Fall-Kopf, Kunden-Seite und Report). Ohne Fall fehlt das Mandat. Fehler → {}.
@@ -128,7 +128,7 @@ export interface FallFuerTreppe { ampel: Ampel; kundeSieht?: CockpitZeile['kunde
 export async function fallFuerTreppe(heute = localDay()): Promise<Record<string, FallFuerTreppe>> {
   try {
     const { zeilen } = await cockpitDaten(heute);
-    return Object.fromEntries(zeilen.map(z => [z.mandatId, { ampel: kundenAmpel(z), ...(z.kundeSieht ? { kundeSieht: z.kundeSieht } : {}), ...(z.phase ? { phase: z.phase } : {}), ...(z.schritt ? { schritt: z.schritt } : {}) }]));
+    return Object.fromEntries(zeilen.map(z => [z.mandatId, { ampel: kundenAmpel(z), ...(z.kundeSieht ? { kundeSieht: z.kundeSieht } : {}), ...(z.phase ? { phase: z.phase, ...(z.phaseNr ? { phaseNr: z.phaseNr } : {}), ...(z.phasenAnzahl ? { phasenAnzahl: z.phasenAnzahl } : {}) } : {}), ...(z.schritt ? { schritt: z.schritt } : {}) }]));
   } catch { return {}; }
 }
 
@@ -158,7 +158,9 @@ export async function ffKennzahlenFuerIndex(heute = localDay()): Promise<FfIndex
     return {
       heute,
       zeilen: zeilen.map(z => ffIndexZeile({
-        fall: faelle.faelle[z.mandatId], gesellschaft: z.gesellschaft, kunde: z.kunde, health: z.health, haengt: z.haengt.map(h => h.text),
+        // 17.10. (dritte Abnahme B3): „Lage der Fälle“ = DIESELBE Ampel wie Landkarte, Lage-Zeile und Fall-Kopf (`kundenAmpel`: was hängt + Kunden-Gesundheit) —
+        // vorher die Gesundheits-Ampel der Leistungstreppe allein (Index „grün“, Fulfillment „braucht Aufmerksamkeit“).
+        fall: faelle.faelle[z.mandatId], gesellschaft: z.gesellschaft, kunde: z.kunde, health: kundenAmpel(z), haengt: z.haengt.map(h => h.text),
         ...(z.puls ? { puls: z.puls } : {}),
       })),
     };

@@ -12,6 +12,7 @@ import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type 
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
+import { tagVon } from '@/lib/zeit';
 
 export type HaengerArt = 'willkommen' | 'freigabe' | 'wartet' | 'puls' | 'report' | 'art14' | 'faellig';
 export interface Haenger {
@@ -65,7 +66,9 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
   const { fall: f, heute } = e;
   const raus: Haenger[] = [];
   const h = (art: HaengerArt, text: string, schwere: 'rot' | 'gelb', href: string, seit?: string) => raus.push({ art, mandatId: f.mandatId, kunde: e.kunde, text, schwere, href, ...(seit ? { seit } : {}) });
-  if (f.status !== 'abgeschlossen' && e.onboarding.willkommen.ueberfaellig) h('willkommen', 'Willkommensmail überfällig (24 Stunden nach der Unterschrift)', 'rot', WEG.fall(f.mandatId, 'reise', 'willkommen'), e.onboarding.willkommen.faellig?.slice(0, 10));
+  if (f.status !== 'abgeschlossen' && e.onboarding.willkommen.ueberfaellig) h('willkommen', 'Willkommensmail überfällig (24 Stunden nach der Unterschrift)', 'rot', WEG.fall(f.mandatId, 'reise', 'willkommen'),
+    // 17.10. (dritte Abnahme B4): der Berliner Tag der Frist — `.slice(0, 10)` nahm den UTC-Tag („seit 13.10.“ statt 14.10.).
+    e.onboarding.willkommen.faellig ? tagVon(e.onboarding.willkommen.faellig) : undefined);
   const nummern = abstimmungsNummern(f.knoten);
   for (const k of f.knoten) {
     if (k.status === 'erledigt' || k.status === 'entfaellt' || !k.faelligAm || k.faelligAm >= heute) continue;

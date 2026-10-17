@@ -10,7 +10,7 @@
 // EIN Klick „Senden“ macht nacheinander: PDF erstellen (wenn heute noch keins) → Puls-Link anlegen (nur wenn der Text den Platzhalter trägt, bei aktivem
 // Kunden-Link) → Mail über die Inbox → „gesendet“ vermerken. Ohne Fall ist alles wie vorher. Link „Fulfillment öffnen ›“ in den Fall.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, Chip, Hinweis, feld, LEUCHT, useRueckfrage } from '../../ui';
@@ -32,6 +32,24 @@ const neueId = () => `report-${typeof crypto !== 'undefined' && 'randomUUID' in 
 
 /** Fortschritt im Paket — eingehängt im geöffneten Mandat (Produkte & Mandate › Mandate). Ohne Treppe: ein Satz mit Weg. */
 /** `imFall` (12.10.): eingebettet unter Fulfillment › Fall › Kunde & Reports — dann ohne den Sprung „Fulfillment öffnen ›“ (er zeigte auf sich selbst). */
+/**
+ * Die Phase eines Mandats aus seinem Fulfillment-Fall (17.10., dritte Abnahme B6: die Mandatsakte sagte „Das Produkt hat noch keinen Ablauf“, obwohl der Fall
+ * in Phase 3 stand) — mit Fall „Phase 3 von 8 · Diagnose“ und der Sprung in die Reise; ohne Fall `ohne` (der Ablauf des Produkts bzw. der Hinweis dazu).
+ * Liest dieselbe Lage wie „Fortschritt im Paket“ (`useTreppe`, Phase aus `fallStelle`).
+ */
+export function FallPhase({ mandatId, ohne, rahmen }: { mandatId: string; ohne: ReactNode; rahmen: (inhalt: ReactNode) => ReactNode }) {
+  const api = useTreppe();
+  if (!api.lage) return ohne ? <>{rahmen(ohne)}</> : null;
+  const f = api.lage.kunden.find(k => k.mandatId === mandatId)?.fall;
+  if (!f?.phase) return ohne ? <>{rahmen(ohne)}</> : null;
+  return <>{rahmen(
+    <Link href={WEG.fall(mandatId)} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 44, fontSize: TYP.bedien, color: C.ink, textDecoration: 'none', flexWrap: 'wrap' }}>
+      <span>{f.phaseNr && f.phasenAnzahl ? `Phase ${f.phaseNr} von ${f.phasenAnzahl} · ` : ''}{f.phase}</span>
+      <span style={{ color: C.aktiv }}>in der Reise ›</span>
+    </Link>,
+  )}</>;
+}
+
 export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFall?: boolean }) {
   const api = useTreppe();
   const [senden, setSenden] = useState(false);

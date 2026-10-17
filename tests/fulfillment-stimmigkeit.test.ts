@@ -34,7 +34,10 @@ import { allesWasHaengt } from '@/lib/fulfillment/prozesse/cockpit';
 import { taktLeiste, montagVon } from '@/lib/fulfillment/prozesse/ansichten';
 import { reportAchse } from '@/lib/fulfillment/prozesse/ansichten';
 import { fallStartTag } from '@/lib/fulfillment/prozesse/fall';
-import { brauchtAnzahl, formularOffen, kundenText } from '@/lib/fulfillment/kunde/bild';
+import { brauchtAnzahl, formularOffen, kundenText, kundenPunktTitel, kundenReise } from '@/lib/fulfillment/kunde/bild';
+import { onboardingZaehlung, obKnotenId } from '@/lib/fulfillment/prozesse/onboarding';
+import { MUSTER_PLAYBOOK } from '@/lib/fulfillment/muster';
+import { tagVon } from '@/lib/zeit';
 import { SAMMEL_SCHRITT } from '@/lib/fulfillment/prozesse/phasen';
 import type { CockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
 import type { KundenSicht } from '@/lib/fulfillment/kunde/sicht';
@@ -229,13 +232,14 @@ describe('Zweite Abnahme 15.10.: EINE Lage-Rechnung, EIN nächster Schritt, EIN 
       const s = sichten[m];
       const ohneFrist = (t: string | undefined) => (t ?? '').replace(/ — bis \d{2}\.\d{2}\.\d{4}$/, '');
       if (p.zustand === 'wartet_kunde') expect(s.wartet.map(w => w.titel), m).toContain(kundenText(p.titel));
-      else expect(ohneFrist(s.naechstes[0]), m).toBe(kundenText(p.titel));
+      // 17.10. (dritte Abnahme B4): derselbe Punkt in Kunden-Worten (`kundenPunktTitel` — z. B. nie „Willkommen in 24 Stunden“).
+      else expect(ohneFrist(s.naechstes[0]), m).toBe(kundenPunktTitel(p));
       expect(reports[m]!.naechstes?.[0], m).toBe(s.naechstes[0]);
       // Keine Phase steht unter „Als Nächstes“.
       for (const ph of reise.phasen) expect(s.naechstes.map(ohneFrist), m).not.toContain(kundenText(ph.titel));
     }
     expect(sichten['m-demo-nordwerk'].naechstes[0]).toMatch(/^Diagnosebericht/);
-    expect(sichten['m-demo-lumen'].naechstes[0]).toMatch(/^Willkommen in 24 Stunden/);
+    expect(sichten['m-demo-lumen'].naechstes[0]).toBe('Willkommensmail mit den ersten Schritten');
   });
 
   it('„Was hängt“: die Lage (alle Fälle) und der Fall-Kopf (je Fall) zählen aus derselben Liste', () => {
@@ -287,5 +291,92 @@ describe('Zweite Abnahme 15.10.: EINE Lage-Rechnung, EIN nächster Schritt, EIN 
     const { reportZusatzFuer } = await import('@/lib/fulfillment/kunde/server');
     const alt = await reportZusatzFuer('m-demo-nordwerk', tagePlus(HEUTE, -14));
     if (alt?.puls) expect(alt.puls.am <= tagePlus(HEUTE, -14)).toBe(true);
+  });
+});
+
+// ─── Dritte Abnahme 17.10. (B3–B6, C6): EINE Ampel, EIN Tag, EINE Zählung, die Mandatsakte kennt den Fall ─────────────────────────────────────────
+describe('Dritte Abnahme 17.10.: Ampel, Fristen, Zählungen, Mandatsakte, Feinschliff', () => {
+  it('B3: „Lage der Fälle“ im Business-Index nimmt DIESELBE Ampel wie Landkarte, Lage und Fall-Kopf', async () => {
+    const { ffKennzahlenFuerIndex } = await import('@/lib/fulfillment/prozesse/server');
+    const d = await ffKennzahlenFuerIndex(HEUTE);
+    for (const m of MANDATE) expect(d!.zeilen.find(z => z.mandatId === m)!.health, m).toBe(kundenAmpel(cockpit.find(z => z.mandatId === m)!));
+    // Lumen: intern rot (Willkommensmail überfällig) — der Index sagt dasselbe, nicht „grün“.
+    expect(d!.zeilen.find(z => z.mandatId === 'm-demo-lumen')!.health).toBe('rot');
+  });
+
+  it('B4: keine verstrichene Frist und keine interne Reaktionszeit beim Kunden; intern derselbe Berliner Tag wie die Frist', async () => {
+    for (const m of MANDATE) {
+      for (const t of [...sichten[m].naechstes, ...(reports[m]!.naechstes ?? [])]) {
+        expect(t, m).not.toMatch(/24 Stunden/);
+        const bis = / — bis (\d{2})\.(\d{2})\.(\d{4})$/.exec(t);
+        if (bis) expect(`${bis[3]}-${bis[2]}-${bis[1]}` >= HEUTE, `${m}: ${t}`).toBe(true);
+      }
+    }
+    // Intern: „überfällig seit …“ = der Berliner Tag der Frist (nicht der UTC-Tag) = die Frist am Knoten.
+    const lu = cockpit.find(z => z.mandatId === 'm-demo-lumen')!;
+    const w = lu.haengt.find(h => h.art === 'willkommen')!;
+    const f = await lese('fulfillment/fall', '?m=m-demo-lumen');
+    const faellig = (f.onboarding as { willkommen: { faellig?: string } }).willkommen.faellig!;
+    expect(w.seit).toBe(tagVon(faellig));
+    const knoten = faelle['m-demo-lumen'].fall.knoten.find(k => k.id === obKnotenId('willkommen'));
+    if (knoten?.faelligAm) expect(knoten.faelligAm).toBe(w.seit);
+  });
+
+  it('B5: der Phasen-Anteil beim Kunden hat dieselbe Grundlage wie intern („1 von 3“ = 33 %); der Onboarding-Zähler zählt überall gleich', () => {
+    for (const m of MANDATE) {
+      const { fall, freigaben } = faelle[m];
+      const reise = fallReise(fall, freigaben, HEUTE);
+      const jetzt = reise.phasen[reise.jetzt];
+      const kunde = sichten[m].zeitstrahl.find(p => p.stand === 'aktuell')!;
+      if (jetzt.gesamt) expect(kunde.anteil, m).toBe(Math.round((jetzt.erledigt / jetzt.gesamt) * 100) / 100);
+      expect(reports[m]!.phasen!.find(p => p.stand === 'aktuell')!.anteil, m).toBe(kunde.anteil);
+      // Die Reise beim Kunden sagt denselben Anteil in Worten.
+      const spalte = kundenReise(sichten[m].zeitstrahl, sichten[m].naechstes, 0).find(x => x.zustand === 'jetzt')!;
+      if (kunde.anteil != null) expect(spalte.unter, m).toBe(`${Math.round(kunde.anteil * 100)}\u00A0% der Schritte`);
+      // Onboarding: Fall (Zähler), Fulfillment › Onboarding (`onboardingErfuellt`) und die Haken zählen dasselbe — alle Schritte.
+      const z = onboardingZaehlung(faelle[m].onboarding.schritte as never);
+      expect(z.gesamt, m).toBe(faelle[m].onboarding.schritte.length);
+      expect(uebersicht!.faelle[m].onboardingErfuellt ?? 0, m).toBe(z.erledigt);
+    }
+  });
+
+  it('B6: die Mandatsakte kennt den Fall — Phase aus dem Fall (Nummer und Titel) mit Sprung in die Reise', () => {
+    for (const m of MANDATE) {
+      const z = cockpit.find(x => x.mandatId === m)!;
+      expect(treppe.find(k => k.mandatId === m)!.fall, m).toMatchObject({ phase: z.phase, phaseNr: z.phaseNr, phasenAnzahl: z.phasenAnzahl });
+    }
+    const akte = readFileSync(path.join(process.cwd(), 'components/os/crm/Kunden.tsx'), 'utf8');
+    expect(akte).toContain('<FallPhase mandatId={m.id}');
+    const phase = readFileSync(path.join(process.cwd(), 'components/os/mandate/treppe/Fortschritt.tsx'), 'utf8');
+    expect(phase).toContain('in der Reise ›');
+    expect(phase).toContain('WEG.fall(mandatId)');
+  });
+
+  it('C6: EIN klarer nächster Schritt, danach mit Kontext; Takt passt zum Paket; Report nur bis zu seinem Stand; Befähigung erst am Ende; Playbook ohne Du', async () => {
+    for (const m of MANDATE) {
+      const n = sichten[m].naechstes;
+      expect(n.length, m).toBeGreaterThan(0);
+      for (const t of n.slice(1)) expect(t, m).toMatch(/^Danach( in „[^“]+“)?: /);
+    }
+    // Takt: das tägliche Huddle gehört zum Vertriebsaufbau (Nordwerk), nicht zur Cockpit-Einführung (Lumen).
+    const takt = (m: typeof MANDATE[number]) => { const x = faelle[m]; return taktLeiste({ rituale: x.rituale as never, fallRituale: x.fall.rituale, termine: x.termine, heute: HEUTE, kalender: x.kalender, vorlageId: x.fall.vorlageId }); };
+    expect(takt('m-demo-lumen').zeilen.some(z => z.rhythmus === 'werktags')).toBe(false);
+    expect(takt('m-demo-nordwerk').zeilen.some(z => z.rhythmus === 'werktags')).toBe(true);
+    // Ein Report „Stand vor 14 Tagen“ zeigt nur Messwerte bis dahin.
+    const { reportZusatzFuer } = await import('@/lib/fulfillment/kunde/server');
+    const stand = tagePlus(HEUTE, -14);
+    const alt = await reportZusatzFuer('m-demo-nordwerk', stand);
+    const nw = faelle['m-demo-nordwerk'].fall;
+    for (const z of alt!.wertKonto) {
+      const e = nw.wertKonto[z.zielId];
+      const bis = (e?.messungen ?? []).filter(x => tagVon(x.am) <= stand).sort((a, b) => (a.am < b.am ? -1 : 1)).at(-1);
+      if (bis) expect(z.jetzt.startsWith(String(bis.wert)), z.name).toBe(true);
+    }
+    // Befähigung „läuft ohne uns“: in Phase 3 von 8 noch nichts erfüllt.
+    expect(nw.befaehigung.some(b => b.erfuellt)).toBe(false);
+    // Das Playbook steht beim Kunden in der Anrede des Mandats — die Fragen tragen keine Anrede.
+    for (const q of MUSTER_PLAYBOOK.fragen ?? []) expect(q.frage).not.toMatch(/\b(euer|eure|euren|eurem|ihr|habt|tretet|Ihr|Ihre|Sie)\b/);
+    // Der Report-Zeitstrahl beginnt mit dem Fallstart.
+    expect(readFileSync(path.join(process.cwd(), 'components/os/fulfillment/kunde/FallKunde.tsx'), 'utf8')).toContain('links={`Fallstart ${tagKurz(achse.von)}`}');
   });
 });

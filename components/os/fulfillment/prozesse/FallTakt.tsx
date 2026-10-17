@@ -60,7 +60,7 @@ export function TaktKarten({ daten, ops, melde, schreiben, setSchreiben, onTermi
   const f = daten.fall!;
   const heute = localDay();
   const rituale = daten.rituale ?? [];
-  const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute, ...(daten.kalender ? { kalender: daten.kalender } : {}) });
+  const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute, vorlageId: f.vorlageId, ...(daten.kalender ? { kalender: daten.kalender } : {}) });
   return (
     <>
       <KalenderLeiste leiste={leiste} rituale={rituale} heute={heute} onTermin={onTermin} />
