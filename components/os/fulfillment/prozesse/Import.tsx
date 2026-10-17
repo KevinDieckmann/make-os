@@ -60,17 +60,29 @@ export function Import({ daten }: { daten: Uebersicht }) {
   return (
     <Karte i={2}>
       <Ueberschrift erklaerung="fulfillment.importRechtPruefen">Import</Ueberschrift>
-      <div style={klein}>Bausteine (Format „vorlagen“) oder gezeichnete Abläufe (je Ablauf „stufen“ und „uebergaenge“) — erst kommt eine Vorschau, geschrieben wird erst mit „Übernehmen“.</div>
+      <div style={klein}>Bausteine (Format „vorlagen“), gezeichnete Abläufe (je Ablauf „stufen“ und „uebergaenge“) oder Pakete mit Phasen und Fluss (Format „pakete“) — erst kommt eine Vorschau, geschrieben wird erst mit „Übernehmen“. Pakete brauchen ihre Bausteine in der Bibliothek: erst die Bausteine importieren.</div>
       <Leiste>
         <input ref={datei} type="file" accept="application/json,.json" aria-label="Datei wählen" onChange={e => { const f = e.target.files?.[0]; if (f) void lesen(f); }} style={{ fontSize: TYP.bedien, color: C.inkDim, minHeight: 44 }} />
       </Leiste>
       {meldung && <Hinweis art={meldung.art}>{meldung.text}</Hinweis>}
       {vs && (
         <div style={{ display: 'grid', gap: 10 }}>
+          {/* 17.10. (Bibliothek): auf einen Blick — Abläufe, Bausteine, Marken nach Vorschlag, mögliche Duplikate. */}
+          {vs.zahlen && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} data-import-zahlen>
+              {vs.zahlen.ablaeufe > 0 && <Chip farbe={LEUCHT.planung}>{anzahl(vs.zahlen.ablaeufe, 'Ablauf', 'Abläufe')}</Chip>}
+              {vs.zahlen.bausteine > 0 && <Chip farbe={LEUCHT.planung}>{anzahl(vs.zahlen.bausteine, 'Baustein', 'Bausteine')}</Chip>}
+              {vs.zahlen.vorVerkauf > 0 && <Chip farbe={LEUCHT.achtung}>{vs.zahlen.vorVerkauf} vor Verkauf prüfen</Chip>}
+              {vs.zahlen.nurIntern > 0 && <Chip farbe={LEUCHT.agenten}>{vs.zahlen.nurIntern} nur intern</Chip>}
+              {vs.zahlen.recht > 0 && <Chip farbe={LEUCHT.achtung}>{vs.zahlen.recht} rechtlich prüfen</Chip>}
+              {vs.zahlen.duplikate > 0 && <Chip farbe={LEUCHT.kritisch}>{anzahl(vs.zahlen.duplikate, 'mögliches Duplikat', 'mögliche Duplikate')}</Chip>}
+            </div>
+          )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {Object.entries(vs.zaehler).filter(([, n]) => n > 0).map(([s, n]) => <Chip key={s} farbe={STATUS_FARBE[s] ?? C.inkDim}>{n} {STATUS_TEXT[s] ?? s}</Chip>)}
           </div>
           {vs.fehler.length > 0 && <Hinweis art="achtung" titel={`${anzahl(vs.fehler.length, 'Eintrag wird', 'Einträge werden')} nicht übernommen`}>{vs.fehler.slice(0, 12).join(' · ')}{vs.fehler.length > 12 ? ` · und ${vs.fehler.length - 12} weitere` : ''}</Hinweis>}
+          {(vs.duplikate?.length ?? 0) > 0 && <Hinweis art="info" titel="Mögliche Duplikate — beide bleiben">{vs.duplikate.slice(0, 8).join(' · ')}{vs.duplikate.length > 8 ? ` · und ${vs.duplikate.length - 8} weitere` : ''}</Hinweis>}
           {vs.hinweise.map(h => <Hinweis key={h} art="info">{h}</Hinweis>)}
           {(vs.pakete.length > 0 || vs.giltFuer.length > 0) && pakete.length > 0 && (
             <div style={{ display: 'grid', gap: 6 }}>
@@ -109,6 +121,17 @@ export function Import({ daten }: { daten: Uebersicht }) {
               <Chip farbe={STATUS_FARBE[a.status]}>{STATUS_TEXT[a.status]}</Chip>
               <span style={klein}>{a.form} · {a.stufen} Stufen · {a.uebergaenge} Übergänge{a.ergaenzungen ? ` · ${a.ergaenzungen} ergänzt (gestrichelt)` : ''}</span>
               {a.status === 'konflikt' && <Haken an={wahl.nehmen?.[a.id] === true} onChange={x => setze('nehmen', a.id, x)}>Import nehmen</Haken>}
+            </div>
+          ))}
+          {(vs.paketVorlagen ?? []).map(p => (
+            <div key={p.id} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }} data-import-paket={p.id}>
+              <b style={{ fontSize: TYP.bedien, color: C.ink, fontWeight: 600 }}>{p.titel}</b>
+              <Chip farbe={STATUS_FARBE[p.status]}>{STATUS_TEXT[p.status]}</Chip>
+              <span style={klein}>
+                {anzahl(p.phasen, 'Phase', 'Phasen')} · {anzahl(p.schritte, 'Schritt', 'Schritte')} · {anzahl(p.entscheidungen, 'Entscheidung', 'Entscheidungen')} · {anzahl(p.erinnerungen, 'Erinnerung', 'Erinnerungen')} · {anzahl(p.bausteine, 'Baustein', 'Bausteine')}
+              </span>
+              {p.fehlend.length > 0 && <Chip farbe={LEUCHT.kritisch}>{p.fehlend.length} Bausteine fehlen</Chip>}
+              {p.status === 'konflikt' && <Haken an={wahl.nehmen?.[p.id] === true} onChange={x => setze('nehmen', p.id, x)}>Import nehmen (sonst meine Fassung behalten)</Haken>}
             </div>
           ))}
           <Leiste>

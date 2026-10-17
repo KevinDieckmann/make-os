@@ -12,21 +12,37 @@
 // Marken: „vor Einsatz rechtlich prüfen“ (`rechtVorschlag`), „vor Verkauf prüfen“ (gekauftes/fremdes Material, `pruefen_vor_verkauf`),
 // „nur intern“ (`nur_intern`). Grenzen: ≤ 400 Bausteine bzw. ≤ 20 Abläufe je Datei (413), sonst wird abgelehnt — nie still gekürzt.
 // Rein und client-sicher; die Route (app/api/fulfillment/import) prüft Größe (≤ 4 MB) und Stand (vorschauId → 409).
+//
+// Seit 17.10. (Prozess-Editor, Bibliothek) ein drittes Format, derselbe Weg:
+//   · Pakete:    `{ format?: 'make-os/pakete', pakete: [ { schluessel?, titel, beschreibung?, vorbehalt?, quelle?, abstimmungen?, rollen?, phasen: [
+//                  { id, titel, abstimmung?, dauerTage?, ziel?, warum?, kundeSichtbar?, kreislauf?, fluss: [ Schritt | { gruppe, id, fluss: [Schritt] } ] } ] } ],
+//                  vorlagen?: [...] }`
+//     Schritt = `{ id, titel, form?, frist?, zweige?: { ja?, nein? }, zustaendig?, kundeSichtbar?, ziel?, ergebnis?, kennzahl?, rolle?, dauerTage?, abstimmung?,
+//     bausteine?: [Kennung] }` — Formen, Fristen und Zweige wie im Editor (dieselben Werkzeuge, `zweigePruefen`, `vorlageStrukturPruefen`), Bausteine per
+//     Kennung der Quelle (→ `fb-imp-<id>`) oder als vorhandene Kennung `fb-…`; sie müssen in der Bibliothek ODER im `vorlagen`-Teil derselben Datei stehen,
+//     sonst blockiert die Datei (nichts still ohne Baustein). Eine Paket-Vorlage bekommt `fp-imp-pk-<slug>`, ihre Knoten feste Kennungen aus den Quell-Kennungen
+//     (wiederholbar, ändert nichts doppelt) und `phasenVonHand` (die Reihenfolge der Datei gilt). Folgende Schritte ohne Gruppe bilden EINEN Strang; trägt einer
+//     davon Bausteine, stehen sie in einem Sammel-Teilprozess (heißt wie die Phase — dieselbe Form, die der Editor anlegt). `pos`/`verbindungen` (freie Fläche)
+//     kennt das Format noch nicht — solche Felder werden wie jedes unbekannte Feld ignoriert, bis `ProzessKnoten` sie trägt.
+// Ein JSON-Array auf oberster Ebene gilt als Bausteine-Liste (`vorlagen`). `pruefgrund` einer Quelle wird der Grund von „vor Verkauf prüfen“, `zusatz` ein
+// Schlagwort `zusatz:<wert>`. Die Vorschau zählt zusätzlich (`zahlen`) und nennt mögliche Duplikate (gleicher Titel, andere Kennung) — beide bleiben.
 
-import type { AnwendenErgebnis, Baustein, BausteinArt, ImportLauf, ProzessKnoten, ProzessVorlage, Uebergang, VorlagenDatei } from '../typen';
-import { BAUSTEIN_ARTEN, vorlageAus } from '../lesen';
-import { GRENZEN, TEXT_MAX } from '../grenzen';
+import type { AnwendenErgebnis, Baustein, BausteinArt, Freigabepunkt, ImportLauf, KnotenForm, ProzessKnoten, ProzessVorlage, Rolle, Uebergang, VorlagenDatei, Zweige } from '../typen';
+import { BAUSTEIN_ARTEN, KNOTEN_FORMEN, KREISLAUF_IDS, vorlageAus } from '../lesen';
+import { GRENZEN, ID_FREI, KENNUNG, TEXT_MAX } from '../grenzen';
 import { ebeneVon, kinderVon, vorfahren } from '../regeln';
 import { PHASEN, SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE, phaseEinfuegen, phaseFinden, phaseTitel, phaseVon } from './phasen';
 import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
-import { ausfuehren, fnv, istObj, nein, slug, titelForm } from './pruefen';
+import { zweigePruefen } from './fluss-struktur';
+import { FRIST_MAX } from './editor';
+import { ausfuehren, fnv, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, slug, titelForm } from './pruefen';
 import { anzahl } from '@/lib/text/zahlwort';
 
 export const IMPORT_GRENZEN = { bytes: 4 * 1024 * 1024, bausteine: 400, ablaeufe: 20, laufTage: 30 } as const;
 const QUELL_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
-export type ImportFormat = 'bausteine' | 'ablaeufe';
+export type ImportFormat = 'bausteine' | 'ablaeufe' | 'pakete';
 export type BausteinStatus = 'neu' | 'gleich' | 'ergaenzt' | 'abweichend' | 'konflikt';
 
 export interface ImportBausteinVorschau {
@@ -37,14 +53,31 @@ export interface ImportBausteinVorschau {
   pakete: string[]; giltFuer: string[]; phase?: string; unterphase?: string;
 }
 export interface ImportAblaufVorschau { id: string; titel: string; form: NonNullable<ProzessVorlage['form']>; stufen: number; uebergaenge: number; ergaenzungen: number; status: 'neu' | 'gleich' | 'aktualisiert' | 'konflikt' }
+/** Eine Paket-Vorlage der Datei (Format „Pakete“, 17.10.) — Zahlen je Form, damit vor dem Übernehmen klar ist, was entsteht. */
+export interface ImportPaketVorschau {
+  id: string; titel: string; status: 'neu' | 'gleich' | 'aktualisiert' | 'konflikt';
+  phasen: number; schritte: number; entscheidungen: number; erinnerungen: number; nachrichten: number; termine: number;
+  /** Abstimmungspunkte (zwischen den Phasen und im Fluss). */
+  abstimmungen: number;
+  /** Verweise auf Bausteine (Knoten auf Ebene 5). */
+  bausteine: number;
+  /** Bausteine, die weder in der Bibliothek noch in der Datei stehen (dann blockiert die Datei). */
+  fehlend: string[];
+}
 export interface ImportVorschau {
   format: ImportFormat; datei: string;
   bausteine: ImportBausteinVorschau[]; ablaeufe: ImportAblaufVorschau[];
+  /** Paket-Vorlagen der Datei (Format „Pakete“) — nicht verwechseln mit `pakete` (Paket-Schlüssel der Bausteine zum Einsortieren). */
+  paketVorlagen: ImportPaketVorschau[];
   pakete: string[]; giltFuer: string[];
-  /** Einträge, die NICHT übernommen werden können (Bausteine: übersprungen; Abläufe: blockieren die Datei). */
+  /** Einträge, die NICHT übernommen werden können (Bausteine: übersprungen; Abläufe und Pakete: blockieren die Datei). */
   fehler: string[];
   hinweise: string[];
+  /** Mögliche Duplikate (gleicher Titel, andere Kennung — in der Datei oder gegen die Bibliothek); beide bleiben, nichts wird zusammengelegt. */
+  duplikate: string[];
   zaehler: Record<BausteinStatus | 'aktualisiert', number>;
+  /** Auf einen Blick: Abläufe (Pakete + gezeichnete), Bausteine, Marken nach Vorschlag. */
+  zahlen: { ablaeufe: number; bausteine: number; vorVerkauf: number; nurIntern: number; recht: number; duplikate: number };
 }
 export interface ImportWahl {
   /** Quell-Kennung → Marke „rechtlich prüfen“ setzen (true) oder nicht (false); fehlt: Vorschlag gilt. */
@@ -78,9 +111,9 @@ export function rechtVorschlag(x: { art: string; titel: string; unterphase?: str
   if (RECHT_RE.test(`${x.hinweis ?? ''} ${x.zweck ?? ''}`)) return 'Der Hinweis nennt Recht, Provision oder Einwilligung — vor Einsatz rechtlich prüfen.';
   return undefined;
 }
-/** Vorschlag „vor Verkauf prüfen“ (Material Dritter). */
-export function urheberVorschlag(x: { herkunft?: string; pruefenVorVerkauf?: boolean }): string | undefined {
-  if (x.pruefenVorVerkauf) return 'Gekauftes bzw. fremdes Material — vor Verkauf prüfen.';
+/** Vorschlag „vor Verkauf prüfen“ (Material Dritter) — mit `grund` (Feld `pruefgrund` der Quelle, 17.10.) als Text der Marke. */
+export function urheberVorschlag(x: { herkunft?: string; pruefenVorVerkauf?: boolean; grund?: string }): string | undefined {
+  if (x.pruefenVorVerkauf) return x.grund ? `${x.grund.charAt(0).toUpperCase()}${x.grund.slice(1)}` : 'Gekauftes bzw. fremdes Material — vor Verkauf prüfen.';
   return x.herkunft && URHEBER_RE.test(x.herkunft) ? 'Herkunft nennt Material Dritter — vor Verkauf prüfen.' : undefined;
 }
 
@@ -117,10 +150,13 @@ function bausteinLesen(x: Record<string, unknown>): Gelesen {
   const giltFuer = Array.isArray(x.gilt_fuer) ? x.gilt_fuer.filter((y): y is string => typeof y === 'string').map(tagWert).filter(Boolean) : [];
   const pakete = Array.isArray(x.pakete) ? x.pakete.filter((y): y is string => typeof y === 'string').map(tagWert).filter(Boolean) : [];
   const nurInt = x.nur_intern === true;
+  const pruefgrund = laenge(s(x.pruefgrund), TEXT_MAX.kurz, 'der Prüfgrund', q);
+  const zusatz = typeof x.zusatz === 'string' ? tagWert(x.zusatz) : '';
   const tags = [
     ...(phase ? [`phase:${tagWert(phase)}`] : []), ...(unterphase ? [`unterphase:${tagWert(unterphase)}`] : []),
     ...giltFuer.map(g => `fuer:${g}`), ...pakete.map(p => `paket:${p}`),
     ...(typeof x.paket_haupt === 'string' && tagWert(x.paket_haupt) ? [`paket-haupt:${tagWert(x.paket_haupt)}`] : []),
+    ...(zusatz ? [`zusatz:${zusatz}`] : []),
     ...(nurInt ? [TAG_NUR_INTERN] : []), ...(x.pruefen_vor_verkauf === true ? [TAG_VOR_VERKAUF] : []),
   ];
   // Quellen: nur kurze Kennungen wie „D4“ — nie Adressen.
@@ -131,7 +167,7 @@ function bausteinLesen(x: Record<string, unknown>): Gelesen {
     ...(zweck ? { zweck } : {}), ...(hinweis ? { hinweis } : {}), ...(kennzahl ? { kennzahl } : {}), ...(herkunftText ? { herkunftText } : {}), ...(text ? { text } : {}),
   };
   const recht = rechtVorschlag({ art, titel, ...(unterphase ? { unterphase } : {}), ...(hinweis ? { hinweis } : {}), ...(zweck ? { zweck } : {}) });
-  const urheber = urheberVorschlag({ ...(herkunftText ? { herkunft: herkunftText } : {}), pruefenVorVerkauf: x.pruefen_vor_verkauf === true });
+  const urheber = urheberVorschlag({ ...(herkunftText ? { herkunft: herkunftText } : {}), pruefenVorVerkauf: x.pruefen_vor_verkauf === true, ...(pruefgrund ? { grund: pruefgrund } : {}) });
   return {
     q, b, quelleIds, nurIntern: nurInt, preis: x.instanzwerte !== undefined || x.instanzspezifisch === true,
     pakete, giltFuer, ...(recht ? { recht } : {}), ...(urheber ? { urheber } : {}), ...(phase ? { phase } : {}), ...(unterphase ? { unterphase } : {}),
@@ -247,29 +283,260 @@ function ablaufLesen(schluessel: string, p: Record<string, unknown>): AblaufGele
   };
 }
 
-export interface ImportGelesen { format: ImportFormat; bausteine: Gelesen[]; ablaeufe: AblaufGelesen[]; fehler: string[]; blockiert: boolean }
+// ── Pakete (17.10.): Paket-Vorlagen im Format des Prozess-Editors ───────────────────────────────────────────────────────────────────
 
-/** Eine Datei lesen (Format erkennen). Wirft nie — Fehler stehen in `fehler`; `blockiert` heißt: so nicht übernehmbar (Abläufe, Grenzen). */
-export function importLesen(roh: unknown): ImportGelesen {
-  if (istObj(roh) && Array.isArray(roh.vorlagen)) {
-    const fehler: string[] = [];
-    const liste = roh.vorlagen.filter(istObj);
-    if (liste.length > IMPORT_GRENZEN.bausteine) return { format: 'bausteine', bausteine: [], ablaeufe: [], fehler: [`Die Datei hat ${liste.length} Einträge — höchstens ${IMPORT_GRENZEN.bausteine} je Datei. Bitte teilen. Nichts übernommen.`], blockiert: true };
-    const bausteine: Gelesen[] = [];
-    const ids = new Set<string>();
-    for (const x of liste) {
-      try {
-        const g = bausteinLesen(x);
-        if (ids.has(g.b.id)) { fehler.push(`„${g.q}“ steht doppelt in der Datei — der zweite Eintrag wird übersprungen.`); continue; }
-        ids.add(g.b.id); bausteine.push(g);
-      } catch (e) { fehler.push(`${e instanceof Error ? e.message : 'Eintrag unlesbar'} — übersprungen.`); }
+const ZUST = ['intern', 'kunde', 'beide'] as const;
+/** Texte an einem Schritt (Feld → Textgrenze) — dieselben Grenzen wie das Knoten-Formular (`KNOTEN_TEXTE` im Vorlagen-Schreibweg). */
+const SCHRITT_TEXTE = [['ziel', 'ziel'], ['ergebnis', 'ergebnis'], ['kennzahl', 'kurz'], ['rolle', 'kurz']] as const;
+/** Höchstens so viele Abstimmungspunkte je Paket (wie im Editor). */
+const ABSTIMMUNGEN_MAX = 30;
+
+interface PaketGelesen {
+  /** Die Vorlage OHNE Baustein-Knoten — die entstehen beim Binden (`paketBinden`), ihr Titel kommt aus Datei bzw. Bibliothek. */
+  v: Omit<ProzessVorlage, 'fassung' | 'geaendert' | 'geaendertVon' | 'herkunft'>;
+  /** Je Schritt die Baustein-Verweise der Datei (Kennung der Quelle oder `fb-…`), in Reihenfolge. */
+  verweise: { knotenId: string; schritt: string; refs: string[] }[];
+}
+
+/** Ganze Tage in einer Spanne (oder nichts) — wie die Frist im Editor (`schrittFelder`). */
+function ganzeTage(v: unknown, max: number, name: string): number | undefined {
+  const x = optZahl(v, 0, max, name);
+  if (x === null || x === undefined) return undefined;
+  if (!Number.isInteger(x)) nein(`${name}: ganze Tage von 0 bis ${max}.`);
+  return x;
+}
+/** Objekt ohne `undefined`-Felder (optionale Felder fehlen ganz — wie im Säuberer). */
+const ohneLeer = <T>(o: Record<string, unknown>): T => Object.fromEntries(Object.entries(o).filter(([, w]) => w !== undefined && w !== null)) as T;
+
+function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
+  const titel = pflichtText(p.titel, 'titel', `Paket ${nr}: Titel`);
+  const wo = `Paket „${titel}“`;
+  const id = `fp-imp-pk-${slug(typeof p.schluessel === 'string' && p.schluessel.trim() ? p.schluessel : titel, 50)}`;
+  const h = fnv(id).slice(0, 8);
+  const wurzel = `fk-i${h}-w`;
+  const knoten: ProzessKnoten[] = [{ id: wurzel, titel, rang: 1 }];
+  const quellen = new Set<string>();
+  const quelle = (v: unknown, was: string): string => {
+    if (typeof v !== 'string' || !QUELL_ID.test(v)) return nein(`${wo}: ${was} braucht eine Kennung (a–z, 0–9, Bindestrich).`);
+    if (quellen.has(v)) return nein(`${wo}: die Kennung „${v}“ steht doppelt.`);
+    quellen.add(v);
+    return v;
+  };
+  // Abstimmungspunkte und Rollen
+  if (p.abstimmungen !== undefined && !Array.isArray(p.abstimmungen)) nein(`${wo}: „abstimmungen“ ist keine Liste.`);
+  const freigaben: Freigabepunkt[] = ((p.abstimmungen as unknown[] | undefined) ?? []).map((a, i) => {
+    if (!istObj(a) || typeof a.id !== 'string' || !ID_FREI.test(a.id)) return nein(`${wo}: Abstimmungspunkt ${i + 1} braucht eine Kennung (z. B. F0 oder A1).`);
+    return { id: a.id, titel: pflichtText(a.titel, 'titel', `${wo}, Abstimmungspunkt ${a.id}: Titel`), wer: optWahl(a.wer, ZUST, `${wo}, Abstimmungspunkt ${a.id}: wer`) ?? 'beide' };
+  });
+  if (new Set(freigaben.map(f => f.id)).size !== freigaben.length) nein(`${wo}: ein Abstimmungspunkt steht doppelt.`);
+  if (freigaben.length > ABSTIMMUNGEN_MAX) nein(`${wo}: höchstens ${ABSTIMMUNGEN_MAX} Abstimmungspunkte (jetzt ${freigaben.length}).`, 413);
+  if (p.rollen !== undefined && !Array.isArray(p.rollen)) nein(`${wo}: „rollen“ ist keine Liste.`);
+  const rollen: Rolle[] = ((p.rollen as unknown[] | undefined) ?? []).map((r, i) => {
+    if (!istObj(r) || typeof r.id !== 'string' || !ID_FREI.test(r.id)) return nein(`${wo}: Rolle ${i + 1} braucht eine Kennung.`);
+    const aufgabe = optText(r.aufgabe, 'kurz', `${wo}, Rolle ${r.id}: Aufgabe`);
+    return { id: r.id, titel: pflichtText(r.titel, 'titel', `${wo}, Rolle ${r.id}: Titel`), ...(aufgabe ? { aufgabe } : {}) };
+  });
+  if (new Set(rollen.map(r => r.id)).size !== rollen.length) nein(`${wo}: eine Rolle steht doppelt.`);
+  const abstimmung = (v: unknown, was: string): string | undefined => {
+    if (v === undefined || v === null || v === '') return undefined;
+    if (typeof v !== 'string' || !freigaben.some(f => f.id === v)) return nein(`${was}: den Abstimmungspunkt „${String(v)}“ kennt das Paket nicht (Liste „abstimmungen“).`);
+    return v;
+  };
+
+  const verweise: PaketGelesen['verweise'] = [];
+  const schrittKnoten = new Map<string, string>();
+  const zweigeRoh: { knotenId: string; wo: string; z: unknown }[] = [];
+  const schritt = (x: Record<string, unknown>, eltern: string, rang: number, mitBausteinen: boolean) => {
+    if (x.gruppe !== undefined) nein(`${wo}: Gruppen stehen nur direkt in einer Phase, nicht in einer Gruppe.`);
+    const sq = quelle(x.id, 'Ein Schritt');
+    const w = `${wo}, Schritt „${sq}“`;
+    const freigabe = abstimmung(x.abstimmung, w);
+    const form = (optWahl(x.form, KNOTEN_FORMEN, `${w}: Form`) ?? (freigabe ? 'abstimmung' : 'schritt')) as KnotenForm;
+    const texte: Record<string, string> = {};
+    for (const [f, feld] of SCHRITT_TEXTE) { const t = optText(x[f], feld, `${w}: ${f}`); if (t) texte[f] = t; }
+    if (x.bausteine !== undefined && !Array.isArray(x.bausteine)) nein(`${w}: „bausteine“ ist keine Liste.`);
+    const refs = ((x.bausteine as unknown[] | undefined) ?? []).map(r => (typeof r === 'string' && (QUELL_ID.test(r) || KENNUNG.baustein.test(r)) ? r : nein(`${w}: „${String(r)}“ ist keine Baustein-Kennung.`)));
+    if (new Set(refs).size !== refs.length) nein(`${w}: ein Baustein steht doppelt.`);
+    // Bausteine hängen auf Ebene 5 unter einem Einzelschritt (Ebene 4) — der Strang steht dann im Sammel-Teilprozess (`mitBausteinen`).
+    if (refs.length && !mitBausteinen) nein(`${w}: Bausteine nur an Schritten im Strang oder in einer Gruppe.`);
+    const kid = `fk-i${h}-s${fnv(sq).slice(0, 8)}`;
+    knoten.push(ohneLeer<ProzessKnoten>({
+      id: kid, elternId: eltern, titel: pflichtText(x.titel, 'titel', `${w}: Titel`), rang, form,
+      frist: ganzeTage(x.frist, FRIST_MAX, `${w}: Frist (Tage)`), dauerTage: ganzeTage(x.dauerTage, 3650, `${w}: Dauer (Tage)`),
+      zustaendig: optWahl(x.zustaendig, ZUST, `${w}: Verantwortung`), kundeSichtbar: optBool(x.kundeSichtbar, `${w}: für den Kunden sichtbar`), freigabe, ...texte,
+    }));
+    schrittKnoten.set(sq, kid);
+    if (x.zweige !== undefined) zweigeRoh.push({ knotenId: kid, wo: w, z: x.zweige });
+    if (refs.length) verweise.push({ knotenId: kid, schritt: sq, refs });
+    // `pos`/`verbindungen` (freie Fläche) und jedes andere unbekannte Feld: ignoriert, bis `ProzessKnoten` sie trägt.
+  };
+
+  if (!Array.isArray(p.phasen) || !p.phasen.length) nein(`${wo}: keine Phasen („phasen“: […]).`);
+  (p.phasen as unknown[]).forEach((ph, i) => {
+    if (!istObj(ph)) nein(`${wo}: Phase ${i + 1} ist kein Objekt.`);
+    const P = ph as Record<string, unknown>;
+    const pq = quelle(P.id, `Phase ${i + 1}`);
+    const w = `${wo}, Phase „${pq}“`;
+    const ptitel = pflichtText(P.titel, 'titel', `${w}: Titel`);
+    if (P.kreislauf !== undefined && (!Array.isArray(P.kreislauf) || P.kreislauf.some(k => !(KREISLAUF_IDS as readonly unknown[]).includes(k)))) nein(`${w}: Kreislauf — unbekannte Stufe.`);
+    const kreislauf = Array.isArray(P.kreislauf) && P.kreislauf.length ? (Array.from(new Set(P.kreislauf as string[])) as ProzessKnoten['kreislauf']) : undefined;
+    const pid = `fk-i${h}-p${fnv(pq).slice(0, 8)}`;
+    knoten.push(ohneLeer<ProzessKnoten>({
+      id: pid, elternId: wurzel, titel: ptitel, rang: i + 1, kundeSichtbar: optBool(P.kundeSichtbar, `${w}: für den Kunden sichtbar`) ?? true,
+      freigabe: abstimmung(P.abstimmung, w), dauerTage: ganzeTage(P.dauerTage, 3650, `${w}: Dauer (Tage)`), kreislauf,
+      ziel: optText(P.ziel, 'ziel', `${w}: Ziel`), warum: optText(P.warum, 'ziel', `${w}: Warum`), zustaendig: optWahl(P.zustaendig, ZUST, `${w}: Verantwortung`),
+    }));
+    if (P.fluss !== undefined && !Array.isArray(P.fluss)) nein(`${w}: „fluss“ ist keine Liste.`);
+    let rang = 0;
+    let strang: Record<string, unknown>[] = [];
+    // Folgende Schritte ohne Gruppe = EIN Strang; mit Bausteinen im Sammel-Teilprozess (heißt wie die Phase), sonst direkt in der Phase (Ebene 3).
+    const strangAbschliessen = () => {
+      if (!strang.length) return;
+      if (strang.some(x => Array.isArray(x.bausteine) && x.bausteine.length)) {
+        const tid = `fk-i${h}-t${fnv(`${pq}:${rang}`).slice(0, 8)}`;
+        knoten.push({ id: tid, elternId: pid, titel: ptitel, rang: ++rang });
+        strang.forEach((x, j) => schritt(x, tid, j + 1, true));
+      } else strang.forEach(x => schritt(x, pid, ++rang, false));
+      strang = [];
+    };
+    for (const x of (P.fluss as unknown[] | undefined) ?? []) {
+      if (!istObj(x)) nein(`${w}: ein Eintrag im Fluss ist kein Objekt.`);
+      const X = x as Record<string, unknown>;
+      if (X.gruppe === undefined) { strang.push(X); continue; }
+      strangAbschliessen();
+      const gq = quelle(X.id, `Eine Gruppe in Phase „${ptitel}“`);
+      const gtitel = pflichtText(X.gruppe, 'titel', `${w}, Gruppe „${gq}“: Titel`);
+      const gs = Array.isArray(X.fluss) ? X.fluss : [];
+      if (!gs.length || gs.some(s => !istObj(s))) nein(`${w}: die Gruppe „${gtitel}“ braucht Schritte („fluss“: […]).`);
+      const gid = `fk-i${h}-g${fnv(gq).slice(0, 8)}`;
+      knoten.push(ohneLeer<ProzessKnoten>({ id: gid, elternId: pid, titel: gtitel, rang: ++rang, ziel: optText(X.ziel, 'ziel', `${w}, Gruppe „${gq}“: Ziel`) }));
+      (gs as Record<string, unknown>[]).forEach((s, j) => schritt(s, gid, j + 1, true));
     }
-    return { format: 'bausteine', bausteine, ablaeufe: [], fehler, blockiert: !bausteine.length };
+    strangAbschliessen();
+  });
+
+  // Zweige: Kennungen der Quelle → Knoten; geprüft wie im Editor (nur an Entscheidungen/Erinnerungen, dieselbe Phase, Schleife nur über eine Erinnerung).
+  for (const { knotenId, wo: w, z } of zweigeRoh) {
+    if (!istObj(z)) nein(`${w}: „zweige“ ist kein Objekt ({ ja, nein }).`);
+    const zw: Zweige = {};
+    for (const art of ['ja', 'nein'] as const) {
+      const ziel = (z as Record<string, unknown>)[art];
+      if (ziel === undefined || ziel === null || ziel === '') continue;
+      const k = typeof ziel === 'string' ? schrittKnoten.get(ziel) : undefined;
+      if (!k) nein(`${w}: der ${art === 'ja' ? 'Ja' : 'Nein'}-Zweig zeigt auf „${String(ziel)}“ — diesen Schritt gibt es im Paket nicht.`);
+      zw[art] = k;
+    }
+    if (zw.ja || zw.nein) { const i = knoten.findIndex(x => x.id === knotenId); knoten[i] = { ...knoten[i], zweige: zw }; }
+  }
+  zweigePruefen(knoten);
+  const beschreibung = optText(p.beschreibung, 'beschreibung', `${wo}: Beschreibung`);
+  const vorbehalt = optText(p.vorbehalt, 'hinweis', `${wo}: Vorbehalt`);
+  const q = optText(p.quelle, 'kurz', `${wo}: Quelle`);
+  return {
+    v: {
+      id, art: 'paket', titel, knoten, uebergaenge: [], freigaben, rollen, phasenVonHand: true,
+      ...(beschreibung ? { beschreibung } : {}), ...(vorbehalt ? { vorbehalt } : {}), ...(q ? { quelleHinweis: `Quelle: ${q}`.slice(0, TEXT_MAX.kurz) } : {}),
+    },
+    verweise,
+  };
+}
+
+/** Baustein-Verweis der Datei → Kennung in der Bibliothek (`fb-…` bleibt, eine Kennung der Quelle wird `fb-imp-<id>` — wie beim Bausteine-Import). */
+const bausteinKennung = (ref: string): string => (ref.startsWith('fb-') ? ref : `fb-imp-${ref}`);
+
+/** Die Baustein-Knoten (Ebene 5) anhängen; ihr Titel ist der des Bausteins. Fehlende Bausteine werden genannt (dann blockiert die Datei). */
+function paketBinden(p: PaketGelesen, titelVon: ReadonlyMap<string, string>): { v: PaketGelesen['v']; fehlend: string[] } {
+  const h = fnv(p.v.id).slice(0, 8);
+  const fehlend: string[] = [];
+  const dazu: ProzessKnoten[] = [];
+  for (const { knotenId, schritt, refs } of p.verweise) {
+    refs.forEach((ref, i) => {
+      const bid = bausteinKennung(ref);
+      const t = titelVon.get(bid);
+      if (t === undefined) { if (!fehlend.includes(ref)) fehlend.push(ref); return; }
+      dazu.push({ id: `fk-i${h}-b${fnv(`${schritt}>${bid}`).slice(0, 8)}`, elternId: knotenId, titel: t.slice(0, TEXT_MAX.titel), rang: i + 1, bausteinId: bid });
+    });
+  }
+  return { v: { ...p.v, knoten: [...p.v.knoten, ...dazu] }, fehlend };
+}
+
+/** Titel der Bausteine, die nach dem Import da wären: Datei vor Bibliothek (so bleibt der Titel der Knoten wiederholbar gleich). */
+function bausteinTitel(d: Pick<VorlagenDatei, 'bausteine'>, g: Pick<ImportGelesen, 'bausteine'>): Map<string, string> {
+  return new Map([...d.bausteine.map(b => [b.id, b.titel] as const), ...g.bausteine.map(x => [x.b.id, x.b.titel] as const)]);
+}
+
+/** Struktur einer Paket-Vorlage zum Vergleichen (gleich/aktualisiert) — beide Seiten durch DENSELBEN Säuberer, Schlüssel sortiert. */
+const paketStruktur = (v: Pick<ProzessVorlage, 'id' | 'art' | 'titel' | 'knoten' | 'uebergaenge' | 'freigaben' | 'rollen'> & Partial<ProzessVorlage>) => {
+  const x = vorlageAus(v as unknown as Record<string, unknown>) ?? (v as ProzessVorlage);
+  return stabil({ t: x.titel, b: x.beschreibung ?? null, k: x.knoten, f: x.freigaben, r: x.rollen, v: x.vorbehalt ?? null, q: x.quelleHinweis ?? null, h: x.phasenVonHand ?? null });
+};
+function paketStatus(alt: ProzessVorlage | undefined, v: PaketGelesen['v']): ImportPaketVorschau['status'] {
+  if (!alt) return 'neu';
+  if (paketStruktur(alt) === paketStruktur(v as ProzessVorlage)) return 'gleich';
+  return vonHandGeaendert(alt) ? 'konflikt' : 'aktualisiert';
+}
+/** Zahlen einer Paket-Vorlage für die Vorschau (Formen gesetzt oder abgeleitet: Abstimmungspunkt → Abstimmung). */
+function paketZahlen(v: Pick<ProzessVorlage, 'knoten'>): Omit<ImportPaketVorschau, 'id' | 'titel' | 'status' | 'fehlend'> {
+  const kn = v.knoten;
+  const wurzel = kn.find(k => !k.elternId);
+  const phasen = kn.filter(k => k.elternId === wurzel?.id);
+  const ist = (k: ProzessKnoten) => !k.bausteinId && k.elternId !== wurzel?.id && k.id !== wurzel?.id && !kinderVon(k.id, kn).some(c => !c.bausteinId);
+  const schritte = kn.filter(ist);
+  const form = (f: KnotenForm) => schritte.filter(k => k.form === f).length;
+  return {
+    phasen: phasen.length, schritte: schritte.length, entscheidungen: form('entscheidung'), erinnerungen: form('erinnerung'), nachrichten: form('nachricht'), termine: form('termin'),
+    abstimmungen: phasen.filter(p => p.freigabe).length + schritte.filter(k => k.freigabe).length, bausteine: kn.filter(k => k.bausteinId).length,
+  };
+}
+
+export interface ImportGelesen { format: ImportFormat; bausteine: Gelesen[]; ablaeufe: AblaufGelesen[]; pakete: PaketGelesen[]; fehler: string[]; blockiert: boolean }
+
+/** Die Bausteine einer Liste (`vorlagen`) lesen — Fehler je Eintrag überspringen den Eintrag; über der Grenze blockiert die ganze Datei. */
+function bausteineLesen(roh: unknown[]): { bausteine: Gelesen[]; fehler: string[]; zuViele: boolean } {
+  const fehler: string[] = [];
+  const liste = roh.filter(istObj);
+  if (liste.length > IMPORT_GRENZEN.bausteine) return { bausteine: [], fehler: [`Die Datei hat ${liste.length} Einträge — höchstens ${IMPORT_GRENZEN.bausteine} je Datei. Bitte teilen. Nichts übernommen.`], zuViele: true };
+  const bausteine: Gelesen[] = [];
+  const ids = new Set<string>();
+  for (const x of liste) {
+    try {
+      const g = bausteinLesen(x);
+      if (ids.has(g.b.id)) { fehler.push(`„${g.q}“ steht doppelt in der Datei — der zweite Eintrag wird übersprungen.`); continue; }
+      ids.add(g.b.id); bausteine.push(g);
+    } catch (e) { fehler.push(`${e instanceof Error ? e.message : 'Eintrag unlesbar'} — übersprungen.`); }
+  }
+  return { bausteine, fehler, zuViele: false };
+}
+
+/** Eine Datei lesen (Format erkennen). Wirft nie — Fehler stehen in `fehler`; `blockiert` heißt: so nicht übernehmbar (Abläufe, Pakete, Grenzen). */
+export function importLesen(roh0: unknown): ImportGelesen {
+  // Ein Array auf oberster Ebene ist eine Bausteine-Liste (z. B. ein Katalog ohne Hülle, 17.10.).
+  const roh = Array.isArray(roh0) ? { vorlagen: roh0 } : roh0;
+  if (istObj(roh) && Array.isArray(roh.pakete)) {
+    const b = Array.isArray(roh.vorlagen) ? bausteineLesen(roh.vorlagen) : { bausteine: [], fehler: [], zuViele: false };
+    if (b.zuViele) return { format: 'pakete', bausteine: [], ablaeufe: [], pakete: [], fehler: b.fehler, blockiert: true };
+    const liste = roh.pakete;
+    if (liste.length > IMPORT_GRENZEN.ablaeufe) return { format: 'pakete', bausteine: [], ablaeufe: [], pakete: [], fehler: [`${liste.length} Pakete — höchstens ${IMPORT_GRENZEN.ablaeufe} je Datei. Nichts übernommen.`], blockiert: true };
+    const fehler: string[] = [...b.fehler];
+    const pakete: PaketGelesen[] = [];
+    liste.forEach((p, i) => {
+      try {
+        if (!istObj(p)) nein(`Paket ${i + 1} ist kein Objekt.`);
+        const x = paketLesen(p as Record<string, unknown>, i + 1);
+        if (pakete.some(y => y.v.id === x.v.id)) { fehler.push(`Zwei Pakete haben dieselbe Kennung („${x.v.titel}“) — bitte einen Schlüssel ändern.`); return; }
+        pakete.push(x);
+      } catch (e) { fehler.push(e instanceof Error ? e.message : `Paket ${i + 1} unlesbar.`); }
+    });
+    return { format: 'pakete', bausteine: b.bausteine, ablaeufe: [], pakete, fehler, blockiert: fehler.length > b.fehler.length || !pakete.length };
+  }
+  if (istObj(roh) && Array.isArray(roh.vorlagen)) {
+    const b = bausteineLesen(roh.vorlagen);
+    return { format: 'bausteine', bausteine: b.bausteine, ablaeufe: [], pakete: [], fehler: b.fehler, blockiert: b.zuViele || !b.bausteine.length };
   }
   if (istObj(roh)) {
     const eintraege = Object.entries(roh).filter(([, v]) => istObj(v) && Array.isArray((v as Record<string, unknown>).stufen));
-    if (!eintraege.length) return { format: 'ablaeufe', bausteine: [], ablaeufe: [], fehler: ['Unbekanntes Format: erwartet wird eine Bausteine-Datei („vorlagen“: […]) oder eine Ablauf-Datei (je Ablauf „stufen“ und „uebergaenge“).'], blockiert: true };
-    if (eintraege.length > IMPORT_GRENZEN.ablaeufe) return { format: 'ablaeufe', bausteine: [], ablaeufe: [], fehler: [`${eintraege.length} Abläufe — höchstens ${IMPORT_GRENZEN.ablaeufe} je Datei. Nichts übernommen.`], blockiert: true };
+    if (!eintraege.length) return { format: 'ablaeufe', bausteine: [], ablaeufe: [], pakete: [], fehler: ['Unbekanntes Format: erwartet wird eine Bausteine-Datei („vorlagen“: […]), eine Ablauf-Datei (je Ablauf „stufen“ und „uebergaenge“) oder eine Pakete-Datei („pakete“: […]).'], blockiert: true };
+    if (eintraege.length > IMPORT_GRENZEN.ablaeufe) return { format: 'ablaeufe', bausteine: [], ablaeufe: [], pakete: [], fehler: [`${eintraege.length} Abläufe — höchstens ${IMPORT_GRENZEN.ablaeufe} je Datei. Nichts übernommen.`], blockiert: true };
     const fehler: string[] = [];
     const ablaeufe: AblaufGelesen[] = [];
     for (const [k, v] of eintraege) {
@@ -279,9 +546,9 @@ export function importLesen(roh: unknown): ImportGelesen {
         ablaeufe.push(a);
       } catch (e) { fehler.push(e instanceof Error ? e.message : 'Ablauf unlesbar.'); }
     }
-    return { format: 'ablaeufe', bausteine: [], ablaeufe, fehler, blockiert: fehler.length > 0 || !ablaeufe.length };
+    return { format: 'ablaeufe', bausteine: [], ablaeufe, pakete: [], fehler, blockiert: fehler.length > 0 || !ablaeufe.length };
   }
-  return { format: 'bausteine', bausteine: [], ablaeufe: [], fehler: ['Die Datei ist kein JSON-Objekt.'], blockiert: true };
+  return { format: 'bausteine', bausteine: [], ablaeufe: [], pakete: [], fehler: ['Die Datei ist kein JSON-Objekt.'], blockiert: true };
 }
 
 // ── Vergleich mit dem Bestand ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -346,16 +613,52 @@ export function importVorschau(roh: unknown, d: VorlagenDatei, datei: string): I
     zaehler[status === 'aktualisiert' ? 'aktualisiert' : status]++;
     return { id: a.v.id, titel: a.v.titel, form: a.v.form ?? 'fluss', stufen: a.v.knoten.length - 1, uebergaenge: a.v.uebergaenge.length, ergaenzungen: a.ergaenzungen, status } satisfies ImportAblaufVorschau;
   });
+  // Pakete (17.10.): binden gegen Bibliothek + Datei; fehlende Bausteine und Regelverstöße (Ebenen, Bausteine) stehen als Fehler da.
+  const titelVon = bausteinTitel(d, g);
+  const fehler = [...g.fehler];
+  const paketVorlagen = g.pakete.map(p => {
+    const { v, fehlend } = paketBinden(p, titelVon);
+    if (fehlend.length) fehler.push(`Paket „${v.titel}“: ${anzahl(fehlend.length, 'Baustein fehlt', 'Bausteine fehlen')} in der Bibliothek (${fehlend.slice(0, 6).join(', ')}${fehlend.length > 6 ? ' …' : ''}) — bitte zuerst die Bausteine importieren. Nichts übernommen.`);
+    else {
+      const r = ausfuehren(() => { vorlageStrukturPruefen(v as ProzessVorlage, { bausteine: [...d.bausteine, ...g.bausteine.map(x => x.b as Baustein)], prozesse: d.prozesse }); return { datei: null, geaendert: [] }; });
+      if (!r.ok) fehler.push(`Paket „${v.titel}“: ${r.fehler}`);
+    }
+    const alt = d.prozesse.find(x => x.id === v.id);
+    if (alt && alt.art !== 'paket') fehler.push(`Paket „${v.titel}“: eine Vorlage mit dieser Kennung ist kein Paket — bitte den Schlüssel ändern.`);
+    const status = paketStatus(alt, v);
+    zaehler[status === 'aktualisiert' ? 'aktualisiert' : status]++;
+    return { id: v.id, titel: v.titel, status, ...paketZahlen(v), fehlend } satisfies ImportPaketVorschau;
+  });
   const hinweise: string[] = [];
   const preise = bausteine.filter(b => b.preis).length;
   if (preise) hinweise.push(`${anzahl(preise, 'Eintrag trägt', 'Einträge tragen')} Instanzwerte (z. B. Preise) — die werden nicht übernommen und gehören in den Produktkatalog.`);
   const intern = bausteine.filter(b => b.nurIntern).length;
   if (intern) hinweise.push(`${anzahl(intern, 'Eintrag ist', 'Einträge sind')} „nur intern“ — sie erscheinen nie beim Kunden, im Report oder in einem Export.`);
   if (istObj(roh) && roh.quellenverzeichnis !== undefined) hinweise.push('Das Quellenverzeichnis der Datei (mit Ablage-Adressen) wird nicht übernommen — nur die Kennungen der Quellen.');
+  if (paketVorlagen.length) hinweise.push('Pakete gelten für neue Fälle; laufende Fälle zeigen „Vorlage geändert — übernehmen?“ erst, wenn sie diese Vorlage nutzen.');
+  // Mögliche Duplikate: gleicher Titel, andere Kennung — in der Datei und gegen die Bibliothek. Es wird nichts zusammengelegt; beide bleiben.
+  const duplikate: string[] = [];
+  const gesehen = new Map<string, string>();
+  for (const x of g.bausteine) {
+    const t = titelForm(x.b.titel);
+    const doppelt = gesehen.get(t);
+    if (doppelt && doppelt !== x.b.id) duplikate.push(`Zwei Bausteine der Datei heißen „${x.b.titel}“.`);
+    gesehen.set(t, x.b.id);
+    const da = d.bausteine.find(b => b.id !== x.b.id && titelForm(b.titel) === t);
+    if (da) duplikate.push(`„${x.b.titel}“ gibt es schon in der Bibliothek (andere Kennung) — beide bleiben.`);
+  }
+  for (const p of paketVorlagen) {
+    const da = d.prozesse.find(x => x.id !== p.id && titelForm(x.titel) === titelForm(p.titel));
+    if (da) duplikate.push(`Eine Vorlage „${da.titel}“ gibt es schon — „${p.titel}“ aus der Datei entsteht daneben.`);
+  }
   return {
-    format: g.format, datei, bausteine, ablaeufe,
+    format: g.format, datei, bausteine, ablaeufe, paketVorlagen,
     pakete: Array.from(new Set(g.bausteine.flatMap(x => x.pakete))).sort(), giltFuer: Array.from(new Set(g.bausteine.flatMap(x => x.giltFuer))).sort(),
-    fehler: g.fehler, hinweise, zaehler,
+    fehler, hinweise, duplikate, zaehler,
+    zahlen: {
+      ablaeufe: ablaeufe.length + paketVorlagen.length, bausteine: bausteine.length, vorVerkauf: bausteine.filter(b => b.urheber).length,
+      nurIntern: intern, recht: bausteine.filter(b => b.recht).length, duplikate: duplikate.length,
+    },
   };
 }
 
@@ -496,6 +799,25 @@ export function importAnwenden(d0: VorlagenDatei, roh: unknown, wahl: ImportWahl
       if (status === 'konflikt' && wahl.nehmen?.[a.v.id] !== true) continue;
       const neu: ProzessVorlage = { ...(a.v as ProzessVorlage), fassung: (alt?.fassung ?? 0) + 1, herkunft: herkunft(), geaendert: k.jetzt, geaendertVon: k.person };
       if (alt) { merkeVorlage(alt); d.prozesse = d.prozesse.map(p => (p.id === alt.id ? neu : p)); }
+      else { d.prozesse.push(neu); lauf.neu.push(neu.id); }
+      geaendert.push(neu.id);
+    }
+
+    // Pakete (17.10.): gegen die Bibliothek NACH den Bausteinen dieser Datei binden — fehlt ein Baustein, wird nichts übernommen.
+    const titelVon = bausteinTitel(d, g);
+    for (const p of g.pakete) {
+      const { v, fehlend } = paketBinden(p, titelVon);
+      if (fehlend.length) nein(`Paket „${v.titel}“: ${anzahl(fehlend.length, 'Baustein fehlt', 'Bausteine fehlen')} in der Bibliothek (${fehlend.slice(0, 6).join(', ')}${fehlend.length > 6 ? ' …' : ''}) — bitte zuerst die Bausteine importieren. Nichts übernommen.`);
+      const alt = d.prozesse.find(x => x.id === v.id);
+      if (alt && alt.art !== 'paket') nein(`„${v.titel}“: eine Vorlage mit dieser Kennung ist kein Paket — bitte den Schlüssel ändern.`, 409);
+      const status = paketStatus(alt, v);
+      if (status === 'gleich') continue;
+      if (status === 'konflikt' && wahl.nehmen?.[v.id] !== true) continue;
+      // Der Papierkorb einer schon bearbeiteten Vorlage bleibt (nichts geht still verloren); die Vorher-Fassung merkt der Lauf für „Rückgängig“.
+      const neu: ProzessVorlage = { ...(v as ProzessVorlage), ...(alt?.papierkorb ? { papierkorb: alt.papierkorb } : {}), fassung: (alt?.fassung ?? 0) + 1, herkunft: herkunft(), geaendert: k.jetzt, geaendertVon: k.person };
+      vorlageStrukturPruefen(neu, d);
+      zweigePruefen(neu.knoten);
+      if (alt) { merkeVorlage(alt); d.prozesse = d.prozesse.map(x => (x.id === alt.id ? neu : x)); }
       else { d.prozesse.push(neu); lauf.neu.push(neu.id); }
       geaendert.push(neu.id);
     }
