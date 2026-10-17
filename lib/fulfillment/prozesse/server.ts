@@ -115,7 +115,7 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
     // Stand der gespeicherten Knoten, die die Handgriffe ändern (Schreibwege B3) — derselbe Stand, den der Schreibweg des Falls prüft.
     const ids = new Set(handgriffKnoten(zeile));
     const knotenStand = Object.fromEntries(f.knoten.filter(k => ids.has(k.id)).map(k => [k.id, { stand: eintragStand(k), status: k.status }]));
-    zeilen.push({ ...zeile, ...(Object.keys(knotenStand).length ? { knotenStand } : {}), gesellschaft: m.gesellschaft });
+    zeilen.push({ ...zeile, ...(Object.keys(knotenStand).length ? { knotenStand } : {}), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}), gesellschaft: m.gesellschaft });
   }
   return { zeilen, vorlagen };
 }

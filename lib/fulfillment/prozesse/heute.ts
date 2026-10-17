@@ -49,6 +49,8 @@ export interface HeuteEintrag {
   haengt?: string;
   /** Jetzt dran (dringend, hängt, überfällig, heute fällig, ohne Datum, Entscheidung/Entwurf bereit, Start, Willkommensmail) — sonst „demnächst“. */
   jetzt: boolean;
+  /** Wer das Mandat betreut (aus der Cockpit-Zeile; fehlt = niemand eingetragen). */
+  zustaendig?: string;
   /** Der Punkt ist die Willkommensmail eines neuen Kunden (24-Stunden-Uhr) — immer „jetzt“, auch wenn die Frist erst morgen endet. */
   willkommen?: true;
   quelle: 'naechster' | 'haengt' | 'start' | 'deal';
@@ -183,6 +185,9 @@ export function heuteImFulfillment(zeilen: readonly CockpitZeile[], kandidaten: 
       aktion: { art: 'mandat-starten', chanceId: d.chanceId, ...(d.leistungId ? { leistungId: d.leistungId } : {}) }, href: '',
     });
   }
+  // Wer zuständig ist, steht an jeder Zeile des Falls (17.10., Gesamtprüfung L1 B15).
+  const wer = new Map(zeilen.filter(z => z.zustaendig).map(z => [z.mandatId, z.zustaendig!] as const));
+  for (const e of raus) { const w = wer.get(e.mandatId); if (w) e.zustaendig = w; }
   for (const e of raus) {
     if (e.quelle !== 'naechster') continue;
     const bereit = e.aktion.art === 'ja-nein' || e.aktion.art === 'entwurf';
@@ -193,6 +198,9 @@ export function heuteImFulfillment(zeilen: readonly CockpitZeile[], kandidaten: 
 }
 
 /** Die Zahl für Kopf und Glocke: wie viele Punkte jetzt dran sind (und wie viele davon dringend). */
+/** „Meine“: Zeilen, die die Person betreut (bzw. „beide“) — Zeilen ohne Zuständige gehören allen. */
+export const meineHeute = (l: readonly HeuteEintrag[], ich: string): HeuteEintrag[] => l.filter(e => !e.zustaendig || e.zustaendig === ich || e.zustaendig === 'beide');
+
 export function heuteZahlen(l: readonly HeuteEintrag[]): { jetzt: number; dringend: number; demnaechst: number } {
   const jetzt = l.filter(e => e.jetzt);
   return { jetzt: jetzt.length, dringend: jetzt.filter(e => e.dringend).length, demnaechst: l.length - jetzt.length };

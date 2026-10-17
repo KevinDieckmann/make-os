@@ -319,3 +319,12 @@ describe('Heute-Liste schreibt mit Stand (17.10., Gesamtprüfung Schreibwege B3)
     expect(quelle).not.toMatch(/status: 'offen' \}\)\)\)\} \/>/);
   });
 });
+
+describe('Wer ist zuständig (17.10., Gesamtprüfung L1 B15)', () => {
+  it('jede Zeile eines Falls trägt die Zuständige; „Meine“ zeigt eigene, „beide“ und Zeilen ohne Eintrag', async () => {
+    const { meineHeute } = await import('@/lib/fulfillment/prozesse/heute');
+    const l = heuteImFulfillment([{ ...zeilen[0], zustaendig: 'olaf' }, { ...zeilen[2], zustaendig: 'pia' }, { ...zeilen[1], zustaendig: 'beide' }], [], HEUTE);
+    expect(l.filter(e => e.mandatId === 'm-a').every(e => e.zustaendig === 'olaf')).toBe(true);
+    expect(meineHeute(l, 'pia').map(e => e.mandatId).sort()).toEqual(['m-b', 'm-c']);
+  });
+});

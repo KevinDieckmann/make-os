@@ -65,6 +65,8 @@ export interface CockpitZeile {
    * Heute-Liste schickt den Stand mit (veraltet → 409 statt still überschreiben) und nimmt für „Rückgängig“ den alten Status.
    */
   knotenStand?: Record<string, { stand: string; status: FallKnoten['status'] }>;
+  /** Wer das Mandat betreut (Speichername bzw. „beide“; 17.10., Gesamtprüfung L1 B15 — „Heute“ zeigt es und filtert „Meine“). Setzt der Server. */
+  zustaendig?: string;
 }
 
 /** Die Knoten, die die Handgriffe einer Zeile ändern (abhaken: Schritt + Bausteine, ja/nein: die Entscheidung). */

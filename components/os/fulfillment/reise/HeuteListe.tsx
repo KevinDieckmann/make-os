@@ -13,9 +13,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT, MIKRO } from '@/lib/make-one/design';
+import { useIch, usePersonen } from '../../aufgaben/hilfe';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Punkt, Leerzustand, HakenZiel, Klappbar, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
-import { heuteImFulfillment, heuteZahlen, type HeuteEintrag } from '@/lib/fulfillment/prozesse/heute';
+import { heuteImFulfillment, heuteZahlen, meineHeute, type HeuteEintrag } from '@/lib/fulfillment/prozesse/heute';
 import { useCockpit, useUebersichtKurz, fallOps, holeJson, fehlerText, tagKurz, geaendert } from '../prozesse/daten';
 import { MailSenden, type MailEntwurf } from '../prozesse/MailSenden';
 import { StartDialog } from '../prozesse/Onboarding';
@@ -43,11 +44,18 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
   const [entwurf, setEntwurf] = useState<{ e: HeuteEintrag; mail: MailEntwurf; hinweis?: string } | null>(null);
   const [start, setStart] = useState<{ mandatId: string; kunde?: string; leistungId?: string } | null>(null);
   const [demnaechstAuf, setDemnaechstAuf] = useState(false);
+  const [nurMeine, setNurMeine] = useState(false);
+  const ich = useIch();
+  const personen = usePersonen();
   useEffect(() => { if (!meldung?.zurueck) return; const t = setTimeout(() => setMeldung(null), 10_000); return () => clearTimeout(t); }, [meldung]);
   const d = cockpit.daten;
   if (!d) return kompakt ? null : cockpit.fehler ? <Hinweis art="kritisch">{cockpit.fehler}</Hinweis> : null;
   const heute = d.heute;
-  const liste = heuteImFulfillment(d.zeilen, kurz.daten?.kandidaten ?? [], heute, kurz.daten?.deals ?? []);
+  const alle = heuteImFulfillment(d.zeilen, kurz.daten?.kandidaten ?? [], heute, kurz.daten?.deals ?? []);
+  // „Meine“ (17.10., Gesamtprüfung L1 B15): nur, wenn mehr als eine Person im Haushalt ist; die Zeile nennt sonst, wer betreut.
+  const mehrere = personen.length > 1;
+  const liste = mehrere && nurMeine && ich ? meineHeute(alle, ich) : alle;
+  const werName = (e: HeuteEintrag) => (mehrere && e.zustaendig && e.zustaendig !== ich ? (e.zustaendig === 'beide' ? 'beide' : personen.find(p => p.speicher === e.zustaendig)?.name) : undefined);
   const z = heuteZahlen(liste);
   const jetzt = liste.filter(e => e.jetzt);
   const demnaechst = liste.filter(e => !e.jetzt);
@@ -113,7 +121,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
           style={{ background: 'none', border: 'none', padding: '4px 0', minHeight: 44, cursor: 'pointer', textAlign: 'left', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0 }}>
           <span className="ui-zeile-titel" style={{ display: 'block', overflowWrap: 'anywhere' }}>{e.titel} <span style={{ color: C.inkLeise, fontWeight: 400 }}>· {e.kunde}</span></span>
           <span className="ui-zeile-unter" style={{ display: 'block', overflowWrap: 'anywhere', color: e.dringend ? LEUCHT.kritisch : e.ueberfaellig ? LEUCHT.achtung : undefined }}>
-            {[e.haengt && e.haengt !== e.titel ? e.haengt : e.unter, f].filter(Boolean).join(' · ')}
+            {[e.haengt && e.haengt !== e.titel ? e.haengt : e.unter, f, werName(e)].filter(Boolean).join(' · ')}
           </span>
         </button>
         <span className="ui-zeile-rechts">{handgriff(e, i === 0 && e.jetzt)}</span>
@@ -124,6 +132,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
   const kopf = (
     <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       {z.jetzt ? <span style={{ color: z.dringend ? LEUCHT.kritisch : C.inkDim }}>{z.jetzt} zu tun{z.dringend ? ` · ${z.dringend} dringend` : ''}</span> : null}
+      {mehrere && !kompakt && <Knopf leise onClick={() => setNurMeine(!nurMeine)}>{nurMeine ? 'Alle zeigen' : 'Nur meine'}</Knopf>}
       {kompakt && <Link href={WEG.fulfillment()} style={{ color: C.aktiv, fontSize: TYP.bedien, textDecoration: 'none' }}>Fulfillment ›</Link>}
     </span>
   );
