@@ -31,6 +31,7 @@ import { FallAnalyse } from '../analyse/FallAnalyse';
 import { ReiseBild, type BildSpalte } from '../../ui/reise/ReiseBild';
 import { Fluss, FormenLegende } from '../../ui/reise/Fluss';
 import { useSprung, sprungAus, insBild, type Sprung } from './sprung';
+import { AblaufKarte } from './AblaufKarte';
 
 const ABSCHLUSS: ReadonlySet<FallStelleId> = new Set(['befaehigung', 'wirkung', 'abschliessen', 'mandat', 'nachsorge', 'kreislauf']);
 /** Frühere Stellen (bis 17.10. eigene Reiter) → Stelle im Fluss. */
@@ -90,6 +91,12 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
       return null;
     };
     if (s.art === 'phase') { setWahl({ phase: s.wert, knoten: null }); insBild('ff-fluss'); return; }
+    // 17.10. abends (Ausführung): `#schritt-<Knoten>` aus Aufgabe bzw. Glocke — den Knoten im Fluss seiner Phase wählen.
+    if (s.art === 'schritt') {
+      const sp = zeile.spalten.find(x => { const fl = phasenFluss(eingabe, x.id); return !!fl && flussKnoten(fl).some(k => k.id === s.wert); });
+      if (sp) { setWahl({ phase: sp.id, knoten: s.wert }); insBild('ff-detail'); }
+      return;
+    }
     if (s.art === 'freigabe') {
       const sp = zeile.spalten.find(x => x.abstimmung?.id === s.wert);
       const schritt = f.knoten.find(k => k.freigabe === s.wert && k.id !== sp?.id);
@@ -212,11 +219,15 @@ function Detail({ daten, phase, knoten, gewaehlt, ops, status, abschlussOps, mel
   const ob = obSchluessel(z.knoten.id);
   const stelle = gewaehlt.stelle;
   const gesendet = f.onboarding.willkommenGesendetAm;
+  // Ausführung (17.10. abends): an einer Entscheidung bzw. Nachricht, die dran ist, liegt die Hauptaktion in der Ablauf-Karte (Ja/Nein, Entwurf öffnen).
+  const ab = daten.ablauf?.aktiv ? daten.ablauf.knoten[z.knoten.id] : undefined;
+  const ablaufHaupt = !!ab?.aktiv && (ab.art === 'entscheidung' || ab.art === 'nachricht');
   return (
     <>
-      <SchrittDetail z={z} phase={phase} daten={daten} status={status} ops={ops} onFreigabe={onFreigabe} haupt={hier && !(stelle === 'willkommen' && !gesendet)}
+      <SchrittDetail z={z} phase={phase} daten={daten} status={status} ops={ops} onFreigabe={onFreigabe} haupt={hier && !ablaufHaupt && !(stelle === 'willkommen' && !gesendet)}
         mehr={ob ? <OnboardingMehr daten={daten} schluessel={ob} fragen={fragen} /> : undefined}
         zusatz={gewaehlt.erinnerung ? <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.ink }}><BellRing size={14} color={LEUCHT.business} aria-hidden />Erinnerung: {gewaehlt.erinnerung.titel}{gewaehlt.erinnerung.unter ? ` — ${gewaehlt.erinnerung.unter}` : ''}</div> : undefined} />
+      {ab && <AblaufKarte daten={daten} knotenId={z.knoten.id} ops={ops} />}
       {stelle === 'willkommen' && !gesendet && <WillkommenKarte daten={daten} oeffnen={willkommenAuf} setOeffnen={setWillkommenAuf} onMeldung={setMeldung} haupt={hier} />}
       {stelle === 'kickoff' && <KickoffFragen daten={daten} ops={ops} />}
       {stelle && ABSCHLUSS.has(stelle) && <AbschlussDetail daten={daten} stelle={stelle as AbschlussStelle} melde={melde} ops={abschlussOps} />}

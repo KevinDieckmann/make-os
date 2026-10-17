@@ -178,13 +178,14 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
       }
     }
 
-    // 3) Glocken — eine je Runde (Entscheidung nach der Frist offen) bzw. einmal „eskaliert“.
+    // 3) Glocken — eine je Runde (Entscheidung nach der Frist offen) bzw. einmal „eskaliert“. Nur im Systemlauf (Morgenlauf): arbeitet gerade jemand am
+    //    Fall, sieht er die Frage selbst — und die Glocke an sich selbst gäbe es nicht (`melde`); die Marke bliebe dann ohne Glocke stehen.
     const { melde } = await import('@/lib/meldungen/melden');
     const { WEG } = await import('@/lib/wege');
-    for (const a of arbeit) {
+    for (const a of o.person ? [] : arbeit) {
       for (const g of a.soll.glocken) {
         if (a.an) await melde({
-          an: a.an.an, art: 'produkte', link: WEG.fall(a.m.id, 'reise', `schritt-${g.knotenId}`), ...(o.person ? { von: o.person } : {}),
+          an: a.an.an, art: 'produkte', link: WEG.fall(a.m.id, 'reise', `schritt-${g.knotenId}`),
           titel: g.art === 'eskaliert' ? `Eskaliert: „${g.titel}“ — alle Erinnerungen ohne Antwort, bitte entscheiden` : `Entscheidung offen: „${g.titel}“ — ja oder nein?`,
         });
         marke(a.f.mandatId, g.marke);

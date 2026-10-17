@@ -4,6 +4,9 @@
 //        seit 12.10. auch `reports` (erstellte Fortschritts-Reports: Kennung + Zeit), `followups` (am Mandat: Text, Tag, Stand), `analyse` (was aus
 //        der Diagnose noch nicht im Fall steht) und `nachsorge` (Plan ab Mandatsende) — nur lesen.
 //      ?m=&willkommen=1 → Grundlage der Willkommensmail (Vorlage der Bibliothek, Empfänger, Du/Sie, drei freie Kick-off-Zeiten — nur Zeiten).
+//      ?m=&nachricht=<Knoten> → Entwurf einer Nachricht des Ablaufs (17.10. abends, Ausführung): Mail-Baustein des Knotens mit gefüllten Platzhaltern,
+//        Empfänger = erste Ansprechperson mit Adresse; Art. 18 bzw. Werbesperre → kein Entwurf, nur `gesperrt`. Gesendet wird nur per Klick (Inbox).
+//      Seit 17.10. abends trägt die Antwort `ablauf` (Stand der Ausführung je Knoten: dran, Runde, Frist, Aufgabe und ihr Stand).
 // POST { aktion: 'starten', mandatId, vorlageId, start?, anfrageId }  → Fall anlegen (Kopie der Paket-Vorlage), idempotent über anfrageId
 //      { aktion: 'vorlage-uebernehmen', mandatId }                    → neue Fassung der Vorlage übernehmen (nie entfernen)
 //      { aktion: 'nachziehen', mandatId }                             → Phase/Lieferobjekte noch einmal nachziehen (idempotent)
@@ -15,7 +18,8 @@
 //        wert-ziel { zielId, felder: { ausgang?, ausgangZahl?, zielZahl?, einheit?, richtung?, zielBis?, festlegen? } } · ziel-neu { text, ziel?, felder? } ·
 //        wert-messung { zielId, wert, am?, weg? } · befaehigung { id?, text?, erfuellt?, am?, weg? } · willkommen-gesendet { zuruecknehmen? } ·
 //        (12.10.: `am` = nachtragen, was schon passiert ist — ein Tag, nie in der Zukunft; ohne `am` gilt heute.)
-//        fall-status { status } · onboarding-aus { aus } (ohne Fall: Karte „Kundenonboarding starten“ ausblenden).
+//        fall-status { status } · onboarding-aus { aus } (ohne Fall: Karte „Kundenonboarding starten“ ausblenden) ·
+//        antwort { id, antwort: 'ja'|'nein', am?, stand? } (17.10. abends: Entscheidung im Ablauf — „nein“ startet ihre Erinnerung).
 // Nur per Sitzung (Dienstweg 403), Bau-Kennung, nur Mandate von Business-Gesellschaften. Wirkung nach außen: keine (Mails gehen per Klick
 // über /api/inbox/senden, danach `willkommen-gesendet`).
 
@@ -65,6 +69,16 @@ export async function GET(req: Request) {
   const u = unterschriftAm(mandat, crm, f?.gestartetAm);
   // Lese-Protokoll immer, wenn Firma/Kontakte des Mandats ausgeliefert werden (Prüf-Fund 11.10.: vorher nur mit Stakeholdern).
   if (!f) { leseZugriff(req, 'fulfillment', { ids: [mandat.id], anzahl: mandat.kontaktIds.length }); return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await istInhaber(z.person) }); }
+
+  const nachricht = url.searchParams.get('nachricht');
+  if (nachricht) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/.test(nachricht)) return NextResponse.json({ ok: false, fehler: 'Schritt fehlt.' }, { status: 400 });
+    const w0 = fallWirksam(f, ableitungFuer(f, mandat, crm, vorlagen, kunde[m], iso, kalender[m]));
+    const { nachrichtGrundlage } = await import('@/lib/fulfillment/prozesse/ausfuehrung-server');
+    const g = await nachrichtGrundlage({ h: z.haushalt, crm, vorlagen, faelle, kunde, termine: kalender }, w0, mandat, nachricht, z.person, heute);
+    leseZugriff(req, 'fulfillment', { anzahl: g.ok && g.entwurf?.an ? 1 : 0 });
+    return g.ok ? NextResponse.json(g) : NextResponse.json({ ok: false, fehler: g.fehler }, { status: g.status });
+  }
 
   if (url.searchParams.get('willkommen') === '1') {
     // Empfänger: erste Ansprechperson des Mandats mit Adresse, die verarbeitet werden darf (Art. 18 fehlt ganz) — Du/Sie aus ihrer Akte.
@@ -145,6 +159,8 @@ export async function GET(req: Request) {
     reports, followups,
     analyse: dossier ? { f2: !!dossier.f2, diagnose: !!dossier.diagnose, quickWins: ue.quickWins, fragen: ue.fragen.length, massnahmen: ue.massnahmen.map(x => x.text), ziel: ue.ziel?.titel ?? null } : null,
     nachsorge: { ende, plan: nachsorgePlan({ mandatId: m, ende, tage: vorlagen.einstellungen.nachsorgeTage, marken: f.marken, heute }) },
+    // Ausführung der Abläufe (17.10. abends): je Knoten mit Form — dran, Runde, Frist, Aufgabe und ihr Stand (über die Sicht der Person).
+    ablauf: await import('@/lib/fulfillment/prozesse/ausfuehrung-server').then(a => a.ablaufAnsicht(w, heute, z.person)).catch(() => ({ aktiv: false, knoten: {} })),
   });
 }
 
