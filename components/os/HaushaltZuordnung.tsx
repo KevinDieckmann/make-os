@@ -13,7 +13,17 @@ import { Karte, Ueberschrift, Liste, Zeile, Knopf, LEUCHT, Feldzeile, feld } fro
 
 /** Ohne Haushalt der Inhaber (Erstkonto noch ohne Zuordnung) ein neutraler Name. */
 const ERSATZ = 'haushalt';
-interface K { speicher: string; name: string; rolle: string; haushalt: string | null }
+interface K { speicher: string; name: string; rolle: string; haushalt: string | null; finanzRecht?: 'business' | null; privatFinanzen?: boolean }
+
+/**
+ * Was die Zeile über ein Konto sagt (17.10., Abnahme 3 · B10) — aus der Regel des Servers (`privatFinanzen` = `privatFinanzZugangFuer`), nie aus
+ * dem Haushalt allein; ohne die interne Haushaltskennung. Rein (Test tests/abnahme3-rest.test.ts).
+ */
+export function haushaltZeile(k: K): { unter: string; aktion: 'entziehen' | 'freischalten' | null } {
+  if (k.privatFinanzen) return { unter: 'sieht und pflegt die privaten Finanzen', aktion: 'entziehen' };
+  if (k.haushalt && k.finanzRecht === 'business') return { unter: 'nur Business — sieht die privaten Finanzen nicht', aktion: null };
+  return { unter: 'kein Zugang', aktion: 'freischalten' };
+}
 
 export function HaushaltZuordnung() {
   const [konten, setKonten] = useState<K[] | null>(null);
@@ -57,11 +67,12 @@ export function HaushaltZuordnung() {
         </div>
       )}
       <Liste>
-        {konten.map(k => (
-          <Zeile key={k.speicher} titel={k.name} unter={k.haushalt ? `Haushalt „${k.haushalt}“` : 'kein Zugang'}
-            rechts={k.haushalt ? <Knopf leise onClick={() => void setze(k.speicher, null)}>Entziehen</Knopf>
-              : <Knopf farbe={LEUCHT.geld} aus={offen && !nameOk} onClick={() => void setze(k.speicher, offen ? nameSauber : standard)}>{offen ? `Haushalt „${nameOk ? nameSauber : '…'}“` : 'Freischalten'}</Knopf>} />
-        ))}
+        {konten.map(k => { const z = haushaltZeile(k); return (
+          <Zeile key={k.speicher} titel={k.name} unter={z.unter}
+            rechts={z.aktion === 'entziehen' ? <Knopf leise onClick={() => void setze(k.speicher, null)}>Entziehen</Knopf>
+              : z.aktion === 'freischalten' ? <Knopf farbe={LEUCHT.geld} aus={offen && !nameOk} onClick={() => void setze(k.speicher, offen ? nameSauber : standard)}>{offen ? `Haushalt „${nameOk ? nameSauber : '…'}“` : 'Freischalten'}</Knopf>
+              : undefined} />
+        ); })}
       </Liste>
       {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
     </Karte>

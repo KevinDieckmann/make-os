@@ -17,6 +17,7 @@ import type { Grundlage, Kennzahlen, MonatsZeile, Position } from '@/lib/make-on
 import { MONAT_KURZ } from '@/lib/make-one/grundlage';
 import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, LEUCHT } from './ui';
+import { anzahl } from '@/lib/text/zahlwort';
 
 /** Cent-genau — hier wird ein Kassenbuch gelesen, nicht überschlagen. */
 const eurC = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -103,7 +104,7 @@ export function GrundlageView() {
     <>
       <Karte i={0} ton={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Ergebnis netto</Ueberschrift>
-        <Zahl gross wert={eurC(k.ergebnisNetto)} farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} label={`${k.monate} Monate: ${MONAT_KURZ(k.vonMonat)}–${MONAT_KURZ(k.bisMonat)}`} />
+        <Zahl gross wert={eurC(k.ergebnisNetto)} farbe={k.ergebnisNetto >= 0 ? LEUCHT.gut : LEUCHT.kritisch} label={`${anzahl(k.monate, 'Monat', 'Monate')}: ${MONAT_KURZ(k.vonMonat)}–${MONAT_KURZ(k.bisMonat)}`} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 14 }}>
           <Zahl wert={eurC(k.umsatzNetto)} farbe={LEUCHT.gut} label={`Umsatz netto · ${eurC(k.umsatzBrutto)} brutto · ${g.umsatz.length} Rechnungen`} />
           <Zahl wert={eurC(k.kostenNetto)} farbe={LEUCHT.achtung} label={`Kosten netto · ${g.kosten.length} Belege`} />

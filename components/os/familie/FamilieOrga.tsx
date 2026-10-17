@@ -107,7 +107,7 @@ export function Tage({ api }: { api: FamilieApi }) {
       </Liste>
       {!d.tage.length && <Leer>In den nächsten 60 Tagen steht nichts an. Geburtstage und Jahrestage einmal eintragen — der Vorlauf erinnert rechtzeitig.</Leer>}
       {d.familie.tage.length > 0 && (
-        <div style={{ marginTop: 8 }}><button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, fontWeight: 600 }}>{alle ? '▾' : '▸'} Alle {d.familie.tage.length} Tage</button></div>
+        <div style={{ marginTop: 8 }}><button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, fontWeight: 600 }}>{alle ? '▾' : '▸'} {d.familie.tage.length === 1 ? 'Der eine Tag' : `Alle ${d.familie.tage.length} Tage`}</button></div>
       )}
       {liste && (
         <Liste>
@@ -140,7 +140,7 @@ export function Menschen({ api }: { api: FamilieApi }) {
           return (
             <MitAktionen key={m.id} ablage={ablage} liste="menschen" e={m} titel={m.name}>
             <Zeile titel={<span style={{ color: dran ? C.ink : C.inkDim }}>{m.name}</span>}
-              unter={`${ROLLEN.find(r => r.id === m.rolle)?.label}${m.kontaktAlleTage ? ` · alle ${m.kontaktAlleTage} Tage` : ''}${m.letzterKontakt ? ` · zuletzt ${datumLang(m.letzterKontakt)}` : ''}${(() => { const n = m.geburtstag ? naechsterGeburtstag(m.geburtstag, d.heute) : null; return n ? ` · 🎂 ${geburtstagText(m.geburtstag)}${n.inTagen === 0 ? ' — heute' : n.inTagen <= 30 ? ` — in ${n.inTagen} T` : ''}` : ''; })()}`}
+              unter={`${ROLLEN.find(r => r.id === m.rolle)?.label}${m.kontaktAlleTage ? ` · ${m.kontaktAlleTage === 1 ? 'täglich' : `alle ${m.kontaktAlleTage} Tage`}` : ''}${m.letzterKontakt ? ` · zuletzt ${datumLang(m.letzterKontakt)}` : ''}${(() => { const n = m.geburtstag ? naechsterGeburtstag(m.geburtstag, d.heute) : null; return n ? ` · 🎂 ${geburtstagText(m.geburtstag)}${n.inTagen === 0 ? ' — heute' : n.inTagen <= 30 ? ` — in ${n.inTagen} T` : ''}` : ''; })()}`}
               rechts={<Reihe gap={4}>
                 {dran && <Chip farbe={ROSA}>dran</Chip>}
                 <Symbol titel={m.geburtstag ? 'Geburtstag ändern' : 'Geburtstag eintragen'} onClick={() => { setGeb(geb === m.id ? null : m.id); setGebFehler(false); }}>🎂</Symbol>

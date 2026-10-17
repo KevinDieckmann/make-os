@@ -176,8 +176,8 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
       {d && <EinstellungenKarte einstellungen={d.einstellungen} onGespeichert={() => void laden()} />}
 
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.6 }}>
-        Übernommen aus dem KSI: die Struktur (50/30/20) und Standard-Kennzahlen mit ihren Schwellen — gerechnet nur mit euren eigenen Daten,
-        ohne Code oder Daten aus fremden Systemen. Punkte: an der roten Schwelle 20, an der grünen 100, dazwischen linear; eine Säule zählt ab 40 % gemessener Kennzahlen.
+        {/* Kein fremdes System im Text, die Gewichte aus dem Register (17.10., Abnahme 3 · C5) — nie fest im Satz. */}
+        Säulen und Gewichte: {SAEULEN_TEXT}. Standard-Kennzahlen mit ihren Schwellen — gerechnet nur mit euren eigenen Daten. Punkte: an der roten Schwelle 20, an der grünen 100, dazwischen linear; eine Säule zählt ab 40 % gemessener Kennzahlen.
         Der Wachstums-Score nimmt diesen Index als Business-Säule, die Finanzielle Gesundheit als Business-Hälfte der Finanzen.
       </div>
 

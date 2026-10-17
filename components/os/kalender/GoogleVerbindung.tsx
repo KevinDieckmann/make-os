@@ -21,6 +21,7 @@ import { AbgleichStand, type AbgleichInfo } from './AbgleichStand';
 import { googleKalenderStandLaden, googleKalenderVerbinden, GOOGLE_HINWEISE, googleNichtEingerichtet } from './google-verbinden';
 import { useBetreiber } from '../useInhaber';
 import { googleKalenderBereit } from '@/lib/kalender/verbinden-anzeige';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Stand {
   ok: boolean; konfiguriert: boolean; verbunden: boolean; konto?: string; seit?: string; erlaubteDomain?: boolean;
@@ -109,7 +110,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
     setArbeit('abgleich');
     const r = await post('/api/kalender/google', { aktion: voll ? 'voll' : 'abgleichen' });
     setArbeit(null);
-    setHinweis(r.d.ok ? { text: `Abgeglichen — ${r.d.ereignisse ?? 0} Termine${r.d.vonAussen ? `, ${r.d.vonAussen} von Google geändert` : ''}.` } : { text: r.d.fehler ?? 'Abgleich ging nicht.', achtung: true });
+    setHinweis(r.d.ok ? { text: `Abgeglichen — ${anzahl(r.d.ereignisse ?? 0, 'Termin', 'Termine')}${r.d.vonAussen ? `, ${r.d.vonAussen} von Google geändert` : ''}.` } : { text: r.d.fehler ?? 'Abgleich ging nicht.', achtung: true });
     await laden(); onGeaendert?.();
   };
   const kalenderWaehlen = async (id: string) => {
@@ -246,7 +247,7 @@ export function GoogleVerbindung({ onGeaendert }: { onGeaendert?: () => void }) 
                 <>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minHeight: 44, fontSize: 14 }}>
                     <input type="checkbox" checked={bestaetigt} onChange={() => setBestaetigt(!bestaetigt)} style={{ width: 20, height: 20, marginTop: 2 }} />
-                    <span>Ja, diese {vorschau.umzieht.length} Termine jetzt umziehen (in iCloud werden sie danach gelöscht).</span>
+                    <span>Ja, {vorschau.umzieht.length === 1 ? 'diesen einen Termin' : `diese ${vorschau.umzieht.length} Termine`} jetzt umziehen (in iCloud werden sie danach gelöscht).</span>
                   </label>
                   <div><Taste aus={!bestaetigt || !!arbeit} onClick={() => void umziehen()}>{gebe('umzug') ? 'zieht um …' : 'Jetzt umziehen'}</Taste></div>
                 </>

@@ -21,6 +21,8 @@ import { pepperGesetzt } from '@/lib/datenschutz/pepper';
 import { DURCHSICHT_SPEICHER, type DurchsichtErgebnis } from '@/lib/store/durchsicht';
 import { v2Bereitschaft, v2FuerInstanz } from '@/lib/datenschutz/nachweise';
 import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
+import { ladeKonten } from '@/lib/zugang/konten';
+import { wegKlartext, personKlartext } from '@/lib/datenschutz/lese-klartext';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,6 +34,18 @@ async function inhaber(req: Request): Promise<boolean> {
   if (istDienst(req)) return false;
   const w = werAus(req);
   return w.art === 'person' && (await istInhaber(w.person));
+}
+
+/** Die Einträge für die Anzeige — gespeichert bleibt das Protokoll, wie es ist (Hash-Kette, Art. 15). */
+async function inKlartext(liste: LeseEintrag[]): Promise<LeseEintrag[]> {
+  const namen: Record<string, string> = Object.fromEntries((await ladeKonten().catch(() => ({ konten: [] }))).konten
+    .map(k => [k.speicher, (k.name ?? '').trim().split(/\s+/)[0] || 'ein Konto ohne Namen']));
+  return liste.map(e => ({
+    ...e,
+    ...(e.person ? { person: personKlartext(e.person, namen) ?? undefined } : {}),
+    ...(e.betroffen ? { betroffen: personKlartext(e.betroffen, namen) ?? undefined } : {}),
+    weg: wegKlartext(e.weg) ?? undefined,
+  }));
 }
 
 export async function GET(req: Request) {
@@ -67,7 +81,8 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     bereiche: LESE_BEREICHE,
-    lesen: { tage, eintraege: gefiltert.slice(0, MAX), gesamt: gefiltert.length, gekuerzt: gefiltert.length > MAX, zaehlung, aufbewahrungMonate: LESE_AUFBEWAHRUNG_MONATE },
+    // Klartext (17.10., Abnahme 3 · C4): Personen mit dem Namen aus dem Konto, der Weg als „Bereich · was“ — nie Speichernamen oder Pfade.
+    lesen: { tage, eintraege: await inKlartext(gefiltert.slice(0, MAX)), gesamt: gefiltert.length, gekuerzt: gefiltert.length > MAX, zaehlung, aufbewahrungMonate: LESE_AUFBEWAHRUNG_MONATE },
     kette,
     verschluesselung,
     brainIndex,

@@ -2,7 +2,8 @@
 // Du pflegst Ist-Umsatz/Kosten je Monat, Ziel & Cash. Alle Kennzahlen werden
 // deterministisch gerechnet (kein KI-Raten). Die KI liefert nur den Lagebericht.
 
-import { bereichVonFirma } from '@/lib/einheiten';
+import { bereichVonFirma, istBusinessGesellschaft } from '@/lib/einheiten';
+import { runwayRechnen, type RunwayIst } from '@/lib/finanzen/runway';
 
 export interface MonthRow { m: string; umsatz: number; kosten: number; }
 export interface FinanceState {
@@ -42,7 +43,10 @@ export interface FinanceMetrics {
   runRateNoetig: number;      // €/Monat, um Ziel bis Dez zu treffen
   runRateAktuell: number;     // Ø Umsatz der aktiven Monate
   avgBurn: number;            // Ø Kosten der aktiven Monate
-  runwayMonate: number | null;// Cash / Burn (null wenn kein Burn)
+  /** EINE Runway (17.10., Abnahme 3 · B1, lib/finanzen/runway.ts): Kasse ÷ Ø Netto-Verbrauch der letzten drei abgeschlossenen
+   *  Monate — null bei „kein Verbrauch“ (siehe `runway.keinVerbrauch`) oder ohne Kasse/Ist-Monate. Vorher Kasse ÷ Ø Kosten OHNE Umsatz. */
+  runwayMonate: number | null;
+  runway: RunwayIst;
   aktiveMonate: number;
 }
 
@@ -82,7 +86,14 @@ export function computeMetrics(s: FinanceState, jetzt: Date = new Date()): Finan
   const runRateNoetig = restMonate > 0 ? verbleibend / restMonate : verbleibend;
   const runRateAktuell = aktiveMonate > 0 ? istUmsatz / aktiveMonate : 0;
   const avgBurn = aktiveMonate > 0 ? istKosten / aktiveMonate : 0;
-  const runwayMonate = avgBurn > 0 ? s.cash / avgBurn : null;
+  // Runway (17.10., B1): die abgeschlossenen Monate ab dem Start (vor dem laufenden Monat), wie der Business-Index. Die Kasse ist
+  // unbekannt (null), wenn kein Konto einen Stand hat und kein Wert gepflegt ist — nie „0,0 Monate“ aus fehlenden Daten.
+  const bisIdx = s.jahr < h.jahr ? 11 : s.jahr > h.jahr ? -1 : h.monat - 1;
+  const abgeschlossen = months.slice(start, bisIdx + 1).filter(r => (r.umsatz || 0) > 0 || (r.kosten || 0) > 0);
+  const kasseQuelle = (s as Partial<{ kasse: Kasse }>).kasse?.quelle;
+  const kasseBetrag = kasseQuelle === 'keine' || (!kasseQuelle && !s.cash) ? null : s.cash;
+  const runway = runwayRechnen(kasseBetrag, abgeschlossen);
+  const runwayMonate = runway.monate;
 
   return {
     istUmsatz, istKosten, istGewinn,
@@ -95,6 +106,7 @@ export function computeMetrics(s: FinanceState, jetzt: Date = new Date()): Finan
     runRateAktuell,
     avgBurn,
     runwayMonate,
+    runway,
     aktiveMonate,
   };
 }
@@ -121,6 +133,24 @@ export function geschaeftsKasse(firmen: { id: string; kontostand?: number | null
 export function mitKasse(s: FinanceState, firmen: Parameters<typeof geschaeftsKasse>[0]): FinanceState & { kasse: Kasse } {
   const kasse = geschaeftsKasse(firmen, s.cash);
   return { ...s, cash: kasse.betrag, kasse };
+}
+
+/**
+ * Eine Wahrheit (26.09.; seit 17.10. an EINER Stelle, Abnahme 3 · B2): liegt für einen Monat ein Monatsabschluss vor, gilt er — die im
+ * Controlling gepflegten Monate sind nur Rückfall. Controlling (`/api/state/finance`) und Head of Finance lesen darüber dieselben Monate.
+ * Nur Abschlüsse der Business-Gesellschaften (die Selbstständigkeit gehört zu Privat, C3) — wie die Gesamtsicht des Business-Index. Rein.
+ */
+export function mitAbschluessen(s: FinanceState, eintraege: readonly { firma: string; monat: string; umsatz?: number; kosten?: number }[] | undefined): FinanceState {
+  const biz = (eintraege ?? []).filter(e => istBusinessGesellschaft(e.firma) && (e.umsatz != null || e.kosten != null));
+  if (!biz.length) return s;
+  return {
+    ...s,
+    months: s.months.map((m, i) => {
+      const key = `${s.jahr}-${String(i + 1).padStart(2, '0')}`;
+      const je = biz.filter(e => e.monat === key);
+      return je.length ? { ...m, umsatz: je.reduce((a, e) => a + (e.umsatz ?? 0), 0), kosten: je.reduce((a, e) => a + (e.kosten ?? 0), 0) } : m;
+    }),
+  };
 }
 
 /** Ziel als Satzteil — ohne eingetragenes Ziel „kein Ziel eingetragen“ statt „0 €“ (ZOE-Kontext, Lageberichte). */

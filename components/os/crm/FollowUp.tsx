@@ -34,6 +34,7 @@ import { useTasks } from '@/context/TasksContext';
 import { aufgabenAlsFaellig, type AufgabeFaellig } from '@/lib/crm/followup-aufgabe';
 import { WEG, eventLink } from '@/lib/wege';
 import { useRouter } from 'next/navigation';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Antwort { ok: boolean; heute: string; liste: Faellig[]; zahlen: Record<Gruppe, number> & { gesamt: number }; puenktlich: { erledigt: number; puenktlich: number; verpasst: number; quote: number | null } }
 
@@ -365,7 +366,7 @@ function Kadenz({ api, liste, heute, zuKontakt, aktion }: { api: CrmApi; liste: 
       <Karte i={1}>
         <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Takt änderbar unter Stammdaten › Wertelisten</span>}>Kadenz je Kreis</Ueberschrift>
         <Raster min={150}>
-          {kreise.map(x => <Zahl key={x.k} wert={String(x.faellig)} label={`Kreis ${x.k} · ${x.n} Personen · alle ${x.takt} Tage`} farbe={x.faellig ? LEUCHT.achtung : undefined} />)}
+          {kreise.map(x => <Zahl key={x.k} wert={String(x.faellig)} label={`Kreis ${x.k} · ${anzahl(x.n, 'Person', 'Personen')} · alle ${x.takt} Tage`} farbe={x.faellig ? LEUCHT.achtung : undefined} />)}
         </Raster>
         {ohne > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>{ohne} {ohne === 1 ? 'Person hat' : 'Personen haben'} noch keinen Kreis — ohne Kreis keine Kadenz. <Link href={WEG.kreisRunde()} style={{ color: C.aktiv, textDecoration: 'none' }}>Kreis-Runde ›</Link></div>}
       </Karte>

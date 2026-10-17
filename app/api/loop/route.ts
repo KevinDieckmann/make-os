@@ -40,6 +40,7 @@ import type { KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { nordsternSatz } from '@/lib/planung/nordstern';
+import { runwayAnzeige } from '@/lib/finanzen/runway';
 
 /** Frühere Loop-Ergebnisse ohne Gesundheits-Ableitungen (rein): kein Gesundheits-Loop, im Morgen-Loop ohne Tagesform/Schutz. */
 function ohneGesundheit<T extends { agent: string; payload?: unknown }>(l: T[]): T[] {
@@ -178,7 +179,7 @@ export async function POST(req: Request) {
       '',
       'CONTROLLING:',
       m && m.aktiveMonate > 0
-        ? `Ist ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}% vom Ziel), Gewinn ${eur(m.istGewinn)}, nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, Runway ${m.runwayMonate != null ? m.runwayMonate.toFixed(1) + ' Monate' : 'n/a'}.`
+        ? `Ist ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}% vom Ziel), Gewinn ${eur(m.istGewinn)}, nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, Runway ${runwayAnzeige(m.runway)}.`
         : 'Keine Ist-Zahlen gepflegt — der Nordstern ist damit nicht messbar.',
       '',
       `PIPELINE: ${g.prospects.length} Firmen, ${hot} starker Fit (80+), ${kontaktiert} kontaktiert.`,
@@ -255,7 +256,7 @@ export async function POST(req: Request) {
       const zahlOffen = (fplan?.zahlungen ?? []).filter(z => z.status === 'offen');
       user = [
         `Stichtag ${wd}, ${today}. ${nordsternSatz(g.nordstern)}`,
-        m && m.aktiveMonate > 0 ? `CONTROLLING: Ist ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}%), Run-Rate nötig ${eur(m.runRateNoetig)}/Monat, Runway ${m.runwayMonate?.toFixed(1) ?? 'n/a'} Monate.` : 'CONTROLLING: leer — Nordstern nicht messbar.',
+        m && m.aktiveMonate > 0 ? `CONTROLLING: Ist ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}%), Run-Rate nötig ${eur(m.runRateNoetig)}/Monat, Runway ${runwayAnzeige(m.runway)}.` : 'CONTROLLING: leer — Nordstern nicht messbar.',
         `FORDERUNGEN: ${eur(g.geld.forderungen)} offen${g.geld.ueberfaelligeForderungen ? ` (davon ${eur(g.geld.ueberfaelligeForderungen)} ÜBERFÄLLIG)` : ''} · in Vorbereitung ${eur(g.geld.vorbereitung)}.`,
         `RECHNUNGEN: ${(fplan?.rechnungen ?? []).map(r2 => `${r2.kunde} „${r2.titel}" ${eur(r2.betrag)} [${r2.status}${r2.faellig ? `, fällig ${r2.faellig}` : ''}]`).join(' · ') || 'keine'}`,
         `EIGENE ZAHLUNGEN (Prioritätenliste, oben zuerst): ${zahlOffen.slice(0, 6).map(z => `${z.an} ${eur(z.betrag)}${z.faellig ? ` (${z.faellig})` : ''}`).join(' · ') || 'leer'}`,

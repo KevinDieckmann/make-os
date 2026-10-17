@@ -22,9 +22,16 @@ describe('Business-Kasse', () => {
     expect(geschaeftsKasse([{ id: 'kdv', kontostand: null }], 1000).quelle).toBe('manuell');
     expect(geschaeftsKasse([], 0).quelle).toBe('keine');
   });
-  it('Runway rechnet mit der Kasse aus den Konten', () => {
-    const m = computeMetrics(mitKasse(fin(), [{ id: 'kdv', kontostand: 8000 }]), new Date('2026-09-24T10:00:00Z'));
-    expect(m.runwayMonate).toBe(2); // 8.000 / Ø 4.000 Kosten
+  it('Runway rechnet mit der Kasse aus den Konten — EINE Rechnung: Kasse ÷ Ø Netto-Verbrauch (17.10., Abnahme 3 · B1)', () => {
+    const verbrauch = fin({ months: DEFAULT_FINANCE.months.map((m, i) => (i === 5 || i === 6 ? { ...m, umsatz: 2000, kosten: 6000 } : { ...m })) });
+    const m = computeMetrics(mitKasse(verbrauch, [{ id: 'kdv', kontostand: 8000 }]), new Date('2026-09-24T10:00:00Z'));
+    expect(m.runwayMonate).toBe(2); // 8.000 / Ø 4.000 Netto-Verbrauch (6.000 Kosten − 2.000 Umsatz)
+    // Profitabel (10.000 Umsatz, 4.000 Kosten): kein Verbrauch — nicht „2 Monate bei Ø Burn“.
+    const p = computeMetrics(mitKasse(fin(), [{ id: 'kdv', kontostand: 8000 }]), new Date('2026-09-24T10:00:00Z'));
+    expect(p.runwayMonate).toBeNull();
+    expect(p.runway.keinVerbrauch).toBe(true);
+    // Ohne Kasse (kein Konto, kein Wert) keine Zahl — nie „0,0 Monate“ (Abnahme 3: Konto „nur Business“ sah 0,0).
+    expect(computeMetrics({ ...verbrauch, cash: 0 }, new Date('2026-09-24T10:00:00Z')).runwayMonate).toBeNull();
   });
 });
 

@@ -33,6 +33,7 @@ import { Loeschfristen } from './stammdaten/Loeschfristen';
 import { NachweisOffenKarte } from './stammdaten/NachweisOffen';
 import { WEG } from '@/lib/wege';
 import { VERANTWORTLICH_EINRICHTUNG } from '@/lib/datenschutz/einrichtung';
+import { anzahl } from '@/lib/text/zahlwort';
 
 type Unter = 'uebersicht' | 'qualitaet' | 'wertelisten' | 'gesellschaften' | 'datenschutz' | 'austausch';
 const UNTER: { id: Unter; label: string }[] = [{ id: 'uebersicht', label: 'Übersicht' }, { id: 'qualitaet', label: 'Datenqualität' }, { id: 'wertelisten', label: 'Wertelisten' }, { id: 'gesellschaften', label: 'Gesellschaften' }, { id: 'datenschutz', label: 'Datenschutz' }, { id: 'austausch', label: 'Import & Export' }];
@@ -112,7 +113,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
           <Verbindungen i={0} onGeaendert={() => { void laden(); void api.laden(); }} />
           <KennungenUmzug i={1} onGeaendert={() => { void laden(); void api.laden(); }} />
           <Karte i={1}>
-            <Ueberschrift rechts={`${d.qualitaet.kontakte} Personen`}>Vollständigkeit</Ueberschrift>
+            <Ueberschrift rechts={anzahl(d.qualitaet.kontakte, 'Person', 'Personen')}>Vollständigkeit</Ueberschrift>
             <div style={{ display: 'grid', gap: 9 }}>
               {d.qualitaet.vollstaendigkeit.map(f => (
                 <div key={f.feld} style={{ display: 'grid', gridTemplateColumns: 'minmax(110px,140px) 1fr 70px', gap: 12, alignItems: 'center', fontSize: TYP.bedien }}>
@@ -128,7 +129,7 @@ export function Stammdaten({ api, zuBereich, zuKontakt, start, onAnsicht }: { ap
           <Karte i={1} akzent={d.qualitaet.nichtGeprueft.length ? LEUCHT.achtung : undefined}>
             <Ueberschrift rechts={`${d.qualitaet.nichtGeprueft.length} offen`}>Zuletzt geprüft</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: d.qualitaet.nichtGeprueft.length ? LEUCHT.achtung : C.inkLeise, lineHeight: 1.55 }}>
-              {d.qualitaet.nichtGeprueft.length ? `${d.qualitaet.nichtGeprueft.length} Kontakte seit über ${d.qualitaet.pruefenMonate} Monaten nicht geprüft (aktive Beziehungen und Leads) — in der Kontaktseite unter Stammdaten › Datenschutz „Stammdaten geprüft“.` : `Alle aktiven Beziehungen und Leads sind in den letzten ${d.qualitaet.pruefenMonate} Monaten geprüft.`}
+              {d.qualitaet.nichtGeprueft.length ? `${anzahl(d.qualitaet.nichtGeprueft.length, 'Kontakt', 'Kontakte')} seit über ${d.qualitaet.pruefenMonate} Monaten nicht geprüft (aktive Beziehungen und Leads) — in der Kontaktseite unter Stammdaten › Datenschutz „Stammdaten geprüft“.` : `Alle aktiven Beziehungen und Leads sind in den letzten ${d.qualitaet.pruefenMonate} Monaten geprüft.`}
             </div>
             {d.qualitaet.nichtGeprueft.map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ display: 'block', background: 'none', border: 'none', color: C.inkDim, cursor: 'pointer', fontSize: TYP.bedien, padding: '2px 0', textAlign: 'left' }}>{k.name} — {k.nie ? `nie geprüft (seit ${datum(k.seit)})` : `zuletzt ${datum(k.seit)}`}</button>)}
           </Karte>
@@ -251,7 +252,7 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
             <div key={a.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.05)', display: 'grid', gap: 6 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <b style={{ fontWeight: 600 }}>{ANTRAG_ART.find(x => x.id === a.art)?.label}</b><span style={{ color: C.inkDim, fontSize: TYP.bedien }}>{a.name}{a.email ? ` · ${a.email}` : ''} · Eingang {datum(a.eingang)}</span>
-                <Chip farbe={t < 0 ? LEUCHT.kritisch : t < 7 ? LEUCHT.achtung : C.inkDim}>{t < 0 ? `${-t} Tage überfällig` : `noch ${t} Tage`}</Chip>
+                <Chip farbe={t < 0 ? LEUCHT.kritisch : t < 7 ? LEUCHT.achtung : C.inkDim}>{t < 0 ? `${anzahl(-t, 'Tag', 'Tage')} überfällig` : `noch ${anzahl(t, 'Tag', 'Tage')}`}</Chip>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {a.kontaktId && <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${a.kontaktId}`; }}>Datenkopie (JSON)</Knopf>}

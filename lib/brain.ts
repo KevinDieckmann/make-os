@@ -24,7 +24,7 @@ import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, vitalsKurz, type ResolvedVitals } from '@/lib/vitals';
 import { computeIndex, type PerfIndex } from '@/lib/performance';
 import { SAEULEN_TEXT } from '@/lib/business/register';
-import { computeMetrics, mitKasse, eur, zielAngabe, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
+import { computeMetrics, mitKasse, mitAbschluessen, eur, zielAngabe, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
 import { recentRuns, type AgentLogEntry } from '@/lib/agent-log';
 import { computeShields, shieldZeilen, type Shield } from '@/lib/risk';
 import { schwellen, type Schwellen } from '@/lib/schwellen';
@@ -52,6 +52,7 @@ import { bereichVonFirma } from '@/lib/einheiten';
 import { meilensteineSichtbarFuer } from '@/lib/planung/eigene-ziele-sicht-server';
 import { fokusZeilenFuer } from '@/lib/planung/fokus-server';
 import { FOKUS_KOPF, fokusZeilenText, type FokusZeile } from '@/lib/planung/fokus';
+import { runwayAnzeige } from '@/lib/finanzen/runway';
 
 // ── Formen ──
 interface StoredTask { id: string; title: string; status: string; priority: string; dueDate?: string; projectId?: string; assignee?: string; /** Business-Einheit (27.09.) — nur im Business gesetzt. */ einheit?: string }
@@ -184,7 +185,9 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     // Aufgaben (29.09., B4): die übernommene Sicht (`ladeAufgaben` — Space, Unteraufgaben aus `subTasks` …), nur für
     // Personen im Haushalt des Inhabers (wie die Mandate), Papierkorb (`geloeschtAm`) ausgeblendet, gezählt nur Hauptaufgaben.
     personImHaushaltDesInhabers(person).then(ja => (ja ? ladeAufgabenSicht(person).then(aufgabenFuerBrain) : null)), // Sichtfilter „nur ich“ (29.09.)
-    loadJson<FinanceState>('finance'),
+    // Ist-Monate MIT den Monatsabschlüssen (17.10., Abnahme 3 · B1/B2) — dieselben wie Controlling und Head of Finance.
+    Promise.all([loadJson<FinanceState>('finance'), loadJson<{ eintraege?: { firma: string; monat: string; umsatz?: number; kosten?: number }[] }>('business-abschluesse')])
+      .then(([f, a]) => (f ? mitAbschluessen(f, a?.eintraege) : f)),
     loadJson<{ prospects: Prospect[] }>('prospects'),
     // Kalender (29.09., #K4): iCloud/Mac/Google, je Person gefiltert — nie mehr der rohe `calendar-cache`.
     termineFuerZoe(person, heute, tagePlus(heute, 8)),
@@ -391,7 +394,7 @@ export function blockZahlen(b: Brain): string {
   if (!b.finance || !b.metrics) return `ZAHLEN: kein Finanzstand hinterlegt. ${b.nordstern ? 'Der Nordstern' : 'Der Fortschritt'} ist damit nicht messbar — sag das offen.${extra ? ` ${extra}.` : ''}`;
   const m = b.metrics;
   const kern = m.aktiveMonate > 0
-    ? `ZAHLEN: Ist-Umsatz ${eur(m.istUmsatz)} (${b.finance.zielUmsatz > 0 ? `${Math.round(m.fortschritt * 100)}% vom Ziel ${eur(b.finance.zielUmsatz)}` : 'kein Umsatzziel eingetragen'}), Gewinn ${eur(m.istGewinn)}, ${b.finance.zielUmsatz > 0 ? `nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, ` : ''}Runway ${m.runwayMonate != null ? m.runwayMonate.toFixed(1) + ' Monate' : 'n/a'}.`
+    ? `ZAHLEN: Ist-Umsatz ${eur(m.istUmsatz)} (${b.finance.zielUmsatz > 0 ? `${Math.round(m.fortschritt * 100)}% vom Ziel ${eur(b.finance.zielUmsatz)}` : 'kein Umsatzziel eingetragen'}), Gewinn ${eur(m.istGewinn)}, ${b.finance.zielUmsatz > 0 ? `nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, ` : ''}Runway ${runwayAnzeige(m.runway)}.`
     : `ZAHLEN: Controlling ist leer (${zielAngabe(b.finance)}) — ${b.nordstern ? 'der Nordstern' : 'der Fortschritt'} ist nicht messbar. Sag das offen.`;
   return extra ? `${kern} ${extra}.` : kern;
 }

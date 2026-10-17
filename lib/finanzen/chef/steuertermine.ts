@@ -18,7 +18,11 @@ export interface SteuerEinstellung {
 }
 export const STANDARD_EINSTELLUNG: SteuerEinstellung = { ust: 'quartal', dauerfrist: false, estVorauszahlung: true, gewstVorauszahlung: false };
 
-export interface Termin { datum: string; art: 'ust' | 'ust-sv' | 'est' | 'kst' | 'gewst'; titel: string; hinweis: string }
+export interface Termin {
+  datum: string; art: 'ust' | 'ust-sv' | 'est' | 'kst' | 'gewst' | 'erklaerung' | 'offenlegung'; titel: string; hinweis: string;
+  /** Wem die Frist gehört (Gesellschaft oder privat) — gesetzt, wenn sie aus dem Steuer-Modul kommt (17.10., Abnahme 3 · B2). */
+  einheit?: string;
+}
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const utc = (j: number, m: number, t: number) => new Date(Date.UTC(j, m - 1, t, 12));

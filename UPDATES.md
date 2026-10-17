@@ -18,6 +18,22 @@ Kevin: „Nicht überladen, sondern sehr klar. Lieber wenig und klar — es dupl
 - **Rückweg/Update-Probe:** keine Datenumzüge; neu nur das optionale Feld `pakete` an Ritualen (der alte Stand verwirft es beim nächsten Schreiben der
   Vorlagen — dann steht das Huddle wieder in jedem Takt). Playbook-Fragen: neue Texte gelten für neu angelegte Playbooks; vorhandene behalten ihre Fassung.
 - Tests: `tests/fulfillment-miro.test.ts` (neu), `tests/fulfillment-stimmigkeit.test.ts` (dritte Abnahme), Doku `DESIGN_STANDARD.md` › Prozess-Visualisierung.
+## 17.10.2026 — Abnahme 3 außerhalb des Fulfillments (nur lokal — Branch `abnahme3-rest`, Basis 1179a1ea = `update-0910b`)
+- **B1 EINE Runway** `lib/finanzen/runway.ts`: Business-Kasse ÷ Ø Netto-Verbrauch (Kosten − Umsatz) der letzten drei abgeschlossenen Monate, profitabel = „kein
+  Verbrauch“, ohne Kasse keine Zahl (nie 0,0). Business-Index, `computeMetrics` (ZOE, Schilde, Board), Controlling und Head of Finance lesen sie (Controlling/HoF die Zahl
+  des Index über `runwayDesIndex`); die Finanzplanung heißt „Runway laut Plan“ (Rechenkern unverändert). **Achtung:** Schilde/ZOE nennen bei profitabler Firma keine
+  Runway mehr (vorher Kasse ÷ Ø Kosten).
+- **B2** Head of Finance: Ist-Monate mit den Monatsabschlüssen (`mitAbschluessen`, auch /api/state/finance — nur Business-Gesellschaften), Fristen aus `lib/steuern`
+  (GewSt/KSt je Gesellschaft; Business-Sicht ohne ESt), Rechtsform auch aus den Steuer-Einstellungen.
+- **B7** Lead mit offenem Deal = Ebene 2 (`imDeal`, `passtLeadFilter`, `inArbeit`): nie „Qualifizierung“/„In Arbeit“, Filter „SQL · Deal“, Trichter-Quote unverändert.
+- **B8** `.spalte` und Firmenakte/Rechnungszeile mit `minmax(0, 1fr)` (Handy ohne Querscrollen). **B9** Ben: Tagesstart ohne Whoop/Journal, `/api/steuern` ohne
+  Einstellungen Selbstständigkeit/Privat, Mandatsakte über `/api/rechnung`, Schritt 5.5 privat. **B10** Haushaltsfinanzen nach `privatFinanzZugangFuer`. **B11** Text.
+- **C:** Grafiken führen weiter (Wirkung, Pflege-Rhythmus, Traction-Linie, Index-Verlauf, Liquiditätswoche), Einzahl/Mehrzahl, Business ohne Selbstständigkeit
+  (Controlling-Konten, Mandate-Filter), Lese-Protokoll/Netzadresse/v2-Texte in Klartext, Betreiber-Texte gated, Cockpit ohne „KSI“, Brain-Kugel-Schilder (Sperrflächen,
+  hineingezoomt nur mit freiem Platz), Familie-Hinweis, Wochen-Pack ohne Privatzahl, Wer-Filter mit allen im Team, Agenten-Beispiele neutral, Inbox „Frist verstrichen“,
+  Bauplan-Namen, Einrichtungs-Karten zählen die eigenen Schritte, 2FA-Schritt nennt „Gerät merken“.
+- Offen (Fulfillment-Agent): B3–B6, C6. Offen: C7 (Kunden-Link in der Demo aus), C13-Demo-Daten (vor der Vorführung neu säen).
+- Wächter: `tests/abnahme3-rest.test.ts`, `tests/nur-business-sicht.test.ts` (B9/B10). Kein Server-Schritt, keine Datenänderung.
 
 ## 16.10.2026 — Abnahme 2 · C6 Texte im Fulfillment (nur lokal — Branch `ff-texte`, Basis 892a1c9b = `update-0910b`): Satzende nach Datum über `satz()` (kein „12.10..“), Einzahl/Mehrzahl über `anzahl`/`wort` (lib/text/zahlwort.ts), „Gemeinsam entschieden“ nur Entschiedenes + „Noch offen“ (EINE Regel `entscheidungenTeilen`, lib/fulfillment/kunde/bild.ts — Kunden-Seite, Vorschau, Präsentation), sichtbar „Gesundheit des Mandats“/„Kunden-Gesundheit“/„Gesundheit der Fälle“ statt Health, „Steuerungskreis“ statt Steering (Muster-Ritual: nur neue Fälle, Kennung `steering` bleibt), „Pipeline-Abdeckung“ statt Coverage, „Huddle = kurze Abstimmungsrunde“ erklärt; Pipeline-Fehlermeldung mit deutschem Datum; Wächter in tests/fulfillment-abnahme2.test.ts (C6) — kein Server-Schritt, keine Datenänderung.
 ## 16.10.2026 — Abnahme 2, Kleinkram (nur lokal — Branch `abnahme2-klein`, Basis `update-0910b`): Seil-Achse „HEUTE“ versetzt unter den Monaten (`seilAchse` in seil-geometrie.ts, `tests/seil-achse.test.ts`) · Steckbrief „Eingetragen am“ ohne Datum mit „Datum eintragen ›“ · Fällig-Liste in Planung (Jahr/Quartal/Monat) mit `tagKurz` und Priorität auf Deutsch · Beleg-Datum TT.MM.JJJJ · Brain-Notizen mit Anzeigenamen (Kopf-Titel → erste Überschrift → lesbarer Dateiname, `lib/brain/notiz-titel.ts`; Wikilinks weiter über den Dateinamen) — kein Server-Schritt, keine Datenänderung.

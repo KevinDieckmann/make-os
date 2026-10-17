@@ -56,6 +56,7 @@ import { MandatFortschritt, FallPhase } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
 import { useNurBusiness } from '../useInhaber';
 import { anzahl } from '@/lib/text/zahlwort';
+import { useSpace } from '@/hooks/useSpace';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 const STATUS: { id: Mandat['status']; label: string }[] = [{ id: 'angebot', label: 'Angebot' }, { id: 'verhandlung', label: 'Verhandlung' }, { id: 'aktiv', label: 'Aktiv' }, { id: 'pausiert', label: 'Pausiert' }, { id: 'beendet', label: 'Beendet' }];
@@ -80,6 +81,9 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   // Filter nach Gesellschaft (28.09.): Alle · die festen Gesellschaften — zusätzlich zur Person. Konto „nur Business“ ohne Privat-Einheit (B17, 14.10.).
   const [ges, setGes] = useState<GesellschaftFilter>('alle');
   const nurBusiness = useNurBusiness();
+  // Business-Sicht (17.10., Abnahme 3 · C3): die Mandate-Seite gehört zum Business — der Filter nennt keine Privat-Einheit (Selbstständigkeit),
+  // auch nicht bei der Inhaberin (vorher nur beim Konto „nur Business“). Regel `bereichVon` über `gesellschaftFilterFuer`.
+  const imBusiness = useSpace().space === 'business';
   // Kommt man über einen Link auf ein Mandat, springt die Liste einmal dorthin.
   useZuZiel(useZiel('k'), !!api.crm);
   const ablage = useCrmAblage(api, 'mandate');
@@ -175,7 +179,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
-            <span role="group" aria-label="Nach Gesellschaft filtern"><Segmente liste={gesellschaftFilterFuer(nurBusiness).map(g => ({ id: g.id, label: breit ? g.label : g.kurz }))} aktiv={ges} onWahl={setGes} /></span>
+            <span role="group" aria-label="Nach Gesellschaft filtern"><Segmente liste={gesellschaftFilterFuer(nurBusiness || imBusiness).map(g => ({ id: g.id, label: breit ? g.label : g.kurz }))} aktiv={ges} onWahl={setGes} /></span>
           </div>
           <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
             <button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 44 }}>{alle ? 'Beendete ausblenden' : `Beendete zeigen (${beendetVerborgen})`}</button>
@@ -386,7 +390,9 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   const heute = localDay();
   useEffect(() => {
     let lebt = true;
-    fetch('/api/state/finanzplan').then(async r => {
+    // Über die Rechnungs-Route (17.10., Abnahme 3 · B9): sie filtert serverseitig nach der Sicht des Kontos — ein Konto „nur Business“ bekommt
+    // die Rechnungen der Business-Gesellschaften (wie Cockpit und Head of Finance) statt eines 403 vom gemeinsamen Finanzplan.
+    fetch('/api/rechnung').then(async r => {
       if (!lebt) return;
       if (r.status === 403) { setListe('kein'); return; }
       const d = await r.json().catch(() => null) as { rechnungen?: RechnungKurz[] } | null;
@@ -412,7 +418,8 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   };
   return (
     <Feldzeile label="Rechnungen">
-      <div style={{ display: 'grid', gap: 6 }}>
+      {/* minmax(0, 1fr) (17.10., Abnahme 3 · B8): die Rechnungszeile kürzt mit „…“ statt die Seite am Handy quer zu schieben. */}
+      <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 }}>
         {liste === null && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lädt …</span>}
         {liste === 'kein' && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{KEIN_RECHNUNGS_ZUGANG}</span>}
         {liste === 'fehler' && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Rechnungen nicht erreichbar — gleich noch einmal öffnen.</span>}

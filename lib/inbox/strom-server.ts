@@ -243,7 +243,7 @@ export async function stromFuer(person: string, f: StromFilter = {}): Promise<St
     postfaecher: sicht.map(p => p.oeffentlich),
     gespraeche,
     lage: lageBauen(gespraeche),
-    zoe: zoeSatz(gespraeche),
+    zoe: zoeSatz(gespraeche, heute),
     // Für den Umschalter: nur die Bereiche der EIGENEN Postfächer (und alle wählbaren Namen für „Postfach hinzufügen“ liefert /api/inbox/postfaecher).
     bereiche: bereicheDa.filter(b => imBereich(b, sichtSpace)).map(b => ({ id: b, name: bereichName(b, r.namen) })),
     google: r.google,

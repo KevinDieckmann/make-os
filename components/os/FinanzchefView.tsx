@@ -24,13 +24,14 @@ import { useRouter } from 'next/navigation';
 import { WEG } from '@/lib/wege';
 import { finanzOrtName } from '@/lib/einheiten';
 import { BeispielMarke } from './BeispielMarke';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Stand {
   ok: boolean; umfang: 'business' | 'business+haushalt'; haushaltZugang: boolean;
   istStand: Schritt[];
   berichte: Bericht[]; vorschlaege: ChefVorschlag[]; letzte: Partial<Record<Modus, string>>; ruhig: { zeit: string; text: string } | null;
   einstellung: ChefEinstellung;
-  lage: { hinweise: Hinweis[]; termine: Termin[]; kasse: { betrag: number; quelle: string; konten: number; stand: string | null }; runway: number | null;
+  lage: { hinweise: Hinweis[]; termine: Termin[]; kasse: { betrag: number; quelle: string; konten: number; stand: string | null }; runway: number | null; runwayAnzeige?: string | null;
     liquiditaet: { tiefpunkt: number; tiefpunkt_woche: string; engpass_woche: string | null } | null;
     haushalt: { luft: number; sparquote: number; tage_seit_letzter_buchung: number | null } | null; deckung: number | null };
 }
@@ -200,7 +201,7 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
                 {s.berichte.map(b => (
                   <Zeile key={b.id} aktiv={b.id === bericht?.id} onClick={() => setGewaehlt(b.id)} links={<Punkt farbe={STATUS[b.antwort.status]?.farbe ?? C.inkLeise} />}
                     titel={b.modus === 'frage' ? `Frage: ${b.frage ?? ''}` : `${MODI.find(x => x.id === b.modus)?.label}${b.monat ? ` ${b.monat}` : ''}`}
-                    unter={`${zeit(b.zeit)} · ${b.antwort.befunde.length} Befunde · ${b.ausgeloest === 'takt' ? 'vom Takt' : b.ausgeloest === 'zoe' ? 'über ZOE' : 'von Hand'}${b.pruefung.unbelegt.length ? ` · ${b.pruefung.unbelegt.length} nicht belegt` : ''}`} />
+                    unter={`${zeit(b.zeit)} · ${anzahl(b.antwort.befunde.length, 'Befund', 'Befunde')} · ${b.ausgeloest === 'takt' ? 'vom Takt' : b.ausgeloest === 'zoe' ? 'über ZOE' : 'von Hand'}${b.pruefung.unbelegt.length ? ` · ${b.pruefung.unbelegt.length} nicht belegt` : ''}`} />
                 ))}
               </Liste>
             ) : <Leer>Noch keine.</Leer>}
@@ -242,7 +243,7 @@ export function FinanzchefView({ bereich }: { bereich?: 'privat' | 'business' } 
             <Ueberschrift>Lage · vom Code gerechnet</Ueberschrift>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14, marginBottom: 12 }}>
               <Link href={WEG.kontostaende()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={s.lage.kasse.quelle === 'keine' ? undefined : eur(s.lage.kasse.betrag)} label={s.lage.kasse.quelle === 'konten' ? `Kontostand · ${s.lage.kasse.konten} Firmenkonten ›` : 'Kontostand Business ›'} farbe={LEUCHT.geld} /></Link>
-              <Link href={WEG.business({ k: 'runway' })} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={s.lage.runway != null ? `${s.lage.runway.toFixed(1).replace('.', ',')} Mon.` : undefined} label="Runway ›" /></Link>
+              <Link href={WEG.business({ k: 'runway' })} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={s.lage.runwayAnzeige && s.lage.runwayAnzeige !== '—' ? s.lage.runwayAnzeige : s.lage.runway != null ? `${s.lage.runway.toFixed(1).replace('.', ',')} Mon.` : undefined} label="Runway ›" /></Link>
               {s.lage.haushalt && <Link href={WEG.privatIndex('index', 'luft')} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={eur(s.lage.haushalt.luft)} label="Luft privat / Monat ›" farbe={s.lage.haushalt.luft < 0 ? LEUCHT.kritisch : LEUCHT.gut} /></Link>}
               {s.lage.deckung != null && <Link href={WEG.gesamt()} style={{ textDecoration: 'none', color: 'inherit' }}><Zahl wert={`${Math.round(s.lage.deckung)} %`} label="Mindestumsatz gedeckt ›" farbe={s.lage.deckung < 100 ? LEUCHT.achtung : LEUCHT.gut} /></Link>}
             </div>

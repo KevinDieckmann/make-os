@@ -370,15 +370,15 @@ function EinstellungenKarte({ e, gewinn, tun, bereich, est }: { e: SteuerEinstel
     <Karte i={5} id="einstellungen">
       <Ueberschrift rechts={<Knopf leise onClick={() => setOffen(!offen)}>{offen ? 'schließen' : 'öffnen'}</Knopf>}>Steuer-Einstellungen</Ueberschrift>
       {!offen ? (
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{bereich === 'privat' && <>{EINHEIT_LABEL.kdc}: {e.kdc.rechtsform === 'freiberuf' ? 'Freiberufler' : e.kdc.rechtsform === 'einzel' ? 'Gewerbe' : e.kdc.rechtsform}, USt {e.kdc.ust} · Einkommensteuer gemeinsam aus der Finanzplanung · </>}{EINHEIT_LABEL.kdv}: {e.kdv.rechtsform.toUpperCase()}, USt {e.kdv.ust} · {EINHEIT_LABEL.ug}: {e.ug.rechtsform === 'einzel' ? 'Einzelunternehmen' : e.ug.rechtsform.toUpperCase()}, USt {e.ug.ust} · {e.mitBerater ? 'mit Steuerberater' : 'ohne Steuerberater'} · Hebesatz {e.ug.saetze ? `${EINHEIT_LABEL.kdv} ${e.hebesatz} %, ${EINHEIT_LABEL.ug} ${e.ug.saetze.hebesatz} %` : `${e.hebesatz} %`}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{bereich === 'privat' && e.kdc && <>{EINHEIT_LABEL.kdc}: {e.kdc.rechtsform === 'freiberuf' ? 'Freiberufler' : e.kdc.rechtsform === 'einzel' ? 'Gewerbe' : e.kdc.rechtsform}, USt {e.kdc.ust} · Einkommensteuer gemeinsam aus der Finanzplanung · </>}{EINHEIT_LABEL.kdv}: {e.kdv.rechtsform.toUpperCase()}, USt {e.kdv.ust} · {EINHEIT_LABEL.ug}: {e.ug.rechtsform === 'einzel' ? 'Einzelunternehmen' : e.ug.rechtsform.toUpperCase()}, USt {e.ug.ust} · {e.mitBerater ? 'mit Steuerberater' : 'ohne Steuerberater'} · Hebesatz {e.ug.saetze ? `${EINHEIT_LABEL.kdv} ${e.hebesatz} %, ${EINHEIT_LABEL.ug} ${e.ug.saetze.hebesatz} %` : `${e.hebesatz} %`}</div>
       ) : (
         <div style={{ display: 'grid', gap: 18 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 18 }}>
-            {bereich === 'privat' && firma('kdc')}{firma('kdv')}{firma('ug')}
+            {bereich === 'privat' && e.kdc && firma('kdc')}{firma('kdv')}{firma('ug')}
             <div style={{ display: 'grid', gap: 8 }}>
               <span style={{ fontWeight: 700, color: EINHEIT_FARBE.privat }}>{bereich === 'privat' ? 'Privat & allgemein' : 'Allgemein'}</span>
               <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}><Haken an={e.mitBerater} onChange={() => void tun({ einstellungen: { mitBerater: !e.mitBerater } })} />mit Steuerberater (längere Fristen)</label>
-              {bereich === 'privat' && <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}><Haken an={e.privat.estVorauszahlung} onChange={() => void tun({ einstellungen: { privat: { estVorauszahlung: !e.privat.estVorauszahlung } } })} />ESt-Vorauszahlungen</label>}
+              {bereich === 'privat' && e.privat && <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}><Haken an={e.privat.estVorauszahlung} onChange={() => void tun({ einstellungen: { privat: { estVorauszahlung: !e.privat.estVorauszahlung } } })} />ESt-Vorauszahlungen</label>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>

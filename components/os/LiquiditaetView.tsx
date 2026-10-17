@@ -7,7 +7,7 @@
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 // 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Reiter „Liquidität“ unter Finanzen › Business (/os/finanzen/liquiditaet leitet weiter).
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -77,8 +77,11 @@ const bewegungLink = (b: Woche['bewegungen'][number]): string | null =>
  * zu ihrem Posten. „Bild statt Liste, Details auf Klick.“
  */
 function WocheDetail({ w, onZu }: { w: Woche; onZu: () => void }) {
+  // Der Klick in den Verlauf (17.10., Abnahme 3 · C1) soll sichtbar wirken: die geöffnete Woche rückt ins Bild.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [w.von]);
   return (
-    <div role="region" aria-label={`Woche ab ${datum(w.von)}`} style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,.04)', display: 'grid', gap: 6 }}>
+    <div ref={ref} role="region" aria-label={`Woche ab ${datum(w.von)}`} style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,.04)', display: 'grid', gap: 6 }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <b style={{ fontSize: TYP.bedien, color: C.ink }}>{w.label} · ab {datum(w.von)}</b>
         <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Stand am Ende {eur(w.stand)}</span>

@@ -15,6 +15,7 @@ import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
+import { runwayAnzeige } from '@/lib/finanzen/runway';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     hasData ? `Aktive Monate: ${m.aktiveMonate}, Ø Umsatz/Monat bisher: ${eur(m.runRateAktuell)}` : '',
     `Rest-Monate bis Dez: ${m.restMonate}`,
     `Nötige Run-Rate, um Ziel zu treffen: ${eur(m.runRateNoetig)}/Monat`,
-    `Cash: ${eur(s.cash)} (${s.kasse.quelle === 'konten' ? `Summe ${s.kasse.konten} Firmenkonten${s.kasse.stand ? `, ältester Stand ${s.kasse.stand}` : ''}` : s.kasse.quelle === 'manuell' ? 'manuell eingetragen, keine Kontostände' : 'kein Kontostand hinterlegt'})${m.runwayMonate != null ? ` · Runway: ${m.runwayMonate.toFixed(1)} Monate (bei Ø Burn ${eur(m.avgBurn)})` : ' · Runway: n/a (kein Burn hinterlegt)'}`,
+    `Cash: ${eur(s.cash)} (${s.kasse.quelle === 'konten' ? `Summe ${s.kasse.konten} Firmenkonten${s.kasse.stand ? `, ältester Stand ${s.kasse.stand}` : ''}` : s.kasse.quelle === 'manuell' ? 'manuell eingetragen, keine Kontostände' : 'kein Kontostand hinterlegt'}) · Runway: ${runwayAnzeige(m.runway)} (Kasse ÷ Ø Netto-Verbrauch der letzten drei abgeschlossenen Monate)`,
     '',
     'Monatsverlauf (Umsatz / Kosten):',
     s.months.map((r, i) => `${MONTHS_DE[i]}: ${eur(r.umsatz)} / ${eur(r.kosten)}`).join('\n'),

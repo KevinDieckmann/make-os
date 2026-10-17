@@ -17,6 +17,7 @@ import { Fenster } from '../Fenster';
 import { Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leer, feld } from '../ui';
 import { entwurfAnlegen, pdfLaden, rechnungPost, useRechnungen, type RechnungMitFassung } from './daten';
 import { RechnungEditor } from './Editor';
+import { anzahl } from '@/lib/text/zahlwort';
 
 const datumDe = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
 const gesKurz = (g: string) => KERN_EINHEITEN.find(e => e.id === g)?.kurz ?? (g || 'ohne Gesellschaft');
@@ -81,7 +82,7 @@ export function RechnungenKarte() {
               {stand.mahnvorschlaege.map(v => {
                 const r = rechnungen.find(x => x.id === v.rechnungId);
                 return <Zeile key={`${v.rechnungId}-${v.stufe}`} onClick={() => oeffnen(v.rechnungId)} titel={`${v.label} · Rechnung ${v.nummer ?? ''}`}
-                  unter={`${r?.kunde ?? ''} · ${v.tageUeberfaellig} Tage überfällig${r ? ` · ${betrag(r)}` : ''}`} rechts={<Chip farbe={LEUCHT.achtung}>prüfen</Chip>} />;
+                  unter={`${r?.kunde ?? ''} · ${anzahl(v.tageUeberfaellig, 'Tag', 'Tage')} überfällig${r ? ` · ${betrag(r)}` : ''}`} rechts={<Chip farbe={LEUCHT.achtung}>prüfen</Chip>} />;
               })}
             </Liste>
           </>}

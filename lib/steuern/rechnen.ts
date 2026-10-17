@@ -459,9 +459,14 @@ export function steuernNurBusiness<T extends SteuerSichtTeile>(st: T): T {
   const e = st.einstellungen;
   const vz = Object.fromEntries(Object.entries(e.vorauszahlung).filter(([k]) => (k === 'kst' || k === 'gewstKdv' ? biz('kdv') : k === 'kstUg' || k === 'gewstUg' ? biz('ug') : false))) as SteuerEinstellungen['vorauszahlung'];
   const ruecklageIst = Object.fromEntries(Object.entries(e.ruecklageIst).filter(([k]) => biz(k))) as SteuerEinstellungen['ruecklageIst'];
+  // Einstellungen der Privat-Einheiten (Selbstständigkeit, Privat) gehen gar nicht hinaus (17.10., Abnahme 3 · B9) — vorher stand dort die Vorgabe
+  // (Einzelunternehmen, Ist-Versteuerung, ESt-Vorauszahlung), die wie private Steuermerkmale aussah. Die Business-Ansicht liest sie nie.
+  const einstellungen = { ...e, kdc: { ...STANDARD_STEUERN.kdc }, privat: { ...STANDARD_STEUERN.privat }, steuerquote: null, vorauszahlung: vz, ruecklageIst } as Partial<SteuerEinstellungen>;
+  if (!biz('kdc')) delete einstellungen.kdc; // die Ansicht liest die Selbstständigkeit nur unter Privat
+  delete einstellungen.privat;
   return {
     ...st,
-    einstellungen: { ...e, kdc: { ...STANDARD_STEUERN.kdc }, privat: { ...STANDARD_STEUERN.privat }, steuerquote: null, vorauszahlung: vz, ruecklageIst },
+    einstellungen: einstellungen as SteuerEinstellungen,
     fristen: st.fristen.filter(f => biz(f.einheit)),
     ust: st.ust.filter(u => biz(u.firma)),
     // Vorauszahlungen (05.10. abends): die Einkommensteuer ist privat — in der Business-Sicht nie; die Gewerbesteuer der Selbstständigkeit nur,

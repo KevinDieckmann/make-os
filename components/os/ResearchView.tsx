@@ -13,10 +13,11 @@ import { ZoeReiter } from './ZoeReiter';
 
 interface Item { id: number; q: string; a: string; webUsed?: boolean; loading?: boolean; }
 
+// Beispiele ohne das Geschäft des Herstellers (17.10., Abnahme 3 · C12) — allgemein für jede Instanz.
 const SUGGEST = [
-  'Wettbewerber für ein Controlling-Cockpit im deutschen KMU-Markt',
-  'Wie ist BSFZ-Forschungszulage 2026 geregelt — Sätze & Voraussetzungen?',
-  'Marktgröße & Trends: Finanz-/Liquiditätsplanung-Software für KMU (DACH)',
+  'Wer sind die wichtigsten Wettbewerber in unserem Markt — und wie positionieren sie sich?',
+  'Welche Förderprogramme gibt es 2026 für kleine Unternehmen in Deutschland — Sätze & Voraussetzungen?',
+  'Marktgröße & Trends in unserer Branche (DACH) — was sagen aktuelle Studien?',
 ];
 
 export function ResearchView() {

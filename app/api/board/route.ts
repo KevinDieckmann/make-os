@@ -18,6 +18,7 @@ import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { spaceBereich } from '@/lib/make-one/space-regeln';
 import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
+import { runwayAnzeige } from '@/lib/finanzen/runway';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
     '',
     'CONTROLLING:',
     m && stats.finance?.aktiv
-      ? `Ist-Umsatz ${eur(m.istUmsatz)} (${stats.finance.fortschritt}%), Gewinn ${eur(m.istGewinn)}, nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, Runway ${m.runwayMonate != null ? m.runwayMonate.toFixed(1) + ' Monate' : 'n/a'}.`
+      ? `Ist-Umsatz ${eur(m.istUmsatz)} (${stats.finance.fortschritt}%), Gewinn ${eur(m.istGewinn)}, nötige Run-Rate ${eur(m.runRateNoetig)}/Monat, Runway ${runwayAnzeige(m.runway)}.`
       : 'Noch keine Ist-Zahlen gepflegt (Controlling leer).',
     '',
     `PIPELINE (Prospecting): ${pipeline.total} Firmen, ${pipeline.hot} starker Fit (80+), ${pipeline.qualifiziert} qualifiziert, ${pipeline.kontaktiert} kontaktiert, Ø-Score ${pipeline.avgScore}.`,

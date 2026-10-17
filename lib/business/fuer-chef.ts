@@ -10,6 +10,7 @@ import { berechne, type BusinessIndex, type KennzahlStand } from './index';
 import { schwellenText } from './text';
 import { indexStatus } from '@/lib/kennzahlen/kern';
 import { BUSINESS_GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
+import { RUNWAY_ERKLAERUNG } from '@/lib/finanzen/runway';
 
 /** Säulen „nur mit Messung“ (Kapazität, Fulfillment): ohne Messung keine Messlücken (Prüf-Fund 11.10.). */
 const NUR_MIT_MESSUNG: ReadonlySet<string> = new Set(SAEULEN.filter(s => s.nurMitMessung).map(s => s.id));
@@ -66,6 +67,21 @@ export async function businessFuerChef(heute = localDay()): Promise<{ block: Rec
     monatsabschluss_fehlt: abschlussFehlt.map(f => `${FIRMA[f.firma]} ${f.monat}`),
   };
   return { block, hinweise };
+}
+
+/** Die Runway, wie das Cockpit sie zeigt (Business-Index Gesamt, `runway`) — Controlling und Head of Finance lesen genau diese Zahl. */
+export interface RunwayDesIndex { anzeige: string; monate: number | null; keinVerbrauch: boolean; gemessen: boolean; ampel: string; quelle: string; erklaerung: string }
+
+/** EINE Runway (17.10., Abnahme 3 · B1): aus dem Business-Index, Rechnung in lib/finanzen/runway.ts. */
+export async function runwayDesIndex(heute = localDay()): Promise<RunwayDesIndex | null> {
+  const { alle } = await sichtenFuerChef(heute);
+  const k = alle.gesamt.saeulen.flatMap(s => s.kennzahlen).find(x => x.id === 'runway');
+  if (!k) return null;
+  const keinVerbrauch = k.gemessen && k.anzeige === 'kein Verbrauch';
+  return {
+    anzeige: k.gemessen && k.anzeige ? k.anzeige : '—', monate: k.gemessen && !keinVerbrauch ? k.wert : null, keinVerbrauch, gemessen: k.gemessen,
+    ampel: k.ampel, quelle: k.quelle, erklaerung: RUNWAY_ERKLAERUNG,
+  };
 }
 
 /** Text für ZOE: der Index — oder eine Kennzahl im Detail. */

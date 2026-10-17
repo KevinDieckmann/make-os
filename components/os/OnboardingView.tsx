@@ -244,6 +244,14 @@ export function schritteAufEbene(ebene: Ebene, ich: Kontext | null): Schritt[] {
   return schritteDerEbene(ebene, ich).filter(s => (ebene === 'gemeinsam' ? sichtbarFuer(s, ich) && !(s.nurMitMehreren && ich && ich.personen < 2) : schrittFuer(s, ich)));
 }
 
+/**
+ * Was eine Ebene für DIESE Person zählt (17.10., Abnahme 3 · C11): die Schritte, die sie selbst macht (`schrittFuer`, wie der Kopf und Heute) — die
+ * Gemeinsam-Seite zeigt weiter alle sichtbaren, zählt aber nicht die, die nur ein Inhaber abhakt. So ergeben die Karten zusammen die Zahl im Kopf.
+ */
+export function schritteZaehlenAufEbene(ebene: Ebene, ich: Kontext | null): Schritt[] {
+  return schritteAufEbene(ebene, ich).filter(s => schrittFuer(s, ich));
+}
+
 export function EbeneView({ ebene }: { ebene: Ebene }) {
   const { z, haken, laden, meldung } = useOnboarding();
   const meta = ebeneMitId(ebene)!;
@@ -254,7 +262,7 @@ export function EbeneView({ ebene }: { ebene: Ebene }) {
   const schritte = gesperrt ? [] : schritteAufEbene(ebene, ich);
   // Gezählt wie überall (14.10., B4): jeder nicht-optionale Schritt zählt sofort (`alle`) — die Ebenen ergeben zusammen die Zahl der Einrichtung.
   const alle = true;
-  const f = fortschrittVon(schritte, z, { alle });
+  const f = fortschrittVon(gesperrt ? [] : schritteZaehlenAufEbene(ebene, ich), z, { alle });
   const namen = gruppenFuer(!!ich?.altbestand, !!ich?.neustart);
   const weiter = [{ id: 'alles', titel: 'Einrichtung — alle deine Schritte', satz: `${ich?.betreiber ? `${namen.freitag.titel.split(' · ')[0]}, ` : ''}${namen.samstag.titel} und „${namen.spaeter.titel}“ in der richtigen Reihenfolge.`, href: '/os/onboarding' },
     ...EBENEN.filter(e => e.id !== ebene && (!e.nurInhaber || !!ich?.inhaber))];
@@ -344,7 +352,7 @@ function EbenenStand({ z }: { z: Zustand | null }) {
       {ebenen.map(e => (
         <Link key={e.id} href={e.href} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minHeight: 44 }}>
           <div style={{ ...absatz, color: C.ink, fontWeight: 600, marginBottom: 6 }}>{e.titel} ›</div>
-          <Fortschritt schritte={schritteAufEbene(e.id, z?.ich ?? null)} z={z} alle />
+          <Fortschritt schritte={schritteZaehlenAufEbene(e.id, z?.ich ?? null)} z={z} alle />
         </Link>
       ))}
     </div>
@@ -421,7 +429,7 @@ export function OnboardingUebersicht() {
               <Karte i={MAX_I} style={{ height: '100%' }}>
                 <Ueberschrift rechts={<span>›</span>}>{e.titel}</Ueberschrift>
                 <p style={{ ...absatz, margin: '0 0 12px' }}>{e.satz}</p>
-                <Fortschritt schritte={schritteAufEbene(e.id, z?.ich ?? null)} z={z} alle />
+                <Fortschritt schritte={schritteZaehlenAufEbene(e.id, z?.ich ?? null)} z={z} alle />
               </Karte>
             </Link>
           ))}

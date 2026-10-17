@@ -30,6 +30,7 @@ import { useRouter } from 'next/navigation';
 import { entwurfAnlegen } from './rechnung/daten';
 import { statusWechselFehlt } from '@/lib/finanzen/rechnung/regeln';
 import { neueKennung } from '@/lib/kennung';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Firma { id: string; name: string; bank: string; kontostand: number | null; stand: string | null }
 type RStatus = 'geplant' | 'gestellt' | 'bezahlt' | 'storniert';
@@ -249,7 +250,7 @@ export function FinanzplanungView() {
       {/* KPIs */}
       <Karte i={2} akzent={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld}>Cash · beide Konten</Ueberschrift>
-        <Zahl gross wert={firmenB.some(f => f.kontostand != null) ? eur(cash) : undefined} farbe={cash < 0 ? LEUCHT.kritisch : LEUCHT.geld} label={firmenB.some(f => f.kontostand != null) ? `${firmenB.length} Konten` : 'noch kein Kontostand eingetragen'} />
+        <Zahl gross wert={firmenB.some(f => f.kontostand != null) ? eur(cash) : undefined} farbe={cash < 0 ? LEUCHT.kritisch : LEUCHT.geld} label={firmenB.some(f => f.kontostand != null) ? anzahl(firmenB.length, 'Konto', 'Konten') : 'noch kein Kontostand eingetragen'} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 14 }}>
           <Zahl wert={eur(sum(gestellt))} label={`offene Forderungen · ${gestellt.length}`} farbe={gestellt.length ? LEUCHT.achtung : C.inkLeise} />
           <Zahl wert={eur(sum(geplant))} label={`in Vorbereitung · ${geplant.length}`} />

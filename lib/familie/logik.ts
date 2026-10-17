@@ -47,7 +47,7 @@ export function pflegeRhythmus(f: Familie, heute: string): Rhythmus {
     { id: 'tage', titel: 'Wichtige Tage', gewicht: 5, wert: tageOk ?? 1, text: tageOk === null ? 'nichts fällig' : `${Math.round(tageOk * 100)} % rechtzeitig vorbereitet` },
   ];
   const leer = !f.gespraeche.length && !f.dates.length && !f.ritualtage.length && !f.wertschaetzungen.length;
-  if (leer) return { score: null, stufe: 'leer', bausteine: b, hinweis: 'Noch nichts eingetragen. Der Anfang: einen festen Termin fürs Paar-Gespräch setzen.' };
+  if (leer) return { score: null, stufe: 'leer', bausteine: b, hinweis: 'Noch nichts eingetragen. Der Anfang: das nächste Paar-Gespräch halten — danach füllt sich der Rhythmus.' }; // C9 (17.10.): der Termin steht schon fest (Einstellungen), darunter angezeigt
   const score = Math.round(b.reduce((s, x) => s + x.gewicht * x.wert, 0));
   const schwach = b.filter(x => x.wert < 1).sort((x, y) => (y.gewicht * (1 - y.wert)) - (x.gewicht * (1 - x.wert)))[0];
   const stufe = score >= 80 ? 'im-takt' : score >= 60 ? 'stabil' : score >= 40 ? 'aus-dem-takt' : 'fundament';

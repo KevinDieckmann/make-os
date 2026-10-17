@@ -22,6 +22,8 @@ export const GRAFIK_BAUSTEINE: readonly GrafikBaustein[] = [
   { name: 'FadenLinie (Liquidität · Verlauf)', datei: 'components/os/ui/fokus.tsx', weg: 'Mit `onSpalte` öffnet jede Woche ihre Posten (Rechnung, Zahlung, Planposten).' },
   { name: 'Liquidität · 12 Wochen (Controlling)', datei: 'components/os/ControllingView.tsx', weg: 'Jeder Balken öffnet die Liquidität an dieser Woche (`WEG.liquiditaet(woche)`).' },
   { name: 'Wer hält wen (Organigramm)', datei: 'components/os/unternehmen/schild/Struktur.tsx', weg: 'Eine eigene Gesellschaft öffnet ihren Steckbrief.' },
+  // 17.10. (Abnahme 3 · C1): die restlichen Grafiken ohne Weiter.
+  { name: 'Traction-Score im Wochen-Scoreboard', datei: 'components/os/crm/Scoreboard.tsx', weg: 'Die Linie öffnet den Verlauf des Traktions-Index (Überblick, `#index-verlauf`).' },
 ];
 
 /** Welche Verwender einer Grafik den Klick-Weg auch WIRKLICH geben müssen (Ring nur mit `href`, FadenLinie nur mit `onSpalte`). */
@@ -30,4 +32,9 @@ export const GRAFIK_VERWENDER: readonly { datei: string; muss: string; warum: st
   { datei: 'components/os/kennzahlen/IndexAnsicht.tsx', muss: 'href={', warum: 'Ring der Indizes (Privat, Gesundheit) → Verlauf' },
   { datei: 'components/os/ControllingView.tsx', muss: 'hinweis="Ist-Monate im Monatsabschluss öffnen"', warum: 'Kurs aufs Jahresziel → Ist-Monate' },
   { datei: 'components/os/LiquiditaetView.tsx', muss: 'onSpalte={', warum: 'Liquidität · Verlauf → Woche mit Posten' },
+  // 17.10. (Abnahme 3 · C1)
+  { datei: 'components/os/fokus/Wirkung.tsx', muss: 'href={', warum: 'Ring „Wirkung“ → Business-Index bzw. Wachstums-Score' },
+  { datei: 'components/os/familie/WirZwei.tsx', muss: 'href={', warum: 'Ring „Pflege-Rhythmus“ → Zeit zu zweit' },
+  { datei: 'components/os/LiquiditaetView.tsx', muss: 'scrollIntoView', warum: 'die geöffnete Woche rückt ins Bild — der Klick wirkt sichtbar' },
+  { datei: 'components/os/kennzahlen/IndexAnsicht.tsx', muss: 'id={`saeule-${s.id}`}', warum: 'Anker je Säule — der Index-Verlauf springt dorthin (Traktion, Privat, Gesundheit)' },
 ];

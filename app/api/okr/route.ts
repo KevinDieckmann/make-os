@@ -16,6 +16,7 @@ import { computeMetrics, eur, type FinanceState } from '@/lib/make-one/finance-d
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { nordsternSatz } from '@/lib/planung/nordstern';
+import { runwayAnzeige } from '@/lib/finanzen/runway';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
     ? [
         `Ziel (Controlling): ${eur(fin.zielUmsatz)} Umsatz → ${eur(fin.zielGewinn)} Gewinn.`,
         m.aktiveMonate > 0
-          ? `Ist: ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}%), Gewinn ${eur(m.istGewinn)}, Ø ${eur(m.runRateAktuell)}/Monat. Nötige Run-Rate: ${eur(m.runRateNoetig)}/Monat, ${m.restMonate} Monate übrig. Runway ${m.runwayMonate != null ? m.runwayMonate.toFixed(1) + ' Monate' : 'n/a'}.`
+          ? `Ist: ${eur(m.istUmsatz)} (${Math.round(m.fortschritt * 100)}%), Gewinn ${eur(m.istGewinn)}, Ø ${eur(m.runRateAktuell)}/Monat. Nötige Run-Rate: ${eur(m.runRateNoetig)}/Monat, ${m.restMonate} Monate übrig. Runway ${runwayAnzeige(m.runway)}.`
           : 'Ist-Zahlen noch nicht gepflegt (Controlling leer).',
       ].join('\n')
     : 'Noch keine Finanzdaten hinterlegt.';

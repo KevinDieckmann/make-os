@@ -17,7 +17,7 @@ import { WEG } from '@/lib/wege';
 import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
-import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Woche, nurBusiness } from '@/lib/make-one/liquiditaet';
+import { vorschau, monatlicheLast, type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Woche, nurBusiness, businessFirmen } from '@/lib/make-one/liquiditaet';
 import {
   DEFAULT_FINANCE, MONTHS_DE, computeMetrics, mitKasse, geschaeftsKasse, eur,
   type FinanceState,
@@ -28,6 +28,9 @@ import { abEroeffnung } from '@/lib/business/eroeffnung';
 import { firmenMitRegister, mitRegister } from '@/lib/finanzen/konten/register';
 import { useKontenKasse } from './konten/KontenKarte';
 import { usePrivatFinanzen } from './useInhaber';
+import { RUNWAY_ERKLAERUNG } from '@/lib/finanzen/runway';
+import type { RunwayDesIndex } from '@/lib/business/fuer-chef';
+import { anzahl } from '@/lib/text/zahlwort';
 
 /** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
 interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -41,6 +44,9 @@ const mikro: CSSProperties = { fontSize: TYP.mikro, fontWeight: 600, letterSpaci
 const eingabe: CSSProperties = { ...feld, width: 'auto' };
 const zahlFeld: CSSProperties = { ...eingabe, fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' };
 const option: CSSProperties = { background: C.flaeche };
+
+/** Farbe der Runway: rot unter der Kompass-Grenze, sonst ruhig („kein Verbrauch“ = gut). */
+const runwayFarbe = (r: RunwayDesIndex, rot: number) => (r.keinVerbrauch ? LEUCHT.gut : r.monate != null && r.monate < rot ? LEUCHT.kritisch : C.ink);
 
 /** Stand am Ende der Woche in Zustandsfarbe. */
 const standFarbe = (stand: number) => (stand < 0 ? LEUCHT.kritisch : stand < 2000 ? LEUCHT.achtung : LEUCHT.geld);
@@ -84,6 +90,8 @@ export function ControllingView() {
       .catch(() => {});
   }, []);
   const [a, setA] = useState<Analysis | null>(null);
+  // EINE Runway (17.10., Abnahme 3 · B1): die Zahl des Cockpits (Business-Index), vom Server mitgeliefert — nie eine zweite Rechnung hier.
+  const [runwayIst, setRunwayIst] = useState<RunwayDesIndex | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Konnte der Stand nicht geladen werden, wird NICHT gespeichert — sonst
@@ -125,7 +133,8 @@ export function ControllingView() {
   const finanzSpeichern = useSpeichern('/api/state/finance', { listen: { months: 'm' }, uebernehmen: st => setS(st as unknown as FinanceState) });
   const ladeFinanz = useCallback(() => fetch('/api/state/finance')
     .then(r => { if (!r.ok) throw new Error(`Status ${r.status}`); return r.json(); })
-    .then((d: { state: FinanceState | null }) => {
+    .then((d: { state: FinanceState | null; runwayIst?: RunwayDesIndex | null }) => {
+      setRunwayIst(d.runwayIst ?? null);
       if (finanzSpeichern.hatOffenes()) return;
       if (d.state && Array.isArray(d.state.months) && d.state.months.length === 12) { setS(d.state); finanzSpeichern.kenne(d.state); }
       setLoaded(true);
@@ -196,8 +205,10 @@ export function ControllingView() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginTop: 16 }}>
               <Zahl wert={m.aktiveMonate > 0 ? eur(m.istUmsatz) : undefined} label={`Umsatz · Ziel ${eur(s.zielUmsatz)}`} farbe={LEUCHT.gut} />
               <Zahl wert={eur(m.verbleibend)} label="fehlt noch" />
-              {m.runwayMonate != null && (
-                <Zahl wert={m.runwayMonate.toFixed(1).replace('.', ',')} label="Monate Runway" farbe={m.runwayMonate < runwayRot ? LEUCHT.kritisch : C.ink} />
+              {runwayIst?.gemessen && (
+                <Link href={WEG.business({ k: 'runway' })} title={RUNWAY_ERKLAERUNG} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <Zahl wert={runwayIst.anzeige} label="Runway ›" farbe={runwayFarbe(runwayIst, runwayRot)} />
+                </Link>
               )}
             </div>
           </div>
@@ -245,7 +256,8 @@ export function ControllingView() {
 
             {/* Kontostände werden an EINER Stelle gepflegt (Liquidität) — hier nur Anzeige + Weg dorthin (26.09.). */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-              {(firmen ?? fplan.firmen).map(f => (
+              {/* Nur die Business-Konten (17.10., Abnahme 3 · C3): die Selbstständigkeit gehört zu Privat (`businessFirmen` → `bereichVonFirma`). */}
+              {businessFirmen(firmen ?? fplan.firmen).map(f => (
                 <Feld key={f.id} label={<>{f.name}{f.stand ? ` · ${datum(f.stand)}` : ''}</>}>
                   <Link href={WEG.kontostaende()} style={{ ...zahlFeld, width: 140, display: 'inline-block', textDecoration: 'none', color: f.kontostand == null ? C.inkLeise : C.ink }}>{f.kontostand == null ? 'eintragen ›' : `${eur(f.kontostand)} ›`}</Link>
                 </Feld>
@@ -262,10 +274,12 @@ export function ControllingView() {
       <Karte i={2}>
         <Ueberschrift farbe={runRateColor}>Kennzahlen</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
-          <Zahl wert={eur(m.runRateNoetig)} label={`Run-Rate nötig · /Monat · ${m.restMonate} Monate übrig`} />
+          <Zahl wert={eur(m.runRateNoetig)} label={`Run-Rate nötig · /Monat · ${anzahl(m.restMonate, 'Monat', 'Monate')} übrig`} />
           <Zahl wert={m.aktiveMonate > 0 ? eur(m.runRateAktuell) : undefined} label={m.aktiveMonate > 0 ? `Run-Rate aktuell · Ø aus ${m.aktiveMonate} Monaten` : 'Run-Rate aktuell · keine Ist-Zahlen'} farbe={runRateColor} />
           <Zahl wert={m.aktiveMonate > 0 ? eur(m.istGewinn) : undefined} label={`Gewinn · Ziel ${eur(s.zielGewinn)}`} farbe={m.istGewinn >= 0 ? LEUCHT.gut : LEUCHT.kritisch} />
-          <Zahl wert={m.runwayMonate != null ? `${m.runwayMonate.toFixed(1).replace('.', ',')} Mon.` : undefined} label={m.runwayMonate != null ? `Runway · bei Ø Burn ${eur(m.avgBurn)}` : 'Runway · kein Burn/Cash'} farbe={m.runwayMonate != null && m.runwayMonate < runwayRot ? LEUCHT.kritisch : C.ink} />
+          <Link href={WEG.business({ k: 'runway' })} title={RUNWAY_ERKLAERUNG} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Zahl wert={runwayIst?.gemessen ? runwayIst.anzeige : undefined} label={runwayIst?.gemessen ? 'Runway · Kasse ÷ Ø Netto-Verbrauch ›' : 'Runway · Kontostand oder Ist-Monate fehlen ›'} farbe={runwayIst ? runwayFarbe(runwayIst, runwayRot) : C.ink} />
+          </Link>
         </div>
       </Karte>
 
@@ -348,7 +362,7 @@ export function ControllingView() {
                 <>
                   <b style={{ color: C.ink }}>{m.aktiveMonate} {m.aktiveMonate === 1 ? 'Monat' : 'Monate'} aktiv</b> seit {MONTHS_DE[startMonat]} ·
                   Schnitt <b style={{ color: C.ink }}>{eur(m.runRateAktuell)}/Monat</b> ·
-                  noch <b style={{ color: C.ink }}>{m.restMonate} Monate</b> im Jahr.
+                  noch <b style={{ color: C.ink }}>{anzahl(m.restMonate, 'Monat', 'Monate')}</b> im Jahr.
                   {m.restMonate > 0 && <> Für das Ziel bräuchtest du ab jetzt <b style={{ color: m.runRateNoetig > m.runRateAktuell * 5 ? LEUCHT.kritisch : LEUCHT.achtung }}>{eur(m.runRateNoetig)}/Monat</b> — {m.runRateNoetig > m.runRateAktuell * 5 ? 'das ist vom aktuellen Stand aus unrealistisch, das Ziel gehört angepasst.' : 'ambitioniert, aber im Bereich.'}</>}
                 </>
               ) : <>Noch keine Ist-Zahlen eingetragen — unten je Monat Umsatz und Kosten pflegen, dann rechnet alles live.</>}
@@ -360,10 +374,10 @@ export function ControllingView() {
       {/* Eingabe */}
       <Karte i={6}>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
-          Die Ist-Monate kommen aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss je Firma</Link> (Finanzen › Business) — eine Eingabe, eine Wahrheit (26.09.). Liegt für einen Monat noch kein Abschluss vor, gilt der hier gepflegte Wert.
+          Die Ist-Monate kommen aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss je Firma</Link> (Finanzen › Business). Liegt für einen Monat noch kein Abschluss vor, gilt der hier gepflegte Wert.
         </div>
         <details open={loaded && m.aktiveMonate === 0}>
-          <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase', listStyle: 'none', marginTop: 10 }}>Altbestand pflegen ▸</summary>
+          <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.inkLeise, letterSpacing: '.08em', textTransform: 'uppercase', listStyle: 'none', marginTop: 10 }}>Monate ohne Abschluss pflegen ▸</summary>
           <div style={{ ...mikro, margin: '12px 0 8px' }}>Ist je Monat — Umsatz / Kosten</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
             {s.months.map((r, i) => (

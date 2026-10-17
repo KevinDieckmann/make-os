@@ -96,13 +96,19 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
     if (!startModus) setModusTab(new Date().getHours() >= 15 ? 'abend' : 'morgen');
   }, [startModus]);
 
+  // Ein Konto „nur Business“ (17.10., Abnahme 3 · B9): nie Gesundheit oder Tagesform — keine Whoop-Werte, kein Journal, auch keine Anfrage danach.
+  const mitTagesform = nurBusiness === false;
   useEffect(() => {
+    if (!mitTagesform) return;
     fetch('/api/state/vitals').then(r => r.json()).then(d => setVitalsLog(d.log ?? {})).catch(() => {});
     fetch('/api/state/journal').then(r => r.json()).then(d => {
       const j = d.journal ?? {};
       setJournal(j);
       setAbendText(j[heute]?.text ?? '');
     }).catch(() => {});
+  }, [heute, mitTagesform]);
+
+  useEffect(() => {
     // Blöcke von heute und morgen (K5: Kalender-Termine der Art Fokus/Block + Archiv des alten Wochenplans).
     fetch(`/api/planung/bloecke?von=${heute}&bis=${tagPlusK(heute, 2)}`).then(r => r.json()).then(d => setBloecke(Array.isArray(d.bloecke) ? d.bloecke : [])).catch(() => {});
     Promise.all([
@@ -185,24 +191,26 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
   const ueberfaellig = tasksState.tasks.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < heute);
 
   // ── Selbst-abhakende Schritte ──
-  const mSchritte = {
+  // Business-Tagesstart (B9): ohne Whoop-Werte, Kurz-Journal, Tagesnote und Abend-Satz — die Schritte und ihre Zählung folgen.
+  const mSchritte: Record<string, boolean> = {
     an: !!arbeit?.an,
     lage: laufHeute > 0,
-    vitals: !!vitalsLog[heute],
-    journal: j.mood !== undefined,
+    ...(mitTagesform ? { vitals: !!vitalsLog[heute], journal: j.mood !== undefined } : {}),
     fokus: fokusTag.trim().length > 0,
     plan: heuteBloecke.length > 0,
   };
-  const aSchritte = {
+  const aSchritte: Record<string, boolean> = {
     routinen: routinen.gesamt > 0 && routinen.erledigt >= Math.ceil(routinen.gesamt / 2),
-    bewertung: j.tagesnote !== undefined,
-    journal: (j.text ?? '').trim().length > 0,
+    ...(mitTagesform ? { bewertung: j.tagesnote !== undefined, journal: (j.text ?? '').trim().length > 0 } : {}),
     morgen: morgenBloecke.length > 0,
     aus: !!arbeit && !arbeit.an && arbeit.aktivMin > 0,
   };
   const mDone = Object.values(mSchritte).filter(Boolean).length;
   const aDone = Object.values(aSchritte).filter(Boolean).length;
-  const alleFertig = modusTab === 'morgen' ? mDone === 6 : aDone === 5;
+  const mGesamt = Object.keys(mSchritte).length, aGesamt = Object.keys(aSchritte).length;
+  const alleFertig = modusTab === 'morgen' ? mDone === mGesamt : aDone === aGesamt;
+  // Schrittnummern folgen den sichtbaren Schritten.
+  const nr = (liste: Record<string, boolean>, id: string) => Object.keys(liste).indexOf(id) + 1;
 
   // Zonen-Reaktion direkt nach der Eingabe — das eine Urteil des Morgens.
   const recHeute = vitalsLog[heute]?.rec;
@@ -219,9 +227,9 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
   return (
     <Seite
       titel={modusTab === 'morgen' ? 'Tagesstart' : 'Tagesende'}
-      unter={<>{modusTab === 'morgen' ? 'Rein in den Tag' : 'Raus aus dem Tag'} · {datum} — 10–15 Minuten für dich.{gespeichert && <span style={{ color: LEUCHT.gut }}> {gespeichert}</span>}</>}
+      unter={<>{modusTab === 'morgen' ? 'Rein in den Tag' : 'Raus aus dem Tag'} · {datum} — {mitTagesform ? '10–15 Minuten für dich.' : 'der Business-Tag in wenigen Schritten.'}{gespeichert && <span style={{ color: LEUCHT.gut }}> {gespeichert}</span>}</>}
       rechts={<div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Chip farbe={alleFertig ? LEUCHT.gut : LEUCHT.achtung}>{modusTab === 'morgen' ? `${mDone}/6` : `${aDone}/5`}</Chip>
+        <Chip farbe={alleFertig ? LEUCHT.gut : LEUCHT.achtung}>{modusTab === 'morgen' ? `${mDone}/${mGesamt}` : `${aDone}/${aGesamt}`}</Chip>
         <Segmente liste={[{ id: 'morgen', label: 'Morgen' }, { id: 'abend', label: 'Abend' }]} aktiv={modusTab} onWahl={setModusTab} />
       </div>}
       breit={760}
@@ -235,13 +243,13 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
 
       {modusTab === 'morgen' ? (
         <>
-          <Schritt nr={1} titel="Anmelden — der Tag läuft" done={mSchritte.an}>
+          <Schritt nr={nr(mSchritte, 'an')} titel="Anmelden — der Tag läuft" done={mSchritte.an}>
             {arbeit?.an
               ? <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>AN seit {arbeit.seit} · bisher {stunden(arbeit.aktivMin)} aktiv.</span>
               : <Knopf onClick={() => arbeitToggle('an')} farbe={LEUCHT.gut}>● AN — Arbeitszeit läuft</Knopf>}
           </Schritt>
 
-          <Schritt nr={2} titel="Die Lage — ZOE zieht alle Daten zusammen" done={mSchritte.lage}>
+          <Schritt nr={nr(mSchritte, 'lage')} titel="Die Lage — ZOE zieht alle Daten zusammen" done={mSchritte.lage}>
             {lauf?.ausrichtung ? (
               <div style={hinweis}>
                 {lauf.ausrichtung.gruss && <div style={{ marginBottom: 4 }}>{lauf.ausrichtung.gruss} <span style={{ fontSize: TYP.mikro, color: C.inkLeise }}>Stand {lauf.gestartet.slice(11, 16)} Uhr</span></div>}
@@ -261,7 +269,8 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
             </div>
           </Schritt>
 
-          <Schritt nr={3} titel="Wie gepennt? (Whoop-Werte)" done={mSchritte.vitals}>
+          {mitTagesform && <>
+          <Schritt nr={nr(mSchritte, 'vitals')} titel="Wie gepennt? (Whoop-Werte)" done={mSchritte.vitals}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <input value={vEingabe.rec} onChange={e => setVEingabe({ ...vEingabe, rec: e.target.value })} placeholder="Recovery %" type="number" style={zahlenFeld} />
               <input value={vEingabe.sleep} onChange={e => setVEingabe({ ...vEingabe, sleep: e.target.value })} placeholder="Schlaf h" style={zahlenFeld} />
@@ -279,7 +288,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
             {mSchritte.vitals && !zoneR && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>Heute schon da — neue Eingabe überschreibt nur die ausgefüllten Felder.</div>}
           </Schritt>
 
-          <Schritt nr={4} titel="Kurz-Journal — wie geht's rein?" done={mSchritte.journal}>
+          <Schritt nr={nr(mSchritte, 'journal')} titel="Kurz-Journal — wie geht's rein?" done={mSchritte.journal}>
             <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'inline-flex', gap: 8, alignItems: 'center' }}>Stimmung <Skala wert={j.mood} setzen={n => journalSetzen({ mood: n })} farbe={LEUCHT.gut} /></span>
               <span style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'inline-flex', gap: 8, alignItems: 'center' }}>Energie <Skala wert={j.energy} setzen={n => journalSetzen({ energy: n })} farbe={LEUCHT.achtung} /></span>
@@ -287,13 +296,14 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
             </div>
             <Link href="/os/journal" style={link}>Mehr im Journal ›</Link>
           </Schritt>
+          </>}
 
-          <Schritt nr={5} titel="Fokus des Tages" done={mSchritte.fokus}>
+          <Schritt nr={nr(mSchritte, 'fokus')} titel="Fokus des Tages" done={mSchritte.fokus}>
             <FokusFeld wert={fokusTag} label="Mein Fokus heute" platzhalter="Der eine Satz: worauf liegt heute der Fokus?" gross aus={!fokusRitual.sicht}
               onSpeichern={text => fokusRitual.schreiben('mein', 'tag', { text })} />
           </Schritt>
 
-          <Schritt nr={6} titel="Tag bauen — Blöcke, Kollisionen, Delegation" done={mSchritte.plan}>
+          <Schritt nr={nr(mSchritte, 'plan')} titel="Tag bauen — Blöcke, Kollisionen, Delegation" done={mSchritte.plan}>
             <div style={hinweis}>
               {heuteBloecke.length
                 ? `${heuteBloecke.length} Block${heuteBloecke.length > 1 ? ' e' : ''} für heute geplant.`
@@ -313,12 +323,13 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
         </>
       ) : (
         <>
-          <Schritt nr={1} titel="Routinen abschließen" done={aSchritte.routinen}>
+          <Schritt nr={nr(aSchritte, 'routinen')} titel="Routinen abschließen" done={aSchritte.routinen}>
             <div style={hinweis}>{routinen.erledigt}/{routinen.gesamt} heute abgehakt.</div>
             <Link href="/os/planung" style={link}>Abhaken in der Tagesplanung ›</Link>
           </Schritt>
 
-          <Schritt nr={2} titel="Tag bewerten — der Tag in Zahlen" done={aSchritte.bewertung}>
+          {mitTagesform && <>
+          <Schritt nr={nr(aSchritte, 'bewertung')} titel="Tag bewerten — der Tag in Zahlen" done={aSchritte.bewertung}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
               <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Wie war der Tag?</span>
               <Skala wert={j.tagesnote} setzen={n => journalSetzen({ tagesnote: n })} farbe={LEUCHT.gut} />
@@ -328,13 +339,14 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
             </div>
           </Schritt>
 
-          <Schritt nr={3} titel="Ein Satz zum Tag" done={aSchritte.journal}>
+          <Schritt nr={nr(aSchritte, 'journal')} titel="Ein Satz zum Tag" done={aSchritte.journal}>
             <textarea value={abendText} onChange={e => { setAbendText(e.target.value); journalSetzen({ text: e.target.value }); }}
               placeholder="»Hat alles super geklappt, geile Gespräche« zählt auch — was war gut, was nehme ich mit?"
               rows={3} style={{ ...feld, resize: 'vertical', lineHeight: 1.5 }} />
           </Schritt>
+          </>}
 
-          <Schritt nr={4} titel="Blick auf morgen" done={aSchritte.morgen}>
+          <Schritt nr={nr(aSchritte, 'morgen')} titel="Blick auf morgen" done={aSchritte.morgen}>
             <div style={hinweis}>
               {morgenBloecke.length
                 ? `${morgenBloecke.length} Block${morgenBloecke.length > 1 ? ' e' : ''} für morgen geplant — der Tag ist vorbereitet.`
@@ -343,7 +355,7 @@ export function RitualView({ startModus }: { startModus?: 'morgen' | 'abend' }) 
             <Link href="/os/kalender?modus=planen" style={link}>Wochenplaner öffnen ›</Link>
           </Schritt>
 
-          <Schritt nr={5} titel="Ausloggen — Feierabend ist Feierabend" done={aSchritte.aus}>
+          <Schritt nr={nr(aSchritte, 'aus')} titel="Ausloggen — Feierabend ist Feierabend" done={aSchritte.aus}>
             {arbeit?.an
               ? <Knopf onClick={() => arbeitToggle('aus')} farbe={LEUCHT.kritisch}>○ AUS — Session beenden</Knopf>
               : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{arbeit && arbeit.aktivMin > 0 ? `Ausgeloggt · heute ${stunden(arbeit.aktivMin)} aktiv gearbeitet.` : 'Heute keine Arbeits-Session erfasst.'}</span>}

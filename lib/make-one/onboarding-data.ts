@@ -426,7 +426,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
       'Den QR-Code mit einer Authenticator-App scannen (z. B. die Passwörter-App des iPhones) und den 6-stelligen Code bestätigen.',
       'Die Wiederherstellungs-Codes in den Passwort-Manager — sie sind der Weg zurück, wenn das Handy weg ist.',
     ],
-    danach: 'Beim Anmelden fragt MAKE OS zusätzlich den Code.',
+    danach: 'Beim Anmelden fragt MAKE OS zusätzlich den Code — mit „Dieses Gerät 90 Tage merken“ nur einmal je Gerät (gemerkte Geräte stehen unter Konto).',
     wo: KONTO,
   },
   {
@@ -1011,7 +1011,9 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     id: 'steuerprofil', spaeter: true, etappe: 5, nr: '5.4b', ebene: 'gemeinsam', nurInhaber: true, minuten: 25,
     modul: 'finanzen', nach: ['finanzplan', 'steckbrief'], datenOrt: ['steuerparameter'],
     titel: 'Steuerprofil',
-    warum: `Fristen und Schätzungen rechnen mit Rechtsform, Hebesatz und Vorauszahlungen. Für die ${UG_NAME} rechnet das Steuer-Modul noch keine Fristen und keine Schätzung (es zeigt „nicht hinterlegt“). Hinweis, keine Steuerberatung.`,
+    // Seit 15.10. rechnet das Steuer-Modul auch für die Hauptgesellschaft Fristen und eine Schätzung (17.10., Abnahme 3 · B11 — der frühere Satz
+    // „rechnet noch keine Fristen“ stimmte nicht mehr; Wächter tests/abnahme3-rest.test.ts).
+    warum: `Fristen und Schätzungen rechnen mit Rechtsform, Hebesatz und Vorauszahlungen — für jede Gesellschaft ab ihrer Gründung, auch für die ${UG_NAME}. Stimmt das Profil, stimmen Termine und Rücklage. Hinweis, keine Steuerberatung.`,
     wie: [
       'Steuer-Modul: das Profil der Gesellschaften, für die es rechnet, setzen.',
       'Die Steuerparameter der Selbstständigkeit NUR in der Finanzplanung › Zahnrad (führend, siehe Datenkarte) — das Steuer-Modul liest sie dann von dort. Das geht erst, wenn der Finanzplan aus 5.4 steht.',
@@ -1021,7 +1023,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: { href: WEG.steuern(), label: 'Finanzen › Steuern' },
   },
   {
-    id: 'selbststaendigkeit', spaeter: true, etappe: 5, nr: '5.5', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
+    // Privat-Finanzen (17.10., Abnahme 3 · B9): die Selbstständigkeit gehört zu Privat — ein Konto „nur Business“ sieht den Schritt nicht.
+    id: 'selbststaendigkeit', privatFinanzen: true, spaeter: true, etappe: 5, nr: '5.5', ebene: 'gemeinsam', nurInhaber: true, minuten: 30,
     modul: 'finanzen', nach: ['finanzplan'], datenOrt: ['selbst-jan-sep', 'est-voraus'],
     titel: 'Selbstständigkeit: Januar bis September',
     warum: 'Die Einkommensteuer rechnet über das ganze Jahr. Die Monate vor dem Planbeginn (01.10.) gehören deshalb in die Finanzplanung — als Summen, nicht als Monatsabschlüsse.',

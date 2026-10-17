@@ -40,6 +40,7 @@ import { beanGruppe, BEAN_LABEL } from '@/lib/crm/bean';
 import { AufgabenAkte } from '../aufgaben/AufgabenAkte';
 import { ZoeVorschlaege, ZoeFragenKnopf, zoeFragen } from './ZoeFragen';
 import { NeuePersonKurz } from './PersonAnlegen';
+import { anzahl } from '@/lib/text/zahlwort';
 
 export const ROLLEN: { id: FirmaRolle; label: string; farbe: string }[] = [
   { id: 'kunde', label: 'Kunde', farbe: LEUCHT.gut }, { id: 'zielkunde', label: 'Zielkunde', farbe: LEUCHT.business }, { id: 'partner', label: 'Partner', farbe: LEUCHT.agenten },
@@ -126,7 +127,7 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
         titel={<>{x.name}{x.domain && <span style={{ color: C.inkLeise }}> · {x.domain}</span>}</>}
         unter={[x.branche, x.stadt, x.mitarbeiter ? `${x.mitarbeiter} MA` : ''].filter(Boolean).join(' · ') || 'keine Details'}
         rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{personenJe.get(x.id) ?? 0} P.</span><Chip farbe={rolle(x.rolle).farbe}>{rolle(x.rolle).label}</Chip></span>} />)}
-      {auswahl === x.id && <div style={{ padding: '8px 0 18px' }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} onLoeschen={() => loeschen(x)} /></div>}
+      {auswahl === x.id && <div style={{ padding: '8px 0 18px', minWidth: 0 }}><FirmenKarte f={x} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} onLoeschen={() => loeschen(x)} /></div>}
     </div>
   );
 
@@ -221,7 +222,9 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma, onLoeschen }: { f: Firm
   const F: [keyof Firma, string, string?][] = [['domain', 'Domain'], ['webseite', 'Webseite'], ['branche', 'Branche'], ['mitarbeiter', 'Mitarbeitende'], ['umsatz', 'Umsatz'], ['stadt', 'Ort'], ['gegruendet', 'Gegründet'], ['telefon', 'Telefon'], ['email', 'E-Mail'], ['linkedin', 'LinkedIn']];
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    // Am Handy (17.10., Abnahme 3 · B8): EINE Spalte so breit wie der Platz (minmax(0, 1fr)), lange Wörter/Adressen brechen um — vorher wuchs die
+    // implizite Spalte auf ~600 px und die Seite scrollte quer.
+    <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0, overflowWrap: 'anywhere' }}>
       <div>
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 21, fontWeight: 700, letterSpacing: '-.015em' }}>{f.name}</div>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{[f.branche, f.stadt, f.webseite ?? f.domain].filter(Boolean).join(' · ') || '—'}</div>
@@ -286,7 +289,7 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma, onLoeschen }: { f: Firm
         <div>
           <Ueberschrift rechts={`${eventsFuerKunde(crm.stand.events, f.id).length}`}>Events für diesen Kunden</Ueberschrift>
           {eventsFuerKunde(crm.stand.events, f.id).map(e => (
-            <Link key={e.id} href={WEG.besuch(e.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{e.titel} <span style={{ color: C.inkLeise }}>· {datum(e.datum, crm.heute)} · {erfassteTeilnahmen(e.id, crm.stand.teilnahmen).length} Kontakte</span></Link>
+            <Link key={e.id} href={WEG.besuch(e.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{e.titel} <span style={{ color: C.inkLeise }}>· {datum(e.datum, crm.heute)} · {anzahl(erfassteTeilnahmen(e.id, crm.stand.teilnahmen).length, 'Kontakt', 'Kontakte')}</span></Link>
           ))}
         </div>
       )}

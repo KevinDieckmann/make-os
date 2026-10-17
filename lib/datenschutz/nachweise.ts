@@ -48,9 +48,17 @@ export function v2Bereitschaft(e: V2Eingabe): V2Bereitschaft {
  * Die Liste für diese Instanz (15.10., Abnahme 2 A2): außerhalb der Betreiber-Instanz ohne Umgebungswerte, Skripte und Repo — was am Server
  * zu tun ist, sagt der neutrale Satz. Stand und Bereitschaft bleiben gleich. Rein.
  */
+/** Klartext für Kunden-Instanzen (17.10., Abnahme 3 · C4): ohne „Kompatibilitätsmodus — Rückweg …“, „HMAC“, Dateipfade oder Repos. */
+const KLARTEXT_KUNDE: Record<string, (x: V2Punkt) => string> = {
+  modus: x => (x.stand === 'ok' ? 'v2 aktiv — jede Datei trägt Schlüssel-Kennung und Namen; betreut vom Betreiber eurer Instanz'
+    : 'kompatibles Format — die Umstellung auf v2 übernimmt der Betreiber eurer Instanz'),
+  aussen: () => 'Die Notizen des Brain liegen in eigener, gesicherter Ablage; Lösch-Nachweise nur als Fingerabdruck, der Lagebericht nur als Zahlen — beschrieben in den technischen und organisatorischen Maßnahmen (TOM).',
+};
+
 export function v2FuerInstanz(b: V2Bereitschaft, betreiber: boolean): V2Bereitschaft {
   if (betreiber) return b;
   return { ...b, punkte: b.punkte.map(x => {
+    if (KLARTEXT_KUNDE[x.id]) return { ...x, text: KLARTEXT_KUNDE[x.id](x) };
     if (!BETREIBER_WISSEN.test(x.text)) return x;
     const rest = ohneBetreiberTeile(x.text);
     return { ...x, text: rest ? `${rest} — ${x.stand === 'ok' ? 'betreut vom Betreiber eurer Instanz' : 'das übernimmt der Betreiber eurer Instanz'}` : BETREIBER_AM_SERVER };

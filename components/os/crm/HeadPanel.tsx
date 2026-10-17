@@ -22,6 +22,7 @@ import { datum } from './daten';
 import { Person } from './team';
 import { nameVon } from '@/lib/crm/team';
 import { BeispielMarke } from '../BeispielMarke';
+import { anzahl } from '@/lib/text/zahlwort';
 
 interface Qualitaet { laeufe: number; mitKi: number; regelwerk: number; annahmequote: number | null; entschieden: number; wirkung: string | null; gestrichen: number; korrigiert: number; aenderungsgrad: number | null; cent: number; cacheQuote: number | null }
 interface Stand {
@@ -140,7 +141,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
               {v.kampagne && (
                 <div style={{ borderLeft: `2px solid ${LEUCHT.business}55`, paddingLeft: 10, fontSize: TYP.bedien, color: C.inkDim }}>
                   <div style={{ fontSize: 11, color: C.inkLeise, textTransform: 'uppercase', letterSpacing: '.06em' }}>Kampagne · {v.kampagne.playbook}</div>
-                  <b style={{ color: C.ink }}>{v.kampagne.name}</b> — {v.kampagne.ziel} · {v.kampagne.kontakt_ids.length} Personen
+                  <b style={{ color: C.ink }}>{v.kampagne.name}</b> — {v.kampagne.ziel} · {anzahl(v.kampagne.kontakt_ids.length, 'Person', 'Personen')}
                 </div>
               )}
               {v.entwurf && (

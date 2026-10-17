@@ -28,6 +28,7 @@ import { WEG } from '@/lib/wege';
 import type { DealRolle } from '@/lib/crm/typen';
 import { angebotLink } from '@/lib/crm/adresse';
 import { angeboteZu, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
+import { anzahl } from '@/lib/text/zahlwort';
 
 const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } as const;
 /** Rollen am Deal — „Bremst“ steht im Menü, wird aber nie vorgeschlagen (lib/crm/vorschlaege.ts). */
@@ -108,7 +109,7 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{c.wert.betrag ? euro(gesamtwert(c)) : '—'}</div>
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{c.wert.betrag ? `${euro(c.wert.betrag)} ${c.wert.basis === 'monat' ? 'je Monat' : c.wert.basis === 'jahr' ? 'je Jahr' : 'einmalig'}${c.wert.laufzeitMonate ? ` · ${c.wert.laufzeitMonate} Monate` : ''}` : 'ohne Wert'}</div>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{c.wert.betrag ? `${euro(c.wert.betrag)} ${c.wert.basis === 'monat' ? 'je Monat' : c.wert.basis === 'jahr' ? 'je Jahr' : 'einmalig'}${c.wert.laufzeitMonate ? ` · ${anzahl(c.wert.laufzeitMonate, 'Monat', 'Monate')}` : ''}` : 'ohne Wert'}</div>
             {/* Angebots-Tool (28.09.): vorbelegt mit Deal, Firma und erster Person. */}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 8 }}>
               {angeboteZu(crm.stand.angebote, { dealId: c.id }).slice(0, 3).map(x => (
@@ -200,7 +201,7 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
                   <span style={{ fontVariantNumeric: 'tabular-nums', color: v.tage > 30 && !v.bis ? LEUCHT.kritisch : C.inkDim }}>{v.tage} T</span>
                 </div>
               ))}
-              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>angelegt {datum(c.angelegt)} · {verlauf.reduce((a, v) => a + v.tage, 0)} Tage gesamt</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>angelegt {datum(c.angelegt)} · {anzahl(verlauf.reduce((a, v) => a + v.tage, 0), 'Tag', 'Tage')} gesamt</div>
             </div>
           </Karte>
         </div>
