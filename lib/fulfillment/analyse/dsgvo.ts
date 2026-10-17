@@ -91,3 +91,14 @@ export const art14FaelligAm = (erfasstAm: string): string => einMonatNach(erfass
 
 /** Löschtag des Personenteils: Mandatsende + Frist (Tage); ohne Mandatsende null (läuft noch). */
 export const loeschAmFuer = (mandatsEnde: string | null, tage: number): string | null => (mandatsEnde ? tagPlus(mandatsEnde.slice(0, 10), tage) : null);
+
+/**
+ * Art. 18 (18.10., Gesamtprüfung L3 B6): eine Karte, deren verknüpfter Kontakt eingeschränkt ist, geht nie an ein Modell (ZOE `fulfillment_lage`,
+ * Agenten-Werkzeug `dossier_teile`) — sie fällt heraus, nur ihre Zahl bleibt („n Karten ausgeblendet (Art. 18)“). `gesperrt` = Kennungen der
+ * eingeschränkten Kontakte (lib/crm/verarbeitung.ts `eingeschraenkteKennungen`). Rein.
+ */
+export function kartenOhneEingeschraenkte<K extends Pick<PersonenKarte, 'kontaktId'>>(karten: readonly K[], gesperrt: ReadonlySet<string>): { karten: K[]; ausgeblendet: number } {
+  const frei = karten.filter(k => !k.kontaktId || !gesperrt.has(k.kontaktId));
+  return { karten: frei, ausgeblendet: karten.length - frei.length };
+}
+export const ausgeblendetText = (n: number): string => `${n} ${n === 1 ? 'Karte' : 'Karten'} ausgeblendet (Art. 18 — Einschränkung der Verarbeitung)`;
