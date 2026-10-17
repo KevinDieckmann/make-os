@@ -11,6 +11,9 @@ import { marketingTrichter } from '../lib/crm/marketing';
 import { marketingHerkunft } from '../lib/crm/scoring';
 import { schritteFuer, einrichtungStand, fortschrittVon, gruppeVon, istFertig } from '../lib/make-one/onboarding-data';
 import { readFileSync } from 'node:fs';
+import { prognose, jahresgewinn, STANDARD_STEUERN } from '../lib/steuern/rechnen';
+import { ersterOffener } from '../lib/planung/kette-bild';
+import { fuerDich } from '../lib/crm/team';
 import path from 'node:path';
 import { kennzahlen } from '../lib/crm/kennzahlen';
 import { wochenScoreboard } from '../lib/crm/scoreboard';
@@ -190,5 +193,28 @@ describe('B8 · Einrichtung: Gruppen und Etappen zählen wie die Gesamtzahl', ()
   it('die Einrichtungsseite zählt nur noch über fortschrittVon', () => {
     const quelle = readFileSync(path.resolve(__dirname, '..', 'components/os/OnboardingView.tsx'), 'utf8');
     expect(quelle).not.toMatch(/\$\{fertig\} von \$\{liste\.length\}/);
+  });
+});
+
+describe('C · kleine Funde', () => {
+  it('Gewerbesteuer-Vorauszahlung zählt erst ab dem 15. als bezahlt (vorher ab dem 10.)', () => {
+    const ist = Array.from({ length: 9 }, (_, i) => ({ monat: `2026-0${i + 1}`, umsatz: 5000, kosten: 4000, quelle: 'Monatsabschluss' }));
+    const g = { kdc: null, kdv: jahresgewinn(ist, 2026), ug: null };
+    const e = { ...STANDARD_STEUERN, vorauszahlung: { kst: 100, gewstKdv: 1000 } };
+    const am = (tag: string) => prognose(e, tag, g, {}, null).zeilen.find(x => x.id === 'kst')!.betrag!;
+    // 12. August: KSt März + Juni (2 × 100), GewSt Feb. + Mai (2 × 1.000) — die August-Rate (15.) noch nicht.
+    expect(am('2026-08-12') - am('2026-08-15')).toBeCloseTo(1000, 6);
+  });
+  it('„Hier“ in der Meilenstein-Kette ist der erste offene, der auf nichts Offenes wartet', () => {
+    const reihe = [{ id: 'b', erledigt: false, wartetAuf: ['a'] }, { id: 'a', erledigt: false }];
+    expect(ersterOffener(reihe)).toBe('a');
+    expect(ersterOffener([{ id: 'x', erledigt: true }, { id: 'y', erledigt: false }])).toBe('y');
+    expect(ersterOffener([{ id: 'x', erledigt: false, wartetAuf: ['y'] }, { id: 'y', erledigt: false, wartetAuf: ['x'] }])).toBe('x');
+  });
+  it('„Für dich: SQL-bereit“ zählt dieselben Leads wie die Runde oben („SQL bereit — Entscheidung offen“)', () => {
+    const l = fuerDich(A, [], crmMit({}), HEUTE);
+    expect(l.find(x => x.id === 'sql_bereit')).toBeUndefined();
+    const quelle = readFileSync(path.resolve(__dirname, '..', 'lib/crm/team.ts'), 'utf8');
+    expect(quelle).toContain('meineLeads.filter(sqlEntscheidungOffen).length');
   });
 });
