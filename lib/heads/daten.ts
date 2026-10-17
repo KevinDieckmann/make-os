@@ -14,7 +14,8 @@ import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from '@/lib/crm/eventplanung';
 import type { HeadId } from './prompt';
 import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
-import { leads as leadZeilen, fehltBisSqlZeile, salesBereit, mqlErreicht, geklaert } from '@/lib/crm/leads';
+import { leads as leadZeilen, fehltBisSqlZeile, salesBereit, mqlErreicht, geklaert, inArbeit, sqlEntscheidungOffen } from '@/lib/crm/leads';
+import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { kanalLeistung } from '@/lib/crm/score';
 import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote, marketingTrichter } from '@/lib/crm/marketing';
 import { anfragenListe } from '@/lib/crm/anfragen';
@@ -139,11 +140,13 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       bean_verteilung: bean(),
       verlustgruende: Object.entries(verloren.reduce((x, c) => ({ ...x, [c.grund!]: (x[c.grund!] ?? 0) + 1 }), {} as Record<string, number>)),
       // Ebene 1: Leads in Arbeit mit ihren Kernfragen — die Personen für Vorschläge stehen unter „hauptkontakt“.
-      leads_in_arbeit: leadZeilen(aktiv, crm, heute).filter(z => ['kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status) || (salesBereit(z) && !z.deal?.offen && z.status !== 'kunde')).slice(0, 25).map(z => {
+      // EINE Regel (17.10., L2 B5): „In Arbeit“ wie Leads-Liste, Trichter und Planung (`inArbeit`: ohne kalte, ohne Leads mit offenem Deal)
+      // plus „SQL bereit — Entscheidung offen“ wie die Qualifizierungsrunde (`sqlEntscheidungOffen`) — vorher eine eigene Statusliste.
+      leads_in_arbeit: leadZeilen(aktiv, crm, heute).filter(z => inArbeit(z) || sqlEntscheidungOffen(z)).slice(0, 25).map(z => {
         const haupt = z.personen.map(x => nachId.get(x.id)).filter((k): k is Kontakt => !!k).sort((a, b) => (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? ''))[0];
-        return { lead_id: z.id, name: z.name, status: z.status, bean: beanLead(z.id), lifecycle: haupt ? lifecycleJe.get(haupt.id) ?? null : null, score: z.score.punkte, temperatur: z.score.temperatur, kanal: z.kanal, antworten: z.antworten ?? null, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: salesBereit(z), marketing_lead: z.score.scoring?.marketingLead ?? false, mql: mqlErreicht(z), sales_punkte: z.score.scoring ? `${z.score.scoring.sales.punkte} von mindestens ${z.score.scoring.sales.schwelle}` : null, fehlt: fehltBisSqlZeile(z), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
+        return { lead_id: z.id, name: z.name, status: z.status, bean: beanLead(z.id), lifecycle: haupt ? lifecycleJe.get(haupt.id) ?? null : null, score: z.score.punkte, temperatur: z.score.temperatur, kanal: z.kanal, antworten: z.antworten ?? null, kriterien: z.kriterien, geklaert: geklaert(z.kriterien), sql_bereit: salesBereit(z), sql_entscheidung_offen: sqlEntscheidungOffen(z), marketing_lead: z.score.scoring?.marketingLead ?? false, mql: mqlErreicht(z), sales_punkte: z.score.scoring ? `${z.score.scoring.sales.punkte} von mindestens ${z.score.scoring.sales.schwelle}` : null, fehlt: fehltBisSqlZeile(z), deal: z.deal ?? null, letzter_kontakt: z.letzterKontakt ?? null, hauptkontakt: haupt ? p(haupt) : null };
       }),
-      power_hours_4_wochen: crm.sitzungen.filter(s => s.datum >= new Date(Date.parse(heute) - 28 * 864e5).toISOString().slice(0, 10)).map(s => ({ datum: s.datum, person: s.person, versuche: s.karten.filter(k => k.ergebnis).length, gespraeche: s.karten.filter(k => k.ergebnis === 'gespraech' || k.ergebnis === 'termin').length, termine: s.karten.filter(k => k.ergebnis === 'termin').length })),
+      power_hours_4_wochen: crm.sitzungen.filter(s => s.datum >= tagPlus(heute, -28)).map(s => ({ datum: s.datum, person: s.person, versuche: s.karten.filter(k => k.ergebnis).length, gespraeche: s.karten.filter(k => k.ergebnis === 'gespraech' || k.ergebnis === 'termin').length, termine: s.karten.filter(k => k.ergebnis === 'termin').length })),
     };
   }
 
@@ -152,7 +155,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
     const quellen: Record<string, number> = {};
     for (const c of crm.chancen) quellen[c.quelle ?? 'nicht erfasst'] = (quellen[c.quelle ?? 'nicht erfasst'] ?? 0) + 1;
     const kanalLeistungMarketing = kanalLeistung(leadZeilen(aktiv, crm, heute));
-    const vor60 = new Date(Date.parse(heute) - 60 * 864e5).toISOString().slice(0, 10);
+    const vor60 = tagPlus(heute, -60);
     const einst = einstellungAus(crm);
     const saeule = (id?: string) => einst.saeulen.find(x => x.id === id)?.name ?? id;
     const ctx = kontextAus(crm, heute);

@@ -5,7 +5,8 @@ import { describe, it, expect } from 'vitest';
 import type { Kontakt } from '../lib/make-one/crm';
 import type { Chance, Mandat, CrmBestand } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
-import { leads, trichter, type LeadZeile } from '../lib/crm/leads';
+import { leads, trichter, inArbeit, sqlEntscheidungOffen, passtLeadFilter, type LeadZeile } from '../lib/crm/leads';
+import { datenpaket } from '../lib/heads/daten';
 import { kennzahlen } from '../lib/crm/kennzahlen';
 import { wochenScoreboard } from '../lib/crm/scoreboard';
 import { traktionsIndex } from '../lib/crm/traktion-index';
@@ -124,5 +125,24 @@ describe('B4 · „Neue Leads“ je Lead-Zeile, ohne Art.-18-Personen — Scoreb
     expect(sb.zeilen.find(z => z.id === 'neue_leads')!.werte.at(-1)).toBe(1);
     expect(wochenIst(kontakte, crm, HEUTE, HEUTE, zeilen).team.leads).toBe(1);
     expect(wochenIst(kontakte, crm, HEUTE, HEUTE, zeilen).je[A]?.leads).toBe(1);
+  });
+});
+
+describe('B5 · Head of Sales: „Leads in Arbeit“ wie Liste und Runde', () => {
+  const vermerk = (tag: string) => ({ am: `${tag}T09:00:00.000Z`, art: 'system' as const, text: 'Von Hand angelegt', von: A });
+  // kalt: aus der Liste importiert, nie angesprochen, Status aus der Stufe „kontaktiert“; warm: frisch angelegt; deal: mit offenem Deal.
+  const kontakte = [
+    k('kalt', { stufe: 'angesprochen', importiertAm: '2026-01-01' }),
+    k('warm', { stufe: 'angesprochen', importiertAm: HEUTE, aktivitaeten: [vermerk(HEUTE)] }),
+    k('deal', { stufe: 'gespraech', importiertAm: HEUTE, aktivitaeten: [vermerk(HEUTE)] }),
+  ];
+  const crm = crmMit({ chancen: [ch({ id: 'ch-d', kontaktIds: ['c-deal'], stufe: 'bedarf' })] });
+  it('vorher zählte der Head kalte Leads und Leads mit offenem Deal mit — jetzt dieselbe Menge wie „In Arbeit“ + „SQL-Entscheidung offen“', () => {
+    const zeilen = leads(kontakte, crm, HEUTE);
+    const daten = datenpaket('sales', 'lead_review', kontakte, crm, HEUTE, null, []) as { leads_in_arbeit: { lead_id: string }[] };
+    const erwartet = zeilen.filter(z => inArbeit(z) || sqlEntscheidungOffen(z)).map(z => z.id);
+    expect(daten.leads_in_arbeit.map(l => l.lead_id)).toEqual(erwartet);
+    expect(erwartet).toEqual(zeilen.filter(z => passtLeadFilter(z, 'aktiv') || sqlEntscheidungOffen(z)).map(z => z.id));
+    expect(erwartet).toEqual(['c-warm']);
   });
 });
