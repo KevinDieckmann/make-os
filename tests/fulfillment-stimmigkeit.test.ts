@@ -42,6 +42,7 @@ import { SAMMEL_SCHRITT } from '@/lib/fulfillment/prozesse/phasen';
 import type { CockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
 import type { KundenSicht } from '@/lib/fulfillment/kunde/sicht';
 import type { Fall, FallKurz, Freigabepunkt, ProzessVorlage } from '@/lib/fulfillment/typen';
+import { EDITOR_BEISPIEL_TITEL } from '@/lib/demo/fulfillment-editor';
 
 type H = (r: Request) => Promise<Response>;
 const lese = async (pfad: string, suche = '') => {
@@ -187,8 +188,10 @@ describe('Stimmigkeit der Demo-Fälle', () => {
     expect(nr).toEqual(Array.from({ length: nr.length }, (_, i) => i + 1));
     expect(JSON.stringify(fallReise(fall, freigaben, HEUTE).phasen.map(p => p.titel))).not.toMatch(/\(nur /);
     const pakete = uebersicht!.prozesse.filter(p => p.art === 'paket').map(p => p.titel).sort();
-    // 15.10. (Abnahme B4): das Paket heißt, was es liefert — der Kunde sieht nur, was zu seinem Auftrag passt.
-    expect(pakete).toEqual(['Cockpit-Einführung', 'Vertriebsaufbau']);
+    // 15.10. (Abnahme B4): das Paket heißt, was es liefert — der Kunde sieht nur, was zu seinem Auftrag passt. 17.10.: dazu der Beispiel-Ablauf für den
+    // Editor (eigene Paket-Vorlage ohne Produkt und ohne Fall — lib/demo/fulfillment-editor.ts).
+    expect(pakete.filter(t => t !== EDITOR_BEISPIEL_TITEL)).toEqual(['Cockpit-Einführung', 'Vertriebsaufbau']);
+    expect(pakete.filter(t => t === EDITOR_BEISPIEL_TITEL)).toHaveLength(1);
     expect(JSON.stringify(sichten['m-demo-nordwerk'])).not.toContain('Strategie-Begleitung');
   });
 });

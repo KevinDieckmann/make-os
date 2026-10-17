@@ -108,13 +108,15 @@ describe('Indizes: Gemessenes zuerst, Messlücken eingeklappt (components/os/ken
 });
 
 describe('Markttraktion › Planung: jede Zahl trägt ihr Wort, ein Filter statt dreier Pillenreihen', () => {
-  it('Kreislauf: Wort je Stufe, Plan und Ist als zwei Kacheln, Ring und Stufe nebeneinander', async () => {
+  it('Kreislauf: Wort je Stufe, Plan und Ist als zwei Kacheln, die Reise darüber (17.10. statt des Rings)', async () => {
     const { KREISLAUF_EINHEIT } = await import('@/components/os/crm/planung/Kreislauf');
     for (const id of ['kanaele', 'leads', 'deals', 'followup', 'fulfillment', 'nachher', 'wiederkauf'] as const) expect(KREISLAUF_EINHEIT[id], id).toBeTruthy();
     const q = lies('components/os/crm/planung/Kreislauf.tsx');
     expect(q).toContain("<PlanIst titel={s.annahme ? 'Plan (Annahme)' : 'Plan'}>");
     expect(q).toContain('<PlanIst titel="Ist">');
-    expect(q).toContain("minmax(min(100%, 440px), 1fr)");
+    // 17.10. (Reise überall): statt Ring + Stufe nebeneinander die Reise als Zeile (derselbe Baustein wie im Fulfillment), die Stufe darunter.
+    expect(q).toContain("import { ReiseBild } from '../../ui/reise/ReiseBild'");
+    expect(q).not.toContain('function Ring(');
   });
   it('der Kanal-Filter ist ein Auswahl-Chip im Kopf des Kreislaufs', () => {
     const p = lies('components/os/crm/planung/Planung.tsx');

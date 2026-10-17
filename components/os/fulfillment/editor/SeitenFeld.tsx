@@ -15,7 +15,7 @@ import { KNOTEN_FORMEN } from '@/lib/fulfillment/lesen';
 import { FORM_TITEL, FRIST_MAX, type EditorKnoten, type EditorModell, type EditorOp, type EditorPhase } from '@/lib/fulfillment/prozesse/editor';
 import { flussFormVon } from '@/lib/fulfillment/prozesse/reise-bild';
 import type { KnotenForm, Zustaendig } from '@/lib/fulfillment/typen';
-import { FormZeichen } from '../reise/ReiseBild';
+import { FormZeichen } from '../../ui/reise/ReiseBild';
 import { TextFeld, klein } from '../prozesse/teile';
 import { flacheSchritte } from './bild';
 

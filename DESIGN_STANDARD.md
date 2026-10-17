@@ -458,12 +458,26 @@ unübersichtlich.“ Fünf Grundsätze für jede Ansicht (Wächter `tests/design
 
 ## Prozess-Visualisierung (Reise + Fluss, 17.10.)
 Rückmeldung 17.10. zum Fulfillment: „Nicht überladen, sondern sehr klar. Lieber wenig und klar — es dupliziert sich.“ Vorbild ist ein Miro-Board
-(nur der STIL, nie Inhalte). Gilt für jeden Ablauf, der als Prozess gezeigt wird (heute: Fulfillment-Fall, Kunden-Seite, Report-/Wirkungs-PDF).
-- **Reise** = EINE Zeile der Phasen (`components/os/fulfillment/reise/ReiseBild.tsx`): je Phase eine Pille, darunter höchstens vier kurze Kästchen
+(nur der STIL, nie Inhalte). Gilt für jeden Ablauf, der als Prozess gezeigt wird — seit 17.10. im ganzen System (Kevin: „Markttraktion-Kreislauf,
+Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung. Dann sieht das ganze System gleich klar aus.“).
+- **EIN Baustein für alle Bereiche:** `components/os/ui/reise/` (`ReiseBild`, `Fluss`, `KnotenKnopf`, `FormenLegende`, `FreigabeRaute`, `FormZeichen`,
+  `JETZT`, `FORM_FARBE`), Typen und die Fenster-Regel `sichtbareKaestchen` in `lib/reise/bild.ts`. Jeder Bereich rechnet seine Zeile in SEINEM Modell aus den
+  vorhandenen Regeln — die Zeichnung rechnet nichts. Neue Formen/Zustände nur dort, nie in einem Bereich nachbauen (Wächter `tests/reise-ueberall.test.ts`).
+
+  | Bereich | Reise (Zeile) | Fluss / Liste beim Tipp | Modell |
+  |---|---|---|---|
+  | Fulfillment › Fall, Kunden-Seite, Report-PDF, Prozess-Editor | Phasen, Abstimmungspunkte als Raute, Band „Kunde“ | Fluss der Phase, Detail daneben | `lib/fulfillment/prozesse/reise-bild.ts`, `kundenReise` |
+  | Markttraktion › Planung › Kreislauf | sieben Stufen (`laeuft`, Farbe der Welt, kein „Hier“), Zahl mit Wort + Sätze als Kästchen, Band „Kunde“ gestrichelt bis Fulfillment, „↺ in die Deals“ am Ende | die Liste der Stufe (Plan/Ist, Produkte, Kunden) und der Weg in ihre Ansicht | `lib/crm/kreislauf-bild.ts` (aus `kreislauf`) |
+  | Einrichtung (`/os/onboarding`) | Etappen mit „Hier“ (Etappe des nächsten Schritts), ohne Band | Schritte der Etappe als Fluss, daneben Haken + Anleitung; Schalter „Liste“ = die ganze Liste | `lib/make-one/onboarding-bild.ts` (über `schritteFuer`, `istFertig`, `fortschrittVon`, `einrichtungStand`) |
+  | Planung › Ziel (`WEG.ziel`) | Meilensteine in der Reihenfolge der Kette, „Hier“ = erster offener, Raute = der nächste wartet darauf, sonst „›“; ohne Band | Aufgaben des Meilensteins bis zur Raute „erreicht?“, daneben seine Karte (Haken, ▲▼, „+ danach“, bearbeiten) | `lib/planung/kette-bild.ts` (über `ketteOrdnen`, `aufgabenVonMeilenstein`) |
+
+  Das Seil bleibt im Jahr. Optionen des Bausteins: `wort` („Phase“, „Stufe“, „Etappe“, „Meilenstein“), `band={false}`, `mehrWort`, Zustand `laeuft` (+ `farbe`),
+  `raute.gegebenText`; `Fluss` mit `label`/`leer`, `FormenLegende` mit `formen` (nur, was die Ansicht zeigt).
+- **Reise** = EINE Zeile der Phasen (`components/os/ui/reise/ReiseBild.tsx`): je Phase eine Pille, darunter höchstens vier kurze Kästchen
   (`KAESTCHEN_MAX`, Rest „+n“), zwischen den Phasen die Raute des Abstimmungspunkts, unten ein durchgehendes Band (intern „Kunde“, beim Kunden „Bei
   Ihnen/euch“) für das, was beim Kunden liegt; „Läuft immer mit“ (Rituale, Report) als EIN Satz darunter. Klick auf eine Phase zeigt ihren Fluss, Klick
   auf ein Kästchen das Detail.
-- **Fluss** = eine Phase von oben nach unten (`Fluss.tsx`): Start als Kreis/Pille → Schritte → Raute „ja/nein“ → nächste Phase. Mehrere Teilprozesse
+- **Fluss** = eine Phase von oben nach unten (`components/os/ui/reise/Fluss.tsx`): Start als Kreis/Pille → Schritte → Raute „ja/nein“ → nächste Phase. Mehrere Teilprozesse
   stehen als Karten nebeneinander (am Handy untereinander); lange Stränge zeigen ein Fenster um „Hier“ (höchstens sechs) und „+n weitere Schritte“.
 - **Formen tragen die Bedeutung (nie nur Farbe):** Schritt = Kasten (grün `LEUCHT.gut`), Nachricht = Kasten mit Brief (gelb `LEUCHT.achtung`),
   Abstimmungspunkt/Entscheidung = Raute mit „ja“/„nein“, Erinnerung = abgerundeter Kasten mit Glocke (orange `LEUCHT.business`, nur auf dem Nein-Pfad bzw.
@@ -476,7 +490,8 @@ Rückmeldung 17.10. zum Fulfillment: „Nicht überladen, sondern sehr klar. Lie
 - **Wenig und klar:** keine Zahlenwände, keine zweite Darstellung derselben Größe (kein Strahl neben der Reise, keine Lage-Kacheln im Kopf), höchstens
   vier Reiter je Fall, höchstens fünf Unter-Reiter auf der Startseite; alte Adressen leiten in EINER Tabelle um (`ALTE_REITER`, `ALTE_BEREICHE`).
 - **Handy (≤ 720 px):** die Reise wird eine senkrechte Liste der Phasen; nur die laufende zeigt ihre Kästchen, die Raute steht als Zeile darunter, ein Band
-  nur mit Text (mit eigener Beschriftung); der Fluss bleibt senkrecht, der Nein-Pfad rückt unter die Raute — nichts läuft quer aus dem Bild.
+  nur mit Text (mit eigener Beschriftung); der Fluss bleibt senkrecht, der Nein-Pfad rückt unter die Raute — nichts läuft quer aus dem Bild. Im Kreislauf
+  (`laeuft`) zeigt am Handy nur die gewählte Stufe ihre Kästchen; ohne Band entfällt die Band-Zeile.
 - Wächter: `tests/fulfillment-miro.test.ts` (vier Reiter, Umleitungen, Kopf ohne Doppel, Legende, ≤ 4 Kästchen, Hänger = Cockpit, Kunden-Reise).
 - **Titel in Kästchen, Pillen und Knoten** (17.10. Feinschliff): höchstens zwei Zeilen mit „…“ und dem ganzen Titel im Tooltip (`.ff-titel`/`.ff-reise-text`);
   lange Wörter trennt die Silbentrennung (`hyphens: auto`, die Seite hat `lang="de"`) — nie `overflow-wrap: anywhere` (das brach „Diagnoseberic ht“).
@@ -487,7 +502,7 @@ Rückmeldung 17.10. zum Fulfillment: „Nicht überladen, sondern sehr klar. Lie
 Rückmeldung 17.10.: „Jeder baut seine Abläufe selbst in der App: Schritte, Nachrichten, Entscheidungen und Erinnerungen per Ziehen anlegen.“ Fulfillment ›
 Landkarte › Paket-Vorlage „Bearbeiten“ bzw. „+ Neuer Ablauf“ öffnet `?e=<Ablauf>` (`components/os/fulfillment/editor/*`).
 - **Dieselbe Zeichnung wie die Ansicht — kein zweites Darstellungs-Bauteil:** die Reise-Zeile ist `ReiseBild` (mit `griff` auf den Phasen-Pillen, `rauteSchalter`
-  zwischen jeder Phase und hinter der letzten, `ende` = „+ Phase“), die Knoten sind `KnotenKnopf` aus `Fluss.tsx` (mit `editor` und `griff`), dazu `Pfeil` und
+  zwischen jeder Phase und hinter der letzten, `ende` = „+ Phase“), die Knoten sind `KnotenKnopf` aus `components/os/ui/reise/Fluss.tsx` (mit `editor` und `griff`), dazu `Pfeil` und
   `SeitenPfeil`. Neue Formen/Zustände immer dort, nie im Editor nachbauen.
 - **Aufbau (Rechner ≥ 1180 px):** oben die Reise (Phasen ziehen = umsortieren, Raute = Abstimmungspunkt an/aus bzw. bearbeiten), darunter links die Palette
   (Schritt · Nachricht · Entscheidung · Erinnerung · Termin · Baustein — ziehen ODER antippen = nach dem gewählten Knoten bzw. ans Ende der Phase), in der Mitte

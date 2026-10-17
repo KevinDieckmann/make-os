@@ -4,6 +4,18 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 17.10.2026 — Reise + Fluss überall: Kreislauf, Einrichtung, Planung (nur lokal — Branch `reise-ueberall`, Basis ed3cd57f = `update-0910b`)
+Kevin: „Markttraktion-Kreislauf, Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung. Dann sieht das ganze System gleich klar aus.“
+- **EIN Baustein:** `ReiseBild`, `Fluss`/`KnotenKnopf`, `FormenLegende`, `FreigabeRaute` liegen jetzt unter `components/os/ui/reise/` (Typen + Fenster-Regel
+  `lib/reise/bild.ts`); das Fulfillment importiert von dort — Verhalten unverändert (alle `tests/fulfillment-*` grün).
+- **Markttraktion › Planung › Kreislauf:** Reise statt Ring — sieben Stufen nebeneinander, Zahl mit Wort und Sätze als Kästchen, Band „Kunde“ ab Fulfillment;
+  ein Tipp zeigt die Liste der Stufe (Plan/Ist, Produkte, Kunden). Zahlen unverändert aus `kreislauf` (neu nur `haengt` an der Follow-up-Stufe = dieselbe Zahl).
+- **Einrichtung:** Etappen als Reise mit „Hier“, Schritte der Etappe als Fluss, Detail daneben; die ganze Liste über den Schalter „Liste“. Der nächste Schritt
+  steht im Weg vorgewählt (nicht mehr zusätzlich im Stand).
+- **Planung › Ziel:** die Meilenstein-Kette als Reise (Raute = wartet darauf), Aufgaben des gewählten Meilensteins als Fluss bis „erreicht?“, daneben seine Karte.
+- **Demo:** ein Beispiel-Ablauf „Beispiel · Vom Angebot zum Start“ mit Entscheidung (ja/nein) und Erinnerung, über die Editor-Route gesät (lib/demo/fulfillment-editor.ts).
+- Nur Darstellung — keine Datenänderung, kein Server-Schritt, keine Umleitung nötig. Wächter `tests/reise-ueberall.test.ts`.
+
 ## 17.10.2026 — Prozess-Editor im Miro-Stil (nur lokal — Branch `prozess-editor`, Basis ef72b944 = `update-0910b`)
 Kevin: „Jeder baut seine Abläufe selbst in der App: Schritte, Nachrichten, Entscheidungen und Erinnerungen per Ziehen anlegen. Damit wird das Fulfillment zum
 Werkzeug, das Kunden für ihre eigenen Prozesse nutzen.“ Der Upload des bisherigen Stands bleibt davon unberührt (eigener Branch).

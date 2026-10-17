@@ -1062,7 +1062,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ff-ablauf .ui-chip { white-space: normal !important; max-width: 100%; }
 }
 
-/* ── Fulfillment · Reise und Fluss (17.10., Kevins Miro-Standard — components/os/fulfillment/reise/{ReiseBild,Fluss}.tsx) ───────────────────────────
+/* ── Reise und Fluss (17.10., Kevins Miro-Standard — components/os/ui/reise/{ReiseBild,Fluss}.tsx; Fulfillment, Kreislauf, Einrichtung, Planung) ─────────
    Rechner: die Phasen als EINE Zeile (Spuren setzt das Bauteil: Phase · Rauten-Spalte · Phase …), je Spalte Marke · Beschriftung · Kästchen · Band; das
    Band „Kunde“ läuft unten durch (auch durch die Rauten-Spalten). Handy (≤ 720 px): eine senkrechte Liste der Phasen — nur die laufende zeigt ihre
    Kästchen, die Raute steht als Zeile darunter, das Band als kurzer Satz; nichts läuft quer aus dem Bild. Der Fluss steht immer senkrecht; zwei oder mehr
@@ -1079,6 +1079,8 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .ff-reise-text, .ff-titel { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
 .ff-reise-raute-zeile { display: none; }
 .ff-reise-band-titel-folge { display: none; }
+/* Ohne Band (Einrichtung, Planung): drei Zeilen statt vier. Kreislauf (`laeuft`): am Handy zeigt nur die gewählte Stufe ihre Kästchen. */
+@media (min-width: 721px) { .ff-reise-ohne-band > .ff-reise-spalte, .ff-reise-ohne-band > .ff-reise-zwischen { grid-template-rows: 16px auto 1fr; } }
 .ff-fluss { display: grid; justify-items: center; min-width: 0; }
 .ff-fluss-zelle { width: min(100%, 340px); min-width: 0; }
 .ff-fluss-zweig { display: grid; grid-template-columns: minmax(0, 340px) auto minmax(0, 220px); align-items: center; width: 100%; justify-content: center; min-width: 0; }
@@ -1091,7 +1093,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ff-reise-zwischen { display: none; }
   .ff-reise-spalte { grid-template-rows: none; row-gap: 6px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
   .ff-reise-spalte:last-of-type { border-bottom: none; }
-  .ff-reise-offen .ff-reise-kaestchen, .ff-reise-fertig .ff-reise-kaestchen { display: none; }
+  .ff-reise-offen .ff-reise-kaestchen, .ff-reise-fertig .ff-reise-kaestchen, .ff-reise-laeuft:not(.ff-reise-aktiv) .ff-reise-kaestchen { display: none; }
   .ff-reise-raute-zeile { display: flex; }
   .ff-reise-spalte > .ff-reise-band { margin: 0; border-radius: 10px !important; white-space: normal !important; }
   .ff-reise-band-leer { display: none !important; }

@@ -11,17 +11,13 @@ import { LEUCHT, Punkt } from '../../ui';
 import { anzahl, wort } from '@/lib/text/zahlwort';
 import type { PhasenZustand, ReiseFreigabe } from '@/lib/fulfillment/prozesse/reise';
 import type { Ampel, Welle, WellenStufe } from '@/lib/fulfillment/prozesse/darstellung';
-import type { FlussForm } from '@/lib/fulfillment/prozesse/reise-bild';
+import { JETZT, FORM_FARBE, FreigabeRaute } from '../../ui/reise/formen';
 
 export const AMPEL_FARBE: Record<Ampel, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch };
 export const AMPEL_TEXT: Record<Ampel, string> = { gruen: 'läuft rund', gelb: 'braucht einen Blick', rot: 'braucht Aufmerksamkeit' };
-/**
- * „Hier stehen wir“, der laufende Abschnitt — seit 17.10. der Akzent der Instanz (Petrol), derselbe wie auf der Kunden-Seite (`WEG_FARBE`). Orange ist
- * seitdem frei für die Erinnerung im Fluss (Miro-Standard: Grün = Schritt, Gelb = Nachricht, Orange = Erinnerung).
- */
-export const JETZT = C.aktiv;
-/** Die Farben der festen Formen im Fluss — ruhig (getönte Fläche, halbtransparente Kontur), die Bedeutung trägt die Form. */
-export const FORM_FARBE: Record<FlussForm, string> = { schritt: LEUCHT.gut, nachricht: LEUCHT.achtung, entscheidung: C.inkDim, erinnerung: LEUCHT.business, termin: C.ink };
+// „Hier“ (JETZT), die Farben der Formen (FORM_FARBE) und die Raute (FreigabeRaute) sind seit 17.10. gemeinsam für alle Bereiche (components/os/ui/reise) —
+// hier nur weitergereicht, damit jede Fulfillment-Stelle unverändert bleibt.
+export { JETZT, FORM_FARBE, FreigabeRaute };
 export const ZUSTAND_FARBE: Record<PhasenZustand, string> = { fertig: LEUCHT.gut, jetzt: JETZT, offen: C.inkLeise };
 
 const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 };
@@ -31,12 +27,6 @@ export interface StrahlPhase { id?: string; titel: string; zusatz?: string; zust
 
 /** „Abstimmungspunkt 3“ (14.10., Abnahme B19: „Freigabe“ meint in MAKE OS die Vorschläge von ZOE) — Nummer lückenlos aus dem Ablauf. */
 export const abstimmungKurz = (f: { nr?: number }) => `Abstimmungspunkt${f.nr ? ` ${f.nr}` : ''}`;
-
-/** Die Raute eines Abstimmungspunkts: gefüllt grün = vermerkt, Umriss = noch offen. */
-export function FreigabeRaute({ gegeben, groesse = 12, aktiv }: { gegeben: boolean; groesse?: number; aktiv?: boolean }) {
-  const f = gegeben ? LEUCHT.gut : aktiv ? LEUCHT.achtung : C.inkLeise;
-  return <span aria-hidden style={{ display: 'inline-block', width: groesse, height: groesse, transform: 'rotate(45deg)', flex: '0 0 auto', borderRadius: 2, border: `2px solid ${f}`, background: gegeben ? f : 'transparent' }} />;
-}
 
 const balkenFarbe = (p: StrahlPhase) => (p.zustand === 'fertig' ? LEUCHT.gut : p.ueberfaellig ? LEUCHT.kritisch : p.zustand === 'jetzt' ? JETZT : C.inkLeise);
 

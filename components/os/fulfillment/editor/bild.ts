@@ -1,11 +1,11 @@
 // ─── Fulfillment · Prozess-Editor — vom Editor-Modell zur Zeichnung (17.10.) ──────────────────────────────────────────────────────────────
-// Der Editor zeichnet mit DENSELBEN Bauteilen wie die Ansicht (components/os/fulfillment/reise/{ReiseBild,Fluss}.tsx — kein zweites Darstellungs-Bauteil).
+// Der Editor zeichnet mit DENSELBEN Bauteilen wie die Ansicht (components/os/ui/reise/{ReiseBild,Fluss}.tsx — kein zweites Darstellungs-Bauteil).
 // Hier steht nur die Übersetzung: Editor-Knoten → Fluss-Knoten (Form, Satz darunter), Editor-Phasen → Spalten der Reise (höchstens vier Kästchen, Raute,
 // Band „Kunde“), und die Reihenfolge der Schritte einer Phase (für Pfeiltasten und „nach oben/unten“). Rein, ohne Daten-Importe.
 
 import type { EditorKnoten, EditorModell, EditorPhase } from '@/lib/fulfillment/prozesse/editor';
 import { flussFormVon, KAESTCHEN_MAX, type FlussKnoten } from '@/lib/fulfillment/prozesse/reise-bild';
-import type { BildSpalte } from '../reise/ReiseBild';
+import type { BildSpalte } from '@/lib/reise/bild';
 
 const tage = (n: number) => `${n} Tag${n === 1 ? '' : 'e'}`;
 

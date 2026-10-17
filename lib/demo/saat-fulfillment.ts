@@ -3,7 +3,8 @@
 // fulfillment-kunde.ts (C2), fulfillment-analyse.ts (C3) —, über die ROUTEN in-process (`rufe`, wie die übrige Saat), erfunden und neutral
 // (Wächter tests/demo.test.ts liest jede Datei). Der Kontext bringt alles mit, was die Pakete brauchen, damit KEIN Paket lib/demo/saat.ts ändern muss.
 // Reihenfolge: Prozesse (Vorlagen, Bausteine, Fälle) → Kunde (Link-Schalter aus, Antworten, Puls) → Analyse (Dossier, Läufe ohne Modell) →
-// Geschichte (12.10.: Diagnose → Fall, zwei Reports, früherer Puls — eine glaubwürdige Reise ohne Widersprüche).
+// Geschichte (12.10.: Diagnose → Fall, zwei Reports, früherer Puls — eine glaubwürdige Reise ohne Widersprüche) → Editor (17.10.: ein Beispiel-Ablauf mit
+// Entscheidung ja/nein und Erinnerung, über die Editor-Route — lib/demo/fulfillment-editor.ts).
 
 export type DemoModul = Record<string, unknown>;
 /** `rufe` aus lib/demo/saat.ts: eine Route in-process mit der Person im Kopf `x-make-user` (+ Bau-Kennung); wirft bei Fehler. */
@@ -22,6 +23,7 @@ export const FULFILLMENT_ROUTEN = {
   dossier: () => import('@/app/api/fulfillment/dossier/route') as Promise<DemoModul>,
   analyse: () => import('@/app/api/fulfillment/analyse/route') as Promise<DemoModul>,
   personen: () => import('@/app/api/fulfillment/personen/route') as Promise<DemoModul>,
+  editor: () => import('@/app/api/fulfillment/editor/route') as Promise<DemoModul>,
 };
 
 export interface FulfillmentSaatKontext {
@@ -43,6 +45,8 @@ export async function fulfillmentSaeen(k: FulfillmentSaatKontext): Promise<SaatS
   const { kundeSaeen } = await import('./fulfillment-kunde');
   const { analyseSaeen } = await import('./fulfillment-analyse');
   const { geschichteSaeen } = await import('./fulfillment-prozesse');
+  const { editorBeispielSaeen } = await import('./fulfillment-editor');
   // 12.10.: zuletzt der zweite Teil der Geschichte (Diagnose → Fall, Reports, früherer Puls) — er braucht das geprüfte Dossier der Analyse-Saat.
-  return [...await prozesseSaeen(k), ...await kundeSaeen(k), ...await analyseSaeen(k), ...await geschichteSaeen(k)];
+  // 17.10.: danach der Beispiel-Ablauf für den Editor (eine eigene Paket-Vorlage — kein Fall nutzt sie, die Geschichte bleibt unberührt).
+  return [...await prozesseSaeen(k), ...await kundeSaeen(k), ...await analyseSaeen(k), ...await geschichteSaeen(k), ...await editorBeispielSaeen(k)];
 }

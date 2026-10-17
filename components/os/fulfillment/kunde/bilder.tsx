@@ -1,6 +1,6 @@
 // ─── Fulfillment · Kunde — die Bilder der Kunden-Wege (12.10., Fulfillment extern, „ein Bild“) ──────────────────────────────────────────────────
 // Wert-Balken (vorher → jetzt → Ziel), Lage mit Ampel, Fortschritt — für die Kunden-Seite und die Präsentation „Dem Kunden zeigen“. Die Reise selbst zeichnet
-// seit 17.10. dieselbe Zeile wie intern (components/os/fulfillment/reise/ReiseBild.tsx, Modell `kundenReise`; der frühere Phasen-Strahl ist weg). Sie zeichnen
+// seit 17.10. dieselbe Zeile wie intern (components/os/ui/reise/ReiseBild.tsx, Modell `kundenReise`; der frühere Phasen-Strahl ist weg). Sie zeichnen
 // nur: die Modelle (`kundenReise`, `wertModell`) rechnet lib/fulfillment/kunde/bild.ts, dieselben zeichnen die PDFs (lib/fulfillment/kunde/pdf-bild.ts).
 // Farben nur aus den Token (LEUCHT, FARBE, TIEF), Text ≥ 13 px (Beschriftungen in Großbuchstaben 11 px), keine Skripte von außen, kein Bild außer dem Logo.
 

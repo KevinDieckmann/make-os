@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Fulfillment · Prozess-Editor — der Fluss einer Phase zum Bearbeiten (17.10.) ───────────────────────────────────────────────────────────
-// Dieselbe Zeichnung wie der Fluss im Fall (components/os/fulfillment/reise/Fluss.tsx: `KnotenKnopf`, `Pfeil`, `SeitenPfeil`) — dazu nur, was der Editor
+// Dieselbe Zeichnung wie der Fluss im Fall (components/os/ui/reise/Fluss.tsx: `KnotenKnopf`, `Pfeil`, `SeitenPfeil`) — dazu nur, was der Editor
 // braucht: die Ablage-Stellen (`data-ff-ziel`: Start, Schritt, Gruppe, hinter der Gruppe, Ende, freier Nein-Platz), der freie Nein-Platz einer Entscheidung
 // („+ Erinnerung“), der Abstimmungspunkt am Ende der Phase und ein Leerzustand mit einem Satz. Er rechnet nichts (Modell: lib/fulfillment/prozesse/editor.ts).
 
@@ -9,8 +9,8 @@ import type { KeyboardEvent as RKeyboardEvent, ReactNode } from 'react';
 import { Plus, BellRing } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, RAND, ECKE, SCHRIFT, FLAECHE_STIL, TIEF } from '@/lib/make-one/design';
 import type { EditorKnoten, EditorPhase } from '@/lib/fulfillment/prozesse/editor';
-import { KnotenKnopf, Pfeil, SeitenPfeil } from '../reise/Fluss';
-import { FORM_FARBE } from '../reise/bilder';
+import { KnotenKnopf, Pfeil, SeitenPfeil } from '../../ui/reise/Fluss';
+import { FORM_FARBE } from '../../ui/reise/formen';
 import { alsFlussKnoten } from './bild';
 import type { ZiehQuelle } from './ziehen';
 

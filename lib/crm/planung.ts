@@ -212,6 +212,8 @@ export interface KreislaufStufe {
   plan?: string; ist?: string; annahme?: boolean;
   /** Die vorhandene Ansicht der Stufe (Liste, Board, Mandate …). */
   href: string; hrefLabel: string;
+  /** Hängt etwas (17.10., Reise im Kreislauf): `rot` = überfällige Follow-ups — dieselbe Zahl wie `zusatz`, nichts neu gerechnet. */
+  haengt?: 'rot';
 }
 export interface NachLeistungZeile {
   mandatId: string; kunde: string; titel: string; status: Mandat['status']; produkt?: string; phase?: string;
@@ -340,7 +342,7 @@ export function kreislauf(e: KreislaufEingabe, filter: string | null = null): Kr
       plan: `Lead → SQL ${pz(leadZuSqlPlan)}`, ist: `Lead → SQL ${pz(leadZuSqlIst)}`, annahme: annahme('leadZuGespraech', 'gespraechZuSql'), href: WEG.qualifizierung(), hrefLabel: 'Qualifizierung öffnen' },
     { id: 'deals', label: 'Deals (SQL … Abschluss)', anzahl: offen.length, zusatz: `${Math.round(offen.reduce((a, c) => a + gesamtwert(c), 0)).toLocaleString('de-DE')} € offen`,
       plan: `SQL → Gewonnen ${pz(sqlZuGewPlan)}`, ist: `SQL → Gewonnen ${pz(gq?.quote)}`, annahme: annahme('sqlZuAngebot', 'angebotZuGewonnen'), href: WEG.deals(), hrefLabel: 'Deals öffnen' },
-    { id: 'followup', label: 'Abschluss & Follow-up', anzahl: e.followup.faellig, zusatz: e.followup.ueberfaellig ? `${e.followup.ueberfaellig} überfällig` : 'nichts überfällig', href: WEG.followup(), hrefLabel: 'Follow-up öffnen' },
+    { id: 'followup', label: 'Abschluss & Follow-up', anzahl: e.followup.faellig, zusatz: e.followup.ueberfaellig ? `${e.followup.ueberfaellig} überfällig` : 'nichts überfällig', href: WEG.followup(), hrefLabel: 'Follow-up öffnen', ...(e.followup.ueberfaellig ? { haengt: 'rot' as const } : {}) },
     { id: 'fulfillment', label: 'Fulfillment', anzahl: aktiveM.length, zusatz: [`${ff.size} Produkt-Phasen`, ...(fortschrittZusatz(aktiveM, e.fortschritt))].join(' · '), href: WEG.fulfillment('kreislauf'), hrefLabel: 'Fulfillment öffnen' },
     { id: 'nachher', label: 'Nach der Leistung', anzahl: kunden.filter(k => k.offen > 0).length, zusatz: 'Upselling · Cross-Selling · Bewertung · Testimonial · Newsletter', href: '', hrefLabel: 'Schritte je Kunde' },
     { id: 'wiederkauf', label: 'Wiederkauf', anzahl: wieder, zusatz: `${offenWieder} offene Deals mit Bestandskunden`,

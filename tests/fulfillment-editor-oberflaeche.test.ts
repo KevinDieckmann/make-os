@@ -150,9 +150,9 @@ describe('Rechte in der Oberfläche', () => {
 describe('Ein Darstellungs-Bauteil für Ansicht und Editor', () => {
   it('der Editor zeichnet Knoten mit `KnotenKnopf` aus Fluss.tsx und die Phasen mit `ReiseBild` — kein eigenes Knoten-Bauteil', () => {
     const f = quelle('components/os/fulfillment/editor/EditorFluss.tsx');
-    expect(f).toContain("import { KnotenKnopf, Pfeil, SeitenPfeil } from '../reise/Fluss'");
-    expect(quelle('components/os/fulfillment/editor/ProzessEditor.tsx')).toContain("import { ReiseBild, FormZeichen } from '../reise/ReiseBild'");
-    expect(quelle('components/os/fulfillment/reise/Fluss.tsx')).toContain('export function KnotenKnopf');
+    expect(f).toContain("import { KnotenKnopf, Pfeil, SeitenPfeil } from '../../ui/reise/Fluss'");
+    expect(quelle('components/os/fulfillment/editor/ProzessEditor.tsx')).toContain("import { ReiseBild, FormZeichen } from '../../ui/reise/ReiseBild'");
+    expect(quelle('components/os/ui/reise/Fluss.tsx')).toContain('export function KnotenKnopf');
     const sp = editorSpalten(editorModell(V(), []));
     expect(sp[0].kaestchen.map(k => k.titel)).toEqual(['Kick-off planen', 'Unterlagen da?', 'Begrüßung senden']);
     expect(sp[0].raute).toMatchObject({ titel: 'Abstimmungspunkt 1 · Rahmen bestätigt' });
