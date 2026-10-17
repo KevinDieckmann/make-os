@@ -140,6 +140,9 @@ export function kundenAmpel(e: {
   const kommend = termine.find(t => t >= heute);
   const t: AmpelTeil = ueber ? { id: 'termine', label: 'Termine', farbe: 'rot', text: `überfällig seit ${kurz(ueber)}` }
     : kommend ? { id: 'termine', label: 'Termine', farbe: 'gruen', text: `nächster am ${kurz(kommend)}` }
+    // Ein neues Mandat (die ersten 14 Tage) startet grün: den ersten Termin legt das Onboarding (Kick-off) fest — „kein Termin“ ist dann kein Warnzeichen
+    // (17.10., Gesamtprüfung — maximal einfach: ein frisch gestarteter Fall stand sonst gleich gelb da).
+    : m.start && tageZwischen(m.start.slice(0, 10), heute) <= 14 ? { id: 'termine', label: 'Termine', farbe: null, text: 'erster Termin kommt mit dem Kick-off' }
     : { id: 'termine', label: 'Termine', farbe: 'gelb', text: 'kein nächster Termin' };
   // Lieferungen: erledigte Lieferobjekte gegen den Anteil der Dauer, der schon vergangen ist.
   let l: AmpelTeil = { id: 'lieferungen', label: 'Lieferungen', farbe: null, text: 'keine Lieferobjekte in der Stufe' };

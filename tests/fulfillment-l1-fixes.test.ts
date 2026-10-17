@@ -83,3 +83,12 @@ describe('B7 · Mails aus dem Fall im Verlauf der Akte', () => {
     for (const d of ['app/api/fulfillment/fall/route.ts', 'app/api/fulfillment/wirkung/route.ts', 'lib/fulfillment/prozesse/ausfuehrung-server.ts']) expect(readFileSync(d, 'utf8'), d).toMatch(/kontaktId: k{1,2}\.id/);
   });
 });
+
+describe('Ein neuer Fall startet grün', () => {
+  it('in den ersten 14 Tagen ist „kein Termin“ kein Warnzeichen (der Kick-off legt ihn fest)', async () => {
+    const { kundenAmpel } = await import('@/lib/crm/treppe');
+    const m = { start: '2026-10-15', health: {}, naechstesReview: undefined } as never;
+    expect(kundenAmpel({ m, stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBeNull();
+    expect(kundenAmpel({ m: { start: '2026-09-01', health: {} } as never, stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBe('gelb');
+  });
+});
