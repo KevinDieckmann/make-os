@@ -59,3 +59,9 @@ describe('B7: Analyse-Route mit `modellSchranke`', () => {
     expect((await post({ aktion: 'tiefenbericht', mandatId: 'm-1', bestaetigtCent: 100, anfrageId: 'a-2' })).status).toBe(429);
   });
 });
+
+describe('C7: Suchschritt der Analyse rahmt die Eingaben als Daten', () => {
+  it('Schritt 1 „Suchen“ gibt die Dossier-Eingaben nur über fremd(…) ans Modell (wie Schritt 2)', () => {
+    expect(lies('lib/fulfillment/analyse/lauf.ts')).toContain("user: fremd('eingaben', `Unternehmen: ${d.eingaben.firma}");
+  });
+});
