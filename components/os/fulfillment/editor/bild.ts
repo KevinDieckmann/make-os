@@ -6,6 +6,10 @@
 import type { EditorKnoten, EditorModell, EditorPhase } from '@/lib/fulfillment/prozesse/editor';
 import { flussFormVon, KAESTCHEN_MAX, type FlussKnoten } from '@/lib/fulfillment/prozesse/reise-bild';
 import type { BildSpalte } from '@/lib/reise/bild';
+import type { KnotenForm } from '@/lib/fulfillment/typen';
+
+/** Die Form, mit der ein Baustein in den Fluss bzw. auf die Fläche kommt (Mail → Nachricht, Ritual → Termin, Freigabe → Abstimmung). */
+export const formFuerBaustein = (art: string): KnotenForm => (art === 'mail' ? 'nachricht' : art === 'ritual' ? 'termin' : art === 'freigabe' ? 'abstimmung' : 'schritt');
 
 const tage = (n: number) => `${n} Tag${n === 1 ? '' : 'e'}`;
 

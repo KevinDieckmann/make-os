@@ -11,6 +11,8 @@
 //   · Bedienung: Maus/Trackpad ziehen ab 5 px, Finger lange drücken 0,45 s; Tastatur für alles (Pfeile, Alt+Pfeile verschieben, Entf löschen, Enter
 //     bearbeiten, „Einfügen nach …“); Ziele ≥ 44 px. Am Handy (≤ 720 px) eine Liste mit Pfeilen statt Ziehen (EditorListe).
 //   · Rechte: bearbeiten nur volle Mitglieder (die Route prüft; „nur Business“ sieht nur — hier ohne Palette und Ziehen).
+//   · Zwei Ansichten derselben Vorlage (17.10.): „Fluss“ (oben → unten, wie bisher; am Handy die Liste) und „Fläche“ (frei zeichnen wie in Miro, ./Flaeche.tsx;
+//     am Handy nur ansehen). Der Wechsel verliert nichts — beide schreiben über denselben Weg; die Wahl merkt sich der Browser.
 // Rechnet nichts (lib/fulfillment/prozesse/{editor,editor-geschichte}.ts); Änderungen gelten für NEUE Fälle — laufende zeigen „Vorlage geändert — übernehmen?“.
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent } from 'react';
@@ -29,16 +31,20 @@ import { klein, Meldung, KnotenFormular } from '../prozesse/teile';
 import { ReiseBild, FormZeichen } from '../../ui/reise/ReiseBild';
 import { FreigabeRaute } from '../../ui/reise/formen';
 import { FormenLegende } from '../../ui/reise/Fluss';
-import { editorSpalten, flacheSchritte } from './bild';
+import { editorSpalten, flacheSchritte, formFuerBaustein } from './bild';
 import { EditorFluss } from './EditorFluss';
-import { SchrittFeld, PhasenFeld, GruppenFeld, LeerFeld, K44, ZIEL_PX, type EditorApi } from './SeitenFeld';
+import { SchrittFeld, PhasenFeld, GruppenFeld, LeerFeld, WahlKnoepfe, K44, ZIEL_PX, type EditorApi } from './SeitenFeld';
 import { EditorListe } from './EditorListe';
 import { useEditorZiehen, type ZiehQuelle, type ZiehZiel } from './ziehen';
+import { EditorFlaeche } from './Flaeche';
+
+/** Die zwei Ansichten des Editors — Fluss (bzw. Liste am Handy) und Fläche. */
+export type EditorAnsichtArt = 'fluss' | 'flaeche';
+const MERKER_ANSICHT = 'make-ff-editor-ansicht';
 
 export interface EditorDaten { vorlage: ProzessVorlage; stand: string; bausteine: { id: string; titel: string; art: string }[]; darfBearbeiten: boolean; laufend: number }
 
-/** Die Form, mit der ein Baustein in den Fluss kommt (Mail → Nachricht, Ritual → Termin, Freigabe → Abstimmung). */
-export const formFuerBaustein = (art: string): KnotenForm => (art === 'mail' ? 'nachricht' : art === 'ritual' ? 'termin' : art === 'freigabe' ? 'abstimmung' : 'schritt');
+export { formFuerBaustein } from './bild';
 /** Die Palette — in dieser Reihenfolge (Miro-Standard). */
 export const PALETTE: readonly (KnotenForm | 'baustein')[] = ['schritt', 'nachricht', 'entscheidung', 'erinnerung', 'termin', 'baustein'];
 
@@ -56,7 +62,7 @@ export function ProzessEditor({ vorlageId }: { vorlageId: string }) {
 }
 
 /** Der Editor mit seinen Daten (Auswahl, Verlauf, Schreiben). `handy` nur für Tests (sonst die Bildschirmbreite). */
-export function EditorAnsicht({ start, handy: handyFest }: { start: EditorDaten; handy?: boolean }) {
+export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }: { start: EditorDaten; handy?: boolean; ansicht?: EditorAnsichtArt }) {
   const router = useRouter();
   const handyMedien = useHandy();
   const handy = handyFest ?? handyMedien;
@@ -70,6 +76,13 @@ export function EditorAnsicht({ start, handy: handyFest }: { start: EditorDaten;
   const [bausteinZiel, setBausteinZiel] = useState<EditorZiel | null>(null);
   const [papierkorbAuf, setPapierkorbAuf] = useState(false);
   const [mehrFuer, setMehrFuer] = useState<string | null>(null);
+  const [ansicht, setAnsichtRoh] = useState<EditorAnsichtArt>(ansichtFest ?? 'fluss');
+  const [bausteinRueckruf, setBausteinRueckruf] = useState<((b: { id: string; titel: string; art: string }) => void) | null>(null);
+  useEffect(() => {
+    if (ansichtFest) return;
+    try { const m = window.localStorage.getItem(MERKER_ANSICHT); if (m === 'fluss' || m === 'flaeche') setAnsichtRoh(m); } catch { /* privates Fenster */ }
+  }, [ansichtFest]);
+  const setAnsicht = (a: EditorAnsichtArt) => { setAnsichtRoh(a); try { window.localStorage.setItem(MERKER_ANSICHT, a); } catch { /* privates Fenster */ } };
   /** Neu lesen (nach „Mehr Angaben …“, das über den Baum-Weg schreibt) — Auswahl und Verlauf bleiben. */
   const neuLaden = useCallback(async () => {
     const a = await holeJson<EditorDaten>(`/api/fulfillment/editor?v=${encodeURIComponent(d.vorlage.id)}`);
@@ -279,7 +292,8 @@ export function EditorAnsicht({ start, handy: handyFest }: { start: EditorDaten;
         </div>
         {!darf && <Hinweis art="info">Nur ansehen — Abläufe bearbeiten volle Mitglieder.</Hinweis>}
         <Meldung text={meldung?.text ?? null} art={meldung?.art} />
-        {handy ? null : (
+        <WahlKnoepfe label="Ansicht des Ablaufs" liste={[{ id: 'fluss' as const, label: handy ? 'Liste' : 'Fluss' }, { id: 'flaeche' as const, label: handy ? 'Fläche (ansehen)' : 'Fläche' }]} aktiv={ansicht} onWahl={setAnsicht} />
+        {handy || ansicht === 'flaeche' ? null : (
           <ReiseBild spalten={editorSpalten(modell)} aktiv={phase?.id ?? null} gewaehlt={wahl.knoten} label="Phasen des Ablaufs — bearbeiten"
             onPhase={id => waehle(id, null)} onKaestchen={(p, k) => waehle(p, k)}
             griff={id => {
@@ -308,7 +322,12 @@ export function EditorAnsicht({ start, handy: handyFest }: { start: EditorDaten;
         )}
       </Karte>
 
-      {handy ? (
+      {ansicht === 'flaeche' ? (
+        <EditorFlaeche vorlage={d.vorlage} bausteine={d.bausteine} darf={darf} laeuft={laeuft} handy={handy} senden={ops => senden(ops)}
+          gewaehlt={wahl.knoten} onWahl={(p, k) => waehle(p, k)} meldung={(text, art) => setMeldung({ text, art })}
+          bausteinWaehlen={fertig => setBausteinRueckruf(() => fertig)} loeschenPhase={id => void loeschen(id, 'phase')}
+          feld={handy ? undefined : feld} zurListe={id => { setAnsicht('fluss'); if (id) { const p = modell.phasen.find(x => x.abschnitte.some(a => a.knoten.some(k => k.id === id))); if (p) waehle(p.id, id); } }} />
+      ) : handy ? (
         <EditorListe modell={modell} phase={phase} gewaehlt={wahl.knoten} api={api} onPhase={id => waehle(id, null)} onKnoten={(p, k) => waehle(p, k)} feld={feld} />
       ) : !modell.phasen.length ? (
         <Karte i={1}>
@@ -351,14 +370,17 @@ export function EditorAnsicht({ start, handy: handyFest }: { start: EditorDaten;
         </div>
       )}
 
-      {bausteinZiel && (
+      {(bausteinZiel || bausteinRueckruf) && (
         <Karte i={2}>
-          <Ueberschrift rechts={<Knopf leise style={K44} onClick={() => setBausteinZiel(null)}>Abbrechen</Knopf>}>Baustein aus der Bibliothek</Ueberschrift>
+          <Ueberschrift rechts={<Knopf leise style={K44} onClick={() => { setBausteinZiel(null); setBausteinRueckruf(null); }}>Abbrechen</Knopf>}>Baustein aus der Bibliothek</Ueberschrift>
           {d.bausteine.length ? (
             <div role="listbox" aria-label="Baustein wählen" style={{ display: 'grid', gap: 6, maxHeight: 320, overflowY: 'auto' }}>
               {d.bausteine.map(b => (
                 <button key={b.id} type="button" role="option" aria-selected={false} className="fassbar" disabled={laeuft}
-                  onClick={() => { const z = bausteinZiel; setBausteinZiel(null); void neuerKnoten(formFuerBaustein(b.art), z, b); }}
+                  onClick={() => {
+                    if (bausteinRueckruf) { const r = bausteinRueckruf; setBausteinRueckruf(null); r(b); return; }
+                    const z = bausteinZiel; setBausteinZiel(null); if (z) void neuerKnoten(formFuerBaustein(b.art), z, b);
+                  }}
                   style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: ZIEL_PX, padding: '6px 12px', borderRadius: 8, border: `1px solid ${RAND.flaeche}`, background: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer', textAlign: 'left' }}>
                   <span style={{ flex: 1, minWidth: 0 }}>{b.titel}</span><span style={{ color: C.inkLeise }}>{b.art}</span>
                 </button>

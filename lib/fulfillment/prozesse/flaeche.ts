@@ -158,40 +158,49 @@ export function flaecheBild(v: ProzessVorlage, bausteine: readonly (Pick<Baustei
 type Pt = [number, number];
 const ABSTAND_AUSSEN = 40;
 
-/** Die Kandidaten für einen gewinkelten Weg von a nach b (Ausgänge unten/rechts/links/oben, Eingänge oben/links/rechts/unten). */
-function kandidaten(a: Box, b: Box, hindernisse: readonly Box[]): Pt[][] {
+/**
+ * Die Kandidaten für einen gewinkelten Weg von a nach b (Ausgänge unten/rechts/links/oben, Eingänge oben/links/rechts/unten). Die Knickstelle eines Z-Wegs
+ * probiert drei Lagen (Mitte, dicht vor b, dicht hinter a) — so findet sich meist eine Gasse zwischen den Knoten (bzw. den Rahmen).
+ */
+function kandidaten(a: Box, b: Box, hindernisse: readonly Box[], art: PfeilArt): Pt[][] {
   const ax = a.x + a.b / 2, ay = a.y + a.h / 2, bx = b.x + b.b / 2, by = b.y + b.h / 2;
   const aU: Pt = [ax, a.y + a.h], aO: Pt = [ax, a.y], aR: Pt = [a.x + a.b, ay], aL: Pt = [a.x, ay];
   const bO: Pt = [bx, b.y], bU: Pt = [bx, b.y + b.h], bL: Pt = [b.x, by], bR: Pt = [b.x + b.b, by];
   const k: Pt[][] = [];
   const unter = b.y >= a.y + a.h + 8, rechts = b.x >= a.x + a.b + 8, links = b.x + b.b <= a.x - 8, ueber = b.y + b.h <= a.y - 8;
+  const knick = (von: number, bis: number) => [...new Set([Math.round((von + bis) / 2), Math.round(bis - Math.sign(bis - von) * 30), Math.round(von + Math.sign(bis - von) * 30)])];
   if (unter) {
-    const my = Math.round((a.y + a.h + b.y) / 2);
-    k.push(Math.abs(ax - bx) < 1 ? [aU, bO] : [aU, [ax, my], [bx, my], bO]);
+    for (const my of knick(a.y + a.h, b.y)) k.push([aU, [ax, my], [bx, my], bO]);
     if (bx > a.x + a.b) k.push([aR, [bx, ay], bO]);
     if (bx < a.x) k.push([aL, [bx, ay], bO]);
   }
   if (rechts) {
-    const mx = Math.round((a.x + a.b + b.x) / 2);
-    k.push(Math.abs(ay - by) < 1 ? [aR, bL] : [aR, [mx, ay], [mx, by], bL]);
+    for (const mx of knick(a.x + a.b, b.x)) k.push([aR, [mx, ay], [mx, by], bL]);
     if (b.y > ay) k.push([aR, [bx, ay], bO]);
+    if (b.y + b.h < ay) k.push([aR, [bx, ay], bU]);
   }
   if (links) {
-    const mx = Math.round((b.x + b.b + a.x) / 2);
-    k.push(Math.abs(ay - by) < 1 ? [aL, bR] : [aL, [mx, ay], [mx, by], bR]);
+    for (const mx of knick(a.x, b.x + b.b)) k.push([aL, [mx, ay], [mx, by], bR]);
     if (b.y > ay) k.push([aL, [bx, ay], bO]);
+    if (b.y + b.h < ay) k.push([aL, [bx, ay], bU]);
   }
-  // Außen herum (rechts bzw. links an allem vorbei, was zwischen den beiden liegt) — für den Weg zurück und wenn etwas im Weg steht.
+  if (ueber) for (const my of knick(a.y, b.y + b.h)) k.push([aO, [ax, my], [bx, my], bU]);
+  // Außen herum (rechts bzw. links an allem vorbei, was zwischen den beiden liegt; oben drüber) — für den Weg zurück und wenn etwas im Weg steht.
   const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y + a.h, b.y + b.h), xa = Math.min(a.x, b.x), xb = Math.max(a.x + a.b, b.x + b.b);
   const dazwischen = hindernisse.filter(r => r.y < y1 && r.y + r.h > y0 && r.x < xb && r.x + r.b > xa);
   const rx = Math.max(xb, ...dazwischen.map(r => r.x + r.b)) + ABSTAND_AUSSEN, lx = Math.min(xa, ...dazwischen.map(r => r.x)) - ABSTAND_AUSSEN;
   k.push([aR, [rx, ay], [rx, by], bR]);
   k.push([aL, [lx, ay], [lx, by], bL]);
-  if (ueber) { const my = Math.round((b.y + b.h + a.y) / 2); k.push([aO, [ax, my], [bx, my], bU]); }
+  // Die Schleife zurück läuft oben herum in den Eingang der Entscheidung (nicht auf dem Nein-Pfeil zurück).
+  if (art === 'zurueck') { const oy = y0 - 30; k.push([aO, [ax, oy], [bx, oy], bO]); }
   return k;
 }
 
-const sauberWeg = (w: Pt[]): Pt[] => w.filter((p, i) => i === 0 || p[0] !== w[i - 1][0] || p[1] !== w[i - 1][1]);
+/** Doppelte Punkte und Punkte mitten auf einer Geraden fallen weg (sonst zählten sie als Ecke). */
+function sauberWeg(w0: Pt[]): Pt[] {
+  const w = w0.filter((p, i) => i === 0 || p[0] !== w0[i - 1][0] || p[1] !== w0[i - 1][1]);
+  return w.filter((p, i) => i === 0 || i === w.length - 1 || !((w[i - 1][0] === p[0] && p[0] === w[i + 1][0]) || (w[i - 1][1] === p[1] && p[1] === w[i + 1][1])));
+}
 
 /** Schneidet die achsenparallele Strecke p–q das Innere der Box (etwas verkleinert, damit Berührungen am Rand nicht zählen)? */
 function kreuzt(p: Pt, q: Pt, r: Box): boolean {
@@ -214,11 +223,13 @@ export function wegKreuzungen(w: readonly Pt[], hindernisse: readonly Box[], a?:
 export function pfeilWeg(a: Box, b: Box, hindernisse: readonly Box[] = [], art: PfeilArt = 'weiter'): [number, number][] {
   let best: Pt[] | null = null;
   let wert = Number.MAX_VALUE;
-  for (const w0 of kandidaten(a, b, hindernisse)) {
+  for (const w0 of kandidaten(a, b, hindernisse, art)) {
     const w = sauberWeg(w0);
     let laenge = 0;
     for (let i = 1; i < w.length; i++) laenge += Math.abs(w[i][0] - w[i - 1][0]) + Math.abs(w[i][1] - w[i - 1][1]);
-    const v = wegKreuzungen(w, hindernisse, a, b) * 100_000 + laenge + (w.length - 2) * 30 + (art === 'nein' && w[0][0] !== a.x + a.b ? 500 : 0);
+    // Nein geht nach rechts; der Weg zurück nie gerade auf dem Nein-Pfeil.
+    const vorzug = (art === 'nein' && w[0][0] !== a.x + a.b ? 500 : 0) + (art === 'zurueck' && w.length === 2 ? 5000 : 0);
+    const v = wegKreuzungen(w, hindernisse, a, b) * 100_000 + laenge + (w.length - 2) * 30 + vorzug;
     if (v < wert) { wert = v; best = w; }
   }
   return best ?? [[a.x + a.b / 2, a.y + a.h], [b.x + b.b / 2, b.y]];

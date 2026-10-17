@@ -20,7 +20,6 @@ const J = '2026-10-17T09:00:00.000Z';
 const stand = (x: object) => createHash('sha1').update(JSON.stringify(x)).digest('hex').slice(0, 12);
 let N = 0;
 const kx: EditorKontext = { person: 'pia', jetzt: J, standVon: stand, neueId: p => `${p}-s${++N}` };
-const u = (n: number) => `fk-00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const roh = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 
 const V = (): ProzessVorlage => ({
