@@ -2,8 +2,9 @@
 
 // ─── Fulfillment — die Lage als EINE schlanke Zeile (11.10. drei Antwort-Kacheln; seit 17.10. eine Zeile — Miro-Standard) ────────────────────
 // Rückmeldung 17.10.: „Es dupliziert sich — lieber wenig und klar.“ Die Lage-Kacheln oben und die Kunden-Karten der Landkarte zeigten dasselbe. Jetzt steht über
-// der Unternavigation nur noch EINE Zeile: wie viele Kunden in Lieferung (mit Ampel), was hängt (rot zuerst), wer als Nächstes dran ist — je ein Tipp an die
-// Stelle. Liest das Mandats-Cockpit (GET /api/fulfillment/cockpit, nur lesen); Reihenfolge „braucht Aufmerksamkeit“ aus lib/fulfillment/prozesse/darstellung.ts.
+// der Unternavigation nur noch EINE Zeile mit ZAHLEN (Feinschliff 17.10.): wie viele Kunden in Lieferung (mit Ampel) und wie viele Punkte hängen (dringende
+// eigens) — „was hängt“ und „als Nächstes“ im Einzelnen stehen nur in der Kundenkarte. Ein Tipp springt zu den Karten. Liest das Mandats-Cockpit
+// (GET /api/fulfillment/cockpit, nur lesen); Ampel aus lib/fulfillment/prozesse/darstellung.ts.
 
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,7 +12,7 @@ import { FARBE as C, TYP, MIKRO, SCHRIFT } from '@/lib/make-one/design';
 import { Punkt, Erklaert, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
-import { nachAufmerksamkeit, kundenAmpel, lageVerteilung } from '@/lib/fulfillment/prozesse/darstellung';
+import { kundenAmpel } from '@/lib/fulfillment/prozesse/darstellung';
 import { useCockpit } from '../prozesse/daten';
 import { AMPEL_FARBE } from './bilder';
 
@@ -19,7 +20,7 @@ function Teil({ titel, farbe, text, onClick }: { titel: string; farbe?: string; 
   const inhalt = (
     <>
       <span style={{ ...MIKRO }}>{titel}</span>
-      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.ink, minWidth: 0, overflowWrap: 'anywhere' }}>{farbe && <Punkt farbe={farbe} groesse={8} />}{text}{onClick ? ' ›' : ''}</span>
+      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.ink, minWidth: 0, overflowWrap: 'break-word' }}>{farbe && <Punkt farbe={farbe} groesse={8} />}{text}{onClick ? ' ›' : ''}</span>
     </>
   );
   const stil = { display: 'grid', gap: 1, textAlign: 'left' as const, minHeight: 44, padding: '2px 0', minWidth: 0, flex: '1 1 220px', fontFamily: SCHRIFT.text };
@@ -32,20 +33,19 @@ export function LageStreifen() {
   const router = useRouter();
   const { daten } = useCockpit();
   if (!daten) return null;
-  const zeilen = nachAufmerksamkeit(daten.zeilen);
+  const zeilen = daten.zeilen;
   const rot = daten.haengt.filter(h => h.schwere === 'rot');
-  const erster = zeilen[0];
-  const zuerst = daten.haengt[0];
+  const n = daten.haengt.length;
   const ampel = zeilen.length ? AMPEL_FARBE[zeilen.some(z => kundenAmpel(z) === 'rot') ? 'rot' : zeilen.some(z => kundenAmpel(z) === 'gelb') ? 'gelb' : 'gruen'] : undefined;
+  const zuDenKarten = () => router.push(`${WEG.fulfillment()}#ff-kunden`);
   return (
     <div className="ff-lage" role="group" aria-label="Lage" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 22px', alignItems: 'center', padding: '4px 2px', borderBottom: `1px solid ${C.linie}` }}>
       <Erklaert erklaerung="fulfillment.lage" name="Lage"><span style={{ ...MIKRO, color: C.inkDim }}>Lage</span></Erklaert>
-      <Teil titel="Kunden in Lieferung" farbe={ampel} text={zeilen.length ? `${anzahl(zeilen.length, 'Kunde', 'Kunden')} · ${lageVerteilung(zeilen)}` : 'Noch keiner — ein Fall startet mit dem Onboarding'}
-        onClick={() => router.push(zeilen.length ? `${WEG.fulfillment()}#ff-kunden` : WEG.fulfillment('onboarding'))} />
-      <Teil titel="Was hängt?" farbe={rot.length ? LEUCHT.kritisch : daten.haengt.length ? LEUCHT.achtung : LEUCHT.gut}
-        text={zuerst ? `${anzahl(daten.haengt.length, 'Punkt', 'Punkte')}${rot.length ? ` · ${rot.length} dringend` : ''} — ${zuerst.kunde}: ${zuerst.text}` : 'Nichts — alle Fälle sind im Takt'}
-        {...(zuerst ? { onClick: () => router.push(zuerst.href) } : {})} />
-      {erster && <Teil titel="Als Nächstes" farbe={AMPEL_FARBE[kundenAmpel(erster)]} text={`${erster.kunde}${erster.schritt ? ` — ${erster.schritt}` : erster.phase ? ` — ${erster.phase}` : ''}`} onClick={() => router.push(WEG.fall(erster.mandatId))} />}
+      <Teil titel="Kunden in Lieferung" farbe={ampel} text={zeilen.length ? anzahl(zeilen.length, 'Kunde', 'Kunden') : 'Noch keiner — ein Fall startet mit dem Onboarding'}
+        onClick={zeilen.length ? zuDenKarten : () => router.push(WEG.fulfillment('onboarding'))} />
+      <Teil titel="Was hängt?" farbe={rot.length ? LEUCHT.kritisch : n ? LEUCHT.achtung : LEUCHT.gut}
+        text={n ? `${anzahl(n, 'Punkt hängt', 'Punkte hängen')}${rot.length ? ` · ${rot.length} dringend` : ''}` : 'Nichts — alle Fälle sind im Takt'}
+        {...(n ? { onClick: zuDenKarten } : {})} />
     </div>
   );
 }
