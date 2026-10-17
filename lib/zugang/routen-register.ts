@@ -379,6 +379,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 9) — Modul `fulfillment`, Tor `fulfillmentZugang` (Haushalt des Inhabers, Sicht Privat 403,
   //    Schreiben nur per Sitzung + Bau-Kennung, Kunden-Link-Schalter nur Inhaber). C0 legt jede Route als Stub an (Tor + 501), die Pakete füllen sie.
   'fulfillment': r('GET,PATCH', FF, 'Fulfillment (C1): Vorlagen, Bibliothek, Rituale, Zuordnung, Einstellungen, Onboarding-Kandidaten, Kennzahlen; PATCH Einzel-Ops mit Stand (409) — Business; Kunden-Link-Schalter nur Inhaber; Dienstweg schreibt nie.', 'fulfillmentZugang'),
+  'fulfillment/editor': r('GET,PATCH,POST', FF, 'Prozess-Editor (17.10.): eine Paket-Vorlage lesen (Stand der ganzen Vorlage), Editor-Ops mit Stand (409 mit aktueller Fassung, Kreis 409, 413 Grenzen), „Neuer Ablauf“ (anfrageId) — bearbeiten nur volle Mitglieder (Rolle „nur Business“ 403), nur per Sitzung; Dienstweg schreibt nie.', 'vorlagenZugang'),
   'fulfillment/import': r('POST', FF, 'Import der Vorlagen/Abläufe (C1): Vorschau, Übernehmen mit vorschauId, Rückgängig mit laufId; ≤ 4 MB — nur per Sitzung.', 'fulfillmentZugang'),
   'fulfillment/fall': r('GET,POST,PATCH', FF, 'Ein Fall je Mandat (C1): lesen (Lese-Protokoll „fulfillment“), starten (anfrageId), Ops am Fall mit Stand — nur Mandate von Business-Gesellschaften; Dienstweg schreibt nie.', 'fulfillmentZugang'),
   'fulfillment/cockpit': r('GET', FF, 'Mandats-Cockpit (C1): Zusammenfassung je Fall, „was hängt“ — nur lesen.', 'fulfillmentZugang'),
