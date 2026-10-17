@@ -19,6 +19,8 @@ export { ZielBezug } from './ziel-bezug';
 export { useHandy, useBreit, useMedien, HANDY_BIS, SPALTEN_AB } from './medien';
 // Fokus-Signatur (04.10., DESIGN_STANDARD.md › Fokus-Signatur): Mini-Strahl über einer echten Reihe, Segmentbalken, Kante, Netz.
 export { FadenLinie, Segmentbalken, FokusKante, NetzMotiv, type FadenLinieProps } from './fokus';
+// Markenzeichen: der Flow (17.10., DESIGN_STANDARD.md › Markenzeichen: der Flow): der Lichtfaden für jeden Weg — Reise, Fluss, Fläche, als Nächstes mehr.
+export { FlowLinie, flowFaedenAus, type FlowLinieProps } from './flow';
 // Zeilen-Aktionen (04.10., neu 10.10. — DESIGN_STANDARD.md › Zeilen-Aktionen): „⋯“ in eigener Spalte → Menü; Handy: wischen (je Gerät
 // einstellbar, Einstellungen › Bedienung); „Rückgängig“, Rückfrage.
 export { ZeileAktionen, RueckgaengigLeiste, useRueckgaengig, Rueckfrage, useRueckfrage, RUECKGAENGIG_MS, RICHTUNG_AB, ZEILE_MEHR_BREITE, type ZeileAktionenProps, type Rueckgaengig, type RueckfrageDaten, type RueckfrageWahl, type Bestaetigung } from './zeile-aktionen';

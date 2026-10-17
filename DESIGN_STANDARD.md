@@ -258,6 +258,68 @@ Deals › Prognose (Fokus-Karte, erwartete Abschlüsse gewichtet je Monat) · Pl
 Ziel-Zeilen (Segmentbalken), aufgeklappte Engstelle (Kante) · Zahlen › Liquidität (Verlauf als Lichtfäden-Band), Business- und Privat-Index (Verlauf) ·
 Fokus (Schaufenster: „Unser Fokus“ mit Netz, Regler als Segmentbalken, Fokus-Minuten je Tag, darunter der Strahl v3).
 
+Der Faden unter Reise, Fluss und Fläche ist das **Markenzeichen** (nächster Abschnitt) — er zählt nicht gegen „eine Fokus-Karte, zwei FadenLinien“.
+
+## Markenzeichen: der Flow (17.10.)
+Kevin 17.10. (Bild aus der Markttraktion, „Verlauf · 20 Tage“ unter dem Traktions-Index): „Denke dir auch immer den Flow, diese Linie, mit — das ist unser
+Markenzeichen nachher bzw. soll es werden.“ — „Das war damit gemeint — dass alles immer nach und nach in den Flow kommt.“
+
+**Leitsatz: Nach und nach kommt alles in den Flow.** Jede Ansicht mit einem Weg, einem Verlauf, einer Reihenfolge oder einem Fortschritt bekommt den Lichtfaden —
+derselbe Faden überall, aus demselben Zeichner, mit derselben Bedeutung.
+
+- **EIN Zeichner:** `lib/lichtfaeden/flow.ts` — rein `flowProben` (Stützpunkte aus Weg, „Hier“, Stellen, Farbabschnitten), `zeichneFaden` (Kern + Fäden + Partikel,
+  additiv), `zeichneFlow` (dazu Leuchtpunkt „Hier“ und Glühen), `taktLauf` (EIN gemeinsamer requestAnimationFrame für alle Faden-Ebenen der Seite), `flowEbene`
+  (eine Leinwand, viele Fäden, optional Kamera). Die FadenLinie der Index-Verläufe (`lib/lichtfaeden/fadenlinie.ts`) zeichnet mit `zeichneFaden` im selben Takt —
+  der Traktions-Index sieht genau aus wie die Reise. Parameter nur in `FLOW`. Nie eine zweite Linien-Logik (Wächter `tests/flow-linie.test.ts`).
+- **Der Baustein `FlowLinie`** (`components/os/ui/flow.tsx`, Import `from '../ui'`) — die ganze Schnittstelle, ein paar Zeilen:
+
+  ```tsx
+  <FlowLinie punkte={[[0, 12], [480, 12]]} bisHier={0.4} ton={JETZT} hier frans />   // ein Weg in Pixeln der Leinwand
+  <FlowLinie faeden={[…]} />                                                          // mehrere Fäden (FlowFaden)
+  <FlowLinie messen={(eltern, leinwand) => […]} />                                    // die Fäden aus dem Bild messen (Reise, Fluss)
+  ```
+  Ein `FlowFaden` ist: `punkte` (Weg), `farbe`, `bisHier` (0 … 1, erreicht bis hier), `hier` (Leuchtpunkt), `frans` (Zukunft ausgefranst), `gluehen` (Ende glüht),
+  `stellen` (`stau` = offen, `durch` = gegeben), `farben` (Abschnitte in eigener Farbe), `staerke` (fein · mittel · breit), `aufbau` (wächst von links ein).
+  Die Leinwand liegt `position: absolute` im Eltern-Element (Lage per CSS, Klasse `ff-flow-ebene`), ist `aria-hidden`, nimmt keine Zeiger; solange sie läuft,
+  trägt das Eltern-Element `data-flow="an"` (dort blendet CSS die ruhige Ersatz-Linie aus).
+- **Bedeutung (immer gleich):** hell und fließend bis „Hier“ (erreicht), dahinter ruhig und gedämpft; wo der Weg in die Zukunft geht, franst er aus (wie Strahl v3
+  nach HEUTE). An einem offenen Abstimmungspunkt bzw. einer offenen Abhängigkeit **staut** er sich (das Bündel weitet sich und leuchtet, dahinter ein schmaler
+  Hals), an einem gegebenen fließt er hindurch. Der Pfeil in den aktuellen Knoten glüht sanft. Er fließt immer in Laufrichtung.
+- **Farbe:** der Akzent der Instanz (`FLOW_TON.basis` = „Hier“, Petrol), der Nein-Pfad zur Erinnerung im Ton der Erinnerung (Orange), **Rot bzw. Gelb nur, wo
+  wirklich etwas hängt**; im Kreislauf (`laeuft`) jede Stufe in ihrer Farbe. Nur Token (`FLOW_TON` in `components/os/ui/reise/formen.tsx`), nie ein Literal.
+- **Eingebaut:** Reise (`ReiseBild`: der Faden läuft an der Unterkante, das Band „Kunde“ sitzt darauf — seine untere Linie entfällt; ohne Band unter den Kästchen;
+  am Handy links an der senkrechten Liste) · Fluss (`Fluss` + Editor-Fluss: jeder Pfeil ein feiner Faden, `FlussFaden` in `components/os/ui/reise/faden.tsx`) ·
+  Fläche (Prozess-Editor: eine Ebene UNTER dem SVG, Kamera und Wege direkt — beim Ziehen nur die betroffenen, der neue Pfeil zieht einen Faden mit; „Als Bild
+  speichern“ zeichnet die Fäden als ruhiges Standbild ins SVG, `FlaechePfeil faden`). Dadurch automatisch: Fulfillment (Fall, Editor), Markttraktion › Kreislauf,
+  Einrichtung, Planung › Ziel.
+
+**Regeln:**
+1. **Nie ohne echten Weg:** ohne Weg zeigt `FlowLinie` nichts, eine Reise ohne Stufen hat keinen Faden, ein Fluss ohne Pfeile auch nicht — kein Schmuck-Faden über
+   leeren Ansichten.
+2. **Stand nur aus dem Modell:** die Fadenlage rechnet `lib/reise/flow.ts` aus denselben Daten wie die Zeichnung — `reiseFlow` aus den Spalten (die Stufe `jetzt` IST
+   „Hier“, also dieselbe Stelle wie `fallStelle` im Fall-Kopf), `pfeilZustand` aus den Knoten davor/danach, `flaecheFaden` aus den Pfeilen der Fläche. Die
+   Zeichnung misst nur Lagen.
+3. **Bewegung:** sehr ruhig (~30 Bilder je Sekunde im gemeinsamen Takt), pausiert außer Sicht und im verborgenen Tab. `prefers-reduced-motion` = Standbild ohne
+   Takt. Kunden-Ansicht und Präsentation: `flow="still"` (Standbild). Druck: die Ebene ist aus, die ruhigen Linien stehen wieder da; Report-PDFs zeichnen weiter die
+   ruhige Zeile.
+4. **Leistung:** eine Leinwand je Weg-Ansicht, Stützpunkte nur bei neuen Daten, neuer Größe oder neuer Kamera; Fläche: außerhalb des Bildes wird nichts gerechnet,
+   bis ~300 Knoten flüssig; kein React-Zustand je Bild.
+5. **Markenzeichen statt Fokus-Signatur:** der Faden einer Reise, eines Flusses oder einer Fläche zählt nicht gegen die Grenzen der Fokus-Signatur (eine Fokus-Karte,
+   zwei FadenLinien). Dafür gilt: **je Weg genau EIN Faden** — kein zweiter Faden, kein Strahl neben derselben Reise.
+6. **Barrierefrei:** die Leinwand ist `aria-hidden`; die Bedeutung steht in Text und Zeichen (✓, „Hier“, Raute, „hängt“) — nie nur im Faden.
+
+**Neue Ansicht einhängen (Rezept):** Weg und Stand im Modell des Bereichs rechnen (wie `reiseFlow`) → `FlowFaden` bauen → `<FlowLinie … />` in ein
+`position: relative`-Element legen (CSS für die Lage der Leinwand) → Wächter-Zeile in `tests/flow-linie.test.ts` → Zeile unten von „Als Nächstes“ nach „Hat den Flow“.
+
+| Hat den Flow (17.10.) | Als Nächstes |
+|---|---|
+| Index-Verläufe als FadenLinie (Traktions-, Business-, Privat-Index, Liquidität, Zeit je Einheit) — derselbe Zeichner | Liquidität: Engstellen als Stau im Verlauf |
+| Fulfillment › Fall: Reise + Fluss · Prozess-Editor: Reise, Fluss, Fläche | Markttraktion › Deals: die Pipeline-Stufen als Weg (Board) |
+| Markttraktion › Planung › Kreislauf (jede Stufe in ihrer Farbe) | Follow-up: Kadenz als Weg je Kontakt |
+| Einrichtung (Etappen + Schritte) | Planung › Jahr: Meilenstein-Kette im Seil mit Stau an „wartet auf“ |
+| Planung › Ziel (Meilensteine + Aufgaben) | Aufgaben: Abhängigkeiten (`abhaengigVon`) als Kette |
+| Lichtfäden / Seil im Planungsjahr (eigener Zeichner, gleiche Sprache) | Bauplan-Board: Ideen → Fertig · Angebot: Entwurf → gestellt → angenommen |
+
 
 ## Überblick „Für dich“ je Bereich (04.10. abends)
 Kevin: „Lass uns so immer den Überblick gestalten und dann den Flow so anzeigen, wie es die letzten 3 Monate war, wie es jetzt ist und wie der

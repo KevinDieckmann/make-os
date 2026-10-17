@@ -25,7 +25,7 @@ import { RHYTHMUS_TEXT } from '@/lib/fulfillment/prozesse/rituale';
 import { useFall, fallOps, fehlerText, type FallAntwort } from '../prozesse/daten';
 import { klein, Meldung, useTextFrage } from '../prozesse/teile';
 import { SchrittDetail, FreigabeMeilenstein, FreigabeDialog, ExtraDialog, fallOpsMitMeldung, statusSetzer, type FallMeldung } from '../prozesse/FallAblauf';
-import { WillkommenKarte, KickoffFragen, AusAnalyse, KeinFall, VorlageGeaendert, FallStatus, OnboardingZaehler, OnboardingMehr } from '../prozesse/FallUeberblick';
+import { WillkommenKarte, KickoffFragen, AusAnalyse, KeinFall, VorlageGeaendert, AusfuehrungWartet, FallStatus, OnboardingZaehler, OnboardingMehr } from '../prozesse/FallUeberblick';
 import { AbschlussDetail, type AbschlussOps, type AbschlussStelle } from '../prozesse/FallKreislauf';
 import { FallAnalyse } from '../analyse/FallAnalyse';
 import { ReiseBild, type BildSpalte } from '../../ui/reise/ReiseBild';
@@ -163,6 +163,7 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
             <FormenLegende />
           </Karte>
           <div className="ff-fall-detail" style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+            <AusfuehrungWartet daten={daten} />
             <Detail daten={daten} phase={sp.titel} knoten={knoten} gewaehlt={gewaehlt} ops={ops} status={status} abschlussOps={abschlussOps} melde={melde}
               onFreigabe={setFreigabe} willkommenAuf={willkommenAuf} setWillkommenAuf={setWillkommenAuf} setMeldung={setMeldung} fragen={frage.fragen} />
           </div>

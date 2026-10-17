@@ -5,4 +5,4 @@
 // Zeile in seinem Modell. Neue Formen oder Zustände nur hier — nie in einem Bereich nachbauen (Wächter tests/reise-ueberall.test.ts).
 export { ReiseBild, FormZeichen, type BildSpalte, type BildKaestchen } from './ReiseBild';
 export { Fluss, KnotenKnopf, Pfeil, SeitenPfeil, Erinnerung, FormenLegende, formName, knotenLabel } from './Fluss';
-export { JETZT, FORM_FARBE, FreigabeRaute } from './formen';
+export { JETZT, FORM_FARBE, FLOW_TON, FreigabeRaute } from './formen';

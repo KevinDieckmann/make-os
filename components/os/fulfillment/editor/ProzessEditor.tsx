@@ -12,7 +12,8 @@
 //     bearbeiten, „Einfügen nach …“); Ziele ≥ 44 px. Am Handy (≤ 720 px) eine Liste mit Pfeilen statt Ziehen (EditorListe).
 //   · Rechte: bearbeiten nur volle Mitglieder (die Route prüft; „nur Business“ sieht nur — hier ohne Palette und Ziehen).
 //   · Zwei Ansichten derselben Vorlage (17.10.): „Fluss“ (oben → unten, wie bisher; am Handy die Liste) und „Fläche“ (frei zeichnen wie in Miro, ./Flaeche.tsx;
-//     am Handy nur ansehen). Der Wechsel verliert nichts — beide schreiben über denselben Weg; die Wahl merkt sich der Browser.
+//     am Handy nur ansehen). Der Wechsel verliert nichts — beide schreiben über denselben Weg; die Wahl merkt sich der Browser. Seit 17.10. abends
+//     ist am Rechner die Fläche die Vorgabe, am Handy die Liste — eine gemerkte Wahl des Browsers gewinnt (`editorAnsichtVorgabe`).
 // Rechnet nichts (lib/fulfillment/prozesse/{editor,editor-geschichte}.ts); Änderungen gelten für NEUE Fälle — laufende zeigen „Vorlage geändert — übernehmen?“.
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent } from 'react';
@@ -41,6 +42,8 @@ import { EditorFlaeche } from './Flaeche';
 /** Die zwei Ansichten des Editors — Fluss (bzw. Liste am Handy) und Fläche. */
 export type EditorAnsichtArt = 'fluss' | 'flaeche';
 const MERKER_ANSICHT = 'make-ff-editor-ansicht';
+/** Welche Ansicht der Editor zeigt: fest gegeben (Tests) › die gemerkte Wahl des Browsers › am Rechner die Fläche, am Handy die Liste (17.10. abends). */
+export const editorAnsichtVorgabe = (fest: EditorAnsichtArt | undefined, gemerkt: EditorAnsichtArt | null, handy: boolean): EditorAnsichtArt => fest ?? gemerkt ?? (handy ? 'fluss' : 'flaeche');
 
 export interface EditorDaten { vorlage: ProzessVorlage; stand: string; bausteine: { id: string; titel: string; art: string }[]; darfBearbeiten: boolean; laufend: number }
 
@@ -76,7 +79,8 @@ export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }:
   const [bausteinZiel, setBausteinZiel] = useState<EditorZiel | null>(null);
   const [papierkorbAuf, setPapierkorbAuf] = useState(false);
   const [mehrFuer, setMehrFuer] = useState<string | null>(null);
-  const [ansicht, setAnsichtRoh] = useState<EditorAnsichtArt>(ansichtFest ?? 'fluss');
+  const [gemerkt, setAnsichtRoh] = useState<EditorAnsichtArt | null>(null);
+  const ansicht = editorAnsichtVorgabe(ansichtFest, gemerkt, handy);
   const [bausteinRueckruf, setBausteinRueckruf] = useState<((b: { id: string; titel: string; art: string }) => void) | null>(null);
   useEffect(() => {
     if (ansichtFest) return;

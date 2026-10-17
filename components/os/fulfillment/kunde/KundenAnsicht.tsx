@@ -72,7 +72,7 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
         {sicht.lage && <div style={{ marginTop: 4 }}><LageBlock lage={sicht.lage} gross={praesentation} /></div>}
         {sicht.zeitstrahl.length > 0 && (
           <div style={{ marginTop: 22, display: 'grid', gap: 10 }}>
-            <ReiseBild spalten={reise} hierText="hier stehen wir" bandTitel={w.beiEuch} gross={praesentation} label="Unser gemeinsamer Weg durch die Phasen" />
+            <ReiseBild spalten={reise} hierText="hier stehen wir" bandTitel={w.beiEuch} gross={praesentation} label="Unser gemeinsamer Weg durch die Phasen" flow="still" />
             {sicht.erledigt.length > 0 && <div style={klein}><span style={{ ...MIKRO, marginRight: 8 }}>Erledigt in den letzten 14 Tagen</span>{sicht.erledigt.join(' · ')}</div>}
             {reise.some(p => p.raute) && <div style={{ ...klein, color: C.inkLeise }}>◇ Abstimmungspunkt — hier stimmen wir gemeinsam ab, bevor es weitergeht.</div>}
           </div>
