@@ -26,7 +26,8 @@ import type { CrmBestand, Event } from './typen';
 import { nurBusinessGezaehlt } from './zaehlung-business';
 import type { KpiAmpel } from './kennzahlen';
 import { echtesGespraech } from './pipeline';
-import { neuerLeadAm } from './neue-leads';
+import { neuerLead } from './neue-leads';
+import { leads, type LeadZeile } from './leads';
 import type { Traktion, Welt } from './traktion';
 import { followUpBis } from './events';
 import { istNetzwerkenEvent } from './marke';
@@ -185,7 +186,7 @@ export function salesAnteilAb(sitzungen: readonly { person: string; datum: strin
  * Teamziel geteilt durch die Zahl der Personen MIT Sales-Anteil, aufgerundet — `salesAnteilAb`).
  * Gespräche und neue SQL messen an DERSELBEN Messlatte wie Kennzahlen und Traktions-Index (`messlatte`, Ziele der Wertelisten, 7.2).
  */
-export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: string, wochen = 8, plan?: PlanWoche | null): Scoreboard {
+export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: string, wochen = 8, plan?: PlanWoche | null, leadZeilen?: readonly Pick<LeadZeile, 'personen'>[]): Scoreboard {
   // Nur Business (17.10., L2 B2): Deals, Mandate und Angebote einer Privat-Einheit zählen nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
   const crm = nurBusinessGezaehlt(crm0);
   const W = wochenBis(heute, Math.max(1, Math.min(52, Math.round(wochen) || 8)));
@@ -210,9 +211,15 @@ export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: s
   const abChance = fruehestes(chancen.map(c => tag(c.angelegt)));
   const abBeitrag = fruehestes(beitraege.flatMap(b => [tag(b.datum), tag(b.geaendert)]));
   const abContent = veroeffentlicht.length || wirkung.length ? fruehestes([...veroeffentlicht.map(b => tag(b.datum)), ...wirkung.map(x => x.tag)]) : null;
-  // Für die Plan-Zeilen (10.10.): Tag der Anlage von Hand angelegter Personen (mit Vermerk) und Tage, an denen ein Deal die Stufe „Angebot“ erreichte.
+  // Für die Plan-Zeilen (10.10.): Tag, an dem ein Lead neu wurde, und Tage, an denen ein Deal die Stufe „Angebot“ erreichte.
   // Prüf-Fund 11.10.: EINE Regel (lib/crm/neue-leads.ts) — kein rückwirkendes Zählen importierter Kontakte, keine System-Einträge.
-  const neueLeads = kontakte.map(neuerLeadAm).filter((d): d is string => !!d && TAG_MUSTER.test(d));
+  // 17.10. (L2 B4): je Lead-Zeile (`neuerLead`, wie Challenges, Kanal-Stand und Kreislauf) — nicht je Person, ohne Art.-18-Personen. Die
+  // Lead-Zeilen nur, wenn die Zeile gebraucht wird (nur mit Plan); fehlen sie, baut sie das Scoreboard selbst (`leads`).
+  const mitLeadZeile = !!plan && plan.leads > 0;
+  const kontaktNach = new Map(kontakte.map(k => [k.id, k]));
+  const neueLeads = mitLeadZeile
+    ? (leadZeilen ?? leads(kontakte, crm0, heute)).map(z => neuerLead(z, kontaktNach)?.tag).filter((d): d is string => !!d && TAG_MUSTER.test(d))
+    : [];
   const angebote = chancen.flatMap(c => { const h = (c.historie ?? []).find(x => x.stufe === 'angebot'); return h ? [tag(h.am)] : []; });
   const abLeads = fruehestes(neueLeads);
   const abEvent = fruehestes(events.filter(e => !istNetzwerkenEvent(e)).flatMap(e => [e.datum, tag(e.geaendert)]));  // nur unsere Abende — besuchte Events (Events-Reiter) zählen hier nicht
@@ -251,7 +258,7 @@ export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: s
     ...personen('gespraeche'),
     { id: 'neue_chancen', welt: 'sales', label: 'Neue SQL → Deals', ziel: zielSql, gelbAb: planSql ? Math.ceil(planSql / 2) : null, quelle: `Leads, die SQL wurden (Deals angelegt)${planSql ? planText : ml.ausZiel.sql ? ' · Monatsziel der Wertelisten je Woche' : ''}`, ab: abChance, zaehle: anzahl(chancen, c => tag(c.angelegt)), ...(planSql ? { plan: true as const } : {}) },
     // Nur mit Plan (10.10.): neue Leads und Angebote je Woche — dieselben Zählregeln wie die Challenges (lib/crm/planung.ts `wochenIst`).
-    ...(plan && plan.leads > 0 ? [{ id: 'neue_leads', welt: 'sales' as Welt, label: 'Neue Leads', ziel: plan.leads, gelbAb: Math.ceil(plan.leads / 2), quelle: `Von Hand bzw. aus Kanälen angelegte Personen${planText}`, ab: abLeads, zaehle: anzahl(neueLeads, x => x), plan: true as const }] : []),
+    ...(plan && plan.leads > 0 ? [{ id: 'neue_leads', welt: 'sales' as Welt, label: 'Neue Leads', ziel: plan.leads, gelbAb: Math.ceil(plan.leads / 2), quelle: `Leads (Firma bzw. Person), deren erste Person von Hand bzw. aus einem Kanal angelegt wurde${planText}`, ab: abLeads, zaehle: anzahl(neueLeads, x => x), plan: true as const }] : []),
     ...(plan && plan.angebote > 0 ? [{ id: 'angebote', welt: 'sales' as Welt, label: 'Angebote raus', ziel: plan.angebote, gelbAb: Math.ceil(plan.angebote / 2), quelle: `Deals, die die Stufe „Angebot“ erreichten${planText}`, ab: abChance, zaehle: anzahl(angebote, x => x), plan: true as const }] : []),
     { id: 'gewonnen', welt: 'sales', label: 'Gewonnene Deals', ziel: null, gelbAb: null, quelle: 'Stufe „gewonnen“ in der Historie', ab: abChance,
       zaehle: w => chancen.filter(c => (c.historie ?? []).some(h => h.stufe === 'gewonnen' && drin(tag(h.am), w))).length },

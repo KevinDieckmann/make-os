@@ -66,7 +66,7 @@ describe('B2 · Privat-Deals und -Mandate zählen in der Markttraktion nicht (EI
   it('Wochen-Scoreboard „Neue SQL → Deals“, Challenges (`wochenIst`) und Kanal-Stand: nur der Business-Deal', () => {
     const sb = wochenScoreboard([], crm, HEUTE, 1);
     expect(sb.zeilen.find(z => z.id === 'neue_chancen')!.werte.at(-1)).toBe(1);
-    expect(wochenIst([], crm, HEUTE, HEUTE).team.deals).toBe(1);
+    expect(wochenIst([], crm, HEUTE, HEUTE, []).team.deals).toBe(1);
     const st = kanalStaende({ kanaele: [kanal({ herkunft: 'netzwerk' })], zeilen: [], crm, kontaktNach: new Map(), heute: HEUTE });
     expect(st[0].dealsOffen).toBeLessThanOrEqual(1);
   });
@@ -105,5 +105,24 @@ describe('B3 · Gespräch → SQL und SQL → Gewonnen aus EINER Stelle', () => 
     const kr = kreislauf({ heute: HEUTE, kanaele: [kanal()], zeilen: leads(kontakte, crm, HEUTE), crm, kontakte, nachLeistung: {}, followup: { faellig: 0, ueberfaellig: 0 } });
     const d = kr.stufen.find(s => s.id === 'deals')!;
     expect(d.ist).toContain('SQL → Gewonnen 70');
+  });
+});
+
+describe('B4 · „Neue Leads“ je Lead-Zeile, ohne Art.-18-Personen — Scoreboard, Challenges, Kanal-Stand gleich', () => {
+  const vermerk = (tag: string) => ({ am: `${tag}T09:00:00.000Z`, art: 'system' as const, text: 'Von Hand angelegt', von: A });
+  // Eine Firma mit zwei frisch angelegten Personen, dazu eine eingeschränkte Person (Art. 18) — alle in dieser Woche angelegt.
+  const kontakte = [
+    k('a', { firmaId: 'f-acme', firma: 'Acme', importiertAm: HEUTE, aktivitaeten: [vermerk(HEUTE)], besitzer: A }),
+    k('b', { firmaId: 'f-acme', firma: 'Acme', importiertAm: HEUTE, aktivitaeten: [vermerk(HEUTE)], besitzer: A }),
+    k('c', { importiertAm: HEUTE, aktivitaeten: [vermerk(HEUTE)], besitzer: A, eingeschraenkt: { seit: HEUTE, grund: 'Antrag', von: A } } as Partial<Kontakt>),
+  ];
+  const crm = crmMit({ firmen: [{ id: 'f-acme', name: 'Acme', rolle: 'zielkunde', geaendert: J } as unknown as CrmBestand['firmen'][number]] });
+  const zeilen = leads(kontakte, crm, HEUTE);
+  it('vorher 3 (je Person, mit der eingeschränkten) gegen 1 (je Lead) — jetzt überall 1', () => {
+    expect(zeilen.map(z => z.id)).toEqual(['f-acme']);
+    const sb = wochenScoreboard(kontakte, crm, HEUTE, 1, { leads: 5, gespraeche: 1, sql: 1, angebote: 1, quelle: 'Test' });
+    expect(sb.zeilen.find(z => z.id === 'neue_leads')!.werte.at(-1)).toBe(1);
+    expect(wochenIst(kontakte, crm, HEUTE, HEUTE, zeilen).team.leads).toBe(1);
+    expect(wochenIst(kontakte, crm, HEUTE, HEUTE, zeilen).je[A]?.leads).toBe(1);
   });
 });

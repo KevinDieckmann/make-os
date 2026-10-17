@@ -39,3 +39,26 @@ export function neuerLeadSeit(k: Pick<Kontakt, 'importiertAm' | 'aktivitaeten'> 
   const am = neuerLeadAm(k);
   return !!am && am <= heute && am >= tagPlus(heute, -tage);
 }
+
+/** Was die Zählung je Person braucht (Anlage, Verlauf, wer die Beziehung hält). */
+export type NeuerLeadKontakt = Pick<Kontakt, 'importiertAm' | 'aktivitaeten'> & { quelle?: string; besitzer?: string };
+
+/**
+ * Der NEUE Lead einer Lead-Zeile (17.10., L2 B4): EINE Zählung „neue Leads“ für Wochen-Scoreboard, Challenges (`wochenIst`), Kanal-Stand und
+ * Kreislauf — je Lead-Zeile (Firma bzw. Person ohne Firma, wie `leads()` sie bildet: ohne Personen mit Art.-18-Einschränkung oder Werbesperre)
+ * der früheste Tag, an dem eine ihrer Personen als neuer Lead zählt (`neuerLeadAm`), und wer ihn gebracht hat (die Person, die die Beziehung
+ * hält, sonst der erste Mensch im Verlauf). Vorher zählten Scoreboard und Challenges je PERSON aus der rohen Kartei (zwei neue Personen einer
+ * Firma = 2, eine eingeschränkte Person zählte mit), Kanal-Stand und Kreislauf je Lead-Zeile. Rein.
+ */
+export function neuerLead(z: { personen: readonly { id: string }[] }, kontaktNach: ReadonlyMap<string, NeuerLeadKontakt>): { tag: string; wer?: string } | null {
+  let raus: { tag: string; wer?: string } | null = null;
+  for (const p of z.personen) {
+    const k = kontaktNach.get(p.id);
+    const tag = k ? neuerLeadAm(k) : null;
+    if (!k || !tag || (raus && raus.tag <= tag)) continue;
+    const mensch = (k.aktivitaeten ?? []).filter(a => !!a.von && a.von !== 'system' && typeof a.am === 'string').sort((a, b) => tagVon(a.am).localeCompare(tagVon(b.am)))[0]?.von;
+    const wer = k.besitzer ?? mensch;
+    raus = { tag, ...(wer ? { wer } : {}) };
+  }
+  return raus;
+}

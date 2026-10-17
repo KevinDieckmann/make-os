@@ -29,7 +29,7 @@ import { MARKE_EVENTS, alsMarketingAnmeldung, reiheVon } from './marke';
 import { MACHBAR_BIS, ENG_BIS } from '@/lib/kapazitaet/typen';
 import { tagPlus, montagVon } from '@/lib/zeit/kalender-kern';
 import { tagVon } from '@/lib/zeit';
-import { neuerLeadAm } from './neue-leads';
+import { neuerLead } from './neue-leads';
 import { imBusiness } from './treppe';
 import { WEG } from '@/lib/wege';
 import { mandateLink } from './adresse';
@@ -144,8 +144,8 @@ export { istQuoten } from './quoten';
  * EINE Regel mit dem Wochen-Scoreboard, lib/crm/neue-leads.ts `neuerLeadAm`; Prüf-Fund 11.10.).
  */
 export function leadAngelegt(z: Pick<LeadZeile, 'personen'>, kontaktNach: ReadonlyMap<string, Pick<Kontakt, 'importiertAm' | 'aktivitaeten'> & { quelle?: string }>): string | null {
-  const tageL = z.personen.map(p => kontaktNach.get(p.id)).map(k => (k ? neuerLeadAm(k) : null)).filter((t): t is string => !!t).sort();
-  return tageL[0] ?? null;
+  // EINE Zählung „neue Leads“ (17.10., L2 B4): `neuerLead` (lib/crm/neue-leads.ts) — dieselbe für Scoreboard und Challenges.
+  return neuerLead(z, kontaktNach)?.tag ?? null;
 }
 
 export interface KanalStand {
@@ -522,7 +522,7 @@ const ANSPRACHE = new Set(['anruf', 'mail', 'linkedin', 'gespraech', 'termin', '
  * zählen nie). Gespräche `echtesGespraech`, neue Leads = von Hand angelegte Personen, Angebote = Deals, die die Stufe „Angebot“ erreichten,
  * Deals = neu angelegt, Power Hours = Sitzungen, Reaktivieren = Ansprache nach ≥ 90 Tagen Stille, Events = Gäste „da“ auf Events der Woche.
  */
-export function wochenIst(kontakte: readonly (Pick<Kontakt, 'id' | 'importiertAm' | 'aktivitaeten' | 'besitzer'> & { quelle?: string })[], crm: Pick<CrmBestand, 'chancen' | 'sitzungen' | 'teilnahmen' | 'events'>, von: string, bis: string): { team: WochenZahlen; je: Record<string, WochenZahlen> } {
+export function wochenIst(kontakte: readonly (Pick<Kontakt, 'id' | 'importiertAm' | 'aktivitaeten' | 'besitzer'> & { quelle?: string })[], crm: Pick<CrmBestand, 'chancen' | 'sitzungen' | 'teilnahmen' | 'events'>, von: string, bis: string, zeilen: readonly Pick<LeadZeile, 'personen'>[]): { team: WochenZahlen; je: Record<string, WochenZahlen> } {
   const team = leer();
   const je: Record<string, WochenZahlen> = {};
   const plus = (art: ChallengeArt, wer: string | undefined) => { team[art]++; if (wer && wer !== 'system') (je[wer] ??= leer())[art]++; };
@@ -531,14 +531,15 @@ export function wochenIst(kontakte: readonly (Pick<Kontakt, 'id' | 'importiertAm
     const akt = (k.aktivitaeten ?? []).filter(a => a.von !== 'system' && (a.art as string) !== 'system').map(a => ({ ...a, tag: tagVon(a.am) })).sort((a, b) => a.tag.localeCompare(b.tag));
     for (const a of akt) if (drin(a.tag) && echtesGespraech(a)) plus('gespraeche', a.von);
     const angelegt = (k.importiertAm ?? '').slice(0, 10);
-    const neu = neuerLeadAm(k);
-    if (neu && drin(neu)) plus('leads', k.besitzer ?? akt[0]?.von);
     const erste = akt.find(a => drin(a.tag) && ANSPRACHE.has(a.art));
     if (erste) {
       const vorher = akt.filter(a => a.tag < von).pop()?.tag ?? (/^\d{4}-\d{2}-\d{2}$/.test(angelegt) && angelegt < von ? angelegt : null);
       if (vorher && tage(vorher, erste.tag) >= RUHEND_TAGE) plus('reaktivieren', erste.von);
     }
   }
+  // Neue Leads je Lead-Zeile (17.10., L2 B4: `neuerLead`, wie Scoreboard, Kanal-Stand und Kreislauf — nicht je Person, ohne Art. 18).
+  const kontaktNach = new Map(kontakte.map(k => [k.id, k]));
+  for (const z of zeilen) { const n = neuerLead(z, kontaktNach); if (n && drin(n.tag)) plus('leads', n.wer); }
   // Nur Business (17.10., L2 B2): Deals einer Privat-Einheit zählen in den Challenges nicht (`nurBusinessGezaehlt`, EINE Filterstelle).
   for (const c of nurBusinessGezaehlt(crm).chancen) {
     if (drin(tagVon(c.angelegt))) plus('deals', c.besitzer || c.historie[0]?.von);

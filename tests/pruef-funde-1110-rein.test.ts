@@ -99,7 +99,8 @@ describe('Fund 3 — „Neue Leads“ zählt Importe nicht rückwirkend, System-
       k('hand', { importiertAm: '2026-10-06', aktivitaeten: [vermerk('2026-10-06')], besitzer: A }),
       k('import', { importiertAm: '2026-10-06', aktivitaeten: [akt(A, '2026-10-30')] }),
     ];
-    const ist = wochenIst(kontakte, { chancen: [], sitzungen: [], teilnahmen: [], events: [] }, '2026-10-05', '2026-10-11');
+    // Seit 17.10. (L2 B4) je Lead-Zeile — hier zwei Personen ohne Firma = zwei Zeilen.
+    const ist = wochenIst(kontakte, { chancen: [], sitzungen: [], teilnahmen: [], events: [] }, '2026-10-05', '2026-10-11', kontakte.map(x => ({ personen: [{ id: x.id }] })));
     expect(ist.team.leads).toBe(1);
     const nach = new Map(kontakte.map(x => [x.id, x]));
     expect(leadAngelegt({ personen: [{ id: 'c-import' }] } as never, nach)).toBeNull();
