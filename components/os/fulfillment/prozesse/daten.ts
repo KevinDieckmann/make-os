@@ -55,6 +55,8 @@ export interface FallAntwort {
   staende?: { vereinbarung: string; wertKonto: Record<string, string> };
   onboarding?: OnboardingStand;
   diff?: VorlagenDiff | null;
+  /** Alter Fall ohne Formen, die Vorlage hat welche: die Ausführung startet erst mit „Vorlage übernehmen“ (17.10. abends, `ausfuehrungNachUebernahme`). */
+  ausfuehrungWartet?: boolean;
   vorlage?: { id: string; titel: string; fassung: number; freigaben: Freigabepunkt[]; rollen: Rolle[]; zusatz?: true };
   wartet?: WartetPunkt[];
   wertKonto?: WertKontoZeile[];

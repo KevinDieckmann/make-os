@@ -38,7 +38,7 @@ const V = (): ProzessVorlage => ({
   ],
 });
 const daten = (x: Partial<EditorDaten> = {}): EditorDaten => ({ vorlage: V(), stand: 'st-1', bausteine: [{ id: 'fb-mail', titel: 'Begrüßungsmail', art: 'mail' }], darfBearbeiten: true, laufend: 2, ...x });
-const html = (x: Partial<EditorDaten> = {}, handy = false) => renderToStaticMarkup(h(EditorAnsicht, { start: daten(x), handy }));
+const html = (x: Partial<EditorDaten> = {}, handy = false) => renderToStaticMarkup(h(EditorAnsicht, { start: daten(x), handy, ansicht: 'fluss' })); // 17.10. abends: am Rechner ist die Fläche Vorgabe — diese Tests prüfen den Fluss
 
 describe('Rechner: Reise, Palette, Fluss, Seitenfeld', () => {
   const s = html();

@@ -15,6 +15,9 @@
 //   · Tastatur: Tab wandert durch die Knoten, Pfeiltasten verschieben (⇧ = weiter), Entf löscht, Enter bearbeitet, + − 0 zoomen, „Verbinden mit …“ als Menü.
 //   · Am Handy: nur ansehen (Pinch, zwei Finger schieben) — bearbeitet wird in der Liste. „Als Bild speichern“: SVG oder PNG, nur die Fläche mit Legende.
 // Leistung: keine React-Zustände je Mausbewegung — Kamera und Ziehen in Refs, gezeichnet per requestAnimationFrame direkt am SVG (wie die Kugel).
+// Markenzeichen: der Flow (17.10.): die Pfeile sind Lichtfäden auf einer Leinwand UNTER dem SVG (lib/lichtfaeden/flow.ts `flowEbene` — derselbe Zeichner wie
+// Reise und Fluss, im gemeinsamen Takt). Die Ebene bekommt Kamera und Wege direkt (beim Ziehen nur die betroffenen), der neue Pfeil zieht einen Faden mit;
+// reduzierte Bewegung = Standbild. „Als Bild speichern“ zeichnet die Fäden als ruhiges Standbild ins SVG (`FlaechePfeil still`).
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { Plus, Minus, Maximize2, LocateFixed, ImageDown, Grid3x3 } from 'lucide-react';
@@ -28,7 +31,9 @@ import { flussFormVon } from '@/lib/fulfillment/prozesse/reise-bild';
 import { GRENZEN, LAGE } from '@/lib/fulfillment/grenzen';
 import type { KnotenForm, ProzessVorlage } from '@/lib/fulfillment/typen';
 import { FlaecheForm, FlaecheStart, FlaecheRahmen, FlaecheGruppe, FlaecheSpitze, FlaechePfeil, FlaecheLegende, FLAECHE_ZIEL } from '../../ui/reise/flaeche-formen';
-import { FreigabeRaute } from '../../ui/reise/formen';
+import { FreigabeRaute, FLOW_TON } from '../../ui/reise/formen';
+import { flowEbene, bewegungReduziert, type FlowEbene } from '@/lib/lichtfaeden/flow';
+import { flaecheFaden } from '@/lib/reise/flow';
 import { FormZeichen } from '../../ui/reise/ReiseBild';
 import { allesZeigen, transformVon, zoomUm, ZOOM_SCHRITT, weltAus, bildAus, zwischen, sanft, einrasten, flaecheHinweis, type Kamera } from '../../ui/flaeche/kamera';
 import { flaecheEingabe, type FlaecheEingabe } from '../../ui/flaeche/eingabe';
@@ -111,6 +116,8 @@ export function EditorFlaeche(p: FlaecheProps) {
   const band = useRef<SVGRectElement | null>(null);
   const geist = useRef<HTMLDivElement | null>(null);
   const exportSvg = useRef<SVGSVGElement | null>(null);
+  const fadenLeinwand = useRef<HTMLCanvasElement | null>(null);
+  const faeden = useRef<FlowEbene | null>(null);
   const kamera = useRef<Kamera>({ s: 1, x: 40, y: 40 });
   const bildEntwurf = useRef(0);
   const zug = useRef<Zug | null>(null);
@@ -136,6 +143,7 @@ export function EditorFlaeche(p: FlaecheProps) {
       welt.current?.setAttribute('transform', transformVon(k));
       muster.current?.setAttribute('patternTransform', `translate(${k.x} ${k.y}) scale(${k.s})`);
       if (zoomText.current) zoomText.current.textContent = `${Math.round(k.s * 100)} %`;
+      faeden.current?.kamera(k);
     });
   }, []);
   const setzeKamera = useCallback((k: Kamera) => { kamera.current = k; zeichne(); }, [zeichne]);
@@ -177,6 +185,29 @@ export function EditorFlaeche(p: FlaecheProps) {
     return () => { e.abbauen(); eingabe.current = null; };
   }, [setzeKamera, geraet.mac]);
   useEffect(() => { if (!kurzHinweis) return; const t = setTimeout(() => setKurzHinweis(null), 1800); return () => clearTimeout(t); }, [kurzHinweis]);
+
+  // Der Flow: EINE Faden-Ebene unter dem SVG (gemeinsamer Takt; reduzierte Bewegung = Standbild). Die Bühne trägt dann `data-flow="an"` — CSS blendet die
+  // Pfad-Striche aus (Spitze, Beschriftung und der gewählte Pfeil bleiben).
+  const fadenSetzen = useCallback(() => {
+    const e = faeden.current, b = buehne.current;
+    if (!e || !b) return;
+    const r = b.getBoundingClientRect();
+    e.setze(stand.current.bild.pfeile.map(pf => flaecheFaden(pf, FLOW_TON)), { breite: r.width, hoehe: r.height });
+    e.kamera(kamera.current);
+  }, []);
+  useEffect(() => {
+    const c = fadenLeinwand.current, b = buehne.current;
+    if (!c || !b) return;
+    const e = flowEbene(c, b, { ruhig: bewegungReduziert(), handy: !!handy });
+    faeden.current = e;
+    b.dataset.flow = 'an';
+    fadenSetzen();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => fadenSetzen()) : null;
+    ro?.observe(b);
+    return () => { ro?.disconnect(); e.stop(); faeden.current = null; delete b.dataset.flow; };
+  }, [handy, fadenSetzen]);
+  // Neue Vorlage bzw. „wieder der gespeicherte Stand“ (nach Abbruch/Fehler): die Fäden aus dem Bild.
+  useEffect(() => { fadenSetzen(); }, [bild, neuZeichnen, fadenSetzen]);
 
   // Auswahl von außen (Seitenfeld, Fluss) übernehmen.
   useEffect(() => {
@@ -242,6 +273,7 @@ export function EditorFlaeche(p: FlaecheProps) {
       const punkte = pfeilWeg(a, z, hind, pf.art);
       const d = pfadVon(punkte);
       for (const pfad of Array.from(g.querySelectorAll('path'))) pfad.setAttribute('d', d);
+      faeden.current?.weg(pf.id, punkte);
       const t = g.querySelector('[data-teil="text"]');
       if (t) { const o = pfeilTextOrt(punkte); t.setAttribute('transform', `translate(${o[0]} ${o[1]})`); }
     }
@@ -383,6 +415,8 @@ export function EditorFlaeche(p: FlaecheProps) {
       const ende: [number, number] = ziel ? [ziel.x + ziel.b / 2, ziel.y + ziel.h / 2] : w;
       zugPfad.current?.setAttribute('d', `M${zg.anker![0]} ${zg.anker![1]} L${ende[0]} ${ende[1]}`);
       zugPfad.current?.setAttribute('stroke', ziel ? FLAECHE_ZIEL : C.inkDim);
+      // Der Faden zieht mit — erst leise, über einem Ziel hell.
+      faeden.current?.zug({ id: 'fl-zug', punkte: [zg.anker!, ende], farbe: FLOW_TON.basis, staerke: 'fein', ...(ziel ? { gluehen: true } : { bisHier: 0 }) });
       zielKnoten(ziel?.id ?? null);
     } else if (zg.art === 'band') {
       const x = Math.min(zg.welt0[0], w[0]), y = Math.min(zg.welt0[1], w[1]);
@@ -403,6 +437,7 @@ export function EditorFlaeche(p: FlaecheProps) {
   const aufraeumen = () => {
     zielRahmen(null); zielKnoten(null);
     zugPfad.current?.setAttribute('d', '');
+    faeden.current?.zug(null);
     if (band.current) band.current.style.display = 'none';
   };
   const abbrechen = () => {
@@ -766,6 +801,7 @@ export function EditorFlaeche(p: FlaecheProps) {
         )}
 
         <div className="ff-flaeche-buehne" ref={buehne}>
+          <canvas ref={fadenLeinwand} aria-hidden="true" data-flow-ebene="" className="ff-flow-ebene" style={{ pointerEvents: 'none' }} />
           <svg ref={svg} tabIndex={0} role="application" aria-roledescription="Zeichenfläche"
             aria-label={`Fläche des Ablaufs „${vorlage.titel}“: ${bild.rahmen.length} Phasen als Rahmen, ${bild.knoten.length} Schritte${darfZiehen ? ' — Tab wählt den nächsten Knoten, Pfeiltasten verschieben, Entf löscht, Enter bearbeitet' : ''}`}
             aria-describedby={hinweisId}
@@ -777,8 +813,8 @@ export function EditorFlaeche(p: FlaecheProps) {
               </pattern>
               <FlaecheSpitze id={spitzeId} />
             </defs>
-            <rect width="100%" height="100%" fill={C.grund} />
-            {raster && <rect width="100%" height="100%" fill={`url(#${rasterId})`} style={{ pointerEvents: 'none' }} />}
+            {/* Kein Grund-Rechteck: die Bühne trägt den Grund (C.grund), darunter liegt die Faden-Ebene. */}
+            {raster &&<rect width="100%" height="100%" fill={`url(#${rasterId})`} style={{ pointerEvents: 'none' }} />}
             <g ref={welt} transform={transformVon(k)}>
               <g key={neuZeichnen}>
                 <Zeichnung bild={bild} auswahl={auswahl} pfeilWahl={pfeilWahl} spitze={spitzeId} bearbeiten={darfZiehen}
@@ -794,7 +830,7 @@ export function EditorFlaeche(p: FlaecheProps) {
                   ))}
                 </g>
               )}
-              <path ref={zugPfad} d="" fill="none" stroke={C.inkDim} strokeWidth={2} strokeDasharray="6 5" markerEnd={`url(#${spitzeId})`} style={{ pointerEvents: 'none' }} />
+              <path ref={zugPfad} className="ff-fl-zug" d="" fill="none" stroke={C.inkDim} strokeWidth={2} strokeDasharray="6 5" markerEnd={`url(#${spitzeId})`} style={{ pointerEvents: 'none' }} />
               <rect ref={band} fill={TIEF.flaeche(C.aktiv)} stroke={TIEF.rand(C.aktiv)} strokeDasharray="5 4" style={{ display: 'none', pointerEvents: 'none' }} />
             </g>
           </svg>
@@ -886,7 +922,8 @@ function Zeichnung({ bild, auswahl, pfeilWahl, spitze, bearbeiten, nurBild, onRe
         return (
           <g key={pf.id} data-fl-pfeil-g={pf.id}>
             {!nurBild && <path data-fl-pfeil={pf.id} d={d} fill="none" stroke="transparent" strokeWidth={16} style={{ pointerEvents: 'stroke', cursor: 'pointer' }}><title>{`Pfeil${pf.text ? ` „${pf.text}“` : ''}${pf.zweig ? ' — Entf löst den Zweig' : ''}`}</title></path>}
-            <FlaechePfeil d={d} spitze={spitze} text={pf.text} textOrt={pf.text ? pfeilTextOrt(pf.punkte) : undefined} gewaehlt={pfeilWahl === pf.id} gestrichelt={pf.art === 'zurueck'} />
+            <FlaechePfeil d={d} spitze={spitze} text={pf.text} textOrt={pf.text ? pfeilTextOrt(pf.punkte) : undefined} gewaehlt={pfeilWahl === pf.id} gestrichelt={pf.art === 'zurueck'}
+              {...(nurBild ? { faden: flaecheFaden(pf, FLOW_TON) } : {})} />
           </g>
         );
       })}

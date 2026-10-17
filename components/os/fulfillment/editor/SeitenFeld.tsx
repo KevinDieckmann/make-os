@@ -12,7 +12,8 @@ import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Trash2, Plus } from 'lucide-
 import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Schalter, Hinweis, auswahl } from '../../ui';
 import { KNOTEN_FORMEN } from '@/lib/fulfillment/lesen';
-import { FORM_TITEL, FRIST_MAX, type EditorKnoten, type EditorModell, type EditorOp, type EditorPhase } from '@/lib/fulfillment/prozesse/editor';
+import { FORM_TITEL, FRIST_MAX, VERSUCHE_MIN, VERSUCHE_MAX, type EditorKnoten, type EditorModell, type EditorOp, type EditorPhase } from '@/lib/fulfillment/prozesse/editor';
+import { VERSUCHE_VORGABE } from '@/lib/fulfillment/prozesse/ausfuehrung';
 import { flussFormVon } from '@/lib/fulfillment/prozesse/reise-bild';
 import type { KnotenForm, Zustaendig } from '@/lib/fulfillment/typen';
 import { FormZeichen } from '../../ui/reise/ReiseBild';
@@ -103,6 +104,13 @@ export function SchrittFeld({ modell, phase, k, api, titelRef }: { modell: Edito
         <TextFeld key={`${k.id}:${k.frist ?? ''}`} wert={k.frist !== undefined ? String(k.frist) : ''} typ="number" aus={aus} platzhalter="ohne" label="Frist in Tagen"
           onFertig={t => { const n = t.trim() === '' ? null : Number(t); if (n === null || (Number.isInteger(n) && n >= 0 && n <= FRIST_MAX)) void setze({ frist: n }); }} />
       </Feld>
+      {/* Ausführung (17.10. abends): wie oft die Erinnerung auf dem Nein-Pfad läuft, bevor der Punkt „eskaliert“ — leer = Vorgabe (5 Kontaktversuche). */}
+      {k.form === 'erinnerung' && (
+        <Feld label={`Versuche (${VERSUCHE_MIN}–${VERSUCHE_MAX})`} hinweis={`So oft wird erinnert, dann gilt der Punkt als eskaliert. Leer = ${VERSUCHE_VORGABE}.`}>
+          <TextFeld key={`${k.id}:v:${k.versuche ?? ''}`} wert={k.versuche !== undefined ? String(k.versuche) : ''} typ="number" aus={aus} platzhalter={String(VERSUCHE_VORGABE)} label="Versuche"
+            onFertig={t => { const n = t.trim() === '' ? null : Number(t); if (n === null || (Number.isInteger(n) && n >= VERSUCHE_MIN && n <= VERSUCHE_MAX)) void setze({ versuche: n }); }} />
+        </Feld>
+      )}
       <Feld label="Verantwortung">
         <WahlKnoepfe label="Verantwortung" aus={aus} aktiv={k.zustaendig ?? 'intern'} onWahl={z => { if (z !== (k.zustaendig ?? 'intern')) void setze({ zustaendig: z }); }} liste={ZUST} />
       </Feld>

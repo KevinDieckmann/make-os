@@ -14,6 +14,12 @@ export const JETZT = C.aktiv;
 /** Die Farben der festen Formen im Fluss — ruhig (getönte Fläche, halbtransparente Kontur), die Bedeutung trägt die Form. */
 export const FORM_FARBE: Record<FlussForm, string> = { schritt: LEUCHT.gut, nachricht: LEUCHT.achtung, entscheidung: C.inkDim, erinnerung: LEUCHT.business, termin: C.ink };
 
+/**
+ * Die Töne des Flows (Markenzeichen, 17.10. — DESIGN_STANDARD.md › Markenzeichen: der Flow): erreicht im Akzent der Instanz („Hier“, Petrol), der Nein-Pfad zur
+ * Erinnerung im Ton der Erinnerung (Orange), rot bzw. gelb nur, wo wirklich etwas hängt — dieselben Token wie Kästchen und Knoten.
+ */
+export const FLOW_TON = { basis: JETZT, nein: FORM_FARBE.erinnerung, rot: LEUCHT.kritisch, gelb: LEUCHT.achtung } as const;
+
 /** Die Raute (Abstimmungspunkt, Abhängigkeit): gefüllt grün = gegeben, Umriss = noch offen, `aktiv` = gerade dran (gelb). */
 export function FreigabeRaute({ gegeben, groesse = 12, aktiv }: { gegeben: boolean; groesse?: number; aktiv?: boolean }) {
   const f = gegeben ? LEUCHT.gut : aktiv ? LEUCHT.achtung : C.inkLeise;

@@ -145,6 +145,8 @@ export async function GET(req: Request) {
     staende: { vereinbarung: eintragStand(f.vereinbarung ?? {}), wertKonto: Object.fromEntries(mandatZieleLesen(mandat.ziele).map(zl => [zl.id, eintragStand(f.wertKonto[zl.id] ?? { messungen: [] })])) },
     // Ohne Onboarding (aus einem Zusatzmodul gestartet, 17.10. spät): kein Onboarding-Stand — die Reise zeigt dann kein Band.
     ...(f.ohneOnboarding ? {} : { onboarding: onboardingStand(f, abl) }), diff: v ? vorlagenDiff(f, v) : null,
+    // Alte Fälle ohne Formen (17.10. abends): die Ausführung startet erst mit „Vorlage übernehmen“ — der Fall zeigt dann einen Hinweis mit dem Weg dorthin.
+    ausfuehrungWartet: v ? await import('@/lib/fulfillment/prozesse/ausfuehrung').then(a => a.ausfuehrungNachUebernahme(w, v, vorlagenDiff(f, v))) : false,
     vorlage: v ? { id: v.id, titel: v.titel, fassung: v.fassung, freigaben: fg, rollen: v.rollen, ...(v.zusatz ? { zusatz: true } : {}) } : { id: f.vorlageId, titel: 'Vorlage entfernt', fassung: f.vorlageFassung, freigaben: MUSTER_FREIGABEN, rollen: [] },
     // Angehängte Zusatzmodule (17.10. spät): je Modul Titel, Starttag und — bei neuer Fassung — der Diff („Vorlage geändert — übernehmen?“).
     zusaetze: (f.zusaetze ?? []).map(z => { const zv = vorlagen.prozesse.find(p => p.id === z.vorlageId); return { vorlageId: z.vorlageId, titel: zv?.titel ?? z.titel, startAm: z.startAm, fassung: z.vorlageFassung, diff: zv ? zusatzDiff(f, zv) : null }; }),

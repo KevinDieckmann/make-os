@@ -40,6 +40,9 @@ export const EDITOR_KENNUNG = /^fk-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export const EDITOR_ABSTIMMUNG = /^A\d{1,3}$/;
 /** Höchstens so viele Tage Frist an einem Schritt. */
 export const FRIST_MAX = 365;
+/** Runden einer Erinnerung auf dem Nein-Pfad (Feld „Versuche“ im Seitenfeld; fehlt = 5, `VERSUCHE_VORGABE`). Dieselbe Grenze liest lib/fulfillment/lesen.ts. */
+export const VERSUCHE_MIN = 1;
+export const VERSUCHE_MAX = 20;
 /** Name der Formen (Palette, Seitenfeld, Vorleser). */
 export const FORM_TITEL: Readonly<Record<KnotenForm, string>> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin', abstimmung: 'Abstimmung' };
 /** Vorgabe-Titel eines neuen Knotens je Form (kurz, ohne Inhalte — der Mensch benennt ihn um). */
@@ -56,6 +59,8 @@ export interface EditorKnoten {
   /** Form im Editor gesetzt (sonst abgeleitet — Baustein, Abstimmungspunkt). */
   gesetzt: boolean;
   frist?: number; zustaendig?: Zustaendig; kundeSichtbar?: boolean; freigabe?: string;
+  /** Erinnerung auf dem Nein-Pfad: höchstens so viele Runden, dann „eskaliert“ (fehlt = Vorgabe 5, lib/fulfillment/prozesse/ausfuehrung.ts). */
+  versuche?: number;
   bausteine: EditorBaustein[];
   zweige?: Zweige;
   /** Nein-Zweig dieser Entscheidung — steht im Bild neben ihr, nicht im Strang. */
@@ -88,6 +93,7 @@ export function editorModell(v: ProzessVorlage, bausteine: readonly (Pick<Bauste
     id: k.id, titel: k.titel, form: wirksameForm(k, kn, art), gesetzt: !!k.form,
     ...(k.frist !== undefined ? { frist: k.frist } : {}), ...(k.zustaendig ? { zustaendig: k.zustaendig } : {}),
     ...(k.kundeSichtbar !== undefined ? { kundeSichtbar: k.kundeSichtbar } : {}), ...(k.freigabe ? { freigabe: k.freigabe } : {}),
+    ...(k.versuche !== undefined ? { versuche: k.versuche } : {}),
     bausteine: kinderVon(k.id, kn).filter(c => c.bausteinId).map(c => {
       const b = bausteine.find(x => x.id === c.bausteinId);
       return { knotenId: c.id, bausteinId: c.bausteinId!, titel: c.titel || b?.titel || 'Baustein', ...(b ? { art: b.art } : {}) };
@@ -174,8 +180,8 @@ function schrittFelder(o: Record<string, unknown>): Record<string, unknown> {
   const z = optWahl(o.zustaendig, ZUST, 'Verantwortung'); if (z !== undefined) t.zustaendig = z;
   const ks = optBool(o.kundeSichtbar, 'Für den Kunden sichtbar'); if (ks !== undefined) t.kundeSichtbar = ks;
   // Ausführung (17.10. abends): an einer Erinnerung auf dem Nein-Pfad höchstens so viele Runden (fehlt = 5).
-  const v = optZahl(o.versuche, 1, 20, 'Versuche');
-  if (v !== undefined) { if (v !== null && !Number.isInteger(v)) nein('Versuche: ganze Zahl von 1 bis 20.'); t.versuche = v; }
+  const v = optZahl(o.versuche, VERSUCHE_MIN, VERSUCHE_MAX, 'Versuche');
+  if (v !== undefined) { if (v !== null && !Number.isInteger(v)) nein(`Versuche: ganze Zahl von ${VERSUCHE_MIN} bis ${VERSUCHE_MAX}.`); t.versuche = v; }
   return t;
 }
 const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnoten => {

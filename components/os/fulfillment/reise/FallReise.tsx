@@ -25,7 +25,7 @@ import { RHYTHMUS_TEXT } from '@/lib/fulfillment/prozesse/rituale';
 import { useFall, fallOps, fehlerText, type FallAntwort } from '../prozesse/daten';
 import { klein, Meldung, useTextFrage } from '../prozesse/teile';
 import { SchrittDetail, FreigabeMeilenstein, FreigabeDialog, ExtraDialog, fallOpsMitMeldung, statusSetzer, type FallMeldung } from '../prozesse/FallAblauf';
-import { WillkommenKarte, KickoffFragen, AusAnalyse, KeinFall, VorlageGeaendert, FallStatus, OnboardingZaehler, OnboardingMehr } from '../prozesse/FallUeberblick';
+import { WillkommenKarte, KickoffFragen, AusAnalyse, KeinFall, VorlageGeaendert, AusfuehrungWartet, FallStatus, OnboardingZaehler, OnboardingMehr } from '../prozesse/FallUeberblick';
 import { AbschlussDetail, type AbschlussOps, type AbschlussStelle } from '../prozesse/FallKreislauf';
 import { FallAnalyse } from '../analyse/FallAnalyse';
 import { ReiseBild, type BildSpalte } from '../../ui/reise/ReiseBild';
@@ -45,6 +45,8 @@ export function bildSpalten(z: ReiseZeile): BildSpalte[] {
     unter: s.zustand === 'fertig' ? 'erledigt' : s.gesamt ? `${s.erledigt} von ${s.gesamt}` : undefined,
     ...(s.abstimmung ? { raute: { titel: `Abstimmungspunkt${s.abstimmung.nr ? ` ${s.abstimmung.nr}` : ''}${s.abstimmung.titel ? ` · ${s.abstimmung.titel}` : ''}`, gegeben: s.abstimmung.gegeben, hier: s.abstimmung.hier, ...(s.abstimmung.haengt ? { haengt: s.abstimmung.haengt } : {}) } } : {}),
     band: { ...(band[i] ? { text: band[i] } : {}), ...(band[i] && band[i] !== BAND_NICHTS ? { achtung: true } : {}), intern: !s.band.sieht },
+    // Phasen eines angehängten Zusatzmoduls (17.10. spät): eigener Abschnitt der Reise mit dem Titel des Moduls.
+    ...(s.modul ? { abschnitt: { id: s.modul.id, titel: s.modul.titel } } : {}),
   }));
 }
 
@@ -163,6 +165,7 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
             <FormenLegende />
           </Karte>
           <div className="ff-fall-detail" style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+            <AusfuehrungWartet daten={daten} />
             <Detail daten={daten} phase={sp.titel} knoten={knoten} gewaehlt={gewaehlt} ops={ops} status={status} abschlussOps={abschlussOps} melde={melde}
               onFreigabe={setFreigabe} willkommenAuf={willkommenAuf} setWillkommenAuf={setWillkommenAuf} setMeldung={setMeldung} fragen={frage.fragen} />
           </div>

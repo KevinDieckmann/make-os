@@ -7,9 +7,12 @@
 //   · Rein bis auf `fadenlinie()`: `fadenLinienProben` ist deterministisch (getestet).
 //   · Ruhig: höchstens ~30 Bilder je Sekunde (`intervall`), pausiert außerhalb des Bildes, reduzierte Bewegung = Standbild.
 //   · Daten rechnet der Zeichner nie — er bekommt normalisierte Werte (lib/lichtfaeden/reihen.ts `normalisiere`).
+//   · Seit 17.10. (Markenzeichen: der Flow) EINE Quelle mit Reise, Fluss und Fläche: gezeichnet mit `zeichneFaden`, getaktet im gemeinsamen Takt
+//     (`taktLauf`) — beides lib/lichtfaeden/flow.ts. Der Index-Verlauf der Markttraktion sieht damit genau aus wie jeder andere Faden.
 
-import { LICHTFAEDEN, MITTE, fadenSaaten, glatt, textSaat } from './band';
-import { leinwand, rgb, starteLauf, zeichneBuendel, type Lauf, type Probe } from './zeichnen';
+import { LICHTFAEDEN, fadenSaaten, glatt, textSaat } from './band';
+import { leinwand, rgb, type Lauf, type Probe } from './zeichnen';
+import { FLOW, taktLauf, zeichneFaden } from './flow';
 
 /** Parameter der FadenLinie — eine Stelle (DESIGN_STANDARD.md › Fokus-Signatur). */
 export const FADENLINIE = {
@@ -128,14 +131,8 @@ export function fadenlinie(canvas: HTMLCanvasElement, beobachte: Element | null,
     ctx.beginPath(); ctx.moveTo(R, Math.round(y0) + 0.5); ctx.lineTo(d.breite - R, Math.round(y0) + 0.5); ctx.stroke();
     ctx.restore();
 
-    ctx.globalCompositeOperation = 'lighter';
-    // Für den Aufbau braucht der Zeichner den Weg `s` — hier ist s = x.
-    zeichneBuendel(ctx, proben, { farbe: d.farbe, saaten: [MITTE], deckkraft: 0.07, strich: d.handy ? 4 : 5, front }, t);
-    zeichneBuendel(ctx, proben, {
-      farbe: d.farbe, saaten, deckkraft: 0.3, strich: 0.7, front,
-      punkte: { ...LICHTFAEDEN.punkte, abstand: 8, groesse: 1, hell: 2.2, jeder: 2 },
-    }, t);
-    ctx.globalCompositeOperation = 'source-over';
+    // Für den Aufbau braucht der Zeichner den Weg `s` — hier ist s = x. Dasselbe Aussehen wie jeder Faden (flow.ts `zeichneFaden`).
+    zeichneFaden(ctx, proben, { farbe: d.farbe, saaten, front, kernStrich: d.handy ? FLOW.kern.strich.mittel : FLOW.kern.strich.breit }, t);
 
     // HEUTE: ein leuchtender Punkt auf der Leitkurve.
     if (d.heute != null && (front === Infinity || front > feldX(d, d.heute))) {
@@ -148,7 +145,7 @@ export function fadenlinie(canvas: HTMLCanvasElement, beobachte: Element | null,
     }
   }
 
-  const lauf = starteLauf({ beobachte, zeichne, ruhig, intervall: FADENLINIE.intervall });
+  const lauf = taktLauf({ beobachte, zeichne, ruhig, intervall: FADENLINIE.intervall });
   return {
     setze(neu) {
       bild = neu;

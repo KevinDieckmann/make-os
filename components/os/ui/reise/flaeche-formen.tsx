@@ -7,6 +7,7 @@
 import { Mail, BellRing, CalendarClock } from 'lucide-react';
 import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL } from '@/lib/make-one/design';
 import { FORM_NAME, type FlussForm } from '@/lib/reise/bild';
+import { FLOW, type FlowFaden } from '@/lib/lichtfaeden/flow';
 import { FORM_FARBE, JETZT } from './formen';
 
 export type FlaecheUmriss = 'kasten' | 'raute' | 'termin';
@@ -128,13 +129,22 @@ export function FlaecheSpitze({ id, farbe = C.inkDim }: { id: string; farbe?: st
   );
 }
 
-/** Ein Pfeil: der gewinkelte Pfad (fertig gerechnet) mit Spitze, optional beschriftet („ja“, „nein“ oder frei) — die Beschriftung auf dunklem Grund. */
-export function FlaechePfeil({ d, spitze, text, textOrt, gewaehlt, gestrichelt }: { d: string; spitze: string; text?: string; textOrt?: [number, number]; gewaehlt?: boolean; gestrichelt?: boolean }) {
+/**
+ * Ein Pfeil: der gewinkelte Pfad (fertig gerechnet) mit Spitze, optional beschriftet („ja“, „nein“ oder frei) — die Beschriftung auf dunklem Grund.
+ * Markenzeichen: der Flow — live zeichnet die Faden-Ebene unter dem SVG den Pfeil als Lichtfaden (CSS blendet den Strich aus, `data-gewaehlt` bleibt sichtbar);
+ * `faden` (nur „Als Bild speichern“) zeichnet ihn als ruhiges Standbild in seiner Farbe: leiser breiter Schein + feiner Kern (FLOW.standbild).
+ */
+export function FlaechePfeil({ d, spitze, text, textOrt, gewaehlt, gestrichelt, faden }: { d: string; spitze: string; text?: string; textOrt?: [number, number]; gewaehlt?: boolean; gestrichelt?: boolean; faden?: Pick<FlowFaden, 'farbe' | 'bisHier'> }) {
   const farbe = gewaehlt ? C.ink : C.inkDim;
   const breite = text ? Math.max(28, text.length * FLAECHE_SCHRIFT.unter * 0.58 + 14) : 0;
+  const S = FLOW.standbild;
+  const leise = faden && faden.bisHier === 0 ? S.gedaempft : 1;
   return (
     <g style={{ pointerEvents: 'none' }}>
-      <path data-teil="pfad" d={d} fill="none" stroke={farbe} strokeWidth={gewaehlt ? 2.5 : 2} strokeDasharray={gestrichelt ? '6 5' : undefined} markerEnd={`url(#${spitze})`} />
+      {faden && <path d={d} fill="none" stroke={faden.farbe} strokeOpacity={S.schein.deckkraft * leise} strokeWidth={S.schein.breite} strokeLinecap="round" strokeLinejoin="round" />}
+      {faden
+        ? <path data-teil="pfad" d={d} fill="none" stroke={faden.farbe} strokeOpacity={S.kern.deckkraft * leise} strokeWidth={S.kern.breite} strokeDasharray={gestrichelt ? '6 5' : undefined} strokeLinecap="round" markerEnd={`url(#${spitze})`} />
+        : <path data-teil="pfad" data-gewaehlt={gewaehlt ? '' : undefined} data-zurueck={gestrichelt ? '' : undefined} d={d} fill="none" stroke={farbe} strokeWidth={gewaehlt ? 2.5 : 2} strokeDasharray={gestrichelt ? '6 5' : undefined} markerEnd={`url(#${spitze})`} />}
       {text && textOrt && (
         <g data-teil="text" transform={`translate(${textOrt[0]} ${textOrt[1]})`}>
           <rect x={-breite / 2} y={-12} width={breite} height={24} rx={12} fill={C.grund} stroke={RAND.stark} />

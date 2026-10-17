@@ -18,6 +18,11 @@ import { kundenTeile } from '@/lib/fulfillment/kunde/bild';
 import { phasenOrdnen } from '@/lib/fulfillment/prozesse/phasen';
 import { aktuellerKnoten, jetztPhasen, kinderVon, wurzelVon, zusatzJeKnoten } from '@/lib/fulfillment/regeln';
 import { vergleicheBestand } from '@/lib/betrieb/update-probe';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { reiseAbschnitte, type BildSpalte } from '@/lib/reise/bild';
+import { ReiseBild } from '@/components/os/ui/reise/ReiseBild';
+import { bildSpalten } from '@/components/os/fulfillment/reise/FallReise';
 import type { Fall, FallKnoten, ProzessVorlage, VorlagenDatei } from '@/lib/fulfillment/typen';
 
 const J = '2026-10-17T09:00:00.000Z';
@@ -234,6 +239,22 @@ describe('Zusatzmodul an einen laufenden Fall', () => {
     expect(z.spalten.filter(s => s.modul).map(s => s.titel)).toEqual(['Liste vorbereiten', 'Auswertung']);
     const k = kundenTeile({ fall: f, mandat: { ziele: [] }, heute: HEUTE, anrede: 'sie', gesperrt: new Set(), freigaben: fg });
     expect(k.phasen.filter(x => x.stand === 'aktuell').length).toBe(2);
+  });
+  it('Reise-Zeichnung: der Abschnitt des Moduls steht dezent als eigene Zeile mit Titel — beide „Hier“ markiert, je Abschnitt ein Faden', () => {
+    const { d, f } = vorbereitet();
+    const sp = bildSpalten(reiseZeile({ fall: f, freigaben: fallFreigaben(f, d.prozesse), heute: HEUTE }));
+    expect(sp.filter(x => x.abschnitt).map(x => [x.titel, x.abschnitt!.titel])).toEqual([['Liste vorbereiten', 'Probe-Telefonie'], ['Auswertung', 'Probe-Telefonie']]);
+    const teile = reiseAbschnitte(sp);
+    expect(teile.map(t => [t.abschnitt?.titel ?? null, t.spalten.length])).toEqual([[null, sp.length - 2], ['Probe-Telefonie', 2]]);
+    const html = renderToStaticMarkup(h(ReiseBild, { spalten: sp }));
+    expect(html).toContain('Zusatzmodul · Probe-Telefonie');
+    expect(html.match(/aria-current="step"/g)).toHaveLength(2);
+    expect(html.match(/class="ff-reise-weg"/g)).toHaveLength(2);
+    expect(html.match(/data-flow-ebene=""/g)).toHaveLength(2);
+    // Ohne Abschnitt: genau die bisherige EINE Zeile.
+    const ohne: BildSpalte[] = [{ id: 'a', nr: 1, titel: 'A', zustand: 'jetzt', kaestchen: [], mehr: 0 }];
+    expect(renderToStaticMarkup(h(ReiseBild, { spalten: ohne }))).toMatch(/^<div class="ff-reise-weg"><div class="ff-reise" role="list"/);
+    expect(reiseAbschnitte(ohne)).toEqual([{ abschnitt: null, spalten: ohne }]);
   });
   it('die Vorlage des Pakets ändern: Diff und Übernahme fassen den Abschnitt nie an', () => {
     const { p, f } = vorbereitet();

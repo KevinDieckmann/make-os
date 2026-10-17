@@ -75,7 +75,7 @@ function DiffHinweis({ d, titel, mandatId, vorlageId, onMeldung }: { d: NonNulla
   if (!(d.neu.length + d.geaendert.length + (d.reihenfolge?.length ?? 0))) return null;
   const reihe = d.reihenfolge ?? [];
   const teile = [d.neu.length ? `${d.neu.length} neu` : '', d.geaendert.length ? `${d.geaendert.length} geändert` : '', reihe.length ? `neue Reihenfolge in ${reihe.length}` : '', d.entfernt.length ? `${d.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''].filter(Boolean);
-  return (
+  const inhalt = (
     <Hinweis art="info" titel={`${titel} — übernehmen? (Fassung ${d.von} → ${d.nach})`}
       aktion={<Erklaert erklaerung="fulfillment.vorlageDiff" name="Vorlage übernehmen"><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'vorlage-uebernehmen', mandatId, ...(vorlageId ? { vorlageId } : {}) }); onMeldung(a.ok ? { text: 'Neue Fassung übernommen — erledigte Schritte bleiben, wie sie sind.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Übernehmen</Knopf></Erklaert>}>
       <span>{teile.join(' · ')} — erledigte Schritte bleiben erledigt, nichts geht verloren. </span>
@@ -90,6 +90,22 @@ function DiffHinweis({ d, titel, mandatId, vorlageId, onMeldung }: { d: NonNulla
           ))}
         </div>
       )}
+    </Hinweis>
+  );
+  // Der Sprung „Vorlage übernehmen, damit die Ausführung startet“ zielt auf die Übernahme des PAKETS — ein Zusatzmodul hat keine Marke.
+  return vorlageId ? inhalt : <div id="ff-vorlage-geaendert" style={{ scrollMarginTop: 80 }}>{inhalt}</div>;
+}
+
+/**
+ * Ein alter Fall ohne Formen (17.10. abends): die Ausführung (Aufgaben, Entwürfe, Erinnerungen) startet erst, wenn die neue Fassung der Vorlage übernommen ist.
+ * Ein Satz und EIN Knopf — er führt zur vorhandenen Übernahme („Vorlage geändert — übernehmen?“ oben an der Reise); geschrieben wird erst dort.
+ */
+export function AusfuehrungWartet({ daten }: { daten: FallAntwort }) {
+  if (!daten.ausfuehrungWartet || !daten.diff) return null;
+  return (
+    <Hinweis art="info" titel="Ausführung startet nach der Übernahme"
+      aktion={<Knopf leise onClick={() => { const el = document.getElementById('ff-vorlage-geaendert'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); Array.from(el?.querySelectorAll<HTMLElement>('button') ?? []).find(b => b.textContent?.trim() === 'Übernehmen')?.focus({ preventScroll: true }); }}>Vorlage übernehmen, damit die Ausführung startet ›</Knopf>}>
+      Dieser Fall stammt aus einer älteren Fassung ohne Formen — Aufgaben, Entwürfe und Erinnerungen entstehen erst mit der neuen Fassung.
     </Hinweis>
   );
 }

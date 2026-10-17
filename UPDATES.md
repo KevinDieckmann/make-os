@@ -17,14 +17,29 @@ Kevin: „Das Fulfillment soll maximal einfach für uns sein.“ Damit die Bibli
   ein Fall OHNE Onboarding (`Fall.ohneOnboarding`, läuft sofort). Ausführung arbeitet je Abschnitt parallel; Reise/Kunden-Sicht: laufende Phase je Abschnitt
   „jetzt“/„aktuell“ (`jetztPhasen`), Abschluss hängt nie am Modul; Abstimmungspunkte beider über `fallFreigaben`; neue Fassung des Moduls per „Übernehmen“
   (`zusatzDiff`/`zusatzUebernehmen`, POST `vorlage-uebernehmen { vorlageId }`). Fall-Rand: „Zusatzmodul anhängen“.
-- **Daten für die Reise:** `ReisePhase.modul` / `ReiseSpalte.modul` (`{ id, titel }`) — wie die Darstellung den Abschnitt markiert, ist offen (Flow-Agent;
-  components/os/ui/reise/** unverändert).
+- **Reise:** `ReisePhase.modul` → `BildSpalte.abschnitt` (`reiseAbschnitte`, lib/reise/bild.ts); `ReiseBild` zeichnet den Abschnitt dezent als eigene Zeile mit
+  „Zusatzmodul · <Titel>“ — eigenes „Hier“ (zwei Spalten „jetzt“ erlaubt), eigener Flow-Faden je Abschnitt. Ohne Abschnitt bleibt die Reise genau EINE Zeile.
+  Zusammengeführt mit `flow-linie` (855aeecf): Hinweis „Vorlage übernehmen, damit die Ausführung startet“ zielt auf die Übernahme des Pakets.
 - **Probelauf v2** (Wegwerf-Instanz, echte Import-Route): 223 Bausteine neu, 514 „siehe auch“-Verweise alle angekommen; 6 Pakete neu; `versuche` 2 von 2 angekommen
   (`pos`/`pfeilText`/`zusatz` stehen in v2 noch nicht drin). Telefonie per Schalter zum Zusatzmodul, an einen laufenden HoS/CSO-Fall gehängt: EIN Fall, 8
   Onboarding-Schritte (keine zweiten), 196 → 290 Knoten, alle alten da, 6 Telefonie-Phasen markiert, erste Aufgabe „Form der Telefonie festlegen“.
 - **Update-Probe:** Altbestand ohne die neuen Felder liest und schreibt verlustfrei; ohne Zusatzmodul alles Byte für Byte wie bisher. **Rückweg:** der alte Stand
   verwirft `zusatz`/`sieheAuch`/`zusaetze`/`ohneOnboarding` beim nächsten Schreiben — angehängte Phasen bleiben als normale Phasen im Fall.
 - Tests: `tests/fulfillment-import-zusatz.test.ts`, `tests/fulfillment-zusatz-route.test.ts`; alle `tests/fulfillment-*` grün.
+## 17.10.2026 abends — Markenzeichen: der Flow (nur lokal — Branch `flow-linie`, Basis 107fe639 = `update-0910b`)
+Kevin: „Denke dir auch immer den Flow, diese Linie, mit — das ist unser Markenzeichen.“ — „Nach und nach kommt alles in den Flow.“
+- **EIN Faden-Zeichner** `lib/lichtfaeden/flow.ts` (Pfad-Modus des Lichtfadens: `flowProben`, `zeichneFaden`, gemeinsamer Takt `taktLauf`, Ebene `flowEbene`) und der
+  Baustein `FlowLinie` (`components/os/ui/flow.tsx`). Die FadenLinie der Index-Verläufe zeichnet jetzt mit demselben `zeichneFaden` im selben Takt (Aussehen gleich).
+- **Reise:** der Weg als Lichtfaden an der Unterkante (das Band „Kunde“ sitzt darauf): hell bis „Hier“, dahinter ruhig und ausgefranst, Stau an offenen Rauten, rot/gelb
+  nur, wo etwas hängt; Kreislauf je Stufe in ihrer Farbe; am Handy links an der Liste. **Fluss/Editor-Fluss:** Pfeile als feine Fäden (erledigt hell, offen gedämpft,
+  der Pfeil in den aktuellen Knoten glüht, Nein-Pfad orange). **Fläche:** Ebene unter dem SVG, der neue Pfeil zieht einen Faden mit, Export als ruhiges Standbild.
+  Stand nur aus den vorhandenen Spalten bzw. Knoten (`lib/reise/flow.ts`). Reduzierte Bewegung = Standbild, Kunden-Seite `flow="still"`, Druck ohne Ebene.
+- **Klein:** im Editor ist am Rechner die Fläche Vorgabe (gemerkte Wahl gewinnt) · Feld „Versuche (1–20)“ an Erinnerungen (leer = 5) · alte Fälle ohne Formen zeigen
+  „Vorlage übernehmen, damit die Ausführung startet ›“ (führt zur vorhandenen Übernahme; Antwort der Fall-Route trägt `ausfuehrungWartet`) · Index-Status: eine
+  gemessene, aber zu dünne Säule heißt „Vorläufig — erst n von m Kennzahlen gemessen“ statt „Noch keine Daten“ (Kevins Bild: Markttraktion neben Score 37).
+- Doku DESIGN_STANDARD.md › „Markenzeichen: der Flow“ (Leitsatz, Regeln, Liste „Hat den Flow“ / „Als Nächstes“). Wächter `tests/flow-linie.test.ts`.
+- **Rückweg:** nur Oberfläche und ein optionales Antwortfeld — kein Bestand, keine Datenänderung, kein Server-Schritt. Sichtprüfung nur statisch (headless Chrome).
+
 ## 17.10.2026 — Prozess-Editor › Fläche: frei zeichnen wie in Miro (nur lokal — Branch `prozess-flaeche`, Basis f466641b = `update-0910b`)
 Kevin: „Zeichnen wie in Miro: freie Fläche, Kästen frei platzieren, Pfeile ziehen, zoomen und schieben, Rahmen für Phasen — nicht nur die geordnete Liste von
 oben nach unten.“ Im Editor (`?e=<Ablauf>`) der Umschalter **Fluss · Fläche** (am Handy **Liste · Fläche (ansehen)**); die Wahl merkt sich der Browser.
