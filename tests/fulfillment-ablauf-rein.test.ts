@@ -293,11 +293,11 @@ describe('Live-Lage = Reise = Cockpit (EINE Rechnung)', () => {
 });
 
 describe('Nachricht → Entwurf (gefüllt, nie gesendet)', () => {
-  it('Betreff aus der ersten Zeile, Platzhalter gefüllt, Unbekanntes bleibt sichtbar; ohne Termin „(Termin folgt)“', () => {
+  it('Betreff aus der ersten Zeile, Platzhalter gefüllt, Unbekanntes bleibt sichtbar; ohne Termin fällt der Satz weg (17.10., L1 B12)', () => {
     const v = 'Betreff: Ihr Angebot, {{kunde}}\n\n{{anrede}},\n\nwie besprochen — Termin: {{termin}}.\n{{unbekannt}}\n\nViele Grüße\n{{absender}}';
     const m = nachrichtEntwurf(v, { anrede: 'Sie', vorname: 'Testa', nachname: 'Probe', kunde: 'Probe GmbH', absender: 'Pia' }, 'Angebot senden');
     expect(m.betreff).toBe('Ihr Angebot, Probe GmbH');
-    expect(m.text).toBe('Guten Tag Testa Probe,\n\nwie besprochen — Termin: (Termin folgt).\n{{unbekannt}}\n\nViele Grüße\nPia');
+    expect(m.text).toBe('Guten Tag Testa Probe,\n\n{{unbekannt}}\n\nViele Grüße\nPia');
     const du = nachrichtEntwurf('{{anrede}}, bis {{termin}}', { anrede: 'Du', vorname: 'Testa', termin: 'Di, 14.10., 10:00 Uhr' }, 'X');
     expect(du).toEqual({ betreff: 'X', text: 'Hallo Testa, bis Di, 14.10., 10:00 Uhr' });
     expect(nachrichtEntwurf(undefined, { anrede: 'Sie' }, 'Angebot senden')).toEqual({ betreff: 'Angebot senden', text: 'Guten Tag,\n\n\n\nFreundliche Grüße' });

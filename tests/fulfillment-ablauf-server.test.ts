@@ -143,7 +143,8 @@ describe('Ein Ablauf läuft durch', () => {
     const g = await rufe('fulfillment/fall', 'GET', sitzung('olaf'), undefined, `?m=m-ab&nachricht=${n.id}`);
     expect(g.status).toBe(200);
     expect(g.j.entwurf).toMatchObject({ betreff: 'Ihr Angebot — Probe m-ab GmbH', an: { email: 'testa@example.invalid', name: 'Testa Probe' }, gesellschaft: 'ug' });
-    expect((g.j.entwurf as { text: string }).text).toMatch(/^Guten Tag Testa Probe,\n\nanbei unser Angebot\. Nächster Termin: \(Termin folgt\)\./);
+    expect((g.j.entwurf as { text: string }).text).toMatch(/^Guten Tag Testa Probe,\n\nanbei unser Angebot\.\n/); // ohne Termin fällt der Satz weg (L1 B12)
+    expect((g.j.entwurf as { text: string }).text).not.toMatch(/Termin folgt/);
     const v = (await stapel()).find(x => x.status === 'offen' && x.bezug?.id.startsWith('p:nachricht:m-ab:'))!;
     const { PROZESSE_STAPEL } = await import('@/lib/fulfillment/prozesse/server');
     const frei = await PROZESSE_STAPEL.freigeben(v as never, 'olaf', {});

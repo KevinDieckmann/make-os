@@ -492,7 +492,7 @@ export function grussZeile(w: Pick<NachrichtWerte, 'anrede' | 'vorname' | 'nachn
 }
 /**
  * Eine Mail aus einem Mail-Baustein (rein): Betreff aus der ersten Zeile „Betreff: …“ (sonst `betreffVorgabe`), Platzhalter gefüllt — {{anrede}} (Grußzeile),
- * {{vorname}}, {{nachname}}, {{ansprechpartner}}, {{kunde}}/{{firma}}, {{termin}} (ohne Termin: „(Termin folgt)“), {{absender}}. Unbekannte Platzhalter bleiben
+ * {{vorname}}, {{nachname}}, {{ansprechpartner}}, {{kunde}}/{{firma}}, {{termin}} (ohne Termin fällt der Satz weg), {{absender}}. Unbekannte Platzhalter bleiben
  * stehen, damit man sie sieht. Ohne Text: nur Grußzeile und Gruß.
  */
 export function nachrichtEntwurf(vorlage: string | undefined, w: NachrichtWerte, betreffVorgabe: string): { betreff: string; text: string } {
@@ -504,7 +504,9 @@ export function nachrichtEntwurf(vorlage: string | undefined, w: NachrichtWerte,
   const zeilen = vorlage.replace(/\r\n/g, '\n').split('\n');
   let betreff = betreffVorgabe;
   if (/^betreff:/i.test(zeilen[0] ?? '')) { betreff = zeilen.shift()!.replace(/^betreff:\s*/i, '').trim() || betreff; while (zeilen[0] === '') zeilen.shift(); }
-  const ersetze = (t: string) => t
+  // Ohne Termin fällt der Satz mit {{termin}} weg (17.10., Gesamtprüfung L1 B12 — vorher ging „(Termin folgt)“ wörtlich an den Kunden).
+  const ohneTermin = (t: string) => (w.termin ? t : t.replace(/[^.!?\n]*\{\{\s*termin\s*\}\}[^.!?\n]*[.!?]?[ \t]*/g, ''));
+  const ersetze = (t: string) => ohneTermin(t)
     .replace(/\{\{\s*anrede\s*\}\}/g, gruss).replace(/\{\{\s*vorname\s*\}\}/g, w.vorname ?? '').replace(/\{\{\s*nachname\s*\}\}/g, w.nachname ?? '')
     .replace(/\{\{\s*ansprechpartner\s*\}\}/g, ap).replace(/\{\{\s*(kunde|firma)\s*\}\}/g, w.kunde ?? '')
     // 17.10. spät: steht der Platzhalter schon in Klammern („… ab ({{termin}})“), kommt „(Termin folgt)“ ohne zweite Klammer — vorher „((Termin folgt))“.

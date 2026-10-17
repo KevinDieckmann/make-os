@@ -211,9 +211,10 @@ describe('Am gewonnenen Deal: Fall starten', () => {
 });
 
 describe('Kleinkram aus dem Durchspielen', () => {
-  it('„({{termin}})“ ohne Termin wird „(Termin folgt)“ — nicht „((Termin folgt))“', () => {
+  it('„({{termin}})“ ohne Termin: der Satz fällt weg (17.10., L1 B12) — nie „(Termin folgt)“ an den Kunden', () => {
     const m = nachrichtEntwurf('Betreff: X\n{{anrede}},\nim nächsten Termin ({{termin}}).', { anrede: 'Sie', vorname: 'Testa', nachname: 'Probe' }, 'X');
-    expect(m.text).toContain('im nächsten Termin (Termin folgt).');
+    expect(m.text).not.toContain('Termin folgt');
+    expect(m.text).not.toContain('im nächsten Termin');
     expect(m.text).not.toContain('((');
   });
   it('Bestätigung statt „Abstimmungspunkt“ (Kennungen bleiben)', () => {
