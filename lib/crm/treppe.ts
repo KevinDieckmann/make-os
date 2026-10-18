@@ -16,6 +16,7 @@ import { mandatPhase } from './produkte';
 import { tagPlus } from '@/lib/kalender/zeit';
 import { tagVon } from '@/lib/zeit';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
+import { kickoffVermerkText } from '@/lib/fulfillment/prozesse/onboarding';
 
 /**
  * Nur Business (Prüf-Fund 11.10.): Mandate und Deals einer Privat-Einheit (z. B. der Selbstständigkeit, je Instanz) zählen nicht in der
@@ -132,6 +133,8 @@ export function kundenAmpel(e: {
   m: Mandat; stufe: TreppenStufe | null; f: KundenFortschritt | undefined; seit?: string; heute: string; zahlung?: number | null;
   /** Der nächste Termin im Kalender (Fulfillment `naechsterFallTermin`, 14.10.) — sonst wie bisher nur nächster Schritt und Review. */
   termin?: string;
+  /** Kick-off im Fall als „Termin steht anderswo“ vermerkt (Tag; `Fall.onboarding.kickoffAm` — 18.10., Nachprüfung L1b N13). */
+  kickoffVermerkt?: string;
 }): { gesamt: Ampel | null; teile: AmpelTeil[] } {
   const { m, stufe, f, heute } = e;
   // Termine: der nächste Termin im Kalender (Rituale des Falls), der nächste Schritt (Fortschritt) bzw. das nächste Review am Mandat — der früheste zählt.
@@ -142,6 +145,8 @@ export function kundenAmpel(e: {
     : kommend ? { id: 'termine', label: 'Termine', farbe: 'gruen', text: `nächster am ${kurz(kommend)}` }
     // Ein neues Mandat (die ersten 14 Tage) startet grün: den ersten Termin legt das Onboarding (Kick-off) fest — „kein Termin“ ist dann kein Warnzeichen
     // (17.10., Gesamtprüfung — maximal einfach: ein frisch gestarteter Fall stand sonst gleich gelb da).
+    // Kick-off vermerkt, Termin steht anderswo (18.10., L1b N13): derselbe Satz wie im Fall — vorher hieß es hier weiter „kommt mit dem Kick-off“.
+    : e.kickoffVermerkt && m.start && tageZwischen(m.start.slice(0, 10), heute) <= 14 ? { id: 'termine', label: 'Termine', farbe: null, text: kickoffVermerkText(e.kickoffVermerkt) }
     : m.start && tageZwischen(m.start.slice(0, 10), heute) <= 14 ? { id: 'termine', label: 'Termine', farbe: null, text: 'erster Termin kommt mit dem Kick-off' }
     : { id: 'termine', label: 'Termine', farbe: 'gelb', text: 'kein nächster Termin' };
   // Lieferungen: erledigte Lieferobjekte gegen den Anteil der Dauer, der schon vergangen ist.
@@ -163,7 +168,7 @@ export function kundenAmpel(e: {
 }
 
 /** Je aktivem (bzw. pausiertem) Mandat die Zeile „Fortschritt im Paket“. */
-export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined>; termine?: Readonly<Record<string, string | undefined>> }): KundenZeile[] {
+export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined>; termine?: Readonly<Record<string, string | undefined>>; kickoffVermerkt?: Readonly<Record<string, string | undefined>> }): KundenZeile[] {
   const { datei, crm, heute } = e;
   const leistung = new Map<string, Leistung>(crm.leistungen.map(l => [l.id, l]));
   return crm.mandate.filter(m => !m.geloeschtAm && (m.status === 'aktiv' || m.status === 'pausiert') && imBusiness(m)).map(m => {
@@ -182,7 +187,7 @@ export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'man
       schritt,
       lieferobjekte: (stufe?.lieferobjekte ?? []).map(was => { const x = f?.erledigt.find(y => y.was === was); return { was, erledigt: !!x, ...(x ? { am: x.am } : {}) }; }),
       ...(f?.naechster ? { naechster: { ...f.naechster, ueberfaellig: f.naechster.datum < heute } } : {}),
-      ampel: kundenAmpel({ m, stufe, f, seit, heute, zahlung: e.zahlung?.[m.id]?.wert ?? null, ...(e.termine?.[m.id] ? { termin: e.termine[m.id] } : {}) }),
+      ampel: kundenAmpel({ m, stufe, f, seit, heute, zahlung: e.zahlung?.[m.id]?.wert ?? null, ...(e.termine?.[m.id] ? { termin: e.termine[m.id] } : {}), ...(e.kickoffVermerkt?.[m.id] ? { kickoffVermerkt: e.kickoffVermerkt[m.id] } : {}) }),
       naechsteStufe: stufe ? stufeReif({ stufe, stufen: datei.stufen, erledigt, phase: schritt, seit, heute }) : null,
       report: { ...rep, ...(r?.erstelltAm ? { erstelltAm: r.erstelltAm } : {}), ...(r?.dateiId ? { dateiId: r.dateiId } : {}), ...(r?.gesendetAm ? { gesendetAm: r.gesendetAm } : {}) },
     };

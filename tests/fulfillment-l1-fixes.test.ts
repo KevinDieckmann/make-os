@@ -117,6 +117,11 @@ describe('Ein neuer Fall startet grün', () => {
       start, verlaengerung: 'auto', honorar: { betrag: 1000, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], geaendert: '2026-10-15T00:00:00.000Z' }) as never;
     expect(kundenAmpel({ m: mandat('2026-10-15'), stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBeNull();
     expect(kundenAmpel({ m: mandat('2026-09-01'), stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBe('gelb');
+    // 18.10. (Nachprüfung L1b N13): Kick-off als „Termin steht anderswo“ vermerkt → am Mandat derselbe Satz wie im Fall, nicht „kommt mit dem Kick-off“.
+    const t = kundenAmpel({ m: mandat('2026-10-15'), stufe: null, f: undefined, heute: '2026-10-17', kickoffVermerkt: '2026-10-16' }).teile.find(x => x.id === 'termine')!;
+    expect(t).toMatchObject({ farbe: null, text: 'Kick-off vermerkt am 16.10. (Termin steht anderswo)' });
+    // Ein echter Termin im Kalender geht weiter vor.
+    expect(kundenAmpel({ m: mandat('2026-10-15'), stufe: null, f: undefined, heute: '2026-10-17', termin: '2026-10-20', kickoffVermerkt: '2026-10-16' }).teile.find(x => x.id === 'termine')?.text).toBe('nächster am 20.10.');
   });
 });
 

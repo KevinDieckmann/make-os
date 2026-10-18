@@ -128,7 +128,8 @@ export async function treppeLage(person: string, heute = localDay()) {
     // 15.10. (Abnahme B1): mit Fall übernimmt die Treppe Ampel und nächsten Schritt aus dem Fall (dieselbe Rechnung wie Fall-Kopf und Kunden-Seite).
     const faelle = await ff.fallFuerTreppe(heute).catch(() => ({} as Awaited<ReturnType<typeof ff.fallFuerTreppe>>));
     const [datei, crm, frei, vorschlaege, ki] = await Promise.all([ladeTreppe(heute), ladeCrm(), freieTeamStunden(person, heute), offeneDokumentVorschlaege(person).catch(() => []), kiVerfuegbar()]);
-    const kunden = kundenZeilen({ datei, crm, heute, termine }).map(z => ({ ...z, stand: eintragStand(datei.kunden[z.mandatId] ?? {}), fall: faelle[z.mandatId] ?? null }));
+    const kickoffVermerkt = Object.fromEntries(Object.entries(faelle).map(([id, f]) => [id, f?.kickoffVermerktAm]));
+    const kunden = kundenZeilen({ datei, crm, heute, termine, kickoffVermerkt }).map(z => ({ ...z, stand: eintragStand(datei.kunden[z.mandatId] ?? {}), fall: faelle[z.mandatId] ?? null }));
     const zb = zielbild({ datei, crm, heute });
     const bedarf = kapaBedarf(datei, kunden);
     return {
