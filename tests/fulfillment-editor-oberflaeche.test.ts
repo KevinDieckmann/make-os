@@ -74,7 +74,7 @@ describe('Rechner: Reise, Palette, Fluss, Seitenfeld', () => {
     // Ohne gewählten Knoten steht das Feld der Phase da (Titel, Sichtbarkeit, Abstimmungspunkt am Ende).
     expect(s).toContain('Der Kunde sieht diese Phase');
     expect(s).toContain('Bestätigung am Ende der Phase');
-    expect(s).toContain('Änderungen gelten für neue Fälle — die 2 laufenden Fälle zeigen „Vorlage geändert“');
+    expect(s).toContain('Änderungen gelten für neue Fälle — die 2 laufenden Fälle zeigen „Ablauf geändert“');
   });
   it('jedes Bedienziel ist mindestens 44 px hoch', () => {
     for (const markup of [s, html({}, true), renderToStaticMarkup(h(EditorAnsicht, { start: daten() }))]) {
@@ -175,7 +175,7 @@ describe('Laufender Fall: „Vorlage geändert — übernehmen?“ mit Vorschau 
     const { VorlageGeaendert } = await import('@/components/os/fulfillment/prozesse/FallUeberblick');
     const daten = { mandat: { id: 'm-1' }, diff: { von: 2, nach: 3, neu: [{ id: 'a', titel: 'Willkommen' }], geaendert: [], entfernt: [], reihenfolge: [{ id: 'p', titel: 'Umsetzung' }] } } as never;
     const s = renderToStaticMarkup(h(VorlageGeaendert, { daten, onMeldung: () => {} }));
-    expect(s).toContain('Vorlage geändert — übernehmen? (Fassung 2 → 3)');
+    expect(s).toContain('Ablauf geändert — übernehmen? (Fassung 2 → 3)');
     expect(s).toContain('1 neu · neue Reihenfolge in 1');
     expect(s).toContain('nichts geht verloren');
     expect(s).toContain('Was sich ändert ›');

@@ -292,7 +292,7 @@ export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }:
             : d.vorlage.titel}
         </Ueberschrift>
         <div style={klein}>
-          Änderungen gelten für neue Fälle{d.laufend ? ` — ${d.laufend === 1 ? 'der laufende Fall zeigt' : `die ${d.laufend} laufenden Fälle zeigen`} „Vorlage geändert“ und übernimmt sie erst per Klick` : ''}.
+          Änderungen gelten für neue Fälle{d.laufend ? ` — ${d.laufend === 1 ? 'der laufende Fall zeigt' : `die ${d.laufend} laufenden Fälle zeigen`} „Ablauf geändert“ und übernimmt ihn erst per Klick` : ''}.
         </div>
         {/* Vorlagen-Einstellung (17.10. spät): Zusatzmodul — hängt an einen laufenden Fall an statt einen zweiten anzulegen; keine neue Fassung. */}
         <Schalter an={!!d.vorlage.zusatz} aus={!darf || laeuft} onChange={an => { if (darf) void senden([{ op: 'zusatz', an }]); }} erklaerung="fulfillment.zusatzmodul">Zusatzmodul</Schalter>

@@ -67,7 +67,7 @@ export function VorlageGeaendert({ daten, onMeldung }: { daten: FallAntwort; onM
   // Das Paket des Falls und jedes angehängte Zusatzmodul (17.10. spät) — je eine Neuigkeit mit derselben Vorschau und demselben „Übernehmen“.
   return (
     <>
-      {daten.diff && <DiffHinweis d={daten.diff} titel="Vorlage geändert" mandatId={daten.mandat.id} onMeldung={onMeldung} />}
+      {daten.diff && <DiffHinweis d={daten.diff} titel="Ablauf geändert" mandatId={daten.mandat.id} onMeldung={onMeldung} />}
       {(daten.zusaetze ?? []).map(z => z.diff && <DiffHinweis key={z.vorlageId} d={z.diff} titel={`Zusatzmodul „${z.titel}“ geändert`} mandatId={daten.mandat.id} vorlageId={z.vorlageId} onMeldung={onMeldung} />)}
     </>
   );

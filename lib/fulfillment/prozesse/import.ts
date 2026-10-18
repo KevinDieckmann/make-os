@@ -677,8 +677,8 @@ export function importVorschau(roh: unknown, d: VorlagenDatei, datei: string): I
   if (istObj(roh) && roh.quellenverzeichnis !== undefined) hinweise.push('Das Quellenverzeichnis der Datei (mit Ablage-Adressen) wird nicht übernommen — nur die Kennungen der Quellen.');
   if (sieheAuchWeg) hinweise.push(`${anzahl(sieheAuchWeg, 'Verweis „siehe auch“ zeigt', 'Verweise „siehe auch“ zeigen')} auf Bausteine, die weder in der Bibliothek noch in der Datei stehen — sie fallen weg.`);
   const zusatzPakete = g.pakete.filter(p => p.v.zusatz).length;
-  if (zusatzPakete) hinweise.push(`${anzahl(zusatzPakete, 'Paket ist ein Zusatzmodul', 'Pakete sind Zusatzmodule')}: an einem Mandat mit laufendem Fall hängt es dort an (kein zweites Onboarding), sonst startet es ohne Onboarding.`);
-  if (paketVorlagen.length) hinweise.push('Pakete gelten für neue Fälle; laufende Fälle zeigen „Vorlage geändert — übernehmen?“ erst, wenn sie diese Vorlage nutzen.');
+  if (zusatzPakete) hinweise.push(`${anzahl(zusatzPakete, 'Ablauf ist ein Zusatzmodul', 'Abläufe sind Zusatzmodule')}: an einem Mandat mit laufendem Fall hängt es dort an (kein zweites Onboarding), sonst startet es ohne Onboarding.`);
+  if (paketVorlagen.length) hinweise.push('Abläufe gelten für neue Fälle; laufende Fälle zeigen „Ablauf geändert — übernehmen?“ erst, wenn sie diesen Ablauf nutzen.');
   // Mögliche Duplikate: gleicher Titel, andere Kennung — in der Datei und gegen die Bibliothek. Es wird nichts zusammengelegt; beide bleiben.
   const duplikate: string[] = [];
   const gesehen = new Map<string, string>();
