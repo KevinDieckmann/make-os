@@ -521,7 +521,7 @@ async function besucheLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> 
     const w = besuchWirkung(e, ctx), u = besuchUrteil(e, w, s.heute), f = fuerVon(e);
     const bericht = berichtAus({ event: e, teilnahmen: s.crm.teilnahmen, kontakte: s.kontakte, followups: s.crm.followups, heute: s.heute });
     const ausgeblendet = s.crm.teilnahmen.filter(t => t.eventId === e.id && t.netzwerken && s.eingeschraenkt.has(t.kontaktId)).length;
-    const kopf = `- ${e.id} · ${e.titel} · ${e.datum}${e.ort ? ` · ${e.ort}` : ''} · ${anmeldungLabel(anmeldungVon(e))} · ${f.art === 'kunde' ? `für Kunde ${firmaName(f.firmaId)}` : 'für MAKE selbst'}`
+    const kopf = `- ${e.id} · ${e.titel} · ${e.datum}${e.ort ? ` · ${e.ort}` : ''} · ${anmeldungLabel(anmeldungVon(e))} · ${f.art === 'kunde' ? `für Kunde ${firmaName(f.firmaId)}` : 'für uns selbst'}`
       + `\n  ${w.kontakte} erfasst · nachgefasst ${w.nachgefasst} (offen ${w.nachfassenOffen}) · Termine ${w.termine} · Deals ${w.deals} (Pipeline ${eur(w.pipeline)}, gewonnen ${eur(w.umsatz)}) · Kosten ${eur(w.kosten)}${w.kostenJeKontakt !== null ? ` (${eur(w.kostenJeKontakt)} je Kontakt)` : ''} · Urteil: ${u.label}${w.zielGesamt ? ` · Ziele ${w.zielGetroffen}/${w.zielGesamt}` : ''}`;
     const personen = l.length <= 3 ? bericht.zeilen.map(z => `\n  - ${z.kontaktId} ${z.name}${z.firma ? ` (${z.firma})` : ''} · ${schrittLabel(z.schritt)} · zuständig ${z.zustaendig}${z.offen.length ? ` · offen: ${z.offen.join('; ')}` : ''}`).join('') + (ausgeblendet ? `\n  ${ausgeblendet} eingeschränkte ausgeblendet` : '') : '';
     return kopf + personen;

@@ -32,7 +32,7 @@ export function BesuchKunden({ api, crm, onAkte, zuFirma }: Pick<BesuchProps, 'a
       )}
       {gruppen.map((g, i) => {
         const firma = g.firmaId ? firmen.get(g.firmaId) : undefined;
-        const name = g.firmaId === null ? 'MAKE selbst' : firma?.name ?? '(Firma gelöscht)';
+        const name = g.firmaId === null ? 'Uns selbst' : firma?.name ?? '(Firma gelöscht)';
         return (
           <Karte key={g.firmaId ?? 'make'} i={i + 2} akzent={g.firmaId ? LEUCHT.business : undefined}>
             <Ueberschrift rechts={g.firmaId && firma ? <button type="button" onClick={() => zuFirma(firma.id)} className="fassbar" style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 13, fontWeight: 600, minHeight: 44 }}>Zur Firma ›</button> : undefined}>{name}</Ueberschrift>

@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Netzwerken — „Für wen“ am Handy (03.10.) ────────────────────────────────
-// Ein besuchtes Event läuft für MAKE selbst oder für einen Kunden (Firma der Kartei). Zwei große Chips, bei „Kunde“ eine Suche
+// Ein besuchtes Event läuft für uns selbst (nie ein fester Firmenname, 18.10.) oder für einen Kunden (Firma der Kartei). Zwei große Chips, bei „Kunde“ eine Suche
 // mit großen Treffern — kein Menü am Rand, alles mit dem Daumen. Gilt für „Neues Event“ in „Heute bei“ und zum Ändern am
 // gewählten Event; die Regeln (Säuberung, Firma vorhanden) prüft der Server. Kontakte für Kunden: eigener Verantwortlicher, Übergabe = Übermittlung (netz-recht).
 
@@ -21,7 +21,7 @@ export function FuerAuswahl({ firmen, wert, onWahl }: { firmen: readonly Firma[]
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <Wahl an={wert.art === 'make'} onClick={() => { onWahl({ art: 'make' }); setSuche(''); }}>MAKE selbst</Wahl>
+        <Wahl an={wert.art === 'make'} onClick={() => { onWahl({ art: 'make' }); setSuche(''); }}>Für uns selbst</Wahl>
         <Wahl an={wert.art === 'kunde'} farbe={LEUCHT.business} onClick={() => { if (wert.art !== 'kunde') onWahl({ art: 'kunde', firmaId: '' }); }}>Für einen Kunden</Wahl>
       </div>
       {wert.art === 'kunde' && (

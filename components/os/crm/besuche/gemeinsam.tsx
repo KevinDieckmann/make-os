@@ -55,9 +55,9 @@ export function FuerChip({ e, firmen }: { e: Event; firmen: readonly Firma[] }) 
   return n ? <Chip farbe={LEUCHT.business}>für {n}</Chip> : null;
 }
 
-/** Die Auswahl „Für wen“: MAKE selbst, dann die Firmen der Kartei (Kunden zuerst) — der Name der Firma ist die Beschriftung, die Kennung der Wert. */
+/** Die Auswahl „Für wen“: wir selbst (nie ein fester Firmenname, 18.10.), dann die Firmen der Kartei (Kunden zuerst) — der Name der Firma ist die Beschriftung, die Kennung der Wert. */
 export const fuerEintraege = (firmen: readonly Firma[]): { id: string; label: string; hinweis?: string }[] => [
-  { id: 'make', label: 'MAKE selbst', hinweis: 'unser eigenes Event' },
+  { id: 'make', label: 'Uns selbst', hinweis: 'für uns, nicht für einen Kunden' },
   ...[...firmen].sort((a, b) => Number(b.rolle === 'kunde') - Number(a.rolle === 'kunde') || a.name.localeCompare(b.name, 'de')).map(f => ({ id: f.id, label: f.name, ...(f.rolle === 'kunde' ? { hinweis: 'Kunde' } : {}) })),
 ];
 
@@ -77,7 +77,7 @@ export function FuerWahl({ e, api, crm }: { e: Event; api: CrmApi; crm: CrmStand
       {dialog}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <Wahl label="Für wen" liste={eintraege} wert={fuer.art === 'kunde' ? fuer.firmaId : 'make'} farbe={fuer.art === 'kunde' ? LEUCHT.business : C.aktiv}
-          onWahl={async id => { if (!(await fuerAendernOk(e, crm, id === 'make' ? 'MAKE selbst' : firmen.find(f => f.id === id)?.name ?? 'diesen Kunden', bestaetigen))) return; void eventSetzen(api, e, { fuer: id === 'make' ? undefined : { art: 'kunde', firmaId: id } }); }} />
+          onWahl={async id => { if (!(await fuerAendernOk(e, crm, id === 'make' ? 'uns selbst' : firmen.find(f => f.id === id)?.name ?? 'diesen Kunden', bestaetigen))) return; void eventSetzen(api, e, { fuer: id === 'make' ? undefined : { art: 'kunde', firmaId: id } }); }} />
         {fuer.art === 'kunde' && mandatListe.length > 0 && (
           <Wahl label="Mandat" leer="+ Mandat" liste={mandatListe} wert={fuer.mandatId ?? null}
             onWahl={mandatId => void eventSetzen(api, e, { fuer: { art: 'kunde', firmaId: fuer.firmaId, mandatId } })}

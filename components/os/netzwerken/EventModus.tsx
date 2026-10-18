@@ -4,7 +4,7 @@
 // Ganz oben auf der Seite: bei welcher Veranstaltung bin ich heute? Seit 03.10. bietet die Wahl die Events aus dem Event-Kalender
 // an (Reiter „Events“ in der Markttraktion): zuerst die von heute, dann die der nahen Tage, der Rest über die Suche
 // (`heuteBeiAngebot`, lib/crm/besuche.ts). Ein neues Event (Name, Datum heute, Ort optional, für wen) landet im selben Kalender —
-// über den vorhandenen Event-Schreibweg (PATCH /api/crm/bestand, Liste „events“). „Für wen“ (MAKE selbst oder ein Kunde) erbt jede
+// über den vorhandenen Event-Schreibweg (PATCH /api/crm/bestand, Liste „events“). „Für wen“ (wir selbst oder ein Kunde) erbt jede
 // Erfassung vom Event und lässt sich hier ändern. Gemerkt wird die Wahl für den Tag (localStorage — nur Komfort). Ohne Netz
 // entsteht das Event lokal und wird mit der ersten Erfassung mitgeschickt (`eventNeu`, der Server legt es dann an).
 
@@ -52,7 +52,7 @@ export function EventModus({ api, ich, heute, wahl, setWahl }: { api: CrmApi; ic
   const besuch = gueltig ? (event ? istBesuch(event) : !!gueltig.lokal) : false;
   const fuer: EventFuer = event ? fuerVon(event) : gueltig?.fuer ?? { art: 'make' };
   const firmen = api.crm?.stand.firmen ?? KEINE_FIRMEN;
-  const fuerText = fuer.art === 'kunde' ? `Für ${firmen.find(f => f.id === fuer.firmaId)?.name ?? 'einen Kunden'}` : 'Für MAKE selbst';
+  const fuerText = fuer.art === 'kunde' ? `Für ${firmen.find(f => f.id === fuer.firmaId)?.name ?? 'einen Kunden'}` : 'Für uns selbst';
   return (
     <>
       {/* Die EINE wichtige Karte der Seite: in der Bereichsfarbe getönt (Standard: Karte `ton`); ohne Event eine ruhige gestrichelte Fläche. */}
@@ -98,7 +98,7 @@ function FuerFenster({ api, wahl, fuer, firmen, onZu, onGeaendert }: { api: CrmA
   const [fehler, setFehler] = useState<string | null>(null);
   const [frage, setFrage] = useState(false);
   const erfasst = (api.crm?.stand.teilnahmen ?? []).filter(t => t.eventId === wahl.eventId && t.netzwerken).length;
-  const zielName = neu.art === 'kunde' ? firmen.find(f => f.id === neu.firmaId)?.name ?? 'diesen Kunden' : 'MAKE selbst';
+  const zielName = neu.art === 'kunde' ? firmen.find(f => f.id === neu.firmaId)?.name ?? 'diesen Kunden' : 'uns selbst';
   const geaendert = JSON.stringify(neu) !== JSON.stringify(fuer);
   const speichern = async (bestaetigt = false) => {
     if (!fuerGueltig(neu)) return;
@@ -159,7 +159,7 @@ export function EventWahlFenster({ api, ich, heute, onZu, onWahl }: { api: CrmAp
     if (t.length > 160) { setFehler('Der Name ist zu lang (höchstens 160 Zeichen).'); return; }
     if (!istKalendertag(datum)) { setFehler('Bitte ein gültiges Datum wählen.'); return; }
     if (!eventDatumPlausibel(datum, heute)) { setFehler('Das Datum liegt mehr als ein Jahr entfernt — bitte prüfen.'); return; }
-    if (!fuerGueltig(fuer)) { setFehler('Für welchen Kunden? Bitte eine Firma wählen — oder „MAKE selbst“.'); return; }
+    if (!fuerGueltig(fuer)) { setFehler('Für welchen Kunden? Bitte eine Firma wählen — oder „Für uns selbst“.'); return; }
     setLaeuft(true); setFehler(null);
     const kunde = fuer.art === 'kunde' ? fuer : undefined;
     const e = neuesEvent({ id: neueId('ev'), titel: t, datum, ...(ort.trim() ? { ort: ort.trim().slice(0, 200) } : {}), person: ich ?? TEAM[0].id, heute, jetztIso: new Date().toISOString(),
