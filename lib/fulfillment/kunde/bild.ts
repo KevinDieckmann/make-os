@@ -231,8 +231,21 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   });
 
   const seit = tagePlus(e.heute, -14);
-  const erledigt = reihe.filter(k => ebeneVon(k, l) >= 2 && sichtbar(k) && k.status === 'erledigt' && k.erledigtAm && tagVon(k.erledigtAm) >= seit && tagVon(k.erledigtAm) <= e.heute)
-    .map(k => `${kundenText(k.titel, abstimmungTitel(k))} (${tagText(tagVon(k.erledigtAm!))})`);
+  const imFenster = (t: string | undefined): t is string => !!t && tagVon(t) >= seit && tagVon(t) <= e.heute;
+  const erledigtKnoten = reihe.filter(k => ebeneVon(k, l) >= 2 && sichtbar(k) && k.status === 'erledigt' && imFenster(k.erledigtAm));
+  // Eine Bestätigung mit dem Kunden zählt für ihn als erledigt, auch wenn ihr Schritt intern bleibt (18.10., Nachprüfung L1b N19: der Report sagte „noch nichts
+  // abgeschlossen“, obwohl Bestätigung 1 vermerkt war — der Schritt „F0 bestätigt“ ist ein Onboarding-Schritt und für den Kunden nicht sichtbar). Nur, wenn der
+  // Kunde beteiligt ist (`wer` ≠ intern), der Punkt im Fall vorkommt und kein gesperrter Baustein dranhängt; nie doppelt mit einem geteilten Schritt.
+  const schonDa = new Set(erledigtKnoten.map(k => k.freigabe).filter((x): x is string => !!x));
+  const bestaetigt = f ? Object.entries(f.freigaben ?? {})
+    .filter(([id, fg]) => !schonDa.has(id) && imFenster(fg?.am) && l.some(k => k.freigabe === id && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))
+    .map(([id, fg]) => { const t = abstimmungTitel({ freigabe: id }); return t ? { text: `Bestätigung: ${t}`, am: tagVon(fg.am) } : null; })
+    .filter((x): x is { text: string; am: string } => !!x) : [];
+  // Reihenfolge wie bisher (Schritte in Lese-Reihenfolge), die Bestätigungen dahinter — ohne Bestätigung Byte für Byte die bisherige Liste.
+  const erledigt = [
+    ...erledigtKnoten.map(k => ({ text: kundenText(k.titel, abstimmungTitel(k)), am: tagVon(k.erledigtAm!) })),
+    ...bestaetigt,
+  ].map(x => `${x.text} (${tagText(x.am)})`);
   // Als Nächstes: offene, sichtbare Schritte — ein Knoten nur, wenn unter ihm kein offener sichtbarer Schritt steht (dann stehen diese da).
   const offenSichtbar = (k: FallKnoten | undefined) => !!k && sichtbar(k) && (k.status === 'offen' || k.status === 'in_arbeit');
   // Nur die laufende Phase und die danach (Sichtprüfung 12.10.: Schritte aus späten Phasen standen sonst schon heute unter „Als Nächstes“).
