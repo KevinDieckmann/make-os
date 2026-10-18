@@ -14,7 +14,7 @@ export const KLICK_ERLAUBT = [
   { bestand: /^routinen$/, pfad: /^routinen\[id=r-probe-trinken\]\.dauerMin$/, arten: ['wert-geaendert'], grund: 'Klick der Probe: Dauer der eigenen Routine geändert.' },
   { bestand: /^ziele-eigen--malin$/, pfad: /^jahr\[id=z-probe-eigen-malin\]\.fortschritt$/, arten: ['wert-geaendert'], grund: 'Klick der Probe: Fortschritt des eigenen Ziels geändert.' },
   { bestand: /^crm$/, pfad: /^firmen\[id=f-demo-atlas\]\.notiz$/, arten: ['wert-geaendert'], grund: 'Klick der Probe: Notiz der Firma geändert.' },
-  { bestand: /^crm$/, pfad: /^mandate\[id=m-demo-lumen\]\.health\.stimmung$/, arten: ['wert-geaendert'], grund: 'Klick der Probe: Stimmung im Mandat geändert.' },
+  { bestand: /^crm$/, pfad: /^mandate\[id=m-demo-lumen\]\.health\.(stimmung|beteiligung|umsetzung|wirkung|zahlung)$/, arten: ['wert-geaendert'], grund: 'Klick der Probe: Gesundheit des Mandats geändert (alle fünf Werte, PATCH crm mandate).' },
   { bestand: /^crm$/, pfad: /^(firmen\[id=f-demo-atlas\]|mandate\[id=m-demo-lumen\])\.geaendertVon$/, arten: ['wert-geaendert'], grund: 'Klick der Probe: der Server stempelt „zuletzt geändert von“ (lib/crm/speicher.ts).' },
 ];
 

@@ -35,3 +35,20 @@ describe('Ziel-Fortschritt: Wert von Hand bleibt', () => {
     expect(r.liste[0].fortschritt).toBe(30);
   });
 });
+
+describe('Kaskade: der Merker „automatisch“ bleibt beim Nachziehen (18.10., Update-Probe)', () => {
+  it('ein abgeleitetes Ziel behält fortschrittAuto — der nächste Elternwert zieht weiter mit', async () => {
+    const { abgeleitetesZiel } = await import('@/lib/planung/kaskade');
+    const jahr = z('j', 33, { zielwert: 120000, einheit: '€', titel: 'Umsatz' });
+    const bisher = z('j~quartal', 33, { abgeleitetVon: 'j', fortschrittAuto: 33 });
+    const neu = abgeleitetesZiel(jahr, 'quartal', 2026, bisher);
+    expect(neu).toMatchObject({ fortschritt: 33, fortschrittAuto: 33 });
+    // Danach ändert sich das Elternziel: der Wert zieht mit, weil er automatisch gesetzt war.
+    const r = zieleFortschrittAnwenden([neu], [], new Map([['j', 50]]));
+    expect(r.liste[0]).toMatchObject({ fortschritt: 50, fortschrittAuto: 50 });
+    // Ein von Hand gesetzter Wert (ohne Merker) bleibt weiter stehen.
+    const hand = abgeleitetesZiel(jahr, 'quartal', 2026, z('j~quartal', 20, { abgeleitetVon: 'j' }));
+    expect(hand).not.toHaveProperty('fortschrittAuto');
+    expect(zieleFortschrittAnwenden([hand], [], new Map([['j', 50]])).liste[0].fortschritt).toBe(20);
+  });
+});

@@ -105,6 +105,9 @@ export function abgeleitetesZiel(eltern: Ziel, h: Unterhorizont, jahr: number, b
     id: bisher?.id ?? abgeleiteteId(eltern.id, h),
     titel: abgeleiteterTitel(eltern, h, jahr),
     fortschritt: bisher?.fortschritt ?? 0,
+    // Merker „vom Server gesetzt“ (16.10., C17) bleibt beim Nachziehen stehen — sonst gälte der zuletzt nachgezogene Fortschritt danach als
+    // Handwert und zöge nie wieder mit (18.10., Update-Probe: `fortschrittAuto` fiel bei jedem Lauf der Kaskade weg).
+    ...(typeof bisher?.fortschrittAuto === 'number' ? { fortschrittAuto: bisher.fortschrittAuto } : {}),
     erledigt: bisher?.erledigt ?? false,
     ...(bisher?.erledigtAm ? { erledigtAm: bisher.erledigtAm } : {}),
     ...(bisher?.notiz ? { notiz: bisher.notiz } : {}),
