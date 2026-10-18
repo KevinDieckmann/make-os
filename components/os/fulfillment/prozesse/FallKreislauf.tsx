@@ -66,8 +66,8 @@ export function AbschlussDetail({ daten, stelle, melde, ops, haupt }: { daten: F
     case 'mandat': return (
       <Karte i={0} id="kreislauf-mandat">
         <Ueberschrift erklaerung="fulfillment.nachsorge">Mandat beenden</Ueberschrift>
-        <div style={klein}>{daten.nachsorge?.ende ? `Das Mandat ist seit ${tagKurz(daten.nachsorge.ende)} beendet — die Nachsorge zählt ab diesem Tag.` : 'Die Nachsorge zählt ab dem Mandatsende. Beendet wird das Mandat unter Produkte & Mandate › Mandat (Status „beendet“).'}</div>
-        {!daten.nachsorge?.ende && <div><Knopf haupt={haupt} onClick={() => router.push(WEG.mandat(daten.mandat.id))}>Mandat öffnen ›</Knopf></div>}
+        <div style={klein}>{daten.nachsorge?.ende ? `Das Mandat ist seit ${tagKurz(daten.nachsorge.ende)} beendet — die Nachsorge zählt ab diesem Tag.` : 'Die Nachsorge zählt ab dem Mandatsende. „Mandat beenden“ fragt nach dem Ende-Datum (Vorgabe: Ende der Laufzeit) und beendet den Liquiditätsplan im selben Schritt.'}</div>
+        {!daten.nachsorge?.ende && <div><Knopf haupt={haupt} onClick={() => router.push(WEG.mandatBeenden(daten.mandat.id))}>Mandat beenden ›</Knopf></div>}
         {abschluss && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{abschluss.unter}</div>}
       </Karte>
     );
@@ -212,7 +212,7 @@ export function WirkungKarte({ daten, melde, ops, haupt }: { daten: FallAntwort;
         {erstellt?.dateiName && <a href={`/api/fulfillment/wirkung?m=${encodeURIComponent(m.id)}`} download style={{ color: C.aktiv, fontSize: TYP.bedien, alignSelf: 'center', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>↓ PDF</a>}
         {erstellt?.dateiName && <Knopf onClick={perMail}>Per Mail senden …</Knopf>}
         {erstellt && f.status !== 'abgeschlossen' && <Knopf haupt={haupt} leise={!haupt} onClick={abschliessen}>Fall abschließen</Knopf>}
-        {f.status === 'abgeschlossen' && m.status !== 'beendet' && <Knopf haupt={haupt} leise={!haupt} href={WEG.mandat(m.id)}>Mandat beenden ›</Knopf>}
+        {f.status === 'abgeschlossen' && m.status !== 'beendet' && <Knopf haupt={haupt} leise={!haupt} href={WEG.mandatBeenden(m.id)}>Mandat beenden ›</Knopf>}
       </Leiste>
       {dialog}
       {mail && <MailSenden titel="Wirkungsbericht senden" entwurf={mail} hinweis="Der Bericht hängt als PDF an." onZu={() => setMail(null)} onGesendet={() => { melde('Gesendet.'); }} />}

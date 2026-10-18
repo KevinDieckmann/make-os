@@ -139,6 +139,8 @@ export const WEG = {
    */
   unterlagen: (gesellschaftId: string, vertragId?: string) => q('/os/unternehmen', { ablage: gesellschaftId, v: vertragId }),
   mandat: (id?: string) => mandateLink('mandate', id),
+  /** „Mandat beenden“ (18.10., N6): öffnet das Mandat mit dem Dialog (Ende-Datum, Liquiditätsplan im selben Schritt). */
+  mandatBeenden: (id: string) => { const l = mandateLink('mandate', id); return `${l}${l.includes('?') ? '&' : '?'}beenden=1`; },
   produkt: (id?: string) => mandateLink('produkte', id),
   /**
    * Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 10; seit 17.10. nach Kevins Miro-Standard): die eigene Seite unter Produkte & Mandate
