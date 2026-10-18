@@ -564,7 +564,7 @@ export function ZoePanel() {
   // ── Zu: das kleine pulsierende Icon, das überall mitgeht ──
   if (!fenster.offen) {
     return (
-      // Immer sichtbar (18.10., Kevin): Lage und Größe aus der Ablage unten (`.zoe-fab` in app/globals.css) — `<main>` endet über dem Streifen,
+      // Immer sichtbar (18.10.): Lage und Größe aus der Ablage unten (`.zoe-fab` in app/globals.css) — `<main>` endet über dem Streifen,
       // die Kugel liegt nie auf einem Knopf (vorher wich sie beim Lesen aus).
       <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label={`${partnerName} öffnen`} title={partnerName} className="zoe-fab"
         style={{ position: 'fixed', zIndex: 70, borderRadius: '50%', border: 'none', background: FLAECHE, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${KUGEL.smaragd}2E, inset 0 1px 0 rgba(255,255,255,.08)` }}>
