@@ -56,7 +56,8 @@ export async function faelleKurz(mandatIds?: readonly string[]): Promise<Record<
       mandatId: f.mandatId, status: w.status, ...(stelle.phase ? { phase: stelle.phase.titel } : {}), fortschritt: stelle.fortschritt,
       ...(stelle.naechster ? { naechster: stelle.naechster.titel, naechsterLage: { wartetAuf: stelle.naechster.wartetAuf, ...(stelle.naechster.faelligAm ? { faelligAm: stelle.naechster.faelligAm } : {}), ueberfaellig: stelle.naechster.ueberfaellig } } : {}),
       wartet: wa.length, ...(wa[0]?.tage !== undefined ? { wartetAeltesterTage: wa[0].tage } : {}),
-      onboardingOffen: st.offen, onboardingErfuellt: onboardingZaehlung(st.schritte).erledigt, willkommenUeberfaellig: st.willkommen.ueberfaellig,
+      // EINE Zählung mit dem Fall (18.10., L1b N11): offen = alle Schritte minus erfüllte/entfallene — wie „Onboarding 3 von 8“.
+      onboardingOffen: (z => z.gesamt - z.erledigt)(onboardingZaehlung(st.schritte)), onboardingErfuellt: onboardingZaehlung(st.schritte).erledigt, willkommenUeberfaellig: st.willkommen.ueberfaellig,
     };
   }
   return raus;
