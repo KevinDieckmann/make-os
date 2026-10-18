@@ -20,6 +20,7 @@ import { reportPdf } from '@/lib/crm/treppe-pdf';
 import { wirkungsDokument } from '@/lib/fulfillment/prozesse/wirkung';
 import { wirkungPdf } from '@/lib/fulfillment/prozesse/wirkung-pdf';
 import { willkommenMail, WILLKOMMEN_GERUEST } from '@/lib/fulfillment/prozesse/onboarding';
+import { textMitSignatur } from '@/components/os/fulfillment/prozesse/MailSenden';
 import type { Fall, FallKnoten } from '@/lib/fulfillment/typen';
 
 const HEUTE = '2026-10-10';
@@ -240,6 +241,30 @@ describe('Mails an den Kunden', () => {
     expect(du.text).toContain('Hallo Erika,');
     expect(du.text).not.toContain('Projektseite');
     expect(du.text).not.toMatch(/\{\{|\bSie\b/);
+  });
+  it('Willkommensmail endet mit Gruß und dem Vornamen der sendenden Person (C7, 18.10.) — auch ältere Texte ohne {{gruss}}, nie doppelt', () => {
+    const sie = willkommenMail(WILLKOMMEN_GERUEST.Sie, { anrede: 'Sie', nachname: 'Probe', kickoffVorschlaege: [], absender: 'Testa' });
+    expect(sie.text.endsWith('Wir freuen uns auf den Start!\n\nFreundliche Grüße\nTesta')).toBe(true);
+    const du = willkommenMail(WILLKOMMEN_GERUEST.Du, { anrede: 'Du', vorname: 'Erika', kickoffVorschlaege: [], absender: 'Testa' });
+    expect(du.text.endsWith('Viele Grüße\nTesta')).toBe(true);
+    // Ohne Absender: nur der Gruß, kein leerer Platzhalter.
+    expect(willkommenMail(WILLKOMMEN_GERUEST.Sie, { anrede: 'Sie', kickoffVorschlaege: [] }).text.endsWith('\n\nFreundliche Grüße')).toBe(true);
+    // Ein älterer Text ohne {{gruss}} bekommt den Gruß ans Ende; einer, der schon grüßt, nicht noch einmal.
+    const alt = 'Betreff: Hallo\n\n{{anrede}},\n\nschön, dass es losgeht.';
+    expect(willkommenMail(alt, { anrede: 'Sie', nachname: 'Probe', kickoffVorschlaege: [], absender: 'Testa' }).text).toBe('Guten Tag Probe,\n\nschön, dass es losgeht.\n\nFreundliche Grüße\nTesta');
+    const mitGruss = `${alt}\n\nBeste Grüße\n{{absender}}`;
+    const m = willkommenMail(mitGruss, { anrede: 'Sie', kickoffVorschlaege: [], absender: 'Testa' }).text;
+    expect(m.endsWith('Beste Grüße\nTesta')).toBe(true);
+    expect(m.match(/Grüße/g)).toHaveLength(1);
+  });
+  it('Signatur des gewählten Postfachs: kommt ans Ende, wechselt mit dem Postfach, nie doppelt (C7)', () => {
+    const t0 = 'Guten Tag,\n\nText.\n\nFreundliche Grüße\nTesta';
+    const t1 = textMitSignatur(t0, undefined, 'Testa Probe\nBeispiel GmbH');
+    expect(t1).toBe(`${t0}\n\n-- \nTesta Probe\nBeispiel GmbH`);
+    expect(textMitSignatur(t1, undefined, 'Testa Probe\nBeispiel GmbH')).toBe(t1);
+    expect(textMitSignatur(t1, 'Testa Probe\nBeispiel GmbH', 'Anderes Postfach')).toBe(`${t0}\n\n-- \nAnderes Postfach`);
+    expect(textMitSignatur(t1, 'Testa Probe\nBeispiel GmbH', undefined)).toBe(t0);
+    expect(textMitSignatur(t0, undefined, '  ')).toBe(t0);
   });
   it('Puls-Mail: ein Satz, ein Klick; Du/Sie; der Link steht genau einmal', () => {
     const du = pulsMail({ anrede: 'Du', vorname: 'Erika', link: 'https://example.invalid/kunde/kl-x#p=y', absender: 'Max' });

@@ -99,8 +99,11 @@ export async function GET(req: Request) {
       vorschlaege = r.vorschlaege.slice(0, 3).map(x => vorschlagText(x.start, x.ende));
     } catch { vorschlaege = []; }
     leseZugriff(req, 'fulfillment', { anzahl: k ? 1 : 0 });
+    // Absender unter dem Gruß (18.10., C7): der Vorname der Person, die gerade vorbereitet (Konto, `vornameVon`) — nie ein fester Name.
+    const { vornameVon } = await import('@/lib/zoe/grundauftrag');
+    const absender = await vornameVon(z.person);
     return NextResponse.json({
-      ok: true, anrede, vorlage: vorlage ? { id: vorlage.id, titel: vorlage.titel, text: vorlage.text ?? '' } : null,
+      ok: true, anrede, vorlage: vorlage ? { id: vorlage.id, titel: vorlage.titel, text: vorlage.text ?? '' } : null, absender,
       an: k?.email ? { email: k.email, kontaktId: k.id, ...(k.vorname || k.nachname ? { name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() } : {}) } : null,
       ...(k?.vorname ? { vorname: k.vorname } : {}), ...(k?.nachname ? { nachname: k.nachname } : {}),
       ...(k ? {} : { ohneEmpfaenger: mandat.kontaktIds.length ? 'Keine Ansprechperson mit Mail-Adresse, die wir anschreiben dürfen (Adresse fehlt oder Verarbeitung eingeschränkt).' : 'Am Mandat ist keine Ansprechperson eingetragen.' }),

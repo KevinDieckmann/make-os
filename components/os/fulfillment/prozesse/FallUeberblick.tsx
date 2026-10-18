@@ -188,7 +188,7 @@ export function KeinFall({ daten }: { daten: FallAntwort }) {
   );
 }
 
-interface WillkommenGrundlage { anrede: 'Du' | 'Sie'; vorlage: { id: string; titel: string; text: string } | null; an: { email: string; name?: string; kontaktId?: string } | null; vorname?: string; nachname?: string; ohneEmpfaenger?: string; vorschlaege: string[]; gesellschaft: string; gesendetAm: string | null }
+interface WillkommenGrundlage { anrede: 'Du' | 'Sie'; vorlage: { id: string; titel: string; text: string } | null; an: { email: string; name?: string; kontaktId?: string } | null; vorname?: string; nachname?: string; ohneEmpfaenger?: string; vorschlaege: string[]; gesellschaft: string; gesendetAm: string | null; absender?: string }
 
 /** Willkommensmail: Vorlage der Bibliothek (Schlagwort „willkommen“), Kick-off-Vorschläge, Playbook-Link (C2), dann Senden per Klick. */
 export function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung, haupt }: { daten: FallAntwort; oeffnen: boolean; setOeffnen: (b: boolean) => void; onMeldung: (m: FallMeldung) => void; haupt?: boolean }) {
@@ -219,7 +219,7 @@ export function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung, haupt }
   };
   const vorbereiten = () => {
     if (!g?.vorlage) return;
-    const mail = willkommenMail(g.vorlage.text, { anrede: g.anrede, ...(g.vorname ? { vorname: g.vorname } : {}), ...(g.nachname ? { nachname: g.nachname } : {}), kickoffVorschlaege: g.vorschlaege, ...(link ? { playbookLink: link } : {}) });
+    const mail = willkommenMail(g.vorlage.text, { anrede: g.anrede, ...(g.vorname ? { vorname: g.vorname } : {}), ...(g.nachname ? { nachname: g.nachname } : {}), kickoffVorschlaege: g.vorschlaege, ...(link ? { playbookLink: link } : {}), ...(g.absender ? { absender: g.absender } : {}) });
     setEntwurf({ ...mail, an: g.an, gesellschaft: g.gesellschaft });
   };
   const vermerken = async () => { const a = await fallOps(m, [{ op: 'willkommen-gesendet' }]); onMeldung(a.ok ? { text: 'Willkommensmail als gesendet vermerkt.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); };
@@ -237,7 +237,7 @@ export function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung, haupt }
           {g.ohneEmpfaenger && <Hinweis art="achtung">{g.ohneEmpfaenger}</Hinweis>}
           {!g.vorlage ? (
             <Hinweis art="info" titel="Noch kein Text für die Willkommensmail" aktion={<Knopf leise onClick={geruest}>Text aus Gerüst anlegen</Knopf>}>
-              Der Text ist ein Baustein der Bibliothek (Art „Mail“, Schlagwort „willkommen“) mit den Platzhaltern {'{{anrede}}'}, {'{{kickoff_vorschlaege}}'} und {'{{playbook_link}}'}.
+              Der Text ist ein Baustein der Bibliothek (Art „Mail“, Schlagwort „willkommen“) mit den Platzhaltern {'{{anrede}}'}, {'{{kickoff_vorschlaege}}'}, {'{{playbook_link}}'} und {'{{gruss}}'}.
             </Hinweis>
           ) : (
             <>

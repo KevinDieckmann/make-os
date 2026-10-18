@@ -11,7 +11,8 @@
 //   8 F0 bestätigt         ← `Fall.freigaben.F0` (angezeigt als „Abstimmungspunkt n“ — nie das Kürzel, 15.10., Abnahme B5)
 // „entfällt“ (von Hand, mit Grund) gilt als erledigt. Fertig = alle zählenden Schritte erledigt → Fall von „onboarding“ auf „läuft“.
 // Dazu die Willkommensmail aus einer Vorlage der Bibliothek (Baustein Art „mail“ mit Schlagwort `willkommen`, Instanz-Text) mit den
-// Platzhaltern {{anrede}}, {{vorname}}, {{kickoff_vorschlaege}}, {{playbook_link}} — ohne Link fällt der Absatz mit dem Link weg.
+// Platzhaltern {{anrede}}, {{vorname}}, {{kickoff_vorschlaege}}, {{playbook_link}}, {{gruss}} — ohne Link fällt der Absatz mit dem Link weg; ohne {{gruss}}
+// (ältere Texte) kommt der Gruß mit dem Vornamen der sendenden Person ans Ende.
 // Rein und client-sicher.
 
 import type { Baustein, Fall, KnotenStatus, RitualVorlage, VorlagenDatei } from '../typen';
@@ -195,6 +196,8 @@ export const WILLKOMMEN_GERUEST: Record<'Du' | 'Sie', string> = {
     'Danach: Erste Erfolge planen wir für die ersten 30 Tage, und alle zwei Wochen erhalten Sie einen kurzen Bericht zum Stand.',
     '',
     'Bei Fragen antworten Sie einfach auf diese Mail. Wir freuen uns auf den Start!',
+    '',
+    '{{gruss}}',
   ].join('\n'),
   Du: [
     'Betreff: Willkommen — so starten wir gemeinsam',
@@ -212,6 +215,8 @@ export const WILLKOMMEN_GERUEST: Record<'Du' | 'Sie', string> = {
     'Danach: Erste Erfolge planen wir für die ersten 30 Tage, und alle zwei Wochen bekommst du einen kurzen Bericht zum Stand.',
     '',
     'Bei Fragen antworte einfach auf diese Mail. Ich freue mich auf den Start!',
+    '',
+    '{{gruss}}',
   ].join('\n'),
 };
 export const TAG_WILLKOMMEN = 'willkommen';
@@ -240,7 +245,23 @@ export function willkommenVorlage(bausteine: readonly Baustein[], anrede: 'Du' |
   return l.find(b => b.tags.includes(anrede.toLowerCase())) ?? l.find(b => !b.tags.includes('du') && !b.tags.includes('sie')) ?? l[0] ?? null;
 }
 
-export interface WillkommenWerte { anrede: 'Du' | 'Sie'; vorname?: string; nachname?: string; kickoffVorschlaege: string[]; playbookLink?: string }
+export interface WillkommenWerte {
+  anrede: 'Du' | 'Sie'; vorname?: string; nachname?: string; kickoffVorschlaege: string[]; playbookLink?: string;
+  /** Vorname der SENDENDEN Person (aus ihrem Konto, `vornameVon`) — steht unter dem Gruß; nie ein fester Name. */
+  absender?: string;
+}
+
+/**
+ * Der Gruß am Ende, darunter der Vorname der sendenden Person (18.10., Nachprüfung C7: die Mail endete ohne Gruß und Absender) — dieselben Worte wie die
+ * Nachrichten der Ausführung (`nachrichtEntwurf`): Du „Viele Grüße“, Sie „Freundliche Grüße“.
+ */
+export function willkommenGruss(anrede: 'Du' | 'Sie', absender?: string): string {
+  const satz = anrede === 'Du' ? 'Viele Grüße' : 'Freundliche Grüße';
+  const n = absender?.trim();
+  return n ? `${satz}\n${n}` : satz;
+}
+/** Steht am Ende schon ein Gruß („Viele Grüße“, „Mit freundlichen Grüßen“ …)? Dann kommt keiner dazu — nie doppelt. */
+const GRUSS_ZEILE = /^\s*(viele|liebe|beste|herzlichen?|freundliche|mit freundlichen|mit besten)?\s*gr(ü|ue)(ß|ss)/im;
 
 /** Die Mail aus der Vorlage: Betreff (erste Zeile „Betreff: …“), Text mit gefüllten Platzhaltern; ohne Playbook-Link fällt der Absatz weg. */
 export function willkommenMail(vorlage: string, w: WillkommenWerte): { betreff: string; text: string } {
@@ -251,10 +272,14 @@ export function willkommenMail(vorlage: string, w: WillkommenWerte): { betreff: 
   const anrede = w.anrede === 'Du' ? (w.vorname ? `Hallo ${w.vorname}` : 'Hallo') : name ? `Guten Tag ${name}` : 'Guten Tag';
   const vorschlaege = w.kickoffVorschlaege.length ? w.kickoffVorschlaege.map(x => `– ${x}`).join('\n') : '– (Terminvorschläge folgen)';
   const absaetze = zeilen.join('\n').split(/\n{2,}/).filter(a => w.playbookLink || !a.includes('{{playbook_link}}'));
-  const text = absaetze.join('\n\n')
+  const gruss = willkommenGruss(w.anrede, w.absender);
+  let text = absaetze.join('\n\n')
     .replace(/\{\{anrede\}\}/g, anrede).replace(/\{\{vorname\}\}/g, w.vorname ?? '').replace(/\{\{nachname\}\}/g, w.nachname ?? '')
     .replace(/\{\{kickoff_vorschlaege\}\}/g, vorschlaege).replace(/\{\{playbook_link\}\}/g, w.playbookLink ?? '')
+    .replace(/\{\{gruss\}\}/g, gruss).replace(/\{\{absender\}\}/g, w.absender?.trim() ?? '')
     .replace(/\n{3,}/g, '\n\n').trim();
+  // Ältere Texte ohne {{gruss}} (in der Bibliothek schon angelegt) bekommen den Gruß ans Ende — außer, ihr letzter Absatz grüßt schon.
+  if (!/\{\{gruss\}\}/.test(vorlage) && !GRUSS_ZEILE.test(text.split(/\n{2,}/).pop() ?? '')) text = `${text}\n\n${gruss}`;
   return { betreff: betreff.slice(0, 200), text };
 }
 
