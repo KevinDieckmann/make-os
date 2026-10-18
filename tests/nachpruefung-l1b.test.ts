@@ -271,3 +271,30 @@ describe('N17 — Einrichtung für ein Konto „nur Business“: der Erklärtext
     expect(readFileSync('lib/make-one/onboarding-bild.ts', 'utf8')).toContain('k?.betreiber, !!k?.nurBusiness)');
   });
 });
+
+describe('N20 — ZOE-Kugel und Anwesenheits-Plakette weichen beim Lesen aus', () => {
+  it('Regel (`schwebendWeiter`): nach unten rollen → weg; ein Stück nach oben, ganz oben, am Ende oder nach einem Sprung → da', async () => {
+    const { schwebendWeiter, SCHWEBEND_START } = await import('@/components/os/ui/schwebend');
+    // Start wie im Haken: Anker = die Stelle, an der die Seite gerade steht.
+    const lauf = (ys: number[], ende = 5000) => ys.slice(1).reduce((s, y) => schwebendWeiter(s, y, ende - y), { ...SCHWEBEND_START, anker: ys[0], letzt: ys[0] });
+    expect(lauf([10, 30]).weg).toBe(false); // ganz oben
+    expect(lauf([0, 100]).weg).toBe(true); // von oben 100 px nach unten gelesen
+    expect(lauf([100, 110, 120]).weg).toBe(false); // kleines Zittern unter der Schwelle (vom Anker 100 aus)
+    expect(lauf([100, 200, 300]).weg).toBe(true); // nach unten gelesen
+    expect(lauf([100, 300, 290]).weg).toBe(true); // kurz zurück, unter der Schwelle → bleibt weg
+    expect(lauf([100, 300, 250]).weg).toBe(false); // ein Stück nach oben → wieder da
+    expect(lauf([100, 300, 4990]).weg).toBe(false); // am Ende ist Platz reserviert (und ein Sprung)
+    expect(lauf([100, 300, 400, 4980]).weg).toBe(false); // Ende
+    expect(lauf([2000, 2100, 2200, 3000]).weg).toBe(false); // Sprung (Zurück stellt die Stelle wieder her) — kein Lesen
+  });
+
+  it('ZOE-Kugel und Plakette tragen die Klassen; CSS: weg = unsichtbar, keine Klicks, Fokus holt zurück, reduzierte Bewegung ohne Gleiten', async () => {
+    const { readFileSync } = await import('node:fs');
+    expect(readFileSync('components/os/ZoePanel.tsx', 'utf8')).toContain("className={`zoe-fab schwebend${weicht ? ' schwebend-weg' : ''}`}");
+    expect(readFileSync('components/os/Mitarbeit.tsx', 'utf8')).toContain("className={`os-mitarbeit schwebend${weicht ? ' schwebend-weg' : ''}`}");
+    const css = readFileSync('app/globals.css', 'utf8');
+    expect(css).toMatch(/\.schwebend\.schwebend-weg \{[^}]*opacity: 0;[^}]*pointer-events: none !important;/);
+    expect(css).toContain('.schwebend.schwebend-weg:focus-within');
+    expect(css).toContain('@media (prefers-reduced-motion: reduce) { .schwebend { transition: none; } }');
+  });
+});

@@ -17,6 +17,8 @@ export { eingabe, feld, auswahl, Feldzeile } from './felder';
 export { ZielChip, useZielBezug } from './ziel';
 export { ZielBezug } from './ziel-bezug';
 export { useHandy, useBreit, useMedien, HANDY_BIS, SPALTEN_AB } from './medien';
+// Schwebendes (18.10., N20): ZOE-Kugel und Anwesenheits-Plakette weichen beim Lesen nach unten aus (Regel rein, Haken liest `.os-shell main`).
+export { useSchwebendWeicht, schwebendWeiter, SCHWEBEND_START, type SchwebendStand } from './schwebend';
 // Fokus-Signatur (04.10., DESIGN_STANDARD.md › Fokus-Signatur): Mini-Strahl über einer echten Reihe, Segmentbalken, Kante, Netz.
 export { FadenLinie, Segmentbalken, FokusKante, NetzMotiv, type FadenLinieProps } from './fokus';
 // Markenzeichen: der Flow (17.10., DESIGN_STANDARD.md › Markenzeichen: der Flow): der Lichtfaden für jeden Weg — Reise, Fluss, Fläche, als Nächstes mehr.
