@@ -161,7 +161,7 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
       {fluss && sp && (
         <div className="ff-fall-raster">
           <Karte i={1} id="ff-fluss">
-            <Ueberschrift erklaerung="fulfillment.ablaufPhasen" rechts={sp.nr === 1 && onboarding ? <Erklaert erklaerung="fulfillment.onboardingBand" name="Onboarding"><OnboardingZaehler schritte={onboarding.schritte} /></Erklaert> : <span>{sp.zustand === 'fertig' ? 'erledigt' : `${sp.erledigt} von ${sp.gesamt}`}</span>}>
+            <Ueberschrift erklaerung="fulfillment.ablaufPhasen" rechts={sp.nr === 1 && !sp.modul && onboarding ? <Erklaert erklaerung="fulfillment.onboardingBand" name="Onboarding"><OnboardingZaehler schritte={onboarding.schritte} /></Erklaert> : <span>{sp.zustand === 'fertig' ? 'erledigt' : `${sp.erledigt} von ${sp.gesamt}`}</span>}>
               Phase {sp.nr} · {sp.titel}
             </Ueberschrift>
             <Fluss fluss={fluss} gewaehlt={knoten} onWahl={k => waehle(phase!, k.id)}

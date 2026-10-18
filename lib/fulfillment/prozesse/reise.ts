@@ -9,7 +9,7 @@
 import type { Fall, FallKnoten, Freigabepunkt, KnotenForm, KnotenStatus, Zustaendig } from '../typen';
 import { MUSTER_ONBOARDING, type OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
-import { abschnittVon, aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
+import { abschnittVon, aktiverNeinZweig, aktuellerKnoten, fallFortschritt, haeltAn, inReihenfolge, jetztPhasen, kinderVon, mitAusfuehrung, phaseDurch, phasenGang, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
 import { obKnotenId, obSchluessel } from './onboarding';
 import { SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE } from './phasen';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz, BESTAETIGUNG } from './darstellung';
@@ -21,7 +21,10 @@ export type PhasenZustand = 'fertig' | 'jetzt' | 'offen';
 /** Ein Freigabe-Punkt am Ende einer Phase — mit Klartext statt Kürzel; `nr` = Nummer des Abstimmungspunkts in der Anzeige (lückenlos, 14.10.). */
 export interface ReiseFreigabe { id: string; titel: string; wer: Zustaendig; gegeben: boolean; am?: string; nr?: number }
 export interface ReisePhase {
-  /** Titel ohne internen Klammer-Zusatz (`zusatz` = die Erklärung, z. B. „nur Prozess“). */
+  /**
+   * Titel ohne internen Klammer-Zusatz (`zusatz` = die Erklärung, z. B. „nur Prozess“). `nr` zählt in ihrem Abschnitt (18.10., L1b N10): die Phasen des Pakets
+   * 1 … n, die eines angehängten Zusatzmoduls in seiner eigenen Zeile wieder ab 1 — sie zählen nicht im Hauptstrahl.
+   */
   id: string; titel: string; zusatz?: string; nr: number; zustand: PhasenZustand;
   /**
    * Erledigte und zählende Schritte — dieselben Zeilen, die der Ablauf zeigt (`phaseGruppen`: ein Schritt mit seinen Bausteinen ist EINE Zeile;
@@ -45,26 +48,36 @@ export interface Reise { phasen: ReisePhase[]; /** Index der Phase „jetzt“ �
 /** Wer eine Freigabe gibt — in Worten. */
 export const FREIGABE_WER: Record<Zustaendig, string> = { kunde: 'der Kunde bestätigt', intern: 'ihr bestätigt intern', beide: 'Kunde und ihr bestätigen gemeinsam' };
 
-/** Die Reise eines Falls: Phasen in Rang-Reihenfolge mit Zustand, Anteil, Freigabe-Punkt; `jetzt` = die Phase von `aktuellerKnoten`. */
-export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'> & Partial<Pick<Fall, 'zusaetze'>>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], heute: string): Reise {
+/**
+ * Die Reise eines Falls: Phasen in Rang-Reihenfolge mit Zustand, Anteil, Freigabe-Punkt; `jetzt` = die Phase von `aktuellerKnoten`. „Fertig“ ist eine Phase, die
+ * durch ist (`phaseDurch` — 18.10., L1b N2: was nebenher läuft, wie das Kunden-Playbook, hält sie nicht an; es bleibt als offener Schritt sichtbar), also
+ * dieselbe Stelle, an der die Ausführung arbeitet. Ein abgeschlossener Fall hat kein „jetzt“ (N9).
+ */
+export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'> & Partial<Pick<Fall, 'zusaetze' | 'status'>>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], heute: string): Reise {
   const l = fall.knoten;
   const wurzel = wurzelVon(l);
   const phasen = wurzel ? kinderVon(wurzel.id, l) : [];
   // „jetzt“: die Phase von `aktuellerKnoten` und je angehängtem Zusatzmodul seine laufende Phase (17.10. spät — die Abschnitte laufen nebeneinander).
   const aktuell = jetztPhasen(fall);
   const nummern = abstimmungsNummern(l);
-  const raus: ReisePhase[] = phasen.map((p, i) => {
+  const ablauf = mitAusfuehrung(l);
+  const nrImAbschnitt = new Map<string, number>();
+  const raus: ReisePhase[] = phasen.map(p => {
     const zeilen = phaseGruppen(fall, p.id, heute).flatMap(g => g.zeilen);
     const zaehlend = zeilen.filter(z => z.zustand !== 'entfaellt');
     const erledigt = zaehlend.filter(z => z.zustand === 'erledigt').length;
-    const istFertig = phaseFertig(p, l);
+    const istFertig = phaseDurch(p, l, ablauf);
+    const ab = abschnittVon(p) ?? '';
+    const nr = (nrImAbschnitt.get(ab) ?? 0) + 1;
+    nrImAbschnitt.set(ab, nr);
     const darin = teilbaum(p.id, l).map(id => l.find(k => k.id === id)!).filter(Boolean);
     const fg = p.freigabe ? freigaben.find(f => f.id === p.freigabe) : undefined;
     const gegeben = p.freigabe ? fall.freigaben[p.freigabe] : undefined;
     const zusatz = titelZusatz(p.titel);
     return {
-      id: p.id, titel: titelOhneZusatz(p.titel), ...(zusatz ? { zusatz } : {}), nr: i + 1,
-      zustand: istFertig ? 'fertig' : aktuell.has(p.id) ? 'jetzt' : 'offen',
+      id: p.id, titel: titelOhneZusatz(p.titel), ...(zusatz ? { zusatz } : {}), nr,
+      // „jetzt“ vor „fertig“: eine durchlaufene Phase, deren Bestätigung fehlt, ist noch die Stelle des Falls (`aktuellerKnoten`, 18.10.).
+      zustand: aktuell.has(p.id) ? 'jetzt' : istFertig ? 'fertig' : 'offen',
       erledigt, gesamt: zaehlend.length,
       anteil: zaehlend.length ? erledigt / zaehlend.length : istFertig ? 1 : 0,
       ...(p.faelligAm ? { faelligAm: p.faelligAm } : {}),
@@ -79,10 +92,13 @@ export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'> & Partial<Pic
   return { phasen: raus, jetzt, fortschritt: fallFortschritt(fall), fertig: raus.length > 0 && raus.every(p => p.zustand === 'fertig') };
 }
 
-/** Kurzform für das Cockpit (eine Zeile je Kunde): nur, was der Mini-Strahl braucht. */
+/**
+ * Kurzform für das Cockpit (eine Zeile je Kunde): nur, was der Mini-Strahl braucht — die Phasen des Pakets (18.10., L1b N10: ein angehängtes Zusatzmodul hat
+ * seine eigene Zeile und zählt nicht im Hauptstrahl; vorher stand „Phase 2 von 10“ statt „von 8“).
+ */
 export interface ReiseKurzPhase { titel: string; zustand: PhasenZustand; anteil: number; freigabe?: { id: string; gegeben: boolean; nr?: number } }
 export function reiseKurz(r: Reise): ReiseKurzPhase[] {
-  return r.phasen.map(p => ({ titel: p.titel, zustand: p.zustand, anteil: Math.round(p.anteil * 100) / 100, ...(p.freigabe ? { freigabe: { id: p.freigabe.id, gegeben: p.freigabe.gegeben, ...(p.freigabe.nr ? { nr: p.freigabe.nr } : {}) } } : {}) }));
+  return r.phasen.filter(p => !p.modul).map(p => ({ titel: p.titel, zustand: p.zustand, anteil: Math.round(p.anteil * 100) / 100, ...(p.freigabe ? { freigabe: { id: p.freigabe.id, gegeben: p.freigabe.gegeben, ...(p.freigabe.nr ? { nr: p.freigabe.nr } : {}) } } : {}) }));
 }
 
 // ── Schritte einer Phase (Ablauf) ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -236,14 +252,18 @@ export function naechsterPunkt(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status
     if (k.freigabe) continue;
     return { art: 'onboarding', id: k.id, titel: anzeigeTitel(k.titel, nummern), schluessel: s, ...ort(k), wartetAuf: schrittWartet(k) };
   }
-  const durch = phasen.find(ph => ph.freigabe && !fall.freigaben[ph.freigabe] && ph.status !== 'entfaellt' && phaseFertig(ph, l));
+  // Eine durchlaufene Phase, deren Bestätigung fehlt, hält an — DERSELBE Gang durch die Phasen wie die Ausführung (`phasenGang`, 18.10., L1b N2).
+  const durch = phasenGang(fall, phasen).bestaetigung;
   if (durch?.freigabe) return { art: 'freigabe', id: durch.id, titel: fgTitel(durch.freigabe), freigabe: durch.freigabe, ...ort(durch), wartetAuf: fgWartet(durch.freigabe) };
   const p = aktuellerKnoten(fall, abschnitt).phase;
   if (!p) return null;
+  const ablauf = mitAusfuehrung(l);
   // Nie die Phase selbst (15.10., Abnahme B1: „Als Nächstes: Diagnose“ neben „Phase 3: Diagnose“) — eine Phase ohne Schritte hat keinen eigenen nächsten Schritt.
   // Ein Nein-Zweig, der gerade nicht läuft, ist nie „als Nächstes“ (17.10. abends, Ausführung) — er kommt erst mit einem „nein“.
   const zeilen = offeneSchritte(fall, p.id, heute).filter(z => z.knoten.id !== p.id && !wartenderNeinZweig(l, z.knoten.id));
-  let s = zeilen.find(z => !(z.knoten.freigabe && !fall.freigaben[z.knoten.freigabe]));
+  // Was nur nebenher läuft (Kunden-Playbook, Bausteine bzw. Kunden-Schritte ohne Form im Ablauf), ist nie „hier“, solange etwas anhält (18.10., L1b N2).
+  const offenFrei = (z: SchrittZeile) => !(z.knoten.freigabe && !fall.freigaben[z.knoten.freigabe]);
+  let s = zeilen.find(z => offenFrei(z) && haeltAn(z.knoten, l, ablauf)) ?? zeilen.find(offenFrei);
   // An einer Entscheidung mit „nein“ läuft ihr Nein-Zweig (die Erinnerung) — DER ist dann hier.
   const zweig = s && s.knoten.form === 'entscheidung' ? aktiverNeinZweig(l, s.knoten) : null;
   if (zweig) s = alleSchritte(fall, p.id, heute).find(z => z.knoten.id === zweig.id) ?? s;
@@ -265,9 +285,13 @@ export interface FallStelle {
 }
 export function fallStelle(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status'>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], heute: string): FallStelle {
   const r = fallReise(fall, freigaben, heute);
-  const j = r.jetzt >= 0 ? r.phasen[r.jetzt] : null;
+  // „Phase n von m“ zählt im Abschnitt (18.10., L1b N10): die Phasen des Pakets — die eines Zusatzmoduls stehen in seiner eigenen Zeile. Ist das Paket durch und
+  // läuft nur noch ein Zusatzmodul, steht dessen Phase mit seiner Zählung da.
+  const paket = r.phasen.filter(p => !p.modul);
+  const j = paket.find(p => p.zustand === 'jetzt') ?? r.phasen.find(p => p.zustand === 'jetzt') ?? null;
+  const von = j?.modul ? r.phasen.filter(p => p.modul?.id === j.modul!.id).length : paket.length;
   return {
-    phase: j ? { id: j.id, titel: j.titel, nr: j.nr, von: r.phasen.length } : null,
+    phase: j ? { id: j.id, titel: j.titel, nr: j.nr, von } : null,
     fortschritt: r.fortschritt, imOnboarding: fall.status === 'onboarding', fertig: r.fertig,
     naechster: naechsterPunkt(fall, freigaben, heute),
   };

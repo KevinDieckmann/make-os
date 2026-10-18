@@ -15,7 +15,7 @@
 // Fallbeispiel (erfunden): „Beispiel Werkzeugbau“ steht in Phase 2 von 4 („Analyse“), 3 von 10 Schritten sind erledigt, die Preisliste wartet seit
 // neun Tagen beim Kunden → Ampel gelb „Wir warten auf euren Input“, Satz 3 „Von euch brauchen wir eine Sache — sie wartet seit 9 Tagen.“
 
-import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
+import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, mitAusfuehrung, phaseDurch, phaseFertig, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { zielErreichung } from '../prozesse/wert';
 import { RHYTHMUS_TEXT, naechsterFallTermin } from '../prozesse/rituale';
@@ -217,12 +217,14 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   // da (14.10., Abnahme A3: sonst fehlte „hier stehen wir“, wenn sie nicht geteilt war) — mit neutralem Titel (`kundenText`).
   // Schritte je Phase aus DERSELBEN Rechnung wie intern (`fallReise` — Reise-Zeile, Ablauf), nicht aus den Blättern (17.10., dritte Abnahme B5).
   const schritteJe = new Map((f ? fallReise(f, e.freigaben ?? [], e.heute).phasen : []).map(p => [p.id, { erledigt: p.erledigt, gesamt: p.gesamt }]));
+  // „Erledigt“ = durch (`phaseDurch`, 18.10., L1b N2) — dieselbe Stelle wie die Reise intern: was nur nebenher läuft (das Kunden-Playbook), hält die Phase nicht an.
+  const ablauf = mitAusfuehrung(l);
   const phasen: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && (sichtbar(k) || (jetzt.has(k.id) && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))).map(p => {
-    const fertig = phaseFertig(p, l);
+    const fertig = phaseDurch(p, l, ablauf);
     const s = schritteJe.get(p.id);
     const a = abstimmungTitel(p);
     return {
-      titel: kundenText(p.titel, a), stand: fertig ? 'erledigt' as const : jetzt.has(p.id) ? 'aktuell' as const : 'kommt' as const,
+      titel: kundenText(p.titel, a), stand: jetzt.has(p.id) ? 'aktuell' as const : fertig ? 'erledigt' as const : 'kommt' as const,
       ...(s && s.gesamt ? { anteil: fertig ? 1 : Math.round((s.erledigt / s.gesamt) * 100) / 100 } : {}),
       ...(a && p.freigabe ? { abstimmung: { titel: a, erledigt: !!f?.freigaben?.[p.freigabe] } } : {}),
     };
@@ -250,7 +252,10 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   // „<Phase>“: …“ (die nächste) — statt nackter Wörter („Prozess · CRM · Skripte · Einwände“). Eine Frist nur, wenn sie noch nicht verstrichen ist (B4).
   const phaseVon = (k: FallKnoten): FallKnoten | undefined => { let x: FallKnoten | undefined = k; while (x && ebeneVon(x, l) > 2) x = x.elternId ? nach.get(x.elternId) : undefined; return x; };
   const knotenText = (k: FallKnoten) => kundenText(k.titel, abstimmungTitel(k));
-  const ersterKnoten = punktText ? undefined : naechsteKnoten[0];
+  // Der Ersatz für einen nicht geteilten Punkt steht nur dann als „Als Nächstes“ da, wenn er in der laufenden Phase liegt (18.10., Nachprüfung L1b N5: unter
+  // „Diagnose · hier stehen wir“ stand „Prozess“ aus Phase 4) — ein Schritt einer späteren Phase steht unter seiner Phase („Danach in …“).
+  const k0 = naechsteKnoten[0];
+  const ersterKnoten = punktText || !k0 || (akt.phase && phaseVon(k0)?.id !== akt.phase.id) ? undefined : k0;
   const erster = punktText ?? (ersterKnoten ? kundenNaechsterText({ art: 'schritt', titel: knotenText(ersterKnoten), ...(ersterKnoten.faelligAm ? { faelligAm: ersterKnoten.faelligAm } : {}) }, e.freigaben ?? [], e.heute) : null);
   const danach = new Map<string, { phase: FallKnoten | undefined; titel: string[] }>();
   for (const k of naechsteKnoten) {
@@ -263,7 +268,8 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
     const g = danach.get(schluessel)!;
     if (!g.titel.includes(t) && t !== erster) g.titel.push(t);
   }
-  const naechstes = [
+  // Ein abgeschlossener Fall hat kein „Als Nächstes“ (18.10., L1b N9 — wie die Reise intern: kein „hier“).
+  const naechstes = f?.status === 'abgeschlossen' ? [] : [
     ...(erster ? [erster] : []),
     ...[...danach.values()].filter(g => g.titel.length).map(g => danachText(g.phase && g.phase.id !== akt.phase?.id ? kundenText(g.phase.titel, abstimmungTitel(g.phase)) : null, g.titel)),
   ];
