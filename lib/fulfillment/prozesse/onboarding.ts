@@ -11,13 +11,14 @@
 //   8 F0 bestätigt         ← `Fall.freigaben.F0` (angezeigt als „Abstimmungspunkt n“ — nie das Kürzel, 15.10., Abnahme B5)
 // „entfällt“ (von Hand, mit Grund) gilt als erledigt. Fertig = alle zählenden Schritte erledigt → Fall von „onboarding“ auf „läuft“.
 // Dazu die Willkommensmail aus einer Vorlage der Bibliothek (Baustein Art „mail“ mit Schlagwort `willkommen`, Instanz-Text) mit den
-// Platzhaltern {{anrede}}, {{vorname}}, {{kickoff_vorschlaege}}, {{playbook_link}} — ohne Link fällt der Absatz mit dem Link weg.
+// Platzhaltern {{anrede}}, {{vorname}}, {{kickoff_vorschlaege}}, {{playbook_link}}, {{gruss}} — ohne Link fällt der Absatz mit dem Link weg; ohne {{gruss}}
+// (ältere Texte) kommt der Gruß mit dem Vornamen der sendenden Person ans Ende.
 // Rein und client-sicher.
 
 import type { Baustein, Fall, KnotenStatus, RitualVorlage, VorlagenDatei } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 import { MUSTER_ONBOARDING, MUSTER_PLAYBOOK, type OnboardingSchluessel } from '../muster';
-import { ausWandzeit, tagPlus } from '@/lib/kalender/zeit';
+import { ausWandzeit, tagPlus, wandzeit } from '@/lib/kalender/zeit';
 import { abstimmungsNummern } from './darstellung';
 import { ersterTermin } from './termine';
 import { satz } from '@/lib/text/zahlwort';
@@ -83,6 +84,26 @@ export function willkommenUhr(unterschrift: string | undefined, stunden: number,
   if (!faellig) return { ueberfaellig: false };
   const rest = (Date.parse(faellig) - Date.parse(jetzt)) / 3_600_000;
   return { faellig, ueberfaellig: rest < 0, restStunden: Math.round(rest) };
+}
+
+// ── Anzeige der Frist (18.10., Nachprüfung N8) — die Regel bleibt `willkommenUhr`, hier nur, wie sie dasteht ───────────────────────────────────────────
+// Endet die Uhr um 0 Uhr (Unterschrift nur mit Tag → Ende dieses Tages + 24 h), ist der Tag DAVOR der letzte, an dem die Mail rechtzeitig ist: „bis 20.10.“
+// las sich wie „am 20. ist noch Zeit“ — am Morgen des 20. stand aber „überfällig“. Jede Anzeige der Uhr nimmt diese zwei Funktionen.
+const WOCHENTAG_KURZ = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] as const;
+/** Der letzte Berliner Tag, an dem die Willkommensmail noch rechtzeitig ist (`faellig` ISO, z. B. aus `willkommenUhr`). Rein. */
+export function willkommenLetzterTag(faellig: string): string {
+  const ms = Date.parse(faellig);
+  return Number.isNaN(ms) ? faellig.slice(0, 10) : wandzeit(new Date(ms - 1)).slice(0, 10);
+}
+/** „Mo 19.10.“ (Frist um 0 Uhr = Ende des Vortags) bzw. „Di 20.10., 14:30 Uhr“ (Frist mit Uhrzeit). Rein. */
+export function willkommenBisText(faellig: string): string {
+  const ms = Date.parse(faellig);
+  if (Number.isNaN(ms)) return faellig;
+  const w = wandzeit(new Date(ms));
+  const mitternacht = w.slice(11, 16) === '00:00';
+  const tag = mitternacht ? willkommenLetzterTag(faellig) : w.slice(0, 10);
+  const wt = WOCHENTAG_KURZ[new Date(`${tag}T12:00:00Z`).getUTCDay()];
+  return `${wt} ${tag.slice(8, 10)}.${tag.slice(5, 7)}.${mitternacht ? '' : `, ${w.slice(11, 16)} Uhr`}`;
 }
 
 /** Wert-Konto festgelegt (Schritt 6): jedes Ziel hat Ausgang, Ziel und Datum und ist „festgelegt“. Ohne Ziele: nicht erfüllt. */
@@ -182,6 +203,8 @@ export const WILLKOMMEN_GERUEST: Record<'Du' | 'Sie', string> = {
     'Danach: Erste Erfolge planen wir für die ersten 30 Tage, und alle zwei Wochen erhalten Sie einen kurzen Bericht zum Stand.',
     '',
     'Bei Fragen antworten Sie einfach auf diese Mail. Wir freuen uns auf den Start!',
+    '',
+    '{{gruss}}',
   ].join('\n'),
   Du: [
     'Betreff: Willkommen — so starten wir gemeinsam',
@@ -199,6 +222,8 @@ export const WILLKOMMEN_GERUEST: Record<'Du' | 'Sie', string> = {
     'Danach: Erste Erfolge planen wir für die ersten 30 Tage, und alle zwei Wochen bekommst du einen kurzen Bericht zum Stand.',
     '',
     'Bei Fragen antworte einfach auf diese Mail. Ich freue mich auf den Start!',
+    '',
+    '{{gruss}}',
   ].join('\n'),
 };
 export const TAG_WILLKOMMEN = 'willkommen';
@@ -227,7 +252,23 @@ export function willkommenVorlage(bausteine: readonly Baustein[], anrede: 'Du' |
   return l.find(b => b.tags.includes(anrede.toLowerCase())) ?? l.find(b => !b.tags.includes('du') && !b.tags.includes('sie')) ?? l[0] ?? null;
 }
 
-export interface WillkommenWerte { anrede: 'Du' | 'Sie'; vorname?: string; nachname?: string; kickoffVorschlaege: string[]; playbookLink?: string }
+export interface WillkommenWerte {
+  anrede: 'Du' | 'Sie'; vorname?: string; nachname?: string; kickoffVorschlaege: string[]; playbookLink?: string;
+  /** Vorname der SENDENDEN Person (aus ihrem Konto, `vornameVon`) — steht unter dem Gruß; nie ein fester Name. */
+  absender?: string;
+}
+
+/**
+ * Der Gruß am Ende, darunter der Vorname der sendenden Person (18.10., Nachprüfung C7: die Mail endete ohne Gruß und Absender) — dieselben Worte wie die
+ * Nachrichten der Ausführung (`nachrichtEntwurf`): Du „Viele Grüße“, Sie „Freundliche Grüße“.
+ */
+export function willkommenGruss(anrede: 'Du' | 'Sie', absender?: string): string {
+  const satz = anrede === 'Du' ? 'Viele Grüße' : 'Freundliche Grüße';
+  const n = absender?.trim();
+  return n ? `${satz}\n${n}` : satz;
+}
+/** Steht am Ende schon ein Gruß („Viele Grüße“, „Mit freundlichen Grüßen“ …)? Dann kommt keiner dazu — nie doppelt. */
+const GRUSS_ZEILE = /^\s*(viele|liebe|beste|herzlichen?|freundliche|mit freundlichen|mit besten)?\s*gr(ü|ue)(ß|ss)/im;
 
 /** Die Mail aus der Vorlage: Betreff (erste Zeile „Betreff: …“), Text mit gefüllten Platzhaltern; ohne Playbook-Link fällt der Absatz weg. */
 export function willkommenMail(vorlage: string, w: WillkommenWerte): { betreff: string; text: string } {
@@ -238,10 +279,14 @@ export function willkommenMail(vorlage: string, w: WillkommenWerte): { betreff: 
   const anrede = w.anrede === 'Du' ? (w.vorname ? `Hallo ${w.vorname}` : 'Hallo') : name ? `Guten Tag ${name}` : 'Guten Tag';
   const vorschlaege = w.kickoffVorschlaege.length ? w.kickoffVorschlaege.map(x => `– ${x}`).join('\n') : '– (Terminvorschläge folgen)';
   const absaetze = zeilen.join('\n').split(/\n{2,}/).filter(a => w.playbookLink || !a.includes('{{playbook_link}}'));
-  const text = absaetze.join('\n\n')
+  const gruss = willkommenGruss(w.anrede, w.absender);
+  let text = absaetze.join('\n\n')
     .replace(/\{\{anrede\}\}/g, anrede).replace(/\{\{vorname\}\}/g, w.vorname ?? '').replace(/\{\{nachname\}\}/g, w.nachname ?? '')
     .replace(/\{\{kickoff_vorschlaege\}\}/g, vorschlaege).replace(/\{\{playbook_link\}\}/g, w.playbookLink ?? '')
+    .replace(/\{\{gruss\}\}/g, gruss).replace(/\{\{absender\}\}/g, w.absender?.trim() ?? '')
     .replace(/\n{3,}/g, '\n\n').trim();
+  // Ältere Texte ohne {{gruss}} (in der Bibliothek schon angelegt) bekommen den Gruß ans Ende — außer, ihr letzter Absatz grüßt schon.
+  if (!/\{\{gruss\}\}/.test(vorlage) && !GRUSS_ZEILE.test(text.split(/\n{2,}/).pop() ?? '')) text = `${text}\n\n${gruss}`;
   return { betreff: betreff.slice(0, 200), text };
 }
 

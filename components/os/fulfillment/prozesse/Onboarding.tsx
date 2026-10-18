@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TIEF } from '@/lib/make-one/design';
 import { MUSTER_ONBOARDING } from '@/lib/fulfillment/muster';
+import { willkommenBisText } from '@/lib/fulfillment/prozesse/onboarding';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, Punkt, LEUCHT } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { Wahl } from '../../crm/Wahl';
@@ -24,8 +25,7 @@ const GRUND: Record<Kandidat['grund'], string> = { vertrag: 'Vertrag unterschrie
 function uhrText(k: Kandidat): { text: string; farbe: string } | null {
   if (!k.uhr.faellig) return null;
   if (k.uhr.ueberfaellig) return { text: 'Willkommensmail überfällig', farbe: LEUCHT.kritisch };
-  const d = new Date(k.uhr.faellig);
-  return { text: `Willkommen bis ${d.toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })}`, farbe: (k.uhr.restStunden ?? 99) <= 6 ? LEUCHT.achtung : LEUCHT.gut };
+  return { text: `Willkommen bis ${willkommenBisText(k.uhr.faellig)}`, farbe: (k.uhr.restStunden ?? 99) <= 6 ? LEUCHT.achtung : LEUCHT.gut };
 }
 
 /** Kandidaten-Liste mit Start-Dialog — geteilt von Fulfillment › Onboarding und dem Einhänger in Produkte & Mandate. */
@@ -86,8 +86,8 @@ export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' 
         </Feldzeile>
         <Feldzeile label="Start"><input type="date" value={tag} onChange={e => setTag(e.target.value)} style={feld} /></Feldzeile>
         <div style={klein}>{pakete.find(p => p.id === vorlage)?.zusatz
-          ? 'Zusatzmodul: der Fall kopiert die Struktur der Vorlage und startet ohne Onboarding-Schritte — die erste Phase läuft sofort.'
-          : 'Der Fall kopiert die Struktur der Vorlage und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.'}</div>
+          ? 'Zusatzmodul: der Fall übernimmt die Schritte des Ablaufs und startet ohne Onboarding — die erste Phase läuft sofort.'
+          : 'Der Fall übernimmt die Schritte des Ablaufs und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.'}</div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
           <Knopf haupt typ="submit" aus={!vorlage}>Fall anlegen</Knopf>

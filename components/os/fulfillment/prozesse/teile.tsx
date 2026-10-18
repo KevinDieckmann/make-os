@@ -14,6 +14,7 @@ import { ORTE, type OrtId } from '@/lib/fulfillment/orte';
 import { KREISLAUF_IDS } from '@/lib/fulfillment/lesen';
 import { ebeneVon } from '@/lib/fulfillment/regeln';
 import { abstimmungsNummern } from '@/lib/fulfillment/prozesse/darstellung';
+import { bausteinArtName } from '@/lib/fulfillment/prozesse/bausteine';
 import type { ProzessKnoten, ProzessVorlage, Zone } from '@/lib/fulfillment/typen';
 import type { KreislaufId } from '@/lib/crm/planung';
 import { vorlagenOps, fehlerText, type BausteinKurz, type MitStand } from './daten';
@@ -98,7 +99,7 @@ export function KnotenFormular({ vorlage, knoten, elternId, bausteine, onZu }: {
         {ebene === 5 ? (
           <>
             <Feldzeile label="Baustein aus der Bibliothek">
-              <Wahl label="Baustein" liste={bausteine.map(b => ({ id: b.id, label: b.titel, hinweis: b.art }))} wert={typeof w.bausteinId === 'string' ? w.bausteinId : null} onWahl={id => setze('bausteinId', id)} />
+              <Wahl label="Baustein" liste={bausteine.map(b => ({ id: b.id, label: b.titel, hinweis: bausteinArtName(b.art) }))} wert={typeof w.bausteinId === 'string' ? w.bausteinId : null} onWahl={id => setze('bausteinId', id)} />
             </Feldzeile>
             <Feldzeile label="Titel (Anzeige)"><input value={text('titel')} onChange={e => setze('titel', e.target.value)} placeholder="Titel des Bausteins" style={feld} /></Feldzeile>
           </>

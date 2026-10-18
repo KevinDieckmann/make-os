@@ -93,7 +93,7 @@ export function vorlageStrukturPruefen(v: ProzessVorlage, d: Pick<VorlagenDatei,
   const freigaben = new Set(v.freigaben.map(f => f.id));
   for (const k of v.knoten) {
     const e = ebeneVon(k, v.knoten);
-    if (e === KREIS) nein('Kreis in der Vorlage.');
+    if (e === KREIS) nein('Kreis im Ablauf.');
     if (e > EBENEN_MAX) nein(`„${k.titel}“ läge auf Ebene ${e} — höchstens ${EBENEN_MAX} Ebenen (Gesamtprozess · Prozess · Teilprozess · Einzelschritt · Baustein).`);
     if (e === EBENEN_MAX) {
       if (!k.bausteinId) nein(`„${k.titel}“ steht auf Ebene 5 — dort hängen nur Bausteine aus der Bibliothek. Lege einen Einzelschritt auf Ebene 4 an und hänge den Baustein darunter.`);
@@ -104,9 +104,9 @@ export function vorlageStrukturPruefen(v: ProzessVorlage, d: Pick<VorlagenDatei,
     if (k.ort !== undefined && !istOrt(k.ort)) nein(`„${k.titel}“: unbekannter Ort.`);
     if (k.verweis !== undefined) {
       const z = d.prozesse.find(p => p.id === k.verweis);
-      if (!z || z.art !== 'paket' || z.id === v.id) nein(`„${k.titel}“ verweist auf keine Paket-Vorlage.`);
+      if (!z || z.art !== 'paket' || z.id === v.id) nein(`„${k.titel}“ verweist auf keinen Ablauf.`);
     }
-    if (k.freigabe !== undefined && !freigaben.has(k.freigabe)) nein(`„${k.titel}“ verweist auf die Freigabe „${k.freigabe}“, die die Vorlage nicht kennt.`);
+    if (k.freigabe !== undefined && !freigaben.has(k.freigabe)) nein(`„${k.titel}“ verweist auf eine Bestätigung, die der Ablauf nicht kennt.`);
   }
   if (v.uebergaenge.length && v.art !== 'ablauf') nein('Übergänge gibt es nur in Abläufen.');
   for (const u of v.uebergaenge) {
@@ -208,7 +208,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
     const vorher = new Map(datei.prozesse.map(p => [p.id, JSON.stringify(p)]));
     const beruehrt = new Set<string>();
     const geaendert: string[] = [];
-    const vorlage = (id: unknown): ProzessVorlage => d.prozesse.find(p => p.id === id) ?? nein('Diese Vorlage gibt es nicht (mehr).', 404);
+    const vorlage = (id: unknown): ProzessVorlage => d.prozesse.find(p => p.id === id) ?? nein('Diesen Ablauf gibt es nicht (mehr).', 404);
     const setze = (v: ProzessVorlage) => { d.prozesse = d.prozesse.map(p => (p.id === v.id ? v : p)); beruehrt.add(v.id); };
 
     for (const roh of opsRoh) {
@@ -246,7 +246,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
         case 'vorlage': {
           const e = istObj(o.eintrag) ? o.eintrag : nein('eintrag fehlt.');
           const alt = typeof e.id === 'string' ? d.prozesse.find(p => p.id === e.id) : undefined;
-          if (typeof e.id === 'string' && !alt) nein('Diese Vorlage gibt es nicht (mehr).', 404);
+          if (typeof e.id === 'string' && !alt) nein('Diesen Ablauf gibt es nicht (mehr).', 404);
           if (alt) standPruefen(o.stand, k.standVon(vorlageKopf(alt)), alt.id);
           const teil: Record<string, unknown> = {};
           if (e.titel !== undefined || !alt) teil.titel = pflichtText(e.titel, 'titel', 'Titel');
@@ -256,7 +256,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           if (e.rollen !== undefined) teil.rollen = rollenAus(e.rollen);
           const zh = textListe(e.zeichenhinweise, 'kurz', 'Zeichenhinweise', 20); if (zh !== undefined) teil.zeichenhinweise = zh.length ? zh : null;
           if (alt) {
-            if (e.art !== undefined && e.art !== alt.art) nein('Die Art einer Vorlage lässt sich nicht ändern — „Kopie als Paket“ legt eine neue an.');
+            if (e.art !== undefined && e.art !== alt.art) nein('Die Art eines Ablaufs lässt sich nicht ändern — „Als Ablauf übernehmen“ legt eine Kopie an.');
             const neu = mischen(alt, teil);
             // Wurzel heißt wie die Vorlage (Ebene 1 = Gesamtprozess).
             if (teil.titel) { const w = neu.knoten.find(x => !x.elternId); if (w) neu.knoten = neu.knoten.map(x => (x.id === w.id ? { ...x, titel: teil.titel as string } : x)); }
@@ -338,7 +338,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
         case 'knoten-weg': {
           const v = vorlage(o.vorlageId);
           const x = v.knoten.find(y => y.id === o.id) ?? nein('Diesen Knoten gibt es nicht (mehr).', 404);
-          if (!x.elternId) nein('Der oberste Knoten bleibt — die ganze Vorlage löscht man über „Vorlage löschen“.');
+          if (!x.elternId) nein('Der oberste Schritt bleibt — den ganzen Ablauf löscht man über „Ablauf löschen“.');
           standPruefen(o.stand, k.standVon(x), x.id);
           const weg = new Set(teilbaum(x.id, v.knoten));
           // Zweige (Prozess-Editor), die in den entfernten Teil zeigten, fallen mit weg.
@@ -428,7 +428,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           // Pakete (17.10.): nur Paket-Vorlagen, die es gibt; [] löscht die Bindung (dann in jedem Fall), fehlt = unverändert.
           const pakete = e.pakete === undefined ? alt?.pakete
             : Array.isArray(e.pakete) && e.pakete.every(x => typeof x === 'string' && d.prozesse.some(v => v.id === x && v.art === 'paket')) ? Array.from(new Set(e.pakete as string[]))
-              : nein('Pakete: unbekannte Paket-Vorlage.');
+              : nein('Unbekannter Ablauf.');
           const neu: RitualVorlage = {
             id: alt?.id ?? k.neueId('fr'), titel, rhythmus, dauerMin: Math.round(dauer ?? alt?.dauerMin ?? 30), agenda: agenda ?? alt?.agenda ?? [],
             teilnehmende: teiln ?? alt?.teilnehmende ?? ['intern'], geaendert: k.jetzt, geaendertVon: k.person, ...(pakete?.length ? { pakete } : {}),
@@ -449,7 +449,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           if (o.vorlageId === null || o.vorlageId === '') delete d.zuordnung[l];
           else {
             const v = vorlage(o.vorlageId);
-            if (v.art !== 'paket') nein('Einem Produkt wird eine Paket-Vorlage zugeordnet (kein Ablauf, keine Landkarte).');
+            if (v.art !== 'paket') nein('Einem Produkt wird ein Ablauf der Lieferung zugeordnet (keine Landkarte, kein gezeichneter Vertriebsablauf).');
             d.zuordnung[l] = { vorlageId: v.id };
           }
           geaendert.push(`zuordnung:${l}`);
@@ -495,7 +495,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
       if (!alt) return { ...p, fassung: Math.max(1, p.fassung), geaendert: k.jetzt, geaendertVon: k.person };
       return { ...p, fassung: (JSON.parse(alt) as ProzessVorlage).fassung + 1, geaendert: k.jetzt, geaendertVon: k.person };
     });
-    if (d.prozesse.length > GRENZEN.vorlagen) nein(`Prozess-Vorlagen: höchstens ${GRENZEN.vorlagen}. Nichts gespeichert.`, 413);
+    if (d.prozesse.length > GRENZEN.vorlagen) nein(`Prozesse: höchstens ${GRENZEN.vorlagen}. Nichts gespeichert.`, 413);
     return { datei: d, geaendert: Array.from(new Set(geaendert)) };
   });
 }

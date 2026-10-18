@@ -40,8 +40,8 @@ export function AusDokument({ ki }: { ki: boolean }) {
   return (
     <>
       <input ref={eingabe} type="file" accept=".pdf,.docx,.pptx,.md,.txt" hidden aria-hidden onChange={e => { const f = e.target.files?.[0]; if (f) void hochladen(f); }} />
-      <Knopf leise aus={laeuft} titel={ki ? 'Der Head of Sales liest das Dokument und schlägt eine Treppe vor' : 'Ohne KI liest niemand das Dokument — die leere Vorlage geht immer'}
-        onClick={() => { if (!ki) setMeldung({ art: 'achtung', text: 'Gerade ist keine KI verfügbar (Schlüssel, Guthaben oder ausgeschaltet) — legt die leere Vorlage an und füllt sie aus.' }); else eingabe.current?.click(); }}>
+      <Knopf leise aus={laeuft} titel={ki ? 'Der Head of Sales liest das Dokument und schlägt eine Treppe vor' : 'Ohne KI liest niemand das Dokument — die leere Treppe geht immer'}
+        onClick={() => { if (!ki) setMeldung({ art: 'achtung', text: 'Gerade ist keine KI verfügbar (Schlüssel, Guthaben oder ausgeschaltet) — legt die leere Treppe an und füllt sie aus.' }); else eingabe.current?.click(); }}>
         {laeuft ? 'Head of Sales liest …' : 'Aus Dokument übernehmen'}
       </Knopf>
       {meldung && (

@@ -217,11 +217,11 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
     if (!Array.isArray(ops) || !ops.length) return nein('ops: mindestens eine Änderung.');
     if (ops.length > GRENZEN.opsJeAnfrage) return nein(`Höchstens ${GRENZEN.opsJeAnfrage} Änderungen je Anfrage. Nichts gespeichert.`, 413);
     const d: VorlagenDatei = JSON.parse(JSON.stringify(datei));
-    const alt = d.prozesse.find(p => p.id === eingabe.vorlageId) ?? nein('Diese Vorlage gibt es nicht (mehr).', 404);
-    if (alt.art !== 'paket') nein('Der Editor bearbeitet Paket-Vorlagen — Landkarte und Abläufe bleiben im Baum.');
-    if (typeof eingabe.stand !== 'string' || !eingabe.stand) nein('Stand der Vorlage fehlt — bitte neu laden.');
+    const alt = d.prozesse.find(p => p.id === eingabe.vorlageId) ?? nein('Diesen Ablauf gibt es nicht (mehr).', 404);
+    if (alt.art !== 'paket') nein('Der Editor bearbeitet nur Abläufe der Lieferung — die Landkarte und gezeichnete Vertriebsabläufe bleiben im Baum.');
+    if (typeof eingabe.stand !== 'string' || !eingabe.stand) nein('Stand des Ablaufs fehlt — bitte neu laden.');
     standPruefen(eingabe.stand, k.standVon(alt), alt.id);
-    const wurzel = wurzelVon(alt.knoten) ?? nein('Die Vorlage hat keinen obersten Knoten.');
+    const wurzel = wurzelVon(alt.knoten) ?? nein('Der Ablauf hat keinen obersten Schritt.');
     let v: ProzessVorlage = { ...alt };
     let kn: ProzessKnoten[] = [...alt.knoten];
     const grenzeAb = Date.parse(k.jetzt) - PAPIERKORB_TAGE * 86_400_000;
@@ -470,7 +470,7 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
         }
         case 'weg': {
           const x = knoten(o.id);
-          if (x.id === wurzel.id) nein('Den Start (Gesamtprozess) löscht man über „Vorlage löschen“.');
+          if (x.id === wurzel.id) nein('Den Start (Gesamtprozess) löscht man über „Ablauf löschen“.');
           const P = phaseVonKnoten(kn, x.id);
           const art: VorlagenPapierkorb['art'] = x.elternId === wurzel.id ? 'phase' : x.bausteinId ? 'baustein' : istSchritt(x) ? 'schritt' : 'gruppe';
           const g = kinderVon(x.elternId, kn);
@@ -495,7 +495,7 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
         }
         case 'zurueck': {
           const e = pk.find(x => x.id === o.id) ?? nein('Das liegt nicht (mehr) im Papierkorb.', 404);
-          if (e.knoten.some(x => kn.some(y => y.id === x.id))) nein('Ein Teil davon steht schon wieder in der Vorlage — bitte neu laden.', 409);
+          if (e.knoten.some(x => kn.some(y => y.id === x.id))) nein('Ein Teil davon steht schon wieder im Ablauf — bitte neu laden.', 409);
           const kindVon = (eltern: string, id?: string) => !!id && kn.some(y => y.id === id && y.elternId === eltern);
           // Erst prüfen, wohin er gehört (ohne die zurückgeholten Knoten) — dann einfügen, die Wurzel des Teils vorläufig unter einem vorhandenen Eltern-Knoten.
           const s = e.art === 'baustein' ? (e.elternId ? kn.find(y => y.id === e.elternId && !y.bausteinId) : undefined) : undefined;
@@ -649,7 +649,7 @@ export function neuerAblauf(datei: VorlagenDatei, eingabe: unknown, k: EditorKon
     const e = istObj(eingabe) ? eingabe : {};
     const titel = pflichtText(e.titel, 'titel', 'Titel des Ablaufs');
     const phase = optText(e.phase, 'titel', 'Erste Phase') ?? 'Phase 1';
-    if (datei.prozesse.length >= GRENZEN.vorlagen) nein(`Prozess-Vorlagen: höchstens ${GRENZEN.vorlagen}. Nichts gespeichert.`, 413);
+    if (datei.prozesse.length >= GRENZEN.vorlagen) nein(`Prozesse: höchstens ${GRENZEN.vorlagen}. Nichts gespeichert.`, 413);
     const id = k.neueId('fp'), wurzel = k.neueId('fk'), p1 = k.neueId('fk');
     const v: ProzessVorlage = {
       id, art: 'paket', titel,

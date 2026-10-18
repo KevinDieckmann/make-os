@@ -15,7 +15,19 @@ import { WEG } from '@/lib/wege';
 import { neueAnfrageId } from './daten';
 import { beschriftung, klein } from './teile';
 
-interface Postfach { id: string; anzeigename?: string; adresse?: string; bereich?: string | null; bereichName?: string }
+interface Postfach { id: string; anzeigename?: string; adresse?: string; bereich?: string | null; bereichName?: string; signatur?: string }
+
+/** Die Signatur eines Postfachs am Ende des Textes — dieselbe Form wie beim Antworten in der Inbox („-- “ + Signatur, components/os/inbox/Antwort.tsx). */
+const signaturBlock = (s?: string): string => (s?.trim() ? `\n\n-- \n${s.trim()}` : '');
+/**
+ * Text mit der Signatur des gewählten Postfachs (18.10., Nachprüfung C7): die des vorigen Postfachs fällt weg (nur, wenn sie unverändert am Ende steht),
+ * die des neuen kommt ans Ende — nie doppelt. Ohne Signatur bleibt der Text, wie er ist. Rein.
+ */
+export function textMitSignatur(text: string, alt?: string, neu?: string): string {
+  const a = signaturBlock(alt), n = signaturBlock(neu);
+  const ohne = a && text.endsWith(a) ? text.slice(0, -a.length) : text;
+  return n && !ohne.endsWith(n) ? `${ohne.replace(/\s+$/, '')}${n}` : ohne;
+}
 export interface MailEntwurf { betreff: string; text: string; an: { email: string; name?: string; kontaktId?: string } | null; gesellschaft: string; anhang?: { id: string; name: string } }
 
 export function MailSenden({ titel, entwurf, hinweis, onZu, onGesendet }: { titel: string; entwurf: MailEntwurf; hinweis?: string; onZu: () => void; onGesendet: () => Promise<void> | void }) {
@@ -33,7 +45,7 @@ export function MailSenden({ titel, entwurf, hinweis, onZu, onGesendet }: { tite
       const l = Array.isArray(j.postfaecher) ? j.postfaecher : [];
       setPostfaecher(l);
       const p = l.find(x => x.bereich === entwurf.gesellschaft) ?? l[0];
-      if (p) setPostfach(p.id);
+      if (p) { setPostfach(p.id); setText(t => textMitSignatur(t, undefined, p.signatur)); }
     }).catch(() => setPostfaecher([]));
   }, [entwurf.gesellschaft]);
   const los = async (uwg = false): Promise<void> => {
@@ -66,7 +78,10 @@ export function MailSenden({ titel, entwurf, hinweis, onZu, onGesendet }: { tite
           {hinweis && <Hinweis art="info">{hinweis}</Hinweis>}
           <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>Von (Postfach)</span>
             {postfaecher && !postfaecher.length ? <span style={klein}>Kein Postfach im Business-Bereich — unter <Link href={WEG.inbox()} style={{ color: C.aktiv }}>Inbox</Link> ein Postfach verbinden und dem Business zuordnen.</span>
-              : <Wahl label="Postfach" liste={(postfaecher ?? []).map(p => ({ id: p.id, label: `${p.anzeigename ?? p.adresse ?? p.id}${p.bereichName ? ` · ${p.bereichName}` : ''}` }))} wert={postfach} onWahl={setPostfach} />}
+              : <Wahl label="Postfach" liste={(postfaecher ?? []).map(p => ({ id: p.id, label: `${p.anzeigename ?? p.adresse ?? p.id}${p.bereichName ? ` · ${p.bereichName}` : ''}` }))} wert={postfach} onWahl={id => {
+                const sig = (pid: string | null) => postfaecher?.find(p => p.id === pid)?.signatur;
+                setText(t => textMitSignatur(t, sig(postfach), sig(id))); setPostfach(id);
+              }} />}
           </label>
           <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>An</span><input value={an} type="email" onChange={x => setAn(x.target.value)} style={{ ...feld, fontSize: 16 }} /></label>
           <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>Betreff</span><input value={betreff} onChange={x => setBetreff(x.target.value)} style={{ ...feld, fontSize: 16 }} /></label>

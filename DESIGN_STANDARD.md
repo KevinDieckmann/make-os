@@ -544,7 +544,7 @@ Onboarding und Planung bekommen dieselbe Reise- und Ablauf-Darstellung. Dann sie
   stehen als Karten nebeneinander (am Handy untereinander); lange Stränge zeigen ein Fenster um „Hier“ (höchstens sechs) und „+n weitere Schritte“.
 - **Formen tragen die Bedeutung (nie nur Farbe):** Schritt = Kasten (grün `LEUCHT.gut`), Nachricht = Kasten mit Brief (gelb `LEUCHT.achtung`),
   Abstimmungspunkt/Entscheidung = Raute mit „ja“/„nein“, Erinnerung = abgerundeter Kasten mit Glocke (orange `LEUCHT.business`, nur auf dem Nein-Pfad bzw.
-  wenn ein Schritt wirklich beim Kunden wartet), Termin = große Beschriftung mit Linie. Zustände: ✓ erledigt · „Hier“ in Petrol (`C.aktiv`, dieselbe Farbe
+  wenn ein Schritt wirklich beim Kunden wartet), Termin = Kasten mit Kalender (ein Knoten wie die anderen, keine Überschrift — 18.10.). Zustände: ✓ erledigt · „Hier“ in Petrol (`C.aktiv`, dieselbe Farbe
   wie „hier stehen wir“ beim Kunden) · ! hängt. Farben nur aus `FORM_FARBE`/Token (`reise/bilder.tsx`).
 - **Legende einmal, klein** (`FormenLegende`, `data-formen-legende`) unter dem Fluss — nie je Karte.
 - **Rechnen nur in den Modellen:** `lib/fulfillment/prozesse/reise-bild.ts` (`reiseZeile`, `phasenFluss`, Hänger = dieselben Regeln wie `wasHaengt`) und

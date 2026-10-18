@@ -405,7 +405,7 @@ describe('Kleine Punkte: Fläche als Vorgabe, „Versuche“, Hinweis für alte 
     expect(sf).toContain('platzhalter={String(VERSUCHE_VORGABE)}');
     expect(sf).toContain('void setze({ versuche: n })');
   });
-  it('alter Fall ohne Formen: Hinweis „Vorlage übernehmen, damit die Ausführung startet ›“ nur, wenn die neue Fassung Formen bringt', () => {
+  it('alter Fall ohne Formen: Hinweis „Neue Fassung übernehmen, damit die Ausführung startet ›“ nur, wenn die neue Fassung Formen bringt', () => {
     const alt = fall();
     const vorlage = { knoten: [{ id: 'x', form: 'schritt' as const }] };
     expect(ausfuehrungNachUebernahme(alt, vorlage, { neu: [] })).toBe(true);
@@ -414,7 +414,7 @@ describe('Kleine Punkte: Fläche als Vorgabe, „Versuche“, Hinweis für alte 
     expect(ausfuehrungNachUebernahme({ knoten: [...alt.knoten, k('s', 'p2', 'S', 9, { form: 'schritt' })] }, vorlage, { neu: [] })).toBe(false);
     const d = { neu: [], geaendert: [{ id: 'p2-b', titel: 'Leitfaden', felder: ['form'] }], entfernt: [], reihenfolge: [], von: 1, nach: 2 };
     const html = renderToStaticMarkup(h(AusfuehrungWartet, { daten: { ausfuehrungWartet: true, diff: d } as unknown as FallAntwort }));
-    expect(html).toContain('Vorlage übernehmen, damit die Ausführung startet ›');
+    expect(html).toContain('Neue Fassung übernehmen, damit die Ausführung startet ›');
     expect(renderToStaticMarkup(h(AusfuehrungWartet, { daten: { ausfuehrungWartet: false, diff: d } as unknown as FallAntwort }))).toBe('');
     expect(lies('components/os/fulfillment/prozesse/FallUeberblick.tsx')).toContain('<div id="ff-vorlage-geaendert"');
     expect(lies('components/os/fulfillment/reise/FallReise.tsx')).toContain('<AusfuehrungWartet daten={daten} />');

@@ -11,6 +11,7 @@ import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Chip, LEUCHT, useRueckfrage, Erklaert } from '../../ui';
 import { Wahl } from '../../crm/Wahl';
 import type { ImportVorschau, ImportWahl } from '@/lib/fulfillment/prozesse/import';
+import { bausteinArtName } from '@/lib/fulfillment/prozesse/bausteine';
 import { holeJson, fehlerText, geaendert, tagLang, type Uebersicht } from './daten';
 import { anzahl } from '@/lib/text/zahlwort';
 import { klein, Leiste } from './teile';
@@ -102,7 +103,7 @@ export function Import({ daten }: { daten: Uebersicht }) {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     <b style={{ fontSize: TYP.bedien, color: C.ink, fontWeight: 600 }}>{b.titel}</b>
                     <Chip farbe={STATUS_FARBE[b.status]}>{STATUS_TEXT[b.status]}</Chip>
-                    <Chip farbe={C.inkDim}>{b.art}</Chip>
+                    <Chip farbe={C.inkDim}>{bausteinArtName(b.art)}</Chip>
                     {b.nurIntern && <Chip farbe={LEUCHT.agenten}>nur intern</Chip>}
                     {b.preis && <Chip farbe={C.inkLeise}>Preise → Produktkatalog</Chip>}
                   </div>

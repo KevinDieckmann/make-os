@@ -1112,7 +1112,11 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ff-reise-band-titel-folge { display: inline; }
   .ff-fluss-zweig { grid-template-columns: minmax(0, 1fr); justify-items: center; row-gap: 4px; }
   .ff-fluss-zweig > .ff-fluss-zelle { width: min(100%, 340px); }
-  .ff-fluss-seitenpfeil { transform: rotate(90deg); }
+  /* Nein-Pfeil am Handy senkrecht wie „ja“: nur der Pfeil dreht sich, das Wort steht rechts daneben — vorher drehte sich das ganze Element und lief durch
+     den Untertitel der Raute darüber (18.10., Nachprüfung N12). Die Box ist hoch und schmal → der Faden läuft senkrecht (faden.tsx). */
+  .ff-fluss-seitenpfeil { position: relative; flex-direction: column; justify-content: center; min-height: 34px; padding: 0 !important; }
+  .ff-fluss-seitenpfeil > svg { transform: rotate(90deg); }
+  .ff-fluss-seitenpfeil-wort { position: absolute; left: calc(50% + 12px); top: 50%; transform: translateY(-50%); white-space: nowrap; }
   .ff-fluss-zweig > .ff-fluss-erinnerung { width: min(100%, 300px); box-sizing: border-box; }
   .ff-reise-weg { padding-bottom: 0; padding-left: 16px; }
   .ff-reise-weg > .ff-flow-ebene { top: 0; right: auto; width: 16px; height: 100%; }

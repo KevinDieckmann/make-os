@@ -15,11 +15,11 @@ import { fulfillmentAendern, fulfillmentLesen, fulfillmentHaushalt, eintragStand
 import { aktuellerKnoten, istBusinessMandat, unterschriftAm, istBestand, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
-import { localDay, tagVon } from '@/lib/zeit';
+import { localDay } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { fallAnwenden, fallFreigaben, fallStarten, vorlageUebernehmen, zusatzAnhaengen, zusatzUebernehmen } from './fall';
 import { ablaufAktiv } from './ausfuehrung';
-import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, willkommenUhr, type OnboardingAbleitung } from './onboarding';
+import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, willkommenLetzterTag, willkommenUhr, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 import { fallTermine } from './termine-server';
@@ -110,9 +110,10 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
   if (!v) throw new FallFehler('Bitte einen Ablauf wählen (Fulfillment › Übersicht › Abläufe; dem Produkt zuordnen geht unter Produkte).', 400);
   const start = typeof e.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.start) ? e.start : heute;
   const u = unterschriftAm(m, crm, iso);
-  // Frist der Willkommensmail = DIESELBE Uhr (`willkommenUhr`, seit 17.10. ab dem Ende des Tages, wenn nur der Tag bekannt ist), als Berliner Tag.
+  // Frist der Willkommensmail = DIESELBE Uhr (`willkommenUhr`, seit 17.10. ab dem Ende des Tages, wenn nur der Tag bekannt ist), als Berliner Tag —
+  // als LETZTER erlaubter Tag (18.10., N8): endet die Uhr um 0 Uhr, ist es der Tag davor (vorher stand „bis 20.10.“, am Morgen des 20. „überfällig“).
   const uhr = u ? willkommenUhr(u.am, vorlagen.einstellungen.willkommenStunden, undefined, iso) : null;
-  const bis = uhr?.faellig ? tagVon(uhr.faellig) : undefined;
+  const bis = uhr?.faellig ? willkommenLetzterTag(uhr.faellig) : undefined;
   let neu: Fall | null = null;
   let art: 'neu' | 'angehaengt' = 'neu';
   const r = await fulfillmentAendern('faelle', d => {
@@ -316,13 +317,13 @@ export async function fallVorlageUebernehmen(mandatId: unknown, person: string, 
       const z = f.zusaetze?.find(x => x.vorlageId === vorlageId);
       if (!z) return { ok: false, status: 404, fehler: 'Dieses Zusatzmodul hängt nicht an diesem Fall.' };
       const zv = vorlagen.prozesse.find(p => p.id === vorlageId);
-      if (!zv) return { ok: false, status: 404, fehler: 'Die Vorlage dieses Zusatzmoduls gibt es nicht mehr — der Fall läuft mit seiner Kopie weiter.' };
+      if (!zv) return { ok: false, status: 404, fehler: 'Den Ablauf dieses Zusatzmoduls gibt es nicht mehr — der Fall läuft mit seiner Kopie weiter.' };
       if (zv.fassung <= z.vorlageFassung) return { ok: false, status: 409, fehler: 'Das Zusatzmodul hat schon die aktuelle Fassung.' };
       neu = zusatzUebernehmen(f, zv, iso, person);
       return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: [m.id] };
     }
     const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
-    if (!v) return { ok: false, status: 404, fehler: 'Die Vorlage dieses Falls gibt es nicht mehr — der Fall läuft mit seiner Kopie weiter.' };
+    if (!v) return { ok: false, status: 404, fehler: 'Den Ablauf dieses Falls gibt es nicht mehr — der Fall läuft mit seiner Kopie weiter.' };
     if (v.fassung <= f.vorlageFassung) return { ok: false, status: 409, fehler: 'Der Fall hat schon die aktuelle Fassung.' };
     neu = vorlageUebernehmen(f, v, iso, person);
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: [m.id] };

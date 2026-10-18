@@ -6,14 +6,13 @@
 
 import type { DossierKurz, Fall, FallKnoten, Freigabepunkt, KundeKurz } from '../typen';
 import { abschnitteDes, tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
-import { onboardingZaehlung, type OnboardingStand } from './onboarding';
+import { onboardingZaehlung, willkommenLetzterTag, type OnboardingStand } from './onboarding';
 import { fallReise, fallStelle, naechsterPunkt, reiseKurz, ONBOARDING_SPRUNG, type NaechsterPunkt, type ReiseKurzPhase, type WartetAuf } from './reise';
 import { knotenAktion, type HeuteAktion } from './heute';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type Ampel, type KundenLageArt } from './darstellung';
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
-import { tagVon } from '@/lib/zeit';
 
 export type HaengerArt = 'willkommen' | 'freigabe' | 'wartet' | 'puls' | 'report' | 'art14' | 'faellig';
 export interface Haenger {
@@ -117,8 +116,9 @@ export function wasHaengt(e: CockpitEingabe): Haenger[] {
     raus.push({ art, mandatId: f.mandatId, kunde: e.kunde, text, schwere, href, ...(seit ? { seit } : {}), ...(knotenId ? { knotenId } : {}), ...(aktion ? { aktion } : {}) });
   };
   if (f.status !== 'abgeschlossen' && e.onboarding.willkommen.ueberfaellig) h('willkommen', 'Willkommensmail überfällig (24 Stunden nach der Unterschrift)', 'rot', WEG.fall(f.mandatId, 'reise', 'willkommen'),
-    // 17.10. (dritte Abnahme B4): der Berliner Tag der Frist — `.slice(0, 10)` nahm den UTC-Tag („seit 13.10.“ statt 14.10.).
-    e.onboarding.willkommen.faellig ? tagVon(e.onboarding.willkommen.faellig) : undefined);
+    // 17.10. (dritte Abnahme B4): der Berliner Tag der Frist — `.slice(0, 10)` nahm den UTC-Tag („seit 13.10.“ statt 14.10.). 18.10. (N8): der LETZTE
+    // erlaubte Tag (`willkommenLetzterTag`) — wie bei jedem anderen Schritt „seit <Frist am Knoten>“; die Uhr endet oft um 0 Uhr des Folgetags.
+    e.onboarding.willkommen.faellig ? willkommenLetzterTag(e.onboarding.willkommen.faellig) : undefined);
   const nummern = abstimmungsNummern(f.knoten);
   for (const k of f.knoten) {
     // Ausführung (17.10. abends): eine Entscheidung, deren Runden ausgeschöpft sind, hängt rot — bis jemand entscheidet (ja, entfällt oder pausieren).

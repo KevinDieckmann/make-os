@@ -27,8 +27,10 @@ export const GLIEDERUNG_PUNKT_MAX = 1000;
 
 export const BAUSTEIN_ART_LABEL: Record<BausteinArt, string> = {
   aufgabe: 'Aufgabe', dokument: 'Dokument', skript: 'Skript', checkliste: 'Checkliste', mail: 'Mail', kennzahl: 'Kennzahl', ritual: 'Ritual',
-  formular: 'Formular', workbook: 'Workbook', analyse: 'Analyse', freigabe: 'Freigabe',
+  formular: 'Formular', workbook: 'Workbook', analyse: 'Analyse', freigabe: 'Bestätigung', // Kennung bleibt `freigabe`; sichtbar „Bestätigung“ (18.10., ein Begriff überall)
 };
+/** Sichtbarer Name einer Baustein-Art — nie die Kennung (`freigabe`, `mail` …) in der Oberfläche; unbekannte Art bleibt, wie sie ist. */
+export const bausteinArtName = (art: string): string => (BAUSTEIN_ART_LABEL as Record<string, string>)[art] ?? art;
 
 export const nurIntern = (b: Pick<Baustein, 'tags'>): boolean => b.tags.includes(TAG_NUR_INTERN);
 export const markeUrheberGeprueft = (id: string) => `urheber-geprueft:${id}`;

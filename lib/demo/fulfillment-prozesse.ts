@@ -71,7 +71,7 @@ function demoAblaeufe(): J {
       ],
     },
     anfrage: {
-      titel: 'Anfrage-Weiche', form: 'drei Spalten mit Weichen',
+      titel: 'Anfrage: passt es?', form: 'drei Spalten mit Weichen',
       stufen: [
         { id: 'eingang', name: 'Anfrage geht ein', art: 'einstieg' },
         { id: 'pruefen', name: 'Passt die Anfrage?', zweck: 'Zielgruppe, Anlass, Zeitpunkt.' },

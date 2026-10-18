@@ -49,7 +49,7 @@ export function KundenAnsichtVorschau({ mandatId }: { mandatId?: string }) {
     <div style={{ display: 'grid', gap: 12 }}>
       {!mandatId && (
         <Karte flach>
-          <Ueberschrift>Kunden-Ansicht — Vorlage</Ueberschrift>
+          <Ueberschrift>Kunden-Ansicht — Beispiel</Ueberschrift>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>So ist die Seite eines Kunden aufgebaut (Beispielwerte, erfunden). Nie zu sehen: Stakeholder, Haltungen, Notizen, interne Schritte, die Gesundheit des Mandats, Honorar, Dossier, Personenteil, andere Mandate, die Liste der Dateien und Namen eures Teams (außer dem Namen der Ansprechperson).</div>
         </Karte>
       )}

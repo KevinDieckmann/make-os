@@ -247,7 +247,7 @@ function ReportSenden({ mandatId, ki, heuteErstellt, onZu, onGesendet }: { manda
           {schritt && <div role="status" style={klein}>{schritt}</div>}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
             {ki && <Knopf leise onClick={() => laden(true)}>Mit KI formulieren</Knopf>}
-            {mitKi && <Knopf leise onClick={() => laden(false)}>Vorlage nehmen</Knopf>}
+            {mitKi && <Knopf leise onClick={() => laden(false)}>Standardtext nehmen</Knopf>}
             <Knopf leise onClick={onZu}>Abbrechen</Knopf>
             <Knopf haupt onClick={() => los(false)} aus={!!schritt || !postfach || !an.trim() || !betreff.trim() || !text.trim()}>Senden</Knopf>
           </div>

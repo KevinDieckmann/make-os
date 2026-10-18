@@ -28,10 +28,10 @@ export function ProduktFulfillmentZeile({ leistungId }: { leistungId: string }) 
     <div style={{ display: 'grid', gap: 4 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}>
         <span>Fulfillment:</span>
-        {vorlage ? <Link href={WEG.fulfillment('prozesse', { k: vorlage.id })} style={{ color: C.aktiv }}>{vorlage.titel} ›</Link> : <span style={{ color: C.inkLeise }}>kein Paket zugeordnet</span>}
+        {vorlage ? <Link href={WEG.fulfillment('prozesse', { k: vorlage.id })} style={{ color: C.aktiv }}>{vorlage.titel} ›</Link> : <span style={{ color: C.inkLeise }}>kein Ablauf zugeordnet</span>}
         {pakete.length > 0 && (
-          <Erklaert erklaerung="fulfillment.zuordnung" name="Paket für neue Fälle">
-            <Wahl label="Paket" klein liste={pakete.map(p => ({ id: p.id, label: p.titel }))} wert={vorlageId} onWahl={id => void setze(id)} onLeeren={() => void setze(null)} leerenLabel="ohne Paket" />
+          <Erklaert erklaerung="fulfillment.zuordnung" name="Ablauf für neue Fälle">
+            <Wahl label="Ablauf" klein liste={pakete.map(p => ({ id: p.id, label: p.titel }))} wert={vorlageId} onWahl={id => void setze(id)} onLeeren={() => void setze(null)} leerenLabel="ohne Ablauf" />
           </Erklaert>
         )}
         {!pakete.length && <Link href={WEG.fulfillment('prozesse')} style={{ color: C.aktiv }}>Abläufe anlegen ›</Link>}

@@ -115,7 +115,7 @@ export function grenzenPruefen<A extends FulfillmentArt>(art: A, d: FulfillmentD
   if (art === 'vorlagen') {
     const v = d as FulfillmentDateien['vorlagen'];
     return erst(
-      ueber('Prozess-Vorlagen', v.prozesse.length, GRENZEN.vorlagen),
+      ueber('Prozesse', v.prozesse.length, GRENZEN.vorlagen),
       ueber('Bausteine', v.bausteine.length, GRENZEN.bausteine),
       ueber('Rituale', v.rituale.length, GRENZEN.rituale),
       ...v.prozesse.map(p => ueber(`Knoten in „${p.titel}“`, p.knoten.length, GRENZEN.knotenJeVorlage)),

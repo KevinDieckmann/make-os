@@ -50,7 +50,7 @@ function Zeilen({ text, x, y, breite, groesse, zeilen = 2, farbe = C.ink, gewich
 
 /**
  * Ein Knoten der Fläche in seiner Form, an (0, 0) mit b × h: Schritt = Kasten (grün getönt), Nachricht = Kasten mit Brief (gelb), Entscheidung/Abstimmung =
- * Raute, Erinnerung = abgerundeter Kasten mit Glocke (orange), Termin = große Beschriftung mit Kalender und Linie. `gewaehlt` = heller Rand, `ziel` = Petrol
+ * Raute, Erinnerung = abgerundeter Kasten mit Glocke (orange), Termin = Kasten mit Kalender (ein Knoten, keine Überschrift — 18.10., N12). `gewaehlt` = heller Rand, `ziel` = Petrol
  * (hier landet ein Pfeil bzw. ein abgelegter Knoten).
  */
 export function FlaecheForm({ form, umriss, b, h, titel, unter, gewaehlt, ziel }: { form: FlussForm; umriss: FlaecheUmriss; b: number; h: number; titel: string; unter?: string; gewaehlt?: boolean; ziel?: boolean }) {
@@ -66,12 +66,12 @@ export function FlaecheForm({ form, umriss, b, h, titel, unter, gewaehlt, ziel }
     );
   }
   if (umriss === 'termin') {
+    // Termin = Kasten mit Kalender (flacher als ein Schritt, `FL.termin`), Titel bis zwei Zeilen — wie jeder andere Knoten.
     return (
       <g>
-        <rect width={b} height={h} rx={10} fill={gewaehlt || ziel ? TIEF.flaeche(C.ink) : 'transparent'} stroke={gewaehlt || ziel ? rand : 'none'} strokeWidth={breit} />
-        <CalendarClock x={10} y={h / 2 - 11} width={22} height={22} color={f} aria-hidden />
-        <Zeilen text={titel} x={b / 2 + 14} y={h / 2 - 2} breite={b - 52} groesse={FLAECHE_SCHRIFT.rahmen - 2} zeilen={1} gewicht={700} />
-        <line x1={40} x2={b - 10} y1={h - 8} y2={h - 8} stroke={RAND.stark} strokeWidth={2} />
+        <rect width={b} height={h} rx={8} fill={TIEF.flaeche(f)} stroke={rand} strokeWidth={breit} />
+        <CalendarClock x={10} y={h / 2 - 9} width={18} height={18} color={f} aria-hidden />
+        <Zeilen text={titel} x={32 + (b - 44) / 2} y={h / 2} breite={b - 44} groesse={FLAECHE_SCHRIFT.titel} />
       </g>
     );
   }
@@ -174,7 +174,7 @@ export function FlaecheLegende({ x, y }: { x: number; y: number }) {
     teile.push(
       <g key={f.form} transform={`translate(${dx} 0)`}>
         {f.umriss === 'raute' ? <polygon points="17,0 34,11 17,22 0,11" fill={TIEF.flaeche(farbe)} stroke={TIEF.rand(farbe)} strokeWidth={1.5} />
-          : f.umriss === 'termin' ? <CalendarClock x={6} y={0} width={22} height={22} color={farbe} aria-hidden />
+          : f.umriss === 'termin' ? <g><rect width={34} height={22} rx={4} fill={TIEF.flaeche(farbe)} stroke={TIEF.rand(farbe)} strokeWidth={1.5} /><CalendarClock x={10} y={4} width={14} height={14} color={farbe} aria-hidden /></g>
             : <rect width={34} height={22} rx={f.form === 'erinnerung' ? 11 : 4} fill={TIEF.flaeche(farbe)} stroke={TIEF.rand(farbe)} strokeWidth={1.5} />}
         <text x={44} y={15} fontSize={FLAECHE_SCHRIFT.unter} fill={C.inkDim}>{f.wort}</text>
       </g>,
