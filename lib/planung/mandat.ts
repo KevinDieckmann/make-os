@@ -14,6 +14,7 @@
 // Laden auf dem Server: lib/planung/mandat-server.ts.
 
 import { einheitName } from '@/lib/einheiten';
+import { mandatName } from '@/lib/crm/mandat-name';
 import { einheitAusBezug, einheitFarbe } from '@/lib/aufgaben/einheit';
 
 /** Form einer CRM-Kennung (wie der CRM-Schreibweg sie prüft, lib/crm/speicher.ts). */
@@ -95,8 +96,8 @@ export function mandatKurzListe(crm: CrmFuerMandat | null | undefined): MandatKu
   }).sort((a, b) => Number(b.aktiv) - Number(a.aktiv) || a.firma.localeCompare(b.firma, 'de') || a.titel.localeCompare(b.titel, 'de'));
 }
 
-/** „Firma · Mandatstitel“ */
-export const mandatLabel = (m: Pick<MandatKurz, 'firma' | 'titel'>): string => `${m.firma} · ${m.titel}`;
+/** „Firma · Mandatstitel“ — die Firma nicht doppelt, wenn sie schon im Titel steht (18.10., N18). */
+export const mandatLabel = (m: Pick<MandatKurz, 'firma' | 'titel'>): string => mandatName(m.firma, m.titel);
 
 const alsKarte = (m: ReadonlyMap<string, MandatKurz> | readonly MandatKurz[]): ReadonlyMap<string, MandatKurz> =>
   (m instanceof Map ? m : new Map((m as readonly MandatKurz[]).map(x => [x.id, x])));

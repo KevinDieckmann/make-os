@@ -14,7 +14,7 @@ import { RECHTSART, istGesellschaft, type Gesellschaftskennung } from '@/lib/ein
 import { positionNettoCent, ustCent, nummerAusFormat, euroCent, mengeText, KURZ_VORGABE, ZAHLUNGSZIEL_VORGABE_TAGE, UST_SAETZE } from '@/lib/crm/angebote';
 import { istKontaktKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
-import { aufCent } from '@/lib/finanzen/ust';
+import { monatsGrenzen, monatsName, monatsHonorar, type Leistungsmonat } from '@/lib/crm/mandat-laufzeit';
 import { ANSCHRIFT_MAX } from '@/lib/crm/zahlung';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
@@ -365,37 +365,8 @@ export function positionenAusAngebot(a: Pick<Angebot, 'positionen'>, kleinuntern
   }));
 }
 
-/** Erster und letzter Tag eines Monats „JJJJ-MM“. */
-export function monatsGrenzen(monat: string): { von: string; bis: string } | null {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monat)) return null;
-  const [j, m] = monat.split('-').map(Number);
-  const letzter = new Date(Date.UTC(j, m, 0)).getUTCDate();
-  return { von: `${monat}-01`, bis: `${monat}-${String(letzter).padStart(2, '0')}` };
-}
-const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-/** „2026-10“ → „Oktober 2026“. */
-export const monatsName = (monat: string) => (/^\d{4}-\d{2}$/.test(monat) ? `${MONATE[Number(monat.slice(5)) - 1]} ${monat.slice(0, 4)}` : monat);
-
-// ── Teilmonat (Kevin 18.10.: „Anteilig“) ─────────────────────────────────────
-
-/**
- * Der Leistungszeitraum eines Mandats in einem Monat: Monat ∩ [Beginn, Ende], beide Tage eingeschlossen. Beginnt das Mandat mitten
- * im Monat (bzw. endet es dort), ist der Monat „anteilig“ — die Monatsrechnung rechnet dann nur diese Tage (`positionAusMandat`).
- * `tage` 0 = das Mandat läuft in diesem Monat gar nicht. null = kein gültiger Monat „JJJJ-MM“.
- */
-export interface Leistungsmonat { monat: string; von: string; bis: string; tage: number; monatsTage: number; anteilig: boolean }
-export function leistungsmonat(m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string): Leistungsmonat | null {
-  const g = monatsGrenzen(monat);
-  if (!g) return null;
-  const von = tagOk(m.start) && m.start > g.von ? m.start : g.von;
-  const bis = tagOk(m.ende) && m.ende < g.bis ? m.ende : g.bis;
-  const monatsTage = tageZwischen(g.von, g.bis) + 1;
-  const tage = von <= bis ? tageZwischen(von, bis) + 1 : 0;
-  return { monat, von, bis, tage, monatsTage, anteilig: tage > 0 && tage < monatsTage };
-}
-
-/** Läuft das Mandat in diesem Monat (mindestens einen Tag)? */
-export const mandatLaeuftIm = (m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string) => (leistungsmonat(m, monat)?.tage ?? 0) > 0;
+// Monate und Teilmonat (Kevin 18.10.: „Anteilig“) — EINE Regel für Rechnung und Liquiditätsplan in lib/crm/mandat-laufzeit.ts (18.10., N4).
+export { monatsGrenzen, monatsName, leistungsmonat, mandatLaeuftIm, type Leistungsmonat } from '@/lib/crm/mandat-laufzeit';
 
 /**
  * Vorgabe-Monat der Monatsrechnung, wenn keiner gewählt ist (z. B. „Erste Rechnung“ am Angebot): der laufende Monat, geklemmt in die
@@ -433,7 +404,7 @@ export function anteilText(l: Leistungsmonat): string {
  */
 export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen'>, monat: string, opt: { kleinunternehmer?: boolean; nettoAusBrutto: (b: number, s: number) => number; anteil?: Leistungsmonat | null }): RechnungPosition {
   const teil = opt.anteil?.anteilig && m.honorar.basis === 'monat' ? opt.anteil : null;
-  const honorar = teil ? aufCent((m.honorar.betrag * teil.tage) / teil.monatsTage) : m.honorar.betrag;
+  const honorar = monatsHonorar(m, teil);
   const netto = m.honorar.netto ? honorar : opt.nettoAusBrutto(honorar, m.ustSatz);
   const einheit = teil ? 'pauschal' : m.honorar.basis === 'tag' ? 'Tag' : m.honorar.basis === 'einmalig' ? 'pauschal' : 'Monat';
   return {

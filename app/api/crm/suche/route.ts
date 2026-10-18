@@ -16,6 +16,7 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { alleAdressen } from '@/lib/crm/emails';
 import { labelsVon } from '@/lib/crm/mehrfach';
 import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
+import { mandatName } from '@/lib/crm/mandat-name';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
   const ch = crm.chancen.filter(c => passt([c.titel, c.firma])).slice(0, 4).map(c => ({ art: 'chance', id: c.id, titel: c.titel, unter: `Deal · ${c.stufe === 'qualifiziert' ? 'SQL' : c.stufe}`, href: WEG.deal(c.id), p: 1 }));
   // Mandanten klickbar (28.09.): Mandat mit dem Namen der CRM-Firma (Kennung gewinnt), Links über WEG.
   const md = crm.mandate.map(m => ({ m, kunde: firmaVonMandat(m, crm.firmen)?.name ?? m.kunde })).filter(({ m, kunde }) => passt([kunde, m.kunde, m.titel])).slice(0, 4)
-    .map(({ m, kunde }) => ({ art: 'mandat', id: m.id, titel: `${kunde} · ${m.titel}`.slice(0, 90), unter: `Mandat · ${m.status}`, href: WEG.mandat(m.id), p: 1 }));
+    .map(({ m, kunde }) => ({ art: 'mandat', id: m.id, titel: mandatName(kunde, m.titel).slice(0, 90), unter: `Mandat · ${m.status}`, href: WEG.mandat(m.id), p: 1 }));
   const kp = crm.kampagnen.filter(k => passt([k.name])).slice(0, 3).map(k => ({ art: 'kampagne', id: k.id, titel: k.name, unter: `Kampagne · ${k.status}`, href: `/os/markttraktion?s=marketing&a=kampagnen&k=${k.id}`, p: 1 }));
   // Events (M4): besuchte Veranstaltungen (Reiter „Events“) und unsere Make.One-Abende — getrennt gekennzeichnet, der Link führt in den richtigen Reiter.
   const ev = crm.events.filter(e => passt([e.titel, e.ort])).sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 4).map(e => {

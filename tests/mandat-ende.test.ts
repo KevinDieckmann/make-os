@@ -2,7 +2,7 @@
 // Erfundene Daten.
 import { describe, it, expect } from 'vitest';
 import { dealRegeln, wendeCrmAn, leererBestand } from '../lib/crm/speicher';
-import { postenEnde, planpostenAus } from '../lib/crm/kunden';
+import { planpostenAus, mandatPosten, mandatLiquiLage } from '../lib/crm/kunden';
 import { mandatsEnde } from '../lib/fulfillment/regeln';
 import type { Mandat } from '../lib/crm/typen';
 
@@ -33,10 +33,11 @@ describe('Mandat beenden', () => {
     expect(r.ops.map(o => (o as { felder: Record<string, unknown> }).felder.ende)).toEqual(['2026-11-30', undefined, undefined]);
   });
 
-  it('der Posten eines beendeten Mandats endet mit dem Zahlungsziel nach dem Ende; laufende Mandate kein Ende', () => {
-    expect(postenEnde(mandat({ status: 'beendet', ende: '2026-10-17' }), '2026-10-20')).toBe('2026-10-31');
-    expect(postenEnde(mandat({ status: 'beendet' }), '2026-10-20')).toBe('2026-11-03');
-    expect(postenEnde(mandat(), '2026-10-20')).toBeNull();
+  it('der Posten eines beendeten Mandats endet mit dem letzten Monat (anteilig, Zahlungsziel danach); laufende Mandate kein Ende', () => {
+    // 18.10. (N4): statt „Ende + Zahlungsziel“ der Zahlplan bis zum Ende — Mai: volle Monate bis September, Oktober (1.–17.) anteilig.
+    const zu = mandatPosten(mandat({ status: 'beendet', ende: '2026-10-17' }), '2026-10-20', { beendet: true });
+    expect(zu.map(p => [p.id, p.rhythmus, p.ab])).toEqual([['lp-mandat-m-1~2026-10', 'einmalig', '2026-10-15']]);
+    expect(mandatLiquiLage(mandat({ status: 'beendet', ende: '2026-10-17' }), [{ id: 'lp-mandat-m-1', titel: 'x', betrag: 5355, rhythmus: 'monatlich', ab: '2026-05-15', sicher: true }], '2026-10-20').lage).toBe('endet');
     // ein beendetes Mandat schlägt keinen neuen Posten vor
     expect(planpostenAus(mandat({ status: 'beendet', ende: '2026-10-17' }), '2026-10-20')).toBeNull();
   });
@@ -44,9 +45,9 @@ describe('Mandat beenden', () => {
 
 describe('Liquiditäts-Posten beim Start (17.10., Gesamtprüfung L1 B8)', () => {
   it('erste Zahlung ab dem Beginn im laufenden Monat; ohne Verlängerung endet der Posten mit der Mindestlaufzeit', () => {
-    const p = planpostenAus(mandat({ start: '2026-10-17', verlaengerung: 'manuell', mindestlaufzeitMonate: 6 }), '2026-10-17')!;
-    expect(p.ab).toBe('2026-10-31');
-    expect(p.bis).toBe('2027-04-30');
+    // 18.10. (N4): der angebrochene Monat ist ein eigener (anteiliger) Posten, der Monatsposten zählt nur die vollen Monate — 17.10. + 6 Monate = 16.04.
+    const l = mandatPosten(mandat({ start: '2026-10-17', verlaengerung: 'manuell', mindestlaufzeitMonate: 6 }), '2026-10-17');
+    expect(l.map(p => [p.id, p.ab, p.bis])).toEqual([['lp-mandat-m-1~2026-10', '2026-10-31', undefined], ['lp-mandat-m-1', '2026-11-15', '2027-03-15'], ['lp-mandat-m-1~2027-04', '2027-04-15', undefined]]);
     expect(planpostenAus(mandat({ start: '2026-10-17' }), '2026-10-17')!.bis).toBeUndefined(); // auto: läuft weiter
     expect(planpostenAus(mandat({ start: '2026-05-01' }), '2026-10-17')!.ab).toBe('2026-10-15'); // laufendes Mandat: ab Monatsanfang
   });

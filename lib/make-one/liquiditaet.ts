@@ -185,26 +185,85 @@ export const CASH_GEGEN_FREI = 'Heute auf den Konten = was jetzt da ist. „Frei
 /** Ab welcher Wahrscheinlichkeit ein unsicherer Eingang im Szenario zählt. */
 const SZENARIO_SCHWELLE: Record<Szenario, number> = { schlecht: 100, real: 60, gut: 1 };
 
-/** Fällt der Posten in dieser Woche an? Liefert das Datum oder null. */
-function faelligIn(p: Planposten, vonISO: string, bisISO: string): string | null {
-  if (p.ab > bisISO) return null;
-  if (p.bis && p.bis < vonISO) return null;
-  if (p.rhythmus === 'einmalig') return p.ab >= vonISO && p.ab <= bisISO ? p.ab : null;
+// ── Zahltage — EINE Stelle für Vorschau, Monatssumme und Ende (18.10., Nachprüfung N3/N4) ──────────────────────────────────
+// Ein wiederkehrender Posten zahlt am Tag aus `ab` (am Monatsende gekappt: ab 31.01. → 28.02., 31.03. …), alle 1/3/12 Monate, nie vor `ab`
+// und nie nach `bis`. Vorher prüfte die Wochen-Vorschau nur den Wochenanfang gegen `bis` (ein Zahltag nach `bis` in derselben Woche zählte
+// noch) und ließ Monate ohne den 29.–31. aus.
 
-  // Wiederkehrend: am selben Tag des Monats wie im Startdatum.
-  const tag = Number(p.ab.slice(8, 10));
-  const von = new Date(`${vonISO}T00:00:00`);
-  const bis = new Date(`${bisISO}T00:00:00`);
-  for (let d = new Date(von); d <= bis; d.setDate(d.getDate() + 1)) {
-    if (d.getDate() !== tag) continue;
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (iso < p.ab) continue;
-    const monateSeitStart = (d.getFullYear() - Number(p.ab.slice(0, 4))) * 12 + (d.getMonth() - (Number(p.ab.slice(5, 7)) - 1));
-    if (p.rhythmus === 'monatlich') return iso;
-    if (p.rhythmus === 'quartal' && monateSeitStart % 3 === 0) return iso;
-    if (p.rhythmus === 'jaehrlich' && monateSeitStart % 12 === 0) return iso;
+const SCHRITT: Record<Rhythmus, number> = { einmalig: 0, monatlich: 1, quartal: 3, jaehrlich: 12 };
+/** Monatswert eines wiederkehrenden Postens: monatlich 1, Quartal ⅓, Jahr 1/12; einmalig 0. */
+export const MONATSANTEIL: Record<Rhythmus, number> = { einmalig: 0, monatlich: 1, quartal: 1 / 3, jaehrlich: 1 / 12 };
+
+/** Der k-te Zahltag eines wiederkehrenden Postens (k = 0 → `ab`), Tag am Monatsende gekappt. */
+function kterZahltag(ab: string, schritt: number, k: number): string {
+  const [j, mo, ta] = ab.slice(0, 10).split('-').map(Number);
+  const ziel = new Date(Date.UTC(j, mo - 1 + schritt * k, 1, 12));
+  const letzter = new Date(Date.UTC(ziel.getUTCFullYear(), ziel.getUTCMonth() + 1, 0, 12)).getUTCDate();
+  ziel.setUTCDate(Math.min(ta, letzter));
+  return ziel.toISOString().slice(0, 10);
+}
+
+/** Alle Zahltage eines Postens von `von` bis `bisISO` (beide eingeschlossen), aufsteigend. */
+export function zahltage(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus'>, von: string, bisISO: string): string[] {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(p.ab ?? '') || p.ab > bisISO) return [];
+  if (p.bis && p.bis < von) return [];
+  if (p.rhythmus === 'einmalig' || !SCHRITT[p.rhythmus]) return p.ab >= von && p.ab <= bisISO ? [p.ab] : [];
+  const schritt = SCHRITT[p.rhythmus];
+  const raus: string[] = [];
+  // Erst grob an `von` heran (Monate), dann Zahltag für Zahltag — nie über `bis` des Postens oder des Zeitraums hinaus.
+  const monate = (Number(von.slice(0, 4)) - Number(p.ab.slice(0, 4))) * 12 + Number(von.slice(5, 7)) - Number(p.ab.slice(5, 7));
+  for (let k = Math.max(0, Math.floor(monate / schritt) - 1), n = 0; n < 5000; k++, n++) {
+    const d = kterZahltag(p.ab, schritt, k);
+    if (d > bisISO || (p.bis && d > p.bis)) break;
+    if (d >= von) raus.push(d);
   }
-  return null;
+  return raus;
+}
+
+/** Fällt der Posten in dieser Woche an? Liefert den (ersten) Zahltag oder null. */
+function faelligIn(p: Planposten, vonISO: string, bisISO: string): string | null {
+  return zahltage(p, vonISO, bisISO)[0] ?? null;
+}
+
+/** Der letzte Zahltag eines Postens: einmalig `ab`; wiederkehrend mit `bis` der letzte bis dahin (null, wenn er nie zahlt); ohne `bis` offen (null). */
+export function letzterZahltag(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus'>): string | null {
+  if (p.rhythmus === 'einmalig') return p.ab;
+  if (!p.bis || p.bis < p.ab) return null;
+  return zahltage(p, p.ab, p.bis).at(-1) ?? null;
+}
+
+/** Tag + n Monate (am Monatsende gekappt). */
+const monatePlus = (tag: string, n: number) => kterZahltag(tag, 1, n);
+
+/**
+ * Was ein Posten „je Monat“ ausmacht (Liquidität › Was reinkommt / Was rausgeht, Nachprüfung 18.10. N3): nur, solange er wirklich zahlt —
+ * ein wiederkehrender Posten zählt mit seinem Monatswert (Quartal ⅓, Jahr 1/12), wenn er im nächsten Abstand ab heute (1 bzw. 3 bzw. 12 Monate)
+ * einen Zahltag hat. Beendete (letzter Zahltag vorbei) und erst später beginnende zählen nicht; einmalige nie.
+ */
+export function monatswert(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus' | 'betrag'>, heute: string): number {
+  const schritt = SCHRITT[p.rhythmus];
+  if (!schritt) return 0;
+  const fensterEnde = new Date(Date.parse(`${monatePlus(heute, schritt)}T12:00:00Z`) - 864e5).toISOString().slice(0, 10);
+  const fenster = zahltage(p, heute, fensterEnde);
+  return fenster.length ? p.betrag * MONATSANTEIL[p.rhythmus] : 0;
+}
+
+/** Summe je Monat einer Liste (gerundet auf den Euro für die Kopfzeile). */
+export const monatsSumme = (l: readonly Pick<Planposten, 'ab' | 'bis' | 'rhythmus' | 'betrag'>[], heute: string): number =>
+  Math.round(l.reduce((s, p) => s + monatswert(p, heute), 0));
+
+const tagText = (d: string, heute: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4) !== heute.slice(0, 4) ? d.slice(2, 4) : ''}`;
+const RHYTHMUS_TEXT: Record<Rhythmus, string> = { einmalig: 'einmalig', monatlich: 'jeden Monat', quartal: 'jedes Quartal', jaehrlich: 'jedes Jahr' };
+
+/**
+ * Die Zeile unter dem Posten (N3): Rhythmus, dazu „ab …“ (beginnt später), „bis …“ (letzter Zahltag) bzw. „beendet · letzte Zahlung …“ —
+ * vorher stand nur der Rhythmus da, auch bei einem Posten, der längst nicht mehr zahlt.
+ */
+export function postenZeitText(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus'>, heute: string): string {
+  if (p.rhythmus === 'einmalig') return `einmalig am ${tagText(p.ab, heute)}${p.ab < heute ? ' (vorbei)' : ''}`;
+  const letzte = letzterZahltag(p);
+  if (p.bis && (!letzte || letzte < heute)) return letzte ? `beendet · letzte Zahlung ${tagText(letzte, heute)}` : 'beendet';
+  return [RHYTHMUS_TEXT[p.rhythmus], p.ab > heute ? `ab ${tagText(p.ab, heute)}` : '', letzte ? `bis ${tagText(letzte, heute)}` : ''].filter(Boolean).join(' · ');
 }
 
 export function vorschau(

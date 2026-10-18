@@ -5,6 +5,7 @@
 // Tests: tests/fokus-laufend.test.ts.
 
 import type { LaufenderFokus } from './fokus-laufend';
+import { mandatName } from '@/lib/crm/mandat-name';
 
 const SCHLUESSEL = /^(privat|business|gemeinsam):[a-z0-9-]{1,40}$/;
 const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
@@ -46,7 +47,7 @@ export function laufendAbgleich(server: LaufenderFokus | null, lokal: LaufenderF
  */
 export function fokusTitel(l: Pick<LaufenderFokus, 'label' | 'mandatId'>, aufgabe?: string, mandat?: { firma: string; titel: string } | null): string {
   if (aufgabe?.trim()) return aufgabe.trim();
-  if (l.mandatId && mandat) return `${mandat.firma} · ${mandat.titel}`;
+  if (l.mandatId && mandat) return mandatName(mandat.firma, mandat.titel);
   if (l.mandatId) return 'Mandat';
   return l.label || 'Fokus';
 }
