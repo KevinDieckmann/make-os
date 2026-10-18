@@ -3,7 +3,7 @@
 // „Abstimmungspunkts“, ein Schritt statt eines „Knotens“, der Name einer Analyse statt „A1“ … „A13“, ein Ablauf statt einer „Paket-Vorlage“.
 // Die Kennungen im Code und in den Daten bleiben (F0 …, `freigabe`, `abstimmung`, `a1`, `knoten`, `art: 'paket'`) — nur sichtbare Texte sprechen so.
 // Wächter: tests/fulfillment-heute.test.ts (Texte der internen Fulfillment-Oberfläche, der Kunden-Seite und gerenderte Ansichten). Seit 18.10. spricht auch die
-// Kunden-Seite (components/os/fulfillment/kunde, lib/fulfillment/kunde) so — „Bestätigung“ statt „Abstimmungspunkt“ (Nachprüfung L1b, Kevin: „maximal einfach“);
+// Kunden-Seite (components/os/fulfillment/kunde, lib/fulfillment/kunde) so — „Bestätigung“ statt „Abstimmungspunkt“ (Nachprüfung L1b: „maximal einfach“);
 // „Vorlage“/„Paket“ heißen sichtbar „Ablauf“. „Freigabe“ steht nicht auf der Liste: es meint in MAKE OS die Vorschläge von ZOE (Freigabe-Stapel). Rein.
 
 export interface Fachbegriff { wort: string; muster: RegExp; statt: string }

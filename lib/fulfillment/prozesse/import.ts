@@ -872,7 +872,7 @@ export function importAnwenden(d0: VorlagenDatei, roh: unknown, wahl: ImportWahl
       lauf.geaendert.push({ id, vorher }); geaendert.push(id);
     }
     for (const id of lauf.neu.filter(i => i.startsWith('fp-'))) vorlageStrukturPruefen(d.prozesse.find(p => p.id === id)!, d);
-    if (d.prozesse.length > GRENZEN.vorlagen) nein(`Prozess-Vorlagen: höchstens ${GRENZEN.vorlagen}. Nichts übernommen.`, 413);
+    if (d.prozesse.length > GRENZEN.vorlagen) nein(`Prozesse: höchstens ${GRENZEN.vorlagen}. Nichts übernommen.`, 413);
     if (!lauf.neu.length && !lauf.geaendert.length) return { datei: d0, geaendert: [] };
     const grenze = Date.parse(k.jetzt) - IMPORT_GRENZEN.laufTage * 86_400_000;
     d.importLaeufe = [...d.importLaeufe.filter(l => Date.parse(l.am) >= grenze), lauf];

@@ -376,7 +376,7 @@ describe('Wirkung auf Fälle: neue Fälle sofort, laufende nur per Übernahme �
       { titel: 'Neu', zeilen: ['Willkommen'] },
       { titel: 'Geändert', zeilen: ['Fragebogen senden (Titel)'] },
       { titel: 'Neue Reihenfolge', zeilen: ['Umsetzung'] },
-      { titel: 'In der Vorlage entfernt — bleiben im Fall', zeilen: ['Einwände'] },
+      { titel: 'Im Ablauf entfernt — bleiben im Fall', zeilen: ['Einwände'] },
     ]);
     const neu = vorlageUebernehmen(fall, v1, J, 'pia');
     // Nichts fällt weg: jeder Knoten von vorher ist noch da — mit seinem Stand.

@@ -143,7 +143,7 @@ export function diffVorschau(d: VorlagenDiff): { titel: string; zeilen: string[]
     { titel: 'Neu', zeilen: d.neu.map(x => x.titel) },
     { titel: 'Geändert', zeilen: d.geaendert.map(x => `${x.titel} (${x.felder.map(f => DIFF_FELD_NAME[f] ?? f).join(', ')})`) },
     { titel: 'Neue Reihenfolge', zeilen: (d.reihenfolge ?? []).map(x => x.titel) },
-    { titel: 'In der Vorlage entfernt — bleiben im Fall', zeilen: d.entfernt.map(x => x.titel) },
+    { titel: 'Im Ablauf entfernt — bleiben im Fall', zeilen: d.entfernt.map(x => x.titel) },
   ].filter(a => a.zeilen.length);
 }
 
@@ -420,7 +420,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           const am = nachtrag(o.am, 'Am') ?? k.heute;
           if (status && status !== n.status) {
             if (status === 'erledigt' && obSchluessel(n.id)) nein('Dieser Onboarding-Schritt wird abgeleitet — er wird erledigt, sobald das Dazugehörige da ist.');
-            if (status === 'erledigt' && n.freigabe) nein(`Dieser Schritt endet mit der Freigabe ${n.freigabe} — bitte „Freigabe vermerken“.`);
+            if (status === 'erledigt' && n.freigabe) nein('Dieser Schritt endet mit einer Bestätigung — bitte „Bestätigung vermerken“.');
             if (status === 'entfaellt' && !(typeof o.grund === 'string' && o.grund.trim())) nein('„Entfällt“ braucht einen Grund.');
             const { erledigtAm: _a, erledigtVon: _b, grund: _g, ...rest } = n;
             neu = status === 'erledigt' ? erledigen(n, am) : { ...rest, status, seit: am };
@@ -469,7 +469,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
         case 'knoten-extra': {
           if (o.weg === true) {
             const n = knoten(o.id);
-            if (!n.extra || obSchluessel(n.id) || n.id === 'fk-ob' || n.id === OB_TEIL_ID || n.id === OB_PLAYBOOK_FORMULAR_ID) nein('Nur eigene Zusatz-Schritte lassen sich entfernen — Schritte der Vorlage entfallen mit Grund.');
+            if (!n.extra || obSchluessel(n.id) || n.id === 'fk-ob' || n.id === OB_TEIL_ID || n.id === OB_PLAYBOOK_FORMULAR_ID) nein('Nur eigene Zusatz-Schritte lassen sich entfernen — Schritte des Ablaufs entfallen mit Grund.');
             const weg = new Set(teilbaum(n.id, f.knoten));
             f.knoten = f.knoten.filter(x => !weg.has(x.id)); geaendert.push(n.id);
             break;
@@ -479,7 +479,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           if (typeof e.id === 'string' && !alt) nein('Diesen Schritt gibt es im Fall nicht (mehr).', 404);
           if (alt) {
             standPruefen(o.stand, k.standVon(alt), alt.id);
-            if (!alt.extra || obSchluessel(alt.id)) nein('Schritte der Vorlage ändert man in der Vorlage (danach „Vorlage übernehmen“).');
+            if (!alt.extra || obSchluessel(alt.id)) nein('Schritte des Ablaufs ändert man im Ablauf (danach im Fall „Übernehmen“).');
           }
           const teil: Record<string, unknown> = {};
           if (e.titel !== undefined || !alt) teil.titel = pflichtText(e.titel, 'titel', 'Titel');
@@ -497,7 +497,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
           break;
         }
         case 'freigabe': {
-          const id = typeof o.id === 'string' && freigabenErlaubt.has(o.id) ? o.id : nein('Diese Freigabe kennt der Fall nicht.');
+          const id = typeof o.id === 'string' && freigabenErlaubt.has(o.id) ? o.id : nein('Diese Bestätigung kennt der Fall nicht.');
           if (o.zuruecknehmen === true) {
             delete f.freigaben[id];
             for (const n of f.knoten.filter(x => x.freigabe === id && x.status === 'erledigt')) { const { erledigtAm: _a, erledigtVon: _b, ...r } = n; setzeKnoten({ ...r, status: 'offen', seit: k.heute }); }
@@ -505,7 +505,7 @@ export function fallAnwenden(fall0: Fall, opsRoh: unknown, k: FallKontext): Anwe
             break;
           }
           const kunde = o.kunde === undefined || o.kunde === null ? undefined : istObj(o.kunde)
-            ? { wie: optWahl(o.kunde.wie, WIE, 'Freigabe: wie') ?? nein('Freigabe: wie bestätigt (Kick-off, Mail, Link, Termin)?'), am: optTag(o.kunde.am, 'Freigabe: am') ?? k.heute }
+            ? { wie: optWahl(o.kunde.wie, WIE, 'Bestätigung: wie') ?? nein('Bestätigung: wie bestätigt (Kick-off, Mail, Link, Termin)?'), am: optTag(o.kunde.am, 'Bestätigung: am') ?? k.heute }
             : nein('kunde: { wie, am }.');
           const notiz = optText(o.notiz, 'notiz', 'Notiz');
           const am = nachtrag(o.am, 'Vermerkt am') ?? k.heute;
