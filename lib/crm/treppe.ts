@@ -286,18 +286,26 @@ export interface KapaBedarf {
  * Aufwand der Kunden in ihren Stufen je Woche: Monats-Pakete Aufwand × 12 ÷ 52, Jahres-Pakete ÷ 52, sonst über die Dauer der Stufe verteilt
  * (ohne Dauer: Annahme vier Wochen). Dazu die belegten Plätze gegen „höchstens N gleichzeitig“.
  */
+/**
+ * Stunden je Woche, die EIN Kunde in dieser Stufe bindet (aus `aufwandStunden`: je Monat ×12/52, je Jahr /52, sonst über die Dauer; ohne Dauer /4 — Annahme).
+ * EINE Rechnung für die Treppe (`kapaBedarf`) und den Kapazitäts-Vorschlag am Fall (18.10.). Ohne Aufwand: 0.
+ */
+export function stufeStundenWoche(s: Pick<TreppenStufe, 'aufwandStunden' | 'preis' | 'dauerTage'>): { stunden: number; annahme: boolean } {
+  if (!s.aufwandStunden) return { stunden: 0, annahme: false };
+  if (s.preis.art === 'monat') return { stunden: (s.aufwandStunden * 12) / 52, annahme: false };
+  if (s.preis.art === 'jahr') return { stunden: s.aufwandStunden / 52, annahme: false };
+  if (s.dauerTage) return { stunden: s.aufwandStunden / Math.max(1, s.dauerTage / 7), annahme: false };
+  return { stunden: s.aufwandStunden / 4, annahme: true };
+}
+
 export function kapaBedarf(datei: TreppeDatei, zeilen: readonly KundenZeile[]): KapaBedarf {
   const jeStufe: KapaBedarf['jeStufe'] = [];
   const ohneAufwand: string[] = [], annahmeDauer: string[] = [];
   for (const s of [...datei.stufen].sort((a, b) => a.ebene - b.ebene)) {
     const kunden = zeilen.filter(z => z.stufe?.id === s.id && z.status === 'aktiv').length;
-    let je = 0;
-    if (s.aufwandStunden) {
-      if (s.preis.art === 'monat') je = (s.aufwandStunden * 12) / 52;
-      else if (s.preis.art === 'jahr') je = s.aufwandStunden / 52;
-      else if (s.dauerTage) je = s.aufwandStunden / Math.max(1, s.dauerTage / 7);
-      else { je = s.aufwandStunden / 4; if (kunden) annahmeDauer.push(s.name); }
-    } else if (kunden) ohneAufwand.push(s.name);
+    const w = stufeStundenWoche(s);
+    const je = w.stunden;
+    if (s.aufwandStunden) { if (w.annahme && kunden) annahmeDauer.push(s.name); } else if (kunden) ohneAufwand.push(s.name);
     const max = s.regeln.maxGleichzeitig;
     jeStufe.push({ stufeId: s.id, name: s.name, kunden, stundenWoche: Math.round(je * kunden * 10) / 10, ...(max ? { max } : {}), voll: !!max && kunden >= max, ueber: !!max && kunden > max });
   }

@@ -105,3 +105,17 @@ describe('EIN Prädikat „Business-Mandat“ (18.10.: alle Business-Mandate ins
     expect(istBusinessMandat('kdc')).toBe(false);
   });
 });
+
+describe('B10 · Kapazität am Fall vorschlagen', () => {
+  it('Vorschlag für die Zuständige, nur ohne Zuweisung und mit Aufwand; EINE Stunden-Rechnung mit der Treppe', async () => {
+    const { kapaVorschlag } = await import('@/lib/fulfillment/prozesse/kapazitaet-vorschlag');
+    const { stufeStundenWoche } = await import('@/lib/crm/treppe');
+    const personen = [{ id: 'konto-pia' }, { id: 'konto-olaf' }];
+    expect(kapaVorschlag({ mandatId: 'm-1', zustaendig: 'olaf', stundenWoche: 8.77, zuweisungen: [], personen })).toEqual({ person: 'konto-olaf', stundenWoche: 8.8 });
+    expect(kapaVorschlag({ mandatId: 'm-1', zustaendig: 'olaf', stundenWoche: 8, zuweisungen: [{ art: 'mandat', bezugId: 'm-1' }], personen })).toBeNull();
+    expect(kapaVorschlag({ mandatId: 'm-1', zustaendig: 'olaf', stundenWoche: 0, zuweisungen: [], personen })).toBeNull();
+    expect(kapaVorschlag({ mandatId: 'm-1', zustaendig: 'beide', stundenWoche: 4, zuweisungen: [], personen })?.person).toBe('konto-pia');
+    expect(stufeStundenWoche({ aufwandStunden: 20, preis: { art: 'monat' } as never })).toEqual({ stunden: (20 * 12) / 52, annahme: false });
+    expect(stufeStundenWoche({ aufwandStunden: 20, preis: { art: 'fest' } as never })).toEqual({ stunden: 5, annahme: true });
+  });
+});

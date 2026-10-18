@@ -11,6 +11,7 @@
 // Rechnet nichts selbst (lib/fulfillment/prozesse/reise-bild.ts); Schreiben nur über die vorhandenen Fall-Ops. Sprünge (`#phase-…`, `#freigabe-…`,
 // `#willkommen`, `#stelle-…`, auch aus früheren Adressen wie `r=analyse`) wählen Phase und Knoten.
 
+import { KapazitaetVorschlag } from './KapazitaetVorschlag';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { RotateCw, BellRing } from 'lucide-react';
@@ -143,6 +144,7 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
     <div style={{ display: 'grid', gap: 14 }}>
       <Meldung text={meldung?.text ?? null} art={meldung?.art} />
       <VorlageGeaendert daten={daten} onMeldung={setMeldung} />
+      {f.status !== 'abgeschlossen' && <KapazitaetVorschlag mandatId={mandatId} kunde={daten.mandat.kunde} zustaendig={daten.mandat.zustaendig} />}
       <Karte i={0} flach>
         <Ueberschrift erklaerung="fulfillment.reise" rechts={<Erklaert erklaerung="fulfillment.fortschritt" name="Fortschritt"><span>{daten.vorlage?.titel ?? ''}{daten.vorlage?.titel ? ' · ' : ''}{zeile.fortschritt} %</span></Erklaert>}>Reise des Kunden</Ueberschrift>
         <ReiseBild spalten={bildSpalten(zeile)} aktiv={phase} gewaehlt={knoten} onPhase={phaseWaehlen} onKaestchen={waehle} onRaute={p => { const s = zeile.spalten.find(x => x.id === p); if (s?.abstimmung) waehle(p, `fg-${s.abstimmung.id}`); }} />
