@@ -1177,6 +1177,15 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
   „VERLUSTFREI: nein“, wird nicht hochgeladen; neue Bestände/Felder einer Version → Saat-Ergänzung in `scripts/update-probe/saat-zusatz.mjs` + ggf. Klick in `klicks.mjs`), (2) die **Server-Sicherung**
   direkt davor (`deploy/sicherung.sh`, Ablauf GO_LIVE_CHECKLISTE.md). Die Schritte in einfacher Sprache stehen am Anfang von UPDATES.md („Update 12.10. — was neu ist“).
 
+## Was ist neu — nach JEDEM Update (18.10., Kevin: „jedes Mal, wenn ein Update gemacht wird, sagt ihr uns, dass ein Update war, und zeigt, was neu ist — damit Malin auch immer Bescheid weiß“)
+- **Pflicht vor jedem Upload nach `main`:** oben in `lib/neuigkeiten/eintraege.ts` (`NEUIGKEITEN`) einen Eintrag anlegen — Kennung `u-JJJJ-MM-TT` (nie ändern),
+  Titel, ein Satz `kurz` (+ `kurzBusiness` ohne Privat-Themen), Abschnitte „Neu · Besser geworden · Behoben“ in einfachen Sätzen für die Menschen, die damit
+  arbeiten (kein Code, keine Branch-Namen). Jeder Punkt trägt `bereich` (`privat` | `business` | `alle`); Wege nur über `WEG`/`/os…`. Die Texte gehen an JEDE
+  Instanz: keine Personennamen, keine Firmen, keine Beträge (Wächter `tests/neuigkeiten.test.ts`).
+- Anzeige: `UpdateHinweis` im Rahmen (`app/os/layout.tsx`) zeigt je Person EINMAL das neueste ungelesene Update (Server entscheidet, `GET /api/neuigkeiten`;
+  ein Konto „nur Business“ bekommt keine Privat-Punkte, neue Konten nicht die Geschichte vor ihrem Anlegen), dauerhaft unter Einstellungen › Was ist neu
+  (`/os/neuigkeiten`). Gelesen je Person im Bestand `neuigkeiten--<speicher>` (nur Kennung + Zeitpunkt, nie rückwärts).
+
 ## Spaces Privat/Business (26.09., online seit 22:47)
 - Grundregel (Kevin): jeder Eintrag trägt seinen Space, der Space filtert, Home/Heute/ZOE sehen beides. Regeln in
   `lib/make-one/space-regeln.ts` (`spaceVonAufgabe`: Ort gibt vor, `task.space` weicht ab; `fokusSchluessel`/`fokusFuerSpace`:

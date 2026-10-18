@@ -703,6 +703,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Konto › Meine Daten exportiert den Bestand; die eigene Spur der Einrichtung zeigt ihn',
     loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand samt Tageskopien)',
   }),
+  // Was ist neu (18.10.): je Person nur die Kennung des zuletzt gesehenen Updates und der Zeitpunkt — keine Inhalte, keine Dritten.
+  mit(H('neuigkeiten--*', 'Was ist neu je Person (Kennung des zuletzt gesehenen Updates, Zeitpunkt) — nur die Person selbst liest und schreibt sie.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — Nutzung der Software (Hinweis auf neue Funktionen)',
+    art15: 'Konto › Meine Daten exportiert den Bestand',
+    loeschfrist: 'mit dem Konto (Konto löschen entfernt den Bestand samt Tageskopien)',
+  }),
   // Heute › Top 3 (10.10., Branch `heute-top3`): die eigene Auswahl der drei wichtigsten Aufgaben je Tag und Bereich — nur Aufgaben-Kennungen und der
   // Zeitpunkt, keine Titel, keine Dritten. Immer mit Suffix, nur die Person selbst (GET/PUT /api/heute/top3 liefern nur die eigenen).
   mit(H('heute-top3--*', 'Top 3 des Tages je Person (Aufgaben-Kennungen je Tag und Bereich, Zeitpunkt, ob von ZOE vorgeschlagen oder von Hand) — nur die Person selbst liest und schreibt sie.'), {
@@ -862,6 +868,8 @@ const JE_PERSON: readonly string[] = [
   'arbeitsmodus', 'arbeitsmodus--*', 'arbeitsrahmen--*', 'flaeche', 'flaeche--*', 'onboarding--*', 'fokus-laufend--*',
   // Heute › Top 3 (10.10.): die eigene Festlegung des Tages — nur Aufgaben-Kennungen
   'heute-top3--*',
+  // Was ist neu (18.10.): das zuletzt gesehene Update je Person
+  'neuigkeiten--*',
   // Inbox › Aufgaben-Vorschläge (10.10.): Merker je Person (nur Fingerabdrücke), Schalter „automatisch“
   'inbox-vorschlaege--*',
   'agenten-skills-privat--*', 'medien-privat--*', 'ki-tiefenbericht--*',

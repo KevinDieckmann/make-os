@@ -128,6 +128,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('stammdaten', 'Einstellungen · Stammdaten', '/os/stammdaten'),
   s('datenbasis', 'Einstellungen · Datenbasis', '/os/datenbasis'),
   s('hoi', 'Einstellungen · Head of IT', '/os/hoi', undefined, 'volle'),
+  s('neuigkeiten', 'Einstellungen · Was ist neu (Updates)', '/os/neuigkeiten'),
   s('bauplan', 'Einstellungen · Bauplan', '/os/bauplan'),
   s('roadmap', 'Bauplan · Phasen (Roadmap)', '/os/bauplan?s=phasen'),
   s('onboarding', 'Einstellungen · Onboarding (Einrichtung)', '/os/onboarding'),

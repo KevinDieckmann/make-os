@@ -11,6 +11,7 @@ import { FehlerMelder } from '@/components/os/FehlerMelder';
 import { NutzungsMelder } from '@/components/os/NutzungsMelder';
 import { Mitarbeit } from '@/components/os/Mitarbeit';
 import { Willkommen } from '@/components/os/Willkommen';
+import { UpdateHinweis } from '@/components/os/neuigkeiten/UpdateHinweis';
 import { Schnellsuche } from '@/components/os/Schnellsuche';
 import { NetzwerkenPopup } from '@/components/os/netzwerken/Popup';
 import { NetzwerkenSender } from '@/components/os/netzwerken/Sender';
@@ -68,6 +69,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <MedienSender />
       {/* Einmaliger Gruß beim allerersten Öffnen. */}
       <Willkommen />
+      {/* Nach jedem Update einmal „Was ist neu“ je Person (18.10.) — der Server entscheidet, ob es etwas Neues gibt. */}
+      <UpdateHinweis />
     </div>
   );
 }

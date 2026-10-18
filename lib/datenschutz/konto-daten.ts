@@ -72,6 +72,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'tageslauf' }, { basis: 'arbeitsmodus' }, { basis: 'gesundheitszeit' },
   // Business-frei (08.10., Lücke 7): die eigene Ergänzung des Arbeitsrahmens — immer mit Suffix (`arbeitsrahmen--<speicher>`).
   { basis: 'arbeitsrahmen', nurMitSuffix: true },
+  // Was ist neu (18.10.): das zuletzt gesehene Update — IMMER mit Suffix (lib/neuigkeiten/server.ts `neuigkeitenName`).
+  { basis: 'neuigkeiten', nurMitSuffix: true },
   // Heute › Top 3 (10.10.): die eigene Festlegung der drei wichtigsten Aufgaben je Tag und Bereich — IMMER mit Suffix (lib/heute/top3-server.ts `top3Name`).
   { basis: 'heute-top3', nurMitSuffix: true },
   // Mein Fokus (09.10.): Privat und Business getrennt, IMMER mit Suffix (lib/planung/fokus.ts `fokusBestand`).

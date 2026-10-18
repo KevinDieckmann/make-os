@@ -1,0 +1,108 @@
+// ─── MAKE OS — Was ist neu (18.10., Kevin: „jedes Mal, wenn ein Update gemacht wird, sagt ihr uns, dass ein Update war und zeigt, was neu
+// ist — damit Malin auch immer Bescheid weiß“) ─────────────────────────────────────────────────────────────────────────────────────────────
+// EINE Liste der Updates (neueste zuerst). Nach jedem Update sieht jede Person beim nächsten Öffnen EINMAL den Hinweis (UpdateHinweis.tsx),
+// dauerhaft steht alles unter Einstellungen › Was ist neu (/os/neuigkeiten). Gelesen merkt sich der Server je Person (lib/neuigkeiten/server.ts).
+//
+// REGEL (CLAUDE.md › Was ist neu): JEDES Update, das nach `main` geht, bekommt hier oben einen Eintrag — in einfachen Sätzen für die Menschen,
+// die damit arbeiten (kein Code, keine Branch-Namen). Die Texte sind Teil der Software und gehen an JEDE Instanz: keine Namen von Personen,
+// keine Firmen, keine Beträge, keine privaten Inhalte (Wächter tests/neuigkeiten.test.ts). Jeder Punkt trägt seinen Bereich — ein Konto
+// „nur Business“ bekommt Privat-Punkte nie (serverseitig, `neuigkeitenFuer`). `weg` nur über WEG bzw. eine Adresse unter /os.
+//
+// Rein (Server und Browser).
+
+import { WEG } from '@/lib/wege';
+
+export type NeuBereich = 'privat' | 'business' | 'alle';
+export type NeuArt = 'neu' | 'besser' | 'behoben';
+export interface NeuPunkt { text: string; bereich: NeuBereich; weg?: string }
+export interface NeuAbschnitt { art: NeuArt; punkte: NeuPunkt[] }
+export interface Neuigkeit {
+  /** Feste Kennung (`u-JJJJ-MM-TT`, bei zwei Updates an einem Tag `…-2`) — nie ändern, sonst erscheint der Hinweis noch einmal. */
+  id: string;
+  /** Tag des Updates (JJJJ-MM-TT). */
+  datum: string;
+  titel: string;
+  /** Ein, zwei Sätze für den Hinweis. */
+  kurz: string;
+  /** Fassung für ein Konto „nur Business“ (ohne Privat-Themen) — fehlt sie, gilt `kurz`. */
+  kurzBusiness?: string;
+  abschnitte: NeuAbschnitt[];
+}
+
+export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besser geworden', behoben: 'Behoben' };
+
+export const NEUIGKEITEN: readonly Neuigkeit[] = [
+  {
+    id: 'u-2026-10-18',
+    datum: '2026-10-18',
+    titel: 'Das große Herbst-Update',
+    kurz: 'Fulfillment für eure Kunden, ein neuer Kalender, Routinen 2.0, mehr Gesundheit und viele Verbesserungen — und ab jetzt nach jedem Update diese Übersicht.',
+    kurzBusiness: 'Fulfillment für eure Kunden, ein neuer Kalender, Rechnungen aus dem Mandat und viele Verbesserungen — und ab jetzt nach jedem Update diese Übersicht.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { bereich: 'alle', text: 'Was ist neu: Nach jedem Update zeigt MAKE OS einmal, was dazugekommen ist. Alles steht dauerhaft unter Einstellungen › Was ist neu.', weg: '/os/neuigkeiten' },
+        { bereich: 'business', text: 'Fulfillment unter Produkte & Mandate: Abläufe selbst bauen wie auf einem Whiteboard (Schritt, Nachricht, Entscheidung, Erinnerung, Termin, Bestätigung). Jeder neue Kunde bekommt seinen Fall mit „Sie sind hier“.', weg: WEG.fulfillment() },
+        { bereich: 'business', text: 'Onboarding je Kunde: Willkommensmail in 24 Stunden, Kick-off, Ansprechpartner, Ziele mit Ausgangslage — danach legt der Ablauf die Aufgaben mit Fristen selbst an.', weg: WEG.fulfillment('onboarding') },
+        { bereich: 'business', text: 'Kunden-Seite und Report alle zwei Wochen: was erledigt ist, was als Nächstes kommt und worauf wir beim Kunden warten.' },
+        { bereich: 'business', text: 'Leistungstreppe: Fortschritt, Ampel und nächster Schritt je Kunde auf einen Blick.', weg: '/os/mandate' },
+        { bereich: 'business', text: 'Monatsrechnung direkt aus dem Mandat — angefangene Monate werden anteilig berechnet, die Liquidität rechnet genauso.', weg: WEG.rechnungen() },
+        { bereich: 'business', text: 'Markttraktion › Planung: vom Umsatzziel rückwärts zu den Aktivitäten je Woche, mit Wochen-Scoreboard.', weg: '/os/markttraktion?s=planung' },
+        { bereich: 'business', text: 'Unternehmen: Beschluss-Buch, Satzungsstand, Pflichten-Kalender und ein wöchentlicher Recht-Check.', weg: WEG.unternehmen() },
+        { bereich: 'alle', text: 'Heute: die Top 3 des Tages und ein kurzes Tages-Briefing.', weg: WEG.heute() },
+        { bereich: 'alle', text: 'Kalender wie Google: volle Höhe, Sprung auf „jetzt“, mehrtägige Aufgaben als ein Balken, am Handy Tag und drei Tage.', weg: WEG.kalender() },
+        { bereich: 'privat', text: 'Routinen 2.0: x-mal pro Woche, alle paar Tage, mehrmals täglich — mit Zähler („5 von 8“) und Pause, ohne dass die Serie verloren geht.', weg: WEG.routinen() },
+        { bereich: 'privat', text: 'Gesundheit: Erholung (Programme und Behandlungen), Schlaf-Hilfe, Tages-Check und euer Training auf einen Blick.', weg: WEG.gesundheit() },
+        { bereich: 'privat', text: 'Ziele: „Unsere“, „Meine“ und eigene Meilensteine an den eigenen Zielen.', weg: '/os/planung' },
+        { bereich: 'alle', text: 'Inbox: Suche, Übergeben an die andere Person und Aufgaben-Vorschläge aus Mails.', weg: WEG.inbox() },
+        { bereich: 'alle', text: 'Erklärungen an allen Einstellungen — einfach die Zeile antippen.', weg: '/os/system' },
+      ] },
+      { art: 'besser', punkte: [
+        { bereich: 'alle', text: 'Zweiter Faktor: „Gerät merken“ — der Code wird auf einem Gerät nur noch alle 90 Tage abgefragt.', weg: WEG.konto() },
+        { bereich: 'alle', text: 'Brain-Kugel: zoomen, drehen und verschieben.', weg: WEG.wissen() },
+        { bereich: 'alle', text: 'Die Zahlen passen überall zusammen — Index, Cockpit, Liquidität und Planung rechnen mit denselben Werten.' },
+        { bereich: 'business', text: '„Mandat beenden“ fragt nach dem Enddatum, warnt bei Mindestlaufzeit und beendet die Zahlungen in der Liquidität im selben Schritt.' },
+        { bereich: 'alle', text: 'Die ZOE-Kugel weicht beim Lesen aus, damit sie keine Knöpfe mehr verdeckt.' },
+      ] },
+      { art: 'behoben', punkte: [
+        { bereich: 'alle', text: 'Ein Konto „nur Business“ sieht nirgends private Termine, Aufgaben oder Ziele — auch nicht über Heute, die Glocke oder ZOE.' },
+        { bereich: 'business', text: 'Ein beendetes Mandat zählt in der Liquidität nicht mehr mit, und Beträge werden auf den Cent gerechnet.', weg: WEG.liquiditaet() },
+        { bereich: 'alle', text: 'Viele kleine Texte, Zahlen und Darstellungen am Handy.' },
+      ] },
+    ],
+  },
+];
+
+const ZEICHEN_MAX = 400;
+/** Nur Adressen innerhalb der App (keine fremden Ziele aus Daten). */
+export const wegGueltig = (w: unknown): w is string => typeof w === 'string' && w.length <= 300 && /^\/os(\/|\?|#|$)/.test(w);
+
+/**
+ * Die Updates für ein Konto (rein): ein Konto „nur Business“ bekommt keine Privat-Punkte und die Business-Fassung des Kurztexts; leere
+ * Abschnitte fallen weg, Updates ohne Punkt ebenso. `null` (unbekannt) = wie „nur Business“ (lieber ein Punkt zu wenig).
+ */
+export function neuigkeitenFuer(liste: readonly Neuigkeit[], k: { nurBusiness: boolean | null }): Neuigkeit[] {
+  const nurBusiness = k.nurBusiness !== false;
+  return liste.map(n => {
+    const abschnitte = n.abschnitte
+      .map(a => ({ art: a.art, punkte: a.punkte.filter(p => !(nurBusiness && p.bereich === 'privat')).map(p => ({ text: p.text.slice(0, ZEICHEN_MAX), bereich: p.bereich, ...(wegGueltig(p.weg) ? { weg: p.weg } : {}) })) }))
+      .filter(a => a.punkte.length);
+    const { kurzBusiness, ...rest } = n;
+    return { ...rest, kurz: nurBusiness && kurzBusiness ? kurzBusiness : n.kurz, abschnitte };
+  }).filter(n => n.abschnitte.length);
+}
+
+/**
+ * Welche Updates hat die Person noch nicht gesehen? (rein) — alle, die NACH dem zuletzt gesehenen kommen (Reihenfolge der Liste). Hat sie noch
+ * nie eins gesehen, nur Updates nach dem Tag, an dem ihr Konto angelegt wurde (wer neu dazukommt, bekommt den Willkommensgruß, nicht die
+ * Geschichte von vorher). Ohne bekanntes Anlagedatum: alle.
+ */
+export function ungelesene(liste: readonly Neuigkeit[], gesehen: string | null, angelegtTag?: string | null): Neuigkeit[] {
+  if (gesehen) {
+    const i = liste.findIndex(n => n.id === gesehen);
+    if (i >= 0) return liste.slice(0, i);
+  }
+  return angelegtTag ? liste.filter(n => n.datum > angelegtTag) : [...liste];
+}
+
+/** Ist das eine Kennung aus der Liste? */
+export const istNeuigkeit = (id: unknown): id is string => typeof id === 'string' && NEUIGKEITEN.some(n => n.id === id);

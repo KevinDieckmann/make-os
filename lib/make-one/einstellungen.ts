@@ -41,6 +41,7 @@ export const EINSTELLUNGEN_GRUPPEN: EinstellungsGruppe[] = [
   ] },
   { id: 'betrieb', titel: 'Betrieb', eintraege: [
     { href: '/os/hoi', label: 'Head of IT', was: 'Server, App, Sicherheit und der Blick von außen — in Ampeln', voll: true },
+    { href: '/os/neuigkeiten', label: 'Was ist neu', was: 'was jedes Update gebracht hat — neu, besser geworden, behoben' },
     { href: '/os/bauplan', label: 'Bauplan', was: 'was als Nächstes gebaut wird — mit Planung und den Phasen (früher „Roadmap“)' },
     { href: '/os/onboarding', label: 'Onboarding', was: 'die Einrichtung: Meine Einrichtung · Gemeinsam · Instanz' },
     { href: '/os/onboarding/zusammenarbeit', label: 'Zusammenarbeit', was: 'wer woran baut, wie wir zusammen arbeiten' },
@@ -58,4 +59,4 @@ export function einstellungenFuer(k: { nurBusiness: boolean | null }): Einstellu
 }
 
 /** Seiten, auf denen in der Leiste „Einstellungen“ leuchtet (Pfade, die nur hier gelistet sind). */
-export const EINSTELLUNGEN_PFADE = ['/os/system', '/os/konto', '/os/verbindungen', '/os/datenschutz', '/os/stammdaten', '/os/datenbasis', '/os/hoi', '/os/bauplan', '/os/onboarding'];
+export const EINSTELLUNGEN_PFADE = ['/os/system', '/os/konto', '/os/verbindungen', '/os/datenschutz', '/os/stammdaten', '/os/datenbasis', '/os/hoi', '/os/bauplan', '/os/onboarding', '/os/neuigkeiten'];
