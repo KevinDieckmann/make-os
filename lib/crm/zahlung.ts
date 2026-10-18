@@ -20,6 +20,8 @@ export const ZAHLUNGSWEG_LABEL = Object.fromEntries(ZAHLUNGSWEGE.map(w => [w.id,
 
 /** Zahlungsziel: höchstens so viele Tage. */
 export const ZIEL_MAX_TAGE = 180;
+/** Rechnungsanschrift (`empfaenger.anschrift`): höchstens so viele Zeichen — wer dorthin schreibt, prüft vorher (nie still kürzen). */
+export const ANSCHRIFT_MAX = 300;
 
 const txt = (v: unknown, n: number) => { const t = String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n); return t || undefined; };
 const tag = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
@@ -69,7 +71,7 @@ export function zahlungSaeubern(v: unknown): Zahlungsdaten | undefined {
   const empfaenger = {
     ...(txt(e.name, 160) ? { name: txt(e.name, 160) } : {}),
     ...(mail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) ? { email: mail } : {}),
-    ...(txt(e.anschrift, 300) ? { anschrift: txt(e.anschrift, 300) } : {}),
+    ...(txt(e.anschrift, ANSCHRIFT_MAX) ? { anschrift: txt(e.anschrift, ANSCHRIFT_MAX) } : {}),
   };
   const iban = ibanGueltig(o.iban) ? ibanGrundform(o.iban) : undefined;
   const s = o.sepa && typeof o.sepa === 'object' ? o.sepa as Record<string, unknown> : {};

@@ -33,8 +33,10 @@ import {
   MAHN_VORGABE_TAGE, EINLEITUNG_VORLAGE, SCHLUSS_VORLAGE, entwurfAnwenden, entwurfGrenzen, empfaengerAusCrm, kundeAus, kurzVon, mahnLabel, mahnMail,
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt, positionAusMandat,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
-  vorlageSaeubern, positionAusBrutto, type MahnVorschlag, type Pflicht,
+  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen,
+  type MahnVorschlag, type Pflicht,
 } from './regeln';
+import { angenommenZuDeal } from '@/lib/crm/angebote';
 import { rechnungDokument, bankZeile } from './dokument';
 import type { Mahnstufe } from './typen';
 
@@ -192,14 +194,20 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
   } else if (quelle === 'mandat') {
     const m = typeof p.mandatId === 'string' ? crm.mandate.find(x => x.id === p.mandatId && !x.geloeschtAm) : undefined;
     if (!m) throw new RechnungFehler('Mandat nicht gefunden.', 404);
-    const monat = typeof p.monat === 'string' && monatsGrenzen(p.monat) ? p.monat : heute.slice(0, 7);
+    // Ohne gewählten Monat (z. B. „Erste Rechnung“ am Angebot): der laufende, geklemmt in die Laufzeit des Mandats (18.10.).
+    const monat = typeof p.monat === 'string' && monatsGrenzen(p.monat) ? p.monat : mandatMonatVorgabe(m, heute);
     const grenzen = monatsGrenzen(monat)!;
-    vorhandenIn = l => l.find(r => r.mandatId === m.id && r.leistungVon === grenzen.von && r.art !== 'storno' && r.status !== 'storniert');
+    // Teilmonat (Kevin 18.10.: „Anteilig“): Leistungszeitraum = Monat ∩ [Beginn, Ende]; der Betrag folgt in `positionAusMandat`.
+    const lm = leistungsmonat(m, monat)!;
+    // Je Mandat und Leistungsmonat höchstens eine Monatsrechnung: erkannt am Monatsersten (bisher) oder am anteiligen Beginn (neu).
+    // Rechnungen aus einem Angebot (`angebotId`, z. B. die Einmalposten) sind keine Monatsrechnung — sie halten den Monat nicht auf.
+    vorhandenIn = l => l.find(r => r.mandatId === m.id && !r.angebotId && (r.leistungVon === grenzen.von || r.leistungVon === lm.von) && r.art !== 'storno' && r.status !== 'storniert');
     const da = vorhandenIn(plan.rechnungen);
     if (da) {
       if (!inSicht(da, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
       return { rechnung: mitFassung(da), vorhanden: true };
     }
+    if (!lm.tage) throw new RechnungFehler(ausserhalbLaufzeit(m, monat), 409, { grund: 'ausserhalb-laufzeit', monat: mandatMonatVorgabe(m, heute) });
     // 08.10. (Woche 2 · 3.13): ein Mandat mit Gesellschaft „offen“ (angelegt ohne Deal) nimmt NICHT still die Vorgabe — erst wählen.
     if (!gesellschaftAusEinheit(m.gesellschaft) && !istRegisterKennung(m.gesellschaft) && !istGesellschaft(p.firmaId)) throw new RechnungFehler('Am Mandat ist die Gesellschaft noch „offen“ — bitte erst am Mandat wählen, für welche Gesellschaft es läuft; dann die Rechnung schreiben.', 409, { grund: 'gesellschaft' });
     const g = gesellschaftFuer(m.gesellschaft);
@@ -207,10 +215,15 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const k = m.kontaktIds.map(kontakt).find(Boolean);
     const f = firma(m.firmaId);
     const empf = empfaengerAusCrm(k, f);
+    // Angebots-Nr. (18.10.): stammt das Mandat aus einem angenommenen Angebot, steht dessen Nummer und Datum auch auf der Monatsrechnung —
+    // nur als Text (`angebot`/`angebotAm`), nie `angebotId` (die gehört den Rechnungen AUS dem Angebot, sonst verwechselte „aus Angebot“ sie).
+    const ang = (crm.angebote ?? []).filter(a => a.mandatId === m.id && a.status === 'angenommen').sort((x, y) => (y.angenommenAm ?? '').localeCompare(x.angenommenAm ?? ''))[0]
+      ?? (m.chanceId ? angenommenZuDeal(crm.angebote, m.chanceId) : undefined);
     entwurf = neuerEntwurf({
       id, firmaId: g, kunde: kundeAus(empf, m.kunde), titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}`, empfaenger: empf,
-      positionen: m.honorar.betrag > 0 ? [positionAusMandat(m, monat, { kleinunternehmer: ku(g), nettoAusBrutto })] : [],
-      zahlungszielTage: ziel(g, m.zahlungszielTage || undefined), heute, mandatId: m.id, leistungVon: grenzen.von, leistungBis: grenzen.bis,
+      positionen: m.honorar.betrag > 0 ? [positionAusMandat(m, monat, { kleinunternehmer: ku(g), nettoAusBrutto, anteil: lm })] : [],
+      zahlungszielTage: ziel(g, m.zahlungszielTage || undefined), heute, mandatId: m.id, leistungVon: lm.von, leistungBis: lm.bis,
+      ...(ang?.nummer ? { angebot: ang.nummer } : {}), ...(ang?.nummer && ang.gestelltAm ? { angebotAm: tagVon(ang.gestelltAm) } : {}),
       ...(k ? { kontaktId: k.id } : {}), ...(f ? { kundeFirmaId: f.id } : {}), ...(m.ustSatz === 0 && !ku(g) ? { steuerHinweis: 'reverse-charge' as const } : {}),
       einleitung: EINLEITUNG_VORLAGE, schluss: SCHLUSS_VORLAGE,
     }, { kleinunternehmer: ku(g) });
@@ -272,6 +285,7 @@ export async function entwurfSpeichern(p: { id: string; felder: Record<string, u
   if (istGesellschaft(p.felder.firmaId) && !gesellschaftInSicht(p.felder.firmaId, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
   const gs = await gesellschaften(p.haushalt);
   let ergebnis: Rechnung | null = null;
+  let vorher: Rechnung | null = null;
   let felder: string[] = [];
   await updateJson<FinanzplanFile>('finanzplan', cur => {
     const f = planBasis(cur);
@@ -285,12 +299,51 @@ export async function entwurfSpeichern(p: { id: string; felder: Record<string, u
     if (grund) throw new RechnungFehler(grund, 409, { aktuell: mitFassung(alt) });
     felder = Object.keys({ ...alt, ...neu }).filter(k => JSON.stringify((alt as unknown as Record<string, unknown>)[k]) !== JSON.stringify((neu as unknown as Record<string, unknown>)[k]));
     ergebnis = neu;
+    vorher = alt;
     return ugFirmaNachziehen({ ...f, rechnungen: f.rechnungen.map(r => (r.id === p.id ? neu : r)) });
   });
   const r = ergebnis as Rechnung | null;
   if (!r) throw new RechnungFehler('Nicht gespeichert.', 500);
   if (felder.length) await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: r.id, felder }], p.wer);
+  const v = vorher as Rechnung | null;
+  if (v) await anschriftAnFirma(v, r, p.wer);
   return mitFassung(r);
+}
+
+/**
+ * Rechnungsanschrift an der Firma speichern (Kevin 18.10.: „An der Firma speichern“): wurde im Entwurf die Anschrift eingegeben bzw.
+ * geändert, übernimmt der Server sie in die Zahlungsdaten der Kundenfirma (`Firma.zahlung.empfaenger.anschrift` — dieselbe Stelle, aus der
+ * `empfaengerAusCrm` den nächsten Entwurf vorbelegt). Die Firma: `kundeFirmaId` der Rechnung, sonst die des Mandats. Nur über den
+ * CRM-Schreibweg (`aendereCrm`, Änderungsprotokoll mit Kennung und Feldnamen, nie Werten), nur dieses eine Feld (der Rest der
+ * Zahlungsdaten bleibt, wie er gespeichert ist — auch die IBAN); nie bei einer Firma im Papierkorb; Kontakte ohne Firma: nichts.
+ * Nur eine vollständige Anschrift, die beim Zurücklesen genau so herauskommt (`anschriftFuerFirma`). Wirft nie — die Rechnung ist
+ * schon gespeichert; scheitert es, bleibt die Firma, wie sie war (Log).
+ */
+export async function anschriftAnFirma(alt: Rechnung, neu: Rechnung, wer?: Wer): Promise<'gespeichert' | null> {
+  if (neu.status !== 'geplant' || anschriftGleich(anschriftVon(alt.empfaenger), anschriftVon(neu.empfaenger))) return null;
+  const text = anschriftFuerFirma(neu.empfaenger);
+  if (!text) return null;
+  try {
+    const { ladeCrm, aendereCrm } = await import('@/lib/crm/speicher');
+    const firmaId = neu.kundeFirmaId ?? (neu.mandatId ? (await ladeCrm()).mandate.find(m => m.id === neu.mandatId)?.firmaId : undefined);
+    if (!firmaIdOk(firmaId)) return null;
+    const jetzt = new Date().toISOString();
+    const person = wer?.person && /^[a-z0-9-]{1,40}$/.test(wer.person) ? wer.person : undefined;
+    let ergebnis: 'gespeichert' | null = null;
+    await aendereCrm(b => {
+      const f = b.firmen.find(x => x.id === firmaId);
+      if (!f || f.geloeschtAm) return b;
+      if (anschriftGleich(anschriftZerlegen(f.zahlung?.empfaenger?.anschrift), anschriftZerlegen(text))) return b;
+      const wann = { geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) };
+      const zahlung = { ...(f.zahlung ?? {}), empfaenger: { ...(f.zahlung?.empfaenger ?? {}), anschrift: text }, ...wann };
+      ergebnis = 'gespeichert';
+      return { ...b, firmen: b.firmen.map(x => (x.id === f.id ? { ...x, zahlung, ...wann } : x)) };
+    }, wer);
+    return ergebnis;
+  } catch (e) {
+    console.error('[rechnung] Anschrift nicht an der Firma gespeichert:', e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 /** Einen Entwurf löschen (nur „geplant“, ohne Nummer) — gestellte Rechnungen werden storniert, nie gelöscht. */
