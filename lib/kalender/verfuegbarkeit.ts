@@ -3,12 +3,15 @@
 // — freie-Zeit-Suche und Buchungsseite (K4), Heute, Glocke, ZOE (K6). Rechnung rein in
 // lib/kalender/verfuegbarkeit-regeln.ts (Abwesend, Arbeitsort, Wochenvorlage, Feiertage NRW).
 // Termine aus iCloud (frischer Stand, sonst der letzte), Bezüge/Sicherung aus `kalender-bezug`,
-// Wochenvorlage aus `routinen.bloecke`. Nur lesen. Ohne iCloud und ohne Google: nur Vorlage + Feiertage.
+// Wochenvorlage aus `routinen.bloecke`. Nur lesen. Ohne iCloud und ohne Google: der zuletzt vom Mac gelieferte Stand (`calendar-cache`,
+// Nachprüfung 18.10., N7 — dieselbe Quelle, die GET /api/kalender dann zeigt; vorher war die Terminliste leer, „zählt als belegt“ wirkte nicht
+// und die Kick-off-Vorschläge trafen belegte Zeiten). Nie beide Quellen zugleich: mit iCloud/Google zählt allein deren Stand.
 // Seit 08.10. (Lücke 7): dazu die Business-freien Zeiten der Person (lib/arbeitsrahmen/server.ts) — sie nehmen Arbeitszeit
 // weg (Kapazität), belegen in der freien-Zeit-Suche und auf Buchungsseiten (`belegungenAus`) und machen `istFrei` falsch.
 
 import { loadJson } from '@/lib/store/local-db';
-import { verbunden, frischerStand, termineImZeitraum } from './icloud';
+import { verbunden, frischerStand, termineImZeitraum, CACHE } from './icloud';
+import { macTermine, type MacEv } from './termine-lesen';
 import { googleKalenderNamen } from './google/namen';
 import { ladeBezuege } from './bezug-server';
 import { mitBezug } from './bezug';
@@ -27,8 +30,10 @@ const PERSON = /^[a-z0-9-]{1,40}$/;
 export async function verfuegbarkeitFuer(person: string, von: string, bis: string): Promise<Verfuegbarkeit> {
   if (!PERSON.test(person) || !TAG.test(von) || !TAG.test(bis) || bis <= von) throw new Error('verfuegbarkeitFuer: Person oder Zeitraum ungültig.');
   const [einst, bezuege, routinen, businessFrei] = await Promise.all([ladeEinstellungen(), ladeBezuege(), loadJson<RoutinenDatei>('routinen').catch(() => null), businessFreiFensterFuer(person, von, bis).catch(() => [])]);
-  // iCloud und/oder die verbundenen Google-Kalender (03.10.) — beide liegen im selben Stand.
-  const termine = verbunden() || Object.keys(await googleKalenderNamen()).length ? termineImZeitraum(await frischerStand(), von, bis) : [];
+  // iCloud und/oder die verbundenen Google-Kalender (03.10.) — beide liegen im selben Stand. Sonst der Mac-Stand (EINE Abbildung `macTermine`).
+  const termine = verbunden() || Object.keys(await googleKalenderNamen()).length
+    ? termineImZeitraum(await frischerStand(), von, bis)
+    : macTermine((await loadJson<{ events?: MacEv[] }>(CACHE).catch(() => null))?.events, von, bis);
   return verfuegbarkeitAus({
     person, von, bis,
     // R-K2 #69: Schalter „zählt als belegt“ je Kalender — ein nicht zugeordneter Kalender betrifft niemanden.
