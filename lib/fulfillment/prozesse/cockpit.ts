@@ -49,6 +49,8 @@ export interface CockpitZeile {
    * Karte sagte „4 offen“, der Fall „3 von 8“, weil hier das Playbook fehlte). Ob es FERTIG ist, sagt `fertig` (das Playbook darf noch laufen).
    */
   onboarding: { offen: number; erledigt?: number; gesamt?: number; fertig: boolean; willkommenUeberfaellig: boolean };
+  /** Kick-off vermerkt ohne eigenen Kalender-Termin (der Termin steht anderswo — `Fall.onboarding.kickoffAm`, Tag). Fehlt ohne Vermerk (18.10., L1b N13). */
+  kickoffVermerktAm?: string;
   naechsterRitual?: string;
   haengt: Haenger[];
   /** Die Phasen als Mini-Strahl (11.10., Design: „wo steht der Kunde“ als Bild) — Zustand, Anteil, Freigabe-Punkt. Nur lesen. */
@@ -167,6 +169,7 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
     ...(p ? { puls: p } : {}), pulsKritisch: !!p && pulsStufe(p.wert, e.pulsSchwelle) === 'kritisch', pulsOffen: !!e.kunde2?.pulsOffen, link: e.kunde2?.link ?? 'aus',
     analyse: e.dossier ?? null,
     onboarding: (() => { const z = onboardingZaehlung(e.onboarding.schritte); return { offen: z.gesamt - z.erledigt, erledigt: z.erledigt, gesamt: z.gesamt, fertig: e.onboarding.fertig, willkommenUeberfaellig: e.onboarding.willkommen.ueberfaellig }; })(),
+    ...(e.fall.onboarding?.kickoffAm ? { kickoffVermerktAm: e.fall.onboarding.kickoffAm } : {}),
     ...(e.naechsterRitual ? { naechsterRitual: e.naechsterRitual } : {}),
     haengt,
     phasen: reiseKurz(fallReise(e.fall, e.freigaben ?? [], e.heute)),

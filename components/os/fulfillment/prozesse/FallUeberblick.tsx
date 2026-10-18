@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Pillen, HakenZiel, Erklaert, LEUCHT } from '../../ui';
-import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, onboardingZaehlung, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
+import { willkommenMail, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, obKnotenId, onboardingZaehlung, kickoffVermerkText, type OnboardingSchrittStand } from '@/lib/fulfillment/prozesse/onboarding';
 import { fallStartTag, diffVorschau } from '@/lib/fulfillment/prozesse/fall';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
@@ -318,6 +318,7 @@ export function KickoffFragen({ daten, ops }: { daten: FallAntwort; ops: Ops }) 
   const [frage, setFrage] = useState('');
   const [an, setAn] = useState<'entscheider' | 'gruender' | 'vertrieb'>('entscheider');
   const f = daten.fall!;
+  const kickoffErfuellt = !!daten.onboarding?.schritte.find(s => s.schluessel === 'kickoff')?.erfuellt;
   return (
     <Karte i={2}>
       <Ueberschrift rechts={<span>{f.kickoffFragen.filter(q => q.erledigt).length} von {f.kickoffFragen.length}</span>}>Fragen fürs Kick-off</Ueberschrift>
@@ -333,7 +334,13 @@ export function KickoffFragen({ daten, ops }: { daten: FallAntwort; ops: Ops }) 
         <input value={frage} onChange={e => setFrage(e.target.value)} placeholder="Neue Frage" aria-label="Neue Frage" style={feld} />
         <Leiste><Pillen liste={AN} aktiv={an} onWahl={setAn} /><Knopf typ="submit" aus={!frage.trim()}>Hinzufügen</Knopf></Leiste>
       </form>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Den Termin legt ihr unter <Link href={WEG.fall(daten.mandat.id, 'menschen', 'stelle-takt-leiste')} style={{ color: C.aktiv }}>Menschen &amp; Termine</Link> an.</div>
+      {/* 18.10. (Nachprüfung L1b N13): der Weg „Termin steht anderswo“ direkt am Schritt (vorher nur im „⋯“), nach dem Vermerk der Vermerk selbst. */}
+      {f.onboarding.kickoffAm
+        ? <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{kickoffVermerkText(f.onboarding.kickoffAm)}.</div>
+        : <div style={{ fontSize: TYP.bedien, color: C.inkLeise, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <span>Den Termin legt ihr unter <Link href={WEG.fall(daten.mandat.id, 'menschen', 'stelle-takt-leiste')} style={{ color: C.aktiv }}>Menschen &amp; Termine</Link> an.</span>
+            {!kickoffErfuellt && <Knopf leise onClick={async () => { await ops([{ op: 'kickoff-vermerkt' }]); }}>Termin steht anderswo — Kick-off vermerken</Knopf>}
+          </div>}
     </Karte>
   );
 }
