@@ -10,7 +10,7 @@ import {
   ABLAUF_MARKE, VERSUCHE_VORGABE,
 } from '@/lib/fulfillment/prozesse/ausfuehrung';
 import { fallAnwenden, type FallKontext } from '@/lib/fulfillment/prozesse/fall';
-import { naechsterPunkt, naechsterHandgriff, fallStelle } from '@/lib/fulfillment/prozesse/reise';
+import { naechsterPunkt, fallStelle } from '@/lib/fulfillment/prozesse/reise';
 import { reiseZeile, knotenHaengt } from '@/lib/fulfillment/prozesse/reise-bild';
 import { cockpitZeile, wasHaengt } from '@/lib/fulfillment/prozesse/cockpit';
 import { onboardingStand } from '@/lib/fulfillment/prozesse/onboarding';
@@ -115,7 +115,6 @@ describe('Entscheidung fragt nach — ja / nein', () => {
     expect(soll.glocken).toEqual([{ art: 'frage', knotenId: 'e', titel: 'Angebot angenommen?', marke: ABLAUF_MARKE.frage('e', 0) }]);
     expect(ausfuehrungSoll(gemacht(f, soll), '2026-10-12').glocken).toEqual([]);
     expect(naechsterPunkt(f, [], '2026-10-11')).toMatchObject({ id: 'e', wartetAuf: 'entscheidung', ueberfaellig: true });
-    expect(naechsterHandgriff(f, undefined, [], '2026-10-11')).toMatchObject({ art: 'schritt', text: 'Entscheiden: Angebot angenommen?' });
   });
 
   it('„ja“ → weiter zum nächsten Schritt, der Nein-Zweig entfällt', () => {

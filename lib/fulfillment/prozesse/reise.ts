@@ -10,7 +10,7 @@ import type { Fall, FallKnoten, Freigabepunkt, KnotenForm, KnotenStatus, Zustaen
 import { MUSTER_ONBOARDING, type OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
 import { abschnittVon, aktiverNeinZweig, aktuellerKnoten, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
-import { obKnotenId, obSchluessel, type OnboardingStand } from './onboarding';
+import { obKnotenId, obSchluessel } from './onboarding';
 import { SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE } from './phasen';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz, BESTAETIGUNG } from './darstellung';
 
@@ -207,7 +207,7 @@ const OB_REIHE: readonly OnboardingSchluessel[] = [
 ];
 
 /**
- * Der nächste Punkt eines (wirksamen, `fallWirksam`) Falls — dieselbe Reihenfolge wie `naechsterHandgriff`: offene Onboarding-Schritte, dann ein
+ * Der nächste Punkt eines (wirksamen, `fallWirksam`) Falls — EINE Regel für „Als Nächstes“ (die frühere zweite, `naechsterHandgriff`, ist seit 18.10. weg): offene Onboarding-Schritte, dann ein
  * Abstimmungspunkt einer Phase, die sonst durch ist, dann der erste offene Schritt der laufenden Phase (Sammel-Schritte aufgelöst; Schritte ohne
  * Abstimmungspunkt zuerst), zuletzt ihr Abstimmungspunkt. Abgeschlossen oder alles erledigt → null.
  */
@@ -299,56 +299,6 @@ export const ONBOARDING_SPRUNG: Record<OnboardingSchluessel, { reiter: FallReite
   wertkonto: { reiter: 'ziele', text: 'Wert-Konto festlegen' },
   entscheidungslog: { reiter: 'menschen', text: 'Erste Entscheidung festhalten', stelle: 'menschen-entscheidung' },
   f0: { reiter: 'reise', text: `Erste ${BESTAETIGUNG} vermerken` },
-};
-
-export type Handgriff =
-  | { art: 'willkommen'; text: string; dringend: boolean }
-  | { art: 'onboarding'; schluessel: OnboardingSchluessel; reiter: FallReiter; text: string }
-  | { art: 'freigabe'; id: string; text: string }
-  | { art: 'schritt'; id: string; text: string; wartetKunde: boolean }
-  | { art: 'fertig'; text: string };
-
-/**
- * Der eine nächste Handgriff eines Falls — zwei, drei Schritte weiter gedacht: erst die Willkommensmail (24 h), dann das Onboarding, dann die
- * Freigabe der laufenden Phase (wenn sonst alles erledigt ist), sonst der nächste offene Schritt. Ein Fall ohne offene Schritte ist „fertig“.
- */
-export function naechsterHandgriff(fall: Pick<Fall, 'knoten' | 'freigaben' | 'status'>, onboarding: Pick<OnboardingStand, 'schritte' | 'willkommen'> | undefined, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel'>[], heute: string): Handgriff {
-  if (fall.status === 'abgeschlossen') return { art: 'fertig', text: 'Der Fall ist abgeschlossen.' };
-  const offenOb = (onboarding?.schritte ?? []).filter(s => !s.erfuellt && !s.entfaellt);
-  const willkommen = offenOb.find(s => s.schluessel === 'willkommen');
-  if (willkommen) return { art: 'willkommen', text: 'Willkommensmail vorbereiten', dringend: !!onboarding?.willkommen.ueberfaellig };
-  const ob = offenOb.find(s => s.zaehlt && s.schluessel !== 'f0') ?? offenOb.find(s => s.zaehlt);
-  if (ob) {
-    if (ob.schluessel === 'f0') return { art: 'freigabe', id: 'F0', text: freigabeText('F0', freigaben, fall.knoten) };
-    return { art: 'onboarding', schluessel: ob.schluessel, reiter: ONBOARDING_SPRUNG[ob.schluessel].reiter, text: ONBOARDING_SPRUNG[ob.schluessel].text };
-  }
-  // Eine Phase ist durch (alle Schritte erledigt), aber ihre Freigabe fehlt noch → das ist der nächste Handgriff (vor dem Weitermachen).
-  const ohneFreigabeDurch = phasenVon(fall).find(ph => ph.freigabe && !fall.freigaben[ph.freigabe] && ph.status !== 'entfaellt' && phaseFertig(ph, fall.knoten));
-  if (ohneFreigabeDurch?.freigabe) return { art: 'freigabe', id: ohneFreigabeDurch.freigabe, text: freigabeText(ohneFreigabeDurch.freigabe, freigaben, fall.knoten) };
-  const p = aktuellerKnoten(fall).phase;
-  if (!p) return { art: 'fertig', text: 'Alle Phasen sind erledigt.' };
-  // Dieselbe Liste wie „Als Nächstes“ (`offeneSchritte`): ein Sammel-Schritt ist nie selbst der Handgriff, sondern sein erster offener Baustein.
-  const offen = offeneSchritte(fall, p.id, heute).filter(z => !wartenderNeinZweig(fall.knoten, z.knoten.id));
-  const ohneFreigabe = offen.filter(z => !z.knoten.freigabe);
-  // Freigabe als nächster Handgriff: die Phase trägt einen offenen Freigabe-Punkt und sonst ist alles erledigt (bzw. nur noch der Freigabe-Schritt offen).
-  const fg = p.freigabe && !fall.freigaben[p.freigabe] ? p.freigabe : offen.find(z => z.knoten.freigabe && !fall.freigaben[z.knoten.freigabe])?.knoten.freigabe;
-  if (fg && !ohneFreigabe.length) return { art: 'freigabe', id: fg, text: freigabeText(fg, freigaben, fall.knoten) };
-  let s = ohneFreigabe[0] ?? offen[0];
-  if (!s) return fg ? { art: 'freigabe', id: fg, text: freigabeText(fg, freigaben, fall.knoten) } : { art: 'fertig', text: 'Alle Phasen sind erledigt.' };
-  // Ausführung (17.10. abends): an einer Entscheidung mit „nein“ ist die Erinnerung der Handgriff; eine offene Entscheidung fragt.
-  const zweig = s.knoten.form === 'entscheidung' ? aktiverNeinZweig(fall.knoten, s.knoten) : null;
-  if (zweig) s = alleSchritte(fall, p.id, heute).find(z => z.knoten.id === zweig.id) ?? s;
-  const wartetKunde = s.zustand === 'wartet_kunde';
-  const titel = anzeigeTitel(s.knoten.titel, abstimmungsNummern(fall.knoten));
-  const frage = !zweig && s.knoten.form === 'entscheidung' && !s.knoten.freigabe;
-  return { art: 'schritt', id: s.knoten.id, text: wartetKunde ? `Beim Kunden nachfassen: ${titel}` : frage ? `Entscheiden: ${titel}` : zweig ? `Erinnerung: ${titel}` : `Als Nächstes: ${titel}`, wartetKunde };
-}
-
-/** „Abstimmungspunkt 3 vermerken (Diagnose-Abnahme)“ — „Freigabe“ meint in MAKE OS die Vorschläge von ZOE (14.10., Abnahme B19). */
-const freigabeText = (id: string, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel'>[], knoten: readonly FallKnoten[] = []) => {
-  const f = freigaben.find(x => x.id === id);
-  const n = abstimmungsNummern(knoten).get(id);
-  return `${BESTAETIGUNG}${n ? ` ${n}` : ''} vermerken${f ? ` (${titelOhneZusatz(f.titel)})` : ''}`;
 };
 
 /** „seit heute“ · „seit 1 Tag“ · „seit 9 Tagen“ — Wartezeit in Worten. */

@@ -8,8 +8,8 @@ import { createElement as h } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MUSTER_P1, MUSTER_LANDKARTE } from '@/lib/fulfillment/muster';
 import { fallStarten } from '@/lib/fulfillment/prozesse/fall';
-import { onboardingStand, obKnotenId } from '@/lib/fulfillment/prozesse/onboarding';
-import { fallReise, phaseGruppen, naechsteSchritte, statusOps, naechsterHandgriff, reiseKurz } from '@/lib/fulfillment/prozesse/reise';
+import { onboardingStand, obKnotenId, fallWirksam } from '@/lib/fulfillment/prozesse/onboarding';
+import { fallReise, phaseGruppen, naechsteSchritte, statusOps, naechsterPunkt, reiseKurz, ONBOARDING_SPRUNG } from '@/lib/fulfillment/prozesse/reise';
 import { knotenAmpel, kundenAmpel, paketSteckbrief, bausteinOrte, nachAufmerksamkeit, wellenBild, naechsterLauf, gemeinsameSaetze, ohneGemeinsame } from '@/lib/fulfillment/prozesse/darstellung';
 import { landkarteLage } from '@/lib/fulfillment/prozesse/landkarte';
 import { cockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
@@ -99,25 +99,24 @@ describe('Reise eines Falls', () => {
   });
 });
 
-describe('Der nächste Handgriff (eine Hauptaktion)', () => {
+describe('Der nächste Punkt (EINE Regel für „Als Nächstes“, 18.10.: die zweite Regel `naechsterHandgriff` ist weg)', () => {
   const start = () => fallStarten({ mandatId: 'm-x', vorlage: MUSTER_P1, person: 'pia', jetzt: JETZT, start: HEUTE, neueId: (p: string) => `${p}-${Math.random().toString(36).slice(2, 8)}` });
   const abl = { ziele: [], formularProzent: null, kickoffRitualIds: [], willkommenStunden: 24, jetzt: JETZT, unterschrift: '2026-10-09' };
 
-  it('neuer Fall: zuerst die Willkommensmail (dringend nach 24 h), danach der erste offene Onboarding-Schritt', () => {
+  it('neuer Fall: zuerst die Willkommensmail, danach der erste offene Onboarding-Schritt', () => {
     const f = start();
-    const ob = onboardingStand(f, abl);
-    expect(naechsterHandgriff(f, ob, MUSTER_P1.freigaben, HEUTE)).toMatchObject({ art: 'willkommen', dringend: true });
+    expect(naechsterPunkt(fallWirksam(f, abl), MUSTER_P1.freigaben, HEUTE)).toMatchObject({ art: 'onboarding', schluessel: 'willkommen' });
     const f2: Fall = { ...f, onboarding: { willkommenGesendetAm: JETZT } };
-    const g = naechsterHandgriff(f2, onboardingStand(f2, abl), MUSTER_P1.freigaben, HEUTE);
-    expect(g).toMatchObject({ art: 'onboarding', schluessel: 'kickoff', reiter: 'menschen' }); // 17.10.: der Takt steht unter „Menschen & Termine“
+    expect(naechsterPunkt(fallWirksam(f2, abl), MUSTER_P1.freigaben, HEUTE)).toMatchObject({ art: 'onboarding', schluessel: 'kickoff' });
+    expect(ONBOARDING_SPRUNG.kickoff.reiter).toBe('menschen'); // 17.10.: der Takt steht unter „Menschen & Termine“
   });
 
-  it('laufender Fall: nächster offener Schritt; sind alle Schritte einer Phase erledigt, die Freigabe in Klartext; abgeschlossen = fertig', () => {
-    expect(naechsterHandgriff(fall(), undefined, FREIGABEN, HEUTE)).toMatchObject({ art: 'schritt', id: 'p2-s2', text: 'Als Nächstes: Leitfaden schreiben' });
+  it('laufender Fall: nächster offener Schritt; sind alle Schritte einer Phase erledigt, ihre Bestätigung; abgeschlossen = nichts', () => {
+    expect(naechsterPunkt(fall(), FREIGABEN, HEUTE)).toMatchObject({ art: 'schritt', id: 'p2-s2', titel: 'Leitfaden schreiben' });
     const f = fall();
     f.knoten = f.knoten.map(x => (x.id.startsWith('p2-') ? { ...x, status: 'erledigt' } : x));
-    expect(naechsterHandgriff(f, undefined, FREIGABEN, HEUTE)).toEqual({ art: 'freigabe', id: 'F3', text: 'Bestätigung 2 vermerken (Diagnose-Abnahme)' }); // 17.10. spät: „Bestätigung“
-    expect(naechsterHandgriff({ ...fall(), status: 'abgeschlossen' }, undefined, FREIGABEN, HEUTE).art).toBe('fertig');
+    expect(naechsterPunkt(f, FREIGABEN, HEUTE)).toMatchObject({ art: 'freigabe', freigabe: 'F3' });
+    expect(naechsterPunkt({ ...fall(), status: 'abgeschlossen' }, FREIGABEN, HEUTE)).toBeNull();
   });
 });
 
