@@ -21,6 +21,7 @@ import { anzahl } from '@/lib/text/zahlwort';
 import { ortHref, ORTE, istOrt } from '@/lib/fulfillment/orte';
 import { ebeneVon, inReihenfolge, kinderVon, wurzelVon } from '@/lib/fulfillment/regeln';
 import { brotkrumen } from '@/lib/fulfillment/prozesse/landkarte';
+import { bausteinArtName } from '@/lib/fulfillment/prozesse/bausteine';
 import { knotenAmpel, paketSteckbrief, EBENEN_NAME, abstimmungsNummern, abstimmungName, titelOhneZusatz, titelZusatz } from '@/lib/fulfillment/prozesse/darstellung';
 import type { ProzessKnoten, Zone } from '@/lib/fulfillment/typen';
 import { useUebersicht, useCockpit, vorlagenOps, fehlerText, holeJson, geaendert, neueAnfrageId, type Uebersicht, type VorlageMitStand, type MitStand } from './daten';
@@ -61,7 +62,7 @@ export function Prozesse({ k }: { k?: string }) {
         </Leerzustand>
       ) : daten.musterOffen.length > 0 && (
         <Hinweis art="info" aktion={<Erklaert erklaerung="fulfillment.vorlageAusMuster" name="Aus Muster ergänzen"><Knopf leise onClick={ausMuster}>Fehlendes aus Muster anlegen</Knopf></Erklaert>}>
-          Noch nicht angelegt: {daten.musterOffen.length} Muster-Vorlage{daten.musterOffen.length === 1 ? '' : 'n'}.
+          Noch nicht angelegt: {daten.musterOffen.length} Teil{daten.musterOffen.length === 1 ? '' : 'e'} aus dem Muster.
         </Hinweis>
       )}
       {!k && (landkarte || pakete.length > 0) && <HeuteImFulfillment i={0} />}
@@ -146,7 +147,7 @@ function Steckbrief({ vorlage, id, daten, onKnoten }: { vorlage: VorlageMitStand
       </div>
       <Leiste>
         {ort && <Link href={ort.href} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Wohnt heute in: {ort.titel} — öffnen ›</Link>}
-        {verweis && <Knopf leise onClick={() => onKnoten(verweis.knoten.find(x => !x.elternId)?.id ?? '')}>Paket „{verweis.titel}“ öffnen ›</Knopf>}
+        {verweis && <Knopf leise onClick={() => onKnoten(verweis.knoten.find(x => !x.elternId)?.id ?? '')}>Ablauf „{verweis.titel}“ öffnen ›</Knopf>}
         {baustein && <Link href={WEG.fulfillment('bausteine', { b: baustein.id })} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Baustein „{baustein.titel}“ öffnen ›</Link>}
       </Leiste>
       {kunden.length > 0 && (
@@ -265,7 +266,7 @@ export function VorlageEditor({ vorlage, daten }: { vorlage: VorlageMitStand; da
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
       <Leiste>
         <Knopf leise onClick={titel}>Titel ändern</Knopf>
-        {vorlage.art !== 'landkarte' && <Knopf leise onClick={loeschen}>Vorlage löschen</Knopf>}
+        {vorlage.art !== 'landkarte' && <Knopf leise onClick={loeschen}>Ablauf löschen</Knopf>}
       </Leiste>
       <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
         {reihe.map(x => {
@@ -276,13 +277,13 @@ export function VorlageEditor({ vorlage, daten }: { vorlage: VorlageMitStand; da
           return (
             <li key={x.id} style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: (eb - 1) * 16, minHeight: 44, borderBottom: '1px solid rgba(255,255,255,.05)' }}>
               <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, color: eb === 1 ? C.ink : C.inkDim, fontWeight: eb <= 2 ? 600 : 400, overflowWrap: 'anywhere' }}>
-                {x.titel}{x.freigabe ? ` · ${x.freigabe}` : ''}{b ? ` · ${b.art}` : ''}
+                {x.titel}{x.freigabe ? ` · ${x.freigabe}` : ''}{b ? ` · ${bausteinArtName(b.art)}` : ''}
               </span>
               {x.elternId && <Knopf leise ariaLabel="nach oben" aus={i <= 0} onClick={() => op({ op: 'knoten-rang', vorlageId: vorlage.id, id: x.id, richtung: 'hoch' })}>▲</Knopf>}
               {x.elternId && <Knopf leise ariaLabel="nach unten" aus={i >= g.length - 1} onClick={() => op({ op: 'knoten-rang', vorlageId: vorlage.id, id: x.id, richtung: 'runter' })}>▼</Knopf>}
               <Knopf leise ariaLabel="bearbeiten" onClick={() => setForm({ knoten: x })}>✎</Knopf>
               {eb < 5 && <Knopf leise ariaLabel="Schritt darunter anlegen" onClick={() => setForm({ elternId: x.id })}>+</Knopf>}
-              {x.elternId && <Knopf leise ariaLabel="entfernen" onClick={async () => { if (await bestaetigen({ titel: `„${x.titel}“ entfernen?`, text: kinderVon(x.id, vorlage.knoten).length ? 'Alle Schritte darunter fallen mit weg.' : 'Der Schritt fällt aus der Vorlage.', ja: 'Entfernen', gefahr: true })) await op({ op: 'knoten-weg', vorlageId: vorlage.id, id: x.id, stand: x.stand }); }}>×</Knopf>}
+              {x.elternId && <Knopf leise ariaLabel="entfernen" onClick={async () => { if (await bestaetigen({ titel: `„${x.titel}“ entfernen?`, text: kinderVon(x.id, vorlage.knoten).length ? 'Alle Schritte darunter fallen mit weg.' : 'Der Schritt fällt aus dem Ablauf.', ja: 'Entfernen', gefahr: true })) await op({ op: 'knoten-weg', vorlageId: vorlage.id, id: x.id, stand: x.stand }); }}>×</Knopf>}
             </li>
           );
         })}

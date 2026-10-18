@@ -26,6 +26,7 @@ import { neueKennung } from '@/lib/kennung';
 import { editorModell, FORM_TITEL, FORM_VORGABE, type EditorKnoten, type EditorOp, type EditorPhase, type EditorZiel } from '@/lib/fulfillment/prozesse/editor';
 import { geschichteFuer, type GeschichteEintrag } from '@/lib/fulfillment/prozesse/editor-geschichte';
 import { flussFormVon } from '@/lib/fulfillment/prozesse/reise-bild';
+import { bausteinArtName } from '@/lib/fulfillment/prozesse/bausteine';
 import type { KnotenForm, ProzessVorlage } from '@/lib/fulfillment/typen';
 import { holeJson, fehlerText, geaendert } from '../prozesse/daten';
 import { klein, Meldung, KnotenFormular } from '../prozesse/teile';
@@ -388,7 +389,7 @@ export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }:
                     const z = bausteinZiel; setBausteinZiel(null); if (z) void neuerKnoten(formFuerBaustein(b.art), z, b);
                   }}
                   style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: ZIEL_PX, padding: '6px 12px', borderRadius: 8, border: `1px solid ${RAND.flaeche}`, background: 'none', color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer', textAlign: 'left' }}>
-                  <span style={{ flex: 1, minWidth: 0 }}>{b.titel}</span><span style={{ color: C.inkLeise }}>{b.art}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>{b.titel}</span><span style={{ color: C.inkLeise }}>{bausteinArtName(b.art)}</span>
                 </button>
               ))}
             </div>

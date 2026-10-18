@@ -15,6 +15,7 @@ import { KNOTEN_FORMEN } from '@/lib/fulfillment/lesen';
 import { FORM_TITEL, FRIST_MAX, VERSUCHE_MIN, VERSUCHE_MAX, type EditorKnoten, type EditorModell, type EditorOp, type EditorPhase } from '@/lib/fulfillment/prozesse/editor';
 import { VERSUCHE_VORGABE } from '@/lib/fulfillment/prozesse/ausfuehrung';
 import { flussFormVon } from '@/lib/fulfillment/prozesse/reise-bild';
+import { bausteinArtName } from '@/lib/fulfillment/prozesse/bausteine';
 import type { KnotenForm, Zustaendig } from '@/lib/fulfillment/typen';
 import { FormZeichen } from '../../ui/reise/ReiseBild';
 import { TextFeld, klein } from '../prozesse/teile';
@@ -120,7 +121,7 @@ export function SchrittFeld({ modell, phase, k, api, titelRef }: { modell: Edito
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
             {k.bausteine.map(b => (
               <li key={b.knotenId} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: ZIEL_PX }}>
-                <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, color: C.ink, overflowWrap: 'break-word' }}>{b.titel}{b.art ? <span style={{ color: C.inkLeise }}> · {b.art}</span> : null}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, color: C.ink, overflowWrap: 'break-word' }}>{b.titel}{b.art ? <span style={{ color: C.inkLeise }}> · {bausteinArtName(b.art)}</span> : null}</span>
                 {api.darf && <Knopf leise style={K44} ariaLabel={`„${b.titel}“ lösen`} aus={api.laeuft} onClick={() => api.loeschen(b.knotenId, 'baustein')}>×</Knopf>}
               </li>
             ))}
@@ -130,7 +131,7 @@ export function SchrittFeld({ modell, phase, k, api, titelRef }: { modell: Edito
           <select aria-label="Baustein verknüpfen" value="" disabled={aus} style={wahlStil}
             onChange={e => { const id = e.target.value; if (id) void api.tun([{ op: 'baustein-dazu', id: api.neueId(), schrittId: k.id, bausteinId: id }]); }}>
             <option value="">+ Baustein verknüpfen …</option>
-            {api.bausteine.filter(b => !k.bausteine.some(x => x.bausteinId === b.id)).map(b => <option key={b.id} value={b.id}>{b.titel} ({b.art})</option>)}
+            {api.bausteine.filter(b => !k.bausteine.some(x => x.bausteinId === b.id)).map(b => <option key={b.id} value={b.id}>{b.titel} ({bausteinArtName(b.art)})</option>)}
           </select>
         )}
         {!k.bausteine.length && !api.darf && <span style={klein}>keine</span>}

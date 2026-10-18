@@ -87,9 +87,9 @@ function Leistungstreppe({ api, lage, crmApi }: { api: TreppeApi; lage: TreppeLa
   if (!stufen.length) return (
     <Karte i={0}>
       <Ueberschrift rechts={kopf}>Leistungstreppe</Ueberschrift>
-      <Leerzustand symbol="↗" titel="Noch keine Leistungstreppe" aktion={<Knopf onClick={() => api.schreibe([{ op: 'vorlage' }])}>Leere Vorlage anlegen</Knopf>}>
+      <Leerzustand symbol="↗" titel="Noch keine Leistungstreppe" aktion={<Knopf onClick={() => api.schreibe([{ op: 'vorlage' }])}>Leere Treppe anlegen</Knopf>}>
         Bildet ab, wohin ihr mit euren Kunden wollt: vom ersten Kontakt über das Einstiegsangebot bis zum großen Paket — und warum jede Stufe vor der nächsten kommt.
-        Ladet euer Positionierungs-Dokument hoch (der Head of Sales schlägt eine Treppe vor, ihr gebt frei) oder füllt die leere Vorlage aus.
+        Ladet euer Positionierungs-Dokument hoch (der Head of Sales schlägt eine Treppe vor, ihr gebt frei) oder füllt die leere Treppe aus.
       </Leerzustand>
       {dialog}
     </Karte>

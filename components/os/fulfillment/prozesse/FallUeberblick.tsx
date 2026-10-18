@@ -77,10 +77,10 @@ function DiffHinweis({ d, titel, mandatId, vorlageId, onMeldung }: { d: NonNulla
   const [auf, setAuf] = useState(false);
   if (!(d.neu.length + d.geaendert.length + (d.reihenfolge?.length ?? 0))) return null;
   const reihe = d.reihenfolge ?? [];
-  const teile = [d.neu.length ? `${d.neu.length} neu` : '', d.geaendert.length ? `${d.geaendert.length} geändert` : '', reihe.length ? `neue Reihenfolge in ${reihe.length}` : '', d.entfernt.length ? `${d.entfernt.length} in der Vorlage entfernt (bleiben im Fall)` : ''].filter(Boolean);
+  const teile = [d.neu.length ? `${d.neu.length} neu` : '', d.geaendert.length ? `${d.geaendert.length} geändert` : '', reihe.length ? `neue Reihenfolge in ${reihe.length}` : '', d.entfernt.length ? `${d.entfernt.length} im Ablauf entfernt (bleiben im Fall)` : ''].filter(Boolean);
   const inhalt = (
     <Hinweis art="info" titel={`${titel} — übernehmen? (Fassung ${d.von} → ${d.nach})`}
-      aktion={<Erklaert erklaerung="fulfillment.vorlageDiff" name="Vorlage übernehmen"><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'vorlage-uebernehmen', mandatId, ...(vorlageId ? { vorlageId } : {}) }); onMeldung(a.ok ? { text: 'Neue Fassung übernommen — erledigte Schritte bleiben, wie sie sind.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Übernehmen</Knopf></Erklaert>}>
+      aktion={<Erklaert erklaerung="fulfillment.vorlageDiff" name="Neue Fassung übernehmen"><Knopf leise onClick={async () => { const a = await fallAktion({ aktion: 'vorlage-uebernehmen', mandatId, ...(vorlageId ? { vorlageId } : {}) }); onMeldung(a.ok ? { text: 'Neue Fassung übernommen — erledigte Schritte bleiben, wie sie sind.', art: 'gut' } : { text: fehlerText(a), art: 'kritisch' }); }}>Übernehmen</Knopf></Erklaert>}>
       <span>{teile.join(' · ')} — erledigte Schritte bleiben erledigt, nichts geht verloren. </span>
       <button type="button" className="fassbar" aria-expanded={auf} onClick={() => setAuf(!auf)} style={{ minHeight: 44, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', padding: 0, fontSize: TYP.bedien }}>{auf ? 'Vorschau schließen' : 'Was sich ändert ›'}</button>
       {auf && (
@@ -107,7 +107,7 @@ export function AusfuehrungWartet({ daten }: { daten: FallAntwort }) {
   if (!daten.ausfuehrungWartet || !daten.diff) return null;
   return (
     <Hinweis art="info" titel="Ausführung startet nach der Übernahme"
-      aktion={<Knopf leise onClick={() => { const el = document.getElementById('ff-vorlage-geaendert'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); Array.from(el?.querySelectorAll<HTMLElement>('button') ?? []).find(b => b.textContent?.trim() === 'Übernehmen')?.focus({ preventScroll: true }); }}>Vorlage übernehmen, damit die Ausführung startet ›</Knopf>}>
+      aktion={<Knopf leise onClick={() => { const el = document.getElementById('ff-vorlage-geaendert'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); Array.from(el?.querySelectorAll<HTMLElement>('button') ?? []).find(b => b.textContent?.trim() === 'Übernehmen')?.focus({ preventScroll: true }); }}>Neue Fassung übernehmen, damit die Ausführung startet ›</Knopf>}>
       Dieser Fall stammt aus einer älteren Fassung ohne Formen — Aufgaben, Entwürfe und Erinnerungen entstehen erst mit der neuen Fassung.
     </Hinweis>
   );
@@ -166,7 +166,7 @@ export function ZusatzAnhaengen({ daten }: { daten: FallAntwort }) {
       <Knopf haupt typ="submit" aus={!wahl}>Anhängen</Knopf>
       <Knopf leise onClick={() => setAuf(false)}>Abbrechen</Knopf>
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
-      <span style={klein}>Die Phasen kommen als eigener Abschnitt hinten an diesen Fall und laufen neben dem Paket — ohne zweites Onboarding.</span>
+      <span style={klein}>Die Phasen kommen als eigener Abschnitt hinten an diesen Fall und laufen neben dem Ablauf — ohne zweites Onboarding.</span>
     </form>
   );
 }
@@ -236,8 +236,8 @@ export function WillkommenKarte({ daten, oeffnen, setOeffnen, onMeldung, haupt }
         <div style={{ display: 'grid', gap: 10 }}>
           {g.ohneEmpfaenger && <Hinweis art="achtung">{g.ohneEmpfaenger}</Hinweis>}
           {!g.vorlage ? (
-            <Hinweis art="info" titel="Noch keine Willkommens-Vorlage" aktion={<Knopf leise onClick={geruest}>Vorlage aus Gerüst anlegen</Knopf>}>
-              Die Vorlage ist ein Baustein der Bibliothek (Art „Mail“, Schlagwort „willkommen“) mit den Platzhaltern {'{{anrede}}'}, {'{{kickoff_vorschlaege}}'} und {'{{playbook_link}}'}.
+            <Hinweis art="info" titel="Noch kein Text für die Willkommensmail" aktion={<Knopf leise onClick={geruest}>Text aus Gerüst anlegen</Knopf>}>
+              Der Text ist ein Baustein der Bibliothek (Art „Mail“, Schlagwort „willkommen“) mit den Platzhaltern {'{{anrede}}'}, {'{{kickoff_vorschlaege}}'} und {'{{playbook_link}}'}.
             </Hinweis>
           ) : (
             <>

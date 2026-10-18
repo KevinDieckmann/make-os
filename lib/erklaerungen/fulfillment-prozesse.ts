@@ -8,7 +8,7 @@ import type { EinstellungsText } from './typen';
 export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   'fulfillment.landkarte': {
     was: 'Was ihr seht: das ganze Unternehmen als Hochhaus. Das Dach steuert (Ziele, Kennzahlen), die Etagen sind der Weg eines Kunden durch euch — von unten (Marketing) nach oben (Follow-up) —, das Fundament trägt alles (CRM, Recht, Finanzen). Je Etage stehen die Kunden, die gerade dort sind, mit Ampel. Ein Tipp auf einen Kasten öffnet darunter, was dort passiert.',
-    beispiel: 'Die Etage „Fulfillment“ zeigt „2 Kunden“ mit gelber Ampel — ein Tipp öffnet die Abläufe dieser Etage und die zwei Kunden; einer wartet seit neun Tagen auf eine Freigabe.',
+    beispiel: 'Die Etage „Fulfillment“ zeigt „2 Kunden“ mit gelber Ampel — ein Tipp öffnet die Abläufe dieser Etage und die zwei Kunden; einer wartet seit neun Tagen auf eine Bestätigung.',
   },
   'fulfillment.vorlageAusMuster': {
     was: 'Legt das neutrale Gerüst an: die Landkarte und drei Abläufe mit Phasen und Bestätigungen, dazu die Rituale und das Playbook-Formular. Inhalte (Texte, Skripte, Preise) kommen später per Import oder Editor dazu.',
@@ -16,7 +16,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   },
   'fulfillment.zuordnung': {
     was: 'Jedes Produkt bekommt genau einen Ablauf. Startet ein Mandat auf diesem Produkt seinen Fall, kopiert der Fall die Struktur dieses Ablaufs.',
-    beispiel: 'Das Produkt „Diagnose“ liefert nach der Vorlage „Vertriebsleitung auf Zeit“ — ein neues Mandat startet damit direkt in Phase „Vorlauf / Onboarding“.',
+    beispiel: 'Das Produkt „Diagnose“ liefert nach dem Ablauf „Vertriebsleitung auf Zeit“ — ein neues Mandat startet damit direkt in Phase „Vorlauf / Onboarding“.',
   },
   'fulfillment.importRechtPruefen': {
     was: 'Ansprache-Texte (Telefon, Mail, Empfehlung, Provisionen) werden beim Import als „vor Einsatz rechtlich prüfen“ markiert. Das ist ein Hinweis, keine Rechtsberatung — erst nach dem Vermerk „geprüft“ gehen sie an Kunden.',
@@ -39,7 +39,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     aus: 'Der Baustein bleibt intern.',
   },
   'fulfillment.abstimmungAmEnde': {
-    was: 'Eine Bestätigung (◆) am Ende der Phase: erst wenn sie vermerkt ist (wer bestätigt, wie), ist die Phase abgeschlossen. Im Ablauf steht er als Raute zwischen den Phasen.',
+    was: 'Eine Bestätigung (◆) am Ende der Phase: erst wenn sie vermerkt ist (wer bestätigt, wie), ist die Phase abgeschlossen. Im Ablauf steht sie als Raute zwischen den Phasen.',
     beispiel: 'Die Phase „Analyse“ endet mit „Dossier abgestimmt“ — Kunde und ihr bestätigen gemeinsam, dann beginnt „Diagnose“.',
     an: 'Die Phase endet mit dieser Raute; neue Fälle zeigen sie als Bestätigung.',
     aus: 'Die Phase endet ohne Bestätigung — sie ist fertig, sobald ihre Schritte erledigt sind.',
@@ -83,22 +83,22 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Bestätigung 3 · Diagnose-Abnahme: im Steuerungskreis bestätigt, Notiz „Top-5 Maßnahmen angenommen, Maßnahme 4 später“.',
   },
   'fulfillment.zusatzmodul': {
-    was: 'Ein Zusatzmodul ist ein Paket, das man zu einem laufenden Mandat dazubucht. Läuft dort schon ein Fall, kommt kein zweiter Fall und kein zweites Onboarding: die Phasen des Moduls hängen als eigener Abschnitt hinten an den Fall und laufen neben dem Paket. Ohne laufenden Fall startet das Modul als eigener Fall ohne Onboarding.',
+    was: 'Ein Zusatzmodul ist ein Ablauf, den man zu einem laufenden Mandat dazubucht. Läuft dort schon ein Fall, kommt kein zweiter Fall und kein zweites Onboarding: die Phasen des Moduls hängen als eigener Abschnitt hinten an den Fall und laufen neben dem Ablauf. Ohne laufenden Fall startet das Modul als eigener Fall ohne Onboarding.',
     beispiel: 'Ein Kunde ist in Phase 3 der Vertriebsleitung auf Zeit und bucht die Telefonie dazu — der Fall bekommt den Abschnitt „Telefonie“ mit „Liste vorbereiten“ bis „Auswertung“, die erste Aufgabe ist ab heute fällig.',
-    an: 'Startet man das Paket an einem Mandat mit laufendem Fall, hängt es dort an; sonst beginnt ein Fall ohne die acht Onboarding-Schritte.',
-    aus: 'Das Paket startet wie jedes andere einen eigenen Fall mit Onboarding — an einem Mandat mit laufendem Fall geht das nicht.',
+    an: 'Startet man den Ablauf an einem Mandat mit laufendem Fall, hängt er dort an; sonst beginnt ein Fall ohne die acht Onboarding-Schritte.',
+    aus: 'Der Ablauf startet wie jeder andere einen eigenen Fall mit Onboarding — an einem Mandat mit laufendem Fall geht das nicht.',
   },
   'fulfillment.zusatzAnhaengen': {
-    was: 'Hängt ein Zusatzmodul an diesen Fall: seine Phasen stehen danach als eigener Abschnitt hinter denen des Pakets, die Ausführung arbeitet dort parallel ab dem gewählten Tag. Nichts am bisherigen Fall ändert sich.',
+    was: 'Hängt ein Zusatzmodul an diesen Fall: seine Phasen stehen danach als eigener Abschnitt hinter denen des Ablaufs, die Ausführung arbeitet dort parallel ab dem gewählten Tag. Nichts am bisherigen Fall ändert sich.',
     beispiel: '„Telefonie“ ab Montag anhängen — die Reise zeigt danach sechs weitere Phasen, „Form der Telefonie festlegen“ ist die erste Aufgabe.',
   },
   'fulfillment.vorlageDiff': {
-    was: 'Der Fall arbeitet mit einer Kopie der Vorlage. Ändert ihr die Vorlage für künftige Kunden, zeigt der Fall, was neu oder geändert ist. „Übernehmen“ fügt hinzu und ändert — erledigte Schritte werden nie entfernt.',
-    beispiel: 'Die Vorlage bekam den Schritt „Einwandmatrix testen“ — der laufende Fall zeigt „Fassung 3 → 4: 1 neu“ und nimmt ihn per Klick auf.',
+    was: 'Der Fall arbeitet mit einer Kopie des Ablaufs. Ändert ihr den Ablauf für künftige Kunden, zeigt der Fall, was neu oder geändert ist. „Übernehmen“ fügt hinzu und ändert — erledigte Schritte werden nie entfernt.',
+    beispiel: 'Der Ablauf bekam den Schritt „Einwandmatrix testen“ — der laufende Fall zeigt „Fassung 3 → 4: 1 neu“ und nimmt ihn per Klick auf.',
   },
   'fulfillment.vereinbarung': {
     was: 'Die Zusammenarbeits-Vereinbarung hält Rollen, Reaktionszeiten, was wir brauchen, Eskalation, Scope und Entscheidungsrechte fest — bestätigt im Kick-off.',
-    beispiel: 'Reaktionszeit 24 Stunden an Werktagen, Freigaben trifft die Geschäftsführung, Recruiting ist nicht im Scope.',
+    beispiel: 'Reaktionszeit 24 Stunden an Werktagen, Entscheidungen trifft die Geschäftsführung, Recruiting ist nicht im Scope.',
   },
   'fulfillment.stakeholder': {
     was: 'Die Stakeholder-Karte zeigt, wer beim Kunden entscheidet, unterstützt oder skeptisch ist. Personen kommen nur aus der Kartei; Haltung und Notiz sind intern und werden 12 Monate nach Mandatsende gelöscht.',
@@ -114,10 +114,10 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   },
   'fulfillment.wirkung': {
     was: 'Der Wirkungsbericht schließt den Kreis: Wert-Konto vorher und nachher, erledigte Quick Wins, was geliefert wurde und wie weit der Vertrieb ohne uns läuft. Ein Kundenzitat steht nur mit vermerkter Einwilligung darin. Versendet wird per Klick über die Inbox.',
-    beispiel: 'Termine je Monat von 4 auf 11, drei Quick Wins, Übergabe-Paket geliefert, 3 von 4 Befähigungs-Kriterien — daraus entsteht auf Wunsch eine anonyme Fallstudie.',
+    beispiel: 'Termine je Monat von 4 auf 11, drei Quick Wins, Übergabe-Unterlagen geliefert, 3 von 4 Befähigungs-Kriterien — daraus entsteht auf Wunsch eine anonyme Fallstudie.',
   },
   'fulfillment.nachsorge': {
-    was: 'Nach dem Mandatsende legt der Morgenlauf an drei Tagen je einen Vorschlag in den Stapel: Check-in, Empfehlung erfragen, nächste Stufe anbieten. Erst eure Freigabe macht daraus ein Follow-up.',
+    was: 'Nach dem Mandatsende legt der Morgenlauf an drei Tagen je einen Vorschlag in den Stapel: Check-in, Empfehlung erfragen, nächste Stufe anbieten. Erst euer Klick im Stapel macht daraus ein Follow-up.',
     beispiel: 'Mandatsende am 1. März: Check-in am 15. März, Empfehlung am 15. April, nächste Stufe Ende Mai.',
   },
   'fulfillment.entscheidungGeteilt': {
@@ -148,7 +148,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
   },
   'fulfillment.kennzahl.wartet': {
     was: 'Der älteste offene Punkt „wartet auf euch“ über alle laufenden Fälle, in Tagen.',
-    beispiel: 'Eine Freigabe liegt seit 12 Tagen beim Kunden — die Kennzahl zeigt 12 Tage.',
+    beispiel: 'Eine Bestätigung liegt seit 12 Tagen beim Kunden — die Kennzahl zeigt 12 Tage.',
   },
   'fulfillment.kennzahl.puls': {
     was: 'Durchschnitt des letzten Kunden-Pulses je Fall (0 bis 10) aus den letzten 90 Tagen.',
@@ -191,12 +191,12 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Die Karte „Sales-Systematik“ zeigt sechs Phasen, 54 Schritte, 18 Bausteine, liefert das Produkt „Cockpit-Lizenz“ — ein Kunde läuft gerade darin.',
   },
   'fulfillment.ebenen': {
-    was: 'Prozesse haben fünf Ebenen: Gesamt (das Paket) › Prozess (Phase) › Teilprozess › Schritt › Baustein (das Werkzeug, z. B. ein Skript). Die Leiter zeigt, auf welcher Ebene ihr gerade seid; die Brotkrumen führen zurück.',
+    was: 'Prozesse haben fünf Ebenen: Gesamt (der Ablauf) › Prozess (Phase) › Teilprozess › Schritt › Baustein (das Werkzeug, z. B. ein Skript). Die Leiter zeigt, auf welcher Ebene ihr gerade seid; die Brotkrumen führen zurück.',
     beispiel: '„Vertriebsleitung auf Zeit › Aufbau › Skripte › Leitfaden schreiben › Leitfaden Erstgespräch“ — ganz unten der Baustein, den der Schritt benutzt.',
   },
   'fulfillment.bibliothek': {
-    was: 'Die Bibliothek zeigt jeden Baustein als Karte mit seiner Art (Skript, Mail, Checkliste …), wo er steckt und seinen Marken. Filter nach Art, Paket und Phase grenzen ein; die Marken zeigen, was vor dem Einsatz beim Kunden geprüft werden muss.',
-    beispiel: 'Filter „Paket: Netzwerk-Vertrieb“ und „Phase: Messen & Events“ zeigt vier Bausteine; einer trägt „vor Einsatz rechtlich prüfen“.',
+    was: 'Die Bibliothek zeigt jeden Baustein als Karte mit seiner Art (Skript, Mail, Checkliste …), wo er steckt und seinen Marken. Filter nach Art, Ablauf und Phase grenzen ein; die Marken zeigen, was vor dem Einsatz beim Kunden geprüft werden muss.',
+    beispiel: 'Filter „Ablauf: Netzwerk-Vertrieb“ und „Phase: Messen & Events“ zeigt vier Bausteine; einer trägt „vor Einsatz rechtlich prüfen“.',
   },
   'fulfillment.onboardingBand': {
     was: 'Das Onboarding ist die erste Phase der Reise. Der Zähler sagt, wie viele seiner Schritte erledigt sind; „entfällt“ zählt nicht mit. Jeder Schritt steht im Ablauf darunter und führt dorthin, wo er erledigt wird — die Willkommensmail zum Beispiel ist rot, sobald ihre 24 Stunden um sind.',

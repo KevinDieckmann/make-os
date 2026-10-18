@@ -26,6 +26,7 @@ import { abstimmungName, abstimmungsNummern, anzeigeTitel } from '@/lib/fulfillm
 import { obSchluessel } from '@/lib/fulfillment/prozesse/onboarding';
 import { schrittVerweis, type SchrittVerweis } from '@/lib/fulfillment/prozesse/ansichten';
 import { kinderVon } from '@/lib/fulfillment/regeln';
+import { bausteinArtName } from '@/lib/fulfillment/prozesse/bausteine';
 import { OB_TEIL_ID } from '@/lib/fulfillment/prozesse/fall';
 import type { FallKnoten, KnotenStatus } from '@/lib/fulfillment/typen';
 import { fallOps, fehlerText, tagKurz, STATUS_TEXT, type FallAntwort } from './daten';
@@ -138,7 +139,7 @@ function SchrittZeileAnsicht({ z, daten, bausteine, status, ops, onFreigabe, hau
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             {z.bausteine.map(b => {
               const bb = b.bausteinId ? bausteine.get(b.bausteinId) : undefined;
-              const name = bb ? (bb.titel === k.titel ? `${bb.art} öffnen` : bb.titel) : b.bausteinId ? `${b.titel} (Baustein entfernt)` : b.titel;
+              const name = bb ? (bb.titel === k.titel ? `${bausteinArtName(bb.art)} öffnen` : bb.titel) : b.bausteinId ? `${b.titel} (Baustein entfernt)` : b.titel;
               return (
                 <span key={b.id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                   {bb ? <Link href={WEG.fulfillment('bausteine', { b: bb.id })} style={{ color: C.aktiv, fontSize: TYP.bedien }} onClick={e => e.stopPropagation()}>▤ {name}</Link> : <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>▤ {name}</span>}
@@ -229,7 +230,7 @@ export function ExtraDialog({ phaseId, fall, onZu, ops }: { phaseId: string; fal
         <Feldzeile label="Titel"><input value={titel} autoFocus onChange={e => setTitel(e.target.value)} style={feld} /></Feldzeile>
         {orte.length > 1 && <Feldzeile label="Wo"><Wahl label="Wo" liste={orte} wert={eltern} onWahl={setEltern} /></Feldzeile>}
         <Feldzeile label="Fällig am"><input type="date" value={faellig} onChange={e => setFaellig(e.target.value)} style={feld} /></Feldzeile>
-        <div style={klein}>Ein Zusatz-Schritt gilt nur für diesen Fall — die Vorlage bleibt, wie sie ist.</div>
+        <div style={klein}>Ein Zusatz-Schritt gilt nur für diesen Fall — der Ablauf bleibt, wie er ist.</div>
         <Leiste>
           <span style={{ flex: 1 }} />
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>

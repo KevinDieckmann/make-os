@@ -86,8 +86,8 @@ export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' 
         </Feldzeile>
         <Feldzeile label="Start"><input type="date" value={tag} onChange={e => setTag(e.target.value)} style={feld} /></Feldzeile>
         <div style={klein}>{pakete.find(p => p.id === vorlage)?.zusatz
-          ? 'Zusatzmodul: der Fall kopiert die Struktur der Vorlage und startet ohne Onboarding-Schritte — die erste Phase läuft sofort.'
-          : 'Der Fall kopiert die Struktur der Vorlage und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.'}</div>
+          ? 'Zusatzmodul: der Fall übernimmt die Schritte des Ablaufs und startet ohne Onboarding — die erste Phase läuft sofort.'
+          : 'Der Fall übernimmt die Schritte des Ablaufs und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.'}</div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
           <Knopf haupt typ="submit" aus={!vorlage}>Fall anlegen</Knopf>

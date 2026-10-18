@@ -4,7 +4,7 @@
 //     ein Hänger, der derselbe Punkt ist, steht nicht doppelt da; pausierte Fälle und Bestandsmandate fehlen; der Handgriff folgt den Regeln der Karte im Fall.
 //   · Die Liste rendert den Handgriff in der Zeile (Ja/Nein, Entwurf öffnen, abhaken, Fall starten, öffnen) — auf Heute und auf dem Fulfillment-Start.
 //   · Am gewonnenen Deal: „Mandat anlegen & Fall starten“ bzw. „Fall starten“ bzw. „Fall öffnen ›“.
-//   · Fachbegriffe (Abstimmungspunkt, Knoten, A0–A13, Paket-Vorlage) stehen nirgends in der internen Fulfillment-Oberfläche.
+//   · Fachbegriffe (Abstimmungspunkt, Knoten, A0–A13, Vorlage, Paket) stehen nirgends in der Fulfillment-Oberfläche (seit 18.10. auch nicht auf der Kunden-Seite).
 // Erfundene Daten, rein — keine Route, kein Netz.
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -248,10 +248,10 @@ function texte(src: string): string[] {
   return raus;
 }
 
-describe('Fachbegriffe raus (Abstimmungspunkt, Knoten, A0–A13, Paket-Vorlage)', () => {
-  it('kein sichtbarer Text der internen Fulfillment-Oberfläche nennt sie', () => {
+describe('Fachbegriffe raus (Abstimmungspunkt, Knoten, A0–A13, Vorlage, Paket)', () => {
+  it('kein sichtbarer Text der Fulfillment-Oberfläche (intern und Kunden-Seite) nennt sie', () => {
     const dateien = [
-      ...['components/os/fulfillment/analyse', 'components/os/fulfillment/editor', 'components/os/fulfillment/prozesse', 'components/os/fulfillment/reise', 'components/os/ui/reise'].flatMap(d => alle(path.join(WURZEL, d))),
+      ...['components/os/fulfillment/analyse', 'components/os/fulfillment/editor', 'components/os/fulfillment/prozesse', 'components/os/fulfillment/reise', 'components/os/ui/reise', 'components/os/fulfillment/kunde', 'lib/fulfillment/kunde'].flatMap(d => alle(path.join(WURZEL, d))),
       ...['components/os/fulfillment/FulfillmentSeite.tsx', 'lib/erklaerungen/fulfillment-prozesse.ts', 'lib/erklaerungen/fulfillment-analyse.ts', 'lib/fulfillment/prozesse/darstellung.ts', 'lib/fulfillment/prozesse/reise.ts', 'lib/fulfillment/prozesse/reise-bild.ts', 'lib/fulfillment/prozesse/heute.ts', 'lib/fulfillment/prozesse/cockpit.ts', 'lib/reise/bild.ts'].map(d => path.join(WURZEL, d)),
     ];
     const funde: string[] = [];
@@ -264,7 +264,10 @@ describe('Fachbegriffe raus (Abstimmungspunkt, Knoten, A0–A13, Paket-Vorlage)'
       const ohneTags = s.replace(/<[^>]+>/g, ' ');
       expect(fachbegriffeIn(ohneTags)).toEqual([]);
     }
-    expect(FACHBEGRIFFE.map(f => f.wort)).toEqual(['Abstimmungspunkt', 'Knoten', 'A0–A13', 'Paket-Vorlage']);
+    expect(FACHBEGRIFFE.map(f => f.wort)).toEqual(['Abstimmungspunkt', 'Knoten', 'A0–A13', 'Vorlage', 'Paket']);
+    // „Paket“ nur als ganzes Wort — „Festpreis-Paketen“ (Analyse-Beispiel) ist kein Ablauf.
+    expect(fachbegriffeIn('Paket-Vorlage')).toEqual(['Vorlage', 'Paket']);
+    expect(fachbegriffeIn('Drei Wettbewerber mit Festpreis-Paketen')).toEqual([]);
   });
 });
 
