@@ -4,8 +4,9 @@
 //   · Welche Knoten ausgeführt werden: Schritte des Flusses MIT gesetzter Form (Prozess-Editor/Import „pakete“) — nie abgeleitete Onboarding-Schritte, nie
 //     Abstimmungspunkte. Die Muster-Schritte tragen seit 17.10. die Form „Schritt“ (lib/fulfillment/muster.ts); ein Fall ohne solche Knoten (älterer
 //     Stand, eigene Vorlage ohne Formen) läuft genau wie bisher (`ablaufAktiv` = false → nichts entsteht).
-//   · Wo der Fall gerade steht (`aktiveKnoten`): die erste Phase, die nicht fertig ist — eine fertige Phase mit offenem Abstimmungspunkt hält an (erst
-//     bestätigt geht es weiter). In der Phase laufen die Schritte nacheinander; zwei oder mehr benannte Teilprozesse nebeneinander laufen parallel (wie der Fluss
+//   · Wo der Fall gerade steht (`aktiveKnoten`): die erste Phase, die nicht durch ist (`phasenGang`, lib/fulfillment/regeln.ts — seit 18.10. hält nicht
+//     mehr an, was nebenher läuft: das Kunden-Playbook, Bausteine und Kunden-Schritte ohne Form) — eine durchlaufene Phase mit offenem Abstimmungspunkt hält
+//     an (erst bestätigt geht es weiter). In der Phase laufen die Schritte nacheinander; zwei oder mehr benannte Teilprozesse nebeneinander laufen parallel (wie der Fluss
 //     sie zeichnet). An einer Entscheidung mit „nein“ läuft ihr Nein-Zweig (`aktiverNeinZweig`, lib/fulfillment/regeln.ts).
 //   · Was nach einer Erledigung bzw. Antwort passiert (`nachErledigung`, `antwortAnwenden` — der Schreibweg des Falls ruft nur diese): Frist des nächsten
 //     Schritts, Ja-/Nein-Zweig, Übersprungenes entfällt, die Schleife Erinnerung → wieder fragen (höchstens `versuche` Runden, danach „eskaliert“).
@@ -14,9 +15,8 @@
 // Tests: tests/fulfillment-ablauf-rein.test.ts.
 
 import type { Fall, FallKnoten, KnotenStatus } from '../typen';
-import { abschnitteDes, abschnittVon, aktiverNeinZweig, kinderVon, phaseFertig, teilbaum } from '../regeln';
+import { abschnitteDes, abschnittVon, aktiverNeinZweig, ausfuehrbar, haeltAn, kinderVon, mitAusfuehrung, phaseFertig, phasenGang, teilbaum } from '../regeln';
 import { neinZiele, phasenAbschnitte, phasenDer, phaseVonKnoten } from './fluss-struktur';
-import { obSchluessel } from './onboarding';
 import { fnv } from './pruefen';
 import { titelOhneZusatz } from './darstellung';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -37,7 +37,8 @@ export const ablaufAufgabeId = (mandatId: string, knotenId: string, runde = 0): 
 export type AusfuehrungsArt = 'aufgabe' | 'nachricht' | 'entscheidung' | 'erinnerung';
 /** Was die Ausführung mit einem Knoten tut — null: nichts (ohne Form, Abstimmungspunkt, abgeleiteter Onboarding-Schritt, Baustein). */
 export function ausfuehrungsArt(k: Pick<FallKnoten, 'id' | 'form' | 'freigabe' | 'bausteinId'>): AusfuehrungsArt | null {
-  if (!k.form || k.freigabe || obSchluessel(k.id) || k.form === 'abstimmung') return null;
+  // EINE Regel mit lib/fulfillment/regeln.ts `ausfuehrbar` (ohne Form, Bestätigung, abgeleiteter Onboarding-Schritt, Abstimmungspunkt → nichts).
+  if (!ausfuehrbar(k) || !k.form || k.form === 'abstimmung') return null;
   if (k.form === 'schritt' || k.form === 'termin') return 'aufgabe';
   return k.form;
 }
@@ -63,11 +64,17 @@ function schrittFertig(s: FallKnoten, kn: readonly FallKnoten[]): boolean {
   const b = kinderVon(s.id, kn);
   return b.length > 0 && b.every(fertig);
 }
-/** Der Tag, an dem ein Schritt fertig wurde (Erledigung, sonst Statuswechsel, sonst der späteste seiner Bausteine). */
+/**
+ * Ist ein Schritt für den Ablauf durch — fertig, oder es hält nichts mehr an (was darunter offen ist, läuft nebenher: Bausteine ohne Form, das Kunden-Playbook,
+ * Schritte des Kunden ohne Form — lib/fulfillment/regeln.ts `haeltAn`, 18.10., L1b N2)? Ohne solche Knoten genau `schrittFertig`.
+ */
+const schrittDurch = (s: FallKnoten, kn: readonly FallKnoten[], ablauf: boolean): boolean => schrittFertig(s, kn) || !haeltAn(s, kn, ablauf);
+/** Der Tag, an dem ein Schritt fertig wurde (Erledigung, sonst Statuswechsel, sonst der späteste seiner fertigen Bausteine). */
 function fertigTag(s: FallKnoten, kn: readonly FallKnoten[]): string | undefined {
   const eigen = s.erledigtAm ?? (fertig(s) ? s.seit : undefined);
   if (eigen) return eigen.slice(0, 10);
-  return kinderVon(s.id, kn).map(b => b.erledigtAm ?? b.seit).filter((x): x is string => !!x).map(x => x.slice(0, 10)).sort().at(-1);
+  // Nur fertige Bausteine tragen einen Tag (ein Baustein, der nebenher noch läuft, hat keinen — 18.10.); für einen fertigen Schritt sind es ohnehin alle.
+  return kinderVon(s.id, kn).filter(fertig).map(b => b.erledigtAm ?? b.seit).filter((x): x is string => !!x).map(x => x.slice(0, 10)).sort().at(-1);
 }
 
 /**
@@ -96,14 +103,13 @@ type MitZusaetzen = Partial<Pick<Fall, 'zusaetze'>>;
 const abschnittStart = (f: Pick<Fall, 'startAm' | 'gestartetAm'> & MitZusaetzen, abschnitt: string | null): string =>
   (abschnitt ? f.zusaetze?.find(z => z.vorlageId === abschnitt)?.startAm : undefined) ?? fallStart(f);
 
-/** Die Phase, in der die Ausführung in einem Abschnitt arbeitet — null, wenn dort alles fertig ist oder ein Abstimmungspunkt am Ende einer fertigen Phase fehlt. */
+/**
+ * Die Phase, in der die Ausführung in einem Abschnitt arbeitet — null, wenn dort alles durch ist oder ein Abstimmungspunkt am Ende einer durchlaufenen Phase
+ * fehlt. EINE Regel mit „hier“ (`phasenGang`, lib/fulfillment/regeln.ts): eine Phase ist durch, wenn nur noch nebenher läuft, was nie eine Aufgabe bekommt
+ * (18.10., L1b N2 — vorher hielt das Kunden-Playbook bzw. ein Baustein ohne Form den ganzen Ablauf an).
+ */
 function abschnittPhase(f: Pick<Fall, 'knoten' | 'freigaben'>, abschnitt: string | null): FallKnoten | null {
-  for (const p of phasenDer(f.knoten).filter(x => abschnittVon(x) === abschnitt)) {
-    if (p.status === 'entfaellt') continue;
-    if (!phaseFertig(p, f.knoten)) return p;
-    if (p.freigabe && !f.freigaben[p.freigabe]) return null;
-  }
-  return null;
+  return phasenGang(f, phasenDer(f.knoten).filter(x => abschnittVon(x) === abschnitt)).phase;
 }
 /** Die Phase, in der die Ausführung im Paket des Falls gerade arbeitet — null, wenn alles fertig ist oder ein Abstimmungspunkt am Ende einer fertigen Phase fehlt. */
 export function ausfuehrungsPhase(f: Pick<Fall, 'knoten' | 'freigaben'>): FallKnoten | null {
@@ -128,7 +134,9 @@ function phasenStart(f: Pick<Fall, 'knoten' | 'freigaben' | 'startAm' | 'gestart
   if (fg) return fg.am.slice(0, 10);
   const nach = new Map(f.knoten.map(k => [k.id, k]));
   const tage = teilbaum(v.id, f.knoten).map(id => nach.get(id)!).filter(k => k && fertig(k)).map(k => (k.erledigtAm ?? k.seit)?.slice(0, 10)).filter((x): x is string => !!x).sort();
-  return tage.at(-1) ?? abschnittStart(f, abschnitt);
+  // Eine Phase, durch die der Ablauf nur gelaufen ist, weil darin bloß noch etwas nebenher läuft (z. B. nur Bausteine ohne Form — 18.10., L1b N2), begann
+  // und endete mit IHREM Start — nicht mit dem Start des Falls (sonst wäre die nächste Aufgabe schon bei der Ankunft überfällig).
+  return tage.at(-1) ?? (phaseFertig(v, f.knoten) ? abschnittStart(f, abschnitt) : phasenStart(f, v.id));
 }
 
 export interface AktiverKnoten {
@@ -155,6 +163,7 @@ export function aktiveKnoten(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | '
 function aktiveInPhase(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'> & MitZusaetzen, p: FallKnoten): AktiverKnoten[] {
   const kn = f.knoten;
   const nz = neinZiele(kn);
+  const ablauf = mitAusfuehrung(kn);
   const raus: AktiverKnoten[] = [];
   let vorherEnde: string | undefined = phasenStart(f, p.id);
   for (const block of phasenBloecke(kn, p.id, nz)) {
@@ -162,10 +171,13 @@ function aktiveInPhase(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startA
     const imBlock: AktiverKnoten[] = [];
     const enden: string[] = [];
     for (const bahn of block) {
-      const i = bahn.findIndex(s => !schrittFertig(s, kn));
+      const i = bahn.findIndex(s => !schrittDurch(s, kn, ablauf));
       if (i < 0) { const t = fertigTag(bahn[bahn.length - 1], kn); if (t) enden.push(t); continue; }
       const s = bahn[i];
-      const ankunft = i > 0 ? fertigTag(bahn[i - 1], kn) ?? start : start;
+      // Angekommen mit dem letzten fertigen Schritt davor — über Schritte hinweg, die nur nebenher laufen (18.10., L1b N2; ohne solche: der Schritt davor).
+      let j = i - 1;
+      while (j > 0 && !schrittFertig(bahn[j], kn)) j--;
+      const ankunft = i > 0 ? fertigTag(bahn[j], kn) ?? start : start;
       const r = s.form === 'entscheidung' ? aktiverNeinZweig(kn, s) : null;
       if (r) {
         const runde = s.runden ?? 1;

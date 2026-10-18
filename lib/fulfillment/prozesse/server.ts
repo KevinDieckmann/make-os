@@ -56,7 +56,9 @@ export async function faelleKurz(mandatIds?: readonly string[]): Promise<Record<
       mandatId: f.mandatId, status: w.status, ...(stelle.phase ? { phase: stelle.phase.titel } : {}), fortschritt: stelle.fortschritt,
       ...(stelle.naechster ? { naechster: stelle.naechster.titel, naechsterLage: { wartetAuf: stelle.naechster.wartetAuf, ...(stelle.naechster.faelligAm ? { faelligAm: stelle.naechster.faelligAm } : {}), ueberfaellig: stelle.naechster.ueberfaellig } } : {}),
       wartet: wa.length, ...(wa[0]?.tage !== undefined ? { wartetAeltesterTage: wa[0].tage } : {}),
-      onboardingOffen: st.offen, onboardingErfuellt: onboardingZaehlung(st.schritte).erledigt, willkommenUeberfaellig: st.willkommen.ueberfaellig,
+      // EINE Zählung mit dem Fall (18.10., L1b N11): offen = alle Schritte minus erfüllte/entfallene — wie „Onboarding 3 von 8“.
+      onboardingOffen: (z => z.gesamt - z.erledigt)(onboardingZaehlung(st.schritte)), onboardingErfuellt: onboardingZaehlung(st.schritte).erledigt, willkommenUeberfaellig: st.willkommen.ueberfaellig,
+      ...(f.onboarding?.kickoffAm ? { kickoffVermerktAm: f.onboarding.kickoffAm } : {}),
     };
   }
   return raus;
@@ -134,7 +136,11 @@ export async function haengerFuer(mandatId: string, heute = localDay()): Promise
 }
 
 /** Was die Leistungstreppe je Mandat aus dem Fall übernimmt (15.10., Abnahme B1) — Ampel, was der Kunde sieht, Phase, nächster Schritt. */
-export interface FallFuerTreppe { ampel: Ampel; kundeSieht?: CockpitZeile['kundeSieht']; phase?: string; phaseNr?: number; phasenAnzahl?: number; schritt?: string }
+export interface FallFuerTreppe {
+  ampel: Ampel; kundeSieht?: CockpitZeile['kundeSieht']; phase?: string; phaseNr?: number; phasenAnzahl?: number; schritt?: string;
+  /** Kick-off vermerkt ohne eigenen Kalender-Termin (Tag; `Fall.onboarding.kickoffAm`) — Text über `kickoffVermerkText` (18.10., L1b N13). */
+  kickoffVermerktAm?: string;
+}
 /**
  * Für die Leistungstreppe: je laufendem Fall die Ampel (Hänger + Health — dieselbe wie Fall-Kopf und Landkarte), was der Kunde sieht, und der nächste
  * Schritt (`naechsterPunkt` — derselbe wie Fall-Kopf, Kunden-Seite und Report). Ohne Fall fehlt das Mandat. Fehler → {}.
@@ -142,7 +148,7 @@ export interface FallFuerTreppe { ampel: Ampel; kundeSieht?: CockpitZeile['kunde
 export async function fallFuerTreppe(heute = localDay()): Promise<Record<string, FallFuerTreppe>> {
   try {
     const { zeilen } = await cockpitDaten(heute);
-    return Object.fromEntries(zeilen.map(z => [z.mandatId, { ampel: kundenAmpel(z), ...(z.kundeSieht ? { kundeSieht: z.kundeSieht } : {}), ...(z.phase ? { phase: z.phase, ...(z.phaseNr ? { phaseNr: z.phaseNr } : {}), ...(z.phasenAnzahl ? { phasenAnzahl: z.phasenAnzahl } : {}) } : {}), ...(z.schritt ? { schritt: z.schritt } : {}) }]));
+    return Object.fromEntries(zeilen.map(z => [z.mandatId, { ampel: kundenAmpel(z), ...(z.kundeSieht ? { kundeSieht: z.kundeSieht } : {}), ...(z.phase ? { phase: z.phase, ...(z.phaseNr ? { phaseNr: z.phaseNr } : {}), ...(z.phasenAnzahl ? { phasenAnzahl: z.phasenAnzahl } : {}) } : {}), ...(z.schritt ? { schritt: z.schritt } : {}), ...(z.kickoffVermerktAm ? { kickoffVermerktAm: z.kickoffVermerktAm } : {}) }]));
   } catch { return {}; }
 }
 

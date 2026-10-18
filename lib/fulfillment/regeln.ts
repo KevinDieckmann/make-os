@@ -10,6 +10,7 @@ import type { CrmBestand, Mandat } from '@/lib/crm/typen';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
 import { tagVon, tagePlus } from '@/lib/zeit';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
+import { MUSTER_ONBOARDING } from './muster';
 import type {
   Fall, FallKnoten, KnotenStatus, OnboardingKandidat, ProzessVorlage, Unterschrift, WartetPunkt, WertKontoZeile,
 } from './typen';
@@ -109,18 +110,90 @@ export function phaseFertig(p: FallKnoten, liste: readonly FallKnoten[]): boolea
   return b.length > 0 && b.every(fertig);
 }
 
+// ── Was den Ablauf anhält — und was nebenher läuft (18.10., Nachprüfung L1b N2) ──────────────────────────────────────────────────────────
+// Fund: ein neuer Fall bekam keine einzige Ablauf-Aufgabe, bis die GANZE Phase 1 fertig war — auch das Kunden-Playbook (macht der Kunde, darf laut
+// Onboarding-Regel noch laufen) und Bausteine ohne Form („Kick-off-Agenda“), die nie eine Aufgabe bekommen. Im echten Fall lag die Lieferung still, solange
+// der Kunde sein Playbook nicht ausfüllte. EINE Regel für Ausführung, „hier“ (`aktuellerKnoten`, `naechsterPunkt`), Reise, Cockpit und Kunden-Seite:
+//   · Das Kunden-Playbook (der Onboarding-Schritt, der fürs „fertig“ nicht zählt) und alles darunter läuft nebenher — in jedem Fall.
+//   · In einem Fall mit Ausführung (mindestens ein Knoten mit ausführbarer Form) zusätzlich: ein Knoten OHNE Form, der ein Baustein ist (Material) oder den
+//     der Kunde macht — außer er hängt unter einem ausgeführten Schritt (dann gehört er zu dessen Schritt) bzw. ist ein Onboarding-Schritt oder trägt eine
+//     Bestätigung. Er bekommt nie eine Aufgabe, also hält er nie an.
+// Ein Fall ohne Ausführung und ohne offenes Playbook nach fertigem Onboarding rechnet Byte für Byte wie vorher (`phaseDurch` = `phaseFertig`).
+
+/** Kennungen der abgeleiteten Onboarding-Schritte im Fall (`fk-ob-<schlüssel>` — lib/fulfillment/prozesse/onboarding.ts `obKnotenId`; hier ohne Import-Kreis). */
+const OB_SCHRITTE: ReadonlySet<string> = new Set(MUSTER_ONBOARDING.map(s => `fk-ob-${s.schluessel}`));
+/** Onboarding-Schritte, die fürs „fertig“ nicht zählen (das Kunden-Playbook) — sie und alles darunter laufen nebenher. */
+const OB_NEBENHER: ReadonlySet<string> = new Set(MUSTER_ONBOARDING.filter(s => !s.zaehltFuerFertig).map(s => `fk-ob-${s.schluessel}`));
+
+/** Trägt ein Knoten eine Form, die die Ausführung ausführt (Schritt, Termin, Nachricht, Entscheidung, Erinnerung)? EINE Regel mit `ausfuehrungsArt`. */
+export const ausfuehrbar = (k: Pick<FallKnoten, 'id' | 'form' | 'freigabe'>): boolean => !!k.form && k.form !== 'abstimmung' && !k.freigabe && !OB_SCHRITTE.has(k.id);
+/** Läuft in diesem Fall eine Ausführung? (dieselbe Regel wie `ablaufAktiv`, lib/fulfillment/prozesse/ausfuehrung.ts) */
+export const mitAusfuehrung = (liste: readonly Pick<FallKnoten, 'id' | 'form' | 'freigabe'>[]): boolean => liste.some(ausfuehrbar);
+
 /**
- * Der aktuelle Knoten eines Falls (7.4): die erste nicht abgeschlossene Phase (Ebene 2) in Rang-Reihenfolge, darin der erste offene
- * Einzelschritt (Ebene 4; gibt es keine, der erste offene Teilprozess auf Ebene 3). Alles fertig → beides null.
+ * Läuft ein offener Knoten nebenher — hält er weder den Ablauf noch „hier“ an? (Regel oben.) `ablauf` = der Fall hat eine Ausführung (ohne Angabe aus den
+ * Knoten). Ein fertiger Knoten läuft nie nebenher (er ist schon durch).
+ */
+export function laeuftNebenher(k: FallKnoten, liste: readonly FallKnoten[], ablauf: boolean = mitAusfuehrung(liste)): boolean {
+  if (fertig(k)) return false;
+  const vor = vorfahren(k.id, liste);
+  if (OB_NEBENHER.has(k.id) || vor.some(id => OB_NEBENHER.has(id))) return true;
+  if (!ablauf || k.form || k.freigabe || OB_SCHRITTE.has(k.id)) return false;
+  if (!k.bausteinId && k.zustaendig !== 'kunde') return false;
+  const nach = new Map(liste.map(x => [x.id, x]));
+  return !vor.some(id => { const v = nach.get(id); return !!v && ausfuehrbar(v); });
+}
+
+/**
+ * Hält ein Knoten (mit allem darunter) den Ablauf an? Ja, solange in seinem Teilbaum ein offenes Blatt steht, das nicht nebenher läuft. Für einen Schritt
+ * im Ablauf, eine Zeile der Reise und das „hier“ — dieselbe Frage.
+ */
+export function haeltAn(k: FallKnoten, liste: readonly FallKnoten[], ablauf: boolean = mitAusfuehrung(liste)): boolean {
+  const nach = new Map(liste.map(x => [x.id, x]));
+  return teilbaum(k.id, liste).some(id => { const x = nach.get(id)!; return kinderVon(id, liste).length === 0 && !fertig(x) && !laeuftNebenher(x, liste, ablauf); });
+}
+
+/**
+ * Ist eine Phase durch — hält sie den Ablauf nicht mehr an? Fertig (`phaseFertig`) — oder sie hat Blätter, und jedes ist fertig oder läuft nebenher. Was noch
+ * nebenher läuft, bleibt offen sichtbar (Reise, Kunden-Seite), aber der Fall rückt weiter. EINE Regel für Ausführung, „hier“, Reise und Kunden-Seite.
+ */
+export function phaseDurch(p: FallKnoten, liste: readonly FallKnoten[], ablauf: boolean = mitAusfuehrung(liste)): boolean {
+  if (phaseFertig(p, liste)) return true;
+  const b = blaetterUnter(p.id, liste);
+  return b.length > 0 && b.every(x => fertig(x) || laeuftNebenher(x, liste, ablauf));
+}
+
+/**
+ * Wie der Ablauf durch die Phasen geht (EINE Regel für die Ausführung und „hier“ — 18.10., L1b N2): die Phasen der Reihe nach; eine entfallene zählt nicht;
+ * eine Phase, die durch ist, aber deren Bestätigung noch fehlt, hält an (`bestaetigung`); sonst die erste, die nicht durch ist (`phase`). Beides null: alles
+ * durch. Ohne `freigaben` (ein Aufrufer, der sie nicht kennt) hält keine Bestätigung an.
+ */
+export function phasenGang(fall: Pick<Fall, 'knoten'> & Partial<Pick<Fall, 'freigaben'>>, phasen: readonly FallKnoten[]): { phase: FallKnoten | null; bestaetigung: FallKnoten | null } {
+  const ablauf = mitAusfuehrung(fall.knoten);
+  for (const p of phasen) {
+    if (p.status === 'entfaellt') continue;
+    if (!phaseDurch(p, fall.knoten, ablauf)) return { phase: p, bestaetigung: null };
+    if (p.freigabe && fall.freigaben && !fall.freigaben[p.freigabe]) return { phase: null, bestaetigung: p };
+  }
+  return { phase: null, bestaetigung: null };
+}
+
+/**
+ * Der aktuelle Knoten eines Falls (7.4): die Phase (Ebene 2), an der der Gang durch die Phasen steht (`phasenGang` — dieselbe Stelle wie die Ausführung):
+ * die erste, die nicht durch ist (was nebenher läuft, hält sie nicht an), bzw. davor eine durchlaufene, deren Bestätigung noch fehlt (18.10., L1b N2 — vorher
+ * stand „jetzt“ schon in der nächsten Phase, während die Ausführung auf die Bestätigung wartete). Darin der erste offene Einzelschritt, der anhält (Ebene 4;
+ * gibt es keinen, der erste offene Teilprozess auf Ebene 3). Alles durch → beides null.
  * Mit `abschnitt` (17.10. spät, Zusatzmodule): nur in diesem Abschnitt — `null` = das Paket des Falls, sonst die Kennung des Zusatzmoduls (`abschnittVon`).
  */
-export function aktuellerKnoten(fall: Pick<Fall, 'knoten'>, abschnitt?: string | null): { phase: FallKnoten | null; schritt: FallKnoten | null } {
+export function aktuellerKnoten(fall: Pick<Fall, 'knoten'> & Partial<Pick<Fall, 'freigaben'>>, abschnitt?: string | null): { phase: FallKnoten | null; schritt: FallKnoten | null } {
   const l = fall.knoten;
+  const ablauf = mitAusfuehrung(l);
   const reihenfolge = inReihenfolge(l);
-  const phase = reihenfolge.find(k => ebeneVon(k, l) === 2 && (abschnitt === undefined || abschnittVon(k) === abschnitt) && !phaseFertig(k, l)) ?? null;
+  const gang = phasenGang(fall, reihenfolge.filter(k => ebeneVon(k, l) === 2 && (abschnitt === undefined || abschnittVon(k) === abschnitt)));
+  const phase = gang.phase ?? gang.bestaetigung;
   if (!phase) return { phase: null, schritt: null };
   const darin = new Set(teilbaum(phase.id, l));
-  const offen = (ebene: number) => reihenfolge.find(k => darin.has(k.id) && ebeneVon(k, l) === ebene && !fertig(k) && !(kinderVon(k.id, l).length && blaetterUnter(k.id, l).every(fertig))) ?? null;
+  const offen = (ebene: number) => reihenfolge.find(k => darin.has(k.id) && ebeneVon(k, l) === ebene && !fertig(k) && !(kinderVon(k.id, l).length && blaetterUnter(k.id, l).every(fertig)) && haeltAn(k, l, ablauf)) ?? null;
   return { phase, schritt: offen(4) ?? offen(3) };
 }
 
@@ -145,9 +218,11 @@ export function zusatzJeKnoten(liste: readonly FallKnoten[]): Map<string, string
 /**
  * Die Phasen „jetzt“ eines Falls: die des Pakets (bzw. die erste offene überhaupt — `aktuellerKnoten`) und je angehängtem Zusatzmodul seine erste offene Phase —
  * die Abschnitte laufen nebeneinander (die Ausführung arbeitet dort parallel). EINE Regel für Reise, Kunden-Sicht und Ausführung.
+ * Ein abgeschlossener Fall hat kein „jetzt“ (18.10., Nachprüfung L1b N9: der Kopf sagte „Der Fall ist abgeschlossen“, die Reise weiter „HIER · Phase 2“).
  */
-export function jetztPhasen(fall: Pick<Fall, 'knoten'>): Set<string> {
+export function jetztPhasen(fall: Pick<Fall, 'knoten'> & Partial<Pick<Fall, 'status' | 'freigaben'>>): Set<string> {
   const raus = new Set<string>();
+  if (fall.status === 'abgeschlossen') return raus;
   const a = aktuellerKnoten(fall).phase;
   if (a) raus.add(a.id);
   for (const z of abschnitteDes(fall)) { if (!z) continue; const p = aktuellerKnoten(fall, z).phase; if (p) raus.add(p.id); }

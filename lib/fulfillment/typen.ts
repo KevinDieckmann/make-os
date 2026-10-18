@@ -235,11 +235,14 @@ export interface PersonenDatei { version: number; karten: PersonenKarte[] }
 
 // Schnittstellen zwischen den Paketen (Signaturen in den Stub-Dateien, Abschnitt 11):
 export interface FallKurz {
+  /** `onboardingOffen` = Schritte des Onboardings minus erfüllte/entfallene — DIESELBE Zählung wie der Fall (`onboardingZaehlung`, 18.10.). */
   mandatId: string; status: Fall['status']; phase?: string; fortschritt: number; naechster?: string; wartet: number; wartetAeltesterTage?: number; onboardingOffen: number; willkommenUeberfaellig: boolean;
   /** Onboarding-Schritte, die erfüllt sind oder entfallen (alle acht, auch „darf noch laufen“) — dieselbe Zahl wie das Band im Fall (14.10.). */
   onboardingErfuellt?: number;
   /** Live-Lage des nächsten Punkts (17.10. abends, Ausführung) — aus `naechsterPunkt`: worauf gewartet wird, bis wann, überfällig. */
   naechsterLage?: { wartetAuf: WartetAuf; faelligAm?: string; ueberfaellig: boolean };
+  /** Kick-off vermerkt ohne eigenen Kalender-Termin (Tag; `Fall.onboarding.kickoffAm`) — Text über `kickoffVermerkText` (18.10., L1b N13). */
+  kickoffVermerktAm?: string;
 }
 export interface KundeKurz {
   link: 'keiner' | 'aktiv' | 'abgelaufen' | 'widerrufen' | 'aus'; formularProzent: number | null; ungepruefteUnterlagen: number; letzterPuls?: { wert: number; am: string }; pulsOffen: boolean;

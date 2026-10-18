@@ -6,7 +6,7 @@
 
 import type { DossierKurz, Fall, FallKnoten, Freigabepunkt, KundeKurz } from '../typen';
 import { abschnitteDes, tageZwischen, wartetAufEuch, pulsStufe } from '../regeln';
-import type { OnboardingStand } from './onboarding';
+import { onboardingZaehlung, type OnboardingStand } from './onboarding';
 import { fallReise, fallStelle, naechsterPunkt, reiseKurz, ONBOARDING_SPRUNG, type NaechsterPunkt, type ReiseKurzPhase, type WartetAuf } from './reise';
 import { knotenAktion, type HeuteAktion } from './heute';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type Ampel, type KundenLageArt } from './darstellung';
@@ -44,7 +44,13 @@ export interface CockpitZeile {
   report: { faellig: boolean; letzter?: string };
   puls?: { wert: number; am: string }; pulsKritisch: boolean; pulsOffen: boolean; link: KundeKurz['link'];
   analyse: DossierKurz | null;
-  onboarding: { offen: number; fertig: boolean; willkommenUeberfaellig: boolean };
+  /**
+   * Onboarding: `offen` = gesamt − erledigt aus DERSELBEN Zählung wie der Fall („Onboarding 3 von 8“ → 5 offen; `onboardingZaehlung` — 18.10., L1b N11: die
+   * Karte sagte „4 offen“, der Fall „3 von 8“, weil hier das Playbook fehlte). Ob es FERTIG ist, sagt `fertig` (das Playbook darf noch laufen).
+   */
+  onboarding: { offen: number; erledigt?: number; gesamt?: number; fertig: boolean; willkommenUeberfaellig: boolean };
+  /** Kick-off vermerkt ohne eigenen Kalender-Termin (der Termin steht anderswo — `Fall.onboarding.kickoffAm`, Tag). Fehlt ohne Vermerk (18.10., L1b N13). */
+  kickoffVermerktAm?: string;
   naechsterRitual?: string;
   haengt: Haenger[];
   /** Die Phasen als Mini-Strahl (11.10., Design: „wo steht der Kunde“ als Bild) — Zustand, Anteil, Freigabe-Punkt. Nur lesen. */
@@ -162,7 +168,8 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
     health: e.health, report: e.report,
     ...(p ? { puls: p } : {}), pulsKritisch: !!p && pulsStufe(p.wert, e.pulsSchwelle) === 'kritisch', pulsOffen: !!e.kunde2?.pulsOffen, link: e.kunde2?.link ?? 'aus',
     analyse: e.dossier ?? null,
-    onboarding: { offen: e.onboarding.offen, fertig: e.onboarding.fertig, willkommenUeberfaellig: e.onboarding.willkommen.ueberfaellig },
+    onboarding: (() => { const z = onboardingZaehlung(e.onboarding.schritte); return { offen: z.gesamt - z.erledigt, erledigt: z.erledigt, gesamt: z.gesamt, fertig: e.onboarding.fertig, willkommenUeberfaellig: e.onboarding.willkommen.ueberfaellig }; })(),
+    ...(e.fall.onboarding?.kickoffAm ? { kickoffVermerktAm: e.fall.onboarding.kickoffAm } : {}),
     ...(e.naechsterRitual ? { naechsterRitual: e.naechsterRitual } : {}),
     haengt,
     phasen: reiseKurz(fallReise(e.fall, e.freigaben ?? [], e.heute)),

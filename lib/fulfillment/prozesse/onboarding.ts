@@ -31,6 +31,13 @@ export const obSchluessel = (id: string): OnboardingSchluessel | null => {
   return MUSTER_ONBOARDING.some(x => x.schluessel === s) ? (s as OnboardingSchluessel) : null;
 };
 
+/**
+ * Der Vermerk „Kick-off ohne eigenen Kalender-Termin“ (`Fall.onboarding.kickoffAm`, Tag) in Worten — „Kick-off vermerkt am 18.10. (Termin steht anderswo)“.
+ * EIN Satz für den Schritt im Fall, „Menschen & Termine“ und das Mandat (18.10., Nachprüfung L1b N13: nach dem Vermerk stand dort weiter „Kein Termin im
+ * Kalender“). Lesen: `Fall.onboarding.kickoffAm` bzw. `kickoffVermerktAm` in Cockpit-Zeile, `FallKurz` und `FallFuerTreppe`.
+ */
+export const kickoffVermerkText = (am: string): string => `Kick-off vermerkt am ${am.slice(8, 10)}.${am.slice(5, 7)}. (Termin steht anderswo)`;
+
 /** Ist ein Ritual das Kick-off? (Rhythmus „einmal“ — das Muster hat genau eins.) */
 export const istKickoff = (r: Pick<RitualVorlage, 'rhythmus'>) => r.rhythmus === 'einmal';
 
@@ -101,7 +108,7 @@ export function onboardingStand(fall: Fall, a: OnboardingAbleitung): OnboardingS
   const f0Name = `Bestätigung${f0 ? ` ${f0}` : ''}`;
   const bed: Record<OnboardingSchluessel, [boolean, string]> = {
     willkommen: [!!fall.onboarding.willkommenGesendetAm, fall.onboarding.willkommenGesendetAm ? 'Willkommensmail gesendet.' : uhr.ueberfaellig ? 'Willkommensmail überfällig — bitte heute senden.' : 'Willkommensmail noch nicht gesendet.'],
-    kickoff: [kickoff, kickoffRitual ? 'Kick-off steht im Kalender.' : vermerkt ? `Kick-off vermerkt (${vermerkt.slice(8, 10)}.${vermerkt.slice(5, 7)}.) — der Termin steht anderswo.` : erster ? `Erster Termin mit dem Kunden steht im Kalender (${erster.slice(8, 10)}.${erster.slice(5, 7)}.) — er gilt als Kick-off.` : 'Kick-off noch nicht terminiert (Takt › Kick-off › Termin anlegen).'],
+    kickoff: [kickoff, kickoffRitual ? 'Kick-off steht im Kalender.' : vermerkt ? `${kickoffVermerkText(vermerkt)}.` : erster ? `Erster Termin mit dem Kunden steht im Kalender (${erster.slice(8, 10)}.${erster.slice(5, 7)}.) — er gilt als Kick-off.` : 'Kick-off noch nicht terminiert (Takt › Kick-off › Termin anlegen).'],
     vereinbarung: [!!fall.vereinbarung?.bestaetigtAm, fall.vereinbarung?.bestaetigtAm ? 'Vereinbarung bestätigt.' : 'Vereinbarung noch nicht bestätigt.'],
     playbook: [a.formularProzent === 100, a.formularProzent == null ? 'Playbook-Link noch nicht aktiv.' : `Playbook zu ${a.formularProzent} % ausgefüllt.`],
     stakeholder: [entscheider, entscheider ? 'Entscheider eingetragen.' : 'Noch kein Entscheider in der Stakeholder-Karte.'],

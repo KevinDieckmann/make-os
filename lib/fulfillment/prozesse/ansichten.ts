@@ -14,6 +14,7 @@ import { tagPlus } from '@/lib/kalender/zeit';
 import { reportNaechsterFaellig } from '@/lib/crm/treppe';
 import { markeNachsorge, NACHSORGE_TEXT, type NachsorgeArt } from './wirkung';
 import { naechsterFallTermin } from './rituale';
+import { kickoffVermerkText } from './onboarding';
 import { WEG } from '@/lib/wege';
 import { anzahl, satz } from '@/lib/text/zahlwort';
 
@@ -169,9 +170,13 @@ export function taktLeiste(e: {
   };
 }
 
-/** Die Antwort über dem Takt. */
-export function taktLage(t: TaktLeiste, heute: string, letzteMitschrift?: string): Antwort {
+/**
+ * Die Antwort über dem Takt. `kickoffVermerkt` = Tag des Vermerks „Kick-off, Termin steht anderswo“ (`Fall.onboarding.kickoffAm`): ohne eigenen Termin im
+ * Kalender steht dann dieser Vermerk da statt „Kein Termin im Kalender“ (18.10., Nachprüfung L1b N13) — gelb, der Wochen-Check fehlt noch.
+ */
+export function taktLage(t: TaktLeiste, heute: string, letzteMitschrift?: string, kickoffVermerkt?: string): Antwort {
   if (!t.zeilen.length) return { ampel: 'gelb', antwort: 'Noch keine Rituale in der Bibliothek', unter: 'Unter Fulfillment › Prozesse „Aus Muster anlegen“ — dann stehen Kick-off, Wochen-Check, Steuerungskreis und Review bereit.' };
+  if (!t.naechster && kickoffVermerkt) return { ampel: 'gelb', antwort: kickoffVermerkText(kickoffVermerkt), unter: 'Im eigenen Kalender steht noch kein Termin — den Wochen-Check als ersten Termin anlegen.' };
   if (!t.naechster) return { ampel: 'rot', antwort: 'Kein Termin im Kalender', unter: 'Ohne festen Takt gibt es keine Transparenz — den Wochen-Check als ersten Termin anlegen.' };
   const in_ = zwischen(heute, t.naechster.tag);
   const mitschrift = letzteMitschrift ? ` · letzte Mitschrift ${kurz(letzteMitschrift)}` : ' · noch keine Mitschrift';

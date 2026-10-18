@@ -60,7 +60,8 @@ export function FallMenschen({ mandatId }: { mandatId: string }) {
   const rituale = daten.rituale ?? [];
   const leiste = taktLeiste({ rituale, fallRituale: f.rituale, termine: daten.termine ?? {}, heute, vorlageId: f.vorlageId, ...(f.zusaetze?.length ? { zusatzIds: f.zusaetze.map(z => z.vorlageId) } : {}), ...(daten.kalender ? { kalender: daten.kalender } : {}) });
   const letzte = [...f.mitschriften].sort((a, b) => (a.am < b.am ? 1 : -1))[0];
-  const tl = taktLage(leiste, heute, letzte?.am);
+  // 18.10. (L1b N13): ein vermerkter Kick-off („Termin steht anderswo“) steht hier statt „Kein Termin im Kalender“.
+  const tl = taktLage(leiste, heute, letzte?.am, f.onboarding.kickoffAm);
   const v = f.vereinbarung ?? {};
   const zu = (was: 'stakeholder' | 'entscheidung' | 'vereinbarung') => { setOffen(was); insBild(`menschen-${was}`); };
   const terminAnlegen = (r: RitualVorlage) => setTermin(ritualTermin(daten, r, heute));
