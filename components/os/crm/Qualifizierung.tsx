@@ -20,7 +20,7 @@ import { tagVon } from '@/lib/zeit';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
 import { wochenBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { qualifiziertJeWoche } from './fokus-reihen';
-import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, kalteAusgeblendet, leadsAnderer, inQualifizierungNichtInRunde, QUALI_WIEDERVORLAGE_TAGE, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, sqlOffenSatz, kalteAusgeblendet, leadsAnderer, inQualifizierungNichtInRunde, QUALI_WIEDERVORLAGE_TAGE, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
 import { DealAnlegen } from './DealAnlegen';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
@@ -160,7 +160,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
               </Hinweis>
             </div>
           )}
-          {sqlOffen > 0 && <Hinweis art="gut" rolle="status">{sqlOffen} {sqlOffen === 1 ? 'Lead ist' : 'Leads sind'} SQL-bereit und warten auf deine Entscheidung (Deal, weiter qualifizieren, parken oder raus) — sie stehen oben in der Runde.</Hinweis>}
+          {sqlOffen > 0 && <Hinweis art="gut" rolle="status">{sqlOffenSatz(sqlOffen)}</Hinweis>}
           {start && d && !startZeile && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 8 }}>Zu diesem Eintrag gibt es keinen Lead (Dienstleister, Investor oder eingeschränkt) — die Runde zeigt die übrigen.</div>}
         </Karte>
 
