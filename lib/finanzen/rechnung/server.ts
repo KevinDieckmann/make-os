@@ -33,8 +33,10 @@ import {
   MAHN_VORGABE_TAGE, EINLEITUNG_VORLAGE, SCHLUSS_VORLAGE, entwurfAnwenden, entwurfGrenzen, empfaengerAusCrm, kundeAus, kurzVon, mahnLabel, mahnMail,
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt, positionAusMandat,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
-  vorlageSaeubern, positionAusBrutto, type MahnVorschlag, type Pflicht,
+  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit,
+  type MahnVorschlag, type Pflicht,
 } from './regeln';
+import { angenommenZuDeal } from '@/lib/crm/angebote';
 import { rechnungDokument, bankZeile } from './dokument';
 import type { Mahnstufe } from './typen';
 
@@ -192,14 +194,20 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
   } else if (quelle === 'mandat') {
     const m = typeof p.mandatId === 'string' ? crm.mandate.find(x => x.id === p.mandatId && !x.geloeschtAm) : undefined;
     if (!m) throw new RechnungFehler('Mandat nicht gefunden.', 404);
-    const monat = typeof p.monat === 'string' && monatsGrenzen(p.monat) ? p.monat : heute.slice(0, 7);
+    // Ohne gewählten Monat (z. B. „Erste Rechnung“ am Angebot): der laufende, geklemmt in die Laufzeit des Mandats (18.10.).
+    const monat = typeof p.monat === 'string' && monatsGrenzen(p.monat) ? p.monat : mandatMonatVorgabe(m, heute);
     const grenzen = monatsGrenzen(monat)!;
-    vorhandenIn = l => l.find(r => r.mandatId === m.id && r.leistungVon === grenzen.von && r.art !== 'storno' && r.status !== 'storniert');
+    // Teilmonat (Kevin 18.10.: „Anteilig“): Leistungszeitraum = Monat ∩ [Beginn, Ende]; der Betrag folgt in `positionAusMandat`.
+    const lm = leistungsmonat(m, monat)!;
+    // Je Mandat und Leistungsmonat höchstens eine Monatsrechnung: erkannt am Monatsersten (bisher) oder am anteiligen Beginn (neu).
+    // Rechnungen aus einem Angebot (`angebotId`, z. B. die Einmalposten) sind keine Monatsrechnung — sie halten den Monat nicht auf.
+    vorhandenIn = l => l.find(r => r.mandatId === m.id && !r.angebotId && (r.leistungVon === grenzen.von || r.leistungVon === lm.von) && r.art !== 'storno' && r.status !== 'storniert');
     const da = vorhandenIn(plan.rechnungen);
     if (da) {
       if (!inSicht(da, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
       return { rechnung: mitFassung(da), vorhanden: true };
     }
+    if (!lm.tage) throw new RechnungFehler(ausserhalbLaufzeit(m, monat), 409, { grund: 'ausserhalb-laufzeit', monat: mandatMonatVorgabe(m, heute) });
     // 08.10. (Woche 2 · 3.13): ein Mandat mit Gesellschaft „offen“ (angelegt ohne Deal) nimmt NICHT still die Vorgabe — erst wählen.
     if (!gesellschaftAusEinheit(m.gesellschaft) && !istRegisterKennung(m.gesellschaft) && !istGesellschaft(p.firmaId)) throw new RechnungFehler('Am Mandat ist die Gesellschaft noch „offen“ — bitte erst am Mandat wählen, für welche Gesellschaft es läuft; dann die Rechnung schreiben.', 409, { grund: 'gesellschaft' });
     const g = gesellschaftFuer(m.gesellschaft);
@@ -207,10 +215,15 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const k = m.kontaktIds.map(kontakt).find(Boolean);
     const f = firma(m.firmaId);
     const empf = empfaengerAusCrm(k, f);
+    // Angebots-Nr. (18.10.): stammt das Mandat aus einem angenommenen Angebot, steht dessen Nummer und Datum auch auf der Monatsrechnung —
+    // nur als Text (`angebot`/`angebotAm`), nie `angebotId` (die gehört den Rechnungen AUS dem Angebot, sonst verwechselte „aus Angebot“ sie).
+    const ang = (crm.angebote ?? []).filter(a => a.mandatId === m.id && a.status === 'angenommen').sort((x, y) => (y.angenommenAm ?? '').localeCompare(x.angenommenAm ?? ''))[0]
+      ?? (m.chanceId ? angenommenZuDeal(crm.angebote, m.chanceId) : undefined);
     entwurf = neuerEntwurf({
       id, firmaId: g, kunde: kundeAus(empf, m.kunde), titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}`, empfaenger: empf,
-      positionen: m.honorar.betrag > 0 ? [positionAusMandat(m, monat, { kleinunternehmer: ku(g), nettoAusBrutto })] : [],
-      zahlungszielTage: ziel(g, m.zahlungszielTage || undefined), heute, mandatId: m.id, leistungVon: grenzen.von, leistungBis: grenzen.bis,
+      positionen: m.honorar.betrag > 0 ? [positionAusMandat(m, monat, { kleinunternehmer: ku(g), nettoAusBrutto, anteil: lm })] : [],
+      zahlungszielTage: ziel(g, m.zahlungszielTage || undefined), heute, mandatId: m.id, leistungVon: lm.von, leistungBis: lm.bis,
+      ...(ang?.nummer ? { angebot: ang.nummer } : {}), ...(ang?.nummer && ang.gestelltAm ? { angebotAm: tagVon(ang.gestelltAm) } : {}),
       ...(k ? { kontaktId: k.id } : {}), ...(f ? { kundeFirmaId: f.id } : {}), ...(m.ustSatz === 0 && !ku(g) ? { steuerHinweis: 'reverse-charge' as const } : {}),
       einleitung: EINLEITUNG_VORLAGE, schluss: SCHLUSS_VORLAGE,
     }, { kleinunternehmer: ku(g) });

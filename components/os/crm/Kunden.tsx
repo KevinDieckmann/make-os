@@ -51,7 +51,7 @@ import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
 import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
-import { monatsName } from '@/lib/finanzen/rechnung/regeln';
+import { monatsName, mandatLaeuftIm, mandatMonatVorgabe } from '@/lib/finanzen/rechnung/regeln';
 import { MandatFortschritt, FallPhase } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
 import { useNurBusiness } from '../useInhaber';
@@ -418,7 +418,11 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   // Monatsrechnung mit PDF (08.10.): ein Entwurf je Leistungsmonat auf Klick — gestellt wird erst im Editor (nie automatisch).
   const monat = heute.slice(0, 7);
   const vormonat = tagePlus(`${monat}-01`, -1).slice(0, 7);
-  const vormonatLief = !m.start || m.start.slice(0, 7) <= vormonat;
+  // Nur Monate, in denen das Mandat läuft (18.10.: Beginn und Ende — der Server lehnt andere mit 409 ab; der Teilmonat rechnet anteilig).
+  const vormonatLief = mandatLaeuftIm(m, vormonat);
+  const monatLaeuft = mandatLaeuftIm(m, monat);
+  // Läuft es in keinem der beiden (beginnt später bzw. endete früher): sein nächster bzw. letzter Monat.
+  const andererMonat = !vormonatLief && !monatLaeuft ? mandatMonatVorgabe(m, heute) : null;
   const monatsrechnung = async (mo: string) => {
     const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat: mo });
     if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
@@ -442,7 +446,8 @@ function MandatRechnungen({ m }: { m: Mandat }) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Den Vormonat nur, wenn das Mandat da schon lief (17.10., Gesamtprüfung L1 B9 — vorher „Rechnung für September“ bei Start am 17.10.). */}
           {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && vormonatLief && <Knopf leise onClick={() => monatsrechnung(vormonat)}>Rechnung für {monatsName(vormonat)} schreiben</Knopf>}
-          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && <Knopf leise onClick={() => monatsrechnung(monat)}>{vormonatLief ? '… für' : 'Rechnung für'} {monatsName(monat)}{vormonatLief ? '' : ' schreiben'}</Knopf>}
+          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && andererMonat && mandatLaeuftIm(m, andererMonat) && <Knopf leise onClick={() => monatsrechnung(andererMonat)}>Rechnung für {monatsName(andererMonat)} schreiben</Knopf>}
+          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && monatLaeuft && <Knopf leise onClick={() => monatsrechnung(monat)}>{vormonatLief ? '… für' : 'Rechnung für'} {monatsName(monat)}{vormonatLief ? '' : ' schreiben'}</Knopf>}
           {liste !== 'kein' && offenGes && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Gesellschaft noch „offen“ — oben wählen, dann lässt sich die Rechnung schreiben.</span>}
           {liste !== 'kein' && m.honorar.betrag > 0 && !finanzFirma && !offenGes && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{NUR_GRUNDDATEN}</span>}
           {ueber.length > 0 && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{ueber.length} überfällig</span>}

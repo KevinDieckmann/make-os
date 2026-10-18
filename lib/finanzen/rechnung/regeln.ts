@@ -14,6 +14,7 @@ import { RECHTSART, istGesellschaft, type Gesellschaftskennung } from '@/lib/ein
 import { positionNettoCent, ustCent, nummerAusFormat, euroCent, mengeText, KURZ_VORGABE, ZAHLUNGSZIEL_VORGABE_TAGE, UST_SAETZE } from '@/lib/crm/angebote';
 import { istKontaktKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
+import { aufCent } from '@/lib/finanzen/ust';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
@@ -374,12 +375,68 @@ const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'A
 /** „2026-10“ → „Oktober 2026“. */
 export const monatsName = (monat: string) => (/^\d{4}-\d{2}$/.test(monat) ? `${MONATE[Number(monat.slice(5)) - 1]} ${monat.slice(0, 4)}` : monat);
 
-/** Die Position der Monatsrechnung aus dem Honorar des Mandats (netto; ein Brutto-Honorar wird über ust.ts zurückgerechnet). */
-export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen'>, monat: string, opt: { kleinunternehmer?: boolean; nettoAusBrutto: (b: number, s: number) => number }): RechnungPosition {
-  const netto = m.honorar.netto ? m.honorar.betrag : opt.nettoAusBrutto(m.honorar.betrag, m.ustSatz);
-  const einheit = m.honorar.basis === 'tag' ? 'Tag' : m.honorar.basis === 'einmalig' ? 'pauschal' : 'Monat';
+// ── Teilmonat (Kevin 18.10.: „Anteilig“) ─────────────────────────────────────
+
+/**
+ * Der Leistungszeitraum eines Mandats in einem Monat: Monat ∩ [Beginn, Ende], beide Tage eingeschlossen. Beginnt das Mandat mitten
+ * im Monat (bzw. endet es dort), ist der Monat „anteilig“ — die Monatsrechnung rechnet dann nur diese Tage (`positionAusMandat`).
+ * `tage` 0 = das Mandat läuft in diesem Monat gar nicht. null = kein gültiger Monat „JJJJ-MM“.
+ */
+export interface Leistungsmonat { monat: string; von: string; bis: string; tage: number; monatsTage: number; anteilig: boolean }
+export function leistungsmonat(m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string): Leistungsmonat | null {
+  const g = monatsGrenzen(monat);
+  if (!g) return null;
+  const von = tagOk(m.start) && m.start > g.von ? m.start : g.von;
+  const bis = tagOk(m.ende) && m.ende < g.bis ? m.ende : g.bis;
+  const monatsTage = tageZwischen(g.von, g.bis) + 1;
+  const tage = von <= bis ? tageZwischen(von, bis) + 1 : 0;
+  return { monat, von, bis, tage, monatsTage, anteilig: tage > 0 && tage < monatsTage };
+}
+
+/** Läuft das Mandat in diesem Monat (mindestens einen Tag)? */
+export const mandatLaeuftIm = (m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string) => (leistungsmonat(m, monat)?.tage ?? 0) > 0;
+
+/**
+ * Vorgabe-Monat der Monatsrechnung, wenn keiner gewählt ist (z. B. „Erste Rechnung“ am Angebot): der laufende Monat, geklemmt in die
+ * Laufzeit — beginnt das Mandat später, sein erster Monat; endete es schon, sein letzter.
+ */
+export function mandatMonatVorgabe(m: Partial<Pick<Mandat, 'start' | 'ende'>>, heute: string): string {
+  let mo = heute.slice(0, 7);
+  if (tagOk(m.start) && m.start.slice(0, 7) > mo) mo = m.start.slice(0, 7);
+  if (tagOk(m.ende) && m.ende.slice(0, 7) < mo) mo = m.ende.slice(0, 7);
+  return mo;
+}
+
+/** Der Satz, wenn das Mandat im gewählten Monat nicht läuft (409) — mit dem Monat, für den es eine Rechnung gibt. */
+export function ausserhalbLaufzeit(m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string): string {
+  if (tagOk(m.start) && m.start.slice(0, 7) > monat) return `Das Mandat beginnt am ${datumDe(m.start)} — für ${monatsName(monat)} gibt es keine Monatsrechnung. Die erste ist für ${monatsName(m.start.slice(0, 7))}.`;
+  if (tagOk(m.ende) && m.ende.slice(0, 7) < monat) return `Das Mandat endete am ${datumDe(m.ende)} — für ${monatsName(monat)} gibt es keine Monatsrechnung. Die letzte ist für ${monatsName(m.ende.slice(0, 7))}.`;
+  return `Das Mandat läuft in ${monatsName(monat)} nicht (Beginn und Ende am Mandat prüfen) — keine Monatsrechnung.`;
+}
+
+/** „anteilig ab 17.10., 15 von 31 Tagen“ (bzw. „bis 15.12.“ oder „10.10.–20.10.“) — steht in der Position, damit der Kunde es lesen kann. */
+export function anteilText(l: Leistungsmonat): string {
+  const kurz = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.`;
+  const g = monatsGrenzen(l.monat);
+  const ab = !!g && l.von > g.von;
+  const bis = !!g && l.bis < g.bis;
+  const wann = ab && bis ? `${kurz(l.von)}–${kurz(l.bis)}` : ab ? `ab ${kurz(l.von)}` : `bis ${kurz(l.bis)}`;
+  return `anteilig ${wann}, ${l.tage} von ${l.monatsTage} Tagen`;
+}
+
+/**
+ * Die Position der Monatsrechnung aus dem Honorar des Mandats (netto; ein Brutto-Honorar wird über ust.ts zurückgerechnet).
+ * Teilmonat (`anteil` mit `anteilig`, nur Honorar je Monat): Monatshonorar × Tage ÷ Tage des Monats, auf den Cent kaufmännisch
+ * (lib/finanzen/ust.ts) — gerechnet auf das Honorar, wie es am Mandat steht; die Position sagt „anteilig …, 15 von 31 Tagen“.
+ * Ohne `anteil` bzw. voller Monat: wie bisher (bit-gleich).
+ */
+export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen'>, monat: string, opt: { kleinunternehmer?: boolean; nettoAusBrutto: (b: number, s: number) => number; anteil?: Leistungsmonat | null }): RechnungPosition {
+  const teil = opt.anteil?.anteilig && m.honorar.basis === 'monat' ? opt.anteil : null;
+  const honorar = teil ? aufCent((m.honorar.betrag * teil.tage) / teil.monatsTage) : m.honorar.betrag;
+  const netto = m.honorar.netto ? honorar : opt.nettoAusBrutto(honorar, m.ustSatz);
+  const einheit = teil ? 'pauschal' : m.honorar.basis === 'tag' ? 'Tag' : m.honorar.basis === 'einmalig' ? 'pauschal' : 'Monat';
   return {
-    id: 'p1', titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}`.slice(0, RECHNUNG_GRENZEN.titel), text: (m.leistungen ?? []).filter(Boolean).map(x => `• ${x}`).join('\n').slice(0, RECHNUNG_GRENZEN.text),
+    id: 'p1', titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}${teil ? ` (${anteilText(teil)})` : ''}`.slice(0, RECHNUNG_GRENZEN.titel), text: (m.leistungen ?? []).filter(Boolean).map(x => `• ${x}`).join('\n').slice(0, RECHNUNG_GRENZEN.text),
     menge: 1, einheit, einzelpreisCent: Math.max(0, Math.round(netto * 100)), ustSatz: opt.kleinunternehmer ? 0 : (UST_SAETZE as readonly number[]).includes(m.ustSatz) ? m.ustSatz : 19,
   };
 }

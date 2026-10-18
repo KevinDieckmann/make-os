@@ -210,9 +210,13 @@ export function angeboteListe(b: UmsatzBezug, ablage: DateiEintrag[], tool: read
   }
   ablage = ablage.filter(e => !e.angebotId);
   const verknuepft = new Set(ablage.filter(e => e.art === 'angebot' && e.rechnungId).map(e => e.rechnungId!));
+  // Rechnungen, die nur die Nummer eines Tool-Angebots tragen (aus dem Angebot bzw. die Monatsrechnungen des Mandats, 18.10.), zeigen
+  // dasselbe Angebot noch einmal — es steht schon oben.
+  const toolNummern = new Set(tool.map(a => a.nummer).filter((n): n is string => !!n));
   for (const z of b.rechnungen) {
     if (!z.r.angebot && !z.r.angebotAm) continue;
     if (verknuepft.has(z.r.id)) continue; // der Ablage-Eintrag zeigt dasselbe Angebot (mit PDF)
+    if (z.r.angebot && toolNummern.has(z.r.angebot)) continue;
     zeilen.push({ schluessel: `r:${z.r.id}`, quelle: 'rechnung', titel: z.r.titel || z.r.kunde, ...(z.r.angebot ? { nummer: z.r.angebot } : {}), ...(z.r.angebotAm ? { datum: z.r.angebotAm } : {}), betrag: z.r.betrag, status: z.r.status === 'geplant' ? 'offen' : 'angenommen', rechnungId: z.r.id });
   }
   const dealMitAblage = new Set(ablage.filter(e => e.art === 'angebot' && e.dealId).map(e => e.dealId!));
