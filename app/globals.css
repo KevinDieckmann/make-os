@@ -135,6 +135,15 @@ nav a:hover { transform: translateX(2px); }
 .zoe-fenster { transform-origin: 100% 100%; animation: zoeAuf .28s var(--ease-feder); }
 .zoe-fab { transition: transform 180ms var(--ease-feder), box-shadow 220ms var(--ease-glatt); }
 .zoe-fab:hover { transform: scale(1.08); box-shadow: 0 10px 36px rgba(33, 181, 170, .35) !important; }
+/* Schwebendes weicht beim Lesen aus (18.10., N20): ZOE-Kugel und Anwesenheits-Plakette lagen beim Durchrollen auf Knöpfen. Nach unten rollen
+   → sie gleiten aus dem Bild und nehmen keine Klicks an; nach oben, ganz oben und am Seitenende (dort ist Platz) sind sie da
+   (`useSchwebendWeicht`, components/os/ui/schwebend.ts). Mit Tastatur-Fokus bleiben sie sichtbar. Reduzierte Bewegung: ohne Gleiten. */
+.schwebend { transition: transform 220ms var(--ease-glatt), box-shadow 220ms var(--ease-glatt), opacity 180ms linear; }
+.schwebend.schwebend-weg { transform: translateY(calc(100% + 40px)) !important; opacity: 0; pointer-events: none !important; }
+.schwebend.schwebend-weg * { pointer-events: none !important; }
+.schwebend.schwebend-weg:focus-visible, .schwebend.schwebend-weg:focus-within { transform: none !important; opacity: 1; pointer-events: auto !important; }
+.schwebend.schwebend-weg:focus-within * { pointer-events: auto !important; }
+@media (prefers-reduced-motion: reduce) { .schwebend { transition: none; } }
 
 /* ─── ZOE-Icon: ruhiger Puls — die Intelligenz geht überall mit ──────────── */
 @keyframes zoeRing { 0% { transform: scale(.85); opacity: .7; } 70%, 100% { transform: scale(1.45); opacity: 0; } }

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT } from '@/lib/make-one/design';
 import { useSpace } from '@/hooks/useSpace';
+import { useSchwebendWeicht } from './ui';
 
 interface Aktiv { person: string; name: string; pfad: string; seitSek: number }
 
@@ -27,6 +28,8 @@ export function Mitarbeit() {
   const pfad = usePathname() ?? '/os';
   const { space } = useSpace();
   const [andere, setAndere] = useState<Aktiv[]>([]);
+  // Weicht wie die ZOE-Kugel beim Lesen nach unten aus (18.10., N20 — „Ben ist in MAKE OS“ lag auf „In der Inbox öffnen“).
+  const weicht = useSchwebendWeicht();
   useEffect(() => {
     let weg = false;
     const melden = async () => {
@@ -45,7 +48,7 @@ export function Mitarbeit() {
   // Auf der Netzwerken-Seite (Handy, eine Hand, Aktionsleiste unten) stört die schwebende Pille nur.
   if (!andere.length || pfad.startsWith('/os/netzwerken')) return null;
   return (
-    <div style={{ position: 'fixed', right: 96, bottom: 26, zIndex: 60, display: 'grid', gap: 6, justifyItems: 'end', pointerEvents: 'none' }} className="os-mitarbeit">
+    <div style={{ position: 'fixed', right: 96, bottom: 26, zIndex: 60, display: 'grid', gap: 6, justifyItems: 'end', pointerEvents: 'none' }} className={`os-mitarbeit schwebend${weicht ? ' schwebend-weg' : ''}`}>
       {andere.map(a => {
         const hier = a.pfad.split('?')[0] === pfad;
         return (

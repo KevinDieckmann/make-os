@@ -12,6 +12,8 @@ import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeEinstellungen, wemGehoert, type KalenderEinstellungen } from './einstellungen';
 import { termineLesen, type GeleseneTermine } from './termine-lesen';
 import { fuerZoe, terminFremd, type TerminHerkunft } from './zoe-sicht';
+import { kalenderNurBusiness } from './konto-bereich';
+import { spaceVonKalender } from './space';
 import type { TerminMitBezug } from './bezug';
 
 /** `fremd`: Text möglicherweise von Dritten (nie bei maskierten Terminen — „Belegt“ ist unser Text). */
@@ -47,15 +49,22 @@ export function herkunftAus(g: Pick<GeleseneTermine, 'quelle' | 'kalender'>, ein
 
 const mitFremd = (t: ZoeTermin, fremd: boolean): ZoeTermin => (fremd && !t.maskiert ? { ...t, fremd: true } : t);
 
-/** Termine im Zeitraum [von, bis) (Berliner Tage), wie ZOE sie für `person` sehen darf. */
+/**
+ * Termine im Zeitraum [von, bis) (Berliner Tage), wie ZOE sie für `person` sehen darf.
+ * Konto „nur Business“ (Nachprüfung 18.10., N1): nur Termine aus Business-Kalendern (`spaceVonKalender`) — dieselbe Regel wie GET
+ * /api/kalender (`kalenderBereich`), nie „Belegt“-Zeilen aus Privat-Kalendern. Vorher kam über den Fluss „Für dich“ (und alle anderen Leser
+ * dieses Pfads: Brain/ZOE, Lichtfäden, Seil, Analyse, Tagesstart, Wochenplan) ein Abendessen im Kalender „Privat“ mit Titel an. Unlesbarer
+ * Konten-Bestand → wie „nur Business“ (fail-closed).
+ */
 export async function termineFuerZoe(person: string, von: string, bis: string): Promise<ZoeKalender> {
   if (!(await personImHaushaltDesInhabers(person).catch(() => false))) return LEER;
   const einst = await ladeEinstellungen().catch(() => null);
+  const nurBusiness = await kalenderNurBusiness(person).catch(() => true);
   const g = einst ? await termineLesen(einst, von, bis).catch(() => null) : null;
   const herkunft = g && einst ? herkunftAus(g, einst) : null;
   return {
     termine: (g?.termine ?? [])
-      .filter(t => !t.abgesagt)
+      .filter(t => !t.abgesagt && (!nurBusiness || spaceVonKalender(einst, t.kalender) === 'business'))
       .map(t => mitFremd(fuerZoe(t, person), !herkunft || terminFremd(t, herkunft)))
       .sort((a, b) => a.start.localeCompare(b.start)),
     stand: g?.stand ?? null,
