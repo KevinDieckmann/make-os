@@ -97,7 +97,7 @@ describe('C1 · Kalender', () => {
     const q = lies('components/os/kalender/Zeitraster.tsx');
     expect(q).toContain('{zeit}{schloss}');
     expect(q).toContain("Math.abs((h * 60 - jetztMin!) * px) < 16 ? 'hidden'");
-    expect(q).toContain("maxHeight: 'max(420px, calc(100dvh - 150px - var(--os-ablage)))'"); // seit 19.10. minus die Ablage unten (ZOE-Kugel)
+    expect(q).toContain("maxHeight: 'max(420px, calc(100dvh - 150px - var(--os-ablage)))'"); // seit 18.10. minus die Ablage unten (ZOE-Kugel)
     expect(q).not.toMatch(/\{!ev\.bearbeitbar && !ev\.maskiert && <span aria-label="nur in Apple" style=\{\{ marginRight: 4 \}\}>🔒/);
   });
 });
@@ -213,7 +213,7 @@ describe('C11/C12', () => {
     expect(lies('components/os/crm/ZoeFragen.tsx')).toContain('zoe-fragen-symbol');
     const css = lies('app/globals.css');
     expect(css).toContain('.ui-kopf-aktion .zoe-fragen-symbol { display: block; }');
-    // Seit 19.10. reserviert die Ablage unten den Platz (`<main>` endet über Leiste + Streifen der Kugel) — Wächter tests/nachpruefung-l1b.test.ts › N20.
+    // Seit 18.10. reserviert die Ablage unten den Platz (`<main>` endet über Leiste + Streifen der Kugel) — Wächter tests/nachpruefung-l1b.test.ts › N20.
     expect(css).toContain('height: calc(100dvh - var(--os-leiste-handy) - var(--os-ablage))');
   });
   it('Gesundheit ohne Einwilligung: keine Werte — Index und Säulen ohne Zahl, jede Kennzahl „ohne Einwilligung“', () => {

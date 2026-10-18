@@ -272,7 +272,7 @@ describe('N17 — Einrichtung für ein Konto „nur Business“: der Erklärtext
   });
 });
 
-describe('N20 — ZOE-Kugel und Anwesenheits-Plakette sind immer sichtbar und liegen nie auf einem Knopf (Kevin 19.10.: „Immer sichtbar“)', () => {
+describe('N20 — ZOE-Kugel und Anwesenheits-Plakette sind immer sichtbar und liegen nie auf einem Knopf (Kevin 18.10.: „Immer sichtbar“)', () => {
   // Vorher (18.10.) glitten beide beim Lesen weg. Jetzt reserviert die Shell unter dem Inhalt einen Streifen (Ablage): `<main>` rollt nur darüber,
   // Kugel und Plakette stehen darin — am Handy direkt über der unteren Leiste.
   const lies = async (pfad: string) => (await import('node:fs')).readFileSync(pfad, 'utf8');

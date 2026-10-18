@@ -15,7 +15,7 @@ import { mitBezug, type TerminMitBezug } from './bezug';
 export interface MacEv {
   id?: string; title?: string; startDate?: string; endDate?: string; allDay?: boolean; calendarName?: string; location?: string;
   /** Vom Server selbst geschrieben (lib/kalender/icloud.ts `cacheFormat`): die UID des Termins und — aus der eigenen iCloud-Verbindung einer
-   *  Person — deren Speichername. Nur gelesen von `verfuegbarkeitFuer` (19.10., nie doppelt zählen). */
+   *  Person — deren Speichername. Nur gelesen von `verfuegbarkeitFuer` (18.10., nie doppelt zählen). */
   uid?: string; persoenlich?: string;
 }
 

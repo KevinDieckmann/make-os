@@ -47,7 +47,7 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       <NutzungsMelder />
       {/* Die Leiste (26.09.): Home · Wachstum · Privat · Business · Agenten, unten ZOE · Brain · System. */}
       <Leiste />
-      {/* Höhe aus app/globals.css (19.10.): Fensterhöhe minus der Ablage unten (ZOE-Kugel, Anwesenheit; am Handy plus Leiste) — der Inhalt rollt
+      {/* Höhe aus app/globals.css (18.10.): Fensterhöhe minus der Ablage unten (ZOE-Kugel, Anwesenheit; am Handy plus Leiste) — der Inhalt rollt
           nur dort, wo nichts Festes liegt. */}
       <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}>
         {/* Der Kopf (26.09.): Suche im Space · Idee · Heute · Inbox · Kalender · Index des Space. */}

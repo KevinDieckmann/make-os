@@ -1,4 +1,4 @@
-// ─── Freie Zeit: die EIGENE iCloud-Verbindung einer Person zählt auch ohne Haushalts-iCloud/Google (19.10.) ──────────────────────────
+// ─── Freie Zeit: die EIGENE iCloud-Verbindung einer Person zählt auch ohne Haushalts-iCloud/Google (18.10.) ──────────────────────────
 // `verfuegbarkeitFuer` (lib/kalender/verfuegbarkeit.ts) las ohne Haushalts-iCloud und ohne Google nur den Mac-Stand (`calendar-cache`) —
 // Termine aus der eigenen Verbindung einer Person (`icloud-verbindung--<person>`, Spiegel `kalender-icloud--<person>`) zählten dann nicht.
 // Jetzt zählen sie bei IHRER Verfügbarkeit mit: nur „belegt“ (nie ein Titel), nie bei anderen Personen, nie doppelt (was der Mac-Stand trägt,

@@ -82,7 +82,7 @@ export function verfuegbarkeitAus(a: { person: string; von: string; bis: string;
   const tage: TagVerfuegbarkeit[] = [];
   for (let tag = a.von, n = 0; tag < a.bis && n < 400; tag = tagPlus(tag, 1), n++) {
     const heute = eigene.map(t => ({ t, b: amTag(t, tag) })).filter((x): x is { t: T; b: Belegt } => !!x.b);
-    // Titel nie aus privaten, maskierten oder Terminen der eigenen iCloud-Verbindung einer Person (`persoenlich`, 19.10. — dort nur „belegt“).
+    // Titel nie aus privaten, maskierten oder Terminen der eigenen iCloud-Verbindung einer Person (`persoenlich`, 18.10. — dort nur „belegt“).
     const abwesend = heute.filter(x => x.t.art === 'abwesend').map(x => ({ ...x.b, ...(x.t.sichtbarkeit !== 'privat' && !x.t.maskiert && !x.t.persoenlich ? { titel: x.t.titel } : {}) }));
     const ganzAbwesend = abwesend.some(x => x.ganztags);
     const ort = heute.filter(x => x.t.art === 'arbeitsort' && x.t.arbeitsort).pop();

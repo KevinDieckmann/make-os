@@ -56,7 +56,7 @@ export function werFuerBelegung(e: BelegtEinstellungen, kalenderName: string): K
 }
 
 /**
- * Wessen Verfügbarkeit ein TERMIN betrifft (19.10.): ein Termin aus der EIGENEN iCloud-Verbindung einer Person (`persoenlich`, gesetzt nur in
+ * Wessen Verfügbarkeit ein TERMIN betrifft (18.10.): ein Termin aus der EIGENEN iCloud-Verbindung einer Person (`persoenlich`, gesetzt nur in
  * lib/kalender/icloud.ts `persoenlichMarkieren`) gehört genau ihr (Speichername) — auch, wenn ihr Name zu keinem Fach der Einstellungen passt —,
  * außer sie hat den Kalender ausdrücklich auf „zählt nicht als belegt“ gestellt. Alle anderen Termine wie `werFuerBelegung`. Rein.
  */

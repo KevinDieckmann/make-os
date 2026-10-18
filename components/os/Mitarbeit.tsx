@@ -45,7 +45,7 @@ export function Mitarbeit() {
   // Auf der Netzwerken-Seite (Handy, eine Hand, Aktionsleiste unten) stört die schwebende Pille nur.
   if (!andere.length || pfad.startsWith('/os/netzwerken')) return null;
   return (
-    // Immer sichtbar (19.10., Kevin): im Streifen der Ablage unten neben der ZOE-Kugel (`.os-mitarbeit` in app/globals.css), mehrere in einer
+    // Immer sichtbar (18.10., Kevin): im Streifen der Ablage unten neben der ZOE-Kugel (`.os-mitarbeit` in app/globals.css), mehrere in einer
     // Reihe — `<main>` endet über dem Streifen, die Plakette liegt nie auf einem Knopf (vorher wich sie beim Lesen aus).
     <div style={{ position: 'fixed', zIndex: 60, display: 'flex', alignItems: 'center', gap: 6, pointerEvents: 'none' }} className="os-mitarbeit">
       {andere.map(a => {

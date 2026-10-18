@@ -112,7 +112,7 @@ export function useVolleHoehe(ref: RefObject<HTMLElement | null>): number | null
       const fenster = Math.min(window.innerHeight - mainOben, main?.clientHeight ?? window.innerHeight);
       const leiste = document.querySelector<HTMLElement>('.leiste-mobil');
       const lr = leiste && getComputedStyle(leiste).display !== 'none' ? leiste.getBoundingClientRect() : null;
-      // Nur der Teil der Leiste, der über dem Inhalt liegt (19.10.): seit der Ablage unten endet `<main>` über der Leiste — dann zählt sie nicht doppelt.
+      // Nur der Teil der Leiste, der über dem Inhalt liegt (18.10.): seit der Ablage unten endet `<main>` über der Leiste — dann zählt sie nicht doppelt.
       const mainUnten = main ? main.getBoundingClientRect().bottom : window.innerHeight;
       const unten = lr && lr.height > 0 ? Math.max(0, Math.min(window.innerHeight, mainUnten) - lr.top) : 0;
       const neu = volleHoehe(fenster, oben, { unten });

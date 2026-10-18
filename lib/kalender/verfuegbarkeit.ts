@@ -6,7 +6,7 @@
 // Wochenvorlage aus `routinen.bloecke`. Nur lesen. Ohne iCloud und ohne Google: der zuletzt vom Mac gelieferte Stand (`calendar-cache`,
 // Nachprüfung 18.10., N7 — dieselbe Quelle, die GET /api/kalender dann zeigt; vorher war die Terminliste leer, „zählt als belegt“ wirkte nicht
 // und die Kick-off-Vorschläge trafen belegte Zeiten). Nie beide Quellen zugleich: mit iCloud/Google zählt allein deren Stand.
-// Seit 19.10.: die EIGENEN iCloud-Verbindungen der Personen (lib/kalender/icloud-person.ts) zählen auch ohne Haushalts-iCloud/Google — mit
+// Seit 18.10.: die EIGENEN iCloud-Verbindungen der Personen (lib/kalender/icloud-person.ts) zählen auch ohne Haushalts-iCloud/Google — mit
 // iCloud/Google stehen sie schon im Stand (`ladeStand` → `persoenlicheUeberlagerung`), ohne kommen sie zum Mac-Stand dazu (`eigeneVerbindungen`).
 // Sie gehören genau ihrer Person (`werFuerTermin`) und bleiben privat: nur „belegt“, nie ein Titel. Nie doppelt: was im Haushalts-Stand steht
 // (dieselbe UID), zählt nur dort — dieselbe Regel wie `ladeStand`; Kopien aus der Überlagerung im Zwischenspeicher zählen nicht als Mac-Stand.
@@ -36,7 +36,7 @@ export async function verfuegbarkeitFuer(person: string, von: string, bis: strin
   if (!PERSON.test(person) || !TAG.test(von) || !TAG.test(bis) || bis <= von) throw new Error('verfuegbarkeitFuer: Person oder Zeitraum ungültig.');
   const [einst, bezuege, routinen, businessFrei] = await Promise.all([ladeEinstellungen(), ladeBezuege(), loadJson<RoutinenDatei>('routinen').catch(() => null), businessFreiFensterFuer(person, von, bis).catch(() => [])]);
   // iCloud und/oder die verbundenen Google-Kalender (03.10.) — beide liegen im selben Stand (samt den eigenen Verbindungen je Person). Sonst der
-  // Mac-Stand (EINE Abbildung `macTermine`) und dazu die eigenen Verbindungen je Person (19.10.).
+  // Mac-Stand (EINE Abbildung `macTermine`) und dazu die eigenen Verbindungen je Person (18.10.).
   let termine: Termin[];
   if (verbunden() || Object.keys(await googleKalenderNamen()).length) termine = termineImZeitraum(await frischerStand(), von, bis);
   else {
@@ -54,7 +54,7 @@ export async function verfuegbarkeitFuer(person: string, von: string, bis: strin
 }
 
 /**
- * Ohne Haushalts-iCloud und ohne Google (19.10.): die Termine aus den EIGENEN iCloud-Verbindungen der Personen — dieselbe Überlagerung wie
+ * Ohne Haushalts-iCloud und ohne Google (18.10.): die Termine aus den EIGENEN iCloud-Verbindungen der Personen — dieselbe Überlagerung wie
  * `ladeStand` (nur gezeigte Kalender, ohne Objekte, deren UID im Haushalts-iCloud-Stand steht), dazu ohne alles, was der Mac-Stand schon
  * trägt (`uid`, sonst `id`). Termine tragen `persoenlich` (Person) — nur „belegt“. Ohne Verbindung: nichts (bit-gleich wie vorher).
  */
