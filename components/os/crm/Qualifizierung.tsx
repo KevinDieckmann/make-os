@@ -221,7 +221,7 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, oeffne
   // Was im letzten Gespräch festgehalten wurde (18.10., Gesamtprüfung L1 B13): die Notiz vom Event stand nur in der Aktivität — wer qualifiziert, musste die
   // Akte öffnen. Jetzt steht der letzte Gesprächs-Text hier (nur lesen; „übernehmen“ setzt ihn als Notiz zum Lead, wenn die leer ist).
   const ausGespraech = useMemo(() => personen.flatMap(k => k.aktivitaeten ?? [])
-    .filter(a => (a.art === 'notiz' || a.art === 'gespraech' || a.art === 'anruf' || a.art === 'meeting') && (a.text ?? '').trim())
+    .filter(a => (a.art === 'notiz' || a.art === 'gespraech' || a.art === 'anruf' || a.art === 'termin') && (a.text ?? '').trim())
     .sort((a, b) => (b.am ?? '').localeCompare(a.am ?? ''))[0] ?? null, [personen]);
 
   const geprueft = async () => {
