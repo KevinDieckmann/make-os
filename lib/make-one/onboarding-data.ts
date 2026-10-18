@@ -159,12 +159,20 @@ export const ebeneMitId = (id: string): EbeneSeite | null => EBENEN.find(e => e.
  * Ein Hinweis in einer Etappe: entschieden, aber noch nicht gebaut — kein Schritt, kein Häkchen. `nurAltbestand`: betrifft nur die
  * gewachsene Instanz (z. B. ein Abschalten nach ihrem Upload) — eine neue Instanz zeigt ihn nicht.
  */
-export interface EtappenHinweis { titel: string; satz: string; wann: string; nurAltbestand?: true }
+export interface EtappenHinweis {
+  titel: string; satz: string; wann: string; nurAltbestand?: true;
+  /** Betrifft nur den Privat-Bereich (Haushalt) — ein Konto „nur Business“ sieht ihn nicht (Nachprüfung 18.10., N17, `etappenFuer`). */
+  privat?: true;
+}
 /**
  * `allgemein`: Titel/Satz für eine Instanz ohne Altbestand (ohne Upload-Tag und Daten) — gelesen nur über `etappenFuer`. `datenkarte`: in dieser
  * Etappe werden Zahlen eingetragen — die Einrichtung verweist auf die Datenkarte.
  */
-export interface Etappe { nr: number; titel: string; satz: string; hinweise?: EtappenHinweis[]; allgemein?: { titel?: string; satz?: string }; datenkarte?: true }
+export interface Etappe {
+  nr: number; titel: string; satz: string; hinweise?: EtappenHinweis[]; allgemein?: { titel?: string; satz?: string }; datenkarte?: true;
+  /** Titel/Satz für ein Konto „nur Business“ (Nachprüfung 18.10., N17): ohne Privat-Themen — gelesen nur über `etappenFuer(…, nurBusiness)`. */
+  business?: { titel?: string; satz?: string };
+}
 
 export const ETAPPEN: Etappe[] = [
   { nr: 0, titel: 'Am Upload-Tag und direkt danach', satz: 'Am Server, nur der Inhaber — am Abend des Uploads. Die zweite Kopie am Mac geht erst am Tag nach der ersten Nachtsicherung.',
@@ -174,10 +182,11 @@ export const ETAPPEN: Etappe[] = [
   { nr: 2, titel: 'Verbindungen', satz: 'Kalender, Postfächer und Geräte. Jede Person verbindet nur ihre eigenen Konten; niemand liest die Post einer anderen Person.',
     hinweise: [{ titel: 'ZOE aufs Handy über WhatsApp', wann: 'kommt in Phase 1', satz: 'ZOE bekommt eine eigene, zweite WhatsApp-Business-Nummer — nur für ZOE, getrennt von der Business-Nummer der Inbox. Telegram ist raus; bis dahin gibt es dafür keinen Schritt.' }] },
   { nr: 3, titel: 'Firmen & Zahlen', satz: 'Steckbrief, 0-Punkt, Kontostände, offene Posten, Privatkonten. Jede Zahl hat genau einen Eingabeort — siehe Datenkarte. Alle Zahlen kommen von Hand über die vorhandenen Formulare.',
+    business: { satz: 'Steckbrief, 0-Punkt, Kontostände und offene Posten der Firmen. Jede Zahl hat genau einen Eingabeort — siehe Datenkarte. Alle Zahlen kommen von Hand über die vorhandenen Formulare.' },
     datenkarte: true,
     hinweise: [
       { titel: 'Bank-Anbindung', wann: 'vorgezogen in Phase 1', satz: 'Bis dahin tragt ihr Kontostände und Buchungen von Hand ein bzw. lest Kontoauszüge ein.' },
-      { titel: 'Haushalt → Finanzplanung', wann: 'Brücke kommt in Phase 1', satz: 'Der Haushalt führt das Ist (Buchungen, Fixkosten, Budget, Schulden); die Finanzplanung liest künftig daraus. Bis dahin nicht doppelt pflegen.' },
+      { titel: 'Haushalt → Finanzplanung', wann: 'Brücke kommt in Phase 1', privat: true, satz: 'Der Haushalt führt das Ist (Buchungen, Fixkosten, Budget, Schulden); die Finanzplanung liest künftig daraus. Bis dahin nicht doppelt pflegen.' },
     ] },
   { nr: 4, titel: 'Kontakte, Vertrieb & Mandate', satz: 'Kartei, Produkte, laufende Mandate, offene Deals und die Grundlagen des Vertriebs.' },
   { nr: 5, titel: 'Planung & Finanzplan', satz: 'Ziele, Meilensteine, Finanzplan, Arbeitsrahmen und die gemeinsamen Rhythmen.', datenkarte: true },
@@ -195,11 +204,17 @@ export const ETAPPEN: Etappe[] = [
  * Eine Zeile des Ablaufs. `betreiber`: nur in der Betreiber-Instanz (Server-Teil); `ohneBetreiber`: der Satz für eine Instanz ohne Betreiber-Schritte
  * (14.10., Abnahme A2) — gelesen nur über `ablaufFuer`.
  */
-export interface AblaufZeile { wann: string; was: string; betreiber?: true; ohneBetreiber?: string }
+export interface AblaufZeile {
+  wann: string; was: string; betreiber?: true; ohneBetreiber?: string;
+  /** Satz für ein Konto „nur Business“ (Nachprüfung 18.10., N17): ohne Privat-Themen (Gesundheit, Familie, Haushalt) — gelesen über `ablaufFuer`. */
+  wasBusiness?: string;
+}
 
 export const ABLAUF: AblaufZeile[] = [
-  { wann: 'Freitag 09.10., nach dem Upload', betreiber: true, was: 'Etappe 0 am Server (Inhaber, etwa 2½ Stunden). Zuerst 1.8 (eigene Einwilligung (a) zur Gesundheit), dann 0.1 Update, 0.2 Pepper, 0.5 Altbestand, 0.6 Sicherung, 0.8 Vault, 0.9 Adresse, 0.10 WHOOP- und 0.11 Google-Anwendung.' },
-  { wann: 'Samstag 10.10. (höchstens etwa 8 Stunden)', was: 'Alle Schritte mit „Samstag“: vormittags jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele, Finanzplan, Gesundheit und Familie. Die zweite Person braucht deutlich weniger Zeit.' },
+  { wann: 'Freitag 09.10., nach dem Upload', betreiber: true, was: 'Etappe 0 am Server (Inhaber, etwa 2½ Stunden). Zuerst 1.8 (eigene Einwilligung (a) zur Gesundheit), dann 0.1 Update, 0.2 Pepper, 0.5 Altbestand, 0.6 Sicherung, 0.8 Vault, 0.9 Adresse, 0.10 WHOOP- und 0.11 Google-Anwendung.',
+    wasBusiness: 'Etappe 0 am Server (Inhaber, etwa 2½ Stunden): Update, Schlüssel, Altbestand, Sicherung, Vault, Adresse und die Anwendungen für die Verbindungen.' },
+  { wann: 'Samstag 10.10. (höchstens etwa 8 Stunden)', was: 'Alle Schritte mit „Samstag“: vormittags jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele, Finanzplan, Gesundheit und Familie. Die zweite Person braucht deutlich weniger Zeit.',
+    wasBusiness: 'Alle Schritte mit „Samstag“: vormittags jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele und Finanzplan der Firmen. Weitere Personen brauchen deutlich weniger Zeit.' },
   { wann: 'Einzeln bis 16.10.', was: 'Alles mit „einzeln“: zweite Kopie am Mac und Probe (frühestens Sonntag), Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug und WhatsApp als eigene Termine. Der erste Monatsabschluss (Oktober) kommt Anfang November. Der Altbestand (0.5) muss vor dem Update am 16.10. übernommen sein.' },
 ];
 
@@ -208,8 +223,10 @@ export const ABLAUF: AblaufZeile[] = [
  * Instanz mit festen Tagen): dieselbe Reihenfolge, ohne Datum.
  */
 export const ABLAUF_ALLGEMEIN: AblaufZeile[] = [
-  { wann: 'Zuerst · am Server', betreiber: true, was: 'Etappe 0 — nur die Inhaber: Update, Schlüssel, Sicherung, Vault, Adresse und die Anwendungen für die Verbindungen, jeweils mit Befehl. Wer Gesundheitsdaten nutzt, gibt vorher die eigene Einwilligung (1.8).' },
-  { wann: 'Der Kern', was: 'Alle Schritte mit „Der Kern“: zuerst jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele, Finanzplan, Gesundheit und Familie. Weitere Personen brauchen deutlich weniger Zeit.' },
+  { wann: 'Zuerst · am Server', betreiber: true, was: 'Etappe 0 — nur die Inhaber: Update, Schlüssel, Sicherung, Vault, Adresse und die Anwendungen für die Verbindungen, jeweils mit Befehl. Wer Gesundheitsdaten nutzt, gibt vorher die eigene Einwilligung (1.8).',
+    wasBusiness: 'Etappe 0 — nur die Inhaber: Update, Schlüssel, Sicherung, Vault, Adresse und die Anwendungen für die Verbindungen, jeweils mit Befehl.' },
+  { wann: 'Der Kern', was: 'Alle Schritte mit „Der Kern“: zuerst jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele, Finanzplan, Gesundheit und Familie. Weitere Personen brauchen deutlich weniger Zeit.',
+    wasBusiness: 'Alle Schritte mit „Der Kern“: zuerst jede Person ihre Etappen 1 und 2 (Zugang, Verbindungen), danach gemeinsam Stichtag, 0-Punkt, Kontostände, offene Posten, Kartei, Jahresziele und Finanzplan der Firmen. Weitere Personen brauchen deutlich weniger Zeit.' },
   { wann: 'Nach und nach', ohneBetreiber: 'Alles mit „Nach und nach“: Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug als eigener Termin. Der erste Monatsabschluss kommt nach dem ersten vollen Monat ab dem Stichtag.', was: 'Alles mit „Nach und nach“: zweite Kopie der Sicherung und Probe, Mandate, Produkte, Vertrieb, Planung, Steuerprofil, ZOE, Brain, Abschluss — Mail-Umzug und WhatsApp als eigene Termine. Der erste Monatsabschluss kommt nach dem ersten vollen Monat ab dem Stichtag.' },
 ];
 
@@ -219,27 +236,42 @@ export const ABLAUF_ALLGEMEIN: AblaufZeile[] = [
  */
 export const ABLAUF_NEUSTART: AblaufZeile[] = [
   { wann: 'Zuerst · am Server', betreiber: true, was: 'Etappe 0 — nur die Inhaber. Auf einem bestehenden Server ist das meiste schon grün; offen bleibt, was die neue Instanz braucht.' },
-  { wann: 'Der Kern · Zugang', was: 'Etappe 1 — jede Person: zweiter Faktor, Einwilligungen, eigene KI-Schalter, Handy, ein kurzer Rundgang; die Inhaber: Haushalt, Datenschutz, KI der Instanz.' },
-  { wann: 'Der Kern · alles eingeben', was: 'Etappen 2 bis 7 — jede Person ihre eigenen Ziele, ihren Alltag und ihre Gesundheit; gemeinsam Planung, Familie und Finanzen; dann „Business online“: Gesellschaft & Konten, Angebot & Vertrieb. Zahlen eintragen oder hochladen (Kontoauszug, Excel, OP-Liste).' },
-  { wann: 'Danach · Schnittstellen', was: 'Etappe 8 — Kalender, Postfächer, WHOOP und WhatsApp sauber neu verbinden, jede Person ihre eigenen.' },
+  { wann: 'Der Kern · Zugang', was: 'Etappe 1 — jede Person: zweiter Faktor, Einwilligungen, eigene KI-Schalter, Handy, ein kurzer Rundgang; die Inhaber: Haushalt, Datenschutz, KI der Instanz.',
+    wasBusiness: 'Etappe 1 — jede Person: zweiter Faktor, Einwilligungen, eigene KI-Schalter, Handy, ein kurzer Rundgang; die Inhaber: Konten und Rechte, Datenschutz, KI der Instanz.' },
+  { wann: 'Der Kern · alles eingeben', was: 'Etappen 2 bis 7 — jede Person ihre eigenen Ziele, ihren Alltag und ihre Gesundheit; gemeinsam Planung, Familie und Finanzen; dann „Business online“: Gesellschaft & Konten, Angebot & Vertrieb. Zahlen eintragen oder hochladen (Kontoauszug, Excel, OP-Liste).',
+    wasBusiness: 'Etappen 2 bis 7 — jede Person ihre eigenen Ziele und ihren Arbeitsrahmen; gemeinsam die Planung; dann „Business online“: Gesellschaft & Konten, Angebot & Vertrieb. Zahlen eintragen oder hochladen (Kontoauszug, Excel, OP-Liste).' },
+  { wann: 'Danach · Schnittstellen', was: 'Etappe 8 — Kalender, Postfächer, WHOOP und WhatsApp sauber neu verbinden, jede Person ihre eigenen.',
+    wasBusiness: 'Etappe 8 — Kalender, Postfächer und WhatsApp sauber neu verbinden, jede Person ihre eigenen.' },
   { wann: 'Danach · Agenten und Abschluss', was: 'Etappen 9 und 10 — Agenten einstellen, ZOE und Brain; zum Schluss Datenstand und Head of IT.' },
 ];
 
 /**
  * Der Ablauf für diese Instanz: im Neustart dessen Ablauf, mit Altbestand der Fahrplan ihres Uploads (`ABLAUF`), sonst der neutrale ohne Datum.
- * Ohne Betreiber-Instanz (`betreiber === false`) fehlt der Server-Teil, und Zeilen mit `ohneBetreiber` nehmen diesen Satz. Rein.
+ * Ohne Betreiber-Instanz (`betreiber === false`) fehlt der Server-Teil, und Zeilen mit `ohneBetreiber` nehmen diesen Satz. Ein Konto „nur Business“
+ * (`nurBusiness`, Nachprüfung 18.10., N17) liest `wasBusiness` — ohne Gesundheit, Familie, Haushalt. Rein.
  */
-export function ablaufFuer(altbestand: boolean, neustart = false, betreiber = true): readonly { wann: string; was: string }[] {
+export function ablaufFuer(altbestand: boolean, neustart = false, betreiber = true, nurBusiness = false): readonly { wann: string; was: string }[] {
   const l = neustart ? ABLAUF_NEUSTART : altbestand ? ABLAUF : ABLAUF_ALLGEMEIN;
-  return betreiber ? l : l.filter(a => !a.betreiber).map(a => ({ wann: a.wann, was: a.ohneBetreiber ?? a.was }));
+  if (betreiber && !nurBusiness) return l;
+  return l.filter(a => betreiber || !a.betreiber).map(a => ({ wann: a.wann, was: (nurBusiness ? a.wasBusiness : undefined) ?? (betreiber ? a.was : a.ohneBetreiber ?? a.was) }));
 }
 
 /**
  * Die Etappen für diese Instanz: im Neustart die des Neustarts (`NEUSTART_ETAPPEN`); ohne Altbestand mit neutralem Titel/Satz und ohne Hinweise,
  * die nur die gewachsene Instanz betreffen. Außerhalb der Betreiber-Instanz (`betreiber === false`, 15.10., Abnahme 2 A2) ganz ohne Hinweise —
- * sie sind „entschieden, aber nicht gebaut“, also Wissen des Herstellers — und immer in der neutralen Fassung. Rein.
+ * sie sind „entschieden, aber nicht gebaut“, also Wissen des Herstellers — und immer in der neutralen Fassung. Ein Konto „nur Business“ (`nurBusiness`)
+ * bekommt die Fassung `business` und keine Hinweise mit `privat`. Rein.
  */
-export function etappenFuer(altbestand: boolean, neustart = false, betreiber?: boolean): Etappe[] {
+export function etappenFuer(altbestand: boolean, neustart = false, betreiber?: boolean, nurBusiness = false): Etappe[] {
+  const l = etappenGrund(altbestand, neustart, betreiber);
+  if (!nurBusiness) return l;
+  // Konto „nur Business“ (Nachprüfung 18.10., N17): Titel/Satz ohne Privat-Themen, ohne Hinweise zum Haushalt.
+  return l.map(({ business, hinweise, ...e }) => {
+    const h = (hinweise ?? []).filter(x => !x.privat);
+    return { ...e, ...(business ?? {}), ...(h.length ? { hinweise: h } : {}) };
+  });
+}
+function etappenGrund(altbestand: boolean, neustart: boolean, betreiber: boolean | undefined): Etappe[] {
   if (betreiber === false) return (neustart ? NEUSTART_ETAPPEN : ETAPPEN).map(({ allgemein, hinweise: _h, ...e }) => ({ ...e, ...(neustart ? {} : allgemein ?? {}) }));
   if (neustart) return NEUSTART_ETAPPEN;
   if (altbestand) return ETAPPEN;
@@ -1484,15 +1516,18 @@ export const NEUSTART_ETAPPEN: Etappe[] = [
   { nr: 1, titel: 'Zugang, Sicherheit, Datenschutz', satz: 'Wer reinkommt, wie er sich ausweist, wer was sieht, eure Einwilligungen und ein kurzer Rundgang. Danach geht es ans Eingeben.' },
   { nr: 2, titel: 'Meine Ziele und mein Alltag', satz: 'Jede Person für sich: eigene Ziele, Routinen, Arbeitszeit und die übernommenen Aufgaben. Niemand richtet das für eine andere Person ein.' },
   { nr: 3, titel: 'Meine Gesundheit', satz: 'Komplett und nur für dich: Körper-Profil, Ernährung, Sport und Gesundheits-Routinen — nach deiner Einwilligung. Andere sehen höchstens, ob du eingerichtet bist, nie Inhalte.' },
-  { nr: 4, titel: 'Gemeinsam: Ziele, Planung, Familie', satz: 'Eure gemeinsamen Jahresziele und der Nordstern, Fokus, die übernommenen Projekte und die wichtigsten Menschen.' },
+  { nr: 4, titel: 'Gemeinsam: Ziele, Planung, Familie', satz: 'Eure gemeinsamen Jahresziele und der Nordstern, Fokus, die übernommenen Projekte und die wichtigsten Menschen.',
+    business: { titel: 'Gemeinsam: Ziele und Planung', satz: 'Die gemeinsamen Jahresziele, Fokus und die übernommenen Projekte.' } },
   { nr: 5, titel: 'Finanzen: eintragen oder hochladen', satz: 'Privatkonten, Kontoauszüge, Fixkosten, Budget, Schulden und der Finanzplan — jede Zahl einmal, am richtigen Ort.', datenkarte: true,
+    business: { satz: 'Kontoauszüge und der Finanzplan der Firmen — jede Zahl einmal, am richtigen Ort.' },
     hinweise: [
       { titel: 'Bank-Anbindung', wann: 'kommt später', satz: 'Eine Anbindung an die Bank gibt es noch nicht. Bis dahin lest ihr je Konto Kontoauszug-Dateien ein (CAMT.053 oder CSV aus dem Online-Banking) — das Konten-Register ist die Stelle, an der die Bank später andockt. Kein eigener Schritt.' },
-      { titel: 'Haushalt → Finanzplanung', wann: 'Brücke kommt später', satz: 'Der Haushalt führt das Ist (Buchungen, Fixkosten, Budget, Schulden); die Finanzplanung liest künftig daraus. Bis dahin nicht doppelt pflegen.' },
+      { titel: 'Haushalt → Finanzplanung', wann: 'Brücke kommt später', privat: true, satz: 'Der Haushalt führt das Ist (Buchungen, Fixkosten, Budget, Schulden); die Finanzplanung liest künftig daraus. Bis dahin nicht doppelt pflegen.' },
     ] },
   { nr: 6, titel: 'Business online: Gesellschaft & Konten', satz: 'Steckbrief, Absender, Bankkonten, Stichtag und 0-Punkt, Kontostände, offene Posten, Kosten und Steuerprofil — damit jede Gesellschaft mit sauberen Zahlen startet.', datenkarte: true },
   { nr: 7, titel: 'Business online: Angebot & Vertrieb', satz: 'Team, Produkte, eine Angebotsvorlage, die übernommene Kartei, Mandate und Pipeline, Kadenz, erste Kampagne und die Power Hour.' },
   { nr: 8, titel: 'Schnittstellen', satz: 'Erst jetzt, wo alles drin ist, verbindet ihr: Kalender, Postfächer, WHOOP, WhatsApp. Jede Person verbindet nur ihre eigenen Konten — im neuen Datenordner ist jede Verbindung neu, auch wenn sie vorher stand.',
+    business: { satz: 'Erst jetzt, wo alles drin ist, verbindet ihr: Kalender, Postfächer, WhatsApp. Jede Person verbindet nur ihre eigenen Konten — im neuen Datenordner ist jede Verbindung neu, auch wenn sie vorher stand.' },
     hinweise: [
       { titel: 'Google Drive', wann: 'nicht angebunden', satz: 'Dateien aus Google Drive kommen nicht von selbst — Unterlagen ladet ihr dort hoch, wo sie hingehören (Aufgaben, Unternehmen, Kartei). Kein Schritt.' },
       { titel: 'ZOE aufs Handy über WhatsApp', wann: 'kommt später', satz: 'ZOE bekommt eine eigene WhatsApp-Business-Nummer, getrennt von der Nummer der Inbox. Bis dahin gibt es dafür keinen Schritt.' },

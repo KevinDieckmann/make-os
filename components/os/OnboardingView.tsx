@@ -202,7 +202,7 @@ function schrittZeile(roh: Schritt, z: Zustand | null, haken: (id: string, an: b
 /** Schritte nach Etappen gruppiert — mit Satz und den Hinweisen der Etappe (entschieden, aber noch nicht gebaut). */
 /** `hinweise`: ja/nein — oder die Etappen, deren Hinweise schon weiter oben standen (dort nicht noch einmal). */
 function NachEtappen({ schritte, z, haken, laden, start, mitWann = false, hinweise = true }: { schritte: readonly Schritt[]; z: Zustand | null; haken: (id: string, an: boolean) => void; laden?: () => void; start: number; mitWann?: boolean; hinweise?: boolean | ReadonlySet<number> }) {
-  const etappen = etappenFuer(!!z?.ich?.altbestand, !!z?.ich?.neustart, z?.ich?.betreiber).filter(e => schritte.some(s => s.etappe === e.nr));
+  const etappen = etappenFuer(!!z?.ich?.altbestand, !!z?.ich?.neustart, z?.ich?.betreiber, !!z?.ich?.nurBusiness).filter(e => schritte.some(s => s.etappe === e.nr));
   return (
     <>
       {etappen.map((e, i) => {
@@ -494,10 +494,10 @@ export function OnboardingUebersicht() {
 
       <Karte i={4}>
         <Ueberschrift>So läuft die Einrichtung</Ueberschrift>
-        <Liste>{ablaufFuer(alt, neustart, betreiber).map(a => <Zeile key={a.wann} umbrechen titel={a.wann} unter={a.was} />)}</Liste>
+        <Liste>{ablaufFuer(alt, neustart, betreiber, !!z?.ich?.nurBusiness).map(a => <Zeile key={a.wann} umbrechen titel={a.wann} unter={a.was} />)}</Liste>
         <p style={{ ...absatz, marginTop: 10 }}>
-          Drei Ebenen: <strong style={stark}>Instanz</strong> (Server und Einstellungen — nur die Inhaber), <strong style={stark}>Gemeinsam</strong> (Haushalt und
-          Firmen — alle sehen den Stand) und <strong style={stark}>Meine Einrichtung</strong> (jede Person für sich). Prüfungen zeigen nur ja/nein oder Zähler — nie
+          Drei Ebenen: <strong style={stark}>Instanz</strong> (Server und Einstellungen — nur die Inhaber), <strong style={stark}>Gemeinsam</strong> ({z?.ich?.nurBusiness ? 'die Firmen' : 'Haushalt und Firmen'}
+          {' '}— alle sehen den Stand) und <strong style={stark}>Meine Einrichtung</strong> (jede Person für sich). Prüfungen zeigen nur ja/nein oder Zähler — nie
           Werte. Nichts geht ohne euren Klick nach außen{betreiber ? '; Schritte am Server zeigen nur den Befehl, nie einen Wert' : ''}.
         </p>
       </Karte>

@@ -25,7 +25,7 @@ interface Grundlage { etappen: Etappe[]; schritte: Schritt[]; naechster: Schritt
 function grundlage(k: Kontext | null, z: HakenZustand | null | undefined): Grundlage {
   const roh = schritteFuer(k);
   const schritte = roh.map(s => texteFuer(s, k));
-  const etappen = etappenFuer(!!k?.altbestand, !!k?.neustart, k?.betreiber).filter(e => schritte.some(s => s.etappe === e.nr));
+  const etappen = etappenFuer(!!k?.altbestand, !!k?.neustart, k?.betreiber, !!k?.nurBusiness).filter(e => schritte.some(s => s.etappe === e.nr));
   return { etappen, schritte, naechster: einrichtungStand(k, z).naechster, zurueck: new Set(zurueckgefallen(roh, z).map(s => s.id)) };
 }
 

@@ -231,3 +231,43 @@ describe('N7 — freie Zeit ohne iCloud/Google: der Mac-Stand zählt (mit „zä
     expect((await verfuegbarkeitFuer('lena', tag, tagePlus(tag, 1))).tage[0].beschaeftigt).toEqual([]);
   }, 60_000);
 });
+
+describe('N17 — Einrichtung für ein Konto „nur Business“: der Erklärtext nennt keine Privat-Themen', () => {
+  const PRIVAT_WORTE = /Gesundheit|Familie|Haushalt|WHOOP/;
+  const varianten = [false, true].flatMap(alt => [false, true].flatMap(neustart => [false, true].map(betreiber => ({ alt, neustart, betreiber }))));
+
+  it('„So läuft die Einrichtung“ (`ablaufFuer`): in jeder Fassung ohne Gesundheit, Familie, Haushalt — volle Mitglieder unverändert', async () => {
+    const D = await import('@/lib/make-one/onboarding-data');
+    for (const v of varianten) {
+      for (const a of D.ablaufFuer(v.alt, v.neustart, v.betreiber, true)) expect(`${a.wann} ${a.was}`, JSON.stringify(v)).not.toMatch(PRIVAT_WORTE);
+      // Gleiche Zeilen (nur der Satz wechselt).
+      expect(D.ablaufFuer(v.alt, v.neustart, v.betreiber, true).map(a => a.wann)).toEqual(D.ablaufFuer(v.alt, v.neustart, v.betreiber).map(a => a.wann));
+    }
+    // Ohne „nur Business“: dieselben Objekte wie bisher (Fahrplan der gewachsenen Instanz).
+    expect(D.ablaufFuer(true)).toBe(D.ABLAUF);
+    expect(D.ablaufFuer(false, false, true).some(a => /Gesundheit und Familie/.test(a.was))).toBe(true);
+  });
+
+  it('Etappen mit Schritten dieses Kontos (`etappenFuer` + `schritteFuer`): Titel, Satz und Hinweise ohne Privat-Themen', async () => {
+    const D = await import('@/lib/make-one/onboarding-data');
+    for (const v of varianten) {
+      const k = { inhaber: false, personen: 3, nurBusiness: true, privatFinanzen: false, altbestand: v.alt, neustart: v.neustart, betreiber: v.betreiber };
+      const schritte = D.schritteFuer(k);
+      const etappen = D.etappenFuer(v.alt, v.neustart, v.betreiber, true).filter(e => schritte.some(s => s.etappe === e.nr));
+      for (const e of etappen) {
+        expect(`${e.titel} ${e.satz}`, `${JSON.stringify(v)} Etappe ${e.nr}`).not.toMatch(PRIVAT_WORTE);
+        for (const h of e.hinweise ?? []) expect(`${h.titel} ${h.satz}`, `${JSON.stringify(v)} Etappe ${e.nr}`).not.toMatch(/Haushalt/);
+      }
+    }
+    expect(D.etappenFuer(true)).toBe(D.ETAPPEN);
+  });
+
+  it('die Übersicht gibt „nur Business“ an Ablauf, Etappen und den Satz zu den drei Ebenen weiter', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('components/os/OnboardingView.tsx', 'utf8');
+    expect(src).toContain('ablaufFuer(alt, neustart, betreiber, !!z?.ich?.nurBusiness)');
+    expect(src).toContain('z?.ich?.betreiber, !!z?.ich?.nurBusiness)');
+    expect(src).toContain("{z?.ich?.nurBusiness ? 'die Firmen' : 'Haushalt und Firmen'}");
+    expect(readFileSync('lib/make-one/onboarding-bild.ts', 'utf8')).toContain('k?.betreiber, !!k?.nurBusiness)');
+  });
+});
