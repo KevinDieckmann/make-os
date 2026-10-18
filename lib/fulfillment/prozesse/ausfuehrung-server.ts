@@ -128,14 +128,14 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
     const iso = jetzt.toISOString(), heute = o.heute ?? localDay(jetzt);
     const { fallUmfeld, ableitungFuer } = await import('./fall-server');
     const u = o.umfeld ?? await fallUmfeld(o.mandatId ? [o.mandatId] : undefined);
-    const { istBusinessGesellschaft } = await import('@/lib/einheiten');
+    const { istBusinessMandat } = await import('../regeln');
     const arbeit: { f: Fall; w: Fall; m: Mandat; soll: AusfuehrungSoll; an: { an: string; beteiligte: string[] } | null }[] = [];
     const abgeschlossen: string[] = [];
     for (const f of Object.values(u.faelle.faelle)) {
       if (o.mandatId && f.mandatId !== o.mandatId) continue;
       if (f.status === 'abgeschlossen') { if (Object.keys(f.marken).some(x => x.startsWith('ablauf-'))) abgeschlossen.push(f.mandatId); continue; }
       const m = u.crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
-      if (!m || !istBusinessGesellschaft(m.gesellschaft)) continue;
+      if (!m || !istBusinessMandat(m.gesellschaft)) continue;
       const w = fallWirksam(f, ableitungFuer(f, m, u.crm, u.vorlagen, u.kunde[m.id], iso, u.termine[m.id]));
       if (!ablaufAktiv(w)) continue;
       const soll = ausfuehrungSoll(w, heute, k => !!mailBausteinVon(k, w.knoten, u.vorlagen));

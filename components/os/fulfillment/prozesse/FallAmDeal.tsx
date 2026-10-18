@@ -13,7 +13,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { mandateLink } from '@/lib/crm/adresse';
-import { istBusinessGesellschaft } from '@/lib/einheiten';
+import { istBusinessMandat } from '@/lib/fulfillment/regeln';
 import type { CrmApi } from '../../crm/daten';
 import { useUebersichtKurz } from './daten';
 import { StartDialog } from './Onboarding';
@@ -26,7 +26,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
   const [start, setStart] = useState<{ mandatId: string; kunde: string; leistungId?: string } | null>(null);
   if (!crm || !c || c.stufe !== 'gewonnen') return null;
   const mandat = crm.stand.mandate.find(m => m.chanceId === c.id && !m.geloeschtAm);
-  const business = istBusinessGesellschaft(mandat?.gesellschaft ?? c.gesellschaft) && !!kurz.daten;
+  const business = istBusinessMandat(mandat?.gesellschaft ?? c.gesellschaft) && !!kurz.daten;
   const fall = mandat ? kurz.daten?.faelle[mandat.id] : undefined;
   const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
   const vorlageFuer = (leistungId?: string) => {

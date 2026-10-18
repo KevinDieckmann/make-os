@@ -97,7 +97,7 @@ export interface HeuteDeal { chanceId: string; kunde: string; titel: string; gew
 export const DEAL_OHNE_MANDAT_TAGE = 30;
 /**
  * Gewonnene Deals einer Business-Gesellschaft ohne (nicht gelöschtes) Mandat, gewonnen in den letzten `DEAL_OHNE_MANDAT_TAGE` Tagen — jüngste zuerst. `business`
- * entscheidet die Gesellschaft (Server: `istBusinessGesellschaft`), `tageSeit` rechnet Kalendertage. Rein.
+ * entscheidet die Gesellschaft (Server: `istBusinessMandat`), `tageSeit` rechnet Kalendertage. Rein.
  */
 export function gewonneneOhneMandat(
   crm: { chancen: readonly { id: string; stufe: string; titel: string; firma?: string; gesellschaft?: string; leistungId?: string; historie?: readonly { stufe: string; am: string }[] }[]; mandate: readonly { chanceId?: string; geloeschtAm?: string }[] },

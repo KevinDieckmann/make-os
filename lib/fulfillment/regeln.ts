@@ -7,7 +7,7 @@
 // Höchstens `EBENEN_MAX` (5). Ein Kreis hat keine Ebene (`KREIS` = -1) — der Schreibweg lehnt ihn mit 400 ab (`kreisBei`).
 
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
-import { istBusinessGesellschaft } from '@/lib/einheiten';
+import { bereichVonGesellschaft } from '@/lib/einheiten';
 import { tagVon, tagePlus } from '@/lib/zeit';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 import type {
@@ -230,6 +230,16 @@ export function pulsStufe(wert: number, schwelle = 6): PulsStufe {
   return wert >= 9 ? 'gut' : 'neutral';
 }
 
+// ── Business-Mandat: EIN Prädikat (18.10.: „alle Business-Mandate ins Fulfillment“) ─────────────────────────────────────────────
+
+/**
+ * Bekommt ein Mandat Fulfillment? Jede Business-Gesellschaft — auch eine aus dem Register (`g-…`) und „offen“ —, nur Privat-Einheiten (die
+ * Selbstständigkeit) nicht. DIESELBE Regel wie das CRM (`bereichVonGesellschaft`, lib/crm/treppe.ts `imBusiness`); vorher nahm das Fulfillment nur die
+ * festen Gesellschaften, das CRM zählte mehr — zwei Zahlen für „Kunden in Lieferung“ (Gesamtprüfung L2 Zählungen B1). Rechnungen für Register-
+ * Gesellschaften laufen weiter über `finanzFirmaFuer` (sonst `NUR_GRUNDDATEN`).
+ */
+export const istBusinessMandat = (g: unknown): boolean => bereichVonGesellschaft(typeof g === 'string' ? g : null) === 'business';
+
 // ── Mandat: Ende, Unterschrift, Onboarding-Kandidaten (3.1, 8.1) ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -308,7 +318,7 @@ export function onboardingKandidaten(
   const raus: OnboardingKandidat[] = [];
   for (const m of crm.mandate ?? []) {
     if (m.status !== 'aktiv' && m.status !== 'angebot') continue;
-    if (!istBusinessGesellschaft(m.gesellschaft) || m.geloeschtAm || faelle[m.id] || marken[markeOnboardingAus(m.id)]) continue;
+    if (!istBusinessMandat(m.gesellschaft) || m.geloeschtAm || faelle[m.id] || marken[markeOnboardingAus(m.id)]) continue;
     const angebot = (crm.angebote ?? []).some(a => a.status === 'angenommen' && (a.mandatId === m.id || (!!m.chanceId && a.dealId === m.chanceId)));
     const deal = !!m.chanceId && (crm.chancen ?? []).some(c => c.id === m.chanceId && c.stufe === 'gewonnen');
     const grund = m.vertragUnterschrieben ? 'vertrag' as const : angebot ? 'angebot' as const : deal ? 'deal' as const : null;

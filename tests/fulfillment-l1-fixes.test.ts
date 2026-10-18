@@ -93,3 +93,15 @@ describe('Ein neuer Fall startet grün', () => {
     expect(kundenAmpel({ m: mandat('2026-09-01'), stufe: null, f: undefined, heute: '2026-10-17' }).teile.find(t => t.id === 'termine')?.farbe).toBe('gelb');
   });
 });
+
+describe('EIN Prädikat „Business-Mandat“ (18.10.: alle Business-Mandate ins Fulfillment)', () => {
+  it('feste Business-Gesellschaften, Register-Gesellschaften und „offen“ ja — die Selbstständigkeit (Privat) nein; dieselbe Regel wie das CRM', async () => {
+    const { istBusinessMandat } = await import('@/lib/fulfillment/regeln');
+    const { imBusiness } = await import('@/lib/crm/treppe');
+    for (const g of ['ug', 'kdv', 'offen', 'g-00000000-0000-4000-8000-000000000001', 'kdc']) expect(istBusinessMandat(g), g).toBe(imBusiness({ gesellschaft: g }));
+    expect(istBusinessMandat('ug')).toBe(true);
+    expect(istBusinessMandat('offen')).toBe(true);
+    expect(istBusinessMandat('g-00000000-0000-4000-8000-000000000001')).toBe(true);
+    expect(istBusinessMandat('kdc')).toBe(false);
+  });
+});

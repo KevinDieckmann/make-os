@@ -28,7 +28,7 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import { MANDAT_ID, KENNUNG } from '@/lib/fulfillment/grenzen';
-import { istBusinessGesellschaft } from '@/lib/einheiten';
+import { istBusinessMandat } from '@/lib/fulfillment/regeln';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
@@ -56,14 +56,14 @@ export async function GET(req: Request) {
   // Prüf-Fund 11.10.: nur Mandate von Business-Gesellschaften (die Selbstständigkeit gehört zu Privat) — auch Fälle, deren Mandat inzwischen privat
   // ist, fallen heraus. Ein Fall ohne Mandat im CRM bleibt als „Mandat (gelöscht)“ (ohne Namen).
   const mandatVon = new Map(crm.mandate.map(m => [m.id, m] as const));
-  const imBusiness = (mandatId: string): boolean => { const m = mandatVon.get(mandatId); return !m || istBusinessGesellschaft(m.gesellschaft); };
+  const imBusiness = (mandatId: string): boolean => { const m = mandatVon.get(mandatId); return !m || istBusinessMandat(m.gesellschaft); };
   const faelle = { ...faelleRoh, faelle: Object.fromEntries(Object.entries(faelleRoh.faelle).filter(([id]) => imBusiness(id))) };
   const kurz = await faelleKurz(Object.keys(faelle.faelle));
-  const mandate = Object.fromEntries(crm.mandate.filter(m => istBusinessGesellschaft(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
+  const mandate = Object.fromEntries(crm.mandate.filter(m => istBusinessMandat(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
   const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, ...(f.zusaetze?.length ? { zusaetze: f.zusaetze.map(z => z.vorlageId) } : {}), kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '' }]));
   const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso);
   // „Heute im Fulfillment“ (17.10. spät): gewonnene Deals (Business) ohne Mandat — „Mandat anlegen & Fall starten“ direkt in der Liste.
-  const deals = gewonneneOhneMandat(crm, heute, istBusinessGesellschaft, tageZwischen);
+  const deals = gewonneneOhneMandat(crm, heute, istBusinessMandat, tageZwischen);
   // Firmen-/Kundennamen gehen raus → Lese-Protokoll (Prüf-Fund 11.10.), nur die Anzahl.
   leseZugriff(req, 'fulfillment', { anzahl: Object.keys(mandate).length + kandidaten.length + deals.length });
   if (nurKurz) {

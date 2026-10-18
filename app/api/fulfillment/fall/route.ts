@@ -61,9 +61,9 @@ export async function GET(req: Request) {
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { crm, vorlagen, faelle, kunde, termine: kalender } = await fallUmfeld([m]);
-  const { istBusinessGesellschaft } = await import('@/lib/einheiten');
+  const { istBusinessMandat } = await import('@/lib/fulfillment/regeln');
   // Prüf-Fund 11.10.: Mandate einer Privat-Einheit (z. B. die Selbstständigkeit) gibt es hier nicht — 404 VOR jedem Aufbau, derselbe Satz wie „fehlt“.
-  const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm && istBusinessGesellschaft(x.gesellschaft));
+  const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm && istBusinessMandat(x.gesellschaft));
   if (!mandat) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
   const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: true };
   const f = faelle.faelle[m];

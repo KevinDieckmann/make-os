@@ -11,7 +11,7 @@ import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { CrmBestand, FollowUp, Mandat } from '@/lib/crm/typen';
 import type { DossierKurz, Fall, FallKurz, FristenKontext, KundeKurz, MorgenlaufTeil, StakeholderAuskunft, VorlagenDatei } from '../typen';
 import { eintragStand, fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen } from '../speicher';
-import { mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
+import { istBusinessMandat, mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -82,7 +82,6 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
   const laufend = Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen' && (!nur || f.mandatId === nur));
   if (!laufend.length) return { zeilen: [], vorlagen };
   const ids = laufend.map(f => f.mandatId);
-  const { istBusinessGesellschaft } = await import('@/lib/einheiten');
   const [treppe, dossiers] = await Promise.all([
     sicher(async () => (await import('@/lib/crm/treppe-server')).ladeTreppe(heute), null),
     sicher(async () => (await import('../analyse/server')).dossierKurzFuer(ids), {} as Record<string, DossierKurz>),
@@ -99,7 +98,7 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
   const zeilen: (CockpitZeile & { gesellschaft: string })[] = [];
   for (const f of laufend) {
     const m = crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
-    if (!m || !istBusinessGesellschaft(m.gesellschaft)) continue;
+    if (!m || !istBusinessMandat(m.gesellschaft)) continue;
     const abl = ableitungFuer(f, m, crm, vorlagen, kunde[m.id], jetzt, kalender[m.id]);
     const w = fallWirksam(f, abl);
     const z = kz.find(x => x.mandatId === m.id);
@@ -215,8 +214,7 @@ async function prozesseMorgenlaufRest(h: string, heute: string): Promise<Morgenl
   // laufende Mandat am ersten Morgen einen Vorschlag, eine Glocke und „Willkommensmail überfällig“.
   // Eine leere Instanz (kein Business-Mandat) schreibt nichts — die Marke entsteht beim ersten Lauf mit Mandaten.
   if (!vorlagen.marken[MARKE_FULFILLMENT_SEIT]) {
-    const { istBusinessGesellschaft } = await import('@/lib/einheiten');
-    if (crm.mandate.some(m => !m.geloeschtAm && istBusinessGesellschaft(m.gesellschaft))) {
+    if (crm.mandate.some(m => !m.geloeschtAm && istBusinessMandat(m.gesellschaft))) {
       await fulfillmentAendern('vorlagen', d => (d.marken[MARKE_FULFILLMENT_SEIT] ? { ok: true, datei: d, geaendert: [] } : { ok: true, datei: { ...d, marken: { ...d.marken, [MARKE_FULFILLMENT_SEIT]: heute } }, geaendert: [MARKE_FULFILLMENT_SEIT] }), { art: 'system' }, h);
     }
     return { vorschlaege: 0 };

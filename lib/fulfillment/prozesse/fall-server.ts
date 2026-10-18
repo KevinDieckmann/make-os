@@ -12,8 +12,8 @@
 import type { Fall, ProzessVorlage, VorlagenDatei, AnwendenErgebnis, KundeKurz } from '../typen';
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
 import { fulfillmentAendern, fulfillmentLesen, fulfillmentHaushalt, eintragStand } from '../speicher';
-import { aktuellerKnoten, unterschriftAm, istBestand, MARKE_FULFILLMENT_SEIT } from '../regeln';
-import { istBusinessGesellschaft, istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/lib/einheiten';
+import { aktuellerKnoten, istBusinessMandat, unterschriftAm, istBestand, MARKE_FULFILLMENT_SEIT } from '../regeln';
+import { istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 import { localDay, tagVon } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
@@ -87,7 +87,7 @@ function mandatPruefen(crm: Pick<CrmBestand, 'mandate'>, mandatId: unknown): Man
   if (typeof mandatId !== 'string' || !MANDAT.test(mandatId)) throw new FallFehler('Mandat fehlt.', 400);
   const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm);
   if (!m) throw new FallFehler('Dieses Mandat gibt es nicht (mehr).', 404);
-  if (!istBusinessGesellschaft(m.gesellschaft)) throw new FallFehler(istGesellschaft(m.gesellschaft) ? GEHOERT_ZU_PRIVAT(m.gesellschaft) : NUR_BUSINESS_MANDAT, 400);
+  if (!istBusinessMandat(m.gesellschaft)) throw new FallFehler(istGesellschaft(m.gesellschaft) ? GEHOERT_ZU_PRIVAT(m.gesellschaft) : NUR_BUSINESS_MANDAT, 400);
   return m;
 }
 

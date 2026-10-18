@@ -18,13 +18,12 @@ import { loadJson, datenOrdner } from '@/lib/store/local-db';
 import { bildAblegen, bildEntfernen, bildOeffnen } from '@/lib/store/bild-ablage';
 import { protokolliere, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { localDay, tagVon, tagePlus } from '@/lib/zeit';
-import { istBusinessGesellschaft } from '@/lib/einheiten';
 import { textNennt, type PersonMerkmale } from '@/lib/crm/person-weitere';
 import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { Mandat, CrmBestand, FollowUp } from '@/lib/crm/typen';
 import { fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen, fulfillmentSpeicherFuer, eintragStand, UNTERLAGEN_ORDNER } from '../speicher';
-import { mandatsEnde, pulsStufe } from '../regeln';
+import { istBusinessMandat, mandatsEnde, pulsStufe } from '../regeln';
 import { STAPEL_GRUPPE, KENNUNG } from '../grenzen';
 import { dateinameSaeubern } from '@/lib/dateien/regeln';
 import {
@@ -65,7 +64,7 @@ const nein = (status: number, fehler: string, extra: Record<string, unknown> = {
 async function crmLaden(): Promise<CrmBestand> { const { ladeCrm } = await import('@/lib/crm/speicher'); return ladeCrm(); }
 /** Ein Mandat einer Business-Gesellschaft, nicht im Papierkorb — sonst null (Privat bekommt nichts). */
 export const businessMandat = (crm: Pick<CrmBestand, 'mandate'>, mandatId: string): Mandat | null =>
-  (crm.mandate ?? []).find(m => m.id === mandatId && !m.geloeschtAm && istBusinessGesellschaft(m.gesellschaft)) ?? null;
+  (crm.mandate ?? []).find(m => m.id === mandatId && !m.geloeschtAm && istBusinessMandat(m.gesellschaft)) ?? null;
 
 /** Der Fall eines Mandats — über die Schnittstelle von C1 (`fallLesen`), nie schreibend. */
 async function fallVon(mandatId: string): Promise<Fall | null> {
