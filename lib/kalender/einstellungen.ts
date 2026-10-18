@@ -216,4 +216,4 @@ export function wemGehoert(e: KalenderEinstellungen, kalenderName: string): Wer 
 }
 
 // „Zählt als belegt“ (R-K2 #69) rechnet client-sicher in lib/kalender/belegt.ts.
-export { zuordnung, zaehltAlsBelegt, werFuerBelegung } from './belegt';
+export { zuordnung, zaehltAlsBelegt, werFuerBelegung, werFuerTermin } from './belegt';
