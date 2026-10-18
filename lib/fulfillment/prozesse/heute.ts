@@ -14,7 +14,7 @@ import type { Fall, FallKnoten } from '../typen';
 import type { CockpitZeile, Haenger, HaengerArt } from './cockpit';
 import { kinderVon } from '../regeln';
 import { tagVon } from '@/lib/zeit';
-import { obSchluessel } from './onboarding';
+import { obSchluessel, willkommenLetzterTag } from './onboarding';
 import { ausfuehrungsArt } from './ausfuehrung';
 import type { WartetAuf } from './reise';
 
@@ -173,7 +173,7 @@ export function heuteImFulfillment(zeilen: readonly CockpitZeile[], kandidaten: 
     if (k.bestand) continue;
     raus.push({
       id: `${k.mandatId}|start`, mandatId: k.mandatId, kunde: k.kunde, titel: k.titel, unter: 'Mandat da — der Fall wartet auf den Start',
-      ...(k.uhr?.faellig ? { faelligAm: tagVon(k.uhr.faellig) } : {}), ueberfaellig: !!k.uhr?.ueberfaellig, dringend: !!k.uhr?.ueberfaellig, jetzt: true,
+      ...(k.uhr?.faellig ? { faelligAm: willkommenLetzterTag(k.uhr.faellig) } : {}), ueberfaellig: !!k.uhr?.ueberfaellig, dringend: !!k.uhr?.ueberfaellig, jetzt: true,
       quelle: 'start', aktion: { art: 'starten' }, href: '',
     });
   }
