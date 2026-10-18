@@ -14,8 +14,7 @@ import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Pillen, Chip, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
 import type { KreislaufId } from '@/lib/crm/planung';
-import { useUebersicht, useCockpit, vorlagenOps, fehlerText, holeJson } from './daten';
-import { anzahl } from '@/lib/text/zahlwort';
+import { useUebersicht, vorlagenOps, fehlerText, holeJson } from './daten';
 import { KreislaufRad, type RadStufe } from '../reise/teile';
 import { KREISLAUF_REIHE, kreislaufWeg } from '@/lib/fulfillment/prozesse/ansichten';
 import { AblaufBild, AblaufLegende } from './Zeichnung';
@@ -44,16 +43,14 @@ function useKreislaufStufen(): { stufen: RadStufe[] | null; fehler: string | nul
 export function Kreislauf() {
   const router = useRouter();
   const { daten, fehler } = useUebersicht();
-  const cockpit = useCockpit();
   const kreis = useKreislaufStufen();
   const [wahl, setWahl] = useState<string | null>(null);
   const [stufe, setStufe] = useState<string | null>(null);
   const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'kritisch' } | null>(null);
   if (!daten) return fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <div style={klein}>Lädt …</div>;
   const ablaeufe = daten.prozesse.filter(p => p.art === 'ablauf');
-  // „Kunden in Lieferung“ = die Zeilen des Cockpits (laufende Fälle von Business-Mandaten) — DIESELBE Zahl wie die Lage (Gesamtprüfung L2 Zählungen B1);
-  // vorher zählte die Ansicht selbst, auch Fälle ohne Mandat.
-  const inLieferung = cockpit.daten?.zeilen.length ?? Object.values(daten.faelle).filter(f => f.status !== 'abgeschlossen' && f.kunde !== 'Mandat (gelöscht)').length;
+  // Die Zahl „Kunden in Lieferung“ steht EINMAL — an der Stufe „Fulfillment“ (18.10., Nachprüfung N16: vorher dazu noch in der Mitte des Rads, dieselbe Zahl
+  // zweimal); die Lage über den Reitern zeigt sie ohnehin.
   const aktiv = ablaeufe.find(a => a.id === wahl) ?? ablaeufe[0];
   const st = aktiv && stufe ? aktiv.knoten.find(k => k.id === stufe) : undefined;
   const alsPaket = async () => {
@@ -67,7 +64,6 @@ export function Kreislauf() {
         <Ueberschrift farbe={LEUCHT.business} erklaerung="fulfillment.kreislauf" rechts={<Link href={WEG.vertriebsplanung('kreislauf')} style={{ color: C.aktiv, fontSize: TYP.bedien }}>in der Markttraktion ›</Link>}>Der heutige Kreislauf</Ueberschrift>
         {kreis.fehler && <Hinweis art="achtung">Die Zahlen der Markttraktion ließen sich nicht laden ({kreis.fehler}) — die Stufen stehen trotzdem da.</Hinweis>}
         <KreislaufRad stufen={kreis.stufen ?? KREISLAUF_REIHE.map(id => ({ id }))} hier="fulfillment" beschreibung="Der Kreislauf der Markttraktion mit den heutigen Zahlen je Stufe."
-          mitte={<span style={{ display: 'grid', gap: 4 }}><span style={MIKRO}>hier liefern wir</span><b style={{ fontSize: TYP.body, color: C.ink }}>{anzahl(inLieferung, 'Kunde', 'Kunden')}</b><span style={klein}>in Lieferung</span></span>}
           onStufe={st => { if (st.href) router.push(st.href); }} />
         <div style={klein}>Es gilt der Kreislauf aus Markttraktion › Planung. Jede Stufe öffnet ihre Ansicht; die Zahl ist der heutige Stand (Kanäle, Leads in Arbeit, offene Deals, fällige Follow-ups, aktive Mandate, Kunden mit offenen Schritten nach der Leistung, Wiederkäufer). Die Abläufe unten sind Wissen aus früheren Prozessen — keine zweite Wahrheit.</div>
       </Karte>
