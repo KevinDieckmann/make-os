@@ -50,8 +50,9 @@ describe('Die Liste', () => {
     expect(wegGueltig('/osx')).toBe(false);
   });
 
-  it('dieses Update erklärt sich selbst (der Hinweis ist neu) und nennt Fulfillment', () => {
-    const texte = NEUIGKEITEN[0].abschnitte.flatMap(a => a.punkte.map(p => p.text)).join(' ');
+  it('das Herbst-Update (u-2026-10-18) erklärt sich selbst (der Hinweis ist neu) und nennt Fulfillment', () => {
+    // Nach Kennung, nicht nach Stelle — neuere Updates stehen davor.
+    const texte = NEUIGKEITEN.find(x => x.id === 'u-2026-10-18')!.abschnitte.flatMap(a => a.punkte.map(p => p.text)).join(' ');
     expect(texte).toMatch(/Was ist neu/);
     expect(texte).toMatch(/Fulfillment/);
   });

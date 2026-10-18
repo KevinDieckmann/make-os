@@ -33,6 +33,19 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    // Kennung/Datum vorläufig: das nächste Update (Datum beim Hochladen eintragen, danach nie mehr ändern).
+    id: 'u-2026-10-19',
+    datum: '2026-10-19',
+    titel: 'Kleine Verbesserungen',
+    kurz: 'Die ZOE-Kugel ist wieder immer sichtbar, und die Suche nach freier Zeit kennt auch Termine aus der eigenen iCloud-Verbindung.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { bereich: 'alle', text: 'Die ZOE-Kugel ist wieder immer sichtbar und verdeckt trotzdem keine Knöpfe.' },
+        { bereich: 'alle', text: 'Bei der Suche nach freier Zeit zählen auch Termine aus der eigenen iCloud-Verbindung.' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-18',
     datum: '2026-10-18',
     titel: 'Das große Herbst-Update',
