@@ -7,7 +7,7 @@
 //   Nachricht        — Kasten mit Brief, gelb getönt (Willkommensmail, Mail-Baustein, Wirkungsbericht)
 //   Entscheidung     — Raute (Abstimmungspunkt) mit „ja“ nach unten und „nein“ zur Seite
 //   Erinnerung       — Kasten mit Glocke, orange getönt, auf dem Nein-Pfad bzw. neben einem Schritt, der beim Kunden wartet
-//   Termin           — große Beschriftung mit Kalender (Kick-off, Ritual)
+//   Termin           — Kasten mit Kalender (Kick-off, Ritual) — ein Knoten wie die anderen, keine Überschrift (18.10., Nachprüfung N12)
 //   Gruppen          — zwei oder mehr Teilprozesse als Karten nebeneinander
 // Die Bedeutung hängt an der Form (Zeichen + Text für Vorleser), die Farbe kommt dazu. Erledigt ✓ (leise), „Hier“ (Petrol-Rahmen), hängt („!“ rot/gelb).
 // Er zeichnet nur — die Modelle rechnen (Fulfillment `phasenFluss`, Einrichtung `etappenFluss`, Planung `meilensteinFluss`; Typen lib/reise/bild.ts).
@@ -80,25 +80,9 @@ export function KnotenKnopf<K extends K0<K>>({ k, gewaehlt, onWahl, griff, edito
   const zeichen = fertig ? <Check size={16} color={LEUCHT.gut} aria-hidden style={{ flex: '0 0 auto' }} />
     : k.form === 'nachricht' ? <Mail size={16} color={f} aria-hidden style={{ flex: '0 0 auto' }} />
       : k.form === 'erinnerung' ? <BellRing size={16} color={f} aria-hidden style={{ flex: '0 0 auto' }} />
-        : k.form === 'termin' ? <CalendarClock size={20} color={f} aria-hidden style={{ flex: '0 0 auto' }} />
+        : k.form === 'termin' ? <CalendarClock size={16} color={f} aria-hidden style={{ flex: '0 0 auto' }} />
           : null;
   const basis: CSSProperties = { display: 'grid', gap: 4, width: '100%', minWidth: 0, minHeight: 44, textAlign: 'left', cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: C.ink, lineHeight: 1.35, boxSizing: 'border-box' };
-  if (k.form === 'termin') {
-    // Termin: große Beschriftung statt Kasten (wie „Kickoff-Termin“ im Vorbild).
-    return (
-      <button type="button" className="fassbar ff-fluss-knoten" aria-label={knotenLabel(k, !editor)} aria-pressed={gewaehlt} onClick={() => onWahl(k)} {...griff}
-        style={{ ...basis, padding: '6px 4px', background: 'none', border: 'none', borderBottom: `2px solid ${gewaehlt ? C.ink : hier ? JETZT : kante ?? RAND.stark}` }}>
-        {marke}
-        <span style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
-          {zeichen}
-          <span style={{ display: 'grid', gap: 2, minWidth: 0 }}>
-            <span className="ff-titel" title={k.titel} style={{ fontFamily: SCHRIFT.display, fontSize: TYP.titel, fontWeight: 700, color: fertig ? C.inkDim : C.ink, lineHeight: 1.2 }}>{k.titel}</span>
-            {k.unter && <span style={{ ...klein, color: kante ?? C.inkLeise }}>{k.unter}</span>}
-          </span>
-        </span>
-      </button>
-    );
-  }
   if (k.form === 'entscheidung') {
     // Abstimmungspunkt: die Raute, daneben die Frage — „vermerkt?“.
     return (
@@ -154,7 +138,7 @@ export function Erinnerung({ e, art }: { e: { titel: string; unter?: string }; a
 export function SeitenPfeil({ nein, zustand = 'offen' }: { nein?: boolean; zustand?: PfeilZustand }) {
   return (
     <span aria-hidden className="ff-fluss-seitenpfeil" data-flow-pfeil={zustand} data-flow-art="nein" style={{ display: 'flex', alignItems: 'center', gap: 4, color: C.inkLeise, fontSize: TYP.bedien, padding: '0 6px' }}>
-      {nein ? 'nein' : ''}<ArrowRight size={14} />
+      {nein && <span className="ff-fluss-seitenpfeil-wort">nein</span>}<ArrowRight size={14} />
     </span>
   );
 }
@@ -282,7 +266,7 @@ export function FormenLegende({ zustaende = true, formen, entscheidung = 'Entsch
     ...(zeigt('nachricht') ? [{ z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('nachricht')}<Mail size={12} color={FORM_FARBE.nachricht} aria-hidden /></span>, t: 'Nachricht' }] : []),
     ...(zeigt('entscheidung') ? [{ z: <FreigabeRaute gegeben={false} groesse={11} />, t: entscheidung }] : []),
     ...(zeigt('erinnerung') ? [{ z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('erinnerung', true)}<BellRing size={12} color={FORM_FARBE.erinnerung} aria-hidden /></span>, t: 'Erinnerung' }] : []),
-    ...(zeigt('termin') ? [{ z: <CalendarClock size={14} color={C.ink} aria-hidden />, t: 'Termin' }] : []),
+    ...(zeigt('termin') ? [{ z: <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center' }}>{kasten('termin')}<CalendarClock size={12} color={FORM_FARBE.termin} aria-hidden /></span>, t: 'Termin' }] : []),
     ...(zustaende ? [
       { z: <Check size={13} color={LEUCHT.gut} aria-hidden />, t: 'erledigt' },
       { z: <span aria-hidden style={{ display: 'inline-block', width: 18, height: 12, borderRadius: 3, border: `2px solid ${JETZT}` }} />, t: 'hier' },

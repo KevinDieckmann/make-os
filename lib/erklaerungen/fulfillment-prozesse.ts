@@ -171,7 +171,7 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Phase 2 „Analyse“ trägt „Hier“, das Kästchen „Dossier“ hat ein Ausrufezeichen, darunter steht im Band „1 offen“ — der Kunde schuldet noch eine Unterlage. Die Raute danach ist „Bestätigung 2 · Dossier geprüft“.',
   },
   'fulfillment.ablaufPhasen': {
-    was: 'Der Ablauf einer Phase von oben nach unten: Start, Schritte (grün), Nachrichten an den Kunden (gelb, mit Brief), Termine als große Beschriftung, am Ende die Raute der Bestätigung mit „ja“ und „nein“. Auf dem Nein-Pfad steht die Erinnerung (orange, mit Glocke). Mehrere Teilprozesse stehen als Karten nebeneinander. Ein Tipp auf einen Schritt öffnet ihn rechts.',
+    was: 'Der Ablauf einer Phase von oben nach unten: Start, Schritte (grün), Nachrichten an den Kunden (gelb, mit Brief), Termine als Kasten mit Kalender, am Ende die Raute der Bestätigung mit „ja“ und „nein“. Auf dem Nein-Pfad steht die Erinnerung (orange, mit Glocke). Mehrere Teilprozesse stehen als Karten nebeneinander. Ein Tipp auf einen Schritt öffnet ihn rechts.',
     beispiel: 'In „Aufbau“ stehen die Karten „Prozess“ und „Skripte“ nebeneinander; „Leitfaden schreiben“ trägt „Hier · als Nächstes“, die Raute „Bestätigung 4“ führt mit „ja“ in die nächste Phase.',
   },
   'fulfillment.lage': {
