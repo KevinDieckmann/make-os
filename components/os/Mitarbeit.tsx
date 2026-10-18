@@ -14,7 +14,6 @@ import Link from 'next/link';
 import { FARBE as C, SCHRIFT } from '@/lib/make-one/design';
 import { LEUCHT } from '@/lib/make-one/design';
 import { useSpace } from '@/hooks/useSpace';
-import { useSchwebendWeicht } from './ui';
 
 interface Aktiv { person: string; name: string; pfad: string; seitSek: number }
 
@@ -28,8 +27,6 @@ export function Mitarbeit() {
   const pfad = usePathname() ?? '/os';
   const { space } = useSpace();
   const [andere, setAndere] = useState<Aktiv[]>([]);
-  // Weicht wie die ZOE-Kugel beim Lesen nach unten aus (18.10., N20 — „Ben ist in MAKE OS“ lag auf „In der Inbox öffnen“).
-  const weicht = useSchwebendWeicht();
   useEffect(() => {
     let weg = false;
     const melden = async () => {
@@ -48,11 +45,13 @@ export function Mitarbeit() {
   // Auf der Netzwerken-Seite (Handy, eine Hand, Aktionsleiste unten) stört die schwebende Pille nur.
   if (!andere.length || pfad.startsWith('/os/netzwerken')) return null;
   return (
-    <div style={{ position: 'fixed', right: 96, bottom: 26, zIndex: 60, display: 'grid', gap: 6, justifyItems: 'end', pointerEvents: 'none' }} className={`os-mitarbeit schwebend${weicht ? ' schwebend-weg' : ''}`}>
+    // Immer sichtbar (19.10., Kevin): im Streifen der Ablage unten neben der ZOE-Kugel (`.os-mitarbeit` in app/globals.css), mehrere in einer
+    // Reihe — `<main>` endet über dem Streifen, die Plakette liegt nie auf einem Knopf (vorher wich sie beim Lesen aus).
+    <div style={{ position: 'fixed', zIndex: 60, display: 'flex', alignItems: 'center', gap: 6, pointerEvents: 'none' }} className="os-mitarbeit">
       {andere.map(a => {
         const hier = a.pfad.split('?')[0] === pfad;
         return (
-          <Link key={a.person} href={a.pfad} className={hier ? undefined : 'os-mitarbeit-fern'} style={{ pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, textDecoration: 'none',
+          <Link key={a.person} href={a.pfad} className={hier ? undefined : 'os-mitarbeit-fern'} style={{ pointerEvents: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 999, textDecoration: 'none', flex: '0 0 auto', whiteSpace: 'nowrap',
             background: 'rgba(20,24,26,.92)', border: `1px solid ${hier ? LEUCHT.beziehung : 'rgba(255,255,255,.08)'}`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: 12.5, boxShadow: '0 6px 20px -8px rgba(0,0,0,.6)' }}
             title={hier ? 'Ihr seid auf derselben Seite — ändert nicht gleichzeitig denselben Eintrag.' : 'Klick: dorthin wechseln'}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: LEUCHT.beziehung, boxShadow: `0 0 8px ${LEUCHT.beziehung}33` }} />

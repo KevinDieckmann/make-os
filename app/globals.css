@@ -135,15 +135,26 @@ nav a:hover { transform: translateX(2px); }
 .zoe-fenster { transform-origin: 100% 100%; animation: zoeAuf .28s var(--ease-feder); }
 .zoe-fab { transition: transform 180ms var(--ease-feder), box-shadow 220ms var(--ease-glatt); }
 .zoe-fab:hover { transform: scale(1.08); box-shadow: 0 10px 36px rgba(33, 181, 170, .35) !important; }
-/* Schwebendes weicht beim Lesen aus (18.10., N20): ZOE-Kugel und Anwesenheits-Plakette lagen beim Durchrollen auf Knöpfen. Nach unten rollen
-   → sie gleiten aus dem Bild und nehmen keine Klicks an; nach oben, ganz oben und am Seitenende (dort ist Platz) sind sie da
-   (`useSchwebendWeicht`, components/os/ui/schwebend.ts). Mit Tastatur-Fokus bleiben sie sichtbar. Reduzierte Bewegung: ohne Gleiten. */
-.schwebend { transition: transform 220ms var(--ease-glatt), box-shadow 220ms var(--ease-glatt), opacity 180ms linear; }
-.schwebend.schwebend-weg { transform: translateY(calc(100% + 40px)) !important; opacity: 0; pointer-events: none !important; }
-.schwebend.schwebend-weg * { pointer-events: none !important; }
-.schwebend.schwebend-weg:focus-visible, .schwebend.schwebend-weg:focus-within { transform: none !important; opacity: 1; pointer-events: auto !important; }
-.schwebend.schwebend-weg:focus-within * { pointer-events: auto !important; }
-@media (prefers-reduced-motion: reduce) { .schwebend { transition: none; } }
+/* ─── Die Ablage unten: ZOE-Kugel und Anwesenheit sind immer da und liegen nie auf einem Knopf (19.10., Kevin: „Immer sichtbar“) ─────────
+   Vorher (18.10., N20) glitten beide beim Lesen weg, davor lagen sie beim Durchrollen auf Knöpfen. Jetzt hält die Shell unter dem Inhalt einen
+   Streifen frei (`--os-ablage`): `<main>` rollt nur darüber, die Kugel und die Plakette(n) „<Name> ist …“ stehen im Streifen — am Handy direkt
+   über der unteren Leiste (`--os-leiste-handy`). Was auf Fensterhöhe gezogen wird (klebende Spalten, Kalender, Agenten-Seitenfelder), zieht
+   `var(--os-leiste-handy) + var(--os-ablage)` ab. Einzige Ausnahme: die Agenten-Seite am Handy — dort ist ZOE die Seite (keine Kugel, keine
+   Plakette), der Inhalt läuft wie bisher unter die Leiste. Wächter: tests/nachpruefung-l1b.test.ts › N20. */
+:root { --os-kugel: 52px; --os-kugel-rand: 22px; --os-ablage: 72px; --os-leiste-handy: 0px; --os-ablage-linie: #1F262A; }
+@media (max-width: 720px) { :root { --os-ablage: 64px; --os-leiste-handy: calc(64px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 720px) {
+  body:has(.agenten-reiter-handy) { --os-ablage: 0px; --os-leiste-handy: 0px; --os-ablage-linie: transparent; }
+  body:has(.agenten-reiter-handy) .os-shell > main { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+}
+.os-shell > main { box-sizing: border-box; height: calc(100vh - var(--os-leiste-handy) - var(--os-ablage)); border-bottom: 1px solid var(--os-ablage-linie); }
+@supports (height: 100dvh) { .os-shell > main { height: calc(100dvh - var(--os-leiste-handy) - var(--os-ablage)); } }
+/* Die Kugel mittig im Streifen, die Plakette(n) links daneben in einer Reihe (am Handy links im Streifen, nur „ist auch hier“). */
+.zoe-fab { right: var(--os-kugel-rand); bottom: calc(var(--os-leiste-handy) + (var(--os-ablage) - var(--os-kugel)) / 2); width: var(--os-kugel); height: var(--os-kugel); }
+.os-mitarbeit { right: calc(2 * var(--os-kugel-rand) + var(--os-kugel)); bottom: var(--os-leiste-handy); height: var(--os-ablage); }
+@media (max-width: 720px) {
+  .os-mitarbeit { left: 12px; right: auto; max-width: calc(100vw - 12px - 2 * var(--os-kugel-rand) - var(--os-kugel)); overflow: hidden; }
+}
 
 /* ─── ZOE-Icon: ruhiger Puls — die Intelligenz geht überall mit ──────────── */
 @keyframes zoeRing { 0% { transform: scale(.85); opacity: .7; } 70%, 100% { transform: scale(1.45); opacity: 0; } }
@@ -391,13 +402,9 @@ nav a:hover { transform: translateX(2px); }
 @media (max-width: 720px) {
   .leiste-desktop { display: none; }
   .leiste-mobil { display: flex; }
-  /* 16.10. (Abnahme 2 · C11): Leiste (72 px) + ZOE-Kugel darüber (86 + 52 px) — die letzte Zeile bleibt frei, die Kugel deckt nichts ab. */
-  .os-shell main { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
 }
-/* Auf dem Handy sitzt der ZOE-Knopf über der Leiste, nicht darauf. */
-@media (max-width: 720px) {
-  .zoe-fab { bottom: 86px !important; }
-}
+/* Platz für Leiste und ZOE-Kugel am Handy: seit 19.10. die Ablage über der Leiste (`--os-leiste-handy`, `--os-ablage`, oben bei der ZOE-Kugel) —
+   `<main>` endet darüber, die Kugel sitzt im Streifen über der Leiste, nicht darauf und nie auf einem Knopf. */
 /* Agenten-Seite am Handy: ZOE ist dort die Mitte (Reiter „Gespräch“) — die Kugel verdeckte sonst den Reiter „Läuft“ (Rundgang 09.10.). */
 @media (max-width: 720px) {
   body:has(.agenten-reiter-handy) .zoe-fab { display: none !important; }
@@ -495,7 +502,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .spalten-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   .spalten-3-2 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
   /* Lesefenster: bleibt beim Scrollen unter dem Wachstums-Kopf stehen */
-  .spalte-klebt { position: sticky; top: 104px; max-height: calc(100vh - 124px); overflow-y: auto; }
+  .spalte-klebt { position: sticky; top: 104px; max-height: calc(100vh - var(--os-ablage) - 124px); overflow-y: auto; }
 }
 /* Der Kopf nimmt dieselbe Breite wie die Seite, damit die Kanten übereinanderstehen */
 .wachstum-kopf-innen { max-width: 1440px; margin: 0 auto; padding: 10px clamp(18px,4vw,48px); display: flex; align-items: center; gap: 16px; }
@@ -512,7 +519,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 /* Zu zweit (24.09.): „Malin ist auch hier“ — auf dem Handy über der unteren Leiste. */
 /* Am Handy nur „ist auch hier“ (die Warnung zählt), „ist in …“ würde Inhalt und Hauptaktion verdecken. */
 @media (max-width: 767px) { .os-mitarbeit-fern { display: none !important; } }
-@media (max-width: 767px) { .os-mitarbeit { bottom: 84px !important; left: 12px !important; right: auto !important; justify-items: start !important; } }
+/* Wo die Plakette steht (im Streifen der Ablage, am Handy links über der Leiste): oben bei der ZOE-Kugel (`.os-mitarbeit`, 19.10.). */
 
 /* Bauplan-Board (25.09.): fünf Spalten passen auf einen Laptop; am Handy
    wischt man spaltenweise (je Spalte fast die ganze Breite). */

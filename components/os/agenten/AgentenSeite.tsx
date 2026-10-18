@@ -56,7 +56,7 @@ export function Mitte() {
 function Nebenfeld({ id, seite, offen, breite, children }: { id: string; seite: Seitenfeld; offen: boolean; breite: number; children: ReactNode }) {
   const stil: CSSProperties = {
     position: 'sticky', top: ABSTAND.l, alignSelf: 'flex-start', flex: '0 0 auto', width: offen ? breite + SPALTE_ABSTAND : 0,
-    maxHeight: `calc(100vh - ${ABSTAND.l * 2}px)`, overflowX: 'hidden', overflowY: offen ? 'auto' : 'hidden', overscrollBehavior: 'contain',
+    maxHeight: `calc(100vh - var(--os-ablage) - ${ABSTAND.l * 2}px)`, overflowX: 'hidden', overflowY: offen ? 'auto' : 'hidden', overscrollBehavior: 'contain',
   };
   return (
     <div id={id} className="agenten-seitenfeld" data-zu={offen ? undefined : ''} aria-hidden={offen ? undefined : true} style={stil}>

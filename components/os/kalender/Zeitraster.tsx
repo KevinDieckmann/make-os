@@ -459,7 +459,7 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
       {/* Stundenraster — rollt in sich; Strg/⌘ + Rad bzw. zwei Finger zoomen. */}
       {/* Höchstens so hoch wie der Bildschirm (16.10., Abnahme 2 · C1): am Handy rollte sonst die ganze Seite, das Raster selbst nie — der Tag
           stand bei 00:00 statt bei der Arbeitszeit bzw. eine Stunde vor jetzt (`startMinute`). Am Rechner begrenzt ohnehin die Spalte. */}
-      <div ref={rollen} data-kalender-raster="" style={{ overflowY: 'auto', minHeight: 0, maxHeight: 'max(420px, calc(100dvh - 150px))', position: 'relative', scrollbarGutter: 'stable', overscrollBehaviorY: 'contain' }}>
+      <div ref={rollen} data-kalender-raster="" style={{ overflowY: 'auto', minHeight: 0, maxHeight: 'max(420px, calc(100dvh - 150px - var(--os-ablage)))', position: 'relative', scrollbarGutter: 'stable', overscrollBehaviorY: 'contain' }}>
         <div style={{ display: 'grid', gridTemplateColumns: `${kopfBreite}px 1fr`, height: 24 * 60 * px }}>
           <div style={{ position: 'relative' }}>
             {/* Die Stunde dicht an der Jetzt-Zeit weicht ihr (16.10., Abnahme 2 · C1: „08:00“ und „08:12“ übereinander) — die Jetzt-Zeit gewinnt. */}

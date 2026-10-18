@@ -38,7 +38,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from './Rich';
-import { Chip, Knopf, Segmente, feld, LEUCHT, useSchwebendWeicht } from './ui';
+import { Chip, Knopf, Segmente, feld, LEUCHT } from './ui';
 import { KuerzelKugel, headFarbe } from './agenten/Avatar';
 import { useChatKontext } from './chat/useChatKontext';
 import { ansprechpartnerFuer, CHAT_WAHL_TEXT, type ChatHead, type ChatWahl, type PartnerSchluessel } from '@/lib/agenten/kontext-head';
@@ -168,8 +168,6 @@ export function ZoePanel() {
   const spaceRef = useRef(aktiverSpace);
   spaceRef.current = aktiverSpace;
   const [fenster, setFenster] = useState<Fenster>(STANDARD);
-  // Die Kugel weicht beim Lesen nach unten aus (18.10., N20 — lag am Handy auf „Entwurf öffnen“); oben, am Ende und nach oben rollend ist sie da.
-  const weicht = useSchwebendWeicht();
   const [ask, setAsk] = useState('');
   const [thinking, setThinking] = useState(false);
   // Streaming (09.10.): der Text, während er entsteht, und das laufende Werkzeug — bis die fertige Antwort da ist.
@@ -566,8 +564,10 @@ export function ZoePanel() {
   // ── Zu: das kleine pulsierende Icon, das überall mitgeht ──
   if (!fenster.offen) {
     return (
-      <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label={`${partnerName} öffnen`} title={partnerName} className={`zoe-fab schwebend${weicht ? ' schwebend-weg' : ''}`}
-        style={{ position: 'fixed', right: 22, bottom: 22, zIndex: 70, width: 52, height: 52, borderRadius: '50%', border: 'none', background: FLAECHE, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${KUGEL.smaragd}2E, inset 0 1px 0 rgba(255,255,255,.08)` }}>
+      // Immer sichtbar (19.10., Kevin): Lage und Größe aus der Ablage unten (`.zoe-fab` in app/globals.css) — `<main>` endet über dem Streifen,
+      // die Kugel liegt nie auf einem Knopf (vorher wich sie beim Lesen aus).
+      <button onClick={() => setFenster(f => ({ ...f, offen: true }))} aria-label={`${partnerName} öffnen`} title={partnerName} className="zoe-fab"
+        style={{ position: 'fixed', zIndex: 70, borderRadius: '50%', border: 'none', background: FLAECHE, cursor: 'pointer', display: 'grid', placeItems: 'center', boxShadow: `0 8px 30px rgba(0,0,0,.45), 0 0 26px ${KUGEL.smaragd}2E, inset 0 1px 0 rgba(255,255,255,.08)` }}>
         <ZoeSymbol size={38} zustand={kugelZustand} puls />
         {(thinking || stimme.hoert || stimme.spricht) && <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: '50%', background: stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung, boxShadow: `0 0 8px ${stimme.hoert ? LEUCHT.kritisch : stimme.spricht ? J : LEUCHT.achtung}33` }} />}
       </button>

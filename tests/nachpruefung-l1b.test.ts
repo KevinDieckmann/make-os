@@ -272,29 +272,68 @@ describe('N17 — Einrichtung für ein Konto „nur Business“: der Erklärtext
   });
 });
 
-describe('N20 — ZOE-Kugel und Anwesenheits-Plakette weichen beim Lesen aus', () => {
-  it('Regel (`schwebendWeiter`): nach unten rollen → weg; ein Stück nach oben, ganz oben, am Ende oder nach einem Sprung → da', async () => {
-    const { schwebendWeiter, SCHWEBEND_START } = await import('@/components/os/ui/schwebend');
-    // Start wie im Haken: Anker = die Stelle, an der die Seite gerade steht.
-    const lauf = (ys: number[], ende = 5000) => ys.slice(1).reduce((s, y) => schwebendWeiter(s, y, ende - y), { ...SCHWEBEND_START, anker: ys[0], letzt: ys[0] });
-    expect(lauf([10, 30]).weg).toBe(false); // ganz oben
-    expect(lauf([0, 100]).weg).toBe(true); // von oben 100 px nach unten gelesen
-    expect(lauf([100, 110, 120]).weg).toBe(false); // kleines Zittern unter der Schwelle (vom Anker 100 aus)
-    expect(lauf([100, 200, 300]).weg).toBe(true); // nach unten gelesen
-    expect(lauf([100, 300, 290]).weg).toBe(true); // kurz zurück, unter der Schwelle → bleibt weg
-    expect(lauf([100, 300, 250]).weg).toBe(false); // ein Stück nach oben → wieder da
-    expect(lauf([100, 300, 4990]).weg).toBe(false); // am Ende ist Platz reserviert (und ein Sprung)
-    expect(lauf([100, 300, 400, 4980]).weg).toBe(false); // Ende
-    expect(lauf([2000, 2100, 2200, 3000]).weg).toBe(false); // Sprung (Zurück stellt die Stelle wieder her) — kein Lesen
+describe('N20 — ZOE-Kugel und Anwesenheits-Plakette sind immer sichtbar und liegen nie auf einem Knopf (Kevin 19.10.: „Immer sichtbar“)', () => {
+  // Vorher (18.10.) glitten beide beim Lesen weg. Jetzt reserviert die Shell unter dem Inhalt einen Streifen (Ablage): `<main>` rollt nur darüber,
+  // Kugel und Plakette stehen darin — am Handy direkt über der unteren Leiste.
+  const lies = async (pfad: string) => (await import('node:fs')).readFileSync(pfad, 'utf8');
+  const px = (wert: string) => Number(/^(\d+(?:\.\d+)?)px/.exec(wert.trim())?.[1] ?? NaN);
+  /** Die Werte der Ablage aus `:root` (Rechner) bzw. aus der Handy-Medienabfrage. */
+  const ablage = (css: string) => {
+    const root = /^:root \{ (--os-kugel:[^}]*)\}/m.exec(css)?.[1] ?? '';
+    const handy = /@media \(max-width: 720px\) \{ :root \{ ([^}]*)\} \}/.exec(css)?.[1] ?? '';
+    const werte = (block: string) => Object.fromEntries([...block.matchAll(/(--os-[a-z-]+): ([^;]+);/g)].map(m => [m[1], m[2]]));
+    return { rechner: werte(root), handy: { ...werte(root), ...werte(handy) } };
+  };
+
+  it('kein Wegleiten mehr: der Haken ist weg, Kugel und Plakette tragen nur ihre Klasse, die Lage steht nicht inline', async () => {
+    const { existsSync } = await import('node:fs');
+    expect(existsSync('components/os/ui/schwebend.ts')).toBe(false);
+    const zoe = await lies('components/os/ZoePanel.tsx');
+    const mit = await lies('components/os/Mitarbeit.tsx');
+    for (const q of [zoe, mit, await lies('components/os/ui/index.ts'), await lies('app/globals.css')]) expect(q).not.toMatch(/schwebend-weg|useSchwebendWeicht/);
+    expect(zoe).toContain('className="zoe-fab"');
+    expect(zoe).not.toMatch(/className="zoe-fab"\s+style=\{\{[^}]*\b(right|bottom|width|height): /);
+    expect(mit).toContain('className="os-mitarbeit"');
+    expect(mit).not.toMatch(/style=\{\{ position: 'fixed'[^}]*\b(right|bottom): \d/);
+    // `<main>` bekommt seine Höhe aus der CSS (Fensterhöhe minus Ablage), nicht mehr fest 100vh.
+    expect(await lies('app/os/layout.tsx')).not.toContain("height: '100vh'");
   });
 
-  it('ZOE-Kugel und Plakette tragen die Klassen; CSS: weg = unsichtbar, keine Klicks, Fokus holt zurück, reduzierte Bewegung ohne Gleiten', async () => {
-    const { readFileSync } = await import('node:fs');
-    expect(readFileSync('components/os/ZoePanel.tsx', 'utf8')).toContain("className={`zoe-fab schwebend${weicht ? ' schwebend-weg' : ''}`}");
-    expect(readFileSync('components/os/Mitarbeit.tsx', 'utf8')).toContain("className={`os-mitarbeit schwebend${weicht ? ' schwebend-weg' : ''}`}");
-    const css = readFileSync('app/globals.css', 'utf8');
-    expect(css).toMatch(/\.schwebend\.schwebend-weg \{[^}]*opacity: 0;[^}]*pointer-events: none !important;/);
-    expect(css).toContain('.schwebend.schwebend-weg:focus-within');
-    expect(css).toContain('@media (prefers-reduced-motion: reduce) { .schwebend { transition: none; } }');
+  it('CSS: `<main>` endet über der Ablage; Kugel und Plakette stehen im Streifen — Rechner und Handy (über der Leiste)', async () => {
+    const css = await lies('app/globals.css');
+    expect(css).toContain('.os-shell > main { box-sizing: border-box; height: calc(100vh - var(--os-leiste-handy) - var(--os-ablage));');
+    expect(css).toContain('@supports (height: 100dvh) { .os-shell > main { height: calc(100dvh - var(--os-leiste-handy) - var(--os-ablage)); } }');
+    expect(css).toContain('.zoe-fab { right: var(--os-kugel-rand); bottom: calc(var(--os-leiste-handy) + (var(--os-ablage) - var(--os-kugel)) / 2); width: var(--os-kugel); height: var(--os-kugel); }');
+    expect(css).toContain('.os-mitarbeit { right: calc(2 * var(--os-kugel-rand) + var(--os-kugel)); bottom: var(--os-leiste-handy); height: var(--os-ablage); }');
+    // Keine alten festen Lagen mehr (Kugel 86 px, Plakette 84 px am Handy) — sonst läge sie wieder im Inhalt.
+    expect(css).not.toMatch(/\.zoe-fab \{ bottom: \d+px !important; \}/);
+    expect(css).not.toMatch(/\.os-mitarbeit \{ bottom: \d+px !important;/);
+
+    // Geometrie: die Kugel passt mit Luft in den Streifen (Rechner und Handy), die Plakette liegt links neben der Kugel, nie darunter.
+    const { rechner, handy } = ablage(css);
+    for (const [name, w] of [['Rechner', rechner], ['Handy', handy]] as const) {
+      const band = px(w['--os-ablage']), kugel = px(w['--os-kugel']), rand = px(w['--os-kugel-rand']);
+      expect(band - kugel, name).toBeGreaterThanOrEqual(12); // ≥ 6 px Luft über und unter der Kugel
+      expect(rand, name).toBeGreaterThanOrEqual(8); // Plakette (rechts bei 2 × Rand + Kugel) endet mit Abstand links der Kugel
+    }
+    expect(px(rechner['--os-leiste-handy'])).toBe(0);
+    expect(handy['--os-leiste-handy']).toBe('calc(64px + env(safe-area-inset-bottom, 0px))');
+  });
+
+  it('Was auf Fensterhöhe gezogen wird, zieht die Ablage ab (klebende Spalte, Kalender, Agenten-Seitenfeld); der Kalender zählt die Leiste nicht doppelt', async () => {
+    expect(await lies('app/globals.css')).toContain('.spalte-klebt { position: sticky; top: 104px; max-height: calc(100vh - var(--os-ablage) - 124px);');
+    expect(await lies('components/os/kalender/Kalender.tsx')).toContain("'calc(100vh - var(--os-ablage) - 140px)'");
+    expect(await lies('components/os/kalender/Zeitraster.tsx')).toContain("calc(100dvh - 150px - var(--os-ablage))");
+    expect(await lies('components/os/agenten/AgentenSeite.tsx')).toContain('calc(100vh - var(--os-ablage) - ${ABSTAND.l * 2}px)');
+    expect(await lies('components/os/kalender/darstellung.tsx')).toContain('Math.max(0, Math.min(window.innerHeight, mainUnten) - lr.top)');
+  });
+
+  it('Einzige Ausnahme: Agenten-Seite am Handy — dort gibt es weder Kugel noch Plakette, also auch keine Ablage (Inhalt wie bisher unter der Leiste)', async () => {
+    const css = await lies('app/globals.css');
+    expect(css).toContain('body:has(.agenten-reiter-handy) { --os-ablage: 0px; --os-leiste-handy: 0px; --os-ablage-linie: transparent; }');
+    expect(css).toMatch(/body:has\(\.agenten-reiter-handy\) \.zoe-fab \{ display: none !important; \}/);
+    expect(css).toMatch(/body:has\(\.agenten-reiter-handy\) \.os-mitarbeit \{ display: none !important; \}/);
+    // Am Rechner bleibt der Streifen auch auf der Agenten-Seite (dort steht die Plakette darin, die Kugel ist die Seite selbst).
+    expect(css).not.toMatch(/body:has\(\.agenten-flaeche\) \{[^}]*--os-ablage: 0px/);
   });
 });

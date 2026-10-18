@@ -580,7 +580,7 @@ export function Kalender() {
       {(bereich === 'business' || bereich === 'privat') && <BereichVerbindungen key={bereich} bereich={bereich} onGeaendert={() => void laden()} ohneHinweis />}
       {/* Linke Spalte (09.10.): zugeklappt bleibt sie geladen (`hidden`, Zustand und Karten bleiben), das Raster bekommt die ganze Breite.
           Volle Höhe (10.10.): breit hat die Fläche die Höhe bis zum Fensterrand — Spalte und Raster rollen je in sich; schmal das Raster allein. */}
-      <div ref={flaeche} style={{ display: 'grid', gridTemplateColumns: breit && linksSichtbar(breit, linksOffen) ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: breit ? 'stretch' : 'start', ...(breit ? { height: hoehe ?? 'calc(100vh - 140px)', gridTemplateRows: 'minmax(0, 1fr)' } : {}) }}>
+      <div ref={flaeche} style={{ display: 'grid', gridTemplateColumns: breit && linksSichtbar(breit, linksOffen) ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: breit ? 'stretch' : 'start', ...(breit ? { height: hoehe ?? 'calc(100vh - var(--os-ablage) - 140px)', gridTemplateRows: 'minmax(0, 1fr)' } : {}) }}>
         {breit && <div id={LINKS_ID} hidden={!linksSichtbar(breit, linksOffen)} style={{ minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehaviorY: 'contain', paddingRight: 4 }}>{leiste}</div>}
         {haupt}
         {!breit && <div id={LINKS_ID} style={{ minWidth: 0 }}>{leiste}</div>}
