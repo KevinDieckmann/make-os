@@ -17,7 +17,7 @@
 import type { Baustein, Fall, KnotenStatus, RitualVorlage, VorlagenDatei } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 import { MUSTER_ONBOARDING, MUSTER_PLAYBOOK, type OnboardingSchluessel } from '../muster';
-import { ausWandzeit, tagPlus } from '@/lib/kalender/zeit';
+import { ausWandzeit, tagPlus, wandzeit } from '@/lib/kalender/zeit';
 import { abstimmungsNummern } from './darstellung';
 import { ersterTermin } from './termine';
 import { satz } from '@/lib/text/zahlwort';
@@ -76,6 +76,26 @@ export function willkommenUhr(unterschrift: string | undefined, stunden: number,
   if (!faellig) return { ueberfaellig: false };
   const rest = (Date.parse(faellig) - Date.parse(jetzt)) / 3_600_000;
   return { faellig, ueberfaellig: rest < 0, restStunden: Math.round(rest) };
+}
+
+// ── Anzeige der Frist (18.10., Nachprüfung N8) — die Regel bleibt `willkommenUhr`, hier nur, wie sie dasteht ───────────────────────────────────────────
+// Endet die Uhr um 0 Uhr (Unterschrift nur mit Tag → Ende dieses Tages + 24 h), ist der Tag DAVOR der letzte, an dem die Mail rechtzeitig ist: „bis 20.10.“
+// las sich wie „am 20. ist noch Zeit“ — am Morgen des 20. stand aber „überfällig“. Jede Anzeige der Uhr nimmt diese zwei Funktionen.
+const WOCHENTAG_KURZ = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] as const;
+/** Der letzte Berliner Tag, an dem die Willkommensmail noch rechtzeitig ist (`faellig` ISO, z. B. aus `willkommenUhr`). Rein. */
+export function willkommenLetzterTag(faellig: string): string {
+  const ms = Date.parse(faellig);
+  return Number.isNaN(ms) ? faellig.slice(0, 10) : wandzeit(new Date(ms - 1)).slice(0, 10);
+}
+/** „Mo 19.10.“ (Frist um 0 Uhr = Ende des Vortags) bzw. „Di 20.10., 14:30 Uhr“ (Frist mit Uhrzeit). Rein. */
+export function willkommenBisText(faellig: string): string {
+  const ms = Date.parse(faellig);
+  if (Number.isNaN(ms)) return faellig;
+  const w = wandzeit(new Date(ms));
+  const mitternacht = w.slice(11, 16) === '00:00';
+  const tag = mitternacht ? willkommenLetzterTag(faellig) : w.slice(0, 10);
+  const wt = WOCHENTAG_KURZ[new Date(`${tag}T12:00:00Z`).getUTCDay()];
+  return `${wt} ${tag.slice(8, 10)}.${tag.slice(5, 7)}.${mitternacht ? '' : `, ${w.slice(11, 16)} Uhr`}`;
 }
 
 /** Wert-Konto festgelegt (Schritt 6): jedes Ziel hat Ausgang, Ziel und Datum und ist „festgelegt“. Ohne Ziele: nicht erfüllt. */

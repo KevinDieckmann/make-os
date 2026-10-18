@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TIEF } from '@/lib/make-one/design';
 import { MUSTER_ONBOARDING } from '@/lib/fulfillment/muster';
+import { willkommenBisText } from '@/lib/fulfillment/prozesse/onboarding';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, Punkt, LEUCHT } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { Wahl } from '../../crm/Wahl';
@@ -24,8 +25,7 @@ const GRUND: Record<Kandidat['grund'], string> = { vertrag: 'Vertrag unterschrie
 function uhrText(k: Kandidat): { text: string; farbe: string } | null {
   if (!k.uhr.faellig) return null;
   if (k.uhr.ueberfaellig) return { text: 'Willkommensmail überfällig', farbe: LEUCHT.kritisch };
-  const d = new Date(k.uhr.faellig);
-  return { text: `Willkommen bis ${d.toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })}`, farbe: (k.uhr.restStunden ?? 99) <= 6 ? LEUCHT.achtung : LEUCHT.gut };
+  return { text: `Willkommen bis ${willkommenBisText(k.uhr.faellig)}`, farbe: (k.uhr.restStunden ?? 99) <= 6 ? LEUCHT.achtung : LEUCHT.gut };
 }
 
 /** Kandidaten-Liste mit Start-Dialog — geteilt von Fulfillment › Onboarding und dem Einhänger in Produkte & Mandate. */

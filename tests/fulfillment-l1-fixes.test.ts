@@ -1,6 +1,8 @@
 // Gesamtprüfung 17.10. — Linse 1 (Ende zu Ende): Funde, die die Regeln betreffen. Erfundene Daten, rein.
 import { describe, it, expect } from 'vitest';
-import { willkommenUhr } from '@/lib/fulfillment/prozesse/onboarding';
+import { willkommenUhr, willkommenLetzterTag, willkommenBisText } from '@/lib/fulfillment/prozesse/onboarding';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { tagKurz } from '@/components/os/fulfillment/prozesse/daten';
 
 describe('B2 · Willkommens-Uhr', () => {
@@ -16,6 +18,30 @@ describe('B2 · Willkommens-Uhr', () => {
   it('Datum eines Zeitstempels als Berliner Tag — nie der UTC-Tag', () => {
     expect(tagKurz('2026-10-17T22:00:00.000Z')).toBe('18.10.');
     expect(tagKurz('2026-10-17')).toBe('17.10.');
+  });
+});
+
+describe('N8 (Nachprüfung 18.10.) · Anzeige der Willkommens-Frist: das Datum ist der letzte erlaubte Tag', () => {
+  it('Frist um 0 Uhr (Unterschrift nur mit Tag) → der Tag davor: „bis Mo 19.10.“, am Morgen des 20. ist sie überfällig', () => {
+    const u = willkommenUhr('2026-10-18', 24, undefined, '2026-10-18T09:00:00.000Z');
+    expect(u.faellig).toBe('2026-10-19T22:00:00.000Z'); // 20.10. 0 Uhr Berlin — die Regel bleibt
+    expect(willkommenLetzterTag(u.faellig!)).toBe('2026-10-19');
+    expect(willkommenBisText(u.faellig!)).toBe('Mo 19.10.');
+    expect(willkommenUhr('2026-10-18', 24, undefined, '2026-10-19T21:59:00.000Z').ueberfaellig).toBe(false); // 19.10. 23:59
+    expect(willkommenUhr('2026-10-18', 24, undefined, '2026-10-20T05:00:00.000Z').ueberfaellig).toBe(true); // 20.10. morgens
+  });
+  it('Frist mit Uhrzeit → derselbe Tag mit Uhrzeit; Winterzeit ebenso', () => {
+    const f = willkommenUhr('2026-10-17T18:53:00.000Z', 24, undefined, '2026-10-17T19:00:00.000Z').faellig!;
+    expect(willkommenLetzterTag(f)).toBe('2026-10-18');
+    expect(willkommenBisText(f)).toBe('So 18.10., 20:53 Uhr');
+    expect(willkommenBisText('2026-10-25T23:00:00.000Z')).toBe('So 25.10.'); // 26.10. 0 Uhr MEZ
+    expect(willkommenLetzterTag('2026-10-25T23:00:00.000Z')).toBe('2026-10-25');
+  });
+  it('die Anzeigen der Uhr nehmen diese Ableitung (Chip „Willkommensmail“, Onboarding-Liste)', () => {
+    const lies = (d: string) => readFileSync(path.resolve(__dirname, '..', d), 'utf8');
+    expect(lies('components/os/fulfillment/prozesse/FallUeberblick.tsx')).toContain('bis {willkommenBisText(uhr.faellig)}');
+    expect(lies('components/os/fulfillment/prozesse/FallUeberblick.tsx')).not.toContain('bis {tagKurz(uhr.faellig)}');
+    expect(lies('components/os/fulfillment/prozesse/Onboarding.tsx')).toContain('Willkommen bis ${willkommenBisText(k.uhr.faellig)}');
   });
 });
 
