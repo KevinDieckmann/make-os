@@ -330,6 +330,17 @@ export const ruheBis = (z: Pick<LeadZeile, 'geprueftAm'>): string | null => {
   return d.toISOString().slice(0, 10);
 };
 /**
+ * Der Satz über der Runde, wenn SQL-bereite Leads auf eine Entscheidung warten (18.10., Nachprüfung C13 — vorher „1 Lead ist SQL-bereit und warten …“).
+ * Einzahl und Mehrzahl durchgehend; leer bei 0.
+ */
+export function sqlOffenSatz(n: number): string {
+  if (n <= 0) return '';
+  return n === 1
+    ? '1 Lead ist SQL-bereit und wartet auf deine Entscheidung (Deal, weiter qualifizieren, parken oder raus) — er steht oben in der Runde.'
+    : `${n} Leads sind SQL-bereit und warten auf deine Entscheidung (Deal, weiter qualifizieren, parken oder raus) — sie stehen oben in der Runde.`;
+}
+
+/**
  * SQL-bereit, aber noch ohne Entscheidung (Praxis-Prüfung M3): kein Deal, der Status steht noch vor „SQL“. Wer das Ergebnis eines Gesprächs
  * verlässt, ohne „Deal anlegen“, „Parken“ oder „Raus“ zu wählen, hat den Lead sonst aus der Runde verloren (frisch geprüft = nicht mehr dran).
  * Diese Leads bleiben in der Runde — als eigene Gruppe oben — bis jemand entscheidet.

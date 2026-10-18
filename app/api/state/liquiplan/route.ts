@@ -62,10 +62,13 @@ const firmaIdSauber = (v: unknown): string | undefined =>
 function sauber(p: Partial<Planposten>, _i: number): Planposten | null {
   const titel = String(p.titel ?? '').trim().slice(0, 160);
   if (!titel) return null;
-  const betrag = Math.round(Number(p.betrag));
+  // Auf den Cent (18.10., N4: die Teilmonate eines Mandats tragen Cent — vorher rundete jede Änderung hier auf ganze Euro).
+  const betrag = Math.round(Number(p.betrag) * 100) / 100;
   if (!Number.isFinite(betrag) || betrag === 0) return null;
   return {
-    id: String(p.id ?? '').slice(0, 40) || neueKennung('lp'),
+    // Bis 80 Zeichen (18.10.): `lp-mandat-<m-uuid>` hat 48, ein Teilmonat `…~JJJJ-MM` 56 — vorher schnitt die 40 sie ab, und jede Änderung
+    // in Liquidität legte neben dem Mandats-Posten einen zweiten an (doppelt gezählt).
+    id: String(p.id ?? '').slice(0, 80) || neueKennung('lp'),
     titel,
     betrag,
     rhythmus: RHYTHMEN.includes(p.rhythmus as Rhythmus) ? p.rhythmus as Rhythmus : 'monatlich',

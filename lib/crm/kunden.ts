@@ -6,9 +6,11 @@
 // nichts doppelt zählt (manche Kunden-Posten sind schon von Hand drin).
 
 import type { Mandat } from './typen';
-import type { Planposten } from '@/lib/make-one/liquiditaet';
+import { zahltage, letzterZahltag, type Planposten } from '@/lib/make-one/liquiditaet';
+import { geplantesEnde, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
+import { mandatName } from './mandat-name';
+import { PLANPOSTEN_MANDAT, PLANPOSTEN_TEIL } from './mandant-link';
 import { TEAM, BEIDE, zustaendig } from './team';
-import { bruttoAusNetto } from '@/lib/finanzen/ust';
 import { anzahl } from '@/lib/text/zahlwort';
 import { KERN_EINHEITEN, gesellschaftAusEinheit, gehoertZuPrivat, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
 
@@ -21,14 +23,6 @@ function plusMonate(datum: string, n: number): string {
   d.setUTCDate(Math.min(tag, letzter));
   return d.toISOString().slice(0, 10);
 }
-/** Tag + n Monate (am Monatsende gekappt) + t Tage. */
-const plusMonateTag = (datum: string, n: number, t = 0) => {
-  const [j, mo, ta] = datum.slice(0, 10).split('-').map(Number);
-  const ziel = new Date(Date.UTC(j, mo - 1 + n, 1, 12));
-  const letzter = new Date(Date.UTC(ziel.getUTCFullYear(), ziel.getUTCMonth() + 1, 0, 12)).getUTCDate();
-  ziel.setUTCDate(Math.min(ta, letzter) + t);
-  return ziel.toISOString().slice(0, 10);
-};
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 export const HEALTH_GEWICHTE = { beteiligung: 25, umsetzung: 25, wirkung: 30, zahlung: 10, stimmung: 10 } as const;
@@ -122,39 +116,197 @@ export function konzentration(mandate: Mandat[]): { kunde: string; anteil: numbe
   return { kunde, anteil: Math.round((wert / gesamt) * 100) };
 }
 
-/**
- * Bis wann der Liquiplan-Posten eines beendeten Mandats laufen darf (17.10., Gesamtprüfung L1 A2): das Ende des Mandats (fehlt es: heute) — die letzte
- * Zahlung kommt noch mit dem Zahlungsziel. Nicht beendet → null.
- */
-export function postenEnde(m: Pick<Mandat, 'status' | 'ende' | 'zahlungszielTage'>, heute: string): string | null {
-  if (m.status !== 'beendet') return null;
-  return plusTage(m.ende ?? heute, m.zahlungszielTage || 14);
-}
+// ── Mandat → Liquiditätsplan (18.10., Nachprüfung N4/N14 — EIN Zahlplan mit der Monatsrechnung) ─────────────────────────────────
+// Die Zahlungen kommen aus `mandatZahlplan` (lib/crm/mandat-laufzeit.ts): angebrochene Monate (Beginn bzw. Ende mitten im Monat) je ein
+// einmaliger Posten `lp-mandat-<id>~JJJJ-MM` mit dem Betrag der anteiligen Rechnung, die vollen Monate EIN Monatsposten (`planpostenId` bzw.
+// `lp-mandat-<id>`) mit genau so vielen Zahltagen, wie es volle Monate sind. Vorher: ein Monatsposten von „Beginn + Zahlungsziel“ bis
+// „Mindestende + Zahlungsziel“ — für 18.10.–17.04. sieben volle Zahlungen statt anteilig Oktober + fünf + anteilig April.
 
-/** Der Liquiplan-Posten, den ein Mandat erzeugen würde (brutto, Eingang nach Zahlungsziel). */
-export function planpostenAus(m: Mandat, heute: string): Planposten | null {
-  if (m.status !== 'aktiv' && m.status !== 'verhandlung') return null;
-  if (!(m.honorar.betrag > 0) || m.honorar.basis === 'tag') return null;
-  // Eine USt-Funktion (#79/#80): auf den Cent, nicht auf ganze Euro.
-  const brutto = m.honorar.netto ? bruttoAusNetto(m.honorar.betrag, m.ustSatz) : m.honorar.betrag;
-  const basis = m.start && m.start > heute ? m.start : heute;
-  // Beginnt das Mandat in diesem Monat nach dem 1., zählt die erste Rechnung ab dem Beginn (17.10., Gesamtprüfung L1 B8 — vorher „ab 15.10.“ bei Start am
-  // 17.10.). Ohne Verlängerung endet der Posten mit der Mindestlaufzeit (letzte Zahlung mit dem Zahlungsziel).
-  const monatsAnfang = `${basis.slice(0, 8)}01`;
-  const rechnungsTag = m.start && m.start.slice(0, 7) === basis.slice(0, 7) && m.start > monatsAnfang ? m.start : monatsAnfang;
-  const ab = plusTage(m.rechnungsrhythmus === 'einmalig' || m.honorar.basis === 'einmalig' ? basis : rechnungsTag, m.zahlungszielTage || 14);
-  const mindestEnde = !m.ende && m.verlaengerung !== 'auto' && m.mindestlaufzeitMonate && m.start ? plusMonateTag(m.start, m.mindestlaufzeitMonate, -1) : null;
-  const bis = m.ende ?? (mindestEnde ? plusTage(mindestEnde, m.zahlungszielTage || 14) : undefined);
-  const sicher = m.status === 'aktiv' && m.vertragUnterschrieben;
+/** Kennung des Monatspostens eines Mandats (von Hand verknüpft oder `lp-mandat-<id>`). */
+export const hauptPostenId = (m: Pick<Mandat, 'id' | 'planpostenId'>) => m.planpostenId ?? `${PLANPOSTEN_MANDAT}${m.id}`;
+/** Kennung des einmaligen Postens für einen angebrochenen Monat. */
+export const teilPostenId = (m: Pick<Mandat, 'id'>, monat: string) => `${PLANPOSTEN_MANDAT}${m.id}${PLANPOSTEN_TEIL}${monat}`;
+/** Gehört der Posten zu diesem Mandat (Monatsposten oder Teilmonat)? */
+export const postenVomMandat = (id: string, m: Pick<Mandat, 'id' | 'planpostenId'>) => id === hauptPostenId(m) || id.startsWith(`${PLANPOSTEN_MANDAT}${m.id}${PLANPOSTEN_TEIL}`);
+
+const TITEL_MAX = 120;
+const titelMit = (name: string, zusatz = '') => `${name.slice(0, TITEL_MAX - zusatz.length)}${zusatz}`;
+
+/**
+ * Die Liquiplan-Posten eines Mandats (brutto, Eingang nach Zahlungsziel) — leer, wenn keiner entsteht (Status, Honorar fehlt, Tagessatz).
+ * `beendet: true` rechnet auch ein beendetes Mandat bis zu seinem Ende (ohne Ende: heute) — für „Posten beenden“ und die Lage.
+ * Einmalige Honorare und Quartalsrechnungen bleiben EIN Posten wie bisher.
+ */
+export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean } = {}): Planposten[] {
+  const beendet = m.status === 'beendet';
+  if (beendet ? !opt.beendet : m.status !== 'aktiv' && m.status !== 'verhandlung') return [];
+  if (!(m.honorar.betrag > 0) || m.honorar.basis === 'tag') return [];
+  const ziel = zahlungsziel(m);
+  const ende = beendet ? (m.ende ?? heute) : geplantesEnde(m);
+  const sicher = m.status !== 'verhandlung' && m.vertragUnterschrieben;
   // Register-Gesellschaften (`g-…`, 04.10.) führt der Liquiplan noch nicht — dann ohne Firma (wie „offen“), nie still bei kdc.
   const firma = m.gesellschaft === 'offen' || istRegisterKennung(m.gesellschaft) ? undefined : m.gesellschaft;
-  return {
-    id: m.planpostenId ?? `lp-mandat-${m.id}`, titel: `${m.kunde} · ${m.titel}`.slice(0, 120), betrag: brutto,
-    rhythmus: m.honorar.basis === 'einmalig' || m.rechnungsrhythmus === 'einmalig' ? 'einmalig' : m.rechnungsrhythmus === 'quartal' ? 'quartal' : 'monatlich',
-    ab, ...(bis ? { bis } : {}), sicher, ...(sicher ? {} : { wahrscheinlich: m.status === 'aktiv' ? 80 : 50 }),
-    ...(firma ? { firmaId: firma } : {}), kategorie: 'mandat',
-    notiz: `Aus dem Mandat (CRM). ${m.honorar.netto ? `${m.honorar.betrag} € netto${m.ustSatz ? ` + ${m.ustSatz} % USt` : ', Reverse Charge'}` : `${m.honorar.betrag} €`}.`,
-  };
+  const name = mandatName(m.kunde, m.titel);
+  const notiz = `Aus dem Mandat (CRM). ${m.honorar.netto ? `${m.honorar.betrag} € netto${m.ustSatz ? ` + ${m.ustSatz} % USt` : ', Reverse Charge'}` : `${m.honorar.betrag} €`}.`;
+  const gemeinsam = { sicher, ...(sicher ? {} : { wahrscheinlich: m.status === 'verhandlung' ? 50 : 80 }), ...(firma ? { firmaId: firma } : {}), kategorie: 'mandat' } as const;
+  const basis = m.start && m.start > heute ? m.start : heute;
+  const einmalig = m.honorar.basis === 'einmalig' || m.rechnungsrhythmus === 'einmalig';
+  if (einmalig || m.rechnungsrhythmus === 'quartal') {
+    // Wie bisher: EIN Posten — einmalig am Beginn (bzw. heute) + Zahlungsziel; Quartal ab dem Monatsanfang (im Beginnmonat ab dem Beginn).
+    if (ende && ende < basis) return [];
+    const brutto = monatsBrutto(m, null);
+    const monatsAnfang = `${basis.slice(0, 8)}01`;
+    const rechnungsTag = m.start && m.start.slice(0, 7) === basis.slice(0, 7) && m.start > monatsAnfang ? m.start : monatsAnfang;
+    const ab = plusTage(einmalig ? basis : rechnungsTag, ziel);
+    return [{ id: hauptPostenId(m), titel: titelMit(name), betrag: brutto, rhythmus: einmalig ? 'einmalig' : 'quartal', ab, ...(!einmalig && ende ? { bis: plusTage(ende, ziel) } : {}), ...gemeinsam, notiz }];
+  }
+  const plan = mandatZahlplan(m, basis.slice(0, 7), ende);
+  const raus: Planposten[] = plan.teile.map(t => ({
+    id: teilPostenId(m, t.monat), titel: titelMit(name, ` — ${monatsName(t.monat)} anteilig`), betrag: t.betrag, rhythmus: 'einmalig' as const, ab: t.am, ...gemeinsam,
+    notiz: `Aus dem Mandat (CRM): ${monatsName(t.monat)} anteilig, ${t.lm.tage} von ${t.lm.monatsTage} Tagen — wie die Monatsrechnung.`,
+  }));
+  if (plan.voll) raus.push({ id: hauptPostenId(m), titel: titelMit(name), betrag: plan.voll.betrag, rhythmus: 'monatlich', ab: plan.voll.ab, ...(plan.voll.bis ? { bis: plan.voll.bis } : {}), ...gemeinsam, notiz });
+  return raus.sort((x, y) => x.ab.localeCompare(y.ab));
+}
+
+/** Der (Haupt-)Posten, den ein Mandat erzeugen würde: der Monatsposten, sonst der erste Teilmonat — null, wenn keiner entsteht. */
+export function planpostenAus(m: Mandat, heute: string): Planposten | null {
+  const l = mandatPosten(m, heute);
+  return l.find(p => p.id === hauptPostenId(m)) ?? l[0] ?? null;
+}
+
+/** Warum aus einem Mandat kein Posten entsteht — der richtige Satz je Fall (N14: vorher immer „Status oder Honorar fehlt“). */
+export function keinPostenGrund(m: Pick<Mandat, 'status' | 'honorar'>): string {
+  if (m.status === 'angebot') return 'Noch im Angebot — der Posten entsteht, sobald das Mandat in Verhandlung oder aktiv ist.';
+  if (m.status === 'pausiert') return 'Pausiert — solange kein Posten.';
+  if (m.status === 'beendet') return 'Mandat beendet — kein Posten im Liquiditätsplan.';
+  if (!(m.honorar.betrag > 0)) return 'Honorar fehlt — ohne Honorar kein Posten.';
+  if (m.honorar.basis === 'tag') return 'Honorar je Tag — für Tagessätze entsteht kein fester Posten.';
+  return 'Kein Posten.';
+}
+
+export type LiquiLageArt = 'fehlt' | 'ok' | 'abweichend' | 'kein-posten' | 'endet' | 'beendet';
+export interface MandatLiquiLage {
+  lage: LiquiLageArt;
+  /** Was das Mandat eintragen würde (beendet: bis zu seinem Ende). */
+  soll: Planposten[];
+  /** Der Monatsposten im Plan (sonst der erste Posten des Mandats). */
+  vorhanden: Planposten | null;
+  /** Der Satz für die Anzeige. */
+  grund?: string;
+  /** Letzter Zahltag: beim beendeten Mandat laut Plan, bei „endet“ laut Mandat. */
+  letzteZahlung?: string;
+}
+
+const euroText = (n: number) => `${n.toLocaleString('de-DE', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} €`;
+const tagText = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
+/** Künftige Zahlungen (ab heute bis `bis`) einer Liste von Posten — Summe auf den Cent und letzter Zahltag. */
+function kuenftig(l: readonly Planposten[], heute: string, bis: string): { summe: number; letzte: string | null } {
+  let cent = 0; let letzte: string | null = null;
+  for (const p of l) for (const d of zahltage(p, heute, bis)) { cent += Math.round(p.betrag * 100); if (!letzte || d > letzte) letzte = d; }
+  return { summe: cent / 100, letzte };
+}
+
+/**
+ * Wie steht das Mandat im Liquiditätsplan? EINE Rechnung für Mandatsseite und Route (rein): fehlt · ok · abweichend (Betrag, Rhythmus,
+ * Teilmonat fehlt, zahlt länger oder kürzer) · kein Posten (mit Grund) · endet (beendet, der Plan zahlt noch über das Ende) · beendet (der
+ * Plan endet mit dem Mandat). Verglichen werden die KÜNFTIGEN Zahlungen — Vergangenes ist Rechnung, nicht Plan.
+ */
+export function mandatLiquiLage(m: Mandat, posten: readonly Planposten[], heute: string): MandatLiquiLage {
+  const ist = posten.filter(p => postenVomMandat(p.id, m));
+  const vorhanden = ist.find(p => p.id === hauptPostenId(m)) ?? ist[0] ?? null;
+  const beendet = m.status === 'beendet';
+  const soll = mandatPosten(m, heute, { beendet });
+  // Beendet ohne Posten (bzw. ohne Plan): nichts einzutragen — der Satz sagt, warum.
+  if (beendet ? !ist.length : !soll.length) return { lage: 'kein-posten', soll: beendet ? [] : soll, vorhanden, grund: keinPostenGrund(m) };
+  if (!ist.length) return { lage: 'fehlt', soll, vorhanden: null };
+  // Vergleichsfenster: bis gut ein Jahr nach der letzten geplanten Zahlung (offene Posten: ein Jahr ab heute).
+  const sollLetzte = soll.reduce<string | null>((x, p) => { const l = letzterZahltag(p); return l && (!x || l > x) ? l : x; }, null);
+  const offen = soll.some(p => p.rhythmus !== 'einmalig' && !p.bis);
+  const fenster = plusTage(offen || !sollLetzte || sollLetzte < heute ? heute : sollLetzte, 400);
+  const a = kuenftig(ist, heute, fenster), b = kuenftig(soll, heute, fenster);
+  const gleich = Math.abs(a.summe - b.summe) <= 1;
+  if (beendet) {
+    if (!gleich && a.summe > b.summe) return { lage: 'endet', soll, vorhanden, ...(b.letzte ? { letzteZahlung: b.letzte } : {}), grund: a.letzte && (!b.letzte || a.letzte > b.letzte) ? 'Mandat beendet — der Posten im Liquiditätsplan läuft noch weiter.' : 'Mandat beendet — der Plan rechnet den letzten Monat noch voll.' };
+    const letzte = ist.reduce<string | null>((x, p) => { const l = letzterZahltag(p); return l && (!x || l > x) ? l : x; }, null);
+    return { lage: 'beendet', soll, vorhanden, ...(letzte ? { letzteZahlung: letzte } : {}), grund: letzte ? `Mandat beendet — ${letzte < heute ? 'die letzte Zahlung im Liquiditätsplan war am' : 'letzte Zahlung im Liquiditätsplan am'} ${tagText(letzte)}.` : 'Mandat beendet — im Liquiditätsplan kommt nichts mehr.' };
+  }
+  const sollHaupt = soll.find(p => p.id === hauptPostenId(m));
+  const istHaupt = ist.find(p => p.id === hauptPostenId(m));
+  if (sollHaupt && istHaupt && Math.abs(istHaupt.betrag - sollHaupt.betrag) > 1) return { lage: 'abweichend', soll, vorhanden, grund: `Plan ${euroText(istHaupt.betrag)}, Mandat ${euroText(sollHaupt.betrag)} je Zahlung.` };
+  if (sollHaupt && istHaupt && istHaupt.rhythmus !== sollHaupt.rhythmus) return { lage: 'abweichend', soll, vorhanden, grund: `Plan ${istHaupt.rhythmus}, Mandat ${sollHaupt.rhythmus}.` };
+  const fehltTeil = soll.find(t => t.id !== hauptPostenId(m) && t.ab >= heute && !ist.some(x => x.id === t.id && Math.abs(x.betrag - t.betrag) <= 1));
+  if (fehltTeil) return { lage: 'abweichend', soll, vorhanden, grund: `${fehltTeil.titel.split(' — ').pop() ?? 'Ein Teilmonat'} (${euroText(fehltTeil.betrag)}) fehlt im Plan — der Plan rechnet den Monat sonst voll.` };
+  if (!gleich) return { lage: 'abweichend', soll, vorhanden, grund: `Der Plan rechnet künftig ${euroText(a.summe)}, das Mandat ${euroText(b.summe)}${b.letzte ? ` bis ${tagText(b.letzte)}` : ''}.` };
+  return { lage: 'ok', soll, vorhanden };
+}
+
+/**
+ * Die Posten eines Mandats an seinen Zahlplan angleichen (rein): Monatsposten und Teilmonate wie `soll`, künftige Teilmonate, die nicht mehr
+ * dazugehören, fallen weg (Vergangenes bleibt). Gibt es keinen vollen Monat mehr, zahlt der Monatsposten ab heute nichts mehr (`bis` davor).
+ * `nurZeit` („Posten beenden“): am Monatsposten nur Beginn und Ende — Betrag, Titel, Sicherheit bleiben, wie sie im Plan stehen.
+ */
+export function postenAngleichen(alt: readonly Planposten[], m: Mandat, soll: readonly Planposten[], heute: string, opt: { nurZeit?: boolean } = {}): Planposten[] {
+  const hauptId = hauptPostenId(m);
+  const sollHaupt = soll.find(p => p.id === hauptId);
+  const raus: Planposten[] = [];
+  for (const x of alt) {
+    if (x.id === hauptId) {
+      if (sollHaupt) {
+        const { bis: _b, ...ohneBis } = x;
+        raus.push(opt.nurZeit ? { ...ohneBis, ab: sollHaupt.ab, ...(sollHaupt.bis ? { bis: sollHaupt.bis } : {}) } : { ...ohneBis, ...sollHaupt });
+      } else {
+        const stop = plusTage(x.ab < heute ? heute : x.ab, -1);
+        raus.push(!x.bis || x.bis > stop ? { ...x, bis: stop } : x);
+      }
+      continue;
+    }
+    if (postenVomMandat(x.id, m)) {
+      const t = soll.find(p => p.id === x.id);
+      if (t) raus.push({ ...x, ...t });
+      else if (x.ab < heute) raus.push(x);
+      continue;
+    }
+    raus.push(x);
+  }
+  for (const p of soll) if (!alt.some(x => x.id === p.id)) raus.push(p);
+  return raus;
+}
+
+// ── „Mandat beenden“ (18.10., Nachprüfung N6) ────────────────────────────────────────────────────────────────────────────────────
+// Vorher schrieb die Status-Wahl „Beendet“ sofort `ende = heute` — auch mitten in der Mindestlaufzeit, ohne Rückfrage. Jetzt EIN Dialog:
+// Ende-Datum (Vorgabe hier), Hinweise zu Mindestlaufzeit und Kündigungsfrist (`mandatFristen`), und im selben Schritt der Liquiditätsplan.
+
+/**
+ * Vorgabe für das Ende: das gesetzte Ende; sonst der letzte Tag der laufenden Periode (Mindestlaufzeit bzw. — bei automatischer Verlängerung —
+ * der nächsten Periode, `mandatFristen` minus einen Tag); liegt der schon hinter uns, heute. `art` sagt, woher der Tag kommt.
+ */
+export function beendenVorgabe(m: Pick<Mandat, 'ende' | 'start' | 'mindestlaufzeitMonate' | 'verlaengerung' | 'kuendigungsfristTage'>, heute: string): { tag: string; art: 'ende' | 'laufzeit' | 'heute' } {
+  if (m.ende) return { tag: m.ende.slice(0, 10), art: 'ende' };
+  const { endeAm } = mandatFristen(m, heute);
+  const letzter = endeAm ? plusTage(endeAm, -1) : null;
+  return letzter && letzter >= heute ? { tag: letzter, art: 'laufzeit' } : { tag: heute, art: 'heute' };
+}
+
+const tagDe = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
+/**
+ * Was beim gewählten Ende zu wissen ist (Sätze, rein): Fehler (kein Tag, vor dem Beginn) bzw. Hinweise — vor dem Ende der Mindestlaufzeit,
+ * Kündigungsfrist (bis wann gekündigt sein muss bzw. dass sie verpasst ist), Ende in der Zukunft (Rechnungen bis dahin).
+ */
+export function beendenHinweise(m: Pick<Mandat, 'start' | 'mindestlaufzeitMonate' | 'kuendigungsfristTage'>, ende: string, heute: string): { fehler: string | null; hinweise: string[] } {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ende) || !Number.isFinite(Date.parse(`${ende}T12:00:00Z`))) return { fehler: 'Bitte ein Ende-Datum wählen.', hinweise: [] };
+  if (m.start && ende < m.start.slice(0, 10)) return { fehler: `Das Ende liegt vor dem Beginn (${tagDe(m.start.slice(0, 10))}).`, hinweise: [] };
+  const hinweise: string[] = [];
+  const mindest = mindestEnde(m);
+  if (mindest && ende < mindest) hinweise.push(`Mindestlaufzeit bis ${tagDe(mindest)} — ein früheres Ende nur, wenn der Kunde zustimmt.`);
+  if (m.kuendigungsfristTage && m.kuendigungsfristTage > 0) {
+    const bis = plusTage(ende, 1 - m.kuendigungsfristTage);
+    hinweise.push(bis < heute
+      ? `Kündigungsfrist ${m.kuendigungsfristTage} Tage: für ein Ende am ${tagDe(ende)} hätte bis ${tagDe(bis)} gekündigt sein müssen — nur im Einvernehmen.`
+      : `Kündigungsfrist ${m.kuendigungsfristTage} Tage: für ein Ende am ${tagDe(ende)} spätestens am ${tagDe(bis)} kündigen.`);
+  }
+  if (ende > heute) hinweise.push(`Bis ${tagDe(ende)} läuft die Leistung weiter — Monatsrechnungen gehen bis dahin, der letzte Monat anteilig.`);
+  return { fehler: null, hinweise };
 }
 
 // ── Kunden zu zweit (25.09.) ────────────────────────────────────────────────

@@ -312,7 +312,7 @@ export function abschlussSchritt(e: { fall: Pick<Fall, 'status' | 'wirkung'>; al
     return { art: 'abschliessen', text: 'Wirkungsbericht erstellen und Fall abschließen', unter: 'Alle Phasen sind erledigt — jetzt zeigt der Bericht, was vorher → jetzt erreicht ist.' };
   }
   if (!f.wirkung) return { art: 'wirkung', text: 'Wirkungsbericht erstellen', unter: 'Der Fall ist abgeschlossen — der Bericht schließt den Kreis (Kundenstimme, Empfehlung, nächste Stufe).' };
-  if (!e.mandatEnde) return { art: 'mandat-beenden', text: 'Mandat beenden — dann startet die Nachsorge', unter: 'Die Nachsorge zählt ab dem Mandatsende (Produkte & Mandate › Mandat › Status „beendet“).' };
+  if (!e.mandatEnde) return { art: 'mandat-beenden', text: 'Mandat beenden — dann startet die Nachsorge', unter: 'Die Nachsorge zählt ab dem Mandatsende (Produkte & Mandate › Mandat › „Mandat beenden“ — mit Ende-Datum).' };
   const naechste = e.nachsorge.find(p => p.zustand !== 'vorgeschlagen');
   return naechste
     ? { art: 'nachsorge', text: `Nachsorge: ${naechste.text}${naechste.am ? ` am ${kurz(naechste.am)}` : ''}`, unter: 'Der Vorschlag kommt am Morgen in den Freigabe-Stapel — angelegt wird erst per Klick.' }

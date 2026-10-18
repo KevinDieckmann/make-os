@@ -11,6 +11,7 @@
 
 import type { MandatKurz } from '@/lib/planung/mandat';
 import type { MandantEingabe } from './adresse';
+import { mandatName } from './mandat-name';
 
 type MandatName = Pick<MandatKurz, 'id' | 'firma' | 'firmaId' | 'aktiv'>;
 
@@ -37,15 +38,19 @@ export function mandantAusName(name: string | null | undefined, mandate: readonl
   return firmen.size === 1 && f ? { firmaId: f } : null;
 }
 
-/** Vorsilbe der Liquiplan-Posten, die aus einem Mandat entstehen (lib/crm/kunden.ts `planpostenAus`). */
+/** Vorsilbe der Liquiplan-Posten, die aus einem Mandat entstehen (lib/crm/kunden.ts `mandatPosten`). */
 export const PLANPOSTEN_MANDAT = 'lp-mandat-';
+/** Trenner vor dem Monat eines Teilmonat-Postens: `lp-mandat-<id>~JJJJ-MM` (18.10., N4). */
+export const PLANPOSTEN_TEIL = '~';
 
-/** Das Mandat hinter einem Liquiplan-Posten: von Hand verknüpft (`planpostenId`) oder `lp-mandat-<id>`. */
+/** Das Mandat hinter einem Liquiplan-Posten: von Hand verknüpft (`planpostenId`), `lp-mandat-<id>` oder ein Teilmonat `lp-mandat-<id>~JJJJ-MM`. */
 export function mandatAusPlanposten(postenId: string | null | undefined, mandate: readonly Pick<MandatKurz, 'id' | 'planpostenId'>[]): string | null {
   if (!postenId) return null;
   const verknuepft = mandate.find(m => m.planpostenId === postenId);
   if (verknuepft) return verknuepft.id;
-  return postenId.startsWith(PLANPOSTEN_MANDAT) && postenId.length > PLANPOSTEN_MANDAT.length ? postenId.slice(PLANPOSTEN_MANDAT.length) : null;
+  if (!postenId.startsWith(PLANPOSTEN_MANDAT)) return null;
+  const rest = postenId.slice(PLANPOSTEN_MANDAT.length).split(PLANPOSTEN_TEIL)[0];
+  return rest || null;
 }
 
 /**
@@ -70,7 +75,7 @@ export function mandantPruefung(
 /** Anzeigename aus dem Bestand, wenn die Stelle keinen hat: „Firma · Mandatstitel“ bzw. der Firmenname. */
 export function mandantName(ids: { mandatId?: string | null; firmaId?: string | null }, karte: ReadonlyMap<string, Pick<MandatKurz, 'firma' | 'titel' | 'firmaId'>>): string | undefined {
   const m = ids.mandatId ? karte.get(ids.mandatId) : undefined;
-  if (m) return `${m.firma} · ${m.titel}`;
+  if (m) return mandatName(m.firma, m.titel);
   if (!ids.firmaId) return undefined;
   for (const x of karte.values()) if (x.firmaId === ids.firmaId && x.firma) return x.firma;
   return undefined;

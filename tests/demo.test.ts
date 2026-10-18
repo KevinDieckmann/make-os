@@ -176,9 +176,12 @@ describe('Saat', () => {
   // 15.10. (Abnahme 2 B10/B12): stimmige Finanzen und ein Unternehmen ohne Schieflage — dieselbe Saat, über die Routen.
   it('B10: Retainer im Liquiditätsplan, Jahresziel und Ist-Zahlen, Gehälter in der Finanzplanung, Steuern der Hauptgesellschaft', async () => {
     const heute = localDay();
-    const lp = await db.loadJson<{ posten: { kategorie?: string; betrag: number; sicher: boolean }[] }>('liquiplan');
+    const lp = await db.loadJson<{ posten: { id: string; kategorie?: string; betrag: number; sicher: boolean; rhythmus: string }[] }>('liquiplan');
     // Die drei laufenden Retainer (17.10. abends: dazu der Kunde des Beispiel-Falls in Ausführung) — über den Vorschlagsweg „Mandat → Liquiplan“.
-    expect(lp!.posten.filter(p => p.kategorie === 'mandat' && p.betrag > 0 && p.sicher)).toHaveLength(3);
+    // Seit 18.10. (N4) kommt für ein Mandat, das in diesem Monat mitten im Monat begann, der angebrochene Monat als eigener einmaliger Posten dazu.
+    const mandatPosten = lp!.posten.filter(p => p.kategorie === 'mandat' && p.betrag > 0 && p.sicher);
+    expect(mandatPosten.filter(p => p.rhythmus === 'monatlich')).toHaveLength(3);
+    expect(mandatPosten.filter(p => p.rhythmus !== 'monatlich').every(p => p.rhythmus === 'einmalig' && p.id.includes('~'))).toBe(true);
     expect(lp!.posten.some(p => p.betrag < 0)).toBe(true);
     const crm = await db.loadJson<{ mandate: { planpostenId?: string }[] }>('crm');
     expect(crm!.mandate.every(m => !!m.planpostenId)).toBe(true);

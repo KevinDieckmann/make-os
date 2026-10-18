@@ -17,6 +17,7 @@
 // wischen, Rechner Knöpfe am Rand: Archivieren (= „eingestellt“, Reiter Archiv, zurückholbar) und Löschen (Papierkorb
 // 30 Tage, `geloeschtAm`; laufende Mandate/offene Deals → Rückfrage). Endgültig nur aus dem Papierkorb, ohne Verweise.
 
+import { titelOhneFirma } from '@/lib/crm/mandat-name';
 import { WEG } from '@/lib/wege';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -362,7 +363,7 @@ function ProduktDetail({ l, api }: { l: Leistung; api: CrmApi }) {
           const ph = m.phase ? phasen.find(x => x.id === m.phase) : phasen[0];
           return (
             <Zeile key={m.id} onClick={() => router.push(mandateLink('mandate', m.id))} links={<Punkt farbe={m.status === 'aktiv' ? LEUCHT.gut : C.inkLeise} />}
-              titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel.slice(0, 60)}</span></>}
+              titel={<>{m.kunde}{titelOhneFirma(m.kunde, m.titel) && <span style={{ color: C.inkLeise }}> · {titelOhneFirma(m.kunde, m.titel).slice(0, 60)}</span>}</>}
               unter={[m.status, m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : ''}` : '', ph ? `Phase: ${ph.name}` : ''].filter(Boolean).join(' · ')} />
           );
         })}

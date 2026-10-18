@@ -50,6 +50,7 @@ import { faellige, FOLLOWUP_ARTEN, tagPlus, type Faellig, type VirtuelleQuelle }
 import { normiere } from './wahl';
 import { kurzHash, grundAnker, aktivitaetMarke, markenMit } from './aktivitaet-marke';
 import { altSchluessel } from '@/lib/kalender/bezug';
+import { mandatName } from './mandat-name';
 
 // ── Unter-Reiter und Kategorien ──────────────────────────────────────────────
 export type Unter = 'alle' | 'notizen' | 'emails' | 'anrufe' | 'aufgaben' | 'meetings';
@@ -498,7 +499,7 @@ export function bezugAufloesen(id: string | undefined, crm: CrmBestand | null | 
   const c = crm.chancen.find(x => x.id === id);
   if (c) return { art: 'deal', id, titel: c.titel };
   const m = crm.mandate.find(x => x.id === id);
-  if (m) return { art: 'mandat', id, titel: m.titel ? `${m.kunde} · ${m.titel}` : m.kunde };
+  if (m) return { art: 'mandat', id, titel: mandatName(m.kunde, m.titel) };
   const e = crm.events.find(x => x.id === id);
   if (e) return { art: 'event', id, titel: e.titel };
   const kp = crm.kampagnen.find(x => x.id === id);

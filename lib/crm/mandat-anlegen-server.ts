@@ -32,15 +32,22 @@ export type MandatErgebnis =
   | { ok: true; mandatId: string; firmaId: string; kontaktId: string; firmaNeu: boolean; personNeu: boolean; hinweise: string[] }
   | { ok: false; status: number; fehler: string; dublette?: { id: string; name: string }; eingeschraenkt?: true };
 
-/** Personen eines neuen Mandats werden Kunden (Lebensphase, Stufe „gewonnen“, Lifecycle gehoben) — eingeschränkte (Art. 18) bleiben unberührt. */
+/**
+ * Eine Person wird Kunde (rein): Lebensphase „kunde“, Stufe „gewonnen“, Lifecycle gehoben. Die Wiedervorlage aus dem Vertrieb fällt weg (18.10.,
+ * Nachprüfung C1: nach dem gewonnenen Deal stand am Kunden weiter „Wiedervorlage · fällig …“ — die Betreuung läuft ab jetzt über das Mandat).
+ * Ein von Hand gesetzter nächster Schritt bleibt.
+ */
+export function alsKunde(k: Kontakt, jetzt: string): Kontakt {
+  const phase = phaseHeben(k.phase, 'kunde');
+  const { wiedervorlage: _wv, ...ohne } = k;
+  return { ...ohne, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
+}
+
+/** Personen eines neuen Mandats werden Kunden (`alsKunde`) — eingeschränkte (Art. 18) bleiben unberührt. */
 export async function personenWerdenKunde(ids: readonly string[], jetzt: string, wer?: Wer): Promise<void> {
   const menge = new Set(ids);
   if (!menge.size) return;
-  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => {
-    if (!menge.has(k.id) || k.eingeschraenkt) return k;
-    const phase = phaseHeben(k.phase, 'kunde');
-    return { ...k, lebensphase: 'kunde', stufe: 'gewonnen', ...(phase ? { phase } : {}), geaendertAm: tagVon(jetzt) };
-  }) }), wer);
+  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (!menge.has(k.id) || k.eingeschraenkt ? k : alsKunde(k, jetzt))) }), wer);
 }
 
 /** Personen eines beendeten/pausierten Mandats (Firma zuordnen, 11.10.): höchstens Ex-Kunde — nie aus „Kunde“ zurück, nie eingeschränkte. */

@@ -16,7 +16,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Rast
 import { type CrmApi, datum, euro, kurzEuro } from './daten';
 import { Verlauf as AktivitaetenVerlauf } from './teile';
 import { Wahl } from './Wahl';
-import { dealRolleVorschlag, besterEntscheider, offeneRollenVorschlaege, vorschlaegeAnwenden, vorschlaegeZuruecknehmen } from '@/lib/crm/vorschlaege';
+import { dealRolleVorschlag, besterEntscheider, entscheiderHinweis, offeneRollenVorschlaege, vorschlaegeAnwenden, vorschlaegeZuruecknehmen } from '@/lib/crm/vorschlaege';
 import { Person } from './team';
 import { ChancenDetail } from './Pipeline';
 import { useFollowups } from './FollowUp';
@@ -176,9 +176,10 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
                       vorschlag={dealRolleVorschlag(k, crm.heute)} onWahl={r => setzeRolle(k.id, r)} onLeeren={() => setzeRolle(k.id, null)} />
                   </div>
                 ))}
-                {!Object.values(c.personenRollen ?? {}).includes('entscheider') && (
-                  <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                    <span>Noch kein Entscheider markiert — ohne den wird aus dem Deal nichts.</span>
+                {/* 18.10. (C3): sagt die Qualifizierung schon „Entscheider: ja“, kein Warnton — nur noch markieren, wer es ist (`entscheiderHinweis`). */}
+                {entscheiderHinweis(c) && (
+                  <div style={{ fontSize: TYP.bedien, color: entscheiderHinweis(c)!.ton === 'achtung' ? LEUCHT.achtung : C.inkDim, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                    <span>{entscheiderHinweis(c)!.text}</span>
                     {bester && <button type="button" onClick={() => zumVorschlag(bester.kontakt.id)} title={bester.vorschlag.grund}
                       style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, fontWeight: 600 }}>Vorschlag: {anzeigename(bester.kontakt)} ›</button>}
                   </div>

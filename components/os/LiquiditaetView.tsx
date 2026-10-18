@@ -17,7 +17,7 @@ import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import {
-  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, szenarioGruppen, SZENARIEN_GLEICH, CASH_GEGEN_FREI,
+  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, szenarioGruppen, SZENARIEN_GLEICH, CASH_GEGEN_FREI, monatsSumme, postenZeitText,
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
@@ -209,18 +209,17 @@ export function LiquiditaetView() {
 
   const ein = posten.filter(p => p.betrag > 0);
   const aus = posten.filter(p => p.betrag < 0);
-  /** Was ein Posten im Monat ausmacht — für die Summe unten. */
-  const proMonat = (p: Planposten) =>
-    p.rhythmus === 'monatlich' ? p.betrag : p.rhythmus === 'quartal' ? p.betrag / 3 : p.rhythmus === 'jaehrlich' ? p.betrag / 12 : 0;
-  const monatEin = Math.round(ein.reduce((s, p) => s + proMonat(p), 0));
-  const monatAus = Math.round(Math.abs(aus.reduce((s, p) => s + proMonat(p), 0)));
+  // Je Monat (18.10., Nachprüfung N3): nur Posten, die ab heute wirklich noch zahlen (lib/make-one/liquiditaet.ts `monatswert`) — vorher zählte
+  // ein beendetes Mandat weiter mit „jeden Monat +4.998 €“ in der Kopfzahl.
+  const monatEin = monatsSumme(ein, heute);
+  const monatAus = Math.abs(monatsSumme(aus, heute));
 
   const zeile = (p: Planposten) => {
     const auf = offen === p.id;
     const raus = p.betrag < 0;
     return (
       <div key={p.id} id={`ziel-${p.id}`} style={zielRahmen(zielPosten === p.id, raus ? LEUCHT.achtung : LEUCHT.gut)}>
-        <Zeile onClick={() => setOffen(auf ? null : p.id)} aktiv={auf} titel={p.titel} unter={RHYTHMUS_LABEL[p.rhythmus]}
+        <Zeile onClick={() => setOffen(auf ? null : p.id)} aktiv={auf} titel={p.titel} unter={postenZeitText(p, heute)}
           rechts={<>
             {!p.sicher && <Chip farbe={LEUCHT.achtung}>unsicher</Chip>}
             {planpostenVor(p, eroeffnung) && <Chip farbe={C.inkLeise}>vor dem 0-Punkt</Chip>}
@@ -236,7 +235,7 @@ export function LiquiditaetView() {
             </Feld>
             {(p.kategorie === 'mandat' || p.id.startsWith(PLANPOSTEN_MANDAT)) && <PostenMandat postenId={p.id} />}
             <Feld label="Betrag">
-              <input type="number" value={Math.abs(p.betrag)} onChange={e => patch(p.id, { betrag: (raus ? -1 : 1) * Math.abs(Math.round(Number(e.target.value) || 0)) })}
+              <input type="number" value={Math.abs(p.betrag)} onChange={e => patch(p.id, { betrag: (raus ? -1 : 1) * Math.abs(Math.round((Number(e.target.value) || 0) * 100) / 100) })}
                 aria-label="Betrag" style={{ ...eingabe, width: 110, fontFamily: SCHRIFT.display, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />
             </Feld>
             <Feld label="Wie oft">

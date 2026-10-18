@@ -119,13 +119,27 @@ export function dealRolleVorschlag(k: Pick<Kontakt, 'position' | 'jobtitel' | 's
  * für die der Vorschlag „Entscheider“ lautet — für den Sprung aus dem Hinweis
  * „Noch kein Entscheider“. Null, wenn die Daten keinen hergeben.
  */
-export function besterEntscheider<K extends Pick<Kontakt, 'id' | 'position' | 'jobtitel' | 'senioritaet' | 'aktivitaeten' | 'kreis'>>(personen: readonly K[], chance: Pick<Chance, 'personenRollen'>, heute: string): { kontakt: K; vorschlag: WahlVorschlag<DealRolle> } | null {
+export function besterEntscheider<K extends Pick<Kontakt, 'id' | 'position' | 'jobtitel' | 'senioritaet' | 'aktivitaeten' | 'kreis'>>(personen: readonly K[], chance: Pick<Chance, 'personenRollen'> & { qualifizierung?: Pick<Chance['qualifizierung'], 'entscheider'> }, heute: string): { kontakt: K; vorschlag: WahlVorschlag<DealRolle> } | null {
   for (const k of personen) {
     if (chance.personenRollen?.[k.id]) continue;
     const v = dealRolleVorschlag(k, heute);
     if (v?.id === 'entscheider') return { kontakt: k, vorschlag: v };
   }
+  // Qualifizierung „Entscheider: ja“ (18.10., Nachprüfung C3 — in der Runde „spricht selbst mit uns“) und genau eine Person ohne Rolle: sie ist es wohl.
+  const ohneRolle = personen.filter(k => !chance.personenRollen?.[k.id]);
+  if (chance.qualifizierung?.entscheider === 'ja' && ohneRolle.length === 1) return { kontakt: ohneRolle[0], vorschlag: { id: 'entscheider', grund: 'laut Qualifizierung spricht die entscheidende Person selbst mit uns' } };
   return null;
+}
+
+/**
+ * Der Hinweis „kein Entscheider markiert“ am Deal (18.10., C3): sagt die Qualifizierung schon „Entscheider: ja“ (die Runde: spricht selbst mit
+ * uns), ist das kein Warnzeichen mehr — nur noch markieren, wer es ist. Sonst wie bisher. null, wenn eine Person die Rolle trägt.
+ */
+export function entscheiderHinweis(chance: Pick<Chance, 'personenRollen'> & { qualifizierung?: Pick<Chance['qualifizierung'], 'entscheider'> }): { text: string; ton: 'achtung' | 'info' } | null {
+  if (Object.values(chance.personenRollen ?? {}).includes('entscheider')) return null;
+  return chance.qualifizierung?.entscheider === 'ja'
+    ? { text: 'Laut Qualifizierung spricht die entscheidende Person selbst mit uns — hier noch markieren, wer es ist.', ton: 'info' }
+    : { text: 'Noch kein Entscheider markiert — ohne den wird aus dem Deal nichts.', ton: 'achtung' };
 }
 
 /**

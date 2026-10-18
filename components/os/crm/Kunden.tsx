@@ -22,7 +22,7 @@
 import { TermineAkte } from '../kalender/TermineAkte';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { useLinkAuswahl } from '../Verlauf';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { mandateLink } from '@/lib/crm/adresse';
@@ -31,10 +31,12 @@ import { zoeFragen } from './ZoeFragen';
 import { rechnungPasst } from '@/lib/crm/kunden';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, LEUCHT, ZeileAktionen } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, LEUCHT, ZeileAktionen, feld } from '../ui';
 import { useCrmAblage, PapierkorbKarte } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
-import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson, gesellschaftFilterFuer, passtGesellschaft, type GesellschaftFilter } from '@/lib/crm/kunden';
+import { HEALTH_GEWICHTE, HEALTH_LABEL, kundenJePerson, gesellschaftFilterFuer, passtGesellschaft, beendenVorgabe, beendenHinweise, type GesellschaftFilter, type LiquiLageArt } from '@/lib/crm/kunden';
+import { mandatName, titelOhneFirma } from '@/lib/crm/mandat-name';
+import { postenZeitText, type Planposten } from '@/lib/make-one/liquiditaet';
 import { werZahlen } from '@/lib/crm/pipeline';
 import { zustaendig, mitglied, nameVon } from '@/lib/crm/team';
 import type { Mandat } from '@/lib/crm/typen';
@@ -66,7 +68,12 @@ const NETTO = [{ id: 'netto', label: 'netto' }, { id: 'brutto', label: 'brutto' 
 const UST = [{ id: '19', label: '19 % USt' }, { id: '0', label: 'Reverse Charge' }] as const;
 const VERLAENGERUNG = [{ id: 'auto', label: 'verlängert sich' }, { id: 'manuell', label: 'endet' }, { id: 'offen', label: 'offen' }] as const;
 const statusFarbe = (s: string) => (s === 'aktiv' ? LEUCHT.gut : s === 'verhandlung' || s === 'angebot' ? LEUCHT.business : C.inkLeise);
-interface LiquiLage { id: string; lage: 'fehlt' | 'ok' | 'abweichend' | 'kein-posten' | 'endet'; bis?: string; vorschlag: { betrag: number; ab: string; rhythmus: string } | null; vorhanden: { id: string; betrag: number } | null }
+/** Lage im Liquiditätsplan je Mandat (GET /api/crm/liquiplan — gerechnet in lib/crm/kunden.ts `mandatLiquiLage`). */
+interface LiquiLage { id: string; lage: LiquiLageArt; grund?: string; letzteZahlung?: string; soll: Planposten[]; vorhanden: { id: string; betrag: number } | null }
+/** Euro auf den Cent (Teilmonate). */
+const euroCent = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0);
+/** Titel in Listen: „Firma“ und der Rest des Titels — steht die Firma schon im Titel, nicht doppelt (18.10., N18). */
+const MandatTitel = ({ m }: { m: Pick<Mandat, 'kunde' | 'titel'> }) => { const rest = titelOhneFirma(m.kunde, m.titel); return <>{m.kunde}{rest && <span style={{ color: C.inkLeise }}> · {rest}</span>}</>; };
 
 /** Alle Mandate mit Kennzahlen, Filter und Detail — der Hauptteil von Produkte & Mandate. */
 export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
@@ -93,6 +100,19 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const [zuordnen, setZuordnen] = useState<string | null>(null);
   const ladeLiqui = () => fetch('/api/crm/liquiplan').then(r => r.json()).then(d => d.ok && setLiqui(d)).catch(() => {});
   useEffect(() => { void ladeLiqui(); }, []);
+  // Aus dem Fulfillment (18.10., N6): „Mandat beenden ›“ öffnet hier denselben Dialog (`?k=<Mandat>&beenden=1`, WEG.mandatBeenden) — einmal,
+  // sobald Mandate und Liquiditätsplan geladen sind; danach ohne den Zusatz in der Adresse (Neuladen öffnet ihn nicht erneut).
+  const beendenZiel = useZiel('beenden');
+  const beendenRef = useRef<((m: Mandat) => void) | null>(null);
+  const beendenOffen = useRef(false);
+  useEffect(() => {
+    if (beendenZiel !== '1' || beendenOffen.current || !api.crm || !liqui || !auswahl) return;
+    const m = api.crm.stand.mandate.find(x => x.id === auswahl);
+    if (!m) return;
+    beendenOffen.current = true;
+    router.replace(WEG.mandat(m.id));
+    if (m.status !== 'beendet') beendenRef.current?.(m);
+  }, [beendenZiel, api.crm, liqui, auswahl, router]);
   const crm = api.crm;
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const ich = api.ich;
@@ -112,21 +132,41 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const meine = ich ? jePerson.find(x => x.person === ich) : undefined;
   // Neues Mandat: für die gefilterte Person, sonst für mich (im Team) — ohne beides gilt die Sales-Verantwortung.
   const neuFuer = wahl !== 'alle' && wahl !== 'ich' && mitglied(wahl) ? wahl : mitglied(ich)?.id;
-  // Archiv = Status „beendet“ (kein eigenes Feld): ein laufendes Mandat erst nach Rückfrage — es zählt danach nicht mehr in MRR und Radar.
+  // „Mandat beenden“ (18.10., N6): EIN Dialog für Status-Wahl, Archivieren und den Weg aus dem Fulfillment — Ende-Datum (Vorgabe: Ende der Laufzeit),
+  // Hinweise zu Mindestlaufzeit und Kündigungsfrist, und im selben Schritt endet der Liquiditätsplan (POST /api/crm/liquiplan `beenden`).
+  const mandatBeenden = (m: Mandat, opt: { schliessen?: boolean } = {}) => {
+    const heute = crm.heute;
+    const wert = { current: beendenVorgabe(m, heute).tag };
+    const mitPosten = !!liqui?.mandate.find(x => x.id === m.id)?.vorhanden;
+    const vorher = { status: m.status, ende: m.ende };
+    const name = mandatName(m.kunde, m.titel);
+    ablage.fragen({ titel: `„${name}“ beenden?`, text: <BeendenFelder m={m} heute={heute} wert={wert} mitPosten={mitPosten} />, wahl: [{ label: 'Mandat beenden', tun: async () => {
+      const h = beendenHinweise(m, wert.current, heute);
+      if (h.fehler) { ablage.melden(`Nicht beendet — ${h.fehler}`); return; }
+      if (opt.schliessen && auswahl === m.id) setAuswahl(null);
+      if (!(await api.teil('mandate', m.id, { status: 'beendet', ende: wert.current }))) return;
+      if (mitPosten) await fetch('/api/crm/liquiplan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mandatId: m.id, aktion: 'beenden' }) }).catch(() => null);
+      void ladeLiqui();
+      ablage.melden(`„${name}“ beendet zum ${datum(wert.current)}${mitPosten ? ' — der Liquiditätsplan endet mit' : ''} · unter „Beendete zeigen“ zurückholbar`, () => void api.teil('mandate', m.id, nurFelder({ status: vorher.status, ende: vorher.ende })));
+    } }] });
+  };
+  beendenRef.current = mandatBeenden;
+  // Archivieren = Status „beendet“ (kein eigenes Feld): ein laufendes (bzw. pausiertes) Mandat über „Mandat beenden“ — es zählt danach nicht mehr in MRR und Radar.
   const beenden = (m: Mandat) => {
     const vorher = m.status;
-    const tun = () => { if (auswahl === m.id) setAuswahl(null); void api.teil('mandate', m.id, { status: 'beendet' }); ablage.melden(`„${m.kunde} · ${m.titel}“ beendet — unter „Beendete zeigen“ zurückholbar`, () => void api.teil('mandate', m.id, { status: vorher })); };
-    if (vorher !== 'aktiv') { tun(); return; }
-    ablage.fragen({ titel: `„${m.kunde}“ beenden?`, text: 'Archivieren heißt bei Mandaten: Status „beendet“. Es zählt dann nicht mehr im wiederkehrenden Umsatz und im Laufzeitradar; Rechnungen, Zeiten und Verlauf bleiben. Zurückholen geht jederzeit.', wahl: [{ label: 'Beenden', tun }] });
+    if (vorher === 'aktiv' || vorher === 'pausiert') { mandatBeenden(m, { schliessen: true }); return; }
+    if (auswahl === m.id) setAuswahl(null);
+    void api.teil('mandate', m.id, { status: 'beendet' });
+    ablage.melden(`„${mandatName(m.kunde, m.titel)}“ beendet — unter „Beendete zeigen“ zurückholbar`, () => void api.teil('mandate', m.id, { status: vorher }));
   };
   const zurueckholen = (m: Mandat) => {
     const status: Mandat['status'] = m.vertragUnterschrieben ? 'aktiv' : 'verhandlung';
     void api.teil('mandate', m.id, { status });
-    ablage.melden(`„${m.kunde} · ${m.titel}“ ist zurück — ${status === 'aktiv' ? 'aktiv' : 'in Verhandlung (ohne Vertrag)'}`, () => void api.teil('mandate', m.id, { status: 'beendet' }));
+    ablage.melden(`„${mandatName(m.kunde, m.titel)}“ ist zurück — ${status === 'aktiv' ? 'aktiv' : 'in Verhandlung (ohne Vertrag)'}`, () => void api.teil('mandate', m.id, { status: 'beendet' }));
   };
   const loeschen = (m: Mandat) => {
     if (auswahl === m.id) setAuswahl(null);
-    ablage.loeschen(m.id, `${m.kunde} · ${m.titel}`, m.status === 'beendet' ? undefined : { archivAnbieten: false, text: 'Das Mandat läuft noch. Im Papierkorb ist es überall ausgeblendet (Umsatz, Zahlen, Suche). Gibt es Rechnungen, Dateien oder offene Follow-ups dazu, bleibt es stehen — dann ist „Beenden“ der Weg. Ist es nur vorbei: Archivieren (beendet).' });
+    ablage.loeschen(m.id, mandatName(m.kunde, m.titel), m.status === 'beendet' ? undefined : { archivAnbieten: false, text: 'Das Mandat läuft noch. Im Papierkorb ist es überall ausgeblendet (Umsatz, Zahlen, Suche). Gibt es Rechnungen, Dateien oder offene Follow-ups dazu, bleibt es stehen — dann ist „Beenden“ der Weg. Ist es nur vorbei: Archivieren (beendet).' });
   };
   // Neues Mandat ohne Deal (08.10., Woche 2 · 3.13): die Gesellschaft wird VOR dem Anlegen gewählt (bzw. aus dem Filter) — vorher entstand
   // es mit „offen“, und die Rechnung landete still bei der Vorgabe. Seit 10.10. IMMER mit Lead (Firma + Ansprechperson, vorhanden oder neu) —
@@ -192,7 +232,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
             const lq = liqui?.mandate.find(x => x.id === m.id);
             return (
               <div key={m.id} id={`ziel-${m.id}`}>
-                <ZeileAktionen titel={`${m.kunde} · ${m.titel}`} archiviert={m.status === 'beendet'} onArchivieren={() => (m.status === 'beendet' ? zurueckholen(m) : beenden(m))} onLoeschen={() => loeschen(m)}
+                <ZeileAktionen titel={mandatName(m.kunde, m.titel)} archiviert={m.status === 'beendet'} onArchivieren={() => (m.status === 'beendet' ? zurueckholen(m) : beenden(m))} onLoeschen={() => loeschen(m)}
                   loeschenFragt={m.status !== 'beendet'} href={WEG.mandat(m.id)} onOeffnen={() => setAuswahl(m.id)}
                   mehr={[
                     ...(m.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => router.push(WEG.firma(m.firmaId)) }] : [{ id: 'firma-zuordnen', label: 'Firma zuordnen', tun: () => setZuordnen(m.id) }]),
@@ -201,7 +241,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
                   ]}>
                 <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
                   links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
-                  titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel}</span></>}
+                  titel={<MandatTitel m={m} />}
                   unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? 'Liquiplan weicht ab' : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {breit && lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
@@ -213,7 +253,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
                     <Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} />
                   </span>} />
                 </ZeileAktionen>
-                {auswahl === m.id && <MandatDetail m={m} api={api} lq={lq} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt} />}
+                {auswahl === m.id && <MandatDetail m={m} api={api} lq={lq} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt} onBeenden={() => mandatBeenden(m)} />}
               </div>
             );
           })}
@@ -229,7 +269,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   );
 }
 
-function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; api: CrmApi; lq?: LiquiLage; frei: { id: string; titel: string; betrag: number }[]; neuLaden: () => void; zuKontakt: (id: string) => void }) {
+function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m: Mandat; api: CrmApi; lq?: LiquiLage; frei: { id: string; titel: string; betrag: number }[]; neuLaden: () => void; zuKontakt: (id: string) => void; onBeenden: () => void }) {
   const crm = api.crm!;
   const l = crm.mandate[m.id];
   // Nur die geänderten Felder — Kevin und Malin können gleichzeitig am selben Mandat arbeiten.
@@ -262,7 +302,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       </Feldzeile>
       {m.chanceId && <Feldzeile label="Deal"><Link href={WEG.deal(m.chanceId)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Deal öffnen ›</Link></Feldzeile>}
       {istBusinessGesellschaft(m.gesellschaft) && <Feldzeile label="Fulfillment"><Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Fulfillment öffnen ›</Link></Feldzeile>}
-      <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={m.status} onWahl={status => setze({ status })} /></Feldzeile>
+      {/* „Beendet“ öffnet „Mandat beenden“ (18.10., N6: vorher sofort `ende = heute`, auch mitten in der Mindestlaufzeit). */}
+      <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={m.status} onWahl={status => (status === 'beendet' && m.status !== 'beendet' ? onBeenden() : setze({ status }))} /></Feldzeile>
       <Feldzeile label="Vertrag"><Wahl label="Vertrag" liste={VERTRAG} wert={m.vertragUnterschrieben ? 'ja' : 'nein'} farbe={m.vertragUnterschrieben ? LEUCHT.gut : C.aktiv} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
       <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>
       {/* Mandanten klickbar (28.09.): das Mandat führt zurück in die Firmenakte (per Kennung, sonst eindeutiger Name). */}
@@ -322,17 +363,26 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
         </div>
       </div>
       <Feldzeile label="Liquiditätsplan">
-        {lq?.lage === 'ok' && <Link href={WEG.planposten(lq.vorhanden?.id)} style={{ fontSize: TYP.bedien, color: LEUCHT.gut, textDecoration: 'none' }}>steht drin — Posten öffnen ›</Link>}
-        {lq?.lage === 'kein-posten' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>kein Posten (Status oder Honorar fehlt)</span>}
+        {!lq && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lädt …</span>}
+        {lq?.lage === 'ok' && <Link href={WEG.planposten(lq.vorhanden?.id)} style={{ fontSize: TYP.bedien, color: LEUCHT.gut, textDecoration: 'none' }}>steht drin{lq.soll.length > 1 ? ` — mit ${lq.soll.length - (lq.soll.some(p => p.rhythmus !== 'einmalig') ? 1 : 0)} Teilmonat${lq.soll.length > 2 ? 'en' : ''}` : ''} — Posten öffnen ›</Link>}
+        {/* N14 (18.10.): der Satz je Fall — nie mehr „Status oder Honorar fehlt“ bei einem beendeten Mandat. */}
+        {lq?.lage === 'kein-posten' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{lq.grund ?? 'kein Posten'}</span>}
+        {lq?.lage === 'beendet' && (
+          <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+            <span>{lq.grund}</span>
+            {lq.vorhanden && <Link href={WEG.planposten(lq.vorhanden.id)} style={{ color: C.inkLeise, textDecoration: 'none' }}>Posten öffnen ›</Link>}
+          </span>
+        )}
         {lq?.lage === 'endet' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Mandat beendet — der Posten im Liquiditätsplan läuft noch weiter.</span>
-            <Knopf leise onClick={() => liquiplan('beenden')}>{`Posten zum ${datum(lq.bis!)} beenden`}</Knopf>
+            <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{lq.grund}</span>
+            <Knopf leise onClick={() => liquiplan('beenden')}>{lq.letzteZahlung ? `Posten zum Mandatsende angleichen (letzte Zahlung ${datum(lq.letzteZahlung)})` : 'Posten zum Mandatsende angleichen'}</Knopf>
           </div>
         )}
         {(lq?.lage === 'fehlt' || lq?.lage === 'abweichend') && (
           <div style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{lq.lage === 'fehlt' ? `Fehlt: würde ${euro(lq.vorschlag!.betrag)} brutto ${lq.vorschlag!.rhythmus} ab ${datum(lq.vorschlag!.ab)} eintragen.` : `Weicht ab: Plan ${euro(lq.vorhanden!.betrag)}, Mandat ${euro(lq.vorschlag!.betrag)}.`}</span>
+            <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{lq.lage === 'fehlt' ? 'Fehlt im Liquiditätsplan — würde eintragen:' : `Weicht ab: ${lq.grund ?? ''} Angeglichen hieße das:`}</span>
+            <SollListe soll={lq.soll} heute={crm.heute} />
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <Knopf leise onClick={() => liquiplan('anlegen')}>{lq.lage === 'fehlt' ? 'Eintragen' : 'Plan angleichen'}</Knopf>
               {lq.lage === 'fehlt' && frei.slice(0, 4).map(p => <Knopf key={p.id} leise onClick={() => liquiplan('verknuepfen', p.id)}>= {p.titel.slice(0, 26)} ({euro(p.betrag)})</Knopf>)}
@@ -348,6 +398,38 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt }: { m: Mandat; ap
       <Feldzeile label="Offener Punkt"><Feld platzhalter="Neuer offener Punkt …" onFertig={t => t.trim() && setze({ offen: [...m.offen, t.trim()] })} /></Feldzeile>
       {m.quelle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Quelle: {m.quelle}</div>}
     </div>
+  );
+}
+
+/** Was ein Mandat im Liquiditätsplan einträgt: Teilmonate (einmalig) und die vollen Monate — mit Betrag und Zahltagen. */
+function SollListe({ soll, heute }: { soll: Planposten[]; heute: string }) {
+  return (
+    <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 3 }}>
+      {soll.map(p => <li key={p.id} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}>{p.rhythmus === 'einmalig' && p.titel.includes(' — ') ? p.titel.split(' — ').pop() : p.rhythmus === 'einmalig' ? 'einmalig' : 'volle Monate'}: <b style={{ color: C.ink, fontVariantNumeric: 'tabular-nums' }}>{euroCent(p.betrag)}</b> brutto · {postenZeitText(p, heute)}</li>)}
+    </ul>
+  );
+}
+
+/**
+ * Inhalt der Rückfrage „Mandat beenden“ (18.10., N6): Ende-Datum (Vorgabe: Ende der Laufzeit), die Hinweise dazu (rein, `beendenHinweise`) und was im
+ * selben Schritt passiert. Der gewählte Tag steht in `wert` (die Rückfrage liest ihn beim Klick).
+ */
+function BeendenFelder({ m, heute, wert, mitPosten }: { m: Mandat; heute: string; wert: { current: string }; mitPosten: boolean }) {
+  const vorgabe = beendenVorgabe(m, heute);
+  const [ende, setEnde] = useState(wert.current);
+  const h = beendenHinweise(m, ende, heute);
+  return (
+    <span style={{ display: 'grid', gap: 10, whiteSpace: 'normal' }}>
+      <span>Status „beendet“: es zählt dann nicht mehr im wiederkehrenden Umsatz und im Laufzeitradar; Rechnungen, Zeiten und Verlauf bleiben. Zurückholen geht jederzeit.</span>
+      <label style={{ display: 'grid', gap: 4 }}>
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ende (letzter Tag der Leistung)</span>
+        <input type="date" value={ende} onChange={e => { setEnde(e.target.value); wert.current = e.target.value; }} style={{ ...feld, colorScheme: 'dark', maxWidth: 220 }} aria-label="Ende des Mandats" />
+        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{vorgabe.art === 'laufzeit' ? `Vorgabe: Ende der Laufzeit (${datum(vorgabe.tag)})` : vorgabe.art === 'ende' ? `Vorgabe: das Ende am Mandat (${datum(vorgabe.tag)})` : 'Vorgabe: heute'}</span>
+      </label>
+      {h.fehler && <span style={{ color: LEUCHT.kritisch }}>{h.fehler}</span>}
+      {h.hinweise.map(t => <span key={t} style={{ color: LEUCHT.achtung }}>{t}</span>)}
+      {mitPosten && <span>Der Liquiditätsplan endet im selben Schritt mit dem Mandat — der letzte Monat anteilig wie die Rechnung.</span>}
+    </span>
   );
 }
 
@@ -374,7 +456,7 @@ export function KundenKurz({ api }: { api: CrmApi }) {
       <Liste>
         {laufend.map(m => (
           <Zeile key={m.id} onClick={() => router.push(mandateLink('mandate', m.id))} links={<Punkt farbe={crm.mandate[m.id]?.ampel ? AMPEL[crm.mandate[m.id]!.ampel!] : statusFarbe(m.status)} />}
-            titel={<>{m.kunde}<span style={{ color: C.inkLeise }}> · {m.titel}</span></>}
+            titel={<MandatTitel m={m} />}
             unter={m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen'}
             rechts={<Chip farbe={statusFarbe(m.status)}>{STATUS.find(s => s.id === m.status)?.label}</Chip>} />
         ))}
