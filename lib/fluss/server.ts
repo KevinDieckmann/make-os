@@ -6,8 +6,8 @@
 //   · Privat nie im Business: Finanzen Business nur Gesellschaften (`istGesellschaft`, `ohnePrivat`), Privat nur Einheit
 //     `privat`; Planung mit `space` nur Ziele/Meilensteine dieses Space.
 //   · „nur ich“ nie bei der anderen Person: Aufgaben über `ladeAufgabenSicht(person)` (`sichtFuer`/`nurIchBesitzer`),
-//     Familie über `sichtFuer`, eigene Ziele der anderen Person fallen weg, Kalender über `termineFuerZoe` (maskiert) und nur
-//     eigene/gemeinsame Termine, Gesundheit nur die eigene Person, Inbox nur das eigene Postfach.
+//     Familie über `sichtFuer`, eigene Ziele der anderen Person fallen weg, Kalender über `termineFuerZoe` (maskiert; „nur Business“ nur
+//     Business-Kalender) und nur eigene/gemeinsame Termine, Gesundheit nur die eigene Person, Inbox nur das eigene Postfach.
 // Wächter: tests/fluss.test.ts (je Bereich „Sicht X bekommt nichts aus Y“).
 
 import { loadJson } from '@/lib/store/local-db';
@@ -45,7 +45,8 @@ export async function flussLaden(a: FlussAnfrage): Promise<FlussReihe | null> {
     case 'finanzen-business': return finanzenBusiness(a.heute);
     case 'planung': return ohnePrivat && a.space === 'privat' ? null : planung(a.person, a.heute, ohnePrivat ? 'business' : (a.space ?? null));
     case 'aufgaben': return aufgaben(a.person, a.heute, a.space ?? null);
-    case 'kalender': return kalender(a.person, a.heute);
+    // Kalender (Nachprüfung 18.10., N1): „nur Business“ bekommt nur Business-Kalender (die Regel steckt in `termineFuerZoe`) — die Privat-Sicht gar nicht.
+    case 'kalender': return ohnePrivat && a.space === 'privat' ? null : kalender(a.person, a.heute, ohnePrivat ? 'business' : (a.space ?? null));
     case 'gesundheit': return gesundheit(a.person, a.heute);
     case 'familie': return ohnePrivat ? null : familie(a.person, a.heute);
     case 'netzwerken': return netzwerken(a.heute);
@@ -188,11 +189,13 @@ async function aufgaben(person: string, heute: string, space: SpaceId | null = n
 }
 
 // ── Kalender ─────────────────────────────────────────────────────────────────
-async function kalender(person: string, heute: string): Promise<FlussReihe> {
-  const { termineFuerZoe } = await import('@/lib/kalender/zoe-sicht-server');
+async function kalender(person: string, heute: string, space: SpaceId | null): Promise<FlussReihe> {
+  const [{ termineFuerZoe }, { spaceVonKalender }] = await Promise.all([import('@/lib/kalender/zoe-sicht-server'), import('@/lib/kalender/space')]);
+  // `termineFuerZoe`: private/Gesundheit der anderen Person nur maskiert, Konto „nur Business“ nur Business-Kalender (wie GET /api/kalender).
   const k = await termineFuerZoe(person, tagPlus(heute, -ZURUECK), tagPlus(heute, VORAUS));
-  // Nur eigene und gemeinsame Termine — „Belegt“ der anderen Person ist ihre Zeit, nicht meine.
-  const meine = k.termine.filter(t => !t.maskiert && (!t.wer || t.wer === person || t.wer === BEIDE));
+  // Nur eigene und gemeinsame Termine — „Belegt“ der anderen Person ist ihre Zeit, nicht meine. Mit `space` (Sicht Privat · Business,
+  // 18.10.) nur Termine aus Kalendern dieses Bereichs (`spaceVonKalender` — dieselbe Zuordnung wie GET /api/kalender?space=).
+  const meine = k.termine.filter(t => !t.maskiert && (!t.wer || t.wer === person || t.wer === BEIDE) && (!space || spaceVonKalender(k.einstellungen, t.kalender) === space));
   return flussKalender({ heute, link: WEG.kalender(), termine: meine.map(t => ({ id: t.id, titel: t.titel, start: t.start, ende: t.ende, ganztags: t.ganztags, link: WEG.kalender(t.start.slice(0, 10)) })) });
 }
 

@@ -386,6 +386,9 @@ const HAUSHALT_PRIVAT = {
   ziel: 'MESSLATTE-HH-ZIEL-PRIVAT',
   meilenstein: 'MESSLATTE-HH-MEILENSTEIN-PRIVAT',
   fokus: 'MESSLATTE-HH-FOKUS-PRIVAT',
+  // Nachprüfung 18.10. (N1): ein Termin im gemeinsamen Kalender „Privat“ (kein „privat“-Termin einer Person) — volle Mitglieder sehen ihn,
+  // „nur Business“ nie (vorher kam er über GET /api/fluss?bereich=kalender samt Titel an).
+  termin: 'MESSLATTE-HH-TERMIN-PRIVAT',
 };
 
 /**
@@ -413,6 +416,8 @@ const ZUSATZ: Record<string, string> = {
   'aufgaben/zeit': 'ids=t-messlatte-geheim',
   // Werkstatt mit Gedächtnis kommt nur je Head (09.10.) — die zweite Person sieht dabei IHREN Privat-Head „Assistenz“.
   'agenten/skills': 'head=assistenz',
+  // Überblick „Für dich“ braucht einen Bereich (Nachprüfung 18.10., N1: vorher immer 400 — der Kalender des Flusses lief nie durch die Messlatte).
+  fluss: 'bereich=kalender',
 };
 /** Werte für dynamische Segmente. */
 const SEGMENTE: Record<string, string | string[]> = { head: 'sales', slug: 'messlatte-0123456789abcdef01234567', token: 'x', pfad: ['wissen'] };
@@ -463,6 +468,7 @@ describe('Messlatte Sicht-Prüfung 08.10.: alle lesenden Routen mit Malins Sitzu
     await db.saveJson('calendar-cache', { at: J, quelle: 'mac', events: [
       { id: 'e-messlatte-privat', title: SYS.termin, location: SYS.terminOrt, startDate: `${H}T10:00:00`, endDate: `${H}T11:00:00`, allDay: false, calendarName: 'Privat Kevin' },
       { id: 'e-messlatte-offen', title: 'Messlatte offener Termin', startDate: `${H}T12:00:00`, endDate: `${H}T13:00:00`, allDay: false, calendarName: 'Privat Kevin' },
+      { id: 'e-messlatte-hh', title: HAUSHALT_PRIVAT.termin, startDate: `${H}T18:00:00`, endDate: `${H}T19:00:00`, allDay: false, calendarName: 'Privat' },
     ] });
     await db.saveJson('kalender-bezug', { bezuege: { 'e-messlatte-privat': { privat: true, von: 'kevin', geaendert: J, tag: H } } });
 

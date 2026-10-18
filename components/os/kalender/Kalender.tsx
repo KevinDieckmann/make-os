@@ -462,7 +462,7 @@ export function Kalender() {
         )}
       </Karte>
       {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
-      <FlussKarte bereich="kalender" farbe={LEUCHT.schlaf} i={4} />
+      <FlussKarte bereich="kalender" space={bereich === 'alle' ? null : bereich} farbe={LEUCHT.schlaf} i={4} />
       <AuswertungKarte stichtag={ansicht === 'woche' || ansicht === 'vier' || ansicht === 'tag' ? anker : heute} i={4} />
       <Karte i={5}>
         <Ueberschrift erklaerung="kalender.einstellungen" rechts={<Knopf leise onClick={() => setZeigeEinst(v => !v)}>{zeigeEinst ? 'zu' : 'öffnen'}</Knopf>}>Einstellungen</Ueberschrift>

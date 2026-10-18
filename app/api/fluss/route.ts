@@ -1,7 +1,7 @@
 // ─── MAKE OS — Überblick „Für dich“: GET /api/fluss (04.10.2026 abends) ──────
 // Die Reihe eines Bereichs für die angemeldete Person: Ist (letzte 3 Monate), heute, Prognose (nur aus echten Daten), Zeilen.
 //   GET ?bereich=markttraktion|finanzen-privat|finanzen-business|planung|aufgaben|kalender|gesundheit|familie|netzwerken|inbox
-//       &space=privat|business (nur Planung)
+//       &space=privat|business (Planung, Aufgaben, Kalender — Konto „nur Business“: Privat nie, auch ohne Parameter)
 //   → { ok, fluss: FlussReihe | null }
 // Zugang: angemeldete Person im Haushalt des Inhabers (`imHaushaltDesInhabers`); der Dienstweg ist gesperrt (403) — die Reihe
 // hängt an der Person (Privat-Regel). Gefiltert wird NUR hier auf dem Server (lib/fluss/server.ts), die Oberfläche zeigt, was

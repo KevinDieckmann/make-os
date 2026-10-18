@@ -8,7 +8,8 @@
 //   ZOE-Vorschläge   `lies('offen')` aus dem Stapel (Zahl, Art „kalender“)
 //   Geburtstage      `geburtstageIm` (Familie + CRM, eine Stelle je Person)
 // Genutzt von GET /api/heute/anstehend (Heute) und lib/meldungen/speicher.ts (Glocke). Wirft nie — eine Quelle, die
-// fehlt, fehlt einfach.
+// fehlt, fehlt einfach. Konto „nur Business“ (Nachprüfung 18.10., N1-Rest): IMMER die Business-Sicht (`anstehendFuerSpace`) — vorher kam ein
+// Termin aus dem Kalender „Privat“ mit Titel an (wie im Fluss), dazu Privat-Fristen und Geburtstage aus der Familie.
 
 import { speicherStand } from '@/lib/store/local-db';
 import { ladeEinstellungen } from '@/lib/kalender/einstellungen';
@@ -28,8 +29,9 @@ import { dankeZeilen, dankeOffen } from '@/lib/crm/netzwerken';
 import { eventsOhneTermin } from '@/lib/crm/besuche';
 import { WEG } from '@/lib/wege';
 import {
-  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, type Anstehend, type ABuchung, type ADanke, type AVorschlaege,
+  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, anstehendFuerSpace, type Anstehend, type ABuchung, type ADanke, type AVorschlaege,
 } from './anstehend';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
 
@@ -76,6 +78,8 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
   const jetztWand = wandzeit(jetzt), heute = tagVon(jetztWand);
   const einst = await sicher(ladeEinstellungen(), null);
   const vorlauf = einst?.kuendigungVorlaufTage ?? 14;
+  // Unlesbarer Konten-Bestand → wie „nur Business“ (fail-closed, wie der Fluss).
+  const nurBusiness = await sicher(privatAusgeblendetFuer(person), true);
   const [gelesen, kontakte, crm, fristen, buchungen, vorschlaege, geburtstage, ausgeblendet] = await Promise.all([
     einst ? sicher(termineLesen(einst, tagPlus(heute, -4), tagPlus(heute, 2)), null) : Promise.resolve(null),
     sicher(kontakteFuerVerarbeitung(), []),
@@ -96,7 +100,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
   // N3 (F2): Zeiten nur für Meetings an Kontakten, deren Nachbereitung bei DIESER Person liegt (wie `nachbereitung` mit `person`).
   const eigene = kontakte.filter(k => { const f = haeltBeziehung(k); return f === person || f === BEIDE; });
   const verwiesen = new Set(eigene.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.art === 'termin').map(a => a.terminUid).filter((x): x is string => !!x)));
-  return {
+  const a: Anstehend = {
     heute,
     // Bereich je Termin (10.10.): aus dem Kalender (Zuordnung der Kalender-Einstellungen) — die Sicht Privat · Business filtert damit.
     termine: termineHeute(sicht, person, heute, jetztWand).map(t => { const k = kalenderVon.get(t.id); return k ? { ...t, bereich: spaceVonKalender(einst, k) } : t; }),
@@ -111,6 +115,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     geburtstage: geburtstageVorlauf(geburtstage, person, heute),
     danke: dankeAnstehend(crm, kontakte, heute, person),
   };
+  return nurBusiness ? anstehendFuerSpace(a, 'business') : a;
 }
 
 /**
