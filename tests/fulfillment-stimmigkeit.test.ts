@@ -35,7 +35,7 @@ import { taktLeiste, montagVon } from '@/lib/fulfillment/prozesse/ansichten';
 import { reportAchse } from '@/lib/fulfillment/prozesse/ansichten';
 import { fallStartTag } from '@/lib/fulfillment/prozesse/fall';
 import { brauchtAnzahl, formularOffen, kundenText, kundenPunktTitel, kundenReise } from '@/lib/fulfillment/kunde/bild';
-import { onboardingZaehlung, obKnotenId } from '@/lib/fulfillment/prozesse/onboarding';
+import { onboardingZaehlung, obKnotenId, willkommenLetzterTag } from '@/lib/fulfillment/prozesse/onboarding';
 import { MUSTER_PLAYBOOK } from '@/lib/fulfillment/muster';
 import { tagVon } from '@/lib/zeit';
 import { SAMMEL_SCHRITT } from '@/lib/fulfillment/prozesse/phasen';
@@ -324,12 +324,13 @@ describe('Dritte Abnahme 17.10.: Ampel, Fristen, Zählungen, Mandatsakte, Feinsc
         if (bis) expect(`${bis[3]}-${bis[2]}-${bis[1]}` >= HEUTE, `${m}: ${t}`).toBe(true);
       }
     }
-    // Intern: „überfällig seit …“ = der Berliner Tag der Frist (nicht der UTC-Tag) = die Frist am Knoten.
+    // Intern: „überfällig seit …“ = der Berliner Tag der Frist (nicht der UTC-Tag) = die Frist am Knoten — seit 18.10. (N8) der LETZTE erlaubte Tag
+    // (die Uhr endet um 0 Uhr des Folgetags), wie bei jedem anderen Schritt.
     const lu = cockpit.find(z => z.mandatId === 'm-demo-lumen')!;
     const w = lu.haengt.find(h => h.art === 'willkommen')!;
     const f = await lese('fulfillment/fall', '?m=m-demo-lumen');
     const faellig = (f.onboarding as { willkommen: { faellig?: string } }).willkommen.faellig!;
-    expect(w.seit).toBe(tagVon(faellig));
+    expect(w.seit).toBe(willkommenLetzterTag(faellig));
     const knoten = faelle['m-demo-lumen'].fall.knoten.find(k => k.id === obKnotenId('willkommen'));
     if (knoten?.faelligAm) expect(knoten.faelligAm).toBe(w.seit);
   });
