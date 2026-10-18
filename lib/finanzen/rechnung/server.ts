@@ -33,7 +33,7 @@ import {
   MAHN_VORGABE_TAGE, EINLEITUNG_VORLAGE, SCHLUSS_VORLAGE, entwurfAnwenden, entwurfGrenzen, empfaengerAusCrm, kundeAus, kurzVon, mahnLabel, mahnMail,
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt, positionAusMandat,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
-  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit,
+  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen,
   type MahnVorschlag, type Pflicht,
 } from './regeln';
 import { angenommenZuDeal } from '@/lib/crm/angebote';
@@ -285,6 +285,7 @@ export async function entwurfSpeichern(p: { id: string; felder: Record<string, u
   if (istGesellschaft(p.felder.firmaId) && !gesellschaftInSicht(p.felder.firmaId, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
   const gs = await gesellschaften(p.haushalt);
   let ergebnis: Rechnung | null = null;
+  let vorher: Rechnung | null = null;
   let felder: string[] = [];
   await updateJson<FinanzplanFile>('finanzplan', cur => {
     const f = planBasis(cur);
@@ -298,12 +299,51 @@ export async function entwurfSpeichern(p: { id: string; felder: Record<string, u
     if (grund) throw new RechnungFehler(grund, 409, { aktuell: mitFassung(alt) });
     felder = Object.keys({ ...alt, ...neu }).filter(k => JSON.stringify((alt as unknown as Record<string, unknown>)[k]) !== JSON.stringify((neu as unknown as Record<string, unknown>)[k]));
     ergebnis = neu;
+    vorher = alt;
     return ugFirmaNachziehen({ ...f, rechnungen: f.rechnungen.map(r => (r.id === p.id ? neu : r)) });
   });
   const r = ergebnis as Rechnung | null;
   if (!r) throw new RechnungFehler('Nicht gespeichert.', 500);
   if (felder.length) await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: r.id, felder }], p.wer);
+  const v = vorher as Rechnung | null;
+  if (v) await anschriftAnFirma(v, r, p.wer);
   return mitFassung(r);
+}
+
+/**
+ * Rechnungsanschrift an der Firma speichern (Kevin 18.10.: „An der Firma speichern“): wurde im Entwurf die Anschrift eingegeben bzw.
+ * geändert, übernimmt der Server sie in die Zahlungsdaten der Kundenfirma (`Firma.zahlung.empfaenger.anschrift` — dieselbe Stelle, aus der
+ * `empfaengerAusCrm` den nächsten Entwurf vorbelegt). Die Firma: `kundeFirmaId` der Rechnung, sonst die des Mandats. Nur über den
+ * CRM-Schreibweg (`aendereCrm`, Änderungsprotokoll mit Kennung und Feldnamen, nie Werten), nur dieses eine Feld (der Rest der
+ * Zahlungsdaten bleibt, wie er gespeichert ist — auch die IBAN); nie bei einer Firma im Papierkorb; Kontakte ohne Firma: nichts.
+ * Nur eine vollständige Anschrift, die beim Zurücklesen genau so herauskommt (`anschriftFuerFirma`). Wirft nie — die Rechnung ist
+ * schon gespeichert; scheitert es, bleibt die Firma, wie sie war (Log).
+ */
+export async function anschriftAnFirma(alt: Rechnung, neu: Rechnung, wer?: Wer): Promise<'gespeichert' | null> {
+  if (neu.status !== 'geplant' || anschriftGleich(anschriftVon(alt.empfaenger), anschriftVon(neu.empfaenger))) return null;
+  const text = anschriftFuerFirma(neu.empfaenger);
+  if (!text) return null;
+  try {
+    const { ladeCrm, aendereCrm } = await import('@/lib/crm/speicher');
+    const firmaId = neu.kundeFirmaId ?? (neu.mandatId ? (await ladeCrm()).mandate.find(m => m.id === neu.mandatId)?.firmaId : undefined);
+    if (!firmaIdOk(firmaId)) return null;
+    const jetzt = new Date().toISOString();
+    const person = wer?.person && /^[a-z0-9-]{1,40}$/.test(wer.person) ? wer.person : undefined;
+    let ergebnis: 'gespeichert' | null = null;
+    await aendereCrm(b => {
+      const f = b.firmen.find(x => x.id === firmaId);
+      if (!f || f.geloeschtAm) return b;
+      if (anschriftGleich(anschriftZerlegen(f.zahlung?.empfaenger?.anschrift), anschriftZerlegen(text))) return b;
+      const wann = { geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) };
+      const zahlung = { ...(f.zahlung ?? {}), empfaenger: { ...(f.zahlung?.empfaenger ?? {}), anschrift: text }, ...wann };
+      ergebnis = 'gespeichert';
+      return { ...b, firmen: b.firmen.map(x => (x.id === f.id ? { ...x, zahlung, ...wann } : x)) };
+    }, wer);
+    return ergebnis;
+  } catch (e) {
+    console.error('[rechnung] Anschrift nicht an der Firma gespeichert:', e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 /** Einen Entwurf löschen (nur „geplant“, ohne Nummer) — gestellte Rechnungen werden storniert, nie gelöscht. */

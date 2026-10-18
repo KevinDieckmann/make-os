@@ -15,6 +15,7 @@ import { positionNettoCent, ustCent, nummerAusFormat, euroCent, mengeText, KURZ_
 import { istKontaktKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
 import { aufCent } from '@/lib/finanzen/ust';
+import { ANSCHRIFT_MAX } from '@/lib/crm/zahlung';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
@@ -439,6 +440,37 @@ export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz
     id: 'p1', titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}${teil ? ` (${anteilText(teil)})` : ''}`.slice(0, RECHNUNG_GRENZEN.titel), text: (m.leistungen ?? []).filter(Boolean).map(x => `• ${x}`).join('\n').slice(0, RECHNUNG_GRENZEN.text),
     menge: 1, einheit, einzelpreisCent: Math.max(0, Math.round(netto * 100)), ustSatz: opt.kleinunternehmer ? 0 : (UST_SAETZE as readonly number[]).includes(m.ustSatz) ? m.ustSatz : 19,
   };
+}
+
+// ── Rechnungsanschrift ↔ Firma (Kevin 18.10.: „An der Firma speichern“) ──────
+
+type Anschrift = Pick<RechnungEmpfaenger, 'strasse' | 'plz' | 'ort' | 'land'>;
+const ANSCHRIFT_TEILE = ['strasse', 'plz', 'ort', 'land'] as const;
+
+/** Nur die Anschrift-Felder eines Empfängers (getrimmt, leere fallen weg). */
+export function anschriftVon(e: RechnungEmpfaenger | Anschrift | undefined): Anschrift {
+  const a: Anschrift = {};
+  for (const f of ANSCHRIFT_TEILE) { const w = (e?.[f] ?? '').trim(); if (w) a[f] = w; }
+  return a;
+}
+/** Zwei Anschriften gleich (Straße, PLZ, Ort, Land)? */
+export const anschriftGleich = (a: Anschrift | undefined, b: Anschrift | undefined) => {
+  const x = anschriftVon(a), y = anschriftVon(b);
+  return ANSCHRIFT_TEILE.every(f => (x[f] ?? '') === (y[f] ?? ''));
+};
+
+/**
+ * Die Anschrift einer Rechnung als Text für die Firma (`Zahlungsdaten.empfaenger.anschrift`) — „Straße, PLZ Ort, Land“, die Form, die
+ * `anschriftZerlegen` beim nächsten Entwurf wieder liest. null (= nichts an die Firma), wenn sie unvollständig ist (Straße, PLZ, Ort wie
+ * bei den Pflichtangaben), wenn das Zurücklesen sie nicht genau so ergäbe (z. B. eine PLZ, die nicht als PLZ erkannt wird) oder wenn
+ * sie das Feld der Firma sprengte (`ANSCHRIFT_MAX`) — nie still gekürzt, nie verfälscht.
+ */
+export function anschriftFuerFirma(e: RechnungEmpfaenger | undefined): string | null {
+  const a = anschriftVon(e);
+  if (!a.strasse || !a.plz || !a.ort) return null;
+  const text = [a.strasse, `${a.plz} ${a.ort}`, a.land].filter(Boolean).join(', ');
+  if (text.length > ANSCHRIFT_MAX) return null;
+  return anschriftGleich(anschriftZerlegen(text), a) ? text : null;
 }
 
 /**

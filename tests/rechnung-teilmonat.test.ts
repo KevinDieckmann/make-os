@@ -1,6 +1,6 @@
-// ─── Rechnung: Teilmonat anteilig, Angebots-Nr. (Kevins Entscheidungen 18.10.) ──
+// ─── Rechnung: Teilmonat anteilig, Anschrift an der Firma, Angebots-Nr. (Kevins Entscheidungen 18.10.) ──
 // Gesamtprüfung L1 › B9: die erste Monatsrechnung eines Mandats, das mitten im Monat beginnt, rechnete den vollen Monat; die
-// Angebots-Nr. der Monatsrechnung blieb leer. Erfundene Daten, eigener Datenordner.
+// Anschrift musste man jede Rechnung neu eingeben; die Angebots-Nr. der Monatsrechnung blieb leer. Erfundene Daten, eigener Datenordner.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,7 +9,7 @@ import type { FinanzplanFile, Rechnung } from '@/lib/finanzen/finanzplan-bestand
 import type { Angebot, CrmBestand, Firma, Mandat } from '@/lib/crm/typen';
 import type { Kontakt } from '@/lib/make-one/crm';
 import {
-  leistungsmonat, mandatLaeuftIm, mandatMonatVorgabe, ausserhalbLaufzeit, anteilText, positionAusMandat,
+  leistungsmonat, mandatLaeuftIm, mandatMonatVorgabe, ausserhalbLaufzeit, anteilText, positionAusMandat, anschriftFuerFirma, anschriftZerlegen,
 } from '@/lib/finanzen/rechnung/regeln';
 import { nettoAusBrutto, bruttoAusNetto } from '@/lib/finanzen/ust';
 
@@ -79,6 +79,21 @@ describe('Teilmonat: Betrag der Position (rein, auf den Cent über ust.ts)', () 
   });
 });
 
+describe('Anschrift für die Firma (rein)', () => {
+  it('vollständig → „Straße, PLZ Ort[, Land]“, die Form, die der nächste Entwurf wieder liest', () => {
+    expect(anschriftFuerFirma({ strasse: 'Neue Straße 7', plz: '10115', ort: 'Berlin' })).toBe('Neue Straße 7, 10115 Berlin');
+    const mitLand = anschriftFuerFirma({ firma: 'X', strasse: 'Ring 2', plz: '1010', ort: 'Wien', land: 'Österreich' })!;
+    expect(mitLand).toBe('Ring 2, 1010 Wien, Österreich');
+    expect(anschriftZerlegen(mitLand)).toEqual({ strasse: 'Ring 2', plz: '1010', ort: 'Wien', land: 'Österreich' });
+  });
+  it('unvollständig, nicht verlustfrei lesbar oder zu lang → nichts an die Firma', () => {
+    expect(anschriftFuerFirma({ strasse: 'Neue Straße 7', ort: 'Berlin' })).toBeNull();
+    expect(anschriftFuerFirma({ strasse: 'High Street 1', plz: 'SW1A 1AA', ort: 'London' })).toBeNull();
+    expect(anschriftFuerFirma({ strasse: 'x'.repeat(160), plz: '12345', ort: 'y'.repeat(160) })).toBeNull();
+    expect(anschriftFuerFirma(undefined)).toBeNull();
+  });
+});
+
 describe('Kontakt › Umsatz: Monatsrechnungen mit der Angebots-Nr. zeigen das Angebot nicht noch einmal', () => {
   it('Rechnung mit der Nummer eines Tool-Angebots → keine zweite Angebots-Zeile; fremde Nummer bleibt', async () => {
     const { angeboteListe, umsatzBezug } = await import('@/lib/crm/umsatz');
@@ -101,6 +116,7 @@ process.env.MAKE_OS_DATEN_SCHLUESSEL = 'pruef-datenschluessel-nur-fuer-den-teilm
 
 let db: typeof import('@/lib/store/local-db');
 let server: typeof import('@/lib/finanzen/rechnung/server');
+let localDay: () => string;
 const z = { person: 'pia', haushalt: 'test-haus', sicht: 'privat' as const, wer: { art: 'person' as const, person: 'pia' } };
 const J = '2026-09-01T10:00:00.000Z';
 
@@ -115,9 +131,13 @@ const angebot = (id: string, x: Partial<Angebot>): Angebot => ({
 } as Angebot);
 const firma = (id: string, x: Partial<Firma> = {}): Firma => ({ id, name: `Firma ${id}`, rolle: 'kunde', geaendert: J, ...x } as Firma);
 
+const crm = async () => (await db.loadJson<CrmBestand>('crm'))!;
+const firmaIn = async (id: string) => (await crm()).firmen.find(f => f.id === id)!;
+const rechnungIn = async (id: string) => (await db.loadJson<FinanzplanFile>('finanzplan'))!.rechnungen.find(r => r.id === id)!;
 
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
+  ({ localDay } = await import('@/lib/zeit'));
   const speicher = await import('@/lib/crm/speicher');
   const konto = (id: string, sp: string, rolle: 'inhaber' | 'mitglied') => ({ id, speicher: sp, email: `${sp}@example.invalid`, name: `${sp} Test`, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'test-haus' });
   await db.saveJson('konten', { konten: [konto('k1', 'pia', 'inhaber'), konto('k2', 'ole', 'mitglied')], einladungen: [] });
@@ -203,5 +223,60 @@ describe('Monatsrechnung: Angebots-Nr. aus dem angenommenen Angebot', () => {
     expect(b.angebotId).toBeUndefined();
     // Ohne Angebot bleibt das Feld leer.
     expect((await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-schalt', monat: '2028-03' })).rechnung.angebot).toBeUndefined();
+  });
+});
+
+describe('Rechnungsanschrift an der Firma speichern', () => {
+  const adresse = { firma: 'Firma f-neu', name: 'Ben Test', strasse: 'Neue Straße 7', plz: '10115', ort: 'Berlin' };
+  it('eingegebene Anschrift → an der Firma (nur dieses Feld, IBAN und Rest bleiben); die nächste Rechnung ist vorbelegt; Protokoll ohne Werte', async () => {
+    const vorher = await firmaIn('f-neu');
+    const r = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-neu', monat: '2026-10' })).rechnung;
+    expect(r.kundeFirmaId).toBe('f-neu');
+    expect(r.empfaenger?.strasse).toBeUndefined();
+    await server.entwurfSpeichern({ id: r.id, felder: { empfaenger: adresse }, stand: r.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    const f = await firmaIn('f-neu');
+    expect(f.zahlung).toMatchObject({ referenz: 'PO-9', iban: IBAN, empfaenger: { name: 'Buchhaltung', anschrift: 'Neue Straße 7, 10115 Berlin' }, geaendertVon: 'pia' });
+    expect({ ...f, zahlung: undefined, geaendert: undefined, geaendertVon: undefined }).toEqual({ ...vorher, zahlung: undefined, geaendert: undefined, geaendertVon: undefined });
+    const naechste = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-neu', monat: '2026-11' })).rechnung;
+    expect(naechste.empfaenger).toMatchObject({ strasse: 'Neue Straße 7', plz: '10115', ort: 'Berlin' });
+    const eintraege = (await (await import('@/lib/store/aenderungsprotokoll')).protokollMonat('test-haus', localDay().slice(0, 7))).filter(e => e.bestand === 'crm' && e.id === 'f-neu');
+    expect(eintraege.length).toBeGreaterThanOrEqual(1);
+    expect(eintraege.at(-1)).toMatchObject({ liste: 'firmen', op: 'geaendert', person: 'pia', felder: expect.arrayContaining(['zahlung']) });
+    expect(JSON.stringify(eintraege)).not.toContain('Neue Straße');
+  });
+  it('Speichern ohne geänderte Anschrift schreibt die Firma nicht', async () => {
+    const r = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-neu', monat: '2026-12' })).rechnung;
+    const vorher = await firmaIn('f-neu');
+    await server.entwurfSpeichern({ id: r.id, felder: { titel: 'Nur der Titel' }, stand: r.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    expect(await firmaIn('f-neu')).toEqual(vorher);
+  });
+  it('Firma im Papierkorb → nein; Kontakt ohne Firma → nichts; unvollständige Anschrift → nichts', async () => {
+    const vorherCrm = await crm();
+    const w = (await server.entwurfNeu({ ...z, quelle: 'frei', firmaId: 'kdv', kontaktId: 'c-weg1' })).rechnung;
+    expect(w.kundeFirmaId).toBeUndefined(); // die Firma im Papierkorb belegt nichts vor …
+    const w2 = await server.entwurfSpeichern({ id: w.id, felder: { empfaenger: adresse }, stand: w.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    // … und auch ein Verweis von Hand schreibt nicht in sie.
+    await db.updateJson<FinanzplanFile>('finanzplan', f => ({ ...f!, rechnungen: f!.rechnungen.map(x => (x.id === w.id ? { ...x, kundeFirmaId: 'f-weg' } : x)) }));
+    const w3 = await rechnungIn(w.id);
+    await server.entwurfSpeichern({ id: w.id, felder: { empfaenger: { ...adresse, strasse: 'Andere Straße 1' } }, stand: (await import('@/lib/finanzen/finanzplan-bestand')).fassung(w3), haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    expect(w2.empfaenger?.strasse).toBe('Neue Straße 7');
+    const o = (await server.entwurfNeu({ ...z, quelle: 'frei', firmaId: 'kdv', kontaktId: 'c-ohne1' })).rechnung;
+    await server.entwurfSpeichern({ id: o.id, felder: { empfaenger: adresse }, stand: o.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    const t = (await server.entwurfNeu({ ...z, quelle: 'frei', firmaId: 'kdv', kontaktId: 'c-anna1' })).rechnung;
+    await server.entwurfSpeichern({ id: t.id, felder: { empfaenger: { strasse: 'Halb 1', ort: 'Ohneplz' } }, stand: t.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    const nachher = await crm();
+    expect(nachher.firmen.find(f => f.id === 'f-weg')).toEqual(vorherCrm.firmen.find(f => f.id === 'f-weg'));
+    expect(nachher.firmen.find(f => f.id === 'f-muster')).toEqual(vorherCrm.firmen.find(f => f.id === 'f-muster'));
+    expect((await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte.find(k => k.id === 'c-ohne1')?.zahlung).toBeUndefined();
+  });
+  it('gestellte Rechnung → 409, weder Rechnung noch Firma geändert', async () => {
+    const r = (await server.entwurfNeu({ ...z, quelle: 'frei', firmaId: 'kdv', kontaktId: 'c-anna1', kundeFirmaId: 'f-muster' })).rechnung;
+    await db.updateJson<FinanzplanFile>('finanzplan', f => ({ ...f!, rechnungen: f!.rechnungen.map(x => (x.id === r.id ? { ...x, status: 'gestellt', nummer: 'KDV-R-2026-0099', datum: '2026-10-18' } : x)) }));
+    const gestellt = await rechnungIn(r.id);
+    const vorher = await firmaIn('f-muster');
+    const stand = (await import('@/lib/finanzen/finanzplan-bestand')).fassung(gestellt);
+    await expect(server.entwurfSpeichern({ id: r.id, felder: { empfaenger: adresse }, stand, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer })).rejects.toMatchObject({ status: 409 });
+    expect(await rechnungIn(r.id)).toEqual(gestellt);
+    expect(await firmaIn('f-muster')).toEqual(vorher);
   });
 });
