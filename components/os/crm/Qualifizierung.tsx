@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useRouter, useSearchParams } from 'next/navigation';
 import { localDay } from '@/lib/zeit';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { tagVon } from '@/lib/zeit';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
 import { wochenBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { qualifiziertJeWoche } from './fokus-reihen';
@@ -202,6 +203,8 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
 }
 
 // ── Die Karte je Lead ────────────────────────────────────────────────────────────────────────
+const tagKurzDe = (iso?: string) => { const t = iso && iso.length > 10 ? tagVon(iso) : iso; return t && /^\d{4}-\d{2}-\d{2}/.test(t) ? `${t.slice(8, 10)}.${t.slice(5, 7)}.` : ''; };
+
 function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, oeffneKontakt, oeffneFirma, meldeFertig }: {
   z: LeadZeile; api: CrmApi; einstellungen: ScoringEinstellungen; ich: string; heute: string; weiter: (fertig: boolean) => void; ersetze: (neuId: string) => void;
   oeffneKontakt: (id: string) => void; oeffneFirma: (id: string) => void; meldeFertig: (text: string) => void;
@@ -215,6 +218,11 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, oeffne
   const haupt = z.personen.find(p => p.id === z.hauptKontaktId) ?? z.personen[0];
   const ablage = useAblage(haupt ? [haupt.id, ...z.personen.filter(p => p.id !== haupt.id).slice(0, 3).map(p => p.id)] : []);
   const herkunftMitDateien = useMemo(() => herkunftVon(personen, api.crm?.stand ?? { events: [], teilnahmen: [], kampagnen: [], firmen: [] }, ablage), [personen, api.crm, ablage]);
+  // Was im letzten Gespräch festgehalten wurde (18.10., Gesamtprüfung L1 B13): die Notiz vom Event stand nur in der Aktivität — wer qualifiziert, musste die
+  // Akte öffnen. Jetzt steht der letzte Gesprächs-Text hier (nur lesen; „übernehmen“ setzt ihn als Notiz zum Lead, wenn die leer ist).
+  const ausGespraech = useMemo(() => personen.flatMap(k => k.aktivitaeten ?? [])
+    .filter(a => (a.art === 'notiz' || a.art === 'gespraech' || a.art === 'anruf' || a.art === 'meeting') && (a.text ?? '').trim())
+    .sort((a, b) => (b.am ?? '').localeCompare(a.am ?? ''))[0] ?? null, [personen]);
 
   const geprueft = async () => {
     setLaeuft(true);
@@ -260,6 +268,12 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, oeffne
 
         <div>
           <Ueberschrift>Notiz zum Lead</Ueberschrift>
+          {ausGespraech && (
+            <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <span>Aus dem letzten Gespräch ({tagKurzDe(ausGespraech.am)}): „{(ausGespraech.text ?? '').trim().slice(0, 300)}“</span>
+              {!notiz.trim() && <Knopf leise onClick={() => { const t = (ausGespraech.text ?? '').trim().slice(0, 2000); setNotiz(t); void speichern({ notiz: t }); }}>übernehmen</Knopf>}
+            </div>
+          )}
           <textarea value={notiz} onChange={e => setNotiz(e.target.value)} onBlur={() => { if (notiz !== (z.notiz ?? '')) void speichern({ notiz }); }} rows={2} maxLength={2000} placeholder="Was man wissen muss, bevor man anruft …" aria-label="Notiz zum Lead" style={{ ...feld, fontSize: 16, padding: '8px 11px', width: '100%', resize: 'vertical' }} />
         </div>
 
