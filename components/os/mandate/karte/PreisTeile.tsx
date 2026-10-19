@@ -34,7 +34,7 @@ export function PreisTeile({ l, speichern }: { l: Leistung; speichern: (felder: 
   return (
     <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
-        Mehrere Teile lassen sich kombinieren (z. B. monatlich + Bonus, einmalig + je Event). Der erste Teil, der immer gilt, ist der Hauptpreis.
+        Mehrere Teile lassen sich kombinieren (z. B. monatlich + Bonus, einmalig + je Event). Der erste Teil, der immer gilt, ist der Hauptpreis; „optional“ hakt man im Angebot an.
       </div>
       {preise.map((t, i) => (
         <TeilZeile key={t.id} t={t} nr={i + 1} haupt={t.id === haupt} anzahl={preise.length}
@@ -74,7 +74,7 @@ function TeilZeile({ t, nr, haupt, anzahl, onAendern, onSchieben, onWeg }: {
           {anzahl > 1 && <SymbolKnopf ariaLabel={`Preis-Teil ${nr} entfernen`} gefahr onClick={onWeg}>×</SymbolKnopf>}
         </span>
       </div>
-      <Pillen<'grund' | 'option'> liste={[{ id: 'grund', label: 'gilt immer' }, { id: 'option', label: 'optional (zum Anhaken im Angebot)' }]} aktiv={t.rolle} onWahl={r => { if (r !== t.rolle) void onAendern({ ...t, rolle: r }); }} />
+      <Pillen<'grund' | 'option'> liste={[{ id: 'grund', label: 'gilt immer' }, { id: 'option', label: 'optional' }]} aktiv={t.rolle} onWahl={r => { if (r !== t.rolle) void onAendern({ ...t, rolle: r }); }} />
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', minWidth: 0 }}>
         {PREIS_TEIL_FELDER[t.art].map(name => (
           <TextFeld key={`${t.id}-${t.art}-${name}`} label={PREIS_FELD_LABEL[name]} wert={teilFeldWert(t, name)} max={FELD_MAX[name]} modus={name === 'betrag' || name === 'bis' ? 'decimal' : name === 'anzahlung' || name === 'deckel' ? 'numeric' : undefined}
