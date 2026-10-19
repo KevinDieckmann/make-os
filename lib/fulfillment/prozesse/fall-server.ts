@@ -75,6 +75,8 @@ export function ableitungFuer(fall: Fall, m: Mandat | undefined, crm: Pick<CrmBe
     formularProzent: kunde ? (kunde.playbookProzent !== undefined ? kunde.playbookProzent : kunde.formularProzent) : null,
     kickoffRitualIds: vorlagen.rituale.filter(istKickoff).map(r => r.id),
     ...(uhrAb ? { unterschrift: uhrAb } : {}),
+    // „Angebot angenommen?“ ist erledigt (19.10., B13): mit einem angenommenen Angebot (sein Tag), sonst mit einem aktiven Mandat (Tag der Unterschrift).
+    ...(u?.quelle === 'angebot' ? { angebotAngenommen: u.am } : m?.status === 'aktiv' ? { angebotAngenommen: u?.am ?? fall.gestartetAm } : {}),
     willkommenStunden: vorlagen.einstellungen.willkommenStunden,
     jetzt,
     ...(termine?.length ? { kundenTermine: termine.map(t => t.tag) } : {}),

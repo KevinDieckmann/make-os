@@ -21,6 +21,7 @@ import { MUSTER_ONBOARDING, MUSTER_PLAYBOOK, type OnboardingSchluessel } from '.
 import { ausWandzeit, tagPlus, wandzeit } from '@/lib/kalender/zeit';
 import { abstimmungsNummern } from './darstellung';
 import { ersterTermin } from './termine';
+import { angebotAngenommenWirksam } from '../regeln';
 import { satz } from '@/lib/text/zahlwort';
 
 export const OB_PRAEFIX = 'fk-ob-';
@@ -49,6 +50,11 @@ export interface OnboardingAbleitung {
   kickoffRitualIds: readonly string[];
   /** Zeitpunkt der Unterschrift (ISO oder Tag) — für die 24-h-Uhr. */
   unterschrift?: string;
+  /**
+   * Das Angebot gilt als angenommen (ISO oder Tag) — ein angenommenes Angebot zum Mandat bzw. Deal, sonst ein AKTIVES Mandat (19.10., Rundgang B13). Dann ist die
+   * Entscheidung „Angebot angenommen?“ im Fall erledigt (`angebotAngenommenWirksam`). Fehlt: sie bleibt, wie sie ist.
+   */
+  angebotAngenommen?: string;
   willkommenStunden: number;
   jetzt: string;
   /** Tage der Termine mit dem Kunden im Kalender (Bezug zum Mandat bzw. zur Firma) — der erste ab dem Start gilt als Kick-off-Termin. */
@@ -161,7 +167,8 @@ export function onboardingZaehlung(schritte: readonly Pick<OnboardingSchrittStan
 
 /**
  * Der Fall, wie er wirkt: Onboarding-Schritte (Knoten `fk-ob-*`) tragen den abgeleiteten Stand (erledigt, wenn erfüllt — „entfällt“,
- * „wartet“, „in Arbeit“ von Hand bleiben), und ein fertiges Onboarding steht als „läuft“. Gespeichert wird davon nichts.
+ * „wartet“, „in Arbeit“ von Hand bleiben), und ein fertiges Onboarding steht als „läuft“. Ist das Angebot angenommen bzw. das Mandat aktiv, ist die
+ * Entscheidung „Angebot angenommen?“ erledigt (19.10., B13). Gespeichert wird davon nichts.
  */
 export function fallWirksam(fall: Fall, a: OnboardingAbleitung): Fall {
   const st = onboardingStand(fall, a);
@@ -176,7 +183,9 @@ export function fallWirksam(fall: Fall, a: OnboardingAbleitung): Fall {
     if (erfuellt.get(k.id)) return k.status === 'erledigt' ? k : { ...k, status: 'erledigt' as const };
     return k.status === 'erledigt' ? { ...k, status: 'offen' as const } : k;
   });
-  return { ...fall, knoten, status: fall.status === 'onboarding' && st.fertig ? 'laeuft' : fall.status };
+  // „Angebot angenommen?“ bei aktivem Mandat bzw. angenommenem Angebot: erledigt mit „ja“ (19.10., Rundgang B13 — lib/fulfillment/regeln.ts).
+  const wirksam = a.angebotAngenommen ? angebotAngenommenWirksam(knoten, a.angebotAngenommen) : knoten;
+  return { ...fall, knoten: wirksam, status: fall.status === 'onboarding' && st.fertig ? 'laeuft' : fall.status };
 }
 
 // ── Willkommensmail ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────

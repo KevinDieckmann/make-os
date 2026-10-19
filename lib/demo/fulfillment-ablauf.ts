@@ -3,7 +3,7 @@
 // Ein dritter, erfundener Kunde (Firma, Ansprechperson, Mandat, Liquiditätsplan über den Vorschlagsweg) bekommt einen Fall nach dem Beispiel-Ablauf des Editors
 // (lib/demo/fulfillment-editor.ts). Vorher hängt an der Erinnerung „Nach einer Woche nachfassen“ ein Mail-Baustein (Editor-Route). Dann wie im Browser:
 //   Onboarding (Willkommensmail, Entscheider, Vereinbarung, Ziel, Log, Kick-off, Abstimmungspunkt 1; das Playbook entfällt mit Grund) → „Bedarf aufnehmen“
-//   erledigt → „Angebot senden“ gesendet → „Angebot angenommen?“ nein vor sieben Tagen → die Erinnerung ist heute fällig: ihre Aufgabe steht in Aufgaben,
+//   erledigt → „Konzept senden“ gesendet → „Konzept freigegeben?“ nein vor sieben Tagen → die Erinnerung ist heute fällig: ihre Aufgabe steht in Aufgaben,
 //   ihr Mail-Entwurf als Vorschlag im Stapel (gesendet wird nichts), die Entscheidung bleibt offen (Ja/Nein im Fall). Heute fällig, nie überfällig — die Demo
 //   hat keine überfällige Aufgabe (Abnahme B12).
 // Alles über die ROUTEN (`rufe`), erfunden und neutral (Wächter tests/demo.test.ts liest jede Datei der Demo).
@@ -47,12 +47,12 @@ export async function ablaufBeispielSaeen(k: FulfillmentSaatKontext): Promise<Sa
 
   // 2) Ein Mail-Baustein für die Erinnerung — Bibliothek, dann im Editor an die Erinnerung des Beispiel-Ablaufs gehängt (vor dem Start: der Fall kopiert ihn).
   await k.rufe(k.routen.fulfillment(), 'PATCH', '/api/fulfillment', L, { ops: [{ op: 'baustein', eintrag: {
-    art: 'mail', titel: 'Angebot nachfassen (Beispiel)', zweck: 'Freundlich nachfragen, wenn ein Angebot noch ohne Antwort ist.', tags: ['nachfassen'],
-    text: ['Betreff: Kurze Rückfrage zum Angebot — {{kunde}}', '', '{{anrede}},', '', 'ich wollte kurz nachhören, ob Sie unser Angebot schon prüfen konnten. Wenn es passt, sprechen wir den Start im nächsten Termin ab ({{termin}}).', '', 'Freundliche Grüße', '{{absender}}'].join('\n'),
+    art: 'mail', titel: 'Konzept nachfassen (Beispiel)', zweck: 'Freundlich nachfragen, wenn ein Konzept noch ohne Antwort ist.', tags: ['nachfassen'],
+    text: ['Betreff: Kurze Rückfrage zum Konzept — {{kunde}}', '', '{{anrede}},', '', 'ich wollte kurz nachhören, ob Sie unser Konzept schon prüfen konnten. Wenn es passt, sprechen wir den Start im nächsten Termin ab ({{termin}}).', '', 'Freundliche Grüße', '{{absender}}'].join('\n'),
   } }] });
   const ue = await k.rufe(k.routen.fulfillment(), 'GET', '/api/fulfillment', L);
   const vorlage = (ue.prozesse as { id: string; art: string; titel: string }[] | undefined)?.find(p => p.art === 'paket' && p.titel === EDITOR_BEISPIEL_TITEL);
-  const mail = (ue.bausteine as { id: string; titel: string }[] | undefined)?.find(b => b.titel === 'Angebot nachfassen (Beispiel)');
+  const mail = (ue.bausteine as { id: string; titel: string }[] | undefined)?.find(b => b.titel === 'Konzept nachfassen (Beispiel)');
   const kickoff = (ue.rituale as { id: string; rhythmus: string }[] | undefined)?.find(r => r.rhythmus === 'einmal')?.id;
   if (!vorlage || !mail) return [{ name: 'Fulfillment: Beispiel-Fall in Ausführung', anzahl: 0 }];
   const ed = await k.rufe(k.routen.editor(), 'GET', `/api/fulfillment/editor?v=${encodeURIComponent(vorlage.id)}`, L);
@@ -81,9 +81,9 @@ export async function ablaufBeispielSaeen(k: FulfillmentSaatKontext): Promise<Sa
   const titel = (t: string) => knoten().then(l => l.find(x => x.titel === t));
   const bedarf = await titel('Bedarf aufnehmen');
   if (bedarf) await fallOps([{ op: 'knoten-status', id: bedarf.id, status: 'erledigt', am: plus(-12) }]);
-  const senden = await titel('Angebot senden');
+  const senden = await titel('Konzept senden');
   if (senden) await fallOps([{ op: 'knoten-status', id: senden.id, status: 'erledigt', am: plus(-10) }]);
-  const frage = await titel('Angebot angenommen?');
+  const frage = await titel('Konzept freigegeben?');
   if (frage) await fallOps([{ op: 'antwort', id: frage.id, antwort: 'nein', am: plus(-7) }]);
   return [{ name: 'Fulfillment: Beispiel-Fall in Ausführung', anzahl: frage ? 1 : 0 }];
 }

@@ -47,7 +47,9 @@ const tagPlusFn: { f: (t: string, n: number) => string } = { f: t => t };
 const plus = (n: number) => tagPlusFn.f(heute(), n);
 
 let vorlageId = '';
-const T = { bedarf: 'Bedarf aufnehmen', senden: 'Angebot senden', frage: 'Angebot angenommen?', erinnern: 'Nach einer Woche nachfassen', termin: 'Start-Termin vereinbaren' };
+// 19.10. (Rundgang B13): „Angebot angenommen?“ ist bei aktivem Mandat erledigt (lib/fulfillment/regeln.ts `angebotAngenommenWirksam`) — die Mechanik der
+// Entscheidung prüfen wir an einer Kundenfrage, die im laufenden Mandat offen sein kann.
+const T = { bedarf: 'Bedarf aufnehmen', senden: 'Konzept senden', frage: 'Konzept freigegeben?', erinnern: 'Nach einer Woche nachfassen', termin: 'Start-Termin vereinbaren' };
 
 beforeAll(async () => {
   localDayFn = (await import('@/lib/zeit')).localDay;
