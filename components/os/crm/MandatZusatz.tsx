@@ -1,0 +1,246 @@
+'use client';
+
+// ─── Mandat: Vertrag, Leistungen, Zusatzmodule (Produkte & Mandate › Mandat; 19.10., Paket P3) ─────────────────────────────────────────
+// Kevin 19.10.: „Mandat = Hauptprodukt + Zusatzmodule“ — und was am Mandat bisher nur gespeichert war, ist hier pflegbar (PRODUKTE_KONZEPT.md):
+//   · Vertrag      Mindestlaufzeit, Rhythmus, Zahlungsziel — daneben, was das Produkt vorsieht, und „Vom Produkt übernehmen“
+//   · Leistungen   die Liste des Mandats (steht auf der Monatsrechnung)
+//   · Zusatzmodule „+ Zusatzmodul“ aus Produkten mit Rolle „Zusatz“/„beides“ (Honorar vom Produkt, änderbar; ab/bis; inklusive), Vorschläge aus den
+//                  Inklusive-Regeln des Hauptprodukts, „abrechnen“ mit Menge (je Einheit · Tag · Stunde) → Rechnungs-Entwurf. Ein Modul mit eigenem Ablauf
+//                  hängt sich an den laufenden Fall (derselbe Weg wie „Zusatzmodul anhängen“ im Fulfillment).
+// Geschrieben wird nur über den Bestand-Schreibweg mit Stand (`api.teil`, Prüfung im Server: lib/crm/produkt-karte.ts `mandatZusatzPruefen`);
+// Regeln für Rechnung und Liquidität in lib/crm/mandat-zusatz.ts.
+
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { Knopf, LEUCHT, feld } from '../ui';
+import { Fenster } from '../Fenster';
+import { Feldzeile, Feld } from './teile';
+import { Wahl } from './Wahl';
+import { WEG } from '@/lib/wege';
+import { localDay, tagePlus } from '@/lib/zeit';
+import { mandatVertragAusProdukt, preiseText, vertragVon, zusatzExtras, zusatzHonorar } from '@/lib/crm/produkt-karte';
+import { zusatzArt, zusatzBeschreibung, zusatzDeckel, zusatzEinheit, zusatzName, zusatzZeitraum, JE_TEXT } from '@/lib/crm/mandat-zusatz';
+import { centAusEingabe, eingabeAusCent } from '@/lib/crm/angebote';
+import { leistungsmonat, monatsName } from '@/lib/crm/mandat-laufzeit';
+import { entwurfAnlegen } from '../rechnung/daten';
+import { useUebersichtKurz, fallAktion, neueAnfrageId, fehlerText } from '../fulfillment/prozesse/daten';
+import type { Leistung, Mandat, MandatZusatz, MandatZusatzBasis } from '@/lib/crm/typen';
+
+const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
+const RHYTHMUS = [{ id: 'monatlich' as const, label: 'monatlich' }, { id: 'quartal' as const, label: 'je Quartal' }, { id: 'einmalig' as const, label: 'einmalig' }];
+const BASIS: { id: MandatZusatzBasis; label: string }[] = [
+  { id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }, { id: 'einheit', label: 'je Einheit' }, { id: 'tag', label: 'je Tag' }, { id: 'stunde', label: 'je Stunde' },
+];
+const JA_NEIN = [{ id: 'nein' as const, label: 'berechnet' }, { id: 'ja' as const, label: 'inklusive' }];
+const JE = [{ id: 'monat' as const, label: 'je Monat' }, { id: 'quartal' as const, label: 'je Quartal' }, { id: 'jahr' as const, label: 'je Jahr' }];
+const DANACH: Record<string, string> = { monatlich_kuendbar: 'danach monatlich kündbar', verlaengert_um_laufzeit: 'verlängert sich um die Laufzeit', endet: 'endet danach' };
+const tagDe = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
+const neueZusatzId = () => `mz-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2, 14)}`;
+
+type Setze = (teil: Partial<Mandat>) => Promise<unknown> | unknown;
+
+/** Vertrag am Mandat — mit dem, was das Produkt vorsieht, und „Vom Produkt übernehmen“ (nur die Vertragsfelder; das Honorar ist verhandelt). */
+export function MandatVertrag({ m, produkt, setze }: { m: Mandat; produkt?: Leistung; setze: Setze }) {
+  const soll = produkt ? mandatVertragAusProdukt(produkt, m.honorar.basis) : {};
+  const v = produkt ? vertragVon(produkt) : null;
+  const abweichend = (Object.keys(soll) as (keyof typeof soll)[]).filter(k => soll[k] !== undefined && soll[k] !== m[k]);
+  const produktText = v ? [
+    v.mindestlaufzeitMonate ? `${v.mindestlaufzeitMonate} Monate Mindestlaufzeit` : '', v.danach ? DANACH[v.danach] : '', v.kuendigungsfristTage != null ? `${v.kuendigungsfristTage} Tage Kündigungsfrist` : '',
+    v.rechnungsrhythmus ? `Rechnung ${RHYTHMUS.find(r => r.id === v.rechnungsrhythmus)?.label}` : '', v.zahlungszielTage != null ? `Zahlungsziel ${v.zahlungszielTage} Tage` : '',
+    v.ustSatz != null ? `${v.ustSatz} % USt` : '', v.reisekosten === 'separat' ? 'Reisekosten separat' : v.reisekosten === 'inklusive' ? 'Reisekosten inklusive' : '',
+  ].filter(Boolean) : [];
+  return (
+    <Feldzeile label="Vertrag">
+      <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Feld typ="number" wert={m.mindestlaufzeitMonate ? String(m.mindestlaufzeitMonate) : ''} breite={150} platzhalter="Mindestlaufzeit Monate" onFertig={x => setze({ mindestlaufzeitMonate: Number(x) > 0 ? Math.min(120, Math.round(Number(x))) : undefined })} />
+          <Wahl label="Rechnungsrhythmus" liste={RHYTHMUS} wert={m.rechnungsrhythmus} onWahl={rechnungsrhythmus => setze({ rechnungsrhythmus })} />
+          <Feld typ="number" wert={String(m.zahlungszielTage ?? 14)} breite={150} platzhalter="Zahlungsziel Tage" onFertig={x => { const n = Math.round(Number(x)); if (Number.isFinite(n) && n >= 0 && n <= 120) void setze({ zahlungszielTage: n }); }} />
+        </div>
+        <span style={klein}>{m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit` : 'ohne Mindestlaufzeit'} · Rechnung {RHYTHMUS.find(r => r.id === m.rechnungsrhythmus)?.label} · Zahlungsziel {m.zahlungszielTage ?? 14} Tage</span>
+        {produkt && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={klein}>Vom Produkt „{produkt.name}“: {preiseText(produkt)}{produktText.length ? ` · ${produktText.join(' · ')}` : ''}</span>
+            {abweichend.length > 0 && <Knopf leise onClick={async () => { await setze({ ...soll, ...(!m.leistungen.length && produkt.lieferumfang?.length ? { leistungen: produkt.lieferumfang } : {}) }); }}>Vom Produkt übernehmen</Knopf>}
+          </div>
+        )}
+      </div>
+    </Feldzeile>
+  );
+}
+
+/** Leistungen des Mandats (stehen auf der Monatsrechnung): entfernen, neue dazu. */
+export function MandatLeistungen({ m, setze }: { m: Mandat; setze: Setze }) {
+  return (
+    <Feldzeile label="Leistungen">
+      <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+        {m.leistungen.map((x, i) => (
+          <div key={`${i}-${x}`} style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>• {x}</span>
+            <button onClick={() => setze({ leistungen: m.leistungen.filter((_, j) => j !== i) })} aria-label={`Leistung „${x.slice(0, 30)}“ entfernen`} title="Entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 44, minHeight: 44 }}>×</button>
+          </div>
+        ))}
+        <Feld platzhalter="Neue Leistung …" onFertig={t => t.trim() && setze({ leistungen: [...m.leistungen, t.trim().slice(0, 400)] })} />
+      </div>
+    </Feldzeile>
+  );
+}
+
+/** Zusatzmodule am Mandat — Liste, „+ Zusatzmodul“, Vorschläge (inklusive), abrechnen, Ablauf am Fall. */
+export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: readonly Leistung[]; setze: Setze }) {
+  const heute = localDay();
+  const liste = useMemo(() => m.zusatz ?? [], [m.zusatz]);
+  const haupt = m.leistungId ? katalog.find(l => l.id === m.leistungId) : undefined;
+  const kurz = useUebersichtKurz();
+  const [meldung, setMeldung] = useState<string | null>(null);
+  const [abrechnen, setAbrechnen] = useState<MandatZusatz | null>(null);
+  const waehlbar = katalog.filter(l => !l.geloeschtAm && l.status !== 'eingestellt' && l.id !== m.leistungId && (l.rolle === 'zusatz' || l.rolle === 'beides'));
+  const vorschlaege = (haupt?.regeln?.inklusive ?? []).filter(x => !liste.some(z => z.leistungId === x.leistungId && z.inklusive) && katalog.some(l => l.id === x.leistungId && !l.geloeschtAm));
+  const schreiben = (neu: MandatZusatz[]) => setze({ zusatz: neu });
+  const aendern = (id: string, teil: Partial<MandatZusatz>) => schreiben(liste.map(z => (z.id === id ? stripLeer({ ...z, ...teil }) : z)));
+  // Beginn eines neuen Moduls: läuft das Mandat schon, ab heute (sonst rechnete es rückwirkend ab Beginn); sonst mit dem Mandat.
+  const startVorgabe = m.start && m.start < heute ? heute : undefined;
+
+  /** Ablauf des Moduls im Fulfillment: Paket mit „Zusatzmodul“, das dem Produkt zugeordnet ist. */
+  const ablaufVon = (leistungId: string) => {
+    const vid = kurz.daten?.zuordnung[leistungId]?.vorlageId;
+    const p = vid ? kurz.daten?.prozesse.find(x => x.id === vid && x.art === 'paket' && x.zusatz) : undefined;
+    const fall = kurz.daten?.faelle[m.id] as { vorlageId?: string; zusaetze?: string[] } | undefined;
+    return p ? { id: p.id, titel: p.titel, fall: !!fall, dran: !!fall && (fall.vorlageId === p.id || !!fall.zusaetze?.includes(p.id)) } : null;
+  };
+  const anhaengen = async (leistungId: string, start?: string) => {
+    const a = ablaufVon(leistungId);
+    if (!a || !a.fall || a.dran) return;
+    const r = await fallAktion({ aktion: 'starten', mandatId: m.id, vorlageId: a.id, start: start && start > heute ? start : heute, anfrageId: neueAnfrageId() });
+    setMeldung(r.ok ? `Ablauf „${a.titel}“ hängt jetzt am Fall.` : `Ablauf nicht angehängt: ${fehlerText(r)}`);
+    void kurz.laden();
+  };
+
+  const hinzu = async (l: Leistung, inklusiv?: { menge: number; je: NonNullable<MandatZusatz['je']> }) => {
+    const ab = startVorgabe;
+    const h = zusatzHonorar(l);
+    const z: MandatZusatz = {
+      id: neueZusatzId(), leistungId: l.id, ...(ab ? { ab } : {}),
+      ...(inklusiv ? { inklusive: true, menge: inklusiv.menge, je: inklusiv.je } : h ? { honorar: h, ...zusatzExtras(l) } : {}),
+      // Einmalig mit Dauer am Produkt: „bis“ = Ende der Leistung (dann kommt der Rest des Zahlplans in diesem Monat).
+      ...(!inklusiv && h?.basis === 'einmalig' && l.dauerTage ? { bis: tagePlus(ab ?? m.start ?? heute, l.dauerTage - 1) } : {}),
+    };
+    await schreiben([...liste, z]);
+    await anhaengen(l.id, z.ab);
+  };
+
+  return (
+    <Feldzeile label="Zusatzmodule">
+      <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
+        {!liste.length && <span style={klein}>Keine — das Mandat besteht nur aus dem Hauptprodukt.</span>}
+        {liste.map(z => {
+          const art = zusatzArt(z);
+          const ablauf = ablaufVon(z.leistungId);
+          return (
+            <div key={z.id} style={{ display: 'grid', gap: 6, padding: 10, borderRadius: 12, background: 'rgba(255,255,255,.03)', minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink }}>{zusatzName(z, katalog)}</span>
+                <span style={{ ...klein, flex: 1, minWidth: 0 }}>{zusatzBeschreibung(z, katalog)}</span>
+                {art === 'abrechnen' && <Knopf leise onClick={() => setAbrechnen(z)}>abrechnen</Knopf>}
+                <button onClick={() => schreiben(liste.filter(x => x.id !== z.id))} aria-label={`Zusatzmodul „${zusatzName(z, katalog)}“ entfernen`} title="Entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 44, minHeight: 44 }}>×</button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Feld typ="date" wert={z.ab} breite={150} platzhalter="ab" onFertig={ab => aendern(z.id, { ab: ab || undefined })} />
+                <span style={klein}>bis</span>
+                <Feld typ="date" wert={z.bis} breite={150} platzhalter="bis" onFertig={bis => aendern(z.id, { bis: bis || undefined })} />
+                <Wahl label="Berechnet oder inklusive" liste={JA_NEIN} wert={z.inklusive ? 'ja' : 'nein'} onWahl={x => {
+                  const l = katalog.find(k => k.id === z.leistungId);
+                  void aendern(z.id, x === 'ja' ? { inklusive: true, honorar: undefined, zahlplan: undefined, stundenJeMonat: undefined } : { inklusive: undefined, menge: undefined, je: undefined, ...(z.honorar ? {} : l && zusatzHonorar(l) ? { honorar: zusatzHonorar(l), ...zusatzExtras(l) } : {}) });
+                }} />
+              </div>
+              {!z.inklusive && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Feld wert={z.honorar ? eingabeAusCent(z.honorar.betragCent) : ''} breite={130} platzhalter="Honorar €" onFertig={t => { const c = centAusEingabe(t); if (c !== null) void aendern(z.id, { honorar: { betragCent: c, basis: z.honorar?.basis ?? 'monat' } }); else if (!t.trim()) void aendern(z.id, { honorar: undefined }); }} />
+                  <Wahl label="Wie oft" liste={BASIS} wert={z.honorar?.basis ?? null} onWahl={basis => aendern(z.id, { honorar: { betragCent: z.honorar?.betragCent ?? 0, basis }, ...(basis !== 'einmalig' ? { zahlplan: undefined } : {}), ...(basis !== 'stunde' ? { stundenJeMonat: undefined } : {}) })} />
+                  {z.honorar?.basis === 'einmalig' && <Feld typ="number" wert={z.zahlplan ? String(z.zahlplan.anzahlungProzent) : ''} breite={150} platzhalter="Anzahlung %" onFertig={t => { const n = Math.round(Number(t)); void aendern(z.id, { zahlplan: n >= 1 && n <= 99 ? { anzahlungProzent: n } : undefined }); }} />}
+                  {z.honorar?.basis === 'stunde' && <Feld typ="number" wert={z.stundenJeMonat ? String(z.stundenJeMonat) : ''} breite={160} platzhalter={`Std./Monat geplant${zusatzDeckel(z, katalog) ? ` (≤ ${zusatzDeckel(z, katalog)})` : ''}`} onFertig={t => { const n = Number(t); const d = zusatzDeckel(z, katalog); void aendern(z.id, { stundenJeMonat: n > 0 ? Math.min(n, d ?? n) : undefined }); }} />}
+                </div>
+              )}
+              {z.inklusive && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Feld typ="number" wert={z.menge ? String(z.menge) : ''} breite={110} platzhalter="Menge" onFertig={t => { const n = Math.round(Number(t)); void aendern(z.id, n >= 1 ? { menge: n, je: z.je ?? 'quartal' } : { menge: undefined, je: undefined }); }} />
+                  <Wahl label="je Zeitraum" liste={JE} wert={z.je ?? null} onWahl={je => aendern(z.id, { je, menge: z.menge ?? 1 })} />
+                  <span style={klein}>steht als 0-€-Position auf der Monatsrechnung. Mehr als inklusive: dasselbe Modul noch einmal mit Preis je Einheit dazunehmen und abrechnen.</span>
+                </div>
+              )}
+              {ablauf && (ablauf.dran
+                ? <Link href={WEG.fall(m.id)} style={{ ...klein, textDecoration: 'none' }}>Ablauf „{ablauf.titel}“ hängt am Fall ›</Link>
+                : ablauf.fall ? <span><Knopf leise onClick={() => anhaengen(z.leistungId, z.ab)}>Ablauf „{ablauf.titel}“ an den Fall hängen</Knopf></span>
+                  : <span style={klein}>Ablauf „{ablauf.titel}“ — hängt sich an, sobald der Fall läuft (Fulfillment › Zusatzmodul anhängen).</span>)}
+            </div>
+          );
+        })}
+        {vorschlaege.map(x => {
+          const l = katalog.find(k => k.id === x.leistungId)!;
+          return (
+            <div key={x.leistungId} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={klein}>Vorschlag aus „{haupt?.name}“: {l.name} inklusive ({x.menge} je {JE_TEXT[x.je]})</span>
+              <Knopf leise onClick={() => hinzu(l, { menge: x.menge, je: x.je })}>übernehmen</Knopf>
+            </div>
+          );
+        })}
+        {waehlbar.length > 0
+          ? <Wahl label="Zusatzmodul" liste={waehlbar.map(l => ({ id: l.id, label: `${l.name} · ${preiseText(l)}`.slice(0, 80) }))} wert={null} leer="+ Zusatzmodul" onWahl={id => { const l = waehlbar.find(x => x.id === id); if (l) void hinzu(l); }} />
+          : <span style={klein}>Für „+ Zusatzmodul“ ein Produkt mit der Rolle „Zusatz“ oder „beides“ anlegen (Produkte).</span>}
+        {meldung && <span style={{ fontSize: TYP.bedien, color: meldung.startsWith('Ablauf nicht') ? LEUCHT.achtung : LEUCHT.gut }}>{meldung}</span>}
+        {abrechnen && <AbrechnenDialog m={m} z={abrechnen} katalog={katalog} onZu={() => setAbrechnen(null)} />}
+      </div>
+    </Feldzeile>
+  );
+}
+
+/** Leere Werte (undefined) aus einem Modul entfernen — sonst schickte JSON sie nicht und der Server behielte die alten. */
+function stripLeer(z: MandatZusatz): MandatZusatz {
+  return Object.fromEntries(Object.entries(z).filter(([, v]) => v !== undefined)) as unknown as MandatZusatz;
+}
+
+/**
+ * „abrechnen“ (je Einheit · Tag · Stunde): Monat und Menge — legt den Rechnungs-Entwurf an (offener Entwurf des Monats bekommt die Position dazu,
+ * eine gestellte Monatsrechnung bleibt: dann eine eigene) und öffnet ihn. Gestellt wird nur im Editor.
+ */
+function AbrechnenDialog({ m, z, katalog, onZu }: { m: Mandat; z: MandatZusatz; katalog: readonly Leistung[]; onZu: () => void }) {
+  const router = useRouter();
+  const heute = localDay();
+  const zr = zusatzZeitraum(m, z, m.ende);
+  // Vormonat, dieser und nächster Monat — nur die, in denen das Modul läuft.
+  const monate = [-1, 0, 1].map(n => tagePlus(`${heute.slice(0, 7)}-15`, n * 30).slice(0, 7)).filter((mo, i, l) => l.indexOf(mo) === i && (leistungsmonat(zr, mo)?.tage ?? 0) > 0);
+  const [monat, setMonat] = useState<string | null>(monate.includes(heute.slice(0, 7)) ? heute.slice(0, 7) : monate[0] ?? null);
+  const [menge, setMenge] = useState('1');
+  const [fehler, setFehler] = useState<string | null>(null);
+  const einheit = zusatzEinheit(z, katalog);
+  const deckel = zusatzDeckel(z, katalog);
+  const n = Number(menge.replace(',', '.'));
+  const los = async () => {
+    if (!monat || !(n > 0)) { setFehler('Bitte Monat und eine Menge größer 0.'); return; }
+    const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat, einheiten: [{ zusatzId: z.id, menge: n }] });
+    if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
+    router.push(WEG.rechnungSchreiben(e.id));
+  };
+  return (
+    <Fenster titel={`„${zusatzName(z, katalog)}“ abrechnen`} onZu={onZu} breit={480}>
+      <form onSubmit={ev => { ev.preventDefault(); void los(); }} style={{ display: 'grid', gap: 12 }}>
+        <span style={klein}>{zusatzBeschreibung(z, katalog)}</span>
+        {!monate.length && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Das Modul läuft weder im Vormonat noch in diesem oder im nächsten Monat — ab/bis am Modul prüfen.</span>}
+        {monate.length > 0 && <Wahl label="Monat" liste={monate.map(mo => ({ id: mo, label: monatsName(mo) }))} wert={monat} onWahl={setMonat} />}
+        <label style={{ display: 'grid', gap: 4 }}>
+          <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.08em', fontSize: TYP.mikro }}>Menge ({einheit === 'Stunde' ? 'Stunden' : einheit === 'Tag' ? 'Tage' : einheit})</span>
+          <input value={menge} inputMode="decimal" onChange={ev => setMenge(ev.target.value)} style={{ ...feld, fontSize: 16, maxWidth: 160 }} aria-label="Menge" />
+        </label>
+        {deckel !== null && n > deckel && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Vereinbart sind höchstens {deckel} Stunden je Monat — berechnet werden {deckel}.</span>}
+        {fehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{fehler}</span>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <Knopf leise onClick={onZu}>Abbrechen</Knopf>
+          <Knopf haupt typ="submit" aus={!monat}>Rechnung schreiben</Knopf>
+        </div>
+        {zr.start && <span style={klein}>Läuft ab {tagDe(zr.start)}{zr.ende ? ` bis ${tagDe(zr.ende)}` : ''}.</span>}
+      </form>
+    </Fenster>
+  );
+}

@@ -52,7 +52,9 @@ export interface UebersichtKurz {
   deals?: HeuteDeal[];
 }
 
-export interface MandatKurz { id: string; titel: string; kunde: string; firmaId: string | null; kontaktIds: string[]; leistungId: string | null; ziele: Mandat['ziele']; gesellschaft: string; status: string; start: string | null; zustaendig: string | null; business: boolean }
+export interface MandatKurz { id: string; titel: string; kunde: string; firmaId: string | null; kontaktIds: string[]; leistungId: string | null; ziele: Mandat['ziele']; gesellschaft: string; status: string; start: string | null; zustaendig: string | null; business: boolean;
+  /** Zusatzmodule am Mandat (19.10., P3): Produkt und Beginn — für den Vorschlag „Zusatzmodul anhängen“. */
+  zusatz?: { leistungId: string; ab?: string }[] }
 export interface FallAntwort {
   inhaber: boolean;
   mandat: MandatKurz;
