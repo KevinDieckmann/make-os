@@ -19,7 +19,8 @@ export const AMPEL_TEXT: Record<Ampel, string> = { gruen: 'läuft rund', gelb: '
 // „Hier“ (JETZT), die Farben der Formen (FORM_FARBE) und die Raute (FreigabeRaute) sind seit 17.10. gemeinsam für alle Bereiche (components/os/ui/reise) —
 // hier nur weitergereicht, damit jede Fulfillment-Stelle unverändert bleibt.
 export { JETZT, FORM_FARBE, FreigabeRaute };
-export const ZUSTAND_FARBE: Record<PhasenZustand, string> = { fertig: LEUCHT.gut, jetzt: JETZT, offen: C.inkLeise };
+// `laeuft` (19.10., A4): durchlaufen, darin läuft noch etwas nebenher — neutral, nie im Ton von „erledigt“.
+export const ZUSTAND_FARBE: Record<PhasenZustand, string> = { fertig: LEUCHT.gut, jetzt: JETZT, laeuft: C.ink, offen: C.inkLeise };
 
 const klein: CSSProperties = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 };
 
@@ -29,7 +30,7 @@ export interface StrahlPhase { id?: string; titel: string; zusatz?: string; zust
 /** „Abstimmungspunkt 3“ (14.10., Abnahme B19: „Freigabe“ meint in MAKE OS die Vorschläge von ZOE) — Nummer lückenlos aus dem Ablauf. */
 export const abstimmungKurz = (f: { nr?: number }) => `Bestätigung${f.nr ? ` ${f.nr}` : ''}`;
 
-const balkenFarbe = (p: StrahlPhase) => (p.zustand === 'fertig' ? LEUCHT.gut : p.ueberfaellig ? LEUCHT.kritisch : p.zustand === 'jetzt' ? JETZT : C.inkLeise);
+const balkenFarbe = (p: StrahlPhase) => (p.zustand === 'fertig' ? LEUCHT.gut : p.ueberfaellig ? LEUCHT.kritisch : p.zustand === 'jetzt' ? JETZT : ZUSTAND_FARBE[p.zustand]);
 
 /** Ein Abschnitt des Strahls: leise Schiene, darin der erledigte Anteil (vom tiefen in den vollen Ton), am Ende ggf. die Freigabe-Raute. */
 function Schiene({ p, hoehe = 8 }: { p: StrahlPhase; hoehe?: number }) {
@@ -44,7 +45,7 @@ function Schiene({ p, hoehe = 8 }: { p: StrahlPhase; hoehe?: number }) {
   );
 }
 
-const phaseLabel = (p: StrahlPhase, i: number) => `Phase ${i + 1}: ${p.titel}${p.zusatz ? ` (${p.zusatz})` : ''} — ${p.zustand === 'fertig' ? 'erledigt' : p.zustand === 'jetzt' ? 'hier stehen wir' : 'kommt noch'}${p.gesamt ? `, ${p.erledigt ?? 0} von ${p.gesamt} ${wort(p.gesamt, 'Schritt', 'Schritten')} erledigt` : ''}${p.freigabe ? `, ${abstimmungKurz(p.freigabe)} ${p.freigabe.gegeben ? 'vermerkt' : 'offen'}` : ''}`;
+const phaseLabel = (p: StrahlPhase, i: number) => `Phase ${i + 1}: ${p.titel}${p.zusatz ? ` (${p.zusatz})` : ''} — ${p.zustand === 'fertig' ? 'erledigt' : p.zustand === 'jetzt' ? 'hier stehen wir' : p.zustand === 'laeuft' ? 'läuft nebenher' : 'kommt noch'}${p.gesamt ? `, ${p.erledigt ?? 0} von ${p.gesamt} ${wort(p.gesamt, 'Schritt', 'Schritten')} erledigt` : ''}${p.freigabe ? `, ${abstimmungKurz(p.freigabe)} ${p.freigabe.gegeben ? 'vermerkt' : 'offen'}` : ''}`;
 
 /**
  * Der Phasen-Strahl (Rechner): eine Spalte je Phase — oben „Sie sind hier“ bzw. „Phase n“, darunter die Schiene mit dem erledigten Anteil und

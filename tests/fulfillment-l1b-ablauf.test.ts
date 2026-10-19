@@ -82,13 +82,14 @@ describe('N2 · nach fertigem Onboarding läuft der Ablauf sofort an', () => {
     expect(naechsterPunkt(w, FREIGABEN, HEUTE)).toMatchObject({ art: 'schritt', id: id(w, 'Analyse-Umfang'), phaseId: analyse });
     expect(aktuellerKnoten(w).phase!.id).toBe(analyse);
     const r = fallReise(w, FREIGABEN, HEUTE);
-    expect(r.phasen.map(p => p.zustand).slice(0, 3)).toEqual(['fertig', 'jetzt', 'offen']);
+    // Der Vorlauf ist durch, aber Playbook und Kick-off-Agenda laufen nebenher — „läuft“, nie „erledigt“ (19.10., Rundgang A4).
+    expect(r.phasen.map(p => p.zustand).slice(0, 3)).toEqual(['laeuft', 'jetzt', 'offen']);
     expect(fallStelle(w, FREIGABEN, HEUTE).phase).toMatchObject({ id: analyse, nr: 2, von: 8 });
     expect(reiseZeile({ fall: w, freigaben: FREIGABEN, heute: HEUTE }).hier).toEqual({ phaseId: analyse, id: id(w, 'Analyse-Umfang') });
     const c = cockpitZeile({ fall: w, kunde: 'Beispiel GmbH', titel: 'Begleitung', onboarding: onboardingStand(f, abl), health: null, report: { faellig: false }, pulsSchwelle: 6, heute: HEUTE, freigaben: FREIGABEN });
     expect(c).toMatchObject({ phase: 'Analyse', phaseNr: 2, phasenAnzahl: 8, schritt: 'Analyse-Umfang' });
     const t = kundenTeile({ fall: w, mandat: { ziele: [] }, heute: HEUTE, anrede: 'sie', gesperrt: new Set(), freigaben: FREIGABEN });
-    expect(t.phasen.slice(0, 2).map(p => [p.titel, p.stand])).toEqual([['Vorlauf / Onboarding', 'erledigt'], ['Analyse', 'aktuell']]);
+    expect(t.phasen.slice(0, 2).map(p => [p.titel, p.stand])).toEqual([['Vorlauf / Onboarding', 'laeuft'], ['Analyse', 'aktuell']]);
     // Die Schritte des Musters sind nicht für Kunden sichtbar — nichts aus einer anderen Phase rückt nach (N5).
     expect(t.naechstes).toEqual([]);
   });
@@ -101,12 +102,12 @@ describe('N2 · nach fertigem Onboarding läuft der Ablauf sofort an', () => {
     expect(aktiveKnoten(g)).toEqual([]);
     expect(naechsterPunkt(g, FREIGABEN, HEUTE)).toMatchObject({ art: 'freigabe', freigabe: 'F2', phaseId: analyse });
     expect(aktuellerKnoten(g).phase!.id).toBe(analyse);
-    expect(fallReise(g, FREIGABEN, HEUTE).phasen.map(p => p.zustand).slice(0, 3)).toEqual(['fertig', 'jetzt', 'offen']);
+    expect(fallReise(g, FREIGABEN, HEUTE).phasen.map(p => p.zustand).slice(0, 3)).toEqual(['laeuft', 'jetzt', 'offen']);
     expect(reiseZeile({ fall: g, freigaben: FREIGABEN, heute: HEUTE }).hier).toEqual({ phaseId: analyse, id: 'fg-F2' });
     g = ok(fallAnwenden(g, [{ op: 'freigabe', id: 'F2' }], ctx()));
     expect(aktiveKnoten(g).map(a => a.knoten.titel)).toEqual(['Diagnosebericht']);
     expect(ausfuehrungSoll(g, HEUTE).aufgaben.map(a => a.titel)).toEqual(['Diagnosebericht']);
-    expect(fallReise(g, FREIGABEN, HEUTE).phasen.map(p => p.zustand).slice(0, 3)).toEqual(['fertig', 'fertig', 'jetzt']);
+    expect(fallReise(g, FREIGABEN, HEUTE).phasen.map(p => p.zustand).slice(0, 3)).toEqual(['laeuft', 'laeuft', 'jetzt']);
   });
 
   it('ein ausgeführter Schritt hält an, auch wenn darunter nur ein Baustein hängt (Mail-Entwurf) — er gehört zu seinem Schritt', () => {
@@ -131,7 +132,8 @@ describe('N2 · nach fertigem Onboarding läuft der Ablauf sofort an', () => {
     ] };
     const a = aktiveKnoten(f);
     expect(a.map(x => [x.knoten.id, x.ankunft, x.faellig])).toEqual([['s3', '2026-10-12', '2026-10-19']]);
-    expect(fallReise(f, [], HEUTE).phasen.map(p => p.zustand)).toEqual(['fertig', 'fertig', 'fertig', 'jetzt']);
+    // Vorlauf ist wirklich fertig; Analyse und Diagnose (nur Bausteine) sind durchlaufen, ihre Bausteine bleiben offen → „läuft“ (19.10., A4).
+    expect(fallReise(f, [], HEUTE).phasen.map(p => p.zustand)).toEqual(['fertig', 'laeuft', 'laeuft', 'jetzt']);
     expect(naechsterPunkt(f, [], HEUTE)!.id).toBe('s3');
   });
 

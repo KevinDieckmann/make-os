@@ -229,6 +229,37 @@ export function jetztPhasen(fall: Pick<Fall, 'knoten'> & Partial<Pick<Fall, 'sta
   return raus;
 }
 
+/**
+ * Wie eine Phase (Ebene 2) dasteht — EINE Regel für die Darstellung (Reise intern, Cockpit, Kunden-Seite):
+ *   · `jetzt`  — die Phase „hier“ (`jetztPhasen`, je Abschnitt eine).
+ *   · `fertig` — wirklich fertig (`phaseFertig`: eigener Status fertig bzw. jedes Blatt darunter erledigt/entfällt).
+ *   · `laeuft` — der Gang durch die Phasen ist an ihr vorbei (sie liegt in ihrem Abschnitt vor der Phase „jetzt“ bzw. der Abschnitt hat keine mehr) und
+ *                sie ist durch (`phaseDurch`), aber darin ist noch etwas offen, das nur nebenher läuft (Kunden-Playbook, Bausteine ohne Form).
+ *   · `offen`  — sonst: der Gang ist noch nicht dort (auch, wenn sie nur aus Bausteinen besteht und deshalb später nicht anhält).
+ * Rundgang 19.10. (A4): `fallReise` nahm `phaseDurch` für „fertig“ — ein neuer Fall zeigte Phasen nur aus Bausteinen („Umsetzung“, „Führung“) am ersten Tag
+ * als „✓ erledigt“ bei 0 %. „Durch“ sagt nur, dass die Phase den Ablauf nicht anhält; die Regel für „hier“ und die Ausführung (`phasenGang`) bleibt.
+ */
+export type PhasenStand = 'fertig' | 'jetzt' | 'laeuft' | 'offen';
+export function phasenStaende(fall: Pick<Fall, 'knoten'> & Partial<Pick<Fall, 'status' | 'freigaben'>>): Map<string, PhasenStand> {
+  const l = fall.knoten;
+  const w = wurzelVon(l);
+  const phasen = w ? kinderVon(w.id, l) : [];
+  const jetzt = jetztPhasen(fall);
+  const ablauf = mitAusfuehrung(l);
+  // Je Abschnitt (Paket bzw. Zusatzmodul): die Stelle der Phase „jetzt“ in der Reihenfolge seiner Phasen — keine = der Gang ist dort ganz durch.
+  const imAbschnitt = new Map<string, FallKnoten[]>();
+  for (const p of phasen) { const a = abschnittVon(p) ?? ''; imAbschnitt.set(a, [...(imAbschnitt.get(a) ?? []), p]); }
+  const raus = new Map<string, PhasenStand>();
+  for (const liste of imAbschnitt.values()) {
+    const j = liste.findIndex(p => jetzt.has(p.id));
+    liste.forEach((p, i) => {
+      const vorbei = j < 0 || i < j;
+      raus.set(p.id, jetzt.has(p.id) ? 'jetzt' : phaseFertig(p, l) ? 'fertig' : vorbei && phaseDurch(p, l, ablauf) ? 'laeuft' : 'offen');
+    });
+  }
+  return raus;
+}
+
 // ── Ausführung: der Nein-Zweig einer Entscheidung (17.10. abends; lib/fulfillment/prozesse/ausfuehrung.ts) ─────────────────────────────
 
 type ZweigKnoten = Pick<FallKnoten, 'id' | 'status' | 'form' | 'zweige' | 'antwort' | 'runden'>;

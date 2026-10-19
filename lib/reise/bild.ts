@@ -14,7 +14,7 @@ export const FORM_NAME: Record<FlussForm, string> = { schritt: 'Schritt', nachri
 export type KaestchenZustand = 'erledigt' | 'hier' | 'offen' | 'entfaellt';
 /**
  * Zustand einer Stufe: fertig (✓) · jetzt („▾ Hier“) · offen (kommt noch) · `laeuft` = alle Stufen laufen zugleich (ein Kreislauf hat kein „Hier“ — Markttraktion):
- * die Stufe steht in ihrer eigenen Farbe da, ohne Marke.
+ * die Stufe steht in ihrer eigenen Farbe da, ohne Marke. Einzeln neben anderen Stufen (Fulfillment, 19.10.): durchlaufen, darin läuft noch etwas nebenher.
  */
 export type ReiseZustand = 'fertig' | 'jetzt' | 'offen' | 'laeuft';
 export type Haengt = 'rot' | 'gelb';
