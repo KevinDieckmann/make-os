@@ -155,6 +155,14 @@ describe('Saat', () => {
     // Drei Mandate: Nordwerk, Lumen und (17.10. abends) der Kunde des Beispiel-Falls in Ausführung (lib/demo/fulfillment-ablauf.ts).
     expect(crm?.mandate).toHaveLength(3);
     expect(crm?.leistungen.every(l => l.status === 'aktiv')).toBe(true);
+    // Produkte als Karten (19.10., P4): über den Produkt-Import — vier bestehende ergänzt, vier neu, jede Preis-Form; der zweite Lauf ist „gleich“.
+    const { DEMO_PRODUKT_KARTEN } = await import('@/lib/demo/saat');
+    expect(n['Produkte als Karten (Import)']).toBe(DEMO_PRODUKT_KARTEN.length);
+    expect(n['Produkte: zweiter Import gleich']).toBe(DEMO_PRODUKT_KARTEN.length);
+    const karten = crm!.leistungen as unknown as { id: string; preise?: { art: string }[] }[];
+    expect(karten.filter(l => l.preise?.length)).toHaveLength(DEMO_PRODUKT_KARTEN.length);
+    expect(new Set(karten.flatMap(l => (l.preise ?? []).map(t => t.art)))).toEqual(new Set(['kostenlos', 'fest', 'monatlich', 'erfolg', 'je_einheit', 'jaehrlich', 'tagessatz', 'stundensatz']));
+    expect(karten.filter(l => l.id.startsWith('l-demo-')).length).toBe(4);
     const konten = await db.loadJson<{ konten: { email: string; haushalt: string }[] }>('konten');
     expect(konten?.konten.every(k => k.email.endsWith('@example.invalid') && k.haushalt === 'demo')).toBe(true);
     const reg = await db.loadJson<{ gesellschaften: { id: string; rolle?: string; gesellschafter?: unknown[] }[] }>('gesellschaften--demo');

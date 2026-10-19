@@ -362,6 +362,9 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // GET liefert nur Kennungen/Anzahlen der Einfügungen. Schreiben nur von Hand (Dienstweg 403).
   'crm/mandate-tabelle': r('GET,POST', MT, 'Mandate aus Excel/CSV einfügen: Firmen über den EINEN Weg (firmaSichern), Mandate über den CRM-Schreibweg; Vorschau → Übernehmen (Vorschau-Kennung, 409) → Rückgängig (nur Unverändertes); nur von Hand.'),
   'crm/person': r('POST', MT, 'EIN Weg „Person anlegen“ (Kartei, Firmenkarte, + Aktivität, Prospecting, Make.One-Abend; Woche 2 · 1.8) — nur von Hand.'),
+  // Produkte & Mandate · Produkt-Import (P4, 19.10.): Vorschau schreibt nie; Übernehmen über den CRM-Schreibweg (Stand, Prüfen, Regeln) in EINER Sperre,
+  // Abläufe über den Fulfillment-Weg. Dienstweg nur MIT Person des Haushalts (Import im Namen einer Person), Konto „nur Business“ darf (Business).
+  'crm/produkte/import': r('POST', 'haushalt', 'Produkt-Import (Karten als JSON oder Tabelle): Vorschau neu/ändert/gleich/Fehler, dann anlegen bzw. Teil-Merge — nur Haushalt des Inhabers, Grenzen 413.'),
   'crm/scoring': r('GET,PATCH', MT, 'Lead-Scoring.'),
   'crm/planung': r('GET,PATCH', MT, 'Markttraktion-Planung (Schnellknopf „Planung“, 10.10.): Leadkanäle, Kreislauf, Umsatzziele, Challenges — Business; Schreiben nur per Sitzung (Dienstweg 403).'),
   // Produkte & Mandate · Leistungstreppe (10.10.): Treppe, Kundenreise, Zielbild, Roadmap, Positionierung, Fortschritt je Mandat — Business; Schreiben nur per Sitzung.
