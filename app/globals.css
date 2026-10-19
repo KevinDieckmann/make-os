@@ -1114,6 +1114,21 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 @media screen and (min-width: 721px) { .ff-reise-weg[data-flow="an"] .ff-reise-band { border-bottom-color: transparent !important; } }
 @media screen { .ff-fluss[data-flow="an"] .ff-fluss-pfeil-linie { opacity: 0; } }
 @media print { .ff-flow-ebene { display: none !important; } }
+/* Produkte · der Katalog als Treppe (19.10., P2 — components/os/mandate/KatalogTreppe.tsx): Stufen von links (Einstieg) nach rechts, Alternativen
+   übereinander, je Stufe ein Balken; der Faden (`.ff-flow-ebene`) läuft hinter den Kacheln über die Balken — solange er läuft, treten sie zurück.
+   Breiter als die Karte → nur die Treppe wischt seitwärts (der Rahmen), nie die Seite. Am Handy untereinander, der Balken links als Strich. */
+.pk-treppe-rahmen { overflow-x: auto; min-width: 0; padding-bottom: 2px; }
+.pk-treppe { position: relative; isolation: isolate; display: inline-flex; align-items: flex-end; gap: 12px; min-width: 100%; box-sizing: border-box; padding-bottom: 10px; vertical-align: top; }
+.pk-treppe > .ff-flow-ebene { z-index: -1; }
+.pk-stufe { position: relative; display: grid; gap: 8px; flex: 1 0 172px; width: 172px; min-width: 0; align-content: end; }
+.pk-balken { display: block; height: 6px; border-radius: 3px; opacity: .55; }
+@media screen { .pk-treppe[data-flow="an"] .pk-balken { opacity: .16; } }
+@media (max-width: 720px) {
+  .pk-treppe-rahmen { overflow-x: visible; }
+  .pk-treppe { display: flex; flex-direction: column; align-items: stretch; width: 100%; min-width: 0; padding-left: 22px; gap: 16px; }
+  .pk-stufe { flex: none; width: auto; margin-bottom: 0 !important; }
+  .pk-balken { position: absolute; left: -16px; top: 4px; bottom: 4px; width: 4px; height: auto; }
+}
 .ff-fall-raster { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; min-width: 0; }
 @media (min-width: 1180px) { .ff-fall-raster { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } .ff-fall-raster > .ff-fall-detail { position: sticky; top: 12px; } }
 @media (max-width: 720px) {

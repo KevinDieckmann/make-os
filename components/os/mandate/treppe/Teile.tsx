@@ -9,6 +9,8 @@
 // Gerechnet wird nichts hier (lib/crm/treppe.ts); geschrieben über Einzel-Schritte mit Stand (daten.ts).
 
 import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, SCHRIFT, TYP, TIEF } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Leer, Liste, Zeile, Zahl, Raster, LEUCHT, useHandy, useRueckfrage } from '../../ui';
 import { Wahl } from '../../crm/Wahl';
@@ -32,7 +34,7 @@ export function Kundenreise({ api, lage }: { api: TreppeApi; lage: TreppeLage })
   const [offen, setOffen] = useState<string | null>(null);
   const stationen = lage.datei.kreislauf;
   const reise = lage.kundenreise;
-  const stufen = lage.datei.stufen.map(s => ({ id: s.id, label: s.name }));
+  const stufen = lage.katalog.stufen.map(s => ({ id: s.id, label: s.name })); // aus dem Katalog (19.10., P2)
   const neu = () => api.schreibe([{ op: 'station', eintrag: { name: `Station ${stationen.length + 1}` } }]);
   const st = stationen.find(s => s.id === offen);
   return (
@@ -45,7 +47,7 @@ export function Kundenreise({ api, lage }: { api: TreppeApi; lage: TreppeLage })
       ) : (
         <div role="group" aria-label="Kundenreise — die Stationen im Kreis" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 8 }}>
           {reise.map((s, i) => {
-            const stufe = lage.datei.stufen.find(x => x.id === stationen.find(y => y.id === s.id)?.stufeId);
+            const stufe = lage.katalog.stufen.find(x => x.id === stationen.find(y => y.id === s.id)?.stufeId);
             const f = stufe ? farbeVonEbene(stufe.ebene) : C.aktiv;
             return (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -85,6 +87,7 @@ export function Zielbild({ api, lage }: { api: TreppeApi; lage: TreppeLage }) {
   const jahr = Number(lage.heute.slice(0, 4));
   const jahre = [jahr - 1, jahr, jahr + 1, jahr + 2].map(j => ({ id: String(j), label: String(j) }));
   const stand = (id: string) => lage.datei.stufen.find(s => s.id === id)?.stand;
+  const karteVon = (id: string): string | null => { const h = lage.katalog.herkunft[id]; return h?.karte && h.leistungId ? h.leistungId : null; };
   const ziel = (id: string, feld: 'umsatz' | 'kunden', t: string) => void api.schreibe([{ op: 'stufe', eintrag: { id, ziel: { [feld]: zahl(t) } }, stand: stand(id) }]);
   return (
     <>
@@ -95,7 +98,7 @@ export function Zielbild({ api, lage }: { api: TreppeApi; lage: TreppeLage }) {
           <Zahl wert={String(z.summe.istKunden)} label={`Kunden · Ziel ${z.summe.zielKunden}`} farbe={LEUCHT.business} />
           <Zahl wert={`${k.stundenWoche} h`} label={`Aufwand je Woche · frei ${k.frei == null ? '—' : `${k.frei} h`}`} farbe={k.ueber ? LEUCHT.kritisch : LEUCHT.gut} />
         </Raster>
-        {!lage.datei.stufen.length ? <div style={{ ...klein, marginTop: 10 }}>Erst Stufen anlegen — dann bekommt jede ihr Ziel.</div> : (
+        {!lage.katalog.stufen.length ? <div style={{ ...klein, marginTop: 10 }}>Erst Stufen anlegen — dann bekommt jede ihr Ziel.</div> : (
           <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
             {z.zeilen.map(r => {
               const f = farbeVonEbene(r.ebene);
@@ -103,10 +106,13 @@ export function Zielbild({ api, lage }: { api: TreppeApi; lage: TreppeLage }) {
                 <div key={r.stufeId} style={{ display: 'grid', gap: 6, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
                     <span style={{ fontSize: TYP.body, fontWeight: 600 }}>{r.ebene}. {r.name}</span>
-                    <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <Feld typ="text" breite={130} wert={r.ziel.umsatz ? String(r.ziel.umsatz) : ''} platzhalter="Umsatzziel €" onFertig={t => ziel(r.stufeId, 'umsatz', t)} />
-                      <Feld typ="text" breite={110} wert={r.ziel.kunden ? String(r.ziel.kunden) : ''} platzhalter="Kundenziel" onFertig={t => ziel(r.stufeId, 'kunden', t)} />
-                    </span>
+                    {/* Stufe aus einer Produkt-Karte (19.10., P2): das Ziel steht EINMAL — an der Karte (dort ändern); sonst an der gespeicherten Stufe. */}
+                    {karteVon(r.stufeId) ? <Link href={WEG.produkt(karteVon(r.stufeId)!)} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Ziel in der Karte ändern ›</Link> : (
+                      <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <Feld typ="text" breite={130} wert={r.ziel.umsatz ? String(r.ziel.umsatz) : ''} platzhalter="Umsatzziel €" onFertig={t => ziel(r.stufeId, 'umsatz', t)} />
+                        <Feld typ="text" breite={110} wert={r.ziel.kunden ? String(r.ziel.kunden) : ''} platzhalter="Kundenziel" onFertig={t => ziel(r.stufeId, 'kunden', t)} />
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
                     <div style={{ display: 'grid', gap: 4 }}><span style={klein}>Umsatz {euro(r.ist.umsatz)}{r.ziel.umsatz ? ` von ${euro(r.ziel.umsatz)}` : ''}</span><Balken wert={anteil(r.ist.umsatz, r.ziel.umsatz)} farbe={LEUCHT.geld} /></div>
@@ -142,7 +148,7 @@ export function Roadmap({ api, lage }: { api: TreppeApi; lage: TreppeLage }) {
   const pakete = [...lage.datei.roadmap].sort((a, b) => (a.start ?? '9999').localeCompare(b.start ?? '9999') || a.titel.localeCompare(b.titel));
   const [offen, setOffen] = useState<string | null>(null);
   const p = pakete.find(x => x.id === offen);
-  const stufen = lage.datei.stufen.map(s => ({ id: s.id, label: s.name }));
+  const stufen = lage.katalog.stufen.map(s => ({ id: s.id, label: s.name })); // aus dem Katalog (19.10., P2)
   const set = (id: string, stand: string, teil: Record<string, unknown>) => void api.schreibe([{ op: 'paket', eintrag: { id, ...teil }, stand }]);
   const monatOk = (t: string) => (/^\d{4}-\d{2}$/.test(t.trim()) ? t.trim() : t.trim() === '' ? null : undefined);
   return (
@@ -152,7 +158,7 @@ export function Roadmap({ api, lage }: { api: TreppeApi; lage: TreppeLage }) {
         <Liste>
           {pakete.map(x => (
             <Zeile key={x.id} aktiv={x.id === offen} onClick={() => setOffen(x.id === offen ? null : x.id)} titel={x.titel}
-              unter={[x.start || x.fertig ? `${x.start ? monat(x.start) : '?'} – ${x.fertig ? monat(x.fertig) : '?'}` : 'ohne Zeitplan', x.stufeId ? lage.datei.stufen.find(s => s.id === x.stufeId)?.name : '', x.warum].filter(Boolean).join(' · ')}
+              unter={[x.start || x.fertig ? `${x.start ? monat(x.start) : '?'} – ${x.fertig ? monat(x.fertig) : '?'}` : 'ohne Zeitplan', x.stufeId ? lage.katalog.stufen.find(s => s.id === x.stufeId)?.name : '', x.warum].filter(Boolean).join(' · ')}
               rechts={<Chip farbe={STATUS_FARBE[x.status]}>{lage.auswahl.paketStatus.find(s => s.id === x.status)?.label ?? x.status}</Chip>} />
           ))}
         </Liste>

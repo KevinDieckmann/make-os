@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, feld } from '../ui';
+import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, feld, Hinweis as UiHinweis } from '../ui';
 import { WEG } from '@/lib/wege';
 import { eur, prozent, monatLabel, neueKennung } from '@/lib/finanzen/plan/hilfen';
 import { UG_KURZ, GESELLSCHAFTEN, finanzOrtName } from '@/lib/einheiten';
@@ -101,6 +101,9 @@ export function Baukasten() {
   const [loeschen, setLoeschen] = useState(false);
   const [vergleichIds, setVergleichIds] = useState<(string | null)[]>([null]);
   const feldParam = params.get('feld');
+  // Aus der Produkt-Karte (19.10., B15, WEG.finanzplanungProdukt): das Produkt ist vorgewählt — ein Klick legt den Umsatzbaustein an.
+  const produktParam = params.get('produkt');
+  const vorgewaehlt = produktParam ? vorschlaege.produkte.find(x => x.id === produktParam) ?? null : null;
 
   const P = useCallback((pfad: string) => `/planszenarien/id=${ps?.id}${pfad}`, [ps?.id]);
   const setze = useCallback((pfad: string, alt: unknown, neu: unknown, feld: string) => aendere([{ pfad: P(pfad), alt, neu }], `${ps?.name ?? 'Szenario'} · ${feld}`), [aendere, P, ps?.name]);
@@ -206,13 +209,20 @@ export function Baukasten() {
               </Tabelle>
             ) : <Nichts>Noch kein Umsatz im Szenario. Ein Produkt unten anklicken oder „+ Umsatz“ für einen freien Baustein.</Nichts>}
             <div style={{ marginTop: 12 }}>
+              {vorgewaehlt && (
+                <div style={{ marginBottom: 10 }}>
+                  <UiHinweis art="info" titel={`„${vorgewaehlt.name}“ aus der Produkt-Karte`} aktion={<Knopf onClick={() => bausteinDazu(bausteinAusProdukt(neueKennung('b'), vorgewaehlt, { start: m0 }), `Umsatz aus Produkt ${vorgewaehlt.name}`)}>Als Umsatzbaustein hinzufügen</Knopf>}>
+                    {vorgewaehlt.fehlt.length ? `Für die Planung fehlt im Produkt noch: ${vorgewaehlt.fehlt.join(', ')} — der Baustein geht trotzdem, die Werte lassen sich hier ändern.` : `${vorgewaehlt.preis ? `${eur(vorgewaehlt.preis)} € ${vorgewaehlt.basis ? RHYTHMUS_LABEL[RHYTHMUS_AUS_BASIS[vorgewaehlt.basis]] : ''}` : 'Preis offen'}${vorgewaehlt.laufzeit ? ` · ${vorgewaehlt.laufzeit} Monate` : ''} — Kunde, Menge und Start danach in der Zeile.`}
+                  </UiHinweis>
+                </div>
+              )}
               <div style={{ ...MIKRO, marginBottom: 6 }}>Aus dem Produktkatalog</div>
               {vorschlaege.produkte.length ? (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {vorschlaege.produkte.map(p => (
                     <button key={p.id} type="button" title={p.fehlt.length ? `Für die Planung fehlt: ${p.fehlt.join(', ')} — auf der Produktseite ergänzen` : `${p.einheit}${p.laufzeit ? ` · ${p.laufzeit} Monate` : ''}`}
                       onClick={() => void bausteinDazu(bausteinAusProdukt(neueKennung('b'), p, { start: m0 }), `Umsatz aus Produkt ${p.name}`)}
-                      style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${p.fehlt.length ? `${LEUCHT.achtung}66` : 'rgba(255,255,255,.12)'}`, background: 'transparent', color: p.fehlt.length ? LEUCHT.achtung : C.ink }}>
+                      style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${p.id === produktParam ? C.aktiv : p.fehlt.length ? `${LEUCHT.achtung}66` : 'rgba(255,255,255,.12)'}`, background: p.id === produktParam ? `${C.aktiv}1F` : 'transparent', color: p.fehlt.length ? LEUCHT.achtung : C.ink }}>
                       + {p.name}{p.preis ? ` · ${eur(p.preis)} € ${p.basis ? RHYTHMUS_LABEL[RHYTHMUS_AUS_BASIS[p.basis]] : ''}` : ' · Preis offen'}{p.status === 'entwurf' ? ' · Entwurf' : ''}
                     </button>
                   ))}

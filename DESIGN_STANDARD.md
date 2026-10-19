@@ -323,6 +323,7 @@ derselbe Faden überall, aus demselben Zeichner, mit derselben Bedeutung.
 | Einrichtung (Etappen + Schritte) | Planung › Jahr: Meilenstein-Kette im Seil mit Stau an „wartet auf“ |
 | Planung › Ziel (Meilensteine + Aufgaben) | Aufgaben: Abhängigkeiten (`abhaengigVon`) als Kette |
 | Lichtfäden / Seil im Planungsjahr (eigener Zeichner, gleiche Sprache) | Bauplan-Board: Ideen → Fertig · Angebot: Entwurf → gestellt → angenommen |
+| Produkte › Leistungstreppe (19.10.): über die Stufen, hell bis zur höchsten Stufe mit Kunden, über der Platzgrenze rot (`treppenFaden`) | |
 
 
 ## Überblick „Für dich“ je Bereich (04.10. abends)

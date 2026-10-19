@@ -212,6 +212,16 @@ export const dealAkte = (id: string): string => markttraktion('deals', 'akte', i
 
 /** Produkte & Mandate (25.09.): eigener Bereich links unter Aufgaben — s: mandate (Start) · produkte, k: Mandat bzw. Produkt. */
 export const MANDATE_PFAD = '/os/mandate';
+/**
+ * „+ Mandat“ aus der Adresse (19.10., Produkt-Karte P2): `?neu=mandat&produkt=<Produkt>` (WEG.mandatAusProdukt) öffnet den Dialog mit dem
+ * Produkt vorbelegt. null, wenn die Adresse das nicht verlangt; eine ungültige Kennung zählt nicht.
+ */
+export function mandatNeuAusAdresse(p: { get: (k: string) => string | null }): { leistungId: string } | null {
+  if (p.get('neu') !== 'mandat') return null;
+  const id = p.get('produkt') ?? '';
+  return /^[a-z0-9][a-z0-9-]{1,63}$/.test(id) ? { leistungId: id } : null;
+}
+
 export function mandateLink(s?: 'mandate' | 'produkte', k?: string): string {
   const q = new URLSearchParams();
   if (s === 'produkte') q.set('s', 'produkte');
