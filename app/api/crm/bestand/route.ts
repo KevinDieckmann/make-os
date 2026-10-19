@@ -120,6 +120,8 @@ export async function PATCH(req: Request) {
   if (e.konflikte.length) return NextResponse.json({ ok: false, fehler: 'Wurde inzwischen geändert — neu geladen, bitte noch einmal.', konflikte: e.konflikte.map(konfliktOhneIban) }, { status: 409 });
   if (e.sperren.length) return NextResponse.json({ ok: false, fehler: e.sperren.map(s => s.text).join(' · '), sperren: e.sperren }, { status: 409 });
   if (e.grenze.length) return NextResponse.json({ ok: false, fehler: e.grenze.join(' · ') }, { status: 413 });
+  // Produkt-Karte (19.10.): Unsinn in Preis-Teilen, Vertrag, Regeln … — ganze Änderung abgelehnt, nichts gespeichert.
+  if (e.ungueltig?.length) return NextResponse.json({ ok: false, fehler: e.ungueltig.join(' · '), ungueltig: e.ungueltig }, { status: 400 });
   // Regeln (28.09.): Angebote nur übers Tool, Produkt ohne Leistungstext nicht „aktiv“ — ganze Änderung abgelehnt.
   if (e.abgelehnt?.length) return NextResponse.json({ ok: false, fehler: e.abgelehnt.join(' · '), abgelehnt: e.abgelehnt }, { status: 409 });
   // Event-Termine nachziehen (29.09., K5): Datum, Uhrzeit, Titel, Ort, Absage → der iCloud-Spiegel folgt

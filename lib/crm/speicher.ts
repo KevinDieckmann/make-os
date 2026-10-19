@@ -29,6 +29,7 @@ import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
+import { kartenFelderSaeubern, mandatZusatzSaeubern, produktSpiegeln, produktPruefen, spiegelKonflikt, PRODUKT_GRENZEN } from './produkt-karte';
 import { personenSchranke, kampagnenHinweise, kanalWechselBereinigen, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
 import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
@@ -114,8 +115,8 @@ export const HISTORIE_MAX = 5000;
 const GRENZE_IDS = 500;
 export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> = {
   chancen: { kontaktIds: GRENZE_IDS, personenRollen: GRENZE_IDS },
-  mandate: { kontaktIds: GRENZE_IDS, ziele: 500, leistungen: 1000, offen: 1000 },
-  leistungen: { lieferumfang: 500, phasen: 500, unterlagen: 500 },
+  mandate: { kontaktIds: GRENZE_IDS, ziele: 500, leistungen: 1000, offen: 1000, zusatz: PRODUKT_GRENZEN.zusatz },
+  leistungen: { lieferumfang: 500, phasen: 500, unterlagen: 500, preise: PRODUKT_GRENZEN.preise },
   firmen: { branchen: 100 },
   events: { ablauf: 1000, checkliste: 2000, budget: 1000, zielpersonen: ZIELPERSONEN_MAX, uebergaben: UEBERGABEN_MAX, wer: WER_MAX },
   sitzungen: { karten: 2000 },
@@ -417,7 +418,21 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
         : undefined;
       return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}) };
     }
-    case 'mandate': return firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {};
+    case 'mandate': {
+      // Zusatzmodule (19.10., lib/crm/produkt-karte.ts — Form; Rechnung/Liquidität/Fall in P3): ohne diese Zeile fielen sie beim Speichern weg.
+      const zusatzModule = mandatZusatzSaeubern(o.zusatz);
+      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}) };
+    }
+    case 'leistungen': {
+      // Produkt-Karte (19.10., PRODUKTE_KONZEPT.md): die neuen Felder — geprüft vorher (`produktOpsPruefen`, 400/413), hier nur gesäubert.
+      // Ohne Karten-Felder: nichts (der Eintrag bleibt bit-gleich). Gespiegelt wird in `saeubern` (`produktSpiegeln`).
+      const { preise, vertrag, regeln, rolle, ebene, aufgabe, kennzahl, dauerTage, aufwandStundenWoche, ziel } = kartenFelderSaeubern(o);
+      return {
+        ...(preise ? { preise } : {}), ...(vertrag ? { vertrag } : {}), ...(regeln ? { regeln } : {}), ...(rolle ? { rolle } : {}), ...(ebene !== undefined ? { ebene } : {}),
+        ...(aufgabe ? { aufgabe } : {}), ...(kennzahl ? { kennzahl } : {}), ...(dauerTage !== undefined ? { dauerTage } : {}),
+        ...(aufwandStundenWoche !== undefined ? { aufwandStundenWoche } : {}), ...(ziel ? { ziel } : {}),
+      };
+    }
     // Marke (27.09.): durchreichen, wenn gesetzt — ohne Eintrag gilt Make.One abgeleitet (lib/crm/events.ts markeVon), nichts wird zurückgeschrieben.
     // Besuchte Events (03.10., lib/crm/besuche-form.ts): für wen, Anmeldestand, wer geht, Link, Zielpersonen, Übergabe-Protokoll — ohne diese Zeilen fielen sie bei jedem Speichern weg.
     case 'events': {
@@ -472,7 +487,9 @@ export function saeubern(liste: CrmListe, roh: Record<string, unknown>, jetzt: s
   const e = saeubernRoh(liste, roh, jetzt, person);
   if (!e) return e;
   // Archiv & Papierkorb (04.10., lib/crm/ablage.ts): die Marken je Liste — die Zeit selbst setzt `wendeCrmAn` (Server-Zeit).
-  const mit = { ...e, ...zusatz(liste, roh), ...ablageZusatz(liste, roh) };
+  const roh2 = { ...e, ...zusatz(liste, roh), ...ablageZusatz(liste, roh) };
+  // Produkt-Karte (19.10.): `preis`, `laufzeitMonate`, `aufwand.stunden` aus der Karte spiegeln — alte Leser und der alte Stand arbeiten weiter.
+  const mit = liste === 'leistungen' ? produktSpiegeln(roh2 as unknown as Leistung) as unknown as Record<string, unknown> : roh2;
   return 'geaendert' in mit && liste !== 'antraege' && liste !== 'verarbeitungen' ? { ...mit, geaendertVon: person } : mit;
 }
 function saeubernRoh(liste: CrmListe, roh: Record<string, unknown>, jetzt: string, person: string): Record<string, unknown> | null {
@@ -547,6 +564,9 @@ export function regelnAbgelehnt(b: CrmBestand, ops: ListenOp[]): string[] {
     const angebot = 'angebot' in roh ? leistungAngebotSaeubern(roh.angebot) : alt?.angebot;
     const name = String(roh.name ?? alt?.name ?? id);
     const fehlt = produktAngebotFehlt({ angebot });
+    // Produkt-Karte (19.10.): ein gespiegeltes Feld direkt ändern (alte Oberfläche) ginge beim Spiegeln still verloren → Ablehnung mit Text.
+    const spiegel = spiegelKonflikt(alt, roh);
+    if (spiegel) { raus.push(spiegel); continue; }
     if (status === 'aktiv' && alt?.status !== 'aktiv' && fehlt.length) raus.push(`„${name}“ kann erst aktiv gehen, wenn die Angebotstexte stehen — für Angebote fehlt: ${fehlt.join(', ')}.`);
     else if (status === 'aktiv' && alt?.status === 'aktiv' && !produktAngebotFehlt(alt).length && fehlt.length) raus.push(`„${name}“ ist aktiv — der Leistungstext bleibt Pflicht. Erst auf Entwurf stellen, dann leeren.`);
   }
@@ -638,6 +658,27 @@ export interface CrmAnwendung {
    * auch neue Verweise auf gesperrte Personen, `personenSchranke`) — die GANZE Änderung ist abgelehnt.
    */
   abgelehnt?: string[];
+  /** 400 (19.10.): Unsinn in den Feldern der Produkt-Karte (`produktPruefen`) — die GANZE Änderung ist abgelehnt. */
+  ungueltig?: string[];
+}
+
+/**
+ * Felder der Produkt-Karte prüfen (19.10., lib/crm/produkt-karte.ts `produktPruefen`) — nur, was mitkommt; Verweise (Anrechnung, Inklusive)
+ * gegen den Katalog IN der Sperre. 413 = zu groß, 400 = Unsinn; nie still gekürzt.
+ */
+export function produktOpsPruefen(b: CrmBestand, ops: ListenOp[]): { grenze: string[]; ungueltig: string[] } {
+  const grenze: string[] = [], ungueltig: string[] = [];
+  // Bekannt = Katalog außerhalb des Papierkorbs + Produkte, die in derselben Änderung neu angelegt werden.
+  const ids = new Set(b.leistungen.filter(l => !l.geloeschtAm).map(l => l.id));
+  for (const o of ops) if (o.liste === 'leistungen' && o.op === 'upsert' && typeof o.eintrag?.id === 'string') ids.add(o.eintrag.id);
+  for (const o of ops) {
+    if (o.liste !== 'leistungen' || o.op === 'delete') continue;
+    const roh = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;
+    const id = String(o.op === 'teil' ? o.id : roh.id ?? '');
+    const name = String(roh.name ?? b.leistungen.find(l => l.id === id)?.name ?? id);
+    for (const f of produktPruefen(roh, { id, bekannt: x => ids.has(x) })) (f.status === 413 ? grenze : ungueltig).push(`„${name}“: ${f.text}`);
+  }
+  return { grenze, ungueltig };
 }
 
 /**
@@ -665,6 +706,10 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
   // Nie abschneiden (28.09.): zu lange Listen → die ganze Änderung wird abgelehnt (413).
   const zuLang = crmGrenzen(roh);
   if (zuLang.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: zuLang };
+  // Produkt-Karte (19.10.): Preis-Teile, Vertrag, Regeln … — zu groß 413, Unsinn 400, nie still gekürzt.
+  const produkt = produktOpsPruefen(b, roh);
+  if (produkt.grenze.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: produkt.grenze };
+  if (produkt.ungueltig.length) return { bestand: b, angewandt: 0, fehler: [], konflikte: [], sperren: [], grenze: [], ungueltig: produkt.ungueltig };
   // Kanal einer Kampagne wird werblich (08.10., Woche 2 · 5.4): rote Personen fallen heraus, mit Hinweis — VOR der Schranke.
   const kanalWechsel = kanalWechselBereinigen(b, roh, personen ?? personenImLauf.getStore() ?? [], localDay());
   roh = kanalWechsel.ops;
