@@ -14,7 +14,7 @@ import { Fenster } from '../Fenster';
 import type { ImportArt, ImportZeile } from '@/lib/crm/produkt-import';
 
 interface PlanAnsicht { zeilen: ImportZeile[]; zahlen: Record<ImportArt, number>; fehler: string[]; hinweise: string[]; status: number }
-interface Antwort { ok?: boolean; fehler?: string; plan?: PlanAnsicht; angelegt?: number; geaendert?: number; ablauf?: { zugeordnet: number; hinweise: string[] } }
+interface Antwort { ok?: boolean; fehler?: string; plan?: PlanAnsicht; angelegt?: number; geaendert?: number; ablauf?: { zugeordnet: number; hinweise: string[] }; treppe?: { verknuepft: number; hinweise: string[] } }
 
 const ART: Record<ImportArt, { name: string; farbe: string }> = {
   neu: { name: 'neu', farbe: BEDEUTUNG_FARBE.gut },
@@ -99,9 +99,9 @@ export function ProduktImport({ onZu, onFertig }: { onZu: () => void; onFertig?:
     const a = await senden(text, false);
     if (a.plan) { setPlan(a.plan); setPlanFuer(text); }
     if (!a.ok) { setFehler(a.fehler ?? 'Nicht übernommen — nichts gespeichert.'); return; }
-    const teile = [a.angelegt ? `${a.angelegt} angelegt` : '', a.geaendert ? `${a.geaendert} geändert` : '', a.ablauf?.zugeordnet ? `${a.ablauf.zugeordnet} Abläufe zugeordnet` : ''].filter(Boolean);
+    const teile = [a.angelegt ? `${a.angelegt} angelegt` : '', a.geaendert ? `${a.geaendert} geändert` : '', a.ablauf?.zugeordnet ? `${a.ablauf.zugeordnet} Abläufe zugeordnet` : '', a.treppe?.verknuepft ? `${a.treppe.verknuepft} Treppen-Stufen verknüpft` : ''].filter(Boolean);
     setFertig(teile.length ? `Übernommen: ${teile.join(' · ')}.` : 'Übernommen.');
-    setAblaufHinweise(a.ablauf?.hinweise ?? []);
+    setAblaufHinweise([...(a.ablauf?.hinweise ?? []), ...(a.treppe?.hinweise ?? [])]);
     onFertig?.();
   };
 

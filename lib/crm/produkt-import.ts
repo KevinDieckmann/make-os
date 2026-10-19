@@ -5,7 +5,8 @@
 //   · das Format `ProduktImport` = eine Produkt-Karte als JSON (alle Karten-Felder aus P1 + Name, Status, Gesellschaft, Texte, Lieferumfang,
 //     Ablauf), Bezüge (Anrechnung, inklusive) über Produkt-NAMEN — aufgelöst gegen die Lieferung und den Katalog
 //   · `importPlanen(bestand, eingaben, kontext)` → je Produkt neu · ändert (Feld alt → neu) · gleich · Fehler · übersprungen, dazu die Ops für den
-//     CRM-Schreibweg (neu = upsert, ändert = teil mit NUR den gelieferten Feldern — Teil-Merge) und die Ablauf-Zuordnungen
+//     CRM-Schreibweg (neu = upsert, ändert = teil mit NUR den gelieferten Feldern — Teil-Merge), die Ablauf-Zuordnungen und die Verknüpfung
+//     gleichnamiger Treppen-Stufen ohne Produkt (nur `leistungIds`; sonst stünde die Stufe nach dem Import doppelt da)
 //   · `importAusTabelle(csv)` → `ProduktImport[]` (eine Zeile je Produkt bzw. je Preis-Teil; gleiche Namen werden zusammengeführt)
 // Regeln: Abgleich über den Namen ohne Groß/Klein und Leerzeichen (`nameSchluessel`); Papierkorb und Archiv werden erkannt und NIE wiederbelebt
 // (nur Hinweis); geprüft über `produktPruefen`/`preisteilPruefen` (lib/crm/produkt-karte.ts) — nie still gekürzt (zu lang → Fehler 413);
@@ -117,6 +118,8 @@ export interface ImportZeile {
   fehler: string[];
   hinweise: string[];
   ablauf?: { name: string; stand: 'neu' | 'gleich' | 'fehlt' | 'mehrdeutig' | 'entfernen'; vorlageId?: string };
+  /** Gleichnamige Stufe der Leistungstreppe: verknüpfen (sie hat kein Produkt), gleich (schon verknüpft), mehrdeutig/vergeben (nur Hinweis). */
+  stufe?: { id?: string; name: string; stand: 'verknuepfen' | 'gleich' | 'mehrdeutig' | 'vergeben' };
 }
 export interface ImportPlan {
   zeilen: ImportZeile[];
@@ -130,6 +133,11 @@ export interface ImportPlan {
   ops: ListenOp[];
   /** Ablauf-Zuordnungen Produkt → Paket-Vorlage (`null` = entfernen) — über den Fulfillment-Weg (`zuordnung`). */
   zuordnungen: { leistungId: string; vorlageId: string | null }[];
+  /**
+   * Gespeicherte Stufen der Leistungstreppe ohne Produkt, die mit einem Produkt der Lieferung gleich heißen — über den Treppen-Schreibweg
+   * (Op `stufe` mit Stand) verknüpft: nur `leistungIds` ändert sich (das Produkt vorn, alte Verweise bleiben dahinter).
+   */
+  stufen: { stufeId: string; leistungId: string; leistungIds: string[]; stand?: string }[];
 }
 export interface ImportKontext {
   /** Kennung für ein neues Produkt (Server: `neueKennung('l')`). */
@@ -141,8 +149,11 @@ export interface ImportKontext {
   zuordnung?: Readonly<Record<string, { vorlageId: string }>>;
   /** Konto „nur Business“: Produkte einer Privat-Einheit sind dann Fehler (wie überall in der Markttraktion). */
   nurBusiness?: boolean;
-  /** Namen der gespeicherten Treppen-Stufen ohne (vorhandenes) Produkt — für den Hinweis „steht sonst doppelt“. */
-  stufenOhneProdukt?: readonly string[];
+  /**
+   * Die GESPEICHERTEN Stufen der Leistungstreppe (mit Stand des Eintrags) — eine gleichnamige Stufe ohne vorhandenes Produkt wird beim Übernehmen
+   * mit dem Produkt verknüpft, sonst stünde sie nach dem Import doppelt da (Stufe ohne Produkt + neue Stufe der Karte).
+   */
+  stufen?: readonly { id: string; name: string; leistungIds: readonly string[]; stand?: string }[];
 }
 
 // ── Kleine Helfer ────────────────────────────────────────────────────────────
@@ -229,7 +240,7 @@ const FELD_LABEL: Record<string, string> = {
   'vertrag.rechnungsrhythmus': 'Rechnung', 'vertrag.zahlungszielTage': 'Zahlungsziel (Tage)', 'vertrag.ustSatz': 'USt-Satz (%)', 'vertrag.reisekosten': 'Reisekosten',
   'regeln.anrechnung': 'Anrechnung', 'regeln.maxGleichzeitig': 'Höchstens gleichzeitig', 'regeln.inklusive': 'Inklusive', rolle: 'Rolle', ebene: 'Stufe der Treppe',
   aufgabe: 'Aufgabe', kennzahl: 'Kennzahl', dauerTage: 'Dauer (Tage)', aufwandStundenWoche: 'Aufwand (Std./Woche)', 'ziel.umsatz': 'Umsatzziel (€)', 'ziel.kunden': 'Kundenziel',
-  ablauf: 'Ablauf',
+  ablauf: 'Ablauf', stufe: 'Leistungstreppe',
 };
 const DANACH_TEXT: Record<string, string> = { monatlich_kuendbar: 'monatlich kündbar', verlaengert_um_laufzeit: 'verlängert sich um die Laufzeit', endet: 'endet' };
 const ROLLE_TEXT: Record<string, string> = { haupt: 'Hauptprodukt', zusatz: 'Zusatzmodul', beides: 'Haupt- oder Zusatzmodul' };
@@ -277,7 +288,7 @@ function typAusPreisen(p: PreisTeil[] | undefined): LeistungTyp {
  * Hinweis). Status 200 nur ohne jeden Fehler; dann tragen `ops` (CRM-Schreibweg) und `zuordnungen` (Fulfillment) genau die Änderungen.
  */
 export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: unknown, k: ImportKontext): ImportPlan {
-  const plan: ImportPlan = { zeilen: [], zahlen: { neu: 0, aendert: 0, gleich: 0, fehler: 0, uebersprungen: 0 }, fehler: [], hinweise: [], status: 200, ops: [], zuordnungen: [] };
+  const plan: ImportPlan = { zeilen: [], zahlen: { neu: 0, aendert: 0, gleich: 0, fehler: 0, uebersprungen: 0 }, fehler: [], hinweise: [], status: 200, ops: [], zuordnungen: [], stufen: [] };
   const grenze: PruefFehler[] = [];
   if (!Array.isArray(eingaben)) { plan.fehler.push('„produkte“: eine Liste von Produkten (je Produkt ein Objekt mit mindestens „name“).'); plan.status = 400; return plan; }
   if (!eingaben.length) { plan.fehler.push('Keine Produkte in der Lieferung.'); plan.status = 400; return plan; }
@@ -334,7 +345,9 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
 
   // Ablauf: Paket-Vorlagen über den Titel (ohne Groß/Klein und Leerzeichen).
   const vorlageZu = (titel: string) => (k.vorlagen ?? []).filter(x => nameSchluessel(x.titel) === nameSchluessel(titel));
-  const ohneProdukt = new Set((k.stufenOhneProdukt ?? []).map(nameSchluessel));
+  // Treppe: gespeicherte Stufen; „ohne Produkt“ = keine ihrer Kennungen ist ein vorhandenes Produkt (Papierkorb zählt nicht — wie `katalogTreppe`).
+  const gespeichert = k.stufen ?? [];
+  const vorhanden = new Set(lebendig.map(l => l.id));
 
   // 2) Je Produkt die Felder prüfen, auflösen und mit dem Katalog vergleichen.
   for (const v of vor) {
@@ -510,7 +523,28 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
         else { zeile.ablauf = { name: t[0].titel, stand: 'neu', vorlageId: t[0].id }; plan.zuordnungen.push({ leistungId: v.id, vorlageId: t[0].id }); merke('ablauf', bisherName, t[0].titel); }
       }
     }
-    if (ohneProdukt.has(v.schluessel)) zeile.hinweise.push('Auf der Leistungstreppe steht eine Stufe mit diesem Namen ohne Produkt — dort mit diesem Produkt verknüpfen, sonst steht es doppelt.');
+    // Gleichnamige Stufe der Leistungstreppe ohne Produkt → verknüpfen (nur eindeutig; schon vergeben bzw. mehrdeutig → nur Hinweis).
+    const gleichnamig = gespeichert.filter(x => nameSchluessel(x.name) === v.schluessel);
+    if (gleichnamig.length) {
+      const schon = alt ? gespeichert.find(x => x.leistungIds.includes(v.id!)) : undefined;
+      const s0 = gleichnamig[0];
+      const anderes = gleichnamig.length === 1 ? s0.leistungIds.find(x => x !== v.id && vorhanden.has(x)) : undefined;
+      if (schon && gleichnamig.some(x => x.id === schon.id)) zeile.stufe = { id: schon.id, name: schon.name, stand: 'gleich' };
+      else if (gleichnamig.length > 1) {
+        zeile.stufe = { name: s0.name, stand: 'mehrdeutig' };
+        zeile.hinweise.push(`${gleichnamig.length} Stufen der Leistungstreppe heißen „${kurz(s0.name, 60)}“ — nichts verknüpft, bitte in der Treppe zuordnen.`);
+      } else if (anderes) {
+        zeile.stufe = { id: s0.id, name: s0.name, stand: 'vergeben' };
+        zeile.hinweise.push(`Die Stufe „${kurz(s0.name, 60)}“ der Leistungstreppe gehört schon zu „${kurz(nameVonId(anderes), 60)}“ — nichts verknüpft.`);
+      } else if (schon) {
+        zeile.stufe = { id: s0.id, name: s0.name, stand: 'vergeben' };
+        zeile.hinweise.push(`Das Produkt hängt schon an der Stufe „${kurz(schon.name, 60)}“ — die gleichnamige Stufe „${kurz(s0.name, 60)}“ bleibt ohne Produkt.`);
+      } else {
+        zeile.stufe = { id: s0.id, name: s0.name, stand: 'verknuepfen' };
+        plan.stufen.push({ stufeId: s0.id, leistungId: v.id, leistungIds: [v.id, ...s0.leistungIds.filter(x => x !== v.id)], ...(s0.stand ? { stand: s0.stand } : {}) });
+        merke('stufe', undefined, `verknüpft Stufe „${s0.name}“`);
+      }
+    }
 
     zeile.fehler = f.map(x => x.text);
     for (const x of f) if (x.status === 413) grenze.push(x);
@@ -523,6 +557,7 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
         return [{ feld: x, label: FELD_LABEL[x] ?? x, alt: '—', neu: wertText(x, w, nameVonId, k.register) }];
       });
       if (zeile.ablauf?.stand === 'neu') zeile.felder.push({ feld: 'ablauf', label: FELD_LABEL.ablauf, alt: '—', neu: zeile.ablauf.name });
+      if (zeile.stufe?.stand === 'verknuepfen') zeile.felder.push({ feld: 'stufe', label: FELD_LABEL.stufe, alt: '—', neu: `verknüpft Stufe „${zeile.stufe.name}“` });
       const eintrag: Record<string, unknown> = { id: v.id, stufe: 'kern', lieferumfang: [], ...Object.fromEntries(Object.entries(felder).filter(([, w]) => w !== null && w !== undefined)) };
       plan.ops.push({ liste: 'leistungen', op: 'upsert', eintrag });
       continue;
@@ -536,7 +571,7 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
   for (const z of plan.zeilen) plan.zahlen[z.art]++;
   if (plan.zahlen.fehler || plan.fehler.length) {
     plan.status = grenze.length ? 413 : 400;
-    plan.ops = []; plan.zuordnungen = [];
+    plan.ops = []; plan.zuordnungen = []; plan.stufen = [];
   }
   return plan;
 }

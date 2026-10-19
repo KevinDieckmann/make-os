@@ -4,7 +4,9 @@
 //   · Übernehmen: in EINER CRM-Sperre neu planen (gegen den Bestand IN der Sperre) und über den CRM-Schreibweg anwenden (`wendeCrmAn`: Stand,
 //     Prüfen 400/413, Regeln 409; neu = upsert, ändert = teil mit NUR den gelieferten Feldern), Protokoll `{ art: 'import', person }`.
 //     Ein einziger Fehler in der Lieferung → 400 (zu groß → 413), nichts gespeichert. Danach die Abläufe über den Fulfillment-Weg (`zuordnung`),
-//     nur wo es genau eine Paket-Vorlage mit dem Namen gibt — sonst Hinweis. Zweimal derselbe Import = beim zweiten Mal alles „gleich“.
+//     nur wo es genau eine Paket-Vorlage mit dem Namen gibt — sonst Hinweis. Zuletzt gleichnamige Treppen-Stufen ohne Produkt über den Treppen-Schreibweg
+//     (`treppeSchreiben`, Op `stufe` mit dem Stand aus der Vorschau-Lesung): nur `leistungIds` ändert sich, die Kennung der Stufe (Kundenfortschritt)
+//     bleibt. Zweimal derselbe Import = beim zweiten Mal alles „gleich“.
 // Zugang: Haushalt des Inhabers (Klasse `haushalt`); ein Konto „nur Business“ darf (Business), Produkte einer Privat-Einheit nicht. Dienstweg nur
 // MIT einer Person des Haushalts (so importiert Claude auf dem Server im Namen einer Person) — ohne Person bzw. fremde Person 403. Bau-Kennung.
 // Grenzen: höchstens 100 Produkte, 1 MB je Anfrage → 413.
@@ -16,7 +18,6 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { ladeCrm, ladeCrmMitPapierkorb, aendereCrm, wendeCrmAn, type CrmAnwendung } from '@/lib/crm/speicher';
 import { importPlanen, importAusTabelle, IMPORT_GRENZEN, type ImportKontext, type ImportPlan, type TabellenErgebnis } from '@/lib/crm/produkt-import';
-import { stufenOhneProdukt } from '@/lib/crm/produkt-karte';
 import type { CrmBestand } from '@/lib/crm/typen';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
@@ -39,6 +40,11 @@ async function kontextLaden(nurBusiness: boolean): Promise<ImportKontext> {
     } catch { k.register = []; }
   }
   try {
+    // Die gespeicherten Treppen-Stufen mit dem Stand des Eintrags — mit diesem Stand wird verknüpft (inzwischen geändert → 409, nur Hinweis).
+    const { ladeTreppe, eintragStand } = await import('@/lib/crm/treppe-server');
+    k.stufen = (await ladeTreppe()).stufen.map(s => ({ id: s.id, name: s.name, leistungIds: s.leistungIds, stand: eintragStand(s) }));
+  } catch { k.stufen = []; }
+  try {
     const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
     const v = await fulfillmentLesen('vorlagen');
     k.vorlagen = v.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel }));
@@ -46,20 +52,13 @@ async function kontextLaden(nurBusiness: boolean): Promise<ImportKontext> {
   } catch { k.vorlagen = []; }
   return k;
 }
-/** Treppen-Stufen ohne (vorhandenes) Produkt — nur für den Hinweis „steht sonst doppelt“. */
-async function stufenOhne(crm: CrmBestand): Promise<string[]> {
-  try {
-    const { ladeTreppe } = await import('@/lib/crm/treppe-server');
-    return stufenOhneProdukt(crm.leistungen, (await ladeTreppe()).stufen).map(s => s.name);
-  } catch { return []; }
-}
 
 /** Plan + Fehler/Hinweise der Tabelle (eine Stelle für Vorschau und Übernehmen). */
 function planFuer(crm: CrmBestand, produkte: unknown, tabelle: TabellenErgebnis | null, k: ImportKontext): ImportPlan {
   const p = importPlanen(crm, produkte, k);
   if (tabelle) {
     p.hinweise.unshift(...tabelle.hinweise);
-    if (tabelle.fehler.length) { p.fehler.unshift(...tabelle.fehler); if (p.status === 200) p.status = 400; p.ops = []; p.zuordnungen = []; }
+    if (tabelle.fehler.length) { p.fehler.unshift(...tabelle.fehler); if (p.status === 200) p.status = 400; p.ops = []; p.zuordnungen = []; p.stufen = []; }
   }
   return p;
 }
@@ -84,15 +83,12 @@ export async function POST(req: Request) {
   const k = await kontextLaden(await privatAusgeblendetFuer(person));
 
   if (vorschau) {
-    const crm = await ladeCrmMitPapierkorb();
-    k.stufenOhneProdukt = await stufenOhne(crm);
-    const p = planFuer(crm, produkte, tabelle, k);
+    const p = planFuer(await ladeCrmMitPapierkorb(), produkte, tabelle, k);
     // Die Vorschau zeigt Fehler im Plan (200) — nur eine zu große Lieferung als Ganzes ist 413.
     return NextResponse.json({ ok: true, vorschau: true, plan: oeffentlich(p) }, { status: p.status === 413 && !p.zeilen.length ? 413 : 200 });
   }
 
   // Übernehmen: in EINER Sperre neu planen und anwenden — gegen den Bestand IN der Sperre.
-  k.stufenOhneProdukt = await stufenOhne(await ladeCrmMitPapierkorb());
   const jetzt = new Date();
   const wer: Wer = { art: 'import', person };
   const halter: { plan?: ImportPlan; r?: CrmAnwendung } = {};
@@ -132,8 +128,20 @@ export async function POST(req: Request) {
       ablauf.hinweise.push('Abläufe nicht zugeordnet (Fulfillment nicht lesbar) — bitte im Fulfillment zuordnen.');
     }
   }
+  // Gleichnamige Treppen-Stufen ohne Produkt verknüpfen — über den Treppen-Schreibweg (Einzel-Op mit Stand, alles oder nichts).
+  const treppe = { verknuepft: 0, hinweise: [] as string[] };
+  if (plan.stufen.length) {
+    try {
+      const { treppeSchreiben } = await import('@/lib/crm/treppe-server');
+      const t = await treppeSchreiben(plan.stufen.map(x => ({ op: 'stufe', eintrag: { id: x.stufeId, leistungIds: x.leistungIds }, stand: x.stand })), person, wer, jetzt);
+      if (t.ok) treppe.verknuepft = plan.stufen.length;
+      else treppe.hinweise.push(t.status === 409 ? 'Die Leistungstreppe wurde inzwischen geändert — Stufen nicht verknüpft. Bitte die Vorschau neu holen und noch einmal übernehmen.' : `Stufen nicht verknüpft: ${t.fehler} — bitte in der Treppe verknüpfen.`);
+    } catch {
+      treppe.hinweise.push('Stufen nicht verknüpft (Leistungstreppe nicht lesbar) — bitte in der Treppe verknüpfen.');
+    }
+  }
   return NextResponse.json({
     ok: true, vorschau: false, plan: oeffentlich(plan),
-    angelegt: plan.zahlen.neu, geaendert: plan.zahlen.aendert, gleich: plan.zahlen.gleich, uebersprungen: plan.zahlen.uebersprungen, ablauf,
+    angelegt: plan.zahlen.neu, geaendert: plan.zahlen.aendert, gleich: plan.zahlen.gleich, uebersprungen: plan.zahlen.uebersprungen, ablauf, treppe,
   });
 }

@@ -177,6 +177,33 @@ describe('Ablauf (Fulfillment-Vorlage) — nur Hinweis, wenn es ihn nicht gibt',
   });
 });
 
+describe('Gleichnamige Treppen-Stufe ohne Produkt — verknüpfen statt doppelt', () => {
+  const stufe = (id: string, name: string, leistungIds: string[] = []) => ({ id, name, leistungIds, stand: `stand-${id}` });
+  it('eindeutig und ohne vorhandenes Produkt → verknüpfen (Produkt vorn, alte tote Verweise bleiben); schon verknüpft → gleich', () => {
+    const p = importPlanen(BESTAND, [{ name: 'Erfundenes Coaching' }, { name: 'Steuerungs-Begleitung' }], kontext({
+      stufen: [stufe('ts-alt-coaching', 'erfundenes  Coaching', ['l-weg']), stufe('ts-steuer', 'Steuerungs-Begleitung', ['l-steuer'])],
+    }));
+    expect(p.status).toBe(200);
+    const coaching = p.zeilen[0];
+    expect(coaching.stufe).toEqual({ id: 'ts-alt-coaching', name: 'erfundenes  Coaching', stand: 'verknuepfen' });
+    expect(coaching.felder).toContainEqual({ feld: 'stufe', label: 'Leistungstreppe', alt: '—', neu: 'verknüpft Stufe „erfundenes  Coaching“' });
+    expect(p.stufen).toEqual([{ stufeId: 'ts-alt-coaching', leistungId: coaching.id, leistungIds: [coaching.id, 'l-weg'], stand: 'stand-ts-alt-coaching' }]);
+    expect(p.zeilen[1]).toMatchObject({ art: 'gleich', stufe: { id: 'ts-steuer', stand: 'gleich' } });
+  });
+  it('mehrdeutig, schon vergeben oder Produkt hängt schon an einer anderen Stufe → nur Hinweis, nichts verknüpft', () => {
+    const p = importPlanen(BESTAND, [{ name: 'Doppelte Stufe' }, { name: 'Vergebene Stufe' }, { name: 'Steuerungs-Begleitung' }], kontext({
+      stufen: [stufe('ts-d1', 'Doppelte Stufe'), stufe('ts-d2', 'doppelte stufe'), stufe('ts-v', 'Vergebene Stufe', ['l-alt']),
+        stufe('ts-steuer-alt', 'Begleitung alt', ['l-steuer']), stufe('ts-steuer-neu', 'Steuerungs-Begleitung')],
+    }));
+    expect(p.stufen).toEqual([]);
+    expect(p.zeilen.map(z => z.stufe?.stand)).toEqual(['mehrdeutig', 'vergeben', 'vergeben']);
+    expect(p.zeilen[0].hinweise.join(' ')).toMatch(/2 Stufen der Leistungstreppe heißen „Doppelte Stufe“ — nichts verknüpft/);
+    expect(p.zeilen[1].hinweise.join(' ')).toMatch(/gehört schon zu „Alte Analyse“ — nichts verknüpft/);
+    expect(p.zeilen[2].hinweise.join(' ')).toMatch(/hängt schon an der Stufe „Begleitung alt“/);
+    expect(p.zeilen[2].art).toBe('gleich');
+  });
+});
+
 describe('Tabelle (CSV)', () => {
   it('Semikolon, deutsche Beträge, gleiche Namen = ein Produkt mit mehreren Preis-Teilen, Listen und Inklusive', () => {
     const csv = [
@@ -349,6 +376,58 @@ describe('Route — Vorschau, Anlegen, zweiter Lauf', () => {
     expect(r.status).toBe(400);
     expect(r.d.fehler).toMatch(/nichts gespeichert/);
     expect(JSON.stringify(await db.loadJson('crm'))).toBe(vorher);
+  });
+});
+
+describe('Route — Altstufe ohne Produkt (live-ähnlich): verknüpfen, Kundenfortschritt bleibt, EINE Stufe in der Katalog-Treppe', () => {
+  const COACHING: ProduktImport[] = [
+    { name: 'Erfundenes Coaching', status: 'aktiv', gesellschaft: 'ug', leistungstext: 'Monatliches Coaching.', preise: [{ art: 'monatlich', betrag: 1800 }], ebene: 2 },
+    { name: 'Doppelte Stufe', status: 'aktiv', gesellschaft: 'ug', leistungstext: 'Erfunden.', preise: [{ art: 'fest', betrag: 500 }], ebene: 3 },
+  ];
+  it('Vorschau nennt die Verknüpfung, Übernehmen verknüpft über den Treppen-Schreibweg, zweiter Lauf „gleich“', async () => {
+    const { treppeSchreiben, ladeTreppe } = await import('@/lib/crm/treppe-server');
+    const { katalogTreppe } = await import('@/lib/crm/produkt-karte');
+    // Altbestand wie aus „Aus Dokument übernehmen“: eine Stufe ohne Produkt (mit totem Verweis), ein Kunde steht in ihr; dazu zwei gleichnamige Stufen.
+    const t = await treppeSchreiben([
+      { op: 'stufe', eintrag: { id: 'ts-alt-coaching', name: 'erfundenes coaching', ebene: 2, preis: { art: 'fest', betrag: 1000 }, leistungIds: ['l-geloescht-alt'], lieferobjekte: ['Altes Lieferobjekt'], kennzahl: 'Alte Kennzahl' } },
+      { op: 'stufe', eintrag: { id: 'ts-doppel-a', name: 'Doppelte Stufe', ebene: 3, preis: { art: 'fest' } } },
+      { op: 'stufe', eintrag: { id: 'ts-doppel-b', name: 'Doppelte Stufe', ebene: 3, preis: { art: 'fest' } } },
+      { op: 'kunde', mandatId: 'm-alt-kunde', felder: { stufeId: 'ts-alt-coaching' } },
+    ], 'pa');
+    expect(t.ok).toBe(true);
+    const vorher = await ladeTreppe();
+
+    const v = await POST({ produkte: COACHING }, 'pa');
+    expect(v.status).toBe(200);
+    expect(v.d.plan.zeilen[0].stufe).toEqual({ id: 'ts-alt-coaching', name: 'erfundenes coaching', stand: 'verknuepfen' });
+    expect(v.d.plan.zeilen[0].felder.map((f: { neu: string }) => f.neu)).toContain('verknüpft Stufe „erfundenes coaching“');
+    expect(v.d.plan.zeilen[1].stufe.stand).toBe('mehrdeutig');
+    expect(JSON.stringify(await ladeTreppe())).toBe(JSON.stringify(vorher));
+
+    const r = await POST({ produkte: COACHING, vorschau: false }, 'pa');
+    expect(r.status).toBe(200);
+    expect(r.d.treppe).toEqual({ verknuepft: 1, hinweise: [] });
+    const nach = await ladeTreppe();
+    const crm = (await db.loadJson<{ leistungen: Leistung[] }>('crm'))!;
+    const id = crm.leistungen.find(l => l.name === 'Erfundenes Coaching')!.id;
+    const alt = nach.stufen.find(s => s.id === 'ts-alt-coaching')!;
+    // Nur `leistungIds` ändert sich — Name, Lieferobjekte, Kennzahl der Stufe bleiben gespeichert; der Kunde steht weiter in ihr.
+    expect(alt).toMatchObject({ name: 'erfundenes coaching', leistungIds: [id, 'l-geloescht-alt'], lieferobjekte: ['Altes Lieferobjekt'], kennzahl: 'Alte Kennzahl' });
+    expect(nach.kunden['m-alt-kunde'].stufeId).toBe('ts-alt-coaching');
+    expect(nach.stufen.filter(s => s.id.startsWith('ts-doppel')).map(s => s.leistungIds)).toEqual([[], []]);
+    // Katalog-Treppe: EINE Stufe für das Produkt — die alte Kennung, die Karte gewinnt; nicht mehr „ohne Produkt“.
+    const kt = katalogTreppe(crm.leistungen, nach.stufen);
+    const coaching = kt.stufen.filter(s => s.leistungIds.includes(id) || nameSchluessel(s.name) === nameSchluessel('Erfundenes Coaching'));
+    expect(coaching.map(s => s.id)).toEqual(['ts-alt-coaching']);
+    expect(coaching[0]).toMatchObject({ name: 'Erfundenes Coaching', preis: { art: 'monat', betrag: 1800 }, lieferobjekte: ['Altes Lieferobjekt'] });
+    expect(kt.herkunft['ts-alt-coaching']).toEqual({ leistungId: id, gespeichert: true, karte: true });
+    expect(kt.ohneProdukt.map(s => s.id)).not.toContain('ts-alt-coaching');
+
+    const zweiter = await POST({ produkte: COACHING, vorschau: false }, 'pa');
+    expect(zweiter.d.plan.zahlen).toMatchObject({ neu: 0, aendert: 0, gleich: 2 });
+    expect(zweiter.d.plan.zeilen[0].stufe.stand).toBe('gleich');
+    expect(zweiter.d.treppe.verknuepft).toBe(0);
+    expect(JSON.stringify(await ladeTreppe())).toBe(JSON.stringify(nach));
   });
 });
 
