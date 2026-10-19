@@ -148,10 +148,82 @@ export interface Mandat {
   zustaendig?: string;
   /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit). Archiv = Status „beendet“. */
   geloeschtAm?: string;
+  /**
+   * Zusatzmodule (19.10., PRODUKTE_KONZEPT.md — optional, additiv): Mandat = Hauptprodukt (`leistungId`) + Zusatzmodule. Form und
+   * Säuberung in lib/crm/produkt-karte.ts (`mandatZusatzSaeubern`); Rechnung, Liquidität und Fall folgen in Paket P3.
+   */
+  zusatz?: MandatZusatz[];
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
 }
+
+/** Ein Zusatzmodul am Mandat (19.10.): ein Produkt mit Rolle „zusatz“/„beides“, optional mit eigenem Honorar (Cent) oder inklusive. */
+export interface MandatZusatz {
+  /** `mz-…` */
+  id: string;
+  leistungId: string;
+  /** YYYY-MM-DD */
+  ab?: string;
+  bis?: string;
+  /** Netto in Cent; `basis` = wie oft (je Einheit/Stunde: nur auf Klick „abrechnen“ mit Menge — P3). */
+  honorar?: { betragCent: number; basis: MandatZusatzBasis };
+  /** Im Hauptprodukt enthalten (0-€-Position mit Hinweis), z. B. „1 Event je Quartal inklusive“. */
+  inklusive?: boolean;
+  /** Nur bei inklusive: wie viele je Zeitraum. */
+  menge?: number;
+  je?: 'monat' | 'quartal' | 'jahr';
+}
+export type MandatZusatzBasis = 'monat' | 'jahr' | 'einmalig' | 'einheit' | 'tag' | 'stunde';
+
+// ── Produkt-Karte (19.10., PRODUKTE_KONZEPT.md „Ein Produkt, eine Karte“) ─────
+// Alle Felder optional und additiv an `Leistung`; Regeln, Säuberung und Lesen NUR in lib/crm/produkt-karte.ts.
+/**
+ * Preis-Form eines Preis-Teils. Im Konzept „PreisArt“ — hier `PreisTeilArt`, weil lib/crm/treppe-daten.ts `PreisArt` schon für die
+ * (gespeicherte) Treppen-Stufe exportiert und beide in derselben Datei gebraucht werden.
+ */
+export type PreisTeilArt = 'kostenlos' | 'fest' | 'monatlich' | 'jaehrlich' | 'je_einheit' | 'tagessatz' | 'stundensatz' | 'erfolg';
+/** Ein Teil des Preises — eine Karte trägt mehrere (z. B. einmalig + je Event, monatlich + Bonus). Beträge netto in Cent. */
+export interface PreisTeil {
+  /** `pt-…` */
+  id: string;
+  art: PreisTeilArt;
+  /** Netto in Cent; fehlt bei „kostenlos“ und meist bei „erfolg“ — fehlt er sonst, ist der Preis offen. „ab … bis“: `bisCent`. */
+  betragCent?: number;
+  bisCent?: number;
+  /** Nur `je_einheit`: „je Event“, „je Seat“ … */
+  einheit?: string;
+  /** grund = gilt immer · option = nur, wenn gewählt (Mehrverbrauch, je Event …). */
+  rolle: 'grund' | 'option';
+  /** Zahlplan, z. B. 50/50 = `{ anzahlungProzent: 50 }`. */
+  zahlplan?: { anzahlungProzent: number };
+  /** Was enthalten ist (jährlich mit Kontingent). */
+  kontingent?: string;
+  /** Nur `stundensatz`: höchstens N Stunden je Monat. */
+  deckel?: { stundenJeMonat?: number };
+  /** Kurze Erklärung („Bonus bei erreichten Zielen“, „Erfolgsbeteiligung ab 2. Vertrag“). */
+  text?: string;
+}
+export interface ProduktVertrag {
+  mindestlaufzeitMonate?: number;
+  danach?: 'monatlich_kuendbar' | 'verlaengert_um_laufzeit' | 'endet';
+  kuendigungsfristTage?: number;
+  rechnungsrhythmus?: 'monatlich' | 'quartal' | 'einmalig';
+  zahlungszielTage?: number;
+  /** 19, 7 oder 0. */
+  ustSatz?: number;
+  reisekosten?: 'separat' | 'inklusive';
+}
+export interface ProduktRegeln {
+  /** Wird auf diese Produkte angerechnet (Kennungen), mit diesem Anteil (z. B. Workshop voll auf das Mandat = 100). */
+  anrechnung?: { auf: string[]; anteilProzent: number };
+  /** Höchstens so viele Kunden gleichzeitig (Kapazitätsgrenze). */
+  maxGleichzeitig?: number;
+  /** Enthaltene Produkte, z. B. 1 × Eventvertrieb je Quartal. */
+  inklusive?: { leistungId: string; menge: number; je: 'monat' | 'quartal' | 'jahr' }[];
+}
+/** haupt = trägt ein Mandat · zusatz = Zusatzmodul an einem Mandat · beides. Ohne Angabe: haupt. */
+export type ProduktRolle = 'haupt' | 'zusatz' | 'beides';
 
 export type LeistungTyp = 'diagnose' | 'workshop' | 'retainer' | 'sprint' | 'vermittlung' | 'software';
 /** Ein Schritt im Ablauf eines Produkts (25.09.) — ein Mandat steht in genau einer Phase. */
@@ -203,6 +275,27 @@ export interface Leistung {
   geloeschtAm?: string;
   /** Status vor dem Archivieren (04.10., optional): Zurückholen stellt genau diesen wieder her (Kevin: „wieder aktiv“). */
   statusVorArchiv?: 'aktiv' | 'entwurf';
+  // ── Produkt-Karte (19.10., alles optional — lib/crm/produkt-karte.ts liest, säubert, spiegelt) ──
+  /**
+   * Preis-Teile (führen): fehlen sie, gilt das alte `preis` (`preisteileVon`). Mit Preis-Teilen spiegelt der Server `preis` aus dem
+   * Hauptpreis-Teil (`hauptpreis`), damit alte Leser und der alte Stand weiterarbeiten.
+   */
+  preise?: PreisTeil[];
+  /** Vertrag; `mindestlaufzeitMonate` wird nach `laufzeitMonate` gespiegelt. */
+  vertrag?: ProduktVertrag;
+  regeln?: ProduktRegeln;
+  rolle?: ProduktRolle;
+  /** Stufe der Leistungstreppe (1 = erste; gleiche Ebene = Alternativen) — fehlt: aus der gespeicherten, verknüpften Stufe (Lesen). */
+  ebene?: number;
+  /** Aufgabe des Produkts — und warum es vor dem nächsten kommt (aus der Treppen-Stufe übernommen). */
+  aufgabe?: string;
+  /** Kennzahl, die sich beim Kunden bewegen soll. */
+  kennzahl?: string;
+  dauerTage?: number;
+  /** EIN Aufwand → Kapazität (Stunden je Woche und Kunde); wird nach `aufwand.stunden` (je Preis-Einheit) gespiegelt. */
+  aufwandStundenWoche?: number;
+  /** Ziel im Zieljahr der Treppe — Umsatz in Euro (wie das Zielbild), Kunden als Anzahl. */
+  ziel?: { umsatz?: number; kunden?: number };
   geaendert: string;
 }
 /** Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. */

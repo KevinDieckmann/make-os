@@ -64,6 +64,11 @@ export interface TreppenStufe {
   leistungIds: string[];
   /** Ziel im Zieljahr der Treppe. */
   ziel?: { umsatz?: number; kunden?: number };
+  /**
+   * Nur gelesen, NIE gespeichert (19.10.): Stunden je Woche und Kunde einer Stufe aus dem Katalog (lib/crm/produkt-karte.ts `stufenAusKatalog`,
+   * aus der Produkt-Karte) — gewinnt in `stufeStundenWoche` vor `aufwandStunden`. `stufeLesen` übernimmt es nie.
+   */
+  wochenAufwand?: { stunden: number; annahme: boolean };
   geaendert: string;
   geaendertVon: string;
 }
@@ -295,6 +300,11 @@ export interface AnwendenKontext {
   /** Fingerabdruck eines Eintrags (Server: lib/store/fingerabdruck.ts) — injiziert, damit diese Datei client-sicher bleibt. */
   standVon: (x: object) => string;
   neueId: (praefix: 'ts' | 'st' | 'rp') => string;
+  /**
+   * Kennungen der Stufen, die nur aus dem Katalog kommen (19.10., lib/crm/produkt-karte.ts `stufenAusKatalog` — Produkte mit Ebene ohne
+   * gespeicherte Stufe). Ein Kunde, eine Station oder ein Paket darf auch auf sie zeigen. Fehlt: nur gespeicherte Stufen (wie bisher).
+   */
+  katalogStufen?: readonly string[];
 }
 export type AnwendenErgebnis =
   | { ok: true; datei: TreppeDatei; geaendert: string[] }
@@ -370,6 +380,10 @@ export function vorlageStufen(neueId: AnwendenKontext['neueId']): { stufen: Reco
   return { stufen, stationen: stufen.map(s => ({ id: neueId('st'), name: s.name, stufeId: s.id })) };
 }
 
+/** Gespeicherte Stufen und die Stufen aus dem Katalog (nur Kennungen) — worauf Kunde, Station und Paket zeigen dürfen. */
+const bekannteStufen = (d: Pick<TreppeDatei, 'stufen'>, k: Pick<AnwendenKontext, 'katalogStufen'>): readonly { id: string }[] =>
+  k.katalogStufen?.length ? [...d.stufen, ...k.katalogStufen.map(id => ({ id }))] : d.stufen;
+
 /**
  * Schritte anwenden — alles oder nichts. Neu (Kennung unbekannt oder ohne Kennung) braucht keinen Stand; Ändern und Löschen eines
  * vorhandenen Eintrags nur mit dem Stand, den der Browser bekam (sonst 409 mit den Kennungen).
@@ -405,8 +419,8 @@ export function treppeAnwenden(datei: TreppeDatei, opsRoh: unknown, k: AnwendenK
           for (const f of ['preis', 'regeln', 'ziel'] as const) if (e[f] && typeof e[f] === 'object' && alt) roh2[f] = mischen((alt as unknown as Record<string, Record<string, unknown> | undefined>)[f], e[f] as Record<string, unknown>);
           if (!roh2.preis) roh2.preis = { art: 'fest' };
           stufePruefen(roh2);
-        } else if (art === 'station') stationPruefen(roh2, d.stufen);
-        else paketPruefen(roh2, d.stufen);
+        } else if (art === 'station') stationPruefen(roh2, bekannteStufen(d, k));
+        else paketPruefen(roh2, bekannteStufen(d, k));
         const neu = art === 'stufe' ? stufeLesen({ ...roh2, ...vermerk }) : art === 'station' ? stationLesen({ ...roh2, ...vermerk }) : paketLesen({ ...roh2, ...vermerk });
         if (!neu) nein(`Änderung ${i + 1}: Eintrag unvollständig.`);
         if (!alt) {
@@ -472,7 +486,7 @@ export function treppeAnwenden(datei: TreppeDatei, opsRoh: unknown, k: AnwendenK
             if (f.stufeId === null) { const { stufeId: _x, ...r } = neu; neu = r; }
             else {
               const sid = text(f.stufeId);
-              if (!d.stufen.some(s => s.id === sid)) nein('Diese Stufe gibt es nicht (mehr).');
+              if (!bekannteStufen(d, k).some(s => s.id === sid)) nein('Diese Stufe gibt es nicht (mehr).');
               if (neu.stufeId !== sid) neu = { ...neu, stufeId: sid, verlauf: [...neu.verlauf, { stufeId: sid, ab: k.heute }].slice(-50) };
             }
           }
