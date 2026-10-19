@@ -218,7 +218,7 @@ describe('Saat', () => {
   // Bankverbindung), jede Kundenfirma eine erfundene, vollständige Rechnungsanschrift. Über die Rechnungs-Route wie die Oberfläche.
   it('A7: Absender mit Beispiel-IBAN, Kundenfirmen mit Anschrift — eine Monatsrechnung lässt sich bis „gestellt“ vorführen', async () => {
     const { DEMO_IBAN } = await import('@/lib/demo/saat');
-    const pruefziffer = (iban: string) => BigInt((iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, c => String(c.charCodeAt(0) - 55))) % 97n === 1n;
+    const pruefziffer = (iban: string) => BigInt((iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, c => String(c.charCodeAt(0) - 55))) % BigInt(97) === BigInt(1);
     expect(pruefziffer(DEMO_IBAN)).toBe(true);
     const reg = await db.loadJson<{ gesellschaften: { id: string; bank?: { iban?: string } }[] }>('gesellschaften--demo');
     expect(reg?.gesellschaften.find(g => g.id === 'ug')?.bank?.iban).toBe(DEMO_IBAN);
