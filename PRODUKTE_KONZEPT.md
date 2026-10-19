@@ -185,8 +185,12 @@ EINE Stelle `lib/crm/mandat-zusatz.ts` (rein, Server + Browser) für Zusatzmodul
   wie „Zusatzmodul anhängen“); ohne Fall schlägt der Fall es später vor (`MandatKurz.zusatz`).
 - **Deal folgt dem Angebot:** angenommen → `leistungId` des Deals = `angebotHauptprodukt` (laufend vor einmalig, kein reines Zusatzmodul) — dieselbe Regel
   für Mandat-Vorbelegung und den Deal beim Stellen.
-- Tests: `tests/mandat-produkt.test.ts` (rein), `tests/mandat-produkt-server.test.ts` (Schreibwege). Offen: Anrechnung in der Liquidität (die erste Rechnung
-  ist um die Anrechnung kleiner als der Posten), Anrechnung auf Rechnungen aus dem Angebot, B12/B9 (P4).
+- **Anrechnung in der Liquidität** (P3b, `anrechnungLiquiditaet`): DIESELBE Regel wie die Rechnung (`monatsPositionen` + `anrechnungPositionen`) — einmal,
+  höchstens bis zum Betrag des Monats (der Rest verfällt), im Monat der ersten Rechnung; steht sie schon auf einer Rechnung des Mandats, deren Wirkung in
+  deren Monat. Eigener einmaliger Posten `lp-mandat-<id>~anrechnung` (negativ). Die Route liest dafür die Rechnungen des Finanzplans (nur zum Rechnen).
+  Fehlt er im Plan: „Liquiplan weicht ab — Anrechnung fehlt“; „Plan angleichen“ trägt ihn ein.
+- Tests: `tests/mandat-produkt.test.ts` (rein, auch Summe Liquidität = Rechnungen mit Anrechnung), `tests/mandat-produkt-server.test.ts` (Schreibwege).
+  Offen: Anrechnung auf Rechnungen aus dem Angebot, B12/B9 (P4).
 
 ## Pakete
 

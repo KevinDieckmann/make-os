@@ -7,9 +7,9 @@
 
 import type { Mandat } from './typen';
 import { zahltage, letzterZahltag, type Planposten } from '@/lib/make-one/liquiditaet';
-import { geplantesEnde, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
+import { geplantesEnde, leistungsmonat, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
 import { mandatName } from './mandat-name';
-import { zusatzLiquiditaet } from './mandat-zusatz';
+import { zusatzLiquiditaet, anrechnungLiquiditaet, type AnrechnungKontext } from './mandat-zusatz';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import type { Leistung } from './typen';
 import { PLANPOSTEN_MANDAT, PLANPOSTEN_TEIL } from './mandant-link';
@@ -140,9 +140,13 @@ const titelMit = (name: string, zusatz = '') => `${name.slice(0, TITEL_MAX - zus
  * `beendet: true` rechnet auch ein beendetes Mandat bis zu seinem Ende (ohne Ende: heute) — für „Posten beenden“ und die Lage.
  * Einmalige Honorare und Quartalsrechnungen bleiben EIN Posten wie bisher.
  */
-/** Der Produkt-Katalog — nur für die Namen der Zusatzmodule im Titel der Posten (ohne: „Zusatzmodul“). */
-type Katalog = readonly Pick<Leistung, 'id' | 'name' | 'preis' | 'preise'>[];
-export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean; katalog?: Katalog } = {}): Planposten[] {
+/** Der Produkt-Katalog — für die Namen der Zusatzmodule im Titel der Posten (ohne: „Zusatzmodul“) und die Regeln der Anrechnung. */
+type Katalog = readonly (Pick<Leistung, 'id' | 'name' | 'preis' | 'preise'> & Partial<Pick<Leistung, 'regeln' | 'geloeschtAm'>>)[];
+/** Was die Anrechnung in der Liquidität braucht (P3b): alle Mandate und Rechnungen — ohne sie keine Anrechnung im Plan (wie bisher). */
+export type AnrechnungBestand = Pick<AnrechnungKontext, 'mandate' | 'rechnungen'>;
+/** Kennung des Postens der Anrechnung (der erste ohne Monat, weitere — nur bei mehreren Rechnungen mit Anrechnung — mit Monat). */
+export const anrechnungPostenId = (m: Pick<Mandat, 'id'>, monat?: string) => `${PLANPOSTEN_MANDAT}${m.id}${PLANPOSTEN_TEIL}anrechnung${monat ? `${PLANPOSTEN_TEIL}${monat}` : ''}`;
+export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean; katalog?: Katalog; anrechnung?: AnrechnungBestand } = {}): Planposten[] {
   const beendet = m.status === 'beendet';
   if (beendet ? !opt.beendet : m.status !== 'aktiv' && m.status !== 'verhandlung') return [];
   const ende = beendet ? (m.ende ?? heute) : geplantesEnde(m);
@@ -158,8 +162,17 @@ export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean;
       id: `${PLANPOSTEN_MANDAT}${m.id}${PLANPOSTEN_TEIL}${z.id}`, titel: titelMit(name, ` — ${z.titel}`.slice(0, 60)), betrag: z.betrag, rhythmus: z.rhythmus, ab: z.ab, ...(z.bis ? { bis: z.bis } : {}), ...gemeinsam, notiz: z.notiz,
     }))
     : [];
+  // Anrechnung (19.10., P3b): dieselbe Regel wie die Monatsrechnung — einmal, höchstens bis zum Betrag des Monats, im Monat der ersten Rechnung;
+  // ein eigener einmaliger Posten (negativ) am Zahltag dieses Monats. Ohne Bestand bzw. ohne Regel keiner (bit-gleich).
+  const anrechnung: Planposten[] = opt.anrechnung && opt.katalog && m.firmaId && m.leistungId
+    ? anrechnungLiquiditaet(m, basis.slice(0, 7), ende, { katalog: opt.katalog, mandate: opt.anrechnung.mandate, rechnungen: opt.anrechnung.rechnungen, nettoAusBrutto }).map((a, i) => {
+      const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, a.monat);
+      return { id: anrechnungPostenId(m, i ? a.monat : undefined), titel: titelMit(name, ` — ${a.titel}`.slice(0, 60)), betrag: a.cent / 100, rhythmus: 'einmalig' as const, ab: plusTage(lm?.tage ? lm.von : `${a.monat}-01`, zahlungsziel(m)), ...gemeinsam,
+        notiz: `Aus dem Mandat (CRM): ${a.titel} — einmal, auf der Rechnung für ${monatsName(a.monat)} (höchstens bis zum Betrag des Monats).` };
+    })
+    : [];
   const haupt = hauptPosten(m, { ende, basis, name, gemeinsam });
-  return zusatz.length ? [...haupt, ...zusatz].sort((x, y) => x.ab.localeCompare(y.ab)) : haupt;
+  return zusatz.length || anrechnung.length ? [...haupt, ...zusatz, ...anrechnung].sort((x, y) => x.ab.localeCompare(y.ab)) : haupt;
 }
 
 /** Die Posten des Honorars (ohne Zusatzmodule) — genau wie bis 19.10. */
@@ -203,6 +216,8 @@ export function keinPostenGrund(m: Pick<Mandat, 'status' | 'honorar'>): string {
   return 'Kein Posten.';
 }
 
+/** Anfang des Satzes, wenn die Anrechnung im Plan fehlt (P3b) — die Mandatsliste zeigt dann „Liquiplan weicht ab — Anrechnung fehlt“. */
+export const ANRECHNUNG_FEHLT = 'Anrechnung fehlt';
 export type LiquiLageArt = 'fehlt' | 'ok' | 'abweichend' | 'kein-posten' | 'endet' | 'beendet';
 export interface MandatLiquiLage {
   lage: LiquiLageArt;
@@ -230,11 +245,11 @@ function kuenftig(l: readonly Planposten[], heute: string, bis: string): { summe
  * Teilmonat fehlt, zahlt länger oder kürzer) · kein Posten (mit Grund) · endet (beendet, der Plan zahlt noch über das Ende) · beendet (der
  * Plan endet mit dem Mandat). Verglichen werden die KÜNFTIGEN Zahlungen — Vergangenes ist Rechnung, nicht Plan.
  */
-export function mandatLiquiLage(m: Mandat, posten: readonly Planposten[], heute: string, katalog?: Katalog): MandatLiquiLage {
+export function mandatLiquiLage(m: Mandat, posten: readonly Planposten[], heute: string, katalog?: Katalog, anrechnung?: AnrechnungBestand): MandatLiquiLage {
   const ist = posten.filter(p => postenVomMandat(p.id, m));
   const vorhanden = ist.find(p => p.id === hauptPostenId(m)) ?? ist[0] ?? null;
   const beendet = m.status === 'beendet';
-  const soll = mandatPosten(m, heute, { beendet, katalog });
+  const soll = mandatPosten(m, heute, { beendet, katalog, anrechnung });
   // Beendet ohne Posten (bzw. ohne Plan): nichts einzutragen — der Satz sagt, warum.
   if (beendet ? !ist.length : !soll.length) return { lage: 'kein-posten', soll: beendet ? [] : soll, vorhanden, grund: keinPostenGrund(m) };
   if (!ist.length) return { lage: 'fehlt', soll, vorhanden: null };
@@ -254,7 +269,9 @@ export function mandatLiquiLage(m: Mandat, posten: readonly Planposten[], heute:
   if (sollHaupt && istHaupt && Math.abs(istHaupt.betrag - sollHaupt.betrag) > 1) return { lage: 'abweichend', soll, vorhanden, grund: `Plan ${euroText(istHaupt.betrag)}, Mandat ${euroText(sollHaupt.betrag)} je Zahlung.` };
   if (sollHaupt && istHaupt && istHaupt.rhythmus !== sollHaupt.rhythmus) return { lage: 'abweichend', soll, vorhanden, grund: `Plan ${istHaupt.rhythmus}, Mandat ${sollHaupt.rhythmus}.` };
   const fehltTeil = soll.find(t => t.id !== hauptPostenId(m) && t.ab >= heute && !ist.some(x => x.id === t.id && Math.abs(x.betrag - t.betrag) <= 1));
-  if (fehltTeil) return { lage: 'abweichend', soll, vorhanden, grund: fehltTeil.id.includes(`${PLANPOSTEN_TEIL}z-`)
+  if (fehltTeil) return { lage: 'abweichend', soll, vorhanden, grund: fehltTeil.id.startsWith(anrechnungPostenId(m))
+    ? `${ANRECHNUNG_FEHLT} — ${fehltTeil.titel.split(' — ').pop() ?? 'Anrechnung'} (${euroText(fehltTeil.betrag)}) steht nicht im Plan, der Monat ist sonst zu hoch.`
+    : fehltTeil.id.includes(`${PLANPOSTEN_TEIL}z-`)
     ? `Zusatzmodul ${fehltTeil.titel.split(' — ').pop() ?? ''} (${euroText(fehltTeil.betrag)}) fehlt im Plan.`
     : `${fehltTeil.titel.split(' — ').pop() ?? 'Ein Teilmonat'} (${euroText(fehltTeil.betrag)}) fehlt im Plan — der Plan rechnet den Monat sonst voll.` };
   if (!gleich) return { lage: 'abweichend', soll, vorhanden, grund: `Der Plan rechnet künftig ${euroText(a.summe)}, das Mandat ${euroText(b.summe)}${b.letzte ? ` bis ${tagText(b.letzte)}` : ''}.` };

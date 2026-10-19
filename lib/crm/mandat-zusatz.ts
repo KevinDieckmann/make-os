@@ -225,7 +225,7 @@ const gilt = (r: Pick<Rechnung, 'status' | 'art'>) => r.status !== 'storniert' &
 export interface AnrechnungKontext {
   katalog: readonly Pick<Leistung, 'id' | 'name' | 'regeln' | 'geloeschtAm'>[];
   mandate: readonly Pick<Mandat, 'id' | 'firmaId' | 'leistungId' | 'status' | 'honorar' | 'ustSatz' | 'geloeschtAm'>[];
-  rechnungen: readonly Pick<Rechnung, 'id' | 'status' | 'art' | 'mandatId' | 'kundeFirmaId' | 'positionen'>[];
+  rechnungen: readonly Pick<Rechnung, 'id' | 'status' | 'art' | 'mandatId' | 'kundeFirmaId' | 'positionen' | 'leistungVon'>[];
   nettoAusBrutto: (brutto: number, satz: number) => number;
 }
 /**
@@ -383,6 +383,46 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
     else raus.push(...buendeln(z.id, zahlungen, art === 'jahr' ? 12 : 1, offen, notiz, name));
   }
   return raus;
+}
+
+// ── Anrechnung in der Liquidität (19.10., P3b) ───────────────────────────────
+
+/** Die Anrechnung als Liquiplan-Zahlung: Monat, Wirkung auf die Monatsrechnung (brutto, Cent, negativ) und die Namen der angerechneten Produkte. */
+export interface AnrechnungZahlung { monat: string; cent: number; titel: string }
+const ohneAnrechnung = (l: readonly RechnungPosition[]) => l.filter(p => !istAnrechnung(p));
+/** Was die Anrechnung auf einer Rechnung ausmacht (brutto, Cent, ≤ 0): Summe mit ihr minus Summe ohne sie — die Steuer kaufmännisch je Rechnung. */
+export const anrechnungWirkungCent = (positionen: readonly RechnungPosition[]) => rechnungSummen(positionen).brutto - rechnungSummen(ohneAnrechnung(positionen)).brutto;
+
+/**
+ * Die Anrechnung in der Liquidität — DIESELBE Regel wie die Monatsrechnung (`monatsPositionen` + `anrechnungPositionen`): einmal, höchstens bis zum
+ * Betrag des Monats (der Rest verfällt wie auf der Rechnung), im Monat der ersten Rechnung des Hauptprodukts.
+ *   · Steht sie schon auf einer Rechnung dieses Mandats: ihre Wirkung im Leistungsmonat dieser Rechnung (nur ab `abMonat` — Vergangenes ist Rechnung).
+ *   · Steht sie auf einer anderen gültigen Rechnung (Merker): keine.
+ *   · Sonst im ersten Monat ab `abMonat`, in dem das Mandat eine Monatsrechnung hat — so, wie die Rechnung sie dort rechnen wird.
+ * Leer ohne Regel, ohne Kauf bzw. ohne Firma (Mandat ohne Anrechnung: nichts, bit-gleich).
+ */
+export function anrechnungLiquiditaet(m: Mandat, abMonat: string, ende: string | null, ctx: AnrechnungKontext & Pick<PositionKontext, 'katalog'>): AnrechnungZahlung[] {
+  if (!m.firmaId || !m.leistungId) return [];
+  const eigene = ctx.rechnungen.filter(r => gilt(r) && r.mandatId === m.id && (r.positionen ?? []).some(istAnrechnung));
+  const titel = (l: readonly RechnungPosition[]) => l.filter(istAnrechnung).map(p => p.titel).join(', ');
+  if (eigene.length) {
+    return eigene.filter(r => typeof r.leistungVon === 'string' && r.leistungVon.slice(0, 7) >= abMonat)
+      .map(r => ({ monat: r.leistungVon!.slice(0, 7), cent: anrechnungWirkungCent(r.positionen!), titel: titel(r.positionen!) }))
+      .filter(x => x.cent < 0);
+  }
+  const mitEnde = { ...m, ...(ende ? { ende } : {}) };
+  const pctx: PositionKontext = { katalog: ctx.katalog, nettoAusBrutto: ctx.nettoAusBrutto };
+  const start = [abMonat, m.start?.slice(0, 7)].filter((x): x is string => !!x).sort().at(-1)!;
+  const letzter = ende ? ende.slice(0, 7) : monatPlus(start, 24);
+  for (let mo = start; mo <= letzter; mo = monatPlus(mo, 1)) {
+    const pos = monatsPositionen(mitEnde, mo, pctx, ende);
+    if (!pos.length) continue;
+    const anr = anrechnungPositionen(m, pos, ctx);
+    if (!anr.length) return [];
+    const cent = anrechnungWirkungCent([...pos, ...anr]);
+    return cent < 0 ? [{ monat: mo, cent, titel: titel(anr) }] : [];
+  }
+  return [];
 }
 
 // ── Anzeige ──────────────────────────────────────────────────────────────────

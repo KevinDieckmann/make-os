@@ -45,7 +45,7 @@ import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GesellschaftWahl } from './GesellschaftWahl';
 import { finanzFirmaFuer, NUR_GRUNDDATEN, istBusinessGesellschaft } from '@/lib/einheiten';
-import { mandatGesellschaftOffen } from '@/lib/crm/kunden';
+import { mandatGesellschaftOffen, ANRECHNUNG_FEHLT } from '@/lib/crm/kunden';
 import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 import { MandantLink } from './MandantLink';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
@@ -71,6 +71,8 @@ const VERLAENGERUNG = [{ id: 'auto', label: 'verlängert sich' }, { id: 'manuell
 const statusFarbe = (s: string) => (s === 'aktiv' ? LEUCHT.gut : s === 'verhandlung' || s === 'angebot' ? LEUCHT.business : C.inkLeise);
 /** Lage im Liquiditätsplan je Mandat (GET /api/crm/liquiplan — gerechnet in lib/crm/kunden.ts `mandatLiquiLage`). */
 interface LiquiLage { id: string; lage: LiquiLageArt; grund?: string; letzteZahlung?: string; soll: Planposten[]; vorhanden: { id: string; betrag: number } | null }
+/** Der Hinweis in der Liste, wenn der Plan abweicht — fehlt die Anrechnung (P3b), sagt er das. */
+const abweichText = (lq: Pick<LiquiLage, 'grund'>) => (lq.grund?.startsWith(ANRECHNUNG_FEHLT) ? `Liquiplan weicht ab — ${ANRECHNUNG_FEHLT}` : 'Liquiplan weicht ab');
 /** Euro auf den Cent (Teilmonate). */
 const euroCent = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0);
 /** Titel in Listen: „Firma“ und der Rest des Titels — steht die Firma schon im Titel, nicht doppelt (18.10., N18). */
@@ -254,10 +256,10 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
                 <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
                   links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
                   titel={<MandatTitel m={m} />}
-                  unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? 'Liquiplan weicht ab' : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
+                  unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? abweichText(lq) : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {breit && lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
-                    {breit && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>Liquiplan weicht ab</Chip>}
+                    {breit && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>{abweichText(lq)}</Chip>}
                     {breit && lq?.lage === 'endet' && <Chip farbe={LEUCHT.achtung}>Liquiplan läuft weiter</Chip>}
                     {breit && !m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
                     {breit && !m.firmaId && <Chip farbe={LEUCHT.achtung}>ohne Firma</Chip>}

@@ -13,9 +13,9 @@ import { neuesMandat, mandatPlan } from '@/lib/crm/mandate-tabelle';
 import { mandatVorbelegung, angebotHauptprodukt } from '@/lib/crm/angebote';
 import {
   monatsPositionen, zusatzPositionen, abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, anrechnungId, gekauftCent, zusatzLiquiditaet, zusatzArt,
-  zusatzBeschreibung, nurAbgerechnet, positionsId, type AnrechnungKontext,
+  zusatzBeschreibung, nurAbgerechnet, positionsId, anrechnungLiquiditaet, type AnrechnungKontext,
 } from '@/lib/crm/mandat-zusatz';
-import { mandatPosten, mandatLiquiLage, postenAngleichen, postenVomMandat, hauptPostenId } from '@/lib/crm/kunden';
+import { mandatPosten, mandatLiquiLage, postenAngleichen, postenVomMandat, hauptPostenId, anrechnungPostenId, ANRECHNUNG_FEHLT } from '@/lib/crm/kunden';
 import { geplantesEnde, leistungsmonat } from '@/lib/crm/mandat-laufzeit';
 import { positionAusMandat, rechnungSummen, positionenSaeubern } from '@/lib/finanzen/rechnung/regeln';
 import { zahltage, type Planposten } from '@/lib/make-one/liquiditaet';
@@ -326,5 +326,74 @@ describe('Deal folgt dem Angebot — das Hauptprodukt', () => {
     expect(angebotHauptprodukt({ positionen: [pos('l-mon', 'monat'), pos('l-ws', 'einmalig')] }, KATALOG)).toBe('l-ws');
     expect(angebotHauptprodukt({ positionen: [pos('l-mon', 'monat')] }, KATALOG)).toBe('l-mon');
     expect(angebotHauptprodukt({ positionen: [] })).toBeUndefined();
+  });
+});
+
+describe('Anrechnung in der Liquidität — dieselbe Regel wie die Monatsrechnung (P3b)', () => {
+  const ws: Rechnung = { id: 'r-ws', firmaId: 'ug', kunde: 'Beispielwerk GmbH', titel: 'Workshop', betrag: 5712, status: 'bezahlt', kundeFirmaId: 'f-beispiel', positionen: [{ id: 'p1', leistungId: 'l-ws', titel: 'Workshop', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 480_000, ustSatz: 19 }] };
+  const halb = KATALOG.map(l => (l.id === 'l-ws' ? { ...l, regeln: { anrechnung: { auf: ['l-haupt'], anteilProzent: 50 } } } : l));
+  /** Die Monatsrechnungen nacheinander, wie der Server sie anlegt (jede sieht die vorigen Entwürfe — die Anrechnung kommt einmal). Summe brutto in Cent. */
+  const rechnungenMit = (m: Mandat, rechnungen: Rechnung[], katalog = KATALOG) => {
+    const ende = geplantesEnde(m)!;
+    const mit = { ...m, ende };
+    const liste = [...rechnungen];
+    let summe = 0;
+    for (const mo of monateVon(m.start!.slice(0, 7), ende.slice(0, 7))) {
+      const pos = monatsPositionen(mit, mo, { ...ctx, katalog });
+      const alle = [...pos, ...anrechnungPositionen(m, pos, { katalog, mandate: [m], rechnungen: liste, nettoAusBrutto })];
+      summe += rechnungSummen(alle).brutto;
+      liste.push({ id: `r-${mo}`, firmaId: 'ug', mandatId: m.id, kunde: 'x', titel: mo, betrag: 0, status: 'geplant', leistungVon: leistungsmonat(mit, mo)!.von, positionen: alle });
+    }
+    return summe;
+  };
+  const plan = (m: Mandat, heute: string, rechnungen: Rechnung[], katalog = KATALOG) => mandatPosten(m, heute, { katalog, anrechnung: { mandate: [m], rechnungen } });
+  const faelle: { name: string; m: Partial<Mandat>; katalog?: Leistung[]; anrechnung: number }[] = [
+    { name: 'Teilmonat-Start: Anrechnung größer als der erste Monat — gedeckelt, der Rest verfällt', m: { start: '2026-10-18', honorar: { betrag: 4200, basis: 'monat', netto: true } }, anrechnung: -2257.16 },
+    { name: 'voller erster Monat, Anrechnung größer als der Monat', m: {}, anrechnung: -3558.1 },
+    { name: 'Anrechnung kleiner als der erste Monat (50 %) — voll angerechnet', m: {}, katalog: halb, anrechnung: -2856 },
+    // Oktober 18.–31.: 999,99 € × 14/31 = 451,61 € + Modul 777,77 € × 14/31 = 351,25 € → 802,86 € netto: die Grenze ist die ganze Rechnung (955,40 € brutto).
+    { name: 'Teilmonat-Start mit Zusatzmodul im ersten Monat (die Grenze ist die ganze Rechnung)', m: { start: '2026-10-18', honorar: { betrag: 999.99, basis: 'monat', netto: true }, zusatz: [zusatz({ honorar: { betragCent: 77_777, basis: 'monat' } })] }, katalog: halb, anrechnung: -955.4 },
+  ];
+  for (const f of faelle) {
+    it(f.name, () => {
+      const m = mandat(f.m);
+      const posten = plan(m, m.start!, [ws], f.katalog);
+      expect(posten.find(p => p.id === anrechnungPostenId(m))?.betrag).toBe(f.anrechnung);
+      expect(liqSumme(posten)).toBe(rechnungenMit(m, [ws], f.katalog));
+      // Ohne Anrechnung wäre der Plan genau um sie zu hoch.
+      expect(liqSumme(mandatPosten(m, m.start!, { katalog: f.katalog ?? KATALOG })) + Math.round(f.anrechnung * 100)).toBe(rechnungenMit(m, [ws], f.katalog));
+    });
+  }
+  it('der Posten: einmalig, am Zahltag des ersten Monats, mit Namen', () => {
+    const m = mandat({ start: '2026-10-18', honorar: { betrag: 4200, basis: 'monat', netto: true } });
+    expect(plan(m, '2026-10-18', [ws]).find(p => p.id === anrechnungPostenId(m))).toMatchObject({ rhythmus: 'einmalig', ab: '2026-11-01', titel: 'Beispielwerk GmbH · Begleitung — Anrechnung Tagesworkshop', kategorie: 'mandat' });
+  });
+  it('steht sie schon auf einer Rechnung dieses Mandats: deren Wirkung in deren Monat; vergangen bzw. an einem anderen Mandat: keine', () => {
+    const m = mandat();
+    const pos = monatsPositionen(m, '2026-12', ctx);
+    const anr = anrechnungPositionen(m, pos, { katalog: KATALOG, mandate: [m], rechnungen: [ws], nettoAusBrutto });
+    const dez: Rechnung = { id: 'r-dez', firmaId: 'ug', mandatId: 'm-1', kunde: 'x', titel: 'Dez', betrag: 0, status: 'geplant', leistungVon: '2026-12-01', positionen: [...pos, ...anr] };
+    const ak = (rechnungen: Rechnung[]) => ({ katalog: KATALOG, mandate: [m], rechnungen, nettoAusBrutto });
+    expect(anrechnungLiquiditaet(m, '2026-11', geplantesEnde(m), ak([ws, dez]))).toEqual([{ monat: '2026-12', cent: -355_810, titel: 'Anrechnung Tagesworkshop' }]);
+    expect(anrechnungLiquiditaet(m, '2027-01', geplantesEnde(m), ak([ws, dez]))).toEqual([]);
+    expect(anrechnungLiquiditaet(m, '2026-11', geplantesEnde(m), ak([ws, { ...dez, mandatId: 'm-anders' }]))).toEqual([]);
+    expect(anrechnungLiquiditaet(m, '2026-11', geplantesEnde(m), ak([ws, { ...dez, status: 'storniert' }]))).toEqual([{ monat: '2026-11', cent: -355_810, titel: 'Anrechnung Tagesworkshop' }]);
+  });
+  it('„Plan angleichen“ kennt sie: fehlt sie im Plan, „Liquiplan weicht ab — Anrechnung fehlt“; angeglichen ok', () => {
+    const m = mandat({ start: '2026-10-18', honorar: { betrag: 4200, basis: 'monat', netto: true } });
+    const anrechnung = { mandate: [m], rechnungen: [ws] };
+    const alt = mandatPosten(m, '2026-10-18');
+    const lage = mandatLiquiLage(m, alt, '2026-10-18', KATALOG, anrechnung);
+    expect(lage.lage).toBe('abweichend');
+    expect(lage.grund).toBe(`${ANRECHNUNG_FEHLT} — Anrechnung Tagesworkshop (-2.257,16 €) steht nicht im Plan, der Monat ist sonst zu hoch.`);
+    const neu = postenAngleichen(alt, m, lage.soll, '2026-10-18');
+    expect(mandatLiquiLage(m, neu, '2026-10-18', KATALOG, anrechnung).lage).toBe('ok');
+    expect(neu.filter(p => !alt.some(a => a.id === p.id)).map(p => p.id)).toEqual([anrechnungPostenId(m)]);
+  });
+  it('ohne Bestand der Rechnungen bzw. ohne Regel: kein Posten (bit-gleich)', () => {
+    const m = mandat();
+    expect(mandatPosten(m, '2026-11-01', { katalog: KATALOG })).toEqual(mandatPosten(m, '2026-11-01'));
+    expect(plan(m, '2026-11-01', [ws], KATALOG.filter(l => l.id !== 'l-ws'))).toEqual(mandatPosten(m, '2026-11-01'));
+    expect(plan(m, '2026-11-01', [])).toEqual(mandatPosten(m, '2026-11-01'));
   });
 });
