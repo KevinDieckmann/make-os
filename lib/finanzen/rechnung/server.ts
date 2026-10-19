@@ -31,12 +31,14 @@ import { protokolliere, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { WEG } from '@/lib/wege';
 import {
   MAHN_VORGABE_TAGE, EINLEITUNG_VORLAGE, SCHLUSS_VORLAGE, entwurfAnwenden, entwurfGrenzen, empfaengerAusCrm, kundeAus, kurzVon, mahnLabel, mahnMail,
-  mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt, positionAusMandat,
+  mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
   vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen,
   type MahnVorschlag, type Pflicht,
 } from './regeln';
 import { angenommenZuDeal } from '@/lib/crm/angebote';
+import { abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, istAnrechnung, monatsPositionen, nurAbgerechnet } from '@/lib/crm/mandat-zusatz';
+import type { RechnungPosition } from './typen';
 import { rechnungDokument, bankZeile } from './dokument';
 import type { Mahnstufe } from './typen';
 
@@ -103,6 +105,7 @@ export async function rechnungPdf(id: string, z: { haushalt: string; sicht: Sich
 // ── Entwurf anlegen (frei, aus Angebot, aus Mandat) ─────────────────────────
 
 export interface NeuEingabe { quelle?: unknown; firmaId?: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; mandatId?: unknown; angebotId?: unknown; monat?: unknown; /** Nur bei `angebot`: `einmalig` = nur die Einmalposten (Woche 1 · 3.6). */ nur?: unknown;
+  /** Nur bei `mandat` (19.10., P3): Zusatzmodule „abrechnen“ — `[{ zusatzId, menge }]` (je Einheit, Tag, Stunde; lib/crm/mandat-zusatz.ts). */ einheiten?: unknown;
   /** Nur bei `frei`: Vorbelegung aus einem abgelegten Angebot (Titel, Bruttobetrag, Angebotsnummer/-datum — Woche 2 · 3.13, `vorlageSaeubern`). */ vorlage?: unknown }
 
 /**
@@ -199,11 +202,16 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const grenzen = monatsGrenzen(monat)!;
     // Teilmonat (Kevin 18.10.: „Anteilig“): Leistungszeitraum = Monat ∩ [Beginn, Ende]; der Betrag folgt in `positionAusMandat`.
     const lm = leistungsmonat(m, monat)!;
+    // Zusatzmodule „abrechnen“ (19.10., P3): je Einheit / Tag / Stunde mit Menge — nur auf Klick, nie von selbst.
+    const wahl = abrechnenWahlAus(p.einheiten);
+    if (!wahl.ok) throw new RechnungFehler(wahl.fehler, wahl.status);
+    const imMonat = (r: Rechnung) => r.mandatId === m.id && !r.angebotId && (r.leistungVon === grenzen.von || r.leistungVon === lm.von) && r.art !== 'storno' && r.status !== 'storniert';
     // Je Mandat und Leistungsmonat höchstens eine Monatsrechnung: erkannt am Monatsersten (bisher) oder am anteiligen Beginn (neu).
-    // Rechnungen aus einem Angebot (`angebotId`, z. B. die Einmalposten) sind keine Monatsrechnung — sie halten den Monat nicht auf.
-    vorhandenIn = l => l.find(r => r.mandatId === m.id && !r.angebotId && (r.leistungVon === grenzen.von || r.leistungVon === lm.von) && r.art !== 'storno' && r.status !== 'storniert');
+    // Rechnungen aus einem Angebot (`angebotId`, z. B. die Einmalposten) sind keine Monatsrechnung — sie halten den Monat nicht auf; ebenso eine
+    // Rechnung nur aus abgerechneten Zusatzmodulen (P3, `nurAbgerechnet`).
+    vorhandenIn = l => l.find(r => imMonat(r) && !nurAbgerechnet(r));
     const da = vorhandenIn(plan.rechnungen);
-    if (da) {
+    if (da && !wahl.wahl.length) {
       if (!inSicht(da, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
       return { rechnung: mitFassung(da), vorhanden: true };
     }
@@ -219,9 +227,22 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     // nur als Text (`angebot`/`angebotAm`), nie `angebotId` (die gehört den Rechnungen AUS dem Angebot, sonst verwechselte „aus Angebot“ sie).
     const ang = (crm.angebote ?? []).filter(a => a.mandatId === m.id && a.status === 'angenommen').sort((x, y) => (y.angenommenAm ?? '').localeCompare(x.angenommenAm ?? ''))[0]
       ?? (m.chanceId ? angenommenZuDeal(crm.angebote, m.chanceId) : undefined);
+    const ab = wahl.wahl.length ? abrechnenPositionen(m, monat, wahl.wahl, { katalog: crm.leistungen, kleinunternehmer: ku(g) }) : null;
+    if (ab && !ab.ok) throw new RechnungFehler(ab.fehler, ab.status);
+    const abgerechnet = ab?.ok ? ab.positionen : [];
+    if (abgerechnet.length) {
+      // Ein offener Entwurf dieses Monats (Monatsrechnung bzw. abgerechnete Zusatzmodule) bekommt die Positionen dazu (gleiches Modul: ersetzt).
+      const offen = plan.rechnungen.find(r => imMonat(r) && r.status === 'geplant');
+      if (offen) return abgerechnetAnhaengen(offen.id, abgerechnet, { haushalt: p.haushalt, sicht: p.sicht, wer: p.wer, kleinunternehmer: ku(g) });
+    }
+    // Monatsrechnung (P3): Honorar wie bisher + Zusatzmodule (lib/crm/mandat-zusatz.ts) + Abgerechnetes + einmal die Anrechnung eines gekauften Produkts.
+    // Steht die Monatsrechnung schon (gestellt), werden die abgerechneten Module eine eigene Rechnung (nur sie).
+    const basisPositionen = da ? abgerechnet : [...monatsPositionen(m, monat, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto }), ...abgerechnet];
+    const positionen = da ? basisPositionen : [...basisPositionen, ...anrechnungPositionen(m, basisPositionen, { katalog: crm.leistungen, mandate: crm.mandate, rechnungen: plan.rechnungen, nettoAusBrutto }, { kleinunternehmer: ku(g) })];
+    if (da) vorhandenIn = null;
     entwurf = neuerEntwurf({
-      id, firmaId: g, kunde: kundeAus(empf, m.kunde), titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}`, empfaenger: empf,
-      positionen: m.honorar.betrag > 0 ? [positionAusMandat(m, monat, { kleinunternehmer: ku(g), nettoAusBrutto, anteil: lm })] : [],
+      id, firmaId: g, kunde: kundeAus(empf, m.kunde), titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}${da ? ' (abgerechnete Zusatzmodule)' : ''}`, empfaenger: empf,
+      positionen,
       zahlungszielTage: ziel(g, m.zahlungszielTage || undefined), heute, mandatId: m.id, leistungVon: lm.von, leistungBis: lm.bis,
       ...(ang?.nummer ? { angebot: ang.nummer } : {}), ...(ang?.nummer && ang.gestelltAm ? { angebotAm: tagVon(ang.gestelltAm) } : {}),
       ...(k ? { kontaktId: k.id } : {}), ...(f ? { kundeFirmaId: f.id } : {}), ...(m.ustSatz === 0 && !ku(g) ? { steuerHinweis: 'reverse-charge' as const } : {}),
@@ -257,6 +278,12 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const da = finde?.(f.rechnungen);
     if (da && cur) { schonDa = da; return cur; }
     if (sperreEinmal && einmalSchon(f.rechnungen, sperreEinmal)) throw new RechnungFehler(EINMAL_SCHON, 409, { grund: 'einmalposten-schon' });
+    // Anrechnung (P3): steht sie inzwischen auf einer anderen gültigen Rechnung (zwei gleichzeitige Entwürfe), kommt sie hier nicht noch einmal.
+    const schonAngerechnet = new Set(f.rechnungen.filter(r => r.status !== 'storniert' && r.art !== 'storno').flatMap(r => (r.positionen ?? []).filter(istAnrechnung).map(x => x.id)));
+    if (entwurf.positionen?.some(x => istAnrechnung(x) && schonAngerechnet.has(x.id))) {
+      const pos = entwurf.positionen.filter(x => !(istAnrechnung(x) && schonAngerechnet.has(x.id)));
+      entwurf = { ...entwurf, positionen: pos, ...betragFelder(pos, { kleinunternehmer: !!gs.find(x => x.id === entwurf.firmaId)?.kleinunternehmer }) };
+    }
     const sauber = sauberFile({ rechnungen: [entwurf] }).rechnungen[0];
     const neu = ugFirmaNachziehen({ ...f, rechnungen: [...f.rechnungen, sauber] });
     const grenze = ueberGrenze(neu, f);
@@ -270,6 +297,31 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
   if (!r) throw new RechnungFehler('Nicht angelegt.', 500);
   await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'neu', id: r.id, felder: Object.keys(r).filter(k => k !== 'id') }], p.wer);
   return { rechnung: mitFassung(r), vorhanden: false };
+}
+
+/**
+ * Abgerechnete Zusatzmodule (P3) an einen offenen Entwurf hängen — in der Sperre: nur, solange er „geplant“ ist; ein Modul, das schon darauf steht,
+ * wird ersetzt (gleiche Kennung), sonst angehängt; die Beträge kommen wieder aus den Positionen.
+ */
+async function abgerechnetAnhaengen(id: string, neu: RechnungPosition[], z: { haushalt: string; sicht: Sicht; wer?: Wer; kleinunternehmer: boolean }): Promise<{ rechnung: Rechnung & { fassung: string }; vorhanden: boolean }> {
+  let ergebnis: Rechnung | null = null;
+  await updateJson<FinanzplanFile>('finanzplan', cur => {
+    const f = planBasis(cur);
+    const alt = f.rechnungen.find(r => r.id === id);
+    if (!alt || !inSicht(alt, z.sicht)) throw new RechnungFehler('Rechnung nicht gefunden.', 404);
+    if (alt.status !== 'geplant') throw new RechnungFehler('Der Entwurf wurde inzwischen gestellt — bitte noch einmal „abrechnen“ (es entsteht dann eine eigene Rechnung).', 409, { aktuell: mitFassung(alt) });
+    const ids = new Set(neu.map(x => x.id));
+    const pos = [...(alt.positionen ?? []).filter(x => !ids.has(x.id)), ...neu];
+    const r = sauberFile({ rechnungen: [{ ...alt, positionen: pos, ...betragFelder(pos, { kleinunternehmer: z.kleinunternehmer }) }] }).rechnungen[0];
+    const grenze = ueberGrenze({ ...f, rechnungen: f.rechnungen.map(x => (x.id === id ? r : x)) }, f);
+    if (grenze) throw new RechnungFehler(grenze, 413);
+    ergebnis = r;
+    return ugFirmaNachziehen({ ...f, rechnungen: f.rechnungen.map(x => (x.id === id ? r : x)) });
+  });
+  const r = ergebnis as Rechnung | null;
+  if (!r) throw new RechnungFehler('Nicht gespeichert.', 500);
+  await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: r.id, felder: ['positionen', 'betrag', 'netto'] }], z.wer);
+  return { rechnung: mitFassung(r), vorhanden: true };
 }
 
 // ── Entwurf ändern / löschen ─────────────────────────────────────────────────

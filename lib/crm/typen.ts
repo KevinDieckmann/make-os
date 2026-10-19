@@ -150,7 +150,7 @@ export interface Mandat {
   geloeschtAm?: string;
   /**
    * Zusatzmodule (19.10., PRODUKTE_KONZEPT.md — optional, additiv): Mandat = Hauptprodukt (`leistungId`) + Zusatzmodule. Form und
-   * Säuberung in lib/crm/produkt-karte.ts (`mandatZusatzSaeubern`); Rechnung, Liquidität und Fall folgen in Paket P3.
+   * Säuberung in lib/crm/produkt-karte.ts (`mandatZusatzSaeubern`); Rechnung, Liquidität und Abrechnen in lib/crm/mandat-zusatz.ts (P3).
    */
   zusatz?: MandatZusatz[];
   geaendert: string;
@@ -173,6 +173,13 @@ export interface MandatZusatz {
   /** Nur bei inklusive: wie viele je Zeitraum. */
   menge?: number;
   je?: 'monat' | 'quartal' | 'jahr';
+  /**
+   * Zahlplan eines einmaligen Zusatzmoduls (P3, 19.10.), z. B. 50/50 = `{ anzahlungProzent: 50 }`: Anzahlung im Monat des Beginns, der Rest im
+   * Monat von `bis` (ohne `bis` im Folgemonat) — Rechnung und Liquidität gleich (lib/crm/mandat-zusatz.ts). Vorgabe: der Zahlplan des Produkts.
+   */
+  zahlplan?: { anzahlungProzent: number };
+  /** Nur Stundensatz (P3): geplante Stunden je Monat für die Liquidität — Vorgabe und Obergrenze ist der Deckel des Produkts. */
+  stundenJeMonat?: number;
 }
 export type MandatZusatzBasis = 'monat' | 'jahr' | 'einmalig' | 'einheit' | 'tag' | 'stunde';
 

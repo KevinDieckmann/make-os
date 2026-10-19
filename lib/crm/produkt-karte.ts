@@ -431,6 +431,18 @@ export function zusatzHonorar(l: Pick<Leistung, 'preis' | 'preise'>): MandatZusa
   const basis = h ? ZUSATZ_BASIS[h.art] : undefined;
   return h && basis && typeof h.betragCent === 'number' ? { betragCent: h.betragCent, basis } : undefined;
 }
+/**
+ * Was ein Zusatzmodul zusätzlich vom Hauptpreis seines Produkts übernimmt (P3, 19.10.): den Zahlplan eines einmaligen Preises (z. B. 50/50) und beim
+ * Stundensatz den Deckel als geplante Stunden je Monat (Liquidität). Ohne Preis-Teile bzw. ohne beides: `{}`.
+ */
+export function zusatzExtras(l: Pick<Leistung, 'preis' | 'preise'>): Pick<MandatZusatz, 'zahlplan' | 'stundenJeMonat'> {
+  if (!hatPreisteile(l)) return {};
+  const h = hauptpreis(l);
+  return {
+    ...(h?.art === 'fest' && h.zahlplan?.anzahlungProzent ? { zahlplan: { anzahlungProzent: h.zahlplan.anzahlungProzent } } : {}),
+    ...(h?.art === 'stundensatz' && h.deckel?.stundenJeMonat ? { stundenJeMonat: h.deckel.stundenJeMonat } : {}),
+  };
+}
 const VERLAENGERUNG: Record<NonNullable<ProduktVertrag['danach']>, Mandat['verlaengerung']> = { monatlich_kuendbar: 'auto', verlaengert_um_laufzeit: 'auto', endet: 'manuell' };
 export type MandatVertragsFelder = Partial<Pick<Mandat, 'mindestlaufzeitMonate' | 'kuendigungsfristTage' | 'verlaengerung' | 'rechnungsrhythmus' | 'zahlungszielTage' | 'ustSatz'>>;
 /**
@@ -495,7 +507,7 @@ function zusatzListe(l: Leistung, wahl: readonly ZusatzWahl[]): MandatZusatz[] {
     const inklusive = w.inklusive ?? !!i2;
     return {
       id: `mz-${i + 1}`, leistungId: w.leistung.id, ...(w.ab ? { ab: w.ab } : {}), ...(w.bis ? { bis: w.bis } : {}),
-      ...(honorar && !inklusive ? { honorar } : {}), ...(inklusive ? { inklusive: true } : {}), ...(i2 && inklusive ? { menge: i2.menge, je: i2.je } : {}),
+      ...(honorar && !inklusive ? { honorar, ...zusatzExtras(w.leistung) } : {}), ...(inklusive ? { inklusive: true } : {}), ...(i2 && inklusive ? { menge: i2.menge, je: i2.je } : {}),
     };
   });
   for (const x of inkl) if (!out.some(z => z.leistungId === x.leistungId)) out.push({ id: `mz-${out.length + 1}`, leistungId: x.leistungId, inklusive: true, menge: x.menge, je: x.je });
@@ -713,13 +725,62 @@ export function mandatZusatzSaeubern(v: unknown): MandatZusatz[] | undefined {
     const h = istObj(x.honorar) ? x.honorar : undefined;
     const betrag = h ? ganz(h.betragCent, 0, G.betragCent) : undefined, basis = h ? aus(h.basis, ZUSATZ_BASEN) : undefined;
     const menge = ganz(x.menge, 1, G.inklusiveMenge), je = aus(x.je, INKLUSIVE_JE);
+    // P3 (19.10.): Zahlplan (einmalig, z. B. 50/50) und geplante Stunden je Monat (Stundensatz) — beide optional.
+    const ap = istObj(x.zahlplan) ? ganz(x.zahlplan.anzahlungProzent, 1, 99) : undefined;
+    const std = dezimal(x.stundenJeMonat, 0.25, G.stundenJeMonat);
     return [{
       id: x.id, leistungId: x.leistungId, ...(typeof x.ab === 'string' && TAG.test(x.ab) ? { ab: x.ab } : {}), ...(typeof x.bis === 'string' && TAG.test(x.bis) ? { bis: x.bis } : {}),
       ...(betrag !== undefined && basis ? { honorar: { betragCent: betrag, basis } } : {}), ...(x.inklusive === true ? { inklusive: true } : {}),
       ...(menge !== undefined ? { menge } : {}), ...(je ? { je } : {}),
+      ...(ap !== undefined ? { zahlplan: { anzahlungProzent: ap } } : {}), ...(std !== undefined ? { stundenJeMonat: std } : {}),
     }];
   });
   return out.length ? out : undefined;
+}
+
+/**
+ * Zusatzmodule eines Schreibvorgangs am Mandat prüfen (P3, 19.10.) — nur Einträge, die neu sind oder sich geändert haben (`alt` = gespeichert),
+ * damit ein später gelöschtes Produkt nie jede Änderung am Mandat sperrt. 413 = zu viele, 400 = Unsinn; nie still gekürzt. Leer = in Ordnung.
+ *   · ein Produkt aus dem Katalog (nicht im Papierkorb), nie das Hauptprodukt des Mandats selbst
+ *   · ohne „inklusive“: nur Produkte mit Rolle „zusatz“ bzw. „beides“ (inklusive darf jedes — die Regel kommt vom Hauptprodukt)
+ *   · ab ≤ bis, Honorar mit Basis, Zahlplan 1–99 %, geplante Stunden nur beim Stundensatz
+ */
+export function mandatZusatzPruefen(roh: unknown, alt: readonly MandatZusatz[] | undefined, ctx: { katalog: readonly Pick<Leistung, 'id' | 'name' | 'rolle' | 'geloeschtAm'>[]; hauptId?: string }): PruefFehler[] {
+  if (roh === undefined || roh === null || roh === '') return [];
+  if (!Array.isArray(roh)) return [{ status: 400, text: 'Zusatzmodule: eine Liste.' }];
+  if (roh.length > G.zusatz) return [{ status: 413, text: `Höchstens ${G.zusatz} Zusatzmodule je Mandat — nichts gespeichert.` }];
+  const f: PruefFehler[] = [];
+  const ids = new Set<string>();
+  for (const x of roh) {
+    if (!istObj(x) || typeof x.id !== 'string' || !ZUSATZ_ID.test(x.id)) { f.push({ status: 400, text: 'Zusatzmodul: Kennung „mz-…“.' }); continue; }
+    if (ids.has(x.id)) { f.push({ status: 400, text: 'Zusatzmodule: jede Kennung nur einmal.' }); continue; }
+    ids.add(x.id);
+    const vorher = alt?.find(a => a.id === x.id);
+    if (vorher && JSON.stringify(mandatZusatzSaeubern([x])?.[0] ?? null) === JSON.stringify(vorher)) continue;
+    const l = typeof x.leistungId === 'string' ? ctx.katalog.find(k => k.id === x.leistungId && !k.geloeschtAm) : undefined;
+    const name = l ? `„${l.name}“` : 'Zusatzmodul';
+    if (!l) { f.push({ status: 400, text: 'Zusatzmodul: das Produkt gibt es nicht (mehr) im Katalog.' }); continue; }
+    if (l.id === ctx.hauptId) f.push({ status: 400, text: `${name} ist schon das Hauptprodukt dieses Mandats — nicht zugleich Zusatzmodul.` });
+    if (x.inklusive !== true && l.rolle !== 'zusatz' && l.rolle !== 'beides') f.push({ status: 400, text: `${name} ist kein Zusatzmodul (Rolle am Produkt „Zusatz“ bzw. „beides“) — oder als „inklusive“ eintragen.` });
+    for (const k of ['ab', 'bis'] as const) if (x[k] != null && x[k] !== '' && !(typeof x[k] === 'string' && TAG.test(x[k] as string))) f.push({ status: 400, text: `${name}: ${k} als Tag JJJJ-MM-TT.` });
+    if (typeof x.ab === 'string' && typeof x.bis === 'string' && TAG.test(x.ab) && TAG.test(x.bis) && x.bis < x.ab) f.push({ status: 400, text: `${name}: „bis“ liegt vor „ab“.` });
+    if (x.honorar != null) {
+      const h = x.honorar;
+      if (!istObj(h) || !aus(h.basis, ZUSATZ_BASEN)) f.push({ status: 400, text: `${name}: Honorar { betragCent, basis: ${ZUSATZ_BASEN.join(' · ')} }.` });
+      else f.push(...nur([zahlFehler(h.betragCent, `${name}, Honorar (Cent)`, 0, G.betragCent)]));
+    }
+    if (x.zahlplan != null) {
+      if (!istObj(x.zahlplan)) f.push({ status: 400, text: `${name}: Zahlplan { anzahlungProzent }.` });
+      else f.push(...nur([zahlFehler(x.zahlplan.anzahlungProzent, `${name}, Anzahlung (%)`, 1, 99)]));
+    }
+    if (x.stundenJeMonat != null) {
+      f.push(...nur([zahlFehler(x.stundenJeMonat, `${name}, Stunden je Monat`, 0.25, G.stundenJeMonat, false)]));
+      if (!(istObj(x.honorar) && x.honorar.basis === 'stunde')) f.push({ status: 400, text: `${name}: geplante Stunden gibt es nur beim Stundensatz.` });
+    }
+    if (x.menge != null) f.push(...nur([zahlFehler(x.menge, `${name}, Menge`, 1, G.inklusiveMenge)]));
+    if (x.je != null && !aus(x.je, INKLUSIVE_JE)) f.push({ status: 400, text: `${name}: je ${INKLUSIVE_JE.join(', ')}.` });
+  }
+  return f;
 }
 
 // ── Spiegeln (nur im Säuberer des Servers) ───────────────────────────────────

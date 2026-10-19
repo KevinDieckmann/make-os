@@ -6,6 +6,8 @@
 // POST { mandatId, aktion: 'anlegen' | 'verknuepfen' | 'beenden', postenId? } — „beenden“ gleicht die Posten an das Ende des beendeten Mandats an.
 // 18.10. (Nachprüfung N4/N14): EIN Zahlplan mit der Monatsrechnung (lib/crm/mandat-laufzeit.ts) — angebrochene Monate als einmalige Posten
 // `lp-mandat-<id>~JJJJ-MM`, die vollen Monate ein Monatsposten; Lage und Angleichen rein in lib/crm/kunden.ts (`mandatLiquiLage`, `postenAngleichen`).
+// 19.10. (P3): Zusatzmodule bringen eigene Posten `lp-mandat-<id>~z-<Modul>…` (lib/crm/mandat-zusatz.ts) — „Plan angleichen“ (`anlegen`) kennt sie;
+// alte Posten bleiben, bis jemand angleicht.
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -27,9 +29,9 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     mandate: crm.mandate.map(m => {
-      const l = mandatLiquiLage(m, posten, heute);
+      const l = mandatLiquiLage(m, posten, heute, crm.leistungen);
       return {
-        id: m.id, kunde: m.kunde, titel: m.titel, status: m.status, vorschlag: planpostenAus(m, heute), soll: l.soll,
+        id: m.id, kunde: m.kunde, titel: m.titel, status: m.status, vorschlag: planpostenAus(m, heute, crm.leistungen), soll: l.soll,
         vorhanden: l.vorhanden, lage: l.lage, ...(l.grund ? { grund: l.grund } : {}), ...(l.letzteZahlung ? { letzteZahlung: l.letzteZahlung } : {}),
       };
     }),
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
   if (b.aktion === 'anlegen') {
     // Anlegen bzw. „Plan angleichen“: Monatsposten und Teilmonate wie der Zahlplan (ein vorhandener Monatsposten übernimmt die Werte des Mandats).
     const heute = localDay();
-    const soll = mandatPosten(m, heute);
+    const soll = mandatPosten(m, heute, { katalog: crm.leistungen });
     if (!soll.length) return NextResponse.json({ ok: false, fehler: `Aus diesem Mandat entsteht kein Posten: ${keinPostenGrund(m)}` }, { status: 400 });
     await updateJson<{ posten: Planposten[] }>('liquiplan', cur => ({ posten: postenAngleichen(cur?.posten ?? [], m, soll, heute) }));
     const haupt = soll.find(p => p.id === hauptPostenId(m));
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
     // ändern sich nur Beginn und Ende (Betrag, Titel, Sicherheit bleiben, wie sie im Plan stehen).
     if (m.status !== 'beendet') return NextResponse.json({ ok: false, fehler: 'Das Mandat ist nicht beendet.' }, { status: 400 });
     const heute = localDay();
-    const soll = mandatPosten(m, heute, { beendet: true });
+    const soll = mandatPosten(m, heute, { beendet: true, katalog: crm.leistungen });
     let gefunden = false;
     await updateJson<{ posten: Planposten[] }>('liquiplan', cur => {
       const l = cur?.posten ?? [];
@@ -74,7 +76,7 @@ export async function POST(req: Request) {
       return gefunden ? { posten: postenAngleichen(l, m, soll, heute, { nurZeit: true }) } : cur ?? { posten: [] };
     });
     if (!gefunden) return NextResponse.json({ ok: false, fehler: 'Posten nicht im Liquiditätsplan.' }, { status: 404 });
-    const lage = mandatLiquiLage(m, (await loadJson<{ posten: Planposten[] }>('liquiplan'))?.posten ?? [], heute);
+    const lage = mandatLiquiLage(m, (await loadJson<{ posten: Planposten[] }>('liquiplan'))?.posten ?? [], heute, crm.leistungen);
     return NextResponse.json({ ok: true, ...(lage.letzteZahlung ? { letzteZahlung: lage.letzteZahlung, bis: lage.letzteZahlung } : {}) });
   }
   return NextResponse.json({ ok: false, fehler: 'aktion: anlegen, verknuepfen oder beenden.' }, { status: 400 });

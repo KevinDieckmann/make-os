@@ -56,12 +56,15 @@ export const rechnungIdOk = (v: unknown): v is string => typeof v === 'string' &
 
 // ── Säubern (Server UND Säuberung des Finanzplans — nie kürzen außer Texten auf ihre Grenze) ──
 
-/** Eine Position säubern — null, wenn sie nichts taugt (kein Titel). Einzelpreis nie negativ. */
+/** Kennung einer Anrechnung (19.10., P3 — lib/crm/mandat-zusatz.ts `anrechnungId`): nur sie darf einen negativen Einzelpreis tragen. */
+export const ANRECHNUNG_PRAEFIX = 'anr-';
+/** Eine Position säubern — null, wenn sie nichts taugt (kein Titel). Einzelpreis nie negativ — außer einer Anrechnung (`anr-…`, Minusposition). */
 export function positionSaeubern(o: Record<string, unknown>, i: number): RechnungPosition | null {
   const titel = zeile(o.titel, RECHNUNG_GRENZEN.titel);
   if (!titel) return null;
   const menge = Math.max(0, Math.min(RECHNUNG_POSITION_MAX.menge, Math.round((Number(o.menge) || 0) * 1000) / 1000));
-  const preis = Math.max(0, Math.min(RECHNUNG_POSITION_MAX.einzelpreisCent, Math.round(Number(o.einzelpreisCent) || 0)));
+  const anrechnung = typeof o.id === 'string' && o.id.startsWith(ANRECHNUNG_PRAEFIX) && ID.test(o.id);
+  const preis = Math.max(anrechnung ? -RECHNUNG_POSITION_MAX.einzelpreisCent : 0, Math.min(anrechnung ? 0 : RECHNUNG_POSITION_MAX.einzelpreisCent, Math.round(Number(o.einzelpreisCent) || 0)));
   const rabatt = Math.max(0, Math.min(100, Math.round((Number(o.rabattProzent) || 0) * 100) / 100));
   const satz = (UST_SAETZE as readonly number[]).includes(Number(o.ustSatz)) ? Number(o.ustSatz) : 19;
   return {
@@ -239,7 +242,9 @@ export function pflichtFehlt(r: EntwurfFelder, g: Gesellschaft | null | undefine
   if (!pos.length) f.push({ text: 'Mindestens eine Position — Menge und Art der Leistung (§ 14 Abs. 4 Nr. 5 UStG).' });
   if (pos.some(p => !(p.menge > 0))) f.push({ text: 'Eine Position hat Menge 0.' });
   const ku = !!g?.kleinunternehmer;
-  if (pos.length && rechnungSummen(pos, { kleinunternehmer: ku }).netto <= 0) f.push({ text: 'Der Rechnungsbetrag ist 0 € — eine Rechnung braucht ein Entgelt.' });
+  // Eine Anrechnung (19.10., P3) darf die Rechnung auf 0 € bringen (das Entgelt wurde mit dem angerechneten Produkt bezahlt) — nie darunter.
+  const netto = pos.length ? rechnungSummen(pos, { kleinunternehmer: ku }).netto : 1;
+  if (netto < 0 || (netto === 0 && !pos.some(p => p.id.startsWith(ANRECHNUNG_PRAEFIX)))) f.push({ text: netto < 0 ? 'Der Rechnungsbetrag ist kleiner als 0 € — eine Anrechnung höchstens bis zum Betrag der Rechnung.' : 'Der Rechnungsbetrag ist 0 € — eine Rechnung braucht ein Entgelt.' });
   if (!ku && pos.some(p => p.ustSatz === 0)) {
     if (!r.steuerHinweis) f.push({ text: 'Position ohne Umsatzsteuer: Grund wählen — Reverse Charge (§ 13b UStG) oder steuerfrei mit Grund (§ 14 Abs. 4 Nr. 8 UStG).' });
     else if (r.steuerHinweis === 'reverse-charge' && !e.ustId) f.push({ text: 'Reverse Charge: USt-IdNr. des Empfängers fehlt (§ 14a UStG).' });
