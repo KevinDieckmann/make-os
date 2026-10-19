@@ -31,10 +31,11 @@ Einzelleistungen Tagessatz bzw. Stundensatz (gedeckelt je Monat), Reisekosten se
 ## Datenmodell (additiv an `Leistung`)
 
 ```ts
-type PreisArt = 'kostenlos' | 'fest' | 'monatlich' | 'jaehrlich' | 'je_einheit' | 'tagessatz' | 'stundensatz' | 'erfolg';
+type PreisTeilArt = 'kostenlos' | 'fest' | 'monatlich' | 'jaehrlich' | 'je_einheit' | 'tagessatz' | 'stundensatz' | 'erfolg';
+// (im Code `PreisTeilArt`, nicht `PreisArt`: lib/crm/treppe-daten.ts exportiert `PreisArt` schon für die gespeicherte Treppen-Stufe)
 interface PreisTeil {
   id: string;                 // pt-…
-  art: PreisArt;
+  art: PreisTeilArt;
   betragCent?: number;        // netto; fehlt bei kostenlos/erfolg; „ab“-Preise: bisCent
   bisCent?: number;
   einheit?: string;           // nur je_einheit: „je Event“, „je Seat“ …
@@ -88,7 +89,8 @@ Leistung += {
 - `mandatVorlageAusProdukt(leistung, zusatz[])` (rein): Art (aus Preis-Form), Honorar (monatlich/fest/Tagessatz), Mindestlaufzeit, Kündigung,
   Verlängerung, Rhythmus, Zahlungsziel, USt, Gesellschaft, Leistungen (Leistungstext + Lieferumfang). Genutzt von: „+ Mandat“, Mandat aus
   Deal/angenommenem Angebot (`mandatVorbelegung`), Excel-Einfügen (als Vorbelegung), „Mandat aus Produkt anlegen“ (neu, an der Karte).
-- **Zusatzmodule:** `Mandat.zusatz?: { id, leistungId, ab?, bis?, honorar?: { betragCent, basis }, inklusive?: boolean }[]` (optional, additiv).
+- **Zusatzmodule:** `Mandat.zusatz?: { id, leistungId, ab?, bis?, honorar?: { betragCent, basis }, inklusive?: boolean, menge?, je? }[]` (optional, additiv;
+  `basis` = monat · jahr · einmalig · einheit · tag · stunde, `menge`/`je` nur bei inklusive, z. B. 1 je Quartal). Typ `MandatZusatz`, gesäubert seit P1.
   Rechnung: Positionen Haupt + Zusatz (je Event/Einheit nur auf Klick „abrechnen“ mit Menge; inklusive = 0 € Position mit Hinweis).
   Liquidität: Posten je wiederkehrendem Zusatz (EINE Regel `lib/crm/mandat-laufzeit.ts`). Fall: Zusatzmodul mit Ablauf → bestehende
   Zusatzmodul-Zeile im Fall.
@@ -123,6 +125,34 @@ A6 Lieferumfang verdoppelt sich (Enter + Verlassen) · A7 Demo: Gesellschaft ohn
 Rechnungs-Dialog zurück an die Firma (Kevin 18.10.: „an der Firma speichern“) · B9 Angebot übernimmt still den offenen Deal mit anderem Produkt
 (→ Rückfrage) · B11 Handy: geöffnetes Produkt 50 px zu breit · B13 Hafenkontor „Angebot angenommen?“ obwohl Mandat aktiv · B14/B15 Wege
 Ablauf ↔ Produkt und Finanzplanung mit vorgewähltem Produkt.
+
+## P1 Kern — gebaut (19.10., Branch `produkte`)
+
+EINE Stelle `lib/crm/produkt-karte.ts` (rein, Server + Browser). Grundsatz **„ohne Karte gilt das Alte“**: solange ein Produkt keines der Felder
+`preise · vertrag · regeln · rolle · ebene · aufgabe · kennzahl · dauerTage · aufwandStundenWoche · ziel` trägt (`istKarte`), rechnet jede Funktion
+bit-gleich wie vorher (Paritätstests in `tests/produkt-karte.test.ts`). Entscheidungen beim Bauen:
+- **Hauptpreis** = der erste Preis-Teil mit Rolle „grund“ (die Reihenfolge der Karte zählt). Mindestens ein Grund-Teil ist Pflicht (400).
+- **Spiegeln** im Säuberer des Servers (`produktSpiegeln`): `preis` aus dem Hauptpreis-Teil (Einheit „Monat netto“, „Jahr netto“, „pauschal netto“,
+  „Tag netto“, „Stunde netto“, „je … netto“, „kostenlos“), `laufzeitMonate` = Mindestlaufzeit, `aufwand.stunden` = Aufwand je Preis-Einheit (Monat ×52/12,
+  Jahr ×52, einmalig × Dauer in Wochen; ohne Dauer bleibt er). Ändert eine alte Oberfläche ein gespiegeltes Feld einer Karte, lehnt der Server mit Text ab
+  (409, `spiegelKonflikt`) — nie still überschrieben. Prüfen vor dem Schreiben (`produktPruefen`): Unsinn 400 (`CrmAnwendung.ungueltig`), zu groß 413.
+- **Treppe:** jede gespeicherte Stufe gehört dem ERSTEN vorhandenen Produkt ihrer `leistungIds`. Ist es (noch) keine Karte, bleibt die Stufe genau so;
+  ist es eine Karte, gewinnt die Karte (Name, Preis, Aufwand …), die Stufe füllt Leeres, ihre Kennung bleibt. Weitere Karten mit Ebene (eigene oder aus
+  einer verknüpften Stufe — dann nur die Ebene) bekommen eine eigene Stufe `ts-k-<Produkt>` (`katalogStufeId`) und fallen aus den `leistungIds` der alten
+  Stufe heraus; neue Stufen nur für Business-Produkte, die nicht eingestellt sind. Stufen ohne vorhandenes Produkt rechnen weiter mit und stehen zusätzlich
+  in `ohneProdukt`. Kunde/Station/Paket dürfen auf eine Katalog-Stufe zeigen (`AnwendenKontext.katalogStufen`). Der Aufwand einer Karten-Stufe steht als
+  `TreppenStufe.wochenAufwand` (nur gelesen, nie gespeichert) und gewinnt in `stufeStundenWoche`. `GET /api/crm/treppe` liefert zusätzlich
+  `katalog { stufen, ohneProdukt, herkunft }`; `datei` bleibt die gespeicherte Treppe (bearbeitbar bis P2).
+- **Mandat:** `mandatVorlageAusProdukt` (Art aus Typ, sonst Preis-Form; Honorar: monatlich, jährlich ÷ 12, fest/je Einheit/Erfolg/kostenlos einmalig,
+  Tagessatz Basis „tag“, Stundensatz mit Deckel = Obergrenze je Monat + Hinweis; Vertragsfelder über `mandatVertragAusProdukt`; Leistungen = Leistungstext
+  (wenn ≤ 400 Zeichen) + Lieferumfang; `hinweise` → offene Punkte). „+ Mandat“: die gewählte Gesellschaft gilt, „offen“ → die des Produkts. Mandat aus
+  angenommenem Angebot: das Angebot gilt, der Vertrag des Produkts füllt nur Lücken (Kündigung, Verlängerung, Quartal, Mindestlaufzeit ohne Laufzeit).
+  Mandat aus Deal ohne Angebot: Vertragsfelder des Produkts dazu.
+- **Angebot:** `angebotPositionenAusProdukt` — je Grund-Teil eine Position, Optionen nur gewählt, Erfolg als Satz im Text, kostenlos nur allein;
+  `positionAusProdukt` (Produktwahl im Tool) = die erste davon.
+- ZOE (`stammdaten_lage`, Produkte & Leistungen) nennt den Preis über `preiseText` (alle Preis-Teile).
+- **Noch direkt am alten `preis` (nicht in P1):** Oberfläche `components/os/mandate/Produkte.tsx`, `components/os/crm/angebot/Positionen.tsx` (P2),
+  Demo-Saat (P4). Wer neu liest: über `preiseText`/`hauptpreis`/`planBausteinAusProdukt`.
 
 ## Pakete
 
