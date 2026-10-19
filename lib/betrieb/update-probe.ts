@@ -238,6 +238,21 @@ export const ERLAUBT: readonly ErlaubtRegel[] = [
     },
     grund: 'Verzeichnis (Art. 30): unveränderte alte Fassung eines Textes auf die neue gehoben — von Hand Geändertes bleibt.',
   },
+  {
+    // 19.10. (Rundgang B13, lib/fulfillment/regeln.ts `angebotAngenommenWirksam`): bei aktivem Mandat gilt „Angebot angenommen?“ als ja — die
+    // Erinnerung „nachfassen“ entfällt, die Ausführung (lib/fulfillment/prozesse/ausfuehrung-server.ts) schließt IHRE Aufgabe als abgebrochen.
+    // Nur Ablauf-Aufgaben (`ff-ab-…`, gehören der Ausführung), nur offen → abgebrochen; die Aufgabe bleibt mit Titel und Verlauf stehen.
+    bestand: /^tasks$/, pfad: /^tasks\[id=ff-ab-[a-z0-9-]+\]\.status$/, arten: ['wert-geaendert'],
+    wenn: a => ['todo', 'backlog', 'in_progress', 'blocked'].includes(String(a.vorher ?? '').replace(/^"|"$/g, '')) && String(a.nachher ?? '').replace(/^"|"$/g, '') === 'cancelled',
+    grund: 'Fulfillment: ein Schritt entfällt (bei aktivem Mandat ist „Angebot angenommen?“ erledigt) — die Ausführung schließt ihre eigene Aufgabe als abgebrochen; nichts wird gelöscht.',
+  },
+  {
+    // 19.10. (dasselbe): der Mail-Vorschlag dieser Erinnerung im ZOE-Stapel wird abgelehnt („Der Schritt entfällt im Fall — die Nachricht ist nicht
+    // mehr nötig.“, `stapelAufraeumen`). Nur offen → abgelehnt — nie freigegeben, nie entfernt; der Vorschlag bleibt mit Grund im Stapel.
+    bestand: /^zoe-stapel$/, pfad: /^vorschlaege\[id=[^\]]+\]\.status$/, arten: ['wert-geaendert'],
+    wenn: a => String(a.vorher ?? '').replace(/^"|"$/g, '') === 'offen' && String(a.nachher ?? '').replace(/^"|"$/g, '') === 'abgelehnt',
+    grund: 'ZOE-Stapel: der Vorschlag eines entfallenen Fulfillment-Schritts wird mit Grund abgelehnt — er bleibt sichtbar im Stapel.',
+  },
 ];
 
 function erlaubtFuer(a: Abweichung, regeln: readonly ErlaubtRegel[], ctx: PruefKontext): ErlaubtRegel | null {

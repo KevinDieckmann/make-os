@@ -33,6 +33,33 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-19',
+    datum: '2026-10-19',
+    titel: 'Produkte & Mandate neu',
+    kurz: 'Ein Produkt ist jetzt eine Karte: Preis, Vertrag, Regeln, Text und Ablauf stehen genau einmal — Angebot, Mandat, Rechnung und Liquidität lesen alles von dort.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { bereich: 'business', text: 'Die Leistungstreppe ist jetzt euer Katalog: Stufen von links nach rechts, Alternativen übereinander, je Produkt Preis, Kunden und freie Plätze.', weg: WEG.produkt() },
+        { bereich: 'business', text: 'Produkte geführt anlegen: Name, Art, Preis, Gesellschaft und ein Satz — danach öffnet sich die Karte mit allen Einzelheiten.', weg: WEG.produkt() },
+        { bereich: 'business', text: 'Preise kombinierbar: einmalig, monatlich, jährlich, je Event, Tages- oder Stundensatz, Erfolgsanteil — mit Anzahlung, Kontingent oder Deckel.' },
+        { bereich: 'business', text: 'Vertrag und Regeln am Produkt: Mindestlaufzeit, Kündigung, Anrechnung auf ein anderes Produkt, höchstens N Kunden gleichzeitig, inklusive Leistungen.' },
+        { bereich: 'business', text: 'Mandat aus dem Produkt: Honorar, Laufzeit, Gesellschaft und Leistungen kommen mit — dazu Zusatzmodule, die Rechnung, Liquidität und Fall mitrechnen.', weg: WEG.mandat() },
+        { bereich: 'business', text: 'Produkte importieren: aus einer Tabelle oder Datei, mit Vorschau „neu · ändert · gleich“ — erst „Übernehmen“ schreibt.', weg: WEG.produkt() },
+      ] },
+      { art: 'besser', punkte: [
+        { bereich: 'business', text: 'Die Anrechnung (z. B. eines Workshops auf das Mandat) steht genau einmal auf der Rechnung und ebenso in der Liquidität.' },
+        { bereich: 'business', text: 'Das Angebot übernimmt alle Preise eines Produkts als Positionen, Optionen hakt ihr an; der Deal folgt dem angenommenen Angebot.' },
+        { bereich: 'business', text: 'Die Rechnungsanschrift wird an der Firma gespeichert.' },
+        { bereich: 'alle', text: 'Abgeleitete Ziele (Quartal, Monat, Woche) ziehen ihren Fortschritt wieder mit dem Jahresziel mit.' },
+      ] },
+      { art: 'behoben', punkte: [
+        { bereich: 'business', text: 'Ein neuer Fall zeigt keine Phase mehr fälschlich als „erledigt“; was nebenher läuft, heißt „läuft“.' },
+        { bereich: 'business', text: 'Ein Konto „nur Business“ sieht den Produktkatalog in der Planung.' },
+        { bereich: 'business', text: 'Der Lieferumfang verdoppelt sich nicht mehr beim Verlassen des Feldes.' },
+      ] },
+    ],
+  },
+  {
     // Kennung/Datum vorläufig: das nächste Update (Datum beim Hochladen eintragen, danach nie mehr ändern).
     id: 'u-2026-10-18-2',
     datum: '2026-10-18',
