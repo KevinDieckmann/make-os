@@ -121,14 +121,14 @@ describe('Demo: Fulfillment', () => {
     expect(e.laufend).toBe(1); // der Beispiel-Fall in Ausführung (lib/demo/fulfillment-ablauf.ts)
     const { editorModell } = await import('@/lib/fulfillment/prozesse/editor');
     const m = editorModell(e.vorlage as never);
-    expect(m.phasen.map(p => p.titel)).toEqual(['Angebot', 'Start']);
+    expect(m.phasen.map(p => p.titel)).toEqual(['Konzept', 'Start']);
     const schritte1 = m.phasen[0].abschnitte.flatMap(a => a.knoten);
     const entscheidung = schritte1.find(x => x.form === 'entscheidung')!;
-    expect(entscheidung.titel).toBe('Angebot angenommen?');
+    expect(entscheidung.titel).toBe('Konzept freigegeben?');
     const nein = schritte1.find(x => x.id === entscheidung.zweige?.nein)!;
     expect(nein).toMatchObject({ form: 'erinnerung', neinVon: entscheidung.id, zweige: { ja: entscheidung.id } });
     expect(schritte1.filter(x => !x.neinVon).map(x => x.form)).toEqual(['schritt', 'nachricht', 'entscheidung', 'termin']);
-    expect(m.phasen[0].abstimmung?.titel).toBe('Auftrag bestätigt');
+    expect(m.phasen[0].abstimmung?.titel).toBe('Konzept bestätigt');
   });
 
   it('Ausführung (17.10. abends): der Beispiel-Fall läuft sichtbar — offene Entscheidung, fällige Erinnerung mit Aufgabe, Mail-Entwurf im Stapel (nie gesendet)', async () => {
@@ -139,19 +139,19 @@ describe('Demo: Fulfillment', () => {
     expect(fall.status).toBe('laeuft');
     const kn = (t: string) => fall.knoten.find(x => x.titel === t)!;
     expect(kn('Bedarf aufnehmen').status).toBe('erledigt');
-    expect(kn('Angebot senden').status).toBe('erledigt');
-    expect(kn('Angebot angenommen?')).toMatchObject({ status: 'wartet_kunde', antwort: 'nein', runden: 1 });
+    expect(kn('Konzept senden').status).toBe('erledigt');
+    expect(kn('Konzept freigegeben?')).toMatchObject({ status: 'wartet_kunde', antwort: 'nein', runden: 1 });
     const heute = localDay();
     expect(kn('Nach einer Woche nachfassen').faelligAm).toBe(heute); // heute fällig — die Demo hat keine überfällige Aufgabe (demo.test B12)
     const ab = f.ablauf as { aktiv: boolean; knoten: Record<string, { aktiv: boolean; art: string; ueberfaellig: boolean; aufgabe?: string; aufgabeStatus?: string; neinLaeuft?: boolean }> };
     expect(ab.knoten[kn('Nach einer Woche nachfassen').id]).toMatchObject({ aktiv: true, art: 'erinnerung', ueberfaellig: false, aufgabeStatus: 'todo' });
-    expect(ab.knoten[kn('Angebot angenommen?').id]).toMatchObject({ art: 'entscheidung', neinLaeuft: true });
+    expect(ab.knoten[kn('Konzept freigegeben?').id]).toMatchObject({ art: 'entscheidung', neinLaeuft: true });
     // Der Mail-Entwurf: als Vorschlag im Stapel (für die Zuständige), gefüllt aus dem Baustein — gesendet wurde nichts.
     const db = await import('@/lib/store/local-db');
     const st = await db.loadJson<{ vorschlaege: { status: string; werkzeug: string; person?: string; bezug?: { id: string } }[] }>('zoe-stapel');
     expect((st?.vorschlaege ?? []).filter(v => v.status === 'offen' && v.werkzeug === 'fulfillment_nachricht' && v.bezug?.id.startsWith(`p:nachricht:${ABLAUF_DEMO_MANDAT}:`))).toHaveLength(1);
     const n = await lese('fulfillment/fall', `?m=${ABLAUF_DEMO_MANDAT}&nachricht=${kn('Nach einer Woche nachfassen').id}`);
-    expect(n.entwurf).toMatchObject({ betreff: 'Kurze Rückfrage zum Angebot — Hafenkontor Beispiel GmbH', an: { email: 'mara@example.invalid' } });
+    expect(n.entwurf).toMatchObject({ betreff: 'Kurze Rückfrage zum Konzept — Hafenkontor Beispiel GmbH', an: { email: 'mara@example.invalid' } });
     expect((n.entwurf as { text: string }).text).toMatch(/^Guten Tag Mara Beispiel,/);
     // Die Live-Lage: hier = die Erinnerung (heute fällig), die Entscheidung ist offen.
     const c = await lese('fulfillment/cockpit');

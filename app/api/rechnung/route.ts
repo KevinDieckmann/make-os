@@ -98,8 +98,11 @@ export async function POST(req: Request) {
       case 'speichern': {
         const felder = b.felder && typeof b.felder === 'object' && !Array.isArray(b.felder) ? b.felder as Record<string, unknown> : null;
         if (!felder || !id) return fehler('id und felder fehlen.', 400);
-        const r = await entwurfSpeichern({ id, felder, stand: b.stand, haushalt: z.haushalt, sicht: z.sicht, wer });
-        return NextResponse.json({ ok: true, rechnung: r });
+        // „An der Firma speichern“ (19.10., B12): nur der ausdrückliche Haken überschreibt eine andere Anschrift der Firma — mit der Anschrift, die er sah.
+        const af = b.anFirma && typeof b.anFirma === 'object' && !Array.isArray(b.anFirma) ? b.anFirma as { basis?: unknown } : null;
+        const anFirma = af ? { basis: typeof af.basis === 'string' ? af.basis.slice(0, 400) : null } : undefined;
+        const { anFirma: firmaErgebnis, ...r } = await entwurfSpeichern({ id, felder, stand: b.stand, haushalt: z.haushalt, sicht: z.sicht, wer, ...(anFirma ? { anFirma } : {}) });
+        return NextResponse.json({ ok: true, rechnung: r, ...(firmaErgebnis ? { anFirma: firmaErgebnis } : {}) });
       }
       case 'loeschen': {
         if (!id) return fehler('id fehlt.', 400);

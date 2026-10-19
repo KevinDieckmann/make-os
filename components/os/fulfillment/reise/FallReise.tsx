@@ -44,7 +44,8 @@ export function bildSpalten(z: ReiseZeile): BildSpalte[] {
   const band = bandTexte(z);
   return z.spalten.map((s, i) => ({
     id: s.id, nr: s.nr, titel: s.titel, zustand: s.zustand, kaestchen: s.kaestchen, mehr: s.mehr, ...(s.haengt ? { haengt: s.haengt } : {}),
-    unter: s.zustand === 'fertig' ? 'erledigt' : s.gesamt ? `${s.erledigt} von ${s.gesamt}` : undefined,
+    // „läuft nebenher“ (19.10., A4): der Ablauf ist an der Phase vorbei, darin ist noch etwas offen — nie „erledigt“.
+    unter: s.zustand === 'fertig' ? 'erledigt' : s.zustand === 'laeuft' ? `läuft nebenher${s.gesamt ? ` · ${s.erledigt} von ${s.gesamt}` : ''}` : s.gesamt ? `${s.erledigt} von ${s.gesamt}` : undefined,
     ...(s.abstimmung ? { raute: { titel: bestaetigungTitel(s.abstimmung.nr, s.abstimmung.titel || undefined), gegeben: s.abstimmung.gegeben, hier: s.abstimmung.hier, ...(s.abstimmung.haengt ? { haengt: s.abstimmung.haengt } : {}) } } : {}),
     band: { ...(band[i] ? { text: band[i] } : {}), ...(band[i] && band[i] !== BAND_NICHTS ? { achtung: true } : {}), intern: !s.band.sieht },
     // Phasen eines angehängten Zusatzmoduls (17.10. spät): eigener Abschnitt der Reise mit dem Titel des Moduls.

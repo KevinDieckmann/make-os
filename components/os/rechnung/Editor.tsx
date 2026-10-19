@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
-import type { RechnungEmpfaenger, RechnungPosition, SteuerHinweis } from '@/lib/finanzen/rechnung/typen';
+import type { AnschriftAnFirma, RechnungEmpfaenger, RechnungPosition, SteuerHinweis } from '@/lib/finanzen/rechnung/typen';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
@@ -23,7 +23,7 @@ import {
 } from '@/lib/finanzen/rechnung/regeln';
 import { rechnungDokument, bankZeile } from '@/lib/finanzen/rechnung/dokument';
 import { Blatt } from '../crm/angebot/Blatt';
-import { Karte, Knopf, Chip, Hinweis, Pillen, Segmente, Feldzeile, Ueberschrift, feld } from '../ui';
+import { Karte, Knopf, Chip, Hinweis, Pillen, Segmente, Feldzeile, Ueberschrift, Schalter, feld } from '../ui';
 import { neueAnfrage, pdfLaden, rechnungPost, type RechnungDaten, type RechnungMitFassung, type AbsenderAnzeige } from './daten';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
@@ -70,6 +70,11 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
   const [ansicht, setAnsicht] = useState<'bearbeiten' | 'vorschau'>('bearbeiten');
   const [fertig, setFertig] = useState<{ r: RechnungMitFassung; pdf: { id: string; name: string }; mailto: string } | null>(null);
   const [loeschFrage, setLoeschFrage] = useState(false);
+  // Rechnungsanschrift an der Firma (19.10., B12): was der Server zuletzt meldete; der Haken überschreibt eine ANDERE Anschrift der Firma.
+  const [anFirma, setAnFirma] = useState<AnschriftAnFirma | null>(null);
+  const anFirmaRef = useRef<AnschriftAnFirma | null>(null); anFirmaRef.current = anFirma;
+  const [haken, setHaken] = useState(false);
+  const hakenRef = useRef(false); hakenRef.current = haken;
 
   // ── Automatisch speichern: nacheinander, mit dem Stand der letzten Antwort ──
   const formRef = useRef(form); formRef.current = form;
@@ -85,9 +90,12 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
     kette.current = kette.current.then(async () => {
       setStatus('speichert');
       const f = formRef.current;
-      const r = await rechnungPost({ aktion: 'speichern', id: start.id, stand: standRef.current, felder: { ...f, kunde: kundeAus(f.empfaenger, start.kunde) } }, opt);
+      const af = anFirmaRef.current;
+      const ueberschreiben = hakenRef.current && af?.stand === 'abweichend' ? { anFirma: { basis: af.firma ?? null } } : {};
+      const r = await rechnungPost({ aktion: 'speichern', id: start.id, stand: standRef.current, felder: { ...f, kunde: kundeAus(f.empfaenger, start.kunde) }, ...ueberschreiben }, opt);
       if (r.ok && r.rechnung) {
         standRef.current = r.rechnung.fassung; datenRef.current.uebernehmen(r.rechnung); setStatus(offen.current ? 'wartet' : 'gespeichert'); setMeldung(null);
+        if (r.anFirma) { setAnFirma(r.anFirma); if (r.anFirma.stand !== 'abweichend') setHaken(false); }
       } else if (r.status === 409 && r.aktuell) {
         // Die eigene Eingabe bleibt als „Deine Fassung“ — angezeigt wird der gespeicherte Stand.
         standRef.current = r.aktuell.fassung; datenRef.current.uebernehmen(r.aktuell); setStatus('fehler');
@@ -206,6 +214,13 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
             <Feldzeile label="Ihre Referenz / Bestellnummer"><input value={form.empfaenger.referenz ?? ''} onChange={e => empf({ referenz: e.target.value })} style={feld} /></Feldzeile>
             <Feldzeile label="E-Mail für den Versand"><input value={form.empfaenger.email ?? ''} type="email" onChange={e => empf({ email: e.target.value })} style={feld} /></Feldzeile>
           </div>
+          {anFirma?.stand === 'gespeichert' && <div style={{ ...klein, marginTop: 8 }}>Anschrift an der Firma gespeichert — die nächste Rechnung ist damit vorbelegt.</div>}
+          {anFirma?.stand === 'abweichend' && (
+            <div style={{ marginTop: 10 }}>
+              <Schalter karte erklaerungOhne="Die Beschreibung sagt, was an der Firma steht und was der Haken tut" an={haken} onChange={an => { setHaken(an); hakenRef.current = an; if (an) { offen.current = true; void speichernJetzt(); } }}
+                beschreibung={`An der Firma steht eine andere Anschrift: ${anFirma.firma ?? '—'}`}>Diese Anschrift an der Firma speichern</Schalter>
+            </div>
+          )}
         </Karte>
 
         <Karte flach>

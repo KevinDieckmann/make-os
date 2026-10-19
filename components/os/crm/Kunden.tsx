@@ -395,7 +395,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m:
       </Feldzeile>
       <MandatRechnungen m={m} />
       {m.leistungen.length > 0 && <div><div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 4 }}>Leistungen</div><ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 3 }}>{m.leistungen.map((x, i) => <li key={i} style={{ fontSize: TYP.bedien, color: C.inkDim }}>{x}</li>)}</ul></div>}
-      <Feldzeile label="Offener Punkt"><Feld platzhalter="Neuer offener Punkt …" onFertig={t => t.trim() && setze({ offen: [...m.offen, t.trim()] })} /></Feldzeile>
+      <Feldzeile label="Offener Punkt"><Feld leeren platzhalter="Neuer offener Punkt …" onFertig={t => t.trim() && setze({ offen: [...m.offen, t.trim()] })} /></Feldzeile>
       {m.quelle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Quelle: {m.quelle}</div>}
     </div>
   );

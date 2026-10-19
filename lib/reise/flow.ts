@@ -35,13 +35,15 @@ export function reiseFlow(spalten: readonly Pick<BildSpalte, 'zustand' | 'haengt
   const laeuft = spalten.length > 0 && spalten.every(s => s.zustand === 'laeuft');
   if (laeuft) return { hier: null, rauten, haengt, laeuft };
   const j = spalten.findIndex(s => s.zustand === 'jetzt');
+  // Neben anderen Stufen heißt `laeuft`: durchlaufen, darin läuft noch etwas nebenher (Fulfillment, 19.10.) — der Weg ist an ihr vorbei wie an einer fertigen.
+  const vorbei = (s: Pick<BildSpalte, 'zustand'>) => s.zustand === 'fertig' || s.zustand === 'laeuft';
   let hier: ReiseHier;
   if (j >= 0) hier = spalten[j].raute?.hier ? { art: 'grenze', i: j } : { art: 'mitte', i: j };
-  else if (spalten.length && spalten.every(s => s.zustand === 'fertig')) hier = { art: 'ende' };
+  else if (spalten.length && spalten.every(vorbei)) hier = { art: 'ende' };
   else {
     // Keine laufende Stufe: hinter der letzten fertigen (bzw. am Anfang).
     let f = -1;
-    spalten.forEach((s, i) => { if (s.zustand === 'fertig') f = i; });
+    spalten.forEach((s, i) => { if (vorbei(s)) f = i; });
     hier = f >= 0 ? { art: 'grenze', i: f } : { art: 'anfang' };
   }
   return { hier, rauten, haengt, laeuft };

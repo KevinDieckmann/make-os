@@ -15,7 +15,7 @@
 // Fallbeispiel (erfunden): „Beispiel Werkzeugbau“ steht in Phase 2 von 4 („Analyse“), 3 von 10 Schritten sind erledigt, die Preisliste wartet seit
 // neun Tagen beim Kunden → Ampel gelb „Wir warten auf euren Input“, Satz 3 „Von euch brauchen wir eine Sache — sie wartet seit 9 Tagen.“
 
-import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, mitAusfuehrung, phaseDurch, phaseFertig, teilbaum, wartetAufEuch, wertKontoZeilen } from '../regeln';
+import { aktuellerKnoten, ebeneVon, fallFortschritt, inReihenfolge, jetztPhasen, kinderVon, phaseFertig, phasenStaende, teilbaum, wartetAufEuch, wertKontoZeilen, type PhasenStand } from '../regeln';
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { zielErreichung } from '../prozesse/wert';
 import { RHYTHMUS_TEXT, naechsterFallTermin } from '../prozesse/rituale';
@@ -119,7 +119,8 @@ export function tagMitWochentag(t: string): string {
 
 export interface KundenPhase {
   titel: string;
-  stand: 'erledigt' | 'aktuell' | 'kommt';
+  /** erledigt · aktuell (hier stehen wir) · laeuft (der Weg ist vorbei, darin läuft noch etwas — 19.10., A4) · kommt. */
+  stand: 'erledigt' | 'aktuell' | 'laeuft' | 'kommt';
   /**
    * Erledigter Anteil der Phase (0–1, zwei Stellen) — nur bei Phasen mit Schritten. DIESELBE Zählung wie intern (`fallReise`: ein Schritt mit seinen
    * Bausteinen ist EINE Zeile): intern „1 von 3“, beim Kunden „33 % der Schritte“ (17.10., dritte Abnahme B5: vorher 20 % aus den Blättern). Die Zahl der
@@ -200,6 +201,9 @@ export function brauchtAnzahl(wartet: readonly Pick<KundenWartet, 'formular'>[],
 /** Ein Formular ist offen, solange ein Abschnitt nicht abgeschlossen ist — EINE Regel für Lage, Karte und Report. */
 export const formularOffen = (f: { abschnitte: readonly { fertig: boolean }[] }): boolean => f.abschnitte.some(a => !a.fertig);
 
+/** Der Stand einer Phase in Kundenworten — übersetzt aus `phasenStaende` (lib/fulfillment/regeln.ts). */
+const KUNDEN_STAND: Record<PhasenStand, KundenPhase['stand']> = { fertig: 'erledigt', jetzt: 'aktuell', laeuft: 'laeuft', offen: 'kommt' };
+
 /** Die Teile, die der Kunde sieht — EINE Rechnung für Seite, Report, Präsentation. Ohne Fall nur das Wert-Konto des Mandats. */
 export function kundenTeile(e: TeileEingabe): KundenTeile {
   const f = e.fall;
@@ -217,14 +221,16 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   // da (14.10., Abnahme A3: sonst fehlte „hier stehen wir“, wenn sie nicht geteilt war) — mit neutralem Titel (`kundenText`).
   // Schritte je Phase aus DERSELBEN Rechnung wie intern (`fallReise` — Reise-Zeile, Ablauf), nicht aus den Blättern (17.10., dritte Abnahme B5).
   const schritteJe = new Map((f ? fallReise(f, e.freigaben ?? [], e.heute).phasen : []).map(p => [p.id, { erledigt: p.erledigt, gesamt: p.gesamt }]));
-  // „Erledigt“ = durch (`phaseDurch`, 18.10., L1b N2) — dieselbe Stelle wie die Reise intern: was nur nebenher läuft (das Kunden-Playbook), hält die Phase nicht an.
-  const ablauf = mitAusfuehrung(l);
+  // Stand je Phase aus DERSELBEN Regel wie die Reise intern (`phasenStaende`, 19.10., Rundgang A4): „erledigt“ nur, wenn wirklich alles darin erledigt ist;
+  // eine Phase, an der der Weg vorbei ist, obwohl darin noch etwas nebenher läuft (das Kunden-Playbook), „läuft noch“; eine spätere nur aus Bausteinen „kommt“.
+  const staende = f ? phasenStaende(f) : new Map<string, PhasenStand>();
   const phasen: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && (sichtbar(k) || (jetzt.has(k.id) && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))).map(p => {
-    const fertig = phaseDurch(p, l, ablauf);
+    const st = staende.get(p.id) ?? 'offen';
+    const fertig = st === 'fertig';
     const s = schritteJe.get(p.id);
     const a = abstimmungTitel(p);
     return {
-      titel: kundenText(p.titel, a), stand: jetzt.has(p.id) ? 'aktuell' as const : fertig ? 'erledigt' as const : 'kommt' as const,
+      titel: kundenText(p.titel, a), stand: KUNDEN_STAND[st],
       ...(s && s.gesamt ? { anteil: fertig ? 1 : Math.round((s.erledigt / s.gesamt) * 100) / 100 } : {}),
       ...(a && p.freigabe ? { abstimmung: { titel: a, erledigt: !!f?.freigaben?.[p.freigabe] } } : {}),
     };
@@ -467,7 +473,7 @@ export function kundenLage(e: {
 
 /** Eine Phase der Kunden-Reise in der Form der Reise-Zeile (components/os/ui/reise/ReiseBild.tsx `BildSpalte`, Typ lib/reise/bild.ts). */
 export interface KundenReiseSpalte {
-  id: string; nr: number; titel: string; zustand: 'fertig' | 'jetzt' | 'offen'; unter?: string;
+  id: string; nr: number; titel: string; zustand: 'fertig' | 'jetzt' | 'laeuft' | 'offen'; unter?: string;
   kaestchen: { id: string; titel: string; zustand: 'hier' | 'offen' }[]; mehr: number;
   raute?: { titel: string; gegeben: boolean };
   band?: { text?: string; achtung?: boolean };
@@ -490,9 +496,9 @@ export function kundenReise(phasen: readonly KundenPhase[], naechstes: readonly 
     const titel = hier ? g.jetzt : spaeter?.titel ?? [];
     const mehr = Math.max(0, titel.length - KUNDEN_KAESTCHEN) + (hier ? g.jetztMehr : spaeter?.mehr ?? 0);
     return {
-      id: `phase-${i + 1}`, nr: i + 1, titel: p.titel, zustand: p.stand === 'erledigt' ? 'fertig' as const : hier ? 'jetzt' as const : 'offen' as const,
-      // „33 % der Schritte“ — dieselbe Grundlage wie intern „1 von 3“ (B5), als Anteil übersetzt.
-      ...(p.stand === 'erledigt' ? { unter: 'erledigt' } : hier && p.anteil != null ? { unter: `${Math.round(p.anteil * 100)}\u00A0% der Schritte` } : {}),
+      id: `phase-${i + 1}`, nr: i + 1, titel: p.titel, zustand: p.stand === 'erledigt' ? 'fertig' as const : hier ? 'jetzt' as const : p.stand === 'laeuft' ? 'laeuft' as const : 'offen' as const,
+      // „33 % der Schritte“ — dieselbe Grundlage wie intern „1 von 3“ (B5), als Anteil übersetzt. „läuft noch“: der Weg ist vorbei, darin ist noch etwas offen (A4).
+      ...(p.stand === 'erledigt' ? { unter: 'erledigt' } : p.stand === 'laeuft' && !hier ? { unter: 'läuft noch' } : hier && p.anteil != null ? { unter: `${Math.round(p.anteil * 100)}\u00A0% der Schritte` } : {}),
       kaestchen: titel.slice(0, KUNDEN_KAESTCHEN).map((t, j) => ({ id: `n-${i + 1}-${j + 1}`, titel: t, zustand: hier && j === 0 ? 'hier' as const : 'offen' as const })),
       mehr,
       ...(p.abstimmung ? { raute: { titel: p.abstimmung.titel, gegeben: p.abstimmung.erledigt } } : {}),
@@ -510,7 +516,7 @@ export function strahlModell(phasen: readonly KundenPhase[]): { segmente: Strahl
   const n = phasen.length;
   const segmente = phasen.map((p, i) => ({
     titel: p.titel, stand: p.stand, von: i / Math.max(1, n), bis: (i + 1) / Math.max(1, n),
-    fuellung: p.stand === 'erledigt' ? 1 : p.stand === 'aktuell' ? Math.max(0.08, Math.min(1, p.anteil ?? 0)) : 0,
+    fuellung: p.stand === 'erledigt' ? 1 : p.stand === 'aktuell' ? Math.max(0.08, Math.min(1, p.anteil ?? 0)) : p.stand === 'laeuft' ? Math.min(1, p.anteil ?? 0) : 0,
     ...(p.abstimmung ? { abstimmung: p.abstimmung } : {}),
   }));
   const jetzt = phasen.findIndex(p => p.stand === 'aktuell');

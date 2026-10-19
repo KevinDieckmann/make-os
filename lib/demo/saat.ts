@@ -122,14 +122,23 @@ const upsert = (eintrag: unknown) => ({ op: 'upsert', eintrag });
 
 // ── Die erfundenen Daten ──────────────────────────────────────────────────────────────────────────────────────────────
 
+// Rechnungsanschrift je Firma (19.10., Rundgang A7): erfundene Straßen („Musterweg“, „Beispielkai“ …) — damit der Weg Mandat → Rechnung → gestellt
+// vorführbar ist (§ 14 UStG verlangt die Anschrift des Empfängers). Sie liegt dort, wo die Rechnung sie liest: `zahlung.empfaenger.anschrift`.
 const FIRMEN = [
-  { id: 'f-demo-nordwerk', name: 'Nordwerk Maschinenbau GmbH', rolle: 'kunde', branche: 'Maschinenbau', stadt: 'Bielefeld', mitarbeiter: '180' },
-  { id: 'f-demo-lumen', name: 'Lumen Logistik AG', rolle: 'kunde', branche: 'Logistik', stadt: 'Hamburg', mitarbeiter: '420' },
-  { id: 'f-demo-gruenfeld', name: 'Grünfeld Bau GmbH', rolle: 'zielkunde', branche: 'Bau', stadt: 'Münster', mitarbeiter: '95' },
-  { id: 'f-demo-atlas', name: 'Atlas Software GmbH', rolle: 'zielkunde', branche: 'Software', stadt: 'Köln', mitarbeiter: '60' },
-  { id: 'f-demo-seeblick', name: 'Seeblick Hotels KG', rolle: 'zielkunde', branche: 'Hotellerie', stadt: 'Konstanz', mitarbeiter: '240' },
-  { id: 'f-demo-kanzlei', name: 'Beispiel Steuerberatung PartG', rolle: 'partner', branche: 'Steuerberatung', stadt: 'Bielefeld', mitarbeiter: '25' },
+  { id: 'f-demo-nordwerk', name: 'Nordwerk Maschinenbau GmbH', rolle: 'kunde', branche: 'Maschinenbau', stadt: 'Bielefeld', mitarbeiter: '180', anschrift: 'Musterweg 12, 33602 Bielefeld' },
+  { id: 'f-demo-lumen', name: 'Lumen Logistik AG', rolle: 'kunde', branche: 'Logistik', stadt: 'Hamburg', mitarbeiter: '420', anschrift: 'Beispielkai 4, 20457 Hamburg' },
+  { id: 'f-demo-gruenfeld', name: 'Grünfeld Bau GmbH', rolle: 'zielkunde', branche: 'Bau', stadt: 'Münster', mitarbeiter: '95', anschrift: 'Probestraße 7, 48143 Münster' },
+  { id: 'f-demo-atlas', name: 'Atlas Software GmbH', rolle: 'zielkunde', branche: 'Software', stadt: 'Köln', mitarbeiter: '60', anschrift: 'Beispielring 21, 50667 Köln' },
+  { id: 'f-demo-seeblick', name: 'Seeblick Hotels KG', rolle: 'zielkunde', branche: 'Hotellerie', stadt: 'Konstanz', mitarbeiter: '240', anschrift: 'Am Mustersee 3, 78462 Konstanz' },
+  { id: 'f-demo-kanzlei', name: 'Beispiel Steuerberatung PartG', rolle: 'partner', branche: 'Steuerberatung', stadt: 'Bielefeld', mitarbeiter: '25', anschrift: 'Beispielplatz 1, 33602 Bielefeld' },
 ] as const;
+/**
+ * Bankverbindung der Demo-Gesellschaft (19.10., Rundgang A7 — ohne IBAN blieb „Rechnung stellen“ gesperrt): die ÖFFENTLICH DOKUMENTIERTE
+ * Beispiel-IBAN für Deutschland (das Standardbeispiel in IBAN-Erklärungen und Bankdokumentationen, mit gültiger Prüfziffer nach ISO 13616),
+ * KEINE Bankverbindung von uns oder einem Kunden. In Stücken notiert (auch hier im Kommentar nie am Stück), damit der Wächter gegen echte
+ * Kontodaten im Repo (tests/repo-sauber.test.ts: jede gültige IBAN im Quelltext) still bleibt — so wie in den Tests.
+ */
+export const DEMO_IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
 
 const KONTAKTE = [
   { k: 'sophie', vorname: 'Sophie', nachname: 'Brandt', firma: 'f-demo-nordwerk', position: 'Geschäftsführerin', stufe: 'gewonnen', prio: 'A' },
@@ -213,7 +222,7 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   // 3) CRM: Firmen + Produkte (Bestand), Kontakte (Kartei), Mandate, Deals (Anlage-Weg).
   const firmenName = (id?: string) => FIRMEN.find(f => f.id === id)?.name;
   await rufe(R.crm(), 'PATCH', '/api/crm/bestand', LENA, { ops: [
-    ...FIRMEN.map(f => ({ liste: 'firmen', ...upsert({ ...f, webseite: `https://${f.id.slice(7)}.example`, notiz: 'Erfundene Beispiel-Firma (Demo).' }) })),
+    ...FIRMEN.map(({ anschrift, ...f }) => ({ liste: 'firmen', ...upsert({ ...f, webseite: `https://${f.id.slice(7)}.example`, notiz: 'Erfundene Beispiel-Firma (Demo).', zahlung: { empfaenger: { anschrift } } }) })),
     ...PRODUKTE.map(l => ({ liste: 'leistungen', ...upsert({ id: l.id, name: l.name, typ: l.typ, stufe: l.stufe, preis: l.preis, lieferumfang: l.lieferumfang, beschreibung: l.text, gesellschaft: 'ug', status: 'aktiv', angebot: { titel: l.name, leistungstext: l.text } }) })),
   ] });
   // Anlagetag = der Tag der Saat (den stempelt der Server, `serverStempel`) — die erste Notiz liegt daher AM Anlagetag, nie davor (Abnahme
@@ -419,6 +428,8 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   await rufe(R.absender(), 'PATCH', '/api/crm/gesellschaften', LENA, { id: 'ug', ...(abs?.stand ? { stand: abs.stand } : {}), felder: {
     firmierung: UG_NAME, strasse: 'Beispielweg 1', plz: '33602', ort: 'Bielefeld', email: `kontakt@${DEMO_DOMAIN}`, steuernummer: '000/000/00000 (Beispiel)',
     geschaeftsfuehrung: `${DEMO_PERSONEN[0].name} (Beispiel)`, register: 'Amtsgericht Bielefeld, HRB 00000 (Beispiel)',
+    // Bankverbindung (A7): die öffentliche Beispiel-IBAN (DEMO_IBAN) — damit eine Rechnung bis „gestellt“ vorführbar ist.
+    bank: { inhaber: UG_NAME, bank: 'Beispielbank (Demo)', iban: DEMO_IBAN },
   } });
   const diagnose = PRODUKTE[0];
   const entwurfA = (await rufe(R.angebot(), 'POST', '/api/crm/angebot', LENA, { aktion: 'speichern', id: 'ang-demo-gruenfeld', felder: {

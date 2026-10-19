@@ -233,7 +233,8 @@ describe('Rechnungsanschrift an der Firma speichern', () => {
     const r = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-neu', monat: '2026-10' })).rechnung;
     expect(r.kundeFirmaId).toBe('f-neu');
     expect(r.empfaenger?.strasse).toBeUndefined();
-    await server.entwurfSpeichern({ id: r.id, felder: { empfaenger: adresse }, stand: r.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    const gespeichert = await server.entwurfSpeichern({ id: r.id, felder: { empfaenger: adresse }, stand: r.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    expect(gespeichert.anFirma).toEqual({ stand: 'gespeichert' }); // die Firma hatte keine Anschrift → ohne Haken
     const f = await firmaIn('f-neu');
     expect(f.zahlung).toMatchObject({ referenz: 'PO-9', iban: IBAN, empfaenger: { name: 'Buchhaltung', anschrift: 'Neue Straße 7, 10115 Berlin' }, geaendertVon: 'pia' });
     expect({ ...f, zahlung: undefined, geaendert: undefined, geaendertVon: undefined }).toEqual({ ...vorher, zahlung: undefined, geaendert: undefined, geaendertVon: undefined });
@@ -269,6 +270,51 @@ describe('Rechnungsanschrift an der Firma speichern', () => {
     expect(nachher.firmen.find(f => f.id === 'f-muster')).toEqual(vorherCrm.firmen.find(f => f.id === 'f-muster'));
     expect((await db.loadJson<{ kontakte: Kontakt[] }>('kontakte'))!.kontakte.find(k => k.id === 'c-ohne1')?.zahlung).toBeUndefined();
   });
+  // 19.10. (Rundgang B12): eine ANDERE Anschrift der Firma wird nie still überschrieben — nur mit dem Haken „an der Firma speichern“, und nur, solange an
+  // der Firma noch steht, was der Haken gesehen hat (wie ein Stand).
+  it('Firma hat schon eine andere Anschrift → „abweichend“, nichts überschrieben; mit dem Haken (Stand = gesehene Anschrift) gespeichert, mit veraltetem nicht', async () => {
+    const alt = 'Hauptstraße 5, 54321 Beispielstadt';
+    expect((await firmaIn('f-muster')).zahlung?.empfaenger?.anschrift).toBe(alt);
+    const r = (await server.entwurfNeu({ ...z, quelle: 'frei', firmaId: 'kdv', kontaktId: 'c-anna1', kundeFirmaId: 'f-muster' })).rechnung;
+    expect(r.empfaenger).toMatchObject({ strasse: 'Hauptstraße 5', plz: '54321', ort: 'Beispielstadt' }); // vorbelegt aus der Firma
+    const vorher = await firmaIn('f-muster');
+    const neu = { ...r.empfaenger, strasse: 'Lieferweg 9', plz: '54322', ort: 'Beispielstadt' };
+    const s1 = await server.entwurfSpeichern({ id: r.id, felder: { empfaenger: neu }, stand: r.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    expect(s1.anFirma).toEqual({ stand: 'abweichend', firma: alt });
+    expect(await firmaIn('f-muster')).toEqual(vorher);
+    // Haken mit einem veralteten Stand (an der Firma steht inzwischen etwas anderes) → nicht überschrieben.
+    const s2 = await server.entwurfSpeichern({ id: r.id, felder: { empfaenger: neu }, stand: s1.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer, anFirma: { basis: 'Irgendwo 1, 11111 Anders' } });
+    expect(s2.anFirma).toEqual({ stand: 'abweichend', firma: alt });
+    expect(await firmaIn('f-muster')).toEqual(vorher);
+    // Haken mit dem gesehenen Stand → an der Firma gespeichert (nur dieses Feld), ein zweites Mal „gleich“.
+    const s3 = await server.entwurfSpeichern({ id: r.id, felder: { empfaenger: neu }, stand: s2.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer, anFirma: { basis: alt } });
+    expect(s3.anFirma).toEqual({ stand: 'gespeichert' });
+    const f = await firmaIn('f-muster');
+    expect(f.zahlung).toMatchObject({ referenz: 'PO-7', empfaenger: { anschrift: 'Lieferweg 9, 54322 Beispielstadt' } });
+    const s4 = await server.entwurfSpeichern({ id: r.id, felder: { empfaenger: neu }, stand: s3.fassung, haushalt: z.haushalt, sicht: z.sicht, wer: z.wer, anFirma: { basis: alt } });
+    expect(s4.anFirma).toEqual({ stand: 'gleich' });
+    // Zurück auf den alten Stand für die übrigen Fälle.
+    await db.updateJson<CrmBestand>('crm', c => ({ ...c!, firmen: c!.firmen.map(x => (x.id === 'f-muster' ? vorher : x)) }));
+  });
+
+  it('beim Stellen füllt die Anschrift eine Firma ohne Anschrift — eine vorhandene bleibt', async () => {
+    const BEISPIEL_IBAN = IBAN;
+    await db.updateJson<{ gesellschaften: Record<string, unknown>[] }>('gesellschaften--test-haus', g => ({ gesellschaften: g!.gesellschaften.map(x => (x.id === 'kdv' ? { ...x, steuernummer: '000/000/00000', bank: { iban: BEISPIEL_IBAN }, geschaeftsfuehrung: 'Pia Test', register: 'Amtsgericht Beispiel, HRB 0' } : x)) }));
+    await db.updateJson<CrmBestand>('crm', c => ({ ...c!, firmen: [...c!.firmen, firma('f-leer', { name: 'Leer GmbH' }), firma('f-voll', { name: 'Voll GmbH', zahlung: { empfaenger: { anschrift: 'Altweg 1, 12345 Altstadt' } } })] }));
+    const stellen = async (kundeFirmaId: string) => {
+      const r = (await server.entwurfNeu({ ...z, quelle: 'frei', firmaId: 'kdv', kontaktId: 'c-anna1', kundeFirmaId })).rechnung;
+      // Die Anschrift kommt schon mit dem Entwurf (wie aus einem Angebot) — sie wurde nie „geändert“; gespeichert wird sie beim Stellen.
+      await db.updateJson<FinanzplanFile>('finanzplan', f => ({ ...f!, rechnungen: f!.rechnungen.map(x => (x.id === r.id ? { ...x, empfaenger: { firma: 'Kunde', strasse: 'Stellweg 3', plz: '10115', ort: 'Berlin' }, leistungVon: '2026-10-01', positionen: [{ id: 'p1', titel: 'Leistung', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 10000, ustSatz: 19 }] } : x)) }));
+      const fp = await import('@/lib/finanzen/finanzplan-bestand');
+      return server.rechnungStellen({ id: r.id, stand: fp.fassung(await rechnungIn(r.id)), person: 'pia', haushalt: z.haushalt, sicht: z.sicht, wer: z.wer });
+    };
+    expect((await stellen('f-leer')).rechnung.status).toBe('gestellt');
+    expect((await firmaIn('f-leer')).zahlung?.empfaenger?.anschrift).toBe('Stellweg 3, 10115 Berlin');
+    const vorher = await firmaIn('f-voll');
+    expect((await stellen('f-voll')).rechnung.status).toBe('gestellt');
+    expect(await firmaIn('f-voll')).toEqual(vorher);
+  });
+
   it('gestellte Rechnung → 409, weder Rechnung noch Firma geändert', async () => {
     const r = (await server.entwurfNeu({ ...z, quelle: 'frei', firmaId: 'kdv', kontaktId: 'c-anna1', kundeFirmaId: 'f-muster' })).rechnung;
     await db.updateJson<FinanzplanFile>('finanzplan', f => ({ ...f!, rechnungen: f!.rechnungen.map(x => (x.id === r.id ? { ...x, status: 'gestellt', nummer: 'KDV-R-2026-0099', datum: '2026-10-18' } : x)) }));

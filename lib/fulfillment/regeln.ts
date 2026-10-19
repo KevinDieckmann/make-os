@@ -197,6 +197,47 @@ export function aktuellerKnoten(fall: Pick<Fall, 'knoten'> & Partial<Pick<Fall, 
   return { phase, schritt: offen(4) ?? offen(3) };
 }
 
+// ── „Angebot angenommen?“ bei aktivem Mandat (19.10., Rundgang B13) ──────────────────────────────────────────────────────────────────
+// Fund: Bei einem Kunden mit aktivem Mandat fragte das Fulfillment „Angebot angenommen? Ja/Nein“ (Entscheidung aus dem Ablauf). Mit aktivem Mandat bzw.
+// angenommenem Angebot ist diese Entscheidung erledigt — der Fall rechnet sie wirksam als „ja“ (`fallWirksam`, lib/fulfillment/prozesse/onboarding.ts), gespeichert
+// wird davon nichts. Erkannt am Titel, wie die anderen Schritte mit fester Bedeutung (`schrittVerweis`): genau die Frage, ob DAS Angebot angenommen ist —
+// „Angebot für Phase 2 angenommen?“ (ein Nachtrag im laufenden Mandat) bleibt eine offene Entscheidung.
+
+const ANGEBOT_ANGENOMMEN = /^(?:(?:ist|wurde) )?(?:das |unser |ihr )?angebot (?:(?:ist|wurde) )?angenommen$/;
+/** Ist dieser Knoten die Entscheidung „Angebot angenommen?“ (eine Entscheidung, kein Abstimmungspunkt)? */
+export function istAngebotsEntscheidung(k: Pick<FallKnoten, 'form' | 'freigabe' | 'titel'>): boolean {
+  if (k.form !== 'entscheidung' || k.freigabe) return false;
+  return ANGEBOT_ANGENOMMEN.test(k.titel.normalize('NFC').toLowerCase().replace(/[?!.:]+/g, ' ').replace(/\s+/g, ' ').trim());
+}
+export const ANGEBOT_ANGENOMMEN_GRUND = 'Angebot angenommen — das Mandat läuft';
+
+/**
+ * Die Entscheidungen „Angebot angenommen?“ eines Falls, wie sie wirken, wenn das Angebot angenommen ist bzw. das Mandat läuft (`am` = der Tag dafür): erledigt mit
+ * „ja“ — wie ein Klick auf „ja“ (lib/fulfillment/prozesse/ausfuehrung.ts `antwortAnwenden`): der Nein-Zweig (die Erinnerung) entfällt, was der Ja-Zweig
+ * überspringt, ebenso. Der Tag ist frühestens der des letzten fertigen Schritts davor (sonst stünde der nächste Schritt mit einer alten Ankunft sofort als überfällig da).
+ * Rein; ohne passende Entscheidung dieselbe Liste.
+ */
+export function angebotAngenommenWirksam(kn: readonly FallKnoten[], am: string): FallKnoten[] {
+  const offen = kn.filter(k => istAngebotsEntscheidung(k) && !FERTIG.has(k.status));
+  if (!offen.length) return kn as FallKnoten[];
+  let raus = [...kn];
+  const setze = (id: string, f: (k: FallKnoten) => FallKnoten) => { raus = raus.map(k => (k.id === id ? f(k) : k)); };
+  const entfallen = (k: FallKnoten): FallKnoten => (FERTIG.has(k.status) ? k : { ...k, status: 'entfaellt', grund: ANGEBOT_ANGENOMMEN_GRUND });
+  for (const e of offen) {
+    const geschwister = kinderVon(e.elternId, raus);
+    const i = geschwister.findIndex(x => x.id === e.id);
+    const vorher = geschwister.slice(0, Math.max(0, i)).filter(x => x.id !== e.zweige?.nein && x.status === 'erledigt').map(x => (x.erledigtAm ?? x.seit ?? '').slice(0, 10)).filter(Boolean);
+    const tag = [tagVon(am), ...vorher].sort().at(-1)!;
+    const { grund: _g, faelligAm: _f, eskaliertAm: _x, ...r } = e;
+    setze(e.id, () => ({ ...r, status: 'erledigt', seit: tag, erledigtAm: tag, antwort: 'ja', antwortAm: tag }));
+    if (e.zweige?.nein) setze(e.zweige.nein, entfallen);
+    // Ja-Zweig: was im Strang zwischen der Entscheidung und ihrem Ziel steht, wird übersprungen (wie `nachErledigung`).
+    const ziel = e.zweige?.ja ? geschwister.findIndex(x => x.id === e.zweige!.ja) : -1;
+    if (ziel > i) for (const x of geschwister.slice(i + 1, ziel)) if (x.id !== e.zweige?.nein) setze(x.id, entfallen);
+  }
+  return raus;
+}
+
 // ── Zusatzmodule: Abschnitte eines Falls (17.10. spät; lib/fulfillment/prozesse/fall.ts `zusatzAnhaengen`) ─────────────────────────────
 
 /** Der Abschnitt einer Phase (Ebene 2): null = das Paket des Falls, sonst die Kennung der Vorlage des angehängten Zusatzmoduls. */
@@ -226,6 +267,37 @@ export function jetztPhasen(fall: Pick<Fall, 'knoten'> & Partial<Pick<Fall, 'sta
   const a = aktuellerKnoten(fall).phase;
   if (a) raus.add(a.id);
   for (const z of abschnitteDes(fall)) { if (!z) continue; const p = aktuellerKnoten(fall, z).phase; if (p) raus.add(p.id); }
+  return raus;
+}
+
+/**
+ * Wie eine Phase (Ebene 2) dasteht — EINE Regel für die Darstellung (Reise intern, Cockpit, Kunden-Seite):
+ *   · `jetzt`  — die Phase „hier“ (`jetztPhasen`, je Abschnitt eine).
+ *   · `fertig` — wirklich fertig (`phaseFertig`: eigener Status fertig bzw. jedes Blatt darunter erledigt/entfällt).
+ *   · `laeuft` — der Gang durch die Phasen ist an ihr vorbei (sie liegt in ihrem Abschnitt vor der Phase „jetzt“ bzw. der Abschnitt hat keine mehr) und
+ *                sie ist durch (`phaseDurch`), aber darin ist noch etwas offen, das nur nebenher läuft (Kunden-Playbook, Bausteine ohne Form).
+ *   · `offen`  — sonst: der Gang ist noch nicht dort (auch, wenn sie nur aus Bausteinen besteht und deshalb später nicht anhält).
+ * Rundgang 19.10. (A4): `fallReise` nahm `phaseDurch` für „fertig“ — ein neuer Fall zeigte Phasen nur aus Bausteinen („Umsetzung“, „Führung“) am ersten Tag
+ * als „✓ erledigt“ bei 0 %. „Durch“ sagt nur, dass die Phase den Ablauf nicht anhält; die Regel für „hier“ und die Ausführung (`phasenGang`) bleibt.
+ */
+export type PhasenStand = 'fertig' | 'jetzt' | 'laeuft' | 'offen';
+export function phasenStaende(fall: Pick<Fall, 'knoten'> & Partial<Pick<Fall, 'status' | 'freigaben'>>): Map<string, PhasenStand> {
+  const l = fall.knoten;
+  const w = wurzelVon(l);
+  const phasen = w ? kinderVon(w.id, l) : [];
+  const jetzt = jetztPhasen(fall);
+  const ablauf = mitAusfuehrung(l);
+  // Je Abschnitt (Paket bzw. Zusatzmodul): die Stelle der Phase „jetzt“ in der Reihenfolge seiner Phasen — keine = der Gang ist dort ganz durch.
+  const imAbschnitt = new Map<string, FallKnoten[]>();
+  for (const p of phasen) { const a = abschnittVon(p) ?? ''; imAbschnitt.set(a, [...(imAbschnitt.get(a) ?? []), p]); }
+  const raus = new Map<string, PhasenStand>();
+  for (const liste of imAbschnitt.values()) {
+    const j = liste.findIndex(p => jetzt.has(p.id));
+    liste.forEach((p, i) => {
+      const vorbei = j < 0 || i < j;
+      raus.set(p.id, jetzt.has(p.id) ? 'jetzt' : phaseFertig(p, l) ? 'fertig' : vorbei && phaseDurch(p, l, ablauf) ? 'laeuft' : 'offen');
+    });
+  }
   return raus;
 }
 

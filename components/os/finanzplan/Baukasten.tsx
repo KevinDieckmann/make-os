@@ -44,14 +44,17 @@ const einheitenFuer = (sicht: string | undefined) => (sicht === 'business' ? EIN
 const ZIELE = [0, 1, 2, 3].map(n => ({ id: String(n), label: n ? `${n} Monat${n > 1 ? 'e' : ''}` : 'sofort' }));
 
 interface Vorschlaege { produkte: ProduktVorschlag[]; istBasis: IstBasisVorschlag[] }
-/** Vorschläge aus dem CRM — einmal laden; ohne CRM bleiben die Listen leer und die Planung läuft trotzdem. */
-function useVorschlaege(): Vorschlaege {
+/**
+ * Vorschläge aus dem CRM — einmal je Sicht laden; ohne CRM bleiben die Listen leer und die Planung läuft trotzdem. Die Business-Sicht fragt mit
+ * `?sicht=business` (19.10., A5): der Server liefert dort nur, was die Business-Planung tragen kann (keine Produkte der Selbstständigkeit).
+ */
+function useVorschlaege(sicht: string | undefined): Vorschlaege {
   const [v, setV] = useState<Vorschlaege>({ produkte: [], istBasis: [] });
   useEffect(() => {
     let weg = false;
-    fetch('/api/finanzplan/vorschlaege', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((a: (Partial<Vorschlaege> & { ok?: boolean }) | null) => { if (!weg && a?.ok) setV({ produkte: a.produkte ?? [], istBasis: a.istBasis ?? [] }); }).catch(() => { /* ohne CRM */ });
+    fetch(`/api/finanzplan/vorschlaege${sicht === 'business' ? '?sicht=business' : ''}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then((a: (Partial<Vorschlaege> & { ok?: boolean }) | null) => { if (!weg && a?.ok) setV({ produkte: a.produkte ?? [], istBasis: a.istBasis ?? [] }); }).catch(() => { /* ohne CRM */ });
     return () => { weg = true; };
-  }, []);
+  }, [sicht]);
   return v;
 }
 
@@ -95,7 +98,7 @@ export function Baukasten() {
   const psLive = useMemo(() => (ps ? mitLive(ps, live, m0) : null), [ps, live, m0]);
   const g = useMemo(() => (psLive ? rechne(d, undefined, psLive) : basis), [d, psLive, basis]);
   const sw = schwellenVon(d);
-  const vorschlaege = useVorschlaege();
+  const vorschlaege = useVorschlaege(sicht);
   const [neu, setNeu] = useState<{ name: string; basis: string } | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [loeschen, setLoeschen] = useState(false);

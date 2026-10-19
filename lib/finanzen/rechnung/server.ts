@@ -38,7 +38,7 @@ import {
 } from './regeln';
 import { angenommenZuDeal } from '@/lib/crm/angebote';
 import { rechnungDokument, bankZeile } from './dokument';
-import type { Mahnstufe } from './typen';
+import type { AnschriftAnFirma, Mahnstufe } from './typen';
 
 export class RechnungFehler extends Error {
   constructor(msg: string, readonly status: number, readonly extra: Record<string, unknown> = {}) { super(msg); }
@@ -279,7 +279,7 @@ function standPruefen(r: Rechnung, stand: unknown) {
   if (fassung(r) !== stand) throw new RechnungFehler('Wurde inzwischen geändert — der aktuelle Stand ist geladen, bitte noch einmal.', 409, { aktuell: mitFassung(r), grund: 'inzwischen geändert' });
 }
 
-export async function entwurfSpeichern(p: { id: string; felder: Record<string, unknown>; stand: unknown; haushalt: string; sicht: Sicht; wer?: Wer }): Promise<Rechnung & { fassung: string }> {
+export async function entwurfSpeichern(p: { id: string; felder: Record<string, unknown>; stand: unknown; haushalt: string; sicht: Sicht; wer?: Wer; anFirma?: { basis: string | null } }): Promise<Rechnung & { fassung: string; anFirma?: AnschriftAnFirma }> {
   const zuLang = entwurfGrenzen(p.felder);
   if (zuLang.length) throw new RechnungFehler(zuLang.join(' · '), 413);
   if (istGesellschaft(p.felder.firmaId) && !gesellschaftInSicht(p.felder.firmaId, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
@@ -306,8 +306,8 @@ export async function entwurfSpeichern(p: { id: string; felder: Record<string, u
   if (!r) throw new RechnungFehler('Nicht gespeichert.', 500);
   if (felder.length) await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: r.id, felder }], p.wer);
   const v = vorher as Rechnung | null;
-  if (v) await anschriftAnFirma(v, r, p.wer);
-  return mitFassung(r);
+  const anFirma = v ? await anschriftAnFirma(v, r, p.wer, p.anFirma ? { ueberschreiben: p.anFirma } : {}) : null;
+  return { ...mitFassung(r), ...(anFirma ? { anFirma } : {}) };
 }
 
 /**
@@ -318,9 +318,14 @@ export async function entwurfSpeichern(p: { id: string; felder: Record<string, u
  * Zahlungsdaten bleibt, wie er gespeichert ist — auch die IBAN); nie bei einer Firma im Papierkorb; Kontakte ohne Firma: nichts.
  * Nur eine vollständige Anschrift, die beim Zurücklesen genau so herauskommt (`anschriftFuerFirma`). Wirft nie — die Rechnung ist
  * schon gespeichert; scheitert es, bleibt die Firma, wie sie war (Log).
+ * 19.10. (Rundgang B12, Regel des Auftrags): eine VORHANDENE, andere Anschrift der Firma wird nie still überschrieben — nur, wenn die Firma noch keine
+ * hat, oder mit dem ausdrücklichen Haken „an der Firma speichern“ (`ueberschreiben.basis` = die Anschrift, die der Haken gesehen hat; steht inzwischen
+ * eine andere an der Firma, bleibt sie — wie ein Stand). Sonst `abweichend` mit der Anschrift der Firma (die Oberfläche bietet den Haken an).
+ * `alt` = null: beim Stellen — füllt nur eine Firma ohne Anschrift (ein Entwurf, dessen Anschrift nie geändert wurde, z. B. aus dem Angebot).
  */
-export async function anschriftAnFirma(alt: Rechnung, neu: Rechnung, wer?: Wer): Promise<'gespeichert' | null> {
-  if (neu.status !== 'geplant' || anschriftGleich(anschriftVon(alt.empfaenger), anschriftVon(neu.empfaenger))) return null;
+export async function anschriftAnFirma(alt: Rechnung | null, neu: Rechnung, wer?: Wer, opt: { ueberschreiben?: { basis: string | null } } = {}): Promise<AnschriftAnFirma | null> {
+  const ueber = alt ? opt.ueberschreiben : undefined;
+  if (alt && (neu.status !== 'geplant' || (anschriftGleich(anschriftVon(alt.empfaenger), anschriftVon(neu.empfaenger)) && !ueber))) return null;
   const text = anschriftFuerFirma(neu.empfaenger);
   if (!text) return null;
   try {
@@ -329,14 +334,19 @@ export async function anschriftAnFirma(alt: Rechnung, neu: Rechnung, wer?: Wer):
     if (!firmaIdOk(firmaId)) return null;
     const jetzt = new Date().toISOString();
     const person = wer?.person && /^[a-z0-9-]{1,40}$/.test(wer.person) ? wer.person : undefined;
-    let ergebnis: 'gespeichert' | null = null;
+    let ergebnis: AnschriftAnFirma | null = null;
     await aendereCrm(b => {
       const f = b.firmen.find(x => x.id === firmaId);
       if (!f || f.geloeschtAm) return b;
-      if (anschriftGleich(anschriftZerlegen(f.zahlung?.empfaenger?.anschrift), anschriftZerlegen(text))) return b;
+      const daStehtText = (f.zahlung?.empfaenger?.anschrift ?? '').trim();
+      const daSteht = anschriftVon(anschriftZerlegen(daStehtText));
+      if (anschriftGleich(daSteht, anschriftZerlegen(text))) { ergebnis = { stand: 'gleich' }; return b; }
+      const leer = !daSteht.strasse && !daSteht.plz && !daSteht.ort;
+      const mitHaken = !!ueber && anschriftGleich(daSteht, anschriftZerlegen(ueber.basis ?? ''));
+      if (!leer && !mitHaken) { ergebnis = { stand: 'abweichend', firma: daStehtText }; return b; }
       const wann = { geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) };
       const zahlung = { ...(f.zahlung ?? {}), empfaenger: { ...(f.zahlung?.empfaenger ?? {}), anschrift: text }, ...wann };
-      ergebnis = 'gespeichert';
+      ergebnis = { stand: 'gespeichert' };
       return { ...b, firmen: b.firmen.map(x => (x.id === f.id ? { ...x, zahlung, ...wann } : x)) };
     }, wer);
     return ergebnis;
@@ -455,6 +465,8 @@ export async function rechnungStellen(p: { id: string; stand: unknown; person: s
   const e = ergebnis as { r: Rechnung; pdf: { id: string; name: string } } | null;
   if (!e) throw new RechnungFehler('Nicht gestellt.', 500);
   await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: e.r.id, felder: ['status', 'nummer', 'datum', 'faellig', 'pdfDateiId', 'sha256', 'absender', 'lauf'] }], p.wer);
+  // Rechnungsanschrift an der Firma (19.10., B12): beim Stellen füllt die Anschrift eine Firma, die noch keine hat — nie überschrieben.
+  await anschriftAnFirma(null, e.r, p.wer);
   return { rechnung: mitFassung(e.r), pdf: e.pdf, mail: { ...(e.r.empfaenger?.email ? { an: e.r.empfaenger.email } : {}), ...rechnungMail(e.r, v.name) } };
 }
 

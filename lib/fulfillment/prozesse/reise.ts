@@ -9,7 +9,7 @@
 import type { Fall, FallKnoten, Freigabepunkt, KnotenForm, KnotenStatus, Zustaendig } from '../typen';
 import { MUSTER_ONBOARDING, type OnboardingSchluessel } from '../muster';
 import type { FallReiter } from '../adresse';
-import { abschnittVon, aktiverNeinZweig, aktuellerKnoten, fallFortschritt, haeltAn, inReihenfolge, jetztPhasen, kinderVon, mitAusfuehrung, phaseDurch, phasenGang, teilbaum, wartenderNeinZweig, wurzelVon } from '../regeln';
+import { abschnittVon, aktiverNeinZweig, aktuellerKnoten, fallFortschritt, haeltAn, inReihenfolge, kinderVon, mitAusfuehrung, phaseDurch, phasenGang, phasenStaende, teilbaum, wartenderNeinZweig, wurzelVon, type PhasenStand } from '../regeln';
 import { obKnotenId, obSchluessel } from './onboarding';
 import { SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE } from './phasen';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, titelZusatz, BESTAETIGUNG } from './darstellung';
@@ -17,7 +17,11 @@ import { abstimmungName, abstimmungsNummern, anzeigeTitel, titelOhneZusatz, tite
 const FERTIG: ReadonlySet<KnotenStatus> = new Set(['erledigt', 'entfaellt']);
 const fertig = (k: Pick<FallKnoten, 'status'>) => FERTIG.has(k.status);
 
-export type PhasenZustand = 'fertig' | 'jetzt' | 'offen';
+/**
+ * fertig (✓) · jetzt („hier“) · laeuft (durchlaufen, darin läuft noch etwas nebenher — 19.10., A4) · offen (kommt noch). EINE Regel: `phasenStaende`
+ * (lib/fulfillment/regeln.ts). `laeuft` ist auch ein Zustand der gemeinsamen Reise-Zeile (lib/reise/bild.ts `ReiseZustand`).
+ */
+export type PhasenZustand = PhasenStand;
 /** Ein Freigabe-Punkt am Ende einer Phase — mit Klartext statt Kürzel; `nr` = Nummer des Abstimmungspunkts in der Anzeige (lückenlos, 14.10.). */
 export interface ReiseFreigabe { id: string; titel: string; wer: Zustaendig; gegeben: boolean; am?: string; nr?: number }
 export interface ReisePhase {
@@ -49,16 +53,17 @@ export interface Reise { phasen: ReisePhase[]; /** Index der Phase „jetzt“ �
 export const FREIGABE_WER: Record<Zustaendig, string> = { kunde: 'der Kunde bestätigt', intern: 'ihr bestätigt intern', beide: 'Kunde und ihr bestätigen gemeinsam' };
 
 /**
- * Die Reise eines Falls: Phasen in Rang-Reihenfolge mit Zustand, Anteil, Freigabe-Punkt; `jetzt` = die Phase von `aktuellerKnoten`. „Fertig“ ist eine Phase, die
- * durch ist (`phaseDurch` — 18.10., L1b N2: was nebenher läuft, wie das Kunden-Playbook, hält sie nicht an; es bleibt als offener Schritt sichtbar), also
- * dieselbe Stelle, an der die Ausführung arbeitet. Ein abgeschlossener Fall hat kein „jetzt“ (N9).
+ * Die Reise eines Falls: Phasen in Rang-Reihenfolge mit Zustand, Anteil, Freigabe-Punkt; `jetzt` = die Phase von `aktuellerKnoten`. Der Zustand kommt aus
+ * `phasenStaende` (19.10., Rundgang A4): „fertig“ nur, wenn wirklich alles darin erledigt ist; eine Phase, an der der Gang vorbei ist, obwohl darin noch etwas
+ * nebenher läuft (18.10., L1b N2: das Kunden-Playbook, Bausteine ohne Form), ist `laeuft`; eine, an der er noch nicht war, `offen` — auch wenn sie den Ablauf
+ * später nicht anhält. Ein abgeschlossener Fall hat kein „jetzt“ (N9). `fertig` der Reise = jede Phase durch (fertig oder läuft nebenher) — wie die Ausführung.
  */
 export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'> & Partial<Pick<Fall, 'zusaetze' | 'status'>>, freigaben: readonly Pick<Freigabepunkt, 'id' | 'titel' | 'wer'>[], heute: string): Reise {
   const l = fall.knoten;
   const wurzel = wurzelVon(l);
   const phasen = wurzel ? kinderVon(wurzel.id, l) : [];
   // „jetzt“: die Phase von `aktuellerKnoten` und je angehängtem Zusatzmodul seine laufende Phase (17.10. spät — die Abschnitte laufen nebeneinander).
-  const aktuell = jetztPhasen(fall);
+  const stand = phasenStaende(fall);
   const nummern = abstimmungsNummern(l);
   const ablauf = mitAusfuehrung(l);
   const nrImAbschnitt = new Map<string, number>();
@@ -66,7 +71,8 @@ export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'> & Partial<Pic
     const zeilen = phaseGruppen(fall, p.id, heute).flatMap(g => g.zeilen);
     const zaehlend = zeilen.filter(z => z.zustand !== 'entfaellt');
     const erledigt = zaehlend.filter(z => z.zustand === 'erledigt').length;
-    const istFertig = phaseDurch(p, l, ablauf);
+    const istDurch = phaseDurch(p, l, ablauf);
+    const zustand: PhasenZustand = stand.get(p.id) ?? 'offen';
     const ab = abschnittVon(p) ?? '';
     const nr = (nrImAbschnitt.get(ab) ?? 0) + 1;
     nrImAbschnitt.set(ab, nr);
@@ -77,11 +83,12 @@ export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'> & Partial<Pic
     return {
       id: p.id, titel: titelOhneZusatz(p.titel), ...(zusatz ? { zusatz } : {}), nr,
       // „jetzt“ vor „fertig“: eine durchlaufene Phase, deren Bestätigung fehlt, ist noch die Stelle des Falls (`aktuellerKnoten`, 18.10.).
-      zustand: aktuell.has(p.id) ? 'jetzt' : istFertig ? 'fertig' : 'offen',
+      zustand,
       erledigt, gesamt: zaehlend.length,
-      anteil: zaehlend.length ? erledigt / zaehlend.length : istFertig ? 1 : 0,
+      anteil: zaehlend.length ? erledigt / zaehlend.length : zustand === 'fertig' ? 1 : 0,
       ...(p.faelligAm ? { faelligAm: p.faelligAm } : {}),
-      ueberfaellig: !istFertig && darin.some(k => !fertig(k) && !!k.faelligAm && k.faelligAm < heute),
+      // Hänger wie bisher nur, solange die Phase den Ablauf anhält (was nebenher läuft, meldet seine eigene Uhr).
+      ueberfaellig: !istDurch && darin.some(k => !fertig(k) && !!k.faelligAm && k.faelligAm < heute),
       wartet: darin.filter(k => k.status === 'wartet_kunde').length,
       entfaellt: p.status === 'entfaellt',
       ...(p.freigabe ? { freigabe: { id: p.freigabe, titel: fg?.titel ?? '', wer: fg?.wer ?? 'beide', gegeben: !!gegeben, ...(gegeben ? { am: gegeben.am } : {}), ...(nummern.get(p.freigabe) ? { nr: nummern.get(p.freigabe)! } : {}) } } : {}),
@@ -89,7 +96,7 @@ export function fallReise(fall: Pick<Fall, 'knoten' | 'freigaben'> & Partial<Pic
     } satisfies ReisePhase;
   });
   const jetzt = raus.findIndex(p => p.zustand === 'jetzt');
-  return { phasen: raus, jetzt, fortschritt: fallFortschritt(fall), fertig: raus.length > 0 && raus.every(p => p.zustand === 'fertig') };
+  return { phasen: raus, jetzt, fortschritt: fallFortschritt(fall), fertig: raus.length > 0 && raus.every(p => p.zustand === 'fertig' || p.zustand === 'laeuft') };
 }
 
 /**

@@ -15,6 +15,7 @@ import type { KanalStatus } from '@/lib/crm/recht';
 import { kanalLink, einwilligungVorlage, einwilligungUebernehmen } from '@/lib/crm/erfassen';
 import { datum, plusTage, type CrmApi } from './daten';
 import { mitTerminZeit, type TerminZeiten } from '@/lib/crm/aktivitaeten';
+import { anlegeFeld, feldAbschluss } from '@/lib/make-one/feld-abschluss';
 
 import { Person } from './team';
 
@@ -177,10 +178,20 @@ export function Feldzeile({ label, children }: { label: string; children: ReactN
 // Pillen und Mehrfach-Pillen sind seit 03.10. Bausteine des Standards (components/os/ui) — die Namen bleiben für die Markttraktion-Dateien.
 export { Pillen, MehrfachPillen };
 
-/** Kleines Feld, das beim Verlassen speichert. */
-export function Feld({ wert = '', onFertig, platzhalter, typ = 'text', breite }: { wert?: string; onFertig: (t: string) => void; platzhalter?: string; typ?: string; breite?: number | string }) {
-  const [t, setT] = useState(wert);
-  useEffect(() => { setT(wert); }, [wert]);
-  return <input type={typ} value={t} placeholder={platzhalter} aria-label={platzhalter} onChange={e => setT(e.target.value)} onBlur={() => { if (t !== wert) onFertig(t); }} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+/**
+ * Kleines Feld, das beim Verlassen (bzw. mit Enter) speichert. Anlege-Feld (`leeren`, Vorgabe ohne `wert` — ein neuer Listen-Eintrag): Enter speichert den
+ * Text und leert das Feld (der Fokus bleibt für den nächsten Eintrag), ein leeres Verlassen speichert nichts — vorher blieb der Text stehen und ein Klick
+ * daneben legte ihn ein zweites Mal an (19.10., Rundgang A6). Regel: lib/make-one/feld-abschluss.ts.
+ */
+export function Feld(props: { wert?: string; onFertig: (t: string) => void; platzhalter?: string; typ?: string; breite?: number | string; leeren?: boolean }) {
+  const { wert, onFertig, platzhalter, typ = 'text', breite, leeren } = props;
+  const w = wert ?? '';
+  // Ohne `wert`-Angabe (nicht: `wert={undefined}` eines leeren Feldes, das bearbeitet wird) ist es ein Anlege-Feld.
+  const anlegen = anlegeFeld('wert' in props, leeren);
+  const [t, setT] = useState(w);
+  useEffect(() => { setT(w); }, [w]);
+  const abschliessen = () => { const a = feldAbschluss(t, w, anlegen); if (a.leeren) setT(''); if (a.speichern !== null) onFertig(a.speichern); };
+  return <input type={typ} value={t} placeholder={platzhalter} aria-label={platzhalter} onChange={e => setT(e.target.value)} onBlur={abschliessen}
+    onKeyDown={e => { if (e.key !== 'Enter') return; if (anlegen) { e.preventDefault(); abschliessen(); } else (e.target as HTMLInputElement).blur(); }}
     style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', ...(breite ? { width: breite } : {}) }} />;
 }
