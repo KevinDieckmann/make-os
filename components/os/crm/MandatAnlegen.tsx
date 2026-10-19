@@ -114,7 +114,7 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
   const personWert = personId === NEU_PERSON ? { neu: { ...neu } } : personId ? { id: personId } : null;
   // Die Gesellschaft wird VOR dem Anlegen gewählt (08.10., 3.13) — sonst landete die Rechnung still bei der Vorgabe.
   // Vertrag aus dem Formular (P3): Honorar in Cent über `centAusEingabe` (deutsche Schreibweise), leere Zahlen = keine Angabe.
-  const vertragFehler = vertrag && vertrag.betrag.trim() && centAusEingabe(vertrag.betrag) === null ? 'Honorar: bitte eine Zahl (z. B. 2.990 oder 2990,50).' : null;
+  const vertragFehler = vertrag && vertrag.betrag.trim() && centAusEingabe(vertrag.betrag) === null ? 'Honorar: bitte eine Zahl (z. B. 2.500 oder 2500,50).' : null;
   const vertragBody = vertrag && !vertragFehler ? {
     honorar: { betrag: (centAusEingabe(vertrag.betrag) ?? 0) / 100, basis: vertrag.basis },
     mindestlaufzeitMonate: Number.parseInt(vertrag.laufzeit, 10) > 0 ? Number.parseInt(vertrag.laufzeit, 10) : null,

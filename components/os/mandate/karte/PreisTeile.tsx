@@ -78,7 +78,7 @@ function TeilZeile({ t, nr, haupt, anzahl, onAendern, onSchieben, onWeg }: {
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', minWidth: 0 }}>
         {PREIS_TEIL_FELDER[t.art].map(name => (
           <TextFeld key={`${t.id}-${t.art}-${name}`} label={PREIS_FELD_LABEL[name]} wert={teilFeldWert(t, name)} max={FELD_MAX[name]} modus={name === 'betrag' || name === 'bis' ? 'decimal' : name === 'anzahlung' || name === 'deckel' ? 'numeric' : undefined}
-            platzhalter={name === 'betrag' ? 'z. B. 2.990' : name === 'anzahlung' ? '50 = 50/50' : name === 'text' ? (t.art === 'erfolg' ? 'z. B. Bonus bei erreichten Zielen' : 'optional') : undefined}
+            platzhalter={name === 'betrag' ? 'z. B. 2.500' : name === 'anzahlung' ? '50 = 50/50' : name === 'text' ? (t.art === 'erfolg' ? 'z. B. Bonus bei erreichten Zielen' : 'optional') : undefined}
             onFertig={roh => feld(name, roh)} />
         ))}
       </div>

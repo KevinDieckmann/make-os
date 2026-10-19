@@ -25,7 +25,7 @@ const KATALOG = [
   leistung({ id: 'l-haupt', name: 'Vertriebsbegleitung', preise: [teil({ art: 'monatlich', betragCent: 300_000 })] }),
   leistung({ id: 'l-mon', name: 'Reporting-Modul', rolle: 'zusatz', preise: [teil({ art: 'monatlich', betragCent: 50_000 })] }),
   leistung({ id: 'l-je', name: 'Messe-Einsatz', rolle: 'zusatz', preise: [teil({ art: 'je_einheit', betragCent: 150_000, einheit: 'je Event' })] }),
-  leistung({ id: 'l-ws', name: 'Tagesworkshop', typ: 'workshop', preise: [teil({ art: 'fest', betragCent: 200_000 })], regeln: { anrechnung: { auf: ['l-haupt'], anteilProzent: 100 } } }),
+  leistung({ id: 'l-ws', name: 'Klarheitstag', typ: 'workshop', preise: [teil({ art: 'fest', betragCent: 200_000 })], regeln: { anrechnung: { auf: ['l-haupt'], anteilProzent: 100 } } }),
   leistung({ id: 'l-alt', name: 'Altes Paket' }),
 ];
 const mandat = (id: string, x: Partial<Mandat> = {}): Mandat => ({
@@ -72,11 +72,11 @@ describe('Monatsrechnung mit Zusatzmodulen und Anrechnung', () => {
   it('Haupt + laufendes Modul + inklusive (0 €) + EINE Anrechnung; der nächste Monat ohne Anrechnung', async () => {
     const okt = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-zusatz', monat: '2026-10' })).rechnung;
     expect(okt.positionen!.map(p => [p.titel, p.einzelpreisCent])).toEqual([
-      ['Begleitung — Oktober 2026', 300_000], ['Reporting-Modul — Oktober 2026', 50_000], ['Tagesworkshop — inklusive', 0], ['Anrechnung Tagesworkshop', -200_000],
+      ['Begleitung — Oktober 2026', 300_000], ['Reporting-Modul — Oktober 2026', 50_000], ['Klarheitstag — inklusive', 0], ['Anrechnung Klarheitstag', -200_000],
     ]);
     expect(okt).toMatchObject({ netto: 1500, betrag: 1785 });
     const nov = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-zusatz', monat: '2026-11' })).rechnung;
-    expect(nov.positionen!.map(p => p.titel)).toEqual(['Begleitung — November 2026', 'Reporting-Modul — November 2026', 'Tagesworkshop — inklusive']);
+    expect(nov.positionen!.map(p => p.titel)).toEqual(['Begleitung — November 2026', 'Reporting-Modul — November 2026', 'Klarheitstag — inklusive']);
     expect(nov).toMatchObject({ netto: 3500, betrag: 4165 });
     // Den Entwurf noch einmal speichern: die Anrechnung bleibt negativ (Säuberung).
     const gespeichert = await server.entwurfSpeichern({ id: okt.id, felder: { positionen: okt.positionen }, stand: okt.fassung, haushalt: z.haushalt, sicht: z.sicht });

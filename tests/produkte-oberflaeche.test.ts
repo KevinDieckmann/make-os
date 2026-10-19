@@ -115,13 +115,13 @@ describe('geführtes Anlegen und „Als Produkt anlegen“', () => {
   it('neues Produkt: Entwurf mit EINEM Preis-Teil, Fehler je Feld; geht unverändert durch Säubern und Prüfen', () => {
     expect(neuesProdukt({ name: ' ', art: 'monatlich', preis: '', gesellschaft: 'ug', ebene: null, leistungstext: '' }, 'l-x')).toMatchObject({ ok: false, fehler: { name: expect.any(String) } });
     expect(neuesProdukt({ name: 'X', art: 'monatlich', preis: 'zwei', gesellschaft: 'ug', ebene: null, leistungstext: '' }, 'l-x')).toMatchObject({ ok: false, fehler: { preis: expect.stringMatching(/Zahl/) } });
-    const r = neuesProdukt({ name: 'Begleitung', art: 'monatlich', preis: '2.990', gesellschaft: 'ug', ebene: 2, leistungstext: 'Monatliche Begleitung.' }, 'l-neu');
+    const r = neuesProdukt({ name: 'Begleitung', art: 'monatlich', preis: '2.500', gesellschaft: 'ug', ebene: 2, leistungstext: 'Monatliche Begleitung.' }, 'l-neu');
     if (!r.ok) throw new Error('erwartet ok');
-    expect(r.eintrag).toMatchObject({ status: 'entwurf', ebene: 2, preise: [{ id: 'pt-1', art: 'monatlich', betragCent: 299_000, rolle: 'grund' }], angebot: { leistungstext: 'Monatliche Begleitung.' }, typ: 'retainer' });
+    expect(r.eintrag).toMatchObject({ status: 'entwurf', ebene: 2, preise: [{ id: 'pt-1', art: 'monatlich', betragCent: 250_000, rolle: 'grund' }], angebot: { leistungstext: 'Monatliche Begleitung.' }, typ: 'retainer' });
     expect(produktPruefen(r.eintrag as unknown as Record<string, unknown>)).toEqual([]);
     const b = wendeCrmAn(leererBestand(), [{ liste: 'leistungen', op: 'upsert', eintrag: r.eintrag as unknown as Record<string, unknown> }], J, 'pa');
     expect(b.ungueltig ?? []).toEqual([]);
-    expect(b.bestand.leistungen[0]).toMatchObject({ preis: { betrag: 2990, einheit: 'Monat netto', basis: 'monat' }, ebene: 2 });
+    expect(b.bestand.leistungen[0]).toMatchObject({ preis: { betrag: 2500, einheit: 'Monat netto', basis: 'monat' }, ebene: 2 });
     const aufwand = neuesProdukt({ name: 'Tage', art: 'aufwand', satz: 'tag', preis: '1.200', gesellschaft: 'offen', ebene: null, leistungstext: '' }, 'l-t');
     expect(aufwand.ok && aufwand.eintrag.preise).toEqual([{ id: 'pt-1', art: 'tagessatz', rolle: 'grund', betragCent: 120_000 }]);
     const frei = neuesProdukt({ name: 'Check', art: 'kostenlos', preis: '500', gesellschaft: 'ug', ebene: 1, leistungstext: '' }, 'l-k');
@@ -167,10 +167,10 @@ describe('Preis-Teile bearbeiten', () => {
   });
   it('Felder: Betrag deutsch, „bis“ nur größer, Anzahlung 1–99, leer entfernt', () => {
     const t = teil({ art: 'fest' });
-    const b = teilFeldSetzen(t, 'betrag', '2.990,50');
-    expect(b).toEqual({ ok: true, teil: { ...t, betragCent: 299_050 } });
+    const b = teilFeldSetzen(t, 'betrag', '2.500,50');
+    expect(b).toEqual({ ok: true, teil: { ...t, betragCent: 250_050 } });
     if (!b.ok) return;
-    expect(teilFeldWert(b.teil, 'betrag')).toBe('2.990,50');
+    expect(teilFeldWert(b.teil, 'betrag')).toBe('2.500,50');
     expect(teilFeldSetzen(b.teil, 'bis', '1.000')).toMatchObject({ ok: false });
     expect(teilFeldSetzen(t, 'bis', '1.000')).toMatchObject({ ok: false, fehler: expect.stringMatching(/Betrag davor/) });
     expect(teilFeldSetzen(b.teil, 'anzahlung', '100')).toMatchObject({ ok: false });
@@ -279,7 +279,7 @@ describe('Antwort zuerst: was fehlt, Aufwand, Ebenen', () => {
 // ── Angebots-Tool, Adressen ───────────────────────────────────────────────────────────────────────────────────────────
 
 describe('Angebots-Tool: mehrere Preis-Teile, Optionen zum Anhaken', () => {
-  const EVENT = leistung({ id: 'l-ev', name: 'Eventvertrieb', angebot: { leistungstext: 'Vertrieb am Abend.' }, preise: [teil({ id: 'pt-auf', art: 'fest', betragCent: 500_000 }), teil({ id: 'pt-mon', art: 'monatlich', betragCent: 100_000 }), teil({ id: 'pt-je', art: 'je_einheit', betragCent: 150_000, einheit: 'Event', rolle: 'option' })] });
+  const EVENT = leistung({ id: 'l-ev', name: 'Messebegleitung', angebot: { leistungstext: 'Vertrieb am Abend.' }, preise: [teil({ id: 'pt-auf', art: 'fest', betragCent: 500_000 }), teil({ id: 'pt-mon', art: 'monatlich', betragCent: 100_000 }), teil({ id: 'pt-je', art: 'je_einheit', betragCent: 150_000, einheit: 'Event', rolle: 'option' })] });
   it('Kachel: Grund-Teile in einer Zeile, Optionen getrennt; ohne Preis-Teile keine Optionen', () => {
     expect(angebotKachel(EVENT)).toEqual({ preisText: '5.000 € netto einmalig · 1.000 € netto/Monat', optionen: [{ id: 'pt-je', text: '1.500 € netto je Event' }] });
     expect(angebotKachel(leistung({}))).toEqual({ preisText: '1.000 € netto/Monat', optionen: [] });

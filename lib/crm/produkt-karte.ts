@@ -140,13 +140,13 @@ export function preisAusTeil(t: PreisTeil): Leistung['preis'] {
 }
 
 const zahlDe = (cent: number) => (cent / 100).toLocaleString('de-DE', { minimumFractionDigits: cent % 100 ? 2 : 0, maximumFractionDigits: 2 });
-/** „2.990 €“ bzw. „2.990–3.500 €“ (null ohne Betrag). */
+/** „2.500 €“ bzw. „2.500–3.500 €“ (null ohne Betrag). */
 export function betragText(t: Pick<PreisTeil, 'betragCent' | 'bisCent'>): string | null {
   if (typeof t.betragCent !== 'number') return null;
   return typeof t.bisCent === 'number' && t.bisCent > t.betragCent ? `${zahlDe(t.betragCent)}–${zahlDe(t.bisCent)} €` : `${zahlDe(t.betragCent)} €`;
 }
 const zahlplanText = (p: number) => (p === 50 ? 'Zahlung 50/50' : `${p} % Anzahlung`);
-/** Wie ein Preis-Teil heißt: „2.990 € netto/Monat“, „kostenlos“, „1.500 € netto je Event · Zahlung 50/50“, „Bonus bei Zielen“ … */
+/** Wie ein Preis-Teil heißt: „2.500 € netto/Monat“, „kostenlos“, „1.500 € netto je Event · Zahlung 50/50“, „Bonus bei Zielen“ … */
 export function preisText(t: PreisTeil): string {
   const b = betragText(t);
   let kern: string;

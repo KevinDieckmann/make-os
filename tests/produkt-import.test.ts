@@ -84,18 +84,18 @@ describe('Teil-Merge — nur gelieferte Felder', () => {
 describe('Namensbezüge — Anrechnung und inklusive', () => {
   it('auf ein neues Produkt derselben Lieferung und auf den Katalog; Anteil ohne Angabe 100 %', () => {
     const p = importPlanen(BESTAND, [
-      { name: 'Erfundener Tagesworkshop', status: 'aktiv', leistungstext: 'Ein Tag Klarheit.', preise: [{ art: 'fest', betrag: 3900 }], regeln: { anrechnung: { auf: ['Erfundene Vertriebsleitung', 'steuerungs-begleitung'] } } },
+      { name: 'Erfundener Klarheitstag', status: 'aktiv', leistungstext: 'Ein Tag Klarheit.', preise: [{ art: 'fest', betrag: 3900 }], regeln: { anrechnung: { auf: ['Erfundene Vertriebsleitung', 'steuerungs-begleitung'] } } },
       { name: 'Erfundene Vertriebsleitung', preise: [{ art: 'monatlich', betrag: '4.200,00 €' }], regeln: { inklusive: [{ produkt: 'Erfundenes Messe-Modul', menge: 1, je: 'Quartal' }], maxGleichzeitig: 2 } },
       { name: 'Erfundenes Messe-Modul', rolle: 'Zusatzmodul', preise: [{ art: 'fest', betrag: 1500 }, { art: 'je Event', betrag: 900, optional: true, anzahlungProzent: 50 }] },
     ], kontext());
     expect(p.status).toBe(200);
     const id = (n: string) => p.zeilen.find(z => z.name === n)!.id!;
     const eintrag = (n: string) => p.ops.find(o => o.eintrag?.id === id(n))!.eintrag!;
-    expect(eintrag('Erfundener Tagesworkshop').regeln).toEqual({ anrechnung: { auf: [id('Erfundene Vertriebsleitung'), 'l-steuer'], anteilProzent: 100 } });
+    expect(eintrag('Erfundener Klarheitstag').regeln).toEqual({ anrechnung: { auf: [id('Erfundene Vertriebsleitung'), 'l-steuer'], anteilProzent: 100 } });
     expect(eintrag('Erfundene Vertriebsleitung').regeln).toEqual({ maxGleichzeitig: 2, inklusive: [{ leistungId: id('Erfundenes Messe-Modul'), menge: 1, je: 'quartal' }] });
     expect(eintrag('Erfundenes Messe-Modul')).toMatchObject({ rolle: 'zusatz', typ: 'sprint', preise: [{ art: 'fest', betragCent: 150_000, rolle: 'grund' }, { art: 'je_einheit', einheit: 'je Event', betragCent: 90_000, rolle: 'option', zahlplan: { anzahlungProzent: 50 } }] });
     // Die Vorschau nennt Namen, nie Kennungen.
-    const ws = p.zeilen.find(z => z.name === 'Erfundener Tagesworkshop')!.felder.find(f => f.feld === 'regeln.anrechnung')!;
+    const ws = p.zeilen.find(z => z.name === 'Erfundener Klarheitstag')!.felder.find(f => f.feld === 'regeln.anrechnung')!;
     expect(ws.neu).toBe('voll angerechnet auf Erfundene Vertriebsleitung, Steuerungs-Begleitung');
   });
   it('unbekannt oder im Papierkorb → Fehler, nichts geplant', () => {
@@ -155,7 +155,7 @@ describe('Fehler — nie still', () => {
     expect(gesellschaftAus('offen', reg)).toBe('offen');
   });
   it('deutsche Beträge', () => {
-    expect([euroAus('2.990'), euroAus('2.990,50 €'), euroAus('1500.5'), euroAus(' 4 200 EUR '), euroAus('abc')]).toEqual([2990, 2990.5, 1500.5, 4200, NaN]);
+    expect([euroAus('2.500'), euroAus('2.500,50 €'), euroAus('1500.5'), euroAus(' 4 200 EUR '), euroAus('abc')]).toEqual([2500, 2500.5, 1500.5, 4200, NaN]);
   });
 });
 

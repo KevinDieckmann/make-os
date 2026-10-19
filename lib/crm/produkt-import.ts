@@ -35,7 +35,7 @@ export const TEXT_GRENZEN = {
 
 // ── Das Format ───────────────────────────────────────────────────────────────
 
-/** Ein Preis-Teil im Import — wie `PreisTeil` (lib/crm/typen.ts), Beträge wahlweise in Euro (`betrag`, auch „2.990,50“) oder Cent. */
+/** Ein Preis-Teil im Import — wie `PreisTeil` (lib/crm/typen.ts), Beträge wahlweise in Euro (`betrag`, auch „2.500,50“) oder Cent. */
 export interface PreisTeilImport {
   /** kostenlos · fest · monatlich · jaehrlich · je_einheit · tagessatz · stundensatz · erfolg (gängige Synonyme werden erkannt). */
   art: PreisTeilArt | string;
@@ -172,7 +172,7 @@ const absatz = (v: string) => v.replace(/\u0000/g, '').replace(/\r\n?/g, '\n').t
 const gleich = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 const kurz = (s: string, n = 140) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
-/** Euro aus einer Zahl oder einem Text („2.990“, „2.990,50 €“, „1500.5“) — NaN, wenn nichts Lesbares. */
+/** Euro aus einer Zahl oder einem Text („2.500“, „2.500,50 €“, „1500.5“) — NaN, wenn nichts Lesbares. */
 export function euroAus(v: unknown): number {
   if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
   if (typeof v !== 'string') return NaN;

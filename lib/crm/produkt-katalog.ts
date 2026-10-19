@@ -189,7 +189,7 @@ export function neuesProdukt(e: NeuesProduktEingabe, id: string): { ok: true; ei
   let betragCent: number | undefined;
   if (art !== 'kostenlos' && e.preis.trim()) {
     const c = centAusEingabe(e.preis);
-    if (c === null) fehler.preis = 'Der Preis ist keine Zahl — z. B. 2.990 oder 2.990,50.';
+    if (c === null) fehler.preis = 'Der Preis ist keine Zahl — z. B. 2.500 oder 2.500,50.';
     else if (c > PRODUKT_GRENZEN.betragCent) fehler.preis = 'Der Preis ist zu hoch.';
     else betragCent = c;
   }
@@ -295,7 +295,7 @@ export function teilFeldSetzen(t: PreisTeil, feld: PreisTeilFeld, roh: string): 
     case 'betrag': case 'bis': {
       if (!v) return { ok: true, teil: feld === 'betrag' ? (({ betragCent: _b, bisCent: _c, ...r }) => r)(t) as PreisTeil : ohne('bisCent') };
       const c = centAusEingabe(v);
-      if (c === null) return { ok: false, fehler: `${feld === 'betrag' ? 'Betrag' : '„bis“'}: eine Zahl in Euro, z. B. 2.990 oder 2.990,50.` };
+      if (c === null) return { ok: false, fehler: `${feld === 'betrag' ? 'Betrag' : '„bis“'}: eine Zahl in Euro, z. B. 2.500 oder 2.500,50.` };
       if (c > PRODUKT_GRENZEN.betragCent) return { ok: false, fehler: 'Der Betrag ist zu hoch.' };
       if (feld === 'bis') {
         if (typeof t.betragCent !== 'number') return { ok: false, fehler: '„bis“ geht nur mit einem Betrag davor.' };

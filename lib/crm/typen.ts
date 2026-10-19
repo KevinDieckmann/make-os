@@ -226,7 +226,7 @@ export interface ProduktRegeln {
   anrechnung?: { auf: string[]; anteilProzent: number };
   /** Höchstens so viele Kunden gleichzeitig (Kapazitätsgrenze). */
   maxGleichzeitig?: number;
-  /** Enthaltene Produkte, z. B. 1 × Eventvertrieb je Quartal. */
+  /** Enthaltene Produkte, z. B. 1 × Zusatzmodul je Quartal. */
   inklusive?: { leistungId: string; menge: number; je: 'monat' | 'quartal' | 'jahr' }[];
 }
 /** haupt = trägt ein Mandat · zusatz = Zusatzmodul an einem Mandat · beides. Ohne Angabe: haupt. */

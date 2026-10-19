@@ -33,14 +33,14 @@ const teil = (x: Partial<PreisTeil>): PreisTeil => ({ id: 'pt-1', art: 'fest', r
 // ── Die Preis-Formen des Konzepts (Werte erfunden) ────────────────────────────────────────────────────────────────────
 
 const CHECK = leistung({ id: 'l-check', name: 'Kennzahlen-Check', typ: 'diagnose', preise: [teil({ art: 'kostenlos' })], ebene: 1 });
-const WORKSHOP = leistung({ id: 'l-ws', name: 'Tagesworkshop', typ: 'workshop', preise: [teil({ art: 'fest', betragCent: 480_000 })], regeln: { anrechnung: { auf: ['l-hos'], anteilProzent: 100 } } });
+const WORKSHOP = leistung({ id: 'l-ws', name: 'Klarheitstag', typ: 'workshop', preise: [teil({ art: 'fest', betragCent: 480_000 })], regeln: { anrechnung: { auf: ['l-hos'], anteilProzent: 100 } } });
 const HOS = leistung({
   id: 'l-hos', name: 'Vertriebsleitung auf Zeit', angebot: { leistungstext: 'Führung des Vertriebs.' }, lieferumfang: ['Wochenplan', 'Pipeline-Review'],
-  preise: [teil({ id: 'pt-mon', art: 'monatlich', betragCent: 299_000 }), teil({ id: 'pt-bonus', art: 'erfolg', text: 'Bonus bei Zielen' })],
+  preise: [teil({ id: 'pt-mon', art: 'monatlich', betragCent: 250_000 }), teil({ id: 'pt-bonus', art: 'erfolg', text: 'Bonus bei Zielen' })],
   vertrag: { mindestlaufzeitMonate: 6, danach: 'monatlich_kuendbar', kuendigungsfristTage: 30, zahlungszielTage: 10 }, regeln: { maxGleichzeitig: 2 }, aufwandStundenWoche: 8,
 });
 const EVENT = leistung({
-  id: 'l-event', name: 'Eventvertrieb', typ: 'vermittlung',
+  id: 'l-event', name: 'Messebegleitung', typ: 'vermittlung',
   preise: [teil({ id: 'pt-auf', art: 'fest', betragCent: 500_000, zahlplan: { anzahlungProzent: 50 } }), teil({ id: 'pt-je', art: 'je_einheit', betragCent: 150_000, einheit: 'je Event', rolle: 'option', zahlplan: { anzahlungProzent: 50 } })],
 });
 const KI = leistung({ id: 'l-ki', name: 'Assistent', typ: 'software', preise: [teil({ id: 'pt-jahr', art: 'jaehrlich', betragCent: 1_200_000, kontingent: '1.000 Anfragen' }), teil({ id: 'pt-mehr', art: 'je_einheit', betragCent: 5_000, einheit: '100 Anfragen', rolle: 'option' })], vertrag: { mindestlaufzeitMonate: 12 } });
@@ -60,7 +60,7 @@ describe('Preis-Formen: Text, Hauptpreis, kombinierbar', () => {
     expect(produktKarte(WORKSHOP, null, [WORKSHOP, HOS]).regeln.anrechnungText).toBe('voll angerechnet auf Vertriebsleitung auf Zeit');
   });
   it('monatlich mit Mindestlaufzeit, Bonus bei Zielen, höchstens 2 gleichzeitig', () => {
-    expect(preiseText(HOS)).toBe('2.990 € netto/Monat · Bonus bei Zielen');
+    expect(preiseText(HOS)).toBe('2.500 € netto/Monat · Bonus bei Zielen');
     expect(hauptpreis(HOS)?.id).toBe('pt-mon');
     expect(vertragVon(HOS).mindestlaufzeitMonate).toBe(6);
     const k = produktKarte(HOS);
@@ -138,7 +138,7 @@ describe('Säubern und Spiegeln (Server)', () => {
   it('Karte → preis, laufzeitMonate, aufwand.stunden gespiegelt; Karten-Felder bleiben', () => {
     const roh = { ...HOS, preis: { betrag: 1, einheit: 'irgendwas' }, aufwand: { anteil: 0.3 } } as unknown as Record<string, unknown>;
     const s = saeubern('leistungen', roh, J, 'pa') as unknown as Leistung;
-    expect(s.preis).toEqual({ betrag: 2990, einheit: 'Monat netto', basis: 'monat' });
+    expect(s.preis).toEqual({ betrag: 2500, einheit: 'Monat netto', basis: 'monat' });
     expect(s.laufzeitMonate).toBe(6);
     expect(s.aufwand).toEqual({ anteil: 0.3, stunden: 34.67 });
     expect(s.preise).toEqual(HOS.preise);
@@ -183,7 +183,7 @@ describe('Angebot: Positionen aus der Karte', () => {
   it('monatlich + Erfolg: eine Position mit Laufzeit, der Erfolg als Satz im Text; USt aus dem Vertrag', () => {
     const p = angebotPositionenAusProdukt(HOS, [], { idBasis: 'p-1' });
     expect(p).toHaveLength(1);
-    expect(p[0]).toMatchObject({ id: 'p-1', leistungId: 'l-hos', titel: 'Vertriebsleitung auf Zeit', menge: 1, einheit: 'Monat', einzelpreisCent: 299_000, ustSatz: 19, basis: 'monat', laufzeitMonate: 6 });
+    expect(p[0]).toMatchObject({ id: 'p-1', leistungId: 'l-hos', titel: 'Vertriebsleitung auf Zeit', menge: 1, einheit: 'Monat', einzelpreisCent: 250_000, ustSatz: 19, basis: 'monat', laufzeitMonate: 6 });
     expect(p[0].text).toBe('Führung des Vertriebs.\n\nZusätzlich: Bonus bei Zielen.');
     expect(angebotPositionenAusProdukt(HOS, [], { kleinunternehmer: true })[0].ustSatz).toBe(0);
   });
@@ -191,7 +191,7 @@ describe('Angebot: Positionen aus der Karte', () => {
     expect(angebotPositionenAusProdukt(EVENT)).toHaveLength(1);
     const p = angebotPositionenAusProdukt(EVENT, ['pt-je'], { idBasis: 'p-7' });
     expect(p.map(x => [x.id, x.einheit, x.einzelpreisCent, x.basis])).toEqual([['p-7', 'pauschal', 500_000, 'einmalig'], ['p-7-2', 'Event', 150_000, 'einmalig']]);
-    expect(p[1].titel).toBe('Eventvertrieb · je Event');
+    expect(p[1].titel).toBe('Messebegleitung · je Event');
     expect(p[1].text).toBe('Zahlung 50 % bei Auftrag, 50 % bei Abschluss.');
   });
   it('Tagessatz mit Reisekosten separat, kostenlos als 0-€-Position, nur Erfolg → 0-€-Position mit Satz', () => {
@@ -237,7 +237,7 @@ describe('Finanzplanung: Baustein aus der Karte; Altbestand bit-gleich', () => {
   });
   it('mit Karte: Hauptpreis, Basis und Mindestlaufzeit; fehlende Laufzeit wird gemeldet', () => {
     const [p] = produktVorschlaege({ leistungen: [HOS] });
-    expect(p).toMatchObject({ preis: 2990, einheit: 'Monat netto', basis: 'monat', laufzeit: 6, fehlt: [] });
+    expect(p).toMatchObject({ preis: 2500, einheit: 'Monat netto', basis: 'monat', laufzeit: 6, fehlt: [] });
     expect(planungFehlt(leistung({ preise: [teil({ art: 'monatlich', betragCent: 100 })] }))).toEqual(['Laufzeit']);
     expect(planungFehlt(leistung({ preise: [teil({ art: 'fest' })] }))).toEqual(['Preis']);
   });
@@ -379,11 +379,11 @@ describe('Mandat-Vorlage aus dem Produkt', () => {
   it('Karte: Art, Honorar, Vertrag, Leistungen — auch im Mandats-Entwurf', () => {
     const v = mandatVorlageAusProdukt(HOS);
     expect(v).toEqual({
-      titel: 'Vertriebsleitung auf Zeit', leistungId: 'l-hos', art: 'retainer', gesellschaft: 'ug', honorar: { betrag: 2990, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich',
+      titel: 'Vertriebsleitung auf Zeit', leistungId: 'l-hos', art: 'retainer', gesellschaft: 'ug', honorar: { betrag: 2500, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich',
       mindestlaufzeitMonate: 6, kuendigungsfristTage: 30, verlaengerung: 'auto', zahlungszielTage: 10, leistungen: ['Führung des Vertriebs.', 'Wochenplan', 'Pipeline-Review'], hinweise: [],
     });
     const m = mandatEntwurf({ id: 'm-neu', firma: { id: 'f-a', name: 'B' }, kontaktIds: [], gesellschaft: 'ug', leistung: HOS, jetzt: J, person: 'pa' });
-    expect(m).toMatchObject({ mindestlaufzeitMonate: 6, kuendigungsfristTage: 30, verlaengerung: 'auto', zahlungszielTage: 10, honorar: { betrag: 2990, basis: 'monat' }, leistungen: v.leistungen });
+    expect(m).toMatchObject({ mindestlaufzeitMonate: 6, kuendigungsfristTage: 30, verlaengerung: 'auto', zahlungszielTage: 10, honorar: { betrag: 2500, basis: 'monat' }, leistungen: v.leistungen });
   });
   it('Preis-Formen im Mandat: jährlich ÷ 12, Tagessatz, Stundensatz mit Deckel (Hinweis), fest/kostenlos einmalig', () => {
     expect(mandatVorlageAusProdukt(KI)).toMatchObject({ art: 'software', honorar: { betrag: 1000, basis: 'monat' }, rechnungsrhythmus: 'monatlich', mindestlaufzeitMonate: 12 });
