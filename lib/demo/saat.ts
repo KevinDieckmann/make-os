@@ -104,6 +104,7 @@ const R = {
   erholung: () => import('@/app/api/gesundheit/erholung/route') as Promise<Modul>,
   planung: () => import('@/app/api/crm/planung/route') as Promise<Modul>,
   treppe: () => import('@/app/api/crm/treppe/route') as Promise<Modul>,
+  produktImport: () => import('@/app/api/crm/produkte/import/route') as Promise<Modul>,
   absender: () => import('@/app/api/crm/gesellschaften/route') as Promise<Modul>,
   stammdaten: () => import('@/app/api/crm/stammdaten/route') as Promise<Modul>,
   angebot: () => import('@/app/api/crm/angebot/route') as Promise<Modul>,
@@ -161,6 +162,55 @@ const PRODUKTE = [
   // Am Ende (PRODUKTE[0] bleibt die Diagnose — das Demo-Angebot nimmt sie).
   { id: 'l-demo-check', name: 'Kennzahlen-Check', typ: 'diagnose', stufe: 'einstieg', preis: { betrag: 0, einheit: 'kostenlos', basis: 'einmalig' }, lieferumfang: ['Kurzbefund auf einer Seite'], text: 'Zeigt in einer Woche, wo die Steuerung hakt — ohne Risiko für den Kunden.' },
 ] as const;
+
+/**
+ * Die Demo-Produkte als Produkt-Karten (19.10., P4 — PRODUKTE_KONZEPT.md): jede Preis-Form des Konzepts einmal, alles erfunden (Namen, Preise, Texte).
+ * Kommt über den Produkt-Import (dieselbe Route wie „Produkte importieren“): die vier Produkte oben werden über den Namen gefunden und bekommen ihre
+ * Karten-Felder (Teil-Merge — Kennung, Texte, Status bleiben), vier kommen neu dazu. Abgedeckt: kostenlos · Festpreis mit Anrechnung · monatlich mit
+ * Mindestlaufzeit, Bonus, höchstens gleichzeitig und einem enthaltenen Zusatzmodul · Zusatzmodul einmalig + je Messe (50/50) · jährlich mit
+ * Kontingent und Mehrverbrauch · Tagessatz + Reisekosten · Stundensatz mit Deckel. Die Abläufe nennt der zweite Lauf nach dem Fulfillment.
+ */
+const SPARRING_TEXT = 'Ein Gegenüber für Entscheidungen in Vertrieb und Steuerung — nach Bedarf, ohne Mindestlaufzeit.';
+export const DEMO_PRODUKT_KARTEN = [
+  { name: 'Kennzahlen-Check', preise: [{ art: 'kostenlos' }], rolle: 'haupt', ebene: 1, dauerTage: 7 },
+  {
+    name: 'Klarheits-Diagnose', preise: [{ art: 'fest', betrag: 4800 }], vertrag: { zahlungszielTage: 14 }, ebene: 2, dauerTage: 14,
+    regeln: { anrechnung: { auf: ['Vertriebsaufbau'], anteilProzent: 100 } },
+  },
+  {
+    name: 'Vertriebsaufbau', rolle: 'haupt', ebene: 3,
+    preise: [{ art: 'monatlich', betrag: 3500 }, { art: 'erfolg', text: 'Bonus bei erreichten Quartalszielen' }],
+    vertrag: { mindestlaufzeitMonate: 6, danach: 'monatlich_kuendbar', kuendigungsfristTage: 30, zahlungszielTage: 14 },
+    regeln: { maxGleichzeitig: 4, inklusive: [{ produkt: 'Messe-Begleitung', menge: 1, je: 'quartal' }] },
+  },
+  { name: 'Cockpit-Lizenz', preise: [{ art: 'monatlich', betrag: 490 }], vertrag: { mindestlaufzeitMonate: 12, danach: 'verlaengert_um_laufzeit', zahlungszielTage: 30 }, ebene: 3 },
+  {
+    name: 'Messe-Begleitung', status: 'aktiv', gesellschaft: 'ug', typ: 'sprint', rolle: 'zusatz',
+    beschreibung: 'Zusatzmodul: wir begleiten den Messeauftritt vom Gesprächsplan bis zum Nachfassen.',
+    leistungstext: 'Vorbereitung des Messeauftritts (Zielkunden, Gesprächsplan, Termine), Begleitung am Stand und Nachfassen der Kontakte in den zwei Wochen danach.',
+    lieferumfang: ['Gesprächsplan', 'Begleitung am Stand', 'Nachfass-Liste'],
+    preise: [{ art: 'fest', betrag: 1900, anzahlungProzent: 50 }, { art: 'je_einheit', einheit: 'je Messe', betrag: 1200, optional: true, anzahlungProzent: 50 }],
+    vertrag: { zahlungszielTage: 14, reisekosten: 'separat' },
+  },
+  {
+    name: 'Cockpit Jahrespaket', status: 'aktiv', gesellschaft: 'ug', typ: 'software', rolle: 'beides',
+    beschreibung: 'Das Cockpit für ein Jahr — mit festem Kontingent an Monatsauswertungen.',
+    leistungstext: 'Zugang zum Kennzahlen-Cockpit für ein Jahr, Einrichtung und zwölf Monatsauswertungen; weitere Auswertungen nach Bedarf.',
+    lieferumfang: ['Zugang für fünf Personen', 'Einrichtung', 'Zwölf Monatsauswertungen'],
+    preise: [{ art: 'jaehrlich', betrag: 4900, kontingent: 'fünf Nutzer und zwölf Monatsauswertungen' }, { art: 'je_einheit', einheit: 'je weitere Auswertung', betrag: 60, optional: true }],
+    vertrag: { mindestlaufzeitMonate: 12, danach: 'verlaengert_um_laufzeit', zahlungszielTage: 30 },
+  },
+  {
+    name: 'Sparring-Tag', status: 'aktiv', gesellschaft: 'ug', typ: 'sprint', beschreibung: 'Ein Tag gemeinsam an einer Frage — vor Ort oder online.',
+    leistungstext: SPARRING_TEXT, preise: [{ art: 'tagessatz', betrag: 1400 }], vertrag: { reisekosten: 'separat', zahlungszielTage: 14 },
+  },
+  {
+    name: 'Sparring nach Aufwand', status: 'aktiv', gesellschaft: 'ug', typ: 'sprint', beschreibung: 'Stundenweise Begleitung, gedeckelt je Monat.',
+    leistungstext: SPARRING_TEXT, preise: [{ art: 'stundensatz', betrag: 160, stundenJeMonat: 15 }], vertrag: { zahlungszielTage: 14 },
+  },
+] as const;
+/** Abläufe der Lieferung (Fulfillment-Vorlagen der Demo) je Produkt — der zweite Import-Lauf nennt sie (sonst ist alles „gleich“). */
+const DEMO_PRODUKT_ABLAEUFE: Record<string, string> = { 'Vertriebsaufbau': 'Vertriebsaufbau', 'Cockpit-Lizenz': 'Cockpit-Einführung' };
 
 /**
  * Notizen des Demo-Wissens (Vault der Demo). Vorgabe `scope: oeffentlich` (alle Demo-Konten); die Gründungs-Notiz nennt Gesellschafter und Fahrplan
@@ -275,6 +325,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   ];
   for (const [id, stufen] of QUALI) await rufe(R.lead(), 'POST', '/api/crm/lead', LENA, { aktion: 'setze', id, felder: { stufen } });
   schritt('CRM: Firmen', FIRMEN.length); schritt('CRM: Kontakte', KONTAKTE.length); schritt('CRM: Produkte', PRODUKTE.length); schritt('CRM: Mandate', 2); schritt('CRM: Deals', deals.length);
+  // 3a) Produkte als Karten (19.10., P4): über den Produkt-Import — erst die Vorschau, dann übernehmen (wie „Produkte importieren“ im Browser).
+  await rufe(R.produktImport(), 'POST', '/api/crm/produkte/import', LENA, { produkte: DEMO_PRODUKT_KARTEN, vorschau: true });
+  const produktKarten = await rufe(R.produktImport(), 'POST', '/api/crm/produkte/import', LENA, { produkte: DEMO_PRODUKT_KARTEN, vorschau: false }) as { angelegt?: number; geaendert?: number };
+  schritt('Produkte als Karten (Import)', (produktKarten.angelegt ?? 0) + (produktKarten.geaendert ?? 0));
 
   // 3b) Markttraktion › Planung (10.10.): zwei erfundene Leadkanäle (Netzwerk, eigene Eventreihe), ein Umsatzziel bis Jahresende, eine
   //     Challenge dieser Woche und ein abgehakter Schritt „nach der Leistung“ — über die Planungs-Route (Einzel-Schritte), wie im Browser.
@@ -789,6 +843,12 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     ],
     leistungen: PRODUKTE.map(p => p.id), kontaktId,
   })) schritt(s.name, s.anzahl);
+  // 14c') Produkt-Import ein zweites Mal (19.10., P4) — jetzt mit den Abläufen (die Vorlagen gibt es seit 14c): derselbe Import ist „gleich“, die
+  //       Zuordnung Produkt → Ablauf steht schon (14c) und bleibt. Zählt die Produkte, die gleich geblieben sind (Wächter tests/demo.test.ts).
+  const zweiter = await rufe(R.produktImport(), 'POST', '/api/crm/produkte/import', LENA, {
+    produkte: DEMO_PRODUKT_KARTEN.map(p => (DEMO_PRODUKT_ABLAEUFE[p.name] ? { ...p, ablauf: DEMO_PRODUKT_ABLAEUFE[p.name] } : p)), vorschau: false,
+  }) as { gleich?: number };
+  schritt('Produkte: zweiter Import gleich', zweiter.gleich ?? 0);
   // 14d) Inbox (10.10.): Demo-Postfach mit erfundener Post, zwei Übergaben an Jonas (eine mit PDF), Aufgaben-Vorschläge für Lena — nur mit
   //      MAKE_OS_DEMO=1 (sonst gibt es den Anbieter „demo“ nicht). lib/demo/saat-inbox.ts.
   const { inboxSaen } = await import('./saat-inbox');
