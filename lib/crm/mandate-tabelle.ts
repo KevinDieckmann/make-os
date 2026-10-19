@@ -18,6 +18,7 @@ import { finanzOrtAus, finanzOrtName, istRegisterKennung, KERN_EINHEITEN } from 
 import { firmenSchluessel } from './firmen';
 import { firmaPlanen, type FirmaPlan } from './person-anlegen';
 import type { ChancenArt, Firma, Gesellschaft, Leistung, Mandat, MandatStatus } from './typen';
+import { mandatVorlageAusProdukt, istKarte } from './produkt-karte';
 
 /** Spalten einer Mandatsliste (nur Begriffe). */
 export const MANDAT_FELDER: readonly FeldDef[] = [
@@ -151,15 +152,32 @@ export function mandatTeil(e: MandatEingabe): Partial<Mandat> {
   };
 }
 
-/** Das neue Mandat (Firma kommt beim Schreiben dazu). Vorgaben wie „+ Mandat“: monatlich, 14 Tage Zahlungsziel, Verlängerung offen. */
-export function neuesMandat(id: string, e: MandatEingabe, firma: { id: string; name: string }, quelle: string): Record<string, unknown> {
+/**
+ * Die Vorlage eines erkannten Produkts für eine Zeile (19.10., P3): nur Produkte mit Karten-Feldern (`istKarte`) — Altbestand bleibt bei den
+ * bisherigen Vorgaben (bit-gleich). Die Zeile gewinnt immer; die Vorlage füllt nur, was die Zeile offen lässt.
+ */
+export function zeilenVorlage(e: Pick<MandatEingabe, 'leistung'>, produkt: Leistung | undefined) {
+  return produkt && e.leistung && produkt.id === e.leistung.id && istKarte(produkt) ? mandatVorlageAusProdukt(produkt) : null;
+}
+
+/**
+ * Das neue Mandat (Firma kommt beim Schreiben dazu). Vorgaben wie „+ Mandat“: monatlich, 14 Tage Zahlungsziel, Verlängerung offen. Mit erkanntem
+ * Produkt (Karte, P3) belegt dessen Vorlage vor, was die Zeile offen lässt: Honorar, Mindestlaufzeit, Kündigung, Verlängerung, Rhythmus, Zahlungsziel,
+ * USt, Leistungen, inklusive Module.
+ */
+export function neuesMandat(id: string, e: MandatEingabe, firma: { id: string; name: string }, quelle: string, produkt?: Leistung): Record<string, unknown> {
+  const v = zeilenVorlage(e, produkt);
+  const honorar = e.honorar !== undefined ? { honorar: { betrag: e.honorar, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich' } : v ? { honorar: v.honorar, rechnungsrhythmus: v.rechnungsrhythmus } : { honorar: { betrag: 0, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich' };
+  const laufzeit = e.laufzeit ?? v?.mindestlaufzeitMonate;
   return {
     id, kunde: firma.name, firmaId: firma.id, titel: e.titel, kontaktIds: [], art: e.leistung ? ART_AUS_TYP[e.leistung.typ] ?? 'retainer' : 'retainer',
     ...(e.leistung ? { leistungId: e.leistung.id } : {}),
-    gesellschaft: e.gesellschaft, status: e.status ?? 'aktiv', vertragUnterschrieben: false, verlaengerung: 'offen',
-    ...(e.start ? { start: e.start } : {}), ...(e.ende ? { ende: e.ende } : {}), ...(e.laufzeit !== undefined ? { mindestlaufzeitMonate: e.laufzeit } : {}),
-    honorar: { betrag: e.honorar ?? 0, basis: 'monat', netto: true }, ustSatz: e.ustSatz ?? 19,
-    rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: {}, leistungen: [], offen: [], quelle,
+    gesellschaft: e.gesellschaft, status: e.status ?? 'aktiv', vertragUnterschrieben: false, verlaengerung: v?.verlaengerung ?? 'offen',
+    ...(e.start ? { start: e.start } : {}), ...(e.ende ? { ende: e.ende } : {}), ...(laufzeit !== undefined ? { mindestlaufzeitMonate: laufzeit } : {}),
+    ...(v?.kuendigungsfristTage != null ? { kuendigungsfristTage: v.kuendigungsfristTage } : {}),
+    ...honorar, ustSatz: e.ustSatz ?? v?.ustSatz ?? 19,
+    zahlungszielTage: v?.zahlungszielTage ?? 14, ziele: [], health: {}, leistungen: v?.leistungen ?? [], offen: v?.hinweise ?? [], quelle,
+    ...(v?.zusatz?.length ? { zusatz: v.zusatz } : {}),
   };
 }
 
@@ -193,7 +211,7 @@ function unterschiede(m: Mandat, e: MandatEingabe): MandatPlanZeile['aenderungen
  * Plan: je Zeile neu · geändert · gleich · übersprungen, mit der Firma (vorhanden · neu · aus dem Papierkorb zurück). `firmen`/`mandate` MIT
  * Papierkorb (die Sicht ohne Papierkorb rechnet der Plan selbst). Dieselbe Zeile zweimal → Fehler.
  */
-export function mandatPlan(eingaben: readonly MandatEingabe[], crm: { firmen: readonly Firma[]; mandate: readonly Mandat[] }, heute: string, jetzt: string): { zeilen: MandatPlanZeile[]; doppelt: MandatFehler[] } {
+export function mandatPlan(eingaben: readonly MandatEingabe[], crm: { firmen: readonly Firma[]; mandate: readonly Mandat[]; leistungen?: readonly Leistung[] }, heute: string, jetzt: string): { zeilen: MandatPlanZeile[]; doppelt: MandatFehler[] } {
   const sicht = crm.firmen.filter(f => !f.geloeschtAm);
   const zeilen: MandatPlanZeile[] = [], doppelt: MandatFehler[] = [];
   const gesehen = new Set<string>();
@@ -217,17 +235,21 @@ export function mandatPlan(eingaben: readonly MandatEingabe[], crm: { firmen: re
       && (e.leistung ? m.leistungId === e.leistung.id : vergleichsText(m.titel) === vergleichsText(e.titel))
       && (!m.start || !e.start || m.start === e.start));
     if (hand) { zeilen.push({ ...basis, status: 'uebersprungen', aenderungen: [], text: `gibt es schon („${hand.titel}“${hand.start ? ` ab ${tagText(hand.start)}` : ''}) — übersprungen` }); continue; }
+    // Vorlage des erkannten Produkts (P3): füllt nur, was die Zeile offen lässt — die Vorschau zeigt es genau so.
+    const v = zeilenVorlage(e, crm.leistungen?.find(l => l.id === e.leistung?.id));
+    const vHonorar = e.honorar === undefined && v && v.honorar.betrag > 0 ? v.honorar : null;
+    const laufzeit = e.laufzeit ?? v?.mindestlaufzeitMonate;
     zeilen.push({
       ...basis, status: 'neu',
       aenderungen: [
         { feld: 'Gesellschaft', neu: istRegisterKennung(e.gesellschaft) ? 'Register-Gesellschaft' : finanzOrtName(e.gesellschaft as 'kdc' | 'kdv' | 'ug') },
-        { feld: 'Honorar / Monat', neu: euro(e.honorar ?? 0) },
+        vHonorar ? { feld: vHonorar.basis === 'monat' ? 'Honorar / Monat' : vHonorar.basis === 'tag' ? 'Honorar / Tag' : 'Honorar einmalig', neu: `${euro(vHonorar.betrag)} (vom Produkt)` } : { feld: 'Honorar / Monat', neu: euro(e.honorar ?? 0) },
         ...(e.start ? [{ feld: 'Start', neu: tagText(e.start) }] : []),
-        ...(e.laufzeit !== undefined ? [{ feld: 'Laufzeit', neu: `${e.laufzeit} Monate` }] : []),
+        ...(laufzeit !== undefined ? [{ feld: 'Laufzeit', neu: `${laufzeit} Monate${e.laufzeit === undefined ? ' (vom Produkt)' : ''}` }] : []),
         ...(e.ende ? [{ feld: 'Ende', neu: tagText(e.ende) }] : []),
         { feld: 'Status', neu: STATUS_NAME[e.status ?? 'aktiv'] },
       ],
-      ...(e.honorar === undefined ? { text: 'Honorar fehlt — 0 € eingetragen' } : {}),
+      ...(e.honorar === undefined && !vHonorar ? { text: 'Honorar fehlt — 0 € eingetragen' } : {}),
     });
   }
   return { zeilen, doppelt };

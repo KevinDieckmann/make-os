@@ -19,7 +19,7 @@ import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, Cr
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN, UG_KURZ, EINHEITEN_UEBERSCHRIEBEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
-import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt } from './produkt-karte';
+import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt } from './produkt-karte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
@@ -438,8 +438,8 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
   const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
   const laufend = s.monat.netto + kaufmaennisch(s.jahr.netto / 12);
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
-  // Das Mandat trägt die laufende Leistung (Retainer), nicht den einmaligen Auftakt — sonst die erste mit Produkt.
-  const leistungId = (a.positionen.find(p => p.leistungId && p.basis !== 'einmalig') ?? a.positionen.find(p => p.leistungId))?.leistungId;
+  // Das Mandat trägt die laufende Leistung (Retainer), nicht den einmaligen Auftakt — sonst die erste mit Produkt (EINE Regel: `angebotHauptprodukt`).
+  const leistungId = angebotHauptprodukt(a, leistungen);
   const saetze = Array.from(new Set(a.positionen.map(p => p.ustSatz)));
   const basis: Partial<Mandat> = {
     gesellschaft: a.gesellschaft, titel: a.titel || undefined,
@@ -453,13 +453,27 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
   // Der Vertrag des Produkts (Karte) füllt nur, was das Angebot offen lässt — Honorar, USt und Zahlungsziel sind im Angebot vereinbart.
   const produkt = leistungId ? leistungen?.find(l => l.id === leistungId) : undefined;
   const v = produkt ? mandatVertragAusProdukt(produkt, basis.honorar!.basis) : {};
+  // P3 (19.10.): inklusive Module laut Regel des Hauptprodukts (0 € — nie doppelt mit dem Angebot; bezahlte Module stehen im Angebot selbst).
+  const inklusive = produkt?.regeln?.inklusive?.length ? mandatVorlageAusProdukt(produkt).zusatz?.filter(z => z.inklusive) : undefined;
   return {
     ...basis,
     ...(!lz && v.mindestlaufzeitMonate ? { mindestlaufzeitMonate: v.mindestlaufzeitMonate } : {}),
     ...(v.kuendigungsfristTage != null ? { kuendigungsfristTage: v.kuendigungsfristTage } : {}),
     ...(v.verlaengerung ? { verlaengerung: v.verlaengerung } : {}),
     ...(v.rechnungsrhythmus === 'quartal' ? { rechnungsrhythmus: 'quartal' as const } : {}),
+    ...(inklusive?.length ? { zusatz: inklusive } : {}),
   };
+}
+
+/**
+ * Das Hauptprodukt eines Angebots — EINE Regel für Mandat-Vorbelegung, „Deal folgt dem Angebot“ und den Deal beim Stellen (19.10., P3; Rundgang A3):
+ * die erste Position mit Produkt, das kein reines Zusatzmodul ist (Rolle „zusatz“, Katalog übergeben) und laufend abgerechnet wird; sonst die erste
+ * solche einmalige; sonst die erste Position mit Produkt überhaupt. Ohne Katalog genau wie bisher (laufend vor einmalig).
+ */
+export function angebotHauptprodukt(a: Pick<Angebot, 'positionen'>, leistungen?: readonly Pick<Leistung, 'id' | 'rolle'>[]): string | undefined {
+  const mit = a.positionen.filter(p => p.leistungId);
+  const haupt = mit.filter(p => leistungen?.find(l => l.id === p.leistungId)?.rolle !== 'zusatz');
+  return (haupt.find(p => p.basis !== 'einmalig') ?? haupt[0] ?? mit.find(p => p.basis !== 'einmalig') ?? mit[0])?.leistungId;
 }
 
 /** Das angenommene Angebot zu einem Deal (jüngstes) — für die Mandat-Vorbelegung. */
