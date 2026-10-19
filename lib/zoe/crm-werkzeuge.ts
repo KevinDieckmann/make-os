@@ -18,6 +18,7 @@ import { hatTerminVerweise, kontakteMitTerminZeit } from '@/lib/crm/aktivitaeten
 import { crmSicht, crmAntwort, ausgeblendetText, eindeutig, NICHT_IM_HINTERGRUND, ABLAGE_QUELLE, EINGESCHRAENKT_NAME, type CrmSicht } from './crm-sicht';
 import { fehlschlag, istWerkzeugErgebnis, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
+import { preiseText } from '@/lib/crm/produkt-karte';
 
 type Eingabe = Record<string, unknown>;
 type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
@@ -637,7 +638,7 @@ async function stammdatenLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgab
   const w = s.crm.wertelisten ?? {};
   const koerper = [
     block('Gesellschaften (IBAN maskiert)', g.map(x => `- ${x.id} · ${x.name} (${x.kurz}) · Nummern ${x.nummernformat} · Zahlungsziel ${x.zahlungszielTage} T · Gültigkeit ${x.gueltigkeitTage} T${x.bank?.iban ? ` · IBAN ${x.bank.iban}` : ''}`)),
-    block('Produkte & Leistungen', s.crm.leistungen.map(l => `- ${l.id} · ${l.name} · ${l.typ} · ${l.status} · ${eur(l.preis.betrag)}${l.preis.bis ? `–${eur(l.preis.bis)}` : ''} ${l.preis.einheit} · ${l.gesellschaft}${produktAngebotFehlt(l).length ? ' · OHNE Angebotstext' : ''}${l.angebot?.leistungstext ? `\n  Leistungstext: ${l.angebot.leistungstext}` : ''}${l.beschreibung ? `\n  Beschreibung: ${l.beschreibung}` : ''}`)),
+    block('Produkte & Leistungen', s.crm.leistungen.map(l => `- ${l.id} · ${l.name} · ${l.typ} · ${l.status} · ${preiseText(l)} · ${l.gesellschaft}${produktAngebotFehlt(l).length ? ' · OHNE Angebotstext' : ''}${l.angebot?.leistungstext ? `\n  Leistungstext: ${l.angebot.leistungstext}` : ''}${l.beschreibung ? `\n  Beschreibung: ${l.beschreibung}` : ''}`)),
     `Wertelisten: Verlustgründe ${(w.verlustgruende ?? []).join(', ') || 'Standard'} · Branchen ${(w.branchen ?? []).join(', ') || '—'} · Typen ${(w.typen ?? []).join(', ') || '—'} · Kategorien ${(w.kategorien ?? []).join(', ') || '—'} · Labels ${(w.labels ?? []).join(', ') || '—'}`,
     block('Import-Konflikte (Entscheidung je Konflikt)', sichtbar.map(k => `- ${k.kontaktId} ${s.name(k.kontaktId)} · Feld ${k.feld}: online „${String(k.online ?? '')}“ ↔ Liste „${String(k.liste ?? '')}“${k.hinweis ? ` · ${k.hinweis}` : ''}`)),
     `Datenschutz: ${s.crm.antraege.filter(a => a.status === 'offen').length} offene Betroffenenanträge · ${s.crm.verarbeitungen.length} Verarbeitungen im Verzeichnis (Art. 30)`,

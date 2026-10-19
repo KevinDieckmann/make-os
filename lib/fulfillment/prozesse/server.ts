@@ -92,7 +92,9 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
   // Health „Termine“ der Leistungstreppe (14.10., Abnahme B8).
   const termine = Object.fromEntries(laufend.map(f => [f.mandatId, naechsterFallTermin({ fallRituale: f.rituale, terminTage: kalender[f.mandatId] ?? [], heute })?.tag]).filter((x): x is [string, string] => !!x[1]));
   const { kundenZeilen } = await import('@/lib/crm/treppe');
-  const kz = treppe ? kundenZeilen({ datei: treppe, crm, heute, termine }) : [];
+  // Stufen aus dem Katalog (19.10., lib/crm/produkt-karte.ts) — ohne Produkt-Karten genau die gespeicherten.
+  const { treppeMitKatalog } = await import('@/lib/crm/produkt-karte');
+  const kz = treppe ? kundenZeilen({ datei: treppeMitKatalog(treppe, crm.leistungen), crm, heute, termine }) : [];
   const { kundenGesperrt } = await import('./bausteine');
   const gesperrt = kundenGesperrt(vorlagen.bausteine, vorlagen);
   // „Heute im Fulfillment“ (17.10. spät): trägt ein Knoten einen Mail-Baustein, ist sein Handgriff „Entwurf öffnen“ — dieselbe Regel wie die Ausführung.

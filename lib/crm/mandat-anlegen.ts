@@ -6,7 +6,8 @@
 // Hier: Eingabe säubern (nie kürzen — zu lang → 413), Mandat-Entwurf, Folgen an der Firma. Der Ablauf (Firma sichern → Person anlegen →
 // Mandat → Kartei) steht in lib/crm/mandat-anlegen-server.ts.
 
-import type { Firma, Gesellschaft, Lead, Mandat } from './typen';
+import type { Firma, Gesellschaft, Lead, Leistung, Mandat } from './typen';
+import { honorarAusPreis, mandatVorlageAusProdukt } from './produkt-karte';
 import { istGesellschaft, istRegisterKennung } from '@/lib/einheiten';
 import { leereKriterien } from './leads';
 import { istKontaktKennung } from '@/lib/kennung';
@@ -66,26 +67,33 @@ export function mandatEingabeAus(roh: unknown): { ok: true; e: MandatEingabe } |
 }
 
 /**
- * Monatshonorar + Rechnungsrhythmus aus einem Preis (Produkt bzw. Deal-Wert) — EINE Stelle für „+ Mandat“ und „Mandat aus Deal“ (Prüf-Fund
- * 11.10.: ein Jahrespreis stand sonst 12-fach als Monatshonorar im Mandat, im Rechnungsrhythmus, im Liquiplan-Vorschlag, in der Treppe und im MRR).
- * „je Jahr“ → ÷ 12 auf den Cent, „einmalig“ bleibt einmalig, sonst monatlich. Rein.
+ * Monatshonorar + Rechnungsrhythmus aus einem Preis (Produkt bzw. Deal-Wert) — seit 19.10. in lib/crm/produkt-karte.ts (EINE Stelle mit der
+ * Produkt-Karte), hier weiter exportiert. „je Jahr“ → ÷ 12 auf den Cent, „einmalig“ bleibt einmalig, sonst monatlich.
  */
-export function honorarAusPreis(p: { betrag?: number | null; basis?: 'monat' | 'jahr' | 'einmalig' | null } | null | undefined): { honorar: Mandat['honorar']; rechnungsrhythmus: Mandat['rechnungsrhythmus'] } {
-  const roh = typeof p?.betrag === 'number' && Number.isFinite(p.betrag) ? p.betrag : 0;
-  const einmalig = p?.basis === 'einmalig';
-  const betrag = p?.basis === 'jahr' ? Math.round((roh / 12) * 100) / 100 : roh;
-  return { honorar: { betrag, basis: einmalig ? 'einmalig' : 'monat', netto: true }, rechnungsrhythmus: einmalig ? 'einmalig' : 'monatlich' };
-}
+export { honorarAusPreis };
 
-/** Das neue Mandat (wie aus einem gewonnenen Deal: aktiv ab heute, Vertrag und Kickoff als offene Punkte) — mit Firma, Ansprechperson, ggf. Produkt. */
-export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>; kontaktIds: string[]; gesellschaft: Gesellschaft; titel?: string; leistung?: { id: string; name: string; preis: { betrag: number; basis?: 'monat' | 'jahr' | 'einmalig' } } | null; zustaendig?: string; jetzt: string; person: string }): Mandat {
-  const h = honorarAusPreis(o.leistung?.preis);
+/** Das Produkt für `mandatEntwurf`: das ganze Produkt aus dem Katalog — mindestens Kennung, Name und Preis (Betrag, Basis). */
+export type EntwurfLeistung = Pick<Leistung, 'id' | 'name'> & { preis: Pick<Leistung['preis'], 'betrag'> & Partial<Leistung['preis']> } & Partial<Omit<Leistung, 'id' | 'name' | 'preis'>>;
+
+/**
+ * Das neue Mandat (wie aus einem gewonnenen Deal: aktiv ab heute, Vertrag und Kickoff als offene Punkte) — mit Firma, Ansprechperson, ggf. Produkt.
+ * Seit 19.10. aus der Vorlage des Produkts (`mandatVorlageAusProdukt`): Art, Honorar, Vertrag (Mindestlaufzeit, Kündigung, Verlängerung, Rhythmus,
+ * Zahlungsziel, USt), Leistungen und Hinweise. Die Gesellschaft der Eingabe gilt; steht sie auf „offen“, kommt sie vom Produkt. Ohne Karten-Felder
+ * am Produkt genau wie bisher.
+ */
+export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>; kontaktIds: string[]; gesellschaft: Gesellschaft; titel?: string; leistung?: EntwurfLeistung | null; zustaendig?: string; jetzt: string; person: string }): Mandat {
+  // Ältere Aufrufer reichen nur Kennung, Name und Preis — ohne Karten-Felder nimmt die Vorlage genau den bisherigen Weg (Honorar aus dem Preis).
+  const v = o.leistung ? mandatVorlageAusProdukt(o.leistung as Leistung) : null;
+  const h = v ?? honorarAusPreis(undefined);
   return {
-    id: o.id, kunde: o.firma.name, firmaId: o.firma.id, kontaktIds: o.kontaktIds, titel: o.titel || o.leistung?.name || 'Mandat', art: 'retainer',
-    ...(o.leistung ? { leistungId: o.leistung.id } : {}), gesellschaft: o.gesellschaft, status: 'aktiv', vertragUnterschrieben: false, start: tagVon(o.jetzt), verlaengerung: 'offen',
-    honorar: h.honorar, ustSatz: 19,
-    rechnungsrhythmus: h.rechnungsrhythmus, zahlungszielTage: 14, ziele: [],
-    health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen'],
+    id: o.id, kunde: o.firma.name, firmaId: o.firma.id, kontaktIds: o.kontaktIds, titel: o.titel || o.leistung?.name || 'Mandat', art: v?.art ?? 'retainer',
+    ...(o.leistung ? { leistungId: o.leistung.id } : {}), gesellschaft: o.gesellschaft !== 'offen' ? o.gesellschaft : v?.gesellschaft ?? 'offen', status: 'aktiv', vertragUnterschrieben: false, start: tagVon(o.jetzt),
+    ...(v?.mindestlaufzeitMonate ? { mindestlaufzeitMonate: v.mindestlaufzeitMonate } : {}), ...(v?.kuendigungsfristTage != null ? { kuendigungsfristTage: v.kuendigungsfristTage } : {}),
+    verlaengerung: v?.verlaengerung ?? 'offen',
+    honorar: h.honorar, ustSatz: v?.ustSatz ?? 19,
+    rechnungsrhythmus: h.rechnungsrhythmus, zahlungszielTage: v?.zahlungszielTage ?? 14, ziele: [],
+    health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: v?.leistungen ?? [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen', ...(v?.hinweise ?? [])],
+    ...(v?.zusatz?.length ? { zusatz: v.zusatz } : {}),
     quelle: 'Von Hand angelegt (Produkte & Mandate)', ...(o.zustaendig ? { zustaendig: o.zustaendig } : {}), geaendert: o.jetzt, geaendertVon: o.person,
   };
 }

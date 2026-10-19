@@ -60,6 +60,7 @@ import { dealPersonenVorgabe } from '@/lib/crm/pipeline';
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { personenWerdenKunde } from '@/lib/crm/mandat-anlegen-server';
 import { honorarAusPreis } from '@/lib/crm/mandat-anlegen';
+import { mandatVertragAusProdukt } from '@/lib/crm/produkt-karte';
 import { einmalig } from '@/lib/store/anfragen';
 import { wer, BEIDE, nameVon } from '@/lib/crm/team';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
@@ -166,8 +167,11 @@ export async function POST(req: Request) {
     // Angebots-Tool (28.09.): gibt es ein angenommenes Angebot zum Deal, belegt es Honorar, Laufzeit, Produkt,
     // Gesellschaft, USt, Zahlungsziel und Leistungen vor — derselbe Weg, nur mit besseren Startwerten.
     const angebot = angenommenZuDeal(crm.angebote, c.id);
+    // Produkt-Karte (19.10.): der Vertrag des Produkts (Mindestlaufzeit, Kündigung, Verlängerung, Rhythmus, Zahlungsziel, USt) — ohne Karte nichts.
+    const produkt = c.leistungId ? crm.leistungen.find(l => l.id === c.leistungId) : undefined;
+    if (!angebot && produkt) Object.assign(m, mandatVertragAusProdukt(produkt, m.honorar.basis));
     if (angebot) {
-      const v = mandatVorbelegung(angebot);
+      const v = mandatVorbelegung(angebot, crm.leistungen);
       Object.assign(m, v, { quelle: `aus Angebot ${angebot.nummer ?? ''} (Deal „${c.titel}“)`.replace('  ', ' ') });
       if (!v.titel) m.titel = c.titel;
       // Das angenommene Angebot IST die Unterschrift (17.10., Gesamtprüfung L1 B3 — der Fall sagte „Mandat unterschrieben“, das Mandat „ohne Vertrag“, der

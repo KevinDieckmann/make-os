@@ -19,7 +19,7 @@ import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, Cr
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN, UG_KURZ, EINHEITEN_UEBERSCHRIEBEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
-import { preisBasisVon } from '@/lib/finanzen/produkte';
+import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt } from './produkt-karte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ export const ZAHLUNGSZIEL_VORGABE_TAGE = 14;
 export const NACHFASSEN_WERKTAGE = 5;
 
 /** Grenzen — darüber lehnt der Server ab (413), nie still kürzen. */
-export const ANGEBOT_GRENZEN = { positionen: 200, titel: 200, text: 6000, einleitung: 6000, schluss: 6000, grund: 600 } as const;
+export const ANGEBOT_GRENZEN = { positionen: 200, titel: POSITION_GRENZEN.titel, text: POSITION_GRENZEN.text, einleitung: 6000, schluss: 6000, grund: 600 } as const;
 /** Höchstwerte je Position (Schutz vor Tippfehlern: 10 Mio. € je Einzelpreis, 100.000 Stück). */
 export const POSITION_MAX = { menge: 100000, einzelpreisCent: 1_000_000_000, laufzeitMonate: 600 } as const;
 
@@ -351,23 +351,17 @@ export function leistungAngebotSaeubern(v: unknown): Leistung['angebot'] | undef
   return out.leistungstext || Object.keys(out).length > 1 ? out : undefined;
 }
 
-/** Positionstext aus den Angebotstexten des Produkts (Leistungstext, Ergebnis, Hinweise). */
-export function positionsText(l: Pick<Leistung, 'angebot' | 'beschreibung' | 'lieferumfang' | 'ergebnis'>): string {
-  const a = l.angebot;
-  if (a?.leistungstext?.trim()) return [a.leistungstext.trim(), a.ergebnis?.trim() ? `Ergebnis: ${a.ergebnis.trim()}` : '', a.hinweise?.trim() ?? ''].filter(Boolean).join('\n\n');
-  // Altbestand ohne Angebotstext: Beschreibung + Lieferumfang als Vorschlag (die Oberfläche markiert „Text fehlt“).
-  return [l.beschreibung?.trim() ?? '', l.lieferumfang?.length ? l.lieferumfang.map(x => `• ${x}`).join('\n') : '', l.ergebnis?.trim() ? `Ergebnis: ${l.ergebnis.trim()}` : ''].filter(Boolean).join('\n\n');
-}
+/** Positionstext aus den Angebotstexten des Produkts — seit 19.10. in lib/crm/produkt-karte.ts (EINE Stelle), hier weiter exportiert. */
+export { positionsText };
 
-const EINHEIT_JE_BASIS: Record<AngebotBasis, string> = { einmalig: 'pauschal', monat: 'Monat', jahr: 'Jahr' };
-/** Eine Position aus einem Produkt: Menge 1, Preis (Cent), Basis, Laufzeit, Titel und Text aus dem Produkt. */
+const EINHEIT_JE_BASIS: Record<AngebotBasis, string> = ANGEBOT_EINHEIT_JE_BASIS;
+/**
+ * EINE Position aus einem Produkt (Produktwahl im Angebots-Tool): die erste aus `angebotPositionenAusProdukt` (lib/crm/produkt-karte.ts) —
+ * ohne Preis-Teile genau wie bisher (Menge 1, Preis in Cent, Basis, Laufzeit, Titel und Text aus dem Produkt). Alle Teile einer Karte:
+ * `angebotPositionenAusProdukt`.
+ */
 export function positionAusProdukt(l: Leistung, id: string, opt: { kleinunternehmer?: boolean } = {}): AngebotPosition {
-  const basis: AngebotBasis = preisBasisVon(l) ?? 'einmalig';
-  return {
-    id, leistungId: l.id, titel: (l.angebot?.titel?.trim() || l.name).slice(0, ANGEBOT_GRENZEN.titel), text: positionsText(l).slice(0, ANGEBOT_GRENZEN.text),
-    menge: 1, einheit: EINHEIT_JE_BASIS[basis], einzelpreisCent: inCent(l.preis.betrag || 0), ustSatz: opt.kleinunternehmer ? 0 : 19, basis,
-    ...(basis !== 'einmalig' && l.laufzeitMonate ? { laufzeitMonate: Math.round(l.laufzeitMonate) } : {}),
-  };
+  return angebotPositionenAusProdukt(l, [], { idBasis: id, ...opt })[0];
 }
 
 /**
@@ -434,15 +428,20 @@ export function dealWertAusAngebot(a: Pick<Angebot, 'positionen'>): Chance['wert
   return { betrag: ausCent(s.einmalig.netto), basis: 'einmalig' };
 }
 
-/** Vorbelegung eines Mandats aus einem angenommenen Angebot (bestehender Mandat-Weg, /api/crm/lead aktion „mandat“). */
-export function mandatVorbelegung(a: Angebot): Partial<Mandat> {
+/**
+ * Vorbelegung eines Mandats aus einem angenommenen Angebot (bestehender Mandat-Weg, /api/crm/lead aktion „mandat“). Vereinbart ist, was im
+ * Angebot steht (Honorar, Laufzeit, Gesellschaft, USt, Zahlungsziel, Leistungen); seit 19.10. ergänzt der Vertrag des Produkts (Karte,
+ * `leistungen` übergeben) nur, was das Angebot nicht sagt: Kündigungsfrist, Verlängerung, Rhythmus „Quartal“, Mindestlaufzeit ohne Laufzeit.
+ * Ohne Vertrag am Produkt genau wie bisher.
+ */
+export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]): Partial<Mandat> {
   const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
   const laufend = s.monat.netto + kaufmaennisch(s.jahr.netto / 12);
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
   // Das Mandat trägt die laufende Leistung (Retainer), nicht den einmaligen Auftakt — sonst die erste mit Produkt.
   const leistungId = (a.positionen.find(p => p.leistungId && p.basis !== 'einmalig') ?? a.positionen.find(p => p.leistungId))?.leistungId;
   const saetze = Array.from(new Set(a.positionen.map(p => p.ustSatz)));
-  return {
+  const basis: Partial<Mandat> = {
     gesellschaft: a.gesellschaft, titel: a.titel || undefined,
     honorar: laufend > 0 ? { betrag: ausCent(laufend), basis: 'monat', netto: true } : { betrag: ausCent(s.einmalig.netto), basis: 'einmalig', netto: true },
     ...(lz ? { mindestlaufzeitMonate: Math.min(120, lz) } : {}),
@@ -450,6 +449,16 @@ export function mandatVorbelegung(a: Angebot): Partial<Mandat> {
     ustSatz: a.absender?.kleinunternehmer ? 0 : saetze.length === 1 && [0, 7, 19].includes(saetze[0]) ? saetze[0] : 19,
     rechnungsrhythmus: laufend > 0 ? 'monatlich' : 'einmalig', zahlungszielTage: a.zahlungszielTage,
     leistungen: a.positionen.map(p => p.titel),
+  };
+  // Der Vertrag des Produkts (Karte) füllt nur, was das Angebot offen lässt — Honorar, USt und Zahlungsziel sind im Angebot vereinbart.
+  const produkt = leistungId ? leistungen?.find(l => l.id === leistungId) : undefined;
+  const v = produkt ? mandatVertragAusProdukt(produkt, basis.honorar!.basis) : {};
+  return {
+    ...basis,
+    ...(!lz && v.mindestlaufzeitMonate ? { mindestlaufzeitMonate: v.mindestlaufzeitMonate } : {}),
+    ...(v.kuendigungsfristTage != null ? { kuendigungsfristTage: v.kuendigungsfristTage } : {}),
+    ...(v.verlaengerung ? { verlaengerung: v.verlaengerung } : {}),
+    ...(v.rechnungsrhythmus === 'quartal' ? { rechnungsrhythmus: 'quartal' as const } : {}),
   };
 }
 

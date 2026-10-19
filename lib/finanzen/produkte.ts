@@ -11,20 +11,18 @@ import type { Chance, CrmBestand, Leistung, Mandat } from '@/lib/crm/typen';
 import type { Baustein, BausteinEinheit, Rhythmus } from './szenarien';
 import { neuerBaustein } from './szenarien';
 import { planMonat } from './rechenkern';
-import { istKostenlos } from '@/lib/crm/produkte';
+import { preisBasisVon as kartenBasis, basisAusAltpreis, planBausteinAusProdukt, RHYTHMUS_AUS_BASIS as KARTE_RHYTHMUS, type PreisBasis as KartenPreisBasis } from '@/lib/crm/produkt-karte';
 
-export type PreisBasis = NonNullable<Leistung['preis']['basis']>;
+export type PreisBasis = KartenPreisBasis;
 
-/** Basis des Preises: eingetragen, sonst aus der Einheit („Monat netto“ → monat, „Jahr“ → jahr, sonst einmalig); null, wenn nichts erkennbar. */
-export function preisBasisVon(l: Pick<Leistung, 'preis'>): PreisBasis | null {
-  if (l.preis.basis) return l.preis.basis;
-  const e = (l.preis.einheit ?? '').toLowerCase();
-  if (/monat|mtl|\/m\b|month/.test(e)) return 'monat';
-  if (/jahr|jährlich|jaehrlich|p\.\s*a\.|year/.test(e)) return 'jahr';
-  if (/einmal|pauschal|projekt|tag|stunde|workshop|festpreis|one/.test(e)) return 'einmalig';
-  return null;
+/**
+ * Basis des Preises (EINE Regel in lib/crm/produkt-karte.ts, 19.10.): mit Preis-Teilen aus dem Hauptpreis-Teil, sonst wie bisher eingetragen bzw.
+ * aus der Einheit („Monat netto“ → monat, „Jahr“ → jahr, sonst einmalig); null, wenn nichts erkennbar.
+ */
+export function preisBasisVon(l: Pick<Leistung, 'preis'> & Partial<Pick<Leistung, 'preise'>>): PreisBasis | null {
+  return kartenBasis(l);
 }
-export const RHYTHMUS_AUS_BASIS: Record<PreisBasis, Rhythmus> = { monat: 'monatlich', jahr: 'jaehrlich', einmalig: 'einmalig' };
+export const RHYTHMUS_AUS_BASIS: Record<PreisBasis, Rhythmus> = KARTE_RHYTHMUS;
 
 /** Einheit, die zur Basis passt (29.09., Sichtprüfung): „Monat netto“ · „Jahr netto“ · „pauschal netto“. */
 export const EINHEIT_VORGABE: Record<PreisBasis, string> = { monat: 'Monat netto', jahr: 'Jahr netto', einmalig: 'pauschal netto' };
@@ -37,11 +35,14 @@ export function einheitFuerBasis(einheit: string | undefined, basis: PreisBasis 
   const e = (einheit ?? '').trim();
   if (!basis) return e;
   if (!e) return EINHEIT_VORGABE[basis];
-  const ausText = preisBasisVon({ preis: { betrag: 0, einheit: e } });
+  const ausText = basisAusAltpreis({ einheit: e });
   return ausText && ausText !== basis ? EINHEIT_VORGABE[basis] : e;
 }
-/** Anzeige-Einheit eines Produkts (Katalog, Angebots-Produktwahl, Liste). */
-export const produktEinheit = (l: Pick<Leistung, 'preis'>): string => einheitFuerBasis(l.preis.einheit, preisBasisVon(l));
+/** Anzeige-Einheit eines Produkts (Katalog, Angebots-Produktwahl, Liste) — mit Preis-Teilen die Einheit des Hauptpreis-Teils. */
+export const produktEinheit = (l: Pick<Leistung, 'preis'> & Partial<Pick<Leistung, 'preise'>>): string => {
+  const p = planBausteinAusProdukt({ preis: l.preis, preise: l.preise });
+  return einheitFuerBasis(p.einheit, p.basis);
+};
 
 /**
  * Einheit der Planung aus der Gesellschaft des Produkts (28.09., eine Einheitenliste):
@@ -52,22 +53,18 @@ export function einheitAusGesellschaft(g: Leistung['gesellschaft'] | 'offen'): B
   return g === 'kdv' || g === 'kdc' ? g : 'ug';
 }
 
-/** Was dem Produkt für die Planung fehlt — leer heißt: planbar. */
+/** Was dem Produkt für die Planung fehlt — leer heißt: planbar (EINE Regel: `planBausteinAusProdukt`). */
 export function planungFehlt(l: Leistung): string[] {
-  const f: string[] = [];
-  if (!l.preis.betrag && !istKostenlos(l)) f.push('Preis');
-  if (!preisBasisVon(l)) f.push('Basis (Monat · Jahr · einmalig)');
-  if (preisBasisVon(l) !== 'einmalig' && !l.laufzeitMonate) f.push('Laufzeit');
-  if (l.gesellschaft === 'offen') f.push('Gesellschaft');
-  return f;
+  return planBausteinAusProdukt(l).fehlt;
 }
 
-/** Marge je Einheit aus Preis und Aufwandsanteil — null ohne Angabe. */
-export function margeVon(l: Pick<Leistung, 'preis' | 'aufwand'>): { kosten: number; marge: number; anteil: number } | null {
+/** Marge je Einheit aus Preis (Hauptpreis) und Aufwandsanteil — null ohne Angabe. */
+export function margeVon(l: Pick<Leistung, 'preis' | 'aufwand'> & Partial<Pick<Leistung, 'preise'>>): { kosten: number; marge: number; anteil: number } | null {
   const a = l.aufwand?.anteil;
-  if (a == null || !Number.isFinite(a) || !l.preis.betrag) return null;
-  const kosten = l.preis.betrag * Math.max(0, Math.min(1, a));
-  return { kosten, marge: l.preis.betrag - kosten, anteil: a };
+  const preis = planBausteinAusProdukt({ preis: l.preis, preise: l.preise }).preis;
+  if (a == null || !Number.isFinite(a) || !preis) return null;
+  const kosten = preis * Math.max(0, Math.min(1, a));
+  return { kosten, marge: preis - kosten, anteil: a };
 }
 
 export interface ProduktVorschlag {
@@ -78,10 +75,14 @@ export interface ProduktVorschlag {
 /** Produkte des Katalogs, wie die Planung sie braucht (aktiv zuerst, eingestellte nicht). */
 export function produktVorschlaege(crm: Pick<CrmBestand, 'leistungen'>): ProduktVorschlag[] {
   const rang = { aktiv: 0, entwurf: 1, eingestellt: 2 } as const;
-  return crm.leistungen.filter(l => l.status !== 'eingestellt' && !l.geloeschtAm).sort((a, b) => rang[a.status] - rang[b.status] || a.name.localeCompare(b.name)).map(l => ({
-    id: l.id, name: l.name, typ: l.typ, stufe: l.stufe, status: l.status, preis: l.preis.betrag, einheit: l.preis.einheit,
-    basis: preisBasisVon(l), laufzeit: l.laufzeitMonate ?? null, gesellschaft: l.gesellschaft, fehlt: planungFehlt(l), planEinheit: einheitAusGesellschaft(l.gesellschaft),
-  }));
+  return crm.leistungen.filter(l => l.status !== 'eingestellt' && !l.geloeschtAm).sort((a, b) => rang[a.status] - rang[b.status] || a.name.localeCompare(b.name)).map(l => {
+    // EINE Stelle (lib/crm/produkt-karte.ts, 19.10.): Hauptpreis, Basis, Laufzeit (Mindestlaufzeit), Lücken — ohne Preis-Teile wie bisher.
+    const p = planBausteinAusProdukt(l);
+    return {
+      id: l.id, name: l.name, typ: l.typ, stufe: l.stufe, status: l.status, preis: p.preis, einheit: p.einheit,
+      basis: p.basis, laufzeit: p.laufzeit, gesellschaft: l.gesellschaft, fehlt: p.fehlt, planEinheit: einheitAusGesellschaft(l.gesellschaft),
+    };
+  });
 }
 
 /** Umsatzbaustein aus einem Produkt — Preis, Rhythmus, Laufzeit und Einheit vorbelegt, alles überschreibbar. */

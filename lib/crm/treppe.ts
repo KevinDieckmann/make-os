@@ -9,6 +9,8 @@
 //   zielbild         Ziel gegen Ist je Stufe im Zieljahr (Umsatz, Kunden) und die Übergänge zwischen den Stufen
 //   kundenreise      die Stationen des Kreislaufs mit Ist (aus der verknüpften Stufe bzw. von Hand)
 //   kapaBedarf       Aufwand der Kunden in den Stufen je Woche (→ Kapazität) und die Plätze je Stufe (Kapazitätsgrenze)
+// Seit 19.10. („Ein Produkt, eine Karte“, PRODUKTE_KONZEPT.md): gerechnet wird mit den Stufen AUS DEM KATALOG — der Aufrufer reicht
+// `treppeMitKatalog(datei, crm.leistungen)` (lib/crm/produkt-karte.ts) herein; ohne Karten sind das genau die gespeicherten Stufen.
 
 import type { CrmBestand, Mandat, Leistung } from './typen';
 import { mandatLage } from './kunden';
@@ -17,6 +19,7 @@ import { tagPlus } from '@/lib/kalender/zeit';
 import { tagVon } from '@/lib/zeit';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
 import { kickoffVermerkText } from '@/lib/fulfillment/prozesse/onboarding';
+import { wochenStunden, stufenTakt } from './produkt-karte';
 
 /**
  * Nur Business (Prüf-Fund 11.10.): Mandate und Deals einer Privat-Einheit (z. B. der Selbstständigkeit, je Instanz) zählen nicht in der
@@ -295,12 +298,12 @@ export interface KapaBedarf {
  * Stunden je Woche, die EIN Kunde in dieser Stufe bindet (aus `aufwandStunden`: je Monat ×12/52, je Jahr /52, sonst über die Dauer; ohne Dauer /4 — Annahme).
  * EINE Rechnung für die Treppe (`kapaBedarf`) und den Kapazitäts-Vorschlag am Fall (18.10.). Ohne Aufwand: 0.
  */
-export function stufeStundenWoche(s: Pick<TreppenStufe, 'aufwandStunden' | 'preis' | 'dauerTage'>): { stunden: number; annahme: boolean } {
+export function stufeStundenWoche(s: Pick<TreppenStufe, 'aufwandStunden' | 'preis' | 'dauerTage'> & Partial<Pick<TreppenStufe, 'wochenAufwand'>>): { stunden: number; annahme: boolean } {
+  // Stufe aus der Produkt-Karte (19.10., lib/crm/produkt-karte.ts): der Aufwand je Woche steht schon fest (`kapazitaetStundenWoche`).
+  if (s.wochenAufwand) return s.wochenAufwand;
   if (!s.aufwandStunden) return { stunden: 0, annahme: false };
-  if (s.preis.art === 'monat') return { stunden: (s.aufwandStunden * 12) / 52, annahme: false };
-  if (s.preis.art === 'jahr') return { stunden: s.aufwandStunden / 52, annahme: false };
-  if (s.dauerTage) return { stunden: s.aufwandStunden / Math.max(1, s.dauerTage / 7), annahme: false };
-  return { stunden: s.aufwandStunden / 4, annahme: true };
+  // EINE Rechnung mit der Produkt-Karte (`wochenStunden`): je Monat ×12/52, je Jahr /52, sonst über die Dauer; ohne Dauer /4 (Annahme).
+  return wochenStunden(s.aufwandStunden, stufenTakt(s.preis.art), s.dauerTage);
 }
 
 export function kapaBedarf(datei: TreppeDatei, zeilen: readonly KundenZeile[]): KapaBedarf {
@@ -310,7 +313,7 @@ export function kapaBedarf(datei: TreppeDatei, zeilen: readonly KundenZeile[]): 
     const kunden = zeilen.filter(z => z.stufe?.id === s.id && z.status === 'aktiv').length;
     const w = stufeStundenWoche(s);
     const je = w.stunden;
-    if (s.aufwandStunden) { if (w.annahme && kunden) annahmeDauer.push(s.name); } else if (kunden) ohneAufwand.push(s.name);
+    if (s.aufwandStunden || s.wochenAufwand) { if (w.annahme && kunden) annahmeDauer.push(s.name); } else if (kunden) ohneAufwand.push(s.name);
     const max = s.regeln.maxGleichzeitig;
     jeStufe.push({ stufeId: s.id, name: s.name, kunden, stundenWoche: Math.round(je * kunden * 10) / 10, ...(max ? { max } : {}), voll: !!max && kunden >= max, ueber: !!max && kunden > max });
   }

@@ -19,7 +19,7 @@ export function KapazitaetVorschlag({ mandatId, kunde, zustaendig }: { mandatId:
   const [fehler, setFehler] = useState<string | null>(null);
   if (fertig || !kapa.stand || !treppe.lage) return null;
   const zeile = treppe.lage.kunden.find(k => k.mandatId === mandatId);
-  const stufe = zeile?.stufe ? treppe.lage.datei.stufen.find(s => s.id === zeile.stufe!.id) : undefined;
+  const stufe = zeile?.stufe ? treppe.lage.katalog.stufen.find(s => s.id === zeile.stufe!.id) : undefined;
   if (!stufe) return null;
   const v = kapaVorschlag({ mandatId, zustaendig, stundenWoche: stufeStundenWoche(stufe).stunden, zuweisungen: kapa.stand.zuweisungen, personen: kapa.stand.personen });
   if (!v) return null;

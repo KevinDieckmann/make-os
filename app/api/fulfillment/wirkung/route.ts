@@ -48,8 +48,9 @@ async function grundlage(mandatId: string, zitat?: { text: string; einwilligungA
   // Seit 12.10. (Fulfillment extern): „Wie es weitergehen kann“ = die nächste Stufe der Leistungstreppe (Name + Ergebnis, nie ein Preis) — fehlt sie, kein Hinweis.
   const naechsteStufe = await (async () => {
     try {
-      const [{ ladeTreppe }, { kundenZeilen, naechsteStufen }] = await Promise.all([import('@/lib/crm/treppe-server'), import('@/lib/crm/treppe')]);
-      const datei = await ladeTreppe(heute);
+      const [{ ladeTreppe }, { kundenZeilen, naechsteStufen }, { treppeMitKatalog }] = await Promise.all([import('@/lib/crm/treppe-server'), import('@/lib/crm/treppe'), import('@/lib/crm/produkt-karte')]);
+      // Stufen aus dem Katalog (19.10.) — ohne Produkt-Karten genau die gespeicherten.
+      const datei = treppeMitKatalog(await ladeTreppe(heute), crm.leistungen);
       const zeile = kundenZeilen({ datei, crm: { ...crm, mandate: [{ ...m, status: m.status === 'beendet' ? 'aktiv' : m.status }] }, heute })[0];
       const stufe = zeile?.stufe ? datei.stufen.find(s => s.id === zeile.stufe!.id) : undefined;
       const n = stufe ? naechsteStufen(stufe, datei.stufen)[0] : undefined;
