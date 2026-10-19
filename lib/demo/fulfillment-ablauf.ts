@@ -27,7 +27,9 @@ export async function ablaufBeispielSaeen(k: FulfillmentSaatKontext): Promise<Sa
   const kontakt = k.kontaktId('hafen-ansprechperson');
   const plus = (n: number) => tagPlus(k.heute, n);
   // 1) Der Kunde (erfunden) — über die Routen der Markttraktion; der Retainer kommt wie die anderen über den Vorschlag in den Liquiditätsplan.
-  await k.rufe(k.routen.crm(), 'PATCH', '/api/crm/bestand', L, { ops: [{ liste: 'firmen', op: 'upsert', eintrag: { id: ABLAUF_DEMO_FIRMA, name: kunde, rolle: 'kunde', branche: 'Logistik', stadt: 'Bremen', mitarbeiter: '40', webseite: 'https://hafen.example', notiz: 'Erfundene Beispiel-Firma (Demo).' } }] });
+  await k.rufe(k.routen.crm(), 'PATCH', '/api/crm/bestand', L, { ops: [{ liste: 'firmen', op: 'upsert', eintrag: { id: ABLAUF_DEMO_FIRMA, name: kunde, rolle: 'kunde', branche: 'Logistik', stadt: 'Bremen', mitarbeiter: '40', webseite: 'https://hafen.example', notiz: 'Erfundene Beispiel-Firma (Demo).',
+    // Erfundene Rechnungsanschrift (19.10., Rundgang A7) — damit auch hier eine Rechnung bis „gestellt“ vorführbar ist.
+    zahlung: { empfaenger: { anschrift: 'Musterkai 8, 28195 Bremen' } } } }] });
   await k.rufe(k.routen.kontakte(), 'PATCH', '/api/state/kontakte', L, { ops: [{ op: 'upsert', eintrag: {
     id: kontakt, vorname: 'Mara', nachname: 'Beispiel', email: `mara@${DEMO_DOMAIN}`, position: 'Geschäftsführerin', firma: kunde, firmaId: ABLAUF_DEMO_FIRMA,
     // Ohne Aktivitäten vor dem Anlagetag (Abnahme C8: keine Aktivität vor `importiertAm`).

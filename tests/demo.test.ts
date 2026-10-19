@@ -214,6 +214,31 @@ describe('Saat', () => {
     expect(tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled' && !t.geloeschtAm && t.dueDate && t.dueDate < heute).map(t => t.title)).toEqual([]);
   });
 
+  // Rundgang 19.10. (A7): der Weg Mandat → Rechnung → gestellt ist in der Demo vorführbar — der Absender trägt die öffentliche Beispiel-IBAN (keine echte
+  // Bankverbindung), jede Kundenfirma eine erfundene, vollständige Rechnungsanschrift. Über die Rechnungs-Route wie die Oberfläche.
+  it('A7: Absender mit Beispiel-IBAN, Kundenfirmen mit Anschrift — eine Monatsrechnung lässt sich bis „gestellt“ vorführen', async () => {
+    const { DEMO_IBAN } = await import('@/lib/demo/saat');
+    const pruefziffer = (iban: string) => BigInt((iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, c => String(c.charCodeAt(0) - 55))) % 97n === 1n;
+    expect(pruefziffer(DEMO_IBAN)).toBe(true);
+    const reg = await db.loadJson<{ gesellschaften: { id: string; bank?: { iban?: string } }[] }>('gesellschaften--demo');
+    expect(reg?.gesellschaften.find(g => g.id === 'ug')?.bank?.iban).toBe(DEMO_IBAN);
+    const { anschriftZerlegen } = await import('@/lib/finanzen/rechnung/regeln');
+    const crm = (await db.loadJson<{ firmen: { id: string; zahlung?: { empfaenger?: { anschrift?: string } } }[] }>('crm'))!;
+    for (const f of crm.firmen) {
+      const a = anschriftZerlegen(f.zahlung?.empfaenger?.anschrift);
+      expect(!!(a.strasse && a.plz && a.ort), f.id).toBe(true);
+    }
+    const route = (await import('@/app/api/rechnung/route')) as unknown as { POST: Handler };
+    const post = async (body: Record<string, unknown>) => (await route.POST(new Request('http://test/api/rechnung', { method: 'POST', headers: sitzung('lena'), body: JSON.stringify(body) }))).json() as Promise<{ ok: boolean; fehler?: string; fehlt?: unknown; rechnung: { id: string; fassung: string; status: string; nummer?: string; empfaenger?: Record<string, string> } }>;
+    const neu = await post({ aktion: 'neu', quelle: 'mandat', mandatId: 'm-demo-nordwerk' });
+    expect(neu.ok, neu.fehler).toBe(true);
+    expect(neu.rechnung.empfaenger).toMatchObject({ firma: 'Nordwerk Maschinenbau GmbH', strasse: 'Musterweg 12', plz: '33602', ort: 'Bielefeld' });
+    const st = await post({ aktion: 'stellen', id: neu.rechnung.id, stand: neu.rechnung.fassung });
+    expect(st.ok, `${st.fehler ?? ''} ${JSON.stringify(st.fehlt ?? '')}`).toBe(true);
+    expect(st.rechnung.status).toBe('gestellt');
+    expect(st.rechnung.nummer).toBeTruthy();
+  });
+
   it('drittes Konto „nur Business“ (E4-Rest, 09.10.): der Partner sieht Business, aus dem Privat-Bereich nichts — Lena alles', async () => {
     const { DEMO_PARTNER } = await import('@/lib/demo/saat');
     const konten = await db.loadJson<{ konten: { speicher: string; finanzRecht?: string; rolle: string; haushalt: string; email: string }[] }>('konten');
