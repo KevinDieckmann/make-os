@@ -27,6 +27,7 @@ import { TreppenStrategie } from './treppe/Treppe';
 import { KatalogTreppe } from './KatalogTreppe';
 import { ProduktKarte } from './karte/ProduktKarte';
 import { ProduktAnlegen } from './karte/ProduktAnlegen';
+import { ProduktImportKnopf } from './ProduktImport';
 
 const statusFarbe = (s: Leistung['status']) => (s === 'aktiv' ? LEUCHT.gut : s === 'entwurf' ? LEUCHT.achtung : C.inkLeise);
 const klein = { fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 } as const;
@@ -152,7 +153,7 @@ export function Produkte({ api }: { api: CrmApi }) {
         <>
           {treppe.hinweis && <Hinweis art="achtung" aktion={<Knopf leise onClick={() => treppe.setHinweis(null)}>Ok</Knopf>}>{treppe.hinweis}</Hinweis>}
           <Karte i={0}>
-            <Ueberschrift rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{lage && <AusDokument ki={lage.ki} />}<Knopf haupt onClick={() => setAnlegen({ ebene: null })}>+ Produkt</Knopf></span>}>Leistungstreppe</Ueberschrift>
+            <Ueberschrift rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{lage && <AusDokument ki={lage.ki} />}<ProduktImportKnopf onFertig={() => { void api.laden(true); void treppe.neuLaden(); }} /><Knopf haupt onClick={() => setAnlegen({ ebene: null })}>+ Produkt</Knopf></span>}>Leistungstreppe</Ueberschrift>
             {ansicht.linien.length > 1 && (
               <div style={{ marginBottom: 12 }}><Pillen<string> einzeilig liste={[{ id: '', label: 'Alle Linien' }, ...ansicht.linien.map(x => ({ id: x, label: x }))]} aktiv={linie ?? ''} onWahl={x => setLinie(x || null)} /></div>
             )}
