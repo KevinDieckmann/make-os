@@ -97,3 +97,10 @@ export interface RechnungZusatz {
   stornoRechnungId?: string;
   mahnungen?: Mahnung[];
 }
+
+/**
+ * Was mit der Rechnungsanschrift an der Kundenfirma geschah (19.10., Rundgang B12 — Kevin 18.10.: „An der Firma speichern“), nur in der Antwort,
+ * nie gespeichert: `gespeichert` (die Firma hatte keine bzw. der Haken war gesetzt), `gleich` (steht schon so an der Firma), `abweichend` (die Firma
+ * hat eine andere — überschrieben wird nur mit dem Haken „an der Firma speichern“; `firma` = was dort steht, als Stand für den Haken).
+ */
+export interface AnschriftAnFirma { stand: 'gespeichert' | 'gleich' | 'abweichend'; firma?: string }

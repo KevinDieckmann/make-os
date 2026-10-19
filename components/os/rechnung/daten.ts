@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import type { Gesellschaft } from '@/lib/crm/gesellschaften';
 import type { MahnVorschlag, Pflicht } from '@/lib/finanzen/rechnung/regeln';
+import type { AnschriftAnFirma } from '@/lib/finanzen/rechnung/typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 
@@ -27,6 +28,8 @@ export interface RechnungAntwort {
   rechnung?: RechnungMitFassung; aktuell?: RechnungMitFassung; vorhanden?: boolean; fehlt?: Pflicht[];
   pdf?: { id: string; name: string }; mail?: { an?: string; betreff: string; text: string };
   original?: RechnungMitFassung; storno?: RechnungMitFassung; gegenbuchung?: string; mahnTage?: [number, number, number];
+  /** Rechnungsanschrift an der Kundenfirma (19.10., B12) — nur beim Speichern eines Entwurfs, wenn es etwas zu sagen gibt. */
+  anFirma?: AnschriftAnFirma;
 }
 
 /** Eine Anfrage-Kennung je Handlung (Idempotenz, lib/store/anfragen.ts). */
