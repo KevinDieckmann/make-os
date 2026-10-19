@@ -154,6 +154,36 @@ bit-gleich wie vorher (Paritätstests in `tests/produkt-karte.test.ts`). Entsche
 - **Noch direkt am alten `preis` (nicht in P1):** Oberfläche `components/os/mandate/Produkte.tsx`, `components/os/crm/angebot/Positionen.tsx` (P2),
   Demo-Saat (P4). Wer neu liest: über `preiseText`/`hauptpreis`/`planBausteinAusProdukt`.
 
+## P2 Karte + Katalog-Oberfläche — gebaut (19.10., Branch `produkte-ui`)
+
+Regeln der Oberfläche rein in `lib/crm/produkt-katalog.ts` (liest nur von `produkt-karte.ts`, rechnet nie daneben); Oberfläche
+`components/os/mandate/` (`Produkte.tsx`, `KatalogTreppe.tsx`, `karte/*`). Wächter `tests/produkte-oberflaeche.test.ts`.
+- **Katalog = EINE Ansicht:** `katalogAnsicht` aus `katalogTreppe` (Browser, live aus dem CRM-Bestand + den gespeicherten Stufen; Kunden/Plätze aus
+  `lage.kapa.jeStufe`). Stufen links → rechts, Alternativen übereinander, am Handy untereinander; Archiv/Papierkorb nie auf der Treppe; die Linie ist
+  ein Filter (die Liste nach Linien ist weg). Gespeicherte Stufen ohne Produkt stehen gestrichelt an ihrer Stelle: „Als Produkt anlegen“ (`karteAusStufe`
+  → `api.setze`, dann Treppen-Op `stufe` `leistungIds: [neu]` mit Stand — Kennung der Stufe bleibt) oder „entfernen“ (Rückfrage). Produkte ohne Stufe
+  stehen als Zeilen „Ohne Stufe“ (mit Satz, warum: verknüpft mit fremder Stufe / Gesellschaft Privat). Lage oben (Antwort zuerst, ≤ 5 Kacheln).
+- **Faden:** `treppenFaden` über die Balken der Stufen (gemessen), jede Stufe in ihrer Farbe, hell bis zur höchsten Stufe mit Kunden, dahinter gedämpft
+  und ausgefranst, über der Platzgrenze rot. Ohne zwei Stufen kein Faden.
+- **Geführtes Anlegen** (`neuesProdukt`): Name · Art (einmalig · laufend monatlich · jährlich · kostenlos · nach Aufwand je Stunde/Tag) · Preis ·
+  Gesellschaft · Stufe · ein Satz Leistungstext → Entwurf mit EINEM Preis-Teil, öffnet die Karte. Kein Sofort-Entwurf mit Vorgaben mehr.
+- **Die Karte** (Fenster, `?s=produkte&k=<id>` = `WEG.produkt`): Kopf mit Chips Stufe · Rolle · Status · Gesellschaft, Preis-Zeile, Lage, „Was noch
+  fehlt“ (`kartenLuecken`, Weg in den Abschnitt). Abschnitte: Preis (`PREIS_TEIL_FELDER` je Form, Reihenfolge ↑↓, Hauptpreis markiert, Formwechsel räumt
+  auf — `teilFuerArt`) · Vertrag · Regeln · Texte · Lieferumfang · Ablauf · Aufwand & Kapazität · Ziel & Planung · Mandate & Deals · Name, Linie &
+  Unterlagen. Speichern NUR `api.teil` mit Stand; vorher `produktPruefen` wie der Server; was der Server ablehnt, steht im Abschnitt.
+- **Texte an EINER Stelle:** Kurzbeschreibung (`beschreibung`), Leistungstext (`angebot.leistungstext`), Ergebnis, Grenzen & Hinweise. Ergebnis und
+  Grenzen werden an BEIDE alten Stellen geschrieben (`ergebnis`+`angebot.ergebnis`, `grenzen`+`angebot.hinweise`, ≤ 600 Zeichen) — alle Leser sehen
+  denselben Text; standen bisher zwei verschiedene, zeigt das Feld beide (`zusammen`), nichts geht verloren. Titel/Einleitung im Angebot nur, wenn da.
+- **Lieferumfang:** Enter oder „Hinzufügen“ hängt EINMAL an (Verlassen nicht mehr — A6), ≤ 160 Zeichen, ≤ 20 Punkte (Grenzen der Treppe), keine Doppelten.
+- **Ablauf:** Zuordnung über `vorlagenOps` `zuordnung` (wie bisher), „Ablauf öffnen ›“, „+ neuer Ablauf“ (leere Vorlage mit dem Produktnamen, zugeordnet,
+  Editor öffnet). Alte Phasen bleiben lesbar und pflegbar (aufgeklappt).
+- **Mandat aus Produkt:** Knopf in der Karte → `WEG.mandatAusProdukt(id)` = `/os/mandate?neu=mandat&produkt=<id>`, gelesen über `mandatNeuAusAdresse`
+  (lib/crm/adresse.ts) in `ProdukteMandate.tsx` → „+ Mandat“ (`MandatAnlegen`, Produkt vorbelegt, Gesellschaft des Produkts). P3 kann den Dialog dort umstellen.
+- **Angebots-Tool:** Produktwahl = `angebotPositionenAusProdukt` (alle Grund-Teile, angehakte Optionen); `Editor.dazu` nimmt mehrere Positionen.
+- **Reste:** B15 `WEG.finanzplanungProdukt` (Baukasten zeigt das Produkt vorgewählt mit „Als Umsatzbaustein hinzufügen“) · B14 Fulfillment „liefert X ›“
+  führt zur Karte, „noch keinem Produkt zugeordnet“ mit „Produkt wählen ›“ · B11 Karte im Fenster (`minmax(0,1fr)`, Felder umbrechend).
+- Kundenreise/Roadmap/Fortschritt wählen Stufen aus `lage.katalog.stufen`; Zielbild ändert das Ziel einer Karten-Stufe in der Karte (Link), nicht an einer Kopie.
+
 ## Pakete
 
 - **P1 Kern** (`lib/crm/produkt-karte.ts`, Typen, Säuberer + Spiegeln in `lib/crm/speicher.ts` `zusatz('leistungen')`, `stufenAusKatalog`,

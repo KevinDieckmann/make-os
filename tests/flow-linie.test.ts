@@ -82,6 +82,11 @@ describe('EIN Zeichner für jeden Faden', () => {
     expect(lies('components/os/fulfillment/editor/EditorFluss.tsx')).toContain("import { FlussFaden } from '../../ui/reise/faden'");
     expect(lies('components/os/fulfillment/editor/Flaeche.tsx')).toContain("import { flowEbene, bewegungReduziert, type FlowEbene } from '@/lib/lichtfaeden/flow'");
     expect(lies('components/os/ui/flow.tsx')).toContain('flowEbene(c, eltern ?? c,');
+    // Produkte › Leistungstreppe (19.10., P2): der Faden über die Stufen — gemessen aus dem Bild, Stand aus lib/crm/produkt-katalog.ts `treppenFaden`.
+    const tr = lies('components/os/mandate/KatalogTreppe.tsx');
+    expect(tr).toMatch(/import \{[^}]*FlowLinie[^}]*\} from '\.\.\/ui'/);
+    expect(tr).toContain('<FlowLinie messen={messen} />');
+    expect(tr).toContain('treppenFaden(balken');
     // Die FadenLinie zeichnet mit denselben Werten wie jeder Faden (Kern breit = Rechner, mittel = Handy).
     expect(FLOW.kern.strich.breit).toBe(5); expect(FLOW.kern.strich.mittel).toBe(4);
     expect(FLOW.punkte).toMatchObject({ abstand: 8, groesse: 1, hell: 2.2, jeder: 2 });

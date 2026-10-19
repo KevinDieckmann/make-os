@@ -89,6 +89,8 @@ export const WEG = {
   chef: () => q('/os/finanzen', { s: 'chef' }),
   /** Finanzplanung (04.10.): Reiter „Planung“ unter Finanzen › Privat (alles) bzw. › Business (nur Gesellschaften); `u` = Blatt. Weitere Parameter: `finanzplanAdresse`. */
   finanzplanung: (sicht: 'privat' | 'business', u?: string) => q('/os/finanzen', { s: 'finanzplanung', space: sicht, u }),
+  /** Finanzplanung › Planen mit vorgewähltem Produkt (19.10., B15): die Umsatzbausteine, das Produkt aus dem Katalog steht oben bereit (`produkt`). */
+  finanzplanungProdukt: (leistungId: string, sicht: 'privat' | 'business' = 'business') => q('/os/finanzen', { s: 'finanzplanung', space: sicht, u: 'planen', feld: 'umsatz', produkt: leistungId }),
 
   // Offene Posten der Eröffnung (Kennung `er-…`, lib/business/eroeffnung.ts) stehen nicht in der Rechnungsliste — sie führen zum 0-Punkt.
   // 08.10. (Aufräumen Etappe 2): Rechnungen & Zahlungen, Liquidität, Buchungen, Controlling sind Reiter unter Finanzen › Business.
@@ -142,6 +144,11 @@ export const WEG = {
   /** „Mandat beenden“ (18.10., N6): öffnet das Mandat mit dem Dialog (Ende-Datum, Liquiditätsplan im selben Schritt). */
   mandatBeenden: (id: string) => { const l = mandateLink('mandate', id); return `${l}${l.includes('?') ? '&' : '?'}beenden=1`; },
   produkt: (id?: string) => mandateLink('produkte', id),
+  /**
+   * „Mandat aus diesem Produkt anlegen“ (19.10., Produkt-Karte P2): Mandate-Reiter mit dem Dialog „+ Mandat“, das Produkt vorbelegt
+   * (`?neu=mandat&produkt=<Produkt>`, gelesen über `mandatNeuAusAdresse` in lib/crm/adresse.ts).
+   */
+  mandatAusProdukt: (leistungId: string) => q(mandateLink('mandate'), { neu: 'mandat', produkt: leistungId }),
   /**
    * Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 10; seit 17.10. nach Kevins Miro-Standard): die eigene Seite unter Produkte & Mandate
    * (`/os/mandate/fulfillment`) mit Unternavigation `u` (Landkarte · Onboarding · Bausteine · Analysen · Kreislauf), `k` = Knoten, `b` = Baustein.

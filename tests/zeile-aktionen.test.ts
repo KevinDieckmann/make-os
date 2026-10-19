@@ -108,8 +108,8 @@ describe('Baustein ZeileAktionen (components/os/ui)', () => {
 describe('Produkte und Aufgaben nutzen den Baustein', () => {
   it('Produkte: jede Zeile in ZeileAktionen, Reiter Produkte · Archiv · Papierkorb, kein window.confirm', () => {
     const datei = lies('components/os/mandate/Produkte.tsx');
-    // Die Liste (Archivieren/Löschen) — das Detail darunter (Phasen, Unterlagen) wird mit der Inventur umgestellt.
-    const q = datei.slice(datei.indexOf('export function Produkte('), datei.indexOf('function ProduktDetail('));
+    // Die Listen (Ohne Stufe, Archiv: Archivieren/Löschen) — die Karte selbst liegt seit 19.10. (P2) in components/os/mandate/karte/.
+    const q = datei.slice(datei.indexOf('export function Produkte('));
     expect(q).toContain('<ZeileAktionen titel={l.name}');
     expect(datei).toMatch(/from '\.\.\/ui'/);
     expect(datei).not.toMatch(/from '\.\.\/schlank'/);

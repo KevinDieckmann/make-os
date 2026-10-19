@@ -24,6 +24,7 @@ import { brotkrumen } from '@/lib/fulfillment/prozesse/landkarte';
 import { bausteinArtName } from '@/lib/fulfillment/prozesse/bausteine';
 import { knotenAmpel, paketSteckbrief, EBENEN_NAME, abstimmungsNummern, abstimmungName, titelOhneZusatz, titelZusatz } from '@/lib/fulfillment/prozesse/darstellung';
 import type { ProzessKnoten, Zone } from '@/lib/fulfillment/typen';
+import { Wahl } from '../../crm/Wahl';
 import { useUebersicht, useCockpit, vorlagenOps, fehlerText, holeJson, geaendert, neueAnfrageId, type Uebersicht, type VorlageMitStand, type MitStand } from './daten';
 import { Landkarte, ZONE_TEXT, ZONE_FARBE } from './Zeichnung';
 import { KnotenFormular, Meldung, klein, Leiste, useTextFrage } from './teile';
@@ -186,7 +187,15 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
     const a = await holeJson<{ vorlageId?: string }>('/api/fulfillment/editor', { method: 'POST', body: JSON.stringify({ aktion: 'neu', titel: titel.trim(), anfrageId: neueAnfrageId() }) });
     if (a.ok && a.j.vorlageId) { geaendert(); editor(a.j.vorlageId); } else setMeldung(fehlerText(a));
   };
-  const produkte = (vid: string) => Object.entries(daten.zuordnung).filter(([, z]) => z.vorlageId === vid).map(([l]) => daten.leistungen.find(x => x.id === l)?.name).filter((x): x is string => !!x);
+  // Die Produkte, die diesen Ablauf liefern — je mit Weg zur Karte (19.10., B14).
+  const produkte = (vid: string) => Object.entries(daten.zuordnung).filter(([, z]) => z.vorlageId === vid).map(([l]) => daten.leistungen.find(x => x.id === l)).filter((x): x is Uebersicht['leistungen'][number] => !!x);
+  /** „noch keinem Produkt zugeordnet“ → Produkt wählen: die Zuordnung (dieselbe wie in der Karte, Abschnitt „Ablauf“), danach zur Karte. */
+  const produktZuordnen = async (vid: string, leistungId: string) => {
+    const a = await vorlagenOps([{ op: 'zuordnung', leistungId, vorlageId: vid }]);
+    if (!a.ok) { setMeldung(fehlerText(a)); return; }
+    geaendert();
+    router.push(WEG.produkt(leistungId));
+  };
   // Auch Fälle, an denen das Paket als Zusatzmodul hängt (17.10. spät).
   const kundenIn = (vid: string) => Object.values(daten.faelle).filter(f => (f.vorlageId === vid || !!f.zusaetze?.includes(vid)) && f.status !== 'abgeschlossen');
   return (
@@ -209,7 +218,12 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
                 <b style={{ fontFamily: SCHRIFT.display, fontSize: TYP.body, color: C.ink, overflowWrap: 'anywhere' }}>{p.titel}</b>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {p.zusatz && <Chip farbe={LEUCHT.planung}>Zusatzmodul</Chip>}
-                  {pr.length ? pr.map(n => <Chip key={n} farbe={LEUCHT.gut}>liefert {n}</Chip>) : p.zusatz ? null : <Chip farbe={LEUCHT.achtung}>noch keinem Produkt zugeordnet</Chip>}
+                  {pr.length ? pr.map(x => <Link key={x.id} href={WEG.produkt(x.id)} title={`Karte von „${x.name}“ öffnen`} style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.gut}>liefert {x.name} ›</Chip></Link>) : p.zusatz ? null : (
+                    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Chip farbe={LEUCHT.achtung}>noch keinem Produkt zugeordnet</Chip>
+                      {darf && daten.leistungen.length > 0 && <Wahl label={`Produkt für „${p.titel}“`} klein liste={daten.leistungen.filter(x => x.status !== 'eingestellt').map(x => ({ id: x.id, label: x.name }))} wert={null} leer="Produkt wählen ›" onWahl={id => void produktZuordnen(p.id, id)} />}
+                    </span>
+                  )}
                   {kunden.length > 0 && <Chip farbe={LEUCHT.business}>{kunden.length} Kund{kunden.length === 1 ? 'e läuft' : 'en laufen'} darin</Chip>}
                 </div>
                 {sb.phasen.length > 0 && (

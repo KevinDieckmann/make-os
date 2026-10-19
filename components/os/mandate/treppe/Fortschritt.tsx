@@ -57,10 +57,11 @@ export function MandatFortschritt({ mandatId, imFall }: { mandatId: string; imFa
   const [meldung, setMeldung] = useState<string | null>(null);
   const lage = api.lage;
   if (!lage) return api.fehler ? <Hinweis art="kritisch">{api.fehler}</Hinweis> : null;
-  if (!lage.datei.stufen.length) return <div style={klein}>Noch keine Leistungstreppe — unter <Link href={WEG.produkt()} style={{ color: C.aktiv }}>Produkte</Link> anlegen, dann zeigt jedes Mandat hier den Fortschritt seiner Leistung.</div>;
+  if (!lage.katalog.stufen.length) return <div style={klein}>Noch keine Leistungstreppe — unter <Link href={WEG.produkt()} style={{ color: C.aktiv }}>Produkte</Link> anlegen, dann zeigt jedes Mandat hier den Fortschritt seiner Leistung.</div>;
   const z = lage.kunden.find(k => k.mandatId === mandatId);
   if (!z) return <div style={klein}>Fortschritt gibt es für aktive und pausierte Mandate.</div>;
-  const stufen = lage.datei.stufen.map(s => ({ id: s.id, label: `${s.ebene}. ${s.name}` }));
+  // Die Stufen aus dem Katalog (19.10., P2): auch Produkte mit Ebene ohne gespeicherte Stufe (`ts-k-…`) — Namen aus der Karte.
+  const stufen = lage.katalog.stufen.map(s => ({ id: s.id, label: `${s.ebene}. ${s.name}` }));
   const erstellen = async () => {
     setLaeuft(true);
     const r = await fetch('/api/crm/treppe/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'erstellen', mandatId, anfrageId: neueId() }) }).catch(() => null);

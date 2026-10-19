@@ -209,8 +209,11 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   // Erstes Produkt einer anderen Gesellschaft: der Absender folgt dem Produkt (sonst ginge ein KD-Ventures-Produkt
   // unter der Selbstständigkeit raus). Stehen schon Positionen drin, bleibt die Gesellschaft — Hinweis statt Wechsel.
   const [mischHinweis, setMischHinweis] = useState<string | null>(null);
-  const dazu = (p: AngebotPosition, von: Gesellschaftskennung | null) => {
-    const teil: Partial<Form> = { positionen: [...positionen, p] };
+  // Ein Produkt kann mehrere Positionen bringen (19.10., Preis-Teile der Karte + angehakte Optionen) — alle in EINEM Schritt.
+  const dazu = (neu: AngebotPosition[], von: Gesellschaftskennung | null) => {
+    const p = neu[0];
+    if (!p) return;
+    const teil: Partial<Form> = { positionen: [...positionen, ...neu] };
     if (!form.titel.trim() && !vonHand.titel) teil.titel = p.titel;
     if (von && von !== form.gesellschaft) {
       if (!positionen.length || !form.gesellschaft) { teil.gesellschaft = von; merkeGesellschaft(von); setMischHinweis(null); }

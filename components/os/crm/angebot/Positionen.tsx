@@ -8,11 +8,12 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { AngebotBasis, AngebotPosition, Leistung } from '@/lib/crm/typen';
-import { produktEinheit } from '@/lib/finanzen/produkte';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { feld } from '../../ui';
-import { katalog, positionAusProdukt, positionNettoCent, euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, BASIS_LABEL, UST_SAETZE } from '@/lib/crm/angebote';
+import { feld, HakenZiel } from '../../ui';
+import { katalog, positionNettoCent, euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, BASIS_LABEL, UST_SAETZE } from '@/lib/crm/angebote';
+import { angebotPositionenAusProdukt } from '@/lib/crm/produkt-karte';
+import { angebotKachel } from '@/lib/crm/produkt-katalog';
 import { neueId } from '../daten';
 
 const klein = { fontSize: TYP.bedien, color: C.inkLeise } as const;
@@ -39,27 +40,54 @@ function ZahlFeld({ wert, onWert, breite, label, rechts }: { wert: string; onWer
     style={{ ...zelle, width: breite, textAlign: rechts ? 'right' : 'left', fontVariantNumeric: 'tabular-nums' }} />;
 }
 
-export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, aus }: { leistungen: Leistung[]; /** null = Absender noch nicht gewählt (dann zählt jedes Produkt mit Gesellschaft als „andere“, alle sichtbar). */ gesellschaft: Gesellschaftskennung | null; kleinunternehmer: (g: Gesellschaftskennung | null) => boolean; onDazu: (p: AngebotPosition, von: Gesellschaftskennung | null) => void; aus?: boolean }) {
+/**
+ * Der Katalog im Angebots-Tool (19.10., P2): ein Klick auf ein Produkt = ALLE Preis-Teile, die immer gelten, als Positionen (`angebotPositionenAusProdukt`,
+ * lib/crm/produkt-karte.ts) — dazu die angehakten Optionen (Rolle „option“, z. B. „je Event“ oder Mehrverbrauch). Ohne Preis-Teile genau eine Position
+ * wie bisher.
+ */
+export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, aus }: { leistungen: Leistung[]; /** null = Absender noch nicht gewählt (dann zählt jedes Produkt mit Gesellschaft als „andere“, alle sichtbar). */ gesellschaft: Gesellschaftskennung | null; kleinunternehmer: (g: Gesellschaftskennung | null) => boolean; onDazu: (p: AngebotPosition[], von: Gesellschaftskennung | null) => void; aus?: boolean }) {
   const l = katalog(leistungen, gesellschaft);
   const [alle, setAlle] = useState(false);
+  // Angehakte Optionen je Produkt (Kennungen der Preis-Teile) — nur bis zum Hinzufügen.
+  const [optionen, setOptionen] = useState<Record<string, string[]>>({});
   // Hat die gewählte Gesellschaft kein eigenes Produkt, gleich alle zeigen — im Call zählt jeder Klick.
   const keineEigenen = !l.some(x => !x.andere);
   const sichtbar = alle || keineEigenen ? l : l.filter(x => !x.andere);
   if (!l.length) return <div style={klein}>Noch kein aktives Produkt — unter Produkte & Mandate › Produkte anlegen (mit Leistungstext), oder hier eine freie Position.</div>;
+  const dazu = (p: Leistung) => {
+    const von = p.gesellschaft !== 'offen' ? p.gesellschaft as Gesellschaftskennung : null;
+    onDazu(angebotPositionenAusProdukt(p, optionen[p.id] ?? [], { idBasis: neueId('p'), kleinunternehmer: kleinunternehmer(von ?? gesellschaft) }), von);
+    setOptionen(o => { const n = { ...o }; delete n[p.id]; return n; });
+  };
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 8 }}>
-        {sichtbar.map(({ l: p, textFehlt, andere }) => (
-          <button key={p.id} disabled={aus} onClick={() => { const von = p.gesellschaft !== 'offen' ? p.gesellschaft as Gesellschaftskennung : null; onDazu(positionAusProdukt(p, neueId('p'), { kleinunternehmer: kleinunternehmer(von ?? gesellschaft) }), von); }} className="fassbar"
-            style={{ textAlign: 'left', cursor: aus ? 'default' : 'pointer', padding: '12px 13px', borderRadius: 12, border: `1px solid ${andere ? 'rgba(255,255,255,.08)' : `${LEUCHT.gut}55`}`, background: andere ? 'rgba(255,255,255,.03)' : `${LEUCHT.gut}12`, color: C.ink, display: 'grid', gap: 4 }}>
-            <span style={{ fontSize: TYP.bedien, fontWeight: 700, lineHeight: 1.3 }}>+ {p.angebot?.titel?.trim() || p.name}</span>
-            <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{p.preis.betrag ? `${euroCent(Math.round(p.preis.betrag * 100))} ${produktEinheit(p)}` : 'Preis offen'}</span>
-            <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {textFehlt && <span style={{ fontSize: 12, color: LEUCHT.achtung, fontWeight: 700 }}>Text fehlt</span>}
-              {andere && <span style={{ fontSize: 12, color: C.inkLeise }}>andere Gesellschaft</span>}
-            </span>
-          </button>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 190px), 1fr))', gap: 8 }}>
+        {sichtbar.map(({ l: p, textFehlt, andere }) => {
+          const kachel = angebotKachel(p);
+          const gewaehlt = optionen[p.id] ?? [];
+          return (
+            <div key={p.id} style={{ display: 'grid', gap: 2, borderRadius: 12, border: `1px solid ${andere ? 'rgba(255,255,255,.08)' : `${LEUCHT.gut}55`}`, background: andere ? 'rgba(255,255,255,.03)' : `${LEUCHT.gut}12`, minWidth: 0 }}>
+              <button disabled={aus} onClick={() => dazu(p)} className="fassbar"
+                style={{ textAlign: 'left', cursor: aus ? 'default' : 'pointer', padding: '12px 13px', borderRadius: 12, border: 'none', background: 'transparent', color: C.ink, display: 'grid', gap: 4 }}>
+                <span style={{ fontSize: TYP.bedien, fontWeight: 700, lineHeight: 1.3 }}>+ {p.angebot?.titel?.trim() || p.name}</span>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim, fontVariantNumeric: 'tabular-nums' }}>{kachel.preisText}{gewaehlt.length ? ` + ${gewaehlt.length} ${gewaehlt.length === 1 ? 'Option' : 'Optionen'}` : ''}</span>
+                <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {textFehlt && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, fontWeight: 700 }}>Text fehlt</span>}
+                  {andere && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>andere Gesellschaft</span>}
+                </span>
+              </button>
+              {kachel.optionen.map(o => {
+                const an = gewaehlt.includes(o.id);
+                return (
+                  <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 13px 8px', fontSize: TYP.bedien, color: an ? C.ink : C.inkDim }}>
+                    <HakenZiel an={an} label={`Option ${o.text}`} farbe={LEUCHT.planung} onChange={() => setOptionen(x => ({ ...x, [p.id]: an ? gewaehlt.filter(i => i !== o.id) : [...gewaehlt, o.id] }))} />
+                    <span>optional: {o.text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
       {l.some(x => x.andere) && !keineEigenen && <button onClick={() => setAlle(!alle)} style={{ marginTop: 8, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{alle ? 'nur Produkte dieser Gesellschaft' : `+ ${l.filter(x => x.andere).length} Produkte anderer Gesellschaften`}</button>}
     </div>
