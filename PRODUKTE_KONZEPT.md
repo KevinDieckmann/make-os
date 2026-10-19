@@ -183,6 +183,43 @@ Regeln der Oberfläche rein in `lib/crm/produkt-katalog.ts` (liest nur von `prod
 - **Reste:** B15 `WEG.finanzplanungProdukt` (Baukasten zeigt das Produkt vorgewählt mit „Als Umsatzbaustein hinzufügen“) · B14 Fulfillment „liefert X ›“
   führt zur Karte, „noch keinem Produkt zugeordnet“ mit „Produkt wählen ›“ · B11 Karte im Fenster (`minmax(0,1fr)`, Felder umbrechend).
 - Kundenreise/Roadmap/Fortschritt wählen Stufen aus `lage.katalog.stufen`; Zielbild ändert das Ziel einer Karten-Stufe in der Karte (Link), nicht an einer Kopie.
+## P3 Mandat — gebaut (19.10., Branch `produkte-mandat`)
+
+EINE Stelle `lib/crm/mandat-zusatz.ts` (rein, Server + Browser) für Zusatzmodule in Rechnung und Liquidität. Grundsatz wie P1: **ein Mandat ohne
+`zusatz` rechnet bit-gleich** (Monatsrechnung = die eine Position `positionAusMandat`, Liquiplan-Posten unverändert — Tests).
+- **Vorlage überall:** „+ Mandat“ belegt Gesellschaft, Honorar, Mindestlaufzeit, Rhythmus, Zahlungsziel und Leistungen aus dem Produkt vor — im Dialog
+  änderbar, geht als `vertrag` an `mandat-neu` (`vertragEingabeAus`: 400/413), Geändertes gewinnt über die Vorlage. Adresse **`/os/mandate?leistung=<Produkt>`**
+  (`WEG.mandatAusProdukt(id)`) öffnet den Dialog mit dem Produkt (einmal, danach ohne Parameter). Mandat aus Deal ohne Angebot: Vertrag + Leistungen +
+  offene Punkte + inklusive Module (Deal-Wert bleibt das Honorar, ohne Wert das des Produkts); aus angenommenem Angebot zusätzlich die inklusive Module.
+  Excel-Einfügen: erkanntes Produkt **mit Karte** füllt, was die Zeile offen lässt (Vorschau „(vom Produkt)“); Altbestand wie bisher.
+- **Am Mandat pflegbar** (`components/os/crm/MandatZusatz.tsx`): Vertrag (Mindestlaufzeit, Rhythmus, Zahlungsziel; daneben was das Produkt vorsieht,
+  „Vom Produkt übernehmen“ nur Vertragsfelder — das Honorar ist verhandelt), Leistungen, Zusatzmodule.
+- **Zusatzmodule** (`Mandat.zusatz`, neu optional `zahlplan`, `stundenJeMonat`): „+ Zusatzmodul“ nur Rolle „zusatz“/„beides“, Honorar aus `zusatzHonorar`
+  (+ `zusatzExtras`: Zahlplan, Deckel), Beginn = heute bei laufendem Mandat, einmalig mit Dauer → „bis“; Vorschläge aus `regeln.inklusive`. Server prüft nur
+  neue/geänderte Einträge (`mandatZusatzPruefen` in `produktOpsPruefen`): Produkt im Katalog, nie das Hauptprodukt, Rolle (außer inklusive), ab ≤ bis, Basis,
+  Zahlplan, Stunden nur beim Stundensatz → 400; > 50 → 413.
+- **Rechnung** (`monatsPositionen`): Haupt, laufende Module (anteilig nach `monatsHonorar`), inklusive (0 € mit Hinweis, jeden Monat), jährliche (Monat des
+  Beginns + alle 12), einmalige (mit Zahlplan Anzahlung im Beginn-Monat, Rest im Monat von „bis“, ohne „bis“ im Folgemonat). Je Einheit/Tag/Stunde nur
+  „abrechnen“ (`einheiten: [{ zusatzId, menge }]` an `quelle: 'mandat'`; Stunden höchstens der Deckel): offener Entwurf des Monats bekommt die Position,
+  sonst eine eigene Rechnung nur aus `za-…`-Positionen (`nurAbgerechnet` — hält den Monat nicht auf). Positions-Kennungen `zm-/zi-/zj-/ze-/za-/anr-` + Hash.
+- **Anrechnung** (`anrechnungPositionen`): Produkt mit `regeln.anrechnung.auf` = Hauptprodukt, gekauft von derselben Firma (gestellte/bezahlte Rechnung mit
+  dem Produkt, sonst Rechnungen bzw. einmaliges Honorar eines Mandats des Produkts) → EINE Minusposition, höchstens bis zum Rechnungsbetrag (gleicher
+  Satz). Merker = Positions-Kennung `anrechnungId(Produkt, Firma)` auf einer gültigen Rechnung (auch Entwurf; storniert = frei), in der Sperre noch einmal
+  geprüft. Nur `anr-…` darf negativ sein (`positionSaeubern`); 0 € mit Anrechnung ist stellbar (`pflichtFehlt`).
+- **Liquidität** (`zusatzLiquiditaet` in `mandatPosten`): Posten je Modul `lp-mandat-<id>~z-<Modul>[~JJJJ-MM]` — laufend (angebrochen einmalig, volle Monate
+  ein Monatsposten), jährlich, einmalig (50/50 = zwei Zahlungen), Stundensatz mit geplanten Stunden (≤ Deckel); inklusive/je Einheit/Tag: keiner. Betrag =
+  was das Modul auf der Monatsrechnung ausmacht (Steuer kaufmännisch je Rechnung) → **Summe der Posten = Summe der Rechnungen auf den Cent** (Test).
+  „Plan angleichen“ kennt sie (`mandatLiquiLage` meldet „Zusatzmodul … fehlt im Plan“); alte Posten bleiben bis zum Klick.
+- **Fall:** ein Modul, dessen Produkt einen Ablauf mit „Zusatzmodul“ hat, hängt sich beim Hinzufügen an den laufenden Fall (POST `starten`, derselbe Weg
+  wie „Zusatzmodul anhängen“); ohne Fall schlägt der Fall es später vor (`MandatKurz.zusatz`).
+- **Deal folgt dem Angebot:** angenommen → `leistungId` des Deals = `angebotHauptprodukt` (laufend vor einmalig, kein reines Zusatzmodul) — dieselbe Regel
+  für Mandat-Vorbelegung und den Deal beim Stellen.
+- **Anrechnung in der Liquidität** (P3b, `anrechnungLiquiditaet`): DIESELBE Regel wie die Rechnung (`monatsPositionen` + `anrechnungPositionen`) — einmal,
+  höchstens bis zum Betrag des Monats (der Rest verfällt), im Monat der ersten Rechnung; steht sie schon auf einer Rechnung des Mandats, deren Wirkung in
+  deren Monat. Eigener einmaliger Posten `lp-mandat-<id>~anrechnung` (negativ). Die Route liest dafür die Rechnungen des Finanzplans (nur zum Rechnen).
+  Fehlt er im Plan: „Liquiplan weicht ab — Anrechnung fehlt“; „Plan angleichen“ trägt ihn ein.
+- Tests: `tests/mandat-produkt.test.ts` (rein, auch Summe Liquidität = Rechnungen mit Anrechnung), `tests/mandat-produkt-server.test.ts` (Schreibwege).
+  Offen: Anrechnung auf Rechnungen aus dem Angebot, B12/B9 (P4).
 
 ## Pakete
 

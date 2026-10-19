@@ -45,7 +45,7 @@ import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { GesellschaftWahl } from './GesellschaftWahl';
 import { finanzFirmaFuer, NUR_GRUNDDATEN, istBusinessGesellschaft } from '@/lib/einheiten';
-import { mandatGesellschaftOffen } from '@/lib/crm/kunden';
+import { mandatGesellschaftOffen, ANRECHNUNG_FEHLT } from '@/lib/crm/kunden';
 import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 import { MandantLink } from './MandantLink';
 import { Person, ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer } from './team';
@@ -56,6 +56,7 @@ import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
 import { monatsName, mandatLaeuftIm, mandatMonatVorgabe } from '@/lib/finanzen/rechnung/regeln';
 import { MandatFortschritt, FallPhase } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
+import { MandatVertrag, MandatLeistungen, MandatZusatzModule } from './MandatZusatz';
 import { useNurBusiness } from '../useInhaber';
 import { anzahl } from '@/lib/text/zahlwort';
 import { useSpace } from '@/hooks/useSpace';
@@ -70,6 +71,8 @@ const VERLAENGERUNG = [{ id: 'auto', label: 'verlängert sich' }, { id: 'manuell
 const statusFarbe = (s: string) => (s === 'aktiv' ? LEUCHT.gut : s === 'verhandlung' || s === 'angebot' ? LEUCHT.business : C.inkLeise);
 /** Lage im Liquiditätsplan je Mandat (GET /api/crm/liquiplan — gerechnet in lib/crm/kunden.ts `mandatLiquiLage`). */
 interface LiquiLage { id: string; lage: LiquiLageArt; grund?: string; letzteZahlung?: string; soll: Planposten[]; vorhanden: { id: string; betrag: number } | null }
+/** Der Hinweis in der Liste, wenn der Plan abweicht — fehlt die Anrechnung (P3b), sagt er das. */
+const abweichText = (lq: Pick<LiquiLage, 'grund'>) => (lq.grund?.startsWith(ANRECHNUNG_FEHLT) ? `Liquiplan weicht ab — ${ANRECHNUNG_FEHLT}` : 'Liquiplan weicht ab');
 /** Euro auf den Cent (Teilmonate). */
 const euroCent = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0);
 /** Titel in Listen: „Firma“ und der Rest des Titels — steht die Firma schon im Titel, nicht doppelt (18.10., N18). */
@@ -103,6 +106,17 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   // Aus dem Fulfillment (18.10., N6): „Mandat beenden ›“ öffnet hier denselben Dialog (`?k=<Mandat>&beenden=1`, WEG.mandatBeenden) — einmal,
   // sobald Mandate und Liquiditätsplan geladen sind; danach ohne den Zusatz in der Adresse (Neuladen öffnet ihn nicht erneut).
   const beendenZiel = useZiel('beenden');
+  // „Mandat aus diesem Produkt anlegen“ (19.10., P3 — WEG.mandatAusProdukt, `?leistung=<Produkt>`): öffnet „+ Mandat“ einmal mit dem Produkt,
+  // sobald der Katalog da ist; danach ohne den Zusatz in der Adresse (Neuladen öffnet ihn nicht erneut).
+  const ausProdukt = useZiel('leistung');
+  const [neuProdukt, setNeuProdukt] = useState<string | null>(null);
+  const ausProduktOffen = useRef(false);
+  useEffect(() => {
+    if (!ausProdukt || ausProduktOffen.current || !api.crm) return;
+    ausProduktOffen.current = true;
+    router.replace(mandateLink());
+    if (api.crm.stand.leistungen.some(l => l.id === ausProdukt && !l.geloeschtAm)) { setNeuProdukt(ausProdukt); setNeuWahl(true); }
+  }, [ausProdukt, api.crm, router]);
   const beendenRef = useRef<((m: Mandat) => void) | null>(null);
   const beendenOffen = useRef(false);
   useEffect(() => {
@@ -178,7 +192,7 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
       <Karte i={0}>
         <Ueberschrift rechts={<Knopf onClick={() => setNeuWahl(true)}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
         {zuordnen && <MandatAnlegen api={api} modus="zuordnen" mandatId={zuordnen} onZu={() => setZuordnen(null)} onFertig={() => setZuordnen(null)} />}
-        {neuWahl && <MandatAnlegen api={api} modus="neu" {...(ges !== 'alle' ? { gesellschaft: ges } : {})} {...(neuFuer ? { zustaendig: neuFuer } : {})} onZu={() => setNeuWahl(false)} onFertig={id => { setNeuWahl(false); setAuswahl(id); }} />}
+        {neuWahl && <MandatAnlegen api={api} modus="neu" {...(ges !== 'alle' ? { gesellschaft: ges } : {})} {...(neuProdukt ? { leistungId: neuProdukt } : {})} {...(neuFuer ? { zustaendig: neuFuer } : {})} onZu={() => { setNeuWahl(false); setNeuProdukt(null); }} onFertig={id => { setNeuWahl(false); setNeuProdukt(null); setAuswahl(id); }} />}
         <Raster min={150}>
           <Zahl wert={kurzEuro(crm.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
           <Zahl wert={String(mandate.filter(m => m.status === 'aktiv').length)} label="aktive Mandate" />
@@ -242,10 +256,10 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
                 <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
                   links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
                   titel={<MandatTitel m={m} />}
-                  unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? 'Liquiplan weicht ab' : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
+                  unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? abweichText(lq) : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${datum(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${l.health}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     {breit && lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
-                    {breit && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>Liquiplan weicht ab</Chip>}
+                    {breit && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>{abweichText(lq)}</Chip>}
                     {breit && lq?.lage === 'endet' && <Chip farbe={LEUCHT.achtung}>Liquiplan läuft weiter</Chip>}
                     {breit && !m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
                     {breit && !m.firmaId && <Chip farbe={LEUCHT.achtung}>ohne Firma</Chip>}
@@ -332,6 +346,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m:
           <Wahl label="Umsatzsteuer" liste={UST} wert={String(m.ustSatz) === '0' ? '0' : String(m.ustSatz) === '19' ? '19' : null} onWahl={x => setze({ ustSatz: Number(x) })} />
         </div>
       </Feldzeile>
+      {/* Mandat = Hauptprodukt + Zusatzmodule (19.10., P3): Module mit Honorar, inklusive, „abrechnen“; Rechnung und Liquidität kennen sie. */}
+      <MandatZusatzModule m={m} katalog={crm.stand.leistungen} setze={setze} />
       {/* Mandat an Zielen und Zeit (28.09.): erfasste Fokus-Zeit dieses Mandats im laufenden Monat */}
       <Feldzeile label="Zeit"><MandatZeitMonat mandatId={m.id} /></Feldzeile>
       {/* K3 (30.09.): am Mandat verknüpfte Termine (kalender-bezug), Klick öffnet den Kalender. */}
@@ -346,6 +362,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m:
         </div>
         {l?.endeAm && <div style={{ fontSize: TYP.bedien, color: l.endeIn !== null && l.endeIn <= 90 ? LEUCHT.achtung : C.inkLeise, marginTop: 4 }}>Ende {datum(l.endeAm)} ({l.endeIn} Tage){l.fristBis && l.fristBis !== l.endeAm ? ` · kündbar bis ${datum(l.fristBis)}` : ''}</div>}
       </Feldzeile>
+      {/* Vertrag (19.10., P3): Mindestlaufzeit, Rhythmus, Zahlungsziel — pflegbar, daneben was das Produkt vorsieht. */}
+      <MandatVertrag m={m} produkt={produkt} setze={setze} />
       <Feldzeile label="Gesellschaft"><GesellschaftWahl wert={m.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
       <Feldzeile label="Nächstes Review"><Feld typ="date" wert={m.naechstesReview} breite={160} platzhalter="Datum" onFertig={r => setze({ naechstesReview: r || undefined })} /></Feldzeile>
       <div>
@@ -394,7 +412,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m:
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{personen.map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 999, padding: '5px 10px', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>{anzeigename(k)}</button>)}{!personen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>—</span>}</div>
       </Feldzeile>
       <MandatRechnungen m={m} />
-      {m.leistungen.length > 0 && <div><div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 4 }}>Leistungen</div><ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 3 }}>{m.leistungen.map((x, i) => <li key={i} style={{ fontSize: TYP.bedien, color: C.inkDim }}>{x}</li>)}</ul></div>}
+      <MandatLeistungen m={m} setze={setze} />
       <Feldzeile label="Offener Punkt"><Feld leeren platzhalter="Neuer offener Punkt …" onFertig={t => t.trim() && setze({ offen: [...m.offen, t.trim()] })} /></Feldzeile>
       {m.quelle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Quelle: {m.quelle}</div>}
     </div>

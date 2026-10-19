@@ -33,6 +33,7 @@ import { kanalStatus } from './recht';
 import {
   ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
+  angebotHauptprodukt,
 } from './angebote';
 import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgaben, type Gesellschaft, type GesellschaftenDatei } from './gesellschaften';
 import { WEG } from '@/lib/wege';
@@ -264,7 +265,8 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   if (!dealId) {
     const r = await dealAnlegen({
       titel: a0.titel, kontaktIds: [k.id], ...(firmaId ? { firmaId } : {}), wert: dealWertAusAngebot(a0), stufe: 'angebot', gesellschaft: a0.gesellschaft,
-      ...(a0.positionen.find(x => x.leistungId)?.leistungId ? { leistungId: a0.positionen.find(x => x.leistungId)!.leistungId } : {}),
+      // Das Hauptprodukt des Angebots (19.10., P3 — EINE Regel `angebotHauptprodukt`, wie Mandat und „Deal folgt dem Angebot“).
+      ...(angebotHauptprodukt(a0, vor.leistungen) ? { leistungId: angebotHauptprodukt(a0, vor.leistungen)! } : {}),
       schritt: { text: 'Angebot nachfassen', datum: nachfassen },
     }, p.person, jetztIso, p.wer);
     if (r.ok) dealId = r.chance.id; else if (r.offen) dealId = r.offen.id;
@@ -503,7 +505,10 @@ async function antwortSetzen(p: { id: string; stand?: unknown; person: string; w
         if (c.id !== a.dealId || !OFFENE_STUFEN.includes(c.stufe)) return c;
         const r = wechsleStufe(c, art === 'angenommen' ? 'gewonnen' : 'verloren', p.person, jetztIso, art === 'abgelehnt' ? { grund } : {});
         if (!r.ok) { dealFehler = r.fehler; return c; }
-        return { ...r.chance, geaendertVon: p.person };
+        // Deal folgt dem Angebot (19.10., P3; Rundgang A3): enthält das angenommene Angebot ein anderes Hauptprodukt als der Deal, zieht der Deal nach —
+        // sonst zählten „gewonnen“ und die Abschlussquote beim falschen Produkt. Bei mehreren Produkten zählt das Hauptprodukt.
+        const hp = art === 'angenommen' ? angebotHauptprodukt(a, b.leistungen) : undefined;
+        return { ...r.chance, ...(hp && hp !== r.chance.leistungId ? { leistungId: hp } : {}), geaendertVon: p.person };
       });
       const followups = (b.followups ?? []).map(f => (f.id === `fu-${a.id}` && (f.status === 'offen' || f.status === 'verpasst')
         ? { ...f, status: art === 'angenommen' ? 'erledigt' as const : 'abgesagt' as const, ergebnis: art === 'angenommen' ? 'Angebot angenommen' : 'Angebot abgelehnt', ...(art === 'angenommen' ? { erledigtAm: jetztIso } : {}), geaendert: jetztIso, geaendertVon: p.person } : f));

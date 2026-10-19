@@ -24,8 +24,62 @@ export interface MandatEingabe {
   /** Stufe der Leistungstreppe (lib/crm/treppe-daten.ts), aus der heraus angelegt wurde. */
   stufeId?: string;
   zustaendig?: string;
+  /**
+   * Vertrag aus dem Dialog (19.10., P3): vom gewählten Produkt vorbelegt (`mandatVorlageAusProdukt`), änderbar — was hier steht, gewinnt über die
+   * Vorlage. Fehlt es, gilt die Vorlage des Produkts (wie bisher).
+   */
+  vertrag?: MandatVertragEingabe;
 }
-export const MANDAT_GRENZEN = { firma: 160, titel: 120 } as const;
+/** Die änderbaren Vertragsfelder beim Anlegen (alles optional). */
+export interface MandatVertragEingabe {
+  honorar?: { betrag: number; basis: Mandat['honorar']['basis'] };
+  mindestlaufzeitMonate?: number | null;
+  kuendigungsfristTage?: number | null;
+  rechnungsrhythmus?: Mandat['rechnungsrhythmus'];
+  zahlungszielTage?: number;
+  leistungen?: string[];
+}
+export const MANDAT_GRENZEN = { firma: 160, titel: 120, leistungen: 50, leistung: 400, honorar: 10_000_000, laufzeit: 120, frist: 365, ziel: 120 } as const;
+const BASEN = ['monat', 'einmalig', 'tag'] as const;
+const RHYTHMEN = ['monatlich', 'quartal', 'einmalig'] as const;
+
+/** Vertragsfelder aus dem Netz (P3): Unsinn → 400, zu viel/zu lang → 413 (nie gekürzt). Fehlt das Objekt: keine Angaben. */
+export function vertragEingabeAus(v: unknown): { ok: true; vertrag?: MandatVertragEingabe } | { ok: false; status: 400 | 413; fehler: string } {
+  if (v === undefined || v === null) return { ok: true };
+  if (typeof v !== 'object' || Array.isArray(v)) return { ok: false, status: 400, fehler: 'vertrag: ein Objekt.' };
+  const o = v as Record<string, unknown>;
+  const raus: MandatVertragEingabe = {};
+  const ganz = (x: unknown, max: number, name: string, min = 0): number | string => (typeof x === 'number' && Number.isInteger(x) && x >= min && x <= max ? x : `${name}: ganze Zahl von ${min} bis ${max}.`);
+  if (o.honorar !== undefined) {
+    const h = o.honorar && typeof o.honorar === 'object' ? o.honorar as Record<string, unknown> : null;
+    if (!h || typeof h.betrag !== 'number' || !Number.isFinite(h.betrag) || h.betrag < 0 || h.betrag > MANDAT_GRENZEN.honorar || !(BASEN as readonly unknown[]).includes(h.basis)) return { ok: false, status: 400, fehler: 'Honorar: Betrag (Euro, ab 0) und Basis je Monat, einmalig oder je Tag.' };
+    raus.honorar = { betrag: Math.round(h.betrag * 100) / 100, basis: h.basis as Mandat['honorar']['basis'] };
+  }
+  for (const [k, max, name, min] of [['mindestlaufzeitMonate', MANDAT_GRENZEN.laufzeit, 'Mindestlaufzeit (Monate)', 1], ['kuendigungsfristTage', MANDAT_GRENZEN.frist, 'Kündigungsfrist (Tage)', 0]] as const) {
+    if (o[k] === undefined) continue;
+    if (o[k] === null) { raus[k] = null; continue; }
+    const n = ganz(o[k], max, name, min);
+    if (typeof n === 'string') return { ok: false, status: 400, fehler: n };
+    raus[k] = n;
+  }
+  if (o.zahlungszielTage !== undefined) {
+    const n = ganz(o.zahlungszielTage, MANDAT_GRENZEN.ziel, 'Zahlungsziel (Tage)');
+    if (typeof n === 'string') return { ok: false, status: 400, fehler: n };
+    raus.zahlungszielTage = n;
+  }
+  if (o.rechnungsrhythmus !== undefined) {
+    if (!(RHYTHMEN as readonly unknown[]).includes(o.rechnungsrhythmus)) return { ok: false, status: 400, fehler: 'Rechnungsrhythmus: monatlich, quartal oder einmalig.' };
+    raus.rechnungsrhythmus = o.rechnungsrhythmus as Mandat['rechnungsrhythmus'];
+  }
+  if (o.leistungen !== undefined) {
+    if (!Array.isArray(o.leistungen) || o.leistungen.some(x => typeof x !== 'string')) return { ok: false, status: 400, fehler: 'Leistungen: eine Liste von Texten.' };
+    const l = (o.leistungen as string[]).map(x => x.replace(/\u0000/g, '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    if (l.length > MANDAT_GRENZEN.leistungen) return { ok: false, status: 413, fehler: `Höchstens ${MANDAT_GRENZEN.leistungen} Leistungen — nichts gespeichert.` };
+    if (l.some(x => x.length > MANDAT_GRENZEN.leistung)) return { ok: false, status: 413, fehler: `Eine Leistung ist länger als ${MANDAT_GRENZEN.leistung} Zeichen — nichts gespeichert.` };
+    raus.leistungen = l;
+  }
+  return { ok: true, vertrag: raus };
+}
 const FIRMA_ID = /^f-[a-z0-9-]{2,63}$/;
 const LEISTUNG_ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const STUFE_ID = /^ts-[a-z0-9-]{4,60}$/;
@@ -63,7 +117,9 @@ export function mandatEingabeAus(roh: unknown): { ok: true; e: MandatEingabe } |
   const leistungId = text(o.leistungId), stufeId = text(o.stufeId);
   if (leistungId && !LEISTUNG_ID.test(leistungId)) return { ok: false, status: 400, fehler: 'Ungültige Produkt-Kennung.' };
   if (stufeId && !STUFE_ID.test(stufeId)) return { ok: false, status: 400, fehler: 'Ungültige Stufe.' };
-  return { ok: true, e: { firma: f.wahl, person: p.wahl, gesellschaft: g as Gesellschaft, ...(titel ? { titel } : {}), ...(leistungId ? { leistungId } : {}), ...(stufeId ? { stufeId } : {}), ...(text(o.zustaendig) ? { zustaendig: text(o.zustaendig) } : {}) } };
+  const v = vertragEingabeAus(o.vertrag);
+  if (!v.ok) return v;
+  return { ok: true, e: { firma: f.wahl, person: p.wahl, gesellschaft: g as Gesellschaft, ...(titel ? { titel } : {}), ...(leistungId ? { leistungId } : {}), ...(stufeId ? { stufeId } : {}), ...(text(o.zustaendig) ? { zustaendig: text(o.zustaendig) } : {}), ...(v.vertrag && Object.keys(v.vertrag).length ? { vertrag: v.vertrag } : {}) } };
 }
 
 /**
@@ -81,9 +137,20 @@ export type EntwurfLeistung = Pick<Leistung, 'id' | 'name'> & { preis: Pick<Leis
  * Zahlungsziel, USt), Leistungen und Hinweise. Die Gesellschaft der Eingabe gilt; steht sie auf „offen“, kommt sie vom Produkt. Ohne Karten-Felder
  * am Produkt genau wie bisher.
  */
-export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>; kontaktIds: string[]; gesellschaft: Gesellschaft; titel?: string; leistung?: EntwurfLeistung | null; zustaendig?: string; jetzt: string; person: string }): Mandat {
+export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>; kontaktIds: string[]; gesellschaft: Gesellschaft; titel?: string; leistung?: EntwurfLeistung | null; zustaendig?: string; vertrag?: MandatVertragEingabe; jetzt: string; person: string }): Mandat {
   // Ältere Aufrufer reichen nur Kennung, Name und Preis — ohne Karten-Felder nimmt die Vorlage genau den bisherigen Weg (Honorar aus dem Preis).
-  const v = o.leistung ? mandatVorlageAusProdukt(o.leistung as Leistung) : null;
+  const v0 = o.leistung ? mandatVorlageAusProdukt(o.leistung as Leistung) : null;
+  // Was im Dialog geändert wurde (P3), gewinnt über die Vorlage; ein einmaliges Honorar ohne eigenen Rhythmus wird einmalig abgerechnet.
+  const w = o.vertrag;
+  const v = v0 && w ? {
+    ...v0,
+    ...(w.honorar ? { honorar: { betrag: w.honorar.betrag, basis: w.honorar.basis, netto: true }, rechnungsrhythmus: w.rechnungsrhythmus ?? (w.honorar.basis === 'einmalig' ? 'einmalig' as const : v0.rechnungsrhythmus === 'einmalig' ? 'monatlich' as const : v0.rechnungsrhythmus) } : {}),
+    ...(w.rechnungsrhythmus ? { rechnungsrhythmus: w.rechnungsrhythmus } : {}),
+    ...(w.mindestlaufzeitMonate !== undefined ? { mindestlaufzeitMonate: w.mindestlaufzeitMonate ?? undefined } : {}),
+    ...(w.kuendigungsfristTage !== undefined ? { kuendigungsfristTage: w.kuendigungsfristTage ?? undefined } : {}),
+    ...(w.zahlungszielTage !== undefined ? { zahlungszielTage: w.zahlungszielTage } : {}),
+    ...(w.leistungen ? { leistungen: w.leistungen } : {}),
+  } : v0;
   const h = v ?? honorarAusPreis(undefined);
   return {
     id: o.id, kunde: o.firma.name, firmaId: o.firma.id, kontaktIds: o.kontaktIds, titel: o.titel || o.leistung?.name || 'Mandat', art: v?.art ?? 'retainer',

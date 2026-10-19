@@ -60,7 +60,7 @@ import { dealPersonenVorgabe } from '@/lib/crm/pipeline';
 import { leadSaeubern } from '@/lib/crm/lead-form';
 import { personenWerdenKunde } from '@/lib/crm/mandat-anlegen-server';
 import { honorarAusPreis } from '@/lib/crm/mandat-anlegen';
-import { mandatVertragAusProdukt } from '@/lib/crm/produkt-karte';
+import { mandatVertragAusProdukt, mandatVorlageAusProdukt } from '@/lib/crm/produkt-karte';
 import { einmalig } from '@/lib/store/anfragen';
 import { wer, BEIDE, nameVon } from '@/lib/crm/team';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
@@ -169,7 +169,17 @@ export async function POST(req: Request) {
     const angebot = angenommenZuDeal(crm.angebote, c.id);
     // Produkt-Karte (19.10.): der Vertrag des Produkts (Mindestlaufzeit, Kündigung, Verlängerung, Rhythmus, Zahlungsziel, USt) — ohne Karte nichts.
     const produkt = c.leistungId ? crm.leistungen.find(l => l.id === c.leistungId) : undefined;
-    if (!angebot && produkt) Object.assign(m, mandatVertragAusProdukt(produkt, m.honorar.basis));
+    if (!angebot && produkt) {
+      Object.assign(m, mandatVertragAusProdukt(produkt, m.honorar.basis));
+      // P3 (19.10.): die Vorlage des Produkts auch hier — der Deal-Wert ist vereinbart (er gewinnt); ohne Wert das Honorar des Produkts.
+      // Leistungen, offene Punkte der Vorlage (Stundensatz, je Einheit …), Gesellschaft (nur wenn am Deal „offen“) und inklusive Module.
+      const v = mandatVorlageAusProdukt(produkt);
+      if (!(m.honorar.betrag > 0) && v.honorar.betrag > 0) Object.assign(m, { honorar: v.honorar, rechnungsrhythmus: v.rechnungsrhythmus }, mandatVertragAusProdukt(produkt, v.honorar.basis));
+      if (!m.leistungen.length && v.leistungen.length) m.leistungen = v.leistungen;
+      if (v.hinweise.length) m.offen = [...m.offen, ...v.hinweise];
+      if (m.gesellschaft === 'offen' && v.gesellschaft) m.gesellschaft = v.gesellschaft;
+      if (v.zusatz?.length) m.zusatz = v.zusatz;
+    }
     if (angebot) {
       const v = mandatVorbelegung(angebot, crm.leistungen);
       Object.assign(m, v, { quelle: `aus Angebot ${angebot.nummer ?? ''} (Deal „${c.titel}“)`.replace('  ', ' ') });

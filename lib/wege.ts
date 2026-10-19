@@ -144,11 +144,8 @@ export const WEG = {
   /** „Mandat beenden“ (18.10., N6): öffnet das Mandat mit dem Dialog (Ende-Datum, Liquiditätsplan im selben Schritt). */
   mandatBeenden: (id: string) => { const l = mandateLink('mandate', id); return `${l}${l.includes('?') ? '&' : '?'}beenden=1`; },
   produkt: (id?: string) => mandateLink('produkte', id),
-  /**
-   * „Mandat aus diesem Produkt anlegen“ (19.10., Produkt-Karte P2): Mandate-Reiter mit dem Dialog „+ Mandat“, das Produkt vorbelegt
-   * (`?neu=mandat&produkt=<Produkt>`, gelesen über `mandatNeuAusAdresse` in lib/crm/adresse.ts).
-   */
-  mandatAusProdukt: (leistungId: string) => q(mandateLink('mandate'), { neu: 'mandat', produkt: leistungId }),
+  /** „Mandat aus diesem Produkt anlegen“ (19.10., P3): öffnet unter Mandate „+ Mandat“ mit diesem Produkt vorbelegt (`?leistung=<Produkt>`). */
+  mandatAusProdukt: (leistungId: string) => `${mandateLink()}?leistung=${encodeURIComponent(leistungId)}`,
   /**
    * Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 10; seit 17.10. nach Kevins Miro-Standard): die eigene Seite unter Produkte & Mandate
    * (`/os/mandate/fulfillment`) mit Unternavigation `u` (Landkarte · Onboarding · Bausteine · Analysen · Kreislauf), `k` = Knoten, `b` = Baustein.

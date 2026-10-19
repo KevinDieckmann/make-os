@@ -124,7 +124,7 @@ export async function mandateTabelleUebernehmen(roh: Record<string, unknown>, pe
   // 2 · Mandate — eine Änderung über den CRM-Schreibweg. Geänderte nur mit dem Stand der Vorschau (sonst 409, nichts geschrieben).
   const quelle = `Aus Tabelle eingefügt am ${localDay(jetzt).split('-').reverse().join('.')}`;
   const ops: ListenOp[] = plan.map(z => {
-    if (z.status === 'neu') return { liste: 'mandate', op: 'upsert', eintrag: neuesMandat(z.id, z.eingabe, firmaFuer.get(z.firma.firma.id) ?? { id: z.firma.firma.id, name: z.firma.firma.name }, quelle) };
+    if (z.status === 'neu') return { liste: 'mandate', op: 'upsert', eintrag: neuesMandat(z.id, z.eingabe, firmaFuer.get(z.firma.firma.id) ?? { id: z.firma.firma.id, name: z.firma.firma.name }, quelle, v.crm.leistungen.find(l => l.id === z.eingabe.leistung?.id && !l.geloeschtAm)) };
     const da = v.crm.mandate.find(m => m.id === z.id)!;
     return { liste: 'mandate', op: 'teil', id: z.id, felder: mandatTeil(z.eingabe) as Record<string, unknown>, stand: standVon(da) };
   });

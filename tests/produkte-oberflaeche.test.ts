@@ -17,7 +17,6 @@ import {
 import { angebotPositionenAusProdukt, preiseText, produktPruefen, katalogTreppe, PREIS_TEIL_ARTEN, type PreisTeil } from '@/lib/crm/produkt-karte';
 import { treppeAus, type TreppeDatei } from '@/lib/crm/treppe-daten';
 import { saeubern, wendeCrmAn, leererBestand } from '@/lib/crm/speicher';
-import { mandatNeuAusAdresse } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
 import type { CrmBestand, Leistung, Mandat } from '@/lib/crm/typen';
 
@@ -293,12 +292,8 @@ describe('Angebots-Tool: mehrere Preis-Teile, Optionen zum Anhaken', () => {
 });
 
 describe('Adressen: Mandat aus Produkt (für P3) und Finanzplanung mit Produkt (B15)', () => {
-  it('WEG.mandatAusProdukt ↔ mandatNeuAusAdresse', () => {
-    const url = WEG.mandatAusProdukt('l-abc-1');
-    expect(url).toBe('/os/mandate?neu=mandat&produkt=l-abc-1');
-    expect(mandatNeuAusAdresse(new URL(`https://x${url}`).searchParams)).toEqual({ leistungId: 'l-abc-1' });
-    expect(mandatNeuAusAdresse(new URLSearchParams('neu=mandat&produkt=../x'))).toBeNull();
-    expect(mandatNeuAusAdresse(new URLSearchParams('produkt=l-a'))).toBeNull();
+  it('WEG.mandatAusProdukt: EIN Weg — „+ Mandat“ unter Mandate mit dem Produkt vorbelegt (?leistung=, gelesen in Kunden.tsx)', () => {
+    expect(WEG.mandatAusProdukt('l-abc-1')).toBe('/os/mandate?leistung=l-abc-1');
   });
   it('WEG.finanzplanungProdukt wählt das Produkt vor', () => {
     expect(WEG.finanzplanungProdukt('l-a')).toBe('/os/finanzen?s=finanzplanung&space=business&u=planen&feld=umsatz&produkt=l-a');

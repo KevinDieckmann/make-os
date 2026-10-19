@@ -17,8 +17,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Knopf, Punkt } from '../ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Seite, Segmente, Hinweis, LEUCHT } from '../ui';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { mandateLink, markttraktion, mandatNeuAusAdresse } from '@/lib/crm/adresse';
-import { MandatAnlegen } from '../crm/MandatAnlegen';
+import { mandateLink, markttraktion } from '@/lib/crm/adresse';
 import { useCrm } from '../crm/daten';
 import { MandateUebersicht } from '../crm/Kunden';
 import { Produkte } from './Produkte';
@@ -37,10 +36,6 @@ export function ProdukteMandate() {
   const api = useCrm();
   const zuKontakt = (id: string) => router.push(markttraktion('kontakte', 'akte', id));
   const zu = (s: Segment) => router.push(s === 'fulfillment' ? WEG.fulfillment() : mandateLink(s), { scroll: false });
-  // „Mandat aus diesem Produkt anlegen“ (19.10., Produkt-Karte): `?neu=mandat&produkt=<id>` (WEG.mandatAusProdukt) öffnet „+ Mandat“ mit dem
-  // Produkt vorbelegt. Die Stufe leitet der Server aus dem Produkt ab (lib/crm/treppe.ts `stufeVonMandat`) — darum keine Stufen-Kennung hier.
-  const neuAusProdukt = mandatNeuAusAdresse(params);
-  const produktNeu = neuAusProdukt ? api.crm?.stand.leistungen.find(l => l.id === neuAusProdukt.leistungId) : undefined;
   return (
     <Seite titel="Produkte & Mandate" unter={reiter === 'produkte' ? 'Was wir anbieten — mit Preis, Ablauf und Unterlagen.' : 'Für wen wir gerade arbeiten — Laufzeit, Gesundheit, Umsatz.'}
       // Produkte & Mandate (10.10.): das Gesellschafts-Register ist ein eigener Punkt in der Leiste (/os/unternehmen), kein Reiter mehr hier.
@@ -54,10 +49,6 @@ export function ProdukteMandate() {
       {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Index · Kunden" />}
       {/* Daten-Assistent B9 c (09.10.): mehrere Mandate aus Excel/CSV — Vorschau, Übernehmen, Rückgängig. */}
       {reiter === 'mandate' && <MandateTabelle onGeaendert={() => api.laden(true)} />}
-      {produktNeu && (
-        <MandatAnlegen api={api} modus="neu" stufe={{ id: '', name: produktNeu.name, leistungId: produktNeu.id }} {...(produktNeu.gesellschaft !== 'offen' ? { gesellschaft: produktNeu.gesellschaft } : {})}
-          onZu={() => router.replace(mandateLink('mandate'), { scroll: false })} onFertig={id => router.replace(WEG.mandat(id), { scroll: false })} />
-      )}
       <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Neue Mandate entstehen meist aus einem gewonnenen Deal — <Link href={WEG.deals()} style={{ color: C.inkDim }}>Deals öffnen ›</Link></div>
     </Seite>
   );

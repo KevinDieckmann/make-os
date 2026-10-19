@@ -145,8 +145,15 @@ export function ZusatzAnhaengen({ daten }: { daten: FallAntwort }) {
   const [anfrage, setAnfrage] = useState(neueAnfrageId);
   const dran = new Set([f.vorlageId, ...(daten.zusaetze ?? []).map(z => z.vorlageId)]);
   const zusatzModule = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket' && p.zusatz && !dran.has(p.id));
+  // Vorschlag aus dem Mandat (19.10., P3): ein Zusatzmodul am Mandat, dessen Produkt einen Ablauf mit „Zusatzmodul“ hat und noch nicht hängt — derselbe Weg.
+  const amMandat = (daten.mandat.zusatz ?? []).map(z => ({ z, v: zusatzModule.find(p => p.id === kurz.daten?.zuordnung[z.leistungId]?.vorlageId) })).find(x => x.v);
   if (f.status === 'abgeschlossen' || !kurz.daten) return null;
-  if (!auf) return <div><Erklaert erklaerung="fulfillment.zusatzAnhaengen" name="Zusatzmodul anhängen"><Knopf leise onClick={() => { setAuf(true); setWahl(zusatzModule[0]?.id ?? null); }}>+ Zusatzmodul anhängen</Knopf></Erklaert></div>;
+  if (!auf) return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Erklaert erklaerung="fulfillment.zusatzAnhaengen" name="Zusatzmodul anhängen"><Knopf leise onClick={() => { setAuf(true); setWahl(amMandat?.v?.id ?? zusatzModule[0]?.id ?? null); if (amMandat?.z.ab && amMandat.z.ab > localDay()) setTag(amMandat.z.ab); }}>+ Zusatzmodul anhängen</Knopf></Erklaert>
+      {amMandat?.v && <span style={klein}>Am Mandat gebucht: „{amMandat.v.titel}“ — noch nicht im Fall.</span>}
+    </div>
+  );
   if (!zusatzModule.length) {
     return (
       <Hinweis art="info" aktion={<span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}><Knopf leise href={`${WEG.fulfillment()}#ff-ablaeufe`}>Zu den Abläufen ›</Knopf><Knopf leise onClick={() => setAuf(false)}>Schließen</Knopf></span>}>

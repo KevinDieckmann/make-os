@@ -65,7 +65,9 @@ export async function GET(req: Request) {
   // Prüf-Fund 11.10.: Mandate einer Privat-Einheit (z. B. die Selbstständigkeit) gibt es hier nicht — 404 VOR jedem Aufbau, derselbe Satz wie „fehlt“.
   const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm && istBusinessMandat(x.gesellschaft));
   if (!mandat) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
-  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: true };
+  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: true,
+    // Zusatzmodule am Mandat (19.10., P3): nur Produkt und Beginn — „Zusatzmodul anhängen“ schlägt ihren Ablauf vor.
+    ...(mandat.zusatz?.length ? { zusatz: mandat.zusatz.map(z => ({ leistungId: z.leistungId, ...(z.ab ? { ab: z.ab } : {}) })) } : {}) };
   const f = faelle.faelle[m];
   const u = unterschriftAm(mandat, crm, f?.gestartetAm);
   // Lese-Protokoll immer, wenn Firma/Kontakte des Mandats ausgeliefert werden (Prüf-Fund 11.10.: vorher nur mit Stakeholdern).

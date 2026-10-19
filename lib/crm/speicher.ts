@@ -29,7 +29,7 @@ import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
-import { kartenFelderSaeubern, mandatZusatzSaeubern, produktSpiegeln, produktPruefen, spiegelKonflikt, PRODUKT_GRENZEN } from './produkt-karte';
+import { kartenFelderSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktSpiegeln, produktPruefen, spiegelKonflikt, PRODUKT_GRENZEN } from './produkt-karte';
 import { personenSchranke, kampagnenHinweise, kanalWechselBereinigen, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
 import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
@@ -677,6 +677,18 @@ export function produktOpsPruefen(b: CrmBestand, ops: ListenOp[]): { grenze: str
     const id = String(o.op === 'teil' ? o.id : roh.id ?? '');
     const name = String(roh.name ?? b.leistungen.find(l => l.id === id)?.name ?? id);
     for (const f of produktPruefen(roh, { id, bekannt: x => ids.has(x) })) (f.status === 413 ? grenze : ungueltig).push(`„${name}“: ${f.text}`);
+  }
+  // Zusatzmodule am Mandat (19.10., P3): Produkt, Rolle, ab/bis, Honorar — nur neue bzw. geänderte Einträge.
+  const katalog = [...b.leistungen, ...ops.filter(o => o.liste === 'leistungen' && o.op === 'upsert' && o.eintrag).map(o => o.eintrag as unknown as Leistung)];
+  for (const o of ops) {
+    if (o.liste !== 'mandate' || o.op === 'delete') continue;
+    const roh = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>;
+    if (!('zusatz' in roh)) continue;
+    const id = String(o.op === 'teil' ? o.id : roh.id ?? '');
+    const alt = b.mandate.find(m => m.id === id);
+    const hauptId = typeof roh.leistungId === 'string' ? roh.leistungId : alt?.leistungId;
+    const name = String(roh.titel ?? alt?.titel ?? id);
+    for (const f of mandatZusatzPruefen(roh.zusatz, alt?.zusatz, { katalog, ...(hauptId ? { hauptId } : {}) })) (f.status === 413 ? grenze : ungueltig).push(`Mandat „${name}“: ${f.text}`);
   }
   return { grenze, ungueltig };
 }
