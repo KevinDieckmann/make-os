@@ -1,9 +1,10 @@
 // ─── Prozesse — die Werkstatt: Prozesse aller Business-Bereiche als Entwurf bauen, veröffentlichen, aktiv schalten (Etappe B1, 21.10.) ─────────────────
 // GET              Liste aller Prozesse (Werkstatt + Paket-Vorlagen des Fulfillments, die nur lesend) mit den Rechten der Person.
+// GET ?vorlagen=1  die Galerie der Vorlagen (Kundengewinnung, 22.10.) — Kurzform + welche schon übernommen sind; `?vorlage=<id>` eine mit Vorschau.
 // GET ?id=         ein Prozess: Entwurf mit Stand, Versionen (kurz), Befunde (alle — die Werkstatt zeigt sie am Knoten), Kanten des Flusses, Webhook (ohne
 //                  Schlüssel). `&version=<nr>` eine Version ganz; `&vergleich=<a>,<b>` (Nummer oder „entwurf“) der Vergleich (nur Feldnamen, nie Werte).
 // POST { aktion }  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
-//                  · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
+//                  · aus-vorlage { vorlageId, eigner?, anfrageId } (22.10.) · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
 // Tor: `werkstattZugang` — Haushalt des Inhabers, Sicht Privat 403; schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung; veröffentlichen, Status und
 // Webhook nur volle Mitglieder (Konto „nur Business“ baut Entwürfe). Keine Personendaten Dritter (Lese-Protokoll nicht nötig); Lesen schreibt nie.
 
@@ -37,6 +38,21 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const id = q.get('id');
   const d = await prozesseLesen(z.haushalt);
+  // Vorlagen der Kundengewinnung (22.10.): die Galerie (Kurzform + „schon übernommen“) bzw. eine Vorlage mit Vorschau — reine Daten, nichts Persönliches.
+  if (q.get('vorlagen') === '1') {
+    const [{ KUNDENGEWINNUNG_VORLAGEN, vorlageKurz }, { uebernommene }] = await Promise.all([import('@/lib/prozesse/kundengewinnung/bibliothek'), import('@/lib/prozesse/kundengewinnung/uebernehmen')]);
+    return NextResponse.json({ ok: true, rechte: z.rechte, vorlagen: KUNDENGEWINNUNG_VORLAGEN.map(vorlageKurz), uebernommen: uebernommene(d) });
+  }
+  const vid = q.get('vorlage');
+  if (vid) {
+    const { vorlageVon, vorlageKurz, vorlageVorschau } = await import('@/lib/prozesse/kundengewinnung/bibliothek');
+    const v = vorlageVon(vid);
+    if (!v) return nein(404, 'Diese Vorlage gibt es nicht.');
+    return NextResponse.json({
+      ok: true, vorlage: { ...vorlageKurz(v), recht: v.recht, kennzahlen: v.kennzahlen, einstellbar: v.einstellbar, demo: v.demo, vorschau: vorlageVorschau(v.definition),
+        teileVorschau: v.teile.map(t => ({ titel: t.titel, vorschau: vorlageVorschau(t.definition) })) },
+    });
+  }
   if (!id) {
     const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
     const ff = await fulfillmentLesen('vorlagen', z.haushalt).catch(() => null);
@@ -92,8 +108,25 @@ export async function POST(req: Request) {
     }
     return { status: 200, body: { ok: true, geaendert: r.geaendert, ...ansicht(r.eintrag), befunde: r.befunde, ...(r.version ? { version: versionKurz(r.version) } : {}) } };
   };
+  // „Aus Vorlage anlegen“ (22.10., Kundengewinnung): Teile + Hauptprozess mit neuen Kennungen, Eigner aus dem Team, Version 1 und Probelauf, wenn nichts
+  // offen ist (lib/prozesse/kundengewinnung/uebernehmen.ts) — EINE Sperre, alles oder nichts, einmalig über `anfrageId`.
+  const ausVorlage = async (): Promise<{ status: number; body: Record<string, unknown> }> => {
+    const kx = await pruefKontextFuer(z.haushalt, z.person);
+    const eigner = typeof b.eigner === 'string' && b.eigner ? b.eigner : undefined;
+    if (eigner && kx.team && !kx.team.some(t => t.id === eigner && t.aktiv)) return { status: 400, body: { ok: false, fehler: 'Eigner: eine aktive Person aus dem Team.' } };
+    const { ausVorlageAnwenden } = await import('@/lib/prozesse/kundengewinnung/uebernehmen');
+    type Ok = Extract<ReturnType<typeof ausVorlageAnwenden>, { ok: true }>;
+    const r = await prozesseAendern<Omit<Ok, 'ok' | 'datei'>>(
+      dd => ausVorlageAnwenden(dd, b.vorlageId, { person: z.person, jetzt: new Date().toISOString(), rechte: z.rechte, neueKennung: p => neueKennung(p), ...(eigner ? { eigner } : {}), pruef: kx }) as never,
+      wer, z.haushalt,
+    ) as ReturnType<typeof ausVorlageAnwenden>;
+    if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler, ...(r.befunde ? { befunde: r.befunde } : {}) } };
+    return { status: 200, body: { ok: true, ...ansicht(r.haupt), teile: r.teile.map(t => ({ id: t.id, titel: t.entwurf.titel, status: t.status })), befunde: r.befunde, hinweise: r.hinweise, probelauf: r.probelauf } };
+  };
   const a = aktion === 'anlegen'
     ? await einmalig<Record<string, unknown>>('prozess-anlegen', b.anfrageId, ausfuehren, undefined, { wer: z.person })
-    : await ausfuehren();
+    : aktion === 'aus-vorlage'
+      ? await einmalig<Record<string, unknown>>('prozess-aus-vorlage', b.anfrageId, ausVorlage, undefined, { wer: z.person })
+      : await ausfuehren();
   return NextResponse.json(a.body, { status: a.status });
 }

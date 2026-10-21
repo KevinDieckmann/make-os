@@ -9,12 +9,13 @@
 
 import type {
   AgentSchritt, Ausloeser, Bahn, Bedingung, CrmAbfrage, DatumsFeld, FallArt, MaskenWert, PfeilText, ProzessBereich, ProzessDefinition, ProzessForm, ProzessKnoten,
-  RautenRegel, ScorePruefung, SkillEreignis, Temperatur, VertragFeld, WartenRegel, WebhookFeld, Zweige, ModelTier, NotizZettel,
+  RautenRegel, ScorePruefung, SkillEreignis, VertragFeld, WartenRegel, WebhookFeld, Zweige, ModelTier, NotizZettel,
 } from '../definition';
 import { katalogEintrag, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT, ROLLE_EIGNER, ROLLE_ZUSTAENDIG } from '../baustein-katalog';
 import { schlossSetzen } from '../schloss';
 import { laufFremd } from '../definition-pruefen';
 import type { EignerRolle } from './rollen';
+import type { Temperatur } from '@/lib/crm/typen';
 
 type K = ProzessKnoten<ProzessForm>;
 
@@ -184,9 +185,16 @@ export const S = {
   anfrage: (id: string, titel: string, kanal: string, o: Opt = {}): Schritt => sch(id, titel, 'crm.anfrage-anlegen', { werte: { kanal }, ...o }),
   angebotEntwurf: (id: string, titel: string, o: Opt = {}): Schritt => sch(id, titel, 'angebot.entwurf', { werte: { gesellschaft: GESELLSCHAFT }, ...o }),
   // Warten (jedes mit Obergrenze und Ausgang „abgelaufen“)
-  wartenDauer: (id: string, titel: string, tage: number, stunden?: number, o: Opt = {}): Schritt => sch(id, titel, 'warten.dauer', { feld: { warten: { art: 'dauer', tage, ...(stunden ? { stunden } : {}) } }, ...o }),
-  wartenEreignis: (id: string, titel: string, ereignis: SkillEreignis, hoechstensTage: number, o: Opt = {}): Schritt =>
-    sch(id, titel, 'warten.ereignis', { feld: { warten: { art: 'ereignis', ereignis, hoechstensTage } as WartenRegel }, ...o }),
+  /** Warten eine Dauer — `arbeitszeit` zählt Werktage (Mo–Fr ohne Feiertage NRW; Entscheidung E-V7 „48 Stunden = Werktage“). */
+  wartenDauer: (id: string, titel: string, tage: number, o: Opt & { stunden?: number; arbeitszeit?: boolean } = {}): Schritt => {
+    const { stunden, arbeitszeit, ...rest } = o;
+    return sch(id, titel, 'warten.dauer', { feld: { warten: { art: 'dauer', tage, ...(stunden ? { stunden } : {}), ...(arbeitszeit ? { arbeitszeit } : {}) } }, ...rest });
+  },
+  /** Warten auf ein Ereignis zum Fall — Obergrenze in Tagen bzw. (M1) in Stunden, optional in Arbeitszeit (Werktage, 9–18 Uhr). */
+  wartenEreignis: (id: string, titel: string, ereignis: SkillEreignis, hoechstensTage: number, o: Opt & { stunden?: number; arbeitszeit?: boolean } = {}): Schritt => {
+    const { stunden, arbeitszeit, ...rest } = o;
+    return sch(id, titel, 'warten.ereignis', { feld: { warten: { art: 'ereignis', ereignis, hoechstensTage, ...(stunden ? { hoechstensStunden: stunden } : {}), ...(arbeitszeit ? { arbeitszeit } : {}) } as WartenRegel }, ...rest });
+  },
   wartenDatum: (id: string, titel: string, feld: DatumsFeld, versatzTage: number, hoechstensTage: number, o: Opt = {}): Schritt =>
     sch(id, titel, 'warten.datum', { feld: { warten: { art: 'datum', feld, versatzTage, hoechstensTage } }, ...o }),
   // Agenten (ein Schritt, Vertrag nur Kennungen/Zahlen/Auswahl, Budget, Pflichtsatz)
@@ -218,7 +226,8 @@ export const knotenKennung = (vorlage: string, schritt: string): string => `${vo
 /** Aus dem Bau eine Definition (rein): Wurzel, Phasen, Ränge, Zweige auf volle Kennungen, Freigabe-Schlösser nach der EINEN Regel. */
 export function prozess(p: ProzessBau): ProzessDefinition {
   const id = (s: string) => knotenKennung(p.id, s);
-  const wurzel = id('w');
+  // Wurzel, Phasen und Zettel mit „~“ — so stoßen sie nie mit einer lokalen Schritt-Kennung zusammen.
+  const wurzel = id('~w');
   const knoten: K[] = [{ id: wurzel, titel: p.titel, rang: 1 }];
   const lokal = new Set(p.phasen.flatMap(ph => ph.schritte.map(s => s.id)));
   const ziel = (z: string | undefined, von: string): string | undefined => {
@@ -227,7 +236,7 @@ export function prozess(p: ProzessBau): ProzessDefinition {
     return id(z);
   };
   p.phasen.forEach((ph, i) => {
-    const phaseId = id(`p${i + 1}`);
+    const phaseId = id(`~p${i + 1}`);
     knoten.push({ id: phaseId, elternId: wurzel, titel: ph.titel, rang: i + 1 });
     ph.schritte.forEach((s, j) => {
       const e = katalogEintrag(s.baustein);
@@ -245,7 +254,7 @@ export function prozess(p: ProzessBau): ProzessDefinition {
       knoten.push(k);
     });
   });
-  const zettel: NotizZettel[] | undefined = p.zettel ? [{ id: id('zettel'), text: p.zettel, pos: { x: 40, y: 40 }, farbe: 'gelb' }] : undefined;
+  const zettel: NotizZettel[] | undefined = p.zettel ? [{ id: id('~zettel'), text: p.zettel, pos: { x: 40, y: 40 }, farbe: 'gelb' }] : undefined;
   const d: ProzessDefinition = {
     id: p.id, art: 'paket', titel: p.titel, beschreibung: p.beschreibung, knoten, uebergaenge: [], freigaben: [], rollen: [], fassung: 1,
     geaendert: '', geaendertVon: '', bereich: p.bereich, fallArt: p.fallArt, startKriterium: p.startKriterium, endKriterium: p.endKriterium,

@@ -181,6 +181,17 @@ const schnittstelle = (v: unknown): ProzessSchnittstelle | undefined => {
   return o ? { eingaben: liste(o.eingaben, vertragFeld), ausgaben: liste(o.ausgaben, vertragFeld) } : undefined;
 };
 
+/**
+ * Herkunft einer Definition (22.10., Vorlagen der Kundengewinnung): aus welcher Vorlage ein Prozess übernommen wurde (`art: 'muster'`, `quelleIds` = Kennung der
+ * Vorlage) — damit die Galerie „schon übernommen“ zeigt und Übergaben auf den passenden eigenen Prozess zeigen. Nur Form, keine Personen.
+ */
+const herkunft = (v: unknown): ProzessDefinition['herkunft'] | undefined => {
+  const o = obj(v); const art = wahl(o?.art, ['muster', 'import', 'hand', 'demo'] as const);
+  if (!o || !art) return undefined;
+  const q = texte(o.quelleIds).filter(x => ID.test(x));
+  return sauber<NonNullable<ProzessDefinition['herkunft']>>({ art, quelleIds: q.length ? q : undefined, am: typeof o.am === 'string' ? o.am.slice(0, 40) : '' });
+};
+
 /** Eine Definition säubern (rein) — Art immer „paket“, Listen nie gekürzt. null = unlesbar. */
 export function definitionAus(o: O): ProzessDefinition | null {
   const i = id(o.id), titel = typeof o.titel === 'string' ? o.titel : undefined;
@@ -194,7 +205,7 @@ export function definitionAus(o: O): ProzessDefinition | null {
     eigner: typeof o.eigner === 'string' && TEAM_ID.test(o.eigner) ? o.eigner : undefined,
     laeuftAls: typeof o.laeuftAls === 'string' && PERSON.test(o.laeuftAls) ? o.laeuftAls : undefined,
     startKriterium: s(o.startKriterium), endKriterium: s(o.endKriterium), schnittstelle: schnittstelle(o.schnittstelle),
-    zettel: z.length ? z : undefined,
+    zettel: z.length ? z : undefined, herkunft: herkunft(o.herkunft),
   });
 }
 const version = (o: O): ProzessVersion | null => {

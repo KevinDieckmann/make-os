@@ -3,7 +3,7 @@
 // sind; kein Agent ist Pflicht. Jede Vorlage ist eine gültige Definition (lib/prozesse/definition-pruefen.ts), Personen sind Rollen, nichts geht ohne Schloss
 // nach außen. Rein und client-sicher.
 
-import { S, B, V, prozess, abfrageListe, STANDARD_ABBRUCH, EIGNER, ZUSTAENDIG, AN_ANSPRECHPARTNER, C1_EREIGNIS, type KgVorlage, type KgTeil } from './bau';
+import { S, B, V, prozess, abfrageListe, STANDARD_ABBRUCH, EIGNER, ZUSTAENDIG, AN_ANSPRECHPARTNER, type KgVorlage, type KgTeil } from './bau';
 
 // ── V09 · Deal ohne nächsten Schritt / hängender Deal ─────────────────────────────────────────────────────────────────────────────────────────────────
 const V09A: KgTeil = {
@@ -155,8 +155,7 @@ const V12: KgVorlage = {
     { id: 'kickoffTage', label: 'Kickoff spätestens nach (Tagen)', vorgabe: 14 },
   ],
   offen: [
-    { punkt: 'E4', text: '„Mandat angelegt“ als Ereignis (Uhr der Übergabe, parallel zu den Schritten) kommt mit dem Lauf-Motor.' },
-    { punkt: 'M1', text: 'Uhren in Stunden (Mandat 24 Std., Willkommen 24 Std.) kommen mit dem Lauf-Motor — bis dahin gelten die Fristen der Schritte.' },
+    { punkt: 'Parallele Uhr', text: 'Die Uhr der ganzen Übergabe (2 Werktage, parallel zu den Schritten) kennt das Modell nicht — es gelten die Fristen der Schritte; das Ereignis „Mandat angelegt“ (E4) ist da.' },
   ],
   demo: 'Der Saat-Deal wird über das angenommene Angebot gewonnen: Mandat-Vorschlag und Übergabe-Aufgabe sofort, Willkommen am Folgetag, Kickoff in 9 Tagen.',
   teile: [],
@@ -271,4 +270,3 @@ const V15: KgVorlage = {
 };
 
 export const WELLE_1: readonly KgVorlage[] = [V09, V07, V13, V12, V08, V15];
-export { C1_EREIGNIS };
