@@ -41,7 +41,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   prospect: 'Zielliste gegen das ICP bewerten',
   planung: 'Wochenplan-Vorschlag aus Kalender und Aufgaben',
   ernaehrung: 'Essensplan und Einkaufsliste für die Woche',
-  performance: 'Wachstums-Score neu rechnen und einordnen',
+  performance: 'Privat- und Business-Score einordnen (zwei Scores, nie gemischt)',
   content: 'Text-Entwurf in der Marken-Sprache (auftrag = Thema)',
   meeting: 'Transkript zu Protokoll und Aufgaben (auftrag = Transkript)',
   outreach: 'Erstansprache entwerfen (auftrag = Name oder Firma — aus dem CRM, sonst aus der Zielliste)',
@@ -282,13 +282,15 @@ async function agentLaufen(id: Ausfuehrbar, auftrag: string, origin: string, per
       }
       case 'performance': {
         const d = await post('/api/performance', { analyse: true }, 150_000);
-        // Art. 9 (09.10., KI-Etiketten): nur die Sicht für die KI (`fuerZoe`) — ohne Einwilligung (b) weder der Gesamtindex (er enthält die
-        // Gesundheits-Säule) noch ein Gesundheits-Hebel. Vorher gingen `aktuell.index` und `hebel` immer ins nächste Modell.
-        const a = d.fuerZoe as { index?: number | null; label?: string; abdeckung?: number; hebel?: string | null; gesundheit?: boolean } | undefined;
-        if (!a) return fehl(`Performance fehlgeschlagen: ${kuerze(d.error, 200)}`);
+        // Zwei Scores (21.10.): Privat-Score und Business-Score je für sich — nie eine gemischte Zahl. Art. 9 (09.10., KI-Etiketten): nur die Sicht
+        // für die KI (`fuerZoe`) — ohne Einwilligung (b) weder die Zahl des Privat-Scores (sie enthält die Gesundheits-Säule) noch ein Gesundheits-Hebel.
+        type Teil = { index?: number | null; label?: string; abdeckung?: number; hebel?: string | null } | null | undefined;
+        const a = d.fuerZoe as { privat?: Teil; business?: Teil; gesundheit?: boolean } | undefined;
+        if (!a) return fehl(`Score-Agent fehlgeschlagen: ${kuerze(d.error, 200)}`);
         marke.gesundheit = a.gesundheit === true;
-        return gut(`MAKE SCORE: ${a.index != null ? `${a.index} (${a.label})` : 'Gesamtwert privat (ohne Einwilligung „An die KI geben“)'}, ${Math.round((a.abdeckung ?? 0) * 100)} % echte Daten.`
-          + `${a.hebel ? ` Größter Hebel: ${a.hebel}.` : ''}${d.lage ? `\n${kuerze(d.lage, 700)}` : ''}`);
+        const zeile = (name: string, t: Teil, ohne: string) => (t ? `${name}: ${t.index != null ? `${t.index} (${t.label})` : ohne}, ${Math.round((t.abdeckung ?? 0) * 100)} % echte Daten${t.hebel ? ` · größter Hebel: ${t.hebel}` : ''}.` : '');
+        const zeilen = [zeile('PRIVAT-SCORE', a.privat, 'Gesamtwert privat (ohne Einwilligung „An die KI geben“)'), zeile('BUSINESS-SCORE', a.business, 'noch keine Zahl')].filter(Boolean);
+        return gut(`${zeilen.join('\n') || 'Kein Score für dieses Konto.'}${d.lage ? `\n${kuerze(d.lage, 700)}` : ''}`);
       }
       case 'content': {
         if (!auftrag) return fehl('Content-Agent braucht ein Thema — frag die Person, worüber geschrieben werden soll.');

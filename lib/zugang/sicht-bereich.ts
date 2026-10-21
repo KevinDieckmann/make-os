@@ -33,8 +33,8 @@ export function sichtDerAnfrage(req: Request | URL | URLSearchParams | string): 
  * `?space=` selbst filtern (der Wächter verlangt eins von beiden).
  */
 export const ROUTEN_BEREICH: Readonly<Record<string, Sicht>> = {
-  // Privat: Familie & Partnerschaft, Gesundheit (Art. 9), Haushalt, Privat-Index, Ernährung, Sport, WHOOP. (Der Wachstums-Score `performance` filtert
-  // selbst je Sicht — `?sicht=`, lib/fokus/wirkung.ts.)
+  // Privat: Familie & Partnerschaft, Gesundheit (Art. 9), Haushalt, Privat-Index, Ernährung, Sport, WHOOP. (Die zwei Scores `scores` filtern selbst je
+  // Sicht — `?space=`/`?sicht=`, lib/scores/sicht.ts; den gemischten Wachstums-Score gibt es seit 21.10. nicht mehr.)
   'familie': 'privat',
   'gesundheit': 'privat',
   'haushalt': 'privat',

@@ -20,6 +20,7 @@ import { absenderLaden, absenderZeilen } from '@/lib/crm/absender';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { eigenerGesundheitsKontext, KONTEXT_REGEL } from '@/lib/gesundheit/kontext';
 import { gatherBrain } from '@/lib/brain';
+import { scoresSatz } from '@/lib/scores/text';
 import { vitalsHint, vitalsKurz } from '@/lib/vitals';
 import { computeMetrics, eur } from '@/lib/make-one/finance-data';
 import { loadJson } from '@/lib/store/local-db';
@@ -70,7 +71,8 @@ async function gather(today: string, person: string) {
     prospects: b.prospects,
     todaysEvents: b.kalender.heute,
     weekEvents: b.kalender.woche,
-    perf: b.index ?? { index: null, label: 'noch keine Datenbasis', saeulen: [], abdeckung: 0, hebel: null, stand: today },
+    /** Die zwei Scores (21.10., statt des gemischten Performance-Index) — schon für die KI gefiltert (`scoreFuerKi` im Brain). */
+    scores: b.scores,
     vitals: b.vitals,
     /** Art. 9 (05.10.): Vitalwerte/Gesundheits-Säule dürfen an die KI (Einwilligung (b)). */
     gesundheitFrei: b.gesundheitFrei,
@@ -142,10 +144,10 @@ export async function POST(req: Request) {
       `KRITISCH OFFEN (${g.critical.length}):`, g.critical.slice(0, 8).map(fmtTask).join('\n') || '(keine)',
       `Weitere offene Aufgaben: ${g.open.length}`,
       '',
-      // Verbindung zum Index: der Morgen soll auf die schwächste Säule einzahlen.
-      g.perf.index != null
-        ? `PERFORMANCE-INDEX: ${g.perf.index} (${g.perf.label}), Datenbasis ${Math.round(g.perf.abdeckung * 100)}%. Schwächste tragende Säule: ${g.perf.hebel ?? '—'}. Wenn Recovery und Termine es hergeben, lass EINE Priorität auf diese Säule einzahlen — sonst lass es bewusst weg und sag warum.`
-        : `PERFORMANCE-INDEX: noch nicht berechenbar — sag ${name}, was dafür fehlt.`,
+      // Verbindung zu den zwei Scores (21.10.): der Morgen soll auf den größten Hebel eines Scores einzahlen — nie eine gemischte Zahl.
+      scoresSatz(g.scores, { mitSaeulen: false, ohneGesundheitHinweis: !g.gesundheitFrei })
+        ? `${scoresSatz(g.scores, { mitSaeulen: false, ohneGesundheitHinweis: !g.gesundheitFrei })}\nWenn Recovery und Termine es hergeben, lass EINE Priorität auf einen dieser Hebel einzahlen — sonst lass es bewusst weg und sag warum.`
+        : `SCORES: noch nicht berechenbar — sag ${name}, was dafür fehlt.`,
     ].join('\n');
 
     const r = await askJson<Record<string, unknown>>({ zweck: 'loop', system, user, maxTokens: 3000,
@@ -186,9 +188,7 @@ export async function POST(req: Request) {
       '',
       `PIPELINE: ${g.prospects.length} Firmen, ${hot} starker Fit (80+), ${kontaktiert} kontaktiert.`,
       '',
-      g.perf.index != null
-        ? `PERFORMANCE-INDEX: ${g.perf.index} (${g.perf.label}). Säulen: ${g.perf.saeulen.map(s => `${s.label} ${s.score ?? '—'}${s.zuDuenn ? ' (zu dünn)' : ''}`).join(', ')}. Größter Hebel: ${g.perf.hebel ?? '—'}.`
-        : 'PERFORMANCE-INDEX: nicht berechenbar.',
+      scoresSatz(g.scores, { mitSaeulen: true, ohneGesundheitHinweis: !g.gesundheitFrei }) || 'SCORES: nicht berechenbar.',
       '',
       `AUSFÜHRUNG: ${g.open.length} offen, ${g.critical.length} kritisch, ${g.overdue.length} überfällig.`,
       'Kritische Aufgaben:', g.critical.slice(0, 10).map(fmtTask).join('\n') || '(keine)',

@@ -54,7 +54,7 @@ async function privatStandFrisch(haushalt: string, heute: string, zeit?: ZeitBil
   return { pi, frisch: privatFrisch(bestand), ruecklage, ...v };
 }
 
-/** Nur rechnen, nichts schreiben — für den Wachstums-Score. */
+/** Nur rechnen, nichts schreiben (der Privat-Score nimmt `privatStand`, lib/scores/server.ts). */
 export async function privatIndexFuer(haushalt: string, heute = heuteBerlin(), zeit?: ZeitBild | null): Promise<{ pi: PrivatIndex; frisch: boolean }> {
   const [h, d] = await Promise.all([ladeHaushalt(haushalt), ladePrivatDatei(haushalt)]);
   const bestand = { heute, haushalt: h, ruecklage: await ruecklageWirksam(haushalt, d), schwellen: d.schwellen, zeit: zeit ?? null };

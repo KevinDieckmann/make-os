@@ -301,7 +301,7 @@ export function berechnePrivat(b: PrivatBestand): PrivatIndex {
   return berechneModell({ saeulen: PRIVAT_SAEULEN, kennzahlen: PRIVAT_KENNZAHLEN, messen: PRIVAT_MESSEN, bestand: s, schwellen: b.schwellen, stand: b.heute, scope: 'privat' });
 }
 
-/** Sind die Buchungen frisch genug für den Wachstums-Score? (wie score.ts: 45 Tage) */
+/** Sind die Buchungen frisch genug, damit der Privat-Index im Privat-Score zählt? (45 Tage) */
 export function privatFrisch(b: Pick<PrivatBestand, 'haushalt' | 'heute'>): boolean {
   const j = b.haushalt.buchungen.filter(x => x.einheit === 'privat').reduce((m, x) => (x.datum > m ? x.datum : m), '');
   return !!j && tageZwischen(j, b.heute) <= 45;

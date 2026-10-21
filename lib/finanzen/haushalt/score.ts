@@ -1,4 +1,4 @@
-// ─── Finanzen-Säule im Wachstums-Score: Business + Privat ───────────────────
+// ─── Finanzen: private Faktoren und die frühere Finanzen-Säule (bis 21.10. im Wachstums-Score, der seitdem entfällt — lib/scores) ───
 // Kevin, 24.09.: „Privat und Business zusammen.“ Jede Hälfte wird für sich
 // aus ihren ECHTEN Faktoren gemittelt; die Säule ist der Schnitt der Hälften,
 // die es gibt. Fehlt eine Hälfte, zählt nur die andere — keine erfundene Null.

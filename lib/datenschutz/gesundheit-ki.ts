@@ -2,29 +2,35 @@
 // Die Prompt-Bauer holen Gesundheitsangaben nur über diese Helfer. Ohne Einwilligung (b) „An die KI geben“ der Person
 // bleibt jeder Wert draußen — vor dem Modell, nicht erst im Prompt-Text:
 //   · Vitalwerte (Recovery, Schlaf, HRV, Puls, Notiz)        → `VITALS_GESPERRT` (Nullen, `fallback`)
-//   · Performance-Index                                    → ohne Säule „Gesundheit & Energie“ und ohne Gesamtzahl (die enthält sie)
+//   · Privat-Score (21.10., ersetzt den Performance-Index)  → ohne Säule „Gesundheit“, ohne Gesamtzahl/Verlauf (die enthalten sie)
 //   · Ernährungs-Profile                                   → ohne Bedürfnisse/Ziel; „verträgt nicht“ geht nur als neutrales „nie“
 //                                                            (eine Küchenregel, keine Gesundheitsangabe) — für Gäste immer so
 // Rein bis auf `gesundheitKiFuer` (liest die Einwilligung).
 
 import type { ResolvedVitals } from '@/lib/vitals';
-import type { PerfIndex } from '@/lib/performance';
+import { PRIVAT_SCORE_GESUNDHEIT, type ScoreKurz } from '@/lib/scores/sicht';
 import type { Profil } from '@/lib/ernaehrung/modell';
 
 export const VITALS_GESPERRT: ResolvedVitals = { rec: 0, sleep: 0, hrv: 0, rhr: 0, stand: '—', heute: false, alterTage: 999, fallback: true };
 
-/** Säulen-Schlüssel der Gesundheit im Performance-Index (lib/performance.ts). */
-export const GESUNDHEIT_SAEULE = 'health';
+/** Säulen-Kennung der Gesundheit im Privat-Score (lib/scores/privat-score.ts). Der gemischte Performance-Index ist seit 21.10. weg. */
+export const GESUNDHEIT_SAEULE = PRIVAT_SCORE_GESUNDHEIT;
 
-/** Performance-Index für die KI: ohne Einwilligung ohne Gesundheits-Säule und ohne die Gesamtzahl (rein). */
-export function indexFuerKi<T extends Pick<PerfIndex, 'index' | 'saeulen' | 'hebel'> & { hebelKey?: string | null }>(index: T | null, frei: boolean): T | null {
-  if (!index || frei) return index;
-  const hebelGesundheit = index.hebelKey === GESUNDHEIT_SAEULE || index.saeulen.some(s => s.key === GESUNDHEIT_SAEULE && s.label === index.hebel);
+/**
+ * Ein Score für die KI (rein): der Business-Score unverändert; der Privat-Score ohne Einwilligung (b) ohne Gesundheits-Säule, ohne Gesamtzahl,
+ * ohne Status-Wort, ohne Verlauf (alle enthalten die Gesundheit) und ohne einen Gesundheits-Hebel.
+ */
+export function scoreFuerKi<T extends Pick<ScoreKurz, 'sicht' | 'index' | 'label' | 'saeulen' | 'hebel' | 'reihe' | 'status'>>(s: T | null | undefined, frei: boolean): T | null {
+  if (!s) return null;
+  if (frei || s.sicht !== 'privat') return s;
   return {
-    ...index,
+    ...s,
     index: null,
-    saeulen: index.saeulen.filter(s => s.key !== GESUNDHEIT_SAEULE),
-    ...(hebelGesundheit ? { hebel: null, hebelKey: null } : {}),
+    label: '',
+    status: { titel: 'ohne Gesundheit', satz: 'Gesamtzahl privat — ohne Einwilligung „An die KI geben“ nur die Säulen ohne Gesundheit.', vorlaeufig: false },
+    saeulen: s.saeulen.filter(x => x.id !== GESUNDHEIT_SAEULE),
+    reihe: [],
+    hebel: s.hebel && s.hebel.saeuleId === GESUNDHEIT_SAEULE ? null : s.hebel,
   };
 }
 

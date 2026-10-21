@@ -11,17 +11,8 @@ import { localDay } from '@/lib/zeit';
 import { lesen, kennzahlen as finanzKennzahlen, type MalinExport } from '@/lib/make-one/grundlage';
 import { LIVE_AGENTS } from '@/lib/make-one/agents-data';
 import { fortschritt } from '@/lib/onboarding-status';
-import { computeIndex, indexLabel } from '@/lib/performance';
-import { personAus, darfGesundheitSehen } from '@/lib/zoe/raum';
 import { ladeAufgabenSicht } from '@/lib/aufgaben/sicht';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
-import { ladeKonten } from '@/lib/zugang/konten';
-import { kontenImHaushaltDerInhaber } from '@/lib/zugang/inhaber';
-
-/** Ein weiteres Konto im Haushalt des Inhabers (das erste nach Anlage) — oder null. */
-async function anderePersonImHaushalt(ich: string): Promise<string | null> {
-  return kontenImHaushaltDerInhaber(await ladeKonten()).find(k => k.speicher !== ich)?.speicher ?? null;
-}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,11 +21,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
   const heute = localDay();
-  const [ob, tasks, perf, netz, plan, grund] = await Promise.all([
+  const [ob, tasks, netz, plan, grund] = await Promise.all([
     // Onboarding (08.10. spät): ein Fehler der Einrichtungs-Prüfung legt die Startfläche nie lahm.
     fortschritt(personStreng(req)).catch(() => null),
     ladeAufgabenSicht(personStreng(req)), // Sichtfilter „nur ich“ (29.09.)
-    loadJson<{ snapshots?: { date: string; index: number; abdeckung?: number; label?: string; hebel?: string; saeulen?: Record<string, number | null> }[] }>('performance'),
     loadJson<{ kontakte?: unknown[]; chancen?: { wert?: number; stufe?: string }[] }>('netzwerk'),
     // 0-Punkt (05.10.): Konten und Zahlungen ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts).
     loadJson<{ firmen?: { id: string; kontostand?: number | null }[]; zahlungen?: { status?: string; firmaId?: string; faellig?: string }[] }>('finanzplan').then(f => (f ? mitEroeffnung(f) : f)),
@@ -46,8 +36,6 @@ export async function GET(req: Request) {
   const ueberfaellig = offen.filter(t => t.dueDate && t.dueDate < heute).length;
   const kritisch = offen.filter(t => t.priority === 'critical').length;
 
-  const letzter = (perf?.snapshots ?? []).slice().sort((a, b) => a.date.localeCompare(b.date)).at(-1);
-
   const fin = grund?.roh ? finanzKennzahlen(lesen(grund.roh, grund.stand)) : null;
   // Business: private Konten und Zahlungen stehen seit 24.09. unter Zahlen → Privat.
   const konten = (plan?.firmen ?? []).filter(f => (f as { id?: string }).id !== 'privat').reduce((s, f) => s + (f.kontostand ?? 0), 0);
@@ -55,64 +43,11 @@ export async function GET(req: Request) {
 
   const eur0 = (n: number) => new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(Math.round(n));
 
-  // Der MAKE Score steht dauerhaft oben auf der Startfläche (Kevins Ansage:
-  // „nicht auf Knopfdruck, sondern permanent") — mit Einordnung, nicht nur Zahl.
-  // Gerechnet wird mit computeIndex, damit es NICHT zwei Sätze Schwellen gibt.
-  // Je Person ihr Score — Gesundheit, Journal, Rituale sind persönlich; den der anderen Person nur mit Freigabe (26.09.).
-  const ich = personAus(req);
-  const idx = await computeIndex(undefined, ich);
-  // Die andere Person = ein weiteres Konto im Haushalt des Inhabers (aus den Konten, kein fester Name — Plattform-Regel, 05.10.).
-  const andere = await anderePersonImHaushalt(ich);
-  const idxAndere = andere && (await darfGesundheitSehen(req, andere)) ? await computeIndex(undefined, andere) : null;
-  const idxKevin = ich === 'kevin' ? idx : idxAndere, idxMalin = ich === 'malin' ? idx : idxAndere;
-  const reihe = (perf?.snapshots ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
-  const vorher = reihe.filter(s => s.date < idx.stand).at(-1);
-  /**
-   * Kevins Ansage: „Wenn man bei Kevin dann Alles, Business oder Privat
-   * auswählt, soll der Score jeweils für die Themen berechnet werden — so
-   * bekommen wir auch einen privaten MAKE Score." Also derselbe Rechenweg,
-   * nur über die Säulen, die zum jeweiligen Leben gehören. Planung zählt in
-   * beiden: geplant wird privat wie geschäftlich.
-   */
-  const SAEULEN_JE_MODUS: Record<string, string[]> = {
-    alles: ['health', 'business', 'planning', 'finance', 'social'],
-    business: ['business', 'finance', 'planning'],
-    privat: ['health', 'social', 'planning', 'finance'],
-  };
-  const teilIndex = (keys: string[], modus?: 'business' | 'privat') => {
-    // Finanzen: im Business-Modus nur die Business-Hälfte, im Privat-Modus nur die private.
-    const saeulen = idx.saeulen.map(s => (s.key === 'finance' && modus && s.teile ? { ...s, score: s.teile[modus] } : s));
-    const gezaehlt = saeulen.filter(s => keys.includes(s.key) && s.score != null && !s.zuDuenn);
-    const summe = gezaehlt.reduce((s, x) => s + x.gewicht, 0);
-    if (!summe) return { index: null as number | null, label: indexLabel(null), abdeckung: 0 };
-    const wert = Math.round(gezaehlt.reduce((s, x) => s + (x.score as number) * x.gewicht, 0) / summe);
-    // Wie viel des möglichen Gewichts wirklich auf Daten steht.
-    const moeglich = idx.saeulen.filter(s => keys.includes(s.key)).reduce((s, x) => s + x.gewicht, 0) || 1;
-    return { index: wert, label: indexLabel(wert), abdeckung: summe / moeglich };
-  };
-
-  const score = {
-    index: idx.index,
-    label: idx.label,
-    hebel: idx.hebel,
-    abdeckung: idx.abdeckung,
-    stand: idx.stand,
-    trend: vorher?.index != null && idx.index != null ? idx.index - vorher.index : null,
-    saeulen: idx.saeulen.map(s => ({
-      key: s.key, label: s.label, wert: s.score, gewicht: s.gewicht, zuDuenn: s.zuDuenn, hinweis: s.hinweis,
-    })),
-    // Je Leben ein eigener Wert — dokumentierbar, nicht nur ein Gesamtgefühl.
-    modi: Object.fromEntries(Object.entries(SAEULEN_JE_MODUS).map(([m, keys]) => [m, teilIndex(keys, m === 'business' || m === 'privat' ? m : undefined)])),
-    // Und je Person: Malin hat eine andere Gesundheit und andere Ziele.
-    person: {
-      kevin: idxKevin ? { index: idxKevin.index, label: idxKevin.label, abdeckung: idxKevin.abdeckung } : null,
-      malin: idxMalin ? { index: idxMalin.index, label: idxMalin.label, abdeckung: idxMalin.abdeckung } : null,
-    },
-  };
+  // Kein Score mehr hier (21.10., Kevin: nur noch Privat-Score und Business-Score — der gemischte „MAKE Score“ ist weg). Die zwei Scores liefert
+  // nur GET /api/scores, und zwar nur der Person selbst (lib/scores/sicht.ts).
 
   return NextResponse.json({
     heute,
-    score,
     lage: {
       tag: {
         status: { text: 'live', farbe: 'gut' },
@@ -139,13 +74,6 @@ export async function GET(req: Request) {
       gesundheit: {
         status: { text: 'wenig gepflegt', farbe: 'warn' },
       },
-      score: letzter ? {
-        status: { text: `Stand ${letzter.date.slice(8)}.${letzter.date.slice(5, 7)}.`, farbe: 'gut' },
-        kennzahlen: [
-          { wert: String(letzter.index), label: 'Index', farbe: 'gut' },
-          { wert: `${Math.round((letzter.abdeckung ?? 0) * 100)} %`, label: 'Abdeckung', farbe: (letzter.abdeckung ?? 0) < 0.6 ? 'warn' : undefined },
-        ],
-      } : { status: { text: 'noch kein Wert', farbe: 'still' } },
       wachstum: {
         status: { text: (netz?.chancen?.length ?? 0) ? 'live' : 'teilweise live', farbe: (netz?.chancen?.length ?? 0) ? 'gut' : 'warn' },
         kennzahlen: [

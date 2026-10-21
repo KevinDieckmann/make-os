@@ -97,7 +97,7 @@ export function gesundheitOhneEinwilligung(person: string, heute = localDay()): 
   };
 }
 
-/** Nur rechnen — für den Wachstums-Score. */
+/** Nur rechnen, nichts festhalten (der Privat-Score nimmt `gesundheitStand`, lib/scores/server.ts). */
 export async function gesundheitsIndexFuer(person: string, heute = localDay()): Promise<GesundheitsIndex> {
   return berechneGesundheit(await ladeGesundheitBestand(person, heute));
 }

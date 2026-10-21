@@ -22,8 +22,9 @@ import { kontoSicht } from '@/lib/zugang/konto-sicht-server';
 import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { localDay, tagePlus, alterStunden } from '@/lib/zeit';
 import { resolveVitals, vitalsHint, vitalsKurz, type ResolvedVitals } from '@/lib/vitals';
-import { computeIndex, type PerfIndex } from '@/lib/performance';
-import { SAEULEN_TEXT } from '@/lib/business/register';
+import { scoresFuer, type ScoreKurz, type ScoreSicht } from '@/lib/scores/sicht';
+import { scoreRechteFuer, scoresKurzFuer } from '@/lib/scores/server';
+import { scoresSatz } from '@/lib/scores/text';
 import { computeMetrics, mitKasse, eur, zielAngabe, type FinanceState, type FinanceMetrics } from '@/lib/make-one/finance-data';
 import { ladeControlling } from '@/lib/finanzen/controlling-server';
 import { runwayDesIndex, type RunwayDesIndex } from '@/lib/business/fuer-chef';
@@ -46,7 +47,7 @@ import { termineFuerZoe, type ZoeTermin } from '@/lib/kalender/zoe-sicht-server'
 import { spaceVonKalender } from '@/lib/kalender/space';
 import { fremd } from '@/lib/anthropic';
 import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
-import { VITALS_GESPERRT, indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
+import { VITALS_GESPERRT, scoreFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import type { KiBereich, KiKategorie } from '@/lib/datenschutz/ki-einstellungen';
 import { KALENDER_QUELLE } from '@/lib/zoe/fremd';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
@@ -75,7 +76,11 @@ export interface Brain {
    */
   gesundheitFrei: boolean;
   vitals: ResolvedVitals;
-  index: PerfIndex | null;
+  /**
+   * Die zwei Scores (21.10., ersetzt den gemischten Performance-Index): Privat-Score der Person (ohne Einwilligung (b) ohne Gesundheits-Säule
+   * und ohne Gesamtzahl — `scoreFuerKi`) und Business-Score (= Business-Index), jeder nur, wenn die Person ihn sehen darf (lib/scores/sicht.ts).
+   */
+  scores: Partial<Record<ScoreSicht, ScoreKurz>>;
   tasks: {
     alle: StoredTask[];
     offen: StoredTask[];
@@ -196,7 +201,7 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     // Kalender (29.09., #K4): iCloud/Mac/Google, je Person gefiltert — nie mehr der rohe `calendar-cache`.
     termineFuerZoe(person, heute, tagePlus(heute, 8)),
     gesundheitFrei ? resolveVitals(heute, person) : Promise.resolve(VITALS_GESPERRT),
-    computeIndex(heute, person),
+    scoreRechteFuer(person).then(r => scoresKurzFuer(person, scoresFuer('beide', r) ?? [], heute)),
     recentRuns(person, { limit: 10 }), // Gedächtnis: eigene Läufe + Systemläufe, nie die der anderen Person (08.10.)
     // Nur, was die Person sehen darf (08.10.: kein Meilenstein an einem nicht geteilten eigenen Ziel einer anderen Person).
     loadJson<{ meilensteine: { titel: string; bereich: string; faellig?: string; zeitfenster?: string; fortschritt: number; erledigt: boolean; zielId?: string; abgeleitetVon?: string }[] }>('meilensteine')
@@ -269,7 +274,11 @@ export async function gatherBrain(heute: string = localDay(), person: string): P
     heute,
     gesundheitFrei,
     vitals: gesundheitFrei ? (val(vitalsR) ?? vitalsFallback) : VITALS_GESPERRT,
-    index: indexFuerKi(val(indexR), gesundheitFrei),
+    scores: (() => {
+      const sc = val(indexR) ?? {};
+      const privat = scoreFuerKi(sc.privat, gesundheitFrei);
+      return { ...(privat ? { privat } : {}), ...(sc.business ? { business: sc.business } : {}) };
+    })(),
     tasks: {
       alle,
       offen,
@@ -462,21 +471,13 @@ export function kalenderImPrompt(b: { kalender?: Pick<Brain['kalender'], 'heute'
 export const terminInSicht = (e: Pick<CalEvent, 'space' | 'calendarName'>, sicht: 'privat' | 'business'): boolean =>
   (e.space ?? spaceVonKalender(null, e.calendarName ?? '')) === sicht;
 
+/**
+ * Die zwei Scores (21.10.): je Score eine Zeile — nie eine gemischte Zahl (lib/scores/text.ts). In einer Sicht steht nur ihr Score
+ * (`brainNurBereich`). Ohne Score für die Person: ein ehrlicher Satz.
+ */
 export function blockIndex(b: Brain): string {
-  if (!b.index || b.index.index == null) return 'PERFORMANCE-INDEX: noch nicht berechenbar — sag der Person, was dafür fehlt.';
-  const saeulen = b.index.saeulen.map(x => `${x.label} ${x.score ?? '—'}${x.zuDuenn ? ' (zu dünn, zählt nicht)' : ''}`).join(' · ');
-  return `PERFORMANCE-INDEX: ${b.index.index} (${b.index.label}), Datenbasis ${Math.round(b.index.abdeckung * 100)}%. ${saeulen}. Größter Hebel: ${b.index.hebel ?? '—'}. ` +
-    'Eine niedrige Säule mit dünner Datenbasis ist KEIN schlechter Wert, sondern eine Messlücke — sag dann, was die Person eintragen müsste, statt sie zu bewerten. Die Säulen stehen unter Fokus › Wirkung (/os/fokus#wirkung).' +
-    blockBusiness(b);
-}
-
-/** Business-Index (25.09.): eigene Zahlen — die Business-Säule im Detail. */
-function blockBusiness(b: Brain): string {
-  const bi = b.index?.business;
-  if (!bi) return '';
-  const saeulen = bi.saeulen.map(x => `${x.label} ${x.score ?? '—'}`).join(' · ');
-  return `\nBUSINESS-INDEX (${SAEULEN_TEXT}, nur eigene Zahlen): ${bi.index ?? '—'} (${bi.label}). ${saeulen}.` +
-    `${bi.rot.length ? ` Rot: ${bi.rot.join(', ')}.` : ''}${bi.hebel ? ` Größter Hebel: ${bi.hebel}.` : ''} ${bi.luecken} Messlücken — Cockpit /os/finanzen?s=business (Monatsabschluss schließt die meisten).`;
+  const t = scoresSatz(b.scores, { mitSaeulen: true, ohneGesundheitHinweis: !b.gesundheitFrei });
+  return t || 'SCORES: für diese Person gibt es (noch) keinen Score — sag ihr, was dafür fehlt.';
 }
 
 export function blockVitals(b: Brain): string {
@@ -593,6 +594,8 @@ export function brainNurBereich(b: Brain, sicht: 'privat' | 'business'): Brain {
     kalender: { ...b.kalender, heute: b.kalender.heute.filter(imBereich), woche: b.kalender.woche.filter(imBereich) },
     ...(b.anlaesse && sicht === 'business' ? { anlaesse: { ...b.anlaesse, geburtstage: b.anlaesse.geburtstage.filter(g => g.herkunft === 'crm') } } : {}),
     ...(sicht === 'business' ? { shields: (b.shields ?? []).filter(x => x.id !== 'reha') } : {}),
+    // Die zwei Scores (21.10.): in einer Sicht nur ihr eigener — der Privat-Score steht nie im Business-Prompt und umgekehrt.
+    scores: b.scores?.[sicht] ? { [sicht]: b.scores[sicht] } : {},
   };
 }
 

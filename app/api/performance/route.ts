@@ -1,92 +1,28 @@
-// ─── MAKE OS — Performance-Index ────────────────────────────────────────────
-// GET            → aktueller Index (aus echten Daten) + Verlauf
-// POST {}        → Tages-Schnappschuss festhalten (einmal pro Tag genug)
-// POST {analyse} → zusätzlich: MAKE ordnet die Lage ein und benennt den Hebel
-// GET ?sicht=privat|business (10.10., Fokus › Wirkung) → NUR die Säulen dieses Bereichs (lib/fokus/wirkung.ts), Score und Verlauf daraus;
-//        ein Konto „nur Business“ bekommt immer die Business-Sicht (Privat → 403). Ohne Parameter wie bisher (Gesamt-Score).
+// ─── Score-Agent (bis 21.10. „Performance-Index“ / Wachstums-Score) ──────────────────────────────────────────────────────────────────
+// Seit 21.10. (Kevin: „nur noch zwei Scores“) gibt es keinen gemischten Wachstums-Score mehr. Diese Route ist nur noch der Score-Agent und der
+// Tagespunkt des Tagesstarts — beide auf den ZWEI Scores (lib/scores): Privat-Score der Person und Business-Score (= Business-Index).
+// POST {}        → Tagespunkt: Privat-Score der Person rechnen und festhalten (Systemlauf: der Inhaber) — der Business-Index hält seinen selbst fest
+// POST {analyse} → zusätzlich: ZOE ordnet die zwei Scores ein und benennt den Hebel (je Score, nie eine gemischte Zahl)
+// Das Ansehen der Scores läuft über GET /api/scores (nur die Person selbst). Die alten Verläufe `performance`/`performance--*` bleiben liegen.
 
 import { jsonBegrenzt } from '@/lib/zugang/json-grenze';
-import { imHaushaltDesInhabers, nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
+import { nurHaushalt, imHaushaltOderSystemlauf } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
-import { merken } from '@/lib/store/memo';
-import { personAus } from '@/lib/zoe/raum';
-import { loadJson, updateJson } from '@/lib/store/local-db';
 import { askJson, hasAnthropicKey } from '@/lib/anthropic';
 import { logRun } from '@/lib/agent-log';
-import { computeIndex } from '@/lib/performance';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { speicherFuer } from '@/lib/zoe/raum';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 import { gesundheitAnKi } from '@/lib/datenschutz/gesundheit-einwilligung';
-import { indexFuerKi } from '@/lib/datenschutz/gesundheit-ki';
+import { scoreFuerKi } from '@/lib/datenschutz/gesundheit-ki';
 import { laufPerson } from '@/lib/finanzen/haushalt/zugriff';
 import { nordsternSatzFuer } from '@/lib/planung/nordstern-server';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
-import { planZugangFuer } from '@/lib/finanzen/haushalt/zugriff';
-import { wirkungFuerSicht, verlaufFuerSicht } from '@/lib/fokus/wirkung';
-import { istSteuerBereich, type SteuerBereich } from '@/lib/fokus/steuerung';
+import { scoresFuer, type ScoreKurz } from '@/lib/scores/sicht';
+import { scoreRechteFuer, scoresKurzFuer } from '@/lib/scores/server';
+import { scoresSatz } from '@/lib/scores/text';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-export interface PerfSnapshot {
-  date: string;
-  index: number | null;
-  saeulen: Record<string, number | null>;
-  abdeckung: number;
-  /** Was sich an der Rechnung geändert hat — damit ein Sprung im Verlauf erklärt ist. */
-  notiz?: string;
-}
-
-/** 24.09.: ab dem ersten Tag, an dem die private Hälfte der Finanzen zählt, steht das im Verlauf. */
-const HAUSHALT_NOTIZ = 'Finanzen ab hier mit Haushalt (Privat + Business je zur Hälfte)';
-function mitNotiz(snap: PerfSnapshot, aktuell: { saeulen: { key: string; teile?: { privat: number | null } }[] }, liste: PerfSnapshot[]): PerfSnapshot {
-  const privatZaehlt = aktuell.saeulen.find(s => s.key === 'finance')?.teile?.privat != null;
-  const schonMarkiert = liste.some(s => s.notiz === HAUSHALT_NOTIZ && s.date !== snap.date);
-  return privatZaehlt && !schonMarkiert ? { ...snap, notiz: HAUSHALT_NOTIZ } : snap;
-}
-interface PerfFile { snapshots: PerfSnapshot[] }
-
-const MAX = 180; // gut ein halbes Jahr Verlauf
-
-async function history(person: string): Promise<PerfSnapshot[]> {
-  const f = await loadJson<PerfFile>(speicherFuer('performance', person));
-  return Array.isArray(f?.snapshots) ? f.snapshots : [];
-}
-
-export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return nurHaushalt();
-  // Der Score hängt an persönlichen Beständen (Gesundheit, Journal,
-  // Routinen) — er gehört deshalb der Person, die fragt.
-  // Tempo (26.09.): der Score rechnet über viele Bestände — fünf Minuten merken, jede Schreibung setzt zurück.
-  const [aktuell, verlauf] = await Promise.all([merken(`performance:${personAus(req)}`, 5 * 60_000, () => computeIndex(undefined, personAus(req))), history(personAus(req))]);
-  // Sicht je Bereich (10.10.): serverseitig gefiltert — die Antwort trägt nie die Säulen des anderen Bereichs.
-  const roh = new URL(req.url).searchParams.get('sicht');
-  const nurBusiness = (await planZugangFuer(personAus(req)))?.sicht === 'business';
-  if (roh !== null && !istSteuerBereich(roh)) return NextResponse.json({ ok: false, error: 'sicht privat|business.' }, { status: 400 });
-  if (roh === 'privat' && nurBusiness) return NextResponse.json({ ok: false, error: 'Mit Business-Zugang gibt es keine Privat-Sicht.' }, { status: 403 });
-  const sicht: SteuerBereich | null = nurBusiness ? 'business' : roh;
-  const ausliefern = (liste: PerfSnapshot[]) => (sicht
-    ? NextResponse.json({ sicht, aktuell: wirkungFuerSicht(aktuell, sicht), verlauf: verlaufFuerSicht(liste, Object.fromEntries(aktuell.saeulen.map(s => [s.key, s.gewicht])), sicht) })
-    : NextResponse.json({ aktuell, verlauf: liste }));
-  // Der Verlauf wächst von selbst: der ERSTE Aufruf des Tages hält den Punkt
-  // fest (idempotent — spätere GETs schreiben nicht; POST/Analyse erneuert).
-  if (aktuell.index != null && !verlauf.some(s => s.date === aktuell.stand)) {
-    const snap: PerfSnapshot = {
-      date: aktuell.stand,
-      index: aktuell.index,
-      saeulen: Object.fromEntries(aktuell.saeulen.map(s => [s.key, s.score])),
-      abdeckung: aktuell.abdeckung,
-    };
-    const file = await updateJson<PerfFile>(speicherFuer('performance', personAus(req)), current => {
-      const list = Array.isArray(current?.snapshots) ? current.snapshots : [];
-      if (list.some(s => s.date === snap.date)) return { snapshots: list };
-      return { snapshots: [...list, mitNotiz(snap, aktuell, list)].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX) };
-    });
-    return ausliefern(file.snapshots);
-  }
-  return ausliefern(verlauf);
-}
 
 export async function POST(req: Request) {
   if (!(await imHaushaltOderSystemlauf(req))) return nurHaushalt();
@@ -94,62 +30,42 @@ export async function POST(req: Request) {
   let body: { analyse?: boolean } = {};
   try { body = await jsonBegrenzt(req); } catch { /* ohne Body ist ok */ }
 
-  // Für wen die Analyse rechnet = unter wem sie im Agenten-Log steht (08.10.): benannte Person, im Systemlauf der Inhaber.
+  // Für wen gerechnet wird = unter wem es im Agenten-Log steht (08.10.): benannte Person, im Systemlauf der Inhaber.
   const fuer = await laufPerson(req);
-  const aktuell = await computeIndex(undefined, fuer);
-
-  // Schnappschuss für heute — ein Eintrag pro Tag, spätere überschreiben.
-  const snap: PerfSnapshot = {
-    date: aktuell.stand,
-    index: aktuell.index,
-    saeulen: Object.fromEntries(aktuell.saeulen.map(s => [s.key, s.score])),
-    abdeckung: aktuell.abdeckung,
-  };
-  const file = await updateJson<PerfFile>('performance', current => {
-    const list = Array.isArray(current?.snapshots) ? current.snapshots : [];
-    const ohneHeute = list.filter(s => s.date !== snap.date);
-    return { snapshots: [...ohneHeute, mitNotiz(snap, aktuell, list)].sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX) };
-  });
-
-  if (!body.analyse) return NextResponse.json({ aktuell, verlauf: file.snapshots });
-  if (!hasAnthropicKey()) return NextResponse.json({ aktuell, verlauf: file.snapshots, error: 'Kein Anthropic-Key.' });
+  const sichten = scoresFuer('beide', await scoreRechteFuer(fuer)) ?? [];
+  // Rechnen hält den Tagespunkt des Privat-Scores fest (lib/scores/server.ts `privatScoreStand`, einmal am Tag).
+  const scores = await scoresKurzFuer(fuer, sichten);
+  if (!body.analyse) return NextResponse.json({ ok: true, scores });
+  if (!hasAnthropicKey()) return NextResponse.json({ ok: true, scores, error: 'Kein Anthropic-Key.' });
 
   // ── Einordnung: nur interpretieren, nicht rechnen ──
-  // Art. 9 (05.10.): ohne Einwilligung (b) gehen weder die Gesundheits-Säule noch die Gesamtzahl (die sie enthält) an die KI.
+  // Art. 9 (05.10.): ohne Einwilligung (b) gehen weder die Gesundheits-Säule noch die Zahl des Privat-Scores (die sie enthält) an die KI.
   const frei = await gesundheitAnKi(fuer).catch(() => false);
-  const fuerKi = indexFuerKi(aktuell, frei) ?? aktuell;
-  const vorher = frei ? file.snapshots.filter(s => s.date < snap.date).slice(-1)[0] : undefined;
-  const saeulenText = fuerKi.saeulen.map(s => {
-    const faktoren = s.faktoren.map(f => `    · ${f.label}: ${f.echt ? `${f.wert} (${f.quelle})` : `KEINE DATEN (${f.quelle})`}`).join('\n');
-    return `- ${s.label} (Gewicht ${Math.round(s.gewicht * 100)}%): ${s.score ?? 'keine Daten'}${s.score != null ? `, Datenbasis ${Math.round(s.abdeckung * 100)}%` : ''}\n${faktoren}`;
-  }).join('\n');
+  const fuerKi: { privat?: ScoreKurz; business?: ScoreKurz } = {
+    ...(scores.privat ? { privat: scoreFuerKi(scores.privat, frei) ?? undefined } : {}),
+    ...(scores.business ? { business: scores.business } : {}),
+  };
+  if (!fuerKi.privat && !fuerKi.business) return NextResponse.json({ ok: true, scores, error: 'Für dieses Konto gibt es keinen Score.' });
 
   const system = [
-    `Du bist ZOE, die zentrale Intelligenz und Chief of Staff von ${await vornameVon(fuer)}. Du ordnest den Performance-Index dieser Person ein.`,
-    // S1 #9: kein fester Gesundheitskontext mehr im Prompt.
-    // Nordstern aus den Daten des Haushalts (08.10. abends) — vorher fest im Code, samt eines persönlichen Ziels.
+    `Du bist ZOE, die zentrale Intelligenz und Chief of Staff von ${await vornameVon(fuer)}. Du ordnest die zwei Scores dieser Person ein: den Privat-Score (nur Privates) und den Business-Score (= Business-Index, nur Business).`,
     await nordsternSatzFuer(fuer),
-    'Du bekommst FERTIG GERECHNETE Werte — rechne nichts nach, erfinde nichts.',
-    'WICHTIG: Faktoren ohne Daten sind KEINE schlechten Werte, sondern eine Messlücke. Behandle sie als „wissen wir nicht" und sag, was die Person eintragen müsste, damit die Zahl echt wird.',
+    'Du bekommst FERTIG GERECHNETE Werte — rechne nichts nach, erfinde nichts. Mische die zwei Scores NIE zu einer Zahl und nenne Privates nie als Business-Hebel (oder umgekehrt).',
+    'WICHTIG: Säulen ohne Wert sind KEINE schlechten Werte, sondern eine Messlücke. Sag, was die Person eintragen müsste, damit die Zahl echt wird.',
     'Sei nüchtern und konkret. Kein Startup-Sprech. Gesundheitsdaten sind privat.',
-    'Antworte NUR als JSON: {"lage":"<2-3 Sätze: wo steht die Person wirklich, wie belastbar ist die Zahl>","hebel":{"saeule":"<Name>","warum":"<1-2 Sätze>","schritt":"<EINE konkrete Handlung diese Woche>"},"staerke":"<1 Satz: was trägt>","messluecke":"<1 Satz: was fehlt, damit der Index ehrlich misst — leer wenn nichts fehlt>"}',
+    'Antworte NUR als JSON: {"lage":"<2-3 Sätze: wo steht die Person je Score, wie belastbar sind die Zahlen>","hebel":{"score":"<Privat-Score|Business-Score>","saeule":"<Name>","warum":"<1-2 Sätze>","schritt":"<EINE konkrete Handlung diese Woche>"},"staerke":"<1 Satz: was trägt>","messluecke":"<1 Satz: was fehlt, damit die Scores ehrlich messen — leer wenn nichts fehlt>"}',
   ].join('\n');
+  const user = scoresSatz(fuerKi, { mitSaeulen: true, ohneGesundheitHinweis: !frei });
 
-  const user = [
-    frei ? `Stand ${aktuell.stand}. Index: ${aktuell.index ?? 'nicht berechenbar'} (${aktuell.label}).` : `Stand ${aktuell.stand}. Gesamtindex und Gesundheits-Säule bleiben privat (keine Einwilligung) — ordne nur die Säulen unten ein.`,
-    `Datenbasis insgesamt: ${Math.round(aktuell.abdeckung * 100)}% — so viel des Index steht auf echten Daten.`,
-    vorher ? `Vorheriger Stand (${vorher.date}): ${vorher.index}.` : 'Kein früherer Stand zum Vergleich.',
-    '',
-    'SÄULEN:',
-    saeulenText,
-  ].join('\n');
+  const kategorien = (frei && fuerKi.privat ? ['aufgaben', 'finanzen', 'gesundheit'] : ['aufgaben', 'finanzen']) as Parameters<typeof kiAus>[1];
+  const r = await askJson<Record<string, unknown>>({ zweck: 'performance', system, user, maxTokens: 3000, ki: kiAus(req, kategorien, { person: fuer }) });
+  if (!r.ok || !r.data) return NextResponse.json({ ok: true, scores, error: r.error ?? 'Analyse fehlgeschlagen.' });
 
-  const r = await askJson<Record<string, unknown>>({ zweck: 'performance', system, user, maxTokens: 3000, ki: kiAus(req, frei ? ['aufgaben', 'finanzen', 'gesundheit'] : ['aufgaben', 'finanzen'], { person: fuer }) });
-  if (!r.ok || !r.data) return NextResponse.json({ aktuell, verlauf: file.snapshots, error: r.error ?? 'Analyse fehlgeschlagen.' });
-
-  await logRun('performance', `Index ${aktuell.index ?? '—'} (${aktuell.stand})`, { index: aktuell.index, ...r.data }, { person: fuer });
-  // `fuerZoe` (09.10., KI-Etiketten): was ein Agentenlauf an ein Modell weitergeben darf — ohne Einwilligung (b) weder der Gesamtindex
-  // (er enthält die Gesundheits-Säule) noch ein Gesundheits-Hebel (`indexFuerKi`), dazu die Marke, ob Gesundheit im Prompt stand.
-  const fuerZoe = { index: fuerKi.index, ...(fuerKi.index != null ? { label: aktuell.label } : {}), abdeckung: aktuell.abdeckung, hebel: fuerKi.hebel ?? null, gesundheit: frei };
-  return NextResponse.json({ aktuell, verlauf: file.snapshots, ...r.data, fuerZoe });
+  const kurz = (s?: ScoreKurz) => (s ? (s.index != null ? `${s.index}` : '—') : null);
+  await logRun('performance', `Privat-Score ${kurz(fuerKi.privat) ?? '—'} · Business-Score ${kurz(fuerKi.business) ?? '—'}`, { privat: fuerKi.privat?.index ?? null, business: fuerKi.business?.index ?? null, ...r.data }, { person: fuer });
+  // `fuerZoe` (09.10., KI-Etiketten): was ein Agentenlauf an ein Modell weitergeben darf — ohne Einwilligung (b) weder die Zahl des Privat-Scores
+  // (sie enthält die Gesundheits-Säule) noch ein Gesundheits-Hebel (`scoreFuerKi`), dazu die Marke, ob Gesundheit im Prompt stand.
+  const zoeTeil = (s?: ScoreKurz) => (s ? { index: s.index, label: s.label, abdeckung: s.abdeckung, hebel: s.hebel ? `${s.hebel.label} (${s.hebel.saeule})` : null } : null);
+  const fuerZoe = { privat: zoeTeil(fuerKi.privat), business: zoeTeil(fuerKi.business), gesundheit: frei && !!fuerKi.privat };
+  return NextResponse.json({ ok: true, scores, ...r.data, fuerZoe });
 }

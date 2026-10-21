@@ -3,8 +3,8 @@
 // wir im Fokus-Bereich … Zeit — Privat wie Business einzeln.“ Befund am Bildschirm: die Business-Sicht zeigte Familie & Partnerschaft,
 // Gesundheit, Tagesform und „Privat · Selbstständigkeit“. Geprüft:
 //   (a) die reine Regel (Vorgaben je Bereich ohne Überschneidung, Altbestand verteilt, Prüfung lehnt Fremdes ab, Ist nur aus dem eigenen
-//       Bereich, Passung, Spiegel nur eigene Säulen, Wirkung je Sicht, Zeit-Bild je Sicht, Zeit je Einheit je Sicht),
-//   (b) die Routen (/api/fokus/steuerung, /api/performance?sicht=, /api/state/zeit?sicht=, /api/state/zeit/einheiten?sicht=) mit erfundenen
+//       Bereich, Passung, Spiegel nur eigene Säulen, Zeit-Bild je Sicht, Zeit je Einheit je Sicht),
+//   (b) die Routen (/api/fokus/steuerung, /api/scores?sicht= — seit 21.10. die Wirkung, /api/state/zeit?sicht=, /api/state/zeit/einheiten?sicht=) mit erfundenen
 //       Personen: Inhaber, Mitglied, anderer Haushalt, Konto „nur Business“ — Sicht X bekommt nichts aus Y, getrennte Bestände,
 //   (c) Navigation und Oberfläche (Planung nur Planung, Fokus-Knopf im Kopf, alte Adressen leiten weiter, Tagesform/Kompass nur Privat).
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
@@ -24,24 +24,6 @@ delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 vi.mock('@/lib/planung/bloecke-server', () => ({
   planBloeckeLesen: async () => [{ id: 'b1', date: '2026-10-10', startMin: 600, dauerMin: 60, titel: 'Erholung', art: 'erholung', quelle: 'kalender' }],
 }));
-// Der Gesamt-Score (sonst über viele Bestände gerechnet): alle sechs Säulen mit Marken, die in keiner fremden Sicht auftauchen dürfen.
-vi.mock('@/lib/performance', () => ({
-  computeIndex: async () => ({
-    index: 61, label: 'Solide', abdeckung: 0.8, hebel: 'Gesundheit & Energie', hebelKey: 'health', stand: '2026-10-10',
-    saeulen: [
-      { key: 'health', label: 'Gesundheit & Energie', gewicht: 0.35, score: 50, abdeckung: 1, zuDuenn: false, hinweis: '', faktoren: [{ label: 'MARKE-GESUNDHEIT', wert: 50, echt: true, quelle: 'x' }] },
-      { key: 'business', label: 'Business-Performance', gewicht: 0.2, score: 70, abdeckung: 1, zuDuenn: false, hinweis: '', faktoren: [{ label: 'MARKE-BUSINESS', wert: 70, echt: true, quelle: 'x' }] },
-      { key: 'planning', label: 'Planung & Ausführung', gewicht: 0.1, score: 60, abdeckung: 1, zuDuenn: false, hinweis: '', faktoren: [{ label: 'MARKE-GEMISCHT', wert: 60, echt: true, quelle: 'x' }] },
-      { key: 'finance', label: 'Finanzen', gewicht: 0.15, score: 55, abdeckung: 1, zuDuenn: false, hinweis: '', teile: { business: 80, privat: 30 },
-        faktoren: [{ label: 'Business · MARKE-FIN-BUSINESS', wert: 80, echt: true, quelle: 'x' }, { label: 'Privat · MARKE-FIN-PRIVAT', wert: 30, echt: true, quelle: 'x' }] },
-      { key: 'social', label: 'Familie & Partnerschaft', gewicht: 0.1, score: 40, abdeckung: 1, zuDuenn: false, hinweis: '', faktoren: [{ label: 'MARKE-FAMILIE', wert: 40, echt: true, quelle: 'x' }] },
-      { key: 'agents', label: 'Agenten', gewicht: 0.1, score: 65, abdeckung: 1, zuDuenn: false, hinweis: '', faktoren: [{ label: 'MARKE-GEMISCHT-2', wert: 65, echt: true, quelle: 'x' }] },
-    ],
-    business: { index: 70, label: 'Solide', saeulen: [], rot: [], luecken: 0, hebel: null },
-  }),
-  indexLabel: () => '',
-}));
-
 type H = (r: Request) => Promise<Response>;
 const kopf = (p: string) => ({ 'content-type': 'application/json', 'x-make-user': p });
 const anfrage = (url: string, p: string, method = 'GET', body?: unknown) => new Request(`http://test${url}`, { method, headers: kopf(p), ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
@@ -165,23 +147,6 @@ describe('(a) Regel — rein', () => {
     expect(reglerAusThemen('business', [{ id: 'gesundheit', label: 'G', gewicht: 90, zeit: [] }])).toEqual({});
   });
 
-  it('Wirkung je Sicht: Business ohne Gesundheit/Familie/Privat-Finanzen, Privat ohne Business-Index/Business-Finanzen; Gemischtes nirgends', async () => {
-    const { wirkungFuerSicht, verlaufFuerSicht } = await import('@/lib/fokus/wirkung');
-    const { computeIndex } = await import('@/lib/performance');
-    const p = await computeIndex('2026-10-10', 'person-a');
-    const b = wirkungFuerSicht(p, 'business'), pr = wirkungFuerSicht(p, 'privat');
-    expect(b.saeulen.map(s => s.key)).toEqual(['business', 'finance']);
-    expect(pr.saeulen.map(s => s.key)).toEqual(['health', 'finance', 'social']);
-    const bt = JSON.stringify(b), pt = JSON.stringify(pr);
-    for (const m of ['MARKE-GESUNDHEIT', 'MARKE-FAMILIE', 'MARKE-FIN-PRIVAT', 'MARKE-GEMISCHT', 'privat']) expect(bt, m).not.toContain(m);
-    for (const m of ['MARKE-BUSINESS', 'MARKE-FIN-BUSINESS', 'MARKE-GEMISCHT', '"business":{']) expect(pt, m).not.toContain(m);
-    expect(b.saeulen.find(s => s.key === 'finance')?.score).toBe(80);
-    expect(pr.saeulen.find(s => s.key === 'finance')?.score).toBe(30);
-    expect(b.index).toBe(Math.round((70 * 0.2 + 80 * 0.15) / 0.35));
-    const v = verlaufFuerSicht([{ date: 'd', index: 60, abdeckung: 1, saeulen: { health: 50, social: 40, business: 70, finance: 55 } }], { health: 0.35, social: 0.1, business: 0.2 }, 'business');
-    expect(v).toEqual([{ date: 'd', index: 70, saeulen: { business: 70 } }]);
-  });
-
   it('Zeit-Bild je Sicht: Schlüssel, Summen und Blöcke des anderen Bereichs fallen heraus', async () => {
     const { bild, bildFuerSicht } = await import('@/lib/zeitmessung/modell');
     const d = (await db.loadJson('zeit--person-a')) as import('@/lib/zeitmessung/modell').ZeitDatei;
@@ -280,18 +245,18 @@ describe('(b) Routen — Sicht X bekommt nichts aus Y', () => {
     expect(c.text).not.toContain('Produkt & System');
   });
 
-  it('GET /api/performance?sicht=: Business ohne Privat-Säulen, Privat ohne Business; „nur Business“ immer Business', async () => {
-    const perf = (await import('@/app/api/performance/route')) as unknown as { GET: H };
-    const t = async (wer: string, q: string) => { const r = await perf.GET(anfrage(`/api/performance${q}`, wer)); return { status: r.status, text: await r.text() }; };
+  it('Wirkung = der Score des Bereichs (21.10.): GET /api/scores?sicht= — Business ohne Privat-Score, Privat ohne Business-Score; „nur Business“ nie Privat', async () => {
+    const scores = (await import('@/app/api/scores/route')) as unknown as { GET: H };
+    const t = async (wer: string, q: string) => { const r = await scores.GET(anfrage(`/api/scores${q}`, wer)); return { status: r.status, d: (await r.json()) as Record<string, unknown> }; };
     const b = await t('person-a', '?sicht=business');
     expect(b.status).toBe(200);
-    for (const m of ['MARKE-GESUNDHEIT', 'MARKE-FAMILIE', 'MARKE-FIN-PRIVAT', '"health"', '"social"']) expect(b.text, m).not.toContain(m);
+    expect(Object.keys(b.d).sort()).toEqual(['business', 'ok']);
     const p = await t('person-a', '?sicht=privat');
-    for (const m of ['MARKE-BUSINESS', 'MARKE-FIN-BUSINESS']) expect(p.text, m).not.toContain(m);
+    expect(p.status).toBe(200);
+    expect(Object.keys(p.d).sort()).toEqual(['ok', 'privat']);
     expect((await t('person-d', '?sicht=privat')).status).toBe(403);
-    const d = await t('person-d', '');
-    for (const m of ['MARKE-GESUNDHEIT', 'MARKE-FAMILIE']) expect(d.text, m).not.toContain(m);
-  });
+    expect(Object.keys((await t('person-d', '')).d).sort()).toEqual(['business', 'ok']);
+  }, 60_000);
 
   it('GET /api/state/zeit?sicht= und /einheiten?sicht=: nur der Bereich; „nur Business“ ohne Parameter nur Business', async () => {
     const zeit = (await import('@/app/api/state/zeit/route')) as unknown as { GET: H };
@@ -349,7 +314,8 @@ describe('(c) Navigation und Oberfläche', () => {
     expect(v).toContain('<FokusBloeckeKarte i={i++} sicht={bereich} />');
     expect(v).toContain('<Wirkung bereich={bereich}');
     expect(v).not.toContain('<PlanerLeiste');
-    expect(lies('components/os/fokus/Wirkung.tsx')).toContain('/api/performance?sicht=${bereich}');
+    // Seit 21.10. die Wirkung = der Score des Bereichs (dieselbe Quelle wie Heute: GET /api/scores).
+    expect(lies('components/os/fokus/Wirkung.tsx')).toContain('useScores(bereich)');
     expect(lies('components/os/fokus/useSteuerung.ts')).toContain('/api/fokus/steuerung?bereich=${bereich}');
   });
 
