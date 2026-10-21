@@ -182,7 +182,7 @@ export function warteArtVon(a: Aktion): WarteArt | null {
 
 /** Ergebnis einer Aktion (vom Server) — `voruebergehend` wird wiederholt (Backoff), `dauerhaft` geht über die Fehlerkante bzw. hält an. */
 export type AktionErgebnis =
-  | { ok: true; wirkung?: Wirkung[]; kostenCent?: number }
+  | { ok: true; wirkung?: Wirkung[]; kostenCent?: number; /** Agenten-Schritt: das gefragte Modell und die Tokens (Log-Baum der Läufe-Ansicht). */ modell?: string; token?: { ein: number; aus: number } }
   | { ok: false; art: 'voruebergehend' | 'dauerhaft'; grund: LaufGrund };
 
 type Plan =
@@ -633,6 +633,8 @@ export function nachAktion(laufEin: ProzessLauf, def: ProzessDefinition, a: Akti
   if (e.ok) {
     if (e.wirkung?.length) s.wirkung = [...(s.wirkung ?? []).filter(w => !e.wirkung!.some(x => x.id === w.id)), ...e.wirkung];
     if (e.kostenCent) { s.kostenCent = (s.kostenCent ?? 0) + e.kostenCent; l.kostenCent += e.kostenCent; }
+    if (e.modell) s.modell = e.modell;
+    if (e.token) s.token = { ein: (s.token?.ein ?? 0) + e.token.ein, aus: (s.token?.aus ?? 0) + e.token.aus };
     delete s.versuch;
     if (a.art === 'teilprozess' && a.uebergabe) { abschliessen(s, 'erledigt', undefined, jetzt); beenden(l, 'fertig', jetzt, { ergebnis: 'uebergabe' }); return l; }
     const w = warteArtVon(a);
@@ -657,7 +659,9 @@ export function nachAktion(laufEin: ProzessLauf, def: ProzessDefinition, a: Akti
     }
   }
   const k = def.knoten.find(x => x.id === a.knoten);
-  if (k?.zweige?.fehler && idx.get(k.id)?.has('fehler')) { abschliessen(s, 'fehler', 'fehler', jetzt, e.grund); geh(l, idx, k.id, 'fehler', jetzt); return l; }
+  // Ohne KI-Schlüssel bzw. Guthaben (22.10., C1-Frage 1) ist das kein Fehler des Falls, sondern der Einrichtung: SOFORT anhalten, auch mit Fehlerkante —
+  // „erneut ab hier“ setzt an derselben Stelle an, sobald die KI eingerichtet ist.
+  if (e.grund !== 'ki-nicht-eingerichtet' && k?.zweige?.fehler && idx.get(k.id)?.has('fehler')) { abschliessen(s, 'fehler', 'fehler', jetzt, e.grund); geh(l, idx, k.id, 'fehler', jetzt); return l; }
   s.status = 'fehler'; s.grund = e.grund;
   l.status = 'fehler'; l.grund = e.grund;
   return l;

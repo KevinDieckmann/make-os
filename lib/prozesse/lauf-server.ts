@@ -27,7 +27,7 @@ import {
 } from './lauf-regeln';
 import {
   LAUF_AUFGABE_PRAEFIX, LAUF_GRENZEN, laeufeBestand, laufOffen, leererStand, leereLaeufe,
-  type LaeufeDatei, type LaufFall, type LaufGrund, type LaufModus, type ProzessLauf, type ProzessLaufStand, type VerlaufEintrag, type Wirkung,
+  type LaeufeDatei, type LaufFall, type LaufGrund, type LaufModus, type LaufSchritt, type ProzessLauf, type ProzessLaufStand, type Testfall, type VerlaufEintrag, type Wirkung,
 } from './lauf-typen';
 import { fallArtVon, type AgentSchritt, type ProzessDefinition, type ProzessEintrag, type ProzesseDatei } from './definition';
 import { alleSchritte, startKnoten } from './fluss';
@@ -448,13 +448,17 @@ async function agentAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Extract<Akt
   let kosten = 0;
   let ergebnisText = '';
   let werte: Record<string, unknown> = {};
+  const modell = String(s.modellWahl?.modell ?? MODEL_BY_TIER[s.modell]);
+  const token = { ein: 0, aus: 0 };
   for (let runde = 0; runde < 2; runde++) {
     const r = await askText({
       system, user: runde ? `${frage}\n\nDeine letzte Antwort passte nicht zum Vertrag. Bitte noch einmal NUR das JSON.` : frage,
-      model: s.modellWahl?.modell ?? MODEL_BY_TIER[s.modell], maxTokens: 1500, zweck: `prozess-${l.prozessId}`, timeoutMs: 60_000,
+      model: modell, maxTokens: 1500, zweck: `prozess-${l.prozessId}`, timeoutMs: 60_000,
       ki: { lauf: 'hintergrund', person: l.person, kategorien: fall.daten && Object.keys(fall.daten).length ? ['crm'] : ['allgemein'] },
     });
-    if (r.usage) kosten += kostenCent({ stufe: s.modell, tokenEin: r.usage.ein + r.usage.cacheLesen + r.usage.cacheSchreiben, tokenAus: r.usage.aus });
+    if (r.usage) { kosten += kostenCent({ stufe: s.modell, tokenEin: r.usage.ein + r.usage.cacheLesen + r.usage.cacheSchreiben, tokenAus: r.usage.aus }); token.ein += r.usage.ein + r.usage.cacheLesen + r.usage.cacheSchreiben; token.aus += r.usage.aus; }
+    // Kein Schlüssel bzw. kein Guthaben (22.10., C1-Frage 1): sofort anhalten mit klarem Grund — keine fünf Versuche, die nichts ändern können.
+    if (!r.ok && kiNichtEingerichtet(r.error)) return { ...fehlt('ki-nicht-eingerichtet'), kopf };
     if (!r.ok) return { ...fehlt(/^ki-gesperrt/.test(r.error ?? '') ? 'ki-aus' : 'ki-fehler', /^ki-gesperrt/.test(r.error ?? '') ? 'dauerhaft' : 'voruebergehend'), kopf };
     const j = extractJson<{ ergebnis?: unknown; werte?: unknown }>(r.text);
     const p = vertragPruefen(j?.werte ?? {}, s.ausgabe);
@@ -468,7 +472,16 @@ async function agentAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Extract<Akt
     eingabe: { _lauf: l.id, _knoten: a.knoten, _version: l.version, _sorte: 'agent', _werte: werte },
     person: l.person, quelle: 'lauf', anlass: `Prozess „${e.entwurf.titel}“`, bezug: { art: 'prozess', id: a.kennung }, einmalig: a.kennung,
   });
-  return { ok: true, wirkung: [{ art: 'vorschlag', id: v.id }], kostenCent: kosten || a.kostenCent, kopf };
+  return { ok: true, wirkung: [{ art: 'vorschlag', id: v.id }], kostenCent: kosten || a.kostenCent, kopf, modell, ...(token.ein || token.aus ? { token } : {}) };
+}
+
+/** Antworten des KI-Tors, die „nicht eingerichtet“ bedeuten (lib/anthropic.ts): kein Schlüssel bzw. das Guthaben ist leer. */
+export const kiNichtEingerichtet = (fehler: string | undefined): boolean => fehler === 'no-key' || fehler === 'guthaben-leer';
+
+/** EINE Glocke je Person (neuere ersetzt), ganz gleich, wie viele Läufe anhalten — der Titel nennt keine Inhalte. */
+async function kiGlocke(an: string, prozessId: string): Promise<void> {
+  const [{ melde }, { WEG }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/wege')]);
+  await melde({ an, art: 'prozess', titel: 'Prozesse: KI nicht eingerichtet — Agenten-Schritte halten an, bis ein KI-Schlüssel bzw. Guthaben da ist', link: WEG.prozesse({ p: prozessId }), bezug: { art: 'prozess', id: 'ki-nicht-eingerichtet' } });
 }
 
 /** Teilprozess bzw. Übergabe: den Lauf des anderen Prozesses für denselben Fall starten (Kette +1, Herkunft) — idempotent über die Kennung. */
@@ -573,7 +586,10 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
       if (nach.h80 && an) await glocke(an, `„${e.entwurf.titel}“: 80 % des Monatsbudgets erreicht`, 'budget', e.id, false);
       if (nach.notbremse) { await prozessPausieren(e.id, 'notbremse', kx); break; }
       if (nach.grenze) { await prozessPausieren(e.id, 'budget', kx); break; }
-      if (nach.lauf.status === 'fehler' && an) await glocke(an, `„${e.entwurf.titel}“ braucht Hilfe — ein Lauf ist angehalten`, 'fehler', e.id, false);
+      if (nach.lauf.status === 'fehler' && an) {
+        if (nach.lauf.grund === 'ki-nicht-eingerichtet') await kiGlocke(an, e.id);
+        else await glocke(an, `„${e.entwurf.titel}“ braucht Hilfe — ein Lauf ist angehalten`, 'fehler', e.id, false);
+      }
     }
     if (letzter && !laufOffen(letzter) && letzter.herkunft) await elternWecken(letzter, kx);
     return letzter;
@@ -1101,7 +1117,11 @@ async function laeufeJeMonat(def: ProzessDefinition, kx: MotorKontext): Promise<
   return Math.max(1, n);
 }
 
-export interface ScharfVorschau { version: number; bestehende: number; laeufeJeMonat: number; agentenSchritte: number; schaetzungCent: number; befunde: { stufe: string; text: string; knotenId?: string }[] }
+export interface ScharfVorschau {
+  version: number; bestehende: number; laeufeJeMonat: number; agentenSchritte: number; schaetzungCent: number; befunde: { stufe: string; text: string; knotenId?: string }[];
+  /** Aufschlüsselung (22.10., Scharf-Dialog: „Läufe × Agenten-Schritte × Modellstufe“): je Modellstufe die Zahl der Schritte und die Kosten eines Schritts. */
+  jeLaufCent?: number; stufen?: { stufe: string; schritte: number; centJeSchritt: number }[];
+}
 export async function scharfVorschau(prozessId: string): Promise<ScharfVorschau | null> {
   const kx = await kontextLaden();
   const e = eintragVon(kx, prozessId);
@@ -1112,7 +1132,8 @@ export async function scharfVorschau(prozessId: string): Promise<ScharfVorschau 
   const kostenJeStufe = new Map<string, number>();
   for (const st of ['schnell', 'ausgewogen', 'stark'] as const) kostenJeStufe.set(st, await agentKostenCent({ modell: st }));
   const s = kostenSchaetzung(j.def, laeufe, st => kostenJeStufe.get(st) ?? 1);
-  return { version: j.nr, bestehende: (await bestehendeFaelle(j.def, kx)).length, laeufeJeMonat: laeufe, agentenSchritte: s.schritte, schaetzungCent: s.monatCent, befunde: laufBefunde(j.def) };
+  const stufen = (['schnell', 'ausgewogen', 'stark'] as const).map(st => ({ stufe: st, schritte: alleSchritte(j.def).filter(x => x.schritt.form === 'agent' && x.schritt.agent?.modell === st).length, centJeSchritt: kostenJeStufe.get(st) ?? 1 })).filter(x => x.schritte);
+  return { version: j.nr, bestehende: (await bestehendeFaelle(j.def, kx)).length, laeufeJeMonat: laeufe, agentenSchritte: s.schritte, schaetzungCent: s.monatCent, befunde: laufBefunde(j.def), jeLaufCent: s.jeLaufCent, stufen };
 }
 
 export type ScharfErgebnis = { ok: true; gestartet: number; zurueckgehalten: number } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; befunde?: unknown[] };
@@ -1281,10 +1302,154 @@ export async function laeufeDesProzesses(prozessId: string): Promise<{ laeufe: i
     kennzahlen: laufKennzahlen(d.laeufe, prozessId),
   };
 }
-export async function laufLesen(id: string): Promise<{ lauf: import('./lauf-regeln').LaufKurz; knoten: ReturnType<typeof import('./lauf-regeln').knotenStand> } | null> {
+export async function laufLesen(id: string): Promise<{ lauf: import('./lauf-regeln').LaufKurz; knoten: ReturnType<typeof import('./lauf-regeln').knotenStand>; schritte: LaufSchritt[]; daten: Record<string, string> } | null> {
   const { laufKurz, knotenStand } = await import('./lauf-regeln');
   const l = (await laeufeLesen()).laeufe.find(x => x.id === id);
-  return l ? { lauf: laufKurz(l, new Date().toISOString()), knoten: knotenStand(l) } : null;
+  // `schritte` (22.10., Log-Baum): die besuchten Knoten in Reihenfolge — wie im Bestand nur Kennungen, Status, Zeitpunkte, Kosten; `daten` nur Kennungen und Arten.
+  return l ? { lauf: laufKurz(l, new Date().toISOString()), knoten: knotenStand(l), schritte: l.schritte, daten: Object.fromEntries(Object.entries(l.daten).filter(([k]) => k.startsWith('ereignis.') || k.startsWith('bezug.'))) } : null;
+}
+
+// ══ Inhalte eines Laufs LIVE (22.10., Läufe-Ansicht): der Lauf hält nur Kennungen — die Ansicht holt beim Öffnen, was die Person sehen darf ══════════
+
+/** Ein Eintrag hinter einer Wirkung bzw. dem Fall — `sichtbar: false` heißt: es gibt ihn, aber nicht für diese Person (keine Inhalte). */
+export interface InhaltZeile { art: Wirkung['art'] | 'fall'; id: string; sichtbar: boolean; titel?: string; status?: string; an?: string; link?: string; grund?: 'weg' | 'nicht-fuer-dich' | 'eingeschraenkt' }
+export interface LaufInhalte { fall: InhaltZeile | null; wirkungen: Record<string, InhaltZeile> }
+
+/**
+ * Inhalte eines Laufs mit den Rechten der Person — über die vorhandenen Lese-Wege und ihre Filter (EINE Regel je Bestand):
+ *   Aufgaben `ladeAufgabenSicht(person)` (wie GET /api/state/tasks: „nur ich“ anderer, Papierkorb, Privat-Bereich eines Kontos „nur Business“ fehlen),
+ *   Vorschläge `vorschlagSichtbar` (wie GET /api/zoe/stapel — Agenten-Texte bleiben im Stapel, hier nur Titel und der Link dorthin),
+ *   der Fall über `crmSicht(person)` (Art. 18: eingeschränkte Kontakte fehlen — nur „eingeschränkter Kontakt“). Teil-Läufe nur Status. Meldungen ohne Inhalt.
+ */
+export async function laufInhalte(id: string, person: string): Promise<LaufInhalte | null> {
+  const l = (await laeufeLesen()).laeufe.find(x => x.id === id);
+  if (!l) return null;
+  const { WEG } = await import('@/lib/wege');
+  const wirk = l.schritte.flatMap(s => s.wirkung ?? []);
+  const raus: Record<string, InhaltZeile> = {};
+  if (wirk.some(w => w.art === 'aufgabe')) {
+    const { ladeAufgabenSicht } = await import('@/lib/aufgaben/sicht');
+    const sicht = new Map((await ladeAufgabenSicht(person)).tasks.map(t => [t.id, t]));
+    const roh = new Set(((await loadJson<{ tasks?: { id: string }[] }>('tasks'))?.tasks ?? []).map(t => t.id));
+    for (const w of wirk.filter(x => x.art === 'aufgabe')) {
+      const t = sicht.get(w.id);
+      raus[w.id] = t ? { art: 'aufgabe', id: w.id, sichtbar: true, titel: t.title, status: t.status, ...(t.assignee ? { an: t.assignee } : {}), link: WEG.aufgabe(w.id) }
+        : { art: 'aufgabe', id: w.id, sichtbar: false, grund: roh.has(w.id) ? 'nicht-fuer-dich' : 'weg' };
+    }
+  }
+  if (wirk.some(w => w.art === 'vorschlag')) {
+    const [{ lies, vorschlagSichtbar }, { privatAusgeblendetFuer }] = await Promise.all([import('@/lib/zoe/stapel'), import('@/lib/zugang/konto-sicht-server')]);
+    const privat = !(await privatAusgeblendetFuer(person));
+    const alle = new Map((await lies()).map(v => [v.id, v]));
+    for (const w of wirk.filter(x => x.art === 'vorschlag')) {
+      const v = alle.get(w.id);
+      raus[w.id] = v && vorschlagSichtbar(v, person, true, privat)
+        ? { art: 'vorschlag', id: w.id, sichtbar: true, titel: v.titel, status: v.status, ...(v.person ? { an: v.person } : {}), link: WEG.freigaben(undefined, 'business') }
+        : { art: 'vorschlag', id: w.id, sichtbar: false, grund: v ? 'nicht-fuer-dich' : 'weg' };
+    }
+  }
+  if (wirk.some(w => w.art === 'lauf')) {
+    const d = await laeufeLesen();
+    for (const w of wirk.filter(x => x.art === 'lauf')) {
+      const k = d.laeufe.find(x => x.id === w.id);
+      raus[w.id] = k ? { art: 'lauf', id: w.id, sichtbar: true, status: k.status, link: WEG.prozesse({ p: k.prozessId, ansicht: 'werkstatt', w: 'laeufe', lauf: k.id }) } : { art: 'lauf', id: w.id, sichtbar: false, grund: 'weg' };
+    }
+  }
+  for (const w of wirk.filter(x => x.art === 'meldung' || x.art === 'gesendet')) raus[w.id] = { art: w.art, id: w.id, sichtbar: true };
+  return { fall: await fallZeile(l.fall, person), wirkungen: raus };
+}
+
+/** Der Fall eines Laufs in der Sicht der Person (Art. 18 ausgeblendet, IBAN nie). */
+async function fallZeile(f: LaufFall, person: string): Promise<InhaltZeile | null> {
+  if (f.art === 'keiner' || !f.id) return null;
+  const { crmSicht } = await import('@/lib/zoe/crm-sicht');
+  const s = await crmSicht(person);
+  if (!s) return { art: 'fall', id: f.id, sichtbar: false, grund: 'nicht-fuer-dich' };
+  const { WEG } = await import('@/lib/wege');
+  const eingeschraenkt = s.eingeschraenkt.has(f.id);
+  if (eingeschraenkt) return { art: 'fall', id: f.id, sichtbar: false, grund: 'eingeschraenkt' };
+  const zeile = (titel: string | undefined, link?: string): InhaltZeile => (titel ? { art: 'fall', id: f.id!, sichtbar: true, titel, ...(link ? { link } : {}) } : { art: 'fall', id: f.id!, sichtbar: false, grund: 'weg' });
+  switch (f.art) {
+    case 'deal': { const c = s.crm.chancen.find(x => x.id === f.id); return zeile(c?.titel, c ? WEG.deal(c.id) : undefined); }
+    case 'mandat': { const m = s.crm.mandate.find(x => x.id === f.id && !x.geloeschtAm); return zeile(m ? `${m.titel} · ${m.kunde}` : undefined, m ? WEG.mandat(m.id) : undefined); }
+    case 'firma': { const x = s.crm.firmen.find(y => y.id === f.id); return zeile(x?.name, x ? WEG.firma(x.id) : undefined); }
+    case 'lead': { const x = s.crm.firmen.find(y => y.id === f.id); const k = s.kontakt(f.id); return zeile(x?.name ?? (k ? s.name(k.id) : undefined), x ? WEG.firma(x.id) : undefined); }
+    case 'event': { const e = s.crm.events.find(x => x.id === f.id); return zeile(e?.titel); }
+    case 'kampagne': { const c = (s.crm.kampagnen ?? []).find(x => x.id === f.id); return zeile(c?.name); }
+  }
+  return null;
+}
+
+/** Die letzten Eingänge des Webhooks eines Prozesses (22.10., Webhook-Oberfläche): nur Zeit und was daraus wurde — nie die Felder (fremder Text). */
+export async function webhookEingaengeKurz(prozessId: string, h?: string, max = 10): Promise<{ am: string; lauf?: { id: string; status: ProzessLauf['status'] } }[]> {
+  const { webhooksLesen } = await import('./werkstatt-server');
+  const w = await webhooksLesen(h).catch(() => null);
+  if (!w) return [];
+  const d = await laeufeLesen(h);
+  return w.eingaenge.filter(e => e.prozessId === prozessId).sort((a, b) => (a.am < b.am ? 1 : -1)).slice(0, max).map(e => {
+    const l = d.laeufe.find(x => x.prozessId === prozessId && Object.entries(x.daten).some(([k, v]) => k.startsWith('bezug.') && v === e.id));
+    return { am: e.am, ...(l ? { lauf: { id: l.id, status: l.status } } : {}) };
+  });
+}
+
+// ══ Testfälle (22.10., Reiter „Tests“, Punkt 48) ════════════════════════════════════════════════════════════════════════════════════════════════
+
+export type TestErgebnisServer = { id: string; ok: boolean; fehler?: string; ist: { knotenId: string; status: Testfall['erwartet'][number]['status'] }[] };
+
+/**
+ * Einen Testfall anlegen: aus einem Lauf (sein Fall, n8n „Copy to editor“) bzw. mit einem Fall oder dem Beispiel. Die erwartete Folge rechnet der Probelauf
+ * (derselbe Motor, schreibt nichts) auf der jüngsten Version — ohne Version auf dem Entwurf. Höchstens `LAUF_GRENZEN.testfaelle` (sonst 413, nie gekürzt).
+ */
+export async function testfallAnlegen(a: { prozessId: string; person: string; aus?: string; fall?: { art: string; id: string } | 'beispiel' }): Promise<{ ok: true; test: Testfall } | { ok: false; status: 400 | 404 | 409 | 413; fehler: string }> {
+  const kx = await kontextLaden();
+  const e = eintragVon(kx, a.prozessId);
+  if (!e) return { ok: false, status: 404, fehler: 'Diesen Prozess gibt es nicht.' };
+  let fall: LaufFall | 'beispiel' = a.fall === 'beispiel' || !a.fall ? 'beispiel' : { art: a.fall.art as LaufFall['art'], id: a.fall.id };
+  let aus: Testfall['aus'] | undefined;
+  if (a.aus) {
+    const l = (await laeufeLesen(kx.h)).laeufe.find(x => x.id === a.aus && x.prozessId === a.prozessId);
+    if (!l) return { ok: false, status: 404, fehler: 'Diesen Lauf gibt es nicht.' };
+    fall = l.fall.id ? l.fall : 'beispiel';
+    aus = { lauf: l.id, version: l.version };
+  }
+  const quelle = juengste(e) ? 'version' : 'entwurf';
+  const p = await probelauf({ prozessId: a.prozessId, quelle, fall: fall === 'beispiel' ? 'beispiel' : { art: fall.art, id: fall.id! }, person: a.person });
+  if (!p.ok) return { ok: false, status: p.status, fehler: p.fehler };
+  const jetzt = kx.jetzt.toISOString();
+  type R = { ok: true; test: Testfall } | { ok: false; status: 413; fehler: string };
+  return laeufeAendern<R>(d => {
+    const st = standVon(d, a.prozessId);
+    const tests = st.tests ?? [];
+    if (tests.length >= LAUF_GRENZEN.testfaelle) return { datei: d, r: { ok: false as const, status: 413 as const, fehler: `Höchstens ${LAUF_GRENZEN.testfaelle} Testfälle je Prozess — erst einen löschen.` } };
+    const test: Testfall = {
+      id: neueKennung('tf'), nr: Math.max(0, ...tests.map(t => t.nr)) + 1, fall, erwartet: p.schritte.map(x => ({ knotenId: x.knotenId, status: x.status })), am: jetzt,
+      aus: { ...(aus ?? {}), version: aus?.version ?? juengste(e)?.nr },
+    };
+    return { datei: mitStand(d, a.prozessId, { ...st, tests: [...tests, test] }), r: { ok: true as const, test } };
+  }, kx.h);
+}
+
+/** Einen Testfall löschen (nur dieser Prozess). */
+export async function testfallLoeschen(prozessId: string, id: string): Promise<boolean> {
+  return laeufeAendern(d => {
+    const st = standVon(d, prozessId);
+    if (!(st.tests ?? []).some(t => t.id === id)) return { datei: d, r: false };
+    return { datei: mitStand(d, prozessId, { ...st, tests: (st.tests ?? []).filter(t => t.id !== id) }), r: true };
+  });
+}
+
+/** „Alle prüfen“: jeden Testfall als Probelauf auf dem Entwurf bzw. der Version — schreibt NICHTS; den Vergleich rechnet die Ansicht (laeufe-ansicht.ts). */
+export async function testsPruefen(a: { prozessId: string; person: string; quelle: 'entwurf' | 'version'; ids?: readonly string[] }): Promise<{ ok: true; ergebnisse: TestErgebnisServer[] } | { ok: false; status: 404; fehler: string }> {
+  const d = await laeufeLesen();
+  const kx = await kontextLaden();
+  if (!eintragVon(kx, a.prozessId)) return { ok: false, status: 404, fehler: 'Diesen Prozess gibt es nicht.' };
+  const tests = (d.prozesse[a.prozessId]?.tests ?? []).filter(t => !a.ids || a.ids.includes(t.id));
+  const ergebnisse: TestErgebnisServer[] = [];
+  for (const t of tests) {
+    const p = await probelauf({ prozessId: a.prozessId, quelle: a.quelle, fall: t.fall === 'beispiel' ? 'beispiel' : { art: t.fall.art, id: t.fall.id ?? '' }, person: a.person });
+    ergebnisse.push(p.ok ? { id: t.id, ok: true, ist: p.schritte.map(x => ({ knotenId: x.knotenId, status: x.status })) } : { id: t.id, ok: false, fehler: p.fehler, ist: [] });
+  }
+  return { ok: true, ergebnisse };
 }
 export async function prozesseLage(jetzt = new Date()): Promise<import('./lauf-regeln').ProzessLage | null> {
   const { laufLage } = await import('./lauf-regeln');

@@ -78,7 +78,9 @@ export type LaufGrund =
   | 'modell-raute' | 'daten-fehlen' | 'kein-weg' | 'abgelehnt' | 'abgelaufen' | 'ziel' | 'abbruch-kriterium' | 'hand' | 'fall-weg'
   | 'archiviert' | 'knoten-fehlt' | 'version-fehlt' | 'vertrag' | 'ki-aus' | 'ki-fehler' | 'budget' | 'budget-schritt' | 'fenster' | 'hoechstzahl'
   | 'aufgabe-abgebrochen' | 'aufgabe-weg' | 'vorschlag-abgelehnt' | 'teilprozess-fehlt' | 'teilprozess-fehler' | 'kette' | 'schleife'
-  | 'nicht-gebaut' | 'person-fehlt' | 'voruebergehend' | 'dauerhaft' | 'agent-fehlt' | 'notbremse' | 'erneut';
+  | 'nicht-gebaut' | 'person-fehlt' | 'voruebergehend' | 'dauerhaft' | 'agent-fehlt' | 'notbremse' | 'erneut'
+  // 22.10. (Läufe-Ansicht, C1-Frage 1): ohne KI-Schlüssel bzw. Guthaben hält ein Agenten-Schritt SOFORT an — kein Wiederholen, keine Fehlerkante.
+  | 'ki-nicht-eingerichtet';
 
 /** Ein besuchter Knoten. Ein Knoten kann mehrfach besucht werden (Erinnerung, „erneut ab“) — `runde` zählt mit. */
 export interface LaufSchritt {
@@ -98,6 +100,9 @@ export interface LaufSchritt {
   grund?: LaufGrund;
   /** Agenten-Schritt: welcher Head (bzw. `zoe`) — zählt in dessen Tageshöchstzahl (E-V6). */
   kopf?: string;
+  /** Agenten-Schritt (22.10., Log-Baum der Läufe-Ansicht): das Modell, das wirklich gefragt wurde, und die Tokens (nur Zahlen). */
+  modell?: string;
+  token?: { ein: number; aus: number };
 }
 
 /** Worauf ein Lauf wartet (Punkt 46: jedes Warten hat eine Obergrenze bzw. einen Wecker — wartende Läufe kosten nichts, nur der Takt weckt). */
@@ -225,6 +230,31 @@ export interface ProzessLaufStand {
   verlauf: VerlaufEintrag[];
   /** Nur Zähler (Lage, Head of IT): nie gestartete Läufe — ohne Person, Kette zu tief, eigene Wirkung, Bestand voll, Probeläufe über der Schwelle. */
   nicht?: { ohnePerson?: number; kette?: number; eigen?: number; voll?: number; schatten?: number };
+  /** Testfälle (22.10., Reiter „Tests“ der Werkstatt, Punkt 48) — nur Kennungen und die erwartete Statusfolge, nie Inhalte oder Namen. */
+  tests?: Testfall[];
+}
+
+// ══ Testfälle (22.10., Reiter „Tests“; Kevins Bild n8n „Copy to editor“) ════════════════════════════════════════════════════════════════════════
+
+/** Status eines Schritts im Probelauf (dieselben Wörter wie `ProbeZeile` in lib/prozesse/lauf-regeln.ts). */
+export type TestStatus = 'wuerde' | 'uebersprungen' | 'wartet' | 'freigabe' | 'fehler';
+export const TEST_STATUS = ['wuerde', 'uebersprungen', 'wartet', 'freigabe', 'fehler'] as const satisfies readonly TestStatus[];
+/** Testfall `tf-<uuid>`. */
+export const TESTFALL_KENNUNG = /^tf-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/**
+ * Ein gespeicherter Testfall: ein Fall (Kennung) bzw. der erfundene Beispiel-Fall und die Statusfolge, die der Probelauf damals ergab. „Alle prüfen“ spielt
+ * jeden Testfall erneut als Probelauf (schreibt nichts) und vergleicht — grün = gleiche Folge. Kein `von`, kein Name, kein Inhalt (Punkt 98); die Kennung des
+ * Falls tilgt Art. 17 mit dem ganzen Bestand (`tilgen`).
+ */
+export interface Testfall {
+  id: string;
+  /** Laufende Nummer je Prozess („Testfall 3“) — der Name entsteht daraus, nie aus Freitext. */
+  nr: number;
+  fall: LaufFall | 'beispiel';
+  erwartet: { knotenId: string; status: TestStatus }[];
+  am: string;
+  /** Aus einem Lauf übernommen (Kennung und Version) bzw. aus welcher Version gerechnet. */
+  aus?: { lauf?: string; version?: number };
 }
 
 export interface LaeufeDatei {
@@ -269,6 +299,8 @@ export const LAUF_GRENZEN = {
   budgetCentMax: 100_000,
   /** Ereignisse, die älter sind, starten nichts mehr (wie die Agenten). */
   ereignisAlterStunden: 72,
+  /** Testfälle je Prozess (22.10.) — darüber 413, nie gekürzt. */
+  testfaelle: 20,
   /** Arbeitszeit (M1 „Arbeitszeit zählen“): Werktage NRW, von … bis (Berliner Stunden). */
   arbeitVon: 9,
   arbeitBis: 18,
@@ -317,4 +349,5 @@ export const GRUND_TEXT: Readonly<Record<LaufGrund, string>> = {
   'agent-fehlt': 'Agenten-Schritt ohne Einstellungen',
   notbremse: 'Notbremse: zu viele Wirkungen in einer Stunde — Prozess pausiert',
   erneut: 'erneut ab diesem Schritt',
+  'ki-nicht-eingerichtet': 'KI nicht eingerichtet (kein Schlüssel bzw. kein Guthaben) — angehalten, „erneut ab hier“, sobald sie eingerichtet ist',
 };

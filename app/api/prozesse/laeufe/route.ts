@@ -1,12 +1,16 @@
 // ─── Prozesse — Läufe (Etappe C1 „Laufen intern“, 21.10.; ANALYSE_100.md Punkte 29, 35–37, 40, 44, 47, 50, 59, 69) ───────────────────────────────────────
 // GET  ?prozess=pz-…        Läufe eines Prozesses (Status, Dauer, Version, Kosten, wo er steht — nur Kennungen und Zahlen), zurückgehaltene, Einstellungen,
 //                           Verlauf des Prozesses, Kennzahlen (Ziel-Quote, Reaktionszeit, „in der Uhr“)
-//      ?lauf=pl-…           ein Lauf: je Knoten Status, Zeitpunkte, Runden, Kosten, Kennungen der Wirkungen (Inhalte holt die Ansicht live mit den Rechten der Person)
+//      ?lauf=pl-…           ein Lauf: je Knoten Status, Zeitpunkte, Runden, Kosten, Kennungen der Wirkungen; dazu die Schritte in Reihenfolge (Log-Baum)
+//      ?lauf=pl-…&inhalte=1 die Inhalte LIVE mit den Rechten der Person (22.10.): Fall (Art. 18 ausgeblendet), Aufgaben (Sicht der Person), Vorschläge (nur die
+//                           eigenen — Agenten-Texte bleiben im Stapel, hier nur Titel und Link), Teil-Läufe (Status) — Lese-Protokoll „firmen“
 //      ?heute=1             „Prozesse heute: n gelaufen, m warten“ (Punkt 69)
 //      (ohne)               je Prozess die Zahlen (offen, wartend, Fehler, zurückgehalten)
 // POST { aktion }           starten (Auslöser „von Hand“, `anfrageId`, optional `fall`, `erneut` + `grund`) · abbrechen (`lauf`, `grund`) · erneut (`lauf`, „erneut ab
 //                           hier“) · zurueckgehalten (`prozess`, `wie`: starten | verwerfen, optional `ids`) · scharf-vorschau (`prozess`) · scharf (`prozess`, `stand`,
 //                           `budgetCent`, `bestehende`: nur-neue | alle) · einstellung (`prozess`, `felder`) · umzug (`prozess`, `nach`, `zuordnung`, `vorschau`)
+//                           · testfall (22.10.: `prozess`, `wie`: anlegen mit `aus` = Lauf bzw. `fall` | loeschen mit `id`) · tests-pruefen (`prozess`, `quelle`,
+//                           optional `ids` — Probelauf je Testfall, schreibt nichts). Testfälle bauen alle, die Entwürfe bauen.
 // Tor: `werkstattZugang` (Haushalt des Inhabers, Sicht Privat 403); POST nur per Sitzung (Dienstweg 403) mit Bau-Kennung. Starten: wer Entwürfe baut (volle
 // Mitglieder und „nur Business“); alles, was einen Prozess steuert (abbrechen, erneut, zurückgehalten, scharf, Einstellungen, Umzug): nur volle Mitglieder.
 // Lesen schreibt nie; Antworten tragen keine Daten Dritter (Kennungen, Zahlen, Status, Gründe als Code).
@@ -14,7 +18,8 @@
 import { NextResponse } from 'next/server';
 import { werkstattZugang } from '@/lib/prozesse/werkstatt-zugang';
 import { PROZESS_KENNUNG, FALL_ART_IDS, type FallArt } from '@/lib/prozesse/definition';
-import { FALL_KENNUNG, LAUF_KENNUNG, ZURUECK_KENNUNG } from '@/lib/prozesse/lauf-typen';
+import { FALL_KENNUNG, LAUF_KENNUNG, TESTFALL_KENNUNG, ZURUECK_KENNUNG } from '@/lib/prozesse/lauf-typen';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { einmalig } from '@/lib/store/anfragen';
 
@@ -32,6 +37,14 @@ export async function GET(req: Request) {
   const prozess = q.get('prozess'), lauf = q.get('lauf');
   if (lauf) {
     if (!LAUF_KENNUNG.test(lauf)) return nein(400, 'Welcher Lauf? (?lauf=pl-…)');
+    if (q.get('inhalte') === '1') {
+      // Dienstweg ohne Sitzung bekommt keine Inhalte (sie hängen an den Rechten einer Person).
+      if (z.dienst) return nein(403, 'Inhalte eines Laufs nur für eine angemeldete Person.');
+      const r = await S.laufInhalte(lauf, z.person);
+      if (!r) return nein(404, 'Diesen Lauf gibt es nicht.');
+      if (r.fall?.sichtbar) leseZugriff(req, 'firmen', { ids: [r.fall.id], anzahl: 1 }); // Lese-Protokoll: der Fall eines Laufs (Name, Link)
+      return NextResponse.json({ ok: true, ...r });
+    }
     const r = await S.laufLesen(lauf);
     return r ? NextResponse.json({ ok: true, ...r }) : nein(404, 'Diesen Lauf gibt es nicht.');
   }
@@ -39,7 +52,8 @@ export async function GET(req: Request) {
     if (!PROZESS_KENNUNG.test(prozess)) return nein(400, 'Welcher Prozess? (?prozess=pz-…)');
     const d = await S.laeufeLesen(z.haushalt);
     const r = await S.laeufeDesProzesses(prozess);
-    return NextResponse.json({ ok: true, ...r, zurueck: d.zurueckgehalten.filter(x => x.prozessId === prozess).map(x => ({ id: x.id, fall: x.fall, am: x.am, ausloeser: x.ausloeser.art })) });
+    const eingaenge = await S.webhookEingaengeKurz(prozess, z.haushalt);
+    return NextResponse.json({ ok: true, ...r, tests: r.stand?.tests ?? [], webhookEingaenge: eingaenge, zurueck: d.zurueckgehalten.filter(x => x.prozessId === prozess).map(x => ({ id: x.id, fall: x.fall, am: x.am, ausloeser: x.ausloeser.art })) });
   }
   const d = await S.laeufeLesen(z.haushalt);
   if (q.get('heute') === '1') {
@@ -143,6 +157,35 @@ export async function POST(req: Request) {
       const ids = Array.isArray(b.laeufe) ? b.laeufe.filter((x): x is string => typeof x === 'string' && LAUF_KENNUNG.test(x)) : undefined;
       const r = await S.umzug({ prozessId: prozess, nach: b.nach, zuordnung: zu, vorschau: b.vorschau !== false, person: z.person, ...(ids ? { laufIds: ids } : {}) });
       return r.ok ? NextResponse.json({ ok: true, zeilen: r.zeilen, umgezogen: r.umgezogen }) : nein(r.status, r.fehler);
+    }
+    case 'testfall': {
+      if (!z.rechte.entwurf) return nein(403, 'Testfälle bauen nur Personen im Haushalt.');
+      if (!prozess) return nein(400, 'Welcher Prozess? (prozess pz-…)');
+      if (b.wie === 'loeschen') {
+        if (typeof b.id !== 'string' || !TESTFALL_KENNUNG.test(b.id)) return nein(400, 'Welcher Testfall? (id tf-…)');
+        return (await S.testfallLoeschen(prozess, b.id)) ? NextResponse.json({ ok: true }) : nein(404, 'Diesen Testfall gibt es nicht.');
+      }
+      if (b.wie !== 'anlegen') return nein(400, 'wie: anlegen oder loeschen.');
+      const aus = typeof b.aus === 'string' && LAUF_KENNUNG.test(b.aus) ? b.aus : undefined;
+      if (b.aus !== undefined && !aus) return nein(400, 'aus: Kennung eines Laufs (pl-…).');
+      let fall: { art: string; id: string } | 'beispiel' | undefined;
+      if (b.fall === 'beispiel' || b.fall === undefined) fall = 'beispiel';
+      else if (b.fall && typeof b.fall === 'object') {
+        const f = b.fall as { art?: unknown; id?: unknown };
+        if (typeof f.art !== 'string' || !(FALL_ART_IDS as readonly string[]).includes(f.art) || typeof f.id !== 'string' || !FALL_KENNUNG.test(f.id)) return nein(400, 'fall: { art, id } oder „beispiel“.');
+        fall = { art: f.art, id: f.id };
+      } else return nein(400, 'fall: { art, id } oder „beispiel“.');
+      const r = await S.testfallAnlegen({ prozessId: prozess, person: z.person, ...(aus ? { aus } : { fall }) });
+      return r.ok ? NextResponse.json({ ok: true, test: r.test }) : nein(r.status, r.fehler);
+    }
+    case 'tests-pruefen': {
+      if (!z.rechte.entwurf) return nein(403, 'Testfälle prüfen nur Personen im Haushalt.');
+      if (!prozess) return nein(400, 'Welcher Prozess? (prozess pz-…)');
+      const quelle = b.quelle === 'version' ? 'version' : b.quelle === 'entwurf' || b.quelle === undefined ? 'entwurf' : null;
+      if (!quelle) return nein(400, 'quelle: entwurf oder version.');
+      const ids = Array.isArray(b.ids) ? b.ids.filter((x): x is string => typeof x === 'string' && TESTFALL_KENNUNG.test(x)) : undefined;
+      const r = await S.testsPruefen({ prozessId: prozess, person: z.person, quelle, ...(ids ? { ids } : {}) });
+      return r.ok ? NextResponse.json({ ok: true, ergebnisse: r.ergebnisse }) : nein(r.status, r.fehler);
     }
     default: return nein(400, 'Unbekannte Aktion.');
   }
