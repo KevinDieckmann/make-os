@@ -1,0 +1,21 @@
+# Bestandsaufnahme „Prozesse“ in MAKE OS (21.10.2026, Stand update-0910b)
+
+Kurzfassung der Inventur (Datei:Zeile im Repo, Wurzel = Worktree):
+
+## Vorhanden und wiederverwendbar
+- **Prozessmodell Fulfillment** (`lib/fulfillment/typen.ts`): `ProzessArt` landkarte|paket|ablauf; `ProzessKnoten` mit form (schritt, nachricht, entscheidung, erinnerung, termin, abstimmung), zweige, pos, frist, versuche; Ebenen 1–5; Vorlagen mit Fassung, Papierkorb, Zusatzmodul. Grenzen 60 Vorlagen / 400 Knoten (`lib/fulfillment/grenzen.ts`).
+- **Editor + Fläche**: reine Regeln `lib/fulfillment/prozesse/editor.ts` (nur Pakete bearbeitbar, :221), `flaeche.ts` (Pfeile = Reihenfolge + Zweige), Oberfläche `components/os/fulfillment/editor/{ProzessEditor,Flaeche}.tsx` (Palette, Raster, Alles zeigen, PNG/SVG), Kamera `components/os/ui/flaeche/kamera.ts`, Formen `components/os/ui/reise/flaeche-formen.tsx`. Höhe begrenzt: `app/globals.css` `.ff-flaeche-buehne { height: min(76vh, 820px) }`. Vollbild-Muster: `components/os/fulfillment/reise/Praesentation.tsx`.
+- **Ausführung** (`lib/fulfillment/prozesse/ausfuehrung*.ts`): Schritt/Termin → Aufgabe, Nachricht → Stapel-Vorschlag, Entscheidung → Glocke, Erinnerung → Runden; läuft nach Schreiben am Fall und im Morgenlauf; keine KI darin. Fest an „Fall = Mandat“: Fall-Schlüssel, Aufgabenort/Titel, Empfänger, Onboarding/Kunden-Link/Dossier.
+- **Ereignis-System** `lib/ereignisse/*` (Kennungen, Cursor je Konsument, Entprellen, 72 h): angebunden neue-mail, neue-whatsapp, neuer-lead, lead-sql, deal-stufe (inkl. gewonnen), zahlungseingang, termin-abgesagt, aufgabe-zoe; benannt ohne Quelle: termin-vorbei, frist-naht, neue-aufgabe, neues-medium; fehlen: Mandat angelegt/beendet, Rechnung gestellt, Kunden-Link-Antwort, Netzwerken-Erfassung, Fall-Schritt erledigt, Buchung bestätigt, Event vorbei.
+- **Agenten**: `runAgent` (`lib/zoe/agenten.ts:124`), Katalog Heads (`lib/agenten/katalog.ts`: Sales, Marketing, Event, Finance, IT, Operations, Kundenerfolg, CEO-Office, Product, Recht, Research), ältere `headLauf`; **Skill** (`lib/agenten/typen.ts:371`) = passende Einheit für einen Agenten-Schritt (Auslöser hand/zeitplan/ereignis, Eingaben, freigabePflicht, Ergebnis Faden/Stapel, Kostengrenze, Tests); `LaufAuftrag 'skill'`, `reihe(...)`. KI-Tor `askText` mit `ki:{...}`, `modellSchranke` (Rate), Stapel `lege`. Werkzeug-Verträge V3: lesen/vorschlag/intern/aussen/geld/loeschen — aussen/geld/loeschen immer Stapel. Einstellung je Head: Budget, Autonomie vorschlag/intern, Not-Aus; Takt 12 Läufe/Head/Tag, 7–22 Uhr; Hand-Start > 50 Cent → bestätigen; Analyse-Agenten nur nach Klick.
+- **Gemeinsame Darstellung Reise + Fluss** (`lib/reise/*`, `components/os/ui/reise/*`): umgesetzt für Fulfillment, Kreislauf, Einrichtung, Planung, Leistungstreppe.
+
+## Prozesse, die es im Code schon gibt
+Kreislauf (`lib/crm/planung.ts`, Bild ja) · Lead→SQL→Deal→Angebot→Mandat (`leads.ts`, `pipeline.ts`, `angebot-server.ts`, `mandat-anlegen.ts`) · Follow-up/Kadenz/Power Hour (`followup.ts`, `heads/takt.ts`) · Netzwerken-Erfassung 8 Schritte (`netzwerken.ts`) · Kampagnen/9 Playbooks (`kampagnen.ts`) · Event Make.One (`eventplanung.ts`) · Fulfillment P1–P3, Onboarding, Rituale, Analyse A0–A6 (16 Agenten, Wellen), Wirkungsbericht, Nachsorge (Bild ja) · Leistungstreppe + Report alle 2 Wochen (Bild ja) · Rechnung/Monatsabschluss/Head of Finance · Head-Takt (Sales/Marketing/Event) · Morgenlauf/System-Takt · Buchungsseite · Einrichtung Etappen 0–8 (Bild ja) · Bauplan-Board · Recht-Check · Meilenstein-Kette (Bild ja).
+Hinweis: `PLAN.md` „Phase 5 — Prozesse“ sagte noch „bewusst kein grafischer Flow-Editor“ — überholt durch Kevins Entscheidung 21.10.
+
+## Leiste
+Business 10 von max. 12 Punkten (`lib/make-one/spaces.ts`) — Platz für „Prozesse“. Einzutragen: Seite, spaces, SEITEN_SUCHE, WEG, Routen-Register + ROUTEN_BEREICH 'business', Head-Kontext, Speicher-Register, Was ist neu.
+
+## Risiken
+Kosten (Ketten vervielfachen Läufe; Budget je Prozess + Schätzung beim Aktivieren) · Freigaben (aussen/geld/loeschen immer Stapel; „volle Automatik“ = intern + Vorschläge) · Datenschutz (Register, Fristen, Art. 15/17) · Live-Daten (additiv, Fassungen) · Rollen (Bearbeiten heute nur volle Mitglieder) · Privat/Business (nur Business, Ereignisse nie über Personengrenzen) · doppelte Wahrheit (Code-Prozesse als „System“, nur lesbar).
