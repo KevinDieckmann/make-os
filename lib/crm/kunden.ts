@@ -9,7 +9,8 @@ import type { Mandat } from './typen';
 import { zahltage, letzterZahltag, type Planposten } from '@/lib/make-one/liquiditaet';
 import { geplantesEnde, leistungsmonat, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
 import { mandatName } from './mandat-name';
-import { zusatzLiquiditaet, anrechnungLiquiditaet, type AnrechnungKontext } from './mandat-zusatz';
+import { zusatzLiquiditaet, anrechnungLiquiditaet, zahlplanMonate, zahlplanPosition, type AnrechnungKontext } from './mandat-zusatz';
+import { rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import type { Leistung } from './typen';
 import { PLANPOSTEN_MANDAT, PLANPOSTEN_TEIL } from './mandant-link';
@@ -185,6 +186,21 @@ function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: s
   const ziel = zahlungsziel(m);
   const notiz = `Aus dem Mandat (CRM). ${m.honorar.netto ? `${m.honorar.betrag} € netto${m.ustSatz ? ` + ${m.ustSatz} % USt` : ', Reverse Charge'}` : `${m.honorar.betrag} €`}.`;
   const einmalig = m.honorar.basis === 'einmalig' || m.rechnungsrhythmus === 'einmalig';
+  // Zahlplan (21.10., Rundgang B2): ein einmaliges Honorar mit Anzahlung sind zwei Zahlungen — Anzahlung (Monat des Beginns) und Rest, je mit dem Betrag
+  // ihrer Rechnung (`zahlplanPosition`, dieselbe Regel). Liegt ein Monat schon hinter uns (noch nicht abgerechnet), zahlt er ab heute + Zahlungsziel.
+  const zpMonate = zahlplanMonate(m);
+  if (zpMonate) {
+    if (ende && ende < basis) return [];
+    return zpMonate.flatMap((mo, i): Planposten[] => {
+      const pos = zahlplanPosition(m, mo, { nettoAusBrutto }) ?? [];
+      if (!pos.length) return [];
+      const lm = leistungsmonat({ start: m.start }, mo);
+      const tag = [lm?.von ?? `${mo}-01`, basis].sort().at(-1)!;
+      const was = pos[0].titel.split(' — ').pop() ?? monatsName(mo);
+      return [{ id: i ? teilPostenId(m, mo) : hauptPostenId(m), titel: titelMit(name, ` — ${was}`), betrag: rechnungSummen(pos).brutto / 100, rhythmus: 'einmalig', ab: plusTage(tag, ziel), ...gemeinsam, leistungsmonat: mo,
+        notiz: `Aus dem Mandat (CRM): ${was} — wie die Rechnung für ${monatsName(mo)}.` }];
+    });
+  }
   if (einmalig || m.rechnungsrhythmus === 'quartal') {
     // Wie bisher: EIN Posten — einmalig am Beginn (bzw. heute) + Zahlungsziel; Quartal ab dem Monatsanfang (im Beginnmonat ab dem Beginn).
     if (ende && ende < basis) return [];

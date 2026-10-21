@@ -161,6 +161,8 @@ export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>
     rechnungsrhythmus: h.rechnungsrhythmus, zahlungszielTage: v?.zahlungszielTage ?? 14, ziele: [],
     health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: v?.leistungen ?? [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen', ...(v?.hinweise ?? [])],
     ...(v?.zusatz?.length ? { zusatz: v.zusatz } : {}),
+    // Zahlplan (21.10., B2): nur, solange das Honorar einmalig bleibt (im Dialog auf „je Monat“ umgestellt: keiner).
+    ...(v?.zahlplan && h.honorar.basis === 'einmalig' ? { zahlplan: v.zahlplan } : {}),
     quelle: 'Von Hand angelegt (Produkte & Mandate)', ...(o.zustaendig ? { zustaendig: o.zustaendig } : {}), geaendert: o.jetzt, geaendertVon: o.person,
   };
 }

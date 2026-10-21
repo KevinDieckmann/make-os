@@ -7,7 +7,7 @@
 //   · Mandat ohne Zusatz rechnet bit-gleich wie bisher
 //   · Prüfen der Zusatzmodule im Schreibweg (400/413), Deal folgt dem Angebot (Hauptprodukt)
 import { describe, it, expect } from 'vitest';
-import { mandatVorlageAusProdukt, mandatZusatzPruefen, mandatZusatzSaeubern, zusatzExtras, pruefStatus, type PreisTeil } from '@/lib/crm/produkt-karte';
+import { mandatVorlageAusProdukt, mandatZusatzPruefen, mandatZusatzSaeubern, zusatzExtras, pruefStatus, zahlplanSaeubern, type PreisTeil } from '@/lib/crm/produkt-karte';
 import { mandatEntwurf, mandatEingabeAus, vertragEingabeAus } from '@/lib/crm/mandat-anlegen';
 import { neuesMandat, mandatPlan } from '@/lib/crm/mandate-tabelle';
 import { mandatVorbelegung, angebotHauptprodukt } from '@/lib/crm/angebote';
@@ -413,5 +413,54 @@ describe('Anrechnung in der Liquidität — dieselbe Regel wie die Monatsrechnun
     expect(mandatPosten(m, '2026-11-01', { katalog: KATALOG })).toEqual(mandatPosten(m, '2026-11-01'));
     expect(plan(m, '2026-11-01', [ws], KATALOG.filter(l => l.id !== 'l-ws'))).toEqual(mandatPosten(m, '2026-11-01'));
     expect(plan(m, '2026-11-01', [])).toEqual(mandatPosten(m, '2026-11-01'));
+  });
+});
+
+describe('Zahlplan am einmaligen Honorar (Rundgang 19.10. B2) — zwei Zahlungen wie beim Zusatzmodul, Rechnung und Liquidität gleich', () => {
+  const WS50 = leistung({ id: 'l-ws50', name: 'Strategietag', typ: 'workshop', preise: [teil({ art: 'fest', betragCent: 240_000, zahlplan: { anzahlungProzent: 50 } }), teil({ id: 'pt-ev', art: 'je_einheit', betragCent: 90_000, einheit: 'je Event', rolle: 'option' })] });
+  const kat = [...KATALOG, WS50];
+  const einmal = (x: Partial<Mandat> = {}) => mandat({ leistungId: 'l-ws50', start: '2026-10-19', mindestlaufzeitMonate: undefined, honorar: { betrag: 3300, basis: 'einmalig', netto: true }, rechnungsrhythmus: 'einmalig', zahlplan: { anzahlungProzent: 50 }, ...x });
+  it('Vorlage: der Zahlplan kommt vom Festpreis — „+ Mandat“, angenommenes Angebot (inkl. gewählter Option), nie bei laufendem Honorar', () => {
+    expect(mandatVorlageAusProdukt(WS50).zahlplan).toEqual({ anzahlungProzent: 50 });
+    const neu = (vertrag?: Parameters<typeof mandatEntwurf>[0]['vertrag']) => mandatEntwurf({ id: 'm-neu', firma: { id: 'f-a', name: 'A GmbH' }, kontaktIds: [], gesellschaft: 'ug', leistung: WS50, ...(vertrag ? { vertrag } : {}), jetzt: J, person: 'kevin' });
+    expect(neu().zahlplan).toEqual({ anzahlungProzent: 50 });
+    expect(neu({ honorar: { betrag: 900, basis: 'monat' } }).zahlplan).toBeUndefined();
+    const a = { positionen: [{ id: 'p-1', leistungId: 'l-ws50', titel: 'Strategietag', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 240_000, ustSatz: 19, basis: 'einmalig' }, { id: 'p-1-2', leistungId: 'l-ws50', titel: 'Strategietag · je Event', text: '', menge: 1, einheit: 'Event', einzelpreisCent: 90_000, ustSatz: 19, basis: 'einmalig' }], gesellschaft: 'ug', titel: 'Strategietag', zahlungszielTage: 14 } as unknown as Angebot;
+    expect(mandatVorbelegung(a, kat)).toMatchObject({ honorar: { betrag: 3300, basis: 'einmalig' }, zahlplan: { anzahlungProzent: 50 } });
+    expect(mandatVorbelegung(a).zahlplan).toBeUndefined();
+    expect(mandatVorlageAusProdukt(WS).zahlplan).toBeUndefined();
+  });
+  it('Rechnung: Anzahlung im Monat des Beginns, Rest im Folgemonat (bzw. im Monat des Endes), sonst nichts', () => {
+    const m = einmal();
+    const okt = monatsPositionen(m, '2026-10', ctx);
+    expect(okt.map(p => [p.titel, p.einzelpreisCent])).toEqual([['Begleitung — Anzahlung 50 %', 165_000]]);
+    expect(okt[0].text).toContain('Zahlung 50 % bei Beginn, Rest bei Abschluss.');
+    expect(monatsPositionen(m, '2026-11', ctx).map(p => [p.titel, p.einzelpreisCent])).toEqual([['Begleitung — Restzahlung 50 %', 165_000]]);
+    expect(monatsPositionen(m, '2026-12', ctx)).toEqual([]);
+    expect(monatsPositionen(einmal({ ende: '2027-01-20' }), '2027-01', ctx).map(p => p.titel)).toEqual(['Begleitung — Restzahlung 50 %']);
+    // Ende im selben Monat: eine Zahlung über alles.
+    expect(monatsPositionen(einmal({ ende: '2026-10-30' }), '2026-10', ctx).map(p => p.einzelpreisCent)).toEqual([330_000]);
+    // Ohne Zahlplan wie bisher (das Honorar steht in jedem Monat, in dem das Mandat läuft).
+    expect(monatsPositionen(einmal({ zahlplan: undefined }), '2026-11', ctx).map(p => p.einzelpreisCent)).toEqual([330_000]);
+  });
+  it('Liquidität: zwei Posten mit genau den Beträgen der Rechnungen, je mit Leistungsmonat', () => {
+    const m = einmal();
+    const l = mandatPosten(m, '2026-10-19', { katalog: kat });
+    expect(l.map(p => [p.id, p.betrag, p.ab, p.leistungsmonat, p.titel])).toEqual([
+      ['lp-mandat-m-1', 1963.5, '2026-11-02', '2026-10', 'Beispielwerk GmbH · Begleitung — Anzahlung 50 %'],
+      ['lp-mandat-m-1~2026-11', 1963.5, '2026-11-15', '2026-11', 'Beispielwerk GmbH · Begleitung — Restzahlung 50 %'],
+    ]);
+    const rechnungen = ['2026-10', '2026-11', '2026-12'].reduce((a, mo) => a + rechnungSummen(monatsPositionen(m, mo, ctx)).brutto, 0);
+    expect(liqSumme(l)).toBe(rechnungen);
+    // Ungerade Prozente: Rest = Ganzes − Anzahlung (auf den Cent).
+    const krumm = einmal({ honorar: { betrag: 3333.33, basis: 'einmalig', netto: true }, zahlplan: { anzahlungProzent: 30 } });
+    expect(monatsPositionen(krumm, '2026-10', ctx)[0].einzelpreisCent + monatsPositionen(krumm, '2026-11', ctx)[0].einzelpreisCent).toBe(333_333);
+    expect(liqSumme(mandatPosten(krumm, '2026-10-19'))).toBe(['2026-10', '2026-11'].reduce((a, mo) => a + rechnungSummen(monatsPositionen(krumm, mo, ctx)).brutto, 0));
+  });
+  it('Säuberer: Zahlplan nur 1–99 %, sonst weg', () => {
+    expect(zahlplanSaeubern({ anzahlungProzent: 50 })).toEqual({ anzahlungProzent: 50 });
+    expect(zahlplanSaeubern({ anzahlungProzent: 0 })).toBeUndefined();
+    expect(zahlplanSaeubern({ anzahlungProzent: 100 })).toBeUndefined();
+    expect(zahlplanSaeubern('')).toBeUndefined();
   });
 });

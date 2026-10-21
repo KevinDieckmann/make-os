@@ -411,6 +411,8 @@ export interface MandatVorlage {
   /** Leistungen des Mandats: Leistungstext (wenn kurz genug für die Liste, ≤ 400 Zeichen) + Lieferumfang. */
   leistungen: string[];
   zusatz?: MandatZusatz[];
+  /** Zahlplan des einmaligen Honorars (21.10., B2): vom Festpreis-Hauptpreis, z. B. 50/50 — nur bei Honorar-Basis „einmalig“. */
+  zahlplan?: { anzahlungProzent: number };
   /** Was die Vorlage nicht als Feld ausdrücken kann (Stundensatz ohne Deckel, je Einheit …) — für die offenen Punkte am Mandat. */
   hinweise: string[];
 }
@@ -493,11 +495,23 @@ export function mandatVorlageAusProdukt(l: Leistung, zusatz: readonly ZusatzWahl
     default: honorar = honorarAusPreis({ betrag: euro, basis: 'einmalig' });
   }
   const texte = [l.angebot?.leistungstext?.trim() ?? '', ...(l.lieferumfang ?? [])].filter(t => t && t.length <= 400);
+  // Zahlplan (21.10., B2): ein Festpreis mit Anzahlung (z. B. 50/50) wird am Mandat zwei Zahlungen — wie beim einmaligen Zusatzmodul.
+  const zahlplan = mandatZahlplanAusProdukt(l, honorar.honorar.basis);
   return {
     titel: l.name, leistungId: l.id, art: mandatArtVon(l), ...gesellschaft, ...honorar, ...mandatVertragAusProdukt(l, honorar.honorar.basis),
-    leistungen: texte, ...mitZusatz, hinweise,
+    leistungen: texte, ...mitZusatz, ...(zahlplan ? { zahlplan } : {}), hinweise,
   };
 }
+/**
+ * Der Zahlplan eines Mandats aus dem Produkt (21.10., Rundgang B2 — EINE Regel für „+ Mandat“, Mandat aus Deal und aus angenommenem Angebot): der
+ * Zahlplan des Hauptpreis-Teils, wenn er ein Festpreis ist und das Mandat einmalig abrechnet; sonst keiner.
+ */
+export function mandatZahlplanAusProdukt(l: Pick<Leistung, 'preis' | 'preise'>, honorarBasis: Mandat['honorar']['basis']): { anzahlungProzent: number } | undefined {
+  if (honorarBasis !== 'einmalig' || !hatPreisteile(l)) return undefined;
+  const h = hauptpreis(l);
+  return h?.art === 'fest' && h.zahlplan?.anzahlungProzent ? { anzahlungProzent: h.zahlplan.anzahlungProzent } : undefined;
+}
+
 /** Zusatzmodule: die gewählten (mit Honorar aus ihrem Hauptpreis) und die laut `regeln.inklusive` enthaltenen (0 € mit Hinweis). */
 function zusatzListe(l: Leistung, wahl: readonly ZusatzWahl[]): MandatZusatz[] {
   const inkl = l.regeln?.inklusive ?? [];
@@ -571,6 +585,7 @@ export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: read
       : [t.text?.trim() ?? '', ...teilHinweise(t)];
     return {
       id: i === 0 ? idBasis : `${idBasis}-${i + 1}`, leistungId: l.id,
+      preisTeilId: t.id,
       titel: (i === 0 ? l.angebot?.titel?.trim() || l.name : `${l.name} · ${t.art === 'je_einheit' ? jeText(t.einheit) : preisArtLabel(t.art)}`).slice(0, POSITION_GRENZEN.titel),
       text: saetze.filter(Boolean).join('\n\n').slice(0, POSITION_GRENZEN.text),
       menge: 1, einheit: t.art === 'je_einheit' ? einheitKurz(t.einheit) : POS_EINHEIT[t.art], einzelpreisCent: typeof t.betragCent === 'number' ? t.betragCent : 0, ustSatz: ust, basis,
@@ -713,6 +728,12 @@ export function kartenFelderSaeubern(o: Record<string, unknown>): KartenFelder {
     ...(aufgabe ? { aufgabe } : {}), ...(kennzahl ? { kennzahl } : {}), ...(dauerTage !== undefined ? { dauerTage } : {}),
     ...(aufwand !== undefined ? { aufwandStundenWoche: aufwand } : {}), ...(ziel ? { ziel } : {}),
   };
+}
+
+/** Ein Zahlplan `{ anzahlungProzent }` (1–99, ganze Zahl), gesäubert — sonst undefined. Für Zusatzmodule und das einmalige Honorar am Mandat (21.10.). */
+export function zahlplanSaeubern(v: unknown): { anzahlungProzent: number } | undefined {
+  const ap = istObj(v) ? ganz(v.anzahlungProzent, 1, 99) : undefined;
+  return ap !== undefined ? { anzahlungProzent: ap } : undefined;
 }
 
 /** Zusatzmodule eines Mandats, gesäubert (lib/crm/speicher.ts `zusatz('mandate')`) — ungültige Einträge fallen weg; leer → undefined. */

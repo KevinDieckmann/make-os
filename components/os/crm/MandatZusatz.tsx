@@ -20,7 +20,7 @@ import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { WEG } from '@/lib/wege';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { mandatVertragAusProdukt, preiseText, vertragVon, zusatzExtras, zusatzHonorar } from '@/lib/crm/produkt-karte';
+import { mandatVertragAusProdukt, mandatZahlplanAusProdukt, preiseText, vertragVon, zusatzExtras, zusatzHonorar } from '@/lib/crm/produkt-karte';
 import { zusatzArt, zusatzBeschreibung, zusatzDeckel, zusatzEinheit, zusatzName, zusatzZeitraum, JE_TEXT } from '@/lib/crm/mandat-zusatz';
 import { centAusEingabe, eingabeAusCent } from '@/lib/crm/angebote';
 import { leistungsmonat, monatsName } from '@/lib/crm/mandat-laufzeit';
@@ -45,6 +45,9 @@ type Setze = (teil: Partial<Mandat>) => Promise<unknown> | unknown;
 export function MandatVertrag({ m, produkt, setze }: { m: Mandat; produkt?: Leistung; setze: Setze }) {
   const soll = produkt ? mandatVertragAusProdukt(produkt, m.honorar.basis) : {};
   const v = produkt ? vertragVon(produkt) : null;
+  // Zahlplan des einmaligen Honorars (21.10., B2): vom Festpreis des Produkts (z. B. 50/50), am Mandat änderbar.
+  const zpSoll = produkt ? mandatZahlplanAusProdukt(produkt, m.honorar.basis) : undefined;
+  const zpAbweichend = !!zpSoll && zpSoll.anzahlungProzent !== m.zahlplan?.anzahlungProzent;
   const abweichend = (Object.keys(soll) as (keyof typeof soll)[]).filter(k => soll[k] !== undefined && soll[k] !== m[k]);
   const produktText = v ? [
     v.mindestlaufzeitMonate ? `${v.mindestlaufzeitMonate} Monate Mindestlaufzeit` : '', v.danach ? DANACH[v.danach] : '', v.kuendigungsfristTage != null ? `${v.kuendigungsfristTage} Tage Kündigungsfrist` : '',
@@ -58,12 +61,13 @@ export function MandatVertrag({ m, produkt, setze }: { m: Mandat; produkt?: Leis
           <Feld typ="number" wert={m.mindestlaufzeitMonate ? String(m.mindestlaufzeitMonate) : ''} breite={150} platzhalter="Mindestlaufzeit Monate" onFertig={x => setze({ mindestlaufzeitMonate: Number(x) > 0 ? Math.min(120, Math.round(Number(x))) : undefined })} />
           <Wahl label="Rechnungsrhythmus" liste={RHYTHMUS} wert={m.rechnungsrhythmus} onWahl={rechnungsrhythmus => setze({ rechnungsrhythmus })} />
           <Feld typ="number" wert={String(m.zahlungszielTage ?? 14)} breite={150} platzhalter="Zahlungsziel Tage" onFertig={x => { const n = Math.round(Number(x)); if (Number.isFinite(n) && n >= 0 && n <= 120) void setze({ zahlungszielTage: n }); }} />
+          {m.honorar.basis === 'einmalig' && <Feld typ="number" wert={m.zahlplan ? String(m.zahlplan.anzahlungProzent) : ''} breite={150} platzhalter="Anzahlung %" onFertig={x => { const n = Math.round(Number(x)); void setze({ zahlplan: n >= 1 && n <= 99 ? { anzahlungProzent: n } : undefined }); }} />}
         </div>
-        <span style={klein}>{m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit` : 'ohne Mindestlaufzeit'} · Rechnung {RHYTHMUS.find(r => r.id === m.rechnungsrhythmus)?.label} · Zahlungsziel {m.zahlungszielTage ?? 14} Tage</span>
+        <span style={klein}>{m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit` : 'ohne Mindestlaufzeit'} · Rechnung {RHYTHMUS.find(r => r.id === m.rechnungsrhythmus)?.label} · Zahlungsziel {m.zahlungszielTage ?? 14} Tage{m.honorar.basis === 'einmalig' && m.zahlplan ? ` · Zahlung ${m.zahlplan.anzahlungProzent} % bei Beginn, Rest bei Abschluss` : ''}</span>
         {produkt && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={klein}>Vom Produkt „{produkt.name}“: {preiseText(produkt)}{produktText.length ? ` · ${produktText.join(' · ')}` : ''}</span>
-            {abweichend.length > 0 && <Knopf leise onClick={async () => { await setze({ ...soll, ...(!m.leistungen.length && produkt.lieferumfang?.length ? { leistungen: produkt.lieferumfang } : {}) }); }}>Vom Produkt übernehmen</Knopf>}
+            {(abweichend.length > 0 || zpAbweichend) && <Knopf leise onClick={async () => { await setze({ ...soll, ...(zpSoll ? { zahlplan: zpSoll } : {}), ...(!m.leistungen.length && produkt.lieferumfang?.length ? { leistungen: produkt.lieferumfang } : {}) }); }}>Vom Produkt übernehmen</Knopf>}
           </div>
         )}
       </div>

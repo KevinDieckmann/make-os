@@ -153,6 +153,12 @@ export interface Mandat {
    * Säuberung in lib/crm/produkt-karte.ts (`mandatZusatzSaeubern`); Rechnung, Liquidität und Abrechnen in lib/crm/mandat-zusatz.ts (P3).
    */
   zusatz?: MandatZusatz[];
+  /**
+   * Zahlplan eines einmaligen Honorars (21.10., Rundgang B2 — optional, nur bei `honorar.basis` „einmalig“), z. B. 50/50 = `{ anzahlungProzent: 50 }`:
+   * Anzahlung im Monat des Beginns, der Rest im Monat des Endes (ohne Ende im Folgemonat) — Rechnung und Liquidität nach derselben Regel wie ein
+   * einmaliges Zusatzmodul (lib/crm/mandat-zusatz.ts). Vorgabe: der Zahlplan des Hauptpreises des Produkts.
+   */
+  zahlplan?: { anzahlungProzent: number };
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -319,6 +325,8 @@ export interface AngebotPosition {
   id: string;
   /** Aus welchem Produkt die Position stammt (Text und Preis wurden beim Hinzufügen übernommen). */
   leistungId?: string;
+  /** Aus welchem Preis-Teil des Produkts (`pt-…`, 21.10. — Säuberung und Lesen im Angebots-Zweig). */
+  preisTeilId?: string;
   titel: string;
   text: string;
   menge: number;

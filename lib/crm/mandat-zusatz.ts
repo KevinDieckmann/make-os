@@ -134,13 +134,42 @@ export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 
 }
 
 /**
- * Die Positionen der Monatsrechnung (rein, Server UND Liquidität): das Honorar des Mandats wie bisher (`positionAusMandat`, nur bei Honorar > 0)
- * und danach die Zusatzmodule (`zusatzPositionen`). Ohne `zusatz`: genau die eine Position wie bis 19.10. (bit-gleich).
+ * Das einmalige Honorar mit Zahlplan (21.10., Rundgang B2 — dieselbe Regel wie das einmalige Zusatzmodul): Anzahlung im Monat des Beginns, der Rest im
+ * Monat des gesetzten Endes (ohne Ende im Folgemonat), in anderen Monaten nichts. null = kein Zahlplan (das Honorar steht wie bisher in jedem Monat).
  */
-export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
+/** Die Monate der Zahlungen eines einmaligen Honorars mit Zahlplan: [Anzahlung, Rest] (bzw. nur einer, wenn beide in denselben Monat fallen); null ohne Zahlplan. */
+export function zahlplanMonate(m: Pick<Mandat, 'honorar' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan'>>): string[] | null {
+  if (m.honorar.basis !== 'einmalig' || !m.zahlplan?.anzahlungProzent || !tagOk(m.start)) return null;
+  const s = m.start.slice(0, 7);
+  const r = restMonat(m, {});
+  return r && r !== s ? [s, r] : [s];
+}
+export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan'>>, monat: string, ctx: Pick<PositionKontext, 'kleinunternehmer' | 'nettoAusBrutto'>): RechnungPosition[] | null {
+  const p = m.zahlplan?.anzahlungProzent;
+  if (m.honorar.basis !== 'einmalig' || !p || !tagOk(m.start)) return null;
+  const s = m.start.slice(0, 7);
+  const r = restMonat(m, {});
+  const voll = positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: null });
+  const titel = (zusatz: string) => `${m.titel || 'Leistung'} — ${zusatz}`.slice(0, 200);
+  if (!r || r === s) return monat === s ? [voll] : [];
+  const anzahlung = kaufmaennisch((voll.einzelpreisCent * p) / 100);
+  const satz = (t: string) => [voll.text, t].filter(Boolean).join('\n\n').slice(0, 6000);
+  if (monat === s) return [{ ...voll, titel: titel(`Anzahlung ${p} %`), text: satz(`Zahlung ${p} % bei Beginn, Rest bei Abschluss.`), einzelpreisCent: anzahlung }];
+  if (monat === r) return [{ ...voll, titel: titel(`Restzahlung ${100 - p} %`), text: satz('Restzahlung bei Abschluss.'), einzelpreisCent: voll.einzelpreisCent - anzahlung }];
+  return [];
+}
+
+/**
+ * Die Positionen der Monatsrechnung (rein, Server UND Liquidität): das Honorar des Mandats wie bisher (`positionAusMandat`, nur bei Honorar > 0)
+ * und danach die Zusatzmodule (`zusatzPositionen`). Ohne `zusatz`: genau die eine Position wie bis 19.10. (bit-gleich). Ein einmaliges Honorar mit
+ * Zahlplan (21.10.) steht nur im Monat der Anzahlung bzw. des Rests (`zahlplanPosition`).
+ */
+export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'> & Partial<Pick<Mandat, 'zahlplan'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
   const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, monat);
   // Nur in Monaten, in denen das Mandat läuft (der Server prüft das vorher ohnehin — 409 „außerhalb der Laufzeit“).
-  const haupt = m.honorar.betrag > 0 && (lm?.tage ?? 0) > 0 ? [positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: lm })] : [];
+  const laeuft = m.honorar.betrag > 0 && (lm?.tage ?? 0) > 0;
+  const plan = laeuft ? zahlplanPosition(m, monat, ctx) : null;
+  const haupt = !laeuft ? [] : plan ?? [positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: lm })];
   return m.zusatz?.length ? [...haupt, ...zusatzPositionen(m, monat, ctx, ende)] : haupt;
 }
 

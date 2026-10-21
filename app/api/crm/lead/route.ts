@@ -179,6 +179,8 @@ export async function POST(req: Request) {
       if (v.hinweise.length) m.offen = [...m.offen, ...v.hinweise];
       if (m.gesellschaft === 'offen' && v.gesellschaft) m.gesellschaft = v.gesellschaft;
       if (v.zusatz?.length) m.zusatz = v.zusatz;
+      // Zahlplan (21.10., B2): nur bei einmaligem Honorar (der Deal-Wert gewinnt — seine Basis entscheidet).
+      if (v.zahlplan && m.honorar.basis === 'einmalig') m.zahlplan = v.zahlplan;
     }
     if (angebot) {
       const v = mandatVorbelegung(angebot, crm.leistungen);

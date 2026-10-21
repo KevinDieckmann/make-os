@@ -32,13 +32,14 @@ const neueId = () => `mandat-${typeof crypto !== 'undefined' && 'randomUUID' in 
 const HONORAR_BASIS = [{ id: 'monat' as const, label: 'je Monat' }, { id: 'einmalig' as const, label: 'einmalig' }, { id: 'tag' as const, label: 'je Tag' }];
 const RHYTHMUS = [{ id: 'monatlich' as const, label: 'monatlich' }, { id: 'quartal' as const, label: 'je Quartal' }, { id: 'einmalig' as const, label: 'einmalig' }];
 /** Die änderbaren Vertragsfelder im Dialog (Texte, wie getippt). */
-interface VertragForm { betrag: string; basis: Mandat['honorar']['basis']; laufzeit: string; rhythmus: Mandat['rechnungsrhythmus']; ziel: string; leistungen: string; hinweise: string[] }
+interface VertragForm { betrag: string; basis: Mandat['honorar']['basis']; laufzeit: string; rhythmus: Mandat['rechnungsrhythmus']; ziel: string; leistungen: string; hinweise: string[]; zahlplan?: number }
 /** Vorbelegung aus dem Produkt — dieselbe Regel wie der Server (`mandatVorlageAusProdukt`). */
 function formAusProdukt(l: Leistung): VertragForm {
   const v = mandatVorlageAusProdukt(l);
   return {
     betrag: v.honorar.betrag ? eingabeAusCent(inCent(v.honorar.betrag)) : '', basis: v.honorar.basis, laufzeit: v.mindestlaufzeitMonate ? String(v.mindestlaufzeitMonate) : '',
     rhythmus: v.rechnungsrhythmus, ziel: String(v.zahlungszielTage ?? 14), leistungen: v.leistungen.join('\n'), hinweise: v.hinweise,
+    ...(v.zahlplan ? { zahlplan: v.zahlplan.anzahlungProzent } : {}),
   };
 }
 
@@ -180,6 +181,7 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
               <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>Zahlungsziel (Tage)</span><input value={vertrag.ziel} inputMode="numeric" onChange={e => setVertrag(v => v && { ...v, ziel: e.target.value })} style={{ ...feld, fontSize: 16, width: 120 }} /></label>
             </div>
             <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>Leistungen (eine je Zeile)</span><textarea value={vertrag.leistungen} rows={3} onChange={e => setVertrag(v => v && { ...v, leistungen: e.target.value })} style={{ ...feld, fontSize: 16, resize: 'vertical', lineHeight: 1.5 }} /></label>
+            {vertrag.zahlplan && vertrag.basis === 'einmalig' && <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Zahlung {vertrag.zahlplan} % bei Beginn, Rest bei Abschluss (vom Produkt) — zwei Rechnungen.</span>}
             {vertrag.hinweise.map(h => <span key={h} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{h}</span>)}
             {vertragFehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{vertragFehler}</span>}
           </div>
