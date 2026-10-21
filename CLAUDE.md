@@ -722,7 +722,26 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
   Monatsabschluss (`lib/business/fuer-chef.ts`); Feinjustierung: eigene Schwellen je
   Kennzahl (alle Sichten oder eine Firma), Jahresziele je Firma, Verlauf 90 Tage.
 
-## Business-Modell, Privat-Index, Steuern (seit 25.09.2026, online)
+## Die zwei Scores — Privat-Score und Business-Score (21.10., Branch `zwei-scores`, nur lokal)
+Kevin 21.10.: „Am Ende müssen wir Privat wie auch im Business einen Score haben, der alles zusammenbringt, dann haben wir es sauber.“ **Den Wachstums-Score
+(Privat + Business gemischt) gibt es nicht mehr** — nie wieder eine gemischte Zahl zeigen (auch nicht an ZOE).
+- **Business-Score = der Business-Index (Gesamtsicht)**, keine neue Rechnung (lib/business). Säule `ff` heißt sichtbar „Prozesse“ (Kennung bleibt, nur mit
+  Messung; Prozess-Kennzahlen kommen als weitere `FF_KENNZAHLEN` dazu — Kommentar in lib/fulfillment/prozesse/kennzahlen.ts).
+- **Privat-Score je Person** rein in `lib/scores/privat-score.ts` (nur über `berechneModell`): Gesundheit (EIGENER Gesundheits-Index, nur mit Einwilligung (a)) ·
+  Finanzen privat (Privat-Index) · Planung (eigene private Aufgaben, `lib/scores/planung.ts`) · Familie & Partnerschaft (Pflege-Rhythmus); Gewichte als Daten
+  `PRIVAT_SCORE_GEWICHTE` (35 · 15 · 10 · 10 → 50 · 21 · 14 · 14 %). Säulen mit Index tragen GENAU dessen Zahl (eine Kennzahl `direkt`); Säulen, die es für die
+  Person nicht geben kann (keine Einwilligung, kein Haushalt, Ausnahmezeit), tragen `nurMitMessung`. Bestand `privat-score--<person>` (immer mit Suffix, Art. 9).
+- **EINE Filterstelle** `lib/scores/sicht.ts` (`scoreRechte`, `scoresFuer`, `scoresAusliefern`): Privat-Score NUR die Person selbst (kein Parameter für andere,
+  auch „Teilen“ öffnet ihn nicht), nie für `finanzRecht: 'business'`; Business-Score wer den Business-Index sehen darf. Route `GET/POST /api/scores` (Klasse
+  `person`, `eigenePerson`, Dienstweg 403, `?space=` schränkt ein, `leseZugriff` Gesundheit). Server-Lesen nur `lib/scores/server.ts`.
+- **ZOE/Agenten** lesen die Scores nur über `Brain.scores` (gatherBrain → `scoreFuerKi`: ohne Einwilligung (b) ohne Gesundheits-Säule und ohne Gesamtzahl) und
+  `scoresSatz` (lib/scores/text.ts); `brainNurBereich` lässt den Score des anderen Bereichs weg. `/api/performance` = nur noch Score-Agent + Tagespunkt (POST),
+  kein GET. `lib/performance.ts` trägt nur noch `personDatei`; die Verläufe `performance`/`performance--*` bleiben liegen.
+- **Oberfläche:** oben auf Heute `BereichScores` (components/os/scores, vor der Fläche, folgt dem Kopf-Schalter; `beide` = nebeneinander), antippen → `/os/score`
+  (`WEG.score(sicht)`: Privat = IndexAnsicht, Business = `BusinessCockpit teil="index"`, Fläche `score-business`). Finanzen › Business › Cockpit =
+  `BusinessCockpit teil="finanzen"` (Fläche `business` wie bisher): nur die Finanzielle Gesundheit; Privat zeigt den Privat-Index. Fokus › Wirkung = der Score des
+  Bereichs. Das Widget `score` gibt es nicht mehr (gespeicherte Plätze zeigen nichts). Wächter: `tests/zwei-scores.test.ts`, `tests/zwei-scores-route.test.ts`.
+
 - **Finanzen in zwei Ebenen (08.10., Aufräumen Etappe 2; bis dahin „Alles unter Zahlen“)** (`components/os/FinanzenView.tsx`, Aufbau NUR in
   `lib/finanzen/navigation.ts`): Bereich aus `?space=` → Reiter → Kopf-Schalter (Privat · Business; ohne Haushalt Business). Privat: Überblick
   (inkl. Gesamt `#gesamt`) · Konten & Buchungen (Ebene 2) · Planung (Blätter als EINE Pillenreihe, `blaetterFuer`; Altbestand unter
