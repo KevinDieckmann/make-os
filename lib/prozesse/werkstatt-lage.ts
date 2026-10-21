@@ -541,5 +541,7 @@ export function bahnBeimAnhaengen(neu: Pick<K, 'bahn' | 'katalog' | 'form'>, vor
   const vb = bahnSchluessel(vor);
   if (vb !== 'mensch' && !vb.startsWith('person:')) return null;
   const e = katalogEintrag(neu.katalog?.id);
-  return e?.rechte === 'aussen' || neu.form === 'freigabe' ? vb : null;
+  if (!(e?.rechte === 'aussen' || neu.form === 'freigabe')) return null;
+  // Eine Personen-Bahn braucht das Feld „wer“ in der Maske (sonst kennt der Knoten seine Person nicht) — dann die Bahn „Menschen“ direkt daneben.
+  return vb.startsWith('person:') && !e?.maske.some(f => f.id === 'wer') ? 'mensch' : vb;
 }

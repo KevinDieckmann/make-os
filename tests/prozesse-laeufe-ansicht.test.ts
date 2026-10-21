@@ -200,7 +200,9 @@ describe('Feinschliff der Werkstatt (research/prozesse/FEINSCHLIFF_WERKSTATT.md)
   });
   it('5 · Bahn beim Anhängen: ein Mail-Entwurf hinter einem Menschen-Schritt bleibt in dessen Bahn; Regeln bleiben im System', () => {
     const aufgabe = { form: 'schritt' as const, katalog: { id: 'aufgabe.anlegen', werte: { wer: 'konto-a' } } };
-    expect(bahnBeimAnhaengen({ form: 'nachricht', katalog: { id: 'inbox.mail-entwurf' } }, aufgabe)).toBe('person:konto-a');
+    // Der Mail-Entwurf kennt keine Person („wer“ fehlt in der Maske) → die Bahn „Menschen“ direkt neben der Personen-Bahn; die Freigabe kennt sie.
+    expect(bahnBeimAnhaengen({ form: 'nachricht', katalog: { id: 'inbox.mail-entwurf' } }, aufgabe)).toBe('mensch');
+    expect(bahnBeimAnhaengen({ form: 'freigabe', katalog: { id: 'freigabe.stapel' } }, aufgabe)).toBe('person:konto-a');
     expect(bahnBeimAnhaengen({ form: 'nachricht', katalog: { id: 'inbox.mail-entwurf' } }, { form: 'schritt', katalog: { id: 'aufgabe.anlegen' } })).toBe('mensch');
     expect(bahnBeimAnhaengen({ form: 'schritt', katalog: { id: 'crm.abfragen' } }, aufgabe)).toBeNull();
     expect(bahnBeimAnhaengen({ form: 'nachricht', katalog: { id: 'inbox.mail-entwurf' } }, { form: 'schritt', katalog: { id: 'crm.abfragen' } })).toBeNull();
