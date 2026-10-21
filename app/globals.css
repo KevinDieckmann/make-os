@@ -1224,6 +1224,8 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 @media (min-width: 1180px) { .pz-raster.pz-mit-feld { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); } }
 .pz-haupt, .pz-feld { min-width: 0; }
 .pz-feld { display: grid; gap: 12px; align-content: start; }
+/* Text in Feld, Liste und Brotkrumen bricht nur an Silbengrenzen (die Seite ist lang="de") — nie stumm mitten im Wort (21.10., Befund „Cockpit-Einführun g“). */
+.pz-feld, .pz-brot, .pz-liste-prozess { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
 .pz-buehnen-rahmen { position: relative; min-width: 0; }
 .ff-flaeche-buehne.pz-buehne { height: max(480px, calc(100vh - 250px)); }
 @media (max-width: 720px) { .ff-flaeche-buehne.pz-buehne { height: 62vh; min-height: 320px; } }

@@ -166,7 +166,7 @@ export function alsListe(l: readonly ProzessDef[], zahlen: Readonly<Record<strin
   return BAENDER.map(b => {
     const imBand = l.filter(p => p.band === b.id);
     const gruppen: ListenGruppe[] = b.id === 'kern'
-      ? KERN_STUFEN.map(s => ({ id: s.id, titel: s.titel, prozesse: imBand.filter(p => (p.stufe ?? 'fulfillment') === s.id).map(p => prozessAlsListe(p, zahlen)) })).filter(g => g.prozesse.length)
+      ? KERN_STUFEN.map(s => ({ id: s.id, titel: s.titel, prozesse: imBand.filter(p => stufeVon(p) === s.id).map(p => prozessAlsListe(p, zahlen)) })).filter(g => g.prozesse.length)
       : [{ id: b.id, titel: null, prozesse: imBand.map(p => prozessAlsListe(p, zahlen)) }];
     return { id: b.id, titel: b.titel, satz: b.satz, gruppen };
   }).filter(b => b.gruppen.some(g => g.prozesse.length));
@@ -238,5 +238,12 @@ export function kachelTexte(p: Pick<ProzessDef, 'titel' | 'quelle' | 'steckbrief
   };
 }
 
-/** Die Stufe einer Kachel im Kern (Vorgabe Fulfillment) — damit eine Vorlage ohne Angabe nie verloren geht. */
-export const stufeVon = (p: Pick<ProzessDef, 'stufe'>): KernStufe => p.stufe ?? 'fulfillment';
+/**
+ * Die Stufe einer Kachel im Kern (Vorgabe Fulfillment) — damit eine Vorlage ohne Angabe nie verloren geht. Trägt ein Prozess einen Bereich (Etappe B:
+ * gewählt je Vorlage), gilt er vor der abgeleiteten Stufe, sofern er eine Stufe der Fliege nennt — EINE Regel für Bild und Liste.
+ */
+export const stufeVon = (p: Pick<ProzessDef, 'stufe'> & { bereich?: unknown }): KernStufe => {
+  const b = p.bereich;
+  if (typeof b === 'string' && KERN_STUFEN.some(s => s.id === b)) return b as KernStufe;
+  return p.stufe ?? 'fulfillment';
+};

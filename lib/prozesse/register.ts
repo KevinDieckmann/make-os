@@ -6,6 +6,7 @@
 // aus den vorhandenen Lesewegen (`zaehler`, lib/prozesse/server.ts). Neuer Prozess = ein Eintrag hier (+ Fall in tests/prozesse-register.test.ts).
 
 import { WEG } from '@/lib/wege';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 import type { ProzessDef, ProzessPhase, ProzessSchritt } from './typen';
 
 type S = ProzessSchritt;
@@ -134,7 +135,7 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
         schritt('nw-2', 'Person erfassen', 'Auch ohne Netz — die Warteschlange sendet, sobald es wieder geht.'),
         frage('nw-3', 'Schon bekannt?', null, 'Ja → an die vorhandene Akte hängen, nein → neu anlegen. EINE Regel für Firma und Person; Art. 18 → nichts wird angelegt.'),
       ]),
-      phase('schritt', 'Nächster Schritt', [schritt('ns-1', 'Termin, Qualifizieren, Follow-up, Vermitteln, Angebot, Make.One oder nur Kontakt', 'Die Visitenkarte ist KEINE Einwilligung.')]),
+      phase('schritt', 'Nächster Schritt', [schritt('ns-1', `Termin, Qualifizieren, Follow-up, Vermitteln, Angebot, ${MARKE_EVENTS} oder nur Kontakt`, 'Die Visitenkarte ist KEINE Einwilligung.')]),
       phase('abschluss', 'Abschluss', [schritt('ab-1', 'Follow-up, Termin oder Deal anlegen'), nachricht('ab-2', 'Danke-Mail als Entwurf', 'Nur nach einem echten Gespräch, nur per Einzelklick.')]),
     ],
     link: { href: WEG.netzwerken(), text: 'Netzwerken' },
@@ -163,7 +164,7 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
   },
   {
     // lib/crm/eventplanung.ts, lib/crm/marke.ts (eigene Abende unter der Veranstaltungsmarke)
-    id: 'sp-makeone', titel: 'Eigenes Event (Make.One)', quelle: 'system', band: 'kern', stufe: 'marketing',
+    id: 'sp-makeone', titel: `Eigenes Event (${MARKE_EVENTS})`, quelle: 'system', band: 'kern', stufe: 'marketing',
     steckbrief: { ausloeser: 'Ein eigener Abend wird geplant', eingang: 'Vorlage, Format, Reihe und Ziel', ergebnis: 'Gäste da, Nachfassen erledigt, Anmeldungen als Marketing-Leads', empfaenger: 'Sales (Qualifizierung)', eigner: 'Head of Event' },
     phasen: [
       phase('planen', 'Planen', [schritt('pl-1', 'Vorlage und Format'), schritt('pl-2', 'Ziel und Budget'), schritt('pl-3', 'Checkliste wird zu Aufgaben')]),
@@ -171,7 +172,7 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
       phase('abend', 'Abend', [termin('ab-1', 'Termin im Kalender', 'Der Spiegel zieht den Termin nach, wenn sich das Event ändert.'), schritt('ab-2', 'Check-in')]),
       phase('nachher', 'Danach', [schritt('na-1', 'Nachfassen binnen 48 Stunden'), schritt('na-2', 'Anmeldungen zählen als Marketing-Lead')]),
     ],
-    link: { href: WEG.event(), text: 'Markttraktion › Events › Make.One' },
+    link: { href: WEG.event(), text: `Markttraktion › Events › ${MARKE_EVENTS}` },
     uebergaben: [{ nach: 'sp-lead-sql', text: 'Anmeldung' }],
   },
 

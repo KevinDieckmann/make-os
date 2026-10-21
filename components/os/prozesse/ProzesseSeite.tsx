@@ -26,7 +26,7 @@ import type { FlowFaden } from '@/lib/lichtfaeden/flow';
 import { PROZESS_ANSICHTEN, ansichtVorgabe, ebeneVon, type ProzessAnsicht, type ProzessPfad } from '@/lib/prozesse/typen';
 import { prozesseAusAdresse, ebeneHoch } from '@/lib/prozesse/adresse';
 import { alsVorlage, brotkrumen, endeSchritte, pfadGueltig, phaseVon, prozessVon, schrittVon, zahlSchluessel, type SuchTreffer } from '@/lib/prozesse/modell';
-import { fliegeLage, prozessLage, boxenVon, huelle, type RahmenLage } from '@/lib/prozesse/landkarte';
+import { fliegeLage, prozessLage, boxenVon, huelle, pfeileImBild, type PfeilLage, type RahmenLage } from '@/lib/prozesse/landkarte';
 import { STUFE_FARBE, tonVon } from '@/lib/prozesse/farben';
 import { FORM_FARBE } from '../ui/reise/formen';
 import { useVollbild } from '../ui/flaeche/vollbild';
@@ -98,21 +98,40 @@ export function ProzesseSeite() {
 
   // ── Die Szene der Ebene (Landkarte · Prozess · Ablauf) ──
   const spitze = 'pz-spitze';
+  // Die Lage der Landkarte einmal je Bestand (nicht je Mausbewegung) — der Fokus wählt nur, welche Wege hell stehen.
+  const landLage = useMemo(() => (daten && !p ? fliegeLage(prozesse) : null), [daten, prozesse, p]);
+  // Fokus (Befund 21.10.: lange Übergaben nur auf Wunsch): überfahrene Kachel, sonst die gewählte (zuletzt besucht bzw. gesucht); beim Präsentieren die
+  // Kacheln des Rahmens (nur ihre Wege nach vorn).
+  const [ueber, setUeber] = useState<string | null>(null);
+  const [gewaehlt, setGewaehlt] = useState<string | null>(null);
+  const rahmenFokus = useMemo(() => {
+    if (!praes || !landLage) return null;
+    const r = landLage.rahmen[rahmenNr];
+    if (!r || r.id === 'alles') return [];
+    return landLage.kacheln.filter(k => k.stufe === r.id || (!k.stufe && k.band === r.id)).map(k => k.id);
+  }, [praes, landLage, rahmenNr]);
+  const fokus = useMemo<string[]>(() => rahmenFokus ?? (ueber ? [ueber] : gewaehlt ? [gewaehlt] : []), [rahmenFokus, ueber, gewaehlt]);
   const szene = useMemo<Szene | null>(() => {
     if (!daten) return null;
-    if (!p) {
-      const lage = fliegeLage(prozesse);
+    if (!p && landLage) {
+      const lage = landLage;
+      const weg = (pf: PfeilLage, hell: boolean): FlowFaden => {
+        const f = flaecheFaden({ id: pf.id, art: pf.art, punkte: pf.punkte }, FLOW_TON);
+        return hell ? { ...f, staerke: 'mittel', bisHier: 1, gluehen: true } : { ...f, bisHier: 0 };
+      };
       const faeden: FlowFaden[] = [
         { id: 'rueckgrat', punkte: lage.rueckgrat.punkte, farbe: C.aktiv, staerke: 'breit', aufbau: true, farben: lage.rueckgrat.abschnitte.map(a => ({ von: a.von, bis: a.bis, farbe: STUFE_FARBE[a.stufe] })) },
-        ...lage.pfeile.map(pf => flaecheFaden({ id: pf.id, art: pf.art, punkte: pf.punkte }, FLOW_TON)),
+        ...pfeileImBild(lage.pfeile, fokus, { nurAus: !!rahmenFokus }).map(w => weg(w.pfeil, w.hell)),
       ];
       return {
         schluessel: 'landkarte', label: `Landkarte der Prozesse als Fliege: ${prozesse.length} Prozesse in Führung, Kern (Marketing, Sales, Übergabe, Fulfillment, Ausbau) und Unterstützung`,
-        box: huelle([lage.box], 20), boxen: boxenVon({ kacheln: lage.kacheln }), faeden, rahmen: lage.rahmen,
+        box: huelle([lage.box], 12), boxen: boxenVon({ kacheln: lage.kacheln }), faeden, rahmen: lage.rahmen,
         minimap: lage.kacheln.map(k => ({ box: k, farbe: tonVon(nach.get(k.id) ?? { band: k.band, stufe: k.stufe }) })),
-        zeichne: st => <LandkarteBild lage={lage} prozesse={nach} zahlen={zahlen} stufe={st} spitze={spitze} onKachel={id => buehne.current?.fliegeIn(id, () => geh({ p: id }))} onZahl={h => router.push(h)} />,
+        zeichne: st => <LandkarteBild lage={lage} prozesse={nach} zahlen={zahlen} stufe={st} spitze={spitze} fokus={fokus} nurAus={!!rahmenFokus}
+          onFokus={setUeber} onKachel={id => buehne.current?.fliegeIn(id, () => geh({ p: id }))} onZahl={h => router.push(h)} />,
       };
     }
+    if (!p) return null;
     if (!ph) {
       const lage = prozessLage(p, prozesse);
       const faeden: FlowFaden[] = [
@@ -139,7 +158,7 @@ export function ProzesseSeite() {
       zeichne: st => <AblaufBild bild={bild} prozess={p} zahlen={zahlen} gewaehlt={pfad.s ?? null} stufe={st} spitze={spitze} ende={ende}
         onSchritt={(phase, id) => geh({ p: p.id, ph: phase, s: id }, { ersetzen: !!pfad.s })} onPhase={id => geh({ p: p.id, ph: id }, { ersetzen: true })} onZahl={h => router.push(h)} />,
     };
-  }, [daten, prozesse, zahlen, nach, p, ph, pfad.s, geh, router]);
+  }, [daten, landLage, fokus, rahmenFokus, prozesse, zahlen, nach, p, ph, pfad.s, geh, router]);
 
   // ── Wie die neue Szene landet: tiefer = heran, höher = aus dem Element heraus (Punkt 12) ──
   const vorher = useRef<ProzessPfad | null>(null);
@@ -152,9 +171,11 @@ export function ProzesseSeite() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Szenenwechsel
   }, [szene?.schluessel]);
   useEffect(() => { if (daten) vorher.current = pfad; });
+  // Zurück auf der Landkarte: der Prozess, aus dem man kommt, bleibt gewählt — seine Wege stehen hell, bis man woanders hinklickt.
+  useEffect(() => { if (einflug.art === 'raus' && ebene === 1) setGewaehlt(einflug.von); }, [einflug, ebene]);
 
   // ── Präsentieren: Rahmen für Rahmen ──
-  const rahmen = useMemo(() => szene?.rahmen ?? [], [szene]);
+  const rahmen = useMemo(() => szene?.rahmen ?? [], [szene?.rahmen]);
   useEffect(() => { setRahmenNr(0); }, [praes, szene?.schluessel]);
   useEffect(() => {
     if (!praes || !rahmen[rahmenNr]) return;
@@ -168,6 +189,7 @@ export function ProzesseSeite() {
     const gleich = (t.ziel.p ?? '') === (pfad.p ?? '') && (t.ziel.ph ?? '') === (pfad.ph ?? '') && (t.ziel.s ?? '') === (pfad.s ?? '');
     if (ansicht !== 'bild') { geh(t.ziel); return; }
     if (!gleich) geh(t.ziel);
+    if (t.art === 'prozess') setGewaehlt(t.leuchten);
     setLeuchten(l => ({ id: t.leuchten, n: (l?.n ?? 0) + 1 }));
   };
   const auswahlZeigen = useCallback(() => { const id = pfad.s ?? pfad.ph ?? leuchten?.id; if (id) buehne.current?.zeige(id, true); else buehne.current?.allesZeigen(); }, [pfad.s, pfad.ph, leuchten?.id]);
@@ -209,7 +231,7 @@ export function ProzesseSeite() {
         <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           {i > 0 && <span aria-hidden style={{ color: C.inkLeise }}>›</span>}
           {i === krumen.length - 1
-            ? <span aria-current="page" style={{ color: C.ink, fontWeight: 600, overflowWrap: 'anywhere' }}>{k.titel}</span>
+            ? <span aria-current="page" style={{ color: C.ink, fontWeight: 600, overflowWrap: 'break-word', hyphens: 'auto' }}>{k.titel}</span>
             : <Link href={WEG.prozesse({ ...k.pfad, ...(adr.ansicht ? { ansicht: adr.ansicht } : {}), ...(praes ? { modus: 'praesentieren' as const } : adr.voll ? { voll: true } : {}) })} scroll={false} style={{ color: C.inkDim }}>{k.titel}</Link>}
         </span>
       ))}
@@ -257,7 +279,8 @@ export function ProzesseSeite() {
     inhalt = (
       <div className="pz-buehnen-rahmen">
         <Buehne ref={buehne} szene={szene.schluessel} einflug={einflug} box={szene.box} boxen={szene.boxen} faeden={szene.faeden}
-          ziel={pfad.s ?? pfad.ph ?? null} leuchten={leuchten} minimap={minimap} minimapTeile={szene.minimap} handy={handy} label={szene.label} praesentieren={praes}>
+          ziel={pfad.s ?? pfad.ph ?? null} leuchten={leuchten} minimap={minimap} minimapTeile={szene.minimap} handy={handy} label={szene.label} praesentieren={praes}
+          onFrei={() => setGewaehlt(null)}>
           {szene.zeichne}
         </Buehne>
         {hilfeFenster}
@@ -306,7 +329,7 @@ export function ProzesseSeite() {
         </div>
         {ansicht === 'bild' && daten && flaecheLeiste}
         {raster}
-        {ansicht === 'bild' && daten && ebene === 1 && <p className="pz-legende" style={{ ...MIKRO, margin: 0, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien, color: C.inkLeise }}>Ein Klick fährt hinein · Zahl = Fälle, ein Klick darauf zeigt sie · „System“ = schon im Code gebaut, nur lesbar</p>}
+        {ansicht === 'bild' && daten && ebene === 1 && <p className="pz-legende" style={{ ...MIKRO, margin: 0, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien, color: C.inkLeise }}>Ein Klick fährt hinein · Überfahren zeigt alle Übergaben einer Kachel · Zahl = Fälle, ein Klick darauf zeigt sie · „System“ = schon im Code gebaut, nur lesbar</p>}
       </Karte>
     </Seite>
   );

@@ -59,6 +59,8 @@ const FAHRT = { zeige: 420, rein: 360, landen: 460 } as const;
 const LEUCHT_MS = 1800;
 /** Kleinster Zoom beim Fahren auf ein Ziel — darunter wird die Schrift der Formen (15 px) unlesbar. */
 const LESBAR = 0.7;
+/** Rand bei „Alles zeigen“ (Bildschirm-px) — schmal, damit die Gesamtansicht so groß wie möglich steht (die Szene bringt ihren eigenen Rand mit). */
+const RAND_ALLES = 20;
 
 /** Ein geschlossener Weg um eine Box (der Lichtfaden beim Aufleuchten). */
 export function ringUm(b: Rechteck, rand = 12): [number, number][] {
@@ -131,7 +133,7 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
   }, []);
 
   useImperativeHandle(ref, () => ({
-    allesZeigen: () => fliege(passend(stand.current.box, 1, 40)),
+    allesZeigen: () => fliege(passend(stand.current.box, 1, RAND_ALLES)),
     zeige: (id, mitLeuchten) => { const b = stand.current.boxen.get(id); if (!b) return; fliege(aufZiel(b)); if (mitLeuchten) leuchte(id); },
     fliegeIn: (id, dann) => {
       const b = stand.current.boxen.get(id);
@@ -146,7 +148,7 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
   useEffect(() => {
     const e = stand.current.einflug;
     const zielBox = stand.current.ziel ? stand.current.boxen.get(stand.current.ziel) : undefined;
-    const endKamera = zielBox ? aufZiel(zielBox) : passend(stand.current.box, 1, 40);
+    const endKamera = zielBox ? aufZiel(zielBox) : passend(stand.current.box, 1, RAND_ALLES);
     if (e.art === 'neu' || ruhig()) { setze(endKamera); return; }
     const g = groesse();
     if (e.art === 'rein') setze(zoomUm(endKamera, 0.62, g.b / 2, g.h / 2));

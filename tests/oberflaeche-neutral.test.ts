@@ -57,7 +57,9 @@ const WEITERE = ['lib/make-one/seiten.ts', 'lib/make-one/einstellungen.ts', 'lib
   'lib/finanzen/haushalt/gesamt.ts', 'lib/crm/marke.ts', 'lib/crm/reihen-server.ts', 'lib/crm/wertelisten.ts',
   'lib/zoe/vorschlag-anzeige.ts', 'lib/make-one/liquiditaet.ts',
   // 14.10. (Abnahme-Reste 2): Zeilennamen des Rechenkerns (Zahlungskalender) und die Kalender-Dateien mit Namen (Altweg, Zuordnung, Schnelleingabe).
-  'lib/finanzen/rechenkern.ts', 'lib/kalender/apple-altweg.ts', 'lib/kalender/belegt.ts', 'lib/kalender/schnell.ts', 'app/api/apple-calendar/route.ts'];
+  'lib/finanzen/rechenkern.ts', 'lib/kalender/apple-altweg.ts', 'lib/kalender/belegt.ts', 'lib/kalender/schnell.ts', 'app/api/apple-calendar/route.ts',
+  // 21.10. (Prozesse): Titel, Steckbriefe und Schritte des Prozess-Registers stehen auf der Landkarte (u. a. die Veranstaltungsmarke — nur über MARKE_EVENTS).
+  'lib/prozesse/register.ts', 'lib/prozesse/vorlagen.ts', 'lib/prozesse/typen.ts'];
 
 // ── 15.10. (Abnahme 2 A2/C22, Kevin: „Betreiber-Inhalte nur in der eigenen Instanz“) ───────────────────────────────────────────────
 // Betreiber-Wissen = `BETREIBER_WISSEN` (Repo-Dokumente, .env, /srv/, Befehle, Skripte, Umgebungswerte MAKE_OS_*/WHATSAPP_*/GOOGLE_*/WHOOP_* …,

@@ -33,15 +33,21 @@ describe('Die Fliege (Punkte 2, 3, 9 — Entscheidung E1)', () => {
   it('Kern links → rechts: Marketing, Sales, Übergabe, Fulfillment, Ausbau — jede Kachel in der Spalte ihrer Stufe', () => {
     expect(lage.fliege.stufen.map(s => s.id)).toEqual(KERN_STUFEN.map(s => s.id));
     for (let i = 1; i < lage.fliege.stufen.length; i++) expect(lage.fliege.stufen[i].x).toBeGreaterThan(lage.fliege.stufen[i - 1].x);
-    for (const k of lage.kacheln.filter(k => k.band === 'kern')) expect(k.x).toBe(lage.fliege.stufen.find(s => s.id === k.stufe)!.x);
+    for (const k of lage.kacheln.filter(k => k.band === 'kern')) {
+      const s = lage.fliege.stufen.find(x => x.id === k.stufe)!;
+      expect(k.x >= s.x && k.x + k.b <= s.x + s.b, k.id).toBe(true);
+    }
   });
-  it('eine Fliege: außen weit, in der Mitte (Übergabe) der schmale Knoten; die Gasse in der Mitte bleibt frei für den Weg des Kunden', () => {
+  it('eine Fliege: außen weit, in der Mitte (Übergabe) der schmale Knoten auf dem Weg des Kunden; sonst bleibt die Gasse frei', () => {
     const halb = Object.fromEntries(lage.fliege.stufen.map(s => [s.id, s.halb]));
     expect(halb.uebergabe).toBeLessThan(halb.marketing);
     expect(halb.uebergabe).toBeLessThan(halb.ausbau);
     expect(halb.uebergabe).toBeLessThan(halb.sales);
     expect(halb.uebergabe).toBeLessThan(halb.fulfillment);
-    for (const k of lage.kacheln.filter(k => k.band === 'kern')) expect(k.y + k.h <= lage.fliege.mitte - FLIEGE.gasse / 2 + 0.1 || k.y >= lage.fliege.mitte + FLIEGE.gasse / 2 - 0.1).toBe(true);
+    for (const k of lage.kacheln.filter(k => k.band === 'kern' && k.stufe !== 'uebergabe')) expect(k.y + k.h <= lage.fliege.mitte - FLIEGE.gasse / 2 + 0.1 || k.y >= lage.fliege.mitte + FLIEGE.gasse / 2 - 0.1).toBe(true);
+    // Der Knoten liegt AUF dem Weg (er ist der Knoten der Fliege).
+    const knoten = lage.kacheln.find(k => k.stufe === 'uebergabe')!;
+    expect(knoten.y < lage.fliege.mitte && knoten.y + knoten.h > lage.fliege.mitte).toBe(true);
     expect(lage.fliege.pfad.startsWith('M')).toBe(true);
     expect(lage.fliege.pfad.endsWith('Z')).toBe(true);
     // Der Weg des Kunden: von ganz links nach ganz rechts, je Stufe ein Abschnitt, lückenlos.
@@ -55,7 +61,7 @@ describe('Die Fliege (Punkte 2, 3, 9 — Entscheidung E1)', () => {
     for (let i = 0; i < lage.kacheln.length; i++) for (let j = i + 1; j < lage.kacheln.length; j++) expect(ueberlappt(lage.kacheln[i], lage.kacheln[j]), `${lage.kacheln[i].id} × ${lage.kacheln[j].id}`).toBe(false);
     for (const k of lage.kacheln) expect(ueberlappt(k, lage.box) && k.x >= lage.box.x && k.x + k.b <= lage.box.x + lage.box.b).toBe(true);
   });
-  it('Übergaben (Punkt 9): je eine beschriftete Linie von Kachel zu Kachel; nach links = zurück', () => {
+  it('Übergaben (Punkt 9): je eine beschriftete Linie von Kachel zu Kachel (kurze immer, lange nur mit Fokus); nach links = zurück', () => {
     const n = L.reduce((a, p) => a + (p.uebergaben?.length ?? 0), 0);
     expect(lage.pfeile).toHaveLength(n);
     const nach = new Map(lage.kacheln.map(k => [k.id, k]));

@@ -9,6 +9,7 @@ import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL } from '@/lib/make-one/des
 import { FORM_NAME, type FlussForm } from '@/lib/reise/bild';
 import { FLOW, type FlowFaden } from '@/lib/lichtfaeden/flow';
 import { FORM_FARBE, JETZT } from './formen';
+import { stueckeVon, silbenTeilen, type Stueck } from '@/lib/text/umbruch';
 
 export type FlaecheUmriss = 'kasten' | 'raute' | 'termin';
 
@@ -16,18 +17,24 @@ export type FlaecheUmriss = 'kasten' | 'raute' | 'termin';
 export const FLAECHE_SCHRIFT = { titel: 15, unter: 13, rahmen: 20, mikro: 11 } as const;
 
 /**
- * Text in Zeilen umbrechen — grob nach Zeichen (≈ 0,56 · Schriftgröße je Zeichen), an Wortgrenzen, höchstens `zeilen` Zeilen, Rest mit „…“. Lange Wörter
- * werden geteilt. Rein (für die Tests).
+ * Text in Zeilen umbrechen — grob nach Zeichen (≈ 0,56 · Schriftgröße je Zeichen), an Wortgrenzen, höchstens `zeilen` Zeilen, Rest mit „…“. Ein zu langes
+ * Wort bricht zuerst hinter seinen Bindestrichen („Cockpit-“ | „Einführung“, lib/text/umbruch.ts `stueckeVon`); nur was dann noch zu lang ist, wird an einer
+ * Silbengrenze mit Trennstrich geteilt (`silbenTeilen`: „Entscheidungsda-“ | „tum“) — nie stumm mitten im Wort (21.10., Prozesse). Rein (für die Tests).
  */
 export function textZeilen(text: string, breite: number, groesse: number, zeilen = 2): string[] {
   const max = Math.max(4, Math.floor(breite / (groesse * 0.56)));
-  const woerter = text.trim().split(/\s+/).filter(Boolean).flatMap(w => (w.length > max ? w.match(new RegExp(`.{1,${max}}`, 'g')) ?? [w] : [w]));
+  // Stücke mit „leer davor“ (Wortanfang) bzw. ohne (Fortsetzung eines geteilten Worts — ohne Leerzeichen anhängen).
+  const stuecke: Stueck[] = [];
+  for (const s of stueckeVon(text)) {
+    const teile = s.t.length > max ? silbenTeilen(s.t, max) : [s.t];
+    teile.forEach((t, i) => stuecke.push({ t, leer: i === 0 && s.leer }));
+  }
   const raus: string[] = [];
   let z = '';
-  for (const w of woerter) {
-    const t = z ? `${z} ${w}` : w;
+  for (const s of stuecke) {
+    const t = z ? `${z}${s.leer ? ' ' : ''}${s.t}` : s.t;
     if (t.length <= max) { z = t; continue; }
-    raus.push(z); z = w;
+    raus.push(z); z = s.t;
   }
   if (z) raus.push(z);
   if (raus.length <= zeilen) return raus;

@@ -147,6 +147,16 @@ export function flaecheBild(v: ProzessVorlage, bausteine: readonly (Pick<Baustei
     gesehen.add(pf.id);
     pfeile.push({ ...pf, punkte: pfeilWeg(a, b, hindernisse, pf.art) });
   }
+  // Zweiter Durchgang (21.10.): ein Pfeil, der einen anderen kreuzt bzw. auf ihm läuft, wird mit Blick auf alle anderen neu gelegt — nur, wenn es danach weniger
+  // Kreuzungen sind (sonst bleibt er, wie er war).
+  pfeile.forEach((pf, i) => {
+    const andere = pfeile.filter((_, j) => j !== i).map(x => x.punkte);
+    const vorher = andere.reduce((n, q) => n + pfeileKreuzen(pf.punkte, q), 0);
+    if (!vorher) return;
+    const neu = pfeilWeg(box.get(pf.von)!, box.get(pf.nach)!, hindernisse, pf.art, andere);
+    const a = box.get(pf.von)!, b = box.get(pf.nach)!;
+    if (andere.reduce((n, q) => n + pfeileKreuzen(neu, q), 0) < vorher && wegKreuzungen(neu, hindernisse, a, b) <= wegKreuzungen(pf.punkte, hindernisse, a, b)) pfeile[i] = { ...pf, punkte: neu };
+  });
   const teile: Box[] = [...rahmen, ...knoten];
   const x0 = teile.length ? Math.min(...teile.map(t => t.x)) : 0, y0 = teile.length ? Math.min(...teile.map(t => t.y)) : 0;
   const x1 = teile.length ? Math.max(...teile.map(t => t.x + t.b)) : 0, y1 = teile.length ? Math.max(...teile.map(t => t.y + t.h)) : 0;
@@ -192,6 +202,11 @@ function kandidaten(a: Box, b: Box, hindernisse: readonly Box[], art: PfeilArt):
   const rx = Math.max(xb, ...dazwischen.map(r => r.x + r.b)) + ABSTAND_AUSSEN, lx = Math.min(xa, ...dazwischen.map(r => r.x)) - ABSTAND_AUSSEN;
   k.push([aR, [rx, ay], [rx, by], bR]);
   k.push([aL, [lx, ay], [lx, by], bL]);
+  // Unten bzw. oben herum in die Seite des Ziels (21.10., Prozesse Ebene 3): wenn der Weg nach rechts bzw. links von anderen Pfeilen besetzt ist (z. B. „ja“ einer
+  // Entscheidung, deren „nein“ nach rechts geht) — erst weg vom Knoten, dann in der Lücke vor dem Ziel hoch bzw. runter.
+  const unten = Math.max(a.y + a.h, ...dazwischen.map(r => r.y + r.h)) + 30, oben = Math.min(a.y, ...dazwischen.map(r => r.y)) - 30;
+  if (rechts) { const mx = Math.round(b.x - 30); k.push([aU, [ax, unten], [mx, unten], [mx, by], bL]); k.push([aO, [ax, oben], [mx, oben], [mx, by], bL]); }
+  if (links) { const mx = Math.round(b.x + b.b + 30); k.push([aU, [ax, unten], [mx, unten], [mx, by], bR]); k.push([aO, [ax, oben], [mx, oben], [mx, by], bR]); }
   // Die Schleife zurück läuft oben herum in den Eingang der Entscheidung (nicht auf dem Nein-Pfeil zurück).
   if (art === 'zurueck') { const oy = y0 - 30; k.push([aO, [ax, oy], [bx, oy], bO]); }
   return k;
@@ -220,8 +235,37 @@ export function wegKreuzungen(w: readonly Pt[], hindernisse: readonly Box[], a?:
   return n;
 }
 
-/** Der gewinkelte Weg eines Pfeils (siehe Kopf): unter den Kandidaten der mit den wenigsten Kreuzungen, dann der kürzeste mit den wenigsten Ecken. */
-export function pfeilWeg(a: Box, b: Box, hindernisse: readonly Box[] = [], art: PfeilArt = 'weiter'): [number, number][] {
+/**
+ * Wie oft sich zwei gewinkelte Wege kreuzen bzw. ein Stück übereinander laufen (21.10., Prozesse: „Nie Linien, die sich ohne Not kreuzen“). Ein gemeinsamer
+ * Anfangs- oder Endpunkt zählt nicht, ein gemeinsames Stück von mehr als 4 px schon — außer am Ende zweier Pfeile in denselben Eingang.
+ */
+export function pfeileKreuzen(p: readonly Pt[], q: readonly Pt[]): number {
+  let n = 0;
+  // Zwei Pfeile in DENSELBEN Eingang (gleicher Endpunkt) dürfen auf dem letzten Stück zusammenlaufen — das ist eine Zusammenführung, keine Kreuzung.
+  const pe = p[p.length - 1], qe = q[q.length - 1];
+  const zusammen = !!pe && !!qe && pe[0] === qe[0] && pe[1] === qe[1];
+  for (let i = 1; i < p.length; i++) for (let j = 1; j < q.length; j++) {
+    const [a, b] = [p[i - 1], p[i]], [c, d] = [q[j - 1], q[j]];
+    if (zusammen && i === p.length - 1 && j === q.length - 1) continue;
+    const ah = a[1] === b[1], ch = c[1] === d[1];
+    if (ah !== ch) {
+      const [h0, h1, v0, v1] = ah ? [a, b, c, d] : [c, d, a, b];
+      const x = v0[0], y = h0[1];
+      if (x > Math.min(h0[0], h1[0]) + 1 && x < Math.max(h0[0], h1[0]) - 1 && y > Math.min(v0[1], v1[1]) + 1 && y < Math.max(v0[1], v1[1]) - 1) n++;
+    } else if (ah && a[1] === c[1]) {
+      if (Math.min(Math.max(a[0], b[0]), Math.max(c[0], d[0])) - Math.max(Math.min(a[0], b[0]), Math.min(c[0], d[0])) > 4) n++;
+    } else if (!ah && a[0] === c[0]) {
+      if (Math.min(Math.max(a[1], b[1]), Math.max(c[1], d[1])) - Math.max(Math.min(a[1], b[1]), Math.min(c[1], d[1])) > 4) n++;
+    }
+  }
+  return n;
+}
+
+/**
+ * Der gewinkelte Weg eines Pfeils (siehe Kopf): unter den Kandidaten der mit den wenigsten Kreuzungen (Knoten zählen am meisten, dann schon gelegte Pfeile
+ * `andere`), dann der kürzeste mit den wenigsten Ecken.
+ */
+export function pfeilWeg(a: Box, b: Box, hindernisse: readonly Box[] = [], art: PfeilArt = 'weiter', andere: readonly (readonly Pt[])[] = []): [number, number][] {
   let best: Pt[] | null = null;
   let wert = Number.MAX_VALUE;
   for (const w0 of kandidaten(a, b, hindernisse, art)) {
@@ -230,7 +274,8 @@ export function pfeilWeg(a: Box, b: Box, hindernisse: readonly Box[] = [], art: 
     for (let i = 1; i < w.length; i++) laenge += Math.abs(w[i][0] - w[i - 1][0]) + Math.abs(w[i][1] - w[i - 1][1]);
     // Nein geht nach rechts; der Weg zurück nie gerade auf dem Nein-Pfeil.
     const vorzug = (art === 'nein' && w[0][0] !== a.x + a.b ? 500 : 0) + (art === 'zurueck' && w.length === 2 ? 5000 : 0);
-    const v = wegKreuzungen(w, hindernisse, a, b) * 100_000 + laenge + (w.length - 2) * 30 + vorzug;
+    const ueber = andere.reduce((n, q) => n + pfeileKreuzen(w, q), 0);
+    const v = wegKreuzungen(w, hindernisse, a, b) * 100_000 + ueber * 20_000 + laenge + (w.length - 2) * 30 + vorzug;
     if (v < wert) { wert = v; best = w; }
   }
   return best ?? [[a.x + a.b / 2, a.y + a.h], [b.x + b.b / 2, b.y]];

@@ -64,7 +64,7 @@ export function PhaseKarte({ p, ph, zahlen, onSchritt }: { p: ProzessDef; ph: Pr
           <li key={s.id}>
             <button type="button" className="fassbar pz-feld-zeile" onClick={() => onSchritt(s.id)}>
               <FormZeichen form={s.form} />
-              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{s.titel}</span>
+              <span style={{ minWidth: 0, overflowWrap: 'break-word', hyphens: 'auto' }}>{s.titel}</span>
             </button>
           </li>
         ))}

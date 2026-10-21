@@ -638,3 +638,15 @@ beschriftete Lichtfäden. Ein Klick fährt hinein (Kamerafahrt, Pfad in der Adre
 Hauptweg), Ebene 3 Ablauf (die Fläche des Editors, nur lesbar — Rauten und Erinnerungen erst hier), Ebene 4 Schritt. Darstellungen aus EINER Liste
 (`PROZESS_ANSICHTEN`: Bild · Liste); am Handy startet die Liste. Je Kachel Titel und EINE Zahl (die zweite nur rot bei einer Frist), nie eine Null; Farbe nie allein
 (Wort über jeder Stufe, Kontrast ≥ 3:1). Wächter: `tests/prozesse-*.test.ts`.
+- **Die Fliege schön (21.10. abends):** zwei getönte Flügel (Verlauf im Ton jeder Stufe, TIEF, leise), der Knoten „Übergabe“ als eigene Fläche AUF dem Weg des
+  Kunden; Stufen-Titel folgen der Form. Je Flügel Spalten vom Knoten nach außen, jede trägt eine Zeile je Hälfte mehr (`zeilenInnen` + Tiefe) — viele Kacheln
+  einer Stufe verteilen sich auf mehrere Spalten (Reihenfolge stabil: Spalte für Spalte, oben → unten), nie ein Turm; der Umriss steigt nach außen immer an
+  (`weitung`). Rechnen NUR in `lib/prozesse/landkarte.ts`; die Stufe einer Kachel NUR über `stufeVon` (liest künftig den `bereich` einer Vorlage).
+- **Linien wenig und klar:** in der Gesamtansicht nur der Lichtfaden der Fliege und kurze Übergaben zwischen Nachbarn (weiche Kurven, Anschlüsse über die Kante
+  verteilt, gewählt so, dass sich keine zwei kreuzen); lange und bandübergreifende Übergaben erst beim Überfahren bzw. Wählen einer Kachel (hell, beschriftet),
+  beim Präsentieren die Wege des Rahmens nach vorn. Welche Wege ein Bild zeigt, sagt NUR `pfeileImBild`. Lange Wege laufen nie in der Gasse entlang.
+- **Text nie mitten im Wort:** SVG-Text über `lib/text/umbruch.ts` (`einpassen`: Umbruch an Leerzeichen und hinter Bindestrichen, ein zu langes Wort macht die
+  Schrift kleiner statt es zu trennen); Kacheln sind nie schmaler als ihr längstes Wort (`kachelBreite`). Wo die Schrift fest ist (Formen der Fläche), teilt
+  `textZeilen` erst hinter Bindestrichen, dann an einer Silbengrenze mit Trennstrich (`silbenTeilen`). HTML daneben: `hyphens: auto` (die Seite ist `lang="de"`).
+- **Fläche des Editors (Ebene 3):** Pfeile kreuzen keine anderen Pfeile — ein zweiter Durchgang legt kreuzende neu (`pfeileKreuzen`, `pfeilWeg(…, andere)`,
+  auch unten bzw. oben herum); zwei Pfeile in denselben Eingang dürfen zusammenlaufen.
