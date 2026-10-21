@@ -39,7 +39,7 @@ const ZOE_WHATSAPP_WEBHOOK = /^\/api\/zoe\/whatsapp\/webhook$/;
 // WHOOP (08.10.): der Webhook (lib/whoop/webhook.ts) — WHOOP ruft ohne Sitzung und ohne Origin, NUR POST; die Route prüft die Signatur
 // `X-WHOOP-Signature` (HMAC-SHA256 über Zeitstempel + Rohkörper, Client Secret) selbst, ordnet nur bekannte WHOOP-Kennungen zu, liefert nie Daten.
 const WHOOP_WEBHOOK = /^\/api\/whoop\/webhook$/;
-// Prozesse (21.10., B1 — Kevin: Webhook „Ja, abgesichert“): je Prozess eine Adresse `pw-<24 hex>` (96 Bit), NUR POST, ohne Sitzung und ohne Origin (Fremdsysteme
+// Prozesse (21.10., B1 — Entscheidung: Webhook „Ja, abgesichert“): je Prozess eine Adresse `pw-<24 hex>` (96 Bit), NUR POST, ohne Sitzung und ohne Origin (Fremdsysteme
 // rufen sie). Die Route prüft den eigenen Schlüssel der Adresse selbst (nur Fingerabdruck gespeichert, zeitkonstant), nimmt erst nach Klick „scharf“ an, drosselt,
 // schreibt nur Eingang + Ereignis und liefert nie Daten (lib/prozesse/webhook*.ts). Dieselbe Form: lib/prozesse/webhook.ts `WEBHOOK_PFAD` (Wächter).
 const PROZESS_WEBHOOK = /^\/api\/prozesse\/webhook\/pw-[a-f0-9]{24}$/;

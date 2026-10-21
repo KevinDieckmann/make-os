@@ -1,4 +1,4 @@
-// ─── Prozesse — welche Modelle ein Schritt wählen darf (Etappe B1, 21.10.; Kevin 21.10.: „später auch andere Anbieter, sobald angebunden“) ─────────
+// ─── Prozesse — welche Modelle ein Schritt wählen darf (Etappe B1, 21.10.; Entscheidung 21.10.: „später auch andere Anbieter, sobald angebunden“) ─────────
 // KEINE eigene Modellliste: der Andockpunkt „Modell“ (Agenten-Schritt, Modell-Raute) nimmt
 //   · die Modellstufe als Vorgabe (`AgentSchritt.modell` — Rollen wie im Anbieter-Tor: Mitarbeiter schnell, Head ausgewogen, Review stark,
 //     lib/ki/modelle.ts `STUFE_JE_ROLLE`) — so wirkt ein Modellwechsel der Instanz (`stufenModelle`) automatisch und es bleibt günstig;

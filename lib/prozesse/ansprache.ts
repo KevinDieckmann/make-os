@@ -1,4 +1,4 @@
-// ─── Prozesse — Ansprache einer Person: Kanal-Ampel, § 7 UWG, Werbesperre, Art. 18 (Etappe B1, 21.10.; Kevin 21.10.: Kundengewinnung) ─────────────
+// ─── Prozesse — Ansprache einer Person: Kanal-Ampel, § 7 UWG, Werbesperre, Art. 18 (Etappe B1, 21.10.; Entscheidung 21.10.: Kundengewinnung) ─────────────
 // Jeder Baustein, der eine Person anspricht (Katalog-Feld `ansprache`: Mail-/WhatsApp-Entwurf, Einladung, Angebot stellen, Outreach-Aufgabe), prüft VOR
 // jeder Wirkung die Kanal-Ampel (lib/crm/recht.ts `kanalStatus` — dieselbe Regel wie Karteikarte, Power Hour und Heads): rot (Werbesperre,
 // Einschränkung nach Art. 18, kein zulässiger Weg) heißt „nicht“, gelb heißt „mit Hinweis/Anlass“. EINE Stelle — der Motor (Etappe C) ruft sie je Fall,

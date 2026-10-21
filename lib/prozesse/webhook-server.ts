@@ -1,4 +1,4 @@
-// ─── Prozesse — der abgesicherte Webhook: Schlüssel, Annehmen, Frist (Server, Etappe B1, 21.10.; Kevin 21.10.: „Ja, abgesichert“) ─────────────────
+// ─── Prozesse — der abgesicherte Webhook: Schlüssel, Annehmen, Frist (Server, Etappe B1, 21.10.; Entscheidung 21.10.: „Ja, abgesichert“) ─────────────────
 // Reine Regeln: lib/prozesse/webhook.ts. Hier nur, was Zufall, Hash, Bestände und das Ereignis-System braucht:
 //   · `webhookVerwalten` — Schlüssel anlegen/erneuern (32 Byte Zufall, genau einmal in der Antwort, gespeichert nur als SHA-256), scharf, entfernen;
 //   · `webhookAnnehmen` — für die offene Route: Adresse scharf? Schlüssel (zeitkonstant)? Felder nach Schema → Eingang ablegen (fremder Text) → EIN Ereignis

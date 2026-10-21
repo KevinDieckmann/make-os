@@ -1,4 +1,4 @@
-// ─── Prozesse — der abgesicherte Webhook von außen: reine Regeln (Etappe B1, 21.10.; Kevin 21.10.: „Ja, abgesichert“; ANALYSE_100.md Punkt 32) ─────
+// ─── Prozesse — der abgesicherte Webhook von außen: reine Regeln (Etappe B1, 21.10.; Entscheidung 21.10.: „Ja, abgesichert“; ANALYSE_100.md Punkt 32) ─────
 // Je Prozess eine eigene Adresse `/api/prozesse/webhook/pw-<24 hex>` (96 Bit) mit eigenem Schlüssel:
 //   · der Schlüssel (32 Byte, base64url) wird beim Anlegen bzw. Erneuern GENAU EINMAL angezeigt; gespeichert wird nur sein SHA-256 (Fingerabdruck) im
 //     Bestand `prozesse-webhook--<haushalt>` (nie in der Definition, nie in einer Version, nie im Protokoll);

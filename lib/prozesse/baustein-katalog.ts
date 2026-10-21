@@ -1,5 +1,5 @@
-// ─── Prozesse — der Baustein-Katalog als Daten (Etappe B1, 21.10.; ANALYSE_100.md Punkte 22, 45, 51, 62; Kevin 21.10.) ──────────────────────────
-// Kevin 21.10.: „Jede vorhandene Anbindung wird ein Baustein mit eigener Einstellungs-Maske“ — Inbox (Gmail/IMAP), WhatsApp, Kalender, CRM (Kontakt, Firma,
+// ─── Prozesse — der Baustein-Katalog als Daten (Etappe B1, 21.10.; ANALYSE_100.md Punkte 22, 45, 51, 62; Entscheidung 21.10.) ──────────────────────────
+// Entscheidung 21.10.: „Jede vorhandene Anbindung wird ein Baustein mit eigener Einstellungs-Maske“ — Inbox (Gmail/IMAP), WhatsApp, Kalender, CRM (Kontakt, Firma,
 // Deal, Lead, Follow-up), Angebot, Rechnung, Aufgabe, Glocke, Telegram-Hinweis, ZOE, Heads, Fach-Agenten/Skills — und der Baukasten: Aktion, Raute,
 // Warten, Schleife, Teilprozess, Fehlerkante (die Fehlerkante ist ein Ausgang jedes Knotens, `zweige.fehler`), Freigabe, Ende.
 //

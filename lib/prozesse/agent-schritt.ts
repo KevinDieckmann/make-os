@@ -1,5 +1,5 @@
 // ─── Prozesse — der Agenten-Baustein (Etappe B1, 21.10.; ANALYSE_100.md Punkte 51, 53, 54, 55) ─────────────────────────────────────────────────────
-// Kevin 21.10.: „wie ein n8n-AI-Agent-Knoten, aber mit unseren Dingen“ — ein Agenten-Schritt wählt ZOE, einen Head (lib/agenten/katalog.ts) oder einen Skill
+// Entscheidung 21.10.: „wie ein n8n-AI-Agent-Knoten, aber mit unseren Dingen“ — ein Agenten-Schritt wählt ZOE, einen Head (lib/agenten/katalog.ts) oder einen Skill
 // und hat drei Andockpunkte:
 //   Modell       Stufe schnell · ausgewogen · stark (Haiku · Sonnet · Opus) — aufgerufen wird NUR über das KI-Tor `askText` (lib/anthropic.ts), mit Budget
 //                je Schritt (Pflicht). Keine zweite Agentenwelt: der Motor (Etappe C) startet über `reihe(...)`/`runAgent`.

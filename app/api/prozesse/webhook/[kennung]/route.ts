@@ -1,4 +1,4 @@
-// ─── Prozesse — Webhook von außen (Etappe B1, 21.10.; Kevin 21.10.: „Ja, abgesichert“) ────────────────────────────────────────────────────────────────
+// ─── Prozesse — Webhook von außen (Etappe B1, 21.10.; Entscheidung 21.10.: „Ja, abgesichert“) ────────────────────────────────────────────────────────────────
 // OHNE Sitzung erreichbar — NUR `POST /api/prozesse/webhook/pw-<24 hex>` (Middleware `PROZESS_WEBHOOK`, eng gefasste Regex) — „offen, aber selbst geprüft“:
 //   · Drossel je Netz (Fehlversuche) und je Adresse (angenommene Aufrufe) — lib/zugang/drossel.ts;
 //   · Körper ≤ 64 KB (`jsonBegrenzt`, sonst 413), nur JSON-Objekt;

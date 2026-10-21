@@ -1,5 +1,5 @@
 // ─── Prozesse — Rollen: wer baut, veröffentlicht, schaltet scharf, als wer läuft (Etappe B1, 21.10.; ANALYSE_100.md Punkte 10, 68) ──────────────────
-// Vier Rollen sauber getrennt (Kevin 21.10.):
+// Vier Rollen sauber getrennt (Entscheidung 21.10.):
 //   sehen            jedes Konto im Haushalt des Inhabers (Prozesse sind Business — ein Konto „nur Business“ sieht sie)
 //   Entwurf bauen    volle Mitglieder UND Konten „nur Business“ (Team) — ein Entwurf läuft nie
 //   veröffentlichen, Status (Probelauf/aktiv/pausiert/archiviert), Webhook (Schlüssel, scharf)   nur volle Mitglieder (Inhaber bzw. ohne `finanzRecht: 'business'`)

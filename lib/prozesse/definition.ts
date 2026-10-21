@@ -1,6 +1,6 @@
 // ─── Prozesse — das EINE Prozessmodell (Etappe B1 „Modell & Bausteine“, 21.10.; research/prozesse/ANALYSE_100.md Punkte 6, 10, 22, 31, 32, 43, 45,
 // 51, 53, 54, 55, 62, 68, 100) ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-// Kevin 21.10.: Prozesse für ALLE Business-Bereiche (Marketing, Sales, Übergabe, Fulfillment, Ausbau, Führung, Unterstützung) — EIN Modell, additiv
+// Entscheidung 21.10.: Prozesse für ALLE Business-Bereiche (Marketing, Sales, Übergabe, Fulfillment, Ausbau, Führung, Unterstützung) — EIN Modell, additiv
 // erweitert. Das Fulfillment-Prozessmodell (Vorlagen mit Landkarte, Paketen, Abläufen — Prozess-Editor 17.10.) IST dieses Modell: seine Typen stehen
 // hier und lib/fulfillment/typen.ts exportiert sie nur weiter (Re-Export statt Kopie). Alte Fulfillment-Vorlagen bleiben bit-gleich gültig — ihnen
 // fehlen die neuen Felder, und Fehlen heißt: Bereich Fulfillment, Fall = Mandat (`bereichVon`, `fallArtVon`).
@@ -71,7 +71,7 @@ export interface ProzessKnoten<F extends string = KnotenForm> {
   warten?: WartenRegel;
   /** Schleife „je Eintrag“ mit harter Obergrenze je Lauf (Form `schleife`, Punkt 45). */
   schleife?: SchleifeRegel;
-  /** CRM abfragen — liefert eine Liste von Fällen (Kevin 21.10.: Kundengewinnung, nächtlicher Prospecting-Lauf). */
+  /** CRM abfragen — liefert eine Liste von Fällen (Entscheidung 21.10.: Kundengewinnung, nächtlicher Prospecting-Lauf). */
   abfrage?: CrmAbfrage;
   /** „Erneut ab Schritt …“ — der Lauf geht (höchstens n-mal) zurück zu einem früheren Schritt. */
   erneut?: ErneutAb;
@@ -164,7 +164,7 @@ export interface ProzessVorlage<F extends string = KnotenForm> {
   endKriterium?: string;
   /** Feste Ein- und Ausgaben, wenn der Prozess als Teilprozess aufgerufen wird (Punkt 45) — nur Kennungen, Zahlen, Daten, Auswahl. */
   schnittstelle?: ProzessSchnittstelle;
-  /** Notiz-Zettel auf der Fläche (Kevin 21.10.) — nur Text, keine Wirkung, NIE im Lauf (sie sind keine Knoten). */
+  /** Notiz-Zettel auf der Fläche (Entscheidung 21.10.) — nur Text, keine Wirkung, NIE im Lauf (sie sind keine Knoten). */
   zettel?: NotizZettel[];
 }
 /** Ein Notiz-Zettel auf der Fläche: Text an einer Stelle — keine Form, kein Pfeil, kein Lauf. Farbe nur als Name (Token der Oberfläche), nie ein Farbwert. */
@@ -221,7 +221,7 @@ export type Verknuepfung = 'und' | 'oder';
 
 /**
  * Wodurch ein Lauf startet. Ereignis-Arten = `SkillEreignis` (lib/agenten/typen.ts — keine zweite Liste). Datum relativ ist hier nur Modell (die Rechnung über
- * `fristenLesen`/Werktage NRW kommt mit dem Motor, Etappe C). Webhook (Kevin 21.10.: „Ja, abgesichert“): je Prozess eigene Adresse mit eigenem Schlüssel —
+ * `fristenLesen`/Werktage NRW kommt mit dem Motor, Etappe C). Webhook (Entscheidung 21.10.: „Ja, abgesichert“): je Prozess eigene Adresse mit eigenem Schlüssel —
  * der Webhook legt NUR ein Ereignis `webhook` ab (lib/prozesse/webhook-server.ts), gestartet wird erst vom Motor.
  */
 export type Ausloeser =
@@ -274,7 +274,7 @@ export type WartenRegel =
 export interface SchleifeRegel { liste: string; prozessId: string; hoechstens: number }
 /** Teilprozess: immer die veröffentlichte Version; feste Eingaben (Feld der Schnittstelle → Quelle im Lauf). `warten: false` = nur starten, nicht aufs Ergebnis warten. */
 export interface TeilprozessAufruf { prozessId: string; eingaben?: Record<string, string>; warten?: boolean }
-/** Was eine CRM-Abfrage liefert (Kevin 21.10.: ruhende Accounts, neue Leads, Deals ohne nächsten Schritt …). */
+/** Was eine CRM-Abfrage liefert (Entscheidung 21.10.: ruhende Accounts, neue Leads, Deals ohne nächsten Schritt …). */
 export type CrmAbfrageArt = 'leads' | 'neue-leads' | 'firmen-ruhend' | 'deals-ohne-schritt' | 'angebote-ohne-antwort';
 export const CRM_ABFRAGE_ARTEN = ['leads', 'neue-leads', 'firmen-ruhend', 'deals-ohne-schritt', 'angebote-ohne-antwort'] as const satisfies readonly CrmAbfrageArt[];
 export type BeanGruppe = 'B' | 'E' | 'A' | 'N';
@@ -312,7 +312,7 @@ export const KENNUNG_ARTEN = ['kontakt', 'firma', 'lead', 'deal', 'mandat', 'eve
 /** Ein Feld im Vertrag eines Schritts (Punkt 54): Kennung, Zahl, Tag, ja/nein oder Auswahl — kein Freitext. */
 export interface VertragFeld { id: string; art: 'kennung' | 'zahl' | 'datum' | 'ja-nein' | 'auswahl'; kennung?: KennungArt; optionen?: string[]; pflicht?: boolean; liste?: boolean }
 /**
- * Der Agenten-Baustein (Kevin 21.10.: „wie ein n8n-AI-Agent-Knoten, aber mit unseren Dingen“): drei Andockpunkte — Modell (nur über das KI-Tor, Budget je Schritt),
+ * Der Agenten-Baustein (Entscheidung 21.10.: „wie ein n8n-AI-Agent-Knoten, aber mit unseren Dingen“): drei Andockpunkte — Modell (nur über das KI-Tor, Budget je Schritt),
  * Gedächtnis (Brain, Akte), Werkzeuge (ZOE-Werkzeuge mit ihrer Rechte-Klasse). Vertrag: Ein- und Ausgabe nur Kennungen. Pflichtsatz „Warum reicht keine Regel?“.
  */
 export interface AgentSchritt {
@@ -322,7 +322,7 @@ export interface AgentSchritt {
   /** Stufe: schnell (klein) · ausgewogen · stark. Ohne `modellWahl` wählt das KI-Tor das Modell der Stufe (lib/ki/modelle.ts `stufenModelle`). */
   modell: ModelTier;
   /**
-   * Ein bestimmtes angebundenes Modell (Kevin 21.10.: später auch andere Anbieter, sobald angebunden) — nur aus der Liste der Instanz
+   * Ein bestimmtes angebundenes Modell (Entscheidung 21.10.: später auch andere Anbieter, sobald angebunden) — nur aus der Liste der Instanz
    * (lib/prozesse/modell-wahl.ts `modellOptionen`: angebunden UND im Empfänger-/AVV-Register). Aufgerufen wird trotzdem nur über das KI-Tor.
    */
   modellWahl?: ModellWahl;

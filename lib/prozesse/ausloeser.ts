@@ -1,4 +1,4 @@
-// ─── Prozesse — Auslöser (Etappe B1, 21.10.; ANALYSE_100.md Punkte 31, 32; Kevin 21.10.: Webhook „Ja, abgesichert“) ──────────────────────────────
+// ─── Prozesse — Auslöser (Etappe B1, 21.10.; ANALYSE_100.md Punkte 31, 32; Entscheidung 21.10.: Webhook „Ja, abgesichert“) ──────────────────────────────
 // Ein Prozess startet über einen Auslöser-Knoten (Form `ausloeser`, im ersten Teil der ersten Phase):
 //   ereignis   eine Ereignis-Art (= `SkillEreignis`, lib/agenten/typen.ts — keine zweite Liste) + „nur wenn …“ über Felder (lib/prozesse/bedingung.ts).
 //              Nur angebundene Arten (lib/ereignisse/arten.ts); Business-Prozesse hören nie auf Privates (`ausloeserPasst`).
@@ -7,7 +7,7 @@
 //   hand       von Hand.
 //   webhook    eigene Adresse mit eigenem Schlüssel (lib/prozesse/webhook*.ts); das Schema hier sagt, welche Felder angenommen werden — der Rest wird
 //              verworfen; alles Eingehende ist fremder Text.
-//   loop       nach einem der vorhandenen Loops (app/api/loop/route.ts: morgen · woche · rueckblick) — „nach dem Morgen-Loop“ (Kevin 21.10.).
+//   loop       nach einem der vorhandenen Loops (app/api/loop/route.ts: morgen · woche · rueckblick) — „nach dem Morgen-Loop“ (Entscheidung 21.10.).
 // Rein und client-sicher; Tests: tests/prozesse-ausloeser.test.ts.
 
 import { EREIGNISSE_ANGEBUNDEN, EREIGNISSE_INTERN, EREIGNIS_NAME, istEreignisArt } from '@/lib/ereignisse/arten';
