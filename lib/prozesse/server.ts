@@ -1,6 +1,7 @@
 // ─── Prozesse — die Landkarte lesen (Server, Etappe A, 21.10.; ANALYSE_100.md Punkte 4, 27, 74) ─────────────────────────────────────────────
 // EINE Stelle, die zusammenträgt, was die Landkarte zeigt — nur Business, nur lesen, schreibt nie:
 //   Prozesse   das Register der System-Prozesse (./register.ts) + die Vorlagen aus dem Fulfillment-Bestand (./vorlagen.ts `prozessAusVorlage`)
+//              + die Prozesse der Werkstatt (./werkstatt-landkarte.ts `prozessAusWerkstatt`, Bestand `prozesse--<h>`)
 //   Zahlen     aus den VORHANDENEN Lesewegen, nichts neu gezählt (eine Wahrheit mit den Fachseiten):
 //                Leads, Deals, Nach der Leistung  `kreislauf` (lib/crm/planung.ts) — dieselben Zahlen wie Markttraktion › Planung › Kreislauf
 //                Follow-up                         `faellige` (lib/crm/followup.ts) — fällig bis heute, überfällig rot
@@ -88,7 +89,12 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
     // Die Landkarte des Fulfillments (Hochhaus) zuerst, dann Pakete, dann Abläufe — in der Reihenfolge des Bestands.
     const reihe = { landkarte: 0, paket: 1, ablauf: 2 } as const;
     const vorlagen = [...(datei?.prozesse ?? [])].sort((a, b) => (reihe[a.art] ?? 3) - (reihe[b.art] ?? 3));
-    const prozesse: ProzessDef[] = [...SYSTEM_PROZESSE, ...vorlagen.map(prozessAusVorlage).filter((p): p is ProzessDef => !!p)];
+    // Prozesse der Werkstatt (Etappe B2): je eine Kachel in ihrem Bereich der Fliege — jüngste Version bzw. Entwurf, archivierte fehlen.
+    const werkstatt = await sicher(async () => {
+      const [{ prozesseLesen }, { prozessAusWerkstatt }] = await Promise.all([import('./werkstatt-server'), import('./werkstatt-landkarte')]);
+      return (await prozesseLesen(h)).prozesse.map(prozessAusWerkstatt).filter((p): p is ProzessDef => !!p);
+    });
+    const prozesse: ProzessDef[] = [...SYSTEM_PROZESSE, ...vorlagen.map(prozessAusVorlage).filter((p): p is ProzessDef => !!p), ...(werkstatt ?? [])];
     const [mt, ff] = await Promise.all([sicher(() => markttraktionZahlen(heute)), sicher(() => fulfillmentZahlen(heute, vorlagen))]);
     const arten = { ...(mt ?? {}), ...(ff?.arten ?? {}) };
     const zahlen: Record<string, Zahl> = { ...(ff?.knoten ?? {}) };

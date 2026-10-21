@@ -11,7 +11,7 @@
 //   · `AblaufBild`     Ebene 3/4 — die Fläche des Editors (`flaecheBild`), nur lesbar; Enden ohne Pfeil weiter
 
 import type { KeyboardEvent as RKeyboardEvent, MouseEvent as RMouseEvent } from 'react';
-import { Cog, LayoutTemplate, AlertTriangle } from 'lucide-react';
+import { Cog, LayoutTemplate, AlertTriangle, Workflow } from 'lucide-react';
 import { FARBE as C, TIEF, RAND, FLAECHE_STIL } from '@/lib/make-one/design';
 import { pfadVon, pfeilTextOrt, type FlaecheBild } from '@/lib/fulfillment/prozesse/flaeche';
 import { pfeileImBild, kachelTitel, wegTextMass, KACHEL_TEXT, WEG_TEXT, PHASE_TITEL, type FliegeLage, type ProzessLage } from '@/lib/prozesse/landkarte';
@@ -151,8 +151,8 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [
         const t = kachelTexte(p, zahlen[p.id], stufe);
         const z = zahlTexte(zahlen[p.id]);
         const href = zahlen[p.id]?.href;
-        const Zeichen = p.quelle === 'system' ? Cog : LayoutTemplate;
-        const aria = `${p.titel}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? 'System, nur lesbar' : 'Vorlage'}; öffnen`;
+        const Zeichen = p.quelle === 'system' ? Cog : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
+        const aria = `${p.titel}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? 'System, nur lesbar' : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
         const spec = KACHEL_TEXT[stufe];
         const titel = einpassen({ text: kachelTitel(p, stufe), breite: k.b - spec.innen, groesse: spec.groesse, min: spec.min, zeilen: spec.zeilen, gewicht: spec.gewicht });
         const hell = hellIds.has(k.id);

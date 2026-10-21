@@ -45,6 +45,9 @@ export function brotkrumen(l: readonly ProzessDef[], pfad: ProzessPfad): Krume[]
   return raus;
 }
 
+/** Die Marke eines Prozesses (Liste, Kachel, Feld): „System“ (im Code, nur lesbar), „Vorlage“ (Fulfillment) oder „Werkstatt“ (selbst gebaut). */
+export const markeVon = (p: Pick<ProzessDef, 'quelle'>): 'System' | 'Vorlage' | 'Werkstatt' => (p.quelle === 'system' ? 'System' : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage');
+
 /** Wo eine Kachel auf der Landkarte steht: Band (und im Kern die Stufe der Fliege). */
 export function ortVon(p: Pick<ProzessDef, 'band' | 'stufe'>): string {
   const b = BAENDER.find(x => x.id === p.band)?.titel ?? '';
@@ -130,7 +133,7 @@ export function prozesseSuchen(l: readonly ProzessDef[], frage: string, max = 12
 
 // ── Liste (Punkt 30) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export interface ListenKnoten { id: string; ebene: Exclude<Ebene, 1>; titel: string; text?: string; zahl?: string; marke?: 'System' | 'Vorlage'; pfad: ProzessPfad; kinder: ListenKnoten[] }
+export interface ListenKnoten { id: string; ebene: Exclude<Ebene, 1>; titel: string; text?: string; zahl?: string; marke?: 'System' | 'Vorlage' | 'Werkstatt'; pfad: ProzessPfad; kinder: ListenKnoten[] }
 export interface ListenGruppe { id: string; titel: string | null; prozesse: ListenKnoten[] }
 export interface ListenBand { id: Band; titel: string; satz: string; gruppen: ListenGruppe[] }
 
@@ -143,7 +146,7 @@ const zahlText = (z: Zahl | undefined): string | undefined => {
 export function prozessAlsListe(p: ProzessDef, zahlen: Readonly<Record<string, Zahl>> = {}): ListenKnoten {
   const zp = zahlText(zahlen[p.id]);
   return {
-    id: p.id, ebene: 2, titel: p.titel, marke: p.quelle === 'system' ? 'System' : 'Vorlage', pfad: { p: p.id },
+    id: p.id, ebene: 2, titel: p.titel, marke: markeVon(p), pfad: { p: p.id },
     text: `Auslöser: ${p.steckbrief.ausloeser} · Ergebnis: ${p.steckbrief.ergebnis} · Eigner: ${p.steckbrief.eigner}`,
     ...(zp ? { zahl: zp } : {}),
     kinder: p.phasen.map(ph => {
@@ -233,7 +236,7 @@ export function kachelTexte(p: Pick<ProzessDef, 'titel' | 'quelle' | 'steckbrief
   if (stufe === 'fern') return { titel: kurztitel(p.titel), ...(t?.haupt ? { zahl: t.haupt } : t?.zweite ? { zahl: t.zweite.text } : {}) };
   return {
     titel: p.titel,
-    ...(stufe === 'nah' ? { marke: p.quelle === 'system' ? 'System · nur lesbar' : 'Vorlage', eigner: p.steckbrief.eigner } : {}),
+    ...(stufe === 'nah' ? { marke: p.quelle === 'system' ? 'System · nur lesbar' : markeVon(p), eigner: p.steckbrief.eigner } : {}),
     ...(t?.haupt ? { zahl: t.haupt } : {}), ...(t?.zweite ? { zweite: t.zweite.text } : {}),
   };
 }

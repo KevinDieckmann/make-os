@@ -7,6 +7,7 @@
 // Schritten (Ebene 3, feste Formen des Miro-Stils), Übergaben (Punkt 9) und die Zahl der Fälle (Punkt 27). Dasselbe Modell speist Bild UND Liste (Punkt 30).
 
 import type { FlussForm } from '@/lib/reise/bild';
+import type { ProzessStatus } from './definition';
 
 /** Die drei Bänder der Landkarte (Punkt 3): Führung oben, Kern (die Fliege) in der Mitte, Unterstützung unten. */
 export type Band = 'fuehrung' | 'kern' | 'unterstuetzung';
@@ -26,8 +27,11 @@ export const KERN_STUFEN: readonly { id: KernStufe; titel: string; seite: 'gewin
   { id: 'ausbau', titel: 'Ausbau', seite: 'liefern' },
 ];
 
-/** Woher ein Prozess kommt: im Code gebaut („System“, nur lesbar — E3) oder eine Vorlage aus dem Fulfillment-Bestand (im Editor bearbeitbar). */
-export type ProzessQuelle = 'system' | 'vorlage';
+/**
+ * Woher ein Prozess kommt: im Code gebaut („System“, nur lesbar — E3), eine Vorlage aus dem Fulfillment-Bestand (im Editor bearbeitbar) oder in der Werkstatt
+ * gebaut (Etappe B2, Bestand `prozesse--<haushalt>`, lib/prozesse/werkstatt-landkarte.ts).
+ */
+export type ProzessQuelle = 'system' | 'vorlage' | 'werkstatt';
 
 /**
  * Ein Schritt (Ebene 3) in seiner festen Form (Miro-Stil: Schritt grün, Nachricht gelb, Entscheidung Raute, Erinnerung orange, Termin). An einer Entscheidung
@@ -75,6 +79,8 @@ export interface ProzessDef {
   hochhaus?: true;
   uebergaben?: Uebergabe[];
   zaehler?: ZaehlerArt;
+  /** Nur Werkstatt: Status, jüngste veröffentlichte Version (null = nur Entwurf), Zahl der Schritte. */
+  werkstatt?: { status: ProzessStatus; version: number | null; schritte: number };
 }
 
 /**
@@ -99,6 +105,7 @@ export const ebeneVon = (p: ProzessPfad): Ebene => (p.s ? 4 : p.ph ? 3 : p.p ? 2
 export const PROZESS_ANSICHTEN = [
   { id: 'bild', titel: 'Bild', satz: 'Die Fliege und die Abläufe als Bild im Flow-Stil' },
   { id: 'liste', titel: 'Liste', satz: 'Dasselbe als verschachtelte Liste — für das Handy, zum Vorlesen und als Text' },
+  { id: 'werkstatt', titel: 'Werkstatt', satz: 'Prozesse bauen — wie ein n8n-Editor, mit unseren Formen und dem Flow' },
 ] as const;
 export type ProzessAnsicht = (typeof PROZESS_ANSICHTEN)[number]['id'];
 export const istProzessAnsicht = (v: unknown): v is ProzessAnsicht => PROZESS_ANSICHTEN.some(a => a.id === v);

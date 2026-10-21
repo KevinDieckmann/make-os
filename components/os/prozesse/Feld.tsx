@@ -5,7 +5,7 @@
 // die Phase mit ihren Schritten, Ebene 4 den Schritt (Form, was passiert, wer, wohin der Weg führt). Eine Information steht nur einmal je Ansicht (Punkt 24).
 // „System“-Prozesse sind nur lesbar (E3) — das Feld sagt es und führt dorthin, wo der Prozess heute läuft; Vorlagen führen in den Editor bzw. ins Hochhaus.
 
-import { Cog, LayoutTemplate } from 'lucide-react';
+import { Cog, LayoutTemplate, Workflow } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Eigenschaft, Knopf, Chip, Hinweis } from '../ui';
 import { FormZeichen } from '../ui/reise/ReiseBild';
@@ -32,8 +32,10 @@ function ZahlZeile({ z }: { z: Zahl | undefined }) {
 }
 
 function Marke({ p }: { p: ProzessDef }) {
-  const Z = p.quelle === 'system' ? Cog : LayoutTemplate;
-  return <Chip farbe={tonVon(p)}><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Z size={13} aria-hidden />{p.quelle === 'system' ? 'System · nur lesbar' : 'Vorlage'}</span></Chip>;
+  const Z = p.quelle === 'system' ? Cog : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
+  const w = p.werkstatt;
+  const text = p.quelle === 'system' ? 'System · nur lesbar' : w ? `Werkstatt · ${w.version ? `Version ${w.version}` : 'Entwurf'}` : 'Vorlage';
+  return <Chip farbe={tonVon(p)}><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Z size={13} aria-hidden />{text}</span></Chip>;
 }
 
 /** Ebene 2: der Steckbrief des Prozesses. */
@@ -47,7 +49,7 @@ export function SteckbriefKarte({ p, zahl }: { p: ProzessDef; zahl: Zahl | undef
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {p.link && <Knopf leise href={p.link.href}>{p.quelle === 'system' ? `Wo es läuft: ${p.link.text} ›` : `${p.link.text} ›`}</Knopf>}
       </div>
-      {p.quelle === 'system' && <p style={klein}>Dieser Ablauf ist im System gebaut und hier nur zu sehen. Bauen kommt mit der nächsten Etappe.</p>}
+      {p.quelle === 'system' && <p style={klein}>Dieser Ablauf ist im System gebaut und hier nur zu sehen — eigene Prozesse entstehen in der Werkstatt.</p>}
     </Karte>
   );
 }
@@ -84,7 +86,7 @@ export function SchrittKarte({ p, ph, s, zahl }: { p: ProzessDef; ph: ProzessPha
       {s.wer && <Eigenschaft label="Wer">{s.wer}</Eigenschaft>}
       {weg && <Eigenschaft label="Weg">{weg}</Eigenschaft>}
       <ZahlZeile z={zahl} />
-      {p.editor && <Knopf leise href={p.editor}>Im Editor öffnen ›</Knopf>}
+      {p.editor && <Knopf leise href={p.editor}>{p.quelle === 'werkstatt' ? 'In der Werkstatt öffnen ›' : 'Im Editor öffnen ›'}</Knopf>}
       {!s.was && !s.wer && !weg && !zahl && <Hinweis art="info">Mehr steht zu diesem Schritt nicht — er gehört zur Phase „{ph.titel}“.</Hinweis>}
     </Karte>
   );
