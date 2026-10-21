@@ -6,7 +6,7 @@
 // in die Werkstatt; die Kachel steht danach in ihrem Bereich der Fliege. Nichts Persönliches: die Personen kommen aus dem Team der Instanz.
 
 import { useState } from 'react';
-import { Plus, Workflow, LayoutTemplate } from 'lucide-react';
+import { Plus, Workflow, LayoutTemplate, Sparkles } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Feldzeile, feld, auswahl as auswahlStil, Pillen, Zeile, Leerzustand } from '../ui';
 import { Fenster } from '../Fenster';
@@ -56,7 +56,7 @@ export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe }: { onZu
 }
 
 /** Die Werkstatt ohne gewählten Prozess: alle Prozesse nach Bereich, „+ Prozess“. */
-export function WerkstattUebersicht({ onNeu, onVorlage }: { onNeu: () => void; /** „Aus Vorlage anlegen“ (22.10., Kundengewinnung). */ onVorlage?: () => void }) {
+export function WerkstattUebersicht({ onNeu, onVorlage, onHead }: { onNeu: () => void; /** „Aus Vorlage anlegen“ (22.10., Kundengewinnung). */ onVorlage?: () => void; /** „Head fragen“ — ganzer Entwurf als Vorschlag (22.10.). */ onHead?: () => void }) {
   const liste = useWerkstattListe();
   const l = liste.daten?.prozesse ?? [];
   if (liste.fehler && !liste.daten) return <Hinweis art="kritisch">{liste.fehler}</Hinweis>;
@@ -67,6 +67,7 @@ export function WerkstattUebersicht({ onNeu, onVorlage }: { onNeu: () => void; /
         <p style={klein}>Hier entstehen eigene Prozesse — im Stil eines n8n-Editors, mit unseren Formen und dem Flow. System-Prozesse sind nur lesbar; Pakete des Fulfillments öffnen ihren Editor.</p>
         {liste.daten.rechte.entwurf && (
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
+            {onHead && <Knopf leise onClick={onHead}><span className="pz-knopf-inhalt"><Sparkles size={16} aria-hidden />Head fragen</span></Knopf>}
             {onVorlage && <Knopf onClick={onVorlage}><span className="pz-knopf-inhalt"><LayoutTemplate size={16} aria-hidden />Aus Vorlage</span></Knopf>}
             <Knopf haupt onClick={onNeu}><span className="pz-knopf-inhalt"><Plus size={16} aria-hidden />Prozess</span></Knopf>
           </span>

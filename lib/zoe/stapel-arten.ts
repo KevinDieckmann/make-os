@@ -56,6 +56,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   // Prozesse (21.10., C1 „Laufen intern“): Freigabe bzw. Entscheidung eines Laufs — freigegeben/abgelehnt/abgelaufen treiben den Lauf weiter; eine
   // freigegebene Mail/WhatsApp geht sofort raus, als die freigebende Person aus der Sitzung (nie über den Dienstweg) — lib/prozesse/lauf-stapel.ts.
   prozess: async () => (await import('@/lib/prozesse/lauf-stapel')).PROZESS_STAPEL_ART,
+  // Prozesse (22.10., Kundengewinnung): „Head fragen“ in der Werkstatt — ein ganzer Entwurf wird ein NEUER Prozess, Bausteine kommen nur DAZU (auf den aktuellen
+  // Entwurf, über `werkstattAnwenden`); nur die anfragende Person, nur aus der Sitzung (lib/prozesse/kundengewinnung/head-server.ts).
+  'prozess-entwurf': async () => (await import('@/lib/prozesse/kundengewinnung/head-server')).PROZESS_ENTWURF_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

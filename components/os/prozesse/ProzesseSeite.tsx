@@ -21,6 +21,7 @@ import { Maximize2, Minimize2, Expand, Presentation, Map as MapIcon, Plus, Minus
 import { Werkstatt } from './Werkstatt';
 import { WerkstattUebersicht, NeuerProzessFenster } from './WerkstattUebersicht';
 import { VorlagenGalerie } from './VorlagenGalerie';
+import { HeadFragenFenster } from './HeadFragen';
 import { FARBE as C, TYP, MIKRO, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Knopf, Segmente, Hinweis, Leerzustand, Wahl, SymbolKnopf, useHandy, useMedien } from '../ui';
 import { WEG } from '@/lib/wege';
@@ -77,6 +78,8 @@ export function ProzesseSeite() {
   const [neuOffen, setNeuOffen] = useState(false);
   // „Aus Vorlage anlegen“ (22.10., Kundengewinnung): die Galerie der 18 Vorlagen.
   const [vorlageOffen, setVorlageOffen] = useState(false);
+  // „Head fragen“ (22.10.): ein ganzer Entwurf als Vorschlag in den Stapel — übernommen erst per Klick.
+  const [headOffen, setHeadOffen] = useState(false);
   const vollbild = useVollbild();
   const praes = adr.modus === 'praesentieren';
   const voll = vollbild.voll || praes;
@@ -287,7 +290,7 @@ export function ProzesseSeite() {
   let inhalt: ReactNode;
   if (!daten) inhalt = fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Landkarte lädt …</p>;
   else if (!prozesse.length) inhalt = <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine Prozesse">Sobald Abläufe im System oder im Fulfillment stehen, erscheinen sie hier.</Leerzustand>;
-  else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onLandkarte={() => void landkarteNeu()} />;
+  else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} />;
   else if (ansicht === 'liste') inhalt = <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} />;
   else if (szene) {
     inhalt = (
@@ -308,6 +311,10 @@ export function ProzesseSeite() {
   const vorlageFenster = vorlageOffen && (
     <VorlagenGalerie onZu={() => setVorlageOffen(false)}
       onAngelegt={async id => { await landkarteNeu(); setVorlageOffen(false); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
+  );
+  const headFenster = headOffen && (
+    <HeadFragenFenster onZu={() => setHeadOffen(false)}
+      onUebernommen={async r => { await landkarteNeu(); setHeadOffen(false); router.push(WEG.prozesse({ p: r.prozessId, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
   );
   const neuFenster = neuOffen && (
     <NeuerProzessFenster onZu={() => setNeuOffen(false)} bereichVorgabe={p?.band === 'kern' ? p.stufe : p?.band === 'fuehrung' ? 'fuehrung' : p?.band === 'unterstuetzung' ? 'unterstuetzung' : undefined}
@@ -336,6 +343,7 @@ export function ProzesseSeite() {
         <div className="pz-voll-inhalt">{raster}</div>
         {neuFenster}
         {vorlageFenster}
+        {headFenster}
         {praes && (
           <div className="pz-praes-leiste" role="toolbar" aria-label="Präsentieren">
             <SymbolKnopf ariaLabel="Rahmen zurück (←)" aus={rahmenNr <= 0} onClick={() => blaettern(-1)}><ChevronLeft size={18} /></SymbolKnopf>
@@ -360,6 +368,7 @@ export function ProzesseSeite() {
         {raster}
  {neuFenster}
         {vorlageFenster}
+        {headFenster}
         {ansicht === 'bild' && daten && ebene === 1 && <p className="pz-legende" style={{ ...MIKRO, margin: 0, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien, color: C.inkLeise }}>Ein Klick fährt hinein · Überfahren zeigt alle Übergaben einer Kachel · Zahl = Fälle, ein Klick darauf zeigt sie · „System“ = schon im Code gebaut, nur lesbar</p>}
       </Karte>
     </Seite>
@@ -371,8 +380,8 @@ export function ProzesseSeite() {
  * Die Werkstatt im Bereich der Seite (Etappe B2): ohne Prozess die Übersicht mit „+ Prozess“; ein eigener Prozess öffnet die Werkstatt; System-Prozesse und Pakete
  * des Fulfillments bleiben hier nur lesbar (Pakete öffnen weiter ihren vorhandenen Editor).
  */
-function WerkstattBereich({ p, schmal, onNeu, onVorlage, onLandkarte }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onVorlage: () => void; onLandkarte: () => void }) {
-  if (!p) return <WerkstattUebersicht onNeu={onNeu} onVorlage={onVorlage} />;
+function WerkstattBereich({ p, schmal, onNeu, onVorlage, onHead, onLandkarte }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onVorlage: () => void; onHead: () => void; onLandkarte: () => void }) {
+  if (!p) return <WerkstattUebersicht onNeu={onNeu} onVorlage={onVorlage} onHead={onHead} />;
   if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} onLandkarte={onLandkarte} />;
   if (p.quelle === 'vorlage') {
     return (

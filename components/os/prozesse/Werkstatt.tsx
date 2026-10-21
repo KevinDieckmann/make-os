@@ -14,7 +14,9 @@
 //     nur lesbar. Am Handy (unter 768 px) nur ansehen.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Undo2, Redo2, LayoutGrid, Grid3x3, StickyNote, Plus, Minus, Maximize2, Keyboard, Play, Upload, X, Columns3, Check, CloudOff, Loader2 } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid3x3, StickyNote, Plus, Minus, Maximize2, Keyboard, Play, Upload, X, Columns3, Check, CloudOff, Loader2, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP, MIKRO, LEUCHT } from '@/lib/make-one/design';
 import { Knopf, Hinweis, SymbolKnopf, Chip, Reiter } from '../ui';
 import { neueKennung } from '@/lib/kennung';
@@ -38,6 +40,7 @@ import { WerkstattFlaeche, type AnhangZiel, type FlaecheSteuerung } from './Werk
 import { WerkstattPanel } from './WerkstattPanel';
 import { WerkstattFormauswahl } from './WerkstattFormauswahl';
 import { VersionenFenster } from './WerkstattVersionen';
+import { HeadFragenFenster } from './HeadFragen';
 import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, type EintragAnsicht } from './werkstatt-daten';
 
 type K = ProzessKnoten<ProzessForm>;
@@ -57,7 +60,8 @@ const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(
 type Speicher = { art: 'gespeichert' | 'ausstehend' | 'speichert' | 'fehler' | 'konflikt' | 'offline'; text?: string };
 
 export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: string; nurAnsehen: boolean; /** Steckbrief bzw. Version geändert — die Landkarte (Kachel, Brotkrumen) neu laden. */ onLandkarte?: () => void }) {
-  const { daten, fehler: ladeFehler } = useProzess(prozessId);
+  const { daten, fehler: ladeFehler, laden: neuLaden } = useProzess(prozessId);
+  const router = useRouter();
   const kat = useKatalog();
   const auswahlListen = useMemo(() => kat.daten?.auswahl ?? {}, [kat.daten]);
   const modelle = useMemo(() => kat.daten?.modelle ?? [], [kat.daten]);
@@ -84,6 +88,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const [versionAnsicht, setVersionAnsicht] = useState<ProzessVersion | null>(null);
   const [versionenOffen, setVersionenOffen] = useState(false);
   const [hilfe, setHilfe] = useState(false);
+  const [headOffen, setHeadOffen] = useState(false);
   const [raster, setRaster] = useState(true);
   const [zu, setZu] = useState<Set<string>>(new Set());
   const flaeche = useRef<FlaecheSteuerung>(null);
@@ -234,6 +239,21 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
     stand.current = konflikt.stand; setEintrag(konflikt.eintrag); setFassungRoh(fassungVon(konflikt.eintrag.entwurf));
     gesichert.current = aenderung.current; setKonflikt(null); setSpeicher({ art: 'gespeichert' }); schreib(sitzung(), ENTWURF_MERKER(prozessId), null);
     ansagen('Die andere Fassung ist übernommen — Rückgängig holt deine zurück.');
+  };
+
+  // ── „Head fragen“ (22.10., Kundengewinnung): übernommene Bausteine stehen auf dem Server — die neue Fassung holen (Rückgängig holt die vorige zurück);
+  // ein ganzer Entwurf ist ein neuer Prozess — dorthin wechseln. ──
+  const headUebernommen = async (r: { art: 'prozess' | 'baustein'; prozessId: string; text: string }) => {
+    setHeadOffen(false);
+    if (r.art === 'prozess' || r.prozessId !== prozessId) { onLandkarte?.(); router.push(WEG.prozesse({ p: r.prozessId, ansicht: 'werkstatt' }), { scroll: false }); return; }
+    const neu = await neuLaden();
+    if (!neu) { setMeldung({ text: `${r.text} Bitte die Seite neu laden.`, art: 'achtung' }); return; }
+    const f = fassungRef.current;
+    if (f) setGeschichte(g => merke(g, f));
+    stand.current = neu.stand; setEintrag(neu.eintrag); setFassungRoh(fassungVon(neu.eintrag.entwurf)); setBefundeServer(neu.befunde); setGeaendertSeitVersion(neu.entwurfGeaendert);
+    gesichert.current = aenderung.current; setSpeicher({ art: 'gespeichert' }); schreib(sitzung(), ENTWURF_MERKER(prozessId), null);
+    setMeldung({ text: r.text, art: 'gut' });
+    ansagen(r.text);
   };
 
   // ── Anlegen über die Formauswahl („+“, Tab, Faden ins Leere) ──
@@ -472,6 +492,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Alles zeigen" onClick={() => flaeche.current?.allesZeigen()}><Maximize2 size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
+          {!nurLesen && <Knopf leise onClick={() => setHeadOffen(true)} titel="Head fragen — Bausteine oder einen ganzen Entwurf vorschlagen lassen (übernommen erst mit deinem Klick)"><span className="pz-knopf-inhalt"><Sparkles size={14} aria-hidden />Head fragen</span></Knopf>}
           <Knopf leise onClick={probelauf} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts)"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>
           {!nurAnsehen && !versionAnsicht && <Knopf onClick={() => setVersionenOffen(true)} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>}
         </div>
@@ -542,6 +563,11 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
         </aside>
       </div>
       <div aria-live="polite" className="pz-nur-vorlesen">{ansage}</div>
+      {headOffen && (
+        <HeadFragenFenster onZu={() => setHeadOffen(false)} onUebernommen={headUebernommen}
+          gesperrt={ausstehend ? 'Erst warten, bis dein Entwurf gespeichert ist — dann übernehmen.' : null}
+          prozess={{ id: prozessId, titel: d.titel, bereich: d.bereich, fallArt: d.fallArt, beschreibung: d.beschreibung, phasen: phasen(d).map(p => ({ id: p.id, titel: p.titel })) }} />
+      )}
       {versionenOffen && (
         <VersionenFenster versionen={eintrag.versionen} befunde={befunde} sperrt={sperrt} darfVeroeffentlichen={!!rechte?.veroeffentlichen} entwurfGeaendert={geaendertSeitVersion || ausstehend}
           ausstehend={ausstehend} onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} />
