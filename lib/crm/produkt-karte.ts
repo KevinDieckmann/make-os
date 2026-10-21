@@ -552,6 +552,26 @@ function zusatzListe(l: Leistung, wahl: readonly ZusatzWahl[]): MandatZusatz[] {
   return out;
 }
 
+// ── Platzgrenze „höchstens N gleichzeitig“ (21.10., Rundgang B3 — Kevin: warnen, aber erlauben) ──────────────────────
+
+export interface PlatzLage { max: number; belegt: number; voll: boolean }
+/**
+ * Die Plätze eines Produkts mit „höchstens N gleichzeitig“ (Regel der Karte, sonst die der Treppen-Stufe `stufeMax`): belegt = aktive Mandate dieses
+ * Produkts außerhalb des Papierkorbs (dieselbe Zählung wie „n/N Plätze“ im Katalog). `voll` = ein weiteres Mandat ginge über die Grenze. null ohne Grenze.
+ * Angelegt wird trotzdem — die Oberfläche fragt vorher („Alle N Plätze belegt — trotzdem anlegen?“), der Server gibt danach einen Hinweis.
+ */
+export function plaetzeVonProdukt(l: Pick<Leistung, 'id'> & Partial<Pick<Leistung, 'regeln'>>, mandate: readonly Pick<Mandat, 'leistungId' | 'status' | 'geloeschtAm'>[], stufeMax?: number | null): PlatzLage | null {
+  const max = l.regeln?.maxGleichzeitig ?? stufeMax ?? undefined;
+  if (!max) return null;
+  const belegt = mandate.filter(m => m.leistungId === l.id && m.status === 'aktiv' && !m.geloeschtAm).length;
+  return { max, belegt, voll: belegt >= max };
+}
+const platzWort = (n: number) => (n === 1 ? 'Platz' : 'Plätze');
+/** Die Rückfrage vor dem Anlegen (Kevin 21.10.). */
+export const platzFrage = (p: PlatzLage, name: string) => `Alle ${p.max} ${platzWort(p.max)} von „${name}“ belegt (${p.belegt}/${p.max}) — trotzdem anlegen?`;
+/** Der Hinweis des Servers, wenn über der Grenze angelegt wurde (`p` = die Lage VOR dem Anlegen). */
+export const platzHinweis = (p: PlatzLage, name: string) => `Über der Platzgrenze angelegt: „${name}“ hat jetzt ${p.belegt + 1} laufende Mandate, vorgesehen sind höchstens ${p.max} gleichzeitig.`;
+
 // ── Angebot ──────────────────────────────────────────────────────────────────
 
 /** Längen einer Angebots-Position (= `ANGEBOT_GRENZEN.titel/text` in lib/crm/angebote.ts, die von hier liest). */

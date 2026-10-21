@@ -193,6 +193,9 @@ export async function POST(req: Request) {
       m.offen = m.offen.filter(x => x !== 'Vertrag unterschreiben lassen' && !(istBusinessGesellschaft(m.gesellschaft) && x === 'Kickoff-Termin festlegen'));
     }
     const ids = new Set(c.kontaktIds);
+    // Platzgrenze (21.10., B3 — Kevin: warnen, aber erlauben): angelegt wird trotzdem, die Antwort trägt den Hinweis.
+    const { platzHinweisFuer } = await import('@/lib/crm/mandat-anlegen-server');
+    const platz = await platzHinweisFuer(m.leistungId, crm);
     let schonDa = false;
     await aendereCrm(x => {
       if (x.mandate.some(mm => mm.chanceId === c.id)) { schonDa = true; return x; }
@@ -202,7 +205,7 @@ export async function POST(req: Request) {
     // Lifecycle (Prüfbericht F1): eine gesetzte Phase vor „Kunde“ wird Kunde — ohne gesetzte Phase bleibt es beim Vorschlag.
     // 10.10.: dieselbe Folge wie „+ Mandat“ mit Lead (lib/crm/mandat-anlegen-server.ts `personenWerdenKunde`) — eine Stelle.
     await personenWerdenKunde(Array.from(ids), jetzt, werAus(req));
-    return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.` });
+    return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.${platz ? ` ${platz}` : ''}`, ...(platz ? { hinweis: platz } : {}) });
   }
 
   const id = String(b.id ?? '');

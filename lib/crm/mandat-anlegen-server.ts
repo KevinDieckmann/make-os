@@ -26,7 +26,8 @@ import { neueKennung, neueKontaktKennung } from '@/lib/kennung';
 import { tagVon } from '@/lib/zeit';
 import { wer as teamWer } from './team';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
-import type { Firma, Mandat } from './typen';
+import type { CrmBestand, Firma, Mandat } from './typen';
+import { plaetzeVonProdukt, platzHinweis, stufenAusKatalog } from './produkt-karte';
 
 export type MandatErgebnis =
   | { ok: true; mandatId: string; firmaId: string; kontaktId: string; firmaNeu: boolean; personNeu: boolean; hinweise: string[] }
@@ -99,6 +100,24 @@ async function personHolen(p: PersonWahl, firma: Firma, person: string, wer?: We
   return { ok: true, id: r.kontaktId, neu: r.neu, hinweise: r.hinweise };
 }
 
+/**
+ * Platzgrenze (21.10., Rundgang B3 — Kevin: „warnen, aber erlauben“): ist „höchstens N gleichzeitig“ des Produkts schon erreicht, wird trotzdem angelegt —
+ * die Antwort trägt den Hinweis. Die Grenze kommt von der Karte, sonst von der Treppen-Stufe des Produkts. Gelesen VOR dem Anlegen; Fehler → kein Hinweis.
+ */
+export async function platzHinweisFuer(leistungId: string | undefined, crm: Pick<CrmBestand, 'leistungen' | 'mandate'>): Promise<string | null> {
+  const l = leistungId ? crm.leistungen.find(x => x.id === leistungId && !x.geloeschtAm) : undefined;
+  if (!l) return null;
+  let stufeMax: number | undefined;
+  if (!l.regeln?.maxGleichzeitig) {
+    try {
+      const { ladeTreppe } = await import('./treppe-server');
+      stufeMax = stufenAusKatalog(crm.leistungen, (await ladeTreppe()).stufen).find(s => s.leistungIds.includes(l.id))?.regeln.maxGleichzeitig;
+    } catch { stufeMax = undefined; }
+  }
+  const p = plaetzeVonProdukt(l, crm.mandate, stufeMax);
+  return p?.voll ? platzHinweis(p, l.name) : null;
+}
+
 /** „+ Mandat“ mit Lead: Firma + Ansprechperson (vorhanden oder neu), dann das Mandat und die Folgen — siehe Kopf. */
 export async function mandatMitLeadAnlegen(e: MandatEingabe, person: string, wer?: Wer, jetzt = new Date().toISOString()): Promise<MandatErgebnis> {
   const crm = await ladeCrm();
@@ -113,9 +132,10 @@ export async function mandatMitLeadAnlegen(e: MandatEingabe, person: string, wer
   if (!p.ok) return p;
   const zustaendig = e.zustaendig && teamWer(e.zustaendig) ? e.zustaendig : undefined;
   const m = mandatEntwurf({ id: neueKennung('m'), firma: f.firma, kontaktIds: [p.id], gesellschaft: e.gesellschaft, ...(e.titel ? { titel: e.titel } : {}), leistung: leistung ?? null, ...(zustaendig ? { zustaendig } : {}), ...(e.vertrag ? { vertrag: e.vertrag } : {}), jetzt, person });
+  const platz = await platzHinweisFuer(leistung?.id, crm);
   await aendereCrm(b => ({ ...b, mandate: [...b.mandate, m], firmen: b.firmen.map(x => (x.id === f.firma.id ? firmaWirdKunde(x) : x)) }), wer);
   await personenWerdenKunde([p.id], jetzt, wer);
-  const hinweise = [...(f.hinweis ? [f.hinweis] : []), ...p.hinweise];
+  const hinweise = [...(platz ? [platz] : []), ...(f.hinweis ? [f.hinweis] : []), ...p.hinweise];
   if (e.stufeId) {
     const { treppeKundeStufe } = await import('./treppe-server');
     const ok = await treppeKundeStufe(m.id, e.stufeId, person).catch(() => false);
