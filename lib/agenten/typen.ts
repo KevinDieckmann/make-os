@@ -350,7 +350,10 @@ export type Rhythmus = 'taeglich' | 'werktags' | 'woechentlich' | 'monatlich';
 export type SkillEreignis = 'neue-mail' | 'neuer-lead' | 'zahlungseingang' | 'neue-aufgabe' | 'termin-vorbei' | 'frist-naht' | 'neues-medium'
   | 'neue-whatsapp' | 'deal-stufe' | 'lead-sql' | 'termin-abgesagt' | 'aufgabe-zoe'
   // Prozesse (21.10., B1): ein abgesicherter Webhook von außen hat etwas angenommen — intern (kein Skill-Auslöser), nur der Prozess-Motor hört darauf.
-  | 'webhook';
+  | 'webhook'
+  // Kundengewinnung (22.10., research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.1: E2, E3, E5, E6, E7, E10, E11) — Quellen in lib/ereignisse/quellen-kundengewinnung.ts.
+  | 'netzwerken-erfasst' | 'angebot-gestellt' | 'angebot-antwort' | 'buchung-angefragt' | 'buchung-bestaetigt' | 'einwilligung-erteilt'
+  | 'event-vorbei' | 'event-status' | 'linkedin-antwort' | 'vernetzt' | 'kampagne-aktiv' | 'kampagnen-ergebnis';
 export type SkillAusloeser =
   | { art: 'hand' }
   | { art: 'zeitplan'; rhythmus: Rhythmus; /** „HH:MM“ Berliner Zeit */ uhrzeit: string; /** 1 = Montag … 7 = Sonntag (woechentlich) bzw. Monatstag (monatlich) */ tage?: number[] }

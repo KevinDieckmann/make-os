@@ -8,7 +8,7 @@
 // Rein und client-sicher; Tests: tests/prozesse-modell.test.ts, tests/prozesse-versionen.test.ts.
 
 import {
-  BEREICH_IDS, CRM_ABFRAGE_ARTEN, FALL_ART_IDS, FELD_KENNUNG, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, ZETTEL_FARBEN,
+  ABFRAGE_MIT_TAGEN, BEREICH_IDS, CRM_ABFRAGE_ARTEN, FALL_ART_IDS, FELD_KENNUNG, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, ZETTEL_FARBEN,
   type Befund, type FallArt, type ProzessDefinition, type ProzessEintrag, type ProzessForm, type ProzessKnoten, type ProzessSchnittstelle,
 } from './definition';
 import { katalogEintrag, maskeSaeubern, platzhalterFuer, type AuswahlQuelle } from './baustein-katalog';
@@ -155,7 +155,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
     const q = k.abfrage;
     if (!(CRM_ABFRAGE_ARTEN as readonly string[]).includes(q.art)) raus.push(b('fehler', `${titel}: unbekannte Abfrage.`, k.id));
     if (!ganz(q.hoechstens, 1, PROZESS_GRENZEN.abfrageHoechstens)) raus.push(b('offen', `${titel}: höchstens 1 bis ${PROZESS_GRENZEN.abfrageHoechstens} Fälle.`, k.id, 'hoechstens'));
-    if ((q.art === 'neue-leads' || q.art === 'firmen-ruhend' || q.art === 'angebote-ohne-antwort') && !ganz(q.tage, 1, 3650)) raus.push(b('offen', `${titel}: seit wie vielen Tagen?`, k.id, 'tage'));
+    if (ABFRAGE_MIT_TAGEN.includes(q.art) && !ganz(q.tage, 1, 3650)) raus.push(b('offen', `${titel}: seit wie vielen Tagen?`, k.id, 'tage'));
   } else if (e?.feld === 'abfrage') raus.push(b('offen', `${titel}: was soll abgefragt werden?`, k.id));
   if (k.erneut) {
     const ab = d.knoten.find(x => x.id === k.erneut!.ab);

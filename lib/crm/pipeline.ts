@@ -25,7 +25,9 @@ export const STUFEN: { id: ChancenStufe; label: string; p: number; weiterWenn: s
   { id: 'geparkt', label: 'Geparkt', p: 0, weiterWenn: '', offen: false },
 ];
 export const OFFENE_STUFEN = STUFEN.filter(s => s.offen).map(s => s.id);
-export const VERLUSTGRUENDE = ['Preis', 'Kein Bedarf', 'Zeitpunkt', 'Wettbewerb', 'Kein Entscheider', 'Intern gelöst', 'Keine Rückmeldung'];
+// „Keine Entscheidung“ (22.10., Kevins Entscheidung E-V4, research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › V13): fester Grund, damit Auswertung und Vorlage V13 den
+// größten Gegner zählen können. Nur angehängt (die Reihenfolge der übrigen bleibt); eine gleichnamige eigene Werteliste fällt beim Lesen als Doppel weg.
+export const VERLUSTGRUENDE = ['Preis', 'Kein Bedarf', 'Zeitpunkt', 'Wettbewerb', 'Kein Entscheider', 'Intern gelöst', 'Keine Rückmeldung', 'Keine Entscheidung'];
 
 /**
  * Verlustgründe zur Auswahl (27.09., Stammdaten › Wertelisten): die festen aus

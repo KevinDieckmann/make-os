@@ -409,6 +409,8 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   const fertig = e as { a: Angebot; pdf: { id: string; name: string } } | null;
   if (!fertig) throw new AngebotFehler('Nicht gestellt.', 500);
   const mail = mailVorlage({ anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, titel: fertig.a.titel, nummer: fertig.a.nummer, gueltigBis: fertig.a.gueltigBis, absender: v.name });
+  // Ereignis (22.10., Kundengewinnung E3): „Angebot gestellt“ — auch Version 2 eines Deals, der schon auf „angebot“ steht (dann bleibt `deal-stufe` still).
+  await import('@/lib/ereignisse/quellen-kundengewinnung').then(q => q.angebotEreignis('gestellt', { angebotId: fertig.a.id, dealId, kontaktId: k.id, firmaId: fertig.a.firmaId, gesellschaft: fertig.a.gesellschaft })).catch(() => 0);
   return { angebot: mitStand(fertig.a), pdf: fertig.pdf, mail: { ...(k.email ? { an: k.email } : {}), ...mail }, ...(dealId ? { dealId } : {}), hinweise };
 }
 
@@ -535,6 +537,9 @@ async function antwortSetzen(p: { id: string; stand?: unknown; person: string; w
     } catch (e) { fehler = e as AngebotFehler; return b; }
   }, p.wer);
   if (fehler) throw fehler;
+  // Ereignis (22.10., Kundengewinnung E3): Antwort auf das Angebot (angenommen · abgelehnt) — nur Kennungen, wirft nie.
+  const fertig = ergebnis as { angebot: Angebot; dealId?: string } | null;
+  if (fertig) await import('@/lib/ereignisse/quellen-kundengewinnung').then(q => q.angebotEreignis('antwort', { angebotId: fertig.angebot.id, dealId: fertig.dealId, kontaktId: fertig.angebot.kontaktId, firmaId: fertig.angebot.firmaId, gesellschaft: fertig.angebot.gesellschaft, antwort: art })).catch(() => 0);
   return ergebnis!;
 }
 

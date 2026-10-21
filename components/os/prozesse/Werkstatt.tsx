@@ -61,7 +61,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const kat = useKatalog();
   const auswahlListen = useMemo(() => kat.daten?.auswahl ?? {}, [kat.daten]);
   const modelle = useMemo(() => kat.daten?.modelle ?? [], [kat.daten]);
-  const team = useMemo<TeamName[]>(() => (auswahlListen['team-person'] ?? []).map(t => ({ id: t.id, name: t.label })), [auswahlListen]);
+  const team = useMemo<TeamName[]>(() => (auswahlListen['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:')).map(t => ({ id: t.id, name: t.label })), [auswahlListen]);
 
   const [eintrag, setEintrag] = useState<EintragAnsicht | null>(null);
   const [fassung, setFassungRoh] = useState<Fassung | null>(null);

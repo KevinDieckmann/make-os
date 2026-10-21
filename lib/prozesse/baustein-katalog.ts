@@ -125,6 +125,20 @@ const HOECHSTENS = (pflicht = true): MaskenFeld => ({ id: 'hoechstensTage', labe
 const FIRMA_GESELLSCHAFT: MaskenFeld = { id: 'gesellschaft', label: 'Gesellschaft', typ: 'auswahl', quelle: 'gesellschaft', pflicht: true };
 const PRIO: MaskenFeld = { id: 'prioritaet', label: 'Priorität', typ: 'auswahl', optionen: [{ id: 'low', label: 'niedrig' }, { id: 'medium', label: 'mittel' }, { id: 'high', label: 'hoch' }, { id: 'critical', label: 'kritisch' }], vorgabe: 'medium' };
 
+/**
+ * Rollen statt Personen (22.10., Vorlagen der Kundengewinnung — Regel R8): Masken mit Quelle `team-person` nehmen außer einer Person des Teams auch eine
+ * ROLLE, die der Motor erst im Lauf auflöst — nie fällt ein Lauf auf den Inhaber zurück. `rolle:eigner` = der Eigner des Prozesses; `rolle:zustaendig` = die
+ * zuständige Person des Falls (Besitzer des Leads/Deals, Zuständige des Mandats, die Person, die erfasst bzw. den Termin angelegt hat — lib/crm/team.ts
+ * `zustaendig`), ohne sie der Eigner. Die Auflösung steht EINMAL in lib/prozesse/kundengewinnung/rollen.ts `personAusRolle`.
+ */
+export const ROLLE_EIGNER = 'rolle:eigner';
+export const ROLLE_ZUSTAENDIG = 'rolle:zustaendig';
+export const ROLLEN_WERTE: readonly { id: string; label: string }[] = [
+  { id: ROLLE_ZUSTAENDIG, label: 'Zuständig im Fall' }, { id: ROLLE_EIGNER, label: 'Eigner des Prozesses' },
+];
+/** Gesellschaft des Falls (Deal, Mandat, Angebot) — statt einer festen Gesellschaft in einer Vorlage. */
+export const GESELLSCHAFT_DES_FALLS = 'fall.gesellschaft';
+
 /** Neutrale Telegram-Hinweise — fest, ohne Werte, Beträge, Namen (lib/datenschutz/telegram-text.ts). */
 export const TELEGRAM_HINWEISE: readonly { id: string; label: string }[] = [
   { id: 'freigabe', label: 'Ein Prozess braucht deine Freigabe — Details in MAKE OS.' },
@@ -137,11 +151,23 @@ export const TELEGRAM_HINWEISE: readonly { id: string; label: string }[] = [
 export const ABFRAGE_NAME: Readonly<Record<(typeof CRM_ABFRAGE_ARTEN)[number], string>> = {
   leads: 'Leads (nach Status, Temperatur, BEAN, Lifecycle)', 'neue-leads': 'Neue Leads seit n Tagen', 'firmen-ruhend': 'Ruhende Firmen (ohne Kontakt seit n Tagen)',
   'deals-ohne-schritt': 'Deals ohne nächsten Schritt', 'angebote-ohne-antwort': 'Angebote gestellt, ohne Antwort seit n Tagen',
+  // Kundengewinnung (22.10., N1) — gelesen über die vorhandenen Leser (lib/prozesse/kundengewinnung/abfrage.ts).
+  'leads-wiedervorlage': 'Geparkte Leads mit fälliger Wiedervorlage', 'deals-wiedervorlage': 'Geparkte Deals mit fälliger Wiedervorlage',
+  'deals-haengen': 'Hängende Deals (Ampel rot/gelb oder ohne nächsten Schritt)', 'netzwerken-offen': 'Erfassungen des Events ohne Nachfassen',
+  nachbereiten: 'Termine mit CRM-Bezug, die nachbereitet werden wollen', 'vernetzen-runde': 'Vernetzen-Runde der Person (LinkedIn)',
+  'powerhour-karten': 'Power Hour: wer heute dran ist', 'kampagne-personen': 'Personen einer Kampagne', 'mandate-laufzeitende': 'Mandate mit Laufzeitende in n Tagen',
 };
 /** Lead-Status (lib/crm/lead-form.ts) — als Auswahl der Abfrage. */
 const LEAD_STATUS: readonly { id: string; label: string }[] = [
   { id: 'neu', label: 'neu' }, { id: 'kontaktiert', label: 'kontaktiert' }, { id: 'im_gespraech', label: 'im Gespräch' }, { id: 'qualifizierung', label: 'Qualifizierung' },
   { id: 'sql', label: 'SQL' }, { id: 'kein_fit', label: 'kein Fit' }, { id: 'ruht', label: 'ruht' }, { id: 'kunde', label: 'Kunde' },
+];
+/** Felder der Akte, die „Karte ergänzen“ vorschlagen darf (N4 — dieselbe Whitelist wie lib/zoe/crm-vorschlag.ts `KARTE_KONTAKT_FELDER`/`KARTE_FIRMA_FELDER`). */
+export const KARTE_FELDER: readonly { id: string; label: string }[] = [
+  { id: 'aufhaenger', label: 'Aufhänger (Kontakt)' }, { id: 'signale', label: 'Signale (Kontakt)' }, { id: 'marktinfo', label: 'Marktinfo (Kontakt)' },
+  { id: 'recherche', label: 'Stand der Recherche (Kontakt)' }, { id: 'steckbrief', label: 'Steckbrief (Kontakt)' }, { id: 'vorgestelltDurch', label: 'Vorgestellt durch (Kontakt)' },
+  { id: 'branche', label: 'Branche (Firma)' }, { id: 'branchen', label: 'Branchen (Firma)' }, { id: 'mitarbeiter', label: 'Mitarbeitende (Firma)' },
+  { id: 'stadt', label: 'Stadt (Firma)' }, { id: 'webseite', label: 'Webseite (Firma)' }, { id: 'linkedin', label: 'LinkedIn (Kontakt bzw. Firma)' },
 ];
 /** Wie die Zielfelder eines Agenten-Vorschlags heißen. */
 export const ZIELFELD_NAME: Readonly<Record<(typeof VORSCHLAG_ZIELFELDER)[number], string>> = {
@@ -285,6 +311,40 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
   { id: 'schleife.je-eintrag', name: 'Schleife', satz: 'Ruft je Eintrag einer Liste einen Teilprozess auf — mit harter Obergrenze.', anbindung: 'Ablauf', form: 'schleife', kategorie: 'teilprozess', bahn: 'system', rechte: 'lesen', ki: [], feld: 'schleife',
     maske: [{ id: 'liste', label: 'Liste', typ: 'auswahl', quelle: 'liste', pflicht: true }, { id: 'prozessId', label: 'Teilprozess (je Fall)', typ: 'auswahl', quelle: 'prozess', pflicht: true },
       { id: 'hoechstens', label: 'Höchstens je Lauf', typ: 'zahl', min: 1, max: PROZESS_GRENZEN.schleifeHoechstens, pflicht: true, vorgabe: 50, hilfe: 'Der Rest wird nie still gekürzt — er bleibt mit Hinweis für den nächsten Lauf.' }] },
+
+  // ── Kundengewinnung (22.10., N3–N10 aus research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.2) — nur über VORHANDENE Schreibwege; alles, was eine Person
+  //    anspricht, prüft die Kanal-Ampel (`ansprache`), Art. 18 und Werbesperre prüft der Vorschlag (lib/zoe/crm-vorschlag.ts). Nichts geht nach außen. ──
+  { id: 'crm.entwurf-text', name: 'Text-Entwurf', satz: 'Bereitet einen Text zum Kopieren vor — LinkedIn-Nachricht, Anruf-Leitfaden, Intro, Danke, Einladung. Versendet wird nichts.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag',
+    ansprache: { kanalFeld: 'kanal' }, schreibweg: 'crm_vorschlag (Arten nachricht_entwurf · anruf_leitfaden · einladung_entwurf · danke_entwurf — NUR_TEXT, lib/zoe/crm-vorschlag.ts)',
+    maske: [{ id: 'art', label: 'Was', typ: 'auswahl', pflicht: true, optionen: [{ id: 'nachricht_entwurf', label: 'Nachricht (LinkedIn bzw. Mail)' }, { id: 'anruf_leitfaden', label: 'Anruf-Leitfaden' }, { id: 'einladung_entwurf', label: 'Einladung' }, { id: 'danke_entwurf', label: 'Danke-Nachricht' }] },
+      { id: 'kanal', label: 'Kanal', typ: 'auswahl', pflicht: true, optionen: [{ id: 'linkedin', label: 'LinkedIn' }, { id: 'mail', label: 'Mail' }, { id: 'telefon', label: 'Telefon' }, { id: 'einladung', label: 'Einladung' }] },
+      TV('text', 'Text bzw. Gerüst', false, 'Ohne Text schreibt ihn ein Agent-Schritt davor — immer nur als Vorschlag.'), { id: 'anlass', label: 'Anlass (Pflicht bei gelbem Telefon)', typ: 'text', max: PROZESS_TEXT.feldText }] },
+  { id: 'crm.karte-ergaenzen', name: 'Karte ergänzen', satz: 'Bringt ein Ergebnis aus Recherche oder Agent in die Akte — als Vorschlag mit Häkchen je Feld, Quelle als Beleg.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag',
+    schreibweg: 'crm_vorschlag (Art kontakt_felder bzw. firma_felder — Whitelist, Art. 18 und Werbesperre geprüft)',
+    maske: [{ id: 'ziel', label: 'Wo', typ: 'auswahl', pflicht: true, vorgabe: 'firma', optionen: [{ id: 'firma', label: 'Firma des Falls' }, { id: 'kontakt', label: 'Kontakt des Falls' }] },
+      { id: 'felder', label: 'Felder', typ: 'mehrfach', pflicht: true, optionen: KARTE_FELDER },
+      { id: 'uebernahme', label: 'Übernahme', typ: 'auswahl', vorgabe: 'je-feld', optionen: [{ id: 'je-feld', label: 'Häkchen je Feld' }, { id: 'sammel', label: 'Sammelfreigabe (nur Stammdaten)' }] }] },
+  { id: 'crm.lead-parken', name: 'Lead parken', satz: 'Schlägt vor, den Lead mit Wiedervorlage zu parken — übernommen per Klick, dann kommt er am Tag zurück.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag', fest: { art: 'lead_parken' },
+    schreibweg: 'crm_vorschlag Art lead_parken → lib/crm/lead-parken-server.ts `leadParken` (dieselbe Regel wie „Parken“ in der Runde, mit Follow-up)',
+    maske: [{ id: 'parkTage', label: 'Wiedervorlage in (Tagen)', typ: 'zahl', min: 1, max: 365, pflicht: true, vorgabe: 90 },
+      { id: 'grundArt', label: 'Warum', typ: 'auswahl', vorgabe: 'spaeter', optionen: [{ id: 'spaeter', label: 'Später — der Anlass fehlt' }, { id: 'budget_spaeter', label: 'Budget kommt später' }, { id: 'wartet', label: 'Wartet auf andere' }, { id: 'nicht_erreicht', label: 'Nicht erreicht' }, { id: 'sonstiges', label: 'Sonstiges' }] }] },
+  { id: 'crm.deal-schritt', name: 'Nächster Schritt am Deal', satz: 'Schlägt den nächsten Schritt mit Datum am Deal vor — übernommen per Klick.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag', fest: { art: 'deal_aendern' },
+    maske: [TV('naechsterSchritt', 'Nächster Schritt', false, 'Ohne Text kommt er aus dem Agent-Schritt davor.'), TAGE('inTagen', 'In (Tagen)', 365, true)] },
+  { id: 'crm.mandat-anlegen', name: 'Mandat anlegen', satz: 'Legt aus einem gewonnenen Deal das Mandat an — Honorar zählt in MRR und Index, darum erst nach der Freigabe (ein Klick).', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', rechte: 'geld', ki: ['crm', 'finanzen'],
+    schreibweg: 'POST /api/crm/lead `mandat` (nur gewonnen, 409 bei vorhandenem; Vorbelegung aus dem angenommenen Angebot bzw. der Produkt-Karte) — als Vorschlag crm_vorschlag Art mandat_anlegen',
+    maske: [] },
+  { id: 'fulfillment.fall-starten', name: 'Fall starten', satz: 'Schlägt vor, den Fulfillment-Fall des Mandats sofort zu starten (statt erst im Morgenlauf) — übernommen per Klick.', anbindung: 'Fulfillment', form: 'schritt', kategorie: 'aktion', bahn: 'system', rechte: 'vorschlag', ki: ['crm'],
+    schreibweg: 'Stapel-Art fulfillment `p:onboarding:<mandat>` → fallStartenServer (lib/fulfillment/prozesse/fall-server.ts) — Vorlage aus der Produkt-Karte',
+    maske: [] },
+  { id: 'event.gaeste', name: 'Gäste vorschlagen', satz: 'Schlägt eine Gästeliste in der richtigen Mischung vor — nur zulässige Einladungswege, Werbesperre nie; vorgemerkt wird per Klick.', anbindung: 'Events', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag', fest: { art: 'gaesteliste' },
+    liest: 'lib/crm/eventplanung.ts `gaesteVorschlag` und `mix` — Kartei nur über `kontakteFuerVerarbeitung`',
+    maske: [{ id: 'n', label: 'Wie viele', typ: 'zahl', min: 1, max: 200, pflicht: true, vorgabe: 12 }, { id: 'mixZielkunden', label: 'Anteil Zielkunden (%)', typ: 'zahl', min: 0, max: 100, vorgabe: 40 }, { id: 'mixKunden', label: 'Anteil Kunden (%)', typ: 'zahl', min: 0, max: 100, vorgabe: 20 }] },
+  { id: 'crm.kampagnen-ergebnis', name: 'Kampagnen-Ergebnis', satz: 'Hält das Ergebnis einer Person in der Kampagne fest (angesprochen, reagiert, Gespräch, Chance, kein Interesse) — „Chance“ bringt den Lead in die Qualifizierung.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'mensch', werkzeug: 'crm_vorschlag', fest: { art: 'kampagnen_ergebnis' },
+    schreibweg: 'POST /api/crm/kampagnen `ergebnis` (Art. 18 → 409)',
+    maske: [{ id: 'ergebnis', label: 'Vorgabe (sonst wählt die Person)', typ: 'auswahl', optionen: [{ id: 'angesprochen', label: 'angesprochen' }, { id: 'reagiert', label: 'reagiert' }, { id: 'gespraech', label: 'Gespräch' }, { id: 'chance', label: 'Chance' }, { id: 'kein_interesse', label: 'kein Interesse' }] }] },
+  { id: 'crm.anfrage-anlegen', name: 'Anfrage übernehmen', satz: 'Macht aus den Feldern eines Webhooks (z. B. Website-Formular) eine Anfrage — nur als Vorschlag, der Empfänger kommt aus der Kartei, die Uhr läuft ab Eingang.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag', fest: { art: 'anfrage_anlegen' },
+    schreibweg: 'POST /api/crm/anfrage `anlegen` (anfrageBauen: Dublette, Art. 18, Werbesperre, Einwilligung „Anfrage“, Follow-up „Anfrage beantworten“)',
+    maske: [{ id: 'kanal', label: 'Kanal', typ: 'auswahl', pflicht: true, vorgabe: 'website', optionen: [{ id: 'website', label: 'Website' }, { id: 'mail', label: 'Mail' }, { id: 'linkedin', label: 'LinkedIn' }, { id: 'telefon', label: 'Telefon' }, { id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }] }] },
 
   // ── Ende ──
   { id: 'ende.ziel', name: 'Ziel erreicht', satz: 'Der Lauf endet erfolgreich.', anbindung: 'Ablauf', form: 'ende', kategorie: 'ende', bahn: 'system', rechte: 'lesen', ki: [], feld: 'ende', maske: [] },

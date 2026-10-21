@@ -16,16 +16,45 @@
 
 import type { SkillEreignis } from '@/lib/agenten/typen';
 
+// ── Block Kundengewinnung (22.10., Vorlagen der Prozesse; research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.1) ─────────────────────────────────────────
+//   netzwerken-erfasst   E2  Netzwerken-Erfassung abgeschlossen (lib/crm/netzwerken-server.ts, nach Schritt „melden“) — Bezug Kontakt, Firma, Event
+//   angebot-gestellt     E3  „Angebot stellen“ (lib/crm/angebot-server.ts) — auch Version 2, wenn der Deal schon auf „angebot“ steht
+//   angebot-antwort      E3  angenommen bzw. abgelehnt (Stufe = Antwort)
+//   buchung-angefragt    E5  Buchungsanfrage bestätigt der Gast (lib/kalender/buchung-ablauf.ts `anfrageLauf`) — Bezug `terminBuchungId`
+//   buchung-bestaetigt   E5  Freigabe der Buchung abgeschlossen (Schritt „crm“)
+//   einwilligung-erteilt E6  neue, nicht widerrufene Einwilligung mit vollem Nachweis (Kartei-Diff; Stufe = Kanal)
+//   event-vorbei         E7  Event steht auf „durchgeführt“ (CRM-Diff) — Bezug Event
+//   event-status         E7  Event wechselt den Status (Stufe = neuer Status)
+//   linkedin-antwort     E10 Antwort in der Vernetzen-Runde (Kartei-Diff `netzwerk.<profil>.antwort`; Stufe = ja · gespraech · nein)
+//   vernetzt             E10 Vernetzung angenommen (Kartei-Diff `netzwerk.<profil>.vernetztAm`)
+//   kampagne-aktiv       E11 Kampagne wechselt auf „aktiv“ (CRM-Diff) — Bezug Kampagne
+//   kampagnen-ergebnis   E11 neues Ergebnis einer Person in einer Kampagne (Stufe = Ergebnis)
+// C1 (Lauf-Motor) ergänzt E1/E4/E8/E9 in seinem eigenen Block — beim Zusammenführen bleibt es EINE Liste.
+export const EREIGNISSE_KUNDENGEWINNUNG = [
+  'netzwerken-erfasst', 'angebot-gestellt', 'angebot-antwort', 'buchung-angefragt', 'buchung-bestaetigt', 'einwilligung-erteilt',
+  'event-vorbei', 'event-status', 'linkedin-antwort', 'vernetzt', 'kampagne-aktiv', 'kampagnen-ergebnis',
+] as const satisfies readonly SkillEreignis[];
+const EREIGNIS_NAME_KUNDENGEWINNUNG: Readonly<Record<(typeof EREIGNISSE_KUNDENGEWINNUNG)[number], string>> = {
+  'netzwerken-erfasst': 'Begegnung erfasst (Netzwerken)', 'angebot-gestellt': 'Angebot gestellt', 'angebot-antwort': 'Antwort auf ein Angebot',
+  'buchung-angefragt': 'Buchung angefragt', 'buchung-bestaetigt': 'Buchung bestätigt', 'einwilligung-erteilt': 'Einwilligung erteilt',
+  'event-vorbei': 'Event vorbei', 'event-status': 'Event in neuem Status', 'linkedin-antwort': 'Antwort auf LinkedIn', vernetzt: 'Vernetzung angenommen',
+  'kampagne-aktiv': 'Kampagne aktiv', 'kampagnen-ergebnis': 'Ergebnis in einer Kampagne',
+};
+
 /** Wie die Arten heißen (Skill-Editor, „bei: …“, Head of IT, Heads-Paket). */
 export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
   'neue-mail': 'neue Mail', 'neue-whatsapp': 'neue WhatsApp-Nachricht', 'neuer-lead': 'neuer Lead', 'lead-sql': 'Lead wird SQL',
   'deal-stufe': 'Deal in neuer Stufe', zahlungseingang: 'Zahlungseingang', 'termin-abgesagt': 'Termin abgesagt', 'aufgabe-zoe': 'an ZOE gegeben',
   'neue-aufgabe': 'neue Aufgabe', 'termin-vorbei': 'Termin vorbei', 'frist-naht': 'Frist naht', 'neues-medium': 'neues Bild oder Video',
   webhook: 'Webhook von außen',
+  // ── Kundengewinnung (22.10., E2/E3/E5/E6/E7/E10/E11 — Quellen in ./quellen-kundengewinnung.ts) ──
+  ...EREIGNIS_NAME_KUNDENGEWINNUNG,
 };
 
 /** Arten, die eine Quelle speist — nur diese lösen etwas aus. */
-export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'neue-whatsapp', 'neuer-lead', 'lead-sql', 'deal-stufe', 'zahlungseingang', 'termin-abgesagt', 'aufgabe-zoe', 'webhook'];
+export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'neue-whatsapp', 'neuer-lead', 'lead-sql', 'deal-stufe', 'zahlungseingang', 'termin-abgesagt', 'aufgabe-zoe', 'webhook',
+  // Kundengewinnung (22.10.): ein eigener Block — jede Art hat ihre Quelle in ./quellen-kundengewinnung.ts.
+  ...EREIGNISSE_KUNDENGEWINNUNG];
 /** Arten, die nur intern etwas anstoßen (kein Skill-Auslöser). */
 export const EREIGNISSE_INTERN: readonly SkillEreignis[] = ['aufgabe-zoe', 'webhook'];
 /** Alle Arten in der Reihenfolge der Anzeige (angebundene zuerst). */

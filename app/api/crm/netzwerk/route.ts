@@ -175,5 +175,9 @@ export async function POST(req: Request) {
   if (!k) return NextResponse.json({ ok: false, fehler: 'Person nicht gefunden.' }, { status: 404 });
   const kontakt = k as Kontakt;
   if (kErgebnis) await kampagnenErgebnis(kampagneId ?? kontakt.netzwerk?.[person]?.kampagneId, id, kErgebnis, heute, person);
+  // Ereignis (22.10., Kundengewinnung E10): „vernetzt“ bzw. „Antwort“ — für die Person des Profils, nur Kennungen, wirft nie (Vorlage V05).
+  if (b.aktion === 'vernetzt' || b.aktion === 'antwort') {
+    await import('@/lib/ereignisse/quellen-kundengewinnung').then(q => q.netzwerkEreignis(b.aktion === 'vernetzt' ? 'vernetzt' : 'antwort', { kontaktId: kontakt.id, firmaId: kontakt.firmaId, person, tag: heute, antwort: typeof b.art === 'string' ? b.art : undefined, kampagneId: kontakt.netzwerk?.[person]?.kampagneId, eingeschraenkt: !!kontakt.eingeschraenkt })).catch(() => 0);
+  }
   return NextResponse.json({ ok: true, kontakt: fuerPerson(kontakt, person) });
 }

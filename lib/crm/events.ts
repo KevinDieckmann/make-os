@@ -8,6 +8,7 @@
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, Chance } from './typen';
 import { gesamtwert } from './pipeline';
+import { werktagePlus } from '@/lib/zeit/kalender-kern';
 import { budgetSumme } from './eventplanung';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -15,8 +16,11 @@ const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12
 // Marke (27.09.): Konstante und Ableitung liegen in ./marke — hier nur durchgereicht.
 export { MARKE_EVENTS, markeVon, eventName } from './marke';
 
-/** Nachfassen innerhalb von 48 Stunden nach dem Event. */
-export const followUpBis = (e: Pick<Event, 'datum'>) => plusTage(e.datum, 2);
+/**
+ * Nachfassen innerhalb von „48 Stunden“ nach dem Event — seit 22.10. (Kevins Entscheidung E-V7 „48 Stunden = Werktage überall“) zwei WERKTAGE (Mo–Fr ohne Feiertage
+ * NRW, `werktagePlus`), dieselbe Frist wie bei besuchten Events (lib/crm/besuche.ts `besuchFollowupFrist`). Vorher zwei Kalendertage.
+ */
+export const followUpBis = (e: Pick<Event, 'datum'>) => (/^\d{4}-\d{2}-\d{2}$/.test(e.datum) ? werktagePlus(e.datum, 2) : plusTage(e.datum, 2));
 
 /**
  * Stunden bis zum Ende der Nachfass-Frist (Ende des Tages followUpBis, lokale

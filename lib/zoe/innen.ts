@@ -26,6 +26,9 @@ const ROUTEN = {
   '/api/crm/verbindungen': () => import('@/app/api/crm/verbindungen/route'),
   '/api/crm/angebot': () => import('@/app/api/crm/angebot/route'),
   '/api/crm/import': () => import('@/app/api/crm/import/route'),
+  // Kundengewinnung (22.10., Vorschlags-Arten kampagnen_ergebnis und anfrage_anlegen — lib/zoe/crm-vorschlag.ts).
+  '/api/crm/kampagnen': () => import('@/app/api/crm/kampagnen/route'),
+  '/api/crm/anfrage': () => import('@/app/api/crm/anfrage/route'),
   '/api/tasks/create': () => import('@/app/api/tasks/create/route'),
   '/api/heads/[head]': () => import('@/app/api/heads/[head]/route'),
   // 29.09. (#K2): Kalender-Vorschläge des Kalender-Agenten — anlegen nur über den Termin-Schreibweg (lib/zoe/kalender-vorschlag.ts).

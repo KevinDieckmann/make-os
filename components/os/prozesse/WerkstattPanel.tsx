@@ -90,7 +90,8 @@ export function WerkstattPanel(p: PanelProps) {
 
 function SteckbriefPanel(p: PanelProps) {
   const d = p.d;
-  const team = p.auswahl['team-person'] ?? [];
+  // Eigner ist immer eine Person — die Rollen („Zuständig im Fall“, „Eigner des Prozesses“) gibt es nur in den Masken der Schritte.
+  const team = (p.auswahl['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:'));
   const konten = p.auswahl['konto-person'] ?? [];
   const ohne = p.befunde.filter(b => !b.knotenId);
   return (

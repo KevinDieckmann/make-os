@@ -21,7 +21,7 @@ const STATUS_WORT: Readonly<Record<string, string>> = { entwurf: 'Entwurf', prob
 /** Der Dialog „Neuer Prozess“: Name, Bereich, Fall-Art, Eigner, Beschreibung → anlegen → in die Werkstatt. */
 export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe }: { onZu: () => void; onAngelegt: (id: string) => Promise<void> | void; bereichVorgabe?: ProzessBereich }) {
   const kat = useKatalog();
-  const team = kat.daten?.auswahl?.['team-person'] ?? [];
+  const team = (kat.daten?.auswahl?.['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:'));
   const [titel, setTitel] = useState('');
   const [bereich, setBereich] = useState<ProzessBereich>(bereichVorgabe ?? 'sales');
   const [fallArt, setFallArt] = useState<FallArt>('lead');

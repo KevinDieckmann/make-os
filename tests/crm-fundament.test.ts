@@ -132,7 +132,8 @@ describe('Kunden & Mandate', () => {
 describe('Events', () => {
   it('Nachfassen binnen 48 h, Zusage und Erscheinen getrennt, Folgegespräche', () => {
     const e = { id: 'ev-1', titel: 'Stammtisch', format: 'stammtisch' as const, ziel: 'drei Folgegespräche mit Inhabern', datum: '2026-09-10', status: 'durchgefuehrt' as const, geaendert: HEUTE, kostenEuro: 300 };
-    expect(followUpBis(e)).toBe('2026-09-12');
+    // E-V7 (22.10., „48 Stunden = Werktage überall“): Do 10.09. → Mo 14.09. (vorher zwei Kalendertage: Sa 12.09.).
+    expect(followUpBis(e)).toBe('2026-09-14');
     const t = [
       { id: 't1', eventId: 'ev-1', kontaktId: 'c-a', status: 'da' as const, followUpAm: '2026-09-11', geaendert: HEUTE },
       { id: 't2', eventId: 'ev-1', kontaktId: 'c-b', status: 'da' as const, geaendert: HEUTE },

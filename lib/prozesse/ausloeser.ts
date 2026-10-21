@@ -18,6 +18,7 @@ import {
   type Ausloeser, type AusloeserArt, type Befund, type DatumsFeld, type FallArt, type LoopArt, type SkillEreignis, type WebhookFeld, type WebhookFeldArt,
 } from './definition';
 import { bedingungenAus, bedingungenTreffen, verknuepfungAus } from './bedingung';
+import { KG_FALL_FELDER } from './kundengewinnung/felder';
 
 type O = Record<string, unknown>;
 const istObj = (v: unknown): v is O => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -46,6 +47,11 @@ export const EREIGNIS_FELDER: readonly FeldDef[] = [
   { id: 'bezug.mandatid', titel: 'Mandat', art: 'kennung' },
   { id: 'bezug.rechnungid', titel: 'Rechnung', art: 'kennung' },
   { id: 'bezug.aufgabeid', titel: 'Aufgabe', art: 'kennung' },
+  // Kundengewinnung (22.10.): Ereignisse zu Events, Kampagnen, Angeboten und Buchungsseiten (lib/ereignisse/quellen-kundengewinnung.ts).
+  { id: 'bezug.eventid', titel: 'Event', art: 'kennung' },
+  { id: 'bezug.kampagneid', titel: 'Kampagne', art: 'kennung' },
+  { id: 'bezug.angebotid', titel: 'Angebot', art: 'kennung' },
+  { id: 'bezug.terminbuchungid', titel: 'Buchung (Buchungsseite)', art: 'kennung' },
 ];
 /** Felder des Falls (der Motor lädt den Fall über die vorhandenen Lesewege, Etappe C) — je Fall-Art. Nie Namen oder Freitext Dritter. */
 export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
@@ -55,24 +61,30 @@ export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
     { id: 'lead.herkunft', titel: 'Herkunft', art: 'text' }, { id: 'lead.zustaendig', titel: 'Zuständig', art: 'kennung' },
     { id: 'lead.lifecycle', titel: 'Lifecycle', art: 'text' }, { id: 'lead.sql-bereit', titel: 'SQL-bereit', art: 'ja-nein' },
     { id: 'lead.mql', titel: 'MQL erreicht', art: 'ja-nein' }, { id: 'lead.tage-ohne-kontakt', titel: 'Tage ohne Kontakt', art: 'zahl' },
+    // Kundengewinnung (22.10.): Felder der 18 Vorlagen — ein Block in ./kundengewinnung/felder.ts (mit dem Leser, aus dem der Motor den Wert holt).
+    ...KG_FALL_FELDER.lead,
   ],
   deal: [
     { id: 'deal.stufe', titel: 'Stufe', art: 'text' }, { id: 'deal.wert', titel: 'Wert', art: 'zahl' },
     { id: 'deal.gesellschaft', titel: 'Gesellschaft', art: 'kennung' }, { id: 'deal.zustaendig', titel: 'Zuständig', art: 'kennung' },
     { id: 'deal.entscheidung', titel: 'Entscheidung bis', art: 'datum' },
+    ...KG_FALL_FELDER.deal,
   ],
   mandat: [
     { id: 'mandat.status', titel: 'Status', art: 'text' }, { id: 'mandat.gesellschaft', titel: 'Gesellschaft', art: 'kennung' },
     { id: 'mandat.produkt', titel: 'Produkt', art: 'kennung' }, { id: 'mandat.zustaendig', titel: 'Zuständig', art: 'kennung' },
+    ...KG_FALL_FELDER.mandat,
   ],
   event: [
     { id: 'event.reihe', titel: 'Reihe', art: 'text' }, { id: 'event.marke', titel: 'Marke', art: 'text' },
     { id: 'event.anmeldung', titel: 'Anmeldung', art: 'text' }, { id: 'event.datum', titel: 'Datum', art: 'datum' },
+    ...KG_FALL_FELDER.event,
   ],
   firma: [
     { id: 'firma.bean', titel: 'Kundengruppe (BEAN)', art: 'text' }, { id: 'firma.lead-status', titel: 'Lead-Status', art: 'text' },
+    ...KG_FALL_FELDER.firma,
   ],
-  keiner: [],
+  keiner: [...KG_FALL_FELDER.keiner],
 };
 /** Datumsfelder am Fall (Auslöser „Datum“, Warten bis Datum) — je Fall-Art. */
 export const DATUMS_FELDER: readonly { id: DatumsFeld; titel: string; fall: FallArt }[] = [

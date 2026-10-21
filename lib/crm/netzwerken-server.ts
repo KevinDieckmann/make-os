@@ -644,6 +644,10 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     await melde({ an: e.zustaendig, art: 'netzwerken', titel: titel.slice(0, 300), link, von: ctx.person, bezug: { art: 'netzwerken', id: e.erfassungId } });
   });
 
+  // Ereignisse (22.10., Kundengewinnung E2 + E12): Erfassung abgeschlossen; eine NEU angelegte Person ist auch ein neuer Lead (nur Kennungen, wirft nie;
+  // dieselbe Kennung je Erfassung — eine Wiederholung legt nichts doppelt ab). Besuchte Events tragen den Prozess „Event-Nachfassen“ (Vorlage V04).
+  await import('@/lib/ereignisse/quellen-kundengewinnung').then(q => q.netzwerkenEreignisse({ erfassungId: e.erfassungId, kontaktId, ...(firma ? { firmaId: firma.id } : {}), eventId, person: e.zustaendig, neuAngelegt })).catch(() => 0);
+
   // Abschluss: Kennungen aus dem Journal räumen.
   await journalAendern(h, e.erfassungId, x => { const { kontaktId: _k, terminSchluessel: _t, ...rest } = x; return { ...rest, fertig: jetztIso }; }, jetzt);
 

@@ -40,24 +40,21 @@ import { NextResponse } from 'next/server';
 import { istBusinessGesellschaft } from '@/lib/einheiten';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
-import { werAus, type Wer } from '@/lib/store/aenderungsprotokoll';
+import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { localDay, tagVon } from '@/lib/zeit';
 import { personAus } from '@/lib/zoe/raum';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { dealZuFirma } from '@/lib/crm/firmen-bezug';
-import { leads, trichter, salesBereit, fehltBisSqlZeile, leereKriterien, ausscheidenGesperrt } from '@/lib/crm/leads';
+import { leads, trichter, salesBereit, fehltBisSqlZeile, leereKriterien } from '@/lib/crm/leads';
 import { standardScoring, altWertAusStufe } from '@/lib/crm/scoring';
 import { LEAD_MAP_MAX } from '@/lib/crm/lead-form';
-import { istGrundRaus, istGrundParken } from '@/lib/crm/lead-grund';
 import { uebergeben } from '@/lib/crm/uebergabe';
 import { folgenVorschau, folgenAnwenden, zusammenVorschau, zusammenfuehren } from '@/lib/crm/firma-umhaengen-server';
-import { neuesFollowUp } from '@/lib/crm/followup';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { dealPersonenVorgabe } from '@/lib/crm/pipeline';
-import { leadSaeubern } from '@/lib/crm/lead-form';
 import { personenWerdenKunde } from '@/lib/crm/mandat-anlegen-server';
 import { honorarAusPreis } from '@/lib/crm/mandat-anlegen';
 import { mandatVertragAusProdukt, mandatVorlageAusProdukt } from '@/lib/crm/produkt-karte';
@@ -67,6 +64,7 @@ import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
 import type { Lead, Mandat } from '@/lib/crm/typen';
 import { angenommenZuDeal, mandatVorbelegung } from '@/lib/crm/angebote';
 import { neueKennung } from '@/lib/kennung';
+import { leadSchreiben, leadParkenOderRaus } from '@/lib/crm/lead-parken-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,16 +84,7 @@ export async function GET(req: Request) {
   return jsonAntwort(req, { ok: true, leads: z, trichter: trichter(z, crm, heute) }, etag);
 }
 
-/** Lead an Firma oder Person schreiben — der Rest des Eintrags bleibt, wie er ist. */
-async function leadSchreiben(id: string, mut: (alt: Lead | undefined) => Lead | undefined, wer?: Wer): Promise<Lead | undefined> {
-  let neu: Lead | undefined;
-  if (id.startsWith('f-')) {
-    await aendereCrm(c => ({ ...c, firmen: c.firmen.map(f => (f.id === id ? (() => { neu = leadSaeubern(mut(f.lead)); return { ...f, ...(neu ? { lead: neu } : {}) }; })() : f)) }), wer);
-  } else {
-    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => ({ ...(cur ?? { kontakte: [] }), kontakte: (cur?.kontakte ?? []).map(k => (k.id === id ? (() => { neu = leadSaeubern(mut(k.lead)); return { ...k, ...(neu ? { lead: neu } : {}), geaendertAm: localDay() }; })() : k)) }), wer);
-  }
-  return neu;
-}
+// `leadSchreiben` liegt seit 22.10. in lib/crm/lead-parken-server.ts (EINE Stelle für Route und Stapel-Freigabe „Lead parken“).
 
 /** Neue Schreib-Aktionen (03.10.): nie über den Dienstweg — nur eine angemeldete Person des Haushalts. */
 const VON_HAND = ['parken', 'raus', 'abgeben', 'firma-folgen', 'firmen-zusammen', 'mandat-neu', 'mandat-firma'];
@@ -274,28 +263,9 @@ export async function POST(req: Request) {
   // Parken (03.10.): Status „ruht“ mit Wiedervorlage — am Tag kommt der Lead in die Runde zurück; dazu ein Follow-up.
   // Raus: „Kein Fit“ mit fester Grund-Art (Auswertung). Beides nie bei einem Lead mit offenem Deal (dann den Deal parken).
   if (b.aktion === 'parken' || b.aktion === 'raus') {
-    const gesperrt = ausscheidenGesperrt(zeile);
-    if (gesperrt) return NextResponse.json({ ok: false, fehler: gesperrt }, { status: 409 });
-    const grund = String(b.grund ?? '').trim();
-    if (grund.length > 300) return NextResponse.json({ ok: false, fehler: 'Der Grund ist länger als 300 Zeichen.' }, { status: 413 });
-    const parken = b.aktion === 'parken';
-    if (parken ? b.grundArt !== undefined && !istGrundParken(b.grundArt) : !istGrundRaus(b.grundArt)) return NextResponse.json({ ok: false, fehler: parken ? 'grundArt passt nicht zu „Parken“.' : 'Für „Kein Fit“ braucht es einen Grund aus der Liste.' }, { status: 400 });
-    const heute = localDay();
-    if (parken && (!tagOk(b.bis) || String(b.bis) < heute)) return NextResponse.json({ ok: false, fehler: 'Wiedervorlage: ein Datum ab heute.' }, { status: 400 });
-    const lead = await leadSchreiben(id, alt => {
-      const { wiedervorlage: _w, grundArt: _g, ...l } = basis(alt);
-      return { ...l, status: parken ? 'ruht' : 'kein_fit', ...(parken ? { wiedervorlage: String(b.bis) } : {}), grundArt: String(b.grundArt ?? 'spaeter'), ...(grund ? { grund } : { grund: undefined }), qualifiziertAm: tagVon(jetzt), geaendert: jetzt, geaendertVon: person };
-    }, werAus(req));
-    let followup = false;
-    if (parken) {
-      try {
-        const haupt = zeile.personen[0] ? kontakte.find(k => k.id === zeile.personen[0].id) : undefined;
-        const f = neuesFollowUp({ id: neueId('fu'), bezug: zeile.art === 'firma' ? { art: 'firma', id: zeile.id } : { art: 'kontakt', id: zeile.id }, ...(haupt ? { kontaktId: haupt.id } : {}), art: 'sonstig', text: `Wiedervorlage Qualifizierung: ${zeile.name}`.slice(0, 300), faellig: String(b.bis), ...(wer(zeile.besitzer) && zeile.besitzer !== BEIDE ? { zustaendig: zeile.besitzer } : {}) }, haupt, person, jetzt);
-        await aendereCrm(c => ({ ...c, followups: [...(c.followups ?? []), { ...f, geaendertVon: person }] }), werAus(req));
-        followup = true;
-      } catch { /* die Wiedervorlage am Lead trägt allein — die Runde holt ihn zurück */ }
-    }
-    return NextResponse.json({ ok: true, lead, followup, text: parken ? `Geparkt bis ${String(b.bis)} — dann kommt „${zeile.name}“ in die Runde zurück.` : `„${zeile.name}“ ist raus (Kein Fit) — der Grund steht in der Auswertung.` });
+    // Seit 22.10. EINE Stelle (lib/crm/lead-parken-server.ts) — dieselbe Regel nimmt die Freigabe eines Vorschlags „Lead parken“ (Kundengewinnung, N5).
+    const r = await leadParkenOderRaus({ aktion: b.aktion, id, bis: b.bis, grundArt: b.grundArt, grund: b.grund }, person, werAus(req), jetzt);
+    return r.ok ? NextResponse.json({ ok: true, lead: r.lead, followup: r.followup, text: r.text }) : NextResponse.json({ ok: false, fehler: r.fehler, ...(r.eingeschraenkt ? { eingeschraenkt: true } : {}) }, { status: r.status });
   }
 
   // Abgeben: alle Personen des Leads gehen an Kevin oder Malin (Übergabe im Verlauf, Aufgabe für die andere Person).

@@ -28,6 +28,7 @@ import { istBesuch, besuchAbgesagt, fuerFirmaId, anmeldungVon, anmeldungLabel, z
 import { berlinTag } from './netzwerken';
 import { NETZWERKEN_QUELLE } from './netzwerken';
 import { tagVon } from '@/lib/zeit';
+import { werktagePlus } from '@/lib/zeit/kalender-kern';
 import { HERKUNFT } from '@/lib/make-one/crm';
 import { KEINE_WERBE_EINWILLIGUNG } from './netzwerken-recht';
 import { MARKE_EVENTS } from './marke';
@@ -40,10 +41,16 @@ const tagDe = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)
 export const URTEIL_AB_TAGE = 14;
 /** Wie lange nach dem Event ein neuer Deal mit einer erfassten Person noch dem Event zugerechnet wird. */
 export const DEAL_FENSTER_TAGE = 180;
-/** Innerhalb von so vielen Tagen nach dem Event muss nachgefasst sein, damit es für die Follow-up-Quote zählt (wie die 48-Stunden-Regel der Events, `followUpBis`). */
+/**
+ * Innerhalb von so vielen WERKTAGEN nach dem Event muss nachgefasst sein, damit es für die Follow-up-Quote zählt (wie die 48-Stunden-Regel der Events, `followUpBis`).
+ * Seit 22.10. (Kevins Entscheidung E-V7 „48 Stunden = Werktage überall“): Mo–Fr ohne Feiertage NRW (`werktagePlus`) — dieselbe Frist wie das Follow-up der
+ * Erfassung (lib/crm/netzwerken.ts `followupFrist`). Vorher Kalendertage: ein Event am Freitag hätte bis Sonntag nachgefasst sein müssen.
+ */
 export const BESUCH_FOLLOWUP_TAGE = 2;
+/** Bis wann nach einem Event nachgefasst sein muss (rein): `BESUCH_FOLLOWUP_TAGE` Werktage nach dem Tag des Events. */
+export const besuchFollowupFrist = (datum: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(datum) ? werktagePlus(datum, BESUCH_FOLLOWUP_TAGE) : datum);
 /** Die Definition der Follow-up-Quote der besuchten Events — steht als Tooltip und unter den Kennzahlen (Praxis-Prüfung M10). */
-export const FOLLOWUP_QUOTE_DEFINITION = `Anteil der erfassten Personen, bei denen innerhalb von ${BESUCH_FOLLOWUP_TAGE} Tagen nach dem Event nachgefasst wurde (Follow-up, Termin, Gespräch oder Danke-Mail raus). Wer bewusst nicht nachgefasst wird („Nur Kontakt“, Verzicht), zählt nicht mit.`;
+export const FOLLOWUP_QUOTE_DEFINITION = `Anteil der erfassten Personen, bei denen innerhalb von ${BESUCH_FOLLOWUP_TAGE} Werktagen nach dem Event (Mo–Fr ohne Feiertage) nachgefasst wurde (Follow-up, Termin, Gespräch oder Danke-Mail raus). Wer bewusst nicht nachgefasst wird („Nur Kontakt“, Verzicht), zählt nicht mit.`;
 
 export interface BesuchKontext {
   teilnahmen: readonly Teilnahme[];
@@ -59,7 +66,7 @@ export const erfassteTeilnahmen = (eventId: string, teilnahmen: readonly Teilnah
 export interface BesuchWirkung {
   /** Erfasste Kontakte. */
   kontakte: number;
-  /** Davon rechtzeitig nachgefasst: `followUpAm` gesetzt (Termin, Angebot, Vermittlung, Einladung, Danke-Mail zählen) und höchstens `BESUCH_FOLLOWUP_TAGE` Tage nach dem Event. */
+  /** Davon rechtzeitig nachgefasst: `followUpAm` gesetzt (Termin, Angebot, Vermittlung, Einladung, Danke-Mail zählen) und höchstens `BESUCH_FOLLOWUP_TAGE` Werktage nach dem Event (`besuchFollowupFrist`). */
   nachgefasst: number;
   /** Bezug der Quote: erfasste Personen ohne bewussten Verzicht („Nur Kontakt“) — wer nicht nachgefasst werden soll, drückt die Quote nicht. */
   followupBasis: number;
@@ -124,7 +131,7 @@ export function besuchWirkung(e: Event, ctx: BesuchKontext): BesuchWirkung {
   const bis = plusTage(e.datum, DEAL_FENSTER_TAGE);
   const deals = ctx.chancen.filter(c => (c.quelle === 'event' && c.quelleBezug === e.id)
     || (!c.quelle && c.kontaktIds.some(id => neu.has(id)) && tagVon(c.angelegt) >= e.datum && tagVon(c.angelegt) <= bis));
-  const frist = plusTage(e.datum, BESUCH_FOLLOWUP_TAGE);
+  const frist = besuchFollowupFrist(e.datum);
   const basis = t.filter(x => !x.nachfassenVerzichtet || !!x.followUpAm);
   const nachgefasst = basis.filter(x => !!x.followUpAm && x.followUpAm.slice(0, 10) <= frist).length;
   const kosten = budgetSumme(e);

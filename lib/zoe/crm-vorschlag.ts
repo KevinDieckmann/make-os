@@ -58,6 +58,9 @@ export const VORSCHLAG_ARTEN = [
   'leistungstext',
   // Heads (Sales, Marketing, Event): ihren Vorschlag annehmen oder mit Grund ablehnen — über ihre eigene Route
   'head_entscheiden',
+  // Kundengewinnung (22.10., Vorlagen der Prozesse — research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.2 N4, N5, N6, N9, N10): Firmen-Stammdaten aus einer
+  // Recherche, Lead parken, Mandat aus gewonnenem Deal, Kampagnen-Ergebnis, Anfrage aus einem Webhook — jeweils über den VORHANDENEN Schreibweg.
+  'firma_felder', 'lead_parken', 'mandat_anlegen', 'kampagnen_ergebnis', 'anfrage_anlegen',
 ] as const;
 export type VorschlagArt = typeof VORSCHLAG_ARTEN[number];
 /** Arten, die nichts schreiben — Freigabe heißt „übernommen, zum Kopieren“, nichts wird versendet. */
@@ -71,7 +74,17 @@ const ART_TITEL: Record<VorschlagArt, string> = {
   anruf_leitfaden: 'Anruf-Leitfaden', powerhour_reihenfolge: 'Power-Hour-Reihenfolge', einladung_entwurf: 'Einladung entwerfen',
   danke_entwurf: 'Danke-Nachricht entwerfen', beitrag_entwurf: 'Beitrag entwerfen', newsletter_entwurf: 'Newsletter entwerfen',
   segment: 'Segment anlegen', gaesteliste: 'Gästeliste vormerken', leistungstext: 'Leistungstext für ein Produkt', head_entscheiden: 'Head-Vorschlag entscheiden',
+  firma_felder: 'Firma ergänzen', lead_parken: 'Lead parken', mandat_anlegen: 'Mandat anlegen', kampagnen_ergebnis: 'Kampagnen-Ergebnis festhalten', anfrage_anlegen: 'Anfrage übernehmen',
 };
+
+/**
+ * Felder, die „Karte ergänzen“ (Kundengewinnung, N4) an Kontakt bzw. Firma vorschlagen darf — Texte aus Recherche bzw. Agent (fremder Text: nur per Klick).
+ * Nie Einwilligungen, Werbesperre, Einschränkung, Zahlungsdaten, Lead oder Personenbezüge anderer. Webseite/LinkedIn nur https.
+ */
+export const KARTE_KONTAKT_FELDER = ['aufhaenger', 'signale', 'marktinfo', 'recherche', 'steckbrief', 'vorgestelltDurch'] as const;
+export const KARTE_FIRMA_FELDER = ['branche', 'branchen', 'mitarbeiter', 'stadt', 'webseite', 'linkedin'] as const;
+const KARTE_TEXT_MAX: Readonly<Record<string, number>> = { aufhaenger: 600, signale: 600, marktinfo: 800, recherche: 60, steckbrief: 400, vorgestelltDurch: 160, branche: 160, mitarbeiter: 40, stadt: 120, webseite: 300, linkedin: 300 };
+const httpsOk = (v: string) => /^https:\/\/[^\s]{3,}$/.test(v);
 
 const text = (v: unknown, n = 300) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
@@ -250,6 +263,8 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       if (roh.prio !== undefined) { if (!['A', 'B', 'C', ''].includes(String(roh.prio))) return fehlschlag('eingabe', 'Fehlgeschlagen: prio ist A, B oder C.'); setze('prio', roh.prio, k.prio); }
       if (roh.lebensphase !== undefined) { if (!LEBENSPHASEN.includes(roh.lebensphase as never)) return fehlschlag('eingabe', `Fehlgeschlagen: lebensphase ist ${LEBENSPHASEN.join(', ')}.`); setze('lebensphase', roh.lebensphase, k.lebensphase); }
       for (const f of ['position', 'jobtitel', 'telefon', 'linkedin'] as const) if (roh[f] !== undefined) { const t = text(roh[f], 200); if (t) setze(f, t, k[f]); }
+      // Kundengewinnung (22.10., N4 „Karte ergänzen“): Ergebnisse aus Recherche bzw. Agent — Texte, die nur per Klick in die Akte gehen.
+      for (const f of KARTE_KONTAKT_FELDER) if (roh[f] !== undefined) { const t = text(roh[f], KARTE_TEXT_MAX[f]); if (t) setze(f, t, (k as unknown as Record<string, unknown>)[f]); }
       if (roh.firma !== undefined) {
         const fi = firmaAus(s, roh.firma); if (istFehler(fi) || !fi) return fi ?? fehlschlag('eingabe', 'Fehlgeschlagen: firma fehlt.');
         const { istFirmaWechsel, firmaWechselFehlt } = await import('@/lib/crm/stationen');
@@ -258,7 +273,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
         if (!istFirmaWechsel(absicht) && firmaWechselFehlt(kroh, { firmaId: fi.id })) return fehlschlag('eingabe', 'Fehlgeschlagen: Firma ändern braucht firma_wechsel (jobwechsel, zusaetzlich oder korrektur).');
         setze('firmaId', fi.id, k.firmaId); if (istFirmaWechsel(absicht)) felder.firmaWechsel = absicht;
       }
-      if (!Object.keys(felder).length) return fehlschlag('eingabe', 'Fehlgeschlagen: keine erlaubten Felder (typen, kategorien, labels, zustaendig, phase, bean, kreis, anrede, prio, lebensphase, position, jobtitel, telefon, linkedin, firma + firma_wechsel). Einwilligungen, Werbesperre und Einschränkung ändert ZOE nie.');
+      if (!Object.keys(felder).length) return fehlschlag('eingabe', 'Fehlgeschlagen: keine erlaubten Felder (typen, kategorien, labels, zustaendig, phase, bean, kreis, anrede, prio, lebensphase, position, jobtitel, telefon, linkedin, aufhaenger, signale, marktinfo, recherche, steckbrief, vorgestelltDurch, firma + firma_wechsel). Einwilligungen, Werbesperre und Einschränkung ändert ZOE nie.');
       return {
         titel: `${ART_TITEL.kontakt_felder}: ${anzeigename(k)}`, bezugId: `kontakt:${k.id}`, vorher: vorher.join(' · '), nachher: nachher.join(' · '),
         eingabe: { art, kontaktId: k.id, felder, _stand: stand(await rohKontakt(k.id)), ...(k.firmaId ? { firmaId: k.firmaId } : {}) },
@@ -499,6 +514,95 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
         eingabe: { art, head: h, vorschlagId: hv.id, status, ...(grund ? { grund } : {}), ...(k?.firmaId ? { firmaId: k.firmaId } : {}) },
       };
     }
+    // ── Kundengewinnung (22.10.) ──
+    case 'firma_felder': {
+      const fi = firmaAus(s, i.firma); if (istFehler(fi) || !fi) return fi ?? fehlschlag('eingabe', 'Fehlgeschlagen: firma fehlt.');
+      const roh = (i.felder && typeof i.felder === 'object' && !Array.isArray(i.felder) ? i.felder : {}) as Eingabe;
+      const felder: Eingabe = {}; const vorher: string[] = []; const nachher: string[] = [];
+      const alt = fi as unknown as Record<string, unknown>;
+      for (const f of KARTE_FIRMA_FELDER) {
+        if (roh[f] === undefined) continue;
+        if (f === 'branchen') { const l = liste(roh[f]).map(x => text(x, 80)).filter(Boolean).slice(0, 20); if (l.length) { felder[f] = l; vorher.push(`${f} ${(fi.branchen ?? []).join(', ') || '—'}`); nachher.push(`${f} ${l.join(', ')}`); } continue; }
+        const t = text(roh[f], KARTE_TEXT_MAX[f] ?? 200);
+        if (!t) continue;
+        if ((f === 'webseite' || f === 'linkedin') && !httpsOk(t)) return fehlschlag('eingabe', `Fehlgeschlagen: ${f} nur als https-Adresse.`);
+        felder[f] = t; vorher.push(`${f} ${String(alt[f] ?? '—')}`); nachher.push(`${f} ${t}`);
+      }
+      if (!Object.keys(felder).length) return fehlschlag('eingabe', `Fehlgeschlagen: keine erlaubten Felder (${KARTE_FIRMA_FELDER.join(', ')}).`);
+      const quelle = text(i.quelle, 300);
+      const roh2 = (await rohCrm()).firmen.find(x => x.id === fi.id);
+      return {
+        titel: `${ART_TITEL.firma_felder}: ${fi.name}`, bezugId: `firma:${fi.id}`, vorher: vorher.join(' · '), nachher: [nachher.join(' · '), quelle && `Quelle: ${quelle}`].filter(Boolean).join(' · '),
+        eingabe: { art, firmaId: fi.id, felder, _stand: stand(roh2), ...(quelle ? { quelle } : {}) },
+      };
+    }
+    case 'lead_parken': {
+      const { leads: alleLeads, ausscheidenGesperrt } = await import('@/lib/crm/leads');
+      const { istGrundParken } = await import('@/lib/crm/lead-grund');
+      const { tagePlus } = await import('@/lib/zeit');
+      const h = text(i.lead ?? i.firma ?? i.kontakt, 160); if (!h) return fehlschlag('eingabe', 'Fehlgeschlagen: lead fehlt (Firma f-… oder Person c-…).');
+      if (s.eingeschraenkt.has(h)) return fehlschlag('sperre', 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).');
+      const r = eindeutig(alleLeads(s.kontakte, crm, heute), h, z => [z.name], suchPasst);
+      if (!r) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Kein Lead zu dieser Angabe.');
+      if (Array.isArray(r)) return fehlschlag('eingabe', `Fehlgeschlagen: Mehrdeutig — ${r.map(z => `${z.name} [${z.id}]`).join(' oder ')}.`);
+      const gesperrt = ausscheidenGesperrt(r);
+      if (gesperrt) return fehlschlag('konflikt', `Nicht vorgeschlagen: ${gesperrt}`);
+      const tage = Number(i.park_tage ?? i.parkTage);
+      const bis = tagOk(i.bis) ?? (Number.isInteger(tage) && tage >= 1 && tage <= 365 ? tagePlus(heute, tage) : undefined);
+      if (!bis || bis < heute) return fehlschlag('eingabe', 'Fehlgeschlagen: bis (YYYY-MM-DD ab heute) oder park_tage (1–365) ist Pflicht.');
+      const grundArt = istGrundParken(i.grund_art ?? i.grundArt) ? String(i.grund_art ?? i.grundArt) : 'spaeter';
+      const grund = text(i.grund, 300);
+      return {
+        titel: `${ART_TITEL.lead_parken}: ${r.name}`, bezugId: r.art === 'firma' ? `firma:${r.id}` : `kontakt:${r.id}`,
+        vorher: `Status ${r.status}`, nachher: `ruht bis ${bis} (${grundArt}) · danach zurück in der Runde · Follow-up „Wiedervorlage Qualifizierung“`,
+        eingabe: { art, leadId: r.id, bis, grundArt, ...(grund ? { grund } : {}), ...(r.art === 'firma' ? { firmaId: r.id } : {}) },
+      };
+    }
+    case 'mandat_anlegen': {
+      const d = dealAus(s, i.deal); if (istFehler(d) || !d) return d ?? fehlschlag('eingabe', 'Fehlgeschlagen: deal fehlt.');
+      if (d.stufe !== 'gewonnen') return fehlschlag('konflikt', 'Nicht vorgeschlagen: Nur ein gewonnener Deal wird Mandat.');
+      if (crm.mandate.some(m => m.chanceId === d.id)) return fehlschlag('konflikt', 'Nicht vorgeschlagen: Zu diesem Deal gibt es schon ein Mandat.');
+      if (d.kontaktIds.some(id => s.eingeschraenkt.has(id))) return fehlschlag('sperre', 'Nicht vorgeschlagen: Die Verarbeitung einer Person des Deals ist eingeschränkt (Art. 18 DSGVO).');
+      return {
+        titel: `${ART_TITEL.mandat_anlegen}: ${kurz(d.titel, 70)}`, bezugId: `deal:${d.id}`,
+        vorher: 'gewonnen, ohne Mandat', nachher: 'Mandat aus dem Deal (Vorbelegung aus dem angenommenen Angebot bzw. der Produkt-Karte) · Honorar zählt danach in MRR und Index',
+        eingabe: { art, dealId: d.id, ...(d.firmaId ? { firmaId: d.firmaId } : {}) },
+      };
+    }
+    case 'kampagnen_ergebnis': {
+      const kp = crm.kampagnen.find(x => x.id === text(i.kampagne, 80) || suchPasst([x.name], text(i.kampagne, 80)));
+      if (!kp) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: kampagne nicht gefunden (Kennung aus kampagnen_lage).');
+      const k = kontaktAus(s, i.kontakt); if (istFehler(k) || !k) return k ?? fehlschlag('eingabe', 'Fehlgeschlagen: kontakt fehlt.');
+      if (!kp.kontaktIds.includes(k.id)) return fehlschlag('eingabe', 'Fehlgeschlagen: Die Person gehört nicht zu dieser Kampagne.');
+      const ERG = ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'];
+      const erg = ERG.includes(String(i.ergebnis)) ? String(i.ergebnis) : null;
+      if (!erg) return fehlschlag('eingabe', `Fehlgeschlagen: ergebnis ist ${ERG.join(', ')}.`);
+      return {
+        titel: `${ART_TITEL.kampagnen_ergebnis}: ${kp.name} · ${anzeigename(k)}`, bezugId: `kontakt:${k.id}`,
+        nachher: `${erg}${erg === 'chance' ? ' · der Lead geht in die Qualifizierung' : ''}`,
+        eingabe: { art, kampagneId: kp.id, kontaktId: k.id, ergebnis: erg, ...(k.firmaId ? { firmaId: k.firmaId } : {}) },
+      };
+    }
+    case 'anfrage_anlegen': {
+      const { anfrageBauen, ANFRAGE_KANAELE } = await import('@/lib/crm/anfragen');
+      const kanal = String(i.kanal ?? 'website');
+      if (!ANFRAGE_KANAELE.some(x => x.id === kanal)) return fehlschlag('eingabe', `Fehlgeschlagen: kanal ist ${ANFRAGE_KANAELE.map(x => x.id).join(', ')}.`);
+      const t = text(i.text, 3000); if (!t) return fehlschlag('eingabe', 'Fehlgeschlagen: text (was angefragt wurde) fehlt.');
+      // Vorhandene Person (Kennung) — oder neu aus den Feldern (Webhook: fremder Text — darum nur als Vorschlag; Dublette, Art. 18, Werbesperre prüft anfrageBauen).
+      const kid = text(i.kontakt, 80);
+      const vorhanden = kid ? s.kontakte.find(x => x.id === kid) : undefined;
+      if (kid && s.eingeschraenkt.has(kid)) return fehlschlag('sperre', 'Nicht vorgeschlagen: Die Verarbeitung dieser Person ist eingeschränkt (Art. 18 DSGVO).');
+      if (kid && !vorhanden) return fehlschlag('nicht_gefunden', 'Fehlgeschlagen: Kontakt nicht gefunden.');
+      const neu = vorhanden ? undefined : { vorname: text(i.vorname, 80), nachname: text(i.nachname, 80), email: text(i.email, 160), firma: text(i.firma_name ?? i.firma, 160), telefon: text(i.telefon, 60) };
+      const probe = anfrageBauen({ ...(vorhanden ? { kontaktId: vorhanden.id } : { neu }), kanal: kanal as never, text: t }, { kontakte: await karteiFuerPruefung(), crm: await rohCrm(), person: s.person, heute, jetzt: new Date().toISOString(), ids: { kontakt: 'c-probe', followUp: 'fu-probe' } });
+      if (!probe.ok) return fehlschlag('eingabe', `Nicht vorgeschlagen: ${probe.fehler}`);
+      const wer = vorhanden ? anzeigename(vorhanden) : [neu?.vorname, neu?.nachname].filter(Boolean).join(' ') || neu?.firma || neu?.email || 'neue Person';
+      return {
+        titel: `${ART_TITEL.anfrage_anlegen}: ${kurz(wer, 60)} (${kanal})`, bezugId: vorhanden ? `kontakt:${vorhanden.id}` : 'markttraktion',
+        nachher: [probe.bau.neuePerson ? 'neue Person in der Kartei' : 'an die vorhandene Person', `Kanal ${kanal}`, 'Follow-up „Anfrage beantworten“ heute', 'versendet wird nichts'].join(' · '),
+        eingabe: { art, kanal, text: t, ...(vorhanden ? { kontaktId: vorhanden.id } : { neu }) },
+      };
+    }
   }
 }
 
@@ -666,6 +770,30 @@ async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Erge
       const r = await innen('/api/heads/[head]', 'POST', { aktion: 'entscheiden', id: e.vorschlagId, status: e.status, ...(e.grund ? { grund: e.grund } : {}) }, person, { head: String(e.head) });
       return aus(r, e.status === 'angenommen' ? `Head-Vorschlag angenommen${r.json.wohin ? ` → ${String(r.json.wohin)}` : ''}.` : 'Head-Vorschlag abgelehnt — der Head lernt daraus.');
     }
+    // ── Kundengewinnung (22.10.) ──
+    case 'firma_felder': {
+      const r = await innen('/api/crm/bestand', 'PATCH', { ops: [{ liste: 'firmen', op: 'teil', id: e.firmaId, stand: e._stand, felder: e.felder }] }, person);
+      if (r.status === 409) return KONFLIKT;
+      if (r.status < 400 && Array.isArray(r.json.fehler) && r.json.fehler.length) return { ok: false, status: 409, fehler: (r.json.fehler as unknown[]).map(String).join(' · ') };
+      return aus(r, 'Firma ergänzt.');
+    }
+    case 'lead_parken': {
+      // Die Freigabe im Stapel IST der Klick der Person — dieselbe Regel wie „Parken“ in der Runde (lib/crm/lead-parken-server.ts; der Dienstweg parkt nie selbst).
+      const { leadParkenOderRaus } = await import('@/lib/crm/lead-parken-server');
+      const r = await leadParkenOderRaus({ aktion: 'parken', id: String(e.leadId ?? ''), bis: e.bis, grundArt: e.grundArt, grund: e.grund }, person, { art: 'zoe', person });
+      return r.ok ? ok(r.text) : { ok: false, status: r.status, fehler: r.fehler };
+    }
+    case 'mandat_anlegen': {
+      const r = await innen('/api/crm/lead', 'POST', { aktion: 'mandat', chanceId: e.dealId }, person);
+      return aus(r, r.json.text ? String(r.json.text) : 'Mandat angelegt.');
+    }
+    case 'kampagnen_ergebnis': {
+      const kp = (await rohCrm()).kampagnen.find(x => x.id === e.kampagneId);
+      if (kp?.ergebnisse.some(x => x.kontaktId === e.kontaktId && x.ergebnis === e.ergebnis)) return SCHON('Ergebnis festgehalten');
+      return aus(await innen('/api/crm/kampagnen', 'POST', { aktion: 'ergebnis', id: e.kampagneId, kontaktId: e.kontaktId, ergebnis: e.ergebnis }, person), `Ergebnis „${String(e.ergebnis)}“ festgehalten.`);
+    }
+    case 'anfrage_anlegen':
+      return aus(await innen('/api/crm/anfrage', 'POST', { aktion: 'anlegen', ...(e.kontaktId ? { kontaktId: e.kontaktId } : { neu: e.neu }), kanal: e.kanal, text: e.text }, person), 'Anfrage übernommen — Follow-up „Anfrage beantworten“ steht heute an. Versendet wurde nichts.');
     default:
       return { ok: false, status: 400, fehler: 'Unbekannte Art — nichts übernommen.' };
   }
