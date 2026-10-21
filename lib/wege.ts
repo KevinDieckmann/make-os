@@ -24,6 +24,7 @@ import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, type An
 import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import { fulfillmentLink, fallLink, type FulfillmentBereich, type AlterBereich, type FallReiter, type AlterFallReiter } from '@/lib/fulfillment/adresse';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
+import { prozesseLink, type ProzesseAdresse } from '@/lib/prozesse/adresse';
 
 const q = (basis: string, p: Record<string, string | undefined | null>, hash?: string) => {
   const s = new URLSearchParams();
@@ -62,6 +63,14 @@ export const WEG = {
   konto: () => '/os/konto',
   /** Bauplan (Board): `k` öffnet eine Karte. */
   bauplan: (k?: string) => q('/os/bauplan', { k }),
+  /**
+   * Prozesse (21.10., Business-Leiste): die Landkarte als Fliege; `p` Prozess, `ph` Phase, `s` Schritt, `voll` Vollbild, `ansicht` Darstellung, `modus`
+   * Präsentieren — Regeln in lib/prozesse/adresse.ts.
+   */
+  prozesse: (a: ProzesseAdresse = {}) => prozesseLink(a),
+  /** Einstellungen (Übersicht) bzw. die Einrichtung der Instanz (Onboarding). */
+  system: () => '/os/system',
+  einrichtung: () => '/os/onboarding',
   /** Einstellungen › Bedienung (10.10.): Wischen am Handy, Menü „⋯“, Rückfrage vor dem Löschen, Dichte — je Gerät. */
   bedienung: () => '/os/system/bedienung',
   /** System › Datenschutz (05.10.): Verantwortlicher, Empfänger/AVV, Selbstprüfung, Verzeichnis-Export — `#abschnitt` springt hin. */

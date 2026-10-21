@@ -20,7 +20,7 @@
 // reduzierte Bewegung = Standbild. „Als Bild speichern“ zeichnet die Fäden als ruhiges Standbild ins SVG (`FlaechePfeil still`).
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
-import { Plus, Minus, Maximize2, LocateFixed, ImageDown, Grid3x3 } from 'lucide-react';
+import { Plus, Minus, Maximize2, Minimize2, Expand, LocateFixed, ImageDown, Grid3x3 } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, RAND, ECKE, SCHRIFT, FLAECHE_STIL, LEUCHT, TIEF } from '@/lib/make-one/design';
 import { Knopf } from '../../ui';
 import { neueKennung } from '@/lib/kennung';
@@ -37,6 +37,7 @@ import { flaecheFaden } from '@/lib/reise/flow';
 import { FormZeichen } from '../../ui/reise/ReiseBild';
 import { allesZeigen, transformVon, zoomUm, ZOOM_SCHRITT, weltAus, bildAus, zwischen, sanft, einrasten, flaecheHinweis, type Kamera } from '../../ui/flaeche/kamera';
 import { flaecheEingabe, type FlaecheEingabe } from '../../ui/flaeche/eingabe';
+import { useVollbild } from '../../ui/flaeche/vollbild';
 import { istZiehen } from '../../kugel/steuerung';
 import { formFuerBaustein } from './bild';
 import { EXPORT_SCHRIFT, exportRahmen, dateiName, svgText, svgZuPng, herunterladen } from './flaeche-export';
@@ -107,6 +108,9 @@ export function EditorFlaeche(p: FlaecheProps) {
   const [exportArt, setExportArt] = useState<'svg' | 'png' | null>(null);
   const [kurzHinweis, setKurzHinweis] = useState<string | null>(null);
   const [geraet, setGeraet] = useState({ mac: true, touch: false });
+  // Vollbild (21.10., Prozesse Etappe A Punkt 11): `?voll=1` — die Fläche legt sich über Leiste und Kopf (globals.css `.ff-flaeche-voll`), Esc führt zurück.
+  const vollbild = useVollbild();
+  const voll = vollbild.voll && !handy;
 
   const buehne = useRef<HTMLDivElement | null>(null);
   const svg = useRef<SVGSVGElement | null>(null);
@@ -175,6 +179,14 @@ export function EditorFlaeche(p: FlaecheProps) {
     setGeraet({ mac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), touch: !!window.matchMedia?.('(pointer: coarse)').matches });
     return () => { if (bildEntwurf.current) cancelAnimationFrame(bildEntwurf.current); };
   }, [setzeKamera]);
+
+  // Vollbild an bzw. aus: die Bühne ist jetzt anders groß — einmal alles zeigen (nicht beim Öffnen; da gilt die Regel oben).
+  const ersteVoll = useRef(true);
+  useEffect(() => {
+    if (ersteVoll.current) { ersteVoll.current = false; return; }
+    const t = requestAnimationFrame(() => allesAnzeigen());
+    return () => cancelAnimationFrame(t);
+  }, [voll, allesAnzeigen]);
 
   // Zoom und Schieben am SVG (nur dort — außerhalb rollt die Seite).
   useEffect(() => {
@@ -766,7 +778,13 @@ export function EditorFlaeche(p: FlaecheProps) {
   const handyWahl = handy && einzelKnoten;
 
   return (
-    <div className="ff-flaeche" data-ff-flaeche>
+    <div className={`ff-flaeche${voll ? ' ff-flaeche-voll' : ''}`} data-ff-flaeche {...(voll ? { role: 'dialog', 'aria-modal': true, 'aria-label': `Fläche „${vorlage.titel}“ im Vollbild` } : {})}
+      onKeyDown={e => {
+        // Esc: erst Auswahl bzw. Bearbeiten lösen (Fläche, Eingabefeld), dann — wenn nichts mehr gewählt ist — das Vollbild verlassen.
+        if (e.key !== 'Escape' || !voll || e.defaultPrevented || bearbeiten || zweigFrage || zug.current) return;
+        if (stand.current.auswahl.size || pfeilWahl) return;
+        e.preventDefault(); vollbild.aus();
+      }}>
       <div className="ff-flaeche-leiste" role="toolbar" aria-label="Fläche: Ansicht">
         <Knopf leise style={knopf} onClick={() => zoomen(1 / ZOOM_SCHRITT)} ariaLabel="Verkleinern (−)" titel="Verkleinern (−)"><Minus size={16} aria-hidden /></Knopf>
         <span ref={zoomText} aria-live="off" style={{ ...MIKRO, minWidth: 48, textAlign: 'center' }}>{Math.round(k.s * 100)} %</span>
@@ -779,6 +797,9 @@ export function EditorFlaeche(p: FlaecheProps) {
             color: raster ? C.ink : C.inkDim, background: raster ? TIEF.flaeche(C.aktiv) : 'transparent', border: `1px solid ${raster ? TIEF.rand(C.aktiv) : RAND.flaeche}` }}>
           <Grid3x3 size={14} aria-hidden />Raster {raster ? 'an' : 'aus'}
         </button>
+        {!handy && (voll
+          ? <Knopf leise style={knopf} onClick={() => vollbild.aus()} titel="Vollbild verlassen (Esc)"><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Minimize2 size={14} aria-hidden />Verlassen</span></Knopf>
+          : <Knopf leise style={knopf} onClick={() => vollbild.an()} titel="Vollbild — Leiste und Kopf weg, Esc zurück"><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Expand size={14} aria-hidden />Vollbild</span></Knopf>)}
         <span style={{ flex: 1 }} />
         {verbindenMenue}
         <Knopf leise style={knopf} aus={!!exportArt} onClick={() => setExportArt('png')} titel="Als Bild speichern (PNG) — nur die Fläche mit Legende"><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><ImageDown size={14} aria-hidden />Bild (PNG)</span></Knopf>

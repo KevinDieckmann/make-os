@@ -95,6 +95,9 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('fulfillment-onboarding', 'Produkte & Mandate · Fulfillment · Onboarding', WEG.fulfillment('onboarding'), 'business'),
   s('fulfillment-analysen', 'Produkte & Mandate · Fulfillment · Analysen', WEG.fulfillment('analysen'), 'business'),
   s('fulfillment-kreislauf', 'Produkte & Mandate · Fulfillment · Kreislauf', WEG.fulfillment('kreislauf'), 'business'),
+  // Prozesse (21.10.): die Landkarte als Fliege — Marketing, Sales, Übergabe, Fulfillment, Ausbau; Liste und Vollbild über die Adresse.
+  s('prozesse', 'Prozesse · Landkarte der Abläufe (Marketing, Sales, Übergabe, Fulfillment, Ausbau)', WEG.prozesse(), 'business'),
+  s('prozesse-liste', 'Prozesse · als Liste', WEG.prozesse({ ansicht: 'liste' }), 'business'),
   s('unternehmen', 'Unternehmen · Überblick (Schild in einem Blick, Compliance-Ampel)', WEG.unternehmen(), 'business', 'volle'),
   s('unternehmen-ereignis', 'Unternehmen · Was ist passiert? (Ereignis-Assistent: Geschäftsführung, Gesellschafterwechsel, Sitz …)', WEG.ereignisAssistent(), 'business', 'volle'),
   // Unternehmen › Schild (10.10.): die Reiter einzeln auffindbar.

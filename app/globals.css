@@ -1202,6 +1202,57 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 @media (max-width: 720px) {
   .ff-flaeche-buehne { height: 62vh; min-height: 320px; }
 }
+/* Prozess-Editor im Vollbild (21.10., Prozesse Etappe A Punkt 11 — `?voll=1`, components/os/ui/flaeche/vollbild.ts): die Fläche legt sich über Leiste und
+   Kopf, Palette und Seitenfeld schweben daneben; Esc bzw. „Verlassen“ führt zurück. */
+.ff-flaeche.ff-flaeche-voll { position: fixed; inset: 0; z-index: 1500; background: #0B0E10; padding: 10px 14px 14px; box-sizing: border-box; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.ff-flaeche-voll > .ff-flaeche-raster { min-height: 0; height: 100%; align-items: stretch; }
+.ff-flaeche-voll .ff-flaeche-buehne { height: 100%; min-height: 300px; }
+.ff-flaeche-voll .ff-editor-feld, .ff-flaeche-voll .ff-editor-palette { max-height: 100%; overflow: auto; }
+
+/* ── Prozesse (21.10., Etappe A „Sehen“ — components/os/prozesse/*, research/prozesse/ANALYSE_100.md) ───────────────────────────────────────────────
+   Die Bühne ist eine Fläche wie im Prozess-Editor (`.ff-flaeche-buehne` — Faden-Ebene unter dem SVG, Striche ausgeblendet, solange der Flow läuft), nur höher.
+   Vollbild (`.pz-voll`, Punkt 11) liegt über Leiste und Kopf; Präsentieren ohne Ränder (Punkt 93); Aufleuchten nach der Suche (Punkt 15). */
+.pz-karte { display: grid; gap: 12px; }
+.pz-oben { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; min-width: 0; }
+.pz-oben > .pz-suche { flex: 1 1 260px; max-width: 420px; }
+.pz-brot { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; min-width: 0; }
+.pz-brot a { text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.pz-leiste { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pz-knopf-inhalt { display: inline-flex; gap: 6px; align-items: center; }
+.pz-kopf-werkzeuge { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.pz-raster { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; min-width: 0; }
+@media (min-width: 1180px) { .pz-raster.pz-mit-feld { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); } }
+.pz-haupt, .pz-feld { min-width: 0; }
+.pz-feld { display: grid; gap: 12px; align-content: start; }
+.pz-buehnen-rahmen { position: relative; min-width: 0; }
+.ff-flaeche-buehne.pz-buehne { height: max(480px, calc(100vh - 250px)); }
+@media (max-width: 720px) { .ff-flaeche-buehne.pz-buehne { height: 62vh; min-height: 320px; } }
+.pz-kachel { outline: none; }
+.pz-leuchtrand { display: none; }
+.pz-kachel:focus-visible > .pz-leuchtrand, [data-pz-leuchten] > .pz-leuchtrand { display: inline; }
+[data-pz-leuchten] > .pz-leuchtrand { animation: pzLeuchten 1.8s ease-out both; }
+@keyframes pzLeuchten { 0%, 60% { stroke-opacity: 1; } 100% { stroke-opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { [data-pz-leuchten] > .pz-leuchtrand { animation: none; } }
+.pz-minimap { position: absolute; right: 12px; bottom: 12px; padding: 6px; border-radius: 12px; background: #161B1F; border: 1px solid rgba(255,255,255,.14); }
+.pz-hilfe { position: absolute; top: 12px; right: 12px; z-index: 5; display: grid; gap: 10px; width: min(380px, calc(100% - 24px)); padding: 14px; border-radius: 16px; background: #1B2126; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 18px 50px -12px rgba(0,0,0,.75); box-sizing: border-box; }
+.pz-nur-vorlesen { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pz-feld-zeile { display: flex; gap: 8px; align-items: center; width: 100%; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 0; background: transparent; color: #E8ECEA; text-align: left; cursor: pointer; font: inherit; font-size: 14px; }
+.pz-feld-zeile:hover { background: rgba(255,255,255,.04); }
+.pz-liste-prozess { border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 4px 14px; }
+.pz-liste-prozess > summary { min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; cursor: pointer; font-size: 15px; }
+.pz-liste-ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+.pz-liste-ol a { text-decoration: none; }
+.pz-voll { position: fixed; inset: 0; z-index: 1500; background: #0B0E10; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: 10px 14px 14px; gap: 10px; box-sizing: border-box; }
+.pz-voll-kopf { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.pz-voll-werkzeuge { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pz-voll-werkzeuge > .pz-suche { width: min(320px, 70vw); }
+.pz-voll-inhalt { min-height: 0; overflow: auto; }
+.pz-voll .pz-raster, .pz-voll .pz-haupt, .pz-voll .pz-buehnen-rahmen { height: 100%; }
+.pz-voll .ff-flaeche-buehne.pz-buehne { height: 100%; min-height: 300px; }
+.pz-voll .pz-feld { max-height: 100%; overflow: auto; }
+.pz-voll.pz-praesentieren { padding: 0; grid-template-rows: minmax(0, 1fr) auto; gap: 0; }
+.ff-flaeche-buehne.pz-buehne-praes { border: 0; border-radius: 0; }
+.pz-praes-leiste { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 6px 12px 10px; }
 
 /* ── Kunden-Seite, Vorschau und Präsentation (12.10., Fulfillment extern — components/os/fulfillment/kunde/KundenAnsicht.tsx, bilder.tsx) ─────────────
    Nur Klassen `kunde-…` — sie wirken nur in der Kunden-Ansicht. Handy zuerst (eine Spalte), ab ~900 px zwei Spalten (`.kunde-raster`), die Präsentation

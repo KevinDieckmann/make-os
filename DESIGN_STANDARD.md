@@ -625,3 +625,16 @@ Rückmeldung 17.10.: „Zeichnen wie in Miro: freie Fläche, Kästen frei platzi
 - **Als Bild speichern:** PNG oder SVG — nur die Fläche mit Titel und Legende, ohne Auswahl/Anfasser (`flaeche-export.ts`; entsteht im Browser).
 - Wächter: `tests/fulfillment-flaeche-modell.test.ts` (Ableitung, Auto-Layout, Kreise/Zweige, Grenzen/Stand, Fluss ↔ Fläche, Rückgängig, Update-Probe),
   `tests/fulfillment-flaeche-oberflaeche.test.ts` (Eingabe nur am SVG, Kamera, Ziele ≥ 44 px, Handy, nur ansehen, keine Zustände je Bewegung).
+- **Vollbild (21.10.):** EIN Weg für jede Fläche — `useVollbild` (`components/os/ui/flaeche/vollbild.ts`): `?voll=1` in der Adresse (Zurück verlässt es), die
+  Fläche legt sich als festes Overlay über Leiste und Kopf (Werkzeuge schweben), dazu die Fullscreen-API des DOKUMENTS (nie eines Elements — Menüs im Body blieben
+  sonst unsichtbar); Esc bzw. „Verlassen“ führt zurück. Genutzt von Prozesse (Landkarte und jeder Prozess) und dem Prozess-Editor im Fulfillment.
+- **Semantischer Zoom (21.10.):** die Zoomstufe (fern · mittel · nah) kommt NUR aus `zoomStufe` (`components/os/ui/flaeche/stufe.ts`) neben der Kamera — weit weg
+  Form, kurzer Titel und EINE Zahl, nah dran Details; die Zeichnung bekommt die Stufe, kein Knoten entscheidet selbst.
+
+### Prozesse (Landkarte als Fliege, 21.10.)
+Business › Prozesse (`/os/prozesse`, `components/os/prozesse/*`, Regeln `lib/prozesse/*`): die Landkarte der Firma als Fliege links → rechts (Marketing → Sales →
+Übergabe → Fulfillment → Ausbau) mit den Bändern Führung (oben) und Unterstützung (unten); der Weg des Kunden läuft als Lichtfaden durch die Gasse, Übergaben sind
+beschriftete Lichtfäden. Ein Klick fährt hinein (Kamerafahrt, Pfad in der Adresse, Brotkrumen, Esc eine Ebene hinaus): Ebene 2 Prozess (Steckbrief, Phasen mit dem
+Hauptweg), Ebene 3 Ablauf (die Fläche des Editors, nur lesbar — Rauten und Erinnerungen erst hier), Ebene 4 Schritt. Darstellungen aus EINER Liste
+(`PROZESS_ANSICHTEN`: Bild · Liste); am Handy startet die Liste. Je Kachel Titel und EINE Zahl (die zweite nur rot bei einer Frist), nie eine Null; Farbe nie allein
+(Wort über jeder Stufe, Kontrast ≥ 3:1). Wächter: `tests/prozesse-*.test.ts`.
