@@ -51,7 +51,7 @@ export interface LaeufeProps {
 }
 
 export function WerkstattLaeufe(p: LaeufeProps) {
-  return p.laufId ? <LaufAnsicht {...p} laufId={p.laufId} /> : <LaufListe {...p} />;
+  return p.laufId ? <LaufAnsicht key={p.laufId} {...p} laufId={p.laufId} /> : <LaufListe {...p} />;
 }
 
 // ══ Die Liste ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════

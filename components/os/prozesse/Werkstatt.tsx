@@ -524,7 +524,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           {WERKSTATT_REITER.length > 1 && <Reiter liste={WERKSTATT_REITER.map(r => ({ id: r.id, label: r.id === 'laeufe' && laeufe.daten?.laeufe.length ? `${r.titel} · ${laeufe.daten.laeufe.length}` : r.id === 'tests' && laeufe.daten?.tests.length ? `${r.titel} · ${laeufe.daten.tests.length}` : r.titel }))} aktiv={reiter} onWahl={w => reiterWaehlen(w)} ariaLabel="Werkstatt" />}
           {v && <Chip farbe={C.inkDim}>{`Version ${v.nr}`}</Chip>}
           <WerkstattSteuerung prozessId={prozessId} def={d} status={eintrag.status} hatVersion={!!v} laufStand={laeufe.daten?.stand ?? null}
-            rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} />
+            rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} vorher={sichern} />
           {reiter === 'bauen' && !nurLesen && <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: spFarbe }}><SP size={14} aria-hidden />{spText}</span>}
           {reiter === 'bauen' && nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? 'Am Handy nur ansehen' : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
         </div>

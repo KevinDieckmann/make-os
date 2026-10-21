@@ -420,7 +420,8 @@ export const PROZESS_WERKZEUG = 'prozess_schritt';
 /** Glocke (Punkt 69: nur Freigaben, Endgültiges, Zurückgehaltenes) — eine je Prozess und Art (neuere ersetzt). Titel ohne Inhalte. */
 async function glocke(an: string, titel: string, art: string, prozessId: string, freigabe: boolean): Promise<void> {
   const [{ melde }, { WEG }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/wege')]);
-  await melde({ an, art: 'prozess', titel: titel.slice(0, 280), link: freigabe ? WEG.freigaben(undefined, 'business') : WEG.prozesse({ p: prozessId }), bezug: { art: 'prozess', id: `${prozessId}-${art}`.slice(0, 80) } });
+  // Seit 22.10.: Meldungen ohne Freigabe führen in den Reiter „Läufe“ der Werkstatt (dort steht, was anhielt bzw. zurückgehalten ist).
+  await melde({ an, art: 'prozess', titel: titel.slice(0, 280), link: freigabe ? WEG.freigaben(undefined, 'business') : WEG.prozesse({ p: prozessId, ansicht: 'werkstatt', w: 'laeufe' }), bezug: { art: 'prozess', id: `${prozessId}-${art}`.slice(0, 80) } });
 }
 
 /** Agenten-Schritt (Entscheidung 21.10.: nur „Vorschlag“): EIN Aufruf über das KI-Tor, Ergebnis gegen den Vertrag geprüft (eine Korrekturrunde), dann als Vorschlag in den Stapel. */
@@ -480,7 +481,7 @@ export const kiNichtEingerichtet = (fehler: string | undefined): boolean => fehl
 /** EINE Glocke je Person (neuere ersetzt), ganz gleich, wie viele Läufe anhalten — der Titel nennt keine Inhalte. */
 async function kiGlocke(an: string, prozessId: string): Promise<void> {
   const [{ melde }, { WEG }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/wege')]);
-  await melde({ an, art: 'prozess', titel: 'Prozesse: KI nicht eingerichtet — Agenten-Schritte halten an, bis ein KI-Schlüssel bzw. Guthaben da ist', link: WEG.prozesse({ p: prozessId }), bezug: { art: 'prozess', id: 'ki-nicht-eingerichtet' } });
+  await melde({ an, art: 'prozess', titel: 'Prozesse: KI nicht eingerichtet — Agenten-Schritte halten an, bis ein KI-Schlüssel bzw. Guthaben da ist', link: WEG.prozesse({ p: prozessId, ansicht: 'werkstatt', w: 'laeufe' }), bezug: { art: 'prozess', id: 'ki-nicht-eingerichtet' } });
 }
 
 /** Teilprozess bzw. Übergabe: den Lauf des anderen Prozesses für denselben Fall starten (Kette +1, Herkunft) — idempotent über die Kennung. */

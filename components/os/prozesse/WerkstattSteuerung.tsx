@@ -42,6 +42,8 @@ export interface SteuerungProps {
   /** Nach Scharfschalten bzw. Einstellungen: Eintrag und Laufzeit-Stand neu laden. */
   onGeaendert: () => Promise<void>;
   onMeldung: (text: string, art: 'gut' | 'achtung' | 'kritisch' | 'info') => void;
+  /** Vor dem Scharfschalten: ungespeicherte Änderungen sichern (sonst passt der Stand nicht) — false = nicht gespeichert. */
+  vorher?: () => Promise<boolean>;
 }
 
 /** Zustand + Knöpfe der Kopfzeile. */
@@ -93,6 +95,7 @@ export function ScharfFenster(p: SteuerungProps & { onZu: () => void; /** Nur f�
   const los = async () => {
     setFehler(null);
     if (cent === null || budgetFehler) return;
+    if (p.vorher && !(await p.vorher())) { setFehler('Erst muss der Entwurf gespeichert sein.'); return; }
     const r = await laeufeSenden({ aktion: 'scharf', prozess: p.prozessId, stand: p.stand(), budgetCent: cent, bestehende });
     if (r.status === 200 && r.j?.ok) {
       const g = r.j.gestartet ?? 0, zr = r.j.zurueckgehalten ?? 0;
