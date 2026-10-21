@@ -148,6 +148,9 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'fulfillment-kunde--*': 'Kunden-Links, Antworten und Puls je Haushalt (Daten Dritter, Art. 15/17 über die Kartei) — keine Einträge je Konto',
   'fulfillment-dossiers--*': 'Dossiers je Haushalt (je Mandat; Firmenangaben, Läufe) — wer geändert/gestartet hat nur als Speichername',
   'fulfillment-personen--*': 'Berufliche Personenkarten je Haushalt (Dritte, Art. 15/17 über die Kartei, eigene Löschfrist) — keine Einträge je Konto',
+  // Prozesse (21.10., B1): Bestände je Haushalt — beim Konto-Löschen werden Speichername und Team-Kennung des Kontos „[gelöscht]“ (prozesseKontoLoeschen).
+  'prozesse--*': 'Prozesse je Haushalt (Entwürfe, Versionen, Status — Geschäftswissen, Personen nur als Speichername bzw. Team-Kennung)',
+  'prozesse-webhook--*': 'Webhooks je Haushalt (Adresse, Fingerabdruck des Schlüssels, Eingänge Dritter — Art. 15/17 über die Kartei, Frist „ereignisse“) — keine Einträge je Konto',
   'produkt-treppe--*': 'Leistungstreppe je Haushalt (Stufen, Kundenreise, Roadmap, Positionierung, Fortschritt je Mandat-Kennung — wer geändert/erledigt/gesendet hat nur als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
   'fokus-business--*': 'Unser Fokus · Business je Haushalt und Gesellschaft (Freitext der Mitglieder, ohne Personen-Feld)',
   'fokus-steuerung-privat--*': 'Prioritäten · Privat je Haushalt (Themen-Namen, Rang, Gewichte, ohne Personen-Feld) — wer sie geändert hat, steht nur im Änderungsprotokoll',
@@ -569,6 +572,8 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     await nurWenn(schild, async () => (await import('@/lib/gesellschaften/schild-server')).schildKontoLoeschen(konto.haushalt!, speicher));
     // Fulfillment (10.10.): alle fünf Bestände bleiben (Geschäftsunterlagen), der Speichername der Person wird „[gelöscht]“.
     await sicher(`fulfillment--${konto.haushalt}`, async () => (await import('@/lib/fulfillment/speicher')).fulfillmentKontoLoeschen(konto.haushalt!, speicher));
+    // Prozesse (21.10., B1): Einträge bleiben (Geschäftsunterlagen), Speichername und Team-Kennung des Kontos werden „[gelöscht]“.
+    await sicher(`prozesse--${konto.haushalt}`, async () => (await import('@/lib/prozesse/werkstatt-server')).prozesseKontoLoeschen(konto.haushalt!, speicher));
     // Ereignisse (09.10., E1): Ereignisse NUR dieser Person (ihre Mail, „An ZOE gegeben“) fallen weg, aus `personen` wird sie gestrichen.
     const ev = `ereignisse--${konto.haushalt}`;
     await nurWenn(ev, async () => {

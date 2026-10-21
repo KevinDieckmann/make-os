@@ -7,7 +7,7 @@
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
-import { istEreignisArt } from './arten';
+import { istEreignisArt, EREIGNISSE_INTERN } from './arten';
 import { EREIGNIS_GRENZEN, LEER, eingabeSauber, ereignisBestand, ereignisseFuer, geradeGeschriebenAus, type Betrachter, type Ereignis, type EreignisBestand, type EreignisEingabe, type KonsumentStand } from './typen';
 
 const HAUSHALT = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -127,9 +127,11 @@ export async function ereignisseSeit(person: string | null, seit: string, jetzt 
   try {
     const eintraege = (await ereignisseLaden()).eintraege;
     const ab = seit || new Date(jetzt.getTime() - EREIGNIS_GRENZEN.hoechstalterStunden * 3_600_000).toISOString();
-    if (!person) return eintraege.filter(e => !e.person && !e.personen && e.bereich === 'business' && e.am > ab && e.art !== 'aufgabe-zoe').sort((a, x) => a.nr - x.nr);
+    // Interne Arten („An ZOE gegeben“, Webhook eines Prozesses — 21.10.) stoßen nur ihren Lauf an, sie gehören nicht ins Heads-Paket.
+    const extern = (e: Ereignis) => !EREIGNISSE_INTERN.includes(e.art);
+    if (!person) return eintraege.filter(e => !e.person && !e.personen && e.bereich === 'business' && e.am > ab && extern(e)).sort((a, x) => a.nr - x.nr);
     const b = await betrachterFuer(person);
-    return b ? ereignisseFuer(eintraege, b, { seit: ab, bereich: 'business' }).filter(e => e.art !== 'aufgabe-zoe') : [];
+    return b ? ereignisseFuer(eintraege, b, { seit: ab, bereich: 'business' }).filter(extern) : [];
   } catch { return []; }
 }
 

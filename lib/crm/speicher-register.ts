@@ -782,6 +782,18 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'über die Metadaten der Unterlage (fulfillment-kunde--*); Download nur intern als Anhang',
     loeschfrist: '90 Tage nach Mandatsende (Frist „fulfillment-unterlagen“), außer als Beleg übernommen; fällt die Metadaten-Zeile weg, entfernt der Fristen-Lauf die Datei',
   }),
+  // Prozesse (21.10., Etappe B1, lib/prozesse/werkstatt-server.ts): zwei Bestände je Haushalt des Inhabers, nur Business.
+  mit(H('prozesse--*', 'Prozesse aller Business-Bereiche (Werkstatt): je Prozess Entwurf, veröffentlichte Versionen, Status — Ablauf, Bausteine, Masken-Werte (Textvorlagen mit Platzhaltern, nie eingesetzte Daten), Notiz-Zettel. Geschäftswissen, keine Daten Dritter; Personen nur als Team-Kennung (Eigner) bzw. Speichername (wer angelegt/geändert/veröffentlicht, „läuft als“).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Organisation der eigenen Abläufe durch die Mitglieder des Haushalts; Personen nur als Kennung bzw. Speichername',
+    art15: 'alle Konten des Haushalts sehen die Prozesse unter Prozesse › Werkstatt (GET /api/prozesse/werkstatt); Daten Dritter stehen hier nicht',
+    loeschfrist: 'bis der Haushalt den Prozess archiviert bzw. die Instanz gelöscht wird; Konto löschen tilgt den Speichernamen und die Team-Kennung des Kontos („[gelöscht]“)',
+    kategorie: ['vertraulich'],
+  }),
+  mit(E('prozesse-webhook--*', 'Webhooks der Prozesse: je Prozess die öffentliche Adresse (pw-…) und NUR der Fingerabdruck (SHA-256) des Schlüssels, scharf ja/nein, Zähler; dazu die angenommenen Eingänge (nur die Felder des Schemas am Auslöser — fremder Text, kann Personen nennen, z. B. ein Formular). Art. 17: Eingänge, die die Person nennen, fallen weg (person-weitere.ts).', 'ereignisse'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Anfragen und Meldungen, die ein Fremdsystem im Auftrag des Haushalts schickt (z. B. Formular der eigenen Website); nur die Felder des Schemas, der Rest wird verworfen',
+    art15: 'Kontakt: die Auskunft zählt die Eingänge, die die Person nennen (weitere Speicher); Konten des Haushalts sehen Adresse und Zähler in der Werkstatt, nie den Schlüssel',
+    loeschfrist: 'Eingänge nach der Frist „ereignisse“ (Vorgabe 30 Tage, Stammdaten › Datenschutz) im täglichen Löschfristen-Lauf; Adresse und Fingerabdruck bis „Webhook entfernen“ bzw. Archivieren des Prozesses',
+  }),
   K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
@@ -856,6 +868,8 @@ const IN_BUSINESS: readonly string[] = [
   'unternehmen-verlauf--*',
   // Fulfillment (10.10.): Vorlagen, Fälle, Kunde (Links/Antworten/Puls), Dossiers, Personenkarten und der Datei-Ordner — nur Business
   'fulfillment--*', 'fulfillment-faelle--*', 'fulfillment-kunde--*', 'fulfillment-dossiers--*', 'fulfillment-personen--*', 'fulfillment-unterlagen',
+  // Prozesse (21.10., B1): Werkstatt und Webhooks — nur Business
+  'prozesse--*', 'prozesse-webhook--*',
 ];
 const JE_PERSON: readonly string[] = [
   // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber
