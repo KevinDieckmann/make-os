@@ -486,3 +486,60 @@ export function startKamera(box: Box, buehne: { b: number; h: number }, rand = 3
   const l = WERKSTATT_LESBAR;
   return { s: l, x: Math.round(rand - box.x * l), y: Math.round(rand - box.y * l) };
 }
+
+// ── Feinschliff 22.10. (Sichtprüfung, research/prozesse/FEINSCHLIFF_WERKSTATT.md) ────────────────────────────────────────────────────────────────
+
+/** Höchster Zoom beim Einpassen („Alles zeigen“, Befund 4) — ein kleiner Prozess wird nie größer als 100 % gezeigt, aber auch nicht unnötig klein. */
+export const WERKSTATT_EINPASS_MAX = 1;
+/** Der Inhalt der Fläche: alle Knoten (mit Beschriftung) und Zettel — ohne die leeren Ränder der Bahnen und Rahmen. Ohne Knoten die ganze Box. */
+export function inhaltBox(l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: readonly { pos: { x: number; y: number; b?: number; h?: number } }[] = [], rand = 40): Box {
+  const teile: Box[] = [...l.knoten.values(), ...zettel.map(z => ({ x: z.pos.x, y: z.pos.y, b: z.pos.b ?? WS.zettel.b, h: z.pos.h ?? WS.zettel.h }))];
+  if (!teile.length) return l.box;
+  const x0 = Math.min(...teile.map(t => t.x)) - rand, y0 = Math.min(...teile.map(t => t.y)) - rand;
+  const x1 = Math.max(...teile.map(t => t.x + t.b)) + rand, y1 = Math.max(...teile.map(t => t.y + t.h)) + rand;
+  return { x: x0, y: y0, b: x1 - x0, h: y1 - y0 };
+}
+/** „Alles zeigen“ (rein, Befund 4): auf den Inhalt einpassen (nicht auf die leeren Bahnränder), höchstens `WERKSTATT_EINPASS_MAX`, mittig. */
+export function einpassKamera(box: Box, buehne: { b: number; h: number }, rand = 32, max = WERKSTATT_EINPASS_MAX): { s: number; x: number; y: number } {
+  const s = Math.max(0.15, Math.min(max, (buehne.b - 2 * rand) / Math.max(1, box.b), (buehne.h - 2 * rand) / Math.max(1, box.h)));
+  return { s, x: Math.round((buehne.b - box.b * s) / 2 - box.x * s), y: Math.round((buehne.h - box.h * s) / 2 - box.y * s) };
+}
+/**
+ * Die Kamera so wenig wie möglich verschieben, dass eine Box ganz zu sehen ist (rein, Befund 2: „neu angehängter Knoten liegt außerhalb des Bildes“). Der Zoom
+ * bleibt; schon sichtbar → dieselbe Kamera (gleiches Objekt); größer als das Bild → mittig.
+ */
+export function kameraZu(k: { s: number; x: number; y: number }, box: Box, buehne: { b: number; h: number }, rand = 48): { s: number; x: number; y: number } {
+  const lx = box.x * k.s + k.x, ly = box.y * k.s + k.y, rx = lx + box.b * k.s, ry = ly + box.h * k.s;
+  let dx = 0, dy = 0;
+  if (box.b * k.s + 2 * rand > buehne.b) dx = buehne.b / 2 - (lx + rx) / 2;
+  else if (lx < rand) dx = rand - lx;
+  else if (rx > buehne.b - rand) dx = buehne.b - rand - rx;
+  if (box.h * k.s + 2 * rand > buehne.h) dy = buehne.h / 2 - (ly + ry) / 2;
+  else if (ly < rand) dy = rand - ly;
+  else if (ry > buehne.h - rand) dy = buehne.h - rand - ry;
+  return dx || dy ? { s: k.s, x: Math.round(k.x + dx), y: Math.round(k.y + dy) } : k;
+}
+/**
+ * Wo „+“ und Name eines Ausgangs stehen (rein, Befund 3: „Beschriftungen überlappen die +-Knöpfe“): rechts steht das „+“ dicht am Anschluss, der Name RECHTS
+ * daneben auf Höhe des Anschlusses (nie darüber) — bei drei Ausgängen übereinander (Freigabe: freigegeben · abgelehnt · abgelaufen) ist das „+“ kleiner, damit
+ * die Kreise sich nicht berühren. Unten/oben (Raute) bleibt der Name neben dem Anschluss, das „+“ in Fadenrichtung.
+ */
+export function ausgangMarke(a: Pick<Anschluss, 'x' | 'y' | 'richtung'>, o: { rechtsAnzahl: number; mitPlus: boolean }): { plus: Pt; r: number; text: Pt } {
+  if (a.richtung === 'unten') return { plus: [a.x, a.y + 34], r: 13, text: [a.x + 12, a.y + 16] };
+  if (a.richtung === 'oben') return { plus: [a.x, a.y - 34], r: 13, text: [a.x + 12, a.y - 8] };
+  const r = o.rechtsAnzahl >= 3 ? 11 : 13;
+  const plus: Pt = [a.x + 20 + r, a.y];
+  return { plus, r, text: [o.mitPlus ? plus[0] + r + 6 : a.x + 12, a.y + 4] };
+}
+/**
+ * Die Bahn eines neu angehängten Knotens (rein, Befund 5: „Zickzack Mensch/System/Mensch“): was nach außen geht (Mail-/WhatsApp-Entwurf, Einladung, Angebot
+ * stellen — Rechte-Klasse „außen“) bereitet ein Mensch vor und gibt es frei; es folgt deshalb der Menschen-Bahn des Vorgängers statt in „System · Regeln“ zu
+ * springen. Sonst null (die Bahn des Bausteins gilt).
+ */
+export function bahnBeimAnhaengen(neu: Pick<K, 'bahn' | 'katalog' | 'form'>, vor: Pick<K, 'bahn' | 'katalog' | 'form'> | undefined): BahnSchluessel | null {
+  if (!vor || neu.bahn || neu.form === 'agent') return null;
+  const vb = bahnSchluessel(vor);
+  if (vb !== 'mensch' && !vb.startsWith('person:')) return null;
+  const e = katalogEintrag(neu.katalog?.id);
+  return e?.rechte === 'aussen' || neu.form === 'freigabe' ? vb : null;
+}

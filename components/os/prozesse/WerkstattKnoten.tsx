@@ -10,12 +10,13 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
   Zap, ListChecks, Mail, MessageCircle, GitBranch, BellRing, CalendarClock, Bot, Hourglass, Repeat, Workflow, Lock, Flag, Users, FileText, Receipt, Bell, Send,
-  Trash2, RotateCcw, Search, Handshake, Plus, AlertTriangle, Check, Clock, Minus, X, Brain, FolderOpen, Cpu, Wrench, Database, Webhook, CalendarDays, Hand,
+  Trash2, RotateCcw, Search, Handshake, Plus, AlertTriangle, Check, Clock, Minus, X, Brain, FolderOpen, Cpu, Wrench, Database, Webhook, CalendarDays, Hand, Play, Ban,
 } from 'lucide-react';
 import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL } from '@/lib/make-one/design';
 import type { ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { KnotenLageW } from '@/lib/prozesse/werkstatt-lage';
-import { ausgangName, WS } from '@/lib/prozesse/werkstatt-lage';
+import { ausgangName, ausgangMarke, WS } from '@/lib/prozesse/werkstatt-lage';
+import { MARKEN_BEDEUTUNG, zeitText, type LaufMarke, type MarkenStufe } from '@/lib/prozesse/laeufe-ansicht';
 import { WERKSTATT_FORM_FARBE, AGENT_TON_ZWEI } from '@/lib/prozesse/farben';
 import { PROBE_NAME, type ProbeStatus } from '@/lib/prozesse/werkstatt-hinweise';
 import { textZeilen, FLAECHE_SCHRIFT } from '../ui/reise/flaeche-formen';
@@ -48,6 +49,8 @@ export function symbolVon(k: Pick<K, 'form' | 'katalog' | 'ausloeser'>): Symbol 
 }
 
 const PROBE_SYMBOL: Readonly<Record<ProbeStatus, Symbol>> = { wuerde: Check, uebersprungen: Minus, wartet: Clock, freigabe: Lock, fehler: X };
+/** Lauf-Ansicht (22.10.): Symbol je Stufe — Farbe nie allein. */
+const MARKEN_SYMBOL: Readonly<Record<MarkenStufe, Symbol>> = { gelaufen: Check, laeuft: Play, wartet: Clock, fehler: X, uebersprungen: Minus, abgebrochen: Ban };
 const UNTER_SYMBOL = { modell: Cpu, gedaechtnis: Brain, werkzeuge: Wrench } as const;
 
 function Zeilen({ text, x, y, breite, groesse, zeilen, farbe, gewicht }: { text: string; x: number; y: number; breite: number; groesse: number; zeilen: number; farbe: string; gewicht: number }) {
@@ -69,6 +72,9 @@ export interface KnotenZeichnungProps {
   schloss?: boolean;
   befund?: 'fehler' | 'offen' | null;
   probe?: ProbeStatus;
+  /** Lauf-Ansicht (22.10., Punkt 29): der Stand dieses Knotens im geöffneten Lauf — bzw. `grau` (nicht erreicht). */
+  marke?: LaufMarke;
+  grau?: boolean;
   nurLesen?: boolean;
   /** Agent: der gewählte Andockpunkt (Panel). */
   andockGewaehlt?: string | null;
@@ -84,9 +90,11 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
   const rand = p.ziel ? (p.zielNein ? LEUCHT.kritisch : C.aktiv) : p.gewaehlt ? C.ink : TIEF.rand(ton);
   const breit = p.ziel || p.gewaehlt ? 2.6 : 1.6;
   const probeFarbe = p.probe ? BEDEUTUNG_FARBE[PROBE_BEDEUTUNG[p.probe]] : null;
+  const markeFarbe = p.marke ? BEDEUTUNG_FARBE[MARKEN_BEDEUTUNG[p.marke.stufe]] : null;
   const agent = l.gestalt === 'agent';
   const raute = l.gestalt === 'raute';
   const titelY = c.y + c.h + 22;
+  const rechts = l.anschluesse.filter(a => a.richtung === 'rechts' && a.art !== 'ein').length;
   // ── Körper ──
   let koerper: ReactNode;
   if (raute) {
@@ -125,8 +133,11 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
     );
   }
   return (
-    <g>
+    <g opacity={p.grau ? 0.38 : undefined} data-ws-lauf={p.marke?.stufe ?? (p.grau ? 'nicht-erreicht' : undefined)}>
       {probeFarbe && <rect x={c.x - 7} y={c.y - 7} width={c.b + 14} height={c.h + 14} rx={raute ? 14 : 24} fill="none" stroke={probeFarbe} strokeWidth={2.4} strokeDasharray={p.probe === 'uebersprungen' ? '5 5' : undefined} />}
+      {/* Lauf-Ansicht: der Ring im Ton des Stands; „wartet auf dich“ pulsiert (still bei reduzierter Bewegung — globals.css) und nennt die Frist. */}
+      {markeFarbe && <rect className={p.marke?.puls ? 'krit-puls' : undefined} x={c.x - 7} y={c.y - 7} width={c.b + 14} height={c.h + 14} rx={raute ? 14 : 24} fill="none" stroke={markeFarbe} strokeWidth={p.marke?.puls ? 3.2 : 2.4} strokeDasharray={p.marke?.stufe === 'uebersprungen' ? '5 5' : undefined} />}
+      {p.marke && (p.marke.puls || p.marke.frist) && <text x={l.b / 2} y={c.y - 14} textAnchor="middle" fontSize={FLAECHE_SCHRIFT.mikro + 1} fontWeight={600} fill={markeFarbe ?? C.inkDim} style={{ pointerEvents: 'none' }}>{`${p.marke.name}${p.marke.frist ? ` · bis ${zeitText(p.marke.frist)}` : ''}`}</text>}
       {koerper}
       {/* Blitz-Marke am Auslöser, Schloss-Marke an der Freigabe der Regel. */}
       {f === 'ausloeser' && <g transform={`translate(${c.x - 8} ${c.y - 8})`}><circle cx={11} cy={11} r={11} fill={C.grund} stroke={ton} strokeWidth={1.4} /><Zap x={4} y={4} width={14} height={14} color={ton} aria-hidden /></g>}
@@ -134,6 +145,7 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
       {p.schloss && f !== 'freigabe' && <g transform={`translate(${c.x + c.b - 14} ${c.y - 8})`}><circle cx={11} cy={11} r={11} fill={C.grund} stroke={LEUCHT.achtung} strokeWidth={1.4} /><Lock x={4} y={4} width={14} height={14} color={LEUCHT.achtung} aria-hidden /></g>}
       {p.befund && <g transform={`translate(${c.x - 8} ${c.y + c.h - 14})`}><circle cx={11} cy={11} r={11} fill={C.grund} stroke={p.befund === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung} strokeWidth={1.4} /><AlertTriangle x={4} y={4} width={14} height={14} color={p.befund === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung} aria-hidden /></g>}
       {p.probe && probeFarbe && (() => { const P = PROBE_SYMBOL[p.probe!]; return <g transform={`translate(${c.x + c.b - 14} ${c.y + c.h - 14})`}><circle cx={11} cy={11} r={11} fill={probeFarbe} /><P x={4} y={4} width={14} height={14} color={C.grund} aria-hidden /></g>; })()}
+      {p.marke && markeFarbe && (() => { const P = MARKEN_SYMBOL[p.marke!.stufe]; return <g transform={`translate(${c.x + c.b - 14} ${c.y + c.h - 14})`} aria-label={p.marke!.name}><circle cx={11} cy={11} r={11} fill={markeFarbe} /><P x={4} y={4} width={14} height={14} color={C.grund} aria-hidden /></g>; })()}
       {/* Name und Unterzeile unter dem Körper (beim Agenten stehen sie darin). */}
       {!agent && <Zeilen text={k.titel} x={l.b / 2} y={titelY} breite={l.b - 8} groesse={FLAECHE_SCHRIFT.titel} zeilen={2} farbe={C.ink} gewicht={650} />}
       {!agent && <text x={l.b / 2} y={titelY + (textZeilen(k.titel, l.b - 8, FLAECHE_SCHRIFT.titel, 2).length) * FLAECHE_SCHRIFT.titel * 1.22 + 2} textAnchor="middle" fontSize={FLAECHE_SCHRIFT.unter} fill={C.inkLeise} style={{ pointerEvents: 'none' }}>{textZeilen(p.unterzeile, l.b - 8, FLAECHE_SCHRIFT.unter, 1)[0] ?? ''}</text>}
@@ -145,17 +157,19 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
         const farbe = istFehler ? LEUCHT.kritisch : a.art === 'nein' ? WERKSTATT_FORM_FARBE.erinnerung : C.aktiv;
         const benannt = a.art !== 'ein' && a.art !== 'weiter' && (raute || f === 'freigabe' || f === 'warten' || istFehler);
         const zeigePlus = !p.nurLesen && a.art !== 'ein' && (frei || p.gewaehlt) && !(istFehler && !p.gewaehlt) && !(a.art === 'abgelaufen' && !p.gewaehlt && f === 'warten');
-        const plus = a.richtung === 'unten' ? [a.x, a.y + 34] : a.richtung === 'oben' ? [a.x, a.y - 34] : [a.x + 36, a.y];
+        // Feinschliff 22.10. (Befund 3): „+“ dicht am Anschluss, der Name rechts daneben auf Höhe des Anschlusses — nie über dem nächsten „+“.
+        const m = ausgangMarke(a, { rechtsAnzahl: rechts, mitPlus: !!zeigePlus });
+        const plus = m.plus;
         return (
           <g key={a.art}>
-            {zeigePlus && <line x1={a.x} y1={a.y} x2={plus[0]} y2={plus[1]} stroke={TIEF.rand(farbe)} strokeWidth={1.4} strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
+            {zeigePlus && <line x1={a.x} y1={a.y} x2={a.richtung === 'rechts' ? plus[0] - m.r : plus[0]} y2={a.richtung === 'unten' ? plus[1] - m.r : a.richtung === 'oben' ? plus[1] + m.r : plus[1]} stroke={TIEF.rand(farbe)} strokeWidth={1.4} strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
             <circle data-ws-anschluss={`${k.id}|${a.art}`} cx={a.x} cy={a.y} r={a.art === 'ein' ? 6 : 7} fill={C.grund} stroke={a.art === 'ein' ? C.inkDim : farbe} strokeWidth={2}
               style={{ cursor: p.nurLesen || a.art === 'ein' ? 'default' : 'crosshair' }} aria-hidden />
-            {benannt && (frei || p.gewaehlt) && <text x={a.richtung === 'rechts' ? a.x + 12 : a.x + 12} y={a.richtung === 'unten' ? a.y + 16 : a.richtung === 'oben' ? a.y - 8 : a.y - 9} fontSize={FLAECHE_SCHRIFT.mikro + 1} fill={istFehler ? LEUCHT.kritisch : C.inkDim} style={{ pointerEvents: 'none' }}>{`${a.art === 'ein' ? '' : ausgangName(f, a.art)}${frei && raute && a.art === 'nein' ? ' · offen' : ''}`}</text>}
+            {benannt && (frei || p.gewaehlt) && <text x={m.text[0]} y={m.text[1]} fontSize={FLAECHE_SCHRIFT.mikro + 1} fill={istFehler ? LEUCHT.kritisch : C.inkDim} style={{ pointerEvents: 'none' }}>{`${a.art === 'ein' ? '' : ausgangName(f, a.art)}${frei && raute && a.art === 'nein' ? ' · offen' : ''}`}</text>}
             {zeigePlus && (
               <g data-ws-plus={`${k.id}|${a.art}`} transform={`translate(${plus[0]} ${plus[1]})`} style={{ cursor: 'pointer' }} role="button" aria-label={`An „${a.art === 'ein' ? '' : ausgangName(f, a.art)}“ von „${k.titel}“ anhängen`}>
-                <circle r={13} fill={C.flaeche} stroke={TIEF.rand(farbe)} strokeWidth={1.4} />
-                <Plus x={-8} y={-8} width={16} height={16} color={farbe} aria-hidden />
+                <circle r={m.r} fill={C.flaeche} stroke={TIEF.rand(farbe)} strokeWidth={1.4} />
+                <Plus x={-7} y={-7} width={14} height={14} color={farbe} aria-hidden />
               </g>
             )}
           </g>

@@ -3,7 +3,8 @@
 // ─── Prozesse · Werkstatt — die Formauswahl am „+“ (Etappe B2, 21.10.; ANALYSE_100.md Punkt 17; Kevins Bild: „+ am Ausgang hängt den nächsten Baustein an“) ──────
 // Ein kleines Fenster an der Stelle des „+“ (bzw. wo ein Faden ins Leere gezogen wurde, bzw. per Tab am gewählten Knoten): Suche, Kategorien des Katalogs
 // (Auslöser · Aktion · Entscheidung · Warten · Agent · Teilprozess · Ende), je Baustein Symbol, Name und Satz. Pfeile wählen, Enter nimmt, Esc schließt. Bausteine
-// derselben Form wie der Ausgangsknoten stehen oben (lib/prozesse/werkstatt-maske.ts `formauswahl`). Auslöser nur, wenn er an den Anfang kommt.
+// derselben Form wie der Ausgangsknoten stehen oben (lib/prozesse/werkstatt-maske.ts `formauswahl`). Auslöser nur, wenn er an den Anfang kommt; beim Anhängen an
+// einen Auslöser stehen sie hinten (Feinschliff 22.10., Befund 1 — Aktionen und Entscheidungen zuerst).
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent } from 'react';
 import { FARBE as C, TYP, RAND, FLAECHE_STIL, TIEF, MIKRO } from '@/lib/make-one/design';
@@ -14,15 +15,15 @@ import { formauswahl } from '@/lib/prozesse/werkstatt-maske';
 import { WERKSTATT_FORM_FARBE } from '@/lib/prozesse/farben';
 import { symbolVon } from './WerkstattKnoten';
 
-export function WerkstattFormauswahl({ ort, form, ohneAusloeser, titel, onWahl, onZu }: {
-  ort: [number, number]; form?: ProzessForm; ohneAusloeser?: boolean; titel: string;
+export function WerkstattFormauswahl({ ort, form, ohneAusloeser, anhaengen, titel, onWahl, onZu }: {
+  ort: [number, number]; form?: ProzessForm; ohneAusloeser?: boolean; /** An einen Knoten anhängen — Auslöser stehen dann hinten. */ anhaengen?: boolean; titel: string;
   onWahl: (e: KatalogEintrag) => void; onZu: () => void;
 }) {
   const [suche, setSuche] = useState('');
   const [kat, setKat] = useState<KatalogKategorie | 'alle'>('alle');
   const [i, setI] = useState(0);
   const eingabe = useRef<HTMLInputElement | null>(null);
-  const liste = useMemo(() => formauswahl(BAUSTEIN_KATALOG, { suche, form, ohneAusloeser }).filter(e => kat === 'alle' || e.kategorie === kat), [suche, form, ohneAusloeser, kat]);
+  const liste = useMemo(() => formauswahl(BAUSTEIN_KATALOG, { suche, form, ohneAusloeser, anhaengen }).filter(e => kat === 'alle' || e.kategorie === kat), [suche, form, ohneAusloeser, anhaengen, kat]);
   useEffect(() => { eingabe.current?.focus(); }, []);
   useEffect(() => { setI(0); }, [suche, kat]);
   const taste = (e: RKeyboardEvent) => {
@@ -31,7 +32,7 @@ export function WerkstattFormauswahl({ ort, form, ohneAusloeser, titel, onWahl, 
     else if (e.key === 'ArrowUp') { e.preventDefault(); setI(x => Math.max(0, x - 1)); }
     else if (e.key === 'Enter' && liste[i]) { e.preventDefault(); onWahl(liste[i]); }
   };
-  const kategorien = KATALOG_KATEGORIEN.filter(k => !(ohneAusloeser && k.id === 'ausloeser'));
+  const kategorien = KATALOG_KATEGORIEN.filter(k => !(ohneAusloeser && k.id === 'ausloeser')).sort((a, b) => (anhaengen ? Number(a.id === 'ausloeser') - Number(b.id === 'ausloeser') : 0));
   return (
     <div role="dialog" aria-label={titel} className="pw-auswahl" onKeyDown={taste} onPointerDown={e => e.stopPropagation()}
       style={{ left: Math.max(8, ort[0]), top: Math.max(8, ort[1]), background: C.flaecheHoch, border: `1px solid ${RAND.stark}` }}>

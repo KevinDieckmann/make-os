@@ -189,11 +189,13 @@ export function maskeBefunde(k: K, kx: MaskenKontext = {}): Befund[] {
 }
 
 /** Die Formauswahl (Punkt 17): Bausteine einer Form zuerst, dann der Rest — gefiltert nach Suchtext (Name, Satz, Anbindung). Auslöser nur am Anfang. */
-export function formauswahl(katalog: readonly KatalogEintrag[], o: { suche?: string; form?: ProzessForm; ohneAusloeser?: boolean } = {}): KatalogEintrag[] {
+export function formauswahl(katalog: readonly KatalogEintrag[], o: { suche?: string; form?: ProzessForm; ohneAusloeser?: boolean; anhaengen?: boolean } = {}): KatalogEintrag[] {
   const q = (o.suche ?? '').normalize('NFC').trim().toLowerCase();
   const passt = (e: KatalogEintrag) => !q || `${e.name} ${e.satz} ${e.anbindung}`.normalize('NFC').toLowerCase().includes(q);
+  // Feinschliff 22.10. (Befund 1): beim Anhängen an einen Knoten stehen Aktionen und Entscheidungen vorn, Auslöser (nur am Anfang sinnvoll) ganz hinten.
+  const rang = (e: KatalogEintrag) => (o.anhaengen && e.form === 'ausloeser' ? 1 : 0);
   return katalog.filter(e => !(o.ohneAusloeser && e.form === 'ausloeser') && passt(e))
-    .sort((a, b) => Number(b.form === o.form) - Number(a.form === o.form));
+    .sort((a, b) => Number(b.form === o.form) - Number(a.form === o.form) || rang(a) - rang(b));
 }
 
 // ── Die Unterzeile eines Knotens (Kevins Bild: „kleine Unterzeile, z. B. Mail-Entwurf · Stapel“) ──────────────────────────────────────────────────────

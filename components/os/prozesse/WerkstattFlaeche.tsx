@@ -18,14 +18,15 @@ import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL, TYP } from '@/lib/make-on
 import type { NotizZettel, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { Ausgang } from '@/lib/prozesse/fluss';
 import {
-  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
+  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
 } from '@/lib/prozesse/werkstatt-lage';
+import { kanteAufWeg, type LaufMarke } from '@/lib/prozesse/laeufe-ansicht';
 import { tasteZuAktion, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
 import type { ProbeStatus } from '@/lib/prozesse/werkstatt-hinweise';
 import { BAHN_TON, ZETTEL_TON, WERKSTATT_FORM_FARBE } from '@/lib/prozesse/farben';
 import { pfadVon, pfeilTextOrt } from '@/lib/fulfillment/prozesse/flaeche';
 import { flowEbene, bewegungReduziert, type FlowEbene, type FlowFaden } from '@/lib/lichtfaeden/flow';
-import { allesZeigen, transformVon, zoomUm, weltAus, bildAus, zwischen, sanft, flaecheHinweis, type Kamera } from '../ui/flaeche/kamera';
+import { transformVon, zoomUm, weltAus, bildAus, zwischen, sanft, flaecheHinweis, type Kamera } from '../ui/flaeche/kamera';
 import { flaecheEingabe } from '../ui/flaeche/eingabe';
 import { FlaechePfeil, FlaecheSpitze, textZeilen, FLAECHE_SCHRIFT } from '../ui/reise/flaeche-formen';
 import { FLOW_TON } from '../ui/reise/formen';
@@ -33,7 +34,11 @@ import { KnotenZeichnung, ZuKachel } from './WerkstattKnoten';
 
 type K = ProzessKnoten<ProzessForm>;
 export interface AnhangZiel { nach?: string; ausgang?: Ausgang; vor?: string; phaseId?: string; platz?: [number, number] }
-export interface FlaecheSteuerung { allesZeigen(): void; zoomen(f: number): void; zeige(id: string): void; mitte(): [number, number]; bildschirm(x: number, y: number): [number, number]; fokus(): void }
+export interface FlaecheSteuerung {
+  allesZeigen(): void; zoomen(f: number): void; zeige(id: string): void; mitte(): [number, number]; bildschirm(x: number, y: number): [number, number]; fokus(): void;
+  /** Feinschliff 22.10. (Befund 2): die Kamera fährt nur so weit, dass der Knoten ganz zu sehen ist (der Zoom bleibt). */
+  insBild(id: string): void;
+}
 
 export interface WerkstattFlaecheProps {
   d: Pick<ProzessDefinition, 'knoten' | 'zettel'>;
@@ -45,6 +50,8 @@ export interface WerkstattFlaecheProps {
   rahmenWahl: string | null;
   andockWahl: { id: string; art: string } | null;
   probe: ReadonlyMap<string, ProbeStatus> | null;
+  /** Lauf-Ansicht (22.10., Punkt 29): Stand je Knoten und der echte Weg (`<von>><nach>`) — nicht erreichte Knoten grau, der Lichtfaden leuchtet nur den Weg. */
+  lauf?: { marken: ReadonlyMap<string, LaufMarke>; weg: ReadonlySet<string> } | null;
   befundJe: ReadonlyMap<string, 'fehler' | 'offen'>;
   unterzeile: (k: K) => string;
   /** Knoten, hinter denen ein Freigabe-Schloss steht. */
@@ -73,6 +80,12 @@ const ZIEH_PX = 5;
 const ruhig = () => typeof window !== 'undefined' && bewegungReduziert();
 const sauberId = (s: string) => s.replace(/[^A-Za-z0-9_-]/g, '');
 const imFeld = (t: EventTarget | null) => !!(t as Element | null)?.closest?.('input,textarea,select,[contenteditable="true"]');
+
+/** Lauf-Ansicht: der echte Weg leuchtet (kräftig, Hauptfarbe), der Rest ist gedämpft (fein, nicht erreicht). */
+function fadenImLauf(k: { id: string; von: string; nach: string | null; ausgang: Ausgang; zurueck: boolean; punkte: [number, number][] }, weg: ReadonlySet<string>): FlowFaden {
+  const an = kanteAufWeg(weg, k);
+  return { id: k.id, punkte: k.punkte, farbe: k.ausgang === 'fehler' ? LEUCHT.kritisch : FLOW_TON.basis, staerke: an ? 'mittel' : 'fein', ...(an ? {} : { bisHier: 0 }) };
+}
 
 /** Die Farbe eines Fadens: Hauptweg im Akzent, „nein“ im Ton der Erinnerung, Fehler rot, abgelaufen gelb. */
 function fadenVon(k: { id: string; ausgang: Ausgang; zurueck: boolean; punkte: [number, number][] }): FlowFaden {
@@ -122,7 +135,15 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   }, [setze]);
 
   useImperativeHandle(ref, () => ({
-    allesZeigen: () => { const g = groesse(); fliege(allesZeigen(stand.current.lage.box, g.b, g.h, 32, 1)); },
+    // Feinschliff 22.10. (Befund 4): auf den Inhalt einpassen (nicht auf leere Bahnränder), höchstens 100 %.
+    allesZeigen: () => { const g = groesse(); fliege(einpassKamera(inhaltBox(stand.current.lage, stand.current.d.zettel ?? []), g)); },
+    insBild: id => {
+      const k = stand.current.lage.knoten.get(id);
+      if (!k) return;
+      const g = groesse();
+      const z = kameraZu(kamera.current, { x: k.x, y: k.y, b: k.b, h: k.h }, g);
+      if (z !== kamera.current) fliege(z);
+    },
     zoomen: f => { const g = groesse(); fliege(zoomUm(kamera.current, f, g.b / 2, g.h / 2)); },
     zeige: id => {
       const k = stand.current.lage.knoten.get(id);
@@ -172,7 +193,8 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
 
   // ── Der Flow: alle Fäden (Kanten + feine Fäden der Andockpunkte) auf EINER Ebene ──
   const faeden = useMemo<FlowFaden[]>(() => {
-    const l: FlowFaden[] = kanten.map(fadenVon);
+    const weg = p.lauf?.weg;
+    const l: FlowFaden[] = kanten.map(k => (weg ? fadenImLauf(k, weg) : fadenVon(k)));
     for (const k of knoten.values()) {
       if (!k.unterknoten) continue;
       const c = k.koerper;
@@ -182,7 +204,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       }
     }
     return l;
-  }, [kanten, knoten]);
+  }, [kanten, knoten, p.lauf]);
   const faedenRef = useRef(faeden);
   faedenRef.current = faeden;
   const fadenSetzen = useCallback(() => {
@@ -387,6 +409,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
                 {lk.zu || !k ? <ZuKachel l={lk} /> : (
                   <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()}
                     schloss={p.mitSchloss.has(k.id)} befund={p.befundJe.get(k.id) ?? null} probe={p.probe?.get(k.id)} nurLesen={p.nurLesen}
+                    {...(p.lauf ? { marke: p.lauf.marken.get(k.id), grau: !p.lauf.marken.has(k.id) } : {})}
                     andockGewaehlt={p.andockWahl?.id === k.id ? p.andockWahl.art : null} />
                 )}
               </g>
