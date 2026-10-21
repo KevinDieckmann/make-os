@@ -162,11 +162,11 @@ export function maskeAnwenden(k: K, e: KatalogEintrag, werte: W, kx: MaskenUmfel
   if (e.feld) {
     const teil = feldAus(e, werte, k, kx);
     const n: K = { ...k, katalog: { id: e.id } };
-    for (const [f, v] of Object.entries(teil)) { if (v === undefined) delete (n as O)[f]; else (n as O)[f] = v; }
+    for (const [f, v] of Object.entries(teil)) { if (v === undefined) delete (n as unknown as O)[f]; else (n as unknown as O)[f] = v; }
     // Fehlt das Nötigste noch, warten die einfachen Werte (Text, Zahl, ja/nein, Auswahl) in `katalog.werte` — beim nächsten Wert entsteht das Feld.
     if (n[e.feld] === undefined) {
       const w: W = {};
-      for (const f of e.maske) { const v = werte[f.id]; if (!leer(v) && (typeof v !== 'object' || (Array.isArray(v) && v.every(x => typeof x === 'string' || typeof x === 'number')))) w[f.id] = v; }
+      for (const f of e.maske) { const v = werte[f.id]; if (!leer(v) && (typeof v !== 'object' || (Array.isArray(v) && (v.every(x => typeof x === 'string') || v.every(x => typeof x === 'number'))))) w[f.id] = v as MaskenWert; }
       if (Object.keys(w).length) n.katalog = { id: e.id, werte: w };
     }
     return n;
@@ -195,3 +195,35 @@ export function formauswahl(katalog: readonly KatalogEintrag[], o: { suche?: str
   return katalog.filter(e => !(o.ohneAusloeser && e.form === 'ausloeser') && passt(e))
     .sort((a, b) => Number(b.form === o.form) - Number(a.form === o.form));
 }
+
+// ── Die Unterzeile eines Knotens (Kevins Bild: „kleine Unterzeile, z. B. Mail-Entwurf · Stapel“) ──────────────────────────────────────────────────────
+
+const FORM_WORT: Readonly<Record<ProzessForm, string>> = {
+  schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin', abstimmung: 'Abstimmung',
+  ausloeser: 'Auslöser', agent: 'Agent', warten: 'Warten', schleife: 'Schleife', teilprozess: 'Teilprozess', freigabe: 'Freigabe', ende: 'Ende',
+};
+export const formWort = (f: ProzessForm | undefined) => FORM_WORT[f ?? 'schritt'];
+
+/**
+ * Was unter dem Namen eines Knotens steht (rein): der Baustein bzw. die Regel dahinter, „· Stapel“, wenn hinter ihm ein Freigabe-Schloss steht (die Wirkung
+ * geschieht erst nach dem Klick). `agentName` = wie der Agent heißt (ZOE, Head …) — vom Aufrufer, weil die Namen der Heads im Katalog der Agenten stehen.
+ */
+export function knotenUnterzeile(k: K, o: { mitSchloss?: boolean; agentName?: string } = {}): string {
+  const e = katalogEintrag(k.katalog?.id);
+  const stapel = o.mitSchloss ? ' · Stapel' : '';
+  switch (k.form) {
+    case 'ausloeser': return k.ausloeser ? ausloeserKurz(k.ausloeser) : 'wie startet es?';
+    case 'agent': return k.agent ? `${o.agentName ?? 'Agent'} · ${k.agent.modellWahl?.modell ?? k.agent.modell}${stapel}` : 'Agent wählen';
+    case 'warten': {
+      const w = k.warten;
+      if (!w) return 'wie lange?';
+      if (w.art === 'dauer') return `${w.tage} ${w.tage === 1 ? 'Tag' : 'Tage'}${w.stunden ? ` ${w.stunden} h` : ''}`;
+      return w.art === 'datum' ? `bis Datum · höchstens ${w.hoechstensTage} T.` : `auf Ereignis · höchstens ${w.hoechstensTage} T.`;
+    }
+    case 'entscheidung': return !k.raute ? 'Mensch entscheidet' : k.raute.art === 'regel' ? 'nach Regel' : k.raute.art === 'score' ? 'nach Score' : 'Modell entscheidet';
+    case 'ende': return k.ende?.ergebnis === 'abbruch' ? 'Abbruch' : k.ende?.ergebnis === 'uebergabe' ? 'Übergabe' : 'Ziel erreicht';
+    case 'freigabe': return k.schloss ? 'Freigabe · nicht entfernbar' : 'Freigabe im Stapel';
+    default: return `${e ? (e.name !== k.titel ? e.name : e.anbindung) : formWort(k.form)}${stapel}`;
+  }
+}
+const ausloeserKurz = (a: Ausloeser): string => (a.art === 'hand' ? 'von Hand' : a.art === 'zeitplan' ? `Zeitplan ${a.uhrzeit}` : a.art === 'datum' ? 'Datum am Fall' : a.art === 'webhook' ? 'Webhook' : a.art === 'loop' ? 'nach Loop' : 'Ereignis');

@@ -99,7 +99,9 @@ export function anlegen(f: Fassung, neu: K, o: { nach?: string | null; vor?: str
     kn = rangSetzen([...kn, n], neueReihe);
     return ok(kn, f, `${titel(n)} angelegt, am Ende der Phase.`, [n.id]);
   }
-  const i = reihe.indexOf(quelle.id);
+  // Steht hinter der Quelle ein Freigabe-Schloss, kommt der Neue dahinter (das Schloss steht immer direkt hinter seinem Knoten).
+  const sl = kn.find(k => k.schloss?.fuer === quelle.id && k.elternId === quelle.elternId);
+  const i = reihe.indexOf(sl ? sl.id : quelle.id);
   neueReihe = [...reihe.slice(0, i + 1), n.id, ...reihe.slice(i + 1)];
   const istZweig = ausgang === 'nein' || ausgang === 'fehler' || ausgang === 'abgelaufen';
   if (istZweig) {
@@ -145,9 +147,10 @@ export function verbinden(f: Fassung, von: string, aus: Ausgang, nach: string): 
     }
     return ok(kn.map(k => (k.id === von ? mitZweig(k, ausgang, nach) : k)), f, `${titel(a)} → ${titel(b)} (${ausgang}).`);
   }
-  // weiter: B direkt hinter A (gleicher Eltern-Knoten wie A).
+  // weiter: B direkt hinter A (gleicher Eltern-Knoten wie A) — bzw. hinter A's Freigabe-Schloss.
   const reihe = reiheVon(kn, a.elternId ?? pa).filter(id => id !== nach);
-  const i = reihe.indexOf(von);
+  const sl = kn.find(k => k.schloss?.fuer === von && k.elternId === a.elternId);
+  const i = reihe.indexOf(sl ? sl.id : von);
   if (i < 0) return nein('Die Reihenfolge ließ sich nicht bestimmen.');
   const neuReihe = [...reihe.slice(0, i + 1), nach, ...reihe.slice(i + 1)];
   let neu = kn.map(k => (k.id === nach ? { ...k, elternId: a.elternId } : k));

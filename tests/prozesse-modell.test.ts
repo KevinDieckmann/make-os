@@ -165,10 +165,11 @@ describe('Adresse und Ebenen (Punkte 5, 11, 12, 30, 93)', () => {
     expect(brotkrumen(L, { p: 'gibt-es-nicht', ph: 'x' }).map(k => k.titel)).toEqual(['Landkarte']);
     expect(pfadGueltig(L, { p: 'sp-deal', ph: 'quatsch', s: 'ag-1' })).toEqual({ p: 'sp-deal' });
   });
-  it('Darstellungen: EINE Liste (Bild, Liste — erweiterbar), am Handy startet die Liste', () => {
-    expect(PROZESS_ANSICHTEN.map(a => a.id)).toEqual(['bild', 'liste']);
+  it('Darstellungen: EINE Liste (Bild, Liste, seit B2 die Werkstatt — erweiterbar), am Handy startet die Liste', () => {
+    expect(PROZESS_ANSICHTEN.map(a => a.id)).toEqual(['bild', 'liste', 'werkstatt']);
     expect(istProzessAnsicht('liste')).toBe(true);
-    expect(istProzessAnsicht('werkstatt')).toBe(false);
+    expect(istProzessAnsicht('werkstatt')).toBe(true);
+    expect(istProzessAnsicht('n8n')).toBe(false);
     expect(ansichtVorgabe(null, true)).toBe('liste');
     expect(ansichtVorgabe(null, false)).toBe('bild');
     expect(ansichtVorgabe('bild', true)).toBe('bild');

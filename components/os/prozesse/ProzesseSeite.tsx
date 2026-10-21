@@ -8,7 +8,9 @@
 //   · Vollbild (`?voll=1`) für Landkarte und jeden Prozess — Leiste und Kopf weg, Werkzeuge schweben, Esc zurück (Punkt 11, ../ui/flaeche/vollbild.ts).
 //   · Präsentieren (`?modus=praesentieren`): Rahmen für Rahmen entlang des Flows, Bild-auf/ab bzw. Pfeiltasten blättern (Punkt 93).
 //   · Tastatur: Alt+1 alles zeigen, Alt+2 Auswahl zeigen, M Minimap, + / − zoomen, F Vollbild, ? Kürzel — Einzeltasten abschaltbar (Punkt 13).
-//   · Suche springt zum Knoten und lässt ihn aufleuchten (Punkt 15). Nur lesen — gebaut wird in Etappe B.
+//   · Suche springt zum Knoten und lässt ihn aufleuchten (Punkt 15).
+//   · Werkstatt (Etappe B2, `?ansicht=werkstatt`): hier werden Prozesse gebaut (./Werkstatt.tsx); „+ Prozess“ legt einen an (./WerkstattUebersicht.tsx). System-
+//     Prozesse und Fulfillment-Pakete bleiben dort nur lesbar (Pakete öffnen weiter ihren Editor). Unter 768 px nur ansehen.
 // Daten: GET /api/prozesse/landkarte (nur Business, serverseitig). Gerechnet wird in lib/prozesse/* — diese Datei verbindet nur.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -16,8 +18,10 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Maximize2, Minimize2, Expand, Presentation, Map as MapIcon, Plus, Minus, ScanSearch, Keyboard, X, ChevronLeft, ChevronRight, Workflow } from 'lucide-react';
+import { Werkstatt } from './Werkstatt';
+import { WerkstattUebersicht, NeuerProzessFenster } from './WerkstattUebersicht';
 import { FARBE as C, TYP, MIKRO, SCHRIFT } from '@/lib/make-one/design';
-import { Seite, Karte, Knopf, Segmente, Hinweis, Leerzustand, Wahl, SymbolKnopf, useHandy } from '../ui';
+import { Seite, Karte, Knopf, Segmente, Hinweis, Leerzustand, Wahl, SymbolKnopf, useHandy, useMedien } from '../ui';
 import { WEG } from '@/lib/wege';
 import { FLOW_TON } from '../ui/reise/formen';
 import { flaecheFaden } from '@/lib/reise/flow';
@@ -66,7 +70,10 @@ export function ProzesseSeite() {
   const params = useSearchParams();
   const adr = useMemo(() => prozesseAusAdresse(params ?? new URLSearchParams()), [params]);
   const handy = useHandy();
-  const { daten, fehler } = useLandkarte();
+  /** Unter 768 px ist die Werkstatt nur zum Ansehen (Kevins Bild 21.10.). */
+  const schmal = useMedien('(max-width: 767px)');
+  const { daten, fehler, neu: landkarteNeu } = useLandkarte();
+  const [neuOffen, setNeuOffen] = useState(false);
   const vollbild = useVollbild();
   const praes = adr.modus === 'praesentieren';
   const voll = vollbild.voll || praes;
@@ -201,6 +208,8 @@ export function ProzesseSeite() {
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       const st = stand.current;
+      // Hat die Werkstatt bzw. ein Fenster die Taste schon genommen (Auswahl aufheben, Formauswahl schließen), bleibt das Vollbild.
+      if (e.defaultPrevented || document.querySelector('.os-fenster, [role="alertdialog"], .pw-auswahl')) return;
       if (e.key === 'Escape') {
         if (imFeld(e.target)) return;
         if (st.hilfe) { setHilfe(false); e.preventDefault(); return; }
@@ -275,6 +284,7 @@ export function ProzesseSeite() {
   let inhalt: ReactNode;
   if (!daten) inhalt = fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Landkarte lädt …</p>;
   else if (!prozesse.length) inhalt = <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine Prozesse">Sobald Abläufe im System oder im Fulfillment stehen, erscheinen sie hier.</Leerzustand>;
+  else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} />;
   else if (ansicht === 'liste') inhalt = <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} />;
   else if (szene) {
     inhalt = (
@@ -289,6 +299,12 @@ export function ProzesseSeite() {
     );
   }
   const raster = <div className={`pz-raster${feld && ansicht === 'bild' ? ' pz-mit-feld' : ''}`}><div className="pz-haupt">{inhalt}</div>{feld && ansicht === 'bild' && <aside className="pz-feld" aria-label="Details">{feld}</aside>}</div>;
+  // „+ Prozess“ (Kevins Bild 21.10.): Bereich, Fall-Art, Eigner, Steckbrief → Werkstatt; die Kachel steht danach in ihrem Bereich der Fliege.
+  const neuKnopf = !schmal && <Knopf leise onClick={() => setNeuOffen(true)} titel="Einen eigenen Prozess anlegen (Werkstatt)"><span className="pz-knopf-inhalt"><Plus size={15} aria-hidden />Prozess</span></Knopf>;
+  const neuFenster = neuOffen && (
+    <NeuerProzessFenster onZu={() => setNeuOffen(false)} bereichVorgabe={p?.band === 'kern' ? p.stufe : p?.band === 'fuehrung' ? 'fuehrung' : p?.band === 'unterstuetzung' ? 'unterstuetzung' : undefined}
+      onAngelegt={async id => { await landkarteNeu(); setNeuOffen(false); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
+  );
 
   // ── Vollbild bzw. Präsentieren: über allem (Portal in den Body — nie in einer Karte mit Transform) ──
   if (voll) {
@@ -302,12 +318,14 @@ export function ProzesseSeite() {
               {daten && <ProzessSuche prozesse={prozesse} onTreffer={treffer} />}
               {ansichtWahl}
               {ansicht === 'bild' && flaecheLeiste}
+              {neuKnopf}
               {praesKnopf}
               {vollKnopf}
             </div>
           </div>
         )}
         <div className="pz-voll-inhalt">{raster}</div>
+        {neuFenster}
         {praes && (
           <div className="pz-praes-leiste" role="toolbar" aria-label="Präsentieren">
             <SymbolKnopf ariaLabel="Rahmen zurück (←)" aus={rahmenNr <= 0} onClick={() => blaettern(-1)}><ChevronLeft size={18} /></SymbolKnopf>
@@ -322,7 +340,7 @@ export function ProzesseSeite() {
   }
 
   return (
-    <Seite titel="Prozesse" ton={STUFE_FARBE.uebergabe} rechts={<div className="pz-kopf-werkzeuge">{ansichtWahl}{!handy && praesKnopf}{vollKnopf}</div>}>
+    <Seite titel="Prozesse" ton={STUFE_FARBE.uebergabe} rechts={<div className="pz-kopf-werkzeuge">{ansichtWahl}{neuKnopf}{!handy && praesKnopf}{vollKnopf}</div>}>
       <Karte className="pz-karte">
         <div className="pz-oben">
           {brot}
@@ -330,9 +348,31 @@ export function ProzesseSeite() {
         </div>
         {ansicht === 'bild' && daten && flaecheLeiste}
         {raster}
+ {neuFenster}
         {ansicht === 'bild' && daten && ebene === 1 && <p className="pz-legende" style={{ ...MIKRO, margin: 0, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien, color: C.inkLeise }}>Ein Klick fährt hinein · Überfahren zeigt alle Übergaben einer Kachel · Zahl = Fälle, ein Klick darauf zeigt sie · „System“ = schon im Code gebaut, nur lesbar</p>}
       </Karte>
     </Seite>
   );
 }
 
+
+/**
+ * Die Werkstatt im Bereich der Seite (Etappe B2): ohne Prozess die Übersicht mit „+ Prozess“; ein eigener Prozess öffnet die Werkstatt; System-Prozesse und Pakete
+ * des Fulfillments bleiben hier nur lesbar (Pakete öffnen weiter ihren vorhandenen Editor).
+ */
+function WerkstattBereich({ p, schmal, onNeu }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void }) {
+  if (!p) return <WerkstattUebersicht onNeu={onNeu} />;
+  if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} />;
+  if (p.quelle === 'vorlage') {
+    return (
+      <Hinweis art="info" titel={`„${p.titel}“ ist eine Vorlage des Fulfillments`} aktion={p.editor ? <Knopf leise href={p.editor}>Im Fulfillment-Editor öffnen ›</Knopf> : undefined}>
+        Pakete und Abläufe des Fulfillments werden in ihrem eigenen Editor gebaut — hier sind sie nur zu sehen (Bild und Liste).
+      </Hinweis>
+    );
+  }
+  return (
+    <Hinweis art="info" titel={`„${p.titel}“ ist ein System-Prozess`} aktion={p.link ? <Knopf leise href={p.link.href}>{`Wo es läuft: ${p.link.text} ›`}</Knopf> : undefined}>
+      Er ist im Code gebaut und nur lesbar. Eigene Prozesse entstehen über „+ Prozess“.
+    </Hinweis>
+  );
+}

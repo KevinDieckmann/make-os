@@ -22,7 +22,7 @@ const ENDE_ALLGEMEIN = /^(ende|fertig|ziel( erreicht)?|abbruch|übergabe|done|st
 const OHNE_REGEL: ReadonlySet<ProzessForm> = new Set(['ausloeser', 'freigabe', 'ende']);
 
 /** Die ruhigen Hinweise einer Fassung (rein) — je Knoten höchstens einer der Beschriftung, dazu Warnungen an leeren Rauten-Ausgängen und „Teilprozess bilden?“. */
-export function hinweiseVon(d: { knoten: readonly K[] }): Rat[] {
+export function hinweiseVon(d: { knoten: K[] }): Rat[] {
   const raus: Rat[] = [];
   for (const p of phasen(d)) {
     const n = schritteDer(d, p.id).length;

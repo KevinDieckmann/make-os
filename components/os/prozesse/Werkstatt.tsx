@@ -1,0 +1,551 @@
+'use client';
+
+// ─── Prozesse · Werkstatt — hier baut der Haushalt seine Prozesse (Etappe B2, 21.10.; ANALYSE_100.md Punkte 8, 16–19, 22, 23, 25, 43) ─────────────────────────
+// Die dritte Darstellung der Prozesse (`PROZESS_ANSICHTEN`: Bild · Liste · Werkstatt), im Stil eines n8n-Editors, aber in Klar·DARK und mit unseren Dingen:
+//   · Fläche (./WerkstattFlaeche.tsx) mit Knoten, Bahnen, Phasen und dem Flow als Verbindung; Panel rechts (./WerkstattPanel.tsx) mit der Maske des Bausteins.
+//   · Entwurf & Version (Punkt 43): die Fläche IST der Entwurf und speichert sich selbst (EIN Weg: POST /api/prozesse/werkstatt `entwurf`, Stand/409). Kommt eine
+//     andere Fassung dazwischen, bleibt „Deine Fassung“ stehen — speichern oder die andere übernehmen, nie still verworfen; Ungespeichertes übersteht ein Neuladen
+//     (Sitzungsspeicher, bis der Server bestätigt). „Veröffentlichen“ mit Name und Notiz, Versionen ansehen, vergleichen, als Entwurf übernehmen (./WerkstattVersionen.tsx).
+//   · Bauen-Komfort: Rückgängig/Wiederholen, Kopieren/Einfügen mit Kanten, Alt+Pfeil, Tab = Formauswahl, „Ordnen“, Raster, Hilfslinien, „Teilprozess bilden?“,
+//     Beschriftung nach Regel — alles reine Regeln in lib/prozesse/werkstatt-*.ts; diese Datei verbindet nur.
+//   · Kopfzeile: Reiter erst, wenn es mehr als „Bauen“ gibt (Läufe, Tests kommen mit dem Lauf-Motor — keine toten Reiter); „Probelauf“ fragt den Lauf-Motor
+//     (POST /api/prozesse/probelauf) und färbt die Knoten — solange es ihn nicht gibt: „Probelauf kommt mit dem Lauf-Motor“.
+//   · Rollen (lib/prozesse/rollen.ts): volle Mitglieder veröffentlichen, alle im Haushalt bauen Entwürfe; System-Prozesse und Fulfillment-Pakete bleiben hier
+//     nur lesbar. Am Handy (unter 768 px) nur ansehen.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Undo2, Redo2, LayoutGrid, Grid3x3, StickyNote, Plus, Minus, Maximize2, Keyboard, Play, Upload, X, Columns3, Check, CloudOff, Loader2 } from 'lucide-react';
+import { FARBE as C, TYP, MIKRO, LEUCHT } from '@/lib/make-one/design';
+import { Knopf, Hinweis, SymbolKnopf, Chip, Reiter } from '../ui';
+import { neueKennung } from '@/lib/kennung';
+import { definitionPruefen, sperrtVeroeffentlichen } from '@/lib/prozesse/definition-pruefen';
+import { katalogEintrag, type KatalogEintrag } from '@/lib/prozesse/baustein-katalog';
+import { headDef } from '@/lib/agenten/katalog';
+import { FACH_AGENTEN } from '@/lib/prozesse/agent-schritt';
+import { alleSchritte, phasen, wurzel } from '@/lib/prozesse/fluss';
+import type { AgentWer, Befund, KnotenLage, ProzessDefinition, ProzessForm, ProzessKnoten, ProzessVersion } from '@/lib/prozesse/definition';
+import {
+  werkstattLage, lagenFesthalten, ordnen, ortBei, inBahn, bahnSchluessel, knotenMass, WS, type TeamName, type KanteLage,
+} from '@/lib/prozesse/werkstatt-lage';
+import {
+  anlegen, verbinden, loesen, loeschen, ersetzen, umbenennen, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
+  kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, type Ablage, type Ergebnis, type Fassung, type Geschichte,
+} from '@/lib/prozesse/werkstatt-aktionen';
+import { neuerKnoten, knotenUnterzeile } from '@/lib/prozesse/werkstatt-maske';
+import { altPfeil, nachbar, WERKSTATT_KUERZEL, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
+import { hinweiseVon, probelaufAus, probelaufKoerper, PROBELAUF_PFAD, PROBE_FEHLT, centText, type ProbeErgebnis, type ProbeSchritt } from '@/lib/prozesse/werkstatt-hinweise';
+import { WerkstattFlaeche, type AnhangZiel, type FlaecheSteuerung } from './WerkstattFlaeche';
+import { WerkstattPanel } from './WerkstattPanel';
+import { WerkstattFormauswahl } from './WerkstattFormauswahl';
+import { VersionenFenster } from './WerkstattVersionen';
+import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, type EintragAnsicht } from './werkstatt-daten';
+
+type K = ProzessKnoten<ProzessForm>;
+
+/** Die Reiter der Kopfzeile — „Läufe“ und „Tests“ kommen erst mit dem Lauf-Motor dazu (Entscheidung 21.10.: keine toten Reiter). */
+export const WERKSTATT_REITER: readonly { id: 'bauen'; titel: string }[] = [{ id: 'bauen', titel: 'Bauen' }];
+const ENTWURF_MERKER = (id: string) => `make-prozess-entwurf:${id}`;
+const ZU_MERKER = (id: string) => `make-prozess-zu:${id}`;
+const RASTER_MERKER = 'make-werkstatt-raster';
+const lies = (s: Storage | undefined, k: string) => { try { return s?.getItem(k) ?? null; } catch { return null; } };
+const schreib = (s: Storage | undefined, k: string, v: string | null) => { try { if (v === null) s?.removeItem(k); else s?.setItem(k, v); } catch { /* privates Fenster */ } };
+const sitzung = () => (typeof window !== 'undefined' ? window.sessionStorage : undefined);
+const lokal = () => (typeof window !== 'undefined' ? window.localStorage : undefined);
+const fassungVon = (d: Pick<ProzessDefinition, 'knoten' | 'zettel'>): Fassung => ({ knoten: d.knoten, ...(d.zettel ? { zettel: d.zettel } : {}) });
+const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+type Speicher = { art: 'gespeichert' | 'ausstehend' | 'speichert' | 'fehler' | 'konflikt' | 'offline'; text?: string };
+
+export function Werkstatt({ prozessId, nurAnsehen }: { prozessId: string; nurAnsehen: boolean }) {
+  const { daten, fehler: ladeFehler } = useProzess(prozessId);
+  const kat = useKatalog();
+  const auswahlListen = useMemo(() => kat.daten?.auswahl ?? {}, [kat.daten]);
+  const modelle = useMemo(() => kat.daten?.modelle ?? [], [kat.daten]);
+  const team = useMemo<TeamName[]>(() => (auswahlListen['team-person'] ?? []).map(t => ({ id: t.id, name: t.label })), [auswahlListen]);
+
+  const [eintrag, setEintrag] = useState<EintragAnsicht | null>(null);
+  const [fassung, setFassungRoh] = useState<Fassung | null>(null);
+  const [befundeServer, setBefundeServer] = useState<Befund[]>([]);
+  const [geaendertSeitVersion, setGeaendertSeitVersion] = useState(true);
+  const [speicher, setSpeicher] = useState<Speicher>({ art: 'gespeichert' });
+  const [konflikt, setKonflikt] = useState<{ eintrag: EintragAnsicht; stand: string } | null>(null);
+  const [wiederher, setWiederher] = useState<Fassung | null>(null);
+  const [geschichte, setGeschichte] = useState<Geschichte>(LEERE_GESCHICHTE);
+  const [auswahl, setAuswahl] = useState<string[]>([]);
+  const [kanteWahl, setKanteWahl] = useState<string | null>(null);
+  const [rahmenWahl, setRahmenWahl] = useState<string | null>(null);
+  const [andockWahl, setAndockWahl] = useState<{ id: string; art: string } | null>(null);
+  const [titelFokus, setTitelFokus] = useState(0);
+  const [ansage, setAnsage] = useState('');
+  const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'achtung' | 'kritisch' | 'info' } | null>(null);
+  const [formauswahl, setFormauswahl] = useState<{ ziel: AnhangZiel & { bahn?: string }; ort: [number, number]; form?: ProzessForm } | null>(null);
+  const [probe, setProbe] = useState<ProbeErgebnis | null>(null);
+  const [probeHinweis, setProbeHinweis] = useState<string | null>(null);
+  const [versionAnsicht, setVersionAnsicht] = useState<ProzessVersion | null>(null);
+  const [versionenOffen, setVersionenOffen] = useState(false);
+  const [hilfe, setHilfe] = useState(false);
+  const [raster, setRaster] = useState(true);
+  const [zu, setZu] = useState<Set<string>>(new Set());
+  const flaeche = useRef<FlaecheSteuerung>(null);
+  const stand = useRef('');
+  const fassungRef = useRef<Fassung | null>(null);
+  fassungRef.current = fassung;
+  const aenderung = useRef(0);
+  const gesichert = useRef(0);
+  const ablage = useRef<Ablage | null>(null);
+  const rahmen = useRef<HTMLDivElement | null>(null);
+
+  // ── Laden: Server-Fassung übernehmen; eine ungespeicherte Fassung aus dieser Sitzung bleibt (gleicher Stand) bzw. wird angeboten ──
+  useEffect(() => {
+    if (!daten || eintrag) return;
+    setEintrag(daten.eintrag);
+    stand.current = daten.stand;
+    setBefundeServer(daten.befunde);
+    setGeaendertSeitVersion(daten.entwurfGeaendert);
+    const server = fassungVon(daten.eintrag.entwurf);
+    setFassungRoh(server);
+    const roh = lies(sitzung(), ENTWURF_MERKER(prozessId));
+    if (roh) {
+      try {
+        const m = JSON.parse(roh) as { stand: string; fassung: Fassung };
+        if (!gleich(m.fassung, server)) {
+          if (m.stand === daten.stand) { setFassungRoh(m.fassung); aenderung.current = 1; setSpeicher({ art: 'ausstehend' }); }
+          else setWiederher(m.fassung);
+        } else schreib(sitzung(), ENTWURF_MERKER(prozessId), null);
+      } catch { schreib(sitzung(), ENTWURF_MERKER(prozessId), null); }
+    }
+    setZu(new Set((lies(lokal(), ZU_MERKER(prozessId)) ?? '').split(',').filter(Boolean)));
+    if (lies(lokal(), RASTER_MERKER) === 'aus') setRaster(false);
+  }, [daten, eintrag, prozessId]);
+
+  const rechte = daten?.rechte;
+  const nurLesen = nurAnsehen || !rechte?.entwurf || !!versionAnsicht || eintrag?.status === 'archiviert';
+  const d: ProzessDefinition | null = useMemo(() => {
+    if (versionAnsicht) return versionAnsicht.definition;
+    if (!eintrag || !fassung) return null;
+    const { zettel: _z, ...rest } = eintrag.entwurf;
+    return { ...rest, knoten: fassung.knoten, ...(fassung.zettel ? { zettel: fassung.zettel } : {}) };
+  }, [eintrag, fassung, versionAnsicht]);
+  const lage = useMemo(() => (d ? werkstattLage(d, { team, zu }) : null), [d, team, zu]);
+  const ausstehend = speicher.art === 'ausstehend' || speicher.art === 'speichert' || speicher.art === 'fehler' || speicher.art === 'offline' || speicher.art === 'konflikt';
+  const befunde = useMemo(() => (d && (ausstehend || versionAnsicht) ? definitionPruefen(d, {}) : befundeServer), [d, ausstehend, versionAnsicht, befundeServer]);
+  const raete = useMemo(() => (d ? hinweiseVon(d) : []), [d]);
+  const befundJe = useMemo(() => {
+    const m = new Map<string, 'fehler' | 'offen'>();
+    for (const b of befunde) if (b.knotenId && b.stufe !== 'hinweis' && m.get(b.knotenId) !== 'fehler') m.set(b.knotenId, b.stufe as 'fehler' | 'offen');
+    return m;
+  }, [befunde]);
+  const mitSchloss = useMemo(() => new Set((d?.knoten ?? []).flatMap(k => (k.schloss ? [k.schloss.fuer] : []))), [d]);
+  const probeMap = useMemo(() => (probe ? new Map(probe.schritte.map(s => [s.knotenId, s.status])) : null), [probe]);
+  const probeSaetze = useMemo(() => (probe ? new Map<string, ProbeSchritt>(probe.schritte.map(s => [s.knotenId, s])) : null), [probe]);
+  const agentName = useCallback((wer: AgentWer) => (wer.art === 'zoe' ? 'ZOE' : wer.art === 'head' ? headDef(wer.headId)?.kurz ?? 'Head' : wer.art === 'skill' ? 'Skill' : FACH_AGENTEN.find(f => f.id === wer.agentId)?.titel.split(' ')[0] ?? 'Agent'), []);
+  const unterzeile = useCallback((k: K) => knotenUnterzeile(k, { mitSchloss: mitSchloss.has(k.id), ...(k.agent ? { agentName: agentName(k.agent.wer) } : {}) }), [mitSchloss, agentName]);
+
+  const ansagen = (t: string) => setAnsage(t);
+
+  // ── Speichern: EIN Weg, nacheinander; die Antwort ersetzt die Fassung nur, wenn seitdem nichts dazukam ──
+  const sichern = useCallback(async (): Promise<boolean> => {
+    const f = fassungRef.current;
+    if (!f || aenderung.current === gesichert.current) return true;
+    const nr = aenderung.current;
+    setSpeicher({ art: 'speichert' });
+    const r = await werkstattSenden(() => ({ aktion: 'entwurf', id: prozessId, stand: stand.current, knoten: f.knoten, zettel: f.zettel ?? null }));
+    const j = r.j;
+    if (r.status === 200 && j?.ok && j.eintrag && j.stand) {
+      stand.current = j.stand;
+      setEintrag(j.eintrag);
+      setBefundeServer(j.befunde ?? []);
+      if (typeof j.entwurfGeaendert === 'boolean') setGeaendertSeitVersion(j.entwurfGeaendert);
+      gesichert.current = nr;
+      if (aenderung.current === nr) {
+        setFassungRoh(fassungVon(j.eintrag.entwurf));
+        schreib(sitzung(), ENTWURF_MERKER(prozessId), null);
+        setSpeicher({ art: 'gespeichert' });
+      } else setSpeicher({ art: 'ausstehend' });
+      return true;
+    }
+    if (r.status === 409 && j?.eintrag && j.stand) { setKonflikt({ eintrag: j.eintrag, stand: j.stand }); setSpeicher({ art: 'konflikt' }); return false; }
+    if (r.status === 0 || r.status >= 500) { setSpeicher({ art: 'offline', text: 'Keine Verbindung — die Fassung bleibt hier und wird erneut gesendet.' }); return false; }
+    if (j?.befunde) setBefundeServer(j.befunde);
+    setSpeicher({ art: 'fehler', text: String(j?.fehler ?? 'Nicht gespeichert.') });
+    return false;
+  }, [prozessId]);
+  // Nach einer Pause speichern; bei Netzfehler mit wachsendem Abstand erneut.
+  const versuch = useRef(0);
+  useEffect(() => {
+    if (speicher.art !== 'ausstehend' && speicher.art !== 'offline') return;
+    if (konflikt) return;
+    const warte = speicher.art === 'offline' ? Math.min(60_000, 2000 * 2 ** versuch.current) : 800;
+    const t = window.setTimeout(async () => { const ok = await sichern(); versuch.current = ok ? 0 : versuch.current + 1; }, warte);
+    return () => window.clearTimeout(t);
+  }, [speicher, fassung, konflikt, sichern]);
+  // Verlassen mit Ungespeichertem: der Browser fragt.
+  useEffect(() => {
+    if (!ausstehend) return;
+    const vorher = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', vorher);
+    return () => window.removeEventListener('beforeunload', vorher);
+  }, [ausstehend]);
+
+  /** Eine Änderung übernehmen: Geschichte, Fassung, Sitzungsspeicher, Speichern anstoßen, Ansage. */
+  const anwenden = useCallback((e: Ergebnis, o: { auswahl?: boolean } = {}): boolean => {
+    const vorher = fassungRef.current;
+    if (!e.ok) { setMeldung({ text: e.grund, art: 'achtung' }); ansagen(e.grund); return false; }
+    if (!vorher || gleich(vorher, e.fassung)) return true;
+    setGeschichte(g => merke(g, vorher));
+    setFassungRoh(e.fassung);
+    fassungRef.current = e.fassung;
+    aenderung.current++;
+    schreib(sitzung(), ENTWURF_MERKER(prozessId), JSON.stringify({ stand: stand.current, fassung: e.fassung }));
+    setSpeicher(s => (s.art === 'konflikt' ? s : { art: 'ausstehend' }));
+    setMeldung(null);
+    ansagen(e.ansage);
+    if (e.waehle && o.auswahl !== false) { setAuswahl(e.waehle); setKanteWahl(null); setRahmenWahl(null); }
+    return true;
+  }, [prozessId]);
+  const mitFassung = (f: (x: Fassung) => Ergebnis, o?: { auswahl?: boolean }) => { const x = fassungRef.current; return x ? anwenden(f(x), o) : false; };
+
+  const zurueck = () => { const f = fassungRef.current; if (!f) return; const r = rueckgaengig(geschichte, f); if (!r) { ansagen('Nichts mehr rückgängig zu machen.'); return; } setGeschichte(r.geschichte); setFassungRoh(r.fassung); fassungRef.current = r.fassung; aenderung.current++; setSpeicher({ art: 'ausstehend' }); ansagen('Rückgängig.'); };
+  const vor = () => { const f = fassungRef.current; if (!f) return; const r = wiederholen(geschichte, f); if (!r) { ansagen('Nichts zu wiederholen.'); return; } setGeschichte(r.geschichte); setFassungRoh(r.fassung); fassungRef.current = r.fassung; aenderung.current++; setSpeicher({ art: 'ausstehend' }); ansagen('Wiederholt.'); };
+
+  // ── Steckbrief (eigene Aktion; der Name der Wurzel zieht mit) ──
+  const steckbrief = async (felder: Record<string, unknown>) => {
+    await sichern();
+    const r = await werkstattSenden(() => ({ aktion: 'steckbrief', id: prozessId, stand: stand.current, felder }));
+    const j = r.j;
+    if (r.status === 200 && j?.ok && j.eintrag && j.stand) {
+      stand.current = j.stand;
+      setEintrag(j.eintrag);
+      setBefundeServer(j.befunde ?? []);
+      const w = wurzel(j.eintrag.entwurf.knoten);
+      if (w) setFassungRoh(f => (f ? { ...f, knoten: f.knoten.map(k => (k.id === w.id ? { ...k, titel: w.titel } : k)) } : f));
+      ansagen('Steckbrief gespeichert.');
+    } else if (r.status === 409 && j?.eintrag && j.stand) setKonflikt({ eintrag: j.eintrag, stand: j.stand });
+    else setMeldung({ text: String(j?.fehler ?? 'Der Steckbrief ließ sich nicht speichern.'), art: 'kritisch' });
+  };
+
+  // ── Konflikt: Deine Fassung bleibt; speichern oder die andere übernehmen ──
+  const meineSpeichern = async () => { if (!konflikt) return; stand.current = konflikt.stand; setEintrag(konflikt.eintrag); setKonflikt(null); aenderung.current++; setSpeicher({ art: 'ausstehend' }); };
+  const andereUebernehmen = () => {
+    if (!konflikt) return;
+    const f = fassungRef.current;
+    if (f) setGeschichte(g => merke(g, f));
+    stand.current = konflikt.stand; setEintrag(konflikt.eintrag); setFassungRoh(fassungVon(konflikt.eintrag.entwurf));
+    gesichert.current = aenderung.current; setKonflikt(null); setSpeicher({ art: 'gespeichert' }); schreib(sitzung(), ENTWURF_MERKER(prozessId), null);
+    ansagen('Die andere Fassung ist übernommen — Rückgängig holt deine zurück.');
+  };
+
+  // ── Anlegen über die Formauswahl („+“, Tab, Faden ins Leere) ──
+  const anhaengen = (ziel: AnhangZiel & { bahn?: string }, ort: [number, number]) => {
+    if (nurLesen || !d) return;
+    const von = ziel.nach ? d.knoten.find(k => k.id === ziel.nach) : undefined;
+    // Das Fenster bleibt in der Bühne (rechts und unten nicht hinaus).
+    const r = rahmen.current?.getBoundingClientRect();
+    const x = Math.max(8, Math.min(ort[0], (r?.width ?? 900) - 436)), y = Math.max(8, Math.min(ort[1], (r?.height ?? 640) - 470));
+    setFormauswahl({ ziel, ort: [x, y], ...(von?.form && von.form !== 'ausloeser' && von.form !== 'freigabe' ? { form: von.form } : {}) });
+  };
+  /** Wo ein neuer Knoten liegen soll, wenn die Fläche schon von Hand gelegt ist (sonst legt die Regel ihn selbst). */
+  const platzFuer = (neu: K, ziel: AnhangZiel & { bahn?: string }): { platz?: KnotenLage; platzSchaffen?: number } => {
+    if (!lage || !d || !d.knoten.some(k => k.pos)) return {};
+    const quelle = ziel.nach ? lage.knoten.get(ziel.nach) : ziel.vor ? lage.knoten.get(ziel.vor) : undefined;
+    if (!quelle) return {};
+    const m = knotenMass(neu);
+    const bahn = (ziel.bahn as ReturnType<typeof bahnSchluessel> | undefined) ?? bahnSchluessel(neu);
+    const b = lage.bahnen.find(x => x.schluessel === bahn);
+    const r = lage.rahmen.find(x => x.id === quelle.phaseId);
+    if (!b || !r) return {};
+    if (ziel.platz) return { platz: { x: ziel.platz[0] - m.koerper.x - r.x, y: Math.max(WS.bahnRand, ziel.platz[1] - m.koerper.h / 2 - b.y) } };
+    const zweig = ziel.ausgang === 'nein' || ziel.ausgang === 'fehler' || ziel.ausgang === 'abgelaufen';
+    const x = ziel.vor ? quelle.x - r.x : quelle.x - r.x + quelle.b + WS.spaltenLuecke;
+    const y = zweig ? quelle.y - b.y + quelle.h + WS.reihenLuecke : bahn === quelle.bahn ? quelle.y - b.y : WS.bahnRand;
+    return { platz: { x, y: Math.max(0, y) }, ...(!zweig ? { platzSchaffen: m.b + WS.spaltenLuecke } : {}) };
+  };
+  const ausKatalog = (e: KatalogEintrag, ziel: AnhangZiel & { bahn?: string }) => {
+    let neu = neuerKnoten(e, neueKennung('fk'));
+    if (ziel.bahn) neu = inBahn(neu, ziel.bahn as ReturnType<typeof bahnSchluessel>) ?? neu;
+    const ok = mitFassung(f => anlegen(f, neu, { nach: ziel.nach ?? null, ...(ziel.vor ? { vor: ziel.vor } : {}), ...(ziel.phaseId ? { phaseId: ziel.phaseId } : {}), ...(ziel.ausgang ? { ausgang: ziel.ausgang } : {}), ...platzFuer(neu, ziel) }));
+    if (ok) { setAuswahl([neu.id]); setKanteWahl(null); setRahmenWahl(null); }
+    setFormauswahl(null);
+    flaeche.current?.fokus();
+  };
+  /** Alt+Pfeil: derselbe Baustein wie der Knoten in diese Richtung (Auslöser, Freigabe und Ende hängen eine Aufgabe an). */
+  const altAnlegen = (k: K, r: 'rechts' | 'links' | 'unten' | 'oben') => {
+    if (!lage) return;
+    const lk = lage.knoten.get(k.id);
+    const i = lage.bahnen.findIndex(b => b.schluessel === lk?.bahn);
+    const was = altPfeil(k, r, { darunter: lage.bahnen[i + 1]?.schluessel, darueber: i > 0 ? lage.bahnen[i - 1]?.schluessel : undefined });
+    if (!was) { ansagen('In diese Richtung lässt sich hier nichts anlegen.'); return; }
+    const gleicheForm = k.form && !['ausloeser', 'freigabe', 'ende'].includes(k.form) ? katalogEintrag(k.katalog?.id) : undefined;
+    const e = gleicheForm ?? katalogEintrag(k.form === 'entscheidung' ? 'entscheidung.mensch' : 'aufgabe.anlegen')!;
+    ausKatalog(e, { ...(was.vor ? { vor: k.id } : { nach: k.id, ausgang: was.ausgang }), ...(was.bahn ? { bahn: was.bahn } : {}) });
+  };
+
+  // ── Ziehen auf der Fläche: Lage festhalten (nichts springt), Phase und Bahn nach dem Ort, Hilfslinien hat die Fläche schon eingerastet ──
+  const ziehen = (ids: string[], dx: number, dy: number) => {
+    if (!lage || nurLesen) return;
+    mitFassung(f0 => {
+      let f: Fassung = { ...f0, knoten: lagenFesthalten(f0, lage).knoten };
+      const knotenIds = ids.filter(id => lage.knoten.has(id) && !lage.knoten.get(id)!.zu);
+      const lagen: { id: string; pos: KnotenLage }[] = [];
+      for (const id of knotenIds) {
+        const lk = lage.knoten.get(id)!;
+        const ax = lk.x + dx, ay = lk.y + dy;
+        const ort = ortBei(lage, ax + lk.koerper.x + lk.koerper.b / 2, ay + lk.koerper.y + lk.koerper.h / 2);
+        let rx = lage.rahmen.find(r => r.id === lk.phaseId)?.x ?? 0;
+        let by = lage.bahnen.find(b => b.schluessel === lk.bahn)?.y ?? 0;
+        if (ort && knotenIds.length === 1 && ort.phaseId !== lk.phaseId) {
+          const r = inPhase(f, id, ort.phaseId);
+          if (r.ok) { f = r.fassung; rx = ort.rahmenX; }
+        }
+        let y = ay - by;
+        if (ort && ort.bahn !== lk.bahn) {
+          const k = f.knoten.find(x => x.id === id)!;
+          const neu = inBahn(k, ort.bahn);
+          if (neu) { f = { ...f, knoten: f.knoten.map(x => (x.id === id ? neu : x)) }; y = ay - ort.bahnY; }
+          // Diese Bahn passt nicht (Agenten bleiben bei den Agenten, die Kunden-Bahn trägt nur Nachrichten): nur waagerecht verschieben.
+          else { y = lk.y - by; ansagen('In diese Bahn passt der Schritt nicht — er bleibt in seiner Bahn.'); }
+        }
+        lagen.push({ id, pos: { x: Math.round(ax - rx), y: Math.max(0, Math.round(y)) } });
+      }
+      const r = lageSetzen(f, lagen);
+      if (!r.ok) return r;
+      f = r.fassung;
+      const zIds = ids.filter(id => (f.zettel ?? []).some(z => z.id === id));
+      if (zIds.length) f = { ...f, zettel: (f.zettel ?? []).map(z => (zIds.includes(z.id) ? { ...z, pos: { ...z.pos, x: Math.round(z.pos.x + dx), y: Math.round(z.pos.y + dy) } } : z)) };
+      return { ok: true, fassung: f, ansage: ids.length === 1 ? 'Verschoben.' : `${ids.length} verschoben.` };
+    }, { auswahl: false });
+  };
+
+  // ── Kopieren, Einfügen ──
+  const kopie = () => { const f = fassungRef.current; if (!f) return; const a = kopieren(f, auswahl); if (!a) { ansagen('Nichts zum Kopieren gewählt (Auslöser und Schlösser bleiben).'); return; } ablage.current = a; ansagen(`${a.knoten.length + a.zettel.length} kopiert — mit ihren Verbindungen.`); };
+  const einf = () => {
+    const a = ablage.current, f = fassungRef.current;
+    if (!a || !f || !d) { ansagen('Die Ablage ist leer.'); return; }
+    const ziel = auswahl.find(id => phaseVon(f, id));
+    const phaseId = (ziel && phaseVon(f, ziel)) ?? phasen(d).at(-1)?.id;
+    if (!phaseId) return;
+    mitFassung(x => einfuegen(x, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk') }));
+  };
+
+  // ── Tastatur (lib/prozesse/werkstatt-tastatur.ts) ──
+  const taste = (a: TastenAktion): boolean => {
+    if (!d || !lage) return false;
+    const eine = auswahl.length === 1 ? d.knoten.find(k => k.id === auswahl[0]) : undefined;
+    switch (a.art) {
+      case 'abbrechen':
+        if (formauswahl) { setFormauswahl(null); return true; }
+        if (hilfe) { setHilfe(false); return true; }
+        if (auswahl.length || kanteWahl || rahmenWahl) { setAuswahl([]); setKanteWahl(null); setRahmenWahl(null); setAndockWahl(null); return true; }
+        return false;
+      case 'hilfe': setHilfe(h => !h); return true;
+      case 'waehlen': {
+        const boxen = [...lage.knoten.values()].filter(k => !k.zu).map(k => ({ id: k.id, x: k.x, y: k.y, b: k.b, h: k.h }));
+        if (!eine) { const erst = alleSchritte(d)[0]?.schritt.id; if (erst) { setAuswahl([erst]); flaeche.current?.zeige(erst); } return true; }
+        const lk = lage.knoten.get(eine.id);
+        const n = lk ? nachbar(lk, boxen.filter(b => b.id !== eine.id), a.richtung) : null;
+        if (n) { setAuswahl([n]); flaeche.current?.zeige(n); ansagen(`„${d.knoten.find(k => k.id === n)?.titel ?? ''}“ gewählt.`); }
+        return true;
+      }
+      case 'kopieren': kopie(); return true;
+      default: break;
+    }
+    if (nurLesen) return false;
+    switch (a.art) {
+      case 'rueckgaengig': zurueck(); return true;
+      case 'wiederholen': vor(); return true;
+      case 'alles-waehlen': setAuswahl([...alleSchritte(d).map(x => x.schritt.id), ...(d.zettel ?? []).map(z => z.id)]); return true;
+      case 'einfuegen': einf(); return true;
+      case 'duplizieren': kopie(); einf(); return true;
+      case 'ordnen': mitFassung(f => ({ ok: true, fassung: ordnen(f), ansage: 'Geordnet — eine Leserichtung, Rückgängig holt die alte Lage.' })); return true;
+      case 'loeschen': loeschenAuswahl(); return true;
+      case 'benennen': if (eine) { setTitelFokus(n => n + 1); return true; } return false;
+      case 'formauswahl': {
+        if (!eine) return false;
+        const lk = lage.knoten.get(eine.id);
+        const port = lk?.anschluesse.find(x => x.art === 'weiter' || x.art === 'ja');
+        if (!lk || !port) return false;
+        anhaengen({ nach: eine.id, ausgang: port.art === 'ein' ? 'weiter' : port.art }, flaeche.current?.bildschirm(lk.x + port.x + 30, lk.y + port.y) ?? [80, 80]);
+        return true;
+      }
+      case 'anlegen': if (eine) { altAnlegen(eine, a.richtung); return true; } return false;
+      case 'schieben': if (auswahl.length) { ziehen(auswahl, a.dx, a.dy); return true; } return false;
+      default: return false;
+    }
+  };
+  const loeschenAuswahl = () => {
+    if (kanteWahl && lage) { const k = lage.kanten.find(x => x.id === kanteWahl); if (k) { if (mitFassung(f => loesen(f, k.von, k.ausgang))) setKanteWahl(null); } return; }
+    const f = fassungRef.current;
+    if (!f) return;
+    const zIds = auswahl.filter(id => (f.zettel ?? []).some(z => z.id === id));
+    const kIds = auswahl.filter(id => !zIds.includes(id));
+    if (kIds.length) mitFassung(x => loeschen(x, kIds));
+    if (zIds.length) mitFassung(x => zettelWeg(x, zIds));
+    setAuswahl([]);
+  };
+
+  // ── Probelauf (Vertrag mit dem Lauf-Motor, Etappe C1) ──
+  const probelauf = async () => {
+    setProbeHinweis(null);
+    if (!versionAnsicht) await sichern();
+    const r = await fetch(`${PROBELAUF_PFAD}?space=business`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(probelaufKoerper(prozessId, versionAnsicht ? 'version' : 'entwurf')) }).catch(() => null);
+    const a = probelaufAus(r?.status ?? 0, r ? await r.json().catch(() => null) : null);
+    if (a.art === 'fehlt') { setProbe(null); setProbeHinweis(PROBE_FEHLT); return; }
+    if (a.art === 'fehler') { setProbe(null); setProbeHinweis(a.text); return; }
+    setProbe(a.ergebnis);
+    ansagen(`Probelauf: ${a.ergebnis.schritte.length} Schritte, geschätzt ${centText(a.ergebnis.kostenSchaetzungCent)}.`);
+  };
+
+  // ── Versionen ──
+  const veroeffentlichen = async (name: string, notiz: string): Promise<string | null> => {
+    if (!(await sichern())) return 'Erst muss der Entwurf gespeichert sein.';
+    const r = await werkstattSenden(() => ({ aktion: 'veroeffentlichen', id: prozessId, stand: stand.current, name, notiz }));
+    const j = r.j;
+    if (r.status === 200 && j?.ok && j.eintrag && j.stand) { stand.current = j.stand; setEintrag(j.eintrag); setBefundeServer(j.befunde ?? []); setGeaendertSeitVersion(false); setFassungRoh(fassungVon(j.eintrag.entwurf)); setVersionenOffen(false); setMeldung({ text: `${j.version?.name ?? 'Version'} ist veröffentlicht.`, art: 'gut' }); return null; }
+    if (j?.befunde) setBefundeServer(j.befunde);
+    return String(j?.fehler ?? 'Nicht veröffentlicht.');
+  };
+  const uebernehmen = async (nr: number): Promise<string | null> => {
+    await sichern();
+    const vorher = fassungRef.current;
+    const r = await werkstattSenden(() => ({ aktion: 'version-uebernehmen', id: prozessId, stand: stand.current, nr }));
+    const j = r.j;
+    if (r.status === 200 && j?.ok && j.eintrag && j.stand) {
+      if (vorher) setGeschichte(g => merke(g, vorher));
+      stand.current = j.stand; setEintrag(j.eintrag); setBefundeServer(j.befunde ?? []); setFassungRoh(fassungVon(j.eintrag.entwurf)); gesichert.current = aenderung.current;
+      setVersionAnsicht(null); setVersionenOffen(false); setMeldung({ text: `Version ${nr} ist jetzt der Entwurf.`, art: 'gut' });
+      return null;
+    }
+    return String(j?.fehler ?? 'Nicht übernommen.');
+  };
+  const ansehen = async (nr: number) => { const r = await versionHolen(prozessId, nr); if (r.daten) { setVersionAnsicht(r.daten.version); setVersionenOffen(false); setAuswahl([]); } else setMeldung({ text: r.fehler ?? 'Die Version ließ sich nicht laden.', art: 'kritisch' }); };
+  const vergleichen = async (nr: number) => { await sichern(); const r = await vergleichHolen(prozessId, nr, 'entwurf'); return r.daten?.vergleich ?? null; };
+
+  // ── Zuklappen (Merker je Prozess) ──
+  const zuklappen = (phaseId: string) => {
+    setZu(s => { const n = new Set(s); if (n.has(phaseId)) n.delete(phaseId); else n.add(phaseId); schreib(lokal(), ZU_MERKER(prozessId), [...n].join(',') || null); return n; });
+    setAuswahl(a => a.filter(id => !lage?.knoten.get(id) || lage.knoten.get(id)!.phaseId !== phaseId));
+  };
+  const phaseAktion = (aktion: 'umbenennen' | 'teilen' | 'zuklappen' | 'neu' | 'loeschen', id: string, wert?: string) => {
+    if (aktion === 'zuklappen') { zuklappen(id); return; }
+    if (aktion === 'umbenennen' && wert) mitFassung(f => umbenennen(f, id, wert));
+    if (aktion === 'teilen') mitFassung(f => teilprozessBilden(f, id, { id: neueKennung('fk') }));
+    if (aktion === 'neu') mitFassung(f => phaseNeu(f, { id: neueKennung('fk'), titel: 'Neue Phase', nach: id }));
+    if (aktion === 'loeschen' && mitFassung(f => phaseLoeschen(f, id))) setRahmenWahl(null);
+  };
+  const zettelHin = () => {
+    const m = flaeche.current?.mitte() ?? [200, 200];
+    mitFassung(f => zettelNeu(f, { id: neueKennung('fk'), text: '', pos: { x: Math.round(m[0] - WS.zettel.b / 2), y: Math.round(m[1] - WS.zettel.h / 2) }, farbe: 'gelb' }));
+  };
+
+  // ── Zeichnung ──
+  if (!daten || !eintrag || !fassung || !d || !lage) {
+    return <div className="pw-werkstatt">{ladeFehler ? <Hinweis art="kritisch">{ladeFehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Werkstatt lädt …</p>}</div>;
+  }
+  const ein = auswahl.length === 1 ? auswahl[0] : null;
+  const panelKnoten = ein ? d.knoten.find(k => k.id === ein) ?? null : null;
+  const panelZettel = ein ? (d.zettel ?? []).find(z => z.id === ein) ?? null : null;
+  const panelPhase = rahmenWahl && !panelKnoten ? phasen(d).find(p => p.id === rahmenWahl) ?? null : null;
+  const panelKante: KanteLage | null = kanteWahl ? lage.kanten.find(k => k.id === kanteWahl) ?? null : null;
+  const sperrt = sperrtVeroeffentlichen(befunde);
+  const SP = { gespeichert: Check, ausstehend: Loader2, speichert: Loader2, fehler: CloudOff, konflikt: CloudOff, offline: CloudOff }[speicher.art];
+  const spText = { gespeichert: 'Entwurf gespeichert', ausstehend: 'wird gespeichert …', speichert: 'speichert …', fehler: 'nicht gespeichert', konflikt: 'Konflikt — deine Fassung bleibt', offline: 'offline — bleibt hier' }[speicher.art];
+  const spFarbe = speicher.art === 'gespeichert' ? C.inkLeise : speicher.art === 'fehler' || speicher.art === 'konflikt' ? LEUCHT.kritisch : speicher.art === 'offline' ? LEUCHT.achtung : C.inkDim;
+  const v = eintrag.versionen.at(-1);
+  return (
+    <div className="pw-werkstatt" onKeyDown={e => { if (e.key === 'Escape' && (formauswahl || hilfe)) { e.preventDefault(); setFormauswahl(null); setHilfe(false); } }}>
+      <div className="pw-kopf">
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {WERKSTATT_REITER.length > 1 && <Reiter liste={WERKSTATT_REITER.map(r => ({ id: r.id, label: r.titel }))} aktiv="bauen" onWahl={() => undefined} ariaLabel="Werkstatt" />}
+          <Chip farbe={eintrag.status === 'aktiv' ? LEUCHT.gut : C.inkDim}>{v ? `Version ${v.nr}${eintrag.status !== 'entwurf' ? ` · ${eintrag.status}` : ''}` : 'Entwurf'}</Chip>
+          {!nurLesen && <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: spFarbe }}><SP size={14} aria-hidden />{spText}</span>}
+          {nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? 'Am Handy nur ansehen' : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
+        </div>
+        <div className="pw-werkzeuge" role="toolbar" aria-label="Werkstatt">
+          {!nurLesen && <SymbolKnopf ariaLabel="Rückgängig (⌘Z)" aus={!geschichte.zurueck.length} onClick={zurueck}><Undo2 size={16} /></SymbolKnopf>}
+          {!nurLesen && <SymbolKnopf ariaLabel="Wiederholen (⌘⇧Z)" aus={!geschichte.vor.length} onClick={vor}><Redo2 size={16} /></SymbolKnopf>}
+          {!nurLesen && <Knopf leise onClick={() => taste({ art: 'ordnen' })} titel="Ordnen — eine Leserichtung (⇧O, rückgängig machbar)"><span className="pz-knopf-inhalt"><LayoutGrid size={14} aria-hidden />Ordnen</span></Knopf>}
+          {!nurLesen && <Knopf leise onClick={zettelHin} titel="Notiz-Zettel auf die Fläche"><span className="pz-knopf-inhalt"><StickyNote size={14} aria-hidden />Zettel</span></Knopf>}
+          {!nurLesen && <Knopf leise onClick={() => phaseAktion('neu', phasen(d).at(-1)?.id ?? '')} titel="Neue Phase am Ende"><span className="pz-knopf-inhalt"><Columns3 size={14} aria-hidden />Phase</span></Knopf>}
+          <SymbolKnopf ariaLabel="Raster an/aus" gedrueckt={raster} onClick={() => { const n = !raster; setRaster(n); schreib(lokal(), RASTER_MERKER, n ? null : 'aus'); }}><Grid3x3 size={16} /></SymbolKnopf>
+          <SymbolKnopf ariaLabel="Verkleinern" onClick={() => flaeche.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
+          <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
+          <SymbolKnopf ariaLabel="Alles zeigen" onClick={() => flaeche.current?.allesZeigen()}><Maximize2 size={16} /></SymbolKnopf>
+          <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
+          <Knopf leise onClick={probelauf} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts)"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>
+          {!nurAnsehen && !versionAnsicht && <Knopf onClick={() => setVersionenOffen(true)} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>}
+        </div>
+      </div>
+      {konflikt && (
+        <Hinweis art="achtung" titel="Inzwischen hat jemand anders diesen Entwurf geändert" aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}><Knopf onClick={meineSpeichern}>Meine Fassung speichern</Knopf><Knopf leise onClick={andereUebernehmen}>Andere Fassung übernehmen</Knopf></span>}>
+          Deine Fassung ist nicht verloren — sie steht hier auf der Fläche. Speichern überschreibt die andere; Übernehmen holt die andere (Rückgängig holt deine zurück).
+        </Hinweis>
+      )}
+      {wiederher && (
+        <Hinweis art="info" titel="Ungespeicherte Fassung aus dieser Sitzung" aktion={<span style={{ display: 'inline-flex', gap: 8 }}><Knopf onClick={() => { anwenden({ ok: true, fassung: wiederher, ansage: 'Wiederhergestellt.' }); setWiederher(null); }}>Wiederherstellen</Knopf><Knopf leise onClick={() => { setWiederher(null); schreib(sitzung(), ENTWURF_MERKER(prozessId), null); }}>Verwerfen</Knopf></span>}>
+          Beim letzten Mal wurde nicht alles gespeichert — inzwischen gibt es eine neuere Fassung auf dem Server.
+        </Hinweis>
+      )}
+      {versionAnsicht && (
+        <Hinweis art="info" titel={`Version ${versionAnsicht.nr} · ${versionAnsicht.name} — nur lesen`} aktion={<Knopf leise onClick={() => setVersionAnsicht(null)}><span className="pz-knopf-inhalt"><X size={14} aria-hidden />Zurück zum Entwurf</span></Knopf>}>
+          {versionAnsicht.notiz ?? 'So wurde der Prozess veröffentlicht.'}
+        </Hinweis>
+      )}
+      {(speicher.art === 'fehler' || speicher.art === 'offline') && speicher.text && <Hinweis art={speicher.art === 'fehler' ? 'kritisch' : 'achtung'}>{speicher.text}{speicher.art === 'fehler' ? ' Deine Fassung bleibt hier — nach der nächsten Änderung wird erneut gespeichert.' : ''}</Hinweis>}
+      {meldung && <Hinweis art={meldung.art} aktion={<SymbolKnopf ariaLabel="Meldung schließen" onClick={() => setMeldung(null)}><X size={14} /></SymbolKnopf>}>{meldung.text}</Hinweis>}
+      {probeHinweis && <Hinweis art="info" aktion={<SymbolKnopf ariaLabel="Schließen" onClick={() => setProbeHinweis(null)}><X size={14} /></SymbolKnopf>}>{probeHinweis}</Hinweis>}
+      {probe && <Hinweis art="info" titel="Probelauf — nichts wurde geschrieben" aktion={<Knopf leise onClick={() => setProbe(null)}>Beenden</Knopf>}>{`Grün würde laufen, gelb wartet bzw. braucht Freigabe, grau wird übersprungen, rot ist ein Fehler. Kosten geschätzt: ${centText(probe.kostenSchaetzungCent)}.`}</Hinweis>}
+      <div className={`pw-raster${nurAnsehen ? ' pw-raster-schmal' : ''}`}>
+        <div ref={rahmen} className="pw-flaeche-rahmen">
+          <WerkstattFlaeche ref={flaeche} d={d} lage={lage} szene={`${prozessId}:${versionAnsicht?.nr ?? 'entwurf'}`} auswahl={auswahl} kanteWahl={kanteWahl} rahmenWahl={rahmenWahl} andockWahl={andockWahl}
+            probe={probeMap} befundJe={befundJe} unterzeile={unterzeile} mitSchloss={mitSchloss} nurLesen={nurLesen} raster={raster} handy={nurAnsehen}
+            label={`Werkstatt „${d.titel}“: ${alleSchritte(d).length} Schritte in ${phasen(d).length} Phasen, ${lage.bahnen.length} Bahnen. Pfeile wählen, Alt + Pfeil legt an, Tab öffnet die Formauswahl.`}
+            onAuswahl={(ids, o) => { setKanteWahl(null); setAndockWahl(null); setRahmenWahl(null); setAuswahl(a => (o?.erweitern ? [...a.filter(x => !ids.includes(x)), ...ids.filter(x => !a.includes(x))] : ids)); }}
+            onKante={id => { setKanteWahl(id); setAuswahl([]); setRahmenWahl(null); }}
+            onRahmen={id => { setRahmenWahl(id); setAuswahl([]); setKanteWahl(null); }}
+            onUnter={(id, art) => { setAuswahl([id]); setAndockWahl({ id, art }); setKanteWahl(null); setRahmenWahl(null); }}
+            onZiehen={ziehen}
+            onVerbinden={(von, ausgang, nach) => mitFassung(f => verbinden(f, von, ausgang, nach))}
+            onAnhaengen={anhaengen}
+            onZuklappen={zuklappen}
+            onTaste={taste} />
+          {formauswahl && (
+            <WerkstattFormauswahl ort={formauswahl.ort} form={formauswahl.form} titel={formauswahl.ziel.nach ? `Anhängen an „${d.knoten.find(k => k.id === formauswahl.ziel.nach)?.titel ?? ''}“` : 'Baustein anlegen'}
+              ohneAusloeser={!!formauswahl.ziel.nach && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form !== 'ausloeser'}
+              onWahl={e => ausKatalog(e, formauswahl.ziel)} onZu={() => { setFormauswahl(null); flaeche.current?.fokus(); }} />
+          )}
+          {hilfe && (
+            <div role="dialog" aria-label="Kürzel der Werkstatt" className="pz-hilfe">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <b style={{ fontSize: TYP.body }}>Kürzel</b>
+                <SymbolKnopf ariaLabel="Schließen (Esc)" onClick={() => setHilfe(false)}><X size={16} /></SymbolKnopf>
+              </div>
+              <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', margin: 0, fontSize: TYP.bedien }}>
+                {WERKSTATT_KUERZEL.map(k => <span key={k.taste} style={{ display: 'contents' }}><dt style={{ color: C.ink, fontWeight: 600 }}>{k.taste}</dt><dd style={{ margin: 0, color: C.inkDim }}>{k.was}</dd></span>)}
+              </dl>
+            </div>
+          )}
+        </div>
+        <aside className="pw-panel" aria-label="Einstellungen">
+          <WerkstattPanel d={d} auswahl={auswahlListen} modelle={modelle} befunde={befunde} raete={raete} probe={probeSaetze} kanten={lage.kanten} nurLesen={nurLesen}
+            knoten={panelKnoten} phase={panelPhase} kante={panelKante} zettel={panelZettel} andock={andockWahl?.id === ein ? andockWahl?.art ?? null : null} titelFokus={titelFokus}
+            onKnoten={k => mitFassung(f => ersetzen(f, k), { auswahl: false })}
+            onSteckbrief={steckbrief}
+            onZweig={(von, ausgang, nach) => mitFassung(f => (nach ? verbinden(f, von, ausgang, nach) : loesen(f, von, ausgang)), { auswahl: false })}
+            onPfeilText={(von, art, t) => mitFassung(f => pfeilText(f, von, art, t), { auswahl: false })}
+            onLoeschen={ids => { mitFassung(f => loeschen(f, ids)); setAuswahl([]); }}
+            onKopieren={kopie}
+            onPhase={phaseAktion}
+            onZettel={(id, teil) => { if (teil) mitFassung(f => zettelAendern(f, id, teil), { auswahl: false }); else { mitFassung(f => zettelWeg(f, [id])); setAuswahl([]); } }}
+            agentName={agentName} />
+          {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
+        </aside>
+      </div>
+      <div aria-live="polite" className="pz-nur-vorlesen">{ansage}</div>
+      {versionenOffen && (
+        <VersionenFenster versionen={eintrag.versionen} befunde={befunde} sperrt={sperrt} darfVeroeffentlichen={!!rechte?.veroeffentlichen} entwurfGeaendert={geaendertSeitVersion || ausstehend}
+          ausstehend={ausstehend} onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} />
+      )}
+    </div>
+  );
+}
+

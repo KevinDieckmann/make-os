@@ -9,7 +9,7 @@ import type { LandkarteDaten } from '@/lib/prozesse/typen';
 
 export const LANDKARTE_QUELLE = '/api/prozesse/landkarte?space=business';
 
-export function useLandkarte(): { daten: LandkarteDaten | null; fehler: string | null; neu: () => void } {
+export function useLandkarte(): { daten: LandkarteDaten | null; fehler: string | null; neu: () => Promise<void> } {
   const [daten, setDaten] = useState<LandkarteDaten | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const laden = useCallback(async () => {
@@ -25,5 +25,5 @@ export function useLandkarte(): { daten: LandkarteDaten | null; fehler: string |
     document.addEventListener('visibilitychange', sicht);
     return () => document.removeEventListener('visibilitychange', sicht);
   }, [laden]);
-  return { daten, fehler, neu: () => void laden() };
+  return { daten, fehler, neu: laden };
 }

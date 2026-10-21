@@ -4,6 +4,7 @@ import { neuerProzess } from '@/lib/prozesse/bestand';
 import { kantenVon, phasen, schritteDer, flussPruefen } from '@/lib/prozesse/fluss';
 import { katalogEintrag } from '@/lib/prozesse/baustein-katalog';
 import { definitionPruefen } from '@/lib/prozesse/definition-pruefen';
+import { schlossSetzen } from '@/lib/prozesse/schloss';
 import { neuerKnoten } from '@/lib/prozesse/werkstatt-maske';
 import {
   anlegen, verbinden, loesen, loeschen, umbenennen, inPhase, phaseNeu, phaseLoeschen, teilprozessBilden, teilStelle, kopieren, einfuegen,
@@ -61,6 +62,17 @@ describe('Anlegen am Ausgang (Punkt 17: „+“, Tab, Alt+Pfeil)', () => {
     const f2 = gut(anlegen(f, t, { nach: f.knoten.at(-1)!.id }));
     expect(schritteDer(f2, phase(d).id).slice(0, 2).every(s => s.form === 'ausloeser')).toBe(true);
     expect(anlegen(f, knoten('aufgabe.anlegen'), { vor: start(d).id }).ok).toBe(false);
+  });
+  it('hinter einer Außenwirkung steht das Schloss — ein neuer Schritt kommt hinter das Schloss, das Speichern ändert nichts mehr daran', () => {
+    const d = basis();
+    const m = knoten('inbox.mail-entwurf', 'Angebot senden');
+    const mit = schlossSetzen(def(d, gut(anlegen(fass(d), m, { nach: start(d).id })))).definition;
+    const schloss = mit.knoten.find(k => k.schloss?.fuer === m.id)!;
+    const x = knoten('aufgabe.anlegen', 'Nachfassen planen');
+    const f = gut(anlegen(fass(mit), x, { nach: m.id }));
+    expect(schritteDer(f, phase(d).id).map(s => s.id)).toEqual([start(d).id, m.id, schloss.id, x.id]);
+    expect(schlossSetzen(def(mit, f)).definition.knoten).toEqual(f.knoten);
+    expect(kantenVon(f).some(k => k.von === schloss.id && k.nach === x.id && k.ausgang === 'ja')).toBe(true);
   });
   it('Platz schaffen: Schritte rechts vom neuen Platz rücken weiter', () => {
     const d = basis();
