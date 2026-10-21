@@ -21,12 +21,12 @@ import { Wahl } from './Wahl';
 import { WEG } from '@/lib/wege';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { mandatVertragAusProdukt, mandatZahlplanAusProdukt, preiseText, vertragVon, zusatzExtras, zusatzHonorar } from '@/lib/crm/produkt-karte';
-import { zusatzArt, zusatzBeschreibung, zusatzDeckel, zusatzEinheit, zusatzName, zusatzZeitraum, JE_TEXT } from '@/lib/crm/mandat-zusatz';
+import { zusatzArt, zusatzBeschreibung, zusatzDeckel, zusatzEinheit, zusatzName, zusatzZeitraum, zusatzOptionen, teilEinheit, JE_TEXT } from '@/lib/crm/mandat-zusatz';
 import { centAusEingabe, eingabeAusCent } from '@/lib/crm/angebote';
 import { leistungsmonat, monatsName } from '@/lib/crm/mandat-laufzeit';
 import { entwurfAnlegen } from '../rechnung/daten';
 import { useUebersichtKurz, fallAktion, neueAnfrageId, fehlerText } from '../fulfillment/prozesse/daten';
-import type { Leistung, Mandat, MandatZusatz, MandatZusatzBasis } from '@/lib/crm/typen';
+import type { Leistung, Mandat, MandatZusatz, MandatZusatzBasis, PreisTeil } from '@/lib/crm/typen';
 
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 const RHYTHMUS = [{ id: 'monatlich' as const, label: 'monatlich' }, { id: 'quartal' as const, label: 'je Quartal' }, { id: 'einmalig' as const, label: 'einmalig' }];
@@ -101,7 +101,8 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
   const haupt = m.leistungId ? katalog.find(l => l.id === m.leistungId) : undefined;
   const kurz = useUebersichtKurz();
   const [meldung, setMeldung] = useState<string | null>(null);
-  const [abrechnen, setAbrechnen] = useState<MandatZusatz | null>(null);
+  // „abrechnen“: das Modul selbst (je Einheit · Tag · Stunde) oder ein optionaler Teil seines Produkts (21.10., B7 — z. B. „je Messe“).
+  const [abrechnen, setAbrechnen] = useState<{ z: MandatZusatz; teil?: PreisTeil } | null>(null);
   const waehlbar = katalog.filter(l => !l.geloeschtAm && l.status !== 'eingestellt' && l.id !== m.leistungId && (l.rolle === 'zusatz' || l.rolle === 'beides'));
   const vorschlaege = (haupt?.regeln?.inklusive ?? []).filter(x => !liste.some(z => z.leistungId === x.leistungId && z.inklusive) && katalog.some(l => l.id === x.leistungId && !l.geloeschtAm));
   const schreiben = (neu: MandatZusatz[]) => setze({ zusatz: neu });
@@ -149,7 +150,7 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.ink }}>{zusatzName(z, katalog)}</span>
                 <span style={{ ...klein, flex: 1, minWidth: 0 }}>{zusatzBeschreibung(z, katalog)}</span>
-                {art === 'abrechnen' && <Knopf leise onClick={() => setAbrechnen(z)}>abrechnen</Knopf>}
+                {art === 'abrechnen' && <Knopf leise onClick={() => setAbrechnen({ z })}>abrechnen</Knopf>}
                 <button onClick={() => schreiben(liste.filter(x => x.id !== z.id))} aria-label={`Zusatzmodul „${zusatzName(z, katalog)}“ entfernen`} title="Entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', minWidth: 44, minHeight: 44 }}>×</button>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -177,6 +178,12 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
                   <span style={klein}>steht als 0-€-Position auf der Monatsrechnung. Mehr als inklusive: dasselbe Modul noch einmal mit Preis je Einheit dazunehmen und abrechnen.</span>
                 </div>
               )}
+              {zusatzOptionen(z, katalog).map(t => (
+                <div key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={klein}>optional: {eingabeAusCent(t.betragCent!)} € netto je {teilEinheit(t)}{t.text ? ` · ${t.text}` : ''}</span>
+                  <Knopf leise onClick={() => setAbrechnen({ z, teil: t })}>je {teilEinheit(t)} abrechnen</Knopf>
+                </div>
+              ))}
               {ablauf && (ablauf.dran
                 ? <Link href={WEG.fall(m.id)} style={{ ...klein, textDecoration: 'none' }}>Ablauf „{ablauf.titel}“ hängt am Fall ›</Link>
                 : ablauf.fall ? <span><Knopf leise onClick={() => anhaengen(z.leistungId, z.ab)}>Ablauf „{ablauf.titel}“ an den Fall hängen</Knopf></span>
@@ -197,7 +204,7 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
           ? <Wahl label="Zusatzmodul" liste={waehlbar.map(l => ({ id: l.id, label: `${l.name} · ${preiseText(l)}`.slice(0, 80) }))} wert={null} leer="+ Zusatzmodul" onWahl={id => { const l = waehlbar.find(x => x.id === id); if (l) void hinzu(l); }} />
           : <span style={klein}>Für „+ Zusatzmodul“ ein Produkt mit der Rolle „Zusatz“ oder „beides“ anlegen (Produkte).</span>}
         {meldung && <span style={{ fontSize: TYP.bedien, color: meldung.startsWith('Ablauf nicht') ? LEUCHT.achtung : LEUCHT.gut }}>{meldung}</span>}
-        {abrechnen && <AbrechnenDialog m={m} z={abrechnen} katalog={katalog} onZu={() => setAbrechnen(null)} />}
+        {abrechnen && <AbrechnenDialog m={m} z={abrechnen.z} teil={abrechnen.teil} katalog={katalog} onZu={() => setAbrechnen(null)} />}
       </div>
     </Feldzeile>
   );
@@ -212,7 +219,7 @@ function stripLeer(z: MandatZusatz): MandatZusatz {
  * „abrechnen“ (je Einheit · Tag · Stunde): Monat und Menge — legt den Rechnungs-Entwurf an (offener Entwurf des Monats bekommt die Position dazu,
  * eine gestellte Monatsrechnung bleibt: dann eine eigene) und öffnet ihn. Gestellt wird nur im Editor.
  */
-function AbrechnenDialog({ m, z, katalog, onZu }: { m: Mandat; z: MandatZusatz; katalog: readonly Leistung[]; onZu: () => void }) {
+function AbrechnenDialog({ m, z, teil, katalog, onZu }: { m: Mandat; z: MandatZusatz; teil?: PreisTeil; katalog: readonly Leistung[]; onZu: () => void }) {
   const router = useRouter();
   const heute = localDay();
   const zr = zusatzZeitraum(m, z, m.ende);
@@ -221,19 +228,19 @@ function AbrechnenDialog({ m, z, katalog, onZu }: { m: Mandat; z: MandatZusatz; 
   const [monat, setMonat] = useState<string | null>(monate.includes(heute.slice(0, 7)) ? heute.slice(0, 7) : monate[0] ?? null);
   const [menge, setMenge] = useState('1');
   const [fehler, setFehler] = useState<string | null>(null);
-  const einheit = zusatzEinheit(z, katalog);
-  const deckel = zusatzDeckel(z, katalog);
+  const einheit = teil ? teilEinheit(teil) : zusatzEinheit(z, katalog);
+  const deckel = teil ? (teil.art === 'stundensatz' ? teil.deckel?.stundenJeMonat ?? null : null) : zusatzDeckel(z, katalog);
   const n = Number(menge.replace(',', '.'));
   const los = async () => {
     if (!monat || !(n > 0)) { setFehler('Bitte Monat und eine Menge größer 0.'); return; }
-    const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat, einheiten: [{ zusatzId: z.id, menge: n }] });
+    const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat, einheiten: [{ zusatzId: z.id, menge: n, ...(teil ? { teilId: teil.id } : {}) }] });
     if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
     router.push(WEG.rechnungSchreiben(e.id));
   };
   return (
-    <Fenster titel={`„${zusatzName(z, katalog)}“ abrechnen`} onZu={onZu} breit={480}>
+    <Fenster titel={`„${zusatzName(z, katalog)}“${teil ? ` · je ${einheit}` : ''} abrechnen`} onZu={onZu} breit={480}>
       <form onSubmit={ev => { ev.preventDefault(); void los(); }} style={{ display: 'grid', gap: 12 }}>
-        <span style={klein}>{zusatzBeschreibung(z, katalog)}</span>
+        <span style={klein}>{teil ? `optional: ${eingabeAusCent(teil.betragCent ?? 0)} € netto je ${einheit}` : zusatzBeschreibung(z, katalog)}</span>
         {!monate.length && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Das Modul läuft weder im Vormonat noch in diesem oder im nächsten Monat — ab/bis am Modul prüfen.</span>}
         {monate.length > 0 && <Wahl label="Monat" liste={monate.map(mo => ({ id: mo, label: monatsName(mo) }))} wert={monat} onWahl={setMonat} />}
         <label style={{ display: 'grid', gap: 4 }}>

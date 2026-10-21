@@ -91,7 +91,7 @@ export function pdfLaden(rechnungId: string, name?: string) {
 export interface EntwurfNeu {
   quelle: 'frei' | 'angebot' | 'mandat'; firmaId?: string; kontaktId?: string; kundeFirmaId?: string; mandatId?: string; angebotId?: string; monat?: string;
   /** Nur die Einmalposten eines gemischten Angebots (Woche 1 · 3.6). */ nur?: 'einmalig';
-  /** Nur `mandat` (19.10., P3): Zusatzmodule „abrechnen“ mit Menge (je Einheit, Tag, Stunde). */ einheiten?: { zusatzId: string; menge: number }[];
+  /** Nur `mandat` (19.10., P3): Zusatzmodule „abrechnen“ mit Menge (je Einheit, Tag, Stunde). */ einheiten?: { zusatzId: string; menge: number; teilId?: string }[];
   /** Nur `frei`: abgelegtes Angebot (Altbestand) → EINE Position. */ vorlage?: { titel?: string; bruttoCent?: number; angebot?: string; angebotAm?: string };
 }
 /** Ein Konto ohne Zugang zu den Rechnungen (Finanzen des Haushalts) bekommt 403 — diesen Satz statt „Nicht angelegt“ (3.16). */

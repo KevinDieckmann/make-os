@@ -13,7 +13,7 @@ import { neuesMandat, mandatPlan } from '@/lib/crm/mandate-tabelle';
 import { mandatVorbelegung, angebotHauptprodukt } from '@/lib/crm/angebote';
 import {
   monatsPositionen, zusatzPositionen, abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, anrechnungId, gekauftCent, zusatzLiquiditaet, zusatzArt,
-  zusatzBeschreibung, nurAbgerechnet, positionsId, anrechnungLiquiditaet, type AnrechnungKontext,
+  zusatzBeschreibung, nurAbgerechnet, positionsId, anrechnungLiquiditaet, zusatzOptionen, type AnrechnungKontext,
 } from '@/lib/crm/mandat-zusatz';
 import { mandatPosten, mandatLiquiLage, postenAngleichen, postenVomMandat, hauptPostenId, anrechnungPostenId, ANRECHNUNG_FEHLT } from '@/lib/crm/kunden';
 import { geplantesEnde, leistungsmonat } from '@/lib/crm/mandat-laufzeit';
@@ -462,5 +462,28 @@ describe('Zahlplan am einmaligen Honorar (Rundgang 19.10. B2) — zwei Zahlungen
     expect(zahlplanSaeubern({ anzahlungProzent: 0 })).toBeUndefined();
     expect(zahlplanSaeubern({ anzahlungProzent: 100 })).toBeUndefined();
     expect(zahlplanSaeubern('')).toBeUndefined();
+  });
+});
+
+describe('Optionaler Teil eines Zusatzmoduls abrechnen (Rundgang 19.10. B7) — „je Messe“ neben dem Festpreis, wie je Einheit', () => {
+  const m = mandat({ zusatz: [zusatz({ id: 'mz-e', leistungId: 'l-event', honorar: { betragCent: 500_000, basis: 'einmalig' }, zahlplan: { anzahlungProzent: 50 } })] });
+  it('die abrechenbaren optionalen Teile des Produkts', () => {
+    expect(zusatzOptionen(m.zusatz![0], KATALOG).map(t => t.id)).toEqual(['pt-je']);
+    expect(zusatzOptionen(zusatz({ leistungId: 'l-mon' }), KATALOG)).toEqual([]);
+  });
+  it('abrechnen mit Menge: eigene Position zum Preis des Teils (Kennung za-…, eigene je Teil), läuft das Modul nicht → 409, unbekannter Teil → 400', () => {
+    const r = abrechnenPositionen(m, '2026-11', [{ zusatzId: 'mz-e', menge: 2, teilId: 'pt-je' }], ctx);
+    expect(r.ok && r.positionen.map(p => [p.titel, p.menge, p.einheit, p.einzelpreisCent, p.leistungId])).toEqual([['Messebegleitung · je Event — November 2026', 2, 'Event', 150_000, 'l-event']]);
+    expect(r.ok && r.positionen[0].id.startsWith('za-')).toBe(true);
+    expect(r.ok && nurAbgerechnet({ positionen: r.positionen })).toBe(true);
+    expect(abrechnenPositionen(m, '2026-11', [{ zusatzId: 'mz-e', menge: 1, teilId: 'pt-auf' }], ctx)).toMatchObject({ ok: false, status: 400 });
+    expect(abrechnenPositionen(m, '2026-10', [{ zusatzId: 'mz-e', menge: 1, teilId: 'pt-je' }], ctx)).toMatchObject({ ok: false, status: 409 });
+    expect(abrechnenPositionen(m, '2026-11', [{ zusatzId: 'mz-e', menge: 0, teilId: 'pt-je' }], ctx)).toMatchObject({ ok: false, status: 400 });
+    // Ohne Teil bleibt das einmalige Modul „steht von selbst auf der Monatsrechnung“ (409) — wie bisher.
+    expect(abrechnenPositionen(m, '2026-11', [{ zusatzId: 'mz-e', menge: 1 }], ctx)).toMatchObject({ ok: false, status: 409 });
+  });
+  it('aus dem Netz: teilId nur in der Form pt-…', () => {
+    expect(abrechnenWahlAus([{ zusatzId: 'mz-e', menge: 2, teilId: 'pt-je' }])).toEqual({ ok: true, wahl: [{ zusatzId: 'mz-e', menge: 2, teilId: 'pt-je' }] });
+    expect(abrechnenWahlAus([{ zusatzId: 'mz-e', menge: 2, teilId: 'x; drop' }])).toMatchObject({ ok: false, status: 400 });
   });
 });

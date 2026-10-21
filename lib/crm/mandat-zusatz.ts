@@ -175,8 +175,11 @@ export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz'
 
 // ── Abrechnen (je Einheit · Tag · Stunde) ────────────────────────────────────
 
-/** Was „abrechnen“ mitbringt: das Modul und die Menge (Einheiten, Tage bzw. Stunden). */
-export interface AbrechnenWahl { zusatzId: string; menge: number }
+/**
+ * Was „abrechnen“ mitbringt: das Modul und die Menge (Einheiten, Tage bzw. Stunden). `teilId` (21.10., Rundgang B7): ein OPTIONALER Preis-Teil des Produkts
+ * hinter dem Modul (z. B. „je Messe“ neben dem Festpreis) — abgerechnet wie je Einheit, zu seinem Preis.
+ */
+export interface AbrechnenWahl { zusatzId: string; menge: number; teilId?: string }
 export const ABRECHNEN_MAX = { module: 20, menge: 100000 } as const;
 /** Die Auswahl „abrechnen“ aus dem Netz: Liste von `{ zusatzId, menge }` — fehlt sie, leer. Unsinn 400, zu viele 413 (nie gekürzt). */
 export function abrechnenWahlAus(v: unknown): { ok: true; wahl: AbrechnenWahl[] } | { ok: false; status: 400 | 413; fehler: string } {
@@ -188,7 +191,8 @@ export function abrechnenWahlAus(v: unknown): { ok: true; wahl: AbrechnenWahl[] 
     const o = x && typeof x === 'object' ? x as Record<string, unknown> : {};
     if (typeof o.zusatzId !== 'string' || !/^mz-[a-z0-9-]{1,60}$/.test(o.zusatzId)) return { ok: false, status: 400, fehler: 'einheiten: unbekanntes Zusatzmodul.' };
     if (typeof o.menge !== 'number' || !Number.isFinite(o.menge)) return { ok: false, status: 400, fehler: 'einheiten: Menge als Zahl.' };
-    wahl.push({ zusatzId: o.zusatzId, menge: o.menge });
+    if (o.teilId !== undefined && !(typeof o.teilId === 'string' && /^pt-[a-z0-9-]{1,40}$/.test(o.teilId))) return { ok: false, status: 400, fehler: 'einheiten: unbekannter Preis-Teil.' };
+    wahl.push({ zusatzId: o.zusatzId, menge: o.menge, ...(typeof o.teilId === 'string' ? { teilId: o.teilId } : {}) });
   }
   return { ok: true, wahl };
 }
@@ -201,6 +205,20 @@ function teilFuer(z: MandatZusatz, katalog?: Katalog): PreisTeil | undefined {
   const art = z.honorar?.basis === 'einheit' ? 'je_einheit' : z.honorar?.basis === 'tag' ? 'tagessatz' : z.honorar?.basis === 'stunde' ? 'stundensatz' : null;
   return art ? preisteileVon(l).find(t => t.art === art) : undefined;
 }
+/** Preis-Formen, die nach Menge abgerechnet werden (je Einheit · Tag · Stunde). */
+const NACH_MENGE: readonly PreisTeil['art'][] = ['je_einheit', 'tagessatz', 'stundensatz'];
+/**
+ * Die optionalen Teile des Produkts hinter einem Modul, die sich am Mandat abrechnen lassen (21.10., Rundgang B7): Rolle „option“, nach Menge (je Einheit,
+ * Tag, Stunde), mit Betrag — z. B. „je Messe“ neben dem Festpreis eines Messe-Moduls. Ohne Preis-Teile bzw. ohne Katalog: keine.
+ */
+export function zusatzOptionen(z: Pick<MandatZusatz, 'leistungId'>, katalog?: Katalog): PreisTeil[] {
+  const l = katalog?.find(x => x.id === z.leistungId);
+  if (!l || !hatPreisteile(l)) return [];
+  return preisteileVon(l).filter(t => t.rolle === 'option' && NACH_MENGE.includes(t.art) && typeof t.betragCent === 'number');
+}
+/** Einheit eines Preis-Teils auf der Rechnung: „Messe“ (aus „je Messe“), „Tag“, „Stunde“. */
+export const teilEinheit = (t: Pick<PreisTeil, 'art' | 'einheit'>) => (t.art === 'tagessatz' ? 'Tag' : t.art === 'stundensatz' ? 'Stunde' : (t.einheit ?? '').trim().replace(/^(je|pro)\s+/i, '').slice(0, 30) || 'Einheit');
+
 /** Deckel (Stunden je Monat) eines Stundensatz-Moduls: aus dem Produkt — höchstens so viele Stunden je Monat werden berechnet. */
 export function zusatzDeckel(z: MandatZusatz, katalog?: Katalog): number | null {
   if (z.honorar?.basis !== 'stunde') return null;
@@ -227,9 +245,29 @@ export function abrechnenPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz'
   for (const w of wahl) {
     const z = (m.zusatz ?? []).find(x => x.id === w.zusatzId);
     if (!z) return { ok: false, status: 400, fehler: 'Dieses Zusatzmodul hängt nicht (mehr) am Mandat.' };
-    if (gesehen.has(z.id)) return { ok: false, status: 400, fehler: 'Jedes Modul nur einmal je Rechnung abrechnen.' };
-    gesehen.add(z.id);
+    const schluessel = `${z.id}|${w.teilId ?? ''}`;
+    if (gesehen.has(schluessel)) return { ok: false, status: 400, fehler: 'Jedes Modul nur einmal je Rechnung abrechnen.' };
+    gesehen.add(schluessel);
     const name = zusatzName(z, ctx.katalog);
+    if (w.teilId) {
+      // Optionaler Teil des Produkts (B7): zu seinem Preis, nach Menge — die Stunden höchstens bis zu seinem Deckel.
+      const t = zusatzOptionen(z, ctx.katalog).find(x => x.id === w.teilId);
+      if (!t) return { ok: false, status: 400, fehler: `„${name}“: diesen optionalen Teil gibt es am Produkt nicht (mehr) bzw. er wird nicht nach Menge abgerechnet.` };
+      if (typeof w.menge !== 'number' || !Number.isFinite(w.menge) || w.menge <= 0) return { ok: false, status: 400, fehler: `„${name}“: Menge größer 0.` };
+      if (w.menge > ABRECHNEN_MAX.menge) return { ok: false, status: 413, fehler: `„${name}“: höchstens ${ABRECHNEN_MAX.menge.toLocaleString('de-DE')} — nichts angelegt.` };
+      const lmT = leistungsmonat(zusatzZeitraum(m, z, m.ende), monat);
+      if (!lmT?.tage) return { ok: false, status: 409, fehler: `„${name}“ läuft in ${monatsName(monat)} nicht (ab/bis am Modul bzw. Laufzeit des Mandats prüfen).` };
+      const menge = Math.round(w.menge * 1000) / 1000;
+      const deckel = t.art === 'stundensatz' ? t.deckel?.stundenJeMonat ?? null : null;
+      const berechnet = deckel !== null && menge > deckel ? deckel : menge;
+      const einheit = teilEinheit(t);
+      raus.push({
+        id: `${POS.abrechnen}${fnv(schluessel)}`, leistungId: z.leistungId, titel: `${name} · je ${einheit} — ${monatsName(monat)}`.slice(0, 200),
+        text: berechnet < menge ? `${menge.toLocaleString('de-DE')} Stunden erfasst — berechnet höchstens ${deckel} Stunden je Monat (vereinbarter Deckel).` : (t.text?.trim() || 'Zusatzmodul, optional nach Menge'),
+        menge: berechnet, einheit, einzelpreisCent: t.betragCent!, ustSatz: satz,
+      });
+      continue;
+    }
     if (zusatzArt(z) !== 'abrechnen') return { ok: false, status: 409, fehler: `„${name}“ wird nicht nach Menge abgerechnet (${z.inklusive ? 'inklusive' : 'monatlich, jährlich bzw. einmalig — das steht von selbst auf der Monatsrechnung'}).` };
     if (typeof w.menge !== 'number' || !Number.isFinite(w.menge) || w.menge <= 0) return { ok: false, status: 400, fehler: `„${name}“: Menge größer 0.` };
     if (w.menge > ABRECHNEN_MAX.menge) return { ok: false, status: 413, fehler: `„${name}“: höchstens ${ABRECHNEN_MAX.menge.toLocaleString('de-DE')} — nichts angelegt.` };
