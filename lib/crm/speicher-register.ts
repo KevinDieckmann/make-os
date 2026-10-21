@@ -432,6 +432,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // 10.10. (Inventur Trennung): der Name entsteht über speicherFuer('gesundheit-index', person) — der Scanner sah ihn nicht.
   mit(H('gesundheit-index', 'Gesundheits-Index (Erstkonto) — Verlauf und Schwellen aus eigenen Gesundheitswerten.'), GESUNDHEIT),
   mit(H('gesundheit-index--*', 'Gesundheits-Index je Person — Verlauf und Schwellen aus eigenen Gesundheitswerten.'), GESUNDHEIT),
+  // Die zwei Scores (21.10.): der Privat-Score je Person — ein Schnappschuss am Tag (Index, Säulen, Kennzahl-Werte, Ampeln) und eigene Schwellen.
+  // Er trägt den eigenen Gesundheits-Index als Säule (Art. 9) — darum wie die Gesundheit; nur die Person selbst sieht ihn (GET /api/scores).
+  mit(H('privat-score--*', 'Privat-Score je Person (Zahlen je Tag: Gesundheits-Index, Privat-Index, Planung, Pflege-Rhythmus) — nur die Person selbst, auch bei „Teilen“ nie andere Konten.'), {
+    ...GESUNDHEIT,
+    art15: 'nur die Person selbst sieht ihren Privat-Score (Heute, /os/score); Konto › Meine Daten exportiert den Bestand — auch bei „Teilen“ nie andere Konten',
+    loeschfrist: 'rollend 400 Tage (ältere Tage fallen beim Schreiben heraus); Konto löschen entfernt den Bestand samt Tageskopien',
+  }),
   mit(H('haut', 'Symptom-Tagebuch (Erstkonto; Modul je Person, 09.10.) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   mit(H('haut--*', 'Symptom-Tagebuch je Person (Modul) — eigene Gesundheitsdaten.'), GESUNDHEIT),
   // Körper-Profil (08.10. abends, Fragebogen Teil 3): Leitsatz, Beschwerden, Hebel, Stufenplan, Zusammenhänge, Anzeige-Einstellungen —
@@ -717,7 +724,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'rollend 45 Tage (ältere Tage fallen beim Schreiben heraus); Konto löschen entfernt den Bestand samt Tageskopien',
   }),
   K('ordnung', 'Sortierung/Ordnung von Listen.'),
-  K('performance', 'Wachstums-Score (Zahlen).'),
+  K('performance', 'Wachstums-Score (Zahlen) — Altbestand, wird seit 21.10. nicht mehr geschrieben (nur noch zwei Scores, lib/scores).'),
   K('planung-einheiten--*', 'Einheiten der Planung je Haushalt.'),
   K('spaces', 'Space-Einstellungen.'),
   // Tageslauf je Person seit 08.10. spät (Datenschutz vor dem Upload): die Ausrichtung entsteht mit dem Gesundheitskontext der Person
@@ -778,7 +785,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
-  K('performance--*', 'Wachstums-Score je Person (Zahlen).'),
+  K('performance--*', 'Wachstums-Score je Person (Zahlen) — Altbestand, wird seit 21.10. nicht mehr geschrieben.'),
   K('flaeche', 'Anordnung der Flächen (Erstkonto).'),
   K('flaeche--*', 'Anordnung der Flächen je Person.'),
   K('hoi-aussen', 'Außenprüfung des Head of IT (Zeiten, Status).'),
@@ -852,7 +859,7 @@ const IN_BUSINESS: readonly string[] = [
 ];
 const JE_PERSON: readonly string[] = [
   // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber
-  'sport', 'sport--*', 'vitals', 'vitals--*', 'gesundheit-index', 'gesundheit-index--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
+  'sport', 'sport--*', 'vitals', 'vitals--*', 'gesundheit-index', 'gesundheit-index--*', 'privat-score--*', 'haut', 'haut--*', 'streak', 'streak--*', 'health-log', 'health-log--*', 'journal', 'journal--*',
   'gesundheit-alltag', 'gesundheit-alltag--*', 'gesundheit-koerper', 'gesundheit-koerper--*', 'gesundheit-unterlagen', 'gesundheit-unterlagen--*', 'gesundheitszeit', 'gesundheitszeit--*',
   'gesundheit-einwilligungen', 'whoop-stand--*', 'whoop-verbindung--*', 'erholung--*',
   // Routinen 2 (10.10.): Zähler, Erinnerungs-Einstellung und Riegel je Person — wie der Gesundheits-Log
@@ -908,8 +915,8 @@ export const GEMISCHT: Readonly<Record<string, string>> = {
   'kapazitaet-plan--*': 'Wochenpläne der Arbeit inkl. Selbstständigkeit (Posten nur als Kennung)',
   zeit: 'Schlüssel space:bereich je Tag; Fokus-Blöcke mit Einheit/Mandat',
   'zeit--*': 'Schlüssel space:bereich je Tag; Fokus-Blöcke mit Einheit/Mandat',
-  performance: 'Wachstums-Score je Tag: Säulen Gesundheit/Familie (privat) und Business/Finanzen in einem Eintrag',
-  'performance--*': 'Wachstums-Score je Tag: Säulen Gesundheit/Familie (privat) und Business/Finanzen in einem Eintrag',
+  performance: 'Altbestand (bis 21.10.): Wachstums-Score je Tag — Säulen Gesundheit/Familie (privat) und Business/Finanzen in einem Eintrag; seitdem getrennt (privat-score--*, business-verlauf)',
+  'performance--*': 'Altbestand (bis 21.10.): Wachstums-Score je Tag — Säulen Gesundheit/Familie (privat) und Business/Finanzen in einem Eintrag; seitdem getrennt (privat-score--*, business-verlauf)',
   tageslauf: 'Tagesläufe: Ausrichtung mit Tagesform (Art. 9) und Business-Prioritäten in einem Text',
   'tageslauf--*': 'Tagesläufe: Ausrichtung mit Tagesform (Art. 9) und Business-Prioritäten in einem Text',
   // ── Kalender ──

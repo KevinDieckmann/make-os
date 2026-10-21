@@ -179,9 +179,13 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'state/willkommen': r('GET,POST,DELETE', 'haushalt', 'Willkommens-Haken des Haushalts.'),
   'state/meetings': r('GET,POST,DELETE', 'haushalt', 'Meeting-Verlauf (Wortlaut Dritter) des Haushalts.'),
   'onboarding': r('GET,POST', 'haushalt', 'Einrichtung (Onboarding): gemeinsame Häkchen und Befunde für den Haushalt, persönliche nur für die Person der Sitzung; abhaken nur die Person selbst (Dienstweg 403, ohne Person 401), Inhaber-Schritte nur der Inhaber.'),
-  'startflaeche': r('GET', 'haushalt', 'Kennzahlen aus den Beständen des Haushalts; Score der anderen Person nur mit Freigabe.'),
+  'startflaeche': r('GET', 'haushalt', 'Kennzahlen aus den Beständen des Haushalts — seit 21.10. ohne Score (die zwei Scores nur über `scores`, nur die Person selbst).'),
   'risk': r('GET', 'haushalt', 'Warnungen aus Finanz-, Aufgaben- und Kalenderbeständen des Haushalts.'),
-  'performance': r('GET,POST', 'haushalt', 'MAKE Score je Person aus Beständen des Haushalts; POST auch als Systemlauf (Tagesstart).', undefined, 'Idempotenter Tagespunkt im EIGENEN Verlauf der Person (erster Aufruf des Tages) — der Systemlauf kennt nur den Inhaber.'),
+  'performance': r('POST', 'haushalt', 'Score-Agent und Tagespunkt (21.10.: auf den zwei Scores — Privat-Score der Person, Business-Score; kein gemischter Score mehr, kein GET); POST auch als Systemlauf (Tagesstart, rechnet für den Inhaber).'),
+  // Die zwei Scores (21.10., Kevin): Privat-Score je Person (eigene Gesundheit nur mit Einwilligung, Finanzen privat, Planung, Familie) und Business-Score
+  // (= Business-Index, Gesamtsicht). Nur die Person selbst (eigenePerson: Sitzung, Haushalt des Inhabers, Dienstweg 403), kein Parameter für eine andere
+  // Person; welcher Score, entscheidet EINE reine Stelle (lib/scores/sicht.ts): Privat nie für „nur Business“.
+  'scores': r('GET,POST', 'person', 'Die zwei Scores der Person selbst (Privat-Score mit eigener Gesundheit, Business-Score = Business-Index); Privat nie für Konten „nur Business“; POST nur eigene Schwellen des Privat-Scores. (Wie Gesundheits- und Privat-Index hält das Rechnen einmal am Tag den Tagespunkt im EIGENEN Verlauf `privat-score--<person>` fest — in lib/scores/server.ts, nicht im Rumpf.)'),
   'state/flaeche': r('GET,PUT', 'person', 'Flächen-Layout je Person (speicherFuer).'),
   'state/rituale': r('GET,PUT', 'person', 'Rituale-Log je Person.'),
   'heute/anstehend': r('GET', 'haushalt', '„Heute“ aus Kalender, Fristen, Follow-ups des Haushalts.'),
