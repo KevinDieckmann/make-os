@@ -240,8 +240,6 @@ function ausstiegZiel(def: Pick<ProzessDefinition, 'knoten'>, k: K): string | nu
   return kantenVon(ohne).find(x => x.von === k.id && x.ausgang === 'weiter')?.nach ?? null;
 }
 
-const positiv = (k: K): LaufAusgang => (k.form === 'entscheidung' || k.form === 'freigabe' ? 'ja' : 'weiter');
-const istTag = (t: unknown): t is string => typeof t === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t);
 const zahl = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const text = (v: unknown): string => (typeof v === 'string' ? v : '');
 const werteVon = (k: K, e: KatalogEintrag | null): Record<string, MaskenWert> => ({ ...(e ? maskeVorgaben(e) : {}), ...(k.katalog?.werte ?? {}) });
