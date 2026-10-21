@@ -252,12 +252,12 @@ describe('Teilmonat mit Zusatz: Summe der Liquidität = Summe der Monatsrechnung
   it('Stundensatz: geplante Stunden je Monat (höchstens der Deckel) als Posten; je Einheit und inklusive: keiner', () => {
     const m = mandat({ leistungId: undefined, zusatz: [zusatz({ id: 'mz-std', leistungId: 'l-std', honorar: { betragCent: 18_000, basis: 'stunde' }, stundenJeMonat: 30 }), zusatz({ id: 'mz-je', leistungId: 'l-je', honorar: { betragCent: 150_000, basis: 'einheit' } })] });
     const z = zusatzLiquiditaet(m, '2026-11', geplantesEnde(m), ctx);
-    expect(z).toEqual([{ id: 'z-mz-std', titel: 'Sparring', betrag: 4284, rhythmus: 'monatlich', ab: '2026-11-15', bis: '2027-04-15', notiz: 'Aus dem Mandat (CRM): Zusatzmodul „Sparring“ — 30 Std./Monat geplant (abgerechnet wird nach Stunden).' }]);
+    expect(z).toEqual([{ id: 'z-mz-std', titel: 'Sparring', betrag: 4284, rhythmus: 'monatlich', ab: '2026-11-15', bis: '2027-04-15', notiz: 'Aus dem Mandat (CRM): Zusatzmodul „Sparring“ — 30 Std./Monat geplant (abgerechnet wird nach Stunden).', monat: '2026-11' }]);
   });
   it('offen verlängert: das laufende Modul läuft ohne Ende weiter', () => {
     const m = mandat({ verlaengerung: 'auto', mindestlaufzeitMonate: undefined, leistungId: undefined, zusatz: [zusatz({ honorar: { betragCent: 49_000, basis: 'monat' } })] });
     const z = zusatzLiquiditaet(m, '2026-11', geplantesEnde(m), ctx);
-    expect(z).toEqual([{ id: 'z-mz-1', titel: 'Reporting-Modul', betrag: 583.1, rhythmus: 'monatlich', ab: '2026-11-15', notiz: 'Aus dem Mandat (CRM): Zusatzmodul „Reporting-Modul“ — wie die Monatsrechnung.' }]);
+    expect(z).toEqual([{ id: 'z-mz-1', titel: 'Reporting-Modul', betrag: 583.1, rhythmus: 'monatlich', ab: '2026-11-15', notiz: 'Aus dem Mandat (CRM): Zusatzmodul „Reporting-Modul“ — wie die Monatsrechnung.', monat: '2026-11' }]);
   });
   it('„Plan angleichen“ kennt die Module; alte Posten bleiben, bis jemand angleicht', () => {
     const ohne = mandat({ leistungId: undefined });

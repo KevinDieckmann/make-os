@@ -40,6 +40,11 @@ export interface Rechnung {
   leistungVon?: string;
   leistungBis?: string;
   notiz?: string;
+  /** Für „Rechnung statt Plan“ (21.10., `rechnungDeckung`): Zahlungsziel, Stornorechnung, aus einem Angebot, Positionen (nur Kennungen). */
+  zahlungszielTage?: number;
+  art?: string;
+  angebotId?: string;
+  positionen?: readonly { id: string }[];
 }
 export interface Zahlung { id: string; an: string; titel: string; betrag: number; status: string; faellig?: string; firmaId?: string }
 export interface Merkposten { id: string; titel: string; betrag: number; art: string; notiz?: string; firmaId?: string }
@@ -136,6 +141,13 @@ export interface Planposten {
   wahrscheinlich?: number;
   /** Ersetzt einen importierten Plan-Posten (Excel-Import legt ihn nicht wieder an). */
   ersetzt?: string;
+  /**
+   * Posten aus einem Mandat (21.10., Rundgang 19.10. A2 — gesetzt von lib/crm/kunden.ts `mandatPosten`, optional): das Mandat und der Leistungsmonat
+   * der ersten Zahlung (`ab`; wiederkehrend je Zahlung + 1 bzw. 3 bzw. 12 Monate). Damit erkennt die Vorschau, welche Zahlung eine gestellte Rechnung
+   * schon ersetzt (`rechnungDeckung`). Altbestand ohne die Felder: Mandat aus der Kennung `lp-mandat-<id>…`, Monat aus der Kennung bzw. `ab` − Zahlungsziel.
+   */
+  mandatId?: string;
+  leistungsmonat?: string;
 }
 
 /** Die Kategorien, in denen bei uns gedacht wird. */
@@ -220,9 +232,9 @@ export function zahltage(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus'>, von: st
   return raus;
 }
 
-/** Fällt der Posten in dieser Woche an? Liefert den (ersten) Zahltag oder null. */
-function faelligIn(p: Planposten, vonISO: string, bisISO: string): string | null {
-  return zahltage(p, vonISO, bisISO)[0] ?? null;
+/** Fällt der Posten in dieser Woche an? Liefert den (ersten) Zahltag, den keine Rechnung ersetzt (`deckung`), oder null. */
+function faelligIn(p: Planposten, vonISO: string, bisISO: string, deckung: Deckung = KEINE_DECKUNG): string | null {
+  return zahltage(p, vonISO, bisISO).find(t => !deckung(p, t)) ?? null;
 }
 
 /** Der letzte Zahltag eines Postens: einmalig `ab`; wiederkehrend mit `bis` der letzte bis dahin (null, wenn er nie zahlt); ohne `bis` offen (null). */
@@ -235,22 +247,95 @@ export function letzterZahltag(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus'>): 
 /** Tag + n Monate (am Monatsende gekappt). */
 const monatePlus = (tag: string, n: number) => kterZahltag(tag, 1, n);
 
+// ── Rechnung statt Plan (21.10., Rundgang 19.10. A2) — EINE Stelle für die Vorschau UND die Kopfzahl „Was reinkommt“ ─────────────────
+// Vorher zählten eine gestellte Rechnung eines Mandats und der Planposten desselben Monats beide (Woche ab 02.11.: Rechnung +2.578 € und dieselben
+// Posten noch einmal). Regel: Gibt es für einen Mandats-Monat eine Rechnung (gestellt oder bezahlt, nicht storniert, keine Stornorechnung; Mandat +
+// Leistungsmonat), zählt die Rechnung — die Zahlung des Planpostens für diesen Monat nicht. Ein Entwurf ersetzt den Plan nur dort, wo er selbst zählt
+// (optimistische Vorschau). Keine Monatsrechnung sind Rechnungen aus einem Angebot und Rechnungen nur aus abgerechneten Zusatzmodulen (`za-…`, wie der
+// Rechnungs-Server). Ohne solche Rechnungen rechnet alles bit-gleich wie vorher.
+
+/** Vorsilbe/Trenner der Mandats-Posten (= lib/crm/mandant-link.ts `PLANPOSTEN_MANDAT`/`PLANPOSTEN_TEIL`; hier ohne Import, die Datei bleibt leicht). */
+const POSTEN_MANDAT = 'lp-mandat-';
+const POSTEN_TEIL = '~';
+/** Kennungs-Vorsilbe der Positionen aus „abrechnen“ — lib/crm/mandat-zusatz.ts `POS.abrechnen` liest sie von hier (EINE Stelle). */
+export const ABGERECHNET_PRAEFIX = 'za-';
+const MONAT = /^\d{4}-(0[1-9]|1[0-2])$/;
+const monatVon = (tag: string) => tag.slice(0, 7);
+const monatPlusN = (monat: string, n: number) => kterZahltag(`${monat}-01`, 1, n).slice(0, 7);
+const monateAbstand = (a: string, b: string) => (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7));
+const tagMinus = (tag: string, n: number) => new Date(Date.parse(`${tag.slice(0, 10)}T12:00:00Z`) - n * 864e5).toISOString().slice(0, 10);
+
+/** Das Mandat hinter einem Planposten: Feld `mandatId`, sonst aus der Kennung `lp-mandat-<id>` bzw. `lp-mandat-<id>~…` (sonst null). */
+export function mandatVonPosten(p: Partial<Pick<Planposten, 'id' | 'mandatId'>>): string | null {
+  if (p.mandatId) return p.mandatId;
+  if (!p.id?.startsWith(POSTEN_MANDAT)) return null;
+  return p.id.slice(POSTEN_MANDAT.length).split(POSTEN_TEIL)[0] || null;
+}
+
+/**
+ * Der Leistungsmonat der Zahlung eines Mandats-Postens am Zahltag `tag` („JJJJ-MM“): der Monat der ersten Zahlung + so viele Monate, wie der Zahltag
+ * hinter `ab` liegt (einmalig: 0). Der Monat der ersten Zahlung: Feld `leistungsmonat`, sonst der Monat am Ende der Kennung (`…~JJJJ-MM`: Teilmonat,
+ * Zusatzmodul, Anrechnung), sonst (Altbestand) der Monat von `ab` − Zahlungsziel (`zielTage`, der Zahltag eines Mandats-Postens ist Beginn der
+ * Leistung im Monat + Zahlungsziel — lib/crm/mandat-laufzeit.ts).
+ */
+export function postenLeistungsmonat(p: Pick<Planposten, 'ab' | 'rhythmus'> & Partial<Pick<Planposten, 'id' | 'leistungsmonat'>>, tag: string, zielTage: number): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(p.ab ?? '') || !/^\d{4}-\d{2}-\d{2}/.test(tag)) return null;
+  const k = SCHRITT[p.rhythmus] ? monateAbstand(monatVon(p.ab), monatVon(tag)) : 0;
+  const ausId = /~(\d{4}-\d{2})$/.exec(p.id ?? '')?.[1];
+  const erster = p.leistungsmonat && MONAT.test(p.leistungsmonat) ? p.leistungsmonat : ausId && MONAT.test(ausId) ? ausId : monatVon(tagMinus(p.ab, Math.max(0, zielTage)));
+  return monatPlusN(erster, k);
+}
+
+/** Ersetzt eine Zahlung eines Planpostens (Posten, Zahltag)? */
+export type Deckung = (p: Pick<Planposten, 'ab' | 'rhythmus'> & Partial<Pick<Planposten, 'id' | 'mandatId' | 'leistungsmonat'>>, tag: string) => boolean;
+/** Keine Rechnung ersetzt etwas (ohne Rechnungen; Altverhalten). */
+export const KEINE_DECKUNG: Deckung = () => false;
+
+/** Ist die Rechnung eine Monatsrechnung eines Mandats, die ihren Monat im Plan ersetzt? (gestellt/bezahlt; Entwurf nur mit `mitEntwurf`) */
+export function rechnungDecktMonat(r: Pick<Rechnung, 'status' | 'mandatId' | 'leistungVon'> & Partial<Pick<Rechnung, 'art' | 'angebotId' | 'positionen'>>, mitEntwurf = false): boolean {
+  if (!r.mandatId || typeof r.leistungVon !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(r.leistungVon)) return false;
+  if (r.art === 'storno' || r.angebotId) return false;
+  if (!(r.status === 'gestellt' || r.status === 'bezahlt' || (mitEntwurf && r.status === 'geplant'))) return false;
+  const pos = r.positionen ?? [];
+  return !(pos.length && pos.every(p => typeof p.id === 'string' && p.id.startsWith(ABGERECHNET_PRAEFIX)));
+}
+
+/**
+ * Die EINE Regel „Rechnung statt Plan“ als Prüfung (Posten, Zahltag) → ersetzt (rein). `mitEntwurf`: auch Entwürfe (nur, wo sie selbst zählen —
+ * die optimistische Vorschau). Ohne passende Rechnungen: `KEINE_DECKUNG` (bit-gleich).
+ */
+export function rechnungDeckung(rechnungen: readonly Rechnung[], opt: { mitEntwurf?: boolean } = {}): Deckung {
+  const je = new Map<string, { monat: string; ziel: number }[]>();
+  for (const r of rechnungen) {
+    if (!rechnungDecktMonat(r, !!opt.mitEntwurf)) continue;
+    const ziel = typeof r.zahlungszielTage === 'number' && Number.isFinite(r.zahlungszielTage) && r.zahlungszielTage >= 0 ? r.zahlungszielTage : 14;
+    je.set(r.mandatId!, [...(je.get(r.mandatId!) ?? []), { monat: monatVon(r.leistungVon!), ziel }]);
+  }
+  if (!je.size) return KEINE_DECKUNG;
+  return (p, tag) => {
+    const mid = mandatVonPosten(p);
+    const l = mid ? je.get(mid) : undefined;
+    return !!l && l.some(d => postenLeistungsmonat(p, tag, d.ziel) === d.monat);
+  };
+}
+
 /**
  * Was ein Posten „je Monat“ ausmacht (Liquidität › Was reinkommt / Was rausgeht, Nachprüfung 18.10. N3): nur, solange er wirklich zahlt —
  * ein wiederkehrender Posten zählt mit seinem Monatswert (Quartal ⅓, Jahr 1/12), wenn er im nächsten Abstand ab heute (1 bzw. 3 bzw. 12 Monate)
- * einen Zahltag hat. Beendete (letzter Zahltag vorbei) und erst später beginnende zählen nicht; einmalige nie.
+ * einen Zahltag hat. Beendete (letzter Zahltag vorbei) und erst später beginnende zählen nicht; einmalige nie. Seit 21.10. (A2): Zahltage, die eine
+ * Rechnung ersetzt (`deckung`, dieselbe Regel wie die Vorschau), zählen nicht.
  */
-export function monatswert(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus' | 'betrag'>, heute: string): number {
+export function monatswert(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus' | 'betrag'> & Partial<Pick<Planposten, 'id' | 'mandatId' | 'leistungsmonat'>>, heute: string, deckung: Deckung = KEINE_DECKUNG): number {
   const schritt = SCHRITT[p.rhythmus];
   if (!schritt) return 0;
   const fensterEnde = new Date(Date.parse(`${monatePlus(heute, schritt)}T12:00:00Z`) - 864e5).toISOString().slice(0, 10);
-  const fenster = zahltage(p, heute, fensterEnde);
+  const fenster = zahltage(p, heute, fensterEnde).filter(t => !deckung(p, t));
   return fenster.length ? p.betrag * MONATSANTEIL[p.rhythmus] : 0;
 }
 
-/** Summe je Monat einer Liste (gerundet auf den Euro für die Kopfzeile). */
-export const monatsSumme = (l: readonly Pick<Planposten, 'ab' | 'bis' | 'rhythmus' | 'betrag'>[], heute: string): number =>
-  Math.round(l.reduce((s, p) => s + monatswert(p, heute), 0));
+/** Summe je Monat einer Liste (gerundet auf den Euro für die Kopfzeile) — `deckung` wie in der Vorschau (`rechnungDeckung`). */
+export const monatsSumme = (l: readonly (Pick<Planposten, 'ab' | 'bis' | 'rhythmus' | 'betrag'> & Partial<Pick<Planposten, 'id' | 'mandatId' | 'leistungsmonat'>>)[], heute: string, deckung: Deckung = KEINE_DECKUNG): number =>
+  Math.round(l.reduce((s, p) => s + monatswert(p, heute, deckung), 0));
 
 const tagText = (d: string, heute: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4) !== heute.slice(0, 4) ? d.slice(2, 4) : ''}`;
 const RHYTHMUS_TEXT: Record<Rhythmus, string> = { einmalig: 'einmalig', monatlich: 'jeden Monat', quartal: 'jedes Quartal', jaehrlich: 'jedes Jahr' };
@@ -290,6 +375,8 @@ export function vorschau(
   }
   // „optimistisch" bleibt als Kurzform erhalten: es entspricht dem guten Fall.
   const schwelle = optimistisch ? SZENARIO_SCHWELLE.gut : SZENARIO_SCHWELLE[szenario];
+  // Rechnung statt Plan (21.10., A2): die Zahlung eines Mandats-Postens, deren Monat eine Rechnung schon trägt, zählt nicht — Entwürfe nur, wo sie selbst zählen.
+  const deckung = rechnungDeckung(rechnungen, { mitEntwurf: optimistisch });
   const start = (nurFirma ? firmen.filter(f => f.id === nurFirma) : firmen)
     .reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const fix = monatlicheLast(merkposten);
@@ -345,7 +432,7 @@ export function vorschau(
     for (const p of planposten) {
       // Filter je Firma: erlaubt eine Planung pro Gesellschaft statt im Topf.
       if (nurFirma && p.firmaId && p.firmaId !== nurFirma) continue;
-      const datum = faelligIn(p, vonISO, bisISO);
+      const datum = faelligIn(p, vonISO, bisISO, deckung);
       if (!datum) continue;
       // Einnahmen zählen nur, wenn sie im gewählten Szenario überhaupt eintreten.
       // Ausgaben, die an unsicheren Einnahmen hängen (z. B. die USt-Zahllast

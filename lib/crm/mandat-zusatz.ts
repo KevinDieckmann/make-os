@@ -17,6 +17,7 @@ import { leistungsmonat, monatsHonorar, monatsName, plusMonateGekappt, zahlungsz
 import { ANRECHNUNG_PRAEFIX, anteilText, positionAusMandat, positionNetto, rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
 import { UST_SAETZE } from './angebote';
 import { hatPreisteile, hauptpreis, preisteileVon } from './produkt-karte';
+import { ABGERECHNET_PRAEFIX } from '@/lib/make-one/liquiditaet';
 import { inCent, kaufmaennisch } from '@/lib/finanzen/ust';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ export function zusatzArt(z: Pick<MandatZusatz, 'inklusive' | 'honorar'>): Zusat
 /** „je Quartal“ … für inklusive Mengen. */
 export const JE_TEXT: Record<NonNullable<MandatZusatz['je']>, string> = { monat: 'Monat', quartal: 'Quartal', jahr: 'Jahr' };
 /** Präfixe der Positions-Kennungen (die Kennung ist der Merker — nie umbenennen): laufend · inklusive · jährlich · einmalig · abgerechnet · Anrechnung. */
-export const POS = { monat: 'zm-', inklusive: 'zi-', jahr: 'zj-', einmalig: 'ze-', abrechnen: 'za-', anrechnung: ANRECHNUNG_PRAEFIX } as const;
+export const POS = { monat: 'zm-', inklusive: 'zi-', jahr: 'zj-', einmalig: 'ze-', abrechnen: ABGERECHNET_PRAEFIX, anrechnung: ANRECHNUNG_PRAEFIX } as const;
 /** Positionen, die „abrechnen“ anlegt — eine Rechnung NUR aus solchen ist keine Monatsrechnung (sie hält den Monat nicht auf). */
 export const nurAbgerechnet = (r: Pick<Rechnung, 'positionen'>) => !!r.positionen?.length && r.positionen.every(p => p.id.startsWith(POS.abrechnen));
 
@@ -59,8 +60,13 @@ export function zusatzZeitraum(m: Partial<Pick<Mandat, 'start'>>, z: Pick<Mandat
   return { ...(s ? { start: s } : {}), ...(e ? { ende: e } : {}) };
 }
 
-/** Der Monat, in dem der Rest eines einmaligen Moduls mit Zahlplan fällig wird: der Monat von „bis“, ohne „bis“ der Folgemonat des Beginns. */
-function restMonat(zr: { start?: string; ende?: string }): string | null {
+/**
+ * Der Monat, in dem der Rest eines einmaligen Moduls mit Zahlplan fällig wird: der Monat von „bis“ (bzw. dem gesetzten Ende des Mandats), ohne beides der
+ * Folgemonat des Beginns. 21.10.: IMMER mit dem gesetzten Ende (`m.ende`) gerechnet — vorher nahm die Liquidität das geplante Ende (Mindestlaufzeit) und
+ * legte den Rest ein halbes Jahr später als die Rechnung (Summe gleich, Monat falsch; „Rechnung statt Plan“ fand die Zahlung dann nicht).
+ */
+function restMonat(m: Partial<Pick<Mandat, 'start' | 'ende'>>, z: Pick<MandatZusatz, 'ab' | 'bis'>): string | null {
+  const zr = zusatzZeitraum(m, z, m.ende);
   if (!zr.start) return null;
   return zr.ende ? zr.ende.slice(0, 7) : monatPlus(zr.start.slice(0, 7), 1);
 }
@@ -113,7 +119,7 @@ export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 
       if (!zr.start) continue;
       const s = zr.start.slice(0, 7);
       const p = z.zahlplan?.anzahlungProzent;
-      const r = p ? restMonat(zr) : null;
+      const r = p ? restMonat(m, z) : null;
       const betrag = z.honorar!.betragCent;
       if (p && r && r !== s) {
         const anzahlung = kaufmaennisch((betrag * p) / 100);
@@ -292,6 +298,8 @@ export interface ZusatzPostenRoh {
   ab: string;
   bis?: string;
   notiz: string;
+  /** Leistungsmonat der ersten Zahlung („JJJJ-MM“, 21.10., A2) — wiederkehrend je Zahlung + 1 bzw. 12 Monate (Planposten `leistungsmonat`). */
+  monat: string;
 }
 
 interface Zahlung { monat: string; cent: number; tag: string; voll: boolean; titel: string }
@@ -313,9 +321,9 @@ function buendeln(zid: string, l: readonly Zahlung[], schritt: 1 | 12, offen: bo
       const id = hauptVergeben ? `z-${zid}~${a.monat}` : `z-${zid}`;
       hauptVergeben = true;
       const lauftWeiter = letzteReihe && offen;
-      raus.push({ id, titel: name, betrag: a.cent / 100, rhythmus: schritt === 1 ? 'monatlich' : 'jaehrlich', ab: a.tag, ...(lauftWeiter ? {} : { bis: plusMonateGekappt(a.tag, schritt * (n - 1)) }), notiz });
+      raus.push({ id, titel: name, betrag: a.cent / 100, rhythmus: schritt === 1 ? 'monatlich' : 'jaehrlich', ab: a.tag, ...(lauftWeiter ? {} : { bis: plusMonateGekappt(a.tag, schritt * (n - 1)) }), notiz, monat: a.monat });
     } else {
-      for (let k = i; k < j; k++) raus.push({ id: `z-${zid}~${l[k].monat}`, titel: l[k].titel, betrag: l[k].cent / 100, rhythmus: 'einmalig', ab: l[k].tag, notiz });
+      for (let k = i; k < j; k++) raus.push({ id: `z-${zid}~${l[k].monat}`, titel: l[k].titel, betrag: l[k].cent / 100, rhythmus: 'einmalig', ab: l[k].tag, notiz, monat: l[k].monat });
     }
     i = j;
   }
@@ -337,15 +345,15 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
   // Horizont: hinter dem letzten Ereignis (Beginn/Ende eines Moduls oder des Mandats, Rest eines Zahlplans) ist alles gleichförmig — 13 Monate
   // danach reichen, damit jede jährliche Zahlung einmal im Gleichlauf steht; offene Reihen laufen danach ohne Ende weiter.
   const ereignisse = [abMonat, m.start, ende, ...liste.flatMap(z => [z.ab, z.bis])].filter((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}/.test(x)).map(x => x.slice(0, 7));
-  for (const z of liste) { const r = z.zahlplan ? restMonat(zusatzZeitraum(m, z, ende)) : null; if (r) ereignisse.push(r); }
+  for (const z of liste) { const r = z.zahlplan ? restMonat(m, z) : null; if (r) ereignisse.push(r); }
   const horizont = ende ? ende.slice(0, 7) : monatPlus(ereignisse.sort().at(-1)!, 13);
   const brutto = (l: readonly RechnungPosition[]) => rechnungSummen(l).brutto;
-  const mitEnde = { ...m, ...(ende ? { ende } : {}) };
-  // Je Monat die Positionen der Monatsrechnung (einmal gerechnet, für alle Module).
+  // Je Monat die Positionen der Monatsrechnung (einmal gerechnet, für alle Module) — mit dem geplanten Ende als Laufzeit (`ende`); das Mandat selbst
+  // bleibt unverändert (der Rest eines Zahlplans richtet sich nach dem gesetzten Ende, wie auf der Rechnung — `restMonat`).
   const monate: string[] = [];
   const start = [abMonat, m.start?.slice(0, 7)].filter((x): x is string => !!x).sort().at(-1)!;
   for (let mo = start; mo <= horizont; mo = monatPlus(mo, 1)) monate.push(mo);
-  const jeMonat = new Map(monate.map(mo => [mo, monatsPositionen(mitEnde, mo, pctx, ende)]));
+  const jeMonat = new Map(monate.map(mo => [mo, monatsPositionen(m, mo, pctx, ende)]));
   const raus: ZusatzPostenRoh[] = [];
   for (const z of liste) {
     const art = zusatzArt(z);
@@ -379,7 +387,7 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
       const titelTeil = art === 'einmalig' ? (l[k].titel.includes(' — ') ? `${name} ${l[k].titel.split(' — ').pop()}` : name) : `${name} ${monatsName(mo)}${lm.anteilig ? ' anteilig' : ''}`;
       zahlungen.push({ monat: mo, cent, tag: plusTage(lm.von, ziel), voll: art === 'jahr' || (art === 'monat' && !lm.anteilig), titel: titelTeil });
     }
-    if (art === 'einmalig') raus.push(...zahlungen.map(x => ({ id: `z-${z.id}~${x.monat}`, titel: x.titel, betrag: x.cent / 100, rhythmus: 'einmalig' as const, ab: x.tag, notiz })));
+    if (art === 'einmalig') raus.push(...zahlungen.map(x => ({ id: `z-${z.id}~${x.monat}`, titel: x.titel, betrag: x.cent / 100, rhythmus: 'einmalig' as const, ab: x.tag, notiz, monat: x.monat })));
     else raus.push(...buendeln(z.id, zahlungen, art === 'jahr' ? 12 : 1, offen, notiz, name));
   }
   return raus;
@@ -410,12 +418,11 @@ export function anrechnungLiquiditaet(m: Mandat, abMonat: string, ende: string |
       .map(r => ({ monat: r.leistungVon!.slice(0, 7), cent: anrechnungWirkungCent(r.positionen!), titel: titel(r.positionen!) }))
       .filter(x => x.cent < 0);
   }
-  const mitEnde = { ...m, ...(ende ? { ende } : {}) };
   const pctx: PositionKontext = { katalog: ctx.katalog, nettoAusBrutto: ctx.nettoAusBrutto };
   const start = [abMonat, m.start?.slice(0, 7)].filter((x): x is string => !!x).sort().at(-1)!;
   const letzter = ende ? ende.slice(0, 7) : monatPlus(start, 24);
   for (let mo = start; mo <= letzter; mo = monatPlus(mo, 1)) {
-    const pos = monatsPositionen(mitEnde, mo, pctx, ende);
+    const pos = monatsPositionen(m, mo, pctx, ende);
     if (!pos.length) continue;
     const anr = anrechnungPositionen(m, pos, ctx);
     if (!anr.length) return [];

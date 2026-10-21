@@ -154,12 +154,13 @@ export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean;
   // Register-Gesellschaften (`g-…`, 04.10.) führt der Liquiplan noch nicht — dann ohne Firma (wie „offen“), nie still bei kdc.
   const firma = m.gesellschaft === 'offen' || istRegisterKennung(m.gesellschaft) ? undefined : m.gesellschaft;
   const name = mandatName(m.kunde, m.titel);
-  const gemeinsam = { sicher, ...(sicher ? {} : { wahrscheinlich: m.status === 'verhandlung' ? 50 : 80 }), ...(firma ? { firmaId: firma } : {}), kategorie: 'mandat' } as const;
+  // `mandatId` (21.10., A2): die Vorschau erkennt daran (mit `leistungsmonat` je Posten), welche Zahlung eine gestellte Rechnung schon ersetzt.
+  const gemeinsam = { sicher, ...(sicher ? {} : { wahrscheinlich: m.status === 'verhandlung' ? 50 : 80 }), ...(firma ? { firmaId: firma } : {}), kategorie: 'mandat', mandatId: m.id } as const;
   const basis = m.start && m.start > heute ? m.start : heute;
   // Zusatzmodule (19.10., P3): je Modul eigene Posten `lp-mandat-<id>~z-<Modul>…` nach derselben Laufzeit-Regel — ohne `zusatz` keine (bit-gleich).
   const zusatz: Planposten[] = m.zusatz?.length
     ? zusatzLiquiditaet(m, basis.slice(0, 7), ende, { katalog: opt.katalog, nettoAusBrutto }).map(z => ({
-      id: `${PLANPOSTEN_MANDAT}${m.id}${PLANPOSTEN_TEIL}${z.id}`, titel: titelMit(name, ` — ${z.titel}`.slice(0, 60)), betrag: z.betrag, rhythmus: z.rhythmus, ab: z.ab, ...(z.bis ? { bis: z.bis } : {}), ...gemeinsam, notiz: z.notiz,
+      id: `${PLANPOSTEN_MANDAT}${m.id}${PLANPOSTEN_TEIL}${z.id}`, titel: titelMit(name, ` — ${z.titel}`.slice(0, 60)), betrag: z.betrag, rhythmus: z.rhythmus, ab: z.ab, ...(z.bis ? { bis: z.bis } : {}), ...gemeinsam, leistungsmonat: z.monat, notiz: z.notiz,
     }))
     : [];
   // Anrechnung (19.10., P3b): dieselbe Regel wie die Monatsrechnung — einmal, höchstens bis zum Betrag des Monats, im Monat der ersten Rechnung;
@@ -167,7 +168,7 @@ export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean;
   const anrechnung: Planposten[] = opt.anrechnung && opt.katalog && m.firmaId && m.leistungId
     ? anrechnungLiquiditaet(m, basis.slice(0, 7), ende, { katalog: opt.katalog, mandate: opt.anrechnung.mandate, rechnungen: opt.anrechnung.rechnungen, nettoAusBrutto }).map((a, i) => {
       const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, a.monat);
-      return { id: anrechnungPostenId(m, i ? a.monat : undefined), titel: titelMit(name, ` — ${a.titel}`.slice(0, 60)), betrag: a.cent / 100, rhythmus: 'einmalig' as const, ab: plusTage(lm?.tage ? lm.von : `${a.monat}-01`, zahlungsziel(m)), ...gemeinsam,
+      return { id: anrechnungPostenId(m, i ? a.monat : undefined), titel: titelMit(name, ` — ${a.titel}`.slice(0, 60)), betrag: a.cent / 100, rhythmus: 'einmalig' as const, ab: plusTage(lm?.tage ? lm.von : `${a.monat}-01`, zahlungsziel(m)), ...gemeinsam, leistungsmonat: a.monat,
         notiz: `Aus dem Mandat (CRM): ${a.titel} — einmal, auf der Rechnung für ${monatsName(a.monat)} (höchstens bis zum Betrag des Monats).` };
     })
     : [];
@@ -176,7 +177,7 @@ export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean;
 }
 
 /** Die Posten des Honorars (ohne Zusatzmodule) — genau wie bis 19.10. */
-function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: string; gemeinsam: Pick<Planposten, 'sicher' | 'wahrscheinlich' | 'firmaId' | 'kategorie'> }): Planposten[] {
+function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: string; gemeinsam: Pick<Planposten, 'sicher' | 'wahrscheinlich' | 'firmaId' | 'kategorie' | 'mandatId'> }): Planposten[] {
   if (!(m.honorar.betrag > 0) || m.honorar.basis === 'tag') return [];
   const { ende, basis, name, gemeinsam } = o;
   const ziel = zahlungsziel(m);
@@ -189,14 +190,14 @@ function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: s
     const monatsAnfang = `${basis.slice(0, 8)}01`;
     const rechnungsTag = m.start && m.start.slice(0, 7) === basis.slice(0, 7) && m.start > monatsAnfang ? m.start : monatsAnfang;
     const ab = plusTage(einmalig ? basis : rechnungsTag, ziel);
-    return [{ id: hauptPostenId(m), titel: titelMit(name), betrag: brutto, rhythmus: einmalig ? 'einmalig' : 'quartal', ab, ...(!einmalig && ende ? { bis: plusTage(ende, ziel) } : {}), ...gemeinsam, notiz }];
+    return [{ id: hauptPostenId(m), titel: titelMit(name), betrag: brutto, rhythmus: einmalig ? 'einmalig' : 'quartal', ab, ...(!einmalig && ende ? { bis: plusTage(ende, ziel) } : {}), ...gemeinsam, leistungsmonat: (einmalig ? basis : rechnungsTag).slice(0, 7), notiz }];
   }
   const plan = mandatZahlplan(m, basis.slice(0, 7), ende);
   const raus: Planposten[] = plan.teile.map(t => ({
-    id: teilPostenId(m, t.monat), titel: titelMit(name, ` — ${monatsName(t.monat)} anteilig`), betrag: t.betrag, rhythmus: 'einmalig' as const, ab: t.am, ...gemeinsam,
+    id: teilPostenId(m, t.monat), titel: titelMit(name, ` — ${monatsName(t.monat)} anteilig`), betrag: t.betrag, rhythmus: 'einmalig' as const, ab: t.am, ...gemeinsam, leistungsmonat: t.monat,
     notiz: `Aus dem Mandat (CRM): ${monatsName(t.monat)} anteilig, ${t.lm.tage} von ${t.lm.monatsTage} Tagen — wie die Monatsrechnung.`,
   }));
-  if (plan.voll) raus.push({ id: hauptPostenId(m), titel: titelMit(name), betrag: plan.voll.betrag, rhythmus: 'monatlich', ab: plan.voll.ab, ...(plan.voll.bis ? { bis: plan.voll.bis } : {}), ...gemeinsam, notiz });
+  if (plan.voll) raus.push({ id: hauptPostenId(m), titel: titelMit(name), betrag: plan.voll.betrag, rhythmus: 'monatlich', ab: plan.voll.ab, ...(plan.voll.bis ? { bis: plan.voll.bis } : {}), ...gemeinsam, leistungsmonat: plan.voll.vonMonat, notiz });
   return raus.sort((x, y) => x.ab.localeCompare(y.ab));
 }
 
