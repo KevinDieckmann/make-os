@@ -33,7 +33,7 @@ import { kanalStatus } from './recht';
 import {
   ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
-  angebotHauptprodukt,
+  angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot,
 } from './angebote';
 import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgaben, type Gesellschaft, type GesellschaftenDatei } from './gesellschaften';
 import { WEG } from '@/lib/wege';
@@ -157,7 +157,8 @@ export async function angebotVersion(p: { id: string; person: string; haushalt?:
     const v = mitVorgaben(gs.find(g => g.id === a.gesellschaft) ?? { id: a.gesellschaft });
     const neu: Angebot = {
       id: neueAngebotId(), gesellschaft: a.gesellschaft, ...(a.kontaktId ? { kontaktId: a.kontaktId } : {}), ...(a.firmaId ? { firmaId: a.firmaId } : {}),
-      ...(a.dealId ? { dealId: a.dealId } : {}), ...(a.mandatId ? { mandatId: a.mandatId } : {}), titel: a.titel, positionen: a.positionen.map(x => ({ ...x })),
+      // Die neue Fassung gehört zum Deal des Vorgängers (bestätigt, B9) und behält, ob der Titel von Hand ist (A1) — 21.10.
+      ...(a.dealId ? { dealId: a.dealId, dealWahl: 'deal' as const } : {}), ...(a.mandatId ? { mandatId: a.mandatId } : {}), titel: a.titel, ...(a.titelVonHand ? { titelVonHand: true as const } : {}), positionen: a.positionen.map(x => ({ ...x })),
       einleitung: a.einleitung, schluss: a.schluss, gueltigBis: plusTage(heute, v.gueltigkeitTage), zahlungszielTage: a.zahlungszielTage,
       status: 'entwurf', version: (a.version || 1) + 1, vorgaengerId: a.id, angelegt: jetzt.toISOString(), angelegtVon: p.person, geaendert: jetzt.toISOString(), geaendertVon: p.person,
     };
@@ -259,17 +260,30 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   // 2. Deal: vorhanden (am Angebot, sonst offener der Person/Firma) oder neu über den EINEN Weg (`dealAnlegen`).
   //    Nur ein OFFENER Deal wird übernommen (08.10., Woche 1 · 3.3 Folgeauftrag): ein gewonnener, verlorener oder geparkter Deal am
   //    Entwurf zählt nicht — sonst meldete „Angenommen“ den alten Deal als gewonnen, und „Mandat anlegen“ scheiterte.
+  //    21.10. (Rundgang B9): nie still einen offenen Deal mit einem ANDEREN Produkt — die Wahl am Entwurf entscheidet (`dealWahl`): „deal“ = bestätigt,
+  //    „neu“ = ein eigener Deal (auch neben einem offenen), ohne Wahl und mit anderem Produkt → 409 mit der Rückfrage (das Tool fragt vorher).
   const firmaId = a0.firmaId ?? k.firmaId;
-  let dealId = a0.dealId && vor.chancen.some(c => c.id === a0.dealId && OFFENE_STUFEN.includes(c.stufe)) ? a0.dealId : undefined;
-  if (!dealId) dealId = vor.chancen.find(c => OFFENE_STUFEN.includes(c.stufe) && (c.kontaktIds.includes(k.id) || (!!firmaId && c.firmaId === firmaId)))?.id;
+  const hp = angebotHauptprodukt(a0, vor.leistungen);
+  const offenDeal = (id: string | undefined) => (id ? vor.chancen.find(c => c.id === id && OFFENE_STUFEN.includes(c.stufe)) : undefined);
+  const neuerDeal = a0.dealWahl === 'neu';
+  let dealId = !neuerDeal ? offenDeal(a0.dealId)?.id : undefined;
+  const bestaetigt = !!dealId && a0.dealWahl === 'deal';
+  if (!dealId && !neuerDeal) dealId = vor.chancen.find(c => OFFENE_STUFEN.includes(c.stufe) && (c.kontaktIds.includes(k.id) || (!!firmaId && c.firmaId === firmaId)))?.id;
+  const gefunden = offenDeal(dealId);
+  if (gefunden && !bestaetigt && dealProduktAnders(gefunden, hp)) {
+    const produkt = vor.leistungen.find(l => l.id === gefunden.leistungId)?.name ?? gefunden.titel;
+    throw new AngebotFehler(`${dealFrageText(produkt)} Es gibt den offenen Deal „${gefunden.titel}“ mit einem anderen Produkt — im Angebot wählen, dann senden. Nichts gestellt.`, 409, { grund: 'deal-frage', deal: { id: gefunden.id, titel: gefunden.titel } });
+  }
   if (!dealId) {
     const r = await dealAnlegen({
       titel: a0.titel, kontaktIds: [k.id], ...(firmaId ? { firmaId } : {}), wert: dealWertAusAngebot(a0), stufe: 'angebot', gesellschaft: a0.gesellschaft,
       // Das Hauptprodukt des Angebots (19.10., P3 — EINE Regel `angebotHauptprodukt`, wie Mandat und „Deal folgt dem Angebot“).
-      ...(angebotHauptprodukt(a0, vor.leistungen) ? { leistungId: angebotHauptprodukt(a0, vor.leistungen)! } : {}),
+      ...(hp ? { leistungId: hp } : {}),
+      // „Neuer Deal“ gewählt: bewusst neben einem offenen (sonst lehnte `dealAnlegen` den zweiten ab und das Stellen nahm still den offenen).
+      ...(neuerDeal ? { trotzdem: true } : {}),
       schritt: { text: 'Angebot nachfassen', datum: nachfassen },
     }, p.person, jetztIso, p.wer);
-    if (r.ok) dealId = r.chance.id; else if (r.offen) dealId = r.offen.id;
+    if (r.ok) dealId = r.chance.id; else if (r.offen && !dealProduktAnders(vor.chancen.find(c => c.id === r.offen!.id), hp)) dealId = r.offen.id;
     else hinweise.push(`Kein Deal angelegt: ${r.fehler}`);
   }
 
@@ -508,7 +522,11 @@ async function antwortSetzen(p: { id: string; stand?: unknown; person: string; w
         // Deal folgt dem Angebot (19.10., P3; Rundgang A3): enthält das angenommene Angebot ein anderes Hauptprodukt als der Deal, zieht der Deal nach —
         // sonst zählten „gewonnen“ und die Abschlussquote beim falschen Produkt. Bei mehreren Produkten zählt das Hauptprodukt.
         const hp = art === 'angenommen' ? angebotHauptprodukt(a, b.leistungen) : undefined;
-        return { ...r.chance, ...(hp && hp !== r.chance.leistungId ? { leistungId: hp } : {}), geaendertVon: p.person };
+        const folgt = !!hp && hp !== r.chance.leistungId;
+        // 21.10. (Rundgang A1): auch der Titel — aber nur ein automatisch entstandener (nur das alte Produkt bzw. das Art-Wort und die Firma).
+        const firma = (c.firmaId ? b.firmen.find(f => f.id === c.firmaId)?.name : undefined) ?? c.firma;
+        const titel = folgt ? dealTitelNachAngebot(r.chance, a, b.leistungen, firma) : null;
+        return { ...r.chance, ...(folgt ? { leistungId: hp } : {}), ...(titel ? { titel } : {}), geaendertVon: p.person };
       });
       const followups = (b.followups ?? []).map(f => (f.id === `fu-${a.id}` && (f.status === 'offen' || f.status === 'verpasst')
         ? { ...f, status: art === 'angenommen' ? 'erledigt' as const : 'abgesagt' as const, ergebnis: art === 'angenommen' ? 'Angebot angenommen' : 'Angebot abgelehnt', ...(art === 'angenommen' ? { erledigtAm: jetztIso } : {}), geaendert: jetztIso, geaendertVon: p.person } : f));

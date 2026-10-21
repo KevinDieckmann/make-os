@@ -13,6 +13,9 @@
 // Seit 29.09. (A4/A5): beim Verlassen der Seite sofort (keepalive) und mit Warnung, solange etwas offen ist; scheitert
 // das Speichern vorübergehend (Netz, 5xx), versucht es ein Timer erneut; bei 409 wird die eigene Eingabe nicht
 // weggeworfen — sie bleibt als „Deine Fassung“ (übernehmen/kopieren), gezeigt wird der gespeicherte Stand.
+// Seit 21.10. (Rundgang 19.10.): der Titel folgt den Produkten („<Firma> · <Hauptprodukt>“), solange er nicht von Hand geschrieben ist (A1); ein offener
+// Deal mit einem ANDEREN Produkt wird nie still übernommen — „Zu diesem Deal oder neuer Deal?“ (B9); ein zweiter Klick auf ein Produkt bringt nur, was
+// noch fehlt (B5). Geleerte Felder (Kontakt, Deal …) gehen als `null` an den Server — sonst bliebe dort der alte Wert stehen.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Angebot, AngebotPosition, Chance, Firma } from '@/lib/crm/typen';
@@ -32,6 +35,7 @@ import { kanalStatus } from '@/lib/crm/recht';
 import {
   angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionAusProdukt, dealWertUebernehmen, istGesellschaft,
   NACHFASSEN_WERKTAGE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE,
+  angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen,
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { absenderAus, empfaengerAus, angebotDokument } from '@/lib/crm/angebot-dokument';
@@ -43,7 +47,7 @@ import { mailtoLink } from '@/lib/crm/angebote';
 
 // Der Absender kann im Editor offen sein (08.10., Sofort-Paket 3.2): ohne Deal, Merker oder eindeutige operative Business-Gesellschaft
 // wird er gewählt — nie mehr still die Selbstständigkeit. Solange er fehlt, speichert der Entwurf nicht (Hinweis oben, Warnung beim Verlassen).
-type Form = Pick<Angebot, 'kontaktId' | 'firmaId' | 'dealId' | 'mandatId' | 'titel' | 'positionen' | 'einleitung' | 'schluss' | 'gueltigBis' | 'zahlungszielTage'> & { gesellschaft?: Gesellschaftskennung };
+type Form = Pick<Angebot, 'kontaktId' | 'firmaId' | 'dealId' | 'mandatId' | 'titel' | 'positionen' | 'einleitung' | 'schluss' | 'gueltigBis' | 'zahlungszielTage' | 'titelVonHand' | 'dealWahl'> & { gesellschaft?: Gesellschaftskennung };
 type VonHand = { titel: boolean; einleitung: boolean; schluss: boolean };
 export interface Vorbelegung { kontaktId?: string | null; firmaId?: string | null; dealId?: string | null }
 export interface Gestellt { angebot: AngebotMitStand; pdf: { id: string; name: string }; mailto: string; hinweise: string[]; dealId?: string }
@@ -51,7 +55,10 @@ export interface Gestellt { angebot: AngebotMitStand; pdf: { id: string; name: s
 const GES_WAHL: WahlEintrag<Gesellschaftskennung>[] = KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label }));
 const kopf = { fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkDim } as const;
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
-const nurForm = (a: Angebot): Form => ({ gesellschaft: a.gesellschaft, kontaktId: a.kontaktId, firmaId: a.firmaId, dealId: a.dealId, mandatId: a.mandatId, titel: a.titel, positionen: a.positionen, einleitung: a.einleitung, schluss: a.schluss, gueltigBis: a.gueltigBis, zahlungszielTage: a.zahlungszielTage });
+const nurForm = (a: Angebot): Form => ({ gesellschaft: a.gesellschaft, kontaktId: a.kontaktId, firmaId: a.firmaId, dealId: a.dealId, mandatId: a.mandatId, titel: a.titel, positionen: a.positionen, einleitung: a.einleitung, schluss: a.schluss, gueltigBis: a.gueltigBis, zahlungszielTage: a.zahlungszielTage, titelVonHand: a.titelVonHand, dealWahl: a.dealWahl });
+/** Felder, die der Entwurf leeren kann: fehlen sie in der Form, gehen sie als `null` an den Server (JSON verwirft `undefined` — der alte Wert bliebe). */
+const LEERBAR = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'titelVonHand', 'dealWahl'] as const;
+const mitLeeren = (f: Form): Record<string, unknown> => ({ ...f, ...Object.fromEntries(LEERBAR.filter(x => f[x] === undefined).map(x => [x, null])) });
 
 /** Offene Deals einer Person bzw. ihrer Firma — jüngste zuerst. */
 function offeneDeals(chancen: Chance[], k: Kontakt | undefined, firmaId: string | undefined): Chance[] {
@@ -88,16 +95,25 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     const firma = firmaId ? crm.stand.firmen.find(f => f.id === firmaId) : undefined;
     const ziel = firma?.zahlung?.zielTage ?? k?.zahlung?.zielTage ?? v?.zahlungszielTage ?? ZAHLUNGSZIEL_VORGABE_TAGE;
     const produkt = d?.leistungId ? crm.stand.leistungen.find(l => l.id === d.leistungId && l.status === 'aktiv') : undefined;
-    const titel = d?.titel ?? '';
+    const positionen = produkt ? [dealWertUebernehmen(positionAusProdukt(produkt, 'p-1', { kleinunternehmer: !!v?.kleinunternehmer }), d?.wert)] : [];
+    // A1 (21.10.): der Titel kommt aus den Produkten, nicht mehr aus dem Deal — sonst hieß ein Workshop-Angebot nach dem alten Deal.
+    const titel = angebotTitelAus({ positionen }, crm.stand.leistungen, firma?.name);
     const gueltigBis = plusTage(heute, v?.gueltigkeitTage ?? GUELTIG_VORGABE_TAGE);
     const texte = angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel, gueltigBis });
     return {
-      ...(g ? { gesellschaft: g } : {}), ...(k ? { kontaktId: k.id } : {}), ...(firmaId ? { firmaId } : {}), ...(d ? { dealId: d.id } : {}), titel,
-      positionen: produkt ? [dealWertUebernehmen(positionAusProdukt(produkt, 'p-1', { kleinunternehmer: !!v?.kleinunternehmer }), d?.wert)] : [],
-      ...texte, gueltigBis, zahlungszielTage: ziel,
+      // B9 (21.10.): ein Deal, von dem aus das Angebot entsteht, ist bestätigt; ein still gefundener offener Deal nicht (Rückfrage bei anderem Produkt).
+      ...(g ? { gesellschaft: g } : {}), ...(k ? { kontaktId: k.id } : {}), ...(firmaId ? { firmaId } : {}), ...(d ? { dealId: d.id, ...(d === deal ? { dealWahl: 'deal' as const } : {}) } : {}), titel,
+      positionen, ...texte, gueltigBis, zahlungszielTage: ziel,
     };
   });
-  const [vonHand, setVonHand] = useState<VonHand>(() => ({ titel: !!start?.titel, einleitung: !!start, schluss: !!start }));
+  // Titel von Hand: gespeichert am Entwurf (`titelVonHand`); ein älterer Entwurf ohne das Feld behält seinen Titel nur, wenn er nicht automatisch entstand.
+  const [vonHand, setVonHand] = useState<VonHand>(() => {
+    if (!start) return { titel: false, einleitung: false, schluss: false };
+    const startFirma = start.firmaId ? crm.stand.firmen.find(f => f.id === start.firmaId)?.name : undefined;
+    const startDeal = start.dealId ? crm.stand.chancen.find(c => c.id === start.dealId)?.titel : undefined;
+    const auto = !start.titelVonHand && angebotTitelAutomatisch(start.titel, { firma: startFirma, dealTitel: startDeal, leistungen: crm.stand.leistungen, positionen: start.positionen });
+    return { titel: !auto, einleitung: true, schluss: true };
+  });
   const [status, setStatus] = useState<'ruhig' | 'wartet' | 'speichert' | 'gespeichert' | 'fehler'>(start ? 'gespeichert' : 'ruhig');
   const [meldung, setMeldung] = useState<string | null>(null);
   /** Die eigene Fassung nach einem 409 — nie weggeworfen, bis sie übernommen oder verworfen ist. */
@@ -126,7 +142,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     kette.current = kette.current.then(async () => {
       setStatus('speichert');
       const gesendet = formRef.current;
-      const r = await angebotPost({ aktion: 'speichern', id, felder: gesendet, ...(standRef.current ? { stand: standRef.current } : {}) }, opt);
+      const r = await angebotPost({ aktion: 'speichern', id, felder: mitLeeren(gesendet), ...(standRef.current ? { stand: standRef.current } : {}) }, opt);
       if (r.ok && r.angebot) {
         versuch.current = 0;
         standRef.current = r.angebot.stand; datenRef.current.uebernehmen(r.angebot); setStatus(offen.current ? 'wartet' : 'gespeichert'); setMeldung(null);
@@ -175,6 +191,12 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   const firma: Firma | undefined = form.firmaId ? crm.stand.firmen.find(f => f.id === form.firmaId) : undefined;
   const deals = offeneDeals(crm.stand.chancen, k, form.firmaId);
   const deal = form.dealId ? crm.stand.chancen.find(c => c.id === form.dealId) : undefined;
+  // B9 (21.10.): trägt ein nicht bestätigter Deal ein ANDERES Produkt als das Hauptprodukt des Angebots, wird gefragt — nie still übernommen.
+  const hauptprodukt = angebotHauptprodukt(form, crm.stand.leistungen);
+  const produktName = (lid: string | undefined) => (lid ? crm.stand.leistungen.find(l => l.id === lid)?.name : undefined);
+  const dealFrage = !!deal && form.dealWahl !== 'deal' && dealProduktAnders(deal, hauptprodukt);
+  // A1 (21.10.): der Titel aus den Produkten — er gilt, solange der Titel nicht von Hand geschrieben ist.
+  const titelAuto = angebotTitelAus(form, crm.stand.leistungen, firma?.name);
   const g = form.gesellschaft ? gesellschaftVon(form.gesellschaft) : null;
   const v = g ? mitVorgaben(g) : null;
   const ku = !!v?.kleinunternehmer;
@@ -184,6 +206,12 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   const luecken = g?.luecken ?? [];
   const absenderFehlt = luecken.filter(x => x === 'Firmierung' || x === 'Anschrift');
   const absenderWeg = form.gesellschaft ? WEG.unternehmen(form.gesellschaft, 'absender') : null;
+
+  // Titel nachziehen, solange er nicht von Hand ist — gespeichert mit der nächsten Änderung bzw. vor der Vorschau (wie die Vorlage darunter).
+  useEffect(() => {
+    if (vonHand.titel || !titelAuto || titelAuto === formRef.current.titel) return;
+    setForm(f => ({ ...f, titel: titelAuto })); offen.current = true;
+  }, [titelAuto, vonHand.titel]);
 
   // Vorlage nachziehen, solange die Texte nicht von Hand geändert wurden (Anrede, Name, Titel, gültig bis).
   useEffect(() => {
@@ -196,12 +224,12 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   }, [k?.anrede, k?.vorname, k?.nachname, form.titel, form.gueltigBis, vonHand.einleitung, vonHand.schluss]);
 
   function kontaktWaehlen(neu: Kontakt | null) {
-    if (!neu) { aendern({ kontaktId: undefined, firmaId: undefined, dealId: undefined }); return; }
+    if (!neu) { aendern({ kontaktId: undefined, firmaId: undefined, dealId: undefined, dealWahl: undefined }); return; }
     const d = offeneDeals(crm.stand.chancen, neu, neu.firmaId)[0];
     const f = neu.firmaId ? crm.stand.firmen.find(x => x.id === neu.firmaId) : undefined;
-    const teil: Partial<Form> = { kontaktId: neu.id, firmaId: neu.firmaId, dealId: d?.id, ...(f?.zahlung?.zielTage != null ? { zahlungszielTage: f.zahlung.zielTage } : neu.zahlung?.zielTage != null ? { zahlungszielTage: neu.zahlung.zielTage } : {}) };
+    // Der jüngste offene Deal ist nur vorgeschlagen (`dealWahl` leer) — trägt er ein anderes Produkt, fragt das Tool (B9). Der Titel folgt den Produkten (A1).
+    const teil: Partial<Form> = { kontaktId: neu.id, firmaId: neu.firmaId, dealId: d?.id, dealWahl: undefined, ...(f?.zahlung?.zielTage != null ? { zahlungszielTage: f.zahlung.zielTage } : neu.zahlung?.zielTage != null ? { zahlungszielTage: neu.zahlung.zielTage } : {}) };
     if (d && istGesellschaft(d.gesellschaft)) teil.gesellschaft = d.gesellschaft;
-    if (!vonHand.titel && d?.titel) teil.titel = d.titel;
     aendern(teil);
   }
   const positionen = form.positionen;
@@ -209,12 +237,17 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   // Erstes Produkt einer anderen Gesellschaft: der Absender folgt dem Produkt (sonst ginge ein KD-Ventures-Produkt
   // unter der Selbstständigkeit raus). Stehen schon Positionen drin, bleibt die Gesellschaft — Hinweis statt Wechsel.
   const [mischHinweis, setMischHinweis] = useState<string | null>(null);
-  // Ein Produkt kann mehrere Positionen bringen (19.10., Preis-Teile der Karte + angehakte Optionen) — alle in EINEM Schritt.
-  const dazu = (neu: AngebotPosition[], von: Gesellschaftskennung | null) => {
-    const p = neu[0];
+  const [dazuHinweis, setDazuHinweis] = useState<string | null>(null);
+  // Ein Produkt kann mehrere Positionen bringen (19.10., Preis-Teile der Karte + angehakte Optionen) — alle in EINEM Schritt. Was schon drinsteht, kommt
+  // nicht noch einmal dazu (21.10., B5: Option nachträglich angehakt + Produkt erneut geklickt = nur die Option).
+  const dazu = (alle: AngebotPosition[], von: Gesellschaftskennung | null) => {
+    const p = alle[0];
     if (!p) return;
+    const e = positionenErgaenzen(positionen, alle);
+    if (!e.neu.length) { setDazuHinweis(`„${p.titel}“ steht schon im Angebot — Menge oder Preis in der Zeile ändern.`); return; }
+    setDazuHinweis(e.schonDa.length ? `${e.schonDa.length === 1 ? '1 Position stand' : `${e.schonDa.length} Positionen standen`} schon im Angebot — nur Neues dazu.` : null);
+    const neu = e.neu;
     const teil: Partial<Form> = { positionen: [...positionen, ...neu] };
-    if (!form.titel.trim() && !vonHand.titel) teil.titel = p.titel;
     if (von && von !== form.gesellschaft) {
       if (!positionen.length || !form.gesellschaft) { teil.gesellschaft = von; merkeGesellschaft(von); setMischHinweis(null); }
       else setMischHinweis(`„${p.titel}“ gehört zu ${GES_WAHL.find(x => x.id === von)?.label ?? von} — Absender bleibt ${GES_WAHL.find(x => x.id === form.gesellschaft)?.label ?? form.gesellschaft}. Getrennte Angebote je Gesellschaft sind sauberer.`);
@@ -233,7 +266,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     if (st.grund === 'keine Adresse') return { hinweise: ['Keine E-Mail-Adresse am Kontakt — das PDF entsteht trotzdem; bitte auf anderem Weg senden.'] };
     return { hinweise: st.farbe === 'gruen' ? [] : [`Kanal-Ampel ${st.farbe}: ${st.grund}. Ein angefragtes Angebot ist Vertragsanbahnung (Art. 6 Abs. 1 lit. b DSGVO) — nur senden, wenn es angefragt wurde, ohne Werbung.`] };
   }, [k, crm.stand.mandate, crm.stand.chancen]);
-  const fehlt = [!form.gesellschaft ? 'Absender (Gesellschaft)' : '', absenderFehlt.length ? `Absender: ${absenderFehlt.join(', ')}` : '', !k ? 'Empfänger' : '', !positionen.length ? 'mindestens eine Position' : positionen.length && !(s.gesamt.netto > 0) ? 'eine Summe über 0 €' : '', !form.titel.trim() ? 'Titel' : '', form.gueltigBis < heute ? '„gültig bis“ in der Zukunft' : ''].filter(Boolean);
+  const fehlt = [!form.gesellschaft ? 'Absender (Gesellschaft)' : '', dealFrage ? 'Deal wählen (dieser oder neu)' : '', absenderFehlt.length ? `Absender: ${absenderFehlt.join(', ')}` : '', !k ? 'Empfänger' : '', !positionen.length ? 'mindestens eine Position' : positionen.length && !(s.gesamt.netto > 0) ? 'eine Summe über 0 €' : '', !form.titel.trim() ? 'Titel' : '', form.gueltigBis < heute ? '„gültig bis“ in der Zukunft' : ''].filter(Boolean);
 
   async function zurVorschau() {
     offen.current = true; // auch ein unveränderter, vorbelegter Entwurf wird vor der Vorschau gespeichert
@@ -249,6 +282,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     const r = await angebotPost({ aktion: 'stellen', id, stand: standRef.current, nachfassenAm: nachfassen });
     if (!r.ok || !r.angebot) {
       if (r.status === 409 && r.aktuell) { standRef.current = r.aktuell.stand; daten.uebernehmen(r.aktuell); }
+      // B9: der Server kennt einen offenen Deal mit anderem Produkt, den diese Ansicht noch nicht sah — neu laden, dann steht die Rückfrage da.
+      if ((r as { grund?: unknown }).grund === 'deal-frage') { void api.laden(true); setAnsicht('bearbeiten'); }
       setMeldung(r.fehler ?? 'Nicht gesendet.');
       return;
     }
@@ -296,12 +331,20 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
           {/* B17 (14.10.): Konto „nur Business“ wählt nur unter den Gesellschaften, die der Server liefert (nie die Privat-Einheit). */}
           <Wahl<Gesellschaftskennung> label="Gesellschaft" liste={daten.nurEntwuerfe ? GES_WAHL.filter(g => daten.gesellschaften.some(x => x.id === g.id)) : GES_WAHL} wert={form.gesellschaft} onWahl={x => { merkeGesellschaft(x); aendern({ gesellschaft: x }); }} />
           {(deals.length > 0 || deal) && (
-            <Wahl<string> label="Deal" leer="+ Deal" liste={[...(deal && !deals.some(d => d.id === deal.id) ? [deal] : []), ...deals].map(d => ({ id: d.id, label: d.titel, hinweis: crm.stufen.find(x => x.id === d.stufe)?.label }))}
-              wert={form.dealId ?? null} onWahl={x => aendern({ dealId: x })} onLeeren={() => aendern({ dealId: undefined })} leerenLabel="ohne Deal (beim Senden neu)" />
+            <Wahl<string> label="Deal" leer={form.dealWahl === 'neu' ? 'neuer Deal beim Senden' : '+ Deal'} liste={[...(deal && !deals.some(d => d.id === deal.id) ? [deal] : []), ...deals].map(d => ({ id: d.id, label: d.titel, hinweis: [crm.stufen.find(x => x.id === d.stufe)?.label, produktName(d.leistungId)].filter(Boolean).join(' · ') }))}
+              wert={form.dealId ?? null} onWahl={x => aendern({ dealId: x, dealWahl: 'deal' })} onLeeren={() => aendern({ dealId: undefined, dealWahl: 'neu' })} leerenLabel="ohne Deal (beim Senden neu)" />
           )}
           {!deals.length && !deal && k && <span style={klein}>Kein offener Deal — beim Senden entsteht einer in Stufe „Angebot“.</span>}
           {luecken.length > 0 && <Chip farbe={absenderFehlt.length ? LEUCHT.kritisch : LEUCHT.achtung}>Absender: {luecken.join(', ')} fehlt</Chip>}
         </div>
+        {dealFrage && deal && (
+          <div style={{ marginTop: 10 }}>
+            <Hinweis art="achtung" rolle="status" titel={dealFrageText(produktName(deal.leistungId) ?? deal.titel)}
+              aktion={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf onClick={() => aendern({ dealWahl: 'deal' })}>Zu diesem Deal</Knopf><Knopf leise onClick={() => aendern({ dealId: undefined, dealWahl: 'neu' })}>Neuer Deal</Knopf></span>}>
+              Offen ist „{deal.titel}“ ({produktName(deal.leistungId) ?? 'anderes Produkt'}) — dieses Angebot enthält {produktName(hauptprodukt) ?? 'ein anderes Produkt'}.{deals.length > 1 ? ' Oder oben einen anderen Deal wählen.' : ''}
+            </Hinweis>
+          </div>
+        )}
         {!form.gesellschaft && (
           <div style={{ marginTop: 10 }}><Hinweis art="achtung" rolle="status" titel="Absender wählen">Für dieses Angebot steht keine Gesellschaft fest — oben „Gesellschaft“ wählen (oder ein Produkt anklicken). Bis dahin wird der Entwurf nicht gespeichert.</Hinweis></div>
         )}
@@ -320,9 +363,14 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
         <div style={{ ...kopf, marginBottom: 10 }}>2 · Was</div>
         <Katalog leistungen={crm.stand.leistungen} gesellschaft={form.gesellschaft ?? null} kleinunternehmer={x => !!x && !!mitVorgaben(gesellschaftVon(x)).kleinunternehmer} onDazu={dazu} />
         {mischHinweis && <div style={{ fontSize: TYP.bedien, color: LEUCHT.business, marginTop: 8 }}>{mischHinweis}</div>}
+        {dazuHinweis && <div role="status" style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{dazuHinweis}</div>}
         <div style={{ marginTop: 14 }}>
-          <input value={form.titel} onChange={e => { setVonHand(h => ({ ...h, titel: true })); aendern({ titel: e.target.value }); }} placeholder="Titel des Angebots (z. B. Retainer Strategie 2027)" aria-label="Titel des Angebots"
+          <input value={form.titel} onChange={e => { setVonHand(h => ({ ...h, titel: true })); aendern({ titel: e.target.value, titelVonHand: true }); }} placeholder="Titel des Angebots (z. B. Retainer Strategie 2027)" aria-label="Titel des Angebots"
             style={{ ...feld, fontSize: TYP.body, fontWeight: 700, padding: '10px 13px' }} />
+          {vonHand.titel && titelAuto && titelAuto !== form.titel && (
+            <button type="button" onClick={() => { setVonHand(h => ({ ...h, titel: false })); aendern({ titel: titelAuto, titelVonHand: undefined }); }}
+              style={{ marginTop: 6, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>{`Titel aus den Produkten: „${titelAuto}“`}</button>
+          )}
         </div>
         <div style={{ marginTop: 6 }}>
           {positionen.map((p, i) => (

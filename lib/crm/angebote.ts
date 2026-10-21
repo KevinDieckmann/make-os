@@ -21,6 +21,7 @@ import { KERN_EINHEITEN, UG_KURZ, EINHEITEN_UEBERSCHRIEBEN } from '@/lib/einheit
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
 import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt } from './produkt-karte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
+import { produktTitel, titelNurProdukt } from './titel-regel';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
@@ -194,6 +195,8 @@ const txt = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').re
 const zeile = (v: unknown, n: number) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const idOk = (v: unknown): v is string => typeof v === 'string' && ID.test(v);
+/** Kennung eines Preis-Teils (dieselbe Form wie `preisteilSaeubern` in lib/crm/produkt-karte.ts). */
+const TEIL_ID = /^pt-[a-z0-9-]{1,40}$/;
 export const kontaktIdOk = (v: unknown): v is string => typeof v === 'string' && /^c-[a-z0-9-]{4,60}$/.test(v);
 export const firmaIdOk = (v: unknown): v is string => typeof v === 'string' && /^f-[a-z0-9-]{2,63}$/.test(v);
 const BASEN: readonly AngebotBasis[] = ['einmalig', 'monat', 'jahr'];
@@ -222,6 +225,7 @@ export function positionSaeubern(o: Record<string, unknown>, i: number): Angebot
   const lz = Math.round(Number(o.laufzeitMonate) || 0);
   return {
     id: idOk(o.id) ? o.id : `p${i + 1}`, ...(idOk(o.leistungId) ? { leistungId: o.leistungId } : {}),
+    ...(idOk(o.leistungId) && typeof o.preisTeilId === 'string' && TEIL_ID.test(o.preisTeilId) ? { preisTeilId: o.preisTeilId } : {}),
     titel, text: txt(o.text, ANGEBOT_GRENZEN.text), menge, einheit: zeile(o.einheit, 30) || 'pauschal', einzelpreisCent: preis,
     ...(rabatt ? { rabattProzent: rabatt } : {}), ustSatz: satz, basis,
     ...(basis !== 'einmalig' && lz > 0 ? { laufzeitMonate: Math.min(POSITION_MAX.laufzeitMonate, lz) } : {}),
@@ -229,7 +233,7 @@ export function positionSaeubern(o: Record<string, unknown>, i: number): Angebot
 }
 
 /** Die Felder, die ein Browser an einem ENTWURF setzen darf. Alles andere (Nummer, Status, Prüfsumme …) setzt der Server. */
-export const ENTWURF_FELDER = ['gesellschaft', 'kontaktId', 'firmaId', 'dealId', 'mandatId', 'titel', 'positionen', 'einleitung', 'schluss', 'gueltigBis', 'zahlungszielTage'] as const;
+export const ENTWURF_FELDER = ['gesellschaft', 'kontaktId', 'firmaId', 'dealId', 'mandatId', 'titel', 'positionen', 'einleitung', 'schluss', 'gueltigBis', 'zahlungszielTage', 'titelVonHand', 'dealWahl'] as const;
 
 /**
  * Entwurf säubern: nur ENTWURF_FELDER aus `roh`, auf den bisherigen Entwurf gelegt. Status bleibt „entwurf“,
@@ -246,14 +250,19 @@ export function entwurfSaeubern(roh: Record<string, unknown>, alt: Angebot | nul
   for (const p of positionen) { let id = p.id; let n = 2; while (gesehen.has(id)) id = `${p.id}-${n++}`; p.id = id; gesehen.add(id); }
   const gb = r('gueltigBis');
   const ziel = Math.round(Number(r('zahlungszielTage')));
+  // „Neuer Deal“ (21.10., B9) heißt: kein Deal am Entwurf — ein mitgeschickter Deal fällt dann weg.
+  const dealNeu = r('dealWahl') === 'neu';
   return {
     // Rückfall `kdc` nur noch, wenn das Register keine eindeutige operative Business-Gesellschaft kennt (Altverhalten, im Editor sichtbar).
     id: basis.id, gesellschaft: istGesellschaft(g) ? g : alt?.gesellschaft ?? basis.gesellschaftVorgabe ?? 'kdc',
     ...(kontaktIdOk(r('kontaktId')) ? { kontaktId: r('kontaktId') as string } : {}),
     ...(firmaIdOk(r('firmaId')) ? { firmaId: r('firmaId') as string } : {}),
-    ...(idOk(r('dealId')) ? { dealId: r('dealId') as string } : {}),
+    ...(idOk(r('dealId')) && !dealNeu ? { dealId: r('dealId') as string } : {}),
     ...(idOk(r('mandatId')) ? { mandatId: r('mandatId') as string } : {}),
     titel: zeile(r('titel'), ANGEBOT_GRENZEN.titel), positionen,
+    // 21.10. (Rundgang A1/B9): Titel von Hand und die Wahl des Deals — nur in ihrer Form, `null` nimmt sie weg.
+    ...(r('titelVonHand') === true ? { titelVonHand: true as const } : {}),
+    ...(r('dealWahl') === 'deal' || r('dealWahl') === 'neu' ? { dealWahl: r('dealWahl') as 'deal' | 'neu' } : {}),
     einleitung: txt(r('einleitung'), ANGEBOT_GRENZEN.einleitung), schluss: txt(r('schluss'), ANGEBOT_GRENZEN.schluss),
     gueltigBis: tagOk(gb) ? gb : plusTage(basis.heute, basis.gueltigTage ?? GUELTIG_VORGABE_TAGE),
     zahlungszielTage: Number.isFinite(ziel) && ziel >= 0 ? Math.min(180, ziel) : basis.zielTage ?? ZAHLUNGSZIEL_VORGABE_TAGE,
@@ -375,12 +384,97 @@ export function dealWertUebernehmen(p: AngebotPosition, w: { betrag: number; bas
   return { ...ohne, basis: w.basis, einheit: EINHEIT_JE_BASIS[w.basis], einzelpreisCent: inCent(w.betrag), ...(laufzeit ? { laufzeitMonate: laufzeit } : {}) };
 }
 
+/**
+ * Dieselbe Position? (21.10., Rundgang B5) — nur Positionen aus einem Produkt: tragen beide den Preis-Teil, entscheidet er; sonst (Altbestand,
+ * Produkt ohne Preis-Teile) Titel, Basis und Einheit. Menge, Preis und Rabatt zählen nicht — die ändert man in der Zeile.
+ */
+export function gleichePosition(a: Pick<AngebotPosition, 'leistungId' | 'preisTeilId' | 'titel' | 'basis' | 'einheit'>, b: Pick<AngebotPosition, 'leistungId' | 'preisTeilId' | 'titel' | 'basis' | 'einheit'>): boolean {
+  if (!a.leistungId || a.leistungId !== b.leistungId) return false;
+  if (a.preisTeilId && b.preisTeilId) return a.preisTeilId === b.preisTeilId;
+  const n = (t: string) => t.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
+  return n(a.titel) === n(b.titel) && a.basis === b.basis && n(a.einheit) === n(b.einheit);
+}
+
+/**
+ * Ein Produkt ins Angebot (21.10., Rundgang B5): was schon drinsteht (dieselbe Position, `gleichePosition`), kommt nicht noch einmal dazu — ein zweiter
+ * Klick nach dem Anhaken einer Option bringt NUR die Option. `schonDa` nennt, was übersprungen wurde (die Oberfläche sagt es).
+ */
+export function positionenErgaenzen(vorhanden: readonly AngebotPosition[], neu: readonly AngebotPosition[]): { neu: AngebotPosition[]; schonDa: AngebotPosition[] } {
+  const dazu: AngebotPosition[] = [];
+  const schonDa: AngebotPosition[] = [];
+  for (const p of neu) (vorhanden.some(x => gleichePosition(x, p)) || dazu.some(x => gleichePosition(x, p)) ? schonDa : dazu).push(p);
+  return { neu: dazu, schonDa };
+}
+
 /** Produkte für den Katalog im Tool: aktive der Gesellschaft (dazu die ohne Gesellschaft), „Text fehlt“ markiert. */
 export function katalog(leistungen: readonly Leistung[], gesellschaft: Gesellschaftskennung | null): { l: Leistung; textFehlt: boolean; andere: boolean }[] {
   return leistungen.filter(l => l.status === 'aktiv' && !l.geloeschtAm)
     .map(l => ({ l, textFehlt: produktAngebotFehlt(l).length > 0, andere: l.gesellschaft !== gesellschaft && l.gesellschaft !== 'offen' }))
     .sort((a, b) => Number(a.andere) - Number(b.andere) || a.l.name.localeCompare(b.l.name, 'de'));
 }
+
+// ── Titel aus den Produkten, Deal folgt dem Angebot (21.10., Rundgang 19.10. A1/B9) ────────────────────────────────────────────
+
+type ProduktName = Pick<Leistung, 'id' | 'name' | 'rolle'> & { angebot?: Pick<NonNullable<Leistung['angebot']>, 'titel'> };
+const produktName = (l: Pick<ProduktName, 'name' | 'angebot'>) => l.angebot?.titel?.trim() || l.name;
+
+/**
+ * Der Titel eines Angebots aus seinen Produkten: das Hauptprodukt (`angebotHauptprodukt` — dieselbe Regel wie „Deal folgt dem Angebot“), sonst die erste
+ * Position, davor die Firma: „<Firma> · <Produkt>“. Ohne Position leer. Ein von Hand geschriebener Titel (`titelVonHand`) bleibt — das entscheidet der Aufrufer.
+ */
+export function angebotTitelAus(a: Pick<Angebot, 'positionen'>, leistungen: readonly ProduktName[] = [], firma?: string | null): string {
+  const hp = angebotHauptprodukt(a, leistungen);
+  const l = hp ? leistungen.find(x => x.id === hp) : undefined;
+  const produkt = l ? produktName(l) : (hp ? a.positionen.find(p => p.leistungId === hp) : a.positionen[0])?.titel ?? '';
+  return produktTitel(produkt, firma, ANGEBOT_GRENZEN.titel);
+}
+
+/**
+ * Ist der gespeicherte Titel eines älteren Entwurfs (ohne `titelVonHand`) automatisch entstanden? Leer, gleich dem Titel des Deals (den das Tool bis
+ * 21.10. still übernahm) oder er nennt nur ein Produkt (Katalog oder Position) und die Firma. Dann folgt er den Produkten; sonst bleibt er.
+ */
+export function angebotTitelAutomatisch(titel: string, ctx: { firma?: string | null; dealTitel?: string | null; leistungen?: readonly Pick<Leistung, 'name' | 'angebot'>[]; positionen?: readonly Pick<AngebotPosition, 'titel'>[] }): boolean {
+  if (!titel.trim()) return true;
+  const n = (t: string) => t.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (ctx.dealTitel && n(ctx.dealTitel) === n(titel)) return true;
+  return titelNurProdukt(titel, { firma: ctx.firma, produkte: [...(ctx.leistungen ?? []).flatMap(l => [l.name, l.angebot?.titel]), ...(ctx.positionen ?? []).map(p => p.titel)] });
+}
+
+/**
+ * Der Titel, den Mandat (und darüber Fall und Rechnung) aus einem angenommenen Angebot nehmen: der des Angebots — außer er nennt nur ein Produkt, das gar
+ * nicht im Angebot steht (Angebote vor dem 21.10. erbten still den Titel des alten Deals). Dann der Titel aus den Produkten. Gespeichert wird nichts.
+ */
+export function angebotTitelFuerFolge(a: Pick<Angebot, 'titel' | 'positionen' | 'empfaenger' | 'firmaId'>, leistungen?: readonly ProduktName[], firma?: string | null): string {
+  if (!leistungen?.length || !a.titel.trim()) return a.titel;
+  const f = firma ?? a.empfaenger?.firma;
+  const drin = new Set(a.positionen.map(p => p.leistungId).filter(Boolean));
+  const imAngebot = [...leistungen.filter(l => drin.has(l.id)).flatMap(l => [l.name, l.angebot?.titel]), ...a.positionen.map(p => p.titel)];
+  const fremd = leistungen.filter(l => !drin.has(l.id)).flatMap(l => [l.name, l.angebot?.titel]);
+  if (titelNurProdukt(a.titel, { firma: f, produkte: imAngebot }) || !titelNurProdukt(a.titel, { firma: f, produkte: fremd })) return a.titel;
+  return angebotTitelAus(a, leistungen, f) || a.titel;
+}
+
+/**
+ * Deal folgt dem Angebot — auch im Titel (21.10., A1): zieht das angenommene Angebot den Deal auf ein anderes Hauptprodukt, bekommt der Deal den Titel aus
+ * den Produkten, wenn sein Titel automatisch entstanden ist (nur das alte Produkt bzw. das Art-Wort, dazu die Firma — `titelNurProdukt`). Ein von Hand
+ * geschriebener Titel bleibt. null = nichts ändern.
+ */
+export function dealTitelNachAngebot(deal: Pick<Chance, 'titel' | 'leistungId' | 'art'>, a: Pick<Angebot, 'positionen'>, leistungen: readonly ProduktName[], firma?: string | null): string | null {
+  const alt = deal.leistungId ? leistungen.find(l => l.id === deal.leistungId) : undefined;
+  if (!titelNurProdukt(deal.titel, { firma, produkte: alt ? [alt.name, alt.angebot?.titel] : [], art: deal.art })) return null;
+  const neu = angebotTitelAus(a, leistungen, firma).slice(0, 160);
+  return neu && neu !== deal.titel ? neu : null;
+}
+
+/**
+ * Rückfrage statt still übernehmen (21.10., Rundgang B9): trägt der Deal ein ANDERES Produkt als das Hauptprodukt des Angebots? Ohne Produkt am Deal
+ * oder ohne Produkt im Angebot gibt es nichts zu fragen.
+ */
+export function dealProduktAnders(deal: Pick<Chance, 'leistungId'> | undefined, hauptprodukt: string | undefined): boolean {
+  return !!deal?.leistungId && !!hauptprodukt && deal.leistungId !== hauptprodukt;
+}
+/** Text der Rückfrage — derselbe in der Oberfläche und in der 409-Antwort beim Stellen. */
+export const dealFrageText = (produkt: string) => `Zu diesem Deal (${produkt}) oder neuer Deal?`;
 
 // ── Vorlagen (Anrede Sie/Du) ─────────────────────────────────────────────────
 
@@ -441,8 +535,10 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
   // Das Mandat trägt die laufende Leistung (Retainer), nicht den einmaligen Auftakt — sonst die erste mit Produkt (EINE Regel: `angebotHauptprodukt`).
   const leistungId = angebotHauptprodukt(a, leistungen);
   const saetze = Array.from(new Set(a.positionen.map(p => p.ustSatz)));
+  // Titel: der des Angebots — nannte er nur ein fremdes Produkt (Altbestand vor 21.10., A1), der aus den Produkten (`angebotTitelFuerFolge`).
+  const titel = angebotTitelFuerFolge(a, leistungen);
   const basis: Partial<Mandat> = {
-    gesellschaft: a.gesellschaft, titel: a.titel || undefined,
+    gesellschaft: a.gesellschaft, titel: titel || undefined,
     honorar: laufend > 0 ? { betrag: ausCent(laufend), basis: 'monat', netto: true } : { betrag: ausCent(s.einmalig.netto), basis: 'einmalig', netto: true },
     ...(lz ? { mindestlaufzeitMonate: Math.min(120, lz) } : {}),
     ...(leistungId ? { leistungId } : {}),
