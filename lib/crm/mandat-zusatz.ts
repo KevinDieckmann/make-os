@@ -17,6 +17,7 @@ import { leistungsmonat, monatsHonorar, monatsName, plusMonateGekappt, zahlungsz
 import { ANRECHNUNG_PRAEFIX, anteilText, positionAusMandat, positionNetto, rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
 import { UST_SAETZE } from './angebote';
 import { hatPreisteile, hauptpreis, preisteileVon } from './produkt-karte';
+import { ABGERECHNET_PRAEFIX } from '@/lib/make-one/liquiditaet';
 import { inCent, kaufmaennisch } from '@/lib/finanzen/ust';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ export function zusatzArt(z: Pick<MandatZusatz, 'inklusive' | 'honorar'>): Zusat
 /** „je Quartal“ … für inklusive Mengen. */
 export const JE_TEXT: Record<NonNullable<MandatZusatz['je']>, string> = { monat: 'Monat', quartal: 'Quartal', jahr: 'Jahr' };
 /** Präfixe der Positions-Kennungen (die Kennung ist der Merker — nie umbenennen): laufend · inklusive · jährlich · einmalig · abgerechnet · Anrechnung. */
-export const POS = { monat: 'zm-', inklusive: 'zi-', jahr: 'zj-', einmalig: 'ze-', abrechnen: 'za-', anrechnung: ANRECHNUNG_PRAEFIX } as const;
+export const POS = { monat: 'zm-', inklusive: 'zi-', jahr: 'zj-', einmalig: 'ze-', abrechnen: ABGERECHNET_PRAEFIX, anrechnung: ANRECHNUNG_PRAEFIX } as const;
 /** Positionen, die „abrechnen“ anlegt — eine Rechnung NUR aus solchen ist keine Monatsrechnung (sie hält den Monat nicht auf). */
 export const nurAbgerechnet = (r: Pick<Rechnung, 'positionen'>) => !!r.positionen?.length && r.positionen.every(p => p.id.startsWith(POS.abrechnen));
 
@@ -59,8 +60,13 @@ export function zusatzZeitraum(m: Partial<Pick<Mandat, 'start'>>, z: Pick<Mandat
   return { ...(s ? { start: s } : {}), ...(e ? { ende: e } : {}) };
 }
 
-/** Der Monat, in dem der Rest eines einmaligen Moduls mit Zahlplan fällig wird: der Monat von „bis“, ohne „bis“ der Folgemonat des Beginns. */
-function restMonat(zr: { start?: string; ende?: string }): string | null {
+/**
+ * Der Monat, in dem der Rest eines einmaligen Moduls mit Zahlplan fällig wird: der Monat von „bis“ (bzw. dem gesetzten Ende des Mandats), ohne beides der
+ * Folgemonat des Beginns. 21.10.: IMMER mit dem gesetzten Ende (`m.ende`) gerechnet — vorher nahm die Liquidität das geplante Ende (Mindestlaufzeit) und
+ * legte den Rest ein halbes Jahr später als die Rechnung (Summe gleich, Monat falsch; „Rechnung statt Plan“ fand die Zahlung dann nicht).
+ */
+function restMonat(m: Partial<Pick<Mandat, 'start' | 'ende'>>, z: Pick<MandatZusatz, 'ab' | 'bis'>): string | null {
+  const zr = zusatzZeitraum(m, z, m.ende);
   if (!zr.start) return null;
   return zr.ende ? zr.ende.slice(0, 7) : monatPlus(zr.start.slice(0, 7), 1);
 }
@@ -113,7 +119,7 @@ export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 
       if (!zr.start) continue;
       const s = zr.start.slice(0, 7);
       const p = z.zahlplan?.anzahlungProzent;
-      const r = p ? restMonat(zr) : null;
+      const r = p ? restMonat(m, z) : null;
       const betrag = z.honorar!.betragCent;
       if (p && r && r !== s) {
         const anzahlung = kaufmaennisch((betrag * p) / 100);
@@ -128,20 +134,52 @@ export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 
 }
 
 /**
- * Die Positionen der Monatsrechnung (rein, Server UND Liquidität): das Honorar des Mandats wie bisher (`positionAusMandat`, nur bei Honorar > 0)
- * und danach die Zusatzmodule (`zusatzPositionen`). Ohne `zusatz`: genau die eine Position wie bis 19.10. (bit-gleich).
+ * Das einmalige Honorar mit Zahlplan (21.10., Rundgang B2 — dieselbe Regel wie das einmalige Zusatzmodul): Anzahlung im Monat des Beginns, der Rest im
+ * Monat des gesetzten Endes (ohne Ende im Folgemonat), in anderen Monaten nichts. null = kein Zahlplan (das Honorar steht wie bisher in jedem Monat).
  */
-export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
+/** Die Monate der Zahlungen eines einmaligen Honorars mit Zahlplan: [Anzahlung, Rest] (bzw. nur einer, wenn beide in denselben Monat fallen); null ohne Zahlplan. */
+export function zahlplanMonate(m: Pick<Mandat, 'honorar' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan'>>): string[] | null {
+  if (m.honorar.basis !== 'einmalig' || !m.zahlplan?.anzahlungProzent || !tagOk(m.start)) return null;
+  const s = m.start.slice(0, 7);
+  const r = restMonat(m, {});
+  return r && r !== s ? [s, r] : [s];
+}
+export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan'>>, monat: string, ctx: Pick<PositionKontext, 'kleinunternehmer' | 'nettoAusBrutto'>): RechnungPosition[] | null {
+  const p = m.zahlplan?.anzahlungProzent;
+  if (m.honorar.basis !== 'einmalig' || !p || !tagOk(m.start)) return null;
+  const s = m.start.slice(0, 7);
+  const r = restMonat(m, {});
+  const voll = positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: null });
+  const titel = (zusatz: string) => `${m.titel || 'Leistung'} — ${zusatz}`.slice(0, 200);
+  if (!r || r === s) return monat === s ? [voll] : [];
+  const anzahlung = kaufmaennisch((voll.einzelpreisCent * p) / 100);
+  const satz = (t: string) => [voll.text, t].filter(Boolean).join('\n\n').slice(0, 6000);
+  if (monat === s) return [{ ...voll, titel: titel(`Anzahlung ${p} %`), text: satz(`Zahlung ${p} % bei Beginn, Rest bei Abschluss.`), einzelpreisCent: anzahlung }];
+  if (monat === r) return [{ ...voll, titel: titel(`Restzahlung ${100 - p} %`), text: satz('Restzahlung bei Abschluss.'), einzelpreisCent: voll.einzelpreisCent - anzahlung }];
+  return [];
+}
+
+/**
+ * Die Positionen der Monatsrechnung (rein, Server UND Liquidität): das Honorar des Mandats wie bisher (`positionAusMandat`, nur bei Honorar > 0)
+ * und danach die Zusatzmodule (`zusatzPositionen`). Ohne `zusatz`: genau die eine Position wie bis 19.10. (bit-gleich). Ein einmaliges Honorar mit
+ * Zahlplan (21.10.) steht nur im Monat der Anzahlung bzw. des Rests (`zahlplanPosition`).
+ */
+export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'> & Partial<Pick<Mandat, 'zahlplan'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
   const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, monat);
   // Nur in Monaten, in denen das Mandat läuft (der Server prüft das vorher ohnehin — 409 „außerhalb der Laufzeit“).
-  const haupt = m.honorar.betrag > 0 && (lm?.tage ?? 0) > 0 ? [positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: lm })] : [];
+  const laeuft = m.honorar.betrag > 0 && (lm?.tage ?? 0) > 0;
+  const plan = laeuft ? zahlplanPosition(m, monat, ctx) : null;
+  const haupt = !laeuft ? [] : plan ?? [positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: lm })];
   return m.zusatz?.length ? [...haupt, ...zusatzPositionen(m, monat, ctx, ende)] : haupt;
 }
 
 // ── Abrechnen (je Einheit · Tag · Stunde) ────────────────────────────────────
 
-/** Was „abrechnen“ mitbringt: das Modul und die Menge (Einheiten, Tage bzw. Stunden). */
-export interface AbrechnenWahl { zusatzId: string; menge: number }
+/**
+ * Was „abrechnen“ mitbringt: das Modul und die Menge (Einheiten, Tage bzw. Stunden). `teilId` (21.10., Rundgang B7): ein OPTIONALER Preis-Teil des Produkts
+ * hinter dem Modul (z. B. „je Messe“ neben dem Festpreis) — abgerechnet wie je Einheit, zu seinem Preis.
+ */
+export interface AbrechnenWahl { zusatzId: string; menge: number; teilId?: string }
 export const ABRECHNEN_MAX = { module: 20, menge: 100000 } as const;
 /** Die Auswahl „abrechnen“ aus dem Netz: Liste von `{ zusatzId, menge }` — fehlt sie, leer. Unsinn 400, zu viele 413 (nie gekürzt). */
 export function abrechnenWahlAus(v: unknown): { ok: true; wahl: AbrechnenWahl[] } | { ok: false; status: 400 | 413; fehler: string } {
@@ -153,7 +191,8 @@ export function abrechnenWahlAus(v: unknown): { ok: true; wahl: AbrechnenWahl[] 
     const o = x && typeof x === 'object' ? x as Record<string, unknown> : {};
     if (typeof o.zusatzId !== 'string' || !/^mz-[a-z0-9-]{1,60}$/.test(o.zusatzId)) return { ok: false, status: 400, fehler: 'einheiten: unbekanntes Zusatzmodul.' };
     if (typeof o.menge !== 'number' || !Number.isFinite(o.menge)) return { ok: false, status: 400, fehler: 'einheiten: Menge als Zahl.' };
-    wahl.push({ zusatzId: o.zusatzId, menge: o.menge });
+    if (o.teilId !== undefined && !(typeof o.teilId === 'string' && /^pt-[a-z0-9-]{1,40}$/.test(o.teilId))) return { ok: false, status: 400, fehler: 'einheiten: unbekannter Preis-Teil.' };
+    wahl.push({ zusatzId: o.zusatzId, menge: o.menge, ...(typeof o.teilId === 'string' ? { teilId: o.teilId } : {}) });
   }
   return { ok: true, wahl };
 }
@@ -166,6 +205,20 @@ function teilFuer(z: MandatZusatz, katalog?: Katalog): PreisTeil | undefined {
   const art = z.honorar?.basis === 'einheit' ? 'je_einheit' : z.honorar?.basis === 'tag' ? 'tagessatz' : z.honorar?.basis === 'stunde' ? 'stundensatz' : null;
   return art ? preisteileVon(l).find(t => t.art === art) : undefined;
 }
+/** Preis-Formen, die nach Menge abgerechnet werden (je Einheit · Tag · Stunde). */
+const NACH_MENGE: readonly PreisTeil['art'][] = ['je_einheit', 'tagessatz', 'stundensatz'];
+/**
+ * Die optionalen Teile des Produkts hinter einem Modul, die sich am Mandat abrechnen lassen (21.10., Rundgang B7): Rolle „option“, nach Menge (je Einheit,
+ * Tag, Stunde), mit Betrag — z. B. „je Messe“ neben dem Festpreis eines Messe-Moduls. Ohne Preis-Teile bzw. ohne Katalog: keine.
+ */
+export function zusatzOptionen(z: Pick<MandatZusatz, 'leistungId'>, katalog?: Katalog): PreisTeil[] {
+  const l = katalog?.find(x => x.id === z.leistungId);
+  if (!l || !hatPreisteile(l)) return [];
+  return preisteileVon(l).filter(t => t.rolle === 'option' && NACH_MENGE.includes(t.art) && typeof t.betragCent === 'number');
+}
+/** Einheit eines Preis-Teils auf der Rechnung: „Messe“ (aus „je Messe“), „Tag“, „Stunde“. */
+export const teilEinheit = (t: Pick<PreisTeil, 'art' | 'einheit'>) => (t.art === 'tagessatz' ? 'Tag' : t.art === 'stundensatz' ? 'Stunde' : (t.einheit ?? '').trim().replace(/^(je|pro)\s+/i, '').slice(0, 30) || 'Einheit');
+
 /** Deckel (Stunden je Monat) eines Stundensatz-Moduls: aus dem Produkt — höchstens so viele Stunden je Monat werden berechnet. */
 export function zusatzDeckel(z: MandatZusatz, katalog?: Katalog): number | null {
   if (z.honorar?.basis !== 'stunde') return null;
@@ -192,9 +245,29 @@ export function abrechnenPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz'
   for (const w of wahl) {
     const z = (m.zusatz ?? []).find(x => x.id === w.zusatzId);
     if (!z) return { ok: false, status: 400, fehler: 'Dieses Zusatzmodul hängt nicht (mehr) am Mandat.' };
-    if (gesehen.has(z.id)) return { ok: false, status: 400, fehler: 'Jedes Modul nur einmal je Rechnung abrechnen.' };
-    gesehen.add(z.id);
+    const schluessel = `${z.id}|${w.teilId ?? ''}`;
+    if (gesehen.has(schluessel)) return { ok: false, status: 400, fehler: 'Jedes Modul nur einmal je Rechnung abrechnen.' };
+    gesehen.add(schluessel);
     const name = zusatzName(z, ctx.katalog);
+    if (w.teilId) {
+      // Optionaler Teil des Produkts (B7): zu seinem Preis, nach Menge — die Stunden höchstens bis zu seinem Deckel.
+      const t = zusatzOptionen(z, ctx.katalog).find(x => x.id === w.teilId);
+      if (!t) return { ok: false, status: 400, fehler: `„${name}“: diesen optionalen Teil gibt es am Produkt nicht (mehr) bzw. er wird nicht nach Menge abgerechnet.` };
+      if (typeof w.menge !== 'number' || !Number.isFinite(w.menge) || w.menge <= 0) return { ok: false, status: 400, fehler: `„${name}“: Menge größer 0.` };
+      if (w.menge > ABRECHNEN_MAX.menge) return { ok: false, status: 413, fehler: `„${name}“: höchstens ${ABRECHNEN_MAX.menge.toLocaleString('de-DE')} — nichts angelegt.` };
+      const lmT = leistungsmonat(zusatzZeitraum(m, z, m.ende), monat);
+      if (!lmT?.tage) return { ok: false, status: 409, fehler: `„${name}“ läuft in ${monatsName(monat)} nicht (ab/bis am Modul bzw. Laufzeit des Mandats prüfen).` };
+      const menge = Math.round(w.menge * 1000) / 1000;
+      const deckel = t.art === 'stundensatz' ? t.deckel?.stundenJeMonat ?? null : null;
+      const berechnet = deckel !== null && menge > deckel ? deckel : menge;
+      const einheit = teilEinheit(t);
+      raus.push({
+        id: `${POS.abrechnen}${fnv(schluessel)}`, leistungId: z.leistungId, titel: `${name} · je ${einheit} — ${monatsName(monat)}`.slice(0, 200),
+        text: berechnet < menge ? `${menge.toLocaleString('de-DE')} Stunden erfasst — berechnet höchstens ${deckel} Stunden je Monat (vereinbarter Deckel).` : (t.text?.trim() || 'Zusatzmodul, optional nach Menge'),
+        menge: berechnet, einheit, einzelpreisCent: t.betragCent!, ustSatz: satz,
+      });
+      continue;
+    }
     if (zusatzArt(z) !== 'abrechnen') return { ok: false, status: 409, fehler: `„${name}“ wird nicht nach Menge abgerechnet (${z.inklusive ? 'inklusive' : 'monatlich, jährlich bzw. einmalig — das steht von selbst auf der Monatsrechnung'}).` };
     if (typeof w.menge !== 'number' || !Number.isFinite(w.menge) || w.menge <= 0) return { ok: false, status: 400, fehler: `„${name}“: Menge größer 0.` };
     if (w.menge > ABRECHNEN_MAX.menge) return { ok: false, status: 413, fehler: `„${name}“: höchstens ${ABRECHNEN_MAX.menge.toLocaleString('de-DE')} — nichts angelegt.` };
@@ -215,7 +288,10 @@ export function abrechnenPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz'
 
 // ── Anrechnung ───────────────────────────────────────────────────────────────
 
-/** Merker der Anrechnung: Kennung der Minusposition je (angerechnetes Produkt, Firma) — gibt es sie auf einer gültigen Rechnung, nie noch einmal. */
+/**
+ * Kennung der Minusposition je (angerechnetes Produkt, Firma) — dieselbe auf jeder Rechnung, die einen Teil der Anrechnung trägt. Was auf gültigen
+ * Rechnungen (auch Entwürfen; storniert = frei) unter dieser Kennung steht, ist schon angerechnet (`angerechnetCent`).
+ */
 export const anrechnungId = (produktId: string, firmaId: string) => `${POS.anrechnung}${fnv(`${produktId}|${firmaId}`)}`;
 /** Ist die Position eine Anrechnung (darf negativ sein)? */
 export const istAnrechnung = (p: Pick<RechnungPosition, 'id'>) => p.id.startsWith(POS.anrechnung);
@@ -225,7 +301,7 @@ const gilt = (r: Pick<Rechnung, 'status' | 'art'>) => r.status !== 'storniert' &
 export interface AnrechnungKontext {
   katalog: readonly Pick<Leistung, 'id' | 'name' | 'regeln' | 'geloeschtAm'>[];
   mandate: readonly Pick<Mandat, 'id' | 'firmaId' | 'leistungId' | 'status' | 'honorar' | 'ustSatz' | 'geloeschtAm'>[];
-  rechnungen: readonly Pick<Rechnung, 'id' | 'status' | 'art' | 'mandatId' | 'kundeFirmaId' | 'positionen' | 'leistungVon'>[];
+  rechnungen: readonly Pick<Rechnung, 'id' | 'status' | 'art' | 'mandatId' | 'kundeFirmaId' | 'positionen' | 'leistungVon' | 'angebotId'>[];
   nettoAusBrutto: (brutto: number, satz: number) => number;
 }
 /**
@@ -246,34 +322,54 @@ export function gekauftCent(produktId: string, firmaId: string, ctx: AnrechnungK
     .reduce((a, x) => a + inCent(x.honorar.netto ? x.honorar.betrag : ctx.nettoAusBrutto(x.honorar.betrag, x.ustSatz)), 0);
 }
 
+/** Wie viel unter dieser Kennung schon angerechnet ist — netto, Cent, ≥ 0: die Minuspositionen auf gültigen Rechnungen (auch Entwürfen). */
+export function angerechnetCent(id: string, rechnungen: AnrechnungKontext['rechnungen']): number {
+  return rechnungen.filter(gilt).flatMap(r => (r.positionen ?? []).filter(p => p.id === id)).reduce((a, p) => a - positionNetto(p), 0);
+}
+
+/** Die Anrechnungen, die für das Hauptprodukt eines Mandats gelten: je Produkt mit Regel und Kauf der volle Betrag (netto, Cent) und was davon noch offen ist. */
+function anrechnungen(m: Pick<Mandat, 'id' | 'firmaId' | 'leistungId'>, ctx: AnrechnungKontext): { l: AnrechnungKontext['katalog'][number]; id: string; anteil: number; voll: number; bisher: number }[] {
+  if (!m.firmaId || !m.leistungId) return [];
+  const raus: { l: AnrechnungKontext['katalog'][number]; id: string; anteil: number; voll: number; bisher: number }[] = [];
+  for (const l of ctx.katalog) {
+    const a = l.regeln?.anrechnung;
+    if (l.geloeschtAm || !a?.auf.includes(m.leistungId)) continue;
+    const gekauft = gekauftCent(l.id, m.firmaId, ctx, m.id);
+    if (gekauft <= 0) continue;
+    const id = anrechnungId(l.id, m.firmaId);
+    raus.push({ l, id, anteil: a.anteilProzent, voll: kaufmaennisch((gekauft * a.anteilProzent) / 100), bisher: angerechnetCent(id, ctx.rechnungen) });
+  }
+  return raus;
+}
+/** Was von den Anrechnungen eines Mandats noch offen ist (netto, Cent, ≥ 0) — 0 = alles angerechnet bzw. nichts anzurechnen. */
+export const anrechnungOffenCent = (m: Pick<Mandat, 'id' | 'firmaId' | 'leistungId'>, ctx: AnrechnungKontext) =>
+  anrechnungen(m, ctx).reduce((s, x) => s + Math.max(0, x.voll - x.bisher), 0);
+
 /**
- * Die Anrechnung auf der Monatsrechnung eines Mandats (rein): je Produkt, das laut `regeln.anrechnung` auf das Hauptprodukt dieses Mandats
- * angerechnet wird und das die Firma gekauft hat (`gekauftCent`), EINE Minusposition „Anrechnung <Produkt>“ — Anteil laut Regel, höchstens bis zum
- * Betrag der Rechnung (netto, gleicher Steuersatz). Steht die Anrechnung (Kennung `anrechnungId`) schon auf einer gültigen Rechnung (auch einem
- * Entwurf), kommt sie nicht noch einmal. `positionen` = die übrigen Positionen dieser Rechnung.
+ * Die Anrechnung auf der Monatsrechnung eines Mandats (rein) — Kevin 21.10.: „Angerechnet wird der ganze gezahlte Betrag des angerechneten Produkts
+ * inklusive gewählter Optionen. Ist der erste Monat kleiner (Teilmonat), wandert der Rest auf die nächsten Rechnungen, bis alles angerechnet ist.“
+ * Je Produkt, das laut `regeln.anrechnung` auf das Hauptprodukt angerechnet wird und das die Firma gekauft hat (`gekauftCent`, alle Positionen dieses
+ * Produkts — auch Optionen), EINE Minusposition „Anrechnung <Produkt>“: Anteil laut Regel, abzüglich dessen, was unter derselben Kennung schon auf
+ * gültigen Rechnungen steht, höchstens bis zum Betrag dieser Rechnung (netto, gleicher Steuersatz). Der Rest kommt auf die nächste Rechnung.
+ * `positionen` = die übrigen Positionen dieser Rechnung. (Bis 21.10.: einmal, höchstens bis zum Rechnungsbetrag — der Rest verfiel.)
  */
 export function anrechnungPositionen(m: Pick<Mandat, 'id' | 'firmaId' | 'leistungId' | 'ustSatz'>, positionen: readonly RechnungPosition[], ctx: AnrechnungKontext, opt: { kleinunternehmer?: boolean } = {}): RechnungPosition[] {
   if (!m.firmaId || !m.leistungId) return [];
   const satz = satzVon(m, opt.kleinunternehmer);
-  const schon = new Set(ctx.rechnungen.filter(gilt).flatMap(r => (r.positionen ?? []).filter(istAnrechnung).map(p => p.id)));
   const raus: RechnungPosition[] = [];
   let rest = positionen.filter(p => p.ustSatz === satz).reduce((a, p) => a + positionNetto(p), 0);
-  for (const l of ctx.katalog) {
-    const a = l.regeln?.anrechnung;
-    if (l.geloeschtAm || !a?.auf.includes(m.leistungId) || rest <= 0) continue;
-    const id = anrechnungId(l.id, m.firmaId);
-    if (schon.has(id)) continue;
-    const gekauft = gekauftCent(l.id, m.firmaId, ctx, m.id);
-    if (gekauft <= 0) continue;
-    const voll = kaufmaennisch((gekauft * a.anteilProzent) / 100);
-    const betrag = Math.min(voll, rest);
+  const euro = (c: number) => (c / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  for (const x of anrechnungen(m, ctx)) {
+    const offen = x.voll - x.bisher;
+    if (offen <= 0 || rest <= 0) continue;
+    const betrag = Math.min(offen, rest);
     rest -= betrag;
-    const euro = (c: number) => (c / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    raus.push({
-      id, leistungId: l.id, titel: `Anrechnung ${l.name}`.slice(0, 200),
-      text: betrag < voll ? `Angerechnet ${a.anteilProzent === 100 ? 'voll' : `zu ${a.anteilProzent} %`}: ${euro(betrag)} € von ${euro(voll)} € (höchstens bis zum Betrag dieser Rechnung, einmalig).` : `Angerechnet ${a.anteilProzent === 100 ? 'voll' : `zu ${a.anteilProzent} %`} (einmalig).`,
-      menge: 1, einheit: 'pauschal', einzelpreisCent: -betrag, ustSatz: satz,
-    });
+    const danach = offen - betrag;
+    const wie = x.anteil === 100 ? 'voll' : `zu ${x.anteil} %`;
+    const text = !x.bisher && !danach
+      ? `Angerechnet ${wie}.`
+      : `Angerechnet ${wie}: ${euro(betrag)} € von ${euro(x.voll)} €${x.bisher ? ` (bisher ${euro(x.bisher)} €)` : ''}${danach ? ` — der Rest von ${euro(danach)} € folgt auf der nächsten Rechnung.` : ' — damit vollständig angerechnet.'}`;
+    raus.push({ id: x.id, leistungId: x.l.id, titel: `Anrechnung ${x.l.name}`.slice(0, 200), text, menge: 1, einheit: 'pauschal', einzelpreisCent: -betrag, ustSatz: satz });
   }
   return raus;
 }
@@ -292,6 +388,8 @@ export interface ZusatzPostenRoh {
   ab: string;
   bis?: string;
   notiz: string;
+  /** Leistungsmonat der ersten Zahlung („JJJJ-MM“, 21.10., A2) — wiederkehrend je Zahlung + 1 bzw. 12 Monate (Planposten `leistungsmonat`). */
+  monat: string;
 }
 
 interface Zahlung { monat: string; cent: number; tag: string; voll: boolean; titel: string }
@@ -313,9 +411,9 @@ function buendeln(zid: string, l: readonly Zahlung[], schritt: 1 | 12, offen: bo
       const id = hauptVergeben ? `z-${zid}~${a.monat}` : `z-${zid}`;
       hauptVergeben = true;
       const lauftWeiter = letzteReihe && offen;
-      raus.push({ id, titel: name, betrag: a.cent / 100, rhythmus: schritt === 1 ? 'monatlich' : 'jaehrlich', ab: a.tag, ...(lauftWeiter ? {} : { bis: plusMonateGekappt(a.tag, schritt * (n - 1)) }), notiz });
+      raus.push({ id, titel: name, betrag: a.cent / 100, rhythmus: schritt === 1 ? 'monatlich' : 'jaehrlich', ab: a.tag, ...(lauftWeiter ? {} : { bis: plusMonateGekappt(a.tag, schritt * (n - 1)) }), notiz, monat: a.monat });
     } else {
-      for (let k = i; k < j; k++) raus.push({ id: `z-${zid}~${l[k].monat}`, titel: l[k].titel, betrag: l[k].cent / 100, rhythmus: 'einmalig', ab: l[k].tag, notiz });
+      for (let k = i; k < j; k++) raus.push({ id: `z-${zid}~${l[k].monat}`, titel: l[k].titel, betrag: l[k].cent / 100, rhythmus: 'einmalig', ab: l[k].tag, notiz, monat: l[k].monat });
     }
     i = j;
   }
@@ -337,15 +435,15 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
   // Horizont: hinter dem letzten Ereignis (Beginn/Ende eines Moduls oder des Mandats, Rest eines Zahlplans) ist alles gleichförmig — 13 Monate
   // danach reichen, damit jede jährliche Zahlung einmal im Gleichlauf steht; offene Reihen laufen danach ohne Ende weiter.
   const ereignisse = [abMonat, m.start, ende, ...liste.flatMap(z => [z.ab, z.bis])].filter((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}/.test(x)).map(x => x.slice(0, 7));
-  for (const z of liste) { const r = z.zahlplan ? restMonat(zusatzZeitraum(m, z, ende)) : null; if (r) ereignisse.push(r); }
+  for (const z of liste) { const r = z.zahlplan ? restMonat(m, z) : null; if (r) ereignisse.push(r); }
   const horizont = ende ? ende.slice(0, 7) : monatPlus(ereignisse.sort().at(-1)!, 13);
   const brutto = (l: readonly RechnungPosition[]) => rechnungSummen(l).brutto;
-  const mitEnde = { ...m, ...(ende ? { ende } : {}) };
-  // Je Monat die Positionen der Monatsrechnung (einmal gerechnet, für alle Module).
+  // Je Monat die Positionen der Monatsrechnung (einmal gerechnet, für alle Module) — mit dem geplanten Ende als Laufzeit (`ende`); das Mandat selbst
+  // bleibt unverändert (der Rest eines Zahlplans richtet sich nach dem gesetzten Ende, wie auf der Rechnung — `restMonat`).
   const monate: string[] = [];
   const start = [abMonat, m.start?.slice(0, 7)].filter((x): x is string => !!x).sort().at(-1)!;
   for (let mo = start; mo <= horizont; mo = monatPlus(mo, 1)) monate.push(mo);
-  const jeMonat = new Map(monate.map(mo => [mo, monatsPositionen(mitEnde, mo, pctx, ende)]));
+  const jeMonat = new Map(monate.map(mo => [mo, monatsPositionen(m, mo, pctx, ende)]));
   const raus: ZusatzPostenRoh[] = [];
   for (const z of liste) {
     const art = zusatzArt(z);
@@ -355,8 +453,10 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
     const notiz = `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — wie die Monatsrechnung.`;
     const zahlungen: Zahlung[] = [];
     if (art === 'abrechnen') {
-      // Stundensatz mit geplanten Stunden je Monat (höchstens der Deckel) — die echten Stunden kommen per „abrechnen“ auf die Rechnung.
-      const std = z.honorar?.basis === 'stunde' ? Math.min(z.stundenJeMonat ?? 0, zusatzDeckel(z, ctx.katalog) ?? Infinity) : 0;
+      // Stundensatz mit geplanten Stunden je Monat (höchstens der Deckel), Tagessatz mit geplanten Tagen (21.10., B4) — die echten Stunden bzw. Tage kommen
+      // per „abrechnen“ auf die Rechnung.
+      const tag = z.honorar?.basis === 'tag';
+      const std = z.honorar?.basis === 'stunde' ? Math.min(z.stundenJeMonat ?? 0, zusatzDeckel(z, ctx.katalog) ?? Infinity) : tag ? z.tageJeMonat ?? 0 : 0;
       if (!(std > 0)) continue;
       for (const mo of monate) {
         const lm = leistungsmonat(zr, mo);
@@ -365,7 +465,7 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
         const p: RechnungPosition = { id: 'x', titel: 'x', text: '', menge: 1, einheit: 'Monat', einzelpreisCent: netto, ustSatz: satzVon(m) };
         zahlungen.push({ monat: mo, cent: brutto([p]), tag: plusTage(lm.von, ziel), voll: !lm.anteilig, titel: `${name} ${monatsName(mo)}${lm.anteilig ? ' anteilig' : ''}` });
       }
-      raus.push(...buendeln(z.id, zahlungen, 1, offen, `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — ${z.stundenJeMonat} Std./Monat geplant (abgerechnet wird nach Stunden).`, name));
+      raus.push(...buendeln(z.id, zahlungen, 1, offen, tag ? `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — ${std.toLocaleString('de-DE')} Tage/Monat geplant (abgerechnet wird nach Tagen).` : `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — ${z.stundenJeMonat} Std./Monat geplant (abgerechnet wird nach Stunden).`, name));
       continue;
     }
     if (art !== 'monat' && art !== 'jahr' && art !== 'einmalig') continue;
@@ -379,50 +479,60 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
       const titelTeil = art === 'einmalig' ? (l[k].titel.includes(' — ') ? `${name} ${l[k].titel.split(' — ').pop()}` : name) : `${name} ${monatsName(mo)}${lm.anteilig ? ' anteilig' : ''}`;
       zahlungen.push({ monat: mo, cent, tag: plusTage(lm.von, ziel), voll: art === 'jahr' || (art === 'monat' && !lm.anteilig), titel: titelTeil });
     }
-    if (art === 'einmalig') raus.push(...zahlungen.map(x => ({ id: `z-${z.id}~${x.monat}`, titel: x.titel, betrag: x.cent / 100, rhythmus: 'einmalig' as const, ab: x.tag, notiz })));
+    if (art === 'einmalig') raus.push(...zahlungen.map(x => ({ id: `z-${z.id}~${x.monat}`, titel: x.titel, betrag: x.cent / 100, rhythmus: 'einmalig' as const, ab: x.tag, notiz, monat: x.monat })));
     else raus.push(...buendeln(z.id, zahlungen, art === 'jahr' ? 12 : 1, offen, notiz, name));
   }
   return raus;
 }
 
-// ── Anrechnung in der Liquidität (19.10., P3b) ───────────────────────────────
+// ── Anrechnung in der Liquidität (19.10., P3b; 21.10. Rest über mehrere Monate) ───────────────────────
 
 /** Die Anrechnung als Liquiplan-Zahlung: Monat, Wirkung auf die Monatsrechnung (brutto, Cent, negativ) und die Namen der angerechneten Produkte. */
 export interface AnrechnungZahlung { monat: string; cent: number; titel: string }
 const ohneAnrechnung = (l: readonly RechnungPosition[]) => l.filter(p => !istAnrechnung(p));
 /** Was die Anrechnung auf einer Rechnung ausmacht (brutto, Cent, ≤ 0): Summe mit ihr minus Summe ohne sie — die Steuer kaufmännisch je Rechnung. */
 export const anrechnungWirkungCent = (positionen: readonly RechnungPosition[]) => rechnungSummen(positionen).brutto - rechnungSummen(ohneAnrechnung(positionen)).brutto;
+/** Wie viele Monate die Liquidität eine offene Anrechnung höchstens vorausrechnet (ein Mandat ohne Ende). */
+export const ANRECHNUNG_MONATE = 36;
 
 /**
- * Die Anrechnung in der Liquidität — DIESELBE Regel wie die Monatsrechnung (`monatsPositionen` + `anrechnungPositionen`): einmal, höchstens bis zum
- * Betrag des Monats (der Rest verfällt wie auf der Rechnung), im Monat der ersten Rechnung des Hauptprodukts.
- *   · Steht sie schon auf einer Rechnung dieses Mandats: ihre Wirkung im Leistungsmonat dieser Rechnung (nur ab `abMonat` — Vergangenes ist Rechnung).
- *   · Steht sie auf einer anderen gültigen Rechnung (Merker): keine.
- *   · Sonst im ersten Monat ab `abMonat`, in dem das Mandat eine Monatsrechnung hat — so, wie die Rechnung sie dort rechnen wird.
- * Leer ohne Regel, ohne Kauf bzw. ohne Firma (Mandat ohne Anrechnung: nichts, bit-gleich).
+ * Die Anrechnung in der Liquidität — DIESELBE Regel wie die Monatsrechnung (`monatsPositionen` + `anrechnungPositionen`): je Monat höchstens bis zum
+ * Betrag des Monats, der Rest wandert in die Folgemonate, bis alles angerechnet ist (Kevin 21.10.).
+ *   · Steht sie schon auf Rechnungen dieses Mandats: deren Wirkung im jeweiligen Leistungsmonat (nur ab `abMonat` — Vergangenes ist Rechnung).
+ *   · Danach Monat für Monat ab `abMonat` (Monate, die schon eine Monatsrechnung haben, ausgenommen): so, wie die Rechnung sie dort rechnen wird —
+ *     jede gedachte Rechnung zählt für die nächste mit, bis nichts mehr offen ist (höchstens bis zum Ende bzw. `ANRECHNUNG_MONATE`).
+ * Was auf Rechnungen anderer Mandate derselben Firma angerechnet ist, ist angerechnet (dieselbe Kennung). Leer ohne Regel, ohne Kauf bzw. ohne
+ * Firma (Mandat ohne Anrechnung: nichts, bit-gleich).
  */
 export function anrechnungLiquiditaet(m: Mandat, abMonat: string, ende: string | null, ctx: AnrechnungKontext & Pick<PositionKontext, 'katalog'>): AnrechnungZahlung[] {
   if (!m.firmaId || !m.leistungId) return [];
-  const eigene = ctx.rechnungen.filter(r => gilt(r) && r.mandatId === m.id && (r.positionen ?? []).some(istAnrechnung));
   const titel = (l: readonly RechnungPosition[]) => l.filter(istAnrechnung).map(p => p.titel).join(', ');
-  if (eigene.length) {
-    return eigene.filter(r => typeof r.leistungVon === 'string' && r.leistungVon.slice(0, 7) >= abMonat)
-      .map(r => ({ monat: r.leistungVon!.slice(0, 7), cent: anrechnungWirkungCent(r.positionen!), titel: titel(r.positionen!) }))
-      .filter(x => x.cent < 0);
+  const raus: AnrechnungZahlung[] = [];
+  const eigene = ctx.rechnungen.filter(r => gilt(r) && r.mandatId === m.id && typeof r.leistungVon === 'string');
+  for (const r of eigene) {
+    if (!(r.positionen ?? []).some(istAnrechnung) || r.leistungVon!.slice(0, 7) < abMonat) continue;
+    const cent = anrechnungWirkungCent(r.positionen!);
+    if (cent < 0) raus.push({ monat: r.leistungVon!.slice(0, 7), cent, titel: titel(r.positionen!) });
   }
-  const mitEnde = { ...m, ...(ende ? { ende } : {}) };
+  // Monate mit Monatsrechnung (auch ohne Anrechnung, auch Entwurf) rechnet die Rechnung — die Simulation lässt sie aus.
+  const belegt = new Set(eigene.filter(r => !r.angebotId && !nurAbgerechnet(r)).map(r => r.leistungVon!.slice(0, 7)));
   const pctx: PositionKontext = { katalog: ctx.katalog, nettoAusBrutto: ctx.nettoAusBrutto };
   const start = [abMonat, m.start?.slice(0, 7)].filter((x): x is string => !!x).sort().at(-1)!;
-  const letzter = ende ? ende.slice(0, 7) : monatPlus(start, 24);
-  for (let mo = start; mo <= letzter; mo = monatPlus(mo, 1)) {
-    const pos = monatsPositionen(mitEnde, mo, pctx, ende);
+  const letzter = ende ? ende.slice(0, 7) : monatPlus(start, ANRECHNUNG_MONATE);
+  let sim: AnrechnungKontext['rechnungen'] = ctx.rechnungen;
+  for (let mo = start, n = 0; mo <= letzter && n <= ANRECHNUNG_MONATE; mo = monatPlus(mo, 1), n++) {
+    if (!anrechnungOffenCent(m, { ...ctx, rechnungen: sim })) break;
+    if (belegt.has(mo)) continue;
+    const pos = monatsPositionen(m, mo, pctx, ende);
     if (!pos.length) continue;
-    const anr = anrechnungPositionen(m, pos, ctx);
-    if (!anr.length) return [];
+    const anr = anrechnungPositionen(m, pos, { ...ctx, rechnungen: sim });
+    if (!anr.length) continue;
     const cent = anrechnungWirkungCent([...pos, ...anr]);
-    return cent < 0 ? [{ monat: mo, cent, titel: titel(anr) }] : [];
+    if (cent < 0) raus.push({ monat: mo, cent, titel: titel(anr) });
+    // Die gedachte Rechnung dieses Monats: was sie anrechnet, ist für die nächste angerechnet.
+    sim = [...sim, { id: `sim-${mo}`, status: 'geplant', mandatId: m.id, positionen: anr, leistungVon: `${mo}-01` }];
   }
-  return [];
+  return raus.sort((x, y) => x.monat.localeCompare(y.monat));
 }
 
 // ── Anzeige ──────────────────────────────────────────────────────────────────
@@ -441,7 +551,7 @@ export function zusatzBeschreibung(z: MandatZusatz, katalog?: Katalog): string {
   else if (art === 'jahr') kern = `${euro(h.betragCent)} netto/Jahr`;
   else if (art === 'einmalig') kern = `${euro(h.betragCent)} netto einmalig${z.zahlplan ? ` · ${z.zahlplan.anzahlungProzent === 50 ? 'Zahlung 50/50' : `${z.zahlplan.anzahlungProzent} % Anzahlung`}` : ''}`;
   else if (h.basis === 'stunde') kern = `${euro(h.betragCent)} netto/Stunde${z.stundenJeMonat ? ` · ${z.stundenJeMonat.toLocaleString('de-DE')} Std./Monat geplant` : ''}${zusatzDeckel(z, katalog) ? ` · höchstens ${zusatzDeckel(z, katalog)} Std./Monat` : ''}`;
-  else if (h.basis === 'tag') kern = `${euro(h.betragCent)} netto/Tag`;
+  else if (h.basis === 'tag') kern = `${euro(h.betragCent)} netto/Tag${z.tageJeMonat ? ` · ${z.tageJeMonat.toLocaleString('de-DE')} Tage/Monat geplant` : ''}`;
   else kern = `${euro(h.betragCent)} netto je ${zusatzEinheit(z, katalog)}`;
   return [kern, zeit].filter(Boolean).join(' · ');
 }

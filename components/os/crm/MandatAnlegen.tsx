@@ -24,6 +24,7 @@ import { mandatVorlageAusProdukt } from '@/lib/crm/produkt-karte';
 import { centAusEingabe, eingabeAusCent } from '@/lib/crm/angebote';
 import { inCent } from '@/lib/finanzen/ust';
 import type { CrmApi } from './daten';
+import { usePlatzLage } from './plaetze';
 
 const NEU_FIRMA = 'neu:firma';
 const NEU_PERSON = 'neu:person';
@@ -32,13 +33,14 @@ const neueId = () => `mandat-${typeof crypto !== 'undefined' && 'randomUUID' in 
 const HONORAR_BASIS = [{ id: 'monat' as const, label: 'je Monat' }, { id: 'einmalig' as const, label: 'einmalig' }, { id: 'tag' as const, label: 'je Tag' }];
 const RHYTHMUS = [{ id: 'monatlich' as const, label: 'monatlich' }, { id: 'quartal' as const, label: 'je Quartal' }, { id: 'einmalig' as const, label: 'einmalig' }];
 /** Die änderbaren Vertragsfelder im Dialog (Texte, wie getippt). */
-interface VertragForm { betrag: string; basis: Mandat['honorar']['basis']; laufzeit: string; rhythmus: Mandat['rechnungsrhythmus']; ziel: string; leistungen: string; hinweise: string[] }
+interface VertragForm { betrag: string; basis: Mandat['honorar']['basis']; laufzeit: string; rhythmus: Mandat['rechnungsrhythmus']; ziel: string; leistungen: string; hinweise: string[]; zahlplan?: number }
 /** Vorbelegung aus dem Produkt — dieselbe Regel wie der Server (`mandatVorlageAusProdukt`). */
 function formAusProdukt(l: Leistung): VertragForm {
   const v = mandatVorlageAusProdukt(l);
   return {
     betrag: v.honorar.betrag ? eingabeAusCent(inCent(v.honorar.betrag)) : '', basis: v.honorar.basis, laufzeit: v.mindestlaufzeitMonate ? String(v.mindestlaufzeitMonate) : '',
     rhythmus: v.rechnungsrhythmus, ziel: String(v.zahlungszielTage ?? 14), leistungen: v.leistungen.join('\n'), hinweise: v.hinweise,
+    ...(v.zahlplan ? { zahlplan: v.zahlplan.anzahlungProzent } : {}),
   };
 }
 
@@ -76,8 +78,11 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
   const [leistungId, setLeistungIdRoh] = useState<string | null>(startProdukt);
   // Vertrag vom Produkt (P3) — vorbelegt, änderbar; ohne Produkt keiner (dann gilt der bisherige Weg).
   const [vertrag, setVertrag] = useState<VertragForm | null>(() => { const l = startProdukt ? katalog.find(x => x.id === startProdukt) : undefined; return l ? formAusProdukt(l) : null; });
+  // Platzgrenze (21.10., B3): sind alle Plätze des Produkts belegt, fragt „Mandat anlegen“ erst — ein Klick „Trotzdem anlegen“ legt an.
+  const [platzFragen, setPlatzFragen] = useState(false);
   const setLeistungId = (id: string | null) => {
     setLeistungIdRoh(id);
+    setPlatzFragen(false);
     const l = id ? katalog.find(x => x.id === id) : undefined;
     setVertrag(l ? formAusProdukt(l) : null);
     // Die Gesellschaft kommt vom Produkt, solange keine gewählt ist.
@@ -85,6 +90,7 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
   };
   const [fehler, setFehler] = useState<string | null>(null);
   const [dublette, setDublette] = useState<{ id: string; name: string } | null>(null);
+  const platz = usePlatzLage(api, modus === 'neu' ? leistungId : null);
   const anfrageId = useRef(neueId());
 
   const firmenListe = [...(firmaNeu ? [{ id: NEU_FIRMA, label: `${firmaNeu} (neu)` }] : []), ...firmen.map(f => ({ id: f.id, label: f.name }))];
@@ -124,9 +130,11 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
   } : null;
   const fertig = !!firmaWert && (modus === 'zuordnen' || (!!personWert && ges !== 'offen')) && (personId !== NEU_PERSON || !!(neu.vorname || neu.nachname)) && !vertragFehler;
 
-  const anlegen = async () => {
+  const anlegen = async (trotzdem = false) => {
     if (!firmaWert) { setFehler('Bitte eine Firma wählen oder neu anlegen.'); return; }
     if (modus === 'neu' && !personWert) { setFehler('Bitte eine Ansprechperson wählen oder neu anlegen.'); return; }
+    if (modus === 'neu' && platz.frage && !trotzdem) { setPlatzFragen(true); return; }
+    setPlatzFragen(false);
     const body = modus === 'neu'
       ? { aktion: 'mandat-neu', firma: firmaWert, person: personWert, gesellschaft: ges, ...(titel.trim() ? { titel: titel.trim() } : {}), ...(leistungId ? { leistungId } : {}), ...(leistungId && vertragBody ? { vertrag: vertragBody } : {}), ...(stufe ? { stufeId: stufe.id } : {}), ...(zustaendig ? { zustaendig } : {}), anfrageId: anfrageId.current }
       : { aktion: 'mandat-firma', mandatId, firma: firmaWert, ...(personWert ? { person: personWert } : {}) };
@@ -180,13 +188,17 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
               <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>Zahlungsziel (Tage)</span><input value={vertrag.ziel} inputMode="numeric" onChange={e => setVertrag(v => v && { ...v, ziel: e.target.value })} style={{ ...feld, fontSize: 16, width: 120 }} /></label>
             </div>
             <label style={{ display: 'grid', gap: 4 }}><span style={beschriftung}>Leistungen (eine je Zeile)</span><textarea value={vertrag.leistungen} rows={3} onChange={e => setVertrag(v => v && { ...v, leistungen: e.target.value })} style={{ ...feld, fontSize: 16, resize: 'vertical', lineHeight: 1.5 }} /></label>
+            {vertrag.zahlplan && vertrag.basis === 'einmalig' && <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>Zahlung {vertrag.zahlplan} % bei Beginn, Rest bei Abschluss (vom Produkt) — zwei Rechnungen.</span>}
             {vertrag.hinweise.map(h => <span key={h} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{h}</span>)}
             {vertragFehler && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{vertragFehler}</span>}
           </div>
         )}
+        {platzFragen && platz.frage && (
+          <Hinweis art="achtung" aktion={<><Knopf leise onClick={() => setPlatzFragen(false)}>Abbrechen</Knopf><Knopf onClick={() => anlegen(true)}>Trotzdem anlegen</Knopf></>}>{platz.frage}</Hinweis>
+        )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
-          <Knopf haupt aus={!fertig} onClick={anlegen}>{modus === 'neu' ? 'Mandat anlegen' : 'Firma zuordnen'}</Knopf>
+          <Knopf haupt aus={!fertig} onClick={() => anlegen()}>{modus === 'neu' ? 'Mandat anlegen' : 'Firma zuordnen'}</Knopf>
         </div>
       </div>
     </Fenster>

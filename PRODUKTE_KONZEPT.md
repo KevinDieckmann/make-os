@@ -221,6 +221,19 @@ EINE Stelle `lib/crm/mandat-zusatz.ts` (rein, Server + Browser) für Zusatzmodul
 - Tests: `tests/mandat-produkt.test.ts` (rein, auch Summe Liquidität = Rechnungen mit Anrechnung), `tests/mandat-produkt-server.test.ts` (Schreibwege).
   Offen: Anrechnung auf Rechnungen aus dem Angebot, B12/B9 (P4).
 
+## Fix 21.10. (Branch `fix4-geld`, Rundgang 19.10. + Kevins Entscheidungen) — ersetzt die Anrechnungs-Regel oben
+- **Rechnung statt Plan (A2):** gibt es für Mandat + Leistungsmonat eine Rechnung (gestellt/bezahlt, nicht storniert, keine Stornorechnung, nicht aus einem
+  Angebot, nicht nur `za-…`), zählt in der Liquidität die Rechnung, die Zahlung des Planpostens dieses Monats nicht — EINE Stelle `rechnungDeckung`
+  (lib/make-one/liquiditaet.ts) für Vorschau und Kopfzahl „Was reinkommt“. Mandats-Posten tragen `mandatId` + `leistungsmonat`; Altbestand: aus der Kennung
+  bzw. ab − Zahlungsziel. Der Rest eines Zahlplans liegt in Rechnung UND Liquidität im Monat des gesetzten Endes (ohne Ende im Folgemonat).
+- **Anrechnung (Kevin):** alles inkl. Optionen; je Rechnung höchstens ihr Betrag, der Rest auf die nächsten Rechnungen, bis alles angerechnet ist (schon
+  angerechnet = Positionen `anrechnungId` auf gültigen Rechnungen, auch Entwürfen). Liquidität simuliert Monat für Monat mit denselben Funktionen, je Monat ein Posten.
+- **Zahlplan am einmaligen Honorar (B2):** `Mandat.zahlplan` vom Festpreis des Produkts (`mandatZahlplanAusProdukt`) — Anzahlung im Beginn-Monat, Rest wie oben.
+- **Satz × geplante Menge (B4):** `PreisTeil.mengeJeMonat` (Vorgabe: Deckel bzw. 0, `geplanteMenge`), `Mandat.tageJeMonat`, `MandatZusatz.tageJeMonat`;
+  Planung und Liquidität monatlich Satz × Menge, die Rechnung die echten Tage/Stunden. Planung sagt „kostenlos“. Offen: Eingabefeld in der Karte (PreisTeile.tsx).
+- **Platzgrenze (B3):** warnen, aber erlauben (`plaetzeVonProdukt`, `usePlatzLage`); Server liefert einen Hinweis. **B6** Onboarding-Frage nach dem Anlegen
+  (vorhandener Start-Dialog). **B7** optionaler Teil eines Zusatzmoduls „abrechnen“ (`zusatzOptionen`, `teilId`). **B8** Rechnungsfenster → zurück (`zurueck`).
+
 ## Pakete
 
 - **P1 Kern** (`lib/crm/produkt-karte.ts`, Typen, Säuberer + Spiegeln in `lib/crm/speicher.ts` `zusatz('leistungen')`, `stufenAusKatalog`,

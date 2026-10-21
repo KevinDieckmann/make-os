@@ -45,11 +45,16 @@ export interface Planposten {
   /** Dieser (eigene) Posten ersetzt einen importierten Plan-Posten — der
    *  Excel-Import legt den ersetzten dann nicht wieder an. */
   ersetzt?: string;
+  /** Posten aus einem Mandat (21.10., A2 — lib/make-one/liquiditaet.ts `rechnungDeckung`): Mandat und Leistungsmonat der ersten Zahlung. */
+  mandatId?: string;
+  leistungsmonat?: string;
 }
 interface Datei { posten: Planposten[] }
 
 const RHYTHMEN: Rhythmus[] = ['einmalig', 'monatlich', 'quartal', 'jaehrlich'];
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
+const MONAT = /^\d{4}-(0[1-9]|1[0-2])$/;
+const MANDAT_ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
 /**
  * Zulässige `firmaId`: privat, die festen Gesellschaften (09.10.: auch `ug` — vorher fiel sie hier still weg), eine
  * Register-Gesellschaft `g-…` — und ein Altwert früherer fester Zuordnungen (kurze Kennung aus Buchstaben/Ziffern): der bleibt
@@ -82,6 +87,9 @@ function sauber(p: Partial<Planposten>, _i: number): Planposten | null {
       ? Math.max(0, Math.min(100, Math.round(Number(p.wahrscheinlich))))
       : undefined,
     ersetzt: p.ersetzt ? String(p.ersetzt).slice(0, 60) : undefined,
+    // 21.10. (A2): ohne diese Zeilen fielen sie bei jeder Änderung in der Liquidität weg (dann gilt wieder die Ableitung aus der Kennung).
+    mandatId: typeof p.mandatId === 'string' && MANDAT_ID.test(p.mandatId) ? p.mandatId : undefined,
+    leistungsmonat: typeof p.leistungsmonat === 'string' && MONAT.test(p.leistungsmonat) ? p.leistungsmonat : undefined,
   };
 }
 

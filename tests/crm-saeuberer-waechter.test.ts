@@ -45,6 +45,18 @@ describe('CRM-Säuberer kennen jedes Typ-Feld (#23)', () => {
       expect(fehlt, `${typ}: diese Felder kennt der Säuberer ${fn}() nicht — übernehmen oder als Ausnahme mit Grund eintragen`).toEqual([]);
     });
   }
+  // 21.10. (Rundgang B2/B4): die Teile der Produkt-Karte und die Zusatzmodule säubert lib/crm/produkt-karte.ts — ein neues Feld (z. B. `mengeJeMonat`,
+  // `tageJeMonat`) fiele sonst beim Speichern still weg.
+  it('PreisTeil ↔ preisteilSaeubern(), MandatZusatz ↔ mandatZusatzSaeubern() (lib/crm/produkt-karte.ts)', () => {
+    const karte = quelle('lib/crm/produkt-karte.ts');
+    for (const [fn, typ] of [['preisteilSaeubern', 'PreisTeil'], ['mandatZusatzSaeubern', 'MandatZusatz']] as const) {
+      const text = funktion(karte, fn);
+      expect(text.length, `Säuberer ${fn} nicht gefunden`).toBeGreaterThan(0);
+      const felder = felderVon(typen, typ);
+      expect(felder.length, `Typ ${typ} nicht gefunden`).toBeGreaterThan(0);
+      expect(felder.filter(f => !nennt(text, f)), `${typ}: diese Felder kennt ${fn}() nicht`).toEqual([]);
+    }
+  });
   it('Kontakt ↔ saeubereKontakt()', () => {
     const crm = quelle('lib/make-one/crm.ts');
     const text = funktion(crm, 'saeubereKontakt');

@@ -9,7 +9,7 @@
 
 import type { Chance, CrmBestand, Leistung, Mandat } from '@/lib/crm/typen';
 import type { Baustein, BausteinEinheit, Rhythmus } from './szenarien';
-import { neuerBaustein } from './szenarien';
+import { neuerBaustein, RHYTHMUS_LABEL } from './szenarien';
 import { planMonat } from './rechenkern';
 import { preisBasisVon as kartenBasis, basisAusAltpreis, planBausteinAusProdukt, RHYTHMUS_AUS_BASIS as KARTE_RHYTHMUS, type PreisBasis as KartenPreisBasis } from '@/lib/crm/produkt-karte';
 
@@ -41,7 +41,8 @@ export function einheitFuerBasis(einheit: string | undefined, basis: PreisBasis 
 /** Anzeige-Einheit eines Produkts (Katalog, Angebots-Produktwahl, Liste) — mit Preis-Teilen die Einheit des Hauptpreis-Teils. */
 export const produktEinheit = (l: Pick<Leistung, 'preis'> & Partial<Pick<Leistung, 'preise'>>): string => {
   const p = planBausteinAusProdukt({ preis: l.preis, preise: l.preise });
-  return einheitFuerBasis(p.einheit, p.basis);
+  // Die Einheit, wie das Produkt ABGERECHNET wird (Tages-/Stundensatz: „Tag/Stunde netto“) — geplant wird beim Satz monatlich (21.10., B4).
+  return einheitFuerBasis(p.einheit, p.anzeigeBasis);
 };
 
 /**
@@ -61,7 +62,9 @@ export function planungFehlt(l: Leistung): string[] {
 /** Marge je Einheit aus Preis (Hauptpreis) und Aufwandsanteil — null ohne Angabe. */
 export function margeVon(l: Pick<Leistung, 'preis' | 'aufwand'> & Partial<Pick<Leistung, 'preise'>>): { kosten: number; marge: number; anteil: number } | null {
   const a = l.aufwand?.anteil;
-  const preis = planBausteinAusProdukt({ preis: l.preis, preise: l.preise }).preis;
+  // Je Einheit: beim Tages-/Stundensatz der Satz (nicht der geplante Monatsbetrag).
+  const p = planBausteinAusProdukt({ preis: l.preis, preise: l.preise });
+  const preis = p.satz?.betrag ?? p.preis;
   if (a == null || !Number.isFinite(a) || !preis) return null;
   const kosten = preis * Math.max(0, Math.min(1, a));
   return { kosten, marge: preis - kosten, anteil: a };
@@ -71,6 +74,10 @@ export interface ProduktVorschlag {
   id: string; name: string; typ: Leistung['typ']; stufe: Leistung['stufe']; status: Leistung['status'];
   preis: number; einheit: string; basis: PreisBasis | null; laufzeit: number | null; gesellschaft: Leistung['gesellschaft'];
   fehlt: string[]; planEinheit: BausteinEinheit;
+  /** Kostenlos (21.10., B4) — die Planung sagt „kostenlos“ statt „Preis offen“. */
+  kostenlos?: boolean;
+  /** Tages-/Stundensatz (21.10., B4): Satz, geplante Menge je Monat, Einheit — `preis` ist dann Satz × Menge je Monat. */
+  satz?: { betrag: number; menge: number; einheit: string };
 }
 /** Produkte des Katalogs, wie die Planung sie braucht (aktiv zuerst, eingestellte nicht). */
 export function produktVorschlaege(crm: Pick<CrmBestand, 'leistungen'>): ProduktVorschlag[] {
@@ -81,8 +88,25 @@ export function produktVorschlaege(crm: Pick<CrmBestand, 'leistungen'>): Produkt
     return {
       id: l.id, name: l.name, typ: l.typ, stufe: l.stufe, status: l.status, preis: p.preis, einheit: p.einheit,
       basis: p.basis, laufzeit: p.laufzeit, gesellschaft: l.gesellschaft, fehlt: p.fehlt, planEinheit: einheitAusGesellschaft(l.gesellschaft),
+      ...(p.kostenlos ? { kostenlos: true } : {}), ...(p.satz ? { satz: p.satz } : {}),
     };
   });
+}
+
+const euroText = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
+/**
+ * Wie die Planung den Preis eines Produkts nennt (21.10., Rundgang B4): „kostenlos“ (vorher „Preis offen“), beim Tages-/Stundensatz der geplante Monat
+ * „2.400 € monatlich (15 Std. × 160 €)“ (vorher „160 € einmalig“), sonst „Betrag Rhythmus“ bzw. „Preis offen“.
+ */
+export function produktPlanText(p: Pick<ProduktVorschlag, 'preis' | 'basis'> & Partial<Pick<ProduktVorschlag, 'kostenlos' | 'satz'>>): string {
+  if (p.kostenlos) return 'kostenlos';
+  if (p.satz) {
+    const je = p.satz.einheit === 'Std.' ? 'Stunde' : 'Tag';
+    if (!p.satz.betrag) return 'Preis offen';
+    return p.satz.menge ? `${euroText(p.preis)} € monatlich (${euroText(p.satz.menge)} ${p.satz.einheit} × ${euroText(p.satz.betrag)} €)` : `${euroText(p.satz.betrag)} € je ${je} · geplante Menge je Monat offen`;
+  }
+  if (!p.preis) return 'Preis offen';
+  return `${euroText(p.preis)} € ${p.basis ? RHYTHMUS_LABEL[RHYTHMUS_AUS_BASIS[p.basis]] : ''}`.trim();
 }
 
 /** Umsatzbaustein aus einem Produkt — Preis, Rhythmus, Laufzeit und Einheit vorbelegt, alles überschreibbar. */
@@ -108,7 +132,10 @@ export function istBasisVorschlaege(crm: Pick<CrmBestand, 'mandate' | 'chancen' 
   for (const m of mandate) {
     const l = produkt(m.leistungId);
     const laufzeit = m.ende && m.start ? Math.max(1, Math.round((Date.parse(m.ende) - Date.parse(m.start)) / (30.44 * 864e5))) : m.mindestlaufzeitMonate ?? l?.laufzeitMonate ?? null;
-    out.push({ quelle: 'mandat', quelleId: m.id, kunde: m.kunde, titel: m.titel, produktId: l?.id, produkt: l?.name, betrag: m.honorar.betrag, rhythmus: m.honorar.basis === 'monat' ? 'monatlich' : 'einmalig', laufzeit, start: startAus(m.start), gesellschaft: m.gesellschaft });
+    // Tagessatz mit geplanten Tagen (21.10., B4): Satz × Tage je Monat — sonst wie bisher.
+    const tage = m.honorar.basis === 'tag' && m.tageJeMonat ? m.tageJeMonat : 0;
+    const betrag = tage ? Math.round(m.honorar.betrag * tage * 100) / 100 : m.honorar.betrag;
+    out.push({ quelle: 'mandat', quelleId: m.id, kunde: m.kunde, titel: m.titel, produktId: l?.id, produkt: l?.name, betrag, rhythmus: m.honorar.basis === 'monat' || tage ? 'monatlich' : 'einmalig', laufzeit, start: startAus(m.start), gesellschaft: m.gesellschaft });
   }
   const gewonnen = crm.chancen.filter((c): c is Chance => c.stufe === 'gewonnen' && c.wert.betrag > 0 && !crm.mandate.some(m => m.chanceId === c.id));
   for (const c of gewonnen) {

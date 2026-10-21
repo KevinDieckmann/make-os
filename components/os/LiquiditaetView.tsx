@@ -17,7 +17,7 @@ import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import {
-  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, szenarioGruppen, SZENARIEN_GLEICH, CASH_GEGEN_FREI, monatsSumme, postenZeitText,
+  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, szenarioGruppen, SZENARIEN_GLEICH, CASH_GEGEN_FREI, monatsSumme, rechnungDeckung, postenZeitText,
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
@@ -211,8 +211,10 @@ export function LiquiditaetView() {
   const aus = posten.filter(p => p.betrag < 0);
   // Je Monat (18.10., Nachprüfung N3): nur Posten, die ab heute wirklich noch zahlen (lib/make-one/liquiditaet.ts `monatswert`) — vorher zählte
   // ein beendetes Mandat weiter mit „jeden Monat +4.998 €“ in der Kopfzahl.
-  const monatEin = monatsSumme(ein, heute);
-  const monatAus = Math.abs(monatsSumme(aus, heute));
+  // 21.10. (A2): dieselbe Regel wie die Vorschau — eine Zahlung, deren Monat schon eine gestellte Rechnung trägt, zählt hier nicht mehr (`rechnungDeckung`).
+  const deckung = useMemo(() => rechnungDeckung(ab?.rechnungen ?? []), [ab]);
+  const monatEin = monatsSumme(ein, heute, deckung);
+  const monatAus = Math.abs(monatsSumme(aus, heute, deckung));
 
   const zeile = (p: Planposten) => {
     const auf = offen === p.id;

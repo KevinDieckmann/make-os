@@ -10,13 +10,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Knopf, LEUCHT } from '../../ui';
+import { Knopf, LEUCHT, Hinweis } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { mandateLink } from '@/lib/crm/adresse';
 import { istBusinessMandat } from '@/lib/fulfillment/regeln';
 import type { CrmApi } from '../../crm/daten';
 import { useUebersichtKurz } from './daten';
 import { StartDialog } from './Onboarding';
+import { usePlatzLage } from '../../crm/plaetze';
 
 export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string }) {
   const crm = api.crm;
@@ -46,11 +47,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
   return (
     <div className="ff-fall-am-deal" style={box}>
       {!mandat ? (
-        <>
-          <span style={{ fontSize: TYP.bedien, flex: '1 1 260px' }}>Gewonnen — jetzt Kunde: {business ? 'Mandat anlegen und gleich den Fall starten.' : 'aus dem Deal wird ein Mandat (Vertrag, Kick-off, Gesundheit des Mandats).'}</span>
-          {business && <Knopf haupt farbe={LEUCHT.gut} onClick={() => anlegen(true)}>Mandat anlegen & Fall starten</Knopf>}
-          <Knopf leise={business} farbe={LEUCHT.gut} onClick={() => anlegen(false)}>{business ? 'Nur Mandat anlegen' : 'Mandat anlegen'}</Knopf>
-        </>
+        <AnlegenKnoepfe api={api} leistungId={c.leistungId} business={business} anlegen={anlegen} />
       ) : fall ? (
         <>
           <span style={{ fontSize: TYP.bedien, flex: '1 1 260px', color: LEUCHT.gut }}>Kunde — der Fall läuft{fall.phase ? ` (${fall.phase})` : ''}.</span>
@@ -66,5 +63,27 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
       )}
       {start && <StartDialog k={{ mandatId: start.mandatId, kunde: start.kunde, ...(start.leistungId ? { leistungId: start.leistungId } : {}), ...vorlageFuer(start.leistungId) }} pakete={pakete} onZu={() => setStart(null)} />}
     </div>
+  );
+}
+
+/**
+ * Die Knöpfe am gewonnenen Deal ohne Mandat — mit der Platzgrenze (21.10., Rundgang B3: warnen, aber erlauben): sind alle Plätze des Produkts
+ * belegt, fragt der Klick erst („Alle N Plätze belegt — trotzdem anlegen?“), ein Klick „Trotzdem anlegen“ legt an (der Server lehnt nie ab).
+ */
+function AnlegenKnoepfe({ api, leistungId, business, anlegen }: { api: CrmApi; leistungId?: string; business: boolean; anlegen: (mitFall: boolean) => Promise<void> }) {
+  const platz = usePlatzLage(api, leistungId);
+  const [frage, setFrage] = useState<boolean | null>(null);
+  const los = async (mitFall: boolean) => { if (platz.frage) setFrage(mitFall); else await anlegen(mitFall); };
+  return (
+    <>
+      <span style={{ fontSize: TYP.bedien, flex: '1 1 260px' }}>Gewonnen — jetzt Kunde: {business ? 'Mandat anlegen und gleich den Fall starten.' : 'aus dem Deal wird ein Mandat (Vertrag, Kick-off, Gesundheit des Mandats).'}</span>
+      {business && <Knopf haupt farbe={LEUCHT.gut} onClick={() => los(true)}>Mandat anlegen & Fall starten</Knopf>}
+      <Knopf leise={business} farbe={LEUCHT.gut} onClick={() => los(false)}>{business ? 'Nur Mandat anlegen' : 'Mandat anlegen'}</Knopf>
+      {frage !== null && platz.frage && (
+        <div style={{ flex: '1 1 100%' }}>
+          <Hinweis art="achtung" aktion={<><Knopf leise onClick={() => setFrage(null)}>Abbrechen</Knopf><Knopf onClick={async () => { const mitFall = frage; setFrage(null); await anlegen(mitFall); }}>Trotzdem anlegen</Knopf></>}>{platz.frage}</Hinweis>
+        </div>
+      )}
+    </>
   );
 }

@@ -19,7 +19,7 @@ import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, Cr
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN, UG_KURZ, EINHEITEN_UEBERSCHRIEBEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
-import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt } from './produkt-karte';
+import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt, mandatZahlplanAusProdukt } from './produkt-karte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
 import { produktTitel, titelNurProdukt } from './titel-regel';
 
@@ -551,8 +551,11 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
   const v = produkt ? mandatVertragAusProdukt(produkt, basis.honorar!.basis) : {};
   // P3 (19.10.): inklusive Module laut Regel des Hauptprodukts (0 € — nie doppelt mit dem Angebot; bezahlte Module stehen im Angebot selbst).
   const inklusive = produkt?.regeln?.inklusive?.length ? mandatVorlageAusProdukt(produkt).zusatz?.filter(z => z.inklusive) : undefined;
+  // Zahlplan (21.10., Rundgang B2): ein einmaliges Angebot über ein Produkt mit Anzahlung (z. B. 50/50) wird zwei Zahlungen — wie das Zusatzmodul.
+  const zahlplan = produkt ? mandatZahlplanAusProdukt(produkt, basis.honorar!.basis) : undefined;
   return {
     ...basis,
+    ...(zahlplan ? { zahlplan } : {}),
     ...(!lz && v.mindestlaufzeitMonate ? { mindestlaufzeitMonate: v.mindestlaufzeitMonate } : {}),
     ...(v.kuendigungsfristTage != null ? { kuendigungsfristTage: v.kuendigungsfristTage } : {}),
     ...(v.verlaengerung ? { verlaengerung: v.verlaengerung } : {}),

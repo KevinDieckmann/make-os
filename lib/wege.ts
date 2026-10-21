@@ -42,6 +42,15 @@ export const freigabenReiterAus = (t: string | null | undefined): FreigabenReite
 /** Abschnitte der Fokus-Seite (components/os/FokusView.tsx) — Anker `#<abschnitt>`. */
 export type FokusAbschnitt = 'fokus' | 'prioritaeten' | 'zeit' | 'wirkung' | 'tagesform' | 'arbeiten';
 
+/**
+ * Ein Rücksprung-Ziel aus der Adresse (21.10., B8): nur ein eigener Pfad unter `/os/` — nie eine fremde Adresse (`//…`, `https:…`, Backslash).
+ * null = kein gültiges Ziel.
+ */
+export function zurueckZiel(v: string | null | undefined): string | null {
+  if (typeof v !== 'string' || v.length > 400) return null;
+  return /^\/os\/[^\s\\]*$/.test(v) && !v.startsWith('//') ? v : null;
+}
+
 export const WEG = {
   /**
    * Heute (08.10., Aufräumen Etappe 1): EINE Startseite unter /os — ohne Space Privat und Business zusammen, mit `space` nur
@@ -96,8 +105,11 @@ export const WEG = {
   // 08.10. (Aufräumen Etappe 2): Rechnungen & Zahlungen, Liquidität, Buchungen, Controlling sind Reiter unter Finanzen › Business.
   rechnung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen', { s: 'rechnungen', space: 'business', r: id })),
   rechnungen: () => q('/os/finanzen', { s: 'rechnungen', space: 'business' }),
-  /** Rechnung schreiben (08.10.): öffnet den Rechnungs-Editor über Rechnungen & Zahlungen (`re` = Entwurf bzw. Rechnung). */
-  rechnungSchreiben: (id?: string) => q('/os/finanzen', { s: 'rechnungen', space: 'business', re: id }),
+  /**
+   * Rechnung schreiben (08.10.): öffnet den Rechnungs-Editor über Rechnungen & Zahlungen (`re` = Entwurf bzw. Rechnung). `zurueck` (21.10., Rundgang B8):
+   * wohin „Schließen“ führt — z. B. ins Mandat, aus dem der Editor geöffnet wurde (nur eigene Pfade `/os/…`, `zurueckZiel`); ohne: bleibt in den Rechnungen.
+   */
+  rechnungSchreiben: (id?: string, zurueck?: string) => q('/os/finanzen', { s: 'rechnungen', space: 'business', re: id, zurueck: zurueck && zurueckZiel(zurueck) ? zurueck : undefined }),
   zahlung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen', { s: 'rechnungen', space: 'business', z: id })),
   planposten: (id?: string) => q('/os/finanzen', { s: 'liquiditaet', space: 'business', p: id }),
   kontostaende: () => q('/os/finanzen', { s: 'liquiditaet', space: 'business' }, 'kontostaende'),

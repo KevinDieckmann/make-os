@@ -54,16 +54,20 @@ beforeAll(async () => {
     einleitung: '', schluss: '', gueltigBis: '2026-12-31', zahlungszielTage: 14, status: 'gestellt', version: 1, gestelltAm: J, angelegt: J, geaendert: J } as unknown as Angebot;
   await db.saveJson('crm', {
     ...speicher.leererBestand(), leistungen: KATALOG, chancen: [deal], angebote: [angebot],
-    firmen: [{ id: 'f-muster', name: 'Muster GmbH', rolle: 'kunde', geaendert: J, zahlung: { empfaenger: { anschrift: 'Hauptstraße 5, 54321 Beispielstadt' } } }],
+    firmen: [{ id: 'f-muster', name: 'Muster GmbH', rolle: 'kunde', geaendert: J, zahlung: { empfaenger: { anschrift: 'Hauptstraße 5, 54321 Beispielstadt' } } },
+      { id: 'f-zwei', name: 'Zweite Beispiel GmbH', rolle: 'kunde', geaendert: J, zahlung: { empfaenger: { anschrift: 'Nebenweg 2, 54321 Beispielstadt' } } }],
     mandate: [
       mandat('m-zusatz', { zusatz: [{ id: 'mz-mon', leistungId: 'l-mon', honorar: { betragCent: 50_000, basis: 'monat' } }, { id: 'mz-je', leistungId: 'l-je', honorar: { betragCent: 150_000, basis: 'einheit' } }, { id: 'mz-inkl', leistungId: 'l-ws', inklusive: true }] }),
       mandat('m-ohne', { leistungId: undefined }),
+      // 21.10. (Kevin: Anrechnung inkl. Optionen, der Rest wandert): Beginn mitten im Oktober, der Workshop (+ Option) ist größer als der Oktober.
+      mandat('m-rest', { kunde: 'Zweite Beispiel GmbH', firmaId: 'f-zwei', start: '2026-10-20' }),
     ],
   } as unknown as CrmBestand);
   await db.saveJson('gesellschaften--test-haus', { gesellschaften: [{ id: 'kdv', firmierung: 'Beispiel Ventures UG (haftungsbeschränkt)', strasse: 'Beispielweg 1', plz: '12345', ort: 'Musterstadt' }] });
   const { SEED } = await import('@/lib/finanzen/finanzplan-bestand');
   // Der Workshop ist bezahlt (Rechnung derselben Firma mit dem Produkt) — er wird auf das Hauptprodukt angerechnet.
-  await db.saveJson('finanzplan', { ...SEED, rechnungen: [{ id: 'r-ws', firmaId: 'kdv', kunde: 'Muster GmbH', titel: 'Workshop', betrag: 2380, netto: 2000, status: 'bezahlt', kundeFirmaId: 'f-muster', positionen: [{ id: 'p1', leistungId: 'l-ws', titel: 'Workshop', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 200_000, ustSatz: 19 }] }] });
+  await db.saveJson('finanzplan', { ...SEED, rechnungen: [{ id: 'r-ws', firmaId: 'kdv', kunde: 'Muster GmbH', titel: 'Workshop', betrag: 2380, netto: 2000, status: 'bezahlt', kundeFirmaId: 'f-muster', positionen: [{ id: 'p1', leistungId: 'l-ws', titel: 'Workshop', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 200_000, ustSatz: 19 }] },
+    { id: 'r-ws2', firmaId: 'kdv', kunde: 'Zweite Beispiel GmbH', titel: 'Workshop', betrag: 5355, netto: 4500, status: 'bezahlt', kundeFirmaId: 'f-zwei', positionen: [{ id: 'p1', leistungId: 'l-ws', titel: 'Workshop', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 200_000, ustSatz: 19 }, { id: 'p2', leistungId: 'l-ws', titel: 'Workshop · je Event', text: '', menge: 1, einheit: 'Event', einzelpreisCent: 250_000, ustSatz: 19 }] }] });
   server = await import('@/lib/finanzen/rechnung/server');
 });
 afterAll(() => { rmSync(ordner, { recursive: true, force: true }); });
@@ -105,6 +109,24 @@ describe('Monatsrechnung mit Zusatzmodulen und Anrechnung', () => {
     await expect(server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-zusatz', monat: '2026-12', einheiten: [{ zusatzId: 'mz-mon', menge: 1 }] })).rejects.toMatchObject({ status: 409 });
     await expect(server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-zusatz', monat: '2026-12', einheiten: 'drei' })).rejects.toMatchObject({ status: 400 });
     expect((await rechnungen()).length).toBe(vorher);
+  });
+  it('Anrechnung inkl. Option, Teilmonat zuerst — der Rest wandert über die nächsten Rechnungen, bis alles angerechnet ist', async () => {
+    const titel = (r: Rechnung) => r.positionen!.filter(p => p.id.startsWith('anr-')).map(p => [p.einzelpreisCent, p.text]);
+    // Oktober 20.–31.: 3.000 € × 12/31 = 1.161,29 € — so viel wird angerechnet, 4.500 € (Grundpreis + Option) − 1.161,29 € bleiben offen.
+    const okt = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-rest', monat: '2026-10' })).rechnung;
+    expect(titel(okt)).toEqual([[-116_129, 'Angerechnet voll: 1.161,29 € von 4.500,00 € — der Rest von 3.338,71 € folgt auf der nächsten Rechnung.']]);
+    expect(okt.netto).toBe(0);
+    const nov = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-rest', monat: '2026-11' })).rechnung;
+    expect(titel(nov)).toEqual([[-300_000, 'Angerechnet voll: 3.000,00 € von 4.500,00 € (bisher 1.161,29 €) — der Rest von 338,71 € folgt auf der nächsten Rechnung.']]);
+    const dez = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-rest', monat: '2026-12' })).rechnung;
+    expect(titel(dez)).toEqual([[-33_871, 'Angerechnet voll: 338,71 € von 4.500,00 € (bisher 4.161,29 €) — damit vollständig angerechnet.']]);
+    expect(dez.netto).toBe(2661.29);
+    const jan = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-rest', monat: '2027-01' })).rechnung;
+    expect(titel(jan)).toEqual([]);
+    // Wird der November storniert, ist sein Teil wieder offen — die nächste neue Rechnung trägt ihn.
+    await setzeStatus(nov.id, 'storniert');
+    const feb = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-rest', monat: '2027-02' })).rechnung;
+    expect(titel(feb)[0][0]).toBe(-300_000);
   });
   it('Mandat ohne Zusatz: genau eine Position wie bisher', async () => {
     const r = (await server.entwurfNeu({ ...z, quelle: 'mandat', mandatId: 'm-ohne', monat: '2026-10' })).rechnung;

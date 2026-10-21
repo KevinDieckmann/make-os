@@ -29,7 +29,7 @@ import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
-import { kartenFelderSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktSpiegeln, produktPruefen, spiegelKonflikt, PRODUKT_GRENZEN } from './produkt-karte';
+import { kartenFelderSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
 import { personenSchranke, kampagnenHinweise, kanalWechselBereinigen, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
 import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
@@ -421,7 +421,11 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
     case 'mandate': {
       // Zusatzmodule (19.10., lib/crm/produkt-karte.ts — Form; Rechnung/Liquidität/Fall in P3): ohne diese Zeile fielen sie beim Speichern weg.
       const zusatzModule = mandatZusatzSaeubern(o.zusatz);
-      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}) };
+      // Zahlplan eines einmaligen Honorars (21.10., B2): ohne diese Zeile fiele er beim Speichern weg (lib/crm/produkt-karte.ts `zahlplanSaeubern`).
+      const zahlplan = zahlplanSaeubern(o.zahlplan);
+      // Geplante Tage je Monat beim Tagessatz (21.10., B4) — 0,25 … 744, sonst weg.
+      const tage = typeof o.tageJeMonat === 'number' && Number.isFinite(o.tageJeMonat) && o.tageJeMonat >= 0.25 && o.tageJeMonat <= 744 ? Math.round(o.tageJeMonat * 100) / 100 : undefined;
+      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}), ...(zahlplan ? { zahlplan } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}) };
     }
     case 'leistungen': {
       // Produkt-Karte (19.10., PRODUKTE_KONZEPT.md): die neuen Felder — geprüft vorher (`produktOpsPruefen`, 400/413), hier nur gesäubert.

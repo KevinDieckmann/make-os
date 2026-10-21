@@ -108,8 +108,22 @@ export function hauptpreis(l: Pick<Leistung, 'preis' | 'preise'>): PreisTeil | n
 const BASIS_JE_ART: Record<PreisTeilArt, PreisBasis> = {
   kostenlos: 'einmalig', fest: 'einmalig', monatlich: 'monat', jaehrlich: 'jahr', je_einheit: 'einmalig', tagessatz: 'einmalig', stundensatz: 'einmalig', erfolg: 'einmalig',
 };
-/** Basis (Monat · Jahr · einmalig) eines Preis-Teils. */
+/** Basis (Monat · Jahr · einmalig) eines Preis-Teils — wie er abgerechnet wird (Tages-/Stundensatz: je Menge, darum „einmalig“). */
 export const basisVonTeil = (t: Pick<PreisTeil, 'art'>): PreisBasis => BASIS_JE_ART[t.art];
+/** Tages- bzw. Stundensatz: abgerechnet nach Menge, GEPLANT als Satz × geplante Menge je Monat (21.10., Rundgang B4). */
+export const istSatz = (art: PreisTeilArt): art is 'tagessatz' | 'stundensatz' => art === 'tagessatz' || art === 'stundensatz';
+/**
+ * Die geplante Menge je Monat eines Tages-/Stundensatzes (Kevin 21.10.): `mengeJeMonat`, sonst der Deckel (Stundensatz) bzw. 0; beim Stundensatz höchstens
+ * der Deckel. Andere Preis-Formen: 0. EINE Regel für Finanzplanung, Mandat-Vorlage und Zusatzmodule.
+ */
+export function geplanteMenge(t: Pick<PreisTeil, 'art'> & Partial<Pick<PreisTeil, 'mengeJeMonat' | 'deckel'>>): number {
+  if (!istSatz(t.art)) return 0;
+  const d = t.art === 'stundensatz' ? t.deckel?.stundenJeMonat : undefined;
+  const m = t.mengeJeMonat ?? d ?? 0;
+  return d ? Math.min(m, d) : m;
+}
+/** „Stunden“ bzw. „Tage“ — die Einheit der geplanten Menge. */
+export const mengeEinheit = (art: PreisTeilArt) => (art === 'stundensatz' ? 'Std.' : 'Tage');
 /** Basis des Produkts: aus dem Hauptpreis-Teil — ohne Preis-Teile wie bisher aus dem alten Preis (auch null, wenn nichts erkennbar). */
 export function preisBasisVon(l: Pick<Leistung, 'preis'> & Partial<Pick<Leistung, 'preise'>>): PreisBasis | null {
   if (hatPreisteile(l)) { const h = hauptpreis(l as Pick<Leistung, 'preis' | 'preise'>); return h ? basisVonTeil(h) : null; }
@@ -163,6 +177,7 @@ export function preisText(t: PreisTeil): string {
   const extra = [
     t.kontingent?.trim() ? `inkl. ${t.kontingent.trim()}` : '',
     t.deckel?.stundenJeMonat ? `höchstens ${t.deckel.stundenJeMonat} Std./Monat` : '',
+    istSatz(t.art) && typeof t.mengeJeMonat === 'number' ? `${t.mengeJeMonat.toLocaleString('de-DE')} ${mengeEinheit(t.art)}/Monat geplant` : '',
     t.zahlplan?.anzahlungProzent ? zahlplanText(t.zahlplan.anzahlungProzent) : '',
   ].filter(Boolean);
   return [kern, ...extra].join(' · ');
@@ -411,6 +426,10 @@ export interface MandatVorlage {
   /** Leistungen des Mandats: Leistungstext (wenn kurz genug für die Liste, ≤ 400 Zeichen) + Lieferumfang. */
   leistungen: string[];
   zusatz?: MandatZusatz[];
+  /** Zahlplan des einmaligen Honorars (21.10., B2): vom Festpreis-Hauptpreis, z. B. 50/50 — nur bei Honorar-Basis „einmalig“. */
+  zahlplan?: { anzahlungProzent: number };
+  /** Tagessatz (21.10., B4): geplante Tage je Monat (`geplanteMenge`) — nur bei Honorar-Basis „tag“. */
+  tageJeMonat?: number;
   /** Was die Vorlage nicht als Feld ausdrücken kann (Stundensatz ohne Deckel, je Einheit …) — für die offenen Punkte am Mandat. */
   hinweise: string[];
 }
@@ -435,12 +454,15 @@ export function zusatzHonorar(l: Pick<Leistung, 'preis' | 'preise'>): MandatZusa
  * Was ein Zusatzmodul zusätzlich vom Hauptpreis seines Produkts übernimmt (P3, 19.10.): den Zahlplan eines einmaligen Preises (z. B. 50/50) und beim
  * Stundensatz den Deckel als geplante Stunden je Monat (Liquidität). Ohne Preis-Teile bzw. ohne beides: `{}`.
  */
-export function zusatzExtras(l: Pick<Leistung, 'preis' | 'preise'>): Pick<MandatZusatz, 'zahlplan' | 'stundenJeMonat'> {
+export function zusatzExtras(l: Pick<Leistung, 'preis' | 'preise'>): Pick<MandatZusatz, 'zahlplan' | 'stundenJeMonat' | 'tageJeMonat'> {
   if (!hatPreisteile(l)) return {};
   const h = hauptpreis(l);
+  // Geplante Menge (21.10., B4): `mengeJeMonat` des Produkts, beim Stundensatz sonst der Deckel.
+  const menge = h ? geplanteMenge(h) : 0;
   return {
     ...(h?.art === 'fest' && h.zahlplan?.anzahlungProzent ? { zahlplan: { anzahlungProzent: h.zahlplan.anzahlungProzent } } : {}),
-    ...(h?.art === 'stundensatz' && h.deckel?.stundenJeMonat ? { stundenJeMonat: h.deckel.stundenJeMonat } : {}),
+    ...(h?.art === 'stundensatz' && menge > 0 ? { stundenJeMonat: menge } : {}),
+    ...(h?.art === 'tagessatz' && menge > 0 ? { tageJeMonat: menge } : {}),
   };
 }
 const VERLAENGERUNG: Record<NonNullable<ProduktVertrag['danach']>, Mandat['verlaengerung']> = { monatlich_kuendbar: 'auto', verlaengert_um_laufzeit: 'auto', endet: 'manuell' };
@@ -482,9 +504,11 @@ export function mandatVorlageAusProdukt(l: Leistung, zusatz: readonly ZusatzWahl
     case 'jaehrlich': honorar = honorarAusPreis({ betrag: euro, basis: 'jahr' }); break;
     case 'tagessatz': honorar = { honorar: { betrag: euro, basis: 'tag', netto: true }, rechnungsrhythmus: 'monatlich' }; break;
     case 'stundensatz': {
-      const n = h.deckel?.stundenJeMonat;
+      // Geplante Stunden (21.10., B4): `mengeJeMonat`, sonst der Deckel — höchstens der Deckel.
+      const n = geplanteMenge(h);
+      const d = h.deckel?.stundenJeMonat;
       honorar = n ? honorarAusPreis({ betrag: Math.round(euro * n * 100) / 100, basis: 'monat' }) : { honorar: { betrag: 0, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich' };
-      hinweise.push(n ? `Stundensatz ${betragText(h)} netto, höchstens ${n} Std./Monat — als Monatshonorar steht die Obergrenze; nach Aufwand abrechnen.` : `Stundensatz ${betragText(h) ?? 'offen'} netto — Honorar nach Aufwand eintragen.`);
+      hinweise.push(n ? `Stundensatz ${betragText(h)} netto${d ? `, höchstens ${d} Std./Monat` : ''}${n !== d ? `, ${n} Std./Monat geplant` : ''} — als Monatshonorar stehen die geplanten Stunden; nach Aufwand abrechnen.` : `Stundensatz ${betragText(h) ?? 'offen'} netto — Honorar nach Aufwand eintragen.`);
       break;
     }
     case 'je_einheit': honorar = honorarAusPreis({ betrag: euro, basis: 'einmalig' }); hinweise.push(`Preis ${jeText(h.einheit)} — Menge beim Abrechnen angeben.`); break;
@@ -493,11 +517,25 @@ export function mandatVorlageAusProdukt(l: Leistung, zusatz: readonly ZusatzWahl
     default: honorar = honorarAusPreis({ betrag: euro, basis: 'einmalig' });
   }
   const texte = [l.angebot?.leistungstext?.trim() ?? '', ...(l.lieferumfang ?? [])].filter(t => t && t.length <= 400);
+  // Zahlplan (21.10., B2): ein Festpreis mit Anzahlung (z. B. 50/50) wird am Mandat zwei Zahlungen — wie beim einmaligen Zusatzmodul.
+  const zahlplan = mandatZahlplanAusProdukt(l, honorar.honorar.basis);
+  // Tagessatz (21.10., B4): die geplanten Tage je Monat — die Liquidität plant Satz × Tage, die Rechnung nimmt die echten Tage.
+  const tage = h?.art === 'tagessatz' ? geplanteMenge(h) : 0;
   return {
     titel: l.name, leistungId: l.id, art: mandatArtVon(l), ...gesellschaft, ...honorar, ...mandatVertragAusProdukt(l, honorar.honorar.basis),
-    leistungen: texte, ...mitZusatz, hinweise,
+    leistungen: texte, ...mitZusatz, ...(zahlplan ? { zahlplan } : {}), ...(tage > 0 ? { tageJeMonat: tage } : {}), hinweise,
   };
 }
+/**
+ * Der Zahlplan eines Mandats aus dem Produkt (21.10., Rundgang B2 — EINE Regel für „+ Mandat“, Mandat aus Deal und aus angenommenem Angebot): der
+ * Zahlplan des Hauptpreis-Teils, wenn er ein Festpreis ist und das Mandat einmalig abrechnet; sonst keiner.
+ */
+export function mandatZahlplanAusProdukt(l: Pick<Leistung, 'preis' | 'preise'>, honorarBasis: Mandat['honorar']['basis']): { anzahlungProzent: number } | undefined {
+  if (honorarBasis !== 'einmalig' || !hatPreisteile(l)) return undefined;
+  const h = hauptpreis(l);
+  return h?.art === 'fest' && h.zahlplan?.anzahlungProzent ? { anzahlungProzent: h.zahlplan.anzahlungProzent } : undefined;
+}
+
 /** Zusatzmodule: die gewählten (mit Honorar aus ihrem Hauptpreis) und die laut `regeln.inklusive` enthaltenen (0 € mit Hinweis). */
 function zusatzListe(l: Leistung, wahl: readonly ZusatzWahl[]): MandatZusatz[] {
   const inkl = l.regeln?.inklusive ?? [];
@@ -513,6 +551,26 @@ function zusatzListe(l: Leistung, wahl: readonly ZusatzWahl[]): MandatZusatz[] {
   for (const x of inkl) if (!out.some(z => z.leistungId === x.leistungId)) out.push({ id: `mz-${out.length + 1}`, leistungId: x.leistungId, inklusive: true, menge: x.menge, je: x.je });
   return out;
 }
+
+// ── Platzgrenze „höchstens N gleichzeitig“ (21.10., Rundgang B3 — Kevin: warnen, aber erlauben) ──────────────────────
+
+export interface PlatzLage { max: number; belegt: number; voll: boolean }
+/**
+ * Die Plätze eines Produkts mit „höchstens N gleichzeitig“ (Regel der Karte, sonst die der Treppen-Stufe `stufeMax`): belegt = aktive Mandate dieses
+ * Produkts außerhalb des Papierkorbs (dieselbe Zählung wie „n/N Plätze“ im Katalog). `voll` = ein weiteres Mandat ginge über die Grenze. null ohne Grenze.
+ * Angelegt wird trotzdem — die Oberfläche fragt vorher („Alle N Plätze belegt — trotzdem anlegen?“), der Server gibt danach einen Hinweis.
+ */
+export function plaetzeVonProdukt(l: Pick<Leistung, 'id'> & Partial<Pick<Leistung, 'regeln'>>, mandate: readonly Pick<Mandat, 'leistungId' | 'status' | 'geloeschtAm'>[], stufeMax?: number | null): PlatzLage | null {
+  const max = l.regeln?.maxGleichzeitig ?? stufeMax ?? undefined;
+  if (!max) return null;
+  const belegt = mandate.filter(m => m.leistungId === l.id && m.status === 'aktiv' && !m.geloeschtAm).length;
+  return { max, belegt, voll: belegt >= max };
+}
+const platzWort = (n: number) => (n === 1 ? 'Platz' : 'Plätze');
+/** Die Rückfrage vor dem Anlegen (Kevin 21.10.). */
+export const platzFrage = (p: PlatzLage, name: string) => `Alle ${p.max} ${platzWort(p.max)} von „${name}“ belegt (${p.belegt}/${p.max}) — trotzdem anlegen?`;
+/** Der Hinweis des Servers, wenn über der Grenze angelegt wurde (`p` = die Lage VOR dem Anlegen). */
+export const platzHinweis = (p: PlatzLage, name: string) => `Über der Platzgrenze angelegt: „${name}“ hat jetzt ${p.belegt + 1} laufende Mandate, vorgesehen sind höchstens ${p.max} gleichzeitig.`;
 
 // ── Angebot ──────────────────────────────────────────────────────────────────
 
@@ -571,6 +629,7 @@ export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: read
       : [t.text?.trim() ?? '', ...teilHinweise(t)];
     return {
       id: i === 0 ? idBasis : `${idBasis}-${i + 1}`, leistungId: l.id,
+      preisTeilId: t.id,
       titel: (i === 0 ? l.angebot?.titel?.trim() || l.name : `${l.name} · ${t.art === 'je_einheit' ? jeText(t.einheit) : preisArtLabel(t.art)}`).slice(0, POSITION_GRENZEN.titel),
       text: saetze.filter(Boolean).join('\n\n').slice(0, POSITION_GRENZEN.text),
       menge: 1, einheit: t.art === 'je_einheit' ? einheitKurz(t.einheit) : POS_EINHEIT[t.art], einzelpreisCent: typeof t.betragCent === 'number' ? t.betragCent : 0, ustSatz: ust, basis,
@@ -583,7 +642,7 @@ export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: read
 
 export const RHYTHMUS_AUS_BASIS: Record<PreisBasis, Rhythmus> = { monat: 'monatlich', jahr: 'jaehrlich', einmalig: 'einmalig' };
 export interface PlanBausteinVorlage {
-  /** Preis je Einheit netto in Euro (Hauptpreis). */
+  /** Preis je Einheit netto in Euro (Hauptpreis) — beim Tages-/Stundensatz der geplante Monatsbetrag (Satz × geplante Menge, 21.10.). */
   preis: number;
   einheit: string;
   basis: PreisBasis | null;
@@ -591,6 +650,12 @@ export interface PlanBausteinVorlage {
   laufzeit: number | null;
   /** Was für die Planung fehlt — leer heißt planbar. */
   fehlt: string[];
+  /** Kostenlos (21.10., B4): die Planung sagt „kostenlos“, nicht „Preis offen“. */
+  kostenlos: boolean;
+  /** Tages-/Stundensatz (21.10., B4): Satz (€ netto), geplante Menge je Monat und ihre Einheit — geplant wird Satz × Menge monatlich. */
+  satz?: { betrag: number; menge: number; einheit: string };
+  /** Basis, wie das Produkt abgerechnet wird (Anzeige der Einheit) — beim Satz „einmalig“ (je Menge), geplant wird monatlich (`basis`). */
+  anzeigeBasis: PreisBasis | null;
 }
 /**
  * Was die Planung aus einem Produkt zieht (lib/finanzen/produkte.ts `produktVorschlaege`/`bausteinAusProdukt`): der Hauptpreis-Teil,
@@ -604,16 +669,25 @@ export function planBausteinAusProdukt(l: Pick<Leistung, 'preis'> & Partial<Pick
     if (!basis) fehlt.push('Basis (Monat · Jahr · einmalig)');
     if (basis !== 'einmalig' && !l.laufzeitMonate) fehlt.push('Laufzeit');
     if (l.gesellschaft === 'offen') fehlt.push('Gesellschaft');
-    return { preis: l.preis.betrag, einheit: l.preis.einheit, basis, rhythmus: basis ? RHYTHMUS_AUS_BASIS[basis] : null, laufzeit: l.laufzeitMonate ?? null, fehlt };
+    return { preis: l.preis.betrag, einheit: l.preis.einheit, basis, rhythmus: basis ? RHYTHMUS_AUS_BASIS[basis] : null, laufzeit: l.laufzeitMonate ?? null, fehlt, kostenlos: istKostenlosAlt(l.preis), anzeigeBasis: basis };
   }
   const h = hauptpreis(l as Pick<Leistung, 'preis' | 'preise'>)!;
-  const basis = basisVonTeil(h);
   const laufzeit = vertragVon({ vertrag: l.vertrag, laufzeitMonate: l.laufzeitMonate }).mindestlaufzeitMonate ?? null;
   const fehlt: string[] = [];
+  const kostenlos = istKostenlos(l);
   if (typeof h.betragCent !== 'number' && h.art !== 'kostenlos' && h.art !== 'erfolg') fehlt.push('Preis');
-  if (basis !== 'einmalig' && !laufzeit) fehlt.push('Laufzeit');
   if (l.gesellschaft === 'offen') fehlt.push('Gesellschaft');
-  return { preis: typeof h.betragCent === 'number' ? h.betragCent / 100 : 0, einheit: preisAusTeil(h).einheit, basis, rhythmus: RHYTHMUS_AUS_BASIS[basis], laufzeit, fehlt };
+  if (istSatz(h.art)) {
+    // Tages-/Stundensatz (Kevin 21.10., Rundgang B4 — vorher „160 € einmalig“): geplant wird Satz × geplante Menge je Monat, monatlich; eine Laufzeit braucht
+    // es nicht (läuft, solange geplant). Ohne geplante Menge: Lücke „geplante Menge je Monat“.
+    const satz = typeof h.betragCent === 'number' ? h.betragCent / 100 : 0;
+    const menge = geplanteMenge(h);
+    if (!menge) fehlt.push(`geplante ${h.art === 'stundensatz' ? 'Stunden' : 'Tage'} je Monat`);
+    return { preis: Math.round(satz * menge * 100) / 100, einheit: preisAusTeil(h).einheit, basis: 'monat', rhythmus: 'monatlich', laufzeit, fehlt, kostenlos, satz: { betrag: satz, menge, einheit: mengeEinheit(h.art) }, anzeigeBasis: basisVonTeil(h) };
+  }
+  const basis = basisVonTeil(h);
+  if (basis !== 'einmalig' && !laufzeit) fehlt.push('Laufzeit');
+  return { preis: typeof h.betragCent === 'number' ? h.betragCent / 100 : 0, einheit: preisAusTeil(h).einheit, basis, rhythmus: RHYTHMUS_AUS_BASIS[basis], laufzeit, fehlt, kostenlos, anzeigeBasis: basis };
 }
 
 // ── Säubern (Lesen und Schreiben: robust — Kaputtes fällt weg; abgelehnt wird vorher in `produktPruefen`) ───────────
@@ -638,6 +712,8 @@ export function preisteilSaeubern(v: unknown, fallbackId: string): PreisTeil | n
   const bis = betrag !== undefined ? ganz(v.bisCent, betrag + 1, G.betragCent) : undefined;
   const ap = istObj(v.zahlplan) ? ganz(v.zahlplan.anzahlungProzent, 1, 99) : undefined;
   const dk = art === 'stundensatz' && istObj(v.deckel) ? ganz(v.deckel.stundenJeMonat, 1, G.stundenJeMonat) : undefined;
+  // Geplante Menge je Monat (21.10., B4): nur Tages-/Stundensatz, 0 … 744 (Viertel erlaubt).
+  const mj = istSatz(art) ? dezimal(v.mengeJeMonat, 0, G.stundenJeMonat) : undefined;
   const einheit = art === 'je_einheit' ? zeile(v.einheit, G.einheit) : undefined;
   return {
     id: typeof v.id === 'string' && TEIL_ID.test(v.id) ? v.id : fallbackId, art,
@@ -646,6 +722,7 @@ export function preisteilSaeubern(v: unknown, fallbackId: string): PreisTeil | n
     ...(ap !== undefined ? { zahlplan: { anzahlungProzent: ap } } : {}),
     ...(zeile(v.kontingent, G.kontingent) ? { kontingent: zeile(v.kontingent, G.kontingent) } : {}),
     ...(dk !== undefined ? { deckel: { stundenJeMonat: dk } } : {}),
+    ...(mj !== undefined ? { mengeJeMonat: mj } : {}),
     ...(zeile(v.text, G.text) ? { text: zeile(v.text, G.text) } : {}),
   };
 }
@@ -715,6 +792,12 @@ export function kartenFelderSaeubern(o: Record<string, unknown>): KartenFelder {
   };
 }
 
+/** Ein Zahlplan `{ anzahlungProzent }` (1–99, ganze Zahl), gesäubert — sonst undefined. Für Zusatzmodule und das einmalige Honorar am Mandat (21.10.). */
+export function zahlplanSaeubern(v: unknown): { anzahlungProzent: number } | undefined {
+  const ap = istObj(v) ? ganz(v.anzahlungProzent, 1, 99) : undefined;
+  return ap !== undefined ? { anzahlungProzent: ap } : undefined;
+}
+
 /** Zusatzmodule eines Mandats, gesäubert (lib/crm/speicher.ts `zusatz('mandate')`) — ungültige Einträge fallen weg; leer → undefined. */
 export function mandatZusatzSaeubern(v: unknown): MandatZusatz[] | undefined {
   if (!Array.isArray(v)) return undefined;
@@ -728,11 +811,12 @@ export function mandatZusatzSaeubern(v: unknown): MandatZusatz[] | undefined {
     // P3 (19.10.): Zahlplan (einmalig, z. B. 50/50) und geplante Stunden je Monat (Stundensatz) — beide optional.
     const ap = istObj(x.zahlplan) ? ganz(x.zahlplan.anzahlungProzent, 1, 99) : undefined;
     const std = dezimal(x.stundenJeMonat, 0.25, G.stundenJeMonat);
+    const tage = dezimal(x.tageJeMonat, 0.25, G.stundenJeMonat);
     return [{
       id: x.id, leistungId: x.leistungId, ...(typeof x.ab === 'string' && TAG.test(x.ab) ? { ab: x.ab } : {}), ...(typeof x.bis === 'string' && TAG.test(x.bis) ? { bis: x.bis } : {}),
       ...(betrag !== undefined && basis ? { honorar: { betragCent: betrag, basis } } : {}), ...(x.inklusive === true ? { inklusive: true } : {}),
       ...(menge !== undefined ? { menge } : {}), ...(je ? { je } : {}),
-      ...(ap !== undefined ? { zahlplan: { anzahlungProzent: ap } } : {}), ...(std !== undefined ? { stundenJeMonat: std } : {}),
+      ...(ap !== undefined ? { zahlplan: { anzahlungProzent: ap } } : {}), ...(std !== undefined ? { stundenJeMonat: std } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}),
     }];
   });
   return out.length ? out : undefined;
@@ -776,6 +860,10 @@ export function mandatZusatzPruefen(roh: unknown, alt: readonly MandatZusatz[] |
     if (x.stundenJeMonat != null) {
       f.push(...nur([zahlFehler(x.stundenJeMonat, `${name}, Stunden je Monat`, 0.25, G.stundenJeMonat, false)]));
       if (!(istObj(x.honorar) && x.honorar.basis === 'stunde')) f.push({ status: 400, text: `${name}: geplante Stunden gibt es nur beim Stundensatz.` });
+    }
+    if (x.tageJeMonat != null) {
+      f.push(...nur([zahlFehler(x.tageJeMonat, `${name}, Tage je Monat`, 0.25, G.stundenJeMonat, false)]));
+      if (!(istObj(x.honorar) && x.honorar.basis === 'tag')) f.push({ status: 400, text: `${name}: geplante Tage gibt es nur beim Tagessatz.` });
     }
     if (x.menge != null) f.push(...nur([zahlFehler(x.menge, `${name}, Menge`, 1, G.inklusiveMenge)]));
     if (x.je != null && !aus(x.je, INKLUSIVE_JE)) f.push({ status: 400, text: `${name}: je ${INKLUSIVE_JE.join(', ')}.` });
@@ -860,6 +948,7 @@ export function preisteilPruefen(v: unknown, nr = 1): PruefFehler[] {
     v.bisCent != null && (typeof v.betragCent !== 'number' || (typeof v.bisCent === 'number' && v.bisCent <= v.betragCent)) ? { status: 400, text: `${p}: „bis“ nur mit Betrag und größer als er.` } : null,
     v.einheit != null && art !== 'je_einheit' ? { status: 400, text: `${p}: eine Einheit gibt es nur bei „je Einheit“.` } : textFehler(v.einheit, `${p}, Einheit`, G.einheit),
     v.deckel != null && art !== 'stundensatz' ? { status: 400, text: `${p}: einen Deckel gibt es nur beim Stundensatz.` } : null,
+    v.mengeJeMonat != null && !istSatz(art) ? { status: 400, text: `${p}: eine geplante Menge je Monat gibt es nur beim Tages- und Stundensatz.` } : zahlFehler(v.mengeJeMonat, `${p}, geplant je Monat`, 0, G.stundenJeMonat, false),
     v.deckel != null && !istObj(v.deckel) ? { status: 400, text: `${p}: Deckel { stundenJeMonat }.` } : null,
     istObj(v.deckel) ? zahlFehler(v.deckel.stundenJeMonat, `${p}, Stunden je Monat`, 1, G.stundenJeMonat) : null,
     v.zahlplan != null && (!istObj(v.zahlplan) || typeof v.zahlplan.anzahlungProzent !== 'number') ? { status: 400, text: `${p}: Zahlplan { anzahlungProzent }.` } : null,
