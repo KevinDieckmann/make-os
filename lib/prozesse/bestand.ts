@@ -116,9 +116,10 @@ const raute = (v: unknown): RautenRegel | undefined => {
 };
 const warten = (v: unknown): WartenRegel | undefined => {
   const o = obj(v);
-  if (o?.art === 'dauer') return sauber<WartenRegel>({ art: 'dauer', tage: n(o.tage) ?? 0, stunden: n(o.stunden) });
+  // C1 (21.10., M1): `arbeitszeit` und `hoechstensStunden` (optional) — ohne sie wie bisher.
+  if (o?.art === 'dauer') return sauber<WartenRegel>({ art: 'dauer', tage: n(o.tage) ?? 0, stunden: n(o.stunden), arbeitszeit: o.arbeitszeit === true ? true : undefined });
   if (o?.art === 'datum' && s(o.feld)) return sauber<WartenRegel>({ art: 'datum', feld: o.feld as string, versatzTage: n(o.versatzTage), hoechstensTage: n(o.hoechstensTage) ?? 0 });
-  if (o?.art === 'ereignis' && s(o.ereignis)) return sauber<WartenRegel>({ art: 'ereignis', ereignis: o.ereignis as string, bedingungen: bedingungen(o.bedingungen), verknuepfung: verkn(o.verknuepfung), hoechstensTage: n(o.hoechstensTage) ?? 0 });
+  if (o?.art === 'ereignis' && s(o.ereignis)) return sauber<WartenRegel>({ art: 'ereignis', ereignis: o.ereignis as string, bedingungen: bedingungen(o.bedingungen), verknuepfung: verkn(o.verknuepfung), hoechstensTage: n(o.hoechstensTage) ?? 0, hoechstensStunden: n(o.hoechstensStunden), arbeitszeit: o.arbeitszeit === true ? true : undefined });
   return undefined;
 };
 const schleife = (v: unknown): SchleifeRegel | undefined => { const o = obj(v); const l = s(o?.liste), p = s(o?.prozessId); return o && l && p ? { liste: l, prozessId: p, hoechstens: n(o.hoechstens) ?? 0 } : undefined; };

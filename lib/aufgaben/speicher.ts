@@ -597,6 +597,12 @@ export async function aufgabenAendern(opsOderRechnen: AufgabenOps | OpsRechnen, 
     try { await (await import('@/lib/fulfillment/prozesse/ausfuehrung-server')).fulfillmentNachAufgaben(vorher, nachher, echtePerson ? opt.person : SYSTEM); }
     catch (e) { console.error('[aufgaben] Fulfillment nicht weitergerückt —', e instanceof Error ? e.message : e); }
   }
+  // Prozesse (21.10., C1 „Laufen intern“, Punkt 67): eine Aufgabe eines Prozess-Laufs (Kennung `pl-…`) wurde erledigt, abgebrochen oder in den
+  // Papierkorb gelegt → der Lauf geht weiter (lib/prozesse/lauf-server.ts; nur, wenn er genau darauf wartet — idempotent, wirft nie). Erst prüfen, dann laden.
+  if (nachher.tasks.some(t => t.id.startsWith('pl-') && vorher.tasks.find(v => v.id === t.id && (v.status !== t.status || v.geloeschtAm !== t.geloeschtAm)))) {
+    try { await (await import('@/lib/prozesse/lauf-server')).prozesseNachAufgaben(vorher, nachher); }
+    catch (e) { console.error('[aufgaben] Prozess nicht weitergerückt —', e instanceof Error ? e.message : e); }
+  }
   // Umzug Privat ↔ Business (29.09., #4): der Bereich der Dateien an umgezogenen Aufgaben zieht mit.
   await dateienBereichNachziehen(vorher, nachher, opt.haushalt, echtePerson ? opt.person : SYSTEM);
   if (erg.entfernt && opt.haushalt) await papierkorbDateienEntfernen(opt.haushalt, opt.person, erg.entfernt);

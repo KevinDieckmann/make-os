@@ -74,7 +74,7 @@ function WebhookFelderFeld({ wert, onWert, aus }: { wert: readonly WebhookFeld[]
           <select aria-label="Art" value={f.art} disabled={aus} onChange={e => setze(i, { art: e.target.value as WebhookFeld['art'] })} style={{ ...auswahlStil, width: '100%' }}>
             {WEBHOOK_FELD_ARTEN.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
-          <Schalter an={!!f.pflicht} onChange={v => setze(i, { pflicht: v || undefined })} aus={aus} ariaLabel="Pflicht" erklaerungOhne="Pflichtfeld des Webhooks" />
+          <Schalter an={!!f.pflicht} onChange={v => setze(i, { pflicht: v || undefined })} aus={aus} ariaLabel="Pflicht" erklaerungOhne="Schaltet ein Feld des Webhooks auf Pflicht um." />
           <SymbolKnopf ariaLabel="Feld entfernen" aus={aus} onClick={() => onWert(l.filter((_, j) => j !== i))}><X size={16} /></SymbolKnopf>
         </div>
       ))}
@@ -127,7 +127,7 @@ export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, 
       );
       break;
     case 'zahl': eingabe = <ZahlFeld label={f.label} wert={typeof wert === 'number' ? wert : null} aus={aus} min={f.min} max={f.max} onWert={onWert} />; break;
-    case 'ja-nein': eingabe = <Schalter an={wert === true} onChange={v => onWert(v)} aus={aus} erklaerungOhne={f.hilfe ?? f.label}>{wert === true ? 'ja' : 'nein'}</Schalter>; break;
+    case 'ja-nein': eingabe = <Schalter an={wert === true} onChange={v => onWert(v)} aus={aus} erklaerung={[{ kopf: f.label, text: f.hilfe ?? `${f.label}: ja oder nein für diesen Baustein.` }]}>{wert === true ? 'ja' : 'nein'}</Schalter>; break;
     case 'uhrzeit': eingabe = <input aria-label={f.label} type="time" value={typeof wert === 'string' ? wert : ''} disabled={aus} onChange={e => onWert(e.target.value || null)} style={{ ...feld, maxWidth: 160, colorScheme: 'dark' }} />; break;
     case 'auswahl':
       eingabe = (

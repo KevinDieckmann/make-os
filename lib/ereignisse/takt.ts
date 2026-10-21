@@ -35,6 +35,8 @@ const EINGABE_FELD: Readonly<Record<BezugFeld, string>> = {
   aufgabeId: 'aufgabe', terminUid: 'termin', gespraech: 'gespraech', followupId: 'followup',
   // Prozesse (21.10., B1): nur Webhook-Ereignisse tragen sie — die sind intern (kein Skill-Lauf); der Eintrag hält die Liste vollständig.
   prozessId: 'prozess', eingangId: 'eingang',
+  // Prozesse C1 (21.10.): der Schritt eines Fulfillment-Falls („Schritt im Fall erledigt“).
+  knotenId: 'schritt',
   // Kundengewinnung (22.10.): Event, Kampagne, Angebot, Buchung der Buchungsseite.
   eventId: 'event', kampagneId: 'kampagne', angebotId: 'angebot', terminBuchungId: 'buchungsanfrage',
 };

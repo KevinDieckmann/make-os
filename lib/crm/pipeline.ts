@@ -25,8 +25,9 @@ export const STUFEN: { id: ChancenStufe; label: string; p: number; weiterWenn: s
   { id: 'geparkt', label: 'Geparkt', p: 0, weiterWenn: '', offen: false },
 ];
 export const OFFENE_STUFEN = STUFEN.filter(s => s.offen).map(s => s.id);
-// „Keine Entscheidung“ (22.10., Kevins Entscheidung E-V4, research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › V13): fester Grund, damit Auswertung und Vorlage V13 den
-// größten Gegner zählen können. Nur angehängt (die Reihenfolge der übrigen bleibt); eine gleichnamige eigene Werteliste fällt beim Lesen als Doppel weg.
+// 21.10. (Prozesse C1, M9): „Keine Entscheidung“ fest dazu — der größte Verlustgrund im B2B (der Kunde entscheidet sich gar nicht) war bisher nur als
+// „Keine Rückmeldung“ oder „Kein Entscheider“ erfassbar. Angehängt (nie umsortiert); ein gleichnamiger eigener Wert gilt weiter (ohne Doppel).
+// 22.10. (Kundengewinnung, Kevins Entscheidung E-V4): derselbe feste Grund trägt die Vorlage V13 („Verloren / keine Entscheidung“).
 export const VERLUSTGRUENDE = ['Preis', 'Kein Bedarf', 'Zeitpunkt', 'Wettbewerb', 'Kein Entscheider', 'Intern gelöst', 'Keine Rückmeldung', 'Keine Entscheidung'];
 
 /**

@@ -17,7 +17,8 @@
  * im iCloud-Stand steht (lib/meldungen/regeln.ts `buchungenErledigen`).
  */
 /** `kunden-link` (11.10.): Uploads über DENSELBEN Kunden-Link (Fulfillment) fallen in eine ungelesene Meldung zusammen. */
-export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin' | 'netzwerken' | 'kunden-link'; id: string }
+/** `prozess` (21.10., Prozesse C1): je Prozess und Art eine Meldung (Freigabe wartet, Fehler, Flutschutz, Budget, Notbremse) — id `<prozess>:<art>`. */
+export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin' | 'netzwerken' | 'kunden-link' | 'prozess'; id: string }
 /**
  * `netzwerken` (02.10.): jemand hat dir beim Netzwerken einen Termin gebucht oder eine Person zugeteilt (Bezug `netzwerken` =
  * Kennung der Erfassung, eine Meldung je Erfassung) — gespeichert in der Glocke der anderen Person, das Pop-up zeigt sie einmal.
@@ -31,7 +32,8 @@ export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin' | 
 /** `agenten` (09.10., Agenten-Bereich Paket 1): ein Lauf eines Heads bzw. Mitarbeiters ist fertig — Text neutral, ohne Inhalt; Link auf den Thread. */
 /** `medien` (09.10., Paket 4c): ein Medium wartet auf deine Freigabe (Vier-Augen) bzw. ein KI-Video ist fertig — Text neutral, Link auf das Medium. */
 /** `gesundheit` (09.10., Schlaf-Hilfe): die eigene Abend-Erinnerung zur Schlafenszeit — Titel IMMER neutral (keine Uhrzeit, keine Werte). */
-export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender' | 'netzwerken' | 'sicherheit' | 'vertrag' | 'postfach' | 'verbindung' | 'agenten' | 'medien' | 'gesundheit' | 'produkte';
+/** `prozess` (21.10., Prozesse C1 „Laufen intern“): ein Prozess wartet auf eine Freigabe, braucht Hilfe (Fehler), hat Läufe zurückgehalten oder pausiert (Budget, Notbremse) — Titel ohne Inhalte, nur Business. */
+export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender' | 'netzwerken' | 'sicherheit' | 'vertrag' | 'postfach' | 'verbindung' | 'agenten' | 'medien' | 'gesundheit' | 'produkte' | 'prozess';
 
 export interface MeldungEingabe {
   /** Empfänger: Speichername der Person (z. B. „malin“). Nie an sich selbst melden. */

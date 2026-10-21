@@ -47,6 +47,9 @@ export const EREIGNIS_FELDER: readonly FeldDef[] = [
   { id: 'bezug.mandatid', titel: 'Mandat', art: 'kennung' },
   { id: 'bezug.rechnungid', titel: 'Rechnung', art: 'kennung' },
   { id: 'bezug.aufgabeid', titel: 'Aufgabe', art: 'kennung' },
+  // C1 (21.10., M3): der Termin als Feld (Termin vorbei, Termin abgesagt) und der Schritt eines Fulfillment-Falls (Fall-Schritt erledigt).
+  { id: 'bezug.terminuid', titel: 'Termin', art: 'kennung' },
+  { id: 'bezug.knotenid', titel: 'Schritt (Fall)', art: 'kennung' },
   // Kundengewinnung (22.10.): Ereignisse zu Events, Kampagnen, Angeboten und Buchungsseiten (lib/ereignisse/quellen-kundengewinnung.ts).
   { id: 'bezug.eventid', titel: 'Event', art: 'kennung' },
   { id: 'bezug.kampagneid', titel: 'Kampagne', art: 'kennung' },
@@ -83,6 +86,11 @@ export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
   firma: [
     { id: 'firma.bean', titel: 'Kundengruppe (BEAN)', art: 'text' }, { id: 'firma.lead-status', titel: 'Lead-Status', art: 'text' },
     ...KG_FALL_FELDER.firma,
+  ],
+  // C1 (21.10., M3): Kampagnen-Playbooks als Prozesse.
+  kampagne: [
+    { id: 'kampagne.status', titel: 'Status', art: 'text' }, { id: 'kampagne.playbook', titel: 'Playbook', art: 'text' }, { id: 'kampagne.kanal', titel: 'Kanal', art: 'text' },
+    ...KG_FALL_FELDER.kampagne,
   ],
   keiner: [...KG_FALL_FELDER.keiner],
 };

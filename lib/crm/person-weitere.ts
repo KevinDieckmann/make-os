@@ -370,6 +370,9 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Prozesse (21.10., B1): Eingänge der Webhooks (fremder Text, z. B. ein Formular) — die Eingänge, die die Person nennen, fallen weg; Adressen und
   // Fingerabdrücke der Schlüssel bleiben (keine Personendaten).
   { name: 'prozesse-webhook--*', muster: /^prozesse-webhook--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('eingaenge') },
+  // Prozesse · Läufe (21.10., C1): nur Kennungen — die der Person werden „[gelöscht]“ (Fall, Bezug des Ereignisses); der Lauf endet im nächsten Takt
+  // („Fall weg“), Status und Zeitpunkte bleiben als Nachweis.
+  { name: 'prozess-laeufe--*', muster: /^prozess-laeufe--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Terminbuchungen (29.09., K4): die Buchungen der Person fallen weg (Name, Adresse, Kontakt-Kennung); Seiten bleiben.
   { name: 'buchung--*', muster: /^buchung--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('buchungen') },
   // Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1): Fall (Stakeholder-Kennung getilgt, Notiz weg), Kunde (Antworten/Puls/Unterlagen, die die

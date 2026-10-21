@@ -236,6 +236,8 @@ export async function POST(req: Request) {
     if (regelFehler) return NextResponse.json({ ok: false, fehler: regelFehler }, { status: 400 });
     if (!erledigt) return NextResponse.json({ ok: false, fehler: 'Follow-up nicht gefunden.' }, { status: 404 });
     const e = erledigt as FollowUp;
+    // Ereignis (21.10., Prozesse C1, E8): Follow-up erledigt — stoppt z. B. die Uhr eines Prozesses. Nur Kennungen, nach dem Speichern, wirft nie.
+    await import('@/lib/ereignisse/quellen').then(q => q.followupErledigtEreignis({ id: e.id, ...(e.kontaktId ? { kontaktId: e.kontaktId } : {}), ...(e.bezug ? { bezug: e.bezug } : {}) })).catch(() => 0);
     // Follow-up = Aufgabe (29.09., #99): die verknüpfte Aufgabe wird mit erledigt (idempotent, über den Aufgaben-Schreibweg).
     if (e.aufgabeId) await aufgabeErledigenNachFollowUp(e, person);
     let lead: LeadMeldung | null = null;

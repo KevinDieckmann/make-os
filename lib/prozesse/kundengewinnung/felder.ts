@@ -58,6 +58,8 @@ export const KG_FALL_FELDER: Readonly<Record<FallArt, readonly KgFeld[]>> = {
     f('firma.daten-fehlen', 'Stammdaten fehlen', 'ja-nein', 'vollstaendigkeit (lib/crm/akte.ts) und Firmenfelder Branche, Mitarbeitende, Webseite'),
     f('firma.bester-kanal', 'Bester Kanal (Ansprechpartner)', 'text', 'besterKanal (lib/crm/recht.ts) — mail · telefon · linkedin · keiner'),
   ],
+  // Kampagne (Fall-Art seit C1, M3): die Felder der Kampagne selbst stehen dort; die Vorlage V06 braucht keine weiteren.
+  kampagne: [],
   keiner: [
     f('abfrage.anzahl', 'Treffer der CRM-Abfrage', 'zahl', 'Ergebnis der letzten CRM-Abfrage im Lauf (lib/prozesse/kundengewinnung/abfrage.ts)'),
   ],

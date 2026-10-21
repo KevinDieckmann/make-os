@@ -50,7 +50,9 @@ export const ANSPRUCH_MS = 10 * 60_000;
 // Fulfillment (10.10., FULFILLMENT_KONZEPT.md): `fulfillment` — Onboarding starten, Nachsorge, Puls, Analyse-Hinweise; verteilt nach Präfix der
 // Kennung (`p:`/`k:`/`a:`) in lib/fulfillment/stapel.ts.
 // Inbox (10.10., Roadmap Phase 1): `inbox` — Aufgaben-Vorschlag aus einer Mail/WhatsApp (Regelwerk ohne Modell, lib/inbox/aufgaben-vorschlag-server.ts).
-export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | 'fulfillment' | 'inbox' | AgentenStapelArt;
+// Prozesse (21.10., Etappe C1 „Laufen intern“): `prozess` — ein Lauf legt eine Freigabe bzw. Entscheidung vor (Ausgänge freigegeben · abgelehnt ·
+// abgelaufen als Äste), nach der Freigabe einer Mail/WhatsApp geht sie sofort raus — als die freigebende Person (lib/prozesse/lauf-stapel.ts).
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | 'fulfillment' | 'inbox' | 'prozess' | AgentenStapelArt;
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {
@@ -107,6 +109,11 @@ export interface Vorschlag {
   bereichNennt?: BereichNennt[];
   /** Wer den Bereich von Hand gesetzt hat (Speichername). */
   bereichVon?: string;
+  /**
+   * Feste Kennung der Wirkung (21.10., Prozesse C1, Punkt 42: `<lauf>-<schritt>`): liegt schon ein Vorschlag mit derselben Kennung im Stapel — gleich in
+   * welchem Status —, legt `lege` keinen zweiten an (ein wiederholter Lauf-Schritt nach einem Abbruch schreibt nichts doppelt). Nur Server-Läufe setzen sie.
+   */
+  einmalig?: string;
 }
 
 /** Die Bereichs-Felder eines Vorschlags — `lege` setzt sie selbst, eine Angabe des Aufrufers zählt nicht. */
@@ -161,7 +168,8 @@ export async function lege(v: Omit<Vorschlag, 'id' | 'zeit' | 'tag' | 'status'>,
     // Liegt dieselbe Wirkung schon offen da, kommt nichts Zweites dazu — aber nur für DIESELBE Person (09.10., Agenten-Datenschicht):
     // vorher verschwand der Vorschlag der einen Person still, wenn die andere denselben offen hatte (den sie nie sieht), und der
     // Aufrufer bekam den fremden Vorschlag zurück. Personlose (System-)Vorschläge gleichen nur personlose ab.
-    schonDa = offen.find(x => (x.person ?? null) === (vorschlag.person ?? null) && kennung(x.werkzeug, x.eingabe) === kennung(vorschlag.werkzeug, vorschlag.eingabe));
+    schonDa = (vorschlag.einmalig ? liste.find(x => x.einmalig === vorschlag.einmalig) : undefined)
+      ?? offen.find(x => (x.person ?? null) === (vorschlag.person ?? null) && kennung(x.werkzeug, x.eingabe) === kennung(vorschlag.werkzeug, vorschlag.eingabe));
     if (schonDa) return { vorschlaege: liste };
     const erledigt = liste.filter(x => !AKTIV.has(x.status));
     const platz = Math.max(0, GRENZE - offen.length - 1);

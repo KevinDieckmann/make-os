@@ -186,11 +186,14 @@ export const PROZESS_BEREICHE: readonly { id: ProzessBereich; titel: string; ban
   { id: 'unterstuetzung', titel: 'Unterstützung', band: 'unterstuetzung' },
 ];
 export const BEREICH_IDS = PROZESS_BEREICHE.map(b => b.id) as readonly ProzessBereich[];
-/** Woran ein Lauf hängt: ein Lead, ein Deal, ein Mandat, ein Event, eine Firma — oder an nichts (z. B. Monatsabschluss). */
-export type FallArt = 'lead' | 'deal' | 'mandat' | 'event' | 'firma' | 'keiner';
+/**
+ * Woran ein Lauf hängt: ein Lead, ein Deal, ein Mandat, ein Event, eine Firma, eine Kampagne — oder an nichts (z. B. Monatsabschluss).
+ * C1 (21.10., M3): `kampagne` dazu (Kampagnen-Playbooks als Prozesse) — additiv; ein älterer Stand liest einen Prozess mit Fall „Kampagne“ als ohne Fall-Art.
+ */
+export type FallArt = 'lead' | 'deal' | 'mandat' | 'event' | 'firma' | 'kampagne' | 'keiner';
 export const FALL_ARTEN: readonly { id: FallArt; titel: string }[] = [
   { id: 'lead', titel: 'Lead' }, { id: 'deal', titel: 'Deal' }, { id: 'mandat', titel: 'Mandat' },
-  { id: 'event', titel: 'Event' }, { id: 'firma', titel: 'Firma' }, { id: 'keiner', titel: 'ohne Fall' },
+  { id: 'event', titel: 'Event' }, { id: 'firma', titel: 'Firma' }, { id: 'kampagne', titel: 'Kampagne' }, { id: 'keiner', titel: 'ohne Fall' },
 ];
 export const FALL_ART_IDS = FALL_ARTEN.map(f => f.id) as readonly FallArt[];
 /** Fehlt der Bereich, ist es eine Fulfillment-Vorlage. */
@@ -261,11 +264,15 @@ export type RautenRegel =
 export type ScorePruefung = 'score' | 'temperatur' | 'sql-bereit' | 'mql';
 export const SCORE_PRUEFUNGEN = ['score', 'temperatur', 'sql-bereit', 'mql'] as const satisfies readonly ScorePruefung[];
 export const TEMPERATUREN = ['kalt', 'lau', 'warm', 'heiss'] as const satisfies readonly Temperatur[];
-/** Warten — jedes Warten hat eine Obergrenze und den Ausgang „abgelaufen“ (`zweige.abgelaufen`). Wartende Läufe kosten nichts (der Takt weckt). */
+/**
+ * Warten — jedes Warten hat eine Obergrenze und den Ausgang „abgelaufen“ (`zweige.abgelaufen`). Wartende Läufe kosten nichts (der Takt weckt).
+ * C1 (21.10., M1): Obergrenze auch in STUNDEN (`hoechstensStunden`, z. B. „Antwort binnen 4 Stunden“) und „Arbeitszeit zählen“ (`arbeitszeit`: Tage =
+ * Werktage NRW, Stunden = Arbeitsstunden Mo–Fr 9–18 Uhr; Entscheidung 21.10.: „48 Stunden = Werktage“) — beide optional, ohne sie wie bisher.
+ */
 export type WartenRegel =
-  | { art: 'dauer'; tage: number; stunden?: number }
+  | { art: 'dauer'; tage: number; stunden?: number; arbeitszeit?: boolean }
   | { art: 'datum'; feld: DatumsFeld; versatzTage?: number; hoechstensTage: number }
-  | { art: 'ereignis'; ereignis: SkillEreignis; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung; hoechstensTage: number };
+  | { art: 'ereignis'; ereignis: SkillEreignis; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung; hoechstensTage: number; hoechstensStunden?: number; arbeitszeit?: boolean };
 /**
  * Schleife „je Eintrag einer Liste“: ruft je Eintrag (je Fall) einen veröffentlichten Teilprozess auf. `liste` = `abfrage:<Knoten>` (Ergebnis einer
  * CRM-Abfrage dieses Prozesses) oder eine Liste am Fall. Harte Obergrenze JE LAUF: mehr Einträge werden nie still gekürzt — der Rest bleibt mit
@@ -426,6 +433,8 @@ export const PROZESS_GRENZEN = {
   werkzeugeJeAgent: 20,
   schleifeHoechstens: 500,
   wartenTageMax: 90,
+  /** Obergrenze eines Wartens in Stunden (C1, M1) — 30 Tage. */
+  wartenStundenMax: 720,
   /** Höchstes Budget je Agenten- bzw. Modell-Schritt in Cent (darüber: erst einen Teilprozess bilden oder bewusst mehrere Schritte). */
   budgetCentMax: 500,
   opsJeAnfrage: 60,

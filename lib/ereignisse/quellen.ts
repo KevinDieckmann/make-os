@@ -161,8 +161,12 @@ export async function rechnungBezahltEreignis(r: { id: string; firmaId?: string;
 
 // ── CRM und Kartei ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Was sich im CRM geändert hat (rein): Deal neu bzw. in einer anderen Stufe, Firmen-Lead neu auf SQL. */
-export function crmDiff(vorher: Pick<CrmBestand, 'chancen' | 'firmen'>, nachher: Pick<CrmBestand, 'chancen' | 'firmen'>): EreignisEingabe[] {
+/**
+ * Was sich im CRM geändert hat (rein): Deal neu bzw. in einer anderen Stufe, Firmen-Lead neu auf SQL — seit 21.10. (Prozesse C1, E4) auch Mandat neu
+ * angelegt bzw. neu auf „beendet“ (nur, wenn beide Stände Mandate tragen; Bereich aus der Gesellschaft — die Selbstständigkeit gehört zu Privat).
+ */
+type CrmFuerDiff = Pick<CrmBestand, 'chancen' | 'firmen'> & Partial<Pick<CrmBestand, 'mandate'>>;
+export function crmDiff(vorher: CrmFuerDiff, nachher: CrmFuerDiff): EreignisEingabe[] {
   const raus: EreignisEingabe[] = [];
   const alt = new Map(vorher.chancen.map(c => [c.id, c.stufe]));
   for (const c of nachher.chancen) {
@@ -175,11 +179,21 @@ export function crmDiff(vorher: Pick<CrmBestand, 'chancen' | 'firmen'>, nachher:
     if (f.lead?.status !== 'sql' || leadAlt.get(f.id) === 'sql') continue;
     raus.push({ id: ereignisKennung('crm', 'lead', f.id, 'sql'), art: 'lead-sql', quelle: 'crm', bereich: 'business', bezug: { firmaId: f.id } });
   }
+  if (vorher.mandate && nachher.mandate) {
+    const mAlt = new Map(vorher.mandate.map(m => [m.id, m]));
+    for (const m of nachher.mandate) {
+      if (m.geloeschtAm) continue;
+      const a = mAlt.get(m.id);
+      const bezug = { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}), ...(m.chanceId ? { dealId: m.chanceId } : {}) };
+      if (!a) raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'angelegt'), art: 'mandat-angelegt', quelle: 'crm', bereich: bereichVonGesellschaft(m.gesellschaft), bezug });
+      else if (m.status === 'beendet' && a.status !== 'beendet') raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'beendet', (m.ende ?? '').slice(0, 10)), art: 'mandat-beendet', quelle: 'crm', bereich: bereichVonGesellschaft(m.gesellschaft), bezug });
+    }
+  }
   return raus;
 }
 
 /** Nach dem Speichern des CRM (lib/crm/speicher.ts `crmSchreiben`). Wirft nie. */
-export async function crmEreignisse(vorher: Pick<CrmBestand, 'chancen' | 'firmen'> & Partial<Pick<CrmBestand, 'events' | 'kampagnen'>>, nachher: Pick<CrmBestand, 'chancen' | 'firmen'> & Partial<Pick<CrmBestand, 'events' | 'kampagnen'>>): Promise<number> {
+export async function crmEreignisse(vorher: CrmFuerDiff & Partial<Pick<CrmBestand, 'events' | 'kampagnen'>>, nachher: CrmFuerDiff & Partial<Pick<CrmBestand, 'events' | 'kampagnen'>>): Promise<number> {
   try {
     // Kundengewinnung (22.10., E7/E11): Events und Kampagnen — eigener Block in ./quellen-kundengewinnung.ts.
     const { crmDiffKundengewinnung } = await import('./quellen-kundengewinnung');
@@ -277,4 +291,136 @@ export async function terminAbsagenEreignisse(alt: { kalender: { id: string }[];
     }, ics => vomGegenueberAbgesagt(ics, ich));
     return l.length ? (await ereignis(l)).neu : 0;
   } catch (e) { console.warn(`[ereignisse] Kalender: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`); return 0; }
+}
+
+// ── Prozesse C1 (21.10., „Laufen intern“ — VORLAGEN_KUNDENGEWINNUNG.md 5.1 E1/E8/E9, ANALYSE_100 Punkt 33) ─────────────────────────────────────────
+// Aus VORHANDENEN Schreibwegen (nie eine neue Abfrage), nach dem Speichern, wirft nie, nur Kennungen.
+
+/** Rechnung gestellt (Rechnungswesen „Rechnung stellen“) — Bereich aus der Gesellschaft der Rechnung, Mandat/Kunde/Kontakt als Bezug. Wirft nie. */
+export async function rechnungGestelltEreignis(r: { id: string; firmaId?: string; mandatId?: string; kundeFirmaId?: string; kontaktId?: string }): Promise<number> {
+  try {
+    return (await ereignis({ id: ereignisKennung('rechnung', r.id, 'gestellt'), art: 'rechnung-gestellt', quelle: 'rechnung', bereich: bereichVonFirma(r.firmaId),
+      bezug: { rechnungId: r.id, ...(r.mandatId ? { mandatId: r.mandatId } : {}), ...(r.kundeFirmaId ? { firmaId: r.kundeFirmaId } : {}), ...(r.kontaktId ? { kontaktId: r.kontaktId } : {}) } })).neu;
+  } catch { return 0; }
+}
+
+/** Ein Termin des Kalender-Spiegels (calendar-cache) mit CRM-Bezug, wie ihn der Signal-Lauf schon liest. */
+export interface TerminMitBezug { id: string; ende?: string; ganztags?: boolean; abgesagt?: boolean; privat?: boolean; kontaktIds: readonly string[]; dealId?: string; firmaId?: string; mandatId?: string; von?: string }
+
+/**
+ * Termine mit CRM-Bezug, die gerade vorbei sind (rein, E1): Ende ≤ jetzt und höchstens `fensterStunden` her (ältere wurden schon gemeldet bzw. sind
+ * zu alt, um noch etwas auszulösen) — nie abgesagte, nie ganztägige. Kennung `kalender:<termin>:vorbei` (dieselbe bei jedem Lauf → kein Doppel).
+ */
+export function terminVorbeiAus(termine: readonly TerminMitBezug[], jetzt: Date, endeMs: (wand: string) => number, fensterStunden = 72): EreignisEingabe[] {
+  const raus: EreignisEingabe[] = [];
+  const t = jetzt.getTime();
+  for (const x of termine) {
+    if (x.abgesagt || x.ganztags || !x.ende || !x.kontaktIds.length) continue;
+    const e = endeMs(x.ende);
+    if (!Number.isFinite(e) || e > t || t - e > fensterStunden * 3_600_000) continue;
+    raus.push({
+      id: ereignisKennung('kalender', x.id, 'vorbei'), art: 'termin-vorbei', quelle: 'kalender', bereich: x.privat ? 'privat' : 'business',
+      bezug: { terminUid: x.id, kontaktId: x.kontaktIds[0], ...(x.dealId ? { dealId: x.dealId } : {}), ...(x.firmaId ? { firmaId: x.firmaId } : {}), ...(x.mandatId ? { mandatId: x.mandatId } : {}) },
+      ...(x.von && /^[a-z0-9-]{1,40}$/.test(x.von) && x.von !== 'system' ? { person: x.von } : {}),
+    });
+  }
+  return raus;
+}
+/** Nach dem CRM-Signal-Lauf (lib/crm/signale-server.ts). Wirft nie. */
+export async function terminVorbeiEreignisse(termine: readonly TerminMitBezug[], jetzt = new Date()): Promise<number> {
+  try {
+    const { terminMs } = await import('@/lib/crm/signale');
+    const l = terminVorbeiAus(termine, jetzt, terminMs);
+    return l.length ? (await ereignis(l, { jetzt })).neu : 0;
+  } catch { return 0; }
+}
+
+/**
+ * Eigene Mail an Kontakte gesendet (E8 „antwort-gesendet“): Adressen → Kontakte (alle Adressen, keine Sammeladressen, eingeschränkte nie), Bereich des
+ * Postfachs, `person` = wer gesendet hat. Wirft nie.
+ */
+export async function antwortGesendetEreignis(a: { person: string; quelle: 'gmail' | 'imap'; nachricht: string; an: readonly string[]; postfach: string; gespraech?: string }): Promise<number> {
+  try {
+    if (!a.an.length) return 0;
+    const adresse = await adressenIndex();
+    const { ladePostfach } = await import('@/lib/postfach/register');
+    const bereich = (await ladePostfach(a.person, a.postfach).catch(() => null))?.bereich ?? null;
+    let crm: CrmBestand | null | undefined;
+    const crmEinmal = async () => (crm === undefined ? (crm = await crmLaden()) : crm);
+    const liste: EreignisEingabe[] = [];
+    const gesehen = new Set<string>();
+    for (const m of a.an) {
+      const k = adresse.get(m.trim().toLowerCase());
+      if (!k || gesehen.has(k.id)) continue;
+      gesehen.add(k.id);
+      const bezug = await personBezug(k, crmEinmal);
+      if (bezug === null) continue;
+      liste.push({ id: ereignisKennung('antwort', a.quelle, a.nachricht, k.id), art: 'antwort-gesendet', quelle: a.quelle, bereich: bereichAusPostfach(bereich), person: a.person, bezug: { ...bezug, ...(a.gespraech ? { gespraech: a.gespraech } : {}) } });
+    }
+    return liste.length ? (await ereignis(liste)).neu : 0;
+  } catch { return 0; }
+}
+
+/** Eigene WhatsApp-Nachricht an eine zugeordnete Akte gesendet (E8). Wirft nie. */
+export async function whatsappGesendetEreignis(a: { person: string; wamid: string; kontaktId?: string; bereich: string }): Promise<number> {
+  try {
+    if (!a.kontaktId) return 0;
+    const k = (await (await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).find(x => x.id === a.kontaktId);
+    const bezug = await personBezug(k, () => crmLaden());
+    if (!bezug || !k) return 0;
+    return (await ereignis({ id: ereignisKennung('antwort', 'wa', a.wamid), art: 'antwort-gesendet', quelle: 'whatsapp', bereich: bereichAusPostfach(a.bereich), person: a.person, bezug })).neu;
+  } catch { return 0; }
+}
+
+/**
+ * Follow-up erledigt (E8, /api/crm/followup) — Bezug Kontakt/Deal/Mandat/Firma aus dem Follow-up; Bereich aus der Gesellschaft des Deals bzw. Mandats
+ * (die Selbstständigkeit gehört zu Privat), sonst Business. Eingeschränkte Personen nie. Wirft nie.
+ */
+export async function followupErledigtEreignis(f: { id: string; kontaktId?: string; bezug?: { art: string; id: string } }): Promise<number> {
+  try {
+    const b = f.bezug;
+    if (f.kontaktId) {
+      const k = (await (await import('@/lib/crm/verarbeitung')).kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).find(x => x.id === f.kontaktId);
+      if (k?.eingeschraenkt) return 0;
+    }
+    let bereich: EreignisBereich = 'business';
+    if (b?.art === 'chance' || b?.art === 'mandat') {
+      const c = await crmLaden();
+      const g = b.art === 'chance' ? c?.chancen.find(x => x.id === b.id)?.gesellschaft : c?.mandate.find(x => x.id === b.id)?.gesellschaft;
+      if (g) bereich = bereichVonGesellschaft(g);
+    }
+    const bezug = {
+      followupId: f.id, ...(f.kontaktId ? { kontaktId: f.kontaktId } : {}),
+      ...(b?.art === 'chance' ? { dealId: b.id } : b?.art === 'mandat' ? { mandatId: b.id } : b?.art === 'firma' ? { firmaId: b.id } : {}),
+    };
+    return (await ereignis({ id: ereignisKennung('crm', 'followup', f.id, 'erledigt'), art: 'followup-erledigt', quelle: 'crm', bereich, bezug })).neu;
+  } catch { return 0; }
+}
+
+/**
+ * Fulfillment-Fall (rein, nach dem Schreiben des Falls): Schritte, die neu auf „erledigt“ stehen (Kennung mit dem Tag der Erledigung — ein wieder
+ * geöffneter und erneut erledigter Schritt meldet sich erneut), und Ziele des Wert-Kontos, deren Erreichung mit dieser Messung 100 % erreicht.
+ */
+export function fallDiff(vorher: { knoten: readonly { id: string; status: string }[]; wertKonto?: Record<string, unknown> }, nachher: { knoten: readonly { id: string; status: string; erledigtAm?: string }[]; wertKonto?: Record<string, unknown> }, m: { id: string; firmaId?: string; gesellschaft: string; kontaktIds?: readonly string[] }, erreichung: (e: unknown) => number | null): EreignisEingabe[] {
+  const alt = new Map(vorher.knoten.map(k => [k.id, k.status]));
+  const bereich = bereichVonGesellschaft(m.gesellschaft as never);
+  const basis = { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}) };
+  const raus: EreignisEingabe[] = [];
+  for (const k of nachher.knoten) {
+    if (k.status !== 'erledigt' || alt.get(k.id) === 'erledigt') continue;
+    raus.push({ id: ereignisKennung('fall', m.id, k.id, (k.erledigtAm ?? '').slice(0, 10)), art: 'fall-schritt-erledigt', quelle: 'fulfillment', bereich, bezug: { ...basis, knotenId: k.id } });
+  }
+  for (const [ziel, e] of Object.entries(nachher.wertKonto ?? {})) {
+    const jetzt = erreichung(e), vorhin = erreichung(vorher.wertKonto?.[ziel]);
+    if (jetzt === 100 && vorhin !== 100) raus.push({ id: ereignisKennung('fall', m.id, 'ziel', ziel), art: 'ziel-erreicht', quelle: 'fulfillment', bereich, bezug: { ...basis } });
+  }
+  return raus;
+}
+/** Nach dem Schreiben eines Fulfillment-Falls (lib/fulfillment/prozesse/fall-server.ts — die Ausführung bleibt unberührt). Wirft nie. */
+export async function fallEreignisse(vorher: Parameters<typeof fallDiff>[0], nachher: Parameters<typeof fallDiff>[1], m: Parameters<typeof fallDiff>[2]): Promise<number> {
+  try {
+    const { zielErreichung } = await import('@/lib/fulfillment/prozesse/wert');
+    const l = fallDiff(vorher, nachher, m, e => zielErreichung(e as never));
+    return l.length ? (await ereignis(l)).neu : 0;
+  } catch { return 0; }
 }

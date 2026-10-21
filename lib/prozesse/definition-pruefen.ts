@@ -110,7 +110,10 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
       if (w.art === 'dauer') {
         if (!ganz(w.tage, 0, PROZESS_GRENZEN.wartenTageMax) || (w.stunden !== undefined && !ganz(w.stunden, 0, 23)) || (w.tage === 0 && !w.stunden)) raus.push(b('offen', `${titel}: Dauer 0 bis ${PROZESS_GRENZEN.wartenTageMax} Tage (und Stunden), nicht null.`, k.id));
       } else {
-        if (!ganz(w.hoechstensTage, 1, PROZESS_GRENZEN.wartenTageMax)) raus.push(b('offen', `${titel}: jedes Warten braucht eine Obergrenze (1 bis ${PROZESS_GRENZEN.wartenTageMax} Tage).`, k.id, 'hoechstensTage'));
+        // C1 (21.10., M1): beim Warten auf ein Ereignis darf die Obergrenze auch in Stunden stehen (1 bis 720).
+        const stunden = w.art === 'ereignis' && w.hoechstensStunden !== undefined;
+        if (stunden && !ganz((w as { hoechstensStunden?: number }).hoechstensStunden, 1, PROZESS_GRENZEN.wartenStundenMax)) raus.push(b('offen', `${titel}: Obergrenze 1 bis ${PROZESS_GRENZEN.wartenStundenMax} Stunden.`, k.id, 'hoechstensStunden'));
+        else if (!stunden && !ganz(w.hoechstensTage, 1, PROZESS_GRENZEN.wartenTageMax)) raus.push(b('offen', `${titel}: jedes Warten braucht eine Obergrenze (1 bis ${PROZESS_GRENZEN.wartenTageMax} Tage).`, k.id, 'hoechstensTage'));
         if (w.art === 'datum' && !datumsFelderFuer(fall).includes(w.feld)) raus.push(b('offen', `${titel}: dieses Datum gibt es bei diesem Fall nicht.`, k.id));
         if (w.art === 'ereignis') {
           if (!istEreignisArt(w.ereignis) || !ereignisStartetProzess(w.ereignis)) raus.push(b('offen', `${titel}: auf dieses Ereignis kann ein Prozess nicht warten.`, k.id));

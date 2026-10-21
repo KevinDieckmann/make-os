@@ -135,6 +135,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   medien: { Icon: ImageIcon, label: 'Fotos & Videos', farbe: C.aktiv },
   // 10.10. (Leistungstreppe): Fortschritts-Report fällig bzw. ein Kunde ist reif für die nächste Stufe — neutral, Link ins Mandat.
   produkte: { Icon: Sparkles, label: 'Produkte & Mandate', farbe: C.aktiv },
+  // Prozesse (21.10., C1): Freigabe wartet, Fehler, Flutschutz, Budget, Notbremse — Titel ohne Inhalte.
+  prozess: { Icon: Layers, label: 'Prozesse', farbe: C.aktiv },
   // 08.10. (Lücke 7): Business-Hinweise, die während einer Business-freien Zeit kamen — gesammelt, danach EINE Meldung.
   businessfrei: { Icon: Moon, label: 'Aus der freien Zeit', farbe: C.aktiv },
   // 09.10. (Schlaf-Hilfe): die eigene Abend-Erinnerung zur Schlafenszeit — neutral.

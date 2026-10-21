@@ -351,6 +351,10 @@ export type SkillEreignis = 'neue-mail' | 'neuer-lead' | 'zahlungseingang' | 'ne
   | 'neue-whatsapp' | 'deal-stufe' | 'lead-sql' | 'termin-abgesagt' | 'aufgabe-zoe'
   // Prozesse (21.10., B1): ein abgesicherter Webhook von außen hat etwas angenommen — intern (kein Skill-Auslöser), nur der Prozess-Motor hört darauf.
   | 'webhook'
+  // Prozesse (21.10., C1 „Laufen intern“, VORLAGEN_KUNDENGEWINNUNG.md 5.1 E4/E8/E9 + ANALYSE_100 Punkt 33): Quellen aus vorhandenen Schreibwegen
+  // (lib/ereignisse/quellen.ts) — Mandat angelegt/beendet (CRM), Rechnung gestellt (Rechnungswesen), Schritt eines Fulfillment-Falls erledigt, eigene
+  // Antwort an einen Kontakt gesendet (Inbox/WhatsApp), Follow-up erledigt, Ziel eines Mandats erreicht (Wert-Konto).
+  | 'mandat-angelegt' | 'mandat-beendet' | 'rechnung-gestellt' | 'fall-schritt-erledigt' | 'antwort-gesendet' | 'followup-erledigt' | 'ziel-erreicht'
   // Kundengewinnung (22.10., research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.1: E2, E3, E5, E6, E7, E10, E11) — Quellen in lib/ereignisse/quellen-kundengewinnung.ts.
   | 'netzwerken-erfasst' | 'angebot-gestellt' | 'angebot-antwort' | 'buchung-angefragt' | 'buchung-bestaetigt' | 'einwilligung-erteilt'
   | 'event-vorbei' | 'event-status' | 'linkedin-antwort' | 'vernetzt' | 'kampagne-aktiv' | 'kampagnen-ergebnis';

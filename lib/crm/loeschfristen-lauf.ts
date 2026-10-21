@@ -342,6 +342,18 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     }
   });
 
+  // 11g · Prozesse (21.10., C1): beendete Läufe und Verlauf-Einträge vor der Frist „prozess-laeufe“ (Vorgabe 12 Monate) — je Haushalt-Bestand, offene nie.
+  await schritt('prozess-laeufe', async () => {
+    const { laeufeFristAnwenden } = await import('@/lib/prozesse/lauf-server');
+    const grenze = stichtag('prozess-laeufe', f['prozess-laeufe'], heute);
+    for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+      const m = /^(prozess-laeufe--[a-z0-9-]{1,40})\.json$/.exec(d);
+      if (!m) continue;
+      const n = await laeufeFristAnwenden(m[1], grenze);
+      if (n) { zaehle('prozess-laeufe', n); await protokolliere(m[1], [{ op: 'geloescht', id: 'loeschfrist', felder: ['laeufe'] }], SYSTEM); }
+    }
+  });
+
   // 12 · Umzugs- und Aufräum-Kopien im Archiv (30 Tage) — andere Archiv-Dateien bleiben (dokumentiert)
   await schritt('archiv-umzug', async () => {
     const grenze = stichtag('archiv-umzug', f['archiv-umzug'], heute);

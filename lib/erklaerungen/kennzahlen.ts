@@ -111,16 +111,6 @@ export const KENNZAHL_TEXTE: Readonly<Record<string, KennzahlText>> = {
     beispiel: 'Zwei Personen teilen ihre Erholung, eine steht auf Gelb: Der Faktor sinkt leicht, und die nächsten zwei Wochen werden etwas vorsichtiger geplant.',
     tun: 'Nichts — niemand muss etwas teilen. Einzelwerte sieht nur die Person selbst, im Team zählt nur der Faktor.',
   },
-  'fokus.wirkung.abdeckung': {
-    wie: 'Anteil der Messpunkte der Wirkung, die auf echten Daten beruhen. Der Rest ist noch nicht gemessen.',
-    beispiel: '55 % heißt: Gut die Hälfte der Faktoren hat eine Messung. Die Zahl ist ein guter Hinweis, aber noch kein Urteil.',
-    tun: 'Unter „Säulen“ aufklappen: Die grauen Faktoren führen zu der Stelle, an der du sie erfassen kannst.',
-  },
-  'fokus.wirkung.bestwert': {
-    wie: 'Der höchste Wert der Wirkung in den gespeicherten Tagen — als Vergleichsmarke.',
-    beispiel: 'Bestwert 81 am 12.09., heute 74: Es ging schon besser, und der Verlauf darunter zeigt, wann.',
-    tun: 'Schau im Verlauf, was um den Bestwert herum anders war, und mach das wieder.',
-  },
   'agent.annahmequote': {
     wie: 'Angenommene Vorschläge der Skills dieses Heads geteilt durch alle entschiedenen (angenommen plus abgelehnt). Offene Vorschläge zählen nicht.',
     beispiel: '8 angenommen, 2 abgelehnt: 80 %. Gemessen werden Agenten, nie Menschen.',

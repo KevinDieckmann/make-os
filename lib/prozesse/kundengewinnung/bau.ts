@@ -29,18 +29,13 @@ export const AN_KONTAKT = 'fall.kontakt';
 export const AN_ANSPRECHPARTNER = 'fall.ansprechpartner';
 
 /**
- * Ereignisse, die der Lauf-Motor (C1) ergänzt (E1, E4, E8, E9 — research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.1). Die Vorlagen nennen sie schon mit der
- * Kennung der Spezifikation; bis zum Zusammenführen sind sie ein ausdrücklich offener Punkt der Vorlage (die Prüfung meldet „offen“, sie läuft noch nicht).
+ * Ereignisse, die der Lauf-Motor (C1, 21.10.) speist (E1, E4, E8, E9 — research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.1). Seit dem Zusammenführen sind sie
+ * angebunden; die Namen stehen hier nur, damit die Vorlagen sie an EINER Stelle nennen.
  */
 export const C1_EREIGNIS = {
-  terminVorbei: 'termin-vorbei' as SkillEreignis,
-  mandatAngelegt: 'mandat-angelegt' as SkillEreignis,
-  mandatBeendet: 'mandat-beendet' as SkillEreignis,
-  antwortGesendet: 'antwort-gesendet' as SkillEreignis,
-  followupErledigt: 'followup-erledigt' as SkillEreignis,
-  zielErreicht: 'ziel-erreicht' as SkillEreignis,
-  reportErstellt: 'report-erstellt' as SkillEreignis,
-} as const;
+  terminVorbei: 'termin-vorbei', mandatAngelegt: 'mandat-angelegt', mandatBeendet: 'mandat-beendet', antwortGesendet: 'antwort-gesendet',
+  followupErledigt: 'followup-erledigt', zielErreicht: 'ziel-erreicht',
+} as const satisfies Record<string, SkillEreignis>;
 
 /** Was eine Vorlage braucht, damit sie wirkt (Galerie: „braucht: …“). */
 export type Braucht = 'postfach' | 'whatsapp' | 'kalender' | 'linkedin-profil' | 'buchungsseite' | 'ki' | 'web-recherche' | 'kampagne' | 'events' | 'mandate' | 'fulfillment';

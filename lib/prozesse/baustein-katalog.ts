@@ -283,11 +283,14 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
 
   // ── Warten ──
   { id: 'warten.dauer', name: 'Warten (Dauer)', satz: 'Wartet eine feste Zeit.', anbindung: 'Ablauf', form: 'warten', kategorie: 'warten', bahn: 'system', rechte: 'lesen', ki: [], feld: 'warten',
-    maske: [{ id: 'tage', label: 'Tage', typ: 'zahl', min: 0, max: PROZESS_GRENZEN.wartenTageMax, pflicht: true, vorgabe: 3 }, { id: 'stunden', label: 'Stunden', typ: 'zahl', min: 0, max: 23 }] },
+    maske: [{ id: 'tage', label: 'Tage', typ: 'zahl', min: 0, max: PROZESS_GRENZEN.wartenTageMax, pflicht: true, vorgabe: 3 }, { id: 'stunden', label: 'Stunden', typ: 'zahl', min: 0, max: 23 },
+      { id: 'arbeitszeit', label: 'Arbeitszeit zählen (Werktage, 9–18 Uhr)', typ: 'ja-nein', vorgabe: false }] },
   { id: 'warten.datum', name: 'Warten bis Datum', satz: 'Wartet bis zu einem Datum am Fall — höchstens n Tage.', anbindung: 'Ablauf', form: 'warten', kategorie: 'warten', bahn: 'system', rechte: 'lesen', ki: [], feld: 'warten',
     maske: [{ id: 'feld', label: 'Datum', typ: 'auswahl', quelle: 'datumsfeld', pflicht: true }, { id: 'versatzTage', label: 'Tage (negativ = vorher)', typ: 'zahl', min: -365, max: 365 }, HOECHSTENS()] },
   { id: 'warten.ereignis', name: 'Warten auf Ereignis', satz: 'Wartet, bis ein Ereignis zum Fall passiert — höchstens n Tage.', anbindung: 'Ablauf', form: 'warten', kategorie: 'warten', bahn: 'system', rechte: 'lesen', ki: [], feld: 'warten',
-    maske: [{ id: 'ereignis', label: 'Ereignis', typ: 'auswahl', quelle: 'ereignis', pflicht: true }, BEDINGUNGEN(), VERKNUEPFUNG, HOECHSTENS()] },
+    maske: [{ id: 'ereignis', label: 'Ereignis', typ: 'auswahl', quelle: 'ereignis', pflicht: true }, BEDINGUNGEN(), VERKNUEPFUNG, HOECHSTENS(false),
+      { id: 'hoechstensStunden', label: 'Höchstens (Stunden)', typ: 'zahl', min: 1, max: PROZESS_GRENZEN.wartenStundenMax, hilfe: 'Statt Tagen — z. B. „Antwort binnen 4 Stunden“.' },
+      { id: 'arbeitszeit', label: 'Arbeitszeit zählen (Werktage, 9–18 Uhr)', typ: 'ja-nein', vorgabe: false }] },
 
   // ── Agenten (ZOE, Heads, Skills) ──
   { id: 'agent.zoe', name: 'ZOE', satz: 'ZOE arbeitet einen Schritt ab — mit Vertrag, Budget und Rechte-Profil.', anbindung: 'ZOE', form: 'agent', kategorie: 'agent', bahn: 'agent', agent: true, feld: 'agent',
@@ -525,6 +528,7 @@ export const PLATZHALTER_JE_FALL: Readonly<Record<FallArt, readonly string[]>> =
   mandat: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'firma.name', 'mandat.titel', 'mandat.start', 'mandat.produkt'],
   event: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'event.titel', 'event.datum', 'event.ort'],
   firma: ['firma.name', 'firma.branche'],
+  kampagne: ['kampagne.titel'],
   keiner: [],
 };
 const PLATZHALTER_IMMER = ['prozess.titel', 'heute', 'lauf.start'];

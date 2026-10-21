@@ -204,6 +204,8 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     ereignisse: await import('@/lib/ereignisse/server').then(m => m.ereignisLage(new Date(jetzt))).catch(() => null),
     // Lauf-Spur (10.10., Paket V1): Läufe der letzten 7 Tage beider Bereiche — nur Zahlen (Fehlerquote, Tempo und Zwischenspeicher von ZOE).
     laufSpur: await laufSpurLage(new Date(jetzt)).catch(() => null),
+    // Prozesse (21.10., C1, Punkt 88): nur Zähler aus dem Bestand der Läufe (lib/prozesse/lauf-server.ts) — nie Kennungen.
+    prozesse: await import('@/lib/prozesse/lauf-server').then(m => m.prozesseLage(new Date(jetzt))).catch(() => null),
   };
 }
 
