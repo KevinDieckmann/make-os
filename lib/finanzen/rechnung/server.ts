@@ -529,6 +529,8 @@ export async function rechnungStellen(p: { id: string; stand: unknown; person: s
   await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: e.r.id, felder: ['status', 'nummer', 'datum', 'faellig', 'pdfDateiId', 'sha256', 'absender', 'lauf'] }], p.wer);
   // Rechnungsanschrift an der Firma (19.10., B12): beim Stellen füllt die Anschrift eine Firma, die noch keine hat — nie überschrieben.
   await anschriftAnFirma(null, e.r, p.wer);
+  // Ereignis (21.10., Prozesse C1): Rechnung gestellt → Prozesse (nur Kennungen, nie Beträge) — nach dem Speichern, wirft nie.
+  await import('@/lib/ereignisse/quellen').then(q => q.rechnungGestelltEreignis(e.r)).catch(() => 0);
   return { rechnung: mitFassung(e.r), pdf: e.pdf, mail: { ...(e.r.empfaenger?.email ? { an: e.r.empfaenger.email } : {}), ...rechnungMail(e.r, v.name) } };
 }
 

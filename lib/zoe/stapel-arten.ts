@@ -17,8 +17,11 @@ import type { StapelArt, Vorschlag } from './stapel';
 export type ArtErgebnis = { ok: true; text: string } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string };
 
 export interface StapelArtFreigabe {
-  /** `sammel` = Kennung einer Sammelfreigabe (29.09., #97) — alle darin freigegebenen Einträge tragen sie. */
-  freigeben: (v: Vorschlag, person: string, opt: { eingabe?: Record<string, unknown> | null; sammel?: string }) => Promise<ArtErgebnis>;
+  /**
+   * `sammel` = Kennung einer Sammelfreigabe (29.09., #97) — alle darin freigegebenen Einträge tragen sie. `sitzung` (21.10., Prozesse C1): die Freigabe
+   * kommt aus der Sitzung der Person selbst (nicht über den Dienstweg) — nur dann darf eine Art nach außen senden (N12).
+   */
+  freigeben: (v: Vorschlag, person: string, opt: { eingabe?: Record<string, unknown> | null; sammel?: string; sitzung?: boolean }) => Promise<ArtErgebnis>;
   nachAblehnen?: (v: Vorschlag, person: string) => Promise<unknown>;
 }
 
@@ -50,6 +53,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   // Inbox (10.10., Roadmap Phase 1 „Aufgaben: Vorschläge aus Mails/WhatsApp“): ein Regelwerk hat in einer Nachricht einen Auftrag erkannt —
   // die Aufgabe entsteht erst hier, über den Aufgaben-Weg (/api/tasks/create), nur für die Person, in deren Inbox die Nachricht liegt.
   inbox: async () => (await import('@/lib/inbox/aufgaben-vorschlag-server')).INBOX_STAPEL_ART,
+  // Prozesse (21.10., C1 „Laufen intern“): Freigabe bzw. Entscheidung eines Laufs — freigegeben/abgelehnt/abgelaufen treiben den Lauf weiter; eine
+  // freigegebene Mail/WhatsApp geht sofort raus, als die freigebende Person aus der Sitzung (nie über den Dienstweg) — lib/prozesse/lauf-stapel.ts.
+  prozess: async () => (await import('@/lib/prozesse/lauf-stapel')).PROZESS_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

@@ -25,7 +25,7 @@ describe('Auslöser prüfen', () => {
     const ok = ausloeserAus({ art: 'ereignis', ereignis: 'deal-stufe', bedingungen: [{ feld: 'ereignis.stufe', op: 'gleich', wert: 'gewonnen' }] }, 'deal');
     expect(ok.befunde).toEqual([]);
     expect(ok.ausloeser).toEqual({ art: 'ereignis', ereignis: 'deal-stufe', bedingungen: [{ feld: 'ereignis.stufe', op: 'gleich', wert: 'gewonnen' }] });
-    expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'termin-vorbei' }, 'deal'))).toBe(1); // noch nicht angebunden
+    expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'frist-naht' }, 'deal'))).toBe(1); // noch nicht angebunden (termin-vorbei seit C1 angebunden)
     expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'webhook' }, 'deal'))).toBe(1); // intern
     expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'aufgabe-zoe' }, 'deal'))).toBe(1); // intern
     expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'neuer-lead', bedingungen: [{ feld: 'deal.wert', op: 'groesser', wert: 5 }] }, 'lead'), 'fehler')).toBe(1);

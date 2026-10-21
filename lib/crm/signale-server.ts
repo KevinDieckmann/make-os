@@ -72,6 +72,15 @@ export async function signaleLauf(o: { wer: Wer; erzwingen?: boolean; abstandMin
     return n || nach.geaendert ? { ...f, kontakte: nach.kontakte } : f;
   }, o.wer);
   await saveJson<SignaleStand>(SIGNALE_BESTAND, { letzter: jetzt, neu });
+  // Ereignis (21.10., Prozesse C1, E1): Termine mit CRM-Bezug, die gerade vorbei sind — aus denselben Daten wie oben (keine neue Abfrage), nie abgesagte,
+  // nie ganztägige; dieselbe Kennung bei jedem Lauf (kein Doppel). Wirft nie.
+  const ganz = new Map((kalender?.events ?? []).map(t => [t.id, t as { endDate?: string; allDay?: boolean }]));
+  await import('@/lib/ereignisse/quellen').then(q => q.terminVorbeiEreignisse(mitBezug.map(m => {
+    const t = ganz.get(m.id);
+    const b = bezugVon({ id: m.id, uid: m.uid });
+    return { id: m.id, ...(t?.endDate ? { ende: t.endDate } : {}), ...(t?.allDay ? { ganztags: true } : {}), ...(m.privat ? { privat: true } : {}), kontaktIds: m.kontaktIds,
+      ...(m.dealId ? { dealId: m.dealId } : {}), ...(b?.firmaId ? { firmaId: b.firmaId } : {}), ...(b?.mandatId ? { mandatId: b.mandatId } : {}), ...(m.von ? { von: m.von } : {}) };
+  }), jetztD)).catch(() => 0);
   return { neu, termine: termine.length };
 }
 

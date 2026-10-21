@@ -202,7 +202,7 @@ export async function POST(req: Request) {
       // Vorschlag einer Art (z. B. „aufgabe“): deren Freigabe (beansprucht selbst) — nie fuehreAus, auch wenn die Art unbekannt ist.
       if (v.bezug) {
         const art = await stapelArtVon(v);
-        const r = art ? await art.freigeben(v, wer, { sammel }) : UNBEKANNTE_ART;
+        const r = art ? await art.freigeben(v, wer, { sammel, sitzung: !zugang.dienst }) : UNBEKANNTE_ART;
         ergebnisse.push({ id: v.id, ok: r.ok, text: r.ok ? r.text : r.fehler });
       }
     }
@@ -235,7 +235,7 @@ export async function POST(req: Request) {
   if (v.bezug) {
     // Nichts übernommen (z. B. inzwischen geändert) → der Vorschlag bleibt offen.
     const art = await stapelArtVon(v);
-    const r = art ? await art.freigeben(v, wer, { eingabe: sauber.wert }) : UNBEKANNTE_ART;
+    const r = art ? await art.freigeben(v, wer, { eingabe: sauber.wert, sitzung: !zugang.dienst }) : UNBEKANNTE_ART;
     if (!r.ok) return NextResponse.json({ ok: false, error: r.fehler }, { status: r.status });
     return NextResponse.json({ ok: true, ergebnis: r.text, vorschlag: await hole(v.id) });
   }

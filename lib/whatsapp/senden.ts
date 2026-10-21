@@ -120,6 +120,8 @@ export async function whatsappSenden(person: string, e: SendeEingabe, jetzt = Da
     await aendereWaSpiegel(cur => ausgehendMerken(cur, m));
     // Zugeordnetes Gespräch: die gesendete Nachricht steht sofort im Verlauf der Akte (wie bei Mail; nur nach „Zuordnen“).
     await import('@/lib/inbox/verlauf').then(v => v.verlaufNachziehen(person, e.gespraech)).catch(() => { /* Verlauf folgt beim nächsten Lauf */ });
+    // Ereignis (21.10., Prozesse C1, E8): eigene Antwort an eine zugeordnete Akte gesendet — nur Kennungen, wirft nie.
+    await import('@/lib/ereignisse/quellen').then(q => q.whatsappGesendetEreignis({ person, wamid: id, ...(z?.kontaktId && !z.sperre ? { kontaktId: z.kontaktId } : {}), bereich: k.bereich })).catch(() => 0);
     return { status: 200, body: { ok: true, id, status: 'angenommen', text: e.art === 'frei' ? 'Gesendet.' : 'Vorlage gesendet.' } };
   }, undefined, { wer: person }); // Nachschliff 09.10.: die gemerkte Antwort nur für die Person selbst (lib/store/anfragen.ts `wer`)
 }
