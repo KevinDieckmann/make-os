@@ -56,6 +56,7 @@ import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
 import { monatsName, mandatLaeuftIm, mandatMonatVorgabe } from '@/lib/finanzen/rechnung/regeln';
 import { MandatFortschritt, FallPhase } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
+import { OnboardingFrage } from '../fulfillment/prozesse/OnboardingFrage';
 import { MandatVertrag, MandatLeistungen, MandatZusatzModule } from './MandatZusatz';
 import { useNurBusiness } from '../useInhaber';
 import { anzahl } from '@/lib/text/zahlwort';
@@ -110,6 +111,8 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   // sobald der Katalog da ist; danach ohne den Zusatz in der Adresse (Neuladen öffnet ihn nicht erneut).
   const ausProdukt = useZiel('leistung');
   const [neuProdukt, setNeuProdukt] = useState<string | null>(null);
+  // Nach dem Anlegen (21.10., Rundgang B6): hat das Produkt einen Ablauf, fragt „Kundenonboarding jetzt starten?“ (vorhandener Start-Dialog, nichts automatisch).
+  const [onboardingFuer, setOnboardingFuer] = useState<string | null>(null);
   const ausProduktOffen = useRef(false);
   useEffect(() => {
     if (!ausProdukt || ausProduktOffen.current || !api.crm) return;
@@ -192,7 +195,8 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
       <Karte i={0}>
         <Ueberschrift rechts={<Knopf onClick={() => setNeuWahl(true)}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
         {zuordnen && <MandatAnlegen api={api} modus="zuordnen" mandatId={zuordnen} onZu={() => setZuordnen(null)} onFertig={() => setZuordnen(null)} />}
-        {neuWahl && <MandatAnlegen api={api} modus="neu" {...(ges !== 'alle' ? { gesellschaft: ges } : {})} {...(neuProdukt ? { leistungId: neuProdukt } : {})} {...(neuFuer ? { zustaendig: neuFuer } : {})} onZu={() => { setNeuWahl(false); setNeuProdukt(null); }} onFertig={id => { setNeuWahl(false); setNeuProdukt(null); setAuswahl(id); }} />}
+        {neuWahl && <MandatAnlegen api={api} modus="neu" {...(ges !== 'alle' ? { gesellschaft: ges } : {})} {...(neuProdukt ? { leistungId: neuProdukt } : {})} {...(neuFuer ? { zustaendig: neuFuer } : {})} onZu={() => { setNeuWahl(false); setNeuProdukt(null); }} onFertig={id => { setNeuWahl(false); setNeuProdukt(null); setAuswahl(id); setOnboardingFuer(id); }} />}
+        {onboardingFuer && (() => { const nm = crm.stand.mandate.find(x => x.id === onboardingFuer); return nm ? <OnboardingFrage m={nm} produktName={crm.stand.leistungen.find(l => l.id === nm.leistungId)?.name} onZu={() => setOnboardingFuer(null)} /> : null; })()}
         <Raster min={150}>
           <Zahl wert={kurzEuro(crm.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
           <Zahl wert={String(mandate.filter(m => m.status === 'aktiv').length)} label="aktive Mandate" />
