@@ -4,6 +4,8 @@
 // Kevin: „tiefer verankern“. Zahlen, Markttraktion und Mandate zeigen die
 // Kennzahlen des Index, die zu ihnen gehören — dieselbe Zahl wie im Cockpit
 // (eine Wahrheit), ein Klick öffnet sie dort mit Formel, Quelle und Verlauf.
+// Seit 21.10. (zwei Scores): der Business-Index IST der Business-Score — Kopf und Kacheln führen auf /os/score?space=business. Unter Finanzen
+// (`saeule="fh"`) steht im Kopf nur die Finanzielle Gesundheit, nie die Zahl des ganzen Scores.
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -21,7 +23,7 @@ export const STREIFEN = {
   mandate: ['konzentration', 'churn', 'nrr', 'ueberfaellig', 'dso'],
 } as const;
 
-export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: readonly string[]; titel?: string; i?: number }) {
+export function IndexStreifen({ ids, titel = 'Business-Score', i = 0, saeule }: { ids: readonly string[]; titel?: string; i?: number; saeule?: string }) {
   const [bi, setBi] = useState<BusinessIndex | null>(null);
   const [kein, setKein] = useState(false);
   useEffect(() => {
@@ -31,11 +33,14 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
   if (kein) return null; // kein Zugang (anderer Haushalt) oder nicht erreichbar — die Seite bleibt, wie sie war
   const alle = bi?.saeulen.flatMap(s => s.kennzahlen) ?? [];
   const liste = ids.map(id => alle.find(k => k.id === id)).filter((k): k is KennzahlStand => !!k);
-  const farbe = scoreFarbe(bi?.index ?? null);
+  // Unter Finanzen nur die Zahl der Säule (21.10.) — sonst der Business-Score.
+  const s = saeule ? bi?.saeulen.find(x => x.id === saeule) ?? null : null;
+  const zahl = saeule ? (s && !s.zuDuenn ? s.score : null) : bi?.index ?? null;
+  const farbe = scoreFarbe(zahl);
   return (
     <Karte i={i}>
-      <Ueberschrift farbe={farbe} rechts={<Link href={WEG.business()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Cockpit ›</Link>}>
-        {titel}{bi?.index != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{bi.index}</span>}{bi && <span title={indexStatus(bi).satz} style={{ color: C.inkLeise, fontWeight: 600, letterSpacing: 0, textTransform: 'none', marginLeft: 6 }}>{indexStatus(bi).titel}</span>}
+      <Ueberschrift farbe={farbe} rechts={<Link href={WEG.score('business')} style={{ color: C.inkLeise, textDecoration: 'none' }}>Business-Score ›</Link>}>
+        {titel}{zahl != null && <span style={{ color: C.ink, marginLeft: 6, letterSpacing: 0 }}>{zahl}</span>}{bi && !saeule && <span title={indexStatus(bi).satz} style={{ color: C.inkLeise, fontWeight: 600, letterSpacing: 0, textTransform: 'none', marginLeft: 6 }}>{indexStatus(bi).titel}</span>}
       </Ueberschrift>
       {/* 11.10.: 140 px Mindestbreite — am Handy zwei Kacheln je Zeile statt fünf Zeilen untereinander. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))', gap: 8 }}>
@@ -44,7 +49,7 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
           const k = 'label' in x ? (x as KennzahlStand) : null;
           const f = k ? AMPEL_FARBE[k.ampel] : C.inkLeise;
           return (
-            <Link key={x.id} href={WEG.business({ k: x.id })} className="fassbar" title={k ? `${k.label}: ${k.quelle}` : undefined}
+            <Link key={x.id} href={WEG.score('business', { k: x.id })} className="fassbar" title={k ? `${k.label}: ${k.quelle}` : undefined}
               style={{ display: 'grid', gap: 3, padding: '9px 11px', borderRadius: 12, textDecoration: 'none', minWidth: 0,
                 background: k?.gemessen ? `color-mix(in srgb, ${f} 7%, ${C.flaecheHoch})` : 'rgba(255,255,255,.025)', border: `1px solid ${k?.gemessen ? `${f}33` : 'rgba(255,255,255,.06)'}` }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -58,8 +63,8 @@ export function IndexStreifen({ ids, titel = 'Business-Index', i = 0 }: { ids: r
           );
         })}
       </div>
-      {bi && indexStatus(bi).vorlaeufig && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{indexStatus(bi).satz}</div>}
-      {bi && liste.some(k => !k.gemessen) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>„fehlt“ = Messlücke — im Cockpit steht, wie ihr sie schließt.</div>}
+      {bi && !saeule && indexStatus(bi).vorlaeufig && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>{indexStatus(bi).satz}</div>}
+      {bi && liste.some(k => !k.gemessen) && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8 }}>„fehlt“ = Messlücke — im Business-Score steht je Kennzahl, wie ihr sie schließt.</div>}
       {bi && liste.some(k => k.ampel === 'rot') && <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, marginTop: 4 }}>Rot: {liste.filter(k => k.ampel === 'rot').map(k => k.label).join(', ')}</div>}
     </Karte>
   );

@@ -4,7 +4,7 @@
 // Partnerschaft, Körper, Erholung, Essen, Privat-Index …), und ein gespeichertes Layout zeigte, was immer darin stand.
 //
 // EINE Regel für Katalog (Browser), Standard (Wächter) und gespeicherte Layouts (Server, app/api/state/flaeche):
-//   · `privat`   — Inhalte nur des Privat-Bereichs (Gesundheit, Familie, Essen, Privat-Finanzen, Wachstums-Score mit den Säulen Gesundheit/Familie).
+//   · `privat`   — Inhalte nur des Privat-Bereichs (Gesundheit, Familie, Essen, Privat-Finanzen; die Art `score` — der frühere Wachstums-Score, seit 21.10. ohne Widget — bleibt hier, damit alte Plätze nie in Business stehen).
 //   · `business` — Inhalte nur des Business-Bereichs (Markttraktion, Business-Index, Traktion, Zeit je Einheit).
 //   · `neutral`  — das Widget folgt dem Bereich seiner Fläche (Aufgaben, Termine, Fokus, Ziele, Steht an, Top 3, Tages-Briefing, Freigaben von ZOE & Inbox, Zeit „Privat gegen
 //                  Business“ = nur Summen, Entscheidung 09.10.). Auf einer Fläche mit Bereich nimmt es IMMER deren Bereich (`widgetSpace`).

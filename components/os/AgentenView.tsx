@@ -2,12 +2,11 @@
 
 // ─── MAKE OS — Agenten ──────────────────────────────────────────────────────
 // ZOE dirigiert, darunter die Abteilungen. Seit 24.09. im lebendigen
-// Muster: der Agenten-Score als Ring, die letzten Läufe, je Abteilung eine
+// Muster: der Betrieb in Zahlen (seit 21.10. ohne eigenen Score), die letzten Läufe, je Abteilung eine
 // Karte mit den Agenten als Zeilen (Status, Autonomie als Chips), aufklappbar
 // für Autonomie, Modell, Status, Funktionen und Bauplan.
 
 import Link from 'next/link';
-import { WEG } from '@/lib/wege';
 import { useEffect, useState } from 'react';
 import { useNachspeichern } from '@/lib/make-one/nachspeichern';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -17,7 +16,7 @@ import {
   type AgentStatus, type Autonomy, type ModelTier, type DeptAgent,
 } from '@/lib/make-one/agents-data';
 import { AgentenHirn } from './AgentenHirn';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Ring, Zahl, Hinweis, LEUCHT, Spalten, Spalte, aufZwei } from './ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Hinweis, LEUCHT, Spalten, Spalte, aufZwei } from './ui';
 import { ZoeReiter } from './ZoeReiter';
 import { useBetreiber } from './useInhaber';
 import { BETREIBER_WISSEN } from '@/lib/betrieb/betreiber';
@@ -44,12 +43,10 @@ export function AgentenView() {
   // Betreiber-Instanz (15.10., Abnahme 2 A2).
   const betreiber = useBetreiber() === true;
   const [laeufe, setLaeufe] = useState<Lauf[]>([]);
-  const [score, setScore] = useState<number | null | undefined>(undefined);
 
   useEffect(() => {
     fetch('/api/state/agents').then(r => r.json()).then((d: { config: CfgMap }) => setCfg(d.config ?? {})).catch(() => {});
     fetch('/api/state/agent-log?limit=10').then(r => r.json()).then(d => setLaeufe(Array.isArray(d.entries) ? d.entries : [])).catch(() => {});
-    fetch('/api/performance').then(r => r.json()).then(d => { const s = (d.aktuell?.saeulen ?? []).find((x: { key: string }) => x.key === 'agents'); setScore(s ? s.score : null); }).catch(() => setScore(null));
   }, []);
   const spaeter = useNachspeichern<CfgMap>(next => { fetch('/api/state/agents', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) }).catch(() => {}); }, 300);
   const patch = (id: string, p: Cfg) => { const next: CfgMap = { ...cfg, [id]: { ...cfg[id], ...p } }; setCfg(next); spaeter(next); };
@@ -126,9 +123,9 @@ export function AgentenView() {
       <Spalten verhaeltnis="1:1">
         <Spalte>
       <Karte i={0} ton={LEUCHT.agenten}>
-        <Ueberschrift farbe={LEUCHT.agenten} rechts={<Link href={WEG.wachstum()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Wirkung ›</Link>}>Agenten-Score</Ueberschrift>
+        {/* 21.10. (Kevin: nur noch zwei Scores — Privat und Business): kein eigener Agenten-Score mehr, nur der Betrieb in Zahlen. */}
+        <Ueberschrift farbe={LEUCHT.agenten}>Agenten im Betrieb</Ueberschrift>
         <div style={{ display: 'flex', gap: 'clamp(16px,3vw,32px)', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Ring label="Agenten" wert={score != null ? String(score) : undefined} farbe={LEUCHT.agenten} anteil={score != null ? score / 100 : undefined} />
           <div style={{ flex: 1, minWidth: 220, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 16 }}>
             <Zahl wert={String(live)} label={`von ${alle.length} Agenten live`} farbe={LEUCHT.gut} />
             <Zahl wert={laeufe.length ? String(woche) : undefined} label="Läufe in 7 Tagen" farbe={LEUCHT.puls} />

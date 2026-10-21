@@ -179,7 +179,9 @@ describe('C8 · Brain-Kugel: Schilder nie unter Knöpfen, hineingezoomt nur mit 
 
 describe('C1 · Grafiken führen weiter', () => {
   it('Wirkung, Pflege-Rhythmus, Traction-Linie, Liquidität und Index-Verlauf', () => {
-    expect(lies('components/os/fokus/Wirkung.tsx')).toMatch(/href=\{bereich === 'business'/);
+    // Seit 21.10. (zwei Scores) führt die Wirkung auf den Score des Bereichs (/os/score) — der Ring im Block ebenso (BereichScores).
+    expect(lies('components/os/fokus/Wirkung.tsx')).toContain('href={WEG.score(bereich)}');
+    expect(lies('components/os/scores/BereichScores.tsx')).toContain('href={ziel}');
     expect(lies('components/os/familie/WirZwei.tsx')).toContain('#kachel-dates');
     expect(lies('components/os/flaeche/Flaeche.tsx')).toContain('id={`kachel-${platz.id}`}');
     expect(lies('components/os/crm/Scoreboard.tsx')).toContain('#index-verlauf`} data-grafik-weiter=""');

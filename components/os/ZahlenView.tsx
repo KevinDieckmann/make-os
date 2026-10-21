@@ -81,7 +81,7 @@ export function ZahlenBusiness({ ohneStreifen = false }: { ohneStreifen?: boolea
   return (
     <>
       {/* Business-Index (25.09.): die Finanz-Kennzahlen, dieselbe Zahl wie im Cockpit. */}
-      {!ohneStreifen && <IndexStreifen ids={STREIFEN.zahlen} titel="Business-Index · Finanzen" />}
+      {!ohneStreifen && <IndexStreifen ids={STREIFEN.zahlen} titel="Finanzielle Gesundheit" saeule="fh" />}
       <Flaeche seite="zahlen">
       <Kachel id="konten" titel="Auf den Konten" breite={6}>
       <Karte i={0} akzent={LEUCHT.geld}>

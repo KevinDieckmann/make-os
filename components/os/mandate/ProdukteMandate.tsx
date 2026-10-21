@@ -46,7 +46,7 @@ export function ProdukteMandate() {
       {/* Antwort zuerst (11.10.): oben der Überblick mit „Als Nächstes“ und die Liste — die Index-Kennzahlen (meist „fehlt“) stehen als Hintergrund darunter. */}
       {reiter === 'mandate' ? <MandateUebersicht api={api} zuKontakt={zuKontakt} /> : <Produkte api={api} />}
       {reiter === 'mandate' && <GewonneneOhneMandat api={api} />}
-      {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Index · Kunden" />}
+      {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Score · Kunden" />}
       {/* Daten-Assistent B9 c (09.10.): mehrere Mandate aus Excel/CSV — Vorschau, Übernehmen, Rückgängig. */}
       {reiter === 'mandate' && <MandateTabelle onGeaendert={() => api.laden(true)} />}
       <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Neue Mandate entstehen meist aus einem gewonnenen Deal — <Link href={WEG.deals()} style={{ color: C.inkDim }}>Deals öffnen ›</Link></div>

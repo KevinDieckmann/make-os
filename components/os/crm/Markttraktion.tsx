@@ -237,7 +237,7 @@ export function MarkttraktionSeite() {
       {(bereich === 'besuche' || bereich === 'event') && !kParam && <div><Pillen einzeilig farbe={WELT_FARBE.event} liste={EVENTS} aktiv={bereich} onWahl={b => gehe(b)} /></div>}
       {/* Antwort zuerst (11.10.): „Für dich“ und was zu tun ist oben — die Index-Kennzahlen (oft noch „fehlt“) als Hintergrund darunter. */}
       {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
-      {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Index · Markttraktion" />}
+      {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Score · Markttraktion" />}
 
       {bereich === 'deals' && (
         <>

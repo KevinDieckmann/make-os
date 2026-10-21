@@ -5,10 +5,13 @@
 // Business-Bereich.“ Hier steht unser Index (Säulen und Gewichte: SAEULEN_TEXT in
 // lib/business/register.ts) — je Firma und gesamt, jede Zahl
 // mit Formel und Quelle, jede fehlende mit dem Weg, sie zu schließen.
-// Der Wachstums-Score nimmt genau diese Zahl als seine Business-Säule.
-// Seit 25.09. lebt das Cockpit unter Finanzen › Business › Überblick (/os/finanzen?s=business);
-// /os/business leitet dorthin um. Hinter jeder Kachel stehen die Punkte, aus
-// denen sie besteht — jeder ein Link dorthin, wo man handelt.
+// Hinter jeder Kachel stehen die Punkte, aus denen sie besteht — jeder ein Link dorthin, wo man handelt.
+//
+// Zwei Scores (21.10., Kevin zum Cockpit unter Finanzen: „Das ist ja der Gesamt-Score, das macht keinen Sinn [unter Finanzen]“): dieser Index IST
+// der Business-Score. Zwei Teile derselben Komponente:
+//   · teil="index"    — der ganze Business-Score (alle Säulen, Verlauf, Sichten je Gesellschaft) auf /os/score?space=business (Fläche `score-business`)
+//   · teil="finanzen" — Finanzen › Business › Cockpit (/os/finanzen?s=business, Fläche `business` wie bisher): NUR die Finanzielle Gesundheit,
+//                       dazu Für dich, Geschäftsmodell, 0-Punkt, Monatsabschluss, Einstellungen. Kennzahl-Links (?k=) öffnen weiter jede Kennzahl.
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -54,8 +57,8 @@ interface Antwort {
 
 const SCOPE_LABEL = Object.fromEntries(SCOPES.map(s => [s.id, s.label])) as Record<Scope, string>;
 
-/** eingebettet = als Reiter „Business“ unter Zahlen (ohne eigenen Seitenrahmen). */
-export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet?: boolean; darunter?: ReactNode } = {}) {
+/** eingebettet = ohne eigenen Seitenrahmen (unter Finanzen bzw. auf /os/score). `teil` = der ganze Business-Score oder nur die Finanzen. */
+export function BusinessCockpit({ eingebettet = false, darunter, teil = 'index' }: { eingebettet?: boolean; darunter?: ReactNode; teil?: 'index' | 'finanzen' } = {}) {
   const router = useRouter();
   const pfad = usePathname() ?? '/os/finanzen';
   const params = useSearchParams();
@@ -90,7 +93,10 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
   const offeneK = bi && offen ? bi.saeulen.flatMap(s => s.kennzahlen.map(k => ({ k, s }))).find(x => x.k.id === offen) : undefined;
   const alleK = bi?.saeulen.flatMap(s => s.kennzahlen) ?? [];
 
-  const sichtWahl = <Segmente liste={SCOPES.map(x => x.id).map(s => ({ id: s, label: d?.sichten?.[s]?.index != null ? `${SCOPE_LABEL[s]} · ${d.sichten[s].index}` : SCOPE_LABEL[s] }))} aktiv={scope} onWahl={wechsle} />;
+  // Unter Finanzen nie die Zahl des Business-Scores an den Sichten (21.10.) — dort zählt nur die Finanzielle Gesundheit.
+  const sichtWahl = <Segmente liste={SCOPES.map(x => x.id).map(s => ({ id: s, label: teil === 'index' && d?.sichten?.[s]?.index != null ? `${SCOPE_LABEL[s]} · ${d.sichten[s].index}` : SCOPE_LABEL[s] }))} aktiv={scope} onWahl={wechsle} />;
+  const fh = bi?.saeulen.find(s => s.id === 'fh') ?? null;
+  const fhFarbe = scoreFarbe(fh && !fh.zuDuenn ? fh.score : null);
   const inhalt = (
     <>
       {eingebettet && (
@@ -103,14 +109,38 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
       {privatSicht && <Hinweis>{GEHOERT_ZU_PRIVAT(privatSicht)} Ihre Zahlen stehen unter Finanzen › Privat › Planung; hier siehst du „Gesamt“ ohne sie.</Hinweis>}
 
-      <Flaeche seite="business">
+      {teil === 'finanzen' && (
+        // Finanzen zeigt nur Finanzen (21.10.): die Säule „Finanzielle Gesundheit“ mit ihren Kennzahlen — der ganze Business-Score steht auf Heute.
+        <Flaeche seite="business">
+        <Kachel id="saeule-fh" titel="Finanzielle Gesundheit" breite={6}>
+        <Karte i={0} ton={fhFarbe}>
+          <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 44px)', alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+            <Ring groesse="gross" wert={fh?.score != null && !fh.zuDuenn ? String(fh.score) : undefined} anteil={fh?.score != null && !fh.zuDuenn ? fh.score / 100 : undefined} farbe={fhFarbe}
+              label={!fh ? 'lädt …' : fh.score == null ? 'Noch keine Daten' : fh.zuDuenn ? 'Vorläufig' : 'Finanzielle Gesundheit'}
+              href={WEG.score('business', { f: scope })} hinweis="Den ganzen Business-Score öffnen — alle Säulen" />
+            <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Chip farbe={fhFarbe}>{SCOPE_LABEL[scope]}</Chip>
+                {fh && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{fh.kennzahlen.filter(k => k.gemessen).length} von {fh.kennzahlen.length} Kennzahlen gemessen{fh.zuDuenn ? ' — zu wenig, zählt noch nicht' : ''}</span>}
+              </div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{fh?.satz ?? 'Liquidität, Forderungen, Ausgaben, Kapital'} — die Finanz-Säule des Business-Scores.</div>
+              <Link href={WEG.score('business')} style={{ fontSize: TYP.bedien, color: C.inkDim }}>Der ganze Business-Score mit allen Säulen ›</Link>
+            </div>
+          </div>
+          {fh && <SaeuleKacheln kennzahlen={fh.kennzahlen} onOeffnen={setOffen} />}
+        </Karte>
+        </Kachel>
+        </Flaeche>
+      )}
+      {teil === 'index' && (
+      <Flaeche seite="score-business">
       {/* Der Index */}
       <Kachel id="index" titel="Business-Index" breite={6}>
       <Karte i={0} ton={farbe}>
         <div style={{ display: 'flex', gap: 'clamp(18px, 4vw, 44px)', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Der Ring führt weiter (16.10., B7): zum Verlauf darunter — ohne Verlauf zum größten Hebel. */}
           <Ring groesse="gross" wert={bi?.index != null ? String(bi.index) : undefined} anteil={bi?.index != null ? bi.index / 100 : undefined} farbe={farbe} label={bi ? indexStatus(bi).titel : 'lädt …'}
-            href={d?.verlauf.length ? '#index-verlauf' : bi?.hebel ? WEG.business({ k: bi.hebel.id }) : undefined} hinweis={d?.verlauf.length ? 'Verlauf des Business-Index öffnen' : 'Größten Hebel öffnen'} />
+            href={d?.verlauf.length ? '#index-verlauf' : bi?.hebel ? WEG.score('business', { k: bi.hebel.id, f: scope }) : undefined} hinweis={d?.verlauf.length ? 'Verlauf des Business-Index öffnen' : 'Größten Hebel öffnen'} />
           <div style={{ flex: '1 1 320px', minWidth: 0, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Chip farbe={farbe}>{SCOPE_LABEL[scope]}</Chip>
@@ -160,25 +190,26 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
         );
       })}
       </Flaeche>
+      )}
 
       {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
-      <FlussKarte bereich="finanzen-business" farbe={LEUCHT.business} />
+      {teil === 'finanzen' && <FlussKarte bereich="finanzen-business" farbe={LEUCHT.business} />}
 
-      {d?.modell && <ModellKarte m={d.modell} />}
+      {teil === 'finanzen' && d?.modell && <ModellKarte m={d.modell} />}
 
-      {d && d.verlauf.length > 0 && <VerlaufKarte punkte={d.verlauf} />}
+      {teil === 'index' && d && d.verlauf.length > 0 && <VerlaufKarte punkte={d.verlauf} />}
 
-      {darunter}
+      {teil === 'finanzen' && darunter}
 
       {/* 0-Punkt (05.10.): Stichtag + Anfangsbestand je Gesellschaft — ab dort rechnet alles neu, Älteres bleibt archiviert. */}
-      {d && <EroeffnungKarte onGeaendert={() => void laden()} />}
-      {d && <MonatsabschlussKarte eintraege={d.abschluesse} stichtage={d.stichtage} laeufe={d.abschlussLaeufe} onGespeichert={() => void laden()} />}
-      {d && <EinstellungenKarte einstellungen={d.einstellungen} onGespeichert={() => void laden()} />}
+      {teil === 'finanzen' && d && <EroeffnungKarte onGeaendert={() => void laden()} />}
+      {teil === 'finanzen' && d && <MonatsabschlussKarte eintraege={d.abschluesse} stichtage={d.stichtage} laeufe={d.abschlussLaeufe} onGespeichert={() => void laden()} />}
+      {teil === 'finanzen' && d && <EinstellungenKarte einstellungen={d.einstellungen} onGespeichert={() => void laden()} />}
 
       <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.6 }}>
         {/* Kein fremdes System im Text, die Gewichte aus dem Register (17.10., Abnahme 3 · C5) — nie fest im Satz. */}
         Säulen und Gewichte: {SAEULEN_TEXT}. Standard-Kennzahlen mit ihren Schwellen — gerechnet nur mit euren eigenen Daten. Punkte: an der roten Schwelle 20, an der grünen 100, dazwischen linear; eine Säule zählt ab 40 % gemessener Kennzahlen.
-        Der Wachstums-Score nimmt diesen Index als Business-Säule, die Finanzielle Gesundheit als Business-Hälfte der Finanzen.
+        {teil === 'finanzen' ? ' Unter Finanzen steht davon nur die Finanzielle Gesundheit — der ganze Business-Score steht oben auf Heute.' : ' Der Business-Score ist dieser Index (Gesamtsicht) — er steht oben auf Heute.'}
       </div>
 
       {offeneK && d && (
@@ -189,7 +220,7 @@ export function BusinessCockpit({ eingebettet = false, darunter }: { eingebettet
   );
   if (eingebettet) return inhalt;
   return (
-    <Seite titel="Business-Index" breit={1440}
+    <Seite titel="Business-Score" breit={1440}
       unter={`Mit unseren eigenen Zahlen: ${SAEULEN_TEXT}. Jede Zahl mit Formel und Quelle — Privates zählt nie.`}>
       <div className="ui-reiter-zeile">{sichtWahl}</div>
       {inhalt}

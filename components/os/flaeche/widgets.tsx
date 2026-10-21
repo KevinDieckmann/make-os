@@ -497,7 +497,7 @@ const indexKurz = (r: Partial<IndexKurz> | null | undefined): IndexKurz | null =
   ...(r.teil ? { teil: r.teil } : {}), ...(r.vorlaeufig ? { vorlaeufig: r.vorlaeufig } : {}), saeulen: r.saeulen,
 } : null);
 const INDEX_QUELLEN: Record<string, { url: string; label: string; farbe: string; ziel: string; lies: (d: unknown) => IndexKurz | null; hinweis?: string }> = {
-  business: { url: '/api/business?scope=gesamt&kompakt=1', label: 'Business-Index', farbe: LEUCHT.business, ziel: WEG.business(), lies: d => indexKurz((d as { bi?: Partial<IndexKurz> }).bi) },
+  business: { url: '/api/business?scope=gesamt&kompakt=1', label: 'Business-Index', farbe: LEUCHT.business, ziel: WEG.score('business'), lies: d => indexKurz((d as { bi?: Partial<IndexKurz> }).bi) },
   privat: { url: '/api/privat?kompakt=1', label: 'Privat-Index', farbe: LEUCHT.geld, ziel: WEG.privatIndex(), lies: d => { const r = d as { ok?: boolean } & Partial<IndexKurz>; return r?.ok ? indexKurz({ ...r, saeulen: r.saeulen ?? [] }) : null; } },
   gesundheit: { url: '/api/gesundheit/index?kompakt=1', label: 'Gesundheits-Index', farbe: LEUCHT.gut, ziel: WEG.gesundheit('index'), lies: d => { const r = d as { ok?: boolean } & Partial<IndexKurz>; return r?.ok ? indexKurz({ ...r, saeulen: r.saeulen ?? [] }) : null; } },
   // B2 (14.10.): der Traktions-Score ist EINE Kennzahl der Business-Säule „Markt & Kunden“ — der Satz darunter sagt, warum die Säule eine andere Zahl trägt.
@@ -625,36 +625,9 @@ function FamilieWidget({ titel, i }: WidgetProps) {
   );
 }
 
-// ── Wachstums-Score (26.09.: vom Kopf auf Heute gewandert) ──────────────────
-interface ScoreAntwort { aktuell: { index: number | null; label: string; hebel: string | null; hebelKey?: string | null; stand: string; saeulen: { key: string; label: string; score: number | null }[] }; verlauf: { date: string; index: number | null }[] }
-const SAEULE_FARBE: Record<string, string> = { health: LEUCHT.gut, business: LEUCHT.business, planning: LEUCHT.planung, finance: LEUCHT.geld, social: LEUCHT.beziehung, agents: LEUCHT.agenten };
-const SAEULE_KURZ: Record<string, string> = { health: 'Gesundheit', business: 'Business', planning: 'Planung', finance: 'Finanzen', social: 'Familie', agents: 'Agenten' };
-function ScoreWidget({ titel, i }: WidgetProps) {
-  const d = useDaten<ScoreAntwort>('/api/performance', x => ((x as ScoreAntwort).aktuell ? (x as ScoreAntwort) : null));
-  const p = d?.aktuell;
-  const zone = zoneFarbe(p?.index);
-  const v = d?.verlauf ?? [];
-  const letzte = v.at(-1)?.index, davor = v.at(-2)?.index;
-  const delta = letzte != null && davor != null ? letzte - davor : null;
-  return (
-    <Karte i={i} akzent={p?.index != null ? zone : undefined}>
-      <Ueberschrift farbe={zone} rechts={<Link href={WEG.wachstum()} style={link}>Wirkung ›</Link>}>{titel ?? 'Wachstums-Score'}</Ueberschrift>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Link href={WEG.wachstum()} style={{ textDecoration: 'none', color: 'inherit' }}><Ring groesse="klein" label="" wert={p?.index != null ? String(p.index) : undefined} farbe={zone} anteil={p?.index != null ? p.index / 100 : undefined} /></Link>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: TYP.body, fontWeight: 600 }}>
-            {d === undefined ? 'lade …' : p?.index != null ? p.label : 'Noch keine Messung'}
-            {delta != null && delta !== 0 && <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: delta > 0 ? LEUCHT.gut : LEUCHT.kritisch }}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}</span>}
-          </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 4 }}>{p?.hebel ? <>Größter Hebel: {p.hebel}</> : p ? `Stand ${p.stand.slice(8)}.${p.stand.slice(5, 7)}.` : 'Der Score, auf den wir hinarbeiten'}</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-            {(p?.saeulen ?? []).map(s => <span key={s.key} title={SAEULE_KURZ[s.key] ?? s.label} style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: s.score == null ? C.inkLeise : SAEULE_FARBE[s.key] ?? C.inkDim }}>{(SAEULE_KURZ[s.key] ?? s.label).slice(0, 3)} {s.score ?? '—'}</span>)}
-          </div>
-        </div>
-      </div>
-    </Karte>
-  );
-}
+// ── Wachstums-Score: entfallen (21.10.) ─────────────────────────────────────
+// Kevin 21.10.: nur noch zwei Scores — Privat-Score und Business-Score stehen oben auf Heute (components/os/scores/BereichScores.tsx). Das Widget
+// `score` gibt es nicht mehr; ein gespeicherter Platz mit dieser Art zeigt nichts (Flaeche.tsx überspringt unbekannte Arten), nichts wird gelöscht.
 
 // ── Register + Katalog ──────────────────────────────────────────────────────
 const TAGE_WAHL: EinstellungDef = { k: 'tage', label: 'Zeitraum', art: 'wahl', optionen: [{ w: 1, label: 'heute' }, { w: 3, label: '3 Tage' }, { w: 7, label: '7 Tage' }, { w: 14, label: '14 Tage' }], standard: 1 };
@@ -919,7 +892,6 @@ export const WIDGETS: Record<string, WidgetDef> = {
   briefing: { art: 'briefing', label: 'Tages-Briefing', bereich: 'Tag', beschreibung: 'Drei bis fünf Sätze zum Tag: was ansteht, was brennt, was auf deine Freigabe wartet, deine Top 3 und ein Hinweis zum Fokus', breite: 4, Komponente: BriefingWidget },
   top3: { art: 'top3', label: 'Top 3 des Tages', bereich: 'Tag', beschreibung: 'Die drei wichtigsten Aufgaben des Tages — ZOE schlägt vor, du übernimmst, tauschst oder legst selbst fest; mit Eisenhower-Zeichen', breite: 4, Komponente: Top3Widget },
   anstehend: { art: 'anstehend', label: 'Steht an', bereich: 'Tag', beschreibung: 'Nachbereiten, Fristen, Follow-ups, Buchungsanfragen und Geburtstage — dieselbe Quelle wie die Glocke', breite: 4, Komponente: AnstehendWidget },
-  score: { art: 'score', label: 'Wachstums-Score', bereich: 'Tag', beschreibung: 'Der Score, auf den wir hinarbeiten — mit den sechs Säulen', breite: 2, Komponente: ScoreWidget },
   aufgaben: { art: 'aufgaben', label: 'Aufgaben', bereich: 'Tag', beschreibung: 'Fällige und kritische Aufgaben, Schnellanlage', breite: 4, Komponente: AufgabenWidget,
     einstellungen: [{ k: 'nur', label: 'Zeigt', art: 'wahl', optionen: [{ w: 'dran', label: 'fällig & kritisch' }, { w: 'alle', label: 'alle offenen' }], standard: 'dran' }, { k: 'space', label: 'Space', art: 'wahl', optionen: [{ w: 'alle', label: 'Privat und Business' }, { w: 'privat', label: 'nur Privat' }, { w: 'business', label: 'nur Business' }], standard: 'alle' }, { k: 'einheit', label: 'Einheit', art: 'wahl', optionen: [{ w: 'alle', label: 'alle' }, ...KERN_EINHEITEN_NAMEN.map(n => ({ w: n, label: `nur ${n}` })), { w: 'ohne', label: 'Business ohne Einheit' }], standard: 'alle' }, { k: 'anzahl', label: 'Anzahl', art: 'wahl', optionen: [{ w: 5, label: '5' }, { w: 8, label: '8' }, { w: 12, label: '12' }], standard: 8 }] },
   termine: { art: 'termine', label: 'Termine', bereich: 'Tag', beschreibung: 'Heute oder die nächsten Tage aus dem Kalender', breite: 4, Komponente: TermineWidget,
@@ -958,7 +930,6 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'briefing', label: 'Tages-Briefing', beschreibung: WIDGETS.briefing.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'top3', label: 'Top 3 des Tages', beschreibung: WIDGETS.top3.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'anstehend', label: 'Steht an', beschreibung: WIDGETS.anstehend.beschreibung, bereich: 'Tag', breite: 4 },
-  { art: 'score', label: 'Wachstums-Score', beschreibung: WIDGETS.score.beschreibung, bereich: 'Tag', breite: 2 },
   { art: 'aufgaben', label: 'Aufgaben', beschreibung: WIDGETS.aufgaben.beschreibung, bereich: 'Tag', breite: 4 },
   { art: 'termine', label: 'Termine heute', beschreibung: 'Die Termine von heute', bereich: 'Tag', breite: 4 },
   { art: 'termine', label: 'Nächste 7 Tage', beschreibung: 'Was in der Woche ansteht — privat und Business', bereich: 'Tag', breite: 4, voreinstellung: { tage: 7 } },

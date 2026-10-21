@@ -4,8 +4,8 @@
 // Kevin (08.10.): „Die Software wirkt unaufgeräumt und überladen.“ Seitdem trägt der Kopf nur noch vier Dinge: links den
 // Schalter Privat · Business (EIN Schalter, oben — die Leiste zeigt die Punkte der Wahl, Heute folgt ihm; am Handy kompakt;
 // seit 09.10. ohne „Alles“, Kevin: „es gibt nur Business oder Privat“), in der Mitte die Suche (⌘K), rechts
-// die Glocke und den Fokus-Knopf. Heute, Inbox und Kalender stehen in der Leiste; der Wachstums-Score und der Index des
-// Space sind Karten auf Heute (und unter Fokus › Wirkung bzw. Finanzen). Datei hieß bis 26.09. WachstumsKopf.tsx.
+// die Glocke und den Fokus-Knopf. Heute, Inbox und Kalender stehen in der Leiste; der Score des Bereichs (seit 21.10. nur noch zwei:
+// Privat- und Business-Score) steht oben auf Heute (und unter Fokus › Wirkung). Datei hieß bis 26.09. WachstumsKopf.tsx.
 // 10.10. (Entscheidung: „Den Fokus-Bereich oben rechts aufbauen“): der Fokus-Knopf öffnet die Fokus-Seite (/os/fokus — Fokus, Prioritäten,
 // Zeit, Wirkung, folgt dem Schalter); läuft ein Fokus, zeigt er die Uhr und beendet ihn per Klick wie bisher (components/os/zeit/fokus-beenden.ts).
 

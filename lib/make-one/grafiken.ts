@@ -33,7 +33,7 @@ export const GRAFIK_VERWENDER: readonly { datei: string; muss: string; warum: st
   { datei: 'components/os/ControllingView.tsx', muss: 'hinweis="Ist-Monate im Monatsabschluss öffnen"', warum: 'Kurs aufs Jahresziel → Ist-Monate' },
   { datei: 'components/os/LiquiditaetView.tsx', muss: 'onSpalte={', warum: 'Liquidität · Verlauf → Woche mit Posten' },
   // 17.10. (Abnahme 3 · C1)
-  { datei: 'components/os/fokus/Wirkung.tsx', muss: 'href={', warum: 'Ring „Wirkung“ → Business-Index bzw. Wachstums-Score' },
+  { datei: 'components/os/fokus/Wirkung.tsx', muss: 'href={', warum: 'Wirkung → der Score des Bereichs (Privat- bzw. Business-Score, /os/score)' },
   { datei: 'components/os/familie/WirZwei.tsx', muss: 'href={', warum: 'Ring „Pflege-Rhythmus“ → Zeit zu zweit' },
   { datei: 'components/os/LiquiditaetView.tsx', muss: 'scrollIntoView', warum: 'die geöffnete Woche rückt ins Bild — der Klick wirkt sichtbar' },
   { datei: 'components/os/kennzahlen/IndexAnsicht.tsx', muss: 'id={`saeule-${s.id}`}', warum: 'Anker je Säule — der Index-Verlauf springt dorthin (Traktion, Privat, Gesundheit)' },

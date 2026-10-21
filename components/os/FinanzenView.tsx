@@ -40,7 +40,7 @@ import { PRIVAT_REITER, BUSINESS_REITER, UEBERBLICK_UNTER, finanzOrt, finanzAdre
 const UNTER: Record<FinanzReiter | 'chef' | 'controlling', string> = {
   privat: 'Privat-Index, was ansteht und was das Business fürs Leben bringen muss',
   konten: 'Eure Konten, Buchungen, Budgets und Schulden',
-  business: 'Business-Index, Konten und Fälliges der Gesellschaften',
+  business: 'Finanzielle Gesundheit, Konten und Fälliges der Gesellschaften',
   controlling: 'Kurs aufs Jahresziel, Run-Rate und Runway',
   rechnungen: 'Was reinkommt, was raus muss — in welcher Reihenfolge',
   liquiditaet: 'Wie viel Geld wann da ist',
@@ -143,7 +143,7 @@ function Inhalt({ ort, zugang, inhaber, planZugang, altbestand, u, t }: { ort: F
   // Konten, Fälliges und Monat (ZahlenBusiness) lesen die GEMEINSAMEN Finanz-Bestände (Finanzplan-Listen, Liquiplan, Buchungen) — die tragen
   // Privates und gehen nur an volle Mitglieder (`privatFinanzZugang`). Ein Konto „nur Business“ sieht hier das Cockpit ohne sie, statt
   // leerer Nullen (Gesamtprüfung 12.10.: vorher brach die Seite für dieses Konto ab).
-  return inhaber ? <BusinessCockpit eingebettet darunter={zugang ? <ZahlenBusiness ohneStreifen /> : undefined} /> : inhaber === false && zugang ? <ZahlenBusiness /> : null;
+  return inhaber ? <BusinessCockpit eingebettet teil="finanzen" darunter={zugang ? <ZahlenBusiness ohneStreifen /> : undefined} /> : inhaber === false && zugang ? <ZahlenBusiness /> : null;
 }
 
 /** Altbestand der Selbstständigkeit — geladen erst auf Klick. */

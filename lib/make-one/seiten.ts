@@ -23,11 +23,14 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('heute', 'Heute · Privat und Business', WEG.heute()),
   s('heute-privat', 'Heute · Privat', WEG.heute('privat'), 'privat'),
   s('heute-business', 'Heute · Business', WEG.heute('business'), 'business'),
+  // Die zwei Scores (21.10.): Privat-Score (nur die eigene Person) und Business-Score (= Business-Index) — alle Säulen, Kennzahlen, größter Hebel.
+  s('score-privat', 'Privat-Score · alles Private in einer Zahl', WEG.score('privat'), 'privat', 'volle'),
+  s('score-business', 'Business-Score · Business-Index mit allen Säulen', WEG.score('business'), 'business'),
   // Fokus (10.10.): EINE Steuerungsseite oben rechts — Fokus, Prioritäten (früher Kompass), Zeit, Wirkung (früher Wachstum).
   s('fokus', 'Fokus · Fokus, Prioritäten, Zeit und Wirkung', WEG.fokus()),
   s('fokus-prioritaeten', 'Fokus · Prioritäten und Kompass', WEG.fokus('prioritaeten')),
   s('fokus-zeit', 'Fokus · Zeit je Thema (Soll und Ist)', WEG.fokus('zeit')),
-  s('fokus-wirkung', 'Fokus · Wirkung (Wachstums-Score)', WEG.fokus('wirkung')),
+  s('fokus-wirkung', 'Fokus · Wirkung (Score des Bereichs)', WEG.fokus('wirkung')),
   s('ritual', 'Tagesstart & Tagesende', '/os/ritual'),
   s('tageslauf', 'Tageslauf', '/os/tageslauf', 'privat'),
   s('inbox', 'Inbox', WEG.inbox()),

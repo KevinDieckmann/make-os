@@ -140,7 +140,7 @@ describe('Aufräumen Etappe 1 — eine Startseite „Heute“', () => {
     const funde = code.filter(f => /['"`]\/os\/(heute|uebersicht)\b/.test(lies(f)));
     expect(funde).toEqual([]);
   });
-  it('Heute: Gruß und Datum einmal, je Sicht Steht an · Fokus · Termine · Aufgaben · Zeit · Wachstums-Score; alte Flächen-Kennungen', () => {
+  it('Heute: Gruß und Datum einmal, oben der Score des Bereichs, je Sicht Steht an · Fokus · Termine · Aufgaben · Zeit; alte Flächen-Kennungen', () => {
     const v = lies('components/os/HeuteView.tsx');
     expect(v).toContain('titel="Heute"');
     expect((v.match(/gruss\}/g) ?? []).length).toBe(1);
@@ -151,9 +151,10 @@ describe('Aufräumen Etappe 1 — eine Startseite „Heute“', () => {
     expect(std.slice(0, std.indexOf('\n};'))).not.toContain('alle: [');
     const teile = [std.slice(std.indexOf('privat: ['), std.indexOf('business: [')), std.slice(std.indexOf('business: ['), std.indexOf('\n};'))];
     for (const t of teile) for (const art of ['anstehend', 'fokus', 'termine', 'aufgaben']) expect(t, art).toContain(`art: '${art}'`);
-    // Wachstums-Score (Säulen Gesundheit, Familie …) nur in Privat — Business zeigt keine Privat-Themen (10.10., tests/sicht-business-privat.test.ts).
-    expect(teile[0]).toContain("art: 'score'");
-    expect(teile[1]).not.toContain("art: 'score'");
+    // Zwei Scores (21.10.): kein Wachstums-Score mehr — oben steht der Score des Bereichs (Privat- bzw. Business-Score), vor der Fläche.
+    for (const t of teile) expect(t).not.toContain("art: 'score'");
+    expect(v).toContain('<BereichScores');
+    expect(v.indexOf('<BereichScores')).toBeLessThan(v.indexOf('<Flaeche'));
     // „Das Ganze“ (Kevin 09.10.): in beiden Sichten die Zeit Privat gegen Business.
     for (const t of teile) expect(t).toContain("{ id: 'zeit', art: 'zeit', breite: 2, einstellungen: { space: 'beide' } }");
     expect(lies('app/os/page.tsx')).toContain('<HeuteView />');

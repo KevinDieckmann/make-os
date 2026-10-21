@@ -14,6 +14,11 @@
 // Nachbesserung 08.10. (Kevin: „ein Schalter, oben“): Heute hat KEINE eigene Umschaltung mehr — die Sicht folgt dem Schalter im
 // Kopf (`useSpace().wahl`).
 //
+// Die zwei Scores (21.10., Kevin: „Privat wie auch im Business einen Score, der alles zusammenbringt“): ganz oben, vor der gestaltbaren Fläche,
+// steht der Score des Bereichs — Privat → Privat-Score, Business → Business-Score (components/os/scores/BereichScores.tsx); antippen öffnet alles
+// (/os/score). Der Wachstums-Score (gemischt) ist weg: das Widget `score` gibt es nicht mehr (ein gespeicherter Platz zeigt nichts), und der
+// Business-Index steht nicht mehr doppelt als Karte im Business-Standard (er IST der Business-Score; als Widget bleibt er im Katalog).
+//
 // Nur zwei Bereiche (09.10., Kevin: „Oben der Knopf ‚Alles‘ kann raus — es gibt nur Business oder Privat. Und die Zeit wird jedes
 // Mal im Hintergrund gemessen, und dann sehen wir das Ganze.“): Heute ist immer Privat ODER Business. Die Fläche `home` (die
 // frühere Sicht „Alles“) wird nicht mehr gezeigt — gespeicherte Layouts darunter bleiben liegen, nichts wird gelöscht. „Das Ganze“
@@ -26,6 +31,7 @@ import { Seite, ZielBezug } from './ui';
 import { Flaeche } from './flaeche/Flaeche';
 import { Anlaesse } from './kalender/Anlaesse';
 import { BusinessFreiStatus } from './arbeitsrahmen/BusinessFrei';
+import { BereichScores } from './scores/BereichScores';
 import { useSpace } from '@/hooks/useSpace';
 import type { StandardPlatz } from '@/lib/flaeche/modell';
 import type { SpaceId } from '@/lib/make-one/space-regeln';
@@ -72,7 +78,6 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'familie', art: 'familie', breite: 2 },
     { id: 'essen', art: 'essen', breite: 2 },
     { id: 'routinen', art: 'routinen', breite: 2 },
-    { id: 'score', art: 'score', breite: 2 },
   ],
   business: [
     { id: 'einrichtung', art: 'einrichtung', breite: 6 },
@@ -84,15 +89,13 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'fulfillment', art: 'fulfillment', breite: 4 },
     { id: 'anstehend', art: 'anstehend', breite: 4 },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'business', business: true }, titel: 'Nächste 3 Tage · Business' },
-    { id: 'index', art: 'index', breite: 2, einstellungen: { saeule: 'business' } },
     { id: 'zeit', art: 'zeit', breite: 2, einstellungen: { space: 'beide' } },
     // Jahresziele auch im Business (10.10.): der Fortschritt der Business-Ziele — der Server liefert hier nur Business (`?space=business`).
     { id: 'ziele', art: 'ziele', breite: 4 },
     { id: 'aufgaben', art: 'aufgaben', breite: 4, einstellungen: { space: 'business', nur: 'dran' } },
     { id: 'traktion', art: 'index', breite: 2, einstellungen: { saeule: 'traktion' } },
     { id: 'dran', art: 'dran', breite: 2 },
-    // Kein Wachstums-Score mehr in Business (Entscheidung 10.10.: „Business-Themen sind Business-Themen und Privat Privat“): seine Säulen sind
-    // Gesundheit, Familie & Partnerschaft, Finanzen privat … — er steht in Privat. Business hat den Business-Index (oben).
+    // Kein Wachstums-Score mehr (21.10.: nur noch zwei Scores) — der Business-Score steht über der Fläche (BereichScores), nicht als Karte.
   ],
 };
 
@@ -117,6 +120,8 @@ export function HeuteView() {
       // eigenen Zeile über den Karten; das Wichtigste des Tages steht trotzdem darunter (die Regel, was wartet, bleibt unverändert).
       rechts={<BusinessFreiStatus kompakt />}
 >
+      {/* Die zwei Scores (21.10.): oben der Score des Bereichs — antippen öffnet alles (Säulen, Kennzahlen, größter Hebel). */}
+      <BereichScores key={`score-${sicht}`} sicht={sicht} />
       {/* K2 (29.09.): Feiertag NRW heute/morgen. Geburtstage stehen nur in „Steht an“ (F2 M2, eine Stelle). */}
       <Anlaesse geburtstage={false} space={sicht} />
       {sicht === 'privat' && <ZielBezug bereich="privat" max={2} />}

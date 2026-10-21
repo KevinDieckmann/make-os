@@ -6,7 +6,7 @@
 // spezifischen Themen. Eine riesige Steuerungsseite: was und wie wir etwas machen wollen, welche Zeit wir dafür reingeben wollen und wo der
 // Fokus draufgeht.“ Einstieg: der Fokus-Knopf oben rechts im Kopf. Die Seite folgt dem Kopf-Schalter Privat · Business (Konto „nur
 // Business“: immer Business) — und zeigt in Business NIE Privat-Themen, in Privat nie Business-Themen; gefiltert wird auf dem Server
-// (Fokus-Tafel, /api/fokus/steuerung, /api/performance?sicht=, /api/state/zeit*?sicht=).
+// (Fokus-Tafel, /api/fokus/steuerung, /api/scores?sicht=, /api/state/zeit*?sicht=).
 // Abschnitte (Klappbar, Anker #<abschnitt>, offen/zu je Browser gemerkt):
 //   Fokus        — Unser Fokus · Mein Fokus je Horizont (FokusTafel, fester Bereich), darunter die Lichtfäden des Bereichs
 //   Prioritäten  — die Themen des Bereichs: Rang, Gewicht, Zeit-Quellen (früher Kompass: Reihenfolge und Säulen-Regler)
