@@ -39,6 +39,10 @@ const ZOE_WHATSAPP_WEBHOOK = /^\/api\/zoe\/whatsapp\/webhook$/;
 // WHOOP (08.10.): der Webhook (lib/whoop/webhook.ts) — WHOOP ruft ohne Sitzung und ohne Origin, NUR POST; die Route prüft die Signatur
 // `X-WHOOP-Signature` (HMAC-SHA256 über Zeitstempel + Rohkörper, Client Secret) selbst, ordnet nur bekannte WHOOP-Kennungen zu, liefert nie Daten.
 const WHOOP_WEBHOOK = /^\/api\/whoop\/webhook$/;
+// Prozesse (21.10., B1 — Kevin: Webhook „Ja, abgesichert“): je Prozess eine Adresse `pw-<24 hex>` (96 Bit), NUR POST, ohne Sitzung und ohne Origin (Fremdsysteme
+// rufen sie). Die Route prüft den eigenen Schlüssel der Adresse selbst (nur Fingerabdruck gespeichert, zeitkonstant), nimmt erst nach Klick „scharf“ an, drosselt,
+// schreibt nur Eingang + Ereignis und liefert nie Daten (lib/prozesse/webhook*.ts). Dieselbe Form: lib/prozesse/webhook.ts `WEBHOOK_PFAD` (Wächter).
+const PROZESS_WEBHOOK = /^\/api\/prozesse\/webhook\/pw-[a-f0-9]{24}$/;
 // Öffentliche Buchungsseite (29.09., K4): NUR diese Pfade sind ohne Sitzung offen — die Seite einer Buchungsadresse,
 // ihre Status-Seite und genau deren zwei Schnittstellen. Adresse = lesbarer Vorsatz + 96 Bit Zufall (lib/kalender/buchung.ts
 // `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.
@@ -86,7 +90,7 @@ export async function middleware(req: NextRequest) {
   if (riegel) { if (!riegelGemeldet) { riegelGemeldet = true; console.error(`[MAKE OS] Middleware: ${riegel} — alle Anfragen 503.`); } return new NextResponse(`MAKE OS ist nicht eingerichtet (${riegel}).`, { status: 503 }); }
 
   // CSRF-Schutz: Schreibzugriffe aus fremden Browser-Kontexten abweisen.
-  if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname) && !(GOOGLE_MELDEWEG.test(req.nextUrl.pathname) && req.method === 'POST') && !(WHATSAPP_WEBHOOK.test(req.nextUrl.pathname) && req.method === 'POST') && !(ZOE_WHATSAPP_WEBHOOK.test(req.nextUrl.pathname) && req.method === 'POST') && !(WHOOP_WEBHOOK.test(req.nextUrl.pathname) && req.method === 'POST')) {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && !CSP_MELDEWEG.test(req.nextUrl.pathname) && !(GOOGLE_MELDEWEG.test(req.nextUrl.pathname) && req.method === 'POST') && !(WHATSAPP_WEBHOOK.test(req.nextUrl.pathname) && req.method === 'POST') && !(ZOE_WHATSAPP_WEBHOOK.test(req.nextUrl.pathname) && req.method === 'POST') && !(WHOOP_WEBHOOK.test(req.nextUrl.pathname) && req.method === 'POST') && !(PROZESS_WEBHOOK.test(req.nextUrl.pathname) && req.method === 'POST')) {
     const origin = req.headers.get('origin');
     if (origin) {
       // Die eigene Adresse ist, was der Browser als Host schickt — hinter einem
@@ -161,6 +165,8 @@ export async function middleware(req: NextRequest) {
   if (ZOE_WHATSAPP_WEBHOOK.test(pfad) && (req.method === 'GET' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
   // WHOOP-Webhook: nie als jemand (Köpfe oben gelöscht), nur POST — die Route handelt für niemanden aus dem Körper.
   if (WHOOP_WEBHOOK.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
+  // Prozess-Webhook: nie als jemand (Köpfe oben gelöscht), nur POST — die Route handelt für niemanden aus dem Körper.
+  if (PROZESS_WEBHOOK.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
   // Abmeldelink: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Route handelt für niemanden.
   if (ABMELDE_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
 

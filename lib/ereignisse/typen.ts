@@ -19,10 +19,12 @@ import type { ModelTier, SkillEreignis } from '@/lib/agenten/typen';
 import type { Spanne } from '@/lib/arbeitsrahmen/regel';
 
 export type EreignisArt = SkillEreignis;
-export const EREIGNIS_QUELLEN = ['gmail', 'imap', 'whatsapp', 'kontoauszug', 'finanzplan', 'crm', 'kartei', 'anfrage', 'aufgaben', 'kalender'] as const;
+// `webhook` (21.10., Prozesse B1): ein abgesicherter Webhook eines Prozesses (lib/prozesse/webhook-server.ts).
+export const EREIGNIS_QUELLEN = ['gmail', 'imap', 'whatsapp', 'kontoauszug', 'finanzplan', 'crm', 'kartei', 'anfrage', 'aufgaben', 'kalender', 'webhook'] as const;
 export type EreignisQuelle = typeof EREIGNIS_QUELLEN[number];
 /** Die Kennungen, die ein Ereignis tragen darf — sonst nichts. */
-export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rechnungId', 'buchungId', 'kontoId', 'aufgabeId', 'terminUid', 'gespraech', 'followupId'] as const;
+/** Prozesse (21.10., B1): `prozessId` (`pz-…`) und `eingangId` (`we-…`) — Webhook-Ereignisse tragen nur diese zwei. */
+export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rechnungId', 'buchungId', 'kontoId', 'aufgabeId', 'terminUid', 'gespraech', 'followupId', 'prozessId', 'eingangId'] as const;
 export type BezugFeld = typeof BEZUG_FELDER[number];
 export type EreignisBezug = Partial<Record<BezugFeld, string>>;
 export type EreignisBereich = 'privat' | 'business';

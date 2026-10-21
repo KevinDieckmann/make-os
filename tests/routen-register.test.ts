@@ -42,6 +42,7 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   // Kunden-Link (10.10., Fulfillment C2, kommt ausgeschaltet): Token im Kopf, gleiche 404 für jede Fehlerart — Middleware KUNDE_OFFEN (tests/fulfillment-fundament-middleware.test.ts).
   'kunde/[link]': ['GET'], 'kunde/[link]/formular': ['POST'], 'kunde/[link]/upload': ['POST'], 'kunde/[link]/puls': ['POST'],
   'kalender/google/meldung': ['POST'], 'google/gmail/meldung': ['POST'], 'hoi/csp': ['POST'],
+  'prozesse/webhook/[kennung]': ['POST'], // Prozesse (21.10., B1): eigener Schlüssel je Adresse (Fingerabdruck, zeitkonstant), erst scharf nach Klick — prüft die Route selbst (tests/prozesse-webhook.test.ts)
   'whoop/webhook': ['POST'], // WHOOP: X-WHOOP-Signature über Zeitstempel + Rohkörper — prüft die Route selbst (tests/whoop-webhook.test.ts)
   'whatsapp/webhook': ['GET', 'POST'], // Meta: Verify-Token bzw. X-Hub-Signature-256 — prüft die Route selbst (tests/whatsapp-webhook.test.ts)
   'zoe/whatsapp/webhook': ['GET', 'POST'], // ZOE-Nummer (08.10.): Verify-Token bzw. X-Hub-Signature-256 der ZOE-Nummer — prüft die Route selbst (tests/zoe-whatsapp-route.test.ts)

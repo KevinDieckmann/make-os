@@ -400,6 +400,11 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'kunde/[link]/formular': r('POST', 'offen', 'Formular-Antworten eines Abschnitts über den Kunden-Link (C2): Stempel, Honigtopf, ≤ 64 KB, Drossel — sonst dieselbe 404.'),
   'kunde/[link]/upload': r('POST', 'offen', 'Eine Unterlage über den Kunden-Link (C2): nur mit Recht „upload“ (je neuem Link an, je Link abschaltbar — Entscheidung 10.10. 23:25), Typ am Inhalt, Größen, Drossel — sonst dieselbe 404.'),
   'kunde/[link]/puls': r('POST', 'offen', 'Kunden-Puls (C2): Wert 0–10 + ein Satz mit dem Puls-Token (öffnet nur den Puls) — sonst dieselbe 404.'),
+  // ── Prozesse · Werkstatt (21.10., Etappe B1 „Modell & Bausteine“) — Modul `prozesse`, Tor `werkstattZugang` (Haushalt des Inhabers, Sicht Privat 403; schreiben nur
+  //    per Sitzung + Bau-Kennung; veröffentlichen/Status/Webhook nur volle Mitglieder, Konto „nur Business“ baut Entwürfe).
+  'prozesse/werkstatt': r('GET,POST', 'modul:prozesse', 'Werkstatt (B1): Prozesse aller Business-Bereiche — Liste (mit Paket-Vorlagen des Fulfillments, nur lesend), Entwurf mit Stand/409, Befunde, Versionen, Vergleich; anlegen (anfrageId), Steckbrief, Entwurf, veröffentlichen, Version übernehmen, Status, Webhook-Schlüssel (genau einmal in der Antwort) — Dienstweg schreibt nie.', 'werkstattZugang'),
+  'prozesse/katalog': r('GET', 'modul:prozesse', 'Baustein-Katalog (B1) mit aufgelöster Klasse und KI-Kategorien; mit ?auswahl=1 die Werte der Auswahlquellen (nur Business, nur Kennung + Name) — schreibt nie.', 'werkstattZugang'),
+  'prozesse/webhook/[kennung]': r('POST', 'offen', 'Webhook eines Prozesses von außen (B1, Kevin 21.10.: „abgesichert“) — enge Regex in der Middleware, eigener Schlüssel je Adresse (nur Fingerabdruck gespeichert, zeitkonstant), erst nach Klick scharf, gedrosselt je Netz und Adresse, ≤ 64 KB, nur Felder des Schemas, schreibt nur Eingang + Ereignis `webhook`; jede Ablehnung dieselbe 404, handelt für niemanden, nie der Dienstschlüssel.'),
 
   // ── Buchung (öffentlich) ───────────────────────────────────────────────────────────────────────────────────
   'buchung/[slug]': r('GET,POST', 'offen', 'Öffentliche Buchungsseite (K4): enge Regex in der Middleware, Drossel, Honigtopf, Stempel, Größe — handelt nie als Person.'),

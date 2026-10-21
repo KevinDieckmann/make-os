@@ -33,6 +33,8 @@ export const ZOE_ANLASS = 'Takt: An ZOE gegeben';
 const EINGABE_FELD: Readonly<Record<BezugFeld, string>> = {
   kontaktId: 'kontakt', firmaId: 'firma', dealId: 'deal', mandatId: 'mandat', rechnungId: 'rechnung', buchungId: 'buchung', kontoId: 'konto',
   aufgabeId: 'aufgabe', terminUid: 'termin', gespraech: 'gespraech', followupId: 'followup',
+  // Prozesse (21.10., B1): nur Webhook-Ereignisse tragen sie — die sind intern (kein Skill-Lauf); der Eintrag hält die Liste vollständig.
+  prozessId: 'prozess', eingangId: 'eingang',
 };
 export function laufEingaben(f: Pick<FaelligesEreignis, 'ereignis' | 'konsument'>): Record<string, string> {
   const e = f.ereignis;

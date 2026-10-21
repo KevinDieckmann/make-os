@@ -11,6 +11,8 @@
 //   neuer-lead        neue Anfrage (/api/crm/anfrage)
 //   termin-abgesagt   iCloud-Abgleich: ein Termin mit CRM-Bezug wurde vom Gegenüber abgesagt (lib/kalender/icloud.ts)
 //   aufgabe-zoe       „An ZOE geben“ (lib/zoe/aufgaben-werkzeuge.ts) — stößt den ZOE-Aufgaben-Lauf sofort an (intern, kein Skill-Auslöser)
+//   webhook           Prozesse (21.10., B1): ein scharfer Webhook eines Prozesses hat einen Eingang angenommen (lib/prozesse/webhook-server.ts) —
+//                     intern (kein Skill-Auslöser), nur Kennungen (Prozess, Eingang); gestartet wird erst vom Prozess-Motor (Etappe C)
 
 import type { SkillEreignis } from '@/lib/agenten/typen';
 
@@ -19,12 +21,13 @@ export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
   'neue-mail': 'neue Mail', 'neue-whatsapp': 'neue WhatsApp-Nachricht', 'neuer-lead': 'neuer Lead', 'lead-sql': 'Lead wird SQL',
   'deal-stufe': 'Deal in neuer Stufe', zahlungseingang: 'Zahlungseingang', 'termin-abgesagt': 'Termin abgesagt', 'aufgabe-zoe': 'an ZOE gegeben',
   'neue-aufgabe': 'neue Aufgabe', 'termin-vorbei': 'Termin vorbei', 'frist-naht': 'Frist naht', 'neues-medium': 'neues Bild oder Video',
+  webhook: 'Webhook von außen',
 };
 
 /** Arten, die eine Quelle speist — nur diese lösen etwas aus. */
-export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'neue-whatsapp', 'neuer-lead', 'lead-sql', 'deal-stufe', 'zahlungseingang', 'termin-abgesagt', 'aufgabe-zoe'];
+export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'neue-whatsapp', 'neuer-lead', 'lead-sql', 'deal-stufe', 'zahlungseingang', 'termin-abgesagt', 'aufgabe-zoe', 'webhook'];
 /** Arten, die nur intern etwas anstoßen (kein Skill-Auslöser). */
-export const EREIGNISSE_INTERN: readonly SkillEreignis[] = ['aufgabe-zoe'];
+export const EREIGNISSE_INTERN: readonly SkillEreignis[] = ['aufgabe-zoe', 'webhook'];
 /** Alle Arten in der Reihenfolge der Anzeige (angebundene zuerst). */
 export const EREIGNIS_ARTEN: readonly SkillEreignis[] = [...EREIGNISSE_ANGEBUNDEN, ...(Object.keys(EREIGNIS_NAME) as SkillEreignis[]).filter(a => !EREIGNISSE_ANGEBUNDEN.includes(a))];
 /** Was ein Skill als Auslöser wählen darf: angebunden und nicht intern. */

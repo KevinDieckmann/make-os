@@ -8,92 +8,21 @@
 // Ebenen (Regel `ebeneVon`, lib/fulfillment/regeln.ts): ein Knoten ohne `elternId` ist Ebene 1 (Gesamtprozess, je Vorlage genau einer),
 // seine Kinder Ebene 2 (Prozess/Phase/Zone), dann 3 (Teilprozess), 4 (Einzelschritt), 5 (Baustein — nur `bausteinId`).
 
-import type { KreislaufId } from '@/lib/crm/planung';
 import type { KundenAnrede, KundenLage, KundenPhase, KundenQuickWin } from './kunde/bild';
 import type { WartetAuf } from './prozesse/reise';
+// Das Prozessmodell (Knoten, Vorlage, Formen, Zweige, Lage, Papierkorb …) ist seit 21.10. das EINE Modell aller Prozesse (lib/prozesse/definition.ts,
+// Etappe B1) — hier nur weitergereicht (Re-Export statt Kopie). Fulfillment-Vorlagen tragen die Formen `KnotenForm` (Vorgabe der Typ-Parameter), die
+// neuen Felder allgemeiner Prozesse fehlen ihnen: Fehlen = Bereich Fulfillment, Fall = Mandat (`bereichVon`, `fallArtVon`).
+import type {
+  Zone, ProzessArt, Zustaendig, Herkunft, ProzessKnoten, KnotenLage, PfeilText, KnotenForm, Zweige, VorlagenPapierkorb, AblaufForm, Uebergang,
+  Freigabepunkt, Rolle, ProzessVorlage,
+} from '@/lib/prozesse/definition';
+export type {
+  Zone, ProzessArt, Zustaendig, Herkunft, ProzessKnoten, KnotenLage, PfeilText, KnotenForm, Zweige, VorlagenPapierkorb, AblaufForm, Uebergang,
+  Freigabepunkt, Rolle, ProzessVorlage,
+};
 
 export const FULFILLMENT_VERSION = 1;
-export type Zone = 'dach' | 'etage' | 'fundament';
-export type ProzessArt = 'landkarte' | 'paket' | 'ablauf';
-export type Zustaendig = 'intern' | 'kunde' | 'beide';
-export interface Herkunft { art: 'muster' | 'import' | 'hand' | 'demo'; datei?: string; quelleIds?: string[]; importLauf?: string; am: string }
-
-export interface ProzessKnoten {
-  id: string; elternId?: string; titel: string; rang: number;
-  zone?: Zone; kreislauf?: KreislaufId[]; ort?: string; verweis?: string;          // Landkarte
-  ziel?: string; warum?: string; eingang?: string; ergebnis?: string; kennzahl?: string;
-  zustaendig?: Zustaendig; rolle?: string; dauerTage?: number; aufwandStunden?: number;
-  freigabe?: string; kundeSichtbar?: boolean; phaseId?: string;
-  bausteinId?: string;                                                              // NUR Ebene 5 (dort Pflicht)
-  heute?: string; werkzeuge?: string[]; dokumentation?: string;                     // Ablauf-Stufen
-  art?: 'einstieg' | 'stufe' | 'ausstieg' | 'routine'; optional?: boolean; ausgang?: string; original?: string;
-  beleg?: 'quelle' | 'ergaenzung';                                                 // ergaenzung = gestrichelt
-  // Prozess-Editor (17.10.) — alle optional; ohne Feld gilt das bisherige Verhalten (Form aus Baustein/Abstimmungspunkt abgeleitet).
-  form?: KnotenForm; frist?: number; zweige?: Zweige;
-  // Prozess-Editor › Fläche (17.10.) — beide optional; ohne sie legt die Fläche alles automatisch aus der Reihenfolge aus. Reine Lage: zählt nicht als neue
-  // Fassung (laufende Fälle sehen keine Änderung) und geht nie in einen Fall.
-  pos?: KnotenLage; pfeilText?: PfeilText;
-  /**
-   * Ausführung (17.10. abends): an einer Erinnerung auf dem Nein-Pfad — höchstens so viele Runden (Erinnerung → wieder fragen), danach „eskaliert“.
-   * Fehlt = `VERSUCHE_VORGABE` (5 — „5 Kontaktversuche“; lib/fulfillment/prozesse/ausfuehrung.ts). Ganze Zahl 1 … 20.
-   */
-  versuche?: number;
-}
-/**
- * Lage auf der Fläche (Prozess-Editor, 17.10.): an einer Phase der Rahmen (absolut, mit Breite `b` und Höhe `h` — fehlen sie, passt sich der Rahmen dem Inhalt an),
- * an einem Schritt die linke obere Ecke RELATIV zu seinem Rahmen (der Rahmen nimmt seine Schritte beim Verschieben mit). Ganze Zahlen in Bildpunkten der Fläche.
- */
-export interface KnotenLage { x: number; y: number; b?: number; h?: number }
-/** Beschriftung der Pfeile, die von einem Schritt ausgehen (Fläche): `weiter` = zum nächsten, `ja`/`nein` an einer Entscheidung (fehlt = „ja“/„nein“). */
-export interface PfeilText { weiter?: string; ja?: string; nein?: string }
-/**
- * Form eines Knotens im Fluss (Prozess-Editor, 17.10.). Fehlt sie, leitet die Ansicht sie ab (Abstimmungspunkt → Raute, Mail-Baustein → Nachricht,
- * Ritual → Termin, sonst Schritt — lib/fulfillment/prozesse/reise-bild.ts `knotenForm`). Das Feld heißt `form`, weil `art` an Ablauf-Stufen schon belegt ist.
- */
-export type KnotenForm = 'schritt' | 'nachricht' | 'entscheidung' | 'erinnerung' | 'termin' | 'abstimmung';
-/**
- * Ausgänge im Fluss (Prozess-Editor): an einer Entscheidung `ja` (fehlt = der nächste Schritt) und `nein` (typisch eine Erinnerung); an einer Erinnerung nur
- * `ja` = „danach zurück zu …“ (fehlt = es geht nach der Entscheidung weiter). Kennungen von Knoten derselben Phase; Kreise nur über Erinnerung → Entscheidung.
- */
-export interface Zweige { ja?: string; nein?: string }
-/** Ein gelöschter Teil einer Paket-Vorlage im Papierkorb der Vorlage (Prozess-Editor) — 30 Tage zurückholbar, dann fällt er beim nächsten Schreiben weg. */
-export interface VorlagenPapierkorb {
-  /** Kennung des obersten gelöschten Knotens. */
-  id: string; am: string; von: string; art: 'phase' | 'gruppe' | 'schritt' | 'baustein';
-  /**
-   * Wo er stand (Zurückholen setzt ihn wieder dorthin): Phase, Eltern-Knoten und die Geschwister davor/danach (Phase, Gruppe, Baustein); ein Schritt merkt sich
-   * seinen Platz im Fluss (`platz` — wie lib/fulfillment/prozesse/editor.ts `positionVon`, unabhängig von Sammel-Teilprozessen, die inzwischen fehlen).
-   */
-  phaseId?: string; elternId?: string; nachId?: string; vorId?: string;
-  platz?: { nach?: string; vor?: string; inGruppe?: string; nachGruppe?: string; anfang?: true };
-  knoten: ProzessKnoten[];
-  /** Zweige anderer Knoten, die in den gelöschten Teil zeigten (beim Zurückholen wieder gesetzt, wenn der Knoten noch da und der Zweig frei ist). */
-  verweise?: { knotenId: string; zweig: 'ja' | 'nein'; ziel: string }[];
-  /** Ein Rückgängig im Editor (kein bewusstes Löschen) — die Liste „Papierkorb“ zeigt ihn nicht. */
-  still?: true;
-}
-/** Zeichenform eines Ablaufs — `kreis` (Entscheidung 11.10.: Sales Circle „schön visualisieren“): Stufen im Uhrzeigersinn, Ergänzungen auf einem gestrichelten äußeren Ring. */
-export type AblaufForm = 'baum' | 'trichter' | 'fluss' | 'zeitachse' | 'kreis';
-export interface Uebergang { von: string; nach: string; art: 'weiter' | 'rueckweg' | 'ausstieg' | 'schleife' | 'kreislauf'; weiche?: string; beleg?: 'quelle' | 'ergaenzung' }
-export interface Freigabepunkt { id: string; titel: string; wer: Zustaendig }
-export interface Rolle { id: string; titel: string; aufgabe?: string }
-export interface ProzessVorlage {
-  id: string; art: ProzessArt; titel: string; beschreibung?: string;
-  form?: AblaufForm;                                    // Zeichenform (Ablauf); fehlt = baum
-  quelleHinweis?: string; vorbehalt?: string; zeichenhinweise?: string[];
-  knoten: ProzessKnoten[]; uebergaenge: Uebergang[]; freigaben: Freigabepunkt[]; rollen: Rolle[];
-  fassung: number; herkunft?: Herkunft; geaendert: string; geaendertVon: string;
-  /** Phasen (Ebene 2) von Hand umgestellt (12.10.) — dann gilt diese Reihenfolge statt der Regel in lib/fulfillment/prozesse/phasen.ts. Nur Pakete. */
-  phasenVonHand?: true;
-  /** Papierkorb des Prozess-Editors (17.10.) — nur Pakete; die Knoten darin zählen nirgends mit. */
-  papierkorb?: VorlagenPapierkorb[];
-  /**
-   * Zusatzmodul (17.10. spät, z. B. Telefonie) — nur Pakete. Läuft am Mandat schon ein Fall, wird KEIN zweiter Fall angelegt: die Phasen des Pakets hängen als
-   * eigener Abschnitt am laufenden Fall (`Fall.zusaetze`, `FallKnoten.zusatz`, lib/fulfillment/prozesse/fall.ts `zusatzAnhaengen`); ohne Fall startet es als
-   * normaler Fall OHNE vorangestellte Onboarding-Phase (`Fall.ohneOnboarding`). Ändert nur, wie ein Fall startet — keine neue Fassung.
-   */
-  zusatz?: true;
-}
 
 export type BausteinArt = 'aufgabe' | 'dokument' | 'skript' | 'checkliste' | 'mail' | 'kennzahl' | 'ritual' | 'formular' | 'workbook' | 'analyse' | 'freigabe';
 export type AnalyseAgentId = 'a0' | 'ap' | 'tb' | 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10' | 'a11' | 'a12' | 'a13';

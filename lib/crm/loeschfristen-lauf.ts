@@ -331,6 +331,17 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     }
   });
 
+  // 11f · Prozesse (21.10., B1): Eingänge der Webhooks vor der Frist „ereignisse“ — je Haushalt-Bestand, idempotent; Adressen bleiben.
+  await schritt('prozesse-webhook', async () => {
+    const { webhookFristAnwenden } = await import('@/lib/prozesse/webhook-server');
+    for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+      const m = /^(prozesse-webhook--[a-z0-9-]{1,40})\.json$/.exec(d);
+      if (!m) continue;
+      const n = await webhookFristAnwenden(m[1], jetzt);
+      if (n) { zaehle('prozesse-webhook', n); await protokolliere(m[1], [{ op: 'geloescht', id: 'loeschfrist', felder: ['eingaenge'] }], SYSTEM); }
+    }
+  });
+
   // 12 · Umzugs- und Aufräum-Kopien im Archiv (30 Tage) — andere Archiv-Dateien bleiben (dokumentiert)
   await schritt('archiv-umzug', async () => {
     const grenze = stichtag('archiv-umzug', f['archiv-umzug'], heute);
