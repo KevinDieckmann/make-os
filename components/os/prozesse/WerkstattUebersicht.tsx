@@ -56,7 +56,7 @@ export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe }: { onZu
 }
 
 /** Die Werkstatt ohne gewählten Prozess: alle Prozesse nach Bereich, „+ Prozess“. */
-export function WerkstattUebersicht({ onNeu }: { onNeu: () => void }) {
+export function WerkstattUebersicht({ onNeu, onVorlage }: { onNeu: () => void; /** „Aus Vorlage anlegen“ (22.10., Kundengewinnung). */ onVorlage?: () => void }) {
   const liste = useWerkstattListe();
   const l = liste.daten?.prozesse ?? [];
   if (liste.fehler && !liste.daten) return <Hinweis art="kritisch">{liste.fehler}</Hinweis>;
@@ -65,9 +65,14 @@ export function WerkstattUebersicht({ onNeu }: { onNeu: () => void }) {
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
         <p style={klein}>Hier entstehen eigene Prozesse — im Stil eines n8n-Editors, mit unseren Formen und dem Flow. System-Prozesse sind nur lesbar; Pakete des Fulfillments öffnen ihren Editor.</p>
-        {liste.daten.rechte.entwurf && <Knopf haupt onClick={onNeu}><span className="pz-knopf-inhalt"><Plus size={16} aria-hidden />Prozess</span></Knopf>}
+        {liste.daten.rechte.entwurf && (
+          <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
+            {onVorlage && <Knopf onClick={onVorlage}><span className="pz-knopf-inhalt"><LayoutTemplate size={16} aria-hidden />Aus Vorlage</span></Knopf>}
+            <Knopf haupt onClick={onNeu}><span className="pz-knopf-inhalt"><Plus size={16} aria-hidden />Prozess</span></Knopf>
+          </span>
+        )}
       </div>
-      {!l.length && <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine eigenen Prozesse" aktion={liste.daten.rechte.entwurf ? <Knopf onClick={onNeu}>Ersten Prozess anlegen</Knopf> : undefined}>Ein Prozess beginnt mit einem Auslöser; „+“ am Ausgang hängt den nächsten Baustein an.</Leerzustand>}
+      {!l.length && <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine eigenen Prozesse" aktion={liste.daten.rechte.entwurf ? <Knopf onClick={onVorlage ?? onNeu}>{onVorlage ? 'Mit einer Vorlage beginnen' : 'Ersten Prozess anlegen'}</Knopf> : undefined}>Ein Prozess beginnt mit einem Auslöser; „+“ am Ausgang hängt den nächsten Baustein an.</Leerzustand>}
       {PROZESS_BEREICHE.map(b => {
         const drin = l.filter(p => p.bereich === b.id);
         if (!drin.length) return null;
