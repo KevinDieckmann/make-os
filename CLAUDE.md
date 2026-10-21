@@ -1633,6 +1633,39 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
   der CRM-Säuberer des Standes `a063e73a` hätte Text-Ziele beim ersten Fulfillment-Schreiben am Mandat verworfen. Alle Fulfillment-Leser lesen darüber; Rückweg: der alte Stand liest Objekte.
 - Offen: die Willkommensmail-Vorlage prüft `fuerKundenFrei` nicht (sie wird vor dem Senden gelesen); `components/os/fulfillment/KommtMit.tsx` ist ungenutzt (C0-Platzhalter). Mail-Spiegel-Leser für Modelle schwärzen Kunden-Link-Tokens mit `tokenSchwaerzen` (zoe-sicht, Entwurf).
 
+## Prozesse — Landkarte, Werkstatt, Lauf-Motor (21./22.10., Branches `prozesse-*`, nur lokal; Analyse `research/prozesse/ANALYSE_100.md`, Vorlagen `research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md`)
+Kevin 21.10.: „Ein schönes Miro nach außen, bei uns dann die volle Automatisierung der Einzelprozesse dahinter … zentrales Steuerungselement für Sales,
+Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — „jede Verbindung ein Lichtfaden aus unserem Flow“. Leistenpunkt **Prozesse** (nur Business).
+- **EIN Modell** `lib/prozesse/definition.ts` (Fulfillment-Vorlagen sind ein Fall davon, `lib/fulfillment/typen.ts` reicht weiter): `bereich`, `fallArt`, `eigner`
+  (Team, nie Name), Steckbrief, Auslöser, Knoten mit Formen, Zweige, Notiz-Zettel. Ein Import für Oberfläche/Motor: `lib/prozesse/schnittstelle.ts`.
+  Code-Prozesse stehen als „System“ nur lesbar im Register `lib/prozesse/register.ts` (Marke über `MARKE_EVENTS`, nie fest).
+- **Bild = Automatik, drei Darstellungen eines Prozesses** (`PROZESS_ANSICHTEN`): Bild (Miro/Flow, oben → unten), Liste, Werkstatt (n8n-Stil, links → rechts).
+  Landkarte = Fliege (Bowtie) mit Bändern Führung/Unterstützung (`lib/prozesse/landkarte.ts`, `lage.ts`; das Hochhaus bleibt Drill-down im Fulfillment);
+  lange Übergaben nur beim Überfahren (`pfeileImBild`); Umbruch nur an Wortgrenzen (`lib/text/umbruch.ts`). Vollbild `components/os/ui/flaeche/vollbild.ts`.
+- **Baustein-Katalog als Daten** (`BAUSTEIN_KATALOG`, Masken-Schema je Baustein): jede Anbindung (Inbox, WhatsApp, Kalender, CRM, Angebot, Rechnung,
+  Aufgabe, Glocke, Telegram, ZOE, Heads, Agenten/Skills) = ein Eintrag; Werkzeugklasse aus `lib/werkzeuge/vertrag.ts` (nie doppelt). Neue Anbindung = neuer
+  Eintrag. **Agent-Knoten**: Andockpunkte Modell (Stufe aus `lib/ki/modelle.ts`/`anbieterWaehlen`, nie feste Modell-Kennung) · Gedächtnis · Werkzeuge;
+  Vertrag (Ein-/Ausgabe-Schema, nur Kennungen), Rechte-Ampel „tödliches Dreieck“, Pflichtsatz „Warum reicht keine Regel?“. **Freigabe-Schloss**
+  (`schlossSetzen`) hinter jedem Baustein der Klassen aussen · geld · loeschen — nicht entfernbar.
+- **Auslöser**: Ereignis (`SkillEreignis`, Bedingung „nur wenn“) · Zeitplan · Datum · von Hand · Loop (Tagesstart) · **Webhook** (`/api/prozesse/webhook/[kennung]`,
+  offen nur über `PROZESS_WEBHOOK`, Schlüssel nur Fingerabdruck, einmal gezeigt, scharf erst nach Klick, ≤ 64 KB, schreibt nur ein Ereignis `webhook`).
+  Ereignis-Quellen nur aus vorhandenen Schreibwegen; ein Kennungs-Umzug erzeugt keine neuen Ereignisse (Wächter `tests/ereignisse-umzug-sicher.test.ts`).
+- **Entwurf ≠ Version**: Werkstatt speichert den Entwurf (Stand/409, „Deine Fassung“), „Veröffentlichen“ mit Name + Notiz (volle Mitglieder), Versionen
+  vergleichen/übernehmen; laufende Fälle bleiben auf ihrer Version. Route `/api/prozesse/werkstatt`, Tor `prozesseZugang` (alt `werkstattZugang`).
+- **Lauf-Motor** (`lib/prozesse/lauf-server.ts`; rein und browser-sicher `lauf-regeln.ts`/`lauf-typen.ts` — Wächter `tests/prozesse-lauf-client.test.ts`:
+  kein Server-Code in Modulen, die `components/os/prozesse/*` lädt; `next build` merkt es, tsc/vitest nicht): Bestand `prozess-laeufe--<haushalt>` (nur
+  Kennungen/Status, 12 Monate), Wirkung = Kennung `<lauf>-<schritt>`, Flut-/Schleifenschutz (Herkunft, Tiefe 3), Warten mit Ablauf, Notbremse, HOI-Befund.
+  **Laufen intern** (Kevin): Menschen-Schritte → Aufgaben, Außen → Stapel-Art `prozess`; **nach Freigabe direkt senden** (Mail/WhatsApp als die freigebende
+  Person aus der Sitzung, Dienstweg 403, alle Prüfungen); Agenten-Schritte nur als Vorschlag; jeder Prozess startet im **Probelauf**, scharf nur über
+  `POST /api/prozesse/laeufe { aktion: 'scharf' }` mit **Budget je Prozess** (kein Gesamtbudget) und „Gilt das für n bestehende Fälle?“ (Vorgabe nur neue).
+  Agenten-Schritte warten nachts bis 7 Uhr; ohne KI-Schlüssel sofort Halt mit Grund. Probelauf `POST /api/prozesse/probelauf` schreibt nichts.
+- **Vorlagen & Heads**: 18 Vorlagen der Kundengewinnung als Daten (`lib/prozesse/kundengewinnung/*`), Galerie „Aus Vorlage“ (Übernahme = Entwurf im
+  Probelauf). „Head fragen“ (`/api/prozesse/head`, Stapel-Art `prozess-entwurf`): Vorschlag ganzer Prozess oder Bausteine, nur über `askText` (Struktur, nie
+  Maskenwerte), Übernahme nur per Klick der anfragenden Person. Fulfillment = Werkzeug (Produktkarte → Prozess), KEINE eigenen Fulfillment-Vorlagen (Kevin).
+- **Läufe · Tests** in der Werkstatt: Lauf auf demselben Bild (Haken je Knoten, Log-Baum, Kosten), Inhalte LIVE mit den Rechten der Person (`?inhalte=1`,
+  Lese-Protokoll), „Als Testfall übernehmen“; Heute › Business Widget `prozesse`.
+- Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
+
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
 - **Eine Stelle je Aufgabe:** rein `lib/crm/netzwerken.ts` (Schritte, `erfassungPruefen`, `kenntWirSchon`, `firmaVorschlaege`, Danke-Entwurf, `berichtAus`), Server `lib/crm/netzwerken-server.ts` (`erfassungAusfuehren`, `dankeRausVermerken`, `freieVorschlaege`), Route `app/api/netzwerken` (GET Personen/`?frei=`, POST `erfassen`/`danke-raus`), Warteschlange `lib/netzwerken/warteschlange.ts`, Karte-Auslesen (aus) `lib/crm/netzwerken-karte.ts`. Nie neben diesen Stellen eine zweite Dublettenprüfung, Erfassungslogik oder Offline-Warteschlange bauen.

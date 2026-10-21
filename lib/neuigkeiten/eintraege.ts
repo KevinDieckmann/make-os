@@ -35,10 +35,17 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
     id: 'u-2026-10-21',
     datum: '2026-10-21',
-    titel: 'Produkte & Mandate neu',
-    kurz: 'Ein Produkt ist jetzt eine Karte: Preis, Vertrag, Regeln, Text und Ablauf stehen genau einmal — Angebot, Mandat, Rechnung und Liquidität lesen alles von dort.',
+    titel: 'Prozesse, zwei Scores, Produkte & Mandate',
+    kurz: 'Neu unter Business: „Prozesse“ — alle Abläufe von Marketing bis Fulfillment als Landkarte, in der Werkstatt selbst bauen und intern laufen lassen. Oben auf „Heute“ stehen nur noch zwei Scores, und ein Produkt ist jetzt eine Karte.',
+    kurzBusiness: 'Neu: „Prozesse“ — alle Abläufe von Marketing bis Fulfillment als Landkarte, in der Werkstatt selbst bauen und intern laufen lassen. Oben auf „Heute“ steht der Business-Score, und ein Produkt ist jetzt eine Karte.',
     abschnitte: [
       { art: 'neu', punkte: [
+        { bereich: 'business', text: 'Prozesse: eine Landkarte der ganzen Firma als Fliege — links Kunden gewinnen, in der Mitte die Übergabe, rechts liefern und ausbauen. Antippen fährt bis zum einzelnen Schritt, auf Wunsch im Vollbild oder als Präsentation.', weg: WEG.prozesse() },
+        { bereich: 'business', text: 'Werkstatt: Prozesse selbst bauen — Bausteine mit „+“ anhängen, jede Verbindung ein Lichtfaden, eine Maske je Baustein. Dazu Auslöser (Mail, WhatsApp, Lead, Deal, Termin, Zahlung, Zeitplan, Webhook von außen) und Agenten mit Modell, Gedächtnis und Werkzeugen.', weg: WEG.prozesse({ ansicht: 'werkstatt' }) },
+        { bereich: 'business', text: '18 fertige Vorlagen für die Kundengewinnung, vom nächtlichen Prospecting bis zur Gästeliste — und „Head fragen“: der Head schlägt einen ganzen Prozess oder fehlende Bausteine vor, übernommen wird erst mit eurem Klick.', weg: WEG.prozesse({ ansicht: 'werkstatt' }) },
+        { bereich: 'business', text: 'Laufen intern: Schritte werden Aufgaben, alles nach außen liegt als Vorschlag in den Freigaben — gebt ihr eine Mail oder WhatsApp frei, geht sie direkt raus. Jeder Prozess startet im Probelauf, scharf erst mit eurem Klick und einem Budget.' },
+        { bereich: 'business', text: 'Reiter „Läufe“ und „Tests“: jeder Lauf auf demselben Bild mit Haken je Schritt, Ablauf und Kosten — ein Lauf lässt sich als Testfall übernehmen.' },
+        { bereich: 'alle', text: 'Oben auf „Heute“ steht der Score eures Bereichs: unter Privat der Privat-Score (je Person), unter Business der Business-Score. Antippen öffnet Säulen, Kennzahlen und den größten Hebel.' },
         { bereich: 'business', text: 'Die Leistungstreppe ist jetzt euer Katalog: Stufen von links nach rechts, Alternativen übereinander, je Produkt Preis, Kunden und freie Plätze.', weg: WEG.produkt() },
         { bereich: 'business', text: 'Produkte geführt anlegen: Name, Art, Preis, Gesellschaft und ein Satz — danach öffnet sich die Karte mit allen Einzelheiten.', weg: WEG.produkt() },
         { bereich: 'business', text: 'Preise kombinierbar: einmalig, monatlich, jährlich, je Event, Tages- oder Stundensatz, Erfolgsanteil — mit Anzahlung, Kontingent oder Deckel.' },
@@ -47,6 +54,9 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { bereich: 'business', text: 'Produkte importieren: aus einer Tabelle oder Datei, mit Vorschau „neu · ändert · gleich“ — erst „Übernehmen“ schreibt.', weg: WEG.produkt() },
       ] },
       { art: 'besser', punkte: [
+        { bereich: 'alle', text: 'Der gemischte Wachstums-Score ist weg — Finanzen zeigt nur noch die Finanzen der Sicht, Privat zeigt Privat und Business zeigt Business.' },
+        { bereich: 'business', text: 'Die Säule „Fulfillment“ im Business-Score heißt jetzt „Prozesse“.' },
+        { bereich: 'business', text: 'Event-Nachfassen „48 Stunden“ heißt überall zwei Werktage; „keine Entscheidung“ ist ein eigener Verlustgrund.' },
         { bereich: 'business', text: 'Anrechnung (z. B. eines Workshops auf das Mandat): angerechnet wird alles inklusive gewählter Optionen; was in den ersten Monat nicht passt, wandert auf die nächsten Rechnungen — Liquidität rechnet genauso.' },
         { bereich: 'business', text: 'Tages- und Stundensätze planen mit einer Menge je Monat; abgerechnet werden die echten Stunden bzw. Tage.' },
         { bereich: 'business', text: '„Höchstens N gleichzeitig“: beim nächsten Mandat warnt MAKE OS „alle Plätze belegt“ — anlegen geht trotzdem.' },
