@@ -77,7 +77,7 @@ const V07: KgVorlage = {
     { id: 'blockDauer', label: 'Dauer des Blocks (Minuten)', vorgabe: 60, knoten: 'b', feld: 'dauerMin' }, { id: 'budgetCent', label: 'Budget (Cent)', vorgabe: 15 },
   ],
   offen: [{ punkt: 'E3 (Landkarte)', text: 'Läuft heute schon im Head-Takt (`power_hour`). Die Landkarte zeigt ihn zuerst als System-Kachel; in den Motor wandert er erst mit Gold-Test (keine zweite Wahrheit).' }],
-  demo: 'Für die erfundene Person „Lena“ stehen 6 Karten bereit, wer gestern geschrieben hat, steht oben; ein Block 10:00–11:00 liegt im Stapel.',
+  demo: 'Für eine erfundene Person der Demo stehen 6 Karten bereit, wer gestern geschrieben hat, steht oben; ein Block 10:00–11:00 liegt im Stapel.',
   teile: [],
   definition: prozess({
     id: 'kg-v07', titel: 'Power-Hour-Vorbereitung jeden Morgen', bereich: 'sales', fallArt: 'keiner',
