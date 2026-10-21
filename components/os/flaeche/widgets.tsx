@@ -503,10 +503,14 @@ const INDEX_QUELLEN: Record<string, { url: string; label: string; farbe: string;
   // B2 (14.10.): der Traktions-Score ist EINE Kennzahl der Business-Säule „Markt & Kunden“ — der Satz darunter sagt, warum die Säule eine andere Zahl trägt.
   traktion: { url: '/api/crm/traktion', label: 'Traktions-Score', farbe: LEUCHT.business, ziel: markttraktion(), lies: d => indexKurz((d as { index?: Partial<IndexKurz> }).index), hinweis: TRAKTION_IM_BUSINESS_INDEX },
 };
-function IndexWidget({ e, titel, i }: WidgetProps) {
-  const q = INDEX_QUELLEN[str(e.saeule, 'business')] ?? INDEX_QUELLEN.business;
+function IndexWidget({ e, titel, i, seite }: WidgetProps) {
+  const saeule = str(e.saeule, 'business');
+  const q = INDEX_QUELLEN[saeule] ?? INDEX_QUELLEN.business;
+  // Auf Heute › Business steht der Business-Score schon oben (Kevin 21.10.: nur zwei Scores) — eine gespeicherte Karte
+  // „Business-Index“ wäre dieselbe Zahl doppelt. Fläche `uebersicht-business` = HEUTE_FLAECHE.business (HeuteView.tsx).
+  const doppelt = seite === 'uebersicht-business' && saeule === 'business';
   const d = useDaten(q.url, q.lies);
-  if (d === null) return null;
+  if (doppelt || d === null) return null;
   const farbe = d?.index == null ? C.inkLeise : zoneFarbe(d.index);
   const status = d ? indexStatus(d) : null;
   return (
