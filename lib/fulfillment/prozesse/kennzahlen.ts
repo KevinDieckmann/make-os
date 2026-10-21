@@ -88,11 +88,16 @@ export function ffKennzahlenRechnen(faelle: readonly FfFallDaten[], e: { heute: 
 }
 function addTage(t: string, n: number): string { const d = new Date(`${t.slice(0, 10)}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 
-// ── 2. Säule „Fulfillment“ im Business-Index ──────────────────────────────────────────────────────────────────────────────────────────
+// ── 2. Säule „Prozesse“ (bis 21.10. „Fulfillment“) im Business-Index ──────────────────────────────────────────────────────────────────────────────────────────
 
+// 21.10. (Kevin, Analyse Punkt 84 „zwei Scores“): die Säule heißt sichtbar „Prozesse“ — sie misst, wie unsere Abläufe laufen; heute die Lieferung
+// (die vier Kennzahlen unten). Die Kennung bleibt `ff` (gespeicherte Schwellen und Verläufe lesen weiter), `nurMitMessung` bleibt: ohne Messung fällt
+// sie heraus, der Index ist bit-gleich wie ohne sie. Erweiterung (Prozess-Kennzahlen — Menge, Umwandlung, Zeit, Befolgungsquote je Prozess): als
+// weitere Einträge in `FF_KENNZAHLEN` mit eigener `gruppe` (z. B. „Ablauf“) und ihrem Fall in `ffMessung`; die Daten dazu als weiteres Feld in
+// `FfIndexDaten` (Server: `ffKennzahlenFuerIndex`). Die Säule, ihr Gewicht und ihre Kennung ändern sich dabei nicht.
 export const FF_ID = 'ff';
 export const FF_GEWICHT = 0.1;
-export const FF_SAEULE = { id: FF_ID, label: 'Fulfillment', gewicht: FF_GEWICHT, satz: 'Wie gut wir liefern — Kunden-Gesundheit, Takt, Kunden-Puls und Wert-Konto der laufenden Fälle', nurMitMessung: true };
+export const FF_SAEULE = { id: FF_ID, label: 'Prozesse', gewicht: FF_GEWICHT, satz: 'Wie unsere Abläufe laufen — heute die Lieferung: Lage der Fälle, Takt, Kunden-Puls und Wert-Konto', nurMitMessung: true };
 
 /** Eine Zeile je laufendem Fall (nur Summen, keine Personen). */
 export interface FfIndexZeile {

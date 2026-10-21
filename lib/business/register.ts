@@ -31,6 +31,8 @@ export const scopeAus = (v: unknown): Scope => SCOPES.find(s => s.id === v)?.id 
 // 10.10.: sechste Säule „Fulfillment“ (10 %, Kevin 23:25: „sofort in den Business-Index“) — alle bisherigen ×0,9 (Verhältnis bleibt). Sie trägt
 // `nurMitMessung`: ohne laufenden Fall (bzw. ohne Messung) fällt sie ganz heraus, der Index ist dann exakt der bisherige (lib/fulfillment/prozesse/
 // kennzahlen.ts, Test tests/fulfillment-c1-index.test.ts).
+// 21.10. (Kevin, zwei Scores — Analyse Punkt 84): die Säule `ff` heißt sichtbar „Prozesse“ (Kennung bleibt; heutige Kennzahlen bleiben drin, Prozess-
+// Kennzahlen kommen später dazu). Der Business-Index ist der Business-Score auf Heute (lib/scores) — gerechnet wie bisher, keine neue Rechnung.
 const REST = 1 - KP_GEWICHT;
 const REST_FF = 1 - FF_GEWICHT;
 export const SAEULEN: { id: SaeuleId; label: string; gewicht: number; satz: string; nurMitMessung?: boolean }[] = [
