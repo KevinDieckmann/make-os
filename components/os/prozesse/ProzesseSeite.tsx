@@ -26,7 +26,7 @@ import type { FlowFaden } from '@/lib/lichtfaeden/flow';
 import { PROZESS_ANSICHTEN, ansichtVorgabe, ebeneVon, type ProzessAnsicht, type ProzessPfad } from '@/lib/prozesse/typen';
 import { prozesseAusAdresse, ebeneHoch } from '@/lib/prozesse/adresse';
 import { alsVorlage, brotkrumen, endeSchritte, pfadGueltig, phaseVon, prozessVon, schrittVon, zahlSchluessel, type SuchTreffer } from '@/lib/prozesse/modell';
-import { fliegeLage, prozessLage, boxenVon, huelle, pfeileImBild, type PfeilLage, type RahmenLage } from '@/lib/prozesse/landkarte';
+import { fliegeLage, prozessLage, boxenVon, huelle, pfeileImBild, einpassBox, type PfeilLage, type RahmenLage } from '@/lib/prozesse/landkarte';
 import { STUFE_FARBE, tonVon } from '@/lib/prozesse/farben';
 import { FORM_FARBE } from '../ui/reise/formen';
 import { useVollbild } from '../ui/flaeche/vollbild';
@@ -140,7 +140,8 @@ export function ProzesseSeite() {
       ];
       return {
         schluessel: `prozess:${p.id}`, label: `Prozess „${p.titel}“: ${p.phasen.length} Phasen von links nach rechts`,
-        box: huelle([lage.box], 20), boxen: boxenVon({ phasen: lage.phasen, geister: lage.geister }), faeden, rahmen: lage.rahmen,
+        // Eingepasst wird auf die Kette (Befund 21.10.: sonst stand sie winzig zwischen den Übergaben) — die Übergaben dürfen am Rand angeschnitten sein.
+        box: einpassBox(lage), boxen: boxenVon({ phasen: lage.phasen, geister: lage.geister }), faeden, rahmen: lage.rahmen,
         minimap: [...lage.phasen.map(x => ({ box: x, farbe: tonVon(p) })), ...lage.geister.map(g => ({ box: g, farbe: C.inkLeise }))],
         zeichne: st => <ProzessBild lage={lage} prozess={p} zahlen={zahlen} stufe={st} spitze={spitze}
           onPhase={id => buehne.current?.fliegeIn(id, () => geh({ p: p.id, ph: id }))} onGeist={id => buehne.current?.fliegeIn(`geist:${id}`, () => geh({ p: id }))} onZahl={h => router.push(h)} />,

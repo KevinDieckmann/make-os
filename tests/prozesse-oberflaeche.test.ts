@@ -10,7 +10,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, replace: () => {}, back: () => {} }), useSearchParams: () => new URLSearchParams(), usePathname: () => '/os/prozesse' }));
 
 import { SYSTEM_PROZESSE } from '@/lib/prozesse/register';
-import { fliegeLage, prozessLage } from '@/lib/prozesse/landkarte';
+import { fliegeLage, prozessLage, einpassBox, PHASE_TITEL, PROZESS_MASS } from '@/lib/prozesse/landkarte';
+import { allesZeigen } from '@/components/os/ui/flaeche/kamera';
+import type { ProzessDef } from '@/lib/prozesse/typen';
 import { alsVorlage, endeSchritte } from '@/lib/prozesse/modell';
 import { flaecheBild } from '@/lib/fulfillment/prozesse/flaeche';
 import { LandkarteBild, ProzessBild, AblaufBild } from '@/components/os/prozesse/Bilder';
@@ -86,6 +88,29 @@ describe('Ebene 2 und 3', () => {
     const ab = deal.phasen.find(p => p.id === 'abschluss')!;
     const sk = renderToStaticMarkup(h(SchrittKarte, { p: deal, ph: ab, s: ab.schritte[0], zahl: undefined }));
     expect(sk).toContain('Wenn ja: weiter bei „Deal gewonnen“');
+  });
+});
+
+describe('Einpassung auf Ebene 2 (Befund 21.10., Sichtprüfung 1440 px)', () => {
+  // Die Bühne neben dem Steckbrief bei 1440 px Fensterbreite: etwa 760 × 560 (Leiste, Ränder, Feld 360 px abgezogen). Dieselbe Rechnung wie die Bühne beim
+  // Landen (`passend(box, 1, RAND_ALLES = 20)`).
+  const BUEHNE = { b: 760, h: 560 };
+  const einpassen = (p: ProzessDef) => { const lage = prozessLage(p, L); return { lage, k: allesZeigen(einpassBox(lage), BUEHNE.b, BUEHNE.h, 20, 1) }; };
+  const viele: ProzessDef = { ...nach.get('sp-deal')!, id: 'sp-viele', uebergaben: [], phasen: Array.from({ length: 8 }, (_, i) => ({ id: `v${i}`, titel: `Phase mit langem Namen ${i + 1}`, schritte: [{ id: `v${i}-s`, titel: 'Etwas tun', form: 'schritt' as const }] })) };
+  it.each([['sp-deal', nach.get('sp-deal')!], ['acht Phasen', viele]] as const)('%s: die Phasenkette füllt ≥ 80 % der Bühnenbreite, Titel ≥ 12 px auf dem Bildschirm', (_n, p) => {
+    const { lage, k } = einpassen(p);
+    expect(lage.kette.b * k.s).toBeGreaterThanOrEqual(0.8 * BUEHNE.b);
+    expect(PHASE_TITEL.fernMin * k.s).toBeGreaterThanOrEqual(12);
+    // Die Übergaben zählen nicht in die Einpassung (dürfen am Rand angeschnitten sein).
+    expect(einpassBox(lage).b).toBe(lage.kette.b + 48);
+    for (const g of lage.geister) expect(g.x < lage.kette.x || g.x >= lage.kette.x + lage.kette.b).toBe(true);
+  });
+  it('mehr als vier Phasen brechen um — der Weg läuft im Z (eine Zeile = eine Gerade)', () => {
+    const { lage } = einpassen(viele);
+    expect(new Set(lage.phasen.map(ph => ph.y)).size).toBeGreaterThan(1);
+    expect(Math.max(...lage.phasen.map(ph => ph.x))).toBeLessThan(PROZESS_MASS.marke.b + PROZESS_MASS.jeZeile * (PROZESS_MASS.phase.b + PROZESS_MASS.luecke));
+    expect(lage.weg.length).toBe(6);
+    expect(prozessLage(nach.get('sp-deal')!, L).weg.length).toBe(2);
   });
 });
 

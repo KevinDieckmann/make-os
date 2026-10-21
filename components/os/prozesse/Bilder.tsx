@@ -14,7 +14,7 @@ import type { KeyboardEvent as RKeyboardEvent, MouseEvent as RMouseEvent } from 
 import { Cog, LayoutTemplate, AlertTriangle } from 'lucide-react';
 import { FARBE as C, TIEF, RAND, FLAECHE_STIL } from '@/lib/make-one/design';
 import { pfadVon, pfeilTextOrt, type FlaecheBild } from '@/lib/fulfillment/prozesse/flaeche';
-import { pfeileImBild, kachelTitel, wegTextMass, KACHEL_TEXT, WEG_TEXT, type FliegeLage, type ProzessLage } from '@/lib/prozesse/landkarte';
+import { pfeileImBild, kachelTitel, wegTextMass, KACHEL_TEXT, WEG_TEXT, PHASE_TITEL, type FliegeLage, type ProzessLage } from '@/lib/prozesse/landkarte';
 import type { ProzessDef, Zahl } from '@/lib/prozesse/typen';
 import { kachelTexte, kurztitel, zahlTexte, zahlSchluessel } from '@/lib/prozesse/modell';
 import { STUFE_FARBE, tonVon } from '@/lib/prozesse/farben';
@@ -211,7 +211,7 @@ export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onG
       {[{ box: lage.start, wort: 'Start' }, { box: lage.ende, wort: 'Ergebnis' }].map(m => (
         <g key={m.wort} transform={`translate(${m.box.x} ${m.box.y})`}>
           <rect width={m.box.b} height={m.box.h} rx={m.box.h / 2} fill={C.grund} stroke={C.inkDim} strokeWidth={2} />
-          <text x={m.box.b / 2} y={m.box.h / 2} textAnchor="middle" dominantBaseline="central" fontSize={fern ? KACHEL_SCHRIFT.fern : 17} fontWeight={650} fill={C.ink}>{m.wort}</text>
+          <text x={m.box.b / 2} y={m.box.h / 2} textAnchor="middle" dominantBaseline="central" fontSize={fern ? PHASE_TITEL.fernMin : 17} fontWeight={650} fill={C.ink}>{m.wort}</text>
         </g>
       ))}
       {lage.phasen.map(ph => {
@@ -227,8 +227,8 @@ export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onG
             <Leuchtrand b={ph.b} h={ph.h} rx={16} />
             <text x={18} y={26} fontSize={FLAECHE_SCHRIFT.mikro} fontWeight={600} letterSpacing="1.1" fill={C.inkLeise}>{`PHASE ${ph.nr}`}</text>
             {fern
-              ? <TextBlock e={einpassen({ text: ph.titel, breite: ph.b - 36, groesse: KACHEL_SCHRIFT.fern, min: 22, zeilen: 2, gewicht: 700 })} x={18} mitteY={Math.min(ph.h / 2 + 8, 76)} gewicht={700} />
-              : <TextBlock e={zeile(ph.titel, ph.b - 36, 19, 15, 700)} x={18} mitteY={50} gewicht={700} />}
+              ? <TextBlock e={einpassen({ text: ph.titel, breite: ph.b - 36, groesse: PHASE_TITEL.fern, min: PHASE_TITEL.fernMin, zeilen: 2, gewicht: 700 })} x={18} mitteY={Math.min(ph.h / 2 + 8, 76)} gewicht={700} />
+              : <TextBlock e={zeile(ph.titel, ph.b - 36, PHASE_TITEL.mittel, PHASE_TITEL.mittelMin, 700)} x={18} mitteY={50} gewicht={700} />}
             {z?.haupt && <ZahlPille x={ph.b + 6} y={-12} text={z.haupt} ton={ton} rechtsBuendig {...(zr?.href && onZahl ? { href: zr.href, onZahl } : {})} />}
             {/* Ebene 2: der Hauptweg als ruhige Aufzählung — Formen (Raute, Erinnerung …) erst im Ablauf (Punkt 5). */}
             {!fern && ph.zeilen.map((t, i) => (

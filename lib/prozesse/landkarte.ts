@@ -463,12 +463,24 @@ export function pfeileImBild(pfeile: readonly PfeilLage[], fokus: readonly strin
 
 // ── Ebene 2: ein Prozess ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export const PROZESS_MASS = { phase: { b: 300, kopf: 80, zeile: 28 }, marke: { b: 200, h: 64 }, geist: { b: 260, h: 72 }, luecke: 96, geistLuecke: 176, zeigen: 4 } as const;
+/**
+ * Maße von Ebene 2 (Bildpunkte der Fläche). Befund 21.10. (Sichtprüfung 1440 px): mit großen Lücken und weit abgesetzten Übergaben stand die Phasenkette winzig
+ * in der Mitte einer großen Bühne (Schrift ≈ 5 px). Jetzt: schmalere Lücken, höchstens `jeZeile` Phasen je Zeile (mehr brechen in die nächste Zeile um — der
+ * Weg läuft im Z zurück an den Anfang), Übergaben dicht daneben (dürfen am Rand angeschnitten sein). Die Kamera passt auf die KETTE ein (`einpassBox`).
+ */
+export const PROZESS_MASS = { phase: { b: 280, kopf: 80, zeile: 28 }, marke: { b: 160, h: 64 }, geist: { b: 240, h: 72 }, luecke: 56, zeilenLuecke: 72, geistLuecke: 72, zeigen: 4, jeZeile: 4 } as const;
+/**
+ * Schrift der Phasen-Titel auf Ebene 2 (Bildpunkte der Fläche): weit weg groß (die Kette wird ganz eingepasst — Zoom um 0,4 auf einer Bühne neben dem Steckbrief),
+ * damit der Titel auf dem Bildschirm mindestens 12 px hat (Wächter tests/prozesse-oberflaeche.test.ts › Einpassung).
+ */
+export const PHASE_TITEL = { fern: 34, fernMin: 30, mittel: 19, mittelMin: 15 } as const;
 
 export interface PhaseLage extends Box { id: string; nr: number; titel: string; zeilen: string[]; mehr: number }
 export interface GeistLage extends Box { id: string; titel: string; text: string; richtung: 'von' | 'an' }
 export interface ProzessLage {
   box: Box; mitte: number;
+  /** Start, Phasen und Ergebnis ohne die Übergaben — darauf passt die Kamera beim Hineinfahren ein (`einpassBox`). */
+  kette: Box;
   start: Box & { titel: string }; ende: Box & { titel: string };
   phasen: PhaseLage[]; geister: GeistLage[];
   /** Der Weg durch den Prozess (Start → Phasen → Ergebnis) — als Lichtfaden; die Kacheln liegen darüber, er leuchtet in den Lücken. */
@@ -483,26 +495,42 @@ export function prozessLage(p: ProzessDef, alle: readonly ProzessDef[]): Prozess
   // Ebene 2 zeigt je Phase nur den Hauptweg (ohne Nein-Zweige) — Rauten und Erinnerungen gehören erst in den Ablauf (Ebene 3, Punkt 5).
   const hauptweg = p.phasen.map(ph => ph.schritte.filter(x => !neinVon(ph, x.id)));
   const hoehen = hauptweg.map(l => M.phase.kopf + Math.min(M.zeigen, l.length) * M.phase.zeile + (l.length > M.zeigen ? M.phase.zeile : 0) + 14);
-  const maxH = Math.max(M.marke.h, ...hoehen);
-  const mitte = r1(maxH / 2);
-  let x = 0;
-  const start = { x, y: r1(mitte - M.marke.h / 2), b: M.marke.b, h: M.marke.h, titel: p.steckbrief.ausloeser };
-  x += M.marke.b + M.luecke;
+  // Zeilen zu höchstens `jeZeile` Phasen; jede Zeile so hoch wie ihre höchste Phase.
+  const zeilen: number[][] = [];
+  p.phasen.forEach((_, i) => { if (i % M.jeZeile === 0) zeilen.push([]); zeilen[zeilen.length - 1].push(i); });
+  if (!zeilen.length) zeilen.push([]);
+  const zeilenH = zeilen.map(z => Math.max(M.marke.h, ...z.map(i => hoehen[i])));
+  const oben: number[] = [];
+  zeilenH.reduce((y, h, r) => { oben[r] = y; return y + h + M.zeilenLuecke; }, 0);
+  const mitteVon = (r: number) => r1(oben[r] + zeilenH[r] / 2);
+  const mitte = mitteVon(0);
+  const x0 = M.marke.b + M.luecke;
+  const start = { x: 0, y: r1(mitte - M.marke.h / 2), b: M.marke.b, h: M.marke.h, titel: p.steckbrief.ausloeser };
   const phasen: PhaseLage[] = p.phasen.map((ph, i) => {
+    const r = Math.floor(i / M.jeZeile), j = i % M.jeZeile;
     const h = hoehen[i];
-    const l: PhaseLage = { id: ph.id, nr: i + 1, titel: ph.titel, x, y: r1(mitte - h / 2), b: M.phase.b, h, zeilen: hauptweg[i].slice(0, M.zeigen).map(s => s.titel), mehr: Math.max(0, hauptweg[i].length - M.zeigen) };
-    x += M.phase.b + M.luecke;
-    return l;
+    return { id: ph.id, nr: i + 1, titel: ph.titel, x: x0 + j * (M.phase.b + M.luecke), y: r1(mitteVon(r) - h / 2), b: M.phase.b, h, zeilen: hauptweg[i].slice(0, M.zeigen).map(s => s.titel), mehr: Math.max(0, hauptweg[i].length - M.zeigen) };
   });
-  const ende = { x, y: r1(mitte - M.marke.h / 2), b: M.marke.b, h: M.marke.h, titel: p.steckbrief.ergebnis };
-  const weg: [number, number][] = [[start.x + start.b / 2, mitte], [ende.x + ende.b / 2, mitte]];
+  const letzteZeile = zeilen.length - 1;
+  const letzte = phasen.at(-1);
+  const endeX = letzte ? letzte.x + letzte.b + M.luecke : x0;
+  const mitteEnde = mitteVon(letzteZeile);
+  const ende = { x: endeX, y: r1(mitteEnde - M.marke.h / 2), b: M.marke.b, h: M.marke.h, titel: p.steckbrief.ergebnis };
+  // Der Weg: eine Zeile = eine Gerade; mehr Zeilen = ein Z (am Ende einer Zeile durch die Lücke zurück an den Anfang der nächsten).
+  const weg: [number, number][] = [[start.x + start.b / 2, mitte]];
+  zeilen.forEach((z, r) => {
+    if (r === letzteZeile) return;
+    const rechts = r1(phasen[z[z.length - 1]].x + M.phase.b + M.luecke / 2), links = r1(x0 - M.luecke / 2), luecke = r1(oben[r] + zeilenH[r] + M.zeilenLuecke / 2);
+    weg.push([rechts, mitteVon(r)], [rechts, luecke], [links, luecke], [links, mitteVon(r + 1)]);
+  });
+  weg.push([ende.x + ende.b / 2, mitteEnde]);
   // Geister: wer an diesen Prozess übergibt (links), an wen er übergibt (rechts).
   const von = alle.filter(q => q.id !== p.id && (q.uebergaben ?? []).some(u => u.nach === p.id)).map(q => ({ q, text: q.uebergaben!.find(u => u.nach === p.id)!.text }));
   const an = (p.uebergaben ?? []).map(u => ({ q: alle.find(x => x.id === u.nach), text: u.text })).filter((x): x is { q: ProzessDef; text: string } => !!x.q && x.q.id !== p.id);
   const stapel = (n: number, i: number) => r1(mitte - (n * M.geist.h + (n - 1) * 20) / 2 + i * (M.geist.h + 20));
   const geister: GeistLage[] = [
     ...von.map(({ q, text }, i) => ({ id: q.id, titel: q.titel, text, richtung: 'von' as const, x: -(M.geist.b + M.geistLuecke), y: stapel(von.length, i), b: M.geist.b, h: M.geist.h })),
-    ...an.map(({ q, text }, i) => ({ id: q.id, titel: q.titel, text, richtung: 'an' as const, x: r1(ende.x + ende.b + M.geistLuecke), y: stapel(an.length, i), b: M.geist.b, h: M.geist.h })),
+    ...an.map(({ q, text }, i) => ({ id: q.id, titel: q.titel, text, richtung: 'an' as const, x: r1(ende.x + ende.b + M.geistLuecke), y: r1(stapel(an.length, i) + mitteEnde - mitte), b: M.geist.b, h: M.geist.h })),
   ];
   // Wege von und zu den Geistern: weiche Kurven, die Anschlüsse am Start bzw. Ergebnis über die Kante verteilt (in der Reihenfolge der Geister) — so laufen
   // sie nebeneinander ein, nie übereinander und nie über Kreuz. Die Beschriftung steht nah am Geist (dort liegen die Wege am weitesten auseinander).
@@ -520,10 +548,14 @@ export function prozessLage(p: ProzessDef, alle: readonly ProzessDef[]): Prozess
       return { id: `an:${g.id}`, von: p.id, nach: g.id, text: g.text, art: 'weiter' as const, punkte, textOrt: ort, textOrtFern: ort, textFrei: true, sicht: 'immer' as const };
     }),
   ];
-  const box = huelle([start, ende, ...phasen, ...geister], 0);
-  const rahmen: RahmenLage[] = [{ id: 'alles', titel: p.titel, box: huelle([box], 40) }, ...phasen.map(ph => ({ id: ph.id, titel: ph.titel, box: huelle([ph], 60) }))];
-  return { box, mitte, start, ende, phasen, geister, weg, pfeile, rahmen };
+  const kette = huelle([start, ende, ...phasen], 0);
+  const box = huelle([kette, ...geister], 0);
+  const rahmen: RahmenLage[] = [{ id: 'alles', titel: p.titel, box: huelle([kette], 40) }, ...phasen.map(ph => ({ id: ph.id, titel: ph.titel, box: huelle([ph], 60) }))];
+  return { box, kette, mitte, start, ende, phasen, geister, weg, pfeile, rahmen };
 }
+
+/** Worauf die Kamera auf Ebene 2 einpasst: die Kette (Start, Phasen, Ergebnis) mit schmalem Rand — die Übergaben links und rechts dürfen angeschnitten sein. */
+export const einpassBox = (l: Pick<ProzessLage, 'kette'>): Box => huelle([l.kette], 24);
 
 /** Wohin eine Kachel bzw. Phase im Bild zeigt (für Kamerafahrt, Minimap, Suche): Kennung → Box. */
 export function boxenVon(l: { kacheln?: readonly KachelLage[]; phasen?: readonly PhaseLage[]; geister?: readonly GeistLage[] }): Map<string, Box> {
