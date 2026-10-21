@@ -530,7 +530,8 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   const monatsrechnung = async (mo: string) => {
     const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat: mo });
     if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
-    router.push(WEG.rechnungSchreiben(e.id));
+    // Schließen führt zurück ins Mandat (21.10., Rundgang B8).
+    router.push(WEG.rechnungSchreiben(e.id, WEG.mandat(m.id)));
   };
   return (
     <Feldzeile label="Rechnungen">

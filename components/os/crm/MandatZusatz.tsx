@@ -235,7 +235,8 @@ function AbrechnenDialog({ m, z, teil, katalog, onZu }: { m: Mandat; z: MandatZu
     if (!monat || !(n > 0)) { setFehler('Bitte Monat und eine Menge größer 0.'); return; }
     const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat, einheiten: [{ zusatzId: z.id, menge: n, ...(teil ? { teilId: teil.id } : {}) }] });
     if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
-    router.push(WEG.rechnungSchreiben(e.id));
+    // Schließen führt zurück ins Mandat (21.10., Rundgang B8).
+    router.push(WEG.rechnungSchreiben(e.id, WEG.mandat(m.id)));
   };
   return (
     <Fenster titel={`„${zusatzName(z, katalog)}“${teil ? ` · je ${einheit}` : ''} abrechnen`} onZu={onZu} breit={480}>

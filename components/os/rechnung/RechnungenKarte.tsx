@@ -18,6 +18,8 @@ import { Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leer, feld } f
 import { entwurfAnlegen, pdfLaden, rechnungPost, useRechnungen, type RechnungMitFassung } from './daten';
 import { RechnungEditor } from './Editor';
 import { anzahl } from '@/lib/text/zahlwort';
+import { zurueckZiel } from '@/lib/wege';
+import { useZurueck } from '../Verlauf';
 
 const datumDe = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
 const gesKurz = (g: string) => KERN_EINHEITEN.find(e => e.id === g)?.kurz ?? (g || 'ohne Gesellschaft');
@@ -35,8 +37,15 @@ export function RechnungenKarte() {
   const stand = daten.stand;
 
   /** Editor öffnen/schließen über die Adresse (Zurück schließt ihn). */
-  const oeffnen = (id: string) => { const p = new URLSearchParams(q.toString()); p.set('re', id); router.push(`${pfad}?${p.toString()}`, { scroll: false }); };
-  const schliessen = () => { const p = new URLSearchParams(q.toString()); p.delete('re'); router.replace(`${pfad}${p.toString() ? `?${p.toString()}` : ''}`, { scroll: false }); void daten.laden(); };
+  const oeffnen = (id: string) => { const p = new URLSearchParams(q.toString()); p.set('re', id); p.delete('zurueck'); router.push(`${pfad}?${p.toString()}`, { scroll: false }); };
+  // Aus dem Mandat (bzw. einer anderen Seite) geöffnet (21.10., Rundgang B8): „Schließen“ führt dorthin zurück — ein echter Schritt zurück, sonst die Seite
+  // aus `zurueck` (nur eigene Pfade, `zurueckZiel`). Vorher landete man in Finanzen › Rechnungen.
+  const zurueck = useZurueck();
+  const zurueckNach = zurueckZiel(q.get('zurueck'));
+  const schliessen = () => {
+    if (zurueckNach) { zurueck(zurueckNach); return; }
+    const p = new URLSearchParams(q.toString()); p.delete('re'); router.replace(`${pfad}${p.toString() ? `?${p.toString()}` : ''}`, { scroll: false }); void daten.laden();
+  };
   // Ein Entwurf, der gerade erst (außerhalb) angelegt wurde, steht vielleicht noch nicht in der Liste — EINMAL je Kennung nachladen.
   const nachgeladen = useRef<string | null>(null);
   const { laden } = daten;
