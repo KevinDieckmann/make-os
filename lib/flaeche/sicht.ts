@@ -17,7 +17,7 @@ import type { Einstellungen, Layout, Platz } from './modell';
 export type WidgetSicht = 'privat' | 'business' | 'neutral';
 
 const NUR_PRIVAT: ReadonlySet<string> = new Set(['koerper', 'erholung', 'routinen', 'essen', 'finanzen-privat', 'familie', 'score']);
-const NUR_BUSINESS: ReadonlySet<string> = new Set(['dran', 'kanal', 'event', 'fulfillment']);
+const NUR_BUSINESS: ReadonlySet<string> = new Set(['dran', 'kanal', 'event', 'fulfillment', 'prozesse']);
 const INDEX_BEREICH: Readonly<Record<string, Exclude<WidgetSicht, 'neutral'>>> = { privat: 'privat', gesundheit: 'privat', business: 'business', traktion: 'business' };
 
 const bereichAus = (v: unknown): Exclude<WidgetSicht, 'neutral'> | null => (v === 'privat' || v === 'business' ? v : null);

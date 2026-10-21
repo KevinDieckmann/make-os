@@ -20,6 +20,8 @@ import { EINSTELLUNGEN_BUSINESS } from './einstellungen-business';
 import { EINSTELLUNGEN_FULFILLMENT_PROZESSE } from './fulfillment-prozesse';
 import { EINSTELLUNGEN_FULFILLMENT_KUNDE } from './fulfillment-kunde';
 import { EINSTELLUNGEN_FULFILLMENT_ANALYSE } from './fulfillment-analyse';
+// Prozesse (22.10.): Läufe, Tests, Scharfschalten, Webhook der Werkstatt.
+import { EINSTELLUNGEN_PROZESSE_LAEUFE } from './prozesse-laeufe';
 
 export type { EinstellungsText, ErklaerAbschnitt } from './typen';
 export { KOPF } from './typen';
@@ -28,6 +30,7 @@ export { KOPF } from './typen';
 export const EINSTELLUNGEN = {
   ...EINSTELLUNGEN_DATENSCHUTZ, ...EINSTELLUNGEN_KONTO, ...EINSTELLUNGEN_PRIVAT, ...EINSTELLUNGEN_BUSINESS,
   ...EINSTELLUNGEN_FULFILLMENT_PROZESSE, ...EINSTELLUNGEN_FULFILLMENT_KUNDE, ...EINSTELLUNGEN_FULFILLMENT_ANALYSE,
+  ...EINSTELLUNGEN_PROZESSE_LAEUFE,
 } as const;
 
 export type EinstellungsSchluessel = keyof typeof EINSTELLUNGEN;

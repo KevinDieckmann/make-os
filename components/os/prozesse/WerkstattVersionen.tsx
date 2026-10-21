@@ -7,7 +7,7 @@
 // als Entwurf übernehmen (Rückfrage: der Entwurf wird ersetzt, die Versionen bleiben). Geschrieben wird über den EINEN Schreibweg der Werkstatt.
 
 import { useState } from 'react';
-import { Eye, GitCompare, RotateCcw, Upload } from 'lucide-react';
+import { Eye, GitCompare, RotateCcw, Upload, ClipboardCheck } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Feldzeile, feld, Zeile, Leer } from '../ui';
 import { Fenster } from '../Fenster';
@@ -19,8 +19,12 @@ import { BefundListe } from './WerkstattPanel';
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
 const tag = (iso: string) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' }) : iso; };
 
-export function VersionenFenster({ versionen, befunde, sperrt, darfVeroeffentlichen, entwurfGeaendert, ausstehend, onVeroeffentlichen, onAnsehen, onVergleichen, onUebernehmen, onZu }: {
+export function VersionenFenster({ versionen, befunde, sperrt, darfVeroeffentlichen, entwurfGeaendert, ausstehend, laufHinweise = [], tests, onVeroeffentlichen, onAnsehen, onVergleichen, onUebernehmen, onZu }: {
   versionen: readonly VersionKurz[]; befunde: readonly Befund[]; sperrt: boolean; darfVeroeffentlichen: boolean; entwurfGeaendert: boolean; ausstehend: boolean;
+  /** Hinweise für das Laufen (22.10., Punkt 49: Schleifen über eigene Ereignisse, Modell-Rauten, Schleifen-Baustein — lib/prozesse/lauf-regeln.ts `laufBefunde`). */
+  laufHinweise?: readonly Befund[];
+  /** Testfälle (22.10.): sind sie grün? „Prüfen“ spielt sie auf dem Entwurf ab. */
+  tests?: { anzahl: number; stand: { satz: string; bedeutung: 'gut' | 'achtung' | 'info' | 'kritisch' | 'neutral' } | null; onPruefen: () => Promise<void> };
   onVeroeffentlichen: (name: string, notiz: string) => Promise<string | null>;
   onAnsehen: (nr: number) => void;
   onVergleichen: (nr: number) => Promise<Vergleich | null>;
@@ -47,6 +51,17 @@ export function VersionenFenster({ versionen, befunde, sperrt, darfVeroeffentlic
         {grund && <Hinweis art={sperrt ? 'achtung' : 'info'}>{grund}</Hinweis>}
         {ausstehend && <p style={klein}>Ungespeicherte Änderungen werden vorher gespeichert.</p>}
         {sperrt && <BefundListe befunde={befunde.filter(b => b.stufe !== 'hinweis')} />}
+        {laufHinweise.length > 0 && (
+          <>
+            <div style={{ ...MIKRO }}>Beim Laufen beachten</div>
+            <BefundListe befunde={laufHinweise} />
+          </>
+        )}
+        {tests && tests.anzahl > 0 && tests.stand && (
+          <Hinweis art={tests.stand.bedeutung} aktion={<Knopf leise onClick={tests.onPruefen}><span className="pz-knopf-inhalt"><ClipboardCheck size={14} aria-hidden />Prüfen</span></Knopf>}>
+            {tests.stand.satz}
+          </Hinweis>
+        )}
         {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
         <div><Knopf haupt aus={gesperrt} onClick={async () => { setFehler(null); const f = await onVeroeffentlichen(name.trim(), notiz.trim()); if (f) setFehler(f); }}>
           <span className="pz-knopf-inhalt"><Upload size={16} aria-hidden />Veröffentlichen</span>

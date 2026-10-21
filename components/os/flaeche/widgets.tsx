@@ -71,6 +71,7 @@ import { vorschlagAnzeige, type VorschlagAnzeige, type VorschlagFuerAnzeige } fr
 import { useNurBusiness } from '../useInhaber';
 import { BeispielMarke } from '../BeispielMarke';
 import { HeuteImFulfillment } from '../fulfillment/reise/HeuteListe';
+import { ProzesseHeuteZeile } from '../prozesse/HeuteProzesse';
 
 /** `seite` = die Fläche, auf der das Widget steht (28.09. abends) — z. B. für den Standard-Space der Aufgaben. */
 export interface WidgetProps { e: Einstellungen; titel?: string; i: number; seite?: string }
@@ -226,6 +227,8 @@ function TermineWidget({ e, titel, i, seite }: WidgetProps) {
 // Kevin: „Das Fulfillment soll maximal einfach für uns sein.“ Was in den Fällen jetzt dran ist — dieselbe Liste wie oben auf dem Fulfillment-Start
 // (lib/fulfillment/prozesse/heute.ts), mit dem Handgriff in der Zeile (abhaken, Ja/Nein, Entwurf öffnen, Fall starten). Nur Business; ohne Punkt keine Karte.
 function FulfillmentWidget({ titel, i }: WidgetProps) { return <HeuteImFulfillment kompakt i={i} {...(titel ? { titel } : {})} />; }
+// ── Prozesse heute (22.10., ANALYSE_100.md Punkt 69): „n gelaufen, m warten auf dich“ als eine Zeile mit Link zu Prozesse — nur Business; ohne Lauf keine Karte.
+function ProzesseWidget({ titel, i }: WidgetProps) { return <ProzesseHeuteZeile i={i} {...(titel ? { titel } : {})} />; }
 
 function DranWidget({ titel, i }: WidgetProps) {
   const router = useRouter();
@@ -918,6 +921,7 @@ export const WIDGETS: Record<string, WidgetDef> = {
     einstellungen: [{ k: 'inbox', label: 'Inbox dazu', art: 'schalter', standard: false }] },
   dran: { art: 'dran', label: 'Wer heute dran ist', bereich: 'Business', beschreibung: 'Die wichtigsten Kontakte der Power Hour', breite: 4, Komponente: DranWidget },
   fulfillment: { art: 'fulfillment', label: 'Heute im Fulfillment', bereich: 'Business', beschreibung: 'Was in den Fällen jetzt dran ist — abhaken, Ja/Nein, Entwurf öffnen oder Fall starten direkt in der Zeile', breite: 4, Komponente: FulfillmentWidget },
+  prozesse: { art: 'prozesse', label: 'Prozesse heute', bereich: 'Business', beschreibung: 'Wie viele Läufe heute gelaufen sind und wie viele auf dich warten — ein Klick führt zu Prozesse', breite: 2, Komponente: ProzesseWidget },
   kanal: { art: 'kanal', label: 'Kanal-Leistung', bereich: 'Business', beschreibung: 'Welcher Herkunftskanal warme Leads und SQLs bringt', breite: 2, Komponente: KanalWidget },
   event: { art: 'event', label: `Nächstes Event · ${MARKE_EVENTS}`, bereich: 'Business', beschreibung: 'Das nächste Event unter unserer Marke — Datum, Zusagen, offenes Nachfassen', breite: 2, Komponente: EventWidget },
   familie: { art: 'familie', label: 'Familie & Partnerschaft', bereich: 'Familie', beschreibung: 'Paar-Gespräch, wichtige Tage, wer einen Anruf verdient, Frage der Woche', breite: 2, Komponente: FamilieWidget },
@@ -958,6 +962,7 @@ export const KATALOG: KatalogEintrag[] = [
   { art: 'zoe', label: 'Freigaben von ZOE & Inbox', beschreibung: WIDGETS.zoe.beschreibung, bereich: 'ZOE', breite: 2, voreinstellung: { inbox: true } },
   { art: 'dran', label: 'Wer heute dran ist', beschreibung: WIDGETS.dran.beschreibung, bereich: 'Business', breite: 4 },
   { art: 'fulfillment', label: 'Heute im Fulfillment', beschreibung: WIDGETS.fulfillment.beschreibung, bereich: 'Business', breite: 4 },
+  { art: 'prozesse', label: 'Prozesse heute', beschreibung: WIDGETS.prozesse.beschreibung, bereich: 'Business', breite: 2 },
   { art: 'kanal', label: 'Kanal-Leistung', beschreibung: WIDGETS.kanal.beschreibung, bereich: 'Business', breite: 2 },
   { art: 'event', label: WIDGETS.event.label, beschreibung: WIDGETS.event.beschreibung, bereich: 'Business', breite: 2 },
   { art: 'familie', label: 'Familie & Partnerschaft', beschreibung: WIDGETS.familie.beschreibung, bereich: 'Familie', breite: 2 },

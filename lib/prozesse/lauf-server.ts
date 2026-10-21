@@ -32,7 +32,6 @@ import {
 import { fallArtVon, type AgentSchritt, type ProzessDefinition, type ProzessEintrag, type ProzesseDatei } from './definition';
 import { alleSchritte, startKnoten } from './fluss';
 import { ausloeserPasst, ereignisDaten, startetNachLoop } from './ausloeser';
-import { katalogEintrag } from './baustein-katalog';
 import { anspracheUrteil } from './ansprache';
 import { laufPerson, type TeamKurz } from './rollen';
 import { herkunftAus, mitLaufHerkunft } from './lauf-herkunft';
@@ -1104,7 +1103,7 @@ export async function bestehendeFaelle(def: ProzessDefinition, kx: MotorKontext)
 }
 
 /** Läufe je Monat (Schätzung): Ereignisse der letzten 30 Tage, die gepasst hätten, sonst der Rhythmus des Zeitplans. */
-async function laeufeJeMonat(def: ProzessDefinition, kx: MotorKontext): Promise<number> {
+async function laeufeJeMonat(def: ProzessDefinition, _kx: MotorKontext): Promise<number> {
   let n = 0;
   const { ereignisseLaden } = await import('@/lib/ereignisse/server');
   const b = await ereignisseLaden().catch(() => null);
@@ -1312,7 +1311,7 @@ export async function laufLesen(id: string): Promise<{ lauf: import('./lauf-rege
 // ══ Inhalte eines Laufs LIVE (22.10., Läufe-Ansicht): der Lauf hält nur Kennungen — die Ansicht holt beim Öffnen, was die Person sehen darf ══════════
 
 /** Ein Eintrag hinter einer Wirkung bzw. dem Fall — `sichtbar: false` heißt: es gibt ihn, aber nicht für diese Person (keine Inhalte). */
-export interface InhaltZeile { art: Wirkung['art'] | 'fall'; id: string; sichtbar: boolean; titel?: string; status?: string; an?: string; link?: string; grund?: 'weg' | 'nicht-fuer-dich' | 'eingeschraenkt' }
+export interface InhaltZeile { art: Wirkung['art'] | 'fall'; id: string; sichtbar: boolean; titel?: string; status?: string; an?: string; /** Liegt bei der Person der Ansicht („wartet auf dich“). */ mir?: true; link?: string; grund?: 'weg' | 'nicht-fuer-dich' | 'eingeschraenkt' }
 export interface LaufInhalte { fall: InhaltZeile | null; wirkungen: Record<string, InhaltZeile> }
 
 /**
@@ -1333,7 +1332,7 @@ export async function laufInhalte(id: string, person: string): Promise<LaufInhal
     const roh = new Set(((await loadJson<{ tasks?: { id: string }[] }>('tasks'))?.tasks ?? []).map(t => t.id));
     for (const w of wirk.filter(x => x.art === 'aufgabe')) {
       const t = sicht.get(w.id);
-      raus[w.id] = t ? { art: 'aufgabe', id: w.id, sichtbar: true, titel: t.title, status: t.status, ...(t.assignee ? { an: t.assignee } : {}), link: WEG.aufgabe(w.id) }
+      raus[w.id] = t ? { art: 'aufgabe', id: w.id, sichtbar: true, titel: t.title, status: t.status, ...(t.assignee ? { an: t.assignee } : {}), ...(t.assignee === person ? { mir: true as const } : {}), link: WEG.aufgabe(w.id) }
         : { art: 'aufgabe', id: w.id, sichtbar: false, grund: roh.has(w.id) ? 'nicht-fuer-dich' : 'weg' };
     }
   }
@@ -1344,7 +1343,7 @@ export async function laufInhalte(id: string, person: string): Promise<LaufInhal
     for (const w of wirk.filter(x => x.art === 'vorschlag')) {
       const v = alle.get(w.id);
       raus[w.id] = v && vorschlagSichtbar(v, person, true, privat)
-        ? { art: 'vorschlag', id: w.id, sichtbar: true, titel: v.titel, status: v.status, ...(v.person ? { an: v.person } : {}), link: WEG.freigaben(undefined, 'business') }
+        ? { art: 'vorschlag', id: w.id, sichtbar: true, titel: v.titel, status: v.status, ...(v.person ? { an: v.person } : {}), ...(v.person === person ? { mir: true as const } : {}), link: WEG.freigaben(undefined, 'business') }
         : { art: 'vorschlag', id: w.id, sichtbar: false, grund: v ? 'nicht-fuer-dich' : 'weg' };
     }
   }

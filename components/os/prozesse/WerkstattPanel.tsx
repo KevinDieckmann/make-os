@@ -7,7 +7,7 @@
 // Verbindung wie das Ziehen, für Tastatur und Vorleser), die Befunde und Hinweise am Knoten, der Satz des Probelaufs. Ohne Auswahl: der Steckbrief des Prozesses
 // (Name, Bereich, Fall, Eigner, Kriterien — Punkt 10). Phase, Faden und Zettel haben eigene, kurze Felder.
 
-import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { Lock, Trash2, Copy, Scissors, ChevronsRightLeft, Plus } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT, BEDEUTUNG_FARBE, MIKRO, TIEF } from '@/lib/make-one/design';
 import { Ueberschrift, Hinweis, Knopf, Pillen, Feldzeile, auswahl as auswahlStil, Chip } from '../ui';
@@ -53,7 +53,7 @@ export function BefundListe({ befunde, raete = [], onTeilprozess }: { befunde: r
 }
 
 const FELD_TITEL = new Map<string, string>([...EREIGNIS_FELDER, ...Object.values(FALL_FELDER).flat()].map(f => [f.id, f.titel]));
-const feldTitel = (id: string) => FELD_TITEL.get(id) ?? (id.startsWith('webhook.') ? `Webhook: ${id.slice(8)}` : id.startsWith('agent.') ? `Agent-Ausgabe: ${id.slice(6)}` : id);
+export const feldTitel = (id: string) => FELD_TITEL.get(id) ?? (id.startsWith('webhook.') ? `Webhook: ${id.slice(8)}` : id.startsWith('agent.') ? `Agent-Ausgabe: ${id.slice(6)}` : id);
 
 export interface PanelProps {
   d: ProzessDefinition;
@@ -77,6 +77,8 @@ export interface PanelProps {
   onPhase: (aktion: 'umbenennen' | 'teilen' | 'zuklappen' | 'neu' | 'loeschen', id: string, wert?: string) => void;
   onZettel: (id: string, teil: Partial<Pick<NotizZettel, 'text' | 'farbe'>> | null) => void;
   agentName: (wer: AgentWer) => string;
+  /** Zusatz unter der Maske eines Knotens (22.10.: die Webhook-Karte am Auslöser „Webhook von außen“). */
+  knotenZusatz?: (k: K) => ReactNode;
 }
 
 /** Das Panel (siehe Kopf). */
@@ -203,6 +205,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
       )}
       {!e && <p style={leise}>Dieser Knoten hat keinen Baustein aus dem Katalog — er läuft als {formWort(k.form)} ohne eigene Einstellungen.</p>}
       {e && !istAgent && e.maske.map(feld)}
+      {p.knotenZusatz?.(k)}
       {istAgent && e && (
         <>
           {e.maske.filter(f => !GRUPPE[f.id]).map(feld)}

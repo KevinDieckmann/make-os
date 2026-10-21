@@ -8,12 +8,15 @@
 //     (Sitzungsspeicher, bis der Server bestätigt). „Veröffentlichen“ mit Name und Notiz, Versionen ansehen, vergleichen, als Entwurf übernehmen (./WerkstattVersionen.tsx).
 //   · Bauen-Komfort: Rückgängig/Wiederholen, Kopieren/Einfügen mit Kanten, Alt+Pfeil, Tab = Formauswahl, „Ordnen“, Raster, Hilfslinien, „Teilprozess bilden?“,
 //     Beschriftung nach Regel — alles reine Regeln in lib/prozesse/werkstatt-*.ts; diese Datei verbindet nur.
-//   · Kopfzeile: Reiter erst, wenn es mehr als „Bauen“ gibt (Läufe, Tests kommen mit dem Lauf-Motor — keine toten Reiter); „Probelauf“ fragt den Lauf-Motor
-//     (POST /api/prozesse/probelauf) und färbt die Knoten — solange es ihn nicht gibt: „Probelauf kommt mit dem Lauf-Motor“.
+//   · Kopfzeile (22.10., Kevins Bild n8n „Executions“): Reiter Bauen · Läufe · Tests auf demselben Bild (Adresse `w=`, ein Lauf `lauf=` — lib/prozesse/adresse.ts);
+//     der Zustand des Prozesses (Entwurf · Probelauf · scharf · pausiert) mit „Scharf schalten“, Pausieren und den Einstellungen (./WerkstattSteuerung.tsx);
+//     „Probelauf“ fragt den Lauf-Motor (POST /api/prozesse/probelauf) mit dem Beispiel oder einem echten Fall (./ProbeFall.tsx) und färbt die Knoten — solange es
+//     ihn nicht gibt: „Probelauf kommt mit dem Lauf-Motor“. Läufe: ./WerkstattLaeufe.tsx, Tests: ./WerkstattTests.tsx, Webhook am Auslöser: ./WerkstattWebhook.tsx.
 //   · Rollen (lib/prozesse/rollen.ts): volle Mitglieder veröffentlichen, alle im Haushalt bauen Entwürfe; System-Prozesse und Fulfillment-Pakete bleiben hier
 //     nur lesbar. Am Handy (unter 768 px) nur ansehen.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Undo2, Redo2, LayoutGrid, Grid3x3, StickyNote, Plus, Minus, Maximize2, Keyboard, Play, Upload, X, Columns3, Check, CloudOff, Loader2 } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, LEUCHT } from '@/lib/make-one/design';
 import { Knopf, Hinweis, SymbolKnopf, Chip, Reiter } from '../ui';
@@ -32,6 +35,13 @@ import {
   kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, type Ablage, type Ergebnis, type Fassung, type Geschichte,
 } from '@/lib/prozesse/werkstatt-aktionen';
 import { neuerKnoten, knotenUnterzeile } from '@/lib/prozesse/werkstatt-maske';
+import { bahnBeimAnhaengen } from '@/lib/prozesse/werkstatt-lage';
+import { laufBefunde } from '@/lib/prozesse/lauf-regeln';
+import { webhookAusloeserVon } from '@/lib/prozesse/webhook';
+import { prozesseAusAdresse, type WerkstattReiterId } from '@/lib/prozesse/adresse';
+import { testStand } from '@/lib/prozesse/laeufe-ansicht';
+import { WEG } from '@/lib/wege';
+import type { ProzessStatus } from '@/lib/prozesse/definition';
 import { altPfeil, nachbar, WERKSTATT_KUERZEL, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
 import { hinweiseVon, probelaufAus, probelaufKoerper, PROBELAUF_PFAD, PROBE_FEHLT, centText, type ProbeErgebnis, type ProbeSchritt } from '@/lib/prozesse/werkstatt-hinweise';
 import { WerkstattFlaeche, type AnhangZiel, type FlaecheSteuerung } from './WerkstattFlaeche';
@@ -39,11 +49,17 @@ import { WerkstattPanel } from './WerkstattPanel';
 import { WerkstattFormauswahl } from './WerkstattFormauswahl';
 import { VersionenFenster } from './WerkstattVersionen';
 import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, type EintragAnsicht } from './werkstatt-daten';
+import { WerkstattSteuerung } from './WerkstattSteuerung';
+import { WerkstattLaeufe } from './WerkstattLaeufe';
+import { WerkstattTests, testsPruefen, type TestErgebnis } from './WerkstattTests';
+import { WebhookKarte, type WebhookKurz } from './WerkstattWebhook';
+import { ProbeFallFenster, type FallWert } from './ProbeFall';
+import { useLaeufe } from './laeufe-daten';
 
 type K = ProzessKnoten<ProzessForm>;
 
-/** Die Reiter der Kopfzeile — „Läufe“ und „Tests“ kommen erst mit dem Lauf-Motor dazu (Entscheidung 21.10.: keine toten Reiter). */
-export const WERKSTATT_REITER: readonly { id: 'bauen'; titel: string }[] = [{ id: 'bauen', titel: 'Bauen' }];
+/** Die Reiter der Kopfzeile (22.10., Kevins Bild n8n „Executions“) — „Läufe“ und „Tests“ kamen mit dem Lauf-Motor (Entscheidung 21.10.: keine toten Reiter). */
+export const WERKSTATT_REITER: readonly { id: WerkstattReiterId; titel: string }[] = [{ id: 'bauen', titel: 'Bauen' }, { id: 'laeufe', titel: 'Läufe' }, { id: 'tests', titel: 'Tests' }];
 const ENTWURF_MERKER = (id: string) => `make-prozess-entwurf:${id}`;
 const ZU_MERKER = (id: string) => `make-prozess-zu:${id}`;
 const RASTER_MERKER = 'make-werkstatt-raster';
@@ -57,7 +73,12 @@ const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(
 type Speicher = { art: 'gespeichert' | 'ausstehend' | 'speichert' | 'fehler' | 'konflikt' | 'offline'; text?: string };
 
 export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: string; nurAnsehen: boolean; /** Steckbrief bzw. Version geändert — die Landkarte (Kachel, Brotkrumen) neu laden. */ onLandkarte?: () => void }) {
-  const { daten, fehler: ladeFehler } = useProzess(prozessId);
+  const { daten, fehler: ladeFehler, laden: prozessLaden } = useProzess(prozessId);
+  const laeufe = useLaeufe(prozessId);
+  const router = useRouter();
+  const adr = prozesseAusAdresse(useSearchParams());
+  const reiter: WerkstattReiterId = adr.w ?? 'bauen';
+  const reiterWaehlen = (w: WerkstattReiterId, lauf?: string | null) => router.push(WEG.prozesse({ p: prozessId, ansicht: 'werkstatt', w, ...(lauf ? { lauf } : {}), ...(adr.voll ? { voll: true } : {}) }), { scroll: false });
   const kat = useKatalog();
   const auswahlListen = useMemo(() => kat.daten?.auswahl ?? {}, [kat.daten]);
   const modelle = useMemo(() => kat.daten?.modelle ?? [], [kat.daten]);
@@ -86,6 +107,12 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const [hilfe, setHilfe] = useState(false);
   const [raster, setRaster] = useState(true);
   const [zu, setZu] = useState<Set<string>>(new Set());
+  const [webhook, setWebhook] = useState<WebhookKurz | null>(null);
+  const [probeFall, setProbeFall] = useState<FallWert>('beispiel');
+  const [probeOffen, setProbeOffen] = useState(false);
+  const [testErg, setTestErg] = useState<Map<string, TestErgebnis>>(new Map());
+  /** Feinschliff 22.10. (Befund 2): ein neu angehängter Knoten — sobald die Lage ihn kennt, fährt die Kamera hin. */
+  const zeigeNeu = useRef<string | null>(null);
   const flaeche = useRef<FlaecheSteuerung>(null);
   const stand = useRef('');
   const fassungRef = useRef<Fassung | null>(null);
@@ -115,6 +142,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
       } catch { schreib(sitzung(), ENTWURF_MERKER(prozessId), null); }
     }
     setZu(new Set((lies(lokal(), ZU_MERKER(prozessId)) ?? '').split(',').filter(Boolean)));
+    setWebhook((daten.webhook as WebhookKurz | null) ?? null);
     if (lies(lokal(), RASTER_MERKER) === 'aus') setRaster(false);
   }, [daten, eintrag, prozessId]);
 
@@ -127,6 +155,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
     return { ...rest, knoten: fassung.knoten, ...(fassung.zettel ? { zettel: fassung.zettel } : {}) };
   }, [eintrag, fassung, versionAnsicht]);
   const lage = useMemo(() => (d ? werkstattLage(d, { team, zu }) : null), [d, team, zu]);
+  useEffect(() => { const id = zeigeNeu.current; if (id && lage?.knoten.has(id)) { zeigeNeu.current = null; flaeche.current?.insBild(id); } }, [lage]);
+  // Testergebnisse gelten für genau diese Fassung — jede Änderung macht sie wieder „noch nicht geprüft“.
+  useEffect(() => { setTestErg(m => (m.size ? new Map() : m)); }, [fassung]);
   const ausstehend = speicher.art === 'ausstehend' || speicher.art === 'speichert' || speicher.art === 'fehler' || speicher.art === 'offline' || speicher.art === 'konflikt';
   const befunde = useMemo(() => (d && (ausstehend || versionAnsicht) ? definitionPruefen(d, {}) : befundeServer), [d, ausstehend, versionAnsicht, befundeServer]);
   const raete = useMemo(() => (d ? hinweiseVon(d) : []), [d]);
@@ -264,8 +295,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const ausKatalog = (e: KatalogEintrag, ziel: AnhangZiel & { bahn?: string }) => {
     let neu = neuerKnoten(e, neueKennung('fk'));
     if (ziel.bahn) neu = inBahn(neu, ziel.bahn as ReturnType<typeof bahnSchluessel>) ?? neu;
+    // Feinschliff 22.10. (Befund 5): was nach außen geht, folgt der Menschen-Bahn des Vorgängers (kein Zickzack Mensch/System/Mensch).
+    else if (ziel.nach) { const b = bahnBeimAnhaengen(neu, d?.knoten.find(k => k.id === ziel.nach)); if (b) neu = inBahn(neu, b) ?? neu; }
     const ok = mitFassung(f => anlegen(f, neu, { nach: ziel.nach ?? null, ...(ziel.vor ? { vor: ziel.vor } : {}), ...(ziel.phaseId ? { phaseId: ziel.phaseId } : {}), ...(ziel.ausgang ? { ausgang: ziel.ausgang } : {}), ...platzFuer(neu, ziel) }));
-    if (ok) { setAuswahl([neu.id]); setKanteWahl(null); setRahmenWahl(null); }
+    if (ok) { setAuswahl([neu.id]); setKanteWahl(null); setRahmenWahl(null); zeigeNeu.current = neu.id; }
     setFormauswahl(null);
     flaeche.current?.fokus();
   };
@@ -387,13 +420,37 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   // ── Probelauf (Vertrag mit dem Lauf-Motor, Etappe C1) ──
   const probelauf = async () => {
     setProbeHinweis(null);
+    setProbeOffen(false);
     if (!versionAnsicht) await sichern();
-    const r = await fetch(`${PROBELAUF_PFAD}?space=business`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(probelaufKoerper(prozessId, versionAnsicht ? 'version' : 'entwurf')) }).catch(() => null);
+    const fall = probeFall === 'beispiel' ? 'beispiel' as const : { art: probeFall.art, id: probeFall.id };
+    const r = await fetch(`${PROBELAUF_PFAD}?space=business`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(probelaufKoerper(prozessId, versionAnsicht ? 'version' : 'entwurf', fall)) }).catch(() => null);
     const a = probelaufAus(r?.status ?? 0, r ? await r.json().catch(() => null) : null);
     if (a.art === 'fehlt') { setProbe(null); setProbeHinweis(PROBE_FEHLT); return; }
     if (a.art === 'fehler') { setProbe(null); setProbeHinweis(a.text); return; }
     setProbe(a.ergebnis);
-    ansagen(`Probelauf: ${a.ergebnis.schritte.length} Schritte, geschätzt ${centText(a.ergebnis.kostenSchaetzungCent)}.`);
+    ansagen(`Probelauf${probeFall === 'beispiel' ? ' mit dem Beispiel' : ` mit „${probeFall.name}“`}: ${a.ergebnis.schritte.length} Schritte, geschätzt ${centText(a.ergebnis.kostenSchaetzungCent)}.`);
+  };
+
+  // ── Zustand, Status, Neu laden (22.10.) ──
+  /** Eintrag und Laufzeit-Stand neu laden (nach Scharfschalten, Einstellungen, Status) — die Fassung auf der Fläche bleibt. */
+  const neuLaden = async () => {
+    const r = await prozessLaden();
+    if (r) { stand.current = r.stand; setEintrag(r.eintrag); setBefundeServer(r.befunde); setGeaendertSeitVersion(r.entwurfGeaendert); setWebhook((r.webhook as WebhookKurz | null) ?? null); onLandkarte?.(); }
+    await laeufe.laden();
+  };
+  const statusSetzen = async (status: ProzessStatus): Promise<string | null> => {
+    if (!(await sichern())) return 'Erst muss der Entwurf gespeichert sein.';
+    const r = await werkstattSenden(() => ({ aktion: 'status', id: prozessId, stand: stand.current, status }));
+    const j = r.j;
+    if (r.status === 200 && j?.ok && j.eintrag && j.stand) { stand.current = j.stand; setEintrag(j.eintrag); setBefundeServer(j.befunde ?? []); await laeufe.laden(); onLandkarte?.(); return null; }
+    if (j?.befunde) setBefundeServer(j.befunde);
+    if (r.status === 409 && j?.eintrag && j.stand) { stand.current = j.stand; setEintrag(j.eintrag); }
+    return String(j?.fehler ?? 'Der Status ließ sich nicht setzen.');
+  };
+  const testsAlle = async () => {
+    const r = await testsPruefen(prozessId, laeufe.daten?.tests ?? []);
+    if ('ergebnisse' in r) setTestErg(new Map(r.ergebnisse.map(e => [e.id, e])));
+    else setMeldung({ text: r.fehler, art: 'kritisch' });
   };
 
   // ── Versionen ──
@@ -442,6 +499,14 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   if (!daten || !eintrag || !fassung || !d || !lage) {
     return <div className="pw-werkstatt">{ladeFehler ? <Hinweis art="kritisch">{ladeFehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Werkstatt lädt …</p>}</div>;
   }
+  const konten = new Map((auswahlListen['konto-person'] ?? []).map(t => [t.id, t.label]));
+  const jungeVersion = eintrag.versionen.at(-1);
+  // Ob die jüngste Version einen Webhook-Auslöser hat, weiß die Ansicht nur, wenn der Entwurf seitdem gleich ist — sonst sagt es der Server beim Schalten.
+  const versionHatWebhook = !geaendertSeitVersion ? !!webhookAusloeserVon(eintrag.entwurf) : true;
+  const webhookZusatz = (k: K) => (k.form === 'ausloeser' && (k.ausloeser?.art === 'webhook' || k.katalog?.id === 'ausloeser.webhook')
+    ? <WebhookKarte prozessId={prozessId} webhook={webhook} eingaenge={laeufe.daten?.webhookEingaenge ?? []} felder={k.ausloeser?.art === 'webhook' ? k.ausloeser.felder : []}
+        darf={!!rechte?.webhook && !nurAnsehen} versionHatWebhook={!!jungeVersion && versionHatWebhook} onWebhook={w => { setWebhook(w); void laeufe.laden(); }} />
+    : null);
   const ein = auswahl.length === 1 ? auswahl[0] : null;
   const panelKnoten = ein ? d.knoten.find(k => k.id === ein) ?? null : null;
   const panelZettel = ein ? (d.zettel ?? []).find(z => z.id === ein) ?? null : null;
@@ -453,15 +518,17 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const spFarbe = speicher.art === 'gespeichert' ? C.inkLeise : speicher.art === 'fehler' || speicher.art === 'konflikt' ? LEUCHT.kritisch : speicher.art === 'offline' ? LEUCHT.achtung : C.inkDim;
   const v = eintrag.versionen.at(-1);
   return (
-    <div className="pw-werkstatt" onKeyDown={e => { if (e.key === 'Escape' && (formauswahl || hilfe)) { e.preventDefault(); setFormauswahl(null); setHilfe(false); } }}>
+    <div className="pw-werkstatt" onKeyDown={e => { if (e.key === 'Escape' && (formauswahl || hilfe || probeOffen)) { e.preventDefault(); setFormauswahl(null); setHilfe(false); setProbeOffen(false); } }}>
       <div className="pw-kopf">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          {WERKSTATT_REITER.length > 1 && <Reiter liste={WERKSTATT_REITER.map(r => ({ id: r.id, label: r.titel }))} aktiv="bauen" onWahl={() => undefined} ariaLabel="Werkstatt" />}
-          <Chip farbe={eintrag.status === 'aktiv' ? LEUCHT.gut : C.inkDim}>{v ? `Version ${v.nr}${eintrag.status !== 'entwurf' ? ` · ${eintrag.status}` : ''}` : 'Entwurf'}</Chip>
-          {!nurLesen && <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: spFarbe }}><SP size={14} aria-hidden />{spText}</span>}
-          {nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? 'Am Handy nur ansehen' : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
+          {WERKSTATT_REITER.length > 1 && <Reiter liste={WERKSTATT_REITER.map(r => ({ id: r.id, label: r.id === 'laeufe' && laeufe.daten?.laeufe.length ? `${r.titel} · ${laeufe.daten.laeufe.length}` : r.id === 'tests' && laeufe.daten?.tests.length ? `${r.titel} · ${laeufe.daten.tests.length}` : r.titel }))} aktiv={reiter} onWahl={w => reiterWaehlen(w)} ariaLabel="Werkstatt" />}
+          {v && <Chip farbe={C.inkDim}>{`Version ${v.nr}`}</Chip>}
+          <WerkstattSteuerung prozessId={prozessId} def={d} status={eintrag.status} hatVersion={!!v} laufStand={laeufe.daten?.stand ?? null}
+            rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} />
+          {reiter === 'bauen' && !nurLesen && <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: spFarbe }}><SP size={14} aria-hidden />{spText}</span>}
+          {reiter === 'bauen' && nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? 'Am Handy nur ansehen' : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
         </div>
-        <div className="pw-werkzeuge" role="toolbar" aria-label="Werkstatt">
+        {reiter === 'bauen' && <div className="pw-werkzeuge" role="toolbar" aria-label="Werkstatt">
           {!nurLesen && <SymbolKnopf ariaLabel="Rückgängig (⌘Z)" aus={!geschichte.zurueck.length} onClick={zurueck}><Undo2 size={16} /></SymbolKnopf>}
           {!nurLesen && <SymbolKnopf ariaLabel="Wiederholen (⌘⇧Z)" aus={!geschichte.vor.length} onClick={vor}><Redo2 size={16} /></SymbolKnopf>}
           {!nurLesen && <Knopf leise onClick={() => taste({ art: 'ordnen' })} titel="Ordnen — eine Leserichtung (⇧O, rückgängig machbar)"><span className="pz-knopf-inhalt"><LayoutGrid size={14} aria-hidden />Ordnen</span></Knopf>}
@@ -472,9 +539,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Alles zeigen" onClick={() => flaeche.current?.allesZeigen()}><Maximize2 size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
-          <Knopf leise onClick={probelauf} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts)"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>
-          {!nurAnsehen && !versionAnsicht && <Knopf onClick={() => setVersionenOffen(true)} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>}
-        </div>
+          <Knopf leise onClick={() => setProbeOffen(o => !o)} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts); mit dem Beispiel oder einem echten Fall"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>
+          {!nurAnsehen && !versionAnsicht && <Knopf onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>}
+        </div>}
       </div>
       {konflikt && (
         <Hinweis art="achtung" titel="Inzwischen hat jemand anders diesen Entwurf geändert" aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}><Knopf onClick={meineSpeichern}>Meine Fassung speichern</Knopf><Knopf leise onClick={andereUebernehmen}>Andere Fassung übernehmen</Knopf></span>}>
@@ -494,8 +561,16 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
       {(speicher.art === 'fehler' || speicher.art === 'offline') && speicher.text && <Hinweis art={speicher.art === 'fehler' ? 'kritisch' : 'achtung'}>{speicher.text}{speicher.art === 'fehler' ? ' Deine Fassung bleibt hier — nach der nächsten Änderung wird erneut gespeichert.' : ''}</Hinweis>}
       {meldung && <Hinweis art={meldung.art} aktion={<SymbolKnopf ariaLabel="Meldung schließen" onClick={() => setMeldung(null)}><X size={14} /></SymbolKnopf>}>{meldung.text}</Hinweis>}
       {probeHinweis && <Hinweis art="info" aktion={<SymbolKnopf ariaLabel="Schließen" onClick={() => setProbeHinweis(null)}><X size={14} /></SymbolKnopf>}>{probeHinweis}</Hinweis>}
-      {probe && <Hinweis art="info" titel="Probelauf — nichts wurde geschrieben" aktion={<Knopf leise onClick={() => setProbe(null)}>Beenden</Knopf>}>{`Grün würde laufen, gelb wartet bzw. braucht Freigabe, grau wird übersprungen, rot ist ein Fehler. Kosten geschätzt: ${centText(probe.kostenSchaetzungCent)}.`}</Hinweis>}
-      <div className={`pw-raster${nurAnsehen ? ' pw-raster-schmal' : ''}`}>
+      {reiter === 'bauen' && probe && <Hinweis art="info" titel={`Probelauf ${probeFall === 'beispiel' ? 'mit dem Beispiel-Fall' : `mit „${probeFall.name}“`} — nichts wurde geschrieben`} aktion={<Knopf leise onClick={() => setProbe(null)}>Beenden</Knopf>}>{`Grün würde laufen, gelb wartet bzw. braucht Freigabe, grau wird übersprungen, rot ist ein Fehler. Kosten geschätzt: ${centText(probe.kostenSchaetzungCent)}.`}</Hinweis>}
+      {reiter === 'laeufe' && (
+        <WerkstattLaeufe prozessId={prozessId} laufId={adr.lauf ?? null} daten={laeufe.daten} fehler={laeufe.fehler} rechte={rechte} team={team} konten={konten} agentName={agentName}
+          onLauf={id => reiterWaehlen('laeufe', id)} onTestfall={() => reiterWaehlen('tests')} onNeu={laeufe.laden} />
+      )}
+      {reiter === 'tests' && (
+        <WerkstattTests prozessId={prozessId} d={d} tests={laeufe.daten?.tests ?? []} rechte={rechte} ergebnisse={testErg}
+          onErgebnisse={e => setTestErg(m => { const n = new Map(m); for (const x of e) n.set(x.id, x); return n; })} onNeu={laeufe.laden} />
+      )}
+      {reiter === 'bauen' && <div className={`pw-raster${nurAnsehen ? ' pw-raster-schmal' : ''}`}>
         <div ref={rahmen} className="pw-flaeche-rahmen">
           <WerkstattFlaeche ref={flaeche} d={d} lage={lage} szene={`${prozessId}:${versionAnsicht?.nr ?? 'entwurf'}`} auswahl={auswahl} kanteWahl={kanteWahl} rahmenWahl={rahmenWahl} andockWahl={andockWahl}
             probe={probeMap} befundJe={befundJe} unterzeile={unterzeile} mitSchloss={mitSchloss} nurLesen={nurLesen} raster={raster} handy={nurAnsehen}
@@ -511,9 +586,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
             onTaste={taste} />
           {formauswahl && (
             <WerkstattFormauswahl ort={formauswahl.ort} form={formauswahl.form} titel={formauswahl.ziel.nach ? `Anhängen an „${d.knoten.find(k => k.id === formauswahl.ziel.nach)?.titel ?? ''}“` : 'Baustein anlegen'}
-              ohneAusloeser={!!formauswahl.ziel.nach && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form !== 'ausloeser'}
+              ohneAusloeser={!!formauswahl.ziel.nach && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form !== 'ausloeser'} anhaengen={!!formauswahl.ziel.nach}
               onWahl={e => ausKatalog(e, formauswahl.ziel)} onZu={() => { setFormauswahl(null); flaeche.current?.fokus(); }} />
           )}
+          {probeOffen && <ProbeFallFenster fallArt={d.fallArt ?? 'mandat'} wert={probeFall} onWert={setProbeFall} onStart={probelauf} onZu={() => setProbeOffen(false)} />}
           {hilfe && (
             <div role="dialog" aria-label="Kürzel der Werkstatt" className="pz-hilfe">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -537,14 +613,16 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
             onKopieren={kopie}
             onPhase={phaseAktion}
             onZettel={(id, teil) => { if (teil) mitFassung(f => zettelAendern(f, id, teil), { auswahl: false }); else { mitFassung(f => zettelWeg(f, [id])); setAuswahl([]); } }}
-            agentName={agentName} />
+            agentName={agentName} knotenZusatz={webhookZusatz} />
           {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
         </aside>
-      </div>
+      </div>}
       <div aria-live="polite" className="pz-nur-vorlesen">{ansage}</div>
       {versionenOffen && (
         <VersionenFenster versionen={eintrag.versionen} befunde={befunde} sperrt={sperrt} darfVeroeffentlichen={!!rechte?.veroeffentlichen} entwurfGeaendert={geaendertSeitVersion || ausstehend}
-          ausstehend={ausstehend} onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} />
+          ausstehend={ausstehend} laufHinweise={laufBefunde(d)}
+          tests={{ anzahl: laeufe.daten?.tests.length ?? 0, stand: testStand(testErg.size ? [...testErg.values()] : null, laeufe.daten?.tests.length ?? 0), onPruefen: testsAlle }}
+          onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} />
       )}
     </div>
   );

@@ -87,6 +87,8 @@ export const HEUTE_STANDARD: Record<HeuteSicht, StandardPlatz[]> = {
     { id: 'zoe', art: 'zoe', breite: 2, einstellungen: { inbox: true } },
     // Heute im Fulfillment (17.10. spät, Kevin: „maximal einfach für uns“): was in den Fällen jetzt dran ist, mit dem Handgriff in der Zeile — ohne Punkt keine Karte.
     { id: 'fulfillment', art: 'fulfillment', breite: 4 },
+    // Prozesse heute (22.10., Punkt 69): eine Tageszeile „n gelaufen, m warten auf dich“ mit Link zu Prozesse — ohne Lauf keine Karte.
+    { id: 'prozesse', art: 'prozesse', breite: 2 },
     { id: 'anstehend', art: 'anstehend', breite: 4 },
     { id: 'termine', art: 'termine', breite: 4, einstellungen: { tage: 3, space: 'business', business: true }, titel: 'Nächste 3 Tage · Business' },
     { id: 'zeit', art: 'zeit', breite: 2, einstellungen: { space: 'beide' } },

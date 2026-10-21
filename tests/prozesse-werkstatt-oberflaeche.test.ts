@@ -158,7 +158,8 @@ describe('Verdrahtung und Wächter', () => {
     expect(w).toContain("addEventListener('beforeunload'");
     expect(w).toContain('PROBELAUF_PFAD');
     expect(w).toContain('setProbeHinweis(PROBE_FEHLT)');
-    expect(WERKSTATT_REITER.map(r => r.id)).toEqual(['bauen']);
+    // Seit 22.10. (Läufe-Ansicht): Bauen · Läufe · Tests — die Reiter kamen mit dem Lauf-Motor (tests/prozesse-laeufe-oberflaeche.test.ts).
+    expect(WERKSTATT_REITER.map(r => r.id)).toEqual(['bauen', 'laeufe', 'tests']);
     expect(w).toContain('WERKSTATT_REITER.length > 1 &&');
     expect(w).not.toMatch(/fetch\([^)]*prozesse\/werkstatt[^)]*method/); // geschrieben wird nur über werkstattSenden
     expect(lies('components/os/prozesse/werkstatt-daten.ts')).toContain("kette = lauf.catch(() => undefined);");
