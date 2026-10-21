@@ -67,7 +67,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
 }
 
 /**
- * Die Knöpfe am gewonnenen Deal ohne Mandat — mit der Platzgrenze (21.10., Rundgang B3, Kevin: „warnen, aber erlauben“): sind alle Plätze des Produkts
+ * Die Knöpfe am gewonnenen Deal ohne Mandat — mit der Platzgrenze (21.10., Rundgang B3: warnen, aber erlauben): sind alle Plätze des Produkts
  * belegt, fragt der Klick erst („Alle N Plätze belegt — trotzdem anlegen?“), ein Klick „Trotzdem anlegen“ legt an (der Server lehnt nie ab).
  */
 function AnlegenKnoepfe({ api, leistungId, business, anlegen }: { api: CrmApi; leistungId?: string; business: boolean; anlegen: (mitFall: boolean) => Promise<void> }) {
