@@ -221,7 +221,10 @@ export function abrechnenPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz'
 
 // ── Anrechnung ───────────────────────────────────────────────────────────────
 
-/** Merker der Anrechnung: Kennung der Minusposition je (angerechnetes Produkt, Firma) — gibt es sie auf einer gültigen Rechnung, nie noch einmal. */
+/**
+ * Kennung der Minusposition je (angerechnetes Produkt, Firma) — dieselbe auf jeder Rechnung, die einen Teil der Anrechnung trägt. Was auf gültigen
+ * Rechnungen (auch Entwürfen; storniert = frei) unter dieser Kennung steht, ist schon angerechnet (`angerechnetCent`).
+ */
 export const anrechnungId = (produktId: string, firmaId: string) => `${POS.anrechnung}${fnv(`${produktId}|${firmaId}`)}`;
 /** Ist die Position eine Anrechnung (darf negativ sein)? */
 export const istAnrechnung = (p: Pick<RechnungPosition, 'id'>) => p.id.startsWith(POS.anrechnung);
@@ -231,7 +234,7 @@ const gilt = (r: Pick<Rechnung, 'status' | 'art'>) => r.status !== 'storniert' &
 export interface AnrechnungKontext {
   katalog: readonly Pick<Leistung, 'id' | 'name' | 'regeln' | 'geloeschtAm'>[];
   mandate: readonly Pick<Mandat, 'id' | 'firmaId' | 'leistungId' | 'status' | 'honorar' | 'ustSatz' | 'geloeschtAm'>[];
-  rechnungen: readonly Pick<Rechnung, 'id' | 'status' | 'art' | 'mandatId' | 'kundeFirmaId' | 'positionen' | 'leistungVon'>[];
+  rechnungen: readonly Pick<Rechnung, 'id' | 'status' | 'art' | 'mandatId' | 'kundeFirmaId' | 'positionen' | 'leistungVon' | 'angebotId'>[];
   nettoAusBrutto: (brutto: number, satz: number) => number;
 }
 /**
@@ -252,34 +255,54 @@ export function gekauftCent(produktId: string, firmaId: string, ctx: AnrechnungK
     .reduce((a, x) => a + inCent(x.honorar.netto ? x.honorar.betrag : ctx.nettoAusBrutto(x.honorar.betrag, x.ustSatz)), 0);
 }
 
+/** Wie viel unter dieser Kennung schon angerechnet ist — netto, Cent, ≥ 0: die Minuspositionen auf gültigen Rechnungen (auch Entwürfen). */
+export function angerechnetCent(id: string, rechnungen: AnrechnungKontext['rechnungen']): number {
+  return rechnungen.filter(gilt).flatMap(r => (r.positionen ?? []).filter(p => p.id === id)).reduce((a, p) => a - positionNetto(p), 0);
+}
+
+/** Die Anrechnungen, die für das Hauptprodukt eines Mandats gelten: je Produkt mit Regel und Kauf der volle Betrag (netto, Cent) und was davon noch offen ist. */
+function anrechnungen(m: Pick<Mandat, 'id' | 'firmaId' | 'leistungId'>, ctx: AnrechnungKontext): { l: AnrechnungKontext['katalog'][number]; id: string; anteil: number; voll: number; bisher: number }[] {
+  if (!m.firmaId || !m.leistungId) return [];
+  const raus: { l: AnrechnungKontext['katalog'][number]; id: string; anteil: number; voll: number; bisher: number }[] = [];
+  for (const l of ctx.katalog) {
+    const a = l.regeln?.anrechnung;
+    if (l.geloeschtAm || !a?.auf.includes(m.leistungId)) continue;
+    const gekauft = gekauftCent(l.id, m.firmaId, ctx, m.id);
+    if (gekauft <= 0) continue;
+    const id = anrechnungId(l.id, m.firmaId);
+    raus.push({ l, id, anteil: a.anteilProzent, voll: kaufmaennisch((gekauft * a.anteilProzent) / 100), bisher: angerechnetCent(id, ctx.rechnungen) });
+  }
+  return raus;
+}
+/** Was von den Anrechnungen eines Mandats noch offen ist (netto, Cent, ≥ 0) — 0 = alles angerechnet bzw. nichts anzurechnen. */
+export const anrechnungOffenCent = (m: Pick<Mandat, 'id' | 'firmaId' | 'leistungId'>, ctx: AnrechnungKontext) =>
+  anrechnungen(m, ctx).reduce((s, x) => s + Math.max(0, x.voll - x.bisher), 0);
+
 /**
- * Die Anrechnung auf der Monatsrechnung eines Mandats (rein): je Produkt, das laut `regeln.anrechnung` auf das Hauptprodukt dieses Mandats
- * angerechnet wird und das die Firma gekauft hat (`gekauftCent`), EINE Minusposition „Anrechnung <Produkt>“ — Anteil laut Regel, höchstens bis zum
- * Betrag der Rechnung (netto, gleicher Steuersatz). Steht die Anrechnung (Kennung `anrechnungId`) schon auf einer gültigen Rechnung (auch einem
- * Entwurf), kommt sie nicht noch einmal. `positionen` = die übrigen Positionen dieser Rechnung.
+ * Die Anrechnung auf der Monatsrechnung eines Mandats (rein) — Kevin 21.10.: „Angerechnet wird der ganze gezahlte Betrag des angerechneten Produkts
+ * inklusive gewählter Optionen. Ist der erste Monat kleiner (Teilmonat), wandert der Rest auf die nächsten Rechnungen, bis alles angerechnet ist.“
+ * Je Produkt, das laut `regeln.anrechnung` auf das Hauptprodukt angerechnet wird und das die Firma gekauft hat (`gekauftCent`, alle Positionen dieses
+ * Produkts — auch Optionen), EINE Minusposition „Anrechnung <Produkt>“: Anteil laut Regel, abzüglich dessen, was unter derselben Kennung schon auf
+ * gültigen Rechnungen steht, höchstens bis zum Betrag dieser Rechnung (netto, gleicher Steuersatz). Der Rest kommt auf die nächste Rechnung.
+ * `positionen` = die übrigen Positionen dieser Rechnung. (Bis 21.10.: einmal, höchstens bis zum Rechnungsbetrag — der Rest verfiel.)
  */
 export function anrechnungPositionen(m: Pick<Mandat, 'id' | 'firmaId' | 'leistungId' | 'ustSatz'>, positionen: readonly RechnungPosition[], ctx: AnrechnungKontext, opt: { kleinunternehmer?: boolean } = {}): RechnungPosition[] {
   if (!m.firmaId || !m.leistungId) return [];
   const satz = satzVon(m, opt.kleinunternehmer);
-  const schon = new Set(ctx.rechnungen.filter(gilt).flatMap(r => (r.positionen ?? []).filter(istAnrechnung).map(p => p.id)));
   const raus: RechnungPosition[] = [];
   let rest = positionen.filter(p => p.ustSatz === satz).reduce((a, p) => a + positionNetto(p), 0);
-  for (const l of ctx.katalog) {
-    const a = l.regeln?.anrechnung;
-    if (l.geloeschtAm || !a?.auf.includes(m.leistungId) || rest <= 0) continue;
-    const id = anrechnungId(l.id, m.firmaId);
-    if (schon.has(id)) continue;
-    const gekauft = gekauftCent(l.id, m.firmaId, ctx, m.id);
-    if (gekauft <= 0) continue;
-    const voll = kaufmaennisch((gekauft * a.anteilProzent) / 100);
-    const betrag = Math.min(voll, rest);
+  const euro = (c: number) => (c / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  for (const x of anrechnungen(m, ctx)) {
+    const offen = x.voll - x.bisher;
+    if (offen <= 0 || rest <= 0) continue;
+    const betrag = Math.min(offen, rest);
     rest -= betrag;
-    const euro = (c: number) => (c / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    raus.push({
-      id, leistungId: l.id, titel: `Anrechnung ${l.name}`.slice(0, 200),
-      text: betrag < voll ? `Angerechnet ${a.anteilProzent === 100 ? 'voll' : `zu ${a.anteilProzent} %`}: ${euro(betrag)} € von ${euro(voll)} € (höchstens bis zum Betrag dieser Rechnung, einmalig).` : `Angerechnet ${a.anteilProzent === 100 ? 'voll' : `zu ${a.anteilProzent} %`} (einmalig).`,
-      menge: 1, einheit: 'pauschal', einzelpreisCent: -betrag, ustSatz: satz,
-    });
+    const danach = offen - betrag;
+    const wie = x.anteil === 100 ? 'voll' : `zu ${x.anteil} %`;
+    const text = !x.bisher && !danach
+      ? `Angerechnet ${wie}.`
+      : `Angerechnet ${wie}: ${euro(betrag)} € von ${euro(x.voll)} €${x.bisher ? ` (bisher ${euro(x.bisher)} €)` : ''}${danach ? ` — der Rest von ${euro(danach)} € folgt auf der nächsten Rechnung.` : ' — damit vollständig angerechnet.'}`;
+    raus.push({ id: x.id, leistungId: x.l.id, titel: `Anrechnung ${x.l.name}`.slice(0, 200), text, menge: 1, einheit: 'pauschal', einzelpreisCent: -betrag, ustSatz: satz });
   }
   return raus;
 }
@@ -393,43 +416,54 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
   return raus;
 }
 
-// ── Anrechnung in der Liquidität (19.10., P3b) ───────────────────────────────
+// ── Anrechnung in der Liquidität (19.10., P3b; 21.10. Rest über mehrere Monate) ───────────────────────
 
 /** Die Anrechnung als Liquiplan-Zahlung: Monat, Wirkung auf die Monatsrechnung (brutto, Cent, negativ) und die Namen der angerechneten Produkte. */
 export interface AnrechnungZahlung { monat: string; cent: number; titel: string }
 const ohneAnrechnung = (l: readonly RechnungPosition[]) => l.filter(p => !istAnrechnung(p));
 /** Was die Anrechnung auf einer Rechnung ausmacht (brutto, Cent, ≤ 0): Summe mit ihr minus Summe ohne sie — die Steuer kaufmännisch je Rechnung. */
 export const anrechnungWirkungCent = (positionen: readonly RechnungPosition[]) => rechnungSummen(positionen).brutto - rechnungSummen(ohneAnrechnung(positionen)).brutto;
+/** Wie viele Monate die Liquidität eine offene Anrechnung höchstens vorausrechnet (ein Mandat ohne Ende). */
+export const ANRECHNUNG_MONATE = 36;
 
 /**
- * Die Anrechnung in der Liquidität — DIESELBE Regel wie die Monatsrechnung (`monatsPositionen` + `anrechnungPositionen`): einmal, höchstens bis zum
- * Betrag des Monats (der Rest verfällt wie auf der Rechnung), im Monat der ersten Rechnung des Hauptprodukts.
- *   · Steht sie schon auf einer Rechnung dieses Mandats: ihre Wirkung im Leistungsmonat dieser Rechnung (nur ab `abMonat` — Vergangenes ist Rechnung).
- *   · Steht sie auf einer anderen gültigen Rechnung (Merker): keine.
- *   · Sonst im ersten Monat ab `abMonat`, in dem das Mandat eine Monatsrechnung hat — so, wie die Rechnung sie dort rechnen wird.
- * Leer ohne Regel, ohne Kauf bzw. ohne Firma (Mandat ohne Anrechnung: nichts, bit-gleich).
+ * Die Anrechnung in der Liquidität — DIESELBE Regel wie die Monatsrechnung (`monatsPositionen` + `anrechnungPositionen`): je Monat höchstens bis zum
+ * Betrag des Monats, der Rest wandert in die Folgemonate, bis alles angerechnet ist (Kevin 21.10.).
+ *   · Steht sie schon auf Rechnungen dieses Mandats: deren Wirkung im jeweiligen Leistungsmonat (nur ab `abMonat` — Vergangenes ist Rechnung).
+ *   · Danach Monat für Monat ab `abMonat` (Monate, die schon eine Monatsrechnung haben, ausgenommen): so, wie die Rechnung sie dort rechnen wird —
+ *     jede gedachte Rechnung zählt für die nächste mit, bis nichts mehr offen ist (höchstens bis zum Ende bzw. `ANRECHNUNG_MONATE`).
+ * Was auf Rechnungen anderer Mandate derselben Firma angerechnet ist, ist angerechnet (dieselbe Kennung). Leer ohne Regel, ohne Kauf bzw. ohne
+ * Firma (Mandat ohne Anrechnung: nichts, bit-gleich).
  */
 export function anrechnungLiquiditaet(m: Mandat, abMonat: string, ende: string | null, ctx: AnrechnungKontext & Pick<PositionKontext, 'katalog'>): AnrechnungZahlung[] {
   if (!m.firmaId || !m.leistungId) return [];
-  const eigene = ctx.rechnungen.filter(r => gilt(r) && r.mandatId === m.id && (r.positionen ?? []).some(istAnrechnung));
   const titel = (l: readonly RechnungPosition[]) => l.filter(istAnrechnung).map(p => p.titel).join(', ');
-  if (eigene.length) {
-    return eigene.filter(r => typeof r.leistungVon === 'string' && r.leistungVon.slice(0, 7) >= abMonat)
-      .map(r => ({ monat: r.leistungVon!.slice(0, 7), cent: anrechnungWirkungCent(r.positionen!), titel: titel(r.positionen!) }))
-      .filter(x => x.cent < 0);
+  const raus: AnrechnungZahlung[] = [];
+  const eigene = ctx.rechnungen.filter(r => gilt(r) && r.mandatId === m.id && typeof r.leistungVon === 'string');
+  for (const r of eigene) {
+    if (!(r.positionen ?? []).some(istAnrechnung) || r.leistungVon!.slice(0, 7) < abMonat) continue;
+    const cent = anrechnungWirkungCent(r.positionen!);
+    if (cent < 0) raus.push({ monat: r.leistungVon!.slice(0, 7), cent, titel: titel(r.positionen!) });
   }
+  // Monate mit Monatsrechnung (auch ohne Anrechnung, auch Entwurf) rechnet die Rechnung — die Simulation lässt sie aus.
+  const belegt = new Set(eigene.filter(r => !r.angebotId && !nurAbgerechnet(r)).map(r => r.leistungVon!.slice(0, 7)));
   const pctx: PositionKontext = { katalog: ctx.katalog, nettoAusBrutto: ctx.nettoAusBrutto };
   const start = [abMonat, m.start?.slice(0, 7)].filter((x): x is string => !!x).sort().at(-1)!;
-  const letzter = ende ? ende.slice(0, 7) : monatPlus(start, 24);
-  for (let mo = start; mo <= letzter; mo = monatPlus(mo, 1)) {
+  const letzter = ende ? ende.slice(0, 7) : monatPlus(start, ANRECHNUNG_MONATE);
+  let sim: AnrechnungKontext['rechnungen'] = ctx.rechnungen;
+  for (let mo = start, n = 0; mo <= letzter && n <= ANRECHNUNG_MONATE; mo = monatPlus(mo, 1), n++) {
+    if (!anrechnungOffenCent(m, { ...ctx, rechnungen: sim })) break;
+    if (belegt.has(mo)) continue;
     const pos = monatsPositionen(m, mo, pctx, ende);
     if (!pos.length) continue;
-    const anr = anrechnungPositionen(m, pos, ctx);
-    if (!anr.length) return [];
+    const anr = anrechnungPositionen(m, pos, { ...ctx, rechnungen: sim });
+    if (!anr.length) continue;
     const cent = anrechnungWirkungCent([...pos, ...anr]);
-    return cent < 0 ? [{ monat: mo, cent, titel: titel(anr) }] : [];
+    if (cent < 0) raus.push({ monat: mo, cent, titel: titel(anr) });
+    // Die gedachte Rechnung dieses Monats: was sie anrechnet, ist für die nächste angerechnet.
+    sim = [...sim, { id: `sim-${mo}`, status: 'geplant', mandatId: m.id, positionen: anr, leistungVon: `${mo}-01` }];
   }
-  return [];
+  return raus.sort((x, y) => x.monat.localeCompare(y.monat));
 }
 
 // ── Anzeige ──────────────────────────────────────────────────────────────────

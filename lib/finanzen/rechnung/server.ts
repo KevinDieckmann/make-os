@@ -143,6 +143,8 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
   let vorhandenIn: ((l: Rechnung[]) => Rechnung | undefined) | null = null;
   /** Rechnung über alle Positionen eines Angebots: Kennung der Einmalposten-Rechnung, die es dann nicht geben darf (auch in der Sperre geprüft). */
   let sperreEinmal: string | null = null;
+  /** Anrechnung (21.10.): in der Sperre gegen die dann gespeicherten Rechnungen neu gerechnet — was inzwischen angerechnet wurde, kommt nicht doppelt. */
+  let anrechnungNeu: ((rechnungen: Rechnung[]) => RechnungPosition[]) | null = null;
 
   const firma = (fid: unknown) => (firmaIdOk(fid) ? crm.firmen.find(f => f.id === fid && !f.geloeschtAm) : undefined);
   const kontakt = (kid: unknown) => (kontaktIdOk(kid) ? kontakte.find(k => k.id === kid) : undefined);
@@ -238,7 +240,10 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     // Monatsrechnung (P3): Honorar wie bisher + Zusatzmodule (lib/crm/mandat-zusatz.ts) + Abgerechnetes + einmal die Anrechnung eines gekauften Produkts.
     // Steht die Monatsrechnung schon (gestellt), werden die abgerechneten Module eine eigene Rechnung (nur sie).
     const basisPositionen = da ? abgerechnet : [...monatsPositionen(m, monat, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto }), ...abgerechnet];
-    const positionen = da ? basisPositionen : [...basisPositionen, ...anrechnungPositionen(m, basisPositionen, { katalog: crm.leistungen, mandate: crm.mandate, rechnungen: plan.rechnungen, nettoAusBrutto }, { kleinunternehmer: ku(g) })];
+    // Anrechnung (Kevin 21.10.): was vom gekauften Produkt (inkl. Optionen) noch offen ist, höchstens bis zum Betrag dieser Rechnung — der Rest folgt.
+    const anrechnungFuer = (rechnungen: Rechnung[]) => anrechnungPositionen(m, basisPositionen, { katalog: crm.leistungen, mandate: crm.mandate, rechnungen, nettoAusBrutto }, { kleinunternehmer: ku(g) });
+    if (!da) anrechnungNeu = anrechnungFuer;
+    const positionen = da ? basisPositionen : [...basisPositionen, ...anrechnungFuer(plan.rechnungen)];
     if (da) vorhandenIn = null;
     entwurf = neuerEntwurf({
       id, firmaId: g, kunde: kundeAus(empf, m.kunde), titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}${da ? ' (abgerechnete Zusatzmodule)' : ''}`, empfaenger: empf,
@@ -272,17 +277,19 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
   let gespeichert: Rechnung | null = null;
   let schonDa: Rechnung | null = null;
   const finde = vorhandenIn as ((l: Rechnung[]) => Rechnung | undefined) | null;
+  const anrechnungInSperre = anrechnungNeu as ((rechnungen: Rechnung[]) => RechnungPosition[]) | null;
   await updateJson<FinanzplanFile>('finanzplan', cur => {
     const f = planBasis(cur);
     // Zwei gleichzeitige „aus Angebot/Mandat“: der zweite bekommt den ersten Entwurf (kein Doppel).
     const da = finde?.(f.rechnungen);
     if (da && cur) { schonDa = da; return cur; }
     if (sperreEinmal && einmalSchon(f.rechnungen, sperreEinmal)) throw new RechnungFehler(EINMAL_SCHON, 409, { grund: 'einmalposten-schon' });
-    // Anrechnung (P3): steht sie inzwischen auf einer anderen gültigen Rechnung (zwei gleichzeitige Entwürfe), kommt sie hier nicht noch einmal.
-    const schonAngerechnet = new Set(f.rechnungen.filter(r => r.status !== 'storniert' && r.art !== 'storno').flatMap(r => (r.positionen ?? []).filter(istAnrechnung).map(x => x.id)));
-    if (entwurf.positionen?.some(x => istAnrechnung(x) && schonAngerechnet.has(x.id))) {
-      const pos = entwurf.positionen.filter(x => !(istAnrechnung(x) && schonAngerechnet.has(x.id)));
-      entwurf = { ...entwurf, positionen: pos, ...betragFelder(pos, { kleinunternehmer: !!gs.find(x => x.id === entwurf.firmaId)?.kleinunternehmer }) };
+    // Anrechnung (P3; 21.10. mit Rest über mehrere Rechnungen): gegen die Rechnungen IN der Sperre neu gerechnet — wurde inzwischen (zweiter Entwurf
+    // gleichzeitig) schon etwas angerechnet, steht hier nur noch, was offen ist (bzw. nichts).
+    if (anrechnungInSperre && entwurf.positionen) {
+      const ohne = entwurf.positionen.filter(x => !istAnrechnung(x));
+      const pos = [...ohne, ...anrechnungInSperre(f.rechnungen)];
+      if (JSON.stringify(pos) !== JSON.stringify(entwurf.positionen)) entwurf = { ...entwurf, positionen: pos, ...betragFelder(pos, { kleinunternehmer: !!gs.find(x => x.id === entwurf.firmaId)?.kleinunternehmer }) };
     }
     const sauber = sauberFile({ rechnungen: [entwurf] }).rechnungen[0];
     const neu = ugFirmaNachziehen({ ...f, rechnungen: [...f.rechnungen, sauber] });

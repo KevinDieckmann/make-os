@@ -163,15 +163,17 @@ export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean;
       id: `${PLANPOSTEN_MANDAT}${m.id}${PLANPOSTEN_TEIL}${z.id}`, titel: titelMit(name, ` — ${z.titel}`.slice(0, 60)), betrag: z.betrag, rhythmus: z.rhythmus, ab: z.ab, ...(z.bis ? { bis: z.bis } : {}), ...gemeinsam, leistungsmonat: z.monat, notiz: z.notiz,
     }))
     : [];
-  // Anrechnung (19.10., P3b): dieselbe Regel wie die Monatsrechnung — einmal, höchstens bis zum Betrag des Monats, im Monat der ersten Rechnung;
-  // ein eigener einmaliger Posten (negativ) am Zahltag dieses Monats. Ohne Bestand bzw. ohne Regel keiner (bit-gleich).
-  const anrechnung: Planposten[] = opt.anrechnung && opt.katalog && m.firmaId && m.leistungId
-    ? anrechnungLiquiditaet(m, basis.slice(0, 7), ende, { katalog: opt.katalog, mandate: opt.anrechnung.mandate, rechnungen: opt.anrechnung.rechnungen, nettoAusBrutto }).map((a, i) => {
-      const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, a.monat);
-      return { id: anrechnungPostenId(m, i ? a.monat : undefined), titel: titelMit(name, ` — ${a.titel}`.slice(0, 60)), betrag: a.cent / 100, rhythmus: 'einmalig' as const, ab: plusTage(lm?.tage ? lm.von : `${a.monat}-01`, zahlungsziel(m)), ...gemeinsam, leistungsmonat: a.monat,
-        notiz: `Aus dem Mandat (CRM): ${a.titel} — einmal, auf der Rechnung für ${monatsName(a.monat)} (höchstens bis zum Betrag des Monats).` };
-    })
+  // Anrechnung (19.10., P3b; 21.10. Kevin: der Rest wandert in die Folgemonate): dieselbe Regel wie die Monatsrechnung — je Monat höchstens bis zum
+  // Betrag des Monats; je Monat ein eigener einmaliger Posten (negativ) am Zahltag dieses Monats. Ohne Bestand bzw. ohne Regel keiner (bit-gleich).
+  const anrechnungRoh = opt.anrechnung && opt.katalog && m.firmaId && m.leistungId
+    ? anrechnungLiquiditaet(m, basis.slice(0, 7), ende, { katalog: opt.katalog, mandate: opt.anrechnung.mandate, rechnungen: opt.anrechnung.rechnungen, nettoAusBrutto })
     : [];
+  const anrechnung: Planposten[] = anrechnungRoh.map((a, i) => {
+    const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, a.monat);
+    const teil = anrechnungRoh.length > 1 ? ` ${monatsName(a.monat)}` : '';
+    return { id: anrechnungPostenId(m, i ? a.monat : undefined), titel: titelMit(name, ` — ${a.titel}${teil}`.slice(0, 60)), betrag: a.cent / 100, rhythmus: 'einmalig' as const, ab: plusTage(lm?.tage ? lm.von : `${a.monat}-01`, zahlungsziel(m)), ...gemeinsam, leistungsmonat: a.monat,
+      notiz: `Aus dem Mandat (CRM): ${a.titel} — auf der Rechnung für ${monatsName(a.monat)} (höchstens bis zum Betrag des Monats; ein Rest folgt im nächsten Monat).` };
+  });
   const haupt = hauptPosten(m, { ende, basis, name, gemeinsam });
   return zusatz.length || anrechnung.length ? [...haupt, ...zusatz, ...anrechnung].sort((x, y) => x.ab.localeCompare(y.ab)) : haupt;
 }
