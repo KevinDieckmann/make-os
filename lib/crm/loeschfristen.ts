@@ -57,7 +57,9 @@ export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'head
   // 09.10. (E1 Ereignisstelle): Ereignisse für die Agenten (nur Kennungen) — rollend.
   | 'ereignisse'
   // 10.10. (Fulfillment, FULFILLMENT_KONZEPT.md 8.1): Personenkarten, Unterlagen und Mandatsdaten — je ab Mandatsende.
-  | 'fulfillment-personen' | 'fulfillment-unterlagen' | 'fulfillment-mandatsdaten';
+  | 'fulfillment-personen' | 'fulfillment-unterlagen' | 'fulfillment-mandatsdaten'
+  // 21.10. (Prozesse C1): beendete Läufe der Prozesse (nur Kennungen und Status).
+  | 'prozess-laeufe';
 export type Einheit = 'tage' | 'monate';
 
 export interface FristDef {
@@ -126,6 +128,8 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'fulfillment-personen', titel: 'Fulfillment: berufliche Personenkarten der Dossiers', einheit: 'tage', standard: 90, min: 30, max: 365, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e, Art. 14 DSGVO', hinweis: 'Gezählt ab Mandatsende: danach fällt jede Personenkarte weg, nur der Vermerk (Anzahl) bleibt am Dossier.' },
   { id: 'fulfillment-unterlagen', titel: 'Fulfillment: Unterlagen der Kunden', einheit: 'tage', standard: 90, min: 30, max: 3650, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Gezählt ab Mandatsende: hochgeladene und intern abgelegte Unterlagen fallen weg — außer sie wurden als Beleg übernommen.' },
   { id: 'fulfillment-mandatsdaten', titel: 'Fulfillment: Antworten, Puls-Sätze, Stakeholder-Haltung und -Notiz', einheit: 'monate', standard: 12, min: 3, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Gezählt ab Mandatsende: Formular-Antworten, Puls-Sätze sowie Haltung und Notiz der Stakeholder fallen weg; der Fall selbst bleibt.' },
+  // 21.10. (Prozesse C1, lib/prozesse/lauf-server.ts): nur Kennungen und Status je Schritt — ab dem Ende des Laufs; offene Läufe bleiben.
+  { id: 'prozess-laeufe', titel: 'Prozesse: beendete Läufe', einheit: 'monate', standard: 12, min: 1, max: 36, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Je Lauf nur Kennungen, Status und Zeitpunkte (nie Texte oder Namen) — beendete Läufe und Verlauf-Einträge des Prozesses fallen nach der Frist weg; offene Läufe bleiben, bis sie enden.' },
   { id: 'sicherungen', titel: 'Sicherungen (Tages-, Wochen-, Monatsgenerationen)', einheit: 'monate', standard: SICHERUNG_GENERATIONEN.monatlich, min: SICHERUNG_GENERATIONEN.monatlich, max: SICHERUNG_GENERATIONEN.monatlich, wirkung: 'fest', anzeige: `bis zu ${SICHERUNG_GENERATIONEN.monatlich} Monate`, norm: 'Art. 5 Abs. 1 lit. e, Art. 17, Art. 32 DSGVO', hinweis: SICHERUNG_SATZ },
 ];
 

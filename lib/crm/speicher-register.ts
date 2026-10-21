@@ -794,6 +794,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Kontakt: die Auskunft zählt die Eingänge, die die Person nennen (weitere Speicher); Konten des Haushalts sehen Adresse und Zähler in der Werkstatt, nie den Schlüssel',
     loeschfrist: 'Eingänge nach der Frist „ereignisse“ (Vorgabe 30 Tage, Stammdaten › Datenschutz) im täglichen Löschfristen-Lauf; Adresse und Fingerabdruck bis „Webhook entfernen“ bzw. Archivieren des Prozesses',
   }),
+  // Prozesse · Läufe (21.10., Etappe C1, lib/prozesse/lauf-server.ts): je Haushalt des Inhabers, nur Business. Je Lauf NUR Kennungen und Status (Punkt 98).
+  mit(T('prozess-laeufe--*', 'Läufe der Prozesse: je Lauf Prozess, Version, Fall (Kennung: Lead/Deal/Mandat/Firma/Event/Kampagne), Kennungen aus dem auslösenden Ereignis (Kontakt, Firma, Deal …), je besuchtem Schritt Status, Zeitpunkte, Kosten und die Kennungen der Wirkungen (Aufgabe, Vorschlag, Teil-Lauf) — nie Texte, Namen oder Adressen (die stehen in Aufgabe, Vorschlag bzw. Akte). Dazu je Prozess Einstellungen (Budget, Flutschutz, Ziel/Abbruch), Zähler und der Verlauf (wer schaltete scharf, Gründe von Hand). Art. 17: Kennung der Person → „[gelöscht]“, der Lauf endet (Fall weg); Konto löschen: Speichername → „[gelöscht]“.', 'prozess-laeufe'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Durchführung der Geschäftsabläufe (Kundengewinnung, Übergabe, Fulfillment) durch die Mitglieder des Haushalts; Dritte nur als Kennung',
+    art15: 'Kontakt: die Auskunft zählt die Läufe, die seine Kennung tragen (weitere Speicher); Konten des Haushalts sehen die Läufe unter Prozesse (GET /api/prozesse/laeufe) — nur Kennungen und Status',
+    loeschfrist: 'beendete Läufe nach der Frist „prozess-laeufe“ (Vorgabe 12 Monate ab Ende, Stammdaten › Datenschutz) im täglichen Löschfristen-Lauf; offene Läufe bleiben, bis sie enden (Art. 18/Werbesperre beenden sie sofort)',
+  }),
   K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
@@ -870,6 +876,8 @@ const IN_BUSINESS: readonly string[] = [
   'fulfillment--*', 'fulfillment-faelle--*', 'fulfillment-kunde--*', 'fulfillment-dossiers--*', 'fulfillment-personen--*', 'fulfillment-unterlagen',
   // Prozesse (21.10., B1): Werkstatt und Webhooks — nur Business
   'prozesse--*', 'prozesse-webhook--*',
+  // Prozesse · Läufe (21.10., C1) — nur Business
+  'prozess-laeufe--*',
 ];
 const JE_PERSON: readonly string[] = [
   // Gesundheit (Art. 9) — Altbestand ohne Suffix gehört dem Inhaber
