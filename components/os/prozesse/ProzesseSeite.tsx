@@ -124,7 +124,7 @@ export function ProzesseSeite() {
         box: huelle([lage.box], 20), boxen: boxenVon({ phasen: lage.phasen, geister: lage.geister }), faeden, rahmen: lage.rahmen,
         minimap: [...lage.phasen.map(x => ({ box: x, farbe: tonVon(p) })), ...lage.geister.map(g => ({ box: g, farbe: C.inkLeise }))],
         zeichne: st => <ProzessBild lage={lage} prozess={p} zahlen={zahlen} stufe={st} spitze={spitze}
-          onPhase={id => buehne.current?.fliegeIn(id, () => geh({ p: p.id, ph: id }))} onGeist={id => buehne.current?.fliegeIn(`geist:${id}`, () => geh({ p: id }))} />,
+          onPhase={id => buehne.current?.fliegeIn(id, () => geh({ p: p.id, ph: id }))} onGeist={id => buehne.current?.fliegeIn(`geist:${id}`, () => geh({ p: id }))} onZahl={h => router.push(h)} />,
       };
     }
     const bild = flaecheBild(alsVorlage(p));
@@ -137,7 +137,7 @@ export function ProzesseSeite() {
       rahmen: [{ id: 'alles', titel: p.titel, box: huelle([bild.box], 40) }, ...bild.rahmen.map(r => ({ id: r.id, titel: r.titel, box: huelle([r], 20) }))],
       minimap: [...bild.rahmen.map(r => ({ box: r, farbe: C.inkLeise })), ...bild.knoten.map(k => ({ box: k, farbe: FORM_FARBE[k.form] }))],
       zeichne: st => <AblaufBild bild={bild} prozess={p} zahlen={zahlen} gewaehlt={pfad.s ?? null} stufe={st} spitze={spitze} ende={ende}
-        onSchritt={(phase, id) => geh({ p: p.id, ph: phase, s: id }, { ersetzen: !!pfad.s })} onPhase={id => geh({ p: p.id, ph: id }, { ersetzen: true })} />,
+        onSchritt={(phase, id) => geh({ p: p.id, ph: phase, s: id }, { ersetzen: !!pfad.s })} onPhase={id => geh({ p: p.id, ph: id }, { ersetzen: true })} onZahl={h => router.push(h)} />,
     };
   }, [daten, prozesse, zahlen, nach, p, ph, pfad.s, geh, router]);
 

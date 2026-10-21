@@ -19,8 +19,7 @@ import { kachelTexte, kurztitel, zahlTexte, zahlSchluessel } from '@/lib/prozess
 import { STUFE_FARBE, tonVon } from '@/lib/prozesse/farben';
 import type { ZoomStufe } from '../ui/flaeche/stufe';
 import { FlaecheForm, FlaecheStart, FlaecheRahmen, FlaecheGruppe, FlaechePfeil, FlaecheSpitze, FLAECHE_SCHRIFT, textZeilen } from '../ui/reise/flaeche-formen';
-import { FORM_FARBE, JETZT } from '../ui/reise/formen';
-import type { FlussForm } from '@/lib/reise/bild';
+import { JETZT } from '../ui/reise/formen';
 
 /**
  * Schrift der Kacheln je Zoomstufe (Bildpunkte der Fläche): so groß, dass sie im Bild lesbar bleibt — fern ≈ 13 px bei Zoom 0,5, mittel ≈ 13 px ab 0,7
@@ -55,17 +54,6 @@ function ZahlPille({ x, y, text, rot, groesse = FLAECHE_SCHRIFT.unter, ton, href
       <text x={rot ? groesse + 14 : 9} y={h / 2} dominantBaseline="central" fontSize={groesse} fontWeight={600} fill={rot ? farbe : C.ink}>{text}</text>
     </g>
   );
-}
-
-/** Ein kleines Zeichen je Form (Kasten, Brief, Raute, Pille, Kalender) — die Form trägt die Bedeutung, die Farbe kommt dazu. */
-function FormMini({ form, x, y }: { form: FlussForm; x: number; y: number }) {
-  const f = FORM_FARBE[form];
-  const s = { fill: TIEF.flaeche(f), stroke: f, strokeWidth: 1.4 };
-  if (form === 'entscheidung') return <polygon points={`${x + 6},${y} ${x + 12},${y + 6} ${x + 6},${y + 12} ${x},${y + 6}`} {...s} />;
-  if (form === 'erinnerung') return <rect x={x} y={y + 1} width={13} height={10} rx={5} {...s} />;
-  if (form === 'nachricht') return <g><rect x={x} y={y + 1} width={13} height={10} rx={1.5} {...s} /><path d={`M${x} ${y + 2} L${x + 6.5} ${y + 7} L${x + 13} ${y + 2}`} fill="none" stroke={f} strokeWidth={1.2} /></g>;
-  if (form === 'termin') return <g><rect x={x} y={y + 1} width={13} height={11} rx={1.5} {...s} /><line x1={x} x2={x + 13} y1={y + 4} y2={y + 4} stroke={f} strokeWidth={1.4} /></g>;
-  return <rect x={x} y={y + 1} width={13} height={10} rx={1.5} {...s} />;
 }
 
 /** Rand zum Aufleuchten (sichtbar nur mit `data-pz-leuchten` am Element — CSS). */
@@ -151,9 +139,9 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, onKachel,
 
 // ── Ebene 2: ein Prozess ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onGeist }: {
+export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onGeist, onZahl }: {
   lage: ProzessLage; prozess: ProzessDef; zahlen: Readonly<Record<string, Zahl>>; stufe: ZoomStufe; spitze: string;
-  onPhase: (id: string) => void; onGeist: (id: string) => void;
+  onPhase: (id: string) => void; onGeist: (id: string) => void; onZahl?: (href: string) => void;
 }) {
   const ton = tonVon(prozess);
   const fern = stufe === 'fern';
@@ -168,7 +156,8 @@ export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onG
         </g>
       ))}
       {lage.phasen.map(ph => {
-        const z = zahlTexte(zahlen[zahlSchluessel({ p: prozess.id, ph: ph.id })]);
+        const zr = zahlen[zahlSchluessel({ p: prozess.id, ph: ph.id })];
+        const z = zahlTexte(zr);
         const schritte = prozess.phasen.find(x => x.id === ph.id)?.schritte ?? [];
         return (
           <g key={ph.id} data-pz-id={ph.id} data-pz-klick="" className="pz-kachel" role="button" tabIndex={0} transform={`translate(${ph.x} ${ph.y})`}
@@ -181,14 +170,15 @@ export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onG
             {fern
               ? <Text text={ph.titel} x={18} y={62} breite={ph.b - 36} groesse={KACHEL_SCHRIFT.fern} gewicht={700} />
               : <text x={18} y={56} fontSize={19} fontWeight={700} fill={C.ink}>{textZeilen(ph.titel, ph.b - 36, 19, 1)[0] ?? ''}</text>}
-            {z?.haupt && <ZahlPille x={ph.b - 12} y={10} text={z.haupt} ton={ton} rechtsBuendig />}
+            {z?.haupt && <ZahlPille x={ph.b + 6} y={-12} text={z.haupt} ton={ton} rechtsBuendig {...(zr?.href && onZahl ? { href: zr.href, onZahl } : {})} />}
+            {/* Ebene 2: der Hauptweg als ruhige Aufzählung — Formen (Raute, Erinnerung …) erst im Ablauf (Punkt 5). */}
             {!fern && ph.zeilen.map((t, i) => (
               <g key={i}>
-                <FormMini form={schritte[i]?.form ?? 'schritt'} x={18} y={80 + i * 28} />
-                <text x={40} y={92 + i * 28} fontSize={15} fill={C.inkDim}>{textZeilen(t, ph.b - 58, 15, 1)[0] ?? ''}</text>
+                <circle cx={24} cy={87 + i * 28} r={3} fill={C.inkLeise} />
+                <text x={36} y={92 + i * 28} fontSize={15} fill={C.inkDim}>{textZeilen(t, ph.b - 54, 15, 1)[0] ?? ''}</text>
               </g>
             ))}
-            {!fern && ph.mehr > 0 && <text x={40} y={92 + ph.zeilen.length * 28} fontSize={15} fill={C.inkLeise}>{`+${ph.mehr} weitere`}</text>}
+            {!fern && ph.mehr > 0 && <text x={36} y={92 + ph.zeilen.length * 28} fontSize={15} fill={C.inkLeise}>{`+${ph.mehr} weitere`}</text>}
           </g>
         );
       })}
@@ -210,9 +200,9 @@ export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onG
 
 // ── Ebene 3/4: der Ablauf auf der Fläche (dieselben Formen wie im Editor, nur lesbar) ─────────────────────────────────────────────────────
 
-export function AblaufBild({ bild, prozess, zahlen, gewaehlt, stufe, spitze, ende, onSchritt, onPhase }: {
+export function AblaufBild({ bild, prozess, zahlen, gewaehlt, stufe, spitze, ende, onSchritt, onPhase, onZahl }: {
   bild: FlaecheBild; prozess: ProzessDef; zahlen: Readonly<Record<string, Zahl>>; gewaehlt: string | null; stufe: ZoomStufe; spitze: string;
-  ende: ReadonlySet<string>; onSchritt: (phaseId: string, id: string) => void; onPhase: (id: string) => void;
+  ende: ReadonlySet<string>; onSchritt: (phaseId: string, id: string) => void; onPhase: (id: string) => void; onZahl?: (href: string) => void;
 }) {
   const fern = stufe === 'fern';
   const ton = tonVon(prozess);
@@ -233,14 +223,15 @@ export function AblaufBild({ bild, prozess, zahlen, gewaehlt, stufe, spitze, end
       {bild.starts.map(s => <g key={s.id} transform={`translate(${s.x} ${s.y})`}><FlaecheStart b={s.b} h={s.h} titel={s.titel} /></g>)}
       {bild.abstimmungen.map(a => <g key={a.id} transform={`translate(${a.x} ${a.y})`}><FlaecheForm form="entscheidung" umriss="raute" b={a.b} h={a.h} titel={a.titel} /></g>)}
       {bild.knoten.map(k => {
-        const z = zahlTexte(zahlen[zahlSchluessel({ p: prozess.id, ph: k.phaseId, s: k.id })]);
+        const zr = zahlen[zahlSchluessel({ p: prozess.id, ph: k.phaseId, s: k.id })];
+        const z = zahlTexte(zr);
         return (
           <g key={k.id} data-pz-id={k.id} data-pz-klick="" className="pz-kachel" role="button" tabIndex={0} transform={`translate(${k.x} ${k.y})`}
             aria-label={`${k.titel}${z?.haupt ? `, ${z.haupt}` : ''}${ende.has(k.id) ? ', Ende dieses Wegs' : ''} — Schritt öffnen`} aria-pressed={gewaehlt === k.id}
             onClick={() => onSchritt(k.phaseId, k.id)} onKeyDown={taste(() => onSchritt(k.phaseId, k.id))} style={{ cursor: 'pointer' }}>
             <FlaecheForm form={k.form} umriss={k.umriss} b={k.b} h={k.h} titel={k.titel} gewaehlt={gewaehlt === k.id} />
             <Leuchtrand b={k.b} h={k.h} rx={10} />
-            {z?.haupt && <ZahlPille x={k.b + 6} y={-14} text={z.haupt} ton={ton} rechtsBuendig />}
+            {z?.haupt && <ZahlPille x={k.b + 6} y={-14} text={z.haupt} ton={ton} rechtsBuendig {...(zr?.href && onZahl ? { href: zr.href, onZahl } : {})} />}
             {ende.has(k.id) && <text x={k.b / 2} y={k.h + 22} textAnchor="middle" fontSize={FLAECHE_SCHRIFT.unter} fontWeight={600} fill={C.inkLeise}>■ Ende</text>}
           </g>
         );

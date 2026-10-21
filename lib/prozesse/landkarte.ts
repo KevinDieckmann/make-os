@@ -11,7 +11,7 @@
 
 import { pfeilWeg, pfeilTextOrt, type Box } from '@/lib/fulfillment/prozesse/flaeche';
 import { BAENDER, KERN_STUFEN, type Band, type KernStufe, type ProzessDef } from './typen';
-import { stufeVon } from './modell';
+import { neinVon, stufeVon } from './modell';
 import { reiheVerteilen, r1 } from './lage';
 
 /** Maße der Landkarte (Bildpunkte der Fläche). */
@@ -173,7 +173,9 @@ export interface ProzessLage {
 /** Die Lage eines Prozesses auf Ebene 2 (siehe Kopf). `alle` = alle Prozesse (für die Übergaben von und an). */
 export function prozessLage(p: ProzessDef, alle: readonly ProzessDef[]): ProzessLage {
   const M = PROZESS_MASS;
-  const hoehen = p.phasen.map(ph => M.phase.kopf + Math.min(M.zeigen, ph.schritte.length) * M.phase.zeile + (ph.schritte.length > M.zeigen ? M.phase.zeile : 0) + 14);
+  // Ebene 2 zeigt je Phase nur den Hauptweg (ohne Nein-Zweige) — Rauten und Erinnerungen gehören erst in den Ablauf (Ebene 3, Punkt 5).
+  const hauptweg = p.phasen.map(ph => ph.schritte.filter(x => !neinVon(ph, x.id)));
+  const hoehen = hauptweg.map(l => M.phase.kopf + Math.min(M.zeigen, l.length) * M.phase.zeile + (l.length > M.zeigen ? M.phase.zeile : 0) + 14);
   const maxH = Math.max(M.marke.h, ...hoehen);
   const mitte = r1(maxH / 2);
   let x = 0;
@@ -181,7 +183,7 @@ export function prozessLage(p: ProzessDef, alle: readonly ProzessDef[]): Prozess
   x += M.marke.b + M.luecke;
   const phasen: PhaseLage[] = p.phasen.map((ph, i) => {
     const h = hoehen[i];
-    const l: PhaseLage = { id: ph.id, nr: i + 1, titel: ph.titel, x, y: r1(mitte - h / 2), b: M.phase.b, h, zeilen: ph.schritte.slice(0, M.zeigen).map(s => s.titel), mehr: Math.max(0, ph.schritte.length - M.zeigen) };
+    const l: PhaseLage = { id: ph.id, nr: i + 1, titel: ph.titel, x, y: r1(mitte - h / 2), b: M.phase.b, h, zeilen: hauptweg[i].slice(0, M.zeigen).map(s => s.titel), mehr: Math.max(0, hauptweg[i].length - M.zeigen) };
     x += M.phase.b + M.luecke;
     return l;
   });

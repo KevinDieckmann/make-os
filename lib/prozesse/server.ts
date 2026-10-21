@@ -66,7 +66,7 @@ async function fulfillmentZahlen(heute: string, vorlagen: readonly import('@/lib
   for (const v of vorlagen) {
     const je = kundenJeKnoten(v, faelle);
     const wurzel = v.knoten.find(k => !k.elternId);
-    const fall = (n: number) => ({ wert: n, wort: n === 1 ? 'Fall' : 'Fälle' });
+    const fall = (n: number): Zahl => ({ wert: n, wort: n === 1 ? 'Fall' : 'Fälle', href: WEG.fulfillment() });
     // Die Kachel eines Pakets zählt seine Fälle; die Landkarte (Hochhaus) zählt nur an ihren Etagen (alle Fälle stehen schon an „Lieferung“).
     if (wurzel && v.art !== 'landkarte' && je[wurzel.id]?.length) knoten[v.id] = fall(je[wurzel.id].length);
     // Phasen und Schritte (auch in benannten Teilprozessen) — der Schlüssel aus der Phase, in der der Knoten liegt.
