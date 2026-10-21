@@ -159,6 +159,11 @@ export interface Mandat {
    * einmaliges Zusatzmodul (lib/crm/mandat-zusatz.ts). Vorgabe: der Zahlplan des Hauptpreises des Produkts.
    */
   zahlplan?: { anzahlungProzent: number };
+  /**
+   * Nur bei `honorar.basis` „tag“ (21.10., Rundgang B4): geplante Tage je Monat — die Liquidität plant Tagessatz × Tage monatlich (wie die Planung); die
+   * Rechnung nimmt die echten Tage. Vorgabe: die geplante Menge des Produkts.
+   */
+  tageJeMonat?: number;
   geaendert: string;
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
@@ -186,6 +191,8 @@ export interface MandatZusatz {
   zahlplan?: { anzahlungProzent: number };
   /** Nur Stundensatz (P3): geplante Stunden je Monat für die Liquidität — Vorgabe und Obergrenze ist der Deckel des Produkts. */
   stundenJeMonat?: number;
+  /** Nur Tagessatz (21.10., B4): geplante Tage je Monat für die Liquidität — Vorgabe die geplante Menge des Produkts; abgerechnet wird nach Tagen. */
+  tageJeMonat?: number;
 }
 export type MandatZusatzBasis = 'monat' | 'jahr' | 'einmalig' | 'einheit' | 'tag' | 'stunde';
 
@@ -214,6 +221,11 @@ export interface PreisTeil {
   kontingent?: string;
   /** Nur `stundensatz`: höchstens N Stunden je Monat. */
   deckel?: { stundenJeMonat?: number };
+  /**
+   * Nur Tages-/Stundensatz (21.10., Rundgang B4): geplante Menge je Monat (Tage bzw. Stunden) für Finanzplanung und Liquidität — Satz × Menge monatlich;
+   * die Rechnung nimmt die echten Tage/Stunden. Fehlt sie: der Deckel (Stundensatz) bzw. 0 (`geplanteMenge`, lib/crm/produkt-karte.ts).
+   */
+  mengeJeMonat?: number;
   /** Kurze Erklärung („Bonus bei erreichten Zielen“, „Erfolgsbeteiligung ab 2. Vertrag“). */
   text?: string;
 }

@@ -415,8 +415,10 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
     const notiz = `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — wie die Monatsrechnung.`;
     const zahlungen: Zahlung[] = [];
     if (art === 'abrechnen') {
-      // Stundensatz mit geplanten Stunden je Monat (höchstens der Deckel) — die echten Stunden kommen per „abrechnen“ auf die Rechnung.
-      const std = z.honorar?.basis === 'stunde' ? Math.min(z.stundenJeMonat ?? 0, zusatzDeckel(z, ctx.katalog) ?? Infinity) : 0;
+      // Stundensatz mit geplanten Stunden je Monat (höchstens der Deckel), Tagessatz mit geplanten Tagen (21.10., B4) — die echten Stunden bzw. Tage kommen
+      // per „abrechnen“ auf die Rechnung.
+      const tag = z.honorar?.basis === 'tag';
+      const std = z.honorar?.basis === 'stunde' ? Math.min(z.stundenJeMonat ?? 0, zusatzDeckel(z, ctx.katalog) ?? Infinity) : tag ? z.tageJeMonat ?? 0 : 0;
       if (!(std > 0)) continue;
       for (const mo of monate) {
         const lm = leistungsmonat(zr, mo);
@@ -425,7 +427,7 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
         const p: RechnungPosition = { id: 'x', titel: 'x', text: '', menge: 1, einheit: 'Monat', einzelpreisCent: netto, ustSatz: satzVon(m) };
         zahlungen.push({ monat: mo, cent: brutto([p]), tag: plusTage(lm.von, ziel), voll: !lm.anteilig, titel: `${name} ${monatsName(mo)}${lm.anteilig ? ' anteilig' : ''}` });
       }
-      raus.push(...buendeln(z.id, zahlungen, 1, offen, `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — ${z.stundenJeMonat} Std./Monat geplant (abgerechnet wird nach Stunden).`, name));
+      raus.push(...buendeln(z.id, zahlungen, 1, offen, tag ? `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — ${std.toLocaleString('de-DE')} Tage/Monat geplant (abgerechnet wird nach Tagen).` : `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — ${z.stundenJeMonat} Std./Monat geplant (abgerechnet wird nach Stunden).`, name));
       continue;
     }
     if (art !== 'monat' && art !== 'jahr' && art !== 'einmalig') continue;
@@ -511,7 +513,7 @@ export function zusatzBeschreibung(z: MandatZusatz, katalog?: Katalog): string {
   else if (art === 'jahr') kern = `${euro(h.betragCent)} netto/Jahr`;
   else if (art === 'einmalig') kern = `${euro(h.betragCent)} netto einmalig${z.zahlplan ? ` · ${z.zahlplan.anzahlungProzent === 50 ? 'Zahlung 50/50' : `${z.zahlplan.anzahlungProzent} % Anzahlung`}` : ''}`;
   else if (h.basis === 'stunde') kern = `${euro(h.betragCent)} netto/Stunde${z.stundenJeMonat ? ` · ${z.stundenJeMonat.toLocaleString('de-DE')} Std./Monat geplant` : ''}${zusatzDeckel(z, katalog) ? ` · höchstens ${zusatzDeckel(z, katalog)} Std./Monat` : ''}`;
-  else if (h.basis === 'tag') kern = `${euro(h.betragCent)} netto/Tag`;
+  else if (h.basis === 'tag') kern = `${euro(h.betragCent)} netto/Tag${z.tageJeMonat ? ` · ${z.tageJeMonat.toLocaleString('de-DE')} Tage/Monat geplant` : ''}`;
   else kern = `${euro(h.betragCent)} netto je ${zusatzEinheit(z, katalog)}`;
   return [kern, zeit].filter(Boolean).join(' · ');
 }

@@ -62,8 +62,10 @@ export function MandatVertrag({ m, produkt, setze }: { m: Mandat; produkt?: Leis
           <Wahl label="Rechnungsrhythmus" liste={RHYTHMUS} wert={m.rechnungsrhythmus} onWahl={rechnungsrhythmus => setze({ rechnungsrhythmus })} />
           <Feld typ="number" wert={String(m.zahlungszielTage ?? 14)} breite={150} platzhalter="Zahlungsziel Tage" onFertig={x => { const n = Math.round(Number(x)); if (Number.isFinite(n) && n >= 0 && n <= 120) void setze({ zahlungszielTage: n }); }} />
           {m.honorar.basis === 'einmalig' && <Feld typ="number" wert={m.zahlplan ? String(m.zahlplan.anzahlungProzent) : ''} breite={150} platzhalter="Anzahlung %" onFertig={x => { const n = Math.round(Number(x)); void setze({ zahlplan: n >= 1 && n <= 99 ? { anzahlungProzent: n } : undefined }); }} />}
+          {/* Tagessatz (21.10., B4): geplante Tage je Monat — die Liquidität plant Satz × Tage, die Rechnung nimmt die echten Tage. */}
+          {m.honorar.basis === 'tag' && <Feld typ="number" wert={m.tageJeMonat ? String(m.tageJeMonat) : ''} breite={160} platzhalter="Tage/Monat geplant" onFertig={x => { const n = Math.round(Number(x.replace(',', '.')) * 100) / 100; void setze({ tageJeMonat: n >= 0.25 && n <= 744 ? n : undefined }); }} />}
         </div>
-        <span style={klein}>{m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit` : 'ohne Mindestlaufzeit'} · Rechnung {RHYTHMUS.find(r => r.id === m.rechnungsrhythmus)?.label} · Zahlungsziel {m.zahlungszielTage ?? 14} Tage{m.honorar.basis === 'einmalig' && m.zahlplan ? ` · Zahlung ${m.zahlplan.anzahlungProzent} % bei Beginn, Rest bei Abschluss` : ''}</span>
+        <span style={klein}>{m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit` : 'ohne Mindestlaufzeit'} · Rechnung {RHYTHMUS.find(r => r.id === m.rechnungsrhythmus)?.label} · Zahlungsziel {m.zahlungszielTage ?? 14} Tage{m.honorar.basis === 'einmalig' && m.zahlplan ? ` · Zahlung ${m.zahlplan.anzahlungProzent} % bei Beginn, Rest bei Abschluss` : ''}{m.honorar.basis === 'tag' ? (m.tageJeMonat ? ` · ${m.tageJeMonat.toLocaleString('de-DE')} Tage/Monat geplant` : ' · geplante Tage je Monat offen (ohne sie plant die Liquidität nichts)') : ''}</span>
         {produkt && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={klein}>Vom Produkt „{produkt.name}“: {preiseText(produkt)}{produktText.length ? ` · ${produktText.join(' · ')}` : ''}</span>
@@ -156,14 +158,15 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
                 <Feld typ="date" wert={z.bis} breite={150} platzhalter="bis" onFertig={bis => aendern(z.id, { bis: bis || undefined })} />
                 <Wahl label="Berechnet oder inklusive" liste={JA_NEIN} wert={z.inklusive ? 'ja' : 'nein'} onWahl={x => {
                   const l = katalog.find(k => k.id === z.leistungId);
-                  void aendern(z.id, x === 'ja' ? { inklusive: true, honorar: undefined, zahlplan: undefined, stundenJeMonat: undefined } : { inklusive: undefined, menge: undefined, je: undefined, ...(z.honorar ? {} : l && zusatzHonorar(l) ? { honorar: zusatzHonorar(l), ...zusatzExtras(l) } : {}) });
+                  void aendern(z.id, x === 'ja' ? { inklusive: true, honorar: undefined, zahlplan: undefined, stundenJeMonat: undefined, tageJeMonat: undefined } : { inklusive: undefined, menge: undefined, je: undefined, ...(z.honorar ? {} : l && zusatzHonorar(l) ? { honorar: zusatzHonorar(l), ...zusatzExtras(l) } : {}) });
                 }} />
               </div>
               {!z.inklusive && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Feld wert={z.honorar ? eingabeAusCent(z.honorar.betragCent) : ''} breite={130} platzhalter="Honorar €" onFertig={t => { const c = centAusEingabe(t); if (c !== null) void aendern(z.id, { honorar: { betragCent: c, basis: z.honorar?.basis ?? 'monat' } }); else if (!t.trim()) void aendern(z.id, { honorar: undefined }); }} />
-                  <Wahl label="Wie oft" liste={BASIS} wert={z.honorar?.basis ?? null} onWahl={basis => aendern(z.id, { honorar: { betragCent: z.honorar?.betragCent ?? 0, basis }, ...(basis !== 'einmalig' ? { zahlplan: undefined } : {}), ...(basis !== 'stunde' ? { stundenJeMonat: undefined } : {}) })} />
+                  <Wahl label="Wie oft" liste={BASIS} wert={z.honorar?.basis ?? null} onWahl={basis => aendern(z.id, { honorar: { betragCent: z.honorar?.betragCent ?? 0, basis }, ...(basis !== 'einmalig' ? { zahlplan: undefined } : {}), ...(basis !== 'stunde' ? { stundenJeMonat: undefined } : {}), ...(basis !== 'tag' ? { tageJeMonat: undefined } : {}) })} />
                   {z.honorar?.basis === 'einmalig' && <Feld typ="number" wert={z.zahlplan ? String(z.zahlplan.anzahlungProzent) : ''} breite={150} platzhalter="Anzahlung %" onFertig={t => { const n = Math.round(Number(t)); void aendern(z.id, { zahlplan: n >= 1 && n <= 99 ? { anzahlungProzent: n } : undefined }); }} />}
+                  {z.honorar?.basis === 'tag' && <Feld typ="number" wert={z.tageJeMonat ? String(z.tageJeMonat) : ''} breite={160} platzhalter="Tage/Monat geplant" onFertig={t => { const n = Math.round(Number(t.replace(',', '.')) * 100) / 100; void aendern(z.id, { tageJeMonat: n >= 0.25 && n <= 744 ? n : undefined }); }} />}
                   {z.honorar?.basis === 'stunde' && <Feld typ="number" wert={z.stundenJeMonat ? String(z.stundenJeMonat) : ''} breite={160} platzhalter={`Std./Monat geplant${zusatzDeckel(z, katalog) ? ` (≤ ${zusatzDeckel(z, katalog)})` : ''}`} onFertig={t => { const n = Number(t); const d = zusatzDeckel(z, katalog); void aendern(z.id, { stundenJeMonat: n > 0 ? Math.min(n, d ?? n) : undefined }); }} />}
                 </div>
               )}

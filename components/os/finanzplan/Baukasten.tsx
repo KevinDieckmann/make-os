@@ -24,7 +24,7 @@ import {
   RHYTHMUS_LABEL, KOSTENART_LABEL, BAUSTEIN_EINHEIT_LABEL,
   type Planszenario, type Baustein, type Rhythmus, type KostenArt, type BausteinEinheit, type Regler,
 } from '@/lib/finanzen/szenarien';
-import { bausteinAusProdukt, einheitAusGesellschaft, RHYTHMUS_AUS_BASIS, type ProduktVorschlag, type IstBasisVorschlag } from '@/lib/finanzen/produkte';
+import { bausteinAusProdukt, einheitAusGesellschaft, RHYTHMUS_AUS_BASIS, produktPlanText as produktPreisText, type ProduktVorschlag, type IstBasisVorschlag } from '@/lib/finanzen/produkte';
 import { schwellenVon } from '@/lib/finanzen/schwellen';
 import { usePlan, rechne, type Gerechnet } from './daten';
 import { Geld, Kachel, Kacheln, Tabelle, TH, THr, TD, TDr, TDleise, ZahlFeld, TextFeld, Auswahl, MonatWahl, KnopfKlein, Hinweis, Dialog, Feld, Formular, Schalter, StatusPille, Legende, Pillen, Nichts, Etikett, KUPFER, LILA, personName } from './teile';
@@ -215,7 +215,7 @@ export function Baukasten() {
               {vorgewaehlt && (
                 <div style={{ marginBottom: 10 }}>
                   <UiHinweis art="info" titel={`„${vorgewaehlt.name}“ aus der Produkt-Karte`} aktion={<Knopf onClick={() => bausteinDazu(bausteinAusProdukt(neueKennung('b'), vorgewaehlt, { start: m0 }), `Umsatz aus Produkt ${vorgewaehlt.name}`)}>Als Umsatzbaustein hinzufügen</Knopf>}>
-                    {vorgewaehlt.fehlt.length ? `Für die Planung fehlt im Produkt noch: ${vorgewaehlt.fehlt.join(', ')} — der Baustein geht trotzdem, die Werte lassen sich hier ändern.` : `${vorgewaehlt.preis ? `${eur(vorgewaehlt.preis)} € ${vorgewaehlt.basis ? RHYTHMUS_LABEL[RHYTHMUS_AUS_BASIS[vorgewaehlt.basis]] : ''}` : 'Preis offen'}${vorgewaehlt.laufzeit ? ` · ${vorgewaehlt.laufzeit} Monate` : ''} — Kunde, Menge und Start danach in der Zeile.`}
+                    {vorgewaehlt.fehlt.length ? `Für die Planung fehlt im Produkt noch: ${vorgewaehlt.fehlt.join(', ')} — der Baustein geht trotzdem, die Werte lassen sich hier ändern.` : `${produktPreisText(vorgewaehlt)}${vorgewaehlt.laufzeit ? ` · ${vorgewaehlt.laufzeit} Monate` : ''} — Kunde, Menge und Start danach in der Zeile.`}
                   </UiHinweis>
                 </div>
               )}
@@ -226,7 +226,7 @@ export function Baukasten() {
                     <button key={p.id} type="button" title={p.fehlt.length ? `Für die Planung fehlt: ${p.fehlt.join(', ')} — auf der Produktseite ergänzen` : `${p.einheit}${p.laufzeit ? ` · ${p.laufzeit} Monate` : ''}`}
                       onClick={() => void bausteinDazu(bausteinAusProdukt(neueKennung('b'), p, { start: m0 }), `Umsatz aus Produkt ${p.name}`)}
                       style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${p.id === produktParam ? C.aktiv : p.fehlt.length ? `${LEUCHT.achtung}66` : 'rgba(255,255,255,.12)'}`, background: p.id === produktParam ? `${C.aktiv}1F` : 'transparent', color: p.fehlt.length ? LEUCHT.achtung : C.ink }}>
-                      + {p.name}{p.preis ? ` · ${eur(p.preis)} € ${p.basis ? RHYTHMUS_LABEL[RHYTHMUS_AUS_BASIS[p.basis]] : ''}` : ' · Preis offen'}{p.status === 'entwurf' ? ' · Entwurf' : ''}
+                      + {p.name} · {produktPreisText(p)}{p.status === 'entwurf' ? ' · Entwurf' : ''}
                     </button>
                   ))}
                 </div>

@@ -163,6 +163,8 @@ export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>
     ...(v?.zusatz?.length ? { zusatz: v.zusatz } : {}),
     // Zahlplan (21.10., B2): nur, solange das Honorar einmalig bleibt (im Dialog auf „je Monat“ umgestellt: keiner).
     ...(v?.zahlplan && h.honorar.basis === 'einmalig' ? { zahlplan: v.zahlplan } : {}),
+    // Geplante Tage (21.10., B4): nur, solange das Honorar je Tag bleibt.
+    ...(v?.tageJeMonat && h.honorar.basis === 'tag' ? { tageJeMonat: v.tageJeMonat } : {}),
     quelle: 'Von Hand angelegt (Produkte & Mandate)', ...(o.zustaendig ? { zustaendig: o.zustaendig } : {}), geaendert: o.jetzt, geaendertVon: o.person,
   };
 }

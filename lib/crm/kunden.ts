@@ -181,7 +181,14 @@ export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean;
 
 /** Die Posten des Honorars (ohne Zusatzmodule) — genau wie bis 19.10. */
 function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: string; gemeinsam: Pick<Planposten, 'sicher' | 'wahrscheinlich' | 'firmaId' | 'kategorie' | 'mandatId'> }): Planposten[] {
-  if (!(m.honorar.betrag > 0) || m.honorar.basis === 'tag') return [];
+  if (!(m.honorar.betrag > 0)) return [];
+  // Tagessatz (21.10., Rundgang B4): mit geplanten Tagen je Monat plant die Liquidität Tagessatz × Tage — wie ein Monatshonorar (Teilmonat anteilig, volle
+  // Monate ein Monatsposten); abgerechnet werden die echten Tage. Ohne geplante Tage: kein Posten (wie bisher).
+  if (m.honorar.basis === 'tag') {
+    if (!(m.tageJeMonat && m.tageJeMonat > 0)) return [];
+    const monatlich: Mandat = { ...m, honorar: { ...m.honorar, betrag: Math.round(m.honorar.betrag * m.tageJeMonat * 100) / 100, basis: 'monat' }, rechnungsrhythmus: 'monatlich' };
+    return hauptPosten(monatlich, o).map(p => ({ ...p, notiz: `Aus dem Mandat (CRM): ${m.tageJeMonat!.toLocaleString('de-DE')} Tage/Monat geplant × ${m.honorar.betrag} € ${m.honorar.netto ? 'netto' : 'brutto'} — abgerechnet wird nach Tagen.` }));
+  }
   const { ende, basis, name, gemeinsam } = o;
   const ziel = zahlungsziel(m);
   const notiz = `Aus dem Mandat (CRM). ${m.honorar.netto ? `${m.honorar.betrag} € netto${m.ustSatz ? ` + ${m.ustSatz} % USt` : ', Reverse Charge'}` : `${m.honorar.betrag} €`}.`;
@@ -226,12 +233,12 @@ export function planpostenAus(m: Mandat, heute: string, katalog?: Katalog): Plan
 }
 
 /** Warum aus einem Mandat kein Posten entsteht — der richtige Satz je Fall (N14: vorher immer „Status oder Honorar fehlt“). */
-export function keinPostenGrund(m: Pick<Mandat, 'status' | 'honorar'>): string {
+export function keinPostenGrund(m: Pick<Mandat, 'status' | 'honorar'> & Partial<Pick<Mandat, 'tageJeMonat'>>): string {
   if (m.status === 'angebot') return 'Noch im Angebot — der Posten entsteht, sobald das Mandat in Verhandlung oder aktiv ist.';
   if (m.status === 'pausiert') return 'Pausiert — solange kein Posten.';
   if (m.status === 'beendet') return 'Mandat beendet — kein Posten im Liquiditätsplan.';
   if (!(m.honorar.betrag > 0)) return 'Honorar fehlt — ohne Honorar kein Posten.';
-  if (m.honorar.basis === 'tag') return 'Honorar je Tag — für Tagessätze entsteht kein fester Posten.';
+  if (m.honorar.basis === 'tag') return 'Honorar je Tag — für Tagessätze entsteht ein Posten erst mit geplanten Tagen je Monat (am Mandat unter „Vertrag“): dann Tagessatz × Tage.';
   return 'Kein Posten.';
 }
 

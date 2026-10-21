@@ -180,6 +180,7 @@ export function neuesMandat(id: string, e: MandatEingabe, firma: { id: string; n
     ...(v?.zusatz?.length ? { zusatz: v.zusatz } : {}),
     // Zahlplan des Produkts (21.10., B2) nur, wenn das Honorar aus der Vorlage kommt und einmalig ist.
     ...(e.honorar === undefined && v?.zahlplan && v.honorar.basis === 'einmalig' ? { zahlplan: v.zahlplan } : {}),
+    ...(e.honorar === undefined && v?.tageJeMonat && v.honorar.basis === 'tag' ? { tageJeMonat: v.tageJeMonat } : {}),
   };
 }
 

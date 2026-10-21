@@ -181,6 +181,7 @@ export async function POST(req: Request) {
       if (v.zusatz?.length) m.zusatz = v.zusatz;
       // Zahlplan (21.10., B2): nur bei einmaligem Honorar (der Deal-Wert gewinnt — seine Basis entscheidet).
       if (v.zahlplan && m.honorar.basis === 'einmalig') m.zahlplan = v.zahlplan;
+      if (v.tageJeMonat && m.honorar.basis === 'tag') m.tageJeMonat = v.tageJeMonat;
     }
     if (angebot) {
       const v = mandatVorbelegung(angebot, crm.leistungen);

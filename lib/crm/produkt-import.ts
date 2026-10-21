@@ -50,6 +50,8 @@ export interface PreisTeilImport {
   kontingent?: string;
   /** Nur beim Stundensatz: höchstens N Stunden je Monat — kurz oder als `deckel`. */
   stundenJeMonat?: number | string; deckel?: { stundenJeMonat: number };
+  /** Nur Tages-/Stundensatz (21.10.): geplante Menge je Monat (Tage bzw. Stunden) für Planung und Liquidität. */
+  mengeJeMonat?: number | string;
   text?: string;
   id?: string;
 }
@@ -97,7 +99,7 @@ export const IMPORT_FELDER = [
   'name', 'status', 'gesellschaft', 'typ', 'linie', 'beschreibung', 'leistungstext', 'angebot', 'ergebnis', 'grenzen', 'lieferumfang',
   'preise', 'vertrag', 'regeln', 'rolle', 'ebene', 'aufgabe', 'kennzahl', 'dauerTage', 'aufwandStundenWoche', 'ziel', 'ablauf',
 ] as const;
-const PREIS_TEIL_FELDER = ['art', 'betrag', 'betragCent', 'bis', 'bisCent', 'einheit', 'rolle', 'optional', 'anzahlungProzent', 'zahlplan', 'kontingent', 'stundenJeMonat', 'deckel', 'text', 'id'];
+const PREIS_TEIL_FELDER = ['art', 'betrag', 'betragCent', 'bis', 'bisCent', 'einheit', 'rolle', 'optional', 'anzahlungProzent', 'zahlplan', 'kontingent', 'stundenJeMonat', 'deckel', 'mengeJeMonat', 'text', 'id'];
 const VERTRAG_FELDER = ['mindestlaufzeitMonate', 'danach', 'kuendigungsfristTage', 'rechnungsrhythmus', 'zahlungszielTage', 'ustSatz', 'reisekosten'] as const;
 const ANGEBOT_FELDER = ['titel', 'einleitung', 'leistungstext', 'ergebnis', 'hinweise'] as const;
 
@@ -612,6 +614,7 @@ function preiseAus(w: unknown, alt: readonly PreisTeil[], f: PruefFehler[]): unk
     const apZahl = ap === undefined || ap === null || ap === '' ? undefined : zahlAus(ap);
     const std = t.stundenJeMonat ?? (istObj(t.deckel) ? t.deckel.stundenJeMonat : undefined);
     const stdZahl = std === undefined || std === null || std === '' ? undefined : zahlAus(std);
+    const mjZahl = t.mengeJeMonat === undefined || t.mengeJeMonat === null || t.mengeJeMonat === '' ? undefined : zahlAus(t.mengeJeMonat);
     let id = typeof t.id === 'string' ? t.id : alt[i]?.id;
     if (!id || vergeben.has(id)) { let n = i + 1; id = `pt-${n}`; while (vergeben.has(id) || alt.some((x, j) => j !== i && x.id === id)) id = `pt-${++n}`; }
     vergeben.add(id);
@@ -625,6 +628,7 @@ function preiseAus(w: unknown, alt: readonly PreisTeil[], f: PruefFehler[]): unk
       ...(apZahl !== undefined ? { zahlplan: { anzahlungProzent: apZahl } } : {}),
       ...(typeof t.kontingent === 'string' && text(t.kontingent) ? { kontingent: text(t.kontingent) } : {}),
       ...(stdZahl !== undefined ? { deckel: { stundenJeMonat: stdZahl } } : {}),
+      ...(mjZahl !== undefined ? { mengeJeMonat: mjZahl } : {}),
       ...(typeof t.text === 'string' && text(t.text) ? { text: text(t.text) } : {}),
     };
   });
@@ -704,7 +708,7 @@ type SpaltenZiel =
   | { ebene: 'ziel'; feld: 'umsatz' | 'kunden' }
   | { ebene: 'regel'; feld: 'anrechnungAuf' | 'anrechnungProzent' | 'maxGleichzeitig' | 'inklusive' }
   | { ebene: 'angebot'; feld: 'titel' | 'einleitung' | 'hinweise' }
-  | { ebene: 'preis'; feld: 'art' | 'betrag' | 'bis' | 'einheit' | 'optional' | 'anzahlung' | 'kontingent' | 'deckel' | 'text' };
+  | { ebene: 'preis'; feld: 'art' | 'betrag' | 'bis' | 'einheit' | 'optional' | 'anzahlung' | 'kontingent' | 'deckel' | 'mengeJeMonat' | 'text' };
 const P = (feld: string, art: 'text' | 'liste' | 'zahl' = 'text'): SpaltenZiel => ({ ebene: 'produkt', feld, art });
 /** Spaltennamen (klein, ohne Leer-/Sonderzeichen, Umlaute ausgeschrieben) → Ziel. */
 const SPALTEN: Record<string, SpaltenZiel> = {
@@ -733,6 +737,7 @@ const SPALTEN: Record<string, SpaltenZiel> = {
   einheit: { ebene: 'preis', feld: 'einheit' }, je: { ebene: 'preis', feld: 'einheit' },
   optional: { ebene: 'preis', feld: 'optional' }, option: { ebene: 'preis', feld: 'optional' },
   anzahlung: { ebene: 'preis', feld: 'anzahlung' }, anzahlungprozent: { ebene: 'preis', feld: 'anzahlung' }, zahlplan: { ebene: 'preis', feld: 'anzahlung' },
+  geplantjemonat: { ebene: 'preis', feld: 'mengeJeMonat' }, mengejemonat: { ebene: 'preis', feld: 'mengeJeMonat' }, geplantemenge: { ebene: 'preis', feld: 'mengeJeMonat' },
   kontingent: { ebene: 'preis', feld: 'kontingent' }, deckel: { ebene: 'preis', feld: 'deckel' }, stundenjemonat: { ebene: 'preis', feld: 'deckel' }, deckelstundenjemonat: { ebene: 'preis', feld: 'deckel' },
   preistext: { ebene: 'preis', feld: 'text' }, preishinweis: { ebene: 'preis', feld: 'text' },
 };
