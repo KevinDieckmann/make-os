@@ -5,7 +5,7 @@
 // baut seine Änderung über lib/crm/produkt-katalog.ts (geprüft wie der Server) und schreibt über `speichern` (= `api.teil` mit Stand). Ein
 // abgelehnter Wert bleibt mit Satz am Feld stehen; was der Server ablehnt, zeigt die Karte im Abschnitt.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, ECKE, FLAECHE_STIL } from '@/lib/make-one/design';
@@ -16,7 +16,7 @@ import { mandateLink } from '@/lib/crm/adresse';
 import { titelOhneFirma } from '@/lib/crm/mandat-name';
 import { vertragVon, PRODUKT_GRENZEN, INKLUSIVE_JE } from '@/lib/crm/produkt-karte';
 import {
-  vertragAenderung, regelnAenderung, textAenderung, texteVon, lieferumfangDazu, aufwandText, planungsSicht, DANACH_LABEL, RHYTHMUS_LABEL, TEXT_FELDER, LIEFER_MAX,
+  vertragAenderung, regelnAenderung, textAenderung, texteVon, lieferumfangDazu, lieferumfangBeimSchliessen, aufwandText, planungsSicht, DANACH_LABEL, RHYTHMUS_LABEL, TEXT_FELDER, LIEFER_MAX,
 } from '@/lib/crm/produkt-katalog';
 import { planungFehlt, margeVon } from '@/lib/finanzen/produkte';
 import type { CrmBestand, Leistung, ProduktVertrag, Unterlage, UnterlageArt } from '@/lib/crm/typen';
@@ -115,15 +115,40 @@ export function TexteTeil({ l, speichern }: { l: Leistung; speichern: Speichern 
 
 // ── Lieferumfang ─────────────────────────────────────────────────────────────
 
+/**
+ * Entwürfe, die beim Schließen nicht gespeichert werden konnten (zu lang, Liste voll, Server lehnte ab) — je Produkt, nur in dieser Sitzung des Browsers.
+ * Beim nächsten Öffnen stehen sie wieder im Feld (mit Satz): nichts geht still verloren (21.10., Rundgang B9).
+ */
+const LIEFER_ENTWURF = new Map<string, string>();
+
 export function LieferumfangTeil({ l, speichern }: { l: Leistung; speichern: Speichern }) {
-  const [neu, setNeu] = useState('');
-  const [fehler, setFehler] = useState<string | null>(null);
   const liste = l.lieferumfang ?? [];
+  const [neu, setNeu] = useState(() => LIEFER_ENTWURF.get(l.id) ?? '');
+  const [fehler, setFehler] = useState<string | null>(() => {
+    const t = LIEFER_ENTWURF.get(l.id);
+    if (!t) return null;
+    const r = lieferumfangBeimSchliessen(liste, t);
+    return r.art === 'behalten' ? r.fehler : 'Noch nicht übernommen — Enter oder „Hinzufügen“.';
+  });
+  // Beim Schließen (Karte „Fertig“/×, Abschnitt zugeklappt): ein getippter Punkt ohne Enter wird übernommen — dieselbe Regel wie das Anlege-Feld
+  // (`lieferumfangBeimSchliessen` → `feldAbschluss`): leer speichert nichts, ein Punkt der Liste kommt nie doppelt (21.10., Rundgang B9).
+  const offen = useRef({ neu, liste, speichern });
+  offen.current = { neu, liste, speichern };
+  useEffect(() => {
+    LIEFER_ENTWURF.delete(l.id);
+    return () => {
+      const { neu: t, liste: jetzt, speichern: sp } = offen.current;
+      const r = lieferumfangBeimSchliessen(jetzt, t);
+      if (r.art === 'behalten') LIEFER_ENTWURF.set(l.id, t);
+      else if (r.art === 'speichern') void sp({ lieferumfang: r.liste }).then(ok => { if (!ok) LIEFER_ENTWURF.set(l.id, t); });
+    };
+  }, [l.id]);
   const dazu = async () => {
     const r = lieferumfangDazu(liste, neu);
     if (!r.ok) { setFehler(r.fehler); return; }
     setFehler(null);
     setNeu('');
+    offen.current.neu = ''; // schon unterwegs — ein Schließen gleich danach hängt ihn nicht noch einmal an
     if (!(await speichern({ lieferumfang: r.liste }))) setNeu(neu);
   };
   return (
@@ -141,7 +166,7 @@ export function LieferumfangTeil({ l, speichern }: { l: Leistung; speichern: Spe
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void dazu(); } }} style={{ ...feld, flex: '1 1 200px', width: 'auto' }} />
         <Knopf leise aus={!neu.trim()} onClick={dazu}>Hinzufügen</Knopf>
       </div>
-      <span style={ruhig}>{fehler ? <span role="alert" style={{ color: LEUCHT.achtung }}>{fehler}</span> : `je Punkt höchstens ${LIEFER_MAX.zeichen} Zeichen, höchstens ${LIEFER_MAX.anzahl} Punkte`}</span>
+      <span style={ruhig}>{fehler ? <span role="alert" style={{ color: LEUCHT.achtung }}>{fehler}</span> : neu.trim() ? 'Enter oder „Hinzufügen“ — sonst beim Schließen übernommen.' : `je Punkt höchstens ${LIEFER_MAX.zeichen} Zeichen, höchstens ${LIEFER_MAX.anzahl} Punkte`}</span>
     </div>
   );
 }

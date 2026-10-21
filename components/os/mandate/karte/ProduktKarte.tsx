@@ -129,7 +129,7 @@ export function ProduktKarte({ api, l, gespeicherteStufe, besitztStufe, belegung
       {abschnitt('regeln', 'Regeln', regelnText(l.regeln, namen) === 'keine' ? 'keine' : n([l.regeln?.anrechnung, l.regeln?.maxGleichzeitig, l.regeln?.inklusive?.length].filter(Boolean).length, 'Regel', 'Regeln'),
         <RegelnTeil l={l} alle={crm.stand.leistungen} anrechnungAlt={gespeicherteStufe?.regeln.anrechnung} speichern={speichernIn('regeln')} />)}
       {abschnitt('texte', 'Texte', texte.leistungstext ? 'Leistungstext ✓' : 'Leistungstext fehlt', <TexteTeil l={l} speichern={speichernIn('texte')} />)}
-      {abschnitt('liefer', 'Lieferumfang', n(k.lieferumfang.length, 'Punkt', 'Punkte'), <LieferumfangTeil l={l} speichern={speichernIn('liefer')} />)}
+      {abschnitt('liefer', 'Lieferumfang', n(k.lieferumfang.length, 'Punkt', 'Punkte'), <LieferumfangTeil key={l.id} l={l} speichern={speichernIn('liefer')} />)}
       {abschnitt('ablauf', 'Ablauf', ablauf === undefined ? '…' : ablauf === null ? '—' : ablauf.titel ?? 'kein Ablauf',
         <AblaufTeil l={l} speichern={speichernIn('ablauf')} mandateJePhase={id => crm.stand.mandate.filter(m => m.leistungId === l.id && m.status !== 'beendet' && (m.phase ?? l.phasen?.[0]?.id) === id).length} />)}
       {abschnitt('aufwand', 'Aufwand & Kapazität', aufwand.wert, <AufwandTeil l={l} aufwand={k.aufwand} stufe={belegung} speichern={speichernIn('aufwand')} />)}
