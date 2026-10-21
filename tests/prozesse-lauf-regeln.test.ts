@@ -9,7 +9,7 @@ import {
   kostenBuchen, budgetReicht, wirkungZaehlen, umzugVorschau, umziehen, probeZeilen, laufLage, abbrechen, anhalten, fortsetzen, knotenStand, laufKurz,
   schleifenBefunde, type LaufUmfeld, type StartAnfrage,
 } from '@/lib/prozesse/lauf-regeln';
-import { leereLaeufe, leererStand, LAUF_GRENZEN, WIRKUNG_KENNUNG, type LaeufeDatei, type ProzessLauf } from '@/lib/prozesse/lauf-typen';
+import { leereLaeufe, leererStand, LAUF_GRENZEN, WIRKUNG_KENNUNG, type LaeufeDatei, type ProzessLauf, type ProzessLaufStand } from '@/lib/prozesse/lauf-typen';
 import { schlossSetzen } from '@/lib/prozesse/schloss';
 import type { ProzessDefinition } from '@/lib/prozesse/definition';
 import { definition, fk, schritt, PZ, J } from './fixtures/prozess-bau';
@@ -186,7 +186,7 @@ describe('Feste Regeln vor jedem Schritt', () => {
       .toMatchObject({ status: 'abgebrochen', grund: 'abbruch-kriterium' });
   });
   it('Modell-Raute entscheidet nie (Entscheidung 21.10.) — der Lauf hält an', () => {
-    const d = definition([schritt(10, 'Modell?', 1, { form: 'entscheidung', raute: { art: 'modell', frage: 'Passt es?', warumKeineRegel: 'Probe', modell: 'haiku', budgetCent: 5 } })]);
+    const d = definition([schritt(10, 'Modell?', 1, { form: 'entscheidung', raute: { art: 'modell', frage: 'Passt es?', warumKeineRegel: 'Probe', modell: 'schnell', budgetCent: 5 } })]);
     expect(voran(lauf(d), d, umfeld()).lauf).toMatchObject({ status: 'fehler', grund: 'modell-raute' });
   });
   it('Regel-Raute rechnet aus den Fall-Feldern', () => {
@@ -233,7 +233,7 @@ describe('Außenwirkung nur über das Schloss (Punkte 61, N12)', () => {
 });
 
 describe('Agenten-Schritte, Budget, Notbremse', () => {
-  const AG = definition([schritt(40, 'Recherche', 1, { form: 'agent', agent: { auftrag: 'Fasse zusammen.', modell: 'haiku', budgetCent: 10, werkzeuge: [], ausgabe: 'text' } as never })]);
+  const AG = definition([schritt(40, 'Recherche', 1, { form: 'agent', agent: { auftrag: 'Fasse zusammen.', modell: 'schnell', budgetCent: 10, werkzeuge: [], ausgabe: 'text' } as never })]);
   it('Agent nicht erlaubt (Budget) → Lauf angehalten, Prozess soll pausieren; Fenster → wartet bis 7 Uhr', () => {
     const p = voran(lauf(AG), AG, umfeld(J, { agent: () => ({ ok: false, grund: 'budget', pause: true }) }));
     expect(p.pause).toBe('budget');
@@ -249,7 +249,7 @@ describe('Agenten-Schritte, Budget, Notbremse', () => {
     expect(voran(w, AG, umfeld(plus(5), { agent: () => ({ ok: true, kostenCent: 3 }) })).aktion).toMatchObject({ art: 'agent', kostenCent: 3 });
   });
   it('Budget je Monat: 80 % einmal Hinweis, an der Grenze Pause; ohne Scharfschalten nie Budget', () => {
-    let st = { ...leererStand(), einstellung: { scharf: { am: J, von: 'pia', version: 1, budgetCent: 100, schaetzungCent: 50, bestehende: 'nur-neue' as const, bestehendeAnzahl: 0 } } };
+    let st: ProzessLaufStand = { ...leererStand(), einstellung: { scharf: { am: J, von: 'pia', version: 1, budgetCent: 100, schaetzungCent: 50, bestehende: 'nur-neue' as const, bestehendeAnzahl: 0 } } };
     expect(budgetReicht(leererStand(), 1, J)).toBe(false);
     expect(budgetReicht(st, 100, J)).toBe(true);
     let r = kostenBuchen(st, 79, J); st = r.stand;
@@ -265,7 +265,7 @@ describe('Agenten-Schritte, Budget, Notbremse', () => {
     expect(budgetReicht(r.stand, 50, '2026-11-02T08:00:00.000Z')).toBe(true);
   });
   it('Notbremse: mehr Wirkungen je Stunde als erlaubt → der Prozess pausiert sich', () => {
-    let st = { ...leererStand(), einstellung: { notbremseJeStunde: 2 } };
+    let st: ProzessLaufStand = { ...leererStand(), einstellung: { notbremseJeStunde: 2 } };
     const a = wirkungZaehlen(st, J); st = a.stand;
     const b = wirkungZaehlen(st, J); st = b.stand;
     expect([a.notbremse, b.notbremse]).toEqual([false, false]);
