@@ -90,8 +90,8 @@ describe('Die Fläche: Bahnen, Rahmen, Fäden (Punkte 18, 19, 25)', () => {
   const l = werkstattLage(d, { team });
   const nichts = () => {};
   const html = renderToStaticMarkup(h(WerkstattFlaeche, {
-    d, lage: l, szene: 's', auswahl: [], kanteWahl: null, rahmenWahl: null, andockWahl: null, probe: null, befundJe: new Map(), unterzeile: k => knotenUnterzeile(k),
-    mitSchloss: new Set(), nurLesen: false, raster: true, label: 'Werkstatt', onAuswahl: nichts, onKante: nichts, onRahmen: nichts, onUnter: nichts, onZiehen: nichts,
+    d, lage: l, szene: 's', auswahl: [], kanteWahl: null, rahmenWahl: null, andockWahl: null, probe: null, befundJe: new Map<string, 'fehler' | 'offen'>(), unterzeile: k => knotenUnterzeile(k),
+    mitSchloss: new Set<string>(), nurLesen: false, raster: true, label: 'Werkstatt', onAuswahl: nichts, onKante: nichts, onRahmen: nichts, onUnter: nichts, onZiehen: nichts,
     onVerbinden: nichts, onAnhaengen: nichts, onZuklappen: nichts, onTaste: () => false,
   }));
   it('Punktraster, Faden-Ebene unter dem SVG, Bahnen mit Namen, Rahmen mit Zuklappen', () => {

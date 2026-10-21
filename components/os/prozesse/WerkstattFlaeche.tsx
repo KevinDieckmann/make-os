@@ -18,7 +18,7 @@ import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL, TYP } from '@/lib/make-on
 import type { NotizZettel, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { Ausgang } from '@/lib/prozesse/fluss';
 import {
-  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, type KnotenLageW, type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
+  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
 } from '@/lib/prozesse/werkstatt-lage';
 import { tasteZuAktion, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
 import type { ProbeStatus } from '@/lib/prozesse/werkstatt-hinweise';

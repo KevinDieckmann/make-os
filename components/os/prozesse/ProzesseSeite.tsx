@@ -284,7 +284,7 @@ export function ProzesseSeite() {
   let inhalt: ReactNode;
   if (!daten) inhalt = fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Landkarte lädt …</p>;
   else if (!prozesse.length) inhalt = <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine Prozesse">Sobald Abläufe im System oder im Fulfillment stehen, erscheinen sie hier.</Leerzustand>;
-  else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} />;
+  else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onLandkarte={() => void landkarteNeu()} />;
   else if (ansicht === 'liste') inhalt = <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} />;
   else if (szene) {
     inhalt = (
@@ -360,9 +360,9 @@ export function ProzesseSeite() {
  * Die Werkstatt im Bereich der Seite (Etappe B2): ohne Prozess die Übersicht mit „+ Prozess“; ein eigener Prozess öffnet die Werkstatt; System-Prozesse und Pakete
  * des Fulfillments bleiben hier nur lesbar (Pakete öffnen weiter ihren vorhandenen Editor).
  */
-function WerkstattBereich({ p, schmal, onNeu }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void }) {
+function WerkstattBereich({ p, schmal, onNeu, onLandkarte }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onLandkarte: () => void }) {
   if (!p) return <WerkstattUebersicht onNeu={onNeu} />;
-  if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} />;
+  if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} onLandkarte={onLandkarte} />;
   if (p.quelle === 'vorlage') {
     return (
       <Hinweis art="info" titel={`„${p.titel}“ ist eine Vorlage des Fulfillments`} aktion={p.editor ? <Knopf leise href={p.editor}>Im Fulfillment-Editor öffnen ›</Knopf> : undefined}>

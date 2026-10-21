@@ -56,7 +56,7 @@ const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(
 
 type Speicher = { art: 'gespeichert' | 'ausstehend' | 'speichert' | 'fehler' | 'konflikt' | 'offline'; text?: string };
 
-export function Werkstatt({ prozessId, nurAnsehen }: { prozessId: string; nurAnsehen: boolean }) {
+export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: string; nurAnsehen: boolean; /** Steckbrief bzw. Version geändert — die Landkarte (Kachel, Brotkrumen) neu laden. */ onLandkarte?: () => void }) {
   const { daten, fehler: ladeFehler } = useProzess(prozessId);
   const kat = useKatalog();
   const auswahlListen = useMemo(() => kat.daten?.auswahl ?? {}, [kat.daten]);
@@ -220,6 +220,7 @@ export function Werkstatt({ prozessId, nurAnsehen }: { prozessId: string; nurAns
       const w = wurzel(j.eintrag.entwurf.knoten);
       if (w) setFassungRoh(f => (f ? { ...f, knoten: f.knoten.map(k => (k.id === w.id ? { ...k, titel: w.titel } : k)) } : f));
       ansagen('Steckbrief gespeichert.');
+      onLandkarte?.();
     } else if (r.status === 409 && j?.eintrag && j.stand) setKonflikt({ eintrag: j.eintrag, stand: j.stand });
     else setMeldung({ text: String(j?.fehler ?? 'Der Steckbrief ließ sich nicht speichern.'), art: 'kritisch' });
   };
@@ -292,7 +293,7 @@ export function Werkstatt({ prozessId, nurAnsehen }: { prozessId: string; nurAns
         const ax = lk.x + dx, ay = lk.y + dy;
         const ort = ortBei(lage, ax + lk.koerper.x + lk.koerper.b / 2, ay + lk.koerper.y + lk.koerper.h / 2);
         let rx = lage.rahmen.find(r => r.id === lk.phaseId)?.x ?? 0;
-        let by = lage.bahnen.find(b => b.schluessel === lk.bahn)?.y ?? 0;
+        const by = lage.bahnen.find(b => b.schluessel === lk.bahn)?.y ?? 0;
         if (ort && knotenIds.length === 1 && ort.phaseId !== lk.phaseId) {
           const r = inPhase(f, id, ort.phaseId);
           if (r.ok) { f = r.fassung; rx = ort.rahmenX; }
@@ -400,7 +401,7 @@ export function Werkstatt({ prozessId, nurAnsehen }: { prozessId: string; nurAns
     if (!(await sichern())) return 'Erst muss der Entwurf gespeichert sein.';
     const r = await werkstattSenden(() => ({ aktion: 'veroeffentlichen', id: prozessId, stand: stand.current, name, notiz }));
     const j = r.j;
-    if (r.status === 200 && j?.ok && j.eintrag && j.stand) { stand.current = j.stand; setEintrag(j.eintrag); setBefundeServer(j.befunde ?? []); setGeaendertSeitVersion(false); setFassungRoh(fassungVon(j.eintrag.entwurf)); setVersionenOffen(false); setMeldung({ text: `${j.version?.name ?? 'Version'} ist veröffentlicht.`, art: 'gut' }); return null; }
+    if (r.status === 200 && j?.ok && j.eintrag && j.stand) { stand.current = j.stand; setEintrag(j.eintrag); setBefundeServer(j.befunde ?? []); setGeaendertSeitVersion(false); setFassungRoh(fassungVon(j.eintrag.entwurf)); setVersionenOffen(false); setMeldung({ text: `${j.version?.name ?? 'Version'} ist veröffentlicht.`, art: 'gut' }); onLandkarte?.(); return null; }
     if (j?.befunde) setBefundeServer(j.befunde);
     return String(j?.fehler ?? 'Nicht veröffentlicht.');
   };
