@@ -13,7 +13,7 @@ import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { prozesseBestand, webhookBestand, type KiKategorie, type ProzesseDatei, type ProzessEintrag, type WebhookDatei } from './definition';
 import { prozesseAus, webhooksAus } from './bestand';
-import { BAUSTEIN_KATALOG, GESELLSCHAFT_DES_FALLS, QUELLEN_IM_PROZESS, ROLLEN_WERTE, kategorienVonEintrag, klasseVonEintrag, type AuswahlQuelle, type KatalogEintrag } from './baustein-katalog';
+import { BAUSTEIN_KATALOG, GESELLSCHAFT_DES_FALLS, POSTFACH_WERTE, QUELLEN_IM_PROZESS, ROLLEN_WERTE, kategorienVonEintrag, klasseVonEintrag, type AuswahlQuelle, type KatalogEintrag } from './baustein-katalog';
 import type { PruefKontext } from './definition-pruefen';
 import type { TeamKurz } from './rollen';
 import type { ModellOption } from './modell-wahl';
@@ -106,7 +106,7 @@ export async function auswahlListen(h: string, person: string, datei?: ProzesseD
     'team-person': [...(await sicher(() => teamVon(h), [])).filter(t => t.aktiv).map(t => ({ id: t.id, label: t.name })), ...ROLLEN_WERTE],
     'konto-person': (await sicher(() => kontenDesHaushalts(h), [])).map(k => ({ id: k.speicher, label: k.name })),
     'pipeline-stufe': STUFEN.map(s => ({ id: s.id, label: s.label })),
-    postfach: postfaecher,
+    postfach: [...postfaecher, ...POSTFACH_WERTE],
     head: KATALOG.filter(x => x.bereich === 'business').map(x => ({ id: x.id, label: x.name })),
     skill: Array.from(skills.entries()).filter(([, s]) => s.aktiv).map(([id, s]) => ({ id, label: s.name })),
     ereignis: PROZESS_EREIGNISSE.map(e => ({ id: e, label: EREIGNIS_NAME[e] })),

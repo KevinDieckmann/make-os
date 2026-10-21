@@ -138,6 +138,15 @@ export const ROLLEN_WERTE: readonly { id: string; label: string }[] = [
 ];
 /** Gesellschaft des Falls (Deal, Mandat, Angebot) — statt einer festen Gesellschaft in einer Vorlage. */
 export const GESELLSCHAFT_DES_FALLS = 'fall.gesellschaft';
+/**
+ * Postfach statt fester Kennung (Vorlagen): das Business-Postfach der Person, als die der Lauf schreibt, bzw. das Postfach der Nachricht, die den Lauf
+ * gestartet hat (Antwort im selben Gespräch). Der Motor löst es auf; ohne passendes Postfach endet der Schritt über seine Fehlerkante — nie ein privates.
+ */
+export const POSTFACH_DES_LAUFS = 'postfach.lauf';
+export const POSTFACH_DER_NACHRICHT = 'postfach.nachricht';
+export const POSTFACH_WERTE: readonly { id: string; label: string }[] = [
+  { id: POSTFACH_DES_LAUFS, label: 'Business-Postfach der Person des Laufs' }, { id: POSTFACH_DER_NACHRICHT, label: 'Postfach der Nachricht (Antwort im Gespräch)' },
+];
 
 /** Neutrale Telegram-Hinweise — fest, ohne Werte, Beträge, Namen (lib/datenschutz/telegram-text.ts). */
 export const TELEGRAM_HINWEISE: readonly { id: string; label: string }[] = [
@@ -328,6 +337,9 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
     schreibweg: 'crm_vorschlag Art lead_parken → lib/crm/lead-parken-server.ts `leadParken` (dieselbe Regel wie „Parken“ in der Runde, mit Follow-up)',
     maske: [{ id: 'parkTage', label: 'Wiedervorlage in (Tagen)', typ: 'zahl', min: 1, max: 365, pflicht: true, vorgabe: 90 },
       { id: 'grundArt', label: 'Warum', typ: 'auswahl', vorgabe: 'spaeter', optionen: [{ id: 'spaeter', label: 'Später — der Anlass fehlt' }, { id: 'budget_spaeter', label: 'Budget kommt später' }, { id: 'wartet', label: 'Wartet auf andere' }, { id: 'nicht_erreicht', label: 'Nicht erreicht' }, { id: 'sonstiges', label: 'Sonstiges' }] }] },
+  { id: 'crm.deal-vorschlagen', name: 'Deal vorschlagen', satz: 'Schlägt einen Deal mit nächstem Schritt vor — angelegt wird erst per Klick (der Lead wird SQL, wenn die Kriterien erfüllt sind).', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag', fest: { art: 'deal_anlegen' },
+    schreibweg: 'crm_vorschlag Art deal_anlegen → POST /api/crm/deal (dealAnlegen: nächster Schritt mit Datum Pflicht, zweiter offener Deal 409)',
+    maske: [TV('titel', 'Titel', false), TV('naechsterSchritt', 'Nächster Schritt'), TAGE('inTagen', 'Nächster Schritt in (Tagen)', 365, true)] },
   { id: 'crm.deal-schritt', name: 'Nächster Schritt am Deal', satz: 'Schlägt den nächsten Schritt mit Datum am Deal vor — übernommen per Klick.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag', fest: { art: 'deal_aendern' },
     maske: [TV('naechsterSchritt', 'Nächster Schritt', false, 'Ohne Text kommt er aus dem Agent-Schritt davor.'), TAGE('inTagen', 'In (Tagen)', 365, true)] },
   { id: 'crm.mandat-anlegen', name: 'Mandat anlegen', satz: 'Legt aus einem gewonnenen Deal das Mandat an — Honorar zählt in MRR und Index, darum erst nach der Freigabe (ein Klick).', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', rechte: 'geld', ki: ['crm', 'finanzen'],

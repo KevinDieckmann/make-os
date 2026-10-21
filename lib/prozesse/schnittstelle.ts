@@ -14,7 +14,7 @@ export {
 } from './ausloeser';
 export {
   BAUSTEIN_KATALOG, KATALOG_KATEGORIEN, AUSWAHL_QUELLEN, QUELLEN_IM_PROZESS, FREIGABE_BAUSTEIN, FORM_KLASSE, KLASSE_RANG, FORMATIERER, PLATZHALTER_JE_FALL,
-  TELEGRAM_HINWEISE, ABFRAGE_NAME, ZIELFELD_NAME, KARTE_FELDER, ROLLE_EIGNER, ROLLE_ZUSTAENDIG, ROLLEN_WERTE, GESELLSCHAFT_DES_FALLS, katalogEintrag, klasseVonEintrag, kategorienVonEintrag, brauchtSchloss, staerkste, maskeSaeubern, maskeVorgaben,
+  TELEGRAM_HINWEISE, ABFRAGE_NAME, ZIELFELD_NAME, KARTE_FELDER, ROLLE_EIGNER, ROLLE_ZUSTAENDIG, ROLLEN_WERTE, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT, POSTFACH_WERTE, katalogEintrag, klasseVonEintrag, kategorienVonEintrag, brauchtSchloss, staerkste, maskeSaeubern, maskeVorgaben,
   formatieren, platzhalterFuer, textvorlagePruefen, textvorlageFuellen, katalogSelbstpruefung,
   type KatalogEintrag, type KatalogKategorie, type KatalogFeld, type MaskenFeld, type MaskenTyp, type MaskenKontext, type AuswahlQuelle, type FormatiererId,
 } from './baustein-katalog';
