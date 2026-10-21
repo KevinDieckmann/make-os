@@ -12,7 +12,7 @@
 
 import { EREIGNISSE_ANGEBUNDEN, EREIGNISSE_INTERN, EREIGNIS_NAME, istEreignisArt } from '@/lib/ereignisse/arten';
 import type { Ereignis } from '@/lib/ereignisse/typen';
-import { wiederkehrendPruefen } from '@/lib/agenten/zeitplan';
+import { wiederkehrendPruefen } from '@/lib/agenten/zeitplan-regeln';
 import {
   FELD_KENNUNG, LOOP_ARTEN, PROZESS_GRENZEN, PROZESS_TEXT, WEBHOOK_FELD_ARTEN,
   type Ausloeser, type AusloeserArt, type Befund, type DatumsFeld, type FallArt, type LoopArt, type SkillEreignis, type WebhookFeld, type WebhookFeldArt,

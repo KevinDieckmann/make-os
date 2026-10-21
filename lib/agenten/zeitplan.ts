@@ -28,20 +28,16 @@ import { ausWandzeit, tagPlus, tagVon, wandAus, wandzeit } from '@/lib/kalender/
 import { istWerktag, wochentag } from '@/lib/zeit/kalender-kern';
 import { istBusinessFrei, type Spanne } from '@/lib/arbeitsrahmen/regel';
 import type { Faellig } from '@/lib/zoe/takt';
+// Reine Zeitplan-Regeln liegen in ./zeitplan-regeln (auch im Browser nutzbar, z. B. Werkstatt der Prozesse) — hier nur weitergereicht.
+import { TAKT_VON, TAKT_BIS, UHRZEIT, FENSTER_FEHLER, wiederkehrendPruefen, type Pruefung } from './zeitplan-regeln';
+export { TAKT_VON, TAKT_BIS, FENSTER_FEHLER, wiederkehrendPruefen, type Pruefung };
 
-/** Agenten-Läufe des Takts nur in diesem Fenster (Berliner Stunden) — dieselben Werte wie VON/BIS in lib/zoe/takt.ts (Wächter). */
-export const TAKT_VON = 7;
-export const TAKT_BIS = 22;
 /** Höchstzahl automatischer Läufe je Head und Berliner Tag (Fragerunde 15: „Höchstzahl Auto-Läufe“). */
 export const AUTO_LAEUFE_JE_TAG = 12;
 /** Kennung im Bestand für ZOE-Pläne (kein Head) — zählt in die Tageshöchstzahl wie ein Head. */
 export const ZOE_SCHLUESSEL = 'zoe';
 
-const UHRZEIT = /^([01]\d|2[0-3]):([0-5]\d)$/;
-/** Ein Slot ab `TAKT_BIS` liefe an seinem Tag nie (Nachtruhe des Takts) — davor geplante laufen ab `TAKT_VON`. */
-export const FENSTER_FEHLER = `Agenten-Läufe starten zwischen ${TAKT_VON}:00 und ${TAKT_BIS}:00 Uhr — frühere Zeiten laufen um ${TAKT_VON}:00, spätere gar nicht.`;
 const WAND = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
-const RHYTHMEN: readonly Rhythmus[] = ['taeglich', 'werktags', 'woechentlich', 'monatlich'];
 
 /** Die Regel eines Zeitplans — aus einem Skill-Auslöser oder dem Zeitplan einer Hintergrundaufgabe. */
 export type ZeitRegel =
@@ -56,29 +52,9 @@ export function regelVon(x: SkillAusloeser | Zeitplan): ZeitRegel | null {
 
 // ── Prüfen (Eingaben aus Skill-Editor und „+ Hintergrundaufgabe“) ─────────────────────────────────────────────────────────
 
-export type Pruefung<T> = { ok: true; wert: T } | { ok: false; status: 400 | 413; fehler: string };
 
 /** Ist der Tag ein echter Kalendertag (Rundweg über UTC-Mittag)? */
 const istTag = (t: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(t) && new Date(`${t}T12:00:00Z`).toISOString().slice(0, 10) === t;
-
-/** Rhythmus, Uhrzeit, Tage eines wiederkehrenden Zeitplans prüfen (rein). */
-export function wiederkehrendPruefen(roh: { rhythmus?: unknown; uhrzeit?: unknown; tage?: unknown }): Pruefung<{ rhythmus: Rhythmus; uhrzeit: string; tage?: number[] }> {
-  if (!RHYTHMEN.includes(roh.rhythmus as Rhythmus)) return { ok: false, status: 400, fehler: 'Rhythmus: täglich, werktags, wöchentlich oder monatlich.' };
-  const rhythmus = roh.rhythmus as Rhythmus;
-  if (typeof roh.uhrzeit !== 'string' || !UHRZEIT.test(roh.uhrzeit)) return { ok: false, status: 400, fehler: 'Uhrzeit als „HH:MM“ (Berliner Zeit).' };
-  if (Number(roh.uhrzeit.slice(0, 2)) >= TAKT_BIS) return { ok: false, status: 400, fehler: FENSTER_FEHLER };
-  let tage: number[] | undefined;
-  if (roh.tage !== undefined && roh.tage !== null) {
-    if (!Array.isArray(roh.tage)) return { ok: false, status: 400, fehler: 'Tage als Liste.' };
-    const max = rhythmus === 'woechentlich' ? 7 : rhythmus === 'monatlich' ? 31 : 0;
-    if (!max && roh.tage.length) return { ok: false, status: 400, fehler: 'Tage gibt es nur bei „wöchentlich“ (1 = Montag … 7 = Sonntag) und „monatlich“ (1–31).' };
-    if (roh.tage.length > max) return { ok: false, status: 413, fehler: `Höchstens ${max} Tage.` };
-    if (!roh.tage.every(t => Number.isInteger(t) && (t as number) >= 1 && (t as number) <= max)) return { ok: false, status: 400, fehler: rhythmus === 'woechentlich' ? 'Wochentage 1 (Montag) bis 7 (Sonntag).' : 'Monatstage 1 bis 31.' };
-    tage = Array.from(new Set(roh.tage as number[])).sort((a, b) => a - b);
-    if (!tage.length) tage = undefined;
-  }
-  return { ok: true, wert: { rhythmus, uhrzeit: roh.uhrzeit, ...(tage ? { tage } : {}) } };
-}
 
 /** Zeitplan einer Hintergrundaufgabe prüfen (rein). Einmalig: Berliner Wandzeit `YYYY-MM-DDTHH:mm:ss`, nicht in der Vergangenheit. */
 export function zeitplanPruefen(roh: unknown, jetztWand?: string): Pruefung<Zeitplan> {
