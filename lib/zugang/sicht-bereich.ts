@@ -62,6 +62,8 @@ export const ROUTEN_BEREICH: Readonly<Record<string, Sicht>> = {
   // Fulfillment (10.10.): Vorlagen, Fälle, Kunden-Link intern, Dossiers, Personenteil — und der öffentliche Kunden-Link (Mandate sind Business).
   'fulfillment': 'business',
   'kunde': 'business',
+  // Prozesse (21.10.): die Landkarte der Firma — Marketing, Sales, Fulfillment — ist Business.
+  'prozesse': 'business',
 };
 
 /** Normalisiert `/api/x/y/` bzw. `x/y` zu `x/y`. */

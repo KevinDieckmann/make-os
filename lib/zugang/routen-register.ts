@@ -394,6 +394,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'fulfillment/dossier': r('GET,POST', FF, 'Dossier je Mandat (C3) ohne Personenteil: anlegen, Eingaben, F1/F2, Interessenabwägung, Übernehmen/Verwerfen, Prüfen — Lese-Protokoll; Dienstweg schreibt nie.', 'fulfillmentZugang'),
   'fulfillment/analyse': r('GET,POST', FF, 'Analyse-Läufe (C3): Stand und Kostenschätzung je Lauf; Start NUR per Klick auf genau diesen Lauf mit bestätigtem Betrag (kein Autostart), Abbruch, Tiefenbericht — nur per Sitzung.', 'fulfillmentZugang'),
   'fulfillment/personen': r('GET,POST', FF, 'Personenteil der Dossiers (C3): berufliche Personenkarten, Art.-14-Stand, Verknüpfen, Löschen — nur Inhaber oder Mitglied ohne finanzRecht „business“ (personenteilZugang); Lese-Protokoll „personenrecherche“.', 'personenteilZugang'),
+  // ── Prozesse (21.10., Etappe A „Sehen“) — Modul `prozesse`, Tor `prozesseZugang` (Haushalt des Inhabers, Sicht Privat 403; „nur Business“ liest).
+  'prozesse/landkarte': r('GET', 'modul:prozesse', 'Landkarte der Prozesse (Fliege): System-Prozesse aus dem Register, Fulfillment-Vorlagen und Zahl der Fälle aus den vorhandenen Lesewegen — nur Business, nur Zahlen und Titel, schreibt nie.', 'prozesseZugang'),
   'fulfillment/dossier/leseteil': r('GET', 'person', 'Leseteil „Tiefenbericht — nur für dich“ (C3): nur die Person der Sitzung, die ihn ausgelöst hat (andere 404); nie Dienstweg.'),
   // ── Kunden-Link (öffentlich, C2) — kommt AUSGESCHALTET: enge Regex in der Middleware (KUNDE_OFFEN), handelt für niemanden, gleiche 404 für jede Fehlerart.
   'kunde/[link]': r('GET', 'offen', 'Kunden-Sicht über den Kunden-Link (C2): Token im Kopf, nie als Person; Umgebung UND Instanz-Schalter müssen an sein, sonst dieselbe 404.'),

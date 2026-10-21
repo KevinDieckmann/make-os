@@ -9,6 +9,7 @@
 import type { ProzessVorlage, Zone } from '../typen';
 import { kinderVon } from '../regeln';
 import { WEG } from '@/lib/wege';
+import { reiheVerteilen } from '@/lib/prozesse/lage';
 
 export interface LandkartenKasten { id: string; x: number; y: number; b: number; h: number; titel: string; zone: Zone; anzahl: number; href: string; verweis?: string; unter: string[] }
 /** Ein Pfeil mit Beschriftung (senkrecht gedreht an `tx`/`ty`). */
@@ -33,10 +34,9 @@ export function landkarteLage(v: Pick<ProzessVorlage, 'knoten'>, zaehler: Record
     href: WEG.fulfillment('prozesse', { k: k.id }), ...(k.verweis ? { verweis: k.verweis } : {}),
     unter: kinderVon(k.id, v.knoten).map(x => x.titel).slice(0, 6),
   });
+  // Die Reihe füllt die ganze Breite — dieselbe Regel wie die Bänder der Prozess-Landkarte (lib/prozesse/lage.ts, verallgemeinert 21.10.).
   const reihe = (l: typeof ebene2, y: number, h: number, zone: Zone) => {
-    if (!l.length) return;
-    const b = (innenB - M.luecke * (l.length - 1)) / l.length;
-    l.forEach((k, i) => kasten(k, innenX + i * (b + M.luecke), y, b, h, zone));
+    reiheVerteilen({ anzahl: l.length, x: innenX, breite: innenB, luecke: M.luecke }).forEach((r, i) => kasten(l[i], r.x, y, r.b, h, zone));
   };
   let y = M.rand + (dach.length ? M.giebel : 0);
   const dachY = y;
