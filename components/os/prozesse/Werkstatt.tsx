@@ -306,7 +306,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           // Diese Bahn passt nicht (Agenten bleiben bei den Agenten, die Kunden-Bahn trägt nur Nachrichten): nur waagerecht verschieben.
           else { y = lk.y - by; ansagen('In diese Bahn passt der Schritt nicht — er bleibt in seiner Bahn.'); }
         }
-        lagen.push({ id, pos: { x: Math.round(ax - rx), y: Math.max(0, Math.round(y)) } });
+        lagen.push({ id, pos: { x: Math.max(WS.rahmenRand / 2, Math.round(ax - rx)), y: Math.max(0, Math.round(y)) } });
       }
       const r = lageSetzen(f, lagen);
       if (!r.ok) return r;
