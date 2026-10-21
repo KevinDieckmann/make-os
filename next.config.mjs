@@ -66,10 +66,12 @@ const nextConfig = {
   // Adressen bleiben gültig — Lesezeichen und ZOE-Verweise landen richtig.
   async redirects() {
     return [
-      // 10.10. (Entscheidung: Fokus und Kompass zusammen, oben rechts; „Planung soll nur Planung sein“): Wachstum ist der Abschnitt Wirkung,
-      // der Kompass der Abschnitt Prioritäten der Fokus-Seite. Next reicht die Parameter weiter, der Anker öffnet den Abschnitt.
-      { source: '/os/performance', destination: '/os/fokus#wirkung', permanent: false },
-      { source: '/os/wachstum', destination: '/os/fokus#wirkung', permanent: false },
+      // 10.10. (Entscheidung: Fokus und Kompass zusammen, oben rechts; „Planung soll nur Planung sein“): der Kompass ist der Abschnitt Prioritäten
+      // der Fokus-Seite. Next reicht die Parameter weiter, der Anker öffnet den Abschnitt.
+      // 21.10. (Kevin: nur noch zwei Scores — der Wachstums-Score ist weg): alte Adressen des Wachstums-Scores führen auf Heute, wo oben der Score
+      // des Bereichs steht (?space= wandert mit).
+      { source: '/os/performance', destination: '/os', permanent: false },
+      { source: '/os/wachstum', destination: '/os', permanent: false },
       { source: '/os/kompass', destination: '/os/fokus#prioritaeten', permanent: false },
       // 25.09.: „Brain“ heißt in der Leiste so, die Seite liegt unter /os/wissen.
       { source: '/os/brain', destination: '/os/wissen', permanent: false },
@@ -141,7 +143,8 @@ const nextConfig = {
       { source: '/os/saeule/agents', destination: '/os/agenten', permanent: false },
       { source: '/os/saeule/planning', destination: '/os/aufgaben', permanent: false },
       { source: '/os/saeule/finance', destination: '/os/finanzen', permanent: false },
-      { source: '/os/saeule/:key', destination: '/os/fokus#wirkung', permanent: false },
+      // Übrige Säulen des früheren Wachstums-Scores (21.10.: entfallen) → Heute mit dem Score des Bereichs.
+      { source: '/os/saeule/:key', destination: '/os', permanent: false },
     ];
   },
 };

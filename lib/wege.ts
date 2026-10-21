@@ -203,7 +203,6 @@ export const WEG = {
   // Fokus (10.10., Entscheidung: Fokus und Kompass zusammen, oben rechts im Kopf): EINE Steuerungsseite je Bereich (folgt dem Kopf-Schalter),
   // Abschnitte als Anker. Die frühere Seite „Wachstum“ ist der Abschnitt Wirkung, der „Kompass“ die Abschnitte Prioritäten und „Wie wir arbeiten“.
   fokus: (abschnitt?: FokusAbschnitt) => (abschnitt ? `/os/fokus#${abschnitt}` : '/os/fokus'),
-  wachstum: () => '/os/fokus#wirkung',
   /**
    * Die zwei Scores (21.10., Kevin: „Privat wie auch im Business einen Score, der alles zusammenbringt“): Privat-Score bzw. Business-Score
    * (= Business-Index, Gesamtsicht) mit allen Säulen, Kennzahlen und dem größten Hebel. `k` öffnet eine Kennzahl, `f` die Sicht einer

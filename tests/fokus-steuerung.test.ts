@@ -289,10 +289,11 @@ describe('(c) Navigation und Oberfläche', () => {
     const { default: konfig } = await import('../next.config.mjs');
     const regeln = await (konfig as { redirects: () => Promise<{ source: string; destination: string }[]> }).redirects();
     const ziel = (q: string) => regeln.find(r => r.source === q)?.destination;
-    expect(ziel('/os/wachstum')).toBe('/os/fokus#wirkung');
+    // 21.10. (zwei Scores): der Wachstums-Score ist weg — seine alten Adressen führen auf Heute (oben der Score des Bereichs).
+    expect(ziel('/os/wachstum')).toBe('/os');
     expect(ziel('/os/kompass')).toBe('/os/fokus#prioritaeten');
     expect(ziel('/os/planung/fokus')).toBe('/os/fokus#prioritaeten');
-    expect(ziel('/os/performance')).toBe('/os/fokus#wirkung');
+    expect(ziel('/os/performance')).toBe('/os');
     expect(existsSync(path.join(wurzel, 'app/os/kompass'))).toBe(false);
     expect(existsSync(path.join(wurzel, 'app/os/wachstum'))).toBe(false);
     const funde = ['app', 'components', 'lib', 'hooks', 'context'].flatMap(dateien).filter(f => /['"`]\/os\/(kompass|wachstum)\b/.test(lies(f)));
