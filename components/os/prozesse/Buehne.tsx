@@ -57,6 +57,8 @@ const ruhig = () => typeof window !== 'undefined' && bewegungReduziert();
 /** Wie lange eine Kamerafahrt dauert (ms) — Hineinfahren etwas länger, damit man sieht, wohin. */
 const FAHRT = { zeige: 420, rein: 360, landen: 460 } as const;
 const LEUCHT_MS = 1800;
+/** Kleinster Zoom beim Fahren auf ein Ziel — darunter wird die Schrift der Formen (15 px) unlesbar. */
+const LESBAR = 0.7;
 
 /** Ein geschlossener Weg um eine Box (der Lichtfaden beim Aufleuchten). */
 export function ringUm(b: Rechteck, rand = 12): [number, number][] {
@@ -111,6 +113,13 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
     fahrt.current = requestAnimationFrame(schritt);
   }, [setze]);
   const passend = useCallback((b: Rechteck, max = 1.2, rand = 48) => { const g = groesse(); return allesZeigen(b, g.b, g.h, rand, max); }, []);
+  /** Auf ein Ziel (Phase, Schritt): passend — aber nie unlesbar klein; ist es zu groß, beginnt das Bild oben an seiner Mitte (wie der Editor, START_MIN). */
+  const aufZiel = useCallback((b: Rechteck) => {
+    const k = passend(b, 1.1, 60);
+    if (k.s >= LESBAR) return k;
+    const g = groesse();
+    return { s: LESBAR, x: Math.round(g.b / 2 - (b.x + b.b / 2) * LESBAR), y: Math.round(40 - b.y * LESBAR) };
+  }, [passend]);
 
   const leuchte = useCallback((id: string) => {
     const b = stand.current.boxen.get(id);
@@ -123,7 +132,7 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
 
   useImperativeHandle(ref, () => ({
     allesZeigen: () => fliege(passend(stand.current.box, 1, 40)),
-    zeige: (id, mitLeuchten) => { const b = stand.current.boxen.get(id); if (!b) return; fliege(passend(b, 1.2, 80)); if (mitLeuchten) leuchte(id); },
+    zeige: (id, mitLeuchten) => { const b = stand.current.boxen.get(id); if (!b) return; fliege(aufZiel(b)); if (mitLeuchten) leuchte(id); },
     fliegeIn: (id, dann) => {
       const b = stand.current.boxen.get(id);
       if (!b) { dann(); return; }
@@ -131,13 +140,13 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
     },
     zoomen: f => { const g = groesse(); fliege(zoomUm(kamera.current, f, g.b / 2, g.h / 2), 220); },
     rahmen: b => fliege(passend(b, 1.6, 24), 700),
-  }), [fliege, passend, leuchte]);
+  }), [fliege, passend, aufZiel, leuchte]);
 
   // ── Landen: eine neue Szene erscheint (rein: aus der Weite heran · raus: aus dem Element heraus · neu: gleich passend) ──
   useEffect(() => {
     const e = stand.current.einflug;
     const zielBox = stand.current.ziel ? stand.current.boxen.get(stand.current.ziel) : undefined;
-    const endKamera = zielBox ? passend(zielBox, 1.1, 60) : passend(stand.current.box, 1, 40);
+    const endKamera = zielBox ? aufZiel(zielBox) : passend(stand.current.box, 1, 40);
     if (e.art === 'neu' || ruhig()) { setze(endKamera); return; }
     const g = groesse();
     if (e.art === 'rein') setze(zoomUm(endKamera, 0.62, g.b / 2, g.h / 2));
@@ -150,8 +159,8 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
   useEffect(() => {
     if (erstesZiel.current) { erstesZiel.current = false; return; }
     const b = p.ziel ? stand.current.boxen.get(p.ziel) : undefined;
-    if (b) fliege(passend(b, 1.1, 60));
-  }, [p.ziel, fliege, passend]);
+    if (b) fliege(aufZiel(b));
+  }, [p.ziel, fliege, aufZiel]);
   useEffect(() => { if (p.leuchten) leuchte(p.leuchten.id); }, [p.leuchten, leuchte]);
 
   // ── Eingabe (nur am SVG) ──
@@ -162,7 +171,8 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
     const e = flaecheEingabe(el, {
       kamera: () => kamera.current, setze: k => { if (fahrt.current) { cancelAnimationFrame(fahrt.current); fahrt.current = 0; } setze(k); },
       freiSchiebt: () => true,
-      istFrei: z => !(z as Element | null)?.closest?.('[data-pz-klick]'),
+      // Ziehen schiebt überall (auch über einer Kachel) — ein Klick nach dem Ziehen zählt nicht (`klickNachZiehen`).
+      istFrei: () => true,
     });
     return () => { e.abbauen(); if (bild.current) cancelAnimationFrame(bild.current); if (fahrt.current) cancelAnimationFrame(fahrt.current); };
   }, [setze]);
@@ -207,10 +217,14 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
   };
 
   const hinweis = flaecheHinweis(geraet.mac, geraet.touch || !!p.handy, false);
+  // Ein Klick am Ende eines Zugs (Schieben) öffnet nichts — sonst führe jedes Verschieben über einer Kachel in sie hinein.
+  const druck = useRef<{ x: number; y: number } | null>(null);
   return (
     <div ref={buehne} className={`ff-flaeche-buehne pz-buehne${p.praesentieren ? ' pz-buehne-praes' : ''}`}>
       <canvas ref={leinwand} aria-hidden="true" data-flow-ebene="" className="ff-flow-ebene" style={{ pointerEvents: 'none' }} />
       <svg ref={svg} tabIndex={0} role="group" aria-roledescription="Fläche" aria-label={p.label} className="pz-svg"
+        onPointerDownCapture={e => { druck.current = { x: e.clientX, y: e.clientY }; }}
+        onClickCapture={e => { const d = druck.current; if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) { e.stopPropagation(); e.preventDefault(); } }}
         onClick={e => { if (!(e.target as Element).closest?.('[data-pz-klick]')) p.onFrei?.(); }} style={{ fontFamily: 'inherit' }}>
         <g ref={welt} transform={transformVon(kamera.current)} data-stufe={stufe}>{p.children(stufe)}</g>
       </svg>

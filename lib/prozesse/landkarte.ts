@@ -16,15 +16,15 @@ import { reiheVerteilen, r1 } from './lage';
 
 /** Maße der Landkarte (Bildpunkte der Fläche). */
 export const FLIEGE = {
-  kachel: { b: 240, h: 88 },
+  kachel: { b: 280, h: 96 },
   /** Waagerecht zwischen zwei Stufen (Platz für Wege und ihre Beschriftung), senkrecht zwischen zwei Kacheln einer Spalte. */
-  spalte: 128, zeile: 16,
+  spalte: 128, zeile: 24,
   /** Die Gasse in der Mitte der Fliege — dort läuft der Weg des Kunden. */
   gasse: 56,
   /** Seitenrand, Kopf eines Bandes (Titel), Innenrand, Abstand der Bänder, Platz für die Stufen-Titel über der Fliege. */
-  rand: 80, kopf: 56, innen: 28, abstand: 110, stufenKopf: 40,
+  rand: 80, kopf: 56, innen: 28, abstand: 80, stufenKopf: 44,
   /** Mindest-Halbhöhe der Fliege je Stufe — so bleibt die Form erkennbar, auch mit wenigen Kacheln (der Knoten in der Mitte hat keine). */
-  minHalb: { marketing: 230, sales: 170, uebergabe: 0, fulfillment: 170, ausbau: 230 } as Record<KernStufe, number>,
+  minHalb: { marketing: 250, sales: 190, uebergabe: 0, fulfillment: 190, ausbau: 250 } as Record<KernStufe, number>,
   /** Luft zwischen Kacheln und Umriss der Fliege. */
   luft: 26,
 } as const;
@@ -156,7 +156,7 @@ export function fliegeLage(prozesse: readonly ProzessDef[]): FliegeLage {
 
 // ── Ebene 2: ein Prozess ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export const PROZESS_MASS = { phase: { b: 260, kopf: 72, zeile: 26 }, marke: { b: 200, h: 64 }, geist: { b: 220, h: 64 }, luecke: 96, zeigen: 4 } as const;
+export const PROZESS_MASS = { phase: { b: 300, kopf: 80, zeile: 28 }, marke: { b: 200, h: 64 }, geist: { b: 260, h: 72 }, luecke: 96, zeigen: 4 } as const;
 
 export interface PhaseLage extends Box { id: string; nr: number; titel: string; zeilen: string[]; mehr: number }
 export interface GeistLage extends Box { id: string; titel: string; text: string; richtung: 'von' | 'an' }

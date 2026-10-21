@@ -15,12 +15,18 @@ import { FARBE as C, TIEF, RAND, FLAECHE_STIL } from '@/lib/make-one/design';
 import { pfadVon, pfeilTextOrt, type FlaecheBild } from '@/lib/fulfillment/prozesse/flaeche';
 import type { FliegeLage, ProzessLage } from '@/lib/prozesse/landkarte';
 import type { ProzessDef, Zahl } from '@/lib/prozesse/typen';
-import { kachelTexte, zahlTexte, zahlSchluessel } from '@/lib/prozesse/modell';
+import { kachelTexte, kurztitel, zahlTexte, zahlSchluessel } from '@/lib/prozesse/modell';
 import { STUFE_FARBE, tonVon } from '@/lib/prozesse/farben';
 import type { ZoomStufe } from '../ui/flaeche/stufe';
 import { FlaecheForm, FlaecheStart, FlaecheRahmen, FlaecheGruppe, FlaechePfeil, FlaecheSpitze, FLAECHE_SCHRIFT, textZeilen } from '../ui/reise/flaeche-formen';
 import { FORM_FARBE, JETZT } from '../ui/reise/formen';
 import type { FlussForm } from '@/lib/reise/bild';
+
+/**
+ * Schrift der Kacheln je Zoomstufe (Bildpunkte der Fläche): so groß, dass sie im Bild lesbar bleibt — fern ≈ 13 px bei Zoom 0,5, mittel ≈ 13 px ab 0,7
+ * (Grenzen: components/os/ui/flaeche/stufe.ts).
+ */
+export const KACHEL_SCHRIFT = { fern: 26, zahlFern: 22, mittel: 18, nah: 16 } as const;
 
 /** Tastatur an einem SVG-Knopf: Enter bzw. Leertaste lösen aus. */
 const taste = (f: () => void) => (e: RKeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } };
@@ -113,19 +119,29 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, onKachel,
             <rect x={0} y={12} width={4} height={k.h - 24} rx={2} fill={ton} />
             <Leuchtrand b={k.b} h={k.h} />
             {fern ? (
-              <Text text={t.titel ?? ''} x={18} y={k.h / 2 - (textZeilen(t.titel ?? '', k.b - 30, 24, 2).length > 1 ? 10 : -8)} breite={k.b - 30} groesse={24} gewicht={700} />
+              <Text text={t.titel ?? ''} x={18} y={k.h / 2 - (textZeilen(t.titel ?? '', k.b - 32, KACHEL_SCHRIFT.fern, 2).length > 1 ? 9 : -9)} breite={k.b - 32} groesse={KACHEL_SCHRIFT.fern} gewicht={700} />
             ) : (
               <>
-                <Zeichen x={16} y={stufe === 'nah' ? 30 : 14} width={16} height={16} color={ton} aria-hidden />
-                {t.marke && <text x={16} y={20} fontSize={FLAECHE_SCHRIFT.mikro} fontWeight={600} letterSpacing="1.1" fill={C.inkLeise}>{t.marke.toUpperCase()}</text>}
-                <Text text={t.titel ?? ''} x={40} y={stufe === 'nah' ? 43 : 27} breite={k.b - 54} groesse={stufe === 'nah' ? 15 : 16} gewicht={650} />
-                {t.eigner && <text x={16} y={k.h - 12} fontSize={FLAECHE_SCHRIFT.unter} fill={C.inkDim}>{t.eigner}</text>}
+                {t.marke && <text x={18} y={22} fontSize={FLAECHE_SCHRIFT.mikro} fontWeight={600} letterSpacing="1.1" fill={C.inkLeise}>{t.marke.toUpperCase()}</text>}
+                <Zeichen x={18} y={stufe === 'nah' ? 33 : 20} width={18} height={18} color={ton} aria-hidden />
+                <Text text={t.titel ?? ''} x={44} y={stufe === 'nah' ? 47 : 34} breite={k.b - 58} groesse={stufe === 'nah' ? KACHEL_SCHRIFT.nah : KACHEL_SCHRIFT.mittel} gewicht={650} />
+                {t.eigner && <text x={18} y={k.h - 12} fontSize={FLAECHE_SCHRIFT.unter} fill={C.inkDim}>{t.eigner}</text>}
               </>
             )}
-            {/* Die Zahl: fern groß über der Ecke, sonst unten bzw. (nah) oben rechts. */}
-            {fern && t.zahl && <ZahlPille x={k.b + 8} y={-24} text={t.zahl} groesse={22} ton={ton} rechtsBuendig {...(href ? { href, onZahl } : {})} />}
-            {!fern && z?.haupt && <ZahlPille x={stufe === 'nah' ? k.b - 10 : 16} y={stufe === 'nah' ? 6 : k.h - 30} text={z.haupt} ton={ton} rechtsBuendig={stufe === 'nah'} {...(href ? { href, onZahl } : {})} />}
-            {!fern && z?.zweite && <ZahlPille x={stufe === 'nah' ? k.b - 10 : z.haupt ? 26 + z.haupt.length * 7.6 + 18 : 16} y={stufe === 'nah' ? 32 : k.h - 30} text={z.zweite.text} rot={z.zweite.rot} ton={ton} rechtsBuendig={stufe === 'nah'} {...(href ? { href, onZahl } : {})} />}
+            {/* Die Zahl hängt als Abzeichen an der oberen rechten Ecke (die zweite links daneben) — nie im Text der Kachel, nie doppelt. */}
+            {(() => {
+              const g = fern ? KACHEL_SCHRIFT.zahlFern : FLAECHE_SCHRIFT.unter;
+              const h = Math.round(g * 1.75);
+              const haupt = fern ? t.zahl : z?.haupt;
+              const zweite = fern ? undefined : z?.zweite;
+              const breite = (text: string, rot?: boolean) => Math.round(text.length * g * 0.58 + (rot ? g + 22 : 18));
+              return (
+                <>
+                  {haupt && <ZahlPille x={k.b + 6} y={-h / 2} text={haupt} groesse={g} ton={ton} rechtsBuendig {...(href ? { href, onZahl } : {})} />}
+                  {zweite && <ZahlPille x={k.b + 6 - (haupt ? breite(haupt) + 6 : 0)} y={-h / 2} text={zweite.text} rot={zweite.rot} groesse={g} ton={ton} rechtsBuendig {...(href ? { href, onZahl } : {})} />}
+                </>
+              );
+            })()}
           </g>
         );
       })}
@@ -145,8 +161,12 @@ export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onG
     <g>
       <defs><FlaecheSpitze id={spitze} /></defs>
       {lage.pfeile.map(pf => <FlaechePfeil key={pf.id} d={pfadVon(pf.punkte)} spitze={spitze} text={fern ? undefined : pf.text} textOrt={fern ? undefined : pf.textOrt} />)}
-      <g transform={`translate(${lage.start.x} ${lage.start.y})`}><FlaecheStart b={lage.start.b} h={lage.start.h} titel="Start" /></g>
-      <g transform={`translate(${lage.ende.x} ${lage.ende.y})`}><FlaecheStart b={lage.ende.b} h={lage.ende.h} titel="Ergebnis" /></g>
+      {[{ box: lage.start, wort: 'Start' }, { box: lage.ende, wort: 'Ergebnis' }].map(m => (
+        <g key={m.wort} transform={`translate(${m.box.x} ${m.box.y})`}>
+          <rect width={m.box.b} height={m.box.h} rx={m.box.h / 2} fill={C.grund} stroke={C.inkDim} strokeWidth={2} />
+          <text x={m.box.b / 2} y={m.box.h / 2} textAnchor="middle" dominantBaseline="central" fontSize={fern ? KACHEL_SCHRIFT.fern : 17} fontWeight={650} fill={C.ink}>{m.wort}</text>
+        </g>
+      ))}
       {lage.phasen.map(ph => {
         const z = zahlTexte(zahlen[zahlSchluessel({ p: prozess.id, ph: ph.id })]);
         const schritte = prozess.phasen.find(x => x.id === ph.id)?.schritte ?? [];
@@ -158,15 +178,17 @@ export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onG
             <rect width={ph.b} height={ph.h} rx={16} fill={TIEF.flaeche(ton)} stroke={TIEF.rand(ton)} strokeWidth={1.5} />
             <Leuchtrand b={ph.b} h={ph.h} rx={16} />
             <text x={18} y={26} fontSize={FLAECHE_SCHRIFT.mikro} fontWeight={600} letterSpacing="1.1" fill={C.inkLeise}>{`PHASE ${ph.nr}`}</text>
-            <text x={18} y={52} fontSize={17} fontWeight={700} fill={C.ink}>{textZeilen(ph.titel, ph.b - 36, 17, 1)[0] ?? ''}</text>
+            {fern
+              ? <Text text={ph.titel} x={18} y={62} breite={ph.b - 36} groesse={KACHEL_SCHRIFT.fern} gewicht={700} />
+              : <text x={18} y={56} fontSize={19} fontWeight={700} fill={C.ink}>{textZeilen(ph.titel, ph.b - 36, 19, 1)[0] ?? ''}</text>}
             {z?.haupt && <ZahlPille x={ph.b - 12} y={10} text={z.haupt} ton={ton} rechtsBuendig />}
             {!fern && ph.zeilen.map((t, i) => (
               <g key={i}>
-                <FormMini form={schritte[i]?.form ?? 'schritt'} x={18} y={72 + i * 26} />
-                <text x={40} y={83 + i * 26} fontSize={FLAECHE_SCHRIFT.unter} fill={C.inkDim}>{textZeilen(t, ph.b - 58, FLAECHE_SCHRIFT.unter, 1)[0] ?? ''}</text>
+                <FormMini form={schritte[i]?.form ?? 'schritt'} x={18} y={80 + i * 28} />
+                <text x={40} y={92 + i * 28} fontSize={15} fill={C.inkDim}>{textZeilen(t, ph.b - 58, 15, 1)[0] ?? ''}</text>
               </g>
             ))}
-            {!fern && ph.mehr > 0 && <text x={40} y={83 + ph.zeilen.length * 26} fontSize={FLAECHE_SCHRIFT.unter} fill={C.inkLeise}>{`+${ph.mehr} weitere`}</text>}
+            {!fern && ph.mehr > 0 && <text x={40} y={92 + ph.zeilen.length * 28} fontSize={15} fill={C.inkLeise}>{`+${ph.mehr} weitere`}</text>}
           </g>
         );
       })}
@@ -178,7 +200,7 @@ export function ProzessBild({ lage, prozess, zahlen, stufe, spitze, onPhase, onG
             <rect width={g.b} height={g.h} rx={12} fill={C.grund} stroke={RAND.stark} strokeWidth={1.4} strokeDasharray="6 5" />
             <Leuchtrand b={g.b} h={g.h} rx={12} />
             <text x={14} y={22} fontSize={FLAECHE_SCHRIFT.mikro} fontWeight={600} letterSpacing="1.1" fill={C.inkLeise}>{g.richtung === 'von' ? 'KOMMT VON' : 'GEHT AN'}</text>
-            <text x={14} y={46} fontSize={14} fontWeight={600} fill={C.inkDim}>{textZeilen(g.titel, g.b - 28, 14, 1)[0] ?? ''}</text>
+            <text x={14} y={fern ? 52 : 46} fontSize={fern ? 22 : 15} fontWeight={600} fill={C.inkDim}>{textZeilen(fern ? kurztitel(g.titel) : g.titel, g.b - 28, fern ? 22 : 15, 1)[0] ?? ''}</text>
           </g>
         );
       })}

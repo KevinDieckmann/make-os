@@ -1225,7 +1225,7 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .pz-haupt, .pz-feld { min-width: 0; }
 .pz-feld { display: grid; gap: 12px; align-content: start; }
 .pz-buehnen-rahmen { position: relative; min-width: 0; }
-.ff-flaeche-buehne.pz-buehne { height: max(440px, calc(100vh - 320px)); }
+.ff-flaeche-buehne.pz-buehne { height: max(480px, calc(100vh - 250px)); }
 @media (max-width: 720px) { .ff-flaeche-buehne.pz-buehne { height: 62vh; min-height: 320px; } }
 .pz-kachel { outline: none; }
 .pz-leuchtrand { display: none; }

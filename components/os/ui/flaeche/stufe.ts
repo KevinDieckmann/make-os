@@ -5,5 +5,5 @@
 
 export type ZoomStufe = 'fern' | 'mittel' | 'nah';
 /** Unter `fernUnter` ist es „fern“ (Form, Kurztitel, Zahl), ab `nahAb` „nah“ (Details); dazwischen „mittel“ (Titel und Zahl). */
-export const ZOOM_STUFEN = { fernUnter: 0.55, nahAb: 1.15 } as const;
+export const ZOOM_STUFEN = { fernUnter: 0.7, nahAb: 1.3 } as const;
 export const zoomStufe = (s: number): ZoomStufe => (!(s > 0) ? 'mittel' : s < ZOOM_STUFEN.fernUnter ? 'fern' : s >= ZOOM_STUFEN.nahAb ? 'nah' : 'mittel');

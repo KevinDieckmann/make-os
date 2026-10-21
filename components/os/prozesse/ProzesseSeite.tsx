@@ -154,7 +154,7 @@ export function ProzesseSeite() {
   useEffect(() => { if (daten) vorher.current = pfad; });
 
   // ── Präsentieren: Rahmen für Rahmen ──
-  const rahmen = szene?.rahmen ?? [];
+  const rahmen = useMemo(() => szene?.rahmen ?? [], [szene]);
   useEffect(() => { setRahmenNr(0); }, [praes, szene?.schluessel]);
   useEffect(() => {
     if (!praes || !rahmen[rahmenNr]) return;
@@ -173,15 +173,15 @@ export function ProzesseSeite() {
   const auswahlZeigen = useCallback(() => { const id = pfad.s ?? pfad.ph ?? leuchten?.id; if (id) buehne.current?.zeige(id, true); else buehne.current?.allesZeigen(); }, [pfad.s, pfad.ph, leuchten?.id]);
 
   // ── Tastatur (Punkt 13) ──
-  const stand = useRef({ hilfe, voll, praes, ebene, pfad, ansicht, einzeltasten });
-  stand.current = { hilfe, voll, praes, ebene, pfad, ansicht, einzeltasten };
+  const stand = useRef({ hilfe, voll, praes, ebene, pfad, ansicht, einzeltasten, vollbild });
+  stand.current = { hilfe, voll, praes, ebene, pfad, ansicht, einzeltasten, vollbild };
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       const st = stand.current;
       if (e.key === 'Escape') {
         if (imFeld(e.target)) return;
         if (st.hilfe) { setHilfe(false); e.preventDefault(); return; }
-        if (st.voll) { vollbild.aus(); e.preventDefault(); return; }
+        if (st.voll) { st.vollbild.aus(); e.preventDefault(); return; }
         if (st.ebene > 1) { geh(ebeneHoch(st.pfad)); e.preventDefault(); }
         return;
       }
@@ -195,11 +195,11 @@ export function ProzesseSeite() {
       else if (e.key === '?') { e.preventDefault(); setHilfe(x => !x); }
       else if (e.key === '+' || e.key === '=') { e.preventDefault(); buehne.current?.zoomen(1.25); }
       else if (e.key === '-') { e.preventDefault(); buehne.current?.zoomen(0.8); }
-      else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); if (st.voll) vollbild.aus(); else vollbild.an(); }
+      else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); if (st.voll) st.vollbild.aus(); else st.vollbild.an(); }
     };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
-  }, [geh, vollbild, auswahlZeigen, blaettern]);
+  }, [geh, auswahlZeigen, blaettern]);
 
   // ── Teile ──
   const krumen = daten ? brotkrumen(prozesse, pfad) : [];
