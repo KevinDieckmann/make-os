@@ -36,7 +36,7 @@ import {
   vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen,
   type MahnVorschlag, type Pflicht,
 } from './regeln';
-import { angenommenZuDeal } from '@/lib/crm/angebote';
+import { angenommenZuDeal, angebotTitelFuerFolge } from '@/lib/crm/angebote';
 import { abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, istAnrechnung, monatsPositionen, nurAbgerechnet } from '@/lib/crm/mandat-zusatz';
 import type { RechnungPosition } from './typen';
 import { rechnungDokument, bankZeile } from './dokument';
@@ -185,6 +185,9 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     }
     const k = kontakt(a.kontaktId);
     const f = firma(a.firmaId ?? k?.firmaId);
+    // 21.10. (Rundgang A1): der Titel aus den Produkten des Angebots — ein alter Titel, der nur ein fremdes Produkt nennt, wird nicht übernommen
+    // (dieselbe Regel wie das Mandat aus dem Angebot, `angebotTitelFuerFolge`). Gespeichertes bleibt unverändert.
+    const titelAusAngebot = angebotTitelFuerFolge(a, crm.leistungen);
     const empf = empfaengerAusCrm(k, f);
     const mandat = a.mandatId ? crm.mandate.find(m => m.id === a.mandatId) : a.dealId ? crm.mandate.find(m => m.chanceId === a.dealId && !m.geloeschtAm) : undefined;
     // Gesellschaft wie überall (08.10., 3.6): eine Register-Gesellschaft führt der Finanzplan nicht (409 „nur Grunddaten“), nie still kdc.
@@ -192,7 +195,7 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     if (!g) throw new RechnungFehler('Für dieses Angebot steht keine Gesellschaft fest — die Rechnung frei schreiben.', 409, { grund: 'gesellschaft' });
     const positionen = positionenAusAngebot(nurEinmalig ? { positionen: a.positionen.filter(x => x.basis === 'einmalig') } : a, ku(g));
     entwurf = neuerEntwurf({
-      id: nurEinmalig ? fest : id, firmaId: g, kunde: kundeAus(empf, a.empfaenger?.firma ?? a.empfaenger?.name), titel: nurEinmalig ? `${a.titel || 'Leistung'} — einmalig`.slice(0, 160) : a.titel, empfaenger: empf, positionen,
+      id: nurEinmalig ? fest : id, firmaId: g, kunde: kundeAus(empf, a.empfaenger?.firma ?? a.empfaenger?.name), titel: nurEinmalig ? `${titelAusAngebot || 'Leistung'} — einmalig`.slice(0, 160) : titelAusAngebot, empfaenger: empf, positionen,
       zahlungszielTage: a.zahlungszielTage, heute, ...(mandat ? { mandatId: mandat.id } : {}), ...(a.nummer ? { angebot: a.nummer } : {}), ...(a.gestelltAm ? { angebotAm: tagVon(a.gestelltAm) } : {}),
       ...(k ? { kontaktId: k.id } : {}), ...(f ? { kundeFirmaId: f.id } : {}), angebotId: a.id, einleitung: EINLEITUNG_VORLAGE, schluss: SCHLUSS_VORLAGE,
     }, { kleinunternehmer: ku(g) });

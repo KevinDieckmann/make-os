@@ -236,7 +236,7 @@ export function karteAusStufe(s: TreppenStufe, id: string): Leistung {
 
 // ── Preis-Teile bearbeiten ───────────────────────────────────────────────────
 
-export type PreisTeilFeld = 'betrag' | 'bis' | 'einheit' | 'anzahlung' | 'kontingent' | 'deckel' | 'text';
+export type PreisTeilFeld = 'betrag' | 'bis' | 'einheit' | 'anzahlung' | 'kontingent' | 'deckel' | 'menge' | 'text';
 /** Je Preis-Form nur die passenden Felder (Reihenfolge = Anzeige). */
 export const PREIS_TEIL_FELDER: Record<PreisTeilArt, readonly PreisTeilFeld[]> = {
   kostenlos: ['text'],
@@ -244,13 +244,14 @@ export const PREIS_TEIL_FELDER: Record<PreisTeilArt, readonly PreisTeilFeld[]> =
   monatlich: ['betrag', 'bis', 'text'],
   jaehrlich: ['betrag', 'bis', 'kontingent', 'anzahlung', 'text'],
   je_einheit: ['betrag', 'bis', 'einheit', 'anzahlung', 'text'],
-  tagessatz: ['betrag', 'bis', 'text'],
-  stundensatz: ['betrag', 'bis', 'deckel', 'text'],
+  // Geplante Menge je Monat (21.10., Kevin: Tages-/Stundensätze „mit geplanter Menge je Monat“) — Planung und Liquidität rechnen Satz × Menge.
+  tagessatz: ['betrag', 'bis', 'menge', 'text'],
+  stundensatz: ['betrag', 'bis', 'deckel', 'menge', 'text'],
   erfolg: ['betrag', 'text'],
 };
 export const PREIS_FELD_LABEL: Record<PreisTeilFeld, string> = {
   betrag: 'Betrag (€ netto)', bis: 'bis (€, optional)', einheit: 'Einheit (z. B. Event)', anzahlung: 'Anzahlung (%)', kontingent: 'Enthalten (Kontingent)',
-  deckel: 'Höchstens Std./Monat', text: 'Kurze Erklärung',
+  deckel: 'Höchstens Std./Monat', menge: 'Geplant je Monat', text: 'Kurze Erklärung',
 };
 
 /** Den Teil auf eine andere Preis-Form stellen — Felder, die es dort nicht gibt, fallen weg (sonst lehnte der Server ab). */
@@ -264,6 +265,7 @@ export function teilFuerArt(t: PreisTeil, art: PreisTeilArt): PreisTeil {
     ...(f.includes('anzahlung') && t.zahlplan ? { zahlplan: t.zahlplan } : {}),
     ...(f.includes('kontingent') && t.kontingent ? { kontingent: t.kontingent } : {}),
     ...(f.includes('deckel') && t.deckel ? { deckel: t.deckel } : {}),
+    ...(f.includes('menge') && typeof t.mengeJeMonat === 'number' ? { mengeJeMonat: t.mengeJeMonat } : {}),
     ...(t.text ? { text: t.text } : {}),
   };
 }
@@ -317,6 +319,14 @@ export function teilFeldSetzen(t: PreisTeil, feld: PreisTeilFeld, roh: string): 
       const n = ganz(1, PRODUKT_GRENZEN.stundenJeMonat, 'Stunden je Monat');
       return typeof n === 'string' ? { ok: false, fehler: n } : { ok: true, teil: { ...t, deckel: { stundenJeMonat: n } } };
     }
+    case 'menge': {
+      // Tage bzw. Stunden je Monat, auch halbe („1,5“); leer = Vorgabe (Deckel bzw. 0, `geplanteMenge` in lib/crm/produkt-karte.ts).
+      if (!v) return { ok: true, teil: ohne('mengeJeMonat') };
+      const n = Number(v.replace(/\./g, '').replace(',', '.'));
+      if (!Number.isFinite(n) || n < 0 || n > PRODUKT_GRENZEN.stundenJeMonat) return { ok: false, fehler: `Geplant je Monat: eine Zahl von 0 bis ${PRODUKT_GRENZEN.stundenJeMonat.toLocaleString('de-DE')}.` };
+      if (t.deckel?.stundenJeMonat && n > t.deckel.stundenJeMonat) return { ok: false, fehler: 'Geplant je Monat: höchstens so viel wie der Deckel.' };
+      return { ok: true, teil: { ...t, mengeJeMonat: Math.round(n * 100) / 100 } };
+    }
     case 'einheit': case 'kontingent': case 'text': {
       const max = feld === 'einheit' ? PRODUKT_GRENZEN.einheit : feld === 'kontingent' ? PRODUKT_GRENZEN.kontingent : PRODUKT_GRENZEN.text;
       if (v.length > max) return { ok: false, fehler: `Zu lang (höchstens ${max} Zeichen) — nicht gespeichert.` };
@@ -332,6 +342,7 @@ export function teilFeldWert(t: PreisTeil, feld: PreisTeilFeld): string {
     case 'bis': return euro(t.bisCent);
     case 'anzahlung': return t.zahlplan ? String(t.zahlplan.anzahlungProzent) : '';
     case 'deckel': return t.deckel?.stundenJeMonat ? String(t.deckel.stundenJeMonat) : '';
+    case 'menge': return typeof t.mengeJeMonat === 'number' ? t.mengeJeMonat.toLocaleString('de-DE') : '';
     case 'einheit': return t.einheit ?? '';
     case 'kontingent': return t.kontingent ?? '';
     case 'text': return t.text ?? '';

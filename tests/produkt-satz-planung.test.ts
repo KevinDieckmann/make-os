@@ -109,3 +109,24 @@ describe('B4 · Mandat und Zusatzmodul: geplante Tage bzw. Stunden, änderbar �
     expect(istBasisVorschlaege({ mandate: [mandat()], chancen: [], leistungen: [] }, '2026-10-20')[0]).toMatchObject({ betrag: 1400, rhythmus: 'einmalig' });
   });
 });
+
+describe('Karte: Feld „Geplant je Monat“ am Tages-/Stundensatz (21.10.)', () => {
+  it('nur bei Sätzen, Dezimal erlaubt, nie über dem Deckel, leer = Vorgabe; Formwechsel behält es nur bei Sätzen', async () => {
+    const { PREIS_TEIL_FELDER, teilFeldSetzen, teilFeldWert, teilFuerArt } = await import('@/lib/crm/produkt-katalog');
+    expect(PREIS_TEIL_FELDER.tagessatz).toContain('menge');
+    expect(PREIS_TEIL_FELDER.stundensatz).toContain('menge');
+    expect(PREIS_TEIL_FELDER.monatlich).not.toContain('menge');
+    const tag = { id: 'pt-1', art: 'tagessatz' as const, rolle: 'grund' as const, betragCent: 120_000 };
+    const r = teilFeldSetzen(tag, 'menge', '1,5');
+    expect(r).toEqual({ ok: true, teil: { ...tag, mengeJeMonat: 1.5 } });
+    if (r.ok) {
+      expect(teilFeldWert(r.teil, 'menge')).toBe('1,5');
+      expect(teilFeldSetzen(r.teil, 'menge', '')).toEqual({ ok: true, teil: tag });
+      expect(teilFuerArt(r.teil, 'monatlich')).not.toHaveProperty('mengeJeMonat');
+    }
+    const std = { id: 'pt-2', art: 'stundensatz' as const, rolle: 'option' as const, betragCent: 15_000, deckel: { stundenJeMonat: 8 } };
+    expect(teilFeldSetzen(std, 'menge', '10')).toMatchObject({ ok: false });
+    expect(teilFeldSetzen(std, 'menge', 'abc')).toMatchObject({ ok: false });
+    expect(teilFeldSetzen(std, 'menge', '6')).toMatchObject({ ok: true, teil: { mengeJeMonat: 6 } });
+  });
+});

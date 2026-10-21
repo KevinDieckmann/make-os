@@ -33,8 +33,8 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
-    id: 'u-2026-10-19',
-    datum: '2026-10-19',
+    id: 'u-2026-10-21',
+    datum: '2026-10-21',
     titel: 'Produkte & Mandate neu',
     kurz: 'Ein Produkt ist jetzt eine Karte: Preis, Vertrag, Regeln, Text und Ablauf stehen genau einmal — Angebot, Mandat, Rechnung und Liquidität lesen alles von dort.',
     abschnitte: [
@@ -47,15 +47,19 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { bereich: 'business', text: 'Produkte importieren: aus einer Tabelle oder Datei, mit Vorschau „neu · ändert · gleich“ — erst „Übernehmen“ schreibt.', weg: WEG.produkt() },
       ] },
       { art: 'besser', punkte: [
-        { bereich: 'business', text: 'Die Anrechnung (z. B. eines Workshops auf das Mandat) steht genau einmal auf der Rechnung und ebenso in der Liquidität.' },
-        { bereich: 'business', text: 'Das Angebot übernimmt alle Preise eines Produkts als Positionen, Optionen hakt ihr an; der Deal folgt dem angenommenen Angebot.' },
+        { bereich: 'business', text: 'Anrechnung (z. B. eines Workshops auf das Mandat): angerechnet wird alles inklusive gewählter Optionen; was in den ersten Monat nicht passt, wandert auf die nächsten Rechnungen — Liquidität rechnet genauso.' },
+        { bereich: 'business', text: 'Tages- und Stundensätze planen mit einer Menge je Monat; abgerechnet werden die echten Stunden bzw. Tage.' },
+        { bereich: 'business', text: '„Höchstens N gleichzeitig“: beim nächsten Mandat warnt MAKE OS „alle Plätze belegt“ — anlegen geht trotzdem.' },
+        { bereich: 'business', text: 'Nach einem neuen Mandat mit Ablauf fragt MAKE OS „Kundenonboarding jetzt starten?“.' },
+        { bereich: 'business', text: 'Das Angebot übernimmt alle Preise eines Produkts als Positionen, Optionen hakt ihr an; es heißt nach Firma und Produkt, und der Deal folgt dem angenommenen Angebot.' },
         { bereich: 'business', text: 'Die Rechnungsanschrift wird an der Firma gespeichert.' },
         { bereich: 'alle', text: 'Abgeleitete Ziele (Quartal, Monat, Woche) ziehen ihren Fortschritt wieder mit dem Jahresziel mit.' },
       ] },
       { art: 'behoben', punkte: [
         { bereich: 'business', text: 'Ein neuer Fall zeigt keine Phase mehr fälschlich als „erledigt“; was nebenher läuft, heißt „läuft“.' },
         { bereich: 'business', text: 'Ein Konto „nur Business“ sieht den Produktkatalog in der Planung.' },
-        { bereich: 'business', text: 'Der Lieferumfang verdoppelt sich nicht mehr beim Verlassen des Feldes.' },
+        { bereich: 'business', text: 'Der Lieferumfang verdoppelt sich nicht mehr, und ein getippter Punkt geht beim Schließen nicht verloren.' },
+        { bereich: 'business', text: 'Liquidität: Ein Monat mit gestellter Rechnung zählt nicht mehr doppelt (Rechnung und Planposten).' },
       ] },
     ],
   },
