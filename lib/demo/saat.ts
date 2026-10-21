@@ -858,6 +858,10 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   const { kiBeispieleSaen } = await import('./saat-ki');
   for (const s of await kiBeispieleSaen({ lena: LENA, jonas: JONAS, haushalt: DEMO_HAUSHALT, heute, jetzt, kontaktId })) schritt(s.name, s.anzahl);
 
+  // 14f) Prozesse (22.10., Kundengewinnung): einige der 18 Vorlagen über „Aus Vorlage“ der Werkstatt — veröffentlicht im Probelauf, Eignerin Lena (lib/demo/saat-prozesse.ts).
+  const { prozesseAusVorlagenSaen } = await import('./saat-prozesse');
+  for (const s of await prozesseAusVorlagenSaen({ lena: LENA, eigner: KONTO_LENA, rufe })) schritt(s.name, s.anzahl);
+
   // 15) Wissen: Notizen im Vault der Demo (nur, wenn er im Datenordner liegt — Riegel in lib/demo/schutz.ts).
   let notizen = 0;
   if (o.vaultDir) {

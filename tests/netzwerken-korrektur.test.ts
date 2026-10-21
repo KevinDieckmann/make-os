@@ -258,9 +258,10 @@ describe('5 · Event-Kennzahlen: Netzwerken-Events getrennt', { timeout: 20_000 
     expect(nach('makeone')).toBe('2026-10-02');
     expect(nach('nur-kontakt')).toBeUndefined();
     expect(nach('followup')).toBeUndefined();
-    // Die 48-h-Kennzahl rechnet sie als pünktlich nachgefasst (Frist 04.10. ist bei 06.10. vorbei): 3 von 5.
+    // Die 48-h-Kennzahl rechnet sie als pünktlich nachgefasst: 3 von 5. Seit E-V7 (22.10., „48 Stunden = Werktage überall“) endet die Frist eines Events
+    // am Fr 02.10. erst am Di 06.10. (zwei Werktage) — am 07.10. ist sie vorbei (vorher: Kalendertage, Frist 04.10.).
     const { eventKennzahlen } = await import('@/lib/crm/traktion');
-    const n48 = eventKennzahlen(await kontakte(), await crm(), '2026-10-06').find(x => x.id === 'nachfassen_48h')!;
+    const n48 = eventKennzahlen(await kontakte(), await crm(), '2026-10-07').find(x => x.id === 'nachfassen_48h')!;
     expect(n48.wert).toBeCloseTo(3 / 5);
   });
 });

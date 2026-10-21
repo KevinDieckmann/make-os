@@ -52,7 +52,9 @@ export const ANSPRUCH_MS = 10 * 60_000;
 // Inbox (10.10., Roadmap Phase 1): `inbox` — Aufgaben-Vorschlag aus einer Mail/WhatsApp (Regelwerk ohne Modell, lib/inbox/aufgaben-vorschlag-server.ts).
 // Prozesse (21.10., Etappe C1 „Laufen intern“): `prozess` — ein Lauf legt eine Freigabe bzw. Entscheidung vor (Ausgänge freigegeben · abgelehnt ·
 // abgelaufen als Äste), nach der Freigabe einer Mail/WhatsApp geht sie sofort raus — als die freigebende Person (lib/prozesse/lauf-stapel.ts).
-export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | 'fulfillment' | 'inbox' | 'prozess' | AgentenStapelArt;
+// Prozesse (22.10., Kundengewinnung „Heads setzen Prozesse mit auf“): `prozess-entwurf` — ein Head hat einen ganzen Prozess-Entwurf bzw. Bausteine für den
+// offenen Prozess vorgeschlagen; übernommen nur von der anfragenden Person, aus der Sitzung, über die Werkstatt (lib/prozesse/kundengewinnung/head-server.ts).
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | 'fulfillment' | 'inbox' | 'prozess' | 'prozess-entwurf' | AgentenStapelArt;
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {

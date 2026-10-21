@@ -27,6 +27,7 @@ export const STUFEN: { id: ChancenStufe; label: string; p: number; weiterWenn: s
 export const OFFENE_STUFEN = STUFEN.filter(s => s.offen).map(s => s.id);
 // 21.10. (Prozesse C1, M9): „Keine Entscheidung“ fest dazu — der größte Verlustgrund im B2B (der Kunde entscheidet sich gar nicht) war bisher nur als
 // „Keine Rückmeldung“ oder „Kein Entscheider“ erfassbar. Angehängt (nie umsortiert); ein gleichnamiger eigener Wert gilt weiter (ohne Doppel).
+// 22.10. (Kundengewinnung, Kevins Entscheidung E-V4): derselbe feste Grund trägt die Vorlage V13 („Verloren / keine Entscheidung“).
 export const VERLUSTGRUENDE = ['Preis', 'Kein Bedarf', 'Zeitpunkt', 'Wettbewerb', 'Kein Entscheider', 'Intern gelöst', 'Keine Rückmeldung', 'Keine Entscheidung'];
 
 /**

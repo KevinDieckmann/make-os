@@ -354,7 +354,7 @@ describe('M10 · besuchte Events: Erfassung = besucht; Follow-up-Quote mit Defin
     const kpi = besuchKennzahlen([e], ctx(z, '2026-10-12')).find(x => x.id === 'besuche_followup')!;
     expect(kpi.anzeige).toBe('67 %');
     expect(kpi.definition).toBe(FOLLOWUP_QUOTE_DEFINITION);
-    expect(FOLLOWUP_QUOTE_DEFINITION).toContain('innerhalb von 2 Tagen');
+    expect(FOLLOWUP_QUOTE_DEFINITION).toContain('innerhalb von 2 Werktagen');
     expect(kpi.quelle).toBe('2 von 3 Personen rechtzeitig nachgefasst');
   });
   it('lauter „Nur Kontakt“: keine Quote statt 0 %', () => {

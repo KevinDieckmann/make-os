@@ -111,6 +111,8 @@ async function anfrageLauf(h: string, a: Absicht): Promise<void> {
       const { b, s } = await buchungUndSeite(id);
       // Bezug `buchung` (Nachtrag F1): freigegeben, abgelehnt, abgesagt oder abgelaufen → die Glocke zählt sie nicht mehr.
       await melde({ an: s.person, art: 'buchung', titel: `Neue Terminanfrage: „${s.titel}“ am ${datumText(b)} — bitte freigeben oder ablehnen`, link: '/os/kalender?buchungen=1', bezug: { art: 'buchung', id } });
+      // Ereignis (22.10., Kundengewinnung E5): Buchung angefragt — für die Person der Seite, nur die Kennung der Buchung (der Gast ist noch nicht im CRM).
+      await import('@/lib/ereignisse/quellen-kundengewinnung').then(q => q.buchungEreignis('angefragt', { buchungId: id, person: s.person })).catch(() => 0);
     });
   });
   await absichtAbschliessen(h, a.id, 'fertig');
@@ -327,6 +329,10 @@ async function freigabeSchritte(h: string, a: Absicht): Promise<void> {
         const fu = neuesFollowUp({ id: vorbereitenId, bezug: { art: 'kontakt', id: b.kontaktId! }, kontaktId: b.kontaktId, art: 'termin', text: `Termin vorbereiten — „${s.titel.slice(0, 60)}“`, faellig: vorbereitenTag(b.start, heute), quelle: 'hand', ...(b.terminUid ? { terminUid: b.terminUid } : {}), ...(b.anliegen ? { notiz: `Anliegen: ${b.anliegen}`.slice(0, 1000) } : {}) }, k, von, jetzt);
         return { ...c, followups: [...(c.followups ?? []), { ...fu, zustaendig: s.person, geaendertVon: von }] };
       }, { art: 'person', person: von });
+      // Ereignis (22.10., Kundengewinnung E5 + E12): Buchung bestätigt; eine bei der Freigabe NEU angelegte Person ist auch ein neuer Lead (`kontaktNeu`
+      // = die Kennung, die der Schritt „kontakt“ für eine neue Person vergab). Nur Kennungen, wirft nie, je Buchung einmal.
+      const neuePerson = b.kontaktId === v.daten<string>('kontaktNeu') && !k.werbesperre;
+      await import('@/lib/ereignisse/quellen-kundengewinnung').then(q => q.buchungEreignis('bestaetigt', { buchungId: id, person: s.person, kontaktId: b.kontaktId, firmaId: k.firmaId, neuePerson, ...(b.terminUid ? { terminUid: b.terminUid } : {}) })).catch(() => 0);
     });
   });
 }

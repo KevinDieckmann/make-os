@@ -281,9 +281,21 @@ export type WartenRegel =
 export interface SchleifeRegel { liste: string; prozessId: string; hoechstens: number }
 /** Teilprozess: immer die veröffentlichte Version; feste Eingaben (Feld der Schnittstelle → Quelle im Lauf). `warten: false` = nur starten, nicht aufs Ergebnis warten. */
 export interface TeilprozessAufruf { prozessId: string; eingaben?: Record<string, string>; warten?: boolean }
-/** Was eine CRM-Abfrage liefert (Entscheidung 21.10.: ruhende Accounts, neue Leads, Deals ohne nächsten Schritt …). */
-export type CrmAbfrageArt = 'leads' | 'neue-leads' | 'firmen-ruhend' | 'deals-ohne-schritt' | 'angebote-ohne-antwort';
-export const CRM_ABFRAGE_ARTEN = ['leads', 'neue-leads', 'firmen-ruhend', 'deals-ohne-schritt', 'angebote-ohne-antwort'] as const satisfies readonly CrmAbfrageArt[];
+/**
+ * Was eine CRM-Abfrage liefert (Entscheidung 21.10.: ruhende Accounts, neue Leads, Deals ohne nächsten Schritt …). Seit 22.10. (Kundengewinnung, N1 aus
+ * research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.2) dazu die Arten der 18 Vorlagen — gelesen NUR über die vorhandenen Leser (lib/prozesse/kundengewinnung/abfrage.ts):
+ *   leads-wiedervorlage   Leads „ruht“ mit Wiedervorlage bis heute (lib/crm/leads.ts)      deals-wiedervorlage   geparkte Deals, Wiedervorlage fällig (`dealWiedervorlagen`)
+ *   deals-haengen         offene Deals mit Ampel rot/gelb oder ohne nächsten Schritt (`gesundheit`, lib/crm/pipeline.ts)
+ *   netzwerken-offen      Erfassungen des Event-Falls ohne Nachfassen und ohne Verzicht     nachbereiten          Termine mit CRM-Bezug vorbei, ohne Notiz (`nachbereitung`)
+ *   vernetzen-runde       die Vernetzen-Runde der Person (`netzRunde`)                     powerhour-karten      wer heute dran ist (`werIstDran`)
+ *   kampagne-personen     die Personen einer Kampagne (Kampagne des Falls bzw. jede aktive) mandate-laufzeitende  aktive Mandate mit Ende in n Tagen (`mandatFristen`)
+ */
+export type CrmAbfrageArt = 'leads' | 'neue-leads' | 'firmen-ruhend' | 'deals-ohne-schritt' | 'angebote-ohne-antwort'
+  | 'leads-wiedervorlage' | 'deals-wiedervorlage' | 'deals-haengen' | 'netzwerken-offen' | 'nachbereiten' | 'vernetzen-runde' | 'powerhour-karten' | 'kampagne-personen' | 'mandate-laufzeitende';
+export const CRM_ABFRAGE_ARTEN = ['leads', 'neue-leads', 'firmen-ruhend', 'deals-ohne-schritt', 'angebote-ohne-antwort',
+  'leads-wiedervorlage', 'deals-wiedervorlage', 'deals-haengen', 'netzwerken-offen', 'nachbereiten', 'vernetzen-runde', 'powerhour-karten', 'kampagne-personen', 'mandate-laufzeitende'] as const satisfies readonly CrmAbfrageArt[];
+/** Abfrage-Arten, die eine Zahl „Tage“ brauchen (seit bzw. ohne Kontakt seit bzw. Vorlauf). */
+export const ABFRAGE_MIT_TAGEN: readonly CrmAbfrageArt[] = ['neue-leads', 'firmen-ruhend', 'angebote-ohne-antwort', 'mandate-laufzeitende'];
 export type BeanGruppe = 'B' | 'E' | 'A' | 'N';
 /**
  * Eine CRM-Abfrage (liefert eine Liste von Fällen — nur Kennungen). Filter über die VORHANDENEN Leser (lib/crm/leads.ts `leads`, Lifecycle, BEAN,

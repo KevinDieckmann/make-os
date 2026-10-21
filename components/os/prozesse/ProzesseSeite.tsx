@@ -17,9 +17,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Maximize2, Minimize2, Expand, Presentation, Map as MapIcon, Plus, Minus, ScanSearch, Keyboard, X, ChevronLeft, ChevronRight, Workflow } from 'lucide-react';
+import { Maximize2, Minimize2, Expand, Presentation, Map as MapIcon, Plus, Minus, ScanSearch, Keyboard, X, ChevronLeft, ChevronRight, Workflow, LayoutTemplate } from 'lucide-react';
 import { Werkstatt } from './Werkstatt';
 import { WerkstattUebersicht, NeuerProzessFenster } from './WerkstattUebersicht';
+import { VorlagenGalerie } from './VorlagenGalerie';
+import { HeadFragenFenster } from './HeadFragen';
 import { FARBE as C, TYP, MIKRO, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Knopf, Segmente, Hinweis, Leerzustand, Wahl, SymbolKnopf, useHandy, useMedien } from '../ui';
 import { WEG } from '@/lib/wege';
@@ -74,6 +76,10 @@ export function ProzesseSeite() {
   const schmal = useMedien('(max-width: 767px)');
   const { daten, fehler, neu: landkarteNeu } = useLandkarte();
   const [neuOffen, setNeuOffen] = useState(false);
+  // „Aus Vorlage anlegen“ (22.10., Kundengewinnung): die Galerie der 18 Vorlagen.
+  const [vorlageOffen, setVorlageOffen] = useState(false);
+  // „Head fragen“ (22.10.): ein ganzer Entwurf als Vorschlag in den Stapel — übernommen erst per Klick.
+  const [headOffen, setHeadOffen] = useState(false);
   const vollbild = useVollbild();
   const praes = adr.modus === 'praesentieren';
   const voll = vollbild.voll || praes;
@@ -284,7 +290,7 @@ export function ProzesseSeite() {
   let inhalt: ReactNode;
   if (!daten) inhalt = fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Landkarte lädt …</p>;
   else if (!prozesse.length) inhalt = <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine Prozesse">Sobald Abläufe im System oder im Fulfillment stehen, erscheinen sie hier.</Leerzustand>;
-  else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onLandkarte={() => void landkarteNeu()} />;
+  else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} />;
   else if (ansicht === 'liste') inhalt = <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} />;
   else if (szene) {
     inhalt = (
@@ -301,6 +307,15 @@ export function ProzesseSeite() {
   const raster = <div className={`pz-raster${feld && ansicht === 'bild' ? ' pz-mit-feld' : ''}`}><div className="pz-haupt">{inhalt}</div>{feld && ansicht === 'bild' && <aside className="pz-feld" aria-label="Details">{feld}</aside>}</div>;
   // „+ Prozess“ (Kevins Bild 21.10.): Bereich, Fall-Art, Eigner, Steckbrief → Werkstatt; die Kachel steht danach in ihrem Bereich der Fliege.
   const neuKnopf = !schmal && <Knopf leise onClick={() => setNeuOffen(true)} titel="Einen eigenen Prozess anlegen (Werkstatt)"><span className="pz-knopf-inhalt"><Plus size={15} aria-hidden />Prozess</span></Knopf>;
+  const vorlageKnopf = !schmal && <Knopf leise onClick={() => setVorlageOffen(true)} titel="Einen Prozess aus einer Vorlage der Kundengewinnung anlegen"><span className="pz-knopf-inhalt"><LayoutTemplate size={15} aria-hidden />Vorlage</span></Knopf>;
+  const vorlageFenster = vorlageOffen && (
+    <VorlagenGalerie onZu={() => setVorlageOffen(false)}
+      onAngelegt={async id => { await landkarteNeu(); setVorlageOffen(false); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
+  );
+  const headFenster = headOffen && (
+    <HeadFragenFenster onZu={() => setHeadOffen(false)}
+      onUebernommen={async r => { await landkarteNeu(); setHeadOffen(false); router.push(WEG.prozesse({ p: r.prozessId, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
+  );
   const neuFenster = neuOffen && (
     <NeuerProzessFenster onZu={() => setNeuOffen(false)} bereichVorgabe={p?.band === 'kern' ? p.stufe : p?.band === 'fuehrung' ? 'fuehrung' : p?.band === 'unterstuetzung' ? 'unterstuetzung' : undefined}
       onAngelegt={async id => { await landkarteNeu(); setNeuOffen(false); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
@@ -319,6 +334,7 @@ export function ProzesseSeite() {
               {ansichtWahl}
               {ansicht === 'bild' && flaecheLeiste}
               {neuKnopf}
+              {vorlageKnopf}
               {praesKnopf}
               {vollKnopf}
             </div>
@@ -326,6 +342,8 @@ export function ProzesseSeite() {
         )}
         <div className="pz-voll-inhalt">{raster}</div>
         {neuFenster}
+        {vorlageFenster}
+        {headFenster}
         {praes && (
           <div className="pz-praes-leiste" role="toolbar" aria-label="Präsentieren">
             <SymbolKnopf ariaLabel="Rahmen zurück (←)" aus={rahmenNr <= 0} onClick={() => blaettern(-1)}><ChevronLeft size={18} /></SymbolKnopf>
@@ -340,7 +358,7 @@ export function ProzesseSeite() {
   }
 
   return (
-    <Seite titel="Prozesse" ton={STUFE_FARBE.uebergabe} rechts={<div className="pz-kopf-werkzeuge">{ansichtWahl}{neuKnopf}{!handy && praesKnopf}{vollKnopf}</div>}>
+    <Seite titel="Prozesse" ton={STUFE_FARBE.uebergabe} rechts={<div className="pz-kopf-werkzeuge">{ansichtWahl}{neuKnopf}{vorlageKnopf}{!handy && praesKnopf}{vollKnopf}</div>}>
       <Karte className="pz-karte">
         <div className="pz-oben">
           {brot}
@@ -349,6 +367,8 @@ export function ProzesseSeite() {
         {ansicht === 'bild' && daten && flaecheLeiste}
         {raster}
  {neuFenster}
+        {vorlageFenster}
+        {headFenster}
         {ansicht === 'bild' && daten && ebene === 1 && <p className="pz-legende" style={{ ...MIKRO, margin: 0, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien, color: C.inkLeise }}>Ein Klick fährt hinein · Überfahren zeigt alle Übergaben einer Kachel · Zahl = Fälle, ein Klick darauf zeigt sie · „System“ = schon im Code gebaut, nur lesbar</p>}
       </Karte>
     </Seite>
@@ -360,8 +380,8 @@ export function ProzesseSeite() {
  * Die Werkstatt im Bereich der Seite (Etappe B2): ohne Prozess die Übersicht mit „+ Prozess“; ein eigener Prozess öffnet die Werkstatt; System-Prozesse und Pakete
  * des Fulfillments bleiben hier nur lesbar (Pakete öffnen weiter ihren vorhandenen Editor).
  */
-function WerkstattBereich({ p, schmal, onNeu, onLandkarte }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onLandkarte: () => void }) {
-  if (!p) return <WerkstattUebersicht onNeu={onNeu} />;
+function WerkstattBereich({ p, schmal, onNeu, onVorlage, onHead, onLandkarte }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onVorlage: () => void; onHead: () => void; onLandkarte: () => void }) {
+  if (!p) return <WerkstattUebersicht onNeu={onNeu} onVorlage={onVorlage} onHead={onHead} />;
   if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} onLandkarte={onLandkarte} />;
   if (p.quelle === 'vorlage') {
     return (

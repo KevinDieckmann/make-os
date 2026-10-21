@@ -87,11 +87,26 @@ export async function gmailEreignisse(person: string, koepfe: readonly { id: str
 }
 
 /** IMAP-Abgleich: neue Nachrichten im Posteingang eines Postfachs (nur nach dem ersten Lesen des Ordners). Wirft nie. */
-export async function imapEreignisse(person: string, postfach: { adresse: string; bereich: string | null }, koepfe: readonly { id: string; labels: string[]; liste?: boolean; automatisch?: boolean; von: { email: string } }[]): Promise<number> {
+export async function imapEreignisse(person: string, postfach: { id?: string; adresse: string; bereich: string | null }, koepfe: readonly { id: string; labels: string[]; liste?: boolean; automatisch?: boolean; von: { email: string } }[]): Promise<number> {
   try {
     const ein = koepfe.filter(k => eingehend(k, new Set([postfach.adresse.toLowerCase()])));
-    return ein.length ? postEreignisse(person, 'imap', postfach.bereich, ein.map(k => ({ id: k.id, von: k.von.email }))) : 0;
+    if (!ein.length) return 0;
+    // E13 (22.10., Kundengewinnung — Vorlage V03 findet sein Gespräch): das Gespräch `im~<postfach>~<Faden>` aus demselben Bündeln wie die Inbox
+    // (lib/inbox/strom.ts `imapFaeden` über die Köpfe des Postfachs im Spiegel) — nur die Kennung, nie Betreff oder Adresse. Fehlt etwas: ohne Gespräch.
+    const faeden = await imapGespraeche(person, postfach.id).catch(() => null);
+    return postEreignisse(person, 'imap', postfach.bereich, ein.map(k => {
+      const f = faeden?.get(k.id);
+      return { id: k.id, von: k.von.email, ...(f && postfach.id ? { gespraech: `im~${postfach.id}~${f}` } : {}) };
+    }));
   } catch { return 0; }
+}
+
+/** Faden je Kopf-Kennung eines IMAP-Postfachs (Server) — dieselbe Rechnung wie die Inbox. null ohne Postfach-Kennung. */
+async function imapGespraeche(person: string, postfachId: string | undefined): Promise<Map<string, string> | null> {
+  if (!postfachId) return null;
+  const [{ ladeImapStand }, { imapFaeden }, { kurzHash }] = await Promise.all([import('@/lib/postfach/spiegel'), import('@/lib/inbox/strom'), import('@/lib/postfach/rfc822')]);
+  const s = await ladeImapStand(person);
+  return imapFaeden(Object.values(s.koepfe).filter(k => k.postfachId === postfachId), kurzHash);
 }
 
 // ── WhatsApp ────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -178,8 +193,13 @@ export function crmDiff(vorher: CrmFuerDiff, nachher: CrmFuerDiff): EreignisEing
 }
 
 /** Nach dem Speichern des CRM (lib/crm/speicher.ts `crmSchreiben`). Wirft nie. */
-export async function crmEreignisse(vorher: CrmFuerDiff, nachher: CrmFuerDiff): Promise<number> {
-  try { const l = crmDiff(vorher, nachher); return l.length ? (await ereignis(l)).neu : 0; } catch { return 0; }
+export async function crmEreignisse(vorher: CrmFuerDiff & Partial<Pick<CrmBestand, 'events' | 'kampagnen'>>, nachher: CrmFuerDiff & Partial<Pick<CrmBestand, 'events' | 'kampagnen'>>): Promise<number> {
+  try {
+    // Kundengewinnung (22.10., E7/E11): Events und Kampagnen — eigener Block in ./quellen-kundengewinnung.ts.
+    const { crmDiffKundengewinnung } = await import('./quellen-kundengewinnung');
+    const l = [...crmDiff(vorher, nachher), ...crmDiffKundengewinnung(vorher, nachher)];
+    return l.length ? (await ereignis(l)).neu : 0;
+  } catch { return 0; }
 }
 
 /** Kartei (rein): Personen-Leads, die neu auf SQL stehen — eingeschränkte nie. */
@@ -194,7 +214,9 @@ export function karteiDiffSql(vorher: readonly Pick<Kontakt, 'id' | 'lead'>[] | 
 export async function karteiEreignisse(vorher: unknown, nachher: unknown): Promise<number> {
   try {
     const liste = (b: unknown) => (b && typeof b === 'object' && Array.isArray((b as { kontakte?: unknown }).kontakte) ? (b as { kontakte: Kontakt[] }).kontakte : []);
-    const l = karteiDiffSql(liste(vorher), liste(nachher));
+    // Kundengewinnung (22.10., E6): neue Einwilligung mit vollem Nachweis — eigener Block in ./quellen-kundengewinnung.ts.
+    const { einwilligungDiff } = await import('./quellen-kundengewinnung');
+    const l = [...karteiDiffSql(liste(vorher), liste(nachher)), ...einwilligungDiff(liste(vorher), liste(nachher))];
     return l.length ? (await ereignis(l)).neu : 0;
   } catch { return 0; }
 }

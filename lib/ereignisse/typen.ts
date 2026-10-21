@@ -21,12 +21,18 @@ import type { Spanne } from '@/lib/arbeitsrahmen/regel';
 export type EreignisArt = SkillEreignis;
 // `webhook` (21.10., Prozesse B1): ein abgesicherter Webhook eines Prozesses (lib/prozesse/webhook-server.ts).
 // `fulfillment`, `rechnung` (21.10., Prozesse C1): Fall-Schritt/Ziel bzw. „Rechnung stellen“ (lib/ereignisse/quellen.ts).
-export const EREIGNIS_QUELLEN = ['gmail', 'imap', 'whatsapp', 'kontoauszug', 'finanzplan', 'crm', 'kartei', 'anfrage', 'aufgaben', 'kalender', 'webhook', 'fulfillment', 'rechnung'] as const;
+// `netzwerken`, `buchung` (22.10., Kundengewinnung): Erfassungen auf Veranstaltungen und Buchungsanfragen (lib/ereignisse/quellen-kundengewinnung.ts).
+export const EREIGNIS_QUELLEN = ['gmail', 'imap', 'whatsapp', 'kontoauszug', 'finanzplan', 'crm', 'kartei', 'anfrage', 'aufgaben', 'kalender', 'webhook', 'fulfillment', 'rechnung', 'netzwerken', 'buchung'] as const;
 export type EreignisQuelle = typeof EREIGNIS_QUELLEN[number];
 /** Die Kennungen, die ein Ereignis tragen darf — sonst nichts. */
 /** Prozesse (21.10., B1): `prozessId` (`pz-…`) und `eingangId` (`we-…`) — Webhook-Ereignisse tragen nur diese zwei. */
 /** Prozesse C1 (21.10.): `knotenId` — der Schritt eines Fulfillment-Falls (Ereignis „Schritt im Fall erledigt“). */
-export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rechnungId', 'buchungId', 'kontoId', 'aufgabeId', 'terminUid', 'gespraech', 'followupId', 'prozessId', 'eingangId', 'knotenId'] as const;
+/**
+ * Kundengewinnung (22.10.): `eventId`, `kampagneId`, `angebotId` und `terminBuchungId` (Buchungsseite — `buchungId` meint Bankbuchungen, siehe Kontoauszug)
+ * — nur Kennungen, wie alles hier.
+ */
+export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rechnungId', 'buchungId', 'kontoId', 'aufgabeId', 'terminUid', 'gespraech', 'followupId', 'prozessId', 'eingangId', 'knotenId',
+  'eventId', 'kampagneId', 'angebotId', 'terminBuchungId'] as const;
 export type BezugFeld = typeof BEZUG_FELDER[number];
 export type EreignisBezug = Partial<Record<BezugFeld, string>>;
 export type EreignisBereich = 'privat' | 'business';
@@ -44,7 +50,7 @@ export interface Ereignis {
   person?: string;
   /** Nur diese Personen (WhatsApp mit `WHATSAPP_PERSONEN`). Fehlen `person` und `personen`: alle im Haushalt, die den Bereich sehen. */
   personen?: string[];
-  /** Kennung einer Stufe (Deal) — nie Text. */
+  /** Kennung einer Stufe (Deal) bzw. eines Zustands (Kanal einer Einwilligung, Antwort auf ein Angebot, Status eines Events, Ergebnis in einer Kampagne — 22.10.) — nie Text. */
   stufe?: string;
   /** Wann MAKE OS davon erfuhr (ISO). */
   am: string;

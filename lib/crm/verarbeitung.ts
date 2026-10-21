@@ -72,6 +72,7 @@ export const KONTAKTE_LESER_ERLAUBT: Readonly<Record<string, string>> = {
   'app/api/crm/kampagnen/route.ts': 'Kampagnen — nimmt eingeschränkte Personen selbst raus und meldet sie in laufenden Kampagnen.',
   'app/api/crm/followup/route.ts': 'Follow-ups — Power Hour ohne eingeschränkte, Anzeige bestehender Follow-ups mit Kennzeichnung.',
   'app/api/crm/lead/route.ts': 'Qualifizierung — eingeschränkte raus (lib/crm/leads.ts).',
+  'lib/crm/lead-parken-server.ts': 'Lead parken/ausscheiden (aus der Lead-Route herausgelöst, 22.10.) — eingeschränkte Person → 409 vor dem Schreiben, die Lead-Liste kennt sie ohnehin nicht (lib/crm/leads.ts).',
   'app/api/crm/suche/route.ts': 'Suche — zeigt eingeschränkte Personen mit Kennzeichnung (Auffinden ist keine Verarbeitung zur Ansprache).',
   'app/api/crm/netzwerk/route.ts': 'Vernetzen-Runde — eingeschränkte raus (lib/crm/netzwerk.ts).',
   'app/api/crm/marketing/route.ts': 'Marketing — Segmente/Newsletter nehmen eingeschränkte selbst raus (lib/crm/segmente.ts).',

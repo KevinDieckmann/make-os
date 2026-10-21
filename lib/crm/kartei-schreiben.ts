@@ -66,7 +66,8 @@ export async function aendereKontakte<T extends KarteiBestand = KarteiBestand>(m
 
 /** Ereignisse (09.10., E1): Personen-Lead wird SQL → Agenten (nur Kennungen) — nach dem Speichern, nur wenn sich ein Lead änderte, wirft nie. */
 async function ereignisseNachher(aenderungen: readonly Aenderung[], vorher: Roh, nachher: unknown): Promise<void> {
-  if (!aenderungen.some(a => a.op === 'neu' || a.felder?.includes('lead'))) return;
+  // Seit 22.10. (Kundengewinnung, E6) auch bei neuen Einwilligungen.
+  if (!aenderungen.some(a => a.op === 'neu' || a.felder?.includes('lead') || a.felder?.includes('einwilligungen'))) return;
   await import('@/lib/ereignisse/quellen').then(q => q.karteiEreignisse(vorher, nachher)).catch(() => 0);
 }
 
