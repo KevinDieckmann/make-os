@@ -481,7 +481,7 @@ async function teilLaufStarten(l: ProzessLauf, a: Extract<Aktion, { art: 'teilpr
   if (!e || !j) return null;
   const modus = modusFuer(e, standVon(d, e.id));
   if (!modus) return null;
-  const r = await laufStarten({
+  const r = await prozessLaufStarten({
     id: neueKennung('pl'), prozessId: e.id, version: j.nr, def: j.def, fall: fallArtVon(j.def) === l.fall.art ? l.fall : { art: 'keiner' },
     modus: l.modus === 'schatten' ? 'schatten' : modus, person: l.person, ausloeser: { art: a.uebergabe ? 'uebergabe' : 'teilprozess', quelle: a.kennung },
     daten: l.daten, tiefe: l.tiefe + 1, herkunft: { prozessId: l.prozessId, laufId: l.id }, ...(l.fremd ? { fremd: true } : {}), automatisch: false,
@@ -493,7 +493,7 @@ async function teilLaufStarten(l: ProzessLauf, a: Extract<Aktion, { art: 'teilpr
 // ══ Starten ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Einen Lauf starten (in der Sperre; Regeln: lib/prozesse/lauf-regeln.ts `starten`). Zurückgehalten → eine Glocke an den Eigner (je Prozess und Stunde). */
-export async function laufStarten(a: StartAnfrage, h?: string): Promise<StartErgebnis> {
+export async function prozessLaufStarten(a: StartAnfrage, h?: string): Promise<StartErgebnis> {
   const r = await laeufeAendern(d => { const x = starten(d, a); return { datei: x.datei, r: x }; }, h);
   if (!r.ok && r.grund === 'flut') await flutMelden(a.prozessId, h).catch(() => null);
   return r;
@@ -734,7 +734,7 @@ async function aufEreignisStarten(e: Ereignis, kx: MotorKontext): Promise<number
       if (!ausloeserPasst(a, p.id, e, daten)) continue;
       // Schleifenschutz (Punkt 49): die eigene Wirkung startet den Prozess nie; eine Kette endet nach `kettenTiefe`.
       if (herkunft?.prozessId === p.id) { await laeufeAendern(dd => ({ datei: mitStand(dd, p.id, { ...standVon(dd, p.id), nicht: { ...(standVon(dd, p.id).nicht ?? {}), eigen: (standVon(dd, p.id).nicht?.eigen ?? 0) + 1 } }), r: null }), kx.h); continue; }
-      const r = await laufStarten({
+      const r = await prozessLaufStarten({
         id: neueKennung('pl'), prozessId: p.id, version: j.nr, def: j.def, fall, modus, person: personFuer(j.def, kx, e.person ?? null),
         ausloeser: { art: a.art, knoten: s.id, quelle: e.id }, daten: kennungsDaten(e), tiefe: herkunft ? herkunft.tiefe + 1 : 0,
         ...(herkunft ? { herkunft: { prozessId: herkunft.prozessId, laufId: herkunft.laufId } } : {}), ...(a.art === 'webhook' ? { fremd: true } : {}),
@@ -795,7 +795,7 @@ async function zeitplaeneStarten(kx: MotorKontext): Promise<number> {
       if (!letzter) continue; // erstes Mal: nur merken
       const modus = modusFuer(p, st);
       if (!modus) continue;
-      const res = await laufStarten({
+      const res = await prozessLaufStarten({
         id: neueKennung('pl'), prozessId: p.id, version: j.nr, def: j.def, fall: { art: 'keiner' }, modus, person: personFuer(j.def, kx),
         ausloeser: { art: 'zeitplan', knoten: s.id, quelle: faellig }, automatisch: true, periode: `zeitplan:${s.id}:${faellig}`, jetzt: kx.jetzt.toISOString(),
       }, kx.h);
@@ -950,7 +950,7 @@ export async function prozesseNachLoop(loop: 'morgen' | 'woche' | 'rueckblick', 
       if (!modus) continue;
       for (const s of startKnoten(j.def)) {
         if (!s.ausloeser || !startetNachLoop(s.ausloeser, loop)) continue;
-        const r = await laufStarten({
+        const r = await prozessLaufStarten({
           id: neueKennung('pl'), prozessId: p.id, version: j.nr, def: j.def, fall: { art: 'keiner' }, modus, person: personFuer(j.def, kx, o.person ?? null),
           ausloeser: { art: 'loop', knoten: s.id, quelle: `${loop}:${tag}` }, automatisch: true, periode: `loop:${loop}:${tag}`, jetzt: kx.jetzt.toISOString(),
         }, kx.h);
@@ -983,7 +983,7 @@ export async function laufVonHand(a: { prozessId: string; person: string; fall?:
   const d = await laeufeLesen(kx.h);
   const modus = modusFuer(e, standVon(d, e.id));
   if (!modus) return { ok: false, status: 409, fehler: 'Der Prozess läuft gerade nicht.' };
-  const r = await laufStarten({
+  const r = await prozessLaufStarten({
     id: neueKennung('pl'), prozessId: e.id, version: j.nr, def: j.def, fall, modus, person: a.person, ausloeser: { art: 'hand', knoten: hand.id, von: a.person, quelle: a.anfrage },
     automatisch: false, ...(a.erneut ? { erneut: true } : {}), periode: `hand:${a.anfrage}`, jetzt: kx.jetzt.toISOString(),
   }, kx.h);
@@ -1046,7 +1046,7 @@ export async function zurueckgehaltenEntscheiden(prozessId: string, wie: 'starte
     const d = await laeufeLesen(kx.h);
     const modus = modusFuer(e, standVon(d, e.id));
     if (!modus) break;
-    const r = await laufStarten({
+    const r = await prozessLaufStarten({
       id: neueKennung('pl'), prozessId, version: j.nr, def: j.def, fall: z.fall, modus, person: z.person, ausloeser: z.ausloeser, daten: z.daten, tiefe: z.tiefe,
       ...(z.herkunft ? { herkunft: z.herkunft } : {}), ...(z.fremd ? { fremd: true } : {}), automatisch: false, ...(z.ausloeser.quelle ? { periode: z.ausloeser.quelle } : {}), jetzt: iso,
     }, kx.h);
@@ -1153,9 +1153,9 @@ export async function scharfSchalten(a: { prozessId: string; person: string; rec
     const j = juengste(e)!;
     const neu: string[] = [];
     for (const b of await bestehendeFaelle(j.def, kx)) {
-      const r = await laufStarten({
+      const r = await prozessLaufStarten({
         id: neueKennung('pl'), prozessId: e.id, version: j.nr, def: j.def, fall: b.fall, modus: 'scharf', person: personFuer(j.def, kx),
-        ausloeser: { art: 'bestehend', knoten: b.knoten, quelle: `bestehend:${jetzt.slice(0, 10)}` }, daten: b.daten, automatisch: true, jetzt,
+        ausloeser: { art: 'bestehend', knoten: b.knoten, quelle: `bestehend:${tagVonIso(jetzt)}` }, daten: b.daten, automatisch: true, jetzt,
       }, kx.h);
       if (r.ok) { gestartet++; neu.push(r.lauf.id); } else if (r.grund === 'flut') zurueck++;
     }

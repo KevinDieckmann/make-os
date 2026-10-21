@@ -1,6 +1,6 @@
 // Head of IT (27.09.): Befunde aus innen, Host und außen — Schwellen, Gesamtampel, Kurzbericht.
 import { describe, it, expect } from 'vitest';
-import { befundeAus, gesamt, kurzbericht, einrichtungBefunde, type InnenLage, type HostLage, type AussenLage } from '../lib/hoi/lage';
+import { befundeAus, gesamt, kurzbericht, einrichtungBefunde, prozesseBefunde, type InnenLage, type HostLage, type AussenLage, type ProzesseLageHoi } from '../lib/hoi/lage';
 
 const JETZT = '2026-09-27T06:30:00.000Z';
 const innen: InnenLage = {
@@ -90,5 +90,20 @@ describe('Einrichtung der Verbindungen (08.10. spät, L23): graue Hinweise statt
     const b = einrichtungBefunde({ google: false, whatsapp: false, whoop: false });
     expect(gesamt(b).ampel).toBe('grau');
     expect(JSON.stringify(b)).not.toMatch(/@|malin|kevin/i);
+  });
+});
+
+describe('Prozesse (21.10., C1, Punkt 88): Läufe des Motors — nur Zähler', () => {
+  const p = (x: Partial<ProzesseLageHoi> = {}): ProzesseLageHoi => ({ laeufe: 10, offen: 3, wartend: 2, fehler: 0, haengend: 0, freigabenUeberfaellig: 0, zurueckgehalten: 0, abgelehnt: 0, laeufe7d: 8, fehler7d: 0, pausiertNotbremse: 0, pausiertBudget: 0, ...x });
+  it('ohne Läufe kein Befund; ruhig → grün; hängend, überfällige Freigabe, zurückgehalten, Budget-Pause → gelb', () => {
+    expect(prozesseBefunde(null)).toEqual([]);
+    expect(prozesseBefunde(p())[0]).toMatchObject({ id: 'prozesse', ampel: 'gruen' });
+    for (const x of [{ haengend: 1 }, { freigabenUeberfaellig: 1 }, { zurueckgehalten: 2 }, { pausiertBudget: 1 }, { fehler: 1 }]) expect(prozesseBefunde(p(x))[0].ampel, JSON.stringify(x)).toBe('gelb');
+  });
+  it('Notbremse, abgelehnte Starts (Bestand voll) oder Fehlerquote ≥ 25 % (ab 4 Läufen) → rot; nie Kennungen oder Namen', () => {
+    for (const x of [{ pausiertNotbremse: 1 }, { abgelehnt: 3 }, { laeufe7d: 8, fehler7d: 2 }]) expect(prozesseBefunde(p(x))[0].ampel, JSON.stringify(x)).toBe('rot');
+    expect(prozesseBefunde(p({ laeufe7d: 3, fehler7d: 1 }))[0].ampel).toBe('gruen');
+    expect(JSON.stringify(prozesseBefunde(p({ fehler: 2, haengend: 1 })))).not.toMatch(/pl-|pz-|@|kevin|malin/i);
+    expect(befundeAus({ ...innen, prozesse: p({ pausiertNotbremse: 1 }) }, null, null, JETZT).some(b => b.id === 'prozesse' && b.ampel === 'rot')).toBe(true);
   });
 });
