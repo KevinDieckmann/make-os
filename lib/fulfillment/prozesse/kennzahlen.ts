@@ -90,7 +90,7 @@ function addTage(t: string, n: number): string { const d = new Date(`${t.slice(0
 
 // ── 2. Säule „Prozesse“ (bis 21.10. „Fulfillment“) im Business-Index ──────────────────────────────────────────────────────────────────────────────────────────
 
-// 21.10. (Kevin, Analyse Punkt 84 „zwei Scores“): die Säule heißt sichtbar „Prozesse“ — sie misst, wie unsere Abläufe laufen; heute die Lieferung
+// 21.10. (Analyse Punkt 84 „zwei Scores“): die Säule heißt sichtbar „Prozesse“ — sie misst, wie unsere Abläufe laufen; heute die Lieferung
 // (die vier Kennzahlen unten). Die Kennung bleibt `ff` (gespeicherte Schwellen und Verläufe lesen weiter), `nurMitMessung` bleibt: ohne Messung fällt
 // sie heraus, der Index ist bit-gleich wie ohne sie. Erweiterung (Prozess-Kennzahlen — Menge, Umwandlung, Zeit, Befolgungsquote je Prozess): als
 // weitere Einträge in `FF_KENNZAHLEN` mit eigener `gruppe` (z. B. „Ablauf“) und ihrem Fall in `ffMessung`; die Daten dazu als weiteres Feld in
