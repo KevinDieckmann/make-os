@@ -19,6 +19,7 @@ import { planungFehlt } from '@/lib/finanzen/produkte';
 import { inCent } from '@/lib/finanzen/ust';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
 import { weglaenge, type FlowFaden, type FlowFarbe, type FlowPunkt } from '@/lib/lichtfaeden/flow';
+import { feldAbschluss } from '@/lib/make-one/feld-abschluss';
 
 // ── Die Treppe als Bild ──────────────────────────────────────────────────────
 
@@ -458,13 +459,26 @@ export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'>, feld: Tex
 /** Grenzen des Lieferumfangs = die der Treppe (dort wird jeder Punkt je Kunde abgehakt). */
 export const LIEFER_MAX = { zeichen: TEXT_MAX.lieferobjekt, anzahl: TREPPE_GRENZEN.lieferobjekte } as const;
 /** Einen Punkt anhängen — leer, doppelt, zu lang oder zu viele: Satz statt Änderung (Enter + Verlassen hängt nie zweimal an). */
-export function lieferumfangDazu(liste: readonly string[], roh: string): { ok: true; liste: string[] } | { ok: false; fehler: string } {
+export function lieferumfangDazu(liste: readonly string[], roh: string): { ok: true; liste: string[] } | { ok: false; fehler: string; grund: 'leer' | 'lang' | 'doppelt' | 'voll' } {
   const t = roh.replace(/\s+/g, ' ').trim();
-  if (!t) return { ok: false, fehler: 'Leer — nichts hinzugefügt.' };
-  if (t.length > LIEFER_MAX.zeichen) return { ok: false, fehler: `Zu lang (${t.length} von höchstens ${LIEFER_MAX.zeichen} Zeichen) — bitte kürzer fassen.` };
-  if (liste.some(x => norm(x).toLowerCase() === t.toLowerCase())) return { ok: false, fehler: `„${t}“ steht schon in der Liste.` };
-  if (liste.length >= LIEFER_MAX.anzahl) return { ok: false, fehler: `Höchstens ${LIEFER_MAX.anzahl} Punkte — nichts hinzugefügt.` };
+  if (!t) return { ok: false, fehler: 'Leer — nichts hinzugefügt.', grund: 'leer' };
+  if (t.length > LIEFER_MAX.zeichen) return { ok: false, fehler: `Zu lang (${t.length} von höchstens ${LIEFER_MAX.zeichen} Zeichen) — bitte kürzer fassen.`, grund: 'lang' };
+  if (liste.some(x => norm(x).toLowerCase() === t.toLowerCase())) return { ok: false, fehler: `„${t}“ steht schon in der Liste.`, grund: 'doppelt' };
+  if (liste.length >= LIEFER_MAX.anzahl) return { ok: false, fehler: `Höchstens ${LIEFER_MAX.anzahl} Punkte — nichts hinzugefügt.`, grund: 'voll' };
   return { ok: true, liste: [...liste, t] };
+}
+
+/**
+ * Beim Schließen (Karte „Fertig“/×, Abschnitt zugeklappt — 21.10., Rundgang B9): ein getippter, noch nicht übernommener Punkt geht nicht still verloren.
+ * Dieselbe Regel wie das Anlege-Feld (`feldAbschluss`, lib/make-one/feld-abschluss.ts): ein leeres Feld speichert nichts; sonst über `lieferumfangDazu`
+ * — ein Punkt, der schon in der Liste steht, kommt nie doppelt. Passt er nicht (zu lang, Liste voll), bleibt er als Entwurf (`behalten`, mit Satz).
+ */
+export function lieferumfangBeimSchliessen(liste: readonly string[], text: string): { art: 'nichts' } | { art: 'speichern'; liste: string[] } | { art: 'behalten'; fehler: string } {
+  const a = feldAbschluss(text, '', true);
+  if (a.speichern === null) return { art: 'nichts' };
+  const r = lieferumfangDazu(liste, a.speichern);
+  if (r.ok) return { art: 'speichern', liste: r.liste };
+  return r.grund === 'doppelt' || r.grund === 'leer' ? { art: 'nichts' } : { art: 'behalten', fehler: r.fehler };
 }
 
 // ── Aufwand & Kapazität ──────────────────────────────────────────────────────

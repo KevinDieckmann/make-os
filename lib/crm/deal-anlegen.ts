@@ -28,6 +28,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { aendereCrm } from './speicher';
 import { leads, leereKriterien, salesBereit, fehltBisSqlZeile, quelleAusLead, type LeadZeile } from './leads';
 import { ladeScoring } from './scoring-server';
+import { ART_WORT } from './titel-regel';
 import { OFFENE_STUFEN, DEAL_PERSONEN_MAX } from './pipeline';
 import { wer, BEIDE, verantwortlich } from './team';
 import { dealZuFirma } from './firmen-bezug';
@@ -57,7 +58,7 @@ export interface DealEingabe {
 }
 
 const ARTEN: ChancenArt[] = ['retainer', 'projekt', 'workshop', 'vermittlung', 'software'];
-const ART_WORT: Record<ChancenArt, string> = { retainer: 'Retainer', projekt: 'Projekt', workshop: 'Workshop', vermittlung: 'Vermittlung', software: 'Software' };
+// Das Art-Wort steht EINMAL in lib/crm/titel-regel.ts — dort erkennt auch „Deal folgt dem Angebot“ einen automatischen Titel (21.10.).
 /** Höchstens so viele Personen an einem Deal (wie `LISTEN_GRENZEN` im Bestand) — darüber 413, nie still gekürzt. */
 // Grenze und Vorgabe der Personen am Deal stehen client-sicher in lib/crm/pipeline.ts (2.4, 09.10.).
 export { DEAL_PERSONEN_MAX, dealPersonenVorgabe } from './pipeline';

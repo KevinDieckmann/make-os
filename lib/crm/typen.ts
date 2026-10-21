@@ -319,6 +319,12 @@ export interface AngebotPosition {
   id: string;
   /** Aus welchem Produkt die Position stammt (Text und Preis wurden beim Hinzufügen übernommen). */
   leistungId?: string;
+  /**
+   * Aus welchem Preis-Teil des Produkts (`PreisTeil.id`, „pt-…“) — optional, additiv (21.10., Rundgang B5): so erkennt das Angebots-Tool, dass ein
+   * Preis-Teil schon drinsteht, und ein zweiter Klick auf das Produkt hängt nur die neu angehakte Option an. Fehlt es (Altbestand, Produkt ohne
+   * Preis-Teile), gelten Produkt, Titel, Basis und Einheit (`positionenErgaenzen`, lib/crm/angebote.ts).
+   */
+  preisTeilId?: string;
   titel: string;
   text: string;
   menge: number;
@@ -359,6 +365,17 @@ export interface Angebot {
   status: AngebotsStatus;
   version: number;
   vorgaengerId?: string;
+  /**
+   * Titel von Hand geschrieben (21.10., Rundgang A1; optional) — sonst folgt er den Produkten („<Firma> · <Hauptprodukt>“, `angebotTitelAus`).
+   * Fehlt das Feld an einem älteren Entwurf, erkennt `angebotTitelAutomatisch` einen automatisch entstandenen Titel.
+   */
+  titelVonHand?: true;
+  /**
+   * Wie der Deal gewählt wurde (21.10., Rundgang B9; optional): `deal` = der Deal am Angebot ist bestätigt (ausdrücklich gewählt, vom Deal aus
+   * angelegt oder auf die Rückfrage „Zu diesem Deal oder neuer Deal?“), `neu` = beim Stellen entsteht ein eigener Deal — nie still der offene.
+   * Fehlt es, übernimmt das Stellen einen offenen Deal nur, wenn er kein ANDERES Produkt trägt (sonst 409 mit der Rückfrage).
+   */
+  dealWahl?: 'deal' | 'neu';
   /** Nachfolger (neue Version), wenn es eine gibt — setzt nur der Server. */
   nachfolgerId?: string;
   gestelltAm?: string;
