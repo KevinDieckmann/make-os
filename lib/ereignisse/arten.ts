@@ -13,6 +13,14 @@
 //   aufgabe-zoe       „An ZOE geben“ (lib/zoe/aufgaben-werkzeuge.ts) — stößt den ZOE-Aufgaben-Lauf sofort an (intern, kein Skill-Auslöser)
 //   webhook           Prozesse (21.10., B1): ein scharfer Webhook eines Prozesses hat einen Eingang angenommen (lib/prozesse/webhook-server.ts) —
 //                     intern (kein Skill-Auslöser), nur Kennungen (Prozess, Eingang); gestartet wird erst vom Prozess-Motor (Etappe C)
+// Prozesse C1 (21.10., „Laufen intern“) — aus VORHANDENEN Schreibwegen, nie aus einer neuen Abfrage (lib/ereignisse/quellen.ts):
+//   termin-vorbei          CRM-Signal-Lauf (lib/crm/signale-server.ts): Termin mit Bezug, Ende ≤ jetzt (nie abgesagte, nie ganztägige)
+//   mandat-angelegt/-beendet  CRM-Schreibweg (`crmDiff` über `mandate`)
+//   rechnung-gestellt      Rechnungswesen „Rechnung stellen“ (lib/finanzen/rechnung/server.ts)
+//   fall-schritt-erledigt  Fulfillment-Fall: ein Schritt wird erledigt (lib/fulfillment/prozesse/fall-server.ts — nur gemeldet, die Ausführung bleibt)
+//   ziel-erreicht          Fulfillment-Fall: eine neue Messung bringt ein Ziel des Wert-Kontos auf 100 %
+//   antwort-gesendet       eigene Mail (Inbox) bzw. WhatsApp an einen Kontakt gesendet — person = wer gesendet hat
+//   followup-erledigt      Follow-up erledigt (/api/crm/followup)
 
 import type { SkillEreignis } from '@/lib/agenten/typen';
 
@@ -22,10 +30,14 @@ export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
   'deal-stufe': 'Deal in neuer Stufe', zahlungseingang: 'Zahlungseingang', 'termin-abgesagt': 'Termin abgesagt', 'aufgabe-zoe': 'an ZOE gegeben',
   'neue-aufgabe': 'neue Aufgabe', 'termin-vorbei': 'Termin vorbei', 'frist-naht': 'Frist naht', 'neues-medium': 'neues Bild oder Video',
   webhook: 'Webhook von außen',
+  'mandat-angelegt': 'Mandat angelegt', 'mandat-beendet': 'Mandat beendet', 'rechnung-gestellt': 'Rechnung gestellt',
+  'fall-schritt-erledigt': 'Schritt im Fall erledigt', 'antwort-gesendet': 'Antwort gesendet', 'followup-erledigt': 'Follow-up erledigt', 'ziel-erreicht': 'Ziel erreicht',
 };
 
 /** Arten, die eine Quelle speist — nur diese lösen etwas aus. */
-export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'neue-whatsapp', 'neuer-lead', 'lead-sql', 'deal-stufe', 'zahlungseingang', 'termin-abgesagt', 'aufgabe-zoe', 'webhook'];
+export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'neue-whatsapp', 'neuer-lead', 'lead-sql', 'deal-stufe', 'zahlungseingang', 'termin-abgesagt', 'aufgabe-zoe', 'webhook',
+  // Prozesse C1 (21.10.)
+  'termin-vorbei', 'mandat-angelegt', 'mandat-beendet', 'rechnung-gestellt', 'fall-schritt-erledigt', 'antwort-gesendet', 'followup-erledigt', 'ziel-erreicht'];
 /** Arten, die nur intern etwas anstoßen (kein Skill-Auslöser). */
 export const EREIGNISSE_INTERN: readonly SkillEreignis[] = ['aufgabe-zoe', 'webhook'];
 /** Alle Arten in der Reihenfolge der Anzeige (angebundene zuerst). */

@@ -47,9 +47,9 @@ export function seitZeilen(ereignisse: readonly Ereignis[], kontakte: readonly K
  * „hat geschrieben“, nie Inhalt), Zahlung → finanzen, Absage → kalender, sonst crm. Rein.
  */
 export function kiKategorieVon(art: EreignisArt): KiKategorie {
-  if (art === 'neue-mail' || art === 'neue-whatsapp') return 'postfach';
-  if (art === 'zahlungseingang') return 'finanzen';
-  if (art === 'termin-abgesagt') return 'kalender';
+  if (art === 'neue-mail' || art === 'neue-whatsapp' || art === 'antwort-gesendet') return 'postfach';
+  if (art === 'zahlungseingang' || art === 'rechnung-gestellt') return 'finanzen';
+  if (art === 'termin-abgesagt' || art === 'termin-vorbei') return 'kalender';
   return 'crm';
 }
 

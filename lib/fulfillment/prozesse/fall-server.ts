@@ -278,6 +278,9 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
       if (ok) nachzug.ziele = (nachzug.ziele ?? 0) + gemessen.size; else nachzug.fehler = 'Ist-Wert am Mandat nicht nachgezogen';
     }
   } catch (e) { nachzug.fehler = e instanceof Error ? e.message.slice(0, 200) : 'Ziele nicht nachgezogen'; }
+  // Ereignisse (21.10., Prozesse C1): Schritt im Fall erledigt, Ziel des Wert-Kontos erreicht — nur gemeldet (nur Kennungen), die Ausführung unten
+  // bleibt unverändert. Nach dem Speichern, wirft nie.
+  await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(alt, fall, m)).catch(() => 0);
   // Ausführung (17.10. abends): nächster Schritt → Aufgabe, Nachricht → Vorschlag, erledigte Schritte schließen ihre Aufgabe — idempotent.
   await ablaufNachzug(fall, m.id, person, wer, jetzt, nachzug);
   return { fall: fallWirksam(fall, abl), geaendert: r.geaendert, nachzug };

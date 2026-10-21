@@ -93,6 +93,10 @@ export async function POST(req: Request) {
   // Inbox (10.10., Roadmap Phase 1): Aufgaben-Vorschläge aus Mails/WhatsApp — Regelwerk ohne Modell, je Person höchstens alle 15 Min., nur
   // eigene Gespräche bzw. Team-Gespräche, um die sie sich kümmert; nur in den EIGENEN Freigabe-Stapel (lib/inbox/aufgaben-vorschlag-server.ts).
   void import('@/lib/inbox/aufgaben-vorschlag-server').then(m => m.inboxVorschlaegeImTakt()).catch(() => {});
+  // Prozesse (21.10., C1 „Laufen intern“): der Motor im Takt — Ereignisse (eigener Cursor), Zeitpläne, Wecker, feste Wache (Art. 18/Werbesperre), bereite
+  // Läufe voran. Ohne veröffentlichte Prozesse nichts; wartende Läufe kosten nichts. Regel-Schritte laufen nachts, Agenten-Schritte warten bis 7 Uhr.
+  // Nie blockierend, wirft nie (lib/prozesse/lauf-server.ts).
+  void import('@/lib/prozesse/lauf-server').then(m => m.prozesseImTakt()).catch(() => {});
   void businessTagesstand();
   // Agenten (Härtetest 09.10.): verwaiste Läufe („läuft“ ohne Prozess nach einem Neustart, „wartet“ auf einen aufgegebenen Auftrag) enden
   // sichtbar mit „fehler“ und einer Glocke — nie „läuft“ für immer. Nie blockierend.

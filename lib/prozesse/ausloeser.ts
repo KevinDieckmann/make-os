@@ -46,6 +46,9 @@ export const EREIGNIS_FELDER: readonly FeldDef[] = [
   { id: 'bezug.mandatid', titel: 'Mandat', art: 'kennung' },
   { id: 'bezug.rechnungid', titel: 'Rechnung', art: 'kennung' },
   { id: 'bezug.aufgabeid', titel: 'Aufgabe', art: 'kennung' },
+  // C1 (21.10., M3): der Termin als Feld (Termin vorbei, Termin abgesagt) und der Schritt eines Fulfillment-Falls (Fall-Schritt erledigt).
+  { id: 'bezug.terminuid', titel: 'Termin', art: 'kennung' },
+  { id: 'bezug.knotenid', titel: 'Schritt (Fall)', art: 'kennung' },
 ];
 /** Felder des Falls (der Motor lädt den Fall über die vorhandenen Lesewege, Etappe C) — je Fall-Art. Nie Namen oder Freitext Dritter. */
 export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
@@ -71,6 +74,10 @@ export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
   ],
   firma: [
     { id: 'firma.bean', titel: 'Kundengruppe (BEAN)', art: 'text' }, { id: 'firma.lead-status', titel: 'Lead-Status', art: 'text' },
+  ],
+  // C1 (21.10., M3): Kampagnen-Playbooks als Prozesse.
+  kampagne: [
+    { id: 'kampagne.status', titel: 'Status', art: 'text' }, { id: 'kampagne.playbook', titel: 'Playbook', art: 'text' }, { id: 'kampagne.kanal', titel: 'Kanal', art: 'text' },
   ],
   keiner: [],
 };

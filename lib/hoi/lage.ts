@@ -111,6 +111,32 @@ export interface InnenLage {
   ereignisse?: EreignisLageHoi | null;
   /** Lauf-Spur (10.10., Paket V1): Agenten-Läufe der letzten 7 Tage — Fehlerquote, Tempo und Cache-Anteil von ZOE; nur Zahlen. */
   laufSpur?: LaufSpurLage | null;
+  /** Prozesse (21.10., C1 „Laufen intern“, Punkt 88): Läufe im Motor — nur Zähler (Fehler, hängende, überfällige Freigaben, Flutschutz, Pausen). null = keine Läufe. */
+  prozesse?: ProzesseLageHoi | null;
+}
+
+/** Prozesse (21.10., C1) — dieselbe Form wie lib/prozesse/lauf-regeln.ts `laufLage` (nur Zahlen, nie Kennungen oder Namen). */
+export interface ProzesseLageHoi { laeufe: number; offen: number; wartend: number; fehler: number; haengend: number; freigabenUeberfaellig: number; zurueckgehalten: number; abgelehnt: number; laeufe7d: number; fehler7d: number; pausiertNotbremse: number; pausiertBudget: number }
+/** Schwelle der Fehlerquote (7 Tage) für Rot — darunter gelb, sobald ein Lauf angehalten ist. */
+export const PROZESSE_FEHLER_ROT = 0.25;
+
+/**
+ * Prozess-Gesundheit (Punkt 88): rot bei Notbremse, abgelehnten Starts (Bestand voll) oder Fehlerquote ≥ 25 % (7 Tage, ab 4 Läufen); gelb bei angehaltenen
+ * Läufen, hängenden (≥ 7 Tage ohne Bewegung), überfälligen Freigaben, zurückgehaltenen Starts oder Budget-Pause. Rein, getestet.
+ */
+export function prozesseBefunde(p: ProzesseLageHoi | null | undefined): Befund[] {
+  if (!p) return [];
+  const quote = p.laeufe7d >= 4 ? p.fehler7d / p.laeufe7d : 0;
+  const rot = p.pausiertNotbremse > 0 || p.abgelehnt > 0 || quote >= PROZESSE_FEHLER_ROT;
+  const gelb = p.fehler > 0 || p.haengend > 0 || p.freigabenUeberfaellig > 0 || p.zurueckgehalten > 0 || p.pausiertBudget > 0;
+  const teile = [`${p.offen} offen`, `${p.wartend} wartend`, p.fehler ? `${p.fehler} angehalten` : '', p.haengend ? `${p.haengend} hängen` : '', p.freigabenUeberfaellig ? `${p.freigabenUeberfaellig} Freigaben überfällig` : '',
+    p.zurueckgehalten ? `${p.zurueckgehalten} zurückgehalten` : '', p.laeufe7d ? `Fehlerquote 7 Tage ${Math.round(quote * 100)} %` : ''].filter(Boolean);
+  return [{
+    id: 'prozesse', bereich: 'app', label: 'Prozesse', ampel: rot ? 'rot' : gelb ? 'gelb' : 'gruen', wert: teile.join(' · '),
+    satz: rot ? (p.pausiertNotbremse ? 'Ein Prozess hat die Notbremse gezogen (zu viele Wirkungen je Stunde) — Prozess prüfen, dann fortsetzen (Prozesse)' : p.abgelehnt ? 'Der Bestand der Läufe ist voll — neue Starts werden abgelehnt (nichts gekürzt); beendete Läufe räumt die Frist' : 'Viele Läufe enden im Fehler — Prozesse › Läufe ansehen')
+      : gelb ? 'Läufe warten bzw. sind angehalten — Freigaben im Stapel, Aufgaben oder „erneut ab hier“ (Prozesse)'
+        : 'Prozesse laufen — Menschen-Schritte als Aufgaben, Außenwirkung nur nach Freigabe',
+  }];
 }
 
 /** Lauf-Spur (10.10., Paket V1 „Messen & sparen“) — gerechnet aus lib/agenten/spur.ts (`summeVon`, `zoeTempo`), nur Zahlen, nie Personen/Kennungen. */
@@ -731,6 +757,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...taktRobustBefunde(innen.taktRobust));
   b.push(...ereignisBefunde(innen.ereignisse));
   b.push(...laufSpurBefunde(innen.laufSpur));
+  b.push(...prozesseBefunde(innen.prozesse));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));
   b.push(...kettenBefunde(innen.protokollKette, jetzt));

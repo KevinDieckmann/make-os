@@ -63,7 +63,10 @@ export function aenderbareFelder(eingabe: Record<string, unknown> | null | undef
 
 /** Darf dieser Vorschlag vor dem Freigeben geändert werden? */
 export function darfAendern(v: { eingabe?: Record<string, unknown> | null; bezug?: unknown }): boolean {
-  return !v.bezug && aenderbareFelder(v.eingabe).length > 0;
+  // Prozesse (21.10., C1, Punkt 61 „Ändern & freigeben“): die Art `prozess` liest aus der geänderten Eingabe NUR Betreff und Text einer Mail/WhatsApp —
+  // Empfänger und alles mit „_“ bleiben, wie der Lauf sie vorbereitet hat (lib/prozesse/lauf-stapel.ts).
+  const prozess = !!v.bezug && typeof v.bezug === 'object' && (v.bezug as { art?: unknown }).art === 'prozess';
+  return (!v.bezug || prozess) && aenderbareFelder(v.eingabe).length > 0;
 }
 
 const eigen = (o: Record<string, string>, s: string) => Object.prototype.hasOwnProperty.call(o, s);

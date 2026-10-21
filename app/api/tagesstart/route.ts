@@ -332,6 +332,14 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Tageslauf', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 2b) Prozesse „nach dem Morgen-Loop“ (21.10., C1, N11): hier endet der Morgen (der Tageslauf oben) — einer je Prozess und Tag (Schlüssel mit dem Tag).
+  try {
+    const n = await (await import('@/lib/prozesse/lauf-server')).prozesseNachLoop('morgen', { person });
+    if (n) schritte.push({ name: 'Prozesse nach dem Morgen-Loop', ok: true, info: `${n} gestartet` });
+  } catch {
+    schritte.push({ name: 'Prozesse nach dem Morgen-Loop', ok: false });
+  }
+
   // 3) Performance-Schnappschuss — nur so entsteht ein Verlauf.
   try {
     await fetch(`${origin}/api/performance`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...dienst }, body: '{}', signal: AbortSignal.timeout(20_000) });

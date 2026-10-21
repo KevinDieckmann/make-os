@@ -20,11 +20,13 @@ import type { Spanne } from '@/lib/arbeitsrahmen/regel';
 
 export type EreignisArt = SkillEreignis;
 // `webhook` (21.10., Prozesse B1): ein abgesicherter Webhook eines Prozesses (lib/prozesse/webhook-server.ts).
-export const EREIGNIS_QUELLEN = ['gmail', 'imap', 'whatsapp', 'kontoauszug', 'finanzplan', 'crm', 'kartei', 'anfrage', 'aufgaben', 'kalender', 'webhook'] as const;
+// `fulfillment`, `rechnung` (21.10., Prozesse C1): Fall-Schritt/Ziel bzw. „Rechnung stellen“ (lib/ereignisse/quellen.ts).
+export const EREIGNIS_QUELLEN = ['gmail', 'imap', 'whatsapp', 'kontoauszug', 'finanzplan', 'crm', 'kartei', 'anfrage', 'aufgaben', 'kalender', 'webhook', 'fulfillment', 'rechnung'] as const;
 export type EreignisQuelle = typeof EREIGNIS_QUELLEN[number];
 /** Die Kennungen, die ein Ereignis tragen darf — sonst nichts. */
 /** Prozesse (21.10., B1): `prozessId` (`pz-…`) und `eingangId` (`we-…`) — Webhook-Ereignisse tragen nur diese zwei. */
-export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rechnungId', 'buchungId', 'kontoId', 'aufgabeId', 'terminUid', 'gespraech', 'followupId', 'prozessId', 'eingangId'] as const;
+/** Prozesse C1 (21.10.): `knotenId` — der Schritt eines Fulfillment-Falls (Ereignis „Schritt im Fall erledigt“). */
+export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rechnungId', 'buchungId', 'kontoId', 'aufgabeId', 'terminUid', 'gespraech', 'followupId', 'prozessId', 'eingangId', 'knotenId'] as const;
 export type BezugFeld = typeof BEZUG_FELDER[number];
 export type EreignisBezug = Partial<Record<BezugFeld, string>>;
 export type EreignisBereich = 'privat' | 'business';
@@ -46,6 +48,12 @@ export interface Ereignis {
   stufe?: string;
   /** Wann MAKE OS davon erfuhr (ISO). */
   am: string;
+  /**
+   * Prozesse C1 (21.10., Punkt 49 Schleifenschutz): die Wirkung eines Prozess-Laufs hat das Ereignis ausgelöst — `prozess:<prozess>:<lauf>:<tiefe>`.
+   * Gesetzt NUR von der Ereignisstelle aus dem Zusammenhang des Laufs (lib/prozesse/lauf-herkunft.ts), nie von einer Quelle. Ein Prozess startet
+   * auf ein Ereignis seiner eigenen Läufe nie; eine Kette endet nach `LAUF_GRENZEN.kettenTiefe`.
+   */
+  herkunft?: string;
 }
 
 /** Was eine Quelle meldet (`nr`/`am` setzt die Ereignisstelle). */
@@ -125,8 +133,11 @@ export function eingabeSauber(e: EreignisEingabe, istArt: (a: unknown) => boolea
     ...(personen?.length ? { personen } : {}),
     ...(typeof e.stufe === 'string' && /^[a-z0-9_-]{1,40}$/.test(e.stufe) ? { stufe: e.stufe } : {}),
     ...(typeof e.am === 'string' && Number.isFinite(Date.parse(e.am)) ? { am: e.am } : {}),
+    ...(typeof e.herkunft === 'string' && HERKUNFT.test(e.herkunft) ? { herkunft: e.herkunft } : {}),
   };
 }
+/** Herkunft aus einem Prozess-Lauf (Punkt 49): `prozess:pz-<uuid>:pl-<uuid>:<tiefe>`. */
+export const HERKUNFT = /^prozess:pz-[0-9a-f-]{36}:pl-[0-9a-f-]{36}:[0-9]$/;
 
 // ── Sichtregel ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 

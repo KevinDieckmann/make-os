@@ -47,7 +47,15 @@ export async function ereignis(e: EreignisEingabe | readonly EreignisEingabe[], 
     const jetzt = opt.jetzt ?? new Date();
     const am = jetzt.toISOString();
     const saubere: EreignisEingabe[] = [];
-    for (const x of liste) { const s = eingabeSauber(x, istEreignisArt); if (s) saubere.push(s); else erg.ungueltig++; }
+    // Prozesse C1 (21.10., Punkt 49): entsteht das Ereignis in der Wirkung eines Prozess-Laufs, trägt es dessen Herkunft (Schleifenschutz) — nur aus dem
+    // Zusammenhang (lib/prozesse/lauf-herkunft.ts), nie aus der Eingabe einer Quelle.
+    const herkunft = await import('@/lib/prozesse/lauf-herkunft').then(m => m.laufHerkunftText()).catch(() => null);
+    for (const x of liste) {
+      if (!x || typeof x !== 'object') { erg.ungueltig++; continue; }
+      const { herkunft: _h, ...ohne } = x as EreignisEingabe & { herkunft?: string };
+      const s = eingabeSauber({ ...ohne, ...(herkunft ? { herkunft } : {}) }, istEreignisArt);
+      if (s) saubere.push(s); else erg.ungueltig++;
+    }
     if (erg.ungueltig) console.warn(`[ereignisse] ${erg.ungueltig} ungültige Eingabe(n) verworfen`);
     if (!saubere.length) return erg;
     const haushalt = opt.haushalt && HAUSHALT.test(opt.haushalt) ? opt.haushalt : await ereignisHaushalt();
