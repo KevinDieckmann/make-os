@@ -47,7 +47,7 @@ describe('Spaces', () => {
       expect(s.start).toBe(`/os?space=${s.id}`);
     }
     expect(leisteFuer('privat').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Gesundheit', 'Familie', 'Kontakte', 'ZOE']);
-    expect(leisteFuer('business').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Markttraktion', 'Produkte & Mandate', 'Unternehmen', 'ZOE']);
+    expect(leisteFuer('business').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Markttraktion', 'Produkte & Mandate', 'Prozesse', 'Unternehmen', 'ZOE']);
   });
   it('Hervorhebung in der Leiste passt zum Fundort', () => {
     // 10.10.: Kontakte stehen im Business nicht mehr in der Leiste — die Kartei gehört zur Markttraktion.

@@ -25,7 +25,7 @@
 // Alte Adressen mit `?space=alles` und ein gemerktes „alles“ gelten als „kein Parameter“ bzw. „der zuletzt konkrete Space“.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays, Building2 } from 'lucide-react';
+import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays, Building2, Workflow } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
 
 export type { SpaceId };
@@ -105,6 +105,8 @@ export const SPACES: Space[] = [
       // Produkte & Mandate und Unternehmen (10.10., Entscheidung: getrennt, Unternehmen eigener Punkt und eigener Ausbau). Kontakte stehen im
       // Business nicht mehr in der Leiste (Entscheidung 10.10.) — die Kartei liegt in Markttraktion › Kontakte & Firmen; `zeitId` bleibt für die Zeitmessung.
       { href: '/os/mandate', label: 'Produkte & Mandate', icon: Briefcase, zeitId: 'mandate', passt: ['/os/mandate'] },
+      // Prozesse (21.10., Kevin: „Leistenpunkt ‚Prozesse‘ mit Vollbild“): die Landkarte aller Abläufe von Marketing bis Fulfillment.
+      { href: '/os/prozesse', label: 'Prozesse', icon: Workflow, passt: ['/os/prozesse'] },
       { href: '/os/unternehmen', label: 'Unternehmen', icon: Building2, passt: ['/os/unternehmen'], nurVolleMitglieder: true },
     ],
   },

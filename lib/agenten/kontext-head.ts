@@ -71,6 +71,8 @@ export const SEITEN_REGELN: readonly SeitenRegel[] = [
   { muster: '/os/content', head: 'marketing' },
   { muster: '/os/medien', head: { business: 'marketing' } },
   { muster: '/os/mandate', head: 'kundenerfolg' },
+  // Prozesse (21.10.): die Landkarte aller Abläufe — Sache des Head of Operations.
+  { muster: '/os/prozesse', head: 'operations' },
   // Produkte (10.10., Leistungstreppe): Pakete, Treppe und Positionierung sind Sache des Head of Sales.
   { muster: '/os/mandate?s=produkte', head: 'sales' },
   // Unternehmen (Firmen-Akte, Schild, Verträge) und Datenschutz (10.10., Entscheidung „Chat je Bereich“) → Head of Recht.
