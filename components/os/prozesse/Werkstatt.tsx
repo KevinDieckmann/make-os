@@ -538,7 +538,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
     <div className="pw-werkstatt" onKeyDown={e => { if (e.key === 'Escape' && (formauswahl || hilfe || probeOffen)) { e.preventDefault(); setFormauswahl(null); setHilfe(false); setProbeOffen(false); } }}>
       <div className="pw-kopf">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          {WERKSTATT_REITER.length > 1 && <Reiter liste={WERKSTATT_REITER.map(r => ({ id: r.id, label: r.id === 'laeufe' && laeufe.daten?.laeufe.length ? `${r.titel} · ${laeufe.daten.laeufe.length}` : r.id === 'tests' && laeufe.daten?.tests.length ? `${r.titel} · ${laeufe.daten.tests.length}` : r.titel }))} aktiv={reiter} onWahl={w => reiterWaehlen(w)} ariaLabel="Werkstatt" />}
+          {WERKSTATT_REITER.length > 1 && <div className="ui-reiter-zeile"><Reiter liste={WERKSTATT_REITER.map(r => ({ id: r.id, label: r.id === 'laeufe' && laeufe.daten?.laeufe.length ? `${r.titel} · ${laeufe.daten.laeufe.length}` : r.id === 'tests' && laeufe.daten?.tests.length ? `${r.titel} · ${laeufe.daten.tests.length}` : r.titel }))} aktiv={reiter} onWahl={w => reiterWaehlen(w)} ariaLabel="Werkstatt" /></div>}
           {v && <Chip farbe={C.inkDim}>{`Version ${v.nr}`}</Chip>}
           <WerkstattSteuerung prozessId={prozessId} def={d} status={eintrag.status} hatVersion={!!v} laufStand={laeufe.daten?.stand ?? null}
             rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} vorher={sichern} />

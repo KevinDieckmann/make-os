@@ -38,9 +38,16 @@ export function crmDiffKundengewinnung(vorher: Partial<Pick<CrmBestand, 'events'
   for (const x of nachher.kampagnen ?? []) {
     const alt = kpAlt.get(x.id);
     if (x.status === 'aktiv' && alt?.status !== 'aktiv') raus.push({ id: ereignisKennung('crm', 'kampagne', x.id, 'aktiv'), art: 'kampagne-aktiv', quelle: 'crm', bereich: 'business', bezug: { kampagneId: x.id } });
+    // Gleiche Einträge zählen nicht; ein Eintrag, der nur die Kontakt-Kennung gewechselt hat (Kennungs-Umzug, Zusammenführen), auch nicht —
+    // dafür verbraucht er einen übrig gebliebenen alten Eintrag mit gleichem Ergebnis und Zeitpunkt. Nur echte Zuwächse melden sich.
     const gesehen = new Set((alt?.ergebnisse ?? []).map(r => `${r.kontaktId}|${r.ergebnis}|${r.am}`));
+    const neuSet = new Set((x.ergebnisse ?? []).map(r => `${r.kontaktId}|${r.ergebnis}|${r.am}`));
+    const rest = new Map<string, number>();
+    for (const r of alt?.ergebnisse ?? []) if (!neuSet.has(`${r.kontaktId}|${r.ergebnis}|${r.am}`)) rest.set(`${r.ergebnis}|${r.am}`, (rest.get(`${r.ergebnis}|${r.am}`) ?? 0) + 1);
     for (const r of x.ergebnisse ?? []) {
       if (gesehen.has(`${r.kontaktId}|${r.ergebnis}|${r.am}`)) continue;
+      const umbenannt = rest.get(`${r.ergebnis}|${r.am}`) ?? 0;
+      if (umbenannt > 0) { rest.set(`${r.ergebnis}|${r.am}`, umbenannt - 1); continue; }
       raus.push({ id: ereignisKennung('crm', 'kampagne', x.id, r.kontaktId, r.ergebnis, r.am), art: 'kampagnen-ergebnis', quelle: 'crm', stufe: r.ergebnis, bereich: 'business', bezug: { kampagneId: x.id, kontaktId: r.kontaktId } });
     }
   }
@@ -56,12 +63,15 @@ const nachweisVoll = (e: { zeitpunkt?: string; erfasstVon?: string; wortlaut?: s
 export function einwilligungDiff(vorher: readonly Pick<Kontakt, 'id' | 'einwilligungen'>[] | null | undefined, nachher: readonly Pick<Kontakt, 'id' | 'einwilligungen' | 'firmaId' | 'eingeschraenkt'>[] | null | undefined): EreignisEingabe[] {
   if (!nachher?.length) return [];
   const alt = new Map((vorher ?? []).map(x => [x.id, new Set((x.einwilligungen ?? []).filter(e => !e.widerrufenAm && nachweisVoll(e)).map(e => e.kanal))]));
+  // Dieselbe Einwilligung (Kanal + Zeitpunkt + Beleg) unter einer neuen Kontakt-Kennung ist keine neue (Kennungs-Umzug, Zusammenführen).
+  const schluessel = (e: { kanal: string; zeitpunkt?: string; erteiltAm: string; belegRef?: string }) => `${e.kanal}|${(e.zeitpunkt ?? e.erteiltAm).slice(0, 19)}|${e.belegRef ?? ''}`;
+  const bekannt = new Set((vorher ?? []).flatMap(x => (x.einwilligungen ?? []).filter(e => !e.widerrufenAm && nachweisVoll(e)).map(schluessel)));
   const raus: EreignisEingabe[] = [];
   for (const p of nachher) {
     if (p.eingeschraenkt) continue;
     const war = alt.get(p.id) ?? new Set<string>();
     for (const e of p.einwilligungen ?? []) {
-      if (e.widerrufenAm || !nachweisVoll(e) || war.has(e.kanal)) continue;
+      if (e.widerrufenAm || !nachweisVoll(e) || war.has(e.kanal) || bekannt.has(schluessel(e))) continue;
       war.add(e.kanal);
       raus.push({ id: ereignisKennung('kartei', 'einwilligung', p.id, e.kanal, (e.zeitpunkt ?? e.erteiltAm).slice(0, 19)), art: 'einwilligung-erteilt', quelle: 'kartei', stufe: e.kanal, bereich: 'business', bezug: { kontaktId: p.id, ...(p.firmaId ? { firmaId: p.firmaId } : {}) } });
     }
