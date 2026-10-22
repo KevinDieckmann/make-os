@@ -143,8 +143,10 @@ describe('Charge rückgängig (#97)', () => {
     expect((await stapel.hole(s1))!.eingabe._charge).toBe((await stapel.hole(s2))!.eingabe._charge);
     expect((await post({ aktion: 'freigeben', id: 'a1', stapelId: s1 })).status).toBe(200);
     expect((await post({ aktion: 'freigeben', id: 'a2', stapelId: s2 })).status).toBe(200);
-    // Malin ändert danach die Deadline von a2 von Hand.
-    await vonHand('a2', { dueDate: '2026-11-11' });
+    // Malin ändert danach die Deadline von a2 von Hand — auf einen Tag, der sicher nicht die Frist des Modells ist (die liegt heute + 20 Tage;
+    // am 22.10. wäre das genau der 11.11. gewesen, und der Test hätte nichts „Geändertes“ gesehen).
+    const handFrist = modell.frist === '2026-11-11' ? '2026-11-12' : '2026-11-11';
+    await vonHand('a2', { dueDate: handFrist });
     const g = await (await route.GET(anfrage('kevin', 'GET', undefined, '/api/aufgaben/zoe?chargen=1'))).json() as { chargen: { charge: string; eintraege: unknown[] }[] };
     expect(g.chargen).toHaveLength(1);
     expect(g.chargen[0].eintraege).toHaveLength(2);
@@ -155,7 +157,7 @@ describe('Charge rückgängig (#97)', () => {
     expect(b.teilweise).toEqual([expect.objectContaining({ titel: expect.stringContaining('Aufgabe a2'), grund: expect.stringContaining('Deadline') })]);
     const t1 = await task('a1'), t2 = await task('a2');
     expect(t1).toMatchObject({ status: 'todo', dueDate: '2026-12-01', notiz: 'Alt' });
-    expect(t2).toMatchObject({ status: 'todo', dueDate: '2026-11-11', notiz: 'Alt' });
+    expect(t2).toMatchObject({ status: 'todo', dueDate: handFrist, notiz: 'Alt' });
     const unter = (await bestand()).tasks.filter(x => x.parentId === 'a1' || x.parentId === 'a2');
     expect(unter.every(u => !!u.geloeschtAm)).toBe(true);
     // Zweimal: nichts mehr.
