@@ -53,6 +53,8 @@ export const KG_FALL_FELDER: Readonly<Record<FallArt, readonly KgFeld[]>> = {
     f('event.quote-48h', 'Anteil rechtzeitig nachgefasst (%)', 'zahl', 'besuchWirkung (lib/crm/besuche.ts) bzw. nachfassen_48h (lib/crm/traktion.ts) — leer, solange niemand fällig ist'),
     f('event.mix-erreicht', 'Mischung der Gäste erreicht', 'ja-nein', 'mix gegen das Ziel (lib/crm/eventplanung.ts)'),
     f('event.status', 'Status des Events', 'text', 'Event.status (lib/crm/typen.ts)'),
+    // Datums-Start (22.10.): V04 hört nur auf besuchte Events, V18 nur auf eigene Abende — dieselbe Regel wie überall (lib/crm/marke.ts).
+    f('event.besucht', 'Besuchtes Event (Netzwerken)', 'ja-nein', 'istNetzwerkenEvent (lib/crm/marke.ts) — ja: besucht, nein: eigener Abend'),
   ],
   firma: [
     f('firma.daten-fehlen', 'Stammdaten fehlen', 'ja-nein', 'vollstaendigkeit (lib/crm/akte.ts) und Firmenfelder Branche, Mitarbeitende, Webseite'),

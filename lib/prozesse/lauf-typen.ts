@@ -258,6 +258,11 @@ export interface ProzessLaufStand {
   zeitplan?: Record<string, string>;
   /** Loop: zuletzt gestarteter Tag je Loop-Art. */
   loop?: Record<string, string>;
+  /**
+   * Datum am Fall (22.10., lib/prozesse/datum-start.ts): zuletzt behandelter Moment je Auslöser-Knoten (Berliner Wandzeit `YYYY-MM-DDTHH:MM`). Fehlt er (erster Takt
+   * nach dem Scharfschalten bzw. nach dem Update), wird nur gemerkt — nie nachgeholt. Optional, fehlt im Altbestand.
+   */
+  datum?: Record<string, string>;
   verlauf: VerlaufEintrag[];
   /** Nur Zähler (Lage, Head of IT): nie gestartete Läufe — ohne Person, Kette zu tief, eigene Wirkung, Bestand voll, Probeläufe über der Schwelle. */
   nicht?: { ohnePerson?: number; kette?: number; eigen?: number; voll?: number; schatten?: number };
@@ -344,6 +349,12 @@ export const LAUF_GRENZEN = {
   rechercheSuchen: 3,
   /** Kennungen einer CRM-Abfrage im Lauf (wie `PROZESS_GRENZEN.abfrageHoechstens`). */
   listeMax: 1000,
+  /** Datum am Fall (22.10.): nach einem Ausfall bzw. einer Pause holt der Takt höchstens so viele Tage nach (nie beim ersten Takt — dann wird nur gemerkt). */
+  datumNachholenTage: 3,
+  /** Datum am Fall: so viele Fälle prüft die Vorschau der Werkstatt höchstens (darüber „Vorschau gekürzt“ — gestartet wird im Takt immer jeder Fall). */
+  datumVorschauFaelle: 200,
+  /** Vorschau der Werkstatt: so viele Tage voraus. */
+  datumVorschauTage: 60,
 } as const;
 
 /** Sätze zu den Gründen (Lauf-Ansicht, Probelauf, Glocke) — ohne Namen, ohne Inhalte. */

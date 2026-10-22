@@ -22,7 +22,7 @@ import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import type { TasksState } from '@/types/tasks';
 import {
   aufgabeFertig, budgetReicht, ereignisEingetreten, fallAusEreignis, fallSchluessel, freigabeEntschieden, kostenBuchen, laeufeAus, monatVon, nachAktion,
-  starten, teilprozessFertig, voran, wartetAuf, weckenZeit, wirkungZaehlen, anhalten, fortsetzen, abbrechen, verlaufAnhaengen, tagVonIso, startGesperrt, rechercheVorTagen,
+  starten, teilprozessFertig, voran, wartetAuf, weckenZeit, wirkungZaehlen, anhalten, fortsetzen, abbrechen, verlaufAnhaengen, tagVonIso, startGesperrt, rechercheVorTagen, datumSchonGestartet,
   type Aktion, type AktionErgebnis, type Empfaenger, type LaufUmfeld, type StartAnfrage, type StartErgebnis, type AgentFreigabe,
 } from './lauf-regeln';
 import { istWebRecherche, oeffentlichModus, OEFFENTLICH_KATEGORIEN } from './agent-schritt';
@@ -31,9 +31,11 @@ import {
   LAUF_AUFGABE_PRAEFIX, LAUF_GRENZEN, laeufeBestand, laufOffen, leererStand, leereLaeufe,
   type LaeufeDatei, type LaufFall, type LaufGrund, type LaufModus, type LaufSchritt, type ProzessLauf, type ProzessLaufStand, type Testfall, type VerlaufEintrag, type Wirkung,
 } from './lauf-typen';
-import { fallArtVon, type AgentSchritt, type ProzessDefinition, type ProzessEintrag, type ProzesseDatei } from './definition';
+import { fallArtVon, type AgentSchritt, type Ausloeser, type DatumsFeld, type ProzessDefinition, type ProzessEintrag, type ProzesseDatei } from './definition';
 import { alleSchritte, startKnoten } from './fluss';
-import { ausloeserPasst, ereignisDaten, startetNachLoop } from './ausloeser';
+import { ausloeserPasst, ereignisDaten, startetNachLoop, DATUMS_FELDER } from './ausloeser';
+import { datumFaellig, datumFeldFenster, datumMoment, datumPeriode, stichtagVon } from './datum-start';
+import { bedingungenTreffen } from './bedingung';
 import { anspracheUrteil } from './ansprache';
 import { laufPerson, type TeamKurz } from './rollen';
 import { herkunftAus, mitLaufHerkunft } from './lauf-herkunft';
@@ -214,7 +216,9 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       if (!m) return { ...LEER_FALL, fehlt: true };
       const k = nachId(m.kontaktIds[0]);
       const produkt = m.leistungId ? crm.leistungen?.find(l => l.id === m.leistungId)?.name : undefined;
-      const kuendigung = m.ende && m.kuendigungsfristTage ? tagPlus(m.ende.slice(0, 10), -m.kuendigungsfristTage) : undefined;
+      // Ende und Kündigungsfrist über `mandatFristen` (lib/crm/kunden.ts) — dieselbe Regel wie Kalender-Fristen und Datums-Start (auch Start + Mindestlaufzeit).
+      const { mandatFristen } = await import('@/lib/crm/kunden');
+      const mf = mandatFristen(m, localDay(kx.jetzt));
       return {
         fehlt: false, kontakt: k, personen: m.kontaktIds.map(nachId).filter((x): x is Kontakt => !!x), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}), ...hat(k),
         daten: {
@@ -224,7 +228,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
           ...(await mandatFelder(m, kx)),
         },
         platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde },
-        datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(m.ende ? { 'mandat.ende': m.ende.slice(0, 10) } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(kuendigung ? { 'mandat.kuendigungsfrist': kuendigung } : {}) },
+        datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(mf.endeAm ? { 'mandat.ende': mf.endeAm } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(mf.frist ? { 'mandat.kuendigungsfrist': mf.frist } : {}) },
       };
     }
     case 'firma': {
@@ -264,7 +268,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const e = crm.events.find(x => x.id === fall.id);
       if (!e) return { ...LEER_FALL, fehlt: true };
       return {
-        ...LEER_FALL, daten: { ...(e.reihe ? { 'event.reihe': e.reihe } : {}), ...(e.marke ? { 'event.marke': e.marke } : {}), ...(e.anmeldung ? { 'event.anmeldung': e.anmeldung } : {}), 'event.datum': e.datum, ...(e.status ? { 'event.status': e.status } : {}), ...(await kgLesen(null, [])).daten, ...(await eventFelder(e, crm, alle, kx)) },
+        ...LEER_FALL, daten: { ...(await eventVorFelder(e)), ...(await kgLesen(null, [])).daten, ...(await eventFelder(e, crm, alle, kx)) },
         platzhalter: { 'event.titel': e.titel, 'event.datum': e.datum, 'event.ort': e.ort ?? '' }, datum: { 'event.datum': e.datum.slice(0, 10) },
       };
     }
@@ -282,6 +286,15 @@ async function mandatFelder(m: CrmBestand['mandate'][number], kx: MotorKontext):
   const { mandatLage } = await import('@/lib/crm/kunden');
   const lage = mandatLage(m, localDay(kx.jetzt));
   return { ...(lage.ampel ? { 'mandat.ampel': lage.ampel } : {}), ...(lage.health !== null ? { 'mandat.health': lage.health } : {}) };
+}
+
+/** Die einfachen Felder eines Events (Reihe, Marke, Anmeldung, Datum, Status, besucht) — EINE Stelle für den Fall-Leser und den Datums-Start. */
+async function eventVorFelder(e: CrmBestand['events'][number]): Promise<Record<string, unknown>> {
+  const { istNetzwerkenEvent } = await import('@/lib/crm/marke');
+  return {
+    ...(e.reihe ? { 'event.reihe': e.reihe } : {}), ...(e.marke ? { 'event.marke': e.marke } : {}), ...(e.anmeldung ? { 'event.anmeldung': e.anmeldung } : {}), 'event.datum': e.datum,
+    ...(e.status ? { 'event.status': e.status } : {}), 'event.besucht': istNetzwerkenEvent(e),
+  };
 }
 
 /** Anteil rechtzeitig nachgefasster Erfassungen eines besuchten Events in Prozent (lib/crm/besuche.ts `besuchWirkung`) — ohne Erfassungen kein Wert. */
@@ -1030,6 +1043,9 @@ export async function prozesseImTakt(jetzt = new Date()): Promise<TaktErgebnis |
     // 3) Zeitpläne des Tages.
     erg.gestartet += await zeitplaeneStarten(kx);
 
+    // 3b) Datum am Fall (22.10., Punkt 34): Fälle, deren Stichtag jetzt erreicht ist — beim ersten Mal nur merken.
+    erg.gestartet += await datumStarten(kx);
+
     // 4) Wecker.
     erg.geweckt += await weckerPruefen(kx);
 
@@ -1200,6 +1216,178 @@ async function zeitplaeneStarten(kx: MotorKontext): Promise<number> {
     }
   }
   return n;
+}
+
+// ══ Datum am Fall (22.10.; ANALYSE_100.md Punkt 34 — Regeln: lib/prozesse/datum-start.ts) ════════════════════════════════════════════════════════════════
+
+/** Ein Fall mit einem Datum: der Fall, das Datum am Fall, die Kennungen für den Lauf und einfache Felder für „nur wenn …“ (ohne den ganzen Fall zu lesen). */
+interface DatumKandidat { fall: LaufFall; datum: string; bezug: Record<string, string>; vor: Record<string, unknown> }
+
+const FRIST_PRAEFIX: Partial<Record<DatumsFeld, string>> = {
+  'mandat.kuendigungsfrist': 'md-frist-', 'mandat.review': 'md-review-', 'deal.entscheidung': 'dl-', 'angebot.gueltig-bis': 'an-', 'rechnung.faellig': 're-',
+};
+
+/**
+ * Die Fälle mit einem Datum im Fenster [von, bis] (Berliner Tage, einschließlich) — NUR über die vorhandenen Leser, nie eine eigene Fristenrechnung:
+ *   · Fristen (Kündigungsfrist, Review, Entscheidung, Angebot gültig bis, Rechnung fällig) über `fristenLesen` (lib/kalender/fristen-server.ts, Systemlauf, nur Business);
+ *   · Start und Ende des Mandats über das CRM (Ende über `mandatFristen` — dieselbe Regel wie der Kalender, auch beendete Mandate), Events über das CRM, die
+ *     Wiedervorlage über die Leads (ohne eingeschränkte Personen). Mandate und Deals einer Privat-Gesellschaft nie (Prozesse sind Business).
+ * null = eine Quelle ist nicht lesbar (der Takt merkt dann nichts und versucht es im nächsten Takt neu).
+ */
+async function datumKandidaten(feld: DatumsFeld, von: string, bis: string, kx: MotorKontext): Promise<DatumKandidat[] | null> {
+  const crm = await crmVon(kx);
+  if (!crm) return null;
+  const heute = localDay(kx.jetzt);
+  const { bereichVonGesellschaft } = await import('@/lib/einheiten');
+  const business = (g: string | undefined) => !g || bereichVonGesellschaft(g) !== 'privat';
+  const imFenster = (t: string | null | undefined): t is string => !!t && t.slice(0, 10) >= von && t.slice(0, 10) <= bis;
+  const mandatVon = (id: string | undefined) => (id ? crm.mandate.find(m => m.id === id && !m.geloeschtAm) : undefined);
+  const mandatBezug = (m: CrmBestand['mandate'][number]) => ({ 'bezug.mandatid': m.id, ...(m.firmaId ? { 'bezug.firmaid': m.firmaId } : {}) });
+  const raus: DatumKandidat[] = [];
+  const praefix = FRIST_PRAEFIX[feld];
+  if (praefix) {
+    const { fristenLesen } = await import('@/lib/kalender/fristen-server');
+    const fristen = await fristenLesen(von, tagPlus(bis, 1), heute, null).catch(() => null);
+    if (!fristen) return null;
+    const rechnungen = feld === 'rechnung.faellig' ? (await loadJson<{ rechnungen?: { id: string; mandatId?: string }[] }>('finanzplan').catch(() => null))?.rechnungen ?? [] : [];
+    for (const f of fristen) {
+      if (f.bereich !== 'business' || f.erledigt || !f.id.startsWith(praefix) || !imFenster(f.tag)) continue;
+      const id = f.id.slice(praefix.length);
+      if (feld === 'deal.entscheidung' || feld === 'angebot.gueltig-bis') {
+        const dealId = feld === 'deal.entscheidung' ? id : (crm.angebote ?? []).find(a => a.id === id)?.dealId;
+        const c = dealId ? crm.chancen.find(x => x.id === dealId) : undefined;
+        if (c && business(c.gesellschaft)) raus.push({ fall: { art: 'deal', id: c.id }, datum: f.tag, bezug: { 'bezug.dealid': c.id, ...(c.firmaId ? { 'bezug.firmaid': c.firmaId } : {}), ...(feld === 'angebot.gueltig-bis' ? { 'bezug.angebotid': id } : {}) }, vor: { 'deal.stufe': c.stufe } });
+        continue;
+      }
+      const m = mandatVon(feld === 'rechnung.faellig' ? rechnungen.find(r => r.id === id)?.mandatId : id);
+      if (m && business(m.gesellschaft)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: f.tag, bezug: { ...mandatBezug(m), ...(feld === 'rechnung.faellig' ? { 'bezug.rechnungid': id } : {}) }, vor: { 'mandat.status': m.status } });
+    }
+    return raus;
+  }
+  if (feld === 'mandat.start' || feld === 'mandat.ende') {
+    const { mandatFristen } = await import('@/lib/crm/kunden');
+    for (const m of crm.mandate) {
+      if (m.geloeschtAm || !business(m.gesellschaft)) continue;
+      const t = feld === 'mandat.start' ? m.start?.slice(0, 10) : mandatFristen(m, heute).endeAm;
+      if (imFenster(t)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: t.slice(0, 10), bezug: mandatBezug(m), vor: { 'mandat.status': m.status } });
+    }
+    return raus;
+  }
+  if (feld === 'event.datum') {
+    for (const e of crm.events) if (imFenster(e.datum)) raus.push({ fall: { art: 'event', id: e.id }, datum: e.datum.slice(0, 10), bezug: { 'bezug.eventid': e.id }, vor: await eventVorFelder(e) });
+    return raus;
+  }
+  if (feld === 'lead.wiedervorlage') {
+    for (const z of await leadsVon(kx)) if (imFenster(z.wiedervorlage)) raus.push({ fall: { art: 'lead', id: z.id }, datum: z.wiedervorlage.slice(0, 10), bezug: z.art === 'firma' ? { 'bezug.firmaid': z.id } : { 'bezug.kontaktid': z.id }, vor: { 'lead.status': z.status } });
+    return raus;
+  }
+  return raus;
+}
+
+type DatumAusloeserDef = Extract<Ausloeser, { art: 'datum' }>;
+/** Passt der Kandidat zu „nur wenn …“? Reichen die einfachen Felder, wird der Fall nicht gelesen; sonst über den Fall-Leser (wie beim Ereignis-Start). */
+async function datumPasst(a: DatumAusloeserDef, k: DatumKandidat, daten: Record<string, string>, def: ProzessDefinition, kx: MotorKontext): Promise<boolean> {
+  if (!a.bedingungen?.length) return true;
+  const billig = a.bedingungen.every(b => b.feld in k.vor);
+  const felder = billig ? k.vor : { ...k.vor, ...(await fallInfo(k.fall, kx, daten, { brauche: gelesenFelderMenge(def) })).daten };
+  return bedingungenTreffen(a.bedingungen, felder, a.verknuepfung);
+}
+/** Die Fälle eines Datums-Auslösers, deren Stichtag in `tage` liegt (sortiert nach Stichtag) — mit Periode und den Daten für den Lauf. */
+async function datumFaelle(a: DatumAusloeserDef, knotenId: string, def: ProzessDefinition, tage: readonly string[], kx: MotorKontext): Promise<{ k: DatumKandidat; stichtag: string; periode: string; daten: Record<string, string> }[] | null> {
+  if (!tage.length) return [];
+  const fallArt = fallArtVon(def);
+  if (DATUMS_FELDER.find(x => x.id === a.feld)?.fall !== fallArt) return [];
+  const sortiert = [...tage].sort();
+  const fen = datumFeldFenster(sortiert[0], sortiert.at(-1)!, a);
+  const kandidaten = await datumKandidaten(a.feld, fen.von, fen.bis, kx);
+  if (!kandidaten) return null;
+  const menge = new Set(tage);
+  const raus: { k: DatumKandidat; stichtag: string; periode: string; daten: Record<string, string> }[] = [];
+  for (const k of kandidaten) {
+    const stichtag = stichtagVon(k.datum, a);
+    if (!stichtag || !menge.has(stichtag) || k.fall.art !== fallArt) continue;
+    raus.push({ k, stichtag, periode: datumPeriode(knotenId, stichtag), daten: { ...k.bezug, 'datum.feld': a.feld, 'datum.stichtag': stichtag } });
+  }
+  return raus.sort((x, y) => x.stichtag.localeCompare(y.stichtag) || (x.k.fall.id ?? '').localeCompare(y.k.fall.id ?? ''));
+}
+
+/**
+ * Datum am Fall im Takt (22.10., Punkt 34): je laufendem Prozess (scharf bzw. Probelauf im Schatten — wie Zeitplan und Ereignis; Entwurf, pausiert und archiviert nie)
+ * und Datums-Auslöser seiner jüngsten Version die Fälle, deren Stichtag jetzt erreicht ist. Merker je Auslöser-Knoten im Lauf-Zustand (`datum`): beim ERSTEN Mal
+ * (nach dem Scharfschalten bzw. nach dem Update) wird nur gemerkt — nie nachgeholt; danach startet jeder Moment genau einmal, nach einem Ausfall höchstens
+ * `datumNachholenTage` zurück; scharf nie für einen Stichtag vor dem Scharfschalten. Je Fall und Stichtag höchstens ein Lauf (Periode, `starten`), Flutschutz,
+ * Art. 18/Werbesperre beendet den Lauf wie immer (`umfeldFuer`). Gemerkt wird erst NACH den Starts (ein Abbruch dazwischen wiederholt nur, nichts doppelt).
+ */
+async function datumStarten(kx: MotorKontext): Promise<number> {
+  const wand = wandzeit(kx.jetzt);
+  let n = 0;
+  for (const p of kx.prozesse.prozesse) {
+    if (laufZustand(p) !== 'laeuft') continue;
+    const j = juengste(p);
+    if (!j) continue;
+    for (const s of startKnoten(j.def)) {
+      const a = s.ausloeser;
+      if (a?.art !== 'datum') continue;
+      const d0 = await laeufeLesen(kx.h);
+      const st = standVon(d0, p.id);
+      const modus = modusFuer(p, st);
+      if (!modus) continue;
+      const ab = modus === 'scharf' && st.einstellung.scharf?.am ? wandzeit(new Date(st.einstellung.scharf.am)) : undefined;
+      const f = datumFaellig(st.datum?.[s.id], wand, a.uhrzeit, LAUF_GRENZEN.datumNachholenTage, ab);
+      if (!f) continue;
+      const faelle = await datumFaelle(a, s.id, j.def, f.tage, kx);
+      if (!faelle) continue; // eine Quelle ist nicht lesbar — nichts merken, im nächsten Takt neu
+      // Alle Fälle des Stichtags in diesem einen Durchgang (je Auslöser höchstens einmal am Tag) — über dem Flutschutz werden Starts zurückgehalten, nie gekürzt.
+      for (const x of faelle) {
+        if (datumSchonGestartet(d0, p.id, x.k.fall, x.periode)) continue;
+        if (!await datumPasst(a, x.k, x.daten, j.def, kx)) continue;
+        const r = await prozessLaufStarten({
+          id: neueKennung('pl'), prozessId: p.id, version: j.nr, def: j.def, fall: x.k.fall, modus, person: personFuer(j.def, kx),
+          ausloeser: { art: 'datum', knoten: s.id, quelle: x.periode }, daten: x.daten, automatisch: true, periode: x.periode, jetzt: kx.jetzt.toISOString(),
+        }, kx.h);
+        if (r.ok) n++;
+      }
+      await laeufeAendern(dd => { const x = standVon(dd, p.id); return { datei: mitStand(dd, p.id, { ...x, datum: { ...(x.datum ?? {}), [s.id]: f.merker } }), r: null }; }, kx.h);
+    }
+  }
+  return n;
+}
+
+/** Bestehende Fälle eines Datums-Auslösers beim Scharfschalten: Stichtag in den letzten `datumNachholenTage` Tagen, Moment erreicht, „nur wenn …“ passt. */
+async function datumBestehende(a: DatumAusloeserDef, knotenId: string, def: ProzessDefinition, kx: MotorKontext): Promise<{ fall: LaufFall; daten: Record<string, string>; periode: string }[]> {
+  const wand = wandzeit(kx.jetzt).slice(0, 16), heute = wand.slice(0, 10);
+  const tage = Array.from({ length: LAUF_GRENZEN.datumNachholenTage }, (_, i) => tagPlus(heute, -i)).filter(t => datumMoment(t, a.uhrzeit) <= wand);
+  const d = await laeufeLesen(kx.h);
+  const raus: { fall: LaufFall; daten: Record<string, string>; periode: string }[] = [];
+  for (const x of (await datumFaelle(a, knotenId, def, tage, kx)) ?? []) {
+    if (datumSchonGestartet(d, def.id, x.k.fall, x.periode)) continue;
+    if (await datumPasst(a, x.k, x.daten, def, kx)) raus.push({ fall: x.k.fall, daten: x.daten, periode: x.periode });
+  }
+  return raus;
+}
+
+/** Vorschau der Werkstatt (22.10.): die nächsten Starts eines Datums-Auslösers im Entwurf — nur Tage und Anzahlen, nie Namen. null = kein Datums-Auslöser. */
+export async function datumVorschau(prozessId: string, knotenId: string, h?: string, jetzt = new Date()): Promise<{ naechste: { tag: string; n: number }[]; gesamt: number; tage: number; gekuerzt: boolean; lesbar: boolean } | null> {
+  const kx = await kontextLaden(jetzt, h);
+  const e = eintragVon(kx, prozessId);
+  const k = e?.entwurf.knoten.find(x => x.id === knotenId);
+  const a = k?.ausloeser;
+  if (!e || a?.art !== 'datum') return null;
+  const heute = localDay(kx.jetzt);
+  const tage = Array.from({ length: LAUF_GRENZEN.datumVorschauTage }, (_, i) => tagPlus(heute, i));
+  const faelle = await datumFaelle(a, knotenId, e.entwurf, tage, kx);
+  if (!faelle) return { naechste: [], gesamt: 0, tage: tage.length, gekuerzt: false, lesbar: false };
+  const d = await laeufeLesen(kx.h);
+  const jeTag = new Map<string, number>();
+  let geprueft = 0, gekuerzt = false;
+  for (const x of faelle) {
+    if (datumSchonGestartet(d, prozessId, x.k.fall, x.periode)) continue;
+    if (geprueft >= LAUF_GRENZEN.datumVorschauFaelle) { gekuerzt = true; break; }
+    geprueft++;
+    if (await datumPasst(a, x.k, x.daten, e.entwurf, kx)) jeTag.set(x.stichtag, (jeTag.get(x.stichtag) ?? 0) + 1);
+  }
+  const alle = [...jeTag.entries()].sort(([x], [y]) => x.localeCompare(y)).map(([tag, n]) => ({ tag, n }));
+  return { naechste: alle.slice(0, 5), gesamt: alle.reduce((s, x) => s + x.n, 0), tage: tage.length, gekuerzt, lesbar: true };
 }
 
 /** Wecker: Zeit/Datum/Obergrenzen/Fenster/Pause nach Fehler; Frist einer Freigabe (der Vorschlag wird „abgelehnt — Frist abgelaufen“); Aufgaben und Teil-Läufe, die ohne Haken zu Ende gingen. */
@@ -1455,11 +1643,19 @@ export async function zurueckgehaltenEntscheiden(prozessId: string, wie: 'starte
 
 // ══ Scharf schalten (Punkte 36, 59) ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-/** Fälle, die es beim Scharfschalten schon gibt (Punkt 36): je Auslöser „Ereignis“ die Fälle, deren heutiger Stand passt — sonst keine. */
-export async function bestehendeFaelle(def: ProzessDefinition, kx: MotorKontext): Promise<{ fall: LaufFall; daten: Record<string, string>; knoten: string }[]> {
+/**
+ * Fälle, die es beim Scharfschalten schon gibt (Punkt 36): je Auslöser „Ereignis“ die Fälle, deren heutiger Stand passt; je Auslöser „Datum am Fall“ (22.10.) die Fälle,
+ * deren Stichtag in den letzten Tagen erreicht wurde (`periode` — derselbe Schlüssel wie der Datums-Start, nie doppelt) — sonst keine.
+ */
+export async function bestehendeFaelle(def: ProzessDefinition, kx: MotorKontext): Promise<{ fall: LaufFall; daten: Record<string, string>; knoten: string; periode?: string }[]> {
   const crm = await crmVon(kx);
   if (!crm) return [];
-  const raus: { fall: LaufFall; daten: Record<string, string>; knoten: string }[] = [];
+  const raus: { fall: LaufFall; daten: Record<string, string>; knoten: string; periode?: string }[] = [];
+  for (const s of startKnoten(def)) {
+    const a = s.ausloeser;
+    if (a?.art !== 'datum') continue;
+    for (const x of await datumBestehende(a, s.id, def, kx)) if (!raus.some(r => r.fall.id === x.fall.id)) raus.push({ ...x, knoten: s.id });
+  }
   const fallArt = fallArtVon(def);
   const { bedingungenTreffen } = await import('./bedingung');
   const { bereichVonGesellschaft } = await import('@/lib/einheiten');
@@ -1504,6 +1700,11 @@ async function laeufeJeMonat(def: ProzessDefinition, kx: MotorKontext): Promise<
     if (a?.art === 'ereignis' && b) n += b.eintraege.filter(e => e.art === a.ereignis && e.bereich !== 'privat' && ausloeserPasst(a, def.id, e, ereignisDaten(e))).length;
     if (a?.art === 'zeitplan') n += a.rhythmus === 'taeglich' ? 30 : a.rhythmus === 'werktags' ? 21 : a.rhythmus === 'woechentlich' ? Math.round(4.3 * (a.tage?.length || 1)) : (a.tage?.length || 1);
     if (a?.art === 'loop') n += a.loop === 'morgen' ? 30 : a.loop === 'woche' ? 4 : 1;
+    // Datum am Fall (22.10.): Fälle, deren Stichtag in den nächsten 30 Tagen liegt (ohne „nur wenn …“ zu prüfen — eine obere Schätzung).
+    if (a?.art === 'datum') {
+      const heute = localDay(kx.jetzt);
+      n += ((await datumFaelle(a, s.id, def, Array.from({ length: 30 }, (_, i) => tagPlus(heute, i)), kx)) ?? []).length;
+    }
   }
   // Produkt → Prozess (22.10.): neue Mandate bzw. gebuchte Zusatzmodule im Bestand der Ereignisse, deren Produkt auf diesen Prozess zeigt.
   const crm = b && fallArtVon(def) === 'mandat' ? await crmVon(kx) : null;
@@ -1573,7 +1774,7 @@ export async function scharfSchalten(a: { prozessId: string; person: string; rec
     for (const b of await bestehendeFaelle(j.def, kx)) {
       const r = await prozessLaufStarten({
         id: neueKennung('pl'), prozessId: e.id, version: j.nr, def: j.def, fall: b.fall, modus: 'scharf', person: personFuer(j.def, kx),
-        ausloeser: { art: 'bestehend', knoten: b.knoten, quelle: `bestehend:${tagVonIso(jetzt)}` }, daten: b.daten, automatisch: true, jetzt,
+        ausloeser: { art: 'bestehend', knoten: b.knoten, quelle: b.periode ?? `bestehend:${tagVonIso(jetzt)}` }, daten: b.daten, automatisch: true, ...(b.periode ? { periode: b.periode } : {}), jetzt,
       }, kx.h);
       if (r.ok) { gestartet++; neu.push(r.lauf.id); } else if (r.grund === 'flut') zurueck++;
     }

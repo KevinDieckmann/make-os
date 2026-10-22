@@ -96,7 +96,7 @@ const V04: KgVorlage = {
     startKriterium: 'Ein besuchtes Event (Marke Netzwerken) — am Tag des Events um 19:00.', endKriterium: 'Jede Erfassung ist nachgefasst oder bewusst verzichtet.',
     zettel: STANDARD_ABBRUCH,
     phasen: [{ titel: 'Nachfassen', schritte: [
-      S.datum('t', 'Am Tag des Events, 19:00', 'event.datum', 0, '19:00'),
+      S.datum('t', 'Am Tag des Events, 19:00', 'event.datum', 0, '19:00', false, [B.ist('event.besucht', true), B.nicht('event.status', 'abgesagt')]),
       S.abfrage('a1', 'Offene Erfassungen finden', { art: 'netzwerken-offen', hoechstens: 60 }),
       S.schleife('a2', 'Jede Erfassung nachfassen', abfrageListe('kg-v04', 'a1'), 'kg-v04a', 60),
       S.head('a3', 'Abendbericht', 'event', {
@@ -196,7 +196,7 @@ const V18: KgVorlage = {
     zettel: STANDARD_ABBRUCH,
     phasen: [
       { titel: 'Einladen', schritte: [
-        S.datum('t', '28 Tage vor dem Event', 'event.datum', -28, '09:00'),
+        S.datum('t', '28 Tage vor dem Event', 'event.datum', -28, '09:00', false, [B.ist('event.besucht', false), B.nicht('event.status', 'abgesagt')]),
         S.gaeste('a1', 'Gäste vorschlagen', 12, 40, 20),
         S.aufgabe('a2', 'Checkliste als Aufgaben', { titel: 'Checkliste des Abends abarbeiten', wer: EIGNER, fristTage: 21 }),
         S.schleife('a3', 'Jeden Gast einladen', 'event.gaeste', 'kg-v18a', 24),

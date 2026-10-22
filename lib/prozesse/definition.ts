@@ -223,14 +223,18 @@ export type Verknuepfung = 'und' | 'oder';
 // ══ Auslöser (Punkte 31, 32) ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 /**
- * Wodurch ein Lauf startet. Ereignis-Arten = `SkillEreignis` (lib/agenten/typen.ts — keine zweite Liste). Datum relativ ist hier nur Modell (die Rechnung über
- * `fristenLesen`/Werktage NRW kommt mit dem Motor, Etappe C). Webhook (Entscheidung 21.10.: „Ja, abgesichert“): je Prozess eigene Adresse mit eigenem Schlüssel —
+ * Wodurch ein Lauf startet. Ereignis-Arten = `SkillEreignis` (lib/agenten/typen.ts — keine zweite Liste). Datum relativ rechnet der Motor (22.10., lib/prozesse/datum-start.ts +
+ * `datumStarten` im Takt: Fristen über `fristenLesen`, Werktage NRW über den Kalender-Kern). Webhook (Entscheidung 21.10.: „Ja, abgesichert“): je Prozess eigene Adresse mit eigenem Schlüssel —
  * der Webhook legt NUR ein Ereignis `webhook` ab (lib/prozesse/webhook-server.ts), gestartet wird erst vom Motor.
  */
 export type Ausloeser =
   | { art: 'ereignis'; ereignis: SkillEreignis; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung }
   | { art: 'zeitplan'; rhythmus: Rhythmus; /** „HH:MM“ Berliner Zeit */ uhrzeit: string; /** woechentlich 1–7, monatlich 1–31 */ tage?: number[] }
-  | { art: 'datum'; feld: DatumsFeld; /** −365 … 365 Tage (negativ = vorher) */ versatzTage: number; werktage?: boolean; uhrzeit?: string }
+  /**
+   * Datum am Fall (22.10., Datums-Start — lib/prozesse/datum-start.ts): `werktage` zählt Werktage NRW (Kalender-Kern), `uhrzeit` fehlt = 08:00; „nur wenn …“ über die
+   * Felder des Falls (optional — z. B. nur besuchte Events, nur ruhende Leads).
+   */
+  | { art: 'datum'; feld: DatumsFeld; /** −365 … 365 Tage (negativ = vorher) */ versatzTage: number; werktage?: boolean; uhrzeit?: string; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung }
   | { art: 'hand' }
   | { art: 'webhook'; felder: WebhookFeld[]; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung }
   /** Nach einem der vorhandenen Loops (app/api/loop/route.ts: morgen · woche · rueckblick) — „nach dem Morgen-Loop“. */
@@ -271,7 +275,8 @@ export const TEMPERATUREN = ['kalt', 'lau', 'warm', 'heiss'] as const satisfies 
  */
 export type WartenRegel =
   | { art: 'dauer'; tage: number; stunden?: number; arbeitszeit?: boolean }
-  | { art: 'datum'; feld: DatumsFeld; versatzTage?: number; hoechstensTage: number }
+  /** `werktage` (22.10., optional): der Versatz zählt Werktage NRW — dieselbe Regel wie der Datums-Auslöser (lib/prozesse/datum-start.ts `stichtagVon`). */
+  | { art: 'datum'; feld: DatumsFeld; versatzTage?: number; hoechstensTage: number; werktage?: boolean }
   | { art: 'ereignis'; ereignis: SkillEreignis; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung; hoechstensTage: number; hoechstensStunden?: number; arbeitszeit?: boolean };
 /**
  * Schleife „je Eintrag einer Liste“: ruft je Eintrag (je Fall) einen veröffentlichten Teilprozess auf. `liste` = `abfrage:<Knoten>` (Ergebnis einer

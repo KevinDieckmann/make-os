@@ -3,7 +3,8 @@
 //   ereignis   eine Ereignis-Art (= `SkillEreignis`, lib/agenten/typen.ts — keine zweite Liste) + „nur wenn …“ über Felder (lib/prozesse/bedingung.ts).
 //              Nur angebundene Arten (lib/ereignisse/arten.ts); Business-Prozesse hören nie auf Privates (`ausloeserPasst`).
 //   zeitplan   Rhythmus + Uhrzeit (dieselbe Prüfung wie die Skills, lib/agenten/zeitplan.ts `wiederkehrendPruefen`).
-//   datum      „n Tage vor/nach einem Datum am Fall“ — hier NUR das Modell; gerechnet wird mit dem Motor über die vorhandenen Fristen-Leser (Punkt 34, C).
+//   datum      „n Tage (bzw. Werktage) vor/nach einem Datum am Fall“ + „nur wenn …“ über die Felder des Falls — Regeln in lib/prozesse/datum-start.ts, gestartet im
+//              Takt (lib/prozesse/lauf-server.ts `datumStarten`, Fristen über `fristenLesen`; Punkt 34).
 //   hand       von Hand.
 //   webhook    eigene Adresse mit eigenem Schlüssel (lib/prozesse/webhook*.ts); das Schema hier sagt, welche Felder angenommen werden — der Rest wird
 //              verworfen; alles Eingehende ist fremder Text.
@@ -117,6 +118,8 @@ export const webhookFeldSchluessel = (id: string): string => `webhook.${id}`;
 export function ausloeserFelder(a: Ausloeser | { art: AusloeserArt; felder?: readonly WebhookFeld[] }, fall: FallArt): string[] {
   if (a.art === 'webhook') return (a.felder ?? []).map(f => webhookFeldSchluessel(f.id));
   if (a.art === 'ereignis') return [...EREIGNIS_FELDER, ...FALL_FELDER[fall]].map(f => f.id);
+  // Datum am Fall (22.10.): „nur wenn …“ über die Felder des Falls (z. B. nur besuchte Events, nur ruhende Leads).
+  if (a.art === 'datum') return FALL_FELDER[fall].map(f => f.id);
   return [];
 }
 
@@ -192,7 +195,12 @@ export function ausloeserAus(roh: unknown, fall: FallArt, knotenId?: string): { 
       const uhr = typeof roh.uhrzeit === 'string' && UHRZEIT.test(roh.uhrzeit) ? roh.uhrzeit : undefined;
       if (roh.uhrzeit !== undefined && roh.uhrzeit !== null && !uhr) raus.push(b('fehler', 'Datum: Uhrzeit als „HH:MM“.'));
       if (raus.length) return { ausloeser: null, befunde: raus };
-      return { ausloeser: { art: 'datum', feld, versatzTage: versatz!, ...(roh.werktage === true ? { werktage: true } : {}), ...(uhr ? { uhrzeit: uhr } : {}) }, befunde: [] };
+      const { bedingungen, befunde } = bedingungenAus(roh.bedingungen, ausloeserFelder({ art: 'datum' }, fall), 'Nur wenn');
+      const v = verknuepfungAus(roh.verknuepfung);
+      return {
+        ausloeser: { art: 'datum', feld, versatzTage: versatz!, ...(roh.werktage === true ? { werktage: true } : {}), ...(uhr ? { uhrzeit: uhr } : {}), ...(bedingungen.length ? { bedingungen } : {}), ...(v && bedingungen.length > 1 ? { verknuepfung: v } : {}) },
+        befunde: befunde.map(x => ({ ...x, ...(knotenId ? { knotenId } : {}) })),
+      };
     }
     case 'webhook': {
       const { felder, befunde } = webhookFelderAus(roh.felder);
@@ -246,7 +254,8 @@ export function ausloeserText(a: Ausloeser): string {
     case 'datum': {
       const d = DATUMS_FELDER.find(x => x.id === a.feld)?.titel ?? a.feld;
       const t = Math.abs(a.versatzTage);
-      return a.versatzTage === 0 ? `am Tag: ${d}` : `${t} ${a.werktage ? 'Werktage' : 'Tage'} ${a.versatzTage < 0 ? 'vor' : 'nach'}: ${d}`;
+      const wann = a.versatzTage === 0 ? `am Tag: ${d}` : `${t} ${a.werktage ? 'Werktage' : 'Tage'} ${a.versatzTage < 0 ? 'vor' : 'nach'}: ${d}`;
+      return `${wann}${a.uhrzeit ? `, ${a.uhrzeit}` : ''}${a.bedingungen?.length ? ` (nur wenn ${a.bedingungen.length === 1 ? 'eine Bedingung' : `${a.bedingungen.length} Bedingungen`} erfüllt)` : ''}`;
     }
     case 'webhook': return `Webhook von außen${a.felder.length ? ` (${a.felder.length} Felder)` : ''}`;
     case 'loop': return `nach dem ${LOOP_NAME[a.loop]}`;

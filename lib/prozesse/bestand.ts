@@ -87,7 +87,8 @@ const ausloeser = (v: unknown): Ausloeser | undefined => {
     case 'hand': return { art };
     case 'ereignis': { const e = s(o.ereignis); return e ? sauber<Ausloeser>({ art, ereignis: e, bedingungen: bedingungen(o.bedingungen), verknuepfung: verkn(o.verknuepfung) }) : undefined; }
     case 'zeitplan': { const r = s(o.rhythmus), u = s(o.uhrzeit); const t = Array.isArray(o.tage) ? o.tage.filter((x): x is number => Number.isInteger(x)) : []; return r && u ? sauber<Ausloeser>({ art, rhythmus: r, uhrzeit: u, tage: t.length ? t : undefined }) : undefined; }
-    case 'datum': { const f = s(o.feld), vt = n(o.versatzTage); return f && vt !== undefined ? sauber<Ausloeser>({ art, feld: f, versatzTage: vt, werktage: o.werktage === true ? true : undefined, uhrzeit: s(o.uhrzeit) }) : undefined; }
+    // 22.10. (Datums-Start): „nur wenn …“ über die Felder des Falls — optional, ohne wie bisher.
+    case 'datum': { const f = s(o.feld), vt = n(o.versatzTage); return f && vt !== undefined ? sauber<Ausloeser>({ art, feld: f, versatzTage: vt, werktage: o.werktage === true ? true : undefined, uhrzeit: s(o.uhrzeit), bedingungen: bedingungen(o.bedingungen), verknuepfung: verkn(o.verknuepfung) }) : undefined; }
     case 'webhook': return sauber<Ausloeser>({ art, felder: liste(o.felder, webhookFeld), bedingungen: bedingungen(o.bedingungen), verknuepfung: verkn(o.verknuepfung) });
     case 'loop': { const l = wahl(o.loop, LOOP_ARTEN); return l ? { art, loop: l } : undefined; }
   }
@@ -121,7 +122,7 @@ const warten = (v: unknown): WartenRegel | undefined => {
   const o = obj(v);
   // C1 (21.10., M1): `arbeitszeit` und `hoechstensStunden` (optional) — ohne sie wie bisher.
   if (o?.art === 'dauer') return sauber<WartenRegel>({ art: 'dauer', tage: n(o.tage) ?? 0, stunden: n(o.stunden), arbeitszeit: o.arbeitszeit === true ? true : undefined });
-  if (o?.art === 'datum' && s(o.feld)) return sauber<WartenRegel>({ art: 'datum', feld: o.feld as string, versatzTage: n(o.versatzTage), hoechstensTage: n(o.hoechstensTage) ?? 0 });
+  if (o?.art === 'datum' && s(o.feld)) return sauber<WartenRegel>({ art: 'datum', feld: o.feld as string, versatzTage: n(o.versatzTage), hoechstensTage: n(o.hoechstensTage) ?? 0, werktage: o.werktage === true ? true : undefined });
   if (o?.art === 'ereignis' && s(o.ereignis)) return sauber<WartenRegel>({ art: 'ereignis', ereignis: o.ereignis as string, bedingungen: bedingungen(o.bedingungen), verknuepfung: verkn(o.verknuepfung), hoechstensTage: n(o.hoechstensTage) ?? 0, hoechstensStunden: n(o.hoechstensStunden), arbeitszeit: o.arbeitszeit === true ? true : undefined });
   return undefined;
 };

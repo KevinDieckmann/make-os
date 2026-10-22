@@ -34,7 +34,8 @@ import {
   type ProzessLauf, type ProzessLaufStand, type SchrittStatus, type VerlaufEintrag, type WarteArt, type Wirkung, type Zurueckgehalten,
 } from './lauf-typen';
 import { ausWandzeit, minutenVon, tagPlus, tagVon, wandAus, wandzeit } from '@/lib/kalender/zeit';
-import { istWerktag, werktagePlus } from '@/lib/aufgaben/feiertage';
+import { istWerktag, werktagePlus } from '@/lib/zeit/kalender-kern';
+import { istDatumPeriode, stichtagVon } from './datum-start';
 
 type K = ProzessKnoten<ProzessForm>;
 
@@ -635,8 +636,10 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
       if (!w) return { art: 'fehler', grund: 'daten-fehlen' };
       if (w.art === 'dauer') return { art: 'warten', ausgangSchatten: 'weiter', warten: { art: 'zeit', bis: zeitPlus(u.jetzt, { tage: w.tage, stunden: w.stunden, arbeitszeit: w.arbeitszeit }) } };
       if (w.art === 'datum') {
+        // Stichtag wie beim Datums-Auslöser (lib/prozesse/datum-start.ts): Kalendertage bzw. — mit `werktage` — Werktage NRW über den Kalender-Kern.
         const d = u.fallDatum?.(w.feld) ?? null;
-        const ziel = d ? tagIso(d, w.versatzTage ?? 0) : undefined;
+        const stichtag = d ? stichtagVon(d, { versatzTage: w.versatzTage ?? 0, ...(w.werktage ? { werktage: true } : {}) }) : null;
+        const ziel = stichtag ? tagIso(stichtag) : undefined;
         const ober = zeitPlus(u.jetzt, { tage: Math.max(1, w.hoechstensTage) });
         if (ziel && ziel <= u.jetzt) return { art: 'weiter', ausgang: 'eingetreten', status: 'erledigt' };
         return { art: 'warten', ausgangSchatten: 'eingetreten', warten: { art: 'datum', bis: ziel && ziel < ober ? ziel : ober, ...(ziel ? { ziel } : {}) } };
@@ -1122,6 +1125,16 @@ export function startGesperrt(datei: LaeufeDatei, prozessId: string, fall: LaufF
 }
 
 /**
+ * Datum am Fall (22.10., lib/prozesse/datum-start.ts): gibt es für diesen Fall und diese Periode (Auslöser-Knoten + Stichtag) schon einen Lauf, einen offenen Lauf oder
+ * einen zurückgehaltenen Start? (rein — der Takt überspringt solche Fälle, ohne den Fall zu lesen; die Sperre selbst liegt in `starten`.)
+ */
+export function datumSchonGestartet(datei: LaeufeDatei, prozessId: string, fall: LaufFall, periode: string): boolean {
+  const schluessel = fallSchluessel(prozessId, fall);
+  return datei.laeufe.some(l => l.schluessel === schluessel && (laufOffen(l) || l.ausloeser.quelle === periode))
+    || datei.zurueckgehalten.some(z => z.prozessId === prozessId && fallSchluessel(z.prozessId, z.fall, z.ausloeser.quelle) === schluessel);
+}
+
+/**
  * Recherche-Frische (rein, M6): vor wie vielen Tagen wurde dieser Fall (Firma bzw. Lead — dieselbe Kennung) zuletzt im Web recherchiert? Über alle scharfen
  * Läufe aller Prozesse; null = nie (bzw. die Läufe sind nach ihrer Frist weg).
  */
@@ -1151,7 +1164,14 @@ export function starten(datei: LaeufeDatei, a: StartAnfrage): StartErgebnis {
   const gleiche = datei.laeufe.filter(l => l.schluessel === schluessel);
   const offen = gleiche.find(laufOffen);
   if (offen) return { ok: false, datei, grund: 'offen', lauf: offen };
-  const letzter = gleiche.sort((x, y) => (x.start < y.start ? -1 : 1)).at(-1);
+  // Datum am Fall (22.10., lib/prozesse/datum-start.ts): je Fall und Stichtag höchstens EIN Lauf (die Periode steht im Lauf als `ausloeser.quelle`) — ein Lauf
+  // einer früheren Periode (voriges Ende, alte Wiedervorlage) sperrt eine neue nicht (Wiedereintritt je Periode, M2).
+  const periode = a.fall.art !== 'keiner' && a.fall.id && istDatumPeriode(a.periode) ? a.periode : null;
+  if (periode) {
+    const schon = gleiche.find(l => l.ausloeser.quelle === periode);
+    if (schon && !a.erneut) return { ok: false, datei, grund: 'schon', lauf: schon };
+  }
+  const letzter = periode ? undefined : gleiche.sort((x, y) => (x.start < y.start ? -1 : 1)).at(-1);
   if (letzter && !a.erneut) {
     const tage = st.einstellung.erneutNachTagen;
     const seit = letzter.ende ? (Date.parse(a.jetzt) - Date.parse(letzter.ende)) / 86_400_000 : 0;

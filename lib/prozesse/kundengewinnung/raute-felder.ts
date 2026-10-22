@@ -22,7 +22,7 @@ export function gelesenFelder(def: Pick<ProzessDefinition, 'knoten'>): Gelesenes
     if (r?.art === 'regel') bed(k.id, 'raute', r.bedingungen);
     if (r?.art === 'score') raus.push({ knotenId: k.id, feld: SCORE_FELD[r.pruefung] ?? 'lead.score', op: 'score', wo: 'raute' });
     const a = k.ausloeser;
-    if (a && (a.art === 'ereignis' || a.art === 'webhook')) bed(k.id, 'ausloeser', a.bedingungen);
+    if (a && (a.art === 'ereignis' || a.art === 'webhook' || a.art === 'datum')) bed(k.id, 'ausloeser', a.bedingungen);
     if (k.warten?.art === 'ereignis') bed(k.id, 'warten', k.warten.bedingungen);
   }
   return raus;

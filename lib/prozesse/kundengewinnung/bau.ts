@@ -138,8 +138,9 @@ export const S = {
     sch(id, titel, 'ausloeser.zeitplan', { feld: { ausloeser: { art: 'zeitplan', rhythmus, uhrzeit, ...(tage ? { tage } : {}) } } }),
   ereignis: (id: string, titel: string, ereignis: SkillEreignis, bedingungen?: Bedingung[]): Schritt =>
     sch(id, titel, 'ausloeser.ereignis', { feld: { ausloeser: { art: 'ereignis', ereignis, ...(bedingungen?.length ? { bedingungen } : {}) } as Ausloeser } }),
-  datum: (id: string, titel: string, feld: DatumsFeld, versatzTage: number, uhrzeit?: string, werktage?: boolean): Schritt =>
-    sch(id, titel, 'ausloeser.datum', { feld: { ausloeser: { art: 'datum', feld, versatzTage, ...(werktage ? { werktage } : {}), ...(uhrzeit ? { uhrzeit } : {}) } } }),
+  /** Datum am Fall (22.10.: der Motor startet ihn im Takt — lib/prozesse/datum-start.ts); `bedingungen` = „nur wenn …“ über die Felder des Falls. */
+  datum: (id: string, titel: string, feld: DatumsFeld, versatzTage: number, uhrzeit?: string, werktage?: boolean, bedingungen?: Bedingung[]): Schritt =>
+    sch(id, titel, 'ausloeser.datum', { feld: { ausloeser: { art: 'datum', feld, versatzTage, ...(werktage ? { werktage } : {}), ...(uhrzeit ? { uhrzeit } : {}), ...(bedingungen?.length ? { bedingungen } : {}) } } }),
   webhook: (id: string, titel: string, felder: WebhookFeld[]): Schritt => sch(id, titel, 'ausloeser.webhook', { feld: { ausloeser: { art: 'webhook', felder } } }),
   // CRM lesen
   abfrage: (id: string, titel: string, q: CrmAbfrage, o: Opt = {}): Schritt => sch(id, titel, 'crm.abfragen', { feld: { abfrage: q }, ...o }),

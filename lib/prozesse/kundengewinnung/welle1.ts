@@ -203,7 +203,8 @@ const V08: KgVorlage = {
     { id: 'entscheidTage', label: 'Entscheiden in (Tagen)', vorgabe: 5, knoten: 'a6', feld: 'frist' }, { id: 'parkTage', label: 'Neu parken für (Tage)', vorgabe: 90, knoten: 'a6p', feld: 'parkTage' },
     { id: 'reaktionTage', label: 'Reaktion abwarten (Tage)', vorgabe: 14, knoten: 'a8', feld: 'hoechstensTage' },
   ],
-  offen: [{ punkt: 'M2', text: 'Wiedereintritt nach neuer Wiedervorlage (Lauf-Kennung je Periode) kommt mit dem Lauf-Motor.' }, { punkt: 'M6', text: 'Die optionale Recherche (Research mit Ausgabe-Vertrag, Felder nur als Vorschlag mit Häkchen je Feld) läuft im Motor — in dieser Vorlage ist sie aus (Einstellung „Recherche“); einschalten heißt: einen Research-Schritt vor „Wie weiter?“ einsetzen.' }],
+  // M2 (Wiedereintritt nach neuer Wiedervorlage) ist seit dem Datums-Start gebaut (22.10.: je Fall und Stichtag ein Lauf — lib/prozesse/datum-start.ts).
+  offen: [{ punkt: 'M6', text: 'Die optionale Recherche (Research mit Ausgabe-Vertrag, Felder nur als Vorschlag mit Häkchen je Feld) läuft im Motor — in dieser Vorlage ist sie aus (Einstellung „Recherche“); einschalten heißt: einen Research-Schritt vor „Wie weiter?“ einsetzen.' }],
   demo: 'Eine erfundene Druckerei, geparkt mit „Budget kommt später“, Wiedervorlage heute; ein neues Signal (Event-Anmeldung) → Aufgabe „Reaktivieren“.',
   teile: [],
   definition: prozess({
@@ -213,7 +214,7 @@ const V08: KgVorlage = {
     zettel: STANDARD_ABBRUCH,
     phasen: [
       { titel: 'Prüfen', schritte: [
-        S.datum('t', 'Am Tag der Wiedervorlage', 'lead.wiedervorlage', 0, '08:00'),
+        S.datum('t', 'Am Tag der Wiedervorlage', 'lead.wiedervorlage', 0, '08:00', false, [B.ist('lead.status', 'ruht')]),
         S.regel('a2', 'Ohne neue Signale seit dem Parken?', [B.ist('lead.neue-signale', false)], { zweige: { nein: 'a4' }, pfeil: { ja: 'keine Signale', nein: 'neue Signale' } }),
         S.aufgabe('a4', 'Reaktivieren mit Anlass', { titel: 'Reaktivieren mit Anlass', fristTage: 3, beschreibung: 'Anlass, bester Kanal (Ampel) und Grund des Parkens stehen in der Akte. „Nicht erreicht“: einen anderen Kanal wählen.' }),
       ] },
@@ -242,7 +243,8 @@ const V15: KgVorlage = {
     { id: 'reviewTage', label: 'Review in (Tagen)', vorgabe: 14 }, { id: 'kuendigungVorlaufTage', label: 'Vorlauf vor der Kündigungsfrist (Tage)', vorgabe: 14, knoten: 'a8', feld: 'versatzTage' },
     { id: 'budgetCent', label: 'Budget (Cent)', vorgabe: 15, knoten: 'a3', feld: 'budgetCent' },
   ],
-  offen: [{ punkt: 'M2', text: 'Wiedereintritt je Periode (Prozess + Mandat + Ende) kommt mit dem Lauf-Motor.' }, { punkt: 'E9', text: 'Ausbau-Auslöser mitten in der Laufzeit (Ziel erreicht, Report erstellt) kommt mit dem Lauf-Motor.' }],
+  // M2 (Wiedereintritt je Periode: Prozess + Mandat + Ende) ist seit dem Datums-Start gebaut (22.10., lib/prozesse/datum-start.ts).
+  offen: [{ punkt: 'E9', text: 'Ausbau-Auslöser mitten in der Laufzeit (Ziel erreicht, Report erstellt) kommt mit dem Lauf-Motor.' }],
   demo: 'Das Saat-Mandat bekommt Mindestlaufzeit und Kündigungsfrist (Ende in 85 Tagen): Review-Einladung im Stapel, danach ein Ausbau-Deal-Vorschlag.',
   teile: [],
   definition: prozess({
@@ -252,7 +254,7 @@ const V15: KgVorlage = {
     zettel: STANDARD_ABBRUCH,
     phasen: [
       { titel: 'Lage & Review', schritte: [
-        S.datum('t', '90 Tage vor dem Ende', 'mandat.ende', -90, '09:00'),
+        S.datum('t', '90 Tage vor dem Ende', 'mandat.ende', -90, '09:00', false, [B.ist('mandat.status', 'aktiv')]),
         S.akte('a1', 'Lage lesen'),
         S.regel('a2', 'Ohne Risiko?', [B.nicht('mandat.ampel', 'rot'), B.groesser('mandat.health', 59)], { zweige: { nein: 'a2r' } }),
         S.aufgabe('a2r', 'Risiko-Gespräch', { titel: 'Risiko-Gespräch führen', fristTage: 5, prioritaet: 'high' }),
