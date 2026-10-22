@@ -12,6 +12,8 @@
 //     (der Vorschlag gilt dem Bereich, nicht einem Head)
 // Nur vorhandene Wege und Routen; geschrieben wird nur über die Fenster und Karten, die es schon gibt. Die Liste ist serverseitig auf Business gefiltert —
 // gefiltert nach Bereich wird hier im Browser (lib/prozesse/bereich-automationen.ts, rein).
+// Je Space (22.10. abends, Gruppe B): `space` wählt die Fassung (`automationVon`); einzelne Prozesse (`prozesse`, z. B. Terminbuchung im Kalender) stehen unter
+// ihrem Bereich. In Privat gibt es keine Prozesse — dort stehen nur die Karten der Heads (GET /api/agenten?space=privat, serverseitig gefiltert), ohne Landkarte.
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,7 +21,8 @@ import { Plus, LayoutTemplate, Sparkles, Workflow, Settings2, Inbox as InboxIcon
 import { FARBE as C, TYP, MIKRO, BEDEUTUNG_FARBE } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Zeile, Chip, Knopf, Hinweis, Leerzustand, Raster } from '../ui';
 import { WEG } from '@/lib/wege';
-import { AUTOMATION_LABEL, automationHeads, type Werkzeug } from '@/lib/make-one/werkzeuge';
+import { AUTOMATION_LABEL, automationHeads, automationVon, type Werkzeug } from '@/lib/make-one/werkzeuge';
+import type { SpaceId } from '@/lib/make-one/space-regeln';
 import { automationenFuer, automationLage, type AutomationGruppe } from '@/lib/prozesse/bereich-automationen';
 import { BEREICH_IDS, type ProzessBereich } from '@/lib/prozesse/definition';
 import type { StellschraubenRechte } from '@/lib/prozesse/stellschrauben';
@@ -44,8 +47,10 @@ export type HeadKurz = Pick<HeadKarte, 'id' | 'name' | 'kurz' | 'auftrag' | 'akt
 export interface WeitererHead { id: string; head?: HeadKurz | null }
 
 /** Die Ansicht ohne Abrufe (Tests rendern sie mit Beispieldaten). */
-export function BereichAutomationenAnsicht({ werkzeug, gruppen, head, headId, weitere = [], darfBauen, schrauben, fehler, laedt, onNeu, onVorlage, onHead, onGespeichert }: {
+export function BereichAutomationenAnsicht({ werkzeug, gruppen, head, headId, weitere = [], darfBauen, schrauben, fehler, laedt, onNeu, onVorlage, onHead, onGespeichert, space = 'business' }: {
   werkzeug: Werkzeug;
+  /** Die Sicht (Privat: keine Prozesse, nur die Heads). */
+  space?: SpaceId;
   gruppen: AutomationGruppe[];
   /** Der Head des Bereichs: Daten, `null` = für diese Person nicht sichtbar bzw. nicht da, `undefined` = lädt. */
   head?: HeadKurz | null;
@@ -65,6 +70,21 @@ export function BereichAutomationenAnsicht({ werkzeug, gruppen, head, headId, we
     lage.scharf && `${lage.scharf} scharf`, lage.probelauf && `${lage.probelauf} im Probelauf`, lage.pausiert && `${lage.pausiert} pausiert`,
     lage.entwurf && `${lage.entwurf} ${lage.entwurf === 1 ? 'Entwurf' : 'Entwürfe'}`, lage.system && `${lage.system} System`, lage.pakete && `${lage.pakete} ${lage.pakete === 1 ? 'Paket' : 'Pakete'}`,
   ].filter(Boolean).join(' · ');
+  // Privat (22.10. abends): keine Landkarte — nur die Heads des Bereichs (Prozesse gibt es im Business).
+  if (space === 'privat') {
+    const karten = headId ? [{ id: headId, head }, ...weitere] : [];
+    return (
+      <div className="wz-automationen" style={{ display: 'grid', gap: 16 }} data-werkzeug={werkzeug.id} data-space="privat">
+        <Karte>
+          <Ueberschrift>{`${AUTOMATION_LABEL} · ${werkzeug.name}`}</Ueberschrift>
+          <p style={klein}>Hier arbeitet der Head dieses Bereichs für dich — Vorschläge landen in deinen Freigaben, übernommen wird erst mit deinem Klick. Abläufe zum Bauen gibt es im Business unter Prozesse.</p>
+        </Karte>
+        {karten.length === 1 && <HeadKarteBereich head={karten[0].head} headId={karten[0].id} darfBauen={false} space={space} />}
+        {karten.length > 1 && <Raster min={280}>{karten.map(k => <HeadKarteBereich key={k.id} head={k.head} headId={k.id} darfBauen={false} space={space} />)}</Raster>}
+        {!karten.length && <Leerzustand symbol={<Sparkles size={20} />} titel="Kein Head für diesen Bereich">Hier antwortet ZOE.</Leerzustand>}
+      </div>
+    );
+  }
   return (
     <div className="wz-automationen" style={{ display: 'grid', gap: 16 }} data-werkzeug={werkzeug.id}>
       <Karte>
@@ -105,7 +125,7 @@ export function BereichAutomationenAnsicht({ werkzeug, gruppen, head, headId, we
 }
 
 /** Die Karte des Heads: Auftrag, offene Vorschläge (Freigaben), Gespräch, Einstellungen, „Head fragen“ (einen Prozess für den Bereich vorschlagen lassen). */
-function HeadKarteBereich({ head, headId, onHead, darfBauen }: { head?: HeadKurz | null; headId: string; onHead?: () => void; darfBauen: boolean }) {
+function HeadKarteBereich({ head, headId, onHead, darfBauen, space = 'business' }: { head?: HeadKurz | null; headId: string; onHead?: () => void; darfBauen: boolean; space?: SpaceId }) {
   if (head === undefined) return <Karte flach><p style={klein}>Der Head lädt …</p></Karte>;
   if (head === null) return <Karte flach><Hinweis art="info" titel="Head dieses Bereichs">Der Head ist für dich hier nicht zu sehen — die Agenten zeigen, wer dir zur Verfügung steht.</Hinweis><Knopf leise href={WEG.agenten()}>Zu den Agenten ›</Knopf></Karte>;
   return (
@@ -113,7 +133,7 @@ function HeadKarteBereich({ head, headId, onHead, darfBauen }: { head?: HeadKurz
       <Ueberschrift rechts={head.gesperrt ? <Chip farbe={C.inkDim}>angehalten</Chip> : head.aktiv ? undefined : <Chip farbe={C.inkDim}>aus</Chip>}>{head.name}</Ueberschrift>
       <p style={klein}>{head.gesperrt?.text ?? head.auftrag}</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        <Knopf leise href={WEG.freigaben(undefined, 'business')} titel="Offene Vorschläge in den Freigaben"><span className="pz-knopf-inhalt"><InboxIcon size={15} aria-hidden />{head.zaehler.freigaben ? `${head.zaehler.freigaben} offene Vorschläge` : 'Keine offenen Vorschläge'}</span></Knopf>
+        <Knopf leise href={WEG.freigaben(undefined, space)} titel="Offene Vorschläge in den Freigaben"><span className="pz-knopf-inhalt"><InboxIcon size={15} aria-hidden />{head.zaehler.freigaben ? `${head.zaehler.freigaben} offene Vorschläge` : 'Keine offenen Vorschläge'}</span></Knopf>
         <Knopf leise href={WEG.agenten({ h: headId })}><span className="pz-knopf-inhalt"><MessageSquare size={15} aria-hidden />Gespräch</span></Knopf>
         <Knopf leise href={WEG.agenten({ h: headId, r: 'einstellungen' })}><span className="pz-knopf-inhalt"><Settings2 size={15} aria-hidden />Einstellungen</span></Knopf>
         {darfBauen && onHead && <Knopf onClick={onHead} titel="Den Head einen Prozess für diesen Bereich vorschlagen lassen — übernommen erst mit deinem Klick"><span className="pz-knopf-inhalt"><Sparkles size={15} aria-hidden />Head fragen</span></Knopf>}
@@ -122,33 +142,55 @@ function HeadKarteBereich({ head, headId, onHead, darfBauen }: { head?: HeadKurz
   );
 }
 
-/** Der Baustein mit Daten — auf der Seite eines Werkzeugs dort, wo `werkzeug.automation.href` hinzeigt. */
-export function BereichAutomationen({ werkzeug }: { werkzeug: Werkzeug }) {
-  const a = werkzeug.automation;
+/** Der Baustein mit Daten — auf der Seite eines Werkzeugs dort, wo `werkzeug.automation.href` hinzeigt. `space` wählt die Fassung (Vorgabe Business). */
+export function BereichAutomationen({ werkzeug, space = 'business' }: { werkzeug: Werkzeug; space?: SpaceId }) {
+  // Privat: nur die Heads — die Landkarte (Business) wird dort gar nicht erst geladen.
+  return space === 'privat' ? <PrivatHeads werkzeug={werkzeug} /> : <BusinessAutomationen werkzeug={werkzeug} />;
+}
+
+/** Alle Heads einer Fassung aus EINEM Abruf: `undefined` = lädt, sonst die Liste (leer, wenn der Abruf scheitert — dann „nicht zu sehen“). */
+function useHeads(headIds: readonly string[], space: SpaceId): (id: string) => HeadKurz | null | undefined {
+  const [heads, setHeads] = useState<HeadKurz[] | undefined>(undefined);
+  const headSchluessel = headIds.join(',');
+  useEffect(() => {
+    if (!headSchluessel) return;
+    let an = true;
+    void fetch(`/api/agenten?space=${space}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+      .then((j: { heads?: HeadKurz[] } | null) => { if (an) setHeads(j?.heads ?? []); });
+    return () => { an = false; };
+  }, [headSchluessel, space]);
+  return (id: string) => (heads === undefined ? undefined : heads.find(h => h.id === id) ?? null);
+}
+
+function PrivatHeads({ werkzeug }: { werkzeug: Werkzeug }) {
+  const a = automationVon(werkzeug, 'privat');
+  const headIds = automationHeads(a);
+  const headVon = useHeads(headIds, 'privat');
+  if (!a) return null;
+  return (
+    <BereichAutomationenAnsicht werkzeug={werkzeug} space="privat" gruppen={[]} head={headIds[0] ? headVon(headIds[0]) : undefined} headId={headIds[0]}
+      weitere={headIds.slice(1).map(id => ({ id, head: headVon(id) }))} darfBauen={false} schrauben={{}} onNeu={() => {}} onVorlage={() => {}} onHead={() => {}} onGespeichert={() => {}} />
+  );
+}
+
+function BusinessAutomationen({ werkzeug }: { werkzeug: Werkzeug }) {
+  const a = automationVon(werkzeug, 'business');
   const router = useRouter();
   const { daten, fehler, neu } = useLandkarte();
   const anp = useLandkarteAnpassung(daten);
   const laeufe = useLaufZahlen();
   const liste = useWerkstattListe();
-  // Alle Heads des Werkzeugs aus EINEM Abruf: `undefined` = lädt, sonst die Liste (leer, wenn der Abruf scheitert — dann „nicht zu sehen“).
-  const [heads, setHeads] = useState<HeadKurz[] | undefined>(undefined);
   const [neuOffen, setNeuOffen] = useState(false);
   const [vorlageOffen, setVorlageOffen] = useState(false);
   const [headOffen, setHeadOffen] = useState(false);
   const headIds = automationHeads(a);
   const headId = headIds[0];
-  const headSchluessel = headIds.join(',');
-  useEffect(() => {
-    if (!headSchluessel) return;
-    let an = true;
-    void fetch('/api/agenten?space=business', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null)
-      .then((j: { heads?: HeadKurz[] } | null) => { if (an) setHeads(j?.heads ?? []); });
-    return () => { an = false; };
-  }, [headSchluessel]);
-  const headVon = (id: string): HeadKurz | null | undefined => (heads === undefined ? undefined : heads.find(h => h.id === id) ?? null);
-  const gruppen = useMemo(() => (a && daten ? automationenFuer(anp.ansicht, a.bereiche, laeufe ?? {}) : []), [a, daten, anp.ansicht, laeufe]);
+  const headVon = useHeads(headIds, 'business');
+  const gruppen = useMemo(() => (a && daten ? automationenFuer(anp.ansicht, a.bereiche, laeufe ?? {}, a.prozesse) : []), [a, daten, anp.ansicht, laeufe]);
   if (!a) return null;
-  const bereich = ersterBereich(a.bereiche);
+  // Ohne ganze Bereiche (nur einzelne Prozesse, z. B. Terminbuchung im Kalender): die Bereiche dieser Prozesse belegen „+ Prozess“ und die Galerie vor.
+  const bereicheDa = a.bereiche.length ? a.bereiche : gruppen.map(g => g.bereich.id);
+  const bereich = ersterBereich(bereicheDa);
   const inDieWerkstatt = async (id: string) => { await neu(); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt' })); };
   return (
     <>
@@ -157,7 +199,7 @@ export function BereichAutomationen({ werkzeug }: { werkzeug: Werkzeug }) {
         schrauben={{ rechte: daten?.stellschraubenRechte, stand: daten?.stellschraubenStand }} fehler={!daten ? fehler : null} laedt={!daten && !fehler}
         onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onGespeichert={neu} />
       {neuOffen && <NeuerProzessFenster onZu={() => setNeuOffen(false)} bereichVorgabe={bereich} onAngelegt={async id => { setNeuOffen(false); await inDieWerkstatt(id); }} />}
-      {vorlageOffen && <VorlagenGalerie bereiche={a.bereiche} onZu={() => setVorlageOffen(false)} onAngelegt={async id => { setVorlageOffen(false); await inDieWerkstatt(id); }} />}
+      {vorlageOffen && <VorlagenGalerie bereiche={bereicheDa} onZu={() => setVorlageOffen(false)} onAngelegt={async id => { setVorlageOffen(false); await inDieWerkstatt(id); }} />}
       {headOffen && <HeadFragenFenster bereichVorgabe={bereich} onZu={() => setHeadOffen(false)} onUebernommen={async r => { setHeadOffen(false); await inDieWerkstatt(r.prozessId); }} />}
     </>
   );

@@ -23,11 +23,11 @@ vi.mock('next/navigation', () => ({
 
 import {
   WERKZEUGE, PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, werkzeugFuer, werkzeugVonHref, werkzeugKontext, werkzeugPunkte, alleUnterpunkte, automationPunkt, automationHeads,
-  vollAdresse, imWerkzeugModus, AUTOMATION_LABEL, RUECKWEG_LABEL, type Werkzeug, type WerkzeugPunkt,
+  vollAdresse, imWerkzeugModus, AUTOMATION_LABEL, RUECKWEG_LABEL, type Werkzeug, type WerkzeugPunkt, automationVon, automationenVon, werkzeugFuerKonto, headsDerSeiten,
 } from '@/lib/make-one/werkzeuge';
 import { HUB_MENUE, HUB_PUNKTE, hubGruppenAnzeige, hubOrtFuer, markttraktion } from '@/lib/crm/adresse';
 import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
-import { SPACES, leisteFuer, passtZu } from '@/lib/make-one/spaces';
+import { SPACES, leisteFuer, passtZu, ZOE_BEREICH } from '@/lib/make-one/spaces';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
 import { WEG } from '@/lib/wege';
 import { BEREICH_IDS } from '@/lib/prozesse/definition';
@@ -44,7 +44,12 @@ const pfadVon = (href: string) => href.split(/[?#]/)[0];
 const seiteDa = (href: string) => existsSync(path.join(wurzel, 'app', pfadVon(href).replace(/^\//, ''), 'page.tsx'));
 const PZ = 'pz-11111111-2222-4333-8444-555555555555';
 /** Die Seite eines Werkzeugs, die seine Aktionen hört — ein neues Werkzeug trägt sich hier ein (sonst rot). */
-const SEITE_DES_WERKZEUGS: Record<string, string> = { prozesse: 'components/os/prozesse/ProzesseSeite.tsx', markttraktion: 'components/os/crm/Markttraktion.tsx' };
+const SEITE_DES_WERKZEUGS: Record<string, string> = {
+  prozesse: 'components/os/prozesse/ProzesseSeite.tsx', markttraktion: 'components/os/crm/Markttraktion.tsx',
+  // Gruppe B (22.10. abends) — keine Aktionen, jeder Punkt eine Adresse.
+  kalender: 'components/os/kalender/Kalender.tsx', inbox: 'components/os/inbox/InboxZwei.tsx', aufgaben: 'components/os/aufgaben/AufgabenRaum.tsx',
+  gesundheit: 'components/os/GesundheitView.tsx', familie: 'components/os/familie/FamilieView.tsx', zoe: 'components/os/StapelView.tsx',
+};
 
 /** Beispiel-Adressen, an denen die Unterpunkte aufgelöst werden. */
 const ORTE = ['', '?ansicht=liste', '?ansicht=werkstatt', `?p=${PZ}&ansicht=werkstatt`, `?p=${PZ}&ansicht=werkstatt&w=laeufe`, `?p=${PZ}&ansicht=werkstatt&w=tests`, '?p=sp-deal', '?modus=praesentieren', '?voll=1'];
@@ -180,14 +185,14 @@ describe('„Automationen & Head“ im Muster (Gruppen, Fuß, Standard-Unterpunk
     const ohne: Werkzeug = { ...HUB, automation: { ...HUB.automation!, gruppe: undefined } };
     expect(alleUnterpunkte(ohne).at(-1)?.id).toBe('automationen');
   });
-  it('jedes echte Werkzeug mit `automation`: Bereiche der Landkarte, nur Business-Heads, Ort im Werkzeug', () => {
-    for (const w of [...WERKZEUGE, HUB]) {
-      const a = w.automation;
-      if (!a) continue;
+  it('jedes echte Werkzeug mit `automation`: Bereiche der Landkarte, Heads des Space der Fassung, Ort im Werkzeug', () => {
+    for (const w of [...WERKZEUGE, HUB]) for (const a of automationenVon(w)) {
       for (const b of a.bereiche) expect(BEREICH_IDS as readonly string[], `${w.id}:${b}`).toContain(b);
-      for (const id of automationHeads(a)) expect(headDef(id)?.bereich, `${w.id}:${id}`).toBe('business');
-      const ziel = a.href(werkzeugKontext(w.pfade[0]));
-      expect(w.pfade.some(m => passtZu(pfadVon(ziel), ziel.includes('?') ? ziel.slice(ziel.indexOf('?')) : '', m)), w.id).toBe(true);
+      for (const sp of a.spaces ?? w.spaces) {
+        for (const id of automationHeads(a)) expect(headDef(id)?.bereich, `${w.id}:${id}`).toBe(sp);
+        const ziel = a.href(werkzeugKontext(w.pfade[0], '', false, { space: sp }));
+        expect(w.pfade.some(m => passtZu(pfadVon(ziel), ziel.includes('?') ? ziel.slice(ziel.indexOf('?')) : '', m)), w.id).toBe(true);
+      }
     }
   });
 });
@@ -222,7 +227,7 @@ describe('Leiste: das Werkzeug-Menü nur auf Werkzeug-Adressen', () => {
     expect(laeufe).toContain('data-werkzeug-punkt="laeufe"');
   });
   it('überall sonst die Leiste des Space — kein Werkzeug-Menü, kein Rückweg', async () => {
-    for (const [pfad, suche] of [['/os', ''], ['/os/mandate', ''], ['/os/aufgaben', '']] as const) {
+    for (const [pfad, suche] of [['/os', ''], ['/os/mandate', ''], ['/os/system', '']] as const) {
       const { desktop } = await render(pfad, suche);
       expect(desktop, pfad).not.toContain('data-werkzeug');
       expect(desktop, pfad).not.toContain(`>${RUECKWEG_LABEL}</span>`);
@@ -358,7 +363,7 @@ describe('„Automationen & Head“: dieselben Daten wie das Werkzeug Prozesse',
     const { BereichAutomationenAnsicht } = await import('@/components/os/werkzeug/BereichAutomationen');
     const kopf = (id: string, name: string, freigaben: number) => ({ id, name, kurz: name, auftrag: `${name} führt.`, aktiv: true, zaehler: { freigaben, laufend: 0 } });
     const html = renderToStaticMarkup(h(BereichAutomationenAnsicht, {
-      werkzeug: MARKTTRAKTION_WERKZEUG, gruppen: automationenFuer(ansicht, MARKTTRAKTION_WERKZEUG.automation!.bereiche, {}), headId: 'sales', head: kopf('sales', 'Head of Sales', 2),
+      werkzeug: MARKTTRAKTION_WERKZEUG, gruppen: automationenFuer(ansicht, automationVon(MARKTTRAKTION_WERKZEUG, 'business')!.bereiche, {}), headId: 'sales', head: kopf('sales', 'Head of Sales', 2),
       weitere: [{ id: 'marketing', head: kopf('marketing', 'Head of Marketing', 0) }, { id: 'event', head: null }],
       darfBauen: true, schrauben: {}, onNeu: () => {}, onVorlage: () => {}, onHead: () => {}, onGespeichert: () => {},
     }));
@@ -427,11 +432,12 @@ describe('Markttraktion als Werkzeug (HubSpot-Art, Punkte aus HUB_MENUE)', () =>
     }
   });
   it('„Automationen & Head“: Prozess-Bereiche Marketing · Sales · Übergabe, Heads Sales (zuerst) · Marketing · Event', () => {
-    expect(M.automation?.bereiche).toEqual(['marketing', 'sales', 'uebergabe']);
-    expect(M.automation?.head).toBe('sales');
-    expect(automationHeads(M.automation)).toEqual(['sales', 'marketing', 'event']);
-    expect(automationHeads(PROZESSE_WERKZEUG.automation)).toEqual([]);
-    expect(automationHeads({ ...HUB.automation!, weitereHeads: ['sales', 'event'] })).toEqual(['sales', 'event']);
+    const a = automationVon(M, 'business');
+    expect(a?.bereiche).toEqual(['marketing', 'sales', 'uebergabe']);
+    expect(a?.head).toBe('sales');
+    expect(automationHeads(a)).toEqual(['sales', 'marketing', 'event']);
+    expect(automationHeads(automationVon(PROZESSE_WERKZEUG, 'business'))).toEqual([]);
+    expect(automationHeads({ ...automationVon(HUB, 'business')!, weitereHeads: ['sales', 'event'] })).toEqual(['sales', 'event']);
   });
   const render = async (pfad: string, suche = '') => {
     nav.pfad = pfad; nav.suche = suche;
@@ -472,3 +478,4 @@ describe('Markttraktion als Werkzeug (HubSpot-Art, Punkte aus HUB_MENUE)', () =>
     expect(html).not.toContain(RUECKWEG_LABEL);
   });
 });
+

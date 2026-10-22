@@ -53,14 +53,17 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
 
   const eintrag = (p: PunktAnsicht, kind = false) => {
     const S = p.icon;
+    // Zahl hinter dem Namen (Punkte aus einer Liste der Seite: ungelesen bzw. offen) — klein und leise, eingeklappt weg.
+    const zahl = p.zahl ? <span aria-label={`${p.zahl}`} style={{ marginLeft: 'auto', flex: '0 0 auto', fontSize: TYP.bedien, fontWeight: 600, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{p.zahl}</span> : null;
     const innen = <>
       <S size={kind ? 15 : 17} strokeWidth={1.8} style={{ flex: '0 0 auto' }} aria-hidden />
       {!nurSymbole && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>}
+      {!nurSymbole && zahl}
     </>;
     const titel = p.titel === p.label ? p.label : `${p.label} — ${p.titel}`;
     if (variante === 'blatt') {
       const stil: CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, padding: kind ? '10px 10px 10px 22px' : '10px 10px', minHeight: ZIEL.handy, minWidth: 0, boxSizing: 'border-box', borderRadius: ECKE.eingabe, textDecoration: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text, color: p.an ? farbe : C.ink, background: p.an ? `${farbe}14` : 'transparent', fontSize: TYP.body, fontWeight: p.an ? 600 : 500 };
-      const blattInnen = <><S size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} aria-hidden /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span></>;
+      const blattInnen = <><S size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} aria-hidden /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>{zahl}</>;
       return p.href
         ? <Link key={p.id} href={p.href} onClick={() => onWeg?.()} aria-current={p.an ? 'page' : undefined} title={titel} data-werkzeug-punkt={p.id} style={stil}>{blattInnen}</Link>
         : <button key={p.id} type="button" onClick={() => { werkzeugAktion(werkzeug.id, p.aktion!); onWeg?.(); }} title={titel} data-werkzeug-punkt={p.id} className="fassbar" style={stil}>{blattInnen}</button>;
@@ -74,8 +77,11 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
   const ueberschrift = (g: string) => (nurSymbole
     ? <div key={`g:${g}`} role="separator" aria-label={g} title={g} style={{ borderTop: `1px solid ${C.linie}`, margin: '6px 8px' }} />
     : <div key={`g:${g}`} role="heading" aria-level={3} className="wz-gruppe" style={{ ...MIKRO, padding: variante === 'blatt' ? '8px 10px 2px' : '10px 10px 4px', ...(variante === 'blatt' ? { gridColumn: '1 / -1' } : {}) }}>{g}</div>);
+  // Ein Punkt ohne Gruppe nach einer Gruppe (z. B. „Automationen & Head“ hinter „Geldfluss“) bekommt einen Strich — sonst stünde er optisch in der Gruppe davor.
+  const strich = (k: string) => <div key={`s:${k}`} role="separator" aria-hidden style={{ borderTop: `1px solid ${C.linie}`, margin: '6px 8px', ...(variante === 'blatt' ? { gridColumn: '1 / -1' } : {}) }} />;
   const liste = (ps: PunktAnsicht[]) => ps.flatMap((p, i) => [
     ...(p.gruppe && p.gruppe !== ps[i - 1]?.gruppe ? [ueberschrift(p.gruppe)] : []),
+    ...(!p.gruppe && ps[i - 1]?.gruppe ? [strich(p.id)] : []),
     eintrag(p), ...p.unter.map(u => eintrag(u, true)),
   ]);
 

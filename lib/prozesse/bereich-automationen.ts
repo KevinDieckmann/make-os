@@ -61,14 +61,23 @@ export function automationZeile(p: ProzessDef, z?: LaufZahlen): AutomationZeile 
 
 /**
  * Die Prozesse der Bereiche eines Werkzeugs, in der Reihenfolge der Bereiche und der Landkarte (angepasst: eigene Zuordnung und Reihenfolge gelten). Unbekannte
- * Bereiche fallen weg; ein Bereich ohne Prozesse bleibt (mit leerer Liste) — dort steht dann „+ Prozess“.
+ * Bereiche fallen weg; ein Bereich ohne Prozesse bleibt (mit leerer Liste) — dort steht dann „+ Prozess“. `prozesse` = einzelne Prozesse, die zum Werkzeug
+ * gehören, ohne dass ihr ganzer Bereich dazugehört (Kalender: Terminbuchung) — sie stehen unter dem Bereich, in dem sie auf der Landkarte liegen, nach den
+ * ganzen Bereichen; Unbekanntes fällt weg, nichts doppelt.
  */
-export function automationenFuer(ansicht: LandkarteAnsicht, bereiche: readonly string[], laeufe: Readonly<Record<string, LaufZahlen>> = {}): AutomationGruppe[] {
+export function automationenFuer(ansicht: LandkarteAnsicht, bereiche: readonly string[], laeufe: Readonly<Record<string, LaufZahlen>> = {}, prozesse: readonly string[] = []): AutomationGruppe[] {
   const nachId = new Map(ansicht.bereiche.map(b => [b.id, b]));
-  return bereiche.flatMap(id => {
+  const ganze = bereiche.flatMap(id => {
     const b = nachId.get(id);
     return b ? [{ bereich: b, zeilen: (ansicht.jeBereich[id] ?? []).map(p => automationZeile(p, laeufe[p.id])) }] : [];
   });
+  if (!prozesse.length) return ganze;
+  const schon = new Set(ganze.flatMap(g => g.zeilen.map(z => z.id)));
+  const einzeln = ansicht.bereiche.flatMap(b => {
+    const zeilen = (ansicht.jeBereich[b.id] ?? []).filter(p => prozesse.includes(p.id) && !schon.has(p.id)).map(p => automationZeile(p, laeufe[p.id]));
+    return zeilen.length ? [{ bereich: b, zeilen }] : [];
+  });
+  return [...ganze, ...einzeln];
 }
 
 /** Die Lage in Zahlen (Kopf des Bausteins): wie viele eigene Prozesse scharf, im Probelauf, pausiert, als Entwurf; dazu System und Pakete. */
