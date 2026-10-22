@@ -479,8 +479,10 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
     }
     case 'entscheidung': {
       const r = k.raute;
-      if (r?.art === 'regel') return { art: 'weiter', ausgang: bedingungenTreffen(r.bedingungen, u.daten, r.verknuepfung) ? 'ja' : 'nein', status: 'erledigt' };
-      if (r?.art === 'score') { const t = scoreTrifft(r, u.daten); return { art: 'weiter', ausgang: t ? 'ja' : 'nein', status: 'erledigt', ...(t === null ? { grund: 'daten-fehlen' as const } : {}) }; }
+      // Die Felder des Laufs (abfrage.*, schleife.*, agent.* — Ergebnisse der Schritte davor) und des Falls bzw. Ereignisses.
+      const felder = { ...l.daten, ...u.daten };
+      if (r?.art === 'regel') return { art: 'weiter', ausgang: bedingungenTreffen(r.bedingungen, felder, r.verknuepfung) ? 'ja' : 'nein', status: 'erledigt' };
+      if (r?.art === 'score') { const t = scoreTrifft(r, felder); return { art: 'weiter', ausgang: t ? 'ja' : 'nein', status: 'erledigt', ...(t === null ? { grund: 'daten-fehlen' as const } : {}) }; }
       // Entscheidung 21.10.: keine Rauten, über die ein Modell entscheidet — in C1 hält so ein Lauf an (Fehlerkante, sonst angehalten).
       if (r?.art === 'modell') return { art: 'fehler', grund: 'modell-raute' };
       const frage = text(werte.frage) || k.titel;
@@ -499,6 +501,10 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
       if (k.schloss?.fuer) {
         const x = def.knoten.find(y => y.id === k.schloss!.fuer);
         if (!x) return { art: 'fehler', grund: 'knoten-fehlt' };
+        // Wurde der Schritt hinter dem Schloss übersprungen (Kanal rot, Recherche frisch …), gibt es nichts freizugeben: ein Agent geht weiter („ja“ — sein Ergebnis
+        // fehlt nur), eine Außenwirkung nicht („nein“ — wie bei Mail/WhatsApp; nie eine Aufgabe „von Hand“ für etwas, das nicht sein darf).
+        const vorher = [...l.schritte].reverse().find(y => y.knoten === x.id);
+        if (vorher?.status === 'uebersprungen') return { art: 'weiter', ausgang: x.form === 'agent' ? 'ja' : 'nein', status: 'uebersprungen', grund: vorher.grund ?? 'kein-weg' };
         return schlossPlan(l, k, x, kennung, u);
       }
       const wer = werVon(u, l, werte.wer);

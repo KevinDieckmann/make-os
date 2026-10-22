@@ -14,6 +14,7 @@ import { Knopf, LEUCHT, feld } from '../ui';
 import { ZOE_FRAGEN_EREIGNIS, passtZuBezug, type CrmBezug } from '@/lib/zoe/crm-bezug';
 import { WEG } from '@/lib/wege';
 import { kontaktAkte } from '@/lib/crm/adresse';
+import type { FeldWahl } from '@/lib/zoe/crm-felder-wahl';
 import { headDef } from '@/lib/agenten/katalog';
 import { headFarbe } from '../agenten/Avatar';
 
@@ -111,14 +112,30 @@ export function ZoeVorschlaege({ art, id, onUebernommen }: { art: 'kontakt' | 'f
  * Im Stapel (Aufträge & Freigaben): was ZOE in der Markttraktion vorbereitet hat — Text zum Kopieren, Mail-Programm
  * (nur bei zulässigem Kanal vorbereitet) und der Sprung zum Kontakt/zur Firma. Freigeben/Ablehnen macht der Stapel selbst.
  */
-export function CrmStapelDetail({ v }: { v: { eingabe: Record<string, unknown>; bezug?: { art: string; id: string } } }) {
+export function CrmStapelDetail({ v, wahl, gewaehlt, onWahl }: {
+  v: { eingabe: Record<string, unknown>; bezug?: { art: string; id: string } };
+  /** Häkchen je Feld (22.10. spät, Prozess-Schritt mit Feldern — lib/zoe/crm-felder-wahl.ts): die vorbereiteten Felder; ohne = nur als Ganzes. */
+  wahl?: readonly FeldWahl[] | null; gewaehlt?: ReadonlySet<string>; onWahl?: (f: ReadonlySet<string>) => void;
+}) {
   const e = v.eingabe;
   const t = typeof e.text === 'string' ? e.text : typeof e.inhalt === 'string' ? e.inhalt : '';
   const mailto = typeof e._mailto === 'string' ? e._mailto : '';
   const [art, id] = (v.bezug?.id ?? '').split(':');
   const ziel = !id ? '' : art === 'kontakt' ? kontaktAkte(id) : art === 'firma' ? WEG.firma(id) : art === 'deal' ? WEG.deal(id) : '';
+  const an = gewaehlt ?? new Set((wahl ?? []).map(f => f.id));
   return (
     <div style={{ marginTop: 12, display: 'grid', gap: 8, fontSize: TYP.bedien, color: C.inkDim }}>
+      {wahl && onWahl && (
+        <div role="group" aria-label="Felder übernehmen" style={{ display: 'grid', gap: 2 }}>
+          <div style={{ fontSize: 12, color: C.inkLeise }}>Übernommen wird nur, was angehakt ist:</div>
+          {wahl.map(f => (
+            <label key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44, cursor: 'pointer' }}>
+              <input type="checkbox" checked={an.has(f.id)} onChange={x => { const n = new Set(an); if (x.target.checked) n.add(f.id); else n.delete(f.id); onWahl(n); }} style={{ width: 20, height: 20 }} />
+              <span><b style={{ color: C.ink }}>{f.name}</b> · {f.wert}</span>
+            </label>
+          ))}
+        </div>
+      )}
       {t && <div style={{ whiteSpace: 'pre-wrap', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '10px 12px', maxHeight: 240, overflowY: 'auto', lineHeight: 1.5 }}>{t}</div>}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {t && <button type="button" onClick={() => { void navigator.clipboard?.writeText(t); }} style={{ background: 'none', border: 'none', padding: 0, color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, fontFamily: SCHRIFT.text }}>Kopieren</button>}

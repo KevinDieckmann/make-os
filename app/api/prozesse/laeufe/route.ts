@@ -146,7 +146,7 @@ export async function POST(req: Request) {
       const f = b.felder && typeof b.felder === 'object' ? b.felder as Record<string, unknown> : null;
       if (!f) return nein(400, 'felder fehlt.');
       const zahl = (k: string) => (f[k] === undefined ? undefined : f[k] === null ? null : f[k]) as number | null | undefined;
-      const r = await S.einstellungSetzen(prozess, z.person, { flutJeStunde: zahl('flutJeStunde'), notbremseJeStunde: zahl('notbremseJeStunde'), erneutNachTagen: zahl('erneutNachTagen'), budgetCent: zahl('budgetCent'), ...(f.ziel !== undefined ? { ziel: f.ziel } : {}), ...(f.abbruch !== undefined ? { abbruch: f.abbruch } : {}) });
+      const r = await S.einstellungSetzen(prozess, z.person, { flutJeStunde: zahl('flutJeStunde'), notbremseJeStunde: zahl('notbremseJeStunde'), erneutNachTagen: zahl('erneutNachTagen'), budgetCent: zahl('budgetCent'), rechercheFrischeTage: zahl('rechercheFrischeTage'), rechercheSuchen: zahl('rechercheSuchen'), ...(f.ziel !== undefined ? { ziel: f.ziel } : {}), ...(f.abbruch !== undefined ? { abbruch: f.abbruch } : {}) });
       return r.ok ? NextResponse.json({ ok: true }) : nein(r.status, r.fehler);
     }
     case 'umzug': {

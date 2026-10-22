@@ -25,7 +25,7 @@ import {
   starten, teilprozessFertig, voran, wartetAuf, weckenZeit, wirkungZaehlen, anhalten, fortsetzen, abbrechen, verlaufAnhaengen, tagVonIso, startGesperrt, rechercheVorTagen,
   type Aktion, type AktionErgebnis, type Empfaenger, type LaufUmfeld, type StartAnfrage, type StartErgebnis, type AgentFreigabe,
 } from './lauf-regeln';
-import { FACH_AGENTEN } from './agent-schritt';
+import { istWebRecherche } from './agent-schritt';
 import { ROLLE_EIGNER, ROLLE_ZUSTAENDIG, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT } from './baustein-katalog';
 import {
   LAUF_AUFGABE_PRAEFIX, LAUF_GRENZEN, laeufeBestand, laufOffen, leererStand, leereLaeufe,
@@ -390,9 +390,6 @@ export async function agentKostenCent(a: Pick<AgentSchritt, 'modell'>): Promise<
 
 let agentKosten = new Map<string, number>();
 /** Synchron für die reinen Regeln: die Schätzung wird vor dem Anstoß geladen (`agentKostenVorladen`). */
-/** Liest dieser Agenten-Schritt das Web? (Research, Prospecting, Content — lib/prozesse/agent-schritt.ts `FACH_AGENTEN`) — dann gelten Recherche-Frische und Suchen je Lead. */
-export const istWebRecherche = (a: Pick<AgentSchritt, 'wer'>): boolean => a.wer.art === 'fach' && !!FACH_AGENTEN.find(f => f.id === (a.wer as { agentId: string }).agentId)?.kategorien.includes('web');
-
 function agentErlaubt(a: AgentSchritt, knoten: string, l: ProzessLauf, st: ProzessLaufStand, kx: MotorKontext, d?: LaeufeDatei): AgentFreigabe {
   const kosten = agentKosten.get(a.modell) ?? 1;
   if (kosten > a.budgetCent) return { ok: false, grund: 'budget-schritt', kostenCent: kosten };
@@ -1442,13 +1439,14 @@ export async function scharfSchalten(a: { prozessId: string; person: string; rec
 }
 
 /** Einstellungen der Läufe (Flutschutz, Notbremse, Wiedereintritt, Ziel/Abbruch, Budget) — nur volle Mitglieder; Verlauf mit Kennung. */
-export async function einstellungSetzen(prozessId: string, person: string, felder: Partial<Record<'flutJeStunde' | 'notbremseJeStunde' | 'erneutNachTagen' | 'budgetCent', number | null>> & { ziel?: unknown; abbruch?: unknown }): Promise<{ ok: true } | { ok: false; status: 400 | 404; fehler: string }> {
+export async function einstellungSetzen(prozessId: string, person: string, felder: Partial<Record<'flutJeStunde' | 'notbremseJeStunde' | 'erneutNachTagen' | 'budgetCent' | 'rechercheFrischeTage' | 'rechercheSuchen', number | null>> & { ziel?: unknown; abbruch?: unknown }): Promise<{ ok: true } | { ok: false; status: 400 | 404; fehler: string }> {
   const { zielAbbruchAus } = await import('./lauf-regeln');
   const kx = await kontextLaden();
   if (!eintragVon(kx, prozessId)) return { ok: false, status: 404, fehler: 'Diesen Prozess gibt es nicht.' };
   const zahl = (v: unknown, min: number, max: number): number | null | 'fehler' | undefined => (v === undefined ? undefined : v === null ? null : typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max ? v : 'fehler');
   const flut = zahl(felder.flutJeStunde, 1, 1000), bremse = zahl(felder.notbremseJeStunde, 1, 5000), erneut = zahl(felder.erneutNachTagen, 1, 3650), budget = zahl(felder.budgetCent, 0, LAUF_GRENZEN.budgetCentMax);
-  if ([flut, bremse, erneut, budget].includes('fehler')) return { ok: false, status: 400, fehler: 'Zahlen: Flutschutz 1–1000 je Stunde, Notbremse 1–5000 je Stunde, Wiedereintritt 1–3650 Tage, Budget 0–100.000 Cent.' };
+  const frische = zahl(felder.rechercheFrischeTage, 1, 3650), suchen = zahl(felder.rechercheSuchen, 1, 5);
+  if ([flut, bremse, erneut, budget, frische, suchen].includes('fehler')) return { ok: false, status: 400, fehler: 'Zahlen: Flutschutz 1–1000 je Stunde, Notbremse 1–5000 je Stunde, Wiedereintritt 1–3650 Tage, Budget 0–100.000 Cent, Recherche-Frische 1–3650 Tage, Suchen je Lead 1–5.' };
   const ziel = felder.ziel === undefined ? undefined : zielAbbruchAus(felder.ziel);
   const abbruch = felder.abbruch === undefined ? undefined : zielAbbruchAus(felder.abbruch);
   if (ziel === 'fehler' || abbruch === 'fehler') return { ok: false, status: 400, fehler: 'Ziel/Abbruch: höchstens 20 Bedingungen über Felder (feld, op, wert).' };
@@ -1456,8 +1454,9 @@ export async function einstellungSetzen(prozessId: string, person: string, felde
   await laeufeAendern(d => {
     const st = standVon(d, prozessId);
     const e = { ...st.einstellung };
-    const setz = <K extends 'flutJeStunde' | 'notbremseJeStunde' | 'erneutNachTagen'>(k: K, v: number | null | undefined) => { if (v === null) delete e[k]; else if (v !== undefined) e[k] = v; };
+    const setz = <K extends 'flutJeStunde' | 'notbremseJeStunde' | 'erneutNachTagen' | 'rechercheFrischeTage' | 'rechercheSuchen'>(k: K, v: number | null | undefined) => { if (v === null) delete e[k]; else if (v !== undefined) e[k] = v; };
     setz('flutJeStunde', flut as number | null | undefined); setz('notbremseJeStunde', bremse as number | null | undefined); setz('erneutNachTagen', erneut as number | null | undefined);
+    setz('rechercheFrischeTage', frische as number | null | undefined); setz('rechercheSuchen', suchen as number | null | undefined);
     if (ziel === null) delete e.ziel; else if (ziel) e.ziel = ziel;
     if (abbruch === null) delete e.abbruch; else if (abbruch) e.abbruch = abbruch;
     if (budget !== undefined && budget !== null && e.scharf) e.scharf = { ...e.scharf, budgetCent: budget as number };

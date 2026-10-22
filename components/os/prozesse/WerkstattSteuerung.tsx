@@ -15,6 +15,8 @@ import { Fenster } from '../Fenster';
 import type { Bedingung, MaskenWert, ProzessDefinition, ProzessStatus, Verknuepfung } from '@/lib/prozesse/definition';
 import { LAUF_GRENZEN, type Bestehende, type ProzessLaufStand } from '@/lib/prozesse/lauf-typen';
 import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
+import { alleSchritte } from '@/lib/prozesse/fluss';
+import { istWebRecherche } from '@/lib/prozesse/agent-schritt';
 import {
   werkstattZustand, fortsetzenStatus, ZUSTAND_NAME, ZUSTAND_BEDEUTUNG, kostenZeilen, budgetVorschlag, euroZuCent, centZuEuro, centWort, zeitText, type WerkstattZustand,
 } from '@/lib/prozesse/laeufe-ansicht';
@@ -153,6 +155,10 @@ function EinstellungenFenster(p: SteuerungProps & { darf: boolean; onZu: () => v
   const [flut, setFlut] = useState(zahlText(e.flutJeStunde));
   const [bremse, setBremse] = useState(zahlText(e.notbremseJeStunde));
   const [erneut, setErneut] = useState(zahlText(e.erneutNachTagen));
+  const [frische, setFrische] = useState(zahlText(e.rechercheFrischeTage));
+  const [suchen, setSuchen] = useState(zahlText(e.rechercheSuchen));
+  // Recherche-Frische und Suchen je Lead nur, wenn der Prozess im Web recherchiert (Research-Agent).
+  const recherche = useMemo(() => alleSchritte(p.def).some(x => x.schritt.form === 'agent' && !!x.schritt.agent && istWebRecherche(x.schritt.agent)), [p.def]);
   const [budget, setBudget] = useState(e.scharf ? centZuEuro(e.scharf.budgetCent) : '');
   const [ziel, setZiel] = useState<Bedingung[]>(e.ziel?.bedingungen ?? []);
   const [abbruch, setAbbruch] = useState<Bedingung[]>(e.abbruch?.bedingungen ?? []);
@@ -162,11 +168,11 @@ function EinstellungenFenster(p: SteuerungProps & { darf: boolean; onZu: () => v
   const bed = (b: Bedingung[], v?: Verknuepfung) => (b.length ? { bedingungen: b, ...(v ? { verknuepfung: v } : {}) } : null);
   const speichern = async () => {
     setFehler(null);
-    const f = zahl(flut, 1, 1000), n = zahl(bremse, 1, 5000), w = zahl(erneut, 1, 3650);
-    if (f === 'fehler' || n === 'fehler' || w === 'fehler') { setFehler('Ganze Zahlen: Flutschutz 1–1000, Notbremse 1–5000, Wiedereintritt 1–3650 Tage — leer heißt Vorgabe.'); return; }
+    const f = zahl(flut, 1, 1000), n = zahl(bremse, 1, 5000), w = zahl(erneut, 1, 3650), rf = zahl(frische, 1, 3650), rs = zahl(suchen, 1, 5);
+    if (f === 'fehler' || n === 'fehler' || w === 'fehler' || rf === 'fehler' || rs === 'fehler') { setFehler('Ganze Zahlen: Flutschutz 1–1000, Notbremse 1–5000, Wiedereintritt 1–3650 Tage, Recherche-Frische 1–3650 Tage, Suchen je Lead 1–5 — leer heißt Vorgabe.'); return; }
     const c = e.scharf ? euroZuCent(budget) : undefined;
     if (c === null) { setFehler('Budget: Betrag in Euro, z. B. 5 oder 12,50.'); return; }
-    const r = await laeufeSenden({ aktion: 'einstellung', prozess: p.prozessId, felder: { flutJeStunde: f, notbremseJeStunde: n, erneutNachTagen: w, ...(c !== undefined ? { budgetCent: c } : {}), ziel: bed(ziel, e.ziel?.verknuepfung), abbruch: bed(abbruch, e.abbruch?.verknuepfung) } });
+    const r = await laeufeSenden({ aktion: 'einstellung', prozess: p.prozessId, felder: { flutJeStunde: f, notbremseJeStunde: n, erneutNachTagen: w, ...(recherche ? { rechercheFrischeTage: rf, rechercheSuchen: rs } : {}), ...(c !== undefined ? { budgetCent: c } : {}), ziel: bed(ziel, e.ziel?.verknuepfung), abbruch: bed(abbruch, e.abbruch?.verknuepfung) } });
     if (r.status === 200 && r.j?.ok) { p.onMeldung('Einstellungen gespeichert.', 'gut'); await p.onGeaendert(); p.onZu(); return; }
     setFehler(String(r.j?.fehler ?? 'Nicht gespeichert.'));
   };
@@ -185,6 +191,16 @@ function EinstellungenFenster(p: SteuerungProps & { darf: boolean; onZu: () => v
         <Feldzeile label="Wiedereintritt nach Tagen (leer = nie automatisch)" erklaerung="prozesse.wiedereintritt">
           <input aria-label="Wiedereintritt nach Tagen" inputMode="numeric" value={erneut} disabled={aus} placeholder="nie" onChange={x => setErneut(x.target.value)} style={{ ...feld, maxWidth: 180 }} />
         </Feldzeile>
+        {recherche && (
+          <>
+            <Feldzeile label={`Recherche-Frische: dieselbe Firma höchstens alle … Tage (leer = ${LAUF_GRENZEN.rechercheFrischeTage})`} erklaerung="prozesse.recherche-frische">
+              <input aria-label="Recherche-Frische in Tagen" inputMode="numeric" value={frische} disabled={aus} placeholder={String(LAUF_GRENZEN.rechercheFrischeTage)} onChange={x => setFrische(x.target.value)} style={{ ...feld, maxWidth: 180 }} />
+            </Feldzeile>
+            <Feldzeile label={`Web-Suchen je Lead (leer = ${LAUF_GRENZEN.rechercheSuchen})`} erklaerung="prozesse.recherche-suchen">
+              <input aria-label="Web-Suchen je Lead" inputMode="numeric" value={suchen} disabled={aus} placeholder={String(LAUF_GRENZEN.rechercheSuchen)} onChange={x => setSuchen(x.target.value)} style={{ ...feld, maxWidth: 180 }} />
+            </Feldzeile>
+          </>
+        )}
         {e.scharf && (
           <Feldzeile label="Budget dieses Prozesses je Monat (€)" erklaerung="prozesse.budget">
             <input aria-label="Budget je Monat in Euro (Einstellungen)" inputMode="decimal" value={budget} disabled={aus} onChange={x => setBudget(x.target.value)} style={{ ...feld, maxWidth: 200 }} />

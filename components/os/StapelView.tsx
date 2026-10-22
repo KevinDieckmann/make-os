@@ -33,6 +33,7 @@ import { CrmStapelDetail } from './crm/ZoeFragen';
 import { RechtStapelDetail } from './unternehmen/schild/Recht';
 import { useTasks } from '@/context/TasksContext';
 import { risikoarm, vorschlagSauber, nurGewaehlt, zoeStandLesen, ZOE_AUFGABE_WERKZEUG, type ZoeFeld } from '@/lib/aufgaben/zoe';
+import { felderZurWahl, crmSammelTauglich } from '@/lib/zoe/crm-felder-wahl';
 import { FreigabeFelder, alleFelder } from './aufgaben/ZoeAufgabe';
 import { ZoeReiter } from './ZoeReiter';
 import { useSpace } from '@/hooks/useSpace';
@@ -93,9 +94,12 @@ export function StapelView() {
   const [laedt, setLaedt] = useState(true);
   const { state: aufgabenStand, rehydrate } = useTasks();
   const [haekchen, setHaekchen] = useState<Record<string, ReadonlySet<ZoeFeld>>>({});
+  /** Häkchen je Feld bei CRM-Vorschlägen aus einem Prozess-Schritt (22.10. spät, M6 — lib/zoe/crm-felder-wahl.ts). */
+  const [crmHaken, setCrmHaken] = useState<Record<string, ReadonlySet<string>>>({});
+  const crmWahl = (v: Vorschlag) => (v.bezug?.art === 'crm' ? felderZurWahl(v.eingabe) : null);
   /** ZOE-Aufgaben-Vorschlag (Art „aufgabe“) — gesäubert, sonst null. */
   const aufgabenInhalt = (v: Vorschlag) => (v.werkzeug === ZOE_AUFGABE_WERKZEUG && v.bezug?.art === 'aufgabe' ? vorschlagSauber(v.eingabe, v.bezug.id) : null);
-  const sammelTauglich = (v: Vorschlag) => risikoarm(aufgabenInhalt(v));
+  const sammelTauglich = (v: Vorschlag) => risikoarm(aufgabenInhalt(v)) || crmSammelTauglich(v);
 
   const laden = useCallback(async () => {
     try {
@@ -139,7 +143,11 @@ export function StapelView() {
       setMeldung(`Nicht freigegeben: ${aenderung.fehler.map(f => `„${f.schluessel}“ — ${f.grund}`).join(' · ')}`);
       return;
     }
-    const eingabe = inhalt && auswahl ? nurGewaehlt(inhalt, auswahl) : aenderung?.eingabe ?? null;
+    // CRM-Vorschlag mit Häkchen je Feld: nur die gewählten der vorbereiteten Felder (der Server prüft dieselbe Regel).
+    const wahl = entscheidung === 'freigeben' && !inhalt && !aenderung ? crmWahl(v) : null;
+    const crmAuswahl = wahl ? [...(crmHaken[v.id] ?? new Set(wahl.map(f => f.id)))] : null;
+    if (crmAuswahl && !crmAuswahl.length) { setOffenId(v.id); setBusy(null); setMeldung('Nicht freigegeben: mindestens ein Feld wählen.'); return; }
+    const eingabe = inhalt && auswahl ? nurGewaehlt(inhalt, auswahl) : aenderung?.eingabe ?? (crmAuswahl ? { _felder: crmAuswahl } : null);
     // Freigeben mit Stand (09.10. spät): hat sich der Vorschlag inzwischen geändert (z. B. Bereich in einem anderen Fenster), kommt 409 — nichts freigegeben.
     const d = await fetch('/api/zoe/stapel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: v.id, entscheidung, ...(grund[v.id] ? { grund: grund[v.id] } : {}), ...(eingabe ? { eingabe } : {}), ...(entscheidung === 'freigeben' && v.stand ? { stand: v.stand } : {}) }) }).then(r => r.json()).catch(() => ({ error: 'nicht erreichbar' }));
     setMeldung(d.ergebnis ?? (entscheidung === 'ablehnen' ? `Abgelehnt: ${v.titel}` : d.error ?? '')); setBusy(null);
@@ -233,7 +241,7 @@ export function StapelView() {
             </div>
           )}
           {/* Art „crm“ (28.09., C7): Text zum Kopieren, Mail-Programm, Sprung in die Markttraktion. */}
-          {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} />}
+          {v.bezug?.art === 'crm' && <CrmStapelDetail v={v} wahl={crmWahl(v)} gewaehlt={crmHaken[v.id]} onWahl={f => setCrmHaken(h => ({ ...h, [v.id]: f }))} />}
           {v.bezug?.art === 'inbox' && <InboxStapelDetail v={v} />}
           {/* Art „recht“ (10.10., Head of Recht): Checkliste, Aufgabentext bzw. Fundstelle zum Lesen — keine Rechtsberatung. */}
           {v.bezug?.art === 'recht' && <RechtStapelDetail v={v} />}
