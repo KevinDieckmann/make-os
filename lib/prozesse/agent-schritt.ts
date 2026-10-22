@@ -62,6 +62,8 @@ export const FACH_AGENTEN: readonly { id: string; titel: string; kategorien: rea
   { id: 'outreach', titel: 'Outreach (Ansprache vorbereiten)', kategorien: ['crm'], fremd: true },
 ];
 const fachAgent = (id: string) => FACH_AGENTEN.find(f => f.id === id) ?? null;
+/** Liest dieser Agenten-Schritt das Web? (Research, Prospecting, Content) — dann gelten Recherche-Frische und „höchstens n Suchen je Lead“ (Motor, M6). */
+export const istWebRecherche = (a: Pick<AgentSchritt, 'wer'>): boolean => a.wer.art === 'fach' && !!fachAgent(a.wer.agentId)?.kategorien.includes('web');
 
 /** ZOE-Werkzeuge (Register, nicht Agenten-/Steuerungs-Werkzeuge) — die Menge, aus der ein Agenten-Schritt wählen kann. */
 export const ZOE_WERKZEUGE: readonly string[] = Object.entries(EINORDNUNG).filter(([, e]) => e.herkunft === 'zoe').map(([n]) => n);

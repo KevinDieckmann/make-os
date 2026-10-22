@@ -15,6 +15,7 @@
 // Mitglieder und „nur Business“); alles, was einen Prozess steuert (abbrechen, erneut, zurückgehalten, scharf, Einstellungen, Umzug): nur volle Mitglieder.
 // Lesen schreibt nie; Antworten tragen keine Daten Dritter (Kennungen, Zahlen, Status, Gründe als Code).
 
+import { modellSchranke } from '@/lib/zugang/umfang';
 import { NextResponse } from 'next/server';
 import { werkstattZugang } from '@/lib/prozesse/werkstatt-zugang';
 import { PROZESS_KENNUNG, FALL_ART_IDS, type FallArt } from '@/lib/prozesse/definition';
@@ -85,6 +86,8 @@ export async function POST(req: Request) {
     case 'starten': {
       if (!z.rechte.entwurf) return nein(403, 'Prozesse starten nur Personen im Haushalt.');
       if (!prozess) return nein(400, 'Welcher Prozess? (prozess pz-…)');
+      // Ein Lauf von Hand kann gleich einen Agenten-Schritt ausführen (Modell über das KI-Tor) — die Schranke je Person zuerst.
+      { const m = modellSchranke(req); if (m) return m; }
       let fall: { art: FallArt; id?: string } | undefined;
       if (b.fall && typeof b.fall === 'object') {
         const f = b.fall as { art?: unknown; id?: unknown };
@@ -113,6 +116,7 @@ export async function POST(req: Request) {
     case 'erneut': {
       const s = steuern(); if (s) return s;
       if (!lauf) return nein(400, 'Welcher Lauf? (lauf pl-…)');
+      { const m = modellSchranke(req); if (m) return m; }
       const r = await S.laufErneut(lauf);
       return r.ok ? NextResponse.json({ ok: true, lauf: r.lauf.id, status: r.lauf.status }) : nein(r.status, r.fehler);
     }
@@ -120,6 +124,7 @@ export async function POST(req: Request) {
       const s = steuern(); if (s) return s;
       if (!prozess) return nein(400, 'Welcher Prozess? (prozess pz-…)');
       if (b.wie !== 'starten' && b.wie !== 'verwerfen') return nein(400, 'wie: starten oder verwerfen.');
+      if (b.wie === 'starten') { const m = modellSchranke(req); if (m) return m; }
       const ids = Array.isArray(b.ids) ? b.ids.filter((x): x is string => typeof x === 'string' && ZURUECK_KENNUNG.test(x)) : undefined;
       if (Array.isArray(b.ids) && ids!.length !== b.ids.length) return nein(400, 'ids: Kennungen zh-….');
       const r = await S.zurueckgehaltenEntscheiden(prozess, b.wie, z.person, ids);
@@ -146,7 +151,7 @@ export async function POST(req: Request) {
       const f = b.felder && typeof b.felder === 'object' ? b.felder as Record<string, unknown> : null;
       if (!f) return nein(400, 'felder fehlt.');
       const zahl = (k: string) => (f[k] === undefined ? undefined : f[k] === null ? null : f[k]) as number | null | undefined;
-      const r = await S.einstellungSetzen(prozess, z.person, { flutJeStunde: zahl('flutJeStunde'), notbremseJeStunde: zahl('notbremseJeStunde'), erneutNachTagen: zahl('erneutNachTagen'), budgetCent: zahl('budgetCent'), ...(f.ziel !== undefined ? { ziel: f.ziel } : {}), ...(f.abbruch !== undefined ? { abbruch: f.abbruch } : {}) });
+      const r = await S.einstellungSetzen(prozess, z.person, { flutJeStunde: zahl('flutJeStunde'), notbremseJeStunde: zahl('notbremseJeStunde'), erneutNachTagen: zahl('erneutNachTagen'), budgetCent: zahl('budgetCent'), rechercheFrischeTage: zahl('rechercheFrischeTage'), rechercheSuchen: zahl('rechercheSuchen'), ...(f.ziel !== undefined ? { ziel: f.ziel } : {}), ...(f.abbruch !== undefined ? { abbruch: f.abbruch } : {}) });
       return r.ok ? NextResponse.json({ ok: true }) : nein(r.status, r.fehler);
     }
     case 'umzug': {

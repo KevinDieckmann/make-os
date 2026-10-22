@@ -82,8 +82,9 @@ const ART_TITEL: Record<VorschlagArt, string> = {
  * Nie Einwilligungen, Werbesperre, Einschränkung, Zahlungsdaten, Lead oder Personenbezüge anderer. Webseite/LinkedIn nur https.
  */
 export const KARTE_KONTAKT_FELDER = ['aufhaenger', 'signale', 'marktinfo', 'recherche', 'steckbrief', 'vorgestelltDurch'] as const;
-export const KARTE_FIRMA_FELDER = ['branche', 'branchen', 'mitarbeiter', 'stadt', 'webseite', 'linkedin'] as const;
-const KARTE_TEXT_MAX: Readonly<Record<string, number>> = { aufhaenger: 600, signale: 600, marktinfo: 800, recherche: 60, steckbrief: 400, vorgestelltDurch: 160, branche: 160, mitarbeiter: 40, stadt: 120, webseite: 300, linkedin: 300 };
+// 22.10. spät (Prozesse M6): dazu Beschreibung (`marktinfo`) und Umsatz der Firma — Ziele des Research-Agenten (lib/prozesse/agent-felder.ts).
+export const KARTE_FIRMA_FELDER = ['branche', 'branchen', 'mitarbeiter', 'stadt', 'webseite', 'linkedin', 'marktinfo', 'umsatz'] as const;
+const KARTE_TEXT_MAX: Readonly<Record<string, number>> = { aufhaenger: 600, signale: 600, marktinfo: 800, recherche: 60, steckbrief: 400, vorgestelltDurch: 160, branche: 160, mitarbeiter: 40, stadt: 120, webseite: 300, linkedin: 300, umsatz: 60 };
 const httpsOk = (v: string) => /^https:\/\/[^\s]{3,}$/.test(v);
 
 const text = (v: unknown, n = 300) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
@@ -611,7 +612,7 @@ export const PRIVAT_VORGESCHLAGEN = 'VORGESCHLAGEN, NICHT AUSGEFÜHRT — Der Vo
 export const PRIVAT_NICHT_VORGESCHLAGEN = 'Nicht vorgeschlagen: Die Prüfung in der Markttraktion hat nicht gepasst. Details gehören zu Business — sag der Person, dass sie es oben unter „Business“ fragen kann.';
 
 /** Das Werkzeug `crm_vorschlag`: prüfen, Vorher/Nachher rechnen, als Stapel-Art „crm“ ablegen — ändert nichts. */
-export async function crmVorschlag(input: Eingabe, _origin: string, person?: string, kontext?: { herkunft?: string; sicht?: 'privat' | 'business' }): Promise<WerkzeugRueckgabe> {
+export async function crmVorschlag(input: Eingabe, _origin: string, person?: string, kontext?: { herkunft?: string; sicht?: 'privat' | 'business'; uebernahme?: 'je-feld' | 'sammel' }): Promise<WerkzeugRueckgabe> {
   try {
     const s = await crmSicht(person);
     if (!s || !person) return fehlschlag('rechte', NICHT_IM_HINTERGRUND);
@@ -624,7 +625,8 @@ export async function crmVorschlag(input: Eingabe, _origin: string, person?: str
     if (istWerkzeugErgebnis(p)) return privatSicht && !p.ok ? fehlschlag(p.klasse ?? 'eingabe', PRIVAT_NICHT_VORGESCHLAGEN) : p;
     const v = await lege({
       werkzeug: CRM_VORSCHLAG_WERKZEUG, gruppe: 'crm', titel: p.titel, ...(p.vorher ? { vorher: p.vorher } : {}), nachher: p.nachher,
-      eingabe: p.eingabe, person, quelle: 'gespraech', bezug: { art: 'crm', id: p.bezugId },
+      // Häkchen je Feld bzw. Sammelfreigabe (22.10. spät, Prozesse M6) — nur aus einem Prozess-Schritt, lib/zoe/crm-felder-wahl.ts.
+      eingabe: { ...p.eingabe, ...(kontext?.uebernahme ? { _uebernahme: kontext.uebernahme } : {}) }, person, quelle: 'gespraech', bezug: { art: 'crm', id: p.bezugId },
       // Aus dem Agenten-Bereich (Durchstich 09.10.): „<Head>: …“ vorne — der Vorschlag zählt dann beim Head (Zähler, Annahmequote).
       ...(kontext?.herkunft || text(input.begruendung, 400) ? { anlass: [kontext?.herkunft, text(input.begruendung, 400)].filter(Boolean).join(' — ').slice(0, 600) } : {}),
     });
@@ -805,7 +807,7 @@ async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Erge
  * gelöst — der Vorschlag bleibt offen. Doppelklick, zweites Fenster, „alle freigeben“: der zweite bekommt 409.
  */
 export const CRM_STAPEL_ART: StapelArtFreigabe = {
-  freigeben: async (vIn, person) => {
+  freigeben: async (vIn, person, opt) => {
     const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
     if (!person || !(await personImHaushaltDesInhabers(person))) return { ok: false, status: 403, fehler: 'Nur im Haushalt des Inhabers.' };
     // Prüfen (wie C4: nur, für wen ZOE ihn vorbereitet hat) und beanspruchen in EINER Sperre.
@@ -816,9 +818,18 @@ export const CRM_STAPEL_ART: StapelArtFreigabe = {
     });
     if (!a.ok) return { ok: false, status: a.status, fehler: a.fehler };
     const v = a.v;
-    // „Ändern & freigeben“ gibt es für CRM-Vorschläge nicht — übernommen wird genau, was vorbereitet und geprüft wurde.
+    // „Ändern & freigeben“ gibt es für CRM-Vorschläge nicht — übernommen wird genau, was vorbereitet und geprüft wurde. Einzige Ausnahme (22.10. spät):
+    // „Häkchen je Feld“ — dann nur die gewählten der vorbereiteten Felder (nie ein neuer Wert, lib/zoe/crm-felder-wahl.ts).
+    let eingabe = v.eingabe;
+    const wahl = opt?.eingabe?._felder;
+    if (Array.isArray(wahl)) {
+      const { nurGewaehlteFelder } = await import('./crm-felder-wahl');
+      const g = nurGewaehlteFelder(v.eingabe, wahl);
+      if (!g.ok) { await loslassen(v.id); return { ok: false, status: 400, fehler: g.fehler }; }
+      eingabe = g.eingabe;
+    }
     let r: Ergebnis;
-    try { r = await ausfuehren(v.eingabe, person, v.id); }
+    try { r = await ausfuehren(eingabe, person, v.id); }
     catch (e) { await loslassen(v.id); throw e; }
     if (!r.ok) { await loslassen(v.id); return r; }
     await entscheide(v.id, 'freigegeben', { ergebnis: r.text, von: person, ausArbeit: true });

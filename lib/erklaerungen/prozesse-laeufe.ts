@@ -32,6 +32,16 @@ export const EINSTELLUNGEN_PROZESSE_LAEUFE = {
     was: 'Ein Fall läuft höchstens einmal gleichzeitig durch einen Prozess. Ist ein Lauf beendet, darf derselbe Fall erst nach so vielen Tagen erneut automatisch starten; leer heißt nie automatisch — dann nur von Hand mit Grund.',
     beispiel: 'Bei 90 Tagen kann eine Firma, die im Frühjahr nachgefasst wurde, im Sommer wieder in den Prozess „Lead nachfassen“ kommen — vorher nicht.',
   },
+  'prozesse.recherche-frische': {
+    was: 'Ein Recherche-Schritt (Web) fragt dieselbe Firma bzw. denselben Lead höchstens alle so viele Tage — über alle Prozesse. Ist die letzte Recherche jünger, wird der Schritt ohne Modellaufruf und ohne Kosten übersprungen und der Lauf geht weiter.',
+    beispiel: 'Bei 90 Tagen recherchiert der nächtliche Prospecting-Lauf die Beispiel GmbH im Januar; im Februar findet er sie wieder als ruhend, überspringt die Recherche aber und bewertet nur.',
+    daten: 'Gezählt wird nur, dass recherchiert wurde (Zeitpunkt am Lauf) — nie, was gefunden wurde. Das Ergebnis steht nur im Vorschlag.',
+  },
+  'prozesse.recherche-suchen': {
+    was: 'So viele Web-Suchen darf ein Recherche-Schritt je Lead höchstens machen (1 bis 5). Jede Suche kostet zusätzlich zu den Tokens und zählt ins Budget des Prozesses.',
+    beispiel: 'Mit 3 Suchen findet der Research-Agent Webseite, Branche und eine Meldung zur neuen Vertriebsleitung der Beispiel GmbH — mehr sucht er nicht.',
+    daten: 'Die Web-Suche läuft nur, wenn sie in den KI-Einstellungen erlaubt ist; Webseiten sind fremder Text und gehen nur als Vorschlag mit Häkchen je Feld in die Akte.',
+  },
   'prozesse.ziel-abbruch': {
     was: 'Ziel und Abbruch sind Bedingungen über Felder des Falls, die vor jedem Schritt geprüft werden: trifft das Ziel zu, endet der Lauf mit Erfolg; trifft der Abbruch zu, endet er ohne Ziel. Einschränkung nach Art. 18 und Werbesperre beenden immer.',
     beispiel: 'Ziel: Deal-Stufe ist „gewonnen“. Gewinnt ihr den Deal, während der Lauf noch auf eine Erinnerung wartet, endet er sofort als erreicht — keine überflüssige Erinnerung mehr.',

@@ -80,7 +80,9 @@ export type LaufGrund =
   | 'aufgabe-abgebrochen' | 'aufgabe-weg' | 'vorschlag-abgelehnt' | 'teilprozess-fehlt' | 'teilprozess-fehler' | 'kette' | 'schleife'
   | 'nicht-gebaut' | 'person-fehlt' | 'voruebergehend' | 'dauerhaft' | 'agent-fehlt' | 'notbremse' | 'erneut'
   // 22.10. (Läufe-Ansicht, C1-Frage 1): ohne KI-Schlüssel bzw. Guthaben hält ein Agenten-Schritt SOFORT an — kein Wiederholen, keine Fehlerkante.
-  | 'ki-nicht-eingerichtet';
+  | 'ki-nicht-eingerichtet'
+  // 22.10. spät (Motor-Rest: Schleife, CRM-Abfrage, Agent mit Feldern, Platzhalter, Nachtlauf).
+  | 'rolle-fehlt' | 'gesellschaft-fehlt' | 'abfrage-rest' | 'schleife-rest' | 'liste-fehlt' | 'gedrosselt' | 'recherche-frisch' | 'agent-aus';
 
 /** Ein besuchter Knoten. Ein Knoten kann mehrfach besucht werden (Erinnerung, „erneut ab“) — `runde` zählt mit. */
 export interface LaufSchritt {
@@ -103,7 +105,22 @@ export interface LaufSchritt {
   /** Agenten-Schritt (22.10., Log-Baum der Läufe-Ansicht): das Modell, das wirklich gefragt wurde, und die Tokens (nur Zahlen). */
   modell?: string;
   token?: { ein: number; aus: number };
+  /**
+   * Motor-Rest (22.10. spät, nur Zahlen): CRM-Abfrage = Treffer im Lauf, Schleife = gestartete Teil-Läufe; `rest` = was über der Obergrenze liegt (nie still
+   * gekürzt — es wartet sichtbar auf den nächsten Lauf); `uebersprungen` = Fälle, die schon einen Lauf haben (offen bzw. noch nicht wieder dran).
+   */
+  anzahl?: number;
+  rest?: number;
+  uebersprungen?: number;
+  /** Der Schritt hat im Web recherchiert (Research-Agent) — Grundlage der Recherche-Frische (dieselbe Firma höchstens alle n Tage). */
+  recherche?: true;
 }
+
+/**
+ * Die Liste einer CRM-Abfrage im Lauf (22.10. spät, N1): nur die KENNUNGEN der Fälle in fester Reihenfolge (höchstens `hoechstens` der Abfrage) und wie viele es
+ * insgesamt gab. Lebt nur, solange der Lauf offen ist (beim Ende fällt sie weg) — gelesen von der Schleife, die die Abfrage nennt (`abfrage:<Knoten>`).
+ */
+export interface LaufListe { faelle: LaufFall[]; gesamt: number; am: string }
 
 /** Worauf ein Lauf wartet (Punkt 46: jedes Warten hat eine Obergrenze bzw. einen Wecker — wartende Läufe kosten nichts, nur der Takt weckt). */
 export type WarteArt = 'aufgabe' | 'freigabe' | 'zeit' | 'datum' | 'ereignis' | 'teilprozess' | 'fenster' | 'fehler';
@@ -169,6 +186,8 @@ export interface ProzessLauf {
   zaehler?: Record<string, number>;
   /** Anspruch des Motors (gerade in Arbeit) — älter als `LAUF_GRENZEN.anspruchMs` gilt als verwaist. */
   inArbeit?: { seit: string; token: string };
+  /** Listen der CRM-Abfragen dieses Laufs je Abfrage-Knoten (22.10. spät) — nur Kennungen, nur solange der Lauf offen ist. */
+  listen?: Record<string, LaufListe>;
 }
 
 /** Ein zurückgehaltener Start (Flutschutz, Punkt 37) — „starten“ oder „verwerfen“ per Klick; nie still gekürzt. */
@@ -203,6 +222,13 @@ export interface LaufEinstellung {
   /** „Ziel erreicht, wenn …“ bzw. „Abbrechen, wenn …“ (Punkt 40) — Bedingungen über Felder des Falls. Art. 18 und Werbesperre beenden IMMER (fest). */
   ziel?: { bedingungen: Bedingung[]; verknuepfung?: Verknuepfung };
   abbruch?: { bedingungen: Bedingung[]; verknuepfung?: Verknuepfung };
+  /**
+   * Recherche-Frische (22.10. spät, M6): dieselbe Firma bzw. derselbe Lead wird höchstens alle n Tage im Web recherchiert (Vorgabe
+   * `LAUF_GRENZEN.rechercheFrischeTage`) — über alle Prozesse; jünger → der Schritt wird übersprungen (kein Modellaufruf, keine Kosten).
+   */
+  rechercheFrischeTage?: number;
+  /** Höchstens so viele Web-Suchen je Recherche eines Leads (Vorgabe `LAUF_GRENZEN.rechercheSuchen`). */
+  rechercheSuchen?: number;
 }
 
 export type VerlaufWas = 'scharf' | 'bestehende' | 'budget' | 'einstellung' | 'pause' | 'fortgesetzt' | 'notbremse' | 'budget-80' | 'budget-grenze'
@@ -304,6 +330,15 @@ export const LAUF_GRENZEN = {
   /** Arbeitszeit (M1 „Arbeitszeit zählen“): Werktage NRW, von … bis (Berliner Stunden). */
   arbeitVon: 9,
   arbeitBis: 18,
+  /** Agenten-Schritte je Takt-Anstoß (22.10. spät, E-V5): nach 7 Uhr starten die gesammelten Agenten-Schritte gedrosselt — der Rest im nächsten Takt. */
+  agentenJeTakt: 4,
+  /** So lange wartet ein gedrosselter Agenten-Schritt (Minuten). */
+  drosselMinuten: 2,
+  /** Recherche-Frische (Vorgabe, Tage) und Web-Suchen je Recherche (Vorgabe) — Felder je Prozess in `LaufEinstellung`. */
+  rechercheFrischeTage: 90,
+  rechercheSuchen: 3,
+  /** Kennungen einer CRM-Abfrage im Lauf (wie `PROZESS_GRENZEN.abfrageHoechstens`). */
+  listeMax: 1000,
 } as const;
 
 /** Sätze zu den Gründen (Lauf-Ansicht, Probelauf, Glocke) — ohne Namen, ohne Inhalte. */
@@ -350,4 +385,12 @@ export const GRUND_TEXT: Readonly<Record<LaufGrund, string>> = {
   notbremse: 'Notbremse: zu viele Wirkungen in einer Stunde — Prozess pausiert',
   erneut: 'erneut ab diesem Schritt',
   'ki-nicht-eingerichtet': 'KI nicht eingerichtet (kein Schlüssel bzw. kein Guthaben) — angehalten, „erneut ab hier“, sobald sie eingerichtet ist',
+  'rolle-fehlt': 'die Rolle (Eigner bzw. Zuständig) ist keiner Person mit Konto zugeordnet — bitte im Prozess den Eigner bzw. am Fall die Zuständige setzen',
+  'gesellschaft-fehlt': 'der Fall hat keine Business-Gesellschaft (Deal bzw. Mandat) — bitte am Fall setzen',
+  'abfrage-rest': 'mehr Treffer als „höchstens“ — der Rest kommt sichtbar im nächsten Lauf',
+  'schleife-rest': 'Obergrenze je Lauf erreicht — die übrigen Fälle warten sichtbar auf den nächsten Lauf',
+  'liste-fehlt': 'die Liste der Schleife fehlt (Abfrage nicht gelaufen bzw. unbekannte Liste)',
+  gedrosselt: 'Agenten-Schritte laufen gedrosselt — weiter im nächsten Takt',
+  'recherche-frisch': 'diese Firma wurde vor Kurzem recherchiert (Recherche-Frische) — übersprungen, ohne Kosten',
+  'agent-aus': 'der Agent ist unter ZOE › Agenten ausgeschaltet',
 };

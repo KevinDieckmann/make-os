@@ -121,6 +121,8 @@ export interface AskOptions {
   systemStabil?: string;
   /** Denktiefe (output_config.effort). Lehnt die API sie ab, läuft der Aufruf ohne — das Schema bleibt. */
   effort?: 'low' | 'medium' | 'high';
+  /** Nur mit Web-Suche: höchstens so viele Suchen in diesem Aufruf (1 … Vorgabe des Werkzeugs). */
+  webMaxUses?: number;
   /**
    * Datenschutz (05.10., Pflicht für jeden Aufrufer — Wächter tests/ki-datenschutz.test.ts): Lauf-Art, Person und
    * Datenkategorien dieses Aufrufs. Das KI-Tor (lib/datenschutz/ki-tor.ts) entscheidet damit, ob der Aufruf überhaupt
@@ -595,7 +597,9 @@ export async function askWithSearch(opts: AskOptions): Promise<AskResult & { web
   // Web-Suche aus (Instanz/Person, 05.10.): gleich ohne Werkzeug — die Antwort sagt ehrlich webUsed:false.
   const { websucheErlaubt } = await import('./datenschutz/ki-tor');
   if (!(await websucheErlaubt(opts.ki))) return { ...(await askText({ ...opts, tools: undefined })), webUsed: false };
-  const withTool = await askText({ ...opts, tools: [WEB_SEARCH_TOOL] });
+  // Höchstens so viele Suchen (22.10. spät, Prozesse: „höchstens n Suchen je Lead“) — ohne Angabe die Vorgabe des Werkzeugs.
+  const suchen = opts.webMaxUses && Number.isInteger(opts.webMaxUses) && opts.webMaxUses >= 1 && opts.webMaxUses <= WEB_SEARCH_TOOL.max_uses ? opts.webMaxUses : WEB_SEARCH_TOOL.max_uses;
+  const withTool = await askText({ ...opts, tools: [{ ...WEB_SEARCH_TOOL, max_uses: suchen }] });
   if (withTool.ok) return { ...withTool, webUsed: true };
   if (/tool|web_search|not.*support|permission|invalid_request/i.test(withTool.error ?? '')) {
     const plain = await askText({ ...opts, tools: undefined });
