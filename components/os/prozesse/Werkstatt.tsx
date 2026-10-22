@@ -53,6 +53,7 @@ import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, 
 import { WerkstattSteuerung } from './WerkstattSteuerung';
 import { WerkstattLaeufe } from './WerkstattLaeufe';
 import { WerkstattTests, testsPruefen, type TestErgebnis } from './WerkstattTests';
+import { DatumAusloeserKarte } from './WerkstattDatum';
 import { WebhookKarte, type WebhookKurz } from './WerkstattWebhook';
 import { ProbeFallFenster, type FallWert } from './ProbeFall';
 import { useLaeufe } from './laeufe-daten';
@@ -556,7 +557,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const webhookZusatz = (k: K) => (k.form === 'ausloeser' && (k.ausloeser?.art === 'webhook' || k.katalog?.id === 'ausloeser.webhook')
     ? <WebhookKarte prozessId={prozessId} webhook={webhook} eingaenge={laeufe.daten?.webhookEingaenge ?? []} felder={k.ausloeser?.art === 'webhook' ? k.ausloeser.felder : []}
         darf={!!rechte?.webhook && !nurAnsehen} versionHatWebhook={!!jungeVersion && versionHatWebhook} onWebhook={w => { setWebhook(w); void laeufe.laden(); }} />
-    : null);
+    // Datums-Start (22.10.): worauf der Auslöser schaut und die nächsten Starts (des gespeicherten Entwurfs).
+    : k.form === 'ausloeser' && k.ausloeser?.art === 'datum'
+      ? <DatumAusloeserKarte prozessId={prozessId} knotenId={k.id} ausloeser={k.ausloeser} gespeichert={speicher.art === 'gespeichert'} />
+      : null);
   const ein = auswahl.length === 1 ? auswahl[0] : null;
   const panelKnoten = ein ? d.knoten.find(k => k.id === ein) ?? null : null;
   const panelZettel = ein ? (d.zettel ?? []).find(z => z.id === ein) ?? null : null;

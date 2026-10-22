@@ -173,7 +173,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   // Felder für Bedingungen: am Auslöser die des Ereignisses bzw. Webhooks, sonst Fall + Webhook + Agenten-Ausgaben (wie die Prüfung).
   const felder: Option[] = useMemo(() => {
     const ids = k.form === 'ausloeser'
-      ? ausloeserFelder(k.ausloeser ?? { art: e?.id === 'ausloeser.webhook' ? 'webhook' : 'ereignis' }, d.fallArt ?? 'mandat')
+      ? ausloeserFelder(k.ausloeser ?? { art: e?.id === 'ausloeser.webhook' ? 'webhook' : e?.id === 'ausloeser.datum' ? 'datum' : 'ereignis' }, d.fallArt ?? 'mandat')
       : rautenFelder(d);
     return ids.map(id => ({ id, label: feldTitel(id) }));
   }, [k, e, d]);

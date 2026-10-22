@@ -1653,6 +1653,9 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
 - **Auslöser**: Ereignis (`SkillEreignis`, Bedingung „nur wenn“) · Zeitplan · Datum · von Hand · Loop (Tagesstart) · **Webhook** (`/api/prozesse/webhook/[kennung]`,
   offen nur über `PROZESS_WEBHOOK`, Schlüssel nur Fingerabdruck, einmal gezeigt, scharf erst nach Klick, ≤ 64 KB, schreibt nur ein Ereignis `webhook`).
   Ereignis-Quellen nur aus vorhandenen Schreibwegen; ein Kennungs-Umzug erzeugt keine neuen Ereignisse (Wächter `tests/ereignisse-umzug-sicher.test.ts`).
+  **Datum am Fall startet selbst (22.10., Branch `prozesse-datum`; Punkt 34):** Regeln rein `lib/prozesse/datum-start.ts` (Stichtag, Werktage NUR über den Kalender-Kern — auch „Warten bis Datum“), Takt `datumStarten`: Kandidaten NUR über vorhandene Leser (Fristen über `fristenLesen`, Mandatsende über `mandatFristen`, Events/Wiedervorlage über CRM/Leads).
+  Merker `ProzessLaufStand.datum`: erster Takt (nach Scharfschalten/Update) NUR merken, nie nachholen; danach jeder Moment einmal (nach Ausfall ≤ `datumNachholenTage`, scharf nie vor `scharf.am`); je Fall und Stichtag EIN Lauf (Periode als `ausloeser.quelle`, Regel in `starten`).
+  „Nur wenn …“ am Datums-Auslöser über Fall-Felder (V04 besuchte, V18 eigene Events, V08 ruhende Leads, V15 aktive Mandate); Werkstatt zeigt Quelle + nächste Starts (`?datum=<Knoten>`). Test `tests/prozesse-datum-ausloeser.test.ts`.
 - **Entwurf ≠ Version**: Werkstatt speichert den Entwurf (Stand/409, „Deine Fassung“), „Veröffentlichen“ mit Name + Notiz (volle Mitglieder), Versionen
   vergleichen/übernehmen; laufende Fälle bleiben auf ihrer Version. Route `/api/prozesse/werkstatt`, Tor `prozesseZugang` (alt `werkstattZugang`).
 - **Produkt → Prozess (22.10., Branch `prozesse-fulfillment`; Kevin: „Fulfillment = das Werkzeug“, KEINE eigenen Fulfillment-Vorlagen):** jedes Produkt hat genau

@@ -41,7 +41,7 @@ export function maskeWerte(k: K, e: KatalogEintrag): W {
       if (!a) return {};
       if (a.art === 'ereignis') return ohneLeere({ ereignis: a.ereignis, bedingungen: a.bedingungen ?? [], verknuepfung: a.verknuepfung });
       if (a.art === 'zeitplan') return ohneLeere({ rhythmus: a.rhythmus, uhrzeit: a.uhrzeit, tage: a.tage ?? [] });
-      if (a.art === 'datum') return ohneLeere({ feld: a.feld, versatzTage: a.versatzTage, werktage: a.werktage ?? false, uhrzeit: a.uhrzeit });
+      if (a.art === 'datum') return ohneLeere({ feld: a.feld, versatzTage: a.versatzTage, werktage: a.werktage ?? false, uhrzeit: a.uhrzeit, bedingungen: a.bedingungen ?? [], verknuepfung: a.verknuepfung });
       if (a.art === 'webhook') return ohneLeere({ felder: a.felder, bedingungen: a.bedingungen ?? [], verknuepfung: a.verknuepfung });
       if (a.art === 'loop') return { loop: a.loop };
       return {};
@@ -69,7 +69,7 @@ export function maskeWerte(k: K, e: KatalogEintrag): W {
       const w = k.warten;
       if (!w) return {};
       if (w.art === 'dauer') return ohneLeere({ tage: w.tage, stunden: w.stunden });
-      if (w.art === 'datum') return ohneLeere({ feld: w.feld, versatzTage: w.versatzTage, hoechstensTage: w.hoechstensTage || undefined });
+      if (w.art === 'datum') return ohneLeere({ feld: w.feld, versatzTage: w.versatzTage, werktage: w.werktage ?? false, hoechstensTage: w.hoechstensTage || undefined });
       return ohneLeere({ ereignis: w.ereignis, bedingungen: w.bedingungen ?? [], verknuepfung: w.verknuepfung, hoechstensTage: w.hoechstensTage || undefined });
     }
     case 'schleife': return k.schleife ? ohneLeere({ liste: k.schleife.liste, prozessId: k.schleife.prozessId, hoechstens: k.schleife.hoechstens || undefined }) : {};
@@ -111,7 +111,7 @@ function feldAus(e: KatalogEintrag, w: W, alt: K, kx: MaskenUmfeld): Partial<K> 
       if (e.id === 'ausloeser.hand') a = { art: 'hand' };
       else if (e.id === 'ausloeser.ereignis') a = text(w.ereignis) ? sauber<Ausloeser>({ art: 'ereignis', ereignis: w.ereignis, bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung) }) : undefined;
       else if (e.id === 'ausloeser.zeitplan') { const t = liste<unknown>(w.tage).filter((x): x is number => Number.isInteger(x)); a = text(w.rhythmus) && text(w.uhrzeit) ? sauber<Ausloeser>({ art: 'zeitplan', rhythmus: w.rhythmus, uhrzeit: w.uhrzeit, tage: t.length ? t : undefined }) : undefined; }
-      else if (e.id === 'ausloeser.datum') a = text(w.feld) && zahl(w.versatzTage) !== undefined ? sauber<Ausloeser>({ art: 'datum', feld: w.feld, versatzTage: zahl(w.versatzTage), werktage: w.werktage === true ? true : undefined, uhrzeit: text(w.uhrzeit) || undefined }) : undefined;
+      else if (e.id === 'ausloeser.datum') a = text(w.feld) && zahl(w.versatzTage) !== undefined ? sauber<Ausloeser>({ art: 'datum', feld: w.feld, versatzTage: zahl(w.versatzTage), werktage: w.werktage === true ? true : undefined, uhrzeit: text(w.uhrzeit) || undefined, bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung) }) : undefined;
       else if (e.id === 'ausloeser.webhook') a = sauber<Ausloeser>({ art: 'webhook', felder: liste<WebhookFeld>(w.felder), bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung) });
       else if (e.id === 'ausloeser.loop') a = text(w.loop) ? { art: 'loop', loop: w.loop as 'morgen' } : undefined;
       return { ausloeser: a };
@@ -143,7 +143,7 @@ function feldAus(e: KatalogEintrag, w: W, alt: K, kx: MaskenUmfeld): Partial<K> 
     case 'warten': {
       let x: WartenRegel | undefined;
       if (e.id === 'warten.dauer') x = sauber<WartenRegel>({ art: 'dauer', tage: zahl(w.tage) ?? 0, stunden: zahl(w.stunden) });
-      else if (e.id === 'warten.datum') x = text(w.feld) ? sauber<WartenRegel>({ art: 'datum', feld: w.feld, versatzTage: zahl(w.versatzTage), hoechstensTage: zahl(w.hoechstensTage) ?? 0 }) : undefined;
+      else if (e.id === 'warten.datum') x = text(w.feld) ? sauber<WartenRegel>({ art: 'datum', feld: w.feld, versatzTage: zahl(w.versatzTage), hoechstensTage: zahl(w.hoechstensTage) ?? 0, werktage: w.werktage === true ? true : undefined }) : undefined;
       else if (e.id === 'warten.ereignis') x = text(w.ereignis) ? sauber<WartenRegel>({ art: 'ereignis', ereignis: w.ereignis, bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung), hoechstensTage: zahl(w.hoechstensTage) ?? 0 }) : undefined;
       return { warten: x };
     }
