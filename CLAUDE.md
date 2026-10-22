@@ -1856,6 +1856,22 @@ Markttraktion das zweite (HubSpot-Art, Gruppen-Überschriften im Menü); dann di
 - Wächter `tests/werkzeuge.test.ts` (jede Adresse eines Unterpunkts existiert und bleibt im Werkzeug, Zuordnung eindeutig, Leistenpunkt öffnet, ≤ 2 Ebenen, Gruppen
   beieinander, Aktionen gehört, Menü nur auf Werkzeug-Adressen, Rückweg, Rahmen/Orte, keine Literale, Automationen & Head mit mehreren Heads, Markttraktion: Punkte =
   `HUB_MENUE`, genau ein leuchtender Punkt je Adresse inkl. Netzwerken, Leiste und Blatt) plus die Wächter der Aufräum-Etappe und `tests/markttraktion-hub.test.ts`.
+- **Gruppe B (22.10. abends, Branch `werkzeuge-b`)** — Muster-Bausteine: Kontext mit `space`/`nurBusiness` (Wahl im Kopf), `automation` je Space (`automationVon`, Heads NUR
+  über `headsDerSeiten` aus `SEITEN_REGELN`; in Privat nur Head-Karten, keine Landkarte), `prozesse` = einzelne Prozesse neben ganzen Bereichen, `nurVolleMitglieder`
+  (`werkzeugFuerKonto`), **`liste`** = Punkte aus Daten der Seite (`components/os/werkzeug/listen.ts`: nur Kennung/Name/Bereich/Archiv/Zahl, nie Inhalte, nichts gemerkt),
+  **`spalte`** = eigene linke Spalte breit IN der Leiste unter dem Menü (`components/os/werkzeug/spalte.tsx`, Portal; schmal/eingeklappt wie bisher auf der Seite).
+- **Kalender** (`KALENDER_WERKZEUG`, Privat + Business): Kalender · Planen · Aufgaben (`?modus=`) · nur Business „Automationen & Head“ (`?s=automationen`: Prozess
+  Terminbuchung + Buchungsseiten, kein Head) · Fuß Einstellungen (`?einstellungen=1`); die Spalte (Mini-Monat, Kalender, Bausteine) steht in der Leiste; die Seite folgt der Adresse.
+- **Inbox** (`INBOX_WERKZEUG`, Privat + Business): Inbox · Bereiche (Liste `inbox-bereiche` aus der nach Space gefilterten Antwort, mit ungelesen) · nur Business Automationen
+  (`?s=automationen`: Anfrage-Eingang) · Fuß Postfächer (`?postfaecher=1`, jetzt aus der Adresse); die Bereichs-Reiter der Seite sind weg, Fächer und Postfach-Pillen bleiben.
+- **Aufgaben** (`AUFGABEN_WERKZEUG`, Privat + Business): Überblick · Spaces (Liste `aufgaben-spaces`, Regel `aufgabenSpaceImMenue`: Bereich der Wahl, nie archivierte
+  Mandanten) · Zeitstrahl · Automationen (`b=automationen`: Business Operations + Head-Takt/Morgenlauf, Privat Assistenz) · Fuß Archiv & Papierkorb; `AufgabenLeiste` ist weg.
+- **Gesundheit** (`GESUNDHEIT_WERKZEUG`, nur Privat, nur volle Mitglieder): Heute · Tagesstart & Tagesende · Journal | Sport · Erholung · Körper · Ernährung | Index ·
+  Verlauf · Automationen (`?s=automationen`); `/os/sport?s=erholung` leuchtet unter Erholung; „Körper“ nie mit `?fuer=` (der Personen-Schalter schreibt `?fuer=`).
+- **Familie** (`FAMILIE_WERKZEUG`, nur Privat): Wir zwei · Familie · Rahmen (`?b=`, jetzt aus der Adresse) · Kontakte (`/os/menschen` — kein eigener Leistenpunkt mehr,
+  `passt` unter Familie, Zeit weiter `privat:kontakte` über `FEST` in lib/zeitmessung/bereich.ts) · Automationen (`?b=automationen`, Head Familie).
+- **ZOE** (`ZOE_WERKZEUG`, Privat + Business): Freigaben · Agenten · Agenten-Werkzeuge (Research · Content · Meeting · Board · Prospecting) · Loops · Brain · Fuß Empfang
+  (`/zoe`); ersetzt die Reiterzeile `ZoeReiter` (gelöscht), `ZOE_BEREICH` bleibt als Liste für die Wächter. Kein „Automationen & Head“.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
