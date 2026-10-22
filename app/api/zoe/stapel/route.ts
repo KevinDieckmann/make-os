@@ -36,13 +36,15 @@ import { innenAdresse } from '@/lib/innen';
 import { imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { risikoarm, vorschlagSauber, ZOE_AUFGABE_WERKZEUG } from '@/lib/aufgaben/zoe';
+import { crmSammelTauglich } from '@/lib/zoe/crm-felder-wahl';
 import { neueKennung } from '@/lib/kennung';
 import { FINANZPLAN_ALTWEG_WERKZEUGE } from '@/lib/zoe/finanz-werkzeuge';
 import { privatFinanzZugang } from '@/lib/finanzen/haushalt/zugriff';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
 /** Darf in eine Sammelfreigabe? Nur ZOE-Aufgaben-Vorschläge, die nichts überschreiben (Notiz/Unteraufgaben). */
-const sammelTauglich = (v: Vorschlag) => v.werkzeug === ZOE_AUFGABE_WERKZEUG && v.bezug?.art === 'aufgabe' && risikoarm(vorschlagSauber(v.eingabe, v.bezug.id));
+// 22.10. spät (Prozesse M6): dazu „Firma ergänzen“ mit Sammelfreigabe aus einem Prozess-Schritt (nur Stammdaten — lib/zoe/crm-felder-wahl.ts).
+const sammelTauglich = (v: Vorschlag) => (v.werkzeug === ZOE_AUFGABE_WERKZEUG && v.bezug?.art === 'aufgabe' && risikoarm(vorschlagSauber(v.eingabe, v.bezug.id))) || crmSammelTauglich(v);
 
 /** Längster Ablehnungs-Grund (Zeichen) — länger → 413, nie gekürzt. */
 const GRUND_MAX = 400;

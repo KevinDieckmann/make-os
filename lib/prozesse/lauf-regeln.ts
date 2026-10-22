@@ -16,16 +16,20 @@
 
 import { kantenVon, startKnoten, alleSchritte, schloesser, type Kante } from './fluss';
 import { bedingungenTreffen } from './bedingung';
-import { brauchtSchloss, FORM_KLASSE, katalogEintrag, klasseVonEintrag, maskeVorgaben, textvorlageFuellen, type KatalogEintrag } from './baustein-katalog';
-import type { AnspracheUrteil } from './ansprache';
 import {
-  bereichVon, fallArtVon,
-  type AgentSchritt, type Befund, type Bedingung, type DatumsFeld, type FallArt, type MaskenWert, type ProzessDefinition, type ProzessEintrag, type ProzessForm,
+  brauchtSchloss, FORM_KLASSE, katalogEintrag, klasseVonEintrag, maskeVorgaben, textvorlageFuellen, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT,
+  type KatalogEintrag,
+} from './baustein-katalog';
+import type { AnspracheUrteil } from './ansprache';
+import { istRolle } from './kundengewinnung/rollen';
+import {
+  bereichVon, fallArtVon, PROZESS_GRENZEN,
+  type AgentSchritt, type Befund, type Bedingung, type CrmAbfrage, type DatumsFeld, type FallArt, type MaskenWert, type ProzessDefinition, type ProzessEintrag, type ProzessForm,
   type ProzessKnoten, type SkillEreignis, type Verknuepfung,
 } from './definition';
 import {
   GRUND_TEXT, LAUF_GRENZEN, laufOffen, leererStand,
-  type LaeufeDatei, type LaufAusgang, type LaufAusloeser, type LaufEinstellung, type LaufFall, type LaufGrund, type LaufModus, type LaufSchritt, type LaufWarten,
+  type LaeufeDatei, type LaufAusgang, type LaufAusloeser, type LaufEinstellung, type LaufFall, type LaufGrund, type LaufListe, type LaufModus, type LaufSchritt, type LaufWarten,
   type ProzessLauf, type ProzessLaufStand, type SchrittStatus, type VerlaufEintrag, type WarteArt, type Wirkung, type Zurueckgehalten,
 } from './lauf-typen';
 import { ausWandzeit, minutenVon, tagPlus, tagVon, wandAus, wandzeit } from '@/lib/kalender/zeit';
@@ -117,8 +121,11 @@ const tagIso = (tag: string, versatz = 0): string => ausWandzeit(wandAus(tagPlus
 /** Ein Empfänger aus dem Fall (nie aus fremdem Text): Kontakt-Kennung, Anzeigename, Adresse bzw. Nummer. */
 export interface Empfaenger { kontaktId: string; name: string; email?: string; telefon?: string }
 
-/** Darf ein Agenten-Schritt jetzt laufen? (Takt-Fenster 7–22 Uhr, Tageshöchstzahl des Heads, Budget des Prozesses und des Schritts, Hintergrund-KI). */
-export type AgentFreigabe = { ok: true; kostenCent: number } | { ok: false; grund: LaufGrund; bis?: string; pause?: true; kostenCent?: number };
+/**
+ * Darf ein Agenten-Schritt jetzt laufen? (Takt-Fenster 7–22 Uhr, Tageshöchstzahl des Heads, Budget des Prozesses und des Schritts, Hintergrund-KI). `bis` = warten
+ * (Fenster, Höchstzahl, gedrosselt); `ueberspringen` = der Schritt fällt ohne Modellaufruf aus (Recherche-Frische) und der Lauf geht über „weiter“.
+ */
+export type AgentFreigabe = { ok: true; kostenCent: number } | { ok: false; grund: LaufGrund; bis?: string; pause?: true; kostenCent?: number; ueberspringen?: true };
 
 export interface LaufUmfeld {
   /** Jetzt (ISO). */
@@ -149,6 +156,18 @@ export interface LaufUmfeld {
   einstellung?: LaufEinstellung;
   /** Frist einer Freigabe, wenn der Knoten nichts sagt (Tage). */
   freigabeFristTage?: number;
+  /**
+   * Rollen statt Personen (22.10. spät, Regel R8): `rolle:eigner` bzw. `rolle:zustaendig` → Speichername (Aufgabe, Freigabe, Glocke) und Team-Kennung
+   * (Follow-up). null = nicht auflösbar → der Schritt hält mit Grund (nie ein Rückfall auf den Inhaber). Ohne Angabe gilt jede Rolle als nicht auflösbar.
+   */
+  rolle?: (wert: string) => { speicher: string; team: string } | null;
+  /** Gesellschaft des Falls (`fall.gesellschaft`) — nur eine Business-Gesellschaft, sonst null (der Schritt hält). Ohne Angabe bleibt der Wert. */
+  gesellschaft?: () => string | null;
+  /**
+   * Postfach-Platzhalter (`postfach.lauf`, `postfach.nachricht`) → Kennung eines Business-Postfachs der Person des Laufs (nie ein privates), sonst null (der
+   * Schritt hält). Feste Kennungen bleiben, wie sie sind. Ohne Angabe bleibt der Wert (gesendet wird über das Postfach der freigebenden Person).
+   */
+  postfach?: (wert: string) => string | null;
 }
 
 // ══ Aktionen (Wirkungen) ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -170,7 +189,14 @@ export type Aktion =
   | { art: 'crm-vorschlag'; kennung: string; knoten: string; titel: string; eingabe: Record<string, unknown> }
   | { art: 'meldung'; kennung: string; knoten: string; an: string | null; titel: string; telegram?: string }
   | { art: 'agent'; kennung: string; knoten: string; titel: string; schritt: AgentSchritt; kostenCent: number }
-  | { art: 'teilprozess'; kennung: string; knoten: string; prozessId: string; warten: boolean; uebergabe?: true };
+  | { art: 'teilprozess'; kennung: string; knoten: string; prozessId: string; warten: boolean; uebergabe?: true }
+  /** CRM abfragen (22.10. spät, N1): eine Liste von Fällen — nur lesen; das Ergebnis (Kennungen) hält der Lauf in `listen[knoten]`. */
+  | { art: 'abfrage'; kennung: string; knoten: string; abfrage: CrmAbfrage }
+  /**
+   * Schleife je Fall (22.10. spät): je Eintrag der Liste ein Teil-Lauf des veröffentlichten Teilprozesses — höchstens `hoechstens` neue je Lauf (der Rest wartet
+   * sichtbar auf den nächsten Lauf), Fälle mit einem Lauf zählen nicht (ein Lauf je Prozess und Fall — so legt ein Wiederholen nichts doppelt an).
+   */
+  | { art: 'schleife'; kennung: string; knoten: string; prozessId: string; liste: string; hoechstens: number };
 
 /** Worauf ein Lauf nach dieser Aktion wartet — null: gleich weiter. */
 export function warteArtVon(a: Aktion): WarteArt | null {
@@ -182,20 +208,30 @@ export function warteArtVon(a: Aktion): WarteArt | null {
 
 /** Ergebnis einer Aktion (vom Server) — `voruebergehend` wird wiederholt (Backoff), `dauerhaft` geht über die Fehlerkante bzw. hält an. */
 export type AktionErgebnis =
-  | { ok: true; wirkung?: Wirkung[]; kostenCent?: number; /** Agenten-Schritt: das gefragte Modell und die Tokens (Log-Baum der Läufe-Ansicht). */ modell?: string; token?: { ein: number; aus: number } }
-  | { ok: false; art: 'voruebergehend' | 'dauerhaft'; grund: LaufGrund };
+  | {
+    ok: true; wirkung?: Wirkung[]; kostenCent?: number; /** Agenten-Schritt: das gefragte Modell und die Tokens (Log-Baum der Läufe-Ansicht). */ modell?: string; token?: { ein: number; aus: number };
+    /** CRM-Abfrage: die Liste (Kennungen) für die Schleife. */
+    liste?: LaufListe;
+    /** Felder für die nächsten Rauten (`abfrage.*`, `schleife.*`, `agent.*`) — nur Kennungen und Zahlen (Vertrag), nie Text. */
+    daten?: Record<string, string>;
+    /** Zahlen am Schritt (Treffer bzw. gestartete Teil-Läufe, Rest über der Obergrenze, schon versorgt) und ein Hinweis (z. B. Rest im nächsten Lauf). */
+    anzahl?: number; rest?: number; uebersprungen?: number; hinweis?: LaufGrund;
+    /** Der Schritt hat im Web recherchiert (Frische) bzw. fremden Text gelesen — danach gibt es nur Vorschläge (Regel 6). */
+    recherche?: true; fremd?: true;
+  }
+  | { ok: false; art: 'voruebergehend' | 'dauerhaft'; grund: LaufGrund; /** Kosten eines Modellaufrufs, der trotzdem bezahlt ist (z. B. Ergebnis passte nicht zum Vertrag). */ kostenCent?: number };
 
 type Plan =
   | { art: 'weiter'; ausgang: LaufAusgang; status?: SchrittStatus; grund?: LaufGrund; sprung?: string; zaehle?: true }
   | { art: 'ende'; ergebnis: 'erfolg' | 'abbruch' | 'uebergabe'; aktion?: Aktion }
-  | { art: 'warten'; warten: Omit<LaufWarten, 'knoten'>; ausgangSchatten: LaufAusgang }
+  | { art: 'warten'; warten: Omit<LaufWarten, 'knoten'>; ausgangSchatten: LaufAusgang; grund?: LaufGrund }
   | { art: 'aktion'; aktion: Aktion; schatten: SchrittStatus; ausgangSchatten: LaufAusgang }
   | { art: 'fehler'; grund: LaufGrund }
   | { art: 'pause'; grund: 'budget' };
 
 // ══ Lauf-Grundlagen ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-const kopie = (l: ProzessLauf): ProzessLauf => ({ ...l, schritte: l.schritte.map(s => ({ ...s, ...(s.wirkung ? { wirkung: [...s.wirkung] } : {}) })), ...(l.zaehler ? { zaehler: { ...l.zaehler } } : {}), ...(l.wartet ? { wartet: { ...l.wartet } } : {}), daten: { ...l.daten } });
+const kopie = (l: ProzessLauf): ProzessLauf => ({ ...l, schritte: l.schritte.map(s => ({ ...s, ...(s.wirkung ? { wirkung: [...s.wirkung] } : {}) })), ...(l.zaehler ? { zaehler: { ...l.zaehler } } : {}), ...(l.wartet ? { wartet: { ...l.wartet } } : {}), ...(l.listen ? { listen: { ...l.listen } } : {}), daten: { ...l.daten } });
 
 /** Der offene Schritt am aktuellen Knoten (zuletzt angekommen, noch nicht verlassen). */
 export function offenerSchritt(l: Pick<ProzessLauf, 'schritte' | 'aktuell'>): LaufSchritt | null {
@@ -216,6 +252,8 @@ function beenden(l: ProzessLauf, status: 'fertig' | 'abgebrochen' | 'fehler', je
   if (status !== 'fehler') { l.ende = jetzt; l.aktuell = null; }
   delete l.wartet;
   delete l.inArbeit;
+  // Die Listen der CRM-Abfragen leben nur, solange der Lauf offen ist (Kennungen — die Zahlen stehen am Schritt).
+  if (status !== 'fehler') delete l.listen;
   if (o.ergebnis) l.ergebnis = o.ergebnis;
   if (o.grund) l.grund = o.grund;
   // Ein offener Schritt wird mit beendet (abgebrochen bzw. Fehler).
@@ -266,9 +304,26 @@ export function bezugAus(l: Pick<ProzessLauf, 'fall' | 'daten'>, u?: Pick<LaufUm
 // ══ Der Plan je Knoten ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 const AUFGABE_BAUSTEINE = new Set(['aufgabe.anlegen', 'crm.outreach-aufgabe', 'aufgabe.an-zoe', 'kalender.block', 'crm.uebergeben', 'crm.kontakt-pflegen']);
-const LESEN_BAUSTEINE = new Set(['crm.firma-akte', 'crm.abfragen']);
-const CRM_VORSCHLAG_BAUSTEINE = new Set(['crm.kontakt-notiz', 'crm.deal-anlegen', 'crm.deal-stufe', 'crm.lead-qualifizieren', 'crm.followup', 'angebot.entwurf']);
+const LESEN_BAUSTEINE = new Set(['crm.firma-akte']);
+/** Bausteine, die als CRM-Vorschlag in den Stapel gehen (`crm_vorschlag`) — seit 22.10. spät auch Deal vorschlagen, nächster Schritt am Deal, Lead parken, Text-Entwurf. */
+const CRM_VORSCHLAG_BAUSTEINE = new Set(['crm.kontakt-notiz', 'crm.deal-anlegen', 'crm.deal-stufe', 'crm.lead-qualifizieren', 'crm.followup', 'angebot.entwurf',
+  'crm.deal-vorschlagen', 'crm.deal-schritt', 'crm.lead-parken', 'crm.entwurf-text']);
 const SENDE_BAUSTEINE = new Set(['inbox.mail-entwurf', 'whatsapp.entwurf']);
+
+/**
+ * Wer ist gemeint? (rein) Eine ROLLE (`rolle:eigner`, `rolle:zustaendig`) löst das Umfeld auf — nicht auflösbar → der Schritt hält mit Grund (Regel 5: nie ein
+ * Rückfall auf den Inhaber); sonst wie bisher die Person aus der Maske, die zuständige Person des Falls bzw. die Person des Laufs.
+ */
+function werVon(u: LaufUmfeld, l: ProzessLauf, wer: unknown): { an: string | null } | { fehler: LaufGrund } {
+  if (istRolle(wer)) { const r = u.rolle?.(wer) ?? null; return r ? { an: r.speicher } : { fehler: 'rolle-fehlt' }; }
+  return { an: u.person?.(typeof wer === 'string' ? wer : undefined) ?? l.person };
+}
+/** Ein Postfach-Platzhalter wird über das Umfeld aufgelöst (null = kein passendes Business-Postfach); feste Kennungen bleiben. */
+function postfachVon(u: LaufUmfeld, wert: unknown): string | null | undefined {
+  if (typeof wert !== 'string' || !wert) return undefined;
+  if ((wert === POSTFACH_DES_LAUFS || wert === POSTFACH_DER_NACHRICHT) && u.postfach) return u.postfach(wert);
+  return wert;
+}
 
 function bis(u: LaufUmfeld, tage: unknown): string {
   const t = zahl(tage);
@@ -278,11 +333,13 @@ function bis(u: LaufUmfeld, tage: unknown): string {
 function aufgabePlan(l: ProzessLauf, k: K, kennung: string, u: LaufUmfeld, o: { titel: string; beschreibung?: string; wer?: unknown; fristTage?: unknown; prioritaet?: unknown; hinweis?: string }): Plan {
   const frist = zahl(o.fristTage);
   const beschreibung = [o.beschreibung, `Schritt im Prozess „${u.titel}“. Hakt ihr die Aufgabe ab, geht der Prozess weiter.`, o.hinweis].filter(Boolean).join('\n\n');
+  const wer = werVon(u, l, o.wer);
+  if ('fehler' in wer) return { art: 'fehler', grund: wer.fehler };
   return {
     art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter',
     aktion: {
       art: 'aufgabe', kennung, knoten: k.id, titel: (o.titel || k.titel).slice(0, 300), beschreibung: beschreibung.slice(0, 4000),
-      an: u.person?.(typeof o.wer === 'string' ? o.wer : undefined) ?? l.person,
+      an: wer.an,
       ...(frist !== undefined ? { faellig: tagPlus(tagVonIso(u.jetzt), Math.max(0, Math.round(frist))) } : {}),
       ...(typeof o.prioritaet === 'string' ? { prioritaet: o.prioritaet } : {}),
       bezug: bezugAus(l, u),
@@ -295,6 +352,8 @@ function aussenVorbereiten(k: K, def: ProzessDefinition, u: LaufUmfeld, e: Katal
   if (!schloesser(def.knoten).has(k.id)) return { art: 'fehler', grund: 'schloss-fehlt' };
   const urteil = e ? u.ansprache?.(e, werteVon(k, e)) ?? null : null;
   if (urteil && !urteil.erlaubt) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'kanal-rot' };
+  // Postfach „des Laufs“ bzw. „der Nachricht“ (Vorlagen): ohne passendes Business-Postfach hält der Schritt HIER — nie ein privates, nie eins einer anderen Person.
+  if (e?.id === 'inbox.mail-entwurf' && postfachVon(u, werteVon(k, e).postfach) === null) return { art: 'fehler', grund: 'kein-postfach' };
   return { art: 'weiter', ausgang: 'weiter', status: 'erledigt', grund: 'vorbereitet' };
 }
 
@@ -302,8 +361,12 @@ function aussenVorbereiten(k: K, def: ProzessDefinition, u: LaufUmfeld, e: Katal
 function schlossPlan(l: ProzessLauf, schloss: K, x: K, kennung: string, u: LaufUmfeld): Plan {
   const e = katalogEintrag(x.katalog?.id);
   const werte = werteVon(x, e);
-  const fuer = u.person?.(typeof werte.wer === 'string' ? werte.wer : undefined) ?? l.person;
-  const frist = bis(u, katalogEintrag(schloss.katalog?.id) ? werteVon(schloss, katalogEintrag(schloss.katalog?.id)).fristTage : undefined);
+  // Wer freigibt: die Person der Maske am Schloss (Rolle), sonst am Knoten — sonst wie bisher.
+  const schlossWerte = katalogEintrag(schloss.katalog?.id) ? werteVon(schloss, katalogEintrag(schloss.katalog?.id)) : {};
+  const w = werVon(u, l, typeof schlossWerte.wer === 'string' && schlossWerte.wer ? schlossWerte.wer : werte.wer);
+  if ('fehler' in w) return { art: 'fehler', grund: w.fehler };
+  const fuer = w.an;
+  const frist = bis(u, katalogEintrag(schloss.katalog?.id) ? schlossWerte.fristTage : undefined);
   if (e && SENDE_BAUSTEINE.has(e.id)) {
     const urteil = u.ansprache?.(e, werte) ?? null;
     if (urteil && !urteil.erlaubt) return { art: 'weiter', ausgang: 'nein', status: 'uebersprungen', grund: 'kanal-rot' };
@@ -311,13 +374,15 @@ function schlossPlan(l: ProzessLauf, schloss: K, x: K, kennung: string, u: LaufU
     if (e.id === 'inbox.mail-entwurf') {
       if (!an?.email) return { art: 'weiter', ausgang: 'nein', status: 'uebersprungen', grund: 'kein-empfaenger' };
       const betreff = fuellen(werte.betreff, u), txt = fuellen(werte.text, u);
+      const postfach = postfachVon(u, werte.postfach);
+      if (postfach === null) return { art: 'fehler', grund: 'kein-postfach' };
       return {
         art: 'aktion', schatten: 'freigabe', ausgangSchatten: 'ja',
         aktion: {
           art: 'vorschlag', kennung, knoten: schloss.id, sorte: 'freigabe', titel: `${x.titel}: Mail an ${an.name}`.slice(0, 200),
           nachher: `An: ${an.name} <${an.email}>\nBetreff: ${betreff}\n\n${txt}${urteil?.farbe === 'gelb' ? `\n\nHinweis Kanal-Ampel: ${urteil.grund}` : ''}`.slice(0, 8000),
           fuer, bis: frist,
-          sende: { kanal: 'mail', ...(typeof werte.postfach === 'string' && werte.postfach ? { postfach: werte.postfach } : {}), an, betreff, text: txt },
+          sende: { kanal: 'mail', ...(postfach ? { postfach } : {}), an, betreff, text: txt },
         },
       };
     }
@@ -355,12 +420,19 @@ function scoreTrifft(r: Extract<NonNullable<K['raute']>, { art: 'score' }>, d: R
   }
 }
 
-function crmVorschlagEingabe(l: ProzessLauf, k: K, e: KatalogEintrag, u: LaufUmfeld): Record<string, unknown> | null {
+function crmVorschlagEingabe(l: ProzessLauf, k: K, e: KatalogEintrag, u: LaufUmfeld): Record<string, unknown> | null | { fehler: LaufGrund } {
   const w = werteVon(k, e);
   const b = bezugAus(l, u);
   const heute = tagVonIso(u.jetzt);
   const in_ = (n: unknown) => tagPlus(heute, Math.max(0, Math.round(zahl(n) ?? 0)));
   const leadId = l.fall.art === 'lead' || l.fall.art === 'firma' ? l.fall.id : b.firmaId ?? b.kontaktId;
+  // Zuständig als Rolle (Follow-up): die Team-Kennung der Rolle — nicht auflösbar → der Schritt hält.
+  let zustaendig: string | undefined;
+  if (typeof w.wer === 'string' && w.wer) {
+    if (istRolle(w.wer)) { const r = u.rolle?.(w.wer) ?? null; if (!r) return { fehler: 'rolle-fehlt' }; zustaendig = r.team; } else zustaendig = w.wer;
+  }
+  // Ein Wert aus dem Agenten-Schritt davor (Vertrag, nur Zahlen) — z. B. „in wie vielen Tagen“ (V09a): vor der Vorgabe der Maske.
+  const agentTage = zahl(Number(l.daten['agent.intagen'] ?? NaN));
   switch (e.id) {
     case 'crm.kontakt-notiz': return b.kontaktId ? { art: 'aktivitaet', kontakt: b.kontaktId, aktivitaet_art: 'notiz', text: fuellen(w.text, u) || k.titel } : null;
     case 'crm.deal-anlegen': return b.kontaktId ? { art: 'deal_anlegen', kontakt: b.kontaktId, titel: fuellen(w.titel, u) || k.titel, naechster_schritt: fuellen(w.naechsterSchritt, u) || k.titel, faellig: in_(w.inTagen) } : null;
@@ -368,9 +440,24 @@ function crmVorschlagEingabe(l: ProzessLauf, k: K, e: KatalogEintrag, u: LaufUmf
     case 'crm.lead-qualifizieren': return leadId && typeof w.status === 'string' ? { art: 'qualifizierung', lead: leadId, lead_status: w.status } : null;
     case 'crm.followup': {
       if (!b.kontaktId && !b.firmaId && !b.dealId && !b.mandatId) return null;
-      return { art: 'followup', text: fuellen(w.text, u) || k.titel, faellig: in_(w.inTagen), ...(b.kontaktId ? { kontakt: b.kontaktId } : {}), ...(b.firmaId ? { firma: b.firmaId } : {}), ...(b.dealId ? { deal: b.dealId } : {}), ...(b.mandatId ? { mandat: b.mandatId } : {}), ...(typeof w.wer === 'string' && w.wer ? { zustaendig: w.wer } : {}) };
+      return { art: 'followup', text: fuellen(w.text, u) || k.titel, faellig: in_(w.inTagen), ...(b.kontaktId ? { kontakt: b.kontaktId } : {}), ...(b.firmaId ? { firma: b.firmaId } : {}), ...(b.dealId ? { deal: b.dealId } : {}), ...(b.mandatId ? { mandat: b.mandatId } : {}), ...(zustaendig ? { zustaendig } : {}) };
     }
-    case 'angebot.entwurf': return typeof w.gesellschaft === 'string' ? { art: 'angebot_entwurf', gesellschaft: w.gesellschaft, ...(b.kontaktId ? { kontakt: b.kontaktId } : {}), ...(b.firmaId ? { firma: b.firmaId } : {}), ...(b.dealId ? { deal: b.dealId } : {}) } : null;
+    case 'angebot.entwurf': {
+      if (typeof w.gesellschaft !== 'string') return null;
+      // „Gesellschaft des Falls“ (Vorlagen): nur eine Business-Gesellschaft des Deals bzw. Mandats — ohne sie hält der Schritt.
+      const g = w.gesellschaft === GESELLSCHAFT_DES_FALLS && u.gesellschaft ? u.gesellschaft() : w.gesellschaft;
+      if (!g) return { fehler: 'gesellschaft-fehlt' };
+      return { art: 'angebot_entwurf', gesellschaft: g, ...(b.kontaktId ? { kontakt: b.kontaktId } : {}), ...(b.firmaId ? { firma: b.firmaId } : {}), ...(b.dealId ? { deal: b.dealId } : {}) };
+    }
+    // Seit 22.10. spät (Vorlagen der Kundengewinnung): dieselben Vorschlags-Arten wie ZOE — übernommen erst per Klick.
+    case 'crm.deal-vorschlagen': return b.kontaktId ? { art: 'deal_anlegen', kontakt: b.kontaktId, titel: fuellen(w.titel, u) || k.titel, naechster_schritt: fuellen(w.naechsterSchritt, u) || k.titel, faellig: in_(w.inTagen) } : null;
+    case 'crm.deal-schritt': return b.dealId ? { art: 'deal_aendern', deal: b.dealId, naechster_schritt: fuellen(w.naechsterSchritt, u) || k.titel, faellig: in_(agentTage !== undefined && agentTage >= 0 && agentTage <= 365 ? agentTage : w.inTagen) } : null;
+    case 'crm.lead-parken': return leadId ? { art: 'lead_parken', lead: leadId, park_tage: Math.max(1, Math.min(365, Math.round(zahl(w.parkTage) ?? 90))), ...(typeof w.grundArt === 'string' ? { grund_art: w.grundArt } : {}) } : null;
+    case 'crm.entwurf-text': {
+      const t = fuellen(w.text, u);
+      if (!b.kontaktId || !t || typeof w.art !== 'string') return null;
+      return { art: w.art, kontakt: b.kontaktId, text: t, ...(typeof w.kanal === 'string' ? { kanal: w.kanal } : {}), ...(text(w.anlass) ? { begruendung: `Anlass: ${text(w.anlass)}` } : {}) };
+    }
   }
   return null;
 }
@@ -397,11 +484,13 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
       // Entscheidung 21.10.: keine Rauten, über die ein Modell entscheidet — in C1 hält so ein Lauf an (Fehlerkante, sonst angehalten).
       if (r?.art === 'modell') return { art: 'fehler', grund: 'modell-raute' };
       const frage = text(werte.frage) || k.titel;
+      const wer = werVon(u, l, werte.wer);
+      if ('fehler' in wer) return { art: 'fehler', grund: wer.fehler };
       return {
         art: 'aktion', schatten: 'freigabe', ausgangSchatten: 'ja',
         aktion: {
           art: 'vorschlag', kennung, knoten: k.id, sorte: 'entscheidung', titel: `Entscheidung: ${frage}`.slice(0, 200),
-          nachher: `${frage}\n\nFreigeben = ja · Ablehnen = nein (Prozess „${u.titel}“).`, fuer: u.person?.(typeof werte.wer === 'string' ? werte.wer : undefined) ?? l.person,
+          nachher: `${frage}\n\nFreigeben = ja · Ablehnen = nein (Prozess „${u.titel}“).`, fuer: wer.an,
           bis: bis(u, werte.fristTage),
         },
       };
@@ -412,11 +501,13 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
         if (!x) return { art: 'fehler', grund: 'knoten-fehlt' };
         return schlossPlan(l, k, x, kennung, u);
       }
+      const wer = werVon(u, l, werte.wer);
+      if ('fehler' in wer) return { art: 'fehler', grund: wer.fehler };
       return {
         art: 'aktion', schatten: 'freigabe', ausgangSchatten: 'ja',
         aktion: {
           art: 'vorschlag', kennung, knoten: k.id, sorte: 'freigabe', titel: `Freigabe: ${k.titel}`.slice(0, 200), nachher: `Der Prozess „${u.titel}“ wartet auf deine Freigabe: ${k.titel}.`,
-          fuer: u.person?.(typeof werte.wer === 'string' ? werte.wer : undefined) ?? l.person, bis: bis(u, werte.fristTage),
+          fuer: wer.an, bis: bis(u, werte.fristTage),
         },
       };
     }
@@ -438,10 +529,13 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
     case 'agent': {
       const a = k.agent;
       if (!a) return { art: 'fehler', grund: 'agent-fehlt' };
-      const f = u.agent?.(a, k.id) ?? { ok: false as const, grund: 'ki-aus' as const };
+      const f: AgentFreigabe = u.agent?.(a, k.id) ?? { ok: false, grund: 'ki-aus' };
       if (f.ok) return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'agent', kennung, knoten: k.id, titel: k.titel, schritt: a, kostenCent: f.kostenCent } };
+      // Recherche-Frische (M6): ohne Modellaufruf weiter — der Lauf nimmt den Weg „weiter“, der Grund steht am Schritt.
+      if (f.ueberspringen) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: f.grund };
       if (f.pause) return { art: 'pause', grund: 'budget' };
-      if (f.bis) return { art: 'warten', ausgangSchatten: 'weiter', warten: { art: 'fenster', bis: f.bis } };
+      // Warten: Takt-Fenster (Nachtlauf, E-V5), Tageshöchstzahl des Heads (E-V6) bzw. gedrosselt — derselbe Schritt kommt danach wieder dran.
+      if (f.bis) return { art: 'warten', ausgangSchatten: 'weiter', warten: { art: 'fenster', bis: f.bis }, grund: f.grund };
       return { art: 'fehler', grund: f.grund };
     }
     case 'teilprozess': {
@@ -451,7 +545,17 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
       const warten = t.warten !== false;
       return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'teilprozess', kennung, knoten: k.id, prozessId: t.prozessId, warten } };
     }
-    case 'schleife': return { art: 'fehler', grund: 'nicht-gebaut' };
+    case 'schleife': {
+      // Schleife je Fall (22.10. spät): je Eintrag der Liste ein Teil-Lauf des veröffentlichten Teilprozesses. Der Lauf wartet nicht darauf (Abendbericht,
+      // Auswertung und Uhren modellieren die Vorlagen selbst); die Obergrenze gilt je Lauf, der Rest wartet sichtbar auf den nächsten Lauf.
+      const sl = k.schleife;
+      if (!sl?.prozessId || !sl.liste) return { art: 'fehler', grund: 'liste-fehlt' };
+      if (!u.teilprozess?.(sl.prozessId)) return { art: 'fehler', grund: 'teilprozess-fehlt' };
+      if (l.tiefe + 1 > LAUF_GRENZEN.kettenTiefe) return { art: 'fehler', grund: 'kette' };
+      if (sl.liste.startsWith('abfrage:') && !def.knoten.some(x => x.id === sl.liste.slice(8) && x.abfrage)) return { art: 'fehler', grund: 'liste-fehlt' };
+      const hoechstens = Math.max(1, Math.min(PROZESS_GRENZEN.schleifeHoechstens, Math.round(sl.hoechstens || 1)));
+      return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'schleife', kennung, knoten: k.id, prozessId: sl.prozessId, liste: sl.liste, hoechstens } };
+    }
     case 'erinnerung': {
       const runden = l.zaehler?.[k.id] ?? 0;
       const versuche = zahl(werte.versuche) ?? k.versuche ?? 5;
@@ -466,12 +570,31 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
     if (n < k.erneut.hoechstens && def.knoten.some(x => x.id === k.erneut!.ab)) return { art: 'weiter', ausgang: 'weiter', status: 'erledigt', grund: 'erneut', sprung: k.erneut.ab, zaehle: true };
     return { art: 'weiter', ausgang: 'weiter', status: 'erledigt' };
   }
+  // CRM abfragen (N1): eine Liste von Fällen — nur lesen (der Server liest über die vorhandenen Leser, Art. 18 ausgeblendet, nur Business).
+  if (k.abfrage) return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'abfrage', kennung, knoten: k.id, abfrage: k.abfrage } };
   if (e && LESEN_BAUSTEINE.has(e.id)) return { art: 'weiter', ausgang: 'weiter', status: 'erledigt' };
-  if (k.abfrage) return { art: 'weiter', ausgang: 'weiter', status: 'erledigt' };
-  if (e?.id === 'glocke.melden') return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'meldung', kennung, knoten: k.id, an: u.person?.(typeof werte.wer === 'string' ? werte.wer : undefined) ?? l.person, titel: (fuellen(werte.text, u) || k.titel).slice(0, 280) } };
+  if (e?.id === 'glocke.melden') {
+    const wer = werVon(u, l, werte.wer);
+    if ('fehler' in wer) return { art: 'fehler', grund: wer.fehler };
+    return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'meldung', kennung, knoten: k.id, an: wer.an, titel: (fuellen(werte.text, u) || k.titel).slice(0, 280) } };
+  }
+  // Karte ergänzen (N4): hat ein Agenten-Schritt davor Felder vorgeschlagen (Häkchen je Feld im Stapel), ist hier nichts mehr zu tun; sonst ergänzt ein Mensch.
+  if (e?.id === 'crm.karte-ergaenzen') {
+    if (Number(l.daten['agent.felder'] ?? 0) > 0) return { art: 'weiter', ausgang: 'weiter', status: 'erledigt', grund: 'vorbereitet' };
+    const felder = Array.isArray(werte.felder) ? (werte.felder as string[]).join(', ') : '';
+    return aufgabePlan(l, k, kennung, u, { titel: `Karte ergänzen: ${k.titel}`, beschreibung: felder ? `Felder: ${felder}` : '' });
+  }
+  // Text-Entwurf ohne Text: ein Mensch schreibt ihn (mit dem Anlass der Vorlage) — sonst ein Vorschlag mit Kanal-Ampel.
+  if (e?.id === 'crm.entwurf-text' && !fuellen(werte.text, u)) {
+    const urteil = u.ansprache?.(e, werte) ?? null;
+    if (urteil && !urteil.erlaubt) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'kanal-rot' };
+    return aufgabePlan(l, k, kennung, u, { titel: `${k.titel}`, beschreibung: [text(werte.anlass) && `Anlass: ${text(werte.anlass)}`, urteil?.farbe === 'gelb' ? `Kanal-Ampel gelb: ${urteil.grund}` : ''].filter(Boolean).join('\n') });
+  }
   if (e?.id === 'telegram.hinweis') return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'meldung', kennung, knoten: k.id, an: typeof werte.an === 'string' ? werte.an : l.person, titel: k.titel.slice(0, 280), telegram: typeof werte.hinweis === 'string' ? werte.hinweis : 'wartet' } };
   if (e && CRM_VORSCHLAG_BAUSTEINE.has(e.id)) {
+    if (e.ansprache) { const urteil = u.ansprache?.(e, werte) ?? null; if (urteil && !urteil.erlaubt) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'kanal-rot' }; }
     const ein = crmVorschlagEingabe(l, k, e, u);
+    if (ein && 'fehler' in ein) return { art: 'fehler', grund: ein.fehler as LaufGrund };
     if (!ein) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'daten-fehlen' };
     return { art: 'aktion', schatten: 'freigabe', ausgangSchatten: 'weiter', aktion: { art: 'crm-vorschlag', kennung, knoten: k.id, titel: k.titel, eingabe: ein } };
   }
@@ -595,7 +718,7 @@ export function voran(laufEin: ProzessLauf, def: ProzessDefinition, u: LaufUmfel
       case 'warten':
         if (modus === 'schatten') { abschliessen(s, 'wartet', plan.ausgangSchatten, u.jetzt); geh(l, idx, k.id, plan.ausgangSchatten, u.jetzt); continue; }
         s.status = 'wartet';
-        if (plan.warten.art === 'fenster') s.grund = 'fenster';
+        if (plan.warten.art === 'fenster') s.grund = plan.grund ?? 'fenster';
         l.status = 'wartet'; l.wartet = { knoten: k.id, ...plan.warten };
         return { lauf: l, aktion: null };
       case 'aktion': {
@@ -607,7 +730,8 @@ export function voran(laufEin: ProzessLauf, def: ProzessDefinition, u: LaufUmfel
           geh(l, idx, k.id, plan.ausgangSchatten, u.jetzt);
           continue;
         }
-        s.wirkung = [{ art: wirkungArtVon(plan.aktion), id: plan.aktion.kennung }];
+        // Abfrage und Schleife haben keine eigene Wirkung mit dieser Kennung — die Schleife trägt nach dem Ausführen die Kennungen ihrer Teil-Läufe.
+        if (plan.aktion.art !== 'abfrage' && plan.aktion.art !== 'schleife') s.wirkung = [{ art: wirkungArtVon(plan.aktion), id: plan.aktion.kennung }];
         return { lauf: l, aktion: plan.aktion };
       }
     }
@@ -616,7 +740,14 @@ export function voran(laufEin: ProzessLauf, def: ProzessDefinition, u: LaufUmfel
 }
 
 export const wirkungArtVon = (a: Aktion): Wirkung['art'] =>
-  a.art === 'aufgabe' ? 'aufgabe' : a.art === 'teilprozess' ? 'lauf' : a.art === 'meldung' ? 'meldung' : 'vorschlag';
+  a.art === 'aufgabe' ? 'aufgabe' : a.art === 'teilprozess' || a.art === 'schleife' ? 'lauf' : a.art === 'meldung' ? 'meldung' : 'vorschlag';
+
+/** Listen am Fall, über die eine Schleife laufen kann (außer `abfrage:<Knoten>`): die vorgemerkten Gäste eines eigenen Abends (V18). */
+export const SCHLEIFE_LISTEN = ['event.gaeste'] as const;
+
+/** Welche Felder eine Wirkung in die Daten des Laufs schreiben darf (nur für Rauten — Kennungen und Zahlen nach dem Vertrag, nie Text). */
+const DATEN_SCHLUESSEL = /^(abfrage|schleife|agent)\.[a-z0-9_.-]{1,40}$/;
+
 
 /**
  * Das Ergebnis einer Wirkung eintragen (rein): ok → warten (Aufgabe, Freigabe, Teilprozess) bzw. weiter; vorübergehend → Pause mit Backoff (höchstens
@@ -633,6 +764,15 @@ export function nachAktion(laufEin: ProzessLauf, def: ProzessDefinition, a: Akti
     if (e.kostenCent) { s.kostenCent = (s.kostenCent ?? 0) + e.kostenCent; l.kostenCent += e.kostenCent; }
     if (e.modell) s.modell = e.modell;
     if (e.token) s.token = { ein: (s.token?.ein ?? 0) + e.token.ein, aus: (s.token?.aus ?? 0) + e.token.aus };
+    // Motor-Rest (22.10. spät): Liste der Abfrage, Felder für die nächsten Rauten (nur `abfrage.*`, `schleife.*`, `agent.*` — Kennungen und Zahlen), Zahlen am Schritt.
+    if (e.liste && a.art === 'abfrage') l.listen = { ...(l.listen ?? {}), [a.knoten]: { faelle: e.liste.faelle.slice(0, LAUF_GRENZEN.listeMax), gesamt: e.liste.gesamt, am: e.liste.am } };
+    for (const [x, v] of Object.entries(e.daten ?? {})) if (DATEN_SCHLUESSEL.test(x) && typeof v === 'string' && v.length <= 120) l.daten[x] = v;
+    if (e.anzahl !== undefined) s.anzahl = e.anzahl;
+    if (e.rest) s.rest = e.rest;
+    if (e.uebersprungen) s.uebersprungen = e.uebersprungen;
+    if (e.hinweis) s.grund = e.hinweis;
+    if (e.recherche) s.recherche = true;
+    if (e.fremd) l.fremd = true;
     delete s.versuch;
     if (a.art === 'teilprozess' && a.uebergabe) { abschliessen(s, 'erledigt', undefined, jetzt); beenden(l, 'fertig', jetzt, { ergebnis: 'uebergabe' }); return l; }
     const w = warteArtVon(a);
@@ -642,10 +782,11 @@ export function nachAktion(laufEin: ProzessLauf, def: ProzessDefinition, a: Akti
       l.wartet = { knoten: a.knoten, art: w, wirkung: a.kennung, ...(a.art === 'vorschlag' ? { bis: a.bis } : {}) };
       return l;
     }
-    abschliessen(s, 'erledigt', 'weiter', jetzt);
+    abschliessen(s, 'erledigt', 'weiter', jetzt, e.hinweis);
     geh(l, idx, a.knoten, 'weiter', jetzt);
     return l;
   }
+  if (e.kostenCent) { s.kostenCent = (s.kostenCent ?? 0) + e.kostenCent; l.kostenCent += e.kostenCent; }
   if (e.art === 'voruebergehend') {
     const v = (s.versuch ?? 0) + 1;
     s.versuch = v;
@@ -831,6 +972,35 @@ export type StartErgebnis =
   | { ok: false; datei: LaeufeDatei; grund: StartGrund; lauf?: ProzessLauf; zurueck?: Zurueckgehalten };
 
 const standVon = (d: LaeufeDatei, id: string): ProzessLaufStand => d.prozesse[id] ?? leererStand();
+
+/**
+ * Hat dieser Fall schon einen Lauf des Prozesses, der einen neuen Start verhindert? (rein — dieselbe Regel wie `starten`: offen bzw. beendet und der Wiedereintritt
+ * ist nicht fällig). Die CRM-Abfrage einer Schleife nimmt solche Fälle gar nicht erst in ihre Liste — so kommt der Rest im nächsten Lauf dran.
+ */
+export function startGesperrt(datei: LaeufeDatei, prozessId: string, fall: LaufFall, jetzt: string): 'offen' | 'schon' | null {
+  const schluessel = fallSchluessel(prozessId, fall);
+  const gleiche = datei.laeufe.filter(l => l.schluessel === schluessel);
+  if (gleiche.some(laufOffen)) return 'offen';
+  const letzter = [...gleiche].sort((x, y) => (x.start < y.start ? -1 : 1)).at(-1);
+  if (!letzter) return null;
+  const tage = standVon(datei, prozessId).einstellung.erneutNachTagen;
+  const seit = letzter.ende ? (Date.parse(jetzt) - Date.parse(letzter.ende)) / 86_400_000 : 0;
+  return !tage || seit < tage ? 'schon' : null;
+}
+
+/**
+ * Recherche-Frische (rein, M6): vor wie vielen Tagen wurde dieser Fall (Firma bzw. Lead — dieselbe Kennung) zuletzt im Web recherchiert? Über alle scharfen
+ * Läufe aller Prozesse; null = nie (bzw. die Läufe sind nach ihrer Frist weg).
+ */
+export function rechercheVorTagen(datei: LaeufeDatei, fallId: string | undefined, jetzt: string): number | null {
+  if (!fallId) return null;
+  let juengste: string | null = null;
+  for (const l of datei.laeufe) {
+    if (l.modus !== 'scharf' || l.fall.id !== fallId) continue;
+    for (const s of l.schritte) if (s.recherche && s.bis && (!juengste || s.bis > juengste)) juengste = s.bis;
+  }
+  return juengste ? Math.max(0, (Date.parse(jetzt) - Date.parse(juengste)) / 86_400_000) : null;
+}
 const nichtZaehlen = (st: ProzessLaufStand, art: keyof NonNullable<ProzessLaufStand['nicht']>): ProzessLaufStand => ({ ...st, nicht: { ...(st.nicht ?? {}), [art]: (st.nicht?.[art] ?? 0) + 1 } });
 
 /**
@@ -1005,6 +1175,8 @@ export function probeZeilen(l: ProzessLauf, def: ProzessDefinition): { schritte:
         : s.status === 'freigabe' ? `würde zur Freigabe vorlegen: ${titel}`
           : s.status === 'wartet' ? `würde warten: ${titel}`
             : k?.form === 'agent' ? `würde ${k.agent?.wer.art === 'zoe' ? 'ZOE' : 'den Agenten'} fragen${s.kostenCent ? `, ca. ${Math.max(1, Math.round(s.kostenCent))} ct` : ''}`
+              : k?.form === 'schleife' ? `würde je Fall einen Teil-Lauf starten: ${titel} (höchstens ${k.schleife?.hoechstens ?? 0} je Lauf)`
+              : k?.abfrage ? `würde im CRM abfragen: ${titel} (höchstens ${k.abfrage.hoechstens})`
               : k?.form === 'ausloeser' ? `startet: ${titel}`
                 : k?.form === 'ende' ? `endet: ${titel}`
                   : k?.form === 'entscheidung' ? `entscheidet: ${titel} → ${s.ausgang === 'nein' ? 'nein' : 'ja'}${s.grund === 'daten-fehlen' ? ` (${GRUND_TEXT['daten-fehlen']})` : ''}`
@@ -1128,7 +1300,9 @@ export function laufBefunde(d: Pick<ProzessDefinition, 'knoten'>): Befund[] {
   const raus: Befund[] = [];
   for (const { schritt } of alleSchritte(d)) {
     if (schritt.form === 'entscheidung' && schritt.raute?.art === 'modell') raus.push({ stufe: 'offen', knotenId: schritt.id, text: `„${schritt.titel}“: ${GRUND_TEXT['modell-raute']}.` });
-    if (schritt.form === 'schleife') raus.push({ stufe: 'hinweis', knotenId: schritt.id, text: `„${schritt.titel}“: die Schleife läuft im Motor noch nicht — der Lauf hält dort an.` });
+    // Seit 22.10. spät läuft die Schleife — nur über eine CRM-Abfrage dieses Prozesses bzw. eine Liste am Fall, die der Motor kennt.
+    const liste = schritt.form === 'schleife' ? schritt.schleife?.liste : undefined;
+    if (liste && !liste.startsWith('abfrage:') && !(SCHLEIFE_LISTEN as readonly string[]).includes(liste)) raus.push({ stufe: 'hinweis', knotenId: schritt.id, text: `„${schritt.titel}“: die Liste „${liste}“ kennt der Motor nicht — der Lauf hält dort an (${GRUND_TEXT['liste-fehlt']}).` });
   }
   return [...raus, ...schleifenBefunde(d)];
 }
