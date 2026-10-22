@@ -1,13 +1,13 @@
 'use client';
 // ─── Aufgaben-Navigation wie in der Markttraktion (Kevin 28.09. ~22:30) ─────
-// Oben die Leiste: Überblick · Privat · Firmen ▾ · Mandanten ▾ · Archiv (Firmen/Mandanten als Auswahl mit Suche —
-// dieselbe `Wahl` wie im CRM). Im Space die Brotkrumen Space ▾ › Projekt ▾ › Liste ▾ (seit 06.10. ohne Gruppe): jede Stufe springt
+// Die frühere Leiste oben (Überblick · Privat · Firmen ▾ · Mandanten ▾ · Archiv) ist seit 22.10. abends das Werkzeug-Menü links (lib/make-one/werkzeuge.ts
+// `AUFGABEN_WERKZEUG`: Überblick · Spaces · Zeitstrahl · Automationen & Head · Archiv & Papierkorb). Im Space die Brotkrumen Space ▾ › Projekt ▾ › Liste ▾ (seit 06.10. ohne Gruppe): jede Stufe springt
 // direkt zu einem Geschwister. Mandanten-Space: Kopf mit Firma (→ Firmenakte), Mandat (→ Mandat) und Zuständig.
 // Jeder Zustand steckt in der Adresse (lib/aufgaben/adresse.ts, `WEG.aufgaben`).
 
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Wahl, type WahlEintrag } from '../crm/Wahl';
 import { firmaVonSpace, sonstigeProjektId, type AufgabenSpace } from '@/lib/aufgaben/struktur';
 import type { AufgabenAdresse } from '@/lib/aufgaben/adresse';
@@ -17,60 +17,6 @@ import { useCrmVerweise, projekteImSpace, ownerLabel, type Person } from './hilf
 
 type Gehe = (z: Partial<AufgabenAdresse>) => void;
 const ALLE = '__alle__';
-
-const reiterStil = (an: boolean): CSSProperties => ({
-  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', minHeight: 40, borderRadius: 10, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-  fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, transition: 'background .2s ease, color .2s ease',
-  background: an ? C.ink : 'transparent', color: an ? C.grund : C.inkDim,
-});
-
-/**
- * Die Leiste oben: Überblick · Privat · (Privat-Einheiten, z. B. Selbstständigkeit) · Firmen ▾ · Mandanten ▾ · Archiv.
- * 05.10. (Kevin: „Ja, überall unter Privat“): Firmen-Spaces im Privat-Bereich (`bereich: 'privat'`, lib/einheiten.ts `bereichVon`)
- * stehen als eigene Reiter neben Privat; „Firmen ▾“ zeigt nur die Business-Firmen.
- */
-export function AufgabenLeiste({ adresse, spaces, offenJe, gehe, bereich }: { adresse: AufgabenAdresse; spaces: readonly AufgabenSpace[]; offenJe: ReadonlyMap<string, number>; gehe: Gehe; bereich?: 'privat' | 'business' }) {
-  const raum = adresse.ansicht === 'space' ? spaces.find(s => s.id === adresse.s) : undefined;
-  const firmen = spaces.filter(s => s.art === 'firma' && s.bereich === 'business');
-  // Sicht Business (15.10., Abnahme 2 C13 — „Business zeigt nur Business“): keine Reiter Privat und keine Privat-Einheit (Selbstständigkeit).
-  const imBusiness = bereich === 'business';
-  const privatFirmen = imBusiness ? [] : spaces.filter(s => s.art === 'firma' && s.bereich === 'privat');
-  const privatDa = !imBusiness && spaces.some(s => s.id === 'privat');
-  const mandanten = spaces.filter(s => s.art === 'mandant' && !s.archiv);
-  const archivZahl = spaces.filter(s => s.art === 'mandant' && s.archiv).length;
-  const eintrag = (s: AufgabenSpace): WahlEintrag<string> => ({ id: s.id, label: s.label, punkt: s.farbe, ...(offenJe.get(s.id) ? { hinweis: `${offenJe.get(s.id)} offen` } : {}) });
-  const zuSpace = (id: string) => gehe({ ansicht: 'space', s: id });
-  return (
-    <nav aria-label="Aufgaben" style={{ display: 'flex', gap: 10, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', padding: '8px 2px', marginBottom: 6 }}>
-      <div role="tablist" style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,.06)', borderRadius: 12, padding: 3, flex: '0 0 auto', alignItems: 'center' }}>
-        <button role="tab" aria-selected={adresse.ansicht === 'ueberblick'} onClick={() => gehe({ ansicht: 'ueberblick' })} style={reiterStil(adresse.ansicht === 'ueberblick')}>Überblick</button>
-        {/* Nur, wenn der Server den Space liefert — ein Konto „nur Business“ bekommt den Privat-Bereich gar nicht (09.10., E4). */}
-        {privatDa && (
-          <button role="tab" aria-selected={raum?.id === 'privat'} onClick={() => zuSpace('privat')} style={reiterStil(raum?.id === 'privat')}>
-            Privat{offenJe.get('privat') ? <span style={{ opacity: .6, fontVariantNumeric: 'tabular-nums' }}>{offenJe.get('privat')}</span> : null}
-          </button>
-        )}
-        {privatFirmen.map(s => (
-          <button key={s.id} role="tab" aria-selected={raum?.id === s.id} onClick={() => zuSpace(s.id)} style={reiterStil(raum?.id === s.id)}>
-            {s.label}{offenJe.get(s.id) ? <span style={{ opacity: .6, fontVariantNumeric: 'tabular-nums' }}>{offenJe.get(s.id)}</span> : null}
-          </button>
-        ))}
-        <span style={{ padding: '0 4px', display: 'inline-flex' }}>
-          <Wahl klein label="Firmen" leer="Firmen ▾" liste={firmen.map(eintrag)} wert={raum?.art === 'firma' && raum.bereich === 'business' ? raum.id : null} farbe={raum?.art === 'firma' && raum.bereich === 'business' ? raum.farbe : C.aktiv} onWahl={zuSpace} />
-        </span>
-        <span style={{ padding: '0 4px 0 0', display: 'inline-flex' }}>
-          <Wahl klein label="Mandanten" leer={mandanten.length ? `Mandanten (${mandanten.length}) ▾` : 'Mandanten ▾'} liste={mandanten.map(eintrag)} wert={raum?.art === 'mandant' && !raum.archiv ? raum.id : null} farbe={raum?.farbe ?? C.aktiv} onWahl={zuSpace} />
-        </span>
-      </div>
-      <span aria-hidden style={{ flex: '1 0 8px' }} />
-      <div role="tablist" style={{ display: 'flex', gap: 2, border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, padding: 3, flex: '0 0 auto' }}>
-        <button role="tab" aria-selected={adresse.ansicht === 'archiv' || !!raum?.archiv} onClick={() => gehe({ ansicht: 'archiv' })} style={reiterStil(adresse.ansicht === 'archiv' || !!raum?.archiv)}>
-          Archiv{archivZahl ? <span style={{ opacity: .6, fontVariantNumeric: 'tabular-nums' }}>{archivZahl}</span> : null}
-        </button>
-      </div>
-    </nav>
-  );
-}
 
 /** Brotkrumen im Space: Space ▾ › Projekt ▾ › Liste ▾ — jede Stufe springt zu einem Geschwister. */
 export function Brotkrumen({ adresse, state, spaces, gehe }: { adresse: AufgabenAdresse; state: TasksState; spaces: readonly AufgabenSpace[]; gehe: Gehe }) {

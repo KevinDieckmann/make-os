@@ -4,6 +4,7 @@
 //
 //   /os/aufgaben                                   Überblick (Kacheln + Karten je Privat/Firma/Mandant)
 //     ?b=ueberblick | archiv                       ausdrücklich Überblick bzw. Archiv (beendete Mandate, archivierte Projekte)
+//     ?b=automationen                              „Automationen & Head“ des Werkzeugs Aufgaben (22.10. abends, lib/make-one/werkzeuge.ts)
 //     &s=<Space>                                   privat · kdc · kdv · ug · m-<firmaId>
 //     &p=<Projekt>                                 Projektseite, &t=aufgaben (Start) · notizen · dateien · felder · verlauf
 //     &l=<Liste>                                   Fokus auf eine Liste im Projekt
@@ -23,7 +24,7 @@ export type ProjektReiter = 'aufgaben' | 'notizen' | 'dateien' | 'felder' | 'ver
 export const PROJEKT_REITER: { id: ProjektReiter; label: string }[] = [
   { id: 'aufgaben', label: 'Aufgaben' }, { id: 'notizen', label: 'Notizen' }, { id: 'dateien', label: 'Dateien' }, { id: 'felder', label: 'Felder' }, { id: 'verlauf', label: 'Verlauf' },
 ];
-export type AufgabenAnsicht = 'ueberblick' | 'archiv' | 'space';
+export type AufgabenAnsicht = 'ueberblick' | 'archiv' | 'space' | 'automationen';
 
 export interface AufgabenAdresse {
   /** Was gezeigt wird. */
@@ -61,6 +62,7 @@ export function adresseLesen(p: { get(name: string): string | null }): AufgabenA
   const darstellung = d && DARSTELLUNG.test(d) && d !== 'liste' ? d : undefined;
   const rest = { ...(a ? { a } : {}), ...(darstellung ? { darstellung } : {}), ...(bereich ? { bereich } : {}) };
   if (b === 'archiv') return { ansicht: 'archiv', ...rest };
+  if (b === 'automationen') return { ansicht: 'automationen', ...rest };
   if (b === 'ueberblick') return { ansicht: 'ueberblick', ...rest };
   const imSpace = s ?? (bereich === 'privat' ? 'privat' : undefined);
   if (imSpace) {
@@ -86,6 +88,7 @@ export function aufgabenLink(z: Partial<AufgabenAdresse> = {}): string {
   const bereich = s ? bereichVonSpace(s) : z.bereich;
   if (bereich) q.set('space', bereich);
   if (ansicht === 'archiv') q.set('b', 'archiv');
+  if (ansicht === 'automationen') q.set('b', 'automationen');
   // Überblick ausdrücklich, wenn sonst `space=privat` allein den Privat-Space öffnen würde.
   if (ansicht === 'ueberblick' && bereich === 'privat') q.set('b', 'ueberblick');
   if (s) {

@@ -345,8 +345,55 @@ export const INBOX_WERKZEUG: Werkzeug = {
   }),
 };
 
+// ─── Aufgaben — Business UND Privat ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Überblick · Spaces (die Spaces des Bereichs aus dem Bestand der Person: Privat bzw. die Gesellschaften nach `bereichVon` und NUR laufende Mandanten-Spaces
+// `m-<firmaId>` — beendete/pausierte stehen im Archiv; die Seite legt sie als Liste `aufgaben-spaces` ab, mit Zahl offener Aufgaben) · Zeitstrahl
+// (`ansicht=zeitstrahl`) · „Automationen & Head“ (`b=automationen`; Business: Head of Operations + Head-Takt und Morgenlauf (Serien); Privat: die Persönliche
+// Assistenz — Heads aus `SEITEN_REGELN`) · Fuß Archiv & Papierkorb (`b=archiv`). Projekt › Liste › Aufgabe bleiben Ebene 3 in der Seite (Brotkrumen).
+// Adressen NUR über `WEG.aufgaben`/`aufgabenLink` (lib/aufgaben/adresse.ts).
+export const AUFGABEN_SPACES = 'aufgaben-spaces';
+/** Steht ein Space im Menü? Nur Spaces des Bereichs der Wahl, nie archivierte (beendete/pausierte Mandanten). */
+export const aufgabenSpaceImMenue = (k: WerkzeugKontext, e: ListenEintrag): boolean => !e.archiv && (e.bereich ?? 'business') === k.space;
+type AufgabenOrt = 'ueberblick' | 'zeitstrahl' | 'archiv' | 'automationen' | `space:${string}`;
+export function aufgabenOrt(k: WerkzeugKontext): AufgabenOrt {
+  const a = aufgabenAdresseLesen(k.q);
+  if (a.ansicht === 'automationen') return 'automationen';
+  if (a.ansicht === 'archiv') return 'archiv';
+  if (a.ansicht === 'space' && a.s) {
+    const e = (k.listen?.[AUFGABEN_SPACES] ?? []).find(x => x.id === a.s);
+    if (e?.archiv) return 'archiv';
+    return e && aufgabenSpaceImMenue(k, e) ? `space:${a.s}` : 'ueberblick';
+  }
+  return a.darstellung === 'zeitstrahl' ? 'zeitstrahl' : 'ueberblick';
+}
+const AUFGABEN_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'ueberblick', label: 'Überblick', icon: LayoutGrid, titel: 'Meine, heute, überfällig, wartet — und je Space eine Karte', href: k => WEG.aufgaben({ space: k.space }), aktiv: k => aufgabenOrt(k) === 'ueberblick' },
+  {
+    id: 'space', label: 'Spaces', icon: FolderKanban, gruppe: 'Spaces', titel: 'Projekte, Listen und Aufgaben eines Space',
+    liste: { schluessel: AUFGABEN_SPACES, sichtbar: aufgabenSpaceImMenue, href: (_k, e) => WEG.aufgaben({ s: e.id }), aktiv: (k, e) => aufgabenOrt(k) === `space:${e.id}` },
+  },
+  { id: 'zeitstrahl', label: 'Zeitstrahl', icon: ChartGantt, titel: 'Stränge zum Ziel — Aufgaben, Projekte und Meilensteine auf dem Zeitstrahl', href: k => aufgabenLink({ ansicht: 'ueberblick', darstellung: 'zeitstrahl', bereich: k.space }), aktiv: k => aufgabenOrt(k) === 'zeitstrahl' },
+];
+export const AUFGABEN_WERKZEUG: Werkzeug = {
+  id: 'aufgaben',
+  name: 'Aufgaben',
+  icon: ListChecks,
+  spaces: ['privat', 'business'],
+  pfade: ['/os/aufgaben'],
+  start: WEG.aufgaben(),
+  leistenPunkt: 'Aufgaben',
+  punkte: AUFGABEN_PUNKTE,
+  fuss: [{ id: 'archiv', label: 'Archiv & Papierkorb', icon: Archive, titel: 'Beendete Mandanten, archivierte Projekte, „Neu angefangen“ und der Papierkorb', href: k => WEG.aufgaben({ b: 'archiv', space: k.space }), aktiv: k => aufgabenOrt(k) === 'archiv' }],
+  automation: (['business', 'privat'] as const).map(b => automationMitHeads(WEG.aufgaben({ space: b }), AUFGABEN_PUNKTE, b, {
+    bereiche: [],
+    ...(b === 'business' ? { prozesse: ['sp-head-takt', 'sp-morgenlauf'] } : {}),
+    href: () => WEG.aufgaben({ b: 'automationen', space: b }),
+    aktiv: k => aufgabenOrt(k) === 'automationen',
+  })),
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG, AUFGABEN_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {
