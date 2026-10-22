@@ -99,7 +99,8 @@ export function useTermineFinden({ alle = KEINE, onVorschlag }: { alle?: KTermin
   const karte: ReactNode = (
     <MitPlanenKarte personen={personen} ich={ich} planen={planen} setPlanen={setPlanen} vorschlaege={vorschlaege} feiertage={feiertage} laedt={laedt} fehler={fehler} onWahl={vorlegen} />
   );
-  return { karten: <>{karte}<Buchungsseiten b={buchungen} /></>, raster, farbe, oeffnen };
+  // `mitPlanen` + `buchungen` (22.10. abends): unter „Automationen & Head“ steht die Buchungsseiten-Karte groß in der Mitte — die Spalte trägt dann nur „Mit … planen“.
+  return { karten: <>{karte}<Buchungsseiten b={buchungen} /></>, mitPlanen: karte, buchungen, raster, farbe, oeffnen };
 }
 
 function MitPlanenKarte({ personen, ich, planen, setPlanen, vorschlaege, feiertage, laedt, fehler, onWahl }: {

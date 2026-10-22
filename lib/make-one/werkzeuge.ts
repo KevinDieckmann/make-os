@@ -257,8 +257,59 @@ export const MARKTTRAKTION_WERKZEUG: Werkzeug = {
   },
 };
 
+// ═══ Gruppe B (22.10. abends — Entscheidung: „Ja, alle Empfehlungen“): Kalender, Inbox, Aufgaben, Gesundheit, Familie, ZOE ═══════════════════════════════
+// Adressen bleiben, wie sie sind (alte Links leuchten genau EINEN Punkt — Wächter in tests/werkzeuge.test.ts); in Werkzeugen beider Spaces wandert `?space=`
+// in jedem Ziel mit (die Wahl im Kopf). Gesundheit und Familie gehören fest zu Privat (die Seite legt den Space fest) — dort braucht es den Parameter nicht.
+// „Automationen & Head“ nur, wo es Prozesse (Business) oder einen Head gibt — Heads NUR aus `SEITEN_REGELN` (`automationMitHeads`); Kalender und Inbox haben dort
+// keinen Head (ZOE antwortet) und tragen darum nur ihre Prozesse.
+
+/** Eine Adresse mit dem Space der Wahl (`?space=` wie in der Leiste) — übrige Parameter bleiben. */
+const mitSpaceDerWahl = (href: string, k: WerkzeugKontext): string => {
+  const g = geteilt(href);
+  const q = new URLSearchParams(g.suche.slice(1));
+  q.set('space', k.space);
+  return `${g.pfad}?${q.toString()}`;
+};
+/** Liegt der Pfad unter einer Seite (gleich oder Unterpfad)? */
+const unterSeite = (pfad: string, seite: string): boolean => pfad === seite || pfad.startsWith(`${seite}/`);
+
+// ─── Kalender — Business UND Privat ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Kalender · Planen (`?modus=planen`) · Aufgaben (`?modus=aufgaben`) — dieselben Modi wie der Umschalter der Seite (lib/kalender/modus.ts); nur Business:
+// „Automationen & Head“ (`?s=automationen`: der Prozess Terminbuchung + die Buchungsseiten der Seite; kein Head — `SEITEN_REGELN` gibt dem Kalender ZOE). Fuß:
+// Einstellungen (`?einstellungen=1` — dieselbe Öffnung wie aus dem Onboarding). Die linke Spalte der Seite (Mini-Monat, Kalender, Planen-Bausteine) steht breit in
+// der Leiste unter diesem Menü (`spalte`).
+type KalenderOrt = 'kalender' | 'planen' | 'aufgaben' | 'einstellungen' | 'automationen';
+export function kalenderOrt(k: WerkzeugKontext): KalenderOrt {
+  if (k.q.get('s') === 'automationen' && k.space === 'business') return 'automationen';
+  if (k.q.get('einstellungen') === '1') return 'einstellungen';
+  return modusAusAdresse(k.q).modus;
+}
+const KALENDER_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'kalender', label: 'Kalender', icon: CalendarDays, titel: 'Tag, Woche, Monat, Jahr — Termine, Fristen und Aufgaben mit Uhrzeit', href: k => mitSpaceDerWahl(WEG.kalender(), k), aktiv: k => kalenderOrt(k) === 'kalender' },
+  { id: 'planen', label: 'Planen', icon: Blocks, titel: 'Die Woche planen — Blöcke, Routinen und Aufgaben ins Raster setzen', href: k => mitSpaceDerWahl(WEG.woche(), k), aktiv: k => kalenderOrt(k) === 'planen' },
+  { id: 'aufgaben', label: 'Aufgaben', icon: ListChecks, titel: 'Aufgaben nach Fälligkeit — abhaken und einplanen', href: k => mitSpaceDerWahl(kalenderLink({ modus: 'aufgaben' }), k), aktiv: k => kalenderOrt(k) === 'aufgaben' },
+];
+export const KALENDER_WERKZEUG: Werkzeug = {
+  id: 'kalender',
+  name: 'Kalender',
+  icon: CalendarDays,
+  spaces: ['privat', 'business'],
+  pfade: ['/os/kalender'],
+  start: WEG.kalender(),
+  leistenPunkt: 'Kalender',
+  spalte: true,
+  punkte: KALENDER_PUNKTE,
+  fuss: [{ id: 'einstellungen', label: 'Einstellungen', icon: Settings2, titel: 'Kalender verbinden und zuordnen, Dauer, Bereiche, „zählt als belegt“', href: k => mitSpaceDerWahl(`${WEG.kalender()}?einstellungen=1`, k), aktiv: k => kalenderOrt(k) === 'einstellungen' }],
+  automation: automationMitHeads(WEG.kalender(), KALENDER_PUNKTE, 'business', {
+    bereiche: [],
+    prozesse: ['sp-buchung'],
+    href: k => mitSpaceDerWahl(`${WEG.kalender()}?s=automationen`, k),
+    aktiv: k => kalenderOrt(k) === 'automationen',
+  }),
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {

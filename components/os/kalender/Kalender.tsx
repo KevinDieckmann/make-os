@@ -28,11 +28,15 @@
 // EINE schlanke Kopfzeile (Heute ‹ › · Zeitraum „5.–11. Okt. 2026 · KW 41“ · Abgleich als Punkte · Suche als Symbol · Ansicht · Kalender/Planen ·
 // Kalender|Aufgaben · Darstellung), kein Seitenkopf darüber (der Titel bleibt für Vorleser). Darstellung je Gerät (./darstellung.tsx): Zeilenhöhe,
 // Zoom (Strg/⌘ + Rad bzw. Pinch im Raster), „Aufgaben ohne Uhrzeit anzeigen“, Bedienungshilfe. Am Handy heißt „4 Tage“ „3 Tage“.
+// Seit 22.10. abends ein Werkzeug (lib/make-one/werkzeuge.ts `KALENDER_WERKZEUG`): links das Menü Kalender · Planen · Aufgaben · (Business) Automationen & Head ·
+// Einstellungen — die Seite folgt der Adresse (`?modus=`, `?einstellungen=1`, `?s=automationen`), auch wenn nur sie sich ändert. Die linke Spalte steht breit
+// IN der Leiste unter dem Menü (EINE Spalte, components/os/werkzeug/spalte.tsx); schmal und mit eingeklappter Leiste wie bisher auf der Seite.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Blocks, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { tagPlus, wandAus } from '@/lib/kalender/zeit';
@@ -80,6 +84,10 @@ import { useNurBusiness } from '../useInhaber';
 import { BUSINESS_GESELLSCHAFTEN } from '@/lib/einheiten';
 import { LINKS_ID, LINKS_TASTE, linksOffenLesen, linksOffenMerken, linksSichtbar, linksTaste, oeffnenFuerPlanen } from './klappen';
 import { useKalenderWischen, wischenAktiv } from './wischen';
+import { useWerkzeugSpalte, spalteBelegen } from '../werkzeug/spalte';
+import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
+import { Buchungsseiten } from './Buchungsseiten';
+import { KALENDER_WERKZEUG } from '@/lib/make-one/werkzeuge';
 
 type Ansicht = KalenderAnsicht;
 /** Ansichten mit Zeitraster — nur dort lässt sich planen. */
@@ -178,7 +186,7 @@ export function Kalender() {
   const [sicht, setSicht] = useState<'alle' | Wer>('alle');
   const [bereich, setBereich] = useState<Bereich>('alle');
   // Der Schalter im Kopf wählt den Bereich (seit 09.10. nur Privat · Business); im Kalender bleibt er umschaltbar — auch auf „Alles“.
-  const { filter: kopfBereich } = useSpace();
+  const { filter: kopfBereich, wahl } = useSpace();
   useEffect(() => { setBereich(kopfBereich); }, [kopfBereich]);
   // Konto „nur Business“ (18.10., Gesamtprüfung L4 B5): kein Schalter „Alles · Privat · Business“ — der Server liefert ohnehin nur Business.
   const nurBusiness = useNurBusiness();
@@ -205,6 +213,22 @@ export function Kalender() {
   const [modus, setModusRoh] = useState<Modus>('kalender');
   const planenStart = useRef(false);
   const [aufgabenFilter, setAufgabenFilterRoh] = useState<AufgabenModusFilter>({ wer: 'alle' });
+  // Werkzeug-Menü (22.10. abends): die Punkte ändern nur die Adresse — die Seite folgt ihr (vorher las sie `?modus=` und `?einstellungen=1` nur beim Öffnen).
+  const suchParams = useSearchParams();
+  const modusParam = suchParams?.get('modus') ?? null;
+  const einstParam = suchParams?.get('einstellungen') ?? null;
+  // „Automationen & Head“ (nur Business): der Prozess Terminbuchung und die Buchungsseiten in der Mitte (lib/make-one/werkzeuge.ts `kalenderOrt`).
+  const automationen = suchParams?.get('s') === 'automationen' && wahl === 'business';
+  useEffect(() => {
+    const m = modusAusAdresse(modusParam ? `?modus=${encodeURIComponent(modusParam)}` : '').modus;
+    setModusRoh(m);
+  }, [modusParam]);
+  useEffect(() => {
+    if (einstParam !== '1') return;
+    setZeigeEinst(true); setLinksOffen(true);
+    const t = setTimeout(() => document.getElementById('kalender-einstellungen')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 80);
+    return () => clearTimeout(t);
+  }, [einstParam]);
 
   useEffect(() => { let a: string | null = null; try { a = localStorage.getItem(MERKER); } catch { /* egal */ } setAnsichtRoh(startAnsicht(a, breit)); }, [breit]);
   const setAnsicht = (a: Ansicht) => { setAnsichtRoh(a); try { localStorage.setItem(MERKER, a); } catch { /* egal */ } };
@@ -229,6 +253,8 @@ export function Kalender() {
   // Planen braucht die Bausteine links: eine zugeklappte Spalte geht beim Wechsel nach „Planen“ auf (klappen.ts, nicht gemerkt).
   useEffect(() => { if (oeffnenFuerPlanen(modus, breit, linksOffen)) setLinksOffen(true); }, [modus, breit]); // eslint-disable-line react-hooks/exhaustive-deps
   const setModus = (m: Modus) => { setModusRoh(m); adresseSetzen({ modus: m === 'kalender' ? undefined : m }); };
+  // Einstellungen auf/zu steht in der Adresse — so leuchtet im Menü „Einstellungen“, solange sie offen sind.
+  const einstellungenZeigen = (an: boolean) => { setZeigeEinst(an); adresseSetzen({ einstellungen: an ? '1' : undefined }); };
   useEffect(() => {
     fetch('/api/state/kalender-einstellungen').then(r => r.json()).then((e: Einstellungen) => { setEinst(e); if (e.standardSicht) setSicht(e.standardSicht); }).catch(() => {});
   }, []);
@@ -334,6 +360,14 @@ export function Kalender() {
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
   }, [breit, linksOffen, offen, neu]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Spalte in der Leiste (22.10. abends): gibt es dort den Ort (breit, Leiste ausgeklappt), steht die Spalte darin; die Leiste wird nur breiter, solange sie offen ist.
+  const spalteZiel = useWerkzeugSpalte();
+  const inLeiste = breit && !!spalteZiel;
+  useEffect(() => { spalteBelegen(inLeiste && linksOffen); return () => spalteBelegen(false); }, [inLeiste, linksOffen]);
+  // Unter „Automationen & Head“ ist die Buchungsseiten-Karte offen.
+  const buchungenOeffnen = k4.buchungen.setOffen;
+  useEffect(() => { if (automationen) buchungenOeffnen(true); }, [automationen, buchungenOeffnen]);
 
   // Zeitraum der Kopfzeile in EINER Zeile (10.10.): „5.–11. Okt. 2026 · KW 41“ (lib/kalender/darstellung.ts).
   const titel = zeitraumText(ansicht, tage, anker);
@@ -447,7 +481,7 @@ export function Kalender() {
           {ohne.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{breit ? 'Ins Raster ziehen plant ein (Deadline + Uhrzeit).' : 'Einplanen: Aufgabe öffnen und Deadline setzen.'}</div>}
         </Karte>
       )}
-      {k4.karten}
+      {automationen ? k4.mitPlanen : k4.karten}
       <Karte i={3} akzent={analyse?.conflicts?.length ? LEUCHT.kritisch : undefined}>
         <Ueberschrift rechts={<Knopf leise aus={analysiert || !daten} onClick={() => void analysieren()}>{analysiert ? 'analysiert …' : 'Woche prüfen'}</Knopf>}>Kalender-Agent</Ueberschrift>
         {!analyse && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Konflikte finden, Reha- und Fokus-Blöcke in freie Lücken vorschlagen — eintragen tust du.</div>}
@@ -464,8 +498,8 @@ export function Kalender() {
       {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
       <FlussKarte bereich="kalender" space={bereich === 'alle' ? null : bereich} farbe={LEUCHT.schlaf} i={4} />
       <AuswertungKarte stichtag={ansicht === 'woche' || ansicht === 'vier' || ansicht === 'tag' ? anker : heute} i={4} />
-      <Karte i={5}>
-        <Ueberschrift erklaerung="kalender.einstellungen" rechts={<Knopf leise onClick={() => setZeigeEinst(v => !v)}>{zeigeEinst ? 'zu' : 'öffnen'}</Knopf>}>Einstellungen</Ueberschrift>
+      <Karte i={5} id="kalender-einstellungen" style={{ scrollMarginTop: 16 }}>
+        <Ueberschrift erklaerung="kalender.einstellungen" rechts={<Knopf leise onClick={() => einstellungenZeigen(!zeigeEinst)}>{zeigeEinst ? 'zu' : 'öffnen'}</Knopf>}>Einstellungen</Ueberschrift>
         {zeigeEinst && einst && (
           <div style={{ display: 'grid', gap: 10 }}>
             <IcloudVerbindung onGeaendert={() => void laden()} />
@@ -547,7 +581,7 @@ export function Kalender() {
     </div>
   );
 
-  const haupt = (
+  const kalenderHaupt = (
     <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8, minHeight: 0, minWidth: 0, height: breit ? '100%' : hoehe ?? undefined }}>
       <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
         {kopfzeile}
@@ -570,6 +604,15 @@ export function Kalender() {
     </div>
   );
 
+  // „Automationen & Head“ (22.10. abends, nur Business): statt des Rasters der Prozess Terminbuchung (dieselben Daten wie das Werkzeug Prozesse) und die
+  // Buchungsseiten (dieselbe Karte, die sonst in der Spalte steht — dort steht dann nur „Mit … planen“).
+  const haupt = automationen ? (
+    <div className="kalender-automationen" style={{ display: 'grid', gap: 14, alignContent: 'start', minWidth: 0, minHeight: 0, ...(breit ? { overflowY: 'auto' as const, overscrollBehaviorY: 'contain' as const } : {}) }}>
+      <BereichAutomationen werkzeug={KALENDER_WERKZEUG} space="business" />
+      <Buchungsseiten b={k4.buchungen} />
+    </div>
+  ) : kalenderHaupt;
+
   return (
     // Kein sichtbarer Seitenkopf (10.10.): die Kopfzeile trägt Zeitraum und Bedienung; der Titel bleibt für Vorleser (.kalender-seite, globals.css).
     <Seite titel="Kalender" className="kalender-seite" breit={2400}>
@@ -580,11 +623,13 @@ export function Kalender() {
       {(bereich === 'business' || bereich === 'privat') && <BereichVerbindungen key={bereich} bereich={bereich} onGeaendert={() => void laden()} ohneHinweis />}
       {/* Linke Spalte (09.10.): zugeklappt bleibt sie geladen (`hidden`, Zustand und Karten bleiben), das Raster bekommt die ganze Breite.
           Volle Höhe (10.10.): breit hat die Fläche die Höhe bis zum Fensterrand — Spalte und Raster rollen je in sich; schmal das Raster allein. */}
-      <div ref={flaeche} style={{ display: 'grid', gridTemplateColumns: breit && linksSichtbar(breit, linksOffen) ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: breit ? 'stretch' : 'start', ...(breit ? { height: hoehe ?? 'calc(100vh - var(--os-ablage) - 140px)', gridTemplateRows: 'minmax(0, 1fr)' } : {}) }}>
-        {breit && <div id={LINKS_ID} hidden={!linksSichtbar(breit, linksOffen)} style={{ minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehaviorY: 'contain', paddingRight: 4 }}>{leiste}</div>}
+      {/* Werkzeug (22.10. abends): breit steht die Spalte IN der Leiste unter dem Menü (EINE Spalte) — hier nur, wenn die Leiste keinen Ort dafür hat. */}
+      <div ref={flaeche} style={{ display: 'grid', gridTemplateColumns: breit && !inLeiste && linksSichtbar(breit, linksOffen) ? '280px minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 14, alignItems: breit ? 'stretch' : 'start', ...(breit ? { height: hoehe ?? 'calc(100vh - var(--os-ablage) - 140px)', gridTemplateRows: 'minmax(0, 1fr)' } : {}) }}>
+        {breit && !inLeiste && <div id={LINKS_ID} hidden={!linksSichtbar(breit, linksOffen)} style={{ minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehaviorY: 'contain', paddingRight: 4 }}>{leiste}</div>}
         {haupt}
         {!breit && <div id={LINKS_ID} style={{ minWidth: 0 }}>{leiste}</div>}
       </div>
+      {inLeiste && spalteZiel && createPortal(<div id={LINKS_ID} hidden={!linksSichtbar(breit, linksOffen)} style={{ minWidth: 0 }}>{leiste}</div>, spalteZiel)}
       {planen.unten}
       {rueckgaengig}
       {offen && <TerminFenster key={offen.id} termin={offen} icloud={daten?.icloud ?? false} space={spaceVonKalender(einst, offen.kalender)} kalenderFarbe={kalFarbe(offen.kalender, offen.wer)} onZu={() => setOffen(null)} onGespeichert={() => void laden()} />}
