@@ -1687,6 +1687,14 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
 - **Gliederung & Lage (22.10. Feinschliff):** je Phase höchstens ~10 Schritte (Vorlagen eingehalten, Wächter `tests/prozesse-vorlagen-gliederung.test.ts`);
   mehrere Auslöser führen jeder direkt in den ersten Schritt (Regel in `kantenVon`, `lib/prozesse/fluss.ts`); Notiz-Zettel liegen über dem ersten Rahmen,
   nie über Phasen-Köpfen/Knoten; „Alles zeigen“ zeigt unlesbar kleine Prozesse als zugeklappte Phasen-Kacheln (`zoomStufe`).
+- **Fulfillment in die Werkstatt (22.10., Weg A; Plan `research/prozesse/FULFILLMENT_WERKSTATT_PLAN.md`):** die Werkstatt wird DER Editor der Pakete, ausgeführt
+  wird weiter im Fall; EINE Wahrheit bleibt `fulfillment--<h>` (nie eine Kopie in `prozesse--<h>`). Regeln NUR in `lib/prozesse/fulfillment-modus.ts`: Palette = die
+  sechs Formen (`FULFILLMENT_FORMEN`), jede Werkstatt-Art ist im Paket ein FEHLER (`fulfillmentModusBefunde`), Rundweg `paketAlsDefinition`/`paketAusDefinition`
+  über `vorlageAus` mit Verlust-Wächter `feldVerluste` (nie still verlieren), Ansicht `paketAnsicht` (Bahnen Kunde/Team aus `zustaendig`, Bestätigung als Raute am
+  Phasenende, Lage automatisch — `pos` des alten Editors bleibt unberührt). Der Werkstatt-Säuberer (`bestand.ts`) behält jedes Fulfillment-Feld über die Teile des
+  Fulfillment-Säuberers (`vorlagenKnotenAus` …) — neues Feld im Modell → Voll-Paket im Gold-Test (`Record<…>`, sonst tsc rot). Etappe 1: GET
+  `/api/prozesse/werkstatt?paket=` (nur lesen, `fulfillment-modus-server.ts`) + `PaketWerkstatt.tsx` (Ansehen). Gold `tests/prozesse-ff-werkstatt-e1.test.ts`
+  (Säuberer vorher = nachher gegen 451bd6fd, Paket vorher = nachher, Lesen schreibt nie).
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

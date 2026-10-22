@@ -1,6 +1,8 @@
 // ─── Prozesse — die Werkstatt: Prozesse aller Business-Bereiche als Entwurf bauen, veröffentlichen, aktiv schalten (Etappe B1, 21.10.) ─────────────────
 // GET              Liste aller Prozesse (Werkstatt + Paket-Vorlagen des Fulfillments, die nur lesend) mit den Rechten der Person.
 // GET ?vorlagen=1  die Galerie der Vorlagen (Kundengewinnung, 22.10.) — Kurzform + welche schon übernommen sind; `?vorlage=<id>` eine mit Vorschau.
+// GET ?paket=<fp-…> ein Paket des Fulfillments für die Werkstatt (22.10., Etappe 1 „Öffnen & Rundweg“ — lib/prozesse/fulfillment-modus-server.ts): das Paket aus
+//                  `fulfillment--<h>` (keine Kopie), Stand, Befunde des Fulfillment-Modus, Bausteine mit der Kunden-Regel, Zahl der laufenden Kunden, Produkte. Nur lesen.
 // GET ?id=         ein Prozess: Entwurf mit Stand, Versionen (kurz), Befunde (alle — die Werkstatt zeigt sie am Knoten), Kanten des Flusses, Webhook (ohne
 //                  Schlüssel), Produkte, die auf ihn zeigen (22.10., nur Kennung + Name). `&version=<nr>` eine Version ganz; `&vergleich=<a>,<b>` (Nummer oder „entwurf“) der Vergleich (nur Feldnamen, nie Werte).
 //                  `&datum=<Knoten>` (22.10.) die nächsten Starts eines Datums-Auslösers (nur Tage + Anzahlen).
@@ -53,6 +55,14 @@ export async function GET(req: Request) {
       ok: true, vorlage: { ...vorlageKurz(v), recht: v.recht, kennzahlen: v.kennzahlen, einstellbar: v.einstellbar, demo: v.demo, vorschau: vorlageVorschau(v.definition),
         teileVorschau: v.teile.map(t => ({ titel: t.titel, vorschau: vorlageVorschau(t.definition) })) },
     });
+  }
+  const paketId = q.get('paket');
+  if (paketId !== null) {
+    const [{ KENNUNG }, { paketFuerWerkstatt }] = await Promise.all([import('@/lib/fulfillment/grenzen'), import('@/lib/prozesse/fulfillment-modus-server')]);
+    if (!KENNUNG.vorlage.test(paketId)) return nein(400, 'Welches Paket? (?paket=fp-…)');
+    const p = await paketFuerWerkstatt(z.haushalt, paketId);
+    // Etappe 1: nur ansehen — bearbeitet wird bis Etappe 2 im vorhandenen Editor des Fulfillments (`editor`).
+    return p ? NextResponse.json({ ok: true, rechte: z.rechte, ...p, bearbeiten: false }) : nein(404, 'Dieses Paket gibt es nicht (mehr).');
   }
   if (!id) {
     const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');

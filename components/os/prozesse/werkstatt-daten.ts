@@ -6,7 +6,8 @@
 // Senden aus der letzten Antwort). Rechnet nichts — Regeln stehen in lib/prozesse/*.
 
 import { useCallback, useEffect, useState } from 'react';
-import type { Befund, ProzessEintrag, ProzessVersion } from '@/lib/prozesse/definition';
+import type { Befund, ProzessEintrag, ProzessVersion, ProzessVorlage } from '@/lib/prozesse/definition';
+import type { BibliothekKurz } from '@/lib/prozesse/fulfillment-modus';
 import type { ProzessKurz } from '@/lib/prozesse/fulfillment-bruecke';
 import type { ProzessRechte } from '@/lib/prozesse/rollen';
 import type { KatalogEintrag, KatalogKategorie } from '@/lib/prozesse/baustein-katalog';
@@ -50,6 +51,15 @@ function useAbruf<T>(url: string | null): { daten: T | null; fehler: string | nu
 export const useWerkstattListe = () => useAbruf<ListenAntwort>(WERKSTATT_QUELLE);
 export const useKatalog = () => useAbruf<KatalogAntwort>(KATALOG_QUELLE);
 export const useProzess = (id: string) => useAbruf<ProzessAntwort>(`${WERKSTATT_QUELLE}&id=${encodeURIComponent(id)}`);
+
+/** Ein Paket des Fulfillments für die Werkstatt (22.10., Etappe 1 — nur lesen; GET `?paket=`, lib/prozesse/fulfillment-modus-server.ts). */
+export interface PaketAntwort {
+  ok: true; rechte: ProzessRechte; paket: ProzessVorlage; stand: string; befunde: Befund[]; bibliothek: BibliothekKurz[]; laufende: number;
+  produkte: { id: string; name: string }[]; editor: string;
+  /** Etappe 1: immer false (bearbeitet wird bis Etappe 2 im Editor des Fulfillments). */
+  bearbeiten: boolean;
+}
+export const usePaket = (id: string) => useAbruf<PaketAntwort>(`${WERKSTATT_QUELLE}&paket=${encodeURIComponent(id)}`);
 
 /** Eine Version ganz (Ansehen) bzw. der Vergleich zweier Fassungen (Nummer oder „entwurf“). */
 export const versionHolen = (id: string, nr: number) => holen<{ ok: true; version: ProzessVersion }>(`${WERKSTATT_QUELLE}&id=${encodeURIComponent(id)}&version=${nr}`);

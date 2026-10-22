@@ -135,6 +135,11 @@ const rolle = (o: O): Rolle | null => {
   const i = id(o.id), titel = s(o.titel);
   return i && titel ? sauber<Rolle>({ id: i, titel, aufgabe: s(o.aufgabe) }) : null;
 };
+/**
+ * Die Teile des Vorlagen-Säuberers für den Säuberer der Werkstatt (lib/prozesse/bestand.ts, 22.10. — Fulfillment in die Werkstatt, Etappe 1): EINE Regel je
+ * Feld, damit ein Paket, das die Werkstatt öffnet und wieder speichert, nichts verliert. Reine Weitergabe — das Verhalten hier bleibt, wie es ist.
+ */
+export { knoten as vorlagenKnotenAus, uebergang as uebergangAus, freigabepunkt as freigabepunktAus, rolle as rolleAus, papierkorbEintrag as papierkorbEintragAus };
 export function vorlageAus(o: O): ProzessVorlage | null {
   const i = id(o.id), art = wahl(o.art, ['landkarte', 'paket', 'ablauf'] as const), titel = s(o.titel);
   if (!i || !art || !titel) return null;
