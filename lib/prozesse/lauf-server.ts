@@ -219,16 +219,18 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       // Ende und Kündigungsfrist über `mandatFristen` (lib/crm/kunden.ts) — dieselbe Regel wie Kalender-Fristen und Datums-Start (auch Start + Mindestlaufzeit).
       const { mandatFristen } = await import('@/lib/crm/kunden');
       const mf = mandatFristen(m, localDay(kx.jetzt));
+      // Begleit-Prozesse (22.10., B1): Paket, Status und nächster Termin des Fulfillment-Falls (ohne Fall fehlen sie).
+      const ff = (await faelleVon(kx))[m.id];
       return {
         fehlt: false, kontakt: k, personen: m.kontaktIds.map(nachId).filter((x): x is Kontakt => !!x), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}), ...hat(k),
         daten: {
           'mandat.status': m.status, 'mandat.gesellschaft': m.gesellschaft, ...(m.leistungId ? { 'mandat.produkt': m.leistungId } : {}), ...(m.zustaendig ? { 'mandat.zustaendig': m.zustaendig } : {}),
           ...(m.verlaengerung ? { 'mandat.verlaengerung': m.verlaengerung } : {}),
           ...(await kgLesen(k, m.kontaktIds.map(nachId).filter((y): y is Kontakt => !!y))).daten,
-          ...(await mandatFelder(m, kx)),
+          ...(await mandatFelder(m, kx)), ...fallFelderVon(ff),
         },
         platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde },
-        datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(mf.endeAm ? { 'mandat.ende': mf.endeAm } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(mf.frist ? { 'mandat.kuendigungsfrist': mf.frist } : {}) },
+        datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(mf.endeAm ? { 'mandat.ende': mf.endeAm } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(mf.frist ? { 'mandat.kuendigungsfrist': mf.frist } : {}), ...(ff?.termin ? { 'fall.termin': ff.termin } : {}) },
       };
     }
     case 'firma': {
@@ -282,6 +284,13 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
 }
 
 /** Ampel und Health eines Mandats (lib/crm/kunden.ts `mandatLage` — dieselbe Rechnung wie Mandatsakte und Power Hour). */
+/** Die Fälle des Fulfillments, wie der Motor sie lesen darf (22.10., B1): Paket, Status, nächster Termin — gemerkt wie das Cockpit, wirft nie ({} ohne Fall). */
+async function faelleVon(kx: MotorKontext): Promise<Record<string, import('@/lib/fulfillment/prozesse/server').FallFuerProzesse>> {
+  try { return await (await import('@/lib/fulfillment/prozesse/server')).faelleFuerProzesse(localDay(kx.jetzt)); } catch { return {}; }
+}
+/** Die Fall-Felder `fall.paket`/`fall.status` (nur mit Fall). */
+const fallFelderVon = (f: { paket: string; status: string } | undefined): Record<string, string> => (f ? { ...(f.paket ? { 'fall.paket': f.paket } : {}), 'fall.status': f.status } : {});
+
 async function mandatFelder(m: CrmBestand['mandate'][number], kx: MotorKontext): Promise<Record<string, unknown>> {
   const { mandatLage } = await import('@/lib/crm/kunden');
   const lage = mandatLage(m, localDay(kx.jetzt));
@@ -1279,6 +1288,14 @@ async function datumKandidaten(feld: DatumsFeld, von: string, bis: string, kx: M
   }
   if (feld === 'lead.wiedervorlage') {
     for (const z of await leadsVon(kx)) if (imFenster(z.wiedervorlage)) raus.push({ fall: { art: 'lead', id: z.id }, datum: z.wiedervorlage.slice(0, 10), bezug: z.art === 'firma' ? { 'bezug.firmaid': z.id } : { 'bezug.kontaktid': z.id }, vor: { 'lead.status': z.status } });
+    return raus;
+  }
+  if (feld === 'fall.termin') {
+    // Begleit-Prozesse am Fall (22.10., B1): der nächste Termin mit dem Kunden — aus der Rechnung des Cockpits (`faelleFuerProzesse`), nur laufende Business-Fälle.
+    for (const [id, f] of Object.entries(await faelleVon(kx))) {
+      const m = mandatVon(id);
+      if (m && business(m.gesellschaft) && imFenster(f.termin)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: f.termin.slice(0, 10), bezug: { ...mandatBezug(m), ...(f.paket ? { 'bezug.vorlageid': f.paket } : {}) }, vor: { 'mandat.status': m.status, ...fallFelderVon(f) } });
+    }
     return raus;
   }
   return raus;

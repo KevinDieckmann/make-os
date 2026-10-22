@@ -41,7 +41,7 @@ export interface FeldDef { id: string; titel: string; art: 'text' | 'zahl' | 'da
 /** Felder jedes Ereignisses (aus dem Ereignis selbst — nur Kennungen, Art, Quelle, Bereich, Stufe). */
 export const EREIGNIS_FELDER: readonly FeldDef[] = [
   { id: 'ereignis.quelle', titel: 'Quelle', art: 'text' },
-  { id: 'ereignis.stufe', titel: 'Stufe (Deal)', art: 'text' },
+  { id: 'ereignis.stufe', titel: 'Stufe bzw. Art (Deal, Phase, Hänger, Geliefertes)', art: 'text' },
   { id: 'bezug.kontaktid', titel: 'Kontakt', art: 'kennung' },
   { id: 'bezug.firmaid', titel: 'Firma', art: 'kennung' },
   { id: 'bezug.dealid', titel: 'Deal', art: 'kennung' },
@@ -58,6 +58,9 @@ export const EREIGNIS_FELDER: readonly FeldDef[] = [
   { id: 'bezug.terminbuchungid', titel: 'Buchung (Buchungsseite)', art: 'kennung' },
   // Prozesse × Fulfillment (22.10.): das Produkt eines gebuchten Zusatzmoduls.
   { id: 'bezug.leistungid', titel: 'Produkt (Zusatzmodul)', art: 'kennung' },
+  // Begleit-Prozesse am Fall (22.10., B1): das Paket des Falls und die Bestätigung (F0 …) — „nur für Paket X“ bzw. „nur Bestätigung Y“.
+  { id: 'bezug.vorlageid', titel: 'Paket (Fulfillment)', art: 'kennung' },
+  { id: 'bezug.freigabeid', titel: 'Bestätigung (Fall)', art: 'kennung' },
 ];
 /** Felder des Falls (der Motor lädt den Fall über die vorhandenen Lesewege, Etappe C) — je Fall-Art. Nie Namen oder Freitext Dritter. */
 export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
@@ -79,6 +82,8 @@ export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
   mandat: [
     { id: 'mandat.status', titel: 'Status', art: 'text' }, { id: 'mandat.gesellschaft', titel: 'Gesellschaft', art: 'kennung' },
     { id: 'mandat.produkt', titel: 'Produkt', art: 'kennung' }, { id: 'mandat.zustaendig', titel: 'Zuständig', art: 'kennung' },
+    // Begleit-Prozesse am Fall (22.10., B1): das Paket und der Status des Fulfillment-Falls (lib/fulfillment/prozesse/server.ts `faelleFuerProzesse`) — ohne Fall fehlen sie.
+    { id: 'fall.paket', titel: 'Paket des Falls', art: 'kennung' }, { id: 'fall.status', titel: 'Status des Falls', art: 'text' },
     ...KG_FALL_FELDER.mandat,
   ],
   event: [
@@ -108,6 +113,8 @@ export const DATUMS_FELDER: readonly { id: DatumsFeld; titel: string; fall: Fall
   { id: 'rechnung.faellig', titel: 'Rechnung fällig', fall: 'mandat' },
   { id: 'event.datum', titel: 'Tag des Events', fall: 'event' },
   { id: 'lead.wiedervorlage', titel: 'Wiedervorlage des Leads', fall: 'lead' },
+  // Begleit-Prozesse am Fall (22.10., B1): Termin-Vorbereitung n Werktage vorher.
+  { id: 'fall.termin', titel: 'Nächster Termin mit dem Kunden (Fulfillment-Fall)', fall: 'mandat' },
 ];
 export const datumsFelderFuer = (fall: FallArt): readonly DatumsFeld[] => DATUMS_FELDER.filter(d => d.fall === fall).map(d => d.id);
 

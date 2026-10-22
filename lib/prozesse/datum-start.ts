@@ -82,6 +82,7 @@ export const DATUM_QUELLE: Readonly<Record<DatumsFeld, string>> = {
   'rechnung.faellig': 'die Fälligkeit gestellter Rechnungen aus den Kalender-Fristen — der Fall ist das Mandat der Rechnung',
   'event.datum': 'den Tag des Events (eigene und besuchte Events — „Nur wenn …“ grenzt ein)',
   'lead.wiedervorlage': 'die Wiedervorlage der Leads (ohne eingeschränkte Personen)',
+  'fall.termin': 'den nächsten Termin mit dem Kunden im Fulfillment-Fall (Kick-off, Review, Rituale und Kalender-Termine mit dem Kunden — dieselbe Rechnung wie das Cockpit)',
 };
 
 /** Der Satz zum Datums-Auslöser für die Werkstatt: worauf er schaut, wann er startet, wie oft. */

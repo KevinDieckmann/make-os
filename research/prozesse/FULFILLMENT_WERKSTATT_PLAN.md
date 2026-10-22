@@ -86,7 +86,16 @@ Kevin: „die ganzen vorgefertigten Nachrichten für den Kunden, Follow-ups, wen
 
 Die Pakete bleiben im Fulfillment-Ausführer. Auslöser, Bots (Agent-Knoten) und Entscheidungen (Rauten) hängen als **Werkstatt-Prozesse im Lauf-Motor** daneben. Sie starten auf Fall-Ereignisse; Fall-Art ist das Mandat. Die Begleit-Prozesse ändern den Fall nie, sie wirken nur über ihre eigenen Wege: Aufgaben `pl-…`, Stapel, nach der Freigabe senden, Glocke.
 
-#### B1 · Fall-Ereignisse als Auslöser — 1,5–2 Tage
+#### B1 · Fall-Ereignisse als Auslöser — GEBAUT (22.10.)
+
+Gebaut wie unten beschrieben, mit zwei Abweichungen (nichts doppelt):
+- **Kein Datumsfeld „Report fällig“:** Der Report läuft über `fall-haengt`/report (Hänger mit `REPORT_ALT_TAGE`).
+- **Datumsfeld `fall.termin`** kommt aus `faelleFuerProzesse`, also aus dem Cockpit (`naechsterFallTermin`). Dazu die Fall-Felder `fall.paket` und `fall.status`.
+
+Weitere Punkte:
+- Fall-Start meldet die erste Phase „begonnen“.
+- Gold: `tests/prozesse-ff-begleitung-b1.test.ts`.
+
 
 Allgemeine Regeln:
 - Nur über die vorhandene Ereignis-Stelle (`lib/ereignisse/quellen.ts` `ereignis()`), wie schon `fall-schritt-erledigt` und `ziel-erreicht`.

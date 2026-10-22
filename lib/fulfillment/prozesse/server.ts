@@ -207,10 +207,35 @@ async function empfaenger(m: Pick<Mandat, 'zustaendig'>): Promise<string[]> {
   return (await haushaltsPersonen()).map(x => x.speicher);
 }
 
+/** Was die Prozesse (Lauf-Motor) von einem Fall wissen dürfen (22.10., Begleit-Prozesse B1): nur Kennung des Pakets, Status und der nächste Termin mit dem Kunden. */
+export interface FallFuerProzesse { paket: string; status: Fall['status']; termin?: string }
+/**
+ * Je laufendem Fall eines Business-Mandats Paket, Status und nächster Termin mit dem Kunden — aus DERSELBEN Rechnung wie das Cockpit (`cockpitDaten`:
+ * `naechsterFallTermin`), keine zweite Fristen- oder Terminrechnung. Gelesen vom Motor (Fall-Felder `fall.paket`/`fall.status`, Datums-Auslöser `fall.termin`).
+ */
+export async function faelleFuerProzesse(heute = localDay()): Promise<Record<string, FallFuerProzesse>> {
+  const [{ zeilen }, faelle] = await Promise.all([cockpitDaten(heute), fulfillmentLesen('faelle')]);
+  return Object.fromEntries(zeilen.map(z => [z.mandatId, { paket: faelle.faelle[z.mandatId]?.vorlageId ?? '', status: z.status, ...(z.naechsterRitual ? { termin: z.naechsterRitual } : {}) }]));
+}
+
+/** Begleit-Prozesse (22.10., B1): jeder Hänger eines laufenden Falls als Ereignis `fall-haengt` — DIESELBE Rechnung wie Cockpit und „Heute im Fulfillment“ (`wasHaengt`). */
+async function begleitHaenger(heute: string): Promise<number> {
+  const [{ zeilen }, faelle, { ladeCrm }, { fallHaengtEreignisse }] = await Promise.all([cockpitDaten(heute), fulfillmentLesen('faelle'), import('@/lib/crm/speicher'), import('@/lib/ereignisse/quellen')]);
+  if (!zeilen.some(z => z.haengt.length)) return 0;
+  const crm = await ladeCrm();
+  return fallHaengtEreignisse(zeilen.flatMap(z => {
+    const m = crm.mandate.find(x => x.id === z.mandatId);
+    const vorlageId = faelle.faelle[z.mandatId]?.vorlageId;
+    return m && z.haengt.length ? [{ m, ...(vorlageId ? { vorlageId } : {}), haengt: z.haengt.map(x => ({ art: x.art, ...(x.knotenId ? { knotenId: x.knotenId } : {}), ...(x.seit ? { seit: x.seit } : {}) })) }] : [];
+  }));
+}
+
 export async function prozesseMorgenlauf(h: string, heute: string): Promise<MorgenlaufTeil> {
   // Ausführung der Abläufe (17.10. abends) zuerst — Erinnerungen nach ihrer Frist, Glocken bei offenen Entscheidungen, Aufgaben der Schritte. Idempotent
   // (Marken im Fall), wirft nie; ohne Fall mit Ablauf passiert nichts. Danach Onboarding-Vorschläge und Nachsorge wie bisher.
   const ablauf = await (await import('./ausfuehrung-server')).ablaufMorgenlauf(heute);
+  // Begleit-Prozesse (22.10., B1): die Hänger als Ereignisse — nur gemeldet (nur Kennungen), wirkt nur, wenn ein Begleit-Prozess darauf hört. Wirft nie.
+  await begleitHaenger(heute).catch(() => 0);
   const plus = (t: MorgenlaufTeil): MorgenlaufTeil => ({ vorschlaege: t.vorschlaege + ablauf.nachrichten, ...(ablauf.aufgaben || ablauf.glocken ? { info: `Ablauf: ${ablauf.aufgaben} Aufgaben, ${ablauf.glocken} Glocken` } : {}) });
   return plus(await prozesseMorgenlaufRest(h, heute));
 }

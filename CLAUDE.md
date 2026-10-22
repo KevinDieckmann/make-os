@@ -1695,6 +1695,10 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Fulfillment-Säuberers (`vorlagenKnotenAus` …) — neues Feld im Modell → Voll-Paket im Gold-Test (`Record<…>`, sonst tsc rot). Etappe 1: GET
   `/api/prozesse/werkstatt?paket=` (nur lesen, `fulfillment-modus-server.ts`) + `PaketWerkstatt.tsx` (Ansehen). Gold `tests/prozesse-ff-werkstatt-e1.test.ts`
   (Säuberer vorher = nachher gegen 451bd6fd, Paket vorher = nachher, Lesen schreibt nie).
+  **B1 Fall-Ereignisse** (Begleit-Prozesse daneben, Lauf-Motor): `fall-phase` (begonnen/abgeschlossen), `fall-wartet-kunde`, `abstimmung-bestaetigt` aus dem
+  Schreibweg des Falls (`fallEreignisse` mit den WIRKSAMEN Fällen, rein `fallBegleitDiff`), `fall-haengt` im Morgenlauf aus `wasHaengt` (rein `haengerEreignisse`,
+  je Hänger einmal), `kunde-geliefert` aus dem Kunden-Link (`geliefert` in lib/fulfillment/kunde/server.ts). Bezug `vorlageId`/`freigabeId`; Datumsfeld `fall.termin`
+  und Fall-Felder `fall.paket`/`fall.status` NUR über `faelleFuerProzesse` (Cockpit-Rechnung) — keine zweite Fristen-/Terminrechnung.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

@@ -34,7 +34,9 @@ export type EreignisQuelle = typeof EREIGNIS_QUELLEN[number];
 export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rechnungId', 'buchungId', 'kontoId', 'aufgabeId', 'terminUid', 'gespraech', 'followupId', 'prozessId', 'eingangId', 'knotenId',
   'eventId', 'kampagneId', 'angebotId', 'terminBuchungId',
   // Prozesse × Fulfillment (22.10.): das Produkt eines gebuchten Zusatzmoduls (Ereignis „Zusatzmodul gebucht“) — nur die Kennung.
-  'leistungId'] as const;
+  'leistungId',
+  // Begleit-Prozesse am Fall (22.10., B1): das Paket des Falls (`fp-…`) und die Bestätigung (F0 …) — nur Kennungen.
+  'vorlageId', 'freigabeId'] as const;
 export type BezugFeld = typeof BEZUG_FELDER[number];
 export type EreignisBezug = Partial<Record<BezugFeld, string>>;
 export type EreignisBereich = 'privat' | 'business';

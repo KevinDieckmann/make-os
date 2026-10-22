@@ -134,6 +134,11 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
   // Ausführung (17.10. abends): ist der Fall gleich an einem Schritt mit Form, entsteht seine Aufgabe sofort.
   await ablaufNachzug(neu!, m.id, e.person, e.wer, jetzt);
+  // Begleit-Prozesse (22.10., B1): ein neuer Fall meldet seine erste Phase („begonnen“) und Schritte, die gleich auf den Kunden warten — vorher = leer.
+  if (art === 'neu') {
+    const f = neu!, leer: Fall = { ...f, knoten: [], freigaben: {} };
+    await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(leer, f, m, { vorher: leer, nachher: f, heute })).catch(() => 0);
+  }
   return { fall: neu!, art };
 }
 
@@ -280,7 +285,9 @@ export async function fallSchreiben(mandatId: unknown, opsRoh: unknown, person: 
   } catch (e) { nachzug.fehler = e instanceof Error ? e.message.slice(0, 200) : 'Ziele nicht nachgezogen'; }
   // Ereignisse (21.10., Prozesse C1): Schritt im Fall erledigt, Ziel des Wert-Kontos erreicht — nur gemeldet (nur Kennungen), die Ausführung unten
   // bleibt unverändert. Nach dem Speichern, wirft nie.
-  await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(alt, fall, m)).catch(() => 0);
+  // Begleit-Prozesse (22.10., B1): dazu Phase begonnen/abgeschlossen, Schritt wartet auf den Kunden, Bestätigung gegeben — aus den WIRKSAMEN Fällen (mit
+  // abgeleitetem Onboarding), dieselbe Rechnung wie Reise und Ausführung.
+  await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(alt, fall, m, { vorher: fallWirksam(alt, abl), nachher: fallWirksam(fall, abl), heute })).catch(() => 0);
   // Ausführung (17.10. abends): nächster Schritt → Aufgabe, Nachricht → Vorschlag, erledigte Schritte schließen ihre Aufgabe — idempotent.
   await ablaufNachzug(fall, m.id, person, wer, jetzt, nachzug);
   return { fall: fallWirksam(fall, abl), geaendert: r.geaendert, nachzug };
