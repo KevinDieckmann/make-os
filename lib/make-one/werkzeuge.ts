@@ -31,12 +31,15 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Workflow, Map as MapIcon, List, Hammer, PencilRuler, History, FlaskConical, LayoutTemplate, Presentation, Bot, TrendingUp,
   Briefcase, Package, Route, UserPlus, Blocks, ChartColumn, RefreshCw,
+  Building2, Gauge, CalendarClock, FileText, TriangleAlert, ShieldCheck, Network, Gavel, FileSignature, Landmark, Archive, Trash2,
 } from 'lucide-react';
 import { WEG } from '@/lib/wege';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
 import { ansichtVorgabe, type ProzessAnsicht } from '@/lib/prozesse/typen';
 import { HUB_MENUE, hubOrtFuer, mandateLink, mandateOrt, MANDATE_PFAD, type HubPunkt, type HubOrtId } from '@/lib/crm/adresse';
 import { FULFILLMENT_PFAD, FULFILLMENT_BEREICHE, fulfillmentAusAdresse, type FulfillmentBereich } from '@/lib/fulfillment/adresse';
+import { LAGE_REITER, AKTE_REITER, UNTERNEHMEN_FILTER, MIT_WAHL, unternehmenOrt } from '@/lib/gesellschaften/schild/adresse';
+import type { SchildReiter } from '@/lib/gesellschaften/schild/ampel';
 import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
 import { kontextHeadFuer } from '@/lib/agenten/kontext-head';
 import { passtZu, wahlVon, SPACE_VORGABE } from './spaces';
@@ -276,8 +279,50 @@ export const PRODUKTE_WERKZEUG: Werkzeug = {
   }),
 };
 
+// ─── Unternehmen (22.10. abends, Gruppe A) ─────────────────────────────────────────────────────────────────────────────────────────────────────
+// Lage: Überblick · Pflichten & Fristen · Dokumente · Risiken · Marken & Versicherungen (Kennung `schutz`) · Akte: Struktur · Beschlüsse & Satzung · Verträge &
+// Organe · Gesellschaften · „Automationen & Head“ (`?s=automationen`: Betroffenenrechte aus „Unterstützung“, Head of Recht aus `SEITEN_REGELN`) · Fuß: Archiv ·
+// Papierkorb. Namen und Reihenfolge NUR aus lib/gesellschaften/schild/adresse.ts (dort liest auch die Seite, wo sie steht). Die gewählte Gesellschaft (`w`)
+// wandert in die Reiter mit, die sie kennen (`MIT_WAHL`) — wie vorher die Reiterzeile. „Was ist passiert?“ bleibt der Knopf im Seitenkopf. Nur volle Mitglieder:
+// ein Konto „nur Business“ sieht das Werkzeug nicht (der Server antwortet ihm mit 403).
+const UNTERNEHMEN_SYMBOL: Record<SchildReiter, LucideIcon> = {
+  ueberblick: Gauge, pflichten: CalendarClock, dokumente: FileText, risiken: TriangleAlert, schutz: ShieldCheck,
+  struktur: Network, beschluesse: Gavel, vertraege: FileSignature, gesellschaften: Landmark,
+};
+const unternehmenPunkt = (r: { id: SchildReiter; label: string }, gruppe: string): WerkzeugPunkt => ({
+  id: r.id, label: r.label, icon: UNTERNEHMEN_SYMBOL[r.id], gruppe,
+  href: k => WEG.schild(r.id, MIT_WAHL.includes(r.id) ? k.q.get('w') ?? undefined : undefined),
+  aktiv: k => unternehmenOrt(k.q) === r.id,
+});
+const UNTERNEHMEN_PUNKTE: readonly WerkzeugPunkt[] = [
+  ...LAGE_REITER.map(r => unternehmenPunkt(r, 'Lage')),
+  ...AKTE_REITER.map(r => unternehmenPunkt(r, 'Akte')),
+];
+
+export const UNTERNEHMEN_WERKZEUG: Werkzeug = {
+  id: 'unternehmen',
+  name: 'Unternehmen',
+  icon: Building2,
+  spaces: ['business'],
+  pfade: ['/os/unternehmen'],
+  start: WEG.schild(),
+  leistenPunkt: 'Unternehmen',
+  nurVolleMitglieder: true,
+  punkte: UNTERNEHMEN_PUNKTE,
+  fuss: UNTERNEHMEN_FILTER.filter(f => f.id !== 'liste').map((f): WerkzeugPunkt => ({
+    id: f.id, label: f.label, icon: f.id === 'archiv' ? Archive : Trash2, titel: f.id === 'archiv' ? 'Ruhende und aufgelöste Gesellschaften' : 'Gelöschte Gesellschaften — endgültig nur ohne Verweise',
+    href: () => WEG.schild('gesellschaften', undefined, f.id as 'archiv' | 'papierkorb'), aktiv: k => unternehmenOrt(k.q) === f.id,
+  })),
+  automation: automationMitHeads(WEG.schild(), UNTERNEHMEN_PUNKTE, 'business', {
+    bereiche: [],
+    prozesse: ['sp-betroffenenrechte'],
+    href: () => WEG.schild('automationen'),
+    aktiv: k => unternehmenOrt(k.q) === 'automationen',
+  }),
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG, UNTERNEHMEN_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {

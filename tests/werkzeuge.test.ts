@@ -37,6 +37,7 @@ import { landkarteAnsicht } from '@/lib/prozesse/landkarte-anpassung';
 import { automationenFuer, automationZeile, automationLage } from '@/lib/prozesse/bereich-automationen';
 import type { ProzessDef } from '@/lib/prozesse/typen';
 import * as W from '@/lib/make-one/werkzeuge';
+import * as U from '@/lib/gesellschaften/schild/adresse';
 import { FULFILLMENT_BEREICHE } from '@/lib/fulfillment/adresse';
 
 const wurzel = path.resolve(__dirname, '..');
@@ -57,6 +58,7 @@ const PZ = 'pz-11111111-2222-4333-8444-555555555555';
 /** Die Seite eines Werkzeugs, die seine Aktionen hört — ein neues Werkzeug trägt sich hier ein (sonst rot). */
 const SEITE_DES_WERKZEUGS: Record<string, string> = {
   prozesse: 'components/os/prozesse/ProzesseSeite.tsx', markttraktion: 'components/os/crm/Markttraktion.tsx', 'produkte-mandate': 'components/os/mandate/ProdukteMandate.tsx',
+  unternehmen: 'components/os/unternehmen/UnternehmenView.tsx',
 };
 
 /** Beispiel-Adressen, an denen die Unterpunkte aufgelöst werden. */
@@ -497,8 +499,9 @@ describe('Markttraktion als Werkzeug (HubSpot-Art, Punkte aus HUB_MENUE)', () =>
 // ── Gruppe A (22.10. abends, Entscheidung: „Ja, alle Empfehlungen“): Produkte & Mandate, Unternehmen, Finanzen, Planung als Werkzeuge ───────────
 // Je Werkzeug: die Punkte (Namen, Gruppen, Reihenfolge — Finanzen NUR aus lib/finanzen/navigation.ts), genau EIN leuchtender Punkt je Adresse (auch alte
 // Adressen), jedes Ziel lässt genau seinen Punkt leuchten, „Automationen & Head“ mit den Heads aus SEITEN_REGELN, die Reiterleisten der Seiten sind weg.
-const { automationVon, headsDerSeiten } = W;
+const { automationVon, headsDerSeiten, werkzeugFuerKonto } = W;
 const PM = W.PRODUKTE_WERKZEUG;
+const UN = W.UNTERNEHMEN_WERKZEUG;
 type Sp = 'privat' | 'business';
 const kx = (pfad: string, suche = '', space?: Sp, o: { handy?: boolean; nurBusiness?: boolean } = {}) => werkzeugKontext(pfad, suche, !!o.handy, { ...(space ? { space } : {}), nurBusiness: o.nurBusiness });
 const leuchtet = (w: Werkzeug, pfad: string, suche = '', space?: Sp, o: { handy?: boolean; nurBusiness?: boolean } = {}) => {
@@ -606,6 +609,54 @@ describe('Gruppe A · Produkte & Mandate', () => {
     expect(m).toContain('data-werkzeug="produkte-mandate"');
     for (const t of ['>Kunden<', '>Angebot<', '>Fulfillment<']) expect(m, t).toContain(t);
     expect(m.match(/<a [^>]*aria-current="page"[^>]*>/)?.[0]).toContain('data-werkzeug-punkt="bausteine"');
+  });
+});
+
+describe('Gruppe A · Unternehmen', () => {
+  it('Lage · Akte (Namen aus lib/gesellschaften/schild/adresse.ts, „Marken & Versicherungen“ = schutz) · Automationen & Head · Fuß Archiv, Papierkorb', () => {
+    const k = kx('/os/unternehmen');
+    expect(WERKZEUGE).toContain(UN);
+    expect(werkzeugPunkte(UN, k).map(p => [p.id, p.label, p.gruppe ?? null])).toEqual([
+      ...U.LAGE_REITER.map(r => [r.id, r.label, 'Lage']), ...U.AKTE_REITER.map(r => [r.id, r.label, 'Akte']), ['automationen', AUTOMATION_LABEL, null],
+    ]);
+    expect(U.LAGE_REITER.find(r => r.id === 'schutz')?.label).toBe('Marken & Versicherungen');
+    expect(werkzeugPunkte(UN, k, 'fuss').map(p => [p.id, p.href])).toEqual([['archiv', '/os/unternehmen?s=gesellschaften&f=archiv'], ['papierkorb', '/os/unternehmen?s=gesellschaften&f=papierkorb']]);
+    const a = automationVon(UN, 'business')!;
+    expect([a.bereiche, a.prozesse, automationHeads(a)]).toEqual([[], ['sp-betroffenenrechte'], ['recht']]);
+  });
+  it('genau ein Punkt je Adresse — Steckbrief, Ablage, Ereignis-Assistent und alte Adressen eingeschlossen', () => {
+    const faelle: [string, string][] = [
+      ['', 'ueberblick'], ['?w=g-1', 'ueberblick'], ['?a=ereignis', 'ueberblick'], ['?a=ereignis&w=g-1&e=sitz', 'ueberblick'], ['?s=quatsch', 'ueberblick'],
+      ['?s=pflichten', 'pflichten'], ['?s=dokumente&w=g-1', 'dokumente'], ['?s=risiken', 'risiken'], ['?s=schutz&w=g-1', 'schutz'],
+      ['?s=struktur&w=g-1', 'struktur'], ['?s=beschluesse&w=g-1&b=b-1', 'beschluesse'], ['?s=beschluesse&a=satzung', 'beschluesse'], ['?s=vertraege', 'vertraege'],
+      ['?s=gesellschaften', 'gesellschaften'], ['?s=liste', 'gesellschaften'], ['?g=g-1', 'gesellschaften'], ['?g=g-1&r=vertraege', 'gesellschaften'], ['?ablage=g-1&v=v-1', 'gesellschaften'],
+      ['?s=gesellschaften&f=archiv', 'archiv'], ['?s=archiv', 'archiv'], ['?s=papierkorb', 'papierkorb'], ['?s=automationen', 'automationen'],
+    ];
+    for (const [suche, id] of faelle) expect(leuchtet(UN, '/os/unternehmen', suche, 'business'), suche).toEqual([id]);
+    zieleLeuchten(UN, 'business');
+  });
+  it('die gewählte Gesellschaft (`w`) wandert in die Reiter mit, die sie kennen — wie vorher die Reiterzeile', () => {
+    const p = Object.fromEntries(werkzeugPunkte(UN, kx('/os/unternehmen', '?s=pflichten&w=g-1')).map(x => [x.id, x.href]));
+    for (const id of ['ueberblick', 'pflichten', 'dokumente', 'risiken', 'schutz', 'beschluesse']) expect(p[id], id).toContain('w=g-1');
+    for (const id of ['struktur', 'vertraege', 'gesellschaften', 'automationen']) expect(p[id], id).not.toContain('w=');
+  });
+  it('nur volle Mitglieder: ein Konto „nur Business“ sieht das Werkzeug nicht; die Reiterzeilen der Seite sind weg, „Was ist passiert?“ bleibt im Kopf', () => {
+    expect(UN.nurVolleMitglieder).toBe(true);
+    expect(werkzeugFuerKonto(UN, true)).toBeNull();
+    expect(werkzeugFuerKonto(UN, false)).toBe(UN);
+    expect(werkzeugFuerKonto(PM, true)).toBe(PM);
+    expect(lies('components/os/Leiste.tsx')).toContain('werkzeugFuerKonto(werkzeugFuer(pfad, suche), nurBusiness)');
+    const v = lies('components/os/unternehmen/UnternehmenView.tsx');
+    expect(v).not.toMatch(/<Reiter[\s<]/);
+    expect(v).toContain('Was ist passiert?');
+    expect(v).toContain('<BereichAutomationen werkzeug={UNTERNEHMEN_WERKZEUG} space="business" />');
+    expect(v).toContain("unternehmenSicht(params.get('s'), params.get('f'))");
+  });
+  it('Leiste: das Menü mit „Marken & Versicherungen“ und im Fuß Archiv · Papierkorb', async () => {
+    const u = await leiste('/os/unternehmen', '?s=schutz');
+    expect(u).toContain('data-werkzeug="unternehmen"');
+    expect(u).toContain('>Marken &amp; Versicherungen</span>');
+    for (const t of ['Archiv', 'Papierkorb']) expect(u, t).toContain(`>${t}</span>`);
   });
 });
 
