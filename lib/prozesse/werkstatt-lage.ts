@@ -571,6 +571,30 @@ export function bahnBeimAnhaengen(neu: Pick<K, 'bahn' | 'katalog' | 'form'>, vor
 
 // ── Feinschliff 22.10. (Sichtprüfung der Vorlagen): Beschriftungen, Zettel, Übersicht ──────────────────────────────────────────────────────────
 
+/**
+ * Die Mitte eines Fadens (rein, Werkstatt bau-fertig Punkt 3): der Punkt auf halber Länge des Wegs — dort steht das „+“ zum Dazwischen-Einfügen. Liegt dort die
+ * Beschriftung (Chip), rückt das „+“ ein Stück weiter (auf 62 % der Länge).
+ */
+export function kantenMitte(punkte: readonly Pt[], anteil = 0.5): Pt {
+  if (!punkte.length) return [0, 0];
+  const laengen: number[] = [];
+  let gesamt = 0;
+  for (let i = 1; i < punkte.length; i++) { const d = Math.hypot(punkte[i][0] - punkte[i - 1][0], punkte[i][1] - punkte[i - 1][1]); laengen.push(d); gesamt += d; }
+  let rest = gesamt * anteil;
+  for (let i = 1; i < punkte.length; i++) {
+    const d = laengen[i - 1];
+    if (rest <= d && d > 0) { const t = rest / d; return [Math.round((punkte[i - 1][0] + (punkte[i][0] - punkte[i - 1][0]) * t) * 10) / 10, Math.round((punkte[i - 1][1] + (punkte[i][1] - punkte[i - 1][1]) * t) * 10) / 10]; }
+    rest -= d;
+  }
+  return punkte[punkte.length - 1];
+}
+/** Wo das „+“ eines Fadens steht (rein): in der Mitte, außer dort liegt seine Beschriftung — dann weiter hinten. */
+export function kantenPlus(k: Pick<KanteLage, 'punkte' | 'text' | 'textOrt' | 'zurueck'>): Pt {
+  const m = kantenMitte(k.punkte);
+  const c = chipBox(k);
+  return c && ueberlappt({ x: m[0] - 14, y: m[1] - 14, b: 28, h: 28 }, c) ? kantenMitte(k.punkte, 0.7) : m;
+}
+
 /** Breite der Beschriftung eines Fadens (Chip) — grob nach Zeichen wie `textZeilen` (≈ 0,56 · Schriftgröße je Zeichen). Die Fläche zeichnet genau diese Breite. */
 export const chipBreite = (text: string): number => Math.max(28, text.length * WS.chip.schrift * 0.56 + 14);
 /** Die Fläche der Beschriftung eines Fadens in Welt-Koordinaten (rein) — null ohne Text. Rückschleifen tragen sie mittig, sonst beginnt sie am Ort. */

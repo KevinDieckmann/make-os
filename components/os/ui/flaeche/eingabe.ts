@@ -25,6 +25,11 @@ export interface FlaecheEingabeOptionen {
   istFrei?: (z: EventTarget | null) => boolean;
   /** Mausrad ohne ⌘/Strg über der Fläche: die Seite rollt weiter — kurz den Hinweis zeigen. */
   hinweis?: () => void;
+  /**
+   * Das Mausrad verschiebt die Fläche (22.10., Werkstatt bau-fertig: im Werkzeugmodus füllt die Fläche den Bildschirm — es gibt keine Seite zum Rollen). ⇧ + Rad
+   * verschiebt waagerecht. Ohne Angabe wie bisher (das Rad bleibt bei der Seite).
+   */
+  radSchiebt?: () => boolean;
   uhr?: () => number;
 }
 
@@ -73,6 +78,12 @@ export function flaecheEingabe(el: HTMLElement | SVGElement, o: FlaecheEingabeOp
       return;
     }
     rad = radArt({ deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode, wheelDeltaY: (e as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY, shiftKey: e.shiftKey }, rad, uhr());
+    if (rad.art !== 'trackpad' && o.radSchiebt?.()) {
+      e.preventDefault();
+      const m = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1; // Zeilen bzw. Seiten (Firefox) in Bildpunkte
+      o.setze(verschiebe(o.kamera(), (e.shiftKey ? -e.deltaY : -e.deltaX) * m, (e.shiftKey ? 0 : -e.deltaY) * m));
+      return;
+    }
     if (rad.art !== 'trackpad') { o.hinweis?.(); return; } // Mausrad (oder noch unklar): die Seite rollt weiter
     e.preventDefault();
     o.setze(verschiebe(o.kamera(), -e.deltaX, -e.deltaY));

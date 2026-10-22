@@ -6,15 +6,81 @@
 // Ausgabe des Agenten — nur Kennungen, Zahlen, Tage, ja/nein, Auswahl). Texte werden beim Verlassen des Felds übernommen (nicht bei jedem Tastendruck — so bleibt
 // die Geschichte für Rückgängig sauber). Die Werte prüft die Regel (`maskeSaeubern`, `definitionPruefen`); hier steht nur, wie man sie eingibt.
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { FARBE as C, TYP, LEUCHT, RAND } from '@/lib/make-one/design';
 import { feld, auswahl as auswahlStil, Feldzeile, MehrfachPillen, Schalter, SymbolKnopf, Knopf } from '../ui';
 import { BEDINGUNG_OPS, KENNUNG_ARTEN, WEBHOOK_FELD_ARTEN, type Bedingung, type MaskenWert, type VertragFeld, type WebhookFeld } from '@/lib/prozesse/definition';
 import { BEDINGUNG_NAME } from '@/lib/prozesse/bedingung';
-import type { MaskenFeld } from '@/lib/prozesse/baustein-katalog';
+import { textvorlageFuellen, textvorlagePruefen, type MaskenFeld } from '@/lib/prozesse/baustein-katalog';
+import type { TestWert } from '@/lib/prozesse/testdaten';
 
 export interface Option { id: string; label: string; hinweis?: string }
+
+// ── Platzhalter an den Cursor (Werkstatt bau-fertig, 22.10., Punkt 8) ──────────────────────────────────────────────────────────────────────────────
+/** Das Textvorlagen-Feld, das zuletzt den Fokus hatte — ein Klick auf einen Platzhalter (auch in der linken Spalte des großen Fensters) setzt ihn dort ein. */
+export interface VorlageZiel { einsetzen: (text: string) => void; feld: string }
+/** Was die Felder für Vorschau und Prüfung beim Tippen wissen: die Testwerte (Beispiel bzw. eigene Testdaten) und das Ziel für Platzhalter. */
+export interface VorlageUmfeld { werte?: Readonly<Record<string, TestWert>>; ziel: MutableRefObject<VorlageZiel | null> }
+export const VorlageKontext = createContext<VorlageUmfeld | null>(null);
+/** Ein Platzhalter als Knopf: Klick setzt ihn an den Cursor des zuletzt gewählten Textfelds, Ziehen legt ihn an die Stelle, wo er losgelassen wird. */
+export function PlatzhalterChip({ id, wert, onEinsetzen }: { id: string; wert?: TestWert; onEinsetzen?: (t: string) => void }) {
+  const u = useContext(VorlageKontext);
+  const text = `{{${id}}}`;
+  return (
+    <button type="button" className="fassbar pw-platzhalter" draggable title={`${text}${wert !== undefined && wert !== '' ? ` — Testwert: ${String(wert)}` : ''} · klicken setzt ihn an den Cursor, ziehen legt ihn ab`}
+      onMouseDown={e => e.preventDefault()} onDragStart={e => { e.dataTransfer.setData('text/plain', text); e.dataTransfer.effectAllowed = 'copy'; }}
+      onClick={() => (onEinsetzen ?? u?.ziel.current?.einsetzen)?.(text)}>
+      <span>{text}</span>{wert !== undefined && wert !== '' && <span style={{ color: C.inkLeise }}>{` · ${String(wert)}`}</span>}
+    </button>
+  );
+}
+
+/**
+ * Eine Textvorlage (Punkt 8): Platzhalter per Klick bzw. Ziehen an den Cursor, Prüfung beim Tippen (`textvorlagePruefen`), Live-Vorschau mit den Testwerten
+ * (`textvorlageFuellen`). Übernommen wird beim Verlassen (wie jedes Textfeld der Maske — die Geschichte für Rückgängig bleibt sauber).
+ */
+function VorlageFeld({ id, label, wert, onWert, aus, platzhalter }: { id: string; label: string; wert: string; onWert: (v: string) => void; aus?: boolean; platzhalter?: readonly string[] }) {
+  const u = useContext(VorlageKontext);
+  const [t, setT] = useState(wert);
+  const el = useRef<HTMLTextAreaElement | null>(null);
+  const tRef = useRef(t);
+  tRef.current = t;
+  useEffect(() => setT(wert), [wert]);
+  const fertig = () => { if (tRef.current !== wert) onWert(tRef.current); };
+  const einsetzen = (x: string) => {
+    if (aus) return;
+    const a = el.current;
+    const von = a?.selectionStart ?? tRef.current.length, bis = a?.selectionEnd ?? von;
+    const neu = `${tRef.current.slice(0, von)}${x}${tRef.current.slice(bis)}`;
+    setT(neu); tRef.current = neu;
+    requestAnimationFrame(() => { a?.focus(); a?.setSelectionRange(von + x.length, von + x.length); });
+  };
+  const ziel: VorlageZiel = { einsetzen, feld: id };
+  const fehler = textvorlagePruefen(t, platzhalter);
+  const vorschau = u?.werte && t ? textvorlageFuellen(t, u.werte) : null;
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <textarea ref={el} aria-label={label} value={t} disabled={aus} rows={4} onChange={e => setT(e.target.value)}
+        onFocus={() => { if (u) u.ziel.current = ziel; }} onBlur={fertig}
+        style={{ ...feld, resize: 'vertical', minHeight: 96, ...(fehler.length ? { borderColor: LEUCHT.achtung } : {}) }} />
+      {fehler.map(f => <span key={f} role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{f.charAt(0).toUpperCase() + f.slice(1)}</span>)}
+      {platzhalter?.length ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} aria-label="Platzhalter (klicken setzt an den Cursor)">
+          {platzhalter.map(x => <PlatzhalterChip key={x} id={x} wert={u?.werte?.[x]} onEinsetzen={aus ? undefined : einsetzen} />)}
+        </div>
+      ) : null}
+      {vorschau && (
+        <div className="pw-vorschau" aria-live="polite">
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Vorschau mit den Testwerten:</span>
+          <span style={{ whiteSpace: 'pre-wrap', color: C.ink, fontSize: TYP.bedien }}>{vorschau.text || '—'}</span>
+          {vorschau.fehlend.length ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{`ohne Testwert: ${vorschau.fehlend.map(x => `{{${x}}}`).join(', ')}`}</span> : null}
+        </div>
+      )}
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise, borderTop: `1px solid ${RAND.haar}`, paddingTop: 4 }}>Feste Formatierer mit „|“, z. B. {'{{heute | datum}}'}.</span>
+    </div>
+  );
+}
 
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, margin: 0, lineHeight: 1.45 } as const;
 const zeile = { display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' } as const;
@@ -118,14 +184,8 @@ export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, 
   let eingabe: ReactNode;
   switch (f.typ) {
     case 'text': eingabe = <TextFeld label={f.label} wert={typeof wert === 'string' ? wert : ''} aus={aus} onWert={onWert} />; break;
-    case 'langtext': case 'textvorlage':
-      eingabe = (
-        <>
-          <TextFeld label={f.label} mehrzeilig wert={typeof wert === 'string' ? wert : ''} aus={aus} onWert={onWert} />
-          {f.typ === 'textvorlage' && platzhalter?.length ? <p style={klein}>Platzhalter: {platzhalter.map(x => `{{${x}}}`).join(' · ')} — feste Formatierer mit „|“, z. B. {'{{heute | datum}}'}.</p> : null}
-        </>
-      );
-      break;
+    case 'langtext': eingabe = <TextFeld label={f.label} mehrzeilig wert={typeof wert === 'string' ? wert : ''} aus={aus} onWert={onWert} />; break;
+    case 'textvorlage': eingabe = <VorlageFeld id={f.id} label={f.label} wert={typeof wert === 'string' ? wert : ''} aus={aus} onWert={onWert} platzhalter={platzhalter} />; break;
     case 'zahl': eingabe = <ZahlFeld label={f.label} wert={typeof wert === 'number' ? wert : null} aus={aus} min={f.min} max={f.max} onWert={onWert} />; break;
     case 'ja-nein': eingabe = <Schalter an={wert === true} onChange={v => onWert(v)} aus={aus} erklaerung={[{ kopf: f.label, text: f.hilfe ?? `${f.label}: ja oder nein für diesen Baustein.` }]}>{wert === true ? 'ja' : 'nein'}</Schalter>; break;
     case 'uhrzeit': eingabe = <input aria-label={f.label} type="time" value={typeof wert === 'string' ? wert : ''} disabled={aus} onChange={e => onWert(e.target.value || null)} style={{ ...feld, maxWidth: 160, colorScheme: 'dark' }} />; break;
@@ -154,11 +214,14 @@ export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, 
     case 'webhook-felder': eingabe = <WebhookFelderFeld wert={Array.isArray(wert) ? wert as WebhookFeld[] : []} onWert={v => onWert(v as unknown as MaskenWert)} aus={aus} />; break;
     case 'vertrag': eingabe = <VertragFeldEditor wert={Array.isArray(wert) ? wert as VertragFeld[] : []} onWert={v => onWert(v as unknown as MaskenWert)} aus={aus} />; break;
   }
+  // data-ws-feld (Punkt 6): ein Klick auf den Befund am Knoten springt genau in dieses Feld.
   return (
-    <Feldzeile label={label} fehler={fehler}>
-      {eingabe}
-      {f.hilfe && f.typ !== 'ja-nein' && <span style={klein}>{f.hilfe}</span>}
-    </Feldzeile>
+    <div data-ws-feld={f.id} style={{ display: 'grid', minWidth: 0 }}>
+      <Feldzeile label={label} fehler={fehler}>
+        {eingabe}
+        {f.hilfe && f.typ !== 'ja-nein' && <span style={klein}>{f.hilfe}</span>}
+      </Feldzeile>
+    </div>
   );
 }
 

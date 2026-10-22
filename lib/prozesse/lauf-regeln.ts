@@ -15,7 +15,7 @@
 // Tests: tests/prozesse-lauf-regeln.test.ts.
 
 import { kantenVon, startKnoten, alleSchritte, schloesser, type Kante } from './fluss';
-import { bedingungenTreffen } from './bedingung';
+import { bedingungenTreffen, bedingungTrifft, bedingungText } from './bedingung';
 import {
   brauchtSchloss, FORM_KLASSE, katalogEintrag, klasseVonEintrag, maskeVorgaben, textvorlageFuellen, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT,
   KARTE_FELDER, type KatalogEintrag,
@@ -175,7 +175,17 @@ export interface LaufUmfeld {
    * `[]` = alles da (nichts zu tun), null = unbekannt (kein CRM, Probelauf) — dann gelten alle Felder als offen.
    */
   karteLuecken?: (ziel: 'firma' | 'kontakt', felder: readonly string[]) => string[] | null;
+  /**
+   * Werkstatt bau-fertig (22.10., Punkt 9 — „Weg annehmen“): NUR im Schatten (Probelauf) — der angenommene Ausgang einer Raute, Freigabe bzw. eines Wartens statt des
+   * Hauptwegs. Unpassende Annahmen (ein Ausgang, den die Form nicht hat) wirken nicht. Scharf nie gelesen.
+   */
+  annahme?: (knotenId: string) => LaufAusgang | undefined;
+  /** NUR im Schatten: was der Schritt täte (Aktion, Warten, Ausgang) — für „Schritt testen“ (Ausgabe als Tabelle). Schreibt nichts, gibt nichts zurück. */
+  beobachte?: (b: ProbeBeobachtung) => void;
 }
+
+/** Was ein Schritt im Schatten täte (Werkstatt bau-fertig, Punkt 10) — nur für die Ansicht, nie gespeichert. */
+export interface ProbeBeobachtung { knoten: string; aktion?: Aktion; warten?: Omit<LaufWarten, 'knoten'>; ausgang?: LaufAusgang; status?: SchrittStatus; grund?: LaufGrund }
 
 // ══ Aktionen (Wirkungen) ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -580,6 +590,9 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
   const form: ProzessForm = k.form ?? 'schritt';
   const e = katalogEintrag(k.katalog?.id);
   const werte = werteVon(k, e);
+  // Werkstatt bau-fertig (Punkt 14): ausgeschaltet → übersprungen, weiter über den Hauptweg (Raute „ja“, Freigabe „freigegeben“). Ein Schloss dahinter wird mit
+  // übersprungen (unten bei `freigabe`). Auslöser, Ende und Schloss lassen sich nicht ausschalten — dort wirkt das Feld nicht.
+  if (k.deaktiviert && form !== 'ausloeser' && form !== 'ende' && !k.schloss) return { art: 'weiter', ausgang: form === 'entscheidung' || form === 'freigabe' ? 'ja' : 'weiter', status: 'uebersprungen', grund: 'deaktiviert' };
   switch (form) {
     case 'ausloeser': return { art: 'weiter', ausgang: 'weiter', status: 'erledigt' };
     case 'ende': {
@@ -619,7 +632,8 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
         // Wurde der Schritt hinter dem Schloss übersprungen (Kanal rot, Recherche frisch …), gibt es nichts freizugeben: ein Agent geht weiter („ja“ — sein Ergebnis
         // fehlt nur), eine Außenwirkung nicht („nein“ — wie bei Mail/WhatsApp; nie eine Aufgabe „von Hand“ für etwas, das nicht sein darf).
         const vorher = [...l.schritte].reverse().find(y => y.knoten === x.id);
-        if (vorher?.status === 'uebersprungen') return { art: 'weiter', ausgang: x.form === 'agent' ? 'ja' : 'nein', status: 'uebersprungen', grund: vorher.grund ?? 'kein-weg' };
+        // Ausgeschaltet (Punkt 14): das Schloss wird mit übersprungen und der Lauf geht weiter wie freigegeben — es war nichts freizugeben, nichts ist nach außen gegangen.
+        if (vorher?.status === 'uebersprungen') return { art: 'weiter', ausgang: x.form === 'agent' || vorher.grund === 'deaktiviert' ? 'ja' : 'nein', status: 'uebersprungen', grund: vorher.grund ?? 'kein-weg' };
         return schlossPlan(l, k, x, kennung, u);
       }
       const wer = werVon(u, l, werte.wer);
@@ -795,6 +809,16 @@ function startVon(l: ProzessLauf, def: ProzessDefinition): string | null {
   return (l.ausloeser.knoten && st.some(s => s.id === l.ausloeser.knoten) ? l.ausloeser.knoten : st[0]?.id) ?? alleSchritte(def)[0]?.schritt.id ?? null;
 }
 
+/** Welche angenommenen Ausgänge eine Form im Probelauf nehmen darf (Werkstatt bau-fertig, Punkt 9) — sonst wirkt die Annahme nicht. */
+function annahmeFuer(k: K, u: LaufUmfeld, modus: LaufModus): LaufAusgang | undefined {
+  if (modus !== 'schatten') return undefined;
+  const a = u.annahme?.(k.id);
+  if (!a) return undefined;
+  const f = k.form ?? 'schritt';
+  const erlaubt: readonly LaufAusgang[] = f === 'entscheidung' ? ['ja', 'nein'] : f === 'freigabe' ? ['ja', 'nein', 'abgelaufen'] : f === 'warten' ? (k.warten?.art === 'dauer' ? [] : ['eingetreten', 'abgelaufen']) : [];
+  return erlaubt.includes(a) ? a : undefined;
+}
+
 /**
  * Den Lauf so weit voranbringen, wie es ohne Wirkung geht (rein). Scharf: endet an der nächsten Wirkung (`aktion` — der Schritt steht auf „läuft“
  * mit der festen Kennung), an einem Warten oder am Ende. Schatten: geht ohne Wirkung den ganzen Weg (höchstens `schritteJeAnstoss`).
@@ -820,8 +844,20 @@ export function voran(laufEin: ProzessLauf, def: ProzessDefinition, u: LaufUmfel
     if (!k) { beenden(l, 'fehler', u.jetzt, { grund: 'knoten-fehlt' }); return { lauf: l, aktion: null }; }
     const kennung = wirkungsKennung(l.id, k.id, s.runde ?? 0);
     const plan = planFuer(l, k, def, u, kennung);
+    // Werkstatt bau-fertig (Punkt 9): im Schatten der angenommene Weg statt des Hauptwegs (Raute, Freigabe, Warten) — scharf nie.
+    const annahme = annahmeFuer(k, u, modus);
+    if (modus === 'schatten' && u.beobachte) {
+      u.beobachte({
+        knoten: k.id, ...(plan.art === 'aktion' ? { aktion: plan.aktion, status: plan.schatten, ausgang: annahme ?? plan.ausgangSchatten } : {}),
+        ...(plan.art === 'warten' ? { warten: plan.warten, status: 'wartet' as const, ausgang: annahme ?? plan.ausgangSchatten } : {}),
+        ...(plan.art === 'weiter' ? { ausgang: k.form === 'entscheidung' && annahme ? annahme : plan.ausgang, status: plan.status ?? 'erledigt', ...(plan.grund ? { grund: plan.grund } : {}) } : {}),
+        ...(plan.art === 'fehler' ? { status: 'fehler' as const, grund: plan.grund } : {}),
+        ...(plan.art === 'ende' ? { status: 'erledigt' as const, ...(plan.aktion ? { aktion: plan.aktion } : {}) } : {}),
+      });
+    }
     switch (plan.art) {
       case 'weiter':
+        if (annahme && k.form === 'entscheidung' && plan.status !== 'uebersprungen') { abschliessen(s, plan.status ?? 'erledigt', annahme, u.jetzt, plan.grund); geh(l, idx, k.id, annahme, u.jetzt); continue; }
         abschliessen(s, plan.status ?? 'erledigt', plan.ausgang, u.jetzt, plan.grund);
         if (plan.zaehle) l.zaehler = { ...(l.zaehler ?? {}), [k.id]: (l.zaehler?.[k.id] ?? 0) + 1 };
         geh(l, idx, k.id, plan.ausgang, u.jetzt, plan.sprung);
@@ -842,7 +878,7 @@ export function voran(laufEin: ProzessLauf, def: ProzessDefinition, u: LaufUmfel
         l.status = 'angehalten'; l.grund = 'budget';
         return { lauf: l, aktion: null, pause: 'budget' };
       case 'warten':
-        if (modus === 'schatten') { abschliessen(s, 'wartet', plan.ausgangSchatten, u.jetzt); geh(l, idx, k.id, plan.ausgangSchatten, u.jetzt); continue; }
+        if (modus === 'schatten') { const a = annahme ?? plan.ausgangSchatten; abschliessen(s, 'wartet', a, u.jetzt); geh(l, idx, k.id, a, u.jetzt); continue; }
         s.status = 'wartet';
         if (plan.warten.art === 'fenster') s.grund = plan.grund ?? 'fenster';
         l.status = 'wartet'; l.wartet = { knoten: k.id, ...plan.warten };
@@ -852,8 +888,9 @@ export function voran(laufEin: ProzessLauf, def: ProzessDefinition, u: LaufUmfel
           if (plan.aktion.art === 'agent') s.kostenCent = plan.aktion.kostenCent;
           // Eine Erinnerung im Schatten: einmal „würde erinnern“, dann wie nach der letzten Runde weiter (sonst kreiste der Probelauf).
           if (k.form === 'erinnerung') { abschliessen(s, plan.schatten, 'weiter', u.jetzt); geh(l, idx, k.id, 'weiter', u.jetzt, ausstiegZiel(def, k) ?? ''); continue; }
-          abschliessen(s, plan.schatten, plan.ausgangSchatten, u.jetzt);
-          geh(l, idx, k.id, plan.ausgangSchatten, u.jetzt);
+          const a = annahme ?? plan.ausgangSchatten;
+          abschliessen(s, plan.schatten, a, u.jetzt);
+          geh(l, idx, k.id, a, u.jetzt);
           continue;
         }
         // Abfrage und Schleife haben keine eigene Wirkung mit dieser Kennung — die Schleife trägt nach dem Ausführen die Kennungen ihrer Teil-Läufe.
@@ -1316,7 +1353,7 @@ export function knotenStand(l: ProzessLauf): Record<string, { status: SchrittSta
 }
 
 /** Der Probelauf als Zeilen (Vertrag der Werkstatt, B2): je besuchtem Knoten Status und Satz — „würde …“, nie etwas geschrieben. */
-export interface ProbeZeile { knotenId: string; status: 'wuerde' | 'uebersprungen' | 'wartet' | 'freigabe' | 'fehler'; text: string; kostenCent?: number }
+export interface ProbeZeile { knotenId: string; status: 'wuerde' | 'uebersprungen' | 'wartet' | 'freigabe' | 'fehler'; text: string; kostenCent?: number; /** „Schritt testen“ (22.10.): was der Schritt täte. */ ausgabe?: ProbeAusgabe }
 export function probeZeilen(l: ProzessLauf, def: ProzessDefinition): { schritte: ProbeZeile[]; kostenSchaetzungCent: number } {
   const nach = new Map(def.knoten.map(k => [k.id, k]));
   const schritte: ProbeZeile[] = [];
@@ -1339,6 +1376,100 @@ export function probeZeilen(l: ProzessLauf, def: ProzessDefinition): { schritte:
     schritte.push({ knotenId: s.knoten, status: st, text: satz, ...(s.kostenCent ? { kostenCent: Math.round(s.kostenCent) } : {}) });
   }
   return { schritte, kostenSchaetzungCent: Math.round(l.schritte.reduce((n, s) => n + (s.kostenCent ?? 0), 0)) };
+}
+
+// ══ „Schritt testen“ (Werkstatt bau-fertig, 22.10., Punkt 10): was ein Schritt täte — als Tabelle (Inhalte) und als JSON (nur Kennungen) ═══════════════
+
+/** Eine Zeile der Ausgabe: Feld und Wert (Text für Menschen — Inhalte nur aus Beispiel bzw. live mit den Rechten der Person). */
+export interface AusgabeZeile { feld: string; wert: string }
+/** Die Ausgabe eines Schritts: Tabelle für Menschen, JSON nur mit Kennungen, Arten und Zahlen (nie Namen, Adressen, Texte). */
+export interface ProbeAusgabe { zeilen: AusgabeZeile[]; json: Record<string, string | number | boolean | null> }
+
+const zeit = (iso: string | undefined): string => {
+  if (!iso) return '';
+  const t = new Date(iso);
+  return Number.isFinite(t.getTime()) ? t.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' }) : iso;
+};
+const kurz = (t: string, n = 600) => (t.length > n ? `${t.slice(0, n)} …` : t);
+
+/**
+ * Die Ausgabe eines beobachteten Schritts (rein) — „würde senden: … an …“ steht ausdrücklich da, das Freigabe-Schloss bleibt sichtbar; gesendet, angelegt, gefragt wird
+ * NIE (der Probelauf läuft im Schatten). `felder` = die Felder für Rauten (Beispiel bzw. Fall), `feldName` = wie ein Feld heißt.
+ */
+export function probeAusgabe(b: ProbeBeobachtung, def: Pick<ProzessDefinition, 'knoten'>, o: { felder?: Readonly<Record<string, unknown>>; feldName?: (id: string) => string } = {}): ProbeAusgabe {
+  const k = def.knoten.find(x => x.id === b.knoten);
+  const z: AusgabeZeile[] = [];
+  const j: ProbeAusgabe['json'] = { knoten: b.knoten, ...(b.status ? { status: b.status } : {}), ...(b.ausgang ? { ausgang: b.ausgang } : {}), ...(b.grund ? { grund: b.grund } : {}) };
+  const a = b.aktion;
+  if (a) {
+    j.art = a.art;
+    switch (a.art) {
+      case 'aufgabe':
+        z.push({ feld: 'Wirkung', wert: 'würde eine Aufgabe anlegen (Abhaken treibt den Lauf weiter)' }, { feld: 'Titel', wert: a.titel }, { feld: 'Für', wert: a.an ?? 'die zuständige Person des Falls' });
+        if (a.faellig) z.push({ feld: 'Fällig', wert: a.faellig });
+        if (a.prioritaet) z.push({ feld: 'Priorität', wert: a.prioritaet });
+        if (a.beschreibung) z.push({ feld: 'Beschreibung', wert: kurz(a.beschreibung) });
+        Object.assign(j, { an: a.an, faellig: a.faellig ?? null, ...Object.fromEntries(Object.entries(a.bezug).map(([x, y]) => [x, y ?? null])) });
+        break;
+      case 'vorschlag':
+        if (a.sende) {
+          const an = a.sende.an;
+          z.push({ feld: 'Wirkung', wert: `würde senden (${a.sende.kanal === 'mail' ? 'Mail' : 'WhatsApp'}) — erst nach der Freigabe im Stapel (Schloss)` });
+          z.push({ feld: 'An', wert: a.sende.kanal === 'mail' ? `${an.name} <${an.email ?? ''}>` : `${an.name} (${an.telefon ?? ''})` });
+          if (a.sende.kanal === 'mail') z.push({ feld: 'Betreff', wert: a.sende.betreff }, { feld: 'Text', wert: kurz(a.sende.text, 2000) });
+          else { if (a.sende.vorlage) z.push({ feld: 'Vorlage', wert: a.sende.vorlage }); if (a.sende.text) z.push({ feld: 'Text', wert: kurz(a.sende.text, 2000) }); }
+          Object.assign(j, { kanal: a.sende.kanal, an: an.kontaktId, ...(a.sende.kanal === 'mail' && a.sende.postfach ? { postfach: a.sende.postfach } : {}) });
+        } else {
+          z.push({ feld: 'Wirkung', wert: a.sorte === 'entscheidung' ? 'würde eine Person entscheiden lassen (Stapel: freigeben = ja, ablehnen = nein)' : 'würde zur Freigabe in den Stapel legen' }, { feld: 'Titel', wert: a.titel });
+          if (a.nachher) z.push({ feld: 'Text', wert: kurz(a.nachher) });
+          if (a.wirkung) z.push({ feld: 'Nach der Freigabe', wert: a.wirkung.art === 'crm' ? 'über den CRM-Vorschlag (vorhandener Schreibweg)' : a.wirkung.art === 'fulfillment' ? 'startet den Fulfillment-Fall' : `Termin mit Einladung an ${a.wirkung.an.name} (erst nach der Rückfrage)` });
+          else if (a.danach) z.push({ feld: 'Nach der Freigabe', wert: `Aufgabe „${a.danach.titel}“ (von Hand)` });
+        }
+        z.push({ feld: 'Freigabe durch', wert: a.fuer ?? 'die zuständige Person des Falls' }, { feld: 'Frist', wert: zeit(a.bis) });
+        Object.assign(j, { sorte: a.sorte, fuer: a.fuer, bis: a.bis.slice(0, 10), schloss: true });
+        break;
+      case 'crm-vorschlag':
+        z.push({ feld: 'Wirkung', wert: 'würde einen CRM-Vorschlag in den Stapel legen (übernommen erst per Klick)' }, { feld: 'Art', wert: String(a.eingabe.art ?? '') });
+        Object.assign(j, { vorschlag: String(a.eingabe.art ?? '') });
+        break;
+      case 'meldung':
+        z.push({ feld: 'Wirkung', wert: a.telegram ? 'würde einen neutralen Telegram-Hinweis schicken (ohne Inhalte)' : 'würde in der Glocke melden (nur intern)' }, { feld: 'An', wert: a.an ?? 'die Person des Laufs' }, { feld: 'Text', wert: a.titel });
+        Object.assign(j, { an: a.an, ...(a.telegram ? { telegram: a.telegram } : {}) });
+        break;
+      case 'agent':
+        z.push({ feld: 'Wirkung', wert: 'würde den Agenten fragen — das Ergebnis wäre nur ein Vorschlag' }, { feld: 'Stufe', wert: a.schritt.modell }, { feld: 'Kosten (Schätzung)', wert: `ca. ${Math.max(1, Math.round(a.kostenCent))} ct` });
+        if (a.schritt.werkzeuge.length) z.push({ feld: 'Werkzeuge', wert: a.schritt.werkzeuge.join(', ') });
+        Object.assign(j, { stufe: a.schritt.modell, kostenCent: Math.round(a.kostenCent), wer: a.schritt.wer.art });
+        break;
+      case 'teilprozess':
+        z.push({ feld: 'Wirkung', wert: a.uebergabe ? 'würde den Fall an einen anderen Prozess übergeben' : a.warten ? 'würde einen Teilprozess starten und auf ihn warten' : 'würde einen anderen Prozess starten (ohne zu warten)' });
+        Object.assign(j, { prozessId: a.prozessId, warten: a.warten });
+        break;
+      case 'abfrage':
+        z.push({ feld: 'Wirkung', wert: 'würde im CRM abfragen (nur lesen)' }, { feld: 'Was', wert: a.abfrage.art }, { feld: 'Höchstens', wert: String(a.abfrage.hoechstens) });
+        Object.assign(j, { abfrage: a.abfrage.art, hoechstens: a.abfrage.hoechstens });
+        break;
+      case 'schleife':
+        z.push({ feld: 'Wirkung', wert: 'würde je Eintrag einen Teil-Lauf starten' }, { feld: 'Höchstens je Lauf', wert: String(a.hoechstens) });
+        Object.assign(j, { prozessId: a.prozessId, liste: a.liste, hoechstens: a.hoechstens });
+        break;
+    }
+  } else if (b.warten) {
+    z.push({ feld: 'Wirkung', wert: b.warten.art === 'ereignis' ? 'würde auf ein Ereignis warten' : b.warten.art === 'datum' ? 'würde bis zu einem Datum am Fall warten' : 'würde warten' }, { feld: 'Höchstens bis', wert: zeit(b.warten.bis) });
+    Object.assign(j, { warten: b.warten.art, bis: b.warten.bis?.slice(0, 16) ?? null });
+  } else if (k?.form === 'entscheidung' && k.raute?.art === 'regel') {
+    const felder = o.felder ?? {};
+    for (const x of k.raute.bedingungen) z.push({ feld: bedingungText(x, o.feldName), wert: bedingungTrifft(x, felder) ? 'erfüllt' : 'nicht erfüllt' });
+    z.push({ feld: 'Ergebnis', wert: b.ausgang === 'nein' ? 'nein' : 'ja' });
+  } else if (k?.form === 'entscheidung' && k.raute?.art === 'score') {
+    z.push({ feld: 'Prüfung', wert: k.raute.pruefung }, { feld: 'Ergebnis', wert: b.ausgang === 'nein' ? 'nein' : 'ja' });
+  } else if (b.status === 'fehler' || b.status === 'uebersprungen') {
+    z.push({ feld: b.status === 'fehler' ? 'Hält an' : 'Übersprungen', wert: GRUND_TEXT[b.grund ?? (b.status === 'fehler' ? 'dauerhaft' : 'kein-weg')] });
+  } else {
+    z.push({ feld: 'Wirkung', wert: b.grund === 'vorbereitet' ? 'bereitet vor — die Wirkung geschieht erst nach der Freigabe (Schloss dahinter)' : k?.form === 'ausloeser' ? 'startet den Lauf' : k?.form === 'ende' ? 'beendet den Lauf' : 'geht weiter' });
+  }
+  if (b.ausgang && !z.some(x => x.feld === 'Ergebnis')) z.push({ feld: 'Weiter über', wert: b.ausgang });
+  return { zeilen: z, json: j };
 }
 
 /** Lage der Prozesse (Punkt 88, Head of IT) — nur Zähler. */

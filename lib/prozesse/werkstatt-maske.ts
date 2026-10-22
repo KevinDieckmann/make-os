@@ -212,6 +212,53 @@ export function formauswahl(katalog: readonly KatalogEintrag[], o: { suche?: str
     .sort((a, b) => Number(b.form === o.form) - Number(a.form === o.form) || rang(a) - rang(b));
 }
 
+// ── Knoten-Auswahl als Seitenleiste (Werkstatt bau-fertig, 22.10., Punkt 5 — n8n-Art: Suche, Gruppen, „Zuletzt benutzt“) ─────────────────────────────
+
+/**
+ * Die Gruppe „Daten“: Bausteine, die Daten holen, durchgehen oder danach verzweigen — ohne selbst etwas zu bewirken (CRM-Abfrage, Akte lesen, Schleife je
+ * Eintrag, Entscheidung nach Regel bzw. Score). Sie stehen nur hier, nicht noch einmal bei ihrer Anbindung.
+ */
+export const DATEN_BAUSTEINE: readonly string[] = ['crm.abfragen', 'crm.firma-akte', 'schleife.je-eintrag', 'entscheidung.regel', 'entscheidung.score'];
+/** Reihenfolge der Anbindungs-Gruppen (was fehlt, kommt danach in Katalog-Reihenfolge). */
+export const ANBINDUNG_REIHE: readonly string[] = ['Ablauf', 'Aufgabe', 'CRM', 'Inbox', 'WhatsApp', 'Kalender', 'Angebot', 'Rechnung', 'Fulfillment', 'Events', 'Glocke', 'Telegram', 'ZOE', 'Heads', 'Skills', 'Fach-Agenten', 'Webhook'];
+/** So viele Bausteine merkt „Zuletzt benutzt“ (im Browser, je Person — nie im Bestand). */
+export const ZULETZT_MAX = 6;
+export const ZULETZT_MERKER = 'make-werkstatt-zuletzt';
+export interface AuswahlGruppe { id: string; titel: string; eintraege: KatalogEintrag[] }
+
+/** „Zuletzt benutzt“ fortschreiben (rein): der benutzte Baustein vorn, keine Doppelten, höchstens `ZULETZT_MAX`, nur Bausteine des Katalogs. */
+export function zuletztMerken(l: readonly string[], id: string): string[] {
+  return [id, ...l.filter(x => x !== id)].filter(x => !!katalogEintrag(x)).slice(0, ZULETZT_MAX);
+}
+/** Gemerkte Liste lesen (rein, robust): nur Kennungen des Katalogs, höchstens `ZULETZT_MAX`. */
+export function zuletztAus(roh: string | null): string[] {
+  try { const v = JSON.parse(roh ?? '[]'); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!katalogEintrag(x)).slice(0, ZULETZT_MAX) : []; } catch { return []; }
+}
+
+/**
+ * Die Knoten-Auswahl in Gruppen (rein): „Zuletzt benutzt“ (nur ohne Suche), „Auslöser“ (vorn bzw. — beim Anhängen — ganz hinten), „Daten“, dann je Anbindung
+ * (Ablauf, Aufgabe, CRM, Inbox …). Gefiltert wie `formauswahl` (Suche über Name, Satz, Anbindung; Kategorie); innerhalb einer Gruppe stehen Bausteine derselben
+ * Form wie der Ausgangsknoten vorn. Leere Gruppen fallen weg.
+ */
+export function formauswahlGruppen(katalog: readonly KatalogEintrag[], o: { suche?: string; form?: ProzessForm; ohneAusloeser?: boolean; anhaengen?: boolean; kategorie?: string; zuletzt?: readonly string[] } = {}): AuswahlGruppe[] {
+  const l = formauswahl(katalog, o).filter(e => !o.kategorie || o.kategorie === 'alle' || e.kategorie === o.kategorie);
+  const raus: AuswahlGruppe[] = [];
+  if (!o.suche?.trim() && o.zuletzt?.length) {
+    const z = o.zuletzt.map(id => l.find(e => e.id === id)).filter((e): e is KatalogEintrag => !!e);
+    if (z.length) raus.push({ id: 'zuletzt', titel: 'Zuletzt benutzt', eintraege: z });
+  }
+  const ausl = l.filter(e => e.form === 'ausloeser');
+  const daten = l.filter(e => e.form !== 'ausloeser' && DATEN_BAUSTEINE.includes(e.id));
+  const rest = l.filter(e => e.form !== 'ausloeser' && !DATEN_BAUSTEINE.includes(e.id));
+  const auslGruppe: AuswahlGruppe = { id: 'ausloeser', titel: o.anhaengen ? 'Auslöser (nur am Anfang)' : 'Auslöser', eintraege: ausl };
+  if (!o.anhaengen) raus.push(auslGruppe);
+  raus.push({ id: 'daten', titel: 'Daten', eintraege: daten });
+  const anbindungen = [...ANBINDUNG_REIHE, ...rest.map(e => e.anbindung).filter(a => !ANBINDUNG_REIHE.includes(a))];
+  for (const a of Array.from(new Set(anbindungen))) raus.push({ id: `a:${a}`, titel: a, eintraege: rest.filter(e => e.anbindung === a) });
+  if (o.anhaengen) raus.push(auslGruppe);
+  return raus.filter(g => g.eintraege.length);
+}
+
 // ── Die Unterzeile eines Knotens (Kevins Bild: „kleine Unterzeile, z. B. Mail-Entwurf · Stapel“) ──────────────────────────────────────────────────────
 
 const FORM_WORT: Readonly<Record<ProzessForm, string>> = {

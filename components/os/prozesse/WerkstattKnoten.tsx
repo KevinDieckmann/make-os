@@ -78,6 +78,8 @@ export interface KnotenZeichnungProps {
   nurLesen?: boolean;
   /** Agent: der gewählte Andockpunkt (Panel). */
   andockGewaehlt?: string | null;
+  /** Werkstatt bau-fertig (Punkt 14): ausgeschaltet (bzw. das Schloss hinter einem ausgeschalteten Schritt) — blass, gestrichelt, Marke „aus“. */
+  aus?: boolean;
 }
 
 /** Ein Knoten in seiner Gestalt (an 0, 0 der Knoten-Box). */
@@ -134,7 +136,8 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
     );
   }
   return (
-    <g opacity={p.grau ? 0.38 : undefined} data-ws-lauf={p.marke?.stufe ?? (p.grau ? 'nicht-erreicht' : undefined)}>
+    <g opacity={p.grau ? 0.38 : p.aus ? 0.5 : undefined} data-ws-lauf={p.marke?.stufe ?? (p.grau ? 'nicht-erreicht' : undefined)} data-ws-aus={p.aus ? '' : undefined}>
+      {p.aus && <rect x={c.x - 5} y={c.y - 5} width={c.b + 10} height={c.h + 10} rx={raute ? 12 : 22} fill="none" stroke={C.inkDim} strokeWidth={1.6} strokeDasharray="6 5" />}
       {probeFarbe && <rect x={c.x - 7} y={c.y - 7} width={c.b + 14} height={c.h + 14} rx={raute ? 14 : 24} fill="none" stroke={probeFarbe} strokeWidth={2.4} strokeDasharray={p.probe === 'uebersprungen' ? '5 5' : undefined} />}
       {/* Lauf-Ansicht: der Ring im Ton des Stands; „wartet auf dich“ pulsiert (still bei reduzierter Bewegung — globals.css) und nennt die Frist. */}
       {markeFarbe && <rect className={p.marke?.puls ? 'krit-puls' : undefined} x={c.x - 7} y={c.y - 7} width={c.b + 14} height={c.h + 14} rx={raute ? 14 : 24} fill="none" stroke={markeFarbe} strokeWidth={p.marke?.puls ? 3.2 : 2.4} strokeDasharray={p.marke?.stufe === 'uebersprungen' ? '5 5' : undefined} />}
@@ -144,7 +147,9 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
       {f === 'ausloeser' && <g transform={`translate(${c.x - 8} ${c.y - 8})`}><circle cx={11} cy={11} r={11} fill={C.grund} stroke={ton} strokeWidth={1.4} /><Zap x={4} y={4} width={14} height={14} color={ton} aria-hidden /></g>}
       {f === 'freigabe' && k.schloss && <g transform={`translate(${c.x + c.b - 14} ${c.y - 8})`}><circle cx={11} cy={11} r={11} fill={C.grund} stroke={LEUCHT.achtung} strokeWidth={1.4} /><Lock x={4} y={4} width={14} height={14} color={LEUCHT.achtung} aria-hidden /></g>}
       {p.schloss && f !== 'freigabe' && <g transform={`translate(${c.x + c.b - 14} ${c.y - 8})`}><circle cx={11} cy={11} r={11} fill={C.grund} stroke={LEUCHT.achtung} strokeWidth={1.4} /><Lock x={4} y={4} width={14} height={14} color={LEUCHT.achtung} aria-hidden /></g>}
-      {p.befund && <g transform={`translate(${c.x - 8} ${c.y + c.h - 14})`}><circle cx={11} cy={11} r={11} fill={C.grund} stroke={p.befund === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung} strokeWidth={1.4} /><AlertTriangle x={4} y={4} width={14} height={14} color={p.befund === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung} aria-hidden /></g>}
+      {/* Punkt 6: die Marke trägt den Befund — beim Überfahren steht der Satz, ein Klick springt ins Feld (die Fläche hört auf data-ws-befund). */}
+      {p.befund && <g data-ws-befund={k.id} transform={`translate(${c.x - 8} ${c.y + c.h - 14})`} style={{ cursor: 'pointer' }} role="button" aria-label={`${p.befund === 'fehler' ? 'Fehler' : 'Offen'} an „${k.titel}“ — zum Feld springen`}><circle cx={11} cy={11} r={14} fill="transparent" /><circle cx={11} cy={11} r={11} fill={C.grund} stroke={p.befund === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung} strokeWidth={1.4} /><AlertTriangle x={4} y={4} width={14} height={14} color={p.befund === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung} aria-hidden /></g>}
+      {p.aus && <g transform={`translate(${c.x - 8} ${c.y - 8})`} aria-label="ausgeschaltet"><circle cx={11} cy={11} r={11} fill={C.grund} stroke={C.inkDim} strokeWidth={1.4} /><Ban x={4} y={4} width={14} height={14} color={C.inkDim} aria-hidden /></g>}
       {p.probe && probeFarbe && (() => { const P = PROBE_SYMBOL[p.probe!]; return <g transform={`translate(${c.x + c.b - 14} ${c.y + c.h - 14})`}><circle cx={11} cy={11} r={11} fill={probeFarbe} /><P x={4} y={4} width={14} height={14} color={C.grund} aria-hidden /></g>; })()}
       {p.marke && markeFarbe && (() => { const P = MARKEN_SYMBOL[p.marke!.stufe]; return <g transform={`translate(${c.x + c.b - 14} ${c.y + c.h - 14})`} aria-label={p.marke!.name}><circle cx={11} cy={11} r={11} fill={markeFarbe} /><P x={4} y={4} width={14} height={14} color={C.grund} aria-hidden /></g>; })()}
       {/* Name und Unterzeile unter dem Körper (beim Agenten stehen sie darin). */}

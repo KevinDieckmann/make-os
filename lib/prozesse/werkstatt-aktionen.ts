@@ -11,8 +11,8 @@
 // Freigabe-Schloss setzt nie die Werkstatt, sondern die Regel beim Speichern (lib/prozesse/schloss.ts); löschen lässt es sich nicht.
 // Tests: tests/prozesse-werkstatt-aktionen.test.ts.
 
-import type { KnotenLage, NotizZettel, ProzessForm, ProzessKnoten, Zweige } from './definition';
-import { alleSchritte, kinder, phasen, schritteDer, seitenZiele, wurzel, type Ausgang } from './fluss';
+import type { Befund, KnotenLage, NotizZettel, ProzessForm, ProzessKnoten, Zweige } from './definition';
+import { alleSchritte, flussPruefen, kantenVon, kinder, phasen, schritteDer, seitenZiele, wurzel, type Ausgang } from './fluss';
 
 type K = ProzessKnoten<ProzessForm>;
 /** Was die Werkstatt ändert: die Knoten und die Notiz-Zettel des Entwurfs. */
@@ -160,6 +160,192 @@ export function verbinden(f: Fassung, von: string, aus: Ausgang, nach: string): 
   const ursprung = seitenZiele(kn).get(nach);
   if (ursprung) neu = neu.map(k => { if (k.id !== ursprung) return k; let x = k; for (const z of ZWEIGE) if (x.zweige?.[z] === nach && z !== 'ja') x = mitZweig(x, z, null); return x; });
   return ok(rangSetzen(neu, neuReihe), f, `${titel(b)} folgt jetzt auf ${titel(a)}.`);
+}
+
+// ── Werkstatt bau-fertig (22.10., n8n-Niveau): nachgiebig bauen, ohne das Modell umzubauen ─────────────────────────────────────────────────────────────
+// Das Modell bleibt „Strang je Phase + Abzweige“ (lib/prozesse/fluss.ts). Die Oberfläche wird nachgiebig: ein Faden über Phasen holt das Ziel in die Phase
+// (mit Ansage), ein „+“ mitten auf dem Faden fügt dazwischen ein, das Kantenende lässt sich umhängen. Jede dieser Hilfen prüft danach den Fluss
+// (`flussPruefen`) — entsteht ein NEUER Fehler, bleibt alles, wie es war (ein Grund, nichts geändert). Nie still.
+
+/** Ein Faden, wie die Fläche ihn kennt (Kante aus `kantenVon`). */
+export interface KanteRef { von: string; nach: string | null; ausgang: Ausgang }
+/** Ein Abzweig (nein · Fehler · abgelaufen) trägt genau EINEN Schritt — das sagt das Modell (lib/prozesse/fluss.ts). */
+export const ABZWEIG_EINER = 'Ein Abzweig trägt genau einen Schritt (danach geht es zurück in den Ablauf) — dazwischen passt nichts. Den Schritt dort ersetzen oder im Ablauf dahinter anhängen.';
+const ZWEIG_ARTEN: readonly Ausgang[] = ['nein', 'fehler', 'abgelaufen'];
+
+/** Der erste NEUE Fehler der Fluss-Prüfung nach einer Änderung (rein) — null = es ist kein neuer dazugekommen. */
+export function neuerFlussFehler(vorher: Pick<Fassung, 'knoten'>, nachher: Pick<Fassung, 'knoten'>): Befund | null {
+  const alt = new Set(flussPruefen(vorher).filter(b => b.stufe === 'fehler').map(b => b.text));
+  return flussPruefen(nachher).find(b => b.stufe === 'fehler' && !alt.has(b.text)) ?? null;
+}
+/** Ergebnis nur übernehmen, wenn der Fluss keinen neuen Fehler bekommt (sonst der Grund, nichts geändert). */
+function geprueft(vorher: Fassung, e: Ergebnis, vorsatz = 'Geht so nicht'): Ergebnis {
+  if (!e.ok) return e;
+  const f = neuerFlussFehler(vorher, e.fassung);
+  return f ? nein(`${vorsatz}: ${f.text}`) : e;
+}
+
+/** Warum auf diesem Faden kein „+“ zum Dazwischen-Einfügen steht (rein) — null = es geht. */
+export function zwischenGrund(f: Pick<Fassung, 'knoten'>, k: KanteRef): string | null {
+  if (!k.nach) return 'Dieser Faden endet hier — am Ausgang „+“ anhängen.';
+  const a = f.knoten.find(x => x.id === k.von), b = f.knoten.find(x => x.id === k.nach);
+  if (!a || !b) return 'Diesen Schritt gibt es nicht (mehr).';
+  if (!phaseVon(f, a.id) || !phaseVon(f, b.id)) return 'Fäden verbinden Schritte.';
+  if (ZWEIG_ARTEN.includes(k.ausgang) || seitenZiele(f.knoten).has(a.id)) return ABZWEIG_EINER;
+  if (istSchloss(b)) return 'Das Freigabe-Schloss steht immer direkt hinter seinem Schritt — hinter dem Schloss einfügen.';
+  if (b.form === 'ausloeser') return 'In einen Auslöser führt kein Faden.';
+  if (a.form === 'ende') return `${titel(a)} ist ein Ende.`;
+  return null;
+}
+
+/**
+ * Einen neuen Schritt mitten auf einen Faden setzen (rein, Punkt 3 — das „+“ in der Mitte jedes Fadens): er steht danach zwischen Quelle und Ziel. Im Modell
+ * heißt das: direkt hinter der Quelle in den Strang (hinter ihr Schloss bzw. hinter den letzten Auslöser), und ist das Ziel dann nicht ohnehin sein nächster
+ * Schritt, ein Sprung „weiter bei …“ zum Ziel (an einer Entscheidung zeigt „ja“ auf den neuen Schritt). Abzweige tragen genau einen Schritt (`zwischenGrund`).
+ */
+export function zwischenEinfuegen(f: Fassung, k: KanteRef, neu: K, o: { platz?: KnotenLage; platzSchaffen?: number } = {}): Ergebnis {
+  const grund = zwischenGrund(f, k);
+  if (grund) return nein(grund);
+  const a = f.knoten.find(x => x.id === k.von)!, b = f.knoten.find(x => x.id === k.nach)!;
+  let q = istSchloss(a) ? f.knoten.find(x => x.id === a.schloss!.fuer) ?? a : a;
+  if (q.form === 'ausloeser' && q.elternId) {
+    // Mehrere Auslöser führen JEDER in den ersten Schritt — der Neue kommt hinter den letzten (nie zwischen zwei Auslöser).
+    const letzter = [...reiheVon(f.knoten, q.elternId)].reverse().find(id => f.knoten.find(x => x.id === id)?.form === 'ausloeser');
+    q = f.knoten.find(x => x.id === letzter) ?? q;
+  }
+  const r = anlegen(f, neu, { nach: q.id, ausgang: q.form === 'entscheidung' ? 'ja' : 'weiter', ...(o.platz ? { platz: o.platz } : {}), ...(o.platzSchaffen ? { platzSchaffen: o.platzSchaffen } : {}) });
+  if (!r.ok) return r;
+  let kn = r.fassung.knoten;
+  const n = kn.find(x => x.id === neu.id)!;
+  const naechster = kantenVon({ knoten: kn }).find(x => x.von === n.id && (x.ausgang === 'weiter' || x.ausgang === 'ja'))?.nach ?? null;
+  if (n.form !== 'ende' && naechster !== b.id && !n.zweige?.ja) kn = kn.map(x => (x.id === n.id ? mitZweig(x, 'ja', b.id) : x));
+  return geprueft(f, ok(kn, f, `${titel(n)} eingefügt zwischen ${titel(a.schloss ? q : a)} und ${titel(b)}.`, [n.id]), 'Dazwischen einfügen geht hier nicht');
+}
+
+/** Ein Schritt mit allem, was zu ihm gehört: sein Freigabe-Schloss und seine Abzweige (rekursiv) — wandert er in eine andere Phase, wandern sie mit. */
+function mitAnhang(kn: readonly K[], id: string): Set<string> {
+  const m = new Set([id]);
+  const seite = seitenZiele(kn);
+  let n = -1;
+  while (n !== m.size) {
+    n = m.size;
+    for (const k of kn) {
+      if (k.schloss && m.has(k.schloss.fuer)) m.add(k.id);
+      const u = seite.get(k.id);
+      if (u && m.has(u)) m.add(k.id);
+    }
+  }
+  return m;
+}
+
+/** Einen Schritt (mit Schloss und Abzweigen) ans Ende einer anderen Phase holen (rein) — die Lage von Hand fällt weg (die Phase ordnet ihn selbst). */
+function inPhaseHolen(f: Fassung, id: string, phaseId: string): Fassung {
+  const m = mitAnhang(f.knoten, id);
+  const reihe = [...reiheVon(f.knoten, phaseId).filter(x => !m.has(x)), ...alleSchritte(f).map(x => x.schritt.id).filter(x => m.has(x))];
+  const kn = f.knoten.map(k => { if (!m.has(k.id)) return k; const { pos: _p, ...rest } = k; return { ...rest, elternId: phaseId } as K; });
+  return { ...f, knoten: rangSetzen(kn, reihe) };
+}
+
+/**
+ * Verbinden über Phasen (rein, Punkt 4): liegt das Ziel in einer anderen Phase, holt die Werkstatt es (mit Schloss und Abzweigen) in die Phase der Quelle —
+ * Fäden bleiben in ihrer Phase, das Modell bleibt gleich — und sagt es an. Entstünde dabei ein Fehler (z. B. ein Sprung aus der alten Phase auf das Ziel), bleibt
+ * alles, wie es war.
+ */
+export function verbindenFrei(f: Fassung, von: string, aus: Ausgang, nach: string): Ergebnis {
+  const a0 = f.knoten.find(k => k.id === von), b = f.knoten.find(k => k.id === nach);
+  if (!a0 || !b) return nein('Diesen Knoten gibt es nicht (mehr).');
+  const a = istSchloss(a0) && (aus === 'ja' || aus === 'weiter') ? f.knoten.find(k => k.id === a0.schloss!.fuer) ?? a0 : a0;
+  const pa = phaseVon(f, a.id), pb = phaseVon(f, nach);
+  if (!pa || !pb || pa === pb || b.form === 'ausloeser' || istSchloss(b) || a.form === 'ende' || a.id === nach) return geprueft(f, verbinden(f, von, aus, nach), 'Verbinden geht so nicht');
+  const geholt = inPhaseHolen(f, nach, pa);
+  const r = verbinden(geholt, von, aus, nach);
+  if (!r.ok) return r;
+  const ph = f.knoten.find(k => k.id === pa)?.titel ?? '';
+  return geprueft(f, { ...r, ansage: `${titel(b)} liegt jetzt in der Phase „${ph}“ (Fäden bleiben in ihrer Phase). ${r.ansage}` }, `${titel(b)} in die Phase „${ph}“ zu holen geht nicht`);
+}
+
+/**
+ * Das Ende eines Fadens umhängen (rein, Punkt 4 — Kantenende greifen und auf einen anderen Schritt ziehen):
+ *   ein Sprung „weiter bei …“ bzw. das „ja“ einer Entscheidung → zeigt auf das neue Ziel;
+ *   der Strang („weiter“) → das neue Ziel folgt direkt (das alte kommt danach — die Reihenfolge lässt sich nur umhängen, nicht lösen);
+ *   nein · Fehler · abgelaufen → der Abzweig zeigt auf das neue Ziel;
+ *   vom Abzweig zurück in den Ablauf → ein Sprung „weiter bei …“ zum neuen Ziel.
+ * Über Phasen wie `verbindenFrei`; entsteht ein neuer Fehler, bleibt alles, wie es war.
+ */
+export function umhaengen(f: Fassung, k: KanteRef, ziel: string): Ergebnis {
+  if (k.nach === ziel) return nein('Der Faden hängt schon dort.');
+  const a = f.knoten.find(x => x.id === k.von), z = f.knoten.find(x => x.id === ziel);
+  if (!a || !z) return nein('Diesen Knoten gibt es nicht (mehr).');
+  const nachK = k.nach ? f.knoten.find(x => x.id === k.nach) : undefined;
+  if (nachK && istSchloss(nachK) && nachK.schloss!.fuer === a.id) return nein('Das Freigabe-Schloss steht immer direkt hinter seinem Schritt — dieser Faden lässt sich nicht umhängen.');
+  if (ZWEIG_ARTEN.includes(k.ausgang)) return verbindenFrei(f, k.von, k.ausgang, ziel);
+  const quelle = istSchloss(a) ? f.knoten.find(x => x.id === a.schloss!.fuer) ?? a : a;
+  const sprung = quelle.form === 'entscheidung' ? !!quelle.zweige?.ja : quelle.form !== 'freigabe' && !!quelle.zweige?.ja;
+  const seite = seitenZiele(f.knoten).has(quelle.id);
+  if (!sprung && !seite) return verbindenFrei(f, k.von, k.ausgang === 'ja' && quelle.form === 'entscheidung' ? 'ja' : 'weiter', ziel);
+  // Sprung bzw. Rückweg eines Abzweigs: „weiter bei …“ zeigt auf das neue Ziel (über Phasen: erst holen).
+  if (quelle.form === 'freigabe' || quelle.form === 'ende') return nein(`${titel(quelle)} hat keinen Sprung, der sich umhängen ließe.`);
+  if (z.form === 'ausloeser') return nein('In einen Auslöser führt kein Faden — er startet den Prozess.');
+  if (istSchloss(z)) return nein(`Das Schloss gehört zu „${f.knoten.find(x => x.id === z.schloss!.fuer)?.titel ?? ''}“ — es steht immer direkt dahinter.`);
+  const pq = phaseVon(f, quelle.id), pz = phaseVon(f, ziel);
+  if (!pq || !pz) return nein('Fäden verbinden Schritte.');
+  const basis = pq === pz ? f : inPhaseHolen(f, ziel, pq);
+  const kn = basis.knoten.map(x => (x.id === quelle.id ? mitZweig(x, 'ja', ziel) : x));
+  const geholt = pq === pz ? '' : ` ${titel(z)} liegt jetzt in der Phase „${f.knoten.find(x => x.id === pq)?.titel ?? ''}“.`;
+  return geprueft(f, ok(kn, f, `${titel(quelle)} geht jetzt weiter bei ${titel(z)}.${geholt}`), 'Umhängen geht so nicht');
+}
+
+/** Ein Fall der Mehrfach-Entscheidung (Punkt 15): Name, Bedingungen („wenn …“) und wohin es dann geht (ein Schritt der Phase; ohne = weiter im Ablauf). */
+export interface MehrfachFall { titel: string; bedingungen: import('./definition').Bedingung[]; verknuepfung?: 'und' | 'oder'; ziel?: string | null }
+export const MEHRFACH_MAX = 8;
+
+/**
+ * „Mehrfach-Entscheidung“ als Bau-Hilfe (rein, Punkt 15 — der Switch aus n8n): wird SOFORT zu einer Kaskade aus Rauten nach Regel — das Modell bleibt, wie es ist.
+ * Fall 1 = die erste Raute direkt hinter `nach` (ja → sein Ziel bzw. weiter im Ablauf); jeder weitere Fall = die Raute am „nein“ der vorigen (ja → sein Ziel bzw.
+ * weiter im Ablauf); „sonst“ = das „nein“ der letzten Raute (der Lauf endet bzw. eine Aufgabe „von Hand prüfen“). Ein Fall braucht mindestens eine Bedingung; Ziele
+ * sind Schritte derselben Phase. Prüft den Fluss wie jede Hilfe (Kreis, Phase) — sonst ein Grund, nichts geändert.
+ */
+export function mehrfachEntscheidung(f: Fassung, o: { nach: string; faelle: readonly MehrfachFall[]; sonst?: 'ende' | 'aufgabe'; kennung: Kennung }): Ergebnis {
+  const quelle = f.knoten.find(k => k.id === o.nach);
+  if (!quelle) return nein('Den Knoten, an den angehängt werden soll, gibt es nicht (mehr).');
+  if (o.faelle.length < 2) return nein('Eine Mehrfach-Entscheidung hat mindestens zwei Fälle — für einen Fall reicht eine Raute.');
+  if (o.faelle.length > MEHRFACH_MAX) return nein(`Höchstens ${MEHRFACH_MAX} Fälle — sonst lieber einen Teilprozess bilden.`);
+  const leer = o.faelle.findIndex(x => !x.bedingungen.length || !x.titel.trim());
+  if (leer >= 0) return nein(`Fall ${leer + 1}: Name und mindestens eine Bedingung fehlen.`);
+  const ph = phaseVon(f, quelle.id);
+  for (const x of o.faelle) {
+    if (!x.ziel) continue;
+    const z = f.knoten.find(k => k.id === x.ziel);
+    if (!z || phaseVon(f, z.id) !== ph || z.form === 'ausloeser' || istSchloss(z)) return nein(`„${x.titel}“: das Ziel muss ein Schritt derselben Phase sein.`);
+  }
+  const raute = (x: MehrfachFall): K => ({
+    id: o.kennung(), titel: x.titel.trim(), rang: 0, form: 'entscheidung', bahn: 'system', katalog: { id: 'entscheidung.regel' },
+    raute: { art: 'regel', bedingungen: x.bedingungen, ...(x.verknuepfung ? { verknuepfung: x.verknuepfung } : {}) },
+  });
+  const r1 = raute(o.faelle[0]);
+  let e = anlegen(f, r1, { nach: quelle.id, ausgang: quelle.form === 'entscheidung' ? 'ja' : 'weiter' });
+  if (!e.ok) return e;
+  let kn = e.fassung.knoten;
+  if (o.faelle[0].ziel) kn = kn.map(k => (k.id === r1.id ? mitZweig(k, 'ja', o.faelle[0].ziel!) : k));
+  let vorige = r1.id;
+  const neu = [r1.id];
+  for (const x of o.faelle.slice(1)) {
+    const r = raute(x);
+    e = anlegen({ ...e.fassung, knoten: kn }, r, { nach: vorige, ausgang: 'nein' });
+    if (!e.ok) return e;
+    kn = e.fassung.knoten;
+    if (x.ziel) kn = kn.map(k => (k.id === r.id ? mitZweig(k, 'ja', x.ziel!) : k));
+    vorige = r.id;
+    neu.push(r.id);
+  }
+  if (o.sonst === 'aufgabe') {
+    const t: K = { id: o.kennung(), titel: 'Sonst: von Hand prüfen', rang: 0, form: 'schritt', bahn: 'mensch', katalog: { id: 'aufgabe.anlegen', werte: { titel: 'Sonst: von Hand prüfen', wer: 'rolle:zustaendig' } } };
+    e = anlegen({ ...e.fassung, knoten: kn }, t, { nach: vorige, ausgang: 'nein' });
+    if (!e.ok) return e;
+    kn = e.fassung.knoten;
+    neu.push(t.id);
+  }
+  return geprueft(f, ok(kn, f, `Mehrfach-Entscheidung mit ${o.faelle.length} Fällen angelegt — als ${o.faelle.length} Rauten nach Regel hintereinander${o.sonst === 'aufgabe' ? ', „sonst“ als Aufgabe' : ', „sonst“ endet der Lauf'}.`, neu), 'Die Mehrfach-Entscheidung geht so nicht');
 }
 
 /** Einen Zweig lösen (rein) — der Strang („weiter“) lässt sich nicht lösen, nur umhängen. */

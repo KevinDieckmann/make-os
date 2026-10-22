@@ -1,6 +1,6 @@
 // ─── Prozesse · Werkstatt — mit der Tastatur bauen (Etappe B2, 21.10.; ANALYSE_100.md Punkte 16, 17) ──────────────────────────────────────────────────
 // Der schnellste Weg zu einem Ablauf (Whimsical, bpmn.io): Alt+Pfeil legt einen verbundenen Schritt derselben Form in diese Richtung an, Tab am Knoten öffnet
-// die Formauswahl, Pfeile wählen den Nachbarn, ⇧+Pfeile schieben, ⌘Z/⌘⇧Z, ⌘C/⌘V/⌘D, Entf, Enter benennt. Hier steht rein:
+// die Formauswahl, Pfeile wählen den Nachbarn, ⇧+Pfeile schieben, ⌘Z/⌘⇧Z, ⌘C/⌘V/⌘D, Entf, F2 benennt, Enter öffnet das große Fenster. Hier steht rein:
 //   · `tasteZuAktion` — welche Taste was tut (eine Liste, auch für die Hilfe: `WERKSTATT_KUERZEL`);
 //   · `nachbar` — der nächste Knoten in einer Richtung (Pfeile);
 //   · `altPfeil` — was Alt+Pfeil anlegt: rechts = dahinter (an einer Entscheidung „ja“), links = davor, unten = der Abzweig (nein · abgelaufen) bzw. dahinter in
@@ -21,7 +21,9 @@ export type TastenAktion =
   | { art: 'schieben'; dx: number; dy: number }
   | { art: 'loeschen' } | { art: 'rueckgaengig' } | { art: 'wiederholen' }
   | { art: 'kopieren' } | { art: 'einfuegen' } | { art: 'duplizieren' } | { art: 'alles-waehlen' }
-  | { art: 'benennen' } | { art: 'abbrechen' } | { art: 'ordnen' } | { art: 'hilfe' };
+  | { art: 'benennen' } | { art: 'abbrechen' } | { art: 'ordnen' } | { art: 'hilfe' }
+  // Werkstatt bau-fertig (22.10.): Enter öffnet das große Einstellungsfenster (F2 benennt direkt auf der Fläche), Zoom mit + − 0, Karte (Minimap) mit M.
+  | { art: 'oeffnen' } | { art: 'zoom'; wie: 'groesser' | 'kleiner' | 'alles' } | { art: 'karte' };
 
 /** Die Kürzel der Werkstatt (Hilfe-Fenster und Titel der Knöpfe). */
 export const WERKSTATT_KUERZEL: readonly { taste: string; was: string }[] = [
@@ -29,12 +31,15 @@ export const WERKSTATT_KUERZEL: readonly { taste: string; was: string }[] = [
   { taste: 'Tab', was: 'Formauswahl am gewählten Knoten (anhängen)' },
   { taste: 'Pfeile', was: 'Nachbarn wählen' },
   { taste: '⇧ + Pfeile', was: 'Gewählte verschieben' },
-  { taste: 'Enter', was: 'Umbenennen' },
+  { taste: 'Doppelklick · F2', was: 'Namen direkt auf der Fläche ändern' },
+  { taste: 'Enter · zweiter Doppelklick', was: 'Großes Einstellungsfenster (Eingabe · Maske · Ausgabe)' },
   { taste: 'Entf', was: 'Löschen (das Freigabe-Schloss bleibt)' },
   { taste: '⌘ / Strg + Z · ⇧ + Z', was: 'Rückgängig · Wiederholen' },
   { taste: '⌘ / Strg + C · V · D', was: 'Kopieren · Einfügen · Duplizieren (mit Verbindungen)' },
   { taste: '⌘ / Strg + A', was: 'Alles wählen' },
   { taste: '⇧ + O', was: 'Ordnen' },
+  { taste: '+ · − · 0', was: 'Vergrößern · Verkleinern · Alles zeigen' },
+  { taste: 'M', was: 'Karte (Minimap) an/aus' },
   { taste: 'Esc', was: 'Auswahl aufheben, Fenster schließen' },
   { taste: '?', was: 'Diese Übersicht' },
 ];
@@ -60,7 +65,13 @@ export function tasteZuAktion(e: { key: string; altKey?: boolean; shiftKey?: boo
     return null;
   }
   if (e.key === 'Delete' || e.key === 'Backspace') return { art: 'loeschen' };
-  if (e.key === 'Enter' || e.key === 'F2') return { art: 'benennen' };
+  if (e.key === 'F2') return { art: 'benennen' };
+  if (e.key === 'Enter') return { art: 'oeffnen' };
+  if (e.altKey) return null;
+  if (e.key === '+' || e.key === '=') return { art: 'zoom', wie: 'groesser' };
+  if (e.key === '-' || e.key === '_') return { art: 'zoom', wie: 'kleiner' };
+  if (e.key === '0') return { art: 'zoom', wie: 'alles' };
+  if (e.key === 'm' || e.key === 'M') return { art: 'karte' };
   if (e.key === 'Escape') return { art: 'abbrechen' };
   if (e.key === 'O' && e.shiftKey) return { art: 'ordnen' };
   if (e.key === '?') return { art: 'hilfe' };

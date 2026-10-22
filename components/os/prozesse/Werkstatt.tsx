@@ -17,10 +17,13 @@
 //   · Werkzeugmodus (22.10., Werkzeug-Muster — ../werkzeug/rahmen.tsx): der Pfeil ⤢ oben rechts in der Fläche öffnet den ganzen Bildschirm; dort füllt die
 //     Fläche alles, und dieselben Griffe schweben Miro-artig: Ordnen, Zettel, Phase, Raster … links, Zoom unten rechts, „Head fragen“ unten links, Probelauf
 //     und Veröffentlichen oben rechts, Zustand und Version hinter dem Titel; das Panel schwebt rechts und klappt ein. Außerhalb bleibt alles wie bisher.
+//   · Werkstatt bau-fertig (22.10., n8n-Niveau): Hinweise schweben, Doppelklick benennt auf der Fläche, „+“ mitten auf dem Faden, Verbinden über Phasen und Kantenende
+//     umhängen, Knoten-Auswahl als Seitenleiste, Befund mit Satz, großes Fenster (./WerkstattGross.tsx) mit Platzhaltern an den Cursor, Testdaten, „Weg annehmen“,
+//     „Nur diesen Schritt“ / „Bis hier“ und „Modell wirklich fragen“, Lauf → Testdaten, Karte, Ausschalten, Kopieren zwischen Prozessen, Mehrfach-Entscheidung.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Undo2, Redo2, LayoutGrid, Grid3x3, StickyNote, Plus, Minus, Fullscreen, Keyboard, Play, Upload, X, Columns3, Check, CloudOff, Loader2, Sparkles } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid3x3, StickyNote, Plus, Minus, Fullscreen, Keyboard, Play, Upload, X, Columns3, Check, CloudOff, Loader2, Sparkles, Map as KarteSymbol } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, LEUCHT } from '@/lib/make-one/design';
 import { Knopf, Hinweis, SymbolKnopf, Chip, Reiter } from '../ui';
 import { neueKennung } from '@/lib/kennung';
@@ -34,8 +37,9 @@ import {
   werkstattLage, lagenFesthalten, ordnen, zettelFreiLegen, allesAlsKacheln, ortBei, inBahn, bahnSchluessel, knotenMass, WS, type TeamName, type KanteLage,
 } from '@/lib/prozesse/werkstatt-lage';
 import {
-  anlegen, verbinden, loesen, loeschen, ersetzen, umbenennen, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
-  kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, type Ablage, type Ergebnis, type Fassung, type Geschichte,
+  anlegen, verbinden, loesen, loeschen, ersetzen, umbenennen as umbenennen_, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
+  kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, verbindenFrei, umhaengen, zwischenEinfuegen, zwischenGrund, mehrfachEntscheidung,
+  type Ablage, type Ergebnis, type Fassung, type Geschichte,
 } from '@/lib/prozesse/werkstatt-aktionen';
 import { neuerKnoten, knotenUnterzeile } from '@/lib/prozesse/werkstatt-maske';
 import { bahnBeimAnhaengen } from '@/lib/prozesse/werkstatt-lage';
@@ -44,6 +48,8 @@ import { webhookAusloeserVon } from '@/lib/prozesse/webhook';
 import { prozesseAusAdresse, type WerkstattReiterId } from '@/lib/prozesse/adresse';
 import { testStand } from '@/lib/prozesse/laeufe-ansicht';
 import { WEG } from '@/lib/wege';
+import { localDay } from '@/lib/zeit';
+import { ablageAus, ablageFuerSpeicher, ABLAGE_MERKER } from '@/lib/prozesse/ablage';
 import type { ProzessStatus } from '@/lib/prozesse/definition';
 import { altPfeil, nachbar, WERKSTATT_KUERZEL, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
 import { hinweiseVon, probelaufAus, probelaufKoerper, PROBELAUF_PFAD, PROBE_FEHLT, centText, type ProbeErgebnis, type ProbeSchritt } from '@/lib/prozesse/werkstatt-hinweise';
@@ -54,6 +60,12 @@ import { VersionenFenster } from './WerkstattVersionen';
 import { ProzessKopieren } from './WerkstattKopie';
 import { HeadFragenFenster } from './HeadFragen';
 import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, type EintragAnsicht } from './werkstatt-daten';
+import { WerkstattGross, type ModellAntwort } from './WerkstattGross';
+import { MehrfachFenster } from './WerkstattMehrfach';
+import { VorlageKontext, type VorlageZiel } from './WerkstattMaske';
+import { testWerte, annahmenAusLauf, type ProzessTestdaten } from '@/lib/prozesse/testdaten';
+import type { LaufKurz } from '@/lib/prozesse/lauf-regeln';
+import type { LaufSchritt } from '@/lib/prozesse/lauf-typen';
 import { WerkstattSteuerung } from './WerkstattSteuerung';
 import { WerkstattLaeufe } from './WerkstattLaeufe';
 import { WerkstattTests, testsPruefen, type TestErgebnis } from './WerkstattTests';
@@ -74,6 +86,7 @@ export const WERKSTATT_REITER: readonly { id: WerkstattReiterId; titel: string }
 const ENTWURF_MERKER = (id: string) => `make-prozess-entwurf:${id}`;
 const ZU_MERKER = (id: string) => `make-prozess-zu:${id}`;
 const RASTER_MERKER = 'make-werkstatt-raster';
+const KARTE_MERKER = 'make-werkstatt-karte';
 const lies = (s: Storage | undefined, k: string) => { try { return s?.getItem(k) ?? null; } catch { return null; } };
 const schreib = (s: Storage | undefined, k: string, v: string | null) => { try { if (v === null) s?.removeItem(k); else s?.setItem(k, v); } catch { /* privates Fenster */ } };
 const sitzung = () => (typeof window !== 'undefined' ? window.sessionStorage : undefined);
@@ -113,10 +126,23 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const [kanteWahl, setKanteWahl] = useState<string | null>(null);
   const [rahmenWahl, setRahmenWahl] = useState<string | null>(null);
   const [andockWahl, setAndockWahl] = useState<{ id: string; art: string } | null>(null);
-  const [titelFokus, setTitelFokus] = useState(0);
+  const [titelFokus] = useState(0);
+  /** Werkstatt bau-fertig (Punkt 2): dieser Knoten wird gerade direkt auf der Fläche umbenannt. */
+  const [umbenennen, setUmbenennen] = useState<string | null>(null);
+  /** Punkt 15: die Bau-Hilfe „Mehrfach-Entscheidung“ — hinter diesem Knoten. */
+  const [mehrfach, setMehrfach] = useState<string | null>(null);
+  /** Punkt 7: das große Einstellungsfenster (Eingabe · Maske · Ausgabe) für diesen Knoten. */
+  const [gross, setGross] = useState<string | null>(null);
+  /** Punkt 6: ein Klick auf den Befund am Knoten springt in sein Feld. */
+  const [feldFokus, setFeldFokus] = useState<{ knoten: string; feld?: string; n: number } | null>(null);
+  /** Punkt 10: das Ergebnis von „Nur diesen Schritt“ bzw. „Bis hier testen“ (nur für den Knoten des großen Fensters). */
+  const [schrittTest, setSchrittTest] = useState<{ knoten: string; ergebnis: ProbeErgebnis & { art: 'nur' | 'bis' } } | null>(null);
+  const [schrittTestLaeuft, setSchrittTestLaeuft] = useState(false);
+  /** Punkt 8: das Textvorlagen-Feld, das zuletzt den Fokus hatte — Platzhalter landen dort am Cursor. */
+  const vorlageZiel = useRef<VorlageZiel | null>(null);
   const [ansage, setAnsage] = useState('');
   const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'achtung' | 'kritisch' | 'info' } | null>(null);
-  const [formauswahl, setFormauswahl] = useState<{ ziel: AnhangZiel & { bahn?: string }; ort: [number, number]; form?: ProzessForm } | null>(null);
+  const [formauswahl, setFormauswahl] = useState<{ ziel: AnhangZiel & { bahn?: string }; form?: ProzessForm } | null>(null);
   const [probe, setProbe] = useState<ProbeErgebnis | null>(null);
   const [probeHinweis, setProbeHinweis] = useState<string | null>(null);
   const [versionAnsicht, setVersionAnsicht] = useState<ProzessVersion | null>(null);
@@ -126,6 +152,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const [hilfe, setHilfe] = useState(false);
   const [headOffen, setHeadOffen] = useState(false);
   const [raster, setRaster] = useState(true);
+  /** Punkt 12: die Karte (Minimap) unten rechts — gemerkt im Browser. */
+  const [karte, setKarte] = useState(false);
   const [zu, setZu] = useState<Set<string>>(new Set());
   /** „Alles zeigen“ als Kacheln (Befund 6): die Phasen, die die Übersicht gerade zugeklappt zeigt — nur für den Augenblick, nie gemerkt. */
   const [uebersicht, setUebersicht] = useState<Set<string> | null>(null);
@@ -142,7 +170,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   fassungRef.current = fassung;
   const aenderung = useRef(0);
   const gesichert = useRef(0);
-  const ablage = useRef<Ablage | null>(null);
+  const ablage = useRef<{ ablage: Ablage; am: string } | null>(null);
   const rahmen = useRef<HTMLDivElement | null>(null);
 
   // ── Laden: Server-Fassung übernehmen; eine ungespeicherte Fassung aus dieser Sitzung bleibt (gleicher Stand) bzw. wird angeboten ──
@@ -167,6 +195,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     setZu(new Set((lies(lokal(), ZU_MERKER(prozessId)) ?? '').split(',').filter(Boolean)));
     setWebhook((daten.webhook as WebhookKurz | null) ?? null);
     if (lies(lokal(), RASTER_MERKER) === 'aus') setRaster(false);
+    if (lies(lokal(), KARTE_MERKER) === 'an') setKarte(true);
   }, [daten, eintrag, prozessId]);
 
   const rechte = daten?.rechte;
@@ -215,12 +244,25 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     return m;
   }, [befunde]);
   const mitSchloss = useMemo(() => new Set((d?.knoten ?? []).flatMap(k => (k.schloss ? [k.schloss.fuer] : []))), [d]);
+  /** Punkt 6: die Sätze der Befunde je Knoten (beim Überfahren der Marke am Knoten). */
+  const befundTexte = useMemo(() => {
+    const m = new Map<string, { text: string; feld?: string; stufe: 'fehler' | 'offen' }[]>();
+    for (const b of befunde) if (b.knotenId && b.stufe !== 'hinweis') m.set(b.knotenId, [...(m.get(b.knotenId) ?? []), { text: b.text, stufe: b.stufe as 'fehler' | 'offen', ...(b.feld ? { feld: b.feld } : {}) }]);
+    return m;
+  }, [befunde]);
+  /** Punkt 3: auf welchen Fäden mitten ein „+“ steht (dazwischen einfügen) — die Regel `zwischenGrund`; Kacheln zugeklappter Phasen nie. */
+  /** Punkte 7–8: die Testwerte (Beispiel ∪ Testdaten ∪ Webhook aus dem Schema) für Vorschau und Platzhalter — dieselbe Quelle wie der Probelauf. */
+  const testwerte = useMemo(() => testWerte({ testdaten: eintrag?.testdaten ?? null, knoten: d?.knoten ?? [], titel: d?.titel, heute: localDay() }), [eintrag?.testdaten, d?.knoten, d?.titel]);
+  const vorlageUmfeld = useMemo(() => ({ werte: testwerte.platzhalter, ziel: vorlageZiel }), [testwerte]);
+  const zwischenOk = useMemo(() => new Set(d && lage ? lage.kanten.filter(k => !k.von.startsWith('zu:') && !k.nach?.startsWith('zu:') && zwischenGrund(d, k) === null).map(k => k.id) : []), [d, lage]);
   const probeMap = useMemo(() => (probe ? new Map(probe.schritte.map(s => [s.knotenId, s.status])) : null), [probe]);
   const probeSaetze = useMemo(() => (probe ? new Map<string, ProbeSchritt>(probe.schritte.map(s => [s.knotenId, s])) : null), [probe]);
   const agentName = useCallback((wer: AgentWer) => (wer.art === 'zoe' ? 'ZOE' : wer.art === 'head' ? headDef(wer.headId)?.kurz ?? 'Head' : wer.art === 'skill' ? 'Skill' : FACH_AGENTEN.find(f => f.id === wer.agentId)?.titel.split(' ')[0] ?? 'Agent'), []);
   const unterzeile = useCallback((k: K) => knotenUnterzeile(k, { mitSchloss: mitSchloss.has(k.id), ...(k.agent ? { agentName: agentName(k.agent.wer) } : {}) }), [mitSchloss, agentName]);
 
   const ansagen = (t: string) => setAnsage(t);
+  // Punkt 1: gute Nachrichten verschwinden von selbst (sie schweben über der Fläche) — Warnungen und Fehler bleiben, bis man sie schließt.
+  useEffect(() => { if (meldung?.art !== 'gut') return; const t = window.setTimeout(() => setMeldung(null), 6000); return () => window.clearTimeout(t); }, [meldung]);
 
   // ── Speichern: EIN Weg, nacheinander; die Antwort ersetzt die Fassung nur, wenn seitdem nichts dazukam ──
   const sichern = useCallback(async (): Promise<boolean> => {
@@ -331,13 +373,13 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   };
 
   // ── Anlegen über die Formauswahl („+“, Tab, Faden ins Leere) ──
-  const anhaengen = (ziel: AnhangZiel & { bahn?: string }, ort: [number, number]) => {
+  // Seit 22.10. (bau-fertig, Punkt 5) öffnet die Knoten-Auswahl als Seitenleiste in voller Höhe — der Ort des „+“ zählt nur noch für die Lage des neuen Knotens.
+  const anhaengen = (ziel: AnhangZiel & { bahn?: string }, _ort?: [number, number]) => {
     if (nurLesen || !d) return;
-    const von = ziel.nach ? d.knoten.find(k => k.id === ziel.nach) : undefined;
-    // Das Fenster bleibt in der Bühne (rechts und unten nicht hinaus).
-    const r = rahmen.current?.getBoundingClientRect();
-    const x = Math.max(8, Math.min(ort[0], (r?.width ?? 900) - 436)), y = Math.max(8, Math.min(ort[1], (r?.height ?? 640) - 470));
-    setFormauswahl({ ziel, ort: [x, y], ...(von?.form && von.form !== 'ausloeser' && von.form !== 'freigabe' ? { form: von.form } : {}) });
+    const vonId = ziel.nach ?? (ziel.zwischen ? lage?.kanten.find(k => k.id === ziel.zwischen)?.von : undefined);
+    const von = vonId ? d.knoten.find(k => k.id === vonId) : undefined;
+    setUmbenennen(null);
+    setFormauswahl({ ziel, ...(von?.form && von.form !== 'ausloeser' && von.form !== 'freigabe' ? { form: von.form } : {}) });
   };
   /** Wo ein neuer Knoten liegen soll, wenn die Fläche schon von Hand gelegt ist (sonst legt die Regel ihn selbst). */
   const platzFuer = (neu: K, ziel: AnhangZiel & { bahn?: string }): { platz?: KnotenLage; platzSchaffen?: number } => {
@@ -360,7 +402,11 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (ziel.bahn) neu = inBahn(neu, ziel.bahn as ReturnType<typeof bahnSchluessel>) ?? neu;
     // Feinschliff 22.10. (Befund 5): was nach außen geht, folgt der Menschen-Bahn des Vorgängers (kein Zickzack Mensch/System/Mensch).
     else if (ziel.nach) { const b = bahnBeimAnhaengen(neu, d?.knoten.find(k => k.id === ziel.nach)); if (b) neu = inBahn(neu, b) ?? neu; }
-    const ok = mitFassung(f => anlegen(f, neu, { nach: ziel.nach ?? null, ...(ziel.vor ? { vor: ziel.vor } : {}), ...(ziel.phaseId ? { phaseId: ziel.phaseId } : {}), ...(ziel.ausgang ? { ausgang: ziel.ausgang } : {}), ...platzFuer(neu, ziel) }));
+    // Mitten auf einem Faden (Punkt 3): zwischen Quelle und Ziel — die Regel steht in lib/prozesse/werkstatt-aktionen.ts `zwischenEinfuegen`.
+    const kante = ziel.zwischen ? lage?.kanten.find(k => k.id === ziel.zwischen) : undefined;
+    const ok = kante
+      ? mitFassung(f => zwischenEinfuegen(f, kante, neu, platzFuer(neu, { nach: kante.von })))
+      : mitFassung(f => anlegen(f, neu, { nach: ziel.nach ?? null, ...(ziel.vor ? { vor: ziel.vor } : {}), ...(ziel.phaseId ? { phaseId: ziel.phaseId } : {}), ...(ziel.ausgang ? { ausgang: ziel.ausgang } : {}), ...platzFuer(neu, ziel) }));
     if (ok) { setAuswahl([neu.id]); setKanteWahl(null); setRahmenWahl(null); zeigeNeu.current = neu.id; }
     setFormauswahl(null);
     flaeche.current?.fokus();
@@ -414,14 +460,30 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   };
 
   // ── Kopieren, Einfügen ──
-  const kopie = () => { const f = fassungRef.current; if (!f) return; const a = kopieren(f, auswahl); if (!a) { ansagen('Nichts zum Kopieren gewählt (Auslöser und Schlösser bleiben).'); return; } ablage.current = a; ansagen(`${a.knoten.length + a.zettel.length} kopiert — mit ihren Verbindungen.`); };
+  // Punkt 13: ⌘C legt die Auswahl auch in den Browser-Speicher (ohne Personen, lib/prozesse/ablage.ts) — so lässt sie sich in einem anderen Prozess einfügen.
+  const kopie = () => {
+    const f = fassungRef.current;
+    if (!f) return;
+    const a = kopieren(f, auswahl);
+    if (!a) { ansagen('Nichts zum Kopieren gewählt (Auslöser und Schlösser bleiben).'); return; }
+    const am = new Date().toISOString();
+    ablage.current = { ablage: a, am };
+    schreib(lokal(), ABLAGE_MERKER, JSON.stringify(ablageFuerSpeicher(a, { quelle: prozessId, jetzt: am })));
+    ansagen(`${a.knoten.length + a.zettel.length} kopiert — mit ihren Verbindungen; auch in einem anderen Prozess einfügbar.`);
+  };
   const einf = () => {
-    const a = ablage.current, f = fassungRef.current;
+    const f = fassungRef.current;
+    // Aus einem anderen Prozess (jünger als die eigene Ablage): die Fassung ohne Personen aus dem Browser-Speicher.
+    const fremd = ablageAus(lies(lokal(), ABLAGE_MERKER), new Date().toISOString());
+    const ausFremd = !!fremd && fremd.quelle !== prozessId && (!ablage.current || fremd.am > ablage.current.am);
+    const a = ausFremd ? fremd!.ablage : ablage.current?.ablage;
     if (!a || !f || !d) { ansagen('Die Ablage ist leer.'); return; }
     const ziel = auswahl.find(id => phaseVon(f, id));
     const phaseId = (ziel && phaseVon(f, ziel)) ?? phasen(d).at(-1)?.id;
     if (!phaseId) return;
-    mitFassung(x => einfuegen(x, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk') }));
+    if (mitFassung(x => einfuegen(x, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk') })) && ausFremd) {
+      setMeldung({ text: `Aus einem anderen Prozess eingefügt${fremd!.hinweise.length ? ` — ${fremd!.hinweise.join(' ')}` : ''} Verweise auf Schritte, die es hier nicht gibt, meldet die Prüfung.`, art: 'info' });
+    }
   };
 
   // ── Tastatur (lib/prozesse/werkstatt-tastatur.ts) ──
@@ -430,11 +492,14 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     const eine = auswahl.length === 1 ? d.knoten.find(k => k.id === auswahl[0]) : undefined;
     switch (a.art) {
       case 'abbrechen':
+        if (umbenennen) { setUmbenennen(null); return true; }
         if (formauswahl) { setFormauswahl(null); return true; }
         if (hilfe) { setHilfe(false); return true; }
         if (auswahl.length || kanteWahl || rahmenWahl) { setAuswahl([]); setKanteWahl(null); setRahmenWahl(null); setAndockWahl(null); return true; }
         return false;
       case 'hilfe': setHilfe(h => !h); return true;
+      case 'zoom': if (a.wie === 'alles') allesZeigen(); else flaeche.current?.zoomen(a.wie === 'groesser' ? 1.25 : 0.8); return true;
+      case 'karte': karteUmschalten(); return true;
       case 'waehlen': {
         const boxen = [...lage.knoten.values()].filter(k => !k.zu).map(k => ({ id: k.id, x: k.x, y: k.y, b: k.b, h: k.h }));
         if (!eine) { const erst = alleSchritte(d)[0]?.schritt.id; if (erst) { setAuswahl([erst]); flaeche.current?.zeige(erst); } return true; }
@@ -456,7 +521,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       // Ordnen legt auch Zettel frei, die einen Phasen-Kopf, eine Bahn oder einen Knoten verdecken (Befund 3) — über die Rahmen.
       case 'ordnen': mitFassung(f => ({ ok: true, fassung: zettelFreiLegen(ordnen(f), { team, zu }), ansage: 'Geordnet — eine Leserichtung, Zettel liegen frei. Rückgängig holt die alte Lage.' })); return true;
       case 'loeschen': loeschenAuswahl(); return true;
-      case 'benennen': if (eine) { setTitelFokus(n => n + 1); return true; } return false;
+      case 'benennen': if (eine && !eine.schloss) { setUmbenennen(eine.id); return true; } return false;
+      case 'oeffnen': if (eine) { setGross(eine.id); return true; } return false;
       case 'formauswahl': {
         if (!eine) return false;
         const lk = lage.knoten.get(eine.id);
@@ -482,17 +548,80 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   };
 
   // ── Probelauf (Vertrag mit dem Lauf-Motor, Etappe C1) ──
-  const probelauf = async () => {
+  const probelauf = async (o: { fall?: FallWert; annahmen?: Readonly<Record<string, string>> } = {}) => {
     setProbeHinweis(null);
     setProbeOffen(false);
     if (!versionAnsicht) await sichern();
-    const fall = probeFall === 'beispiel' ? 'beispiel' as const : { art: probeFall.art, id: probeFall.id };
-    const r = await fetch(`${PROBELAUF_PFAD}?space=business`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(probelaufKoerper(prozessId, versionAnsicht ? 'version' : 'entwurf', fall)) }).catch(() => null);
+    const pf = o.fall ?? probeFall;
+    const fall = pf === 'beispiel' ? 'beispiel' as const : { art: pf.art, id: pf.id };
+    // Punkt 9: die angenommenen Wege der Testdaten gehen mit (der Server nähme sie sonst selbst aus dem Bestand).
+    const annahmen = o.annahmen ?? eintrag?.testdaten?.annahmen;
+    const r = await fetch(`${PROBELAUF_PFAD}?space=business`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(probelaufKoerper(prozessId, versionAnsicht ? 'version' : 'entwurf', fall, annahmen ? { annahmen } : {})) }).catch(() => null);
     const a = probelaufAus(r?.status ?? 0, r ? await r.json().catch(() => null) : null);
     if (a.art === 'fehlt') { setProbe(null); setProbeHinweis(PROBE_FEHLT); return; }
     if (a.art === 'fehler') { setProbe(null); setProbeHinweis(a.text); return; }
     setProbe(a.ergebnis);
-    ansagen(`Probelauf${probeFall === 'beispiel' ? ' mit dem Beispiel' : ` mit „${probeFall.name}“`}: ${a.ergebnis.schritte.length} Schritte, geschätzt ${centText(a.ergebnis.kostenSchaetzungCent)}.`);
+    ansagen(`Probelauf${pf === 'beispiel' ? ' mit dem Beispiel' : ` mit „${pf.name}“`}: ${a.ergebnis.schritte.length} Schritte, geschätzt ${centText(a.ergebnis.kostenSchaetzungCent)}.`);
+  };
+
+  // ── Werkstatt bau-fertig: Testdaten, „Weg annehmen“, „Schritt testen“, Lauf → Testdaten (Punkte 9–11) ──
+  /** Testdaten speichern (EIN Weg: POST …/werkstatt `testdaten`, Stand/409) — der Server prüft, dass alles erfunden ist. Liefert einen Fehlersatz bzw. null. */
+  const testdatenSpeichern = async (t: ProzessTestdaten | null): Promise<string | null> => {
+    if (!(await sichern())) return 'Erst muss der Entwurf gespeichert sein.';
+    const r = await werkstattSenden(() => ({ aktion: 'testdaten', id: prozessId, stand: stand.current, testdaten: t }));
+    const j = r.j;
+    if (r.status === 200 && j?.ok && j.eintrag && j.stand) { stand.current = j.stand; setEintrag(j.eintrag); ansagen('Testdaten gespeichert.'); return null; }
+    if (r.status === 409 && j?.eintrag && j.stand) { setKonflikt({ eintrag: j.eintrag, stand: j.stand }); return 'Inzwischen hat jemand anders geändert — erst die Fassung klären.'; }
+    return String(j?.fehler ?? 'Die Testdaten ließen sich nicht speichern.');
+  };
+  const annahmeSetzen = async (knotenId: string, ausgang: string | null) => {
+    const td = eintrag?.testdaten ?? null;
+    const annahmen = { ...(td?.annahmen ?? {}) } as Record<string, string>;
+    if (ausgang) annahmen[knotenId] = ausgang; else delete annahmen[knotenId];
+    const { annahmen: _a, am: _am, von: _v, ...rest } = td ?? {};
+    const neu = { ...rest, ...(Object.keys(annahmen).length ? { annahmen } : {}) } as ProzessTestdaten;
+    const f = await testdatenSpeichern(Object.keys(neu).length ? neu : null);
+    if (f) setMeldung({ text: f, art: 'kritisch' });
+    else if (probe) void probelauf({ annahmen });
+  };
+  /** „Nur diesen Schritt testen“ / „Bis hier testen“ — derselbe Motor im Schatten mit Ausgabe (Tabelle, JSON nur Kennungen). Schreibt nichts, sendet nie. */
+  const schrittTesten = async (knotenId: string, art: 'nur' | 'bis') => {
+    setSchrittTestLaeuft(true);
+    if (!versionAnsicht) await sichern();
+    const fall = probeFall === 'beispiel' ? 'beispiel' as const : { art: probeFall.art, id: probeFall.id };
+    const annahmen = eintrag?.testdaten?.annahmen;
+    const r = await fetch(`${PROBELAUF_PFAD}?space=business`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(probelaufKoerper(prozessId, versionAnsicht ? 'version' : 'entwurf', fall, { ...(annahmen ? { annahmen } : {}), [art]: knotenId, ausgabe: true })) }).catch(() => null);
+    const a = probelaufAus(r?.status ?? 0, r ? await r.json().catch(() => null) : null);
+    setSchrittTestLaeuft(false);
+    if (a.art !== 'ergebnis') { setSchrittTest(null); setMeldung({ text: a.art === 'fehlt' ? PROBE_FEHLT : a.text, art: 'kritisch' }); return; }
+    setSchrittTest({ knoten: knotenId, ergebnis: { ...a.ergebnis, art } });
+    // „Bis hier“ färbt auch die Fläche (wie der Probelauf).
+    if (art === 'bis') setProbe(a.ergebnis);
+    ansagen(`${art === 'nur' ? 'Schritt getestet' : 'Bis hier getestet'}: ${a.ergebnis.schritte.length} ${a.ergebnis.schritte.length === 1 ? 'Schritt' : 'Schritte'} — nichts geschrieben, nichts gesendet.`);
+  };
+  /** „Modell wirklich fragen“ (22.10.): Schätzung bzw. der echte Aufruf eines Agenten-Schritts — nur auf eigenen Klick, Ergebnis nur in der Ansicht. */
+  const modellRufen = async (knotenId: string, art: 'schaetzen' | 'fragen'): Promise<ModellAntwort> => {
+    if (art === 'fragen' && !versionAnsicht && !(await sichern())) return { ok: false, fehler: 'Erst muss der Entwurf gespeichert sein.' };
+    const fall = probeFall === 'beispiel' ? 'beispiel' as const : { art: probeFall.art, id: probeFall.id };
+    const r = await fetch(`${PROBELAUF_PFAD}?space=business`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...probelaufKoerper(prozessId, versionAnsicht ? 'version' : 'entwurf', fall, { nur: knotenId }), modell: art }) }).catch(() => null);
+    const j = r ? await r.json().catch(() => null) as (Record<string, unknown> & { ok?: boolean }) | null : null;
+    if (r?.status === 200 && j?.ok) { if (art === 'fragen') ansagen('Modell gefragt — nur ein Vorschlag im Fenster, nichts übernommen.'); return j as unknown as ModellAntwort; }
+    return { ok: false, fehler: String(j?.fehler ?? j?.error ?? 'Das Modell ließ sich nicht fragen.'), ...(typeof j?.kostenCent === 'number' ? { kostenCent: j.kostenCent } : {}) };
+  };
+  /** Punkt 11 („Copy to editor“): Weg des Laufs → „Weg annehmen“ (gespeichert, nur Kennungen), Fall nur für diese Sitzung → Bauen, Probelauf. */
+  const alsTestdaten = async (a: { fall: LaufKurz['fall']; schritte: readonly LaufSchritt[]; start: string }) => {
+    const annahmen = annahmenAusLauf(a.schritte, d?.knoten ?? []);
+    const td = eintrag?.testdaten ?? null;
+    const { annahmen: _a, am: _am, von: _v, ...rest } = td ?? {};
+    const f = await testdatenSpeichern({ ...rest, ...(Object.keys(annahmen).length ? { annahmen } : {}) });
+    if (f) { setMeldung({ text: f, art: 'kritisch' }); return; }
+    const fall: FallWert = a.fall.id && a.fall.art !== 'keiner' ? { art: a.fall.art, id: a.fall.id, name: `Fall des Laufs vom ${tagZeit(a.start)}` } : 'beispiel';
+    setProbeFall(fall);
+    reiterWaehlen('bauen');
+    setMeldung({ text: `Fall und Weg des Laufs sind in „Bauen“: ${Object.keys(annahmen).length} angenommene ${Object.keys(annahmen).length === 1 ? 'Weg' : 'Wege'}${fall === 'beispiel' ? ' (ohne Fall: mit dem Beispiel)' : ' — der Fall gilt nur in dieser Sitzung'}.`, art: 'gut' });
+    void probelauf({ fall, annahmen });
   };
 
   // ── Zustand, Status, Neu laden (22.10.) ──
@@ -555,11 +684,12 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   };
   const phaseAktion = (aktion: 'umbenennen' | 'teilen' | 'zuklappen' | 'neu' | 'loeschen', id: string, wert?: string) => {
     if (aktion === 'zuklappen') { zuklappen(id); return; }
-    if (aktion === 'umbenennen' && wert) mitFassung(f => umbenennen(f, id, wert));
+    if (aktion === 'umbenennen' && wert) mitFassung(f => umbenennen_(f, id, wert));
     if (aktion === 'teilen') mitFassung(f => teilprozessBilden(f, id, { id: neueKennung('fk') }));
     if (aktion === 'neu') mitFassung(f => phaseNeu(f, { id: neueKennung('fk'), titel: 'Neue Phase', nach: id }));
     if (aktion === 'loeschen' && mitFassung(f => phaseLoeschen(f, id))) setRahmenWahl(null);
   };
+  const karteUmschalten = () => { const n = !karte; setKarte(n); schreib(lokal(), KARTE_MERKER, n ? 'an' : null); ansagen(n ? 'Karte an.' : 'Karte aus.'); };
   const zettelHin = () => {
     const m = flaeche.current?.mitte() ?? [200, 200];
     mitFassung(f => zettelNeu(f, { id: neueKennung('fk'), text: '', pos: { x: Math.round(m[0] - WS.zettel.b / 2), y: Math.round(m[1] - WS.zettel.h / 2) }, farbe: 'gelb' }));
@@ -600,14 +730,36 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       {reiter === 'bauen' && nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? (mobilDarf ? 'Am Handy: Texte und Fristen ändern' : 'Am Handy nur ansehen') : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
     </>
   );
+  const karteKnopf = <SymbolKnopf ariaLabel="Karte (Minimap) an/aus (M)" gedrueckt={karte} onClick={karteUmschalten}><KarteSymbol size={16} /></SymbolKnopf>;
   const rasterKnopf = <SymbolKnopf ariaLabel="Raster an/aus" gedrueckt={raster} onClick={() => { const n = !raster; setRaster(n); schreib(lokal(), RASTER_MERKER, n ? null : 'aus'); }}><Grid3x3 size={16} /></SymbolKnopf>;
   const headKnopf = !nurLesen && <Knopf leise onClick={() => setHeadOffen(true)} titel="Head fragen — Bausteine oder einen ganzen Entwurf vorschlagen lassen (übernommen erst mit deinem Klick)"><span className="pz-knopf-inhalt"><Sparkles size={14} aria-hidden />Head fragen</span></Knopf>;
   const probeKnopf = <Knopf leise onClick={() => setProbeOffen(o => !o)} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts); mit dem Beispiel oder einem echten Fall"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>;
   const versionenKnopf = (!nurAnsehen || mobilDarf) && !versionAnsicht && <Knopf onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>;
-  const panelInhalt = (
+  // ── Werkstatt bau-fertig: Titel der Knoten-Auswahl, Fäden mit „+“, Doppelklick und Umbenennen auf der Fläche ──
+  const auswahlTitel = (z: AnhangZiel): string => {
+    if (z.zwischen) { const k = lage.kanten.find(x => x.id === z.zwischen); return `Einfügen zwischen „${d.knoten.find(x => x.id === k?.von)?.titel ?? ''}“ und „${d.knoten.find(x => x.id === k?.nach)?.titel ?? ''}“`; }
+    return z.nach ? `Anhängen an „${d.knoten.find(k => k.id === z.nach)?.titel ?? ''}“` : 'Baustein anlegen';
+  };
+  const doppelklick = (id: string) => {
+    const k = d.knoten.find(x => x.id === id);
+    if (!k) return;
+    setAuswahl([id]); setKanteWahl(null); setRahmenWahl(null);
+    // Erster Doppelklick: den Namen direkt ändern; zweiter (bzw. ein Schloss, das keinen eigenen Namen trägt): die Einstellungen.
+    if (nurLesen || k.schloss || umbenennen === id) { setUmbenennen(null); setGross(id); return; }
+    setUmbenennen(id);
+  };
+  const umbenannt = (id: string, t: string | null) => {
+    setUmbenennen(u => (u === id ? null : u));
+    const k = d.knoten.find(x => x.id === id);
+    if (t && k && t !== k.titel) mitFassung(f => umbenennen_(f, id, t), { auswahl: false });
+    flaeche.current?.fokus();
+  };
+  const panelFuer = (o: { knoten: K | null; imFenster?: boolean }) => (
     <>
           <WerkstattPanel d={d} auswahl={auswahlListen} modelle={modelle} befunde={befunde} raete={raete} probe={probeSaetze} kanten={lage.kanten} nurLesen={nurLesen}
-            knoten={panelKnoten} phase={panelPhase} kante={panelKante} zettel={panelZettel} andock={andockWahl?.id === ein ? andockWahl?.art ?? null : null} titelFokus={titelFokus}
+            knoten={o.knoten} phase={o.imFenster ? null : panelPhase} kante={o.imFenster ? null : panelKante} zettel={o.imFenster ? null : panelZettel} andock={andockWahl?.id === o.knoten?.id ? andockWahl?.art ?? null : null} titelFokus={titelFokus}
+            annahmen={eintrag.testdaten?.annahmen} onAnnahme={nurLesen ? undefined : (id, a) => void annahmeSetzen(id, a)}
+            onDuplizieren={() => { kopie(); einf(); }} onGross={id => setGross(id)} feldFokus={feldFokus} imFenster={o.imFenster}
             onKnoten={k => mitFassung(f => ersetzen(f, k), { auswahl: false })}
             onSteckbrief={steckbrief}
             onZweig={(von, ausgang, nach) => mitFassung(f => (nach ? verbinden(f, von, ausgang, nach) : loesen(f, von, ausgang)), { auswahl: false })}
@@ -620,10 +772,49 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
             steckbriefZusatz={!nurAnsehen && rechte?.entwurf && !versionAnsicht
               ? <ProzessKopieren prozessId={prozessId} titel={d.titel} vorher={sichern} onKopiert={id => { onLandkarte?.(); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt' }), { scroll: false }); }} />
               : null} />
-          {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
+          {!o.imFenster && !nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
     </>
   );
+  const panelInhalt = panelFuer({ knoten: panelKnoten });
+  const grossKnoten = gross ? d.knoten.find(k => k.id === gross) ?? null : null;
+  const modellFuer = grossKnoten?.form === 'agent' && !nurAnsehen && rechte?.entwurf ? (art: 'schaetzen' | 'fragen') => modellRufen(grossKnoten.id, art) : undefined;
+  // Werkstatt bau-fertig (Punkt 1): Hinweise und Meldungen schweben über der Fläche (Bauen) statt sie nach unten zu schieben — außerhalb wie im Werkzeugmodus.
+  const hinweisTeile: ReactNode[] = [
+    konflikt && (
+      <Hinweis art="achtung" titel="Inzwischen hat jemand anders diesen Entwurf geändert" aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}><Knopf onClick={meineSpeichern}>Meine Fassung speichern</Knopf><Knopf leise onClick={andereUebernehmen}>Andere Fassung übernehmen</Knopf></span>}>
+        Deine Fassung ist nicht verloren — sie steht hier auf der Fläche. Speichern überschreibt die andere; Übernehmen holt die andere (Rückgängig holt deine zurück).
+      </Hinweis>
+    ),
+    wiederher && (
+      <Hinweis art="info" titel="Ungespeicherte Fassung aus dieser Sitzung" aktion={<span style={{ display: 'inline-flex', gap: 8 }}><Knopf onClick={() => { anwenden({ ok: true, fassung: wiederher, ansage: 'Wiederhergestellt.' }); setWiederher(null); }}>Wiederherstellen</Knopf><Knopf leise onClick={() => { setWiederher(null); schreib(sitzung(), ENTWURF_MERKER(prozessId), null); }}>Verwerfen</Knopf></span>}>
+        Beim letzten Mal wurde nicht alles gespeichert — inzwischen gibt es eine neuere Fassung auf dem Server.
+      </Hinweis>
+    ),
+    versionAnsicht && (
+      <Hinweis art="info" titel={`Version ${versionAnsicht.nr} · ${versionAnsicht.name} — nur lesen`}
+        aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
+          {!nurAnsehen && rechte?.entwurf && eintrag.status !== 'archiviert' && <Knopf leise onClick={() => setZurueckholen(true)} titel="Diese Version als neuen Entwurf zurückholen — die laufende Version bleibt, bis ihr veröffentlicht"><span className="pz-knopf-inhalt"><Undo2 size={14} aria-hidden />Als neuen Entwurf zurückholen</span></Knopf>}
+          <Knopf leise onClick={() => { setVersionAnsicht(null); setZurueckholen(false); }}><span className="pz-knopf-inhalt"><X size={14} aria-hidden />Zurück zum Entwurf</span></Knopf>
+        </span>}>
+        {`${tagZeit(versionAnsicht.am)}${konten.get(versionAnsicht.von) ? ` · ${konten.get(versionAnsicht.von)}` : ''} · ${versionAnsicht.notiz ?? 'So wurde der Prozess veröffentlicht.'}`}
+      </Hinweis>
+    ),
+    versionAnsicht && zurueckholen && (
+      <Hinweis art="achtung" titel={`Version ${versionAnsicht.nr} als neuen Entwurf zurückholen?`}
+        aktion={<span style={{ display: 'inline-flex', gap: 8 }}><Knopf onClick={async () => { const f = await uebernehmen(versionAnsicht.nr); setZurueckholen(false); if (f) setMeldung({ text: f, art: 'kritisch' }); }}>Zurückholen</Knopf><Knopf leise onClick={() => setZurueckholen(false)}>Abbrechen</Knopf></span>}>
+        {`Der jetzige Entwurf wird ersetzt (Rückgängig holt ihn zurück). ${v ? `Neue Fälle laufen weiter auf Version ${v.nr}, bis ihr veröffentlicht; laufende Fälle bleiben auf ihrer Version.` : ''}`}
+      </Hinweis>
+    ),
+    (speicher.art === 'fehler' || speicher.art === 'offline') && speicher.text && <Hinweis art={speicher.art === 'fehler' ? 'kritisch' : 'achtung'}>{speicher.text}{speicher.art === 'fehler' ? ' Deine Fassung bleibt hier — nach der nächsten Änderung wird erneut gespeichert.' : ''}</Hinweis>,
+    meldung && <Hinweis art={meldung.art} aktion={<SymbolKnopf ariaLabel="Meldung schließen" onClick={() => setMeldung(null)}><X size={14} /></SymbolKnopf>}>{meldung.text}</Hinweis>,
+    probeHinweis && <Hinweis art="info" aktion={<SymbolKnopf ariaLabel="Schließen" onClick={() => setProbeHinweis(null)}><X size={14} /></SymbolKnopf>}>{probeHinweis}</Hinweis>,
+    reiter === 'bauen' && probe && <Hinweis art="info" titel={`Probelauf ${probeFall === 'beispiel' ? 'mit dem Beispiel-Fall' : `mit „${probeFall.name}“`} — nichts wurde geschrieben`} aktion={<Knopf leise onClick={() => setProbe(null)}>Beenden</Knopf>}>{`Grün würde laufen, gelb wartet bzw. braucht Freigabe, grau wird übersprungen, rot ist ein Fehler. Kosten geschätzt: ${centText(probe.kostenSchaetzungCent)}.`}</Hinweis>,
+  ].filter(Boolean);
+  const hinweisBlock = (schwebend: boolean) => (hinweisTeile.length
+    ? <div className={schwebend ? (imModus ? 'wz-hinweise' : 'pw-hinweise-schwebe') : 'pw-hinweise'}>{hinweisTeile.map((x, i) => <div key={i} className={schwebend ? 'pw-hinweis-karte' : undefined}>{x}</div>)}</div>
+    : null);
   return (
+    <VorlageKontext.Provider value={vorlageUmfeld}>
     <div className={`pw-werkstatt${imModus ? ' pw-modus' : ''}`} onKeyDown={e => { if (e.key === 'Escape' && (formauswahl || hilfe || probeOffen)) { e.preventDefault(); setFormauswahl(null); setHilfe(false); setProbeOffen(false); } }}>
       {imModus ? (
         <>
@@ -640,7 +831,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
             </div>
           </WerkzeugSlot>
           <WerkzeugSlot ort="unten-rechts">
-            <ZoomLeiste massstab={massstab.ref} onKleiner={() => flaeche.current?.zoomen(0.8)} onGroesser={() => flaeche.current?.zoomen(1.25)} onAlles={allesZeigen} />
+            <ZoomLeiste massstab={massstab.ref} onKleiner={() => flaeche.current?.zoomen(0.8)} onGroesser={() => flaeche.current?.zoomen(1.25)} onAlles={allesZeigen}>{karteKnopf}</ZoomLeiste>
           </WerkzeugSlot>
           {headKnopf && <WerkzeugSlot ort="unten-links">{headKnopf}</WerkzeugSlot>}
           <WerkzeugSlot ort="aktionen">{probeKnopf}{versionenKnopf}</WerkzeugSlot>
@@ -661,6 +852,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           <SymbolKnopf ariaLabel="Verkleinern" onClick={() => flaeche.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Alles zeigen" onClick={allesZeigen}><Fullscreen size={16} /></SymbolKnopf>
+          {karteKnopf}
           <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
           {headKnopf}
           {probeKnopf}
@@ -668,41 +860,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
         </div>}
       </div>
       )}
-      {/* Meldungen: außerhalb wie bisher untereinander (der Rahmen trägt keine eigene Box), im Werkzeugmodus schwebend über der Fläche. */}
-      <div className={imModus ? 'wz-hinweise' : 'pw-hinweise'}>
-      {konflikt && (
-        <Hinweis art="achtung" titel="Inzwischen hat jemand anders diesen Entwurf geändert" aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}><Knopf onClick={meineSpeichern}>Meine Fassung speichern</Knopf><Knopf leise onClick={andereUebernehmen}>Andere Fassung übernehmen</Knopf></span>}>
-          Deine Fassung ist nicht verloren — sie steht hier auf der Fläche. Speichern überschreibt die andere; Übernehmen holt die andere (Rückgängig holt deine zurück).
-        </Hinweis>
-      )}
-      {wiederher && (
-        <Hinweis art="info" titel="Ungespeicherte Fassung aus dieser Sitzung" aktion={<span style={{ display: 'inline-flex', gap: 8 }}><Knopf onClick={() => { anwenden({ ok: true, fassung: wiederher, ansage: 'Wiederhergestellt.' }); setWiederher(null); }}>Wiederherstellen</Knopf><Knopf leise onClick={() => { setWiederher(null); schreib(sitzung(), ENTWURF_MERKER(prozessId), null); }}>Verwerfen</Knopf></span>}>
-          Beim letzten Mal wurde nicht alles gespeichert — inzwischen gibt es eine neuere Fassung auf dem Server.
-        </Hinweis>
-      )}
-      {versionAnsicht && (
-        <Hinweis art="info" titel={`Version ${versionAnsicht.nr} · ${versionAnsicht.name} — nur lesen`}
-          aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
-            {!nurAnsehen && rechte?.entwurf && eintrag.status !== 'archiviert' && <Knopf leise onClick={() => setZurueckholen(true)} titel="Diese Version als neuen Entwurf zurückholen — die laufende Version bleibt, bis ihr veröffentlicht"><span className="pz-knopf-inhalt"><Undo2 size={14} aria-hidden />Als neuen Entwurf zurückholen</span></Knopf>}
-            <Knopf leise onClick={() => { setVersionAnsicht(null); setZurueckholen(false); }}><span className="pz-knopf-inhalt"><X size={14} aria-hidden />Zurück zum Entwurf</span></Knopf>
-          </span>}>
-          {`${tagZeit(versionAnsicht.am)}${konten.get(versionAnsicht.von) ? ` · ${konten.get(versionAnsicht.von)}` : ''} · ${versionAnsicht.notiz ?? 'So wurde der Prozess veröffentlicht.'}`}
-        </Hinweis>
-      )}
-      {versionAnsicht && zurueckholen && (
-        <Hinweis art="achtung" titel={`Version ${versionAnsicht.nr} als neuen Entwurf zurückholen?`}
-          aktion={<span style={{ display: 'inline-flex', gap: 8 }}><Knopf onClick={async () => { const f = await uebernehmen(versionAnsicht.nr); setZurueckholen(false); if (f) setMeldung({ text: f, art: 'kritisch' }); }}>Zurückholen</Knopf><Knopf leise onClick={() => setZurueckholen(false)}>Abbrechen</Knopf></span>}>
-          {`Der jetzige Entwurf wird ersetzt (Rückgängig holt ihn zurück). ${v ? `Neue Fälle laufen weiter auf Version ${v.nr}, bis ihr veröffentlicht; laufende Fälle bleiben auf ihrer Version.` : ''}`}
-        </Hinweis>
-      )}
-      {(speicher.art === 'fehler' || speicher.art === 'offline') && speicher.text && <Hinweis art={speicher.art === 'fehler' ? 'kritisch' : 'achtung'}>{speicher.text}{speicher.art === 'fehler' ? ' Deine Fassung bleibt hier — nach der nächsten Änderung wird erneut gespeichert.' : ''}</Hinweis>}
-      {meldung && <Hinweis art={meldung.art} aktion={<SymbolKnopf ariaLabel="Meldung schließen" onClick={() => setMeldung(null)}><X size={14} /></SymbolKnopf>}>{meldung.text}</Hinweis>}
-      {probeHinweis && <Hinweis art="info" aktion={<SymbolKnopf ariaLabel="Schließen" onClick={() => setProbeHinweis(null)}><X size={14} /></SymbolKnopf>}>{probeHinweis}</Hinweis>}
-      {reiter === 'bauen' && probe && <Hinweis art="info" titel={`Probelauf ${probeFall === 'beispiel' ? 'mit dem Beispiel-Fall' : `mit „${probeFall.name}“`} — nichts wurde geschrieben`} aktion={<Knopf leise onClick={() => setProbe(null)}>Beenden</Knopf>}>{`Grün würde laufen, gelb wartet bzw. braucht Freigabe, grau wird übersprungen, rot ist ein Fehler. Kosten geschätzt: ${centText(probe.kostenSchaetzungCent)}.`}</Hinweis>}
-      </div>
+      {reiter !== 'bauen' && hinweisBlock(false)}
       {reiter === 'laeufe' && (
         <WerkstattLaeufe prozessId={prozessId} laufId={adr.lauf ?? null} daten={laeufe.daten} fehler={laeufe.fehler} rechte={rechte} team={team} konten={konten} agentName={agentName}
-          onLauf={id => reiterWaehlen('laeufe', id)} onTestfall={() => reiterWaehlen('tests')} onNeu={laeufe.laden} />
+          onLauf={id => reiterWaehlen('laeufe', id)} onTestfall={() => reiterWaehlen('tests')} onNeu={laeufe.laden} onAlsTestdaten={a => void alsTestdaten(a)} />
       )}
       {reiter === 'tests' && (
         <WerkstattTests prozessId={prozessId} d={d} tests={laeufe.daten?.tests ?? []} rechte={rechte} ergebnisse={testErg}
@@ -723,18 +884,25 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
             onRahmen={id => { setRahmenWahl(id); setAuswahl([]); setKanteWahl(null); }}
             onUnter={(id, art) => { setAuswahl([id]); setAndockWahl({ id, art }); setKanteWahl(null); setRahmenWahl(null); }}
             onZiehen={ziehen}
-            onVerbinden={(von, ausgang, nach) => mitFassung(f => verbinden(f, von, ausgang, nach))}
+            onVerbinden={(von, ausgang, nach) => mitFassung(f => verbindenFrei(f, von, ausgang, nach))}
+            zwischen={zwischenOk} onZwischen={(id, ort) => anhaengen({ zwischen: id }, ort)}
+            onUmhaengen={(id, ziel) => { const k = lage.kanten.find(x => x.id === id); if (k && mitFassung(f => umhaengen(f, k, ziel))) setKanteWahl(null); }}
+            onDoppel={doppelklick} umbenennen={umbenennen} onUmbenannt={umbenannt}
+            karte={karte} radSchiebt={imModus} onZettelGroesse={(id, b, h) => mitFassung(f => { const z = (f.zettel ?? []).find(x => x.id === id); return z ? zettelAendern(f, id, { pos: { ...z.pos, b, h } }) : { ok: false, grund: 'Diesen Zettel gibt es nicht (mehr).' }; }, { auswahl: false })}
+            befundTexte={befundTexte} onBefund={(id, feld) => { setAuswahl([id]); setKanteWahl(null); setRahmenWahl(null); setFeldFokus(f => ({ knoten: id, ...(feld ? { feld } : {}), n: (f?.n ?? 0) + 1 })); }}
             onAnhaengen={anhaengen}
             onZuklappen={zuklappen}
             onTaste={taste} onMassstab={massstab.setzen} />
+          {hinweisBlock(true)}
           {/* Der Pfeil oben rechts IN der Fläche (Entscheidung 22.10.) — im Werkzeugmodus trägt ihn die Kopfzeile (⤡). */}
           {!modus && onGanzerBildschirm && <GanzerBildschirmKnopf onClick={onGanzerBildschirm} />}
           {formauswahl && (
-            <WerkstattFormauswahl ort={formauswahl.ort} form={formauswahl.form} titel={formauswahl.ziel.nach ? `Anhängen an „${d.knoten.find(k => k.id === formauswahl.ziel.nach)?.titel ?? ''}“` : 'Baustein anlegen'}
-              ohneAusloeser={!!formauswahl.ziel.nach && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form !== 'ausloeser'} anhaengen={!!formauswahl.ziel.nach}
-              onWahl={e => ausKatalog(e, formauswahl.ziel)} onZu={() => { setFormauswahl(null); flaeche.current?.fokus(); }} />
+            <WerkstattFormauswahl form={formauswahl.form} titel={auswahlTitel(formauswahl.ziel)}
+              ohneAusloeser={!!formauswahl.ziel.zwischen || (!!formauswahl.ziel.nach && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form !== 'ausloeser')} anhaengen={!!formauswahl.ziel.nach || !!formauswahl.ziel.zwischen}
+              onWahl={e => ausKatalog(e, formauswahl.ziel)} onZu={() => { setFormauswahl(null); flaeche.current?.fokus(); }}
+              onMehrfach={formauswahl.ziel.nach && !formauswahl.ziel.zwischen && !formauswahl.ziel.ausgang?.match(/nein|fehler|abgelaufen/) ? () => { setMehrfach(formauswahl.ziel.nach!); setFormauswahl(null); } : undefined} />
           )}
-          {probeOffen && <ProbeFallFenster fallArt={d.fallArt ?? 'mandat'} wert={probeFall} onWert={setProbeFall} onStart={probelauf} onZu={() => setProbeOffen(false)} />}
+          {probeOffen && <ProbeFallFenster fallArt={d.fallArt ?? 'mandat'} wert={probeFall} onWert={setProbeFall} onStart={() => probelauf()} onZu={() => setProbeOffen(false)} />}
           {hilfe && (
             <div role="dialog" aria-label="Kürzel der Werkstatt" className="pz-hilfe">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -769,7 +937,27 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           tests={{ anzahl: laeufe.daten?.tests.length ?? 0, stand: testStand(testErg.size ? [...testErg.values()] : null, laeufe.daten?.tests.length ?? 0), onPruefen: testsAlle }}
           onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} namen={konten} />
       )}
+      {mehrfach && (
+        <MehrfachFenster d={d} nach={mehrfach} onZu={() => setMehrfach(null)} onAnlegen={(faelle, sonst) => {
+          const f = fassungRef.current;
+          if (!f) return 'Die Werkstatt lädt noch.';
+          const e = mehrfachEntscheidung(f, { nach: mehrfach, faelle, sonst, kennung: () => neueKennung('fk') });
+          if (!e.ok) return e.grund;
+          anwenden(e); setMehrfach(null);
+          return null;
+        }} />
+      )}
+      {/* Punkt 7: das große Einstellungsfenster — Eingabe · Maske · Ausgabe (Enter bzw. zweiter Doppelklick). */}
+      {grossKnoten && reiter === 'bauen' && (
+        <WerkstattGross k={grossKnoten} d={d} panel={panelFuer({ knoten: grossKnoten, imFenster: true })} werte={testwerte} testdaten={eintrag.testdaten ?? null}
+          namen={new Map(team.map(t => [t.id, t.name]))} mitSchloss={mitSchloss.has(grossKnoten.id)} nurLesen={nurLesen}
+          test={schrittTest?.knoten === grossKnoten.id ? schrittTest.ergebnis : null} testLaeuft={schrittTestLaeuft}
+          onTesten={art => void schrittTesten(grossKnoten.id, art)} onTestdaten={testdatenSpeichern}
+          onZu={() => { setGross(null); setSchrittTest(null); flaeche.current?.fokus(); }}
+          onModell={modellFuer} />
+      )}
     </div>
+    </VorlageKontext.Provider>
   );
 }
 
