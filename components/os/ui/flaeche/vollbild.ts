@@ -11,15 +11,10 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { vollAdresse } from '@/lib/make-one/werkzeuge';
 
-/** Die Adresse mit bzw. ohne Vollbild — alle übrigen Parameter bleiben; ohne Vollbild fällt auch „Präsentieren“ weg (es schließt das Vollbild ein). */
-export function vollAdresse(pfad: string, suche: string, an: boolean): string {
-  const q = new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche);
-  if (an) q.set('voll', '1');
-  else { q.delete('voll'); q.delete('modus'); }
-  const t = q.toString();
-  return t ? `${pfad}?${t}` : pfad;
-}
+// Die Adresse mit bzw. ohne Vollbild: EINE Regel für Flächen und Werkzeuge (22.10., Werkzeug-Muster — der Werkzeugmodus IST dieses Vollbild).
+export { vollAdresse };
 
 const nativAn = () => typeof document !== 'undefined' && !!document.fullscreenElement;
 

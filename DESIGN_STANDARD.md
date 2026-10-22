@@ -650,3 +650,15 @@ Hauptweg), Ebene 3 Ablauf (die Fläche des Editors, nur lesbar — Rauten und Er
   `textZeilen` erst hinter Bindestrichen, dann an einer Silbengrenze mit Trennstrich (`silbenTeilen`). HTML daneben: `hyphens: auto` (die Seite ist `lang="de"`).
 - **Fläche des Editors (Ebene 3):** Pfeile kreuzen keine anderen Pfeile — ein zweiter Durchgang legt kreuzende neu (`pfeileKreuzen`, `pfeilWeg(…, andere)`,
   auch unten bzw. oben herum); zwei Pfeile in denselben Eingang dürfen zusammenlaufen.
+
+## Werkzeug-Muster (22.10.) — ein Bereich als eigenes Werkzeug
+Ein großer Bereich (Prozesse, als Nächstes Markttraktion) ist ein **Werkzeug**: EINE Konfiguration in `lib/make-one/werkzeuge.ts`, Bausteine in
+`components/os/werkzeug/*`. Regeln für die Oberfläche:
+- **Leiste klappt um** wie bei HubSpot: oben „← MAKE OS“, Name mit Symbol in der Farbe des Space, die Unterpunkte (Zeilen ≥ 44 px, `TYP.bedien`, aktiv getönt),
+  Gruppen-Überschriften in der Beschriftungs-Stufe (`MIKRO`), Fuß hinter einer Haarlinie. Höchstens zwei Ebenen. Unten bleiben Einstellungen, Melden, Konto.
+- **Pfeil oben rechts in jeder Fläche** (`GanzerBildschirmKnopf`, ⤢) öffnet den Werkzeugmodus; im Modus trägt die Kopfzeile ⤡ „Vollbild verlassen“, Esc beendet.
+- **Werkzeugmodus (Miro-Art)**: die Fläche füllt den Bildschirm; links die schmale Symbol-Leiste (nur Symbole, Name als Tooltip); schwebende Leisten aus
+  `RAND`/Flächen-Token mit Tiefenschatten — Kopfzeile oben, Werkzeugleiste links (senkrecht, nur Symbole), Zoom unten rechts (− % + · Alles zeigen · Karte), Fragen
+  unten links, Seitenfeld rechts zum Ein- und Ausklappen. Leere Orte bleiben unsichtbar. Keine Transformation/kein Weichzeichner an schwebenden Leisten.
+  Bewegung nur als Übergang der Farbe — bei `prefers-reduced-motion` aus.
+- „Alles zeigen“ hat das Symbol „Fullscreen“ (Rahmen-Ecken); ⤢/⤡ gehören allein dem ganzen Bildschirm.

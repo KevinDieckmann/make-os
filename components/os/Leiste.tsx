@@ -11,10 +11,15 @@
 // Handy: unten FÜNF Einträge — Heute · Inbox · Menü · ZOE · Netzwerken (sechs liefen ineinander). „Menü“ öffnet das Blatt mit dem
 // Schalter Privat/Business, allen Punkten der Wahl, Einstellungen und „Problem oder Idee melden“ — ein „Mehr“ daneben wäre
 // dasselbe Blatt ein zweites Mal; den frei gewordenen Platz bekommt die Inbox (am Handy der häufigste Weg, sonst zwei Tipps entfernt).
+// Werkzeug-Muster (22.10., lib/make-one/werkzeuge.ts; Kevin: „Menü wie HubSpot“): steht die Adresse in einem Werkzeug (heute Prozesse), klappt die Leiste
+// auf dessen Unterpunkte um — oben „← MAKE OS“ (zeigt wieder die Punkte des Space, die Seite bleibt offen: ein ungespeicherter Entwurf geht nie verloren,
+// und jeder Punkt ist von dort einen Klick entfernt), darunter Name und Symbol, dann die Unterpunkte; unten bleiben Einstellungen, Melden, Konto. Steht man so
+// im Werkzeug, aber mit der Space-Leiste, klappt ein Klick auf den Punkt des Werkzeugs sie wieder um. Am Handy bleibt die Leiste unten, wie sie ist — das
+// Blatt „Menü“ zeigt das Werkzeug oben.
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Settings, PanelLeftClose, PanelLeftOpen, MessageSquareWarning, Handshake, Sun, Inbox, LayoutGrid } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT } from '@/lib/make-one/design';
 import { ZOE_EINTRAG, SPACE_WAHLEN, aktiverSpaceEintrag, aktiverLeistenPunkt, leisteFuer, spaceVon, type SpaceWahl, type SpaceEintrag } from '@/lib/make-one/spaces';
@@ -24,6 +29,8 @@ import { WEG } from '@/lib/wege';
 import { useWartezahl, wartezahlText } from '@/lib/netzwerken/zaehler';
 import { EINSTELLUNGEN_PFADE } from '@/lib/make-one/einstellungen';
 import { useNurBusiness } from './useInhaber';
+import { werkzeugFuer, werkzeugKontext, werkzeugVonHref, WERKZEUG_ZURUECK } from '@/lib/make-one/werkzeuge';
+import { WerkzeugMenue } from './werkzeug/menue';
 
 /** Einstellungen (08.10., vorher „System“): Adresse bleibt /os/system; leuchtet auf allen Seiten, die dort gelistet sind. */
 export const EINSTELLUNGEN: SpaceEintrag = { href: '/os/system', label: 'Einstellungen', icon: Settings, passt: EINSTELLUNGEN_PFADE };
@@ -85,6 +92,18 @@ export function Leiste() {
   useEffect(() => { setOffen(false); }, [pfad, suche]);
   useEffect(() => { if (offen) setBlattWahl(wahl); }, [offen]); // eslint-disable-line react-hooks/exhaustive-deps
   const vorname = konto?.name.split(' ')[0] ?? '';
+  // Werkzeug-Muster: auf einer Werkzeug-Adresse zeigt die Leiste dessen Menü — außer man hat „← MAKE OS“ gewählt (bis zum nächsten Seitenwechsel).
+  const werkzeug = werkzeugFuer(pfad, suche);
+  const wzKontext = useMemo(() => werkzeugKontext(pfad, suche), [pfad, suche]);
+  const wzBlattKontext = useMemo(() => werkzeugKontext(pfad, suche, true), [pfad, suche]);
+  const [spaceZeigen, setSpaceZeigen] = useState(false);
+  useEffect(() => { setSpaceZeigen(false); }, [pfad]);
+  useEffect(() => {
+    const zurueck = () => setSpaceZeigen(true);
+    window.addEventListener(WERKZEUG_ZURUECK, zurueck);
+    return () => window.removeEventListener(WERKZEUG_ZURUECK, zurueck);
+  }, []);
+  const werkzeugMenue = !!werkzeug && !spaceZeigen;
 
   /** Ein Punkt der Leiste: Symbol + Text, eingeklappt nur das Symbol; aktiv in der Farbe des Space. */
   const zeileStil = (an: boolean, farbe: string = C.aktiv): CSSProperties => ({
@@ -94,6 +113,15 @@ export function Leiste() {
   });
   const zeile = (e: SpaceEintrag, an: boolean, farbe?: string) => {
     const Icon = e.icon;
+    // Im Werkzeug, aber mit der Space-Leiste: der Punkt des Werkzeugs klappt die Leiste wieder auf das Werkzeug um (kein Seitenwechsel).
+    if (werkzeug && spaceZeigen && werkzeugVonHref(e.href)?.id === werkzeug.id) {
+      return (
+        <button key={e.href} type="button" onClick={() => setSpaceZeigen(false)} title={`${e.label} — Menü des Werkzeugs`} aria-current={an ? 'page' : undefined} className="fassbar" style={{ ...zeileStil(an, farbe), width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+          <Icon size={17} strokeWidth={1.8} style={{ flex: '0 0 auto' }} />
+          {!zu && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>}
+        </button>
+      );
+    }
     return (
       <Link key={e.href} href={e.href} title={e.label} aria-current={an ? 'page' : undefined} className="fassbar" style={zeileStil(an, farbe)}>
         <Icon size={17} strokeWidth={1.8} style={{ flex: '0 0 auto' }} />
@@ -131,10 +159,12 @@ export function Leiste() {
           </button>
         </div>
 
+        {/* Werkzeug-Muster (22.10.): im Werkzeug dessen Menü — „← MAKE OS“, Name, Unterpunkte. */}
+        {werkzeugMenue && werkzeug && <WerkzeugMenue werkzeug={werkzeug} kontext={wzKontext} variante="leiste" schmal={zu} farbe={sp.farbe} onZurueck={() => setSpaceZeigen(true)} />}
         {/* Die Wahl (oben im Kopf) — nur als Beschriftung, in ihrer Farbe. */}
-        {!zu && <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: sp.farbe, padding: '0 10px 6px' }}>{sp.label}</div>}
+        {!werkzeugMenue && !zu && <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: sp.farbe, padding: '0 10px 6px' }}>{sp.label}</div>}
         {/* Die Punkte des Space, dann ZOE (gemeinsam). */}
-        {leisteFuer(wahl, !!nurBusiness).map(e => zeile(e, punktAn?.href === e.href, e === ZOE_EINTRAG ? C.aktiv : sp.farbe))}
+        {!werkzeugMenue && leisteFuer(wahl, !!nurBusiness).map(e => zeile(e, punktAn?.href === e.href, e === ZOE_EINTRAG ? C.aktiv : sp.farbe))}
 
         <div style={{ marginTop: 'auto', display: 'grid', gap: 1 }}>
           <div style={{ borderTop: `1px solid ${C.linie}`, margin: '10px 0 8px' }} />
@@ -152,6 +182,8 @@ export function Leiste() {
       {offen && (
         <div className="leiste-mobil-blatt" onClick={() => setOffen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(0,0,0,.45)' }}>
           <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', left: 8, right: 8, bottom: 'calc(64px + env(safe-area-inset-bottom))', maxHeight: 'calc(100vh - 96px - env(safe-area-inset-bottom))', overflowY: 'auto', background: C.flaecheHoch, border: `1px solid ${spaceVon(blattWahl).farbe}55`, borderRadius: 16, padding: 10, boxShadow: '0 16px 40px -12px rgba(0,0,0,.8)' }}>
+            {/* Werkzeug-Muster (22.10.): im Werkzeug steht sein Menü oben im Blatt, darunter wie bisher Bereich und Punkte. */}
+            {werkzeug && <WerkzeugMenue werkzeug={werkzeug} kontext={wzBlattKontext} variante="blatt" farbe={sp.farbe} onWeg={() => setOffen(false)} />}
             <div role="group" aria-label="Bereich im Menü" style={{ display: 'grid', gridTemplateColumns: `repeat(${blattWahlen.length}, minmax(0, 1fr))`, gap: 4, padding: 3, marginBottom: 6, borderRadius: 999, background: 'rgba(255,255,255,.05)' }}>
               {blattWahlen.map(id => { const w = spaceVon(id); const an = id === blattWahl; return (
                 <button key={id} type="button" aria-pressed={an} onClick={() => setBlattWahl(id)} className="fassbar"

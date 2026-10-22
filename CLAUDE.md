@@ -1769,6 +1769,40 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Tests `tests/prozesse-stellschrauben*.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
+## Werkzeug-Muster — jeder große Bereich ein eigenes Werkzeug (22.10., Branch `werkzeuge`, nur lokal)
+Kevin 22.10.: „Wenn ich Prozesse aufmache, kommt im Grunde ein neues Tool — wie bei Miro. Genauso bei Markttraktion wie bei HubSpot … dann bekommt jeder Bereich
+mehr Power“ — „Innerhalb der Maske auf jeden Fall einen Pfeil oben rechts, der diesen Bereich einfach als Ganzes macht.“ Prozesse ist das erste Werkzeug (Miro-Art);
+als Nächstes Markttraktion als Hub (Gruppen-Überschriften im Menü), dann die übrigen Bereiche — das Muster trägt sie schon.
+- **EINE Konfiguration je Werkzeug als Daten** in `lib/make-one/werkzeuge.ts` (`WERKZEUGE`, rein, client-sicher): Kennung, Name, Symbol, Spaces, `pfade` (Muster wie
+  `passtZu` — eine Adresse gehört höchstens EINEM Werkzeug), `leistenPunkt` (der Punkt der Space-Leiste, der es öffnet — das Werkzeug ersetzt keinen Punkt),
+  Unterpunkte (Ziel NUR über `WEG`/vorhandene Adressen — alte Links gelten weiter — oder eine Aktion der Seite über das Ereignis `make-werkzeug`; `aktiv`,
+  `sichtbar`; `gruppe` = nur Überschrift), `fuss`. **Höchstens zwei Ebenen** (Unterpunkt + `unter`); tiefer gehört es in die Seite (Reiter). Neues Werkzeug = ein
+  Eintrag dort + die Seite hört seine Aktionen + `SEITE_DES_WERKZEUGS` im Wächter — nie die Leiste anfassen.
+- **Leiste klappt um** (`components/os/Leiste.tsx` + `components/os/werkzeug/menue.tsx` `WerkzeugMenue`): auf einer Werkzeug-Adresse oben „← MAKE OS“, Name mit
+  Symbol, Unterpunkte; unten bleiben Einstellungen, Melden, Konto. „← MAKE OS“ zeigt wieder die Punkte des Space OHNE Seitenwechsel (ein ungespeicherter Entwurf geht
+  nie verloren; Heute ist von dort ein Klick) — bis zum nächsten Pfadwechsel; der Punkt des Werkzeugs klappt zurück. Eingeklappt nur Symbole. **Handy:** die Leiste
+  unten bleibt, das Blatt „Menü“ zeigt das Werkzeug oben (Variante `blatt`).
+- **Werkzeugmodus = das Vollbild der Flächen** (`?voll=1`, EIN Parameter — `vollAdresse` liegt in werkzeuge.ts, `ui/flaeche/vollbild.ts` reicht weiter): der Rahmen
+  `components/os/werkzeug/rahmen.tsx` (`WerkzeugRahmen`, Portal, aria-modal): links die schmale Symbol-Leiste (`schiene`, Links bleiben im Modus), oben schwebend
+  „← MAKE OS · <Werkzeug> · <Titel>“ + Aktionen + „Vollbild verlassen“, Esc verlässt (`esc={false}`, wenn die Seite Esc selbst führt). Orte für schwebende Leisten
+  (`WerkzeugSlot`: `titel` · `aktionen` · `links` · `unten-links` · `unten-rechts`; außerhalb zeichnen sie nichts — die Seite legt ihre Leisten dann selbst hin),
+  `WerkzeugFeld` (Seitenfeld rechts, klappt ein, öffnet sich bei neuer Auswahl), `GanzerBildschirmKnopf` (der Pfeil ⤢ oben rechts IN jeder Fläche, außerhalb des
+  Modus), `ZoomLeiste` + `useMassstab` (`components/os/werkzeug/zoom.tsx`; Maßstab per `onMassstab` direkt aus der Kamera, kein Zustand je Bild). Keine
+  Transformation/kein Weichzeichner an den schwebenden Leisten (Fenster mit `position: fixed` blieben darin gefangen). `flaechig` = die Fläche füllt den Bildschirm,
+  sonst Seite mit Rand unter der Kopfzeile. Präsentieren bleibt eigener Modus. Die Schale (Layout, Kopf) bleibt — der Rahmen legt sich nur darüber.
+- **Prozesse** (erstes Werkzeug): Unterpunkte Landkarte · Liste · Werkstatt (mit offenem eigenen Prozess: Bauen · Läufe · Tests) · Vorlagen; Fuß Präsentieren.
+  Im Modus: Werkzeugleiste links (Werkstatt: Rückgängig, Ordnen, Zettel, Phase, Raster …; Landkarte: Auswahl, Anpassen, Kürzel), Zoom unten rechts, Head fragen
+  unten links, Probelauf/Veröffentlichen bzw. Prozess/Vorlage/Präsentieren oben rechts, Zustand + Version hinter dem Titel, Steckbrief/Maske als `WerkzeugFeld`.
+- **„Automationen & Head“ je Werkzeug** (Kevin 22.10.: „Jeder Bereich hat einen eigenen Automation & Head of Bereich … also eigentlich die Prozesse“): Feld
+  `automation { bereiche, head, href, aktiv, gruppe? }` → Standard-Unterpunkt (`automationPunkt`, Name `AUTOMATION_LABEL`). Ort = **Parameter an der vorhandenen
+  Seite des Werkzeugs** (z. B. ein Reiter `s=automationen`), keine eigene Seite (keine dritte Ebene, die Schnellsuche findet die Seite schon, der Rahmen bleibt).
+  Die Seite rendert dort `components/os/werkzeug/BereichAutomationen.tsx` (`<BereichAutomationen werkzeug={…} />`): DIESELBEN Daten wie Prozesse (Landkarte in
+  der angepassten Fassung + Läufe, Filter rein in `lib/prozesse/bereich-automationen.ts`), Zustand wie in der Werkstatt, „+ Prozess“ (Bereich vorbelegt), „Aus
+  Vorlage“ (Galerie mit `bereiche`), System-Prozesse mit Stellschrauben, Head-Karte (GET /api/agenten, Freigaben, Gespräch, Einstellungen, „Head fragen“ mit
+  `bereichVorgabe`). Bereiche nur feste Kennungen (`BEREICH_IDS`) — eigene `lb-…` gehören der Instanz. Prozesse selbst trägt keinen Punkt (dort ist es die ganze Landkarte).
+- Wächter `tests/werkzeuge.test.ts` (jede Adresse eines Unterpunkts existiert und bleibt im Werkzeug, Zuordnung eindeutig, Leistenpunkt öffnet, ≤ 2 Ebenen, Gruppen
+  beieinander, Aktionen gehört, Menü nur auf Werkzeug-Adressen, Rückweg, Rahmen/Orte, keine Literale, Automationen & Head) plus die Wächter der Aufräum-Etappe.
+
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
 - **Eine Stelle je Aufgabe:** rein `lib/crm/netzwerken.ts` (Schritte, `erfassungPruefen`, `kenntWirSchon`, `firmaVorschlaege`, Danke-Entwurf, `berichtAus`), Server `lib/crm/netzwerken-server.ts` (`erfassungAusfuehren`, `dankeRausVermerken`, `freieVorschlaege`), Route `app/api/netzwerken` (GET Personen/`?frei=`, POST `erfassen`/`danke-raus`), Warteschlange `lib/netzwerken/warteschlange.ts`, Karte-Auslesen (aus) `lib/crm/netzwerken-karte.ts`. Nie neben diesen Stellen eine zweite Dublettenprüfung, Erfassungslogik oder Offline-Warteschlange bauen.

@@ -1283,6 +1283,64 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .pz-voll .pw-panel { max-height: 100%; }
 @media print { .pw-auswahl, .pw-werkzeuge { display: none !important; } }
 
+/* ─── Werkzeug-Muster (22.10., lib/make-one/werkzeuge.ts, components/os/werkzeug/*) ─────────────────────────────────────────────────────────────
+   Kevin: „Wenn ich Prozesse aufmache, kommt im Grunde ein neues Tool — wie bei Miro.“ Werkzeugmodus = Vollbild (`voll=1`): links die schmale Symbol-Leiste,
+   die Fläche füllt den Rest, Kopfzeile und Leisten schweben (`.wz-schwebe`, leer = unsichtbar). Keine Transformation und kein Weichzeichner an den schwebenden
+   Leisten — Fenster (position: fixed), die aus ihnen öffnen, bleiben am Bildschirm. `--wz-oben` setzt der Rahmen aus der Höhe der Kopfzeile. */
+.wz-modus { position: fixed; inset: 0; z-index: 1500; background: #0B0E10; color: #E8ECEA; display: grid; grid-template-columns: 64px minmax(0, 1fr); --wz-oben: 76px; }
+.wz-schiene { display: flex; flex-direction: column; padding: 12px 8px; border-right: 1px solid #1F262A; background: #0B0E10; overflow-y: auto; overflow-x: hidden; box-sizing: border-box; }
+.wz-buehne { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.wz-inhalt { position: absolute; inset: 0; overflow: auto; padding: var(--wz-oben) 20px 84px; box-sizing: border-box; overscroll-behavior: contain; }
+.wz-inhalt.wz-inhalt-flaeche { padding: 0; overflow: hidden; }
+.wz-kopf { position: absolute; top: 10px; left: 12px; right: 12px; z-index: 7; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-start; justify-content: space-between; pointer-events: none; }
+.wz-kopf > * { pointer-events: auto; }
+.wz-kopf-teil { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; min-height: 52px; padding: 4px 8px; border-radius: 16px; background: #1B2126; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 14px 36px -16px rgba(0,0,0,.8); box-sizing: border-box; min-width: 0; max-width: 100%; }
+.wz-kopf-rechts { margin-left: auto; justify-content: flex-end; }
+.wz-kopf-name { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 6px; border-radius: 10px; text-decoration: none; white-space: nowrap; }
+.wz-trenner { color: #86918F; }
+.wz-titel { min-width: 0; display: flex; align-items: center; }
+.wz-titel .pz-brot { font-size: 15px; }
+.wz-ort { display: contents; }
+.wz-kopf-rechts .pz-suche { width: min(260px, 40vw); }
+.wz-schwebe { position: absolute; z-index: 5; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px; border-radius: 16px; background: #1B2126; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 14px 36px -16px rgba(0,0,0,.8); box-sizing: border-box; }
+.wz-schwebe:empty { display: none; }
+.wz-links { left: 12px; top: 0; bottom: 0; margin: auto 0; height: fit-content; max-height: calc(100% - 2 * var(--wz-oben)); overflow-y: auto; }
+.wz-links .wz-palette, .wz-palette { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.wz-unten-links { left: 12px; bottom: 12px; }
+.wz-unten-rechts { right: 12px; bottom: 12px; }
+.wz-zoom { display: flex; gap: 2px; align-items: center; }
+.wz-massstab { min-width: 52px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; color: #A2ADB0; }
+.wz-hinweise { position: absolute; z-index: 4; top: var(--wz-oben); left: 0; right: 0; margin: 0 auto; width: min(640px, calc(100% - 160px)); display: grid; gap: 8px; }
+.wz-hinweise:empty { display: none; }
+.pw-hinweise { display: contents; }
+.wz-feld { position: absolute; z-index: 4; top: var(--wz-oben); right: 12px; bottom: 76px; width: min(380px, calc(100% - 120px)); display: flex; flex-direction: column; border-radius: 16px; background: #161B1F; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 18px 50px -18px rgba(0,0,0,.85); overflow: hidden; box-sizing: border-box; }
+.wz-feld-kopf { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 4px 4px 14px; border-bottom: 1px solid rgba(255,255,255,.07); }
+.wz-feld-inhalt { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 14px; display: grid; gap: 12px; align-content: start; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
+.wz-feld-zu { position: absolute; z-index: 4; top: var(--wz-oben); right: 12px; border-radius: 14px; background: #1B2126; border: 1px solid rgba(255,255,255,.14); }
+/* Der Pfeil ⤢ oben rechts IN einer Fläche (außerhalb des Werkzeugmodus). */
+.wz-ganz { position: absolute; top: 10px; right: 10px; z-index: 3; border-radius: 12px; background: #1B2126; border: 1px solid rgba(255,255,255,.14); }
+/* Die Flächen im Werkzeugmodus: randlos über den ganzen Bildschirm; Hinweis unten mittig, Minimap über der Zoom-Leiste, Hilfe unter der Kopfzeile. */
+.wz-inhalt-flaeche .pz-raster, .wz-inhalt-flaeche .pz-haupt, .wz-inhalt-flaeche .pz-buehnen-rahmen { height: 100%; }
+.wz-inhalt-flaeche .pz-raster { display: block; }
+.wz-inhalt-flaeche .ff-flaeche-buehne.pz-buehne, .wz-inhalt-flaeche .ff-flaeche-buehne.pw-buehne { height: 100%; min-height: 0; border: 0; border-radius: 0; }
+.wz-inhalt-flaeche .pw-werkstatt { display: block; position: relative; height: 100%; }
+.wz-inhalt-flaeche .pw-raster { display: block; position: relative; height: 100%; }
+.wz-inhalt-flaeche .pw-flaeche-rahmen { position: absolute; inset: 0; }
+.wz-inhalt-flaeche .wz-feld .pw-panel { max-height: none; padding: 0; border: 0; background: transparent; }
+.wz-inhalt-flaeche .ff-flaeche-hinweis { left: 50% !important; bottom: 18px !important; transform: translateX(-50%); text-align: center; max-width: min(520px, 40vw) !important; }
+.wz-inhalt-flaeche .pz-minimap { bottom: 76px; }
+.wz-inhalt-flaeche .pz-hilfe { top: var(--wz-oben); }
+@media (max-width: 720px) {
+  .wz-modus { grid-template-columns: minmax(0, 1fr); }
+  .wz-schiene { display: none; }
+  .wz-text { display: none; }
+  .wz-inhalt { padding: var(--wz-oben) 12px 84px; }
+  .wz-feld { left: 8px; right: 8px; width: auto; top: auto; bottom: 8px; max-height: 55vh; }
+  .wz-hinweise { width: calc(100% - 24px); }
+}
+@media (prefers-reduced-motion: reduce) { .wz-modus *, .wz-modus *::before, .wz-modus *::after { transition: none !important; } }
+@media print { .wz-schiene, .wz-kopf, .wz-schwebe, .wz-ganz { display: none !important; } }
+
 /* ── Kunden-Seite, Vorschau und Präsentation (12.10., Fulfillment extern — components/os/fulfillment/kunde/KundenAnsicht.tsx, bilder.tsx) ─────────────
    Nur Klassen `kunde-…` — sie wirken nur in der Kunden-Ansicht. Handy zuerst (eine Spalte), ab ~900 px zwei Spalten (`.kunde-raster`), die Präsentation
    „Dem Kunden zeigen“ größer. Druck: weiß, dunkle Schrift, nichts zum Ausfüllen, keine Karte zerrissen. */
