@@ -10,14 +10,18 @@
 // sehen, nie umgekehrt). Aufbau und Regeln: lib/finanzen/navigation.ts.
 //   Privat    Überblick · Konten & Buchungen (Ebene 2: Buchungen … Schulden, Selbstständigkeit) · Planung (Ebene 2: Blätter) · Steuern
 //   Business  Überblick (Ebene 2: Cockpit · Controlling & Ziele) · Rechnungen & Zahlungen (oben: Rechnungen schreiben mit PDF, 08.10.) · Liquidität · Buchungen · Planung · Steuern
-//   Head of Finance = Knopf neben den Reitern. Gesamt (die Brücke) steht einmal: unten auf Privat › Überblick (#gesamt).
+//   Head of Finance = Knopf auf der Seite. Gesamt (die Brücke) steht einmal: unten auf Privat › Überblick (#gesamt).
+// 22.10. abends (Werkzeug Finanzen, Gruppe A): Ebene 1 ist das Menü der linken Leiste (lib/make-one/werkzeuge.ts `FINANZEN_WERKZEUG`, Punkte NUR aus
+// `FINANZ_MENUE`) — die Reiterleiste hier ist weg; Cockpit und Controlling & Ziele sind Menüpunkte (ihre Pillenreihe ist weg). Ebene 2 bleibt: die Pillen unter
+// Konten & Buchungen und die Blätter der Planung. „Automationen & Head“ = s=chef: oben die Abläufe des Bereichs und die Karte(n) der Heads
+// (BereichAutomationen), darunter der Head of Finance. Am Handy steht das Menü oben im Blatt „Menü“.
 // Die früheren Nebenseiten (/os/finanzen/planung, …/liquiditaet, …/buchungen, …/grundlage, …/dashboard, /os/controlling) leiten in
 // next.config.mjs mit allen Parametern hierher. Wer keinen Haushalt hat, sieht nur Business (Überblick, Planung) und den Head of Finance.
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Bot } from 'lucide-react';
-import { Seite, Reiter, Pillen, Knopf, Karte, Ueberschrift, LEUCHT } from './ui';
+import { Seite, Pillen, Knopf, Karte, Ueberschrift, LEUCHT } from './ui';
 import { ZahlenBusiness } from './ZahlenView';
 import { HaushaltView } from './haushalt/HaushaltView';
 import { GesamtView } from './haushalt/GesamtView';
@@ -34,21 +38,12 @@ import { GrundlageView } from './GrundlageView';
 import { useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
 import { useHaushaltZugang } from './useInhaber';
-import { PRIVAT_REITER, BUSINESS_REITER, UEBERBLICK_UNTER, finanzOrt, finanzAdresse, kontenUnter, type FinanzReiter, type FinanzOrt, type KontenUnter } from '@/lib/finanzen/navigation';
+import { FINANZ_MENUE, finanzOrt, finanzAdresse, finanzMenueId, finanzMenueErlaubt, kontenUnter, type FinanzMenueId, type FinanzOrt, type KontenUnter } from '@/lib/finanzen/navigation';
+import { FINANZEN_WERKZEUG } from '@/lib/make-one/werkzeuge';
+import { BereichAutomationen } from './werkzeug/BereichAutomationen';
 
-/** Ein Satz je Ort (eine Zeile, Design-Standard). */
-const UNTER: Record<FinanzReiter | 'chef' | 'controlling', string> = {
-  privat: 'Privat-Index, was ansteht und was das Business fürs Leben bringen muss',
-  konten: 'Eure Konten, Buchungen, Budgets und Schulden',
-  business: 'Finanzielle Gesundheit, Konten und Fälliges der Gesellschaften',
-  controlling: 'Kurs aufs Jahresziel, Run-Rate und Runway',
-  rechnungen: 'Was reinkommt, was raus muss — in welcher Reihenfolge',
-  liquiditaet: 'Wie viel Geld wann da ist',
-  buchungen: 'Was auf den Konten der Gesellschaften passiert ist',
-  finanzplanung: 'Szenarien, Blätter und Ist-Abgleich',
-  steuern: 'Fristen, Rücklage, Umsatzsteuer, Übergabe an den Steuerberater',
-  chef: 'Head of Finance · Lage, Fristen, Vorschläge zur Freigabe',
-};
+/** Ein Satz je Ort (eine Zeile, Design-Standard) — aus dem Menü (`FINANZ_MENUE`), der Head of Finance eigens. */
+const CHEF_SATZ = 'Automationen & Head · Abläufe, Lage, Fristen, Vorschläge zur Freigabe';
 
 export function FinanzenView() {
   const router = useRouter(); const p = useSearchParams();
@@ -66,52 +61,45 @@ export function FinanzenView() {
 
   const ort: FinanzOrt = finanzOrt(new URLSearchParams(p.toString()), { gemerkt: space, haushalt: zugang });
   const { bereich } = ort;
-  // Reiter, die dieses Konto hat: ohne Haushalt nur Überblick + Planung (der Server filtert), Steuern nur im Haushalt des Inhabers.
-  const reiterListe = (bereich === 'privat' ? PRIVAT_REITER : BUSINESS_REITER).filter(r =>
-    // Rechnungen schreiben (08.10.): auch Konten „nur Business“ — der Server zeigt ihnen nur die Business-Gesellschaften.
-    zugang === false ? r.id === 'business' || ((r.id === 'finanzplanung' || r.id === 'rechnungen') && planZugang) : r.id !== 'steuern' || inhaber !== false);
-  const reiter: FinanzReiter | 'chef' = ort.reiter === 'chef' || reiterListe.some(r => r.id === ort.reiter) ? ort.reiter : reiterListe[0]?.id ?? 'business';
+  // Der Punkt des Menüs (Ebene 1, in der Leiste): nur, was dieses Konto hat (`finanzMenueErlaubt` — dieselbe Regel wie das Menü); sonst der erste.
+  // Ohne Haushalt nur Cockpit, Rechnungen und Planung (der Server filtert), Steuern und Controlling nur im Haushalt des Inhabers.
+  const erlaubt = FINANZ_MENUE[bereich].filter(m => finanzMenueErlaubt(m.id, { haushalt: zugang, planZugang, inhaber }));
+  const gewuenscht = finanzMenueId(ort);
+  const punkt: FinanzMenueId | 'chef' = gewuenscht === 'chef' || erlaubt.some(m => m.id === gewuenscht) ? gewuenscht : erlaubt[0]?.id ?? 'business';
 
   // Ort wechseln = router.push (Zurück führt zum vorigen Ort, 25.09.); die Filter des alten Ortes fallen weg.
   const geh = (ziel: Parameters<typeof finanzAdresse>[1]) => router.push(finanzAdresse(bereich, ziel), { scroll: false });
 
-  // #gesamt (die Brücke) und #altbestand springen nach dem Laden einmal hin.
-  useZuZiel(null, zugang !== null);
+  // #gesamt (die Brücke), #altbestand, #einstellungen und #eroeffnung (Fuß des Menüs) springen nach dem Laden hin — auch, wenn nur die Adresse wechselt.
+  useZuZiel(null, zugang !== null, p.toString());
 
-  const chefAn = reiter === 'chef';
-  const kopfZeile = zugang !== null && (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
-      <nav aria-label="Finanzen" className="ui-reiter-zeile" style={{ flex: '1 1 auto', minWidth: 0 }}>
-        <Reiter ariaLabel={bereich === 'privat' ? 'Finanzen Privat' : 'Finanzen Business'} liste={reiterListe} aktiv={chefAn ? null : reiter} onWahl={geh} />
-      </nav>
-      <Knopf leise href={finanzAdresse(bereich, 'chef')} farbe={chefAn ? LEUCHT.geld : undefined} ariaLabel="Head of Finance" titel="Head of Finance — Lage, Fristen, Vorschläge zur Freigabe">
-        <Bot size={16} /><span className="ui-nur-breit">Head of Finance</span>
-      </Knopf>
-    </div>
+  const chefAn = punkt === 'chef';
+  // Head of Finance bleibt zusätzlich ein Knopf auf der Seite (er führt zu „Automationen & Head“).
+  const chefKnopf = zugang !== null && !chefAn && (
+    <Knopf leise href={finanzAdresse(bereich, 'chef')} ariaLabel="Head of Finance" titel="Head of Finance — Lage, Fristen, Vorschläge zur Freigabe">
+      <Bot size={16} /><span className="ui-nur-breit">Head of Finance</span>
+    </Knopf>
   );
 
-  // Ebene 2 — nur unter Konten & Buchungen und unter Business › Überblick.
-  const ebene2 = reiter === 'konten'
-    ? <Pillen einzeilig liste={kontenUnter()} aktiv={ort.unter as KontenUnter} onWahl={geh} />
-    : reiter === 'business' && inhaber
-      ? <Pillen einzeilig liste={UEBERBLICK_UNTER} aktiv={ort.unter === 'controlling' ? 'controlling' : 'business'} onWahl={geh} />
-      : null;
+  // Ebene 2 — nur unter Konten & Buchungen (die Blätter der Planung stehen in der Planung selbst).
+  const ebene2 = punkt === 'konten' ? <Pillen einzeilig liste={kontenUnter()} aktiv={ort.unter as KontenUnter} onWahl={geh} /> : null;
 
-  const unterSatz = chefAn ? UNTER.chef : reiter === 'business' && ort.unter === 'controlling' ? UNTER.controlling : UNTER[reiter];
-  const breit = reiter === 'chef' ? undefined : 1440;
+  const unterSatz = chefAn ? CHEF_SATZ : FINANZ_MENUE[bereich].find(m => m.id === punkt)?.titel ?? '';
+  const breit = chefAn ? undefined : 1440;
 
   return (
-    <Seite titel="Finanzen" breit={breit} unter={`${bereich === 'privat' ? 'Privat' : 'Business'} · ${unterSatz}`}>
-      {kopfZeile}
+    <Seite titel="Finanzen" breit={breit} unter={`${bereich === 'privat' ? 'Privat' : 'Business'} · ${unterSatz}`} rechts={chefKnopf || undefined}>
       {ebene2 && <nav aria-label="Unterbereiche" style={{ minWidth: 0 }}>{ebene2}</nav>}
-      {zugang === null ? null : <Inhalt ort={{ ...ort, reiter }} zugang={zugang} inhaber={inhaber} planZugang={planZugang} altbestand={p.get('alt')} u={p.get('u')} t={p.get('t')} />}
+      {zugang === null ? null : <Inhalt ort={ort} punkt={punkt} zugang={zugang} inhaber={inhaber} planZugang={planZugang} altbestand={p.get('alt')} u={p.get('u')} t={p.get('t')} />}
     </Seite>
   );
 }
 
-function Inhalt({ ort, zugang, inhaber, planZugang, altbestand, u, t }: { ort: FinanzOrt; zugang: boolean; inhaber: boolean | null; planZugang: boolean; altbestand: string | null; u: string | null; t: string | null }) {
-  const { bereich, reiter } = ort;
-  if (reiter === 'chef') return <FinanzchefView bereich={bereich} />;
+function Inhalt({ ort, punkt, zugang, inhaber, planZugang, altbestand, u, t }: { ort: FinanzOrt; punkt: FinanzMenueId | 'chef'; zugang: boolean; inhaber: boolean | null; planZugang: boolean; altbestand: string | null; u: string | null; t: string | null }) {
+  const { bereich } = ort;
+  const reiter = punkt === 'controlling' ? 'business' : punkt;
+  // „Automationen & Head“ (22.10. abends): die Abläufe des Bereichs (Business: Monatsabschluss, Rechnung) und die Karte des Heads, darunter der Head of Finance.
+  if (reiter === 'chef') return <><BereichAutomationen werkzeug={FINANZEN_WERKZEUG} space={bereich} /><FinanzchefView bereich={bereich} /></>;
   if (reiter === 'steuern') return <SteuernView key={bereich} bereich={bereich} />;
   if (reiter === 'finanzplanung') {
     if (!zugang && !planZugang) return null;
@@ -139,7 +127,7 @@ function Inhalt({ ort, zugang, inhaber, planZugang, altbestand, u, t }: { ort: F
   if (reiter === 'rechnungen') return <><RechnungenKarte />{zugang && <FinanzplanungView />}</>;
   if (reiter === 'liquiditaet') return <LiquiditaetView />;
   if (reiter === 'buchungen') return <BuchungenView bereich="business" />;
-  if (ort.unter === 'controlling' && inhaber) return <ControllingView />;
+  if (punkt === 'controlling' && inhaber) return <ControllingView />;
   // Konten, Fälliges und Monat (ZahlenBusiness) lesen die GEMEINSAMEN Finanz-Bestände (Finanzplan-Listen, Liquiplan, Buchungen) — die tragen
   // Privates und gehen nur an volle Mitglieder (`privatFinanzZugang`). Ein Konto „nur Business“ sieht hier das Cockpit ohne sie, statt
   // leerer Nullen (Gesamtprüfung 12.10.: vorher brach die Seite für dieses Konto ab).

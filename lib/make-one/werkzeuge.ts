@@ -32,6 +32,7 @@ import {
   Workflow, Map as MapIcon, List, Hammer, PencilRuler, History, FlaskConical, LayoutTemplate, Presentation, Bot, TrendingUp,
   Briefcase, Package, Route, UserPlus, Blocks, ChartColumn, RefreshCw,
   Building2, Gauge, CalendarClock, FileText, TriangleAlert, ShieldCheck, Network, Gavel, FileSignature, Landmark, Archive, Trash2,
+  Wallet, LayoutDashboard, Target, Receipt, Waves, BookOpen, Calculator, Scale, Settings2, Anchor, Sun, ListChecks, PiggyBank,
 } from 'lucide-react';
 import { WEG } from '@/lib/wege';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
@@ -40,6 +41,7 @@ import { HUB_MENUE, hubOrtFuer, mandateLink, mandateOrt, MANDATE_PFAD, type HubP
 import { FULFILLMENT_PFAD, FULFILLMENT_BEREICHE, fulfillmentAusAdresse, type FulfillmentBereich } from '@/lib/fulfillment/adresse';
 import { LAGE_REITER, AKTE_REITER, UNTERNEHMEN_FILTER, MIT_WAHL, unternehmenOrt } from '@/lib/gesellschaften/schild/adresse';
 import type { SchildReiter } from '@/lib/gesellschaften/schild/ampel';
+import { FINANZ_MENUE, FINANZ_FUSS, finanzAdresse, finanzFussAdresse, finanzOrt, finanzMenueId, finanzMenueErlaubt, type FinanzBereich, type FinanzMenueId, type FinanzFussPunkt } from '@/lib/finanzen/navigation';
 import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
 import { kontextHeadFuer } from '@/lib/agenten/kontext-head';
 import { passtZu, wahlVon, SPACE_VORGABE } from './spaces';
@@ -321,8 +323,58 @@ export const UNTERNEHMEN_WERKZEUG: Werkzeug = {
   }),
 };
 
+// ─── Finanzen (22.10. abends, Gruppe A) — in Business UND Privat ───────────────────────────────────────────────────────────────────────────────
+// Aufbau NUR in lib/finanzen/navigation.ts (`FINANZ_MENUE`, `FINANZ_FUSS`) — hier wird nichts aufgezählt. Business: Überblick (Cockpit, Controlling & Ziele) ·
+// Geldfluss (Rechnungen & Zahlungen, Liquidität, Buchungen) · Planung & Pflichten (Planung, Steuern) · „Automationen & Head“ (= `s=chef`: Monatsabschluss und
+// Rechnung, Head of Finance) · Fuß Einstellungen, 0-Punkt. Privat: Überblick · Konten & Buchungen · Planung · Steuern · „Automationen & Head“ (Head „Finanzen
+// privat“, keine Prozesse) · Fuß Altbestand. Welcher Punkt leuchtet, sagt dieselbe Regel wie die Seite (`finanzOrt` → `finanzMenueId`); `?space=` steht in
+// jedem Ziel. Konto „nur Business“: nur, was es benutzen kann (`finanzMenueErlaubt`).
+const FINANZ_SYMBOL: Record<FinanzMenueId, LucideIcon> = {
+  privat: Sun, konten: ListChecks, business: LayoutDashboard, controlling: Target, rechnungen: Receipt, liquiditaet: Waves, buchungen: BookOpen,
+  finanzplanung: Calculator, steuern: Scale,
+};
+const FINANZ_FUSS_SYMBOL: Record<FinanzFussPunkt['id'], LucideIcon> = { einstellungen: Settings2, eroeffnung: Anchor, altbestand: PiggyBank };
+/** Der Punkt, der an dieser Adresse leuchtet — wie die Seite: Bereich aus `?space=`/Reiter/Wahl, Punkte, die das Konto nicht hat, zählen als der erste. */
+function finanzAn(k: WerkzeugKontext): FinanzMenueId | 'chef' {
+  const ort = finanzOrt(k.q, { gemerkt: k.space, haushalt: k.nurBusiness ? false : null });
+  const id = finanzMenueId(ort);
+  if (id === 'chef') return id;
+  const erlaubt = FINANZ_MENUE[ort.bereich].filter(m => finanzMenueErlaubt(m.id, { haushalt: !k.nurBusiness }));
+  return erlaubt.some(m => m.id === id) ? id : erlaubt[0]?.id ?? 'business';
+}
+/** Der Bereich der Seite (Privat · Business) — dieselbe Regel wie die Seite. */
+const finanzBereich = (k: WerkzeugKontext): FinanzBereich => finanzOrt(k.q, { gemerkt: k.space, haushalt: k.nurBusiness ? false : null }).bereich;
+const FINANZ_PUNKTE: readonly WerkzeugPunkt[] = (['business', 'privat'] as const).flatMap(b => FINANZ_MENUE[b].map((m): WerkzeugPunkt => ({
+  id: `${b}-${m.id}`, label: m.label, icon: FINANZ_SYMBOL[m.id], titel: m.titel, ...(m.gruppe ? { gruppe: m.gruppe } : {}),
+  href: () => finanzAdresse(b, m.id === 'controlling' ? 'controlling' : m.id),
+  sichtbar: k => finanzBereich(k) === b && finanzMenueErlaubt(m.id, { haushalt: !k.nurBusiness }),
+  aktiv: k => finanzBereich(k) === b && finanzAn(k) === m.id,
+})));
+
+export const FINANZEN_WERKZEUG: Werkzeug = {
+  id: 'finanzen',
+  name: 'Finanzen',
+  icon: Wallet,
+  spaces: ['privat', 'business'],
+  pfade: ['/os/finanzen'],
+  start: finanzAdresse('business', 'business'),
+  leistenPunkt: 'Finanzen',
+  punkte: FINANZ_PUNKTE,
+  fuss: (['business', 'privat'] as const).flatMap(b => FINANZ_FUSS[b].map((f): WerkzeugPunkt => ({
+    id: f.id, label: f.label, icon: FINANZ_FUSS_SYMBOL[f.id], titel: f.titel, href: () => finanzFussAdresse(f.id),
+    // Der Altbestand gehört Privat — ein Konto „nur Business“ hat ihn nicht.
+    sichtbar: k => finanzBereich(k) === b && !(b === 'privat' && k.nurBusiness),
+  }))),
+  automation: (['business', 'privat'] as const).map(b => automationMitHeads(finanzAdresse(b, b), FINANZ_PUNKTE, b, {
+    bereiche: [],
+    ...(b === 'business' ? { prozesse: ['sp-monatsabschluss', 'sp-rechnung'] } : {}),
+    href: () => finanzAdresse(b, 'chef'),
+    aktiv: k => finanzAn(k) === 'chef',
+  })),
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG, UNTERNEHMEN_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG, UNTERNEHMEN_WERKZEUG, FINANZEN_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {

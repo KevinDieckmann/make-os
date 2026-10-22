@@ -121,9 +121,10 @@ describe('Handy-Regeln', () => {
     expect(f).toContain('ariaLabel="Letzte Änderung rückgängig"');
   });
 
-  it('Finanzen: eine wischbare Reiterleiste je Bereich statt Segment-Umschalter im Kopf', () => {
+  it('Finanzen: Ebene 1 ist das Menü des Werkzeugs (linke Leiste) — keine Reiterleiste und kein Segment-Umschalter im Kopf', () => {
     const f = lies('components/os/FinanzenView.tsx');
-    expect(f).toContain("<Reiter ariaLabel={bereich === 'privat' ? 'Finanzen Privat' : 'Finanzen Business'}");
+    expect(f).not.toMatch(/<Reiter[\s<]/);
+    expect(f).toContain('FINANZ_MENUE[bereich]');
     expect(f).not.toContain('<Segmente');
   });
 });

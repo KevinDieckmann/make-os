@@ -1,7 +1,8 @@
 // ─── Aufräumen Etappe 2 (08.10.): Finanzen in höchstens zwei Ebenen ─────────
 // Kevin: „Die Software wirkt unaufgeräumt und überladen.“ Der Wächter hält fest:
-// 1. Finanzen hat höchstens zwei Navigationsebenen: EINE Reiterleiste je Bereich (FinanzenView), darunter höchstens EINE Pillenreihe
-//    (Konten & Buchungen, Business-Überblick, Blätter der Planung). Eingebettete Ansichten tragen weder Seite noch Reiter.
+// 1. Finanzen hat höchstens zwei Navigationsebenen: EINE Ebene 1 je Bereich — seit 22.10. abends das Menü des Werkzeugs Finanzen in der linken
+//    Leiste (Punkte NUR aus `FINANZ_MENUE`), die Seite trägt keine Reiterleiste mehr —, darunter höchstens EINE Pillenreihe (Konten & Buchungen,
+//    Blätter der Planung; Cockpit und Controlling & Ziele sind Menüpunkte). Eingebettete Ansichten tragen weder Seite noch Reiter.
 // 2. Keine Seite unter app/os/finanzen außer der einen; die früheren Nebenseiten und Weiterleitungs-Seiten gibt es nicht mehr.
 // 3. Alte Adressen leiten in next.config.mjs weiter — mit ihren Parametern auf den richtigen Ort (wie Next sie zusammenführt).
 // 4. Der Bereich: ?space= gewinnt, sonst der Reiter, sonst der Kopf-Schalter; ohne Haushalt immer Business. Business zeigt nie Privates.
@@ -11,7 +12,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { WEG } from '../lib/wege';
 import { SEITEN_SUCHE } from '../lib/make-one/seiten';
-import { finanzOrt, finanzAdresse, kontenUnter, PRIVAT_REITER, BUSINESS_REITER, UEBERBLICK_UNTER, HAUSHALT_UNTER, FINANZ_S } from '../lib/finanzen/navigation';
+import { finanzOrt, finanzAdresse, finanzMenueId, kontenUnter, PRIVAT_REITER, BUSINESS_REITER, FINANZ_MENUE, HAUSHALT_UNTER, FINANZ_S } from '../lib/finanzen/navigation';
+import { FINANZEN_WERKZEUG, werkzeugKontext, werkzeugPunkte } from '../lib/make-one/werkzeuge';
 import { blaetterFuer, blattAus, abschnitteFuer, NUR_PRIVAT_UNTERSEITEN, NUR_PRIVAT_ABSCHNITTE, ABSCHNITTE, ZAHNRAD, finanzplanAdresse, alteAdresseUmschreiben, istAbschnittId, type Unterseite, type AbschnittId } from '../lib/finanzen/plan/hilfen';
 import { PRIVAT_GESELLSCHAFTEN } from '../lib/einheiten';
 
@@ -27,19 +29,24 @@ const ort = (adresse: string, o: Parameters<typeof finanzOrt>[1] = {}) => finanz
 const EINGEBETTET = ['BuchungenView', 'ControllingView', 'LiquiditaetView', 'FinanzplanungView', 'GrundlageView'].map(n => `components/os/${n}.tsx`);
 
 describe('Aufräumen Etappe 2 — höchstens zwei Ebenen', () => {
-  it('Ebene 1: wenige Reiter je Bereich, eindeutig, Überblick vorn', () => {
+  it('Ebene 1: wenige Punkte je Bereich, eindeutig, der Überblick vorn — das Menü des Werkzeugs liest NUR diese Liste', () => {
     for (const l of [PRIVAT_REITER, BUSINESS_REITER]) {
-      expect(l.length).toBeLessThanOrEqual(6);
-      expect(l[0].label).toBe('Überblick');
+      expect(l.length).toBeLessThanOrEqual(7);
       expect(new Set(l.map(r => r.label)).size).toBe(l.length);
     }
     expect(PRIVAT_REITER.map(r => r.label)).toEqual(['Überblick', 'Konten & Buchungen', 'Planung', 'Steuern']);
-    expect(BUSINESS_REITER.map(r => r.label)).toEqual(['Überblick', 'Rechnungen & Zahlungen', 'Liquidität', 'Buchungen', 'Planung', 'Steuern']);
-    // Head of Finance ist ein Knopf, Gesamt kein Reiter mehr.
+    // Business (22.10. abends): Cockpit und Controlling & Ziele sind zwei Punkte der Gruppe „Überblick“ — ihre Pillenreihe ist weg.
+    expect(BUSINESS_REITER.map(r => r.label)).toEqual(['Cockpit', 'Controlling & Ziele', 'Rechnungen & Zahlungen', 'Liquidität', 'Buchungen', 'Planung', 'Steuern']);
+    expect(FINANZ_MENUE.business.slice(0, 2).map(m => m.gruppe)).toEqual(['Überblick', 'Überblick']);
+    // Head of Finance ist „Automationen & Head“ (und ein Knopf), Gesamt kein Punkt.
     for (const l of [PRIVAT_REITER, BUSINESS_REITER]) expect(l.map(r => r.label)).not.toEqual(expect.arrayContaining(['Head of Finance', 'Gesamt']));
+    for (const b of ['privat', 'business'] as const) {
+      const menue = werkzeugPunkte(FINANZEN_WERKZEUG, werkzeugKontext('/os/finanzen', '', false, { space: b })).filter(p => p.id !== 'automationen');
+      expect(menue.map(p => p.label), b).toEqual(FINANZ_MENUE[b].map(m => m.label));
+    }
   });
   it('Ebene 2: eine flache Reihe — keine dritte Ebene darunter', () => {
-    for (const l of [kontenUnter(), UEBERBLICK_UNTER, blaetterFuer('privat'), blaetterFuer('business')]) {
+    for (const l of [kontenUnter(), blaetterFuer('privat'), blaetterFuer('business')]) {
       expect(new Set(l.map(x => x.id)).size).toBe(l.length);
       expect(new Set(l.map(x => x.label)).size).toBe(l.length);
       for (const x of l) expect(Object.keys(x)).not.toContain('unter');
@@ -51,9 +58,10 @@ describe('Aufräumen Etappe 2 — höchstens zwei Ebenen', () => {
     // Abschnitte stehen als Daten neben den Blättern, nie als dritte Pillenreihe (keine `unter`-Liste an einem Blatt).
     for (const u of Object.keys(ABSCHNITTE) as Unterseite[]) for (const a of ABSCHNITTE[u]) expect(Object.keys(a)).not.toContain('unter');
   });
-  it('FinanzenView rendert genau EINE Reiterleiste; Planung und Haushalt keine eigene', () => {
+  it('FinanzenView rendert KEINE Reiterleiste (Ebene 1 = das Menü des Werkzeugs); Planung und Haushalt keine eigene', () => {
     const v = lies('components/os/FinanzenView.tsx');
-    expect((v.match(/<Reiter /g) ?? []).length).toBe(1);
+    expect((v.match(/<Reiter[\s<]/g) ?? []).length).toBe(0);
+    expect((v.match(/<Pillen /g) ?? []).length).toBe(1); // nur Konten & Buchungen
     expect(v).toContain('Head of Finance');
     expect(lies('components/os/finanzplan/Finanzplan.tsx')).not.toMatch(/<Reiter /);
     expect(lies('components/os/haushalt/HaushaltView.tsx')).not.toMatch(/<Reiter /);
@@ -141,7 +149,9 @@ describe('Aufräumen Etappe 2 — der Bereich', () => {
   });
   it('Adressen tragen immer den Bereich (Kopf und Leiste zeigen denselben Space)', () => {
     for (const r of [...PRIVAT_REITER, ...HAUSHALT_UNTER]) expect(finanzAdresse('privat', r.id)).toContain('space=privat');
-    for (const r of [...BUSINESS_REITER, ...UEBERBLICK_UNTER]) expect(finanzAdresse('business', r.id)).toContain('space=business');
+    for (const r of BUSINESS_REITER) expect(finanzAdresse('business', r.id)).toContain('space=business');
+    // Jeder Punkt des Menüs führt genau an seinen Ort (finanzOrt → finanzMenueId).
+    for (const b of ['privat', 'business'] as const) for (const m of FINANZ_MENUE[b]) expect(finanzMenueId(ort(finanzAdresse(b, m.id))), `${b}:${m.id}`).toBe(m.id);
     expect(ort(finanzAdresse('privat', 'konten'))).toEqual({ bereich: 'privat', reiter: 'konten', unter: 'buchungen' });
     expect(ort(finanzAdresse('business', 'buchungen'))).toEqual({ bereich: 'business', reiter: 'buchungen', unter: null });
   });

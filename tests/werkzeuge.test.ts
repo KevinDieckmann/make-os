@@ -37,6 +37,7 @@ import { landkarteAnsicht } from '@/lib/prozesse/landkarte-anpassung';
 import { automationenFuer, automationZeile, automationLage } from '@/lib/prozesse/bereich-automationen';
 import type { ProzessDef } from '@/lib/prozesse/typen';
 import * as W from '@/lib/make-one/werkzeuge';
+import * as N from '@/lib/finanzen/navigation';
 import * as U from '@/lib/gesellschaften/schild/adresse';
 import { FULFILLMENT_BEREICHE } from '@/lib/fulfillment/adresse';
 
@@ -58,7 +59,7 @@ const PZ = 'pz-11111111-2222-4333-8444-555555555555';
 /** Die Seite eines Werkzeugs, die seine Aktionen hört — ein neues Werkzeug trägt sich hier ein (sonst rot). */
 const SEITE_DES_WERKZEUGS: Record<string, string> = {
   prozesse: 'components/os/prozesse/ProzesseSeite.tsx', markttraktion: 'components/os/crm/Markttraktion.tsx', 'produkte-mandate': 'components/os/mandate/ProdukteMandate.tsx',
-  unternehmen: 'components/os/unternehmen/UnternehmenView.tsx',
+  unternehmen: 'components/os/unternehmen/UnternehmenView.tsx', finanzen: 'components/os/FinanzenView.tsx',
 };
 
 /** Beispiel-Adressen, an denen die Unterpunkte aufgelöst werden. */
@@ -502,12 +503,14 @@ describe('Markttraktion als Werkzeug (HubSpot-Art, Punkte aus HUB_MENUE)', () =>
 const { automationVon, headsDerSeiten, werkzeugFuerKonto } = W;
 const PM = W.PRODUKTE_WERKZEUG;
 const UN = W.UNTERNEHMEN_WERKZEUG;
+const FI = W.FINANZEN_WERKZEUG;
 type Sp = 'privat' | 'business';
 const kx = (pfad: string, suche = '', space?: Sp, o: { handy?: boolean; nurBusiness?: boolean } = {}) => werkzeugKontext(pfad, suche, !!o.handy, { ...(space ? { space } : {}), nurBusiness: o.nurBusiness });
 const leuchtet = (w: Werkzeug, pfad: string, suche = '', space?: Sp, o: { handy?: boolean; nurBusiness?: boolean } = {}) => {
   const k = kx(pfad, suche, space, o);
   return [...werkzeugPunkte(w, k), ...werkzeugPunkte(w, k, 'fuss')].flatMap(p => [p, ...p.unter]).filter(p => p.an).map(p => p.id);
 };
+const ids = (w: Werkzeug, k: ReturnType<typeof kx>) => werkzeugPunkte(w, k).map(p => p.id);
 const teilen = (href: string) => { const [p, rest = ''] = href.split('#')[0].split('?'); return { pfad: p, suche: rest ? `?${rest}` : '' }; };
 /** Jedes Ziel (Punkt, Fuß, „Automationen & Head“) gibt es, bleibt im Werkzeug und lässt — dort aufgerufen — genau seinen Punkt leuchten (Anker leuchten nie). */
 const zieleLeuchten = (w: Werkzeug, space: Sp, o: { nurBusiness?: boolean } = {}) => {
@@ -657,6 +660,91 @@ describe('Gruppe A · Unternehmen', () => {
     expect(u).toContain('data-werkzeug="unternehmen"');
     expect(u).toContain('>Marken &amp; Versicherungen</span>');
     for (const t of ['Archiv', 'Papierkorb']) expect(u, t).toContain(`>${t}</span>`);
+  });
+});
+
+describe('Gruppe A · Finanzen (Business und Privat)', () => {
+  it('Punkte NUR aus FINANZ_MENUE: Business in drei Gruppen, Privat ohne; dahinter „Automationen & Head“ = Head of Finance (s=chef)', () => {
+    const b = werkzeugPunkte(FI, kx('/os/finanzen', '', 'business'));
+    expect(WERKZEUGE).toContain(FI);
+    expect(b.map(p => [p.label, p.gruppe ?? null])).toEqual([...N.FINANZ_MENUE.business.map(m => [m.label, m.gruppe ?? null]), [AUTOMATION_LABEL, null]]);
+    expect([...new Set(b.map(p => p.gruppe).filter(Boolean))]).toEqual(['Überblick', 'Geldfluss', 'Planung & Pflichten']);
+    expect(b.map(p => p.href)).toEqual([...N.FINANZ_MENUE.business.map(m => N.finanzAdresse('business', m.id)), N.finanzAdresse('business', 'chef')]);
+    const p = werkzeugPunkte(FI, kx('/os/finanzen', '', 'privat'));
+    expect(p.map(x => [x.label, x.gruppe ?? null])).toEqual([...N.FINANZ_MENUE.privat.map(m => [m.label, null]), [AUTOMATION_LABEL, null]]);
+    expect(p.map(x => x.href)).toEqual([...N.FINANZ_MENUE.privat.map(m => N.finanzAdresse('privat', m.id)), N.finanzAdresse('privat', 'chef')]);
+    for (const x of [...b, ...p]) expect(x.href, x.id).toContain('space=');
+    // Keine zweite Liste: werkzeuge.ts nennt keinen Namen der Finanzen selbst.
+    const q = lies('lib/make-one/werkzeuge.ts');
+    for (const t of ["'Rechnungen & Zahlungen'", "'Controlling & Ziele'", "'Konten & Buchungen'", "'Cockpit'"]) expect(q, t).not.toContain(t);
+  });
+  it('Fuß: Business Einstellungen · 0-Punkt (Anker im Cockpit), Privat der Altbestand — Anker leuchten nie', () => {
+    expect(werkzeugPunkte(FI, kx('/os/finanzen', '', 'business'), 'fuss').map(p => [p.label, p.href])).toEqual([
+      ['Einstellungen', '/os/finanzen?s=business&space=business#einstellungen'], ['0-Punkt', '/os/finanzen?s=business&space=business#eroeffnung'],
+    ]);
+    expect(werkzeugPunkte(FI, kx('/os/finanzen', '', 'privat'), 'fuss').map(p => [p.label, p.href])).toEqual([['Altbestand', WEG.altbestand()]]);
+  });
+  it('genau ein Punkt je Adresse — wie die Seite (finanzOrt): Bereich aus ?space=, Reiter, Wahl; alte Adressen eingeschlossen', () => {
+    const faelle: [string, Sp, string][] = [
+      ['', 'business', 'business-business'], ['', 'privat', 'privat-privat'], ['?s=business', 'privat', 'business-business'], ['?s=business&f=kdv&k=runway', 'business', 'business-business'],
+      ['?s=controlling', 'business', 'business-controlling'], ['?s=controlling&space=business', 'privat', 'business-controlling'],
+      ['?s=rechnungen&r=re-1', 'business', 'business-rechnungen'], ['?s=rechnungen&space=business&re=re-1', 'business', 'business-rechnungen'], ['?s=liquiditaet&p=p-1', 'business', 'business-liquiditaet'],
+      ['?s=buchungen&monat=2026-08', 'business', 'business-buchungen'], ['?s=finanzplanung&space=business&u=planen', 'business', 'business-finanzplanung'], ['?s=steuern', 'business', 'business-steuern'],
+      ['?s=chef', 'business', 'automationen'], ['?s=chef&space=privat', 'privat', 'automationen'],
+      ['?s=privat', 'privat', 'privat-privat'], ['?s=gesamt', 'privat', 'privat-privat'], ['?s=privat&t=fixkosten', 'privat', 'privat-konten'], ['?s=privat&t=buchungen&space=privat', 'privat', 'privat-konten'],
+      ['?s=buchungen&space=privat', 'privat', 'privat-konten'], ['?s=finanzplanung&space=privat&u=selbst', 'privat', 'privat-finanzplanung'], ['?s=steuern&space=privat', 'privat', 'privat-steuern'],
+      ['?s=rechnungen&space=privat', 'privat', 'privat-privat'], // einen Business-Reiter gibt es unter Privat nicht → Überblick (wie die Seite)
+    ];
+    for (const [suche, sp, id] of faelle) for (const handy of [false, true]) expect(leuchtet(FI, '/os/finanzen', suche, sp, { handy }), `${suche} (${sp})`).toEqual([id]);
+    for (const sp of ['business', 'privat'] as const) zieleLeuchten(FI, sp);
+  });
+  it('Konto „nur Business“: immer Business, nur Cockpit · Rechnungen · Planung + Head; was es nicht hat, zählt als Cockpit', () => {
+    const k = kx('/os/finanzen', '?s=privat&space=privat', 'privat', { nurBusiness: true });
+    expect(k.space).toBe('business');
+    expect(ids(FI, k)).toEqual(['business-business', 'business-rechnungen', 'business-finanzplanung', 'automationen']);
+    expect(werkzeugPunkte(FI, k, 'fuss').map(p => p.id)).toEqual(['einstellungen', 'eroeffnung']);
+    expect(leuchtet(FI, '/os/finanzen', '?s=steuern', undefined, { nurBusiness: true })).toEqual(['business-business']);
+    zieleLeuchten(FI, 'business', { nurBusiness: true });
+  });
+  it('„Automationen & Head“: Business Monatsabschluss + Rechnung mit Head of Finance; Privat nur „Finanzen privat“', () => {
+    const b = automationVon(FI, 'business')!, p = automationVon(FI, 'privat')!;
+    expect([b.bereiche, b.prozesse, automationHeads(b)]).toEqual([[], ['sp-monatsabschluss', 'sp-rechnung'], ['finanzen']]);
+    expect([p.bereiche, p.prozesse ?? [], automationHeads(p)]).toEqual([[], [], ['finanzen-privat']]);
+  });
+  it('die Seite: keine Reiterleiste und keine Cockpit/Controlling-Pillen mehr; Head of Finance bleibt Knopf; Ebene 2 nur unter Konten', () => {
+    const v = lies('components/os/FinanzenView.tsx');
+    expect(v).not.toMatch(/<Reiter[\s<]/);
+    expect(v).not.toContain('UEBERBLICK_UNTER');
+    expect(v).toContain('FINANZ_MENUE[bereich].filter(m => finanzMenueErlaubt(m.id');
+    expect(v).toContain('ariaLabel="Head of Finance"');
+    expect(v).toContain("const ebene2 = punkt === 'konten' ? <Pillen einzeilig liste={kontenUnter()}");
+    expect(v).toContain('<BereichAutomationen werkzeug={FINANZEN_WERKZEUG} space={bereich} /><FinanzchefView bereich={bereich} />');
+  });
+  it('Privat: nur die Karte des Heads — kein „Aus Vorlage“, kein „Head fragen“, Freigaben der Sicht Privat', async () => {
+    const { BereichAutomationenAnsicht } = await import('@/components/os/werkzeug/BereichAutomationen');
+    const head = { id: 'finanzen-privat', name: 'Finanzen privat', kurz: 'Finanzen privat', auftrag: 'Hält die Haushaltsfinanzen im Blick.', aktiv: true, zaehler: { freigaben: 1, laufend: 0 } };
+    const html = renderToStaticMarkup(h(BereichAutomationenAnsicht, { werkzeug: FI, space: 'privat', mitProzessen: false, gruppen: [], headId: 'finanzen-privat', head, darfBauen: true, schrauben: {}, onNeu: () => {}, onVorlage: () => {}, onHead: () => {}, onGespeichert: () => {} }));
+    expect(html).toContain('Finanzen privat');
+    expect(html).toContain(`href="${WEG.freigaben(undefined, 'privat').replace(/&/g, '&amp;')}"`);
+    for (const t of ['Aus Vorlage', 'Head fragen', 'Die Prozesse laden']) expect(html, t).not.toContain(t);
+  });
+});
+
+describe('Gruppe A · Leiste: Finanzen', () => {
+  it('Business: drei Gruppen-Überschriften, ein Strich vor „Automationen & Head“, genau ein leuchtender Punkt', async () => {
+    const d = await leiste('/os/finanzen', '?s=liquiditaet&space=business');
+    expect(d).toContain('data-werkzeug="finanzen"');
+    expect((d.match(/role="heading"/g) ?? []).length).toBe(3);
+    for (const t of ['Cockpit', 'Controlling &amp; Ziele', 'Liquidität', 'Steuern', 'Automationen &amp; Head', 'Einstellungen', '0-Punkt']) expect(d, t).toContain(`>${t}</span>`);
+    expect((d.match(/aria-current="page"/g) ?? []).length).toBe(1);
+    expect(d.match(/<a [^>]*aria-current="page"[^>]*>/)?.[0]).toContain('data-werkzeug-punkt="business-liquiditaet"');
+    expect(d).not.toContain('>Altbestand</span>');
+  });
+  it('Privat: die Punkte von Privat, kein Business-Punkt, Fuß Altbestand', async () => {
+    const d = await leiste('/os/finanzen', '?s=privat&t=fixkosten&space=privat');
+    for (const t of ['Überblick', 'Konten &amp; Buchungen', 'Planung', 'Steuern', 'Altbestand']) expect(d, t).toContain(`>${t}</span>`);
+    for (const t of ['Cockpit', 'Liquidität', '0-Punkt']) expect(d, t).not.toContain(`>${t}</span>`);
+    expect(d.match(/<a [^>]*aria-current="page"[^>]*>/)?.[0]).toContain('data-werkzeug-punkt="privat-konten"');
   });
 });
 
