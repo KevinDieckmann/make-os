@@ -162,7 +162,16 @@ Weitere Teile von B1:
 - Erinnerungen „mit Link“: Je Mandat gilt höchstens EIN Kunden-Link, und ein neuer widerruft den alten. (Empfehlung: Die Erinnerung verweist auf den Link aus der Willkommensmail; „neuen Link senden“ nur als eigener Freigabe-Schritt.)
 - Soll FB3 die Willkommensmail selbst senden? (Empfehlung: nein — sie bleibt im Fall, der Begleit-Prozess erinnert nur.)
 
-### E2 · Bearbeiten im Fulfillment-Modus (Entwurf) — 2–3 Tage
+### E2 · Bearbeiten im Fulfillment-Modus (Entwurf) — GEBAUT (22.10.)
+
+Gebaut so:
+- Regeln rein in `lib/prozesse/fulfillment-entwurf.ts` (Speichern und Verwerfen) und in `fulfillment-bearbeiten.ts`, das die Ops des Fulfillment-Editors im Browser anwendet.
+- Oberfläche: `PaketWerkstatt` und `PaketPanel`.
+- Gold: `tests/prozesse-ff-werkstatt-e2.test.ts`.
+
+Bewusst nicht gebaut:
+- Freies Ziehen auf der Fläche — geändert wird über das Seitenfeld.
+- Gruppen umbenennen.
 
 - **Entwurf im Fulfillment-Bestand:** neues optionales Feld `VorlagenDatei.entwuerfe?: Record<paketId, { knoten, freigaben, zusatz?, titel, basisFassung, basisStand, am, von }>`. Dazu gehören der Säuberer `vorlagenAus`, Grenzen (413), Art. 15/17 (keine Personendaten außer `von` → Konto löschen tilgt es) und das Speicher-Register (vorhandener Eintrag `fulfillment--*`). Es ist kein zweiter Speicher.
 - **Route `POST /api/prozesse/werkstatt`:** `paket-entwurf` mit Stand des Entwurfs (409 mit „Deine Fassung“), Bau-Kennung, nur per Sitzung, nur volle Mitglieder und Business. Geschrieben wird über `fulfillmentAendern('vorlagen')`.

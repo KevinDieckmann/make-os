@@ -17,8 +17,12 @@ export interface PaketFuerWerkstatt {
   /** Laufende Fälle (nicht abgeschlossen) von Business-Mandaten, die dieses Paket bzw. Zusatzmodul nutzen — nur die Zahl. */
   laufende: number;
   produkte: ProduktVerweis[];
-  /** Der vorhandene Editor des Fulfillments (bis Etappe 2 der Weg zum Bearbeiten). */
+  /** Der vorhandene Editor des Fulfillments. */
   editor: string;
+  /** E2 (22.10.): der Entwurf der Werkstatt (die ganze Fassung) — null ohne Entwurf; `stand` = Stand der Fassung, an der die Werkstatt arbeitet. */
+  entwurf: { vorlage: ProzessVorlage; basisFassung: number; am: string; von: string; paketGeaendert: boolean } | null;
+  /** Stand der Fassung, an der die Werkstatt arbeitet (Entwurf, sonst Paket) — der Schreibweg prüft ihn (409). */
+  arbeitsStand: string;
 }
 
 /** Das Paket `id` (nur Paket-Vorlagen) — null, wenn es keins gibt. Wirft nur, wenn ein Bestand unlesbar ist. */
@@ -45,5 +49,37 @@ export async function paketFuerWerkstatt(h: string, id: string): Promise<PaketFu
     laufende = Object.values(faelle.faelle).filter(f => f.status !== 'abgeschlossen' && business.has(f.mandatId) && (f.vorlageId === id || (f.zusaetze ?? []).some(z => z.vorlageId === id))).length;
     produkte = produkteVonVorlage(crm.leistungen, d.zuordnung, id);
   } catch { /* ohne Zahl */ }
-  return { paket: v, stand: eintragStand(v), befunde, bibliothek, laufende, produkte, editor: WEG.fulfillment('prozesse', { e: id }) };
+  const e = d.entwuerfe?.[id] ?? null;
+  // Die Bibliothek in Kürze umfasst auch Bausteine, die nur der Entwurf nutzt.
+  for (const k of e?.vorlage.knoten ?? []) if (k.bausteinId && !genutzt.has(k.bausteinId)) {
+    const b = d.bausteine.find(x => x.id === k.bausteinId);
+    if (b) { const kf = fuerKundenFrei(b, d); genutzt.add(b.id); bibliothek.push({ id: b.id, titel: b.titel, art: b.art, kundeFrei: kf.frei, ...(kf.grund ? { grund: kf.grund } : {}) }); }
+  }
+  return {
+    paket: v, stand: eintragStand(v), befunde, bibliothek, laufende, produkte, editor: WEG.fulfillment('prozesse', { e: id }),
+    entwurf: e ? { vorlage: e.vorlage, basisFassung: e.basisFassung, am: e.am, von: e.von, paketGeaendert: e.basisStand !== eintragStand(v) } : null,
+    arbeitsStand: eintragStand(e?.vorlage ?? v),
+  };
+}
+
+/** Die ganze Bibliothek in Kürze (Bausteine hinzufügen in der Werkstatt) — Kennung, Titel, Art und die Kunden-Regel. Nur lesen. */
+export async function bibliothekKurz(h: string): Promise<BibliothekKurz[]> {
+  const [{ fulfillmentLesen }, { fuerKundenFrei }] = await Promise.all([import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/bausteine')]);
+  const d = await fulfillmentLesen('vorlagen', h);
+  return d.bausteine.map(b => { const k = fuerKundenFrei(b, d); return { id: b.id, titel: b.titel, art: b.art, kundeFrei: k.frei, ...(k.grund ? { grund: k.grund } : {}) }; });
+}
+
+/** E2: einen Entwurf speichern bzw. verwerfen — über die Schreibstelle des Fulfillments (`fulfillmentAendern`, eine Sperre, Grenzen 413, Protokoll ohne Werte). */
+export async function paketEntwurfSchreiben(h: string, person: string, aktion: 'speichern' | 'verwerfen', eingabe: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const [{ fulfillmentAendern, eintragStand }, { paketEntwurfAnwenden, paketEntwurfVerwerfen }] = await Promise.all([import('@/lib/fulfillment/speicher'), import('./fulfillment-entwurf')]);
+  let befunde: Befund[] | undefined;
+  const r = await fulfillmentAendern('vorlagen', d => {
+    const x = aktion === 'verwerfen' ? paketEntwurfVerwerfen(d, eingabe.paketId) : paketEntwurfAnwenden(d, eingabe, { person, jetzt: new Date().toISOString(), standVon: eintragStand });
+    if (!x.ok) befunde = x.befunde;
+    return x;
+  }, { art: 'person', person }, h);
+  const paketId = typeof eingabe.paketId === 'string' ? eingabe.paketId : '';
+  const ansicht = paketId ? await paketFuerWerkstatt(h, paketId) : null;
+  if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler, ...(befunde ? { befunde } : {}), ...(r.status === 409 && ansicht ? { aktuell: ansicht } : {}) } };
+  return { status: 200, body: { ok: true, geaendert: r.geaendert, ...(ansicht ?? {}) } };
 }

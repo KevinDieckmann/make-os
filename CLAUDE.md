@@ -1699,6 +1699,10 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Schreibweg des Falls (`fallEreignisse` mit den WIRKSAMEN Fällen, rein `fallBegleitDiff`), `fall-haengt` im Morgenlauf aus `wasHaengt` (rein `haengerEreignisse`,
   je Hänger einmal), `kunde-geliefert` aus dem Kunden-Link (`geliefert` in lib/fulfillment/kunde/server.ts). Bezug `vorlageId`/`freigabeId`; Datumsfeld `fall.termin`
   und Fall-Felder `fall.paket`/`fall.status` NUR über `faelleFuerProzesse` (Cockpit-Rechnung) — keine zweite Fristen-/Terminrechnung.
+  **E2 Bearbeiten:** Entwurf im optionalen Feld `VorlagenDatei.entwuerfe[<paket>]` (`PaketEntwurf`, Säuberer `lesen.ts`, Grenzen) — geschrieben NUR über
+  lib/prozesse/fulfillment-entwurf.ts (`paketEntwurfAnwenden`: Stand/409, Fulfillment-Modus + Verlust-Wächter, `vorlageStrukturPruefen`; gleich dem Paket → kein
+  Entwurf) via POST `/api/prozesse/werkstatt` `paket-entwurf`/`paket-verwerfen` (nur volle Mitglieder, `darfVorlagenBearbeiten`). Jede Änderung im Browser = Op des
+  Fulfillment-Editors (`paketBearbeiten` → `editorAnwenden`, nie nachgebaut). Laufende Fälle und neue Fälle sehen einen Entwurf nie.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

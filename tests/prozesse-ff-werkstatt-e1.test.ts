@@ -265,7 +265,7 @@ describe('Ansicht: dieselbe Fläche wie jeder Werkstatt-Prozess', () => {
   it('Gruppen bleiben Gruppen; Bausteine stehen nicht als Knoten, sondern im Seitenfeld (mit der Kunden-Regel)', () => {
     expect(k('fk-g1').elternId).toBe('fk-g');
     expect(a.definition.knoten.some(x => x.bausteinId)).toBe(false);
-    expect(a.info[u(1)].bausteine).toEqual([{ titel: 'Begrüßungsmail', art: 'mail', kundeFrei: true }]);
+    expect(a.info[u(1)].bausteine).toEqual([{ knotenId: u(5), bausteinId: 'fb-mail', titel: 'Begrüßungsmail', art: 'mail', kundeFrei: true }]);
     expect(a.info['fk-g1'].bausteine[0]).toMatchObject({ kundeFrei: false, grund: 'nur intern' });
     expect(paketUnterzeile(a.info[u(1)])).toBe('Frist 3 T. · 1 Baustein');
     expect(paketKnotenZeilen(a.info[u(2)]).map(z => z.name)).toContain('Weg');
@@ -353,7 +353,8 @@ describe('Route GET /api/prozesse/werkstatt?paket= — nur lesen', () => {
       expect(j.laufende).toBe(2);
       expect(j.produkte).toEqual([{ id: 'p-probe', name: 'Probe-Produkt' }]);
       expect(j.editor).toContain('/os/mandate/fulfillment');
-      expect(j.bearbeiten).toBe(false);
+      // Seit E2 bearbeiten volle Mitglieder (wie im Editor des Fulfillments); „nur Business“ sieht nur.
+      expect(j.bearbeiten).toBe(p !== 'partnerin');
     }
   });
   it('Lesen schreibt nie: Bytes des Datenordners vorher = nachher (Fall vorher = Fall nachher), kein Eintrag in prozesse--…', async () => {

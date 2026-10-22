@@ -245,7 +245,19 @@ export function vorlagenAus(roh: unknown): VorlagenDatei {
     version: n(o.version) ?? FULFILLMENT_VERSION,
     prozesse: liste(o.prozesse, vorlageAus), bausteine: mitVerweisen, rituale: liste(o.rituale, ritual),
     zuordnung, agentZusatz, einstellungen: einstellungenAus(o.einstellungen), importLaeufe: liste(o.importLaeufe, importLauf), marken: textMap(o.marken),
+    ...entwuerfeAus(o.entwuerfe),
   };
+}
+/** Entwürfe der Werkstatt (22.10., E2): nur Paket-Fassungen mit derselben Kennung wie ihr Schlüssel; ohne Entwurf fehlt das Feld ganz (bit-gleich wie vorher). */
+function entwuerfeAus(v: unknown): Pick<VorlagenDatei, 'entwuerfe'> {
+  const raus: NonNullable<VorlagenDatei['entwuerfe']> = {};
+  for (const [k, w] of Object.entries(obj(v) ?? {})) {
+    const e = obj(w); const vorlage = e && obj(e.vorlage) ? vorlageAus(e.vorlage as O) : null;
+    const basisFassung = n(e?.basisFassung), basisStand = s(e?.basisStand), am = s(e?.am);
+    if (!ID.test(k) || !vorlage || vorlage.art !== 'paket' || vorlage.id !== k || basisFassung === undefined || !basisStand || !am) continue;
+    raus[k] = { vorlage, basisFassung, basisStand, am, von: s(e?.von) ?? '' };
+  }
+  return Object.keys(raus).length ? { entwuerfe: raus } : {};
 }
 
 // ── Fälle `fulfillment-faelle--<h>` ───────────────────────────────────────────────────────────────────────────────────────────────────

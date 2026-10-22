@@ -119,7 +119,8 @@ export interface PaketKnotenInfo {
   form: KnotenForm; formTitel: string; formGesetzt: boolean;
   phase: string; gruppe?: string;
   frist?: number; versuche?: number; zustaendig?: Zustaendig; kundeSichtbar?: boolean;
-  bausteine: { titel: string; art?: string; kundeFrei?: boolean; grund?: string }[];
+  /** Bausteine (Ebene 5) am Schritt — `knotenId` = ihr Knoten im Paket (Entfernen), `bausteinId` = der Baustein der Bibliothek. */
+  bausteine: { knotenId: string; bausteinId: string; titel: string; art?: string; kundeFrei?: boolean; grund?: string }[];
   /** Zweige in Worten („ja → …“, „nein → …“). */
   zweige: string[];
   /** Am Abstimmungspunkt: wer bestätigt. */
@@ -160,7 +161,7 @@ export function paketAnsicht(v: ProzessVorlage, bibliothek: readonly BibliothekK
       id: e.id, titel: e.titel, art: 'schritt', form: e.form, formTitel: FORM_TITEL[e.form], formGesetzt: e.gesetzt, phase, ...(gruppe ? { gruppe } : {}),
       ...(e.frist !== undefined ? { frist: e.frist } : {}), ...(e.versuche !== undefined ? { versuche: e.versuche } : {}),
       ...(e.zustaendig ? { zustaendig: e.zustaendig } : {}), ...(e.kundeSichtbar !== undefined ? { kundeSichtbar: e.kundeSichtbar } : {}),
-      bausteine: e.bausteine.map(b => { const x = bibliothek.find(y => y.id === b.bausteinId); return { titel: b.titel, ...(b.art ? { art: b.art } : {}), ...(x ? { kundeFrei: x.kundeFrei, ...(x.grund ? { grund: x.grund } : {}) } : {}) }; }),
+      bausteine: e.bausteine.map(b => { const x = bibliothek.find(y => y.id === b.bausteinId); return { knotenId: b.knotenId, bausteinId: b.bausteinId, titel: b.titel, ...(b.art ? { art: b.art } : {}), ...(x ? { kundeFrei: x.kundeFrei, ...(x.grund ? { grund: x.grund } : {}) } : {}) }; }),
       zweige: zweigText(e),
     };
     return {

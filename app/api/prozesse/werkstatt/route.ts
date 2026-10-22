@@ -6,7 +6,8 @@
 // GET ?id=         ein Prozess: Entwurf mit Stand, Versionen (kurz), Befunde (alle — die Werkstatt zeigt sie am Knoten), Kanten des Flusses, Webhook (ohne
 //                  Schlüssel), Produkte, die auf ihn zeigen (22.10., nur Kennung + Name). `&version=<nr>` eine Version ganz; `&vergleich=<a>,<b>` (Nummer oder „entwurf“) der Vergleich (nur Feldnamen, nie Werte).
 //                  `&datum=<Knoten>` (22.10.) die nächsten Starts eines Datums-Auslösers (nur Tage + Anzahlen).
-// POST { aktion }  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
+// POST { aktion }  paket-entwurf { paketId, stand, vorlage } · paket-verwerfen { paketId } — der Entwurf eines Fulfillment-Pakets (22.10., E2; nur volle Mitglieder)
+//                  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
 //                  · aus-vorlage { vorlageId, eigner?, anfrageId } (22.10.) · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
 // Tor: `werkstattZugang` — Haushalt des Inhabers, Sicht Privat 403; schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung; veröffentlichen, Status und
 // Webhook nur volle Mitglieder (Konto „nur Business“ baut Entwürfe). Keine Personendaten Dritter (Lese-Protokoll nicht nötig); Lesen schreibt nie.
@@ -61,8 +62,10 @@ export async function GET(req: Request) {
     const [{ KENNUNG }, { paketFuerWerkstatt }] = await Promise.all([import('@/lib/fulfillment/grenzen'), import('@/lib/prozesse/fulfillment-modus-server')]);
     if (!KENNUNG.vorlage.test(paketId)) return nein(400, 'Welches Paket? (?paket=fp-…)');
     const p = await paketFuerWerkstatt(z.haushalt, paketId);
-    // Etappe 1: nur ansehen — bearbeitet wird bis Etappe 2 im vorhandenen Editor des Fulfillments (`editor`).
-    return p ? NextResponse.json({ ok: true, rechte: z.rechte, ...p, bearbeiten: false }) : nein(404, 'Dieses Paket gibt es nicht (mehr).');
+    if (!p) return nein(404, 'Dieses Paket gibt es nicht (mehr).');
+    // E2 (22.10.): bearbeiten wie im Editor des Fulfillments — nur volle Mitglieder (`darfVorlagenBearbeiten`); mit `&bibliothek=1` die ganze Bibliothek in Kürze.
+    const [{ darfVorlagenBearbeiten }, { bibliothekKurz }] = await Promise.all([import('@/lib/fulfillment/zugang'), import('@/lib/prozesse/fulfillment-modus-server')]);
+    return NextResponse.json({ ok: true, rechte: z.rechte, ...p, bearbeiten: !z.dienst && await darfVorlagenBearbeiten(z.person), ...(q.get('bibliothek') === '1' ? { bibliothekAlle: await bibliothekKurz(z.haushalt) } : {}) });
   }
   if (!id) {
     const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
@@ -112,6 +115,15 @@ export async function POST(req: Request) {
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, KOERPER_MAX); } catch (e) { return jsonZuGross(e) ?? nein(400, 'Kein JSON.'); }
   const aktion = typeof b.aktion === 'string' ? b.aktion : '';
+  // Fulfillment in die Werkstatt (22.10., E2): der Entwurf eines Pakets — im Bestand `fulfillment--<h>` (keine Kopie), nur volle Mitglieder (wie der Editor des
+  // Fulfillments), Stand/409, Fulfillment-Modus + Verlust-Wächter + Struktur (lib/prozesse/fulfillment-entwurf.ts). Laufende Fälle sehen einen Entwurf nie.
+  if (aktion === 'paket-entwurf' || aktion === 'paket-verwerfen') {
+    const { darfVorlagenBearbeiten } = await import('@/lib/fulfillment/zugang');
+    if (!(await darfVorlagenBearbeiten(z.person))) return nein(403, 'Pakete bearbeiten nur volle Mitglieder des Haushalts.');
+    const { paketEntwurfSchreiben } = await import('@/lib/prozesse/fulfillment-modus-server');
+    const r = await paketEntwurfSchreiben(z.haushalt, z.person, aktion === 'paket-entwurf' ? 'speichern' : 'verwerfen', b);
+    return NextResponse.json(r.body, { status: r.status });
+  }
   if (aktion.startsWith('webhook-')) {
     const r = await webhookVerwalten(z.person, z.rechte, b, z.haushalt);
     if (!r.ok) return nein(r.status, r.fehler);

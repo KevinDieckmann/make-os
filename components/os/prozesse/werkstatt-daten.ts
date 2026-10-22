@@ -52,14 +52,19 @@ export const useWerkstattListe = () => useAbruf<ListenAntwort>(WERKSTATT_QUELLE)
 export const useKatalog = () => useAbruf<KatalogAntwort>(KATALOG_QUELLE);
 export const useProzess = (id: string) => useAbruf<ProzessAntwort>(`${WERKSTATT_QUELLE}&id=${encodeURIComponent(id)}`);
 
-/** Ein Paket des Fulfillments für die Werkstatt (22.10., Etappe 1 — nur lesen; GET `?paket=`, lib/prozesse/fulfillment-modus-server.ts). */
+/** Ein Paket des Fulfillments für die Werkstatt (22.10., E1/E2; GET `?paket=&bibliothek=1`, lib/prozesse/fulfillment-modus-server.ts). */
 export interface PaketAntwort {
   ok: true; rechte: ProzessRechte; paket: ProzessVorlage; stand: string; befunde: Befund[]; bibliothek: BibliothekKurz[]; laufende: number;
   produkte: { id: string; name: string }[]; editor: string;
-  /** Etappe 1: immer false (bearbeitet wird bis Etappe 2 im Editor des Fulfillments). */
+  /** Darf die Person das Paket bearbeiten (volle Mitglieder, wie der Editor des Fulfillments)? */
   bearbeiten: boolean;
+  /** E2: der Entwurf (die ganze Fassung) — null ohne; `arbeitsStand` = Stand der Fassung, an der die Werkstatt arbeitet. */
+  entwurf: { vorlage: ProzessVorlage; basisFassung: number; am: string; von: string; paketGeaendert: boolean } | null;
+  arbeitsStand: string;
+  /** Die ganze Bibliothek in Kürze (Baustein hinzufügen). */
+  bibliothekAlle?: BibliothekKurz[];
 }
-export const usePaket = (id: string) => useAbruf<PaketAntwort>(`${WERKSTATT_QUELLE}&paket=${encodeURIComponent(id)}`);
+export const usePaket = (id: string) => useAbruf<PaketAntwort>(`${WERKSTATT_QUELLE}&paket=${encodeURIComponent(id)}&bibliothek=1`);
 
 /** Eine Version ganz (Ansehen) bzw. der Vergleich zweier Fassungen (Nummer oder „entwurf“). */
 export const versionHolen = (id: string, nr: number) => holen<{ ok: true; version: ProzessVersion }>(`${WERKSTATT_QUELLE}&id=${encodeURIComponent(id)}&version=${nr}`);

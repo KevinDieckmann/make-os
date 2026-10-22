@@ -28,7 +28,7 @@ export function TextFeld({ wert, onWert, mehrzeilig, aus, platz, label }: { wert
     ? <textarea aria-label={label} value={t} disabled={aus} placeholder={platz} onChange={e => setT(e.target.value)} onBlur={fertig} rows={4} style={{ ...feld, resize: 'vertical', minHeight: 96 }} />
     : <input aria-label={label} value={t} disabled={aus} placeholder={platz} onChange={e => setT(e.target.value)} onBlur={fertig} onKeyDown={e => { if (e.key === 'Enter') fertig(); }} style={feld} />;
 }
-function ZahlFeld({ wert, onWert, aus, min, max, label }: { wert: number | null; onWert: (v: number | null) => void; aus?: boolean; min?: number; max?: number; label: string }) {
+export function ZahlFeld({ wert, onWert, aus, min, max, label }: { wert: number | null; onWert: (v: number | null) => void; aus?: boolean; min?: number; max?: number; label: string }) {
   const [t, setT] = useState(wert === null ? '' : String(wert));
   useEffect(() => setT(wert === null ? '' : String(wert)), [wert]);
   const fertig = () => { const n = t.trim() === '' ? null : Number(t.replace(',', '.')); if (n === null || Number.isFinite(n)) { if (n !== wert) onWert(n === null ? null : Math.round(n)); } else setT(wert === null ? '' : String(wert)); };
