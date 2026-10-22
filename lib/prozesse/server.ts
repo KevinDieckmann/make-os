@@ -10,6 +10,7 @@
 //                                                  `kundenJeKnoten` (lib/fulfillment/regeln.ts) — die Zahl der Fälle an jedem Knoten
 // Die Kartei kommt über `kontakteFuerVerarbeitung` (Art. 18: eingeschränkte Personen fehlen ganz). Die Antwort trägt nur Titel aus Register und Vorlagen
 // und Zahlen — keine Personen, keine Namen, keine Beträge. Jeder Teil ist für sich abgesichert: scheitert er, fehlt seine Zahl (nie eine erfundene Null).
+// Stellschrauben (22.10.): je System-Prozess die Einstellungen, die er liest (lib/prozesse/stellschrauben-server.ts) — nur Werte, keine Personen.
 // Eine Minute gemerkt je Haushalt und Tag (jede Schreibung über local-db setzt den Speicher zurück).
 
 import { merken } from '@/lib/store/memo';
@@ -111,7 +112,13 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
     const alle: ProzessDef[] = [...SYSTEM_PROZESSE, ...vorlagen.map(prozessAusVorlage).filter((p): p is ProzessDef => !!p), ...(werkstatt ?? [])];
     // Prozesse × Fulfillment (22.10.): welche Produkte auf einen Prozess zeigen (Werkstatt über `Leistung.prozessId`, Pakete über die Zuordnung des Fulfillments).
     const produkte = await sicher(async () => (await import('@/lib/crm/speicher')).ladeCrm());
-    const prozesse = produkte ? await mitProdukten(alle, produkte.leistungen, datei?.zuordnung ?? {}) : alle;
+    const mitProd = produkte ? await mitProdukten(alle, produkte.leistungen, datei?.zuordnung ?? {}) : alle;
+    // Stellschrauben (22.10.): die Einstellungen, die die System-Prozesse heute schon lesen — aus den vorhandenen Beständen (nur lesen; geändert wird über
+    // deren Routen). Scheitert es ganz, fehlen sie (die Landkarte bleibt, wie sie war).
+    const prozesse = (await sicher(async () => {
+      const { stellschraubenQuellenLesen, mitStellschrauben } = await import('./stellschrauben-server');
+      return mitStellschrauben(mitProd, await stellschraubenQuellenLesen(h, { ...(produkte ? { crm: produkte } : {}), ...(datei ? { fulfillment: datei.einstellungen } : {}) }));
+    })) ?? mitProd;
     const [mt, ff] = await Promise.all([sicher(() => markttraktionZahlen(heute)), sicher(() => fulfillmentZahlen(heute, vorlagen))]);
     const arten = { ...(mt ?? {}), ...(ff?.arten ?? {}) };
     const zahlen: Record<string, Zahl> = { ...(ff?.knoten ?? {}) };

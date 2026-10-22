@@ -2,7 +2,8 @@
 // GET → alle Prozesse der Landkarte (System-Prozesse aus dem Register + Vorlagen aus dem Fulfillment) mit Steckbrief, Phasen, Schritten, Übergaben und
 //       der Zahl der Fälle, wo es echte Daten gibt; dazu (22.10.) die gespeicherten Abweichungen „Landkarte anpassen“ (`anpassung`, `anpassungStand`).
 //       Nur Business (Sicht Privat → 403), nur Haushalt des Inhabers (auch „nur Business“ liest), nur lesen — schreibt nie. ETag aus dem Inhalt
-//       (304, wenn sich nichts geändert hat). Gerechnet in lib/prozesse/server.ts.
+//       (304, wenn sich nichts geändert hat). Gerechnet in lib/prozesse/server.ts. Seit 22.10. tragen die System-Prozesse ihre Stellschrauben
+//       (Werte aus den vorhandenen Beständen) und die Antwort `stellschraubenRechte` (was diese Person je Weg ändern darf — im ETag).
 // POST { stand, ops } (22.10.) → „Landkarte anpassen“: Bereiche umbenennen/färben/anlegen, Kacheln zuordnen/beschriften/ausblenden, Reihenfolge, „Auf Vorgabe
 //       zurück“ (lib/prozesse/landkarte-anpassung.ts). Tor wie die Werkstatt: nur per Sitzung (Dienstweg 403) mit Bau-Kennung, nur wer Entwürfe bauen darf
 //       (403), Stand/409 mit der aktuellen Fassung, Grenzen 413 (nie gekürzt). Gespeichert werden nur Abweichungen (Bestand `prozesse-landkarte--<h>`).
@@ -10,6 +11,8 @@
 import { NextResponse } from 'next/server';
 import { prozesseZugang } from '@/lib/prozesse/zugang';
 import { landkarteLesen } from '@/lib/prozesse/server';
+import { stellschraubenRechte } from '@/lib/prozesse/stellschrauben-server';
+import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { anpassungSchreiben, anpassungStand } from '@/lib/prozesse/landkarte-anpassung-server';
 import { etagAus, jsonAntwort, unveraendert } from '@/lib/http/json-antwort';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -22,8 +25,11 @@ export async function GET(req: Request) {
   const z = await prozesseZugang(req);
   if (z instanceof Response) return z;
   const daten = await landkarteLesen();
-  const etag = etagAus('prozesse', daten.stand);
-  return unveraendert(req, etag) ?? jsonAntwort(req, { ok: true, ...daten }, etag);
+  // Stellschrauben (22.10.): was DIESE Person je Weg ändern darf — außerhalb des Merkers (der gilt je Haushalt), darum auch im ETag.
+  const rechte = await stellschraubenRechte(req, z);
+  // Fingerabdruck statt JSON (Kommas trennen If-None-Match — der ETag wäre nie wiedererkannt worden).
+  const etag = etagAus('prozesse', `${daten.stand}-${fingerabdruck(rechte)}`);
+  return unveraendert(req, etag) ?? jsonAntwort(req, { ok: true, ...daten, stellschraubenRechte: rechte }, etag);
 }
 
 const nein = (status: number, fehler: string, extra: Record<string, unknown> = {}) => NextResponse.json({ ok: false, fehler, ...extra }, { status });
