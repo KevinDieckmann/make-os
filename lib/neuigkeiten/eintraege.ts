@@ -58,6 +58,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { bereich: 'business', text: 'Vertrag und Regeln am Produkt: Mindestlaufzeit, Kündigung, Anrechnung auf ein anderes Produkt, höchstens N Kunden gleichzeitig, inklusive Leistungen.' },
         { bereich: 'business', text: 'Mandat aus dem Produkt: Honorar, Laufzeit, Gesellschaft und Leistungen kommen mit — dazu Zusatzmodule, die Rechnung, Liquidität und Fall mitrechnen.', weg: WEG.mandat() },
         { bereich: 'business', text: 'Produkte importieren: aus einer Tabelle oder Datei, mit Vorschau „neu · ändert · gleich“ — erst „Übernehmen“ schreibt.', weg: WEG.produkt() },
+        { bereich: 'business', text: 'Markttraktion als Hub: ein Menü mit Gruppen statt Reitern und Schnellknöpfen — Kontakte und Firmen, Vertrieb, Marketing samt Netzwerken, Steuerung, unten die Stammdaten. Neu „Auswertung“: der Weg vom Kontakt zum gewonnenen Deal als Lichtfaden, dazu Traktions-Index, Scoreboard, Kanäle und Pipeline. „+ Angebot“ steht in Kontakt-, Firmen- und Deal-Akte.', weg: WEG.auswertung() },
       ] },
       { art: 'besser', punkte: [
         { bereich: 'alle', text: 'Der gemischte Wachstums-Score ist weg — Finanzen zeigt nur noch die Finanzen der Sicht, Privat zeigt Privat und Business zeigt Business.' },

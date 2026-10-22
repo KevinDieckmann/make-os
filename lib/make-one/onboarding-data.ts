@@ -916,7 +916,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     titel: 'Kartei importieren und bereinigen',
     warum: 'Power Hour, Pipeline und Index rechnen mit der Kartei. Herkunft, Rechtsgrundlage und Zuständigkeit müssen stimmen, sonst schlägt das System die Falschen vor.',
     wie: [
-      'Markttraktion › Zahnrad (Stammdaten): Import mit Vorschau, Konflikte entscheiden, Dubletten und Firmen zusammenführen.',
+      'Markttraktion › Stammdaten: Import mit Vorschau, Konflikte entscheiden, Dubletten und Firmen zusammenführen.',
       'Herkunft und Rechtsgrundlage übernehmen; bei den wichtigsten Menschen Kreis A oder B setzen.',
       '„Zuständig“ je wichtigem Kontakt setzen — sonst landet die Power Hour bei einer Person.',
       'Für Kontakte aus fremden Quellen läuft ab dem Import die Ein-Monats-Frist für die Information nach Art. 14.',
@@ -961,8 +961,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     warum: 'Positionierung, Wertelisten und Wochenziele machen Vorschläge, Texte und das Scoreboard erst passend.',
     wie: [
       'Marketing › Positionierung: Zielgruppe, Nutzen, Ton.',
-      'Zahnrad › Wertelisten: Verlustgründe, Kadenz je Kreis.',
-      'Überblick: Wochenziele im Scoreboard je Person. Den Scoring-Standard lassen oder anpassen.',
+      'Markttraktion › Stammdaten › Wertelisten: Verlustgründe, Kadenz je Kreis.',
+      'Markttraktion › Auswertung: Wochenziele im Scoreboard je Person. Den Scoring-Standard lassen oder anpassen.',
     ],
     danach: 'Die Heads schlagen in eurer Sprache vor.',
     wo: { href: WEG.marketing('positionierung'), label: 'Markttraktion › Marketing' },
@@ -1487,7 +1487,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     warum: 'Eine feste Stunde für Anrufe und Nachrichten, in der MAKE OS die Reihenfolge vorgibt — je Person, damit nie zwei dieselbe Person anrufen.',
     wie: [
       'Planung › Routinen: in der Wochenvorlage je Person einen festen Block „Power Hour“ (Business).',
-      'Markttraktion › Überblick: Wochenziele im Scoreboard je Person.',
+      'Markttraktion › Auswertung: Wochenziele im Scoreboard je Person.',
       'Markttraktion › Follow-up › Power Hour einmal durchgehen.',
     ],
     danach: 'Die Power Hour füllt sich jede Woche selbst; im Kalender steht sie, sobald er verbunden ist.',
@@ -1666,7 +1666,7 @@ export const NEUSTART: readonly NeustartEintrag[] = [
     titel: 'Übernommene Kartei sichten und bereinigen',
     warum: 'Die Kartei ist mit dem Neustart mitgekommen. Power Hour, Pipeline und Index rechnen mit ihr — Herkunft, Rechtsgrundlage, Kreis und Zuständigkeit müssen stimmen.',
     wie: [
-      'Markttraktion › Zahnrad (Stammdaten) › Datenqualität: die Verbindungsprüfung laufen lassen, Dubletten und Firmen zusammenführen.',
+      'Markttraktion › Stammdaten › Datenqualität: die Verbindungsprüfung laufen lassen, Dubletten und Firmen zusammenführen.',
       'Bei den wichtigsten Menschen Kreis A oder B und „Zuständig“ setzen — sonst landet die Power Hour bei einer Person.',
       'Herkunft und Rechtsgrundlage prüfen; neue Listen nur über den Import mit Vorschau (für Kontakte aus fremden Quellen läuft dann die Frist nach Art. 14).',
     ],
@@ -1681,7 +1681,7 @@ export const NEUSTART: readonly NeustartEintrag[] = [
   { id: 'deals', etappe: 7, gruppe: KERN, texte: { titel: 'Pipeline: offene Deals prüfen' } },
   { id: 'vertrieb', etappe: 7, gruppe: KERN, texte: {
     titel: 'Positionierung, Wertelisten und Scoring',
-    wie: ['Marketing › Positionierung: Zielgruppe, Nutzen, Ton.', 'Zahnrad › Wertelisten: Verlustgründe und eigene Werte.', 'Qualifizierung & Scoring: den Standard lassen oder anpassen.'],
+    wie: ['Marketing › Positionierung: Zielgruppe, Nutzen, Ton.', 'Markttraktion › Stammdaten › Wertelisten: Verlustgründe und eigene Werte.', 'Leads & Qualifizierung › Scoring: den Standard lassen oder anpassen.'],
   } },
   { id: 'kampagne-start', etappe: 7, gruppe: KERN }, { id: 'powerhour', etappe: 7, gruppe: KERN },
   { id: 'mandate-kapazitaet', etappe: 7, gruppe: DANACH }, { id: 'ich-visitenkarte', etappe: 7, gruppe: KERN, optional: true },

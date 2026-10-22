@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Qualifizierung & Scoring — der Schnellknopf in der Mitte (03.10.) ──────────────────────────
+// ─── Leads & Qualifizierung (03.10. als Schnellknopf „Qualifizierung & Scoring“, seit 22.10. Hub-Punkt unter „Vertrieb“) ───
 // Kevin: „Leadscoring ist der Oberbegriff der Qualifizierung — mach das ‚Qualifizierung & Scoring‘, darunter Qualifizierung und die
 // Scoring-Einstellungen von Marketing und von Sales, also von MQL zu SQL.“ Pillen: Qualifizierung (die Runde) · Scoring, darunter
 // Marketing-Scoring · Sales-Scoring. Die Kennung `qualifizierung` und alle alten Links bleiben (lib/crm/adresse.ts).

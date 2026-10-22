@@ -1,6 +1,6 @@
 'use client';
 
-// ─── Markttraktion · Planung (Schnellknopf rechts neben „Angebot“, 10.10.) ───────────────────────────────────────
+// ─── Markttraktion · Planung (10.10. als Schnellknopf, seit 22.10. Hub-Punkt unter „Steuerung“) ──────────────────
 // Kevin: „Umsatzziele auf einzelne Aktivitäten runterplanen — Sales, Marketing, was auch immer — mit Kapa und allem, was dazugehört. Das
 // Wochen-Scoreboard ist mega, aber nur, wenn ich weiß, was das Ziel war. Dann wöchentliche Challenges …“ — und: „Die Pipeline in einem
 // Bereich sehen, wo wir die Conversions sehen und anpassen können — planen pro Leadkanal.“
