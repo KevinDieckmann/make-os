@@ -15,8 +15,8 @@ export const EINSTELLUNGEN_FULFILLMENT_PROZESSE = {
     beispiel: 'Nach dem Klick steht „Vertriebsleitung auf Zeit“ mit acht Phasen von Vorlauf bis Übergabe bereit; ein zweiter Klick legt nichts doppelt an.',
   },
   'fulfillment.zuordnung': {
-    was: 'Jedes Produkt bekommt genau einen Ablauf. Startet ein Mandat auf diesem Produkt seinen Fall, kopiert der Fall die Struktur dieses Ablaufs.',
-    beispiel: 'Das Produkt „Diagnose“ liefert nach dem Ablauf „Vertriebsleitung auf Zeit“ — ein neues Mandat startet damit direkt in Phase „Vorlauf / Onboarding“.',
+    was: 'Jedes Produkt bekommt genau einen Ablauf: einen Ablauf des Fulfillments oder einen Prozess aus der Werkstatt (Prozesse). Beim Ablauf des Fulfillments kopiert der Fall des Mandats seine Struktur. Beim Prozess startet ein neues Mandat mit diesem Produkt — bzw. dieses Produkt als gebuchtes Zusatzmodul — seinen Lauf: im Probelauf zuerst ohne Wirkung, scharf erst nach „scharf schalten“. Laufende Mandate bleiben auf ihrer Version.',
+    beispiel: 'Das Produkt „Diagnose“ zeigt auf den Prozess „Diagnose liefern“ — wird ein Mandat mit „Diagnose“ angelegt, beginnt dessen Lauf mit der ersten Aufgabe „Kick-off vereinbaren“ für die zuständige Person.',
   },
   'fulfillment.importRechtPruefen': {
     was: 'Ansprache-Texte (Telefon, Mail, Empfehlung, Provisionen) werden beim Import als „vor Einsatz rechtlich prüfen“ markiert. Das ist ein Hinweis, keine Rechtsberatung — erst nach dem Vermerk „geprüft“ gehen sie an Kunden.',

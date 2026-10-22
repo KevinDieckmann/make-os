@@ -79,6 +79,20 @@ async function fulfillmentZahlen(heute: string, vorlagen: readonly import('@/lib
   return { arten, knoten };
 }
 
+/**
+ * Die Produkte je Prozess anhängen (Prozesse × Fulfillment, 22.10.): Werkstatt-Prozesse über `Leistung.prozessId`, Pakete über `zuordnung` — nur Name, Kennung, Link.
+ * Ein Werkstatt-Prozess an einem Produkt startet mit jedem neuen Mandat dieses Produkts; das steht vorne im Auslöser des Steckbriefs.
+ */
+async function mitProdukten(l: readonly ProzessDef[], katalog: readonly import('@/lib/crm/typen').Leistung[], zuordnung: Readonly<Record<string, { vorlageId: string }>>): Promise<ProzessDef[]> {
+  const [{ produkteVonProzess, produkteVonVorlage }, { WEG }] = await Promise.all([import('./produkt-bindung'), import('@/lib/wege')]);
+  return l.map(p => {
+    const v = p.quelle === 'werkstatt' ? produkteVonProzess(katalog, p.id) : p.quelle === 'vorlage' ? produkteVonVorlage(katalog, zuordnung, p.id) : [];
+    if (!v.length) return p;
+    const steckbrief = p.quelle === 'werkstatt' ? { ...p.steckbrief, ausloeser: `Neues Mandat bzw. Zusatzmodul des Produkts · ${p.steckbrief.ausloeser}` } : p.steckbrief;
+    return { ...p, steckbrief, produkte: v.map(x => ({ id: x.id, name: x.name, href: WEG.produkt(x.id) })) };
+  });
+}
+
 /** Die Landkarte (siehe Kopf). */
 export async function landkarteLesen(heute = localDay()): Promise<Omit<LandkarteDaten, 'ok'>> {
   const { fulfillmentHaushalt } = await import('@/lib/fulfillment/speicher');
@@ -94,7 +108,10 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
       const [{ prozesseLesen }, { prozessAusWerkstatt }] = await Promise.all([import('./werkstatt-server'), import('./werkstatt-landkarte')]);
       return (await prozesseLesen(h)).prozesse.map(prozessAusWerkstatt).filter((p): p is ProzessDef => !!p);
     });
-    const prozesse: ProzessDef[] = [...SYSTEM_PROZESSE, ...vorlagen.map(prozessAusVorlage).filter((p): p is ProzessDef => !!p), ...(werkstatt ?? [])];
+    const alle: ProzessDef[] = [...SYSTEM_PROZESSE, ...vorlagen.map(prozessAusVorlage).filter((p): p is ProzessDef => !!p), ...(werkstatt ?? [])];
+    // Prozesse × Fulfillment (22.10.): welche Produkte auf einen Prozess zeigen (Werkstatt über `Leistung.prozessId`, Pakete über die Zuordnung des Fulfillments).
+    const produkte = await sicher(async () => (await import('@/lib/crm/speicher')).ladeCrm());
+    const prozesse = produkte ? await mitProdukten(alle, produkte.leistungen, datei?.zuordnung ?? {}) : alle;
     const [mt, ff] = await Promise.all([sicher(() => markttraktionZahlen(heute)), sicher(() => fulfillmentZahlen(heute, vorlagen))]);
     const arten = { ...(mt ?? {}), ...(ff?.arten ?? {}) };
     const zahlen: Record<string, Zahl> = { ...(ff?.knoten ?? {}) };

@@ -39,6 +39,8 @@ const EINGABE_FELD: Readonly<Record<BezugFeld, string>> = {
   knotenId: 'schritt',
   // Kundengewinnung (22.10.): Event, Kampagne, Angebot, Buchung der Buchungsseite.
   eventId: 'event', kampagneId: 'kampagne', angebotId: 'angebot', terminBuchungId: 'buchungsanfrage',
+  // Prozesse × Fulfillment (22.10.): das Produkt eines gebuchten Zusatzmoduls.
+  leistungId: 'produkt',
 };
 export function laufEingaben(f: Pick<FaelligesEreignis, 'ereignis' | 'konsument'>): Record<string, string> {
   const e = f.ereignis;

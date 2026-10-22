@@ -355,6 +355,8 @@ export type SkillEreignis = 'neue-mail' | 'neuer-lead' | 'zahlungseingang' | 'ne
   // (lib/ereignisse/quellen.ts) — Mandat angelegt/beendet (CRM), Rechnung gestellt (Rechnungswesen), Schritt eines Fulfillment-Falls erledigt, eigene
   // Antwort an einen Kontakt gesendet (Inbox/WhatsApp), Follow-up erledigt, Ziel eines Mandats erreicht (Wert-Konto).
   | 'mandat-angelegt' | 'mandat-beendet' | 'rechnung-gestellt' | 'fall-schritt-erledigt' | 'antwort-gesendet' | 'followup-erledigt' | 'ziel-erreicht'
+  // Prozesse × Fulfillment (22.10.): ein Zusatzmodul wird an einem bestehenden Mandat gebucht (CRM-Schreibweg) — startet u. a. den Prozess seines Produkts.
+  | 'zusatz-gebucht'
   // Kundengewinnung (22.10., research/prozesse/VORLAGEN_KUNDENGEWINNUNG.md › 5.1: E2, E3, E5, E6, E7, E10, E11) — Quellen in lib/ereignisse/quellen-kundengewinnung.ts.
   | 'netzwerken-erfasst' | 'angebot-gestellt' | 'angebot-antwort' | 'buchung-angefragt' | 'buchung-bestaetigt' | 'einwilligung-erteilt'
   | 'event-vorbei' | 'event-status' | 'linkedin-antwort' | 'vernetzt' | 'kampagne-aktiv' | 'kampagnen-ergebnis';

@@ -49,7 +49,7 @@ export function ProduktKarte({ api, l, gespeicherteStufe, besitztStufe, belegung
   const [offen, setOffen] = useState<ReadonlySet<KartenAbschnitt>>(new Set());
   const [fehlerBei, setFehlerBei] = useState<KartenAbschnitt | null>(null);
   const [statusHinweis, setStatusHinweis] = useState<string | null>(null);
-  const ablauf = useAblauf(l.id);
+  const ablauf = useAblauf(l);
   const k = produktKarte(l, gespeicherteStufe, crm.stand.leistungen);
   const z = produktZahlen(l, crm.stand);
   const texte = texteVon(l);

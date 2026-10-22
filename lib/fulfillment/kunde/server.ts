@@ -199,12 +199,14 @@ export async function sichtFuer(e: { mandat: Mandat; modus: 'voll' | 'puls'; lin
   const u = await kundenUmfeld(e.mandat, fall, e.vorlagen);
   // 14.10. (Abnahme A3): die Lage folgt dem, was intern hängt — dieselbe Rechnung wie das Cockpit, nur in Worten (die Texte gehen nie hinaus).
   const haengt = fall ? await haengerVon(e.mandat.id, e.heute) : null;
+  // Prozesse × Fulfillment (22.10.): ohne Fall die Etappen aus den scharfen Läufen der Werkstatt-Prozesse am Mandat (nur „Dem Kunden zeigen“; wirft nie).
+  const etappen = !fall && e.modus === 'voll' ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(e.mandat.id) : null;
   return kundenSicht({
     modus: e.modus, heute: e.heute, mandat: e.mandat, paket: paketName(e.mandat, e.crm, fall, e.vorlagen), fall, bausteine: e.vorlagen.bausteine, marken: e.vorlagen.marken, rituale: e.vorlagen.rituale,
     kunde: e.kunde, rechte, standVon, datenschutz: await hinweisLaden(u.anrede), uploadFrei: frei,
     ...(e.anfrage ? { pulsOffen: !e.anfrage.beantwortetAm && e.anfrage.offenBis >= e.heute } : {}),
     anrede: u.anrede, ...(u.anbieter ? { anbieter: u.anbieter } : {}), ...(u.ansprechperson ? { ansprechperson: u.ansprechperson } : {}), freigaben: u.freigaben, terminTage: u.terminTage,
-    ...(haengt ? { haengt } : {}),
+    ...(haengt ? { haengt } : {}), ...(etappen ? { etappen } : {}),
   });
 }
 

@@ -5,6 +5,7 @@
 // die Phase mit ihren Schritten, Ebene 4 den Schritt (Form, was passiert, wer, wohin der Weg führt). Eine Information steht nur einmal je Ansicht (Punkt 24).
 // „System“-Prozesse sind nur lesbar (E3) — das Feld sagt es und führt dorthin, wo der Prozess heute läuft; Vorlagen führen in den Editor bzw. ins Hochhaus.
 
+import Link from 'next/link';
 import { Cog, LayoutTemplate, Workflow } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Eigenschaft, Knopf, Chip, Hinweis } from '../ui';
@@ -45,6 +46,14 @@ export function SteckbriefKarte({ p, zahl }: { p: ProzessDef; zahl: Zahl | undef
       <Ueberschrift rechts={<Marke p={p} />}>Steckbrief</Ueberschrift>
       <p style={klein}>{ortVon(p)}</p>
       {steckbriefZeilen(p, { phasenImBild: true }).map(z => <Eigenschaft key={z.id} label={z.titel}>{z.wert}</Eigenschaft>)}
+      {/* Prozesse × Fulfillment (22.10.): an welchem Produkt der Prozess hängt — ein neues Mandat dieses Produkts startet ihn. */}
+      {p.produkte?.length ? (
+        <Eigenschaft label="Gehört zu Produkt">
+          <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
+            {p.produkte.map(x => <Link key={x.id} href={x.href} style={{ color: C.aktiv }}>{x.name} ›</Link>)}
+          </span>
+        </Eigenschaft>
+      ) : null}
       <ZahlZeile z={zahl} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {p.link && <Knopf leise href={p.link.href}>{p.quelle === 'system' ? `Wo es läuft: ${p.link.text} ›` : `${p.link.text} ›`}</Knopf>}

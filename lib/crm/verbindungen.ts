@@ -110,6 +110,8 @@ export interface VerbindungsBestaende {
   termine?: TermineStand | null;
   /** F2 N4: Familie des Inhabers — Kennungen der Menschen und Wichtigen Tage (Verweis `menschId`). null = nicht geprüft. */
   familieTage?: FamilieTageStand | null;
+  /** Prozesse × Fulfillment (22.10.): Kennungen der Prozesse der Werkstatt (Bestand `prozesse--<haushalt>`) — für `Leistung.prozessId`. null = nicht geprüft. */
+  prozesse?: { ids: string[] } | null;
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
@@ -240,6 +242,8 @@ export const PRUEFUNGEN = {
   ...PRUEFUNGEN_TERMINE,
   // F2 N4 (29.09.): Wichtige Tage mit totem Menschen-Verweis — lib/crm/verbindungen-familie.ts.
   ...PRUEFUNGEN_FAMILIE,
+  // Prozesse × Fulfillment (22.10.): das Produkt zeigt auf einen Prozess der Werkstatt, den es nicht (mehr) gibt — ein neues Mandat startet dann keinen Lauf.
+  'produkt-prozess-tot': { schwere: 'warnung', bereich: 'mandate', reparierbar: true, art: 'produkt', text: n => `${n} ${e(n, 'Produkt zeigt', 'Produkte zeigen')} auf einen Prozess der Werkstatt, den es nicht mehr gibt — ein neues Mandat startet dann keinen Lauf. Reparieren löst den Verweis (danach in der Produktkarte einen Ablauf wählen).` },
 } as const satisfies Record<string, Pruefung>;
 
 export type PruefungId = keyof typeof PRUEFUNGEN;
@@ -560,6 +564,7 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     if (a.status !== 'entwurf' && (!a.pdfDateiId || (pdfIds && !pdfIds.has(a.pdfDateiId)))) melde('angebot-ohne-pdf', a.id);
   }
   for (const l of liste(crm.leistungen)) if (l.status === 'aktiv' && !l.angebot?.leistungstext?.trim()) melde('produkt-ohne-angebotstext', l.id);
+  if (b.prozesse) { const ids = new Set(b.prozesse.ids); for (const l of liste(crm.leistungen)) if (l.prozessId && !ids.has(l.prozessId)) melde('produkt-prozess-tot', l.id); }
 
   // Ergänzung (Integritätsprüfung 28.09. abends): Firmentext, Typ, Aktivitäten, Deal-Quelle, Planposten, Phase,
   // doppelte Teilnahmen, Kampagnen-Ergebnisse außerhalb, Head-Vorschläge, Einwilligungs-Belege.
@@ -739,6 +744,17 @@ export function verbindungenReparieren(b: VerbindungsBestaende, ids: readonly st
       return rest;
     }));
     zaehle('firma-mutter-tot', 'crm', n, `${n} ${e(n, 'Firma', 'Firmen')}: Verweis auf gelöschte Mutterfirma entfernt`);
+  }
+  if (will.has('produkt-prozess-tot') && b.prozesse) {
+    const ids = new Set(b.prozesse.ids);
+    let n = 0;
+    setze('leistungen', liste(crm.leistungen).map(l => {
+      if (!l.prozessId || ids.has(l.prozessId)) return l;
+      n++;
+      const { prozessId: _weg, ...rest } = l;
+      return rest;
+    }));
+    zaehle('produkt-prozess-tot', 'crm', n, `${n} ${e(n, 'Produkt', 'Produkte')}: Verweis auf einen gelöschten Prozess gelöst`);
   }
   if (will.has('firma-lead-deal-tot')) {
     let n = 0;

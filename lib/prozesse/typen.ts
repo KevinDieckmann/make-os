@@ -81,6 +81,11 @@ export interface ProzessDef {
   zaehler?: ZaehlerArt;
   /** Nur Werkstatt: Status, jüngste veröffentlichte Version (null = nur Entwurf), Zahl der Schritte. */
   werkstatt?: { status: ProzessStatus; version: number | null; schritte: number };
+  /**
+   * Prozesse × Fulfillment (22.10.): die Produkte, die auf diesen Prozess zeigen (Werkstatt: `Leistung.prozessId`; Paket: Zuordnung des Fulfillments) — der Server
+   * hängt sie an (lib/prozesse/server.ts), die Kachel nennt sie, der Steckbrief verlinkt sie („gehört zu Produkt …“, `WEG.produkt`). Fehlt = an keinem Produkt.
+   */
+  produkte?: { id: string; name: string; href: string }[];
 }
 
 /**

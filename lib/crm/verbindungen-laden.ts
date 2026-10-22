@@ -58,7 +58,19 @@ async function quellen(): Promise<Quellen> {
 function speicherNamen(q: Quellen): string[] {
   return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER, 'liquiplan', ICLOUD_SPEICHER, BEZUG_SPEICHER, ...HEADS.map(h => standName(h)),
     ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`, `${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`, `familie--${q.haushalt}`] : []),
-    ...q.personen.map(p => speicherFuer('zeit', p)), ...zieleSpeicher(q), `buchung--${q.haushalt ?? HAUSHALT_ERSATZ}`];
+    ...q.personen.map(p => speicherFuer('zeit', p)), ...zieleSpeicher(q), `buchung--${q.haushalt ?? HAUSHALT_ERSATZ}`,
+    // Prozesse × Fulfillment (22.10.): `Leistung.prozessId` zeigt auf einen Prozess der Werkstatt.
+    `prozesse--${q.haushalt ?? 'inhaber'}`];
+}
+
+/**
+ * Prozesse × Fulfillment (22.10.): die Kennungen der Prozesse der Werkstatt (nur Kennungen) — Grundlage für „Produkt zeigt auf einen Prozess, den es nicht gibt“.
+ * Ohne Bestand (Instanz ohne Prozesse) null: dann wird nicht geprüft (nie ein Verweis als tot gemeldet, nur weil der Bestand fehlt).
+ */
+async function ladeProzessIds(): Promise<{ ids: string[] } | null> {
+  const [{ prozesseHaushalt }, { prozesseAus }, { prozesseBestand }] = await Promise.all([import('@/lib/prozesse/werkstatt-server'), import('@/lib/prozesse/bestand'), import('@/lib/prozesse/definition')]);
+  const roh = await loadJson<unknown>(prozesseBestand(await prozesseHaushalt()));
+  return roh ? { ids: prozesseAus(roh).prozesse.map(p => p.id) } : null;
 }
 
 /** Die Ziele-Speicher (28.09., Mandat an Zielen): der gemeinsame und je Person der eigene — plus die Meilensteine. */
@@ -199,7 +211,7 @@ async function aufPlatte(h: string): Promise<string[]> {
 export async function ladeVerbindungsBestaende(heute: string, betrachter?: string | null): Promise<VerbindungsBestaende & { haushalt: string | null }> {
   const q = await quellen();
   // Seit 28.09. abends: Planposten-Kennungen (Mandat → Liquiditätsplan) und Head-Vorschläge (nur Kennung, Person, Status).
-  const [liquiplan, heads, planung, kalender, buchungen, familieSpiegel, termine, familieTage] = await Promise.all([
+  const [liquiplan, heads, planung, kalender, buchungen, familieSpiegel, termine, familieTage, prozesse] = await Promise.all([
     loadJson<{ posten?: { id: string }[] }>('liquiplan'),
     Promise.all(HEADS.map(async h => ({ head: h, stand: await loadJson<{ vorschlaege?: { id: string; kontakt_id?: string | null; status?: string }[] }>(standName(h)) }))),
     ladePlanung(q, betrachter),
@@ -208,6 +220,7 @@ export async function ladeVerbindungsBestaende(heute: string, betrachter?: strin
     ladeFamilieSpiegel().catch(() => null),
     ladeTermineStand().catch(() => null),
     ladeFamilieTage().catch(() => null),
+    ladeProzessIds().catch(() => null),
   ]);
   const [kontakte, crm, finanz, tasks, ordnung, einheiten, konflikte, ablage, dateien, zeiten, aufgabenAblage] = await Promise.all([
     loadJson<{ kontakte?: Kontakt[] }>('kontakte'),
@@ -244,6 +257,7 @@ export async function ladeVerbindungsBestaende(heute: string, betrachter?: strin
     familieSpiegel,
     termine,
     familieTage,
+    prozesse,
     heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
 }

@@ -13,18 +13,23 @@ import { Fenster } from '../Fenster';
 import { WEG } from '@/lib/wege';
 import { neueKennung } from '@/lib/kennung';
 import { PROZESS_BEREICHE, FALL_ARTEN, PROZESS_TEXT, type FallArt, type ProzessBereich } from '@/lib/prozesse/definition';
+import { PRODUKT_BEREICHE } from '@/lib/prozesse/produkt-bindung';
 import { useKatalog, useWerkstattListe, werkstattSenden } from './werkstatt-daten';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
 const STATUS_WORT: Readonly<Record<string, string>> = { entwurf: 'Entwurf', probelauf: 'Probelauf', aktiv: 'aktiv', pausiert: 'pausiert', archiviert: 'archiviert' };
 
-/** Der Dialog „Neuer Prozess“: Name, Bereich, Fall-Art, Eigner, Beschreibung → anlegen → in die Werkstatt. */
-export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe }: { onZu: () => void; onAngelegt: (id: string) => Promise<void> | void; bereichVorgabe?: ProzessBereich }) {
+/**
+ * Der Dialog „Neuer Prozess“: Name, Bereich, Fall-Art, Eigner, Beschreibung → anlegen → in die Werkstatt. `fuerProdukt` (22.10., Prozesse × Fulfillment — von der
+ * Produktkarte „Prozess für dieses Produkt anlegen“): Name = Produkt, Bereich nur Fulfillment · Übergabe · Ausbau, ein Lauf hängt immer am Mandat.
+ */
+export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe, fuerProdukt }: { onZu: () => void; onAngelegt: (id: string) => Promise<void> | void; bereichVorgabe?: ProzessBereich; fuerProdukt?: { name: string } }) {
   const kat = useKatalog();
   const team = (kat.daten?.auswahl?.['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:'));
-  const [titel, setTitel] = useState('');
-  const [bereich, setBereich] = useState<ProzessBereich>(bereichVorgabe ?? 'sales');
-  const [fallArt, setFallArt] = useState<FallArt>('lead');
+  const [titel, setTitel] = useState(fuerProdukt?.name.slice(0, PROZESS_TEXT.titel) ?? '');
+  const [bereich, setBereich] = useState<ProzessBereich>(fuerProdukt ? 'fulfillment' : bereichVorgabe ?? 'sales');
+  const [fallArt, setFallArt] = useState<FallArt>(fuerProdukt ? 'mandat' : 'lead');
+  const bereiche = fuerProdukt ? PROZESS_BEREICHE.filter(b => PRODUKT_BEREICHE.includes(b.id)) : PROZESS_BEREICHE;
   const [eigner, setEigner] = useState('');
   const [beschreibung, setBeschreibung] = useState('');
   const [fehler, setFehler] = useState<string | null>(null);
@@ -37,11 +42,15 @@ export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe }: { onZu
     setFehler(String(r.j?.fehler ?? 'Der Prozess ließ sich nicht anlegen.'));
   };
   return (
-    <Fenster titel="Neuer Prozess" onZu={onZu} breit={640}>
-      <p style={klein}>Ein Prozess beginnt als Entwurf mit einer Phase und einem Auslöser „von Hand“. Gebaut wird in der Werkstatt; erst „Veröffentlichen“ macht ihn lauffähig.</p>
+    <Fenster titel={fuerProdukt ? 'Prozess für dieses Produkt' : 'Neuer Prozess'} onZu={onZu} breit={640}>
+      <p style={klein}>{fuerProdukt
+        ? `Der Prozess gehört zum Produkt „${fuerProdukt.name}“: ein neues Mandat mit diesem Produkt startet ihn — erst nach „Veröffentlichen“, im Probelauf zuerst ohne Wirkung. Gebaut wird in der Werkstatt.`
+        : 'Ein Prozess beginnt als Entwurf mit einer Phase und einem Auslöser „von Hand“. Gebaut wird in der Werkstatt; erst „Veröffentlichen“ macht ihn lauffähig.'}</p>
       <Feldzeile label="Name * (Verb + Gegenstand)"><input aria-label="Name" value={titel} maxLength={PROZESS_TEXT.titel} placeholder="z. B. Lead nachfassen" onChange={e => setTitel(e.target.value)} style={feld} autoFocus /></Feldzeile>
-      <Feldzeile label="Bereich — die Kachel steht dort auf der Landkarte"><Pillen liste={PROZESS_BEREICHE.map(b => ({ id: b.id, label: b.titel }))} aktiv={bereich} onWahl={setBereich} /></Feldzeile>
-      <Feldzeile label="Woran hängt ein Lauf?"><Pillen liste={FALL_ARTEN.map(f => ({ id: f.id, label: f.titel }))} aktiv={fallArt} onWahl={setFallArt} /></Feldzeile>
+      <Feldzeile label="Bereich — die Kachel steht dort auf der Landkarte"><Pillen liste={bereiche.map(b => ({ id: b.id, label: b.titel }))} aktiv={bereich} onWahl={setBereich} /></Feldzeile>
+      {fuerProdukt
+        ? <Feldzeile label="Woran hängt ein Lauf?"><span style={klein}>Am Mandat — dem Mandat mit diesem Produkt.</span></Feldzeile>
+        : <Feldzeile label="Woran hängt ein Lauf?"><Pillen liste={FALL_ARTEN.map(f => ({ id: f.id, label: f.titel }))} aktiv={fallArt} onWahl={setFallArt} /></Feldzeile>}
       <Feldzeile label="Eigner (eine Person aus dem Team, später änderbar)">
         <select aria-label="Eigner" value={eigner} onChange={e => setEigner(e.target.value)} style={{ ...auswahlStil, width: '100%' }}>
           <option value="">— noch offen —</option>

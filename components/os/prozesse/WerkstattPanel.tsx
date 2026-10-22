@@ -8,9 +8,10 @@
 // (Name, Bereich, Fall, Eigner, Kriterien — Punkt 10). Phase, Faden und Zettel haben eigene, kurze Felder.
 
 import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
+import Link from 'next/link';
 import { Lock, Trash2, Copy, Scissors, ChevronsRightLeft, Plus } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT, BEDEUTUNG_FARBE, MIKRO, TIEF } from '@/lib/make-one/design';
-import { Ueberschrift, Hinweis, Knopf, Pillen, Feldzeile, auswahl as auswahlStil, Chip } from '../ui';
+import { Ueberschrift, Hinweis, Knopf, Pillen, Feldzeile, Schalter, auswahl as auswahlStil, Chip } from '../ui';
 import {
   PROZESS_BEREICHE, FALL_ARTEN, ZETTEL_FARBEN, type Befund, type MaskenWert, type NotizZettel, type ProzessDefinition, type ProzessForm, type ProzessKnoten, type AgentWer,
 } from '@/lib/prozesse/definition';
@@ -20,10 +21,12 @@ import { EREIGNIS_FELDER, FALL_FELDER, ausloeserFelder } from '@/lib/prozesse/au
 import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { erlaubteWerkzeuge, rechteProfil } from '@/lib/prozesse/agent-schritt';
 import { schlossText } from '@/lib/prozesse/schloss';
+import { kundenFormErlaubt } from '@/lib/prozesse/produkt-bindung';
 import { maskeWerte, maskeAnwenden, formWort } from '@/lib/prozesse/werkstatt-maske';
 import { AUSGAENGE, ausgangName, type KanteLage } from '@/lib/prozesse/werkstatt-lage';
 import { PROBE_NAME, PROBE_BEDEUTUNG, centText, type ProbeSchritt, type Rat } from '@/lib/prozesse/werkstatt-hinweise';
 import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
+import { WEG } from '@/lib/wege';
 import { ZETTEL_TON, WERKSTATT_FORM_FARBE } from '@/lib/prozesse/farben';
 import type { ModellOption } from '@/lib/prozesse/modell-wahl';
 import { MaskenEingabe, TextFeld, type Option } from './WerkstattMaske';
@@ -79,6 +82,8 @@ export interface PanelProps {
   agentName: (wer: AgentWer) => string;
   /** Zusatz unter der Maske eines Knotens (22.10.: die Webhook-Karte am Auslöser „Webhook von außen“). */
   knotenZusatz?: (k: K) => ReactNode;
+  /** Produkte, die auf diesen Prozess zeigen (22.10., Prozesse × Fulfillment) — der Steckbrief verlinkt sie. */
+  produkte?: readonly { id: string; name: string }[];
 }
 
 /** Das Panel (siehe Kopf). */
@@ -120,6 +125,13 @@ function SteckbriefPanel(p: PanelProps) {
           {konten.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
         </select>
       </Feldzeile>
+      {p.produkte?.length ? (
+        <Feldzeile label="Gehört zu Produkt — ein neues Mandat startet diesen Prozess">
+          <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
+            {p.produkte.map(x => <Link key={x.id} href={WEG.produkt(x.id)} style={{ color: C.aktiv, fontSize: TYP.bedien }}>{x.name} ›</Link>)}
+          </span>
+        </Feldzeile>
+      ) : null}
       <Feldzeile label="Startkriterium — wann gehört ein Fall hinein?"><TextFeld label="Startkriterium" mehrzeilig wert={d.startKriterium ?? ''} aus={p.nurLesen} onWert={v => p.onSteckbrief({ startKriterium: v || null })} /></Feldzeile>
       <Feldzeile label="Endkriterium — wann ist der Prozess erfüllt?"><TextFeld label="Endkriterium" mehrzeilig wert={d.endKriterium ?? ''} aus={p.nurLesen} onWert={v => p.onSteckbrief({ endKriterium: v || null })} /></Feldzeile>
       <BefundListe befunde={ohne} raete={p.raete.filter(r => !r.knotenId)} onTeilprozess={p.nurLesen ? undefined : id => p.onPhase('teilen', id)} />
@@ -195,6 +207,14 @@ function KnotenPanel(p: PanelProps & { k: K }) {
       <Feldzeile label="Name (Verb + Gegenstand)">
         <TitelFeld eingabe={titel} wert={k.titel} aus={p.nurLesen || !!k.schloss} onWert={t => p.onKnoten({ ...k, titel: t })} />
       </Feldzeile>
+      {/* Prozesse × Fulfillment (22.10.): ein Schritt, eine Nachricht oder ein Termin eines Mandats-Prozesses darf im Kunden-Link als Etappe erscheinen —
+          nur ausdrücklich (lib/prozesse/kunden-etappen.ts); alles andere bleibt intern. */}
+      {(d.fallArt ?? 'mandat') === 'mandat' && kundenFormErlaubt(k.form) && !k.schloss && (
+        <Schalter an={k.kundeSichtbar === true} aus={p.nurLesen} erklaerung="prozesse.kundeSichtbar"
+          onChange={v => { if (v) p.onKnoten({ ...k, kundeSichtbar: true }); else { const { kundeSichtbar: _weg, ...ohne } = k; p.onKnoten(ohne); } }}>
+          Dem Kunden zeigen
+        </Schalter>
+      )}
       {k.schloss && (
         <Hinweis art="achtung" titel={<span className="pz-knopf-inhalt"><Lock size={14} aria-hidden />Freigabe-Schloss</span>}>
           Gehört zu „{fuer?.titel ?? ''}“ — {schlossText(k.schloss.grund)} Die Regel setzt es selbst; es lässt sich nicht entfernen. Einstellen lässt sich, wer freigibt und wohin „abgelehnt“ bzw. „abgelaufen“ führen.

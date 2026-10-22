@@ -21,6 +21,9 @@
 //   ziel-erreicht          Fulfillment-Fall: eine neue Messung bringt ein Ziel des Wert-Kontos auf 100 %
 //   antwort-gesendet       eigene Mail (Inbox) bzw. WhatsApp an einen Kontakt gesendet — person = wer gesendet hat
 //   followup-erledigt      Follow-up erledigt (/api/crm/followup)
+// Prozesse × Fulfillment (22.10., Produkt → Prozess):
+//   zusatz-gebucht         CRM-Schreibweg (`crmDiff` über `mandate[].zusatz`): ein neues Zusatzmodul an einem BESTEHENDEN Mandat — Bezug Mandat + Produkt
+//                          (`leistungId`); beim Anlegen eines Mandats kommt nur „mandat-angelegt“ (der Motor liest Haupt- und Zusatzprodukte dann selbst)
 
 import type { SkillEreignis } from '@/lib/agenten/typen';
 
@@ -57,6 +60,7 @@ export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
   webhook: 'Webhook von außen',
   'mandat-angelegt': 'Mandat angelegt', 'mandat-beendet': 'Mandat beendet', 'rechnung-gestellt': 'Rechnung gestellt',
   'fall-schritt-erledigt': 'Schritt im Fall erledigt', 'antwort-gesendet': 'Antwort gesendet', 'followup-erledigt': 'Follow-up erledigt', 'ziel-erreicht': 'Ziel erreicht',
+  'zusatz-gebucht': 'Zusatzmodul gebucht',
   // ── Kundengewinnung (22.10., E2/E3/E5/E6/E7/E10/E11 — Quellen in ./quellen-kundengewinnung.ts) ──
   ...EREIGNIS_NAME_KUNDENGEWINNUNG,
 };
@@ -65,6 +69,8 @@ export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
 export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'neue-whatsapp', 'neuer-lead', 'lead-sql', 'deal-stufe', 'zahlungseingang', 'termin-abgesagt', 'aufgabe-zoe', 'webhook',
   // Prozesse C1 (21.10.)
   'termin-vorbei', 'mandat-angelegt', 'mandat-beendet', 'rechnung-gestellt', 'fall-schritt-erledigt', 'antwort-gesendet', 'followup-erledigt', 'ziel-erreicht',
+  // Prozesse × Fulfillment (22.10.)
+  'zusatz-gebucht',
   // Kundengewinnung (22.10.): ein eigener Block — jede Art hat ihre Quelle in ./quellen-kundengewinnung.ts.
   ...EREIGNISSE_KUNDENGEWINNUNG];
 /** Arten, die nur intern etwas anstoßen (kein Skill-Auslöser). */
