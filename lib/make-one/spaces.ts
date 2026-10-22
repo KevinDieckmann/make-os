@@ -74,7 +74,10 @@ export const ZOE_EINTRAG: SpaceEintrag = {
   auch: ['/zoe', '/os/stapel', '/os/agenten', '/os/loop', '/os/wissen', '/os/research', '/os/content', '/os/meeting', '/os/board', '/os/prospecting'],
 };
 
-/** Die Reiter unter ZOE (components/os/ZoeReiter.tsx) — Brain ist der Name des Wissens, die Adresse bleibt /os/wissen. */
+/**
+ * Die Bereiche unter ZOE — Brain ist der Name des Wissens, die Adresse bleibt /os/wissen. Seit 22.10. abends zeigt sie das Werkzeug-Menü ZOE
+ * (lib/make-one/werkzeuge.ts `ZOE_WERKZEUG`, die frühere Reiterzeile `ZoeReiter` ist weg); die Liste bleibt die Grundlage für Wächter und Einstellungen.
+ */
 export const ZOE_BEREICH: { href: string; label: string; passt: string[] }[] = [
   { href: '/os/stapel', label: 'Freigaben', passt: ['/os/stapel'] },
   { href: '/os/agenten', label: 'Agenten', passt: ['/os/agenten', '/os/research', '/os/content', '/os/meeting', '/os/board', '/os/prospecting'] },

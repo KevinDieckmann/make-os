@@ -82,8 +82,9 @@ describe('1. Nichts geht verloren — jede Aktion hat einen (ruhigeren) Ort', ()
     const mehr = quelle.slice(quelle.indexOf('export function MehrMenue'));
     for (const art of ['leitplanken', 'budget', 'geplant', 'uebersicht']) expect(mehr).toContain(`dialog({ art: '${art}' })`);
     expect(lies('components/os/agenten/Hintergrund.tsx')).toContain("dialog({ art: 'geplant' })");
-    // Freigaben-Seite auch über die ZOE-Reiter (Freigaben · Agenten · Loops · Brain · Empfang).
-    expect(lies('components/os/agenten/AgentenSeite.tsx')).toContain('<ZoeReiter />');
+    // Freigaben-Seite über das Werkzeug-Menü ZOE (22.10. abends: Freigaben · Agenten · Agenten-Werkzeuge · Loops · Brain · Empfang) — die frühere Reiterzeile
+    // `ZoeReiter` ist weg (keine doppelte Navigation; Wächter in tests/werkzeuge.test.ts).
+    expect(lies('components/os/agenten/AgentenSeite.tsx')).not.toContain('ZoeReiter');
   });
 
   it('am Handy steht der Hintergrund samt Budget, Not-Aus und ⋯ unter dem Reiter „Läuft“', async () => {

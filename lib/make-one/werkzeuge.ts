@@ -484,8 +484,40 @@ export const FAMILIE_WERKZEUG: Werkzeug = {
   }),
 };
 
+// ─── ZOE — Business UND Privat ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Freigaben · Agenten · Agenten-Werkzeuge: Research · Content · Meeting · Board · Prospecting · Loops · Brain (/os/wissen) · Fuß Empfang (/zoe). Ersetzt die frühere
+// Reiterzeile der ZOE-Seiten (`ZoeReiter`) — EINE Navigation. Kein „Automationen & Head“ (ZOE führt die Agenten selbst).
+interface ZoeOrt { id: string; label: string; icon: LucideIcon; pfad: string; titel: string; gruppe?: string }
+const ZOE_ORTE: readonly ZoeOrt[] = [
+  { id: 'freigaben', label: 'Freigaben', icon: CheckCheck, pfad: '/os/stapel', titel: 'Was ZOE und die Heads vorschlagen — freigeben oder ablehnen' },
+  { id: 'agenten', label: 'Agenten', icon: Bot, pfad: '/os/agenten', titel: 'ZOE und die Heads — Gespräche, Läufe, Einstellungen' },
+  { id: 'research', label: 'Research', icon: Microscope, pfad: '/os/research', titel: 'Recherche mit Quellen', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'content', label: 'Content', icon: PenLine, pfad: '/os/content', titel: 'Beiträge und Texte', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'meeting', label: 'Meeting', icon: Mic, pfad: '/os/meeting', titel: 'Meeting → Aufgaben', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'board', label: 'Board', icon: Presentation, pfad: '/os/board', titel: 'Reporting & Board', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'prospecting', label: 'Prospecting', icon: Radar, pfad: '/os/prospecting', titel: 'Neue Kontakte finden', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'loops', label: 'Loops', icon: Repeat, pfad: '/os/loop', titel: 'Wiederkehrende Abläufe von ZOE' },
+  { id: 'brain', label: 'Brain', icon: Brain, pfad: '/os/wissen', titel: 'Notizen und Wissen' },
+];
+const ZOE_EMPFANG = '/zoe';
+export const zoeOrt = (k: WerkzeugKontext): string | null => (unterSeite(k.pfad, ZOE_EMPFANG) ? 'empfang' : ZOE_ORTE.find(o => unterSeite(k.pfad, o.pfad))?.id ?? null);
+export const ZOE_WERKZEUG: Werkzeug = {
+  id: 'zoe',
+  name: 'ZOE',
+  icon: Sparkles,
+  spaces: ['privat', 'business'],
+  pfade: [...ZOE_ORTE.map(o => o.pfad), ZOE_EMPFANG],
+  start: WEG.freigaben(),
+  leistenPunkt: 'ZOE',
+  punkte: ZOE_ORTE.map((o): WerkzeugPunkt => ({
+    id: o.id, label: o.label, icon: o.icon, titel: o.titel, ...(o.gruppe ? { gruppe: o.gruppe } : {}),
+    href: k => (o.id === 'freigaben' ? WEG.freigaben(undefined, k.space) : mitSpaceDerWahl(o.pfad, k)), aktiv: k => zoeOrt(k) === o.id,
+  })),
+  fuss: [{ id: 'empfang', label: 'Empfang', icon: Sparkles, titel: 'Der Empfang — ZOE als ganze Fläche', href: () => ZOE_EMPFANG, aktiv: k => zoeOrt(k) === 'empfang' }],
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG, AUFGABEN_WERKZEUG, GESUNDHEIT_WERKZEUG, FAMILIE_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG, AUFGABEN_WERKZEUG, GESUNDHEIT_WERKZEUG, FAMILIE_WERKZEUG, ZOE_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {

@@ -19,7 +19,6 @@ import {
 import { Building2 } from 'lucide-react';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Chip, Zahl, Hinweis, feld, LEUCHT } from './ui';
 import { KiMarke } from './KiMarke';
-import { ZoeReiter } from './ZoeReiter';
 import { WEG } from '@/lib/wege';
 
 type PZeile = Prospect & { stand?: string };
@@ -184,7 +183,6 @@ export function ProspectingView() {
       unter="Deine Zielliste: Firmen rein, KI qualifiziert gegen dein Profil (Score, Fit, Aufhänger), du priorisierst."
       rechts={<Chip farbe={LEUCHT.agenten}>live · autonom</Chip>}
     >
-      <ZoeReiter />
       {/* Kennzahlen */}
       <Karte i={0} ton={LEUCHT.business}>
         <Ueberschrift farbe={LEUCHT.business}>Zielliste</Ueberschrift>

@@ -9,7 +9,6 @@ import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Rich } from '@/components/os/Rich';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT } from './ui';
-import { ZoeReiter } from './ZoeReiter';
 
 interface Item { id: number; q: string; a: string; webUsed?: boolean; loading?: boolean; }
 
@@ -50,7 +49,6 @@ export function ResearchView() {
       unter="Recherche mit Quellen: Markt, Wettbewerb, Förderung, Prospects — nur lesend, keine Freigabe nötig."
       rechts={<Chip farbe={LEUCHT.agenten}>live · autonom</Chip>}
     >
-      <ZoeReiter />
       {items.length === 0 && (
         <Karte i={0} akzent={LEUCHT.agenten}>
           <Ueberschrift farbe={LEUCHT.agenten}>Beispiele</Ueberschrift>
