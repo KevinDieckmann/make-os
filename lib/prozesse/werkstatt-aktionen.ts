@@ -295,6 +295,59 @@ export function umhaengen(f: Fassung, k: KanteRef, ziel: string): Ergebnis {
   return geprueft(f, ok(kn, f, `${titel(quelle)} geht jetzt weiter bei ${titel(z)}.${geholt}`), 'Umhängen geht so nicht');
 }
 
+/** Ein Fall der Mehrfach-Entscheidung (Punkt 15): Name, Bedingungen („wenn …“) und wohin es dann geht (ein Schritt der Phase; ohne = weiter im Ablauf). */
+export interface MehrfachFall { titel: string; bedingungen: import('./definition').Bedingung[]; verknuepfung?: 'und' | 'oder'; ziel?: string | null }
+export const MEHRFACH_MAX = 8;
+
+/**
+ * „Mehrfach-Entscheidung“ als Bau-Hilfe (rein, Punkt 15 — der Switch aus n8n): wird SOFORT zu einer Kaskade aus Rauten nach Regel — das Modell bleibt, wie es ist.
+ * Fall 1 = die erste Raute direkt hinter `nach` (ja → sein Ziel bzw. weiter im Ablauf); jeder weitere Fall = die Raute am „nein“ der vorigen (ja → sein Ziel bzw.
+ * weiter im Ablauf); „sonst“ = das „nein“ der letzten Raute (der Lauf endet bzw. eine Aufgabe „von Hand prüfen“). Ein Fall braucht mindestens eine Bedingung; Ziele
+ * sind Schritte derselben Phase. Prüft den Fluss wie jede Hilfe (Kreis, Phase) — sonst ein Grund, nichts geändert.
+ */
+export function mehrfachEntscheidung(f: Fassung, o: { nach: string; faelle: readonly MehrfachFall[]; sonst?: 'ende' | 'aufgabe'; kennung: Kennung }): Ergebnis {
+  const quelle = f.knoten.find(k => k.id === o.nach);
+  if (!quelle) return nein('Den Knoten, an den angehängt werden soll, gibt es nicht (mehr).');
+  if (o.faelle.length < 2) return nein('Eine Mehrfach-Entscheidung hat mindestens zwei Fälle — für einen Fall reicht eine Raute.');
+  if (o.faelle.length > MEHRFACH_MAX) return nein(`Höchstens ${MEHRFACH_MAX} Fälle — sonst lieber einen Teilprozess bilden.`);
+  const leer = o.faelle.findIndex(x => !x.bedingungen.length || !x.titel.trim());
+  if (leer >= 0) return nein(`Fall ${leer + 1}: Name und mindestens eine Bedingung fehlen.`);
+  const ph = phaseVon(f, quelle.id);
+  for (const x of o.faelle) {
+    if (!x.ziel) continue;
+    const z = f.knoten.find(k => k.id === x.ziel);
+    if (!z || phaseVon(f, z.id) !== ph || z.form === 'ausloeser' || istSchloss(z)) return nein(`„${x.titel}“: das Ziel muss ein Schritt derselben Phase sein.`);
+  }
+  const raute = (x: MehrfachFall): K => ({
+    id: o.kennung(), titel: x.titel.trim(), rang: 0, form: 'entscheidung', bahn: 'system', katalog: { id: 'entscheidung.regel' },
+    raute: { art: 'regel', bedingungen: x.bedingungen, ...(x.verknuepfung ? { verknuepfung: x.verknuepfung } : {}) },
+  });
+  const r1 = raute(o.faelle[0]);
+  let e = anlegen(f, r1, { nach: quelle.id, ausgang: quelle.form === 'entscheidung' ? 'ja' : 'weiter' });
+  if (!e.ok) return e;
+  let kn = e.fassung.knoten;
+  if (o.faelle[0].ziel) kn = kn.map(k => (k.id === r1.id ? mitZweig(k, 'ja', o.faelle[0].ziel!) : k));
+  let vorige = r1.id;
+  const neu = [r1.id];
+  for (const x of o.faelle.slice(1)) {
+    const r = raute(x);
+    e = anlegen({ ...e.fassung, knoten: kn }, r, { nach: vorige, ausgang: 'nein' });
+    if (!e.ok) return e;
+    kn = e.fassung.knoten;
+    if (x.ziel) kn = kn.map(k => (k.id === r.id ? mitZweig(k, 'ja', x.ziel!) : k));
+    vorige = r.id;
+    neu.push(r.id);
+  }
+  if (o.sonst === 'aufgabe') {
+    const t: K = { id: o.kennung(), titel: 'Sonst: von Hand prüfen', rang: 0, form: 'schritt', bahn: 'mensch', katalog: { id: 'aufgabe.anlegen', werte: { titel: 'Sonst: von Hand prüfen', wer: 'rolle:zustaendig' } } };
+    e = anlegen({ ...e.fassung, knoten: kn }, t, { nach: vorige, ausgang: 'nein' });
+    if (!e.ok) return e;
+    kn = e.fassung.knoten;
+    neu.push(t.id);
+  }
+  return geprueft(f, ok(kn, f, `Mehrfach-Entscheidung mit ${o.faelle.length} Fällen angelegt — als ${o.faelle.length} Rauten nach Regel hintereinander${o.sonst === 'aufgabe' ? ', „sonst“ als Aufgabe' : ', „sonst“ endet der Lauf'}.`, neu), 'Die Mehrfach-Entscheidung geht so nicht');
+}
+
 /** Einen Zweig lösen (rein) — der Strang („weiter“) lässt sich nicht lösen, nur umhängen. */
 export function loesen(f: Fassung, von: string, ausgang: Ausgang): Ergebnis {
   const a = f.knoten.find(k => k.id === von);

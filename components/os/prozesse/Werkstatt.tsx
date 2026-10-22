@@ -35,7 +35,7 @@ import {
 } from '@/lib/prozesse/werkstatt-lage';
 import {
   anlegen, verbinden, loesen, loeschen, ersetzen, umbenennen as umbenennen_, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
-  kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, verbindenFrei, umhaengen, zwischenEinfuegen, zwischenGrund,
+  kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, verbindenFrei, umhaengen, zwischenEinfuegen, zwischenGrund, mehrfachEntscheidung,
   type Ablage, type Ergebnis, type Fassung, type Geschichte,
 } from '@/lib/prozesse/werkstatt-aktionen';
 import { neuerKnoten, knotenUnterzeile } from '@/lib/prozesse/werkstatt-maske';
@@ -46,6 +46,7 @@ import { prozesseAusAdresse, type WerkstattReiterId } from '@/lib/prozesse/adres
 import { testStand } from '@/lib/prozesse/laeufe-ansicht';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
+import { ablageAus, ablageFuerSpeicher, ABLAGE_MERKER } from '@/lib/prozesse/ablage';
 import type { ProzessStatus } from '@/lib/prozesse/definition';
 import { altPfeil, nachbar, WERKSTATT_KUERZEL, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
 import { hinweiseVon, probelaufAus, probelaufKoerper, PROBELAUF_PFAD, PROBE_FEHLT, centText, type ProbeErgebnis, type ProbeSchritt } from '@/lib/prozesse/werkstatt-hinweise';
@@ -57,6 +58,7 @@ import { ProzessKopieren } from './WerkstattKopie';
 import { HeadFragenFenster } from './HeadFragen';
 import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, type EintragAnsicht } from './werkstatt-daten';
 import { WerkstattGross } from './WerkstattGross';
+import { MehrfachFenster } from './WerkstattMehrfach';
 import { VorlageKontext, type VorlageZiel } from './WerkstattMaske';
 import { testWerte, annahmenAusLauf, type ProzessTestdaten } from '@/lib/prozesse/testdaten';
 import type { LaufKurz } from '@/lib/prozesse/lauf-regeln';
@@ -124,6 +126,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const [titelFokus] = useState(0);
   /** Werkstatt bau-fertig (Punkt 2): dieser Knoten wird gerade direkt auf der Fläche umbenannt. */
   const [umbenennen, setUmbenennen] = useState<string | null>(null);
+  /** Punkt 15: die Bau-Hilfe „Mehrfach-Entscheidung“ — hinter diesem Knoten. */
+  const [mehrfach, setMehrfach] = useState<string | null>(null);
   /** Punkt 7: das große Einstellungsfenster (Eingabe · Maske · Ausgabe) für diesen Knoten. */
   const [gross, setGross] = useState<string | null>(null);
   /** Punkt 6: ein Klick auf den Befund am Knoten springt in sein Feld. */
@@ -163,7 +167,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   fassungRef.current = fassung;
   const aenderung = useRef(0);
   const gesichert = useRef(0);
-  const ablage = useRef<Ablage | null>(null);
+  const ablage = useRef<{ ablage: Ablage; am: string } | null>(null);
   const rahmen = useRef<HTMLDivElement | null>(null);
 
   // ── Laden: Server-Fassung übernehmen; eine ungespeicherte Fassung aus dieser Sitzung bleibt (gleicher Stand) bzw. wird angeboten ──
@@ -453,14 +457,30 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   };
 
   // ── Kopieren, Einfügen ──
-  const kopie = () => { const f = fassungRef.current; if (!f) return; const a = kopieren(f, auswahl); if (!a) { ansagen('Nichts zum Kopieren gewählt (Auslöser und Schlösser bleiben).'); return; } ablage.current = a; ansagen(`${a.knoten.length + a.zettel.length} kopiert — mit ihren Verbindungen.`); };
+  // Punkt 13: ⌘C legt die Auswahl auch in den Browser-Speicher (ohne Personen, lib/prozesse/ablage.ts) — so lässt sie sich in einem anderen Prozess einfügen.
+  const kopie = () => {
+    const f = fassungRef.current;
+    if (!f) return;
+    const a = kopieren(f, auswahl);
+    if (!a) { ansagen('Nichts zum Kopieren gewählt (Auslöser und Schlösser bleiben).'); return; }
+    const am = new Date().toISOString();
+    ablage.current = { ablage: a, am };
+    schreib(lokal(), ABLAGE_MERKER, JSON.stringify(ablageFuerSpeicher(a, { quelle: prozessId, jetzt: am })));
+    ansagen(`${a.knoten.length + a.zettel.length} kopiert — mit ihren Verbindungen; auch in einem anderen Prozess einfügbar.`);
+  };
   const einf = () => {
-    const a = ablage.current, f = fassungRef.current;
+    const f = fassungRef.current;
+    // Aus einem anderen Prozess (jünger als die eigene Ablage): die Fassung ohne Personen aus dem Browser-Speicher.
+    const fremd = ablageAus(lies(lokal(), ABLAGE_MERKER), new Date().toISOString());
+    const ausFremd = !!fremd && fremd.quelle !== prozessId && (!ablage.current || fremd.am > ablage.current.am);
+    const a = ausFremd ? fremd!.ablage : ablage.current?.ablage;
     if (!a || !f || !d) { ansagen('Die Ablage ist leer.'); return; }
     const ziel = auswahl.find(id => phaseVon(f, id));
     const phaseId = (ziel && phaseVon(f, ziel)) ?? phasen(d).at(-1)?.id;
     if (!phaseId) return;
-    mitFassung(x => einfuegen(x, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk') }));
+    if (mitFassung(x => einfuegen(x, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk') })) && ausFremd) {
+      setMeldung({ text: `Aus einem anderen Prozess eingefügt${fremd!.hinweise.length ? ` — ${fremd!.hinweise.join(' ')}` : ''} Verweise auf Schritte, die es hier nicht gibt, meldet die Prüfung.`, art: 'info' });
+    }
   };
 
   // ── Tastatur (lib/prozesse/werkstatt-tastatur.ts) ──
@@ -865,7 +885,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           {formauswahl && (
             <WerkstattFormauswahl form={formauswahl.form} titel={auswahlTitel(formauswahl.ziel)}
               ohneAusloeser={!!formauswahl.ziel.zwischen || (!!formauswahl.ziel.nach && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form !== 'ausloeser')} anhaengen={!!formauswahl.ziel.nach || !!formauswahl.ziel.zwischen}
-              onWahl={e => ausKatalog(e, formauswahl.ziel)} onZu={() => { setFormauswahl(null); flaeche.current?.fokus(); }} />
+              onWahl={e => ausKatalog(e, formauswahl.ziel)} onZu={() => { setFormauswahl(null); flaeche.current?.fokus(); }}
+              onMehrfach={formauswahl.ziel.nach && !formauswahl.ziel.zwischen && !formauswahl.ziel.ausgang?.match(/nein|fehler|abgelaufen/) ? () => { setMehrfach(formauswahl.ziel.nach!); setFormauswahl(null); } : undefined} />
           )}
           {probeOffen && <ProbeFallFenster fallArt={d.fallArt ?? 'mandat'} wert={probeFall} onWert={setProbeFall} onStart={() => probelauf()} onZu={() => setProbeOffen(false)} />}
           {hilfe && (
@@ -901,6 +922,16 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           ausstehend={ausstehend} laufHinweise={laufBefunde(d)}
           tests={{ anzahl: laeufe.daten?.tests.length ?? 0, stand: testStand(testErg.size ? [...testErg.values()] : null, laeufe.daten?.tests.length ?? 0), onPruefen: testsAlle }}
           onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} namen={konten} />
+      )}
+      {mehrfach && (
+        <MehrfachFenster d={d} nach={mehrfach} onZu={() => setMehrfach(null)} onAnlegen={(faelle, sonst) => {
+          const f = fassungRef.current;
+          if (!f) return 'Die Werkstatt lädt noch.';
+          const e = mehrfachEntscheidung(f, { nach: mehrfach, faelle, sonst, kennung: () => neueKennung('fk') });
+          if (!e.ok) return e.grund;
+          anwenden(e); setMehrfach(null);
+          return null;
+        }} />
       )}
       {/* Punkt 7: das große Einstellungsfenster — Eingabe · Maske · Ausgabe (Enter bzw. zweiter Doppelklick). */}
       {grossKnoten && reiter === 'bauen' && (

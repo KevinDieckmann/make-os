@@ -8,7 +8,7 @@
 // Anhängen an einen Knoten stehen sie ganz hinten.
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent } from 'react';
-import { X } from 'lucide-react';
+import { X, GitFork } from 'lucide-react';
 import { FARBE as C, TYP, FLAECHE_STIL, TIEF, MIKRO } from '@/lib/make-one/design';
 import { Pillen, SymbolKnopf } from '../ui';
 import { BAUSTEIN_KATALOG, KATALOG_KATEGORIEN, type KatalogEintrag, type KatalogKategorie } from '@/lib/prozesse/baustein-katalog';
@@ -20,9 +20,11 @@ import { symbolVon } from './WerkstattKnoten';
 const merkerLesen = (): string[] => { try { return zuletztAus(window.localStorage.getItem(ZULETZT_MERKER)); } catch { return []; } };
 const merkerSchreiben = (l: readonly string[]) => { try { window.localStorage.setItem(ZULETZT_MERKER, JSON.stringify(l)); } catch { /* privates Fenster */ } };
 
-export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, onWahl, onZu }: {
+export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, onWahl, onZu, onMehrfach }: {
   form?: ProzessForm; ohneAusloeser?: boolean; /** An einen Knoten anhängen — Auslöser stehen dann hinten. */ anhaengen?: boolean; titel: string;
   onWahl: (e: KatalogEintrag) => void; onZu: () => void;
+  /** Punkt 15: „Mehrfach-Entscheidung“ (Bau-Hilfe — wird zu einer Kaskade aus Rauten nach Regel). */
+  onMehrfach?: () => void;
 }) {
   const [suche, setSuche] = useState('');
   const [kat, setKat] = useState<KatalogKategorie | 'alle'>('alle');
@@ -53,6 +55,15 @@ export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, on
       <input ref={eingabe} aria-label="Baustein suchen" placeholder="Baustein suchen … (z. B. Mail, Deal, Warten)" value={suche} onChange={e => setSuche(e.target.value)}
         style={{ ...FLAECHE_STIL.eingabe, width: '100%', minHeight: 44, boxSizing: 'border-box', borderRadius: 12, padding: '10px 14px', color: C.ink, fontSize: 16 }} />
       <Pillen einzeilig liste={[{ id: 'alle' as const, label: 'Alle' }, ...kategorien.map(k => ({ id: k.id, label: k.titel }))]} aktiv={kat} onWahl={v => setKat(v)} />
+      {onMehrfach && !suche.trim() && (kat === 'alle' || kat === 'entscheidung') && (
+        <button type="button" className="fassbar pw-auswahl-zeile" onClick={onMehrfach} title="Mehrere Fälle mit je einer Bedingung — gebaut als Rauten nach Regel hintereinander">
+          <span aria-hidden style={{ display: 'inline-flex', width: 34, height: 34, flex: '0 0 auto', borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: TIEF.flaeche(WERKSTATT_FORM_FARBE.entscheidung), border: `1px solid ${TIEF.rand(WERKSTATT_FORM_FARBE.entscheidung)}` }}><GitFork width={18} height={18} color={WERKSTATT_FORM_FARBE.entscheidung} /></span>
+          <span style={{ minWidth: 0, display: 'grid', gap: 2, textAlign: 'left' }}>
+            <span style={{ fontSize: TYP.body, color: C.ink, fontWeight: 600 }}>Mehrfach-Entscheidung …</span>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.35 }}>Mehrere Fälle, der erste passende gewinnt — wird zu Rauten nach Regel.</span>
+          </span>
+        </button>
+      )}
       <div ref={liste} role="listbox" aria-label="Bausteine" className="pw-auswahl-liste">
         {gruppen.map(g => (
           <section key={g.id} aria-label={g.titel} style={{ display: 'grid', gap: 2 }}>
