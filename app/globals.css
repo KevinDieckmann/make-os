@@ -380,7 +380,8 @@ nav a:hover { transform: translateX(2px); }
   [role="button"]:hover:not([data-still]),
   summary:hover { filter: brightness(1.16); }
   button:active:not(:disabled):not([data-still]),
-  [role="button"]:active:not([data-still]) { transform: scale(.97); transition-duration: .1s; }
+  /* Nie in SVG: dort ersetzt eine CSS-Transformation das `transform`-Attribut (die Lage) — das Ziel springt beim Drücken weg, der Klick geht ins Leere. */
+  [role="button"]:active:not([data-still]):not(svg *) { transform: scale(.97); transition-duration: .1s; }
   a[href]:hover { filter: brightness(1.2); }
 }
 
