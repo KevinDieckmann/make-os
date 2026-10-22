@@ -141,10 +141,11 @@ export const WEG = {
   unternehmen: (id?: string, reiter?: 'steckbrief' | 'gesellschafter' | 'organe' | 'beteiligungen' | 'vertraege' | 'unterlagen' | 'absender') => q('/os/unternehmen', { g: id, r: id && reiter && reiter !== 'steckbrief' ? reiter : undefined }),
   /**
    * Unternehmen › Schild (10.10.): Reiter der Seite (Überblick · Gesellschaften · Pflichten · Dokumente · Risiken · Struktur · Marken & Versicherungen ·
-   * Verträge & Organe) — optional gleich auf eine Gesellschaft (`w`). Ohne Reiter: der Überblick (Ampel).
+   * Verträge & Organe) — optional gleich auf eine Gesellschaft (`w`). Ohne Reiter: der Überblick (Ampel). Seit 22.10. abends (Werkzeug Unternehmen) auch
+   * „Automationen & Head“ (`automationen`) und unter Gesellschaften der Filter Archiv bzw. Papierkorb (`f`). Orte: lib/gesellschaften/schild/adresse.ts.
    */
-  schild: (reiter?: 'ueberblick' | 'gesellschaften' | 'pflichten' | 'dokumente' | 'risiken' | 'struktur' | 'schutz' | 'vertraege' | 'beschluesse', gesellschaftId?: string) =>
-    q('/os/unternehmen', { s: reiter && reiter !== 'ueberblick' ? reiter : undefined, w: gesellschaftId }),
+  schild: (reiter?: 'ueberblick' | 'gesellschaften' | 'pflichten' | 'dokumente' | 'risiken' | 'struktur' | 'schutz' | 'vertraege' | 'beschluesse' | 'automationen', gesellschaftId?: string, filter?: 'archiv' | 'papierkorb') =>
+    q('/os/unternehmen', { s: reiter && reiter !== 'ueberblick' ? reiter : undefined, w: gesellschaftId, f: reiter === 'gesellschaften' ? filter : undefined }),
   /**
    * Unternehmen › Beschlüsse & Satzung (10.10.): das Beschluss-Buch einer Gesellschaft — optional gleich ein Beschluss geöffnet (`b`) bzw. die
    * Ansicht „Gegenstand & Satzung“ (`a=satzung`).

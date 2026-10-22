@@ -130,7 +130,8 @@ describe('Globale Shell', () => {
   // Nachbesserung 08.10.: unten fünf Einträge; „Menü“ leuchtet bei offenem Blatt oder auf einem Punkt der Leiste, der unten nicht steht (N3 sinngemäß).
   it('Leiste unten: Menü leuchtet nur auf Seiten der Leiste ohne eigenen Knopf und trägt den offenen Blattkasten mit', () => {
     const l = lies('components/os/Leiste.tsx');
-    expect(l).toContain("an: offen || einstellungenAn || (!!punktAn && !['Heute', 'Inbox', 'ZOE'].includes(punktAn.label))");
+    // Seit 22.10. abends gehört Netzwerken zu Business (Punkt Markttraktion) — dort leuchtet unten nur „Netzwerken“, nicht zusätzlich „Menü“.
+    expect(l).toContain("an: offen || einstellungenAn || (!!punktAn && !netzwerkenAn && !['Heute', 'Inbox', 'ZOE'].includes(punktAn.label))");
     expect(l).not.toContain("an: space === s.id && pfad !== '/os'");
   });
 
@@ -227,7 +228,8 @@ describe('Inbox (Inbox 2, 06.10.)', () => {
 
 describe('Praxis-Funde 04.10. (Handy-Tippziele, Kopf, Abschneiden)', () => {
   it('Tippziele ≥ 44 px: Planer-Reiter, Rückgängig, „Alle gelesen“, Sport-Kopfknöpfe, Finanzplan-Datei, Website-Login', () => {
-    expect(lies('components/os/PlanerLeiste.tsx').match(/className="planer-reiter"/g)?.length).toBe(2);
+    // Seit 22.10. abends stehen die Horizonte im Menü des Werkzeugs Planung — die Planer-Leiste trägt nur noch die Tage (ein Ziel-Stil für alle).
+    expect(lies('components/os/PlanerLeiste.tsx').match(/className="planer-reiter"/g)?.length).toBe(1);
     expect(lies('app/globals.css')).toMatch(/\.planer-reiter \{ display: inline-flex !important; align-items: center; min-height: 44px;/);
     // Rückgängig: seit 04.10. EINE Leiste für alle Listen (components/os/ui/zeile-aktionen.tsx, Klasse in globals.css).
     expect(lies('components/os/planung/ZieleMeilensteine.tsx')).toMatch(/useRueckgaengig[^\n]*from '\.\.\/ui'/); // planung/Rueckgaengig.tsx ist darin aufgegangen
@@ -239,7 +241,8 @@ describe('Praxis-Funde 04.10. (Handy-Tippziele, Kopf, Abschneiden)', () => {
   });
   it('Tagesplan und Produkte & Mandate hängen am Standard (ui-seite: Eingaben 16 px, Reiter 44 px am Handy)', () => {
     expect(lies('components/os/TagesplanView.tsx')).toMatch(/from '\.\/ui';/);
-    expect(lies('components/os/mandate/ProdukteMandate.tsx')).toMatch(/import \{ Seite, Segmente, (Hinweis, )?LEUCHT \} from '\.\.\/ui';/);
+    // Seit 22.10. abends ohne Segmente im Kopf — Mandate · Produkte · Fulfillment stehen im Menü des Werkzeugs.
+    expect(lies('components/os/mandate/ProdukteMandate.tsx')).toMatch(/import \{ Seite, (Hinweis, )?LEUCHT \} from '\.\.\/ui';/);
   });
   it('Kopf-Suche wird am schmalen Rechner nicht zerquetscht; ZOE sendet nichts Leeres; Fokus-Frage nicht abgeschnitten', () => {
     expect(lies('components/os/Kopf.tsx')).toContain("flex: '1 1000 520px', minWidth: 150,");

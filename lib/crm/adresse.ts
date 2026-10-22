@@ -186,12 +186,18 @@ export const karteiBean = (b: string): string => (/^[BEAN]$/.test(b) ? `${PFAD}?
 /** Die Deal-Akte (27.09.): eine ganze Seite je Deal. */
 export const dealAkte = (id: string): string => markttraktion('deals', 'akte', id);
 
-/** Produkte & Mandate (25.09.): eigener Bereich links unter Aufgaben — s: mandate (Start) · produkte, k: Mandat bzw. Produkt. */
+/**
+ * Produkte & Mandate (25.09.): eigener Bereich links unter Aufgaben — s: mandate (Start) · produkte · automationen („Automationen & Head“ des Werkzeugs,
+ * 22.10. abends), k: Mandat bzw. Produkt.
+ */
 export const MANDATE_PFAD = '/os/mandate';
+export type MandateOrt = 'mandate' | 'produkte' | 'automationen';
+/** Welcher Ort der Seite /os/mandate (Unbekanntes = Mandate) — dieselbe Regel für die Seite und das Werkzeug-Menü. */
+export const mandateOrt = (s: string | null | undefined): MandateOrt => (s === 'produkte' || s === 'automationen' ? s : 'mandate');
 
-export function mandateLink(s?: 'mandate' | 'produkte', k?: string): string {
+export function mandateLink(s?: MandateOrt, k?: string): string {
   const q = new URLSearchParams();
-  if (s === 'produkte') q.set('s', 'produkte');
+  if (s === 'produkte' || s === 'automationen') q.set('s', s);
   if (k) q.set('k', k);
   const t = q.toString();
   return t ? `${MANDATE_PFAD}?${t}` : MANDATE_PFAD;

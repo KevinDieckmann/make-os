@@ -19,7 +19,6 @@ import { stufeVon } from '@/lib/kapazitaet/modell';
 import type { KapaOp } from '@/lib/kapazitaet/aendern';
 import { Erklaert, Seite, Karte, Ueberschrift, Zahl, Liste, Zeile, Leer, Knopf, Chip, Hinweis, feld, auswahl, useHandy, LEUCHT, useRueckgaengig } from '../ui';
 import { kennzahlTextVon } from '@/lib/erklaerungen/kennzahlen';
-import { PlanerLeiste } from '../PlanerLeiste';
 import { useKapazitaet, type Bezug } from './useKapazitaet';
 import { MachbarMarke, LastBand, STUFE_FARBE, STUFE_TEXT } from './teile';
 import { BusinessFreiLink } from '../arbeitsrahmen/BusinessFrei';
@@ -45,7 +44,6 @@ export function KapazitaetAnsicht() {
   }, [geladen]);
   return (
     <Seite titel="Kapazität" unter="Zeit und Machbarkeit über die Personen — was wir uns vornehmen, gegen die Stunden, die wirklich da sind.">
-      <PlanerLeiste aktiv="kapazitaet" />
       {!k.zugang && <Hinweis art="info" titel="Kein Zugang">Die Kapazität gehört zum Haushalt des Inhabers.</Hinweis>}
       {k.fehler && <Hinweis art="kritisch">{k.fehler}</Hinweis>}
       {k.zugang && !s && !k.fehler && <Karte><Leer>Rechnet die Kapazität …</Leer></Karte>}

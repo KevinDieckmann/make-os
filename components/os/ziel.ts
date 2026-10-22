@@ -15,22 +15,30 @@ export function useZiel(param: string): string | null {
   return z;
 }
 
-/** Springt einmal zum Element `ziel-<id>` (bzw. zum #Anker der Adresse), sobald `bereit` ist. */
-export function useZuZiel(id: string | null, bereit: boolean) {
+/**
+ * Springt einmal zum Element `ziel-<id>` (bzw. zum #Anker der Adresse), sobald `bereit` ist. `stand` (22.10. abends, Werkzeug-Menü): ändert sich die
+ * Adresse ohne neues Laden der Seite (z. B. Finanzen › „Einstellungen“ bzw. „0-Punkt“ im Menü der Leiste = ein Anker im Cockpit), wird der Anker erneut
+ * gesucht. Listen und Karten kommen oft erst nach den Daten — gesucht wird darum einige Male (bis etwa 3 s), dann nicht mehr.
+ */
+export function useZuZiel(id: string | null, bereit: boolean, stand?: string) {
   const erledigt = useRef<string | null>(null);
   useEffect(() => {
     const anker = !id && typeof window !== 'undefined' ? window.location.hash.slice(1) : '';
     const schluessel = id ? `ziel-${id}` : anker;
-    if (!schluessel || !bereit || erledigt.current === schluessel) return;
-    // Nach dem Zeichnen suchen — Listen kommen oft einen Takt später.
-    const t = window.setTimeout(() => {
+    const merker = `${stand ?? ''}|${schluessel}`;
+    if (!schluessel || !bereit || erledigt.current === merker) return;
+    let versuche = 0;
+    let t = 0;
+    const suche = () => {
       const el = document.getElementById(schluessel);
-      if (!el) return;
-      erledigt.current = schluessel;
+      if (!el) { if (++versuche < 25) t = window.setTimeout(suche, 120); return; }
+      erledigt.current = merker;
       el.scrollIntoView({ behavior: 'smooth', block: id ? 'center' : 'start' });
-    }, 60);
+    };
+    // Nach dem Zeichnen suchen — Listen kommen oft einen Takt später.
+    t = window.setTimeout(suche, 60);
     return () => window.clearTimeout(t);
-  }, [id, bereit]);
+  }, [id, bereit, stand]);
 }
 
 /** Rahmen für den verlinkten Eintrag. */

@@ -62,6 +62,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { bereich: 'business', text: 'Mandat aus dem Produkt: Honorar, Laufzeit, Gesellschaft und Leistungen kommen mit — dazu Zusatzmodule, die Rechnung, Liquidität und Fall mitrechnen.', weg: WEG.mandat() },
         { bereich: 'business', text: 'Produkte importieren: aus einer Tabelle oder Datei, mit Vorschau „neu · ändert · gleich“ — erst „Übernehmen“ schreibt.', weg: WEG.produkt() },
         { bereich: 'business', text: 'Markttraktion ist ein eigenes Werkzeug wie HubSpot: die Leiste links klappt auf ihr Menü um — Kontakte und Firmen, Vertrieb, Marketing samt Netzwerken, Steuerung mit „Automationen & Head“, unten die Stammdaten. Neu „Auswertung“: der Weg vom Kontakt zum gewonnenen Deal als Lichtfaden, dazu Traktions-Index, Scoreboard, Kanäle und Pipeline. „+ Angebot“ steht in Kontakt-, Firmen- und Deal-Akte.', weg: WEG.auswertung() },
+        { bereich: 'alle', text: 'Auch Produkte & Mandate, Unternehmen, Finanzen und Planung sind jetzt Werkzeuge: beim Öffnen klappt die Leiste links auf ihr Menü um (am Handy oben im „Menü“), die Reiterzeilen auf den Seiten sind weg. Je Bereich gibt es „Automationen & Head“ — die Abläufe des Bereichs und sein Head; unter Privat nur, wo es einen Head gibt. Planung › „Woche planen“ öffnet den Kalender.', weg: WEG.jahr() },
       ] },
       { art: 'besser', punkte: [
         { bereich: 'alle', text: 'Der gemischte Wachstums-Score ist weg — Finanzen zeigt nur noch die Finanzen der Sicht, Privat zeigt Privat und Business zeigt Business.' },

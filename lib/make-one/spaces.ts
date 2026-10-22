@@ -101,7 +101,9 @@ export const SPACES: Space[] = [
     eintraege: [
       ...vorn('business'),
       { href: '/os/finanzen?s=business', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?space=business', '/os/finanzen?s=business', '/os/finanzen?s=controlling', '/os/finanzen?s=rechnungen', '/os/finanzen?s=liquiditaet', '/os/finanzen?s=buchungen', '/os/finanzen?s=steuern', '/os/finanzen?s=chef'], auch: ['/os/finanzen'] },
-      { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm'] },
+      // Netzwerken (22.10. abends): eine eigene Seite, aber Teil der Markttraktion (Werkzeug) — sie gehört fest zu Business (vorher nahm die Leiste dort die
+      // Farbe des gemerkten Space). Die Zeit zählt damit unter `business:markttraktion`.
+      { href: '/os/markttraktion', label: 'Markttraktion', icon: TrendingUp, passt: ['/os/markttraktion', '/os/crm', '/os/netzwerken'] },
       // Produkte & Mandate und Unternehmen (10.10., Entscheidung: getrennt, Unternehmen eigener Punkt und eigener Ausbau). Kontakte stehen im
       // Business nicht mehr in der Leiste (Entscheidung 10.10.) — die Kartei liegt in Markttraktion › Kontakte & Firmen; `zeitId` bleibt für die Zeitmessung.
       { href: '/os/mandate', label: 'Produkte & Mandate', icon: Briefcase, zeitId: 'mandate', passt: ['/os/mandate'] },

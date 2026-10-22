@@ -279,10 +279,13 @@ describe('(c) Navigation und Oberfläche', () => {
     return statSync(path.join(wurzel, rel)).isDirectory() ? dateien(rel) : /\.(tsx?|mjs)$/.test(n) ? [rel] : [];
   });
 
-  it('Planung ist nur Planung: Tag · Woche · Monat · Quartal · Jahr & Ziele · Routinen · Kapazität', () => {
-    const p = lies('components/os/PlanerLeiste.tsx');
-    const labels = Array.from(p.matchAll(/label: '([^']+)', href:/g)).map(m => m[1]);
-    expect(labels).toEqual(['Tag', 'Woche', 'Monat', 'Quartal', 'Jahr & Ziele', 'Routinen', 'Kapazität']);
+  it('Planung ist nur Planung: Jahr & Ziele · Quartal · Monat · Tag · Routinen · Kapazität (+ „Woche planen“ im Kalender) — seit 22.10. abends das Menü des Werkzeugs', async () => {
+    const { PLANUNG_WERKZEUG, werkzeugKontext, werkzeugPunkte } = await import('../lib/make-one/werkzeuge');
+    const k = werkzeugKontext('/os/planung/jahr', '', false, { space: 'business' });
+    expect(werkzeugPunkte(PLANUNG_WERKZEUG, k).filter(p => p.id !== 'automationen').map(p => p.label)).toEqual(['Jahr & Ziele', 'Quartal', 'Monat', 'Tag', 'Routinen', 'Kapazität']);
+    expect(werkzeugPunkte(PLANUNG_WERKZEUG, k, 'fuss').map(p => p.label)).toEqual(['Woche planen']);
+    // Die Planer-Leiste trägt nur noch die Zeitnavigation des Tages.
+    expect(lies('components/os/PlanerLeiste.tsx')).not.toMatch(/label: '[^']+', href:/);
   });
 
   it('alte Adressen leiten auf die Fokus-Seite; die alten Seiten gibt es nicht mehr; kein Code verlinkt sie', async () => {

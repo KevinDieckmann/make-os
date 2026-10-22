@@ -62,8 +62,8 @@ describe('Aufräumen Etappe 1 — Leiste', () => {
   // weder ein Punkt der Leiste noch ein Reiter der Planung — sie sind die Fokus-Seite hinter dem Fokus-Knopf im Kopf.
   it('Fokus, Kompass und Wachstum: kein Punkt der Leiste, kein Reiter der Planung — die Fokus-Seite oben rechts', () => {
     for (const s of SPACES) expect(leisteFuer(s.id).map(e => e.label)).not.toEqual(expect.arrayContaining(['Fokus']));
-    const planer = lies('components/os/PlanerLeiste.tsx');
-    for (const h of ["href: '/os/fokus'", "href: '/os/kompass'", "href: '/os/wachstum'"]) expect(planer).not.toContain(h);
+    const planer = lies('components/os/PlanerLeiste.tsx') + lies('lib/make-one/werkzeuge.ts');
+    for (const h of ["href: '/os/fokus'", "href: '/os/kompass'", "href: '/os/wachstum'", "'/os/fokus'", 'WEG.fokus(']) expect(planer).not.toContain(h);
     expect(lies('components/os/Kopf.tsx')).toContain('<Link href={WEG.fokus()}');
   });
 });

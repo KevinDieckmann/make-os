@@ -3,7 +3,10 @@
 // ─── Unternehmen — Gesellschafts-Register und Schild (/os/unternehmen, 04.10. / 10.10.) ─────────────────────────────
 // Kevin 04.10.: „Kriegen wir dort jetzt alles sauber geplant?“ — eigene Gesellschaften als offene Liste, Steckbrief, Cap-Table,
 // Beteiligungen, Verträge mit Fristen, Unterlagen. Kevin 10.10.: „Welche Infos muss ich immer dokumentiert bei mir haben — rechtlich wie ein
-// Schild aufstellen, das Risiko immer wieder mitbewerten.“ Die Seite ist in Reiter gegliedert (`?s=`, Wege über `WEG.schild`):
+// Schild aufstellen, das Risiko immer wieder mitbewerten.“ Die Seite ist in Orte gegliedert (`?s=`, Wege über `WEG.schild`, gelesen über
+// lib/gesellschaften/schild/adresse.ts). Seit 22.10. abends ist Unternehmen ein Werkzeug (lib/make-one/werkzeuge.ts `UNTERNEHMEN_WERKZEUG`): die Gruppen
+// Lage · Akte, „Automationen & Head“ (`?s=automationen`) und Archiv · Papierkorb stehen als Menü in der linken Leiste (am Handy oben im Blatt „Menü“) — die
+// zwei Reiterzeilen der Seite sind weg. Die Seite folgt der Adresse:
 //   Überblick (Ampel je Gesellschaft und gesamt) · Gesellschaften (Liste · Archiv · Papierkorb, `?f=`) · Pflichten · Dokumente (mit Vorlagen) ·
 //   Risiken · Struktur (Organigramm + Cap-Table) · Marken & Versicherungen · Verträge & Organe · Beschlüsse & Satzung (10.10.: Beschluss-Buch,
 //   Gegenstand & Satzung mit Historie — `?s=beschluesse&w=<kennung>[&b=<beschluss>][&a=satzung]`, Beschluesse.tsx). Pflichten/Dokumente/Risiken/Schutz gelten je
@@ -21,7 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, FileText, Trash2 } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leerzustand, Leer, Reiter, Pillen, Feldzeile, eingabe, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leerzustand, Leer, Pillen, Feldzeile, eingabe, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../ui';
 import { useNurBusiness } from '../useInhaber';
 import { zufallsUuid } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
@@ -33,7 +36,10 @@ import {
   geloeschterBezug, geloeschtText,
   type GesStatus, type Rechtsform,
 } from '@/lib/gesellschaften/modell';
-import { lageAus, type SchildReiter, type Lage } from '@/lib/gesellschaften/schild/ampel';
+import { lageAus, type Lage } from '@/lib/gesellschaften/schild/ampel';
+import { unternehmenSicht, MIT_ALLE, UNTERNEHMEN_FILTER, type UnternehmenSicht, type UnternehmenFilter } from '@/lib/gesellschaften/schild/adresse';
+import { UNTERNEHMEN_WERKZEUG } from '@/lib/make-one/werkzeuge';
+import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
 import type { DateiEintrag } from '@/lib/dateien/regeln';
 import { bezugName, klein, tagText, UnterlagenBleiben, type GAnzeige, type RegisterDaten } from './teile';
 import { Detail } from './Detail';
@@ -55,31 +61,11 @@ import { LebenslaufKarte } from './blick/Lebenslauf';
 import { SchildZeichen, TonChip } from './blick/teile';
 import { blickFuer, TON_SATZ } from '@/lib/gesellschaften/schild/blick';
 
-type Sicht = SchildReiter;
-// Reiter in zwei Gruppen (11.10., Kevin: „neun Reiter laufen über, keiner versteht, was zuerst zu tun ist“): „Lage“ (was ist zu tun) und „Akte“ (was
-// gilt, wer hält wen). Kennungen und alte Adressen bleiben (`?s=`), nur die Beschriftung ist kürzer; am Handy wischt die Zeile.
-const LAGE_REITER: { id: Sicht; label: string }[] = [
-  { id: 'ueberblick', label: 'Überblick' }, { id: 'pflichten', label: 'Pflichten & Fristen' }, { id: 'dokumente', label: 'Dokumente' },
-  { id: 'risiken', label: 'Risiken' }, { id: 'schutz', label: 'Schutz' },
-];
-const AKTE_REITER: { id: Sicht; label: string }[] = [
-  { id: 'struktur', label: 'Struktur' }, { id: 'beschluesse', label: 'Beschlüsse & Satzung' }, { id: 'vertraege', label: 'Verträge & Organe' }, { id: 'gesellschaften', label: 'Gesellschaften' },
-];
-const SICHTEN: { id: Sicht; label: string }[] = [...LAGE_REITER, ...AKTE_REITER];
-/** Reiter mit „Alle“ im Gesellschafts-Filter (dann das Bild über alle Gesellschaften). */
-const MIT_ALLE: readonly Sicht[] = ['ueberblick', 'pflichten', 'dokumente', 'risiken'];
+type Sicht = UnternehmenSicht;
 /** Kennung der Pille „Alle“ im Gesellschafts-Filter (keine Gesellschaft heißt so). */
 const ALLE = '__alle';
-type Filter = 'liste' | 'archiv' | 'papierkorb';
-const FILTER: { id: Filter; label: string }[] = [{ id: 'liste', label: 'Aktiv' }, { id: 'archiv', label: 'Archiv' }, { id: 'papierkorb', label: 'Papierkorb' }];
-/** Reiter + Filter aus der Adresse — alte Adressen (`s=liste|archiv|papierkorb`) bleiben gültig. */
-export function sichtAus(s: string | null, f: string | null): { sicht: Sicht; filter: Filter } {
-  if (s === 'liste' || s === 'archiv' || s === 'papierkorb') return { sicht: 'gesellschaften', filter: s };
-  const sicht = SICHTEN.find(x => x.id === s)?.id ?? 'ueberblick';
-  return { sicht, filter: FILTER.find(x => x.id === f)?.id ?? 'liste' };
-}
-/** Reiter, die je Business-Gesellschaft gelten (Gesellschaft-Wahl `w`) — ohne `w` zeigen die Reiter mit „Alle“ das Bild über alle. */
-const JE_GESELLSCHAFT: readonly Sicht[] = ['schutz', 'beschluesse'];
+type Filter = UnternehmenFilter;
+const FILTER = [...UNTERNEHMEN_FILTER];
 
 /** Status → Farbe der Pille: Zustand, keine Deko. */
 export const STATUS_FARBE: Record<GesStatus, string> = { geplant: C.inkDim, gruendung: LEUCHT.achtung, eingetragen: LEUCHT.gut, ruhend: C.inkLeise, aufgeloest: C.inkLeise };
@@ -89,7 +75,7 @@ export function UnternehmenView() {
   const router = useRouter();
   const params = useSearchParams();
   const offen = params.get('g');
-  const { sicht, filter } = sichtAus(params.get('s'), params.get('f'));
+  const { sicht, filter } = unternehmenSicht(params.get('s'), params.get('f'));
   const [daten, setDaten] = useState<RegisterDaten | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [neu, setNeu] = useState(false);
@@ -133,6 +119,15 @@ export function UnternehmenView() {
     );
   }
 
+  // „Automationen & Head“ des Werkzeugs (22.10. abends): die Betroffenenrechte und der Head of Recht — braucht das Register nicht.
+  if (sicht === 'automationen' && !offen && !params.get('ablage')) {
+    return (
+      <Seite titel="Unternehmen" unter="Die Abläufe rund um Recht und Datenschutz — und der Head dieses Bereichs.">
+        <BereichAutomationen werkzeug={UNTERNEHMEN_WERKZEUG} space="business" />
+      </Seite>
+    );
+  }
+
   if (!daten) {
     return (
       <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Pflichten, Risiken und Schutzrechte — eine Quelle.">
@@ -156,10 +151,6 @@ export function UnternehmenView() {
   const assistent = params.get('a') === 'ereignis';
   const mitFilter = business.length > 1 && (MIT_ALLE.includes(sicht) || sicht === 'schutz');
   const filterListe = [...(MIT_ALLE.includes(sicht) ? [{ id: ALLE, label: 'Alle' }] : []), ...business.map(x => ({ id: x.id as string, label: x.name }))];
-  const wechsle = (s: Sicht) => {
-    const ziel = MIT_ALLE.includes(s) ? w : JE_GESELLSCHAFT.includes(s) ? gewaehlt : undefined;
-    geh({ s, ...(ziel ? { w: ziel } : {}) });
-  };
 
   return (
     // Unternehmen (10.10.): eigener Punkt in der Leiste, getrennt von Produkte & Mandate. 11.10.: Antwort zuerst — der Überblick ist „in einem Blick“.
@@ -169,10 +160,6 @@ export function UnternehmenView() {
       {offen && !g && (weg
         ? <Hinweis art="info" titel={geloeschtText(weg)}>Diese Gesellschaft wurde endgültig gelöscht. <UnterlagenBleiben href={WEG.unterlagen(weg.id)} /></Hinweis>
         : <Hinweis art="info" titel="Nicht gefunden">Diese Gesellschaft gibt es im Register nicht (mehr).</Hinweis>)}
-      <div className="ui-reiter-zeile">
-        <Reiter gruppe liste={LAGE_REITER} aktiv={LAGE_REITER.some(x => x.id === sicht) ? sicht : null} onWahl={wechsle} ariaLabel="Lage des Unternehmens" />
-        <Reiter gruppe liste={AKTE_REITER} aktiv={AKTE_REITER.some(x => x.id === sicht) ? sicht : null} onWahl={wechsle} ariaLabel="Akte des Unternehmens" />
-      </div>
       {mitFilter && !assistent && (
         <div role="group" aria-label="Gesellschaft wählen"><Pillen einzeilig liste={filterListe} aktiv={filter1 ?? (MIT_ALLE.includes(sicht) ? ALLE : gewaehlt ?? null)} onWahl={x => geh({ s: sicht, ...(x !== ALLE ? { w: x } : {}) })} /></div>
       )}

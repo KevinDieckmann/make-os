@@ -6,7 +6,7 @@
 
 import { WEG } from '@/lib/wege';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
-import { automationenLink } from '@/lib/crm/adresse';
+import { automationenLink, mandateLink } from '@/lib/crm/adresse';
 
 export interface SeitenTreffer {
   art: 'seite'; id: string; titel: string; href: string; space?: 'privat' | 'business';
@@ -47,6 +47,8 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('planung-quartal', 'Planung · Quartal', '/os/planung/quartal'),
   s('routinen', 'Planung · Routinen', WEG.routinen()),
   s('kapazitaet', 'Planung · Kapazität, Zeit und Machbarkeit je Person', WEG.kapazitaet(), 'business'),
+  // Werkzeug Planung (22.10. abends): „Automationen & Head“ — ein Parameter an der Seite des Jahres (Business: Ziele & Meilensteine, Privat: Assistenz).
+  s('planung-automationen', 'Planung · Automationen & Head (Ziele & Meilensteine, CEO-Office, Assistenz)', `${WEG.jahr()}?s=automationen`),
   // Finanzen (08.10., Aufräumen Etappe 2: höchstens zwei Ebenen — Aufbau in lib/finanzen/navigation.ts)
   s('finanzen', 'Finanzen · Privat', WEG.privat(), 'privat'),
   s('finanzen-konten', 'Finanzen · Privat · Konten & Buchungen', WEG.privat('buchungen'), 'privat'),
@@ -99,6 +101,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('fulfillment-onboarding', 'Produkte & Mandate · Fulfillment · Onboarding', WEG.fulfillment('onboarding'), 'business'),
   s('fulfillment-analysen', 'Produkte & Mandate · Fulfillment · Analysen', WEG.fulfillment('analysen'), 'business'),
   s('fulfillment-kreislauf', 'Produkte & Mandate · Fulfillment · Kreislauf', WEG.fulfillment('kreislauf'), 'business'),
+  s('mandate-automationen', 'Produkte & Mandate · Automationen & Head (Übergabe, Fulfillment, Ausbau)', mandateLink('automationen'), 'business'),
   // Prozesse (21.10.): die Landkarte als Fliege — Marketing, Sales, Übergabe, Fulfillment, Ausbau; Liste und Vollbild über die Adresse.
   s('prozesse', 'Prozesse · Landkarte der Abläufe (Marketing, Sales, Übergabe, Fulfillment, Ausbau)', WEG.prozesse(), 'business'),
   s('prozesse-liste', 'Prozesse · als Liste', WEG.prozesse({ ansicht: 'liste' }), 'business'),
@@ -111,8 +114,9 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('unternehmen-risiken', 'Unternehmen · Risiko-Register', WEG.schild('risiken'), 'business', 'volle'),
   s('unternehmen-struktur', 'Unternehmen · Struktur und Cap-Table', WEG.schild('struktur'), 'business', 'volle'),
   s('unternehmen-vertraege', 'Unternehmen · Verträge und Organe', WEG.schild('vertraege'), 'business', 'volle'),
-  s('unternehmen-schutz', 'Unternehmen · Marken, Domains, Versicherungen', WEG.schild('schutz'), 'business', 'volle'),
+  s('unternehmen-schutz', 'Unternehmen · Marken & Versicherungen (Marken, Domains, Versicherungen)', WEG.schild('schutz'), 'business', 'volle'),
   s('unternehmen-beschluesse', 'Unternehmen · Beschlüsse & Satzung (Beschluss-Buch, Gegenstand, Fassungen)', WEG.beschluss(), 'business', 'volle'),
+  s('unternehmen-automationen', 'Unternehmen · Automationen & Head (Betroffenenrechte, Head of Recht)', WEG.schild('automationen'), 'business', 'volle'),
   // Netzwerken (03.10.): unterwegs erfassen und die eigenen Visitenkarten (QR) — in jedem Space auffindbar.
   s('netzwerken', 'Netzwerken · Person erfassen, Abendbericht', WEG.netzwerken()),
   s('netzwerken-karte', 'Netzwerken · Meine Visitenkarten', WEG.netzwerkenKarte()),
