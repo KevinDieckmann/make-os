@@ -17,6 +17,7 @@ import type {
 import { katalogEintrag, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT, ROLLE_EIGNER, ROLLE_ZUSTAENDIG } from '../baustein-katalog';
 import { schlossSetzen } from '../schloss';
 import { laufFremd } from '../definition-pruefen';
+import { zettelObenPlatz, WS } from '../werkstatt-lage';
 import type { EignerRolle } from './rollen';
 import type { Temperatur } from '@/lib/crm/typen';
 
@@ -267,7 +268,10 @@ export function prozess(p: ProzessBau): ProzessDefinition {
       knoten.push(k);
     });
   });
-  const zettel: NotizZettel[] | undefined = p.zettel ? [{ id: id('~zettel'), text: p.zettel, pos: { x: 40, y: 40 }, farbe: 'gelb' }] : undefined;
+  // Der Zettel liegt über dem ersten Rahmen (Befund 3, 22.10.) — vorher bei 40/40 über dem Kopf der ersten Phase und den Namen der Bahnen.
+  // Die Höhe reicht für den ganzen Text (grob ≈ 0,56 · 13 px je Zeichen auf 212 px Breite, eine Zeile Reserve für Umbrüche an Wortgrenzen).
+  const zettelH = p.zettel ? Math.max(WS.zettel.h, 36 + 18 * (Math.ceil((p.zettel.length * 13 * 0.56) / (WS.zettel.b - 28)) + 1)) : 0;
+  const zettel: NotizZettel[] | undefined = p.zettel ? [{ id: id('~zettel'), text: p.zettel, pos: { ...zettelObenPlatz(0, { h: zettelH }), b: WS.zettel.b, h: zettelH }, farbe: 'gelb' }] : undefined;
   const d: ProzessDefinition = {
     id: p.id, art: 'paket', titel: p.titel, beschreibung: p.beschreibung, knoten, uebergaenge: [], freigaben: [], rollen: [], fassung: 1,
     geaendert: '', geaendertVon: '', bereich: p.bereich, fallArt: p.fallArt, startKriterium: p.startKriterium, endKriterium: p.endKriterium,

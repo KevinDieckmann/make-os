@@ -28,7 +28,7 @@ import { FACH_AGENTEN } from '@/lib/prozesse/agent-schritt';
 import { alleSchritte, phasen, wurzel } from '@/lib/prozesse/fluss';
 import type { AgentWer, Befund, KnotenLage, ProzessDefinition, ProzessForm, ProzessKnoten, ProzessVersion } from '@/lib/prozesse/definition';
 import {
-  werkstattLage, lagenFesthalten, ordnen, ortBei, inBahn, bahnSchluessel, knotenMass, WS, type TeamName, type KanteLage,
+  werkstattLage, lagenFesthalten, ordnen, zettelFreiLegen, allesAlsKacheln, ortBei, inBahn, bahnSchluessel, knotenMass, WS, type TeamName, type KanteLage,
 } from '@/lib/prozesse/werkstatt-lage';
 import {
   anlegen, verbinden, loesen, loeschen, ersetzen, umbenennen, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
@@ -56,6 +56,7 @@ import { WerkstattTests, testsPruefen, type TestErgebnis } from './WerkstattTest
 import { WebhookKarte, type WebhookKurz } from './WerkstattWebhook';
 import { ProbeFallFenster, type FallWert } from './ProbeFall';
 import { useLaeufe } from './laeufe-daten';
+import { zoomStufe } from '../ui/flaeche/stufe';
 
 type K = ProzessKnoten<ProzessForm>;
 
@@ -109,6 +110,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const [headOffen, setHeadOffen] = useState(false);
   const [raster, setRaster] = useState(true);
   const [zu, setZu] = useState<Set<string>>(new Set());
+  /** „Alles zeigen“ als Kacheln (Befund 6): die Phasen, die die Übersicht gerade zugeklappt zeigt — nur für den Augenblick, nie gemerkt. */
+  const [uebersicht, setUebersicht] = useState<Set<string> | null>(null);
+  const einpassen = useRef<'alles' | { phase: string } | null>(null);
   const [webhook, setWebhook] = useState<WebhookKurz | null>(null);
   const [probeFall, setProbeFall] = useState<FallWert>('beispiel');
   const [probeOffen, setProbeOffen] = useState(false);
@@ -156,8 +160,30 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
     const { zettel: _z, ...rest } = eintrag.entwurf;
     return { ...rest, knoten: fassung.knoten, ...(fassung.zettel ? { zettel: fassung.zettel } : {}) };
   }, [eintrag, fassung, versionAnsicht]);
-  const lage = useMemo(() => (d ? werkstattLage(d, { team, zu }) : null), [d, team, zu]);
+  const zuWirksam = useMemo(() => (uebersicht?.size ? new Set([...zu, ...uebersicht]) : zu), [zu, uebersicht]);
+  const lage = useMemo(() => (d ? werkstattLage(d, { team, zu: zuWirksam }) : null), [d, team, zuWirksam]);
   useEffect(() => { const id = zeigeNeu.current; if (id && lage?.knoten.has(id)) { zeigeNeu.current = null; flaeche.current?.insBild(id); } }, [lage]);
+  // Nach dem Umschalten der Übersicht (bzw. dem Aufklappen einer Kachel) die Kamera auf die neue Lage einpassen.
+  useEffect(() => {
+    const e = einpassen.current;
+    if (!e || !lage) return;
+    einpassen.current = null;
+    if (e === 'alles') flaeche.current?.allesZeigen(); else flaeche.current?.rahmenZeigen(e.phase);
+  }, [lage]);
+  useEffect(() => { setUebersicht(null); }, [prozessId, versionAnsicht]);
+  /** „Alles zeigen“ (Befund 6): passt der Prozess nur unlesbar ins Bild (`zoomStufe` „fern“), stehen die Phasen als Kacheln da — ein Klick klappt auf. */
+  const allesZeigen = () => {
+    if (!d) return;
+    const g = flaeche.current?.groesse() ?? { b: 960, h: 600 };
+    if (allesAlsKacheln(d, g, zoomStufe, { team, zu })) {
+      setUebersicht(new Set(phasen(d).map(p => p.id).filter(id => !zu.has(id))));
+      einpassen.current = 'alles';
+      ansagen('Alles zeigen: die Phasen stehen als Kacheln da — ein Klick klappt eine auf.');
+      return;
+    }
+    if (uebersicht) { setUebersicht(null); einpassen.current = 'alles'; return; }
+    flaeche.current?.allesZeigen();
+  };
   // Testergebnisse gelten für genau diese Fassung — jede Änderung macht sie wieder „noch nicht geprüft“.
   useEffect(() => { setTestErg(m => (m.size ? new Map() : m)); }, [fassung]);
   const ausstehend = speicher.art === 'ausstehend' || speicher.art === 'speichert' || speicher.art === 'fehler' || speicher.art === 'offline' || speicher.art === 'konflikt';
@@ -407,7 +433,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
       case 'alles-waehlen': setAuswahl([...alleSchritte(d).map(x => x.schritt.id), ...(d.zettel ?? []).map(z => z.id)]); return true;
       case 'einfuegen': einf(); return true;
       case 'duplizieren': kopie(); einf(); return true;
-      case 'ordnen': mitFassung(f => ({ ok: true, fassung: ordnen(f), ansage: 'Geordnet — eine Leserichtung, Rückgängig holt die alte Lage.' })); return true;
+      // Ordnen legt auch Zettel frei, die einen Phasen-Kopf, eine Bahn oder einen Knoten verdecken (Befund 3) — über die Rahmen.
+      case 'ordnen': mitFassung(f => ({ ok: true, fassung: zettelFreiLegen(ordnen(f), { team, zu }), ansage: 'Geordnet — eine Leserichtung, Zettel liegen frei. Rückgängig holt die alte Lage.' })); return true;
       case 'loeschen': loeschenAuswahl(); return true;
       case 'benennen': if (eine) { setTitelFokus(n => n + 1); return true; } return false;
       case 'formauswahl': {
@@ -497,6 +524,12 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
 
   // ── Zuklappen (Merker je Prozess) ──
   const zuklappen = (phaseId: string) => {
+    // Eine Kachel der Übersicht (Befund 6): aufklappen und die Phase einpassen — der Merker der Phasen bleibt unberührt.
+    if (uebersicht?.has(phaseId)) {
+      setUebersicht(u => { if (!u) return u; const n = new Set(u); n.delete(phaseId); return n.size ? n : null; });
+      einpassen.current = { phase: phaseId };
+      return;
+    }
     setZu(s => { const n = new Set(s); if (n.has(phaseId)) n.delete(phaseId); else n.add(phaseId); schreib(lokal(), ZU_MERKER(prozessId), [...n].join(',') || null); return n; });
     setAuswahl(a => a.filter(id => !lage?.knoten.get(id) || lage.knoten.get(id)!.phaseId !== phaseId));
   };
@@ -548,13 +581,13 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
         {reiter === 'bauen' && <div className="pw-werkzeuge" role="toolbar" aria-label="Werkstatt">
           {!nurLesen && <SymbolKnopf ariaLabel="Rückgängig (⌘Z)" aus={!geschichte.zurueck.length} onClick={zurueck}><Undo2 size={16} /></SymbolKnopf>}
           {!nurLesen && <SymbolKnopf ariaLabel="Wiederholen (⌘⇧Z)" aus={!geschichte.vor.length} onClick={vor}><Redo2 size={16} /></SymbolKnopf>}
-          {!nurLesen && <Knopf leise onClick={() => taste({ art: 'ordnen' })} titel="Ordnen — eine Leserichtung (⇧O, rückgängig machbar)"><span className="pz-knopf-inhalt"><LayoutGrid size={14} aria-hidden />Ordnen</span></Knopf>}
+          {!nurLesen && <Knopf leise onClick={() => taste({ art: 'ordnen' })} titel="Ordnen — eine Leserichtung; Zettel, die etwas verdecken, wandern über die Rahmen (⇧O, rückgängig machbar)"><span className="pz-knopf-inhalt"><LayoutGrid size={14} aria-hidden />Ordnen</span></Knopf>}
           {!nurLesen && <Knopf leise onClick={zettelHin} titel="Notiz-Zettel auf die Fläche"><span className="pz-knopf-inhalt"><StickyNote size={14} aria-hidden />Zettel</span></Knopf>}
           {!nurLesen && <Knopf leise onClick={() => phaseAktion('neu', phasen(d).at(-1)?.id ?? '')} titel="Neue Phase am Ende"><span className="pz-knopf-inhalt"><Columns3 size={14} aria-hidden />Phase</span></Knopf>}
           <SymbolKnopf ariaLabel="Raster an/aus" gedrueckt={raster} onClick={() => { const n = !raster; setRaster(n); schreib(lokal(), RASTER_MERKER, n ? null : 'aus'); }}><Grid3x3 size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Verkleinern" onClick={() => flaeche.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
-          <SymbolKnopf ariaLabel="Alles zeigen" onClick={() => flaeche.current?.allesZeigen()}><Maximize2 size={16} /></SymbolKnopf>
+          <SymbolKnopf ariaLabel="Alles zeigen" onClick={allesZeigen}><Maximize2 size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
           {!nurLesen && <Knopf leise onClick={() => setHeadOffen(true)} titel="Head fragen — Bausteine oder einen ganzen Entwurf vorschlagen lassen (übernommen erst mit deinem Klick)"><span className="pz-knopf-inhalt"><Sparkles size={14} aria-hidden />Head fragen</span></Knopf>}
           <Knopf leise onClick={() => setProbeOffen(o => !o)} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts); mit dem Beispiel oder einem echten Fall"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>

@@ -15,7 +15,7 @@ import {
 import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL } from '@/lib/make-one/design';
 import type { ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { KnotenLageW } from '@/lib/prozesse/werkstatt-lage';
-import { ausgangName, ausgangMarke, WS } from '@/lib/prozesse/werkstatt-lage';
+import { ausgangName, ausgangMarke, titelOben, WS } from '@/lib/prozesse/werkstatt-lage';
 import { MARKEN_BEDEUTUNG, zeitText, type LaufMarke, type MarkenStufe } from '@/lib/prozesse/laeufe-ansicht';
 import { WERKSTATT_FORM_FARBE, AGENT_TON_ZWEI } from '@/lib/prozesse/farben';
 import { PROBE_NAME, type ProbeStatus } from '@/lib/prozesse/werkstatt-hinweise';
@@ -93,7 +93,8 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
   const markeFarbe = p.marke ? BEDEUTUNG_FARBE[MARKEN_BEDEUTUNG[p.marke.stufe]] : null;
   const agent = l.gestalt === 'agent';
   const raute = l.gestalt === 'raute';
-  const titelY = c.y + c.h + 22;
+  // Unter dem Körper; bei der Raute tiefer — „nein“, sein „+“ und die Beschriftung des Fadens stehen dazwischen (lib/prozesse/werkstatt-lage.ts `titelOben`).
+  const titelY = titelOben(l);
   const rechts = l.anschluesse.filter(a => a.richtung === 'rechts' && a.art !== 'ein').length;
   // ── Körper ──
   let koerper: ReactNode;

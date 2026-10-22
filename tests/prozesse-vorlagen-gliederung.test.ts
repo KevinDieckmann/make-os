@@ -42,7 +42,7 @@ describe('Gliederung der Vorlagen (Befund 1)', () => {
       expect(ohneAusloeser(kantenText(d))).toEqual(ohneAusloeser(v.kanten));
       // Die Auslöser: vorher eine Kette (Auslöser → Auslöser → erster Schritt) — jetzt führt jeder direkt in diesen ersten Schritt.
       const alt = new Map(v.kanten.map(k => { const [von, rest] = k.split('>'); return [von, rest.slice(0, rest.lastIndexOf(':'))]; }));
-      let erster = startKnoten(d)[0]?.id;
+      let erster: string | undefined = startKnoten(d)[0]?.id;
       while (erster && ausloeser.has(erster)) erster = alt.get(erster);
       for (const a of ausloeser) expect(kantenText(d).filter(k => k.startsWith(`${a}>`)), a).toEqual([`${a}>${erster}:weiter`]);
     });

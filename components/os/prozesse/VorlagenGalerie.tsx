@@ -16,6 +16,7 @@ import { neueKennung } from '@/lib/kennung';
 import { WERKSTATT_FORM_FARBE } from '@/lib/prozesse/farben';
 import { PROZESS_BEREICHE } from '@/lib/prozesse/definition';
 import type { VorlageKurz, VorschauPhase } from '@/lib/prozesse/kundengewinnung/bibliothek';
+import { galerieBereiche, vorlagenFiltern, VORLAGEN_ARTEN, type VorlagenArt } from '@/lib/prozesse/kundengewinnung/galerie';
 import { WERKSTATT_QUELLE, useKatalog, werkstattSenden } from './werkstatt-daten';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
@@ -62,7 +63,9 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
   const team = useMemo(() => (kat.daten?.auswahl?.['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:')), [kat.daten]);
   const [liste, setListe] = useState<Liste | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
-  const [welle, setWelle] = useState<'alle' | '1' | '2' | '3'>('alle');
+  // Feinschliff 22.10. (Befund 5): gefiltert wird nach Bereich und Art („mit Agenten“ · „nur Regeln“) — nicht mehr nach der internen Welle.
+  const [bereich, setBereich] = useState('alle');
+  const [art, setArt] = useState<VorlagenArt>('alle');
   const [gewaehlt, setGewaehlt] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [eigner, setEigner] = useState('');
@@ -90,13 +93,20 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
     setFehler(String(r.j?.fehler ?? 'Die Vorlage ließ sich nicht übernehmen.'));
   };
 
-  const sichtbar = (liste?.vorlagen ?? []).filter(v => welle === 'alle' || String(v.welle) === welle);
+  const sichtbar = vorlagenFiltern(liste?.vorlagen ?? [], { bereich, art });
+  const bereiche = galerieBereiche(liste?.vorlagen ?? []);
   return (
     <Fenster titel={detail ? `${detail.nr} · ${detail.titel}` : 'Aus Vorlage anlegen'} onZu={onZu} breit={980}>
       {!detail && (
         <div style={{ display: 'grid', gap: 12 }}>
           <p style={klein}>18 Vorlagen der Kundengewinnung — jede ist ein vollständiger Prozess mit Schlössern vor jeder Außenwirkung, Rollen statt Personen und ehrlich benannten offenen Punkten. Übernehmen legt eine eigene Kopie an (Probelauf, schreibt nichts).</p>
-          <Pillen liste={[{ id: 'alle', label: 'Alle' }, { id: '1', label: 'Welle 1 · Regeln' }, { id: '2', label: 'Welle 2 · mit Agenten' }, { id: '3', label: 'Welle 3 · neue Quellen' }]} aktiv={welle} onWahl={setWelle} />
+          <div role="group" aria-label="Bereich">
+            <Pillen liste={[{ id: 'alle', label: 'Alle Bereiche' }, ...bereiche.map(b => ({ id: b.id, label: `${b.titel} · ${b.anzahl}` }))]} aktiv={bereich} onWahl={setBereich} />
+          </div>
+          <div role="group" aria-label="Wer arbeitet mit">
+            <Pillen liste={[...VORLAGEN_ARTEN]} aktiv={art} onWahl={setArt} />
+          </div>
+          {liste && !sichtbar.length && <p style={klein}>Keine Vorlage passt zu dieser Auswahl.</p>}
           {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
           {!liste && !fehler && <p style={klein}>Die Vorlagen laden …</p>}
           <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>

@@ -18,7 +18,7 @@ import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL, TYP } from '@/lib/make-on
 import type { NotizZettel, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { Ausgang } from '@/lib/prozesse/fluss';
 import {
-  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
+  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
 } from '@/lib/prozesse/werkstatt-lage';
 import { kanteAufWeg, type LaufMarke } from '@/lib/prozesse/laeufe-ansicht';
 import { tasteZuAktion, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
@@ -38,6 +38,9 @@ export interface FlaecheSteuerung {
   allesZeigen(): void; zoomen(f: number): void; zeige(id: string): void; mitte(): [number, number]; bildschirm(x: number, y: number): [number, number]; fokus(): void;
   /** Feinschliff 22.10. (Befund 2): die Kamera fährt nur so weit, dass der Knoten ganz zu sehen ist (der Zoom bleibt). */
   insBild(id: string): void;
+  /** Feinschliff 22.10. (Vorlagen, Befund 6): die Größe der Bühne (für „Alles zeigen“ als Kacheln) und eine Phase einpassen (nach dem Aufklappen einer Kachel). */
+  groesse(): { b: number; h: number };
+  rahmenZeigen(phaseId: string): void;
 }
 
 export interface WerkstattFlaecheProps {
@@ -145,6 +148,13 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       if (z !== kamera.current) fliege(z);
     },
     zoomen: f => { const g = groesse(); fliege(zoomUm(kamera.current, f, g.b / 2, g.h / 2)); },
+    groesse: () => groesse(),
+    rahmenZeigen: phaseId => {
+      const r = stand.current.lage.rahmen.find(x => x.id === phaseId);
+      if (!r) return;
+      const drin = [...stand.current.lage.knoten.values()].filter(k => k.phaseId === phaseId);
+      fliege(einpassKamera(drin.length ? inhaltBox({ knoten: new Map(drin.map(k => [k.id, k])), box: r }) : r, groesse()));
+    },
     zeige: id => {
       const k = stand.current.lage.knoten.get(id);
       if (!k) return;
@@ -170,7 +180,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     const e = flaecheEingabe(el, {
       kamera: () => kamera.current, setze,
       freiSchiebt: () => stand.current.nurLesen,
-      istFrei: z => !(z as Element | null)?.closest?.('[data-ws-knoten],[data-ws-anschluss],[data-ws-plus],[data-ws-kante],[data-ws-zettel],[data-ws-rahmen],[data-ws-unter]'),
+      istFrei: z => !(z as Element | null)?.closest?.('[data-ws-knoten],[data-ws-anschluss],[data-ws-plus],[data-ws-kante],[data-ws-zettel],[data-ws-rahmen],[data-ws-unter],[data-ws-zu]'),
     });
     return () => { e.abbauen(); if (bild.current) cancelAnimationFrame(bild.current); };
   }, [setze]);
@@ -257,6 +267,9 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     }
     const kante = t.closest('[data-ws-kante]')?.getAttribute('data-ws-kante');
     if (kante) { p.onKante(kante); return; }
+    // Eine zugeklappte Phase (Kachel): ein Klick klappt sie auf (Befund 6) — der Rahmen-Kopf wählt weiter die Phase.
+    const zuK = t.closest('[data-ws-zu]')?.getAttribute('data-ws-zu');
+    if (zuK) { p.onZuklappen(zuK); return; }
     const rahmen = t.closest('[data-ws-rahmen]')?.getAttribute('data-ws-rahmen');
     if (rahmen) { p.onRahmen(rahmen); return; }
     if (!p.nurLesen) { zug.current = { art: 'band', zeiger: e.pointerId, start: w, aktiv: false, erweitern: e.shiftKey }; svg.current?.setPointerCapture(e.pointerId); }
@@ -390,10 +403,10 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
                 <FlaechePfeil d={dd} spitze={spitze} gewaehlt={an} gestrichelt={k.zurueck} />
                 {k.ausgang === 'fehler' && <path d={dd} fill="none" stroke={LEUCHT.kritisch} strokeOpacity={0.85} strokeWidth={1.6} strokeDasharray="6 5" style={{ pointerEvents: 'none' }} />}
                 <path data-ws-kante={k.id} d={dd} fill="none" stroke="transparent" strokeWidth={16} style={{ cursor: p.nurLesen ? 'default' : 'pointer' }} />
-                {k.text && (() => { const o = k.textOrt ?? pfeilTextOrt(k.punkte); const b = Math.max(28, k.text.length * FLAECHE_SCHRIFT.unter * 0.56 + 14); return (
+                {k.text && (() => { const o = k.textOrt ?? pfeilTextOrt(k.punkte); const b = chipBreite(k.text); return (
                   <g transform={`translate(${o[0]} ${o[1]})`} style={{ pointerEvents: 'none' }}>
-                    <rect x={k.zurueck ? -b / 2 : 0} y={-11} width={b} height={22} rx={11} fill={C.grund} stroke={k.ausgang === 'fehler' ? TIEF.rand(LEUCHT.kritisch) : an ? C.ink : RAND.stark} />
-                    <text x={k.zurueck ? 0 : b / 2} textAnchor="middle" dominantBaseline="central" fontSize={FLAECHE_SCHRIFT.unter} fill={k.ausgang === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{k.text}</text>
+                    <rect x={k.zurueck ? -b / 2 : 0} y={-WS.chip.hoehe / 2} width={b} height={WS.chip.hoehe} rx={WS.chip.hoehe / 2} fill={C.grund} stroke={k.ausgang === 'fehler' ? TIEF.rand(LEUCHT.kritisch) : an ? C.ink : RAND.stark} />
+                    <text x={k.zurueck ? 0 : b / 2} textAnchor="middle" dominantBaseline="central" fontSize={WS.chip.schrift} fill={k.ausgang === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{k.text}</text>
                   </g>
                 ); })()}
               </g>
@@ -404,8 +417,9 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
             const k = nach.get(lk.id);
             const ziel = fadenZiel?.id === lk.id;
             return (
-              <g key={lk.id} data-ws-knoten={lk.zu ? undefined : lk.id} data-ws-rahmen={lk.zu ? lk.zu.phaseId : undefined} transform={`translate(${lk.x} ${lk.y})`}
-                style={{ cursor: p.nurLesen ? 'default' : 'grab' }} aria-label={k ? `${k.titel} — ${p.unterzeile(k)}` : lk.zu?.titel}>
+              <g key={lk.id} data-ws-knoten={lk.zu ? undefined : lk.id} data-ws-zu={lk.zu ? lk.zu.phaseId : undefined} transform={`translate(${lk.x} ${lk.y})`}
+                style={{ cursor: lk.zu ? 'pointer' : p.nurLesen ? 'default' : 'grab' }} {...(lk.zu ? { role: 'button' } : {})}
+                aria-label={lk.zu ? `Phase „${lk.zu.titel}“ aufklappen (${lk.zu.schritte} Schritte)` : k ? `${k.titel} — ${p.unterzeile(k)}` : undefined}>
                 {lk.zu || !k ? <ZuKachel l={lk} /> : (
                   <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()}
                     schloss={p.mitSchloss.has(k.id)} befund={p.befundJe.get(k.id) ?? null} probe={p.probe?.get(k.id)} nurLesen={p.nurLesen}

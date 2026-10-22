@@ -42,6 +42,15 @@ export const WS = {
   /** Stummel am Anschluss, bevor die Kurve beginnt; Abstand der Rückschleife unter den Knoten. */
   stummel: 18, schleife: 26,
   zettel: { b: 240, h: 150 },
+  /** Feinschliff 22.10. (Befund 3): Abstand der Zettel zueinander und zur Oberkante der Rahmen (sie liegen darüber). */
+  zettelAbstand: 24,
+  /**
+   * Feinschliff 22.10. (Befund 4): der Name einer Raute steht um so viel tiefer — zwischen Körper und Name haben der „nein“-Ausgang, sein „+“ und die
+   * Beschriftung des Fadens Platz (vorher lag „nein“ bzw. der Pfeil-Text auf dem Namen).
+   */
+  rauteTitel: 44,
+  /** Beschriftung eines Fadens (Chip): Schriftgröße und Höhe — dieselben Maße zeichnet die Fläche. */
+  chip: { schrift: 13, hoehe: 22 },
 } as const;
 
 // ── Bahnen (Punkt 25) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -158,7 +167,16 @@ export function knotenMass(k: Pick<K, 'form'>): { b: number; h: number; koerper:
     return { b, h, koerper: { x: 20, y: 0, b: WS.agent.b, h: WS.agent.h } };
   }
   const s = g === 'raute' ? WS.raute : WS.quadrat;
-  return { b: WS.knotenB, h: s + WS.beschriftung, koerper: { x: (WS.knotenB - s) / 2, y: 0, b: s, h: s } };
+  return { b: WS.knotenB, h: s + WS.beschriftung + (g === 'raute' ? WS.rauteTitel : 0), koerper: { x: (WS.knotenB - s) / 2, y: 0, b: s, h: s } };
+}
+
+/** Grundlinie der ersten Zeile des Namens (relativ zur Knoten-Box) — unter dem Körper; bei der Raute tiefer (Befund 4). Der Agent trägt den Namen im Körper. */
+export const titelOben = (l: Pick<KnotenLageW, 'gestalt' | 'koerper'>): number => l.koerper.y + l.koerper.h + 22 + (l.gestalt === 'raute' ? WS.rauteTitel : 0);
+/** Die Fläche von Name und Unterzeile in Welt-Koordinaten (rein, großzügig: volle Breite, zwei Zeilen) — null beim Agenten (Name im Körper). */
+export function titelBox(l: Pick<KnotenLageW, 'x' | 'y' | 'b' | 'gestalt' | 'koerper'>): Box | null {
+  if (l.gestalt === 'agent') return null;
+  const t = titelOben(l);
+  return { x: l.x + 4, y: l.y + t - 13, b: l.b - 8, h: 2 * 15 * 1.22 + 13 + 8 };
 }
 
 /** Ein Anschluss (relativ zur Knoten-Box): Eingang bzw. ein Ausgang, mit der Richtung, in die der Faden abgeht. */
@@ -365,20 +383,22 @@ function kurve(a: Pt, c1: Pt, c2: Pt, b: Pt, n = 14): Pt[] {
 
 /**
  * Der Weg eines Fadens von einem Ausgang zum Eingang (rein): kurzer Stummel in Richtung des Ausgangs, dann eine weiche Kurve in den Eingang (von links). Liegt
- * das Ziel nicht rechts vom Ausgang, läuft der Faden als Rückschleife außen unten herum (`zurueck`).
+ * das Ziel nicht rechts vom Ausgang, läuft der Faden als Rückschleife außen unten herum (`zurueck`). `seitlich` (Befund 4, Raute unten): nach dem Stummel erst
+ * so weit waagerecht nach rechts, dann die Kurve — so läuft der „nein“-Faden am Namen unter der Raute vorbei statt durch ihn.
  */
-export function fadenWeg(von: Pt, richtung: Anschluss['richtung'], nach: Pt, unterkante: number): { punkte: Pt[]; zurueck: boolean } {
+export function fadenWeg(von: Pt, richtung: Anschluss['richtung'], nach: Pt, unterkante: number, seitlich = 0): { punkte: Pt[]; zurueck: boolean } {
   const S = WS.stummel;
   const p1: Pt = richtung === 'unten' ? [von[0], von[1] + S] : richtung === 'oben' ? [von[0], von[1] - S] : [von[0] + S, von[1]];
+  const quer = (richtung === 'unten' || richtung === 'oben') && seitlich > 0;
+  const p2: Pt = quer ? [r1(p1[0] + seitlich), p1[1]] : p1;
   const q1: Pt = [nach[0] - S, nach[1]];
-  if (q1[0] < p1[0] + 12) {
+  if (q1[0] < p2[0] + 12) {
     const yu = r1(unterkante + WS.schleife);
-    const rx = r1(Math.max(p1[0], von[0] + S));
+    const rx = r1(Math.max(p2[0], von[0] + S));
     return { punkte: [von, p1, [rx, p1[1]], [rx, yu], [q1[0] - S, yu], [q1[0] - S, nach[1]], q1, nach], zurueck: true };
   }
-  const dx = Math.max(40, (q1[0] - p1[0]) * 0.5);
-  const start: Pt = richtung === 'rechts' ? p1 : [p1[0], p1[1]];
-  return { punkte: [von, ...kurve(start, [start[0] + dx, start[1]], [q1[0] - dx, q1[1]], q1), nach], zurueck: false };
+  const dx = Math.max(40, (q1[0] - p2[0]) * 0.5);
+  return { punkte: [von, ...(quer ? [p1] : []), ...kurve(p2, [p2[0] + dx, p2[1]], [q1[0] - dx, q1[1]], q1), nach], zurueck: false };
 }
 
 /** Alle Kanten mit Weg (rein). Kanten ins Leere (`nach: null` — der Lauf endet) haben keinen Faden; ein „abgelaufen“ ohne eigenes Ziel am Warten auch nicht. */
@@ -402,14 +422,17 @@ export function kantenWege(d: Pick<ProzessDefinition, 'knoten'>, knoten: Readonl
     const aus = ausgangAn(a, k.ausgang);
     const ein = anschlussAbs(b, 'ein');
     if (!aus || !ein) continue;
-    const w = fadenWeg(aus.abs, aus.richtung, ein.abs, Math.max(a.y + a.h, b.y + b.h));
+    // Raute unten (Befund 4): erst bis an den rechten Rand der Knoten-Box, dann die Kurve — der Faden kreuzt den Namen nie.
+    const seitlich = aus.richtung === 'unten' && a.gestalt === 'raute' ? a.x + a.b - aus.abs[0] : 0;
+    const w = fadenWeg(aus.abs, aus.richtung, ein.abs, Math.max(a.y + a.h, b.y + b.h), seitlich);
     const f = kv?.form ?? 'schritt';
     const eigen = k.ausgang === 'weiter' ? kv?.pfeilText?.weiter : kv?.pfeilText?.[k.ausgang];
     const zielTitel = nachId.get(k.nach!)?.titel ?? b.zu?.titel ?? '';
     const zeigen = eigen ?? (w.zurueck ? `zurück zu „${zielTitel}“` : k.ausgang === 'weiter' ? undefined : ausgangName(f, k.ausgang));
     const textOrt: Pt | undefined = zeigen
       ? w.zurueck ? [r1((w.punkte[3][0] + w.punkte[4][0]) / 2), w.punkte[3][1] + 14]
-        : aus.richtung === 'unten' ? [aus.abs[0] + 8, aus.abs[1] + 14] : aus.richtung === 'oben' ? [aus.abs[0] + 8, aus.abs[1] - 8] : [aus.abs[0] + 10, aus.abs[1] - 8]
+        // unten (Befund 4): rechts neben dem „+“ des Ausgangs, auf dem waagerechten Stück des Fadens — über dem Namen der Raute, nie darauf.
+        : aus.richtung === 'unten' ? [aus.abs[0] + 22, aus.abs[1] + 14] : aus.richtung === 'oben' ? [aus.abs[0] + 8, aus.abs[1] - 8] : [aus.abs[0] + 10, aus.abs[1] - 8]
       : undefined;
     raus.push({ ...k, id: schluessel, punkte: w.punkte, zurueck: w.zurueck, ...(zeigen ? { text: zeigen } : {}), ...(textOrt ? { textOrt } : {}) });
   }
@@ -544,4 +567,77 @@ export function bahnBeimAnhaengen(neu: Pick<K, 'bahn' | 'katalog' | 'form'>, vor
   if (!(e?.rechte === 'aussen' || neu.form === 'freigabe')) return null;
   // Eine Personen-Bahn braucht das Feld „wer“ in der Maske (sonst kennt der Knoten seine Person nicht) — dann die Bahn „Menschen“ direkt daneben.
   return vb.startsWith('person:') && !e?.maske.some(f => f.id === 'wer') ? 'mensch' : vb;
+}
+
+// ── Feinschliff 22.10. (Sichtprüfung der Vorlagen): Beschriftungen, Zettel, Übersicht ──────────────────────────────────────────────────────────
+
+/** Breite der Beschriftung eines Fadens (Chip) — grob nach Zeichen wie `textZeilen` (≈ 0,56 · Schriftgröße je Zeichen). Die Fläche zeichnet genau diese Breite. */
+export const chipBreite = (text: string): number => Math.max(28, text.length * WS.chip.schrift * 0.56 + 14);
+/** Die Fläche der Beschriftung eines Fadens in Welt-Koordinaten (rein) — null ohne Text. Rückschleifen tragen sie mittig, sonst beginnt sie am Ort. */
+export function chipBox(k: Pick<KanteLage, 'text' | 'textOrt' | 'zurueck'>): Box | null {
+  if (!k.text || !k.textOrt) return null;
+  const b = chipBreite(k.text);
+  return { x: k.zurueck ? k.textOrt[0] - b / 2 : k.textOrt[0], y: k.textOrt[1] - WS.chip.hoehe / 2, b, h: WS.chip.hoehe };
+}
+/** Überlappen sich zwei Flächen (rein; Berühren zählt nicht)? */
+export const ueberlappt = (a: Box, b: Box): boolean => a.x < b.x + b.b && b.x < a.x + a.b && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * Befund 3 (Sichtprüfung 22.10.: „der Zettel liegt über dem Phasen-Kopf“): wo ein Zettel ohne eigene Lage hingehört — ÜBER den Rahmen, links bündig mit dem
+ * ersten Rahmen, mehrere nebeneinander (`i` = Platz in der Reihe). Dort liegt nie ein Phasen-Kopf, eine Bahn-Beschriftung oder ein Knoten.
+ */
+export function zettelObenPlatz(i = 0, mass: { h?: number } = {}): { x: number; y: number } {
+  return { x: WS.bahnKopf + i * (WS.zettel.b + WS.zettelAbstand), y: -((mass.h ?? WS.zettel.h) + WS.zettelAbstand) };
+}
+/** Die Fläche eines Zettels (Welt-Koordinaten). */
+export const zettelBox = (z: { pos: { x: number; y: number; b?: number; h?: number } }): Box => ({ x: z.pos.x, y: z.pos.y, b: z.pos.b ?? WS.zettel.b, h: z.pos.h ?? WS.zettel.h });
+/** Was ein Zettel verdeckt (rein): Phasen-Köpfe, Bahn-Beschriftungen und Knoten (mit Namen) — leer = er liegt frei. */
+export function zettelVerdeckt(l: Pick<WerkstattLage, 'knoten' | 'rahmen' | 'bahnen'>, z: { pos: { x: number; y: number; b?: number; h?: number } }): string[] {
+  const zb = zettelBox(z);
+  const raus: string[] = [];
+  for (const r of l.rahmen) if (ueberlappt(zb, { x: r.x, y: r.y, b: r.b, h: WS.rahmenKopf })) raus.push(`phase:${r.id}`);
+  for (const b of l.bahnen) if (ueberlappt(zb, { x: 0, y: b.y, b: WS.bahnKopf, h: Math.min(b.h, 56) })) raus.push(`bahn:${b.schluessel}`);
+  for (const k of l.knoten.values()) if (ueberlappt(zb, k)) raus.push(`knoten:${k.id}`);
+  return raus;
+}
+/**
+ * Zettel, die etwas verdecken, über die Rahmen legen (rein; „Ordnen“ ruft es mit — so lässt sich auch ein schon übernommener Prozess mit einem Klick richten).
+ * Freie Zettel bleiben, wo sie sind; die verschobenen bekommen den ersten freien Platz der Reihe über den Rahmen. Nichts zu tun → dieselbe Definition.
+ */
+export function zettelFreiLegen<D extends Pick<ProzessDefinition, 'knoten' | 'zettel'>>(d: D, o: { team?: readonly TeamName[]; zu?: ReadonlySet<string> } = {}): D {
+  const zs = d.zettel ?? [];
+  if (!zs.length) return d;
+  const l = werkstattLage({ knoten: d.knoten }, o);
+  const bleiben = zs.filter(z => !zettelVerdeckt(l, z).length);
+  if (bleiben.length === zs.length) return d;
+  const belegt: Box[] = bleiben.map(zettelBox);
+  const neu = zs.map(z => {
+    if (bleiben.includes(z)) return z;
+    for (let i = 0; i < 1000; i++) {
+      const p = zettelObenPlatz(i, z.pos);
+      const box = { ...p, b: z.pos.b ?? WS.zettel.b, h: z.pos.h ?? WS.zettel.h };
+      if (belegt.some(b => ueberlappt(b, box))) continue;
+      belegt.push(box);
+      return { ...z, pos: { ...z.pos, x: p.x, y: p.y } };
+    }
+    return z;
+  });
+  return { ...d, zettel: neu };
+}
+
+/** Der Zoom, mit dem „Alles zeigen“ diese Lage einpasst (rein). */
+export const einpassZoom = (l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: readonly { pos: { x: number; y: number; b?: number; h?: number } }[], buehne: { b: number; h: number }): number =>
+  einpassKamera(inhaltBox(l, zettel), buehne).s;
+/**
+ * Befund 6 (Sichtprüfung 22.10.: „Alles zeigen wird unlesbar“): passt der ganze Prozess nur so klein ins Bild, dass die Namen unlesbar wären (Stufe „fern“ der
+ * EINEN Regel `zoomStufe` — components/os/ui/flaeche/stufe.ts, der Aufrufer reicht sie herein), zeigt „Alles zeigen“ die Phasen als zugeklappte Kacheln
+ * (semantischer Zoom wie auf der Landkarte); ein Klick auf eine Kachel klappt sie auf. Bei nur einer Phase gibt es nichts zuzuklappen. Rein.
+ */
+export function allesAlsKacheln(
+  d: Pick<ProzessDefinition, 'knoten' | 'zettel'>, buehne: { b: number; h: number }, stufe: (s: number) => 'fern' | 'mittel' | 'nah',
+  o: { team?: readonly TeamName[]; zu?: ReadonlySet<string> } = {},
+): boolean {
+  const offen = phasen(d).filter(p => !o.zu?.has(p.id));
+  if (offen.length < 2) return false;
+  return stufe(einpassZoom(werkstattLage(d, o), d.zettel ?? [], buehne)) === 'fern';
 }
