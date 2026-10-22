@@ -644,6 +644,11 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
         <WerkstattTests prozessId={prozessId} d={d} tests={laeufe.daten?.tests ?? []} rechte={rechte} ergebnisse={testErg}
           onErgebnisse={e => setTestErg(m => { const n = new Map(m); for (const x of e) n.set(x.id, x); return n; })} onNeu={laeufe.laden} />
       )}
+      {/* Am Handy zuerst die Schritte zum Bearbeiten (Texte, Fristen, Zuständige) — die Fläche und der Steckbrief folgen darunter. */}
+      {reiter === 'bauen' && nurAnsehen && (
+        <MobilSchrittListe darf={mobilDarf} onBearbeiten={setMobilWahl}
+          phasen={phasen(d).map(p => ({ id: p.id, titel: p.titel, schritte: alleSchritte(d).filter(x => x.phase.id === p.id && x.schritt.form !== 'freigabe').map(x => ({ id: x.schritt.id, titel: x.schritt.titel, unter: unterzeile(x.schritt) || undefined })) }))} />
+      )}
       {reiter === 'bauen' && <div className={`pw-raster${nurAnsehen ? ' pw-raster-schmal' : ''}`}>
         <div ref={rahmen} className="pw-flaeche-rahmen">
           <WerkstattFlaeche ref={flaeche} d={d} lage={lage} szene={`${prozessId}:${versionAnsicht?.nr ?? 'entwurf'}`} auswahl={auswahl} kanteWahl={kanteWahl} rahmenWahl={rahmenWahl} andockWahl={andockWahl}
@@ -694,10 +699,6 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
         </aside>
       </div>}
-      {reiter === 'bauen' && nurAnsehen && (
-        <MobilSchrittListe darf={mobilDarf} onBearbeiten={setMobilWahl}
-          phasen={phasen(d).map(p => ({ id: p.id, titel: p.titel, schritte: alleSchritte(d).filter(x => x.phase.id === p.id && x.schritt.form !== 'freigabe').map(x => ({ id: x.schritt.id, titel: x.schritt.titel, unter: unterzeile(x.schritt) || undefined })) }))} />
-      )}
       {mobilWahl && (() => {
         const k = d.knoten.find(x => x.id === mobilWahl);
         if (!k) return null;

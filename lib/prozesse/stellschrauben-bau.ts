@@ -68,7 +68,7 @@ function headZeilen(id: string, name: string, h: HeadKurz | undefined): Stellsch
   const z = (k: string, n: string, wert: string, erklaerung: string): Stellschraube => ({ id: `head-${id}-${k}`, gruppe: name, name: n, erklaerung, art: 'info', wert, wo, link });
   return [
     z('aktiv', 'An / aus', h?.notAus ? 'angehalten (Not-Aus)' : h?.aktiv === false ? 'aus' : 'an', 'Ausgeschaltet schlägt der Head im Takt nichts vor; Not-Aus hält alle seine Läufe an.'),
-    z('stufe', 'Modell', h?.stufe ? STUFE_TEXT[h.stufe] ?? h.stufe : 'Vorgabe des Katalogs', 'Welche Modellstufe der Head nimmt — nie eine feste Modell-Kennung.'),
+    z('stufe', 'Modell', h?.stufe ? STUFE_TEXT[h.stufe] ?? h.stufe : 'Vorgabe des Katalogs', 'Welche Modellstufe der Head nimmt (schnell, ausgewogen oder stark).'),
     z('budget', 'Budget je Monat', typeof h?.budgetCentMonat === 'number' ? `${(h.budgetCentMonat / 100).toLocaleString('de-DE')} €` : 'keine Grenze', 'Ab 80 % meldet sich die Glocke, bei 100 % pausiert der Head bis Monatsende.'),
     z('autonomie', 'Autonomie', h?.autonomie ? AUTONOMIE_TEXT[h.autonomie] ?? h.autonomie : 'Vorgabe', 'Was der Head ohne Klick selbst erledigen darf — nur verschärfen.'),
   ];

@@ -252,6 +252,13 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           {fehlerBefunde.slice(0, 5).map((b, i) => <span key={i} style={{ display: 'block' }}>{b.text}</span>)}
         </Hinweis>
       )}
+      {schmal && (
+        <MobilSchrittListe darf={mobilDarf} onBearbeiten={setMobilWahl}
+          phasen={phasen(d).map(p => ({
+            id: p.id, titel: p.titel, bearbeitbar: true,
+            schritte: alleSchritte(d).filter(x => x.phase.id === p.id && !ansicht.abstimmungen[x.schritt.id]).map(x => ({ id: x.schritt.id, titel: x.schritt.titel, unter: paketUnterzeile(ansicht.info[x.schritt.id]) || undefined })),
+          }))} />
+      )}
       <div className={`pw-raster${schmal ? ' pw-raster-schmal' : ''}`}>
         <div className="pw-flaeche-rahmen">
           <WerkstattFlaeche ref={flaeche} d={d} lage={lage} szene={`${daten.paket.id}:${daten.paket.fassung}`} auswahl={auswahl} kanteWahl={null} rahmenWahl={rahmenWahl} andockWahl={null}
@@ -268,13 +275,6 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           </aside>
         )}
       </div>
-      {schmal && (
-        <MobilSchrittListe darf={mobilDarf} onBearbeiten={setMobilWahl}
-          phasen={phasen(d).map(p => ({
-            id: p.id, titel: p.titel, bearbeitbar: true,
-            schritte: alleSchritte(d).filter(x => x.phase.id === p.id && !ansicht.abstimmungen[x.schritt.id]).map(x => ({ id: x.schritt.id, titel: x.schritt.titel, unter: paketUnterzeile(ansicht.info[x.schritt.id]) || undefined })),
-          }))} />
-      )}
       {mobilWahl && (() => {
         const k = fassung.knoten.find(x => x.id === mobilWahl);
         if (!k) return null;
