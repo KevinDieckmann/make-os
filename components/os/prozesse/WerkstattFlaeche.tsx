@@ -13,12 +13,13 @@
 // Leistung: Kamera in Refs, gezeichnet per requestAnimationFrame; React-Zustand nur beim Ziehen (wenige Dutzend Knoten).
 
 import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent } from 'react';
-import { ChevronsLeftRight, ChevronsRightLeft, User, Users, Cog, Bot, Heart } from 'lucide-react';
+import { ChevronsLeftRight, ChevronsRightLeft, User, Users, Cog, Bot, Heart, Plus } from 'lucide-react';
 import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL, TYP } from '@/lib/make-one/design';
 import type { NotizZettel, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { Ausgang } from '@/lib/prozesse/fluss';
 import {
-  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
+  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, kantenPlus, titelBox,
+  type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
 } from '@/lib/prozesse/werkstatt-lage';
 import { kanteAufWeg, type LaufMarke } from '@/lib/prozesse/laeufe-ansicht';
 import { tasteZuAktion, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
@@ -33,7 +34,7 @@ import { FLOW_TON } from '../ui/reise/formen';
 import { KnotenZeichnung, ZuKachel } from './WerkstattKnoten';
 
 type K = ProzessKnoten<ProzessForm>;
-export interface AnhangZiel { nach?: string; ausgang?: Ausgang; vor?: string; phaseId?: string; platz?: [number, number] }
+export interface AnhangZiel { nach?: string; ausgang?: Ausgang; vor?: string; phaseId?: string; platz?: [number, number]; /** Werkstatt bau-fertig (Punkt 3): mitten auf diesem Faden einfügen. */ zwischen?: string }
 export interface FlaecheSteuerung {
   allesZeigen(): void; zoomen(f: number): void; zeige(id: string): void; mitte(): [number, number]; bildschirm(x: number, y: number): [number, number]; fokus(): void;
   /** Feinschliff 22.10. (Befund 2): die Kamera fährt nur so weit, dass der Knoten ganz zu sehen ist (der Zoom bleibt). */
@@ -74,12 +75,25 @@ export interface WerkstattFlaecheProps {
   onTaste: (a: TastenAktion) => boolean;
   /** Werkzeug-Muster (22.10.): der Maßstab je gezeichnetem Bild (Zoom-Leiste „87 %“) — schreibt direkt, kein Zustand je Bild. */
   onMassstab?: (s: number) => void;
+  // ── Werkstatt bau-fertig (22.10., n8n-Niveau) ──
+  /** Fäden, auf denen mitten ein „+“ steht (dazwischen einfügen) — die Regel sagt die Werkstatt (`zwischenGrund`). */
+  zwischen?: ReadonlySet<string>;
+  onZwischen?: (kanteId: string, bildschirm: [number, number]) => void;
+  /** Das Ende eines gewählten Fadens auf einen anderen Schritt gezogen. */
+  onUmhaengen?: (kanteId: string, ziel: string) => void;
+  /** Doppelklick auf einen Knoten (erster: Namen direkt ändern, zweiter: großes Fenster). */
+  onDoppel?: (id: string) => void;
+  /** Dieser Knoten wird gerade direkt auf der Fläche umbenannt. */
+  umbenennen?: string | null;
+  /** Ende des Umbenennens: neuer Name bzw. null (abgebrochen). */
+  onUmbenannt?: (id: string, titel: string | null) => void;
 }
 
 type Zug =
   | { art: 'knoten'; zeiger: number; start: [number, number]; ids: string[]; aktiv: boolean; erweitern: boolean; id: string }
   | { art: 'faden'; zeiger: number; start: [number, number]; von: string; ausgang: Ausgang; aktiv: boolean }
-  | { art: 'band'; zeiger: number; start: [number, number]; aktiv: boolean; erweitern: boolean };
+  | { art: 'band'; zeiger: number; start: [number, number]; aktiv: boolean; erweitern: boolean }
+  | { art: 'ende'; zeiger: number; start: [number, number]; kante: string; von: [number, number]; aktiv: boolean };
 
 const ZIEH_PX = 5;
 const ruhig = () => typeof window !== 'undefined' && bewegungReduziert();
@@ -119,6 +133,18 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   const [geraet, setGeraet] = useState({ mac: true, touch: false });
   const stand = useRef(p);
   stand.current = p;
+  /** Das Feld zum Umbenennen auf der Fläche (Punkt 2) — seine Lage folgt der Kamera (gesetzt im Bild, kein Zustand je Bild). */
+  const namensFeld = useRef<HTMLInputElement | null>(null);
+  const namensOrt = useCallback(() => {
+    const el = namensFeld.current, id = stand.current.umbenennen;
+    const lk = id ? stand.current.lage.knoten.get(id) : undefined;
+    if (!el || !lk) return;
+    const t = titelBox(lk) ?? { x: lk.x + lk.koerper.x, y: lk.y + lk.koerper.y + lk.koerper.h / 2 - 20, b: lk.koerper.b, h: 40 };
+    const k = kamera.current;
+    const [x, y] = bildAus(k, t.x, t.y);
+    el.style.left = `${Math.round(x)}px`; el.style.top = `${Math.round(y)}px`;
+    el.style.width = `${Math.max(160, Math.round(t.b * k.s))}px`;
+  }, []);
 
   const groesse = () => { const r = buehne.current?.getBoundingClientRect(); return { b: r?.width || 960, h: r?.height || 600 }; };
   const zeichne = useCallback(() => {
@@ -130,8 +156,9 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       muster.current?.setAttribute('patternTransform', `translate(${k.x} ${k.y}) scale(${k.s})`);
       ebene.current?.kamera(k);
       stand.current.onMassstab?.(k.s);
+      namensOrt();
     });
-  }, []);
+  }, [namensOrt]);
   const setze = useCallback((k: Kamera) => { kamera.current = k; zeichne(); }, [zeichne]);
   const fliege = useCallback((ziel: Kamera) => {
     if (ruhig()) { setze(ziel); return; }
@@ -183,7 +210,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     const e = flaecheEingabe(el, {
       kamera: () => kamera.current, setze,
       freiSchiebt: () => stand.current.nurLesen,
-      istFrei: z => !(z as Element | null)?.closest?.('[data-ws-knoten],[data-ws-anschluss],[data-ws-plus],[data-ws-kante],[data-ws-zettel],[data-ws-rahmen],[data-ws-unter],[data-ws-zu]'),
+      istFrei: z => !(z as Element | null)?.closest?.('[data-ws-knoten],[data-ws-anschluss],[data-ws-plus],[data-ws-kante],[data-ws-zettel],[data-ws-rahmen],[data-ws-unter],[data-ws-zu],[data-ws-zwischen],[data-ws-ende]'),
     });
     return () => { e.abbauen(); if (bild.current) cancelAnimationFrame(bild.current); };
   }, [setze]);
@@ -252,8 +279,14 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     svg.current?.focus({ preventScroll: true }); // Tastatur gehört danach der Fläche
     const t = e.target as Element;
     const w = welt0(e);
-    const plus = t.closest('[data-ws-plus]');
+    const plus = t.closest('[data-ws-plus],[data-ws-zwischen]');
     if (plus) return; // Klick (onClick) öffnet die Formauswahl
+    // Werkstatt bau-fertig (Punkt 4): das Ende eines gewählten Fadens greifen und auf einen anderen Schritt ziehen.
+    const ende = t.closest('[data-ws-ende]')?.getAttribute('data-ws-ende');
+    if (ende && !p.nurLesen) {
+      const k = stand.current.lage.kanten.find(x => x.id === ende);
+      if (k?.punkte.length) { zug.current = { art: 'ende', zeiger: e.pointerId, start: w, kante: k.id, von: k.punkte[0], aktiv: false }; svg.current?.setPointerCapture(e.pointerId); e.preventDefault(); return; }
+    }
     const unter = t.closest('[data-ws-unter]')?.getAttribute('data-ws-unter');
     if (unter) { const [id, art] = unter.split('|'); p.onUnter(id, art); return; }
     const an = t.closest('[data-ws-anschluss]')?.getAttribute('data-ws-anschluss');
@@ -292,6 +325,12 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
         const h = hilfslinien(box, andere, { raster: stand.current.raster ? WS.raster : 0 });
         setZieh({ ids: z.ids, dx: h.x - haupt.x - haupt.koerper.x, dy: h.y - haupt.y - haupt.koerper.y, linien: h.linien });
       } else setZieh({ ids: z.ids, dx: Math.round(dx), dy: Math.round(dy), linien: [] });
+    } else if (z.art === 'ende') {
+      const ziel = (document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-ws-knoten]')?.getAttribute('data-ws-knoten')) ?? null;
+      const zk = ziel ? stand.current.lage.knoten.get(ziel) : null;
+      const ein = zk ? anschlussAbs(zk, 'ein') : null;
+      setFadenZiel(ziel ? { id: ziel, nein: !ein } : null);
+      setZugPunkte(fadenWeg(z.von, 'rechts', ein ? ein.abs : w, Math.max(z.von[1], w[1]) + 40).punkte);
     } else if (z.art === 'faden') {
       const von = stand.current.lage.knoten.get(z.von);
       const a = von ? anschlussAbs(von, z.ausgang) : null;
@@ -316,6 +355,12 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       setZieh(null);
       return;
     }
+    if (z.art === 'ende') {
+      const ziel = fadenZiel;
+      setZugPunkte(null); setFadenZiel(null);
+      if (z.aktiv && ziel && !ziel.nein) p.onUmhaengen?.(z.kante, ziel.id);
+      return;
+    }
     if (z.art === 'faden') {
       const ziel = fadenZiel;
       setZugPunkte(null); setFadenZiel(null);
@@ -334,11 +379,17 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     p.onAuswahl([...drin, ...zt], { erweitern: z.erweitern });
   };
   const plusKlick = (e: RMouseEvent<SVGSVGElement>) => {
+    const zw = (e.target as Element).closest('[data-ws-zwischen]')?.getAttribute('data-ws-zwischen');
+    if (zw && !p.nurLesen) { const r = svg.current!.getBoundingClientRect(); p.onZwischen?.(zw, [e.clientX - r.left, e.clientY - r.top]); return; }
     const pl = (e.target as Element).closest('[data-ws-plus]')?.getAttribute('data-ws-plus');
     if (!pl || p.nurLesen) return;
     const [von, art] = pl.split('|');
     const r = svg.current!.getBoundingClientRect();
     p.onAnhaengen({ nach: von, ausgang: art as Ausgang }, [e.clientX - r.left, e.clientY - r.top]);
+  };
+  const doppel = (e: RMouseEvent<SVGSVGElement>) => {
+    const id = (e.target as Element).closest('[data-ws-knoten]')?.getAttribute('data-ws-knoten');
+    if (id) { e.preventDefault(); p.onDoppel?.(id); }
   };
   const taste = (e: RKeyboardEvent<SVGSVGElement>) => {
     if (imFeld(e.target)) return;
@@ -358,7 +409,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     <div ref={buehne} className="ff-flaeche-buehne pw-buehne">
       <canvas ref={leinwand} aria-hidden="true" data-flow-ebene="" className="ff-flow-ebene" style={{ pointerEvents: 'none' }} />
       <svg ref={svg} tabIndex={0} role="application" aria-roledescription="Werkstatt-Fläche" aria-label={p.label} className="pw-svg"
-        onPointerDown={runter} onPointerMove={bewegt} onPointerUp={hoch} onPointerCancel={hoch} onClick={plusKlick} onKeyDown={taste}
+        onPointerDown={runter} onPointerMove={bewegt} onPointerUp={hoch} onPointerCancel={hoch} onClick={plusKlick} onDoubleClick={doppel} onKeyDown={taste}
         style={{ fontFamily: 'inherit', cursor: p.nurLesen ? 'grab' : 'default', touchAction: p.nurLesen ? undefined : 'none' }}>
         <defs>
           <pattern ref={muster} id={rasterId} width={WS.raster} height={WS.raster} patternUnits="userSpaceOnUse"><circle cx={1} cy={1} r={1.1} fill={RAND.stark} /></pattern>
@@ -401,8 +452,11 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
           {kanten.map(k => {
             const dd = pfadVon(k.punkte);
             const an = p.kanteWahl === k.id;
+            const zw = !p.nurLesen && !zieh && p.zwischen?.has(k.id);
+            const mp = zw ? kantenPlus(k) : null;
+            const ende = an && !p.nurLesen && !zieh ? k.punkte.at(-1) : undefined;
             return (
-              <g key={k.id}>
+              <g key={k.id} className={`pw-kante${an ? ' pw-kante-an' : ''}`}>
                 <FlaechePfeil d={dd} spitze={spitze} gewaehlt={an} gestrichelt={k.zurueck} />
                 {k.ausgang === 'fehler' && <path d={dd} fill="none" stroke={LEUCHT.kritisch} strokeOpacity={0.85} strokeWidth={1.6} strokeDasharray="6 5" style={{ pointerEvents: 'none' }} />}
                 <path data-ws-kante={k.id} d={dd} fill="none" stroke="transparent" strokeWidth={16} style={{ cursor: p.nurLesen ? 'default' : 'pointer' }} />
@@ -412,6 +466,21 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
                     <text x={k.zurueck ? 0 : b / 2} textAnchor="middle" dominantBaseline="central" fontSize={WS.chip.schrift} fill={k.ausgang === 'fehler' ? LEUCHT.kritisch : C.inkDim}>{k.text}</text>
                   </g>
                 ); })()}
+                {/* Werkstatt bau-fertig (Punkt 3): „+“ mitten auf dem Faden — dazwischen einfügen (beim Überfahren bzw. am gewählten Faden). */}
+                {mp && (
+                  <g className="pw-kante-plus" data-ws-zwischen={k.id} transform={`translate(${mp[0]} ${mp[1]})`} role="button" style={{ cursor: 'pointer' }}
+                    aria-label={`Dazwischen einfügen: zwischen „${nach.get(k.von)?.titel ?? ''}“ und „${(k.nach && nach.get(k.nach)?.titel) || ''}“`}>
+                    <circle r={13} fill={C.flaeche} stroke={C.aktiv} strokeWidth={1.6} />
+                    <Plus x={-7} y={-7} width={14} height={14} color={C.aktiv} aria-hidden />
+                  </g>
+                )}
+                {/* Punkt 4: das Ende des gewählten Fadens greifen und umhängen. */}
+                {ende && (
+                  <g data-ws-ende={k.id} transform={`translate(${ende[0]} ${ende[1]})`} style={{ cursor: 'grab' }} role="button" aria-label="Ende des Fadens greifen und auf einen anderen Schritt ziehen">
+                    <circle r={14} fill="transparent" />
+                    <circle r={8} fill={C.aktiv} stroke={C.grund} strokeWidth={2} />
+                  </g>
+                )}
               </g>
             );
           })}
@@ -439,9 +508,31 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
         </g>
       </svg>
       <p className="ff-flaeche-hinweis pz-hinweis" style={{ position: 'absolute', left: 12, bottom: 8, margin: 0, fontSize: TYP.bedien, color: C.inkLeise, pointerEvents: 'none', maxWidth: 'calc(100% - 24px)' }}>{hinweis}</p>
+      {/* Punkt 2: den Namen direkt auf der Fläche ändern (Doppelklick bzw. F2) — Enter übernimmt, Esc bricht ab, Verlassen übernimmt. */}
+      {p.umbenennen && nach.get(p.umbenennen) && (
+        <NamensFeld key={p.umbenennen} feld={namensFeld} wert={nach.get(p.umbenennen)!.titel} onSetzen={namensOrt}
+          onFertig={t => p.onUmbenannt?.(p.umbenennen!, t)} />
+      )}
     </div>
   );
 });
+
+/** Das Feld zum Umbenennen auf der Fläche (Punkt 2): liegt über dem Namen des Knotens, wählt den Text beim Öffnen; Enter übernimmt, Esc bricht ab. */
+function NamensFeld({ feld, wert, onSetzen, onFertig }: { feld: { current: HTMLInputElement | null }; wert: string; onSetzen: () => void; onFertig: (t: string | null) => void }) {
+  const fertig = useRef(false);
+  const ende = (t: string | null) => { if (fertig.current) return; fertig.current = true; onFertig(t); };
+  useEffect(() => { onSetzen(); feld.current?.focus({ preventScroll: true }); feld.current?.select(); }, [feld, onSetzen]);
+  return (
+    <input ref={el => { feld.current = el; }} className="pw-namensfeld" aria-label="Name des Schritts" defaultValue={wert} maxLength={120}
+      onKeyDown={e => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); ende((e.target as HTMLInputElement).value.trim() || null); }
+        else if (e.key === 'Escape') { e.preventDefault(); ende(null); }
+      }}
+      onBlur={e => ende(e.target.value.trim() || null)}
+      onPointerDown={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()} />
+  );
+}
 
 function Zettel({ z, gewaehlt }: { z: NotizZettel; gewaehlt: boolean }) {
   const ton = ZETTEL_TON[z.farbe ?? 'gelb'];

@@ -1278,6 +1278,21 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .pw-auswahl { position: absolute; z-index: 6; width: min(420px, calc(100% - 16px)); display: grid; gap: 10px; padding: 14px; border-radius: 16px; box-shadow: 0 18px 50px -12px rgba(0,0,0,.75); box-sizing: border-box; }
 .pw-auswahl-zeile { display: flex; gap: 10px; align-items: center; width: 100%; min-height: 48px; padding: 6px 10px; border-radius: 12px; border: 1px solid transparent; color: #E8ECEA; cursor: pointer; font: inherit; }
 .pz-voll .pw-werkstatt { display: flex; flex-direction: column; height: 100%; }
+/* Werkstatt bau-fertig (22.10., n8n-Niveau): Hinweise schweben über der Fläche (statt sie zu schieben), „+“ mitten auf dem Faden (beim Überfahren bzw. am gewählten
+   Faden), Name direkt auf der Fläche ändern, Knoten-Auswahl als Seitenleiste in voller Höhe. Keine Transformation an schwebenden Leisten (Fenster bleiben am Bildschirm). */
+.pw-hinweise-schwebe { position: absolute; z-index: 4; top: 12px; left: 64px; right: 64px; margin: 0 auto; max-width: 640px; display: grid; gap: 8px; pointer-events: none; }
+.pw-hinweise-schwebe > *, .wz-hinweise > * { pointer-events: auto; }
+.pw-hinweis-karte { border-radius: 14px; background: #161B1F; box-shadow: 0 14px 36px -16px rgba(0,0,0,.85); }
+.pw-kante .pw-kante-plus { opacity: 0; transition: opacity .12s ease-out; }
+.pw-kante:hover .pw-kante-plus, .pw-kante.pw-kante-an .pw-kante-plus, .pw-kante .pw-kante-plus:focus { opacity: 1; }
+@media (hover: none) { .pw-kante .pw-kante-plus { opacity: .85; } }
+.pw-namensfeld { position: absolute; z-index: 5; min-height: 40px; padding: 6px 10px; box-sizing: border-box; border-radius: 10px; border: 1px solid #58D9CD; background: #161B1F; color: #E8ECEA; font: inherit; font-size: 15px; font-weight: 650; text-align: center; box-shadow: 0 10px 30px -12px rgba(0,0,0,.85); }
+.pw-auswahl-leiste { position: absolute; z-index: 6; top: 0; right: 0; bottom: 0; width: min(400px, 100%); display: flex; flex-direction: column; gap: 10px; padding: 12px; box-sizing: border-box; border-radius: 16px; background: #1B2126; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 18px 50px -12px rgba(0,0,0,.75); }
+.pw-auswahl-liste { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 4px; align-content: start; }
+.wz-inhalt-flaeche .pw-auswahl-leiste { top: var(--wz-oben); right: 12px; bottom: 12px; }
+@media (prefers-reduced-motion: reduce) { .pw-kante .pw-kante-plus { transition: none; } }
+@media print { .pw-auswahl-leiste, .pw-hinweise-schwebe, .pw-kante-plus { display: none !important; } }
+
 .pz-voll .pw-raster { flex: 1 1 auto; min-height: 0; height: 100%; }
 .pz-voll .pw-flaeche-rahmen, .pz-voll .ff-flaeche-buehne.pw-buehne { height: 100%; min-height: 300px; }
 .pz-voll .pw-panel { max-height: 100%; }
