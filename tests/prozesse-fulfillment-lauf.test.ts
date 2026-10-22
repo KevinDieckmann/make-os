@@ -223,3 +223,35 @@ describe('Sichtbar: Landkarte, Werkstatt, Verbindungsprüfung', () => {
     expect(r.bestaende.crm.leistungen.find(l => l.id === 'p-scharf')?.prozessId).toBe(PZ_SCHARF);
   });
 });
+
+describe('Fulfillment: ein Mandat, dessen Ablauf ein laufender Werkstatt-Prozess ist, ist KEIN Kandidat „noch kein Fall“ (Kevin 22.10.: „Dort ausblenden“)', () => {
+  const MIT_LAUF = ['ma-doppel', 'ma-probe', 'ma-scharf', 'ma-v2'];
+  const OHNE = ['ma-alt', 'ma-entwurf', 'ma-mit-zusatz', 'ma-paket'];
+  it('Liste (GET /api/fulfillment?nur=kurz): scharf und Schatten fehlen; Entwurf, Bestandsmandat ohne Lauf, Paket und nur Zusatz-Lauf bleiben — das Paket-Mandat bit-gleich', async () => {
+    const { aendereCrm } = await import('@/lib/crm/speicher');
+    const { localDay } = await import('@/lib/zeit');
+    // Unterschrieben und frisch (kein Bestand) — sonst wäre keines ein Kandidat mit Vorschlag.
+    await aendereCrm(b => ({ ...b, mandate: b.mandate.map(m => ({ ...m, vertragUnterschrieben: true, start: localDay() })) }), { art: 'person', person: 'pia' });
+    const { GET } = await import('@/app/api/fulfillment/route');
+    const r = await GET(new Request('http://test/api/fulfillment?nur=kurz&space=business', { headers: sitzung('pia') }));
+    expect(r.status).toBe(200);
+    const j = await r.json() as { kandidaten: { mandatId: string }[] };
+    expect(j.kandidaten.map(k => k.mandatId).sort()).toEqual(OHNE);
+    // Gold: ohne die Menge rechnet die Ansicht dieselben Kandidaten — für das Paket-Mandat Feld für Feld gleich.
+    const [{ kandidatenAnsicht }, { fulfillmentLesen }, { ladeCrm }] = await Promise.all([import('@/lib/fulfillment/prozesse/server'), import('@/lib/fulfillment/speicher'), import('@/lib/crm/speicher')]);
+    const ohneMenge = kandidatenAnsicht(await ladeCrm(), await fulfillmentLesen('vorlagen', H), (await fulfillmentLesen('faelle', H)).faelle, localDay(), new Date().toISOString());
+    expect(ohneMenge.map(k => k.mandatId).sort()).toEqual([...MIT_LAUF, ...OHNE].sort());
+    const paket = (l: { mandatId: string }[]) => JSON.stringify({ ...l.find(k => k.mandatId === 'ma-paket'), uhr: undefined });
+    expect(paket(j.kandidaten)).toBe(paket(ohneMenge));
+  });
+  it('Morgenlauf: Vorschlag „Fall starten“ und Glocke nur für die übrigen Kandidaten', async () => {
+    const { prozesseMorgenlauf } = await import('@/lib/fulfillment/prozesse/server');
+    const { localDay } = await import('@/lib/zeit');
+    await prozesseMorgenlauf(H, localDay()); // erster Lauf: merkt sich nur den Stichtag
+    await prozesseMorgenlauf(H, localDay());
+    const stapel = ((await db.loadJson<{ vorschlaege: { eingabe: { mandatId?: string }; bezug?: { art: string; id: string } }[] }>('zoe-stapel'))?.vorschlaege ?? [])
+      .filter(v => v.bezug?.id.startsWith('p:onboarding:')).map(v => v.eingabe.mandatId).sort();
+    expect(stapel).toEqual(OHNE);
+  });
+});
+

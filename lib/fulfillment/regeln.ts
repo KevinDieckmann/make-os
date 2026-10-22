@@ -461,11 +461,16 @@ export function onboardingKandidaten(
   faelle: Readonly<Record<string, unknown>>,
   marken: Readonly<Record<string, string>>,
   heute: string,
+  /**
+   * Prozesse × Fulfillment (22.10., Entscheidung „dort ausblenden“): Mandate, deren Ablauf ein laufender Prozess der Werkstatt ist (lib/prozesse/produkt-bindung.ts
+   * `mandateMitProduktLauf`, gelesen vom Server) — sie sind KEIN Kandidat. Fehlt die Menge, rechnet die Regel bit-gleich wie vorher.
+   */
+  mitProzessLauf?: ReadonlySet<string>,
 ): OnboardingKandidat[] {
   const raus: OnboardingKandidat[] = [];
   for (const m of crm.mandate ?? []) {
     if (m.status !== 'aktiv' && m.status !== 'angebot') continue;
-    if (!istBusinessMandat(m.gesellschaft) || m.geloeschtAm || faelle[m.id] || marken[markeOnboardingAus(m.id)]) continue;
+    if (!istBusinessMandat(m.gesellschaft) || m.geloeschtAm || faelle[m.id] || marken[markeOnboardingAus(m.id)] || mitProzessLauf?.has(m.id)) continue;
     const angebot = (crm.angebote ?? []).some(a => a.status === 'angenommen' && (a.mandatId === m.id || (!!m.chanceId && a.dealId === m.chanceId)));
     const deal = !!m.chanceId && (crm.chancen ?? []).some(c => c.id === m.chanceId && c.stufe === 'gewonnen');
     const grund = m.vertragUnterschrieben ? 'vertrag' as const : angebot ? 'angebot' as const : deal ? 'deal' as const : null;

@@ -61,7 +61,9 @@ export async function GET(req: Request) {
   const kurz = await faelleKurz(Object.keys(faelle.faelle));
   const mandate = Object.fromEntries(crm.mandate.filter(m => istBusinessMandat(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
   const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, ...(f.zusaetze?.length ? { zusaetze: f.zusaetze.map(z => z.vorlageId) } : {}), kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '' }]));
-  const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso);
+  // Prozesse × Fulfillment (22.10., Entscheidung „dort ausblenden“): läuft für ein Mandat schon der Werkstatt-Prozess seines Produkts, ist es kein Kandidat „noch kein Fall“.
+  const { mandateMitProduktLaufLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
+  const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso, await mandateMitProduktLaufLesen(crm));
   // „Heute im Fulfillment“ (17.10. spät): gewonnene Deals (Business) ohne Mandat — „Mandat anlegen & Fall starten“ direkt in der Liste.
   const deals = gewonneneOhneMandat(crm, heute, istBusinessMandat, tageZwischen);
   // Firmen-/Kundennamen gehen raus → Lese-Protokoll (Prüf-Fund 11.10.), nur die Anzahl.

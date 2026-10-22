@@ -227,7 +227,9 @@ async function prozesseMorgenlaufRest(h: string, heute: string): Promise<Morgenl
     }
     return { vorschlaege: 0 };
   }
-  const kandidaten = onboardingKandidaten(crm, faelle.faelle, vorlagen.marken, heute).filter(k => !k.bestand && !vorlagen.marken[markeOnboardingVorschlag(k.mandatId)]);
+  // Prozesse × Fulfillment (22.10.): ein Mandat, dessen Ablauf ein laufender Werkstatt-Prozess ist, bekommt keinen Vorschlag und keine Glocke „Fall starten“.
+  const { mandateMitProduktLaufLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
+  const kandidaten = onboardingKandidaten(crm, faelle.faelle, vorlagen.marken, heute, await mandateMitProduktLaufLesen(crm)).filter(k => !k.bestand && !vorlagen.marken[markeOnboardingVorschlag(k.mandatId)]);
   const enden: Record<string, string | null> = Object.fromEntries(crm.mandate.map(m => [m.id, mandatsEnde(m)]));
   const nachsorge = nachsorgeFaellig({ faelle: Object.values(faelle.faelle), enden, tage: vorlagen.einstellungen.nachsorgeTage, heute });
   if (!kandidaten.length && !nachsorge.length) return { vorschlaege: 0 };
@@ -399,9 +401,12 @@ export const PROZESSE_STAPEL: StapelArtFreigabe = {
 
 // ── Ansichten der Routen ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Onboarding-Kandidaten mit Uhr und vorgeschlagener Vorlage (für Produkte & Mandate und Fulfillment › Onboarding). */
-export function kandidatenAnsicht(crm: Pick<CrmBestand, 'mandate' | 'angebote' | 'chancen'>, vorlagen: VorlagenDatei, faelle: Record<string, Fall>, heute: string, jetzt: string) {
-  return onboardingKandidaten(crm, faelle, vorlagen.marken, heute).map(k => {
+/**
+ * Onboarding-Kandidaten mit Uhr und vorgeschlagener Vorlage (für Produkte & Mandate und Fulfillment › Onboarding). `mitProzessLauf` (22.10.): Mandate, deren Ablauf
+ * ein laufender Prozess der Werkstatt ist (`mandateMitProduktLaufLesen`) — sie fehlen; ohne Angabe wie vorher.
+ */
+export function kandidatenAnsicht(crm: Pick<CrmBestand, 'mandate' | 'angebote' | 'chancen'>, vorlagen: VorlagenDatei, faelle: Record<string, Fall>, heute: string, jetzt: string, mitProzessLauf?: ReadonlySet<string>) {
+  return onboardingKandidaten(crm, faelle, vorlagen.marken, heute, mitProzessLauf).map(k => {
     const m = crm.mandate.find(x => x.id === k.mandatId)!;
     const v = vorlageFuerProdukt(vorlagen, m.leistungId);
     // Bestand: keine 24-h-Uhr (kein „überfällig“) — die Uhr beginnt erst mit dem Start des Falls (`ableitungFuer`).
