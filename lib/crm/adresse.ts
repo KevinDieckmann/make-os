@@ -239,7 +239,7 @@ export function mandantZiel({ mandatId, firmaId, privat, mandatDa, firmaDa, zuga
 // ─── Der Hub — das Menü der Markttraktion als Werkzeug (22.10., Kevins Entscheidungen) ─────────────────────────────────────────────────────
 // Kevin 22.10.: Markttraktion wird ein eigenes Werkzeug (HubSpot-Art) — beim Öffnen klappt die linke Leiste auf diese Punkte um (das gemeinsame
 // Werkzeug-Muster, lib/make-one/werkzeuge.ts, hängt die Liste dort ein). Hier steht NUR die Liste als Daten: Gruppen mit Überschrift, je Punkt Kennung,
-// Name, lucide-Symbol (als Name — die Oberfläche löst ihn auf, components/os/crm/HubMenue.tsx `HUB_SYMBOLE`), Ziel über die Link-Funktionen dieser
+// Name, lucide-Symbol (als Name — aufgelöst in lib/crm/hub-symbole.ts `HUB_SYMBOLE`), Ziel über die Link-Funktionen dieser
 // Datei und die Bereiche, bei denen er leuchtet. Dazu der Standard-Punkt „Automationen & Head“ (eigener Eintrag `automation`, wie im Werkzeug-
 // Muster) und der Fuß (Stammdaten). Produkte & Mandate bleibt ein eigenes Werkzeug, Kontakte stehen nur hier (nie zusätzlich in der Hauptleiste).
 // Regeln (Wächter tests/aufraeumen-etappe3.test.ts + tests/markttraktion-hub.test.ts): höchstens zwölf Punkte in den Gruppen (dazu der Fuß und
@@ -332,8 +332,8 @@ export const HUB_PUNKTE: readonly HubPunkt[] = [...HUB_MENUE.gruppen.flatMap(g =
 /** Ein Eintrag zum Zeichnen — eigener Punkt oder „Automationen & Head“. */
 export interface HubEintrag { id: HubOrtId; name: string; symbol: HubSymbol; ziel: string; titel: string }
 /**
- * Die Gruppen zum Zeichnen (Übergangs-Menü der Seite, Tests): die eigenen Punkte, „Automationen & Head“ am Ende seiner Gruppe — wie
- * `alleUnterpunkte` im Werkzeug-Muster.
+ * Die Gruppen in der Reihenfolge des Menüs (Tests, Beschreibungen): die eigenen Punkte, „Automationen & Head“ am Ende seiner Gruppe — dieselbe
+ * Reihenfolge, die `alleUnterpunkte(MARKTTRAKTION_WERKZEUG)` in der Werkzeug-Leiste zeichnet (Wächter tests/werkzeuge.test.ts).
  */
 export function hubGruppenAnzeige(): { id: HubGruppeId; titel: string | null; punkte: HubEintrag[] }[] {
   const a = HUB_MENUE.automation;

@@ -22,9 +22,11 @@ vi.mock('next/navigation', () => ({
 }));
 
 import {
-  WERKZEUGE, PROZESSE_WERKZEUG, werkzeugFuer, werkzeugVonHref, werkzeugKontext, werkzeugPunkte, alleUnterpunkte, automationPunkt, vollAdresse, imWerkzeugModus,
-  AUTOMATION_LABEL, RUECKWEG_LABEL, type Werkzeug, type WerkzeugPunkt,
+  WERKZEUGE, PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, werkzeugFuer, werkzeugVonHref, werkzeugKontext, werkzeugPunkte, alleUnterpunkte, automationPunkt, automationHeads,
+  vollAdresse, imWerkzeugModus, AUTOMATION_LABEL, RUECKWEG_LABEL, type Werkzeug, type WerkzeugPunkt,
 } from '@/lib/make-one/werkzeuge';
+import { HUB_MENUE, HUB_PUNKTE, hubGruppenAnzeige, hubOrtFuer, markttraktion } from '@/lib/crm/adresse';
+import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
 import { SPACES, leisteFuer, passtZu } from '@/lib/make-one/spaces';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
 import { WEG } from '@/lib/wege';
@@ -42,7 +44,7 @@ const pfadVon = (href: string) => href.split(/[?#]/)[0];
 const seiteDa = (href: string) => existsSync(path.join(wurzel, 'app', pfadVon(href).replace(/^\//, ''), 'page.tsx'));
 const PZ = 'pz-11111111-2222-4333-8444-555555555555';
 /** Die Seite eines Werkzeugs, die seine Aktionen hört — ein neues Werkzeug trägt sich hier ein (sonst rot). */
-const SEITE_DES_WERKZEUGS: Record<string, string> = { prozesse: 'components/os/prozesse/ProzesseSeite.tsx' };
+const SEITE_DES_WERKZEUGS: Record<string, string> = { prozesse: 'components/os/prozesse/ProzesseSeite.tsx', markttraktion: 'components/os/crm/Markttraktion.tsx' };
 
 /** Beispiel-Adressen, an denen die Unterpunkte aufgelöst werden. */
 const ORTE = ['', '?ansicht=liste', '?ansicht=werkstatt', `?p=${PZ}&ansicht=werkstatt`, `?p=${PZ}&ansicht=werkstatt&w=laeufe`, `?p=${PZ}&ansicht=werkstatt&w=tests`, '?p=sp-deal', '?modus=praesentieren', '?voll=1'];
@@ -51,7 +53,8 @@ const alle = (w: Werkzeug, suche: string, handy = false) => {
   return [...werkzeugPunkte(w, k), ...werkzeugPunkte(w, k, 'fuss')].flatMap(p => [p, ...p.unter]);
 };
 
-// ── Ein Beispiel-Werkzeug wie der kommende Markttraktion-Hub: Gruppen, Fuß, „Automationen & Head“ (nur im Test, nie in WERKZEUGE) ──
+// ── Ein Beispiel-Werkzeug (Gruppen, Fuß, „Automationen & Head“) für die allgemeinen Regeln — nur im Test, nie in WERKZEUGE; das echte Markttraktion-Werkzeug
+// prüft der Block „Markttraktion als Werkzeug“ unten. ──
 const HUB: Werkzeug = {
   id: 'hub-test', name: 'Hub', icon: List, spaces: ['business'], pfade: ['/os/markttraktion'], start: '/os/markttraktion', leistenPunkt: 'Markttraktion',
   punkte: [
@@ -88,7 +91,12 @@ describe('Werkzeug-Konfiguration', () => {
       expect(!!werkzeugVonHref(e.href), e.label).toBe(WERKZEUGE.some(w => w.leistenPunkt === e.label && w.spaces.includes(s.id)));
     }
     expect(werkzeugFuer('/os')).toBeNull();
-    expect(werkzeugFuer('/os/markttraktion', '?s=kontakte')).toBeNull();
+    expect(werkzeugFuer('/os/markttraktion', '?s=kontakte')?.id).toBe('markttraktion');
+    expect(werkzeugFuer('/os/netzwerken')?.id).toBe('markttraktion');
+    expect(werkzeugFuer('/os/netzwerken/karte')?.id).toBe('markttraktion');
+    expect(werkzeugFuer('/os/netzwerkenx')).toBeNull();
+    expect(werkzeugFuer('/os/mandate')).toBeNull(); // Produkte & Mandate bleibt (noch) kein Werkzeug
+    expect(werkzeugFuer('/os/menschen')).toBeNull(); // Kontakte privat
     expect(werkzeugFuer('/os/prozesse', '?p=sp-deal&voll=1')?.id).toBe('prozesse');
     expect(werkzeugFuer('/os/prozessebuch')).toBeNull();
   });
@@ -143,8 +151,10 @@ describe('Werkzeug-Konfiguration', () => {
       const datei = SEITE_DES_WERKZEUGS[w.id];
       expect(datei, `${w.id}: Seite in SEITE_DES_WERKZEUGS eintragen`).toBeDefined();
       const q = lies(datei);
-      expect(q).toContain('WERKZEUG_EREIGNIS');
-      for (const p of [...alleUnterpunkte(w), ...(w.fuss ?? [])].flatMap(x => [x, ...(x.unter ?? [])])) if (p.aktion) expect(q, `${w.id}:${p.aktion}`).toContain(`'${p.aktion}'`);
+      const aktionen = [...alleUnterpunkte(w), ...(w.fuss ?? [])].flatMap(x => [x, ...(x.unter ?? [])]).filter(p => p.aktion);
+      // Ein Werkzeug ohne Aktionen (Markttraktion: jeder Punkt ist eine Adresse) braucht keinen Hörer — sonst muss die Seite lauschen.
+      if (aktionen.length) expect(q, w.id).toContain('WERKZEUG_EREIGNIS');
+      for (const p of aktionen) expect(q, `${w.id}:${p.aktion}`).toContain(`'${p.aktion}'`);
     }
   });
   it('Werkzeugmodus = derselbe Parameter wie das Vollbild der Flächen (`voll=1`); Links im Modus bleiben im ganzen Bildschirm', () => {
@@ -170,12 +180,12 @@ describe('„Automationen & Head“ im Muster (Gruppen, Fuß, Standard-Unterpunk
     const ohne: Werkzeug = { ...HUB, automation: { ...HUB.automation!, gruppe: undefined } };
     expect(alleUnterpunkte(ohne).at(-1)?.id).toBe('automationen');
   });
-  it('jedes echte Werkzeug mit `automation`: Bereiche der Landkarte, ein Business-Head, Ort im Werkzeug', () => {
+  it('jedes echte Werkzeug mit `automation`: Bereiche der Landkarte, nur Business-Heads, Ort im Werkzeug', () => {
     for (const w of [...WERKZEUGE, HUB]) {
       const a = w.automation;
       if (!a) continue;
       for (const b of a.bereiche) expect(BEREICH_IDS as readonly string[], `${w.id}:${b}`).toContain(b);
-      if (a.head) expect(headDef(a.head)?.bereich, `${w.id}:${a.head}`).toBe('business');
+      for (const id of automationHeads(a)) expect(headDef(id)?.bereich, `${w.id}:${id}`).toBe('business');
       const ziel = a.href(werkzeugKontext(w.pfade[0]));
       expect(w.pfade.some(m => passtZu(pfadVon(ziel), ziel.includes('?') ? ziel.slice(ziel.indexOf('?')) : '', m)), w.id).toBe(true);
     }
@@ -212,7 +222,7 @@ describe('Leiste: das Werkzeug-Menü nur auf Werkzeug-Adressen', () => {
     expect(laeufe).toContain('data-werkzeug-punkt="laeufe"');
   });
   it('überall sonst die Leiste des Space — kein Werkzeug-Menü, kein Rückweg', async () => {
-    for (const [pfad, suche] of [['/os', ''], ['/os/markttraktion', '?s=kontakte'], ['/os/aufgaben', '']] as const) {
+    for (const [pfad, suche] of [['/os', ''], ['/os/mandate', ''], ['/os/aufgaben', '']] as const) {
       const { desktop } = await render(pfad, suche);
       expect(desktop, pfad).not.toContain('data-werkzeug');
       expect(desktop, pfad).not.toContain(`>${RUECKWEG_LABEL}</span>`);
@@ -294,7 +304,7 @@ describe('Werkzeugmodus: Rahmen und Orte', () => {
   });
   it('Standard: keine Farb-Literale, keine Schrift unter 11 px, kein <a href="/os…">, nichts Persönliches in den neuen Dateien', () => {
     const ordner = 'components/os/werkzeug';
-    const dateien = [...readdirSync(path.join(wurzel, ordner)).map(n => `${ordner}/${n}`), 'lib/make-one/werkzeuge.ts', 'lib/prozesse/bereich-automationen.ts'];
+    const dateien = [...readdirSync(path.join(wurzel, ordner)).map(n => `${ordner}/${n}`), 'lib/make-one/werkzeuge.ts', 'lib/prozesse/bereich-automationen.ts', 'lib/crm/hub-symbole.ts'];
     for (const f of dateien) {
       const q = lies(f).split('\n').filter(z => !z.trim().startsWith('//')).join('\n');
       expect(q, f).not.toMatch(/['"`]#[0-9a-fA-F]{3,8}['"`]/);
@@ -344,8 +354,121 @@ describe('„Automationen & Head“: dieselben Daten wie das Werkzeug Prozesse',
     for (const t of ['Aus Vorlage', 'Head fragen']) expect(ohne, t).not.toContain(t);
     expect(ohne).toContain('Zu den Agenten');
   });
+  it('mehrere Heads (Markttraktion): je eine Karte nebeneinander — Sales zuerst, dann Marketing und Event; „Head fragen“ nur einmal', async () => {
+    const { BereichAutomationenAnsicht } = await import('@/components/os/werkzeug/BereichAutomationen');
+    const kopf = (id: string, name: string, freigaben: number) => ({ id, name, kurz: name, auftrag: `${name} führt.`, aktiv: true, zaehler: { freigaben, laufend: 0 } });
+    const html = renderToStaticMarkup(h(BereichAutomationenAnsicht, {
+      werkzeug: MARKTTRAKTION_WERKZEUG, gruppen: automationenFuer(ansicht, MARKTTRAKTION_WERKZEUG.automation!.bereiche, {}), headId: 'sales', head: kopf('sales', 'Head of Sales', 2),
+      weitere: [{ id: 'marketing', head: kopf('marketing', 'Head of Marketing', 0) }, { id: 'event', head: null }],
+      darfBauen: true, schrauben: {}, onNeu: () => {}, onVorlage: () => {}, onHead: () => {}, onGespeichert: () => {},
+    }));
+    expect(html).toContain(`${AUTOMATION_LABEL.replace('&', '&amp;')} · Markttraktion`);
+    for (const t of ['Head of Sales', 'Head of Marketing', '2 offene Vorschläge', 'Keine offenen Vorschläge', 'Der Head ist für dich hier nicht zu sehen']) expect(html, t).toContain(t);
+    expect(html.indexOf('Head of Sales')).toBeLessThan(html.indexOf('Head of Marketing'));
+    expect((html.match(/>Head fragen</g) ?? []).length).toBe(1);
+    for (const id of ['sales', 'marketing']) expect(html).toContain(`href="${WEG.agenten({ h: id, r: 'einstellungen' }).replace(/&/g, '&amp;')}"`);
+    for (const b of ['Marketing', 'Sales', 'Übergabe']) expect(html, b).toContain(`>${b}</div>`);
+    // Ohne weitere Heads bleibt die Ansicht, wie sie war (eine Karte, kein Raster).
+    const eins = renderToStaticMarkup(h(BereichAutomationenAnsicht, { werkzeug: HUB, gruppen: [], headId: 'sales', head: kopf('sales', 'Head of Sales', 0), darfBauen: true, schrauben: {}, onNeu: () => {}, onVorlage: () => {}, onHead: () => {}, onGespeichert: () => {} }));
+    expect(eins).not.toContain('class="raster"');
+  });
   it('Galerie und Head nehmen den Bereich (additiv, ohne Angabe wie bisher)', () => {
     expect(lies('components/os/prozesse/VorlagenGalerie.tsx')).toContain('const imBereich = (b: string) => !nurBereiche?.length || nurBereiche.includes(b);');
     expect(lies('components/os/prozesse/HeadFragen.tsx')).toContain("useState<ProzessBereich>(prozess?.bereich ?? bereichVorgabe ?? 'sales')");
+  });
+});
+
+// ── Markttraktion als Werkzeug (22.10. abends): die Punkte aus HUB_MENUE in der linken Leiste — das Übergangs-Menü der Seite ist weg ──────────────────
+describe('Markttraktion als Werkzeug (HubSpot-Art, Punkte aus HUB_MENUE)', () => {
+  const M = MARKTTRAKTION_WERKZEUG;
+  const leuchtet = (pfad: string, suche = '', handy = false) => {
+    const k = werkzeugKontext(pfad, suche, handy);
+    return [...werkzeugPunkte(M, k), ...werkzeugPunkte(M, k, 'fuss')].filter(p => p.an).map(p => p.id);
+  };
+  it('Punkte = HUB_MENUE (Reihenfolge, Name, Symbol, Ziel, Gruppe); Fuß Stammdaten; „Automationen & Head“ am Ende von Steuerung; keine dritte Ebene', () => {
+    const k = werkzeugKontext('/os/markttraktion');
+    const l = werkzeugPunkte(M, k);
+    expect(l.map(p => p.id)).toEqual(hubGruppenAnzeige().flatMap(g => g.punkte.map(p => p.id)));
+    expect(l.map(p => p.gruppe ?? null)).toEqual(hubGruppenAnzeige().flatMap(g => g.punkte.map(() => g.titel)));
+    for (const p of l.filter(x => x.id !== 'automationen')) {
+      const hp = HUB_PUNKTE.find(x => x.id === p.id)!;
+      expect([p.label, p.href, p.titel], p.id).toEqual([hp.name, hp.ziel, hp.titel]);
+      expect(p.icon, p.id).toBe(HUB_SYMBOLE[hp.symbol]);
+    }
+    const a = l.find(p => p.id === 'automationen')!;
+    expect([a.label, a.href, a.gruppe]).toEqual([HUB_MENUE.automation.name, HUB_MENUE.automation.ziel, 'Steuerung']);
+    expect(AUTOMATION_LABEL).toBe(HUB_MENUE.automation.name);
+    expect(werkzeugPunkte(M, k, 'fuss').map(p => [p.id, p.label, p.href])).toEqual(HUB_MENUE.fuss.map(p => [p.id, p.name, p.ziel]));
+    expect(l.every(p => p.unter.length === 0 && !p.aktion)).toBe(true); // die dritte Ebene bleibt als Reiter in der Seite
+    expect([M.leistenPunkt, M.start, M.spaces]).toEqual(['Markttraktion', markttraktion(), ['business']]);
+    expect(WERKZEUGE).toContain(M);
+  });
+  it('genau ein Punkt leuchtet je Adresse — auch auf Netzwerken, bei alten Adressen und „Automationen & Head“ (EINE Regel: hubOrtFuer)', () => {
+    const faelle: [string, string, string][] = [
+      ['/os/markttraktion', '', 'ueberblick'], ['/os/markttraktion', '?s=kontakte&a=akte&k=c-1', 'kontakte'], ['/os/markttraktion', '?s=firmen', 'firmen'],
+      ['/os/markttraktion', '?s=firmen&a=leads', 'qualifizierung'], ['/os/markttraktion', '?s=deals&a=liste', 'deals'], ['/os/markttraktion', '?s=deals&a=auswertung', 'auswertung'],
+      ['/os/markttraktion', '?s=angebot&k=ang-1', 'angebot'], ['/os/markttraktion', '?s=followup&a=powerhour', 'followup'], ['/os/markttraktion', '?s=sales&a=kampagnen', 'marketing'],
+      ['/os/markttraktion', '?s=event&k=ev-1', 'events'], ['/os/markttraktion', '?s=besuche&a=wirkung', 'events'], ['/os/markttraktion', '?s=planung&a=ziele', 'planung'],
+      ['/os/markttraktion', '?s=automationen', 'automationen'], ['/os/markttraktion', '?s=stammdaten&a=datenschutz', 'stammdaten'],
+      ['/os/netzwerken', '', 'netzwerken'], ['/os/netzwerken/karte', '', 'netzwerken'], ['/os/netzwerken', '?event=ev-1', 'netzwerken'],
+    ];
+    for (const [pfad, suche, id] of faelle) {
+      for (const handy of [false, true]) expect(leuchtet(pfad, suche, handy), `${pfad}${suche}`).toEqual([id]);
+      expect(hubOrtFuer(pfad, suche)).toBe(id);
+    }
+  });
+  it('jedes Ziel (Punkt, Fuß, „Automationen & Head“) gibt es, bleibt im Werkzeug und lässt genau seinen Punkt leuchten', () => {
+    const k = werkzeugKontext('/os/markttraktion');
+    for (const p of [...werkzeugPunkte(M, k), ...werkzeugPunkte(M, k, 'fuss')]) {
+      expect(seiteDa(p.href!), p.id).toBe(true);
+      expect(werkzeugVonHref(p.href!)?.id, p.id).toBe('markttraktion');
+      const [pfad, suche] = p.href!.split('?');
+      expect(leuchtet(pfad, suche ?? ''), p.id).toEqual([p.id]);
+    }
+  });
+  it('„Automationen & Head“: Prozess-Bereiche Marketing · Sales · Übergabe, Heads Sales (zuerst) · Marketing · Event', () => {
+    expect(M.automation?.bereiche).toEqual(['marketing', 'sales', 'uebergabe']);
+    expect(M.automation?.head).toBe('sales');
+    expect(automationHeads(M.automation)).toEqual(['sales', 'marketing', 'event']);
+    expect(automationHeads(PROZESSE_WERKZEUG.automation)).toEqual([]);
+    expect(automationHeads({ ...HUB.automation!, weitereHeads: ['sales', 'event'] })).toEqual(['sales', 'event']);
+  });
+  const render = async (pfad: string, suche = '') => {
+    nav.pfad = pfad; nav.suche = suche;
+    const { Leiste } = await import('@/components/os/Leiste');
+    const html = renderToStaticMarkup(h(Leiste));
+    const [desktop, mobil] = html.split('class="leiste-mobil"');
+    return { desktop, mobil };
+  };
+  it('Leiste auf /os/markttraktion: Rückweg, Name, vier Gruppen-Überschriften, alle Punkte, genau ein leuchtender; Handy-Leiste wie bisher', async () => {
+    const { desktop, mobil } = await render('/os/markttraktion', '?s=deals&a=liste');
+    expect(desktop).toContain('data-werkzeug="markttraktion"');
+    expect(desktop.indexOf(`>${RUECKWEG_LABEL}</span>`)).toBeLessThan(desktop.indexOf('>Überblick</span>'));
+    expect((desktop.match(/role="heading"/g) ?? []).length).toBe(4);
+    for (const t of ['Überblick', 'Kontakte', 'Firmen', 'Leads &amp; Qualifizierung', 'Deals', 'Angebote', 'Follow-up &amp; Power Hour', 'Marketing', 'Events', 'Netzwerken', 'Planung', 'Auswertung', 'Automationen &amp; Head', 'Stammdaten']) {
+      expect(desktop, t).toContain(`>${t}</span>`);
+    }
+    const deals = desktop.match(/<a [^>]*href="\/os\/markttraktion\?s=deals"[^>]*>/)?.[0] ?? '';
+    expect(deals).toContain('aria-current="page"');
+    expect((desktop.match(/aria-current="page"/g) ?? []).length).toBe(1);
+    expect(desktop).not.toContain('title="Prozesse"'); // die Punkte des Space stehen erst nach „← MAKE OS“
+    expect(desktop).toContain('title="Einstellungen"');
+    for (const t of ['>Heute<', '>Inbox<', '>Menü<', '>ZOE<', '>Netzwerken<']) expect(mobil, t).toContain(t);
+    expect(mobil).not.toContain('data-werkzeug');
+  });
+  it('Leiste auf /os/netzwerken: dasselbe Menü, „Netzwerken“ leuchtet', async () => {
+    const { desktop } = await render('/os/netzwerken');
+    expect(desktop).toContain('data-werkzeug="markttraktion"');
+    const netz = desktop.match(/<a [^>]*href="\/os\/netzwerken"[^>]*>/)?.[0] ?? '';
+    expect(netz).toContain('aria-current="page"');
+    expect(netz).toContain('data-werkzeug-punkt="netzwerken"');
+  });
+  it('Blatt am Handy: das Werkzeug oben mit seinen Gruppen und dem Fuß', async () => {
+    const { WerkzeugMenue } = await import('@/components/os/werkzeug/menue');
+    const html = renderToStaticMarkup(h(WerkzeugMenue, { werkzeug: M, kontext: werkzeugKontext('/os/markttraktion', '?s=kontakte', true), variante: 'blatt', farbe: '#6E7EF5' }));
+    expect(html).toContain('>Markttraktion</div>');
+    expect((html.match(/role="heading"/g) ?? []).length).toBe(4);
+    for (const p of [...HUB_PUNKTE, HUB_MENUE.automation]) expect(html, p.id).toContain(`data-werkzeug-punkt="${p.id}"`);
+    expect(html).not.toContain(RUECKWEG_LABEL);
   });
 });

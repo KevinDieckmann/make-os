@@ -60,9 +60,12 @@ describe('Markttraktion — ein Hub mit höchstens zwölf Punkten, jede Ansicht 
     expect(punktVon({ s: 'stammdaten' })).toBe('stammdaten');
     expect(punktVon({ s: 'deals', a: 'auswertung' })).toBe('auswertung');
   });
-  it('die Seite rendert das Hub-Menü, ohne Reiterzeile, Schnellknöpfe und Zahnrad; doppelte Ansichten sind weg', () => {
+  it('das Menü ist die Werkzeug-Leiste (kein Menü in der Seite), ohne Reiterzeile, Schnellknöpfe und Zahnrad; doppelte Ansichten sind weg', () => {
     const v = lies('components/os/crm/Markttraktion.tsx');
-    expect(v).toContain('<HubMenue aktiv={hubOrt} />');
+    // Seit 22.10. abends trägt die linke Leiste die Punkte (lib/make-one/werkzeuge.ts `MARKTTRAKTION_WERKZEUG`) — das Übergangs-Menü der Seite ist weg.
+    expect(v).not.toContain('HubMenue');
+    expect(v).not.toContain('mt-hub');
+    expect(lies('lib/make-one/werkzeuge.ts')).toContain('export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG];');
     expect(v).toContain('punktVon({ s: bereich, a: ansicht })');
     for (const alt of ['REITER_ZEILE', 'Schnellknoepfe', 'mt-schnell', 'Settings', 'KONTAKTE']) expect(v, alt).not.toContain(alt);
     expect(lies('app/globals.css')).not.toMatch(/\.mt-schnell|mtPuls|\.mt-leiste|\.mt-nur-/);

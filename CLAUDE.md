@@ -1451,8 +1451,9 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
   „Automationen & Head“ (Wächter `tests/aufraeumen-etappe3.test.ts`, `tests/markttraktion-hub.test.ts`). Welcher Punkt leuchtet NUR über `punktVon(aufloesen(s, a))`
   bzw. `hubOrtFuer(pfad, suche)` (auch Netzwerken); `deals&a=auswertung` (WEG.kunden, Kennzahlen, Widgets) zeigt die Auswertung und leuchtet dort. Hub-Punkte sind
   KEINE Einträge der Space-Leiste (Zeitmessung bleibt `business:markttraktion`); Produkte & Mandate bleibt ein eigenes Werkzeug, Kontakte stehen nur im Hub.
-  Die dritte Ebene bleibt als Reiter IN der Seite. Das Menü steht ÜBERGANGSWEISE in der Seite (`components/os/crm/HubMenue.tsx`, `HUB_SYMBOLE`; ≥ 1400 px Spalte links,
-  darunter Knopf mit Blatt) — bis das Werkzeug-Muster (lib/make-one/werkzeuge.ts) die Punkte in der linken Leiste trägt; dann fällt `<HubMenue>` aus der Seite.
+  Die dritte Ebene bleibt als Reiter IN der Seite. Das Menü IST die linke Leiste: Markttraktion ist ein Werkzeug (`MARKTTRAKTION_WERKZEUG` in
+  lib/make-one/werkzeuge.ts, Abschnitt „Werkzeug-Muster“; Symbole `HUB_SYMBOLE` in lib/crm/hub-symbole.ts) — die Seite rendert nur den Inhalt, am Handy steht
+  das Menü oben im Blatt „Menü“. Nie wieder ein Menü in der Seite; neue Punkte nur in `HUB_MENUE`.
   Den Reiter „Sales“, Firmen › Leads, Deals › Kunden und die alte Qualifizierungs-Runde der Kartei (`runde-chancen`) gibt es nicht mehr — `aufloesen()` übersetzt JEDE
   alte Kombination, die Seite schreibt alte Adressen still auf den neuen Ort um. Alte Links NIE umschreiben, sondern dort ergänzen; neue Ansicht = genau EIN Ort in
   `HUB_MENUE`/den `…_ANSICHTEN`. `WEG.deal(id)` öffnet die Deal-Akte.
@@ -1788,13 +1789,13 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
 
 ## Werkzeug-Muster — jeder große Bereich ein eigenes Werkzeug (22.10., Branch `werkzeuge`, nur lokal)
 Kevin 22.10.: „Wenn ich Prozesse aufmache, kommt im Grunde ein neues Tool — wie bei Miro. Genauso bei Markttraktion wie bei HubSpot … dann bekommt jeder Bereich
-mehr Power“ — „Innerhalb der Maske auf jeden Fall einen Pfeil oben rechts, der diesen Bereich einfach als Ganzes macht.“ Prozesse ist das erste Werkzeug (Miro-Art);
-als Nächstes Markttraktion als Hub (Gruppen-Überschriften im Menü), dann die übrigen Bereiche — das Muster trägt sie schon.
+mehr Power“ — „Innerhalb der Maske auf jeden Fall einen Pfeil oben rechts, der diesen Bereich einfach als Ganzes macht.“ Prozesse ist das erste Werkzeug (Miro-Art),
+Markttraktion das zweite (HubSpot-Art, Gruppen-Überschriften im Menü); dann die übrigen Bereiche — das Muster trägt sie schon.
 - **EINE Konfiguration je Werkzeug als Daten** in `lib/make-one/werkzeuge.ts` (`WERKZEUGE`, rein, client-sicher): Kennung, Name, Symbol, Spaces, `pfade` (Muster wie
   `passtZu` — eine Adresse gehört höchstens EINEM Werkzeug), `leistenPunkt` (der Punkt der Space-Leiste, der es öffnet — das Werkzeug ersetzt keinen Punkt),
   Unterpunkte (Ziel NUR über `WEG`/vorhandene Adressen — alte Links gelten weiter — oder eine Aktion der Seite über das Ereignis `make-werkzeug`; `aktiv`,
   `sichtbar`; `gruppe` = nur Überschrift), `fuss`. **Höchstens zwei Ebenen** (Unterpunkt + `unter`); tiefer gehört es in die Seite (Reiter). Neues Werkzeug = ein
-  Eintrag dort + die Seite hört seine Aktionen + `SEITE_DES_WERKZEUGS` im Wächter — nie die Leiste anfassen.
+  Eintrag dort + die Seite hört seine Aktionen (nur wenn es welche hat) + `SEITE_DES_WERKZEUGS` im Wächter — nie die Leiste anfassen.
 - **Leiste klappt um** (`components/os/Leiste.tsx` + `components/os/werkzeug/menue.tsx` `WerkzeugMenue`): auf einer Werkzeug-Adresse oben „← MAKE OS“, Name mit
   Symbol, Unterpunkte; unten bleiben Einstellungen, Melden, Konto. „← MAKE OS“ zeigt wieder die Punkte des Space OHNE Seitenwechsel (ein ungespeicherter Entwurf geht
   nie verloren; Heute ist von dort ein Klick) — bis zum nächsten Pfadwechsel; der Punkt des Werkzeugs klappt zurück. Eingeklappt nur Symbole. **Handy:** die Leiste
@@ -1811,14 +1812,24 @@ als Nächstes Markttraktion als Hub (Gruppen-Überschriften im Menü), dann die 
   Im Modus: Werkzeugleiste links (Werkstatt: Rückgängig, Ordnen, Zettel, Phase, Raster …; Landkarte: Auswahl, Anpassen, Kürzel), Zoom unten rechts, Head fragen
   unten links, Probelauf/Veröffentlichen bzw. Prozess/Vorlage/Präsentieren oben rechts, Zustand + Version hinter dem Titel, Steckbrief/Maske als `WerkzeugFeld`.
 - **„Automationen & Head“ je Werkzeug** (Kevin 22.10.: „Jeder Bereich hat einen eigenen Automation & Head of Bereich … also eigentlich die Prozesse“): Feld
-  `automation { bereiche, head, href, aktiv, gruppe? }` → Standard-Unterpunkt (`automationPunkt`, Name `AUTOMATION_LABEL`). Ort = **Parameter an der vorhandenen
+  `automation { bereiche, head, weitereHeads?, href, aktiv, gruppe? }` → Standard-Unterpunkt (`automationPunkt`, Name `AUTOMATION_LABEL`). Ort = **Parameter an der vorhandenen
   Seite des Werkzeugs** (z. B. ein Reiter `s=automationen`), keine eigene Seite (keine dritte Ebene, die Schnellsuche findet die Seite schon, der Rahmen bleibt).
   Die Seite rendert dort `components/os/werkzeug/BereichAutomationen.tsx` (`<BereichAutomationen werkzeug={…} />`): DIESELBEN Daten wie Prozesse (Landkarte in
   der angepassten Fassung + Läufe, Filter rein in `lib/prozesse/bereich-automationen.ts`), Zustand wie in der Werkstatt, „+ Prozess“ (Bereich vorbelegt), „Aus
   Vorlage“ (Galerie mit `bereiche`), System-Prozesse mit Stellschrauben, Head-Karte (GET /api/agenten, Freigaben, Gespräch, Einstellungen, „Head fragen“ mit
   `bereichVorgabe`). Bereiche nur feste Kennungen (`BEREICH_IDS`) — eigene `lb-…` gehören der Instanz. Prozesse selbst trägt keinen Punkt (dort ist es die ganze Landkarte).
+  Mehrere Heads: `weitereHeads` (alle über `automationHeads(a)`, der Head des Werkzeugs zuerst) → je Head eine Karte nebeneinander (EIN Abruf
+  /api/agenten), „Head fragen“ nur an der ersten (der Vorschlag gilt dem Bereich). Ohne `weitereHeads` bleibt es eine Karte wie bisher.
+- **Markttraktion** (zweites Werkzeug, 22.10. abends): `MARKTTRAKTION_WERKZEUG`, `pfade` `/os/markttraktion` + `/os/netzwerken` (Netzwerken ist eine eigene Seite,
+  gehört aber zum Werkzeug und leuchtet dort), Leistenpunkt „Markttraktion“. Punkte NUR aus `HUB_MENUE` (lib/crm/adresse.ts: Reihenfolge, Namen, Ziele, Gruppen
+  CRM · Vertrieb · Marketing · Steuerung, Fuß Stammdaten), Symbole aus `lib/crm/hub-symbole.ts`; welcher Punkt leuchtet NUR über `hubOrtFuer` (alte Adressen über
+  `aufloesen`). Keine `unter` (die dritte Ebene bleibt als Reiter in der Seite), keine Aktionen (jeder Punkt eine Adresse), noch kein Werkzeugmodus/Rahmen.
+  „Automationen & Head“ = `?s=automationen` → `<BereichAutomationen werkzeug={MARKTTRAKTION_WERKZEUG} />` mit den Prozess-Bereichen Marketing · Sales · Übergabe und
+  den Heads Sales (Head des Werkzeugs) + Marketing + Event (aus `HUB_MENUE.automation`). Das frühere Übergangs-Menü in der Seite (`HubMenue`, `.mt-hub*`) und der
+  Platzhalter `AutomationenPlatz` sind entfernt.
 - Wächter `tests/werkzeuge.test.ts` (jede Adresse eines Unterpunkts existiert und bleibt im Werkzeug, Zuordnung eindeutig, Leistenpunkt öffnet, ≤ 2 Ebenen, Gruppen
-  beieinander, Aktionen gehört, Menü nur auf Werkzeug-Adressen, Rückweg, Rahmen/Orte, keine Literale, Automationen & Head) plus die Wächter der Aufräum-Etappe.
+  beieinander, Aktionen gehört, Menü nur auf Werkzeug-Adressen, Rückweg, Rahmen/Orte, keine Literale, Automationen & Head mit mehreren Heads, Markttraktion: Punkte =
+  `HUB_MENUE`, genau ein leuchtender Punkt je Adresse inkl. Netzwerken, Leiste und Blatt) plus die Wächter der Aufräum-Etappe und `tests/markttraktion-hub.test.ts`.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.

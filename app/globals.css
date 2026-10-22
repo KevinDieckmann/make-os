@@ -550,20 +550,6 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .flaeche-kopf { min-width: 0; }
 .flaeche-kopf button { font-family: inherit; }
 
-/* ─── Markttraktion · Hub-Menü in der Seite (22.10.) — ÜBERGANG, bis die Werkzeug-Leiste (lib/make-one/werkzeuge.ts) die Punkte trägt ───
-   Gespeist aus HUB_MENUE (lib/crm/adresse.ts), gezeichnet von components/os/crm/HubMenue.tsx. Breit (≥ 1400 px — darunter bliebe neben der
-   Hauptleiste zu wenig Platz für Kartei und Akte): eine schmale Spalte links neben dem Inhalt, klebt beim Scrollen. Schmaler und am Handy: oben
-   ein Knopf mit dem aktuellen Punkt, der die Gruppen als Blatt aufklappt. Die Schnellknöpfe mit Puls und die Reiterzeile sind weg (22.10.). */
-.mt-hub, .mt-hub-inhalt { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
-.mt-hub-nav-breit { display: none; }
-.mt-hub-nav-schmal { display: grid; gap: 8px; min-width: 0; }
-.mt-hub-blatt { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 4px 12px; }
-@media (min-width: 1400px) {
-  .mt-hub { grid-template-columns: 212px minmax(0, 1fr); align-items: start; }
-  .mt-hub-nav-breit { display: grid; gap: 1px; position: sticky; top: 8px; }
-  .mt-hub-nav-schmal { display: none; }
-}
-@media (max-width: 720px) { .mt-hub, .mt-hub-inhalt { gap: 14px; } }
 /* Glocke im Kopf (28.09. abends): kommt eine neue Meldung, leuchtet sie kurz rot auf und schwingt einmal — aus bei reduced-motion */
 @keyframes glockePuls { 0% { box-shadow: 0 0 0 0 rgba(255,92,92,.55); } 70% { box-shadow: 0 0 0 9px rgba(255,92,92,0); } 100% { box-shadow: 0 0 0 0 rgba(255,92,92,0); } }
 @keyframes glockeSchwing { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }

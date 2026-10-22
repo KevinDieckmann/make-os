@@ -19,13 +19,16 @@
 //                   Prozess-Landkarte und welcher Head zum Werkzeug gehören, und WO auf der Seite des Werkzeugs der Baustein steht
 //                   (components/os/werkzeug/BereichAutomationen.tsx) — ein Parameter an der vorhandenen Seite, keine eigene Seite (keine dritte Ebene, die
 //                   Schnellsuche findet die Seite schon, der Rahmen bleibt). Prozesse selbst trägt ihn nicht: dort ist es die ganze Landkarte.
-// Ein neues Werkzeug (als Nächstes Markttraktion als Hub) = ein Eintrag in `WERKZEUGE` + die Seite hängt den Rahmen ein; nichts in der Leiste ändern.
+// Werkzeuge heute: Prozesse (Miro-Art) und Markttraktion (HubSpot-Art, Gruppen-Überschriften, Punkte aus `HUB_MENUE`).
+// Ein neues Werkzeug = ein Eintrag in `WERKZEUGE` + die Seite hört seine Aktionen (bzw. hängt den Rahmen ein); nichts in der Leiste ändern.
 
 import type { LucideIcon } from 'lucide-react';
-import { Workflow, Map as MapIcon, List, Hammer, PencilRuler, History, FlaskConical, LayoutTemplate, Presentation, Bot } from 'lucide-react';
+import { Workflow, Map as MapIcon, List, Hammer, PencilRuler, History, FlaskConical, LayoutTemplate, Presentation, Bot, TrendingUp } from 'lucide-react';
 import { WEG } from '@/lib/wege';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
 import { ansichtVorgabe, type ProzessAnsicht } from '@/lib/prozesse/typen';
+import { HUB_MENUE, hubOrtFuer, type HubPunkt, type HubOrtId } from '@/lib/crm/adresse';
+import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
 import { passtZu } from './spaces';
 import type { SpaceId } from './space-regeln';
 
@@ -58,7 +61,10 @@ export interface WerkzeugPunkt {
  */
 export interface WerkzeugAutomation {
   bereiche: readonly string[];
+  /** Der Head des Werkzeugs (Vorbelegung, „Head fragen“). */
   head?: string;
+  /** Weitere Heads des Bereichs (z. B. Markttraktion: Marketing und Event neben Sales) — je eine Karte unter der ersten; ohne: nur `head`. */
+  weitereHeads?: readonly string[];
   href: (k: WerkzeugKontext) => string;
   aktiv: (k: WerkzeugKontext) => boolean;
   /** Unter welcher Überschrift der Punkt steht (z. B. „Steuerung“); ohne: am Ende der Unterpunkte. */
@@ -67,6 +73,10 @@ export interface WerkzeugAutomation {
 /** Name und Symbol des Standard-Unterpunkts — überall gleich. */
 export const AUTOMATION_LABEL = 'Automationen & Head';
 export const AUTOMATION_ICON: LucideIcon = Bot;
+/** Alle Heads eines Werkzeugs, der Head des Werkzeugs zuerst, ohne Doppelte (der Baustein zeichnet je Head eine Karte). */
+export function automationHeads(a: WerkzeugAutomation | undefined): string[] {
+  return a ? [...new Set([...(a.head ? [a.head] : []), ...(a.weitereHeads ?? [])])] : [];
+}
 
 export interface Werkzeug {
   id: string;
@@ -125,8 +135,40 @@ export const PROZESSE_WERKZEUG: Werkzeug = {
   ],
 };
 
-/** Alle Werkzeuge — als Nächstes Markttraktion (Hub), dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG];
+// ─── Markttraktion (das zweite Werkzeug, HubSpot-Art) ──────────────────────────────────────────────────────────────────────────────────────
+// Die Punkte NUR aus `HUB_MENUE` (lib/crm/adresse.ts — Reihenfolge, Namen, Ziele, Gruppen; Symbole aus lib/crm/hub-symbole.ts): Überblick · CRM (Kontakte,
+// Firmen) · Vertrieb (Leads & Qualifizierung, Deals, Angebote, Follow-up & Power Hour) · Marketing (Marketing, Events, Netzwerken) · Steuerung (Planung,
+// Auswertung, „Automationen & Head“), Fuß Stammdaten. Welcher Punkt leuchtet, sagt NUR `hubOrtFuer` (auch auf der eigenen Seite Netzwerken). Die dritte
+// Ebene (Board · Liste, Fällig · Woche …) bleibt als Reiter in der Seite — darum keine `unter`. Keine Aktionen: jeder Punkt ist eine Adresse.
+const hubAn = (k: WerkzeugKontext): HubOrtId | null => hubOrtFuer(k.pfad, k.q.toString());
+const hubPunkt = (p: HubPunkt, gruppe: string | null): WerkzeugPunkt => ({
+  id: p.id, label: p.name, icon: HUB_SYMBOLE[p.symbol], titel: p.titel, href: () => p.ziel, aktiv: k => hubAn(k) === p.id, ...(gruppe ? { gruppe } : {}),
+});
+const hubAutomation = HUB_MENUE.automation;
+
+export const MARKTTRAKTION_WERKZEUG: Werkzeug = {
+  id: 'markttraktion',
+  name: 'Markttraktion',
+  icon: TrendingUp,
+  spaces: ['business'],
+  // Netzwerken (02.10.) ist eine eigene Seite, gehört aber zum Werkzeug — dort leuchtet „Netzwerken“.
+  pfade: ['/os/markttraktion', '/os/netzwerken'],
+  start: WEG.markttraktion(),
+  leistenPunkt: 'Markttraktion',
+  punkte: HUB_MENUE.gruppen.flatMap(g => g.punkte.map(p => hubPunkt(p, g.titel))),
+  fuss: HUB_MENUE.fuss.map(p => hubPunkt(p, null)),
+  automation: {
+    bereiche: hubAutomation.prozessBereiche,
+    head: hubAutomation.heads[0],
+    weitereHeads: hubAutomation.heads.slice(1),
+    href: () => hubAutomation.ziel,
+    aktiv: k => hubAn(k) === hubAutomation.id,
+    gruppe: HUB_MENUE.gruppen.find(g => g.id === hubAutomation.gruppe)?.titel ?? undefined,
+  },
+};
+
+/** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG];
 
 const geteilt = (href: string): { pfad: string; suche: string } => {
   const ohneAnker = href.split('#')[0];

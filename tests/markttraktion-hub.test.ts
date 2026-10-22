@@ -2,9 +2,10 @@
 // Kevin 22.10.: Markttraktion wird ein eigenes Werkzeug (HubSpot-Art) — Menü mit Gruppen statt Reiterzeile, Schnellknöpfen und Zahnrad;
 // „Auswertung als eigener Punkt — an die Markttraktion-Kennzahlen anlegen, dann haben wir auch einen geilen Flow“; „+ Angebot“ in den Akten.
 // Geprüft wird: das Menü als Daten (Gruppen, Ziele, Symbole), `punktVon`/`hubOrtFuer` (jede Adresse leuchtet genau einen Punkt), die Auswertung
-// (jede Zahl = die vorhandene Rechnung, ohne Daten grau, nie eine erfundene Null) und die Seite (Hub statt Reiter, „+ Angebot“, Übergangs-Menü).
+// (jede Zahl = die vorhandene Rechnung, ohne Daten grau, nie eine erfundene Null) und die Seite (Hub statt Reiter, „+ Angebot“, das Menü ist die
+// Werkzeug-Leiste — das Werkzeug selbst prüft tests/werkzeuge.test.ts).
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { Angebot, Chance, CrmBestand } from '@/lib/crm/typen';
@@ -15,7 +16,7 @@ import {
 import { WEG } from '@/lib/wege';
 import { leads, trichter, passtLeadFilter, mqlErreicht } from '@/lib/crm/leads';
 import { auswertungFlow, auswertungSpalten, flowZiel, flowLink, zahlText } from '@/lib/crm/auswertung-flow';
-import { HUB_SYMBOLE } from '@/components/os/crm/HubMenue';
+import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
 
 const wurzel = path.resolve(__dirname, '..');
 const lies = (p: string) => readFileSync(path.join(wurzel, p), 'utf8');
@@ -178,12 +179,16 @@ describe('Auswertung — jede Zahl ist die vorhandene Rechnung, ohne Daten grau'
 
 describe('Die Seite — Hub statt Reiterzeile', () => {
   const v = lies('components/os/crm/Markttraktion.tsx');
-  it('Hub-Menü als Übergang in der Seite, klar markiert; Auswertung und Automationen als eigene Orte', () => {
-    expect(v).toContain('<HubMenue aktiv={hubOrt} />');
-    expect(v).toContain('ÜBERGANG — wird durch die Werkzeug-Leiste ersetzt');
-    expect(lies('components/os/crm/HubMenue.tsx')).toContain('ÜBERGANG — wird durch die Werkzeug-Leiste ersetzt');
+  it('das Menü ist die Werkzeug-Leiste (Übergangs-Menü und Platzhalter sind weg); Auswertung und „Automationen & Head“ als eigene Orte', () => {
+    expect(v).not.toContain('HubMenue');
+    expect(v).not.toContain('mt-hub');
+    expect(v).not.toContain('ÜBERGANG');
+    expect(existsSync(path.join(wurzel, 'components/os/crm/HubMenue.tsx'))).toBe(false);
+    expect(existsSync(path.join(wurzel, 'components/os/crm/AutomationenPlatz.tsx'))).toBe(false);
+    expect(lies('app/globals.css')).not.toContain('.mt-hub');
     expect(v).toContain("hubOrt === 'auswertung' && <Auswertung");
-    expect(v).toContain("hubOrt === 'automationen' && <AutomationenPlatz");
+    // „Automationen & Head“ = der Baustein des Werkzeug-Musters mit dem Markttraktion-Werkzeug (Prozesse Marketing/Sales/Übergabe, Heads Sales/Marketing/Event).
+    expect(v).toContain("hubOrt === 'automationen' && <BereichAutomationen werkzeug={MARKTTRAKTION_WERKZEUG} />");
   });
   it('„+ Angebot“ im Kopf, solange Kontakt, Firma oder Deal offen sind — nimmt sie mit; nie in den Runden', () => {
     expect(v).toContain('angebotVonHier(bereich, ansicht, kParam)');

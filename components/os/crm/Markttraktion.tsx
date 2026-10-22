@@ -15,7 +15,8 @@
 // Die dritte Ebene bleibt als Reiter IN der Seite. „+ Angebot“ steht im Kopf, sobald eine Kontakt-, Firmen- oder Deal-Akte offen ist, und nimmt sie
 // mit (`angebotVonHier`); „+ Aktivität“ und „ZOE fragen“ bleiben im Kopf. Alte Adressen (Reiter „Sales“, Firmen › Leads, Deals › Kunden …)
 // übersetzt `aufloesen` und die Seite schreibt sie still auf den neuen Ort um.
-// Das Menü steht ÜBERGANGSWEISE in der Seite (`HubMenue`) — bis die Werkzeug-Leiste (lib/make-one/werkzeuge.ts) die Punkte in der linken Leiste trägt.
+// Das Menü ist die linke Leiste: Markttraktion ist ein Werkzeug (lib/make-one/werkzeuge.ts `MARKTTRAKTION_WERKZEUG`) — beim Öffnen klappt die Leiste
+// auf die Punkte um (am Handy oben im Blatt „Menü“); die Seite rendert nur den Inhalt. „Automationen & Head“ = der Baustein des Werkzeug-Musters.
 // Das Grundkonzept stammt aus der Markttraktion in KEMARIS Operations; die Daten sind ausschließlich unsere eigenen. Technisch heißt
 // die Datenschicht weiter „crm“ (lib/crm, /api/crm) — das ist die Kartei darunter, nicht der Name.
 
@@ -49,9 +50,9 @@ import { ZoeFragenKnopf } from './ZoeFragen';
 import { zoeBezugFuer } from '@/lib/zoe/crm-bezug';
 import { markttraktionHead } from '@/lib/agenten/kontext-head';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
-import { HubMenue } from './HubMenue';
 import { Auswertung } from './Auswertung';
-import { AutomationenPlatz } from './AutomationenPlatz';
+import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
+import { MARKTTRAKTION_WERKZEUG } from '@/lib/make-one/werkzeuge';
 
 // Die dritte Ebene (Reiter in der Seite): Deals und Follow-up hier, Events als EINE Zeile (Adressen in `EVENTS_REITER`); Qualifizierung, Marketing,
 // Planung und Stammdaten tragen ihre Reiter selbst.
@@ -91,7 +92,7 @@ export function MarkttraktionSeite() {
     if (ansicht) q.set('a', ansicht); else q.delete('a');
     router.replace(q.toString() ? `${PFAD}?${q}` : PFAD, { scroll: false });
   }, [params, bereich, ansicht, router]);
-  // Welcher Punkt des Hubs leuchtet (deals&a=auswertung = Auswertung).
+  // Welcher Punkt des Hubs gilt (deals&a=auswertung = Auswertung) — dieselbe Regel lässt den Punkt in der Werkzeug-Leiste leuchten.
   const hubOrt = punktVon({ s: bereich, a: ansicht });
   const api = useCrm();
   const { setFehler, setHinweis } = api;
@@ -174,47 +175,42 @@ export function MarkttraktionSeite() {
       <FehlerHinweis text={api.fehler} onZu={fehlerZu} />
       <FehlerHinweis text={api.hinweis} onZu={hinweisZu} ton="info" bleibt />
 
-      <div className="mt-hub">
-        {/* ÜBERGANG — wird durch die Werkzeug-Leiste ersetzt: das Hub-Menü (HUB_MENUE) in der Seite, bis die linke Leiste die Punkte trägt. */}
-        <HubMenue aktiv={hubOrt} />
-        <div className="mt-hub-inhalt">
-          {/* Antwort zuerst (11.10.): „Für dich“ und was zu tun ist oben — die Index-Kennzahlen (oft noch „fehlt“) als Hintergrund darunter. */}
-          {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
-          {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Score · Markttraktion" />}
+      {/* Antwort zuerst (11.10.): „Für dich“ und was zu tun ist oben — die Index-Kennzahlen (oft noch „fehlt“) als Hintergrund darunter. */}
+      {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
+      {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Score · Markttraktion" />}
 
-          {/* Auswertung (22.10., eigener Punkt): der Flow vom Kontakt zum Kunden und alle Kennzahlen — die alte Adresse deals&a=auswertung zeigt dasselbe. */}
-          {hubOrt === 'auswertung' && <Auswertung api={api} zuBereich={zuBereich} zuDeal={zuDeal} />}
-          {hubOrt === 'automationen' && <AutomationenPlatz />}
+      {/* Auswertung (22.10., eigener Punkt): der Flow vom Kontakt zum Kunden und alle Kennzahlen — die alte Adresse deals&a=auswertung zeigt dasselbe. */}
+      {hubOrt === 'auswertung' && <Auswertung api={api} zuBereich={zuBereich} zuDeal={zuDeal} />}
+      {/* „Automationen & Head“ (Werkzeug-Muster): die Prozesse von Marketing, Sales und Übergabe mit den Heads Sales, Marketing und Event. */}
+      {hubOrt === 'automationen' && <BereichAutomationen werkzeug={MARKTTRAKTION_WERKZEUG} />}
 
-          {bereich === 'deals' && hubOrt === 'deals' && (
-            <>
-              {dealsAnsicht !== 'akte' && <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} /></div>}
-              <Pipeline api={api} ansicht={dealsAnsicht} zuKontakt={zuKontakt} zuLeads={() => gehe('qualifizierung', 'leads')} zuAkte={zuDeal} zurueck={() => zurueckWie(markttraktion('deals'))} zuOffen={params.get('zu') === '1'} />
-            </>
-          )}
-          {bereich === 'followup' && (
-            <>
-              <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={FOLLOWUP} aktiv={followupAnsicht} onWahl={a => gehe('followup', a === 'faellig' ? undefined : a)} /></div>
-              {followupAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
-              {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} />}
-            </>
-          )}
-          {bereich === 'planung' && <MtPlanung ansicht={(ansicht ?? 'kreislauf') as PlanungAnsicht} kanal={params.get('kanal')} onOrt={(a, k) => { router.push(planungLink(a, k), { scroll: false }); if (a !== (ansicht ?? 'kreislauf')) nachOben(); }} />}
-          {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={zuDeal} />}
-          {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('qualifizierung', 'leads', id)}
-            leads={<><SalesTrichter api={api} zuBereich={zuBereich} /><Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} /></>} />}
-          {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
-          {bereich === 'besuche' && <Besuche api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} ansicht={besuche} k={kParam} reiter={eventsPillen} onAkte={(id, wie) => gehe('besuche', undefined, id ?? undefined, wie ?? (id ? 'push' : 'replace'))} />}
-          {bereich === 'event' && !besuchsId && !kParam && <div>{eventsPillen}</div>}
-          {bereich === 'event' && !besuchsId && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={(id, wie) => gehe('event', undefined, id ?? undefined, wie)} />}
+      {bereich === 'deals' && hubOrt === 'deals' && (
+        <>
+          {dealsAnsicht !== 'akte' && <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} /></div>}
+          <Pipeline api={api} ansicht={dealsAnsicht} zuKontakt={zuKontakt} zuLeads={() => gehe('qualifizierung', 'leads')} zuAkte={zuDeal} zurueck={() => zurueckWie(markttraktion('deals'))} zuOffen={params.get('zu') === '1'} />
+        </>
+      )}
+      {bereich === 'followup' && (
+        <>
+          <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={FOLLOWUP} aktiv={followupAnsicht} onWahl={a => gehe('followup', a === 'faellig' ? undefined : a)} /></div>
+          {followupAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
+          {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} />}
+        </>
+      )}
+      {bereich === 'planung' && <MtPlanung ansicht={(ansicht ?? 'kreislauf') as PlanungAnsicht} kanal={params.get('kanal')} onOrt={(a, k) => { router.push(planungLink(a, k), { scroll: false }); if (a !== (ansicht ?? 'kreislauf')) nachOben(); }} />}
+      {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={zuDeal} />}
+      {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('qualifizierung', 'leads', id)}
+        leads={<><SalesTrichter api={api} zuBereich={zuBereich} /><Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} /></>} />}
+      {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
+      {bereich === 'besuche' && <Besuche api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} ansicht={besuche} k={kParam} reiter={eventsPillen} onAkte={(id, wie) => gehe('besuche', undefined, id ?? undefined, wie ?? (id ? 'push' : 'replace'))} />}
+      {bereich === 'event' && !besuchsId && !kParam && <div>{eventsPillen}</div>}
+      {bereich === 'event' && !besuchsId && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={(id, wie) => gehe('event', undefined, id ?? undefined, wie)} />}
 
-          {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
-            kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
-          {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
-          {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => (a === 'chancen' ? gehe('qualifizierung') : gehe('kontakte', `runde-${a}`))} zuAkte={zuAkte} startBean={params.get('bean')} />}
-          {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
-        </div>
-      </div>
+      {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
+        kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
+      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
+      {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => (a === 'chancen' ? gehe('qualifizierung') : gehe('kontakte', `runde-${a}`))} zuAkte={zuAkte} startBean={params.get('bean')} />}
+      {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
     </Seite>
   );
 }
