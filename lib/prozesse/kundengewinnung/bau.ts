@@ -4,6 +4,9 @@
 //   · `prozess(...)` setzt Wurzel, Phasen, Ränge und Kennungen (`<vorlage>:<schritt>`), übersetzt die Zweige auf diese Kennungen und setzt die Freigabe-Schlösser
 //     über die EINE Regel (lib/prozesse/schloss.ts `schlossSetzen`) — eine Vorlage hat also nie ein fehlendes Schloss.
 //   · `S.*` baut einen Schritt aus einem Baustein des Katalogs: Form, Bahn und Masken-Werte wie die Werkstatt (`katalog.werte` bzw. das eigene Feld).
+// Gliederung (Feinschliff 22.10., Befund 1): höchstens `PROZESS_GRENZEN.schritteHinweis` Schritte je Phase (Schlösser zählen mit) — die Werkstatt rät sonst
+// selbst „Teilprozess bilden?“. Zweige bleiben in ihrer Phase; ein Ende, das nur über einen Sprung erreicht wird, steht im Strang hinter einem Schritt, der nicht
+// durchfällt (Ende bzw. eigenes „ja“) — sonst liefe der Schritt davor hinein. Wächter: tests/prozesse-vorlagen-gliederung.test.ts (derselbe Ablauf wie vorher).
 // Keine Namen, keine Firmen, keine Beträge (Plattform-Regel): Personen sind Rollen (`rolle:eigner`, `rolle:zustaendig`), Postfach und Gesellschaft „des
 // Falls“ bzw. „des Laufs“, Ereignisse und Felder nur Kennungen. Rein und client-sicher (die Galerie liest dieselben Daten über die Route).
 

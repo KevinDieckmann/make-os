@@ -14,22 +14,26 @@ const V09A: KgTeil = {
     startKriterium: 'Ein offener Deal mit Ampel rot oder gelb bzw. ohne nächsten Schritt (aus der Schleife).',
     endKriterium: 'Der Deal hat einen nächsten Schritt mit Datum, oder er ist geschlossen bzw. geparkt.',
     zettel: STANDARD_ABBRUCH,
-    phasen: [{ titel: 'Deal klären', schritte: [
-      S.hand('t', 'Je Deal (aus der Schleife)'),
-      S.regel('a1', 'Weniger als zweimal verschoben?', [B.kleiner('deal.verschoben', 2)], { zweige: { nein: 'a5' }, pfeil: { ja: 'ja', nein: 'zweimal und öfter' } }),
-      S.mensch('a5', 'Weiterführen — oder parken bzw. verlieren?', 'Weiterführen (ja) — oder parken bzw. verlieren (nein)? Parken braucht die Wiedervorlage, verlieren den Grund.', ZUSTAENDIG, { zweige: { ja: 'a2', nein: 'a6' }, frist: 3 }),
-      S.aufgabe('a6', 'Deal parken oder verlieren', { titel: 'Deal parken (mit Wiedervorlage) oder verlieren (mit Grund)', fristTage: 3, beschreibung: 'In der Deal-Akte die Stufe setzen — die Regel verlangt Grund bzw. Wiedervorlage. Ein gewonnener Deal mit Mandat wird nie verloren.' }, { zweige: { ja: 'e1' } }),
-      S.head('a2', 'Nächsten Schritt vorschlagen', 'sales', {
-        auftrag: 'Lies die Deal-Akte, die letzten Aktivitäten und offene Angebote. Schlage EINEN nächsten Schritt vor: Kanal und in wie vielen Tagen. Nur Kennungen und Zahlen im Ergebnis.',
-        warum: 'Der passende Schritt hängt vom Gesprächsstand ab — das steht in Notizen, nicht in Feldern.', budgetCent: 5, modell: 'schnell',
-        ausgabe: [V.zahl('intagen'), V.wahl('kanal', ['telefon', 'mail', 'termin'])],
-      }),
-      S.dealSchritt('a3', 'Nächsten Schritt setzen', 2, 'Nächster Schritt (aus dem Vorschlag)'),
-      S.wartenEreignis('a4', 'Bewegung abwarten', 'deal-stufe', 5, { zweige: { abgelaufen: 'a7' } }),
-      S.glocke('a7', 'Eskalieren', 'Ein Deal bewegt sich nicht — bitte ansehen.', EIGNER),
-      S.ziel('ez', 'Deal hat einen nächsten Schritt'),
-      S.ziel('e1', 'Geparkt bzw. verloren'),
-    ] }],
+    phasen: [
+      { titel: 'Klären', schritte: [
+        S.hand('t', 'Je Deal (aus der Schleife)'),
+        S.regel('a1', 'Weniger als zweimal verschoben?', [B.kleiner('deal.verschoben', 2)], { zweige: { ja: 'a2', nein: 'a5' }, pfeil: { ja: 'ja', nein: 'zweimal und öfter' } }),
+        S.mensch('a5', 'Weiterführen — oder parken bzw. verlieren?', 'Weiterführen (ja) — oder parken bzw. verlieren (nein)? Parken braucht die Wiedervorlage, verlieren den Grund.', ZUSTAENDIG, { zweige: { ja: 'a2', nein: 'a6' }, frist: 3 }),
+        S.aufgabe('a6', 'Deal parken oder verlieren', { titel: 'Deal parken (mit Wiedervorlage) oder verlieren (mit Grund)', fristTage: 3, beschreibung: 'In der Deal-Akte die Stufe setzen — die Regel verlangt Grund bzw. Wiedervorlage. Ein gewonnener Deal mit Mandat wird nie verloren.' }, { zweige: { ja: 'e1' } }),
+        S.ziel('e1', 'Geparkt bzw. verloren'),
+        S.head('a2', 'Nächsten Schritt vorschlagen', 'sales', {
+          auftrag: 'Lies die Deal-Akte, die letzten Aktivitäten und offene Angebote. Schlage EINEN nächsten Schritt vor: Kanal und in wie vielen Tagen. Nur Kennungen und Zahlen im Ergebnis.',
+          warum: 'Der passende Schritt hängt vom Gesprächsstand ab — das steht in Notizen, nicht in Feldern.', budgetCent: 5, modell: 'schnell',
+          ausgabe: [V.zahl('intagen'), V.wahl('kanal', ['telefon', 'mail', 'termin'])],
+        }),
+      ] },
+      { titel: 'Nachhalten', schritte: [
+        S.dealSchritt('a3', 'Nächsten Schritt setzen', 2, 'Nächster Schritt (aus dem Vorschlag)'),
+        S.wartenEreignis('a4', 'Bewegung abwarten', 'deal-stufe', 5, { zweige: { abgelaufen: 'a7' } }),
+        S.glocke('a7', 'Eskalieren', 'Ein Deal bewegt sich nicht — bitte ansehen.', EIGNER),
+        S.ziel('ez', 'Deal hat einen nächsten Schritt'),
+      ] },
+    ],
   }),
 };
 const V09: KgVorlage = {
@@ -207,18 +211,22 @@ const V08: KgVorlage = {
     beschreibung: 'Am Tag der Wiedervorlage: neue Signale → Reaktivieren mit Anlass; sonst entscheidet ein Mensch: reaktivieren, neu parken oder kein Fit.',
     startKriterium: 'Ein Lead „ruht“ und seine Wiedervorlage ist heute.', endKriterium: 'Der Lead steht wieder auf „kontaktiert“ oder höher, ist neu geparkt oder auf „kein Fit“.',
     zettel: STANDARD_ABBRUCH,
-    phasen: [{ titel: 'Wiedervorlage', schritte: [
-      S.datum('t', 'Am Tag der Wiedervorlage', 'lead.wiedervorlage', 0, '08:00'),
-      S.regel('a2', 'Ohne neue Signale seit dem Parken?', [B.ist('lead.neue-signale', false)], { zweige: { nein: 'a4' }, pfeil: { ja: 'keine Signale', nein: 'neue Signale' } }),
-      S.aufgabe('a4', 'Reaktivieren mit Anlass', { titel: 'Reaktivieren mit Anlass', fristTage: 3, beschreibung: 'Anlass, bester Kanal (Ampel) und Grund des Parkens stehen in der Akte. „Nicht erreicht“: einen anderen Kanal wählen.' }),
-      S.mensch('a6', 'Wie weiter?', 'Reaktivieren (ja) — oder neu parken bzw. kein Fit (nein)?', ZUSTAENDIG, { zweige: { nein: 'a6p' }, frist: 5 }),
-      S.parken('a6p', 'Neu parken', 90, 'spaeter', { zweige: { ja: 'ep' } }),
-      S.qualifizieren('a7', 'Lead aktivieren', 'kontaktiert'),
-      S.wartenEreignis('a8', 'Reaktion abwarten', 'neue-mail', 14, { zweige: { abgelaufen: 'a8e' } }),
-      { id: 'a8e', titel: 'Noch einmal entscheiden', baustein: 'lauf.erneut-ab', feld: { erneut: { ab: 'kg-v08:a6', hoechstens: 1 } } },
-      S.uebergabe('ez', 'Reaktion da — weiter in „Mail eines Leads“', 'kg-v03'),
-      S.ziel('ep', 'Neu geparkt'),
-    ] }],
+    phasen: [
+      { titel: 'Prüfen', schritte: [
+        S.datum('t', 'Am Tag der Wiedervorlage', 'lead.wiedervorlage', 0, '08:00'),
+        S.regel('a2', 'Ohne neue Signale seit dem Parken?', [B.ist('lead.neue-signale', false)], { zweige: { nein: 'a4' }, pfeil: { ja: 'keine Signale', nein: 'neue Signale' } }),
+        S.aufgabe('a4', 'Reaktivieren mit Anlass', { titel: 'Reaktivieren mit Anlass', fristTage: 3, beschreibung: 'Anlass, bester Kanal (Ampel) und Grund des Parkens stehen in der Akte. „Nicht erreicht“: einen anderen Kanal wählen.' }),
+      ] },
+      { titel: 'Entscheiden', schritte: [
+        S.mensch('a6', 'Wie weiter?', 'Reaktivieren (ja) — oder neu parken bzw. kein Fit (nein)?', ZUSTAENDIG, { zweige: { nein: 'a6p' }, frist: 5 }),
+        S.parken('a6p', 'Neu parken', 90, 'spaeter', { zweige: { ja: 'ep' } }),
+        S.qualifizieren('a7', 'Lead aktivieren', 'kontaktiert'),
+        S.wartenEreignis('a8', 'Reaktion abwarten', 'neue-mail', 14, { zweige: { abgelaufen: 'a8e' } }),
+        { id: 'a8e', titel: 'Noch einmal entscheiden', baustein: 'lauf.erneut-ab', feld: { erneut: { ab: 'kg-v08:a6', hoechstens: 1 } } },
+        S.uebergabe('ez', 'Reaktion da — weiter in „Mail eines Leads“', 'kg-v03'),
+        S.ziel('ep', 'Neu geparkt'),
+      ] },
+    ],
   }),
 };
 

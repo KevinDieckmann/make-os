@@ -8,7 +8,8 @@
 // Ziele von nein/fehler/abgelaufen stehen NEBEN dem Strang (wie der Nein-Zweig im Fulfillment): danach geht es bei ihrem `zweige.ja` weiter, sonst zurück
 // in den Strang hinter dem Knoten, von dem sie abzweigen; ein Ende-Knoten beendet den Weg. Ein Freigabe-Schloss (lib/prozesse/schloss.ts) steht immer
 // DIREKT hinter seinem Knoten — egal, wo es gespeichert ist. Kreise nur über eine Erinnerung zurück zur Entscheidung (die Schleife des Fulfillments);
-// eine Schleife „je Eintrag“ ruft einen Teilprozess (kein Kreis im Fluss). Rein und client-sicher; Tests: tests/prozesse-modell.test.ts.
+// eine Schleife „je Eintrag“ ruft einen Teilprozess (kein Kreis im Fluss). Mehrere Auslöser stehen am Anfang nebeneinander und führen JEDER in den ersten
+// Schritt dahinter (22.10., Befund 2). Rein und client-sicher; Tests: tests/prozesse-modell.test.ts, tests/prozesse-vorlagen-gliederung.test.ts.
 
 import type { Befund, ProzessDefinition, ProzessForm, ProzessKnoten } from './definition';
 
@@ -80,11 +81,23 @@ export function kantenVon(d: Pick<ProzessDefinition, 'knoten'>): Kante[] {
     return null;
   };
 
+  /**
+   * Mehrere Auslöser (Feinschliff 22.10., Befund 2): sie stehen nebeneinander am Anfang, und JEDER führt in den ersten Schritt dahinter — nie in den
+   * nächsten Auslöser (der hätte keinen Eingang, die Werkstatt zeigte den Faden nicht). Der Motor startet ohnehin beim Auslöser, der feuerte.
+   */
+  const nachAusloesern = (id: string): string | null => {
+    let n = naechsterIm.get(id) ?? null;
+    const gesehen = new Set<string>();
+    while (n && nach.get(n)?.form === 'ausloeser' && !gesehen.has(n)) { gesehen.add(n); n = naechsterIm.get(n) ?? null; }
+    return n;
+  };
+
   const schritte = new Set(alleSchritte(d).map(x => x.schritt.id));
   for (const k of kn) {
     if (!schritte.has(k.id) || istSchloss.has(k.id)) continue; // Wurzel, Phasen, Gruppen, Bausteine; Schlösser unten bei ihrem Knoten
     if (k.form === 'ende') continue;
-    const positiv = k.form === 'entscheidung' ? (k.zweige?.ja ?? weiterVon({ ...k, zweige: { ...k.zweige, ja: undefined } } as K)) : weiterVon(k);
+    const positiv = k.form === 'entscheidung' ? (k.zweige?.ja ?? weiterVon({ ...k, zweige: { ...k.zweige, ja: undefined } } as K))
+      : k.form === 'ausloeser' && naechsterIm.has(k.id) ? nachAusloesern(k.id) : weiterVon(k);
     const l = schloss.get(k.id);
     const ausgangPositiv: Ausgang = k.form === 'entscheidung' ? 'ja' : k.form === 'freigabe' ? 'ja' : 'weiter';
     if (l) {

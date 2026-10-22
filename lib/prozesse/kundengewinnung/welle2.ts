@@ -26,7 +26,7 @@ const V03: KgVorlage = {
     startKriterium: 'Eine neue eingehende Mail eines Kontakts mit aktivem Lead bzw. offenem Deal (Business-Postfach).', endKriterium: 'Die Antwort ist gesendet, oder ein Follow-up bzw. Termin ist angelegt.',
     zettel: STANDARD_ABBRUCH,
     phasen: [
-      { titel: 'Lesen & antworten', schritte: [
+      { titel: 'Lesen & zuordnen', schritte: [
         S.ereignis('t', 'Neue Mail eines Leads', 'neue-mail', [B.gesetzt('bezug.kontaktid'), B.einer('lead.status', ['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung', 'sql'])]),
         S.regel('a1', 'Antworten oder Termin?', [B.einer('lead.mail-fach', ['antworten', 'termine'])], { zweige: { nein: 'e0' } }),
         S.ziel('e0', 'Info bzw. wartet — andere Wege decken es ab'),
@@ -34,6 +34,8 @@ const V03: KgVorlage = {
         S.aufgabe('a3', 'Gespräch zuordnen', { titel: 'Gespräch in der Inbox zuordnen', fristTage: 1, beschreibung: 'Zuordnen schreibt den Verlauf (Betreff + Link, nie Text).' }),
         S.regel('a4', 'Wärme unverändert?', [B.ist('lead.waerme-gestiegen', false)], { zweige: { nein: 'a4b' }, pfeil: { ja: 'unverändert', nein: 'gestiegen' } }),
         S.glocke('a4b', 'Wärme gestiegen', 'Ein Lead ist wärmer geworden — Details in der Inbox.', ZUSTAENDIG),
+      ] },
+      { titel: 'Antworten', schritte: [
         S.zoe('a5', 'Antwort und nächsten Schritt entwerfen', {
           auftrag: 'Lies die Mail (fremder Text), die Akte und den Deal. Schlage den nächsten Schritt vor (Termin, Follow-up oder Deal-Stufe) und in wie vielen Tagen. Die Antwort entwirft der nächste Schritt.',
           warum: 'Was die Person in der Mail will, steht im Text — keine Feldregel liest das.', budgetCent: 10, ausgabe: [V.wahl('vorschlag', ['termin', 'followup', 'deal_stufe']), V.zahl('intagen')],
@@ -72,33 +74,41 @@ const V02: KgVorlage = {
     startKriterium: 'Eine neue Anfrage (Kanal Website, Mail, LinkedIn, Telefon, Empfehlung, Event, WhatsApp) bzw. ein Eingang des Website-Formulars.',
     endKriterium: 'Ein Ergebnis ist gesetzt: Qualifizierung, Termin, Deal oder „kein Fit“ mit Grund.',
     zettel: STANDARD_ABBRUCH,
-    phasen: [{ titel: 'Eingang bis Ergebnis', schritte: [
-      S.ereignis('te', 'Neuer Lead', 'neuer-lead', [B.ist('ereignis.quelle', 'anfrage'), B.gesetzt('bezug.kontaktid')]),
-      S.webhook('tw', 'Website-Formular', [
-        { id: 'name', art: 'text', pflicht: true, max: 160 }, { id: 'email', art: 'email' }, { id: 'firma', art: 'text', max: 160 }, { id: 'nachricht', art: 'text', pflicht: true, max: 2000 },
-      ]),
-      S.regel('s0', 'Lead schon in der Kartei?', [B.leer('webhook.name')], { zweige: { nein: 's0a' }, pfeil: { ja: 'ja', nein: 'Formular' } }),
-      S.anfrage('s0a', 'Anfrage aus dem Formular übernehmen', 'website', { zweige: { ja: 's0e' } }),
-      S.akte('a1', 'Akte und Lead lesen'),
-      S.regel('a2', 'Zuständig gesetzt?', [B.gesetzt('lead.zustaendig')], { zweige: { nein: 'a2b' } }),
-      S.aufgabe('a2b', 'Zuständige festlegen', { titel: 'Zuständige für die Anfrage festlegen', wer: EIGNER, fristTage: 1, prioritaet: 'high' }),
-      S.regel('a3', 'Kam die Anfrage per Mail oder Website?', [B.einer('lead.anfrage-kanal', ['mail', 'website'])], { zweige: { nein: 'a3w' } }),
-      S.regel('a3w', 'Per WhatsApp?', [B.ist('lead.anfrage-kanal', 'whatsapp')], { zweige: { ja: 'a4w', nein: 'a4t' } }),
-      S.text('a4t', 'Rückruf-Leitfaden', { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Antwort auf die Anfrage' }, { zweige: { ja: 'a5' } }),
-      S.mail('a4m', 'Erste Antwort entwerfen', { betreff: 'Ihre Anfrage', text: 'Guten Tag {{kontakt.anrede}} {{kontakt.nachname}},\n\nvielen Dank für Ihre Anfrage — wir melden uns mit einem Vorschlag für die nächsten Schritte.' }),
-      S.wartenEreignis('a5', 'Uhr: erste Reaktion', C1_EREIGNIS.antwortGesendet, 1, { stunden: 4, arbeitszeit: true, zweige: { abgelaufen: 'a6' } }),
-      S.glocke('a6', 'Uhr abgelaufen: eskalieren', 'Eine Anfrage wartet über die Uhr hinaus auf die erste Reaktion.', ZUSTAENDIG),
-      S.mensch('a7', 'Ergebnis der Anfrage', 'Qualifizieren bzw. Termin (ja) — oder kein Fit bzw. nur Info (nein)? Mit Grund.', ZUSTAENDIG, { zweige: { nein: 'a7n' }, frist: 2 }),
-      S.aufgabe('a7n', 'Ergebnis mit Grund festhalten', { titel: 'Anfrage abschließen: kein Fit bzw. Info — mit Grund', fristTage: 1 }, { zweige: { ja: 'ek' } }),
-      S.score('a8', 'SQL-bereit?', 'sql-bereit', { zweige: { nein: 'a8q' } }),
-      S.qualifizieren('a8q', 'In die Qualifizierung', 'qualifizierung', { zweige: { ja: 'eq' } }),
-      S.dealVorschlag('a9', 'Deal vorschlagen', { naechsterSchritt: 'Bedarfsgespräch vereinbaren', inTagen: 3 }),
-      S.uebergabe('ez', 'An „Deal führen“', 'kg-v09'),
-      S.whatsapp('a4w', 'Antwort per WhatsApp entwerfen', 'Danke für Ihre Nachricht — wir melden uns gleich mit einem Vorschlag.', { zweige: { ja: 'a5' } }),
-      S.ziel('s0e', 'Anfrage übernommen — der neue Lead startet den Eingang'),
-      S.ziel('ek', 'Abgeschlossen (kein Fit bzw. Info)'),
-      S.ziel('eq', 'In der Qualifizierung'),
-    ] }],
+    // Gegliedert 22.10. (Feinschliff, Befund 1): drei Phasen statt einer mit 25 Schritten — derselbe Ablauf (gleiche Knoten, Kanten, Schlösser, Ausgänge;
+    // Wächter tests/prozesse-vorlagen-gliederung.test.ts). Ein Ende, das nur über einen Sprung erreicht wird, steht hinter einem Schritt mit eigenem „ja“.
+    phasen: [
+      { titel: 'Eingang', schritte: [
+        S.ereignis('te', 'Neuer Lead', 'neuer-lead', [B.ist('ereignis.quelle', 'anfrage'), B.gesetzt('bezug.kontaktid')]),
+        S.webhook('tw', 'Website-Formular', [
+          { id: 'name', art: 'text', pflicht: true, max: 160 }, { id: 'email', art: 'email' }, { id: 'firma', art: 'text', max: 160 }, { id: 'nachricht', art: 'text', pflicht: true, max: 2000 },
+        ]),
+        S.regel('s0', 'Lead schon in der Kartei?', [B.leer('webhook.name')], { zweige: { ja: 'a1', nein: 's0a' }, pfeil: { ja: 'ja', nein: 'Formular' } }),
+        S.anfrage('s0a', 'Anfrage aus dem Formular übernehmen', 'website', { zweige: { ja: 's0e' } }),
+        S.ziel('s0e', 'Anfrage übernommen — der neue Lead startet den Eingang'),
+        S.akte('a1', 'Akte und Lead lesen'),
+        S.regel('a2', 'Zuständig gesetzt?', [B.gesetzt('lead.zustaendig')], { zweige: { nein: 'a2b' } }),
+        S.aufgabe('a2b', 'Zuständige festlegen', { titel: 'Zuständige für die Anfrage festlegen', wer: EIGNER, fristTage: 1, prioritaet: 'high' }),
+      ] },
+      { titel: 'Erste Antwort', schritte: [
+        S.regel('a3', 'Kam die Anfrage per Mail oder Website?', [B.einer('lead.anfrage-kanal', ['mail', 'website'])], { zweige: { ja: 'a4m', nein: 'a3w' } }),
+        S.regel('a3w', 'Per WhatsApp?', [B.ist('lead.anfrage-kanal', 'whatsapp')], { zweige: { ja: 'a4w', nein: 'a4t' } }),
+        S.text('a4t', 'Rückruf-Leitfaden', { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Antwort auf die Anfrage' }, { zweige: { ja: 'a5' } }),
+        S.whatsapp('a4w', 'Antwort per WhatsApp entwerfen', 'Danke für Ihre Nachricht — wir melden uns gleich mit einem Vorschlag.', { zweige: { ja: 'a5' } }),
+        S.mail('a4m', 'Erste Antwort entwerfen', { betreff: 'Ihre Anfrage', text: 'Guten Tag {{kontakt.anrede}} {{kontakt.nachname}},\n\nvielen Dank für Ihre Anfrage — wir melden uns mit einem Vorschlag für die nächsten Schritte.' }),
+        S.wartenEreignis('a5', 'Uhr: erste Reaktion', C1_EREIGNIS.antwortGesendet, 1, { stunden: 4, arbeitszeit: true, zweige: { abgelaufen: 'a6' } }),
+        S.glocke('a6', 'Uhr abgelaufen: eskalieren', 'Eine Anfrage wartet über die Uhr hinaus auf die erste Reaktion.', ZUSTAENDIG),
+      ] },
+      { titel: 'Ergebnis', schritte: [
+        S.mensch('a7', 'Ergebnis der Anfrage', 'Qualifizieren bzw. Termin (ja) — oder kein Fit bzw. nur Info (nein)? Mit Grund.', ZUSTAENDIG, { zweige: { nein: 'a7n' }, frist: 2 }),
+        S.aufgabe('a7n', 'Ergebnis mit Grund festhalten', { titel: 'Anfrage abschließen: kein Fit bzw. Info — mit Grund', fristTage: 1 }, { zweige: { ja: 'ek' } }),
+        S.score('a8', 'SQL-bereit?', 'sql-bereit', { zweige: { nein: 'a8q' } }),
+        S.qualifizieren('a8q', 'In die Qualifizierung', 'qualifizierung', { zweige: { ja: 'eq' } }),
+        S.dealVorschlag('a9', 'Deal vorschlagen', { naechsterSchritt: 'Bedarfsgespräch vereinbaren', inTagen: 3 }),
+        S.uebergabe('ez', 'An „Deal führen“', 'kg-v09'),
+        S.ziel('ek', 'Abgeschlossen (kein Fit bzw. Info)'),
+        S.ziel('eq', 'In der Qualifizierung'),
+      ] },
+    ],
   }),
 };
 
@@ -121,22 +131,28 @@ const V10: KgVorlage = {
     beschreibung: 'Nachfassen nach fünf Werktagen, Erinnerung kurz vor Ablauf, bei Ablauf oder Rückfrage bewusst entscheiden: neue Version oder verloren.',
     startKriterium: 'Ein Angebot wird gestellt (Ereignis „Angebot gestellt“, auch eine neue Version).', endKriterium: 'Angenommen oder abgelehnt (mit Grund), oder eine neue Version ist entworfen.',
     zettel: STANDARD_ABBRUCH,
-    phasen: [{ titel: 'Nachfassen', schritte: [
-      S.ereignis('t', 'Angebot gestellt', 'angebot-gestellt'),
-      S.regel('a1', 'Nachfass-Follow-up da?', [B.ist('deal.nachfass-followup', true)], { zweige: { nein: 'a1f' } }),
-      S.followup('a1f', 'Nachfass-Follow-up sichern', { text: 'Angebot nachfassen', inTagen: 5 }),
-      S.wartenEreignis('a2', 'Reaktion abwarten', 'neue-mail', 5, { arbeitszeit: true, zweige: { abgelaufen: 'a4' } }),
-      S.text('a4', 'Nachfassen am Telefon', { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Gestelltes Angebot' }, { zweige: { ja: 'a5' } }),
-      S.mensch('a3', 'Frage oder Änderungswunsch?', 'Ist die Antwort eine Frage bzw. ein Änderungswunsch (ja) — oder schon Zusage bzw. Absage (nein, dann in der Angebots-Ansicht setzen)?', ZUSTAENDIG, { zweige: { ja: 'a6', nein: 'ea' }, frist: 2 }),
-      S.ziel('ea', 'Entschieden — weiter über „Gewonnen“ bzw. „Verloren“'),
-      S.wartenDatum('a5', 'Bis kurz vor Ablauf', 'angebot.gueltig-bis', -3, 30),
-      S.mail('a5b', 'Erinnerung: Angebot läuft ab', { betreff: 'Unser Angebot zu {{deal.titel}}', text: 'Guten Tag {{kontakt.anrede}} {{kontakt.nachname}},\n\nunser Angebot gilt noch wenige Tage — gibt es Fragen dazu?' }),
-      S.mensch('a6', 'Wie weiter?', 'Neue Version (ja) — oder verloren mit Grund (nein)?', ZUSTAENDIG, { zweige: { nein: 'a6v' }, frist: 3 }),
-      S.aufgabe('a6v', 'Deal als verloren schließen', { titel: 'Deal schließen: verloren (Grund aus der Liste)', fristTage: 2 }, { zweige: { ja: 'ev' } }),
-      S.angebotEntwurf('a7', 'Neue Version entwerfen'),
-      S.ziel('ez', 'Neue Version entworfen'),
-      S.ziel('ev', 'Verloren'),
-    ] }],
+    phasen: [
+      { titel: 'Absichern', schritte: [
+        S.ereignis('t', 'Angebot gestellt', 'angebot-gestellt'),
+        S.regel('a1', 'Nachfass-Follow-up da?', [B.ist('deal.nachfass-followup', true)], { zweige: { nein: 'a1f' } }),
+        S.followup('a1f', 'Nachfass-Follow-up sichern', { text: 'Angebot nachfassen', inTagen: 5 }),
+      ] },
+      { titel: 'Nachfassen & entscheiden', schritte: [
+        S.wartenEreignis('a2', 'Reaktion abwarten', 'neue-mail', 5, { arbeitszeit: true, zweige: { abgelaufen: 'a4' } }),
+        S.text('a4', 'Nachfassen am Telefon', { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Gestelltes Angebot' }, { zweige: { ja: 'a5' } }),
+        S.mensch('a3', 'Frage oder Änderungswunsch?', 'Ist die Antwort eine Frage bzw. ein Änderungswunsch (ja) — oder schon Zusage bzw. Absage (nein, dann in der Angebots-Ansicht setzen)?', ZUSTAENDIG, { zweige: { ja: 'a6', nein: 'ea' }, frist: 2 }),
+        S.ziel('ea', 'Entschieden — weiter über „Gewonnen“ bzw. „Verloren“'),
+        S.ziel('ev', 'Verloren'),
+        S.wartenDatum('a5', 'Bis kurz vor Ablauf', 'angebot.gueltig-bis', -3, 30),
+        S.mail('a5b', 'Erinnerung: Angebot läuft ab', { betreff: 'Unser Angebot zu {{deal.titel}}', text: 'Guten Tag {{kontakt.anrede}} {{kontakt.nachname}},\n\nunser Angebot gilt noch wenige Tage — gibt es Fragen dazu?' }),
+        S.mensch('a6', 'Wie weiter?', 'Neue Version (ja) — oder verloren mit Grund (nein)?', ZUSTAENDIG, { zweige: { nein: 'a6v' }, frist: 3 }),
+        S.aufgabe('a6v', 'Deal als verloren schließen', { titel: 'Deal schließen: verloren (Grund aus der Liste)', fristTage: 2 }, { zweige: { ja: 'ev' } }),
+      ] },
+      { titel: 'Neue Version', schritte: [
+        S.angebotEntwurf('a7', 'Neue Version entwerfen'),
+        S.ziel('ez', 'Neue Version entworfen'),
+      ] },
+    ],
   }),
 };
 
@@ -151,27 +167,31 @@ const V01A: KgTeil = {
     beschreibung: 'Teilprozess des nächtlichen Prospecting-Laufs: fehlende Angaben recherchieren (nur öffentlich, mit Quelle — als Vorschlag), Score lesen, gute Fälle als Outreach und Deal-Vorschlag.',
     startKriterium: 'Eine Firma aus der Abfrage des Nachtlaufs.', endKriterium: 'Der Account ist bewertet, und es liegt ein Outreach oder die Entscheidung „bleibt in der Pflege“ vor.',
     zettel: STANDARD_ABBRUCH,
-    phasen: [{ titel: 'Bewerten', schritte: [
-      S.hand('t', 'Je Account (aus der Schleife)'),
-      S.regel('a1', 'Daten vollständig?', [B.ist('firma.daten-fehlen', false)], { zweige: { ja: 'a4', nein: 'a2' } }),
-      S.research('a2', 'Firma recherchieren', {
-        auftrag: 'Öffentliche Angaben zur Firma mit Quelle: Branche, Mitarbeitende, Webseite, LinkedIn-Seite, Beschreibung; dazu Signale und eine Einschätzung des Fit (0–100).',
-        warum: 'Öffentliche Angaben stehen nicht im CRM — eine Regel kann sie nicht kennen.', budgetCent: 20, ausgabe: [V.zahl('fit')],
-        vorschlagFelder: ['firma.branche', 'firma.mitarbeiter', 'firma.website', 'firma.linkedin', 'firma.beschreibung'],
-      }),
-      S.karte('a3', 'Ergebnis in die Karte eintragen', 'firma', ['branche', 'mitarbeiter', 'webseite', 'linkedin'], 'je-feld'),
-      S.score('a4', 'Lead-Score warm?', 'temperatur', { temperatur: ['warm', 'heiss'], zweige: { nein: 'a5' } }),
-      S.regel('a5', 'Fit aus der Recherche stark?', [B.groesser('agent.fit', 69)], { zweige: { ja: 'a6', nein: 'e1' } }),
-      S.ziel('e1', 'Bleibt in der Pflege'),
-      S.aufgabe('a6', 'Outreach vorbereiten', { titel: 'Outreach vorbereiten: {{firma.name}}', fristTage: 2, beschreibung: 'Aufhänger, bester Kanal (Ampel) und Score stehen in der Akte.' }),
-      S.regel('a7', 'Bester Kanal Mail?', [B.ist('firma.bester-kanal', 'mail')], { zweige: { nein: 'a8t' } }),
-      S.text('a8t', 'Anruf-Leitfaden', { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Aufhänger aus der Recherche' }, { zweige: { ja: 'a9' } }),
-      S.mail('a8', 'Erstansprache entwerfen', { betreff: 'Kurze Frage zu {{firma.name}}', text: 'Guten Tag,\n\nbeim Blick auf {{firma.name}} ist uns etwas aufgefallen — darf ich kurz erzählen, woran wir arbeiten?' }),
-      S.score('a9', 'SQL-bereit?', 'sql-bereit', { zweige: { nein: 'e2' } }),
-      S.ziel('e2', 'Outreach vorbereitet'),
-      S.dealVorschlag('a10', 'Deal vorschlagen', { naechsterSchritt: 'Erstgespräch vereinbaren', inTagen: 3 }),
-      S.uebergabe('ez', 'An „Deal führen“', 'kg-v09'),
-    ] }],
+    phasen: [
+      { titel: 'Anreichern', schritte: [
+        S.hand('t', 'Je Account (aus der Schleife)'),
+        S.regel('a1', 'Daten vollständig?', [B.ist('firma.daten-fehlen', false)], { zweige: { ja: 'a4', nein: 'a2' } }),
+        S.research('a2', 'Firma recherchieren', {
+          auftrag: 'Öffentliche Angaben zur Firma mit Quelle: Branche, Mitarbeitende, Webseite, LinkedIn-Seite, Beschreibung; dazu Signale und eine Einschätzung des Fit (0–100).',
+          warum: 'Öffentliche Angaben stehen nicht im CRM — eine Regel kann sie nicht kennen.', budgetCent: 20, ausgabe: [V.zahl('fit')],
+          vorschlagFelder: ['firma.branche', 'firma.mitarbeiter', 'firma.website', 'firma.linkedin', 'firma.beschreibung'],
+        }),
+        S.karte('a3', 'Ergebnis in die Karte eintragen', 'firma', ['branche', 'mitarbeiter', 'webseite', 'linkedin'], 'je-feld'),
+        S.score('a4', 'Lead-Score warm?', 'temperatur', { temperatur: ['warm', 'heiss'], zweige: { nein: 'a5' } }),
+        S.regel('a5', 'Fit aus der Recherche stark?', [B.groesser('agent.fit', 69)], { zweige: { ja: 'a6', nein: 'e1' } }),
+        S.ziel('e1', 'Bleibt in der Pflege'),
+        S.aufgabe('a6', 'Outreach vorbereiten', { titel: 'Outreach vorbereiten: {{firma.name}}', fristTage: 2, beschreibung: 'Aufhänger, bester Kanal (Ampel) und Score stehen in der Akte.' }),
+      ] },
+      { titel: 'Ansprechen', schritte: [
+        S.regel('a7', 'Bester Kanal Mail?', [B.ist('firma.bester-kanal', 'mail')], { zweige: { nein: 'a8t' } }),
+        S.text('a8t', 'Anruf-Leitfaden', { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Aufhänger aus der Recherche' }, { zweige: { ja: 'a9' } }),
+        S.mail('a8', 'Erstansprache entwerfen', { betreff: 'Kurze Frage zu {{firma.name}}', text: 'Guten Tag,\n\nbeim Blick auf {{firma.name}} ist uns etwas aufgefallen — darf ich kurz erzählen, woran wir arbeiten?' }),
+        S.score('a9', 'SQL-bereit?', 'sql-bereit', { zweige: { nein: 'e2' } }),
+        S.ziel('e2', 'Outreach vorbereitet'),
+        S.dealVorschlag('a10', 'Deal vorschlagen', { naechsterSchritt: 'Erstgespräch vereinbaren', inTagen: 3 }),
+        S.uebergabe('ez', 'An „Deal führen“', 'kg-v09'),
+      ] },
+    ],
   }),
 };
 const V01: KgVorlage = {
@@ -281,26 +301,30 @@ const V14: KgVorlage = {
     beschreibung: 'Steht das Mandat gut und wurde länger nicht gefragt: wen könnte die Person kennen (nur eigenes CRM), um ein Intro bitten, Text für den Kunden, Empfehlung abwarten, „vorgestellt durch“ eintragen, Danke.',
     startKriterium: '45 Tage nach Mandatsende bzw. ein Ziel des Mandats ist erreicht.', endKriterium: 'Ein Intro ist erbeten, und eine Empfehlung kam als Lead an — oder die Frage ist bewusst verschoben.',
     zettel: STANDARD_ABBRUCH,
-    phasen: [{ titel: 'Fragen', schritte: [
-      S.datum('t1', '45 Tage nach Mandatsende', 'mandat.ende', 45, '09:00'),
-      S.ereignis('t2', 'Ziel des Mandats erreicht', C1_EREIGNIS.zielErreicht),
-      S.regel('a1', 'Steht das Mandat gut?', [B.ist('mandat.ampel', 'gruen'), B.groesser('mandat.health', 74)], { zweige: { nein: 'e0' } }),
-      S.ziel('e0', 'Nicht jetzt'),
-      S.regel('a2', 'Länger nicht gefragt?', [B.groesser('mandat.tage-seit-empfehlung', 119), B.leer('mandat.tage-seit-empfehlung')], { oder: true, zweige: { nein: 'e1' } }),
-      S.ziel('e1', 'Schon gefragt'),
-      S.head('a3', 'Wen könnte die Person kennen?', 'kundenerfolg', {
-        auftrag: 'Nur aus dem eigenen CRM (keine Web-Suche): welche Firmen ähneln dem Kunden (Kreis, Branche)? Nenne bis zu drei Kennungen.',
-        warum: 'Ähnlichkeit nach Kreis, Branche und Verlauf ist eine Einschätzung — keine Feldregel.', budgetCent: 10, ausgabe: [V.kennung('firmen', 'firma', true)],
-      }),
-      S.aufgabe('a4', 'Im nächsten Termin um ein Intro bitten', { titel: 'Im nächsten Termin um ein Intro bitten', fristTage: 14, beschreibung: 'Wirkung in einem Satz, dazu bis zu drei passende Firmen. Doppelte Zustimmung — der Kunde fragt selbst.' }),
-      S.text('a5', 'Intro-Text zum Weiterleiten', { art: 'nachricht_entwurf', kanal: 'mail', text: 'Text für den Kunden zum Weiterleiten — erst nach Zusage der Zielperson.' }),
-      S.wartenEreignis('a6', 'Empfehlung abwarten', 'neuer-lead', 30, { zweige: { abgelaufen: 'e2' } }),
-      S.ziel('e2', 'Gefragt, offen'),
-      // Die empfohlene Person kennt der Lauf nicht (Fall ist das Mandat) — darum trägt ein Mensch „Vorgestellt durch“ an IHRER Akte ein, mit dem Namen aus dem Fall.
-      S.aufgabe('a7', '„Vorgestellt durch“ eintragen', { titel: '„Vorgestellt durch“ am neuen Kontakt eintragen', fristTage: 2, beschreibung: 'Empfehlungsgeber: {{kontakt.vorname}} {{kontakt.nachname}} ({{firma.name}}) — in der Akte der empfohlenen Person unter „Vorgestellt durch“.' }),
-      S.aufgabe('a8', 'Danke an den Empfehlungsgeber', { titel: 'Danke an den Empfehlungsgeber (persönlich)', fristTage: 2 }),
-      S.uebergabe('ez', 'An den Lead-Eingang', 'kg-v02'),
-    ] }],
+    phasen: [
+      { titel: 'Prüfen', schritte: [
+        S.datum('t1', '45 Tage nach Mandatsende', 'mandat.ende', 45, '09:00'),
+        S.ereignis('t2', 'Ziel des Mandats erreicht', C1_EREIGNIS.zielErreicht),
+        S.regel('a1', 'Steht das Mandat gut?', [B.ist('mandat.ampel', 'gruen'), B.groesser('mandat.health', 74)], { zweige: { nein: 'e0' } }),
+        S.ziel('e0', 'Nicht jetzt'),
+        S.regel('a2', 'Länger nicht gefragt?', [B.groesser('mandat.tage-seit-empfehlung', 119), B.leer('mandat.tage-seit-empfehlung')], { oder: true, zweige: { nein: 'e1' } }),
+        S.ziel('e1', 'Schon gefragt'),
+      ] },
+      { titel: 'Fragen', schritte: [
+        S.head('a3', 'Wen könnte die Person kennen?', 'kundenerfolg', {
+          auftrag: 'Nur aus dem eigenen CRM (keine Web-Suche): welche Firmen ähneln dem Kunden (Kreis, Branche)? Nenne bis zu drei Kennungen.',
+          warum: 'Ähnlichkeit nach Kreis, Branche und Verlauf ist eine Einschätzung — keine Feldregel.', budgetCent: 10, ausgabe: [V.kennung('firmen', 'firma', true)],
+        }),
+        S.aufgabe('a4', 'Im nächsten Termin um ein Intro bitten', { titel: 'Im nächsten Termin um ein Intro bitten', fristTage: 14, beschreibung: 'Wirkung in einem Satz, dazu bis zu drei passende Firmen. Doppelte Zustimmung — der Kunde fragt selbst.' }),
+        S.text('a5', 'Intro-Text zum Weiterleiten', { art: 'nachricht_entwurf', kanal: 'mail', text: 'Text für den Kunden zum Weiterleiten — erst nach Zusage der Zielperson.' }),
+        S.wartenEreignis('a6', 'Empfehlung abwarten', 'neuer-lead', 30, { zweige: { abgelaufen: 'e2' } }),
+        S.ziel('e2', 'Gefragt, offen'),
+        // Die empfohlene Person kennt der Lauf nicht (Fall ist das Mandat) — darum trägt ein Mensch „Vorgestellt durch“ an IHRER Akte ein, mit dem Namen aus dem Fall.
+        S.aufgabe('a7', '„Vorgestellt durch“ eintragen', { titel: '„Vorgestellt durch“ am neuen Kontakt eintragen', fristTage: 2, beschreibung: 'Empfehlungsgeber: {{kontakt.vorname}} {{kontakt.nachname}} ({{firma.name}}) — in der Akte der empfohlenen Person unter „Vorgestellt durch“.' }),
+        S.aufgabe('a8', 'Danke an den Empfehlungsgeber', { titel: 'Danke an den Empfehlungsgeber (persönlich)', fristTage: 2 }),
+        S.uebergabe('ez', 'An den Lead-Eingang', 'kg-v02'),
+      ] },
+    ],
   }),
 };
 
