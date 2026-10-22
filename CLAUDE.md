@@ -1652,6 +1652,17 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Ereignis-Quellen nur aus vorhandenen Schreibwegen; ein Kennungs-Umzug erzeugt keine neuen Ereignisse (Wächter `tests/ereignisse-umzug-sicher.test.ts`).
 - **Entwurf ≠ Version**: Werkstatt speichert den Entwurf (Stand/409, „Deine Fassung“), „Veröffentlichen“ mit Name + Notiz (volle Mitglieder), Versionen
   vergleichen/übernehmen; laufende Fälle bleiben auf ihrer Version. Route `/api/prozesse/werkstatt`, Tor `prozesseZugang` (alt `werkstattZugang`).
+- **Produkt → Prozess (22.10., Branch `prozesse-fulfillment`; Kevin: „Fulfillment = das Werkzeug“, KEINE eigenen Fulfillment-Vorlagen):** jedes Produkt hat genau
+  EINEN Ablauf — Paket des Fulfillments (`fulfillment--<h>.zuordnung`, Fall wie bisher, bit-gleich) ODER Prozess der Werkstatt (`Leistung.prozessId`, nur `pz-…`,
+  kein Karten-Feld). Regeln NUR in `lib/prozesse/produkt-bindung.ts` (rein: `fuerProduktWaehlbar` = Fall-Art Mandat in Fulfillment · Übergabe · Ausbau, `ablaufWechsel`
+  erst neu setzen dann alt lösen, `produktStarts`, `produktMandate`, `produkteVon…`, `KUNDEN_FORMEN`). Start im Motor `produktLaeufeStarten` (lauf-server, an
+  `aufEreignisStarten`): „Mandat angelegt“ → Haupt + Zusatzmodule, Ereignis **`zusatz-gebucht`** (crmDiff, NUR neue Module an bestehenden Mandaten, Bezug `leistungId`)
+  → das Modul; Auslöser des Laufs `produkt`, Fall = Mandat, nur laufende Prozesse (Probelauf = Schatten, Entwurf nie), ein Lauf je Fall und Prozess; bestehende Fälle
+  beim Scharfschalten zählen die Mandate des Produkts. Sicht: Produktkarte „Ablauf“ (Pakete + Prozesse, „In der Werkstatt öffnen“/„Im Editor öffnen“, „Prozess für
+  dieses Produkt anlegen“ = `NeuerProzessFenster fuerProdukt`), Landkarte/Steckbrief „gehört zu Produkt …“ (`ProzessDef.produkte`, Server hängt an), Werkstatt-GET
+  `produkte`, Verbindungsprüfung `produkt-prozess-tot`. Kunde: Schalter „Dem Kunden zeigen“ (`kundeSichtbar`, nur Schritt · Nachricht · Termin) → Etappen aus SCHARFEN
+  Läufen (`lib/prozesse/kunden-etappen.ts`) füllen `zeitstrahl`/`erledigt`/`naechstes` NUR ohne Fall (`sichtFuer`), keine neuen Schlüssel der Positivliste.
+  Tests `tests/prozesse-fulfillment-*.test.ts` (Gold: Paket-Mandat bit-gleich).
 - **Lauf-Motor** (`lib/prozesse/lauf-server.ts`; rein und browser-sicher `lauf-regeln.ts`/`lauf-typen.ts` — Wächter `tests/prozesse-lauf-client.test.ts`:
   kein Server-Code in Modulen, die `components/os/prozesse/*` lädt; `next build` merkt es, tsc/vitest nicht): Bestand `prozess-laeufe--<haushalt>` (nur
   Kennungen/Status, 12 Monate), Wirkung = Kennung `<lauf>-<schritt>`, Flut-/Schleifenschutz (Herkunft, Tiefe 3), Warten mit Ablauf, Notbremse, HOI-Befund.

@@ -321,6 +321,13 @@ export interface Leistung {
   aufwandStundenWoche?: number;
   /** Ziel im Zieljahr der Treppe — Umsatz in Euro (wie das Zielbild), Kunden als Anzahl. */
   ziel?: { umsatz?: number; kunden?: number };
+  /**
+   * Prozess der Werkstatt (22.10., Prozesse × Fulfillment — Kevin: „Prozesse für unsere Produkte bauen“): Kennung `pz-…` eines Prozesses mit Fall-Art Mandat
+   * (Bestand `prozesse--<haushalt>`, nur Verweis, keine Kopie). Ein neues Mandat mit diesem Produkt — bzw. dieses Produkt als gebuchtes Zusatzmodul — startet
+   * seinen Lauf über den Motor (lib/prozesse/produkt-bindung.ts, lib/prozesse/lauf-server.ts). Optional; KEIN Karten-Feld (ändert die Treppe nicht).
+   * Neben einer Paket-Zuordnung des Fulfillments (`fulfillment--<h>.zuordnung`) steht immer nur eins — die Produktkarte („Ablauf“) wählt genau einen Weg.
+   */
+  prozessId?: string;
   geaendert: string;
 }
 /** Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. */

@@ -11,6 +11,12 @@ export const EINSTELLUNGEN_PROZESSE_LAEUFE = {
     was: 'Ein Prozess ist Entwurf (läuft nie), Probelauf (Läufe rechnen im Schatten mit echten Fällen und schreiben nichts), scharf (Läufe legen echte Aufgaben und Vorschläge an — nach außen geht nur, was ihr freigebt) oder pausiert (offene Läufe halten an und gehen danach genau dort weiter).',
     beispiel: 'Der Prozess „Lead nachfassen“ läuft eine Woche als Probelauf. Im Reiter Läufe seht ihr, welche Leads er erfasst hätte; danach schaltet ihr ihn scharf.',
   },
+  'prozesse.kundeSichtbar': {
+    was: 'Ein Schritt, eine Nachricht oder ein Termin eines Prozesses am Mandat kann im Kunden-Link als Etappe erscheinen — nur, wenn er hier eingeschaltet ist, und nur aus scharfen Läufen (nie aus dem Probelauf). Der Kunde sieht den Titel der Phase, wie weit sie ist, was erledigt ist und was als Nächstes kommt; Agenten, Entscheidungen, Freigaben und Warten bleiben immer intern. Hat das Mandat einen Ablauf des Fulfillments, zeigt der Kunden-Link wie bisher nur diesen.',
+    beispiel: 'Im Prozess „Diagnose liefern“ ist „Kick-off-Termin“ eingeschaltet, „Angebot intern prüfen“ nicht. Der Kunde der Beispiel GmbH sieht „Kick-off-Termin“ als erledigt und „Ergebnis-Workshop“ als nächsten Schritt — die interne Prüfung sieht er nie.',
+    an: 'Der Schritt erscheint im Kunden-Link (Titel und Stand), sobald ein scharfer Lauf ihn erreicht hat bzw. er als Nächstes kommt.',
+    aus: 'Der Schritt bleibt intern.',
+  },
   'prozesse.budget': {
     was: 'Das Budget gilt je Prozess und Monat (kein Gesamtbudget): nur Agenten-Schritte kosten Geld. Bei 80 Prozent kommt ein Hinweis in die Glocke, an der Grenze pausiert sich nur dieser Prozess — die anderen laufen weiter.',
     beispiel: 'Geschätzt sind drei Euro im Monat, ihr legt fünf Euro fest. Im dritten Monat kommen mehr Leads, bei vier Euro meldet die Glocke 80 Prozent, bei fünf Euro pausiert der Prozess.',

@@ -2,7 +2,7 @@
 // GET              Liste aller Prozesse (Werkstatt + Paket-Vorlagen des Fulfillments, die nur lesend) mit den Rechten der Person.
 // GET ?vorlagen=1  die Galerie der Vorlagen (Kundengewinnung, 22.10.) — Kurzform + welche schon übernommen sind; `?vorlage=<id>` eine mit Vorschau.
 // GET ?id=         ein Prozess: Entwurf mit Stand, Versionen (kurz), Befunde (alle — die Werkstatt zeigt sie am Knoten), Kanten des Flusses, Webhook (ohne
-//                  Schlüssel). `&version=<nr>` eine Version ganz; `&vergleich=<a>,<b>` (Nummer oder „entwurf“) der Vergleich (nur Feldnamen, nie Werte).
+//                  Schlüssel), Produkte, die auf ihn zeigen (22.10., nur Kennung + Name). `&version=<nr>` eine Version ganz; `&vergleich=<a>,<b>` (Nummer oder „entwurf“) der Vergleich (nur Feldnamen, nie Werte).
 // POST { aktion }  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
 //                  · aus-vorlage { vorlageId, eigner?, anfrageId } (22.10.) · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
 // Tor: `werkstattZugang` — Haushalt des Inhabers, Sicht Privat 403; schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung; veröffentlichen, Status und
@@ -77,9 +77,13 @@ export async function GET(req: Request) {
   }
   const kx = await pruefKontextFuer(z.haushalt, z.person, d);
   const w = (await webhooksLesen(z.haushalt)).webhooks.find(x => x.prozessId === e.id);
+  // Prozesse × Fulfillment (22.10.): die Produkte, die auf diesen Prozess zeigen (`Leistung.prozessId`) — nur Kennung und Name, für „gehört zu Produkt …“.
+  const produkte = await (async () => {
+    try { const [{ ladeCrm }, { produkteVonProzess }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/prozesse/produkt-bindung')]); return produkteVonProzess((await ladeCrm()).leistungen, e.id); } catch { return []; }
+  })();
   return NextResponse.json({
     ok: true, rechte: z.rechte, ...ansicht(e), befunde: definitionPruefen(e.entwurf, kx), kanten: kantenVon(e.entwurf),
-    webhook: w ? webhookKurz(w) : null,
+    webhook: w ? webhookKurz(w) : null, produkte,
   });
 }
 

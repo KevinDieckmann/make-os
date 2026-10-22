@@ -1063,6 +1063,37 @@ async function aufEreignisStarten(e: Ereignis, kx: MotorKontext): Promise<number
       if (r.ok) n++;
     }
   }
+  // Produkt → Prozess (22.10., Prozesse × Fulfillment): ein neues Mandat bzw. ein gebuchtes Zusatzmodul startet den Prozess, auf den sein Produkt zeigt.
+  return n + await produktLaeufeStarten(e, kx);
+}
+/**
+ * Starts über die Bindung eines Produkts (`Leistung.prozessId`; welche: lib/prozesse/produkt-bindung.ts `produktStarts`) — wie jeder Ereignis-Start: nur ein
+ * laufender Prozess (Probelauf = Schatten, scharf erst nach „scharf schalten“; Entwurf startet nie), nur Fall-Art Mandat, jüngste Version, ein Lauf je Fall und
+ * Prozess (`starten`: offen bzw. schon gelaufen → nichts), Flutschutz, eigene Wirkung startet nie (Schleifenschutz). Die Fulfillment-Ausführung der Pakete bleibt
+ * davon unberührt (sie startet einen Fall wie bisher nur auf Klick).
+ */
+async function produktLaeufeStarten(e: Ereignis, kx: MotorKontext): Promise<number> {
+  if (e.art !== 'mandat-angelegt' && e.art !== 'zusatz-gebucht') return 0;
+  const crm = await crmVon(kx);
+  const mandatId = e.bezug.mandatId;
+  if (!crm || !mandatId) return 0;
+  const { produktStarts } = await import('./produkt-bindung');
+  const herkunft = herkunftAus(e.herkunft);
+  let n = 0;
+  for (const b of produktStarts(e, crm)) {
+    const p = eintragVon(kx, b.prozessId);
+    if (!p || laufZustand(p) !== 'laeuft' || herkunft?.prozessId === p.id) continue;
+    const j = juengste(p);
+    if (!j || fallArtVon(j.def) !== 'mandat') continue;
+    const modus = modusFuer(p, standVon(await laeufeLesen(kx.h), p.id));
+    if (!modus) continue;
+    const r = await prozessLaufStarten({
+      id: neueKennung('pl'), prozessId: p.id, version: j.nr, def: j.def, fall: { art: 'mandat', id: mandatId }, modus, person: personFuer(j.def, kx, e.person ?? null),
+      ausloeser: { art: 'produkt', quelle: e.id }, daten: { ...kennungsDaten(e), 'produkt.id': b.leistungId, 'produkt.rolle': b.rolle }, tiefe: herkunft ? herkunft.tiefe + 1 : 0,
+      ...(herkunft ? { herkunft: { prozessId: herkunft.prozessId, laufId: herkunft.laufId } } : {}), automatisch: true, periode: e.id, jetzt: kx.jetzt.toISOString(),
+    }, kx.h);
+    if (r.ok) n++;
+  }
   return n;
 }
 /** Was vom Ereignis im Lauf bleibt: nur Art, Quelle, Stufe und Kennungen (nie Text — auch nicht vom Webhook; dort nur die Eingangs-Kennung). */
@@ -1404,11 +1435,21 @@ export async function bestehendeFaelle(def: ProzessDefinition, kx: MotorKontext)
       if (!raus.some(x => x.fall.id === fall.id)) raus.push({ fall, daten, knoten: s.id });
     }
   }
+  // Produkt → Prozess (22.10., Prozesse × Fulfillment): laufende Mandate, deren Produkt (Haupt oder Zusatz) auf diesen Prozess zeigt — auch ohne eigenen
+  // Auslöser „Ereignis“ (die Bindung IST der Auslöser). Nur Business, jedes Mandat einmal.
+  if (fallArt === 'mandat') {
+    const { produktMandate } = await import('./produkt-bindung');
+    const start = startKnoten(def)[0]?.id ?? alleSchritte(def)[0]?.schritt.id ?? '';
+    for (const x of produktMandate(def.id, crm)) {
+      if (bereichVonGesellschaft(x.mandat.gesellschaft) === 'privat' || raus.some(r => r.fall.id === x.mandat.id)) continue;
+      raus.push({ fall: { art: 'mandat', id: x.mandat.id }, daten: { 'ereignis.quelle': 'bestehend', 'bezug.mandatid': x.mandat.id, 'produkt.id': x.leistungId, 'produkt.rolle': x.rolle }, knoten: start });
+    }
+  }
   return raus;
 }
 
 /** Läufe je Monat (Schätzung): Ereignisse der letzten 30 Tage, die gepasst hätten, sonst der Rhythmus des Zeitplans. */
-async function laeufeJeMonat(def: ProzessDefinition, _kx: MotorKontext): Promise<number> {
+async function laeufeJeMonat(def: ProzessDefinition, kx: MotorKontext): Promise<number> {
   let n = 0;
   const { ereignisseLaden } = await import('@/lib/ereignisse/server');
   const b = await ereignisseLaden().catch(() => null);
@@ -1417,6 +1458,12 @@ async function laeufeJeMonat(def: ProzessDefinition, _kx: MotorKontext): Promise
     if (a?.art === 'ereignis' && b) n += b.eintraege.filter(e => e.art === a.ereignis && e.bereich !== 'privat' && ausloeserPasst(a, def.id, e, ereignisDaten(e))).length;
     if (a?.art === 'zeitplan') n += a.rhythmus === 'taeglich' ? 30 : a.rhythmus === 'werktags' ? 21 : a.rhythmus === 'woechentlich' ? Math.round(4.3 * (a.tage?.length || 1)) : (a.tage?.length || 1);
     if (a?.art === 'loop') n += a.loop === 'morgen' ? 30 : a.loop === 'woche' ? 4 : 1;
+  }
+  // Produkt → Prozess (22.10.): neue Mandate bzw. gebuchte Zusatzmodule im Bestand der Ereignisse, deren Produkt auf diesen Prozess zeigt.
+  const crm = b && fallArtVon(def) === 'mandat' ? await crmVon(kx) : null;
+  if (b && crm) {
+    const { produktStarts } = await import('./produkt-bindung');
+    n += b.eintraege.filter(e => e.bereich !== 'privat' && produktStarts(e, crm).some(x => x.prozessId === def.id)).length;
   }
   return Math.max(1, n);
 }

@@ -22,6 +22,7 @@ import type { TreppeDatei, TreppenStufe } from './treppe-daten';
 import type { Rhythmus } from '@/lib/finanzen/szenarien';
 import { inCent } from '@/lib/finanzen/ust';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
+import { PROZESS_KENNUNG } from '@/lib/prozesse/definition';
 
 export type { PreisTeil, PreisTeilArt, ProduktVertrag, ProduktRegeln, ProduktRolle, MandatZusatz, MandatZusatzBasis } from './typen';
 
@@ -698,6 +699,11 @@ const dezimal = (v: unknown, min: number, max: number): number | undefined => (t
 const zeile = (v: unknown, n: number): string | undefined => { const t = typeof v === 'string' ? v.replace(/\u0000/g, '').replace(/\s+/g, ' ').trim() : ''; return t ? t.slice(0, n) : undefined; };
 const absatz = (v: unknown, n: number): string | undefined => { const t = typeof v === 'string' ? v.replace(/\u0000/g, '').replace(/\r\n?/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim() : ''; return t ? t.slice(0, n) : undefined; };
 const KENNUNG = /^[a-z0-9][a-z0-9-]{1,63}$/;
+/**
+ * Verweis auf einen Prozess der Werkstatt (22.10., Prozesse × Fulfillment; `Leistung.prozessId`): nur die Form `pz-<uuid>` — ob es ihn gibt und ob er zu einem
+ * Mandat passt, entscheidet der Motor beim Start (lib/prozesse/produkt-bindung.ts) und zeigt die Verbindungsprüfung. Sonst undefined.
+ */
+export const produktProzessKennung = (v: unknown): string | undefined => (typeof v === 'string' && PROZESS_KENNUNG.test(v) ? v : undefined);
 const TEIL_ID = /^pt-[a-z0-9-]{1,40}$/;
 const ZUSATZ_ID = /^mz-[a-z0-9-]{1,60}$/;
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
@@ -1029,6 +1035,8 @@ export function produktPruefen(felder: Record<string, unknown>, opt: { id?: stri
     else f.push(...nur([zahlFehler(d.ziel.umsatz, 'Umsatzziel (Euro)', 0, G.zielUmsatz, false), zahlFehler(d.ziel.kunden, 'Kundenziel', 0, G.zielKunden)]));
   }
   f.push(...nur([
+    // Prozess der Werkstatt (22.10.): nur eine Kennung `pz-…` — `null` löst den Verweis.
+    d.prozessId != null && !produktProzessKennung(d.prozessId) ? { status: 400, text: 'Prozess: eine Kennung aus der Werkstatt (pz-…).' } : null,
     d.rolle != null && !aus(d.rolle, PRODUKT_ROLLEN) ? { status: 400, text: `Rolle: ${PRODUKT_ROLLEN.join(', ')}.` } : null,
     zahlFehler(d.ebene, 'Ebene der Treppe', 1, G.ebene),
     textFehler(d.aufgabe, 'Die Aufgabe', G.aufgabe),

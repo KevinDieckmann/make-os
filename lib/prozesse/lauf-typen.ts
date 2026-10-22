@@ -139,7 +139,8 @@ export interface LaufWarten {
 
 /** Wodurch der Lauf startete — nur Art und Kennungen. */
 export interface LaufAusloeser {
-  art: AusloeserArt | 'teilprozess' | 'uebergabe' | 'bestehend';
+  /** `produkt` (22.10., Prozesse × Fulfillment): gestartet über die Bindung eines Produkts (`Leistung.prozessId`, lib/prozesse/produkt-bindung.ts). */
+  art: AusloeserArt | 'teilprozess' | 'uebergabe' | 'bestehend' | 'produkt';
   /** Auslöser-Knoten der Version. */
   knoten?: string;
   /** Ereignis-Kennung (ereignisse--*), Webhook-Eingang, Zeitplan-Slot, Loop-Tag, Anfrage — was den Start eindeutig macht. */

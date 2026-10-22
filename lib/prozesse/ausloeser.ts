@@ -55,6 +55,8 @@ export const EREIGNIS_FELDER: readonly FeldDef[] = [
   { id: 'bezug.kampagneid', titel: 'Kampagne', art: 'kennung' },
   { id: 'bezug.angebotid', titel: 'Angebot', art: 'kennung' },
   { id: 'bezug.terminbuchungid', titel: 'Buchung (Buchungsseite)', art: 'kennung' },
+  // Prozesse × Fulfillment (22.10.): das Produkt eines gebuchten Zusatzmoduls.
+  { id: 'bezug.leistungid', titel: 'Produkt (Zusatzmodul)', art: 'kennung' },
 ];
 /** Felder des Falls (der Motor lädt den Fall über die vorhandenen Lesewege, Etappe C) — je Fall-Art. Nie Namen oder Freitext Dritter. */
 export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {

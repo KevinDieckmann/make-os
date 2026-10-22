@@ -97,6 +97,11 @@ export interface SichtEingabe {
   terminTage?: readonly { uid: string; tag: string; von?: string; titel?: string }[];
   /** Was intern hängt (Cockpit `wasHaengt`, nur Art/Schwere/Tage) — die Lage übersetzt es in Worte (14.10.). Geht selbst NIE an den Kunden. */
   haengt?: readonly KundenHaenger[];
+  /**
+   * Prozesse × Fulfillment (22.10.): die Etappen aus den scharfen Läufen der Werkstatt-Prozesse am Mandat (nur „Dem Kunden zeigen“, lib/prozesse/kunden-etappen.ts)
+   * — gilt NUR ohne Fall: dann füllen sie dieselben Schlüssel `zeitstrahl`, `erledigt`, `naechstes` (kein neuer Schlüssel der Positivliste). Mit Fall bit-gleich wie vorher.
+   */
+  etappen?: { phasen: KundenPhase[]; erledigt: string[]; naechstes: string[] } | null;
 }
 
 export { formularOffen };
@@ -139,7 +144,11 @@ export function kundenSicht(e: SichtEingabe): KundenSicht {
   return {
     modus: 'voll', ...basis, mandat: e.mandat.titel, ...(e.paket ? { paket: e.paket } : {}),
     ...(f ? { lage: t.lage } : {}), ...(t.fortschritt ? { fortschritt: t.fortschritt } : {}),
-    zeitstrahl: t.phasen, erledigt: t.erledigt, naechstes: t.naechstes, wartet: t.wartet, wertKonto: t.wertKonto, quickWins: t.quickWins, rituale: t.rituale,
+    // Ohne Fall, aber mit Etappen aus einem Prozess der Werkstatt (22.10.): dieselben Schlüssel aus dem Lauf — mit Fall wie bisher nur der Fall.
+    ...(!f && e.etappen
+      ? { zeitstrahl: e.etappen.phasen.map(p => ({ ...p })), erledigt: [...e.etappen.erledigt], naechstes: [...e.etappen.naechstes] }
+      : { zeitstrahl: t.phasen, erledigt: t.erledigt, naechstes: t.naechstes }),
+    wartet: t.wartet, wertKonto: t.wertKonto, quickWins: t.quickWins, rituale: t.rituale,
     ...(t.naechsterTermin ? { naechsterTermin: t.naechsterTermin } : {}), entscheidungen, formulare,
     upload: e.rechte.upload ? {
       erlaubt: e.uploadFrei > 0, eingegangen: vomKunden.length, frei: e.uploadFrei,

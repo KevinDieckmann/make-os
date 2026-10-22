@@ -631,7 +631,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
             onKopieren={kopie}
             onPhase={phaseAktion}
             onZettel={(id, teil) => { if (teil) mitFassung(f => zettelAendern(f, id, teil), { auswahl: false }); else { mitFassung(f => zettelWeg(f, [id])); setAuswahl([]); } }}
-            agentName={agentName} knotenZusatz={webhookZusatz} />
+            agentName={agentName} knotenZusatz={webhookZusatz} produkte={daten?.produkte} />
           {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
         </aside>
       </div>}

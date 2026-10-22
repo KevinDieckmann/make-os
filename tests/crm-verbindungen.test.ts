@@ -74,7 +74,7 @@ describe('Verbindungsprüfung — sauberer Bestand', () => {
   });
   it('jede Prüfung hat Satz, Schwere und Bereich; reparierbar ist eine feste Teilmenge', () => {
     for (const id of PRUEFUNG_IDS) expect(PRUEFUNGEN[id].text(2)).toMatch(/^\S/);
-    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'meilenstein-ziel-tot', 'meilenstein-wartet-tot', 'zeit-mandat-tot', 'termin-uid-tot', 'kalender-bezug-kennung-tot', 'zeit-termin-tot', 'aktivitaet-termin-tot', 'event-termin-verwaist', 'termin-waise-neu', 'followup-termin-verschoben', 'followup-termin-tot', 'buchung-followup-ohne-termin', 'familie-tag-mensch-tot']);
+    expect(REPARIERBAR).toEqual(['firma-mutter-tot', 'werte-ausserhalb-wertelisten', 'firma-lead-deal-tot', 'kontakt-lead-deal-tot', 'deal-kontakt-tot', 'deal-rolle-tot', 'mandat-kontakt-tot', 'followup-kontakt-tot', 'followup-bezug-tot', 'kampagne-kontakt-tot', 'beitrag-kontakt-tot', 'antrag-kontakt-tot', 'werbesperre-kampagne', 'einschraenkung-kampagne', 'aufgabe-bezug-tot', 'datei-fehlt', 'konflikt-veraltet', 'kontakt-firma-text-abweichend', 'kontakt-typ-abweichend', 'teilnahme-doppelt', 'ziel-mandat-tot', 'meilenstein-mandat-tot', 'meilenstein-ziel-tot', 'meilenstein-wartet-tot', 'zeit-mandat-tot', 'termin-uid-tot', 'kalender-bezug-kennung-tot', 'zeit-termin-tot', 'aktivitaet-termin-tot', 'event-termin-verwaist', 'termin-waise-neu', 'followup-termin-verschoben', 'followup-termin-tot', 'buchung-followup-ohne-termin', 'familie-tag-mensch-tot', 'produkt-prozess-tot']);
   });
 });
 
@@ -210,6 +210,8 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   // F2 (29.09.): Follow-up am gelöschten Termin; Wichtiger Tag der Familie mit gelöschtem Menschen.
   ['followup-termin-tot', b => { b.crm.followups.push(fu('fu-tot', { terminUid: 'U-gibtsnicht', faellig: '2026-10-01' }), fu('fu-lebt', { terminUid: 'U-1', faellig: '2026-10-01' })); }, 1, 'fu-tot'],
   ['familie-tag-mensch-tot', b => { b.familieTage = { menschen: ['m-1'], tage: [{ id: 'tag-ok', menschId: 'm-1' }, { id: 'tag-tot', menschId: 'm-weg' }] }; }, 1, 'tag-tot'],
+  // Prozesse × Fulfillment (22.10.): ein Produkt zeigt auf einen Prozess der Werkstatt, den es nicht mehr gibt (ohne geladene Prozesse keine Prüfung).
+  ['produkt-prozess-tot', b => { b.prozesse = { ids: ['pz-00000000-0000-4000-8000-000000000001'] }; b.crm.leistungen = [produkt('l-ok', { prozessId: 'pz-00000000-0000-4000-8000-000000000001' }), produkt('l-tot', { prozessId: 'pz-00000000-0000-4000-8000-0000000000ff' })]; }, 1, 'l-tot'],
   ['einwilligung-beleg-tot', b => { b.kontakte[0].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'd-weg99' }]; b.kontakte[1].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'Formular d-abcd1' }]; }, 1, 'c-anna1'],
 ];
 
@@ -325,6 +327,9 @@ describe('Verbindungen reparieren', () => {
     // F2 (29.09.): Follow-up am gelöschten Termin, Wichtiger Tag ohne Menschen.
     b.crm.followups.push(fu('fu-tot', { terminUid: 'U-gibtsnicht', faellig: '2026-10-01' }));
     b.familieTage = { menschen: ['m-1'], tage: [{ id: 'tag-tot', menschId: 'm-weg' }] };
+    // Prozesse × Fulfillment (22.10.): ein Produkt zeigt auf einen gelöschten Prozess der Werkstatt.
+    b.prozesse = { ids: [] };
+    b.crm.leistungen.push({ id: 'l-pz', name: 'l-pz', typ: 'retainer', stufe: 'kern', preis: { betrag: 100, einheit: 'Monat netto' }, lieferumfang: [], gesellschaft: 'kdv', status: 'entwurf', geaendert: J, prozessId: 'pz-00000000-0000-4000-8000-0000000000ff' });
     // Nicht reparierbar — muss stehen bleiben:
     b.crm.chancen[0].firmaId = 'f-weg';
     b.crm.teilnahmen.push({ id: 'tn-9', eventId: 'ev-1', kontaktId: 'c-weg1', status: 'da', geaendert: J });

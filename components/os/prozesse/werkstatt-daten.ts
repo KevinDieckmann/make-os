@@ -18,7 +18,9 @@ export const KATALOG_QUELLE = '/api/prozesse/katalog?auswahl=1&space=business';
 
 export interface VersionKurz { nr: number; name: string; notiz?: string; am: string; von: string }
 export type EintragAnsicht = Omit<ProzessEintrag, 'versionen'> & { versionen: VersionKurz[] };
-export interface ProzessAntwort { ok: true; rechte: ProzessRechte; eintrag: EintragAnsicht; stand: string; entwurfGeaendert: boolean; befunde: Befund[]; webhook: unknown }
+export interface ProzessAntwort { ok: true; rechte: ProzessRechte; eintrag: EintragAnsicht; stand: string; entwurfGeaendert: boolean; befunde: Befund[]; webhook: unknown;
+  /** Produkte, die auf diesen Prozess zeigen (22.10., Prozesse × Fulfillment) — nur Kennung und Name. */
+  produkte?: { id: string; name: string }[] }
 export interface ListenAntwort { ok: true; rechte: ProzessRechte; prozesse: ProzessKurz[] }
 export type KatalogAufgeloest = KatalogEintrag & { klasse: string | null };
 export type Auswahl = Partial<Record<AuswahlQuelle, { id: string; label: string }[]>>;

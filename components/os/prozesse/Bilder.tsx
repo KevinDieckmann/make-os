@@ -152,7 +152,7 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [
         const z = zahlTexte(zahlen[p.id]);
         const href = zahlen[p.id]?.href;
         const Zeichen = p.quelle === 'system' ? Cog : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
-        const aria = `${p.titel}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? 'System, nur lesbar' : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
+        const aria = `${p.titel}${t.produkt ? `, ${t.produkt}` : ''}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? 'System, nur lesbar' : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
         const spec = KACHEL_TEXT[stufe];
         const titel = einpassen({ text: kachelTitel(p, stufe), breite: k.b - spec.innen, groesse: spec.groesse, min: spec.min, zeilen: spec.zeilen, gewicht: spec.gewicht });
         const hell = hellIds.has(k.id);
@@ -171,7 +171,8 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [
                 {t.marke && <text x={18} y={22} fontSize={FLAECHE_SCHRIFT.mikro} fontWeight={600} letterSpacing="1.1" fill={C.inkLeise}>{t.marke.toUpperCase()}</text>}
                 <Zeichen x={18} y={(stufe === 'nah' ? k.h / 2 + 2 : k.h / 2) - 9} width={18} height={18} color={ton} aria-hidden />
                 <TextBlock e={titel} x={44} mitteY={stufe === 'nah' ? k.h / 2 + 2 : k.h / 2} gewicht={spec.gewicht} />
-                {t.eigner && <text x={18} y={k.h - 10} fontSize={FLAECHE_SCHRIFT.mikro + 1} fill={C.inkDim}>{zeile(t.eigner, k.b - 36, FLAECHE_SCHRIFT.mikro + 1, FLAECHE_SCHRIFT.mikro).zeilen[0]}</text>}
+                {/* Unten: das Produkt, zu dem der Prozess gehört (22.10.), sonst — nah — der Eigner. Eine Zeile, nie doppelt. */}
+                {(t.produkt ?? t.eigner) && <text x={18} y={k.h - 10} fontSize={FLAECHE_SCHRIFT.mikro + 1} fill={C.inkDim}>{zeile((t.produkt ?? t.eigner)!, k.b - 36, FLAECHE_SCHRIFT.mikro + 1, FLAECHE_SCHRIFT.mikro).zeilen[0]}</text>}
               </>
             )}
             {/* Die Zahl hängt als Abzeichen an der oberen rechten Ecke (die zweite links daneben) — nie im Text der Kachel, nie doppelt. */}

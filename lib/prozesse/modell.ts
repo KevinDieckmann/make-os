@@ -10,6 +10,7 @@
 //   · Wenig und klar (Punkt 24): `kachelTexte` — was eine Kachel je Zoomstufe zeigt; jede Information nur einmal je Ansicht.
 
 import { suchPasst } from '@/lib/text/such-norm';
+import { produktZeile } from './produkt-bindung';
 import type { ProzessKnoten, ProzessVorlage } from '@/lib/fulfillment/typen';
 import { BAENDER, KERN_STUFEN, STECKBRIEF_FELDER, EBENE_NAME, type Band, type Ebene, type KernStufe, type ProzessDef, type ProzessPfad, type ProzessPhase, type ProzessSchritt, type Zahl } from './typen';
 
@@ -231,12 +232,15 @@ export type KachelStufe = 'fern' | 'mittel' | 'nah';
  * Was eine Kachel der Landkarte zeigt — je Zoomstufe (Punkt 14) und nur einmal (Punkt 24): fern der kurze Titel und EINE Zahl (groß), mittel Titel + Zahl,
  * nah dazu Marke und Eigner. Der Steckbrief steht erst eine Ebene tiefer.
  */
-export function kachelTexte(p: Pick<ProzessDef, 'titel' | 'quelle' | 'steckbrief'>, z: Zahl | undefined, stufe: KachelStufe): { titel?: string; marke?: string; eigner?: string; zahl?: string; zweite?: string } {
+export function kachelTexte(p: Pick<ProzessDef, 'titel' | 'quelle' | 'steckbrief'> & Partial<Pick<ProzessDef, 'produkte'>>, z: Zahl | undefined, stufe: KachelStufe): { titel?: string; marke?: string; eigner?: string; produkt?: string; zahl?: string; zweite?: string } {
   const t = zahlTexte(z);
   if (stufe === 'fern') return { titel: kurztitel(p.titel), ...(t?.haupt ? { zahl: t.haupt } : t?.zweite ? { zahl: t.zweite.text } : {}) };
+  // Prozesse × Fulfillment (22.10.): „für <Produkt>“ — nur, wenn der Titel es nicht schon sagt (lib/prozesse/produkt-bindung.ts `produktZeile`).
+  const produkt = p.produkte?.length ? produktZeile(p.titel, p.produkte) : null;
   return {
     titel: p.titel,
     ...(stufe === 'nah' ? { marke: p.quelle === 'system' ? 'System · nur lesbar' : markeVon(p), eigner: p.steckbrief.eigner } : {}),
+    ...(produkt ? { produkt } : {}),
     ...(t?.haupt ? { zahl: t.haupt } : {}), ...(t?.zweite ? { zweite: t.zweite.text } : {}),
   };
 }

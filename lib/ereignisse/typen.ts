@@ -32,7 +32,9 @@ export type EreignisQuelle = typeof EREIGNIS_QUELLEN[number];
  * — nur Kennungen, wie alles hier.
  */
 export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rechnungId', 'buchungId', 'kontoId', 'aufgabeId', 'terminUid', 'gespraech', 'followupId', 'prozessId', 'eingangId', 'knotenId',
-  'eventId', 'kampagneId', 'angebotId', 'terminBuchungId'] as const;
+  'eventId', 'kampagneId', 'angebotId', 'terminBuchungId',
+  // Prozesse × Fulfillment (22.10.): das Produkt eines gebuchten Zusatzmoduls (Ereignis „Zusatzmodul gebucht“) — nur die Kennung.
+  'leistungId'] as const;
 export type BezugFeld = typeof BEZUG_FELDER[number];
 export type EreignisBezug = Partial<Record<BezugFeld, string>>;
 export type EreignisBereich = 'privat' | 'business';

@@ -29,7 +29,7 @@ import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
-import { kartenFelderSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
+import { kartenFelderSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktProzessKennung, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
 import { personenSchranke, kampagnenHinweise, kanalWechselBereinigen, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
 import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
@@ -431,10 +431,12 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       // Produkt-Karte (19.10., PRODUKTE_KONZEPT.md): die neuen Felder — geprüft vorher (`produktOpsPruefen`, 400/413), hier nur gesäubert.
       // Ohne Karten-Felder: nichts (der Eintrag bleibt bit-gleich). Gespiegelt wird in `saeubern` (`produktSpiegeln`).
       const { preise, vertrag, regeln, rolle, ebene, aufgabe, kennzahl, dauerTage, aufwandStundenWoche, ziel } = kartenFelderSaeubern(o);
+      // Prozess der Werkstatt (22.10., Prozesse × Fulfillment): nur eine gültige Kennung `pz-…` — ohne diese Zeile fiele der Verweis beim Speichern weg.
+      const prozessId = produktProzessKennung(o.prozessId);
       return {
         ...(preise ? { preise } : {}), ...(vertrag ? { vertrag } : {}), ...(regeln ? { regeln } : {}), ...(rolle ? { rolle } : {}), ...(ebene !== undefined ? { ebene } : {}),
         ...(aufgabe ? { aufgabe } : {}), ...(kennzahl ? { kennzahl } : {}), ...(dauerTage !== undefined ? { dauerTage } : {}),
-        ...(aufwandStundenWoche !== undefined ? { aufwandStundenWoche } : {}), ...(ziel ? { ziel } : {}),
+        ...(aufwandStundenWoche !== undefined ? { aufwandStundenWoche } : {}), ...(ziel ? { ziel } : {}), ...(prozessId ? { prozessId } : {}),
       };
     }
     // Marke (27.09.): durchreichen, wenn gesetzt — ohne Eintrag gilt Make.One abgeleitet (lib/crm/events.ts markeVon), nichts wird zurückgeschrieben.

@@ -187,6 +187,15 @@ export function crmDiff(vorher: CrmFuerDiff, nachher: CrmFuerDiff): EreignisEing
       const bezug = { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}), ...(m.chanceId ? { dealId: m.chanceId } : {}) };
       if (!a) raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'angelegt'), art: 'mandat-angelegt', quelle: 'crm', bereich: bereichVonGesellschaft(m.gesellschaft), bezug });
       else if (m.status === 'beendet' && a.status !== 'beendet') raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'beendet', (m.ende ?? '').slice(0, 10)), art: 'mandat-beendet', quelle: 'crm', bereich: bereichVonGesellschaft(m.gesellschaft), bezug });
+      // Zusatzmodul gebucht (22.10., Prozesse × Fulfillment): ein NEUER Eintrag in `zusatz` an einem bestehenden, nicht beendeten Mandat — je Modul einmal
+      // (Kennung aus dem Modul `mz-…`). Beim Anlegen des Mandats nicht: dann liest der Motor die Zusatzmodule über „mandat-angelegt“ selbst.
+      if (a && m.status !== 'beendet' && m.zusatz?.length) {
+        const vorher = new Set((a.zusatz ?? []).map(z => z.id));
+        for (const z of m.zusatz) {
+          if (vorher.has(z.id)) continue;
+          raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'zusatz', z.id), art: 'zusatz-gebucht', quelle: 'crm', bereich: bereichVonGesellschaft(m.gesellschaft), bezug: { ...bezug, leistungId: z.leistungId } });
+        }
+      }
     }
   }
   return raus;
