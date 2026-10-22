@@ -29,7 +29,7 @@ import { istWebRecherche, oeffentlichModus, OEFFENTLICH_KATEGORIEN } from './age
 import { ROLLE_EIGNER, ROLLE_ZUSTAENDIG, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT } from './baustein-katalog';
 import {
   LAUF_AUFGABE_PRAEFIX, LAUF_GRENZEN, laeufeBestand, laufOffen, leererStand, leereLaeufe,
-  type LaeufeDatei, type LaufFall, type LaufGrund, type LaufModus, type LaufSchritt, type ProzessLauf, type ProzessLaufStand, type Testfall, type VerlaufEintrag, type Wirkung,
+  type LaeufeDatei, type LaufAusgang, type LaufFall, type LaufGrund, type LaufModus, type LaufSchritt, type ProzessLauf, type ProzessLaufStand, type Testfall, type VerlaufEintrag, type Wirkung,
 } from './lauf-typen';
 import { fallArtVon, type AgentSchritt, type Ausloeser, type DatumsFeld, type ProzessDefinition, type ProzessEintrag, type ProzesseDatei } from './definition';
 import { alleSchritte, startKnoten } from './fluss';
@@ -40,6 +40,7 @@ import { anspracheUrteil } from './ansprache';
 import { laufPerson, type TeamKurz } from './rollen';
 import { herkunftAus, mitLaufHerkunft } from './lauf-herkunft';
 import { gelesenFelderMenge } from './kundengewinnung/raute-felder';
+import { testWerte, webhookBeispiel, webhookFelderVon } from './testdaten';
 import { anredeAus, kundenGruss } from '@/lib/fulfillment/kunde/bild';
 
 // ══ Bestand ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -146,6 +147,8 @@ interface FallInfo {
   datum: Record<string, string>;
   hatMandat: boolean;
   hatChance: boolean;
+  /** Der erfundene Beispiel-Fall des Probelaufs (lib/prozesse/testdaten.ts) — nie ein echter Fall. */
+  beispiel?: true;
 }
 const LEER_FALL: FallInfo = { fehlt: false, daten: {}, platzhalter: {}, kontakt: null, personen: [], datum: {}, hatMandat: false, hatChance: false };
 
@@ -424,7 +427,7 @@ export async function umfeldFuer(l: ProzessLauf, def: ProzessDefinition, kx: Mot
     },
     ausgenommen, fallFehlt: f.fehlt, einstellung: st.einstellung,
     // „Karte ergänzen“ ohne Agent davor (22.10. spät): welche Felder an Firma bzw. Kontakt des Falls noch leer sind — nur, wenn die Definition den Baustein hat.
-    ...(alleSchritte(def).some(x => x.schritt.katalog?.id === 'crm.karte-ergaenzen') && o.fall !== BEISPIEL ? { karteLuecken: await karteLuecken(l, f, kx) } : {}),
+    ...(alleSchritte(def).some(x => x.schritt.katalog?.id === 'crm.karte-ergaenzen') && !o.fall?.beispiel ? { karteLuecken: await karteLuecken(l, f, kx) } : {}),
   };
 }
 async function karteLuecken(l: ProzessLauf, f: FallInfo, kx: MotorKontext): Promise<NonNullable<LaufUmfeld['karteLuecken']>> {
@@ -1869,49 +1872,43 @@ export async function umzug(a: { prozessId: string; nach: number; zuordnung: Rec
 
 // ══ Probelauf (Punkt 48 — Vertrag der Werkstatt B2) ═════════════════════════════════════════════════════════════════════════════════════════════
 
-const BEISPIEL: FallInfo = {
-  fehlt: false, kontakt: null, personen: [], hatMandat: false, hatChance: true, zustaendig: undefined,
-  daten: {
-    'deal.stufe': 'angebot', 'deal.wert': 1000, 'lead.status': 'qualifizierung', 'lead.temperatur': 'warm', 'lead.score': 60, 'lead.bean': 'N', 'lead.sql-bereit': true, 'lead.mql': true,
-    'mandat.status': 'aktiv', 'firma.lead-status': 'im_gespraech', 'event.reihe': '', 'kampagne.status': 'aktiv',
-    // Felder der Vorlagen (Kundengewinnung) — erfunden, damit der Probelauf mit dem Beispiel den ganzen Weg zeigt.
-    'firma.daten-fehlen': true, 'firma.bester-kanal': 'telefon', 'lead.bester-kanal': 'mail', 'lead.ampel-mail': 'gruen', 'lead.ampel-telefon': 'gelb',
-    'deal.ampel': 'gelb', 'deal.offen': true, 'deal.verschoben': 0, 'deal.mandat-da': false, 'deal.ampel-mail': 'gruen',
-    // 22.10. spät (lib/prozesse/kundengewinnung/fall-felder-server.ts) — der Hauptweg jeder Raute, erfunden.
-    'deal.vertrag-unterschrieben': false, 'deal.nachfass-followup': false, 'lead.zustaendig': 'beispiel', 'lead.neue-signale': true, 'lead.waerme-gestiegen': false,
-    'lead.mail-fach': 'antworten', 'lead.gespraech-zugeordnet': false, 'lead.anfrage-kanal': 'mail', 'lead.buchung-folge': 'qualifizierung', 'lead.nachweis-vollstaendig': true,
-    'lead.einladungsweg': 'mail', 'lead.danke-moeglich': true, 'lead.netzwerken-schritt': 'qualifizieren', 'lead.kampagnen-ergebnis': 'chance',
-    'mandat.ampel': 'gruen', 'mandat.health': 80, 'mandat.verlaengerung': 'manuell', 'mandat.verlaengert': false, 'mandat.ampel-mail': 'gruen',
-    'event.mix-erreicht': true, 'event.quote-48h': 90,
-    // Kunden-Begleitung (22.10., B2) — der Hauptweg der Begleit-Vorlagen, erfunden.
-    'fall.status': 'laeuft', 'fall.phase': 'Umsetzung', 'fall.wartet-kunde': 1, 'fall.bestaetigung-offen': true, 'fall.willkommen-offen': true, 'fall.report-faellig': true,
-    'fall.puls-kritisch': true, 'fall.puls-gespraech-offen': false,
-  },
-  platzhalter: {
-    'kontakt.anrede': 'Sie', 'kontakt.vorname': 'Erika', 'kontakt.nachname': 'Beispiel', 'firma.name': 'Beispiel GmbH', 'deal.titel': 'Beispiel-Deal', 'mandat.titel': 'Beispiel-Mandat', 'event.titel': 'Beispiel-Abend', 'kampagne.titel': 'Beispiel-Kampagne',
-    'kunde.gruss': 'Guten Tag Erika Beispiel', 'fall.phase': 'Umsetzung', 'fall.termin': '2026-11-05',
-  },
-  datum: {},
-};
-const BEISPIEL_EMPFAENGER: Empfaenger = { kontaktId: 'c-beispiel', name: 'Erika Beispiel', email: 'erika@example.invalid', telefon: '+49 000 0000000' };
+/**
+ * Das Beispiel (erfunden) steht seit 22.10. (Werkstatt bau-fertig) EINMAL in lib/prozesse/testdaten.ts — die Werkstatt rechnet ihre Vorschau damit, der Probelauf hier.
+ * Eigene Testdaten des Prozesses (`ProzessEintrag.testdaten`, nur erfundene Werte) liegen darüber; ein Webhook bekommt sein Beispiel aus dem Felder-Schema.
+ */
+function beispielFall(e: ProzessEintrag, def: ProzessDefinition, jetzt: Date): { info: FallInfo; empfaenger: Empfaenger; daten: Record<string, string> } {
+  const tw = testWerte({ testdaten: e.testdaten ?? null, knoten: def.knoten, titel: def.titel, heute: localDay(jetzt) });
+  const wh = webhookBeispiel(webhookFelderVon(def.knoten));
+  return {
+    info: { fehlt: false, kontakt: null, personen: [], hatMandat: false, hatChance: true, zustaendig: undefined, daten: { ...tw.felder }, platzhalter: { ...tw.platzhalter }, datum: {}, beispiel: true },
+    empfaenger: { ...tw.empfaenger },
+    daten: Object.fromEntries(Object.entries(wh).map(([k, v]) => [k, String(v)])),
+  };
+}
 
-export type ProbeErgebnis = { ok: true; schritte: import('./lauf-regeln').ProbeZeile[]; kostenSchaetzungCent: number; befunde: unknown[] } | { ok: false; status: 400 | 404; fehler: string };
+export type ProbeErgebnis = { ok: true; schritte: import('./lauf-regeln').ProbeZeile[]; kostenSchaetzungCent: number; befunde: unknown[]; hinweis?: 'bis-nicht-erreicht' | 'nur-nicht-erreichbar'; echterFall?: true } | { ok: false; status: 400 | 404; fehler: string };
 
 /**
  * Probelauf (rein im Schatten — derselbe Motor-Code wie der echte Lauf): spielt den Entwurf bzw. die jüngste Version mit einem echten Fall oder dem
- * Beispiel durch und zeigt je Schritt „würde …“. Schreibt NICHTS (kein Lauf, keine Aufgabe, kein Vorschlag, kein Modellaufruf).
+ * Beispiel durch und zeigt je Schritt „würde …“. Schreibt NICHTS (kein Lauf, keine Aufgabe, kein Vorschlag, kein Modellaufruf, nichts gesendet).
+ * Werkstatt bau-fertig (22.10., Punkte 9 und 10): `annahmen` = „Weg annehmen“ je Raute/Freigabe/Warten (ohne Angabe die gespeicherten Testdaten); `nur` = nur
+ * diesen Schritt testen (der Lauf beginnt dort, gezeigt wird er — bzw. bei einer Außenwirkung dazu ihr Schloss mit „würde senden … an …“); `bis` = bis hier testen;
+ * `ausgabe` = je Schritt die Ausgabe als Tabelle (Inhalte: Beispiel bzw. live mit den Rechten der Person) und als JSON (nur Kennungen).
  */
-export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'version'; fall?: { art: string; id: string } | 'beispiel'; person: string }): Promise<ProbeErgebnis> {
+export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'version'; fall?: { art: string; id: string } | 'beispiel'; person: string; annahmen?: Readonly<Record<string, LaufAusgang>>; nur?: string; bis?: string; ausgabe?: boolean }): Promise<ProbeErgebnis> {
   const kx = await kontextLaden();
   const e = eintragVon(kx, a.prozessId);
   if (!e) return { ok: false, status: 404, fehler: 'Diesen Prozess gibt es nicht.' };
   const j = juengste(e);
   const def = a.quelle === 'version' ? j?.def : e.entwurf;
   if (!def) return { ok: false, status: 404, fehler: 'Es gibt noch keine veröffentlichte Version.' };
+  if (a.nur && !alleSchritte(def).some(x => x.schritt.id === a.nur)) return { ok: false, status: 404, fehler: 'Diesen Schritt gibt es in dieser Fassung nicht.' };
+  if (a.bis && !alleSchritte(def).some(x => x.schritt.id === a.bis)) return { ok: false, status: 404, fehler: 'Diesen Schritt gibt es in dieser Fassung nicht.' };
   const fallArt = fallArtVon(def);
   let fall: LaufFall = { art: fallArt };
-  let info: FallInfo = BEISPIEL;
-  let empfaenger: Empfaenger | null = BEISPIEL_EMPFAENGER;
+  const bsp = beispielFall(e, def, kx.jetzt);
+  let info: FallInfo = bsp.info;
+  let empfaenger: Empfaenger | null = bsp.empfaenger;
   if (a.fall && a.fall !== 'beispiel') {
     if (a.fall.art !== fallArt) return { ok: false, status: 400, fehler: `Dieser Prozess hängt an „${fallArt}“.` };
     fall = { art: fallArt, id: a.fall.id };
@@ -1923,19 +1920,44 @@ export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'ver
   const iso = kx.jetzt.toISOString();
   const lauf: ProzessLauf = {
     id: 'pl-00000000-0000-4000-8000-000000000000', prozessId: e.id, version: j?.nr ?? 0, fall, bereich: def.bereich ?? 'fulfillment', schluessel: fallSchluessel(e.id, fall, 'probe'),
-    durchgang: 1, modus: 'schatten', status: 'laeuft', person: a.person, ausloeser: { art: 'hand' }, tiefe: 0, daten: {}, start: iso, geaendert: iso, aktuell: null, schritte: [], kostenCent: 0,
+    durchgang: 1, modus: 'schatten', status: 'laeuft', person: a.person, ausloeser: { art: 'hand' }, tiefe: 0, daten: info.beispiel ? bsp.daten : {}, start: iso, geaendert: iso,
+    // „Nur diesen Schritt testen“: der Lauf beginnt an diesem Schritt (derselbe Motor; was davor steht, gilt als gelaufen).
+    aktuell: a.nur ?? null, schritte: [], kostenCent: 0,
   };
   const basis = await umfeldFuer(lauf, def, kx, { fall: info });
   const beispielGesellschaft = (await import('@/lib/einheiten')).BUSINESS_GESELLSCHAFTEN[0] ?? null;
+  const annahmen = a.annahmen ?? e.testdaten?.annahmen ?? {};
+  const beobachtet = new Map<string, import('./lauf-regeln').ProbeBeobachtung>();
   const u: LaufUmfeld = {
-    ...basis, ausgenommen: info === BEISPIEL ? null : basis.ausgenommen, empfaenger: an => (an === 'fall.zustaendig' ? null : empfaenger),
+    ...basis, ausgenommen: info.beispiel ? null : basis.ausgenommen, empfaenger: an => (an === 'fall.zustaendig' ? null : empfaenger),
     // Beispiel: die erste Business-Gesellschaft der Instanz (lib/einheiten.ts — nie eine feste Firma im Code).
-    ...(info === BEISPIEL ? { ansprache: () => null, fallDatum: () => tagPlus(localDay(kx.jetzt), 1), gesellschaft: () => beispielGesellschaft } : {}),
+    ...(info.beispiel ? { ansprache: () => null, fallDatum: () => tagPlus(localDay(kx.jetzt), 1), gesellschaft: () => beispielGesellschaft } : {}),
     teilprozess: id => { const x = eintragVon(kx, id); const jj = x ? juengste(x) : null; return jj ? { version: jj.nr } : null; },
+    annahme: id => annahmen[id],
+    ...(a.ausgabe ? { beobachte: (b: import('./lauf-regeln').ProbeBeobachtung) => { beobachtet.set(b.knoten, b); } } : {}),
   };
-  const { probeZeilen, laufBefunde } = await import('./lauf-regeln');
+  const { probeZeilen, laufBefunde, probeAusgabe } = await import('./lauf-regeln');
   const r = voran(lauf, def, u, 'schatten');
-  return { ok: true, ...probeZeilen(r.lauf, def), befunde: laufBefunde(def) };
+  const p = probeZeilen(r.lauf, def);
+  let schritte = p.schritte;
+  let hinweis: 'bis-nicht-erreicht' | 'nur-nicht-erreichbar' | undefined;
+  // Ausschnitt: nur dieser Schritt (bei einer Außenwirkung dazu das Schloss direkt dahinter) bzw. alles bis hier.
+  const ziel = a.nur ?? a.bis;
+  if (ziel) {
+    const i = schritte.findIndex(x => x.knotenId === ziel);
+    if (i < 0) hinweis = a.nur ? 'nur-nicht-erreichbar' : 'bis-nicht-erreicht';
+    else {
+      const schlossDahinter = schritte[i + 1] && def.knoten.find(k => k.id === schritte[i + 1].knotenId)?.schloss?.fuer === ziel;
+      schritte = a.nur ? schritte.slice(i, schlossDahinter ? i + 2 : i + 1) : schritte.slice(0, schlossDahinter ? i + 2 : i + 1);
+    }
+  }
+  if (a.ausgabe) {
+    const { feldTitelVon } = await import('./ausloeser');
+    const felder = { ...r.lauf.daten, ...u.daten };
+    schritte = schritte.map(x => { const b = beobachtet.get(x.knotenId); return b ? { ...x, ausgabe: probeAusgabe(b, def, { felder, feldName: feldTitelVon }) } : x; });
+  }
+  const kosten = Math.round(schritte.reduce((n, x) => n + (x.kostenCent ?? 0), 0));
+  return { ok: true, schritte, kostenSchaetzungCent: ziel ? kosten : p.kostenSchaetzungCent, befunde: laufBefunde(def), ...(hinweis ? { hinweis } : {}), ...(info.beispiel ? {} : { echterFall: true as const }) };
 }
 
 // ══ Lesen (Route, Läufe-Ansicht, Heute, HOI) ════════════════════════════════════════════════════════════════════════════════════════════════════

@@ -20,6 +20,7 @@ import { veroeffentlichen, versionAlsEntwurf } from './versionen';
 import { oeffentlichModus, vertragAus } from './agent-schritt';
 import { freigabepunktAus, papierkorbEintragAus, rolleAus, uebergangAus, vorlagenKnotenAus } from '@/lib/fulfillment/lesen';
 import type { ProzessRechte } from './rollen';
+import { testdatenAus, testdatenPruefen } from './testdaten';
 
 type O = Record<string, unknown>;
 type K = ProzessKnoten<ProzessForm>;
@@ -175,6 +176,8 @@ export function knotenAus(o: O): K | null {
     katalog: katalog(o.katalog), ausloeser: ausloeser(o.ausloeser), agent: agent(o.agent), raute: raute(o.raute), warten: warten(o.warten),
     schleife: schleife(o.schleife), teilprozess: teilprozess(o.teilprozess), ende: ende(o.ende), schloss: schloss(o.schloss),
     bahn: wahl(o.bahn, BAHNEN), abfrage: abfrage(o.abfrage), erneut: erneut(o.erneut),
+    // Werkstatt bau-fertig (22.10., Punkt 14): ausgeschaltet — nur `true` zählt, ohne Feld bit-gleich wie bisher.
+    deaktiviert: o.deaktiviert === true ? true : undefined,
     // Fulfillment in die Werkstatt (22.10., Etappe 1): die Felder der Paket-Vorlagen, die nur das Fulfillment kennt — mit DERSELBEN Regel gesäubert
     // (lib/fulfillment/lesen.ts `vorlagenKnotenAus`), damit ein Paket, das die Werkstatt öffnet und speichert, nichts verliert. Werkstatt-Prozesse tragen
     // sie nicht; dann fehlen sie wie bisher (Gold: tests/prozesse-ff-werkstatt-e1.test.ts gegen den Stand 451bd6fd).
@@ -247,6 +250,8 @@ export function eintragAus(o: O): ProzessEintrag | null {
     id: i, entwurf: e, versionen, status: wahl(o.status, PROZESS_STATUS) ?? 'entwurf',
     angelegtAm: s(o.angelegtAm) ?? '', angelegtVon: s(o.angelegtVon) ?? '', entwurfAm: s(o.entwurfAm) ?? '', entwurfVon: s(o.entwurfVon) ?? '',
     statusAm: s(o.statusAm), statusVon: s(o.statusVon),
+    // Werkstatt bau-fertig (22.10.): optionale Testdaten — nur erfundene Werte (sonst fallen sie beim Lesen ganz weg); ohne Feld bit-gleich wie bisher.
+    testdaten: testdatenAus(o.testdaten),
   });
 }
 export const leerProzesse = (): ProzesseDatei => ({ v: 1, prozesse: [] });
@@ -343,6 +348,7 @@ function entwurfSpeichern(e: ProzessEintrag, d: ProzessDefinition, kx: Werkstatt
  * Die Änderungen der Werkstatt (rein, alles oder nichts). `aktion`:
  *   anlegen { titel, bereich, fallArt, eigner?, beschreibung? } · steckbrief { id, stand, felder } · entwurf { id, stand, knoten, zettel? }
  *   veroeffentlichen { id, stand, name, notiz? } · version-uebernehmen { id, stand, nr } · status { id, stand, status }
+ *   testdaten { id, stand, testdaten } (22.10., Werkstatt bau-fertig — nur erfundene Werte, null leert)
  * Rechte (Punkt 68): Entwürfe bauen volle Mitglieder und Konten „nur Business“; veröffentlichen und Status nur volle Mitglieder (403).
  */
 export function werkstattAnwenden(datei: ProzesseDatei, eingabe: unknown, kx: WerkstattKontext): WerkstattErgebnis {
@@ -444,6 +450,15 @@ export function werkstattAnwenden(datei: ProzesseDatei, eingabe: unknown, kx: We
       if (!v.ok) return nein(v.status, v.fehler);
       const r = entwurfSpeichern(v.eintrag, v.eintrag.entwurf, kx);
       return r.ok ? ersetzt(r.eintrag, r.befunde) : r.e;
+    }
+    case 'testdaten': {
+      // Werkstatt bau-fertig (22.10., Punkte 9 und 11): „Beispiel bearbeiten“ und „Weg annehmen“ — nur erfundene Werte (lib/prozesse/testdaten.ts), sonst 400.
+      if (alt.status === 'archiviert') return nein(409, 'Ein archivierter Prozess wird nicht geändert — erst zurückholen.');
+      const t = testdatenPruefen(o.testdaten);
+      if (!t.ok) return nein(t.status, `${t.fehler} Nichts gespeichert.`);
+      const { testdaten: _alt, ...ohne } = alt;
+      const e: ProzessEintrag = t.testdaten ? { ...ohne, testdaten: { ...t.testdaten, am: kx.jetzt, von: kx.person } } : ohne;
+      return ersetzt(e, definitionPruefen(e.entwurf, kx.pruef ?? {}));
     }
     case 'status': {
       if (!kx.rechte.status) return nein(403, 'Veröffentlichen, aktiv schalten und Webhooks gibt es nur für volle Mitglieder — Entwürfe kannst du bauen.');

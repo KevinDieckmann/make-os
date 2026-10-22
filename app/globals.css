@@ -1292,6 +1292,20 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .wz-inhalt-flaeche .pw-auswahl-leiste { top: var(--wz-oben); right: 12px; bottom: 12px; }
 @media (prefers-reduced-motion: reduce) { .pw-kante .pw-kante-plus { transition: none; } }
 @media print { .pw-auswahl-leiste, .pw-hinweise-schwebe, .pw-kante-plus { display: none !important; } }
+/* Großes Einstellungsfenster (Punkt 7): Eingabe · Maske · Ausgabe nebeneinander ab 1100 px, sonst untereinander; Platzhalter als Knöpfe (Punkt 8). */
+.pw-gross { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 1100px) { .pw-gross { grid-template-columns: minmax(220px, .85fr) minmax(0, 1.35fr) minmax(260px, 1fr); } }
+.pw-gross-spalte { display: grid; gap: 10px; align-content: start; min-width: 0; }
+@media (min-width: 1100px) { .pw-gross-spalte { max-height: calc(88vh - 120px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; } .pw-gross-mitte { padding: 0 14px; border-left: 1px solid rgba(255,255,255,.07); border-right: 1px solid rgba(255,255,255,.07); } }
+.pw-gross-felder { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 14px; } .pw-gross-felder dt { color: #A2ADB0; } .pw-gross-felder dd { margin: 0; color: #E8ECEA; overflow-wrap: anywhere; }
+.pw-ausgabe { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); }
+.pw-ausgabe-tabelle { width: 100%; border-collapse: collapse; font-size: 14px; } .pw-ausgabe-tabelle th { text-align: left; vertical-align: top; color: #A2ADB0; font-weight: 600; padding: 4px 10px 4px 0; white-space: nowrap; } .pw-ausgabe-tabelle td { color: #E8ECEA; padding: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; } .pw-ausgabe-tabelle tr + tr { border-top: 1px solid rgba(255,255,255,.06); }
+.pw-test-schritt { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.02); }
+.pw-json { margin: 0; padding: 10px; border-radius: 10px; background: #0B0E10; color: #C9D2D0; font-size: 13px; overflow: auto; max-height: 260px; }
+.pw-testdaten { display: grid; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.1); }
+.pw-platzhalter { display: inline-flex; align-items: center; gap: 2px; min-height: 32px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(88,217,205,.35); background: rgba(88,217,205,.08); color: #58D9CD; font: inherit; font-size: 13px; cursor: grab; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-vorschau { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.03); border: 1px dashed rgba(255,255,255,.12); }
+.pw-befund-tipp { position: absolute; z-index: 6; display: grid; gap: 4px; max-width: 340px; padding: 10px 12px; border-radius: 12px; background: #1B2126; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 14px 36px -16px rgba(0,0,0,.85); font-size: 14px; line-height: 1.4; pointer-events: none; }
 
 .pz-voll .pw-raster { flex: 1 1 auto; min-height: 0; height: 100%; }
 .pz-voll .pw-flaeche-rahmen, .pz-voll .ff-flaeche-buehne.pw-buehne { height: 100%; min-height: 300px; }

@@ -107,6 +107,10 @@ export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
   ],
   keiner: [...KG_FALL_FELDER.keiner],
 };
+/** Wie ein Feld für Rauten heißt (rein; Ereignis, Fall, Webhook, Agenten-Ausgabe) — Werkstatt und „Schritt testen“ nennen es gleich. */
+const FELD_TITEL_ALLE: ReadonlyMap<string, string> = new Map([...EREIGNIS_FELDER, ...Object.values(FALL_FELDER).flat()].map(f => [f.id, f.titel]));
+export const feldTitelVon = (id: string): string => FELD_TITEL_ALLE.get(id) ?? (id.startsWith('webhook.') ? `Webhook: ${id.slice(8)}` : id.startsWith('agent.') ? `Agent-Ausgabe: ${id.slice(6)}` : id);
+
 /** Datumsfelder am Fall (Auslöser „Datum“, Warten bis Datum) — je Fall-Art. */
 export const DATUMS_FELDER: readonly { id: DatumsFeld; titel: string; fall: FallArt }[] = [
   { id: 'mandat.kuendigungsfrist', titel: 'Kündigungsfrist des Mandats', fall: 'mandat' },

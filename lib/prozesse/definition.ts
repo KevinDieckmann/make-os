@@ -83,6 +83,11 @@ export interface ProzessKnoten<F extends string = KnotenForm> {
   schloss?: SchlossMarke;
   /** Bahn auf der Fläche (wer handelt). Fehlt = aus dem Baustein. */
   bahn?: Bahn;
+  /**
+   * Werkstatt bau-fertig (22.10., Punkt 14): der Schritt ist ausgeschaltet — der Lauf überspringt ihn (Status „übersprungen“, Grund „ausgeschaltet“) und geht über
+   * den Hauptweg weiter; ein Freigabe-Schloss dahinter wird MIT übersprungen (es bleibt im Prozess, fällt nie still weg). Nie an Auslöser, Ende oder Schloss.
+   */
+  deaktiviert?: boolean;
 }
 /**
  * Lage auf der Fläche (Prozess-Editor, 17.10.): an einer Phase der Rahmen (absolut, mit Breite `b` und Höhe `h` — fehlen sie, passt sich der Rahmen dem Inhalt an),
@@ -410,6 +415,11 @@ export interface ProzessEintrag {
   angelegtAm: string; angelegtVon: string;
   entwurfAm: string; entwurfVon: string;
   statusAm?: string; statusVon?: string;
+  /**
+   * Werkstatt bau-fertig (22.10.): Testdaten des Prozesses — erfundene Beispiel-Werte und „Weg annehmen“ für den Probelauf (lib/prozesse/testdaten.ts; nur
+   * `*.invalid`-Adressen, Platzhalter-Telefon, Annahmen nur als Kennungen). Gehört zum Eintrag, nicht zur Version — läuft nie, geht nie in einen Fall.
+   */
+  testdaten?: import('./testdaten').ProzessTestdaten;
 }
 export interface ProzesseDatei { v: 1; prozesse: ProzessEintrag[] }
 

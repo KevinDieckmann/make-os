@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
-import { Lock, Trash2, Copy, Scissors, ChevronsRightLeft, Plus } from 'lucide-react';
+import { Lock, Trash2, Copy, Scissors, ChevronsRightLeft, Plus, CopyPlus, Maximize2 } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT, BEDEUTUNG_FARBE, MIKRO, TIEF } from '@/lib/make-one/design';
 import { Ueberschrift, Hinweis, Knopf, Pillen, Feldzeile, Schalter, auswahl as auswahlStil, Chip } from '../ui';
 import {
@@ -17,7 +17,8 @@ import {
 } from '@/lib/prozesse/definition';
 import { alleSchritte, phasen, schritteDer, type Ausgang } from '@/lib/prozesse/fluss';
 import { katalogEintrag, klasseVonEintrag, platzhalterFuer, type AuswahlQuelle, type KatalogEintrag } from '@/lib/prozesse/baustein-katalog';
-import { EREIGNIS_FELDER, FALL_FELDER, ausloeserFelder } from '@/lib/prozesse/ausloeser';
+import { ausloeserFelder, feldTitelVon } from '@/lib/prozesse/ausloeser';
+import { annahmeOptionen } from '@/lib/prozesse/testdaten';
 import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { erlaubteWerkzeuge, rechteProfil } from '@/lib/prozesse/agent-schritt';
 import { schlossText } from '@/lib/prozesse/schloss';
@@ -55,8 +56,8 @@ export function BefundListe({ befunde, raete = [], onTeilprozess }: { befunde: r
   );
 }
 
-const FELD_TITEL = new Map<string, string>([...EREIGNIS_FELDER, ...Object.values(FALL_FELDER).flat()].map(f => [f.id, f.titel]));
-export const feldTitel = (id: string) => FELD_TITEL.get(id) ?? (id.startsWith('webhook.') ? `Webhook: ${id.slice(8)}` : id.startsWith('agent.') ? `Agent-Ausgabe: ${id.slice(6)}` : id);
+/** Wie ein Feld für Rauten heißt — EINE Stelle (lib/prozesse/ausloeser.ts `feldTitelVon`), auch für „Schritt testen“. */
+export const feldTitel = feldTitelVon;
 
 export interface PanelProps {
   d: ProzessDefinition;
@@ -86,6 +87,17 @@ export interface PanelProps {
   produkte?: readonly { id: string; name: string }[];
   /** Unten im Steckbrief (22.10.): „Kopie anlegen“ und „Als Vorlage speichern“ (./WerkstattKopie.tsx). */
   steckbriefZusatz?: ReactNode;
+  // ── Werkstatt bau-fertig (22.10.) ──
+  /** „Weg annehmen“ im Probelauf (Punkt 9): Kennung → Ausgang; ändern über `onAnnahme` (null = wieder der Hauptweg). */
+  annahmen?: Readonly<Record<string, string>>;
+  onAnnahme?: (knotenId: string, ausgang: string | null) => void;
+  onDuplizieren?: () => void;
+  /** Das große Einstellungsfenster öffnen (Eingabe · Maske · Ausgabe, Punkt 7). */
+  onGross?: (knotenId: string) => void;
+  /** Ein Klick auf einen Befund am Knoten (Punkt 6) springt in dieses Feld (`n` zählt hoch, damit derselbe Klick wieder springt). */
+  feldFokus?: { knoten: string; feld?: string; n: number } | null;
+  /** Im großen Fenster: ohne Kopfzeile (die trägt das Fenster) und ohne „großes Fenster“-Knopf. */
+  imFenster?: boolean;
 }
 
 /** Das Panel (siehe Kopf). */
@@ -173,6 +185,18 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   useEffect(() => { if (p.titelFokus) titel.current?.focus(); }, [p.titelFokus]);
   const andock = useRef<HTMLDivElement | null>(null);
   useEffect(() => { if (p.andock) andock.current?.querySelector(`[data-ws-abschnitt="${p.andock}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [p.andock, k.id]);
+  // Punkt 6: der Befund am Knoten springt in sein Feld (bzw. an die Befunde, wenn er keins nennt).
+  const ff = p.feldFokus;
+  useEffect(() => {
+    if (!ff || ff.knoten !== k.id) return;
+    const wurzel = andock.current;
+    const ziel = (ff.feld ? wurzel?.querySelector(`[data-ws-feld="${ff.feld}"]`) : null) ?? wurzel?.querySelector('[data-ws-befunde]');
+    if (!ziel) return;
+    ziel.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    (ziel.querySelector('input,textarea,select,button') as HTMLElement | null)?.focus({ preventScroll: true });
+  }, [ff, k.id]);
+  const optionenAnnahme = annahmeOptionen(k);
+  const ausschaltbar = k.form !== 'ausloeser' && k.form !== 'ende' && !k.schloss;
   // Felder für Bedingungen: am Auslöser die des Ereignisses bzw. Webhooks, sonst Fall + Webhook + Agenten-Ausgaben (wie die Prüfung).
   const felder: Option[] = useMemo(() => {
     const ids = k.form === 'ausloeser'
@@ -207,6 +231,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
         </div>
       </div>
       {e?.satz && <p style={klein}>{e.satz}</p>}
+      {k.deaktiviert && <Hinweis art="achtung" titel="Ausgeschaltet">Der Lauf überspringt diesen Schritt{schloss ? ' — sein Freigabe-Schloss mit' : ''}. Nichts davon wirkt, bis du ihn wieder einschaltest.</Hinweis>}
       <Feldzeile label="Name (Verb + Gegenstand)">
         <TitelFeld eingabe={titel} wert={k.titel} aus={p.nurLesen || !!k.schloss} onWert={t => p.onKnoten({ ...k, titel: t })} />
       </Feldzeile>
@@ -283,10 +308,29 @@ function KnotenPanel(p: PanelProps & { k: K }) {
           })}
         </div>
       )}
-      <BefundListe befunde={befunde} raete={raete} />
+      {/* Punkt 9: „Weg annehmen“ — welchen Ausgang der Probelauf hier nimmt (gespeichert als Testdaten, nur Kennungen; scharf nie). */}
+      {optionenAnnahme.length > 0 && p.onAnnahme && (
+        <Feldzeile label="Im Probelauf annehmen">
+          <select aria-label="Im Probelauf annehmen" value={p.annahmen?.[k.id] ?? ''} disabled={p.nurLesen} onChange={ev => p.onAnnahme!(k.id, ev.target.value || null)} style={{ ...auswahlStil, width: '100%' }}>
+            <option value="">— Hauptweg (Vorgabe) —</option>
+            {optionenAnnahme.map(o => <option key={o.ausgang} value={o.ausgang}>{o.label}</option>)}
+          </select>
+        </Feldzeile>
+      )}
+      {/* Punkt 14: ausschalten statt löschen — der Lauf überspringt ihn, ein Schloss dahinter mit. */}
+      {ausschaltbar && (
+        <Schalter an={k.deaktiviert === true} aus={p.nurLesen}
+          erklaerung={[{ kopf: 'Schritt ausschalten', text: 'Ausgeschaltet überspringt der Lauf diesen Schritt und geht über den Hauptweg weiter. Ein Freigabe-Schloss dahinter wird mit übersprungen — es bleibt im Prozess. Beispiel: die Erinnerungs-Mail eine Woche lang aussetzen, ohne sie zu löschen.' }]}
+          onChange={v => { if (v) p.onKnoten({ ...k, deaktiviert: true }); else { const { deaktiviert: _d, ...ohne } = k; p.onKnoten(ohne); } }}>
+          Ausgeschaltet
+        </Schalter>
+      )}
+      <div data-ws-befunde=""><BefundListe befunde={befunde} raete={raete} /></div>
       {!p.nurLesen && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {!p.imFenster && p.onGross && <Knopf leise onClick={() => p.onGross!(k.id)} titel="Großes Fenster: Eingabe · Maske · Ausgabe (Enter bzw. zweiter Doppelklick)"><span className="pz-knopf-inhalt"><Maximize2 size={14} aria-hidden />Groß öffnen</span></Knopf>}
           <Knopf leise onClick={p.onKopieren} titel="Kopieren (⌘C)"><span className="pz-knopf-inhalt"><Copy size={14} aria-hidden />Kopieren</span></Knopf>
+          {!k.schloss && k.form !== 'ausloeser' && p.onDuplizieren && <Knopf leise onClick={p.onDuplizieren} titel="Duplizieren (⌘D)"><span className="pz-knopf-inhalt"><CopyPlus size={14} aria-hidden />Duplizieren</span></Knopf>}
           {!k.schloss && <Knopf leise onClick={() => p.onLoeschen([k.id])} titel="Löschen (Entf)"><span className="pz-knopf-inhalt"><Trash2 size={14} aria-hidden />Löschen</span></Knopf>}
         </div>
       )}

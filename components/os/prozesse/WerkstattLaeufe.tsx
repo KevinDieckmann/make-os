@@ -6,18 +6,18 @@
 // wartet — „wartet auf dich“ pulsiert mit Frist —, rot Fehler, grau nicht erreicht), der Lichtfaden leuchtet den echten Weg (lib/prozesse/laeufe-ansicht.ts). Rechts
 // je Knoten Eingabe und Ausgabe: gespeichert sind nur Kennungen — die Inhalte holt die Ansicht beim Öffnen LIVE mit den Rechten der Person (GET …&inhalte=1:
 // Aufgaben in ihrer Sicht, nur eigene Vorschläge, Fall ohne Art. 18). Agenten-Texte stehen im Stapel — hier der Link dorthin. Darunter der Log-Baum. Knöpfe:
-// „Abbrechen (mit Grund)“, „Erneut ab hier“, „Als Testfall übernehmen“ (n8n „Copy to editor“).
+// „Abbrechen (mit Grund)“, „Erneut ab hier“, „Als Testdaten in Bauen“ (n8n „Copy to editor“, seit 22.10.) und „Als Testfall übernehmen“.
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Ban, RotateCcw, ClipboardCheck, ListTree, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Ban, RotateCcw, ClipboardCheck, ListTree, ExternalLink, Hammer } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, BEDEUTUNG_FARBE } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Chip, Pillen, Zeile, Leer, Ueberschrift, Erklaert, Kennzahl, Raster, feld } from '../ui';
 import type { ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import { werkstattLage, type TeamName } from '@/lib/prozesse/werkstatt-lage';
 import { knotenUnterzeile, formWort } from '@/lib/prozesse/werkstatt-maske';
 import type { LaufKurz } from '@/lib/prozesse/lauf-regeln';
-import { GRUND_TEXT, type LaufGrund } from '@/lib/prozesse/lauf-typen';
+import { GRUND_TEXT, type LaufGrund, type LaufSchritt } from '@/lib/prozesse/lauf-typen';
 import type { InhaltZeile } from '@/lib/prozesse/lauf-server';
 import {
   LAUF_FILTER, LAUF_STATUS_NAME, LAUF_STATUS_BEDEUTUNG, MARKEN_BEDEUTUNG, SCHRITT_NAME, laufFiltern, laufMarken, laufWeg, laufLog, centWort, dauerMinText, dauerText, zeitText,
@@ -47,6 +47,11 @@ export interface LaeufeProps {
   onLauf: (id: string | null) => void;
   /** Ein Testfall ist angelegt — in den Reiter Tests wechseln. */
   onTestfall: () => void;
+  /**
+   * Werkstatt bau-fertig (22.10., Punkt 11 — echtes „Copy to editor“): Fall und Weg dieses Laufs als Testdaten in „Bauen“ — der Weg wird „Weg annehmen“ (nur
+   * Kennungen), der Fall gilt nur in dieser Sitzung (gespeichert wird von ihm nichts), dann läuft der Probelauf.
+   */
+  onAlsTestdaten?: (a: { fall: LaufKurz['fall']; schritte: readonly LaufSchritt[]; start: string }) => void;
   onNeu: () => Promise<unknown>;
 }
 
@@ -155,7 +160,8 @@ function LaufAnsicht(p: LaeufeProps & { laufId: string }) {
         <span className="pw-werkzeuge">
           {steuern && offen && <Knopf leise onClick={() => setAbbruch('')} titel="Den Lauf beenden — der Grund steht im Verlauf des Prozesses"><span className="pz-knopf-inhalt"><Ban size={14} aria-hidden />Abbrechen</span></Knopf>}
           {steuern && lk.status === 'fehler' && <Knopf onClick={() => senden({ aktion: 'erneut', lauf: lk.id }, 'Erneut ab der Fehlerstelle gestartet.')} titel="An der Fehlerstelle neu ansetzen — Erledigtes wird nie wiederholt"><span className="pz-knopf-inhalt"><RotateCcw size={14} aria-hidden />Erneut ab hier</span></Knopf>}
-          {p.rechte?.entwurf && <Knopf leise onClick={testfall} titel="Diesen Fall und seinen Weg als Testfall festhalten (wie „Copy to editor“)"><span className="pz-knopf-inhalt"><ClipboardCheck size={14} aria-hidden />Als Testfall übernehmen</span></Knopf>}
+          {p.rechte?.entwurf && p.onAlsTestdaten && <Knopf leise onClick={() => p.onAlsTestdaten!({ fall: lk.fall, schritte: lauf.schritte, start: lk.start })} titel="Fall und Weg dieses Laufs in „Bauen“ übernehmen — der Probelauf spielt ihn dort nach (der Weg wird „Weg annehmen“, der Fall gilt nur in dieser Sitzung)"><span className="pz-knopf-inhalt"><Hammer size={14} aria-hidden />Als Testdaten in Bauen</span></Knopf>}
+          {p.rechte?.entwurf && <Knopf leise onClick={testfall} titel="Diesen Fall und seinen Weg als Testfall festhalten (Reiter Tests)"><span className="pz-knopf-inhalt"><ClipboardCheck size={14} aria-hidden />Als Testfall übernehmen</span></Knopf>}
         </span>
       </div>
       {lk.grund && <Hinweis art={lk.status === 'fehler' ? 'kritisch' : 'info'}>{GRUND_TEXT[lk.grund]}</Hinweis>}

@@ -86,7 +86,9 @@ export type LaufGrund =
   // 22.10. nachts (Entscheidung „Nur öffentliche Angaben“): Research ohne Firmennamen am Fall — es gibt nichts Öffentliches zu recherchieren.
   | 'oeffentlich-leer'
   // 22.10. spät (Bausteine mit eigenem Weg — lib/prozesse/bausteine-server.ts): nichts zu tun bzw. kein eigener Weg möglich.
-  | 'schon-erledigt' | 'nichts-vorzuschlagen' | 'keine-zeit' | 'kein-ablauf';
+  | 'schon-erledigt' | 'nichts-vorzuschlagen' | 'keine-zeit' | 'kein-ablauf'
+  // 22.10. (Werkstatt bau-fertig, Punkt 14): der Schritt ist in der Werkstatt ausgeschaltet.
+  | 'deaktiviert';
 
 /** Ein besuchter Knoten. Ein Knoten kann mehrfach besucht werden (Erinnerung, „erneut ab“) — `runde` zählt mit. */
 export interface LaufSchritt {
@@ -398,6 +400,7 @@ export const GRUND_TEXT: Readonly<Record<LaufGrund, string>> = {
   voruebergehend: 'vorübergehender Fehler — wird wiederholt',
   dauerhaft: 'Fehler — angehalten',
   'agent-fehlt': 'Agenten-Schritt ohne Einstellungen',
+  deaktiviert: 'Schritt ausgeschaltet (Werkstatt) — übersprungen',
   notbremse: 'Notbremse: zu viele Wirkungen in einer Stunde — Prozess pausiert',
   erneut: 'erneut ab diesem Schritt',
   'ki-nicht-eingerichtet': 'KI nicht eingerichtet (kein Schlüssel bzw. kein Guthaben) — angehalten, „erneut ab hier“, sobald sie eingerichtet ist',

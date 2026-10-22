@@ -87,13 +87,23 @@ export interface WerkstattFlaecheProps {
   umbenennen?: string | null;
   /** Ende des Umbenennens: neuer Name bzw. null (abgebrochen). */
   onUmbenannt?: (id: string, titel: string | null) => void;
+  /** Punkt 6: die Sätze der Befunde je Knoten — beim Überfahren der Marke; ein Klick springt ins Feld. */
+  befundTexte?: ReadonlyMap<string, readonly { text: string; feld?: string; stufe: 'fehler' | 'offen' }[]>;
+  onBefund?: (id: string, feld?: string) => void;
+  /** Punkt 12: die Karte (Minimap) unten rechts. */
+  karte?: boolean;
+  /** Punkt „Zettelgröße ziehen“: die neue Größe eines Zettels (Welt-Bildpunkte). */
+  onZettelGroesse?: (id: string, b: number, h: number) => void;
+  /** Im Werkzeugmodus verschiebt das Mausrad die Fläche (keine Seite zum Rollen). */
+  radSchiebt?: boolean;
 }
 
 type Zug =
   | { art: 'knoten'; zeiger: number; start: [number, number]; ids: string[]; aktiv: boolean; erweitern: boolean; id: string }
   | { art: 'faden'; zeiger: number; start: [number, number]; von: string; ausgang: Ausgang; aktiv: boolean }
   | { art: 'band'; zeiger: number; start: [number, number]; aktiv: boolean; erweitern: boolean }
-  | { art: 'ende'; zeiger: number; start: [number, number]; kante: string; von: [number, number]; aktiv: boolean };
+  | { art: 'ende'; zeiger: number; start: [number, number]; kante: string; von: [number, number]; aktiv: boolean }
+  | { art: 'groesse'; zeiger: number; start: [number, number]; id: string; b: number; h: number; aktiv: boolean };
 
 const ZIEH_PX = 5;
 const ruhig = () => typeof window !== 'undefined' && bewegungReduziert();
@@ -131,6 +141,9 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   const [fadenZiel, setFadenZiel] = useState<{ id: string; nein: boolean } | null>(null);
   const [zugPunkte, setZugPunkte] = useState<[number, number][] | null>(null);
   const [geraet, setGeraet] = useState({ mac: true, touch: false });
+  const [befundHover, setBefundHover] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [groesse_, setGroesse] = useState<{ id: string; b: number; h: number } | null>(null);
+  const sicht = useRef<SVGRectElement | null>(null);
   const stand = useRef(p);
   stand.current = p;
   /** Das Feld zum Umbenennen auf der Fläche (Punkt 2) — seine Lage folgt der Kamera (gesetzt im Bild, kein Zustand je Bild). */
@@ -157,6 +170,9 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       ebene.current?.kamera(k);
       stand.current.onMassstab?.(k.s);
       namensOrt();
+      // Punkt 12: der sichtbare Ausschnitt in der Karte (Welt-Koordinaten).
+      const r = sicht.current;
+      if (r) { const g = groesse(); r.setAttribute('x', String(-k.x / k.s)); r.setAttribute('y', String(-k.y / k.s)); r.setAttribute('width', String(g.b / k.s)); r.setAttribute('height', String(g.h / k.s)); }
     });
   }, [namensOrt]);
   const setze = useCallback((k: Kamera) => { kamera.current = k; zeichne(); }, [zeichne]);
@@ -210,7 +226,8 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     const e = flaecheEingabe(el, {
       kamera: () => kamera.current, setze,
       freiSchiebt: () => stand.current.nurLesen,
-      istFrei: z => !(z as Element | null)?.closest?.('[data-ws-knoten],[data-ws-anschluss],[data-ws-plus],[data-ws-kante],[data-ws-zettel],[data-ws-rahmen],[data-ws-unter],[data-ws-zu],[data-ws-zwischen],[data-ws-ende]'),
+      radSchiebt: () => !!stand.current.radSchiebt,
+      istFrei: z => !(z as Element | null)?.closest?.('[data-ws-knoten],[data-ws-anschluss],[data-ws-plus],[data-ws-kante],[data-ws-zettel],[data-ws-rahmen],[data-ws-unter],[data-ws-zu],[data-ws-zwischen],[data-ws-ende],[data-ws-befund],[data-ws-groesse]'),
     });
     return () => { e.abbauen(); if (bild.current) cancelAnimationFrame(bild.current); };
   }, [setze]);
@@ -223,8 +240,14 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     return m;
   }, [p.lage.knoten, zieh]);
   const kanten = useMemo(() => (zieh ? kantenWege(p.d, knoten) : p.lage.kanten), [zieh, p.d, knoten, p.lage.kanten]);
-  const zettel = useMemo(() => (p.d.zettel ?? []).map(z => (zieh?.ids.includes(z.id) ? { ...z, pos: { ...z.pos, x: z.pos.x + zieh.dx, y: z.pos.y + zieh.dy } } : z)), [p.d.zettel, zieh]);
+  const zettel = useMemo(() => (p.d.zettel ?? []).map(z => {
+    let x = zieh?.ids.includes(z.id) ? { ...z, pos: { ...z.pos, x: z.pos.x + zieh.dx, y: z.pos.y + zieh.dy } } : z;
+    if (groesse_?.id === z.id) x = { ...x, pos: { ...x.pos, b: groesse_.b, h: groesse_.h } };
+    return x;
+  }), [p.d.zettel, zieh, groesse_]);
   const nach = useMemo(() => new Map(p.d.knoten.map(k => [k.id, k])), [p.d.knoten]);
+  /** Punkt 14: ausgeschaltete Schritte und die Schlösser dahinter (sie werden mit übersprungen). */
+  const aus = useMemo(() => { const m = new Set(p.d.knoten.filter(k => k.deaktiviert).map(k => k.id)); for (const k of p.d.knoten) if (k.schloss && m.has(k.schloss.fuer)) m.add(k.id); return m; }, [p.d.knoten]);
   const belegt = useMemo(() => {
     const m = new Map<string, Set<string>>();
     for (const k of p.lage.kanten) { const s = m.get(k.von) ?? new Set<string>(); s.add(k.ausgang === 'ja' && nach.get(k.von)?.form !== 'entscheidung' && nach.get(k.von)?.form !== 'freigabe' ? 'weiter' : k.ausgang); m.set(k.von, s); }
@@ -281,6 +304,15 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     const w = welt0(e);
     const plus = t.closest('[data-ws-plus],[data-ws-zwischen]');
     if (plus) return; // Klick (onClick) öffnet die Formauswahl
+    // Punkt 6: die Befund-Marke am Knoten — ein Klick springt in das betroffene Feld.
+    const bf = t.closest('[data-ws-befund]')?.getAttribute('data-ws-befund');
+    if (bf) { e.preventDefault(); p.onBefund?.(bf, p.befundTexte?.get(bf)?.find(x => x.feld)?.feld); return; }
+    // Zettelgröße ziehen (Anfasser unten rechts am gewählten Zettel).
+    const gz = t.closest('[data-ws-groesse]')?.getAttribute('data-ws-groesse');
+    if (gz && !p.nurLesen) {
+      const z = (stand.current.d.zettel ?? []).find(x => x.id === gz);
+      if (z) { zug.current = { art: 'groesse', zeiger: e.pointerId, start: w, id: gz, b: z.pos.b ?? WS.zettel.b, h: z.pos.h ?? WS.zettel.h, aktiv: false }; svg.current?.setPointerCapture(e.pointerId); e.preventDefault(); return; }
+    }
     // Werkstatt bau-fertig (Punkt 4): das Ende eines gewählten Fadens greifen und auf einen anderen Schritt ziehen.
     const ende = t.closest('[data-ws-ende]')?.getAttribute('data-ws-ende');
     if (ende && !p.nurLesen) {
@@ -312,7 +344,16 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   };
   const bewegt = (e: RPointerEvent<SVGSVGElement>) => {
     const z = zug.current;
-    if (!z || z.zeiger !== e.pointerId) return;
+    if (!z) {
+      // Punkt 6: über der Befund-Marke steht der Satz (nicht nur das Symbol).
+      const bf = (e.target as Element).closest?.('[data-ws-befund]')?.getAttribute('data-ws-befund') ?? null;
+      if (bf !== (befundHover?.id ?? null)) {
+        const r = buehne.current?.getBoundingClientRect();
+        setBefundHover(bf && r ? { id: bf, x: e.clientX - r.left, y: e.clientY - r.top } : null);
+      }
+      return;
+    }
+    if (z.zeiger !== e.pointerId) return;
     const w = welt0(e);
     const dx = w[0] - z.start[0], dy = w[1] - z.start[1];
     if (!z.aktiv) { if (Math.hypot(dx, dy) * kamera.current.s < ZIEH_PX) return; z.aktiv = true; }
@@ -325,6 +366,8 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
         const h = hilfslinien(box, andere, { raster: stand.current.raster ? WS.raster : 0 });
         setZieh({ ids: z.ids, dx: h.x - haupt.x - haupt.koerper.x, dy: h.y - haupt.y - haupt.koerper.y, linien: h.linien });
       } else setZieh({ ids: z.ids, dx: Math.round(dx), dy: Math.round(dy), linien: [] });
+    } else if (z.art === 'groesse') {
+      setGroesse({ id: z.id, b: Math.max(160, Math.round(z.b + dx)), h: Math.max(160, Math.round(z.h + dy)) });
     } else if (z.art === 'ende') {
       const ziel = (document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-ws-knoten]')?.getAttribute('data-ws-knoten')) ?? null;
       const zk = ziel ? stand.current.lage.knoten.get(ziel) : null;
@@ -353,6 +396,12 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       if (z.aktiv && zieh && !p.nurLesen) p.onZiehen(zieh.ids, zieh.dx, zieh.dy);
       else if (!z.aktiv) p.onAuswahl([z.id], { erweitern: z.erweitern });
       setZieh(null);
+      return;
+    }
+    if (z.art === 'groesse') {
+      const g = groesse_;
+      setGroesse(null);
+      if (z.aktiv && g) p.onZettelGroesse?.(g.id, g.b, g.h);
       return;
     }
     if (z.art === 'ende') {
@@ -447,7 +496,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
             );
           })}
           {/* Notiz-Zettel (reiner Text, kein Knoten). */}
-          {zettel.map(z => <Zettel key={z.id} z={z} gewaehlt={gewaehlt.has(z.id)} />)}
+          {zettel.map(z => <Zettel key={z.id} z={z} gewaehlt={gewaehlt.has(z.id)} anfasser={!p.nurLesen && p.auswahl.length === 1 && gewaehlt.has(z.id)} />)}
           {/* Fäden: der Strich darunter (blendet CSS aus, solange der Flow läuft), Fehlerkante rot gestrichelt, Beschriftung, breite Trefferfläche. */}
           {kanten.map(k => {
             const dd = pfadVon(k.punkte);
@@ -494,7 +543,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
                 aria-label={lk.zu ? `Phase „${lk.zu.titel}“ aufklappen (${lk.zu.schritte} Schritte)` : k ? `${k.titel} — ${p.unterzeile(k)}` : undefined}>
                 {lk.zu || !k ? <ZuKachel l={lk} /> : (
                   <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()}
-                    schloss={p.mitSchloss.has(k.id)} befund={p.befundJe.get(k.id) ?? null} probe={p.probe?.get(k.id)} nurLesen={p.nurLesen}
+                    schloss={p.mitSchloss.has(k.id)} befund={p.befundJe.get(k.id) ?? null} probe={p.probe?.get(k.id)} nurLesen={p.nurLesen} aus={aus.has(k.id)}
                     {...(p.lauf ? { marke: p.lauf.marken.get(k.id), grau: !p.lauf.marken.has(k.id) } : {})}
                     andockGewaehlt={p.andockWahl?.id === k.id ? p.andockWahl.art : null} />
                 )}
@@ -513,6 +562,16 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
         <NamensFeld key={p.umbenennen} feld={namensFeld} wert={nach.get(p.umbenennen)!.titel} onSetzen={namensOrt}
           onFertig={t => p.onUmbenannt?.(p.umbenennen!, t)} />
       )}
+      {/* Punkt 6: der Satz des Befunds beim Überfahren der Marke — ein Klick springt ins Feld. */}
+      {befundHover && p.befundTexte?.get(befundHover.id)?.length ? (
+        <div role="tooltip" className="pw-befund-tipp" style={{ left: Math.max(8, befundHover.x + 14), top: Math.max(8, befundHover.y + 14) }}>
+          {p.befundTexte.get(befundHover.id)!.slice(0, 4).map((b, i) => <span key={i} style={{ color: b.stufe === 'fehler' ? LEUCHT.kritisch : LEUCHT.achtung }}>{b.text}</span>)}
+          {(p.befundTexte.get(befundHover.id)!.length > 4) && <span style={{ color: C.inkLeise }}>{`+${p.befundTexte.get(befundHover.id)!.length - 4} weitere`}</span>}
+          <span style={{ color: C.inkLeise }}>Klick springt ins Feld.</span>
+        </div>
+      ) : null}
+      {/* Punkt 12: die Karte (Minimap) — klicken bzw. ziehen setzt den Ausschnitt. */}
+      {p.karte && <Karte lage={p.lage} d={p.d} sicht={sicht} onMitte={(wx, wy) => { const g = groesse(), k = kamera.current; setze({ s: k.s, x: g.b / 2 - wx * k.s, y: g.h / 2 - wy * k.s }); }} onZeigen={zeichne} />}
     </div>
   );
 });
@@ -534,7 +593,37 @@ function NamensFeld({ feld, wert, onSetzen, onFertig }: { feld: { current: HTMLI
   );
 }
 
-function Zettel({ z, gewaehlt }: { z: NotizZettel; gewaehlt: boolean }) {
+/** Die Karte (Minimap, Punkt 12 — wie die Bühne der Landkarte): Rahmen und Knoten in ihren Farben, der sichtbare Ausschnitt als Rahmen. */
+function Karte({ lage, d, sicht, onMitte, onZeigen }: { lage: WerkstattLage; d: Pick<ProzessDefinition, 'knoten'>; sicht: { current: SVGRectElement | null }; onMitte: (x: number, y: number) => void; onZeigen: () => void }) {
+  const mm = useMemo(() => {
+    const B = 200, H = 130, b = lage.box;
+    const s = Math.min(B / Math.max(1, b.b), H / Math.max(1, b.h)) * 0.92;
+    return { B, H, s, ox: (B - b.b * s) / 2 - b.x * s, oy: (H - b.h * s) / 2 - b.y * s };
+  }, [lage.box]);
+  const form = useMemo(() => new Map(d.knoten.map(k => [k.id, k.form ?? 'schritt'])), [d.knoten]);
+  useEffect(() => { onZeigen(); }, [onZeigen]);
+  const ziehen = useRef(false);
+  const setze = (e: RPointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    onMitte((e.clientX - r.left - mm.ox) / mm.s, (e.clientY - r.top - mm.oy) / mm.s);
+  };
+  return (
+    <div className="pz-minimap pw-karte" role="group" aria-label="Karte — klicken oder ziehen, um den Ausschnitt zu verschieben">
+      <svg width={mm.B} height={mm.H} style={{ display: 'block', cursor: 'crosshair', touchAction: 'none' }}
+        onPointerDown={e => { ziehen.current = true; e.currentTarget.setPointerCapture(e.pointerId); setze(e); }}
+        onPointerMove={e => { if (ziehen.current) setze(e); }}
+        onPointerUp={e => { ziehen.current = false; e.currentTarget.releasePointerCapture(e.pointerId); }}>
+        <g transform={`translate(${mm.ox} ${mm.oy}) scale(${mm.s})`}>
+          {lage.rahmen.map(r => <rect key={r.id} x={r.x} y={r.y} width={r.b} height={r.h} rx={12 / mm.s} fill="none" stroke={C.inkLeise} strokeWidth={1.5 / mm.s} />)}
+          {[...lage.knoten.values()].map(k => <rect key={k.id} x={k.x + k.koerper.x} y={k.y + k.koerper.y} width={k.koerper.b} height={k.koerper.h} rx={6 / mm.s} fill={WERKSTATT_FORM_FARBE[form.get(k.id) ?? 'schritt']} fillOpacity={0.7} />)}
+          <rect ref={sicht} fill="none" stroke={C.ink} strokeWidth={2 / mm.s} />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+function Zettel({ z, gewaehlt, anfasser }: { z: NotizZettel; gewaehlt: boolean; anfasser?: boolean }) {
   const ton = ZETTEL_TON[z.farbe ?? 'gelb'];
   const b = z.pos.b ?? WS.zettel.b, h = z.pos.h ?? WS.zettel.h;
   const zeilen = textZeilen(z.text || 'Notiz', b - 28, FLAECHE_SCHRIFT.unter, Math.max(1, Math.floor((h - 24) / 18)));
@@ -544,6 +633,12 @@ function Zettel({ z, gewaehlt }: { z: NotizZettel; gewaehlt: boolean }) {
       <rect width={b} height={h} rx={10} fill={TIEF.flaeche(ton)} stroke={gewaehlt ? C.ink : TIEF.rand(ton)} strokeWidth={gewaehlt ? 2.2 : 1.2} />
       <rect width={b} height={6} rx={3} fill={TIEF.fuellung(ton)} />
       {zeilen.map((t, i) => <text key={i} x={14} y={30 + i * 18} fontSize={FLAECHE_SCHRIFT.unter} fill={z.text ? C.ink : C.inkLeise} style={{ pointerEvents: 'none' }}>{t}</text>)}
+      {anfasser && (
+        <g data-ws-groesse={z.id} transform={`translate(${b - 18} ${h - 18})`} style={{ cursor: 'nwse-resize' }} role="button" aria-label="Größe des Zettels ziehen">
+          <rect width={22} height={22} fill="transparent" />
+          <path d="M16 4 L4 16 M16 10 L10 16" stroke={C.inkDim} strokeWidth={1.6} strokeLinecap="round" />
+        </g>
+      )}
     </g>
   );
 }
