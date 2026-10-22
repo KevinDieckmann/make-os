@@ -1681,6 +1681,9 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Maskenwerte), Übernahme nur per Klick der anfragenden Person. Fulfillment = Werkzeug (Produktkarte → Prozess), KEINE eigenen Fulfillment-Vorlagen (Kevin).
 - **Läufe · Tests** in der Werkstatt: Lauf auf demselben Bild (Haken je Knoten, Log-Baum, Kosten), Inhalte LIVE mit den Rechten der Person (`?inhalte=1`,
   Lese-Protokoll), „Als Testfall übernehmen“; Heute › Business Widget `prozesse`.
+- **Gliederung & Lage (22.10. Feinschliff):** je Phase höchstens ~10 Schritte (Vorlagen eingehalten, Wächter `tests/prozesse-vorlagen-gliederung.test.ts`);
+  mehrere Auslöser führen jeder direkt in den ersten Schritt (Regel in `kantenVon`, `lib/prozesse/fluss.ts`); Notiz-Zettel liegen über dem ersten Rahmen,
+  nie über Phasen-Köpfen/Knoten; „Alles zeigen“ zeigt unlesbar kleine Prozesse als zugeklappte Phasen-Kacheln (`zoomStufe`).
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
