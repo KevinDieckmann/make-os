@@ -133,6 +133,11 @@ export interface Fall {
   zusaetze?: FallZusatz[];
   /** Gestartet aus einem Zusatzmodul ohne laufenden Fall (17.10. spät): ohne die acht Onboarding-Schritte — der Fall läuft sofort (`onboardingStand` leer). */
   ohneOnboarding?: true;
+  /**
+   * E5 (22.10., Entscheidung F3): die Akte eines Mandats, dessen Produkt auf einen Prozess der WERKSTATT zeigt — angelegt beim Start des scharfen Laufs, nur mit dem
+   * Onboarding (keine Paket-Knoten); `vorlageId` = `prozessId`. Fehlt: ein Fall mit Paket wie bisher. Lesen nur über `fallAblauf` (findet ihn auch ohne das Feld).
+   */
+  ablauf?: { art: 'prozess'; prozessId: string };
 }
 export interface FaelleDatei { version: number; faelle: Record<string, Fall> }
 

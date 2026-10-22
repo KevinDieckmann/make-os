@@ -1170,6 +1170,15 @@ async function produktLaeufeStarten(e: Ereignis, kx: MotorKontext): Promise<numb
       ...(herkunft ? { herkunft: { prozessId: herkunft.prozessId, laufId: herkunft.laufId } } : {}), automatisch: true, periode: e.id, jetzt: kx.jetzt.toISOString(),
     }, kx.h);
     if (r.ok) n++;
+    // E5 (22.10., Entscheidung F3): ein SCHARFER Lauf eines Hauptprodukts legt die Akte des Mandats an (Onboarding, keine Paket-Knoten; idempotent — ein Fall je
+    // Mandat) — auch, wenn derselbe Prozess über seinen eigenen Auslöser schon lief (Bindung + Auslöser, „offen“). Schatten/Probelauf legt nie eine Akte an.
+    // Wirft nie: ohne Akte läuft der Prozess trotzdem.
+    const scharfLaeuft = r.ok ? r.lauf.modus === 'scharf' : (r.grund === 'offen' || r.grund === 'schon') && r.lauf?.modus === 'scharf' && r.lauf.fall.id === mandatId;
+    if (scharfLaeuft && b.rolle === 'haupt') {
+      await import('@/lib/fulfillment/prozesse/fall-server').then(f => f.prozessAkteAnlegen({
+        mandatId, prozessId: p.id, titel: j.def.titel, version: j.nr, person: personFuer(j.def, kx, e.person ?? null) ?? 'system', wer: { art: 'system' }, jetzt: kx.jetzt,
+      })).catch(() => null);
+    }
   }
   return n;
 }

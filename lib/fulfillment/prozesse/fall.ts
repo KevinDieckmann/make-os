@@ -125,6 +125,23 @@ export function fallStarten(e: StartEingabe): Fall {
 
 // ── Vorlagen-Diff (7.2) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+export { fallAblauf } from './ablauf-art';
+/** Wurzel der Akte eines Werkstatt-Prozesses (der Fall trägt sonst keine Paket-Knoten). */
+export const PROZESS_AKTE_WURZEL = 'fk-akte';
+
+/**
+ * Die Akte eines Mandats, dessen Produkt auf einen Prozess der Werkstatt zeigt (rein, E5): derselbe Start wie jeder Fall (`fallStarten` — Onboarding-Phase mit
+ * den acht Schritten, Willkommens-Uhr, Playbook, Befähigung), aber OHNE Paket-Knoten — der Ablauf läuft im Motor. `vorlageId` = Prozess, `vorlageFassung` = Version.
+ */
+export function prozessAkteStarten(e: Omit<StartEingabe, 'vorlage'> & { prozessId: string; titel: string; version: number }): Fall {
+  const v: ProzessVorlage = {
+    id: e.prozessId, art: 'paket', titel: e.titel, knoten: [{ id: PROZESS_AKTE_WURZEL, titel: e.titel, rang: 1 }], uebergaenge: [], freigaben: [], rollen: [],
+    fassung: e.version, geaendert: e.jetzt, geaendertVon: e.person,
+  };
+  const { prozessId, titel: _t, version: _v, ...rest } = e;
+  return { ...fallStarten({ ...rest, vorlage: v }), ablauf: { art: 'prozess', prozessId } };
+}
+
 export interface VorlagenDiff {
   von: number; nach: number; neu: { id: string; titel: string }[]; geaendert: { id: string; titel: string; felder: string[] }[]; entfernt: { id: string; titel: string }[];
   /** Eltern-Knoten (Phasen, Teilprozesse, Wurzel), deren Schritte in der Vorlage anders geordnet sind (Prozess-Editor, 17.10.). */

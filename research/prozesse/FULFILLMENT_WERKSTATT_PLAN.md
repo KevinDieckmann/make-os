@@ -234,7 +234,12 @@ Produktkarte), „Neuer Ablauf“ aus der Werkstatt („+ Prozess“ › Bereich
 - **Import und Muster** bleiben im Fulfillment. Für markierte Pakete legt der Import nur einen Entwurf an.
 - **Gold:** Der Editor ist für markierte Pakete nur lesbar; unmarkierte bleiben unverändert bedienbar.
 
-### E5 · Akte für Mandate mit Werkstatt-Prozess (F3) — 1,5–2 Tage (unabhängig von E2–E4)
+### E5 · Akte für Mandate mit Werkstatt-Prozess (F3) — GEBAUT (22.10.)
+
+**Stand 22.10.:** `prozessAkteAnlegen`/`prozessAkteStarten`, `Fall.ablauf`, `fallAblauf` (Feld, sonst Kennung — Rückweg ohne Lauf-Lesen), Kunden-Sicht mit Etappen.
+Abweichungen: die Akte entsteht auch, wenn der Lauf über den eigenen Auslöser des Prozesses schon lief (Bindung + Auslöser); nur Hauptprodukte (ein Zusatzmodul
+legt keine Akte an). Die Ableitung „über den Lauf“ ist die Kennung (`vorlageId` = Prozess) — kein Lesen der Läufe nötig.
+
 
 - **Beim Start eines scharfen Laufs** über die Produkt-Bindung (`produktLaeufeStarten`) legt der Server die Akte an: `fallStartenServer` mit dem neuen optionalen Feld `Fall.ablauf = { art: 'prozess', prozessId }`, dem Onboarding-Teil und ohne Paket-Knoten. Das ist idempotent, ein Fall je Mandat.
 - **Kandidaten-Regel:** `onboardingKandidaten(…, mitProzessLauf)` bleibt die EINE Regel. Ein Mandat ist entweder Kandidat oder hat einen Fall, nie beides. Ein Schatten-Lauf legt keine Akte an; er bleibt wie bisher kein Kandidat.

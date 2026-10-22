@@ -120,13 +120,13 @@ export async function paketEntwurfSchreiben(h: string, person: string, aktion: '
  * `fulfillment--<h>`, gleich mit der Marke `werkstatt:<paket>` (bearbeitet wird sie nur in der Werkstatt). Rechte prüft die Route.
  */
 export async function paketNeuSchreiben(h: string, person: string, eingabe: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
-  const [{ fulfillmentAendern, eintragStand }, { neuerAblauf }, { mitWerkstattMarke }, { neueKennung }] = await Promise.all([
-    import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/editor'), import('@/lib/fulfillment/prozesse/werkstatt-marke'), import('@/lib/kennung'),
+  const [{ fulfillmentAendern, eintragStand }, { neuerAblauf }, { mitWerkstattMarke }, { neueKennung }, { tagVon }] = await Promise.all([
+    import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/editor'), import('@/lib/fulfillment/prozesse/werkstatt-marke'), import('@/lib/kennung'), import('@/lib/zeit'),
   ]);
   const jetzt = new Date().toISOString();
   const r = await fulfillmentAendern('vorlagen', d => {
     const x = neuerAblauf(d, { titel: eingabe.titel, ...(eingabe.phase !== undefined ? { phase: eingabe.phase } : {}) }, { person, jetzt, standVon: eintragStand, neueId: p => neueKennung(p) });
-    return x.ok ? { ...x, datei: { ...x.datei, marken: mitWerkstattMarke(x.datei.marken, x.geaendert[0], jetzt.slice(0, 10)) } } : x;
+    return x.ok ? { ...x, datei: { ...x.datei, marken: mitWerkstattMarke(x.datei.marken, x.geaendert[0], tagVon(jetzt)) } } : x;
   }, { art: 'person', person }, h);
   if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler } };
   return { status: 200, body: { ok: true, paketId: r.geaendert[0] } };

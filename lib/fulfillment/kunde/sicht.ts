@@ -17,6 +17,7 @@
 import { tagVon } from '@/lib/zeit';
 import { abschnitteVon, formularProzent, formularSchluessel, formularStandVon, formulareDesFalls } from './formular';
 import { offeneAnfrage } from './puls';
+import { fallAblauf } from '../prozesse/ablauf-art';
 import { HINWEIS_VERSION } from './link';
 import { fuerKundenFrei, kundenGesperrt } from '../prozesse/bausteine';
 import { formularOffen, kundenTeile, tagText, type KundenAnrede, type KundenHaenger, type KundenLage, type KundenPhase, type KundenQuickWin, type KundenRitual, type KundenWartet, type KundenWert } from './bild';
@@ -144,8 +145,9 @@ export function kundenSicht(e: SichtEingabe): KundenSicht {
   return {
     modus: 'voll', ...basis, mandat: e.mandat.titel, ...(e.paket ? { paket: e.paket } : {}),
     ...(f ? { lage: t.lage } : {}), ...(t.fortschritt ? { fortschritt: t.fortschritt } : {}),
-    // Ohne Fall, aber mit Etappen aus einem Prozess der Werkstatt (22.10.): dieselben Schlüssel aus dem Lauf — mit Fall wie bisher nur der Fall.
-    ...(!f && e.etappen
+    // Ohne Fall, aber mit Etappen aus einem Prozess der Werkstatt (22.10.): dieselben Schlüssel aus dem Lauf — mit Fall wie bisher nur der Fall. E5: ist der Fall
+    // die Akte eines Werkstatt-Prozesses (`fallAblauf`), kommen Zeitstrahl, Erledigt und Nächstes ebenso aus dem Lauf; alles andere aus der Akte.
+    ...((!f || fallAblauf(f)) && e.etappen
       ? { zeitstrahl: e.etappen.phasen.map(p => ({ ...p })), erledigt: [...e.etappen.erledigt], naechstes: [...e.etappen.naechstes] }
       : { zeitstrahl: t.phasen, erledigt: t.erledigt, naechstes: t.naechstes }),
     wartet: t.wartet, wertKonto: t.wertKonto, quickWins: t.quickWins, rituale: t.rituale,

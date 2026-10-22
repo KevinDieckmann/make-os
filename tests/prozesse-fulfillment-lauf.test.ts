@@ -132,7 +132,15 @@ describe('Ein neues Mandat startet den Prozess seines Produkts', () => {
   });
   it('GOLD: das Mandat mit Fulfillment-Paket verhält sich wie vorher — kein Lauf, jeder Fulfillment-Bestand bit-gleich, Paket weiter zugeordnet', async () => {
     expect((await laeufe()).laeufe.some(l => l.fall.id === 'ma-paket')).toBe(false);
-    expect(fulfillmentDateien()).toEqual(fulfillmentVorher);
+    // E5 (22.10., Entscheidung F3): die scharfen Läufe eines Hauptprodukts legen die AKTE ihres Mandats an (nur Onboarding, `ablauf` = Prozess) — sonst ist
+    // jeder Fulfillment-Bestand bit-gleich, und das Paket-Mandat hat keinen Fall.
+    const jetzt = fulfillmentDateien();
+    const faelle = (n: string) => path.basename(n).startsWith('fulfillment-faelle--'); // der Bestand und seine Tageskopie
+    const faelleRoh = jetzt[Object.keys(jetzt).find(n => n.startsWith('fulfillment-faelle--'))!];
+    expect(Object.fromEntries(Object.entries(jetzt).filter(([n]) => !faelle(n)))).toEqual(fulfillmentVorher);
+    const akten = (JSON.parse(faelleRoh) as { faelle: Record<string, { ablauf?: { art: string; prozessId: string } }> }).faelle;
+    expect(Object.keys(akten).sort()).toEqual(['ma-doppel', 'ma-scharf']);
+    expect(akten['ma-scharf'].ablauf).toEqual({ art: 'prozess', prozessId: PZ_SCHARF });
     const [{ fulfillmentLesen }, { vorlageFuerProdukt }] = await Promise.all([import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/vorlagen-anwenden')]);
     expect(vorlageFuerProdukt(await fulfillmentLesen('vorlagen', H), 'p-paket')?.id).toBe('fp-paket');
     // Dieselben Ereignisse wie vor der Bindung: je neues Mandat genau „mandat-angelegt“, kein „zusatz-gebucht“.
@@ -186,9 +194,9 @@ describe('Kunden-Sicht: Etappen aus dem Lauf (nur „Dem Kunden zeigen“, nur s
     // Das Paket-Mandat hat einen scharfen Lauf seines Zusatzmoduls — dessen Etappen gelten (die Kunden-Sicht nimmt sie nur, solange es keinen Fall gibt).
     expect((await kundenEtappenFuer('ma-paket'))?.naechstes).toEqual(['Kick-off vereinbaren', 'Ergebnis-Workshop']);
   });
-  it('die Kunden-Sicht nimmt sie nur OHNE Fall des Fulfillments (Quelle in `sichtFuer`)', () => {
+  it('die Kunden-Sicht nimmt sie nur OHNE Fall des Fulfillments bzw. für die Akte eines Werkstatt-Prozesses (E5; Quelle in `sichtFuer`)', () => {
     const s = readFileSync(path.join(process.cwd(), 'lib/fulfillment/kunde/server.ts'), 'utf8');
-    expect(s).toContain("const etappen = !fall && e.modus === 'voll' ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(e.mandat.id) : null;");
+    expect(s).toContain("const etappen = (!fall || fallAblauf(fall)) && e.modus === 'voll' ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(e.mandat.id) : null;");
   });
 });
 
@@ -240,7 +248,11 @@ describe('Fulfillment: ein Mandat, dessen Ablauf ein laufender Werkstatt-Prozess
     // Gold: ohne die Menge rechnet die Ansicht dieselben Kandidaten — für das Paket-Mandat Feld für Feld gleich.
     const [{ kandidatenAnsicht }, { fulfillmentLesen }, { ladeCrm }] = await Promise.all([import('@/lib/fulfillment/prozesse/server'), import('@/lib/fulfillment/speicher'), import('@/lib/crm/speicher')]);
     const ohneMenge = kandidatenAnsicht(await ladeCrm(), await fulfillmentLesen('vorlagen', H), (await fulfillmentLesen('faelle', H)).faelle, localDay(), new Date().toISOString());
-    expect(ohneMenge.map(k => k.mandatId).sort()).toEqual([...MIT_LAUF, ...OHNE].sort());
+    // E5: Mandate mit scharfem Lauf ihres Hauptprodukts haben eine Akte — Kandidat XOR Fall; ohne die Menge fehlt also nur noch der Schatten-Lauf nicht.
+    const mitAkte = Object.keys((await fulfillmentLesen('faelle', H)).faelle);
+    expect(MIT_LAUF.filter(m => !mitAkte.includes(m))).toEqual(['ma-probe']);
+    expect(ohneMenge.map(k => k.mandatId).sort()).toEqual([...MIT_LAUF.filter(m => !mitAkte.includes(m)), ...OHNE].sort());
+    expect(ohneMenge.some(k => mitAkte.includes(k.mandatId))).toBe(false);
     const paket = (l: { mandatId: string }[]) => JSON.stringify({ ...l.find(k => k.mandatId === 'ma-paket'), uhr: undefined });
     expect(paket(j.kandidaten)).toBe(paket(ohneMenge));
   });

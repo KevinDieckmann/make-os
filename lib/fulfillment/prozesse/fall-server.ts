@@ -17,7 +17,7 @@ import { istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
-import { fallAnwenden, fallFreigaben, fallStarten, vorlageUebernehmen, zusatzAnhaengen, zusatzUebernehmen } from './fall';
+import { fallAnwenden, fallFreigaben, fallStarten, prozessAkteStarten, vorlageUebernehmen, zusatzAnhaengen, zusatzUebernehmen } from './fall';
 import { ablaufAktiv } from './ausfuehrung';
 import { fallWirksam, istKickoff, onboardingStand, playbookBaustein, willkommenLetzterTag, willkommenUhr, type OnboardingAbleitung } from './onboarding';
 import { letzteMessung, istText, zielText } from './wert';
@@ -140,6 +140,37 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
     await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(leer, f, m, { vorher: leer, nachher: f, heute })).catch(() => 0);
   }
   return { fall: neu!, art };
+}
+
+/**
+ * E5 (22.10., Entscheidung F3): die Akte für ein Mandat, dessen Produkt auf einen Prozess der WERKSTATT zeigt — angelegt, wenn dessen scharfer Lauf startet
+ * (lib/prozesse/lauf-server.ts `produktLaeufeStarten`). Nur das Onboarding (Willkommens-Uhr, Kick-off, Playbook …), keine Paket-Knoten, `ablauf` zeigt auf den
+ * Prozess. Idempotent: hat das Mandat schon einen Fall, bleibt er, wie er ist (`art: 'da'`). Nur Business-Mandate (`mandatPruefen`). Wirft bei Unsinn `FallFehler`.
+ */
+export async function prozessAkteAnlegen(e: { mandatId: string; prozessId: string; titel: string; version: number; person: string; wer?: Wer; jetzt?: Date }): Promise<{ fall: Fall; art: 'neu' | 'da' }> {
+  const jetzt = e.jetzt ?? new Date();
+  const iso = jetzt.toISOString(), heute = localDay(jetzt);
+  const { h, crm, vorlagen } = await fallUmfeld([]);
+  const m = mandatPruefen(crm, e.mandatId);
+  const u = unterschriftAm(m, crm, iso);
+  const uhr = u ? willkommenUhr(u.am, vorlagen.einstellungen.willkommenStunden, undefined, iso) : null;
+  const bis = uhr?.faellig ? willkommenLetzterTag(uhr.faellig) : undefined;
+  let fall: Fall | null = null;
+  let art: 'neu' | 'da' = 'neu';
+  const r = await fulfillmentAendern('faelle', d => {
+    const da = d.faelle[m.id];
+    if (da) { fall = da; art = 'da'; return { ok: true, datei: d, geaendert: [] }; }
+    const pb = playbookBaustein(vorlagen);
+    fall = prozessAkteStarten({ mandatId: m.id, prozessId: e.prozessId, titel: e.titel, version: e.version, person: e.person, jetzt: iso, start: heute, ...(bis ? { willkommenBis: bis } : {}), ...(pb ? { playbookId: pb.id } : {}), neueId: p => neueKennung(p) });
+    return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: fall } }, geaendert: [m.id] };
+  }, e.wer ?? { art: 'person', person: e.person }, h);
+  if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
+  if (art === 'neu') {
+    await ablaufNachzug(fall!, m.id, e.person, e.wer, jetzt);
+    const f = fall!, leer: Fall = { ...f, knoten: [], freigaben: {} };
+    await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(leer, f, m, { vorher: leer, nachher: f, heute })).catch(() => 0);
+  }
+  return { fall: fall!, art };
 }
 
 /** Die Phase des Mandats nachziehen — nur vorwärts im Ablauf des Produkts. Liefert, ob gesetzt wurde. */

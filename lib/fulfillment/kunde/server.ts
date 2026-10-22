@@ -37,6 +37,7 @@ import { kundenSicht, kundeTauglich, kundeHinweis, type KundenAnbieter, type Kun
 import { anredeAus, type KundenAnrede } from './bild';
 import { reportZusatz } from './report-zusatz';
 import { kundenGesperrt } from '../prozesse/bausteine';
+import { fallAblauf } from '../prozesse/ablauf-art';
 import { playbookBaustein } from '../prozesse/onboarding';
 import { OB_PLAYBOOK_FORMULAR_ID, fallFreigaben } from '../prozesse/fall';
 import { kundeFristenAnwenden, unterlageDatei, verwaisteDateien, alleTexte } from './fristen';
@@ -200,7 +201,8 @@ export async function sichtFuer(e: { mandat: Mandat; modus: 'voll' | 'puls'; lin
   // 14.10. (Abnahme A3): die Lage folgt dem, was intern hängt — dieselbe Rechnung wie das Cockpit, nur in Worten (die Texte gehen nie hinaus).
   const haengt = fall ? await haengerVon(e.mandat.id, e.heute) : null;
   // Prozesse × Fulfillment (22.10.): ohne Fall die Etappen aus den scharfen Läufen der Werkstatt-Prozesse am Mandat (nur „Dem Kunden zeigen“; wirft nie).
-  const etappen = !fall && e.modus === 'voll' ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(e.mandat.id) : null;
+  // E5: auch für die Akte eines Werkstatt-Prozesses (`fallAblauf`) — ein Fall mit Paket liest weiter nur den Fall (bit-gleich).
+  const etappen = (!fall || fallAblauf(fall)) && e.modus === 'voll' ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(e.mandat.id) : null;
   return kundenSicht({
     modus: e.modus, heute: e.heute, mandat: e.mandat, paket: paketName(e.mandat, e.crm, fall, e.vorlagen), fall, bausteine: e.vorlagen.bausteine, marken: e.vorlagen.marken, rituale: e.vorlagen.rituale,
     kunde: e.kunde, rechte, standVon, datenschutz: await hinweisLaden(u.anrede), uploadFrei: frei,

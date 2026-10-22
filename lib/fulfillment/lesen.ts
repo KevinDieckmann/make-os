@@ -357,6 +357,8 @@ export function fallAus(o: O): Fall | null {
     phasenVonHand: o.phasenVonHand === true ? true : undefined,
     zusaetze: (() => { const z = liste(o.zusaetze, fallZusatz).filter((x, i, l) => l.findIndex(y => y.vorlageId === x.vorlageId) === i); return z.length ? z : undefined; })(),
     ohneOnboarding: o.ohneOnboarding === true ? true : undefined,
+    // E5 (22.10.): Akte eines Mandats mit Werkstatt-Prozess — nur die Form `{ art: 'prozess', prozessId: pz-… }`, sonst fällt das Feld weg.
+    ablauf: (() => { const a = obj(o.ablauf); const pid = s(a?.prozessId); return a?.art === 'prozess' && pid && /^pz-[0-9a-f-]{36}$/.test(pid) ? { art: 'prozess' as const, prozessId: pid } : undefined; })(),
   });
 }
 export const leerFaelle = (): FaelleDatei => ({ version: FULFILLMENT_VERSION, faelle: {} });

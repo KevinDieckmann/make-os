@@ -1725,6 +1725,12 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   `darfBearbeiten: false` + Weg in die Werkstatt; Links (Landkarte `prozessAusVorlageMit`, Werkstatt-Liste `kurzAusFulfillment(v, true)`, Fulfillment › Prozesse,
   Produktkarte) führen in die Werkstatt; ein Import legt nur einen ENTWURF an (mit offenem Entwurf 409). Unmarkierte Pakete unverändert (Gold).
   Wächter `tests/prozesse-ff-werkstatt-e4.test.ts`.
+  **E5 Akte für Mandate mit Werkstatt-Prozess (F3):** ein SCHARFER Lauf eines Hauptprodukts (`produktLaeufeStarten`, auch wenn derselbe Prozess über seinen
+  eigenen Auslöser schon läuft) legt die Akte an — `prozessAkteAnlegen` (fall-server.ts, idempotent, ein Fall je Mandat) mit `prozessAkteStarten` (fall.ts):
+  Onboarding wie jeder Fall, KEINE Paket-Knoten, optionales Feld `Fall.ablauf = { art: 'prozess', prozessId }`, `vorlageId` = Prozess. Lesen nur über
+  `fallAblauf` (lib/fulfillment/prozesse/ablauf-art.ts — Feld, sonst Kennung `pz-…`: Rückweg). Schatten legt nie eine Akte an. Kandidat XOR Fall bleibt die EINE
+  Regel (`onboardingKandidaten`). Kunden-Sicht: für die Akte Zeitstrahl/Erledigt/Nächstes aus `kundenEtappen`, der Rest aus der Akte; Fälle mit Paket bit-gleich.
+  Wächter `tests/prozesse-ff-akte-e5.test.ts`, angepasst `tests/prozesse-fulfillment-lauf.test.ts` (Akte statt „kein Fall“).
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
