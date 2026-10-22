@@ -57,7 +57,7 @@ import { VersionenFenster } from './WerkstattVersionen';
 import { ProzessKopieren } from './WerkstattKopie';
 import { HeadFragenFenster } from './HeadFragen';
 import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, type EintragAnsicht } from './werkstatt-daten';
-import { WerkstattGross } from './WerkstattGross';
+import { WerkstattGross, type ModellAntwort } from './WerkstattGross';
 import { MehrfachFenster } from './WerkstattMehrfach';
 import { VorlageKontext, type VorlageZiel } from './WerkstattMaske';
 import { testWerte, annahmenAusLauf, type ProzessTestdaten } from '@/lib/prozesse/testdaten';
@@ -597,6 +597,16 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (art === 'bis') setProbe(a.ergebnis);
     ansagen(`${art === 'nur' ? 'Schritt getestet' : 'Bis hier getestet'}: ${a.ergebnis.schritte.length} ${a.ergebnis.schritte.length === 1 ? 'Schritt' : 'Schritte'} — nichts geschrieben, nichts gesendet.`);
   };
+  /** „Modell wirklich fragen“ (22.10.): Schätzung bzw. der echte Aufruf eines Agenten-Schritts — nur auf eigenen Klick, Ergebnis nur in der Ansicht. */
+  const modellRufen = async (knotenId: string, art: 'schaetzen' | 'fragen'): Promise<ModellAntwort> => {
+    if (art === 'fragen' && !versionAnsicht && !(await sichern())) return { ok: false, fehler: 'Erst muss der Entwurf gespeichert sein.' };
+    const fall = probeFall === 'beispiel' ? 'beispiel' as const : { art: probeFall.art, id: probeFall.id };
+    const r = await fetch(`${PROBELAUF_PFAD}?space=business`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...probelaufKoerper(prozessId, versionAnsicht ? 'version' : 'entwurf', fall, { nur: knotenId }), modell: art }) }).catch(() => null);
+    const j = r ? await r.json().catch(() => null) as (Record<string, unknown> & { ok?: boolean }) | null : null;
+    if (r?.status === 200 && j?.ok) { if (art === 'fragen') ansagen('Modell gefragt — nur ein Vorschlag im Fenster, nichts übernommen.'); return j as unknown as ModellAntwort; }
+    return { ok: false, fehler: String(j?.fehler ?? j?.error ?? 'Das Modell ließ sich nicht fragen.'), ...(typeof j?.kostenCent === 'number' ? { kostenCent: j.kostenCent } : {}) };
+  };
   /** Punkt 11 („Copy to editor“): Weg des Laufs → „Weg annehmen“ (gespeichert, nur Kennungen), Fall nur für diese Sitzung → Bauen, Probelauf. */
   const alsTestdaten = async (a: { fall: LaufKurz['fall']; schritte: readonly LaufSchritt[]; start: string }) => {
     const annahmen = annahmenAusLauf(a.schritte, d?.knoten ?? []);
@@ -764,6 +774,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   );
   const panelInhalt = panelFuer({ knoten: panelKnoten });
   const grossKnoten = gross ? d.knoten.find(k => k.id === gross) ?? null : null;
+  const modellFuer = grossKnoten?.form === 'agent' && !nurAnsehen && rechte?.entwurf ? (art: 'schaetzen' | 'fragen') => modellRufen(grossKnoten.id, art) : undefined;
   // Werkstatt bau-fertig (Punkt 1): Hinweise und Meldungen schweben über der Fläche (Bauen) statt sie nach unten zu schieben — außerhalb wie im Werkzeugmodus.
   const hinweisTeile: ReactNode[] = [
     konflikt && (
@@ -939,7 +950,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           namen={new Map(team.map(t => [t.id, t.name]))} mitSchloss={mitSchloss.has(grossKnoten.id)} nurLesen={nurLesen}
           test={schrittTest?.knoten === grossKnoten.id ? schrittTest.ergebnis : null} testLaeuft={schrittTestLaeuft}
           onTesten={art => void schrittTesten(grossKnoten.id, art)} onTestdaten={testdatenSpeichern}
-          onZu={() => { setGross(null); setSchrittTest(null); flaeche.current?.fokus(); }} />
+          onZu={() => { setGross(null); setSchrittTest(null); flaeche.current?.fokus(); }}
+          onModell={modellFuer} />
       )}
     </div>
     </VorlageKontext.Provider>

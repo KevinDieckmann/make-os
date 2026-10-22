@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
+import { FARBE as C, TYP, MIKRO, RAND } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Feldzeile, Pillen, SymbolKnopf, feld, auswahl as auswahlStil } from '../ui';
 import type { Bedingung, ProzessDefinition } from '@/lib/prozesse/definition';
 import { alleSchritte } from '@/lib/prozesse/fluss';
@@ -29,7 +29,7 @@ export function MehrfachFenster({ d, nach, onAnlegen, onZu }: { d: ProzessDefini
     <Fenster titel="Mehrfach-Entscheidung" onZu={onZu} breit={760}>
       <p style={{ margin: 0, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}>Mehrere Fälle, der erste passende gewinnt. Gebaut wird daraus eine Reihe von Rauten nach Regel (je Fall eine) — du kannst sie danach wie jede Raute bearbeiten.</p>
       {faelle.map((x, i) => (
-        <section key={i} style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 14, border: '1px solid rgba(255,255,255,.08)' }} aria-label={`Fall ${i + 1}`}>
+        <section key={i} style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 14, border: `1px solid ${RAND.haar}` }} aria-label={`Fall ${i + 1}`}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ ...MIKRO }}>{`Fall ${i + 1}`}</span>
             {faelle.length > 2 && <SymbolKnopf ariaLabel={`Fall ${i + 1} entfernen`} onClick={() => setFaelle(l => l.filter((_, j) => j !== i))}><X size={16} /></SymbolKnopf>}

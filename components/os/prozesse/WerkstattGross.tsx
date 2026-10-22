@@ -9,8 +9,8 @@
 //     (derselbe Motor im Schatten, POST /api/prozesse/probelauf `nur`/`bis`) als Tabelle, JSON nur mit Kennungen. Gesendet wird NIE — „würde senden … an …“, das
 //     Schloss bleibt sichtbar; ein Modell fragt auch der Test nicht.
 
-import { useMemo, useState, type ReactNode } from 'react';
-import { Lock, Play, ListChecks, Pencil, Braces } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Lock, Play, ListChecks, Pencil, Braces, Sparkles } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, LEUCHT, RAND } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Feldzeile, feld, SymbolKnopf } from '../ui';
 import type { FallArt, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
@@ -24,9 +24,14 @@ import { Fenster } from '../Fenster';
 import { PlatzhalterChip } from './WerkstattMaske';
 
 type K = ProzessKnoten<ProzessForm>;
+/** Antwort von „Modell wirklich fragen“ (POST /api/prozesse/probelauf `modell`) — Schätzung vor dem Klick bzw. das Ergebnis (nur Anzeige). */
+export type ModellAntwort =
+  | { ok: true; art: 'schaetzung'; kostenCent: number; budgetRestCent: number; bereit: boolean; grund?: string }
+  | { ok: true; art: 'ergebnis'; kostenCent: number; ergebnis: string; werte: Record<string, unknown>; felder: Record<string, unknown>; quellen: string[]; modell: string; budgetRestCent: number }
+  | { ok: false; fehler: string; kostenCent?: number };
 export interface GrossWerte { platzhalter: Record<string, TestWert>; felder: Record<string, TestWert>; empfaenger: { kontaktId: string; name: string; email?: string; telefon?: string } }
 
-export function WerkstattGross({ k, d, panel, werte, testdaten, namen, mitSchloss, nurLesen, test, testLaeuft, onTesten, onTestdaten, onZu }: {
+export function WerkstattGross({ k, d, panel, werte, testdaten, namen, mitSchloss, nurLesen, test, testLaeuft, onTesten, onTestdaten, onZu, onModell }: {
   k: K; d: ProzessDefinition;
   /** Die Maske (Mitte) — das Panel des Knotens. */ panel: ReactNode;
   werte: GrossWerte; testdaten: ProzessTestdaten | null;
@@ -35,6 +40,8 @@ export function WerkstattGross({ k, d, panel, werte, testdaten, namen, mitSchlos
   onTesten: (art: 'nur' | 'bis') => void;
   /** Testdaten speichern — liefert einen Fehlersatz bzw. null. */ onTestdaten: (t: ProzessTestdaten | null) => Promise<string | null>;
   onZu: () => void;
+  /** „Modell wirklich fragen“ (nur Agenten-Schritte): Schätzung bzw. der echte Aufruf — auf eigenen Klick. */
+  onModell?: (art: 'schaetzen' | 'fragen') => Promise<ModellAntwort>;
 }) {
   const fall: FallArt = d.fallArt ?? 'mandat';
   const platz = useMemo(() => platzhalterFuer(fall, webhookFelderVon(d.knoten).map(f => f.id)), [fall, d.knoten]);
@@ -81,6 +88,7 @@ export function WerkstattGross({ k, d, panel, werte, testdaten, namen, mitSchlos
             <Knopf onClick={() => onTesten('nur')} titel="Spielt nur diesen Schritt im Motor durch (Schatten) — schreibt nichts, sendet nie"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />{testLaeuft ? 'Testet …' : 'Nur diesen Schritt testen'}</span></Knopf>
             <Knopf leise onClick={() => onTesten('bis')} titel="Spielt den Prozess bis hierher durch — mit den angenommenen Wegen"><span className="pz-knopf-inhalt"><ListChecks size={14} aria-hidden />Bis hier testen</span></Knopf>
           </div>
+          {k.form === 'agent' && onModell && <ModellFragen key={k.id} onModell={onModell} />}
           {test && (
             <div style={{ display: 'grid', gap: 10 }} aria-live="polite">
               {test.hinweis && <Hinweis art="info">{test.hinweis === 'bis-nicht-erreicht' ? 'Auf diesem Weg erreicht der Lauf den Schritt nicht — einen anderen Weg annehmen (Raute, Freigabe, Warten).' : 'Von hier aus lässt sich der Schritt nicht allein testen.'}</Hinweis>}
@@ -168,6 +176,47 @@ function TestdatenEditor({ fall, werte, testdaten, onSpeichern, onZu }: { fall: 
         <Knopf onClick={speichern}>{laeuft ? 'Speichert …' : 'Testdaten speichern'}</Knopf>
         <Knopf leise onClick={onZu}>Abbrechen</Knopf>
       </div>
+    </div>
+  );
+}
+
+/**
+ * „Modell wirklich fragen“ (22.10.): erst die Schätzung (ca. x ct, Rest des Budgets, ob es geht — sonst der Grund), dann NUR auf eigenen Klick der echte Aufruf über den
+ * Agenten-Weg des Laufs. Das Ergebnis steht nur hier — nichts wird übernommen (nicht in Akte, Brain oder Stapel).
+ */
+function ModellFragen({ onModell }: { onModell: (art: 'schaetzen' | 'fragen') => Promise<ModellAntwort> }) {
+  const [schaetzung, setSchaetzung] = useState<ModellAntwort | null>(null);
+  const [antwort, setAntwort] = useState<ModellAntwort | null>(null);
+  // Die Schätzung einmal beim Öffnen (der Aufruf ist rein lesend) — `onModell` wechselt mit jedem Zeichnen, darum bewusst nur je Fenster.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { let aus = false; void onModell('schaetzen').then(r => { if (!aus) setSchaetzung(r); }); return () => { aus = true; }; }, []);
+  const s = schaetzung && schaetzung.ok && schaetzung.art === 'schaetzung' ? schaetzung : null;
+  return (
+    <div className="pw-modell" aria-live="polite">
+      <div style={{ ...MIKRO }}>Modell wirklich fragen</div>
+      {!schaetzung && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Schätzung lädt …</span>}
+      {schaetzung && !schaetzung.ok && <Hinweis art="achtung">{schaetzung.fehler}</Hinweis>}
+      {s && (
+        <>
+          <Knopf aus={!s.bereit} onClick={async () => { setAntwort(await onModell('fragen')); setSchaetzung(await onModell('schaetzen')); }}
+            titel={s.bereit ? 'Fragt das Modell einmal mit den Testdaten bzw. dem gewählten Fall — das Ergebnis ist nur ein Vorschlag hier im Fenster' : s.grund}>
+            <span className="pz-knopf-inhalt"><Sparkles size={14} aria-hidden />{`Modell wirklich fragen (ca. ${s.kostenCent} ct)`}</span>
+          </Knopf>
+          <span style={{ fontSize: TYP.bedien, color: s.bereit ? C.inkLeise : C.inkDim }}>{s.bereit ? `Noch ${s.budgetRestCent} ct im Budget dieses Prozesses (Monat). Nur auf deinen Klick — nichts wird übernommen.` : `Geht gerade nicht: ${s.grund ?? ''}`}</span>
+        </>
+      )}
+      {antwort && !antwort.ok && <Hinweis art="kritisch">{`${antwort.fehler}${antwort.kostenCent ? ` (bezahlt: ${antwort.kostenCent} ct)` : ''}`}</Hinweis>}
+      {antwort && antwort.ok && antwort.art === 'ergebnis' && (
+        <div className="pw-ausgabe">
+          <b style={{ fontSize: TYP.bedien, color: C.ink }}>Vorschlag des Modells — nur hier, nichts übernommen</b>
+          <p style={{ margin: 0, fontSize: TYP.bedien, color: C.ink, whiteSpace: 'pre-wrap' }}>{antwort.ergebnis}</p>
+          {Object.keys(antwort.werte).length + Object.keys(antwort.felder).length > 0 && (
+            <AusgabeTabelle zeilen={[...Object.entries(antwort.werte), ...Object.entries(antwort.felder)].map(([feld, wert]) => ({ feld, wert: Array.isArray(wert) ? wert.join(', ') : String(wert) }))} />
+          )}
+          {antwort.quellen.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, overflowWrap: 'anywhere' }}>{`Quellen: ${antwort.quellen.join(' · ')}`}</span>}
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{`KI-Ergebnis (${antwort.modell}) · Kosten ${antwort.kostenCent} ct · erst nach deiner Prüfung verwenden.`}</span>
+        </div>
+      )}
     </div>
   );
 }

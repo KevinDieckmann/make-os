@@ -146,7 +146,7 @@ const zahlText = (n: number | undefined) => (n === undefined ? '' : String(n));
 const VERLAUF_WORT: Readonly<Record<string, string>> = {
   scharf: 'scharf geschaltet', bestehende: 'bestehende Fälle', budget: 'Budget geändert', einstellung: 'Einstellungen geändert', pause: 'pausiert', fortgesetzt: 'fortgesetzt', notbremse: 'Notbremse',
   'budget-80': '80 % des Budgets', 'budget-grenze': 'Budget erreicht', zurueckgehalten: 'zurückgehalten (Flutschutz)', gestartet: 'Zurückgehaltene gestartet', verworfen: 'Zurückgehaltene verworfen',
-  umzug: 'Läufe auf neue Version', abgebrochen: 'Lauf abgebrochen', erneut: 'erneut gestartet',
+  umzug: 'Läufe auf neue Version', abgebrochen: 'Lauf abgebrochen', erneut: 'erneut gestartet', 'modell-test': 'Modell im Test gefragt (Werkstatt)',
 };
 
 /** Die Einstellungen der Läufe (Felder mit Vorgabe — leer = Vorgabe). */

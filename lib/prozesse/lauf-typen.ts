@@ -239,7 +239,9 @@ export interface LaufEinstellung {
 }
 
 export type VerlaufWas = 'scharf' | 'bestehende' | 'budget' | 'einstellung' | 'pause' | 'fortgesetzt' | 'notbremse' | 'budget-80' | 'budget-grenze'
-  | 'zurueckgehalten' | 'gestartet' | 'verworfen' | 'umzug' | 'abgebrochen' | 'erneut';
+  | 'zurueckgehalten' | 'gestartet' | 'verworfen' | 'umzug' | 'abgebrochen' | 'erneut'
+  // 22.10. (Werkstatt bau-fertig): „Modell wirklich fragen“ aus der Werkstatt — nur die Kosten (Cent) als Zahl.
+  | 'modell-test';
 /** Ein Eintrag im Verlauf des Prozesses (Punkt 36: „die Antwort steht im Verlauf“) — nur Zahlen und Kennungen. */
 export interface VerlaufEintrag {
   am: string; von: string; was: VerlaufWas; n?: number; version?: number; wert?: number;
@@ -349,6 +351,11 @@ export const LAUF_GRENZEN = {
   /** Recherche-Frische (Vorgabe, Tage) und Web-Suchen je Recherche (Vorgabe) — Felder je Prozess in `LaufEinstellung`. */
   rechercheFrischeTage: 90,
   rechercheSuchen: 3,
+  /**
+   * „Modell wirklich fragen“ in der Werkstatt (22.10.): ohne scharfes Budget des Prozesses gilt für solche Tests höchstens so viel je Monat und Prozess (Cent) —
+   * scharf zählt das Budget des Prozesses (dieselbe Monatssumme wie die echten Läufe).
+   */
+  modellTestBudgetCent: 100,
   /** Kennungen einer CRM-Abfrage im Lauf (wie `PROZESS_GRENZEN.abfrageHoechstens`). */
   listeMax: 1000,
   /** Datum am Fall (22.10.): nach einem Ausfall bzw. einer Pause holt der Takt höchstens so viele Tage nach (nie beim ersten Takt — dann wird nur gemerkt). */

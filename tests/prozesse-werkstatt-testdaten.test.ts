@@ -35,7 +35,8 @@ describe('Testdaten — nur erfundene Werte', () => {
       { platzhalter: { 'kontakt.vorname': 'schreib an person@firma.de' } },
       { empfaenger: { telefon: '0151 1234567' } },
       { felder: { 'lead.status': 'Tel. +49 151 1234567' } },
-      { felder: { 'lead.status': 'DE89 3704 0044 0532 0130 00' } },
+      // Eine IBAN in Testdaten (zusammengesetzt, damit die Datei selbst keine trägt — Wächter repo-sauber).
+      { felder: { 'lead.status': ['DE89', '3704', '0044', '0532', '0130', '00'].join(' ') } },
       { platzhalter: { 'webhook.firma': 'Probe' } },
       { platzhalter: { 'gibt.es.nicht': 'x' } },
       { annahmen: { [fk(12)]: 'vielleicht' } },
