@@ -26,6 +26,9 @@
 //   · Postfach OHNE Bereich (z. B. Gmail verbunden, nicht zugeordnet): in jeder Sicht die Karte „… ist noch keinem Bereich zugeordnet — jetzt
 //     zuordnen“ mit der Bereichswahl (Schreibweg /api/inbox/postfaecher `einstellen`); der Server liefert dafür nur Name + maskierte Adresse.
 //   · Erster Abgleich läuft: „Post wird geholt …“ statt leer (lädt dann alle 10 s nach).
+// Werkzeug (22.10. abends, lib/make-one/werkzeuge.ts `INBOX_WERKZEUG`): die Bereichs-Leiste ist in das Menü links gezogen (Inbox · Bereiche · Automationen &
+// Head · Postfächer) — die Seite legt die Bereiche ihrer Antwort als Liste `inbox-bereiche` ab (Kennung, Name, ungelesen; components/os/werkzeug/listen.ts) und
+// folgt der Adresse (`?bereich=`, `?postfaecher=1`, `?s=automationen`). Die Fächer und die Postfach-Pillen eines Bereichs bleiben in der Seite.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -39,7 +42,10 @@ import { POSTFACH_ID } from '@/lib/postfach/typen';
 import { aufgabeAusGespraech } from '@/lib/inbox/aus-gespraech';
 import { neueMailHolen, type NeueMail } from '@/lib/inbox/neue-mail';
 import type { Owner } from '@/types/common';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, Spalten, Spalte, SymbolKnopf, Reiter, Pillen, MehrfachPillen, Chip, Wahl, useBreit, useHandy, useRueckgaengig, LEUCHT, FlussKarte } from '../ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, Spalten, Spalte, SymbolKnopf, Pillen, MehrfachPillen, Chip, Wahl, useBreit, useHandy, useRueckgaengig, LEUCHT, FlussKarte } from '../ui';
+import { useWerkzeugListe } from '../werkzeug/listen';
+import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
+import { INBOX_BEREICHE, INBOX_WERKZEUG } from '@/lib/make-one/werkzeuge';
 import { useLinkAuswahl } from '../Verlauf';
 import { GespraechAnsicht } from './Gespraech';
 import { Postfaecher, STUFE_FARBE, STUFE_TEXT } from './Postfaecher';
@@ -96,9 +102,18 @@ export function InboxZwei() {
   // und ein Link ohne `?space=` zeigte unter „Business“ die Post beider Bereiche. Der Server filtert (`imBereich`).
   const space: 'privat' | 'business' = useSpace().space;
   const [offenId, setOffenId] = useLinkAuswahl('offen');
-  const [ansicht, setAnsicht] = useState<'liste' | 'postfaecher'>(() => (params.get('postfaecher') === '1' ? 'postfaecher' : 'liste'));
   const router = useRouter();
   const pfad = usePathname() ?? '/os/inbox';
+  // Postfächer (`?postfaecher=1`) steht in der Adresse (22.10. abends): der Fuß „Postfächer“ im Werkzeug-Menü und die Knöpfe der Seite führen dorthin — die Seite
+  // folgt (vorher las sie den Parameter nur beim Öffnen); Zurück führt zurück in die Liste.
+  const ansicht: 'liste' | 'postfaecher' = params.get('postfaecher') === '1' ? 'postfaecher' : 'liste';
+  const setAnsicht = useCallback((a: 'liste' | 'postfaecher') => {
+    const q = new URLSearchParams(params.toString());
+    if (a === 'postfaecher') { q.set('postfaecher', '1'); q.delete('s'); } else q.delete('postfaecher');
+    router.push(`${pfad}${q.toString() ? `?${q}` : ''}`, { scroll: false });
+  }, [params, pfad, router]);
+  // „Automationen & Head“ (nur Business): der Prozess Anfrage-Eingang (lib/make-one/werkzeuge.ts `inboxOrt`).
+  const automationen = params.get('s') === 'automationen' && space === 'business';
   // Bereich und Postfach stehen in der Adresse (Ort wechseln = neuer Verlaufseintrag; Zurück führt in denselben Bereich).
   const bereichRoh = params.get('bereich');
   const bereich = bereichRoh && istBereichKennung(bereichRoh) ? bereichRoh : null;
@@ -270,6 +285,8 @@ export function InboxZwei() {
   const bereichWort = (b: string | null) => (b ? namen[b] ?? b : 'Ohne Bereich');
   // Bereichs-Leiste und Etiketten (09.10.): Namen, Farben und Zähler kommen vom Server (`leiste`), die Farbe der Bereiche aus ansicht.ts.
   const leiste = useMemo(() => (s?.leiste ?? []).filter(e => e.id !== null), [s]);
+  // Die Bereiche für das Werkzeug-Menü (22.10. abends) — nur Kennung, Name, ungelesen; aus derselben, serverseitig nach Space gefilterten Antwort.
+  useWerkzeugListe(INBOX_BEREICHE, s ? leiste.map(e => ({ id: e.id as string, label: e.name, ...(e.ungelesen > 0 ? { zahl: e.ungelesen } : {}) })) : null);
   const eintrag = bereich ? leiste.find(e => e.id === bereich) ?? null : null;
   const pfName = useMemo<Record<string, string>>(() => Object.fromEntries((s?.leiste ?? []).flatMap(e => e.postfaecher.map(p => [p.id, p.name]))), [s]);
   const pfZahl = (s?.leiste ?? []).reduce((n, e) => n + e.postfaecher.length, 0);
@@ -337,8 +354,6 @@ export function InboxZwei() {
   const unzugeordnet = s?.unzugeordnet ?? [];
   /** Ein Bereich aus der Adresse, den diese Sicht nicht kennt (alter Link, anderer Space): klar sagen statt leer. */
   const fremderBereich = !!s && !!bereich && !eintrag;
-  const alleUngelesen = (s?.leiste ?? []).reduce((n, e) => n + e.ungelesen, 0);
-  const zaehler = (n: number) => (n > 0 ? <span style={{ marginLeft: 6, color: KUGEL.granat, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} title={`${n} ungelesen`}>{n}</span> : null);
   const leisteIds = leiste.map(e => e.id as string);
   const ohne = (merker?.ohne ?? []).filter(id => leisteIds.includes(id));
 
@@ -378,6 +393,14 @@ export function InboxZwei() {
       {ansicht === 'liste' && <span className="ui-nur-breit"><Knopf leise onClick={async () => { melden('Gleicht ab …'); const r = await senden<{ fehler?: number }>('/api/inbox', { aktion: 'abgleichen' }); melden(r.d.ok ? 'Abgeglichen.' : String(r.d.fehler ?? 'Abgleich ging nicht.')); void laden(); }}>Abgleichen</Knopf></span>}
     </span>
   );
+
+  if (automationen) {
+    return (
+      <Seite titel="Inbox · Automationen & Head">
+        <BereichAutomationen werkzeug={INBOX_WERKZEUG} space="business" />
+      </Seite>
+    );
+  }
 
   if (ansicht === 'postfaecher') {
     return (
@@ -486,16 +509,10 @@ export function InboxZwei() {
           <Hinweis art="info" aktion={<Knopf leise onClick={() => geheZu(null)}>Alle zeigen</Knopf>}>Dieser Bereich hat in dieser Sicht keine Postfächer.</Hinweis>
         </div>
       )}
-      {/* Bereichs-Leiste (09.10.): „Alle“ + je Bereich mit Postfächern, Zähler = ungelesen. Am Handy wischbar; mit offenem Gespräch nur am Rechner. */}
-      {leiste.length > 0 && (breit || !istOffen) && (
-        <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
-          <nav aria-label="Bereiche der Inbox" className="ui-reiter-zeile" data-inbox="bereiche">
-            <Reiter ariaLabel="Bereiche der Inbox" aktiv={bereich ?? ALLE} onWahl={id => geheZu(id === ALLE ? null : id)}
-              liste={[{ id: ALLE, label: <>Alle{zaehler(alleUngelesen)}</> }, ...leiste.map(e => ({ id: e.id as string, label: <>{e.name}{zaehler(e.ungelesen)}</>, farbe: e.farbe }))]} />
-          </nav>
-          {eintrag && eintrag.postfaecher.length > 1 && (
-            <Pillen einzeilig liste={[{ id: ALLE, label: 'Alle Postfächer' }, ...eintrag.postfaecher.map(p => ({ id: p.id, label: p.name }))]} aktiv={pfWahl ?? ALLE} onWahl={id => geheZu(bereich, id === ALLE ? null : id)} />
-          )}
+      {/* Bereiche (seit 22.10. abends im Werkzeug-Menü links bzw. im Blatt „Menü“ am Handy): hier bleibt nur die Wahl des Postfachs eines Bereichs mit mehreren. */}
+      {eintrag && eintrag.postfaecher.length > 1 && (breit || !istOffen) && (
+        <div style={{ display: 'grid', gap: 8, marginBottom: 14 }} data-inbox="postfach-wahl">
+          <Pillen einzeilig liste={[{ id: ALLE, label: 'Alle Postfächer' }, ...eintrag.postfaecher.map(p => ({ id: p.id, label: p.name }))]} aktiv={pfWahl ?? ALLE} onWahl={id => geheZu(bereich, id === ALLE ? null : id)} />
         </div>
       )}
       {s && !s.postfaecher.length && !uebergaben.length && !unzugeordnet.length && !fremderBereich && (

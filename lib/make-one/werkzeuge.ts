@@ -308,8 +308,45 @@ export const KALENDER_WERKZEUG: Werkzeug = {
   }),
 };
 
+// ─── Inbox — Business UND Privat ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Inbox (alle Bereiche der Sicht) · Bereiche (je Bereich mit Postfächern der Person — aus der Antwort von GET /api/inbox, die der Server nach Space filtert
+// (`imBereich`); die Seite legt sie als Liste `inbox-bereiche` ab, mit Ungelesen-Zähler) · nur Business: „Automationen & Head“ (`?s=automationen`: der Prozess
+// Anfrage-Eingang; kein Head — die Inbox gehört ZOE) · Fuß Postfächer (`?postfaecher=1`). Die Fächer (Antworten, Nachfassen, Termine …) bleiben in der Seite.
+export const INBOX_BEREICHE = 'inbox-bereiche';
+type InboxOrt = 'inbox' | 'postfaecher' | 'automationen' | `bereich:${string}`;
+export function inboxOrt(k: WerkzeugKontext): InboxOrt {
+  if (k.q.get('s') === 'automationen' && k.space === 'business') return 'automationen';
+  if (k.q.get('postfaecher') === '1') return 'postfaecher';
+  const b = k.q.get('bereich');
+  return b && (k.listen?.[INBOX_BEREICHE] ?? []).some(e => e.id === b) ? `bereich:${b}` : 'inbox';
+}
+const INBOX_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'inbox', label: 'Inbox', icon: Inbox, titel: 'Alle Gespräche der Sicht — Wichtiges zuerst', href: k => mitSpaceDerWahl(WEG.inbox(), k), aktiv: k => inboxOrt(k) === 'inbox' },
+  {
+    id: 'bereich', label: 'Bereiche', icon: Layers, gruppe: 'Bereiche', titel: 'Nur die Gespräche eines Bereichs',
+    liste: { schluessel: INBOX_BEREICHE, href: (k, e) => mitSpaceDerWahl(`${WEG.inbox()}?bereich=${encodeURIComponent(e.id)}`, k), aktiv: (k, e) => inboxOrt(k) === `bereich:${e.id}` },
+  },
+];
+export const INBOX_WERKZEUG: Werkzeug = {
+  id: 'inbox',
+  name: 'Inbox',
+  icon: Inbox,
+  spaces: ['privat', 'business'],
+  pfade: ['/os/inbox'],
+  start: WEG.inbox(),
+  leistenPunkt: 'Inbox',
+  punkte: INBOX_PUNKTE,
+  fuss: [{ id: 'postfaecher', label: 'Postfächer', icon: Mailbox, titel: 'Postfächer verbinden, Bereich zuordnen, Absender', href: k => mitSpaceDerWahl(`${WEG.inbox()}?postfaecher=1`, k), aktiv: k => inboxOrt(k) === 'postfaecher' }],
+  automation: automationMitHeads(WEG.inbox(), INBOX_PUNKTE, 'business', {
+    bereiche: [],
+    prozesse: ['sp-anfrage'],
+    href: k => mitSpaceDerWahl(`${WEG.inbox()}?s=automationen`, k),
+    aktiv: k => inboxOrt(k) === 'automationen',
+  }),
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {
