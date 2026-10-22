@@ -1719,6 +1719,12 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Akte: Karte „Begleitung läuft“ (`BegleitungLaeuft.tsx` in FallReise) über GET `/api/prozesse/laeufe?fall=mandat:<id>` (`laeufeDesFalls`, offen + 30 Tage, nur
   Business). Wiedereintritt je Fall: der Motor startet je Prozess und Fall EINEN Lauf — Begleit-Vorlagen bringen `KgVorlage.erneutNachTagen` mit, „Aus Vorlage“ setzt
   es für volle Mitglieder über `einstellungSetzen`. Wächter `tests/prozesse-ff-begleitung-b3.test.ts` (von Ende zu Ende über den Takt, Fall/Paket Byte für Byte).
+  **E4 Alter Editor nur lesen (F4):** Marke `werkstatt:<paket>` im Feld `marken` (gesetzt mit dem ersten Entwurf, beim Veröffentlichen, bei „Neuer Ablauf“ aus der
+  Werkstatt — POST `paket-neu`, `paketNeuSchreiben`). EINE Stelle lib/fulfillment/prozesse/werkstatt-marke.ts (`inWerkstatt`, `paketeInWerkstatt`,
+  `paketBearbeitenLink`, `IN_WERKSTATT_TEXT`). Markiert → PATCH /api/fulfillment/editor 409, Baum-Ops (`vorlage`, `knoten*`, `uebergang*`) 409, Editor-GET
+  `darfBearbeiten: false` + Weg in die Werkstatt; Links (Landkarte `prozessAusVorlageMit`, Werkstatt-Liste `kurzAusFulfillment(v, true)`, Fulfillment › Prozesse,
+  Produktkarte) führen in die Werkstatt; ein Import legt nur einen ENTWURF an (mit offenem Entwurf 409). Unmarkierte Pakete unverändert (Gold).
+  Wächter `tests/prozesse-ff-werkstatt-e4.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

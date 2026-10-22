@@ -3,7 +3,8 @@
 // ─── Produkt-Karte · Ablauf (P2, 19.10.; Prozesse × Fulfillment 22.10.) ─────────────────────────────────────────────────────────────────────────────
 // Welcher Ablauf ein neues Mandat dieses Produkts begleitet — genau EINER (Kevin 21.10.: „Fulfillment = das Werkzeug … jedes Produkt zeigt auf seinen Prozess“):
 //   · ein Paket des Fulfillments (vorhandene Zuordnung `vorlagenOps` `zuordnung`, PATCH /api/fulfillment) — der Fall startet wie bisher im Fulfillment;
-//     „Im Editor öffnen ›“ führt in den vorhandenen Prozess-Editor, „+ neuer Ablauf“ legt eine leere Paket-Vorlage mit dem Namen des Produkts an.
+//     „Im Editor öffnen ›“ führt in den vorhandenen Prozess-Editor (seit E4, 22.10.: ein Paket mit Marke `werkstatt:` in die Werkstatt), „+ neuer Ablauf“ legt eine
+//     leere Paket-Vorlage mit dem Namen des Produkts an.
 //   · ein Prozess der Werkstatt (`Leistung.prozessId` über `speichern` = `api.teil` mit Stand) — ein neues Mandat startet seinen Lauf im Motor (Probelauf =
 //     Schatten, scharf erst nach „scharf schalten“); „In der Werkstatt öffnen ›“, „Prozess für dieses Produkt anlegen“ öffnet „Neuer Prozess“ (Fulfillment,
 //     Mandat, Name = Produkt, Eigner wählen) und verknüpft ihn.
@@ -17,6 +18,7 @@ import { FARBE as C, SCHRIFT, TYP, ECKE, FLAECHE_STIL } from '@/lib/make-one/des
 import { Knopf, Hinweis, Chip, SymbolKnopf, Erklaert, LEUCHT } from '../../ui';
 import { Wahl } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
+import { paketBearbeitenLink } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 import { neuePhasenId } from '@/lib/crm/produkte';
 import type { Leistung, ProduktPhase } from '@/lib/crm/typen';
 import { ablaufVon, ablaufWechsel, fuerProduktWaehlbar, type AblaufSchritt } from '@/lib/prozesse/produkt-bindung';
@@ -111,7 +113,7 @@ export function AblaufTeil({ l, mandateJePhase, speichern }: { l: Leistung; mand
             <Erklaert erklaerung="fulfillment.zuordnung" name="Ablauf für neue Fälle">
               <Wahl label="Ablauf für neue Fälle" liste={liste} wert={wahl?.id ?? null} leer="kein Ablauf zugeordnet" onWahl={id => void waehlen(id)} onLeeren={() => void waehlen(null)} leerenLabel="ohne Ablauf" />
             </Erklaert>
-            {paket && <Link href={WEG.fulfillment('prozesse', { e: paket.id })} style={{ color: C.aktiv, fontSize: TYP.bedien }}>Im Editor öffnen ›</Link>}
+            {paket && <Link href={paketBearbeitenLink(paket.id, kurz.daten?.werkstatt)} style={{ color: C.aktiv, fontSize: TYP.bedien }}>{kurz.daten?.werkstatt?.includes(paket.id) ? 'In der Werkstatt öffnen ›' : 'Im Editor öffnen ›'}</Link>}
             {wahl?.art === 'prozess' && <Link href={WEG.prozesse({ p: wahl.id, ansicht: 'werkstatt' })} style={{ color: C.aktiv, fontSize: TYP.bedien }}>In der Werkstatt öffnen ›</Link>}
             {pakete && <Knopf leise onClick={neuerAblauf}>+ neuer Ablauf</Knopf>}
             {darfAnlegen && <Knopf leise onClick={() => setNeuOffen(true)}>Prozess für dieses Produkt anlegen</Knopf>}

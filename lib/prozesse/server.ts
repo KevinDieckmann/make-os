@@ -16,7 +16,8 @@ import { merken } from '@/lib/store/memo';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { localDay } from '@/lib/zeit';
 import { SYSTEM_PROZESSE } from './register';
-import { prozessAusVorlage } from './vorlagen';
+import { prozessAusVorlageMit } from './vorlagen';
+import { inWerkstatt } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 import { zahlSchluessel } from './modell';
 import type { LandkarteDaten, ProzessDef, ZaehlerArt, Zahl } from './typen';
 
@@ -108,7 +109,7 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
       const [{ prozesseLesen }, { prozessAusWerkstatt }] = await Promise.all([import('./werkstatt-server'), import('./werkstatt-landkarte')]);
       return (await prozesseLesen(h)).prozesse.map(prozessAusWerkstatt).filter((p): p is ProzessDef => !!p);
     });
-    const alle: ProzessDef[] = [...SYSTEM_PROZESSE, ...vorlagen.map(prozessAusVorlage).filter((p): p is ProzessDef => !!p), ...(werkstatt ?? [])];
+    const alle: ProzessDef[] = [...SYSTEM_PROZESSE, ...vorlagen.map(v => prozessAusVorlageMit(v, !!datei && inWerkstatt(datei, v.id))).filter((p): p is ProzessDef => !!p), ...(werkstatt ?? [])];
     // Prozesse × Fulfillment (22.10.): welche Produkte auf einen Prozess zeigen (Werkstatt über `Leistung.prozessId`, Pakete über die Zuordnung des Fulfillments).
     const produkte = await sicher(async () => (await import('@/lib/crm/speicher')).ladeCrm());
     const prozesse = produkte ? await mitProdukten(alle, produkte.leistungen, datei?.zuordnung ?? {}) : alle;

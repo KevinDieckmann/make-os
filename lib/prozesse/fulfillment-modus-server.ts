@@ -114,3 +114,20 @@ export async function paketEntwurfSchreiben(h: string, person: string, aktion: '
   if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler, ...(befunde ? { befunde } : {}), ...(paketGeaendert ? { paketGeaendert: true } : {}), ...(r.status === 409 && ansicht ? { aktuell: ansicht } : {}) } };
   return { status: 200, body: { ok: true, geaendert: r.geaendert, ...(fassung ? { veroeffentlicht: fassung } : {}), ...(ansicht ?? {}) } };
 }
+
+/**
+ * „Neuer Ablauf“ aus der Werkstatt (22.10., E4): eine leere Paket-Vorlage über die Regel des Fulfillment-Editors (`neuerAblauf` — Start, eine Phase) im Bestand
+ * `fulfillment--<h>`, gleich mit der Marke `werkstatt:<paket>` (bearbeitet wird sie nur in der Werkstatt). Rechte prüft die Route.
+ */
+export async function paketNeuSchreiben(h: string, person: string, eingabe: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const [{ fulfillmentAendern, eintragStand }, { neuerAblauf }, { mitWerkstattMarke }, { neueKennung }] = await Promise.all([
+    import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/editor'), import('@/lib/fulfillment/prozesse/werkstatt-marke'), import('@/lib/kennung'),
+  ]);
+  const jetzt = new Date().toISOString();
+  const r = await fulfillmentAendern('vorlagen', d => {
+    const x = neuerAblauf(d, { titel: eingabe.titel, ...(eingabe.phase !== undefined ? { phase: eingabe.phase } : {}) }, { person, jetzt, standVon: eintragStand, neueId: p => neueKennung(p) });
+    return x.ok ? { ...x, datei: { ...x.datei, marken: mitWerkstattMarke(x.datei.marken, x.geaendert[0], jetzt.slice(0, 10)) } } : x;
+  }, { art: 'person', person }, h);
+  if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler } };
+  return { status: 200, body: { ok: true, paketId: r.geaendert[0] } };
+}

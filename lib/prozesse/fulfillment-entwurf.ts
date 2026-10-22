@@ -13,6 +13,7 @@ import type { Befund, ProzessDefinition } from './definition';
 import { definitionAus } from './bestand';
 import { paketAusDefinition } from './fulfillment-modus';
 import { vorlageStrukturPruefen } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
+import { mitWerkstattMarke } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 
 export interface EntwurfKontext { person: string; jetzt: string; standVon: (x: object) => string }
 
@@ -62,7 +63,9 @@ export function paketEntwurfAnwenden(d: VorlagenDatei, eingabe: unknown, k: Entw
     };
   }
   const { entwuerfe: _alt, ...rest } = d;
-  return { ok: true, datei: Object.keys(entwuerfe).length ? { ...rest, entwuerfe } : rest, geaendert: [x.paket.id] };
+  // E4 (22.10., F4): mit dem ersten Entwurf gehört das Paket der Werkstatt — Marke `werkstatt:<paket>` (der alte Editor zeigt es dann nur noch an).
+  const marken = entwuerfe[x.paket.id] ? mitWerkstattMarke(d.marken, x.paket.id, k.jetzt.slice(0, 10)) : d.marken;
+  return { ok: true, datei: Object.keys(entwuerfe).length ? { ...rest, marken, entwuerfe } : { ...rest, marken }, geaendert: [x.paket.id] };
 }
 
 /** Die Marke mit Name und Notiz einer veröffentlichten Fassung (der Fulfillment-Bestand kennt keine Versionen — die Notiz steht in `marken`). */
@@ -97,7 +100,8 @@ export function paketVeroeffentlichen(d: VorlagenDatei, eingabe: unknown, k: Ent
   const neu: ProzessVorlage = { ...r.vorlage, fassung, geaendert: k.jetzt, geaendertVon: k.person };
   const { [x.paket.id]: _weg, ...uebrig } = d.entwuerfe ?? {};
   const { entwuerfe: _alt, ...rest } = d;
-  const marken = name || notiz ? { ...d.marken, [fassungNotizMarke(x.paket.id, fassung)]: [name, notiz].filter(Boolean).join(' — ') } : d.marken;
+  const mitNotiz = name || notiz ? { ...d.marken, [fassungNotizMarke(x.paket.id, fassung)]: [name, notiz].filter(Boolean).join(' — ') } : d.marken;
+  const marken = mitWerkstattMarke(mitNotiz, x.paket.id, k.jetzt.slice(0, 10));
   return {
     ok: true, fassung, geaendert: [x.paket.id],
     datei: { ...rest, prozesse: d.prozesse.map(p => (p.id === x.paket.id ? neu : p)), marken, ...(Object.keys(uebrig).length ? { entwuerfe: uebrig } : {}) },

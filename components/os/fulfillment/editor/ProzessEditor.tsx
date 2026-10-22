@@ -46,7 +46,11 @@ const MERKER_ANSICHT = 'make-ff-editor-ansicht';
 /** Welche Ansicht der Editor zeigt: fest gegeben (Tests) › die gemerkte Wahl des Browsers › am Rechner die Fläche, am Handy die Liste (17.10. abends). */
 export const editorAnsichtVorgabe = (fest: EditorAnsichtArt | undefined, gemerkt: EditorAnsichtArt | null, handy: boolean): EditorAnsichtArt => fest ?? gemerkt ?? (handy ? 'fluss' : 'flaeche');
 
-export interface EditorDaten { vorlage: ProzessVorlage; stand: string; bausteine: { id: string; titel: string; art: string }[]; darfBearbeiten: boolean; laufend: number }
+export interface EditorDaten {
+  vorlage: ProzessVorlage; stand: string; bausteine: { id: string; titel: string; art: string }[]; darfBearbeiten: boolean; laufend: number;
+  /** E4 (22.10., F4): das Paket wird in der Werkstatt bearbeitet — hier nur ansehen; `werkstatt` = der Weg dorthin. */
+  inWerkstatt?: boolean; werkstatt?: string;
+}
 
 export { formFuerBaustein } from './bild';
 /** Die Palette — in dieser Reihenfolge (Miro-Standard). */
@@ -297,7 +301,9 @@ export function EditorAnsicht({ start, handy: handyFest, ansicht: ansichtFest }:
         </div>
         {/* Vorlagen-Einstellung (17.10. spät): Zusatzmodul — hängt an einen laufenden Fall an statt einen zweiten anzulegen; keine neue Fassung. */}
         <Schalter an={!!d.vorlage.zusatz} aus={!darf || laeuft} onChange={an => { if (darf) void senden([{ op: 'zusatz', an }]); }} erklaerung="fulfillment.zusatzmodul">Zusatzmodul</Schalter>
-        {!darf && <Hinweis art="info">Nur ansehen — Abläufe bearbeiten volle Mitglieder.</Hinweis>}
+        {!darf && (d.inWerkstatt && d.werkstatt
+          ? <Hinweis art="info" titel="Wird in der Werkstatt bearbeitet" aktion={<Knopf href={d.werkstatt}>In der Werkstatt öffnen ›</Knopf>}>Hier nur ansehen — Änderungen, Entwürfe und neue Fassungen entstehen in der Werkstatt.</Hinweis>
+          : <Hinweis art="info">Nur ansehen — Abläufe bearbeiten volle Mitglieder.</Hinweis>)}
         <Meldung text={meldung?.text ?? null} art={meldung?.art} />
         <WahlKnoepfe label="Ansicht des Ablaufs" liste={[{ id: 'fluss' as const, label: handy ? 'Liste' : 'Fluss' }, { id: 'flaeche' as const, label: handy ? 'Fläche (ansehen)' : 'Fläche' }]} aktiv={ansicht} onWahl={setAnsicht} />
         {handy || ansicht === 'flaeche' ? null : (

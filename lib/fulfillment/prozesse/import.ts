@@ -43,6 +43,7 @@ import { FRIST_MAX, lageAus, pfeilTextAus } from './editor';
 import { rahmenOrdnen, umrissVon } from './flaeche-lage';
 import { ausfuehren, fnv, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, slug, titelForm } from './pruefen';
 import { anzahl } from '@/lib/text/zahlwort';
+import { inWerkstatt, paketeInWerkstatt } from './werkstatt-marke';
 
 export const IMPORT_GRENZEN = { bytes: 4 * 1024 * 1024, bausteine: 400, ablaeufe: 20, laufTage: 30 } as const;
 const QUELL_ID = /^[a-z0-9][a-z0-9-]{0,79}$/;
@@ -68,6 +69,8 @@ export interface ImportPaketVorschau {
   bausteine: number;
   /** Bausteine, die weder in der Bibliothek noch in der Datei stehen (dann blockiert die Datei). */
   fehlend: string[];
+  /** E4 (22.10.): das Paket wird in der Werkstatt bearbeitet — der Import legt dort nur einen ENTWURF an (das Paket bleibt, wie es ist). */
+  werkstatt?: true;
 }
 export interface ImportVorschau {
   format: ImportFormat; datei: string;
@@ -95,7 +98,11 @@ export interface ImportWahl {
   /** `gilt_fuer`-Wert → Paket-Vorlage (älteres Format ohne `pakete`). */
   giltFuer?: Record<string, string>;
 }
-export interface ImportKontext { person: string; jetzt: string; heute: string; datei: string; laufId: string }
+export interface ImportKontext {
+  person: string; jetzt: string; heute: string; datei: string; laufId: string;
+  /** E4 (22.10.): Stand einer Vorlage (Fingerabdruck wie der Editor) — für den Entwurf eines Pakets, das in der Werkstatt bearbeitet wird. */
+  standVon?: (x: object) => string;
+}
 
 // ── Lesen ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -667,7 +674,7 @@ export function importVorschau(roh: unknown, d: VorlagenDatei, datei: string): I
     if (alt && alt.art !== 'paket') fehler.push(`Paket „${v.titel}“: eine Vorlage mit dieser Kennung ist kein Paket — bitte den Schlüssel ändern.`);
     const status = paketStatus(alt, v);
     zaehler[status === 'aktualisiert' ? 'aktualisiert' : status]++;
-    return { id: v.id, titel: v.titel, status, ...paketZahlen(v), fehlend } satisfies ImportPaketVorschau;
+    return { id: v.id, titel: v.titel, status, ...paketZahlen(v), fehlend, ...(alt && inWerkstatt(d, alt.id) ? { werkstatt: true as const } : {}) } satisfies ImportPaketVorschau;
   });
   const hinweise: string[] = [];
   const preise = bausteine.filter(b => b.preis).length;
@@ -871,11 +878,23 @@ export function importAnwenden(d0: VorlagenDatei, roh: unknown, wahl: ImportWahl
       d.prozesse = d.prozesse.map(x => (x.id === id ? { ...x, fassung: vorher.fassung + 1, geaendert: k.jetzt, geaendertVon: k.person } : x));
       lauf.geaendert.push({ id, vorher }); geaendert.push(id);
     }
+    // E4 (22.10., F4): ein Paket, das in der Werkstatt bearbeitet wird (Marke `werkstatt:`), ändert der Import nie direkt — die Änderung wird sein ENTWURF
+    // (veröffentlicht wird in der Werkstatt). Liegt dort schon ein Entwurf, lehnt der Import ab (nichts geht still verloren). Rückgängig fasst das Paket nicht an.
+    const entwuerfeNeu: string[] = [];
+    for (const id of paketeInWerkstatt(d0)) {
+      const vor = d0.prozesse.find(p => p.id === id), nach = d.prozesse.find(p => p.id === id);
+      if (!vor || !nach || vor.art !== 'paket' || JSON.stringify(vor) === JSON.stringify(nach)) continue;
+      if (d0.entwuerfe?.[id]) nein(`„${vor.titel}“ wird in der Werkstatt bearbeitet und hat einen offenen Entwurf — bitte dort erst veröffentlichen oder verwerfen. Nichts übernommen.`, 409);
+      d.prozesse = d.prozesse.map(p => (p.id === id ? vor : p));
+      d.entwuerfe = { ...(d.entwuerfe ?? {}), [id]: { vorlage: { ...nach, fassung: vor.fassung }, basisFassung: vor.fassung, basisStand: k.standVon?.(vor) ?? '', am: k.jetzt, von: k.person } };
+      lauf.geaendert = lauf.geaendert.filter(x => x.id !== id);
+      entwuerfeNeu.push(id);
+    }
     for (const id of lauf.neu.filter(i => i.startsWith('fp-'))) vorlageStrukturPruefen(d.prozesse.find(p => p.id === id)!, d);
     if (d.prozesse.length > GRENZEN.vorlagen) nein(`Prozesse: höchstens ${GRENZEN.vorlagen}. Nichts übernommen.`, 413);
-    if (!lauf.neu.length && !lauf.geaendert.length) return { datei: d0, geaendert: [] };
+    if (!lauf.neu.length && !lauf.geaendert.length && !entwuerfeNeu.length) return { datei: d0, geaendert: [] };
     const grenze = Date.parse(k.jetzt) - IMPORT_GRENZEN.laufTage * 86_400_000;
-    d.importLaeufe = [...d.importLaeufe.filter(l => Date.parse(l.am) >= grenze), lauf];
+    if (lauf.neu.length || lauf.geaendert.length) d.importLaeufe = [...d.importLaeufe.filter(l => Date.parse(l.am) >= grenze), lauf];
     return { datei: d, geaendert: Array.from(new Set(geaendert)) };
   });
 }

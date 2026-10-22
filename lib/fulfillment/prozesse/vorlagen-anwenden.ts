@@ -21,6 +21,7 @@ import { istOrt } from '../orte';
 import { bausteinAusEingabe, markeUrheberGeprueft, MESSE_NACHFASS_TAGE } from './bausteine';
 import { ausfuehren, istObj, mischen, nein, optBool, optText, optWahl, optZahl, pflichtText, standPruefen, textListe } from './pruefen';
 import { zweigeOhne, zweigePruefen } from './fluss-struktur';
+import { inWerkstatt, IN_WERKSTATT_TEXT } from './werkstatt-marke';
 
 export interface VorlagenKontext {
   person: string;
@@ -210,6 +211,8 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
     const geaendert: string[] = [];
     const vorlage = (id: unknown): ProzessVorlage => d.prozesse.find(p => p.id === id) ?? nein('Diesen Ablauf gibt es nicht (mehr).', 404);
     const setze = (v: ProzessVorlage) => { d.prozesse = d.prozesse.map(p => (p.id === v.id ? v : p)); beruehrt.add(v.id); };
+    // E4 (22.10., F4): die Struktur eines Pakets mit Marke `werkstatt:` ändert nur noch die Werkstatt (Knoten, Übergänge, Kopf) — 409, nichts gespeichert.
+    const nichtInWerkstatt = (v: ProzessVorlage): ProzessVorlage => (v.art === 'paket' && inWerkstatt(datei, v.id) ? nein(IN_WERKSTATT_TEXT, 409) : v);
 
     for (const roh of opsRoh) {
       if (!istObj(roh) || typeof roh.op !== 'string') nein('Jede Änderung braucht „op“.');
@@ -247,7 +250,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           const e = istObj(o.eintrag) ? o.eintrag : nein('eintrag fehlt.');
           const alt = typeof e.id === 'string' ? d.prozesse.find(p => p.id === e.id) : undefined;
           if (typeof e.id === 'string' && !alt) nein('Diesen Ablauf gibt es nicht (mehr).', 404);
-          if (alt) standPruefen(o.stand, k.standVon(vorlageKopf(alt)), alt.id);
+          if (alt) { nichtInWerkstatt(alt); standPruefen(o.stand, k.standVon(vorlageKopf(alt)), alt.id); }
           const teil: Record<string, unknown> = {};
           if (e.titel !== undefined || !alt) teil.titel = pflichtText(e.titel, 'titel', 'Titel');
           for (const [f, feld] of [['beschreibung', 'beschreibung'], ['vorbehalt', 'hinweis'], ['quelleHinweis', 'kurz']] as const) { const x = optText(e[f], feld, f); if (x !== undefined) teil[f] = x; }
@@ -299,7 +302,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           break;
         }
         case 'knoten': {
-          const v = vorlage(o.vorlageId);
+          const v = nichtInWerkstatt(vorlage(o.vorlageId));
           let handGeordnet = false;
           const e = istObj(o.eintrag) ? o.eintrag : nein('eintrag fehlt.');
           const teil = knotenTeil(e, v);
@@ -336,7 +339,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           break;
         }
         case 'knoten-weg': {
-          const v = vorlage(o.vorlageId);
+          const v = nichtInWerkstatt(vorlage(o.vorlageId));
           const x = v.knoten.find(y => y.id === o.id) ?? nein('Diesen Knoten gibt es nicht (mehr).', 404);
           if (!x.elternId) nein('Der oberste Schritt bleibt — den ganzen Ablauf löscht man über „Ablauf löschen“.');
           standPruefen(o.stand, k.standVon(x), x.id);
@@ -347,7 +350,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           break;
         }
         case 'knoten-rang': {
-          const v = vorlage(o.vorlageId);
+          const v = nichtInWerkstatt(vorlage(o.vorlageId));
           const x = v.knoten.find(y => y.id === o.id) ?? nein('Diesen Knoten gibt es nicht (mehr).', 404);
           const g = kinderVon(x.elternId, v.knoten);
           const i = g.findIndex(y => y.id === x.id);
@@ -362,7 +365,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           break;
         }
         case 'uebergang': {
-          const v = vorlage(o.vorlageId);
+          const v = nichtInWerkstatt(vorlage(o.vorlageId));
           const e = istObj(o.eintrag) ? o.eintrag : nein('eintrag fehlt.');
           const art = optWahl(e.art, ['weiter', 'rueckweg', 'ausstieg', 'schleife', 'kreislauf'] as const, 'Art des Übergangs') ?? 'weiter';
           if (typeof e.von !== 'string' || typeof e.nach !== 'string') nein('von und nach fehlen.');
@@ -373,7 +376,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
           break;
         }
         case 'uebergang-weg': {
-          const v = vorlage(o.vorlageId);
+          const v = nichtInWerkstatt(vorlage(o.vorlageId));
           setze({ ...v, uebergaenge: v.uebergaenge.filter(x => !(x.von === o.von && x.nach === o.nach)) }); geaendert.push(v.id);
           break;
         }

@@ -45,11 +45,15 @@ export interface Uebersicht {
   mandate: Record<string, { kunde: string; titel: string; leistungId: string | null; status: string }>;
   kennzahlen: FfKennzahl[];
   leistungen: { id: string; name: string; status: string }[];
+  /** E4 (22.10.): Pakete, die in der Werkstatt bearbeitet werden (`paketBearbeitenLink`). */
+  werkstatt?: string[];
 }
 export interface UebersichtKurz {
   kandidaten: Kandidat[]; zuordnung: Record<string, { vorlageId: string }>; faelle: Record<string, FallZeile>; prozesse: { id: string; titel: string; art: string; zusatz?: true }[];
   /** Gewonnene Deals (Business) ohne Mandat — für „Heute im Fulfillment“ (17.10. spät). */
   deals?: HeuteDeal[];
+  /** E4 (22.10.): Pakete, die in der Werkstatt bearbeitet werden. */
+  werkstatt?: string[];
 }
 
 export interface MandatKurz { id: string; titel: string; kunde: string; firmaId: string | null; kontaktIds: string[]; leistungId: string | null; ziele: Mandat['ziele']; gesellschaft: string; status: string; start: string | null; zustaendig: string | null; business: boolean;

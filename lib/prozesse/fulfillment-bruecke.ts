@@ -25,6 +25,8 @@ export interface ProzessKurz {
   /** Hat der Entwurf etwas, das die jüngste Version nicht hat? */
   entwurfGeaendert?: boolean;
   geaendert: string;
+  /** E4 (22.10.): Paket des Fulfillments, das in der Werkstatt bearbeitet wird (Marke `werkstatt:`) — dann `nurLesen: false`, der Link führt in die Werkstatt. */
+  inWerkstatt?: true;
 }
 export function kurzAusEintrag(e: ProzessEintrag, nurLesen = false): ProzessKurz {
   const d: ProzessDefinition = e.entwurf;
@@ -33,9 +35,9 @@ export function kurzAusEintrag(e: ProzessEintrag, nurLesen = false): ProzessKurz
     ...(d.eigner ? { eigner: d.eigner } : {}), nurLesen, entwurfGeaendert: entwurfGeaendert(e), geaendert: e.entwurfAm,
   };
 }
-export function kurzAusFulfillment(v: ProzessVorlage): ProzessKurz {
+export function kurzAusFulfillment(v: ProzessVorlage, inWerkstatt = false): ProzessKurz {
   const p = prozessAusFulfillment(v);
-  return { id: v.id, titel: v.titel, bereich: p.bereich, fallArt: p.fallArt, quelle: 'fulfillment', status: null, version: v.fassung, nurLesen: true, geaendert: v.geaendert };
+  return { id: v.id, titel: v.titel, bereich: p.bereich, fallArt: p.fallArt, quelle: 'fulfillment', status: null, version: v.fassung, nurLesen: !inWerkstatt, geaendert: v.geaendert, ...(inWerkstatt ? { inWerkstatt: true as const } : {}) };
 }
 /** Die Paket-Vorlagen des Fulfillments, die als Prozesse gelten (Landkarte und gezeichnete Abläufe sind Bilder, keine Abläufe mit Schritten). */
 export const fulfillmentProzesse = (l: readonly ProzessVorlage[]): ProzessVorlage[] => l.filter(v => v.art === 'paket');

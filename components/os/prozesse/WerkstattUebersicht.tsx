@@ -34,8 +34,18 @@ export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe, fuerProd
   const [beschreibung, setBeschreibung] = useState('');
   const [fehler, setFehler] = useState<string | null>(null);
   const [anfrageId] = useState(() => neueKennung('pza'));
+  // E4 (22.10.): im Bereich Fulfillment auch ein „Paket“ (Ablauf, der im Fall läuft) — angelegt mit Marke `werkstatt:`, bearbeitet nur hier.
+  const [art, setArt] = useState<'prozess' | 'paket'>('prozess');
+  const alsPaket = !fuerProdukt && bereich === 'fulfillment' && art === 'paket';
   const anlegen = async () => {
     setFehler(null);
+    if (alsPaket) {
+      const p = await werkstattSenden(() => ({ aktion: 'paket-neu', anfrageId, titel: titel.trim() }));
+      const pid = typeof p.j?.paketId === 'string' ? p.j.paketId : null;
+      if (p.status === 200 && p.j?.ok && pid) { await onAngelegt(pid); return; }
+      setFehler(String(p.j?.fehler ?? 'Das Paket ließ sich nicht anlegen.'));
+      return;
+    }
     const r = await werkstattSenden(() => ({ aktion: 'anlegen', anfrageId, titel: titel.trim(), bereich, fallArt, ...(eigner ? { eigner } : {}), ...(beschreibung.trim() ? { beschreibung: beschreibung.trim() } : {}) }));
     const id = r.j?.eintrag?.id;
     if (r.status === 200 && r.j?.ok && id) { await onAngelegt(id); return; }
@@ -48,16 +58,25 @@ export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe, fuerProd
         : 'Ein Prozess beginnt als Entwurf mit einer Phase und einem Auslöser „von Hand“. Gebaut wird in der Werkstatt; erst „Veröffentlichen“ macht ihn lauffähig.'}</p>
       <Feldzeile label="Name * (Verb + Gegenstand)"><input aria-label="Name" value={titel} maxLength={PROZESS_TEXT.titel} placeholder="z. B. Lead nachfassen" onChange={e => setTitel(e.target.value)} style={feld} autoFocus /></Feldzeile>
       <Feldzeile label="Bereich — die Kachel steht dort auf der Landkarte"><Pillen liste={bereiche.map(b => ({ id: b.id, label: b.titel }))} aktiv={bereich} onWahl={setBereich} /></Feldzeile>
-      {fuerProdukt
+      {!fuerProdukt && bereich === 'fulfillment' && (
+        <Feldzeile label="Was entsteht?">
+          <Pillen liste={[{ id: 'prozess' as const, label: 'Prozess (läuft im Motor)' }, { id: 'paket' as const, label: 'Paket (Ablauf im Fall des Kunden)' }]} aktiv={art} onWahl={setArt} />
+        </Feldzeile>
+      )}
+      {alsPaket ? <p style={klein}>Ein Paket des Fulfillments: Phasen, Schritte und Bestätigungen, die jeder Fall dieses Pakets durchläuft. Es entsteht mit einer Phase und wird nur in der Werkstatt bearbeitet.</p> : fuerProdukt
         ? <Feldzeile label="Woran hängt ein Lauf?"><span style={klein}>Am Mandat — dem Mandat mit diesem Produkt.</span></Feldzeile>
         : <Feldzeile label="Woran hängt ein Lauf?"><Pillen liste={FALL_ARTEN.map(f => ({ id: f.id, label: f.titel }))} aktiv={fallArt} onWahl={setFallArt} /></Feldzeile>}
-      <Feldzeile label="Eigner (eine Person aus dem Team, später änderbar)">
-        <select aria-label="Eigner" value={eigner} onChange={e => setEigner(e.target.value)} style={{ ...auswahlStil, width: '100%' }}>
-          <option value="">— noch offen —</option>
-          {team.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-        </select>
-      </Feldzeile>
-      <Feldzeile label="Steckbrief (worum geht es?)"><textarea aria-label="Beschreibung" value={beschreibung} maxLength={PROZESS_TEXT.beschreibung} rows={3} onChange={e => setBeschreibung(e.target.value)} style={{ ...feld, resize: 'vertical' }} /></Feldzeile>
+      {!alsPaket && (
+        <>
+          <Feldzeile label="Eigner (eine Person aus dem Team, später änderbar)">
+            <select aria-label="Eigner" value={eigner} onChange={e => setEigner(e.target.value)} style={{ ...auswahlStil, width: '100%' }}>
+              <option value="">— noch offen —</option>
+              {team.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+            </select>
+          </Feldzeile>
+          <Feldzeile label="Steckbrief (worum geht es?)"><textarea aria-label="Beschreibung" value={beschreibung} maxLength={PROZESS_TEXT.beschreibung} rows={3} onChange={e => setBeschreibung(e.target.value)} style={{ ...feld, resize: 'vertical' }} /></Feldzeile>
+        </>
+      )}
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
       <div><Knopf haupt aus={!titel.trim()} onClick={anlegen}><span className="pz-knopf-inhalt"><Plus size={16} aria-hidden />Anlegen und bauen</span></Knopf></div>
     </Fenster>
@@ -91,7 +110,8 @@ export function WerkstattUebersicht({ onNeu, onVorlage, onHead }: { onNeu: () =>
             <div style={{ ...MIKRO }}>{b.titel}</div>
             {drin.map(p => {
               const Z = p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
-              const href = p.quelle === 'werkstatt' ? WEG.prozesse({ p: p.id, ansicht: 'werkstatt' }) : WEG.fulfillment('prozesse', { e: p.id });
+              // E4 (22.10.): ein Paket mit Marke `werkstatt:` öffnet sich in der Werkstatt, die übrigen (noch) im Editor des Fulfillments.
+              const href = p.quelle === 'werkstatt' || p.inWerkstatt ? WEG.prozesse({ p: p.id, ansicht: 'werkstatt' }) : WEG.fulfillment('prozesse', { e: p.id });
               return (
                 <Zeile key={p.id} umbrechen links={<Z size={18} aria-hidden color={C.inkDim} />} titel={p.titel}
                   unter={p.quelle === 'werkstatt' ? `${STATUS_WORT[p.status ?? 'entwurf'] ?? p.status}${p.version ? ` · Version ${p.version}` : ''}${p.entwurfGeaendert && p.version ? ' · Entwurf geändert' : ''}` : `Fulfillment-Paket · Fassung ${p.version ?? ''} · nur hier lesen`}

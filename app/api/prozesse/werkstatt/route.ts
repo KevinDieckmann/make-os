@@ -7,6 +7,7 @@
 //                  Schlüssel), Produkte, die auf ihn zeigen (22.10., nur Kennung + Name). `&version=<nr>` eine Version ganz; `&vergleich=<a>,<b>` (Nummer oder „entwurf“) der Vergleich (nur Feldnamen, nie Werte).
 //                  `&datum=<Knoten>` (22.10.) die nächsten Starts eines Datums-Auslösers (nur Tage + Anzahlen).
 // POST { aktion }  paket-entwurf { paketId, stand, vorlage } · paket-verwerfen { paketId } — der Entwurf eines Fulfillment-Pakets (22.10., E2; nur volle Mitglieder)
+//                  · paket-neu { titel, phase?, anfrageId } (E4) — „Neuer Ablauf“ aus der Werkstatt: Paket des Fulfillments mit Marke `werkstatt:`
 //                  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
 //                  · aus-vorlage { vorlageId, eigner?, anfrageId } (22.10.) · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
 // Tor: `werkstattZugang` — Haushalt des Inhabers, Sicht Privat 403; schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung; veröffentlichen, Status und
@@ -21,6 +22,7 @@ import { kantenVon } from '@/lib/prozesse/fluss';
 import { entwurfGeaendert, versionKurz, versionenVergleichen } from '@/lib/prozesse/versionen';
 import { webhookKurz } from '@/lib/prozesse/webhook';
 import { webhookVerwalten } from '@/lib/prozesse/webhook-server';
+import { inWerkstatt } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 import { fulfillmentProzesse, kurzAusEintrag, kurzAusFulfillment } from '@/lib/prozesse/fulfillment-bruecke';
 import { PROZESS_GRENZEN, PROZESS_KENNUNG, type ProzessDefinition, type ProzessEintrag } from '@/lib/prozesse/definition';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -78,7 +80,7 @@ export async function GET(req: Request) {
     const ff = await fulfillmentLesen('vorlagen', z.haushalt).catch(() => null);
     return NextResponse.json({
       ok: true, rechte: z.rechte, grenzen: PROZESS_GRENZEN,
-      prozesse: [...d.prozesse.map(e => kurzAusEintrag(e, !z.rechte.entwurf)), ...(ff ? fulfillmentProzesse(ff.prozesse).map(kurzAusFulfillment) : [])],
+      prozesse: [...d.prozesse.map(e => kurzAusEintrag(e, !z.rechte.entwurf)), ...(ff ? fulfillmentProzesse(ff.prozesse).map(v => kurzAusFulfillment(v, inWerkstatt(ff, v.id))) : [])],
     });
   }
   if (!PROZESS_KENNUNG.test(id)) return nein(400, 'Welcher Prozess? (?id=pz-…)');
@@ -130,6 +132,14 @@ export async function POST(req: Request) {
     const { paketEntwurfSchreiben } = await import('@/lib/prozesse/fulfillment-modus-server');
     const r = await paketEntwurfSchreiben(z.haushalt, z.person, aktion === 'paket-entwurf' ? 'speichern' : aktion === 'paket-verwerfen' ? 'verwerfen' : 'veroeffentlichen', b);
     return NextResponse.json(r.body, { status: r.status });
+  }
+  // E4 (22.10.): „Neuer Ablauf“ aus der Werkstatt — ein Paket des Fulfillments mit Marke `werkstatt:` (nur volle Mitglieder, einmalig über `anfrageId`).
+  if (aktion === 'paket-neu') {
+    const { darfVorlagenBearbeiten } = await import('@/lib/fulfillment/zugang');
+    if (!(await darfVorlagenBearbeiten(z.person))) return nein(403, 'Pakete legen nur volle Mitglieder des Haushalts an.');
+    const { paketNeuSchreiben } = await import('@/lib/prozesse/fulfillment-modus-server');
+    const a = await einmalig<Record<string, unknown>>('prozess-paket-neu', b.anfrageId, () => paketNeuSchreiben(z.haushalt, z.person, b), undefined, { wer: z.person });
+    return NextResponse.json(a.body, { status: a.status });
   }
   if (aktion.startsWith('webhook-')) {
     const r = await webhookVerwalten(z.person, z.rechte, b, z.haushalt);

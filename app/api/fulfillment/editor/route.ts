@@ -17,6 +17,7 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { einmalig } from '@/lib/store/anfragen';
 import { neueKennung } from '@/lib/kennung';
 import type { ProzessVorlage, VorlagenDatei } from '@/lib/fulfillment/typen';
+import { inWerkstatt, paketInWerkstattLink, IN_WERKSTATT_TEXT } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,10 +35,13 @@ export async function GET(req: Request) {
   const [d, faelle] = await Promise.all([fulfillmentLesen('vorlagen', z.haushalt), fulfillmentLesen('faelle', z.haushalt)]);
   const v = paket(d, id);
   if (!v) return NextResponse.json({ ok: false, fehler: 'Diesen Ablauf gibt es nicht (mehr).' }, { status: 404 });
+  // E4 (22.10., F4): ein Paket mit Marke `werkstatt:` wird in der Werkstatt bearbeitet — hier nur ansehen, mit Weg dorthin.
+  const werkstatt = inWerkstatt(d, v.id);
   return NextResponse.json({
     ok: true, ...ansicht(v),
     bausteine: d.bausteine.map(b => ({ id: b.id, titel: b.titel, art: b.art })),
-    darfBearbeiten: await darfVorlagenBearbeiten(z.person),
+    darfBearbeiten: !werkstatt && await darfVorlagenBearbeiten(z.person),
+    ...(werkstatt ? { inWerkstatt: true, werkstatt: paketInWerkstattLink(v.id) } : {}),
     // Auch Fälle, an denen der Ablauf als Zusatzmodul hängt (17.10. spät) — sie zeigen „geändert“ ebenso.
     laufend: Object.values(faelle.faelle).filter(f => (f.vorlageId === v.id || !!f.zusaetze?.some(z => z.vorlageId === v.id)) && f.status !== 'abgeschlossen').length,
   });
@@ -48,7 +52,9 @@ export async function PATCH(req: Request) {
   if (z instanceof Response) return z;
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, 512 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
-  const r = await fulfillmentAendern('vorlagen', d => editorAnwenden(d, b, kontext(z.person)), werAus(req), z.haushalt);
+  // E4: ein Paket mit Marke `werkstatt:` ändert nur die Werkstatt — 409 mit dem Weg dorthin (geprüft in der Sperre, nichts geschrieben).
+  const r = await fulfillmentAendern('vorlagen', d => (inWerkstatt(d, b.vorlageId) ? { ok: false as const, status: 409 as const, fehler: IN_WERKSTATT_TEXT } : editorAnwenden(d, b, kontext(z.person))), werAus(req), z.haushalt);
+  if (!r.ok && r.fehler === IN_WERKSTATT_TEXT) return NextResponse.json({ ok: false, fehler: r.fehler, inWerkstatt: true, werkstatt: paketInWerkstattLink(String(b.vorlageId)) }, { status: 409 });
   if (!r.ok) {
     // Veralteter Stand: die aktuelle Fassung gleich mit (der Editor zeigt sie und verwirft seinen Verlauf).
     const aktuell = r.status === 409 && r.konflikte?.length ? paket(await fulfillmentLesen('vorlagen', z.haushalt), b.vorlageId) : undefined;

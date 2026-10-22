@@ -217,7 +217,16 @@ Gebaut so:
   - Übernehmen über die Werkstatt = bit-gleich mit dem Weg des alten Editors (dieselbe Funktion, derselbe Fall danach, dieselben Aufgaben).
   - Ein neuer Fall startet mit der neuen Fassung.
 
-### E4 · Alter Editor nur lesen (F4) und Wege — 1 Tag
+### E4 · Alter Editor nur lesen (F4) und Wege — GEBAUT (22.10.)
+
+**Stand 22.10.:** Marke, 409 im Editor und in den Baum-Ops, Editor nur ansehen mit Weg in die Werkstatt, Links (Landkarte, Werkstatt-Liste, Fulfillment › Prozesse,
+Produktkarte), „Neuer Ablauf“ aus der Werkstatt („+ Prozess“ › Bereich Fulfillment › „Paket“), Import → Entwurf. Abweichungen:
+- Die Weiterleitung der Editor-Seite, „wenn alle Pakete markiert sind“, ist NICHT gebaut: eine Weiterleitung in `next.config.mjs` ist fest, nicht vom Bestand abhängig.
+  Wegnehmen des alten Editors = eigener Schritt auf Kevins Wort (dann eine feste Weiterleitung).
+- „+ neuer Ablauf“ im Fulfillment und auf der Produktkarte legt weiter ohne Marke im alten Editor an — der alte Editor kann am Handy bearbeiten, die Werkstatt
+  nicht (Paket-Modus am Handy nur ansehen). Ein markiertes Paket ist am Handy also nur noch ansehbar — offen für Kevin.
+- Bausteine › „steckt in“ führt weiter in den Editor (dort Hinweis + Weg in die Werkstatt).
+
 
 - **Marke `werkstatt:<paket>`** (gesetzt beim ersten Entwurf in der Werkstatt): `PATCH /api/fulfillment/editor` antwortet 409 „Wird in der Werkstatt bearbeitet“. Der alte Editor zeigt nur Ansehen und den Link „In der Werkstatt öffnen ›“.
 - **Links:** Produktkarte, Landkarte, Fulfillment › Prozesse und die Werkstatt-Liste (`nurLesen: false` im Modus) führen in die Werkstatt.
