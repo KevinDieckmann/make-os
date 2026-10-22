@@ -419,6 +419,8 @@ async function kopfVon(a: AgentSchritt, kx: MotorKontext): Promise<string> {
     }
     return kx.cache.skills.get(a.wer.skillId) ?? 'zoe';
   }
+  // Ein Fach-Agent (Research …) ist kein Head — er zählt unter seinem eigenen Namen (Log), nicht in die Tageshöchstzahl eines Heads (E-V6).
+  if (a.wer.art === 'fach') return a.wer.agentId;
   return 'zoe';
 }
 
@@ -451,7 +453,8 @@ function agentErlaubt(a: AgentSchritt, knoten: string, l: ProzessLauf, st: Proze
   const kopf = a.wer.art === 'head' ? a.wer.headId : a.wer.art === 'skill' ? kx.cache.skills?.get(a.wer.skillId) ?? 'zoe' : 'zoe';
   const heute = localDay(kx.jetzt);
   const heuteLaeufe = (kx.cache.auftraege ?? []).filter(x => x.name === 'faden' && x.tag === heute && /^Takt:/.test(x.anlass ?? '') && x.eingabe?.headId === kopf).length;
-  if (heuteLaeufe + (d ? agentSchritteHeute(d, kopf, heute) : 0) >= 12) return { ok: false, grund: 'hoechstzahl', bis: naechster7(tagPlus(wand.slice(0, 10), 1)) };
+  // E-V6: die 12 Läufe am Tag gelten für Heads (und ZOE) — ein Fach-Agent (Research) ist durch Budget, Drossel und Recherche-Frische begrenzt.
+  if (a.wer.art !== 'fach' && heuteLaeufe + (d ? agentSchritteHeute(d, kopf, heute) : 0) >= 12) return { ok: false, grund: 'hoechstzahl', bis: naechster7(tagPlus(wand.slice(0, 10), 1)) };
   if (!budgetReicht(st, kosten, kx.jetzt.toISOString())) return { ok: false, grund: 'budget', pause: true, kostenCent: kosten };
   kx.cache.agenten = (kx.cache.agenten ?? 0) + 1;
   return { ok: true, kostenCent: kosten };
@@ -616,24 +619,31 @@ async function schleifeAusfuehren(l: ProzessLauf, a: Extract<Aktion, { art: 'sch
   const { fallFuerTeil } = await import('./kundengewinnung/abfrage');
   const teilArt = fallArtVon(j.def);
   const iso = kx.jetzt.toISOString();
-  const gestartet: string[] = [];
-  let schon = 0, i = 0;
-  for (; i < faelle.length && gestartet.length < a.hoechstens; i++) {
-    const fall = fallFuerTeil(faelle[i], teilArt);
-    const r = await prozessLaufStarten({
-      id: neueKennung('pl'), prozessId: teil.id, version: j.nr, def: j.def, fall, modus, person: l.person, ausloeser: { art: 'teilprozess', quelle: a.kennung },
-      // Der Fall des Laufs als Bezug (Event, Kampagne …) — nur die Kennung: daraus liest der Teil-Lauf z. B. den vereinbarten Schritt beim Netzwerken.
-      daten: l.fall.id && l.fall.art !== 'keiner' ? { [`bezug.${l.fall.art}id`]: l.fall.id } : {}, tiefe: l.tiefe + 1, herkunft: { prozessId: l.prozessId, laufId: l.id }, ...(l.fremd ? { fremd: true } : {}), automatisch: false, periode: `${a.kennung}:${i}`, jetzt: iso,
-    }, kx.h);
-    if (r.ok) { gestartet.push(r.lauf.id); continue; }
-    // Schon gestartet — von DIESEM Lauf (Wiederholung nach einem Abbruch): zählt als gestartet; von anderswo: übersprungen.
-    if ((r.grund === 'offen' || r.grund === 'schon') && r.lauf?.herkunft?.laufId === l.id && r.lauf.ausloeser.quelle === a.kennung) { gestartet.push(r.lauf.id); continue; }
-    if (r.grund === 'offen' || r.grund === 'schon') { schon++; continue; }
-    if (r.grund === 'ohne-person') return fehlt('person-fehlt');
-    if (r.grund === 'kette') return fehlt('kette');
-    // Bestand voll: abgelehnt und gezählt (HOI) — die Schleife hält hier an.
-    return fehlt('dauerhaft');
-  }
+  // Der Fall des Laufs als Bezug (Event, Kampagne …) — nur die Kennung: daraus liest der Teil-Lauf z. B. den vereinbarten Schritt beim Netzwerken.
+  const bezug = l.fall.id && l.fall.art !== 'keiner' ? { [`bezug.${l.fall.art}id`]: l.fall.id } : {};
+  // Alle Starts in EINER Sperre (eine Schreibung statt einer je Fall — und ein Abbruch lässt nie die Hälfte gestartet zurück).
+  type R = { gestartet: string[]; schon: number; i: number; fehler?: LaufGrund };
+  const r = await laeufeAendern<R>(d => {
+    let datei = d;
+    const raus: R = { gestartet: [], schon: 0, i: 0 };
+    for (; raus.i < faelle.length && raus.gestartet.length < a.hoechstens; raus.i++) {
+      const x = starten(datei, {
+        id: neueKennung('pl'), prozessId: teil.id, version: j.nr, def: j.def, fall: fallFuerTeil(faelle[raus.i], teilArt), modus, person: l.person, ausloeser: { art: 'teilprozess', quelle: a.kennung },
+        daten: bezug, tiefe: l.tiefe + 1, herkunft: { prozessId: l.prozessId, laufId: l.id }, ...(l.fremd ? { fremd: true } : {}), automatisch: false, periode: `${a.kennung}:${raus.i}`, jetzt: iso,
+      });
+      datei = x.datei;
+      if (x.ok) { raus.gestartet.push(x.lauf.id); continue; }
+      // Schon gestartet — von DIESEM Lauf (Wiederholung nach einem Abbruch): zählt als gestartet; von anderswo: übersprungen.
+      if ((x.grund === 'offen' || x.grund === 'schon') && x.lauf?.herkunft?.laufId === l.id && x.lauf.ausloeser.quelle === a.kennung) { raus.gestartet.push(x.lauf.id); continue; }
+      if (x.grund === 'offen' || x.grund === 'schon') { raus.schon++; continue; }
+      // Ohne Person bzw. Kette zu tief bzw. Bestand voll (abgelehnt und gezählt — HOI): die Schleife hält hier an, Gestartetes bleibt gestartet.
+      raus.fehler = x.grund === 'ohne-person' ? 'person-fehlt' : x.grund === 'kette' ? 'kette' : 'dauerhaft';
+      break;
+    }
+    return { datei, r: raus };
+  }, kx.h);
+  if (r.fehler && !r.gestartet.length) return fehlt(r.fehler);
+  const { gestartet, schon, i } = r;
   const rest = faelle.length - i;
   return {
     ok: true, wirkung: gestartet.map(id => ({ art: 'lauf' as const, id })), anzahl: gestartet.length, ...(rest ? { rest, hinweis: 'schleife-rest' as const } : {}), ...(schon ? { uebersprungen: schon } : {}),
