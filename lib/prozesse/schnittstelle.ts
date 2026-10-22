@@ -20,7 +20,8 @@ export {
 } from './baustein-katalog';
 export {
   MODELL_STUFEN, FACH_AGENTEN, ZOE_WERKZEUGE, WARUM_MIN, VERTRAG_KENNUNG, VERTRAG_LISTE_MAX, erlaubteWerkzeuge, headVonAgent, vertragAus, vertragPruefen, agentAus,
-  ergebnisMussVorschlag, rechteProfil, agentSchlossGrund, agentText, type AgentKontext, type RechteProfil,
+  ergebnisMussVorschlag, rechteProfil, agentSchlossGrund, agentText, istWebRecherche, oeffentlichModus, gedaechtnisWirksam, OEFFENTLICH_KATEGORIEN,
+  type AgentKontext, type RechteProfil,
 } from './agent-schritt';
 export { modellOptionen, modellWahlAus, modellSchluessel, stufeVorgabe, type ModellOption } from './modell-wahl';
 export { anspracheKanal, anspracheUrteil, type AnspracheUrteil } from './ansprache';

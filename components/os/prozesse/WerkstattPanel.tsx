@@ -167,12 +167,15 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   }, [k, e, d]);
   const platz = useMemo(() => platzhalterFuer(d.fallArt ?? 'mandat'), [d.fallArt]);
   const fehlerVon = (feldId: string) => befunde.find(b => b.feld === feldId && b.stufe !== 'hinweis')?.text;
+  // „Nur öffentliche Angaben“ (Entscheidung 22.10. nachts): dann sind Akte und Brain aus — die Maske zeigt sie gesperrt auf „nein“ (so läuft es auch im Motor).
+  const nurOeffentlich = k.form === 'agent' && werte.nurOeffentlich === true;
+  const gesperrt = (id: string) => nurOeffentlich && (id === 'akte' || id === 'brain');
   const feld = (f: KatalogEintrag['maske'][number]) => (
-    <MaskenEingabe key={f.id} f={f} wert={werte[f.id]} onWert={v => setze(f.id, v)} optionen={f.optionen ? f.optionen.map(o => ({ ...o })) : optionenFuer(f.quelle, p, k)}
-      felder={felder} platzhalter={platz} fehler={fehlerVon(f.id)} aus={p.nurLesen} />
+    <MaskenEingabe key={f.id} f={f} wert={gesperrt(f.id) ? false : werte[f.id]} onWert={v => setze(f.id, v)} optionen={f.optionen ? f.optionen.map(o => ({ ...o })) : optionenFuer(f.quelle, p, k)}
+      felder={felder} platzhalter={platz} fehler={fehlerVon(f.id)} aus={p.nurLesen || gesperrt(f.id)} />
   );
   // Agent: die Maske nach den drei Andockpunkten gruppiert (Modell · Gedächtnis · Werkzeuge), dazu das Rechte-Profil.
-  const GRUPPE: Readonly<Record<string, 'modell' | 'gedaechtnis' | 'werkzeuge'>> = { modell: 'modell', modellWahl: 'modell', budgetCent: 'modell', brain: 'gedaechtnis', akte: 'gedaechtnis', werkzeuge: 'werkzeuge' };
+  const GRUPPE: Readonly<Record<string, 'modell' | 'gedaechtnis' | 'werkzeuge'>> = { modell: 'modell', modellWahl: 'modell', budgetCent: 'modell', nurOeffentlich: 'gedaechtnis', brain: 'gedaechtnis', akte: 'gedaechtnis', werkzeuge: 'werkzeuge' };
   const istAgent = k.form === 'agent' && e?.feld === 'agent';
   const profil = istAgent && k.agent ? rechteProfil(k.agent, {}) : null;
   const klasse = e ? klasseVonEintrag(e) : null;
@@ -217,6 +220,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
               <section key={g} data-ws-abschnitt={g} style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 14, border: `1px solid ${p.andock === g ? C.ink : 'transparent'}`, background: 'transparent' }}>
                 <div style={{ ...MIKRO }}>{g === 'modell' ? 'Andockpunkt Modell' : g === 'gedaechtnis' ? 'Andockpunkt Gedächtnis' : 'Andockpunkt Werkzeuge'}</div>
                 {fs.map(feld)}
+                {g === 'gedaechtnis' && nurOeffentlich && <p style={leise}>Nur öffentliche Angaben: an das Modell gehen nur Firmenname, Website und Branche — Akte und Brain bleiben aus, darum steht keine Freigabe dahinter. Die gefundenen Felder bestätigst du im Stapel.</p>}
                 {g === 'werkzeuge' && <p style={leise}>Nur Werkzeuge, die der Agent schon hat. Werkzeuge der Klassen außen, Geld und Löschen setzen automatisch eine Freigabe dahinter.</p>}
               </section>
             );

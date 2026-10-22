@@ -143,7 +143,9 @@ const V10: KgVorlage = {
 // ── V01 · Nächtlicher Prospecting-Lauf ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const V01A: KgTeil = {
   // Seit 22.10. spät (Motor-Rest, M6): Research mit Ausgabe-Vertrag je Firma — Fit an die Raute, Felder nur als Vorschlag mit Häkchen je Feld, Frische 90 Tage.
-  id: 'kg-v01a', titel: 'Account anreichern und bewerten', offen: [{ punkt: 'Schloss', text: 'Hinter der Recherche steht das Freigabe-Schloss (tödliches Dreieck: Akte, Web, Weg nach außen) — je Firma ein Klick „weiter“, dazu die Felder im Stapel.' }],
+  // Seit 22.10. nachts (Entscheidung „Nur öffentliche Angaben“): die Recherche bekommt nur Firmenname, Website und Branche — kein Dreieck, also kein Schloss
+  // dahinter (kein Klick „weiter“ je Firma); die gefundenen Felder bestätigt man im Stapel (einzeln oder alle auf einmal).
+  id: 'kg-v01a', titel: 'Account anreichern und bewerten', offen: [],
   definition: prozess({
     id: 'kg-v01a', titel: 'Account anreichern und bewerten', bereich: 'sales', fallArt: 'firma',
     beschreibung: 'Teilprozess des nächtlichen Prospecting-Laufs: fehlende Angaben recherchieren (nur öffentlich, mit Quelle — als Vorschlag), Score lesen, gute Fälle als Outreach und Deal-Vorschlag.',
@@ -176,7 +178,7 @@ const V01: KgVorlage = {
   id: 'kg-v01', nr: 'V01', welle: 2, titel: 'Nächtlicher Prospecting-Lauf', bereich: 'sales', fallArt: 'keiner', eignerRolle: 'sales',
   zweck: 'Jede Nacht ruhende Accounts und neue Leads anreichern, Scores zusammenziehen, das Ergebnis in die Karte bringen und gute Fälle als Outreach-Aufgabe und Deal-Vorschlag bereitstellen.',
   ausloeserText: 'werktags 02:00 (Agenten-Schritte ab 07:00)', braucht: ['ki', 'web-recherche'], uebergabeAn: ['kg-v09'],
-  recht: ['Die Recherche nutzt nur öffentliche Angaben (Art. 14); Herkunft bei Neuanlage „Recherche“.', 'Die Erstansprache folgt der Kanal-Ampel — kalte Mail ohne Einwilligung bleibt rot (dann Telefon mit Anlass oder Vernetzen, V05).', 'Kein Versand; Web-Inhalte sind fremder Text und gehen nur per Häkchen in die Karte.'],
+  recht: ['Die Recherche nutzt nur öffentliche Angaben (Art. 14); Herkunft bei Neuanlage „Recherche“.', 'An das Modell gehen nur Firmenname, Website und Branche — keine Notizen, keine Kontaktdaten, keine Personen.', 'Die Erstansprache folgt der Kanal-Ampel — kalte Mail ohne Einwilligung bleibt rot (dann Telefon mit Anlass oder Vernetzen, V05).', 'Kein Versand; Web-Inhalte sind fremder Text und gehen nur per Häkchen in die Karte.'],
   kennzahlen: ['Bewertete Accounts je Nacht', 'traktion:sql_30', 'Prozesse: Anteil der Outreach-Aufgaben in der Frist'],
   einstellbar: [
     { id: 'uhrzeit', label: 'Uhrzeit', vorgabe: '02:00', knoten: 't', feld: 'uhrzeit' }, { id: 'ohneKontaktTage', label: 'Ruhend ohne Kontakt seit (Tagen)', vorgabe: 90, knoten: 'q1', feld: 'tage' },

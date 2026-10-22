@@ -366,6 +366,14 @@ export interface AgentSchritt {
   vorschlagFelder?: string[];
   /** Bei `vorschlag`: Übernahme mit Häkchen je Feld (Vorgabe) oder als Sammelfreigabe. */
   uebernahme?: 'je-feld' | 'sammel';
+  /**
+   * „Nur öffentliche Angaben“ (Entscheidung 22.10. nachts) — nur für Web-Recherche-Fach-Agenten (Research, Prospecting, Content; sonst wirkungslos): an das Modell
+   * gehen NUR Firmenname, Website/Domain und Branche aus der Firmenkarte des Falls (lib/prozesse/agent-felder.ts `oeffentlicheAngaben`) — nie Notizen,
+   * Aktivitäten, Kontaktdaten, Personen, Brain, Akte, Deal- oder Angebotsdaten. Der Motor erzwingt das (lib/prozesse/lauf-server.ts), Akte und Brain sind
+   * aus, die KI-Kategorien nur `web` + `allgemein`. Damit fehlt die Ecke „private Daten“ des tödlichen Dreiecks → kein Pflicht-Schloss dahinter; das
+   * Ergebnis bleibt IMMER ein Vorschlag im Stapel (Häkchen je Feld bzw. Sammelfreigabe). Fehlt das Feld, gilt alles wie bisher (Akte, Schloss).
+   */
+  nurOeffentlich?: true;
 }
 /** Ein angebundenes Modell: Anbieter (lib/ki/anbieter.ts `KI_ANBIETER`) + Modell-Kennung (lib/ki/modelle.ts) + Stufe. Nie fest in einer Maske. */
 export interface ModellWahl { anbieter: AnbieterId; modell: string; stufe: ModelTier }

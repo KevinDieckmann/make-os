@@ -120,6 +120,17 @@ const STUFE = (vorgabe: 'schnell' | 'ausgewogen' = 'ausgewogen'): MaskenFeld => 
 /** Ein bestimmtes angebundenes Modell — die Werte liefert die Instanz (Anbieter + Modell + Stufe), nie diese Maske. Ohne Wahl: das Modell der Stufe. */
 const MODELL: MaskenFeld = { id: 'modellWahl', label: 'Modell', typ: 'auswahl', quelle: 'modell', hilfe: 'Nur angebundene Anbieter mit Eintrag im Empfänger-Register. Ohne Wahl gilt das Modell der Stufe.' };
 const BUDGET: MaskenFeld = { id: 'budgetCent', label: 'Budget je Schritt (Cent)', typ: 'zahl', min: 1, max: PROZESS_GRENZEN.budgetCentMax, pflicht: true };
+/**
+ * „Nur öffentliche Angaben“ am Web-Recherche-Agenten (Entscheidung 22.10. nachts) — die Erklärung mit Fallbeispiel steht als `hilfe` am Schalter. Die Regel dahinter:
+ * lib/prozesse/agent-schritt.ts `oeffentlichModus`, erzwungen im Motor (lib/prozesse/lauf-server.ts, lib/prozesse/agent-felder.ts `oeffentlicheAngaben`).
+ */
+export const NUR_OEFFENTLICH: MaskenFeld = {
+  id: 'nurOeffentlich', label: 'Nur öffentliche Angaben (Firmenname, Website)', typ: 'ja-nein', vorgabe: true,
+  hilfe: 'An: Das Modell bekommt nur Firmenname, Website und Branche aus der Firmenkarte — keine Notizen, keine Kontaktdaten, keine Personen; Akte und Brain bleiben aus. '
+    + 'Darum steht hinter der Recherche kein Extra-Klick: du bestätigst nur die gefundenen Felder im Stapel (einzeln oder alle auf einmal). '
+    + 'Beispiel: Zu „Beispiel GmbH · beispiel.de · Maschinenbau“ findet die Recherche Mitarbeiterzahl und LinkedIn-Seite — die Notiz an der Firma sieht das Modell nie. '
+    + 'Aus: Der Agent darf die Akte des Falls mitlesen — dann steht hinter ihm eine Freigabe (private Daten, fremder Text, Weg nach außen).',
+};
 const WARUM: MaskenFeld = { id: 'warumKeineRegel', label: 'Warum reicht keine Regel?', typ: 'langtext', pflicht: true, max: PROZESS_TEXT.warum, hilfe: 'Pflichtsatz: Agenten kosten mehr und sind schwerer zu prüfen.' };
 const HOECHSTENS = (pflicht = true): MaskenFeld => ({ id: 'hoechstensTage', label: 'Höchstens (Tage)', typ: 'zahl', min: 1, max: PROZESS_GRENZEN.wartenTageMax, pflicht, hilfe: 'Danach geht es über den Ausgang „abgelaufen“ weiter.' });
 const FIRMA_GESELLSCHAFT: MaskenFeld = { id: 'gesellschaft', label: 'Gesellschaft', typ: 'auswahl', quelle: 'gesellschaft', pflicht: true };
@@ -311,7 +322,9 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
     maske: [{ id: 'auftrag', label: 'Auftrag', typ: 'langtext', pflicht: true, max: PROZESS_TEXT.auftrag }, STUFE('schnell'), MODELL, BUDGET, WARUM,
       { id: 'vorschlagFelder', label: 'Felder des Vorschlags', typ: 'mehrfach', pflicht: true, optionen: VORSCHLAG_ZIELFELDER.map(id => ({ id, label: ZIELFELD_NAME[id] })) },
       { id: 'uebernahme', label: 'Übernahme', typ: 'auswahl', optionen: [{ id: 'je-feld', label: 'Häkchen je Feld' }, { id: 'sammel', label: 'Sammelfreigabe' }], vorgabe: 'je-feld' },
-      { id: 'akte', label: 'Gedächtnis: Akte des Falls', typ: 'ja-nein', vorgabe: true }] },
+      // Entscheidung 22.10. nachts („Nur öffentliche Angaben“): Vorgabe AN — dann liest die Recherche nur Firmenname, Website und Branche, kein Extra-Klick dahinter.
+      NUR_OEFFENTLICH,
+      { id: 'akte', label: 'Gedächtnis: Akte des Falls', typ: 'ja-nein', vorgabe: true, hilfe: 'Liest der Agent die Akte des Falls mit (Notizen, Aktivitäten, Personen)? Bei „Nur öffentliche Angaben“ bleibt sie immer aus.' }] },
 
   // ── Teilprozess, Schleife ──
   { id: 'teilprozess.aufruf', name: 'Teilprozess', satz: 'Ruft einen veröffentlichten Prozess mit festen Ein- und Ausgaben auf.', anbindung: 'Ablauf', form: 'teilprozess', kategorie: 'teilprozess', bahn: 'system', rechte: 'lesen', ki: [], feld: 'teilprozess',

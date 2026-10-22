@@ -1645,7 +1645,10 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
 - **Baustein-Katalog als Daten** (`BAUSTEIN_KATALOG`, Masken-Schema je Baustein): jede Anbindung (Inbox, WhatsApp, Kalender, CRM, Angebot, Rechnung,
   Aufgabe, Glocke, Telegram, ZOE, Heads, Agenten/Skills) = ein Eintrag; Werkzeugklasse aus `lib/werkzeuge/vertrag.ts` (nie doppelt). Neue Anbindung = neuer
   Eintrag. **Agent-Knoten**: Andockpunkte Modell (Stufe aus `lib/ki/modelle.ts`/`anbieterWaehlen`, nie feste Modell-Kennung) · Gedächtnis · Werkzeuge;
-  Vertrag (Ein-/Ausgabe-Schema, nur Kennungen), Rechte-Ampel „tödliches Dreieck“, Pflichtsatz „Warum reicht keine Regel?“. **Freigabe-Schloss**
+  Vertrag (Ein-/Ausgabe-Schema, nur Kennungen), Rechte-Ampel „tödliches Dreieck“, Pflichtsatz „Warum reicht keine Regel?“. **Web-Recherche „nur öffentliche
+  Angaben“** (Kevin 22.10., `AgentSchritt.nurOeffentlich`, nur Web-Recherche-Fach-Agenten — `oeffentlichModus`; Vorgabe an neuen Research-Knoten und in den Vorlagen):
+  an das Modell NUR Firmenname, Website/Domain, Branche (`oeffentlicheAngaben`, im Motor erzwungen, nie Fall/Kennungen/Notizen/Personen), Akte und Brain aus,
+  KI-Kategorien `web` + `allgemein` → kein Dreieck, kein Pflicht-Schloss; das Ergebnis bleibt ein Vorschlag im Stapel. Ohne Feld wie bisher. **Freigabe-Schloss**
   (`schlossSetzen`) hinter jedem Baustein der Klassen aussen · geld · loeschen — nicht entfernbar.
 - **Auslöser**: Ereignis (`SkillEreignis`, Bedingung „nur wenn“) · Zeitplan · Datum · von Hand · Loop (Tagesstart) · **Webhook** (`/api/prozesse/webhook/[kennung]`,
   offen nur über `PROZESS_WEBHOOK`, Schlüssel nur Fingerabdruck, einmal gezeigt, scharf erst nach Klick, ≤ 64 KB, schreibt nur ein Ereignis `webhook`).

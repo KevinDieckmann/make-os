@@ -66,4 +66,21 @@ describe('Alle Vorlagen der Kundengewinnung laufen im Probelauf ganz durch', () 
     expect(halt).toEqual([]);
     expect(JSON.stringify(await S.laeufeLesen(H))).toBe(vorher);
   });
+  it('V01 (Kevin 22.10. nachts, „Nur öffentliche Angaben“): der Teilprozess je Firma braucht keine Freigabe „weiter“ mehr hinter der Recherche', async () => {
+    const S = await import('@/lib/prozesse/lauf-server');
+    const teil = ids.find(x => x.vorlage === 'kg-v01a')!;
+    const r = await S.probelauf({ prozessId: teil.prozessId, quelle: 'version', fall: 'beispiel', person: 'pia' });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const { prozesseLesen } = await import('@/lib/prozesse/werkstatt-server');
+    const { schloesser } = await import('@/lib/prozesse/fluss');
+    const def = (await prozesseLesen(H)).prozesse.find(p => p.id === teil.prozessId)!.versionen.at(-1)!.definition;
+    const research = def.knoten.find(k => k.form === 'agent' && k.agent?.wer.art === 'fach')!;
+    expect(research.agent).toMatchObject({ nurOeffentlich: true, gedaechtnis: { brain: false, akte: false }, ergebnis: 'vorschlag' });
+    // Kein Schloss hinter der Recherche (die Mail-Entwürfe behalten ihres — sie wirken nach außen).
+    expect(schloesser(def.knoten).has(research.id)).toBe(false);
+    const i = r.schritte.findIndex(z => z.knotenId === research.id);
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(r.schritte[i + 1]?.status).not.toBe('freigabe');
+  });
 });

@@ -82,7 +82,9 @@ export type LaufGrund =
   // 22.10. (Läufe-Ansicht, C1-Frage 1): ohne KI-Schlüssel bzw. Guthaben hält ein Agenten-Schritt SOFORT an — kein Wiederholen, keine Fehlerkante.
   | 'ki-nicht-eingerichtet'
   // 22.10. spät (Motor-Rest: Schleife, CRM-Abfrage, Agent mit Feldern, Platzhalter, Nachtlauf).
-  | 'rolle-fehlt' | 'gesellschaft-fehlt' | 'abfrage-rest' | 'schleife-rest' | 'liste-fehlt' | 'gedrosselt' | 'recherche-frisch' | 'agent-aus';
+  | 'rolle-fehlt' | 'gesellschaft-fehlt' | 'abfrage-rest' | 'schleife-rest' | 'liste-fehlt' | 'gedrosselt' | 'recherche-frisch' | 'agent-aus'
+  // 22.10. nachts (Entscheidung „Nur öffentliche Angaben“): Research ohne Firmennamen am Fall — es gibt nichts Öffentliches zu recherchieren.
+  | 'oeffentlich-leer';
 
 /** Ein besuchter Knoten. Ein Knoten kann mehrfach besucht werden (Erinnerung, „erneut ab“) — `runde` zählt mit. */
 export interface LaufSchritt {
@@ -393,4 +395,5 @@ export const GRUND_TEXT: Readonly<Record<LaufGrund, string>> = {
   gedrosselt: 'Agenten-Schritte laufen gedrosselt — weiter im nächsten Takt',
   'recherche-frisch': 'diese Firma wurde vor Kurzem recherchiert (Recherche-Frische) — übersprungen, ohne Kosten',
   'agent-aus': 'der Agent ist unter ZOE › Agenten ausgeschaltet',
+  'oeffentlich-leer': 'nur öffentliche Angaben: am Fall steht keine Firma mit Namen — nichts recherchiert, ohne Kosten',
 };

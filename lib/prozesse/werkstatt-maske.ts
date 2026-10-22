@@ -17,6 +17,7 @@ import {
 } from './definition';
 import { katalogEintrag, maskeSaeubern, maskeVorgaben, type KatalogEintrag, type MaskenKontext } from './baustein-katalog';
 import { modellSchluessel, stufeVorgabe, type ModellOption } from './modell-wahl';
+import { istWebRecherche, oeffentlichModus } from './agent-schritt';
 
 type K = ProzessKnoten<ProzessForm>;
 type W = Record<string, MaskenWert>;
@@ -53,6 +54,8 @@ export function maskeWerte(k: K, e: KatalogEintrag): W {
         werkzeuge: a.werkzeuge, brain: a.gedaechtnis.brain, akte: a.gedaechtnis.akte, eingabe: a.eingabe, ausgabe: a.ausgabe,
         headId: a.wer.art === 'head' ? a.wer.headId : undefined, skillId: a.wer.art === 'skill' ? a.wer.skillId : undefined,
         vorschlagFelder: a.vorschlagFelder, uebernahme: a.uebernahme ?? (a.ergebnis === 'vorschlag' ? 'je-feld' : undefined),
+        // Alte Schritte ohne das Feld zeigen „aus“ (so laufen sie auch) — die Vorgabe „an“ gilt nur für neue Research-Knoten.
+        ...(istWebRecherche(a) ? { nurOeffentlich: a.nurOeffentlich === true } : {}),
       });
     }
     case 'raute': {
@@ -119,9 +122,11 @@ function feldAus(e: KatalogEintrag, w: W, alt: K, kx: MaskenUmfeld): Partial<K> 
       if ((wer.art === 'head' && !wer.headId) || (wer.art === 'skill' && !wer.skillId)) return { agent: undefined };
       const vorschlag = e.agentFest?.ergebnis === 'vorschlag' || alt.agent?.ergebnis === 'vorschlag';
       const vf = texte(w.vorschlagFelder);
+      // „Nur öffentliche Angaben“ (nur Web-Recherche-Fach-Agenten): Akte und Brain sind dann aus — gespeichert, wie es läuft.
+      const oeffentlich = w.nurOeffentlich === true && oeffentlichModus({ wer, nurOeffentlich: true });
       const a: AgentSchritt = sauber<AgentSchritt>({
         wer, auftrag: text(w.auftrag), modell: stufe(w.modell, stufeVorgabe(wer)), modellWahl: modellWahlVon(w.modellWahl, kx),
-        budgetCent: zahl(w.budgetCent) ?? 0, gedaechtnis: { brain: w.brain === true, akte: w.akte !== false },
+        budgetCent: zahl(w.budgetCent) ?? 0, gedaechtnis: oeffentlich ? { brain: false, akte: false } : { brain: w.brain === true, akte: w.akte !== false }, nurOeffentlich: oeffentlich ? true : undefined,
         werkzeuge: e.agentFest ? [] : texte(w.werkzeuge), eingabe: liste<VertragFeld>(w.eingabe), ausgabe: liste<VertragFeld>(w.ausgabe), warumKeineRegel: text(w.warumKeineRegel),
         ergebnis: vorschlag ? 'vorschlag' : undefined, vorschlagFelder: vorschlag && vf.length ? vf : undefined,
         uebernahme: vorschlag && w.uebernahme === 'sammel' ? 'sammel' : undefined,

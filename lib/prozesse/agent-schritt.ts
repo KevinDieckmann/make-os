@@ -64,6 +64,16 @@ export const FACH_AGENTEN: readonly { id: string; titel: string; kategorien: rea
 const fachAgent = (id: string) => FACH_AGENTEN.find(f => f.id === id) ?? null;
 /** Liest dieser Agenten-Schritt das Web? (Research, Prospecting, Content) — dann gelten Recherche-Frische und „höchstens n Suchen je Lead“ (Motor, M6). */
 export const istWebRecherche = (a: Pick<AgentSchritt, 'wer'>): boolean => a.wer.art === 'fach' && !!fachAgent(a.wer.agentId)?.kategorien.includes('web');
+/**
+ * Gilt „Nur öffentliche Angaben“ (Entscheidung 22.10. nachts)? Nur für Web-Recherche-Fach-Agenten — sonst ist das Feld wirkungslos. Dann gehen an das Modell nur
+ * Firmenname, Website/Domain und Branche (der Motor erzwingt es), Akte und Brain sind aus, gelesen wird nur `web` + `allgemein` — kein Dreieck, kein Pflicht-Schloss.
+ */
+export const oeffentlichModus = (a: Pick<AgentSchritt, 'wer' | 'nurOeffentlich'>): boolean => a.nurOeffentlich === true && istWebRecherche(a);
+/** Was ein Agent im Modus „nur öffentliche Angaben“ liest (KI-Kategorien des Aufrufs — ehrlich, wie im KI-Protokoll). */
+export const OEFFENTLICH_KATEGORIEN: readonly KiKategorie[] = ['allgemein', 'web'];
+/** Das Gedächtnis, das wirklich gilt: im Modus „nur öffentliche Angaben“ sind Akte und Brain aus — ganz gleich, was gespeichert ist. */
+export const gedaechtnisWirksam = (a: Pick<AgentSchritt, 'wer' | 'gedaechtnis' | 'nurOeffentlich'>): AgentSchritt['gedaechtnis'] =>
+  oeffentlichModus(a) ? { brain: false, akte: false } : a.gedaechtnis;
 
 /** ZOE-Werkzeuge (Register, nicht Agenten-/Steuerungs-Werkzeuge) — die Menge, aus der ein Agenten-Schritt wählen kann. */
 export const ZOE_WERKZEUGE: readonly string[] = Object.entries(EINORDNUNG).filter(([, e]) => e.herkunft === 'zoe').map(([n]) => n);
@@ -200,9 +210,11 @@ export function agentAus(roh: unknown, k: AgentKontext = {}, knotenId?: string):
   const budgetCent = typeof bc === 'number' && Number.isInteger(bc) ? bc : 0;
   if (budgetCent <= 0) b('offen', 'Budget je Schritt fehlt (Cent, mindestens 1).', 'budgetCent');
   else if (budgetCent > PROZESS_GRENZEN.budgetCentMax) b('fehler', `Budget höchstens ${PROZESS_GRENZEN.budgetCentMax} Cent je Schritt.`, 'budgetCent');
-  // Gedächtnis
+  // Gedächtnis — im Modus „nur öffentliche Angaben“ (nur Web-Recherche-Fach-Agenten) sind Akte und Brain aus.
   const g = istObj(roh.gedaechtnis) ? roh.gedaechtnis : {};
-  const gedaechtnis = { brain: g.brain === true, akte: g.akte !== false };
+  const oeffentlich = roh.nurOeffentlich === true && !!wer && istWebRecherche({ wer });
+  if (roh.nurOeffentlich === true && wer && !oeffentlich) b('hinweis', '„Nur öffentliche Angaben“ gibt es nur für Web-Recherche-Agenten — hier wirkt es nicht.', 'nurOeffentlich');
+  const gedaechtnis = oeffentlich ? { brain: false, akte: false } : { brain: g.brain === true, akte: g.akte !== false };
   // Werkzeuge
   const werkzeuge = Array.isArray(roh.werkzeuge) ? Array.from(new Set(roh.werkzeuge.filter((x): x is string => typeof x === 'string'))) : [];
   if (werkzeuge.length > PROZESS_GRENZEN.werkzeugeJeAgent) b('fehler', `höchstens ${PROZESS_GRENZEN.werkzeugeJeAgent} Werkzeuge.`, 'werkzeuge');
@@ -235,13 +247,14 @@ export function agentAus(roh: unknown, k: AgentKontext = {}, knotenId?: string):
     agent: {
       wer, auftrag, modell, ...(mw.wahl ? { modellWahl: mw.wahl } : {}), budgetCent: Math.max(0, budgetCent), gedaechtnis, werkzeuge, eingabe: ein.felder, ausgabe: aus.felder, warumKeineRegel: warum,
       ...(ergebnis === 'vorschlag' ? { ergebnis, ...(vf.length && !fremdeZiele.length ? { vorschlagFelder: vf } : {}), ...(uebernahme ? { uebernahme } : {}) } : {}),
+      ...(oeffentlich ? { nurOeffentlich: true as const } : {}),
     },
     befunde,
   };
 }
 
-/** Muss das Ergebnis ein Vorschlag sein? (rein) — sobald der Schritt das Web liest (Research, Prospecting, Content, Head mit Web). */
-export function ergebnisMussVorschlag(a: Pick<AgentSchritt, 'wer' | 'werkzeuge' | 'gedaechtnis'>, k: AgentKontext = {}): boolean {
+/** Muss das Ergebnis ein Vorschlag sein? (rein) — sobald der Schritt das Web liest (Research, Prospecting, Content, Head mit Web; auch „nur öffentliche Angaben“). */
+export function ergebnisMussVorschlag(a: Pick<AgentSchritt, 'wer' | 'werkzeuge' | 'gedaechtnis' | 'nurOeffentlich'>, k: AgentKontext = {}): boolean {
   return rechteProfil(a, {}, k).lesebereiche.includes('web');
 }
 
@@ -271,14 +284,22 @@ export interface RechteProfil {
 /**
  * Das Rechte-Profil eines Agenten-Schritts (rein). `laufFremd` = der Lauf trägt schon fremden Text (Auslöser Webhook, Mail, WhatsApp — „fremd gelesen“
  * gilt für den ganzen Lauf, Punkt 56). Akte und Brain tragen Notizen/Aktivitäten Dritter → zählen als fremder Text (CLAUDE.md Regel 6).
+ * „Nur öffentliche Angaben“ (`oeffentlichModus`): der Fach-Agent liest nur `web` + `allgemein` (Firmenname, Website, Branche — der Motor erzwingt es), Akte und
+ * Brain sind aus → keine privaten Daten → kein Dreieck. Fremder Text (Web) und der Weg nach außen bleiben: gelb, das Ergebnis bleibt ein Vorschlag.
  */
-export function rechteProfil(a: Pick<AgentSchritt, 'wer' | 'werkzeuge' | 'gedaechtnis'>, umfeld: { laufFremd?: boolean } = {}, k: AgentKontext = {}): RechteProfil {
+export function rechteProfil(a: Pick<AgentSchritt, 'wer' | 'werkzeuge' | 'gedaechtnis' | 'nurOeffentlich'>, umfeld: { laufFremd?: boolean } = {}, k: AgentKontext = {}): RechteProfil {
   const kat = new Set<KiKategorie>();
   const headId = headVonAgent(a.wer, k);
   for (const x of (headId ? headDef(headId)?.kategorien : null) ?? []) kat.add(x);
   const klassen = new Set<Rechteklasse>(['lesen']);
   let fremdWerkzeug = false;
-  if (a.wer.art === 'fach') { const f = fachAgent(a.wer.agentId); for (const x of f?.kategorien ?? []) kat.add(x); if (f?.fremd) fremdWerkzeug = true; }
+  const oeffentlich = oeffentlichModus(a);
+  const gedaechtnis = gedaechtnisWirksam(a);
+  if (a.wer.art === 'fach') {
+    const f = fachAgent(a.wer.agentId);
+    for (const x of oeffentlich ? OEFFENTLICH_KATEGORIEN : f?.kategorien ?? []) kat.add(x);
+    if (f?.fremd) fremdWerkzeug = true;
+  }
   for (const name of a.werkzeuge) {
     const e = EINORDNUNG[name];
     if (!e) continue;
@@ -287,13 +308,14 @@ export function rechteProfil(a: Pick<AgentSchritt, 'wer' | 'werkzeuge' | 'gedaec
     const c = k.werkzeugKategorie ? k.werkzeugKategorie(name) : ('kategorie' in e ? e.kategorie ?? null : null);
     if (c) kat.add(c);
   }
-  if (a.gedaechtnis.brain) kat.add('brain');
-  if (a.gedaechtnis.akte) kat.add('crm');
+  if (gedaechtnis.brain) kat.add('brain');
+  if (gedaechtnis.akte) kat.add('crm');
   const lesebereiche = Array.from(kat).sort();
   const gruende: string[] = [];
   const privateDaten = lesebereiche.some(x => !NICHT_PRIVAT.has(x));
   if (privateDaten) gruende.push('liest Daten des Haushalts bzw. Dritter');
-  const fremderText = !!umfeld.laufFremd || fremdWerkzeug || a.gedaechtnis.akte || a.gedaechtnis.brain || lesebereiche.some(x => FREMD_KATEGORIEN.has(x));
+  else if (oeffentlich) gruende.push('nur öffentliche Angaben (Firmenname, Website, Branche)');
+  const fremderText = !!umfeld.laufFremd || fremdWerkzeug || gedaechtnis.akte || gedaechtnis.brain || lesebereiche.some(x => FREMD_KATEGORIEN.has(x));
   if (fremderText) gruende.push('sieht fremden Text (Akte, Notizen, Mails, Webhook)');
   const kl = Array.from(klassen);
   const aussenweg = klassen.has('aussen') || kat.has('web');
@@ -317,5 +339,5 @@ export function agentSchlossGrund(p: Pick<RechteProfil, 'klassen' | 'dreieck'>):
 export function agentText(a: AgentSchritt, k: AgentKontext = {}): string {
   const wer = a.wer.art === 'zoe' ? 'ZOE' : a.wer.art === 'head' ? headDef(a.wer.headId)?.name ?? 'Head' : a.wer.art === 'fach' ? fachAgent(a.wer.agentId)?.titel ?? 'Fach-Agent'
     : `Skill${headVonAgent(a.wer, k) ? ` (${headDef(headVonAgent(a.wer, k)!)?.kurz ?? ''})` : ''}`;
-  return `${wer} · ${MODELL_STUFEN.find(m => m.id === a.modell)?.titel ?? a.modell} · bis ${a.budgetCent} Cent`;
+  return `${wer} · ${MODELL_STUFEN.find(m => m.id === a.modell)?.titel ?? a.modell} · bis ${a.budgetCent} Cent${oeffentlichModus(a) ? ' · nur öffentliche Angaben' : ''}`;
 }

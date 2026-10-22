@@ -17,7 +17,7 @@ import {
 import { definitionPruefen, aktivBefunde, laufFremd, sperrtSpeichern, sperrtVeroeffentlichen, type PruefKontext } from './definition-pruefen';
 import { schlossSetzen } from './schloss';
 import { veroeffentlichen, versionAlsEntwurf } from './versionen';
-import { vertragAus } from './agent-schritt';
+import { oeffentlichModus, vertragAus } from './agent-schritt';
 import type { ProzessRechte } from './rollen';
 
 type O = Record<string, unknown>;
@@ -100,11 +100,14 @@ const agent = (v: unknown): AgentSchritt | undefined => {
   if (!wer) return undefined;
   const g = obj(o.gedaechtnis) ?? {};
   const vf = texte(o.vorschlagFelder).filter(x => (VORSCHLAG_ZIELFELDER as readonly string[]).includes(x));
+  // „Nur öffentliche Angaben“ (22.10. nachts) bleibt nur an Web-Recherche-Fach-Agenten stehen — dann sind Akte und Brain aus (wie der Motor es rechnet).
+  const oeffentlich = o.nurOeffentlich === true && oeffentlichModus({ wer, nurOeffentlich: true });
   return sauber<AgentSchritt>({
     wer, auftrag: typeof o.auftrag === 'string' ? o.auftrag : '', modell: wahl(o.modell, ['schnell', 'ausgewogen', 'stark'] as const) ?? 'ausgewogen', modellWahl: modellWahl(o.modellWahl),
-    budgetCent: n(o.budgetCent) ?? 0, gedaechtnis: { brain: g.brain === true, akte: g.akte !== false }, werkzeuge: texte(o.werkzeuge),
+    budgetCent: n(o.budgetCent) ?? 0, gedaechtnis: oeffentlich ? { brain: false, akte: false } : { brain: g.brain === true, akte: g.akte !== false }, werkzeuge: texte(o.werkzeuge),
     eingabe: liste(o.eingabe, vertragFeld), ausgabe: liste(o.ausgabe, vertragFeld), warumKeineRegel: typeof o.warumKeineRegel === 'string' ? o.warumKeineRegel : '',
     ergebnis: wahl(o.ergebnis, ['daten', 'vorschlag'] as const), vorschlagFelder: vf.length ? vf : undefined, uebernahme: wahl(o.uebernahme, ['je-feld', 'sammel'] as const),
+    nurOeffentlich: oeffentlich ? true : undefined,
   });
 };
 const raute = (v: unknown): RautenRegel | undefined => {

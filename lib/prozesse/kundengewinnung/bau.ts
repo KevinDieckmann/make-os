@@ -200,8 +200,18 @@ export const S = {
   // Agenten (ein Schritt, Vertrag nur Kennungen/Zahlen/Auswahl, Budget, Pflichtsatz)
   head: (id: string, titel: string, headId: string, a: Parameters<typeof agent>[1], o: Opt = {}): Schritt => sch(id, titel, 'agent.head', { feld: { agent: agent({ art: 'head', headId }, a) }, ...o }),
   zoe: (id: string, titel: string, a: Parameters<typeof agent>[1], o: Opt = {}): Schritt => sch(id, titel, 'agent.zoe', { feld: { agent: agent({ art: 'zoe' }, a) }, ...o }),
-  research: (id: string, titel: string, a: Parameters<typeof agent>[1] & { vorschlagFelder: string[] }, o: Opt = {}): Schritt =>
-    sch(id, titel, 'agent.research', { feld: { agent: { ...agent({ art: 'fach', agentId: 'research' }, a), ergebnis: 'vorschlag', vorschlagFelder: a.vorschlagFelder } }, ...o }),
+  /**
+   * Research (Web) — Vorgabe seit 22.10. nachts (Entscheidung „Nur öffentliche Angaben“): an das Modell gehen nur Firmenname, Website und Branche, Akte und Brain
+   * sind aus → kein Dreieck, kein Schloss dahinter; die gefundenen Felder bestätigt man im Stapel. `akteLesen: true` = wie vorher (mit Akte, mit Schloss).
+   */
+  research: (id: string, titel: string, a: Parameters<typeof agent>[1] & { vorschlagFelder: string[]; akteLesen?: true }, o: Opt = {}): Schritt => {
+    const basis = agent({ art: 'fach', agentId: 'research' }, a);
+    const oeffentlich = !a.akteLesen;
+    return sch(id, titel, 'agent.research', { feld: { agent: {
+      ...basis, ergebnis: 'vorschlag', vorschlagFelder: a.vorschlagFelder,
+      ...(oeffentlich ? { nurOeffentlich: true as const, gedaechtnis: { brain: false, akte: false } } : {}),
+    } }, ...o });
+  },
   // Ablauf
   schleife: (id: string, titel: string, liste: string, teil: string, hoechstens: number, o: Opt = {}): Schritt =>
     sch(id, titel, 'schleife.je-eintrag', { feld: { schleife: { liste, prozessId: vorlageRef(teil), hoechstens } }, ...o }),

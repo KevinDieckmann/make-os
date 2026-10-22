@@ -90,3 +90,38 @@ export function felderAuftrag(ziele: readonly string[]): string {
   return ziele.filter((z): z is VorschlagZielfeld => (VORSCHLAG_ZIELFELDER as readonly string[]).includes(z))
     .map(z => `${z} (Text, höchstens ${ZIELFELD_ZUR_AKTE[z].max} Zeichen${ZIELFELD_ZUR_AKTE[z].https ? ', nur https-Adresse' : ''})`).join('; ');
 }
+
+// ── „Nur öffentliche Angaben“ (Entscheidung 22.10. nachts) ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Was ein Web-Recherche-Agent im Modus „nur öffentliche Angaben“ bekommt — und sonst NICHTS (keine Notiz, keine Personen, keine Kennung, keine Akte). */
+export interface OeffentlicheAngaben { name: string; webseite?: string; domain?: string; branche?: string }
+/** Höchstlängen — ein Feld darüber (z. B. eine Notiz im Feld „Webseite“) fällt weg, nie gekürzt. */
+export const OEFFENTLICH_MAX = { name: 200, webseite: 300, domain: 120, branche: 160 } as const;
+// Adresse bzw. Hostname (auch mit Umlauten, IDN) — keine Leerzeichen, kein Text.
+// (als `new RegExp`: Unicode-Klassen in Literalen erst ab ES2018 — das Ziel des Projekts ist ES2017.)
+const ADRESSE = new RegExp('^(https?://)?[\\p{L}\\p{N}.-]+\\.\\p{L}{2,}(:\\d{1,5})?(/\\S*)?$', 'iu');
+const DOMAIN = new RegExp('^[\\p{L}\\p{N}]([\\p{L}\\p{N}-]*[\\p{L}\\p{N}])?(\\.[\\p{L}\\p{N}]([\\p{L}\\p{N}-]*[\\p{L}\\p{N}])?)+$', 'iu');
+const einzeilig = (v: unknown, max: number): string => {
+  const t = typeof v === 'string' ? sauber(v) : '';
+  return t && t.length <= max ? t : '';
+};
+
+/**
+ * Die öffentlichen Angaben einer Firmenkarte (rein): NUR Name, Webseite (als Adresse), Domain und Branche — jedes Feld einzeilig, ohne Markup, über der
+ * Grenze bzw. in falscher Form verworfen (eine Webseite muss wie eine Adresse aussehen, eine Domain wie ein Hostname). Ohne Namen → null (dann gibt es
+ * nichts Öffentliches zu recherchieren). Alle übrigen Felder der Karte (Notiz, Marktinfo, Lead, Zahlung, Stadt, Personen …) kommen hier nie heraus.
+ */
+export function oeffentlicheAngaben(f: { name?: unknown; webseite?: unknown; domain?: unknown; branche?: unknown } | null | undefined): OeffentlicheAngaben | null {
+  if (!f) return null;
+  const name = einzeilig(f.name, OEFFENTLICH_MAX.name);
+  if (!name) return null;
+  const webseite = einzeilig(f.webseite, OEFFENTLICH_MAX.webseite);
+  const domain = einzeilig(f.domain, OEFFENTLICH_MAX.domain);
+  const branche = einzeilig(f.branche, OEFFENTLICH_MAX.branche);
+  return {
+    name,
+    ...(webseite && ADRESSE.test(webseite) ? { webseite } : {}),
+    ...(domain && DOMAIN.test(domain) ? { domain } : {}),
+    ...(branche ? { branche } : {}),
+  };
+}
