@@ -20,7 +20,7 @@
 //   Gesundheit  /os/gesundheit?fuer=<person>#morgen|routinen|haut|streak|index
 //   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
-import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, type AngebotAdresse, type PlanungAnsicht } from '@/lib/crm/adresse';
+import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, auswertungLink, type AngebotAdresse, type PlanungAnsicht } from '@/lib/crm/adresse';
 import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import { fulfillmentLink, fallLink, type FulfillmentBereich, type AlterBereich, type FallReiter, type AlterFallReiter } from '@/lib/fulfillment/adresse';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
@@ -183,7 +183,7 @@ export const WEG = {
   /** Kreis-Runde (Kontakte, 08.10.): Kreis A–D zuordnen — ohne Kreis keine Kadenz. */
   kreisRunde: () => markttraktion('kontakte', 'runde-kreis'),
   markttraktion: () => markttraktion(),
-  // Schnellknöpfe der Markttraktion (28.09. abends): Qualifizierung und Angebot (vorbelegt mit Kontakt/Firma/Deal).
+  // Markttraktion (Hub seit 22.10.): Leads & Qualifizierung und Angebote (vorbelegt mit Kontakt/Firma/Deal).
   qualifizierung: () => markttraktion('qualifizierung'),
   /** Qualifizierungs-Runde mit dem Filter „Nicht zugeordnet“ (08.10., Woche 2 · 6.2): Leads ohne Zuständigkeit übernehmen. */
   nichtZugeordnet: () => `${markttraktion('qualifizierung')}&wer=ohne`,
@@ -224,9 +224,11 @@ export const WEG = {
   kontakt: (id?: string) => markttraktion('kontakte', undefined, id),
   firma: (id?: string) => markttraktion('firmen', undefined, id),
   powerHour: () => markttraktion('followup', 'powerhour'),
-  // Aufräumen Etappe 3 (08.10.): Leads stehen unter dem Schnellknopf Qualifizierung, „Kunden“ in Deals › Auswertung, Kampagnen nur unter Marketing.
+  // Aufräumen Etappe 3 (08.10.): Leads stehen unter Leads & Qualifizierung, „Kunden“ in Deals › Auswertung, Kampagnen nur unter Marketing.
   leads: (id?: string) => markttraktion('qualifizierung', 'leads', id),
   kunden: () => markttraktion('deals', 'auswertung'),
+  /** Markttraktion › Auswertung (Hub, 22.10.): der Flow vom Kontakt zum gewonnenen Deal und alle Kennzahlen — `kunden()` zeigt dieselbe Ansicht. */
+  auswertung: () => auswertungLink(),
   kampagne: (id?: string) => markttraktion('marketing', 'kampagnen', id),
   marketing: (a?: 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
   // 5.19 (08.10.): `r` hängt am vorhandenen Abfrageteil — vorher entstand ohne Kennung „?s=event?r=…“.

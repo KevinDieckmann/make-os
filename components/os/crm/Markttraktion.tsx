@@ -1,26 +1,28 @@
 'use client';
 
-// ─── MAKE OS — Markttraktion (25.09., Reiter neu 27.09., aufgeräumt 08.10.) ──
-// Kevin: „alles, was unter dem CRM läuft — Sales, Marketing, Event — heißt Markttraktion.“ Aufräumen Etappe 3 (08.10., Kevin: „Die
-// Software wirkt unaufgeräumt und überladen.“): sechs Reiter statt zwölf, jede Unteransicht genau einmal (Liste: lib/crm/adresse.ts):
-//   Überblick           Traktions-Index, Für dich, Team, Übergaben, was jetzt zu tun ist
-//   Kontakte & Firmen   Personen · Firmen (Kartei, Runden, „Kontakt öffnen“, Firmenkarte)
-//   Deals               Board · Liste · Auswertung (Kanal-Leistung, Kunden kurz, Pipeline) — ab SQL im Closing, Head of Sales am Board
-//   Follow-up           Fällig · Woche · Power Hour · Kadenz
-//   Marketing           Übersicht · Anfragen · Segmente · Kampagnen · Redaktionsplan · Newsletter · Positionierung — Head of Marketing
-//   Events              Besuchte Events (Kalender · Wirkung · Im Kundenauftrag, Event-Akte) · Make.One (unsere eigenen Abende)
-// In der Mitte die Schnellknöpfe, leise pulsierend: Qualifizierung (Runde · Leads · Scoring), Angebot und (seit 10.10.) Planung. Die Stammdaten
-// (Qualität, Wertelisten, Datenschutz, Import & Export) öffnet das Zahnrad oben rechts. Alte Adressen (Reiter „Sales“, Firmen › Leads,
-// Deals › Kunden …) übersetzt `aufloesen` und die Seite schreibt sie still auf den neuen Ort um.
+// ─── MAKE OS — Markttraktion (25.09., Reiter neu 27.09., aufgeräumt 08.10., Hub seit 22.10.) ──
+// Kevin: „alles, was unter dem CRM läuft — Sales, Marketing, Event — heißt Markttraktion.“ Seit 22.10. ist sie ein eigenes Werkzeug wie HubSpot:
+// statt Reiterzeile, Schnellknöpfen und Zahnrad ein Menü mit Gruppen (Liste: `HUB_MENUE` in lib/crm/adresse.ts):
+//   Überblick           Für dich, Team, Übergaben, was jetzt zu tun ist
+//   CRM                 Kontakte (Kartei, Runden, „Kontakt öffnen“) · Firmen (Firmen-Kartei, Firmenkarte)
+//   Vertrieb            Leads & Qualifizierung (Runde · Leads · Scoring) · Deals (Board · Liste, Deal-Akte) · Angebote · Follow-up & Power Hour
+//                       (Fällig · Woche · Power Hour · Kadenz)
+//   Marketing           Marketing (Übersicht · Anfragen · Segmente · Kampagnen · Redaktionsplan · Newsletter · Positionierung) · Events (Kalender ·
+//                       Wirkung · Im Kundenauftrag · Make.One — EINE Reiterzeile) · Netzwerken (eigene Seite)
+//   Steuerung           Planung (Kreislauf · Ziele · Leadkanäle · Challenges) · Auswertung (Flow, Traktions-Index, Scoreboard, Kanäle, Kunden, Pipeline) ·
+//                       Automationen & Head (Standard-Punkt des Werkzeug-Musters)
+//   Fuß                 Stammdaten (Qualität, Wertelisten, Datenschutz, Import & Export)
+// Die dritte Ebene bleibt als Reiter IN der Seite. „+ Angebot“ steht im Kopf, sobald eine Kontakt-, Firmen- oder Deal-Akte offen ist, und nimmt sie
+// mit (`angebotVonHier`); „+ Aktivität“ und „ZOE fragen“ bleiben im Kopf. Alte Adressen (Reiter „Sales“, Firmen › Leads, Deals › Kunden …)
+// übersetzt `aufloesen` und die Seite schreibt sie still auf den neuen Ort um.
+// Das Menü steht ÜBERGANGSWEISE in der Seite (`HubMenue`) — bis die Werkzeug-Leiste (lib/make-one/werkzeuge.ts) die Punkte in der linken Leiste trägt.
 // Das Grundkonzept stammt aus der Markttraktion in KEMARIS Operations; die Daten sind ausschließlich unsere eigenen. Technisch heißt
 // die Datenschicht weiter „crm“ (lib/crm, /api/crm) — das ist die Kartei darunter, nicht der Name.
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { FARBE as C, SCHRIFT, TIEF } from '@/lib/make-one/design';
-import { Settings } from 'lucide-react';
-import { Seite, Knopf, SymbolKnopf, Reiter as ReiterLeiste, LEUCHT } from '../ui';
-import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, planungLink, REITER_ZEILE, reiterVon, reiterStart, PFAD, type Bereich, type ReiterId, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht } from '@/lib/crm/adresse';
+import { useCallback, useEffect, useState } from 'react';
+import { Seite, Knopf } from '../ui';
+import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, planungLink, punktVon, eventsReiterVon, EVENTS_REITER, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht, type EventsReiterId } from '@/lib/crm/adresse';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
@@ -28,7 +30,6 @@ import { Ueberblick, WELT_FARBE } from './Ueberblick';
 import { Heute } from './Heute';
 import { Kartei } from './Kartei';
 import { Pipeline } from './Pipeline';
-import { KundenKurz } from './Kunden';
 import { FollowUp } from './FollowUp';
 import { Marketing } from './Marketing';
 import { Events } from './Events';
@@ -38,7 +39,6 @@ import { SchnellErfassen } from './SchnellErfassen';
 import { FehlerHinweis } from './FehlerHinweis';
 import { Runden, type RundenArt } from './Runden';
 import { Leads, SalesTrichter } from './Leads';
-import { KanalLeistungLaden } from './Qualifizierung';
 import { QualifizierungScoring } from './quali/QualifizierungScoring';
 import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
@@ -49,31 +49,16 @@ import { ZoeFragenKnopf } from './ZoeFragen';
 import { zoeBezugFuer } from '@/lib/zoe/crm-bezug';
 import { markttraktionHead } from '@/lib/agenten/kontext-head';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
+import { HubMenue } from './HubMenue';
+import { Auswertung } from './Auswertung';
+import { AutomationenPlatz } from './AutomationenPlatz';
 
-// Die Reiterzeile (Aufräumen Etappe 3, 08.10.): links die Arbeit, in der Mitte die Schnellknöpfe, rechts die Welten Marketing und
-// Events. Reihenfolge und Zuordnung stehen in `REITER_ZEILE` (lib/crm/adresse.ts).
-const REITER_NAME: Record<ReiterId, { label: string; farbe?: string }> = {
-  ueberblick: { label: 'Überblick' },
-  kontakte: { label: 'Kontakte & Firmen' },
-  deals: { label: 'Deals', farbe: WELT_FARBE.sales },
-  followup: { label: 'Follow-up' },
-  marketing: { label: 'Marketing', farbe: WELT_FARBE.marketing },
-  events: { label: 'Events', farbe: WELT_FARBE.event },
-};
-const SCHNELL_NAME: Partial<Record<Bereich, { label: string; farbe: string }>> = {
-  qualifizierung: { label: 'Qualifizierung & Scoring', farbe: LEUCHT.business },
-  angebot: { label: 'Angebot', farbe: LEUCHT.gut },
-  // 10.10. (Kevin: „Umsatzziele auf einzelne Aktivitäten runterplanen“): rechts neben „Angebot“.
-  planung: { label: 'Planung', farbe: LEUCHT.planung },
-};
-const eintrag = (r: { id: ReiterId }) => ({ id: r.id, ...REITER_NAME[r.id] });
-const LINKS = REITER_ZEILE.links.map(eintrag);
-const RECHTS = REITER_ZEILE.rechts.map(eintrag);
-const MITTE = REITER_ZEILE.mitte.map(b => ({ id: b, label: SCHNELL_NAME[b]?.label ?? b, farbe: SCHNELL_NAME[b]?.farbe }));
-const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }, { id: 'auswertung', label: 'Auswertung' }];
+// Die dritte Ebene (Reiter in der Seite): Deals und Follow-up hier, Events als EINE Zeile (Adressen in `EVENTS_REITER`); Qualifizierung, Marketing,
+// Planung und Stammdaten tragen ihre Reiter selbst.
+const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Board' }, { id: 'liste', label: 'Liste' }];
 const FOLLOWUP: { id: FollowupAnsicht; label: string }[] = [{ id: 'faellig', label: 'Fällig' }, { id: 'woche', label: 'Woche' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kadenz', label: 'Kadenz' }];
-const KONTAKTE: { id: Bereich; label: string }[] = [{ id: 'kontakte', label: 'Personen' }, { id: 'firmen', label: 'Firmen' }];
-const EVENTS: { id: Bereich; label: string }[] = [{ id: 'besuche', label: 'Besuchte Events' }, { id: 'event', label: MARKE_EVENTS }];
+const EVENTS_NAME: Record<EventsReiterId, string> = { kalender: 'Kalender', wirkung: 'Wirkung', kunden: 'Im Kundenauftrag', makeone: MARKE_EVENTS };
+const EVENTS: { id: EventsReiterId; label: string }[] = EVENTS_REITER.map(r => ({ id: r.id, label: EVENTS_NAME[r.id] }));
 
 // Untertitel: eine Zeile (Aufräumen Etappe 3) — was hier passiert, kein Werbesatz.
 const UNTER: Record<Bereich, string> = {
@@ -89,44 +74,14 @@ const UNTER: Record<Bereich, string> = {
   besuche: 'Veranstaltungen, die wir besuchen: planen, vor Ort erfassen, auswerten.',
   event: 'Unsere eigenen Abende — gemessen an den Gesprächen danach.',
   stammdaten: 'Qualität, Wertelisten, Datenschutz, Import und Export.',
+  auswertung: 'Der Weg vom Kontakt zum Kunden — mit Traktions-Index, Scoreboard, Kanälen und Pipeline.',
+  automationen: 'Die Abläufe von Marketing, Sales und Übergabe — mit ihren Heads.',
 };
-
-/** Eine Gruppe Reiter der Leiste (Standard-Baustein `Reiter`); `leise` = die zweite Gruppe (Welten) mit eigener Rahmung. */
-function Reiter({ liste, aktiv, onWahl, leise }: { liste: { id: ReiterId; label: string; farbe?: string }[]; aktiv: ReiterId | null; onWahl: (r: ReiterId) => void; leise?: boolean }) {
-  return <ReiterLeiste liste={liste} aktiv={aktiv} onWahl={onWahl} gruppe={leise} />;
-}
-
-/**
- * Die zwei Schnellknöpfe in der Mitte (28.09. abends): jeder für sich, getönt in seiner Farbe, dahinter ein leiser Puls
- * (`.mt-schnell` in globals.css, aus bei „Bewegung reduzieren“). Aktiv = kräftige Fläche, volle Kontur, heller Text.
- */
-function Schnellknoepfe({ aktiv, onWahl, className }: { aktiv: Bereich; onWahl: (b: Bereich) => void; className: string }) {
-  return (
-    <div role="tablist" aria-label="Schnellknöpfe" className={className}>
-      {MITTE.map(b => {
-        const an = aktiv === b.id;
-        const f = b.farbe ?? C.aktiv;
-        return (
-          <button key={b.id} role="tab" aria-selected={an} onClick={() => onWahl(b.id)} className="mt-schnell"
-            style={{
-              ['--puls' as string]: f,
-              padding: '8px 16px', minHeight: 40, borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
-              fontFamily: SCHRIFT.text, fontSize: 14, fontWeight: 700,
-              ...TIEF.knopf(f),
-              ...(an ? { background: `${f}3D`, border: `1px solid ${f}`, color: C.ink, boxShadow: `inset 0 0 0 1px ${f}66` } : {}),
-            }}>
-            {b.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function MarkttraktionSeite() {
   const router = useRouter(); const params = useSearchParams();
   const { s: bereich, a: ansicht } = aufloesen(params.get('s'), params.get('a'));
-  // Alte Adressen (Reiter „Sales“, Firmen › Leads, Deals › Kunden …) still auf den neuen Ort schreiben — so leuchtet der richtige Reiter
+  // Alte Adressen (Reiter „Sales“, Firmen › Leads, Deals › Kunden …) still auf den neuen Ort schreiben — so leuchtet der richtige Punkt
   // und Bausteine, die selbst in der Adresse lesen, sehen dieselbe Ansicht. Alle übrigen Parameter (k, t, u, r, bean …) bleiben.
   useEffect(() => {
     const rohS = params.get('s'), rohA = params.get('a');
@@ -136,16 +91,9 @@ export function MarkttraktionSeite() {
     if (ansicht) q.set('a', ansicht); else q.delete('a');
     router.replace(q.toString() ? `${PFAD}?${q}` : PFAD, { scroll: false });
   }, [params, bereich, ansicht, router]);
-  const reiter = reiterVon(bereich);
+  // Welcher Punkt des Hubs leuchtet (deals&a=auswertung = Auswertung).
+  const hubOrt = punktVon({ s: bereich, a: ansicht });
   const api = useCrm();
-  const leiste = useRef<HTMLElement>(null);
-  // Der aktive Reiter bleibt im sichtbaren Ausschnitt der wischbaren Leiste (am Handy sonst oft ausgeblendet; nur waagerecht, die Seite scrollt nicht mit).
-  useEffect(() => {
-    const n = leiste.current; const el = n?.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (!n || !el) return;
-    const a = el.getBoundingClientRect(); const z = n.getBoundingClientRect();
-    if (a.left < z.left + 8 || a.right > z.right - 8) n.scrollTo({ left: n.scrollLeft + (a.left - z.left) - 16, behavior: 'smooth' });
-  }, [bereich]);
   const { setFehler, setHinweis } = api;
   const fehlerZu = useCallback(() => setFehler(null), [setFehler]);
   const hinweisZu = useCallback(() => setHinweis(null), [setHinweis]);
@@ -171,14 +119,13 @@ export function MarkttraktionSeite() {
     router[wie](ziel, { scroll: false });
     if (wie === 'push' && (s !== bereich || (a ?? '') !== (ansicht ?? ''))) nachOben();
   };
-  /** Schnellknopf (08.10., Woche 2 · 3.15): „Angebot“ nimmt den offenen Kontakt, die Firma bzw. den Deal mit — die anderen wie bisher. */
-  const schnell = (b: Bereich) => { if (b === 'angebot' && bereich !== 'angebot') { router.push(angebotVonHier(bereich, ansicht, kParam), { scroll: false }); nachOben(); } else gehe(b); };
   /** In der Kartei eine Person oder Firma wählen: die erste öffnet (Zurück schließt sie wieder), jede weitere tauscht nur. */
   const setAuswahl = (id: string | null) => gehe(bereich, ansicht, id ?? undefined, auswahl && id ? 'replace' : id ? 'push' : 'replace');
   // Ziel mit Objekt (Person, Deal, Event): der Team-Feed und die Index-Punkte geben `k` mit (26.09.).
   const zuBereich = (b: string, a?: string, k?: string) => { const z = aufloesen(b, a); gehe(z.s, z.a, k); };
   const zuKontakt = (id: string) => gehe('kontakte', undefined, id);
   const zuFirma = (id: string) => gehe('firmen', undefined, id);
+  const zuDeal = (id: string) => gehe('deals', 'akte', id);
   const name = (p: string) => (p ? p.charAt(0).toUpperCase() + p.slice(1) : '—');
   const dealsAnsicht = (bereich === 'deals' ? (ansicht ?? 'board') : 'board') as DealsAnsicht;
   const followupAnsicht = (bereich === 'followup' ? (ansicht ?? 'faellig') : 'faellig') as FollowupAnsicht;
@@ -189,12 +136,20 @@ export function MarkttraktionSeite() {
   const rParam = params.get('r');
   useEffect(() => { if (besuchsId) router.replace(`${markttraktion('besuche', undefined, besuchsId)}${rParam ? `&r=${encodeURIComponent(rParam)}` : ''}`, { scroll: false }); }, [besuchsId, rParam, router]);
   const besuche = (bereich === 'besuche' ? (ansicht ?? 'kalender') : 'kalender') as BesucheAnsicht;
+  // Events (22.10.): EINE Reiterzeile Kalender · Wirkung · Im Kundenauftrag · Make.One — keine vierte Ebene, die Adressen bleiben.
+  const eventsReiter = eventsReiterVon({ s: bereich, a: ansicht });
+  const eventsPillen = eventsReiter && <div style={{ overflowX: 'auto', scrollbarWidth: 'none', flex: '1 1 auto' }}><Pillen einzeilig farbe={WELT_FARBE.event} liste={EVENTS} aktiv={eventsReiter}
+    onWahl={id => { const r = EVENTS_REITER.find(x => x.id === id); if (r) gehe(r.s, r.a); }} /></div>;
   // Aktivität hinzufügen — von überall in der Markttraktion, ein Knopf oben rechts (bis 28.09. „Gespräch festhalten“).
   const [erfassen, setErfassen] = useState(false);
   const runde = bereich === 'kontakte' && (ansicht === 'runde-kreis' || ansicht === 'runde-vernetzen') ? (ansicht.slice(6) as RundenArt) : null;
   // „Kontakt öffnen“ (Kevin 25.09., Name 28.09.): eigener Eintrag im Verlauf des Browsers — „Zurück“ dort führt ebenfalls in die Kartei.
   const akteId = bereich === 'kontakte' && ansicht === 'akte' ? kParam : null;
   const zuAkte = (id: string) => gehe('kontakte', 'akte', id);
+  // „+ Angebot“ (22.10., statt des Schnellknopfs): steht im Kopf, solange eine Person, eine Firma oder ein Deal offen ist, und nimmt sie mit
+  // (08.10., Woche 2 · 3.15). In den Runden trägt `k` eine Kampagne — dort kein „+ Angebot“.
+  const angebotBezug = !!kParam && !runde && (bereich === 'kontakte' || bereich === 'firmen' || (bereich === 'deals' && ansicht === 'akte'));
+  const neuesAngebot = () => { router.push(angebotVonHier(bereich, ansicht, kParam), { scroll: false }); nachOben(); };
   // Reiter (28.09.: Über · Aktivitäten · Umsatz · Daten): `t` und `u` in der Adresse, Wechsel ersetzt den Eintrag;
   // „Über“ steht nicht in der Adresse. Ein Anker (#akt-…) springt im Reiter Aktivitäten zur Quelle.
   const akteReiterSetzen = (t: AkteReiter, u?: string | null, anker?: string) => {
@@ -205,69 +160,61 @@ export function MarkttraktionSeite() {
   };
 
   return (
-    // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (in der Reiterleiste rutschte er aus dem Bild).
+    // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar.
     <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>
-      {/* „ZOE fragen“ (28.09., C7): mit dem, was gerade offen ist (Kontakt, Firma, Deal, Angebot) oder dem Reiter — ZOE liest selbst nach, schlägt nur vor. */}
-      {/* Seit 10.10. (Chat je Bereich): „Mit <Head> sprechen“ — der Head des Reiters (Sales, Marketing, Event) im Chat unten; „↔ ZOE“ wechselt dort. */}
+      {/* „ZOE fragen“ (28.09., C7): mit dem, was gerade offen ist (Kontakt, Firma, Deal, Angebot) oder dem Bereich — ZOE liest selbst nach, schlägt nur vor. */}
+      {/* Seit 10.10. (Chat je Bereich): „Mit <Head> sprechen“ — der Head des Bereichs (Sales, Marketing, Event) im Chat unten; „↔ ZOE“ wechselt dort. */}
       <ZoeFragenKnopf bezug={zoeBezugFuer(bereich, ansicht, kParam)} headId={markttraktionHead(`?s=${bereich}`)} />
+      {angebotBezug && <Knopf onClick={neuesAngebot} ariaLabel="Angebot für diese Akte anlegen" style={{ whiteSpace: 'nowrap' }}>+ Angebot</Knopf>}
       {/* „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (am Handy kürzer: „+ Aktivität“). */}
       <Knopf onClick={() => setErfassen(true)} ariaLabel="Aktivität hinzufügen" style={{ whiteSpace: 'nowrap' }}><span>+ Aktivität<span className="ui-nur-breit"> hinzufügen</span></span></Knopf>
-      {/* Stammdaten (Qualität, Wertelisten, Datenschutz, Import & Export) — seit 08.10. hinter dem Zahnrad statt als Reiter. */}
-      <SymbolKnopf ariaLabel="Stammdaten der Markttraktion" titel="Stammdaten: Qualität, Wertelisten, Datenschutz, Import & Export" onClick={() => gehe(REITER_ZEILE.zahnrad)}><Settings size={18} aria-hidden /></SymbolKnopf>
     </>}>
-      {/* Breit: eine Zeile, die Schnellknöpfe mittig zwischen links und rechts. Wird es zu eng (Rahmen < 1100 px, z. B. am
-          Laptop mit Leiste oder am Handy): die Schnellknöpfe als eigene Zeile oben, darunter die Reiter zum Wischen — nie
-          zwei Paare sichtbar zugleich (das andere ist display:none, also auch für Screenreader weg). */}
-      <div className="mt-leistenrahmen">
-        <Schnellknoepfe aktiv={bereich} onWahl={schnell} className="mt-schnellzeile mt-nur-schmal" />
-        <nav aria-label="Markttraktion" ref={leiste} className="ui-reiter-zeile mt-leiste">
-          <Reiter liste={LINKS} aktiv={reiter} onWahl={r => gehe(reiterStart(r))} />
-          <span aria-hidden style={{ flex: '1 0 8px' }} />
-          <Schnellknoepfe aktiv={bereich} onWahl={schnell} className="mt-schnellmitte mt-nur-breit" />
-          <span aria-hidden className="mt-nur-breit" style={{ flex: '1 0 8px' }} />
-          <Reiter liste={RECHTS} aktiv={reiter} onWahl={r => gehe(reiterStart(r))} leise />
-        </nav>
-      </div>
       <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
       {/* Meldungen (K1): fixiert unten, bleiben stehen bis weggeklickt / ~8 s / nächstes Schreiben — nicht mehr oben als Zeile, die das Laden löschte. */}
       <FehlerHinweis text={api.fehler} onZu={fehlerZu} />
       <FehlerHinweis text={api.hinweis} onZu={hinweisZu} ton="info" bleibt />
 
-      {(bereich === 'kontakte' || bereich === 'firmen') && !akteId && !runde && <div><Pillen einzeilig liste={KONTAKTE} aktiv={bereich} onWahl={b => gehe(b)} /></div>}
-      {(bereich === 'besuche' || bereich === 'event') && !kParam && <div><Pillen einzeilig farbe={WELT_FARBE.event} liste={EVENTS} aktiv={bereich} onWahl={b => gehe(b)} /></div>}
-      {/* Antwort zuerst (11.10.): „Für dich“ und was zu tun ist oben — die Index-Kennzahlen (oft noch „fehlt“) als Hintergrund darunter. */}
-      {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
-      {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Score · Markttraktion" />}
+      <div className="mt-hub">
+        {/* ÜBERGANG — wird durch die Werkzeug-Leiste ersetzt: das Hub-Menü (HUB_MENUE) in der Seite, bis die linke Leiste die Punkte trägt. */}
+        <HubMenue aktiv={hubOrt} />
+        <div className="mt-hub-inhalt">
+          {/* Antwort zuerst (11.10.): „Für dich“ und was zu tun ist oben — die Index-Kennzahlen (oft noch „fehlt“) als Hintergrund darunter. */}
+          {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
+          {bereich === 'ueberblick' && <IndexStreifen ids={STREIFEN.markttraktion} titel="Business-Score · Markttraktion" />}
 
-      {bereich === 'deals' && (
-        <>
-          {dealsAnsicht !== 'akte' && <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} /></div>}
-          {/* Auswertung (08.10.): Kanal-Leistung (vorher Sales › Auswertung), Kunden kurz (vorher Deals › Kunden), dann die Pipeline-Auswertung. */}
-          {dealsAnsicht === 'auswertung' && <KanalLeistungLaden i={0} mitTemperatur />}
-          {dealsAnsicht === 'auswertung' && <KundenKurz api={api} />}
-          <Pipeline api={api} ansicht={dealsAnsicht} zuKontakt={zuKontakt} zuLeads={() => gehe('qualifizierung', 'leads')} zuAkte={id => gehe('deals', 'akte', id)} zurueck={() => zurueckWie(markttraktion('deals'))} />
-        </>
-      )}
-      {bereich === 'followup' && (
-        <>
-          <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={FOLLOWUP} aktiv={followupAnsicht} onWahl={a => gehe('followup', a === 'faellig' ? undefined : a)} /></div>
-          {followupAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
-          {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} zuAkte={zuAkte} />}
-        </>
-      )}
-      {bereich === 'planung' && <MtPlanung ansicht={(ansicht ?? 'kreislauf') as PlanungAnsicht} kanal={params.get('kanal')} onOrt={(a, k) => { router.push(planungLink(a, k), { scroll: false }); if (a !== (ansicht ?? 'kreislauf')) nachOben(); }} />}
-      {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} />}
-      {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('qualifizierung', 'leads', id)}
-        leads={<><SalesTrichter api={api} zuBereich={zuBereich} /><Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} /></>} />}
-      {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
-      {bereich === 'besuche' && <Besuche api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} ansicht={besuche} k={kParam} onAnsicht={a => gehe('besuche', a === 'kalender' ? undefined : a)} onAkte={(id, wie) => gehe('besuche', undefined, id ?? undefined, wie ?? (id ? 'push' : 'replace'))} />}
-      {bereich === 'event' && !besuchsId && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={(id, wie) => gehe('event', undefined, id ?? undefined, wie)} />}
+          {/* Auswertung (22.10., eigener Punkt): der Flow vom Kontakt zum Kunden und alle Kennzahlen — die alte Adresse deals&a=auswertung zeigt dasselbe. */}
+          {hubOrt === 'auswertung' && <Auswertung api={api} zuBereich={zuBereich} zuDeal={zuDeal} />}
+          {hubOrt === 'automationen' && <AutomationenPlatz />}
 
-      {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
-        kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
-      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
-      {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => (a === 'chancen' ? gehe('qualifizierung') : gehe('kontakte', `runde-${a}`))} zuAkte={zuAkte} startBean={params.get('bean')} />}
-      {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
+          {bereich === 'deals' && hubOrt === 'deals' && (
+            <>
+              {dealsAnsicht !== 'akte' && <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} /></div>}
+              <Pipeline api={api} ansicht={dealsAnsicht} zuKontakt={zuKontakt} zuLeads={() => gehe('qualifizierung', 'leads')} zuAkte={zuDeal} zurueck={() => zurueckWie(markttraktion('deals'))} zuOffen={params.get('zu') === '1'} />
+            </>
+          )}
+          {bereich === 'followup' && (
+            <>
+              <div><Pillen einzeilig farbe={WELT_FARBE.sales} liste={FOLLOWUP} aktiv={followupAnsicht} onWahl={a => gehe('followup', a === 'faellig' ? undefined : a)} /></div>
+              {followupAnsicht === 'powerhour' && <Heute api={api} name={name} zuKontakt={zuKontakt} />}
+              {followupAnsicht !== 'powerhour' && <FollowUp api={api} ansicht={followupAnsicht} zuKontakt={zuKontakt} zuDeal={zuDeal} zuAkte={zuAkte} />}
+            </>
+          )}
+          {bereich === 'planung' && <MtPlanung ansicht={(ansicht ?? 'kreislauf') as PlanungAnsicht} kanal={params.get('kanal')} onOrt={(a, k) => { router.push(planungLink(a, k), { scroll: false }); if (a !== (ansicht ?? 'kreislauf')) nachOben(); }} />}
+          {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={zuDeal} />}
+          {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('qualifizierung', 'leads', id)}
+            leads={<><SalesTrichter api={api} zuBereich={zuBereich} /><Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} /></>} />}
+          {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
+          {bereich === 'besuche' && <Besuche api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} ansicht={besuche} k={kParam} reiter={eventsPillen} onAkte={(id, wie) => gehe('besuche', undefined, id ?? undefined, wie ?? (id ? 'push' : 'replace'))} />}
+          {bereich === 'event' && !besuchsId && !kParam && <div>{eventsPillen}</div>}
+          {bereich === 'event' && !besuchsId && <Events api={api} zuKontakt={zuKontakt} start={params.get('k') ?? undefined} onAuswahl={(id, wie) => gehe('event', undefined, id ?? undefined, wie)} />}
+
+          {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
+            kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
+          {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
+          {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => (a === 'chancen' ? gehe('qualifizierung') : gehe('kontakte', `runde-${a}`))} zuAkte={zuAkte} startBean={params.get('bean')} />}
+          {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
+        </div>
+      </div>
     </Seite>
   );
 }

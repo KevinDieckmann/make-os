@@ -1440,16 +1440,33 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
 - **Marke Make.One (27.09.):** unter den Events läuft unsere Veranstaltungsmarke. `lib/crm/marke.ts` ist die eine Stelle (`MARKE_EVENTS`,
   `markeVon` = gesetzt oder Make.One, `eventName` = „Make.One · Titel“); `Event.marke` optional, Vorgabe beim Anlegen, alte Events gelten
   abgeleitet — nie zurückschreiben. Wo ein Event nach außen genannt wird (ICS, Nachfass-/Follow-up-Text), `markeVon`/`eventName` nehmen, nie den Text streuen.
-- **Reiter (Aufräumen Etappe 3, 08.10. — Kevin: „unaufgeräumt und überladen“; vorher zwölf):** EINE Stelle `REITER_ZEILE` in `lib/crm/adresse.ts` —
-  sechs Reiter **Überblick · Kontakte & Firmen** (Bereiche `kontakte` = Personen, `firmen`) **· Deals** (a=board|liste|auswertung|akte; Auswertung = Kanal-Leistung
-  + Kunden kurz + Pipeline, der Head of Sales steht am Board) **· Follow-up** (a=faellig|woche|powerhour|kadenz — Power Hour NUR hier) **· Marketing** (a=uebersicht|
-  anfragen|segmente|kampagnen|redaktion|newsletter|positionierung — Kampagnen NUR hier) **· Events** (Bereiche `besuche` = Besuchte Events mit Kalender · Wirkung ·
-  Im Kundenauftrag, `event` = Make.One); dazu die Schnellknöpfe Qualifizierung (a=leads|scoring|scoring-sales, Runde ohne a — Leads NUR hier), Angebot und (10.10.) Planung;
-  die Stammdaten öffnet das Zahnrad im Kopf (`REITER_ZEILE.zahnrad`, auch Einstellungen › Daten & Datenschutz › „Kartei-Pflege“). Den Reiter „Sales“, Firmen › Leads,
-  Deals › Kunden und die alte Qualifizierungs-Runde der Kartei (`runde-chancen`) gibt es nicht mehr — `aufloesen()` übersetzt JEDE alte Kombination (Wächter
-  `tests/aufraeumen-etappe3.test.ts`), die Seite schreibt alte Adressen still auf den neuen Ort um. Alte Links NIE umschreiben, sondern dort ergänzen; neue Ansicht =
-  genau EIN Ort in `REITER_ZEILE`/den `…_ANSICHTEN`. `WEG.deal(id)` öffnet die Deal-Akte.
-- **Leiste mit Schnellknöpfen + Bereich Angebot (28.09. abends, seit 08.10. `REITER_ZEILE`):** Reihenfolge nur in `REITER_ZEILE` (lib/crm/adresse.ts: links · mitte · rechts · zahnrad, jeder Bereich genau einmal — Tests `markttraktion-angebot`, `aufraeumen-etappe3`). Mitte = Qualifizierung (orange, `LEUCHT.business`) + Angebot (grün, `LEUCHT.gut`), Puls von hinten per `.mt-schnell::before` in globals.css (aus bei reduced-motion); passt die Zeile nicht (Container `.mt-leistenrahmen` < 1.100 px), stehen die Schnellknöpfe als eigene Zeile über den wischbaren Reitern. Angebot: `?s=angebot&k=<angebot>&kontakt=&firma=&deal=` — Links nur über `angebotLink`/`WEG.angebot`, lesen über `angebotAusAdresse` (ungültige Kennungen fallen weg); gerendert wird `AngebotStart` (components/os/crm/angebot). Der Kopf-Knopf heißt „+ Aktivität hinzufügen“ (vorher „+ Gespräch festhalten“).
+- **Hub statt Reiter (22.10., Kevin: Markttraktion wird ein eigenes Werkzeug wie HubSpot; vorher 08.10.–21.10. sechs Reiter + Schnellknöpfe + Zahnrad):**
+  EINE Stelle `HUB_MENUE` in `lib/crm/adresse.ts` (reine Daten: Gruppen, je Punkt Kennung, Name, lucide-Symbol als Name, Ziel über die Link-Funktionen der Datei,
+  `bereiche`; dazu `automation` = Standard-Punkt „Automationen & Head“ und `fuss`): **Überblick · CRM** (Kontakte `kontakte`, Firmen `firmen`) **· Vertrieb** (Leads &
+  Qualifizierung `qualifizierung` a=leads|scoring|scoring-sales, Runde ohne a — Leads NUR hier · Deals a=board|liste|akte · Angebote `angebot` · Follow-up & Power Hour
+  a=faellig|woche|powerhour|kadenz — Power Hour NUR hier) **· Marketing** (Marketing a=uebersicht|anfragen|segmente|kampagnen|redaktion|newsletter|positionierung —
+  Kampagnen NUR hier · Events = `besuche` + `event` in EINER Reiterzeile Kalender · Wirkung · Im Kundenauftrag · Make.One, `EVENTS_REITER` · Netzwerken = eigene Seite
+  `/os/netzwerken`, leuchtet dort) **· Steuerung** (Planung a=kreislauf|ziele|kanaele|challenges · Auswertung `auswertung` · Automationen & Head `automationen`), Fuß
+  Stammdaten (auch Einstellungen › Daten & Datenschutz › „Kartei-Pflege“). Höchstens zwölf Punkte in den Gruppen, jeder Bereich genau EINEM Punkt, dem Fuß oder
+  „Automationen & Head“ (Wächter `tests/aufraeumen-etappe3.test.ts`, `tests/markttraktion-hub.test.ts`). Welcher Punkt leuchtet NUR über `punktVon(aufloesen(s, a))`
+  bzw. `hubOrtFuer(pfad, suche)` (auch Netzwerken); `deals&a=auswertung` (WEG.kunden, Kennzahlen, Widgets) zeigt die Auswertung und leuchtet dort. Hub-Punkte sind
+  KEINE Einträge der Space-Leiste (Zeitmessung bleibt `business:markttraktion`); Produkte & Mandate bleibt ein eigenes Werkzeug, Kontakte stehen nur im Hub.
+  Die dritte Ebene bleibt als Reiter IN der Seite. Das Menü steht ÜBERGANGSWEISE in der Seite (`components/os/crm/HubMenue.tsx`, `HUB_SYMBOLE`; ≥ 1400 px Spalte links,
+  darunter Knopf mit Blatt) — bis das Werkzeug-Muster (lib/make-one/werkzeuge.ts) die Punkte in der linken Leiste trägt; dann fällt `<HubMenue>` aus der Seite.
+  Den Reiter „Sales“, Firmen › Leads, Deals › Kunden und die alte Qualifizierungs-Runde der Kartei (`runde-chancen`) gibt es nicht mehr — `aufloesen()` übersetzt JEDE
+  alte Kombination, die Seite schreibt alte Adressen still auf den neuen Ort um. Alte Links NIE umschreiben, sondern dort ergänzen; neue Ansicht = genau EIN Ort in
+  `HUB_MENUE`/den `…_ANSICHTEN`. `WEG.deal(id)` öffnet die Deal-Akte.
+- **Auswertung (22.10., Kevin: „an die Markttraktion-Kennzahlen anlegen, dann haben wir auch einen geilen Flow“):** `components/os/crm/Auswertung.tsx` (`?s=auswertung`,
+  `WEG.auswertung()`): oben „Der Weg zum Kunden“ — Kontakte → Leads → MQL · SQL → Deals → Angebote → Gewonnen als `ReiseBild` mit Lichtfaden; Zahlen NUR aus
+  `lib/crm/auswertung-flow.ts` `auswertungFlow` (rein, nennt je Zahl ihre eine Rechenstelle: `bestand.kontakte`, `passtLeadFilter` aktiv/sql, `mqlErreicht`, Trichter
+  deals/gewonnen, offene Angebote `istOffen` nur Business; ohne Daten grau „—“, eine Null in Worten); Klick → Liste dahinter (`flowZiel`/`flowLink`, Leads mit der gezählten
+  Pille, Gewonnen → Deals `zu=1` = „Gewonnen · Verloren · Geparkt“ aufgeklappt). Darunter Traktions-Index mit Wochen-Scoreboard (`TraktionsIndex`/`useTraktion` aus
+  Ueberblick.tsx — steht nur noch hier, nicht mehr im Überblick), Kanal-Leistung, Kunden kurz, Pipeline-Auswertung (`DealAuswertung`). Neue Markttraktion-Kennzahl mit Weg
+  → hier einhängen, nie eine zweite Zählung.
+- **Angebote (28.09. abends, seit 22.10. Hub-Punkt):** `?s=angebot&k=<angebot>&kontakt=&firma=&deal=` — Links nur über `angebotLink`/`WEG.angebot`, lesen über
+  `angebotAusAdresse` (ungültige Kennungen fallen weg); gerendert wird `AngebotStart` (components/os/crm/angebot). „+ Angebot“ steht im Seitenkopf, solange eine Kontakt-,
+  Firmen- oder Deal-Akte offen ist (nie in den Runden), und nimmt sie über `angebotVonHier(bereich, ansicht, kParam)` mit. Der Kopf-Knopf heißt „+ Aktivität hinzufügen“
+  (vorher „+ Gespräch festhalten“); der Puls der Schnellknöpfe ist weg.
 - **Firma per Kennung:** `Chance.firmaId`, `Mandat.firmaId` (`lib/crm/firmen-bezug.ts`: `firmaVonDeal`, `dealZuFirma`, `firmenName`,
   `firmaIdsErgaenzen` beim Laden in `ladeCrm`). Neue Stellen vergleichen nie mehr `c.firma === f.name`.
 - **Mandanten überall über `MandantLink` (28.09.):** wo außerhalb des CRM ein Mandant/eine CRM-Firma/ein Mandat als Text steht, rendert `components/os/crm/MandantLink.tsx` (`{ mandatId?, firmaId?, name?, klein?, privat?, mandatDa?, firmaDa?, nachName? }`) den Link — Ziel NUR über `mandantZiel` (lib/crm/adresse.ts: Mandat vor Firma, gelöscht → Text „(gelöscht)“, `privat` → nichts, ohne CRM-Zugang → Text). Existenz/Namen aus der Mandat-Kurzform (`components/os/zeit/useMandate.ts`, ein Abruf je Minute); Text-Kunde ohne Kennung nur per eindeutigem Namen (`mandantAusName`), Liquiplan-Posten über `mandatAusPlanposten` (lib/crm/mandant-link.ts). Genutzt: Zeit je Mandat, Mandat-Chip („›“, beim Anlegen `ohneLink`), Ziele/Meilensteine, Finanzplanung-Rechnungen, Liquidität-Posten, Mandatsakte → Firmenakte; Kalender-Mandatsfristen und Schnellsuche verlinken `WEG.mandat`/`WEG.firma`. Tests `tests/mandant-link.test.ts`.
@@ -1476,7 +1493,7 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
   beim ersten Import. Neue Schreibwege für Stammdaten-Felder müssen `vonHandMarkieren` rufen — sonst überschreibt der nächste Import die Handarbeit.
 
 ## Markttraktion › Planung (10.10., Branch `mt-planung`, nur lokal; UPDATES.md)
-Kevin 10.10.: Schnellknopf „Planung“ rechts neben „Angebot“ (`REITER_ZEILE.mitte`, `planungLink`/`WEG.vertriebsplanung`) — „Umsatzziele auf Aktivitäten
+Kevin 10.10.: „Planung“ (bis 21.10. Schnellknopf, seit 22.10. Hub-Punkt unter Steuerung, `HUB_MENUE`; `planungLink`/`WEG.vertriebsplanung`) — „Umsatzziele auf Aktivitäten
 runterplanen, mit Kapa“, „planen pro Leadkanal“, „der Kunde bleibt im Kreis“. Ansichten `a` = kreislauf (Start) · ziele · kanaele · challenges, `kanal` filtert.
 - **Gespeichert nur, was es sonst nicht gibt:** Bestand `markttraktion-planung--<haushalt>` (Business) — Leadkanäle, Umsatzziele (nur Business-Gesellschaften,
   Privat-Einheit → 400), Challenges, Zeiten je Aktivität, Schritte „nach der Leistung“ je Mandat-Kennung. Regeln rein in `lib/crm/planung-daten.ts`
@@ -2740,7 +2757,7 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   Konzept: `docs/konzepte/familie-und-partnerschaft.md`.
 - **Markttraktion (25.09.2026, vorher „CRM“): alles zur Kundengewinnung unter
   `/os/markttraktion`** (`/os/crm` leitet mit allen Parametern um; Adressen und
-  alte Bereiche in `lib/crm/adresse.ts`). Aufbau: sechs Reiter (Überblick · Kontakte & Firmen · Deals · Follow-up · Marketing · Events) plus Schnellknöpfe Qualifizierung, Angebot, Planung und das Zahnrad für die Stammdaten — seit 08.10. (Aufräumen Etappe 3) NUR in `REITER_ZEILE` (`lib/crm/adresse.ts`, Abschnitt „Markttraktion — Deal- und Follow-up-Ebene“ › Reiter); `lib/crm/followup.ts` ist DIE Fälligkeitsliste, auch für Power Hour, „Für dich“ und Befunde. Eine Person im CRM-Bestand entfernen/umbiegen/aufzählen geht nur über `lib/crm/person-verweise.ts`; Win Rate nur über `winRate`/`WIN_RATE`, Gespräche nur über `echtesGespraech` (beide `lib/crm/pipeline.ts`). **Traction-Score** (`lib/crm/traktion.ts`):
+  alte Bereiche in `lib/crm/adresse.ts`). Aufbau: seit 22.10. ein Hub-Menü (Überblick · CRM · Vertrieb · Marketing · Steuerung, Fuß Stammdaten) NUR in `HUB_MENUE` (`lib/crm/adresse.ts`, Abschnitt „Markttraktion — Deal- und Follow-up-Ebene“ › Hub statt Reiter); `lib/crm/followup.ts` ist DIE Fälligkeitsliste, auch für Power Hour, „Für dich“ und Befunde. Eine Person im CRM-Bestand entfernen/umbiegen/aufzählen geht nur über `lib/crm/person-verweise.ts`; Win Rate nur über `winRate`/`WIN_RATE`, Gespräche nur über `echtesGespraech` (beide `lib/crm/pipeline.ts`). **Traction-Score** (`lib/crm/traktion.ts`):
   Gewichte aus dem KEMARIS-Konzept (Sichtbarkeit 15, Marketing 25, Vertrieb 30,
   Events 10, Conversions 20) → Sales 50 · Marketing 40 · Event 10; Punkte aus der
   Ampel, grau zählt nicht, gesamt = gewichtetes geometrisches Mittel, fehlende
@@ -3097,7 +3114,7 @@ Kevin: „ZOE muss unterscheiden, wo wir schreiben oder wie wir schreiben, und d
   (CRM_FEHLER_ABGLEICH #101). Tests: `tests/zoe-crm.test.ts`.
 
 ### Qualifizierung & Scoring (03.10., Branch `quali`, nur lokal) — Details in `SCORING.md`
-- **Reiter:** der Schnellknopf `qualifizierung` heißt „Qualifizierung & Scoring“ (Kennung und alte Links bleiben; `a` leer = Runde · `scoring` = Marketing-Scoring · `scoring-sales`; `k` = Lead-Sprung; Link nur über `qualifizierungLink`). Host `components/os/crm/quali/QualifizierungScoring.tsx`.
+- **Reiter:** der Hub-Punkt `qualifizierung` heißt „Leads & Qualifizierung“ (bis 21.10. Schnellknopf „Qualifizierung & Scoring“; Kennung und alte Links bleiben; `a` leer = Runde · `scoring` = Marketing-Scoring · `scoring-sales`; `k` = Lead-Sprung; Link nur über `qualifizierungLink`). Host `components/os/crm/quali/QualifizierungScoring.tsx`.
 - **Eine Rechnung:** `lib/crm/scoring.ts` (rein) rechnet Marketing (gemessene Signale → MQL) und Sales (Fragen mit Stufen → SQL, Muss-Kriterien, Deckel, Gewicht, Schwellen) aus `ScoringEinstellungen`; `leadScore` (score.ts) ist die Brücke (`LeadScore.scoring`), `leads()` übergibt `scoringKontext(crm)` — **jede Stelle, die einen Score rechnet, muss den Kontext mitgeben** (sonst Standard und abweichende Zahlen). SQL-bereit/„fehlt“ nur über `salesBereit`/`fehltBisSqlZeile`/`mqlErreicht` (leads.ts), nie mehr `sqlBereit(kriterien)` direkt (bleibt als Rückfall für Deal-Kopien). Akte/Seitenfenster: `leadZeileFuer`.
 - **Standard = geschärfter Vorschlag** (seit 03.10., Kevin: „sofort übernehmen“): `standardScoring()` — Marketing 8, Sales 28, Muss-Regeln, Temperatur 5/12/25; wer nichts gespeichert hat, rechnet damit (`standardZumRechnen`). Die alte Rechnung ist `bisherigeRechnung()` (Etikett `bisherig`, in den Einstellungen als „Bisherige Rechnung (bis 03.10.)“ wählbar; API `aktion: 'bisherig'`); der Paritätstest `tests/scoring-standard-paritaet.test.ts` läuft gegen sie (Fixture `tests/fixtures/lead-score-vor-scoring.ts`). `vorschlagScoring()` gibt es nicht mehr.
 - **Begriffe (Kevin 03.10.): Lead → MQL (NUR aus dem Marketing) → SQL.** MQL setzt Marketing-Herkunft voraus — Kampagne, Newsletter mit Double-Opt-in, Website-Anfrage, Content, Anmeldung zu eigenem Event; entschieden von EINER Funktion `istMarketingLead`/`marketingHerkunft` (`lib/crm/scoring.ts`, steckt im Kern: `ScoringErgebnis.marketingLead`, `SeitenErgebnis.gilt`). Begegnung/besuchtes Event, Empfehlung, Direktansprache, Recherche, Bestand bleiben „Lead · noch zu qualifizieren“, bis die Qualifizierung (Sales-Scoring + Muss) SQL entscheidet. Neue Stellen, die MQL zählen oder zeigen, fragen diese Funktion (bzw. `mqlErreicht`/`SeitenChip`), nie die Marketing-Schwelle allein. `ScoringKontext` trägt dafür auch `kampagnen` (`scoringKontext(crm)`).

@@ -1,23 +1,30 @@
 // ─── Markttraktion — Adressen (rein, getestet) ──────────────────────────────
 // /os/markttraktion?s=<Bereich>&a=<Ansicht>&k=<Person, Firma, Deal, Event>
-// Aufräumen Etappe 3 (08.10., Kevin: „Die Software wirkt unaufgeräumt und überladen.“): die Reiterzeile hat sechs Reiter und die zwei
-// Schnellknöpfe — vorher zwölf. Jede Unteransicht steht genau EINMAL; `REITER_ZEILE` unten ist die eine Stelle für Reihenfolge und
-// Zuordnung, `aufloesen` übersetzt jede alte Adresse auf ihren neuen Ort (Wächter: tests/aufraeumen-etappe3.test.ts).
-//   Überblick           ueberblick
-//   Kontakte & Firmen   kontakte (Personen; a = gespeicherte Ansicht, runde-…, akte) · firmen (Firmen-Kartei)
-//   Deals               deals: board (Start) · liste · auswertung (Kanal-Leistung, Kunden kurz, Pipeline-Auswertung) · akte (Deal-Akte zu k)
-//   Follow-up           followup: faellig (Start) · woche · powerhour · kadenz
-//   Marketing           marketing: uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · newsletter · positionierung
-//   Events              besuche (besuchte Veranstaltungen: kalender (Start) · wirkung · kunden; k = Event-Akte) · event (Make.One, k = Abend)
-//   Schnellknöpfe       qualifizierung (Runde · leads · scoring · scoring-sales; k = Lead) · angebot (k = Angebot, kontakt/firma/deal) ·
-//                       planung (10.10.: kreislauf (Start) · ziele · kanaele · challenges; kanal = Filter auf einen Leadkanal)
-//   Zahnrad             stammdaten (Qualität, Wertelisten, Gesellschaften, Datenschutz, Import & Export) — nicht in der Reiterzeile
+// Der Hub (22.10., Kevin: Markttraktion wird ein eigenes Werkzeug wie HubSpot): statt einer Reiterzeile mit Schnellknöpfen und Zahnrad
+// trägt die Markttraktion ein Menü mit Gruppen — `HUB_MENUE` unten ist die EINE Stelle für Reihenfolge, Namen, Symbole und Ziele, `punktVon`
+// sagt, welcher Punkt zu einer Adresse leuchtet (Wächter: tests/aufraeumen-etappe3.test.ts, tests/markttraktion-hub.test.ts). Jeder Bereich
+// gehört genau einem Punkt, dem Fuß oder „Automationen & Head“; die dritte Ebene (Board · Liste, Fällig · Woche …) bleibt als Reiter IN der Seite.
+//   Überblick                     ueberblick
+//   CRM        Kontakte           kontakte (Personen; a = gespeicherte Ansicht, runde-…, akte)
+//              Firmen             firmen (Firmen-Kartei)
+//   Vertrieb   Leads & Qualifiz.  qualifizierung (Runde · leads · scoring · scoring-sales; k = Lead)
+//              Deals              deals: board (Start) · liste · akte (Deal-Akte zu k)
+//              Angebote           angebot (k = Angebot, kontakt/firma/deal)
+//              Follow-up & Power Hour  followup: faellig (Start) · woche · powerhour · kadenz
+//   Marketing  Marketing          marketing: uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · newsletter · positionierung
+//              Events             besuche (besuchte Veranstaltungen: kalender (Start) · wirkung · kunden; k = Event-Akte) · event (Make.One, k = Abend)
+//              Netzwerken         eigene Seite /os/netzwerken (leuchtet dort)
+//   Steuerung  Planung            planung (kreislauf (Start) · ziele · kanaele · challenges; kanal = Filter auf einen Leadkanal)
+//              Auswertung         auswertung (Flow Kontakte → gewonnen, Traktions-Index, Scoreboard, Kanal-Leistung, Kunden, Pipeline) —
+//                                 die alte Adresse deals&a=auswertung zeigt dasselbe und leuchtet hier
+//              Automationen & Head  automationen (Standard-Punkt des Werkzeug-Musters: Prozesse Marketing/Sales/Übergabe + Heads)
+//   Fuß        Stammdaten         stammdaten (Qualität, Wertelisten, Gesellschaften, Datenschutz, Import & Export)
 //   „Kontakt öffnen“: t = ueber (Start, ohne t) · aktivitaeten · umsatz · daten; u = Unter-Reiter der Aktivitäten; Anker #akt-… springt.
 // Alte Adressen bleiben gültig (nie brechen): /os/crm leitet um (next.config.mjs); `aufloesen` übersetzt die alten Bereiche
 // (heute/pipeline/kunden/events/kartei), den früheren Reiter „Sales“ (head/powerhour/kampagnen/auswertung und vom 25./26.09.
 // heute/leads/pipeline/kunden), Firmen › Leads und Deals › Kunden — so funktionieren Suche, Befunde, ZOE und Telegram weiter.
 
-export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'planung' | 'marketing' | 'besuche' | 'event' | 'stammdaten';
+export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'planung' | 'marketing' | 'besuche' | 'event' | 'stammdaten' | 'auswertung' | 'automationen';
 /** Events › Besuchte Events (03.10.): Kalender · Wirkung · Im Kundenauftrag — die Event-Akte steht in `k`. Die Kennung heißt `besuche`, weil `events` als alter Name von Make.One gültig bleibt. */
 export type BesucheAnsicht = 'kalender' | 'wirkung' | 'kunden';
 export const BESUCHE_ANSICHTEN: BesucheAnsicht[] = ['kalender', 'wirkung', 'kunden'];
@@ -27,52 +34,19 @@ export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'segmente' | 'kampagn
 export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'segmente', 'kampagnen', 'redaktion', 'newsletter', 'positionierung'];
 /** Der frühere Reiter „Sales“ (27.09.–08.10.) und der Sales-Reiter vom 25./26.09. — nur noch zum Übersetzen alter Adressen. */
 export const SALES_ALT_ANSICHTEN = ['head', 'powerhour', 'kampagnen', 'auswertung', 'heute', 'leads', 'pipeline', 'kunden'] as const;
-export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'besuche', 'event', 'stammdaten'];
-/** Alte Bereiche, die es als Reiter nicht mehr gibt — `aufloesen` übersetzt sie (der Wächter prüft jede Kombination). */
+export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'besuche', 'event', 'stammdaten', 'auswertung', 'automationen'];
+/** Alte Bereiche, die es als eigenen Ort nicht mehr gibt — `aufloesen` übersetzt sie (der Wächter prüft jede Kombination). */
 export const BEREICHE_ALT = ['sales', 'heute', 'pipeline', 'kunden', 'events', 'kartei'] as const;
 
 /**
- * Die Reiterzeile (Aufräumen Etappe 3, 08.10.): sechs Reiter, in der Mitte die Schnellknöpfe (Qualifizierung orange, Angebot
- * grün — pulsieren leise; seit 10.10. rechts daneben „Planung“, Kevin: „Umsatzziele auf einzelne Aktivitäten runterplanen“). Ein Reiter kann mehrere Bereiche tragen (Kontakte & Firmen, Events); die Stammdaten stehen hinter dem Zahnrad.
- * Jeder Bereich gehört genau einem Reiter, einem Schnellknopf oder dem Zahnrad.
- */
-export type ReiterId = 'ueberblick' | 'kontakte' | 'deals' | 'followup' | 'marketing' | 'events';
-export interface ReiterDef { id: ReiterId; bereiche: Bereich[] }
-export const REITER_ZEILE: { links: ReiterDef[]; mitte: Bereich[]; rechts: ReiterDef[]; zahnrad: Bereich } = {
-  links: [
-    { id: 'ueberblick', bereiche: ['ueberblick'] },
-    { id: 'kontakte', bereiche: ['kontakte', 'firmen'] },
-    { id: 'deals', bereiche: ['deals'] },
-    { id: 'followup', bereiche: ['followup'] },
-  ],
-  mitte: ['qualifizierung', 'angebot', 'planung'],
-  rechts: [
-    { id: 'marketing', bereiche: ['marketing'] },
-    { id: 'events', bereiche: ['besuche', 'event'] },
-  ],
-  zahnrad: 'stammdaten',
-};
-const ALLE_REITER: ReiterDef[] = [...REITER_ZEILE.links, ...REITER_ZEILE.rechts];
-/** Die Reiter der Zeile (ohne Schnellknöpfe). */
-export const REITER_IDS: ReiterId[] = ALLE_REITER.map(r => r.id);
-/** Klickziele der Reiterzeile: Reiter + Schnellknöpfe. */
-export const KLICKZIELE_ZEILE = REITER_IDS.length + REITER_ZEILE.mitte.length;
-/** Welcher Reiter zu einem Bereich leuchtet — null für Schnellknöpfe und das Zahnrad. */
-export function reiterVon(b: Bereich): ReiterId | null {
-  return ALLE_REITER.find(r => r.bereiche.includes(b))?.id ?? null;
-}
-/** Der erste Bereich eines Reiters (wohin ein Klick auf den Reiter führt). */
-export const reiterStart = (r: ReiterId): Bereich => ALLE_REITER.find(x => x.id === r)?.bereiche[0] ?? 'ueberblick';
-
-/**
- * Der Schnellknopf „Qualifizierung & Scoring“ (03.10.; die Kennung `qualifizierung` und alte Links bleiben):
+ * „Leads & Qualifizierung“ (03.10. als Schnellknopf „Qualifizierung & Scoring“, seit 22.10. ein Punkt des Hubs; die Kennung `qualifizierung` und alte Links bleiben):
  * `a` fehlt = die Runde · `leads` = alle Leads (Ebene 1, bis 08.10. Firmen › Leads) · `scoring` = Marketing (bis MQL) · `scoring-sales` = Sales (MQL → SQL).
  * `k` = ein Lead (Firma f-… oder Person c-…): Runde bzw. Liste springen dorthin.
  */
 export type QualiAnsicht = 'runde' | 'leads' | 'scoring' | 'scoring-sales';
 export const QUALI_ANSICHTEN: QualiAnsicht[] = ['runde', 'leads', 'scoring', 'scoring-sales'];
 /**
- * Der Schnellknopf „Planung“ (10.10.): `a` fehlt = der Kreislauf (Start) · `ziele` = Umsatzziele → Aktivitäten (mit Kapazität) ·
+ * „Planung“ (10.10. als Schnellknopf, seit 22.10. ein Punkt des Hubs unter „Steuerung“): `a` fehlt = der Kreislauf (Start) · `ziele` = Umsatzziele → Aktivitäten (mit Kapazität) ·
  * `kanaele` = Leadkanäle (Plan-Quoten, Ist) · `challenges` = Wochen-Challenges und Rückblick. `kanal` filtert auf einen Leadkanal.
  */
 export type PlanungAnsicht = 'kreislauf' | 'ziele' | 'kanaele' | 'challenges';
@@ -124,9 +98,10 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   if (s === 'sales') return salesAlt(ansicht) ? SALES_NEU[ansicht] : SALES_NEU.head;
   if (s && (BEREICHE as string[]).includes(s)) {
     const b = s as Bereich;
-    if (b === 'ueberblick') return { s: b };
+    // Ohne eigene Ansichten: Überblick, Auswertung (22.10.) und Automationen & Head — eine Ansicht in der Adresse fällt weg.
+    if (b === 'ueberblick' || b === 'auswertung' || b === 'automationen') return { s: b };
     if (b === 'firmen' && ansicht === 'leads') return SALES_NEU.leads;
-    // Die alte Qualifizierungs-Runde der Kartei (Chancen-Runde, 25.09.) ist die Runde des Schnellknopfs.
+    // Die alte Qualifizierungs-Runde der Kartei (Chancen-Runde, 25.09.) ist die Runde unter „Leads & Qualifizierung“.
     if (b === 'kontakte' && ansicht === 'runde-chancen') return { s: 'qualifizierung' };
     if (b === 'deals' && ansicht === 'kunden') return SALES_NEU.kunden;
     if (b === 'deals') return mit(b, ansicht && ansicht !== 'board' && (DEALS_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
@@ -172,7 +147,7 @@ export interface AngebotAdresse { angebotId?: string | null; kontaktId?: string 
 const KENNUNG = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 const kennung = (x?: string | null): string | null => (x && KENNUNG.test(x) ? x : null);
 
-/** Link zum Angebot (Schnellknopf „Angebot“, Kontakt öffnen, Deal-Akte): `?s=angebot&k=<angebot>&kontakt=<id>&firma=<id>&deal=<id>`. */
+/** Link zum Angebot (Hub „Angebote“, „+ Angebot“ in Kontakt-, Firmen- und Deal-Akte): `?s=angebot&k=<angebot>&kontakt=<id>&firma=<id>&deal=<id>`. */
 export function angebotLink({ kontaktId, firmaId, dealId, angebotId }: AngebotAdresse = {}): string {
   const q = new URLSearchParams({ s: 'angebot' });
   const k = kennung(angebotId); if (k) q.set('k', k);
@@ -183,9 +158,10 @@ export function angebotLink({ kontaktId, firmaId, dealId, angebotId }: AngebotAd
 }
 
 /**
- * Der Schnellknopf „Angebot“ nimmt mit, was gerade offen ist (08.10., Markttraktion Woche 2 · 3.15 — vorher ging der offene Kontakt
- * verloren): eine Person in „Kontakte“ (auch „Kontakt öffnen“) → Kontakt, eine Firma → Firma, ein Deal in seiner Akte → Deal. Firmen tragen
- * `f-…`; in „Kontakte“ ist eine Kennung mit `f-` die Firmenkarte.
+ * „+ Angebot“ nimmt mit, was gerade offen ist (08.10., Markttraktion Woche 2 · 3.15 — vorher ging der offene Kontakt verloren; seit 22.10.
+ * die Aktion in Kontakt-, Firmen- und Deal-Akte statt eines Schnellknopfs): eine Person in „Kontakte“ (auch „Kontakt öffnen“) → Kontakt, eine
+ * Firma → Firma, ein Deal in seiner Akte → Deal. Firmen tragen `f-…`; in „Kontakte“ ist eine Kennung mit `f-` die Firmenkarte. Ohne offenen
+ * Bezug: die Liste der Angebote.
  */
 export function angebotVonHier(bereich: string, ansicht: string | null | undefined, k: string | null | undefined): string {
   const id = kennung(k);
@@ -258,4 +234,146 @@ export function mandantZiel({ mandatId, firmaId, privat, mandatDa, firmaDa, zuga
   if (f && firmaDa !== false) return { art: 'firma', href: markttraktion('firmen', undefined, f), mandatGeloescht: !!m };
   if (m || f) return { art: 'geloescht', href: null };
   return { art: 'text', href: null };
+}
+
+// ─── Der Hub — das Menü der Markttraktion als Werkzeug (22.10., Kevins Entscheidungen) ─────────────────────────────────────────────────────
+// Kevin 22.10.: Markttraktion wird ein eigenes Werkzeug (HubSpot-Art) — beim Öffnen klappt die linke Leiste auf diese Punkte um (das gemeinsame
+// Werkzeug-Muster, lib/make-one/werkzeuge.ts, hängt die Liste dort ein). Hier steht NUR die Liste als Daten: Gruppen mit Überschrift, je Punkt Kennung,
+// Name, lucide-Symbol (als Name — die Oberfläche löst ihn auf, components/os/crm/HubMenue.tsx `HUB_SYMBOLE`), Ziel über die Link-Funktionen dieser
+// Datei und die Bereiche, bei denen er leuchtet. Dazu der Standard-Punkt „Automationen & Head“ (eigener Eintrag `automation`, wie im Werkzeug-
+// Muster) und der Fuß (Stammdaten). Produkte & Mandate bleibt ein eigenes Werkzeug, Kontakte stehen nur hier (nie zusätzlich in der Hauptleiste).
+// Regeln (Wächter tests/aufraeumen-etappe3.test.ts + tests/markttraktion-hub.test.ts): höchstens zwölf Punkte in den Gruppen (dazu der Fuß und
+// „Automationen & Head“), jeder Bereich genau einem Punkt, dem Fuß oder „Automationen & Head“, jedes Ziel löst auf seinen Punkt auf. Hub-Punkte
+// sind KEINE Einträge der Space-Leiste (lib/make-one/spaces.ts) — die Zeitmessung zählt die ganze Markttraktion weiter als `business:markttraktion`.
+
+/** Netzwerken (02.10.) ist eine eigene Seite — im Hub ein Punkt, der dort leuchtet. Dieselbe Adresse wie `WEG.netzwerken()` (Test). */
+export const NETZWERKEN_PFAD = '/os/netzwerken';
+/** Die Auswertung (22.10.): Flow vom Kontakt zum gewonnenen Deal, Traktions-Index, Scoreboard, Kanal-Leistung, Kunden, Pipeline. */
+export const auswertungLink = (): string => markttraktion('auswertung');
+/** „Automationen & Head“ der Markttraktion (Ort auf der Seite, an dem das Werkzeug-Muster seinen Baustein einhängt). */
+export const automationenLink = (): string => markttraktion('automationen');
+
+/** Die Symbole der Punkte — Namen aus lucide-react (die Oberfläche löst sie auf; lib bleibt ohne React). */
+export type HubSymbol = 'LayoutDashboard' | 'Users' | 'Building2' | 'Funnel' | 'SquareKanban' | 'FileSignature' | 'PhoneCall' | 'Megaphone' | 'CalendarDays'
+  | 'Handshake' | 'Goal' | 'ChartNoAxesCombined' | 'Bot' | 'Settings';
+export type HubPunktId = 'ueberblick' | 'kontakte' | 'firmen' | 'qualifizierung' | 'deals' | 'angebot' | 'followup' | 'marketing' | 'events' | 'netzwerken'
+  | 'planung' | 'auswertung' | 'stammdaten';
+/** Wo man im Hub steht: ein Punkt oder „Automationen & Head“. */
+export type HubOrtId = HubPunktId | 'automationen';
+export type HubGruppeId = 'start' | 'crm' | 'vertrieb' | 'marketing' | 'steuerung';
+
+export interface HubPunkt {
+  id: HubPunktId;
+  name: string;
+  symbol: HubSymbol;
+  /** Wohin ein Klick führt — über die Link-Funktionen dieser Datei (alte Adressen bleiben gültig). */
+  ziel: string;
+  /** Die Bereiche der Markttraktion, bei denen der Punkt leuchtet (leer bei einer eigenen Seite). */
+  bereiche: readonly Bereich[];
+  /** Eine eigene Seite außerhalb der Markttraktion (Netzwerken) — der Punkt leuchtet auf diesem Pfad und darunter. */
+  pfad?: string;
+  /** Erklärung im Tooltip (die schmale Leiste zeigt nur Symbole). */
+  titel: string;
+}
+export interface HubGruppe { id: HubGruppeId; /** null = ohne Überschrift (der Überblick oben). */ titel: string | null; punkte: readonly HubPunkt[] }
+/** Der Standard-Punkt „Automationen & Head“ (Form wie `WerkzeugAutomation` im Werkzeug-Muster): Prozess-Bereiche, Heads, Ort auf der Seite, Gruppe. */
+export interface HubAutomation {
+  id: 'automationen';
+  name: string;
+  symbol: HubSymbol;
+  ziel: string;
+  bereiche: readonly Bereich[];
+  /** Kennungen aus `PROZESS_BEREICHE` (lib/prozesse/definition.ts) — die Abläufe der Kundengewinnung. */
+  prozessBereiche: readonly string[];
+  /** Heads aus dem Katalog (lib/agenten/katalog.ts) — der erste ist der Head des Werkzeugs. */
+  heads: readonly string[];
+  gruppe: HubGruppeId;
+  titel: string;
+}
+
+export const HUB_MENUE: { gruppen: readonly HubGruppe[]; automation: HubAutomation; fuss: readonly HubPunkt[] } = {
+  gruppen: [
+    { id: 'start', titel: null, punkte: [
+      { id: 'ueberblick', name: 'Überblick', symbol: 'LayoutDashboard', ziel: markttraktion(), bereiche: ['ueberblick'], titel: 'Für dich, Team, Übergaben — was jetzt zu tun ist' },
+    ] },
+    { id: 'crm', titel: 'CRM', punkte: [
+      { id: 'kontakte', name: 'Kontakte', symbol: 'Users', ziel: markttraktion('kontakte'), bereiche: ['kontakte'], titel: 'Jede Person mit ihrer ganzen Geschichte' },
+      { id: 'firmen', name: 'Firmen', symbol: 'Building2', ziel: markttraktion('firmen'), bereiche: ['firmen'], titel: 'Jedes Unternehmen mit allen Beziehungen' },
+    ] },
+    { id: 'vertrieb', titel: 'Vertrieb', punkte: [
+      { id: 'qualifizierung', name: 'Leads & Qualifizierung', symbol: 'Funnel', ziel: qualifizierungLink(), bereiche: ['qualifizierung'], titel: 'Runde, Leads und Scoring — bis zum SQL' },
+      { id: 'deals', name: 'Deals', symbol: 'SquareKanban', ziel: markttraktion('deals'), bereiche: ['deals'], titel: 'Ab SQL im Closing — Board und Liste' },
+      { id: 'angebot', name: 'Angebote', symbol: 'FileSignature', ziel: angebotLink(), bereiche: ['angebot'], titel: 'Alle Angebote — neu aus Produkten in einer Minute' },
+      { id: 'followup', name: 'Follow-up & Power Hour', symbol: 'PhoneCall', ziel: markttraktion('followup'), bereiche: ['followup'], titel: 'Fällig, Woche, Power Hour, Kadenz' },
+    ] },
+    { id: 'marketing', titel: 'Marketing', punkte: [
+      { id: 'marketing', name: 'Marketing', symbol: 'Megaphone', ziel: markttraktion('marketing'), bereiche: ['marketing'], titel: 'Anfragen, Segmente, Kampagnen, Redaktion, Newsletter, Positionierung' },
+      { id: 'events', name: 'Events', symbol: 'CalendarDays', ziel: markttraktion('besuche'), bereiche: ['besuche', 'event'], titel: 'Besuchte Events und unsere eigenen Abende' },
+      { id: 'netzwerken', name: 'Netzwerken', symbol: 'Handshake', ziel: NETZWERKEN_PFAD, bereiche: [], pfad: NETZWERKEN_PFAD, titel: 'Vor Ort erfassen — Karte, Gespräch, nächster Schritt' },
+    ] },
+    { id: 'steuerung', titel: 'Steuerung', punkte: [
+      { id: 'planung', name: 'Planung', symbol: 'Goal', ziel: planungLink(), bereiche: ['planung'], titel: 'Vom Umsatzziel zu den Aktivitäten je Leadkanal' },
+      { id: 'auswertung', name: 'Auswertung', symbol: 'ChartNoAxesCombined', ziel: auswertungLink(), bereiche: ['auswertung'], titel: 'Der Weg zum Kunden, Traktions-Index, Scoreboard, Kanäle, Pipeline' },
+    ] },
+  ],
+  automation: {
+    id: 'automationen', name: 'Automationen & Head', symbol: 'Bot', ziel: automationenLink(), bereiche: ['automationen'],
+    prozessBereiche: ['marketing', 'sales', 'uebergabe'], heads: ['sales', 'marketing', 'event'], gruppe: 'steuerung',
+    titel: 'Die Prozesse von Marketing, Sales und Übergabe — mit den Heads Sales, Marketing und Event',
+  },
+  fuss: [
+    { id: 'stammdaten', name: 'Stammdaten', symbol: 'Settings', ziel: markttraktion('stammdaten'), bereiche: ['stammdaten'], titel: 'Qualität, Wertelisten, Datenschutz, Import & Export' },
+  ],
+};
+
+/** Alle eigenen Punkte (Gruppen und Fuß) — ohne „Automationen & Head“. */
+export const HUB_PUNKTE: readonly HubPunkt[] = [...HUB_MENUE.gruppen.flatMap(g => g.punkte), ...HUB_MENUE.fuss];
+
+/** Ein Eintrag zum Zeichnen — eigener Punkt oder „Automationen & Head“. */
+export interface HubEintrag { id: HubOrtId; name: string; symbol: HubSymbol; ziel: string; titel: string }
+/**
+ * Die Gruppen zum Zeichnen (Übergangs-Menü der Seite, Tests): die eigenen Punkte, „Automationen & Head“ am Ende seiner Gruppe — wie
+ * `alleUnterpunkte` im Werkzeug-Muster.
+ */
+export function hubGruppenAnzeige(): { id: HubGruppeId; titel: string | null; punkte: HubEintrag[] }[] {
+  const a = HUB_MENUE.automation;
+  const eintrag = (p: HubPunkt): HubEintrag => ({ id: p.id, name: p.name, symbol: p.symbol, ziel: p.ziel, titel: p.titel });
+  return HUB_MENUE.gruppen.map(g => ({
+    id: g.id, titel: g.titel,
+    punkte: [...g.punkte.map(eintrag), ...(g.id === a.gruppe ? [{ id: a.id, name: a.name, symbol: a.symbol, ziel: a.ziel, titel: a.titel }] : [])],
+  }));
+}
+
+/**
+ * Welcher Punkt leuchtet zu einer aufgelösten Adresse (`aufloesen(s, a)`)? Jeder Bereich gehört genau einem Punkt; die alte Adresse
+ * `deals&a=auswertung` (WEG.kunden, Kennzahlen, Widgets) zeigt die Auswertung und leuchtet dort.
+ */
+export function punktVon(z: { s: Bereich; a?: string }): HubOrtId {
+  if (z.s === 'deals' && z.a === 'auswertung') return 'auswertung';
+  if (HUB_MENUE.automation.bereiche.includes(z.s)) return 'automationen';
+  return HUB_PUNKTE.find(p => p.bereiche.includes(z.s))?.id ?? 'ueberblick';
+}
+
+/** Dasselbe für eine Adresse (Pfad + Parameter): in der Markttraktion nach `punktVon`, auf einer eigenen Seite des Hubs (Netzwerken) ihr Punkt, sonst null. */
+export function hubOrtFuer(pfad: string, suche = ''): HubOrtId | null {
+  if (pfad === PFAD) {
+    const q = new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche);
+    return punktVon(aufloesen(q.get('s'), q.get('a')));
+  }
+  return HUB_PUNKTE.find(p => p.pfad && (pfad === p.pfad || pfad.startsWith(`${p.pfad}/`)))?.id ?? null;
+}
+
+/**
+ * Events in EINER Reiterzeile (22.10., keine vierte Ebene): Kalender · Wirkung · Im Kundenauftrag (besuchte Events) · Make.One (eigene Abende).
+ * Die Adressen bleiben (`besuche`, `besuche&a=wirkung|kunden`, `event`); die Beschriftung setzt die Oberfläche (Make.One aus lib/crm/marke.ts).
+ */
+export type EventsReiterId = BesucheAnsicht | 'makeone';
+export const EVENTS_REITER: readonly { id: EventsReiterId; s: 'besuche' | 'event'; a?: BesucheAnsicht }[] = [
+  { id: 'kalender', s: 'besuche' }, { id: 'wirkung', s: 'besuche', a: 'wirkung' }, { id: 'kunden', s: 'besuche', a: 'kunden' }, { id: 'makeone', s: 'event' },
+];
+/** Welcher Events-Reiter zu einer aufgelösten Adresse leuchtet — null außerhalb der Events. */
+export function eventsReiterVon(z: { s: Bereich; a?: string }): EventsReiterId | null {
+  if (z.s === 'event') return 'makeone';
+  if (z.s !== 'besuche') return null;
+  return EVENTS_REITER.find(r => r.s === 'besuche' && (r.a ?? 'kalender') === (z.a ?? 'kalender'))?.id ?? 'kalender';
 }

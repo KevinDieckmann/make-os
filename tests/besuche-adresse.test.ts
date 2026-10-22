@@ -1,7 +1,7 @@
 // ─── Events (besuchte Veranstaltungen, 03.10.) — Adressen und Reiterleiste ────
 // Make.One bleibt die Kennung `event` (und der alte Name `events`); der neue Reiter heißt `besuche`. Alte Links bleiben gültig.
 import { describe, it, expect } from 'vitest';
-import { aufloesen, markttraktion, REITER_ZEILE, reiterVon, BESUCHE_ANSICHTEN } from '../lib/crm/adresse';
+import { aufloesen, markttraktion, HUB_MENUE, punktVon, eventsReiterVon, EVENTS_REITER, BESUCHE_ANSICHTEN } from '../lib/crm/adresse';
 import { WEG } from '../lib/wege';
 import { zoeBezugFuer } from '../lib/zoe/crm-bezug';
 
@@ -35,11 +35,18 @@ describe('Reiter „Events“ (besuche) neben Make.One (event)', () => {
     expect(WEG.netzwerken()).toBe('/os/netzwerken');
   });
 
-  it('Leiste (Aufräumen Etappe 3, 08.10.): EIN Reiter „Events“ rechts nach Marketing trägt Besuchte Events und Make.One', () => {
-    expect(REITER_ZEILE.rechts.map(r => r.id)).toEqual(['marketing', 'events']);
-    expect(REITER_ZEILE.rechts.find(r => r.id === 'events')?.bereiche).toEqual(['besuche', 'event']);
-    expect(reiterVon('besuche')).toBe('events');
-    expect(reiterVon('event')).toBe('events');
+  it('Hub (22.10.): EIN Punkt „Events“ unter Marketing trägt Besuchte Events und Make.One — die Reiter stehen in EINER Zeile', () => {
+    const marketing = HUB_MENUE.gruppen.find(g => g.id === 'marketing')!;
+    expect(marketing.punkte.map(p => p.id)).toEqual(['marketing', 'events', 'netzwerken']);
+    expect(marketing.punkte.find(p => p.id === 'events')?.bereiche).toEqual(['besuche', 'event']);
+    expect(punktVon({ s: 'besuche' })).toBe('events');
+    expect(punktVon({ s: 'event' })).toBe('events');
+    // Keine vierte Ebene: Kalender · Wirkung · Im Kundenauftrag · Make.One nebeneinander, die Adressen bleiben.
+    expect(EVENTS_REITER.map(r => r.id)).toEqual(['kalender', 'wirkung', 'kunden', 'makeone']);
+    for (const r of EVENTS_REITER) expect(eventsReiterVon(aufloesen(r.s, r.a))).toBe(r.id);
+    expect(eventsReiterVon(aufloesen('events', 'gaeste'))).toBe('makeone');
+    expect(eventsReiterVon(aufloesen('besuche', 'quatsch'))).toBe('kalender');
+    expect(eventsReiterVon(aufloesen('deals'))).toBeNull();
   });
 
   it('ZOE fragen: der Reiter Events hat denselben Bezug wie die Event-Welt', () => {

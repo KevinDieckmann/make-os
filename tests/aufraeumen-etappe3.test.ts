@@ -1,8 +1,8 @@
 // ─── Aufräumen Etappe 3 (08.10.): Markttraktion und Altbestand ──────────────
 // Kevin: „Die Software wirkt unaufgeräumt und überladen.“ Der Wächter hält fest:
-// 1. Die Markttraktion hat höchstens sieben Reiter (heute sechs + die zwei Schnellknöpfe); jeder Bereich gehört genau einem Reiter,
-//    einem Schnellknopf oder dem Zahnrad (Stammdaten); jede Unteransicht steht genau einmal (Power Hour nur unter Follow-up,
-//    Kampagnen nur unter Marketing, Leads nur unter Qualifizierung, „Kunden“ nur in Deals › Auswertung).
+// 1. Die Markttraktion ist ein Hub (22.10., vorher sechs Reiter + Schnellknöpfe + Zahnrad): höchstens zwölf eigene Punkte im Menü; jeder
+//    Bereich gehört genau einem Punkt, dem Fuß (Stammdaten) oder „Automationen & Head“; jede Unteransicht steht genau einmal (Power Hour
+//    nur unter Follow-up, Kampagnen nur unter Marketing, Leads nur unter Qualifizierung, „Kunden“ nur in der Auswertung).
 // 2. Jede alte Adresse (Reiter „Sales“ mit all seinen Ansichten, alte CRM-Bereiche, Firmen › Leads, Deals › Kunden, die alte
 //    Qualifizierungs-Runde der Kartei) und jeder WEG-Link der Markttraktion löst auf einen existierenden neuen Ort auf.
 // 3. Entfernte Seiten leiten weiter (next.config.mjs), unter app/os gibt es keine reine Weiterleitungs-Seite mehr.
@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import {
-  aufloesen, markttraktion, REITER_ZEILE, REITER_IDS, KLICKZIELE_ZEILE, reiterVon, BEREICHE, BEREICHE_ALT, SALES_ALT_ANSICHTEN,
+  aufloesen, markttraktion, HUB_MENUE, HUB_PUNKTE, punktVon, BEREICHE, BEREICHE_ALT, SALES_ALT_ANSICHTEN,
   DEALS_ANSICHTEN, FOLLOWUP_ANSICHTEN, BESUCHE_ANSICHTEN, QUALI_ANSICHTEN, MARKETING_ANSICHTEN, PLANUNG_ANSICHTEN, type Bereich,
 } from '../lib/crm/adresse';
 import { WEG } from '../lib/wege';
@@ -38,36 +38,44 @@ const ALTE_ANSICHTEN = [
   'kreislauf', 'ziele', 'kanaele', 'challenges',
 ];
 
-describe('Markttraktion — höchstens sieben Reiter, jede Ansicht einmal', () => {
-  it('Reiterzeile: sechs Reiter, zwei Schnellknöpfe, Stammdaten hinter dem Zahnrad', () => {
-    expect(REITER_IDS.length).toBeLessThanOrEqual(7);
-    expect(REITER_IDS).toEqual(['ueberblick', 'kontakte', 'deals', 'followup', 'marketing', 'events']);
-    expect(REITER_ZEILE.mitte).toEqual(['qualifizierung', 'angebot', 'planung']);
-    expect(REITER_ZEILE.zahnrad).toBe('stammdaten');
-    // Vorher zwölf Klickziele in der Zeile — seit 08.10. acht, seit 10.10. neun (Kevins Entscheidung: Schnellknopf „Planung“ rechts neben „Angebot“).
-    expect(KLICKZIELE_ZEILE).toBeLessThanOrEqual(9);
+describe('Markttraktion — ein Hub mit höchstens zwölf Punkten, jede Ansicht einmal', () => {
+  it('Hub-Menü: höchstens zwölf eigene Punkte in fünf Gruppen, Stammdaten im Fuß, „Automationen & Head“ unter Steuerung', () => {
+    // Vorher zwölf Klickziele in der Reiterzeile, seit 08.10. acht, 10.10. neun — seit 22.10. ein Menü (Kevins Entscheidung, HubSpot-Art).
+    // Gezählt werden die Punkte der Gruppen — der Fuß (Stammdaten) und der Standard-Punkt „Automationen & Head“ kommen dazu.
+    expect(HUB_MENUE.gruppen.flatMap(g => g.punkte).length).toBeLessThanOrEqual(12);
+    expect(HUB_PUNKTE.length).toBe(HUB_MENUE.gruppen.flatMap(g => g.punkte).length + HUB_MENUE.fuss.length);
+    expect(HUB_MENUE.gruppen.map(g => g.titel)).toEqual([null, 'CRM', 'Vertrieb', 'Marketing', 'Steuerung']);
+    expect(HUB_MENUE.gruppen.flatMap(g => g.punkte.map(p => p.id))).toEqual(['ueberblick', 'kontakte', 'firmen', 'qualifizierung', 'deals', 'angebot', 'followup', 'marketing', 'events', 'netzwerken', 'planung', 'auswertung']);
+    expect(HUB_MENUE.fuss.map(p => p.id)).toEqual(['stammdaten']);
+    expect(HUB_MENUE.automation.gruppe).toBe('steuerung');
   });
   it('jeder Bereich gehört genau einem Ort; „Sales“ ist kein Bereich mehr', () => {
-    const orte = [...REITER_ZEILE.links.flatMap(r => r.bereiche), ...REITER_ZEILE.mitte, ...REITER_ZEILE.rechts.flatMap(r => r.bereiche), REITER_ZEILE.zahnrad];
+    const orte = [...HUB_PUNKTE.flatMap(p => p.bereiche), ...HUB_MENUE.automation.bereiche];
     expect(new Set(orte).size).toBe(orte.length);
     expect([...orte].sort()).toEqual([...BEREICHE].sort());
     expect(BEREICHE as string[]).not.toContain('sales');
-    expect(reiterVon('firmen')).toBe('kontakte');
-    expect(reiterVon('event')).toBe('events');
-    expect(reiterVon('stammdaten')).toBeNull();
+    expect(punktVon({ s: 'firmen' })).toBe('firmen');
+    expect(punktVon({ s: 'event' })).toBe('events');
+    expect(punktVon({ s: 'besuche', a: 'wirkung' })).toBe('events');
+    expect(punktVon({ s: 'stammdaten' })).toBe('stammdaten');
+    expect(punktVon({ s: 'deals', a: 'auswertung' })).toBe('auswertung');
   });
-  it('die Seite rendert die Zeile aus REITER_ZEILE, ohne Sales-Reiter, mit Zahnrad; doppelte Ansichten sind weg', () => {
+  it('die Seite rendert das Hub-Menü, ohne Reiterzeile, Schnellknöpfe und Zahnrad; doppelte Ansichten sind weg', () => {
     const v = lies('components/os/crm/Markttraktion.tsx');
-    expect(v).toContain('REITER_ZEILE.links.map');
-    expect(v).toContain('REITER_ZEILE.rechts.map');
-    expect(v).toContain('gehe(REITER_ZEILE.zahnrad)');
+    expect(v).toContain('<HubMenue aktiv={hubOrt} />');
+    expect(v).toContain('punktVon({ s: bereich, a: ansicht })');
+    for (const alt of ['REITER_ZEILE', 'Schnellknoepfe', 'mt-schnell', 'Settings', 'KONTAKTE']) expect(v, alt).not.toContain(alt);
+    expect(lies('app/globals.css')).not.toMatch(/\.mt-schnell|mtPuls|\.mt-leiste|\.mt-nur-/);
     expect(v).not.toMatch(/bereich === 'sales'/);
     expect(v).not.toContain('SalesStart');
     expect(v).not.toContain('<Kampagnen');            // Kampagnen nur noch unter Marketing
     expect((v.match(/<Heute /g) ?? []).length).toBe(1); // Power Hour nur unter Follow-up
     expect((v.match(/<Leads /g) ?? []).length).toBe(1); // Leads nur unter Qualifizierung
+    expect((v.match(/<Auswertung /g) ?? []).length).toBe(1); // Kanal-Leistung, Kunden und Pipeline-Auswertung nur in der Auswertung
+    expect(v).not.toContain('<KanalLeistungLaden');
+    expect(v).not.toContain('<KundenKurz');
     expect(existsSync(path.join(wurzel, 'components/os/crm/SalesStart.tsx'))).toBe(false);
-    // Die alte Qualifizierungs-Runde der Kartei gibt es nicht mehr neben der Runde des Schnellknopfs.
+    // Die alte Qualifizierungs-Runde der Kartei gibt es nicht mehr neben der Runde unter „Leads & Qualifizierung“.
     expect(lies('components/os/crm/Runden.tsx')).not.toContain('QualifizierungsRunde');
     expect(lies('components/os/crm/Leads.tsx')).not.toContain('export function QualifizierungsRunde');
   });
@@ -114,7 +122,7 @@ describe('Markttraktion — jede alte Adresse findet ihren neuen Ort', () => {
       WEG.akte('c-1'), WEG.kontakt(), WEG.kontakt('c-1'), WEG.firma(), WEG.firma('f-1'), WEG.event(), WEG.event('ev-1', 'gaeste'), WEG.besuch(),
       WEG.besuch('ev-2'), WEG.besuch(undefined, 'wirkung'), WEG.besuch(undefined, 'kunden'), WEG.stammdaten(), WEG.stammdaten('datenschutz'),
       ...(['anfragen', 'segmente', 'kampagnen', 'redaktion', 'newsletter', 'positionierung'] as const).map(a => WEG.marketing(a)), WEG.marketing(),
-      WEG.vertriebsplanung(), ...(['ziele', 'kanaele', 'challenges'] as const).map(a => WEG.vertriebsplanung(a)),
+      WEG.vertriebsplanung(), ...(['ziele', 'kanaele', 'challenges'] as const).map(a => WEG.vertriebsplanung(a)), WEG.auswertung(),
     ];
     for (const l of links) {
       const u = new URL(l, 'http://x');

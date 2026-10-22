@@ -550,61 +550,26 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .flaeche-kopf { min-width: 0; }
 .flaeche-kopf button { font-family: inherit; }
 
-/* ─── Markttraktion · Schnellknöpfe (28.09. abends) ───────────────────────────
-   Qualifizierung (orange) und Angebot (grün) stehen in der Mitte der Reiterleiste
-   und pulsieren leise VON HINTEN: ein weicher Schein in der Knopffarbe (--puls)
-   hinter dem Knopf, nie ein Leuchtkranz davor. Die Gruppe ist ein eigener
-   Stapelkontext, damit der Schein hinter dem Knopf und vor der Seite liegt.
-   Bei „Bewegung reduzieren“ steht der Schein still (Regel oben + hier).
-   Breit: Paar in der Leiste (.mt-nur-breit); passt die Zeile nicht (Rahmen < 1.100 px,
-   Laptop mit Leiste, Handy): eigene Zeile über den Reitern (.mt-nur-schmal) — die
-   Reiter bleiben wischbar, nichts läuft über. */
-.mt-schnellmitte, .mt-schnellzeile { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; position: relative; isolation: isolate; }
-.mt-schnellzeile { justify-content: center; padding: 8px 2px 0; }
-.mt-schnellzeile .mt-schnell { flex: 1 1 0; max-width: 220px; }
-.mt-schnell { position: relative; }
-.mt-schnell::before {
-  content: ''; position: absolute; inset: -2px; border-radius: inherit; z-index: -1; pointer-events: none;
-  background: var(--puls, #58D9CD); filter: blur(7px); opacity: .16;
-  animation: mtPuls 3.4s ease-in-out infinite;
+/* ─── Markttraktion · Hub-Menü in der Seite (22.10.) — ÜBERGANG, bis die Werkzeug-Leiste (lib/make-one/werkzeuge.ts) die Punkte trägt ───
+   Gespeist aus HUB_MENUE (lib/crm/adresse.ts), gezeichnet von components/os/crm/HubMenue.tsx. Breit (≥ 1400 px — darunter bliebe neben der
+   Hauptleiste zu wenig Platz für Kartei und Akte): eine schmale Spalte links neben dem Inhalt, klebt beim Scrollen. Schmaler und am Handy: oben
+   ein Knopf mit dem aktuellen Punkt, der die Gruppen als Blatt aufklappt. Die Schnellknöpfe mit Puls und die Reiterzeile sind weg (22.10.). */
+.mt-hub, .mt-hub-inhalt { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.mt-hub-nav-breit { display: none; }
+.mt-hub-nav-schmal { display: grid; gap: 8px; min-width: 0; }
+.mt-hub-blatt { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 4px 12px; }
+@media (min-width: 1400px) {
+  .mt-hub { grid-template-columns: 212px minmax(0, 1fr); align-items: start; }
+  .mt-hub-nav-breit { display: grid; gap: 1px; position: sticky; top: 8px; }
+  .mt-hub-nav-schmal { display: none; }
 }
-.mt-schnell[aria-selected="true"]::before { opacity: .32; animation-name: mtPulsAn; }
-.mt-schnell + .mt-schnell::before { animation-delay: -1.7s; }
-.mt-schnell + .mt-schnell + .mt-schnell::before { animation-delay: -.85s; } /* dritter Schnellknopf „Planung“ (10.10.) — leicht versetzt */
-@keyframes mtPuls { 0%, 100% { opacity: .08; transform: scale(.94); } 50% { opacity: .38; transform: scale(1.06); } }
-@keyframes mtPulsAn { 0%, 100% { opacity: .22; transform: scale(.97); } 50% { opacity: .5; transform: scale(1.08); } }
-@media (prefers-reduced-motion: reduce) { .mt-schnell::before { animation: none !important; } }
+@media (max-width: 720px) { .mt-hub, .mt-hub-inhalt { gap: 14px; } }
 /* Glocke im Kopf (28.09. abends): kommt eine neue Meldung, leuchtet sie kurz rot auf und schwingt einmal — aus bei reduced-motion */
 @keyframes glockePuls { 0% { box-shadow: 0 0 0 0 rgba(255,92,92,.55); } 70% { box-shadow: 0 0 0 9px rgba(255,92,92,0); } 100% { box-shadow: 0 0 0 0 rgba(255,92,92,0); } }
 @keyframes glockeSchwing { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }
 .glocke-puls { animation: glockePuls 1.2s ease-out 3; }
 .glocke-puls > svg { animation: glockeSchwing .9s ease-in-out 1; transform-origin: 50% 12%; }
 @media (prefers-reduced-motion: reduce) { .glocke-puls, .glocke-puls > svg { animation: none !important; } }
-/* Der Rahmen misst sich selbst (Container-Abfrage): eine Zeile braucht ~1.090 px. */
-.mt-leistenrahmen { container-type: inline-size; display: grid; gap: 4px; margin: -12px 0 -6px; min-width: 0; }
-.mt-nur-schmal { display: none !important; }
-/* Rechner: passt die Leiste nicht in eine Zeile, bricht die zweite Gruppe um, statt abgeschnitten zu werden. */
-@media (min-width: 721px) {
-  .mt-leiste { flex-wrap: wrap; overflow: visible; row-gap: 6px; }
-  .mt-leiste > span[aria-hidden] { display: none; }
-  .mt-leiste > :nth-child(3), .mt-leiste > :last-child { margin-left: auto; }
-}
-@container (max-width: 1100px) {
-  .mt-nur-breit { display: none !important; }
-  .mt-nur-schmal { display: flex !important; }
-}
-/* Rechner (≥ 721 px): die Schnellknöpfe stehen immer in der Leiste (links die Reiter, rechts daneben die Schnellknöpfe, bei Platzmangel bricht die Welten-Gruppe in eine zweite Zeile um) — nie eine eigene dritte Zeile. */
-@media (min-width: 721px) { .mt-nur-breit { display: flex !important; } .mt-nur-schmal { display: none !important; } }
-/* Handy (03.10., Praxis-Fund: der Kopf fraß zwei Drittel des Bildschirms): EINE wischbare Leiste — die Schnellknöpfe vorn, dann die Reiter —
-   statt zwei Zeilen. Der aktive Reiter bleibt im Bild (Markttraktion.tsx). */
-@media (max-width: 720px) {
-  .mt-nur-breit { display: flex !important; }
-  .mt-nur-schmal { display: none !important; }
-  .mt-leiste > :nth-child(3) { order: -1; }
-  .mt-leiste > span[aria-hidden] { display: none !important; }
-  .mt-leistenrahmen { margin: -4px -16px 0; }
-  .mt-leiste { padding-inline: 16px; }
-}
 .ui-nur-breit { display: inline; }
 @media (max-width: 720px) { .ui-nur-breit { display: none; } }
 /* Gegenstück: nur am Handy sichtbar (z. B. eine Aktion, die im kompakten Kopf keinen Platz hat und darunter steht) */

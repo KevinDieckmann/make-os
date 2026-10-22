@@ -6,6 +6,7 @@
 
 import { WEG } from '@/lib/wege';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
+import { automationenLink } from '@/lib/crm/adresse';
 
 export interface SeitenTreffer {
   art: 'seite'; id: string; titel: string; href: string; space?: 'privat' | 'business';
@@ -75,13 +76,16 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('markttraktion', 'Markttraktion · Überblick', WEG.markttraktion(), 'business'),
   s('kontakte', 'Kontakte · Business (Markttraktion)', WEG.kontakt(), 'business'),
   s('firmen', 'Markttraktion · Firmen', WEG.firma(), 'business'),
-  s('leads', 'Markttraktion · Leads qualifizieren', WEG.leads(), 'business'),
+  s('leads', 'Markttraktion · Leads & Qualifizierung · Leads', WEG.leads(), 'business'),
   s('pipeline', 'Markttraktion · Deals', WEG.deals(), 'business'),
-  s('deals-auswertung', 'Markttraktion · Deals, Auswertung', '/os/markttraktion?s=deals&a=auswertung', 'business'),
-  s('followup', 'Markttraktion · Follow-up', WEG.followup(), 'business'),
+  // Auswertung (22.10., eigener Hub-Punkt; vorher Deals › Auswertung — die alte Adresse zeigt dieselbe Ansicht, die Kennung bleibt).
+  s('deals-auswertung', 'Markttraktion · Auswertung — Weg zum Kunden, Traktions-Index, Scoreboard, Kanäle, Pipeline', WEG.auswertung(), 'business'),
+  s('followup', 'Markttraktion · Follow-up & Power Hour', WEG.followup(), 'business'),
   s('powerhour', 'Markttraktion · Power Hour', WEG.powerHour(), 'business'),
-  s('qualifizierung', 'Markttraktion · Qualifizierung & Scoring', WEG.qualifizierung(), 'business'),
-  s('angebot', 'Markttraktion · Angebot', WEG.angebot(), 'business'),
+  s('qualifizierung', 'Markttraktion · Leads & Qualifizierung (Runde, Scoring)', WEG.qualifizierung(), 'business'),
+  s('angebot', 'Markttraktion · Angebote', WEG.angebot(), 'business'),
+  s('mt-planung', 'Markttraktion · Planung — Kreislauf, Umsatzziele, Leadkanäle, Challenges', WEG.vertriebsplanung(), 'business'),
+  s('mt-automationen', 'Markttraktion · Automationen & Head', automationenLink(), 'business'),
   s('marketing', 'Markttraktion · Marketing', WEG.marketing(), 'business'),
   s('kampagnen', 'Markttraktion · Kampagnen', '/os/markttraktion?s=marketing&a=kampagnen', 'business'),
   s('events', 'Markttraktion · Events (besuchte Veranstaltungen)', WEG.besuch(), 'business'),

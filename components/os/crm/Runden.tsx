@@ -8,7 +8,7 @@
 //                  die Beziehung hält (so wandert Arbeit zu Malin) und Sie/Du.
 //                  Erst die Wichtigen (Kunden, Mandate, Gespräche, Prio A/B),
 //                  die übrigen auf Wunsch danach.
-//   (Die Chancen- bzw. Qualifizierungs-Runde steht seit 08.10. nur noch unter dem Schnellknopf Qualifizierung.)
+//   (Die Chancen- bzw. Qualifizierungs-Runde steht seit 08.10. nur noch unter „Leads & Qualifizierung“.)
 // Jede Karte speichert sofort: der Kontakt als ganzer Eintrag (der Server
 // vereint den Verlauf mit dem aktuellen Stand), die Chance als
 // Einzeländerung. „Kein Bedarf“ ist EIN Aufruf an /api/crm/aktivitaet (Notiz
@@ -32,7 +32,7 @@ import { type CrmApi, datum } from './daten';
 import { Pillen, Feldzeile } from './teile';
 import { Person, ZustaendigWahl } from './team';
 
-/** Die Qualifizierungs-Runde (früher 'chancen', „runde-chancen“) lebt seit 08.10. nur noch unter dem Schnellknopf Qualifizierung —
+/** Die Qualifizierungs-Runde (früher 'chancen', „runde-chancen“) lebt seit 08.10. nur noch unter „Leads & Qualifizierung“ —
  * alte Links leitet `aufloesen` (lib/crm/adresse.ts) dorthin. */
 export type RundenArt = 'kreis' | 'vernetzen';
 interface RundenProps { api: CrmApi; name: (p: string) => string; zuKontakt: (id: string) => void; zurueck: () => void }
