@@ -86,6 +86,14 @@ export interface ProzessDef {
    * hängt sie an (lib/prozesse/server.ts), die Kachel nennt sie, der Steckbrief verlinkt sie („gehört zu Produkt …“, `WEG.produkt`). Fehlt = an keinem Produkt.
    */
   produkte?: { id: string; name: string; href: string }[];
+  /**
+   * Landkarte anpassen (22.10., lib/prozesse/landkarte-anpassung.ts `landkarteAnsicht`) — NUR für die Anzeige gesetzt, nie gespeichert: eigene Beschriftung der
+   * Kachel (der Titel des Prozesses bleibt), der Ton des Bereichs (ein Wert aus `LANDKARTE_TOENE`), ein eigener Bereich (`lb-…`, steht als Band), ausgeblendet.
+   */
+  beschriftung?: string;
+  ton?: string;
+  bereichEigen?: string;
+  aus?: true;
 }
 
 /**
@@ -95,7 +103,12 @@ export interface ProzessDef {
 export interface Zahl { wert: number; wort: string; zweite?: { wert: number; wort: string; rot?: true }; href?: string }
 
 /** Antwort von GET /api/prozesse/landkarte (nur Business, serverseitig gebaut). Schlüssel der Zahlen: `p` · `p/phase` · `p/phase/schritt`. */
-export interface LandkarteDaten { ok: true; prozesse: ProzessDef[]; zahlen: Record<string, Zahl>; stand: string }
+export interface LandkarteDaten {
+  ok: true; prozesse: ProzessDef[]; zahlen: Record<string, Zahl>; stand: string;
+  /** Landkarte anpassen (22.10.): die gespeicherten Abweichungen von der Vorgabe (nie die Vorgabe selbst) und ihr Stand (für 409). Fehlt = Vorgabe. */
+  anpassung?: import('./landkarte-anpassung').LandkarteAnpassung;
+  anpassungStand?: string;
+}
 
 /** Ein Ort im Modell — die Ebenen (Punkt 5): 1 Landkarte (leer), 2 Prozess (`p`), 3 Ablauf einer Phase (`ph`), 4 Schritt-Detail (`s`). */
 export interface ProzessPfad { p?: string; ph?: string; s?: string }

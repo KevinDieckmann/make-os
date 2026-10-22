@@ -136,7 +136,7 @@ export function prozesseSuchen(l: readonly ProzessDef[], frage: string, max = 12
 
 export interface ListenKnoten { id: string; ebene: Exclude<Ebene, 1>; titel: string; text?: string; zahl?: string; marke?: 'System' | 'Vorlage' | 'Werkstatt'; pfad: ProzessPfad; kinder: ListenKnoten[] }
 export interface ListenGruppe { id: string; titel: string | null; prozesse: ListenKnoten[] }
-export interface ListenBand { id: Band; titel: string; satz: string; gruppen: ListenGruppe[] }
+export interface ListenBand { id: Band | string; titel: string; satz: string; gruppen: ListenGruppe[] }
 
 const zahlText = (z: Zahl | undefined): string | undefined => {
   const t = zahlTexte(z);
@@ -165,15 +165,22 @@ export function prozessAlsListe(p: ProzessDef, zahlen: Readonly<Record<string, Z
   };
 }
 
-/** Das ganze Modell als verschachtelte Liste: Bänder (Führung, Kern mit den Stufen der Fliege, Unterstützung) → Prozesse → Phasen → Schritte. */
-export function alsListe(l: readonly ProzessDef[], zahlen: Readonly<Record<string, Zahl>> = {}): ListenBand[] {
-  return BAENDER.map(b => {
-    const imBand = l.filter(p => p.band === b.id);
+/**
+ * Das ganze Modell als verschachtelte Liste: Bänder (Führung, Kern mit den Stufen der Fliege, Unterstützung) → Prozesse → Phasen → Schritte. `o.bereiche`
+ * (Landkarte anpassen, lib/prozesse/landkarte-anpassung.ts): eigene Namen und eigene Bereiche (als Band oben bzw. unten) — ohne Angabe wie bisher.
+ */
+export function alsListe(l: readonly ProzessDef[], zahlen: Readonly<Record<string, Zahl>> = {}, o: { bereiche?: readonly { id: string; art: string; titel: string; satz?: string; lage?: 'oben' | 'unten' }[] } = {}): ListenBand[] {
+  const anders = (id: string) => o.bereiche?.find(b => b.id === id);
+  const eigene = (lage: 'oben' | 'unten'): ListenBand[] => (o.bereiche ?? []).filter(b => b.art === 'eigen' && (b.lage ?? 'unten') === lage)
+    .map(b => ({ id: b.id, titel: b.titel, satz: b.satz ?? '', gruppen: [{ id: b.id, titel: null, prozesse: l.filter(p => p.bereichEigen === b.id).map(p => prozessAlsListe(p, zahlen)) }] }));
+  const fest = BAENDER.map(b => {
+    const imBand = l.filter(p => p.band === b.id && !p.bereichEigen);
     const gruppen: ListenGruppe[] = b.id === 'kern'
-      ? KERN_STUFEN.map(s => ({ id: s.id, titel: s.titel, prozesse: imBand.filter(p => stufeVon(p) === s.id).map(p => prozessAlsListe(p, zahlen)) })).filter(g => g.prozesse.length)
+      ? KERN_STUFEN.map(s => ({ id: s.id, titel: anders(s.id)?.titel ?? s.titel, prozesse: imBand.filter(p => stufeVon(p) === s.id).map(p => prozessAlsListe(p, zahlen)) })).filter(g => g.prozesse.length)
       : [{ id: b.id, titel: null, prozesse: imBand.map(p => prozessAlsListe(p, zahlen)) }];
-    return { id: b.id, titel: b.titel, satz: b.satz, gruppen };
-  }).filter(b => b.gruppen.some(g => g.prozesse.length));
+    return { id: b.id, titel: anders(b.id)?.titel ?? b.titel, satz: anders(b.id)?.satz ?? b.satz, gruppen } as ListenBand;
+  });
+  return [fest[0], ...eigene('oben'), fest[1], fest[2], ...eigene('unten')].filter(b => b.gruppen.some(g => g.prozesse.length));
 }
 
 /** Die Liste als Text (Kopieren, Vorlesen, später die Prozessbeschreibung für ZOE). */

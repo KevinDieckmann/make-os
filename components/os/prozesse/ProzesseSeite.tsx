@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Maximize2, Minimize2, Expand, Presentation, Map as MapIcon, Plus, Minus, ScanSearch, Keyboard, X, ChevronLeft, ChevronRight, Workflow, LayoutTemplate } from 'lucide-react';
+import { Maximize2, Minimize2, Expand, Presentation, Map as MapIcon, Plus, Minus, ScanSearch, Keyboard, X, ChevronLeft, ChevronRight, Workflow, LayoutTemplate, Pencil } from 'lucide-react';
 import { Werkstatt } from './Werkstatt';
 import { WerkstattUebersicht, NeuerProzessFenster } from './WerkstattUebersicht';
 import { VorlagenGalerie } from './VorlagenGalerie';
@@ -44,6 +44,7 @@ import { SteckbriefKarte, PhaseKarte, SchrittKarte } from './Feld';
 import { ProzessListe } from './ProzessListe';
 import { ProzessSuche } from './Suche';
 import { useLandkarte } from './daten';
+import { LandkarteAnpassen, useLandkarteAnpassung } from './LandkarteAnpassen';
 
 const MERKER_EINZELTASTEN = 'make-prozesse-einzeltasten';
 const merkerLesen = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
@@ -75,6 +76,9 @@ export function ProzesseSeite() {
   /** Unter 768 px ist die Werkstatt nur zum Ansehen (Kevins Bild 21.10.). */
   const schmal = useMedien('(max-width: 767px)');
   const { daten, fehler, neu: landkarteNeu } = useLandkarte();
+  // Landkarte anpassen (22.10.): die angepasste Fassung gilt überall auf der Seite (Bild, Liste, Vollbild, Präsentieren); der Stift öffnet das Feld dazu.
+  const anp = useLandkarteAnpassung(daten);
+  const [anpassen, setAnpassen] = useState(false);
   const [neuOffen, setNeuOffen] = useState(false);
   // „Aus Vorlage anlegen“ (22.10., Kundengewinnung): die Galerie der 18 Vorlagen.
   const [vorlageOffen, setVorlageOffen] = useState(false);
@@ -93,7 +97,9 @@ export function ProzesseSeite() {
   const [montiert, setMontiert] = useState(false);
   useEffect(() => { setMontiert(true); setEinzeltasten(merkerLesen(MERKER_EINZELTASTEN) !== 'aus'); }, []);
 
-  const prozesse = useMemo(() => daten?.prozesse ?? [], [daten]);
+  const prozesse = useMemo(() => (daten ? anp.ansicht.alle : []), [daten, anp.ansicht]);
+  /** Der Ton je Bereich, wenn er angepasst ist (Bild, Faden des Kunden). */
+  const toene = useMemo(() => Object.fromEntries(anp.ansicht.bereiche.filter(b => b.angepasst).map(b => [b.id, b.ton])) as Record<string, string>, [anp.ansicht]);
   const zahlen = useMemo(() => daten?.zahlen ?? {}, [daten]);
   const nach = useMemo(() => new Map(prozesse.map(p => [p.id, p])), [prozesse]);
   const pfad = useMemo(() => (daten ? pfadGueltig(prozesse, adr) : {}), [daten, prozesse, adr]);
@@ -112,7 +118,7 @@ export function ProzesseSeite() {
   // ── Die Szene der Ebene (Landkarte · Prozess · Ablauf) ──
   const spitze = 'pz-spitze';
   // Die Lage der Landkarte einmal je Bestand (nicht je Mausbewegung) — der Fokus wählt nur, welche Wege hell stehen.
-  const landLage = useMemo(() => (daten && !p ? fliegeLage(prozesse) : null), [daten, prozesse, p]);
+  const landLage = useMemo(() => (daten && !p ? fliegeLage(anp.ansicht.sichtbar, { bereiche: anp.ansicht.bereiche }) : null), [daten, anp.ansicht, p]);
   // Fokus (Befund 21.10.: lange Übergaben nur auf Wunsch): überfahrene Kachel, sonst die gewählte (zuletzt besucht bzw. gesucht); beim Präsentieren die
   // Kacheln des Rahmens (nur ihre Wege nach vorn).
   const [ueber, setUeber] = useState<string | null>(null);
@@ -121,7 +127,7 @@ export function ProzesseSeite() {
     if (!praes || !landLage) return null;
     const r = landLage.rahmen[rahmenNr];
     if (!r || r.id === 'alles') return [];
-    return landLage.kacheln.filter(k => k.stufe === r.id || (!k.stufe && k.band === r.id)).map(k => k.id);
+    return landLage.kacheln.filter(k => k.stufe === r.id || (!k.stufe && (k.bereich ?? k.band) === r.id)).map(k => k.id);
   }, [praes, landLage, rahmenNr]);
   const fokus = useMemo<string[]>(() => rahmenFokus ?? (ueber ? [ueber] : gewaehlt ? [gewaehlt] : []), [rahmenFokus, ueber, gewaehlt]);
   const szene = useMemo<Szene | null>(() => {
@@ -133,14 +139,14 @@ export function ProzesseSeite() {
         return hell ? { ...f, staerke: 'mittel', bisHier: 1, gluehen: true } : { ...f, bisHier: 0 };
       };
       const faeden: FlowFaden[] = [
-        { id: 'rueckgrat', punkte: lage.rueckgrat.punkte, farbe: C.aktiv, staerke: 'breit', aufbau: true, farben: lage.rueckgrat.abschnitte.map(a => ({ von: a.von, bis: a.bis, farbe: STUFE_FARBE[a.stufe] })) },
+        { id: 'rueckgrat', punkte: lage.rueckgrat.punkte, farbe: C.aktiv, staerke: 'breit', aufbau: true, farben: lage.rueckgrat.abschnitte.map(a => ({ von: a.von, bis: a.bis, farbe: toene[a.stufe] ?? STUFE_FARBE[a.stufe] })) },
         ...pfeileImBild(lage.pfeile, fokus, { nurAus: !!rahmenFokus }).map(w => weg(w.pfeil, w.hell)),
       ];
       return {
         schluessel: 'landkarte', label: `Landkarte der Prozesse als Fliege: ${prozesse.length} Prozesse in Führung, Kern (Marketing, Sales, Übergabe, Fulfillment, Ausbau) und Unterstützung`,
         box: huelle([lage.box], 12), boxen: boxenVon({ kacheln: lage.kacheln }), faeden, rahmen: lage.rahmen,
         minimap: lage.kacheln.map(k => ({ box: k, farbe: tonVon(nach.get(k.id) ?? { band: k.band, stufe: k.stufe }) })),
-        zeichne: st => <LandkarteBild lage={lage} prozesse={nach} zahlen={zahlen} stufe={st} spitze={spitze} fokus={fokus} nurAus={!!rahmenFokus}
+        zeichne: st => <LandkarteBild lage={lage} prozesse={nach} zahlen={zahlen} stufe={st} spitze={spitze} fokus={fokus} nurAus={!!rahmenFokus} toene={toene}
           onFokus={setUeber} onKachel={id => buehne.current?.fliegeIn(id, () => geh({ p: id }))} onZahl={h => router.push(h)} />,
       };
     }
@@ -172,7 +178,7 @@ export function ProzesseSeite() {
       zeichne: st => <AblaufBild bild={bild} prozess={p} zahlen={zahlen} gewaehlt={pfad.s ?? null} stufe={st} spitze={spitze} ende={ende}
         onSchritt={(phase, id) => geh({ p: p.id, ph: phase, s: id }, { ersetzen: !!pfad.s })} onPhase={id => geh({ p: p.id, ph: id }, { ersetzen: true })} onZahl={h => router.push(h)} />,
     };
-  }, [daten, landLage, fokus, rahmenFokus, prozesse, zahlen, nach, p, ph, pfad.s, geh, router]);
+  }, [daten, landLage, fokus, rahmenFokus, prozesse, zahlen, nach, p, ph, pfad.s, geh, router, toene]);
 
   // ── Wie die neue Szene landet: tiefer = heran, höher = aus dem Element heraus (Punkt 12) ──
   const vorher = useRef<ProzessPfad | null>(null);
@@ -266,13 +272,16 @@ export function ProzesseSeite() {
       <Knopf leise onClick={auswahlZeigen} titel="Auswahl zeigen (Alt + 2)"><span className="pz-knopf-inhalt"><ScanSearch size={14} aria-hidden />Auswahl zeigen</span></Knopf>
       <SymbolKnopf ariaLabel="Minimap an/aus (M)" gedrueckt={minimap} onClick={() => setMinimap(x => !x)}><MapIcon size={16} /></SymbolKnopf>
       <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(x => !x)}><Keyboard size={16} /></SymbolKnopf>
+      {/* Landkarte anpassen (22.10.): nur auf der Landkarte, nie beim Präsentieren — sonst bleibt die Ansicht ruhig. */}
+      {ebene === 1 && !praes && !schmal && <SymbolKnopf ariaLabel="Landkarte anpassen" titel="Landkarte anpassen — Bereiche, Töne, Reihenfolge, Beschriftung, ausblenden" gedrueckt={anpassen} offen={anpassen} onClick={() => setAnpassen(x => !x)}><Pencil size={16} /></SymbolKnopf>}
     </div>
   );
-  const feld = !praes && p ? (
+  const anpassFeld = anpassen && !praes && ebene === 1 && daten ? <LandkarteAnpassen ansicht={anp.ansicht} anpassung={anp.anpassung} speicher={anp.speicher} aendern={anp.aendern} onZu={() => setAnpassen(false)} /> : null;
+  const feld = anpassFeld ?? (!praes && p ? (
     s && ph ? <SchrittKarte p={p} ph={ph} s={s} zahl={zahlen[zahlSchluessel({ p: p.id, ph: ph.id, s: s.id })]} />
       : ph ? <PhaseKarte p={p} ph={ph} zahlen={zahlen} onSchritt={id => geh({ p: p.id, ph: ph.id, s: id })} />
         : <SteckbriefKarte p={p} zahl={zahlen[p.id]} />
-  ) : null;
+  ) : null);
   const hilfeFenster = hilfe && (
     <div role="dialog" aria-label="Kürzel" className="pz-hilfe">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -291,7 +300,7 @@ export function ProzesseSeite() {
   if (!daten) inhalt = fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Landkarte lädt …</p>;
   else if (!prozesse.length) inhalt = <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine Prozesse">Sobald Abläufe im System oder im Fulfillment stehen, erscheinen sie hier.</Leerzustand>;
   else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} />;
-  else if (ansicht === 'liste') inhalt = <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} />;
+  else if (ansicht === 'liste') inhalt = <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} bereiche={anp.ansicht.bereiche} />;
   else if (szene) {
     inhalt = (
       <div className="pz-buehnen-rahmen">

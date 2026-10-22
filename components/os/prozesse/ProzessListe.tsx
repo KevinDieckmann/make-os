@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { FARBE as C, TYP, MIKRO, SCHRIFT } from '@/lib/make-one/design';
 import { Knopf, Hinweis } from '../ui';
 import { WEG } from '@/lib/wege';
+import type { LandkarteBereich } from '@/lib/prozesse/landkarte-anpassung';
 import { alsListe, alsText, prozessAlsListe, prozessVon, type ListenKnoten } from '@/lib/prozesse/modell';
 import { STUFE_FARBE, BAND_FARBE } from '@/lib/prozesse/farben';
 import type { KernStufe, ProzessDef, ProzessPfad, Zahl } from '@/lib/prozesse/typen';
@@ -57,9 +58,12 @@ function ProzessEintrag({ k, offen, pfad }: { k: ListenKnoten; offen: boolean; p
   );
 }
 
-export function ProzessListe({ prozesse, zahlen, pfad }: { prozesse: readonly ProzessDef[]; zahlen: Readonly<Record<string, Zahl>>; pfad: ProzessPfad }) {
+export function ProzessListe({ prozesse, zahlen, pfad, bereiche }: { prozesse: readonly ProzessDef[]; zahlen: Readonly<Record<string, Zahl>>; pfad: ProzessPfad;
+  /** Landkarte anpassen (22.10.): Namen, Töne und eigene Bereiche — dieselbe Fassung wie das Bild; ausgeblendete Kacheln fehlen auch hier. */
+  bereiche?: readonly LandkarteBereich[] }) {
   const [kopiert, setKopiert] = useState<string | null>(null);
-  const baender = alsListe(prozesse, zahlen);
+  const baender = alsListe(prozesse.filter(p => !p.aus), zahlen, { bereiche });
+  const ton = (id: string) => bereiche?.find(b => b.id === id)?.ton;
   const gewaehlt = prozessVon(prozesse, pfad.p);
   const kopieren = async () => {
     const text = gewaehlt ? alsText([{ id: gewaehlt.band, titel: gewaehlt.titel, satz: gewaehlt.steckbrief.ergebnis, gruppen: [{ id: 'p', titel: null, prozesse: [prozessAlsListe(gewaehlt, zahlen)] }] }]) : alsText(baender);
@@ -75,9 +79,9 @@ export function ProzessListe({ prozesse, zahlen, pfad }: { prozesse: readonly Pr
         <ProzessEintrag k={prozessAlsListe(gewaehlt, zahlen)} offen pfad={pfad} />
       ) : baender.map(b => (
         <section key={b.id} aria-label={b.titel} style={{ display: 'grid', gap: 8 }}>
-          <h2 style={{ ...MIKRO, fontSize: TYP.mikro, color: BAND_FARBE[b.id as 'fuehrung'] ?? C.inkDim, margin: 0 }}>{b.titel} · <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>{b.satz}</span></h2>
+          <h2 style={{ ...MIKRO, fontSize: TYP.mikro, color: ton(b.id) ?? BAND_FARBE[b.id as 'fuehrung'] ?? C.inkDim, margin: 0 }}>{b.titel} · <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>{b.satz}</span></h2>
           {b.gruppen.map(g => (
-            <div key={g.id} style={{ display: 'grid', gap: 6, ...(g.titel ? { borderLeft: `3px solid ${STUFE_FARBE[g.id as KernStufe]}`, paddingLeft: 12 } : {}) }}>
+            <div key={g.id} style={{ display: 'grid', gap: 6, ...(g.titel ? { borderLeft: `3px solid ${ton(g.id) ?? STUFE_FARBE[g.id as KernStufe]}`, paddingLeft: 12 } : {}) }}>
               {g.titel && <h3 style={{ margin: 0, fontSize: TYP.bedien, fontWeight: 700, color: C.ink }}>{g.titel}</h3>}
               {g.prozesse.map(k => <ProzessEintrag key={k.id} k={k} offen={false} pfad={pfad} />)}
             </div>

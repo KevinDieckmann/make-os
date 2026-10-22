@@ -1687,6 +1687,14 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
 - **Gliederung & Lage (22.10. Feinschliff):** je Phase höchstens ~10 Schritte (Vorlagen eingehalten, Wächter `tests/prozesse-vorlagen-gliederung.test.ts`);
   mehrere Auslöser führen jeder direkt in den ersten Schritt (Regel in `kantenVon`, `lib/prozesse/fluss.ts`); Notiz-Zettel liegen über dem ersten Rahmen,
   nie über Phasen-Köpfen/Knoten; „Alles zeigen“ zeigt unlesbar kleine Prozesse als zugeklappte Phasen-Kacheln (`zoomStufe`).
+- **Landkarte anpassen (22.10., Branch `prozesse-anpassbar`):** Stift auf der Landkarte (nur Ebene 1, nie beim Präsentieren) → Feld „Landkarte anpassen“
+  (`components/os/prozesse/LandkarteAnpassen.tsx`): Bereiche umbenennen (Band auch der Satz), Ton NUR aus `LANDKARTE_TOENE` (lib/prozesse/farben.ts, geprüft),
+  eigene Bereiche `lb-<uuid>` (≤ 4, Band oben/unten), Kacheln zuordnen/beschriften/aus-einblenden, Reihenfolge (▲▼, Alt + ↑/↓, Ziehen), „Auf Vorgabe zurück“.
+  Regeln rein `lib/prozesse/landkarte-anpassung.ts`: `landkarteAnsicht` (Anzeige — ohne Anpassung dieselben Objekte, bit-gleich) und `anpassungAendern`
+  (Schritte, alles oder nichts, 400/404/413, `ohneVorgabe`: **die Vorgabe wird nie gespeichert**). Bestand `prozesse-landkarte--<h>` (eigener, nicht im
+  Werkstatt-Bestand), Schreibweg `POST /api/prozesse/landkarte { stand, ops }` (Tor wie die Werkstatt, Recht „Entwurf“, Stand/409). Die Seite nimmt überall die
+  angepasste Fassung (Bild, Liste, Vollbild, Präsentieren); `fliegeLage(…, { bereiche })`, `alsListe(…, { bereiche })`, `tonVon` liest `p.ton`. Wächter
+  `tests/prozesse-landkarte-anpassen.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

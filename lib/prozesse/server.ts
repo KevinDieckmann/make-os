@@ -118,6 +118,14 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
     for (const p of prozesse) if (p.zaehler && arten[p.zaehler]) zahlen[p.id] = arten[p.zaehler]!;
     // Eine Null zeigt die Landkarte nie (DESIGN_STANDARD.md) — dann gibt es dort keine Zahl.
     for (const [k, z] of Object.entries(zahlen)) if (!(z.wert > 0) && !((z.zweite?.wert ?? 0) > 0)) delete zahlen[k];
-    return { prozesse, zahlen, stand: fingerabdruck({ prozesse, zahlen }) };
+    // Landkarte anpassen (22.10.): die gespeicherten Abweichungen gehen mit — angewendet wird im Bild (lib/prozesse/landkarte-anpassung.ts `landkarteAnsicht`),
+    // die Prozesse bleiben hier die der Vorgabe (der Schreibweg vergleicht gegen sie). Ohne Bestand fehlt das Feld (die Antwort wie bisher).
+    const anp = await sicher(async () => {
+      const [{ anpassungLesen, anpassungStand }, { istVorgabe }] = await Promise.all([import('./landkarte-anpassung-server'), import('./landkarte-anpassung')]);
+      const a = await anpassungLesen(h);
+      return { anpassung: istVorgabe(a) ? null : a, anpassungStand: anpassungStand(a) };
+    });
+    const mit = anp ? { ...(anp.anpassung ? { anpassung: anp.anpassung } : {}), anpassungStand: anp.anpassungStand } : {};
+    return { prozesse, zahlen, ...mit, stand: fingerabdruck({ prozesse, zahlen, ...mit }) };
   });
 }

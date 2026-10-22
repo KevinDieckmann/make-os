@@ -56,11 +56,14 @@ export const KACHEL_TEXT = {
   mittel: { groesse: 18, min: 15, gewicht: 650, innen: 60, zeilen: 2 },
   nah: { groesse: 16, min: 14, gewicht: 650, innen: 60, zeilen: 2 },
 } as const;
-/** Welcher Text einer Kachel in welcher Zoomstufe steht (fern der Kurztitel). */
-export const kachelTitel = (p: Pick<ProzessDef, 'titel'>, stufe: keyof typeof KACHEL_TEXT): string => (stufe === 'fern' ? kurztitel(p.titel) : p.titel);
+/** Welcher Text einer Kachel in welcher Zoomstufe steht (fern der Kurztitel) — eine eigene Beschriftung (Landkarte anpassen) vor dem Titel. */
+export const kachelTitel = (p: Pick<ProzessDef, 'titel'> & { beschriftung?: string }, stufe: keyof typeof KACHEL_TEXT): string => {
+  const t = p.beschriftung ?? p.titel;
+  return stufe === 'fern' ? kurztitel(t) : t;
+};
 
 /** Die Breite der Kacheln: mindestens `FLIEGE.kachel.b`, sonst so breit, dass das längste Wort jeder Kachel in jeder Zoomstufe in der kleinsten Schrift passt. */
-export function kachelBreite(prozesse: readonly Pick<ProzessDef, 'titel'>[]): number {
+export function kachelBreite(prozesse: readonly (Pick<ProzessDef, 'titel'> & { beschriftung?: string })[]): number {
   let b: number = FLIEGE.kachel.b;
   for (const p of prozesse) {
     for (const st of ['fern', 'mittel', 'nah'] as const) {
@@ -72,7 +75,8 @@ export function kachelBreite(prozesse: readonly Pick<ProzessDef, 'titel'>[]): nu
 }
 
 export type FluegelSeite = 'links' | 'knoten' | 'rechts';
-export interface KachelLage extends Box { id: string; band: Band; stufe?: KernStufe }
+/** Eine Kachel im Bild; `bereich` = ein eigener Bereich (Landkarte anpassen, `lb-…`) — er steht als Band, `band` sagt dann nur, ob oben oder unten. */
+export interface KachelLage extends Box { id: string; band: Band; stufe?: KernStufe; bereich?: string }
 /**
  * Eine Übergabe im Bild. `sicht`: `immer` = kurzer Weg zwischen Nachbarn (Gesamtansicht), `fokus` = nur, wenn eine ihrer Kacheln überfahren oder gewählt ist.
  * `textOrt` = wo die Beschriftung in normaler Schrift steht, `textOrtFern` = wo sie groß steht (Zoomstufe „fern“) — je die Stelle am Weg, die am wenigsten
@@ -82,7 +86,8 @@ export interface PfeilLage {
   id: string; von: string; nach: string; text: string; art: 'weiter' | 'zurueck'; punkte: [number, number][];
   textOrt: [number, number]; textOrtFern: [number, number]; textFrei: boolean; sicht: 'immer' | 'fokus';
 }
-export interface BandLage extends Box { id: Band; titel: string; satz: string }
+/** Ein Band (Führung, Unterstützung bzw. ein eigener Bereich `lb-…` — Landkarte anpassen). */
+export interface BandLage extends Box { id: string; titel: string; satz: string }
 /** Eine Stufe der Fliege: ihre Spalten von `x` über `b`, Mitte `cx`, Halbhöhe des Umrisses `halb`, Grundlinie ihres Titels `titelY`. */
 export interface StufeLage { id: KernStufe; titel: string; x: number; b: number; cx: number; halb: number; titelY: number }
 /** Eine Spalte der Fliege (für Umriss, Tests und Präsentieren): `tiefe` = wie weit vom Knoten (0 = die innerste), `inhalt` = Halbhöhe ihrer Kacheln. */
@@ -157,14 +162,24 @@ export function textOrtWaehlen(punkte: readonly Pt[], mass: { b: number; h: numb
 
 interface Ort { k: KachelLage; spalte: number; haelfte: 'oben' | 'unten' | 'mitte' | null; reihe: number; bandZeile: number; bandPos: number }
 
+/**
+ * Was die Landkarte anpassen darf (22.10., lib/prozesse/landkarte-anpassung.ts `landkarteAnsicht`): Namen und Sätze der Bereiche, eigene Bereiche als Bänder
+ * oben (unter Führung) bzw. unten (unter Unterstützung). Ohne Angabe die Vorgabe — dieselbe Lage wie vorher (bit-gleich).
+ */
+export interface FliegeOptionen { bereiche?: readonly { id: string; art: 'stufe' | 'band' | 'eigen'; titel: string; satz?: string; lage?: 'oben' | 'unten' }[] }
+interface BandPlan { id: string; titel: string; satz: string; typ: Exclude<Band, 'kern'>; eigen: boolean }
+
 /** Die Lage der Landkarte als Fliege (siehe Kopf). Reihenfolge der Kacheln = Reihenfolge der Prozesse (Register zuerst, dann Vorlagen). */
-export function fliegeLage(prozesse: readonly ProzessDef[]): FliegeLage {
+export function fliegeLage(prozesse: readonly ProzessDef[], o: FliegeOptionen = {}): FliegeLage {
   const F = FLIEGE;
   const K = { b: kachelBreite(prozesse), h: F.kachel.h };
   const kacheln: KachelLage[] = [];
   const orte = new Map<string, Ort>();
   const baender: BandLage[] = [];
-  const bandInfo = (id: Band) => BAENDER.find(b => b.id === id)!;
+  const anders = (id: string) => o.bereiche?.find(b => b.id === id);
+  const bandPlan = (id: Exclude<Band, 'kern'>): BandPlan => { const b = BAENDER.find(x => x.id === id)!, a = anders(id); return { id, titel: a?.titel ?? b.titel, satz: a?.satz ?? b.satz, typ: id, eigen: false }; };
+  const eigeneBaender = (lage: 'oben' | 'unten'): BandPlan[] => (o.bereiche ?? []).filter(b => b.art === 'eigen' && (b.lage ?? 'unten') === lage)
+    .map(b => ({ id: b.id, titel: b.titel, satz: b.satz ?? '', typ: lage === 'oben' ? 'fuehrung' : 'unterstuetzung', eigen: true }));
 
   // ── Spalten der Fliege planen: je Flügel vom Knoten nach außen, jede Spalte eine Zeile je Hälfte mehr ──
   const kern = prozesse.filter(p => p.band === 'kern');
@@ -199,27 +214,37 @@ export function fliegeLage(prozesse: readonly ProzessDef[]): FliegeLage {
   reihe.forEach((s, i) => { if (i) x += reihe[i - 1].stufe === s.stufe ? F.unterspalte : F.spalte; xs.push(r1(x)); x += s.b; });
   const innenX = F.rand, innenB = r1(x - F.rand);
 
-  // ── Band (Führung bzw. Unterstützung): Kacheln mittig in Zeilen ──
-  const band = (id: Band, y0: number): number => {
-    const l = prozesse.filter(p => p.band === id);
+  // ── Band (Führung bzw. Unterstützung, eigene Bereiche): Kacheln mittig in Zeilen ──
+  const band = (bp: BandPlan, y0: number): number => {
+    const l = prozesse.filter(p => (bp.eigen ? p.bereichEigen === bp.id : p.band === bp.typ && !p.bereichEigen));
     if (!l.length) return y0;
     const r = reiheVerteilen({ anzahl: l.length, x: innenX, breite: innenB, luecke: F.bandLuecke, kachel: K.b });
     const zeilen = Math.max(...r.map(z => z.zeile)) + 1;
     const proZeile = new Map<number, number>();
     l.forEach((p, i) => {
-      const k: KachelLage = { id: p.id, band: id, x: r[i].x, y: r1(y0 + F.kopf + r[i].zeile * (K.h + F.zeile)), b: K.b, h: K.h };
+      const k: KachelLage = { id: p.id, band: bp.typ, ...(bp.eigen ? { bereich: bp.id } : {}), x: r[i].x, y: r1(y0 + F.kopf + r[i].zeile * (K.h + F.zeile)), b: K.b, h: K.h };
       kacheln.push(k);
       const pos = proZeile.get(r[i].zeile) ?? 0;
       proZeile.set(r[i].zeile, pos + 1);
       orte.set(p.id, { k, spalte: -1, haelfte: null, reihe: -1, bandZeile: r[i].zeile, bandPos: pos });
     });
     const h = F.kopf + zeilen * K.h + (zeilen - 1) * F.zeile + F.innen;
-    const b = bandInfo(id);
-    baender.push({ id, titel: b.titel, satz: b.satz, x: r1(innenX - F.innen - 20), y: r1(y0), b: r1(innenB + 2 * (F.innen + 20)), h: r1(h) });
+    baender.push({ id: bp.id, titel: bp.titel, satz: bp.satz, x: r1(innenX - F.innen - 20), y: r1(y0), b: r1(innenB + 2 * (F.innen + 20)), h: r1(h) });
     return y0 + h;
   };
+  /** Bänder untereinander (je mit Abstand zum vorigen, das erste ab `y0`); gibt die Unterkante des letzten gezeichneten zurück (ohne Band: `y0`). */
+  const stapelBaender = (l: readonly BandPlan[], y0: number, abstandVorne: boolean): number => {
+    let y = y0, erstes = true;
+    for (const bp of l) {
+      const start = erstes ? (abstandVorne ? y + F.abstand : y) : y + F.abstand;
+      const neu = band(bp, start);
+      if (neu !== start) { y = neu; erstes = false; }
+    }
+    return y;
+  };
 
-  let y = band('fuehrung', 0);
+  const obenBaender = [bandPlan('fuehrung'), ...eigeneBaender('oben')];
+  const y = stapelBaender(obenBaender, 0, false);
   const hatFuehrung = baender.length > 0;
   const oben = r1(y + (hatFuehrung ? F.abstand : 0));
 
@@ -298,7 +323,7 @@ export function fliegeLage(prozesse: readonly ProzessDef[]): FliegeLage {
     const is = reihe.map((r, i) => i).filter(i => reihe[i].stufe === s.id);
     const xa = Math.min(...is.map(i => xs[i])), xb = Math.max(...is.map(i => xs[i] + reihe[i].b));
     const h = Math.max(...is.map(i => halb[i]));
-    return { id: s.id, titel: s.titel, x: r1(xa), b: r1(xb - xa), cx: r1((xa + xb) / 2), halb: r1(h), titelY: r1(mitte - h - 22) };
+    return { id: s.id, titel: anders(s.id)?.titel ?? s.titel, x: r1(xa), b: r1(xb - xa), cx: r1((xa + xb) / 2), halb: r1(h), titelY: r1(mitte - h - 22) };
   });
   const spalten: SpalteLage[] = reihe.map((s, i) => ({ stufe: s.stufe, seite: s.seite, tiefe: s.tiefe, x: xs[i], b: s.b, halb: halb[i], inhalt: r1(inhalt[i]), zeilen: s.zeilen }));
   const ki = reihe.findIndex(s => s.seite === 'knoten');
@@ -306,7 +331,7 @@ export function fliegeLage(prozesse: readonly ProzessDef[]): FliegeLage {
   const L = x1 - x0;
   const toene = stufen.map(s => ({ stufe: s.id, bei: r1(((s.cx - x0) / L) * 1000) / 1000 }));
 
-  y = band('unterstuetzung', kernUnten + F.abstand);
+  stapelBaender([bandPlan('unterstuetzung'), ...eigeneBaender('unten')], kernUnten, true);
 
   // ── Der Weg des Kunden durch die Gasse und den Knoten ──
   const rueckgrat = {
@@ -326,12 +351,14 @@ export function fliegeLage(prozesse: readonly ProzessDef[]): FliegeLage {
   // Lange Wege (nur mit Fokus) zählen nicht zum Bild — „Alles zeigen“ zeigt die Landkarte so groß wie möglich; ein Weg außen herum darf am Rand stehen.
   const alles = huelle([...baender, kernBox, ...kacheln], 0);
   const rahmen: RahmenLage[] = [{ id: 'alles', titel: 'Die ganze Firma', box: huelle([alles], 40) }];
-  for (const b of baender.filter(x => x.id === 'fuehrung')) rahmen.push({ id: b.id, titel: b.titel, box: huelle([b], 30) });
+  // Rahmen der Bänder in der Reihenfolge des Bilds: oben (Führung, eigene oben), die Stufen, unten (Unterstützung, eigene unten).
+  const obenIds = new Set(obenBaender.map(b => b.id));
+  for (const b of baender.filter(x => obenIds.has(x.id))) rahmen.push({ id: b.id, titel: b.titel, box: huelle([b], 30) });
   for (const s of stufen) {
     const ks = kacheln.filter(k => k.stufe === s.id);
     rahmen.push({ id: s.id, titel: s.titel, box: huelle([{ x: s.x, y: r1(s.titelY - 40), b: s.b, h: r1(mitte + s.halb - s.titelY + 40) }, ...ks], 40) });
   }
-  for (const b of baender.filter(x => x.id === 'unterstuetzung')) rahmen.push({ id: b.id, titel: b.titel, box: huelle([b], 30) });
+  for (const b of baender.filter(x => !obenIds.has(x.id))) rahmen.push({ id: b.id, titel: b.titel, box: huelle([b], 30) });
   return {
     breite: r1(innenB + 2 * F.rand), hoehe: r1(alles.y + alles.h), box: alles, baender,
     fliege: { pfad, mitte, x0, x1, stufen, spalten, knoten, caption: [r1(knoten.x + knoten.b / 2), r1(oben + 22)], toene, oben },
@@ -351,7 +378,7 @@ function nachbarn(a: Ort, b: Ort): { achse: 'quer' | 'hoch'; sa: KSeite; sb: KSe
     if (a.spalte === b.spalte && a.haelfte === b.haelfte && Math.abs(a.k.y - b.k.y) <= a.k.h + FLIEGE.zeile + 0.5) return b.k.y > a.k.y ? { achse: 'hoch', sa: 'u', sb: 'o' } : { achse: 'hoch', sa: 'o', sb: 'u' };
     return null;
   }
-  if (a.spalte < 0 && b.spalte < 0 && a.k.band === b.k.band && a.bandZeile === b.bandZeile && Math.abs(a.bandPos - b.bandPos) === 1) {
+  if (a.spalte < 0 && b.spalte < 0 && (a.k.bereich ?? a.k.band) === (b.k.bereich ?? b.k.band) && a.bandZeile === b.bandZeile && Math.abs(a.bandPos - b.bandPos) === 1) {
     return b.k.x > a.k.x ? { achse: 'quer', sa: 'r', sb: 'l' } : { achse: 'quer', sa: 'l', sb: 'r' };
   }
   return null;

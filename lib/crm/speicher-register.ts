@@ -789,6 +789,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'bis der Haushalt den Prozess archiviert bzw. die Instanz gelöscht wird; Konto löschen tilgt den Speichernamen und die Team-Kennung des Kontos („[gelöscht]“)',
     kategorie: ['vertraulich'],
   }),
+  // Prozesse · Landkarte anpassen (22.10., lib/prozesse/landkarte-anpassung-server.ts): NUR die Abweichungen der Landkarte von der Vorgabe je Haushalt.
+  mit(H('prozesse-landkarte--*', 'Landkarte der Prozesse angepasst: Namen, Sätze und Töne der Bereiche, eigene Bereiche, je Kachel (Prozess-Kennung) Bereich, Beschriftung, ausgeblendet, Reihenfolge je Bereich — nur Abweichungen von der Vorgabe. Geschäftswissen, keine Daten Dritter; Person nur als Speichername (wer zuletzt geändert hat).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Organisation der eigenen Abläufe durch die Mitglieder des Haushalts; Person nur als Speichername',
+    art15: 'alle Konten des Haushalts sehen die angepasste Landkarte unter Prozesse (GET /api/prozesse/landkarte); Daten Dritter stehen hier nicht',
+    loeschfrist: 'bis „Auf Vorgabe zurück“ bzw. die Instanz gelöscht wird; Konto löschen tilgt den Speichernamen („[gelöscht]“)',
+    kategorie: ['vertraulich'],
+  }),
   mit(E('prozesse-webhook--*', 'Webhooks der Prozesse: je Prozess die öffentliche Adresse (pw-…) und NUR der Fingerabdruck (SHA-256) des Schlüssels, scharf ja/nein, Zähler; dazu die angenommenen Eingänge (nur die Felder des Schemas am Auslöser — fremder Text, kann Personen nennen, z. B. ein Formular). Art. 17: Eingänge, die die Person nennen, fallen weg (person-weitere.ts).', 'ereignisse'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Anfragen und Meldungen, die ein Fremdsystem im Auftrag des Haushalts schickt (z. B. Formular der eigenen Website); nur die Felder des Schemas, der Rest wird verworfen',
     art15: 'Kontakt: die Auskunft zählt die Eingänge, die die Person nennen (weitere Speicher); Konten des Haushalts sehen Adresse und Zähler in der Werkstatt, nie den Schlüssel',
@@ -875,7 +882,7 @@ const IN_BUSINESS: readonly string[] = [
   // Fulfillment (10.10.): Vorlagen, Fälle, Kunde (Links/Antworten/Puls), Dossiers, Personenkarten und der Datei-Ordner — nur Business
   'fulfillment--*', 'fulfillment-faelle--*', 'fulfillment-kunde--*', 'fulfillment-dossiers--*', 'fulfillment-personen--*', 'fulfillment-unterlagen',
   // Prozesse (21.10., B1): Werkstatt und Webhooks — nur Business
-  'prozesse--*', 'prozesse-webhook--*',
+  'prozesse--*', 'prozesse-webhook--*', 'prozesse-landkarte--*',
   // Prozesse · Läufe (21.10., C1) — nur Business
   'prozess-laeufe--*',
 ];

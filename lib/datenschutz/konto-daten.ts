@@ -152,6 +152,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'prozesse--*': 'Prozesse je Haushalt (Entwürfe, Versionen, Status — Geschäftswissen, Personen nur als Speichername bzw. Team-Kennung)',
   // Prozesse · Läufe (21.10., C1): je Haushalt, nur Kennungen und Status — beim Konto-Löschen wird der Speichername „[gelöscht]“ (laeufeKontoLoeschen).
   'prozess-laeufe--*': 'Läufe der Prozesse je Haushalt (nur Kennungen, Status, Zeitpunkte; Speichername der auslösenden Person) — keine Einträge je Konto, nicht im Export',
+  'prozesse-landkarte--*': 'Landkarte der Prozesse angepasst je Haushalt (nur Abweichungen von der Vorgabe, Speichername wer zuletzt geändert hat) — keine Einträge je Konto',
   'prozesse-webhook--*': 'Webhooks je Haushalt (Adresse, Fingerabdruck des Schlüssels, Eingänge Dritter — Art. 15/17 über die Kartei, Frist „ereignisse“) — keine Einträge je Konto',
   'produkt-treppe--*': 'Leistungstreppe je Haushalt (Stufen, Kundenreise, Roadmap, Positionierung, Fortschritt je Mandat-Kennung — wer geändert/erledigt/gesendet hat nur als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
   'fokus-business--*': 'Unser Fokus · Business je Haushalt und Gesellschaft (Freitext der Mitglieder, ohne Personen-Feld)',
@@ -577,6 +578,7 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     // Prozesse (21.10., B1): Einträge bleiben (Geschäftsunterlagen), Speichername und Team-Kennung des Kontos werden „[gelöscht]“.
     await sicher(`prozesse--${konto.haushalt}`, async () => (await import('@/lib/prozesse/werkstatt-server')).prozesseKontoLoeschen(konto.haushalt!, speicher));
     await sicher(`prozess-laeufe--${konto.haushalt}`, async () => (await import('@/lib/prozesse/lauf-server')).laeufeKontoLoeschen(konto.haushalt!, speicher));
+    await sicher(`prozesse-landkarte--${konto.haushalt}`, async () => (await import('@/lib/prozesse/landkarte-anpassung-server')).landkarteKontoLoeschen(konto.haushalt!, speicher));
     // Ereignisse (09.10., E1): Ereignisse NUR dieser Person (ihre Mail, „An ZOE gegeben“) fallen weg, aus `personen` wird sie gestrichen.
     const ev = `ereignisse--${konto.haushalt}`;
     await nurWenn(ev, async () => {

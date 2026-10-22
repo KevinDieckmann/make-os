@@ -27,3 +27,20 @@ export function useLandkarte(): { daten: LandkarteDaten | null; fehler: string |
   }, [laden]);
   return { daten, fehler, neu: laden };
 }
+
+/** Antwort von POST /api/prozesse/landkarte (Landkarte anpassen) — bei 409 mit der aktuellen Fassung. */
+export interface AnpassenAntwort { status: number; j: { ok?: boolean; fehler?: string; anpassung?: import('@/lib/prozesse/landkarte-anpassung').LandkarteAnpassung; anpassungStand?: string } | null }
+let anpassenKette: Promise<unknown> = Promise.resolve();
+/**
+ * EIN Schreibweg „Landkarte anpassen“ (POST, nacheinander): der Körper entsteht erst, wenn die Anfrage an der Reihe ist (`koerper()`), damit der Stand aus der
+ * letzten Antwort kommt. Netzfehler → Status 0 (nie geworfen).
+ */
+export function landkarteAnpassen(koerper: () => { stand: string; ops: import('@/lib/prozesse/landkarte-anpassung').LandkarteOp[] }): Promise<AnpassenAntwort> {
+  const lauf = anpassenKette.then(async (): Promise<AnpassenAntwort> => {
+    const r = await fetch(LANDKARTE_QUELLE, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(koerper()) }).catch(() => null);
+    if (!r) return { status: 0, j: null };
+    return { status: r.status, j: await r.json().catch(() => null) };
+  });
+  anpassenKette = lauf.catch(() => undefined);
+  return lauf;
+}

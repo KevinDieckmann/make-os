@@ -99,8 +99,10 @@ function StufenTitel({ x, y, titel, groesse, farbe }: { x: number; y: number; ti
 
 // ── Ebene 1: die Landkarte als Fliege ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [], nurAus, onKachel, onZahl, onFokus }: {
+export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [], nurAus, onKachel, onZahl, onFokus, toene }: {
   lage: FliegeLage; prozesse: ReadonlyMap<string, ProzessDef>; zahlen: Readonly<Record<string, Zahl>>; stufe: ZoomStufe; spitze: string;
+  /** Landkarte anpassen (22.10.): der Ton je Bereich (Kennung → Wert aus `LANDKARTE_TOENE`) — ohne Angabe die Töne der Vorgabe. */
+  toene?: Readonly<Record<string, string>>;
   /** Überfahrene bzw. gewählte Kacheln (beim Präsentieren: die des Rahmens) — ihre Wege stehen hell und beschriftet. */
   fokus?: readonly string[]; nurAus?: boolean;
   onKachel: (id: string) => void; onZahl: (href: string) => void;
@@ -112,26 +114,33 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [
   const wege = pfeileImBild(lage.pfeile, fokus, { nurAus });
   const hellIds = new Set(wege.filter(w => w.hell).flatMap(w => [w.pfeil.von, w.pfeil.nach]));
   const grund = `${spitze}-fluegel`, rand = `${spitze}-fluegel-rand`;
-  const knotenTon = STUFE_FARBE.uebergabe;
+  const stufeTon = (id: keyof typeof STUFE_FARBE) => toene?.[id] ?? STUFE_FARBE[id];
+  const knotenTon = stufeTon('uebergabe');
   return (
     <g>
       <defs>
         <FlaecheSpitze id={spitze} />
         {/* Die Flügel: getönt im Ton jeder Stufe (TIEF, leise) — ein Verlauf von links nach rechts. */}
         <linearGradient id={grund} gradientUnits="userSpaceOnUse" x1={fliege.x0} x2={fliege.x1} y1={0} y2={0}>
-          {fliege.toene.map(t => <stop key={t.stufe} offset={t.bei} stopColor={STUFE_FARBE[t.stufe]} stopOpacity={0.12} />)}
+          {fliege.toene.map(t => <stop key={t.stufe} offset={t.bei} stopColor={stufeTon(t.stufe)} stopOpacity={0.12} />)}
         </linearGradient>
         <linearGradient id={rand} gradientUnits="userSpaceOnUse" x1={fliege.x0} x2={fliege.x1} y1={0} y2={0}>
-          {fliege.toene.map(t => <stop key={t.stufe} offset={t.bei} stopColor={STUFE_FARBE[t.stufe]} stopOpacity={0.42} />)}
+          {fliege.toene.map(t => <stop key={t.stufe} offset={t.bei} stopColor={stufeTon(t.stufe)} stopOpacity={0.42} />)}
         </linearGradient>
       </defs>
-      {lage.baender.map(b => (
-        <g key={b.id} transform={`translate(${b.x} ${b.y})`}>
-          <rect data-pz-rand="" width={b.b} height={b.h} rx={22} fill={FLAECHE_STIL.leise.background} stroke={RAND.stark} strokeWidth={1.2} />
-          <text x={22} y={fern ? 38 : 30} fontSize={fern ? 26 : 13} fontWeight={700} letterSpacing="1.4" fill={C.inkDim}>{b.titel.toUpperCase()}</text>
-          {!fern && <text x={22 + textBreite(b.titel.toUpperCase(), 13, 700) + 1.4 * b.titel.length + 18} y={30} fontSize={13} fill={C.inkLeise}>{b.satz}</text>}
-        </g>
-      ))}
+      {lage.baender.map(b => {
+        // Ein Band mit eigenem Ton (Landkarte anpassen) trägt ihn als Punkt vor dem Namen — Farbe nie allein, der Name steht daneben.
+        const ton = toene?.[b.id] && toene[b.id] !== C.inkDim ? toene[b.id] : null;
+        const ein = ton ? (fern ? 30 : 18) : 0;
+        return (
+          <g key={b.id} transform={`translate(${b.x} ${b.y})`}>
+            <rect data-pz-rand="" width={b.b} height={b.h} rx={22} fill={FLAECHE_STIL.leise.background} stroke={ton ? TIEF.rand(ton) : RAND.stark} strokeWidth={1.2} />
+            {ton && <circle cx={22 + (fern ? 9 : 5)} cy={fern ? 29 : 25} r={fern ? 9 : 5} fill={ton} />}
+            <text x={22 + ein} y={fern ? 38 : 30} fontSize={fern ? 26 : 13} fontWeight={700} letterSpacing="1.4" fill={C.inkDim}>{b.titel.toUpperCase()}</text>
+            {!fern && b.satz && <text x={22 + ein + textBreite(b.titel.toUpperCase(), 13, 700) + 1.4 * b.titel.length + 18} y={30} fontSize={13} fill={C.inkLeise}>{b.satz}</text>}
+          </g>
+        );
+      })}
       {/* Die Fliege: zwei getönte Flügel, in der Mitte der Knoten „Übergabe“. */}
       <path data-pz-rand="" d={fliege.pfad} fill={`url(#${grund})`} stroke={`url(#${rand})`} strokeWidth={1.5} />
       {fliege.knoten.b > 0 && <rect x={fliege.knoten.x} y={fliege.knoten.y} width={fliege.knoten.b} height={fliege.knoten.h} rx={Math.min(30, fliege.knoten.h / 2)} fill={TIEF.flaeche(knotenTon)} stroke={TIEF.rand(knotenTon)} strokeWidth={1.5} />}
@@ -141,7 +150,7 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [
         </text>
       )}
       {/* Über jeder Stufe ihr Wort — es folgt der Form der Fliege. */}
-      {fliege.stufen.map(s => <StufenTitel key={s.id} x={s.cx} y={s.titelY} titel={s.titel} groesse={fern ? 30 : 15} farbe={STUFE_FARBE[s.id]} />)}
+      {fliege.stufen.map(s => <StufenTitel key={s.id} x={s.cx} y={s.titelY} titel={s.titel} groesse={fern ? 30 : 15} farbe={stufeTon(s.id)} />)}
       {/* Übergaben: Spitze (der Strich ist der Lichtfaden darunter); Beschriftung, wo Platz ist, bzw. immer mit Fokus. */}
       {wege.map(({ pfeil: pf }) => <FlaechePfeil key={pf.id} d={linieVon(pf.punkte)} spitze={spitze} gestrichelt={pf.art === 'zurueck'} />)}
       {lage.kacheln.map(k => {
@@ -152,7 +161,7 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [
         const z = zahlTexte(zahlen[p.id]);
         const href = zahlen[p.id]?.href;
         const Zeichen = p.quelle === 'system' ? Cog : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
-        const aria = `${p.titel}${t.produkt ? `, ${t.produkt}` : ''}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? 'System, nur lesbar' : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
+        const aria = `${p.beschriftung ?? p.titel}${t.produkt ? `, ${t.produkt}` : ''}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? 'System, nur lesbar' : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
         const spec = KACHEL_TEXT[stufe];
         const titel = einpassen({ text: kachelTitel(p, stufe), breite: k.b - spec.innen, groesse: spec.groesse, min: spec.min, zeilen: spec.zeilen, gewicht: spec.gewicht });
         const hell = hellIds.has(k.id);

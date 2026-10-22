@@ -18,7 +18,31 @@ export const STUFE_FARBE: Readonly<Record<KernStufe, string>> = {
 /** Führung und Unterstützung bleiben ruhig. */
 export const BAND_FARBE: Readonly<Record<Exclude<Band, 'kern'>, string>> = { fuehrung: C.inkDim, unterstuetzung: C.inkDim };
 
-export const tonVon = (p: { band: Band; stufe?: KernStufe }): string => (p.band === 'kern' ? STUFE_FARBE[p.stufe ?? 'fulfillment'] : BAND_FARBE[p.band]);
+/** Der Ton einer Kachel: angepasst (`ton`, Landkarte anpassen — nur aus `LANDKARTE_TOENE`), sonst der ihrer Stufe bzw. ihres Bandes. */
+export const tonVon = (p: { band: Band; stufe?: KernStufe; ton?: string }): string => p.ton ?? (p.band === 'kern' ? STUFE_FARBE[p.stufe ?? 'fulfillment'] : BAND_FARBE[p.band]);
+
+// ── Landkarte anpassen (22.10.: „alles muss anpassbar sein“) — die feste, geprüfte Palette je Bereich ─────────────────────────────────────────
+/**
+ * Die Töne, die ein Bereich der Landkarte tragen darf — NUR Token (nie ein freies Literal), jeder ≥ 3:1 gegen Grund und Kachel, Titel darauf ≥ 4,5:1
+ * (Wächter tests/prozesse-landkarte-anpassen.test.ts). Rot fehlt bewusst (Rot heißt „Frist“). Gespeichert wird nur die Kennung, nie der Farbwert.
+ */
+export const LANDKARTE_TOENE = [
+  { id: 'rose', titel: 'Rosé', ton: LEUCHT.beziehung },
+  { id: 'orange', titel: 'Orange', ton: LEUCHT.business },
+  { id: 'petrol', titel: 'Petrol', ton: C.aktiv },
+  { id: 'blau', titel: 'Blau', ton: LEUCHT.puls },
+  { id: 'violett', titel: 'Violett', ton: LEUCHT.agenten },
+  { id: 'lila', titel: 'Lila', ton: LEUCHT.schlaf },
+  { id: 'gruen', titel: 'Grün', ton: LEUCHT.gut },
+  { id: 'gelb', titel: 'Gelb', ton: LEUCHT.achtung },
+  { id: 'grau', titel: 'Grau', ton: C.inkDim },
+] as const;
+export type LandkarteTon = (typeof LANDKARTE_TOENE)[number]['id'];
+export const istLandkarteTon = (v: unknown): v is LandkarteTon => LANDKARTE_TOENE.some(t => t.id === v);
+/** Der Farbwert eines Tons der Palette (unbekannt: null). */
+export const landkarteTonWert = (id: string | undefined): string | null => LANDKARTE_TOENE.find(t => t.id === id)?.ton ?? null;
+/** Welcher Ton der Palette einem Farbwert entspricht (die Vorgabe eines Bereichs als Kennung). */
+export const landkarteTonVon = (wert: string): LandkarteTon | null => LANDKARTE_TOENE.find(t => t.ton === wert)?.id ?? null;
 
 // ── Werkstatt (Etappe B2, 21.10.) — die Formen im Miro-Stil, dazu Agent (Ton der ZOE-Kugel) und Auslöser; Farbe nie allein (Symbol + Text) ──────────────
 /** Schritt grün, Nachricht gelb, Raute ruhig, Erinnerung orange (Miro-Stil wie die Fläche des Fulfillments) — Agent im Granat der ZOE-Kugel, Auslöser im Akzent. */
