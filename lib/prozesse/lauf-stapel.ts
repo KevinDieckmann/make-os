@@ -6,7 +6,10 @@
 //                   nie der Inhaber als Rückfall), mit allen Prüfungen (§ 7 UWG, Kanal-Ampel, Art. 18, Werbesperre, 24-h-Fenster, `einmalig`). Empfänger und Text
 //                   stehen vor dem Klick im Vorschlag; ändern darf man nur Betreff und Text („Ändern & freigeben“), nie den Empfänger (Punkt 56).
 //                   Schlägt der Versand fehl, bleibt der Vorschlag offen — mit Grund.
-//                   Eine andere Außenwirkung (Angebot stellen, Einladung, Rechnung, Papierkorb): nach der Freigabe eine Aufgabe „von Hand“ — der Lauf wartet darauf.
+//                   Eine andere Außenwirkung (Angebot stellen, Rechnung, Papierkorb): nach der Freigabe eine Aufgabe „von Hand“ — der Lauf wartet darauf.
+//                   Bausteine mit eigenem Weg (22.10. spät, `_wirkung` — lib/prozesse/bausteine-server.ts): Mandat aus dem Deal, Gästeliste, Kampagnen-Ergebnis,
+//                   Anfrage aus dem Webhook (CRM-Schreibwege wie ein Klick), Fall starten (Fulfillment), Termin mit Einladung (Termin-Schreibweg) — ebenfalls
+//                   NUR aus der eigenen Sitzung, `einmalig` je Kennung; schlägt es fehl, bleibt der Vorschlag offen.
 //   abgelehnt     → „nein“ (die Route setzt den Status, `nachAblehnen` führt den Lauf weiter)
 //   abgelaufen    → „abgelaufen“ (der Takt lehnt nach der Frist mit Grund ab, lib/prozesse/lauf-server.ts `weckerPruefen`)
 // Vor der Wirkung wird neu geprüft (Punkt 64): der Lauf wartet noch auf GENAU diesen Vorschlag, auf derselben Version, der Prozess läuft — sonst 409 statt
@@ -14,7 +17,7 @@
 
 import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
 import type { Vorschlag } from '@/lib/zoe/stapel';
-import type { SendeAuftrag } from './lauf-regeln';
+import type { SendeAuftrag, VorschlagWirkung } from './lauf-regeln';
 
 type Fehler = { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string };
 const nein = (status: Fehler['status'], fehler: string): Fehler => ({ ok: false, status, fehler });
@@ -122,7 +125,26 @@ export const PROZESS_STAPEL_ART: StapelArtFreigabe = {
         if (!r.ok) { await loslassen(v.id); return r; }
         ergebnis = s.kanal === 'mail' ? `Mail an ${s.an.name} gesendet.` : `WhatsApp an ${s.an.name} gesendet.`;
       }
-      const danach = v.eingabe._danach as { titel: string; beschreibung: string; bezug: Record<string, string> } | undefined;
+      const wirkung = v.eingabe._wirkung as VorschlagWirkung | undefined;
+      if (wirkung) {
+        // Wie N12: nur aus der eigenen Sitzung — der Dienstweg (ZOE, Takt, Skripte) legt kein Mandat an, startet keinen Fall und lädt nie ein.
+        if (!opt.sitzung) { await loslassen(v.id); return nein(403, 'Nur aus der eigenen Sitzung — über den Dienstweg wird nichts übernommen.'); }
+        const [{ einmalig }, { wirkungUebernehmen }] = await Promise.all([import('@/lib/store/anfragen'), import('./bausteine-server')]);
+        let r: Awaited<ReturnType<typeof wirkungUebernehmen>>;
+        try {
+          const a = await mitLaufHerkunft(herkunft, () => einmalig<Awaited<ReturnType<typeof wirkungUebernehmen>>>('prozess-wirkung', kennung, async () => {
+            const x = await wirkungUebernehmen(person, wirkung, { vid: v.id, kennung });
+            return { status: x.ok ? 200 : x.status, body: x };
+          }, undefined, { wer: person }));
+          const b = a.body as Awaited<ReturnType<typeof wirkungUebernehmen>> | { ok: false; error: string };
+          r = 'error' in b ? { ok: false, status: 409, fehler: b.error } : b;
+        } catch (e) {
+          r = { ok: false, status: 409, fehler: `Nicht übernommen (${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}). Der Vorschlag bleibt offen.` };
+        }
+        if (!r.ok) { await loslassen(v.id); return nein(r.status, r.fehler); }
+        ergebnis = r.text;
+      }
+      const danach = wirkung ? undefined : v.eingabe._danach as { titel: string; beschreibung: string; bezug: Record<string, string> } | undefined;
       if (danach) {
         const [{ systemAufgabenAendern }, { WEG }] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('@/lib/wege')]);
         const iso = new Date().toISOString();

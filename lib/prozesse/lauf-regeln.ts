@@ -18,8 +18,9 @@ import { kantenVon, startKnoten, alleSchritte, schloesser, type Kante } from './
 import { bedingungenTreffen } from './bedingung';
 import {
   brauchtSchloss, FORM_KLASSE, katalogEintrag, klasseVonEintrag, maskeVorgaben, textvorlageFuellen, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT,
-  type KatalogEintrag,
+  KARTE_FELDER, type KatalogEintrag,
 } from './baustein-katalog';
+import { textGeruest } from './kundengewinnung/text-geruest';
 import type { AnspracheUrteil } from './ansprache';
 import { istRolle } from './kundengewinnung/rollen';
 import {
@@ -168,11 +169,32 @@ export interface LaufUmfeld {
    * Schritt hält). Feste Kennungen bleiben, wie sie sind. Ohne Angabe bleibt der Wert (gesendet wird über das Postfach der freigebenden Person).
    */
   postfach?: (wert: string) => string | null;
+  /**
+   * „Karte ergänzen“ ohne Agent davor (22.10. spät): welche der Felder an der Firma bzw. am Kontakt des Falls noch leer sind (Kennungen der Maske).
+   * `[]` = alles da (nichts zu tun), null = unbekannt (kein CRM, Probelauf) — dann gelten alle Felder als offen.
+   */
+  karteLuecken?: (ziel: 'firma' | 'kontakt', felder: readonly string[]) => string[] | null;
 }
 
 // ══ Aktionen (Wirkungen) ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 export interface AufgabeBezug { kontaktId?: string; firmaId?: string; dealId?: string; mandatId?: string }
+/**
+ * Was ein Vorschlag nach der Freigabe selbst bewirkt (22.10. spät, „Bausteine mit eigenem Weg“) — immer über den VORHANDENEN Schreibweg, als die freigebende
+ * Person aus ihrer Sitzung (lib/prozesse/lauf-stapel.ts → lib/prozesse/bausteine-server.ts):
+ *   crm          eine Art von `crm_vorschlag` (lib/zoe/crm-vorschlag.ts: geprüft beim Vorlegen, übernommen bei der Freigabe — Mandat aus dem Deal, Gästeliste,
+ *                Kampagnen-Ergebnis, Anfrage aus dem Webhook). `gaeste`/`webhook`: was der Server beim Vorlegen ergänzt (Gäste aus `gaesteVorschlag`, Felder des
+ *                Webhook-Eingangs — fremder Text, darum nur als Vorschlag).
+ *   fulfillment  den Fulfillment-Fall des Mandats starten (lib/fulfillment/prozesse/fall-server.ts `fallStartenServer`, Ablauf aus der Produkt-Karte).
+ *   termin       einen Termin mit Gast anlegen — die Einladung geht erst mit der Freigabe raus (Kalender-Regel: „Einladung an n Personen …?“ = der Vorschlag;
+ *                `einladungBestaetigt` nur aus der Sitzung, der Dienstweg lädt nie ein). Zeit und Kalender setzt der Server beim Vorlegen (freie Zeit der Person).
+ * Findet der Server keinen eigenen Weg (kein Ablauf, keine freie Zeit), gilt der Ersatz `danach` (Freigabe + Aufgabe „von Hand“) — nichts wird still übergangen.
+ */
+export type VorschlagWirkung =
+  | { art: 'crm'; eingabe: Record<string, unknown>; gaeste?: { n: number; zielkunden: number; kunden: number }; webhook?: true }
+  | { art: 'fulfillment'; mandatId?: string; dealId?: string; vorlageId?: string }
+  | { art: 'termin'; titel: string; dauerMin: number; an: Empfaenger; bezug: AufgabeBezug; start?: string; ende?: string; kalender?: string; uid?: string };
+
 /** Was nach der Freigabe gesendet wird (N12) — Empfänger aus dem Fall, Text aus der Vorlage; geändert werden darf nur Betreff/Text. */
 export type SendeAuftrag =
   | { kanal: 'mail'; postfach?: string; an: Empfaenger; betreff: string; text: string }
@@ -185,6 +207,8 @@ export type Aktion =
     fuer: string | null; bis: string; sende?: SendeAuftrag;
     /** Nach der Freigabe: eine Aufgabe für die freigebende Person (Außenwirkung ohne eigenen Weg im Motor — von Hand). */
     danach?: { titel: string; beschreibung: string; bezug: AufgabeBezug };
+    /** Was die Freigabe selbst bewirkt (eigener Weg) — gewinnt vor `danach`; der Server entscheidet beim Vorlegen, welches gilt. */
+    wirkung?: VorschlagWirkung;
   }
   | { art: 'crm-vorschlag'; kennung: string; knoten: string; titel: string; eingabe: Record<string, unknown> }
   | { art: 'meldung'; kennung: string; knoten: string; an: string | null; titel: string; telegram?: string }
@@ -218,6 +242,8 @@ export type AktionErgebnis =
     anzahl?: number; rest?: number; uebersprungen?: number; hinweis?: LaufGrund;
     /** Der Schritt hat im Web recherchiert (Frische) bzw. fremden Text gelesen — danach gibt es nur Vorschläge (Regel 6). */
     recherche?: true; fremd?: true;
+    /** Nichts zu tun (schon erledigt, nichts vorzuschlagen — Grund in `hinweis`): der Lauf wartet nicht, der Schritt gilt als übersprungen. */
+    weiter?: true;
   }
   | { ok: false; art: 'voruebergehend' | 'dauerhaft'; grund: LaufGrund; /** Kosten eines Modellaufrufs, der trotzdem bezahlt ist (z. B. Ergebnis passte nicht zum Vertrag). */ kostenCent?: number };
 
@@ -398,11 +424,14 @@ function schlossPlan(l: ProzessLauf, schloss: K, x: K, kennung: string, u: LaufU
       },
     };
   }
-  // Andere Außenwirkung (Angebot stellen, Einladung, Rechnung, Papierkorb, Agent im „tödlichen Dreieck“): erst die Freigabe, dann von Hand.
+  // Andere Außenwirkung (Angebot stellen, Einladung, Rechnung, Papierkorb, Agent im „tödlichen Dreieck“): erst die Freigabe, dann von Hand — außer der Baustein
+  // hat seinen eigenen Weg (22.10. spät): Mandat aus dem Deal (Klasse geld, ein Klick) und Termin mit Einladung (Rückfrage „Einladung an n Personen …“).
   const vonHand = !!e && !e.agent;
+  const wirkung = e ? schlossWirkung(l, x, e, werte, u) : null;
   return {
     art: 'aktion', schatten: 'freigabe', ausgangSchatten: 'ja',
     aktion: {
+      ...(wirkung ? { wirkung } : {}),
       art: 'vorschlag', kennung, knoten: schloss.id, sorte: 'freigabe', titel: `Freigabe: ${x.titel}`.slice(0, 200),
       nachher: x.form === 'agent'
         // Agent im „tödlichen Dreieck“ (private Daten, fremder Text, Weg nach außen): sein Ergebnis liegt schon als Vorschlag im Stapel — hier geht es nur ums Weitermachen.
@@ -458,10 +487,90 @@ function crmVorschlagEingabe(l: ProzessLauf, k: K, e: KatalogEintrag, u: LaufUmf
     case 'crm.deal-schritt': return b.dealId ? { art: 'deal_aendern', deal: b.dealId, naechster_schritt: fuellen(w.naechsterSchritt, u) || k.titel, faellig: in_(agentTage !== undefined && agentTage >= 0 && agentTage <= 365 ? agentTage : w.inTagen) } : null;
     case 'crm.lead-parken': return leadId ? { art: 'lead_parken', lead: leadId, park_tage: Math.max(1, Math.min(365, Math.round(zahl(w.parkTage) ?? 90))), ...(typeof w.grundArt === 'string' ? { grund_art: w.grundArt } : {}) } : null;
     case 'crm.entwurf-text': {
-      const t = fuellen(w.text, u);
+      // Ohne Text in der Maske (22.10. spät): ein Gerüst aus den Platzhaltern des Falls und dem Anlass (lib/prozesse/kundengewinnung/text-geruest.ts — kein Modell).
+      const t = fuellen(w.text, u) || textGeruest({ art: w.art, kanal: w.kanal, anlass: w.anlass, titel: k.titel, p: u.platzhalter ?? {} });
       if (!b.kontaktId || !t || typeof w.art !== 'string') return null;
       return { art: w.art, kontakt: b.kontaktId, text: t, ...(typeof w.kanal === 'string' ? { kanal: w.kanal } : {}), ...(text(w.anlass) ? { begruendung: `Anlass: ${text(w.anlass)}` } : {}) };
     }
+  }
+  return null;
+}
+
+/** Ergebnis-Werte eines Kampagnen-Ergebnisses (dieselben wie POST /api/crm/kampagnen `ergebnis`). */
+const KAMPAGNEN_ERGEBNISSE = ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const;
+const zwischen = (v: unknown, min: number, max: number, vorgabe: number): number => { const z = zahl(v); return z === undefined ? vorgabe : Math.max(min, Math.min(max, Math.round(z))); };
+
+/**
+ * Ein Vorschlag, der nach der Freigabe selbst wirkt (22.10. spät) — der Lauf wartet darauf: freigegeben → weiter (die nächsten Rauten lesen den neuen Stand
+ * im CRM), abgelehnt bzw. abgelaufen → ebenfalls weiter, als „übersprungen“ (die Person hat es anders gelöst; `freigabeEntschieden`). Ersatz „von Hand“
+ * (`danach`), wenn der Server keinen eigenen Weg findet. Im Schatten: „würde zur Freigabe vorlegen“.
+ */
+function uebernahmePlan(l: ProzessLauf, k: K, kennung: string, u: LaufUmfeld, o: { titel: string; nachher: string; wirkung: VorschlagWirkung; wer?: unknown; fristTage?: unknown }): Plan {
+  const w = werVon(u, l, o.wer);
+  if ('fehler' in w) return { art: 'fehler', grund: w.fehler };
+  return {
+    art: 'aktion', schatten: 'freigabe', ausgangSchatten: 'weiter',
+    aktion: {
+      art: 'vorschlag', kennung, knoten: k.id, sorte: 'freigabe', titel: o.titel.slice(0, 200), nachher: o.nachher.slice(0, 8000), fuer: w.an, bis: bis(u, o.fristTage), wirkung: o.wirkung,
+      danach: { titel: `Von Hand: ${k.titel}`.slice(0, 300), beschreibung: `Freigegeben im Prozess „${u.titel}“ — bitte jetzt ausführen und abhaken.`, bezug: bezugAus(l, u) },
+    },
+  };
+}
+
+/** Der eigene Weg eines Bausteins ohne Schloss (Fall starten, Gäste vorschlagen, Kampagnen-Ergebnis, Anfrage übernehmen) — sonst null. Rein. */
+function eigenerWegPlan(l: ProzessLauf, k: K, e: KatalogEintrag | null, werte: Readonly<Record<string, MaskenWert>>, u: LaufUmfeld, kennung: string): Plan | null {
+  if (!e) return null;
+  const b = bezugAus(l, u);
+  const fehlen: Plan = { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'daten-fehlen' };
+  const p = u.platzhalter ?? {};
+  const name = (x: unknown) => (typeof x === 'string' && x.trim() ? ` · ${x.trim().slice(0, 80)}` : '');
+  switch (e.id) {
+    case 'fulfillment.fall-starten': {
+      if (!b.mandatId && !b.dealId) return fehlen;
+      return uebernahmePlan(l, k, kennung, u, {
+        titel: `Fall starten${name(p['firma.name'])}`, nachher: `Der Prozess „${u.titel}“ schlägt vor, den Fulfillment-Fall des Mandats jetzt zu starten (Ablauf aus der Produkt-Karte) — statt erst im Morgenlauf.`,
+        wirkung: { art: 'fulfillment', ...(b.mandatId ? { mandatId: b.mandatId } : {}), ...(b.dealId ? { dealId: b.dealId } : {}) }, wer: werte.wer,
+      });
+    }
+    case 'event.gaeste': {
+      const eventId = l.fall.art === 'event' ? l.fall.id : l.daten['bezug.eventid'];
+      if (!eventId) return fehlen;
+      const gaeste = { n: zwischen(werte.n, 1, 200, 12), zielkunden: zwischen(werte.mixZielkunden, 0, 100, 40), kunden: zwischen(werte.mixKunden, 0, 100, 20) };
+      return uebernahmePlan(l, k, kennung, u, {
+        titel: `Gäste vorschlagen${name(p['event.titel'])}`, nachher: `Bis zu ${gaeste.n} Gäste in der Mischung (Zielkunden ${gaeste.zielkunden} %, Kunden ${gaeste.kunden} %) als „vorgemerkt“ — nur zulässige Einladungswege, eingeladen wird nichts.`,
+        wirkung: { art: 'crm', eingabe: { art: 'gaesteliste', event: eventId }, gaeste },
+      });
+    }
+    case 'crm.kampagnen-ergebnis': {
+      const kampagne = l.fall.art === 'kampagne' ? l.fall.id : l.daten['bezug.kampagneid'];
+      if (!kampagne || !b.kontaktId) return fehlen;
+      const ergebnis = (KAMPAGNEN_ERGEBNISSE as readonly unknown[]).includes(werte.ergebnis) ? werte.ergebnis as string : undefined;
+      return uebernahmePlan(l, k, kennung, u, {
+        titel: `Kampagnen-Ergebnis${name(p['kampagne.titel'])}`, nachher: ergebnis ? `Ergebnis „${ergebnis}“ in der Kampagne festhalten.` : 'Das Ergebnis in der Kampagne festhalten (aus dem Verlauf seit dem Start abgeleitet).',
+        wirkung: { art: 'crm', eingabe: { art: 'kampagnen_ergebnis', kampagne, kontakt: b.kontaktId, ...(ergebnis ? { ergebnis } : {}) } },
+      });
+    }
+    case 'crm.anfrage-anlegen': {
+      // Nur aus einem Webhook-Eingang (fremder Text — die Felder liest erst der Server, als Vorschlag; E-V1). Ohne Eingang gibt es nichts zu übernehmen.
+      if (!l.daten['bezug.eingangid']) return fehlen;
+      const kanal = typeof werte.kanal === 'string' && werte.kanal ? werte.kanal : 'website';
+      return uebernahmePlan(l, k, kennung, u, {
+        titel: 'Anfrage übernehmen', nachher: `Aus dem Eingang des Webhooks eine Anfrage (Kanal ${kanal}) — Dublette, Art. 18 und Werbesperre prüft der Vorschlag; versendet wird nichts.`,
+        wirkung: { art: 'crm', eingabe: { art: 'anfrage_anlegen', kanal }, webhook: true },
+      });
+    }
+  }
+  return null;
+}
+
+/** Der eigene Weg hinter einem Schloss (Mandat anlegen, Termin mit Einladung) — sonst null (dann Freigabe + Aufgabe „von Hand“). Rein. */
+function schlossWirkung(l: ProzessLauf, x: K, e: KatalogEintrag, werte: Readonly<Record<string, MaskenWert>>, u: LaufUmfeld): VorschlagWirkung | null {
+  const b = bezugAus(l, u);
+  if (e.id === 'crm.mandat-anlegen') return b.dealId ? { art: 'crm', eingabe: { art: 'mandat_anlegen', deal: b.dealId } } : null;
+  if (e.id === 'kalender.einladung') {
+    const an = u.empfaenger?.(typeof werte.gaeste === 'string' && werte.gaeste ? werte.gaeste : 'fall.kontakt') ?? null;
+    if (!an?.email) return null;
+    return { art: 'termin', titel: (fuellen(werte.titel, u) || x.titel).slice(0, 300), dauerMin: zwischen(werte.dauerMin, 15, 480, 30), an, bezug: b };
   }
   return null;
 }
@@ -588,18 +697,21 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
     if ('fehler' in wer) return { art: 'fehler', grund: wer.fehler };
     return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'meldung', kennung, knoten: k.id, an: wer.an, titel: (fuellen(werte.text, u) || k.titel).slice(0, 280) } };
   }
-  // Karte ergänzen (N4): hat ein Agenten-Schritt davor Felder vorgeschlagen (Häkchen je Feld im Stapel), ist hier nichts mehr zu tun; sonst ergänzt ein Mensch.
+  // Karte ergänzen (N4): hat ein Agenten-Schritt davor Felder vorgeschlagen (Häkchen je Feld im Stapel), ist hier nichts mehr zu tun. Ohne Agent davor
+  // (22.10. spät): die frische Recherche eines anderen Laufs gilt (ihr Vorschlag liegt schon im Stapel); stehen alle Felder schon in der Akte, ist nichts zu tun;
+  // sonst ergänzt ein Mensch genau die Felder, die fehlen (es gibt keine andere Quelle — nie erfundene Werte).
   if (e?.id === 'crm.karte-ergaenzen') {
     if (Number(l.daten['agent.felder'] ?? 0) > 0) return { art: 'weiter', ausgang: 'weiter', status: 'erledigt', grund: 'vorbereitet' };
-    const felder = Array.isArray(werte.felder) ? (werte.felder as string[]).join(', ') : '';
-    return aufgabePlan(l, k, kennung, u, { titel: `Karte ergänzen: ${k.titel}`, beschreibung: felder ? `Felder: ${felder}` : '' });
+    if (l.schritte.some(x => x.grund === 'recherche-frisch')) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'recherche-frisch' };
+    const felder = Array.isArray(werte.felder) ? (werte.felder as string[]).filter((x): x is string => typeof x === 'string') : [];
+    const luecken = u.karteLuecken?.(werte.ziel === 'kontakt' ? 'kontakt' : 'firma', felder) ?? null;
+    if (luecken && !luecken.length) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'schon-erledigt' };
+    const namen = (luecken ?? felder).map(f => KARTE_FELDER.find(x => x.id === f)?.label ?? f).join(', ');
+    return aufgabePlan(l, k, kennung, u, { titel: `Karte ergänzen: ${k.titel}`, beschreibung: namen ? `Es fehlen: ${namen}` : '' });
   }
-  // Text-Entwurf ohne Text: ein Mensch schreibt ihn (mit dem Anlass der Vorlage) — sonst ein Vorschlag mit Kanal-Ampel.
-  if (e?.id === 'crm.entwurf-text' && !fuellen(werte.text, u)) {
-    const urteil = u.ansprache?.(e, werte) ?? null;
-    if (urteil && !urteil.erlaubt) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'kanal-rot' };
-    return aufgabePlan(l, k, kennung, u, { titel: `${k.titel}`, beschreibung: [text(werte.anlass) && `Anlass: ${text(werte.anlass)}`, urteil?.farbe === 'gelb' ? `Kanal-Ampel gelb: ${urteil.grund}` : ''].filter(Boolean).join('\n') });
-  }
+  // Bausteine mit eigenem Weg (22.10. spät): ein Vorschlag, der nach der Freigabe selbst wirkt — über den vorhandenen Schreibweg (siehe `VorschlagWirkung`).
+  const eigen = eigenerWegPlan(l, k, e, werte, u, kennung);
+  if (eigen) return eigen;
   if (e?.id === 'telegram.hinweis') return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'meldung', kennung, knoten: k.id, an: typeof werte.an === 'string' ? werte.an : l.person, titel: k.titel.slice(0, 280), telegram: typeof werte.hinweis === 'string' ? werte.hinweis : 'wartet' } };
   if (e && CRM_VORSCHLAG_BAUSTEINE.has(e.id)) {
     if (e.ansprache) { const urteil = u.ansprache?.(e, werte) ?? null; if (urteil && !urteil.erlaubt) return { art: 'weiter', ausgang: 'weiter', status: 'uebersprungen', grund: 'kanal-rot' }; }
@@ -785,6 +897,14 @@ export function nachAktion(laufEin: ProzessLauf, def: ProzessDefinition, a: Akti
     if (e.fremd) l.fremd = true;
     delete s.versuch;
     if (a.art === 'teilprozess' && a.uebergabe) { abschliessen(s, 'erledigt', undefined, jetzt); beenden(l, 'fertig', jetzt, { ergebnis: 'uebergabe' }); return l; }
+    // Nichts zu tun (22.10. spät — schon erledigt, nichts vorzuschlagen): nicht warten, weiter über den positiven Ausgang (am Schloss „ja“).
+    if (e.weiter) {
+      const form = def.knoten.find(x => x.id === a.knoten)?.form;
+      const aus: LaufAusgang = form === 'freigabe' || form === 'entscheidung' ? 'ja' : 'weiter';
+      abschliessen(s, 'uebersprungen', aus, jetzt, e.hinweis ?? 'schon-erledigt');
+      geh(l, idx, a.knoten, aus, jetzt);
+      return l;
+    }
     const w = warteArtVon(a);
     if (w) {
       s.status = 'wartet';
@@ -899,6 +1019,9 @@ export function freigabeEntschieden(l: ProzessLauf, def: ProzessDefinition, kenn
     if (s) s.wirkung = [...(s.wirkung ?? []).filter(w => w.id !== o.danachAufgabe), { art: 'aufgabe', id: o.danachAufgabe }];
     return n;
   }
+  // Ein Übernahme-Vorschlag eines Schritts (22.10. spät — kein Schloss, keine Entscheidung: Fall starten, Gäste, Kampagnen-Ergebnis, Anfrage): abgelehnt bzw.
+  // abgelaufen heißt „nicht über diesen Vorschlag“ — der Lauf geht weiter (Schritt übersprungen), die nächsten Rauten lesen den echten Stand im CRM.
+  if (wie !== 'ja' && k && k.form !== 'entscheidung' && k.form !== 'freigabe') return verlassen(l, def, 'weiter', jetzt, { status: 'uebersprungen', grund: wie === 'nein' ? 'abgelehnt' : 'abgelaufen' });
   const ausgang: LaufAusgang = wie === 'ja' ? 'ja' : wie === 'nein' ? 'nein' : k?.form === 'entscheidung' ? 'nein' : 'abgelaufen';
   return verlassen(l, def, ausgang, jetzt, wie === 'nein' ? { grund: 'abgelehnt' } : wie === 'abgelaufen' ? { status: 'abgelaufen', grund: 'abgelaufen' } : {});
 }

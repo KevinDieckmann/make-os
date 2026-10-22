@@ -84,7 +84,9 @@ export type LaufGrund =
   // 22.10. spät (Motor-Rest: Schleife, CRM-Abfrage, Agent mit Feldern, Platzhalter, Nachtlauf).
   | 'rolle-fehlt' | 'gesellschaft-fehlt' | 'abfrage-rest' | 'schleife-rest' | 'liste-fehlt' | 'gedrosselt' | 'recherche-frisch' | 'agent-aus'
   // 22.10. nachts (Entscheidung „Nur öffentliche Angaben“): Research ohne Firmennamen am Fall — es gibt nichts Öffentliches zu recherchieren.
-  | 'oeffentlich-leer';
+  | 'oeffentlich-leer'
+  // 22.10. spät (Bausteine mit eigenem Weg — lib/prozesse/bausteine-server.ts): nichts zu tun bzw. kein eigener Weg möglich.
+  | 'schon-erledigt' | 'nichts-vorzuschlagen' | 'keine-zeit' | 'kein-ablauf';
 
 /** Ein besuchter Knoten. Ein Knoten kann mehrfach besucht werden (Erinnerung, „erneut ab“) — `runde` zählt mit. */
 export interface LaufSchritt {
@@ -396,4 +398,8 @@ export const GRUND_TEXT: Readonly<Record<LaufGrund, string>> = {
   'recherche-frisch': 'diese Firma wurde vor Kurzem recherchiert (Recherche-Frische) — übersprungen, ohne Kosten',
   'agent-aus': 'der Agent ist unter ZOE › Agenten ausgeschaltet',
   'oeffentlich-leer': 'nur öffentliche Angaben: am Fall steht keine Firma mit Namen — nichts recherchiert, ohne Kosten',
+  'schon-erledigt': 'schon erledigt (steht so im CRM) — nichts vorzuschlagen',
+  'nichts-vorzuschlagen': 'nichts vorzuschlagen (niemand passt bzw. alle sind schon dabei)',
+  'keine-zeit': 'keine freie Zeit in den nächsten 14 Tagen — der Termin wird von Hand vereinbart',
+  'kein-ablauf': 'dem Produkt ist noch kein Ablauf zugeordnet — der Fall startet nach der Zuordnung (Produkte & Mandate › Produkte)',
 };

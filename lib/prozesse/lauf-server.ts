@@ -37,6 +37,7 @@ import { ausloeserPasst, ereignisDaten, startetNachLoop } from './ausloeser';
 import { anspracheUrteil } from './ansprache';
 import { laufPerson, type TeamKurz } from './rollen';
 import { herkunftAus, mitLaufHerkunft } from './lauf-herkunft';
+import { gelesenFelderMenge } from './kundengewinnung/raute-felder';
 
 // ══ Bestand ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -164,8 +165,11 @@ async function kanalFelder(k: Kontakt | null, ctx: { hatMandat: boolean; hatChan
   return { 'lead.bester-kanal': kanal, 'lead.ampel-mail': mail, 'lead.ampel-telefon': k ? kanalStatus(k, 'telefon', ctx).farbe : 'rot' };
 }
 
+/** Der Lauf, für den ein Fall gelesen wird (22.10. spät): Start/Person für „seit dem Start“, und welche Felder die Definition nennt (teure nur dann). */
+type FallLauf = { lauf?: { id: string; prozessId: string; start: string; person: string | null }; brauche?: ReadonlySet<string> };
+
 /** Felder, Platzhalter, Personen und Daten eines Falls — nur über ladeCrm/Kartei/Leads (Art. 18 wird erkannt, nie verarbeitet). */
-async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record<string, string>> = {}): Promise<FallInfo> {
+async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record<string, string>> = {}, fl: FallLauf = {}): Promise<FallInfo> {
   if (fall.art === 'keiner' || !fall.id) {
     const kid = daten['bezug.kontaktid'];
     const k = kid ? (await kartei(kx)).find(x => x.id === kid) ?? null : null;
@@ -180,6 +184,10 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
     hatMandat: !!k && crm.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(k.id)),
     hatChance: !!k && crm.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(k.id)),
   });
+  // Die übrigen Felder der Vorlagen (Kundengewinnung) — lib/prozesse/kundengewinnung/fall-felder-server.ts; ein vorhandener Wert des Falls geht vor.
+  const kgLesen = async (k: Kontakt | null, personen: Kontakt[], lead?: LeadZeile) => (await import('./kundengewinnung/fall-felder-server')).kgFallFelder({
+    art: fall.art, fallId: fall.id, crm, kontakte: alle, kontakt: k, personen, ...(lead ? { lead } : {}), daten, ...(fl.lauf ? { lauf: fl.lauf } : {}), brauche: fl.brauche ?? null, h: kx.h, jetzt: kx.jetzt, hat: hat(k),
+  });
   switch (fall.art) {
     case 'deal': {
       const c = crm.chancen.find(x => x.id === fall.id);
@@ -191,7 +199,8 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const { gesundheit } = await import('@/lib/crm/pipeline');
       const mandat = crm.mandate.find(m => m.chanceId === c.id && !m.geloeschtAm);
       const nachfass = !!angebot && (crm.followups ?? []).some(x => x.id === `fu-${angebot.id}` && x.status === 'offen');
-      const kg = { 'deal.ampel': gesundheit(c, localDay(kx.jetzt)).ampel, 'deal.verschoben': c.erwartetVerschoben ?? 0, 'deal.offen': OFFENE_STUFEN.includes(c.stufe), 'deal.mandat-da': !!mandat, 'deal.nachfass-followup': nachfass,
+      const x = await kgLesen(k, c.kontaktIds.map(nachId).filter((y): y is Kontakt => !!y));
+      const kg = { ...x.daten, 'deal.ampel': gesundheit(c, localDay(kx.jetzt)).ampel, 'deal.verschoben': c.erwartetVerschoben ?? 0, 'deal.offen': OFFENE_STUFEN.includes(c.stufe), 'deal.mandat-da': !!mandat, 'deal.nachfass-followup': nachfass,
         ...(mandat ? { 'deal.vertrag-unterschrieben': !!mandat.vertragUnterschrieben } : {}), ...(c.grund ? { 'deal.grund': c.grund } : {}), ...(await kanalFelder(k, hat(k), 'deal')) };
       return {
         fehlt: false, kontakt: k, personen: c.kontaktIds.map(nachId).filter((x): x is Kontakt => !!x), zustaendig: c.besitzer, ...hat(k),
@@ -211,6 +220,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
         daten: {
           'mandat.status': m.status, 'mandat.gesellschaft': m.gesellschaft, ...(m.leistungId ? { 'mandat.produkt': m.leistungId } : {}), ...(m.zustaendig ? { 'mandat.zustaendig': m.zustaendig } : {}),
           ...(m.verlaengerung ? { 'mandat.verlaengerung': m.verlaengerung } : {}),
+          ...(await kgLesen(k, m.kontaktIds.map(nachId).filter((y): y is Kontakt => !!y))).daten,
           ...(await mandatFelder(m, kx)),
         },
         platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde },
@@ -226,14 +236,15 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       // Die Firma ist auch ein Lead (lib/crm/leads.ts) — ihre Lead-Felder (Score, Temperatur, SQL-bereit …) gelten für die Score-Rauten der Vorlagen (V01a).
       const z = (await leadsVon(kx)).find(x => x.id === f.id);
       const lead = z ? await leadDaten(z, k, kx) : {};
+      const x = await kgLesen(k, personen, z);
       return {
         fehlt: false, kontakt: k, personen: k ? [k] : [], zustaendig: z?.besitzer, ...hat(k),
         daten: {
-          ...lead, ...(f.bean ? { 'firma.bean': f.bean } : {}), ...(f.lead?.status ? { 'firma.lead-status': f.lead.status } : {}),
+          ...x.daten, ...lead, ...(f.bean ? { 'firma.bean': f.bean } : {}), ...(f.lead?.status ? { 'firma.lead-status': f.lead.status } : {}),
           // „Stammdaten fehlen“: Branche, Mitarbeitende oder Webseite leer (V01a — dann recherchieren).
           'firma.daten-fehlen': !f.branche || !f.mitarbeiter || !f.webseite, ...(await kanalFelder(k, hat(k), 'firma')),
         },
-        platzhalter: { ...kontaktPlatzhalter(k), 'firma.name': f.name, 'firma.branche': f.branche ?? '' },
+        platzhalter: { ...x.platzhalter, ...kontaktPlatzhalter(k), 'firma.name': f.name, 'firma.branche': f.branche ?? '' },
         datum: { ...(z?.wiedervorlage ? { 'lead.wiedervorlage': z.wiedervorlage.slice(0, 10) } : {}) },
       };
     }
@@ -241,10 +252,11 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const z = (await leadsVon(kx)).find(x => x.id === fall.id);
       if (!z) return { ...LEER_FALL, fehlt: !nachId(fall.id) && !crm.firmen.some(f => f.id === fall.id) ? true : false, ...(nachId(fall.id) ? { kontakt: nachId(fall.id), personen: [nachId(fall.id)!] } : {}) };
       const k = nachId(z.hauptKontaktId) ?? (z.art === 'person' ? nachId(z.id) : null);
+      const x = await kgLesen(k, z.personen.map(p => nachId(p.id)).filter((y): y is Kontakt => !!y), z);
       return {
         fehlt: false, kontakt: k, personen: k ? [k] : [], zustaendig: z.besitzer, ...hat(k),
-        daten: { ...(await leadDaten(z, k, kx)), ...(await kanalFelder(k, hat(k), 'lead')), ...(await leadBezugFelder(crm, k?.id ?? (z.art === 'person' ? z.id : undefined), daten, alle, kx)) },
-        platzhalter: { ...kontaktPlatzhalter(k), 'firma.name': z.art === 'firma' ? z.name : k?.firma ?? '', 'lead.status': z.status },
+        daten: { ...(await leadDaten(z, k, kx)), ...(await kanalFelder(k, hat(k), 'lead')), ...x.daten, ...(await leadBezugFelder(crm, k?.id ?? (z.art === 'person' ? z.id : undefined), daten, alle, kx)) },
+        platzhalter: { ...x.platzhalter, ...kontaktPlatzhalter(k), 'firma.name': z.art === 'firma' ? z.name : k?.firma ?? '', 'lead.status': z.status },
         datum: { ...(z.wiedervorlage ? { 'lead.wiedervorlage': z.wiedervorlage.slice(0, 10) } : {}) },
       };
     }
@@ -252,7 +264,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const e = crm.events.find(x => x.id === fall.id);
       if (!e) return { ...LEER_FALL, fehlt: true };
       return {
-        ...LEER_FALL, daten: { ...(e.reihe ? { 'event.reihe': e.reihe } : {}), ...(e.marke ? { 'event.marke': e.marke } : {}), ...(e.anmeldung ? { 'event.anmeldung': e.anmeldung } : {}), 'event.datum': e.datum, ...(e.status ? { 'event.status': e.status } : {}), ...(await eventFelder(e, crm, alle, kx)) },
+        ...LEER_FALL, daten: { ...(e.reihe ? { 'event.reihe': e.reihe } : {}), ...(e.marke ? { 'event.marke': e.marke } : {}), ...(e.anmeldung ? { 'event.anmeldung': e.anmeldung } : {}), 'event.datum': e.datum, ...(e.status ? { 'event.status': e.status } : {}), ...(await kgLesen(null, [])).daten, ...(await eventFelder(e, crm, alle, kx)) },
         platzhalter: { 'event.titel': e.titel, 'event.datum': e.datum, 'event.ort': e.ort ?? '' }, datum: { 'event.datum': e.datum.slice(0, 10) },
       };
     }
@@ -324,7 +336,7 @@ function empfaengerAus(k: Kontakt | null): Empfaenger | null {
 /** Das Umfeld eines Laufs (was nur der Server weiß) — dieselbe Stelle für scharf, Schatten und Probelauf. */
 export async function umfeldFuer(l: ProzessLauf, def: ProzessDefinition, kx: MotorKontext, o: { st?: ProzessLaufStand; laeufe?: LaeufeDatei; fall?: FallInfo } = {}): Promise<LaufUmfeld> {
   const iso = kx.jetzt.toISOString();
-  const f = o.fall ?? await fallInfo(l.fall, kx, l.daten);
+  const f = o.fall ?? await fallInfo(l.fall, kx, l.daten, fallLaufVon(l, def));
   const st = o.st ?? leererStand();
   // Fest (Punkt 40, R1): eine Person des Falls bzw. die auslösende Person ist eingeschränkt (Art. 18) oder hat eine Werbesperre → der Lauf endet.
   const ausloesend = l.daten['bezug.kontaktid'] ? (await kartei(kx)).find(k => k.id === l.daten['bezug.kontaktid']) : undefined;
@@ -383,8 +395,18 @@ export async function umfeldFuer(l: ProzessLauf, def: ProzessDefinition, kx: Mot
       return e && j && laufZustand(e) === 'laeuft' ? { version: j.nr } : null;
     },
     ausgenommen, fallFehlt: f.fehlt, einstellung: st.einstellung,
+    // „Karte ergänzen“ ohne Agent davor (22.10. spät): welche Felder an Firma bzw. Kontakt des Falls noch leer sind — nur, wenn die Definition den Baustein hat.
+    ...(alleSchritte(def).some(x => x.schritt.katalog?.id === 'crm.karte-ergaenzen') && o.fall !== BEISPIEL ? { karteLuecken: await karteLuecken(l, f, kx) } : {}),
   };
 }
+async function karteLuecken(l: ProzessLauf, f: FallInfo, kx: MotorKontext): Promise<NonNullable<LaufUmfeld['karteLuecken']>> {
+  const { karteLueckenAus, karteZiele } = await import('./bausteine-server');
+  return karteLueckenAus(karteZiele(await crmVon(kx), l, f.kontakt));
+}
+/** Was der Fall-Leser vom Lauf wissen muss: Start und Person (für „seit dem Start“) und die Felder, die die Definition nennt. */
+const fallLaufVon = (l: Pick<ProzessLauf, 'id' | 'prozessId' | 'start' | 'person'>, def: ProzessDefinition): FallLauf => ({
+  lauf: { id: l.id, prozessId: l.prozessId, start: l.start, person: l.person }, brauche: gelesenFelderMenge(def),
+});
 
 /** Business-Postfächer einer Person (Platzhalter der Vorlagen, nie ein privates): Gmail (verbunden, nicht unter Privat geführt) und IMAP mit Business-Bereich. */
 async function businessPostfaecher(person: string, kx: MotorKontext): Promise<{ gmail: boolean; imap: string[] }> {
@@ -505,12 +527,26 @@ async function wirkungAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Aktion, k
           return { ok: true, wirkung: [{ art: 'aufgabe', id: a.kennung }] };
         }
         case 'vorschlag': {
-          const { lege } = await import('@/lib/zoe/stapel');
+          const { lege, lies } = await import('@/lib/zoe/stapel');
+          // Eigener Weg (22.10. spät, lib/prozesse/bausteine-server.ts): beim Vorlegen ergänzen und prüfen — nichts zu tun → weiter, kein Weg → „von Hand“.
+          let x = a;
+          if (a.wirkung) {
+            // Schon vorgelegt (Wiederholung nach einem Abbruch)? Dann gilt der Vorschlag von damals — nie neu rechnen und den Lauf an ihm vorbei schicken.
+            const da = (await lies()).find(v => v.einmalig === a.kennung);
+            if (da) return { ok: true, wirkung: [{ art: 'vorschlag', id: da.id }] };
+            const { wirkungVorlegen } = await import('./bausteine-server');
+            const w = await wirkungVorlegen(a.wirkung, l, { fuer: a.fuer, kennung: a.kennung, h: kx.h, jetzt: kx.jetzt });
+            if (w.art === 'weiter') return { ok: true, weiter: true, hinweis: w.grund };
+            if (w.art === 'fehler') return fehlt(w.grund, w.voruebergehend ? 'voruebergehend' : 'dauerhaft');
+            const { wirkung: _w, danach, ...rest } = a;
+            x = w.art === 'vorlegen' ? { ...rest, titel: w.titel, ...(w.vorher ? { vorher: w.vorher } : {}), nachher: w.nachher, wirkung: w.wirkung } : { ...rest, nachher: w.nachher, ...(danach ? { danach } : {}) };
+          }
           const v = await lege({
-            werkzeug: PROZESS_WERKZEUG, gruppe: 'business', titel: a.titel, ...(a.vorher ? { vorher: a.vorher } : {}), nachher: a.nachher,
+            werkzeug: PROZESS_WERKZEUG, gruppe: 'business', titel: x.titel, ...(x.vorher ? { vorher: x.vorher } : {}), nachher: x.nachher,
             eingabe: {
-              ...(a.sende?.kanal === 'mail' ? { betreff: a.sende.betreff, text: a.sende.text } : a.sende?.kanal === 'whatsapp' && a.sende.text ? { text: a.sende.text } : {}),
-              _lauf: l.id, _knoten: a.knoten, _version: l.version, _sorte: a.sorte, _bis: a.bis, ...(a.sende ? { _sende: a.sende } : {}), ...(a.danach ? { _danach: a.danach } : {}),
+              ...(x.sende?.kanal === 'mail' ? { betreff: x.sende.betreff, text: x.sende.text } : x.sende?.kanal === 'whatsapp' && x.sende.text ? { text: x.sende.text } : {}),
+              _lauf: l.id, _knoten: x.knoten, _version: l.version, _sorte: x.sorte, _bis: x.bis, ...(x.sende ? { _sende: x.sende } : {}), ...(x.danach ? { _danach: x.danach } : {}),
+              ...(x.wirkung ? { _wirkung: x.wirkung } : {}),
             },
             ...(a.fuer ? { person: a.fuer } : {}), quelle: 'lauf', anlass: `Prozess „${e.entwurf.titel}“`, bezug: { art: 'prozess', id: a.kennung }, einmalig: a.kennung,
           });
@@ -1060,7 +1096,7 @@ async function aufEreignisStarten(e: Ereignis, kx: MotorKontext): Promise<number
       if (!fall) continue;
       const basis = { ...ereignisDaten(e), ...(await webhookDaten(e, kx)) };
       const brauchtFall = (a.bedingungen ?? []).some(b => !b.feld.startsWith('ereignis.') && !b.feld.startsWith('bezug.') && !b.feld.startsWith('webhook.'));
-      const daten = brauchtFall ? { ...basis, ...(await fallInfo(fall, kx)).daten } : basis;
+      const daten = brauchtFall ? { ...basis, ...(await fallInfo(fall, kx, kennungsDaten(e), { brauche: gelesenFelderMenge(j.def) })).daten } : basis;
       if (!ausloeserPasst(a, p.id, e, daten)) continue;
       // Schleifenschutz (Punkt 49): die eigene Wirkung startet den Prozess nie; eine Kette endet nach `kettenTiefe`.
       if (herkunft?.prozessId === p.id) { await laeufeAendern(dd => ({ datei: mitStand(dd, p.id, { ...standVon(dd, p.id), nicht: { ...(standVon(dd, p.id).nicht ?? {}), eigen: (standVon(dd, p.id).nicht?.eigen ?? 0) + 1 } }), r: null }), kx.h); continue; }
@@ -1089,7 +1125,7 @@ async function aufEreignisWecken(e: Ereignis, kx: MotorKontext): Promise<number>
     if (herkunft?.laufId === l.id) continue;
     const def = defVon(eintragVon(kx, l.prozessId), l.version);
     if (!def) continue;
-    const daten = { ...ereignisDaten(e), ...(await webhookDaten(e, kx)), ...(await fallInfo(l.fall, kx, l.daten)).daten };
+    const daten = { ...ereignisDaten(e), ...(await webhookDaten(e, kx)), ...(await fallInfo(l.fall, kx, l.daten, fallLaufVon(l, def))).daten };
     if (!wartetAuf(l, def, e, daten)) continue;
     const ok = await laeufeAendern(dd => {
       const x = dd.laeufe.find(y => y.id === l.id);
@@ -1308,7 +1344,7 @@ export async function laufVonHand(a: { prozessId: string; person: string; fall?:
   const fallArt = fallArtVon(j.def);
   const fall: LaufFall = fallArt === 'keiner' ? { art: 'keiner' } : a.fall && a.fall.art === fallArt && a.fall.id ? { art: fallArt, id: a.fall.id } : { art: fallArt };
   if (fallArt !== 'keiner' && !fall.id) return { ok: false, status: 400, fehler: 'Für welchen Fall? (Kennung fehlt)' };
-  if (fall.id) { const f = await fallInfo(fall, kx); if (f.fehlt) return { ok: false, status: 404, fehler: 'Diesen Fall gibt es nicht.' }; }
+  if (fall.id) { const f = await fallInfo(fall, kx, {}, { brauche: new Set() }); if (f.fehlt) return { ok: false, status: 404, fehler: 'Diesen Fall gibt es nicht.' }; }
   if (a.erneut && !(a.grund ?? '').trim()) return { ok: false, status: 400, fehler: 'Erneut starten nur mit Grund.' };
   const d = await laeufeLesen(kx.h);
   const modus = modusFuer(e, standVon(d, e.id));
@@ -1409,7 +1445,7 @@ export async function bestehendeFaelle(def: ProzessDefinition, kx: MotorKontext)
       if (!fall || !fall.id) continue;
       const daten: Record<string, string> = { 'ereignis.art': a.ereignis, 'ereignis.quelle': 'bestehend', ...(k.stufe ? { 'ereignis.stufe': k.stufe } : {}), ...Object.fromEntries(Object.entries(k.bezug).map(([x, v]) => [`bezug.${x.toLowerCase()}`, v])) };
       const brauchtFall = (a.bedingungen ?? []).some(b => !b.feld.startsWith('ereignis.') && !b.feld.startsWith('bezug.'));
-      const alle = brauchtFall ? { ...daten, ...(await fallInfo(fall, kx)).daten } : daten;
+      const alle = brauchtFall ? { ...daten, ...(await fallInfo(fall, kx, daten, { brauche: gelesenFelderMenge(def) })).daten } : daten;
       if (!bedingungenTreffen(a.bedingungen, alle, a.verknuepfung)) continue;
       if (!raus.some(x => x.fall.id === fall.id)) raus.push({ fall, daten, knoten: s.id });
     }
@@ -1561,6 +1597,12 @@ const BEISPIEL: FallInfo = {
     // Felder der Vorlagen (Kundengewinnung) — erfunden, damit der Probelauf mit dem Beispiel den ganzen Weg zeigt.
     'firma.daten-fehlen': true, 'firma.bester-kanal': 'telefon', 'lead.bester-kanal': 'mail', 'lead.ampel-mail': 'gruen', 'lead.ampel-telefon': 'gelb',
     'deal.ampel': 'gelb', 'deal.offen': true, 'deal.verschoben': 0, 'deal.mandat-da': false, 'deal.ampel-mail': 'gruen',
+    // 22.10. spät (lib/prozesse/kundengewinnung/fall-felder-server.ts) — der Hauptweg jeder Raute, erfunden.
+    'deal.vertrag-unterschrieben': false, 'deal.nachfass-followup': false, 'lead.zustaendig': 'beispiel', 'lead.neue-signale': true, 'lead.waerme-gestiegen': false,
+    'lead.mail-fach': 'antworten', 'lead.gespraech-zugeordnet': false, 'lead.anfrage-kanal': 'mail', 'lead.buchung-folge': 'qualifizierung', 'lead.nachweis-vollstaendig': true,
+    'lead.einladungsweg': 'mail', 'lead.danke-moeglich': true, 'lead.netzwerken-schritt': 'qualifizieren', 'lead.kampagnen-ergebnis': 'chance',
+    'mandat.ampel': 'gruen', 'mandat.health': 80, 'mandat.verlaengerung': 'manuell', 'mandat.verlaengert': false, 'mandat.ampel-mail': 'gruen',
+    'event.mix-erreicht': true, 'event.quote-48h': 90,
   },
   platzhalter: { 'kontakt.anrede': 'Sie', 'kontakt.vorname': 'Erika', 'kontakt.nachname': 'Beispiel', 'firma.name': 'Beispiel GmbH', 'deal.titel': 'Beispiel-Deal', 'mandat.titel': 'Beispiel-Mandat', 'event.titel': 'Beispiel-Abend', 'kampagne.titel': 'Beispiel-Kampagne' },
   datum: {},
@@ -1587,7 +1629,7 @@ export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'ver
   if (a.fall && a.fall !== 'beispiel') {
     if (a.fall.art !== fallArt) return { ok: false, status: 400, fehler: `Dieser Prozess hängt an „${fallArt}“.` };
     fall = { art: fallArt, id: a.fall.id };
-    info = await fallInfo(fall, kx);
+    info = await fallInfo(fall, kx, {}, { brauche: gelesenFelderMenge(def) });
     if (info.fehlt) return { ok: false, status: 404, fehler: 'Diesen Fall gibt es nicht.' };
     empfaenger = empfaengerAus(info.kontakt);
   }
