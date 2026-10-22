@@ -58,6 +58,8 @@ import { WebhookKarte, type WebhookKurz } from './WerkstattWebhook';
 import { ProbeFallFenster, type FallWert } from './ProbeFall';
 import { useLaeufe } from './laeufe-daten';
 import { zoomStufe } from '../ui/flaeche/stufe';
+import { MobilMaske, MobilSchrittListe } from './MobilBearbeiten';
+import { werkstattMobilAnwenden, werkstattMobilFelder } from '@/lib/prozesse/mobil-felder';
 
 type K = ProzessKnoten<ProzessForm>;
 
@@ -155,6 +157,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
 
   const rechte = daten?.rechte;
   const nurLesen = nurAnsehen || !rechte?.entwurf || !!versionAnsicht || eintrag?.status === 'archiviert';
+  // E6 (22.10., Entscheidung „Am Handy Texte & Fristen ändern“): am Handy Texte, Fristen/Dauer und Zuständige der Schritte — derselbe Entwurf, dieselben Rechte.
+  const mobilDarf = nurAnsehen && !!rechte?.entwurf && !versionAnsicht && eintrag?.status !== 'archiviert';
+  const [mobilWahl, setMobilWahl] = useState<string | null>(null);
   const d: ProzessDefinition | null = useMemo(() => {
     if (versionAnsicht) return versionAnsicht.definition;
     if (!eintrag || !fassung) return null;
@@ -580,7 +585,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           <WerkstattSteuerung prozessId={prozessId} def={d} status={eintrag.status} hatVersion={!!v} laufStand={laeufe.daten?.stand ?? null}
             rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} vorher={sichern} />
           {reiter === 'bauen' && !nurLesen && <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: spFarbe }}><SP size={14} aria-hidden />{spText}</span>}
-          {reiter === 'bauen' && nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? 'Am Handy nur ansehen' : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
+          {reiter === 'bauen' && nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? (mobilDarf ? 'Am Handy: Texte und Fristen ändern' : 'Am Handy nur ansehen') : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
         </div>
         {reiter === 'bauen' && <div className="pw-werkzeuge" role="toolbar" aria-label="Werkstatt">
           {!nurLesen && <SymbolKnopf ariaLabel="Rückgängig (⌘Z)" aus={!geschichte.zurueck.length} onClick={zurueck}><Undo2 size={16} /></SymbolKnopf>}
@@ -595,7 +600,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
           {!nurLesen && <Knopf leise onClick={() => setHeadOffen(true)} titel="Head fragen — Bausteine oder einen ganzen Entwurf vorschlagen lassen (übernommen erst mit deinem Klick)"><span className="pz-knopf-inhalt"><Sparkles size={14} aria-hidden />Head fragen</span></Knopf>}
           <Knopf leise onClick={() => setProbeOffen(o => !o)} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts); mit dem Beispiel oder einem echten Fall"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>
-          {!nurAnsehen && !versionAnsicht && <Knopf onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>}
+          {(!nurAnsehen || mobilDarf) && !versionAnsicht && <Knopf onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>}
         </div>}
       </div>
       {konflikt && (
@@ -672,6 +677,16 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
         </aside>
       </div>}
+      {reiter === 'bauen' && nurAnsehen && (
+        <MobilSchrittListe darf={mobilDarf} onBearbeiten={setMobilWahl}
+          phasen={phasen(d).map(p => ({ id: p.id, titel: p.titel, schritte: alleSchritte(d).filter(x => x.phase.id === p.id && x.schritt.form !== 'freigabe').map(x => ({ id: x.schritt.id, titel: x.schritt.titel, unter: unterzeile(x.schritt) || undefined })) }))} />
+      )}
+      {mobilWahl && (() => {
+        const k = d.knoten.find(x => x.id === mobilWahl);
+        if (!k) return null;
+        return <MobilMaske titel={`„${k.titel}“`} felder={werkstattMobilFelder(k, auswahlListen['team-person'] ?? [])} onZu={() => setMobilWahl(null)}
+          onSpeichern={w => { if (mobilDarf) mitFassung(f => ersetzen(f, werkstattMobilAnwenden(k, w)), { auswahl: false }); setMobilWahl(null); }} />;
+      })()}
       <div aria-live="polite" className="pz-nur-vorlesen">{ansage}</div>
       {headOffen && (
         <HeadFragenFenster onZu={() => setHeadOffen(false)} onUebernommen={headUebernommen}

@@ -23,6 +23,8 @@ import { WerkstattFlaeche, type FlaecheSteuerung } from './WerkstattFlaeche';
 import { PaketPanel, type PanelAuswahl, type PanelPhase } from './PaketPanel';
 import { PaketKunden } from './PaketKunden';
 import { PaketBegleitung } from './PaketBegleitung';
+import { MobilMaske, MobilSchrittListe } from './MobilBearbeiten';
+import { MOBIL_OPS, paketMobilFelder, paketMobilOps } from '@/lib/prozesse/mobil-felder';
 import { usePaket, werkstattSenden, type PaketAntwort } from './werkstatt-daten';
 
 const leer = () => undefined;
@@ -58,6 +60,9 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
   }, [geladen, daten]);
 
   const bearbeiten = !!daten?.bearbeiten && !schmal;
+  // E6 (22.10., Entscheidung „Am Handy Texte & Fristen ändern“): am Handy nur Texte, Fristen und Zuständige — über denselben Entwurf; Bauen bleibt am Rechner.
+  const mobilDarf = !!daten?.bearbeiten && schmal;
+  const [mobilWahl, setMobilWahl] = useState<string | null>(null);
   const bibliothek = useMemo(() => daten?.bibliothekAlle ?? daten?.bibliothek ?? [], [daten]);
   const ansicht = useMemo(() => (fassung ? paketAnsicht(fassung, bibliothek) : null), [fassung, bibliothek]);
   // Die Bahn „Mensch“ heißt im Paket „Team“: die zuständige Person des Mandats (wer das ist, steht am Mandat, nie im Paket).
@@ -107,15 +112,16 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
     aenderung.current++;
     setSpeicher(s => (s.art === 'konflikt' ? s : { art: 'ausstehend' }));
   }, []);
-  const onOps = useCallback((ops: EditorOp[]) => {
+  const onOps = useCallback((ops: EditorOp[], mobil = false) => {
     const f = fassungRef.current;
-    if (!f || !bearbeiten) return;
+    // Am Rechner jede Op des Editors; am Handy nur die Felder der Maske (Schritt/Phase — nie anlegen, verschieben, löschen).
+    if (!f || !(mobil ? mobilDarf && ops.every(o => MOBIL_OPS.includes(o.op)) : bearbeiten)) return;
     const r = paketBearbeiten(f, bibliothek, ops, { person: 'werkstatt', jetzt: new Date().toISOString(), neueId: p => neueKennung(p) });
     if (!r.ok) { setAnsage(r.fehler); setSpeicher({ art: 'fehler', text: r.fehler }); return; }
     uebernehmen(r.vorlage, f);
     // Ein gelöschter Knoten ist nicht mehr wählbar.
     setAuswahl(a => a.filter(id => r.vorlage.knoten.some(k => k.id === id) || id.startsWith('ab~')));
-  }, [bearbeiten, bibliothek, uebernehmen]);
+  }, [bearbeiten, mobilDarf, bibliothek, uebernehmen]);
   const rueckgaengig = () => { const f = fassungRef.current; const a = zurueck.at(-1); if (!f || !a) return; setZurueck(z => z.slice(0, -1)); setVor(v => [...v, f]); setFassung(a); fassungRef.current = a; aenderung.current++; setSpeicher({ art: 'ausstehend' }); };
   const wiederholen = () => { const f = fassungRef.current; const a = vor.at(-1); if (!f || !a) return; setVor(v => v.slice(0, -1)); setZurueck(z => [...z, f]); setFassung(a); fassungRef.current = a; aenderung.current++; setSpeicher({ art: 'ausstehend' }); };
   const verwerfen = async () => {
@@ -203,7 +209,7 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           {fassung.zusatz && <Chip farbe={C.inkDim}>Zusatzmodul</Chip>}
           {daten.laufende > 0 && <Chip farbe={C.aktiv}>{daten.laufende === 1 ? '1 laufender Kunde' : `${daten.laufende} laufende Kunden`}</Chip>}
           {daten.produkte.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{`für ${daten.produkte.map(x => x.name).join(', ')}`}</span>}
-          {bearbeiten && <span role="status" style={{ fontSize: TYP.bedien, color: spFarbe }}>{daten.entwurf || speicher.art !== 'gespeichert' ? SPEICHER_TEXT[speicher.art] : 'Änderungen werden als Entwurf gespeichert'}</span>}
+          {(bearbeiten || mobilDarf) && <span role="status" style={{ fontSize: TYP.bedien, color: spFarbe }}>{daten.entwurf || speicher.art !== 'gespeichert' ? SPEICHER_TEXT[speicher.art] : 'Änderungen werden als Entwurf gespeichert'}</span>}
         </div>
         <div className="pw-werkzeuge" role="toolbar" aria-label={bearbeiten ? 'Paket bearbeiten' : 'Paket ansehen'}>
           {bearbeiten && <SymbolKnopf ariaLabel="Rückgängig (⌘Z)" aus={!zurueck.length} onClick={rueckgaengig}><Undo2 size={16} /></SymbolKnopf>}
@@ -212,8 +218,8 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           <SymbolKnopf ariaLabel="Verkleinern" onClick={() => flaeche.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Alles zeigen" onClick={() => flaeche.current?.allesZeigen()}><Maximize2 size={16} /></SymbolKnopf>
-          {bearbeiten && daten.entwurf && <Knopf leise onClick={verwerfen} titel="Den Entwurf löschen — das Paket bleibt, wie es ist">Entwurf verwerfen</Knopf>}
-          {bearbeiten && istEntwurf && !veroeff && <Knopf onClick={() => setVeroeff({ name: '', notiz: '' })} titel="Der Entwurf wird die neue Fassung des Pakets — laufende Kunden übernehmen je Kunde per Klick">Veröffentlichen</Knopf>}
+          {(bearbeiten || mobilDarf) && daten.entwurf && <Knopf leise onClick={verwerfen} titel="Den Entwurf löschen — das Paket bleibt, wie es ist">Entwurf verwerfen</Knopf>}
+          {(bearbeiten || mobilDarf) && istEntwurf && !veroeff && <Knopf onClick={() => setVeroeff({ name: '', notiz: '' })} titel="Der Entwurf wird die neue Fassung des Pakets — laufende Kunden übernehmen je Kunde per Klick">Veröffentlichen</Knopf>}
           {!bearbeiten && !schmal && <Knopf leise href={daten.editor} titel="Ohne Recht zum Bearbeiten: der Editor des Fulfillments zeigt dasselbe Paket">Im Fulfillment-Editor ansehen ›</Knopf>}
         </div>
       </div>
@@ -262,6 +268,20 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           </aside>
         )}
       </div>
+      {schmal && (
+        <MobilSchrittListe darf={mobilDarf} onBearbeiten={setMobilWahl}
+          phasen={phasen(d).map(p => ({
+            id: p.id, titel: p.titel, bearbeitbar: true,
+            schritte: alleSchritte(d).filter(x => x.phase.id === p.id && !ansicht.abstimmungen[x.schritt.id]).map(x => ({ id: x.schritt.id, titel: x.schritt.titel, unter: paketUnterzeile(ansicht.info[x.schritt.id]) || undefined })),
+          }))} />
+      )}
+      {mobilWahl && (() => {
+        const k = fassung.knoten.find(x => x.id === mobilWahl);
+        if (!k) return null;
+        const art = phasen(d).some(p => p.id === mobilWahl) ? 'phase' as const : 'schritt' as const;
+        return <MobilMaske titel={art === 'phase' ? `Phase „${k.titel}“` : `„${k.titel}“`} felder={paketMobilFelder(k, art)} onZu={() => setMobilWahl(null)}
+          onSpeichern={w => { const ops = paketMobilOps(k.id, art, w); if (ops.length) onOps(ops, true); setMobilWahl(null); }} />;
+      })()}
       {/* B3 (22.10.): die Begleit-Prozesse am Paket — angedockt über die Bedingungen ihres Auslösers; „+ Begleit-Prozess“ am gewählten Schritt bzw. der Phase. */}
       <PaketBegleitung paketId={paketId} begleitung={daten.begleitung ?? []} titelVon={id => fassung.knoten.find(k => k.id === id)?.titel ?? null}
         onZeigen={id => { if (phasen(d).some(p => p.id === id)) { setRahmenWahl(id); setAuswahl([]); } else { setRahmenWahl(null); setAuswahl([id]); } flaeche.current?.zeige(id); }}

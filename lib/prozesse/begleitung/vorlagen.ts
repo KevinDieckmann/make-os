@@ -1,5 +1,5 @@
 // ─── Prozesse · Fulfillment · Kunden-Begleitung — die neun Begleit-Vorlagen (22.10., B2; research/prozesse/FULFILLMENT_WERKSTATT_PLAN.md › B2) ─────────────
-// Kevin 22.10.: „die ganzen vorgefertigten Nachrichten für den Kunden, Follow-ups, wenn sie die Sachen nicht schicken etc. — das kann auch alles aufgebaut werden.“
+// Wunsch 22.10.: „die ganzen vorgefertigten Nachrichten für den Kunden, Follow-ups, wenn sie die Sachen nicht schicken etc. — das kann auch alles aufgebaut werden.“
 // Begleit-Prozesse laufen NEBEN dem Fulfillment-Fall (Lauf-Motor der Werkstatt) und starten auf Ereignisse des Falls (B1: `fall-haengt`, `fall-phase`,
 // `kunde-geliefert`, `abstimmung-bestaetigt`, `ziel-erreicht`) bzw. auf den nächsten Termin (`fall.termin`). Sie schreiben NIE in den Fall: Willkommensmail und
 // Report bleiben im Fall (sonst stimmen „Willkommen gesendet“ und „letzter Report“ nicht — Entscheidung 22.10. „Willkommen-Vorlage nur erinnern, Mail bleibt im Fall“,

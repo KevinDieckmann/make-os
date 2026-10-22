@@ -249,6 +249,12 @@ legt keine Akte an). Die Ableitung „über den Lauf“ ist die Kennung (`vorlag
   - Kandidat XOR Fall.
   - Rückweg: Der alte Säuberer verliert `ablauf`; die Ableitung über den Lauf findet ihn wieder.
 
+### E6 · Am Handy Texte & Fristen ändern — GEBAUT (22.10., nachträglich gewünscht)
+
+Am Handy: Liste der Schritte mit „Bearbeiten“, kleine Maske nur für Texte, Fristen/Dauer und Zuständige (Paket und Werkstatt-Prozess), derselbe Entwurf
+(Stand/409, gleiche Rechte), Veröffentlichen auch am Handy; anlegen, ziehen, verbinden, löschen bleibt am Rechner. Regeln: lib/prozesse/mobil-felder.ts.
+Damit ist der offene Punkt aus E4 (markiertes Paket am Handy nur ansehbar) für Texte und Fristen erledigt.
+
 ## Risiken und Gegenmittel
 
 | Risiko | Gegenmittel |

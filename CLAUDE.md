@@ -1731,6 +1731,11 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   `fallAblauf` (lib/fulfillment/prozesse/ablauf-art.ts — Feld, sonst Kennung `pz-…`: Rückweg). Schatten legt nie eine Akte an. Kandidat XOR Fall bleibt die EINE
   Regel (`onboardingKandidaten`). Kunden-Sicht: für die Akte Zeitstrahl/Erledigt/Nächstes aus `kundenEtappen`, der Rest aus der Akte; Fälle mit Paket bit-gleich.
   Wächter `tests/prozesse-ff-akte-e5.test.ts`, angepasst `tests/prozesse-fulfillment-lauf.test.ts` (Akte statt „kein Fall“).
+  **E6 Am Handy Texte & Fristen ändern:** in der schmalen Ansicht steht unter der Fläche die Liste der Schritte (`MobilSchrittListe`), je Schritt „Bearbeiten“ →
+  `MobilMaske` (Eingaben 16 px, Ziele ≥ 44 px). Welche Felder und wie sie wirken NUR in lib/prozesse/mobil-felder.ts: Paket `paketMobilFelder`/`paketMobilOps`
+  (Ops `schritt`/`phase`, `MOBIL_OPS`), Prozess `werkstattMobilFelder`/`werkstattMobilAnwenden` (Titel, Frist, Masken-Texte/-Zahlen/-Personen, Dauer eines
+  Wartens — nie Kennung, Form, Zweige, Phase). Gespeichert über denselben Entwurf (Stand/409, gleiche Rechte, Veröffentlichen auch am Handy); Bauen bleibt am
+  Rechner. Wächter `tests/prozesse-ff-mobil-e6.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
