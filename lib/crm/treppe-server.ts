@@ -27,7 +27,7 @@ import {
   treppeAus, treppeAnwenden, vorschlagAnwenden, vorschlagSauber, vorschlagTeile, TREPPE_GRENZEN, PREIS_ARTEN, PAKET_STATUS, POSITIONIERUNG_FELDER, POSITIONIERUNG_LABEL,
   type TreppeDatei, type AnwendenErgebnis, type TreppeVorschlag,
 } from './treppe-daten';
-import { kundenZeilen, zielbild, kundenreise, kapaBedarf, stufeVonMandat, preisText, imBusiness, REPORT_TAGE, type KundenZeile } from './treppe';
+import { kundenZeilen, zielbild, kundenreise, kapaBedarf, stufeVonMandat, preisText, imBusiness, type KundenZeile } from './treppe';
 import { reportDokument, reportDateiname, mailVorlage, mitZusatz, type ReportDokument } from './treppe-report';
 import { katalogTreppe, treppeMitKatalog, stufenAusKatalog, preiseText } from './produkt-karte';
 import type { CrmBestand, FollowUp, Mandat } from './typen';
@@ -35,6 +35,9 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { ausgenommen } from './einschraenkung';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
+
+/** Stellschraube (22.10.): Abstand der Fortschritts-Reports — nicht lesbar = 14 Tage (wie vorher). */
+const reportTageLesen = async (): Promise<number> => (await import('@/lib/prozesse/stellschrauben-werte-server')).reportTageWirksam();
 
 /** Der Bestandsname eines Haushalts (ohne gültigen Haushalt: der Inhaber-Bestand — wie Kapazität und Planung). */
 export const treppeSpeicherFuer = (h: string | null | undefined) => (h && HAUSHALT_OK.test(h) ? `produkt-treppe--${h}` : 'produkt-treppe--inhaber');
@@ -144,7 +147,8 @@ export async function treppeLage(person: string, heute = localDay()) {
     const kat = katalogTreppe(crm.leistungen, gespeichert.stufen);
     const datei: TreppeDatei = { ...gespeichert, stufen: kat.stufen };
     const kickoffVermerkt = Object.fromEntries(Object.entries(faelle).map(([id, f]) => [id, f?.kickoffVermerktAm]));
-    const kunden = kundenZeilen({ datei, crm, heute, termine, kickoffVermerkt }).map(z => ({ ...z, stand: eintragStand(datei.kunden[z.mandatId] ?? {}), fall: faelle[z.mandatId] ?? null }));
+    const reportTage = await reportTageLesen();
+    const kunden = kundenZeilen({ datei, crm, heute, termine, kickoffVermerkt, reportTage }).map(z => ({ ...z, stand: eintragStand(datei.kunden[z.mandatId] ?? {}), fall: faelle[z.mandatId] ?? null }));
     const zb = zielbild({ datei, crm, heute });
     const bedarf = kapaBedarf(datei, kunden);
     return {
@@ -220,7 +224,7 @@ async function grundlage(mandatId: string, heute: string): Promise<ReportGrundla
   const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm);
   if (!m) throw new TreppeFehler('Dieses Mandat gibt es nicht (mehr).', 404);
   if (!imBusiness(m)) throw new TreppeFehler('Dieses Mandat gehört zu einer Privat-Einheit — die Leistungstreppe führt nur Business-Mandate.', 400);
-  const zeile = kundenZeilen({ datei, crm: { ...crm, mandate: [{ ...m, status: m.status === 'beendet' ? 'aktiv' : m.status }] }, heute })[0];
+  const zeile = kundenZeilen({ datei, crm: { ...crm, mandate: [{ ...m, status: m.status === 'beendet' ? 'aktiv' : m.status }] }, heute, reportTage: await reportTageLesen() })[0];
   if (!zeile) throw new TreppeFehler('Für dieses Mandat gibt es keinen Fortschritt (Status).', 400);
   const stufe = zeile.stufe ? datei.stufen.find(s => s.id === zeile.stufe!.id) ?? null : null;
   // Fulfillment (C2, 10.10.): mit Fall kommen „Wartet auf euch“, Wert-Konto, Puls (und bei aktivem Kunden-Link die Puls-Frage) dazu — ohne Fall
@@ -326,13 +330,14 @@ export async function treppeMorgenlauf(heute = localDay()): Promise<{ reports: n
   const mandate = new Map(crm.mandate.map(m => [m.id, m]));
   const neueMarken: Record<string, string> = {};
   let reports = 0, stufen = 0;
-  for (const z of kundenZeilen({ datei, crm, heute })) {
+  const reportTage = await reportTageLesen();
+  for (const z of kundenZeilen({ datei, crm, heute, reportTage })) {
     const m = mandate.get(z.mandatId)!;
     const person = fuerPerson(m);
     const link = WEG.mandat(m.id);
-    // Die Marke bremst nur das erneute Vorschlagen (höchstens alle `REPORT_TAGE` Tage) — sie ist kein Report (17.10., L2 A1).
+    // Die Marke bremst nur das erneute Vorschlagen (höchstens alle `reportTage` Tage, Stellschraube — Vorgabe 14) — sie ist kein Report (17.10., L2 A1).
     const vorgeschlagen = datei.marken[`report:${m.id}`];
-    const gebremst = !!vorgeschlagen && vorgeschlagen > tagPlus(heute, -REPORT_TAGE);
+    const gebremst = !!vorgeschlagen && vorgeschlagen > tagPlus(heute, -reportTage);
     if (z.report.faellig && !gebremst && Object.keys(datei.marken).length + Object.keys(neueMarken).length < TREPPE_GRENZEN.marken) {
       await lege({
         werkzeug: WERKZEUG.report, gruppe: 'kunden', titel: `Fortschritts-Report für ${m.kunde}`, nachher: 'Report-PDF erstellen und Mail vorbereiten — gesendet wird erst per Klick',

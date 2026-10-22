@@ -1241,6 +1241,13 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .pz-feld-zeile { display: flex; gap: 8px; align-items: center; width: 100%; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 0; background: transparent; color: #E8ECEA; text-align: left; cursor: pointer; font: inherit; font-size: 14px; }
 .pz-feld-zeile:hover { background: rgba(255,255,255,.04); }
 .pz-liste-prozess { border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 4px 14px; }
+/* Stellschrauben eines System-Prozesses (22.10., components/os/prozesse/Stellschrauben.tsx) */
+.pz-mit-schrauben { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.pz-schrauben-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pz-schraube { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02); min-width: 0; }
+.pz-schraube-kopf { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; font-size: 14px; }
+.pz-schraube-form, .pz-schraube-eingabe, .pz-schraube-fuss { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.pz-schraube-fuss:empty { display: none; }
 .pz-liste-prozess > summary { min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; cursor: pointer; font-size: 15px; }
 .pz-liste-ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
 .pz-liste-ol a { text-decoration: none; }

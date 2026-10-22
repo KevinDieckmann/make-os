@@ -50,6 +50,10 @@ export async function finanzchefFaellig(jetzt: Date): Promise<Faellig[]> {
   const haushalte = haushalteAus((await ladeKonten()).konten);
   const ziele: [string | null, string | null][] = haushalte.size ? Array.from(haushalte.entries()) : [[null, null]];
   const raus: Faellig[] = [];
+  // Stellschraube (22.10.): Fenster des Monatsabschlusses — nicht lesbar = ab dem 3. Werktag bis zum 20. (wie vorher).
+  const { stellschraubenWerte } = await import('@/lib/prozesse/stellschrauben-werte-server');
+  const { abschlussFenster } = await import('@/lib/prozesse/stellschrauben-werte');
+  const fenster = abschlussFenster(await stellschraubenWerte());
   // Business-frei (08.10., Lücke 7): in einer Business-freien Zeit des Haushalts ruht der Head of Finance — seine Modi holen von
   // selbst nach (Monatsabschluss bis zum 20., Wochenreview ab 8 Tagen, Tagescheck „heute noch nicht“).
   const { haushaltBusinessFreiJetzt, businessFreiJetzt } = await import('@/lib/arbeitsrahmen/server');
@@ -59,7 +63,7 @@ export async function finanzchefFaellig(jetzt: Date): Promise<Faellig[]> {
     const stand = { ...leererStand(), ...((await loadJson<ChefStand>(standName(haushalt))) ?? {}) };
     // Berliner Wandzeit (09.10., Takt robust) — vorher getDay()/getHours() der Maschine.
     const { wochentag, stunde } = berlinerUhr(jetzt);
-    const m = faelligerModus(stand, heute, wochentag, stunde, await termineFuer(!haushalt), jetzt);
+    const m = faelligerModus(stand, heute, wochentag, stunde, await termineFuer(!haushalt), jetzt, fenster);
     if (!m) continue;
     raus.push({
       id: `finanzchef-${haushalt ?? 'business'}`,

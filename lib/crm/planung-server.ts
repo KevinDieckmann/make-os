@@ -163,7 +163,7 @@ export async function planungLage(person: string, filter: string | null, heute =
       wochenziele: plan,
       jeWelt: jeWelt(lagen),
       bedarf,
-      kapa: kapaVergleich(bedarf, frei),
+      kapa: kapaVergleich(bedarf, frei, (await import('@/lib/prozesse/stellschrauben-werte')).kapaSchwellen(await (await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenWerte())),
       challenges: {
         aktuell: datei.challenges.filter(c => c.woche === woche).map(c => challengeStand(c, istJetzt, datei.kanaele)),
         vorwoche: datei.challenges.filter(c => c.woche === vorwoche).map(c => challengeStand(c, istVor, datei.kanaele)),

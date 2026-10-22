@@ -198,8 +198,11 @@ export function bildInhaltsTyp(k: Uint8Array): 'jpeg' | 'png' | 'webp' | 'heic' 
 export const base64Bytes = (b64: string): number => Math.floor((b64.length * 3) / 4) - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0);
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
-/** Folgefrist für „Follow-up“: zwei Werktage nach dem Tag der Begegnung (Feiertage NRW zählen mit, `werktagePlus`). */
-export const followupFrist = (tag: string): string => werktagePlus(tag, 2);
+/**
+ * Folgefrist für „Follow-up“: zwei Werktage nach dem Tag der Begegnung (Feiertage NRW zählen mit, `werktagePlus`). Seit 22.10. die Stellschraube „Nachfassen nach
+ * einem Event“ (`tage` = `nachfassWerktage(wertelisten)`, lib/crm/stellschrauben.ts) — EIN Wert mit eigenen und besuchten Events; ohne Angabe zwei.
+ */
+export const followupFrist = (tag: string, tage = 2): string => werktagePlus(tag, tage);
 /** Folgefrist für „Ohne Termin abschließen“: der nächste Werktag — der Termin soll ja bald vereinbart werden. */
 export const followupFristEinTag = (tag: string): string => werktagePlus(tag, 1);
 
@@ -215,7 +218,7 @@ export function stadtAusAnschrift(a: string | undefined): string | undefined {
  * werden abgelehnt (413 bzw. 400 mit Klartext). Personen und Event-Kennung prüft nur die FORM — ob die Person im
  * Haushalt ist und das Event existiert, entscheidet der Server.
  */
-export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: string }): Pruefung<Erfassung> {
+export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: string; nachfassWerktage?: number }): Pruefung<Erfassung> {
   const jetzt = opt.jetzt ?? new Date();
   if (!roh || typeof roh !== 'object' || Array.isArray(roh)) return fehler('Kein gültiger Körper.');
   const b = roh as Record<string, unknown>;
@@ -317,7 +320,7 @@ export function erfassungPruefen(roh: unknown, opt: { jetzt?: Date; heute: strin
   // Einzelheiten je Schritt
   if (schritt === 'followup') {
     const f = (b.followup ?? {}) as Record<string, unknown>;
-    const tag = typeof f.faellig === 'string' && TAG.test(f.faellig) ? f.faellig : followupFrist(tagVon(wandzeit(new Date(erfasstAm))));
+    const tag = typeof f.faellig === 'string' && TAG.test(f.faellig) ? f.faellig : followupFrist(tagVon(wandzeit(new Date(erfasstAm))), opt.nachfassWerktage);
     raus.followup = { faellig: tag };
   } else if (schritt === 'termin') {
     const t = (b.termin ?? {}) as Record<string, unknown>;

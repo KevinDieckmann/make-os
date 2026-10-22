@@ -12,6 +12,7 @@ import type { Kontakt, Aktivitaet } from '@/lib/make-one/crm';
 import type { Chance, ChancenStufe, CrmBestand, Kampagne, KampagnenErgebnis, PowerHourSitzung, Wertelisten } from './typen';
 import type { Welt } from './traktion';
 import { TEAM, BEIDE, zustaendig } from './team';
+import { verschobenGelbAb, VERSCHOBEN_GELB_VORGABE, type CrmStellschrauben } from './stellschrauben';
 
 export const STUFEN: { id: ChancenStufe; label: string; p: number; weiterWenn: string; offen: boolean }[] = [
   // Einstieg der Deal-Ebene: ein qualifizierter Lead (SQL, lib/crm/leads.ts) — die Qualifizierung selbst passiert eine Ebene darüber.
@@ -88,8 +89,11 @@ export function alterTage(c: Chance, heute: string): number {
 }
 
 export type Ampel = 'gruen' | 'gelb' | 'rot';
-/** KEMARIS Operations dealScore.ts: überfällig oder > 30 Tage still → rot; ohne Wert oder > 14 Tage → gelb. Neu: ohne nächsten Schritt → gelb. */
-export function gesundheit(c: Chance, heute: string): { ampel: Ampel; gruende: string[] } {
+/**
+ * KEMARIS Operations dealScore.ts: überfällig oder > 30 Tage still → rot; ohne Wert oder > 14 Tage → gelb. Neu: ohne nächsten Schritt → gelb.
+ * `w` = die Wertelisten (Stellschraube „Deal-Ampel gelb ab Verschiebungen“, 22.10., lib/crm/stellschrauben.ts) — ohne Angabe die Vorgabe (wie vorher).
+ */
+export function gesundheit(c: Chance, heute: string, w?: { stellschrauben?: CrmStellschrauben } | null): { ampel: Ampel; gruende: string[] } {
   if (!OFFENE_STUFEN.includes(c.stufe)) return { ampel: 'gruen', gruende: [] };
   const alter = alterTage(c, heute);
   const g: string[] = [];
@@ -102,15 +106,15 @@ export function gesundheit(c: Chance, heute: string): { ampel: Ampel; gruende: s
     if (!c.naechsterSchritt) { ampel = 'gelb'; g.push('kein nächster Schritt mit Datum'); }
   }
   // Ehrlichere Pipeline (28.09., K4, #84): wer „Entscheidung bis“ zweimal nach hinten schiebt, hat keine Zusage mehr — mindestens gelb.
-  if ((c.erwartetVerschoben ?? 0) >= VERSCHOBEN_GELB) {
+  if ((c.erwartetVerschoben ?? 0) >= verschobenGelbAb(w)) {
     if (ampel === 'gruen') ampel = 'gelb';
     g.push(`Entscheidung ${c.erwartetVerschoben}× verschoben${c.erwartetUrsprung ? ` (ursprünglich ${c.erwartetUrsprung})` : ''}`);
   }
   return { ampel, gruende: g };
 }
 
-/** Ab so vielen Verschiebungen von „Entscheidung bis“ wird die Ampel gelb. */
-export const VERSCHOBEN_GELB = 2;
+/** Ab so vielen Verschiebungen von „Entscheidung bis“ wird die Ampel gelb — die VORGABE; wirksam ist `verschobenGelbAb(wertelisten)` (Stellschraube, 22.10.). */
+export const VERSCHOBEN_GELB = VERSCHOBEN_GELB_VORGABE;
 /**
  * „Entscheidung bis“ nach hinten verschoben (28.09., K4, #84)? Dann merkt sich der Deal das erste Datum (einmal) und zählt mit.
  * Früher legen oder zum ersten Mal setzen zählt nicht. Nur der Server ruft das (lib/crm/speicher.ts dealRegeln).

@@ -340,6 +340,8 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date(), s
       const { ladeCrm } = await import('@/lib/crm/speicher');
       const { TEAM } = await import('@/lib/crm/team');
       const events = (await sicher(ladeCrm(), null))?.events ?? [];
+      // Stellschrauben der festen Prozesse (22.10.): dieselben Zeiten je Modus wie der Takt (lib/heads/takt.ts `faelligeModi`).
+      const modi = await sicher((await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenWerte(), {});
       // Dieselben Personen wie der Takt (lib/heads/takt.ts `powerHourPersonen`, Paket 4b: nie ein festes Kürzel).
       const team = powerHourPersonen(TEAM, konten.konten, konten.einstellungen);
       // Nahtstellen-Prüfung Punkt 9: der Haupt-Inhaber aus der zentralen Regel (lib/zugang/inhaber.ts).
@@ -356,7 +358,7 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date(), s
             haushaltFrei: hhFrei(t),
             personFrei: new Set(team.filter(p => istBusinessFrei(teamFrei.get(p) ?? [], wandzeit(t)))),
             warFrei: (tag, stunde) => istBusinessFrei(hhSpannen, wandAus(tag, stunde * 60)),
-          }, { altRiegelPerson }),
+          }, { altRiegelPerson, modi }),
           (m, t) => { sim.letzte[m.person ? `${m.modus}:${m.person}` : m.modus] = t.toISOString(); },
           ausserhalbTakt);
         raus.push(...headEintraege(h, treffer, person, jetzt));
@@ -380,8 +382,10 @@ export async function naechstesLesen(person: string, jetzt: Date = new Date(), s
         // Steuer-Fristen aus EINER Quelle (17.10., L2 S1): das Steuer-Modul — wie der Takt (`finanzchefFaellig`) und das Finanzbild.
         const termine = await sicher(fristenAusSteuern(heute, !haushalt), []);
         const lpFrei = lauf ? await personFrei(lauf) : [];
+        // Stellschraube (22.10.): dasselbe Fenster des Monatsabschlusses wie der Takt (`finanzchefFaellig`).
+        const fenster = (await import('@/lib/prozesse/stellschrauben-werte')).abschlussFenster(await sicher((await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenWerte(), {}));
         const treffer = modusZeiten(jetzt, bis,
-          t => { if (hhFrei(t) || istBusinessFrei(lpFrei, wandzeit(t))) return []; const m = faelligerModus(sim, heuteBerlin(t), t.getDay(), t.getHours(), termine, t); return m ? [{ modus: m.modus }] : []; },
+          t => { if (hhFrei(t) || istBusinessFrei(lpFrei, wandzeit(t))) return []; const m = faelligerModus(sim, heuteBerlin(t), t.getDay(), t.getHours(), termine, t, fenster); return m ? [{ modus: m.modus }] : []; },
           (m, t) => {
             const iso = t.toISOString();
             sim.letzte = { ...sim.letzte, [m.modus]: iso }; sim.versuche = { ...sim.versuche, [m.modus]: iso };

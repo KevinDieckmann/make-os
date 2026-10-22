@@ -86,6 +86,8 @@ export interface FallAntwort {
   report?: { erstelltAm?: string; gesendetAm?: string } | null;
   /** Erstellte Fortschritts-Reports (Kennung + Zeit) — die Report-Zeitachse (12.10.). */
   reports?: { id: string; am: string }[];
+  /** Stellschraube (22.10.): Abstand der Fortschritts-Reports in Tagen — nur wenn abweichend von 14. */
+  reportTage?: number;
   /** Follow-ups am Mandat (Nachsorge, Puls-Gespräch, Empfehlung) — Text, Tag, Stand. */
   followups?: { id: string; text: string; faellig: string; status: string }[];
   /** Was aus der Diagnose (Dossier, nach F2) noch nicht im Fall steht. */

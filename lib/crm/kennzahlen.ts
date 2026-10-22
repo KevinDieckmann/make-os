@@ -70,7 +70,7 @@ export function kennzahlen(kontakte: Kontakt[], crm0: CrmBestand, heute: string)
   // ── Deal- und Follow-up-Ebene (27.09.): Win Rate, Zyklus, hängender Wert, Pünktlichkeit, Überfälliges, Neuumsatz gegen Ziel ──
   const wr = winRate(crm.chancen, heute);
   const zy = dealZyklus(crm.chancen);
-  const hw = haengtNachWert(crm.chancen, Object.fromEntries(offen.map(c => [c.id, gesundheit(c, heute)])));
+  const hw = haengtNachWert(crm.chancen, Object.fromEntries(offen.map(c => [c.id, gesundheit(c, heute, crm.wertelisten)])));
   const fus = crm.followups ?? [];
   const pk = puenktlichkeit(fus, heute);
   const faellig = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten });

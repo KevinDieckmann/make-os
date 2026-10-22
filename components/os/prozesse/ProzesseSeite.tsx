@@ -42,6 +42,7 @@ import type { Rechteck } from '../ui/flaeche/kamera';
 import { Buehne, type BuehneSteuerung, type Einflug, type MinimapTeil } from './Buehne';
 import { LandkarteBild, ProzessBild, AblaufBild } from './Bilder';
 import { SteckbriefKarte, PhaseKarte, SchrittKarte } from './Feld';
+import { StellschraubenKarte } from './Stellschrauben';
 import { ProzessListe } from './ProzessListe';
 import { ProzessSuche } from './Suche';
 import { useLandkarte } from './daten';
@@ -278,10 +279,14 @@ export function ProzesseSeite() {
     </div>
   );
   const anpassFeld = anpassen && !praes && ebene === 1 && daten ? <LandkarteAnpassen ansicht={anp.ansicht} anpassung={anp.anpassung} speicher={anp.speicher} aendern={anp.aendern} onZu={() => setAnpassen(false)} /> : null;
+  // Stellschrauben (22.10.): öffnet man einen System-Prozess, stehen seine Einstellungen unter dem Steckbrief (Bild), unter der Liste bzw. in der Werkstatt.
+  const schrauben = !praes && p?.stellschrauben?.length && daten
+    ? <StellschraubenKarte key={p.id} p={p} rechte={daten.stellschraubenRechte} stand={daten.stellschraubenStand} onGespeichert={landkarteNeu} />
+    : null;
   const feld = anpassFeld ?? (!praes && p ? (
     s && ph ? <SchrittKarte p={p} ph={ph} s={s} zahl={zahlen[zahlSchluessel({ p: p.id, ph: ph.id, s: s.id })]} />
       : ph ? <PhaseKarte p={p} ph={ph} zahlen={zahlen} onSchritt={id => geh({ p: p.id, ph: ph.id, s: id })} />
-        : <SteckbriefKarte p={p} zahl={zahlen[p.id]} />
+        : <><SteckbriefKarte p={p} zahl={zahlen[p.id]} />{schrauben}</>
   ) : null);
   const hilfeFenster = hilfe && (
     <div role="dialog" aria-label="Kürzel" className="pz-hilfe">
@@ -300,8 +305,12 @@ export function ProzesseSeite() {
   let inhalt: ReactNode;
   if (!daten) inhalt = fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Landkarte lädt …</p>;
   else if (!prozesse.length) inhalt = <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine Prozesse">Sobald Abläufe im System oder im Fulfillment stehen, erscheinen sie hier.</Leerzustand>;
-  else if (ansicht === 'werkstatt') inhalt = <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} />;
-  else if (ansicht === 'liste') inhalt = <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} bereiche={anp.ansicht.bereiche} />;
+  else if (ansicht === 'werkstatt') inhalt = p?.quelle === 'system' && schrauben
+    ? <div className="pz-mit-schrauben"><WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} />{schrauben}</div>
+    : <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} />;
+  else if (ansicht === 'liste') inhalt = schrauben
+    ? <div className="pz-mit-schrauben"><ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} bereiche={anp.ansicht.bereiche} />{schrauben}</div>
+    : <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} bereiche={anp.ansicht.bereiche} />;
   else if (szene) {
     inhalt = (
       <div className="pz-buehnen-rahmen">
@@ -405,7 +414,9 @@ function WerkstattBereich({ p, schmal, onNeu, onVorlage, onHead, onLandkarte }: 
   }
   return (
     <Hinweis art="info" titel={`„${p.titel}“ ist ein System-Prozess`} aktion={p.link ? <Knopf leise href={p.link.href}>{`Wo es läuft: ${p.link.text} ›`}</Knopf> : undefined}>
-      Er ist im Code gebaut und nur lesbar. Eigene Prozesse entstehen über „+ Prozess“.
+      {p.stellschrauben?.length
+        ? 'Der Ablauf ist im Code gebaut — seine Stellschrauben stellst du darunter ein. Eigene Prozesse entstehen über „+ Prozess“.'
+        : 'Er ist im Code gebaut und nur lesbar. Eigene Prozesse entstehen über „+ Prozess“.'}
     </Hinweis>
   );
 }

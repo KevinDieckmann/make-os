@@ -20,7 +20,8 @@ import { tagVon } from '@/lib/zeit';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, feld, LEUCHT, Hinweis, FadenLinie } from '../ui';
 import { wochenBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { qualifiziertJeWoche } from './fokus-reihen';
-import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, sqlOffenSatz, kalteAusgeblendet, leadsAnderer, inQualifizierungNichtInRunde, QUALI_WIEDERVORLAGE_TAGE, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
+import { qualiWiedervorlageTage } from '@/lib/crm/stellschrauben';
+import { statusLabel, zuQualifizieren, sqlEntscheidungOffen, sqlOffenSatz, kalteAusgeblendet, leadsAnderer, inQualifizierungNichtInRunde, type LeadZeile, type RundenFilter } from '@/lib/crm/leads';
 import { DealAnlegen } from './DealAnlegen';
 import { kanalLeistung, temperaturFarbe, temperaturLeistung, KANAL, type KanalId } from '@/lib/crm/score';
 import { type ScoringEinstellungen } from '@/lib/crm/scoring';
@@ -61,6 +62,8 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
   const angebote = useOffeneAngebote();
   const d = useMemo<Daten | null>(() => (roh ? { leads: roh.map(z => { const b = beanFuerLead(z, api.crm?.stand, api.kontakte ?? [], { angebote }); return b && b.bean !== z.bean ? { ...z, bean: b.bean } : z; }) } : null), [roh, api.crm, api.kontakte, angebote]);
   const einstellungen = useScoringEinstellungen(api);
+  // Stellschraube „Wiedervorlage in der Qualifizierung“ (22.10., lib/crm/stellschrauben.ts) — ohne geladenes CRM die Vorgabe.
+  const wv = qualiWiedervorlageTage(api.crm?.stand?.wertelisten);
 
   // `?wer=ohne` (08.10., Woche 2 · 6.2): der Weg „Leads ohne Zuständigkeit“ aus dem Überblick öffnet die Runde auf „Nicht zugeordnet“.
   const adresse = useSearchParams();
@@ -78,7 +81,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
   const [meldung, setMeldung] = useState('');
   const [nachziehen, setNachziehen] = useState<NachziehenVorgabe | null>(null);
   const filterKey = `${wer}|${auchKalt}|${kanal}|${nurNeu}`;
-  const passend = useMemo(() => (d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : []), [d, wer, auchKalt, kanal, nurNeu, heute]);
+  const passend = useMemo(() => (d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute, wiedervorlageTage: wv }) : []), [d, wer, auchKalt, kanal, nurNeu, heute, wv]);
   const nachId = useMemo(() => new Map((d?.leads ?? []).map(z => [z.id, z])), [d]);
   // Ein Sprung aus der Akte (`start`: Firma oder Person) setzt diesen Lead an den Anfang — auch wenn er sonst nicht dran wäre.
   const startZeile = useMemo(() => (start && d ? d.leads.find(z => z.id === start || z.personen.some(p => p.id === start)) : undefined), [start, d]);
@@ -103,20 +106,20 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
     return () => window.removeEventListener('keydown', h);
   }, [karten.length]);
 
-  const zaehl = (w: RundenFilter['wer']) => (d ? zuQualifizieren(d.leads, { wer: w, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }).length : 0);
-  const neuZahl = d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), bean: 'N', heute }).length : 0;
+  const zaehl = (w: RundenFilter['wer']) => (d ? zuQualifizieren(d.leads, { wer: w, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute, wiedervorlageTage: wv }).length : 0);
+  const neuZahl = d ? zuQualifizieren(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), bean: 'N', heute, wiedervorlageTage: wv }).length : 0;
   // 08.10. (Sofort-Paket 1.1): wie viele die Runde nur wegen „kalt“ nicht zeigt — nie eine leere Runde, die „alle qualifiziert“ behauptet.
-  const kalteZahl = d ? kalteAusgeblendet(d.leads, { wer, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : 0;
+  const kalteZahl = d ? kalteAusgeblendet(d.leads, { wer, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute, wiedervorlageTage: wv }) : 0;
   const kalteZeigen = kalteZahl > 0 && !auchKalt ? (
     <Hinweis art="info" rolle="status" aktion={<Knopf leise onClick={() => setAuchKalt(true)}>Zeigen</Knopf>}>
       {kalteZahl} {kalteZahl === 1 ? 'kalter Lead ist' : 'kalte Leads sind'} ausgeblendet (Score unter {einstellungen.temperaturAb.lau} von 100 — Grenze „lau“ der Scoring-Einstellungen) — sie warten im Segment „Vernetzen“, bis sie warm werden.
     </Hinweis>
   ) : null;
   // 1.10 (09.10.): „Meine“ blendet Leads anderer aus — die Zahl steht dabei, ein Klick zeigt alle.
-  const andererZahl = d ? leadsAnderer(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : 0;
+  const andererZahl = d ? leadsAnderer(d.leads, { wer, auchKalt, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute, wiedervorlageTage: wv }) : 0;
   const sqlOffen = karten.filter(sqlEntscheidungOffen).length;
   // 14.10. (B5): die Runde zeigt weniger als „Leads in Qualifizierung“ (Überblick, Leads-Liste) — der Satz sagt, warum (lib/crm/leads.ts).
-  const nichtInRunde = d ? inQualifizierungNichtInRunde(d.leads, { wer, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute }) : 0;
+  const nichtInRunde = d ? inQualifizierungNichtInRunde(d.leads, { wer, ...(kanal ? { kanal } : {}), ...(nurNeu ? { bean: 'N' as const } : {}), heute, wiedervorlageTage: wv }) : 0;
   const andere = anderer(ich);
   const WER: { id: RundenFilter['wer']; label: string }[] = [
     { id: ich, label: `Meine ${zaehl(ich)}` }, { id: andere, label: `${nameVon(andere)} ${zaehl(andere)}` },
@@ -176,7 +179,7 @@ export function Qualifizierung({ api, start, zuLeads }: { api: CrmApi; start?: s
           <Karte i={1} akzent={kalteZeigen ? undefined : LEUCHT.gut}>
             {/* 1.3 (08.10.): ehrlich — keine offene Muss-Frage, sonst geprüft; geprüfte kommen nach der Wiedervorlage zurück. Sind nur kalte
                 ausgeblendet, steht stattdessen der Hinweis darauf (kein „alle qualifiziert“). */}
-            {kalteZeigen ?? <Leer>{wer === ich ? `Bei dir wartet gerade kein Lead: keine offene Muss-Frage, oder du hast ihn geprüft — geprüfte kommen nach ${QUALI_WIEDERVORLAGE_TAGE} Tagen wieder. „Nicht zugeordnet“ zeigt Leads ohne Zuständigkeit.` : 'Hier wartet gerade nichts.'}</Leer>}
+            {kalteZeigen ?? <Leer>{wer === ich ? `Bei dir wartet gerade kein Lead: keine offene Muss-Frage, oder du hast ihn geprüft — geprüfte kommen nach ${wv} Tagen wieder. „Nicht zugeordnet“ zeigt Leads ohne Zuständigkeit.` : 'Hier wartet gerade nichts.'}</Leer>}
           </Karte>
         )}
         {d && karten.length > 0 && !z && (
@@ -279,7 +282,7 @@ function QualiKarte({ z, api, einstellungen, ich, heute, weiter, ersetze, oeffne
 
         {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
         <div className="quali-aktionen" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span title={`Ruhe bis zur Wiedervorlage (${QUALI_WIEDERVORLAGE_TAGE} Tage) — auch mit offenen Fragen`}><Knopf onClick={() => geprueft()} aus={laeuft}>Geprüft → nächster</Knopf></span>
+          <span title={`Ruhe bis zur Wiedervorlage (${qualiWiedervorlageTage(api.crm?.stand?.wertelisten)} Tage) — auch mit offenen Fragen`}><Knopf onClick={() => geprueft()} aus={laeuft}>Geprüft → nächster</Knopf></span>
           {/* 2.2 (08.10.): der Deal entsteht HIER in der Karte (wie im Gesprächsmodus) — kein Sprung mehr in die lange Leads-Liste. */}
           {bereit && !z.deal?.offen && werkzeug !== 'deal' && <Knopf farbe={LEUCHT.gut} onClick={() => setWerkzeug('deal')}>SQL → Deal anlegen</Knopf>}
           <Knopf leise onClick={() => weiter(false)}>Später</Knopf>

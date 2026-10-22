@@ -97,10 +97,10 @@ export interface FollowUpEingabe {
  * Event (followUpBis), Quelle „event“. Zuständig ist, wer eingetragen einlädt
  * und nachfasst; ohne Eintrag entscheidet die Route (wer die Beziehung hält).
  */
-export function followUpEingabe(e: Pick<Event, 'id' | 'titel' | 'datum' | 'marke' | 'reihe'>, t: Pick<Teilnahme, 'kontaktId' | 'einladenDurch'>): FollowUpEingabe {
+export function followUpEingabe(e: Pick<Event, 'id' | 'titel' | 'datum' | 'marke' | 'reihe'>, t: Pick<Teilnahme, 'kontaktId' | 'einladenDurch'>, w?: Parameters<typeof followUpBis>[1]): FollowUpEingabe {
   return {
     aktion: 'anlegen', kontaktId: t.kontaktId, bezug: { art: 'event', id: e.id }, art: 'nachricht',
-    text: nachfassText(e).slice(0, 300), faellig: followUpBis(e), quelle: 'event',
+    text: nachfassText(e).slice(0, 300), faellig: followUpBis(e, w), quelle: 'event',
     ...(t.einladenDurch ? { zustaendig: t.einladenDurch } : {}),
   };
 }

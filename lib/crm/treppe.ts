@@ -28,7 +28,7 @@ import { wochenStunden, stufenTakt } from './produkt-karte';
 export const imBusiness = (x: { gesellschaft?: string | null }): boolean => bereichVonGesellschaft(x.gesellschaft) === 'business';
 import type { TreppeDatei, TreppenStufe, KundenFortschritt, ReportStand } from './treppe-daten';
 
-/** Alle so viele Tage je aktivem Mandat ein Vorschlag „Fortschritts-Report“ (Entscheidung 10.10.). */
+/** Alle so viele Tage je aktivem Mandat ein Vorschlag „Fortschritts-Report“ (Entscheidung 10.10.) — die VORGABE; seit 22.10. einstellbar (Stellschraube `reportTage`). */
 export const REPORT_TAGE = 14;
 /** Ein neues Mandat bekommt den ersten Vorschlag frühestens nach so vielen Tagen. */
 export const REPORT_ERSTER_NACH = 7;
@@ -97,8 +97,8 @@ const tagDes = (x: string) => (x.length > 10 ? tagVon(x) : x);
  * verschieden): letzter erstellter bzw. gesendeter Report + `REPORT_TAGE`, ohne Report der Start + `REPORT_ERSTER_NACH`. Treppe, Hänger im Fall-Kopf,
  * Report-Zeitachse (lib/fulfillment/prozesse/ansichten.ts `reportAchse`) und Kennzahl lesen nur sie. Ohne Start und ohne Report: null.
  */
-export function reportNaechsterFaellig(start: string | undefined, letzter: string | undefined): string | null {
-  if (letzter) return tagPlus(tagDes(letzter), REPORT_TAGE);
+export function reportNaechsterFaellig(start: string | undefined, letzter: string | undefined, tage: number = REPORT_TAGE): string | null {
+  if (letzter) return tagPlus(tagDes(letzter), tage);
   return start ? tagPlus(tagDes(start), REPORT_ERSTER_NACH) : null;
 }
 
@@ -106,10 +106,10 @@ export function reportNaechsterFaellig(start: string | undefined, letzter: strin
  * Ist ein Fortschritts-Report fällig? Nach `reportNaechsterFaellig`. Ein VORSCHLAG zählt nicht als Report (17.10., L2 A1: vorher setzte der Vorschlag
  * die Marke `report:<m>` und der Hänger verschwand für 14 Tage, obwohl kein Report entstand) — die Marke bremst nur das erneute Vorschlagen (treppe-server).
  */
-export function reportFaellig(m: Pick<Mandat, 'status' | 'start'>, r: ReportStand | undefined, heute: string): { faellig: boolean; letzter?: string } {
+export function reportFaellig(m: Pick<Mandat, 'status' | 'start'>, r: ReportStand | undefined, heute: string, tage: number = REPORT_TAGE): { faellig: boolean; letzter?: string } {
   if (m.status !== 'aktiv') return { faellig: false };
   const letzter = [r?.erstelltAm, r?.gesendetAm].filter((x): x is string => !!x).map(tagDes).sort().pop();
-  const n = reportNaechsterFaellig(m.start, letzter);
+  const n = reportNaechsterFaellig(m.start, letzter, tage);
   return { faellig: !n || n <= heute, ...(letzter ? { letzter } : {}) };
 }
 
@@ -171,7 +171,7 @@ export function kundenAmpel(e: {
 }
 
 /** Je aktivem (bzw. pausiertem) Mandat die Zeile „Fortschritt im Paket“. */
-export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined>; termine?: Readonly<Record<string, string | undefined>>; kickoffVermerkt?: Readonly<Record<string, string | undefined>> }): KundenZeile[] {
+export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined>; termine?: Readonly<Record<string, string | undefined>>; kickoffVermerkt?: Readonly<Record<string, string | undefined>>; reportTage?: number }): KundenZeile[] {
   const { datei, crm, heute } = e;
   const leistung = new Map<string, Leistung>(crm.leistungen.map(l => [l.id, l]));
   return crm.mandate.filter(m => !m.geloeschtAm && (m.status === 'aktiv' || m.status === 'pausiert') && imBusiness(m)).map(m => {
@@ -183,7 +183,7 @@ export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'man
     const schritt = mandatPhase(m, l);
     const erledigt = (f?.erledigt ?? []).map(x => x.was);
     const r = datei.reports[m.id];
-    const rep = reportFaellig(m, r, heute);
+    const rep = reportFaellig(m, r, heute, e.reportTage);
     return {
       mandatId: m.id, kunde: m.kunde, titel: m.titel, status: m.status, ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}),
       stufe: stufe ? { id: stufe.id, name: stufe.name, ebene: stufe.ebene } : null, stufeQuelle: st?.quelle ?? null, ...(seit ? { stufeSeit: seit } : {}),

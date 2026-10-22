@@ -89,7 +89,9 @@ export async function POST(req: Request) {
   }
   if (body.aktion !== undefined && body.aktion !== 'erfassen') return fehler('aktion: erfassen, danke-raus oder danke-verzicht.', 400);
 
-  const p = erfassungPruefen(body, { heute: localDay() });
+  // Stellschraube „Nachfassen nach einem Event“ (22.10.): fehlt die Frist im Körper, gilt sie (lib/crm/stellschrauben.ts); nicht lesbar → Vorgabe.
+  const nachfass = await import('@/lib/crm/speicher').then(async m => (await import('@/lib/crm/stellschrauben')).nachfassWerktage((await m.ladeCrm()).wertelisten)).catch(() => undefined);
+  const p = erfassungPruefen(body, { heute: localDay(), ...(nachfass ? { nachfassWerktage: nachfass } : {}) });
   if (!p.ok) return fehler(p.fehler, p.status);
   try {
     const r = await erfassungAusfuehren(p.wert, { person: z.person, haushalt: z.haushalt, wer: werAus(req) });

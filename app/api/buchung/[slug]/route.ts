@@ -138,13 +138,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   const heute = localDay(jetzt);
   const bis = tagPlus(heute, seite.tageVoraus + 1);
   // K1 liest den eben abgeglichenen Stand (ein am iPhone eingetragener Termin blockiert); Buchungen prüft `reservieren` in der Sperre.
-  const [v, einst, fristen] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeEinstellungen(), hinweisFristenLaden()]);
+  const [v, einst, fristen, halteMin] = await Promise.all([verfuegbarkeitFuer(seite.person, heute, bis), ladeEinstellungen(), hinweisFristenLaden(),
+    // Stellschraube (22.10.): so lange hält die vorläufige Buchung ihren Platz — nicht lesbar = RESERVIERT_MIN (wie vorher).
+    Promise.all([import('@/lib/prozesse/stellschrauben-werte'), import('@/lib/prozesse/stellschrauben-werte-server')]).then(async ([w, s]) => w.buchungHalteMin(await s.stellschraubenWerte()))]);
   const feiertage = sperrTageAus(v, einst.freieTage, heute, bis);
   const token = neuesToken();
   const id = neueKennung('bu');
   let r: Reservierung | { ok: false; status: number; fehler: string } = { ok: false, status: 409, fehler: 'Nicht reserviert.' };
   await aendereBuchungBestand(bs => {
-    const x = reservieren(bs, seite.id, e.e, belegungenAus(v), feiertage, { id, tokenHash: tokenHash(token), jetzt, heute, fassung: hinweisFassung(fristen) });
+    const x = reservieren(bs, seite.id, e.e, belegungenAus(v), feiertage, { id, tokenHash: tokenHash(token), jetzt, heute, fassung: hinweisFassung(fristen), halteMin });
     r = x;
     return x.ok ? x.bestand : bs;
   }, jetzt);

@@ -49,13 +49,16 @@ export const EINWILLIGUNG_WORTLAUT = 'Ich habe den Datenschutzhinweis oben zur K
 /** Wie der Nachweis im CRM heißt (Einwilligungs-Liste, Grundlage „Antwort auf Anfrage“). */
 export const KENNTNISNAHME_NAME = 'Kenntnisnahme Datenschutzhinweis';
 
-/** Die Fristen, die der Hinweis nennt (aus `fristenWirksam`): Buchungen (Tage), Kontakte (Monate), Kalender-Zwischenspeicher (Monate). */
-export interface HinweisFristen { buchungen: number; kontakte: number; kalenderCaches: number }
+/**
+ * Die Fristen, die der Hinweis nennt (aus `fristenWirksam`): Buchungen (Tage), Kontakte (Monate), Kalender-Zwischenspeicher (Monate). Seit 22.10. optional die
+ * Gültigkeit des Bestätigungslinks (Tage, Stellschraube `buchungMailLinkTage`) — fehlt = `MAIL_LINK_TAGE`.
+ */
+export interface HinweisFristen { buchungen: number; kontakte: number; kalenderCaches: number; mailLinkTage?: number }
 /** Standard der Löschfristen-Tabelle (lib/crm/loeschfristen.ts) — für Tests und als Rückfall ohne gespeicherte Abweichung. */
 export const HINWEIS_FRISTEN_STANDARD: HinweisFristen = { buchungen: 30, kontakte: 24, kalenderCaches: 12 };
 
 /** Fassung des Hinweises MIT den Fristen, die er nennt — wird mit jeder Buchung gespeichert. */
-export const hinweisFassung = (f: HinweisFristen): string => `${EINWILLIGUNG_VERSION}.b${f.buchungen}-k${f.kontakte}-c${f.kalenderCaches}`;
+export const hinweisFassung = (f: HinweisFristen): string => `${EINWILLIGUNG_VERSION}.b${f.buchungen}-k${f.kontakte}-c${f.kalenderCaches}${f.mailLinkTage !== undefined && f.mailLinkTage !== MAIL_LINK_TAGE ? `-m${f.mailLinkTage}` : ''}`;
 
 const tageText = (n: number) => `${n} ${n === 1 ? 'Tag' : 'Tage'}`;
 const monateText = (n: number) => `${n} ${n === 1 ? 'Monat' : 'Monate'}`;
@@ -70,7 +73,7 @@ export function datenschutzHinweis(f: HinweisFristen): string[] {
     'Zweck und Rechtsgrundlage: Ihre Angaben (Name, E-Mail, Firma, Anliegen) verwenden wir nur, um Ihre Terminanfrage zu bearbeiten und den Termin vorzubereiten — auf Ihre Anfrage hin, vor einem möglichen Vertrag (Art. 6 Abs. 1 lit. b DSGVO). Ohne Name und E-Mail können wir die Anfrage nicht bearbeiten.',
     `Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir ${tageText(f.buchungen)} nach der letzten Änderung, bestätigte Buchungen ${tageText(f.buchungen)} nach dem Termin.`,
     `Erst wenn wir den Termin bestätigen, legen wir Sie als Geschäftskontakt an (Name, E-Mail, Firma, Anliegen, Termin) und tragen den Termin mit Ihrem Namen und Ihrer E-Mail-Adresse in unseren Kalender ein. Den Geschäftskontakt prüfen wir spätestens ${monateText(f.kontakte)} nach dem letzten Kontakt auf Löschung. Den Kalendereintrag behalten wir, solange die Geschäftsbeziehung ihn braucht; die Zwischenkopie vergangener Termine in unserer Software löschen wir nach ${monateText(f.kalenderCaches)}.`,
-    `Nach dem Absenden führt Sie die Seite zu Ihrer persönlichen Status-Seite (die Adresse mit Ihrem Schlüssel kennen nur Sie — bitte aufbewahren). Gegebenenfalls schicken wir Ihnen per E-Mail einen Link, mit dem Sie bestätigen, dass die Adresse Ihnen gehört; jeder solche Link gilt ${tageText(MAIL_LINK_TAGE)} und nur einmal. Darüber hinaus schicken wir Ihnen keine E-Mails und keine Werbung.`,
+    `Nach dem Absenden führt Sie die Seite zu Ihrer persönlichen Status-Seite (die Adresse mit Ihrem Schlüssel kennen nur Sie — bitte aufbewahren). Gegebenenfalls schicken wir Ihnen per E-Mail einen Link, mit dem Sie bestätigen, dass die Adresse Ihnen gehört; jeder solche Link gilt ${tageText(f.mailLinkTage ?? MAIL_LINK_TAGE)} und nur einmal. Darüber hinaus schicken wir Ihnen keine E-Mails und keine Werbung.`,
     // 05.10. (Fassung 4): die Sicherungen wahrheitsgemäß (bis zu 12 Monate, SICHERUNG_SATZ in lib/crm/loeschfristen.ts).
     SICHERUNG_SATZ,
     'Sie können jederzeit Auskunft, Berichtigung, Einschränkung oder Löschung verlangen und sich bei einer Datenschutz-Aufsichtsbehörde beschweren — Ihr Ansprechpartner ist der Verantwortliche unten.',
@@ -83,7 +86,7 @@ export function datenschutzHinweis(f: HinweisFristen): string[] {
 /** `neueJeStunde` (F1 #13): so viele neue (vorläufige) Buchungen je Seite und Stunde — gegen Fluten über viele Adressen. */
 /** `vorlaeufigJeSeite` (S1 #21): so viele vorläufige Reservierungen je Seite GLEICHZEITIG — eine Flut unbestätigter Plätze blockiert sonst die Seite. */
 export const GRENZEN = { name: 80, email: 160, firma: 160, anliegen: 1000, titel: 80, ort: 300, verantwortlich: 300, kalender: 100, seiten: 30, buchungen: 2000, offeneJeSeite: 60, neueJeStunde: 20, vorlaeufigJeSeite: 5 } as const;
-/** So lange hält eine vorläufige Buchung ihren Platz. */
+/** So lange hält eine vorläufige Buchung ihren Platz — die Vorgabe; wirksam ist die Stellschraube `buchungHalteMin` (22.10., lib/prozesse/stellschrauben-werte.ts). */
 export const RESERVIERT_MIN = 30;
 /** Zu schnell ausgefüllt (Sekunden seit dem Laden der Seite) → Maschine. */
 export const MIN_AUSFUELLEN_SEK = 3;
@@ -91,7 +94,7 @@ export const MIN_AUSFUELLEN_SEK = 3;
 export const MAX_AUSFUELLEN_SEK = 2 * 3600;
 /** Standard-Löschfrist in Tagen (einstellbar unter Stammdaten › Datenschutz, Frist „buchungen“). */
 export const LOESCHFRIST_TAGE = 30;
-/** So lange gilt ein Bestätigungslink für die E-Mail-Adresse (einmalig). */
+/** So lange gilt ein Bestätigungslink für die E-Mail-Adresse (einmalig) — die Vorgabe; wirksam ist die Stellschraube `buchungMailLinkTage` (22.10.). */
 export const MAIL_LINK_TAGE = 7;
 /** Text, wenn gerade nichts buchbar ist (Stand alt, Fehler, ohne iCloud, ohne Verantwortlichen). */
 export const NICHT_BUCHBAR = 'Gerade sind keine Termine buchbar. Bitte später noch einmal vorbeischauen.';
@@ -327,7 +330,7 @@ export interface Reservierung { ok: true; bestand: BuchungBestand; buchung: Buch
  * Einen Platz vorläufig reservieren. Prüft auf dem Stand IN der Sperre: Seite aktiv, Platz frei (inkl. gehaltener
  * Buchungen — so gibt es keine Doppelbuchung), dieselbe E-Mail nicht schon offen auf dieser Seite, Grenzen.
  */
-export function reservieren(bestand: BuchungBestand, seiteId: string, e: BuchungEingabe, belegungen: readonly Belegung[], feiertage: Readonly<Record<string, string>>, ctx: { id: string; tokenHash: string; jetzt: Date; heute: string; fassung?: string }): Reservierung | ReservierFehler {
+export function reservieren(bestand: BuchungBestand, seiteId: string, e: BuchungEingabe, belegungen: readonly Belegung[], feiertage: Readonly<Record<string, string>>, ctx: { id: string; tokenHash: string; jetzt: Date; heute: string; fassung?: string; halteMin?: number }): Reservierung | ReservierFehler {
   const seite = bestand.seiten.find(s => s.id === seiteId && s.aktiv);
   if (!seite) return { ok: false, status: 404, fehler: 'Diese Buchungsseite gibt es nicht (mehr).' };
   const jetztIso = ctx.jetzt.toISOString();
@@ -335,7 +338,7 @@ export function reservieren(bestand: BuchungBestand, seiteId: string, e: Buchung
   const offeneSeite = bestand.buchungen.filter(b => b.seiteId === seite.id && OFFEN.includes(b.status) && haeltPlatz(b, jetztIso));
   if (offeneSeite.length >= GRENZEN.offeneJeSeite) return { ok: false, status: 429, fehler: 'Gerade sind zu viele Anfragen offen — bitte später noch einmal.' };
   // S1 #21: höchstens GRENZEN.vorlaeufigJeSeite unbestätigte Reservierungen je Seite gleichzeitig (jede hält 30 Min. einen Platz).
-  if (offeneSeite.filter(b => b.status === 'vorlaeufig').length >= GRENZEN.vorlaeufigJeSeite) return { ok: false, status: 429, fehler: 'Gerade sind zu viele Anfragen offen — bitte in einer halben Stunde noch einmal.' };
+  if (offeneSeite.filter(b => b.status === 'vorlaeufig').length >= GRENZEN.vorlaeufigJeSeite) return { ok: false, status: 429, fehler: `Gerade sind zu viele Anfragen offen — bitte ${(ctx.halteMin ?? RESERVIERT_MIN) === RESERVIERT_MIN ? 'in einer halben Stunde' : 'später'} noch einmal.` };
   // F1 #13: neue Buchungen je Seite und Stunde (auch schon abgelaufene vorläufige zählen — sie belegten den Platz).
   const vorStunde = ctx.jetzt.getTime() - 3_600_000;
   if (bestand.buchungen.filter(b => b.seiteId === seite.id && Date.parse(b.angelegt) >= vorStunde).length >= GRENZEN.neueJeStunde) return { ok: false, status: 429, fehler: 'Gerade kommen sehr viele Anfragen — bitte in einer Stunde noch einmal.' };
@@ -348,7 +351,7 @@ export function reservieren(bestand: BuchungBestand, seiteId: string, e: Buchung
     id: ctx.id, seiteId: seite.id, start: passend.start, ende: passend.ende, status: 'vorlaeufig',
     name: e.name, email: e.email, ...(e.firma ? { firma: e.firma } : {}), ...(e.anliegen ? { anliegen: e.anliegen } : {}),
     einwilligung: { wortlaut: EINWILLIGUNG_WORTLAUT, version: ctx.fassung ?? hinweisFassung(HINWEIS_FRISTEN_STANDARD), am: jetztIso },
-    tokenHash: ctx.tokenHash, angelegt: jetztIso, reserviertBis: new Date(ctx.jetzt.getTime() + RESERVIERT_MIN * 60_000).toISOString(), statusAm: jetztIso,
+    tokenHash: ctx.tokenHash, angelegt: jetztIso, reserviertBis: new Date(ctx.jetzt.getTime() + (ctx.halteMin ?? RESERVIERT_MIN) * 60_000).toISOString(), statusAm: jetztIso,
   };
   return { ok: true, bestand: { ...bestand, buchungen: [...bestand.buchungen, buchung] }, buchung };
 }

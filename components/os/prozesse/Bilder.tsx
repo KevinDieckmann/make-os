@@ -11,12 +11,13 @@
 //   · `AblaufBild`     Ebene 3/4 — die Fläche des Editors (`flaecheBild`), nur lesbar; Enden ohne Pfeil weiter
 
 import type { KeyboardEvent as RKeyboardEvent, MouseEvent as RMouseEvent } from 'react';
-import { Cog, LayoutTemplate, AlertTriangle, Workflow } from 'lucide-react';
+import { Cog, LayoutTemplate, AlertTriangle, Workflow, SlidersHorizontal } from 'lucide-react';
 import { FARBE as C, TIEF, RAND, FLAECHE_STIL } from '@/lib/make-one/design';
 import { pfadVon, pfeilTextOrt, type FlaecheBild } from '@/lib/fulfillment/prozesse/flaeche';
 import { pfeileImBild, kachelTitel, wegTextMass, KACHEL_TEXT, WEG_TEXT, PHASE_TITEL, type FliegeLage, type ProzessLage } from '@/lib/prozesse/landkarte';
 import type { ProzessDef, Zahl } from '@/lib/prozesse/typen';
 import { kachelTexte, kurztitel, zahlTexte, zahlSchluessel } from '@/lib/prozesse/modell';
+import { einstellbar } from '@/lib/prozesse/stellschrauben';
 import { STUFE_FARBE, tonVon } from '@/lib/prozesse/farben';
 import { einpassen, textBreite, type Eingepasst } from '@/lib/text/umbruch';
 import type { ZoomStufe } from '../ui/flaeche/stufe';
@@ -160,8 +161,10 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [
         const t = kachelTexte(p, zahlen[p.id], stufe);
         const z = zahlTexte(zahlen[p.id]);
         const href = zahlen[p.id]?.href;
-        const Zeichen = p.quelle === 'system' ? Cog : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
-        const aria = `${p.beschriftung ?? p.titel}${t.produkt ? `, ${t.produkt}` : ''}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? 'System, nur lesbar' : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
+        // Stellschrauben (22.10.): ein System-Prozess mit änderbaren Werten trägt statt des Zahnrads den Regler — dezent, dieselbe Größe und Farbe.
+        const schrauben = p.quelle === 'system' && einstellbar(p);
+        const Zeichen = p.quelle === 'system' ? (schrauben ? SlidersHorizontal : Cog) : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
+        const aria = `${p.beschriftung ?? p.titel}${t.produkt ? `, ${t.produkt}` : ''}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? (schrauben ? 'System, einstellbar' : 'System, nur lesbar') : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
         const spec = KACHEL_TEXT[stufe];
         const titel = einpassen({ text: kachelTitel(p, stufe), breite: k.b - spec.innen, groesse: spec.groesse, min: spec.min, zeilen: spec.zeilen, gewicht: spec.gewicht });
         const hell = hellIds.has(k.id);

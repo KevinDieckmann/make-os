@@ -56,8 +56,8 @@ export function Nachfassen({ e, api, zuKontakt }: ReiterProps) {
   const offen = da.filter(x => !x.t.followUpAm && !x.t.nachfassenVerzichtet);
   const erledigt = da.filter(x => x.t.followUpAm).sort((a, b) => (b.t.followUpAm ?? '').localeCompare(a.t.followUpAm ?? ''));
   const nichtGekommen = liste.filter(x => x.t.status === 'no_show');
-  const bis = followUpBis(e);
-  const rest = nachfassenRest(e, jetzt);
+  const bis = followUpBis(e, crm.stand.wertelisten);
+  const rest = nachfassenRest(e, jetzt, crm.stand.wertelisten);
   const fristgerecht = erledigt.filter(x => (x.t.followUpAm ?? '') <= bis).length;
   const quote = da.length ? fristgerecht / da.length : null;
   const gruppen = nachfassGruppen(offen, e, ich);

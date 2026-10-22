@@ -204,7 +204,7 @@ export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: s
   const nachEvent = new Map(events.filter(e => !istNetzwerkenEvent(e)).map(e => [e.id, e]));
   // Nachfassen zählt nur bei Gästen, deren Frist vorbei ist oder die schon nachgefasst sind (wie die Kennzahl).
   const gaeste = (crm.teilnahmen ?? []).filter(t => t.status === 'da' && nachEvent.has(t.eventId))
-    .map(t => ({ t, e: nachEvent.get(t.eventId)! })).filter(({ t, e }) => !!t.followUpAm || followUpBis(e) < heute);
+    .map(t => ({ t, e: nachEvent.get(t.eventId)! })).filter(({ t, e }) => !!t.followUpAm || followUpBis(e, crm.wertelisten) < heute);
 
   const abSitzung = fruehestes(sitzungen.map(s => s.datum));
   const abVerlauf = fruehestes(aktivitaeten.map(a => tag(a.am)));
@@ -270,7 +270,7 @@ export function wochenScoreboard(kontakte: Kontakt[], crm0: CrmBestand, heute: s
       zaehle: w => {
         const g = gaeste.filter(x => drin(x.e.datum, w));
         if (!g.length) return null;
-        return Math.round((g.filter(x => x.t.followUpAm && tag(x.t.followUpAm) <= followUpBis(x.e)).length / g.length) * 100);
+        return Math.round((g.filter(x => x.t.followUpAm && tag(x.t.followUpAm) <= followUpBis(x.e, crm.wertelisten)).length / g.length) * 100);
       } },
   ];
 

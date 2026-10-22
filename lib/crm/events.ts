@@ -9,6 +9,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { Event, Teilnahme, Chance } from './typen';
 import { gesamtwert } from './pipeline';
 import { werktagePlus } from '@/lib/zeit/kalender-kern';
+import { nachfassWerktage, type CrmStellschrauben } from './stellschrauben';
 import { budgetSumme } from './eventplanung';
 
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -19,16 +20,17 @@ export { MARKE_EVENTS, markeVon, eventName } from './marke';
 /**
  * Nachfassen innerhalb von „48 Stunden“ nach dem Event — seit 22.10. (Kevins Entscheidung E-V7 „48 Stunden = Werktage überall“) zwei WERKTAGE (Mo–Fr ohne Feiertage
  * NRW, `werktagePlus`), dieselbe Frist wie bei besuchten Events (lib/crm/besuche.ts `besuchFollowupFrist`). Vorher zwei Kalendertage.
+ * Seit 22.10. (Stellschraube) ist die Zahl der Werktage einstellbar: `w` = die Wertelisten (`nachfassWerktage`, lib/crm/stellschrauben.ts) — ohne Angabe zwei.
  */
-export const followUpBis = (e: Pick<Event, 'datum'>) => (/^\d{4}-\d{2}-\d{2}$/.test(e.datum) ? werktagePlus(e.datum, 2) : plusTage(e.datum, 2));
+export const followUpBis = (e: Pick<Event, 'datum'>, w?: { stellschrauben?: CrmStellschrauben } | null) => { const n = nachfassWerktage(w); return /^\d{4}-\d{2}-\d{2}$/.test(e.datum) ? werktagePlus(e.datum, n) : plusTage(e.datum, n); };
 
 /**
  * Stunden bis zum Ende der Nachfass-Frist (Ende des Tages followUpBis, lokale
  * Zeit) — negativ, wenn sie abgelaufen ist. Dieselbe Frist wie in der
  * Tagesliste (lib/crm/heute.ts), nur in Stunden für die Nachfass-Ansicht.
  */
-export function nachfassenRest(e: Pick<Event, 'datum'>, jetztMs: number): number {
-  const ende = new Date(`${followUpBis(e)}T23:59:59`).getTime();
+export function nachfassenRest(e: Pick<Event, 'datum'>, jetztMs: number, w?: { stellschrauben?: CrmStellschrauben } | null): number {
+  const ende = new Date(`${followUpBis(e, w)}T23:59:59`).getTime();
   return Math.floor((ende - jetztMs) / 3_600_000);
 }
 

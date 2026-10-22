@@ -29,6 +29,7 @@ import { personenJeFirma, firmenDerPerson, personenDerFirma } from './stationen'
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { nurBusinessGezaehlt } from './zaehlung-business';
 import { istQuoten, sqlZuGewonnen } from './quoten';
+import { QUALI_WIEDERVORLAGE_VORGABE } from './stellschrauben';
 
 export const LEAD_STATUS: { id: LeadStatus; label: string; weiterWenn: string; aktiv: boolean }[] = [
   { id: 'neu', label: 'Neu', weiterWenn: 'Erste Ansprache über einen zulässigen Kanal.', aktiv: false },
@@ -269,7 +270,8 @@ export function trichter(zeilen: LeadZeile[], crm0: CrmBestand, heute: string): 
 }
 
 // ── Qualifizierungsrunde (27.09.) ─────────────────────────────────────────────
-export const QUALI_WIEDERVORLAGE_TAGE = 60;
+/** Vorgabe der Wiedervorlage in Tagen — wirksam ist die Stellschraube `qualiWiedervorlageTage(wertelisten)` (22.10., lib/crm/stellschrauben.ts). */
+export const QUALI_WIEDERVORLAGE_TAGE = QUALI_WIEDERVORLAGE_VORGABE;
 export interface RundenFilter {
   /** Team-Kürzel der Person, deren Leads dran sind; „ohne“ = Leads ohne Besitzer; „alle“ = jede. */
   wer: string | 'ohne' | 'alle';
@@ -279,6 +281,8 @@ export interface RundenFilter {
   /** Nur diese BEAN-Gruppe (28.09., H4) — die Filter-Pille „Neu“ in der Runde. */
   bean?: BeanId;
   heute: string;
+  /** Ruhe nach „Geprüft“ bzw. Wiedervorlage in Tagen (Stellschraube, 22.10.) — fehlt = Vorgabe. */
+  wiedervorlageTage?: number;
 }
 const tageZw = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);
 /**
@@ -315,18 +319,18 @@ export function offeneMussFragen(z: Pick<LeadZeile, 'kriterien' | 'score'>): num
  *  · sonst: nie qualifiziert oder länger als die Wiedervorlage her
  * SQL-bereite Leads ohne Entscheidung bleiben unabhängig davon in der Runde (`sqlEntscheidungOffen`).
  */
-export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' | 'qualifiziertAm' | 'deal' | 'score'> & { wiedervorlage?: string; geprueftAm?: string }, heute: string): boolean {
+export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' | 'qualifiziertAm' | 'deal' | 'score'> & { wiedervorlage?: string; geprueftAm?: string }, heute: string, tage: number = QUALI_WIEDERVORLAGE_TAGE): boolean {
   if (z.status === 'ruht' && z.wiedervorlage && z.wiedervorlage <= heute) return !z.deal?.offen;
   if (!['neu', 'kontaktiert', 'im_gespraech', 'qualifizierung'].includes(z.status)) return false;
   if (z.deal?.offen) return false;
-  if (z.geprueftAm && tageZw(z.geprueftAm, heute) <= QUALI_WIEDERVORLAGE_TAGE) return false;
+  if (z.geprueftAm && tageZw(z.geprueftAm, heute) <= tage) return false;
   if (offeneMussFragen(z) > 0) return true;
-  return !z.qualifiziertAm || tageZw(z.qualifiziertAm, heute) > QUALI_WIEDERVORLAGE_TAGE;
+  return !z.qualifiziertAm || tageZw(z.qualifiziertAm, heute) > tage;
 }
-/** Bis wann ein geprüfter Lead Ruhe hat (Tag) — für Texte in der Runde. Ohne Prüfung null. */
-export const ruheBis = (z: Pick<LeadZeile, 'geprueftAm'>): string | null => {
+/** Bis wann ein geprüfter Lead Ruhe hat (Tag) — für Texte in der Runde. Ohne Prüfung null. `tage` = Stellschraube (fehlt = Vorgabe). */
+export const ruheBis = (z: Pick<LeadZeile, 'geprueftAm'>, tage: number = QUALI_WIEDERVORLAGE_TAGE): string | null => {
   if (!z.geprueftAm) return null;
-  const d = new Date(`${z.geprueftAm}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + QUALI_WIEDERVORLAGE_TAGE);
+  const d = new Date(`${z.geprueftAm}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + tage);
   return d.toISOString().slice(0, 10);
 };
 /**
@@ -358,7 +362,7 @@ const passtRundenAuswahl = (z: LeadZeile, f: RundenFilter): boolean =>
   && (!f.kanal || z.kanal === f.kanal) && (!f.bean || z.bean === f.bean);
 export function zuQualifizieren(zeilen: LeadZeile[], f: RundenFilter): LeadZeile[] {
   return zeilen
-    .filter(z => brauchtQualifizierung(z, f.heute) || sqlEntscheidungOffen(z))
+    .filter(z => brauchtQualifizierung(z, f.heute, f.wiedervorlageTage) || sqlEntscheidungOffen(z))
     .filter(z => passtRundenAuswahl(z, f))
     .filter(z => f.auchKalt || !istKalt(z) || sqlEntscheidungOffen(z))
     .sort((a, b) => Number(sqlEntscheidungOffen(b)) - Number(sqlEntscheidungOffen(a)) || b.score.punkte - a.score.punkte || (b.letzterKontakt ?? '').localeCompare(a.letzterKontakt ?? '') || a.name.localeCompare(b.name));

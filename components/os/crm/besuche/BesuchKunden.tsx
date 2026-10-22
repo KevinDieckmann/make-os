@@ -9,7 +9,8 @@
 import { useMemo } from 'react';
 import { FARBE as C } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Raster, Zahl, Chip, LEUCHT } from '../../ui';
-import { besuchJeKunde, erfassteTeilnahmen, FOLLOWUP_QUOTE_DEFINITION, type BesuchKontext } from '@/lib/crm/besuche';
+import { besuchJeKunde, erfassteTeilnahmen, followupQuoteDefinition, type BesuchKontext } from '@/lib/crm/besuche';
+import { nachfassWerktage } from '@/lib/crm/stellschrauben';
 import { UEBERGABE_HINWEIS, ROLLE_HINWEIS } from '@/lib/crm/netzwerken-recht';
 import { anmeldungVon, anmeldungLabel } from '@/lib/crm/besuche-form';
 import { datum, euro } from '../daten';
@@ -18,7 +19,7 @@ import { AvvHinweis, type BesuchProps } from './gemeinsam';
 export function BesuchKunden({ api, crm, onAkte, zuFirma }: Pick<BesuchProps, 'api' | 'crm' | 'zuFirma'> & { onAkte: (id: string) => void }) {
   const heute = crm.heute;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
-  const ctx: BesuchKontext = useMemo(() => ({ teilnahmen: crm.stand.teilnahmen, kontakte, chancen: crm.stand.chancen, heute }), [crm.stand.teilnahmen, kontakte, crm.stand.chancen, heute]);
+  const ctx: BesuchKontext = useMemo(() => ({ teilnahmen: crm.stand.teilnahmen, kontakte, chancen: crm.stand.chancen, heute, nachfassWerktage: nachfassWerktage(crm.stand.wertelisten) }), [crm.stand.teilnahmen, kontakte, crm.stand.chancen, heute, crm.stand.wertelisten]);
   const gruppen = useMemo(() => besuchJeKunde(crm.stand.events, ctx), [crm.stand.events, ctx]);
   const nachId = useMemo(() => new Map(crm.stand.events.map(e => [e.id, e])), [crm.stand.events]);
   const firmen = useMemo(() => new Map(crm.stand.firmen.map(f => [f.id, f])), [crm.stand.firmen]);
@@ -39,7 +40,7 @@ export function BesuchKunden({ api, crm, onAkte, zuFirma }: Pick<BesuchProps, 'a
             <Raster min={110}>
               <Zahl wert={String(g.events)} label={g.events === 1 ? 'Event' : 'Events'} />
               <Zahl wert={String(g.kontakte)} label="Kontakte" />
-              <Zahl wert={g.followupQuote === null ? '—' : `${Math.round(g.followupQuote * 100)} %`} label={<span title={FOLLOWUP_QUOTE_DEFINITION}>Follow-up-Quote ⓘ</span>} />
+              <Zahl wert={g.followupQuote === null ? '—' : `${Math.round(g.followupQuote * 100)} %`} label={<span title={followupQuoteDefinition(ctx.nachfassWerktage)}>Follow-up-Quote ⓘ</span>} />
               <Zahl wert={String(g.deals)} label="Deals" />
               {g.pipeline + g.umsatz > 0 && <Zahl wert={euro(g.pipeline + g.umsatz)} label="Pipeline + Umsatz" />}
               {g.kosten > 0 && <Zahl wert={euro(g.kosten)} label="Kosten" />}

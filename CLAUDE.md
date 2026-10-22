@@ -1753,6 +1753,20 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   (Ops `schritt`/`phase`, `MOBIL_OPS`), Prozess `werkstattMobilFelder`/`werkstattMobilAnwenden` (Titel, Frist, Masken-Texte/-Zahlen/-Personen, Dauer eines
   Wartens — nie Kennung, Form, Zweige, Phase). Gespeichert über denselben Entwurf (Stand/409, gleiche Rechte, Veröffentlichen auch am Handy); Bauen bleibt am
   Rechner. Wächter `tests/prozesse-ff-mobil-e6.test.ts`.
+- **Stellschrauben der festen Prozesse (22.10., Branch `prozesse-stellschrauben`; Entscheidung: erst Stellschrauben, dann überführen):** die System-Prozesse bleiben
+  Ausführer im Code, ihr Steckbrief zeigt aber, welche Einstellungen sie lesen (`ProzessDef.stellschrauben`, Modell rein `lib/prozesse/stellschrauben.ts`, gebaut in
+  `stellschrauben-bau.ts` aus den VORHANDENEN Beständen, gelesen in `stellschrauben-server.ts`, angehängt in `landkarteLesen` wie `zaehler`). Geändert wird IMMER über die
+  vorhandene Route des Bestands (`weg` → `anfrageFuer`: Wertelisten, Löschfristen, Mahnstufen, Puls-Schwelle, Fulfillment-Einstellungen; komplexe Masken — Scoring,
+  Buchungsseiten, Head-Einstellungen, Kanäle — nur als Link); Rechte je Weg rechnet `stellschraubenRechte` mit den Regeln der Route (Landkarte `stellschraubenRechte`,
+  im ETag als Fingerabdruck). Feste Code-Werte sind Einstellungen geworden — EINE Lesefunktion je Wert, ohne Eintrag bit-gleich: Markttraktion in den Wertelisten
+  (`crm.wertelisten.stellschrauben`, lib/crm/stellschrauben.ts: `nachfassWerktage` für eigene Abende, besuchte Events UND Erfassung, `qualiWiedervorlageTage`,
+  `verschobenGelbAb`), der Rest im neuen Bestand `prozesse-stellschrauben--<h>` (lib/prozesse/stellschrauben-werte.ts: `headModusPlan`, `abschlussFenster`,
+  `buchungHalteMin`, `buchungMailLinkTage` — der Datenschutz-Hinweis nennt ihn, neue Fassung nur bei Abweichung —, `kapaSchwellen`, `reportTage`; Server
+  `stellschrauben-werte-server.ts`, Route `/api/prozesse/stellschrauben` nur volle Mitglieder, Stand/409). Gesetzlich Festes (Art.-12-Monatsfrist, Löschfristen
+  `wirkung: 'fest'`) steht als „fest (Gesetz)“. Oberfläche `components/os/prozesse/Stellschrauben.tsx` (Bild unter dem Steckbrief, Liste, Werkstatt), Kachel mit
+  Regler statt Zahnrad = „System · einstellbar“. **Neuer fester Wert in einem System-Prozess → Eintrag in `WERTE` + Lesefunktion + Test „ohne Einstellung bit-gleich /
+  mit Einstellung wirkt“**; eine vorhandene Einstellung → Zeile in `stellschraubenBauen` mit ihrem Weg. Offen: Playbook- und Event-Vorlagen (nur „Vorlagen ansehen“).
+  Tests `tests/prozesse-stellschrauben*.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

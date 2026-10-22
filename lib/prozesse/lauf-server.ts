@@ -204,7 +204,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const mandat = crm.mandate.find(m => m.chanceId === c.id && !m.geloeschtAm);
       const nachfass = !!angebot && (crm.followups ?? []).some(x => x.id === `fu-${angebot.id}` && x.status === 'offen');
       const x = await kgLesen(k, c.kontaktIds.map(nachId).filter((y): y is Kontakt => !!y));
-      const kg = { ...x.daten, 'deal.ampel': gesundheit(c, localDay(kx.jetzt)).ampel, 'deal.verschoben': c.erwartetVerschoben ?? 0, 'deal.offen': OFFENE_STUFEN.includes(c.stufe), 'deal.mandat-da': !!mandat, 'deal.nachfass-followup': nachfass,
+      const kg = { ...x.daten, 'deal.ampel': gesundheit(c, localDay(kx.jetzt), crm.wertelisten).ampel, 'deal.verschoben': c.erwartetVerschoben ?? 0, 'deal.offen': OFFENE_STUFEN.includes(c.stufe), 'deal.mandat-da': !!mandat, 'deal.nachfass-followup': nachfass,
         ...(mandat ? { 'deal.vertrag-unterschrieben': !!mandat.vertragUnterschrieben } : {}), ...(c.grund ? { 'deal.grund': c.grund } : {}), ...(await kanalFelder(k, hat(k), 'deal')) };
       return {
         fehlt: false, kontakt: k, personen: c.kontaktIds.map(nachId).filter((x): x is Kontakt => !!x), zustaendig: c.besitzer, ...hat(k),
@@ -315,7 +315,7 @@ async function eventVorFelder(e: CrmBestand['events'][number]): Promise<Record<s
 /** Anteil rechtzeitig nachgefasster Erfassungen eines besuchten Events in Prozent (lib/crm/besuche.ts `besuchWirkung`) — ohne Erfassungen kein Wert. */
 async function eventFelder(e: CrmBestand['events'][number], crm: CrmBestand, kontakte: readonly Kontakt[], kx: MotorKontext): Promise<Record<string, unknown>> {
   const { besuchWirkung } = await import('@/lib/crm/besuche');
-  const w = besuchWirkung(e, { teilnahmen: crm.teilnahmen, kontakte, chancen: crm.chancen, heute: localDay(kx.jetzt) });
+  const w = besuchWirkung(e, { teilnahmen: crm.teilnahmen, kontakte, chancen: crm.chancen, heute: localDay(kx.jetzt), nachfassWerktage: (await import('@/lib/crm/stellschrauben')).nachfassWerktage(crm.wertelisten) });
   return w.followupQuote === null ? {} : { 'event.quote-48h': Math.round(w.followupQuote * 100) };
 }
 

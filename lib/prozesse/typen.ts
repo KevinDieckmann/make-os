@@ -79,6 +79,12 @@ export interface ProzessDef {
   hochhaus?: true;
   uebergaben?: Uebergabe[];
   zaehler?: ZaehlerArt;
+  /**
+   * Stellschrauben (22.10., nur System-Prozesse): die Einstellungen, die dieser Ablauf heute schon liest — Wert, Vorgabe, Grenzen, wo gespeichert und wie
+   * geändert (lib/prozesse/stellschrauben.ts). Der Server füllt sie aus den VORHANDENEN Beständen (lib/prozesse/stellschrauben-server.ts), wie `zaehler`.
+   * Fehlt = keine.
+   */
+  stellschrauben?: import('./stellschrauben').Stellschraube[];
   /** Nur Werkstatt: Status, jüngste veröffentlichte Version (null = nur Entwurf), Zahl der Schritte. */
   werkstatt?: { status: ProzessStatus; version: number | null; schritte: number };
   /**
@@ -108,6 +114,12 @@ export interface LandkarteDaten {
   /** Landkarte anpassen (22.10.): die gespeicherten Abweichungen von der Vorgabe (nie die Vorgabe selbst) und ihr Stand (für 409). Fehlt = Vorgabe. */
   anpassung?: import('./landkarte-anpassung').LandkarteAnpassung;
   anpassungStand?: string;
+  /**
+   * Stellschrauben (22.10.): was die angemeldete Person je Weg ändern darf (dieselben Regeln wie die jeweilige Route — die prüft beim Schreiben noch einmal)
+   * und der Stand des Bestands `prozesse-stellschrauben--<h>` (für 409). Fehlt = nur ansehen.
+   */
+  stellschraubenRechte?: import('./stellschrauben').StellschraubenRechte;
+  stellschraubenStand?: string;
 }
 
 /** Ein Ort im Modell — die Ebenen (Punkt 5): 1 Landkarte (leer), 2 Prozess (`p`), 3 Ablauf einer Phase (`ph`), 4 Schritt-Detail (`s`). */

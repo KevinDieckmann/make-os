@@ -94,7 +94,7 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
   const { kundenZeilen } = await import('@/lib/crm/treppe');
   // Stufen aus dem Katalog (19.10., lib/crm/produkt-karte.ts) — ohne Produkt-Karten genau die gespeicherten.
   const { treppeMitKatalog } = await import('@/lib/crm/produkt-karte');
-  const kz = treppe ? kundenZeilen({ datei: treppeMitKatalog(treppe, crm.leistungen), crm, heute, termine }) : [];
+  const kz = treppe ? kundenZeilen({ datei: treppeMitKatalog(treppe, crm.leistungen), crm, heute, termine, reportTage: await (await import('@/lib/prozesse/stellschrauben-werte-server')).reportTageWirksam() }) : [];
   const { kundenGesperrt } = await import('./bausteine');
   const gesperrt = kundenGesperrt(vorlagen.bausteine, vorlagen);
   // „Heute im Fulfillment“ (17.10. spät): trägt ein Knoten einen Mail-Baustein, ist sein Handgriff „Entwurf öffnen“ — dieselbe Regel wie die Ausführung.

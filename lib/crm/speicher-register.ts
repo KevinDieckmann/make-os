@@ -796,6 +796,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'bis „Auf Vorgabe zurück“ bzw. die Instanz gelöscht wird; Konto löschen tilgt den Speichernamen („[gelöscht]“)',
     kategorie: ['vertraulich'],
   }),
+  // Prozesse · Stellschrauben der festen Prozesse (22.10., lib/prozesse/stellschrauben-werte-server.ts): NUR Abweichungen von der Vorgabe je Haushalt.
+  mit(H('prozesse-stellschrauben--*', 'Stellschrauben der festen System-Prozesse: Uhrzeit/Wochentag/an-aus je Head-Modus, Fenster des Monatsabschlusses, Haltezeit und Gültigkeit des Mail-Links der Buchung, Schwellen der Kapazität, Abstand der Fortschritts-Reports — nur Zahlen und Schalter, nur Abweichungen von der Vorgabe. Keine Daten Dritter; Person nur als Speichername (wer zuletzt geändert hat).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Organisation der eigenen Abläufe durch die Mitglieder des Haushalts; Person nur als Speichername',
+    art15: 'alle Konten des Haushalts sehen die Werte im Steckbrief der Prozesse (GET /api/prozesse/landkarte, /api/prozesse/stellschrauben); Daten Dritter stehen hier nicht',
+    loeschfrist: 'bis ein Wert auf die Vorgabe zurückgesetzt bzw. die Instanz gelöscht wird; Konto löschen tilgt den Speichernamen („[gelöscht]“)',
+    kategorie: ['vertraulich'],
+  }),
   // Prozesse · eigene Vorlagen (22.10., lib/prozesse/eigene-vorlagen-server.ts): Struktur und Texte eines Prozesses als Vorlage des Haushalts — ohne Personen, ohne Fall-Daten.
   mit(H('prozess-vorlagen--*', 'Eigene Vorlagen der Prozesse je Haushalt: Name, Beschreibung, Bereich, Fall-Art und die Definition (Phasen, Bausteine, Masken-Werte als Textvorlagen mit Platzhaltern, Zettel ohne Verfasser) — Personen nur als Rolle („Zuständig im Fall“), kein Eigner, kein „läuft als“, keine Versionen, keine Läufe, keine Fall-Daten. Wer sie gespeichert hat: Speichername.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Organisation der eigenen Abläufe durch die Mitglieder des Haushalts; Person nur als Speichername',
@@ -889,7 +896,7 @@ const IN_BUSINESS: readonly string[] = [
   // Fulfillment (10.10.): Vorlagen, Fälle, Kunde (Links/Antworten/Puls), Dossiers, Personenkarten und der Datei-Ordner — nur Business
   'fulfillment--*', 'fulfillment-faelle--*', 'fulfillment-kunde--*', 'fulfillment-dossiers--*', 'fulfillment-personen--*', 'fulfillment-unterlagen',
   // Prozesse (21.10., B1): Werkstatt und Webhooks — nur Business
-  'prozesse--*', 'prozesse-webhook--*', 'prozesse-landkarte--*', 'prozess-vorlagen--*',
+  'prozesse--*', 'prozesse-webhook--*', 'prozesse-landkarte--*', 'prozess-vorlagen--*', 'prozesse-stellschrauben--*',
   // Prozesse · Läufe (21.10., C1) — nur Business
   'prozess-laeufe--*',
 ];

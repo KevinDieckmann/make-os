@@ -12,7 +12,8 @@ import { useMemo, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Raster, Zahl, Haken, Zeile, Leer, LEUCHT } from '../../ui';
 import { ANMELDUNGEN, anmeldungVon, anmeldungPatch, fuerVon, zielSchluessel, zielpersonGesperrt, linkNormal, LINK_FEHLER } from '@/lib/crm/besuche-form';
-import { besuchWirkung, besuchUrteil, zielGetroffen, FOLLOWUP_QUOTE_DEFINITION, type BesuchKontext } from '@/lib/crm/besuche';
+import { besuchWirkung, besuchUrteil, zielGetroffen, followupQuoteDefinition, type BesuchKontext } from '@/lib/crm/besuche';
+import { nachfassWerktage } from '@/lib/crm/stellschrauben';
 import { UEBERGABE_HINWEIS, ROLLE_HINWEIS } from '@/lib/crm/netzwerken-recht';
 import { budgetSumme } from '@/lib/crm/eventplanung';
 import { berichtAus, EVENT_ZIEL } from '@/lib/crm/netzwerken';
@@ -41,7 +42,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck, ablage 
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const kontaktMap = useMemo(() => new Map(kontakte.map(k => [k.id, k])), [kontakte]);
   const firmenMap = useMemo(() => new Map(crm.stand.firmen.map(f => [f.id, f])), [crm.stand.firmen]);
-  const ctx: BesuchKontext = useMemo(() => ({ teilnahmen: crm.stand.teilnahmen, kontakte, chancen: crm.stand.chancen, heute }), [crm.stand.teilnahmen, kontakte, crm.stand.chancen, heute]);
+  const ctx: BesuchKontext = useMemo(() => ({ teilnahmen: crm.stand.teilnahmen, kontakte, chancen: crm.stand.chancen, heute, nachfassWerktage: nachfassWerktage(crm.stand.wertelisten) }), [crm.stand.teilnahmen, kontakte, crm.stand.chancen, heute, crm.stand.wertelisten]);
   const w = useMemo(() => besuchWirkung(e, ctx), [e, ctx]);
   const urteil = besuchUrteil(e, w, heute);
   const bericht = useMemo(() => berichtAus({ event: e, teilnahmen: crm.stand.teilnahmen, kontakte, followups: crm.stand.followups, heute }), [e, crm.stand.teilnahmen, kontakte, crm.stand.followups, heute]);
@@ -145,7 +146,7 @@ export function BesuchAkte({ api, crm, e, zuKontakt, zuFirma, onZurueck, ablage 
         <Ueberschrift>Wirkung</Ueberschrift>
         <Raster min={120}>
           <Zahl wert={String(w.kontakte)} label="Kontakte erfasst" />
-          <Zahl wert={w.followupQuote === null ? '—' : `${Math.round(w.followupQuote * 100)} %`} label={<span title={FOLLOWUP_QUOTE_DEFINITION}>Follow-up-Quote ⓘ</span>} farbe={hat((w.followupQuote ?? 0) >= 0.8, LEUCHT.gut)} />
+          <Zahl wert={w.followupQuote === null ? '—' : `${Math.round(w.followupQuote * 100)} %`} label={<span title={followupQuoteDefinition(ctx.nachfassWerktage)}>Follow-up-Quote ⓘ</span>} farbe={hat((w.followupQuote ?? 0) >= 0.8, LEUCHT.gut)} />
           <Zahl wert={String(w.termine)} label="Termine" />
           <Zahl wert={String(w.deals)} label="Deals" />
           {w.pipeline > 0 && <Zahl wert={euro(w.pipeline)} label="Pipeline" />}

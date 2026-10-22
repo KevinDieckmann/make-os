@@ -30,6 +30,7 @@ import { localDay, tagVon } from '@/lib/zeit';
 import { tagPlus, wandAus, wandzeit } from '@/lib/kalender/zeit';
 import { wochentag } from '@/lib/zeit/kalender-kern';
 import { istBusinessFrei } from '@/lib/arbeitsrahmen/regel';
+import { headModusPlan, type Werte } from '@/lib/prozesse/stellschrauben-werte';
 
 // Berliner Wandzeit (09.10., Takt robust): Tag, Wochentag und Stunde kommen aus dem Kalender-Kern — vorher aus getDay()/getHours() der
 // Maschine (stimmte nur, weil der Container TZ=Europe/Berlin setzt; ein Skript oder Test ohne TZ verschob Power Hour und Reviews).
@@ -53,13 +54,16 @@ export interface HeadsRahmen {
   warFrei: (tag: string, stunde: number) => boolean;
 }
 
-/** Welcher Modus ist jetzt dran? Rein, getestet. */
-export function faelligeModi(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], personen: string[] = [], rahmen?: HeadsRahmen, opt: { altRiegelPerson?: string | null } = {}): { modus: string; grund: string; person?: string }[] {
+/**
+ * Welcher Modus ist jetzt dran? Rein, getestet. `opt.modi` = die Stellschrauben der festen Prozesse (22.10., Bestand `prozesse-stellschrauben--<h>`,
+ * lib/prozesse/stellschrauben-werte.ts `headModusPlan`): Uhrzeit, Wochentag, an/aus je Modus — ohne Angabe die Zeiten, die bis 22.10. hier fest standen.
+ */
+export function faelligeModi(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], personen: string[] = [], rahmen?: HeadsRahmen, opt: { altRiegelPerson?: string | null; modi?: Werte | null } = {}): { modus: string; grund: string; person?: string }[] {
   // Business-frei (Lücke 7): solange der Haushalt frei ist, ruht jeder Head-Lauf — danach kommt er von selbst bzw. holt nach.
   if (rahmen?.haushaltFrei) return [];
-  const roh = faelligeModiRoh(head, jetzt, s, alleEvents, personen, rahmen?.personFrei, opt.altRiegelPerson ?? null);
+  const roh = faelligeModiRoh(head, jetzt, s, alleEvents, personen, rahmen?.personFrei, opt.altRiegelPerson ?? null, opt.modi ?? null);
   if (roh.length) return roh;
-  return nachholen(head, jetzt, s, alleEvents, rahmen).slice(0, 1);
+  return nachholen(head, jetzt, s, alleEvents, rahmen, opt.modi ?? null).slice(0, 1);
 }
 
 /** Tage vor heute (1 … 6, Berliner Tage), an denen `passt(tag)` gilt — jüngster zuerst. */
@@ -76,55 +80,61 @@ function letzteTage(heute: string, passt: (tag: string) => boolean): string[] {
  * App nicht lief. Ein nie gelaufener Modus (neue Instanz) wird nicht „nachgeholt“. Rein (der Aufrufer prüft, dass JETZT nicht
  * Business-frei ist).
  */
-function nachholen(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], r?: HeadsRahmen): { modus: string; grund: string }[] {
+function nachholen(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], r?: HeadsRahmen, modi: Werte | null = null): { modus: string; grund: string }[] {
   const raus: { modus: string; grund: string }[] = [];
   const heute = localDay(jetzt), monat = heute.slice(0, 7);
+  const P = (modus: string) => headModusPlan(modi, head, modus);
   const pruefe = (modus: string, grund: string, tage: string[], stunde: number) => {
+    if (!P(modus).an) return; // Stellschraube „aus“: weder laufen noch nachholen
     const eingefuehrt = !!s.letzte[modus];
     const d = tage.find(t => eingefuehrt || !!r?.warFrei(t, stunde));
     if (!d || liefSeit(s, modus, d)) return;
     raus.push({ modus, grund: `${grund} (${r?.warFrei(d, stunde) ? 'nachgeholt nach Business-frei' : 'nachgeholt — verpasst'})` });
   };
   if (head === 'sales') {
-    pruefe('wochenreview', 'Wochenreview Vertrieb', letzteTage(heute, t => wt(t) === 5), 14);
-    pruefe('lead_review', 'Leads qualifizieren (Wochenstart)', letzteTage(heute, t => wt(t) === 1), 9);
-    pruefe('kundenreview', 'Kundenreview zum Monatsanfang', letzteTage(heute, t => ersterWerktagVon(t) && t.slice(0, 7) === monat), 9);
+    pruefe('wochenreview', 'Wochenreview Vertrieb', letzteTage(heute, t => wt(t) === P('wochenreview').wochentag), P('wochenreview').stunde);
+    pruefe('lead_review', 'Leads qualifizieren (Wochenstart)', letzteTage(heute, t => wt(t) === P('lead_review').wochentag), P('lead_review').stunde);
+    pruefe('kundenreview', 'Kundenreview zum Monatsanfang', letzteTage(heute, t => ersterWerktagVon(t) && t.slice(0, 7) === monat), P('kundenreview').stunde);
   }
   if (head === 'marketing') {
-    pruefe('wochenplan', 'Wochenplan Marketing', letzteTage(heute, t => wt(t) === 1), 8);
-    pruefe('monatsreview', 'Monatsreview Marketing', letzteTage(heute, t => ersterWerktagVon(t) && t.slice(0, 7) === monat), 10);
+    pruefe('wochenplan', 'Wochenplan Marketing', letzteTage(heute, t => wt(t) === P('wochenplan').wochentag), P('wochenplan').stunde);
+    pruefe('monatsreview', 'Monatsreview Marketing', letzteTage(heute, t => ersterWerktagVon(t) && t.slice(0, 7) === monat), P('monatsreview').stunde);
   }
   if (head === 'event') {
     const events = alleEvents.filter(e => !istNetzwerkenEvent(e) && e.status !== 'abgesagt');
     const tageNachEvent = letzteTage(heute, t => events.some(e => e.datum === tagPlus(t, -1)));
-    pruefe('nachfassen', 'Nachfassen nach dem Event (48 h)', tageNachEvent, 8);
+    pruefe('nachfassen', 'Nachfassen nach dem Event (48 h)', tageNachEvent, P('nachfassen').stunde);
   }
   return raus;
 }
 
-function faelligeModiRoh(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], personen: string[], personFrei: ReadonlySet<string> = new Set(), altRiegelPerson: string | null = null): { modus: string; grund: string; person?: string }[] {
+function faelligeModiRoh(head: HeadId, jetzt: Date, s: HeadStand, alleEvents: { datum: string; status: string; marke?: string }[], personen: string[], personFrei: ReadonlySet<string> = new Set(), altRiegelPerson: string | null = null, modi: Werte | null = null): { modus: string; grund: string; person?: string }[] {
   // Fremde Veranstaltungen aus „Netzwerken“ (Marke „Netzwerken“) sind keine Make.One-Events: kein Nachfassen/Countdown dafür.
   const events = alleEvents.filter(e => !istNetzwerkenEvent(e));
   const heute = localDay(jetzt), w = wt(heute), h = Number(wandzeit(jetzt).slice(11, 13)), werktag = w >= 1 && w <= 5;
   const raus: { modus: string; grund: string; person?: string }[] = [];
   const ersterWerktag = Number(heute.slice(8, 10)) <= 3 && ersterWerktagVon(heute);
+  // Stellschrauben (22.10.): je Modus an/aus, ab Stunde, Wochentag — ohne Eintrag genau die Zeiten von vorher (lib/prozesse/stellschrauben-werte.ts HEAD_MODI).
+  const P = (modus: string) => headModusPlan(modi, head, modus);
+  /** Ist der Modus jetzt dran (an, Stunde erreicht, ggf. der Wochentag)? */
+  const dran = (modus: string) => { const p = P(modus); return p.an && h >= p.stunde && (p.wochentag === undefined || w === p.wochentag); };
   if (head === 'sales') {
-    for (const p of personen) if (werktag && h >= 7 && !personFrei.has(p) && !liefHeute(s, `power_hour:${p}`, heute) && !(p === altRiegelPerson && liefHeute(s, 'power_hour', heute))) raus.push({ modus: 'power_hour', grund: `Power Hour vorbereiten (${p.charAt(0).toUpperCase() + p.slice(1)})`, person: p });
-    if (w === 5 && h >= 14 && !liefHeute(s, 'wochenreview', heute)) raus.push({ modus: 'wochenreview', grund: 'Wochenreview Vertrieb' });
-    if (w === 1 && h >= 9 && !liefHeute(s, 'lead_review', heute)) raus.push({ modus: 'lead_review', grund: 'Leads qualifizieren (Wochenstart)' });
-    if (ersterWerktag && h >= 9 && !liefHeute(s, 'kundenreview', heute)) raus.push({ modus: 'kundenreview', grund: 'Kundenreview zum Monatsanfang' });
+    for (const p of personen) if (werktag && dran('power_hour') && !personFrei.has(p) && !liefHeute(s, `power_hour:${p}`, heute) && !(p === altRiegelPerson && liefHeute(s, 'power_hour', heute))) raus.push({ modus: 'power_hour', grund: `Power Hour vorbereiten (${p.charAt(0).toUpperCase() + p.slice(1)})`, person: p });
+    if (dran('wochenreview') && !liefHeute(s, 'wochenreview', heute)) raus.push({ modus: 'wochenreview', grund: 'Wochenreview Vertrieb' });
+    if (dran('lead_review') && !liefHeute(s, 'lead_review', heute)) raus.push({ modus: 'lead_review', grund: 'Leads qualifizieren (Wochenstart)' });
+    if (ersterWerktag && dran('kundenreview') && !liefHeute(s, 'kundenreview', heute)) raus.push({ modus: 'kundenreview', grund: 'Kundenreview zum Monatsanfang' });
   }
   if (head === 'marketing') {
-    if (w === 1 && h >= 8 && !liefHeute(s, 'wochenplan', heute)) raus.push({ modus: 'wochenplan', grund: 'Wochenplan Marketing' });
+    if (dran('wochenplan') && !liefHeute(s, 'wochenplan', heute)) raus.push({ modus: 'wochenplan', grund: 'Wochenplan Marketing' });
     // LinkedIn (25.09.): werktags ab 8 Uhr die Vernetzen-Portion planen — reines Regelwerk, kostet kein Guthaben.
-    if (werktag && h >= 8 && !liefHeute(s, 'netzwerk', heute)) raus.push({ modus: 'netzwerk', grund: 'Netzwerk: Vernetzen-Runde für heute planen' });
-    if (ersterWerktag && h >= 10 && !liefHeute(s, 'monatsreview', heute)) raus.push({ modus: 'monatsreview', grund: 'Monatsreview Marketing' });
+    if (werktag && dran('netzwerk') && !liefHeute(s, 'netzwerk', heute)) raus.push({ modus: 'netzwerk', grund: 'Netzwerk: Vernetzen-Runde für heute planen' });
+    if (ersterWerktag && dran('monatsreview') && !liefHeute(s, 'monatsreview', heute)) raus.push({ modus: 'monatsreview', grund: 'Monatsreview Marketing' });
   }
-  if (head === 'event' && h >= 8) {
+  if (head === 'event') {
     const gestern = tagPlus(heute, -1);
     const bald = events.some(e => e.status !== 'abgesagt' && e.datum > heute && e.datum <= tagPlus(heute, 7));
-    if (events.some(e => e.datum === gestern && e.status !== 'abgesagt') && !liefHeute(s, 'nachfassen', heute)) raus.push({ modus: 'nachfassen', grund: 'Nachfassen nach dem Event (48 h)' });
-    if (bald && !liefHeute(s, 'planung', heute)) raus.push({ modus: 'planung', grund: 'Countdown bis zum Event' });
+    if (dran('nachfassen') && events.some(e => e.datum === gestern && e.status !== 'abgesagt') && !liefHeute(s, 'nachfassen', heute)) raus.push({ modus: 'nachfassen', grund: 'Nachfassen nach dem Event (48 h)' });
+    if (dran('planung') && bald && !liefHeute(s, 'planung', heute)) raus.push({ modus: 'planung', grund: 'Countdown bis zum Event' });
   }
   return raus.slice(0, 1); // höchstens ein Lauf je Head und Takt — die nächste Person kommt im nächsten Takt
 }
@@ -166,11 +176,13 @@ export async function headsFaellig(jetzt: Date): Promise<Faellig[]> {
   const personen = powerHourPersonen(TEAM, kst.konten, kst.einstellungen);
   const altRiegelPerson = hauptInhaber(kst)?.speicher ?? null;
   const rahmen = await headsRahmen(jetzt, personen);
+  // Stellschrauben der festen Prozesse (22.10.): Uhrzeit, Wochentag, an/aus je Modus — nicht lesbar = die Zeiten von vorher.
+  const modi = await (await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenWerte();
   const raus: Faellig[] = [];
   for (const head of ['sales', 'marketing', 'event'] as HeadId[]) {
     if (!(await resolveAgent(AGENT_ID[head])).enabled) continue;
     const s = { ...leererStand(), ...((await loadJson<HeadStand>(standName(head))) ?? {}) };
-    for (const m of faelligeModi(head, jetzt, s, crm.events, personen, rahmen, { altRiegelPerson })) {
+    for (const m of faelligeModi(head, jetzt, s, crm.events, personen, rahmen, { altRiegelPerson, modi })) {
       raus.push({ id: `${AGENT_ID[head]}-${m.modus}${m.person ? `-${m.person}` : ''}`, grund: `${HEAD_NAME[head]}: ${m.grund}`, auftrag: { art: 'agent', name: AGENT_ID[head], auftrag: `modus:${m.modus}${m.person ? ` person:${m.person}` : ''}`, anlass: `Takt: ${HEAD_NAME[head]} (${m.grund})` } });
     }
   }

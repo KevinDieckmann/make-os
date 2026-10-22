@@ -92,8 +92,8 @@ export function eventKennzahlen(kontakte: Kontakt[], crm0: CrmBestand, heute: st
   // „Nachfassen binnen 48 h“ ist die Kennzahl der EIGENEN Abende — Teilnahmen besuchter Events (Netzwerken) zählen hier nicht (Events-Reiter, 03.10.: eigene Kennzahlen in lib/crm/besuche.ts).
   const nachEvent = new Map((crm.events ?? []).filter(e => !istNetzwerkenEvent(e)).map(e => [e.id, e]));
   const gaeste = crm.teilnahmen.filter(t => t.status === 'da' && nachEvent.has(t.eventId) && nachEvent.get(t.eventId)!.datum >= vor90)
-    .filter(t => t.followUpAm || followUpBis(nachEvent.get(t.eventId)!) < heute);
-  const puenktlich = gaeste.filter(t => t.followUpAm && t.followUpAm.slice(0, 10) <= followUpBis(nachEvent.get(t.eventId)!)).length;
+    .filter(t => t.followUpAm || followUpBis(nachEvent.get(t.eventId)!, crm.wertelisten) < heute);
+  const puenktlich = gaeste.filter(t => t.followUpAm && t.followUpAm.slice(0, 10) <= followUpBis(nachEvent.get(t.eventId)!, crm.wertelisten)).length;
 
   // Folgegespräche: Events, deren 30-Tage-Fenster begonnen hat, in den letzten 120 Tagen.
   const mitFenster = vorbei.filter(e => e.datum >= tagPlus(heute, -119));
@@ -145,7 +145,7 @@ export function uebergaben(kontakte: Kontakt[], crm: CrmBestand, heute: string):
   const nachfassen = offen.filter(t => !istNetzwerkenEvent(events.get(t.eventId)!));
   const begegnungen = offen.filter(t => istNetzwerkenEvent(events.get(t.eventId)!));
   if (nachfassen.length) {
-    const ueberfaellig = nachfassen.filter(t => followUpBis(events.get(t.eventId)!) < heute).length;
+    const ueberfaellig = nachfassen.filter(t => followUpBis(events.get(t.eventId)!, crm.wertelisten) < heute).length;
     liste.push({ id: 'event-nachfassen', von: 'event', an: 'sales', titel: 'Gäste nachfassen', anzahl: nachfassen.length,
       text: `stehen in der Power Hour${ueberfaellig ? ` · ${ueberfaellig} über der 48-Stunden-Frist` : ''}`, ziel: { s: 'followup', a: 'powerhour' } });
   }

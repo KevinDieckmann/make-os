@@ -137,7 +137,7 @@ export async function eventEndgueltig(api: CrmApi, eventId: string, bestaetigen:
 /** Echtes Follow-up für einen Gast, der da war (POST /api/crm/followup) — Frist 48 h nach dem Event, Quelle „event“. */
 export async function followUpAnlegen(api: CrmApi, e: Event, t: Teilnahme): Promise<{ ok: boolean; text: string }> {
   type FuAntwort = { ok: boolean; text?: string; fehler?: string };
-  const r: FuAntwort = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(followUpEingabe(e, t)) })
+  const r: FuAntwort = await fetch('/api/crm/followup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(followUpEingabe(e, t, api.crm?.stand.wertelisten)) })
     .then(x => x.json() as Promise<FuAntwort>).catch((): FuAntwort => ({ ok: false, fehler: 'Nicht angelegt — keine Verbindung.' }));
   void api.laden();
   return { ok: !!r.ok, text: r.ok ? (r.text ?? 'Follow-up steht.') : (r.fehler ?? 'Nicht angelegt.') };

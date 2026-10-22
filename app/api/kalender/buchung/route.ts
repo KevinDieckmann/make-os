@@ -39,7 +39,7 @@ import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { aufgabeErledigenNachFollowUp } from '@/lib/crm/followup-aufgabe-server';
 import type { FollowUp } from '@/lib/crm/typen';
 import { neueKennung } from '@/lib/kennung';
-import { seiteSauber, mailLinkMoeglich, mailLinkPfad, vorbereitenErledigen, buchungenDesGasts, gastAdresse, notizOhneGast, titelOhneGast, GRENZEN, OFFEN, MAIL_LINK_TAGE, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
+import { seiteSauber, mailLinkMoeglich, mailLinkPfad, vorbereitenErledigen, buchungenDesGasts, gastAdresse, notizOhneGast, titelOhneGast, GRENZEN, OFFEN, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
 import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, neuerSlug, neuesToken, mailTokenHash } from '@/lib/kalender/buchung-speicher';
 import { buchungFreigeben, folgeVorschlag, FreigabeFehler } from '@/lib/kalender/buchung-ablauf';
 import { istDienst } from '@/lib/zugang/dienst';
@@ -223,7 +223,9 @@ export async function POST(req: Request) {
     // Nur von Hand: ein Link führt zu einer Mail an Dritte (auch als Entwurf) — nie über ZOE oder Skripte (NUR_VON_HAND).
     const id = typeof b.id === 'string' && ID.test(b.id) ? b.id : '';
     const token = neuesToken();
-    const bis = new Date(jetzt.getTime() + MAIL_LINK_TAGE * 86_400_000).toISOString();
+    // Stellschraube (22.10.): Gültigkeit des Bestätigungslinks — nicht lesbar = die Vorgabe MAIL_LINK_TAGE (wie vorher).
+    const tage = (await import('@/lib/prozesse/stellschrauben-werte')).buchungMailLinkTage(await (await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenWerte());
+    const bis = new Date(jetzt.getTime() + tage * 86_400_000).toISOString();
     let fehler = '', status = 400, slug = '';
     await aendereBuchungBestand(bs => {
       const x = bs.buchungen.find(y => y.id === id);

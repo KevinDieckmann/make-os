@@ -187,7 +187,10 @@ async function kapaStandRoh(heute: string): Promise<{ stand: KapaStand; ohneKopf
   const quelle = (p: PostenEingabe) => (p.art === 'meilenstein' ? msNach.get(p.id) : zielNach.get(p.id));
   const fahrplan = new Set(posten.filter(p => { const q = quelle(p); return !!q && (p.art === 'meilenstein' ? istFahrplanMeilenstein(q) : istFahrplanZiel(q)); }).map(postenSchluessel));
   const register = new Set(posten.filter(p => !einheitNameSichtbar(quelle(p)?.einheit, ohneRegister, namen)).map(postenSchluessel));
-  const rechnung = { heute, personen: eingaben, datei, posten, ist, bezugNamen, plaene: planDatei.wochen };
+  // Stellschraube (22.10.): Schwellen der Machbarkeit — nicht lesbar = die Vorgabe (wie vorher).
+  const [{ stellschraubenWerte }, { kapaSchwellen }] = await Promise.all([import('@/lib/prozesse/stellschrauben-werte-server'), import('@/lib/prozesse/stellschrauben-werte')]);
+  const schwellen = kapaSchwellen(await stellschraubenWerte());
+  const rechnung = { heute, personen: eingaben, datei, posten, ist, bezugNamen, plaene: planDatei.wochen, schwellen };
   // Datenschutz-Prüfung M1 (11.10.): dieselbe Rechnung OHNE Kopf & Energie (keine Erholung → Faktor 1, belastbar = netto) für die Sicht
   // Business und Konten „nur Business“ — dort darf keine Art.-9-Ableitung ankommen (auch nicht als Team-Faktor oder in „belastbar“).
   const ohneKopf = kapazitaetRechnen({ ...rechnung, personen: eingaben.map(({ erholung: _e, ...p }) => p) });

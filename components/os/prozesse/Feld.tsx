@@ -6,12 +6,13 @@
 // „System“-Prozesse sind nur lesbar (E3) — das Feld sagt es und führt dorthin, wo der Prozess heute läuft; Vorlagen führen in den Editor bzw. ins Hochhaus.
 
 import Link from 'next/link';
-import { Cog, LayoutTemplate, Workflow } from 'lucide-react';
+import { Cog, LayoutTemplate, SlidersHorizontal, Workflow } from 'lucide-react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Eigenschaft, Knopf, Chip, Hinweis } from '../ui';
 import { FormZeichen } from '../ui/reise/ReiseBild';
 import { FORM_NAME } from '@/lib/reise/bild';
-import { ortVon, schrittSatz, steckbriefZeilen, zahlTexte, zahlSchluessel } from '@/lib/prozesse/modell';
+import { ortVon, schrittSatz, steckbriefZeilen, zahlTexte, zahlSchluessel, systemMarke } from '@/lib/prozesse/modell';
+import { einstellbar } from '@/lib/prozesse/stellschrauben';
 import { tonVon } from '@/lib/prozesse/farben';
 import type { ProzessDef, ProzessPhase, ProzessSchritt, Zahl } from '@/lib/prozesse/typen';
 
@@ -33,9 +34,9 @@ function ZahlZeile({ z }: { z: Zahl | undefined }) {
 }
 
 function Marke({ p }: { p: ProzessDef }) {
-  const Z = p.quelle === 'system' ? Cog : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
+  const Z = p.quelle === 'system' ? (einstellbar(p) ? SlidersHorizontal : Cog) : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
   const w = p.werkstatt;
-  const text = p.quelle === 'system' ? 'System · nur lesbar' : w ? `Werkstatt · ${w.version ? `Version ${w.version}` : 'Entwurf'}` : 'Vorlage';
+  const text = p.quelle === 'system' ? systemMarke(p) : w ? `Werkstatt · ${w.version ? `Version ${w.version}` : 'Entwurf'}` : 'Vorlage';
   return <Chip farbe={tonVon(p)}><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Z size={13} aria-hidden />{text}</span></Chip>;
 }
 
@@ -58,7 +59,9 @@ export function SteckbriefKarte({ p, zahl }: { p: ProzessDef; zahl: Zahl | undef
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {p.link && <Knopf leise href={p.link.href}>{p.quelle === 'system' ? `Wo es läuft: ${p.link.text} ›` : `${p.link.text} ›`}</Knopf>}
       </div>
-      {p.quelle === 'system' && <p style={klein}>Dieser Ablauf ist im System gebaut und hier nur zu sehen — eigene Prozesse entstehen in der Werkstatt.</p>}
+      {p.quelle === 'system' && <p style={klein}>{einstellbar(p)
+        ? 'Dieser Ablauf ist im System gebaut — seine Stellschrauben stehen darunter; eigene Prozesse entstehen in der Werkstatt.'
+        : 'Dieser Ablauf ist im System gebaut und hier nur zu sehen — eigene Prozesse entstehen in der Werkstatt.'}</p>}
     </Karte>
   );
 }

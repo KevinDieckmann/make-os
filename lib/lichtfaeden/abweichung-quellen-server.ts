@@ -15,11 +15,11 @@ type Lader = (betrachter: string, heute: string) => Promise<AbweichungsQuelle | 
 const LADER: readonly Lader[] = [
   // Deals, deren Entscheidung wiederholt verschoben wurde (Markttraktion).
   async () => {
-    const [{ ladeCrm }, { VERSCHOBEN_GELB, OFFENE_STUFEN }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/pipeline')]);
+    const [{ ladeCrm }, { OFFENE_STUFEN }, { verschobenGelbAb }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/pipeline'), import('@/lib/crm/stellschrauben')]);
     const crm = await ladeCrm();
     const deals = crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))
       .map(c => ({ id: c.id, titel: c.titel, erwartetAm: c.erwartetAm, erwartetUrsprung: c.erwartetUrsprung, erwartetVerschoben: c.erwartetVerschoben }));
-    return dealsVerschoben(deals, VERSCHOBEN_GELB);
+    return dealsVerschoben(deals, verschobenGelbAb(crm.wertelisten));
   },
   // Kapazität: Wochen, in denen eine Person überlastet ist (lib/kapazitaet/abweichung.ts). Stand NUR über `kapaStandFuer` —
   // serverseitig für den Betrachter gefiltert (Erholungswerte anderer nie roh), gemerkt 60 s.

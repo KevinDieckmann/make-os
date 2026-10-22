@@ -128,7 +128,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       pipeline: prognose(crm.chancen, heute, crm.wahrscheinlichkeiten),
       chancen: offen.slice(0, 25).map(c => ({
         id: c.id, titel: c.titel, firma: c.firma, stufe: STUFEN.find(s => s.id === c.stufe)?.label, wert_gesamt: Math.round(gesamtwert(c)), wert: c.wert,
-        ampel: gesundheit(c, heute), naechster_schritt: c.naechsterSchritt ?? null, qualifizierung: c.qualifizierung, entscheidung_bis: c.erwartetAm ?? null,
+        ampel: gesundheit(c, heute, crm.wertelisten), naechster_schritt: c.naechsterSchritt ?? null, qualifizierung: c.qualifizierung, entscheidung_bis: c.erwartetAm ?? null,
         signale: dealSignale(c, c.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k), heute),
         personen: c.kontaktIds.map(id => nachId.get(id)).filter((k): k is Kontakt => !!k).map(p),
       })),
@@ -210,7 +210,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
     meta,
     events: events.map(e => ({
       id: e.id, titel: e.titel, format: e.format, ziel: kurz(e.ziel, 300), ziel_hinweis: zielHinweis(e.ziel), datum: e.datum, ort: e.ort, kapazitaet: e.kapazitaet, kosten: budgetSumme(e), status: e.status,
-      nachfassen_bis: followUpBis(e), nachfassen_rest_stunden: nachfassenRest(e, Date.now()), zahlen: eventZahlen(e, crm.teilnahmen, kontakte, crm.chancen),
+      nachfassen_bis: followUpBis(e, crm.wertelisten), nachfassen_rest_stunden: nachfassenRest(e, Date.now(), crm.wertelisten), zahlen: eventZahlen(e, crm.teilnahmen, kontakte, crm.chancen),
       mischung: mix(e, crm.teilnahmen, kontakte, crm.firmen), checkliste: checklisteStand(e, heute),
       gaeste: crm.teilnahmen.filter(t => t.eventId === e.id).map(t => { const k = nachId.get(t.kontaktId); return k ? { status: t.status, rolle: t.rolle ?? 'gast', fotofreigabe: t.fotofreigabe ?? null, einladungsweg: t.einladungsweg ?? null, eingeladen_am: t.eingeladenAm ?? null, notiz_vom_abend: kurz(t.notiz, 240), nachgefasst: t.followUpAm ?? null, einladung_per_mail: kanalStatus(k, 'einladung').farbe, ...p(k) } : null; }).filter(Boolean),
     })),
