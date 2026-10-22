@@ -151,7 +151,8 @@ function useHeads(a: WerkzeugAutomation | null, space: SpaceId): { headId?: stri
  * Der Baustein mit Daten — auf der Seite eines Werkzeugs dort, wo `automationVon(werkzeug, space).href` hinzeigt. `space` ohne Angabe = die Wahl im Kopf;
  * `weitereProzesse` = Prozesse, die die Seite beisteuert (Produkte & Mandate: `Leistung.prozessId` der Produkte).
  */
-export function BereichAutomationen({ werkzeug, space: spaceVorgabe, weitereProzesse = [] }: { werkzeug: Werkzeug; space?: SpaceId; weitereProzesse?: readonly string[] }) {
+const KEINE: readonly string[] = [];
+export function BereichAutomationen({ werkzeug, space: spaceVorgabe, weitereProzesse = KEINE }: { werkzeug: Werkzeug; space?: SpaceId; weitereProzesse?: readonly string[] }) {
   const { wahl } = useSpace();
   const space = spaceVorgabe ?? wahl;
   const a = automationVon(werkzeug, space);
