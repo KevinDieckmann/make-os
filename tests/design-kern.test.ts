@@ -130,7 +130,8 @@ describe('Globale Shell', () => {
   // Nachbesserung 08.10.: unten fünf Einträge; „Menü“ leuchtet bei offenem Blatt oder auf einem Punkt der Leiste, der unten nicht steht (N3 sinngemäß).
   it('Leiste unten: Menü leuchtet nur auf Seiten der Leiste ohne eigenen Knopf und trägt den offenen Blattkasten mit', () => {
     const l = lies('components/os/Leiste.tsx');
-    expect(l).toContain("an: offen || einstellungenAn || (!!punktAn && !['Heute', 'Inbox', 'ZOE'].includes(punktAn.label))");
+    // Seit 22.10. abends gehört Netzwerken zu Business (Punkt Markttraktion) — dort leuchtet unten nur „Netzwerken“, nicht zusätzlich „Menü“.
+    expect(l).toContain("an: offen || einstellungenAn || (!!punktAn && !netzwerkenAn && !['Heute', 'Inbox', 'ZOE'].includes(punktAn.label))");
     expect(l).not.toContain("an: space === s.id && pfad !== '/os'");
   });
 

@@ -796,3 +796,15 @@ describe('Gruppe A · Planung (Business und Privat)', () => {
   });
 });
 
+describe('Gruppe A · Netzwerken gehört fest zu Business (Teil der Markttraktion)', () => {
+  it('Space, Leistenpunkt und Zeitschlüssel `business:markttraktion` — auch aus der Wahl Privat heraus', async () => {
+    const { aktiverSpaceEintrag, aktiverLeistenPunkt, wahlVon } = await import('@/lib/make-one/spaces');
+    const { zeitSchluessel } = await import('@/lib/zeitmessung/bereich');
+    expect(aktiverSpaceEintrag('/os/netzwerken').space).toBe('business');
+    expect(aktiverSpaceEintrag('/os/netzwerken/karte').space).toBe('business');
+    expect(wahlVon('/os/netzwerken', '', 'privat')).toBe('business');
+    expect(aktiverLeistenPunkt('business', '/os/netzwerken')?.label).toBe('Markttraktion');
+    expect(zeitSchluessel('/os/netzwerken', '', 'privat').schluessel).toBe('business:markttraktion');
+    expect(zeitSchluessel('/os/markttraktion', '?s=deals', 'privat').schluessel).toBe('business:markttraktion');
+  });
+});

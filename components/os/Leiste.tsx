@@ -137,12 +137,14 @@ export function Leiste() {
   // Handy unten: fünf Einträge (HANDY_LEISTE). Heute und Inbox folgen der Wahl; „Menü“ leuchtet, wenn das Blatt offen ist oder die
   // Seite ein Punkt der Leiste ist, der unten nicht eigens steht (Aufgaben, Finanzen, Gesundheit …), oder in den Einstellungen.
   const inboxEintrag = leisteFuer(wahl, !!nurBusiness).find(e => e.label === 'Inbox') ?? { href: WEG.inbox() };
+  // Netzwerken gehört seit 22.10. abends zur Markttraktion (Business) — unten leuchtet dort nur „Netzwerken“, nicht zusätzlich „Menü“.
+  const netzwerkenAn = pfad === WEG.netzwerken() || pfad.startsWith(`${WEG.netzwerken()}/`);
   const unten = [
     { art: 'link' as const, href: sp.start, label: 'Heute', icon: Sun, an: pfad === '/os' },
     { art: 'link' as const, href: inboxEintrag.href, label: 'Inbox', icon: Inbox, an: pfad === '/os/inbox' || pfad.startsWith('/os/inbox/') },
-    { art: 'menue' as const, href: '', label: 'Menü', icon: LayoutGrid, an: offen || einstellungenAn || (!!punktAn && !['Heute', 'Inbox', 'ZOE'].includes(punktAn.label)) },
+    { art: 'menue' as const, href: '', label: 'Menü', icon: LayoutGrid, an: offen || einstellungenAn || (!!punktAn && !netzwerkenAn && !['Heute', 'Inbox', 'ZOE'].includes(punktAn.label)) },
     { art: 'link' as const, href: ZOE_EINTRAG.href, label: 'ZOE', icon: ZOE_EINTRAG.icon, an: aktiv.eintrag === ZOE_EINTRAG },
-    { art: 'link' as const, href: WEG.netzwerken(), label: 'Netzwerken', icon: Handshake, an: pfad === WEG.netzwerken() || pfad.startsWith(`${WEG.netzwerken()}/`) },
+    { art: 'link' as const, href: WEG.netzwerken(), label: 'Netzwerken', icon: Handshake, an: netzwerkenAn },
   ];
 
   return (
