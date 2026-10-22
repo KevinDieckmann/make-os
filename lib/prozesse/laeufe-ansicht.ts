@@ -107,6 +107,8 @@ export const kanteAufWeg = (weg: ReadonlySet<string>, k: { von: string; nach: st
 export interface LogZeile {
   nr: number; knotenId: string; titel: string; form: ProzessForm; status: SchrittStatus; stufe: MarkenStufe; ab: string; bis?: string; dauer: string;
   runde?: number; versuch?: number; grund?: string; kostenCent?: number; modell?: string; token?: { ein: number; aus: number }; kopf?: string; wirkung: Wirkung[];
+  /** CRM-Abfrage bzw. Schleife (22.10. spät): „3 Treffer · 1 übrig · 2 schon versorgt“ bzw. „2 Teil-Läufe · 1 übrig“ — nur Zahlen. */
+  zahlen?: string;
 }
 export interface LogGruppe { phaseId: string; titel: string; zeilen: LogZeile[] }
 
@@ -121,6 +123,13 @@ export function dauerText(ms: number): string {
   if (h < 24) return rm ? `${h} h ${rm} min` : `${h} h`;
   const t = Math.floor(h / 24), rh = h % 24;
   return rh ? `${t} T ${rh} h` : `${t} T`;
+}
+
+/** Die Zahlen einer CRM-Abfrage bzw. Schleife als kurzer Satz (rein) — null ohne Zahlen. */
+function zahlenText(s: Pick<LaufSchritt, 'anzahl' | 'rest' | 'uebersprungen'>, k: Pick<K, 'form' | 'abfrage'> | undefined): string | null {
+  if (s.anzahl === undefined) return null;
+  const was = k?.form === 'schleife' ? `${s.anzahl} ${s.anzahl === 1 ? 'Teil-Lauf' : 'Teil-Läufe'}` : `${s.anzahl} Treffer`;
+  return [was, s.rest ? `${s.rest} übrig für den nächsten Lauf` : '', s.uebersprungen ? `${s.uebersprungen} schon versorgt` : ''].filter(Boolean).join(' · ');
 }
 
 /**
@@ -139,7 +148,7 @@ export function laufLog(schritte: readonly LaufSchritt[], def: Pick<ProzessDefin
       dauer: dauerText(Date.parse(s.bis ?? jetzt) - Date.parse(s.ab)), ...(s.runde ? { runde: s.runde } : {}), ...(s.versuch ? { versuch: s.versuch } : {}),
       ...(s.grund ? { grund: GRUND_TEXT[s.grund as LaufGrund] ?? s.grund } : {}), ...(s.kostenCent ? { kostenCent: Math.round(s.kostenCent) } : {}),
       ...(k?.form === 'agent' ? { modell: s.modell ?? k.agent?.modellWahl?.modell ?? k.agent?.modell } : {}), ...(s.token ? { token: s.token } : {}), ...(s.kopf ? { kopf: s.kopf } : {}),
-      wirkung: s.wirkung ?? [],
+      wirkung: s.wirkung ?? [], ...(zahlenText(s, k) ? { zahlen: zahlenText(s, k)! } : {}),
     };
     const letzte = raus.at(-1);
     const id = ph?.id ?? '—';

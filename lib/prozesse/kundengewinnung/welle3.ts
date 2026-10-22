@@ -79,7 +79,7 @@ const V04: KgVorlage = {
     { id: 'uhrzeit', label: 'Uhrzeit', vorgabe: '19:00', knoten: 't', feld: 'uhrzeit' }, { id: 'fristTage', label: 'Frist (Werktage)', vorgabe: 2, knoten: 'a5', feld: 'tage' },
     { id: 'zielQuote', label: 'Ziel (%)', vorgabe: 80 }, { id: 'hoechstens', label: 'Höchstens je Lauf', vorgabe: 60, knoten: 'a2', feld: 'hoechstens' },
   ],
-  offen: [{ punkt: 'Schleife', text: 'Der Motor führt „Schleife“ und „CRM abfragen“ noch nicht aus — der Probelauf zeigt den Hinweis. Je Erfassung meldet sich zusätzlich das Ereignis „Begegnung erfasst“ (E2).' }],
+  offen: [{ punkt: 'E2', text: 'Je Erfassung meldet sich zusätzlich das Ereignis „Begegnung erfasst“ (E2) — die Schleife des Abends und ein Lauf je Erfassung teilen sich „ein Lauf je Fall“ (nichts doppelt).' }],
   demo: 'Ein erfundener „Beispiel-Unternehmertag“ mit drei Erfassungen (Qualifizieren, nur Kontakt, Follow-up): am Morgen 1 Danke im Stapel, 1 Follow-up, Quote 2/2.',
   teile: [V04A],
   definition: prozess({
@@ -173,7 +173,7 @@ const V18: KgVorlage = {
     { id: 'mixZielkunden', label: 'Zielkunden (%)', vorgabe: 40, knoten: 'a1', feld: 'mixZielkunden' }, { id: 'mixKunden', label: 'Kunden (%)', vorgabe: 20, knoten: 'a1', feld: 'mixKunden' },
     { id: 'ziel48h', label: 'Ziel Nachfassen (%)', vorgabe: 90 }, { id: 'budgetCent', label: 'Budget (Cent)', vorgabe: 10, knoten: 'a8', feld: 'budgetCent' },
   ],
-  offen: [{ punkt: 'Schleife', text: 'Der Motor führt „Schleife“ noch nicht aus — der Probelauf zeigt den Hinweis. Die Gäste kommen aus der Liste am Event (vorgemerkt).' }],
+  offen: [{ punkt: 'Gäste', text: 'Die Schleife nimmt die vorgemerkten Gäste der Liste am Event (`event.gaeste`) — vorgemerkt wird erst, wenn der Vorschlag „Gäste vorschlagen“ übernommen ist.' }],
   demo: 'Ein erfundener „Beispiel-Stammtisch“ in 28 Tagen: 12 Gäste vorgeschlagen, 4 Mails im Stapel, 8 persönliche Einladungen — nach dem Abend 6 Nachfass-Entwürfe.',
   teile: [V18A],
   definition: prozess({
@@ -245,7 +245,7 @@ const V06: KgVorlage = {
     { id: 'jeTag', label: 'Personen je Tag', vorgabe: 10, knoten: 'a3', feld: 'hoechstens' }, { id: 'nachlaufTage', label: 'Nachlauf (Tage)', vorgabe: 7 },
     { id: 'ergebnisTage', label: 'Ergebnis in (Werktagen)', vorgabe: 2 },
   ],
-  offen: [{ punkt: 'Schleife', text: 'Der Motor führt „Schleife“ und „CRM abfragen“ noch nicht aus — der Probelauf zeigt den Hinweis. Fünf der neun Playbooks laufen über eigene Vorlagen (V14, V15, V05, V18, V16).' }],
+  offen: [{ punkt: 'Playbooks', text: 'Fünf der neun Playbooks laufen über eigene Vorlagen (V14, V15, V05, V18, V16).' }],
   demo: 'Eine erfundene Kampagne „Reaktivierung Kreis A/B“ mit drei Saat-Personen: zwei Anlass-Aufgaben, ein Ergebnis „Chance“ → Lead in Qualifizierung.',
   teile: [V06A],
   definition: prozess({

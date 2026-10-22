@@ -37,7 +37,7 @@ vi.mock('@/lib/anthropic', async () => {
 
 const H = 'haus-m2';
 const pz = (n: number) => `pz-00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const TEIL = pz(11), HAUPT = pz(12), RTEIL = pz(13), RHAUPT = pz(14), RTEIL2 = pz(15), RTEIL3 = pz(16), PLATZ = pz(17), OHNE_EIGNER = pz(18), GES = pz(19);
+const TEIL = pz(11), HAUPT = pz(12), RTEIL = pz(13), RHAUPT = pz(14), RTEIL2 = pz(15), RTEIL3 = pz(16), PLATZ = pz(17), OHNE_EIGNER = pz(18), GES = pz(19), ETEIL = pz(20), EHAUPT = pz(21);
 const uhr = (iso: string) => new Date(iso);
 // 22.10.2026, 10:00 Berlin (Sommerzeit bis 25.10.) — und die Nacht zum 23.10.
 const TAG = '2026-10-22T08:00:00.000Z', NACHT = '2026-10-23T00:00:00.000Z', SIEBEN = '2026-10-23T05:00:30.000Z';
@@ -93,6 +93,12 @@ beforeAll(async () => {
   await db.saveJson('crm', {
     ...leererBestand(),
     firmen: [1, 2, 3, 4, 5].map(n => ({ id: `f-r${n}`, name: `Ruhig ${n} GmbH`, rolle: 'interessent' })),
+    // Ein besuchtes Event (Netzwerken) mit zwei Erfassungen: „nur Kontakt“ und „qualifizieren“.
+    events: [{ id: 'ev-1', titel: 'Beispiel-Unternehmertag', format: 'netzwerken', ziel: 'Kontakte', datum: '2026-10-21', status: 'durchgefuehrt', marke: 'Netzwerken' }],
+    teilnahmen: [
+      { id: 'tn-1', eventId: 'ev-1', kontaktId: 'c-b', status: 'da', netzwerken: { erfassungId: 'e1', schritt: 'nur-kontakt', zustaendig: 'pia', erfasstVon: 'pia', erfasstAm: '2026-10-21T17:00:00.000Z' } },
+      { id: 'tn-2', eventId: 'ev-1', kontaktId: 'c-c', status: 'da', netzwerken: { erfassungId: 'e2', schritt: 'qualifizieren', zustaendig: 'pia', erfasstVon: 'pia', erfasstAm: '2026-10-21T17:05:00.000Z' } },
+    ],
     chancen: [deal('ch-a', 'c-a'), deal('ch-b', 'c-b'), deal('ch-c', 'c-c'), deal('ch-x', 'c-x', { naechsterSchritt: { text: 'Anrufen', datum: '2026-11-02' } }), deal('ch-priv', 'c-priv', { gesellschaft: 'kdc' }), deal('ch-art18', 'c-gesperrt')],
   });
   await db.saveJson('tasks', { tasks: [], projects: [] });
@@ -126,10 +132,21 @@ beforeAll(async () => {
   ], { ...mit, fallArt: 'deal' })).definition;
   const ohneEigner = definition([schritt(60, 'Melden', 1, { form: 'nachricht', katalog: { id: 'glocke.melden', werte: { wer: 'rolle:eigner', text: 'x' } } }), ende(61, 2)], { laeuftAls: 'pia', eigner: 'konto-niemand', fallArt: 'deal' });
   const ges = definition([schritt(70, 'Angebot entwerfen', 1, { katalog: { id: 'angebot.entwurf', werte: { gesellschaft: 'fall.gesellschaft' } } }), ende(71, 2)], { ...mit, fallArt: 'deal' });
+  // Event → Erfassungen (Abfrage am Fall des Laufs) → je Person ein Teil-Lauf, der den vereinbarten Schritt aus dem Bezug liest.
+  const eteil = definition([
+    schritt(80, 'Nachfassen vereinbart?', 1, { form: 'entscheidung', katalog: { id: 'entscheidung.regel' }, raute: { art: 'regel', bedingungen: [{ feld: 'lead.netzwerken-schritt', op: 'ungleich', wert: 'nur-kontakt' }] }, zweige: { nein: fk(83) } }),
+    schritt(81, 'Nachfassen', 2, { katalog: { id: 'aufgabe.anlegen', werte: { titel: 'Nachfassen', wer: 'rolle:zustaendig' } } }),
+    ende(82, 3), schritt(83, 'Nur Kontakt', 4, { form: 'ende', ende: { ergebnis: 'erfolg' } }),
+  ], { ...mit, fallArt: 'lead' });
+  const ehaupt = definition([
+    schritt(90, 'Offene Erfassungen', 1, { katalog: { id: 'crm.abfragen' }, abfrage: { art: 'netzwerken-offen', hoechstens: 60 } }),
+    schritt(91, 'Jede Erfassung', 2, { form: 'schleife', katalog: { id: 'schleife.je-eintrag' }, schleife: { liste: `abfrage:${fk(90)}`, prozessId: ETEIL, hoechstens: 60 } }),
+    ende(92, 3),
+  ], { ...mit, fallArt: 'event' });
   const { prozesseBestand } = await import('@/lib/prozesse/definition');
-  await db.saveJson(prozesseBestand(H), { v: 1, prozesse: [eintrag(TEIL, teil), eintrag(HAUPT, haupt), eintrag(RTEIL, rteil), eintrag(RHAUPT, rhaupt), eintrag(RTEIL2, rteil), eintrag(RTEIL3, rteil), eintrag(PLATZ, platz), eintrag(OHNE_EIGNER, ohneEigner), eintrag(GES, ges)] });
+  await db.saveJson(prozesseBestand(H), { v: 1, prozesse: [eintrag(TEIL, teil), eintrag(HAUPT, haupt), eintrag(RTEIL, rteil), eintrag(RHAUPT, rhaupt), eintrag(RTEIL2, rteil), eintrag(RTEIL3, rteil), eintrag(PLATZ, platz), eintrag(OHNE_EIGNER, ohneEigner), eintrag(GES, ges), eintrag(ETEIL, eteil), eintrag(EHAUPT, ehaupt)] });
   const { laeufeBestand } = await import('@/lib/prozesse/lauf-typen');
-  await db.saveJson(laeufeBestand(H), { v: 1, laeufe: [], zurueckgehalten: [], prozesse: Object.fromEntries([TEIL, HAUPT, RTEIL, RHAUPT, RTEIL2, RTEIL3, PLATZ, OHNE_EIGNER, GES].map(id => [id, scharf()])) });
+  await db.saveJson(laeufeBestand(H), { v: 1, laeufe: [], zurueckgehalten: [], prozesse: Object.fromEntries([TEIL, HAUPT, RTEIL, RHAUPT, RTEIL2, RTEIL3, PLATZ, OHNE_EIGNER, GES, ETEIL, EHAUPT].map(id => [id, scharf()])) });
   S = await import('@/lib/prozesse/lauf-server');
   S._agentKostenSetzen({ schnell: 2, ausgewogen: 3, stark: 5 });
   modell.antwort = JSON.stringify({
@@ -196,6 +213,21 @@ describe('Schleife über eine CRM-Abfrage', () => {
     expect((await laeufe()).filter(x => x.prozessId === TEIL).length).toBe(vorher);
     expect(schrittVon(l, fk(21))).toMatchObject({ anzahl: 1 });
     expect(schrittVon(l, fk(21))!.wirkung!.map(w => w.id)).toEqual((await kinder(zweiter)).map(x => x.id));
+  });
+});
+
+describe('Schleife über die Erfassungen eines Events (V04)', () => {
+  it('die Teil-Läufe tragen das Event als Bezug und lesen daraus den vereinbarten Schritt: „nur Kontakt“ endet, „qualifizieren“ wird eine Aufgabe', async () => {
+    const id = await start(EHAUPT, 'ev', TAG, { art: 'event', id: 'ev-1' });
+    const kx = await S.kontextLaden(uhr(TAG), H);
+    const l = (await S.laufVoran(id, kx))!;
+    expect(schrittVon(l, fk(90))).toMatchObject({ anzahl: 2 });
+    for (const k of await kinder(id)) await S.laufVoran(k.id, kx);
+    const k = await kinder(id);
+    expect(k.every(x => x.daten['bezug.eventid'] === 'ev-1')).toBe(true);
+    expect(k.find(x => x.fall.id === 'c-b')).toMatchObject({ status: 'fertig' });
+    expect(k.find(x => x.fall.id === 'c-b')!.schritte.map(s => s.knoten)).toContain(fk(83));
+    expect(k.find(x => x.fall.id === 'c-c')).toMatchObject({ status: 'wartet', wartet: { art: 'aufgabe' } });
   });
 });
 

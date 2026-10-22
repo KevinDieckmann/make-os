@@ -263,9 +263,9 @@ export function LogBaum({ gruppen, wahl, onWahl }: { gruppen: readonly LogGruppe
                       <Chip farbe={BEDEUTUNG_FARBE[MARKEN_BEDEUTUNG[z.stufe]]}>{SCHRITT_NAME[z.status]}</Chip>
                       <span style={{ color: C.inkDim }}>{z.dauer}</span>
                     </span>
-                    {(z.modell || z.kostenCent || z.grund || z.versuch) && (
+                    {(z.modell || z.kostenCent || z.grund || z.versuch || z.zahlen) && (
                       <span style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingLeft: 22 }}>
-                        {[z.modell ? `Modell ${z.modell}` : '', z.token ? `${z.token.ein + z.token.aus} Tokens` : '', z.kostenCent ? centWort(z.kostenCent) : '', z.versuch ? `${z.versuch}. Versuch` : '', z.grund ?? ''].filter(Boolean).join(' · ')}
+                        {[z.zahlen ?? '', z.modell ? `Modell ${z.modell}` : '', z.token ? `${z.token.ein + z.token.aus} Tokens` : '', z.kostenCent ? centWort(z.kostenCent) : '', z.versuch ? `${z.versuch}. Versuch` : '', z.grund ?? ''].filter(Boolean).join(' · ')}
                       </span>
                     )}
                   </button>

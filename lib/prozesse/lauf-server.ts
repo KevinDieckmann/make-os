@@ -190,7 +190,8 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       // Felder der Vorlagen (Kundengewinnung): Ampel, Verschiebungen, offen, Mandat schon da, Mail-Ampel des Hauptkontakts — aus den vorhandenen Lesern.
       const { gesundheit } = await import('@/lib/crm/pipeline');
       const mandat = crm.mandate.find(m => m.chanceId === c.id && !m.geloeschtAm);
-      const kg = { 'deal.ampel': gesundheit(c, localDay(kx.jetzt)).ampel, 'deal.verschoben': c.erwartetVerschoben ?? 0, 'deal.offen': OFFENE_STUFEN.includes(c.stufe), 'deal.mandat-da': !!mandat,
+      const nachfass = !!angebot && (crm.followups ?? []).some(x => x.id === `fu-${angebot.id}` && x.status === 'offen');
+      const kg = { 'deal.ampel': gesundheit(c, localDay(kx.jetzt)).ampel, 'deal.verschoben': c.erwartetVerschoben ?? 0, 'deal.offen': OFFENE_STUFEN.includes(c.stufe), 'deal.mandat-da': !!mandat, 'deal.nachfass-followup': nachfass,
         ...(mandat ? { 'deal.vertrag-unterschrieben': !!mandat.vertragUnterschrieben } : {}), ...(c.grund ? { 'deal.grund': c.grund } : {}), ...(await kanalFelder(k, hat(k), 'deal')) };
       return {
         fehlt: false, kontakt: k, personen: c.kontaktIds.map(nachId).filter((x): x is Kontakt => !!x), zustaendig: c.besitzer, ...hat(k),
@@ -210,6 +211,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
         daten: {
           'mandat.status': m.status, 'mandat.gesellschaft': m.gesellschaft, ...(m.leistungId ? { 'mandat.produkt': m.leistungId } : {}), ...(m.zustaendig ? { 'mandat.zustaendig': m.zustaendig } : {}),
           ...(m.verlaengerung ? { 'mandat.verlaengerung': m.verlaengerung } : {}),
+          ...(await mandatFelder(m, kx)),
         },
         platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde },
         datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(m.ende ? { 'mandat.ende': m.ende.slice(0, 10) } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(kuendigung ? { 'mandat.kuendigungsfrist': kuendigung } : {}) },
@@ -241,7 +243,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const k = nachId(z.hauptKontaktId) ?? (z.art === 'person' ? nachId(z.id) : null);
       return {
         fehlt: false, kontakt: k, personen: k ? [k] : [], zustaendig: z.besitzer, ...hat(k),
-        daten: { ...(await leadDaten(z, k, kx)), ...(await kanalFelder(k, hat(k), 'lead')) },
+        daten: { ...(await leadDaten(z, k, kx)), ...(await kanalFelder(k, hat(k), 'lead')), ...(await leadBezugFelder(crm, k?.id ?? (z.art === 'person' ? z.id : undefined), daten, alle, kx)) },
         platzhalter: { ...kontaktPlatzhalter(k), 'firma.name': z.art === 'firma' ? z.name : k?.firma ?? '', 'lead.status': z.status },
         datum: { ...(z.wiedervorlage ? { 'lead.wiedervorlage': z.wiedervorlage.slice(0, 10) } : {}) },
       };
@@ -250,7 +252,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const e = crm.events.find(x => x.id === fall.id);
       if (!e) return { ...LEER_FALL, fehlt: true };
       return {
-        ...LEER_FALL, daten: { ...(e.reihe ? { 'event.reihe': e.reihe } : {}), ...(e.marke ? { 'event.marke': e.marke } : {}), ...(e.anmeldung ? { 'event.anmeldung': e.anmeldung } : {}), 'event.datum': e.datum, ...(e.status ? { 'event.status': e.status } : {}) },
+        ...LEER_FALL, daten: { ...(e.reihe ? { 'event.reihe': e.reihe } : {}), ...(e.marke ? { 'event.marke': e.marke } : {}), ...(e.anmeldung ? { 'event.anmeldung': e.anmeldung } : {}), 'event.datum': e.datum, ...(e.status ? { 'event.status': e.status } : {}), ...(await eventFelder(e, crm, alle, kx)) },
         platzhalter: { 'event.titel': e.titel, 'event.datum': e.datum, 'event.ort': e.ort ?? '' }, datum: { 'event.datum': e.datum.slice(0, 10) },
       };
     }
@@ -261,6 +263,44 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
     }
   }
   return LEER_FALL;
+}
+
+/** Ampel und Health eines Mandats (lib/crm/kunden.ts `mandatLage` — dieselbe Rechnung wie Mandatsakte und Power Hour). */
+async function mandatFelder(m: CrmBestand['mandate'][number], kx: MotorKontext): Promise<Record<string, unknown>> {
+  const { mandatLage } = await import('@/lib/crm/kunden');
+  const lage = mandatLage(m, localDay(kx.jetzt));
+  return { ...(lage.ampel ? { 'mandat.ampel': lage.ampel } : {}), ...(lage.health !== null ? { 'mandat.health': lage.health } : {}) };
+}
+
+/** Anteil rechtzeitig nachgefasster Erfassungen eines besuchten Events in Prozent (lib/crm/besuche.ts `besuchWirkung`) — ohne Erfassungen kein Wert. */
+async function eventFelder(e: CrmBestand['events'][number], crm: CrmBestand, kontakte: readonly Kontakt[], kx: MotorKontext): Promise<Record<string, unknown>> {
+  const { besuchWirkung } = await import('@/lib/crm/besuche');
+  const w = besuchWirkung(e, { teilnahmen: crm.teilnahmen, kontakte, chancen: crm.chancen, heute: localDay(kx.jetzt) });
+  return w.followupQuote === null ? {} : { 'event.quote-48h': Math.round(w.followupQuote * 100) };
+}
+
+/**
+ * Felder einer Person im Zusammenhang des Laufs, aus dem sie kommt (Schleife über ein Event bzw. eine Kampagne — `bezug.eventid`, `bezug.kampagneid`): der
+ * vereinbarte Schritt beim Netzwerken, ob ein Danke möglich ist (lib/crm/netzwerken.ts `dankeZeilen`: Gespräch, Mail-Ampel, 14 Tage), der Einladungsweg und das
+ * Ergebnis in der Kampagne. Nur Kennungen und feste Wörter.
+ */
+async function leadBezugFelder(crm: CrmBestand, kontaktId: string | undefined, daten: Readonly<Record<string, string>>, kontakte: readonly Kontakt[], kx: MotorKontext): Promise<Record<string, unknown>> {
+  if (!kontaktId) return {};
+  const raus: Record<string, unknown> = {};
+  const eventId = daten['bezug.eventid'];
+  const t = eventId ? crm.teilnahmen.find(x => x.eventId === eventId && x.kontaktId === kontaktId) : undefined;
+  if (t) {
+    if (t.netzwerken?.schritt) raus['lead.netzwerken-schritt'] = t.netzwerken.schritt;
+    if (t.einladungsweg) raus['lead.einladungsweg'] = t.einladungsweg;
+    if (t.netzwerken) {
+      const { dankeZeilen } = await import('@/lib/crm/netzwerken');
+      raus['lead.danke-moeglich'] = dankeZeilen({ events: crm.events, teilnahmen: [t], kontakte, heute: localDay(kx.jetzt) }).some(z => z.mailOk && !z.raus && !z.verzichtet && !z.abgelaufen);
+    }
+  }
+  const kampagneId = daten['bezug.kampagneid'];
+  const erg = kampagneId ? (crm.kampagnen ?? []).find(c => c.id === kampagneId)?.ergebnisse?.filter(e => e.kontaktId === kontaktId).sort((a, b) => (a.am < b.am ? 1 : -1))[0] : undefined;
+  if (erg) raus['lead.kampagnen-ergebnis'] = erg.ergebnis;
+  return raus;
 }
 
 /** Die Lead-Felder einer Lead-Zeile (Status, Score, Temperatur, SQL-bereit, MQL, Tage ohne Kontakt, Grund des Parkens) — eine Stelle für Fall „Lead“ und „Firma“. */
@@ -582,7 +622,8 @@ async function schleifeAusfuehren(l: ProzessLauf, a: Extract<Aktion, { art: 'sch
     const fall = fallFuerTeil(faelle[i], teilArt);
     const r = await prozessLaufStarten({
       id: neueKennung('pl'), prozessId: teil.id, version: j.nr, def: j.def, fall, modus, person: l.person, ausloeser: { art: 'teilprozess', quelle: a.kennung },
-      daten: {}, tiefe: l.tiefe + 1, herkunft: { prozessId: l.prozessId, laufId: l.id }, ...(l.fremd ? { fremd: true } : {}), automatisch: false, periode: `${a.kennung}:${i}`, jetzt: iso,
+      // Der Fall des Laufs als Bezug (Event, Kampagne …) — nur die Kennung: daraus liest der Teil-Lauf z. B. den vereinbarten Schritt beim Netzwerken.
+      daten: l.fall.id && l.fall.art !== 'keiner' ? { [`bezug.${l.fall.art}id`]: l.fall.id } : {}, tiefe: l.tiefe + 1, herkunft: { prozessId: l.prozessId, laufId: l.id }, ...(l.fremd ? { fremd: true } : {}), automatisch: false, periode: `${a.kennung}:${i}`, jetzt: iso,
     }, kx.h);
     if (r.ok) { gestartet.push(r.lauf.id); continue; }
     // Schon gestartet — von DIESEM Lauf (Wiederholung nach einem Abbruch): zählt als gestartet; von anderswo: übersprungen.
@@ -1537,9 +1578,11 @@ export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'ver
     durchgang: 1, modus: 'schatten', status: 'laeuft', person: a.person, ausloeser: { art: 'hand' }, tiefe: 0, daten: {}, start: iso, geaendert: iso, aktuell: null, schritte: [], kostenCent: 0,
   };
   const basis = await umfeldFuer(lauf, def, kx, { fall: info });
+  const beispielGesellschaft = (await import('@/lib/einheiten')).BUSINESS_GESELLSCHAFTEN[0] ?? null;
   const u: LaufUmfeld = {
     ...basis, ausgenommen: info === BEISPIEL ? null : basis.ausgenommen, empfaenger: an => (an === 'fall.zustaendig' ? null : empfaenger),
-    ...(info === BEISPIEL ? { ansprache: () => null, fallDatum: () => tagPlus(localDay(kx.jetzt), 1) } : {}),
+    // Beispiel: die erste Business-Gesellschaft der Instanz (lib/einheiten.ts — nie eine feste Firma im Code).
+    ...(info === BEISPIEL ? { ansprache: () => null, fallDatum: () => tagPlus(localDay(kx.jetzt), 1), gesellschaft: () => beispielGesellschaft } : {}),
     teilprozess: id => { const x = eintragVon(kx, id); const jj = x ? juengste(x) : null; return jj ? { version: jj.nr } : null; },
   };
   const { probeZeilen, laufBefunde } = await import('./lauf-regeln');

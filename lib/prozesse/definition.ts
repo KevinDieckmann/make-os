@@ -357,7 +357,9 @@ export interface AgentSchritt {
   /**
    * Was mit dem Ergebnis geschieht: `daten` (Vorgabe) = Kennungen nach dem Vertrag an den nächsten Schritt; `vorschlag` = ein Vorschlag in den Stapel
    * (Häkchen je Feld bzw. Sammelfreigabe), der nächste Schritt bekommt nur seine Kennung. Liest der Schritt fremden Text aus dem Web (Research), ist es
-   * IMMER ein Vorschlag (Regel 6) — lib/prozesse/agent-schritt.ts erzwingt das.
+   * IMMER ein Vorschlag (Regel 6) — lib/prozesse/agent-schritt.ts erzwingt das. Seit 22.10. spät (Motor, M6): auch bei `vorschlag` gehen die Werte des
+   * VERTRAGS (nur Kennungen, Zahlen, Tage, ja/nein, Auswahl) als `agent.<feld>` an die Rauten (z. B. „Fit ≥ 70“ — nur in harmlose Äste, Punkt 56); die Felder
+   * der Akte (`vorschlagFelder`, Text) gehen nie in den Lauf, nur als CRM-Vorschlag (lib/prozesse/agent-felder.ts).
    */
   ergebnis?: 'daten' | 'vorschlag';
   /** Bei `vorschlag`: welche Felder der Akte der Vorschlag füllen darf (`VORSCHLAG_ZIELFELDER`) — nichts sonst. */

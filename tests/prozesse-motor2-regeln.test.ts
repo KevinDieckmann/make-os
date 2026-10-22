@@ -12,6 +12,7 @@ import type { AgentSchritt, ProzessDefinition } from '@/lib/prozesse/definition'
 import { abfrageFaelle, eventGaeste, fallFuerTeil, type AbfrageDaten } from '@/lib/prozesse/kundengewinnung/abfrage';
 import { agentFelderAus, quellenAus, agentDaten } from '@/lib/prozesse/agent-felder';
 import { felderZurWahl, nurGewaehlteFelder, crmSammelTauglich } from '@/lib/zoe/crm-felder-wahl';
+import { laufLog } from '@/lib/prozesse/laeufe-ansicht';
 import { leads } from '@/lib/crm/leads';
 import { leererBestand } from '@/lib/crm/speicher';
 import { definition, fk, schritt, PZ, PZ2, J } from './fixtures/prozess-bau';
@@ -68,6 +69,10 @@ describe('CRM-Abfrage und Schleife im Lauf', () => {
     // Beim Ende fallen die Listen weg (nur Kennungen, nur solange der Lauf offen ist) — die Zahlen bleiben am Schritt.
     expect(l3.listen).toBeUndefined();
     expect(l3.schritte.find(s => s.knoten === fk(10))?.anzahl).toBe(3);
+    // Die Läufe-Ansicht zeigt die Zahlen am Schritt (nur Zahlen).
+    const zeilen = laufLog(l3.schritte, SCHLEIFE, J).flatMap(g => g.zeilen);
+    expect(zeilen.find(z => z.knotenId === fk(10))?.zahlen).toBe('3 Treffer');
+    expect(zeilen.find(z => z.knotenId === fk(12))?.zahlen).toBe('2 Teil-Läufe · 1 übrig für den nächsten Lauf');
   });
   it('nichts gefunden → Raute „nein“; Teilprozess nicht veröffentlicht → hält; Kette zu tief → hält; fehlende Abfrage → hält', () => {
     const l0 = lauf(SCHLEIFE);

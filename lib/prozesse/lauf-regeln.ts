@@ -404,7 +404,11 @@ function schlossPlan(l: ProzessLauf, schloss: K, x: K, kennung: string, u: LaufU
     art: 'aktion', schatten: 'freigabe', ausgangSchatten: 'ja',
     aktion: {
       art: 'vorschlag', kennung, knoten: schloss.id, sorte: 'freigabe', titel: `Freigabe: ${x.titel}`.slice(0, 200),
-      nachher: `Der Prozess „${u.titel}“ möchte: ${x.titel}.${vonHand ? ' Nach der Freigabe entsteht eine Aufgabe — ausgeführt wird von Hand.' : ''}`, fuer, bis: frist,
+      nachher: x.form === 'agent'
+        // Agent im „tödlichen Dreieck“ (private Daten, fremder Text, Weg nach außen): sein Ergebnis liegt schon als Vorschlag im Stapel — hier geht es nur ums Weitermachen.
+        ? `Der Agenten-Schritt „${x.titel}“ im Prozess „${u.titel}“ ist gelaufen — sein Ergebnis liegt als Vorschlag im Stapel (übernommen wird erst dort). Freigeben = der Prozess geht damit weiter.`
+        : `Der Prozess „${u.titel}“ möchte: ${x.titel}.${vonHand ? ' Nach der Freigabe entsteht eine Aufgabe — ausgeführt wird von Hand.' : ''}`,
+      fuer, bis: frist,
       ...(vonHand ? { danach: { titel: `Von Hand: ${x.titel}`.slice(0, 300), beschreibung: `Freigegeben im Prozess „${u.titel}“ — bitte jetzt ausführen und abhaken.`, bezug: bezugAus(l, u) } } : {}),
     },
   };

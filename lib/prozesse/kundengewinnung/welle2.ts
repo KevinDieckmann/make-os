@@ -142,7 +142,8 @@ const V10: KgVorlage = {
 
 // ── V01 · Nächtlicher Prospecting-Lauf ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const V01A: KgTeil = {
-  id: 'kg-v01a', titel: 'Account anreichern und bewerten', offen: [{ punkt: 'M6', text: 'Research mit Ausgabe-Vertrag je Firma: heute liefert die Recherche Text — die Übernahme in die Karte geht nur als Vorschlag mit Häkchen je Feld.' }],
+  // Seit 22.10. spät (Motor-Rest, M6): Research mit Ausgabe-Vertrag je Firma — Fit an die Raute, Felder nur als Vorschlag mit Häkchen je Feld, Frische 90 Tage.
+  id: 'kg-v01a', titel: 'Account anreichern und bewerten', offen: [{ punkt: 'Schloss', text: 'Hinter der Recherche steht das Freigabe-Schloss (tödliches Dreieck: Akte, Web, Weg nach außen) — je Firma ein Klick „weiter“, dazu die Felder im Stapel.' }],
   definition: prozess({
     id: 'kg-v01a', titel: 'Account anreichern und bewerten', bereich: 'sales', fallArt: 'firma',
     beschreibung: 'Teilprozess des nächtlichen Prospecting-Laufs: fehlende Angaben recherchieren (nur öffentlich, mit Quelle — als Vorschlag), Score lesen, gute Fälle als Outreach und Deal-Vorschlag.',
@@ -183,8 +184,7 @@ const V01: KgVorlage = {
     { id: 'budgetCent', label: 'Budget je Recherche (Cent)', vorgabe: 20 }, { id: 'fitSchwelle', label: 'Fit-Schwelle (0–100)', vorgabe: 70 }, { id: 'erneutNachTagen', label: 'Erneut je Firma nach (Tagen)', vorgabe: 90 },
   ],
   offen: [
-    { punkt: 'E-V5', text: 'Regeln laufen nachts, Agenten-Schritte warten bis 07:00 (Fenster 7–22 Uhr) — der Batch-Weg für die Nacht kommt später (M4).' },
-    { punkt: 'Schleife', text: 'Der Motor führt „Schleife“ und „CRM abfragen“ noch nicht aus — der Probelauf zeigt den Hinweis.' },
+    { punkt: 'E-V5', text: 'Regeln, Abfragen und Schleifen laufen nachts; die Agenten-Schritte warten bis 07:00 und starten dann gedrosselt (Fenster 7–22 Uhr, Tageshöchstzahl E-V6) — der Batch-Weg für die Nacht kommt später (M4).' },
   ],
   demo: 'Eine Zielfirma bekommt in der Nacht eine Recherche „Signale: neue Vertriebsleitung“ → Outreach-Aufgabe mit Telefon-Leitfaden; eine seit 120 Tagen stille Firma „bleibt in der Pflege“.',
   teile: [V01A],
@@ -199,7 +199,8 @@ const V01: KgVorlage = {
       S.abfrage('q2', 'Neue Leads finden', { art: 'neue-leads', status: ['neu'], tage: 7, hoechstens: 25 }),
       S.schleife('l1', 'Ruhende Accounts prüfen', abfrageListe('kg-v01', 'q1'), 'kg-v01a', 25),
       S.schleife('l2', 'Neue Leads prüfen', abfrageListe('kg-v01', 'q2'), 'kg-v01a', 25),
-      S.glocke('g', 'Nachtergebnis melden', 'Der Prospecting-Lauf ist durch: Accounts bewertet, Outreach vorbereitet — Details in der Werkstatt.', EIGNER),
+      // Die Schleife wartet nicht auf die Teil-Läufe — die Glocke meldet, was aufgegriffen ist; Recherche und Outreach folgen ab 07:00 im Stapel bzw. als Aufgabe.
+      S.glocke('g', 'Nachtergebnis melden', 'Der Prospecting-Lauf hat ruhende Accounts und neue Leads aufgegriffen — die Recherche läuft ab 07:00, Ergebnisse kommen in den Stapel.', EIGNER),
       S.ziel('ez'),
     ] }],
   }),
@@ -235,7 +236,7 @@ const V05: KgVorlage = {
     { id: 'uhrzeit', label: 'Uhrzeit', vorgabe: '08:00', knoten: 't', feld: 'uhrzeit' }, { id: 'proTag', label: 'Je Tag (1–40)', vorgabe: 15, knoten: 'q', feld: 'hoechstens' },
     { id: 'folgeTage', label: 'Nachfassen nach (Tagen)', vorgabe: 7 }, { id: 'zurueckziehenTage', label: 'Zurückziehen nach (Tagen)', vorgabe: 21 },
   ],
-  offen: [{ punkt: 'Schleife', text: 'Der Motor führt „Schleife“ und „CRM abfragen“ noch nicht aus — der Probelauf zeigt den Hinweis.' }],
+  offen: [],
   demo: 'Eine erfundene Kampagne „Vernetzen Beispiel-Region“ mit sechs Personen: 2 anfragen, 1 schreiben, 1 zurückziehen.',
   teile: [V05A],
   definition: prozess({

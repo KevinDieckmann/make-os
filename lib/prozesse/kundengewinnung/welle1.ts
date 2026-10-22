@@ -199,7 +199,7 @@ const V08: KgVorlage = {
     { id: 'entscheidTage', label: 'Entscheiden in (Tagen)', vorgabe: 5, knoten: 'a6', feld: 'frist' }, { id: 'parkTage', label: 'Neu parken für (Tage)', vorgabe: 90, knoten: 'a6p', feld: 'parkTage' },
     { id: 'reaktionTage', label: 'Reaktion abwarten (Tage)', vorgabe: 14, knoten: 'a8', feld: 'hoechstensTage' },
   ],
-  offen: [{ punkt: 'M2', text: 'Wiedereintritt nach neuer Wiedervorlage (Lauf-Kennung je Periode) kommt mit dem Lauf-Motor.' }, { punkt: 'M6', text: 'Die optionale Recherche mit Ausgabe-Vertrag folgt mit dem Research-Vertrag.' }],
+  offen: [{ punkt: 'M2', text: 'Wiedereintritt nach neuer Wiedervorlage (Lauf-Kennung je Periode) kommt mit dem Lauf-Motor.' }, { punkt: 'M6', text: 'Die optionale Recherche (Research mit Ausgabe-Vertrag, Felder nur als Vorschlag mit Häkchen je Feld) läuft im Motor — in dieser Vorlage ist sie aus (Einstellung „Recherche“); einschalten heißt: einen Research-Schritt vor „Wie weiter?“ einsetzen.' }],
   demo: 'Eine erfundene Druckerei, geparkt mit „Budget kommt später“, Wiedervorlage heute; ein neues Signal (Event-Anmeldung) → Aufgabe „Reaktivieren“.',
   teile: [],
   definition: prozess({
