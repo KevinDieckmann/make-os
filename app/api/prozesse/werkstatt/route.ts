@@ -1,10 +1,14 @@
 // ─── Prozesse — die Werkstatt: Prozesse aller Business-Bereiche als Entwurf bauen, veröffentlichen, aktiv schalten (Etappe B1, 21.10.) ─────────────────
 // GET              Liste aller Prozesse (Werkstatt + Paket-Vorlagen des Fulfillments, die nur lesend) mit den Rechten der Person.
 // GET ?vorlagen=1  die Galerie der Vorlagen (Kundengewinnung, 22.10.) — Kurzform + welche schon übernommen sind; `?vorlage=<id>` eine mit Vorschau.
+// GET ?paket=<fp-…> ein Paket des Fulfillments für die Werkstatt (22.10., Etappe 1 „Öffnen & Rundweg“ — lib/prozesse/fulfillment-modus-server.ts): das Paket aus
+//                  `fulfillment--<h>` (keine Kopie), Stand, Befunde des Fulfillment-Modus, Bausteine mit der Kunden-Regel, Zahl der laufenden Kunden, Produkte. Nur lesen.
 // GET ?id=         ein Prozess: Entwurf mit Stand, Versionen (kurz), Befunde (alle — die Werkstatt zeigt sie am Knoten), Kanten des Flusses, Webhook (ohne
 //                  Schlüssel), Produkte, die auf ihn zeigen (22.10., nur Kennung + Name). `&version=<nr>` eine Version ganz; `&vergleich=<a>,<b>` (Nummer oder „entwurf“) der Vergleich (nur Feldnamen, nie Werte).
 //                  `&datum=<Knoten>` (22.10.) die nächsten Starts eines Datums-Auslösers (nur Tage + Anzahlen).
-// POST { aktion }  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
+// POST { aktion }  paket-entwurf { paketId, stand, vorlage } · paket-verwerfen { paketId } — der Entwurf eines Fulfillment-Pakets (22.10., E2; nur volle Mitglieder)
+//                  · paket-neu { titel, phase?, anfrageId } (E4) — „Neuer Ablauf“ aus der Werkstatt: Paket des Fulfillments mit Marke `werkstatt:`
+//                  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
 //                  · aus-vorlage { vorlageId, eigner?, anfrageId } (22.10.) · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
 //                  · Kopieren und eigene Vorlagen (22.10., lib/prozesse/kopie.ts): kopieren { id, anfrageId } · als-vorlage { id, titel?, beschreibung?, anfrageId }
 //                    · vorlage-loeschen { vorlageId } · aus-vorlage mit `ev-…` (eigene Vorlage) — Bestand `prozess-vorlagen--<h>`, ohne Personen und Fall-Daten.
@@ -20,12 +24,14 @@ import { kantenVon } from '@/lib/prozesse/fluss';
 import { entwurfGeaendert, versionKurz, versionenVergleichen } from '@/lib/prozesse/versionen';
 import { webhookKurz } from '@/lib/prozesse/webhook';
 import { webhookVerwalten } from '@/lib/prozesse/webhook-server';
+import { inWerkstatt } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 import { fulfillmentProzesse, kurzAusEintrag, kurzAusFulfillment } from '@/lib/prozesse/fulfillment-bruecke';
 import { PROZESS_GRENZEN, PROZESS_KENNUNG, type ProzessDefinition, type ProzessEintrag } from '@/lib/prozesse/definition';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { einmalig } from '@/lib/store/anfragen';
 import { neueKennung } from '@/lib/kennung';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,12 +48,15 @@ export async function GET(req: Request) {
   const id = q.get('id');
   const d = await prozesseLesen(z.haushalt);
   // Vorlagen der Kundengewinnung (22.10.): die Galerie (Kurzform + „schon übernommen“) bzw. eine Vorlage mit Vorschau — reine Daten, nichts Persönliches.
+  // B2 (22.10.): `&gruppe=begleitung` bzw. `&gruppe=alle` zeigt die Kunden-Begleitung (Fulfillment) — ohne Angabe wie bisher die 18 der Kundengewinnung.
   if (q.get('vorlagen') === '1') {
-    const [{ KUNDENGEWINNUNG_VORLAGEN, vorlageKurz }, { uebernommene }] = await Promise.all([import('@/lib/prozesse/kundengewinnung/bibliothek'), import('@/lib/prozesse/kundengewinnung/uebernehmen')]);
+    const [{ vorlagenDerGruppe, vorlageKurz }, { uebernommene }] = await Promise.all([import('@/lib/prozesse/kundengewinnung/bibliothek'), import('@/lib/prozesse/kundengewinnung/uebernehmen')]);
+    const g = q.get('gruppe');
+    const gruppe = g === 'begleitung' || g === 'alle' ? g : 'kundengewinnung';
     // Eigene Vorlagen des Haushalts (22.10.) — nur Kurzform (Name, Bereich, Zahl der Schritte).
     const [{ eigeneVorlagenLesen }, { eigeneVorlageKurz }] = await Promise.all([import('@/lib/prozesse/eigene-vorlagen-server'), import('@/lib/prozesse/kopie')]);
     const eigene = (await eigeneVorlagenLesen(z.haushalt)).vorlagen.map(eigeneVorlageKurz);
-    return NextResponse.json({ ok: true, rechte: z.rechte, vorlagen: KUNDENGEWINNUNG_VORLAGEN.map(vorlageKurz), eigene, uebernommen: uebernommene(d) });
+    return NextResponse.json({ ok: true, rechte: z.rechte, vorlagen: vorlagenDerGruppe(gruppe).map(vorlageKurz), eigene, uebernommen: uebernommene(d) });
   }
   const vid = q.get('vorlage');
   if (vid?.startsWith('ev-')) {
@@ -65,12 +74,24 @@ export async function GET(req: Request) {
         teileVorschau: v.teile.map(t => ({ titel: t.titel, vorschau: vorlageVorschau(t.definition) })) },
     });
   }
+  const paketId = q.get('paket');
+  if (paketId !== null) {
+    const [{ KENNUNG }, { paketFuerWerkstatt }] = await Promise.all([import('@/lib/fulfillment/grenzen'), import('@/lib/prozesse/fulfillment-modus-server')]);
+    if (!KENNUNG.vorlage.test(paketId)) return nein(400, 'Welches Paket? (?paket=fp-…)');
+    const p = await paketFuerWerkstatt(z.haushalt, paketId);
+    if (!p) return nein(404, 'Dieses Paket gibt es nicht (mehr).');
+    // E3: die Antwort nennt laufende Kunden (Mandate) — Lese-Protokoll wie das Cockpit des Fulfillments (nur Zahlen).
+    leseZugriff(req, 'fulfillment', { anzahl: p.kunden.length });
+    // E2 (22.10.): bearbeiten wie im Editor des Fulfillments — nur volle Mitglieder (`darfVorlagenBearbeiten`); mit `&bibliothek=1` die ganze Bibliothek in Kürze.
+    const [{ darfVorlagenBearbeiten }, { bibliothekKurz }] = await Promise.all([import('@/lib/fulfillment/zugang'), import('@/lib/prozesse/fulfillment-modus-server')]);
+    return NextResponse.json({ ok: true, rechte: z.rechte, ...p, bearbeiten: !z.dienst && await darfVorlagenBearbeiten(z.person), ...(q.get('bibliothek') === '1' ? { bibliothekAlle: await bibliothekKurz(z.haushalt) } : {}) });
+  }
   if (!id) {
     const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
     const ff = await fulfillmentLesen('vorlagen', z.haushalt).catch(() => null);
     return NextResponse.json({
       ok: true, rechte: z.rechte, grenzen: PROZESS_GRENZEN,
-      prozesse: [...d.prozesse.map(e => kurzAusEintrag(e, !z.rechte.entwurf)), ...(ff ? fulfillmentProzesse(ff.prozesse).map(kurzAusFulfillment) : [])],
+      prozesse: [...d.prozesse.map(e => kurzAusEintrag(e, !z.rechte.entwurf)), ...(ff ? fulfillmentProzesse(ff.prozesse).map(v => kurzAusFulfillment(v, inWerkstatt(ff, v.id))) : [])],
     });
   }
   if (!PROZESS_KENNUNG.test(id)) return nein(400, 'Welcher Prozess? (?id=pz-…)');
@@ -113,6 +134,24 @@ export async function POST(req: Request) {
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, KOERPER_MAX); } catch (e) { return jsonZuGross(e) ?? nein(400, 'Kein JSON.'); }
   const aktion = typeof b.aktion === 'string' ? b.aktion : '';
+  // Fulfillment in die Werkstatt (22.10., E2): der Entwurf eines Pakets — im Bestand `fulfillment--<h>` (keine Kopie), nur volle Mitglieder (wie der Editor des
+  // Fulfillments), Stand/409, Fulfillment-Modus + Verlust-Wächter + Struktur (lib/prozesse/fulfillment-entwurf.ts). Laufende Fälle sehen einen Entwurf nie.
+  // E3: `paket-veroeffentlichen` { paketId, stand, name?, notiz?, trotzdem? } — der Entwurf wird die neue Fassung des Pakets; laufende Fälle übernehmen je Kunde per Klick.
+  if (aktion === 'paket-entwurf' || aktion === 'paket-verwerfen' || aktion === 'paket-veroeffentlichen') {
+    const { darfVorlagenBearbeiten } = await import('@/lib/fulfillment/zugang');
+    if (!(await darfVorlagenBearbeiten(z.person))) return nein(403, 'Pakete bearbeiten nur volle Mitglieder des Haushalts.');
+    const { paketEntwurfSchreiben } = await import('@/lib/prozesse/fulfillment-modus-server');
+    const r = await paketEntwurfSchreiben(z.haushalt, z.person, aktion === 'paket-entwurf' ? 'speichern' : aktion === 'paket-verwerfen' ? 'verwerfen' : 'veroeffentlichen', b);
+    return NextResponse.json(r.body, { status: r.status });
+  }
+  // E4 (22.10.): „Neuer Ablauf“ aus der Werkstatt — ein Paket des Fulfillments mit Marke `werkstatt:` (nur volle Mitglieder, einmalig über `anfrageId`).
+  if (aktion === 'paket-neu') {
+    const { darfVorlagenBearbeiten } = await import('@/lib/fulfillment/zugang');
+    if (!(await darfVorlagenBearbeiten(z.person))) return nein(403, 'Pakete legen nur volle Mitglieder des Haushalts an.');
+    const { paketNeuSchreiben } = await import('@/lib/prozesse/fulfillment-modus-server');
+    const a = await einmalig<Record<string, unknown>>('prozess-paket-neu', b.anfrageId, () => paketNeuSchreiben(z.haushalt, z.person, b), undefined, { wer: z.person });
+    return NextResponse.json(a.body, { status: a.status });
+  }
   if (aktion.startsWith('webhook-')) {
     const r = await webhookVerwalten(z.person, z.rechte, b, z.haushalt);
     if (!r.ok) return nein(r.status, r.fehler);
@@ -138,14 +177,34 @@ export async function POST(req: Request) {
     const kx = await pruefKontextFuer(z.haushalt, z.person);
     const eigner = typeof b.eigner === 'string' && b.eigner ? b.eigner : undefined;
     if (eigner && kx.team && !kx.team.some(t => t.id === eigner && t.aktiv)) return { status: 400, body: { ok: false, fehler: 'Eigner: eine aktive Person aus dem Team.' } };
+    // B3 (22.10.): „+ Begleit-Prozess“ am Paket — Paket (und Schritt bzw. Phase) müssen im Fulfillment-Bestand stehen; gelesen wird nur.
+    let andocken: { paket: string; knoten?: string } | undefined;
+    if (b.andocken !== undefined) {
+      const ad = (b.andocken && typeof b.andocken === 'object' ? b.andocken : {}) as { paket?: unknown; knoten?: unknown };
+      if (typeof ad.paket !== 'string') return { status: 400, body: { ok: false, fehler: 'Andocken: welches Paket?' } };
+      const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
+      const pk = (await fulfillmentLesen('vorlagen', z.haushalt)).prozesse.find(x => x.id === ad.paket && x.art === 'paket');
+      if (!pk) return { status: 400, body: { ok: false, fehler: 'Dieses Paket gibt es nicht (mehr).' } };
+      if (ad.knoten !== undefined && (typeof ad.knoten !== 'string' || !pk.knoten.some(k => k.id === ad.knoten && !!k.elternId))) return { status: 400, body: { ok: false, fehler: 'Diesen Schritt gibt es im Paket nicht.' } };
+      andocken = { paket: pk.id, ...(typeof ad.knoten === 'string' ? { knoten: ad.knoten } : {}) };
+    }
     const { ausVorlageAnwenden } = await import('@/lib/prozesse/kundengewinnung/uebernehmen');
     type Ok = Extract<ReturnType<typeof ausVorlageAnwenden>, { ok: true }>;
     const r = await prozesseAendern<Omit<Ok, 'ok' | 'datei'>>(
-      dd => ausVorlageAnwenden(dd, b.vorlageId, { person: z.person, jetzt: new Date().toISOString(), rechte: z.rechte, neueKennung: p => neueKennung(p), ...(eigner ? { eigner } : {}), pruef: kx }) as never,
+      dd => ausVorlageAnwenden(dd, b.vorlageId, { person: z.person, jetzt: new Date().toISOString(), rechte: z.rechte, neueKennung: p => neueKennung(p), ...(eigner ? { eigner } : {}), ...(andocken ? { andocken } : {}), pruef: kx }) as never,
       wer, z.haushalt,
     ) as ReturnType<typeof ausVorlageAnwenden>;
     if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler, ...(r.befunde ? { befunde: r.befunde } : {}) } };
-    return { status: 200, body: { ok: true, ...ansicht(r.haupt), teile: r.teile.map(t => ({ id: t.id, titel: t.entwurf.titel, status: t.status })), befunde: r.befunde, hinweise: r.hinweise, probelauf: r.probelauf } };
+    // B3 (22.10.): Wiedereintritt je Fall aus der Vorlage (Begleit-Prozesse: jede Etappe, jeder Report …) — über den vorhandenen Weg der Läufe-Einstellungen,
+    // nur für volle Mitglieder (wie Läufe › Einstellungen); sonst ein Hinweis.
+    const hinweise = [...r.hinweise];
+    const { vorlageVon } = await import('@/lib/prozesse/kundengewinnung/bibliothek');
+    const erneut = typeof b.vorlageId === 'string' ? vorlageVon(b.vorlageId)?.erneutNachTagen : undefined;
+    if (erneut) {
+      if (z.rechte.status && (await (await import('@/lib/prozesse/lauf-server')).einstellungSetzen(r.haupt.id, z.person, { erneutNachTagen: erneut })).ok) hinweise.push(`Läuft je Mandat erneut, frühestens nach ${erneut === 1 ? 'einem Tag' : `${erneut} Tagen`} (Läufe › Einstellungen).`);
+      else hinweise.push(`Läuft je Mandat nur einmal — „erneut nach ${erneut} Tagen“ setzt ein volles Mitglied unter Läufe › Einstellungen.`);
+    }
+    return { status: 200, body: { ok: true, ...ansicht(r.haupt), teile: r.teile.map(t => ({ id: t.id, titel: t.entwurf.titel, status: t.status })), befunde: r.befunde, hinweise, probelauf: r.probelauf } };
   };
   // Kopieren, als eigene Vorlage speichern, eigene Vorlage übernehmen bzw. löschen (22.10., lib/prozesse/kopie.ts) — eigene Stelle, derselbe Rahmen.
   if (aktion === 'kopieren' || aktion === 'als-vorlage' || aktion === 'vorlage-loeschen' || (aktion === 'aus-vorlage' && typeof b.vorlageId === 'string' && b.vorlageId.startsWith('ev-'))) {

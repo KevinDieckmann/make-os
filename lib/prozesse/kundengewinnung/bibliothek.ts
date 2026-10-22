@@ -7,7 +7,8 @@
 import { WELLE_1 } from './welle1';
 import { WELLE_2 } from './welle2';
 import { WELLE_3 } from './welle3';
-import { BRAUCHT_TEXT, type KgVorlage, type Braucht } from './bau';
+import { BEGLEIT_VORLAGEN } from '../begleitung/vorlagen';
+import { BRAUCHT_TEXT, type KgVorlage, type Braucht, type VorlagenGruppe } from './bau';
 import { alleSchritte, phasen, schloesser, startKnoten } from '../fluss';
 import { ausloeserText } from '../ausloeser';
 import { EIGNER_ROLLE_NAME } from './rollen';
@@ -18,11 +19,20 @@ export const KUNDENGEWINNUNG_VORLAGEN: readonly KgVorlage[] = [...WELLE_1, ...WE
 /** Dieselben in der Bau-Reihenfolge der Wellen (Welle 1 → 3, innerhalb der Welle nach Nutzen). */
 export const VORLAGEN_NACH_WELLE: readonly KgVorlage[] = [...WELLE_1, ...WELLE_2, ...WELLE_3];
 
-export const vorlageVon = (id: string): KgVorlage | null => KUNDENGEWINNUNG_VORLAGEN.find(v => v.id === id) ?? null;
+/**
+ * Alle Vorlagen der Galerie (22.10., B2): die 18 der Kundengewinnung und die neun der Kunden-Begleitung (`../begleitung/vorlagen.ts`) — dieselbe Form, dieselbe
+ * Übernahme. `KUNDENGEWINNUNG_VORLAGEN` bleibt die Kundengewinnung allein (Head, Wächter der 18).
+ */
+export const ALLE_VORLAGEN: readonly KgVorlage[] = [...KUNDENGEWINNUNG_VORLAGEN, ...BEGLEIT_VORLAGEN];
+export const gruppeVon = (v: Pick<KgVorlage, 'gruppe'>): VorlagenGruppe => v.gruppe ?? 'kundengewinnung';
+/** Die Vorlagen einer Sammlung (`alle` = beide). */
+export const vorlagenDerGruppe = (g: VorlagenGruppe | 'alle'): readonly KgVorlage[] => (g === 'alle' ? ALLE_VORLAGEN : ALLE_VORLAGEN.filter(v => gruppeVon(v) === g));
+
+export const vorlageVon = (id: string): KgVorlage | null => ALLE_VORLAGEN.find(v => v.id === id) ?? null;
 
 /** Kurzform für die Galerie (Name, Zweck, Auslöser, Zahl der Schritte, Freigaben, „braucht …“). */
 export interface VorlageKurz {
-  id: string; nr: string; welle: number; titel: string; zweck: string; bereich: string; fallArt: string; eigner: string;
+  id: string; nr: string; welle: number; gruppe: VorlagenGruppe; titel: string; zweck: string; bereich: string; fallArt: string; eigner: string;
   ausloeser: string; schritte: number; freigaben: number; agenten: number; teile: number; braucht: string[]; offen: string[]; uebergabeAn: string[];
 }
 const zaehle = (d: ProzessDefinition, f: (form: ProzessForm | undefined) => boolean) => alleSchritte(d).filter(x => f(x.schritt.form)).length;
@@ -31,7 +41,7 @@ export function vorlageKurz(v: KgVorlage): VorlageKurz {
   const d = v.definition;
   const schloss = schloesser(d.knoten).size;
   return {
-    id: v.id, nr: v.nr, welle: v.welle, titel: v.titel, zweck: v.zweck, bereich: v.bereich, fallArt: v.fallArt, eigner: EIGNER_ROLLE_NAME[v.eignerRolle],
+    id: v.id, nr: v.nr, welle: v.welle, gruppe: gruppeVon(v), titel: v.titel, zweck: v.zweck, bereich: v.bereich, fallArt: v.fallArt, eigner: EIGNER_ROLLE_NAME[v.eignerRolle],
     ausloeser: startKnoten(d).map(s => (s.ausloeser ? ausloeserText(s.ausloeser) : s.titel)).join(' · ') || v.ausloeserText,
     schritte: zaehle(d, f => f !== 'ausloeser' && f !== 'ende' && f !== 'freigabe'),
     freigaben: schloss + v.teile.reduce((n, t) => n + schloesser(t.definition.knoten).size, 0),

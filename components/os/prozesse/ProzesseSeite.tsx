@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Maximize2, Minimize2, Expand, Presentation, Map as MapIcon, Plus, Minus, ScanSearch, Keyboard, X, ChevronLeft, ChevronRight, Workflow, LayoutTemplate, Pencil } from 'lucide-react';
 import { Werkstatt } from './Werkstatt';
+import { PaketWerkstatt } from './PaketWerkstatt';
 import { WerkstattUebersicht, NeuerProzessFenster } from './WerkstattUebersicht';
 import { VorlagenGalerie } from './VorlagenGalerie';
 import { HeadFragenFenster } from './HeadFragen';
@@ -386,12 +387,15 @@ export function ProzesseSeite() {
 
 
 /**
- * Die Werkstatt im Bereich der Seite (Etappe B2): ohne Prozess die Übersicht mit „+ Prozess“; ein eigener Prozess öffnet die Werkstatt; System-Prozesse und Pakete
- * des Fulfillments bleiben hier nur lesbar (Pakete öffnen weiter ihren vorhandenen Editor).
+ * Die Werkstatt im Bereich der Seite (Etappe B2): ohne Prozess die Übersicht mit „+ Prozess“; ein eigener Prozess öffnet die Werkstatt; System-Prozesse bleiben hier
+ * nur lesbar. Pakete des Fulfillments öffnen sich seit 22.10. (Fulfillment in die Werkstatt, Etappe 1) auf derselben Fläche zum Ansehen (./PaketWerkstatt.tsx);
+ * Landkarte (Hochhaus) und gezeichnete Abläufe sind Bilder und bleiben ein Hinweis mit Sprung.
  */
 function WerkstattBereich({ p, schmal, onNeu, onVorlage, onHead, onLandkarte }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onVorlage: () => void; onHead: () => void; onLandkarte: () => void }) {
   if (!p) return <WerkstattUebersicht onNeu={onNeu} onVorlage={onVorlage} onHead={onHead} />;
   if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} onLandkarte={onLandkarte} />;
+  // Fulfillment in die Werkstatt (22.10., Etappe 1): ein Paket öffnet sich auf derselben Fläche — nur ansehen; bearbeitet wird bis Etappe 2 im Editor des Fulfillments.
+  if (p.quelle === 'vorlage' && p.editor) return <PaketWerkstatt key={p.id} paketId={p.id} schmal={schmal} />;
   if (p.quelle === 'vorlage') {
     return (
       <Hinweis art="info" titel={`„${p.titel}“ ist eine Vorlage des Fulfillments`} aktion={p.editor ? <Knopf leise href={p.editor}>Im Fulfillment-Editor öffnen ›</Knopf> : undefined}>

@@ -1704,6 +1704,55 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Übernahme landen wie „Aus Vorlage“ (Version 1 im Probelauf bzw. Entwurf, nie scharf). **Masken vollständig:** jeder Wert jeder Vorlage steht in seiner Maske und
   überlebt Lesen → Schreiben (Wächter in `tests/prozesse-versionen-kopie.test.ts` — neuer Wert in einer Vorlage ohne Maskenfeld = rot); neu: Warten „Höchstens
   (Stunden)“/„Arbeitszeit zählen“ im Panel, Entscheidung (Mensch) „Entscheiden binnen (Tagen)“ (`fristTage`, Motor liest `fristTage ?? frist`).
+- **Fulfillment in die Werkstatt (22.10., Weg A; Plan `research/prozesse/FULFILLMENT_WERKSTATT_PLAN.md`):** die Werkstatt wird DER Editor der Pakete, ausgeführt
+  wird weiter im Fall; EINE Wahrheit bleibt `fulfillment--<h>` (nie eine Kopie in `prozesse--<h>`). Regeln NUR in `lib/prozesse/fulfillment-modus.ts`: Palette = die
+  sechs Formen (`FULFILLMENT_FORMEN`), jede Werkstatt-Art ist im Paket ein FEHLER (`fulfillmentModusBefunde`), Rundweg `paketAlsDefinition`/`paketAusDefinition`
+  über `vorlageAus` mit Verlust-Wächter `feldVerluste` (nie still verlieren), Ansicht `paketAnsicht` (Bahnen Kunde/Team aus `zustaendig`, Bestätigung als Raute am
+  Phasenende, Lage automatisch — `pos` des alten Editors bleibt unberührt). Der Werkstatt-Säuberer (`bestand.ts`) behält jedes Fulfillment-Feld über die Teile des
+  Fulfillment-Säuberers (`vorlagenKnotenAus` …) — neues Feld im Modell → Voll-Paket im Gold-Test (`Record<…>`, sonst tsc rot). Etappe 1: GET
+  `/api/prozesse/werkstatt?paket=` (nur lesen, `fulfillment-modus-server.ts`) + `PaketWerkstatt.tsx` (Ansehen). Gold `tests/prozesse-ff-werkstatt-e1.test.ts`
+  (Säuberer vorher = nachher gegen 451bd6fd, Paket vorher = nachher, Lesen schreibt nie).
+  **B1 Fall-Ereignisse** (Begleit-Prozesse daneben, Lauf-Motor): `fall-phase` (begonnen/abgeschlossen), `fall-wartet-kunde`, `abstimmung-bestaetigt` aus dem
+  Schreibweg des Falls (`fallEreignisse` mit den WIRKSAMEN Fällen, rein `fallBegleitDiff`), `fall-haengt` im Morgenlauf aus `wasHaengt` (rein `haengerEreignisse`,
+  je Hänger einmal), `kunde-geliefert` aus dem Kunden-Link (`geliefert` in lib/fulfillment/kunde/server.ts). Bezug `vorlageId`/`freigabeId`; Datumsfeld `fall.termin`
+  und Fall-Felder `fall.paket`/`fall.status` NUR über `faelleFuerProzesse` (Cockpit-Rechnung) — keine zweite Fristen-/Terminrechnung.
+  **E2 Bearbeiten:** Entwurf im optionalen Feld `VorlagenDatei.entwuerfe[<paket>]` (`PaketEntwurf`, Säuberer `lesen.ts`, Grenzen) — geschrieben NUR über
+  lib/prozesse/fulfillment-entwurf.ts (`paketEntwurfAnwenden`: Stand/409, Fulfillment-Modus + Verlust-Wächter, `vorlageStrukturPruefen`; gleich dem Paket → kein
+  Entwurf) via POST `/api/prozesse/werkstatt` `paket-entwurf`/`paket-verwerfen` (nur volle Mitglieder, `darfVorlagenBearbeiten`). Jede Änderung im Browser = Op des
+  Fulfillment-Editors (`paketBearbeiten` → `editorAnwenden`, nie nachgebaut). Laufende Fälle und neue Fälle sehen einen Entwurf nie.
+  **E3 Veröffentlichen:** `paketVeroeffentlichen` (Fassung + 1, Marke `fassung-notiz:<paket>:<n>`; Paket seit Entwurfsbeginn anders → 409 `paketGeaendert`, nur
+  `trotzdem` ersetzt). Laufende Fälle ändern sich NIE beim Veröffentlichen — je Kunde per Klick über den vorhandenen Weg `vorlage-uebernehmen` (Liste `kunden` mit
+  `diffVorschau`, `PaketKunden.tsx`).
+  **B2 Kunden-Begleitung:** neun Begleit-Vorlagen FB1–FB9 in `lib/prozesse/begleitung/vorlagen.ts` (gebaut wie die 18 der Kundengewinnung, `gruppe: 'begleitung'`,
+  `ALLE_VORLAGEN`/`vorlagenDerGruppe`, Galerie mit Sammlung; `?vorlagen=1` bleibt die Kundengewinnung, `&gruppe=begleitung|alle`). Regeln: nur Bausteine, die nie
+  in den Fall schreiben; Willkommensmail und Report bleiben im Fall (Vorlage erinnert nur); Erinnerungen nennen nur den Kunden-Link der Willkommensmail, ein neuer
+  Link nur nach Raute „Mensch“ und aus dem Fall; jedes Warten (auf `kunde-geliefert`/`abstimmung-bestaetigt`) mit Obergrenze + Raute auf die Lage des Falls.
+  Lage-Felder `fall.phase`, `fall.wartet-kunde`, `fall.bestaetigung-offen`, `fall.willkommen-offen`, `fall.report-faellig`, `fall.puls-kritisch`,
+  `fall.puls-gespraech-offen` NUR aus `faelleFuerProzesse` (Cockpit-Zeile + offener `k:puls:`-Vorschlag); Platzhalter `{{kunde.gruss}}` (Du/Sie aus der Akte,
+  EINE Stelle `kundenGruss` in lib/fulfillment/kunde/bild.ts), `{{fall.phase}}`, `{{fall.termin}}`. Texte ohne Sie/ihr. Wächter `tests/prozesse-ff-begleitung-b2.test.ts`.
+  **B3 Eine Fläche:** Andocken OHNE zweites Feld — NUR über die Bedingungen des Auslösers (`fall.paket` bzw. `bezug.vorlageid`, `bezug.knotenid`), Regeln in
+  lib/prozesse/begleitung/andocken.ts (`begleitFuer`, `andockenAnwenden`, `istBegleitProzess`). „+ Begleit-Prozess“ am Paket (`PaketBegleitung.tsx`) = Galerie mit
+  `andocken` → POST `aus-vorlage` (Route prüft Paket/Schritt im Fulfillment-Bestand, nur Begleit-Vorlagen, sonst 400). `paketFuerWerkstatt` liefert `begleitung`.
+  Akte: Karte „Begleitung läuft“ (`BegleitungLaeuft.tsx` in FallReise) über GET `/api/prozesse/laeufe?fall=mandat:<id>` (`laeufeDesFalls`, offen + 30 Tage, nur
+  Business). Wiedereintritt je Fall: der Motor startet je Prozess und Fall EINEN Lauf — Begleit-Vorlagen bringen `KgVorlage.erneutNachTagen` mit, „Aus Vorlage“ setzt
+  es für volle Mitglieder über `einstellungSetzen`. Wächter `tests/prozesse-ff-begleitung-b3.test.ts` (von Ende zu Ende über den Takt, Fall/Paket Byte für Byte).
+  **E4 Alter Editor nur lesen (F4):** Marke `werkstatt:<paket>` im Feld `marken` (gesetzt mit dem ersten Entwurf, beim Veröffentlichen, bei „Neuer Ablauf“ aus der
+  Werkstatt — POST `paket-neu`, `paketNeuSchreiben`). EINE Stelle lib/fulfillment/prozesse/werkstatt-marke.ts (`inWerkstatt`, `paketeInWerkstatt`,
+  `paketBearbeitenLink`, `IN_WERKSTATT_TEXT`). Markiert → PATCH /api/fulfillment/editor 409, Baum-Ops (`vorlage`, `knoten*`, `uebergang*`) 409, Editor-GET
+  `darfBearbeiten: false` + Weg in die Werkstatt; Links (Landkarte `prozessAusVorlageMit`, Werkstatt-Liste `kurzAusFulfillment(v, true)`, Fulfillment › Prozesse,
+  Produktkarte) führen in die Werkstatt; ein Import legt nur einen ENTWURF an (mit offenem Entwurf 409). Unmarkierte Pakete unverändert (Gold).
+  Wächter `tests/prozesse-ff-werkstatt-e4.test.ts`.
+  **E5 Akte für Mandate mit Werkstatt-Prozess (F3):** ein SCHARFER Lauf eines Hauptprodukts (`produktLaeufeStarten`, auch wenn derselbe Prozess über seinen
+  eigenen Auslöser schon läuft) legt die Akte an — `prozessAkteAnlegen` (fall-server.ts, idempotent, ein Fall je Mandat) mit `prozessAkteStarten` (fall.ts):
+  Onboarding wie jeder Fall, KEINE Paket-Knoten, optionales Feld `Fall.ablauf = { art: 'prozess', prozessId }`, `vorlageId` = Prozess. Lesen nur über
+  `fallAblauf` (lib/fulfillment/prozesse/ablauf-art.ts — Feld, sonst Kennung `pz-…`: Rückweg). Schatten legt nie eine Akte an. Kandidat XOR Fall bleibt die EINE
+  Regel (`onboardingKandidaten`). Kunden-Sicht: für die Akte Zeitstrahl/Erledigt/Nächstes aus `kundenEtappen`, der Rest aus der Akte; Fälle mit Paket bit-gleich.
+  Wächter `tests/prozesse-ff-akte-e5.test.ts`, angepasst `tests/prozesse-fulfillment-lauf.test.ts` (Akte statt „kein Fall“).
+  **E6 Am Handy Texte & Fristen ändern:** in der schmalen Ansicht steht unter der Fläche die Liste der Schritte (`MobilSchrittListe`), je Schritt „Bearbeiten“ →
+  `MobilMaske` (Eingaben 16 px, Ziele ≥ 44 px). Welche Felder und wie sie wirken NUR in lib/prozesse/mobil-felder.ts: Paket `paketMobilFelder`/`paketMobilOps`
+  (Ops `schritt`/`phase`, `MOBIL_OPS`), Prozess `werkstattMobilFelder`/`werkstattMobilAnwenden` (Titel, Frist, Masken-Texte/-Zahlen/-Personen, Dauer eines
+  Wartens — nie Kennung, Form, Zweige, Phase). Gespeichert über denselben Entwurf (Stand/409, gleiche Rechte, Veröffentlichen auch am Handy); Bauen bleibt am
+  Rechner. Wächter `tests/prozesse-ff-mobil-e6.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

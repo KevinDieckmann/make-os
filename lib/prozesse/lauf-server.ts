@@ -40,6 +40,7 @@ import { anspracheUrteil } from './ansprache';
 import { laufPerson, type TeamKurz } from './rollen';
 import { herkunftAus, mitLaufHerkunft } from './lauf-herkunft';
 import { gelesenFelderMenge } from './kundengewinnung/raute-felder';
+import { anredeAus, kundenGruss } from '@/lib/fulfillment/kunde/bild';
 
 // ══ Bestand ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -150,7 +151,8 @@ const LEER_FALL: FallInfo = { fehlt: false, daten: {}, platzhalter: {}, kontakt:
 
 function kontaktPlatzhalter(k: Kontakt | null): Record<string, unknown> {
   if (!k) return {};
-  return { 'kontakt.anrede': k.anrede ?? 'Sie', 'kontakt.vorname': k.vorname ?? '', 'kontakt.nachname': k.nachname ?? '' };
+  // `kunde.gruss` (22.10., B2): die Grußzeile nach Du/Sie aus der Akte — EINE Stelle (lib/fulfillment/kunde/bild.ts `kundenGruss`).
+  return { 'kontakt.anrede': k.anrede ?? 'Sie', 'kontakt.vorname': k.vorname ?? '', 'kontakt.nachname': k.nachname ?? '', 'kunde.gruss': kundenGruss(anredeAus(k.anrede), k.vorname, k.nachname) };
 }
 
 /**
@@ -219,16 +221,18 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       // Ende und Kündigungsfrist über `mandatFristen` (lib/crm/kunden.ts) — dieselbe Regel wie Kalender-Fristen und Datums-Start (auch Start + Mindestlaufzeit).
       const { mandatFristen } = await import('@/lib/crm/kunden');
       const mf = mandatFristen(m, localDay(kx.jetzt));
+      // Begleit-Prozesse (22.10., B1): Paket, Status und nächster Termin des Fulfillment-Falls (ohne Fall fehlen sie).
+      const ff = (await faelleVon(kx))[m.id];
       return {
         fehlt: false, kontakt: k, personen: m.kontaktIds.map(nachId).filter((x): x is Kontakt => !!x), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}), ...hat(k),
         daten: {
           'mandat.status': m.status, 'mandat.gesellschaft': m.gesellschaft, ...(m.leistungId ? { 'mandat.produkt': m.leistungId } : {}), ...(m.zustaendig ? { 'mandat.zustaendig': m.zustaendig } : {}),
           ...(m.verlaengerung ? { 'mandat.verlaengerung': m.verlaengerung } : {}),
           ...(await kgLesen(k, m.kontaktIds.map(nachId).filter((y): y is Kontakt => !!y))).daten,
-          ...(await mandatFelder(m, kx)),
+          ...(await mandatFelder(m, kx)), ...fallFelderVon(ff),
         },
-        platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde },
-        datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(mf.endeAm ? { 'mandat.ende': mf.endeAm } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(mf.frist ? { 'mandat.kuendigungsfrist': mf.frist } : {}) },
+        platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde, ...(ff?.phase ? { 'fall.phase': ff.phase } : {}), ...(ff?.termin ? { 'fall.termin': ff.termin } : {}) },
+        datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(mf.endeAm ? { 'mandat.ende': mf.endeAm } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(mf.frist ? { 'mandat.kuendigungsfrist': mf.frist } : {}), ...(ff?.termin ? { 'fall.termin': ff.termin } : {}) },
       };
     }
     case 'firma': {
@@ -282,6 +286,17 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
 }
 
 /** Ampel und Health eines Mandats (lib/crm/kunden.ts `mandatLage` — dieselbe Rechnung wie Mandatsakte und Power Hour). */
+/** Die Fälle des Fulfillments, wie der Motor sie lesen darf (22.10., B1): Paket, Status, nächster Termin — gemerkt wie das Cockpit, wirft nie ({} ohne Fall). */
+async function faelleVon(kx: MotorKontext): Promise<Record<string, import('@/lib/fulfillment/prozesse/server').FallFuerProzesse>> {
+  try { return await (await import('@/lib/fulfillment/prozesse/server')).faelleFuerProzesse(localDay(kx.jetzt)); } catch { return {}; }
+}
+/** Die Fall-Felder `fall.paket`/`fall.status` und (B2) die Lage für die Kunden-Begleitung (nur mit Fall; `fall.phase` fehlt, wenn keine Etappe mehr offen ist). */
+const fallFelderVon = (f: import('@/lib/fulfillment/prozesse/server').FallFuerProzesse | undefined): Record<string, string | number | boolean> => (f ? {
+  ...(f.paket ? { 'fall.paket': f.paket } : {}), 'fall.status': f.status, ...(f.phase ? { 'fall.phase': f.phase } : {}),
+  'fall.wartet-kunde': f.wartetKunde, 'fall.bestaetigung-offen': f.bestaetigungOffen, 'fall.willkommen-offen': f.willkommenOffen, 'fall.report-faellig': f.reportFaellig,
+  'fall.puls-kritisch': f.pulsKritisch, 'fall.puls-gespraech-offen': f.pulsGespraechOffen,
+} : {});
+
 async function mandatFelder(m: CrmBestand['mandate'][number], kx: MotorKontext): Promise<Record<string, unknown>> {
   const { mandatLage } = await import('@/lib/crm/kunden');
   const lage = mandatLage(m, localDay(kx.jetzt));
@@ -1155,6 +1170,15 @@ async function produktLaeufeStarten(e: Ereignis, kx: MotorKontext): Promise<numb
       ...(herkunft ? { herkunft: { prozessId: herkunft.prozessId, laufId: herkunft.laufId } } : {}), automatisch: true, periode: e.id, jetzt: kx.jetzt.toISOString(),
     }, kx.h);
     if (r.ok) n++;
+    // E5 (22.10., Entscheidung F3): ein SCHARFER Lauf eines Hauptprodukts legt die Akte des Mandats an (Onboarding, keine Paket-Knoten; idempotent — ein Fall je
+    // Mandat) — auch, wenn derselbe Prozess über seinen eigenen Auslöser schon lief (Bindung + Auslöser, „offen“). Schatten/Probelauf legt nie eine Akte an.
+    // Wirft nie: ohne Akte läuft der Prozess trotzdem.
+    const scharfLaeuft = r.ok ? r.lauf.modus === 'scharf' : (r.grund === 'offen' || r.grund === 'schon') && r.lauf?.modus === 'scharf' && r.lauf.fall.id === mandatId;
+    if (scharfLaeuft && b.rolle === 'haupt') {
+      await import('@/lib/fulfillment/prozesse/fall-server').then(f => f.prozessAkteAnlegen({
+        mandatId, prozessId: p.id, titel: j.def.titel, version: j.nr, person: personFuer(j.def, kx, e.person ?? null) ?? 'system', wer: { art: 'system' }, jetzt: kx.jetzt,
+      })).catch(() => null);
+    }
   }
   return n;
 }
@@ -1279,6 +1303,14 @@ async function datumKandidaten(feld: DatumsFeld, von: string, bis: string, kx: M
   }
   if (feld === 'lead.wiedervorlage') {
     for (const z of await leadsVon(kx)) if (imFenster(z.wiedervorlage)) raus.push({ fall: { art: 'lead', id: z.id }, datum: z.wiedervorlage.slice(0, 10), bezug: z.art === 'firma' ? { 'bezug.firmaid': z.id } : { 'bezug.kontaktid': z.id }, vor: { 'lead.status': z.status } });
+    return raus;
+  }
+  if (feld === 'fall.termin') {
+    // Begleit-Prozesse am Fall (22.10., B1): der nächste Termin mit dem Kunden — aus der Rechnung des Cockpits (`faelleFuerProzesse`), nur laufende Business-Fälle.
+    for (const [id, f] of Object.entries(await faelleVon(kx))) {
+      const m = mandatVon(id);
+      if (m && business(m.gesellschaft) && imFenster(f.termin)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: f.termin.slice(0, 10), bezug: { ...mandatBezug(m), ...(f.paket ? { 'bezug.vorlageid': f.paket } : {}) }, vor: { 'mandat.status': m.status, ...fallFelderVon(f) } });
+    }
     return raus;
   }
   return raus;
@@ -1851,8 +1883,14 @@ const BEISPIEL: FallInfo = {
     'lead.einladungsweg': 'mail', 'lead.danke-moeglich': true, 'lead.netzwerken-schritt': 'qualifizieren', 'lead.kampagnen-ergebnis': 'chance',
     'mandat.ampel': 'gruen', 'mandat.health': 80, 'mandat.verlaengerung': 'manuell', 'mandat.verlaengert': false, 'mandat.ampel-mail': 'gruen',
     'event.mix-erreicht': true, 'event.quote-48h': 90,
+    // Kunden-Begleitung (22.10., B2) — der Hauptweg der Begleit-Vorlagen, erfunden.
+    'fall.status': 'laeuft', 'fall.phase': 'Umsetzung', 'fall.wartet-kunde': 1, 'fall.bestaetigung-offen': true, 'fall.willkommen-offen': true, 'fall.report-faellig': true,
+    'fall.puls-kritisch': true, 'fall.puls-gespraech-offen': false,
   },
-  platzhalter: { 'kontakt.anrede': 'Sie', 'kontakt.vorname': 'Erika', 'kontakt.nachname': 'Beispiel', 'firma.name': 'Beispiel GmbH', 'deal.titel': 'Beispiel-Deal', 'mandat.titel': 'Beispiel-Mandat', 'event.titel': 'Beispiel-Abend', 'kampagne.titel': 'Beispiel-Kampagne' },
+  platzhalter: {
+    'kontakt.anrede': 'Sie', 'kontakt.vorname': 'Erika', 'kontakt.nachname': 'Beispiel', 'firma.name': 'Beispiel GmbH', 'deal.titel': 'Beispiel-Deal', 'mandat.titel': 'Beispiel-Mandat', 'event.titel': 'Beispiel-Abend', 'kampagne.titel': 'Beispiel-Kampagne',
+    'kunde.gruss': 'Guten Tag Erika Beispiel', 'fall.phase': 'Umsetzung', 'fall.termin': '2026-11-05',
+  },
   datum: {},
 };
 const BEISPIEL_EMPFAENGER: Empfaenger = { kontaktId: 'c-beispiel', name: 'Erika Beispiel', email: 'erika@example.invalid', telefon: '+49 000 0000000' };
@@ -1912,6 +1950,21 @@ export async function laeufeDesProzesses(prozessId: string): Promise<{ laeufe: i
     stand: d.prozesse[prozessId] ?? null,
     kennzahlen: laufKennzahlen(d.laeufe, prozessId),
   };
+}
+/**
+ * Die Läufe zu EINEM Fall (22.10., B3 — Karte „Begleitung läuft“ in der Akte des Fulfillment-Falls): offene und die der letzten 30 Tage, jüngste zuerst, mit dem
+ * Titel des Prozesses — nur Kennungen, Status, Zahlen (wie `laeufeDesProzesses`). Angezeigt werden höchstens 20, `weitere` zählt den Rest (nie still gekürzt).
+ */
+export async function laeufeDesFalls(fall: { art: string; id: string }, h?: string): Promise<{ laeufe: (import('./lauf-regeln').LaufKurz & { titel: string })[]; weitere: number }> {
+  const [{ laufKurz }, { prozesseLesen }] = await Promise.all([import('./lauf-regeln'), import('./werkstatt-server')]);
+  const [d, pz] = await Promise.all([laeufeLesen(h), prozesseLesen(h)]);
+  const jetzt = new Date().toISOString();
+  const grenze = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const titel = new Map(pz.prozesse.map(p => [p.id, p.entwurf.titel] as const));
+  const offen = (s: ProzessLauf['status']) => s === 'laeuft' || s === 'wartet' || s === 'angehalten' || s === 'fehler';
+  const alle = d.laeufe.filter(l => l.fall.art === fall.art && l.fall.id === fall.id && titel.has(l.prozessId) && (offen(l.status) || (l.ende ?? l.geaendert) >= grenze))
+    .sort((a, b) => (offen(a.status) === offen(b.status) ? (a.start < b.start ? 1 : -1) : offen(a.status) ? -1 : 1));
+  return { laeufe: alle.slice(0, 20).map(l => ({ ...laufKurz(l, jetzt), titel: titel.get(l.prozessId)! })), weitere: Math.max(0, alle.length - 20) };
 }
 export async function laufLesen(id: string): Promise<{ lauf: import('./lauf-regeln').LaufKurz; knoten: ReturnType<typeof import('./lauf-regeln').knotenStand>; schritte: LaufSchritt[]; daten: Record<string, string> } | null> {
   const { laufKurz, knotenStand } = await import('./lauf-regeln');

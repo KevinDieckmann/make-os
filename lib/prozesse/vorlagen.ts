@@ -53,7 +53,9 @@ function stufeVonAblauf(kn: readonly ProzessKnoten[]): KernStufe {
 }
 
 /** Eine Vorlage aus dem Fulfillment als Prozess der Landkarte (Quelle „Vorlage“). Ohne Wurzel: null. */
-export function prozessAusVorlage(v: ProzessVorlage): ProzessDef | null {
+export const prozessAusVorlage = (v: ProzessVorlage): ProzessDef | null => prozessAusVorlageMit(v, false);
+/** Dasselbe mit der Marke der Werkstatt (E4, 22.10.): `inWerkstatt` = das Paket wird in der Werkstatt bearbeitet — der Link führt dorthin. */
+export function prozessAusVorlageMit(v: ProzessVorlage, inWerkstatt: boolean): ProzessDef | null {
   if (!v.knoten.some(k => !k.elternId)) return null;
   if (v.art === 'landkarte') {
     return {
@@ -70,7 +72,8 @@ export function prozessAusVorlage(v: ProzessVorlage): ProzessDef | null {
       steckbrief: { ausloeser: v.zusatz ? 'Zusatzmodul an einem laufenden Fall' : 'Fall startet aus diesem Paket', ...VORLAGEN_STECKBRIEF },
       phasen: paketPhasen(v),
       editor: WEG.fulfillment('prozesse', { e: v.id }),
-      link: { href: WEG.fulfillment('prozesse', { e: v.id }), text: 'Im Editor öffnen' },
+      // E4 (22.10.): ein Paket mit Marke `werkstatt:` bearbeitet nur die Werkstatt.
+      link: inWerkstatt ? { href: WEG.prozesse({ p: v.id, ansicht: 'werkstatt' }), text: 'In der Werkstatt öffnen' } : { href: WEG.fulfillment('prozesse', { e: v.id }), text: 'Im Editor öffnen' },
     };
   }
   return {

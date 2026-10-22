@@ -19,6 +19,7 @@ import { veroeffentlichen } from '../versionen';
 import type { ProzessRechte } from '../rollen';
 import { istVorlageRef, vorlageAusRef, type KgVorlage } from './bau';
 import { vorlageVon } from './bibliothek';
+import { andockenAnwenden, istBegleitProzess } from '../begleitung/andocken';
 
 type K = ProzessKnoten<ProzessForm>;
 
@@ -30,6 +31,11 @@ export interface UebernahmeKontext {
   neueKennung: (praefix: 'pz' | 'fk') => string;
   /** Eigner (Team-Kennung) — gewählt im Fenster; ohne bleibt er offen (der Prozess wird dann nicht aktiv). */
   eigner?: string;
+  /**
+   * „+ Begleit-Prozess“ am Paket (22.10., B3): der übernommene Begleit-Prozess hört nur auf dieses Paket (und optional diesen Schritt) — über die Bedingungen
+   * seines Auslösers (lib/prozesse/begleitung/andocken.ts `andockenAnwenden`). Ob es Paket und Schritt gibt, prüft die Route.
+   */
+  andocken?: { paket: string; knoten?: string };
   pruef?: PruefKontext;
 }
 export type UebernahmeErgebnis =
@@ -112,6 +118,12 @@ export function ausVorlageAnwenden(datei: ProzesseDatei, vorlageId: unknown, kx:
   }
   const rh = mitNeuenKennungen(v.definition, { id: hauptId, neu, teil, uebergabe, eigner: kx.eigner, person: kx.person, jetzt: kx.jetzt, vorlage: v.id });
   hinweise.push(...rh.hinweise);
+  if (kx.andocken) {
+    if (!istBegleitProzess(rh.definition)) return { ok: false, status: 400, fehler: 'Nur Begleit-Prozesse docken an einem Paket an.' };
+    const a = andockenAnwenden(rh.definition, kx.andocken);
+    rh.definition = a.definition;
+    hinweise.push(...a.hinweise);
+  }
   // Prüfen und (wo es geht) veröffentlichen: Teile zuerst — der Hauptprozess sieht sie dann als veröffentlicht.
   let stand: ProzessEintrag[] = [...datei.prozesse];
   const pruef = (): PruefKontext => ({

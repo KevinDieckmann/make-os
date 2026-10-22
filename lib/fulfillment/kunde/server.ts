@@ -37,6 +37,7 @@ import { kundenSicht, kundeTauglich, kundeHinweis, type KundenAnbieter, type Kun
 import { anredeAus, type KundenAnrede } from './bild';
 import { reportZusatz } from './report-zusatz';
 import { kundenGesperrt } from '../prozesse/bausteine';
+import { fallAblauf } from '../prozesse/ablauf-art';
 import { playbookBaustein } from '../prozesse/onboarding';
 import { OB_PLAYBOOK_FORMULAR_ID, fallFreigaben } from '../prozesse/fall';
 import { kundeFristenAnwenden, unterlageDatei, verwaisteDateien, alleTexte } from './fristen';
@@ -200,7 +201,8 @@ export async function sichtFuer(e: { mandat: Mandat; modus: 'voll' | 'puls'; lin
   // 14.10. (Abnahme A3): die Lage folgt dem, was intern hängt — dieselbe Rechnung wie das Cockpit, nur in Worten (die Texte gehen nie hinaus).
   const haengt = fall ? await haengerVon(e.mandat.id, e.heute) : null;
   // Prozesse × Fulfillment (22.10.): ohne Fall die Etappen aus den scharfen Läufen der Werkstatt-Prozesse am Mandat (nur „Dem Kunden zeigen“; wirft nie).
-  const etappen = !fall && e.modus === 'voll' ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(e.mandat.id) : null;
+  // E5: auch für die Akte eines Werkstatt-Prozesses (`fallAblauf`) — ein Fall mit Paket liest weiter nur den Fall (bit-gleich).
+  const etappen = (!fall || fallAblauf(fall)) && e.modus === 'voll' ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(e.mandat.id) : null;
   return kundenSicht({
     modus: e.modus, heute: e.heute, mandat: e.mandat, paket: paketName(e.mandat, e.crm, fall, e.vorlagen), fall, bausteine: e.vorlagen.bausteine, marken: e.vorlagen.marken, rituale: e.vorlagen.rituale,
     kunde: e.kunde, rechte, standVon, datenschutz: await hinweisLaden(u.anrede), uploadFrei: frei,
@@ -445,7 +447,10 @@ export async function formularIntern(roh: { mandatId?: unknown; bausteinId?: unk
   }, standVon), wer(person));
   if (!r.ok) return nein(r.status, r.fehler, r.konflikte ? { konflikte: r.konflikte } : {});
   const st = formularStandVon(r.datei, x.m.id, b.id);
-  return ok({ stand: st ? standVon(st) : 'neu', prozent: formularProzent(b, st) });
+  const prozent = formularProzent(b, st);
+  // Gemeinsam im Kick-off gefüllt zählt wie geliefert (22.10., B1).
+  if (prozent === 100) await geliefert(x.m, 'formular', b.id, x.fall?.vorlageId);
+  return ok({ stand: st ? standVon(st) : 'neu', prozent });
 }
 
 /** Antworten exportieren (das Playbook gehört dem Kunden, Konzept 5.4) — CSV oder PDF; nur kundentaugliche Formulare. */
@@ -549,7 +554,21 @@ export async function formularKunde(z: Zugriff, roh: Record<string, unknown>, je
   }, { art: 'system' });
   if (!r.ok) return nein(r.status, r.fehler, r.status === 409 ? { neuLaden: true } : {});
   const st = formularStandVon(r.datei, z.mandat.id, b.id);
-  return ok({ stand: st ? standVon(st) : 'neu', prozent: formularProzent(b, st) });
+  const prozent = formularProzent(b, st);
+  if (prozent === 100) await geliefert(z.mandat, 'formular', b.id, fall?.vorlageId);
+  return ok({ stand: st ? standVon(st) : 'neu', prozent });
+}
+
+/**
+ * Der Kunde hat geliefert (22.10., Begleit-Prozesse B1): Formular vollständig, Unterlage hochgeladen, Puls beantwortet → Ereignis `kunde-geliefert` (nur Kennungen) —
+ * beendet z. B. die Erinnerungskette „Unterlagen fehlen“. Nach dem Speichern, wirft nie.
+ */
+/** Das Paket des Falls (roh gelesen — nie `fallLesen`, Regel „Kurzfassungen lesen roh“). */
+async function paketDesFalls(mandatId: string): Promise<string | undefined> {
+  try { return (await fulfillmentLesen('faelle')).faelle[mandatId]?.vorlageId; } catch { return undefined; }
+}
+async function geliefert(m: Mandat, was: 'formular' | 'unterlage' | 'puls', eintragId: string, vorlageId?: string): Promise<void> {
+  await import('@/lib/ereignisse/quellen').then(q => q.kundeGeliefertEreignis(m, was, eintragId, vorlageId)).catch(() => 0);
 }
 
 /** Upload über den Link — Meldung NEUTRAL an die zuständige Person (ohne Dateinamen). */
@@ -558,6 +577,8 @@ export async function uploadKunde(z: Zugriff, nameRoh: string, bytes: Buffer, zw
   if (!p.ok) return nein(p.status, p.fehler);
   const r = await unterlageAblegen({ mandatId: z.mandat.id, name: p.name, typ: p.typ, bytes: p.bytes, herkunft: 'kunde', linkId: z.link.id, zweck: zweck === 'register' || zweck === 'playbook' ? zweck : 'sonstig' });
   if (r.status !== 200) return r;
+  const uid = (r.body.unterlage as { id?: string } | undefined)?.id;
+  if (uid) await geliefert(z.mandat, 'unterlage', uid, await paketDesFalls(z.mandat.id));
   try {
     const { melde } = await import('@/lib/meldungen/melden');
     const { WEG } = await import('@/lib/wege');
@@ -584,6 +605,7 @@ export async function pulsKunde(z: Zugriff, roh: Record<string, unknown>, jetzt 
   }, { art: 'system' });
   if (!r.ok) return nein(r.status === 404 ? 409 : r.status, r.fehler);
   if (neu && pulsStufe(neu.wert, z.vorlagen.einstellungen.pulsSchwelle) === 'kritisch') await pulsAufmerksamkeit(z.mandat, neu, heute).catch(() => { /* Morgenlauf holt es nach */ });
+  if (neu) await geliefert(z.mandat, 'puls', neu.id, await paketDesFalls(z.mandat.id));
   return ok({ danke: true });
 }
 

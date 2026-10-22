@@ -125,6 +125,10 @@ export function grenzenPruefen<A extends FulfillmentArt>(art: A, d: FulfillmentD
       ...v.bausteine.map(b => ueber(`Fragen in „${b.titel}“`, b.fragen?.length ?? 0, GRENZEN.fragenJeFormular)),
       ...v.bausteine.map(b => ueber(`Text von „${b.titel}“`, b.text?.length ?? 0, GRENZEN.text)),
       ...v.bausteine.map(b => ueber(`„Siehe auch“ von „${b.titel}“`, b.sieheAuch?.length ?? 0, GRENZEN.sieheAuch)),
+      // Entwürfe der Werkstatt (22.10., E2): je Paket höchstens einer, mit denselben Grenzen wie ein Paket.
+      ueber('Entwürfe', Object.keys(v.entwuerfe ?? {}).length, GRENZEN.vorlagen),
+      ...Object.values(v.entwuerfe ?? {}).map(e => ueber(`Knoten im Entwurf von „${e.vorlage.titel}“`, e.vorlage.knoten.length, GRENZEN.knotenJeVorlage)),
+      ...Object.values(v.entwuerfe ?? {}).map(e => ueber(`Papierkorb im Entwurf von „${e.vorlage.titel}“`, e.vorlage.papierkorb?.length ?? 0, GRENZEN.papierkorbJeVorlage)),
     );
   }
   if (art === 'faelle') {

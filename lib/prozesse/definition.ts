@@ -245,7 +245,9 @@ export const AUSLOESER_ARTEN = ['ereignis', 'zeitplan', 'datum', 'hand', 'webhoo
 export type LoopArt = 'morgen' | 'woche' | 'rueckblick';
 export const LOOP_ARTEN = ['morgen', 'woche', 'rueckblick'] as const satisfies readonly LoopArt[];
 /** Datumsfelder am Fall für „n Tage vor/nach …“ (Punkt 34 rechnet sie in Etappe C über die vorhandenen Fristen-Leser). */
-export type DatumsFeld = 'mandat.kuendigungsfrist' | 'mandat.review' | 'mandat.ende' | 'mandat.start' | 'deal.entscheidung' | 'angebot.gueltig-bis' | 'rechnung.faellig' | 'event.datum' | 'lead.wiedervorlage';
+export type DatumsFeld = 'mandat.kuendigungsfrist' | 'mandat.review' | 'mandat.ende' | 'mandat.start' | 'deal.entscheidung' | 'angebot.gueltig-bis' | 'rechnung.faellig' | 'event.datum' | 'lead.wiedervorlage'
+  /** Begleit-Prozesse am Fall (22.10., B1): der nächste Termin mit dem Kunden (Kick-off, Review …) — aus DERSELBEN Rechnung wie das Cockpit (`naechsterFallTermin`). */
+  | 'fall.termin';
 /**
  * Ein bekanntes Feld des Webhook-Körpers (Schema am Auslöser): nur diese Felder werden angenommen, der Rest verworfen. Alles Eingehende ist fremder Text
  * (`fremd()`), auch Kennungen — Weg, Empfänger und Beträge entscheidet es nie (Punkt 56, Etappe C).

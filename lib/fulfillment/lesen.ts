@@ -135,6 +135,11 @@ const rolle = (o: O): Rolle | null => {
   const i = id(o.id), titel = s(o.titel);
   return i && titel ? sauber<Rolle>({ id: i, titel, aufgabe: s(o.aufgabe) }) : null;
 };
+/**
+ * Die Teile des Vorlagen-Säuberers für den Säuberer der Werkstatt (lib/prozesse/bestand.ts, 22.10. — Fulfillment in die Werkstatt, Etappe 1): EINE Regel je
+ * Feld, damit ein Paket, das die Werkstatt öffnet und wieder speichert, nichts verliert. Reine Weitergabe — das Verhalten hier bleibt, wie es ist.
+ */
+export { knoten as vorlagenKnotenAus, uebergang as uebergangAus, freigabepunkt as freigabepunktAus, rolle as rolleAus, papierkorbEintrag as papierkorbEintragAus };
 export function vorlageAus(o: O): ProzessVorlage | null {
   const i = id(o.id), art = wahl(o.art, ['landkarte', 'paket', 'ablauf'] as const), titel = s(o.titel);
   if (!i || !art || !titel) return null;
@@ -240,7 +245,19 @@ export function vorlagenAus(roh: unknown): VorlagenDatei {
     version: n(o.version) ?? FULFILLMENT_VERSION,
     prozesse: liste(o.prozesse, vorlageAus), bausteine: mitVerweisen, rituale: liste(o.rituale, ritual),
     zuordnung, agentZusatz, einstellungen: einstellungenAus(o.einstellungen), importLaeufe: liste(o.importLaeufe, importLauf), marken: textMap(o.marken),
+    ...entwuerfeAus(o.entwuerfe),
   };
+}
+/** Entwürfe der Werkstatt (22.10., E2): nur Paket-Fassungen mit derselben Kennung wie ihr Schlüssel; ohne Entwurf fehlt das Feld ganz (bit-gleich wie vorher). */
+function entwuerfeAus(v: unknown): Pick<VorlagenDatei, 'entwuerfe'> {
+  const raus: NonNullable<VorlagenDatei['entwuerfe']> = {};
+  for (const [k, w] of Object.entries(obj(v) ?? {})) {
+    const e = obj(w); const vorlage = e && obj(e.vorlage) ? vorlageAus(e.vorlage as O) : null;
+    const basisFassung = n(e?.basisFassung), basisStand = s(e?.basisStand), am = s(e?.am);
+    if (!ID.test(k) || !vorlage || vorlage.art !== 'paket' || vorlage.id !== k || basisFassung === undefined || !basisStand || !am) continue;
+    raus[k] = { vorlage, basisFassung, basisStand, am, von: s(e?.von) ?? '' };
+  }
+  return Object.keys(raus).length ? { entwuerfe: raus } : {};
 }
 
 // ── Fälle `fulfillment-faelle--<h>` ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -340,6 +357,8 @@ export function fallAus(o: O): Fall | null {
     phasenVonHand: o.phasenVonHand === true ? true : undefined,
     zusaetze: (() => { const z = liste(o.zusaetze, fallZusatz).filter((x, i, l) => l.findIndex(y => y.vorlageId === x.vorlageId) === i); return z.length ? z : undefined; })(),
     ohneOnboarding: o.ohneOnboarding === true ? true : undefined,
+    // E5 (22.10.): Akte eines Mandats mit Werkstatt-Prozess — nur die Form `{ art: 'prozess', prozessId: pz-… }`, sonst fällt das Feld weg.
+    ablauf: (() => { const a = obj(o.ablauf); const pid = s(a?.prozessId); return a?.art === 'prozess' && pid && /^pz-[0-9a-f-]{36}$/.test(pid) ? { art: 'prozess' as const, prozessId: pid } : undefined; })(),
   });
 }
 export const leerFaelle = (): FaelleDatei => ({ version: FULFILLMENT_VERSION, faelle: {} });

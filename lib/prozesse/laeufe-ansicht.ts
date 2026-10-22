@@ -59,6 +59,25 @@ export const SCHRITT_NAME: Readonly<Record<SchrittStatus, string>> = {
   laeuft: 'läuft', wartet: 'wartet', erledigt: 'gelaufen', uebersprungen: 'übersprungen', fehler: 'Fehler', abgelaufen: 'abgelaufen', abgebrochen: 'abgebrochen', wuerde: 'würde laufen', freigabe: 'hätte Freigabe gebraucht',
 };
 
+/**
+ * Worauf ein Lauf wartet — ein Satz (22.10., B3 „Begleitung läuft“ in der Akte): Aufgabe, Freigabe im Stapel, Ereignis (mit Namen), Datum/Zeit (mit „bis“), Teil-Lauf.
+ * Rein, nur aus dem Lauf (keine Inhalte).
+ */
+export function wartetSatz(w: Pick<LaufWarten, 'art' | 'bis' | 'ereignis'> | undefined, ereignisName: (e: string) => string = e => e): string | null {
+  if (!w) return null;
+  const bis = w.bis ? ` (bis ${zeitText(w.bis)})` : '';
+  switch (w.art) {
+    case 'aufgabe': return 'wartet auf eine Aufgabe';
+    case 'freigabe': return `wartet auf eine Freigabe im Stapel${bis}`;
+    case 'ereignis': return `wartet auf „${w.ereignis ? ereignisName(w.ereignis) : 'ein Ereignis'}“${bis}`;
+    case 'zeit': case 'datum': return `wartet${w.bis ? ` bis ${zeitText(w.bis)}` : ''}`;
+    case 'teilprozess': return 'wartet auf einen Teilprozess';
+    case 'fenster': return `wartet auf das nächste Zeitfenster${bis}`;
+    case 'fehler': return `wartet nach einem Fehler${bis}`;
+    default: return 'wartet';
+  }
+}
+
 /** Die Stufe einer Marke am Knoten (Farbe nie allein — dazu Symbol und Wort). Nicht erreichte Knoten haben keine Marke (grau). */
 export type MarkenStufe = 'gelaufen' | 'laeuft' | 'wartet' | 'fehler' | 'uebersprungen' | 'abgebrochen';
 export const MARKEN_BEDEUTUNG: Readonly<Record<MarkenStufe, Bedeutung>> = { gelaufen: 'gut', laeuft: 'info', wartet: 'achtung', fehler: 'kritisch', uebersprungen: 'neutral', abgebrochen: 'neutral' };

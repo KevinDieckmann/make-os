@@ -4,6 +4,7 @@
 //      ?lauf=pl-…           ein Lauf: je Knoten Status, Zeitpunkte, Runden, Kosten, Kennungen der Wirkungen; dazu die Schritte in Reihenfolge (Log-Baum)
 //      ?lauf=pl-…&inhalte=1 die Inhalte LIVE mit den Rechten der Person (22.10.): Fall (Art. 18 ausgeblendet), Aufgaben (Sicht der Person), Vorschläge (nur die
 //                           eigenen — Agenten-Texte bleiben im Stapel, hier nur Titel und Link), Teil-Läufe (Status) — Lese-Protokoll „firmen“
+//      ?fall=<art>:<id>     die Läufe zu EINEM Fall (22.10., B3 — Karte „Begleitung läuft“ in der Akte des Fulfillment-Falls): offene + letzte 30 Tage, Titel des Prozesses
 //      ?heute=1             „Prozesse heute: n gelaufen, m warten“ (Punkt 69)
 //      (ohne)               je Prozess die Zahlen (offen, wartend, Fehler, zurückgehalten)
 // POST { aktion }           starten (Auslöser „von Hand“, `anfrageId`, optional `fall`, `erneut` + `grund`) · abbrechen (`lauf`, `grund`) · erneut (`lauf`, „erneut ab
@@ -48,6 +49,13 @@ export async function GET(req: Request) {
     }
     const r = await S.laufLesen(lauf);
     return r ? NextResponse.json({ ok: true, ...r }) : nein(404, 'Diesen Lauf gibt es nicht.');
+  }
+  const fall = q.get('fall');
+  if (fall) {
+    const i = fall.indexOf(':');
+    const art = i > 0 ? fall.slice(0, i) : '', id = i > 0 ? fall.slice(i + 1) : '';
+    if (!(FALL_ART_IDS as readonly string[]).includes(art) || art === 'keiner' || !FALL_KENNUNG.test(id)) return nein(400, 'Welcher Fall? (?fall=mandat:<id>)');
+    return NextResponse.json({ ok: true, ...(await S.laeufeDesFalls({ art, id }, z.haushalt)) });
   }
   if (prozess) {
     if (!PROZESS_KENNUNG.test(prozess)) return nein(400, 'Welcher Prozess? (?prozess=pz-…)');

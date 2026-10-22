@@ -60,6 +60,19 @@ export interface VorlagenDatei {
   version: number; prozesse: ProzessVorlage[]; bausteine: Baustein[]; rituale: RitualVorlage[];
   zuordnung: Record<string, { vorlageId: string }>; agentZusatz: Partial<Record<AnalyseAgentId, string>>;
   einstellungen: FulfillmentEinstellungen; importLaeufe: ImportLauf[]; marken: Record<string, string>;
+  /**
+   * Entwürfe der Werkstatt je Paket (22.10., Fulfillment in die Werkstatt E2 — Weg A: die Werkstatt ist der Editor, EINE Wahrheit bleibt dieser Bestand). Ein Entwurf
+   * läuft nie: neue Fälle starten weiter aus dem Paket, bis „Veröffentlichen“ ihn als neue Fassung ins Paket schreibt (E3). Fehlt das Feld: keine Entwürfe.
+   * Geschrieben NUR über lib/prozesse/fulfillment-entwurf.ts. Ein älterer Stand verwirft offene Entwürfe beim nächsten Schreiben (veröffentlichte Fassungen bleiben).
+   */
+  entwuerfe?: Record<string, PaketEntwurf>;
+}
+/** Ein Entwurf der Werkstatt für ein Paket: die ganze Fassung (wie eine Paket-Vorlage) und worauf er aufsetzt. */
+export interface PaketEntwurf {
+  vorlage: ProzessVorlage;
+  /** Fassung und Stand (Fingerabdruck) des Pakets, als der Entwurf begann — Veröffentlichen prüft, ob das Paket inzwischen anders ist (409). */
+  basisFassung: number; basisStand: string;
+  am: string; von: string;
 }
 
 export type KnotenStatus = 'offen' | 'in_arbeit' | 'wartet_kunde' | 'erledigt' | 'entfaellt';
@@ -120,6 +133,11 @@ export interface Fall {
   zusaetze?: FallZusatz[];
   /** Gestartet aus einem Zusatzmodul ohne laufenden Fall (17.10. spät): ohne die acht Onboarding-Schritte — der Fall läuft sofort (`onboardingStand` leer). */
   ohneOnboarding?: true;
+  /**
+   * E5 (22.10., Entscheidung F3): die Akte eines Mandats, dessen Produkt auf einen Prozess der WERKSTATT zeigt — angelegt beim Start des scharfen Laufs, nur mit dem
+   * Onboarding (keine Paket-Knoten); `vorlageId` = `prozessId`. Fehlt: ein Fall mit Paket wie bisher. Lesen nur über `fallAblauf` (findet ihn auch ohne das Feld).
+   */
+  ablauf?: { art: 'prozess'; prozessId: string };
 }
 export interface FaelleDatei { version: number; faelle: Record<string, Fall> }
 

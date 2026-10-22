@@ -45,6 +45,18 @@ export function useLaeufe(prozessId: string): { daten: LaeufeAntwort | null; feh
 }
 
 export const laufHolen = (id: string) => holen<LaufAntwort>(mitSpace(`lauf=${encodeURIComponent(id)}`));
+
+/** B3 (22.10.): die Läufe zu EINEM Fall (Karte „Begleitung läuft“ in der Akte) — offene + letzte 30 Tage, mit dem Titel des Prozesses. */
+export interface FallLaeufeAntwort { ok: true; laeufe: (LaufKurz & { titel: string })[]; weitere: number }
+export function useFallLaeufe(art: string, id: string): FallLaeufeAntwort | null {
+  const [daten, setDaten] = useState<FallLaeufeAntwort | null>(null);
+  useEffect(() => {
+    let an = true;
+    void holen<FallLaeufeAntwort>(mitSpace(`fall=${encodeURIComponent(`${art}:${id}`)}`)).then(r => { if (an) setDaten(r.daten); });
+    return () => { an = false; };
+  }, [art, id]);
+  return daten;
+}
 export const inhalteHolen = (id: string) => holen<InhalteAntwort>(mitSpace(`lauf=${encodeURIComponent(id)}&inhalte=1`));
 
 let verweise: { am: number; v: Promise<CrmVerweise | null> } | null = null;

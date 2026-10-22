@@ -6,7 +6,10 @@
 // Senden aus der letzten Antwort). Rechnet nichts — Regeln stehen in lib/prozesse/*.
 
 import { useCallback, useEffect, useState } from 'react';
-import type { Befund, ProzessEintrag, ProzessVersion } from '@/lib/prozesse/definition';
+import type { Befund, ProzessEintrag, ProzessVersion, ProzessVorlage } from '@/lib/prozesse/definition';
+import type { BibliothekKurz } from '@/lib/prozesse/fulfillment-modus';
+import type { LaufenderKunde } from '@/lib/prozesse/fulfillment-modus-server';
+import type { BegleitAndock } from '@/lib/prozesse/begleitung/andocken';
 import type { ProzessKurz } from '@/lib/prozesse/fulfillment-bruecke';
 import type { ProzessRechte } from '@/lib/prozesse/rollen';
 import type { KatalogEintrag, KatalogKategorie } from '@/lib/prozesse/baustein-katalog';
@@ -50,6 +53,24 @@ function useAbruf<T>(url: string | null): { daten: T | null; fehler: string | nu
 export const useWerkstattListe = () => useAbruf<ListenAntwort>(WERKSTATT_QUELLE);
 export const useKatalog = () => useAbruf<KatalogAntwort>(KATALOG_QUELLE);
 export const useProzess = (id: string) => useAbruf<ProzessAntwort>(`${WERKSTATT_QUELLE}&id=${encodeURIComponent(id)}`);
+
+/** Ein Paket des Fulfillments für die Werkstatt (22.10., E1/E2; GET `?paket=&bibliothek=1`, lib/prozesse/fulfillment-modus-server.ts). */
+export interface PaketAntwort {
+  ok: true; rechte: ProzessRechte; paket: ProzessVorlage; stand: string; befunde: Befund[]; bibliothek: BibliothekKurz[]; laufende: number;
+  produkte: { id: string; name: string }[]; editor: string;
+  /** Darf die Person das Paket bearbeiten (volle Mitglieder, wie der Editor des Fulfillments)? */
+  bearbeiten: boolean;
+  /** E2: der Entwurf (die ganze Fassung) — null ohne; `arbeitsStand` = Stand der Fassung, an der die Werkstatt arbeitet. */
+  entwurf: { vorlage: ProzessVorlage; basisFassung: number; am: string; von: string; paketGeaendert: boolean } | null;
+  arbeitsStand: string;
+  /** Die ganze Bibliothek in Kürze (Baustein hinzufügen). */
+  bibliothekAlle?: BibliothekKurz[];
+  /** E3: die laufenden Kunden mit ihrer Änderung (übernehmen je Kunde per Klick). */
+  kunden: LaufenderKunde[];
+  /** B3: die Begleit-Prozesse, die an diesem Paket andocken (über die Bedingungen ihres Auslösers). */
+  begleitung?: BegleitAndock[];
+}
+export const usePaket = (id: string) => useAbruf<PaketAntwort>(`${WERKSTATT_QUELLE}&paket=${encodeURIComponent(id)}&bibliothek=1`);
 
 /** Eine Version ganz (Ansehen) bzw. der Vergleich zweier Fassungen (Nummer oder „entwurf“). */
 export const versionHolen = (id: string, nr: number) => holen<{ ok: true; version: ProzessVersion }>(`${WERKSTATT_QUELLE}&id=${encodeURIComponent(id)}&version=${nr}`);

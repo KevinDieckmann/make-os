@@ -12,12 +12,13 @@ import {
   type AgentSchritt, type Ausloeser, type Bedingung, type Befund, type CrmAbfrage, type EndeAngabe, type ErneutAb, type KatalogBezug, type KnotenLage,
   type MaskenWert, type ModellWahl, type NotizZettel, type PfeilText, type ProzessDefinition, type ProzessEintrag, type ProzessForm, type ProzessKnoten,
   type ProzessSchnittstelle, type ProzessStatus, type ProzessVersion, type ProzesseDatei, type RautenRegel, type SchleifeRegel, type SchlossMarke,
-  type TeilprozessAufruf, type VertragFeld, type WartenRegel, type WebhookDatei, type WebhookEingang, type WebhookEintrag, type WebhookFeld, type Zweige,
+  type TeilprozessAufruf, type VertragFeld, type VorlagenPapierkorb, type WartenRegel, type WebhookDatei, type WebhookEingang, type WebhookEintrag, type WebhookFeld, type Zweige,
 } from './definition';
 import { definitionPruefen, aktivBefunde, laufFremd, sperrtSpeichern, sperrtVeroeffentlichen, type PruefKontext } from './definition-pruefen';
 import { schlossSetzen } from './schloss';
 import { veroeffentlichen, versionAlsEntwurf } from './versionen';
 import { oeffentlichModus, vertragAus } from './agent-schritt';
+import { freigabepunktAus, papierkorbEintragAus, rolleAus, uebergangAus, vorlagenKnotenAus } from '@/lib/fulfillment/lesen';
 import type { ProzessRechte } from './rollen';
 
 type O = Record<string, unknown>;
@@ -174,7 +175,20 @@ export function knotenAus(o: O): K | null {
     katalog: katalog(o.katalog), ausloeser: ausloeser(o.ausloeser), agent: agent(o.agent), raute: raute(o.raute), warten: warten(o.warten),
     schleife: schleife(o.schleife), teilprozess: teilprozess(o.teilprozess), ende: ende(o.ende), schloss: schloss(o.schloss),
     bahn: wahl(o.bahn, BAHNEN), abfrage: abfrage(o.abfrage), erneut: erneut(o.erneut),
+    // Fulfillment in die Werkstatt (22.10., Etappe 1): die Felder der Paket-Vorlagen, die nur das Fulfillment kennt — mit DERSELBEN Regel gesäubert
+    // (lib/fulfillment/lesen.ts `vorlagenKnotenAus`), damit ein Paket, das die Werkstatt öffnet und speichert, nichts verliert. Werkstatt-Prozesse tragen
+    // sie nicht; dann fehlen sie wie bisher (Gold: tests/prozesse-ff-werkstatt-e1.test.ts gegen den Stand 451bd6fd).
+    ...fulfillmentKnotenFelder(o),
   });
+}
+/** Die Knoten-Felder, die nur Paket-Vorlagen des Fulfillments tragen (Landkarte, Abläufe, Import) — gesäubert wie im Fulfillment-Bestand. */
+const FF_KNOTEN_FELDER = ['zone', 'kreislauf', 'ort', 'verweis', 'art', 'optional', 'ausgang', 'original', 'beleg'] as const satisfies readonly (keyof ProzessKnoten)[];
+function fulfillmentKnotenFelder(o: O): Partial<K> {
+  const ff = vorlagenKnotenAus(o);
+  if (!ff) return {};
+  const raus: Record<string, unknown> = {};
+  for (const f of FF_KNOTEN_FELDER) if (ff[f] !== undefined) raus[f] = ff[f];
+  return raus as Partial<K>;
 }
 const zettel = (o: O): NotizZettel | null => {
   const zid = id(o.id), text = typeof o.text === 'string' ? o.text : undefined, pos = lage(o.pos);
@@ -192,8 +206,9 @@ const schnittstelle = (v: unknown): ProzessSchnittstelle | undefined => {
 const herkunft = (v: unknown): ProzessDefinition['herkunft'] | undefined => {
   const o = obj(v); const art = wahl(o?.art, ['muster', 'import', 'hand', 'demo'] as const);
   if (!o || !art) return undefined;
-  const q = texte(o.quelleIds).filter(x => ID.test(x));
-  return sauber<NonNullable<ProzessDefinition['herkunft']>>({ art, quelleIds: q.length ? q : undefined, am: typeof o.am === 'string' ? o.am.slice(0, 40) : '' });
+  // Quellen und Datei/Importlauf wie im Fulfillment-Bestand (22.10., Etappe 1: ein importiertes Paket trägt freie Quellangaben — die Werkstatt verliert sie nie).
+  const q = texte(o.quelleIds);
+  return sauber<NonNullable<ProzessDefinition['herkunft']>>({ art, quelleIds: q.length ? q : undefined, am: typeof o.am === 'string' ? o.am.slice(0, 40) : '', datei: s(o.datei), importLauf: s(o.importLauf) });
 };
 
 /** Eine Definition säubern (rein) — Art immer „paket“, Listen nie gekürzt. null = unlesbar. */
@@ -201,15 +216,22 @@ export function definitionAus(o: O): ProzessDefinition | null {
   const i = id(o.id), titel = typeof o.titel === 'string' ? o.titel : undefined;
   if (!i || titel === undefined) return null;
   const z = liste(o.zettel, zettel);
+  const zh = texte(o.zeichenhinweise);
+  const pk = liste(o.papierkorb, papierkorbEintragAus) as unknown as VorlagenPapierkorb<ProzessForm>[];
   return sauber<ProzessDefinition>({
     id: i, art: 'paket', titel, beschreibung: s(o.beschreibung),
-    knoten: liste(o.knoten, knotenAus), uebergaenge: [], freigaben: [], rollen: [],
+    knoten: liste(o.knoten, knotenAus), uebergaenge: liste(o.uebergaenge, uebergangAus), freigaben: liste(o.freigaben, freigabepunktAus), rollen: liste(o.rollen, rolleAus),
     fassung: n(o.fassung) ?? 1, geaendert: s(o.geaendert) ?? '', geaendertVon: s(o.geaendertVon) ?? '',
     bereich: wahl(o.bereich, BEREICH_IDS), fallArt: wahl(o.fallArt, FALL_ART_IDS),
     eigner: typeof o.eigner === 'string' && TEAM_ID.test(o.eigner) ? o.eigner : undefined,
     laeuftAls: typeof o.laeuftAls === 'string' && PERSON.test(o.laeuftAls) ? o.laeuftAls : undefined,
     startKriterium: s(o.startKriterium), endKriterium: s(o.endKriterium), schnittstelle: schnittstelle(o.schnittstelle),
     zettel: z.length ? z : undefined, herkunft: herkunft(o.herkunft),
+    // Fulfillment in die Werkstatt (22.10., Etappe 1): was nur Paket-Vorlagen tragen — Abstimmungspunkte, Übergänge, Rollen, Zusatzmodul, Phasen von Hand,
+    // Papierkorb, Hinweise, Ablauf-Form — mit DERSELBEN Regel wie der Fulfillment-Bestand. Werkstatt-Prozesse hatten hier immer leere Listen (bleibt so).
+    form: wahl(o.form, ['baum', 'trichter', 'fluss', 'zeitachse', 'kreis'] as const), quelleHinweis: s(o.quelleHinweis), vorbehalt: s(o.vorbehalt),
+    zeichenhinweise: zh.length ? zh : undefined, phasenVonHand: o.phasenVonHand === true ? true : undefined, papierkorb: pk.length ? pk : undefined,
+    zusatz: o.zusatz === true ? true : undefined,
   });
 }
 const version = (o: O): ProzessVersion | null => {

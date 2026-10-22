@@ -24,6 +24,12 @@
 // Prozesse × Fulfillment (22.10., Produkt → Prozess):
 //   zusatz-gebucht         CRM-Schreibweg (`crmDiff` über `mandate[].zusatz`): ein neues Zusatzmodul an einem BESTEHENDEN Mandat — Bezug Mandat + Produkt
 //                          (`leistungId`); beim Anlegen eines Mandats kommt nur „mandat-angelegt“ (der Motor liest Haupt- und Zusatzprodukte dann selbst)
+// Begleit-Prozesse am Fall (22.10., Fulfillment in die Werkstatt B1) — alle Bereich Business, Bezug Mandat (+ Paket `vorlageId`), nur Kennungen:
+//   fall-phase             nach dem Schreiben eines Falls: eine Phase wird „jetzt“ (Stufe `begonnen`) bzw. „fertig“ (`abgeschlossen`) — `phasenStaende` (regeln.ts)
+//   fall-wartet-kunde      nach dem Schreiben eines Falls: ein Schritt des Kunden wird aktuell (`aktiveKnoten`) bzw. steht neu auf „wartet auf Kunde“
+//   abstimmung-bestaetigt  nach dem Schreiben eines Falls: eine Bestätigung (F0 …) ist neu gegeben — Bezug `freigabeId`
+//   fall-haengt            Morgenlauf: ein Hänger des Cockpits (`wasHaengt` — Willkommen-Uhr, Bestätigung, wartet, überfällig, Puls, Report), Stufe = Art, je Hänger einmal
+//   kunde-geliefert        Kunden-Link bzw. Formular im Kick-off: Formular vollständig (Stufe `formular`), Unterlage hochgeladen (`unterlage`), Puls beantwortet (`puls`)
 
 import type { SkillEreignis } from '@/lib/agenten/typen';
 
@@ -61,6 +67,9 @@ export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
   'mandat-angelegt': 'Mandat angelegt', 'mandat-beendet': 'Mandat beendet', 'rechnung-gestellt': 'Rechnung gestellt',
   'fall-schritt-erledigt': 'Schritt im Fall erledigt', 'antwort-gesendet': 'Antwort gesendet', 'followup-erledigt': 'Follow-up erledigt', 'ziel-erreicht': 'Ziel erreicht',
   'zusatz-gebucht': 'Zusatzmodul gebucht',
+  // ── Begleit-Prozesse am Fall (22.10., B1 — Quellen in ./quellen.ts: `fallEreignisse`, `fallHaengtEreignisse`, `kundeGeliefertEreignis`) ──
+  'fall-phase': 'Phase im Fall begonnen bzw. abgeschlossen', 'fall-wartet-kunde': 'Schritt wartet auf den Kunden', 'abstimmung-bestaetigt': 'Bestätigung im Fall gegeben',
+  'fall-haengt': 'Im Fall hängt etwas', 'kunde-geliefert': 'Kunde hat geliefert',
   // ── Kundengewinnung (22.10., E2/E3/E5/E6/E7/E10/E11 — Quellen in ./quellen-kundengewinnung.ts) ──
   ...EREIGNIS_NAME_KUNDENGEWINNUNG,
 };
@@ -71,6 +80,8 @@ export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'ne
   'termin-vorbei', 'mandat-angelegt', 'mandat-beendet', 'rechnung-gestellt', 'fall-schritt-erledigt', 'antwort-gesendet', 'followup-erledigt', 'ziel-erreicht',
   // Prozesse × Fulfillment (22.10.)
   'zusatz-gebucht',
+  // Begleit-Prozesse am Fall (22.10., B1)
+  'fall-phase', 'fall-wartet-kunde', 'abstimmung-bestaetigt', 'fall-haengt', 'kunde-geliefert',
   // Kundengewinnung (22.10.): ein eigener Block — jede Art hat ihre Quelle in ./quellen-kundengewinnung.ts.
   ...EREIGNISSE_KUNDENGEWINNUNG];
 /** Arten, die nur intern etwas anstoßen (kein Skill-Auslöser). */

@@ -51,6 +51,9 @@ export const BRAUCHT_TEXT: Readonly<Record<Braucht, string>> = {
   mandate: 'Mandate', fulfillment: 'Fulfillment-Vorlagen (Produkt-Karte)',
 };
 
+/** Die Sammlungen der Galerie „Aus Vorlage anlegen“ (22.10., B2). */
+export type VorlagenGruppe = 'kundengewinnung' | 'begleitung';
+
 /** Ein offener Punkt der Vorlage (fehlender Motor-Teil, fehlende Quelle) — mit den Knoten, an denen die Prüfung deshalb „offen“ meldet. */
 export interface OffenerPunkt { punkt: string; text: string; knoten?: string[] }
 export interface Einstellbar { id: string; label: string; vorgabe: string | number | boolean; knoten?: string; feld?: string }
@@ -78,6 +81,14 @@ export interface KgVorlage {
   demo: string;
   /** Andere Vorlagen, an die übergeben wird (Lichtfaden auf der Landkarte) — ihre Kennungen. */
   uebergabeAn: string[];
+  /** Die Sammlung der Galerie (22.10., B2): fehlt = Kundengewinnung; `begleitung` = „Fulfillment · Kunden-Begleitung“ (lib/prozesse/begleitung/vorlagen.ts). */
+  gruppe?: VorlagenGruppe;
+  /**
+   * Wiedereintritt je Fall (22.10., B3): der Motor startet je Prozess und Fall EINEN Lauf (lib/prozesse/lauf-regeln.ts `starten`), einen weiteren erst nach
+   * `erneutNachTagen` (Läufe › Einstellungen). Begleit-Vorlagen, die je Mandat öfter laufen sollen (jede Etappe, jeder Report), bringen hier ihre Vorgabe mit —
+   * „Aus Vorlage“ setzt sie für volle Mitglieder; fehlt = einmal je Fall.
+   */
+  erneutNachTagen?: number;
   definition: ProzessDefinition;
   teile: KgTeil[];
 }

@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     const r = await fulfillmentAendern('vorlagen', d => {
       // Stand prüfen IN der Sperre: hat sich der Bestand seit der Vorschau geändert, ist die Vorschau veraltet.
       if (b.vorschauId !== vorschauIdVon(text, eintragStand(d))) return { ok: false, status: 409, fehler: 'Seit der Vorschau hat sich die Bibliothek geändert — bitte die Vorschau neu laden. Nichts übernommen.' };
-      return importAnwenden(d, roh, wahl, { person: z.person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), datei, laufId }, () => neueKennung('fk'));
+      return importAnwenden(d, roh, wahl, { person: z.person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), datei, laufId, standVon: eintragStand }, () => neueKennung('fk'));
     }, wer, z.haushalt);
     if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
     const lauf = r.datei.importLaeufe.find(l => l.id === laufId);

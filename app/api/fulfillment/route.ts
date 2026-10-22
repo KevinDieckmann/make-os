@@ -30,6 +30,7 @@ import { localDay } from '@/lib/zeit';
 import { MANDAT_ID, KENNUNG } from '@/lib/fulfillment/grenzen';
 import { istBusinessMandat } from '@/lib/fulfillment/regeln';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { paketeInWerkstatt } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,8 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true, kandidaten, deals, zuordnung: vorlagen.zuordnung, faelle: faelleAnsicht,
       prozesse: vorlagen.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, art: p.art, ...(p.zusatz ? { zusatz: true } : {}) })),
+      // E4 (22.10.): Pakete, die in der Werkstatt bearbeitet werden (Links führen dorthin).
+      werkstatt: paketeInWerkstatt(vorlagen),
     });
   }
   // Welcher Kunde steht wo (je Vorlage, wirksame Fälle).
@@ -97,7 +100,7 @@ export async function GET(req: Request) {
   const st = mitStaenden(vorlagen, eintragStand);
   return NextResponse.json({
     ok: true, inhaber: await istInhaber(z.person), darfBearbeiten: await darfVorlagenBearbeiten(z.person),
-    prozesse: st.prozesse,
+    prozesse: st.prozesse, werkstatt: paketeInWerkstatt(vorlagen),
     // Bibliothek in Kurzform: ohne Langtext und Fragen (die holt `?baustein=`), mit Marken und „steckt in …“.
     bausteine: st.bausteine.map(({ text: _t, fragen, gliederung, ...b }) => ({
       ...b, gliederungAnzahl: gliederung.length, fragenAnzahl: fragen?.length ?? 0, nurIntern: nurIntern(b), rechtOffen: rechtOffen(b), vorVerkaufOffen: vorVerkaufOffen(b, vorlagen),

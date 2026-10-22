@@ -425,11 +425,114 @@ export function fallDiff(vorher: { knoten: readonly { id: string; status: string
   }
   return raus;
 }
-/** Nach dem Schreiben eines Fulfillment-Falls (lib/fulfillment/prozesse/fall-server.ts — die Ausführung bleibt unberührt). Wirft nie. */
-export async function fallEreignisse(vorher: Parameters<typeof fallDiff>[0], nachher: Parameters<typeof fallDiff>[1], m: Parameters<typeof fallDiff>[2]): Promise<number> {
+/**
+ * Nach dem Schreiben eines Fulfillment-Falls (lib/fulfillment/prozesse/fall-server.ts — die Ausführung bleibt unberührt). Wirft nie. `wirksam` (22.10., B1): die
+ * Fälle vorher/nachher MIT abgeleitetem Onboarding (`fallWirksam`) — daraus die Begleit-Ereignisse (Phase, wartet auf Kunde, Bestätigung); ohne `wirksam` wie bisher.
+ */
+export async function fallEreignisse(vorher: Parameters<typeof fallDiff>[0], nachher: Parameters<typeof fallDiff>[1], m: Parameters<typeof fallDiff>[2], wirksam?: { vorher: FallFuerBegleitung; nachher: FallFuerBegleitung; heute: string }): Promise<number> {
   try {
     const { zielErreichung } = await import('@/lib/fulfillment/prozesse/wert');
     const l = fallDiff(vorher, nachher, m, e => zielErreichung(e as never));
+    if (wirksam) {
+      const [{ phasenStaende }, { aktiveKnoten }] = await Promise.all([import('@/lib/fulfillment/regeln'), import('@/lib/fulfillment/prozesse/ausfuehrung')]);
+      const r = { phasenStaende, aktiveKnoten };
+      l.push(...fallBegleitDiff(fallBegleitStand(wirksam.vorher, r), fallBegleitStand(wirksam.nachher, r), m, wirksam.heute));
+    }
     return l.length ? (await ereignis(l)).neu : 0;
+  } catch { return 0; }
+}
+
+// ── Begleit-Prozesse am Fall (22.10., Fulfillment in die Werkstatt B1) ────────────────────────────────────────────────────────────────────────────
+// Ereignisse, auf die Begleit-Prozesse der Werkstatt (Lauf-Motor) DANEBEN starten — die Pakete bleiben im Fulfillment-Ausführer. Nur Kennungen; keine zweite
+// Fristenrechnung: Phasen aus `phasenStaende`, aktuelle Schritte aus `aktiveKnoten`, Hänger aus `wasHaengt` (dieselbe Rechnung wie Cockpit und „Heute im Fulfillment“).
+
+export type FallFuerBegleitung = Pick<import('@/lib/fulfillment/typen').Fall, 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm' | 'vorlageId'> & Partial<Pick<import('@/lib/fulfillment/typen').Fall, 'zusaetze'>>;
+/** Was die Begleit-Ereignisse an einem Fall vergleichen (rein gerechnet, nie gespeichert). */
+export interface FallBegleitStand {
+  vorlageId?: string;
+  /** Gegebene Bestätigungen (Kennungen F0 …). */
+  freigaben: readonly string[];
+  /** Phase → Zustand (`phasenStaende`: fertig · jetzt · laeuft · offen). */
+  phasen: ReadonlyMap<string, string>;
+  /** Die aktuellen Schritte (`aktiveKnoten`) und ob der Kunde dran ist. */
+  aktiv: readonly { id: string; kunde: boolean }[];
+  knoten: readonly { id: string; status: string; freigabe?: string }[];
+}
+/** Der Stand eines Falls für die Begleit-Ereignisse (rein) — mit DENSELBEN Regeln wie Reise und Ausführung (hier hereingereicht, damit es rein bleibt). */
+export function fallBegleitStand(f: FallFuerBegleitung, r: { phasenStaende: (f: FallFuerBegleitung) => ReadonlyMap<string, string>; aktiveKnoten: (f: FallFuerBegleitung) => readonly { knoten: { id: string; zustaendig?: string; status: string } }[] }): FallBegleitStand {
+  return {
+    vorlageId: f.vorlageId, freigaben: Object.keys(f.freigaben ?? {}), phasen: r.phasenStaende(f),
+    aktiv: r.aktiveKnoten(f).map(a => ({ id: a.knoten.id, kunde: a.knoten.zustaendig === 'kunde' || a.knoten.status === 'wartet_kunde' })),
+    knoten: f.knoten.map(k => ({ id: k.id, status: k.status, ...(k.freigabe ? { freigabe: k.freigabe } : {}) })),
+  };
+}
+type MandatBasis = { id: string; firmaId?: string; gesellschaft: string; kontaktIds?: readonly string[] };
+const begleitBasis = (m: MandatBasis, vorlageId?: string) => ({
+  bereich: bereichVonGesellschaft(m.gesellschaft as never),
+  bezug: { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}), ...(vorlageId ? { vorlageId } : {}) },
+});
+
+/**
+ * Die Begleit-Ereignisse eines Schreibvorgangs am Fall (rein): Phase „jetzt“ neu → `fall-phase`/begonnen, „fertig“ neu → abgeschlossen; ein Schritt des Kunden wird
+ * aktuell bzw. steht neu auf „wartet auf Kunde“ → `fall-wartet-kunde`; eine Bestätigung ist neu gegeben → `abstimmung-bestaetigt` (an der Phase, die sie trägt).
+ * Kennungen mit dem Tag (Phase, wartet) bzw. je Bestätigung einmal — dieselbe Kennung = dasselbe Ereignis.
+ */
+export function fallBegleitDiff(vorher: FallBegleitStand, nachher: FallBegleitStand, m: MandatBasis, heute: string): EreignisEingabe[] {
+  const { bereich, bezug } = begleitBasis(m, nachher.vorlageId);
+  const raus: EreignisEingabe[] = [];
+  for (const [ph, z] of nachher.phasen) {
+    const war = vorher.phasen.get(ph);
+    const stufe = z === 'jetzt' && war !== 'jetzt' && war !== 'fertig' ? 'begonnen' : z === 'fertig' && war !== 'fertig' ? 'abgeschlossen' : null;
+    if (stufe) raus.push({ id: ereignisKennung('fall', m.id, 'phase', ph, stufe, heute), art: 'fall-phase', quelle: 'fulfillment', bereich, stufe, bezug: { ...bezug, knotenId: ph } });
+  }
+  const warKunde = new Set([...vorher.aktiv.filter(a => a.kunde).map(a => a.id), ...vorher.knoten.filter(k => k.status === 'wartet_kunde').map(k => k.id)]);
+  const jetztKunde = new Set([...nachher.aktiv.filter(a => a.kunde).map(a => a.id), ...nachher.knoten.filter(k => k.status === 'wartet_kunde').map(k => k.id)]);
+  for (const id of jetztKunde) {
+    if (warKunde.has(id)) continue;
+    raus.push({ id: ereignisKennung('fall', m.id, 'kunde', id, heute), art: 'fall-wartet-kunde', quelle: 'fulfillment', bereich, stufe: 'begonnen', bezug: { ...bezug, knotenId: id } });
+  }
+  const gegeben = new Set(vorher.freigaben);
+  for (const f of nachher.freigaben) {
+    if (gegeben.has(f)) continue;
+    const phase = nachher.knoten.find(k => k.freigabe === f)?.id;
+    raus.push({ id: ereignisKennung('fall', m.id, 'freigabe', f), art: 'abstimmung-bestaetigt', quelle: 'fulfillment', bereich, bezug: { ...bezug, freigabeId: f, ...(phase ? { knotenId: phase } : {}) } });
+  }
+  return raus;
+}
+
+/** Ein Hänger des Cockpits, wie ihn die Ereignisse brauchen (nur Kennungen und die Art). */
+export interface HaengerKurz { art: string; knotenId?: string; seit?: string }
+/**
+ * Hänger → `fall-haengt` (rein): je Hänger GENAU einmal — die Kennung trägt Art, Knoten und `seit` (ein neuer Report, eine neue Frist bzw. ein neuer Puls ist ein
+ * neuer Hänger). Stufe = Art des Hängers (willkommen · freigabe · wartet · faellig · puls · report · art14).
+ */
+export function haengerEreignisse(zeilen: readonly { m: MandatBasis; vorlageId?: string; haengt: readonly HaengerKurz[] }[]): EreignisEingabe[] {
+  const raus: EreignisEingabe[] = [];
+  for (const z of zeilen) {
+    const { bereich, bezug } = begleitBasis(z.m, z.vorlageId);
+    for (const h of z.haengt) {
+      raus.push({
+        id: ereignisKennung('fall', z.m.id, 'haengt', h.art, h.knotenId ?? '-', (h.seit ?? '-').slice(0, 10)), art: 'fall-haengt', quelle: 'fulfillment', bereich, stufe: h.art,
+        bezug: { ...bezug, ...(h.knotenId ? { knotenId: h.knotenId } : {}) },
+      });
+    }
+  }
+  return raus;
+}
+/** Morgenlauf (lib/fulfillment/prozesse/server.ts `prozesseMorgenlauf`): die Hänger aller laufenden Fälle als Ereignisse. Wirft nie. */
+export async function fallHaengtEreignisse(zeilen: Parameters<typeof haengerEreignisse>[0]): Promise<number> {
+  try {
+    const l = haengerEreignisse(zeilen);
+    return l.length ? (await ereignis(l)).neu : 0;
+  } catch { return 0; }
+}
+
+/** Was der Kunde geliefert hat — nur die Art und die Kennung des Eintrags (Formular: Baustein, Unterlage: `ud-…`, Puls: `kp-…`). */
+export type KundeGeliefert = 'formular' | 'unterlage' | 'puls';
+/** Der Kunde hat geliefert (Kunden-Link bzw. Formular gemeinsam im Kick-off) → `kunde-geliefert` — beendet z. B. die Erinnerungskette „Unterlagen fehlen“. Wirft nie. */
+export async function kundeGeliefertEreignis(m: MandatBasis, was: KundeGeliefert, eintragId: string, vorlageId?: string): Promise<number> {
+  try {
+    const { bereich, bezug } = begleitBasis(m, vorlageId);
+    return (await ereignis({ id: ereignisKennung('fall', m.id, 'geliefert', was, eintragId), art: 'kunde-geliefert', quelle: 'fulfillment', bereich, stufe: was, bezug })).neu;
   } catch { return 0; }
 }

@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP, MIKRO, TIEF, ECKE, FLAECHE_STIL, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Hinweis, Leerzustand, Liste, Zeile, Chip, Punkt, Klappbar, LEUCHT, useRueckfrage, Erklaert } from '../../ui';
+import { paketBearbeitenLink } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 import { WEG } from '@/lib/wege';
 import { anzahl } from '@/lib/text/zahlwort';
 import { ortHref, ORTE, istOrt } from '@/lib/fulfillment/orte';
@@ -180,7 +181,8 @@ function PaketKarten({ pakete, daten, onKnoten }: { pakete: VorlageMitStand[]; d
   const [meldung, setMeldung] = useState<string | null>(null);
   const frage = useTextFrage();
   const darf = daten.darfBearbeiten !== false;
-  const editor = (id: string) => router.push(WEG.fulfillment('prozesse', { e: id }));
+  // E4 (22.10.): ein Paket mit Marke `werkstatt:` öffnet sich in der Werkstatt, die übrigen im Editor des Fulfillments.
+  const editor = (id: string) => router.push(paketBearbeitenLink(id, daten.werkstatt));
   const neu = async () => {
     const titel = await frage.fragen('Name des neuen Ablaufs');
     if (!titel?.trim()) return;

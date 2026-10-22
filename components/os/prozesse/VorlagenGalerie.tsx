@@ -17,7 +17,7 @@ import { WERKSTATT_FORM_FARBE } from '@/lib/prozesse/farben';
 import { PROZESS_BEREICHE } from '@/lib/prozesse/definition';
 import type { VorlageKurz, VorschauPhase } from '@/lib/prozesse/kundengewinnung/bibliothek';
 import type { EigeneVorlageKurz } from '@/lib/prozesse/kopie';
-import { galerieBereiche, vorlagenFiltern, VORLAGEN_ARTEN, type VorlagenArt } from '@/lib/prozesse/kundengewinnung/galerie';
+import { galerieBereiche, vorlagenFiltern, VORLAGEN_ARTEN, VORLAGEN_GRUPPEN, type VorlagenArt } from '@/lib/prozesse/kundengewinnung/galerie';
 import { WERKSTATT_QUELLE, useKatalog, werkstattSenden } from './werkstatt-daten';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
@@ -61,8 +61,15 @@ export function VorschauBild({ phasen }: { phasen: VorschauPhase[] }) {
   );
 }
 
-/** Das Fenster „Aus Vorlage anlegen“. `onAngelegt(id)` führt in die Werkstatt des neuen Prozesses. */
-export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAngelegt: (id: string) => Promise<void> | void }) {
+/**
+ * Das Fenster „Aus Vorlage anlegen“. `onAngelegt(id)` führt in die Werkstatt des neuen Prozesses. Zwei Sammlungen (22.10., B2): Kundengewinnung und
+ * „Fulfillment · Kunden-Begleitung“ — `gruppe` wählt die Sammlung vor (z. B. „+ Begleit-Prozess“ am Paket).
+ */
+export function VorlagenGalerie({ onZu, onAngelegt, gruppe: gruppeVorgabe, andocken }: {
+  onZu: () => void; onAngelegt: (id: string) => Promise<void> | void; gruppe?: 'kundengewinnung' | 'begleitung';
+  /** B3 (22.10.): „+ Begleit-Prozess“ am Paket — der übernommene Begleit-Prozess hört nur auf dieses Paket (und ggf. diesen Schritt); `text` = wo, in Worten. */
+  andocken?: { paket: string; knoten?: string; text: string };
+}) {
   const kat = useKatalog();
   const team = useMemo(() => (kat.daten?.auswahl?.['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:')), [kat.daten]);
   const [liste, setListe] = useState<Liste | null>(null);
@@ -70,6 +77,7 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
   // Feinschliff 22.10. (Befund 5): gefiltert wird nach Bereich und Art („mit Agenten“ · „nur Regeln“) — nicht mehr nach der internen Welle.
   const [bereich, setBereich] = useState('alle');
   const [art, setArt] = useState<VorlagenArt>('alle');
+  const [gruppe, setGruppe] = useState<'kundengewinnung' | 'begleitung'>(gruppeVorgabe ?? 'kundengewinnung');
   const [gewaehlt, setGewaehlt] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | EigenDetail | null>(null);
   const [loeschFrage, setLoeschFrage] = useState(false);
@@ -77,7 +85,7 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
   const [fertig, setFertig] = useState<{ id: string; hinweise: string[]; probelauf: boolean } | null>(null);
   const [anfrageId, setAnfrageId] = useState(() => neueKennung('pza'));
 
-  useEffect(() => { void holen<Liste>('vorlagen=1').then(l => (l ? setListe(l) : setFehler('Die Vorlagen ließen sich nicht laden.'))); }, []);
+  useEffect(() => { void holen<Liste>('vorlagen=1&gruppe=alle').then(l => (l ? setListe(l) : setFehler('Die Vorlagen ließen sich nicht laden.'))); }, []);
   useEffect(() => {
     if (!gewaehlt) { setDetail(null); return; }
     setDetail(null); setFertig(null); setLoeschFrage(false); setAnfrageId(neueKennung('pza'));
@@ -87,7 +95,8 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
   const uebernehmen = async () => {
     if (!detail) return;
     setFehler(null);
-    const r = await werkstattSenden(() => ({ aktion: 'aus-vorlage', anfrageId, vorlageId: detail.id, ...(eigner ? { eigner } : {}) }));
+    const ad = andocken && !istEigen(detail) && detail.gruppe === 'begleitung' ? { andocken: { paket: andocken.paket, ...(andocken.knoten ? { knoten: andocken.knoten } : {}) } } : {};
+    const r = await werkstattSenden(() => ({ aktion: 'aus-vorlage', anfrageId, vorlageId: detail.id, ...(eigner ? { eigner } : {}), ...ad }));
     const id = r.j?.eintrag?.id;
     if (r.status === 200 && r.j?.ok && id) {
       // Was noch offen ist (Eigner, offene Punkte der Vorlage, Übergaben ohne Ziel), steht hier — dann geht es in die Werkstatt.
@@ -106,13 +115,18 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
   };
   const eigene = liste?.eigene ?? [];
 
-  const sichtbar = vorlagenFiltern(liste?.vorlagen ?? [], { bereich, art });
-  const bereiche = galerieBereiche(liste?.vorlagen ?? []);
+  const derGruppe = vorlagenFiltern(liste?.vorlagen ?? [], { bereich: 'alle', art: 'alle', gruppe });
+  const sichtbar = vorlagenFiltern(derGruppe, { bereich, art });
+  const bereiche = galerieBereiche(derGruppe);
+  const sammlung = VORLAGEN_GRUPPEN.find(g => g.id === gruppe) ?? VORLAGEN_GRUPPEN[0];
   return (
     <Fenster titel={detail ? (istEigen(detail) ? `Eigene Vorlage · ${detail.titel}` : `${detail.nr} · ${detail.titel}`) : 'Aus Vorlage anlegen'} onZu={onZu} breit={980}>
       {!detail && (
         <div style={{ display: 'grid', gap: 12 }}>
-          <p style={klein}>18 Vorlagen der Kundengewinnung — jede ist ein vollständiger Prozess mit Schlössern vor jeder Außenwirkung, Rollen statt Personen und ehrlich benannten offenen Punkten. Übernehmen legt eine eigene Kopie an (Probelauf, schreibt nichts).</p>
+          <div role="group" aria-label="Sammlung">
+            <Pillen liste={VORLAGEN_GRUPPEN.map(g => ({ id: g.id, label: g.label }))} aktiv={gruppe} onWahl={g => { setGruppe(g); setBereich('alle'); }} />
+          </div>
+          <p style={klein}>{liste ? `${derGruppe.length} ` : ''}{sammlung.satz} Übernehmen legt eine eigene Kopie an (Probelauf, schreibt nichts).</p>
           <div role="group" aria-label="Bereich">
             <Pillen liste={[{ id: 'alle', label: 'Alle Bereiche' }, ...bereiche.map(b => ({ id: b.id, label: `${b.titel} · ${b.anzahl}` }))]} aktiv={bereich} onWahl={setBereich} />
           </div>
@@ -184,6 +198,7 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
           {detail.einstellbar.length > 0 && <section style={{ display: 'grid', gap: 4 }}><div style={{ ...MIKRO }}>Einstellbar (Vorgabe)</div><p style={klein}>{detail.einstellbar.map(e => `${e.label} (${String(e.vorgabe === true ? 'an' : e.vorgabe === false ? 'aus' : e.vorgabe)})`).join(' · ')}</p></section>}
           {detail.offen.length > 0 && <Hinweis art="info" titel="Noch offen">{detail.offen.map(o => <div key={o}>{o}</div>)}</Hinweis>}
           {detail.braucht.length > 0 && <p style={klein}>Braucht: {detail.braucht.join(', ')}.</p>}
+          {andocken && detail.gruppe === 'begleitung' && <Hinweis art="info" titel="Dockt an">{`Hört nur auf ${andocken.text} — der Auslöser bekommt die Bedingung beim Übernehmen.`}</Hinweis>}
           </>}
           {liste?.rechte.entwurf ? (
             <>

@@ -33,6 +33,14 @@ import { satz, wort } from '@/lib/text/zahlwort';
 export type KundenAnrede = 'du' | 'sie';
 /** Du/Sie aus der Akte (`Kontakt.anrede`): nur ein ausdrückliches „Du“ duzt — ohne Angabe gilt Sie (wie der 2-Wochen-Report). */
 export const anredeAus = (a: unknown): KundenAnrede => (a === 'Du' || a === 'du' ? 'du' : 'sie');
+/**
+ * Die Grußzeile einer Nachricht an den Kunden (22.10., Begleit-Prozesse B2 — Platzhalter `{{kunde.gruss}}` der Werkstatt): Du → „Hallo Vorname“, Sie → „Guten Tag
+ * Vorname Nachname“; ohne Namen nur der Gruß. EINE Stelle neben `WORTE` (die Vorlagen schreiben den Rest neutral, ohne Sie/ihr).
+ */
+export function kundenGruss(anrede: KundenAnrede, vorname?: string, nachname?: string): string {
+  const v = (vorname ?? '').trim(), n = (nachname ?? '').trim();
+  return anrede === 'du' ? ['Hallo', v].filter(Boolean).join(' ') : ['Guten Tag', v, n].filter(Boolean).join(' ');
+}
 
 /** Alle festen Wörter der Kunden-Wege je Anrede — EINE Tabelle (Seite, Report, Präsentation). Du = „ihr/euch“ (ein Team liest mit). */
 export const WORTE = {

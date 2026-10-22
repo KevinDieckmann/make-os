@@ -34,6 +34,7 @@ import { ReiseBild, type BildSpalte } from '../../ui/reise/ReiseBild';
 import { Fluss, FormenLegende } from '../../ui/reise/Fluss';
 import { useSprung, sprungAus, insBild, type Sprung } from './sprung';
 import { AblaufKarte } from './AblaufKarte';
+import { BegleitungLaeuft } from '../../prozesse/BegleitungLaeuft';
 
 const ABSCHLUSS: ReadonlySet<FallStelleId> = new Set(['befaehigung', 'wirkung', 'abschliessen', 'mandat', 'nachsorge', 'kreislauf']);
 /** Frühere Stellen (bis 17.10. eigene Reiter) → Stelle im Fluss. */
@@ -187,6 +188,8 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
         </Klappbar>
       )}
 
+      {/* B3 (22.10.): Begleit-Prozesse der Werkstatt neben diesem Fall (nur lesen, nur Business — ohne Läufe erscheint die Karte nicht). */}
+      <BegleitungLaeuft mandatId={mandatId} />
       <FallStatus daten={daten} ops={ops} />
       {freigabe && <FreigabeDialog id={freigabe} daten={daten} onZu={() => setFreigabe(null)} ops={ops} />}
       {extra && <ExtraDialog phaseId={extra} fall={f} onZu={() => setExtra(null)} ops={ops} />}

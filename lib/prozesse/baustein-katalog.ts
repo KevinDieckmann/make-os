@@ -540,7 +540,8 @@ const KLAMMERN = /\{\{|\}\}/;
 export const PLATZHALTER_JE_FALL: Readonly<Record<FallArt, readonly string[]>> = {
   lead: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'firma.name', 'lead.status'],
   deal: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'firma.name', 'deal.titel', 'deal.stufe', 'deal.naechster-schritt'],
-  mandat: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'firma.name', 'mandat.titel', 'mandat.start', 'mandat.produkt'],
+  // Kunden-Begleitung (22.10., B2): Grußzeile nach Du/Sie aus der Akte, aktuelle Etappe und nächster Termin des Fulfillment-Falls.
+  mandat: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'firma.name', 'mandat.titel', 'mandat.start', 'mandat.produkt', 'kunde.gruss', 'fall.phase', 'fall.termin'],
   event: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'event.titel', 'event.datum', 'event.ort'],
   firma: ['firma.name', 'firma.branche'],
   kampagne: ['kampagne.titel'],

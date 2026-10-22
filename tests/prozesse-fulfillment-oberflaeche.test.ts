@@ -68,7 +68,8 @@ describe('Produktkarte „Ablauf“', () => {
     expect(s).not.toContain("'/api/crm/bestand'");
   });
   it('Links: Paket → „Im Editor öffnen“, Prozess → „In der Werkstatt öffnen“; „Prozess für dieses Produkt anlegen“ nur mit dem Recht für Entwürfe', () => {
-    expect(s).toContain("WEG.fulfillment('prozesse', { e: paket.id })");
+    // E4 (22.10.): ein Paket mit Marke `werkstatt:` öffnet sich in der Werkstatt — sonst wie vorher im Editor (EINE Stelle `paketBearbeitenLink`).
+    expect(s).toContain('paketBearbeitenLink(paket.id, kurz.daten?.werkstatt)');
     expect(s).toContain('Im Editor öffnen ›');
     expect(s).toContain("WEG.prozesse({ p: wahl.id, ansicht: 'werkstatt' })");
     expect(s).toContain('In der Werkstatt öffnen ›');
