@@ -161,12 +161,12 @@ describe('Platzhalter der Vorlagen: Rollen, Postfach, Gesellschaft', () => {
     expect(voran(l, d, umfeld({ gesellschaft: () => 'ug', empfaenger: an })).aktion).toMatchObject({ art: 'crm-vorschlag', eingabe: { art: 'angebot_entwurf', gesellschaft: 'ug', deal: 'ch-probe' } });
     expect(voran(l, d, umfeld({ gesellschaft: () => null })).lauf).toMatchObject({ status: 'fehler', grund: 'gesellschaft-fehlt' });
   });
-  it('weitere CRM-Bausteine als Vorschlag: Deal vorschlagen, nächster Schritt (Tage aus dem Agenten davor), Lead parken, Text-Entwurf (ohne Text: ein Mensch schreibt ihn)', () => {
+  it('weitere CRM-Bausteine als Vorschlag: Deal vorschlagen, nächster Schritt (Tage aus dem Agenten davor), Lead parken, Text-Entwurf (ohne Text: ein Gerüst aus dem Fall)', () => {
     const d = definition([
       schritt(40, 'Deal vorschlagen', 1, { katalog: { id: 'crm.deal-vorschlagen', werte: { naechsterSchritt: 'Erstgespräch', inTagen: 3 } } }),
     ]);
     const l = lauf(d, { fall: { art: 'deal', id: 'ch-probe' } });
-    const b = (k: string) => voran(l, d, umfeld({ empfaenger: an }));
+    const b = (_k: string) => voran(l, d, umfeld({ empfaenger: an }));
     expect(b('').aktion).toMatchObject({ eingabe: { art: 'deal_anlegen', kontakt: 'c-erika', naechster_schritt: 'Erstgespräch', faellig: '2026-10-24' } });
     const s = definition([schritt(41, 'Nächster Schritt', 1, { katalog: { id: 'crm.deal-schritt', werte: { inTagen: 2 } } })]);
     const ls = { ...lauf(s, { fall: { art: 'deal', id: 'ch-probe' } }), daten: { 'agent.intagen': '5' } };
@@ -175,7 +175,10 @@ describe('Platzhalter der Vorlagen: Rollen, Postfach, Gesellschaft', () => {
     expect(voran(lauf(p, { fall: { art: 'lead', id: 'f-probe' } }), p, umfeld()).aktion).toMatchObject({ eingabe: { art: 'lead_parken', lead: 'f-probe', park_tage: 90, grund_art: 'spaeter' } });
     const t = definition([schritt(43, 'Leitfaden', 1, { katalog: { id: 'crm.entwurf-text', werte: { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Aufhänger aus der Recherche' } } })]);
     const lt = lauf(t, { fall: { art: 'deal', id: 'ch-probe' } });
-    expect(voran(lt, t, umfeld({ empfaenger: an })).aktion).toMatchObject({ art: 'aufgabe', titel: 'Leitfaden' });
+    // Seit 22.10. spät (Bausteine mit eigenem Weg): ohne Text ein Gerüst aus Platzhaltern und Anlass — als Vorschlag (Kanal-Ampel), nicht mehr als Aufgabe.
+    const g = voran(lt, t, umfeld({ empfaenger: an, platzhalter: { 'kontakt.anrede': 'Sie', 'kontakt.nachname': 'Beispiel' } })).aktion as { art: string; eingabe: { text: string } } | null;
+    expect(g).toMatchObject({ art: 'crm-vorschlag', titel: 'Leitfaden', eingabe: { art: 'anruf_leitfaden', kontakt: 'c-erika', kanal: 'telefon' } });
+    expect(g!.eingabe.text).toContain('Anlass: Aufhänger aus der Recherche');
     const tt = { ...t, knoten: t.knoten.map(k => (k.id === fk(43) ? { ...k, katalog: { id: 'crm.entwurf-text', werte: { art: 'nachricht_entwurf', kanal: 'mail', text: 'Guten Tag {{kontakt.nachname}}' } } } : k)) };
     expect(voran(lt, tt, umfeld({ empfaenger: an, platzhalter: { 'kontakt.nachname': 'Beispiel' } })).aktion).toMatchObject({ art: 'crm-vorschlag', eingabe: { art: 'nachricht_entwurf', kontakt: 'c-erika', text: 'Guten Tag Beispiel', kanal: 'mail' } });
     // Kanal rot → übersprungen (nichts angelegt).

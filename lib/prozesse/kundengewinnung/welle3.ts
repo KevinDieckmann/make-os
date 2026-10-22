@@ -97,7 +97,8 @@ const V04: KgVorlage = {
       }),
       S.glocke('a4', 'Bericht melden', 'Der Abendbericht des Events liegt bereit.', EIGNER),
       S.wartenDauer('a5', '48 Stunden (zwei Werktage)', 2, { arbeitszeit: true }),
-      S.regel('a6', 'Quote erreicht?', [B.groesser('event.quote-48h', 79)], { zweige: { nein: 'a6g' } }),
+      // Ohne Erfassung, die schon fällig war, gibt es nichts zu messen (Feld leer) — dann ist nichts überfällig.
+      S.regel('a6', 'Quote erreicht?', [B.groesser('event.quote-48h', 79), B.leer('event.quote-48h')], { oder: true, zweige: { nein: 'a6g' } }),
       S.glocke('a6g', 'Quote unter dem Ziel', 'Beim Nachfassen eines Events ist die Quote unter dem Ziel.', EIGNER),
       S.ziel('ez', 'Event nachgefasst'),
     ] }],
@@ -173,8 +174,8 @@ const V18: KgVorlage = {
     { id: 'mixZielkunden', label: 'Zielkunden (%)', vorgabe: 40, knoten: 'a1', feld: 'mixZielkunden' }, { id: 'mixKunden', label: 'Kunden (%)', vorgabe: 20, knoten: 'a1', feld: 'mixKunden' },
     { id: 'ziel48h', label: 'Ziel Nachfassen (%)', vorgabe: 90 }, { id: 'budgetCent', label: 'Budget (Cent)', vorgabe: 10, knoten: 'a8', feld: 'budgetCent' },
   ],
-  offen: [{ punkt: 'Gäste', text: 'Die Schleife nimmt die vorgemerkten Gäste der Liste am Event (`event.gaeste`) — vorgemerkt wird erst, wenn der Vorschlag „Gäste vorschlagen“ übernommen ist.' }],
-  demo: 'Ein erfundener „Beispiel-Stammtisch“ in 28 Tagen: 12 Gäste vorgeschlagen, 4 Mails im Stapel, 8 persönliche Einladungen — nach dem Abend 6 Nachfass-Entwürfe.',
+  offen: [],
+  demo: 'Ein erfundener „Beispiel-Stammtisch“ in 28 Tagen: 12 Gäste in der Mischung als Vorschlag (ein Klick merkt sie vor), dann 4 Mails im Stapel und 8 persönliche Einladungen — nach dem Abend 6 Nachfass-Entwürfe.',
   teile: [V18A],
   definition: prozess({
     id: 'kg-v18', titel: 'Make.One-Gästeliste', bereich: 'marketing', fallArt: 'event',
@@ -204,7 +205,9 @@ const V18: KgVorlage = {
           auftrag: 'Je einladende Person eine Liste: Danke- und Folge-Entwürfe nur für Gäste mit Status „da“ — nur Dank und Verabredetes.',
           warum: 'Was mit wem verabredet wurde, steht in Notizen des Abends.', budgetCent: 10, modell: 'schnell', ausgabe: [V.zahl('entwuerfe')],
         }),
-        S.regel('a9', '48-Stunden-Ziel erreicht?', [B.groesser('event.quote-48h', 89)], { zweige: { nein: 'a9g' } }),
+        // Gemessen wird erst nach der Frist (zwei Werktage nach dem Abend — dieselbe Regel wie die Kennzahl); ohne fälligen Gast ist das Feld leer.
+        S.wartenDauer('a8w', 'Frist des Nachfassens (zwei Werktage)', 2, { arbeitszeit: true }),
+        S.regel('a9', '48-Stunden-Ziel erreicht?', [B.groesser('event.quote-48h', 89), B.leer('event.quote-48h')], { oder: true, zweige: { nein: 'a9g' } }),
         S.glocke('a9g', 'Ziel nicht erreicht', 'Beim Nachfassen eines Abends ist das 48-Stunden-Ziel nicht erreicht.', EIGNER),
         S.ziel('ez', 'Abend nachgefasst'),
       ] },

@@ -748,16 +748,26 @@ async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Erge
       return aus(await innen('/api/crm/bestand', 'PATCH', { ops: [{ liste: 'segmente', op: 'upsert', eintrag }] }, person), 'Segment angelegt.');
     }
     case 'gaesteliste': {
-      // Beim Freigeben neu gegen den Stand: wer inzwischen gesperrt/eingeschränkt ist oder schon dabei, fällt raus.
+      // Beim Freigeben neu gegen den Stand: wer inzwischen gesperrt/eingeschränkt ist, keinen zulässigen Einladungsweg mehr hat oder schon dabei ist, fällt raus.
       const kontakte = await karteiFuerPruefung();
       const rc = await rohCrm();
       if (rc.teilnahmen.some(t => t.id.startsWith(`${ausVorschlag('tn', vid)}-`))) return SCHON('Gäste vorgemerkt');
       const schon = new Set(rc.teilnahmen.filter(t => t.eventId === e.eventId).map(t => t.kontaktId));
       const alleIds = Array.isArray(e.kontaktIds) ? e.kontaktIds.map(String) : [];
-      const ids = alleIds.filter(id => { const k = kontakte.find(x => x.id === id); return k && !k.werbesperre && !k.eingeschraenkt && !schon.has(id); });
-      if (!ids.length) return { ok: false, status: 409, fehler: 'Niemand mehr vorzumerken (inzwischen gesperrt, eingeschränkt oder schon dabei).' };
-      const ops = ids.map(id => ({ liste: 'teilnahmen', op: 'upsert', eintrag: { id: ausVorschlag('tn', vid, alleIds.indexOf(id)), eventId: e.eventId, kontaktId: id, status: 'vorgemerkt' } }));
-      return aus(await innen('/api/crm/bestand', 'PATCH', { ops }, person), `${ids.length} Gäste vorgemerkt — eingeladen wird nichts.`);
+      // Vormerken nur über die EINE Stelle (22.10. spät, lib/crm/eventplanung.ts `gastTeilnahme`): Einladungsweg nach der Ampel, Herkunft aus der Begegnung.
+      const [{ gastTeilnahme, netzwerkenHerkunft, einladungswegAus }, { kanalStatus }, { OFFENE_STUFEN }] = await Promise.all([import('@/lib/crm/eventplanung'), import('@/lib/crm/recht'), import('@/lib/crm/pipeline')]);
+      const jetzt = new Date().toISOString();
+      const ops: { liste: string; op: string; eintrag: unknown }[] = [];
+      for (const id of alleIds) {
+        const k = kontakte.find(x => x.id === id);
+        if (!k || k.werbesperre || k.eingeschraenkt || schon.has(id)) continue;
+        const st = kanalStatus(k, 'einladung', { hatMandat: rc.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(id)), hatChance: rc.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(id)) });
+        if (st.farbe === 'rot') continue;
+        const herkunft = netzwerkenHerkunft(rc.teilnahmen, id);
+        ops.push({ liste: 'teilnahmen', op: 'upsert', eintrag: gastTeilnahme({ id: ausVorschlag('tn', vid, alleIds.indexOf(id)), eventId: String(e.eventId), kontaktId: id, weg: einladungswegAus(st.farbe), jetztIso: jetzt, person, ...(herkunft ? { herkunft } : {}) }) });
+      }
+      if (!ops.length) return { ok: false, status: 409, fehler: 'Niemand mehr vorzumerken (inzwischen gesperrt, eingeschränkt, ohne Einladungsweg oder schon dabei).' };
+      return aus(await innen('/api/crm/bestand', 'PATCH', { ops }, person), `${ops.length} Gäste vorgemerkt — eingeladen wird nichts.`);
     }
     case 'leistungstext': {
       const felder = { angebot: e.angebot, ...(e.aktiv ? { status: 'aktiv' } : {}) };
@@ -786,6 +796,8 @@ async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Erge
       return r.ok ? ok(r.text) : { ok: false, status: r.status, fehler: r.fehler };
     }
     case 'mandat_anlegen': {
+      // Schon da (zweiter Klick, Wiederholung nach einem Abbruch, inzwischen von Hand): nichts doppelt.
+      if ((await rohCrm()).mandate.some(m => m.chanceId === e.dealId && !m.geloeschtAm)) return SCHON('Mandat angelegt');
       const r = await innen('/api/crm/lead', 'POST', { aktion: 'mandat', chanceId: e.dealId }, person);
       return aus(r, r.json.text ? String(r.json.text) : 'Mandat angelegt.');
     }
@@ -800,6 +812,28 @@ async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Erge
       return { ok: false, status: 400, fehler: 'Unbekannte Art — nichts übernommen.' };
   }
 }
+
+/**
+ * Für Prozess-Läufe (22.10. spät, „Bausteine mit eigenem Weg“ — lib/prozesse/bausteine-server.ts): EINE Art prüfen und planen wie `crm_vorschlag` (dieselben
+ * Prüfungen: Art. 18, Werbesperre, Kanal-Ampel, Stände), aber OHNE abzulegen — der Lauf legt den Vorschlag selbst (Stapel-Art `prozess`, er wartet darauf) und
+ * übernimmt bei der Freigabe über `crmVorschlagUebernehmen` (derselbe Schreibweg wie die Freigabe eines CRM-Vorschlags).
+ */
+export async function crmVorschlagPlanen(input: Eingabe, person: string): Promise<{ plan: { titel: string; vorher?: string; nachher: string; eingabe: Eingabe } } | { fehler: WerkzeugErgebnis }> {
+  try {
+    const s = await crmSicht(person);
+    if (!s) return { fehler: fehlschlag('rechte', NICHT_IM_HINTERGRUND) };
+    const art = String(input.art ?? '') as VorschlagArt;
+    if (!(VORSCHLAG_ARTEN as readonly string[]).includes(art)) return { fehler: fehlschlag('eingabe', `Fehlgeschlagen: art ist eine von ${VORSCHLAG_ARTEN.join(', ')}.`) };
+    const p = await planen(art, input, s);
+    if (istWerkzeugErgebnis(p)) return { fehler: p };
+    return { plan: { titel: p.titel, ...(p.vorher ? { vorher: p.vorher } : {}), nachher: p.nachher, eingabe: p.eingabe } };
+  } catch (e) {
+    console.error('[zoe/crm-vorschlag] planen', e instanceof Error ? e.message : e);
+    return { fehler: fehlschlag('voruebergehend', 'Fehlgeschlagen: Der Vorschlag konnte gerade nicht vorbereitet werden.') };
+  }
+}
+/** Übernehmen einer geplanten Art (siehe `crmVorschlagPlanen`) — über die normalen Schreibwege, als die freigebende Person; `vid` macht es wiederholbar. */
+export const crmVorschlagUebernehmen = (eingabe: Eingabe, person: string, vid: string): Promise<Ergebnis> => ausfuehren(eingabe, person, vid);
 
 /**
  * Stapel-Art „crm“ (lib/zoe/stapel-arten.ts): Freigabe per Klick — beansprucht den Vorschlag IN der Sperre (29.09.),

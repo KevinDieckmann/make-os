@@ -268,7 +268,10 @@ const V14: KgVorlage = {
     { id: 'abstandTage', label: 'Abstand zwischen zwei Fragen (Tage)', vorgabe: 120 }, { id: 'terminFristTage', label: 'Intro erbitten in (Tagen)', vorgabe: 14, knoten: 'a4', feld: 'fristTage' },
     { id: 'wartenTage', label: 'Empfehlung abwarten (Tage)', vorgabe: 30, knoten: 'a6', feld: 'hoechstensTage' }, { id: 'budgetCent', label: 'Budget (Cent)', vorgabe: 10, knoten: 'a3', feld: 'budgetCent' },
   ],
-  offen: [{ punkt: 'Morgenlauf', text: 'Die Nachsorge-Stufe „Empfehlung“ im Fulfillment-Morgenlauf wird beim Umzug in den Motor durch diese Vorlage ersetzt (erst „System“, dann Motor).' }],
+  offen: [
+    { punkt: 'Morgenlauf', text: 'Die Nachsorge-Stufe „Empfehlung“ im Fulfillment-Morgenlauf wird beim Umzug in den Motor durch diese Vorlage ersetzt (erst „System“, dann Motor).' },
+    { punkt: 'Empfehlung abwarten', text: 'Das Ereignis „neuer Lead“ trägt (noch) keinen Bezug zum empfehlenden Mandat — der Lauf wacht erst an der Obergrenze auf („Gefragt, offen“); „Vorgestellt durch“ setzt deshalb ein Mensch an der Akte der empfohlenen Person.' },
+  ],
   demo: 'Ein Saat-Mandat erreicht sein Ziel zu 100 % → Aufgabe „Intro erbitten“; 20 Tage später kommt eine erfundene Anfrage über „Empfehlung“, Danke-Aufgabe und Übergabe an V02.',
   teile: [],
   definition: prozess({
@@ -291,7 +294,8 @@ const V14: KgVorlage = {
       S.text('a5', 'Intro-Text zum Weiterleiten', { art: 'nachricht_entwurf', kanal: 'mail', text: 'Text für den Kunden zum Weiterleiten — erst nach Zusage der Zielperson.' }),
       S.wartenEreignis('a6', 'Empfehlung abwarten', 'neuer-lead', 30, { zweige: { abgelaufen: 'e2' } }),
       S.ziel('e2', 'Gefragt, offen'),
-      S.karte('a7', '„Vorgestellt durch“ eintragen', 'kontakt', ['vorgestelltDurch']),
+      // Die empfohlene Person kennt der Lauf nicht (Fall ist das Mandat) — darum trägt ein Mensch „Vorgestellt durch“ an IHRER Akte ein, mit dem Namen aus dem Fall.
+      S.aufgabe('a7', '„Vorgestellt durch“ eintragen', { titel: '„Vorgestellt durch“ am neuen Kontakt eintragen', fristTage: 2, beschreibung: 'Empfehlungsgeber: {{kontakt.vorname}} {{kontakt.nachname}} ({{firma.name}}) — in der Akte der empfohlenen Person unter „Vorgestellt durch“.' }),
       S.aufgabe('a8', 'Danke an den Empfehlungsgeber', { titel: 'Danke an den Empfehlungsgeber (persönlich)', fristTage: 2 }),
       S.uebergabe('ez', 'An den Lead-Eingang', 'kg-v02'),
     ] }],
