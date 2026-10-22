@@ -60,8 +60,8 @@ describe('Privat · ZOE · System hängen am Standard', () => {
 
   // Gesundheit und Familie sind seit 22.10. abends Werkzeuge: ihre Reiter stehen im Menü links (tests/werkzeuge.test.ts) — in der Seite bleibt nur Sport (Ebene 3).
   it('Umschalter stehen im Inhalt als wischbare Leiste, nicht im Kopf (Sport); Gesundheit und Familie ohne zweite Reiterzeile', () => {
-    for (const f of ['components/os/GesundheitView.tsx']) expect(lies(f), f).not.toContain('<Segmente');
-    for (const f of ['components/os/familie/FamilieView.tsx', 'components/os/sport/SportView.tsx']) {
+    for (const f of ['components/os/GesundheitView.tsx', 'components/os/familie/FamilieView.tsx']) expect(lies(f), f).not.toContain('<Segmente');
+    for (const f of ['components/os/sport/SportView.tsx']) {
       const t = lies(f);
       expect(t, f).toContain('<Segmente');
       expect(/rechts=\{[^}]*<Segmente/.test(t), f).toBe(false);

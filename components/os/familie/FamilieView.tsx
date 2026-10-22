@@ -5,9 +5,14 @@
 // klarer Fokus auf den Ehepartner gelegt wird, ansonsten geht das Fundament
 // kaputt.“ Deshalb zuerst „Wir zwei“, dann „Familie“, dann der „Rahmen“.
 // Konzept: docs/konzepte/familie-und-partnerschaft.md
+// Werkzeug (22.10. abends, lib/make-one/werkzeuge.ts `FAMILIE_WERKZEUG`): Wir zwei · Familie · Rahmen · Kontakte (/os/menschen) · Automationen & Head im Menü
+// links — die Reiterzeile der Seite ist weg; der Bereich steht in der Adresse (`?b=`) und die Seite folgt ihr (vorher las sie ihn nur beim Öffnen).
 
 import { useEffect, useState } from 'react';
-import { Seite, Karte, Ueberschrift, Segmente, Leer, Knopf, Hinweis, ZielBezug, Wahl as UiWahl, feld, LEUCHT, FlussKarte } from '../ui';
+import { useSearchParams } from 'next/navigation';
+import { Seite, Karte, Ueberschrift, Leer, Knopf, Hinweis, ZielBezug, Wahl as UiWahl, feld, LEUCHT, FlussKarte } from '../ui';
+import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
+import { FAMILIE_WERKZEUG } from '@/lib/make-one/werkzeuge';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useFamilie, WOCHENTAGE, type FamilieApi } from './daten';
 import { WirZwei } from './WirZwei';
@@ -16,18 +21,19 @@ import { FamilieOrga } from './FamilieOrga';
 import { Auswahl, Klein, Reihe, Wahl } from './teile';
 import { EigeneBusinessFrei } from '../arbeitsrahmen/BusinessFrei';
 
-type Bereich = 'wir' | 'familie' | 'rahmen';
+type Bereich = 'wir' | 'familie' | 'rahmen' | 'automationen';
 
 export function FamilieView() {
   const api = useFamilie();
-  const [bereich, setBereich] = useState<Bereich>('wir');
+  const params = useSearchParams();
+  // `?b=` (WEG.familie, 08.10.; seit 22.10. abends aus dem Werkzeug-Menü): der Bereich folgt der Adresse — `?b=rahmen` führt z. B. aus Kalender und Kapazität
+  // direkt zu den Business-freien Zeiten.
+  const b = params?.get('b') ?? null;
+  const bereich: Bereich = b === 'familie' || b === 'rahmen' || b === 'automationen' ? b : 'wir';
   const [gespraech, setGespraech] = useState(false);
   const d = api.d;
-  // `?b=rahmen` (WEG.familie('rahmen'), 08.10.): aus Kalender und Kapazität direkt zu den Business-freien Zeiten.
-  useEffect(() => {
-    const b = new URLSearchParams(window.location.search).get('b');
-    if (b === 'wir' || b === 'familie' || b === 'rahmen') setBereich(b);
-  }, []);
+  // Ein anderer Bereich schließt das Paar-Gespräch (wie früher der Reiter) — Eingaben dort speichert das Gespräch selbst.
+  useEffect(() => { setGespraech(false); }, [bereich]);
   useEffect(() => {
     if (!d || bereich !== 'rahmen' || window.location.hash !== '#business-frei') return;
     const t = setTimeout(() => document.getElementById('business-frei')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 150);
@@ -36,7 +42,7 @@ export function FamilieView() {
 
   return (
     <Seite titel="Familie & Partnerschaft" unter="Erst wir zwei, dann die Familie. Gemessen wird, was ihr gemeinsam tut — nie eine Person.">
-      {d && <Segmente liste={[{ id: 'wir', label: 'Wir zwei' }, { id: 'familie', label: 'Familie' }, { id: 'rahmen', label: 'Rahmen' }]} aktiv={bereich} onWahl={b => { setBereich(b); setGespraech(false); }} />}
+      {/* Die Bereiche stehen seit 22.10. abends im Werkzeug-Menü links (am Handy im Blatt „Menü“) — keine zweite Reiterzeile. */}
       <ZielBezug bereich="beziehung" />
       {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
       {d && !gespraech && <FlussKarte bereich="familie" farbe={LEUCHT.beziehung} />}
@@ -44,6 +50,8 @@ export function FamilieView() {
         api.fehler
           ? <Hinweis art="kritisch" titel="Familie & Partnerschaft konnte nicht geladen werden">{api.fehler}</Hinweis>
           : <Karte i={0}><Leer>Lädt …</Leer></Karte>
+      ) : bereich === 'automationen' ? (
+        <BereichAutomationen werkzeug={FAMILIE_WERKZEUG} space="privat" />
       ) : gespraech ? (
         <Gespraech api={api} onZu={() => setGespraech(false)} />
       ) : bereich === 'wir' ? (

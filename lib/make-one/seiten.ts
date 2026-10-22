@@ -71,7 +71,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('sport', 'Gesundheit · Sport — Training, Hyrox, Running, Gym, Erholung', WEG.sport(), 'privat'),
   s('journal', 'Gesundheit · Journal', WEG.journal(), 'privat'),
   s('familie', 'Familie & Partnerschaft', WEG.familie(), 'privat'),
-  s('menschen', 'Kontakte · Privat (unsere Menschen)', WEG.menschen(), 'privat'),
+  s('menschen', 'Familie · Kontakte privat (unsere Menschen)', WEG.menschen(), 'privat'),
   // Business
   s('markttraktion', 'Markttraktion · Überblick', WEG.markttraktion(), 'business'),
   s('kontakte', 'Kontakte · Business (Markttraktion)', WEG.kontakt(), 'business'),

@@ -101,7 +101,7 @@ describe('Werkzeug-Konfiguration', () => {
     expect(werkzeugFuer('/os/netzwerken/karte')?.id).toBe('markttraktion');
     expect(werkzeugFuer('/os/netzwerkenx')).toBeNull();
     expect(werkzeugFuer('/os/mandate')).toBeNull(); // Produkte & Mandate bleibt (noch) kein Werkzeug
-    expect(werkzeugFuer('/os/menschen')).toBeNull(); // Kontakte privat
+    expect(werkzeugFuer('/os/menschen')?.id).toBe('familie'); // Kontakte privat (seit 22.10. abends ein Punkt im Werkzeug Familie)
     expect(werkzeugFuer('/os/prozesse', '?p=sp-deal&voll=1')?.id).toBe('prozesse');
     expect(werkzeugFuer('/os/prozessebuch')).toBeNull();
   });

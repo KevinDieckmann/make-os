@@ -452,8 +452,40 @@ export const GESUNDHEIT_WERKZEUG: Werkzeug = {
   }),
 };
 
+// ─── Familie — nur Privat ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Wir zwei · Familie · Rahmen (die Bereiche der Seite, `?b=`) · Kontakte (/os/menschen — seit 22.10. abends ein Punkt dieses Werkzeugs statt eines eigenen
+// Leistenpunkts; Adresse und Zeitmessung bleiben) · „Automationen & Head“ (`?b=automationen`, Head „Familie & Partnerschaft“ aus `SEITEN_REGELN`).
+type FamilieOrt = 'wir' | 'familie' | 'rahmen' | 'kontakte' | 'automationen';
+export function familieOrt(k: WerkzeugKontext): FamilieOrt {
+  if (unterSeite(k.pfad, WEG.menschen())) return 'kontakte';
+  const b = k.q.get('b');
+  return b === 'familie' || b === 'rahmen' || b === 'automationen' ? b : 'wir';
+}
+const FAMILIE_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'wir', label: 'Wir zwei', icon: Heart, titel: 'Erst wir zwei — Dates, Gespräch, Pflege-Rhythmus', href: () => WEG.familie(), aktiv: k => familieOrt(k) === 'wir' },
+  { id: 'familie', label: 'Familie', icon: Users, titel: 'Familie organisieren — Karten, Menschen, wichtige Tage', href: () => WEG.familie('familie'), aktiv: k => familieOrt(k) === 'familie' },
+  { id: 'rahmen', label: 'Rahmen', icon: Shield, titel: 'Paar-Gespräch, Business-freie Zeiten, Ausnahmezeit', href: () => `${WEG.familie()}?b=rahmen`, aktiv: k => familieOrt(k) === 'rahmen' },
+  { id: 'kontakte', label: 'Kontakte', icon: BookUser, titel: 'Eure Menschen mit Kontakt-Takt und die wichtigen Tage', href: () => WEG.menschen(), aktiv: k => familieOrt(k) === 'kontakte' },
+];
+export const FAMILIE_WERKZEUG: Werkzeug = {
+  id: 'familie',
+  name: 'Familie',
+  icon: Users,
+  spaces: ['privat'],
+  pfade: [WEG.familie(), WEG.menschen()],
+  start: WEG.familie(),
+  leistenPunkt: 'Familie',
+  nurVolleMitglieder: true,
+  punkte: FAMILIE_PUNKTE,
+  automation: automationMitHeads(WEG.familie(), FAMILIE_PUNKTE, 'privat', {
+    bereiche: [],
+    href: () => `${WEG.familie()}?b=automationen`,
+    aktiv: k => familieOrt(k) === 'automationen',
+  }),
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG, AUFGABEN_WERKZEUG, GESUNDHEIT_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG, AUFGABEN_WERKZEUG, GESUNDHEIT_WERKZEUG, FAMILIE_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {
