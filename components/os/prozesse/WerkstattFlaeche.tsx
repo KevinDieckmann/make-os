@@ -72,6 +72,8 @@ export interface WerkstattFlaecheProps {
   onAnhaengen: (ziel: AnhangZiel, bildschirm: [number, number]) => void;
   onZuklappen: (phaseId: string) => void;
   onTaste: (a: TastenAktion) => boolean;
+  /** Werkzeug-Muster (22.10.): der Maßstab je gezeichnetem Bild (Zoom-Leiste „87 %“) — schreibt direkt, kein Zustand je Bild. */
+  onMassstab?: (s: number) => void;
 }
 
 type Zug =
@@ -127,6 +129,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       welt.current?.setAttribute('transform', transformVon(k));
       muster.current?.setAttribute('patternTransform', `translate(${k.x} ${k.y}) scale(${k.s})`);
       ebene.current?.kamera(k);
+      stand.current.onMassstab?.(k.s);
     });
   }, []);
   const setze = useCallback((k: Kamera) => { kamera.current = k; zeichne(); }, [zeichne]);

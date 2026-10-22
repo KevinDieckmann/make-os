@@ -9,7 +9,8 @@
 // Laufende Kunden sehen einen Entwurf nie (Veröffentlichen + Übernehmen je Kunde: E3). Am Handy nur ansehen.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Grid3x3, Maximize2, Minus, Plus, Redo2, Undo2 } from 'lucide-react';
+import { Grid3x3, Fullscreen, Minus, Plus, Redo2, Undo2 } from 'lucide-react';
+import { GanzerBildschirmKnopf } from '../werkzeug/rahmen';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Chip, Hinweis, Knopf, SymbolKnopf, eingabe as eingabeStil } from '../ui';
 import { neueKennung } from '@/lib/kennung';
@@ -31,7 +32,8 @@ const leer = () => undefined;
 type Speicher = { art: 'gespeichert' | 'ausstehend' | 'speichert' | 'fehler' | 'konflikt' | 'offline'; text?: string };
 const SPEICHER_TEXT: Record<Speicher['art'], string> = { gespeichert: 'Entwurf gespeichert', ausstehend: 'Änderung …', speichert: 'Speichert …', fehler: 'Nicht gespeichert', konflikt: 'Andere Fassung', offline: 'Keine Verbindung' };
 
-export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Handy (bzw. schmal): nur ansehen, die Fläche ohne Seitenfeld daneben. */ schmal: boolean }) {
+export function PaketWerkstatt({ paketId, schmal, onGanzerBildschirm }: { paketId: string; /** Am Handy (bzw. schmal): nur ansehen, die Fläche ohne Seitenfeld daneben. */ schmal: boolean;
+  /** Werkzeug-Muster (22.10.): der Pfeil ⤢ oben rechts in der Fläche — „Ganzer Bildschirm“ (fehlt im Werkzeugmodus, dort trägt ihn die Kopfzeile). */ onGanzerBildschirm?: () => void }) {
   const { daten: geladen, fehler, laden } = usePaket(paketId);
   const [daten, setDaten] = useState<PaketAntwort | null>(null);
   const [fassung, setFassung] = useState<ProzessVorlage | null>(null);
@@ -217,7 +219,7 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           <SymbolKnopf ariaLabel="Raster an/aus" gedrueckt={raster} onClick={() => setRaster(r => !r)}><Grid3x3 size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Verkleinern" onClick={() => flaeche.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
-          <SymbolKnopf ariaLabel="Alles zeigen" onClick={() => flaeche.current?.allesZeigen()}><Maximize2 size={16} /></SymbolKnopf>
+          <SymbolKnopf ariaLabel="Alles zeigen" onClick={() => flaeche.current?.allesZeigen()}><Fullscreen size={16} /></SymbolKnopf>
           {(bearbeiten || mobilDarf) && daten.entwurf && <Knopf leise onClick={verwerfen} titel="Den Entwurf löschen — das Paket bleibt, wie es ist">Entwurf verwerfen</Knopf>}
           {(bearbeiten || mobilDarf) && istEntwurf && !veroeff && <Knopf onClick={() => setVeroeff({ name: '', notiz: '' })} titel="Der Entwurf wird die neue Fassung des Pakets — laufende Kunden übernehmen je Kunde per Klick">Veröffentlichen</Knopf>}
           {!bearbeiten && !schmal && <Knopf leise href={daten.editor} titel="Ohne Recht zum Bearbeiten: der Editor des Fulfillments zeigt dasselbe Paket">Im Fulfillment-Editor ansehen ›</Knopf>}
@@ -267,6 +269,7 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
             onAuswahl={ids => { setRahmenWahl(null); setAuswahl(ids.slice(-1)); }}
             onKante={leer} onRahmen={id => { setRahmenWahl(id); setAuswahl([]); }} onUnter={id => setAuswahl([id])}
             onZiehen={leer} onVerbinden={leer} onAnhaengen={leer} onZuklappen={leer} onTaste={taste} />
+          {onGanzerBildschirm && <GanzerBildschirmKnopf onClick={onGanzerBildschirm} />}
         </div>
         {!schmal && (
           <aside className="pw-panel" aria-label="Felder des Pakets">

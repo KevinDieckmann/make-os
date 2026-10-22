@@ -51,6 +51,8 @@ export interface BuehneProps {
   onFrei?: () => void;
   /** Präsentieren: ohne Hinweis und ohne Rand. */
   praesentieren?: boolean;
+  /** Werkzeug-Muster (22.10.): der Maßstab je gezeichnetem Bild (Zoom-Leiste „87 %“) — schreibt direkt, kein Zustand je Bild. */
+  onMassstab?: (s: number) => void;
 }
 
 const ruhig = () => typeof window !== 'undefined' && bewegungReduziert();
@@ -96,6 +98,7 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
       ebene.current?.kamera(k);
       const neu = zoomStufe(k.s);
       if (neu !== stufeRef.current) { stufeRef.current = neu; setStufe(neu); }
+      stand.current.onMassstab?.(k.s);
       // Minimap: der sichtbare Ausschnitt in Welt-Koordinaten.
       const r = sicht.current, g = groesse();
       if (r) { r.setAttribute('x', String(-k.x / k.s)); r.setAttribute('y', String(-k.y / k.s)); r.setAttribute('width', String(g.b / k.s)); r.setAttribute('height', String(g.h / k.s)); }

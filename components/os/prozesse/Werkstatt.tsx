@@ -14,10 +14,13 @@
 //     ihn nicht gibt: „Probelauf kommt mit dem Lauf-Motor“. Läufe: ./WerkstattLaeufe.tsx, Tests: ./WerkstattTests.tsx, Webhook am Auslöser: ./WerkstattWebhook.tsx.
 //   · Rollen (lib/prozesse/rollen.ts): volle Mitglieder veröffentlichen, alle im Haushalt bauen Entwürfe; System-Prozesse und Fulfillment-Pakete bleiben hier
 //     nur lesbar. Am Handy (unter 768 px) nur ansehen.
+//   · Werkzeugmodus (22.10., Werkzeug-Muster — ../werkzeug/rahmen.tsx): der Pfeil ⤢ oben rechts in der Fläche öffnet den ganzen Bildschirm; dort füllt die
+//     Fläche alles, und dieselben Griffe schweben Miro-artig: Ordnen, Zettel, Phase, Raster … links, Zoom unten rechts, „Head fragen“ unten links, Probelauf
+//     und Veröffentlichen oben rechts, Zustand und Version hinter dem Titel; das Panel schwebt rechts und klappt ein. Außerhalb bleibt alles wie bisher.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Undo2, Redo2, LayoutGrid, Grid3x3, StickyNote, Plus, Minus, Maximize2, Keyboard, Play, Upload, X, Columns3, Check, CloudOff, Loader2, Sparkles } from 'lucide-react';
+import { Undo2, Redo2, LayoutGrid, Grid3x3, StickyNote, Plus, Minus, Fullscreen, Keyboard, Play, Upload, X, Columns3, Check, CloudOff, Loader2, Sparkles } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, LEUCHT } from '@/lib/make-one/design';
 import { Knopf, Hinweis, SymbolKnopf, Chip, Reiter } from '../ui';
 import { neueKennung } from '@/lib/kennung';
@@ -61,6 +64,8 @@ import { useLaeufe } from './laeufe-daten';
 import { zoomStufe } from '../ui/flaeche/stufe';
 import { MobilMaske, MobilSchrittListe } from './MobilBearbeiten';
 import { werkstattMobilAnwenden, werkstattMobilFelder } from '@/lib/prozesse/mobil-felder';
+import { useWerkzeugModus, WerkzeugSlot, WerkzeugFeld, GanzerBildschirmKnopf } from '../werkzeug/rahmen';
+import { ZoomLeiste, useMassstab } from '../werkzeug/zoom';
 
 type K = ProzessKnoten<ProzessForm>;
 
@@ -79,12 +84,17 @@ const tagZeit = (iso: string) => { const t = new Date(iso); return Number.isFini
 
 type Speicher = { art: 'gespeichert' | 'ausstehend' | 'speichert' | 'fehler' | 'konflikt' | 'offline'; text?: string };
 
-export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: string; nurAnsehen: boolean; /** Steckbrief bzw. Version geändert — die Landkarte (Kachel, Brotkrumen) neu laden. */ onLandkarte?: () => void }) {
+export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschirm }: { prozessId: string; nurAnsehen: boolean; /** Steckbrief bzw. Version geändert — die Landkarte (Kachel, Brotkrumen) neu laden. */ onLandkarte?: () => void;
+  /** Werkzeug-Muster (22.10.): der Pfeil ⤢ oben rechts in der Fläche — „Ganzer Bildschirm“ (außerhalb des Werkzeugmodus). */ onGanzerBildschirm?: () => void }) {
   const { daten, fehler: ladeFehler, laden: prozessLaden } = useProzess(prozessId);
   const laeufe = useLaeufe(prozessId);
   const router = useRouter();
   const adr = prozesseAusAdresse(useSearchParams());
   const reiter: WerkstattReiterId = adr.w ?? 'bauen';
+  // Werkzeugmodus (22.10.): im Rahmen des Werkzeugs, mit Fläche über den ganzen Bildschirm — dann schweben die Griffe (Orte des Rahmens).
+  const modus = useWerkzeugModus();
+  const imModus = !!modus?.flaechig && reiter === 'bauen' && !nurAnsehen;
+  const massstab = useMassstab();
   const reiterWaehlen = (w: WerkstattReiterId, lauf?: string | null) => router.push(WEG.prozesse({ p: prozessId, ansicht: 'werkstatt', w, ...(lauf ? { lauf } : {}), ...(adr.voll ? { voll: true } : {}) }), { scroll: false });
   const kat = useKatalog();
   const auswahlListen = useMemo(() => kat.daten?.auswahl ?? {}, [kat.daten]);
@@ -580,16 +590,66 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const spText = { gespeichert: 'Entwurf gespeichert', ausstehend: 'wird gespeichert …', speichert: 'speichert …', fehler: 'nicht gespeichert', konflikt: 'Konflikt — deine Fassung bleibt', offline: 'offline — bleibt hier' }[speicher.art];
   const spFarbe = speicher.art === 'gespeichert' ? C.inkLeise : speicher.art === 'fehler' || speicher.art === 'konflikt' ? LEUCHT.kritisch : speicher.art === 'offline' ? LEUCHT.achtung : C.inkDim;
   const v = eintrag.versionen.at(-1);
+  // Die Teile der Kopfzeile — außerhalb in der Werkzeugzeile, im Werkzeugmodus an den Orten des Rahmens (dieselben Griffe, nur verteilt).
+  const kopfZustand = (
+    <>
+      {v && <Chip farbe={C.inkDim}>{`Version ${v.nr}`}</Chip>}
+      <WerkstattSteuerung prozessId={prozessId} def={d} status={eintrag.status} hatVersion={!!v} laufStand={laeufe.daten?.stand ?? null}
+        rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} vorher={sichern} />
+      {reiter === 'bauen' && !nurLesen && <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: spFarbe }}><SP size={14} aria-hidden />{spText}</span>}
+      {reiter === 'bauen' && nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? (mobilDarf ? 'Am Handy: Texte und Fristen ändern' : 'Am Handy nur ansehen') : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
+    </>
+  );
+  const rasterKnopf = <SymbolKnopf ariaLabel="Raster an/aus" gedrueckt={raster} onClick={() => { const n = !raster; setRaster(n); schreib(lokal(), RASTER_MERKER, n ? null : 'aus'); }}><Grid3x3 size={16} /></SymbolKnopf>;
+  const headKnopf = !nurLesen && <Knopf leise onClick={() => setHeadOffen(true)} titel="Head fragen — Bausteine oder einen ganzen Entwurf vorschlagen lassen (übernommen erst mit deinem Klick)"><span className="pz-knopf-inhalt"><Sparkles size={14} aria-hidden />Head fragen</span></Knopf>;
+  const probeKnopf = <Knopf leise onClick={() => setProbeOffen(o => !o)} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts); mit dem Beispiel oder einem echten Fall"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>;
+  const versionenKnopf = (!nurAnsehen || mobilDarf) && !versionAnsicht && <Knopf onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>;
+  const panelInhalt = (
+    <>
+          <WerkstattPanel d={d} auswahl={auswahlListen} modelle={modelle} befunde={befunde} raete={raete} probe={probeSaetze} kanten={lage.kanten} nurLesen={nurLesen}
+            knoten={panelKnoten} phase={panelPhase} kante={panelKante} zettel={panelZettel} andock={andockWahl?.id === ein ? andockWahl?.art ?? null : null} titelFokus={titelFokus}
+            onKnoten={k => mitFassung(f => ersetzen(f, k), { auswahl: false })}
+            onSteckbrief={steckbrief}
+            onZweig={(von, ausgang, nach) => mitFassung(f => (nach ? verbinden(f, von, ausgang, nach) : loesen(f, von, ausgang)), { auswahl: false })}
+            onPfeilText={(von, art, t) => mitFassung(f => pfeilText(f, von, art, t), { auswahl: false })}
+            onLoeschen={ids => { mitFassung(f => loeschen(f, ids)); setAuswahl([]); }}
+            onKopieren={kopie}
+            onPhase={phaseAktion}
+            onZettel={(id, teil) => { if (teil) mitFassung(f => zettelAendern(f, id, teil), { auswahl: false }); else { mitFassung(f => zettelWeg(f, [id])); setAuswahl([]); } }}
+            agentName={agentName} knotenZusatz={webhookZusatz} produkte={daten?.produkte}
+            steckbriefZusatz={!nurAnsehen && rechte?.entwurf && !versionAnsicht
+              ? <ProzessKopieren prozessId={prozessId} titel={d.titel} vorher={sichern} onKopiert={id => { onLandkarte?.(); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt' }), { scroll: false }); }} />
+              : null} />
+          {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
+    </>
+  );
   return (
-    <div className="pw-werkstatt" onKeyDown={e => { if (e.key === 'Escape' && (formauswahl || hilfe || probeOffen)) { e.preventDefault(); setFormauswahl(null); setHilfe(false); setProbeOffen(false); } }}>
+    <div className={`pw-werkstatt${imModus ? ' pw-modus' : ''}`} onKeyDown={e => { if (e.key === 'Escape' && (formauswahl || hilfe || probeOffen)) { e.preventDefault(); setFormauswahl(null); setHilfe(false); setProbeOffen(false); } }}>
+      {imModus ? (
+        <>
+          <WerkzeugSlot ort="titel">{kopfZustand}</WerkzeugSlot>
+          <WerkzeugSlot ort="links">
+            <div className="wz-palette" role="toolbar" aria-label="Werkstatt">
+              {!nurLesen && <SymbolKnopf ariaLabel="Rückgängig (⌘Z)" aus={!geschichte.zurueck.length} onClick={zurueck}><Undo2 size={16} /></SymbolKnopf>}
+              {!nurLesen && <SymbolKnopf ariaLabel="Wiederholen (⌘⇧Z)" aus={!geschichte.vor.length} onClick={vor}><Redo2 size={16} /></SymbolKnopf>}
+              {!nurLesen && <SymbolKnopf ariaLabel="Ordnen (⇧O)" titel="Ordnen — eine Leserichtung; Zettel, die etwas verdecken, wandern über die Rahmen (⇧O, rückgängig machbar)" onClick={() => taste({ art: 'ordnen' })}><LayoutGrid size={16} /></SymbolKnopf>}
+              {!nurLesen && <SymbolKnopf ariaLabel="Notiz-Zettel auf die Fläche" onClick={zettelHin}><StickyNote size={16} /></SymbolKnopf>}
+              {!nurLesen && <SymbolKnopf ariaLabel="Neue Phase am Ende" onClick={() => phaseAktion('neu', phasen(d).at(-1)?.id ?? '')}><Columns3 size={16} /></SymbolKnopf>}
+              {rasterKnopf}
+              <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
+            </div>
+          </WerkzeugSlot>
+          <WerkzeugSlot ort="unten-rechts">
+            <ZoomLeiste massstab={massstab.ref} onKleiner={() => flaeche.current?.zoomen(0.8)} onGroesser={() => flaeche.current?.zoomen(1.25)} onAlles={allesZeigen} />
+          </WerkzeugSlot>
+          {headKnopf && <WerkzeugSlot ort="unten-links">{headKnopf}</WerkzeugSlot>}
+          <WerkzeugSlot ort="aktionen">{probeKnopf}{versionenKnopf}</WerkzeugSlot>
+        </>
+      ) : (
       <div className="pw-kopf">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, minWidth: 0 }}>
           {WERKSTATT_REITER.length > 1 && <div className="ui-reiter-zeile"><Reiter liste={WERKSTATT_REITER.map(r => ({ id: r.id, label: r.id === 'laeufe' && laeufe.daten?.laeufe.length ? `${r.titel} · ${laeufe.daten.laeufe.length}` : r.id === 'tests' && laeufe.daten?.tests.length ? `${r.titel} · ${laeufe.daten.tests.length}` : r.titel }))} aktiv={reiter} onWahl={w => reiterWaehlen(w)} ariaLabel="Werkstatt" /></div>}
-          {v && <Chip farbe={C.inkDim}>{`Version ${v.nr}`}</Chip>}
-          <WerkstattSteuerung prozessId={prozessId} def={d} status={eintrag.status} hatVersion={!!v} laufStand={laeufe.daten?.stand ?? null}
-            rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} vorher={sichern} />
-          {reiter === 'bauen' && !nurLesen && <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: spFarbe }}><SP size={14} aria-hidden />{spText}</span>}
-          {reiter === 'bauen' && nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? (mobilDarf ? 'Am Handy: Texte und Fristen ändern' : 'Am Handy nur ansehen') : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
+          {kopfZustand}
         </div>
         {reiter === 'bauen' && <div className="pw-werkzeuge" role="toolbar" aria-label="Werkstatt">
           {!nurLesen && <SymbolKnopf ariaLabel="Rückgängig (⌘Z)" aus={!geschichte.zurueck.length} onClick={zurueck}><Undo2 size={16} /></SymbolKnopf>}
@@ -597,16 +657,19 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
           {!nurLesen && <Knopf leise onClick={() => taste({ art: 'ordnen' })} titel="Ordnen — eine Leserichtung; Zettel, die etwas verdecken, wandern über die Rahmen (⇧O, rückgängig machbar)"><span className="pz-knopf-inhalt"><LayoutGrid size={14} aria-hidden />Ordnen</span></Knopf>}
           {!nurLesen && <Knopf leise onClick={zettelHin} titel="Notiz-Zettel auf die Fläche"><span className="pz-knopf-inhalt"><StickyNote size={14} aria-hidden />Zettel</span></Knopf>}
           {!nurLesen && <Knopf leise onClick={() => phaseAktion('neu', phasen(d).at(-1)?.id ?? '')} titel="Neue Phase am Ende"><span className="pz-knopf-inhalt"><Columns3 size={14} aria-hidden />Phase</span></Knopf>}
-          <SymbolKnopf ariaLabel="Raster an/aus" gedrueckt={raster} onClick={() => { const n = !raster; setRaster(n); schreib(lokal(), RASTER_MERKER, n ? null : 'aus'); }}><Grid3x3 size={16} /></SymbolKnopf>
+          {rasterKnopf}
           <SymbolKnopf ariaLabel="Verkleinern" onClick={() => flaeche.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
-          <SymbolKnopf ariaLabel="Alles zeigen" onClick={allesZeigen}><Maximize2 size={16} /></SymbolKnopf>
+          <SymbolKnopf ariaLabel="Alles zeigen" onClick={allesZeigen}><Fullscreen size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
-          {!nurLesen && <Knopf leise onClick={() => setHeadOffen(true)} titel="Head fragen — Bausteine oder einen ganzen Entwurf vorschlagen lassen (übernommen erst mit deinem Klick)"><span className="pz-knopf-inhalt"><Sparkles size={14} aria-hidden />Head fragen</span></Knopf>}
-          <Knopf leise onClick={() => setProbeOffen(o => !o)} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts); mit dem Beispiel oder einem echten Fall"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>
-          {(!nurAnsehen || mobilDarf) && !versionAnsicht && <Knopf onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>}
+          {headKnopf}
+          {probeKnopf}
+          {versionenKnopf}
         </div>}
       </div>
+      )}
+      {/* Meldungen: außerhalb wie bisher untereinander (der Rahmen trägt keine eigene Box), im Werkzeugmodus schwebend über der Fläche. */}
+      <div className={imModus ? 'wz-hinweise' : 'pw-hinweise'}>
       {konflikt && (
         <Hinweis art="achtung" titel="Inzwischen hat jemand anders diesen Entwurf geändert" aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}><Knopf onClick={meineSpeichern}>Meine Fassung speichern</Knopf><Knopf leise onClick={andereUebernehmen}>Andere Fassung übernehmen</Knopf></span>}>
           Deine Fassung ist nicht verloren — sie steht hier auf der Fläche. Speichern überschreibt die andere; Übernehmen holt die andere (Rückgängig holt deine zurück).
@@ -636,6 +699,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
       {meldung && <Hinweis art={meldung.art} aktion={<SymbolKnopf ariaLabel="Meldung schließen" onClick={() => setMeldung(null)}><X size={14} /></SymbolKnopf>}>{meldung.text}</Hinweis>}
       {probeHinweis && <Hinweis art="info" aktion={<SymbolKnopf ariaLabel="Schließen" onClick={() => setProbeHinweis(null)}><X size={14} /></SymbolKnopf>}>{probeHinweis}</Hinweis>}
       {reiter === 'bauen' && probe && <Hinweis art="info" titel={`Probelauf ${probeFall === 'beispiel' ? 'mit dem Beispiel-Fall' : `mit „${probeFall.name}“`} — nichts wurde geschrieben`} aktion={<Knopf leise onClick={() => setProbe(null)}>Beenden</Knopf>}>{`Grün würde laufen, gelb wartet bzw. braucht Freigabe, grau wird übersprungen, rot ist ein Fehler. Kosten geschätzt: ${centText(probe.kostenSchaetzungCent)}.`}</Hinweis>}
+      </div>
       {reiter === 'laeufe' && (
         <WerkstattLaeufe prozessId={prozessId} laufId={adr.lauf ?? null} daten={laeufe.daten} fehler={laeufe.fehler} rechte={rechte} team={team} konten={konten} agentName={agentName}
           onLauf={id => reiterWaehlen('laeufe', id)} onTestfall={() => reiterWaehlen('tests')} onNeu={laeufe.laden} />
@@ -662,7 +726,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
             onVerbinden={(von, ausgang, nach) => mitFassung(f => verbinden(f, von, ausgang, nach))}
             onAnhaengen={anhaengen}
             onZuklappen={zuklappen}
-            onTaste={taste} />
+            onTaste={taste} onMassstab={massstab.setzen} />
+          {/* Der Pfeil oben rechts IN der Fläche (Entscheidung 22.10.) — im Werkzeugmodus trägt ihn die Kopfzeile (⤡). */}
+          {!modus && onGanzerBildschirm && <GanzerBildschirmKnopf onClick={onGanzerBildschirm} />}
           {formauswahl && (
             <WerkstattFormauswahl ort={formauswahl.ort} form={formauswahl.form} titel={formauswahl.ziel.nach ? `Anhängen an „${d.knoten.find(k => k.id === formauswahl.ziel.nach)?.titel ?? ''}“` : 'Baustein anlegen'}
               ohneAusloeser={!!formauswahl.ziel.nach && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form !== 'ausloeser'} anhaengen={!!formauswahl.ziel.nach}
@@ -681,23 +747,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
             </div>
           )}
         </div>
-        <aside className="pw-panel" aria-label="Einstellungen">
-          <WerkstattPanel d={d} auswahl={auswahlListen} modelle={modelle} befunde={befunde} raete={raete} probe={probeSaetze} kanten={lage.kanten} nurLesen={nurLesen}
-            knoten={panelKnoten} phase={panelPhase} kante={panelKante} zettel={panelZettel} andock={andockWahl?.id === ein ? andockWahl?.art ?? null : null} titelFokus={titelFokus}
-            onKnoten={k => mitFassung(f => ersetzen(f, k), { auswahl: false })}
-            onSteckbrief={steckbrief}
-            onZweig={(von, ausgang, nach) => mitFassung(f => (nach ? verbinden(f, von, ausgang, nach) : loesen(f, von, ausgang)), { auswahl: false })}
-            onPfeilText={(von, art, t) => mitFassung(f => pfeilText(f, von, art, t), { auswahl: false })}
-            onLoeschen={ids => { mitFassung(f => loeschen(f, ids)); setAuswahl([]); }}
-            onKopieren={kopie}
-            onPhase={phaseAktion}
-            onZettel={(id, teil) => { if (teil) mitFassung(f => zettelAendern(f, id, teil), { auswahl: false }); else { mitFassung(f => zettelWeg(f, [id])); setAuswahl([]); } }}
-            agentName={agentName} knotenZusatz={webhookZusatz} produkte={daten?.produkte}
-            steckbriefZusatz={!nurAnsehen && rechte?.entwurf && !versionAnsicht
-              ? <ProzessKopieren prozessId={prozessId} titel={d.titel} vorher={sichern} onKopiert={id => { onLandkarte?.(); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt' }), { scroll: false }); }} />
-              : null} />
-          {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
-        </aside>
+        {imModus
+          ? <WerkzeugFeld titel="Einstellungen" oeffnenBei={ein ?? kanteWahl ?? rahmenWahl ?? null}>{panelInhalt}</WerkzeugFeld>
+          : <aside className="pw-panel" aria-label="Einstellungen">{panelInhalt}</aside>}
       </div>}
       {mobilWahl && (() => {
         const k = d.knoten.find(x => x.id === mobilWahl);

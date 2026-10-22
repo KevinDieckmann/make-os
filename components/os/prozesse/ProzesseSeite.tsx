@@ -11,13 +11,17 @@
 //   · Suche springt zum Knoten und lässt ihn aufleuchten (Punkt 15).
 //   · Werkstatt (Etappe B2, `?ansicht=werkstatt`): hier werden Prozesse gebaut (./Werkstatt.tsx); „+ Prozess“ legt einen an (./WerkstattUebersicht.tsx). System-
 //     Prozesse und Fulfillment-Pakete bleiben dort nur lesbar (Pakete öffnen weiter ihren Editor). Unter 768 px nur ansehen.
+//   · Werkzeug-Muster (22.10., lib/make-one/werkzeuge.ts — Prozesse ist das erste Werkzeug, Miro-Art): die Leiste klappt auf die Unterpunkte um; der Pfeil ⤢
+//     oben rechts IN jeder Fläche (Landkarte, Werkstatt) öffnet den Werkzeugmodus (`voll=1`, ../werkzeug/rahmen.tsx): Fläche über den ganzen Bildschirm, links
+//     die Symbol-Leiste, oben die Kopfzeile mit Rückweg und Aktionen, schwebend die Werkzeugleiste (links), Zoom (unten rechts), Head fragen (unten links),
+//     das Seitenfeld rechts zum Ein- und Ausklappen. „Vorlagen“ und „Präsentieren“ aus dem Menü kommen als Aktion (`make-werkzeug`) hier an.
 // Daten: GET /api/prozesse/landkarte (nur Business, serverseitig). Gerechnet wird in lib/prozesse/* — diese Datei verbindet nur.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Maximize2, Minimize2, Expand, Presentation, Map as MapIcon, Plus, Minus, ScanSearch, Keyboard, X, ChevronLeft, ChevronRight, Workflow, LayoutTemplate, Pencil } from 'lucide-react';
+import { Maximize2, Fullscreen, Presentation, Map as MapIcon, Plus, Minus, ScanSearch, Keyboard, X, ChevronLeft, ChevronRight, Workflow, LayoutTemplate, Pencil, Sparkles } from 'lucide-react';
 import { Werkstatt } from './Werkstatt';
 import { PaketWerkstatt } from './PaketWerkstatt';
 import { WerkstattUebersicht, NeuerProzessFenster } from './WerkstattUebersicht';
@@ -47,6 +51,9 @@ import { ProzessListe } from './ProzessListe';
 import { ProzessSuche } from './Suche';
 import { useLandkarte } from './daten';
 import { LandkarteAnpassen, useLandkarteAnpassung } from './LandkarteAnpassen';
+import { WerkzeugRahmen, WerkzeugSlot, WerkzeugFeld, GanzerBildschirmKnopf } from '../werkzeug/rahmen';
+import { ZoomLeiste, useMassstab } from '../werkzeug/zoom';
+import { PROZESSE_WERKZEUG, WERKZEUG_EREIGNIS, type WerkzeugAktion } from '@/lib/make-one/werkzeuge';
 
 const MERKER_EINZELTASTEN = 'make-prozesse-einzeltasten';
 const merkerLesen = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
@@ -60,7 +67,7 @@ export const KUERZEL: readonly { taste: string; was: string; einzel?: true }[] =
   { taste: 'Alt + 2', was: 'Auswahl zeigen' },
   { taste: 'M', was: 'Minimap an/aus', einzel: true },
   { taste: '+ / −', was: 'Vergrößern / Verkleinern', einzel: true },
-  { taste: 'F', was: 'Vollbild an/aus', einzel: true },
+  { taste: 'F', was: 'Ganzer Bildschirm an/aus', einzel: true },
   { taste: '?', was: 'Diese Übersicht', einzel: true },
   { taste: '← / → · Bild ↑ / Bild ↓', was: 'Beim Präsentieren: Rahmen zurück / weiter' },
 ];
@@ -91,6 +98,8 @@ export function ProzesseSeite() {
   const voll = vollbild.voll || praes;
   const ansicht: ProzessAnsicht = praes ? 'bild' : ansichtVorgabe(adr.ansicht ?? null, handy);
   const buehne = useRef<BuehneSteuerung>(null);
+  // Werkzeugmodus (22.10.): der Maßstab der Bühne steht unten rechts in der Zoom-Leiste (direkt geschrieben, kein Zustand je Bild).
+  const massstab = useMassstab();
   const [minimap, setMinimap] = useState(false);
   const [hilfe, setHilfe] = useState(false);
   const [einzeltasten, setEinzeltasten] = useState(true);
@@ -246,6 +255,17 @@ export function ProzesseSeite() {
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
   }, [geh, auswahlZeigen, blaettern]);
+  // Aktionen aus dem Menü des Werkzeugs (Leiste, Symbol-Leiste, Blatt): „Vorlagen“ öffnet die Galerie, „Präsentieren“ den Modus (synchron im Klick — Fullscreen).
+  useEffect(() => {
+    const hoeren = (e: Event) => {
+      const d = (e as CustomEvent<WerkzeugAktion>).detail;
+      if (d?.werkzeug !== PROZESSE_WERKZEUG.id) return;
+      if (d.aktion === 'vorlagen') setVorlageOffen(true);
+      else if (d.aktion === 'praesentieren') stand.current.vollbild.an({ modus: 'praesentieren' });
+    };
+    window.addEventListener(WERKZEUG_EREIGNIS, hoeren);
+    return () => window.removeEventListener(WERKZEUG_EREIGNIS, hoeren);
+  }, []);
 
   // ── Teile ──
   const krumen = daten ? brotkrumen(prozesse, pfad) : [];
@@ -262,21 +282,38 @@ export function ProzesseSeite() {
     </nav>
   );
   const ansichtWahl = <Segmente liste={PROZESS_ANSICHTEN.map(a => ({ id: a.id, label: a.titel }))} aktiv={ansicht} onWahl={ansichtWaehlen} />;
-  const vollKnopf = voll
-    ? <Knopf leise onClick={() => vollbild.aus()} titel="Vollbild verlassen (Esc)"><span className="pz-knopf-inhalt"><Minimize2 size={15} aria-hidden />Verlassen</span></Knopf>
-    : <Knopf leise onClick={() => vollbild.an()} titel="Vollbild (F)"><span className="pz-knopf-inhalt"><Expand size={15} aria-hidden />Vollbild</span></Knopf>;
+  // Werkzeug-Muster (22.10.): hat die Ansicht eine Fläche (Landkarte bzw. Bild, Werkstatt eines eigenen Prozesses beim Bauen), trägt die Fläche selbst den Pfeil
+  // ⤢ oben rechts und füllt im Werkzeugmodus den Bildschirm; Liste und Übersichten stehen dort als Seite unter der Kopfzeile.
+  const werkstattOffen = ansicht === 'werkstatt' && p?.quelle === 'werkstatt';
+  const flaechig = (ansicht === 'bild' && !!szene && prozesse.length > 0) || (werkstattOffen && !schmal && (adr.w ?? 'bauen') === 'bauen');
+  // Wo die Fläche selbst den Pfeil trägt (auch am Handy und im Paket des Fulfillments), steht oben kein zweiter Knopf.
+  const pfeilInFlaeche = flaechig || (werkstattOffen && (adr.w ?? 'bauen') === 'bauen') || (ansicht === 'werkstatt' && p?.quelle === 'vorlage' && !!p.editor);
+  const vollKnopf = <Knopf leise onClick={() => vollbild.an()} titel="Ganzer Bildschirm (F) — dieser Bereich als Ganzes"><span className="pz-knopf-inhalt"><Maximize2 size={15} aria-hidden />Ganzer Bildschirm</span></Knopf>;
   const praesKnopf = <Knopf leise onClick={() => vollbild.an({ modus: 'praesentieren' })} titel="Präsentieren — Rahmen für Rahmen"><span className="pz-knopf-inhalt"><Presentation size={15} aria-hidden />Präsentieren</span></Knopf>;
   const flaecheLeiste = (
     <div className="pz-leiste" role="toolbar" aria-label="Fläche">
       <SymbolKnopf ariaLabel="Verkleinern (−)" onClick={() => buehne.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
       <SymbolKnopf ariaLabel="Vergrößern (+)" onClick={() => buehne.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
-      <Knopf leise onClick={() => buehne.current?.allesZeigen()} titel="Alles zeigen (Alt + 1)"><span className="pz-knopf-inhalt"><Maximize2 size={14} aria-hidden />Alles zeigen</span></Knopf>
+      <Knopf leise onClick={() => buehne.current?.allesZeigen()} titel="Alles zeigen (Alt + 1)"><span className="pz-knopf-inhalt"><Fullscreen size={14} aria-hidden />Alles zeigen</span></Knopf>
       <Knopf leise onClick={auswahlZeigen} titel="Auswahl zeigen (Alt + 2)"><span className="pz-knopf-inhalt"><ScanSearch size={14} aria-hidden />Auswahl zeigen</span></Knopf>
       <SymbolKnopf ariaLabel="Minimap an/aus (M)" gedrueckt={minimap} onClick={() => setMinimap(x => !x)}><MapIcon size={16} /></SymbolKnopf>
       <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(x => !x)}><Keyboard size={16} /></SymbolKnopf>
       {/* Landkarte anpassen (22.10.): nur auf der Landkarte, nie beim Präsentieren — sonst bleibt die Ansicht ruhig. */}
       {ebene === 1 && !praes && !schmal && <SymbolKnopf ariaLabel="Landkarte anpassen" titel="Landkarte anpassen — Bereiche, Töne, Reihenfolge, Beschriftung, ausblenden" gedrueckt={anpassen} offen={anpassen} onClick={() => setAnpassen(x => !x)}><Pencil size={16} /></SymbolKnopf>}
     </div>
+  );
+  // Im Werkzeugmodus (Miro-Art): Werkzeugleiste links, Zoom unten rechts — dieselben Griffe wie `flaecheLeiste`, nur verteilt.
+  const landkarteWerkzeuge = (
+    <div className="wz-palette" role="toolbar" aria-label="Fläche">
+      <SymbolKnopf ariaLabel="Auswahl zeigen (Alt + 2)" onClick={auswahlZeigen}><ScanSearch size={16} /></SymbolKnopf>
+      {ebene === 1 && !schmal && <SymbolKnopf ariaLabel="Landkarte anpassen" titel="Landkarte anpassen — Bereiche, Töne, Reihenfolge, Beschriftung, ausblenden" gedrueckt={anpassen} offen={anpassen} onClick={() => setAnpassen(x => !x)}><Pencil size={16} /></SymbolKnopf>}
+      <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(x => !x)}><Keyboard size={16} /></SymbolKnopf>
+    </div>
+  );
+  const landkarteZoom = (
+    <ZoomLeiste massstab={massstab.ref} onKleiner={() => buehne.current?.zoomen(0.8)} onGroesser={() => buehne.current?.zoomen(1.25)} onAlles={() => buehne.current?.allesZeigen()}>
+      <SymbolKnopf ariaLabel="Karte (Minimap) an/aus (M)" gedrueckt={minimap} onClick={() => setMinimap(x => !x)}><MapIcon size={16} /></SymbolKnopf>
+    </ZoomLeiste>
   );
   const anpassFeld = anpassen && !praes && ebene === 1 && daten ? <LandkarteAnpassen ansicht={anp.ansicht} anpassung={anp.anpassung} speicher={anp.speicher} aendern={anp.aendern} onZu={() => setAnpassen(false)} /> : null;
   // Stellschrauben (22.10.): öffnet man einen System-Prozess, stehen seine Einstellungen unter dem Steckbrief (Bild), unter der Liste bzw. in der Werkstatt.
@@ -306,8 +343,8 @@ export function ProzesseSeite() {
   if (!daten) inhalt = fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Landkarte lädt …</p>;
   else if (!prozesse.length) inhalt = <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine Prozesse">Sobald Abläufe im System oder im Fulfillment stehen, erscheinen sie hier.</Leerzustand>;
   else if (ansicht === 'werkstatt') inhalt = p?.quelle === 'system' && schrauben
-    ? <div className="pz-mit-schrauben"><WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} />{schrauben}</div>
-    : <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} />;
+    ? <div className="pz-mit-schrauben"><WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} onGanz={voll ? undefined : () => vollbild.an()} />{schrauben}</div>
+    : <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} onGanz={voll ? undefined : () => vollbild.an()} />;
   else if (ansicht === 'liste') inhalt = schrauben
     ? <div className="pz-mit-schrauben"><ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} bereiche={anp.ansicht.bereiche} />{schrauben}</div>
     : <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} bereiche={anp.ansicht.bereiche} />;
@@ -316,9 +353,11 @@ export function ProzesseSeite() {
       <div className="pz-buehnen-rahmen">
         <Buehne ref={buehne} szene={szene.schluessel} einflug={einflug} box={szene.box} boxen={szene.boxen} faeden={szene.faeden}
           ziel={pfad.s ?? pfad.ph ?? null} leuchten={leuchten} minimap={minimap} minimapTeile={szene.minimap} handy={handy} label={szene.label} praesentieren={praes}
-          onFrei={() => setGewaehlt(null)}>
+          onFrei={() => setGewaehlt(null)} onMassstab={massstab.setzen}>
           {szene.zeichne}
         </Buehne>
+        {/* Der Pfeil oben rechts IN der Fläche (Entscheidung 22.10.): dieser Bereich als Ganzes — im Werkzeugmodus trägt ihn die Kopfzeile (⤡). */}
+        {!voll && <GanzerBildschirmKnopf onClick={() => vollbild.an()} kuerzel="F" />}
         {hilfeFenster}
       </div>
     );
@@ -340,44 +379,50 @@ export function ProzesseSeite() {
       onAngelegt={async id => { await landkarteNeu(); setNeuOffen(false); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
   );
 
-  // ── Vollbild bzw. Präsentieren: über allem (Portal in den Body — nie in einer Karte mit Transform) ──
-  if (voll) {
+  const headKnopf = !schmal && <Knopf leise onClick={() => setHeadOffen(true)} titel="Head fragen — einen ganzen Prozess vorschlagen lassen (übernommen erst mit deinem Klick)"><span className="pz-knopf-inhalt"><Sparkles size={15} aria-hidden />Head fragen</span></Knopf>;
+
+  // ── Präsentieren: über allem (Portal in den Body — nie in einer Karte mit Transform), Rahmen für Rahmen ──
+  if (voll && praes) {
     if (!montiert) return null;
     return createPortal(
-      <div className={`pz-voll${praes ? ' pz-praesentieren' : ''}`} role="dialog" aria-modal="true" aria-label={praes ? 'Prozesse präsentieren' : 'Prozesse im Vollbild'} style={{ fontFamily: SCHRIFT.text, color: C.ink }}>
-        {!praes && (
-          <div className="pz-voll-kopf">
-            {brot}
-            <div className="pz-voll-werkzeuge">
-              {daten && <ProzessSuche prozesse={prozesse} onTreffer={treffer} />}
-              {ansichtWahl}
-              {ansicht === 'bild' && flaecheLeiste}
-              {neuKnopf}
-              {vorlageKnopf}
-              {praesKnopf}
-              {vollKnopf}
-            </div>
-          </div>
-        )}
+      <div className="pz-voll pz-praesentieren" role="dialog" aria-modal="true" aria-label="Prozesse präsentieren" style={{ fontFamily: SCHRIFT.text, color: C.ink }}>
         <div className="pz-voll-inhalt">{raster}</div>
-        {neuFenster}
-        {vorlageFenster}
-        {headFenster}
-        {praes && (
-          <div className="pz-praes-leiste" role="toolbar" aria-label="Präsentieren">
-            <SymbolKnopf ariaLabel="Rahmen zurück (←)" aus={rahmenNr <= 0} onClick={() => blaettern(-1)}><ChevronLeft size={18} /></SymbolKnopf>
-            <span aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkDim, minWidth: 160, textAlign: 'center' }}>{rahmen.length ? `${rahmenNr + 1} / ${rahmen.length} · ${rahmen[rahmenNr]?.titel ?? ''}` : ''}</span>
-            <SymbolKnopf ariaLabel="Rahmen weiter (→)" aus={rahmenNr >= rahmen.length - 1} onClick={() => blaettern(1)}><ChevronRight size={18} /></SymbolKnopf>
-            <SymbolKnopf ariaLabel="Präsentieren beenden (Esc)" onClick={() => vollbild.aus()}><X size={18} /></SymbolKnopf>
-          </div>
-        )}
+        <div className="pz-praes-leiste" role="toolbar" aria-label="Präsentieren">
+          <SymbolKnopf ariaLabel="Rahmen zurück (←)" aus={rahmenNr <= 0} onClick={() => blaettern(-1)}><ChevronLeft size={18} /></SymbolKnopf>
+          <span aria-live="polite" style={{ fontSize: TYP.bedien, color: C.inkDim, minWidth: 160, textAlign: 'center' }}>{rahmen.length ? `${rahmenNr + 1} / ${rahmen.length} · ${rahmen[rahmenNr]?.titel ?? ''}` : ''}</span>
+          <SymbolKnopf ariaLabel="Rahmen weiter (→)" aus={rahmenNr >= rahmen.length - 1} onClick={() => blaettern(1)}><ChevronRight size={18} /></SymbolKnopf>
+          <SymbolKnopf ariaLabel="Präsentieren beenden (Esc)" onClick={() => vollbild.aus()}><X size={18} /></SymbolKnopf>
+        </div>
       </div>,
       document.body,
     );
   }
 
+  // ── Werkzeugmodus (Vollbild, `voll=1`): der Rahmen des Werkzeug-Musters — Esc führt diese Seite selbst (Dialoge, Hilfe zuerst) ──
+  if (voll) {
+    const bildFlaeche = flaechig && ansicht === 'bild';
+    const feldTitel = anpassFeld ? 'Landkarte anpassen' : s ? 'Schritt' : ph ? 'Phase' : 'Steckbrief';
+    return (
+      <WerkzeugRahmen werkzeug={PROZESSE_WERKZEUG} titel={brot} flaechig={flaechig} esc={false} onVerlassen={() => vollbild.aus()} label="Prozesse im Vollbild">
+        <WerkzeugSlot ort="titel">{ansichtWahl}</WerkzeugSlot>
+        <WerkzeugSlot ort="aktionen">
+          {daten && <ProzessSuche prozesse={prozesse} onTreffer={treffer} />}
+          {!werkstattOffen && <>{neuKnopf}{vorlageKnopf}{ansicht === 'bild' && praesKnopf}</>}
+        </WerkzeugSlot>
+        {bildFlaeche && <WerkzeugSlot ort="links">{landkarteWerkzeuge}</WerkzeugSlot>}
+        {bildFlaeche && <WerkzeugSlot ort="unten-rechts">{landkarteZoom}</WerkzeugSlot>}
+        {/* Die Werkstatt eines eigenen Prozesses fragt den Head mit dem offenen Prozess (sie legt ihren Knopf selbst dorthin). */}
+        {!werkstattOffen && headKnopf && <WerkzeugSlot ort="unten-links">{headKnopf}</WerkzeugSlot>}
+        {bildFlaeche ? <>{inhalt}{feld && <WerkzeugFeld titel={feldTitel} oeffnenBei={anpassFeld ? 'anpassen' : pfad.s ?? pfad.ph ?? pfad.p ?? null}>{feld}</WerkzeugFeld>}</> : raster}
+        {neuFenster}
+        {vorlageFenster}
+        {headFenster}
+      </WerkzeugRahmen>
+    );
+  }
+
   return (
-    <Seite titel="Prozesse" ton={STUFE_FARBE.uebergabe} rechts={<div className="pz-kopf-werkzeuge">{ansichtWahl}{neuKnopf}{vorlageKnopf}{!handy && praesKnopf}{vollKnopf}</div>}>
+    <Seite titel="Prozesse" ton={STUFE_FARBE.uebergabe} rechts={<div className="pz-kopf-werkzeuge">{ansichtWahl}{neuKnopf}{vorlageKnopf}{!handy && praesKnopf}{!pfeilInFlaeche && vollKnopf}</div>}>
       <Karte className="pz-karte">
         <div className="pz-oben">
           {brot}
@@ -400,11 +445,12 @@ export function ProzesseSeite() {
  * nur lesbar. Pakete des Fulfillments öffnen sich seit 22.10. (Fulfillment in die Werkstatt, Etappe 1) auf derselben Fläche zum Ansehen (./PaketWerkstatt.tsx);
  * Landkarte (Hochhaus) und gezeichnete Abläufe sind Bilder und bleiben ein Hinweis mit Sprung.
  */
-function WerkstattBereich({ p, schmal, onNeu, onVorlage, onHead, onLandkarte }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onVorlage: () => void; onHead: () => void; onLandkarte: () => void }) {
+function WerkstattBereich({ p, schmal, onNeu, onVorlage, onHead, onLandkarte, onGanz }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onVorlage: () => void; onHead: () => void; onLandkarte: () => void;
+  /** Werkzeug-Muster (22.10.): der Pfeil ⤢ oben rechts in der Fläche — fehlt im Werkzeugmodus (dort trägt ihn die Kopfzeile). */ onGanz?: () => void }) {
   if (!p) return <WerkstattUebersicht onNeu={onNeu} onVorlage={onVorlage} onHead={onHead} />;
-  if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} onLandkarte={onLandkarte} />;
+  if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} onLandkarte={onLandkarte} onGanzerBildschirm={onGanz} />;
   // Fulfillment in die Werkstatt (22.10., Etappe 1): ein Paket öffnet sich auf derselben Fläche — nur ansehen; bearbeitet wird bis Etappe 2 im Editor des Fulfillments.
-  if (p.quelle === 'vorlage' && p.editor) return <PaketWerkstatt key={p.id} paketId={p.id} schmal={schmal} />;
+  if (p.quelle === 'vorlage' && p.editor) return <PaketWerkstatt key={p.id} paketId={p.id} schmal={schmal} onGanzerBildschirm={onGanz} />;
   if (p.quelle === 'vorlage') {
     return (
       <Hinweis art="info" titel={`„${p.titel}“ ist eine Vorlage des Fulfillments`} aktion={p.editor ? <Knopf leise href={p.editor}>Im Fulfillment-Editor öffnen ›</Knopf> : undefined}>
